@@ -5,9 +5,9 @@
   "height": 192,
   "ground_y": 176.0,
   "center_x": 64.0,
-  "ankle_h": 2.0,
+  "ankle_h": 12.546,
   "supersample": 4,
-  "render_scale": 1
+  "render_scale": 3
  },
  "svg_source": {
   "path": "../../../../../../assets/manual-svgs/perfect-cellular-automaton/pca-front-side.svg",
@@ -427,7 +427,9 @@
    "lower": "near_leg_l",
    "foot": "near_leg_foot",
    "channel_prefix": "near_foot",
-   "rest_x": 4.0,
+   "rest_x": -11.024,
+   "rest_lift": -1.199,
+   "rest_pitch": 14.899,
    "bend": 1.0
   },
   {
@@ -435,7 +437,9 @@
    "lower": "far_leg_l",
    "foot": "far_leg_foot",
    "channel_prefix": "far_foot",
-   "rest_x": -4.0,
+   "rest_x": 12.777,
+   "rest_lift": 1.199,
+   "rest_pitch": 11.487,
    "bend": 1.0
   }
  ],

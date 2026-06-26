@@ -57,9 +57,9 @@ def test_rest_pose_matches_reference(doc: RigDocument) -> None:
     from ambition_sprite2d_renderer.authoring.svg_parts import rasterize_subset
 
     doc.data["ik_legs"] = []
-    # Render at supersample=1 so 1px == 1 base-frame unit, matching the
-    # reference raster's scale (area comparison is not scale-invariant).
-    rig_frame = doc.render_at("idle", 0.0, supersample=1)
+    # Render at supersample=1 and scale=1 so 1px == 1 base-frame unit, matching
+    # the reference raster's scale (area comparison is not scale-invariant).
+    rig_frame = doc.render_at("idle", 0.0, supersample=1, scale=1)
     rig_mask = _alpha_mask(rig_frame)
 
     # Reference: the whole view rasterized straight at the same px-per-unit.

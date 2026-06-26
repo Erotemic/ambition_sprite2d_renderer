@@ -53,6 +53,9 @@ RIG_OUT = RIGGED_DIR / "perfect_cellular_automaton.rig.json"
 
 VIEW = "VIEW-front-right"
 REF_DPI = 96.0
+# Output resolution multiplier (geometry stays authored in base-frame units;
+# vector source rasterizes crisply, so we can afford a high multiplier).
+RENDER_SCALE = 3
 
 # top group label -> (region kind, side)
 REGION = {
@@ -264,6 +267,9 @@ def build_skeleton_data() -> dict:
         "ids": ids,
         "proximal_px": proximal_px,
         "rest_angle": {n: a for n, (_, a) in world.items()},
+        # World-space (frame-unit) rest transform of every bone — used to author
+        # IK leg targets that reproduce the *drawn* stance (origin == joint).
+        "world": {n: {"origin": list(o), "angle": a} for n, (o, a) in world.items()},
         "frame": dict(width=FRAME_W, height=FRAME_H, ground_y=GROUND_Y,
                       center_x=CENTER_X, ankle_h=ANKLE_H),
         "K": K,
@@ -300,7 +306,31 @@ def build_doc() -> dict:
 
     svg_rel = Path("../../../../../..") / SVG.relative_to(REPO)
     fr = sk["frame"]
-    fr.update(supersample=4, render_scale=1)
+    # Source art is vector, so publish at higher pixel resolution (render_scale)
+    # without touching the authored geometry or the in-game display size.
+    fr.update(supersample=4, render_scale=RENDER_SCALE)
+
+    # IK rest targets measured from the drawn stance so the default pose matches
+    # the artwork (no crossed legs, no bent knees). ankle_h is shared, so each
+    # foot's height difference is absorbed by a per-leg rest_lift.
+    cx, gy = fr["center_x"], fr["ground_y"]
+    W = sk["world"]
+    ankles = {s: W[f"{s}_leg_foot"]["origin"] for s in ("near", "far")}
+    mean_ankle_y = sum(a[1] for a in ankles.values()) / 2.0
+    fr["ankle_h"] = round(gy - mean_ankle_y, 3)
+    ik_legs = []
+    for side in ("near", "far"):
+        ax, ay = ankles[side]
+        ik_legs.append({
+            "upper": f"{side}_leg_u", "lower": f"{side}_leg_l",
+            "foot": f"{side}_leg_foot", "channel_prefix": f"{side}_foot",
+            "rest_x": round(ax - cx, 3),
+            "rest_lift": round(mean_ankle_y - ay, 3),
+            "rest_pitch": round(W[f"{side}_leg_foot"]["angle"], 3),
+            # knees bend forward (+x) for this right-facing 3/4 view
+            "bend": 1.0,
+        })
+
     return {
         "name": "perfect_cellular_automaton",
         "frame": fr,
@@ -311,12 +341,7 @@ def build_doc() -> dict:
         "palette": {},
         "bones": sk["bones"],
         "parts": parts,
-        "ik_legs": [
-            {"upper": "near_leg_u", "lower": "near_leg_l", "foot": "near_leg_foot",
-             "channel_prefix": "near_foot", "rest_x": 4.0, "bend": 1.0},
-            {"upper": "far_leg_u", "lower": "far_leg_l", "foot": "far_leg_foot",
-             "channel_prefix": "far_foot", "rest_x": -4.0, "bend": 1.0},
-        ],
+        "ik_legs": ik_legs,
         "clips": {
             "idle": {"loop": True, "frames": 8, "duration_ms": 130, "channels": {
                 "torso": {"expr": "1.5*sin(tau*t)"},

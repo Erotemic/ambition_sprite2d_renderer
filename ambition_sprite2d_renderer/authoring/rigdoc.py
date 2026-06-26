@@ -352,8 +352,10 @@ class RigDocument:
                 continue
             pre = leg.get("channel_prefix", "foot")
             hip = w0[up].origin
+            # rest_x/rest_lift/rest_pitch default the foot to its drawn stance, so
+            # a clip only needs to drive the channels it actually animates.
             x = s.get(f"{pre}_x", float(leg.get("rest_x", 0.0)))
-            lift = s.get(f"{pre}_lift", 0.0)
+            lift = s.get(f"{pre}_lift", float(leg.get("rest_lift", 0.0)))
             ankle = (cx + x, gy - ankle_h - lift)
             a1, a2 = two_bone_ik(
                 hip, ankle, sk.bones[up].length, sk.bones[lo].length,
@@ -365,7 +367,7 @@ class RigDocument:
             angles[lo] = a2 - a1 - sk.bones[lo].rest_angle
             foot = leg.get("foot")
             if foot and foot in sk.bones:
-                pitch = s.get(f"{pre}_pitch", 0.0)
+                pitch = s.get(f"{pre}_pitch", float(leg.get("rest_pitch", 0.0)))
                 angles[foot] = pitch - a2 - sk.bones[foot].rest_angle
         return sk.world(angles, root=root), s
 
