@@ -41,7 +41,7 @@
    "name": "head",
    "parent": "torso",
    "offset": [
-    -1.338,
+    -2.216,
     -40.959
    ],
    "length": 0.0,
@@ -51,121 +51,121 @@
    "name": "far_arm_u",
    "parent": "torso",
    "offset": [
-    15.175,
+    13.498,
     -36.716
    ],
-   "length": 29.345,
-   "rest_angle": 83.411
+   "length": 30.017,
+   "rest_angle": 76.21
   },
   {
    "name": "far_arm_l",
    "parent": "far_arm_u",
    "offset": [
-    29.345,
-    -0.0
+    30.017,
+    0.0
    ],
-   "length": 22.56,
-   "rest_angle": 0.132
+   "length": 22.418,
+   "rest_angle": 14.424
   },
   {
    "name": "far_arm_hand",
    "parent": "far_arm_l",
    "offset": [
-    22.56,
-    -0.0
+    22.418,
+    0.0
    ],
-   "length": 15.244,
-   "rest_angle": 9.579
+   "length": 15.253,
+   "rest_angle": 3.069
   },
   {
    "name": "far_leg_u",
    "parent": "pelvis",
    "offset": [
-    7.703,
+    7.488,
     -1.661
    ],
-   "length": 31.387,
-   "rest_angle": 87.894
+   "length": 31.379,
+   "rest_angle": 88.314
   },
   {
    "name": "far_leg_l",
    "parent": "far_leg_u",
    "offset": [
-    31.387,
+    31.379,
     0.0
    ],
-   "length": 30.237,
-   "rest_angle": -5.345
+   "length": 30.032,
+   "rest_angle": -1.64
   },
   {
    "name": "far_leg_foot",
    "parent": "far_leg_l",
    "offset": [
-    30.237,
-    -0.0
+    30.032,
+    0.0
    ],
-   "length": 17.603,
-   "rest_angle": -71.063
+   "length": 19.793,
+   "rest_angle": -76.473
   },
   {
    "name": "near_arm_u",
    "parent": "torso",
    "offset": [
-    -16.836,
+    -16.696,
     -36.531
    ],
-   "length": 31.256,
-   "rest_angle": 95.929
+   "length": 31.677,
+   "rest_angle": 101.06
   },
   {
    "name": "near_arm_l",
    "parent": "near_arm_u",
    "offset": [
-    31.256,
+    31.677,
     -0.0
    ],
-   "length": 20.496,
-   "rest_angle": 2.091
+   "length": 20.32,
+   "rest_angle": -8.205
   },
   {
    "name": "near_arm_hand",
    "parent": "near_arm_l",
    "offset": [
-    20.496,
-    0.0
+    20.32,
+    -0.0
    ],
-   "length": 16.148,
-   "rest_angle": -9.33
+   "length": 16.15,
+   "rest_angle": -4.424
   },
   {
    "name": "near_leg_u",
    "parent": "pelvis",
    "offset": [
-    -7.703,
+    -7.488,
     1.661
    ],
-   "length": 30.396,
-   "rest_angle": 93.132
+   "length": 30.448,
+   "rest_angle": 94.575
   },
   {
    "name": "near_leg_l",
    "parent": "near_leg_u",
    "offset": [
-    30.396,
-    0.0
+    30.448,
+    -0.0
    ],
-   "length": 30.12,
-   "rest_angle": 0.029
+   "length": 30.206,
+   "rest_angle": 0.789
   },
   {
    "name": "near_leg_foot",
    "parent": "near_leg_l",
    "offset": [
-    30.12,
+    30.206,
     0.0
    ],
-   "length": 10.405,
-   "rest_angle": -78.262
+   "length": 11.688,
+   "rest_angle": -82.133
   }
  ],
  "parts": [
@@ -178,10 +178,10 @@
     "path68640"
    ],
    "pivot": [
-    657.0,
+    657.97,
     424
    ],
-   "rest_angle": 87.894
+   "rest_angle": 88.314
   },
   {
    "name": "far_leg_l",
@@ -193,10 +193,10 @@
     "path68650"
    ],
    "pivot": [
-    663.25,
+    662.97,
     594.0
    ],
-   "rest_angle": 82.55
+   "rest_angle": 86.674
   },
   {
    "name": "far_leg_foot",
@@ -208,10 +208,10 @@
     "path68648"
    ],
    "pivot": [
-    684.5,
+    672.42,
     756.5
    ],
-   "rest_angle": 11.487
+   "rest_angle": 10.201
   },
   {
    "name": "far_arm_u",
@@ -225,10 +225,10 @@
     "path67956"
    ],
    "pivot": [
-    697.5,
+    690.55,
     234
    ],
-   "rest_angle": 83.411
+   "rest_angle": 76.21
   },
   {
    "name": "far_arm_l",
@@ -240,10 +240,10 @@
     "path68254"
    ],
    "pivot": [
-    715.75,
+    729.33,
     392.0
    ],
-   "rest_angle": 83.543
+   "rest_angle": 90.634
   },
   {
    "name": "far_arm_hand",
@@ -259,10 +259,10 @@
     "path68284"
    ],
    "pivot": [
-    729.5,
+    727.98,
     513.5
    ],
-   "rest_angle": 93.122
+   "rest_angle": 93.703
   },
   {
    "name": "torso",
@@ -298,7 +298,7 @@
     "rect65653-1-5-9-2"
    ],
    "pivot": [
-    615.25,
+    617.39,
     433.0
    ],
    "rest_angle": 0.0
@@ -321,7 +321,7 @@
     "path41636"
    ],
    "pivot": [
-    608.0,
+    605.37,
     211
    ],
    "rest_angle": 0.0
@@ -335,10 +335,10 @@
     "path68572"
    ],
    "pivot": [
-    573.5,
+    576.8,
     442
    ],
-   "rest_angle": 93.132
+   "rest_angle": 94.575
   },
   {
    "name": "near_leg_l",
@@ -350,10 +350,10 @@
     "path68575"
    ],
    "pivot": [
-    564.5,
+    563.64,
     606.5
    ],
-   "rest_angle": 93.16
+   "rest_angle": 95.364
   },
   {
    "name": "near_leg_foot",
@@ -365,10 +365,10 @@
     "path68581"
    ],
    "pivot": [
-    555.5,
+    548.33,
     769.5
    ],
-   "rest_angle": 14.899
+   "rest_angle": 13.232
   },
   {
    "name": "near_arm_u",
@@ -384,10 +384,10 @@
     "path63558"
    ],
    "pivot": [
-    524.0,
+    526.89,
     235
    ],
-   "rest_angle": 95.929
+   "rest_angle": 101.06
   },
   {
    "name": "near_arm_l",
@@ -399,10 +399,10 @@
     "path66817"
    ],
    "pivot": [
-    506.5,
+    493.96,
     403.5
    ],
-   "rest_angle": 98.021
+   "rest_angle": 92.854
   },
   {
    "name": "near_arm_hand",
@@ -415,10 +415,10 @@
     "path66845"
    ],
    "pivot": [
-    491.0,
+    488.47,
     513.5
    ],
-   "rest_angle": 88.691
+   "rest_angle": 88.431
   }
  ],
  "ik_legs": [
@@ -427,9 +427,9 @@
    "lower": "near_leg_l",
    "foot": "near_leg_foot",
    "channel_prefix": "near_foot",
-   "rest_x": -11.024,
+   "rest_x": -12.74,
    "rest_lift": -1.199,
-   "rest_pitch": 14.899,
+   "rest_pitch": 13.232,
    "bend": 1.0
   },
   {
@@ -437,10 +437,10 @@
    "lower": "far_leg_l",
    "foot": "far_leg_foot",
    "channel_prefix": "far_foot",
-   "rest_x": 12.777,
+   "rest_x": 10.153,
    "rest_lift": 1.199,
-   "rest_pitch": 11.487,
-   "bend": 1.0
+   "rest_pitch": 10.201,
+   "bend": -1.0
   }
  ],
  "clips": {

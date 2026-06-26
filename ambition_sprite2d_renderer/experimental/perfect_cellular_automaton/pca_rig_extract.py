@@ -36,6 +36,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+import numpy as np
+
 # Allow running as a loose script (the experimental dir isn't a package).
 import sys
 _AUTHORING = Path(__file__).resolve().parents[2]
@@ -148,15 +150,6 @@ def _top_group(elem: ET.Element, parent: Dict[ET.Element, ET.Element]) -> str:
     return ""
 
 
-def _bbox_px(ids: List[str]) -> Optional[Tuple[float, float, float, float]]:
-    """Aggregate full-canvas alpha bbox (ref-px @ REF_DPI) of the given ids."""
-    img, (ox, oy), _ = rasterize_subset(SVG, VIEW, ids, REF_DPI)
-    if img is None:
-        return None
-    w, h = img.size
-    return (ox, oy, ox + w, oy + h)
-
-
 def _cx(b):  # bbox center x
     return (b[0] + b[2]) / 2.0
 
@@ -164,31 +157,57 @@ def _cx(b):  # bbox center x
 def build_skeleton_data() -> dict:
     bones = _collect()
     ids = {name: [i for i, _ in items] for name, items in bones.items()}
-    bb = {name: _bbox_px(idlist) for name, idlist in ids.items()}
-    bb = {n: b for n, b in bb.items() if b is not None}
 
-    def jc(name):  # joint helpers operate on segment bboxes
-        return bb[name]
+    # Rasterize each bone's art once to a full-canvas alpha mask (ref-px). The
+    # mask drives joint *x* placement: a joint sits at the limb's true pixel
+    # centre near the connection, NOT the average of whole-part bbox centres
+    # (which drifts to the wide end — e.g. a thigh bbox includes the hip, so its
+    # centre lands at the leg's edge at the knee).
+    masks: Dict[str, Tuple[np.ndarray, int, int]] = {}
+    bb: Dict[str, Tuple[float, float, float, float]] = {}
+    for name, idlist in ids.items():
+        img, (ox, oy), _ = rasterize_subset(SVG, VIEW, idlist, REF_DPI)
+        if img is None:
+            continue
+        a = np.asarray(img.getchannel("A")) > 24
+        masks[name] = (a, ox, oy)
+        h, w = a.shape
+        bb[name] = (ox, oy, ox + w, oy + h)
 
-    # --- joints (ref-px), per chain, measured from segment bboxes ---
+    def cx_frac(name: str, f_lo: float, f_hi: float) -> float:
+        """Centroid x of a bone's mask within a vertical fraction of its bbox
+        (0 = top, 1 = bottom) — the limb centre near one end."""
+        a, ox, oy = masks[name]
+        h, _w = a.shape
+        r0 = int(h * f_lo)
+        r1 = max(r0 + 1, int(round(h * f_hi)))
+        xs = np.nonzero(a[r0:r1])[1]
+        return float(xs.mean()) + ox if xs.size else _cx(bb[name])
+
+    def joint_x(prox: str, dist: str) -> float:
+        """x where ``prox`` (above) meets ``dist`` (below): mean of the two
+        limb centres measured in the bands closest to the shared joint."""
+        return (cx_frac(prox, 0.7, 1.0) + cx_frac(dist, 0.0, 0.3)) / 2.0
+
+    # --- joints (ref-px): x from mask band centres, y from bbox boundaries ---
     J: Dict[str, Tuple[float, float]] = {}
     for side in ("near", "far"):
         u, l, h = f"{side}_arm_u", f"{side}_arm_l", f"{side}_arm_hand"
         if u in bb:
-            J[f"{side}_shoulder"] = (_cx(bb[u]), bb[u][1])
+            J[f"{side}_shoulder"] = (cx_frac(u, 0.0, 0.3), bb[u][1])
         if u in bb and l in bb:
-            J[f"{side}_elbow"] = ((_cx(bb[u]) + _cx(bb[l])) / 2, (bb[u][3] + bb[l][1]) / 2)
+            J[f"{side}_elbow"] = (joint_x(u, l), (bb[u][3] + bb[l][1]) / 2)
         if l in bb and h in bb:
-            J[f"{side}_wrist"] = ((_cx(bb[l]) + _cx(bb[h])) / 2, (bb[l][3] + bb[h][1]) / 2)
+            J[f"{side}_wrist"] = (joint_x(l, h), (bb[l][3] + bb[h][1]) / 2)
         if h in bb:
-            J[f"{side}_handtip"] = (_cx(bb[h]), bb[h][3])
+            J[f"{side}_handtip"] = (cx_frac(h, 0.7, 1.0), bb[h][3])
         pu, pl, pf = f"{side}_leg_u", f"{side}_leg_l", f"{side}_leg_foot"
         if pu in bb:
-            J[f"{side}_hip"] = (_cx(bb[pu]), bb[pu][1])
+            J[f"{side}_hip"] = (cx_frac(pu, 0.0, 0.3), bb[pu][1])
         if pu in bb and pl in bb:
-            J[f"{side}_knee"] = ((_cx(bb[pu]) + _cx(bb[pl])) / 2, (bb[pu][3] + bb[pl][1]) / 2)
+            J[f"{side}_knee"] = (joint_x(pu, pl), (bb[pu][3] + bb[pl][1]) / 2)
         if pl in bb and pf in bb:
-            J[f"{side}_ankle"] = ((_cx(bb[pl]) + _cx(bb[pf])) / 2, (bb[pl][3] + bb[pf][1]) / 2)
+            J[f"{side}_ankle"] = (joint_x(pl, pf), (bb[pl][3] + bb[pf][1]) / 2)
         if pf in bb:
             # toe tip: foot far end horizontally from the ankle x
             fb = bb[pf]
@@ -200,7 +219,7 @@ def build_skeleton_data() -> dict:
         (J["near_hip"][0] + J["far_hip"][0]) / 2,
         (J["near_hip"][1] + J["far_hip"][1]) / 2,
     )
-    neck = (_cx(bb["torso"]), bb["torso"][1]) if "torso" in bb else hip_c
+    neck = (cx_frac("torso", 0.0, 0.3), bb["torso"][1]) if "torso" in bb else hip_c
     head_top = bb["head"][1] if "head" in bb else neck[1]
 
     # --- px -> frame mapping: feet to ground_y, body center to center_x ---
@@ -313,22 +332,37 @@ def build_doc() -> dict:
     # IK rest targets measured from the drawn stance so the default pose matches
     # the artwork (no crossed legs, no bent knees). ankle_h is shared, so each
     # foot's height difference is absorbed by a per-leg rest_lift.
+    from authoring.skeleton import two_bone_ik
+
     cx, gy = fr["center_x"], fr["ground_y"]
     W = sk["world"]
+    blen = {b["name"]: b["length"] for b in sk["bones"]}
     ankles = {s: W[f"{s}_leg_foot"]["origin"] for s in ("near", "far")}
     mean_ankle_y = sum(a[1] for a in ankles.values()) / 2.0
     fr["ankle_h"] = round(gy - mean_ankle_y, 3)
     ik_legs = []
     for side in ("near", "far"):
         ax, ay = ankles[side]
+        hip = W[f"{side}_leg_u"]["origin"]
+        knee_drawn = W[f"{side}_leg_l"]["origin"]
+        lu, ll = blen[f"{side}_leg_u"], blen[f"{side}_leg_l"]
+
+        # Pick the bend side whose IK knee matches where the leg is DRAWN, so the
+        # rest stance reproduces the artwork (one leg may bend opposite the other
+        # in a 3/4 view).
+        def ik_knee(bend):
+            a1, _ = two_bone_ik(tuple(hip), (ax, ay), lu, ll, bend=bend)
+            return (hip[0] + lu * math.cos(math.radians(a1)),
+                    hip[1] + lu * math.sin(math.radians(a1)))
+        bend = min((1.0, -1.0), key=lambda b: math.dist(ik_knee(b), knee_drawn))
+
         ik_legs.append({
             "upper": f"{side}_leg_u", "lower": f"{side}_leg_l",
             "foot": f"{side}_leg_foot", "channel_prefix": f"{side}_foot",
             "rest_x": round(ax - cx, 3),
             "rest_lift": round(mean_ankle_y - ay, 3),
             "rest_pitch": round(W[f"{side}_leg_foot"]["angle"], 3),
-            # knees bend forward (+x) for this right-facing 3/4 view
-            "bend": 1.0,
+            "bend": bend,
         })
 
     return {
