@@ -460,6 +460,98 @@ def _clips(near_rx: float, far_rx: float) -> dict:
             "far_arm_u": {"keys": [[0.0, 44, "out"], [0.55, 44, "out"], [0.7, -84, "out"], [1.0, -80]]},
             "far_arm_l": {"keys": [[0.0, 78, "out"], [0.55, 78, "out"], [0.7, 2, "out"], [1.0, 0]]},
         }},
+        # --- parity rows: these clip NAMES auto-bind to the player's full action
+        # vocabulary (see authoring/actor_contract.py): run→locomotion.run,
+        # slash→action.melee.primary, shoot→action.ranged.primary, hit→damage.hit,
+        # death→lifecycle.death, talk/interact→interaction.*, hover→locomotion.hover.
+        # Run: a committed sprint — long strides, deep forward lean, hard arm pump.
+        "run": {"loop": True, "frames": 8, "duration_ms": 70, "channels": {
+            "near_foot_x": {"keys": [[0.0, gait + 16, "sine"], [0.5, gait - 16, "sine"], [1.0, gait + 16, "sine"]]},
+            "far_foot_x": {"keys": [[0.0, gait - 16, "sine"], [0.5, gait + 16, "sine"], [1.0, gait - 16, "sine"]]},
+            "near_foot_lift": {"keys": [[0.0, 0, "sine"], [0.5, 0, "sine"], [0.75, 12, "sine"], [1.0, 0, "sine"]]},
+            "far_foot_lift": {"keys": [[0.0, 0, "sine"], [0.25, 12, "sine"], [0.5, 0, "sine"], [1.0, 0, "sine"]]},
+            "root_y": {"expr": "-2.4*abs(sin(tau*t))"},
+            "torso": {"const": 9.0},
+            "head": {"const": -5.0},
+            "near_arm_u": {"keys": [[0.0, 26, "sine"], [0.5, -26, "sine"], [1.0, 26, "sine"]]},
+            "far_arm_u": {"keys": [[0.0, -26, "sine"], [0.5, 26, "sine"], [1.0, -26, "sine"]]},
+            "near_arm_l": {"const": 30.0},
+            "far_arm_l": {"const": 30.0},
+        }},
+        # Slash (melee primary): cock the lead arm high-back, then a heavy
+        # down-and-forward sweep with a hip twist; hitbox fires mid-sweep.
+        "slash": {"loop": False, "frames": 7, "duration_ms": 52, "channels": {
+            "torso": {"keys": [[0.0, 0, "out"], [0.25, 13, "out"], [0.55, -15, "out"], [1.0, -4]]},
+            "head": {"keys": [[0.0, 0], [0.25, 7], [0.55, -7], [1.0, 0]]},
+            "near_arm_u": {"keys": [[0.0, 12, "out"], [0.25, 66, "out"], [0.5, -104, "out"], [0.75, -94], [1.0, -90]]},
+            "near_arm_l": {"keys": [[0.0, 24, "out"], [0.25, 84, "out"], [0.5, 12, "out"], [1.0, 6]]},
+            "far_arm_u": {"keys": [[0.0, 0], [0.25, -12], [0.55, 22, "out"], [1.0, 8]]},
+            "far_arm_l": {"const": 12.0},
+        }},
+        # Shoot (ranged primary): snap the lead arm up to a forward aim, hold to
+        # fire (projectile_release ~mid), small recoil back to guard.
+        "shoot": {"loop": False, "frames": 6, "duration_ms": 58, "channels": {
+            "torso": {"keys": [[0.0, 0], [0.3, -4, "out"], [0.5, 3, "out"], [1.0, 0]]},
+            "near_arm_u": {"keys": [[0.0, 12, "out"], [0.35, -88, "out"], [0.5, -96, "out"], [0.7, -82], [1.0, -84]]},
+            "near_arm_l": {"keys": [[0.0, 12, "out"], [0.35, 0, "out"], [0.5, -8, "out"], [1.0, 0]]},
+            "far_arm_u": {"const": 12.0},
+            "far_arm_l": {"const": 14.0},
+        }},
+        # Hit (damage reaction): knocked back off the front foot — torso and head
+        # snap away, arms fling back, then settle.
+        "hit": {"loop": False, "frames": 5, "duration_ms": 48, "channels": {
+            "root_x": {"keys": [[0.0, 0, "out"], [0.2, -5, "out"], [1.0, 0]]},
+            "torso": {"keys": [[0.0, 0, "out"], [0.2, -13, "out"], [0.5, 4], [1.0, 0]]},
+            "head": {"keys": [[0.0, 0, "out"], [0.2, -11, "out"], [1.0, 0]]},
+            "near_arm_u": {"keys": [[0.0, 0, "out"], [0.2, -22, "out"], [1.0, 0]]},
+            "far_arm_u": {"keys": [[0.0, 0, "out"], [0.2, -26, "out"], [1.0, 0]]},
+            "near_arm_l": {"keys": [[0.0, 0], [0.2, 20], [1.0, 0]]},
+            "far_arm_l": {"keys": [[0.0, 0], [0.2, 22], [1.0, 0]]},
+        }},
+        # Death: a stagger, then the knees buckle and the body sinks/crumples to
+        # the ground (the feet slide under as the hips drop); holds collapsed.
+        "death": {"loop": False, "frames": 8, "duration_ms": 85, "channels": {
+            "root_y": {"keys": [[0.0, 0, "out"], [0.35, 4, "out"], [1.0, 34]]},
+            "root_x": {"keys": [[0.0, 0], [0.3, 2], [1.0, -6]]},
+            "near_foot_x": {"keys": [[0.0, gait, "out"], [1.0, gait - 8]]},
+            "far_foot_x": {"keys": [[0.0, gait, "out"], [1.0, gait + 6]]},
+            "torso": {"keys": [[0.0, 0, "out"], [0.3, -10, "out"], [1.0, 22]]},
+            "head": {"keys": [[0.0, 0], [0.3, -8], [1.0, 24]]},
+            "near_arm_u": {"keys": [[0.0, 0, "out"], [0.4, -24], [1.0, 30]]},
+            "far_arm_u": {"keys": [[0.0, 0, "out"], [0.4, -28], [1.0, 34]]},
+            "near_arm_l": {"const": 14.0},
+            "far_arm_l": {"const": 14.0},
+        }},
+        # Talk: an animated lecture — head nods, the lead arm gestures (the PCA
+        # loves to monologue mid-fight).
+        "talk": {"loop": True, "frames": 8, "duration_ms": 140, "channels": {
+            "torso": {"expr": "1.5*sin(tau*t)"},
+            "head": {"expr": "-3*sin(tau*t)"},
+            "near_arm_u": {"expr": "-32+10*sin(tau*t)"},
+            "near_arm_l": {"expr": "42+16*sin(tau*(t-0.1))"},
+            "far_arm_u": {"expr": "4*sin(tau*t)"},
+            "far_arm_l": {"const": 6.0},
+        }},
+        # Interact: reach the lead hand forward, press, withdraw.
+        "interact": {"loop": False, "frames": 6, "duration_ms": 80, "channels": {
+            "torso": {"keys": [[0.0, 0, "out"], [0.4, 6, "out"], [1.0, 0]]},
+            "head": {"keys": [[0.0, 0], [0.4, 4], [1.0, 0]]},
+            "near_arm_u": {"keys": [[0.0, 12, "out"], [0.4, -72, "out"], [0.6, -66], [1.0, 8]]},
+            "near_arm_l": {"keys": [[0.0, 12, "out"], [0.4, -6, "out"], [1.0, 0]]},
+        }},
+        # Hover: stationary aerial idle — lifted, legs trailing, a ready guard
+        # (distinct from fly's spread-armed forward drift).
+        "hover": {"loop": True, "frames": 8, "duration_ms": 130, "channels": {
+            "root_y": {"expr": "-20+2.5*sin(tau*t)"},
+            "near_foot_lift": {"const": 20.0},
+            "far_foot_lift": {"const": 20.0},
+            "torso": {"expr": "2*sin(tau*t)"},
+            "head": {"expr": "-2*sin(tau*(t-0.1))"},
+            "near_arm_u": {"expr": "12+4*sin(tau*t)"},
+            "far_arm_u": {"expr": "12-4*sin(tau*t)"},
+            "near_arm_l": {"const": 16.0},
+            "far_arm_l": {"const": 16.0},
+        }},
     }
 
 
@@ -521,7 +613,10 @@ def build_doc() -> dict:
         "parts": parts,
         "ik_legs": ik_legs,
         "clips": _clips(ik_legs[0]["rest_x"], ik_legs[1]["rest_x"]),
-        "sprite_tuning": {"collision_scale": 1.6},
+        # Display SIZE driver (height = collision_box * collision_scale; does NOT
+        # touch the gameplay collision box). 2.4 renders the boss 1.5x the prior
+        # 1.6 — a commanding presence on par with the player, who was dwarfing him.
+        "sprite_tuning": {"collision_scale": 2.4},
     }
 
 
