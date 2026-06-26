@@ -481,9 +481,9 @@ def blit_rotated(
     R = int(math.ceil(radius)) + 2
     pad = Image.new("RGBA", (2 * R, 2 * R), (0, 0, 0, 0))
     pad.alpha_composite(sprite, (R - int(round(px)), R - int(round(py))))
-    # PIL rotates counter-clockwise in image space; with +y down that matches the
-    # toolkit's clockwise-positive screen angle, so pass delta straight through.
-    rot = pad.rotate(delta_deg, resample=Image.Resampling.BICUBIC, center=(R, R))
+    # The toolkit's angles are clockwise-positive in screen space (+y down); PIL's
+    # rotate() is counter-clockwise-positive, so negate to match the bones.
+    rot = pad.rotate(-delta_deg, resample=Image.Resampling.BICUBIC, center=(R, R))
     if opacity < 1.0:
         rot.putalpha(rot.getchannel("A").point(lambda v: int(v * opacity)))
     canvas.alpha_composite(

@@ -79,6 +79,25 @@ def test_rest_pose_matches_reference(doc: RigDocument) -> None:
     assert 0.85 < ratio < 1.15, f"silhouette area ratio off: {ratio:.3f}"
 
 
+def test_blit_rotated_matches_screen_clockwise() -> None:
+    """A sprite drawn pointing DOWN, rotated by +45 (toolkit screen angles are
+    clockwise-positive, +y down), must point down-LEFT — not down-right. Guards
+    the sign in ``blit_rotated`` (a flip here mirrors every IK-bent limb)."""
+    from PIL import Image, ImageDraw
+    from ambition_sprite2d_renderer.authoring.rigdoc import blit_rotated
+
+    spr = Image.new("RGBA", (20, 80), (0, 0, 0, 0))
+    ImageDraw.Draw(spr).rectangle([8, 0, 12, 78], fill=(0, 255, 0, 255))  # down
+    canvas = Image.new("RGBA", (200, 200), (0, 0, 0, 0))
+    blit_rotated(canvas, spr, (10, 2), (100, 100), 45.0)  # pivot at the top
+    xs = [x for x, _y in (
+        (x, y) for y in range(200) for x in range(200)
+        if canvas.getpixel((x, y))[3] > 32
+    )]
+    # +45 clockwise from "down" sweeps the tip to the LEFT of the pivot (x<100).
+    assert min(xs) < 80, "blit_rotated turned the wrong way (sign flip)"
+
+
 def test_posing_a_bone_rotates_its_part(doc: RigDocument) -> None:
     """Rotating one arm bone must change the frame (the part follows the bone)."""
     doc.data["ik_legs"] = []

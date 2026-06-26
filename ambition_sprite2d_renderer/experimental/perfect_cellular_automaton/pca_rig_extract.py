@@ -305,6 +305,109 @@ Z = {
 }
 
 
+def _clips(near_rx: float, far_rx: float) -> dict:
+    """Animation clips authored against the rig's bones + IK foot channels.
+
+    Channel conventions (see rigdoc): a bone name = pose angle in degrees on top
+    of its rest (screen CW-positive); ``root_x``/``root_y`` shift the whole body
+    from (center_x, ground_y); ``<side>_foot_x`` is the planted foot's world x
+    offset from center_x, ``_lift`` raises it, ``_pitch`` sets its angle. Legs
+    are posed by authoring foot trajectories; IK places the knees."""
+    gait = (near_rx + far_rx) / 2.0  # feet converge under the body when walking
+    A = 9.0    # stride half-amplitude (world x)
+    H = 7.0    # foot swing lift
+
+    def foot_x(phase):  # planted forward -> back, swing back -> forward
+        c = [(0.0, gait + A), (0.5, gait - A), (1.0, gait + A)]
+        return {"keys": [[round((t + phase) % 1.0, 3), v, "sine"] for t, v in c]
+                if phase == 0 else
+                [[0.0, gait - A, "sine"], [0.5, gait + A, "sine"], [1.0, gait - A, "sine"]]}
+
+    def foot_lift(swing_mid):  # single lift bump centered on the swing midpoint
+        return {"keys": [[0.0, 0.0, "sine"], [round(swing_mid - 0.25, 3), 0.0, "sine"],
+                         [swing_mid, H, "sine"], [round(swing_mid + 0.25, 3), 0.0, "sine"],
+                         [1.0, 0.0, "sine"]]}
+
+    def const(**ch):  # a held single-frame pose
+        return {"loop": False, "frames": 1, "channels": {k: {"const": v} for k, v in ch.items()}}
+
+    return {
+        "idle": {"loop": True, "frames": 8, "duration_ms": 130, "channels": {
+            "torso": {"expr": "1.5*sin(tau*t)"},
+            "near_arm_l": {"expr": "3*sin(tau*t)"},
+            "far_arm_l": {"expr": "-3*sin(tau*t)"},
+        }},
+        # Contralateral walk: near foot forward when far foot is back; arms swing
+        # opposite their legs; body bobs twice per stride (lowest at each contact).
+        "walk": {"loop": True, "frames": 8, "duration_ms": 90, "channels": {
+            "near_foot_x": foot_x(0.0),
+            "far_foot_x": foot_x(0.5),
+            "near_foot_lift": foot_lift(0.75),
+            "far_foot_lift": foot_lift(0.25),
+            "root_y": {"expr": "-1.5*abs(sin(tau*t))"},
+            "torso": {"expr": "-2.5*sin(2*tau*t)"},
+            "near_arm_u": {"keys": [[0.0, 16, "sine"], [0.5, -16, "sine"], [1.0, 16, "sine"]]},
+            "far_arm_u": {"keys": [[0.0, -16, "sine"], [0.5, 16, "sine"], [1.0, -16, "sine"]]},
+            "near_arm_l": {"const": 8.0},
+            "far_arm_l": {"const": 8.0},
+        }},
+        # Crouch: hips drop and the feet tuck UNDER the body (the splayed idle
+        # stance would make the bent legs sprawl), so the knees fold compactly.
+        "crouch": const(root_y=13.0, torso=-7.0,
+                        near_foot_x=gait - 4.0, far_foot_x=gait + 4.0,
+                        near_arm_u=14.0, near_arm_l=22.0,
+                        far_arm_u=14.0, far_arm_l=22.0),
+        # Jab: quick straight lead (near) arm — wind back, then snap forward.
+        "jab": {"loop": False, "frames": 5, "duration_ms": 45, "channels": {
+            "torso": {"keys": [[0.0, 0, "out"], [0.3, 6, "out"], [0.5, -6, "out"], [1.0, 0]]},
+            "near_arm_u": {"keys": [[0.0, 10, "out"], [0.3, 30, "out"], [0.5, -82, "out"], [1.0, -78]]},
+            "near_arm_l": {"keys": [[0.0, 20, "out"], [0.3, 55, "out"], [0.5, -4, "out"], [1.0, 0]]},
+        }},
+        # Punch: heavier cross with the far arm + a hip/torso twist and lead step.
+        "punch": {"loop": False, "frames": 6, "duration_ms": 55, "channels": {
+            "torso": {"keys": [[0.0, 0, "out"], [0.35, 8, "out"], [0.6, -9, "out"], [1.0, -4]]},
+            "far_arm_u": {"keys": [[0.0, 18, "out"], [0.35, 38, "out"], [0.6, -86, "out"], [1.0, -82]]},
+            "far_arm_l": {"keys": [[0.0, 20, "out"], [0.35, 60, "out"], [0.6, -2, "out"], [1.0, 0]]},
+            "near_arm_u": {"keys": [[0.0, -6], [0.6, 26, "out"], [1.0, 22]]},
+            "near_arm_l": {"const": 30.0},
+        }},
+        # Block: both arms swing up into a cross-guard in front of the head/chest.
+        # (The far forearm mirrors the near, so its curl takes the opposite sign.)
+        "block": const(torso=-3.0, near_arm_u=-72.0, near_arm_l=80.0,
+                       far_arm_u=-72.0, far_arm_l=-80.0),
+        # Jump: anticipation crouch -> explosive extension (arms up) -> airborne tuck.
+        "jump": {"loop": False, "frames": 6, "duration_ms": 70, "channels": {
+            "root_y": {"keys": [[0.0, 14, "out"], [0.35, -8, "out"], [1.0, -4]]},
+            "torso": {"keys": [[0.0, -6], [0.35, 4], [1.0, 0]]},
+            "near_arm_u": {"keys": [[0.0, 12, "out"], [0.35, -120, "out"], [1.0, -110]]},
+            "far_arm_u": {"keys": [[0.0, 12, "out"], [0.35, -120, "out"], [1.0, -110]]},
+            "near_foot_lift": {"keys": [[0.0, 0], [0.35, 0], [0.6, 14, "out"], [1.0, 10]]},
+            "far_foot_lift": {"keys": [[0.0, 0], [0.35, 0], [0.6, 14, "out"], [1.0, 10]]},
+        }},
+        # Fly / hover: lifted off the ground, legs trailing, arms relaxed and
+        # spread symmetrically (mirrored far-side signs), slow torso/arm sway.
+        "fly": {"loop": True, "frames": 8, "duration_ms": 130, "channels": {
+            "root_y": {"const": -22.0},
+            "near_foot_lift": {"const": 22.0},
+            "far_foot_lift": {"const": 22.0},
+            "torso": {"expr": "3*sin(tau*t)"},
+            "near_arm_u": {"expr": "16+5*sin(tau*t)"},
+            "far_arm_u": {"expr": "16+5*sin(tau*t)"},
+            "near_arm_l": {"const": 20.0},
+            "far_arm_l": {"const": -20.0},
+        }},
+        # Special: kamehameha — charge with both hands cupped back at the hip,
+        # then thrust both arms forward (the glider volley fires on the thrust).
+        "special": {"loop": False, "frames": 10, "duration_ms": 70, "channels": {
+            "torso": {"keys": [[0.0, 10, "out"], [0.55, 12, "out"], [0.7, -8, "out"], [1.0, -4]]},
+            "near_arm_u": {"keys": [[0.0, 44, "out"], [0.55, 44, "out"], [0.7, -84, "out"], [1.0, -80]]},
+            "near_arm_l": {"keys": [[0.0, 78, "out"], [0.55, 78, "out"], [0.7, 2, "out"], [1.0, 0]]},
+            "far_arm_u": {"keys": [[0.0, 44, "out"], [0.55, 44, "out"], [0.7, -84, "out"], [1.0, -80]]},
+            "far_arm_l": {"keys": [[0.0, 78, "out"], [0.55, 78, "out"], [0.7, 2, "out"], [1.0, 0]]},
+        }},
+    }
+
+
 def build_doc() -> dict:
     sk = build_skeleton_data()
     K = sk["K"]
@@ -332,37 +435,24 @@ def build_doc() -> dict:
     # IK rest targets measured from the drawn stance so the default pose matches
     # the artwork (no crossed legs, no bent knees). ankle_h is shared, so each
     # foot's height difference is absorbed by a per-leg rest_lift.
-    from authoring.skeleton import two_bone_ik
-
     cx, gy = fr["center_x"], fr["ground_y"]
     W = sk["world"]
-    blen = {b["name"]: b["length"] for b in sk["bones"]}
     ankles = {s: W[f"{s}_leg_foot"]["origin"] for s in ("near", "far")}
     mean_ankle_y = sum(a[1] for a in ankles.values()) / 2.0
     fr["ankle_h"] = round(gy - mean_ankle_y, 3)
     ik_legs = []
     for side in ("near", "far"):
         ax, ay = ankles[side]
-        hip = W[f"{side}_leg_u"]["origin"]
-        knee_drawn = W[f"{side}_leg_l"]["origin"]
-        lu, ll = blen[f"{side}_leg_u"], blen[f"{side}_leg_l"]
-
-        # Pick the bend side whose IK knee matches where the leg is DRAWN, so the
-        # rest stance reproduces the artwork (one leg may bend opposite the other
-        # in a 3/4 view).
-        def ik_knee(bend):
-            a1, _ = two_bone_ik(tuple(hip), (ax, ay), lu, ll, bend=bend)
-            return (hip[0] + lu * math.cos(math.radians(a1)),
-                    hip[1] + lu * math.sin(math.radians(a1)))
-        bend = min((1.0, -1.0), key=lambda b: math.dist(ik_knee(b), knee_drawn))
-
         ik_legs.append({
             "upper": f"{side}_leg_u", "lower": f"{side}_leg_l",
             "foot": f"{side}_leg_foot", "channel_prefix": f"{side}_foot",
             "rest_x": round(ax - cx, 3),
             "rest_lift": round(mean_ankle_y - ay, 3),
             "rest_pitch": round(W[f"{side}_leg_foot"]["angle"], 3),
-            "bend": bend,
+            # Knees bend forward (+x) for this +x-facing view — anatomically and
+            # locomotion-correct. (The drawn standing legs are near-straight, so
+            # their micro-bow is not a reliable bend signal.)
+            "bend": 1.0,
         })
 
     return {
@@ -376,13 +466,7 @@ def build_doc() -> dict:
         "bones": sk["bones"],
         "parts": parts,
         "ik_legs": ik_legs,
-        "clips": {
-            "idle": {"loop": True, "frames": 8, "duration_ms": 130, "channels": {
-                "torso": {"expr": "1.5*sin(tau*t)"},
-                "near_arm_l": {"expr": "3*sin(tau*t)"},
-                "far_arm_l": {"expr": "-3*sin(tau*t)"},
-            }},
-        },
+        "clips": _clips(ik_legs[0]["rest_x"], ik_legs[1]["rest_x"]),
         "sprite_tuning": {"collision_scale": 1.6},
     }
 
@@ -406,10 +490,30 @@ def cmd_validate(_args):
     print(f"rest frame -> {out}  size={frame.size}")
 
 
+def cmd_debug(args):
+    """Render bone-debug overlays (skeleton on dimmed art) for clips -> /tmp."""
+    from authoring.rigdoc import RigDocument
+    from authoring.debug_overlay import render_clip_strip
+    cmd_build(args)
+    doc = RigDocument.load(RIG_OUT)
+    clips = args.clips or list(doc.clips.keys())
+    for name in clips:
+        if name not in doc.clips:
+            print(f"  (no clip {name!r})")
+            continue
+        out = Path(f"/tmp/pca_dbg_{name}.png")
+        render_clip_strip(doc, name, scale=args.scale).convert("RGB").save(out)
+        print(f"  {out}")
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("build").set_defaults(fn=cmd_build)
     sub.add_parser("validate").set_defaults(fn=cmd_validate)
+    dbg = sub.add_parser("debug")
+    dbg.add_argument("clips", nargs="*", help="clip names (default: all)")
+    dbg.add_argument("--scale", type=int, default=2)
+    dbg.set_defaults(fn=cmd_debug)
     args = ap.parse_args()
     args.fn(args)
