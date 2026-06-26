@@ -10,6 +10,10 @@ dependencies = [
   # SVG rasterizer for `sprite` rig parts (binds hand-authored Inkscape art to
   # bones). Self-contained wheel — no system cairo/inkscape needed.
   "resvg-py>=0.3",
+  # Whitespace/attribute-preserving XML tree for the SVG canonicalizer
+  # (authoring/svg_canonicalize.py) — strips Inkscape bloat into a stable,
+  # diff-friendly form that survives round-tripping through Inkscape saves.
+  "lxml>=5",
 ]
 
 [project.scripts]
