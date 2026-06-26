@@ -32,8 +32,8 @@ changes — the ``.rig.json`` is a generated artifact:
 
     PY=.venv/bin/python
     $PY .../pca_rig_extract.py build       # writes the rig into targets/.../rigged/
-    $PY .../pca_rig_extract.py validate    # rest pose -> /tmp
-    $PY .../pca_rig_extract.py debug idle   # skeleton-on-art overlay -> /tmp
+    $PY .../pca_rig_extract.py validate    # rest pose -> agent-scratch/pca_rig/
+    $PY .../pca_rig_extract.py debug idle   # skeleton-on-art overlay -> agent-scratch/pca_rig/
 """
 from __future__ import annotations
 
@@ -61,6 +61,9 @@ TOOL_ROOT = Path(__file__).resolve().parents[3]
 SVG = TOOL_ROOT / "assets/perfect-cellular-automaton/PCA-multiview.svg"
 RIGGED_DIR = _AUTHORING / "targets/characters/rigged"
 RIG_OUT = RIGGED_DIR / "perfect_cellular_automaton.rig.json"
+# Human-reviewable debug renders land in the repo's gitignored scratch dir (NOT
+# /tmp, which isn't visible from the dev VM).
+SCRATCH_DIR = TOOL_ROOT / "agent-scratch" / "pca_rig"
 
 VIEW = "View - Front Right"
 REF_DPI = 96.0
@@ -536,7 +539,8 @@ def cmd_validate(_args):
     # Pure rest = idle@0 with IK disabled (IK tuning is separate from binding).
     doc.data["ik_legs"] = []
     frame = doc.render_at("idle", 0.0)
-    out = Path("/tmp/pca_rig_rest.png")
+    SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
+    out = SCRATCH_DIR / "rest.png"
     frame.save(out)
     print(f"rest frame -> {out}  size={frame.size}")
 
@@ -547,12 +551,13 @@ def cmd_debug(args):
     from authoring.debug_overlay import render_clip_strip
     cmd_build(args)
     doc = RigDocument.load(RIG_OUT)
+    SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
     clips = args.clips or list(doc.clips.keys())
     for name in clips:
         if name not in doc.clips:
             print(f"  (no clip {name!r})")
             continue
-        out = Path(f"/tmp/pca_dbg_{name}.png")
+        out = SCRATCH_DIR / f"dbg_{name}.png"
         render_clip_strip(doc, name, scale=args.scale).convert("RGB").save(out)
         print(f"  {out}")
 
