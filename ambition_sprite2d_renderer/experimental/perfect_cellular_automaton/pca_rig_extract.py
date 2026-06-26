@@ -552,6 +552,258 @@ def _clips(near_rx: float, far_rx: float) -> dict:
             "near_arm_l": {"const": 16.0},
             "far_arm_l": {"const": 16.0},
         }},
+
+        # ============================================================
+        # FULL player-robot parity: every CharacterAnim row the engine knows
+        # (character_sprites/anim/mod.rs from_name). Clip NAMES match those keys.
+        # ============================================================
+
+        # --- Blink: a real dematerialize, not a pose. body_opacity phases the
+        # whole figure out (held faint while aiming) and back in on arrival. ---
+        "blink_out": {"loop": False, "frames": 5, "duration_ms": 42, "channels": {
+            "body_opacity": {"keys": [[0.0, 1.0, "out"], [0.6, 0.34, "out"], [1.0, 0.12]]},
+            "root_y": {"keys": [[0.0, 0, "out"], [1.0, -5]]},
+            "torso": {"keys": [[0.0, 0, "out"], [1.0, -7]]},
+            "head": {"keys": [[0.0, 0], [1.0, -4]]},
+            "near_arm_u": {"keys": [[0.0, 0, "out"], [1.0, 30]]},
+            "far_arm_u": {"keys": [[0.0, 0, "out"], [1.0, 30]]},
+            "near_arm_l": {"const": 44.0},
+            "far_arm_l": {"const": 44.0},
+        }},
+        "blink_in": {"loop": False, "frames": 5, "duration_ms": 42, "channels": {
+            "body_opacity": {"keys": [[0.0, 0.12, "out"], [0.45, 0.55, "out"], [1.0, 1.0]]},
+            "root_y": {"keys": [[0.0, -5, "out"], [1.0, 0]]},
+            "torso": {"keys": [[0.0, -7, "out"], [0.5, 3], [1.0, 0]]},
+            "near_arm_u": {"keys": [[0.0, 30, "out"], [1.0, 0]]},
+            "far_arm_u": {"keys": [[0.0, 30, "out"], [1.0, 0]]},
+            "near_arm_l": {"keys": [[0.0, 44], [1.0, 0]]},
+            "far_arm_l": {"keys": [[0.0, 44], [1.0, 0]]},
+        }},
+
+        # --- Directional ground attacks (tilts). ---
+        "attack_side": {"loop": False, "frames": 6, "duration_ms": 48, "channels": {
+            "torso": {"keys": [[0.0, 0, "out"], [0.3, 11, "out"], [0.55, -13, "out"], [1.0, -3]]},
+            "near_arm_u": {"keys": [[0.0, 18, "out"], [0.3, 48, "out"], [0.55, -90, "out"], [1.0, -84]]},
+            "near_arm_l": {"keys": [[0.0, 28, "out"], [0.3, 44, "out"], [0.55, -2, "out"], [1.0, 4]]},
+            "far_arm_u": {"keys": [[0.0, 0], [0.55, 18, "out"], [1.0, 6]]},
+            "far_arm_l": {"const": 10.0},
+        }},
+        "attack_up": {"loop": False, "frames": 6, "duration_ms": 48, "channels": {
+            "torso": {"keys": [[0.0, 0, "out"], [0.4, -7, "out"], [1.0, -2]]},
+            "head": {"keys": [[0.0, 0], [0.4, -7], [1.0, -3]]},
+            "near_arm_u": {"keys": [[0.0, 10, "out"], [0.4, -168, "out"], [0.6, -160], [1.0, -158]]},
+            "near_arm_l": {"keys": [[0.0, 24, "out"], [0.4, 0, "out"], [1.0, 0]]},
+            "far_arm_u": {"const": 14.0},
+            "far_arm_l": {"const": 12.0},
+        }},
+        "attack_down": {"loop": False, "frames": 6, "duration_ms": 48, "channels": {
+            "torso": {"keys": [[0.0, 0, "out"], [0.3, 13, "out"], [0.55, -4, "out"], [1.0, 2]]},
+            "head": {"keys": [[0.0, 0], [0.3, -6], [0.55, 8], [1.0, 4]]},
+            "near_arm_u": {"keys": [[0.0, 10, "out"], [0.3, -120, "out"], [0.55, -46, "out"], [1.0, -40]]},
+            "near_arm_l": {"keys": [[0.0, 20, "out"], [0.3, 10, "out"], [0.55, 66, "out"], [1.0, 58]]},
+            "far_arm_u": {"const": 8.0},
+        }},
+
+        # --- Aerial attacks (airborne: feet lifted). ---
+        "air_neutral": {"loop": False, "frames": 6, "duration_ms": 52, "channels": {
+            "near_foot_lift": {"const": 22.0}, "far_foot_lift": {"const": 16.0},
+            "torso": {"keys": [[0.0, 0, "out"], [0.5, 9, "out"], [1.0, 2]]},
+            "near_arm_u": {"keys": [[0.0, -18, "out"], [0.5, -118, "out"], [1.0, -34]]},
+            "far_arm_u": {"keys": [[0.0, 18, "out"], [0.5, 118, "out"], [1.0, 34]]},
+            "near_arm_l": {"const": 22.0}, "far_arm_l": {"const": -22.0},
+        }},
+        "air_forward": {"loop": False, "frames": 6, "duration_ms": 52, "channels": {
+            "near_foot_lift": {"const": 24.0}, "far_foot_lift": {"const": 18.0},
+            "torso": {"keys": [[0.0, 0, "out"], [0.35, 10, "out"], [0.6, -8, "out"], [1.0, 0]]},
+            "near_arm_u": {"keys": [[0.0, 30, "out"], [0.4, -100, "out"], [1.0, -84]]},
+            "near_arm_l": {"keys": [[0.0, 40, "out"], [0.4, 0, "out"], [1.0, 6]]},
+            "far_arm_u": {"const": 16.0}, "far_arm_l": {"const": 12.0},
+        }},
+        "air_back": {"loop": False, "frames": 6, "duration_ms": 52, "channels": {
+            "near_foot_lift": {"const": 20.0}, "far_foot_lift": {"const": 24.0},
+            "torso": {"keys": [[0.0, 0, "out"], [0.4, -10, "out"], [1.0, -2]]},
+            "far_arm_u": {"keys": [[0.0, -10, "out"], [0.4, 96, "out"], [1.0, 80]]},
+            "far_arm_l": {"keys": [[0.0, 10, "out"], [0.4, 4, "out"], [1.0, 8]]},
+            "near_arm_u": {"const": -14.0}, "near_arm_l": {"const": 16.0},
+        }},
+        "air_down": {"loop": False, "frames": 6, "duration_ms": 52, "channels": {
+            "near_foot_lift": {"const": 14.0}, "far_foot_lift": {"const": 14.0},
+            "torso": {"keys": [[0.0, 0, "out"], [0.4, 6, "out"], [1.0, 2]]},
+            "near_arm_u": {"keys": [[0.0, 0, "out"], [0.4, -150, "out"], [1.0, -150]]},
+            "far_arm_u": {"keys": [[0.0, 0, "out"], [0.4, 150, "out"], [1.0, 150]]},
+            "near_arm_l": {"const": 6.0}, "far_arm_l": {"const": -6.0},
+        }},
+        "air_up": {"loop": False, "frames": 6, "duration_ms": 52, "channels": {
+            "near_foot_lift": {"const": 22.0}, "far_foot_lift": {"const": 22.0},
+            "near_arm_u": {"keys": [[0.0, 10, "out"], [0.45, -165, "out"], [1.0, -160]]},
+            "near_arm_l": {"keys": [[0.0, 20, "out"], [0.45, 0], [1.0, 0]]},
+            "far_arm_u": {"const": 12.0},
+        }},
+
+        # --- Ledge set. Hang: arms reach overhead to grip, body slung below. ---
+        "ledge_grab": {"loop": True, "frames": 6, "duration_ms": 150, "channels": {
+            "root_y": {"expr": "10+1.2*sin(tau*t)"},
+            "near_arm_u": {"expr": "-150+3*sin(tau*t)"}, "far_arm_u": {"const": -150.0},
+            "near_arm_l": {"const": 6.0}, "far_arm_l": {"const": 6.0},
+            "near_foot_lift": {"const": 6.0}, "far_foot_lift": {"const": 10.0},
+            "near_foot_x": {"const": gait + 2}, "far_foot_x": {"const": gait - 2},
+            "torso": {"const": 3.0},
+        }},
+        "ledge_climb": {"loop": False, "frames": 7, "duration_ms": 60, "channels": {
+            "root_y": {"keys": [[0.0, 10, "out"], [0.6, 2, "out"], [1.0, 0]]},
+            "near_arm_u": {"keys": [[0.0, -150, "out"], [0.5, -60, "out"], [1.0, 0]]},
+            "far_arm_u": {"keys": [[0.0, -150, "out"], [0.5, -40, "out"], [1.0, 0]]},
+            "near_arm_l": {"keys": [[0.0, 6], [0.5, 50], [1.0, 0]]},
+            "far_arm_l": {"keys": [[0.0, 6], [0.5, 50], [1.0, 0]]},
+            "near_foot_lift": {"keys": [[0.0, 6], [0.6, 0], [1.0, 0]]},
+            "far_foot_lift": {"keys": [[0.0, 10], [0.6, 0], [1.0, 0]]},
+        }},
+        "ledge_getup": {"loop": False, "frames": 6, "duration_ms": 60, "channels": {
+            "root_y": {"keys": [[0.0, 8, "out"], [1.0, 0]]},
+            "torso": {"keys": [[0.0, 14, "out"], [1.0, 0]]},
+            "near_arm_u": {"keys": [[0.0, 30, "out"], [1.0, 0]]},
+            "far_arm_u": {"keys": [[0.0, 24, "out"], [1.0, 0]]},
+        }},
+        "ledge_roll": {"loop": False, "frames": 7, "duration_ms": 48, "channels": {
+            "root_y": {"keys": [[0.0, 8, "out"], [0.5, 16, "out"], [1.0, 0]]},
+            "torso": {"keys": [[0.0, 20, "out"], [0.5, 60, "out"], [1.0, 0]]},
+            "head": {"keys": [[0.0, 14], [0.5, 50], [1.0, 0]]},
+            "near_arm_u": {"keys": [[0.0, 40], [0.5, 70], [1.0, 0]]},
+            "far_arm_u": {"keys": [[0.0, 40], [0.5, 70], [1.0, 0]]},
+            "near_arm_l": {"const": 30.0}, "far_arm_l": {"const": 30.0},
+        }},
+        "ledge_getup_attack": {"loop": False, "frames": 7, "duration_ms": 52, "channels": {
+            "root_y": {"keys": [[0.0, 8, "out"], [0.5, 0], [1.0, 0]]},
+            "torso": {"keys": [[0.0, 12, "out"], [0.55, -12, "out"], [1.0, -3]]},
+            "near_arm_u": {"keys": [[0.0, 30, "out"], [0.4, 50, "out"], [0.6, -88, "out"], [1.0, -82]]},
+            "near_arm_l": {"keys": [[0.0, 20, "out"], [0.4, 40, "out"], [0.6, 0, "out"], [1.0, 4]]},
+        }},
+
+        # --- Wall. Grab: braced against a wall ahead (lead limbs out, lean). ---
+        "wall_grab": {"loop": True, "frames": 6, "duration_ms": 150, "channels": {
+            "torso": {"expr": "10+1.5*sin(tau*t)"},
+            "near_arm_u": {"expr": "-70+4*sin(tau*t)"}, "near_arm_l": {"const": 10.0},
+            "far_arm_u": {"const": -40.0}, "far_arm_l": {"const": 30.0},
+            "near_foot_x": {"const": gait + 8}, "far_foot_x": {"const": gait - 6},
+            "near_foot_lift": {"const": 4.0},
+            "head": {"const": -4.0},
+        }},
+        "wall_jump": {"loop": False, "frames": 6, "duration_ms": 50, "channels": {
+            "torso": {"keys": [[0.0, 10, "out"], [0.4, -8, "out"], [1.0, -2]]},
+            "near_arm_u": {"keys": [[0.0, -70, "out"], [0.4, 20, "out"], [1.0, 8]]},
+            "far_arm_u": {"keys": [[0.0, -40, "out"], [0.4, -100, "out"], [1.0, -86]]},
+            "near_foot_lift": {"keys": [[0.0, 4], [0.5, 18, "out"], [1.0, 12]]},
+            "far_foot_lift": {"keys": [[0.0, 0], [0.5, 16, "out"], [1.0, 10]]},
+        }},
+
+        # --- Air locomotion + landing. ---
+        "fall": {"loop": True, "frames": 4, "duration_ms": 120, "channels": {
+            "near_foot_lift": {"const": 8.0}, "far_foot_lift": {"const": 14.0},
+            "near_foot_x": {"const": gait + 4}, "far_foot_x": {"const": gait - 4},
+            "torso": {"expr": "-4+2*sin(tau*t)"},
+            "near_arm_u": {"expr": "-30+6*sin(tau*t)"}, "far_arm_u": {"expr": "-30-6*sin(tau*t)"},
+            "near_arm_l": {"const": 20.0}, "far_arm_l": {"const": 20.0},
+        }},
+        "float_glide": {"loop": True, "frames": 8, "duration_ms": 130, "channels": {
+            "root_y": {"const": -6.0},
+            "near_foot_lift": {"const": 10.0}, "far_foot_lift": {"const": 10.0},
+            "torso": {"expr": "1.5*sin(tau*t)"},
+            "near_arm_u": {"expr": "-92+3*sin(tau*t)"}, "far_arm_u": {"expr": "-92-3*sin(tau*t)"},
+            "near_arm_l": {"const": -8.0}, "far_arm_l": {"const": -8.0},
+        }},
+        "land_hard": {"loop": False, "frames": 5, "duration_ms": 55, "channels": {
+            "root_y": {"keys": [[0.0, -6, "out"], [0.3, 17, "out"], [1.0, 12]]},
+            "torso": {"keys": [[0.0, -4, "out"], [0.3, 16, "out"], [1.0, 12]]},
+            "near_foot_x": {"const": gait - 5}, "far_foot_x": {"const": gait + 5},
+            "near_arm_u": {"keys": [[0.0, -20, "out"], [0.3, 30, "out"], [1.0, 24]]},
+            "far_arm_u": {"keys": [[0.0, -20, "out"], [0.3, 30, "out"], [1.0, 24]]},
+            "near_arm_l": {"const": 26.0}, "far_arm_l": {"const": 26.0},
+        }},
+        "land_recovery": {"loop": False, "frames": 5, "duration_ms": 60, "channels": {
+            "root_y": {"keys": [[0.0, 12, "out"], [1.0, 0]]},
+            "torso": {"keys": [[0.0, 12, "out"], [1.0, 0]]},
+            "near_arm_u": {"keys": [[0.0, 24, "out"], [1.0, 0]]},
+            "far_arm_u": {"keys": [[0.0, 24, "out"], [1.0, 0]]},
+            "near_arm_l": {"keys": [[0.0, 26], [1.0, 0]]}, "far_arm_l": {"keys": [[0.0, 26], [1.0, 0]]},
+        }},
+
+        # --- Dash / slide / crawl / climb / swim. ---
+        "dash_startup": {"loop": False, "frames": 4, "duration_ms": 40, "channels": {
+            "root_y": {"keys": [[0.0, 0, "out"], [1.0, 7]]},
+            "torso": {"keys": [[0.0, 0, "out"], [1.0, 14]]},
+            "near_arm_u": {"keys": [[0.0, 0, "out"], [1.0, 40]]},
+            "far_arm_u": {"keys": [[0.0, 0, "out"], [1.0, 44]]},
+            "near_arm_l": {"const": 30.0}, "far_arm_l": {"const": 30.0},
+        }},
+        "dash": {"loop": False, "frames": 5, "duration_ms": 38, "channels": {
+            "torso": {"const": 16.0}, "head": {"const": -8.0},
+            "near_foot_x": {"const": gait + 10}, "far_foot_x": {"const": gait - 14},
+            "near_foot_lift": {"const": 6.0}, "far_foot_lift": {"const": 12.0},
+            "near_arm_u": {"const": 42.0}, "far_arm_u": {"const": 48.0},
+            "near_arm_l": {"const": 26.0}, "far_arm_l": {"const": 26.0},
+        }},
+        "slide": {"loop": False, "frames": 5, "duration_ms": 60, "channels": {
+            "root_y": {"keys": [[0.0, 4, "out"], [0.4, 19, "out"], [1.0, 17]]},
+            "torso": {"const": -16.0}, "head": {"const": 8.0},
+            "near_foot_x": {"const": gait + 16}, "far_foot_x": {"const": gait + 2},
+            "near_foot_lift": {"const": 6.0},
+            "near_arm_u": {"const": -10.0}, "far_arm_u": {"const": 40.0},
+            "near_arm_l": {"const": 20.0}, "far_arm_l": {"const": 24.0},
+        }},
+        "crouch_walk": {"loop": True, "frames": 8, "duration_ms": 110, "channels": {
+            "root_y": {"const": 12.0}, "torso": {"const": -6.0},
+            "near_foot_x": foot_x(0.0), "far_foot_x": foot_x(0.5),
+            "near_foot_lift": foot_lift(0.75), "far_foot_lift": foot_lift(0.25),
+            "near_arm_u": {"const": 16.0}, "far_arm_u": {"const": 16.0},
+            "near_arm_l": {"const": 30.0}, "far_arm_l": {"const": 30.0},
+        }},
+        "ladder_climb": {"loop": True, "frames": 8, "duration_ms": 120, "channels": {
+            "near_arm_u": {"expr": "-150+24*sin(tau*t)"},
+            "far_arm_u": {"expr": "-150-24*sin(tau*t)"},
+            "near_arm_l": {"const": 8.0}, "far_arm_l": {"const": 8.0},
+            "near_foot_lift": {"expr": "10+10*sin(tau*t)"},
+            "far_foot_lift": {"expr": "10-10*sin(tau*t)"},
+            "near_foot_x": {"const": gait}, "far_foot_x": {"const": gait},
+            "torso": {"expr": "2*sin(2*tau*t)"},
+        }},
+        "swim": {"loop": True, "frames": 8, "duration_ms": 120, "channels": {
+            "root_y": {"const": -4.0},
+            "near_foot_lift": {"expr": "16+8*sin(tau*t)"},
+            "far_foot_lift": {"expr": "16-8*sin(tau*t)"},
+            "near_arm_u": {"expr": "-40+70*sin(tau*t)"},
+            "far_arm_u": {"expr": "-40-70*sin(tau*(t-0.5))"},
+            "near_arm_l": {"const": 14.0}, "far_arm_l": {"const": 14.0},
+            "torso": {"const": -3.0},
+        }},
+
+        # Dodge roll: a quick forward tuck-and-roll on the ground.
+        "roll": {"loop": False, "frames": 6, "duration_ms": 42, "channels": {
+            "root_y": {"keys": [[0.0, 0, "out"], [0.5, 14, "out"], [1.0, 0]]},
+            "torso": {"keys": [[0.0, 12, "out"], [0.5, 78, "out"], [1.0, 0]]},
+            "head": {"keys": [[0.0, 8], [0.5, 62], [1.0, 0]]},
+            "near_arm_u": {"keys": [[0.0, 30], [0.5, 84], [1.0, 0]]},
+            "far_arm_u": {"keys": [[0.0, 30], [0.5, 84], [1.0, 0]]},
+            "near_arm_l": {"const": 42.0}, "far_arm_l": {"const": 42.0},
+            "near_foot_x": {"const": gait}, "far_foot_x": {"const": gait},
+        }},
+
+        # --- Misc presentation: taunt / aim / charge. ---
+        "taunt": {"loop": True, "frames": 8, "duration_ms": 150, "channels": {
+            "torso": {"expr": "-6+2*sin(tau*t)"}, "head": {"expr": "-6+3*sin(tau*t)"},
+            "near_arm_u": {"expr": "-44+8*sin(tau*t)"}, "far_arm_u": {"expr": "-44-8*sin(tau*t)"},
+            "near_arm_l": {"const": -18.0}, "far_arm_l": {"const": -18.0},
+        }},
+        "aim": {"loop": True, "frames": 6, "duration_ms": 130, "channels": {
+            "near_arm_u": {"expr": "-86+1.5*sin(tau*t)"}, "near_arm_l": {"const": 2.0},
+            "far_arm_u": {"const": 14.0}, "far_arm_l": {"const": 16.0},
+            "torso": {"const": -2.0},
+        }},
+        "charge": {"loop": True, "frames": 8, "duration_ms": 90, "channels": {
+            "torso": {"expr": "10+1.5*sin(2*tau*t)"},
+            "near_arm_u": {"expr": "44+2*sin(2*tau*t)"}, "near_arm_l": {"const": 78.0},
+            "far_arm_u": {"expr": "44-2*sin(2*tau*t)"}, "far_arm_l": {"const": 78.0},
+            "head": {"const": -4.0},
+        }},
     }
 
 

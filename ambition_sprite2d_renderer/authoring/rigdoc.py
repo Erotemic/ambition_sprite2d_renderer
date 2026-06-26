@@ -513,6 +513,10 @@ def paint_part(
         opacity = clamp(params.get(oc, 0.0), 0.0, 1.0)
         if opacity <= 0.01:
             return
+    # Global body fade (default 1.0) — a clip can phase the WHOLE character in/out
+    # (e.g. a blink dematerialize) by driving ``body_opacity`` without tagging every
+    # part with its own channel. No clip setting it leaves rendering unchanged.
+    opacity *= clamp(params.get("body_opacity", 1.0), 0.0, 1.0)
     if part.get("kind") == "sprite":
         if sprite is None:
             return
