@@ -79,25 +79,36 @@ REGION = {
     "Head": ("head", None),
 }
 
-# Authored ``Joints``-layer circle labels -> skeleton joint names. Every real
-# articulation is here; hand/toe tips are derived (they aren't joints). The two
-# ``…-shoulder-torso`` pads are decorative attach points, intentionally unused.
-JOINT_MAP = {
-    "joint-right-shoulder-upper-arm": "near_shoulder",
-    "joint-right-upper-arm-lower-arm": "near_elbow",
-    "joint-right-lower-arm-hand": "near_wrist",
-    "joint-left-upper-arm-shoulder": "far_shoulder",
-    "joint-left-upper-arm-lower-arm": "far_elbow",
-    "joint-left-lower-arm-hand": "far_wrist",
-    "joint-hip-right-upper-leg": "near_hip",
-    "joint-right-upper-leg-lower-leg": "near_knee",
-    "joint-right-lower-leg-foot": "near_ankle",
-    "joint-hip-left-upper-leg": "far_hip",
-    "joint-left-upper-leg-lower-leg": "far_knee",
-    "joint-left-lower-leg-foot": "far_ankle",
-    "joint-head-neck": "neck",
-    "joint-hip-torso": "waist",
+# Authored joint circles are labelled by one grammar — ``joint-<side>-<a>-<b>``,
+# side ∈ {right,left,center}, ``<a>``/``<b>`` the two parts it connects — so the
+# skeleton name is *parsed*, not table-matched. ``right``→near, ``left``→far; the
+# articulation comes from the (unordered) part pair. Hand/toe tips are derived
+# (not joints), and the decorative ``torso-shoulder`` pad pair is unmapped → skipped.
+_SIDE = {"right": "near", "left": "far"}
+_LIMB_JOINT = {
+    frozenset({"shoulder", "upperarm"}): "shoulder",
+    frozenset({"upperarm", "lowerarm"}): "elbow",
+    frozenset({"lowerarm", "hand"}): "wrist",
+    frozenset({"hip", "upperleg"}): "hip",
+    frozenset({"upperleg", "lowerleg"}): "knee",
+    frozenset({"lowerleg", "foot"}): "ankle",
 }
+_CENTER_JOINT = {  # spine joints carry no left/right side
+    frozenset({"neck", "head"}): "neck",
+    frozenset({"hip", "torso"}): "waist",
+}
+
+
+def _joint_name(label: str) -> Optional[str]:
+    """``joint-right-shoulder-upperarm`` -> ``near_shoulder`` (or None to skip)."""
+    parts = (label or "").split("-")
+    if len(parts) != 4 or parts[0] != "joint":
+        return None
+    side, pair = parts[1], frozenset(parts[2:])
+    if side == "center":
+        return _CENTER_JOINT.get(pair)
+    role = _LIMB_JOINT.get(pair)
+    return f"{_SIDE[side]}_{role}" if role and side in _SIDE else None
 
 _SEG_KEY = {"upper": "u", "lower": "l", "hand": "hand", "foot": "foot"}
 
@@ -193,7 +204,7 @@ def _authored_joints() -> Dict[str, Tuple[float, float]]:
     for elem in root.iter():
         if _local(elem.tag) != "circle":
             continue
-        name = JOINT_MAP.get(_label(elem) or "")
+        name = _joint_name(_label(elem) or "")
         if name is None:
             continue
         img, (ox, oy), _ = rasterize_subset(SVG, VIEW, [elem.get("id", "")], REF_DPI)
