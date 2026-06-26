@@ -5,15 +5,15 @@
   "height": 192,
   "ground_y": 176.0,
   "center_x": 64.0,
-  "ankle_h": 12.546,
+  "ankle_h": 15.295,
   "supersample": 4,
   "render_scale": 3
  },
  "svg_source": {
-  "path": "../../../../../../assets/manual-svgs/perfect-cellular-automaton/pca-front-side.svg",
-  "view": "VIEW-front-right",
+  "path": "../../../../assets/perfect-cellular-automaton/PCA-multiview.svg",
+  "view": "View - Front Right",
   "ref_dpi": 96.0,
-  "scale": 0.184502
+  "scale": 0.184275
  },
  "palette": {},
  "bones": [
@@ -22,7 +22,7 @@
    "parent": null,
    "offset": [
     0.0,
-    -73.432
+    -67.905
    ],
    "length": 0.0,
    "rest_angle": 0.0
@@ -31,8 +31,8 @@
    "name": "torso",
    "parent": "pelvis",
    "offset": [
-    0.0,
-    0.0
+    1.474,
+    -8.108
    ],
    "length": 0.0,
    "rest_angle": 0.0
@@ -41,8 +41,8 @@
    "name": "head",
    "parent": "torso",
    "offset": [
-    -2.216,
-    -40.959
+    -1.751,
+    -32.985
    ],
    "length": 0.0,
    "rest_angle": 0.0
@@ -51,121 +51,121 @@
    "name": "far_arm_u",
    "parent": "torso",
    "offset": [
-    13.498,
-    -36.716
+    15.663,
+    -24.048
    ],
-   "length": 30.017,
-   "rest_angle": 76.21
+   "length": 20.22,
+   "rest_angle": 78.434
   },
   {
    "name": "far_arm_l",
    "parent": "far_arm_u",
    "offset": [
-    30.017,
-    0.0
+    20.22,
+    -0.0
    ],
-   "length": 22.418,
-   "rest_angle": 14.424
+   "length": 17.973,
+   "rest_angle": 13.035
   },
   {
    "name": "far_arm_hand",
    "parent": "far_arm_l",
    "offset": [
-    22.418,
+    17.973,
     0.0
    ],
-   "length": 15.253,
-   "rest_angle": 3.069
+   "length": 19.103,
+   "rest_angle": 8.811
   },
   {
    "name": "far_leg_u",
    "parent": "pelvis",
    "offset": [
-    7.488,
-    -1.661
+    7.555,
+    -0.092
    ],
-   "length": 31.379,
-   "rest_angle": 88.314
+   "length": 26.903,
+   "rest_angle": 83.313
   },
   {
    "name": "far_leg_l",
    "parent": "far_leg_u",
    "offset": [
-    31.379,
+    26.903,
     0.0
    ],
-   "length": 30.032,
-   "rest_angle": -1.64
+   "length": 26.516,
+   "rest_angle": 13.071
   },
   {
    "name": "far_leg_foot",
    "parent": "far_leg_l",
    "offset": [
-    30.032,
+    26.516,
     0.0
    ],
-   "length": 19.793,
-   "rest_angle": -76.473
+   "length": 24.478,
+   "rest_angle": -69.047
   },
   {
    "name": "near_arm_u",
    "parent": "torso",
    "offset": [
-    -16.696,
-    -36.531
+    -19.165,
+    -24.232
    ],
-   "length": 31.677,
-   "rest_angle": 101.06
+   "length": 21.207,
+   "rest_angle": 104.338
   },
   {
    "name": "near_arm_l",
    "parent": "near_arm_u",
    "offset": [
-    31.677,
-    -0.0
+    21.207,
+    0.0
    ],
-   "length": 20.32,
-   "rest_angle": -8.205
+   "length": 19.099,
+   "rest_angle": -11.296
   },
   {
    "name": "near_arm_hand",
    "parent": "near_arm_l",
    "offset": [
-    20.32,
-    -0.0
+    19.099,
+    0.0
    ],
-   "length": 16.15,
-   "rest_angle": -4.424
+   "length": 18.214,
+   "rest_angle": -14.124
   },
   {
    "name": "near_leg_u",
    "parent": "pelvis",
    "offset": [
-    -7.488,
-    1.661
+    -7.555,
+    0.092
    ],
-   "length": 30.448,
-   "rest_angle": 94.575
+   "length": 27.663,
+   "rest_angle": 92.291
   },
   {
    "name": "near_leg_l",
    "parent": "near_leg_u",
    "offset": [
-    30.448,
-    -0.0
+    27.663,
+    0.0
    ],
-   "length": 30.206,
-   "rest_angle": 0.789
+   "length": 24.872,
+   "rest_angle": 7.521
   },
   {
    "name": "near_leg_foot",
    "parent": "near_leg_l",
    "offset": [
-    30.206,
+    24.872,
     0.0
    ],
-   "length": 11.688,
-   "rest_angle": -82.133
+   "length": 17.556,
+   "rest_angle": -48.847
   }
  ],
  "parts": [
@@ -178,10 +178,10 @@
     "path68640"
    ],
    "pivot": [
-    657.97,
-    424
+    661.0,
+    463.0
    ],
-   "rest_angle": 88.314
+   "rest_angle": 83.313
   },
   {
    "name": "far_leg_l",
@@ -193,10 +193,10 @@
     "path68650"
    ],
    "pivot": [
-    662.97,
-    594.0
+    678.0,
+    608.0
    ],
-   "rest_angle": 86.674
+   "rest_angle": 96.384
   },
   {
    "name": "far_leg_foot",
@@ -208,10 +208,10 @@
     "path68648"
    ],
    "pivot": [
-    672.42,
-    756.5
+    662.0,
+    751.0
    ],
-   "rest_angle": 10.201
+   "rest_angle": 27.337
   },
   {
    "name": "far_arm_u",
@@ -225,10 +225,10 @@
     "path67956"
    ],
    "pivot": [
-    690.55,
-    234
+    713.0,
+    289.0
    ],
-   "rest_angle": 76.21
+   "rest_angle": 78.434
   },
   {
    "name": "far_arm_l",
@@ -236,14 +236,13 @@
    "z": 9,
    "kind": "sprite",
    "include": [
-    "path68252",
-    "path68254"
+    "path68252"
    ],
    "pivot": [
-    729.33,
-    392.0
+    735.0,
+    396.5
    ],
-   "rest_angle": 90.634
+   "rest_angle": 91.469
   },
   {
    "name": "far_arm_hand",
@@ -251,6 +250,7 @@
    "z": 10,
    "kind": "sprite",
    "include": [
+    "path68254",
     "path68256",
     "path68276",
     "path68278",
@@ -259,10 +259,10 @@
     "path68284"
    ],
    "pivot": [
-    727.98,
-    513.5
+    732.5,
+    494.0
    ],
-   "rest_angle": 93.703
+   "rest_angle": 100.28
   },
   {
    "name": "torso",
@@ -270,7 +270,8 @@
    "z": 22,
    "kind": "sprite",
    "include": [
-    "path59875",
+    "path2210",
+    "path2369",
     "path59879",
     "path59881",
     "path59885",
@@ -278,7 +279,6 @@
     "path59887",
     "path59889",
     "path59883",
-    "path63565",
     "path65575",
     "rect65651",
     "rect65653",
@@ -298,8 +298,8 @@
     "rect65653-1-5-9-2"
    ],
    "pivot": [
-    617.39,
-    433.0
+    628.0,
+    419.5
    ],
    "rest_angle": 0.0
   },
@@ -310,19 +310,19 @@
    "kind": "sprite",
    "include": [
     "path19398",
+    "path53807",
+    "path53809",
     "path41638",
     "path19398-2",
     "path44539",
     "path44541",
     "path44543",
     "path44545",
-    "path53807",
-    "path53809",
     "path41636"
    ],
    "pivot": [
-    605.37,
-    211
+    618.5,
+    240.5
    ],
    "rest_angle": 0.0
   },
@@ -335,10 +335,10 @@
     "path68572"
    ],
    "pivot": [
-    576.8,
-    442
+    579.0,
+    464.0
    ],
-   "rest_angle": 94.575
+   "rest_angle": 92.291
   },
   {
    "name": "near_leg_l",
@@ -350,10 +350,10 @@
     "path68575"
    ],
    "pivot": [
-    563.64,
-    606.5
+    573.0,
+    614.0
    ],
-   "rest_angle": 95.364
+   "rest_angle": 99.811
   },
   {
    "name": "near_leg_foot",
@@ -365,10 +365,10 @@
     "path68581"
    ],
    "pivot": [
-    548.33,
-    769.5
+    550.0,
+    747.0
    ],
-   "rest_angle": 13.232
+   "rest_angle": 50.964
   },
   {
    "name": "near_arm_u",
@@ -384,10 +384,10 @@
     "path63558"
    ],
    "pivot": [
-    526.89,
-    235
+    524.0,
+    288.0
    ],
-   "rest_angle": 101.06
+   "rest_angle": 104.338
   },
   {
    "name": "near_arm_l",
@@ -395,14 +395,13 @@
    "z": 61,
    "kind": "sprite",
    "include": [
-    "path66813",
-    "path66817"
+    "path66813"
    ],
    "pivot": [
-    493.96,
-    403.5
+    495.5,
+    399.5
    ],
-   "rest_angle": 92.854
+   "rest_angle": 93.042
   },
   {
    "name": "near_arm_hand",
@@ -411,14 +410,15 @@
    "kind": "sprite",
    "include": [
     "path66815",
+    "path66817",
     "path66843",
     "path66845"
    ],
    "pivot": [
-    488.47,
-    513.5
+    490.0,
+    503.0
    ],
-   "rest_angle": 88.431
+   "rest_angle": 78.917
   }
  ],
  "ik_legs": [
@@ -427,9 +427,9 @@
    "lower": "near_leg_l",
    "foot": "near_leg_foot",
    "channel_prefix": "near_foot",
-   "rest_x": -12.74,
-   "rest_lift": -1.199,
-   "rest_pitch": 13.232,
+   "rest_x": -12.899,
+   "rest_lift": 0.369,
+   "rest_pitch": 50.964,
    "bend": 1.0
   },
   {
@@ -437,26 +437,38 @@
    "lower": "far_leg_l",
    "foot": "far_leg_foot",
    "channel_prefix": "far_foot",
-   "rest_x": 10.153,
-   "rest_lift": 1.199,
-   "rest_pitch": 10.201,
+   "rest_x": 7.74,
+   "rest_lift": -0.369,
+   "rest_pitch": 27.337,
    "bend": 1.0
   }
  ],
  "clips": {
   "idle": {
    "loop": true,
-   "frames": 8,
-   "duration_ms": 130,
+   "frames": 10,
+   "duration_ms": 120,
    "channels": {
+    "root_y": {
+     "expr": "-0.8*sin(tau*t)"
+    },
     "torso": {
-     "expr": "1.5*sin(tau*t)"
+     "expr": "1.6*sin(tau*t)"
+    },
+    "head": {
+     "expr": "-1.4*sin(tau*(t-0.12))"
+    },
+    "near_arm_u": {
+     "expr": "2.2*sin(tau*t)"
     },
     "near_arm_l": {
-     "expr": "3*sin(tau*t)"
+     "expr": "4.0*sin(tau*(t-0.10))"
+    },
+    "far_arm_u": {
+     "expr": "-2.2*sin(tau*t)"
     },
     "far_arm_l": {
-     "expr": "-3*sin(tau*t)"
+     "expr": "-4.0*sin(tau*(t-0.10))"
     }
    }
   },
@@ -469,17 +481,17 @@
      "keys": [
       [
        0.0,
-       7.7065,
+       6.4205000000000005,
        "sine"
       ],
       [
        0.5,
-       -10.2935,
+       -11.5795,
        "sine"
       ],
       [
        0.0,
-       7.7065,
+       6.4205000000000005,
        "sine"
       ]
      ]
@@ -488,17 +500,17 @@
      "keys": [
       [
        0.0,
-       -10.2935,
+       -11.5795,
        "sine"
       ],
       [
        0.5,
-       7.7065,
+       6.4205000000000005,
        "sine"
       ],
       [
        1.0,
-       -10.2935,
+       -11.5795,
        "sine"
       ]
      ]
@@ -624,10 +636,10 @@
      "const": -7.0
     },
     "near_foot_x": {
-     "const": -5.2935
+     "const": -6.5794999999999995
     },
     "far_foot_x": {
-     "const": 2.7065
+     "const": 1.4205000000000005
     },
     "near_arm_u": {
      "const": 14.0

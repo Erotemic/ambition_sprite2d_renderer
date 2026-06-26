@@ -1,37 +1,46 @@
 #!/usr/bin/env python3
 """Build a bone rig for the Perfect Cell-ular Automaton from its hand-drawn SVG.
 
-This is the *robust process* for turning ``pca-front-side.svg`` into an
+This is the *robust process* for turning ``PCA-multiview.svg`` into an
 animatable ``.rig.json``: it never reconstructs the art (the old, failed
 approach) — it binds the artist's own vector parts to bones and lets the
 existing FK/IK skeleton pose them.
 
-How parts map to bones (the durable contract — survives id churn and reshaping
-as long as these Inkscape *group labels* and naming keywords hold):
+Two things in the SVG are the durable contract (survive id churn and reshaping):
 
-  * The top-level groups under ``VIEW-front-right`` are the body regions:
-    ``Right-arm-front-right`` / ``left-arm`` (near/far arm),
-    ``right-leg`` / ``left-leg`` (near/far leg), ``body`` (torso), and
-    ``Head-front-right`` (head).
-  * Within a limb, each leaf is sorted into a segment by keyword — anything
-    ``hand``/``claw``/``finger`` → hand, ``lower``/``forearm``/``cuff``/
-    ``shin``/``foot``/``toes``/``heel`` → lower/foot, else upper. Unlabelled
-    detail paths inherit the label of their nearest labelled group (so
-    ``finger-lines``, ``helmet-detail``, ``belly-grid`` resolve correctly).
+1. **The layer hierarchy** names body regions and segments. Under the
+   ``View - Front Right`` layer the six region groups are ``Arm - Right`` /
+   ``Arm - Left`` (near/far arm), ``Leg - Right`` / ``Leg - Left`` (near/far
+   leg), ``Torso`` and ``Head``. Within a limb each leaf is sorted into a bone
+   segment by the *nearest enclosing group label*: ``…Hand…`` → hand,
+   ``…Lower…``/``…Forearm…`` → lower, ``…Upper…``/``…Shoulder…`` → upper (legs:
+   ``…Foot…`` → foot, ``…Lower…``/``…Shin…`` → lower, ``…Upper…`` → upper).
+   Unlabelled detail paths (finger lines, helmet detail, belly grid) inherit
+   their parent group's segment, so they ride the right bone for free.
 
-Joints (shoulder/elbow/wrist, hip/knee/ankle, neck) are measured from the
-aggregate bounding box of each segment's art, so the skeleton tracks the art.
-Re-run this whenever the SVG changes; the ``.rig.json`` is a generated artifact.
+2. **The ``Joints`` layer** carries the skeleton directly: 16 circles labelled
+   ``joint-<side>-<a>-<b>`` mark every real articulation (shoulder, elbow,
+   wrist, hip, knee, ankle, neck, waist). We read those positions verbatim
+   rather than guessing joints from bounding boxes — the artist placed them on
+   the art, so the skeleton tracks the art exactly. Hand tips and toe tips are
+   *not* joints; they're derived as the farthest point of the hand/foot mask
+   from the wrist/ankle, which is orientation-agnostic.
+
+In this view the character faces +x; its **right** side is drawn last and so is
+*near* (in front), its **left** side is *far*. Re-run this whenever the SVG
+changes — the ``.rig.json`` is a generated artifact:
 
     PY=.venv/bin/python
     $PY .../pca_rig_extract.py build       # writes the rig into targets/.../rigged/
-    $PY .../pca_rig_extract.py validate     # rest pose vs full-view raster -> /tmp
+    $PY .../pca_rig_extract.py validate    # rest pose -> /tmp
+    $PY .../pca_rig_extract.py debug idle   # skeleton-on-art overlay -> /tmp
 """
 from __future__ import annotations
 
 import argparse
 import json
 import math
+import os
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -45,109 +54,154 @@ if str(_AUTHORING) not in sys.path:
     sys.path.insert(0, str(_AUTHORING))
 
 from authoring.svg_parts import (  # noqa: E402
-    INK_NS, SVG_NS, MM_PER_INCH, rasterize_subset, _local, _label,
+    rasterize_subset, _local, _label,
 )
 
-REPO = Path(__file__).resolve().parents[5]
-SVG = REPO / "assets/manual-svgs/perfect-cellular-automaton/pca-front-side.svg"
+TOOL_ROOT = Path(__file__).resolve().parents[3]
+SVG = TOOL_ROOT / "assets/perfect-cellular-automaton/PCA-multiview.svg"
 RIGGED_DIR = _AUTHORING / "targets/characters/rigged"
 RIG_OUT = RIGGED_DIR / "perfect_cellular_automaton.rig.json"
 
-VIEW = "VIEW-front-right"
+VIEW = "View - Front Right"
 REF_DPI = 96.0
 # Output resolution multiplier (geometry stays authored in base-frame units;
 # vector source rasterizes crisply, so we can afford a high multiplier).
 RENDER_SCALE = 3
 
-# top group label -> (region kind, side)
+# Top region group label -> (region kind, side). "Right" is drawn last in this
+# view, so it is the near (front) side; "Left" is far.
 REGION = {
-    "Right-arm-front-right": ("arm", "near"),
-    "left-arm": ("arm", "far"),
-    "right-leg": ("leg", "near"),
-    "left-leg": ("leg", "far"),
-    "body": ("torso", None),
-    "Head-front-right": ("head", None),
+    "Arm - Right": ("arm", "near"),
+    "Arm - Left": ("arm", "far"),
+    "Leg - Right": ("leg", "near"),
+    "Leg - Left": ("leg", "far"),
+    "Torso": ("torso", None),
+    "Head": ("head", None),
 }
 
+# Authored ``Joints``-layer circle labels -> skeleton joint names. Every real
+# articulation is here; hand/toe tips are derived (they aren't joints). The two
+# ``…-shoulder-torso`` pads are decorative attach points, intentionally unused.
+JOINT_MAP = {
+    "joint-right-shoulder-upper-arm": "near_shoulder",
+    "joint-right-upper-arm-lower-arm": "near_elbow",
+    "joint-right-lower-arm-hand": "near_wrist",
+    "joint-left-upper-arm-shoulder": "far_shoulder",
+    "joint-left-upper-arm-lower-arm": "far_elbow",
+    "joint-left-lower-arm-hand": "far_wrist",
+    "joint-hip-right-upper-leg": "near_hip",
+    "joint-right-upper-leg-lower-leg": "near_knee",
+    "joint-right-lower-leg-foot": "near_ankle",
+    "joint-hip-left-upper-leg": "far_hip",
+    "joint-left-upper-leg-lower-leg": "far_knee",
+    "joint-left-lower-leg-foot": "far_ankle",
+    "joint-head-neck": "neck",
+    "joint-hip-torso": "waist",
+}
 
-def _segment(kind: str, label: str) -> str:
-    """Which bone segment a leaf's (nearest) label belongs to within a region."""
-    t = (label or "").lower()
-    if kind == "arm":
-        if any(k in t for k in ("hand", "claw", "finger")):
-            return "hand"
-        if any(k in t for k in ("lower", "forearm", "cuff", "sleeve")):
-            return "lower"
-        return "upper"
-    if kind == "leg":
-        if any(k in t for k in ("foot", "toes", "heel")):
-            return "foot"
-        if any(k in t for k in ("lower", "shin", "knee")):
-            return "lower"
-        return "upper"
-    return kind  # torso / head: single bone
-
-
-def _bone_name(kind: str, side: Optional[str], seg: str) -> str:
-    if kind in ("torso", "head"):
-        return kind
-    return f"{side}_{kind[:3]}_{ {'upper':'u','lower':'l','hand':'hand','foot':'foot'}[seg] }".replace(" ", "")
+_SEG_KEY = {"upper": "u", "lower": "l", "hand": "hand", "foot": "foot"}
 
 
-def _classify_leaf(leaf: ET.Element, ancestry: List[str], top: str) -> Optional[str]:
-    """Bone name for one drawable leaf, or None if its region is unmapped."""
+# ---- SVG -> (bone -> art ids) classification ---------------------------------
+
+
+def _ancestry(elem: ET.Element, parent: Dict[ET.Element, ET.Element]) -> List[ET.Element]:
+    out: List[ET.Element] = []
+    cur: Optional[ET.Element] = elem
+    while cur is not None:
+        out.append(cur)
+        cur = parent.get(cur)
+    return out  # leaf-first, up to the root
+
+
+def _top_group(chain: List[ET.Element]) -> Optional[str]:
+    """Label of the ``VIEW``'s direct child that contains the leaf."""
+    for i, node in enumerate(chain):
+        if _label(node) == VIEW and i > 0:
+            return _label(chain[i - 1])
+    return None
+
+
+def _segment(kind: str, chain: List[ET.Element]) -> Optional[str]:
+    """Bone segment for a leaf, from the nearest enclosing group label."""
+    for node in chain:
+        t = (_label(node) or "").lower()
+        if not t:
+            continue
+        if kind == "arm":
+            if "hand" in t:
+                return "hand"
+            if "lower" in t or "forearm" in t:
+                return "lower"
+            if "upper" in t or "shoulder" in t:
+                return "upper"
+        elif kind == "leg":
+            if "foot" in t or "toe" in t:
+                return "foot"
+            if "lower" in t or "shin" in t:
+                return "lower"
+            if "upper" in t:
+                return "upper"
+    return None
+
+
+def _bone_for_leaf(chain: List[ET.Element]) -> Optional[str]:
+    top = _top_group(chain)
     if top not in REGION:
         return None
     kind, side = REGION[top]
-    # nearest non-empty label from leaf up to (not including) the top group
-    near = next((l for l in ancestry if l and l != top), top)
-    return _bone_name(kind, side, _segment(kind, near))
-
-
-def _ancestry(elem: ET.Element, parent: Dict[ET.Element, ET.Element]) -> List[str]:
-    out: List[str] = []
-    cur: Optional[ET.Element] = elem
-    while cur is not None:
-        lbl = _label(cur)
-        if lbl:
-            out.append(lbl)
-        cur = parent.get(cur)
-    return out  # leaf-first
+    if kind in ("torso", "head"):
+        return kind
+    seg = _segment(kind, chain)
+    if seg is None:
+        return None
+    limb = "arm" if kind == "arm" else "leg"
+    return f"{side}_{limb}_{_SEG_KEY[seg]}"
 
 
 def _collect() -> Dict[str, List[Tuple[str, ET.Element]]]:
-    """Group every drawable leaf under VIEW by bone name -> [(id, elem), ...]."""
+    """Group every drawable leaf under VIEW by bone name -> [(id, elem), ...].
+
+    The ``Joints`` layer is skipped: its circles drive the skeleton, never the
+    art (and because each part only ever rasterizes its own ids, the joints can
+    never leak into a rendered sprite)."""
     root = ET.fromstring(SVG.read_bytes())
     parent = {c: p for p in root.iter() for c in p}
     bones: Dict[str, List[Tuple[str, ET.Element]]] = {}
     for elem in root.iter():
-        if _local(elem.tag) not in ("path", "polygon", "rect", "ellipse", "circle"):
+        if _local(elem.tag) not in ("path", "polygon", "rect", "ellipse", "circle", "line"):
             continue
-        anc = _ancestry(elem, parent)
-        if VIEW not in anc:
+        chain = _ancestry(elem, parent)
+        labels = {_label(n) for n in chain}
+        if VIEW not in labels or "Joints" in labels:
             continue
-        top = anc[-1] if anc and anc[-1] != "Layer 1" else (anc[-2] if len(anc) > 1 else "")
-        # top group = the child of VIEW; find it explicitly
-        top = _top_group(elem, parent)
-        bone = _classify_leaf(elem, anc, top)
+        bone = _bone_for_leaf(chain)
         if bone is None:
             continue
         bones.setdefault(bone, []).append((elem.get("id", ""), elem))
     return bones
 
 
-def _top_group(elem: ET.Element, parent: Dict[ET.Element, ET.Element]) -> str:
-    """Label of the VIEW's direct child that contains ``elem``."""
-    chain = []
-    cur: Optional[ET.Element] = elem
-    while cur is not None:
-        chain.append(cur)
-        cur = parent.get(cur)
-    # chain is leaf..root; find VIEW then take the element just before it
-    for i, node in enumerate(chain):
-        if _label(node) == VIEW and i > 0:
-            return _label(chain[i - 1]) or ""
-    return ""
+def _authored_joints() -> Dict[str, Tuple[float, float]]:
+    """Skeleton joints in reference px, read straight from the Joints layer.
+
+    Each joint circle rasterizes in the same full-document frame as every part
+    (resvg applies the identical transform chain), so a circle's raster centre
+    is its joint position in the parts' coordinate system — no transform math."""
+    root = ET.fromstring(SVG.read_bytes())
+    out: Dict[str, Tuple[float, float]] = {}
+    for elem in root.iter():
+        if _local(elem.tag) != "circle":
+            continue
+        name = JOINT_MAP.get(_label(elem) or "")
+        if name is None:
+            continue
+        img, (ox, oy), _ = rasterize_subset(SVG, VIEW, [elem.get("id", "")], REF_DPI)
+        if img is None:
+            continue
+        w, h = img.size
+        out[name] = (ox + w / 2.0, oy + h / 2.0)
+    return out
 
 
 def _cx(b):  # bbox center x
@@ -158,11 +212,8 @@ def build_skeleton_data() -> dict:
     bones = _collect()
     ids = {name: [i for i, _ in items] for name, items in bones.items()}
 
-    # Rasterize each bone's art once to a full-canvas alpha mask (ref-px). The
-    # mask drives joint *x* placement: a joint sits at the limb's true pixel
-    # centre near the connection, NOT the average of whole-part bbox centres
-    # (which drifts to the wide end — e.g. a thigh bbox includes the hip, so its
-    # centre lands at the leg's edge at the knee).
+    # Rasterize each bone's art once to a full-canvas alpha mask (ref-px). Masks
+    # bound the figure (head top, feet) and locate the two non-joint tips.
     masks: Dict[str, Tuple[np.ndarray, int, int]] = {}
     bb: Dict[str, Tuple[float, float, float, float]] = {}
     for name, idlist in ids.items():
@@ -174,52 +225,31 @@ def build_skeleton_data() -> dict:
         h, w = a.shape
         bb[name] = (ox, oy, ox + w, oy + h)
 
-    def cx_frac(name: str, f_lo: float, f_hi: float) -> float:
-        """Centroid x of a bone's mask within a vertical fraction of its bbox
-        (0 = top, 1 = bottom) — the limb centre near one end."""
+    def farthest(name: str, frm: Tuple[float, float]) -> Tuple[float, float]:
+        """Mask pixel of ``name`` farthest from ``frm`` — a limb's free tip."""
         a, ox, oy = masks[name]
-        h, _w = a.shape
-        r0 = int(h * f_lo)
-        r1 = max(r0 + 1, int(round(h * f_hi)))
-        xs = np.nonzero(a[r0:r1])[1]
-        return float(xs.mean()) + ox if xs.size else _cx(bb[name])
+        ys, xs = np.nonzero(a)
+        px = xs.astype(float) + ox
+        py = ys.astype(float) + oy
+        i = int(np.argmax((px - frm[0]) ** 2 + (py - frm[1]) ** 2))
+        return (float(px[i]), float(py[i]))
 
-    def joint_x(prox: str, dist: str) -> float:
-        """x where ``prox`` (above) meets ``dist`` (below): mean of the two
-        limb centres measured in the bands closest to the shared joint."""
-        return (cx_frac(prox, 0.7, 1.0) + cx_frac(dist, 0.0, 0.3)) / 2.0
-
-    # --- joints (ref-px): x from mask band centres, y from bbox boundaries ---
-    J: Dict[str, Tuple[float, float]] = {}
+    # --- joints: authored articulations + derived hand/toe tips (ref-px) ---
+    J: Dict[str, Tuple[float, float]] = _authored_joints()
     for side in ("near", "far"):
-        u, l, h = f"{side}_arm_u", f"{side}_arm_l", f"{side}_arm_hand"
-        if u in bb:
-            J[f"{side}_shoulder"] = (cx_frac(u, 0.0, 0.3), bb[u][1])
-        if u in bb and l in bb:
-            J[f"{side}_elbow"] = (joint_x(u, l), (bb[u][3] + bb[l][1]) / 2)
-        if l in bb and h in bb:
-            J[f"{side}_wrist"] = (joint_x(l, h), (bb[l][3] + bb[h][1]) / 2)
-        if h in bb:
-            J[f"{side}_handtip"] = (cx_frac(h, 0.7, 1.0), bb[h][3])
-        pu, pl, pf = f"{side}_leg_u", f"{side}_leg_l", f"{side}_leg_foot"
-        if pu in bb:
-            J[f"{side}_hip"] = (cx_frac(pu, 0.0, 0.3), bb[pu][1])
-        if pu in bb and pl in bb:
-            J[f"{side}_knee"] = (joint_x(pu, pl), (bb[pu][3] + bb[pl][1]) / 2)
-        if pl in bb and pf in bb:
-            J[f"{side}_ankle"] = (joint_x(pl, pf), (bb[pl][3] + bb[pf][1]) / 2)
-        if pf in bb:
-            # toe tip: foot far end horizontally from the ankle x
-            fb = bb[pf]
-            ax = J.get(f"{side}_ankle", (_cx(fb), fb[3]))[0]
-            tipx = fb[0] if abs(fb[0] - ax) > abs(fb[2] - ax) else fb[2]
-            J[f"{side}_toe"] = (tipx, (fb[1] + fb[3]) / 2)
+        wrist, hand = f"{side}_wrist", f"{side}_arm_hand"
+        if wrist in J and hand in masks:
+            J[f"{side}_handtip"] = farthest(hand, J[wrist])
+        ankle, foot = f"{side}_ankle", f"{side}_leg_foot"
+        if ankle in J and foot in masks:
+            J[f"{side}_toe"] = farthest(foot, J[ankle])
 
     hip_c = (
         (J["near_hip"][0] + J["far_hip"][0]) / 2,
         (J["near_hip"][1] + J["far_hip"][1]) / 2,
     )
-    neck = (cx_frac("torso", 0.0, 0.3), bb["torso"][1]) if "torso" in bb else hip_c
+    waist = J.get("waist", hip_c)   # torso hinges at the authored spine base
+    neck = J.get("neck", waist)
     head_top = bb["head"][1] if "head" in bb else neck[1]
 
     # --- px -> frame mapping: feet to ground_y, body center to center_x ---
@@ -240,7 +270,7 @@ def build_skeleton_data() -> dict:
     # --- bone tree: (name, parent, proximal joint, distal joint|None) ---
     specs: List[Tuple[str, Optional[str], Tuple[float, float], Optional[Tuple[float, float]]]] = [
         ("pelvis", None, hip_c, None),
-        ("torso", "pelvis", hip_c, None),
+        ("torso", "pelvis", waist, None),
         ("head", "torso", neck, None),
     ]
     for side in ("far", "near"):  # far first so near draws over it
@@ -312,7 +342,11 @@ def _clips(near_rx: float, far_rx: float) -> dict:
     of its rest (screen CW-positive); ``root_x``/``root_y`` shift the whole body
     from (center_x, ground_y); ``<side>_foot_x`` is the planted foot's world x
     offset from center_x, ``_lift`` raises it, ``_pitch`` sets its angle. Legs
-    are posed by authoring foot trajectories; IK places the knees."""
+    are posed by authoring foot trajectories; IK places the knees.
+
+    The rest pose already matches the drawn stance (arms hanging, feet planted),
+    so idle/fly only need to layer *subtle* motion on top — the figure breathes,
+    it doesn't flail."""
     gait = (near_rx + far_rx) / 2.0  # feet converge under the body when walking
     A = 9.0    # stride half-amplitude (world x)
     H = 7.0    # foot swing lift
@@ -332,10 +366,17 @@ def _clips(near_rx: float, far_rx: float) -> dict:
         return {"loop": False, "frames": 1, "channels": {k: {"const": v} for k, v in ch.items()}}
 
     return {
-        "idle": {"loop": True, "frames": 8, "duration_ms": 130, "channels": {
-            "torso": {"expr": "1.5*sin(tau*t)"},
-            "near_arm_l": {"expr": "3*sin(tau*t)"},
-            "far_arm_l": {"expr": "-3*sin(tau*t)"},
+        # Idle: a slow breath — chest rises (root lifts a hair), torso and head
+        # counter-sway, arms drift, weight settles. Two-beat asymmetry on the
+        # arms keeps it from looking like a metronome.
+        "idle": {"loop": True, "frames": 10, "duration_ms": 120, "channels": {
+            "root_y": {"expr": "-0.8*sin(tau*t)"},
+            "torso": {"expr": "1.6*sin(tau*t)"},
+            "head": {"expr": "-1.4*sin(tau*(t-0.12))"},
+            "near_arm_u": {"expr": "2.2*sin(tau*t)"},
+            "near_arm_l": {"expr": "4.0*sin(tau*(t-0.10))"},
+            "far_arm_u": {"expr": "-2.2*sin(tau*t)"},
+            "far_arm_l": {"expr": "-4.0*sin(tau*(t-0.10))"},
         }},
         # Contralateral walk: near foot forward when far foot is back; arms swing
         # opposite their legs; body bobs twice per stride (lowest at each contact).
@@ -410,7 +451,6 @@ def _clips(near_rx: float, far_rx: float) -> dict:
 
 def build_doc() -> dict:
     sk = build_skeleton_data()
-    K = sk["K"]
     parts = []
     for b in sk["bones"]:
         name = b["name"]
@@ -426,7 +466,7 @@ def build_doc() -> dict:
         })
     parts.sort(key=lambda p: p["z"])
 
-    svg_rel = Path("../../../../../..") / SVG.relative_to(REPO)
+    svg_rel = os.path.relpath(SVG, RIGGED_DIR)
     fr = sk["frame"]
     # Source art is vector, so publish at higher pixel resolution (render_scale)
     # without touching the authored geometry or the in-game display size.
@@ -459,8 +499,8 @@ def build_doc() -> dict:
         "name": "perfect_cellular_automaton",
         "frame": fr,
         "svg_source": {
-            "path": str(svg_rel), "view": VIEW,
-            "ref_dpi": REF_DPI, "scale": round(K, 6),
+            "path": svg_rel, "view": VIEW,
+            "ref_dpi": REF_DPI, "scale": round(sk["K"], 6),
         },
         "palette": {},
         "bones": sk["bones"],
