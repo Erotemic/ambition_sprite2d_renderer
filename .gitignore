@@ -1,0 +1,57 @@
+# Iteration scratch: optimizer output, candidate sheets, diff images. Not committed.
+agent-scratch/
+
+# Generated sheets/diagnostics emitted next to experimental fitters.
+ambition_sprite2d_renderer/experimental/**/*.png
+
+generated/
+.parity-baseline/
+tpl/Godot_v*-stable_linux.x86_64
+
+# Local Godot editor/runtime binaries
+tpl/Godot_v*-stable_linux.x86_64
+
+# Local editor / IDE state
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Logs and crash dumps
+*.log
+*.dmp
+
+# Local env/config files
+.env
+.env.*
+*.local
+
+tmp/
+temp/
+.cache/
+
+
+# Backup / patch artifacts
+*.bak
+*.orig
+*.rej
+**/*.rs.bk
+
+# Rust analyzer local project file
+rust-project.json
+
+debug_traces
+__pycache__
+*.png
+
+.venv/
+__pycache__/
+*.egg-info/
+
+generated
+output
