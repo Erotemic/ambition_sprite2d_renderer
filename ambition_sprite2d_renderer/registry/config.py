@@ -50,6 +50,11 @@ class RenderConfig:
     # sheet dimensions stay within the limit. 16384 is the common modern cap;
     # the runtime addresses frames by explicit rect, so banding is transparent.
     max_sheet_dimension: int = 16384
+    # Alpha-trim + MaxRects-pack the sheet (reclaims the 84-97% transparent
+    # margins). Default ON for adapter targets, which are all character-rendered
+    # (the trim-aware CharacterAnimator path). The BOSS adapter renders via the
+    # grid-based boss path and must opt out (`trim: false` in boss.yaml).
+    trim: bool = True
 
 
 @dataclass

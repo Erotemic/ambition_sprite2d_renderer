@@ -139,35 +139,15 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
     fw = crop_max_x - crop_min_x
     fh = crop_max_y - crop_min_y
 
-    # Pass 2: compose the sheet with cropped frames.
-    #
-    # Layout: one animation per row, stacked vertically. When that single
-    # column would grow taller than the GPU texture limit, the overflow rows
-    # are split onto additional *page images* (each its own PNG) so every page
-    # stays within `max_sheet_dimension`. A single page is byte-identical to
-    # the legacy single-image layout, so only sheets that actually overflow
-    # change. The runtime addresses every frame by (page, explicit rect), so
-    # splitting is transparent to gameplay — see `SheetRecord::images` /
-    # `SheetRow::page` and the character-sprite page-swap in the renderer.
-    row_stride_h = fh + border
-    page_w = label_w + max_frames * (fw + border) + border
-    max_dim = max(row_stride_h + border, int(getattr(job.render, "max_sheet_dimension", 16384)))
-    rows_per_page = max(1, (max_dim - border) // row_stride_h)
-    num_pages = max(1, (len(selected) + rows_per_page - 1) // rows_per_page)
-    if page_w > max_dim:
-        raise ValueError(
-            f"spritesheet for {job.target!r} has a {page_w}px-wide frame row, exceeding "
-            f"the {max_dim}px texture limit; reduce the frame size or per-row frame count"
-        )
-    # One PIL image per page; each page is exactly as tall as the rows it holds.
-    pages: List[Image.Image] = []
-    draws: List[ImageDraw.ImageDraw] = []
-    for p in range(num_pages):
-        rows_on_page = min(rows_per_page, len(selected) - p * rows_per_page)
-        page_h = rows_on_page * row_stride_h + border
-        img = Image.new("RGBA", (page_w, page_h), _parse_bg(job.render.sheet_background))
-        pages.append(img)
-        draws.append(ImageDraw.Draw(img))
+    # Pass 2: crop every frame to the logical box, gather per-animation source
+    # alpha bboxes (hurtboxes) + the reference pose, then lay the frames out.
+    #   render.trim → alpha-trim + MaxRects-pack every frame onto tight square
+    #     pages (the professional packer; frames carry a `page` + trim `off`).
+    #   otherwise → the legacy one-animation-per-labeled-row grid, split into
+    #     page images only when it would exceed the GPU texture limit. Byte-
+    #     identical to the pre-packer output for untrimmed targets.
+    max_dim = int(getattr(job.render, "max_sheet_dimension", 16384))
+    trim = bool(getattr(job.render, "trim", False))
     font = load_font(12)
     manifest: Dict[str, Any] = {
         "target": job.target,
@@ -188,9 +168,6 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
         "frame_height": fh,
         "label_width": label_w,
         "border": border,
-        # Number of page images this sheet was split into (1 = single PNG).
-        # `write_spritesheet` turns this into the `images: [...]` filename list.
-        "pages": num_pages,
         "spec": adapter.spec_dict(spec),
         "crop": {
             "source_frame_width": src_fw,
@@ -202,71 +179,116 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
         "animations": {},
     }
     body_metric_frame: Image.Image | None = None
-    # Per-animation union alpha bboxes in **source canvas** coords
-    # (before the sheet-wide crop). Becomes per-animation hurtboxes
-    # so the gameplay can use the right hurtbox extent for the
-    # active animation — important when arms or other extensions
-    # appear only during attack frames.
+    # Per-animation union alpha bboxes in **source canvas** coords (before the
+    # sheet-wide crop) → per-animation hurtboxes. Layout-independent.
     anim_union_bbox_src: Dict[str, Tuple[int, int, int, int] | None] = {}
+    cropped_rows: List[List[Image.Image]] = []
     for row_idx, animation in enumerate(selected):
-        info = animations[animation]
-        # Route this row to its page image; `y` is page-local (each page is its
-        # own coordinate space starting at the top). For single-page sheets
-        # page==0 and y == border + row_idx*(fh+border), identical to before.
-        page = row_idx // rows_per_page
-        row_in_page = row_idx % rows_per_page
-        y = border + row_in_page * (fh + border)
-        sheet = pages[page]
-        draw = draws[page]
-        if label_w:
-            draw.text((8, y + 8), animation, fill=(255, 255, 255, 255), font=font)
-            draw.text(
-                (8, y + 23),
-                f"{info['frames']}f/{info['duration_ms']}ms",
-                fill=(190, 190, 190, 255),
-                font=load_font(10),
-            )
-        frame_records: List[Dict[str, Any]] = []
         anim_bbox: Tuple[int, int, int, int] | None = None
-        for frame_index, src_frame in enumerate(rendered[row_idx]):
+        row_imgs: List[Image.Image] = []
+        for src_frame in rendered[row_idx]:
             cropped = src_frame.crop((crop_min_x, crop_min_y, crop_max_x, crop_max_y))
-            x = label_w + border + frame_index * (fw + border)
-            sheet.alpha_composite(cropped, (x, y))
-            frame_records.append(
-                {
-                    "index": frame_index,
-                    "x": x,
-                    "y": y,
-                    "w": fw,
-                    "h": fh,
-                    "page": page,
-                    "duration_ms": info["duration_ms"],
-                }
-            )
-            # Per-animation alpha-bbox accumulator (source canvas coords).
+            row_imgs.append(cropped)
             src_bbox = src_frame.getbbox()
             if src_bbox is not None:
-                if anim_bbox is None:
-                    anim_bbox = src_bbox
-                else:
-                    anim_bbox = (
+                anim_bbox = (
+                    src_bbox
+                    if anim_bbox is None
+                    else (
                         min(anim_bbox[0], src_bbox[0]),
                         min(anim_bbox[1], src_bbox[1]),
                         max(anim_bbox[2], src_bbox[2]),
                         max(anim_bbox[3], src_bbox[3]),
                     )
-            # Use the first frame of the first emitted animation as the
-            # canonical reference pose for body-extent measurement. Idle/Rest
-            # is what the gameplay code shows when the entity is at rest, so
-            # its bbox is the most representative — and it's already in
-            # cropped-frame pixel coordinates.
+                )
             if body_metric_frame is None:
                 body_metric_frame = cropped
+        cropped_rows.append(row_imgs)
         anim_union_bbox_src[animation] = anim_bbox
-        manifest["animations"][animation] = {
-            "frames": frame_records,
-            "duration_ms": info["duration_ms"],
-        }
+
+    if trim:
+        from .packer import FrameInput, pack_frames
+
+        frames_in = [
+            FrameInput(key=(ri, fi), image=img, logical_size=(fw, fh))
+            for ri, row_imgs in enumerate(cropped_rows)
+            for fi, img in enumerate(row_imgs)
+        ]
+        result = pack_frames(frames_in, max_dim=max_dim, padding=1, trim=True)
+        pages = result.pages
+        num_pages = len(pages)
+        for row_idx, animation in enumerate(selected):
+            dur = animations[animation]["duration_ms"]
+            recs: List[Dict[str, Any]] = []
+            for frame_index in range(len(cropped_rows[row_idx])):
+                pl = result.placements[(row_idx, frame_index)]
+                rec = {
+                    "index": frame_index,
+                    "x": pl.x,
+                    "y": pl.y,
+                    "w": pl.w,
+                    "h": pl.h,
+                    "fpage": pl.page,
+                    "duration_ms": dur,
+                }
+                if pl.off_x or pl.off_y:
+                    rec["off"] = (pl.off_x, pl.off_y)
+                recs.append(rec)
+            manifest["animations"][animation] = {"frames": recs, "duration_ms": dur}
+    else:
+        # Legacy paged grid (byte-identical for untrimmed targets).
+        row_stride_h = fh + border
+        page_w = label_w + max_frames * (fw + border) + border
+        cap = max(row_stride_h + border, max_dim)
+        rows_per_page = max(1, (cap - border) // row_stride_h)
+        num_pages = max(1, (len(selected) + rows_per_page - 1) // rows_per_page)
+        if page_w > cap:
+            raise ValueError(
+                f"spritesheet for {job.target!r} has a {page_w}px-wide frame row, exceeding "
+                f"the {cap}px texture limit; reduce the frame size or per-row frame count"
+            )
+        pages = []
+        draws = []
+        for p in range(num_pages):
+            rows_on_page = min(rows_per_page, len(selected) - p * rows_per_page)
+            img = Image.new(
+                "RGBA",
+                (page_w, rows_on_page * row_stride_h + border),
+                _parse_bg(job.render.sheet_background),
+            )
+            pages.append(img)
+            draws.append(ImageDraw.Draw(img))
+        for row_idx, animation in enumerate(selected):
+            info = animations[animation]
+            page = row_idx // rows_per_page
+            y = border + (row_idx % rows_per_page) * (fh + border)
+            sheet = pages[page]
+            draw = draws[page]
+            if label_w:
+                draw.text((8, y + 8), animation, fill=(255, 255, 255, 255), font=font)
+                draw.text(
+                    (8, y + 23),
+                    f"{info['frames']}f/{info['duration_ms']}ms",
+                    fill=(190, 190, 190, 255),
+                    font=load_font(10),
+                )
+            recs = []
+            for frame_index, cropped in enumerate(cropped_rows[row_idx]):
+                x = label_w + border + frame_index * (fw + border)
+                sheet.alpha_composite(cropped, (x, y))
+                recs.append(
+                    {
+                        "index": frame_index,
+                        "x": x,
+                        "y": y,
+                        "w": fw,
+                        "h": fh,
+                        "page": page,
+                        "duration_ms": info["duration_ms"],
+                    }
+                )
+            manifest["animations"][animation] = {"frames": recs, "duration_ms": info["duration_ms"]}
+    manifest["pages"] = num_pages
     metrics = (
         _measure_body_extent(body_metric_frame)
         if body_metric_frame is not None

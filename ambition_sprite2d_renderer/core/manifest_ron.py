@@ -254,9 +254,10 @@ def _normalize_adapter_rows(animations) -> List[Dict]:
             for fr in frames
             if isinstance(fr, dict) and all(k in fr for k in ("x", "y", "w", "h"))
         ]
-        # All frames of one animation share a page (an animation never splits
-        # across page images), so the row's page is the first frame's page.
-        page = int(rects[0].get("page", 0)) if rects else 0
+        # Row page = the first frame's page (a per-frame `fpage` when the sheet
+        # was freely packed, else the row-uniform `page`). Per-frame pages of a
+        # packed row are carried on each rect and emitted by `_ron_rect`.
+        page = int(rects[0].get("fpage", rects[0].get("page", 0))) if rects else 0
         rows.append(
             {
                 "animation": name,

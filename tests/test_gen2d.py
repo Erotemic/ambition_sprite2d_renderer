@@ -250,8 +250,10 @@ def test_spritesheet_emits_body_metrics():
 def test_sandbag_adapter_participates_in_character_pipeline(tmp_path):
     job = CharacterJob.load(CONFIGS / "sandbag.yaml")
     # This test pins base geometry + crop behavior, not texture resolution, so
-    # render at 1x (the fleet default is 2x, which would scale these dims).
+    # render at 1x (the fleet default is 2x, which would scale these dims) and
+    # without trim/packing (which would reshape the grid into packed pages).
     job.render.render_scale = 1
+    job.render.trim = False
     adapter = get_adapter("sandbag")
     animations = adapter.animations()
     for name in [
