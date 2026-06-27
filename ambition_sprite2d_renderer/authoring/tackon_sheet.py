@@ -239,6 +239,97 @@ def alpha_bbox_metrics(frame: Image.Image):
     }
 
 
+def _grid_sheet_rows(target, rendered_rows, fw, fh, label_width, max_dim):
+    """Legacy layout: one animation per labeled row, stacked vertically and
+    split into page images only when the column would exceed ``max_dim``.
+    Byte-identical to the pre-packer output. Returns
+    ``(page_sheets, rows_meta, num_pages)``."""
+    max_frames = max(n for _, n, _, _ in rendered_rows)
+    page_w = label_width + fw * max_frames
+    if page_w > max_dim:
+        raise ValueError(
+            f"spritesheet for {target!r} has a {page_w}px-wide frame row, exceeding the "
+            f"{max_dim}px texture limit; reduce the frame size or frame count"
+        )
+    rows_per_page = max(1, max_dim // fh)
+    num_pages = max(1, (len(rendered_rows) + rows_per_page - 1) // rows_per_page)
+    page_sheets, page_draws = [], []
+    for p in range(num_pages):
+        rows_on_page = min(rows_per_page, len(rendered_rows) - p * rows_per_page)
+        img = Image.new("RGBA", (page_w, fh * rows_on_page), (0, 0, 0, 0))
+        page_sheets.append(img)
+        page_draws.append(ImageDraw.Draw(img, "RGBA"))
+    rows_meta = []
+    for row_idx, (anim, nframes, duration_ms, frames_data) in enumerate(rendered_rows):
+        page = row_idx // rows_per_page
+        y = (row_idx % rows_per_page) * fh
+        draw_sheet, sheet = page_draws[page], page_sheets[page]
+        draw_sheet.rectangle((0, y, label_width - 1, y + fh - 1), fill=(18, 22, 30, 235))
+        draw_sheet.text((8, y + 10), anim, fill=(236, 240, 244, 255), font=font(14))
+        draw_sheet.text(
+            (8, y + 30), f"{nframes}f @ {duration_ms}ms", fill=(160, 170, 184, 255), font=font(11)
+        )
+        rects = []
+        for frame_idx, (frame, meta) in enumerate(frames_data):
+            x = label_width + frame_idx * fw
+            sheet.alpha_composite(frame, (x, y))
+            rect = {"x": x, "y": y, "w": fw, "h": fh, "page": page}
+            if meta:
+                rect.update(meta)
+            rects.append(rect)
+        rows_meta.append(
+            {
+                "animation": anim,
+                "row_index": row_idx,
+                "frame_count": nframes,
+                "duration_ms": duration_ms,
+                "duration_secs": round(duration_ms / 1000.0, 6),
+                "page": page,
+                "rects": rects,
+            }
+        )
+    return page_sheets, rows_meta, num_pages
+
+
+def _packed_sheet_rows(target, rendered_rows, fw, fh, max_dim):
+    """Professional layout: alpha-trim every frame + MaxRects-pack the animations
+    onto tight pages, keeping each animation on a single page. Returns
+    ``(page_sheets, rows_meta, num_pages)`` with per-frame `off` trim offsets."""
+    from .packer import FrameInput, pack_frames_grouped
+
+    groups = {
+        row_idx: [
+            FrameInput(key=(row_idx, fi), image=img, logical_size=(fw, fh))
+            for fi, (img, _meta) in enumerate(frames_data)
+        ]
+        for row_idx, (_anim, _n, _d, frames_data) in enumerate(rendered_rows)
+    }
+    result, group_page = pack_frames_grouped(groups, max_dim=max_dim, padding=1, trim=True)
+    rows_meta = []
+    for row_idx, (anim, nframes, duration_ms, frames_data) in enumerate(rendered_rows):
+        rects = []
+        for frame_idx, (_img, meta) in enumerate(frames_data):
+            pl = result.placements[(row_idx, frame_idx)]
+            rect = {"x": pl.x, "y": pl.y, "w": pl.w, "h": pl.h, "page": pl.page}
+            if pl.off_x or pl.off_y:
+                rect["off"] = (pl.off_x, pl.off_y)
+            if meta:
+                rect.update(meta)
+            rects.append(rect)
+        rows_meta.append(
+            {
+                "animation": anim,
+                "row_index": row_idx,
+                "frame_count": nframes,
+                "duration_ms": duration_ms,
+                "duration_secs": round(duration_ms / 1000.0, 6),
+                "page": group_page[row_idx],
+                "rects": rects,
+            }
+        )
+    return result.pages, rows_meta, len(result.pages)
+
+
 def build_sheet(
     target: str,
     rows: List[Tuple[str, int, int]],
@@ -255,6 +346,7 @@ def build_sheet(
     animation_key_map=None,
     attack_hitboxes=None,
     max_sheet_dimension: int = 16384,
+    trim: bool = False,
 ):
     """Build a labeled spritesheet + companion YAML manifest.
 
@@ -375,74 +467,44 @@ def build_sheet(
 
     # ---- Pass 2: assemble the spritesheet from the (cropped) frames. ----
     #
-    # One animation per row, stacked vertically. A single column of rows can
-    # grow taller than the GPU texture limit (16384px) — the PCA boss alone is
-    # 48 rows × 529px = 25392px. When that happens the rows are split across
-    # additional *page images*, each its own PNG within the limit, addressed by
-    # `SheetRow::page`. A single page is byte-identical to the legacy layout, so
-    # only oversized sheets change. The combined `preview` PNG (human-only, not
-    # GPU-loaded, not installed) keeps every row in one tall image for review.
+    # A combined LABELED PREVIEW (one tall grid image, human-only — never a GPU
+    # texture, never installed) is always built so reviewers can see every row.
+    # The actual GPU page images come from one of two layouts:
+    #   - trim=True : alpha-trim every frame + MaxRects-pack the animations onto
+    #     tight pages (the professional packer; reclaims the 84-97% transparent
+    #     margins). Each animation stays on one page so the per-row page model
+    #     holds; frames carry a trim `off` so the runtime repositions them.
+    #   - trim=False: the legacy one-animation-per-row grid, split into page
+    #     images only when it would exceed the GPU texture limit. Byte-identical
+    #     to the pre-packer output for every existing (non-trimmed) target.
     max_frames = max(n for _, n, _ in rows)
-    page_w = label_width + fw * max_frames
-    if page_w > max_sheet_dimension:
-        raise ValueError(
-            f"spritesheet for {target!r} has a {page_w}px-wide frame row, exceeding the "
-            f"{max_sheet_dimension}px texture limit; reduce the frame size or frame count"
-        )
-    rows_per_page = max(1, max_sheet_dimension // fh)
-    num_pages = max(1, (len(rows) + rows_per_page - 1) // rows_per_page)
-
-    # One page image per page; each is exactly as tall as the rows it holds.
-    page_sheets = []
-    page_draws = []
-    for p in range(num_pages):
-        rows_on_page = min(rows_per_page, len(rows) - p * rows_per_page)
-        img = Image.new("RGBA", (page_w, fh * rows_on_page), (0, 0, 0, 0))
-        page_sheets.append(img)
-        page_draws.append(ImageDraw.Draw(img, "RGBA"))
-    # Combined preview spans every row (not split — it never becomes a texture).
-    preview = Image.new("RGBA", (page_w, fh * len(rows)), (34, 34, 40, 255))
+    preview_w = label_width + fw * max_frames
+    preview = Image.new("RGBA", (preview_w, fh * len(rows)), (34, 34, 40, 255))
     draw_prev = ImageDraw.Draw(preview, "RGBA")
     draw_prev.rectangle((0, 0, preview.width, preview.height), fill=(43, 33, 40, 255))
-
-    rows_meta = []
     first = None
     for row_idx, (anim, nframes, duration_ms, frames_data) in enumerate(rendered_rows):
-        page = row_idx // rows_per_page
-        y = (row_idx % rows_per_page) * fh  # page-local y (sheet + manifest rects)
-        y_prev = row_idx * fh  # global y in the combined preview
-        draw_sheet = page_draws[page]
-        sheet = page_sheets[page]
-        for dr, ly in ((draw_sheet, y), (draw_prev, y_prev)):
-            dr.rectangle((0, ly, label_width - 1, ly + fh - 1), fill=(18, 22, 30, 235))
-            dr.text((8, ly + 10), anim, fill=(236, 240, 244, 255), font=font(14))
-            dr.text(
-                (8, ly + 30),
-                f"{nframes}f @ {duration_ms}ms",
-                fill=(160, 170, 184, 255),
-                font=font(11),
-            )
-        rects = []
+        y_prev = row_idx * fh
+        draw_prev.rectangle((0, y_prev, label_width - 1, y_prev + fh - 1), fill=(18, 22, 30, 235))
+        draw_prev.text((8, y_prev + 10), anim, fill=(236, 240, 244, 255), font=font(14))
+        draw_prev.text(
+            (8, y_prev + 30),
+            f"{nframes}f @ {duration_ms}ms",
+            fill=(160, 170, 184, 255),
+            font=font(11),
+        )
         for frame_idx, (frame, meta) in enumerate(frames_data):
             if first is None:
                 first = frame.copy()
-            x = label_width + frame_idx * fw
-            sheet.alpha_composite(frame, (x, y))
-            preview.alpha_composite(frame, (x, y_prev))
-            rect = {"x": x, "y": y, "w": fw, "h": fh, "page": page}
-            if meta:
-                rect.update(meta)
-            rects.append(rect)
-        rows_meta.append(
-            {
-                "animation": anim,
-                "row_index": row_idx,
-                "frame_count": nframes,
-                "duration_ms": duration_ms,
-                "duration_secs": round(duration_ms / 1000.0, 6),
-                "page": page,
-                "rects": rects,
-            }
+            preview.alpha_composite(frame, (label_width + frame_idx * fw, y_prev))
+
+    if trim:
+        page_sheets, rows_meta, num_pages = _packed_sheet_rows(
+            target, rendered_rows, fw, fh, max_sheet_dimension
+        )
+    else:
+        page_sheets, rows_meta, num_pages = _grid_sheet_rows(
+            target, rendered_rows, fw, fh, label_width, max_sheet_dimension
         )
 
     can = canonical_raw

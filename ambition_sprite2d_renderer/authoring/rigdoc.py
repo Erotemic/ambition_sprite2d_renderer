@@ -592,6 +592,9 @@ def render_sheet_for_doc(doc: RigDocument, out_dir: Path) -> List[Path]:
 
     fr = doc.frame
     rs = max(1, int(fr.get("render_scale", 1)))
+    # Rigged docs live under targets/characters/rigged/ and render through the
+    # trim-aware CharacterAnimator path, so alpha-trim + pack them by default
+    # (per-doc opt-out via `frame.trim: false`).
     outputs = build_sheet(
         target=doc.name,
         rows=doc.rows(),
@@ -599,6 +602,7 @@ def render_sheet_for_doc(doc: RigDocument, out_dir: Path) -> List[Path]:
         out_dir=Path(out_dir),
         frame_size=(int(fr["width"]) * rs, int(fr["height"]) * rs),
         sheet_tuning=doc.sprite_tuning or None,
+        trim=bool(fr.get("trim", True)),
     )
     keys = ("spritesheet", "yaml", "ron", "actor", "canonical", "canonical_transparent", "preview")
     return [Path(outputs[k]) for k in keys if outputs.get(k)]

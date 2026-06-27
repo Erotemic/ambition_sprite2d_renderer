@@ -14,6 +14,10 @@ dependencies = [
   # (authoring/svg_canonicalize.py) — strips Inkscape bloat into a stable,
   # diff-friendly form that survives round-tripping through Inkscape saves.
   "lxml>=5",
+  # 2D rectangle bin-packing (MaxRects / Skyline / Guillotine) for the sprite
+  # atlas packer (authoring/packer.py). We delegate the NP-hard packing
+  # heuristic here and keep alpha-trim + extrude + RON metadata in-pipeline.
+  "rectpack>=0.2",
 ]
 
 [project.scripts]

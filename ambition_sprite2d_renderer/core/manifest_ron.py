@@ -159,6 +159,11 @@ def _ron_anchors(anchors) -> str:
 
 def _ron_rect(r) -> str:
     base = f"x: {int(r['x'])}, y: {int(r['y'])}, w: {int(r['w'])}, h: {int(r['h'])}"
+    # Trim offset within the logical frame — only when the frame was alpha-
+    # trimmed (non-zero), so untrimmed rects stay byte-identical.
+    off = r.get("off")
+    if off and (int(off[0]) or int(off[1])):
+        base += f", off: ({int(off[0])}, {int(off[1])})"
     anchors = r.get("anchors")
     if anchors:
         return f"({base}, anchors: {_ron_anchors(anchors)})"
