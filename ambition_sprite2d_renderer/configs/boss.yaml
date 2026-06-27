@@ -19,9 +19,6 @@ render:
   background: transparent
   sheet_background: transparent
   border: 0
-  # The boss adapter renders via the grid-based boss_encounter path (not the
-  # trim-aware CharacterAnimator), so it must NOT be alpha-trimmed/packed.
-  trim: false
   label_width: 100
 actor:
   character_id: npc_ai_slop_zeta

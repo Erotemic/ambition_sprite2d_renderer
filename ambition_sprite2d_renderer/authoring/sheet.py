@@ -9,6 +9,7 @@ from PIL import Image, ImageColor, ImageDraw
 from .adapters import get_adapter
 from .actor_contract import write_actor_contract_for_adapter
 from ..registry import CharacterJob
+from ..registry.pack_groups import policy_for
 from ..core.measure import measure_body_metrics
 from ..core.manifest_ron import render_adapter, ron_tuning
 from .rendering import load_font
@@ -146,8 +147,13 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
     #   otherwise → the legacy one-animation-per-labeled-row grid, split into
     #     page images only when it would exceed the GPU texture limit. Byte-
     #     identical to the pre-packer output for untrimmed targets.
-    max_dim = int(getattr(job.render, "max_sheet_dimension", 16384))
-    trim = bool(getattr(job.render, "trim", False))
+    # Packing / trim policy is data-driven (see registry/pack_groups.py), keyed
+    # by the target. Adapter targets all render through the trim-aware
+    # CharacterAnimator path, so the default policy packs them.
+    policy = policy_for(job.target)
+    max_dim = policy.max_dim
+    trim = policy.trim
+    page_size = policy.page_size
     font = load_font(12)
     manifest: Dict[str, Any] = {
         "target": job.target,
@@ -214,7 +220,9 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
             for ri, row_imgs in enumerate(cropped_rows)
             for fi, img in enumerate(row_imgs)
         ]
-        result = pack_frames(frames_in, max_dim=max_dim, padding=1, trim=True)
+        result = pack_frames(
+            frames_in, max_dim=max_dim, page_size=page_size, padding=1, trim=True
+        )
         pages = result.pages
         num_pages = len(pages)
         for row_idx, animation in enumerate(selected):

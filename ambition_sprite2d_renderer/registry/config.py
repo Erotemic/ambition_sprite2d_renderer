@@ -43,18 +43,10 @@ class RenderConfig:
     label_width: int = 96
     crop: bool = True
     crop_padding: int = 2
-    # GPU max-texture-dimension guard. A sheet with one animation per row can
-    # grow taller than a GPU can allocate (Adreno/mobile cap at 16384; wgpu
-    # rejects anything larger). When the single-column height would exceed this,
-    # the packer flows overflow rows into side-by-side vertical *bands* so both
-    # sheet dimensions stay within the limit. 16384 is the common modern cap;
-    # the runtime addresses frames by explicit rect, so banding is transparent.
-    max_sheet_dimension: int = 16384
-    # Alpha-trim + MaxRects-pack the sheet (reclaims the 84-97% transparent
-    # margins). Default ON for adapter targets, which are all character-rendered
-    # (the trim-aware CharacterAnimator path). The BOSS adapter renders via the
-    # grid-based boss path and must opt out (`trim: false` in boss.yaml).
-    trim: bool = True
+    # NOTE: packing / trim / page-size / GPU-dimension policy is no longer a
+    # per-config render field — it's data-driven per target in
+    # `registry/pack_groups.py` (`policy_for(target)`), the single source every
+    # build path consults. Add a target there to change how it packs.
 
 
 @dataclass

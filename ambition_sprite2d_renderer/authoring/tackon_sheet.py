@@ -42,6 +42,7 @@ from PIL import Image, ImageDraw, ImageFont
 from .actor_contract import write_actor_contract_for_tackon
 from ..core.measure import measure_body_metrics
 from ..core.manifest_ron import record_to_ron, records_to_ron, ron_tuning
+from ..registry.pack_groups import policy_for
 
 RGBA = Tuple[int, int, int, int]
 
@@ -291,7 +292,7 @@ def _grid_sheet_rows(target, rendered_rows, fw, fh, label_width, max_dim):
     return page_sheets, rows_meta, num_pages
 
 
-def _packed_sheet_rows(target, rendered_rows, fw, fh, max_dim):
+def _packed_sheet_rows(target, rendered_rows, fw, fh, max_dim, page_size=4096):
     """Professional layout: alpha-trim every frame + MaxRects-pack ALL frames
     freely onto tight square pages (best fill). Frames of one animation may
     span pages, so each frame carries its own `page` (and `off` trim offset);
@@ -304,7 +305,7 @@ def _packed_sheet_rows(target, rendered_rows, fw, fh, max_dim):
         for row_idx, (_anim, _n, _d, frames_data) in enumerate(rendered_rows)
         for fi, (img, _meta) in enumerate(frames_data)
     ]
-    result = pack_frames(frames, max_dim=max_dim, padding=1, trim=True)
+    result = pack_frames(frames, max_dim=max_dim, page_size=page_size, padding=1, trim=True)
     rows_meta = []
     for row_idx, (anim, nframes, duration_ms, frames_data) in enumerate(rendered_rows):
         rects = []
@@ -350,7 +351,7 @@ def build_sheet(
     animation_key_map=None,
     attack_hitboxes=None,
     max_sheet_dimension: int = 16384,
-    trim: bool = False,
+    trim: Optional[bool] = None,
 ):
     """Build a labeled spritesheet + companion YAML manifest.
 
@@ -382,6 +383,13 @@ def build_sheet(
     whose damage geometry the sprite author wants to pin.
     """
     fw, fh = frame_size
+
+    # Packing / trim policy is data-driven (registry/pack_groups.py), keyed by
+    # the target. A caller may still force `trim` explicitly (e.g. a rigged doc
+    # honouring a per-frame opt-out); `None` ⇒ take the target's policy.
+    policy = policy_for(target)
+    if trim is None:
+        trim = policy.trim
 
     # ---- Pass 1: render every frame + metadata into memory. -------------
     # We need all frames in hand before we can compute the union alpha
@@ -504,7 +512,7 @@ def build_sheet(
 
     if trim:
         page_sheets, rows_meta, num_pages = _packed_sheet_rows(
-            target, rendered_rows, fw, fh, max_sheet_dimension
+            target, rendered_rows, fw, fh, max_sheet_dimension, policy.page_size
         )
     else:
         page_sheets, rows_meta, num_pages = _grid_sheet_rows(

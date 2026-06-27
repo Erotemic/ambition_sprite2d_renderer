@@ -26,7 +26,7 @@ target/animation/frame it belongs to so callers can emit per-target manifests.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Hashable, List, Sequence, Tuple
+from typing import Any, Dict, Hashable, List, Optional, Sequence, Tuple
 
 from PIL import Image
 from rectpack import newPacker, PackingMode, SORT_AREA
@@ -101,17 +101,30 @@ def pack_frames(
     if not frames:
         return PackResult(pages=[], placements={})
 
-    bin_dim = min(max_dim, max(page_size, 64))
+    page_cap = min(max_dim, max(page_size, 64))
     trimmed: List[Tuple[FrameInput, Image.Image, int, int]] = []
     for fr in frames:
         timg, ox, oy = _trim(fr.image, fr.logical_size, trim)
         tw, th = timg.size
-        if tw + 2 * padding > bin_dim or th + 2 * padding > bin_dim:
+        if tw + 2 * padding > page_cap or th + 2 * padding > page_cap:
             raise ValueError(
                 f"frame {fr.key!r} is {tw}x{th} (+{padding}px gutter), exceeding the "
-                f"{bin_dim}px page; raise page_size"
+                f"{page_cap}px page; raise page_size"
             )
         trimmed.append((fr, timg, ox, oy))
+
+    # Choose the bin size. A fixed page_size bin makes MaxRects spread frames
+    # sparsely (a few large identical frames in a 4096² bin land at ~13% fill),
+    # so for a sheet that fits one page we shrink the square bin to the smallest
+    # side that still packs every frame into ONE bin — tight fill, near-grid for
+    # uniform frames, and never larger than the page cap. Only a sheet too big
+    # for a single `page_cap` bin falls back to multi-page packing at the cap
+    # (the residency / split granularity). The bin is always square so a sheet
+    # can grow either dimension as frames are added.
+    sizes = [(t.size[0] + 2 * padding, t.size[1] + 2 * padding) for (_f, t, _x, _y) in trimmed]
+    floor = max(max(w, h) for (w, h) in sizes)
+    fitted = _smallest_single_bin(sizes, lo=floor, hi=page_cap)
+    bin_dim = fitted if fitted is not None else page_cap
 
     # Stable order (caller-provided) → deterministic packing. MaxRects-BSSF is
     # the professional default for sprite atlases; rectpack sorts by area.
@@ -168,6 +181,36 @@ def pack_frames(
     if trim:
         _assert_lossless(frames, placements, pages)
     return PackResult(pages=pages, placements=placements)
+
+
+def _smallest_single_bin(sizes: List[Tuple[int, int]], *, lo: int, hi: int) -> Optional[int]:
+    """Smallest square side in ``[lo, hi]`` that packs every ``(w, h)`` in
+    ``sizes`` into a SINGLE bin, or ``None`` if even ``hi`` can't fit them all
+    (the caller then falls back to multi-page packing). Binary search over a
+    MaxRects trial pack; ``sizes`` already include the gutter."""
+    def fits(side: int) -> bool:
+        trial = newPacker(
+            mode=PackingMode.Offline,
+            rotation=False,
+            pack_algo=MaxRectsBssf,
+            sort_algo=SORT_AREA,
+        )
+        for idx, (w, h) in enumerate(sizes):
+            trial.add_rect(w, h, rid=idx)
+        trial.add_bin(side, side, count=1)
+        trial.pack()
+        return len(trial.rect_list()) == len(sizes)
+
+    if hi < lo or not fits(hi):
+        return None
+    lo_b, hi_b = lo, hi
+    while lo_b < hi_b:
+        mid = (lo_b + hi_b) // 2
+        if fits(mid):
+            hi_b = mid
+        else:
+            lo_b = mid + 1
+    return lo_b
 
 
 def _maxrects(sizes: List[Tuple[int, int]], bin_w: int, bin_h: int) -> List[Tuple[int, int, int]]:
