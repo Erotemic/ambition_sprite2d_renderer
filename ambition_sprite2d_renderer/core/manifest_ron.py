@@ -159,6 +159,10 @@ def _ron_anchors(anchors) -> str:
 
 def _ron_rect(r) -> str:
     base = f"x: {int(r['x'])}, y: {int(r['y'])}, w: {int(r['w'])}, h: {int(r['h'])}"
+    # Per-frame page (a packed animation can span pages). Only present for
+    # packed sheets, so unpacked rects stay byte-identical.
+    if "fpage" in r:
+        base += f", page: {int(r['fpage'])}"
     # Trim offset within the logical frame — only when the frame was alpha-
     # trimmed (non-zero), so untrimmed rects stay byte-identical.
     off = r.get("off")

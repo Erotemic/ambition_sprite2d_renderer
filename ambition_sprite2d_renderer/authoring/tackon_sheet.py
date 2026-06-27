@@ -292,30 +292,34 @@ def _grid_sheet_rows(target, rendered_rows, fw, fh, label_width, max_dim):
 
 
 def _packed_sheet_rows(target, rendered_rows, fw, fh, max_dim):
-    """Professional layout: alpha-trim every frame + MaxRects-pack the animations
-    onto tight pages, keeping each animation on a single page. Returns
-    ``(page_sheets, rows_meta, num_pages)`` with per-frame `off` trim offsets."""
-    from .packer import FrameInput, pack_frames_grouped
+    """Professional layout: alpha-trim every frame + MaxRects-pack ALL frames
+    freely onto tight square pages (best fill). Frames of one animation may
+    span pages, so each frame carries its own `page` (and `off` trim offset);
+    the runtime addresses frames per-page. Returns ``(page_sheets, rows_meta,
+    num_pages)``."""
+    from .packer import FrameInput, pack_frames
 
-    groups = {
-        row_idx: [
-            FrameInput(key=(row_idx, fi), image=img, logical_size=(fw, fh))
-            for fi, (img, _meta) in enumerate(frames_data)
-        ]
+    frames = [
+        FrameInput(key=(row_idx, fi), image=img, logical_size=(fw, fh))
         for row_idx, (_anim, _n, _d, frames_data) in enumerate(rendered_rows)
-    }
-    result, group_page = pack_frames_grouped(groups, max_dim=max_dim, padding=1, trim=True)
+        for fi, (img, _meta) in enumerate(frames_data)
+    ]
+    result = pack_frames(frames, max_dim=max_dim, padding=1, trim=True)
     rows_meta = []
     for row_idx, (anim, nframes, duration_ms, frames_data) in enumerate(rendered_rows):
         rects = []
         for frame_idx, (_img, meta) in enumerate(frames_data):
             pl = result.placements[(row_idx, frame_idx)]
-            rect = {"x": pl.x, "y": pl.y, "w": pl.w, "h": pl.h, "page": pl.page}
+            # Per-frame page (frames of a row may differ) + trim offset.
+            rect = {"x": pl.x, "y": pl.y, "w": pl.w, "h": pl.h, "fpage": pl.page}
             if pl.off_x or pl.off_y:
                 rect["off"] = (pl.off_x, pl.off_y)
             if meta:
                 rect.update(meta)
             rects.append(rect)
+        # SheetRow.page stays the page of frame 0 (a sensible default); the
+        # runtime uses the per-frame `fpage` for trimmed sheets.
+        row_page = result.placements[(row_idx, 0)].page if nframes else 0
         rows_meta.append(
             {
                 "animation": anim,
@@ -323,7 +327,7 @@ def _packed_sheet_rows(target, rendered_rows, fw, fh, max_dim):
                 "frame_count": nframes,
                 "duration_ms": duration_ms,
                 "duration_secs": round(duration_ms / 1000.0, 6),
-                "page": group_page[row_idx],
+                "page": row_page,
                 "rects": rects,
             }
         )

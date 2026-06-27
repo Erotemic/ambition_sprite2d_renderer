@@ -85,26 +85,31 @@ def pack_frames(
     frames: Sequence[FrameInput],
     *,
     max_dim: int = 16384,
+    page_size: int = 4096,
     padding: int = 1,
     trim: bool = True,
     background: Tuple[int, int, int, int] = (0, 0, 0, 0),
 ) -> PackResult:
-    """Trim + MaxRects-pack ``frames`` into pages no larger than ``max_dim``.
+    """Trim + MaxRects-pack ``frames`` freely into square pages of ``page_size``
+    (spilling to more pages as needed). Frames of one logical animation may land
+    on different pages — the runtime addresses each frame by its own page, so
+    this maximizes fill. ``page_size`` is clamped to ``max_dim`` (the GPU limit).
 
-    Raises ``ValueError`` if a single trimmed frame (plus gutter) exceeds
-    ``max_dim`` — it can never fit any page.
+    Raises ``ValueError`` if a single trimmed frame (plus gutter) exceeds the
+    page — it can never fit.
     """
     if not frames:
         return PackResult(pages=[], placements={})
 
+    bin_dim = min(max_dim, max(page_size, 64))
     trimmed: List[Tuple[FrameInput, Image.Image, int, int]] = []
     for fr in frames:
         timg, ox, oy = _trim(fr.image, fr.logical_size, trim)
         tw, th = timg.size
-        if tw + 2 * padding > max_dim or th + 2 * padding > max_dim:
+        if tw + 2 * padding > bin_dim or th + 2 * padding > bin_dim:
             raise ValueError(
                 f"frame {fr.key!r} is {tw}x{th} (+{padding}px gutter), exceeding the "
-                f"{max_dim}px texture limit; reduce the frame size"
+                f"{bin_dim}px page; raise page_size"
             )
         trimmed.append((fr, timg, ox, oy))
 
@@ -121,7 +126,7 @@ def pack_frames(
         packer.add_rect(tw + 2 * padding, th + 2 * padding, rid=idx)
     # Unbounded number of equally-sized pages; rectpack opens a new one when a
     # rect won't fit the current set.
-    packer.add_bin(max_dim, max_dim, count=float("inf"))
+    packer.add_bin(bin_dim, bin_dim, count=float("inf"))
     packer.pack()
 
     rects = packer.rect_list()
