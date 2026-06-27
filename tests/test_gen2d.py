@@ -249,11 +249,11 @@ def test_spritesheet_emits_body_metrics():
 @pytest.mark.slow_render
 def test_sandbag_adapter_participates_in_character_pipeline(tmp_path):
     job = CharacterJob.load(CONFIGS / "sandbag.yaml")
-    # This test pins base geometry + crop behavior, not texture resolution, so
-    # render at 1x (the fleet default is 2x, which would scale these dims) and
-    # without trim/packing (which would reshape the grid into packed pages).
+    # This test pins the LOGICAL frame geometry + crop behavior, not the page
+    # layout. Render at 1x (the fleet default is 2x, which would scale these
+    # dims). Trim/packing stays ON (the production default for character
+    # adapters) — the sheet is now tight packed pages, not the old 11×128 grid.
     job.render.render_scale = 1
-    job.render.trim = False
     adapter = get_adapter("sandbag")
     animations = adapter.animations()
     for name in [
@@ -271,13 +271,18 @@ def test_sandbag_adapter_participates_in_character_pipeline(tmp_path):
     ]:
         assert name in animations
     pages, manifest = build_spritesheet(job)
-    assert len(pages) == 1, "sandbag is a small single-page sheet"
-    sheet = pages[0]
-    assert sheet.size[1] == 11 * 128
     assert manifest["target"] == "sandbag"
     assert manifest["crop"]["enabled"] is False
+    # Logical frame size is unchanged by packing (gameplay coordinate space).
     assert manifest["frame_width"] == 128
     assert manifest["frame_height"] == 128
+    # Packed pages stay within the GPU texture limit, and packing the trimmed
+    # frames reclaims space vs the old 11-row × 128 grid column.
+    assert pages, "sandbag must produce at least one page"
+    assert all(p.size[0] <= 4096 and p.size[1] <= 4096 for p in pages)
+    grid_area = (manifest["label_width"] + 128 * 11) * (128 * 11)
+    packed_area = sum(p.size[0] * p.size[1] for p in pages)
+    assert packed_area < grid_area, (packed_area, grid_area)
 
 
 @pytest.mark.slow_render
