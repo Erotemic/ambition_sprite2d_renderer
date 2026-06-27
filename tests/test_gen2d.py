@@ -268,7 +268,9 @@ def test_sandbag_adapter_participates_in_character_pipeline(tmp_path):
         "dash",
     ]:
         assert name in animations
-    sheet, manifest = build_spritesheet(job)
+    pages, manifest = build_spritesheet(job)
+    assert len(pages) == 1, "sandbag is a small single-page sheet"
+    sheet = pages[0]
     assert sheet.size[1] == 11 * 128
     assert manifest["target"] == "sandbag"
     assert manifest["crop"]["enabled"] is False

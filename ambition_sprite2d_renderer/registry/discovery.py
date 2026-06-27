@@ -129,11 +129,28 @@ def _copy_sheet_files(
             out.append(f"{stem}_actor.ron")
         return out
 
+    def page_siblings_for(fname: str) -> List[str]:
+        """Extra page PNGs for a split sheet: `<stem>_spritesheet.1.png`,
+        `.2.png`, … emitted next to `<stem>_spritesheet.png` when the sheet was
+        too tall for one texture. Empty for the common single-page case."""
+        suffix = "_spritesheet.png"
+        if not fname.endswith(suffix):
+            return []
+        stem = fname[: -len(suffix)]
+        out: List[str] = []
+        for src in render_dir.glob(f"{stem}_spritesheet.*.png"):
+            middle = src.name[len(stem) + len("_spritesheet.") : -len(".png")]
+            if middle.isdigit():
+                out.append(src.name)
+        return sorted(out)
+
     for fname in sheet_files:
         copy_if_exists(fname)
         for companion in companions_for(fname):
             if companion not in listed:
                 copy_if_exists(companion)
+        for page in page_siblings_for(fname):
+            copy_if_exists(page)
     return copied
 
 

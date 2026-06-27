@@ -43,6 +43,13 @@ class RenderConfig:
     label_width: int = 96
     crop: bool = True
     crop_padding: int = 2
+    # GPU max-texture-dimension guard. A sheet with one animation per row can
+    # grow taller than a GPU can allocate (Adreno/mobile cap at 16384; wgpu
+    # rejects anything larger). When the single-column height would exceed this,
+    # the packer flows overflow rows into side-by-side vertical *bands* so both
+    # sheet dimensions stay within the limit. 16384 is the common modern cap;
+    # the runtime addresses frames by explicit rect, so banding is transparent.
+    max_sheet_dimension: int = 16384
 
 
 @dataclass

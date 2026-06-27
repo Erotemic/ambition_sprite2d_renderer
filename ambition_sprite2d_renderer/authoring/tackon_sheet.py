@@ -254,6 +254,7 @@ def build_sheet(
     sheet_tuning=None,
     animation_key_map=None,
     attack_hitboxes=None,
+    max_sheet_dimension: int = 16384,
 ):
     """Build a labeled spritesheet + companion YAML manifest.
 
@@ -373,26 +374,50 @@ def build_sheet(
             fw, fh = new_fw, new_fh
 
     # ---- Pass 2: assemble the spritesheet from the (cropped) frames. ----
+    #
+    # One animation per row, stacked vertically. A single column of rows can
+    # grow taller than the GPU texture limit (16384px) — the PCA boss alone is
+    # 48 rows × 529px = 25392px. When that happens the rows are split across
+    # additional *page images*, each its own PNG within the limit, addressed by
+    # `SheetRow::page`. A single page is byte-identical to the legacy layout, so
+    # only oversized sheets change. The combined `preview` PNG (human-only, not
+    # GPU-loaded, not installed) keeps every row in one tall image for review.
     max_frames = max(n for _, n, _ in rows)
-    sheet = Image.new(
-        "RGBA", (label_width + fw * max_frames, fh * len(rows)), (0, 0, 0, 0)
-    )
-    preview = Image.new(
-        "RGBA", (label_width + fw * max_frames, fh * len(rows)), (34, 34, 40, 255)
-    )
-    draw_sheet = ImageDraw.Draw(sheet, "RGBA")
+    page_w = label_width + fw * max_frames
+    if page_w > max_sheet_dimension:
+        raise ValueError(
+            f"spritesheet for {target!r} has a {page_w}px-wide frame row, exceeding the "
+            f"{max_sheet_dimension}px texture limit; reduce the frame size or frame count"
+        )
+    rows_per_page = max(1, max_sheet_dimension // fh)
+    num_pages = max(1, (len(rows) + rows_per_page - 1) // rows_per_page)
+
+    # One page image per page; each is exactly as tall as the rows it holds.
+    page_sheets = []
+    page_draws = []
+    for p in range(num_pages):
+        rows_on_page = min(rows_per_page, len(rows) - p * rows_per_page)
+        img = Image.new("RGBA", (page_w, fh * rows_on_page), (0, 0, 0, 0))
+        page_sheets.append(img)
+        page_draws.append(ImageDraw.Draw(img, "RGBA"))
+    # Combined preview spans every row (not split — it never becomes a texture).
+    preview = Image.new("RGBA", (page_w, fh * len(rows)), (34, 34, 40, 255))
     draw_prev = ImageDraw.Draw(preview, "RGBA")
     draw_prev.rectangle((0, 0, preview.width, preview.height), fill=(43, 33, 40, 255))
 
     rows_meta = []
     first = None
     for row_idx, (anim, nframes, duration_ms, frames_data) in enumerate(rendered_rows):
-        y = row_idx * fh
-        for dr in [draw_sheet, draw_prev]:
-            dr.rectangle((0, y, label_width - 1, y + fh - 1), fill=(18, 22, 30, 235))
-            dr.text((8, y + 10), anim, fill=(236, 240, 244, 255), font=font(14))
+        page = row_idx // rows_per_page
+        y = (row_idx % rows_per_page) * fh  # page-local y (sheet + manifest rects)
+        y_prev = row_idx * fh  # global y in the combined preview
+        draw_sheet = page_draws[page]
+        sheet = page_sheets[page]
+        for dr, ly in ((draw_sheet, y), (draw_prev, y_prev)):
+            dr.rectangle((0, ly, label_width - 1, ly + fh - 1), fill=(18, 22, 30, 235))
+            dr.text((8, ly + 10), anim, fill=(236, 240, 244, 255), font=font(14))
             dr.text(
-                (8, y + 30),
+                (8, ly + 30),
                 f"{nframes}f @ {duration_ms}ms",
                 fill=(160, 170, 184, 255),
                 font=font(11),
@@ -403,8 +428,8 @@ def build_sheet(
                 first = frame.copy()
             x = label_width + frame_idx * fw
             sheet.alpha_composite(frame, (x, y))
-            preview.alpha_composite(frame, (x, y))
-            rect = {"x": x, "y": y, "w": fw, "h": fh}
+            preview.alpha_composite(frame, (x, y_prev))
+            rect = {"x": x, "y": y, "w": fw, "h": fh, "page": page}
             if meta:
                 rect.update(meta)
             rects.append(rect)
@@ -415,6 +440,7 @@ def build_sheet(
                 "frame_count": nframes,
                 "duration_ms": duration_ms,
                 "duration_secs": round(duration_ms / 1000.0, 6),
+                "page": page,
                 "rects": rects,
             }
         )
@@ -430,9 +456,14 @@ def build_sheet(
     ron_path = out_dir / f"{target}_spritesheet.ron"
     preview_path = out_dir / f"{target}_preview_labeled.png"
 
+    # Page 0 → `<target>_spritesheet.png`; extra pages → `.1.png`, `.2.png`, …
+    page_image_names = [sheet_path.name]
+    for k in range(1, num_pages):
+        page_image_names.append(f"{target}_spritesheet.{k}.png")
     can_bg.save(canonical_path)
     can.save(canonical_transparent_path)
-    sheet.save(sheet_path)
+    for img, name in zip(page_sheets, page_image_names):
+        img.save(out_dir / name)
     preview.save(preview_path)
 
     body_metrics = alpha_bbox_metrics(first or can)
@@ -498,6 +529,10 @@ def build_sheet(
         "rows": rows_meta,
         "body_metrics": body_metrics,
     }
+    # Multi-page sheets carry the full page list; single-page sheets omit it so
+    # their RON stays byte-identical to the pre-paging emitter.
+    if num_pages > 1:
+        manifest["images"] = page_image_names
     if sheet_tuning:
         # Emitted to the RON `tuning` field (ron_tuning reads `sheet_tuning`);
         # the runtime SheetRegistry uses it for in-game display size /

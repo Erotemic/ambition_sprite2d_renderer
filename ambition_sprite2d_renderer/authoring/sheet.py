@@ -58,7 +58,7 @@ def _apply_body_inset(
 _DEFAULT_CROP_PADDING = 2
 
 
-def build_spritesheet(job: CharacterJob) -> Tuple[Image.Image, Dict[str, Any]]:
+def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, Any]]:
     """Render every frame at the configured canvas size, then crop the entire
     sheet to the *union* of all opaque-pixel bboxes across every frame.
 
@@ -140,12 +140,34 @@ def build_spritesheet(job: CharacterJob) -> Tuple[Image.Image, Dict[str, Any]]:
     fh = crop_max_y - crop_min_y
 
     # Pass 2: compose the sheet with cropped frames.
-    sheet_w = label_w + max_frames * (fw + border) + border
-    sheet_h = len(selected) * (fh + border) + border
-    sheet = Image.new(
-        "RGBA", (sheet_w, sheet_h), _parse_bg(job.render.sheet_background)
-    )
-    draw = ImageDraw.Draw(sheet)
+    #
+    # Layout: one animation per row, stacked vertically. When that single
+    # column would grow taller than the GPU texture limit, the overflow rows
+    # are split onto additional *page images* (each its own PNG) so every page
+    # stays within `max_sheet_dimension`. A single page is byte-identical to
+    # the legacy single-image layout, so only sheets that actually overflow
+    # change. The runtime addresses every frame by (page, explicit rect), so
+    # splitting is transparent to gameplay — see `SheetRecord::images` /
+    # `SheetRow::page` and the character-sprite page-swap in the renderer.
+    row_stride_h = fh + border
+    page_w = label_w + max_frames * (fw + border) + border
+    max_dim = max(row_stride_h + border, int(getattr(job.render, "max_sheet_dimension", 16384)))
+    rows_per_page = max(1, (max_dim - border) // row_stride_h)
+    num_pages = max(1, (len(selected) + rows_per_page - 1) // rows_per_page)
+    if page_w > max_dim:
+        raise ValueError(
+            f"spritesheet for {job.target!r} has a {page_w}px-wide frame row, exceeding "
+            f"the {max_dim}px texture limit; reduce the frame size or per-row frame count"
+        )
+    # One PIL image per page; each page is exactly as tall as the rows it holds.
+    pages: List[Image.Image] = []
+    draws: List[ImageDraw.ImageDraw] = []
+    for p in range(num_pages):
+        rows_on_page = min(rows_per_page, len(selected) - p * rows_per_page)
+        page_h = rows_on_page * row_stride_h + border
+        img = Image.new("RGBA", (page_w, page_h), _parse_bg(job.render.sheet_background))
+        pages.append(img)
+        draws.append(ImageDraw.Draw(img))
     font = load_font(12)
     manifest: Dict[str, Any] = {
         "target": job.target,
@@ -166,6 +188,9 @@ def build_spritesheet(job: CharacterJob) -> Tuple[Image.Image, Dict[str, Any]]:
         "frame_height": fh,
         "label_width": label_w,
         "border": border,
+        # Number of page images this sheet was split into (1 = single PNG).
+        # `write_spritesheet` turns this into the `images: [...]` filename list.
+        "pages": num_pages,
         "spec": adapter.spec_dict(spec),
         "crop": {
             "source_frame_width": src_fw,
@@ -185,7 +210,14 @@ def build_spritesheet(job: CharacterJob) -> Tuple[Image.Image, Dict[str, Any]]:
     anim_union_bbox_src: Dict[str, Tuple[int, int, int, int] | None] = {}
     for row_idx, animation in enumerate(selected):
         info = animations[animation]
-        y = border + row_idx * (fh + border)
+        # Route this row to its page image; `y` is page-local (each page is its
+        # own coordinate space starting at the top). For single-page sheets
+        # page==0 and y == border + row_idx*(fh+border), identical to before.
+        page = row_idx // rows_per_page
+        row_in_page = row_idx % rows_per_page
+        y = border + row_in_page * (fh + border)
+        sheet = pages[page]
+        draw = draws[page]
         if label_w:
             draw.text((8, y + 8), animation, fill=(255, 255, 255, 255), font=font)
             draw.text(
@@ -207,6 +239,7 @@ def build_spritesheet(job: CharacterJob) -> Tuple[Image.Image, Dict[str, Any]]:
                     "y": y,
                     "w": fw,
                     "h": fh,
+                    "page": page,
                     "duration_ms": info["duration_ms"],
                 }
             )
@@ -409,7 +442,19 @@ def build_spritesheet(job: CharacterJob) -> Tuple[Image.Image, Dict[str, Any]]:
         if anim_metrics:
             metrics["animations"] = anim_metrics
         manifest["body_metrics"] = metrics
-    return sheet, manifest
+    return pages, manifest
+
+
+def _page_image_names(image_out: Path, num_pages: int) -> List[str]:
+    """Filenames for each page image. Page 0 keeps the canonical
+    ``<stem>_spritesheet.png`` name; later pages are siblings
+    ``<stem>_spritesheet.1.png``, ``.2.png``, … in the same directory, so the
+    runtime loads them by name relative to page 0."""
+    base = image_out.name
+    if num_pages <= 1:
+        return [base]
+    stem, _, ext = base.rpartition(".")
+    return [base] + [f"{stem}.{k}.{ext}" for k in range(1, num_pages)]
 
 
 def write_spritesheet(
@@ -425,8 +470,15 @@ def write_spritesheet(
     manifest_out = Path(manifest_out)
     image_out.parent.mkdir(parents=True, exist_ok=True)
     manifest_out.parent.mkdir(parents=True, exist_ok=True)
-    sheet, manifest = build_spritesheet(job)
-    sheet.save(image_out)
+    pages, manifest = build_spritesheet(job)
+    # Page 0 → `<stem>_spritesheet.png`; extra pages → `.1.png`, `.2.png`, …
+    page_names = _page_image_names(image_out, len(pages))
+    for img, name in zip(pages, page_names):
+        img.save(image_out.parent / name)
+    # Record the full page list so the YAML + RON sidecars carry `images`
+    # (only emitted to RON when there's more than one page).
+    if len(page_names) > 1:
+        manifest["images"] = page_names
     with open(manifest_out, "w", encoding="utf8") as file:
         yaml.safe_dump(manifest, file, sort_keys=False)
     # Sidecar RON: same data, machine-readable shape for the sandbox's

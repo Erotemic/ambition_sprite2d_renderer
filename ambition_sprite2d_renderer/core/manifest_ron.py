@@ -167,6 +167,10 @@ def _ron_rect(r) -> str:
 
 def _ron_row(row) -> str:
     rects = ",\n            ".join(_ron_rect(r) for r in row.get("rects", []))
+    # `page:` only appears for split sheets (page > 0), so single-page RON
+    # stays byte-identical to the pre-paging emitter.
+    page = int(row.get("page", 0))
+    page_field = f"        page: {page},\n" if page else ""
     return (
         f"(\n"
         f'        animation: "{_ron_escape(row["animation"])}",\n'
@@ -174,6 +178,7 @@ def _ron_row(row) -> str:
         f"        frame_count: {int(row['frame_count'])},\n"
         f"        duration_ms: {int(row['duration_ms'])},\n"
         f"        duration_secs: {float(row['duration_secs'])},\n"
+        f"{page_field}"
         f"        rects: [\n            {rects},\n        ],\n"
         f"    )"
     )
@@ -192,10 +197,18 @@ def record_to_ron(record: Dict) -> str:
     y_offset = int(record.get("y_offset", 0))
     y_offset_field = f"    y_offset: {y_offset},\n" if y_offset else ""
     tuning_field = ron_tuning(record)
+    # `images: [...]` only for split (multi-page) sheets; single-page sheets
+    # emit just `image:` so their RON is byte-identical to the pre-paging shape.
+    images = record.get("images") or []
+    images_field = ""
+    if len(images) > 1:
+        joined = ", ".join(f'"{_ron_escape(name)}"' for name in images)
+        images_field = f"    images: [{joined}],\n"
     return (
         f"(\n"
         f'    target: "{_ron_escape(target)}",\n'
         f'    image: "{_ron_escape(record.get("image") or f"{target}_spritesheet.png")}",\n'
+        f"{images_field}"
         f"    label_width: {int(record.get('label_width', 0))},\n"
         f"    frame_width: {int(record['frame_width'])},\n"
         f"    frame_height: {int(record['frame_height'])},\n"
@@ -232,6 +245,9 @@ def _normalize_adapter_rows(animations) -> List[Dict]:
             for fr in frames
             if isinstance(fr, dict) and all(k in fr for k in ("x", "y", "w", "h"))
         ]
+        # All frames of one animation share a page (an animation never splits
+        # across page images), so the row's page is the first frame's page.
+        page = int(rects[0].get("page", 0)) if rects else 0
         rows.append(
             {
                 "animation": name,
@@ -239,6 +255,7 @@ def _normalize_adapter_rows(animations) -> List[Dict]:
                 "frame_count": len(rects),
                 "duration_ms": duration_ms,
                 "duration_secs": round(duration_ms / 1000.0, 6),
+                "page": page,
                 "rects": rects,
             }
         )
