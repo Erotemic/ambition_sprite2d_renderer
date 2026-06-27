@@ -34,6 +34,10 @@ from typing import List, Optional, Tuple
 
 from PIL import Image, ImageDraw, ImageFilter
 
+from ambition_sprite2d_renderer.authoring.packer import FrameInput, pack_frames
+from ambition_sprite2d_renderer.core.manifest_ron import ron_row
+from ambition_sprite2d_renderer.registry.pack_groups import policy_for
+
 RGBA = Tuple[int, int, int, int]
 
 TARGET_NAME = "gnu_ton_boss"
@@ -1711,53 +1715,33 @@ def _gnu_ton_body_metrics_ron(parts_doc: dict) -> str:
     return "\n".join(lines)
 
 
-def _row_ron(anim_name: str, row_index: int, frame_count: int, duration_ms: int) -> str:
-    rects = []
-    for frame_index in range(frame_count):
-        rects.append(
-            "                    ("
-            f"x: {frame_index * FRAME_W}, y: {row_index * FRAME_H}, "
-            f"w: {FRAME_W}, h: {FRAME_H}, anchors: {{}}"
-            "),"
-        )
-    rect_body = "\n".join(rects)
-    duration_secs = duration_ms / 1000.0
-    return (
-        "            (\n"
-        f'                animation: "{anim_name}",\n'
-        f"                row_index: {row_index},\n"
-        f"                frame_count: {frame_count},\n"
-        f"                duration_ms: {duration_ms},\n"
-        f"                duration_secs: {duration_secs:.6g},\n"
-        "                rects: [\n"
-        f"{rect_body}\n"
-        "                ],\n"
-        "            ),"
-    )
+def _runtime_spritesheet_ron(rows_meta: list[dict], parts_doc: dict, images: list[str]) -> str:
+    """Compose the `Vec<SheetRecord>` RON.
 
-
-def _runtime_spritesheet_ron(manifest: dict, parts_doc: dict) -> str:
+    The frame addressing (explicit rects + per-frame `page`/`off` trim) goes
+    through the SHARED [`ron_row`] writer — the same packed-rect algebra every
+    other sheet uses. Only the `body_metrics` block stays bespoke: GNU-ton ships
+    a richer per-frame multipart hurt/hit schema than the generic writer models,
+    so its emitter ([`_gnu_ton_body_metrics_ron`]) is kept verbatim."""
     metrics = _gnu_ton_body_metrics_ron(parts_doc)
-    row_blocks = []
-    for row in manifest["rows"]:
-        row_blocks.append(
-            _row_ron(row["name"], row["row"], row["frames"], row["duration_ms"])
-        )
-    rows = "\n".join(row_blocks)
+    rows_inner = "\n    ".join(ron_row(r) + "," for r in rows_meta)
+    images_field = ""
+    if len(images) > 1:
+        joined = ", ".join(f'"{name}"' for name in images)
+        images_field = f"    images: [{joined}],\n"
     return (
         "[\n"
-        "    (\n"
-        f'        target: "{TARGET_NAME}",\n'
-        f'        image: "{TARGET_NAME}_spritesheet.png",\n'
-        "        label_width: 0,\n"
-        f"        frame_width: {FRAME_W},\n"
-        f"        frame_height: {FRAME_H},\n"
+        "(\n"
+        f'    target: "{TARGET_NAME}",\n'
+        f'    image: "{TARGET_NAME}_spritesheet.png",\n'
+        f"{images_field}"
+        "    label_width: 0,\n"
+        f"    frame_width: {FRAME_W},\n"
+        f"    frame_height: {FRAME_H},\n"
         f"{metrics}\n"
-        "        rows: [\n"
-        f"{rows}\n"
-        "        ],\n"
-        "        tuning: None,\n"
-        "    ),\n"
+        f"    rows: [\n    {rows_inner}\n    ],\n"
+        "    tuning: None,\n"
+        "),\n"
         "]\n"
     )
 
@@ -1765,6 +1749,82 @@ def _runtime_spritesheet_ron(manifest: dict, parts_doc: dict) -> str:
 # ── Sheet assembly ───────────────────────────────────────────────────────────
 
 _LAYERS = ("full", "body", "hands")
+
+
+def _pack_layers(rendered: dict, manifest_rows: list[dict], policy):
+    """Lockstep-pack the full/body/hands layers onto ONE page each.
+
+    GNU-ton's three layers must share an IDENTICAL per-frame layout: the runtime
+    z-layers the body behind platforms and the hands in front, mirroring the
+    body's flat index + trim onto the hands child. So we pack the FULL layer
+    (whose alpha is the union of body+hands) once and reuse that placement for
+    all three, cropping each layer to the FULL frame's trim bbox. The single
+    published record then drives all three textures.
+
+    Returns ``(layer_pages, rows_meta, num_pages)`` where ``layer_pages`` maps
+    each layer name to its list of page images (single page)."""
+    frames = [
+        FrameInput(
+            key=(r["row"], f),
+            image=rendered["full"][(r["row"], f)],
+            logical_size=(FRAME_W, FRAME_H),
+        )
+        for r in manifest_rows
+        for f in range(r["frames"])
+    ]
+    # `policy.page_size` is set large for gnu_ton (registry/pack_groups.py) so
+    # the binary-search single-bin packer keeps all frames on ONE page — the
+    # split-layer record carries one image per layer, so multi-page siblings
+    # (which would resolve the wrong layer's page filename) are not supported.
+    result = pack_frames(
+        frames,
+        max_dim=policy.max_dim,
+        page_size=policy.page_size,
+        padding=1,
+        trim=policy.trim,
+    )
+    if len(result.pages) != 1:
+        raise ValueError(
+            f"{TARGET_NAME}: lockstep split-layer pack must fit ONE page, got "
+            f"{len(result.pages)} — raise the gnu_ton page_size policy"
+        )
+
+    layer_pages: dict[str, list[Image.Image]] = {}
+    page_size = result.pages[0].size
+    for layer in _LAYERS:
+        if layer == "full":
+            layer_pages[layer] = list(result.pages)
+            continue
+        page = Image.new("RGBA", page_size, (0, 0, 0, 0))
+        for (row, f), pl in result.placements.items():
+            crop = rendered[layer][(row, f)].crop(
+                (pl.off_x, pl.off_y, pl.off_x + pl.w, pl.off_y + pl.h)
+            )
+            page.alpha_composite(crop, (pl.x, pl.y))
+        layer_pages[layer] = [page]
+
+    rows_meta = []
+    for r in manifest_rows:
+        rects = []
+        for f in range(r["frames"]):
+            pl = result.placements[(r["row"], f)]
+            rect = {"x": pl.x, "y": pl.y, "w": pl.w, "h": pl.h, "fpage": pl.page}
+            if pl.off_x or pl.off_y:
+                rect["off"] = (pl.off_x, pl.off_y)
+            rects.append(rect)
+        dur = r["duration_ms"]
+        rows_meta.append(
+            {
+                "animation": r["name"],
+                "row_index": r["row"],
+                "frame_count": r["frames"],
+                "duration_ms": dur,
+                "duration_secs": round(dur / 1000.0, 6),
+                "page": result.placements[(r["row"], 0)].page if r["frames"] else 0,
+                "rects": rects,
+            }
+        )
+    return layer_pages, rows_meta, len(result.pages)
 
 
 def build_spritesheet(outdir: Path) -> List[Path]:
@@ -1781,13 +1841,10 @@ def build_spritesheet(outdir: Path) -> List[Path]:
     """
     max_frames = max(frames for _, frames, _ in ANIMATIONS)
     rows = len(ANIMATIONS)
-    sheet_w = max_frames * FRAME_W
-    sheet_h = rows * FRAME_H
 
-    sheets = {
-        layer: Image.new("RGBA", (sheet_w, sheet_h), (0, 0, 0, 0)) for layer in _LAYERS
-    }
-
+    # Pass 1: render every frame of every layer into memory + collect the
+    # design-space anchors (gameplay hitboxes) on the full pass.
+    rendered: dict = {layer: {} for layer in _LAYERS}
     manifest = {
         "target": TARGET_NAME,
         "frame_size": [FRAME_W, FRAME_H],
@@ -1795,18 +1852,13 @@ def build_spritesheet(outdir: Path) -> List[Path]:
         "layers": list(_LAYERS),
     }
     parts: dict = {}
-
     for row_idx, (anim_name, frame_count, duration_ms) in enumerate(ANIMATIONS):
         for f in range(frame_count):
-            x = f * FRAME_W
-            y = row_idx * FRAME_H
-            # `parts` is populated on the full pass (one entry per frame).
             for layer in _LAYERS:
                 pass_parts = parts if layer == "full" else None
-                img = draw_frame(
+                rendered[layer][(row_idx, f)] = draw_frame(
                     anim_name, f, frame_count, layer=layer, parts=pass_parts
                 )
-                sheets[layer].paste(img, (x, y))
         manifest["rows"].append(
             {
                 "name": anim_name,
@@ -1817,17 +1869,23 @@ def build_spritesheet(outdir: Path) -> List[Path]:
         )
         print(f"  [{row_idx + 1}/{rows}] {anim_name} ({frame_count} frames)")
 
+    # Pass 2: lockstep alpha-trim + MaxRects-pack the three layers onto one tight
+    # page each (shared placement → the runtime addresses body + hands with one
+    # flat index + trim). `policy_for` is the single data-driven pack source.
+    policy = policy_for(TARGET_NAME)
+    layer_pages, rows_meta, num_pages = _pack_layers(rendered, manifest["rows"], policy)
+
     outputs: List[Path] = []
     for layer in _LAYERS:
         path = outdir / f"{TARGET_NAME}_{layer}_spritesheet.png"
-        sheets[layer].save(str(path), "PNG")
+        layer_pages[layer][0].save(str(path), "PNG")
         outputs.append(path)
 
-    # Back-compat alias: keep `<target>_spritesheet.png` pointing at the
-    # full sheet so existing consumers (catalog id `gnu_ton`) still
-    # resolve until they migrate to the layered loader.
+    # Back-compat alias: keep `<target>_spritesheet.png` pointing at the full
+    # sheet (catalog id `gnu_ton`); it shares the body/hands packed layout so the
+    # one published record drives all three textures.
     alias_path = outdir / f"{TARGET_NAME}_spritesheet.png"
-    sheets["full"].save(str(alias_path), "PNG")
+    layer_pages["full"][0].save(str(alias_path), "PNG")
     outputs.append(alias_path)
 
     parts_doc = {
@@ -1841,14 +1899,25 @@ def build_spritesheet(outdir: Path) -> List[Path]:
         "anchors": parts,
     }
 
+    page_names = [f"{TARGET_NAME}_spritesheet.png"] + [
+        f"{TARGET_NAME}_spritesheet.{k}.png" for k in range(1, num_pages)
+    ]
     ron_path = outdir / f"{TARGET_NAME}_spritesheet.ron"
-    ron_path.write_text(_runtime_spritesheet_ron(manifest, parts_doc), encoding="utf8")
+    ron_path.write_text(
+        _runtime_spritesheet_ron(rows_meta, parts_doc, page_names), encoding="utf8"
+    )
     outputs.append(ron_path)
 
     actor_path = _write_actor_contract(outdir, manifest, ron_path)
     outputs.append(actor_path)
 
-    debug_path = build_hitbox_debug(outdir, sheets["full"], manifest, parts_doc)
+    # Review-only hitbox overlay: composite the full-layer frames into a plain
+    # GRID (human-only, never a GPU texture) so the per-frame box coordinates
+    # read against an untrimmed canvas.
+    grid_full = Image.new("RGBA", (max_frames * FRAME_W, rows * FRAME_H), (0, 0, 0, 0))
+    for (row_idx, f), img in rendered["full"].items():
+        grid_full.paste(img, (f * FRAME_W, row_idx * FRAME_H))
+    debug_path = build_hitbox_debug(outdir, grid_full, manifest, parts_doc)
     outputs.append(debug_path)
 
     return outputs

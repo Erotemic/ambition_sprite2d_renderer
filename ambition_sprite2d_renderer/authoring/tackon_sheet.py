@@ -335,6 +335,30 @@ def _packed_sheet_rows(target, rendered_rows, fw, fh, max_dim, page_size=4096):
     return result.pages, rows_meta, len(result.pages)
 
 
+def layout_sheet_rows(
+    target,
+    rendered_rows,
+    fw,
+    fh,
+    *,
+    label_width,
+    trim,
+    max_dim=16384,
+    page_size=4096,
+):
+    """The ONE sheet-layout seam: turn rendered rows into GPU page images +
+    normalized ``rows_meta`` (explicit rects, per-frame ``fpage``/``off``).
+
+    ``rendered_rows`` is ``[(anim, nframes, duration_ms, [(frame_img, meta), …]), …]``.
+    ``trim=True`` alpha-trims + MaxRects-packs onto tight pages; ``trim=False``
+    keeps the legacy one-animation-per-labeled-row grid. Returns
+    ``(page_sheets, rows_meta, num_pages)``. Shared by [`build_sheet`] and the
+    bespoke boss generators so there is exactly one packer + grid code path."""
+    if trim:
+        return _packed_sheet_rows(target, rendered_rows, fw, fh, max_dim, page_size)
+    return _grid_sheet_rows(target, rendered_rows, fw, fh, label_width, max_dim)
+
+
 def build_sheet(
     target: str,
     rows: List[Tuple[str, int, int]],
@@ -510,14 +534,16 @@ def build_sheet(
                 first = frame.copy()
             preview.alpha_composite(frame, (label_width + frame_idx * fw, y_prev))
 
-    if trim:
-        page_sheets, rows_meta, num_pages = _packed_sheet_rows(
-            target, rendered_rows, fw, fh, max_sheet_dimension, policy.page_size
-        )
-    else:
-        page_sheets, rows_meta, num_pages = _grid_sheet_rows(
-            target, rendered_rows, fw, fh, label_width, max_sheet_dimension
-        )
+    page_sheets, rows_meta, num_pages = layout_sheet_rows(
+        target,
+        rendered_rows,
+        fw,
+        fh,
+        label_width=label_width,
+        trim=trim,
+        max_dim=max_sheet_dimension,
+        page_size=policy.page_size,
+    )
 
     can = canonical_raw
     can_bg = Image.new("RGBA", (fw, fh), (43, 33, 40, 255))

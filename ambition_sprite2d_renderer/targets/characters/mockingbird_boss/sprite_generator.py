@@ -29,6 +29,8 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 from ambition_sprite2d_renderer.cli.console import print_paths
 from ambition_sprite2d_renderer.core.manifest_ron import records_to_ron
+from ambition_sprite2d_renderer.authoring.tackon_sheet import layout_sheet_rows
+from ambition_sprite2d_renderer.registry.pack_groups import policy_for
 
 try:
     import yaml
@@ -932,19 +934,6 @@ def fit_on_canvas(
     return bg
 
 
-def alpha_metrics(img):
-    """Return compact alpha-bbox metrics for generated manifests."""
-    bbox = img.getbbox()
-    if bbox is None:
-        return {"bbox": None, "fill_x": 0.0, "fill_y": 0.0}
-    x1, y1, x2, y2 = bbox
-    return {
-        "bbox": {"x": x1, "y": y1, "w": x2 - x1, "h": y2 - y1},
-        "fill_x": round((x2 - x1) / max(1, img.width), 4),
-        "fill_y": round((y2 - y1) / max(1, img.height), 4),
-    }
-
-
 def render_work(scene, anim="rest", frame=0, nframes=1, debug=False):
     work = tuple(
         scene.render_cfg.get("work_size", scene.meta.get("work_size", [900, 640]))
@@ -955,32 +944,18 @@ def render_work(scene, anim="rest", frame=0, nframes=1, debug=False):
     ).render(anim, frame, nframes, debug=debug)
 
 
-def build_sheet(scene, frame_size=(256, 256), labeled=False):
-    rows = list(scene.animations.items())
-    max_frames = max(int(info.get("frames", 1)) for _, info in rows)
-    fw, fh = frame_size
-    label_w = 120 if labeled else 0
-    sheet = Image.new("RGBA", (label_w + fw * max_frames, fh * len(rows)), (0, 0, 0, 0))
-    d = ImageDraw.Draw(sheet, "RGBA")
-    meta_rows = []
-    for r, (name, info) in enumerate(rows):
+def _render_rows(scene, frame_size):
+    """Render every animation frame into memory ONCE — the shared input the
+    packer, body_metrics, and labeled preview all consume. Returns
+    ``[(name, nframes, duration_ms, [(frame_img, {}), …]), …]``, frames already
+    fit onto the logical ``frame_size`` canvas (alpha-trim/packing happens
+    downstream in [`layout_sheet_rows`])."""
+    rendered = []
+    for name, info in scene.animations.items():
         nframes = int(info.get("frames", 1))
         dur = int(info.get("duration_ms", 100))
         LOG.info("render row %s (%d frames)", name, nframes)
-        if labeled:
-            d.rounded_rectangle(
-                (8, r * fh + 10, label_w - 10, r * fh + fh - 10),
-                radius=8,
-                fill=(32, 38, 48, 220),
-            )
-            d.text((16, r * fh + 16), name, fill=(244, 246, 250, 255), font=font(16))
-            d.text(
-                (16, r * fh + 38),
-                f"{nframes}f @ {dur}ms",
-                fill=(176, 184, 196, 255),
-                font=font(12),
-            )
-        rects = []
+        frames_data = []
         for c in range(nframes):
             raw = render_work(scene, name, c, nframes)
             frame = fit_on_canvas(
@@ -991,24 +966,40 @@ def build_sheet(scene, frame_size=(256, 256), labeled=False):
                 pad=16,
                 center=tuple(scene.render_cfg.get("frame_center", [0.5, 0.53])),
             )
+            frames_data.append((frame, {}))
+        rendered.append((name, nframes, dur, frames_data))
+    return rendered
+
+
+def _labeled_preview(rendered_rows, frame_size):
+    """Human-only labeled grid (never a GPU texture) so reviewers can read
+    every row. Built from the already-rendered frames — no re-render."""
+    fw, fh = frame_size
+    label_w = 120
+    max_frames = max(n for _, n, _, _ in rendered_rows)
+    sheet = Image.new(
+        "RGBA", (label_w + fw * max_frames, fh * len(rendered_rows)), (0, 0, 0, 0)
+    )
+    d = ImageDraw.Draw(sheet, "RGBA")
+    for r, (name, nframes, dur, frames_data) in enumerate(rendered_rows):
+        d.rounded_rectangle(
+            (8, r * fh + 10, label_w - 10, r * fh + fh - 10),
+            radius=8,
+            fill=(32, 38, 48, 220),
+        )
+        d.text((16, r * fh + 16), name, fill=(244, 246, 250, 255), font=font(16))
+        d.text(
+            (16, r * fh + 38),
+            f"{nframes}f @ {dur}ms",
+            fill=(176, 184, 196, 255),
+            font=font(12),
+        )
+        for c, (frame, _meta) in enumerate(frames_data):
             x = label_w + c * fw
             y = r * fh
             sheet.alpha_composite(frame, (x, y))
-            rects.append({"x": x, "y": y, "w": fw, "h": fh})
-            if labeled:
-                d.rectangle(
-                    (x, y, x + fw - 1, y + fh - 1), outline=(72, 82, 94, 90), width=1
-                )
-        meta_rows.append(
-            {
-                "row_index": r,
-                "animation": name,
-                "frames": nframes,
-                "duration_ms": dur,
-                "rects": rects,
-            }
-        )
-    return sheet, meta_rows
+            d.rectangle((x, y, x + fw - 1, y + fh - 1), outline=(72, 82, 94, 90), width=1)
+    return sheet
 
 
 def make_parts_debug(scene, bg_color=None):
@@ -1067,81 +1058,48 @@ def make_parts_debug(scene, bg_color=None):
     return bg
 
 
-def _union_alpha_bbox(frames):
-    """Union of every frame's alpha bbox (frame-local px) → one body box.
-
-    ``frames`` is a list of ``alpha_metrics`` dicts (``{"bbox": {x,y,w,h}}``).
-    Returns ``None`` if no frame has opaque pixels."""
-    x0 = y0 = x1 = y1 = None
-    for fr in frames:
-        bb = fr.get("bbox") if isinstance(fr, dict) else None
-        if not bb:
-            continue
-        fx0, fy0 = bb["x"], bb["y"]
-        fx1, fy1 = bb["x"] + bb["w"], bb["y"] + bb["h"]
-        x0 = fx0 if x0 is None else min(x0, fx0)
-        y0 = fy0 if y0 is None else min(y0, fy0)
-        x1 = fx1 if x1 is None else max(x1, fx1)
-        y1 = fy1 if y1 is None else max(y1, fy1)
-    if x0 is None:
-        return None
-    return {"x": int(x0), "y": int(y0), "w": int(x1 - x0), "h": int(y1 - y0)}
-
-
-def _runtime_sheet_record(manifest):
-    """Build the runtime ``SheetRecord`` dict the game's `SheetRegistry`
-    deserializes, from this generator's render ``manifest``.
-
-    The key field is ``body_metrics.body_pixel_bbox``: the union alpha
-    bbox across every animation frame, so the boss's *damageable* volume
-    (`BossSpriteMetrics::body_pixel_bbox`, the priority-3 hurtbox source
-    in `damageable_volumes`) tracks the visible bird instead of falling
-    back to the bare, frame-unaligned `combat_size` box — which is what
-    let attacks on the visible body whiff. The mockingbird flies, so the
-    feet anchor is informational only (the body bbox center drives the
-    boss `combat_offset`)."""
-    fw = int(manifest["frame_size"]["w"])
-    fh = int(manifest["frame_size"]["h"])
-    rows = manifest.get("rows", [])
-    alpha = manifest.get("alpha_summary", {})
-    bbox = _union_alpha_bbox(fr for frames in alpha.values() for fr in frames)
-    if bbox is None:
+def _body_metrics(rendered_rows, fw, fh):
+    """Union alpha bbox across every animation frame → the boss's damageable
+    volume (`BossSpriteMetrics::body_pixel_bbox`, priority-3 hurtbox source),
+    so attacks register on the visible bird instead of the frame-unaligned
+    `combat_size` box. Computed in LOGICAL-frame coords (independent of how the
+    sheet is trimmed/packed downstream). The mockingbird flies, so the feet
+    anchor is informational — the body bbox center drives the boss
+    `combat_offset`."""
+    union = None
+    for _name, _n, _d, frames_data in rendered_rows:
+        for frame, _meta in frames_data:
+            bbox = frame.getchannel("A").getbbox()
+            if bbox is None:
+                continue
+            union = (
+                list(bbox)
+                if union is None
+                else [
+                    min(union[0], bbox[0]),
+                    min(union[1], bbox[1]),
+                    max(union[2], bbox[2]),
+                    max(union[3], bbox[3]),
+                ]
+            )
+    if union is None:
         bbox = {"x": 0, "y": 0, "w": fw, "h": fh}
+    else:
+        bbox = {
+            "x": int(union[0]),
+            "y": int(union[1]),
+            "w": int(union[2] - union[0]),
+            "h": int(union[3] - union[1]),
+        }
     feet_x = bbox["x"] + bbox["w"] / 2.0
     feet_y = bbox["y"] + bbox["h"]
-    body_metrics = {
+    return {
         "body_pixel_bbox": bbox,
         "feet_pixel": {"x": float(feet_x), "y": float(feet_y)},
         "feet_anchor_norm": {
             "x": float(feet_x / fw - 0.5),
             "y": float(0.5 - feet_y / fh),
         },
-    }
-    norm_rows = []
-    for r in rows:
-        rects = [
-            {"x": int(rc["x"]), "y": int(rc["y"]), "w": int(rc["w"]), "h": int(rc["h"])}
-            for rc in r.get("rects", [])
-        ]
-        duration_ms = int(r.get("duration_ms", 100))
-        norm_rows.append(
-            {
-                "animation": r["animation"],
-                "row_index": int(r.get("row_index", 0)),
-                "frame_count": int(r.get("frame_count", r.get("frames", len(rects)))),
-                "duration_ms": duration_ms,
-                "duration_secs": round(duration_ms / 1000.0, 6),
-                "rects": rects,
-            }
-        )
-    return {
-        "target": TARGET_NAME,
-        "image": f"{TARGET_NAME}_spritesheet.png",
-        "label_width": 0,
-        "frame_width": fw,
-        "frame_height": fh,
-        "rows": norm_rows,
-        "body_metrics": body_metrics,
     }
 
 
@@ -1195,29 +1153,37 @@ def render_outputs(
         dbg = make_parts_debug(scene, bg_color=bg_color)
         dbg.save(outdir / f"{TARGET_NAME}_parts_debug.png")
         outputs.append(outdir / f"{TARGET_NAME}_parts_debug.png")
+    rows_meta = []
+    body_metrics = None
     if not quick:
         with Timer("spritesheet"):
-            sheet, rows = build_sheet(scene, frame_size, labeled=False)
-            sheet.save(outdir / f"{TARGET_NAME}_spritesheet.png")
-            outputs.append(outdir / f"{TARGET_NAME}_spritesheet.png")
+            # Render every frame ONCE, then run them through the SHARED
+            # layout seam (alpha-trim + MaxRects-pack, or the legacy grid)
+            # exactly like every tack-on character/prop sheet. `policy_for`
+            # is the single data-driven source for trim/page-size.
+            rendered_rows = _render_rows(scene, frame_size)
+            body_metrics = _body_metrics(rendered_rows, frame_size[0], frame_size[1])
+            policy = policy_for(TARGET_NAME)
+            page_sheets, rows_meta, num_pages = layout_sheet_rows(
+                TARGET_NAME,
+                rendered_rows,
+                frame_size[0],
+                frame_size[1],
+                label_width=0,
+                trim=policy.trim,
+                max_dim=policy.max_dim,
+                page_size=policy.page_size,
+            )
+            page_names = [f"{TARGET_NAME}_spritesheet.png"] + [
+                f"{TARGET_NAME}_spritesheet.{k}.png" for k in range(1, num_pages)
+            ]
+            for img, name in zip(page_sheets, page_names):
+                img.save(outdir / name)
+                outputs.append(outdir / name)
         with Timer("labeled preview"):
-            preview, _ = build_sheet(scene, frame_size, labeled=True)
+            preview = _labeled_preview(rendered_rows, frame_size)
             preview.save(outdir / f"{TARGET_NAME}_preview_labeled.png")
             outputs.append(outdir / f"{TARGET_NAME}_preview_labeled.png")
-    else:
-        rows = []
-    alpha_summary = {}
-    if not quick:
-        sheet_path = outdir / f"{TARGET_NAME}_spritesheet.png"
-        sheet_img = Image.open(sheet_path)
-        for row in rows:
-            frames = []
-            for rect in row["rects"]:
-                crop = sheet_img.crop(
-                    (rect["x"], rect["y"], rect["x"] + rect["w"], rect["y"] + rect["h"])
-                )
-                frames.append(alpha_metrics(crop))
-            alpha_summary[row["animation"]] = frames
     manifest = {
         "target": TARGET_NAME,
         "schema_version": scene.data.get("schema_version"),
@@ -1230,8 +1196,7 @@ def render_outputs(
         ),
         "quick": quick,
         "source_urls": scene.meta.get("source_urls", []),
-        "rows": rows,
-        "alpha_summary": alpha_summary,
+        "rows": rows_meta,
     }
     (outdir / f"{TARGET_NAME}_spritesheet_manifest.json").write_text(
         json.dumps(manifest, indent=2)
@@ -1240,11 +1205,23 @@ def render_outputs(
     if not quick:
         # Runtime sidecar the sandbox's SheetRegistry deserializes. Carries
         # body_metrics (alpha-bbox hurtbox) so the boss is damageable on its
-        # visible body — without it, derive_boss_sprite_metrics finds no
-        # metrics and the boss falls back to a frame-unaligned combat_size box.
+        # visible body, and the packed rects (per-frame `page`/`off`) so the
+        # trim-aware runtime reader addresses each frame. Emitted through the
+        # ONE shared `records_to_ron` writer.
+        record = {
+            "target": TARGET_NAME,
+            "image": f"{TARGET_NAME}_spritesheet.png",
+            "label_width": 0,
+            "frame_width": frame_size[0],
+            "frame_height": frame_size[1],
+            "rows": rows_meta,
+            "body_metrics": body_metrics,
+        }
+        if num_pages > 1:
+            record["images"] = page_names
         ron_path = outdir / f"{TARGET_NAME}_spritesheet.ron"
         ron_path.write_text(
-            records_to_ron(TARGET_NAME, [_runtime_sheet_record(manifest)]),
+            records_to_ron(TARGET_NAME, [record]),
             encoding="utf8",
         )
         outputs.append(ron_path)

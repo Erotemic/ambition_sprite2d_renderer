@@ -193,6 +193,14 @@ def _ron_row(row) -> str:
     )
 
 
+def ron_row(row) -> str:
+    """Public alias for the one row/rect writer (explicit rects + per-frame
+    ``page``/``off`` trim). Bespoke boss generators that hand-assemble a record
+    around a non-standard ``body_metrics`` block reuse this so their frame
+    addressing goes through the SAME packed-rect algebra as every other sheet."""
+    return _ron_row(row)
+
+
 def record_to_ron(record: Dict) -> str:
     """Render one ``SheetRecord`` (rows already normalized). Caller wraps in
     ``[...]``. Multi-record callers (packed sheets) join several with ``,\\n``."""

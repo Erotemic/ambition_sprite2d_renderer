@@ -65,6 +65,12 @@ _UNTRIMMED = (
 # pages); a target appears here only when it diverges.
 _POLICIES: Dict[str, PackPolicy] = {target: PackPolicy(trim=False) for target in _UNTRIMMED}
 
+# GNU-ton renders a split body/hands pair that must share ONE atlas layout (the
+# runtime mirrors the body's flat index + trim onto the hands child). The shared
+# record carries a single image per layer, so the pack must stay on ONE page —
+# a `page_size` at the GPU cap keeps the single-bin packer from spilling.
+_POLICIES["gnu_ton_boss"] = PackPolicy(page_size=16384)
+
 
 def policy_for(target: str) -> PackPolicy:
     """Pack policy for a sprite target (its sheet file-root / RON ``target``)."""
