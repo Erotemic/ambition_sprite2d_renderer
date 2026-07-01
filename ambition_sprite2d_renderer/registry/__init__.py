@@ -23,7 +23,7 @@ from .config import (
     load_jobs,
 )
 from .discovery import (
-    ADAPTER_HELPER_STEMS,
+    GENERATOR_MODULE_STEMS,
     CATEGORIES,
     AdapterTarget,
     DiscoveryReport,
@@ -36,7 +36,7 @@ from .discovery import (
 )
 
 __all__ = [
-    "ADAPTER_HELPER_STEMS",
+    "GENERATOR_MODULE_STEMS",
     "AdapterTarget",
     "CATEGORIES",
     "CharacterJob",

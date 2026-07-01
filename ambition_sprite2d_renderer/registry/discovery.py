@@ -7,8 +7,8 @@ One concept — `Target` — covers every renderable thing in the package:
   auto-registered if it exposes a module-level ``render(out_dir, **opts)``
   function. The procedural-Python authoring path.
 - **Adapter targets** defined by a YAML config in ``configs/*.yaml``
-  that's consumed by one of the rigs in ``adapters.py``. The
-  YAML-driven authoring path.
+  that drives one of the procedural ``CharacterGenerator``s registered in
+  ``authoring/generators.py``. The YAML-driven authoring path.
 - **Review NPCs** — YAML configs under ``configs/review/*.yaml``,
   same machinery as adapter targets but a separate category since
   they're review-only (the sandbox runtime loads only the curated
@@ -66,11 +66,13 @@ CATEGORIES: Tuple[str, ...] = (
 # The `configs/review/` directory still exists for backwards-
 # compat authoring, but its contents now register under `characters`.
 
-# Modules under `targets/characters/` that are imported by
-# `adapters.py` and driven by YAML configs instead of a `render()`
-# function. Discovery silently skips these so they don't show up as
-# warnings under `list-targets`.
-ADAPTER_HELPER_STEMS: frozenset[str] = frozenset(
+# Modules under `targets/characters/` that define a `CharacterGenerator` (or a
+# helper for one) and are driven by YAML configs through `authoring/generators.py`
+# rather than a top-level `render()` function. Discovery silently skips these so
+# they don't show up as "doesn't conform to the Target API" warnings under
+# `list-targets`. (`sandbag` is deliberately absent: it exposes both a generator
+# AND a tackon `render()`, so it is discovered as a normal target.)
+GENERATOR_MODULE_STEMS: frozenset[str] = frozenset(
     {
         "alice_cryptographer",
         "bob_engineer",
@@ -570,7 +572,7 @@ def discover_tackon_targets() -> DiscoveryReport:
     tackon_categories = ("characters", "props", "tiles", "icons", "projectiles")
     for category in tackon_categories:
         for stem, dotted in _walk_category(category):
-            if category == "characters" and stem in ADAPTER_HELPER_STEMS:
+            if category == "characters" and stem in GENERATOR_MODULE_STEMS:
                 continue
             try:
                 mod = importlib.import_module(dotted)
@@ -655,7 +657,7 @@ def discover_all_targets() -> DiscoveryReport:
 
 
 __all__ = [
-    "ADAPTER_HELPER_STEMS",
+    "GENERATOR_MODULE_STEMS",
     "AdapterTarget",
     "CATEGORIES",
     "DiscoveryReport",
