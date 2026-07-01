@@ -11,7 +11,7 @@ from .actor_contract import write_actor_contract_for_adapter
 from ..registry import CharacterJob
 from ..registry.pack_groups import policy_for
 from ..core.measure import measure_body_metrics
-from ..core.manifest_ron import render_adapter, ron_tuning
+from ..core.manifest_ron import records_to_ron, render_adapter, ron_tuning
 from .rendering import load_font
 
 
@@ -180,7 +180,6 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
             "enabled": bool(getattr(job.render, "crop", True)),
             "padding_px": crop_padding,
         },
-        "animations": {},
     }
     body_metric_frame: Image.Image | None = None
     # Per-animation union alpha bboxes in **source canvas** coords (before the
@@ -210,93 +209,33 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
         cropped_rows.append(row_imgs)
         anim_union_bbox_src[animation] = anim_bbox
 
-    if trim:
-        from .packer import FrameInput, pack_frames
+    # One layout seam for both spines (see tackon_sheet.layout_sheet_rows): trim
+    # → alpha-trim + MaxRects-pack; untrimmed → the legacy labeled grid. Every
+    # adapter generator is trim=True, so this packs exactly as the former inline
+    # pack_frames did — the RON and page PNGs are byte-identical (the shared
+    # emitter ignores the per-rect index/duration the old inline path carried).
+    from .tackon_sheet import layout_sheet_rows
 
-        frames_in = [
-            FrameInput(key=(ri, fi), image=img, logical_size=(fw, fh))
-            for ri, row_imgs in enumerate(cropped_rows)
-            for fi, img in enumerate(row_imgs)
-        ]
-        result = pack_frames(
-            frames_in, max_dim=max_dim, page_size=page_size, padding=1, trim=True
+    rendered_rows = [
+        (
+            animation,
+            len(cropped_rows[row_idx]),
+            animations[animation]["duration_ms"],
+            [(img, {}) for img in cropped_rows[row_idx]],
         )
-        pages = result.pages
-        num_pages = len(pages)
-        for row_idx, animation in enumerate(selected):
-            dur = animations[animation]["duration_ms"]
-            recs: List[Dict[str, Any]] = []
-            for frame_index in range(len(cropped_rows[row_idx])):
-                pl = result.placements[(row_idx, frame_index)]
-                rec = {
-                    "index": frame_index,
-                    "x": pl.x,
-                    "y": pl.y,
-                    "w": pl.w,
-                    "h": pl.h,
-                    "fpage": pl.page,
-                    "duration_ms": dur,
-                }
-                if pl.off_x or pl.off_y:
-                    rec["off"] = (pl.off_x, pl.off_y)
-                recs.append(rec)
-            manifest["animations"][animation] = {"frames": recs, "duration_ms": dur}
-    else:
-        # Legacy paged grid (byte-identical for untrimmed targets).
-        row_stride_h = fh + border
-        page_w = label_w + max_frames * (fw + border) + border
-        cap = max(row_stride_h + border, max_dim)
-        rows_per_page = max(1, (cap - border) // row_stride_h)
-        num_pages = max(1, (len(selected) + rows_per_page - 1) // rows_per_page)
-        if page_w > cap:
-            raise ValueError(
-                f"spritesheet for {job.target!r} has a {page_w}px-wide frame row, exceeding "
-                f"the {cap}px texture limit; reduce the frame size or per-row frame count"
-            )
-        pages = []
-        draws = []
-        for p in range(num_pages):
-            rows_on_page = min(rows_per_page, len(selected) - p * rows_per_page)
-            img = Image.new(
-                "RGBA",
-                (page_w, rows_on_page * row_stride_h + border),
-                _parse_bg(job.render.sheet_background),
-            )
-            pages.append(img)
-            draws.append(ImageDraw.Draw(img))
-        for row_idx, animation in enumerate(selected):
-            info = animations[animation]
-            page = row_idx // rows_per_page
-            y = border + (row_idx % rows_per_page) * (fh + border)
-            sheet = pages[page]
-            draw = draws[page]
-            if label_w:
-                draw.text((8, y + 8), animation, fill=(255, 255, 255, 255), font=font)
-                draw.text(
-                    (8, y + 23),
-                    f"{info['frames']}f/{info['duration_ms']}ms",
-                    fill=(190, 190, 190, 255),
-                    font=load_font(10),
-                )
-            recs = []
-            for frame_index, cropped in enumerate(cropped_rows[row_idx]):
-                x = label_w + border + frame_index * (fw + border)
-                sheet.alpha_composite(cropped, (x, y))
-                recs.append(
-                    {
-                        "index": frame_index,
-                        "x": x,
-                        "y": y,
-                        "w": fw,
-                        "h": fh,
-                        "page": page,
-                        "duration_ms": info["duration_ms"],
-                    }
-                )
-            manifest["animations"][animation] = {
-                "frames": recs,
-                "duration_ms": info["duration_ms"],
-            }
+        for row_idx, animation in enumerate(selected)
+    ]
+    pages, rows_meta, num_pages = layout_sheet_rows(
+        job.target,
+        rendered_rows,
+        fw,
+        fh,
+        label_width=label_w,
+        trim=trim,
+        max_dim=max_dim,
+        page_size=page_size,
+    )
+    manifest["rows"] = rows_meta
     manifest["pages"] = num_pages
     metrics = (
         _measure_body_extent(body_metric_frame)
@@ -519,7 +458,7 @@ def write_spritesheet(
     ron_path = manifest_out.with_suffix(".ron")
     manifest_for_sidecars = dict(manifest)
     manifest_for_sidecars["image"] = image_out.name
-    ron_path.write_text(_adapter_manifest_to_ron(manifest_for_sidecars))
+    ron_path.write_text(records_to_ron(manifest["target"], [manifest_for_sidecars]))
     # Optional future-facing runtime sidecar. Current sandbox builds ignore
     # this file, but publishing it now lets every adapter config start
     # declaring sparse actor/body/capability/action metadata without changing
