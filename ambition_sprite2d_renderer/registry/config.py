@@ -36,7 +36,7 @@ class RenderConfig:
     # and takes only ASPECT from the frame, so this is pure anti-pixelation:
     # higher resolution under the same on-screen quad, no gameplay change.
     # Default 2 because most sheets are upscaled in game and read soft at 1x.
-    render_scale: int = 2
+    render_scale: float = 2.0
     background: str = "transparent"
     sheet_background: str = "transparent"
     border: int = 0

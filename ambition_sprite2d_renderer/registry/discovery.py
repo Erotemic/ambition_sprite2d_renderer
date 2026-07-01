@@ -29,13 +29,13 @@ returned dict without caring which surface a target came from.
 from __future__ import annotations
 
 import importlib
+import copy
 import shutil
 from pathlib import Path
 from typing import (
     Any,
     Callable,
     Dict,
-    Iterable,
     Iterator,
     List,
     NamedTuple,
@@ -398,14 +398,28 @@ class AdapterTarget:
     def render_sheet(self, out_dir: Path, **opts) -> List[Path]:
         from ..authoring.sheet import write_spritesheet
 
-        del opts
+        quality_scale = opts.pop("quality_scale", None)
+        downsample = opts.pop("downsample", None)
+        if opts:
+            unknown = ", ".join(sorted(opts))
+            raise TypeError(
+                f"AdapterTarget.render_sheet got unknown option(s): {unknown}"
+            )
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
+        job = copy.deepcopy(self._job)
+        if quality_scale is not None:
+            job.render.render_scale = max(
+                1.0 / 64.0,
+                float(job.render.render_scale) * float(quality_scale),
+            )
+        if downsample is not None:
+            job.render.downsample = str(downsample)
         image_out = out_dir / f"{self.name}_spritesheet.png"
         manifest_out = out_dir / f"{self.name}_spritesheet.yaml"
         paths = list(
             write_spritesheet(
-                self._job, image_out, manifest_out, source_config=self._config_path
+                job, image_out, manifest_out, source_config=self._config_path
             )
         )
         actor_out = out_dir / f"{self.name}_actor.ron"

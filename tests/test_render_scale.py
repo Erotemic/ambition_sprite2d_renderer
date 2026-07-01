@@ -19,7 +19,7 @@ from ambition_sprite2d_renderer.cli.commands import (
     DEFAULT_CONFIG_DIR,
     DEFAULT_REVIEW_CONFIG_DIR,
 )
-from ambition_sprite2d_renderer.registry import load_jobs
+from ambition_sprite2d_renderer.registry import AdapterTarget, load_jobs
 from ambition_sprite2d_renderer.registry.config import RenderConfig
 
 
@@ -61,4 +61,36 @@ def test_render_scale_doubles_resolution_across_generator_families():
         # Aspect is preserved up to crop-bbox pixel rounding (looser here only
         # because the test forces supersample=1 for speed; at the real ss=4 the
         # crop edges are smooth and aspect matches tightly).
-        assert abs((w1 / h1) - (w2 / h2)) < 0.12, f"{name}: aspect must hold ({w1}x{h1} vs {w2}x{h2})"
+        assert abs((w1 / h1) - (w2 / h2)) < 0.12, (
+            f"{name}: aspect must hold ({w1}x{h1} vs {w2}x{h2})"
+        )
+
+
+def test_fractional_render_scale_publishes_source_scale_sheet():
+    job = _jobs()["player_robot"]
+    job.render.supersample = 1
+    job.animations = job.animations[:1]
+    w_full, h_full = _published_frame(job, 2)
+    w_half, h_half = _published_frame(job, 1)
+    w_quarter, h_quarter = _published_frame(job, 0.5)
+
+    assert 0.45 < (w_half / w_full) < 0.55
+    assert 0.45 < (h_half / h_full) < 0.55
+    assert 0.20 < (w_quarter / w_full) < 0.30
+    assert 0.20 < (h_quarter / h_full) < 0.30
+
+
+def test_adapter_quality_scale_is_relative_to_normal_render_scale(tmp_path):
+    target = AdapterTarget(
+        config_path=DEFAULT_CONFIG_DIR / "player_robot.yaml", category="characters"
+    )
+    full_dir = tmp_path / "quality_full"
+    target.render_sheet(full_dir)
+    full = yaml.safe_load((full_dir / "player_robot_spritesheet.yaml").read_text())
+
+    out_dir = tmp_path / "quality_half"
+    target.render_sheet(out_dir, quality_scale=0.5)
+    half = yaml.safe_load((out_dir / "player_robot_spritesheet.yaml").read_text())
+
+    assert 0.45 < (half["frame_width"] / full["frame_width"]) < 0.55
+    assert 0.45 < (half["frame_height"] / full["frame_height"]) < 0.55

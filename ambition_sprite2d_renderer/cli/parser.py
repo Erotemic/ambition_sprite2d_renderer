@@ -30,6 +30,7 @@ Two command families:
 
 See ``registry/discovery.py`` for the Target protocol contract.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -90,6 +91,27 @@ def _add_dest_root_arg(p: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_quality_render_args(p: argparse.ArgumentParser) -> None:
+    p.add_argument(
+        "--quality-scale",
+        type=float,
+        default=None,
+        help=(
+            "Render source art at this fraction of the target's normal native "
+            "texture scale before packing. Adapter/vector targets support "
+            "fractional scales such as 0.5, 0.25, and 0.0625; unsupported "
+            "tack-on targets should be upgraded at their render seam instead "
+            "of post-resizing atlases."
+        ),
+    )
+    p.add_argument(
+        "--downsample",
+        choices=["lanczos", "nearest", "bicubic"],
+        default=None,
+        help="Override the renderer's supersample downsample filter for this render.",
+    )
+
+
 def _add_config_dir_args(
     p: argparse.ArgumentParser,
     *,
@@ -124,7 +146,11 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     _add_optional_target_arg(p)
-    _add_config_dir_args(p, config_default=DEFAULT_CONFIG_DIR, out_default=DEFAULT_ASSET_DIR / "canonicals")
+    _add_config_dir_args(
+        p,
+        config_default=DEFAULT_CONFIG_DIR,
+        out_default=DEFAULT_ASSET_DIR / "canonicals",
+    )
     p.add_argument(
         "--adapters-only",
         action="store_true",
@@ -140,6 +166,7 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     _add_optional_target_arg(p)
+    _add_quality_render_args(p)
     p.set_defaults(func=_cmd_sheet)
 
     p = sub.add_parser(
@@ -162,23 +189,38 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_optional_target_arg(p)
     _add_dest_root_arg(p)
+    _add_quality_render_args(p)
     p.set_defaults(func=_cmd_publish)
 
-    p = sub.add_parser("list", help="Show every registered target, grouped by category.")
+    p = sub.add_parser(
+        "list", help="Show every registered target, grouped by category."
+    )
     p.set_defaults(func=_cmd_list_targets)
-    sub.add_parser("list-targets", help="alias of `list`").set_defaults(func=_cmd_list_targets)
+    sub.add_parser("list-targets", help="alias of `list`").set_defaults(
+        func=_cmd_list_targets
+    )
 
     # ---- Adapter-pipeline commands (take config paths, not target names) ----
 
     p = sub.add_parser("draw-all", help="Render every main adapter config in configs/.")
-    _add_config_dir_args(p, config_default=DEFAULT_CONFIG_DIR, out_default=DEFAULT_ASSET_DIR)
+    _add_config_dir_args(
+        p, config_default=DEFAULT_CONFIG_DIR, out_default=DEFAULT_ASSET_DIR
+    )
     p.set_defaults(func=_cmd_draw_all)
 
-    p = sub.add_parser("draw-review", help="Render every review config in configs/review/.")
-    _add_config_dir_args(p, config_default=DEFAULT_REVIEW_CONFIG_DIR, out_default=DEFAULT_ASSET_DIR / "review")
+    p = sub.add_parser(
+        "draw-review", help="Render every review config in configs/review/."
+    )
+    _add_config_dir_args(
+        p,
+        config_default=DEFAULT_REVIEW_CONFIG_DIR,
+        out_default=DEFAULT_ASSET_DIR / "review",
+    )
     p.set_defaults(func=_cmd_draw_review)
 
-    p = sub.add_parser("draw-character", help="Render one config's canonical + spritesheet + YAML.")
+    p = sub.add_parser(
+        "draw-character", help="Render one config's canonical + spritesheet + YAML."
+    )
     p.add_argument(
         "config",
         help=(
@@ -200,7 +242,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.set_defaults(func=_cmd_draw_character)
 
-    p = sub.add_parser("draw-factions", help="Render music-faction leader/NPC review sprites.")
+    p = sub.add_parser(
+        "draw-factions", help="Render music-faction leader/NPC review sprites."
+    )
     p.add_argument("--config", default=str(DEFAULT_FACTION_CONFIG))
     p.add_argument("--out-dir", default=str(DEFAULT_ASSET_DIR / "factions"))
     p.set_defaults(func=_cmd_draw_factions)
@@ -231,7 +275,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--format", choices=["text", "json"], default="text")
     p.set_defaults(func=_cmd_ldtk_manifest)
 
-    p = sub.add_parser("spritesheet", help="Render one config's sheet to a specific path.")
+    p = sub.add_parser(
+        "spritesheet", help="Render one config's sheet to a specific path."
+    )
     p.add_argument("config")
     p.add_argument("output")
     p.add_argument("--manifest-out", default=None)
@@ -244,8 +290,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--frame-index", type=int, default=0)
     p.set_defaults(func=_cmd_single)
 
-    p = sub.add_parser("gifs", help="Write one GIF per animation row for a registered target.")
-    p.add_argument("target", help="Registered target name, e.g. goblin or kernel_guide.")
+    p = sub.add_parser(
+        "gifs", help="Write one GIF per animation row for a registered target."
+    )
+    p.add_argument(
+        "target", help="Registered target name, e.g. goblin or kernel_guide."
+    )
     p.add_argument(
         "--out-dir",
         default=None,

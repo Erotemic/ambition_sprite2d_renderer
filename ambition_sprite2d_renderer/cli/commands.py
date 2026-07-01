@@ -4,6 +4,7 @@ Every ``draw_*`` pipeline function and ``_cmd_*`` argparse handler lives
 here. The argparse wiring that dispatches to them is in ``parser.py``;
 this module imports nothing from there (one-way: parser -> commands).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -44,13 +45,9 @@ def repo_root() -> Path:
 
 # Defaults are computed against the package, not the cwd, so the CLI works
 # regardless of where the user runs it from.
-DEFAULT_CONFIG_DIR = (
-    Path(__file__).resolve().parent.parent / "configs"
-)
+DEFAULT_CONFIG_DIR = Path(__file__).resolve().parent.parent / "configs"
 DEFAULT_REVIEW_CONFIG_DIR = DEFAULT_CONFIG_DIR / "review"
-DEFAULT_ASSET_DIR = (
-    package_dir() / "generated"
-)
+DEFAULT_ASSET_DIR = package_dir() / "generated"
 DEFAULT_FACTION_CONFIG = DEFAULT_CONFIG_DIR / "factions" / "music_factions.yaml"
 
 
@@ -127,15 +124,12 @@ def _get_target(name: str) -> Target:
                 f"  see `registry/discovery.py` for the Target protocol contract."
             )
     raise SystemExit(
-        f"error: unknown target: {name!r}\n"
-        f"  run `list` to see the registered targets."
+        f"error: unknown target: {name!r}\n  run `list` to see the registered targets."
     )
 
 
 def sandbox_sprites_dir() -> Path:
-    return (
-        repo_root() / "crates" / "ambition_gameplay_core" / "assets" / "sprites"
-    )
+    return repo_root() / "crates" / "ambition_gameplay_core" / "assets" / "sprites"
 
 
 def generated_dir(target_name: str) -> Path:
@@ -144,11 +138,25 @@ def generated_dir(target_name: str) -> Path:
 
 # ---- Adapter (character lab) commands -----------------------------------------
 
-def draw_all(config_dir: str | Path = DEFAULT_CONFIG_DIR, out_dir: str | Path = DEFAULT_ASSET_DIR) -> List[Path]:
+
+def draw_all(
+    config_dir: str | Path = DEFAULT_CONFIG_DIR, out_dir: str | Path = DEFAULT_ASSET_DIR
+) -> List[Path]:
     out_dir = Path(out_dir)
     config_dir_path = Path(config_dir)
-    runtime_stems = {"boss", "raid_enforcer", "goblin", "ninja", "ninja_leader", "player_robot", "robot", "sandbag"}
-    default_runtime_dir = config_dir_path.resolve() == Path(DEFAULT_CONFIG_DIR).resolve()
+    runtime_stems = {
+        "boss",
+        "raid_enforcer",
+        "goblin",
+        "ninja",
+        "ninja_leader",
+        "player_robot",
+        "robot",
+        "sandbag",
+    }
+    default_runtime_dir = (
+        config_dir_path.resolve() == Path(DEFAULT_CONFIG_DIR).resolve()
+    )
     outputs: List[Path] = []
     for path, job in load_jobs(config_dir_path):
         # The default configs/ directory has accumulated a few older review
@@ -163,7 +171,9 @@ def draw_all(config_dir: str | Path = DEFAULT_CONFIG_DIR, out_dir: str | Path = 
         stem = job.output_stem(path)
         image_out = out_dir / f"{stem}_spritesheet.png"
         manifest_out = out_dir / f"{stem}_spritesheet.yaml"
-        outputs.extend(write_spritesheet(job, image_out, manifest_out, source_config=path))
+        outputs.extend(
+            write_spritesheet(job, image_out, manifest_out, source_config=path)
+        )
     return outputs
 
 
@@ -237,7 +247,9 @@ def resolve_config_path(value: str | Path) -> Path:
     )
 
 
-def draw_character(config: str | Path, out_dir: str | Path = DEFAULT_ASSET_DIR) -> List[Path]:
+def draw_character(
+    config: str | Path, out_dir: str | Path = DEFAULT_ASSET_DIR
+) -> List[Path]:
     """Render both review artifacts for one character config.
 
     This is the one-shot path for art iteration: it writes the canonical still
@@ -265,7 +277,9 @@ def draw_character(config: str | Path, out_dir: str | Path = DEFAULT_ASSET_DIR) 
 
     sheet_out = out_dir / f"{stem}_spritesheet.png"
     manifest_out = out_dir / f"{stem}_spritesheet.yaml"
-    image_out, yaml_out = write_spritesheet(job, sheet_out, manifest_out, source_config=config_path)
+    image_out, yaml_out = write_spritesheet(
+        job, sheet_out, manifest_out, source_config=config_path
+    )
     actor_out = out_dir / f"{stem}_actor.ron"
     outputs = [canonical_out, image_out, yaml_out]
     if actor_out.exists():
@@ -297,11 +311,13 @@ def _cmd_canonical(args: argparse.Namespace) -> int:
         out = draw_canonical_of(target, args.out_dir)
         print_paths([out])
         return 0
-    print_canonical_outputs(draw_canonicals(
-        args.config_dir,
-        args.out_dir,
-        adapters_only=args.adapters_only,
-    ))
+    print_canonical_outputs(
+        draw_canonicals(
+            args.config_dir,
+            args.out_dir,
+            adapters_only=args.adapters_only,
+        )
+    )
     return 0
 
 
@@ -366,7 +382,9 @@ def _cmd_ldtk_manifest(args: argparse.Namespace) -> int:
 
 
 def _cmd_list_targets(args: argparse.Namespace) -> int:
-    print("# adapter rigs (driven by configs/*.yaml — renders via draw-character / draw-all):")
+    print(
+        "# adapter rigs (driven by configs/*.yaml — renders via draw-character / draw-all):"
+    )
     for target in sorted(TARGETS):
         adapter = get_adapter(target)
         print(f"  {target}: {', '.join(adapter.default_animations())}")
@@ -398,7 +416,11 @@ def _cmd_list_targets(args: argparse.Namespace) -> int:
 
 def _cmd_spritesheet(args: argparse.Namespace) -> int:
     job = CharacterJob.load(args.config)
-    print_paths(write_spritesheet(job, args.output, args.manifest_out, source_config=args.config))
+    print_paths(
+        write_spritesheet(
+            job, args.output, args.manifest_out, source_config=args.config
+        )
+    )
     return 0
 
 
@@ -415,14 +437,20 @@ def _cmd_single(args: argparse.Namespace) -> int:
 
 
 def _manifest_image_path(manifest_path: Path, manifest: dict) -> Path:
-    image = manifest.get("image") or manifest.get("spritesheet") or manifest_path.with_suffix(".png").name
+    image = (
+        manifest.get("image")
+        or manifest.get("spritesheet")
+        or manifest_path.with_suffix(".png").name
+    )
     image_path = Path(str(image))
     if not image_path.is_absolute():
         image_path = manifest_path.parent / image_path
     return image_path
 
 
-def _animation_rows_from_manifest(manifest: dict) -> list[tuple[str, list[dict], int | None]]:
+def _animation_rows_from_manifest(
+    manifest: dict,
+) -> list[tuple[str, list[dict], int | None]]:
     rows: list[tuple[str, list[dict], int | None]] = []
     animations = manifest.get("animations")
     if isinstance(animations, dict):
@@ -431,7 +459,13 @@ def _animation_rows_from_manifest(manifest: dict) -> list[tuple[str, list[dict],
                 continue
             frames = data.get("frames")
             if isinstance(frames, list):
-                rows.append((str(name), [dict(frame) for frame in frames if isinstance(frame, dict)], data.get("duration_ms")))
+                rows.append(
+                    (
+                        str(name),
+                        [dict(frame) for frame in frames if isinstance(frame, dict)],
+                        data.get("duration_ms"),
+                    )
+                )
     raw_rows = manifest.get("rows")
     if isinstance(raw_rows, list):
         for row in raw_rows:
@@ -455,10 +489,15 @@ def _animation_rows_from_manifest(manifest: dict) -> list[tuple[str, list[dict],
 
 
 def _safe_filename_part(text: str) -> str:
-    return "".join(c if c.isalnum() or c in {"-", "_"} else "_" for c in text).strip("_") or "animation"
+    return (
+        "".join(c if c.isalnum() or c in {"-", "_"} else "_" for c in text).strip("_")
+        or "animation"
+    )
 
 
-def write_animation_gifs_for_target(target_name: str, out_dir: Path | None = None) -> list[Path]:
+def write_animation_gifs_for_target(
+    target_name: str, out_dir: Path | None = None
+) -> list[Path]:
     """Write one GIF per animation row for a registered sprite target.
 
     The command reads the target's generated sheet manifest instead of creating
@@ -474,9 +513,15 @@ def write_animation_gifs_for_target(target_name: str, out_dir: Path | None = Non
         target.render_sheet(generated)
     manifest_paths = sorted(generated.glob("*_spritesheet.yaml"))
     if not manifest_paths:
-        raise FileNotFoundError(f"no generated spritesheet YAML found for {target_name!r} in {generated}")
+        raise FileNotFoundError(
+            f"no generated spritesheet YAML found for {target_name!r} in {generated}"
+        )
 
-    root = Path(out_dir) if out_dir is not None else DEFAULT_ASSET_DIR / "gifs" / target.name
+    root = (
+        Path(out_dir)
+        if out_dir is not None
+        else DEFAULT_ASSET_DIR / "gifs" / target.name
+    )
     written: list[Path] = []
     for manifest_path in manifest_paths:
         manifest = yaml.safe_load(manifest_path.read_text(encoding="utf8")) or {}
@@ -511,15 +556,26 @@ def write_animation_gifs_for_target(target_name: str, out_dir: Path | None = Non
             if not images:
                 continue
             out = target_out / f"{_safe_filename_part(animation)}.gif"
-            images[0].save(out, save_all=True, append_images=images[1:], duration=durations, loop=0, disposal=2)
+            images[0].save(
+                out,
+                save_all=True,
+                append_images=images[1:],
+                duration=durations,
+                loop=0,
+                disposal=2,
+            )
             written.append(out)
     return written
 
 
 def _cmd_gifs(args: argparse.Namespace) -> int:
-    written = write_animation_gifs_for_target(args.target, Path(args.out_dir) if args.out_dir else None)
+    written = write_animation_gifs_for_target(
+        args.target, Path(args.out_dir) if args.out_dir else None
+    )
     if not written:
-        rich_print(f"[yellow]No animation GIFs were written for {args.target!r}[/yellow]")
+        rich_print(
+            f"[yellow]No animation GIFs were written for {args.target!r}[/yellow]"
+        )
         return 1
     rich_print(f"[bold green]Animation GIFs for {args.target}:[/bold green]")
     print_paths(written, prefix="  ")
@@ -538,15 +594,25 @@ _TACKON_CATEGORIES = frozenset({"characters", "props", "tiles", "icons"})
 def _tackon_target_names() -> list[str]:
     """Names of every tack-on (non-AdapterTarget) target, sorted."""
     from ..registry import TackonTarget
+
     return sorted(
         name for name, t in _ALL_TARGETS.items() if isinstance(t, TackonTarget)
     )
 
 
-def _render_target(target_name: str) -> List[Path]:
+def _target_render_opts(args: argparse.Namespace) -> dict[str, object]:
+    opts: dict[str, object] = {}
+    if getattr(args, "quality_scale", None) is not None:
+        opts["quality_scale"] = args.quality_scale
+    if getattr(args, "downsample", None) is not None:
+        opts["downsample"] = args.downsample
+    return opts
+
+
+def _render_target(target_name: str, **opts) -> List[Path]:
     target = _get_target(target_name)
     out_dir = generated_dir(target_name)
-    paths = list(target.render_sheet(out_dir))
+    paths = list(target.render_sheet(out_dir, **opts))
     print_paths(paths)
     return paths
 
@@ -589,10 +655,13 @@ def _bulk_over(
 
 def _cmd_sheet(args: argparse.Namespace) -> int:
     """`sheet [<name>]` — render one sheet, or every tack-on sheet."""
+    opts = _target_render_opts(args)
     if args.target:
-        _render_target(args.target)
+        _render_target(args.target, **opts)
         return 0
-    return _bulk_over("sheet", _tackon_target_names(), _render_target)
+    return _bulk_over(
+        "sheet", _tackon_target_names(), lambda name: _render_target(name, **opts)
+    )
 
 
 def _cmd_install(args: argparse.Namespace) -> int:
@@ -609,13 +678,14 @@ def _cmd_install(args: argparse.Namespace) -> int:
 
 def _cmd_publish(args: argparse.Namespace) -> int:
     """`publish [<name>]` — sheet + install for one target, or all tack-ons."""
+    opts = _target_render_opts(args)
     if args.target:
-        _render_target(args.target)
+        _render_target(args.target, **opts)
         copied = _install_target(args.target, args.dest_root)
         return 0 if copied else 1
 
     def _publish_one(name: str) -> None:
-        _render_target(name)
+        _render_target(name, **opts)
         _install_target(name, args.dest_root)
 
     return _bulk_over("publish", _tackon_target_names(), _publish_one)
@@ -766,5 +836,3 @@ def _cmd_draw_runtime_npcs(args: argparse.Namespace) -> int:
         )
         return 1
     return 0
-
-

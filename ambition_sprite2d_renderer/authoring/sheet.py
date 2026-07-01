@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import yaml
 from PIL import Image, ImageColor, ImageDraw
@@ -29,9 +29,7 @@ def _measure_body_extent(frame: Image.Image) -> Dict[str, Any] | None:
     return measure_body_metrics(frame)
 
 
-def _apply_body_inset(
-    bbox: Dict[str, int], inset: Dict[str, float]
-) -> Dict[str, int]:
+def _apply_body_inset(bbox: Dict[str, int], inset: Dict[str, float]) -> Dict[str, int]:
     """Shrink a pixel bbox by per-edge fractions of its own size.
 
     ``inset`` keys (all optional, default 0): ``left``/``right`` as a fraction
@@ -90,9 +88,9 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
     # the frame width, so a bigger canvas = a bigger-drawn, higher-res
     # character). Display size in game is collision-driven and aspect-only, so
     # this only sharpens — it never changes how big the sprite appears.
-    render_scale = max(1, int(getattr(job.render, "render_scale", 1)))
-    src_fw = job.render.frame_width * render_scale
-    src_fh = job.render.frame_height * render_scale
+    render_scale = max(1.0 / 64.0, float(getattr(job.render, "render_scale", 1.0)))
+    src_fw = max(1, round(job.render.frame_width * render_scale))
+    src_fh = max(1, round(job.render.frame_height * render_scale))
     label_w = max(0, job.render.label_width)
     border = max(0, job.render.border)
     max_frames = max(animations[a]["frames"] for a in selected)
@@ -123,7 +121,7 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
 
     crop_padding = max(
         0, int(getattr(job.render, "crop_padding", _DEFAULT_CROP_PADDING))
-    ) * render_scale
+    ) * max(1, round(render_scale))
     if not getattr(job.render, "crop", True):
         crop_min_x, crop_min_y = 0, 0
         crop_max_x, crop_max_y = src_fw, src_fh
@@ -295,7 +293,10 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
                         "duration_ms": info["duration_ms"],
                     }
                 )
-            manifest["animations"][animation] = {"frames": recs, "duration_ms": info["duration_ms"]}
+            manifest["animations"][animation] = {
+                "frames": recs,
+                "duration_ms": info["duration_ms"],
+            }
     manifest["pages"] = num_pages
     metrics = (
         _measure_body_extent(body_metric_frame)
