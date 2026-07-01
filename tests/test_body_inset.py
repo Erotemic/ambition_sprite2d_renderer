@@ -1,40 +1,38 @@
-"""Tests for the adapter-authored body-box inset.
+"""Tests for the generator-authored body-box inset.
 
-The robot adapter shrinks the measured body to half its width (25% off each
-side) and 80% of its height (20% off the top), so every robot-adapter character
-— the player and the robot enemies/variants — gets a tighter gameplay body than
-its full rendered silhouette.
+The robot generator shrinks the measured body to half its width (25% off each
+side) and 80% of its height (20% off the top), so every robot character — the
+player and the robot enemies/variants — gets a tighter gameplay body than its
+full rendered silhouette.
 """
 from __future__ import annotations
 
-from ambition_sprite2d_renderer.authoring.adapters import (
-    BaseAdapter,
-    RobotAdapter,
-    get_adapter,
-)
+from ambition_sprite2d_renderer.authoring.generator import CharacterGenerator
+from ambition_sprite2d_renderer.authoring.generators import get_generator
 from ambition_sprite2d_renderer.authoring.sheet import _apply_body_inset
+from ambition_sprite2d_renderer.targets.characters.robot_side import SideRobotGenerator
 
 
-def test_base_adapter_has_no_inset():
-    # Non-robot adapters keep the raw measured alpha box.
-    assert BaseAdapter().body_inset() is None
+def test_base_generator_has_no_inset():
+    # Generators without an authored inset keep the raw measured alpha box.
+    assert CharacterGenerator().body_inset() is None
 
 
-def test_robot_adapter_inset_is_half_width_top_trim():
-    assert RobotAdapter().body_inset() == {
+def test_robot_inset_is_half_width_top_trim():
+    assert SideRobotGenerator().body_inset() == {
         "left": 0.25,
         "right": 0.25,
         "top": 0.20,
         "bottom": 0.0,
     }
     # The shared registry instance the renderer actually uses.
-    assert get_adapter("robot").body_inset() == RobotAdapter().body_inset()
+    assert get_generator("robot").body_inset() == SideRobotGenerator().body_inset()
 
 
 def test_apply_inset_halves_width_and_trims_top():
     # The player_robot idle box measured today.
     box = {"x": 73, "y": 38, "w": 117, "h": 165}
-    out = _apply_body_inset(box, RobotAdapter().body_inset())
+    out = _apply_body_inset(box, SideRobotGenerator().body_inset())
     assert out == {"x": 102, "y": 71, "w": 58, "h": 132}
     # Width is half, height is 80%; the bottom edge is unchanged (no feet drift).
     assert out["w"] == round(box["w"] * 0.5)

@@ -19,7 +19,7 @@ from typing import Iterable, List, Optional, Tuple
 
 from PIL import Image, ImageDraw
 
-from .adapters import get_adapter
+from .generators import get_generator
 from ..registry import CharacterJob
 from .rendering import load_font
 from ..registry import Target
@@ -41,9 +41,9 @@ def render_canonical(job: CharacterJob) -> Image.Image:
     has shipped this name for a while). New code should construct an
     `AdapterTarget` and call ``target.render_canonical(out_dir)``.
     """
-    adapter = get_adapter(job.target)
-    spec = adapter.sample_spec(job)
-    return adapter.render_canonical(spec, job)
+    generator = get_generator(job.target)
+    spec = generator.sample_spec(job)
+    return generator.render_canonical(spec, job)
 
 
 def _autocrop_transparent(img: Image.Image, pad: int = 4) -> Image.Image:

@@ -21,7 +21,13 @@ import math
 from dataclasses import asdict, dataclass
 
 from ...authoring.actor_contract import write_actor_contract_for_tackon
-from ...authoring.animation_vocab import DEFAULT_ADVANCED_TIMINGS
+from ...authoring.animation_vocab import (
+    DEFAULT_ADVANCED_TIMINGS,
+    FULL_PLAYER_ANIMATION_ORDER,
+    ordered_subset,
+)
+from ...authoring.generator import CharacterGenerator
+from ...registry import CharacterJob
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -413,7 +419,44 @@ def _dust(
         draw.ellipse(_box(x - r, y - r, x + r, y + r), fill=_rgba("9f937f", alpha))
 
 
-def render_frame(animation: str, frame_index: int, frame_count: int) -> Image.Image:
+class SandbagGenerator(CharacterGenerator):
+    """The training-dummy target. Unlike the procedural characters it has no
+    seed-varied spec — every field is fixed — so it renders straight from the
+    module-level frame painter below."""
+
+    target = "sandbag"
+
+    def animations(self) -> Dict[str, Dict[str, int]]:
+        return ordered_subset(ADAPTER_ANIMATIONS, FULL_PLAYER_ANIMATION_ORDER)
+
+    def build_spec(self, job: CharacterJob) -> SandbagSpec:
+        return SandbagSpec(
+            seed=job.seed,
+            archetype=job.archetype,
+            variant=str(job.variant or "classic"),
+        )
+
+    def spec_dict(self, spec: SandbagSpec) -> Dict[str, object]:
+        return spec.to_dict()
+
+    def render_frame(
+        self,
+        spec: SandbagSpec,
+        animation: str,
+        frame_index: int,
+        size: Tuple[int, int],
+        job: CharacterJob,
+    ) -> Image.Image:
+        anim = self.animations()[animation]
+        frame = render_sandbag_frame(
+            animation, frame_index % anim["frames"], anim["frames"]
+        )
+        if frame.size != size:
+            frame = frame.resize(size, Image.Resampling.LANCZOS)
+        return frame
+
+
+def render_sandbag_frame(animation: str, frame_index: int, frame_count: int) -> Image.Image:
     canvas = Image.new("RGBA", (FRAME_W * SCALE, FRAME_H * SCALE), (0, 0, 0, 0))
     draw = ImageDraw.Draw(canvas, "RGBA")
 
@@ -1009,7 +1052,7 @@ def build_sheet(
         draw.text((8, y + 28), label, fill=(186, 189, 214, 255), font=small)
         frame_records = []
         for frame_index in range(frame_count):
-            frame = render_frame(source_name, frame_index % frame_count, frame_count)
+            frame = render_sandbag_frame(source_name, frame_index % frame_count, frame_count)
             x = LABEL_W + frame_index * FRAME_W
             sheet.alpha_composite(frame, (x, y))
             if first_frame is None and row_name == "idle" and frame_index == 0:

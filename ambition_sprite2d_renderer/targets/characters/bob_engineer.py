@@ -41,6 +41,9 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+
+from ...authoring.generator import CharacterGenerator
+from ...registry import CharacterJob
 from enum import Enum
 from typing import Dict, Optional, Tuple
 
@@ -177,8 +180,11 @@ class BobPose:
     hold_keys: bool = True
 
 
-class BobEngineerGenerator:
+class BobEngineerGenerator(CharacterGenerator):
     """Bespoke geometry for Bob with three view modes."""
+
+    target = "bob_engineer"
+    applies_job_name = True
 
     name = "bob_engineer"
 
@@ -191,7 +197,28 @@ class BobEngineerGenerator:
         "idle_side": {"frames": 6, "duration_ms": 140},
     }
 
-    def sample_spec(self, seed: int, archetype: str = "bob") -> BobSpec:
+    def render_frame(
+        self,
+        spec: BobSpec,
+        animation: str,
+        frame_index: int,
+        size: Tuple[int, int],
+        job: CharacterJob,
+    ) -> Image.Image:
+        anim = self.animations()[animation]
+        return self.render_animation_frame(
+            spec,
+            animation,
+            frame_index % anim["frames"],
+            anim["frames"],
+            size,
+            background=parse_background(job.render.background),
+            supersample=job.render.supersample,
+            downsample=job.render.downsample,
+        )
+
+    def build_spec(self, job: CharacterJob) -> BobSpec:
+        seed, archetype = job.seed, job.archetype
         if archetype != "bob":
             raise KeyError(
                 f"bob_engineer target only ships 'bob' archetype; got {archetype!r}. "

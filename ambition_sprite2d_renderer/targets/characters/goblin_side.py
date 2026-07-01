@@ -21,7 +21,9 @@ from PIL import Image, ImageColor, ImageDraw
 from ambition_sprite2d_renderer.core.draw import rgba, with_alpha, bbox_from_center as _bbox
 
 from ...authoring.common_draw import RESAMPLING, draw_capsule, draw_rotated_ellipse, draw_rotated_rounded_rect
+from ...authoring.generator import CharacterGenerator
 from ...authoring.rig import add, clamp, ease_in_out_sine, ease_out_cubic, lerp, smoothstep, vec
+from ...registry import CharacterJob
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -94,10 +96,11 @@ class GoblinPose:
     dead: bool = False
 
 
-class SideGoblinGenerator:
+class SideGoblinGenerator(CharacterGenerator):
     name = "goblin"
+    target = "goblin"
 
-    SPRITESHEET_ANIMATIONS: Dict[str, Dict[str, int]] = {
+    ANIMATIONS: Dict[str, Dict[str, int]] = {
         "idle": {"frames": 8, "duration_ms": 120},
         "walk": {"frames": 8, "duration_ms": 95},
         "run": {"frames": 8, "duration_ms": 75},
@@ -195,7 +198,8 @@ class SideGoblinGenerator:
         },
     }
 
-    def sample_spec(self, seed: int, archetype: str = "default", held_item: Optional[str] = None) -> GoblinSpec:
+    def build_spec(self, job: CharacterJob) -> GoblinSpec:
+        seed, archetype, held_item = job.seed, job.archetype, job.held_item
         rng = random.Random(seed)
         archetype_key = str(archetype or "default").lower()
         palette_name = "classic"
@@ -845,3 +849,23 @@ class SideGoblinGenerator:
         high = self._render_highres(spec, animation, frame_index, frame_count, size, background, max(1, int(supersample)))
         resample = RESAMPLING.NEAREST if downsample == "nearest" else RESAMPLING.LANCZOS
         return high.resize(size, resample)
+
+    def render_frame(
+        self,
+        spec: GoblinSpec,
+        animation: str,
+        frame_index: int,
+        size: Tuple[int, int],
+        job: CharacterJob,
+    ) -> Image.Image:
+        anim = self.animations()[animation]
+        return self.render_animation_frame(
+            spec,
+            animation,
+            frame_index % anim["frames"],
+            anim["frames"],
+            size,
+            background=parse_background(job.render.background),
+            supersample=job.render.supersample,
+            downsample=job.render.downsample,
+        )

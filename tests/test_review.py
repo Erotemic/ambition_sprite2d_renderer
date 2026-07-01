@@ -5,7 +5,7 @@ pytestmark = pytest.mark.slow_render
 
 from pathlib import Path
 
-from ambition_sprite2d_renderer.authoring.adapters import get_adapter
+from ambition_sprite2d_renderer.authoring.generators import get_generator
 from ambition_sprite2d_renderer.cli import draw_review
 from ambition_sprite2d_renderer.registry import CharacterJob
 
@@ -48,7 +48,7 @@ def test_toon_target_supports_overrides(tmp_path):
             },
         }
     )
-    adapter = get_adapter(job.target)
+    adapter = get_generator(job.target)
     spec = adapter.sample_spec(job)
     assert spec.name == "Override Tester"
     assert spec.torso_w == 25.0
@@ -62,7 +62,7 @@ def test_toon_target_supports_overrides(tmp_path):
 
 def test_absurd_general_has_shouting_trope_spec(tmp_path):
     job = CharacterJob.load(REVIEW_DIR / "absurd_general.yaml")
-    adapter = get_adapter(job.target)
+    adapter = get_generator(job.target)
     spec = adapter.sample_spec(job)
     assert spec.archetype == "absurd_general"
     assert spec.outfit == "general_uniform"
@@ -77,7 +77,7 @@ def test_absurd_general_has_shouting_trope_spec(tmp_path):
 
 
 def test_oiler_and_erdish_review_specs_render(tmp_path):
-    adapter = get_adapter("toon")
+    adapter = get_generator("toon")
     # Source of truth: the `oiler` / `erdish` entries in
     # ToonSideGenerator.PRESETS. The Oiler preset deliberately uses
     # `scholar_queue` (powdered-wig silhouette) so the silhouette reads

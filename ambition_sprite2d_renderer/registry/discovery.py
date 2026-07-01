@@ -381,14 +381,14 @@ class AdapterTarget:
         )
 
     def render_canonical(self, out_dir: Path, **opts) -> Path:
-        from ..authoring.adapters import get_adapter
+        from ..authoring.generators import get_generator
 
-        del opts  # adapter pipeline ignores tack-on **opts
+        del opts  # generator pipeline ignores tack-on **opts
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
-        adapter = get_adapter(self._job.target)
-        spec = adapter.sample_spec(self._job)
-        img = adapter.render_canonical(spec, self._job)
+        generator = get_generator(self._job.target)
+        spec = generator.sample_spec(self._job)
+        img = generator.render_canonical(spec, self._job)
         if img.mode != "RGBA":
             img = img.convert("RGBA")
         out = out_dir / f"{self.name}_canonical_transparent.png"

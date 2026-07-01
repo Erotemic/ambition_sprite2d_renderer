@@ -4,7 +4,7 @@ import pytest
 from PIL import Image, ImageChops
 import yaml
 
-from ambition_sprite2d_renderer.authoring.adapters import get_adapter
+from ambition_sprite2d_renderer.authoring.generators import get_generator
 from ambition_sprite2d_renderer.authoring.animation_vocab import (
     ADVANCED_PLAYER_ANIMATION_ORDER,
     EXTENDED_PLAYER_ANIMATION_ORDER,
@@ -62,7 +62,7 @@ def test_render_default_assets(tmp_path):
 
 def test_animation_sets_include_blink_parts_and_dash():
     for target in ["robot", "goblin"]:
-        adapter = get_adapter(target)
+        adapter = get_generator(target)
         assert "blink_out" in adapter.animations()
         assert "blink_in" in adapter.animations()
         assert "dash" in adapter.animations()
@@ -72,7 +72,7 @@ def test_animation_sets_include_blink_parts_and_dash():
 def test_death_frames_keep_visible_mass_and_anchor():
     for cfg in ["robot.yaml", "goblin.yaml", "boss.yaml"]:
         job = CharacterJob.load(Path(str(CONFIGS)) / cfg)
-        adapter = get_adapter(job.target)
+        adapter = get_generator(job.target)
         spec = adapter.sample_spec(job)
         info = adapter.animations()["death"]
         frames = [
@@ -92,9 +92,9 @@ def test_death_frames_keep_visible_mass_and_anchor():
 
 def test_blink_parts_are_teleport_not_eyelid_blink():
     for target in ["robot", "goblin"]:
-        adapter = get_adapter(target)
+        adapter = get_generator(target)
         adapter.sample_spec(CharacterJob.load(Path(str(CONFIGS)) / f"{target}.yaml"))
-        generator = adapter.generator
+        generator = adapter
         for name in ["blink_out", "blink_in"]:
             info = adapter.animations()[name]
             for idx in range(info["frames"]):
@@ -191,7 +191,7 @@ def test_tile_sprites_match_authored_dimensions_and_skip_crop(tmp_path):
 
 
 def test_boss_animation_set_matches_rust_boss_attack_kind():
-    adapter = get_adapter("boss")
+    adapter = get_generator("boss")
     keys = set(adapter.animations())
     expected = {
         "rest",
@@ -211,7 +211,7 @@ def test_boss_animation_set_matches_rust_boss_attack_kind():
 @pytest.mark.slow_render
 def test_boss_attack_rows_render_non_empty():
     job = CharacterJob.load(CONFIGS / "boss.yaml")
-    adapter = get_adapter("boss")
+    adapter = get_generator("boss")
     spec = adapter.sample_spec(job)
     for name in ["rest", "floor_slam", "side_sweep", "spike_halo", "dash_echo"]:
         info = adapter.animations()[name]
@@ -254,7 +254,7 @@ def test_sandbag_adapter_participates_in_character_pipeline(tmp_path):
     # dims). Trim/packing stays ON (the production default for character
     # adapters) — the sheet is now tight packed pages, not the old 11×128 grid.
     job.render.render_scale = 1
-    adapter = get_adapter("sandbag")
+    adapter = get_generator("sandbag")
     animations = adapter.animations()
     for name in [
         "idle",
@@ -288,7 +288,7 @@ def test_sandbag_adapter_participates_in_character_pipeline(tmp_path):
 @pytest.mark.slow_render
 def test_extended_player_review_rows_render_non_empty(tmp_path):
     job = CharacterJob.load(REVIEW_CONFIGS / "player_extended.yaml")
-    adapter = get_adapter(job.target)
+    adapter = get_generator(job.target)
     spec = adapter.sample_spec(job)
     for name in EXTENDED_PLAYER_ANIMATION_ORDER + ADVANCED_PLAYER_ANIMATION_ORDER:
         info = adapter.animations()[name]
@@ -331,7 +331,7 @@ def test_review_configs_do_not_overwrite_variants(tmp_path):
 @pytest.mark.slow_render
 def test_sandbag_full_review_uses_shared_animation_vocabulary(tmp_path):
     job = CharacterJob.load(REVIEW_CONFIGS / "sandbag_full_review.yaml")
-    adapter = get_adapter(job.target)
+    adapter = get_generator(job.target)
     missing = [name for name in job.animations if name not in adapter.animations()]
     assert missing == []
     for name in [
@@ -420,7 +420,7 @@ def test_review_npc_variants_have_distinct_specs_and_render(tmp_path):
     fingerprints = set()
     for name in samples:
         job = CharacterJob.load(REVIEW_CONFIGS / name)
-        adapter = get_adapter(job.target)
+        adapter = get_generator(job.target)
         spec = adapter.sample_spec(job)
         data = adapter.spec_dict(spec)
         fingerprints.add(

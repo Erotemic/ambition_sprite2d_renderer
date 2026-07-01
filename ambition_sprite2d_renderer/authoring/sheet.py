@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Tuple
 import yaml
 from PIL import Image, ImageColor, ImageDraw
 
-from .adapters import get_adapter
+from .generators import get_generator
 from .actor_contract import write_actor_contract_for_adapter
 from ..registry import CharacterJob
 from ..registry.pack_groups import policy_for
@@ -36,7 +36,7 @@ def _apply_body_inset(bbox: Dict[str, int], inset: Dict[str, float]) -> Dict[str
     of width, ``top``/``bottom`` as a fraction of height. The origin moves in by
     the left/top trim; the result never has a non-positive dimension. Used to
     derive an authored gameplay body tighter than the measured alpha box — see
-    ``BaseAdapter.body_inset``."""
+    ``CharacterGenerator.body_inset``."""
     left = float(inset.get("left", 0.0))
     right = float(inset.get("right", 0.0))
     top = float(inset.get("top", 0.0))
@@ -74,9 +74,9 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
     records the original canvas size and crop offset for debugging or for
     runtime loaders that need the unpadded dimensions.
     """
-    adapter = get_adapter(job.target)
-    spec = adapter.sample_spec(job)
-    animations = adapter.animations()
+    generator = get_generator(job.target)
+    spec = generator.sample_spec(job)
+    animations = generator.animations()
     selected = [a for a in job.animations if a in animations]
     missing = [a for a in job.animations if a not in animations]
     if missing:
@@ -105,7 +105,7 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
         info = animations[animation]
         row_frames: List[Image.Image] = []
         for frame_index in range(info["frames"]):
-            frame = adapter.render_frame(
+            frame = generator.render_frame(
                 spec, animation, frame_index, (src_fw, src_fh), job
             )
             row_frames.append(frame)
@@ -146,7 +146,7 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
     #     page images only when it would exceed the GPU texture limit. Byte-
     #     identical to the pre-packer output for untrimmed targets.
     # Packing / trim policy is data-driven (see registry/pack_groups.py), keyed
-    # by the target. Adapter targets all render through the trim-aware
+    # by the target. Generator targets all render through the trim-aware
     # CharacterAnimator path, so the default policy packs them.
     policy = policy_for(job.target)
     max_dim = policy.max_dim
@@ -172,7 +172,7 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
         "frame_height": fh,
         "label_width": label_w,
         "border": border,
-        "spec": adapter.spec_dict(spec),
+        "spec": generator.spec_dict(spec),
         "crop": {
             "source_frame_width": src_fw,
             "source_frame_height": src_fh,
@@ -304,17 +304,17 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
         else None
     )
     if metrics is not None:
-        # Authored body-box inset (adapter-declared): trim the measured alpha
-        # box to the intended gameplay body so every character from this adapter
+        # Authored body-box inset (generator-declared): trim the measured alpha
+        # box to the intended gameplay body so every character from this generator
         # shares a tighter collision / hurt body than its full silhouette.
-        body_inset = adapter.body_inset()
+        body_inset = generator.body_inset()
         if body_inset:
             metrics["body_pixel_bbox"] = _apply_body_inset(
                 metrics["body_pixel_bbox"], body_inset
             )
         # Per-animation hurtbox: each animation's alpha-bbox in
         # cropped-frame coords (subtract the sheet crop offset).
-        # Per-animation hitbox: adapter-declared rects, also
+        # Per-animation hitbox: generator-declared rects, also
         # translated to cropped-frame coords. Together they give
         # the gameplay layer a clean per-animation
         # {hurtbox, hitbox} pair for each row in the sheet.
@@ -344,13 +344,13 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
                             entry["hurtbox"]["bbox"], body_inset
                         )
             anim_metrics[animation] = entry
-        # Adapter-declared per-animation hurtbox parts override
+        # Generator-declared per-animation hurtbox parts override
         # (head + body split for bosses, etc.). When present, the
         # parts REPLACE the auto-derived bbox above so the player's
         # attack registration only triggers on the central body —
         # not on cosmetic extensions like outstretched arms.
         try:
-            hurtboxes_by_anim = adapter.hurtbox_parts((src_fw, src_fh))
+            hurtboxes_by_anim = generator.hurtbox_parts((src_fw, src_fh))
         except Exception:
             hurtboxes_by_anim = {}
         for anim_name, hurtbox in (hurtboxes_by_anim or {}).items():
@@ -386,15 +386,15 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
             if anim_name not in anim_metrics:
                 anim_metrics[anim_name] = {}
             # Replace the auto-derived single-bbox hurtbox with the
-            # adapter-declared multi-rect parts. Drop the bbox so
+            # generator-declared multi-rect parts. Drop the bbox so
             # consumers (which prefer `parts` over `bbox`) get only
             # the authored shapes.
             anim_metrics[anim_name]["hurtbox"] = {"parts": cropped_parts}
 
-        # Adapter-declared per-animation hitboxes (attack damage
+        # Generator-declared per-animation hitboxes (attack damage
         # geometry). Translated source canvas → cropped frame.
         try:
-            hitboxes_by_anim = adapter.attack_hitboxes((src_fw, src_fh))
+            hitboxes_by_anim = generator.attack_hitboxes((src_fw, src_fh))
         except Exception:
             hitboxes_by_anim = {}
         for anim_name, hitbox in (hitboxes_by_anim or {}).items():

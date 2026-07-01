@@ -5,7 +5,7 @@ player mechanics. Tests reflect the current adapter vocabulary rather than the
 runtime row subset.
 """
 
-from ambition_sprite2d_renderer.authoring.adapters import get_adapter
+from ambition_sprite2d_renderer.authoring.generators import get_generator
 from ambition_sprite2d_renderer.authoring.animation_vocab import FULL_PLAYER_ANIMATION_ORDER
 
 
@@ -13,14 +13,13 @@ EXPECTED_ROBOT_ANIMS = list(FULL_PLAYER_ANIMATION_ORDER)
 
 
 def test_robot_animation_contract():
-    adapter = get_adapter("robot")
+    adapter = get_generator("robot")
     animations = adapter.animations()
     assert list(animations) == EXPECTED_ROBOT_ANIMS
 
 
 def test_robot_run_pose_is_side_scroller_friendly():
-    adapter = get_adapter("robot")
-    gen = adapter.generator
+    gen = get_generator("robot")
     pose = gen.pose_for_animation("run", 2, gen.ANIMATIONS["run"]["frames"])
     # Running leans into the facing direction with a strong stride.
     # `root_tilt` was renamed to `body_tilt` in a later refactor.

@@ -44,6 +44,9 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+
+from ...authoring.generator import CharacterGenerator
+from ...registry import CharacterJob
 from enum import Enum
 from typing import Dict, Optional, Tuple
 
@@ -192,8 +195,10 @@ class AlicePose:
     carry_notes: bool = True
 
 
-class AliceCryptographerGenerator:
+class AliceCryptographerGenerator(CharacterGenerator):
     name = "alice_cryptographer"
+    target = "alice_cryptographer"
+    applies_job_name = True
 
     ANIMATIONS: Dict[str, Dict[str, int]] = {
         "idle": {"frames": 6, "duration_ms": 140},
@@ -203,7 +208,28 @@ class AliceCryptographerGenerator:
         "idle_side": {"frames": 6, "duration_ms": 140},
     }
 
-    def sample_spec(self, seed: int, archetype: str = "alice") -> AliceSpec:
+    def render_frame(
+        self,
+        spec: AliceSpec,
+        animation: str,
+        frame_index: int,
+        size: Tuple[int, int],
+        job: CharacterJob,
+    ) -> Image.Image:
+        anim = self.animations()[animation]
+        return self.render_animation_frame(
+            spec,
+            animation,
+            frame_index % anim["frames"],
+            anim["frames"],
+            size,
+            background=parse_background(job.render.background),
+            supersample=job.render.supersample,
+            downsample=job.render.downsample,
+        )
+
+    def build_spec(self, job: CharacterJob) -> AliceSpec:
+        seed, archetype = job.seed, job.archetype
         if archetype != "alice":
             raise KeyError(
                 f"alice_cryptographer target only ships 'alice' archetype; got {archetype!r}."

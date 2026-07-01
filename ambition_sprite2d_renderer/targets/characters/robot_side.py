@@ -15,12 +15,14 @@ is drawn in front.
 
 import math
 import random
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from PIL import Image, ImageDraw
 from ambition_sprite2d_renderer.core.draw import bbox_from_center as _bbox
 
 from ...authoring.common_draw import RESAMPLING, draw_capsule, draw_rotated_rounded_rect
+from ...authoring.generator import CharacterGenerator
+from ...registry import CharacterJob
 from .robot25d import BotSpec, Pose, parse_background
 from ...authoring.animation_vocab import (
     DEFAULT_ADVANCED_TIMINGS,
@@ -52,7 +54,9 @@ def _paste_rotated_local(base: Image.Image, layer: Image.Image, center: Point, a
     base.alpha_composite(rotated, (int(center[0] - rotated.width / 2), int(center[1] - rotated.height / 2)))
 
 
-class SideRobotGenerator:
+class SideRobotGenerator(CharacterGenerator):
+    target = "robot"
+
     name = "robot"
 
     ANIMATIONS: Dict[str, Dict[str, int]] = {
@@ -107,7 +111,154 @@ class SideRobotGenerator:
         "shadow": _rgba("#000000", 38),
     }
 
-    def sample_spec(self, seed: int, archetype: str = "cute_scout") -> BotSpec:
+    def render_frame(
+        self,
+        spec: BotSpec,
+        animation: str,
+        frame_index: int,
+        size: Tuple[int, int],
+        job: CharacterJob,
+    ) -> Image.Image:
+        anim = self.animations()[animation]
+        return self.render_animation_frame(
+            spec,
+            animation,
+            frame_index % anim["frames"],
+            anim["frames"],
+            size,
+            background=parse_background(job.render.background),
+            supersample=job.render.supersample,
+            downsample=job.render.downsample,
+        )
+
+    def attack_hitboxes(self, size: Tuple[int, int]) -> Dict[str, Dict[str, Any]]:
+        """Per-attack hitboxes for the player's 3-frame continuous-sweep melee.
+
+        Every attack carries a coarse bbox (fallback) PLUS a directional convex
+        ``poly`` that surrounds its slash effect — narrow at the body, flaring
+        wide at the far end (the crescent's tip), via the ``cone`` helper. Active
+        across all three frames. Authored for the right-facing robot; the runtime
+        mirrors x by facing and reads the poly as a ``CombatVolume::Convex``.
+        Coords are source-canvas pixels (NOT frame-clamped, so they reach past
+        the sprite edge)."""
+        w, h = size
+        cx = w // 2
+        # Body anchor the swings originate from (chest-ish), source pixels.
+        body_cy = h * 0.47
+
+        def box(x: float, y: float, ww: float, hh: float) -> Dict[str, Any]:
+            # Active across all 3 frames of the continuous-sweep attack (the
+            # blade arcs through its hitbox the whole swing), not just frame 0.
+            return {"bbox": (int(x), int(y), int(ww), int(hh)), "active_frames": [0, 1, 2]}
+
+        def cone(ox, oy, dx, dy, length, near_w, far_w, tip=0.18):
+            """Slash-arc cone: NARROW (near_w) at the body-side point (ox,oy),
+            flaring to a wide FAN at the far end (far_w) with a forward tip — the
+            lasersword arc spreading at the end of the swing. `(dx,dy)` is the
+            CARDINAL swing direction (no diagonal tilt). Perpendicular half-
+            widths; 5-point convex hull. Authored for the right-facing robot
+            (runtime mirrors x by facing); may reach past the frame (unclamped)."""
+            plen = math.hypot(dx, dy) or 1.0
+            ux, uy = dx / plen, dy / plen
+            px, py = -uy, ux  # perpendicular
+            fx, fy = ox + ux * length, oy + uy * length
+            tx, ty = ox + ux * length * (1.0 + tip), oy + uy * length * (1.0 + tip)
+            return [
+                (ox + px * near_w, oy + py * near_w),  # near, one side
+                (fx + px * far_w, fy + py * far_w),    # far fan, one side
+                (tx, ty),                              # forward tip
+                (fx - px * far_w, fy - py * far_w),    # far fan, other side
+                (ox - px * near_w, oy - py * near_w),  # near, other side
+            ]
+
+        def poke(ox, oy, dx, dy, length, half_w):
+            """Straight narrow thrust (a down-tilt poke / stab) — a parallel-sided
+            jab in a CARDINAL direction, NOT a flaring cone."""
+            plen = math.hypot(dx, dy) or 1.0
+            ux, uy = dx / plen, dy / plen
+            px, py = -uy, ux
+            fx, fy = ox + ux * length, oy + uy * length
+            return [
+                (ox + px * half_w, oy + py * half_w),
+                (fx + px * half_w, fy + py * half_w),
+                (fx - px * half_w, fy - py * half_w),
+                (ox - px * half_w, oy - py * half_w),
+            ]
+
+        def ring(ox, oy, rx, ry):
+            """Hexagonal hull around (ox,oy) — for the aerial-neutral spin that
+            sweeps all the way around the body."""
+            return [
+                (ox + rx, oy),
+                (ox + rx * 0.5, oy - ry * 0.87),
+                (ox - rx * 0.5, oy - ry * 0.87),
+                (ox - rx, oy),
+                (ox - rx * 0.5, oy + ry * 0.87),
+                (ox + rx * 0.5, oy + ry * 0.87),
+            ]
+
+        def shaped(b, poly):
+            b["poly"] = poly
+            return b
+
+        # Each attack carries the coarse bbox (fallback) PLUS a convex `poly`
+        # surrounding its slash effect. Arcs are CONES that flare into a fan at
+        # the tip; the down-tilt is a straight POKE. All directions are CARDINAL
+        # (forward = +x, up = -y, down = +y) — no diagonal tilt.
+        return {
+            # Forehand slash: forward cone, flaring tall into a fan at the tip to
+            # cover the whole arc.
+            "attack_side": shaped(
+                box(cx + w * 0.26, h * 0.12, w * 0.60, h * 0.72),
+                cone(cx - w * 0.06, body_cy, 1.0, 0.0, w * 1.34, h * 0.22, h * 0.62),
+            ),
+            # Up-tilt slash: straight overhead cone (cardinal up).
+            "attack_up": shaped(
+                box(cx - w * 0.12, -h * 0.08, w * 0.58, h * 0.62),
+                cone(cx, body_cy - h * 0.04, 0.0, -1.0, h * 1.0, w * 0.20, w * 0.54),
+            ),
+            # Aerial up: straight overhead cone.
+            "air_up": shaped(
+                box(cx - w * 0.22, -h * 0.10, w * 0.55, h * 0.62),
+                cone(cx, body_cy - h * 0.04, 0.0, -1.0, h * 1.0, w * 0.18, w * 0.48),
+            ),
+            # Down-tilt: a straight forward-low POKE (jab), not a cone.
+            "attack_down": shaped(
+                box(cx + w * 0.16, h * 0.50, w * 0.58, h * 0.46),
+                poke(cx, body_cy + h * 0.16, 1.0, 0.0, w * 1.04, h * 0.13),
+            ),
+            # Aerial down: straight-down cone.
+            "air_down": shaped(
+                box(cx - w * 0.28, h * 0.52, w * 0.62, h * 0.58),
+                cone(cx, body_cy + h * 0.04, 0.0, 1.0, h * 1.0, w * 0.18, w * 0.48),
+            ),
+            # Aerial forward: straight forward cone.
+            "air_forward": shaped(
+                box(cx + w * 0.22, h * 0.22, w * 0.60, h * 0.58),
+                cone(cx - w * 0.02, body_cy, 1.0, 0.0, w * 1.22, h * 0.20, h * 0.56),
+            ),
+            # Aerial back: straight BACKWARD cone (left of centre).
+            "air_back": shaped(
+                box(cx - w * 0.72, h * 0.22, w * 0.62, h * 0.58),
+                cone(cx + w * 0.02, body_cy, -1.0, 0.0, w * 1.12, h * 0.20, h * 0.52),
+            ),
+            # Aerial neutral: a wide spin all the way around the body.
+            "air_neutral": shaped(
+                box(cx - w * 0.42, h * 0.18, w * 0.92, h * 0.68),
+                ring(cx, body_cy, w * 0.78, h * 0.62),
+            ),
+        }
+
+    def body_inset(self) -> Dict[str, float]:
+        """Tighten the robot's gameplay body to half the visible width (25% off
+        each side) and trim the top 20%. The rendered art keeps its full
+        silhouette (antenna, lean, arm-swing); only the collision / hurt body
+        shrinks. Shared by every robot character — the player and the robot
+        enemies + variants all build from this generator."""
+        return {"left": 0.25, "right": 0.25, "top": 0.20, "bottom": 0.0}
+
+    def build_spec(self, job: CharacterJob) -> BotSpec:
+        seed, archetype = job.seed, job.archetype
         rng = random.Random(seed)
         scale = 1.0
         key = str(archetype or "").lower()

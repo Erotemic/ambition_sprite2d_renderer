@@ -26,6 +26,8 @@ from ambition_sprite2d_renderer.core.draw import rgba, with_alpha, bbox_from_cen
 
 from ...authoring.common_draw import RESAMPLING, draw_capsule, draw_rotated_ellipse, draw_rotated_rounded_rect
 from ...authoring.rig import add, clamp, ease_in_out_sine, ease_out_cubic, smoothstep, vec
+from ...authoring.generator import CharacterGenerator
+from ...registry import CharacterJob
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -150,7 +152,10 @@ from ._toon_palettes import PALETTES as _TOON_PALETTES
 from ._toon_presets import PRESETS as _TOON_PRESETS
 
 
-class ToonSideGenerator:
+class ToonSideGenerator(CharacterGenerator):
+    target = "toon"
+    applies_job_name = True
+
     PALETTES = _TOON_PALETTES
     PRESETS = _TOON_PRESETS
 
@@ -173,7 +178,28 @@ class ToonSideGenerator:
 
 
 
-    def sample_spec(self, seed: int, archetype: str = "general_hero") -> ToonSpec:
+    def render_frame(
+        self,
+        spec: ToonSpec,
+        animation: str,
+        frame_index: int,
+        size: Tuple[int, int],
+        job: CharacterJob,
+    ) -> Image.Image:
+        anim = self.animations()[animation]
+        return self.render_animation_frame(
+            spec,
+            animation,
+            frame_index % anim["frames"],
+            anim["frames"],
+            size,
+            background=parse_background(job.render.background),
+            supersample=job.render.supersample,
+            downsample=job.render.downsample,
+        )
+
+    def build_spec(self, job: CharacterJob) -> ToonSpec:
+        seed, archetype = job.seed, job.archetype
         try:
             preset = dict(self.PRESETS[archetype])
         except KeyError as ex:

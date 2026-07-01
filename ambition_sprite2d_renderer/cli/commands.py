@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 from typing import List
 
-from ..authoring.adapters import TARGETS, get_adapter
+from ..authoring.generators import GENERATORS, get_generator
 from ..authoring.canonical import (
     draw_canonical_of,
     render_canonical,
@@ -383,11 +383,11 @@ def _cmd_ldtk_manifest(args: argparse.Namespace) -> int:
 
 def _cmd_list_targets(args: argparse.Namespace) -> int:
     print(
-        "# adapter rigs (driven by configs/*.yaml — renders via draw-character / draw-all):"
+        "# procedural generators (driven by configs/*.yaml — renders via draw-character / draw-all):"
     )
-    for target in sorted(TARGETS):
-        adapter = get_adapter(target)
-        print(f"  {target}: {', '.join(adapter.default_animations())}")
+    for target in sorted(GENERATORS):
+        generator = get_generator(target)
+        print(f"  {target}: {', '.join(generator.default_animations())}")
     print("# registered targets (unified — works with render/install/canonical):")
     by_category: dict[str, list[str]] = {cat: [] for cat in CATEGORIES}
     for name, tgt in _ALL_TARGETS.items():
@@ -426,9 +426,9 @@ def _cmd_spritesheet(args: argparse.Namespace) -> int:
 
 def _cmd_single(args: argparse.Namespace) -> int:
     job = CharacterJob.load(args.config)
-    adapter = get_adapter(job.target)
-    spec = adapter.sample_spec(job)
-    img = adapter.render_single(spec, args.animation, args.frame_index, job)
+    generator = get_generator(job.target)
+    spec = generator.sample_spec(job)
+    img = generator.render_single(spec, args.animation, args.frame_index, job)
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     img.save(output)

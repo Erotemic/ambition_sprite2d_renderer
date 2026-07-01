@@ -37,6 +37,9 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+
+from ...authoring.generator import CharacterGenerator
+from ...registry import CharacterJob
 from typing import Dict, Optional, Tuple
 
 from PIL import Image, ImageColor, ImageDraw
@@ -124,8 +127,11 @@ class TrentPose:
     blink: bool = False
 
 
-class TrentElderGenerator:
+class TrentElderGenerator(CharacterGenerator):
     """Bespoke geometry for Trent."""
+
+    target = "trent_elder"
+    applies_job_name = True
 
     name = "trent_elder"
 
@@ -136,7 +142,28 @@ class TrentElderGenerator:
         "interact": {"frames": 6, "duration_ms": 130},
     }
 
-    def sample_spec(self, seed: int, archetype: str = "trent") -> TrentSpec:
+    def render_frame(
+        self,
+        spec: TrentSpec,
+        animation: str,
+        frame_index: int,
+        size: Tuple[int, int],
+        job: CharacterJob,
+    ) -> Image.Image:
+        anim = self.animations()[animation]
+        return self.render_animation_frame(
+            spec,
+            animation,
+            frame_index % anim["frames"],
+            anim["frames"],
+            size,
+            background=parse_background(job.render.background),
+            supersample=job.render.supersample,
+            downsample=job.render.downsample,
+        )
+
+    def build_spec(self, job: CharacterJob) -> TrentSpec:
+        seed, archetype = job.seed, job.archetype
         if archetype != "trent":
             raise KeyError(
                 f"trent_elder target only ships 'trent' archetype; got {archetype!r}. "

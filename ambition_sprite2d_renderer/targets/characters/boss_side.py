@@ -18,7 +18,7 @@ Implementation notes:
 import math
 import random
 from dataclasses import asdict, dataclass
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from PIL import Image, ImageColor, ImageDraw
 from ambition_sprite2d_renderer.core.draw import rgba, with_alpha, bbox_from_center as _bbox
@@ -29,7 +29,9 @@ from ...authoring.common_draw import (
     draw_rotated_ellipse,
     draw_rotated_rounded_rect,
 )
+from ...authoring.generator import CharacterGenerator
 from ...authoring.rig import add, clamp, ease_in_out_sine, ease_out_cubic, lerp, smoothstep, vec
+from ...registry import CharacterJob
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -102,8 +104,9 @@ class ZetaPose:
     dead: bool = False
 
 
-class AISlopZetaGenerator:
+class AISlopZetaGenerator(CharacterGenerator):
     name = "boss"
+    target = "boss"
 
     ANIMATIONS: Dict[str, Dict[str, int]] = {
         # Rows named after ambition_engine::BossAttackKind where applicable.
@@ -134,7 +137,104 @@ class AISlopZetaGenerator:
         "shadow": rgba("#000000", 42),
     }
 
-    def sample_spec(self, seed: int, archetype: str = "ai_slop_zeta") -> ZetaSpec:
+    def canonical_pose(self) -> Tuple[str, int]:
+        return ("rest", 1)
+
+    def render_frame(
+        self,
+        spec: ZetaSpec,
+        animation: str,
+        frame_index: int,
+        size: Tuple[int, int],
+        job: CharacterJob,
+    ) -> Image.Image:
+        anim = self.animations()[animation]
+        return self.render_animation_frame(
+            spec,
+            animation,
+            frame_index % anim["frames"],
+            anim["frames"],
+            size,
+            background=parse_background(job.render.background),
+            supersample=job.render.supersample,
+            downsample=job.render.downsample,
+        )
+
+    def attack_hitboxes(self, size: Tuple[int, int]) -> Dict[str, Dict[str, Any]]:
+        """Per-attack hitbox shapes for the Gradient Sentinel boss, in source
+        canvas pixels (128×128 by default). Animation → attack: ``floor_slam`` →
+        FloorSlam, ``side_sweep`` → SideSweep, ``spike_halo`` → ring volley,
+        ``dash_echo`` → hazard lane. The renderer translates these to
+        cropped-frame coordinates."""
+        canvas_w, canvas_h = size
+        return {
+            # FloorSlam: ground-level slap centered below the body. Width 96 so
+            # the slam only damages players standing directly under / near the
+            # boss.
+            "floor_slam": {
+                "bbox": (16, 90, canvas_w - 32, 28),
+            },
+            # SideSweep: two arm hitboxes matching the visible arm reach
+            # (y≈46..82, inner edges at x≈28 / x≈100).
+            "side_sweep": {
+                "parts": [
+                    {"name": "left", "x": 0, "y": 46, "w": 30, "h": 38},
+                    {"name": "right", "x": canvas_w - 30, "y": 46, "w": 30, "h": 38},
+                ],
+            },
+            # SpikeHalo: a ring around the boss, approximated by four quadrant
+            # boxes inset from each edge so the absolute corners aren't damaging.
+            "spike_halo": {
+                "parts": [
+                    {"name": "top", "x": 8, "y": 0, "w": canvas_w - 16, "h": 36},
+                    {
+                        "name": "bottom",
+                        "x": 8,
+                        "y": canvas_h - 36,
+                        "w": canvas_w - 16,
+                        "h": 36,
+                    },
+                    {"name": "left", "x": 0, "y": 24, "w": 36, "h": canvas_h - 48},
+                    {
+                        "name": "right",
+                        "x": canvas_w - 36,
+                        "y": 24,
+                        "w": 36,
+                        "h": canvas_h - 48,
+                    },
+                ],
+            },
+            # DashEcho: an elongated horizontal lane tracking the dash, tightened
+            # vertically so the player can jump over it with reasonable timing.
+            "dash_echo": {
+                "bbox": (0, 56, canvas_w, 28),
+            },
+        }
+
+    def hurtbox_parts(self, size: Tuple[int, int]) -> Dict[str, Dict[str, Any]]:
+        """Split the auto-derived alpha-bbox hurtbox into head + body so the
+        player's attacks register on the central head/torso but NOT on the arms
+        (which extend far during ``side_sweep`` / ``floor_slam``). Coordinates
+        are source canvas pixels (128×128). ``hit`` reuses the rest pair so the
+        player can keep attacking the stunned boss; ``death`` skips parts."""
+        del size
+        head = {"name": "head", "x": 46, "y": 5, "w": 36, "h": 25}
+        body = {"name": "body", "x": 42, "y": 28, "w": 44, "h": 58}
+        per_anim_parts = [head, body]
+        return {
+            anim: {"parts": [dict(p) for p in per_anim_parts]}
+            for anim in (
+                "rest",
+                "floor_slam",
+                "side_sweep",
+                "spike_halo",
+                "dash_echo",
+                "hit",
+            )
+        }
+
+    def build_spec(self, job: CharacterJob) -> ZetaSpec:
+        seed, archetype = job.seed, job.archetype
         rng = random.Random(seed)
         return ZetaSpec(
             target=self.name,

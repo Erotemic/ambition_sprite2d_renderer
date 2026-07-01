@@ -25,6 +25,8 @@ from ambition_sprite2d_renderer.core.draw import rgba, with_alpha
 from ...authoring.animation_vocab import CORE_CHARACTER_ANIMATION_ORDER, DEFAULT_CORE_TIMINGS, ordered_subset
 from ...authoring.rig import add, clamp, vec
 from ...authoring.common_draw import RESAMPLING, draw_capsule, draw_rotated_ellipse, draw_rotated_rounded_rect
+from ...authoring.generator import CharacterGenerator
+from ...registry import CharacterJob
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -117,8 +119,9 @@ class NinjaPose:
     dead: bool = False
 
 
-class NinjaSideGenerator:
+class NinjaSideGenerator(CharacterGenerator):
     name = "ninja"
+    target = "ninja"
 
     ANIMATIONS: Dict[str, Dict[str, int]] = ordered_subset(
         {
@@ -219,7 +222,31 @@ class NinjaSideGenerator:
         },
     }
 
-    def sample_spec(self, seed: int = 0, archetype: str = "shadow_duelist") -> NinjaSpec:
+    def spec_dict(self, spec: NinjaSpec) -> Dict[str, object]:
+        return spec.to_dict()
+
+    def render_frame(
+        self,
+        spec: NinjaSpec,
+        animation: str,
+        frame_index: int,
+        size: Tuple[int, int],
+        job: CharacterJob,
+    ) -> Image.Image:
+        anim = self.animations()[animation]
+        return self.render_animation_frame(
+            spec,
+            animation,
+            frame_index % anim["frames"],
+            anim["frames"],
+            size,
+            background=parse_background(job.render.background),
+            supersample=job.render.supersample,
+            downsample=job.render.downsample,
+        )
+
+    def build_spec(self, job: CharacterJob) -> NinjaSpec:
+        seed, archetype = job.seed, job.archetype
         preset = dict(self.PRESETS.get(archetype, self.PRESETS["shadow_duelist"]))
         rng = random.Random(seed)
         # Tiny deterministic variation only in secondary details.  The main
