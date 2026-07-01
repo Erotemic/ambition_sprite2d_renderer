@@ -85,6 +85,13 @@ class CharacterGenerator:
             spec = replace(spec, name=job.name)
         return self._apply_overrides(spec, job)
 
+    def frames_for(self, job: CharacterJob):
+        """Bind this generator to a job and expose it as a ``FrameSource`` — the
+        uniform contract the sheet pipeline consumes. The spec is sampled once."""
+        from .frame_source import GeneratedFrameSource
+
+        return GeneratedFrameSource(self, job)
+
     def spec_dict(self, spec: Any) -> Dict[str, Any]:
         return dataclass_dict(spec)
 
