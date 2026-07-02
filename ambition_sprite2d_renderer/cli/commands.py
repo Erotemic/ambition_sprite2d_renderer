@@ -834,3 +834,43 @@ def _cmd_draw_runtime_npcs(args: argparse.Namespace) -> int:
         )
         return 1
     return 0
+
+
+def _cmd_ultrapack(args: argparse.Namespace) -> int:
+    """Pool every target's frames into shared uniform atlas pages at one quality
+    tier. Writes pages + catalog (runtime artifacts) to ``--out``; the labeled
+    page overlays + pack report land under ``out/diagnostics/`` only with
+    ``--debug-views``, so the published pack stays clean by default."""
+    from ..authoring.ultrapack import (
+        ultrapack,
+        ultrapack_rendered,
+        write_debug_views,
+        write_pack,
+    )
+
+    if args.from_rendered is not None:
+        pack = ultrapack_rendered(
+            Path(args.from_rendered),
+            scale=args.scale,
+            min_frame_px=args.min_frame_px,
+            page_size=args.page_size,
+        )
+    else:
+        pack = ultrapack(
+            list(_ALL_TARGETS.values()),
+            scale=args.scale,
+            min_frame_px=args.min_frame_px,
+            page_size=args.page_size,
+        )
+
+    written = write_pack(pack, args.out, name=args.name)
+    if args.debug_views:
+        written += write_debug_views(pack, args.out, name=args.name)
+    print(
+        f"ultrapack '{args.name}' @ scale {args.scale:g}: "
+        f"{len(pack.frames)} frames from "
+        f"{len({f.target for f in pack.frames})} targets -> "
+        f"{len(pack.pages)} pages ({pack.fill_fraction() * 100:.1f}% fill)"
+    )
+    print_paths(written)
+    return 0

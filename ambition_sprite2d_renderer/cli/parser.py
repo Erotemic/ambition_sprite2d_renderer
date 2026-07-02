@@ -58,6 +58,7 @@ from .commands import (
     _cmd_sheet,
     _cmd_single,
     _cmd_spritesheet,
+    _cmd_ultrapack,
 )
 
 
@@ -367,6 +368,61 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.set_defaults(func=_cmd_debug_hitboxes)
+
+    p = sub.add_parser(
+        "ultrapack",
+        help=(
+            "Pool every target's frames into shared, uniformly-sized atlas "
+            "pages at one quality tier. Writes pages + a catalog (runtime "
+            "artifacts only); diagnostics are opt-in via --debug-views."
+        ),
+    )
+    p.add_argument(
+        "--out",
+        type=Path,
+        required=True,
+        help="Output directory for the shared pages + catalog.",
+    )
+    p.add_argument(
+        "--from-rendered",
+        type=Path,
+        default=None,
+        metavar="DIR",
+        help=(
+            "Pool from already-published `*_spritesheet.yaml` sheets in DIR "
+            "instead of re-rendering every target (the efficient regen path). "
+            "Default: discover + render every registered target."
+        ),
+    )
+    p.add_argument(
+        "--scale",
+        type=float,
+        default=1.0,
+        help="Quality tier scale (1.0 authored, 0.5, 0.25, 0.0625 potato).",
+    )
+    p.add_argument(
+        "--min-frame-px",
+        type=int,
+        default=1,
+        help="Floor for each scaled frame's side (potato uses 8).",
+    )
+    p.add_argument(
+        "--page-size",
+        type=int,
+        default=2048,
+        help="Square atlas page size in pixels (clamped to the GPU max).",
+    )
+    p.add_argument(
+        "--name",
+        default="ultrapack",
+        help="Basename for the page PNGs + catalog JSON.",
+    )
+    p.add_argument(
+        "--debug-views",
+        action="store_true",
+        help="Also write labeled page overlays + a pack report under out/diagnostics/.",
+    )
+    p.set_defaults(func=_cmd_ultrapack)
 
     return parser
 
