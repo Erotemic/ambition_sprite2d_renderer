@@ -20,9 +20,19 @@ dependencies = [
   "rectpack>=0.2",
 ]
 
+[project.optional-dependencies]
+# The rig editor (`python -m ambition_sprite2d_renderer.gui`) and the
+# mockingbird part editor are the only Qt consumers; the render pipeline
+# never needs this.
+gui = ["PySide6>=6.6"]
+
 [project.scripts]
 ambition-sprite2d-renderer = "ambition_sprite2d_renderer.cli:main"
 ambition-mockingbird-boss = "ambition_sprite2d_renderer.targets.characters.mockingbird_boss.sprite_generator:cli"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
 addopts = "-ra"
@@ -33,4 +43,13 @@ pythonpath = ["."]
 include = ["ambition_sprite2d_renderer*"]
 
 [tool.setuptools.package-data]
-ambition_sprite2d_renderer = ["configs/**/*.yaml", "targets/characters/mockingbird_boss/*.yaml"]
+# NOTE: targets/characters/rigged/ is a DATA dir (auto-discovered *.rig.json),
+# not a package — it must never grow an __init__.py or it would shadow the
+# sibling rigged.py module. Ship its rig docs (and the data/ dir: rig
+# templates + pack_plan.yaml) via these globs.
+ambition_sprite2d_renderer = [
+  "configs/**/*.yaml",
+  "data/**/*",
+  "targets/characters/mockingbird_boss/*.yaml",
+  "targets/characters/rigged/*.rig.json",
+]

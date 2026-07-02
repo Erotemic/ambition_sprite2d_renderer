@@ -39,7 +39,10 @@ except Exception as ex:
 
 RGBA = Tuple[int, int, int, int]
 DATA_DIR = Path(__file__).resolve().parent
-TOOL_ROOT = DATA_DIR.parents[1]
+# targets/characters/mockingbird_boss -> up past targets/ and the package dir
+# to the tool checkout root, so the default render dir is the same
+# `<tool>/generated/<target>/` every other target uses.
+TOOL_ROOT = DATA_DIR.parents[3]
 TARGET_NAME = "mockingbird_boss"
 DEFAULT_SCENE = DATA_DIR / "mockingbird_boss_scene.yaml"
 OUTPUT_FILES = [

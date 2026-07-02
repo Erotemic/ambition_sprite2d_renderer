@@ -1,15 +1,22 @@
-# Iteration scratch: optimizer output, candidate sheets, diff images. Not committed.
+# Render outputs (regenerate with the CLI; never commit sheets/PNGs).
+generated/
+output/
+*.png
+
+# Differential-harness baselines + iteration scratch (see parity_harness.py).
+.parity-baseline/
 agent-scratch/
 
-# Generated sheets/diagnostics emitted next to experimental fitters.
-ambition_sprite2d_renderer/experimental/**/*.png
+# Per-sheet regen cache (regen_sprites.sh).
+.cache/
 
-generated/
-.parity-baseline/
+# Local Godot editor/runtime binaries.
 tpl/Godot_v*-stable_linux.x86_64
 
-# Local Godot editor/runtime binaries
-tpl/Godot_v*-stable_linux.x86_64
+# Python
+__pycache__/
+*.egg-info/
+.venv/
 
 # Local editor / IDE state
 .vscode/
@@ -22,36 +29,19 @@ tpl/Godot_v*-stable_linux.x86_64
 .DS_Store
 Thumbs.db
 
-# Logs and crash dumps
+# Logs, crash dumps, debug traces
 *.log
 *.dmp
+debug_traces/
 
 # Local env/config files
 .env
 .env.*
 *.local
 
+# Scratch dirs / backup artifacts
 tmp/
 temp/
-.cache/
-
-
-# Backup / patch artifacts
 *.bak
 *.orig
 *.rej
-**/*.rs.bk
-
-# Rust analyzer local project file
-rust-project.json
-
-debug_traces
-__pycache__
-*.png
-
-.venv/
-__pycache__/
-*.egg-info/
-
-generated
-output

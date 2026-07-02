@@ -42,7 +42,8 @@ RGBA = Tuple[int, int, int, int]
 
 TARGET_NAME = "gnu_ton_boss"
 DATA_DIR = Path(__file__).resolve().parent
-TOOL_ROOT = DATA_DIR.parents[2]
+# targets/characters/gnu_ton_boss -> the tool checkout root (display paths).
+TOOL_ROOT = DATA_DIR.parents[3]
 
 # Frame canvas — bumped from 512×384 → 768×576 for less in-game pixelation
 # at the boss's blown-up render scale. Design-space coordinates and anchor

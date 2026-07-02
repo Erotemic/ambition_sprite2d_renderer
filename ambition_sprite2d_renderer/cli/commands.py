@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import List
@@ -39,7 +40,13 @@ def package_dir() -> Path:
 
 
 def repo_root() -> Path:
-    # tools/ambition_sprite2d_renderer/ambition_sprite2d_renderer/cli.py -> repo root.
+    # <repo>/tools/ambition_sprite2d_renderer/ambition_sprite2d_renderer/cli/
+    # commands.py -> repo root. Only meaningful for a checkout inside the
+    # ambition repo (install/publish default destinations); AMBITION_REPO_ROOT
+    # overrides for standalone checkouts.
+    override = os.environ.get("AMBITION_REPO_ROOT")
+    if override:
+        return Path(override).resolve()
     return Path(__file__).resolve().parents[4]
 
 

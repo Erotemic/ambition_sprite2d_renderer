@@ -4,7 +4,9 @@ A multi-file character package: the boss ships a manifest + per-part
 frames assembled by :mod:`.sprite_generator`, with part-config YAML
 files alongside the renderer (`mockingbird_boss_parts.yaml`,
 `mockingbird_boss_scene.yaml`, `mockingbird_boss_legacy_parts.yaml`)
-and a Tk-based part editor (:mod:`.part_editor`) for tuning the rig.
+and a PySide6 part editor (:mod:`.part_editor`) for tuning the rig.
+Run the generator CLI with ``python -m
+ambition_sprite2d_renderer.targets.characters.mockingbird_boss``.
 
 The package layout exists so adding the next multi-file character is a
 copy-this-directory operation: drop ``targets/characters/<name>/`` with
@@ -56,9 +58,9 @@ def install(render_dir: str | Path, dest_root: str | Path) -> List[Path]:
             install_dir=install_dir,
         )
     )
-    # Optional actor-contract sidecar emitted by target_registry's post-render
-    # hook. Custom boss installers bypass the default copy helper, so carry it
-    # explicitly when present.
+    # Optional actor-contract sidecar emitted by registry/discovery's
+    # post-render hook. Custom boss installers bypass the default copy helper,
+    # so carry it explicitly when present.
     actor_src = render_dir / f"{TARGET_NAME}_actor.ron"
     if actor_src.exists():
         install_dir.mkdir(parents=True, exist_ok=True)
