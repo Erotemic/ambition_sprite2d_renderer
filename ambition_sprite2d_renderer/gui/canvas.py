@@ -5,6 +5,11 @@ Interactions:
 - wheel: zoom (about the cursor); middle-drag (or space-drag): pan
 - left-click near a joint: select that bone
 - drag a selected FK bone: rotate it — writes a key at the current frame
+- Alt+drag a bone two FK levels deep (a hand, a free foot): EDITOR-SIDE
+  limb IK — the drag places the bone's origin and writes pose keys for
+  its parent and grandparent (the document stays plain FK; the solver is
+  only an input device). The elbow/knee keeps the side it currently bends
+  toward.
 - Ctrl+drag any joint: move the bone's ATTACHMENT OFFSET (rig structure,
   not animation — edits ``bone.offset`` in parent-local space)
 - drag an IK foot: move its ankle target — writes ``<prefix>_x`` /
@@ -23,7 +28,7 @@ from PySide6.QtCore import QPoint, QPointF, Qt, Signal
 from PySide6.QtGui import QColor, QImage, QPainter, QPen
 from PySide6.QtWidgets import QWidget
 
-from ..authoring.skeleton import BoneWorld
+from ..authoring.skeleton import BoneWorld, two_bone_ik
 from .state import EditorState
 
 Point = Tuple[float, float]
@@ -48,8 +53,9 @@ class CanvasWidget(QWidget):
         self.show_bones = True
         self.onion_skin = False
         self._fitted = False
-        self._drag_mode: Optional[str] = None  # "rotate" | "foot" | "pan"
+        self._drag_mode: Optional[str] = None  # "rotate" | "foot" | "limb_ik" | "offset" | "pan"
         self._drag_bone: Optional[str] = None
+        self._ik_bend: float = 1.0
         self._pan_anchor = QPoint()
         self.setMinimumSize(360, 360)
         self.setMouseTracking(False)
@@ -178,6 +184,45 @@ class CanvasWidget(QWidget):
                     best, best_d = name, d
         return best
 
+    def _fk_chain(self, bone_name: str) -> Optional[Tuple[str, str]]:
+        """The two-bone FK chain ending at ``bone_name``'s origin, if any:
+        ``(grandparent, parent)`` — both segments real (length > 0) and not
+        already driven by a document IK leg."""
+        doc = self.state.doc
+        bone = doc.bone(bone_name)
+        if bone is None or doc.foot_leg_for_bone(bone_name) is not None:
+            return None
+        lo = doc.bone(bone.get("parent") or "")
+        if lo is None or float(lo.get("length", 0.0)) <= 0:
+            return None
+        up = doc.bone(lo.get("parent") or "")
+        if up is None or float(up.get("length", 0.0)) <= 0:
+            return None
+        return up["name"], lo["name"]
+
+    def _current_bend(self, chain: Tuple[str, str]) -> float:
+        """Bend sign that keeps the middle joint on its current side: solve
+        both ways for the current tip and pick the closer elbow/knee."""
+        try:
+            sk = self.state.doc.build_skeleton()
+            world, _ = self.state.doc.solve(self.state.clip_name, self.state.t())
+        except Exception:  # noqa: BLE001
+            return 1.0
+        up, lo = chain
+        root = world[up].origin
+        mid = world[lo].origin
+        tip = world[lo].tip
+        l1, l2 = sk.bones[up].length, sk.bones[lo].length
+        best, best_d = 1.0, float("inf")
+        for bend in (1.0, -1.0):
+            w1, _w2 = two_bone_ik(root, tip, l1, l2, bend=bend)
+            m = (root[0] + l1 * math.cos(math.radians(w1)),
+                 root[1] + l1 * math.sin(math.radians(w1)))
+            d = math.hypot(m[0] - mid[0], m[1] - mid[1])
+            if d < best_d:
+                best, best_d = bend, d
+        return best
+
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.MiddleButton:
             self._drag_mode = "pan"
@@ -198,6 +243,22 @@ class CanvasWidget(QWidget):
             self._drag_bone = hit
             self.state.push_undo()
             self.statusMessage.emit(f"moving {hit} attachment (Ctrl+drag)")
+            return
+        if event.modifiers() & Qt.KeyboardModifier.AltModifier:
+            chain = self._fk_chain(hit)
+            if chain is None:
+                self._drag_mode = None
+                self.statusMessage.emit(
+                    f"{hit} has no two-bone FK chain above it for Alt+drag IK"
+                )
+                return
+            self._drag_mode = "limb_ik"
+            self._drag_bone = hit
+            self._ik_bend = self._current_bend(chain)
+            self.state.push_undo()
+            self.statusMessage.emit(
+                f"placing {hit} via {chain[0]}+{chain[1]} IK (Alt+drag)"
+            )
             return
         leg = self.state.doc.foot_leg_for_bone(hit)
         if leg is not None:
@@ -222,11 +283,14 @@ class CanvasWidget(QWidget):
             self.pan += QPointF(delta.x(), delta.y())
             self.update()
             return
-        if self._drag_mode not in ("rotate", "foot", "offset") or self._drag_bone is None:
+        if self._drag_mode not in ("rotate", "foot", "offset", "limb_ik") or self._drag_bone is None:
             return
         fp = self.widget_to_frame(event.position())
         if self._drag_mode == "offset":
             self._drag_offset_to(fp)
+            return
+        if self._drag_mode == "limb_ik":
+            self._drag_limb_to(fp)
             return
         if self._drag_mode == "foot":
             leg = self.state.doc.foot_leg_for_bone(self._drag_bone)
@@ -253,6 +317,30 @@ class CanvasWidget(QWidget):
         # Normalize the written pose into (-180, 180] so keys stay sane.
         pose = (pose + 180.0) % 360.0 - 180.0
         self.state.write_key(self._drag_bone, round(pose, 1))
+
+    def _drag_limb_to(self, fp: Point) -> None:
+        """Editor-side two-bone IK: place the dragged bone's origin at ``fp``
+        by writing FK pose keys for its grandparent and parent."""
+        chain = self._fk_chain(self._drag_bone)
+        if chain is None:
+            return
+        try:
+            sk = self.state.doc.build_skeleton()
+            world, _ = self.state.doc.solve(self.state.clip_name, self.state.t())
+        except Exception:  # noqa: BLE001
+            return
+        up, lo = chain
+        root = world[up].origin
+        w1, w2 = two_bone_ik(
+            root, fp, sk.bones[up].length, sk.bones[lo].length, bend=self._ik_bend
+        )
+        parent = sk.bones[up].parent
+        parent_angle = world[parent].angle if parent else 0.0
+        pose_up = w1 - parent_angle - sk.bones[up].rest_angle
+        pose_lo = w2 - w1 - sk.bones[lo].rest_angle
+        for name, pose in ((up, pose_up), (lo, pose_lo)):
+            pose = (pose + 180.0) % 360.0 - 180.0
+            self.state.write_key(name, round(pose, 1))
 
     def _drag_offset_to(self, fp: Point) -> None:
         """Move the dragged bone's attachment so its origin lands at frame

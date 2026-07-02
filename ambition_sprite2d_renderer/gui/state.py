@@ -33,6 +33,7 @@ class EditorState(QObject):
         self.selected_bone: Optional[str] = None
         self.selected_part: Optional[int] = None  # index into doc.parts
         self.dirty: bool = False
+        self.pose_clipboard: Optional[dict] = None  # {channel: value}
         self._undo: List[str] = []
         self._redo: List[str] = []
 
@@ -153,3 +154,23 @@ class EditorState(QObject):
             keys.append([t, round(float(value), 3), ease])
             keys.sort(key=lambda k: float(k[0]))
         self.mark_changed()
+
+    # ---- Pose clipboard (copy a frame's full pose, paste as keys) -----------------
+
+    def copy_pose(self) -> int:
+        """Sample every driven channel at the current frame into the pose
+        clipboard. Returns the number of channels captured."""
+        self.pose_clipboard = {
+            name: round(v, 3) for name, v in self.doc.sample(self.clip_name, self.t()).items()
+        }
+        return len(self.pose_clipboard)
+
+    def paste_pose(self) -> int:
+        """Write the clipboard pose as keys at the current frame (any clip).
+        Returns the number of channels written; 0 if the clipboard is empty."""
+        if not self.pose_clipboard:
+            return 0
+        self.push_undo()
+        for name, value in self.pose_clipboard.items():
+            self.write_key(name, value)
+        return len(self.pose_clipboard)

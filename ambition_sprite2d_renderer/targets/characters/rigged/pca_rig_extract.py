@@ -27,11 +27,18 @@ Two things in the SVG are the durable contract (survive id churn and reshaping):
    from the wrist/ankle, which is orientation-agnostic.
 
 In this view the character faces +x; its **right** side is drawn last and so is
-*near* (in front), its **left** side is *far*. Re-run this whenever the SVG
-changes — the ``.rig.json`` is a generated artifact:
+*near* (in front), its **left** side is *far*.
+
+Ownership split: this extractor owns the rig document's GEOMETRY (bones, sprite
+parts, IK legs, frame, svg_source — everything derivable from the SVG); the
+document's ANIMATION (``clips``, plus ``features`` and any hand-added parts) is
+authored — in the rig editor GUI (``python -m ambition_sprite2d_renderer.gui``)
+or by hand — and survives a rebuild untouched. Re-run ``build`` whenever the
+SVG changes; it refreshes geometry in place:
 
     PY=.venv/bin/python
-    $PY .../pca_rig_extract.py build       # writes the rig into targets/.../rigged/
+    $PY .../pca_rig_extract.py build       # refresh geometry, keep authored clips
+    $PY .../pca_rig_extract.py build --fresh  # discard document, reseed clips
     $PY .../pca_rig_extract.py validate    # rest pose -> agent-scratch/pca_rig/
     $PY .../pca_rig_extract.py debug idle   # skeleton-on-art overlay -> agent-scratch/pca_rig/
 """
@@ -351,464 +358,6 @@ Z = {
 }
 
 
-def _clips(near_rx: float, far_rx: float) -> dict:
-    """Animation clips authored against the rig's bones + IK foot channels.
-
-    Channel conventions (see rigdoc): a bone name = pose angle in degrees on top
-    of its rest (screen CW-positive); ``root_x``/``root_y`` shift the whole body
-    from (center_x, ground_y); ``<side>_foot_x`` is the planted foot's world x
-    offset from center_x, ``_lift`` raises it, ``_pitch`` sets its angle. Legs
-    are posed by authoring foot trajectories; IK places the knees.
-
-    The rest pose already matches the drawn stance (arms hanging, feet planted),
-    so idle/fly only need to layer *subtle* motion on top — the figure breathes,
-    it doesn't flail."""
-    gait = (near_rx + far_rx) / 2.0  # feet converge under the body when walking
-    A = 9.0    # stride half-amplitude (world x)
-    H = 7.0    # foot swing lift
-
-    def foot_x(phase):  # planted forward -> back, swing back -> forward
-        c = [(0.0, gait + A), (0.5, gait - A), (1.0, gait + A)]
-        return {"keys": [[round((t + phase) % 1.0, 3), v, "sine"] for t, v in c]
-                if phase == 0 else
-                [[0.0, gait - A, "sine"], [0.5, gait + A, "sine"], [1.0, gait - A, "sine"]]}
-
-    def foot_lift(swing_mid):  # single lift bump centered on the swing midpoint
-        return {"keys": [[0.0, 0.0, "sine"], [round(swing_mid - 0.25, 3), 0.0, "sine"],
-                         [swing_mid, H, "sine"], [round(swing_mid + 0.25, 3), 0.0, "sine"],
-                         [1.0, 0.0, "sine"]]}
-
-    def const(**ch):  # a held single-frame pose
-        return {"loop": False, "frames": 1, "channels": {k: {"const": v} for k, v in ch.items()}}
-
-    return {
-        # Idle: a slow breath — chest rises (root lifts a hair), torso and head
-        # counter-sway, arms drift, weight settles. Two-beat asymmetry on the
-        # arms keeps it from looking like a metronome.
-        "idle": {"loop": True, "frames": 10, "duration_ms": 120, "channels": {
-            "root_y": {"expr": "-0.8*sin(tau*t)"},
-            "torso": {"expr": "1.6*sin(tau*t)"},
-            "head": {"expr": "-1.4*sin(tau*(t-0.12))"},
-            "near_arm_u": {"expr": "2.2*sin(tau*t)"},
-            "near_arm_l": {"expr": "4.0*sin(tau*(t-0.10))"},
-            "far_arm_u": {"expr": "-2.2*sin(tau*t)"},
-            "far_arm_l": {"expr": "-4.0*sin(tau*(t-0.10))"},
-        }},
-        # Contralateral walk: near foot forward when far foot is back; arms swing
-        # opposite their legs; body bobs twice per stride (lowest at each contact).
-        "walk": {"loop": True, "frames": 8, "duration_ms": 90, "channels": {
-            "near_foot_x": foot_x(0.0),
-            "far_foot_x": foot_x(0.5),
-            "near_foot_lift": foot_lift(0.75),
-            "far_foot_lift": foot_lift(0.25),
-            "root_y": {"expr": "-1.5*abs(sin(tau*t))"},
-            "torso": {"expr": "-2.5*sin(2*tau*t)"},
-            "near_arm_u": {"keys": [[0.0, 16, "sine"], [0.5, -16, "sine"], [1.0, 16, "sine"]]},
-            "far_arm_u": {"keys": [[0.0, -16, "sine"], [0.5, 16, "sine"], [1.0, -16, "sine"]]},
-            "near_arm_l": {"const": 8.0},
-            "far_arm_l": {"const": 8.0},
-        }},
-        # Crouch: hips drop and the feet tuck UNDER the body (the splayed idle
-        # stance would make the bent legs sprawl), so the knees fold compactly.
-        "crouch": const(root_y=13.0, torso=-7.0,
-                        near_foot_x=gait - 4.0, far_foot_x=gait + 4.0,
-                        near_arm_u=14.0, near_arm_l=22.0,
-                        far_arm_u=14.0, far_arm_l=22.0),
-        # Jab: quick straight lead (near) arm — wind back, then snap forward.
-        "jab": {"loop": False, "frames": 5, "duration_ms": 45, "channels": {
-            "torso": {"keys": [[0.0, 0, "out"], [0.3, 6, "out"], [0.5, -6, "out"], [1.0, 0]]},
-            "near_arm_u": {"keys": [[0.0, 10, "out"], [0.3, 30, "out"], [0.5, -82, "out"], [1.0, -78]]},
-            "near_arm_l": {"keys": [[0.0, 20, "out"], [0.3, 55, "out"], [0.5, -4, "out"], [1.0, 0]]},
-        }},
-        # Punch: heavier cross with the far arm + a hip/torso twist and lead step.
-        "punch": {"loop": False, "frames": 6, "duration_ms": 55, "channels": {
-            "torso": {"keys": [[0.0, 0, "out"], [0.35, 8, "out"], [0.6, -9, "out"], [1.0, -4]]},
-            "far_arm_u": {"keys": [[0.0, 18, "out"], [0.35, 38, "out"], [0.6, -86, "out"], [1.0, -82]]},
-            "far_arm_l": {"keys": [[0.0, 20, "out"], [0.35, 60, "out"], [0.6, -2, "out"], [1.0, 0]]},
-            "near_arm_u": {"keys": [[0.0, -6], [0.6, 26, "out"], [1.0, 22]]},
-            "near_arm_l": {"const": 30.0},
-        }},
-        # Block: both arms swing up into a cross-guard in front of the head/chest.
-        # (The far forearm mirrors the near, so its curl takes the opposite sign.)
-        "block": const(torso=-3.0, near_arm_u=-72.0, near_arm_l=80.0,
-                       far_arm_u=-72.0, far_arm_l=-80.0),
-        # Jump: anticipation crouch -> explosive extension (arms up) -> airborne tuck.
-        "jump": {"loop": False, "frames": 6, "duration_ms": 70, "channels": {
-            "root_y": {"keys": [[0.0, 14, "out"], [0.35, -8, "out"], [1.0, -4]]},
-            "torso": {"keys": [[0.0, -6], [0.35, 4], [1.0, 0]]},
-            "near_arm_u": {"keys": [[0.0, 12, "out"], [0.35, -120, "out"], [1.0, -110]]},
-            "far_arm_u": {"keys": [[0.0, 12, "out"], [0.35, -120, "out"], [1.0, -110]]},
-            "near_foot_lift": {"keys": [[0.0, 0], [0.35, 0], [0.6, 14, "out"], [1.0, 10]]},
-            "far_foot_lift": {"keys": [[0.0, 0], [0.35, 0], [0.6, 14, "out"], [1.0, 10]]},
-        }},
-        # Fly / hover: lifted off the ground, legs trailing, arms relaxed and
-        # spread symmetrically (mirrored far-side signs), slow torso/arm sway.
-        "fly": {"loop": True, "frames": 8, "duration_ms": 130, "channels": {
-            "root_y": {"const": -22.0},
-            "near_foot_lift": {"const": 22.0},
-            "far_foot_lift": {"const": 22.0},
-            "torso": {"expr": "3*sin(tau*t)"},
-            "near_arm_u": {"expr": "16+5*sin(tau*t)"},
-            "far_arm_u": {"expr": "16+5*sin(tau*t)"},
-            "near_arm_l": {"const": 20.0},
-            "far_arm_l": {"const": -20.0},
-        }},
-        # Special: kamehameha — charge with both hands cupped back at the hip,
-        # then thrust both arms forward (the glider volley fires on the thrust).
-        "special": {"loop": False, "frames": 10, "duration_ms": 70, "channels": {
-            "torso": {"keys": [[0.0, 10, "out"], [0.55, 12, "out"], [0.7, -8, "out"], [1.0, -4]]},
-            "near_arm_u": {"keys": [[0.0, 44, "out"], [0.55, 44, "out"], [0.7, -84, "out"], [1.0, -80]]},
-            "near_arm_l": {"keys": [[0.0, 78, "out"], [0.55, 78, "out"], [0.7, 2, "out"], [1.0, 0]]},
-            "far_arm_u": {"keys": [[0.0, 44, "out"], [0.55, 44, "out"], [0.7, -84, "out"], [1.0, -80]]},
-            "far_arm_l": {"keys": [[0.0, 78, "out"], [0.55, 78, "out"], [0.7, 2, "out"], [1.0, 0]]},
-        }},
-        # --- parity rows: these clip NAMES auto-bind to the player's full action
-        # vocabulary (see authoring/actor_contract.py): run→locomotion.run,
-        # slash→action.melee.primary, shoot→action.ranged.primary, hit→damage.hit,
-        # death→lifecycle.death, talk/interact→interaction.*, hover→locomotion.hover.
-        # Run: a committed sprint — long strides, deep forward lean, hard arm pump.
-        "run": {"loop": True, "frames": 8, "duration_ms": 70, "channels": {
-            "near_foot_x": {"keys": [[0.0, gait + 16, "sine"], [0.5, gait - 16, "sine"], [1.0, gait + 16, "sine"]]},
-            "far_foot_x": {"keys": [[0.0, gait - 16, "sine"], [0.5, gait + 16, "sine"], [1.0, gait - 16, "sine"]]},
-            "near_foot_lift": {"keys": [[0.0, 0, "sine"], [0.5, 0, "sine"], [0.75, 12, "sine"], [1.0, 0, "sine"]]},
-            "far_foot_lift": {"keys": [[0.0, 0, "sine"], [0.25, 12, "sine"], [0.5, 0, "sine"], [1.0, 0, "sine"]]},
-            "root_y": {"expr": "-2.4*abs(sin(tau*t))"},
-            "torso": {"const": 9.0},
-            "head": {"const": -5.0},
-            "near_arm_u": {"keys": [[0.0, 26, "sine"], [0.5, -26, "sine"], [1.0, 26, "sine"]]},
-            "far_arm_u": {"keys": [[0.0, -26, "sine"], [0.5, 26, "sine"], [1.0, -26, "sine"]]},
-            "near_arm_l": {"const": 30.0},
-            "far_arm_l": {"const": 30.0},
-        }},
-        # Slash (melee primary): cock the lead arm high-back, then a heavy
-        # down-and-forward sweep with a hip twist; hitbox fires mid-sweep.
-        "slash": {"loop": False, "frames": 7, "duration_ms": 52, "channels": {
-            "torso": {"keys": [[0.0, 0, "out"], [0.25, 13, "out"], [0.55, -15, "out"], [1.0, -4]]},
-            "head": {"keys": [[0.0, 0], [0.25, 7], [0.55, -7], [1.0, 0]]},
-            "near_arm_u": {"keys": [[0.0, 12, "out"], [0.25, 66, "out"], [0.5, -104, "out"], [0.75, -94], [1.0, -90]]},
-            "near_arm_l": {"keys": [[0.0, 24, "out"], [0.25, 84, "out"], [0.5, 12, "out"], [1.0, 6]]},
-            "far_arm_u": {"keys": [[0.0, 0], [0.25, -12], [0.55, 22, "out"], [1.0, 8]]},
-            "far_arm_l": {"const": 12.0},
-        }},
-        # Shoot (ranged primary): snap the lead arm up to a forward aim, hold to
-        # fire (projectile_release ~mid), small recoil back to guard.
-        "shoot": {"loop": False, "frames": 6, "duration_ms": 58, "channels": {
-            "torso": {"keys": [[0.0, 0], [0.3, -4, "out"], [0.5, 3, "out"], [1.0, 0]]},
-            "near_arm_u": {"keys": [[0.0, 12, "out"], [0.35, -88, "out"], [0.5, -96, "out"], [0.7, -82], [1.0, -84]]},
-            "near_arm_l": {"keys": [[0.0, 12, "out"], [0.35, 0, "out"], [0.5, -8, "out"], [1.0, 0]]},
-            "far_arm_u": {"const": 12.0},
-            "far_arm_l": {"const": 14.0},
-        }},
-        # Hit (damage reaction): knocked back off the front foot — torso and head
-        # snap away, arms fling back, then settle.
-        "hit": {"loop": False, "frames": 5, "duration_ms": 48, "channels": {
-            "root_x": {"keys": [[0.0, 0, "out"], [0.2, -5, "out"], [1.0, 0]]},
-            "torso": {"keys": [[0.0, 0, "out"], [0.2, -13, "out"], [0.5, 4], [1.0, 0]]},
-            "head": {"keys": [[0.0, 0, "out"], [0.2, -11, "out"], [1.0, 0]]},
-            "near_arm_u": {"keys": [[0.0, 0, "out"], [0.2, -22, "out"], [1.0, 0]]},
-            "far_arm_u": {"keys": [[0.0, 0, "out"], [0.2, -26, "out"], [1.0, 0]]},
-            "near_arm_l": {"keys": [[0.0, 0], [0.2, 20], [1.0, 0]]},
-            "far_arm_l": {"keys": [[0.0, 0], [0.2, 22], [1.0, 0]]},
-        }},
-        # Death: a stagger, then the knees buckle and the body sinks/crumples to
-        # the ground (the feet slide under as the hips drop); holds collapsed.
-        "death": {"loop": False, "frames": 8, "duration_ms": 85, "channels": {
-            "root_y": {"keys": [[0.0, 0, "out"], [0.35, 4, "out"], [1.0, 34]]},
-            "root_x": {"keys": [[0.0, 0], [0.3, 2], [1.0, -6]]},
-            "near_foot_x": {"keys": [[0.0, gait, "out"], [1.0, gait - 8]]},
-            "far_foot_x": {"keys": [[0.0, gait, "out"], [1.0, gait + 6]]},
-            "torso": {"keys": [[0.0, 0, "out"], [0.3, -10, "out"], [1.0, 22]]},
-            "head": {"keys": [[0.0, 0], [0.3, -8], [1.0, 24]]},
-            "near_arm_u": {"keys": [[0.0, 0, "out"], [0.4, -24], [1.0, 30]]},
-            "far_arm_u": {"keys": [[0.0, 0, "out"], [0.4, -28], [1.0, 34]]},
-            "near_arm_l": {"const": 14.0},
-            "far_arm_l": {"const": 14.0},
-        }},
-        # Talk: an animated lecture — head nods, the lead arm gestures (the PCA
-        # loves to monologue mid-fight).
-        "talk": {"loop": True, "frames": 8, "duration_ms": 140, "channels": {
-            "torso": {"expr": "1.5*sin(tau*t)"},
-            "head": {"expr": "-3*sin(tau*t)"},
-            "near_arm_u": {"expr": "-32+10*sin(tau*t)"},
-            "near_arm_l": {"expr": "42+16*sin(tau*(t-0.1))"},
-            "far_arm_u": {"expr": "4*sin(tau*t)"},
-            "far_arm_l": {"const": 6.0},
-        }},
-        # Interact: reach the lead hand forward, press, withdraw.
-        "interact": {"loop": False, "frames": 6, "duration_ms": 80, "channels": {
-            "torso": {"keys": [[0.0, 0, "out"], [0.4, 6, "out"], [1.0, 0]]},
-            "head": {"keys": [[0.0, 0], [0.4, 4], [1.0, 0]]},
-            "near_arm_u": {"keys": [[0.0, 12, "out"], [0.4, -72, "out"], [0.6, -66], [1.0, 8]]},
-            "near_arm_l": {"keys": [[0.0, 12, "out"], [0.4, -6, "out"], [1.0, 0]]},
-        }},
-        # Hover: stationary aerial idle — lifted, legs trailing, a ready guard
-        # (distinct from fly's spread-armed forward drift).
-        "hover": {"loop": True, "frames": 8, "duration_ms": 130, "channels": {
-            "root_y": {"expr": "-20+2.5*sin(tau*t)"},
-            "near_foot_lift": {"const": 20.0},
-            "far_foot_lift": {"const": 20.0},
-            "torso": {"expr": "2*sin(tau*t)"},
-            "head": {"expr": "-2*sin(tau*(t-0.1))"},
-            "near_arm_u": {"expr": "12+4*sin(tau*t)"},
-            "far_arm_u": {"expr": "12-4*sin(tau*t)"},
-            "near_arm_l": {"const": 16.0},
-            "far_arm_l": {"const": 16.0},
-        }},
-
-        # ============================================================
-        # FULL player-robot parity: every CharacterAnim row the engine knows
-        # (character_sprites/anim/mod.rs from_name). Clip NAMES match those keys.
-        # ============================================================
-
-        # --- Blink: a real dematerialize, not a pose. body_opacity phases the
-        # whole figure out (held faint while aiming) and back in on arrival. ---
-        "blink_out": {"loop": False, "frames": 5, "duration_ms": 42, "channels": {
-            "body_opacity": {"keys": [[0.0, 1.0, "out"], [0.6, 0.34, "out"], [1.0, 0.12]]},
-            "root_y": {"keys": [[0.0, 0, "out"], [1.0, -5]]},
-            "torso": {"keys": [[0.0, 0, "out"], [1.0, -7]]},
-            "head": {"keys": [[0.0, 0], [1.0, -4]]},
-            "near_arm_u": {"keys": [[0.0, 0, "out"], [1.0, 30]]},
-            "far_arm_u": {"keys": [[0.0, 0, "out"], [1.0, 30]]},
-            "near_arm_l": {"const": 44.0},
-            "far_arm_l": {"const": 44.0},
-        }},
-        "blink_in": {"loop": False, "frames": 5, "duration_ms": 42, "channels": {
-            "body_opacity": {"keys": [[0.0, 0.12, "out"], [0.45, 0.55, "out"], [1.0, 1.0]]},
-            "root_y": {"keys": [[0.0, -5, "out"], [1.0, 0]]},
-            "torso": {"keys": [[0.0, -7, "out"], [0.5, 3], [1.0, 0]]},
-            "near_arm_u": {"keys": [[0.0, 30, "out"], [1.0, 0]]},
-            "far_arm_u": {"keys": [[0.0, 30, "out"], [1.0, 0]]},
-            "near_arm_l": {"keys": [[0.0, 44], [1.0, 0]]},
-            "far_arm_l": {"keys": [[0.0, 44], [1.0, 0]]},
-        }},
-
-        # --- Directional ground attacks (tilts). ---
-        "attack_side": {"loop": False, "frames": 6, "duration_ms": 48, "channels": {
-            "torso": {"keys": [[0.0, 0, "out"], [0.3, 11, "out"], [0.55, -13, "out"], [1.0, -3]]},
-            "near_arm_u": {"keys": [[0.0, 18, "out"], [0.3, 48, "out"], [0.55, -90, "out"], [1.0, -84]]},
-            "near_arm_l": {"keys": [[0.0, 28, "out"], [0.3, 44, "out"], [0.55, -2, "out"], [1.0, 4]]},
-            "far_arm_u": {"keys": [[0.0, 0], [0.55, 18, "out"], [1.0, 6]]},
-            "far_arm_l": {"const": 10.0},
-        }},
-        "attack_up": {"loop": False, "frames": 6, "duration_ms": 48, "channels": {
-            "torso": {"keys": [[0.0, 0, "out"], [0.4, -7, "out"], [1.0, -2]]},
-            "head": {"keys": [[0.0, 0], [0.4, -7], [1.0, -3]]},
-            "near_arm_u": {"keys": [[0.0, 10, "out"], [0.4, -168, "out"], [0.6, -160], [1.0, -158]]},
-            "near_arm_l": {"keys": [[0.0, 24, "out"], [0.4, 0, "out"], [1.0, 0]]},
-            "far_arm_u": {"const": 14.0},
-            "far_arm_l": {"const": 12.0},
-        }},
-        "attack_down": {"loop": False, "frames": 6, "duration_ms": 48, "channels": {
-            "torso": {"keys": [[0.0, 0, "out"], [0.3, 13, "out"], [0.55, -4, "out"], [1.0, 2]]},
-            "head": {"keys": [[0.0, 0], [0.3, -6], [0.55, 8], [1.0, 4]]},
-            "near_arm_u": {"keys": [[0.0, 10, "out"], [0.3, -120, "out"], [0.55, -46, "out"], [1.0, -40]]},
-            "near_arm_l": {"keys": [[0.0, 20, "out"], [0.3, 10, "out"], [0.55, 66, "out"], [1.0, 58]]},
-            "far_arm_u": {"const": 8.0},
-        }},
-
-        # --- Aerial attacks (airborne: feet lifted). ---
-        "air_neutral": {"loop": False, "frames": 6, "duration_ms": 52, "channels": {
-            "near_foot_lift": {"const": 22.0}, "far_foot_lift": {"const": 16.0},
-            "torso": {"keys": [[0.0, 0, "out"], [0.5, 9, "out"], [1.0, 2]]},
-            "near_arm_u": {"keys": [[0.0, -18, "out"], [0.5, -118, "out"], [1.0, -34]]},
-            "far_arm_u": {"keys": [[0.0, 18, "out"], [0.5, 118, "out"], [1.0, 34]]},
-            "near_arm_l": {"const": 22.0}, "far_arm_l": {"const": -22.0},
-        }},
-        "air_forward": {"loop": False, "frames": 6, "duration_ms": 52, "channels": {
-            "near_foot_lift": {"const": 24.0}, "far_foot_lift": {"const": 18.0},
-            "torso": {"keys": [[0.0, 0, "out"], [0.35, 10, "out"], [0.6, -8, "out"], [1.0, 0]]},
-            "near_arm_u": {"keys": [[0.0, 30, "out"], [0.4, -100, "out"], [1.0, -84]]},
-            "near_arm_l": {"keys": [[0.0, 40, "out"], [0.4, 0, "out"], [1.0, 6]]},
-            "far_arm_u": {"const": 16.0}, "far_arm_l": {"const": 12.0},
-        }},
-        "air_back": {"loop": False, "frames": 6, "duration_ms": 52, "channels": {
-            "near_foot_lift": {"const": 20.0}, "far_foot_lift": {"const": 24.0},
-            "torso": {"keys": [[0.0, 0, "out"], [0.4, -10, "out"], [1.0, -2]]},
-            "far_arm_u": {"keys": [[0.0, -10, "out"], [0.4, 96, "out"], [1.0, 80]]},
-            "far_arm_l": {"keys": [[0.0, 10, "out"], [0.4, 4, "out"], [1.0, 8]]},
-            "near_arm_u": {"const": -14.0}, "near_arm_l": {"const": 16.0},
-        }},
-        "air_down": {"loop": False, "frames": 6, "duration_ms": 52, "channels": {
-            "near_foot_lift": {"const": 14.0}, "far_foot_lift": {"const": 14.0},
-            "torso": {"keys": [[0.0, 0, "out"], [0.4, 6, "out"], [1.0, 2]]},
-            "near_arm_u": {"keys": [[0.0, 0, "out"], [0.4, -150, "out"], [1.0, -150]]},
-            "far_arm_u": {"keys": [[0.0, 0, "out"], [0.4, 150, "out"], [1.0, 150]]},
-            "near_arm_l": {"const": 6.0}, "far_arm_l": {"const": -6.0},
-        }},
-        "air_up": {"loop": False, "frames": 6, "duration_ms": 52, "channels": {
-            "near_foot_lift": {"const": 22.0}, "far_foot_lift": {"const": 22.0},
-            "near_arm_u": {"keys": [[0.0, 10, "out"], [0.45, -165, "out"], [1.0, -160]]},
-            "near_arm_l": {"keys": [[0.0, 20, "out"], [0.45, 0], [1.0, 0]]},
-            "far_arm_u": {"const": 12.0},
-        }},
-
-        # --- Ledge set. Hang: arms reach overhead to grip, body slung below. ---
-        "ledge_grab": {"loop": True, "frames": 6, "duration_ms": 150, "channels": {
-            "root_y": {"expr": "10+1.2*sin(tau*t)"},
-            "near_arm_u": {"expr": "-150+3*sin(tau*t)"}, "far_arm_u": {"const": -150.0},
-            "near_arm_l": {"const": 6.0}, "far_arm_l": {"const": 6.0},
-            "near_foot_lift": {"const": 6.0}, "far_foot_lift": {"const": 10.0},
-            "near_foot_x": {"const": gait + 2}, "far_foot_x": {"const": gait - 2},
-            "torso": {"const": 3.0},
-        }},
-        "ledge_climb": {"loop": False, "frames": 7, "duration_ms": 60, "channels": {
-            "root_y": {"keys": [[0.0, 10, "out"], [0.6, 2, "out"], [1.0, 0]]},
-            "near_arm_u": {"keys": [[0.0, -150, "out"], [0.5, -60, "out"], [1.0, 0]]},
-            "far_arm_u": {"keys": [[0.0, -150, "out"], [0.5, -40, "out"], [1.0, 0]]},
-            "near_arm_l": {"keys": [[0.0, 6], [0.5, 50], [1.0, 0]]},
-            "far_arm_l": {"keys": [[0.0, 6], [0.5, 50], [1.0, 0]]},
-            "near_foot_lift": {"keys": [[0.0, 6], [0.6, 0], [1.0, 0]]},
-            "far_foot_lift": {"keys": [[0.0, 10], [0.6, 0], [1.0, 0]]},
-        }},
-        "ledge_getup": {"loop": False, "frames": 6, "duration_ms": 60, "channels": {
-            "root_y": {"keys": [[0.0, 8, "out"], [1.0, 0]]},
-            "torso": {"keys": [[0.0, 14, "out"], [1.0, 0]]},
-            "near_arm_u": {"keys": [[0.0, 30, "out"], [1.0, 0]]},
-            "far_arm_u": {"keys": [[0.0, 24, "out"], [1.0, 0]]},
-        }},
-        "ledge_roll": {"loop": False, "frames": 7, "duration_ms": 48, "channels": {
-            "root_y": {"keys": [[0.0, 8, "out"], [0.5, 16, "out"], [1.0, 0]]},
-            "torso": {"keys": [[0.0, 20, "out"], [0.5, 60, "out"], [1.0, 0]]},
-            "head": {"keys": [[0.0, 14], [0.5, 50], [1.0, 0]]},
-            "near_arm_u": {"keys": [[0.0, 40], [0.5, 70], [1.0, 0]]},
-            "far_arm_u": {"keys": [[0.0, 40], [0.5, 70], [1.0, 0]]},
-            "near_arm_l": {"const": 30.0}, "far_arm_l": {"const": 30.0},
-        }},
-        "ledge_getup_attack": {"loop": False, "frames": 7, "duration_ms": 52, "channels": {
-            "root_y": {"keys": [[0.0, 8, "out"], [0.5, 0], [1.0, 0]]},
-            "torso": {"keys": [[0.0, 12, "out"], [0.55, -12, "out"], [1.0, -3]]},
-            "near_arm_u": {"keys": [[0.0, 30, "out"], [0.4, 50, "out"], [0.6, -88, "out"], [1.0, -82]]},
-            "near_arm_l": {"keys": [[0.0, 20, "out"], [0.4, 40, "out"], [0.6, 0, "out"], [1.0, 4]]},
-        }},
-
-        # --- Wall. Grab: braced against a wall ahead (lead limbs out, lean). ---
-        "wall_grab": {"loop": True, "frames": 6, "duration_ms": 150, "channels": {
-            "torso": {"expr": "10+1.5*sin(tau*t)"},
-            "near_arm_u": {"expr": "-70+4*sin(tau*t)"}, "near_arm_l": {"const": 10.0},
-            "far_arm_u": {"const": -40.0}, "far_arm_l": {"const": 30.0},
-            "near_foot_x": {"const": gait + 8}, "far_foot_x": {"const": gait - 6},
-            "near_foot_lift": {"const": 4.0},
-            "head": {"const": -4.0},
-        }},
-        "wall_jump": {"loop": False, "frames": 6, "duration_ms": 50, "channels": {
-            "torso": {"keys": [[0.0, 10, "out"], [0.4, -8, "out"], [1.0, -2]]},
-            "near_arm_u": {"keys": [[0.0, -70, "out"], [0.4, 20, "out"], [1.0, 8]]},
-            "far_arm_u": {"keys": [[0.0, -40, "out"], [0.4, -100, "out"], [1.0, -86]]},
-            "near_foot_lift": {"keys": [[0.0, 4], [0.5, 18, "out"], [1.0, 12]]},
-            "far_foot_lift": {"keys": [[0.0, 0], [0.5, 16, "out"], [1.0, 10]]},
-        }},
-
-        # --- Air locomotion + landing. ---
-        "fall": {"loop": True, "frames": 4, "duration_ms": 120, "channels": {
-            "near_foot_lift": {"const": 8.0}, "far_foot_lift": {"const": 14.0},
-            "near_foot_x": {"const": gait + 4}, "far_foot_x": {"const": gait - 4},
-            "torso": {"expr": "-4+2*sin(tau*t)"},
-            "near_arm_u": {"expr": "-30+6*sin(tau*t)"}, "far_arm_u": {"expr": "-30-6*sin(tau*t)"},
-            "near_arm_l": {"const": 20.0}, "far_arm_l": {"const": 20.0},
-        }},
-        "float_glide": {"loop": True, "frames": 8, "duration_ms": 130, "channels": {
-            "root_y": {"const": -6.0},
-            "near_foot_lift": {"const": 10.0}, "far_foot_lift": {"const": 10.0},
-            "torso": {"expr": "1.5*sin(tau*t)"},
-            "near_arm_u": {"expr": "-92+3*sin(tau*t)"}, "far_arm_u": {"expr": "-92-3*sin(tau*t)"},
-            "near_arm_l": {"const": -8.0}, "far_arm_l": {"const": -8.0},
-        }},
-        "land_hard": {"loop": False, "frames": 5, "duration_ms": 55, "channels": {
-            "root_y": {"keys": [[0.0, -6, "out"], [0.3, 17, "out"], [1.0, 12]]},
-            "torso": {"keys": [[0.0, -4, "out"], [0.3, 16, "out"], [1.0, 12]]},
-            "near_foot_x": {"const": gait - 5}, "far_foot_x": {"const": gait + 5},
-            "near_arm_u": {"keys": [[0.0, -20, "out"], [0.3, 30, "out"], [1.0, 24]]},
-            "far_arm_u": {"keys": [[0.0, -20, "out"], [0.3, 30, "out"], [1.0, 24]]},
-            "near_arm_l": {"const": 26.0}, "far_arm_l": {"const": 26.0},
-        }},
-        "land_recovery": {"loop": False, "frames": 5, "duration_ms": 60, "channels": {
-            "root_y": {"keys": [[0.0, 12, "out"], [1.0, 0]]},
-            "torso": {"keys": [[0.0, 12, "out"], [1.0, 0]]},
-            "near_arm_u": {"keys": [[0.0, 24, "out"], [1.0, 0]]},
-            "far_arm_u": {"keys": [[0.0, 24, "out"], [1.0, 0]]},
-            "near_arm_l": {"keys": [[0.0, 26], [1.0, 0]]}, "far_arm_l": {"keys": [[0.0, 26], [1.0, 0]]},
-        }},
-
-        # --- Dash / slide / crawl / climb / swim. ---
-        "dash_startup": {"loop": False, "frames": 4, "duration_ms": 40, "channels": {
-            "root_y": {"keys": [[0.0, 0, "out"], [1.0, 7]]},
-            "torso": {"keys": [[0.0, 0, "out"], [1.0, 14]]},
-            "near_arm_u": {"keys": [[0.0, 0, "out"], [1.0, 40]]},
-            "far_arm_u": {"keys": [[0.0, 0, "out"], [1.0, 44]]},
-            "near_arm_l": {"const": 30.0}, "far_arm_l": {"const": 30.0},
-        }},
-        "dash": {"loop": False, "frames": 5, "duration_ms": 38, "channels": {
-            "torso": {"const": 16.0}, "head": {"const": -8.0},
-            "near_foot_x": {"const": gait + 10}, "far_foot_x": {"const": gait - 14},
-            "near_foot_lift": {"const": 6.0}, "far_foot_lift": {"const": 12.0},
-            "near_arm_u": {"const": 42.0}, "far_arm_u": {"const": 48.0},
-            "near_arm_l": {"const": 26.0}, "far_arm_l": {"const": 26.0},
-        }},
-        "slide": {"loop": False, "frames": 5, "duration_ms": 60, "channels": {
-            "root_y": {"keys": [[0.0, 4, "out"], [0.4, 19, "out"], [1.0, 17]]},
-            "torso": {"const": -16.0}, "head": {"const": 8.0},
-            "near_foot_x": {"const": gait + 16}, "far_foot_x": {"const": gait + 2},
-            "near_foot_lift": {"const": 6.0},
-            "near_arm_u": {"const": -10.0}, "far_arm_u": {"const": 40.0},
-            "near_arm_l": {"const": 20.0}, "far_arm_l": {"const": 24.0},
-        }},
-        "crouch_walk": {"loop": True, "frames": 8, "duration_ms": 110, "channels": {
-            "root_y": {"const": 12.0}, "torso": {"const": -6.0},
-            "near_foot_x": foot_x(0.0), "far_foot_x": foot_x(0.5),
-            "near_foot_lift": foot_lift(0.75), "far_foot_lift": foot_lift(0.25),
-            "near_arm_u": {"const": 16.0}, "far_arm_u": {"const": 16.0},
-            "near_arm_l": {"const": 30.0}, "far_arm_l": {"const": 30.0},
-        }},
-        "ladder_climb": {"loop": True, "frames": 8, "duration_ms": 120, "channels": {
-            "near_arm_u": {"expr": "-150+24*sin(tau*t)"},
-            "far_arm_u": {"expr": "-150-24*sin(tau*t)"},
-            "near_arm_l": {"const": 8.0}, "far_arm_l": {"const": 8.0},
-            "near_foot_lift": {"expr": "10+10*sin(tau*t)"},
-            "far_foot_lift": {"expr": "10-10*sin(tau*t)"},
-            "near_foot_x": {"const": gait}, "far_foot_x": {"const": gait},
-            "torso": {"expr": "2*sin(2*tau*t)"},
-        }},
-        "swim": {"loop": True, "frames": 8, "duration_ms": 120, "channels": {
-            "root_y": {"const": -4.0},
-            "near_foot_lift": {"expr": "16+8*sin(tau*t)"},
-            "far_foot_lift": {"expr": "16-8*sin(tau*t)"},
-            "near_arm_u": {"expr": "-40+70*sin(tau*t)"},
-            "far_arm_u": {"expr": "-40-70*sin(tau*(t-0.5))"},
-            "near_arm_l": {"const": 14.0}, "far_arm_l": {"const": 14.0},
-            "torso": {"const": -3.0},
-        }},
-
-        # Dodge roll: a quick forward tuck-and-roll on the ground.
-        "roll": {"loop": False, "frames": 6, "duration_ms": 42, "channels": {
-            "root_y": {"keys": [[0.0, 0, "out"], [0.5, 14, "out"], [1.0, 0]]},
-            "torso": {"keys": [[0.0, 12, "out"], [0.5, 78, "out"], [1.0, 0]]},
-            "head": {"keys": [[0.0, 8], [0.5, 62], [1.0, 0]]},
-            "near_arm_u": {"keys": [[0.0, 30], [0.5, 84], [1.0, 0]]},
-            "far_arm_u": {"keys": [[0.0, 30], [0.5, 84], [1.0, 0]]},
-            "near_arm_l": {"const": 42.0}, "far_arm_l": {"const": 42.0},
-            "near_foot_x": {"const": gait}, "far_foot_x": {"const": gait},
-        }},
-
-        # --- Misc presentation: taunt / aim / charge. ---
-        "taunt": {"loop": True, "frames": 8, "duration_ms": 150, "channels": {
-            "torso": {"expr": "-6+2*sin(tau*t)"}, "head": {"expr": "-6+3*sin(tau*t)"},
-            "near_arm_u": {"expr": "-44+8*sin(tau*t)"}, "far_arm_u": {"expr": "-44-8*sin(tau*t)"},
-            "near_arm_l": {"const": -18.0}, "far_arm_l": {"const": -18.0},
-        }},
-        "aim": {"loop": True, "frames": 6, "duration_ms": 130, "channels": {
-            "near_arm_u": {"expr": "-86+1.5*sin(tau*t)"}, "near_arm_l": {"const": 2.0},
-            "far_arm_u": {"const": 14.0}, "far_arm_l": {"const": 16.0},
-            "torso": {"const": -2.0},
-        }},
-        "charge": {"loop": True, "frames": 8, "duration_ms": 90, "channels": {
-            "torso": {"expr": "10+1.5*sin(2*tau*t)"},
-            "near_arm_u": {"expr": "44+2*sin(2*tau*t)"}, "near_arm_l": {"const": 78.0},
-            "far_arm_u": {"expr": "44-2*sin(2*tau*t)"}, "far_arm_l": {"const": 78.0},
-            "head": {"const": -4.0},
-        }},
-    }
-
-
 def build_doc() -> dict:
     sk = build_skeleton_data()
     parts = []
@@ -866,7 +415,6 @@ def build_doc() -> dict:
         "bones": sk["bones"],
         "parts": parts,
         "ik_legs": ik_legs,
-        "clips": _clips(ik_legs[0]["rest_x"], ik_legs[1]["rest_x"]),
         # Display SIZE driver (height = collision_box * collision_scale; does NOT
         # touch the gameplay collision box). 2.4 renders the boss 1.5x the prior
         # 1.6 — a commanding presence on par with the player, who was dwarfing him.
@@ -874,11 +422,56 @@ def build_doc() -> dict:
     }
 
 
-def cmd_build(_args):
+# Fallback animation when the rig has never been authored: a barely-breathing
+# rest pose, enough for the document to render and register everywhere.
+SEED_CLIPS = {
+    "idle": {"loop": True, "frames": 8, "duration_ms": 120, "channels": {
+        "root_y": {"expr": "-0.8*sin(tau*t)"},
+        "torso": {"expr": "1.2*sin(tau*t)"},
+    }},
+}
+
+# Document keys this extractor owns (regenerated from the SVG on every build).
+# Everything else in the rig.json — most importantly ``clips`` — is authored
+# (GUI / hand-edited) and survives a rebuild untouched.
+GENERATED_KEYS = ("name", "frame", "svg_source", "bones", "ik_legs")
+
+
+def merge_doc(existing: dict, generated: dict) -> dict:
+    """Refresh ``existing``'s geometry from ``generated``, keeping authored data.
+
+    - ``clips``, ``features``, and unknown top-level keys are authored: kept.
+    - ``parts`` merge by name: extractor-generated names are replaced; foreign
+      names (hand-added accessories, front-view swaps, …) are kept.
+    - ``palette`` / ``sprite_tuning`` keep authored entries, gaining defaults.
+    """
+    doc = dict(existing)
+    for key in GENERATED_KEYS:
+        doc[key] = generated[key]
+    gen_names = {p["name"] for p in generated["parts"]}
+    foreign = [p for p in existing.get("parts", []) if p.get("name") not in gen_names]
+    doc["parts"] = sorted(generated["parts"] + foreign, key=lambda p: float(p.get("z", 0.0)))
+    for soft in ("palette", "sprite_tuning"):
+        merged = dict(generated.get(soft, {}))
+        merged.update(existing.get(soft, {}))
+        doc[soft] = merged
+    if not doc.get("clips"):
+        doc["clips"] = json.loads(json.dumps(SEED_CLIPS))
+    return doc
+
+
+def cmd_build(args):
     RIGGED_DIR.mkdir(parents=True, exist_ok=True)
-    doc = build_doc()
+    generated = build_doc()
+    existing = {}
+    if RIG_OUT.exists() and not getattr(args, "fresh", False):
+        existing = json.loads(RIG_OUT.read_text(encoding="utf8"))
+    doc = merge_doc(existing, generated)
     RIG_OUT.write_text(json.dumps(doc, indent=1) + "\n", encoding="utf8")
-    print(f"wrote {RIG_OUT}  ({len(doc['bones'])} bones, {len(doc['parts'])} parts)")
+    print(
+        f"wrote {RIG_OUT}  ({len(doc['bones'])} bones, {len(doc['parts'])} parts, "
+        f"{len(doc['clips'])} authored clips preserved)"
+    )
 
 
 def cmd_validate(_args):
@@ -895,7 +488,7 @@ def cmd_validate(_args):
 
 
 def cmd_debug(args):
-    """Render bone-debug overlays (skeleton on dimmed art) for clips -> /tmp."""
+    """Render bone-debug overlays (skeleton on dimmed art) per clip."""
     from authoring.rigdoc import RigDocument
     from authoring.debug_overlay import render_clip_strip
     cmd_build(args)
@@ -914,7 +507,12 @@ def cmd_debug(args):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("build").set_defaults(fn=cmd_build)
+    bld = sub.add_parser("build", help="refresh rig geometry from the SVG")
+    bld.add_argument(
+        "--fresh", action="store_true",
+        help="discard the existing document (authored clips reset to the seed)",
+    )
+    bld.set_defaults(fn=cmd_build)
     sub.add_parser("validate").set_defaults(fn=cmd_validate)
     dbg = sub.add_parser("debug")
     dbg.add_argument("clips", nargs="*", help="clip names (default: all)")

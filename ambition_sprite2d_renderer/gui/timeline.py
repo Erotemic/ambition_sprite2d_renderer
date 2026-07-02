@@ -68,6 +68,11 @@ class TimelinePanel(QWidget):
         add_clip.setFixedWidth(28)
         add_clip.clicked.connect(self._add_clip)
         row.addWidget(add_clip)
+        dup_clip = QPushButton("⧉")
+        dup_clip.setFixedWidth(28)
+        dup_clip.setToolTip("Duplicate current clip")
+        dup_clip.clicked.connect(self._dup_clip)
+        row.addWidget(dup_clip)
         del_clip = QPushButton("−")
         del_clip.setFixedWidth(28)
         del_clip.clicked.connect(self._del_clip)
@@ -299,6 +304,26 @@ class TimelinePanel(QWidget):
             return
         self.state.push_undo()
         self.state.doc.clips[name] = {"loop": True, "frames": 8, "duration_ms": 100, "channels": {}}
+        self.state.clip_name = name
+        self.state.frame_idx = 0
+        self.state.mark_changed()
+        self.state.timeChanged.emit()
+
+    def _dup_clip(self) -> None:
+        import json
+
+        src = self.state.clip_name
+        name, ok = QInputDialog.getText(
+            self, "Duplicate clip", "New clip name:", text=f"{src}_copy"
+        )
+        name = name.strip()
+        if not ok or not name:
+            return
+        if name in self.state.doc.clips:
+            QMessageBox.warning(self, "Duplicate clip", f"Clip {name!r} already exists.")
+            return
+        self.state.push_undo()
+        self.state.doc.clips[name] = json.loads(json.dumps(self.state.doc.clips[src]))
         self.state.clip_name = name
         self.state.frame_idx = 0
         self.state.mark_changed()

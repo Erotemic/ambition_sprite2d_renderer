@@ -85,6 +85,10 @@ class MainWindow(QMainWindow):
         editm = bar.addMenu("&Edit")
         self._action(editm, "Undo", QKeySequence.StandardKey.Undo, self._undo)
         self._action(editm, "Redo", QKeySequence.StandardKey.Redo, self._redo)
+        editm.addSeparator()
+        self._action(editm, "Copy pose", "Ctrl+Shift+C", self._copy_pose)
+        self._action(editm, "Paste pose", "Ctrl+Shift+V", self._paste_pose)
+        editm.addSeparator()
         self._action(editm, "Rename character…", None, self.rename_character)
         self._action(editm, "Frame settings…", None, self.frame_settings)
         self._action(editm, "Edit document JSON in $VISUAL", "Ctrl+J", self.edit_doc_in_visual)
@@ -321,6 +325,23 @@ class MainWindow(QMainWindow):
         self.state.dirty = True
 
     # ---- edit ops -----------------------------------------------------------------
+
+    def _copy_pose(self) -> None:
+        n = self.state.copy_pose()
+        self.statusBar().showMessage(
+            f"Copied pose ({n} channels) from {self.state.clip_name}"
+            f"@{self.state.frame_idx}", 4000,
+        )
+
+    def _paste_pose(self) -> None:
+        n = self.state.paste_pose()
+        if n:
+            self.statusBar().showMessage(
+                f"Pasted pose ({n} channels) at {self.state.clip_name}"
+                f"@{self.state.frame_idx}", 4000,
+            )
+        else:
+            self.statusBar().showMessage("Pose clipboard is empty", 2000)
 
     def _undo(self) -> None:
         if not self.state.undo():
