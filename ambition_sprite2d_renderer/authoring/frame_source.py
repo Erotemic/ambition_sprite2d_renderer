@@ -168,3 +168,90 @@ class GeneratedFrameSource:
 
     def spec_dict(self) -> Optional[Dict[str, Any]]:
         return self._generator.spec_dict(self._spec)
+
+
+class CallableFrameSource:
+    """A :class:`FrameSource` over a module-authored target: a frame callable
+    ``render_fn(animation, index, count) -> Image`` plus its row list and the
+    sheet-build recipe (crop / label / geometry options).
+
+    This is what a module *declares* instead of hand-rolling a ``render()`` that
+    calls ``build_sheet``. The recipe fields are read back by
+    ``sheet_build.render_sheet`` when it assembles the sheet, so the module says
+    *what* it is once and the one pipeline does the building.
+
+    ``render_fn`` draws at the module's native ``frame_size``; :meth:`frame`
+    resizes to a caller-requested size (for the per-frame API / packer), while
+    the sheet build uses the native size directly.
+    """
+
+    def __init__(
+        self,
+        *,
+        target: str,
+        rows: List[Tuple[str, int, int]],
+        render_fn,
+        frame_size: Tuple[int, int],
+        label_width: int = 0,
+        auto_crop: bool = True,
+        crop_margin: int = 2,
+        actor_metadata: Optional[Dict[str, Any]] = None,
+        frame_meta_fn=None,
+        body_metrics_fn=None,
+        animation_key_map: Optional[Dict[str, str]] = None,
+        attack_hitboxes: Optional[Dict[str, Any]] = None,
+        sheet_tuning: Optional[Dict[str, Any]] = None,
+        trim: Optional[bool] = None,
+        max_sheet_dimension: int = 16384,
+    ) -> None:
+        self.target = target
+        self.rows = list(rows)
+        self.render_fn = render_fn
+        self.frame_size = frame_size
+        # Sheet-build recipe (read by render_sheet).
+        self.label_width = label_width
+        self.auto_crop = auto_crop
+        self.crop_margin = crop_margin
+        self._actor_metadata = actor_metadata
+        self.frame_meta_fn = frame_meta_fn
+        self.body_metrics_fn = body_metrics_fn
+        self.animation_key_map = animation_key_map
+        self._attack_hitboxes = attack_hitboxes
+        self.sheet_tuning = sheet_tuning
+        self.trim = trim
+        self.max_sheet_dimension = max_sheet_dimension
+
+    def animations(self) -> Dict[str, Dict[str, int]]:
+        return {
+            anim: {"frames": nframes, "duration_ms": duration_ms}
+            for anim, nframes, duration_ms in self.rows
+        }
+
+    def frame(
+        self, animation: str, index: int, count: int, size: Tuple[int, int]
+    ) -> Image.Image:
+        img = self.render_fn(animation, index, count)
+        if img.size != size:
+            img = img.resize(size, Image.Resampling.LANCZOS)
+        return img
+
+    def canonical_pose(self) -> Tuple[str, int]:
+        anim, nframes, _ = self.rows[0]
+        return (anim, min(1, nframes - 1))
+
+    def attack_hitboxes(self, size: Tuple[int, int]) -> Dict[str, Dict[str, Any]]:
+        del size  # authored in native-frame pixels
+        return dict(self._attack_hitboxes or {})
+
+    def hurtbox_parts(self, size: Tuple[int, int]) -> Dict[str, Dict[str, Any]]:
+        del size  # module targets derive per-anim hurtboxes via animation_key_map
+        return {}
+
+    def body_inset(self) -> Optional[Dict[str, float]]:
+        return None
+
+    def actor_metadata(self) -> Optional[Dict[str, Any]]:
+        return self._actor_metadata
+
+    def spec_dict(self) -> Optional[Dict[str, Any]]:
+        return None

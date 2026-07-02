@@ -40,6 +40,7 @@ import yaml
 from PIL import Image, ImageDraw, ImageFont
 
 from .actor_contract import write_actor_contract_for_tackon
+from .frame_source import CallableFrameSource, FrameSource
 from ..core.measure import measure_body_metrics
 from ..core.manifest_ron import record_to_ron, records_to_ron, ron_tuning
 from ..registry.pack_groups import policy_for
@@ -377,7 +378,39 @@ def build_sheet(
     max_sheet_dimension: int = 16384,
     trim: Optional[bool] = None,
 ):
-    """Build a labeled spritesheet + companion YAML manifest.
+    """Build one module target's sheet from a frame callable + rows.
+
+    Thin constructor: wraps the recipe in a :class:`CallableFrameSource` and
+    hands it to the one :func:`render_sheet` core. Kept as the module-target
+    entry point so the ~50 target modules that call it need no change.
+    """
+    source = CallableFrameSource(
+        target=target,
+        rows=rows,
+        render_fn=render_fn,
+        frame_size=frame_size,
+        label_width=label_width,
+        frame_meta_fn=frame_meta_fn,
+        auto_crop=auto_crop,
+        crop_margin=crop_margin,
+        actor_metadata=actor_metadata,
+        body_metrics_fn=body_metrics_fn,
+        sheet_tuning=sheet_tuning,
+        animation_key_map=animation_key_map,
+        attack_hitboxes=attack_hitboxes,
+        max_sheet_dimension=max_sheet_dimension,
+        trim=trim,
+    )
+    return render_sheet(source, out_dir)
+
+
+def render_sheet(source: FrameSource, out_dir: Path):
+    """Build a sheet from any frame source with a callable-style recipe.
+
+    The one sheet-assembly core for module-authored targets: render every frame,
+    auto-crop, lay out via :func:`layout_sheet_rows`, measure body metrics +
+    per-animation hurt/hit geometry, and emit the page PNG(s), YAML, RON, and
+    actor sidecar.
 
     ``frame_meta_fn`` is an optional callable ``(animation, frame_idx,
     nframes) -> dict``. When provided, the returned dict is merged
@@ -406,6 +439,22 @@ def build_sheet(
     rects, merged in as ``animations[key].hitbox`` — for boss attacks
     whose damage geometry the sprite author wants to pin.
     """
+    target = source.target
+    rows = source.rows
+    render_fn = source.render_fn
+    frame_size = source.frame_size
+    label_width = source.label_width
+    frame_meta_fn = source.frame_meta_fn
+    auto_crop = source.auto_crop
+    crop_margin = source.crop_margin
+    actor_metadata = source.actor_metadata()
+    body_metrics_fn = source.body_metrics_fn
+    sheet_tuning = source.sheet_tuning
+    animation_key_map = source.animation_key_map
+    attack_hitboxes = source.attack_hitboxes(source.frame_size)
+    max_sheet_dimension = source.max_sheet_dimension
+    trim = source.trim
+
     fw, fh = frame_size
 
     # Packing / trim policy is data-driven (registry/pack_groups.py), keyed by
