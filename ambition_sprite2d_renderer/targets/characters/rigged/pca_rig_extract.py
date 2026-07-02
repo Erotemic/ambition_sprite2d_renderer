@@ -47,9 +47,11 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-# Allow running as a loose script (the experimental dir isn't a package).
+# Allow running as a loose script: put the inner package (which owns
+# ``authoring/``) on sys.path. This file lives at
+# ``<pkg>/targets/characters/rigged/`` -> the package is parents[3].
 import sys
-_AUTHORING = Path(__file__).resolve().parents[2]
+_AUTHORING = Path(__file__).resolve().parents[3]
 if str(_AUTHORING) not in sys.path:
     sys.path.insert(0, str(_AUTHORING))
 
@@ -57,9 +59,9 @@ from authoring.svg_parts import (  # noqa: E402
     rasterize_subset, _local, _label,
 )
 
-TOOL_ROOT = Path(__file__).resolve().parents[3]
+TOOL_ROOT = Path(__file__).resolve().parents[4]
 SVG = TOOL_ROOT / "assets/perfect-cellular-automaton/PCA-multiview.svg"
-RIGGED_DIR = _AUTHORING / "targets/characters/rigged"
+RIGGED_DIR = Path(__file__).resolve().parent
 RIG_OUT = RIGGED_DIR / "perfect_cellular_automaton.rig.json"
 # Human-reviewable debug renders land in the repo's gitignored scratch dir (NOT
 # /tmp, which isn't visible from the dev VM).

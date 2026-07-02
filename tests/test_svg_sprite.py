@@ -29,7 +29,10 @@ RIG = (
 @pytest.fixture()
 def doc() -> RigDocument:
     if not RIG.exists():
-        pytest.skip("pca rig not generated (run pca_rig_extract.py build)")
+        pytest.skip(
+            "pca rig not generated "
+            "(run targets/characters/rigged/pca_rig_extract.py build)"
+        )
     return RigDocument.load(RIG)
 
 
