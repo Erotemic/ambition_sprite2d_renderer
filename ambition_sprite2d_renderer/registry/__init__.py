@@ -25,28 +25,24 @@ from .config import (
 from .discovery import (
     GENERATOR_MODULE_STEMS,
     CATEGORIES,
-    AdapterTarget,
     DiscoveryReport,
-    TackonTarget,
     Target,
     _ensure_actor_sidecars,
     default_sheet_files,
     discover_all_targets,
-    discover_tackon_targets,
+    discover_module_targets,
 )
 
 __all__ = [
     "GENERATOR_MODULE_STEMS",
-    "AdapterTarget",
     "CATEGORIES",
     "CharacterJob",
     "DEFAULT_ANIMATIONS",
     "DiscoveryReport",
     "RenderConfig",
-    "TackonTarget",
     "Target",
     "default_sheet_files",
     "discover_all_targets",
-    "discover_tackon_targets",
+    "discover_module_targets",
     "load_jobs",
 ]

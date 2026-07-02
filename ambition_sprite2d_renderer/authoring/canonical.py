@@ -4,11 +4,10 @@ Single entry point: iterate the unified target registry, call
 ``target.render_canonical(out_dir)`` on each, compose a labeled
 gallery image with per-category section headers.
 
-Every Target (tack-on or YAML-adapter) implements the same
-[`render_canonical`] protocol method, so this module no longer needs
-per-surface collectors. The slow/fast fallback for tack-on targets
-without a dedicated canonical hook lives inside [`TackonTarget`]
-itself.
+Every Target (module- or config-authored) implements the same
+``render_canonical`` method, so this module no longer needs per-surface
+collectors. The slow/fast fallback for module targets without a dedicated
+canonical hook lives inside [`Target`] itself.
 """
 
 from __future__ import annotations
@@ -35,11 +34,11 @@ _TILE_BORDER = (72, 72, 84, 255)
 
 
 def render_canonical(job: CharacterJob) -> Image.Image:
-    """Legacy in-memory adapter canonical renderer.
+    """Legacy in-memory config-target canonical renderer.
 
     Kept for backwards compat with callers (the ``canonical.py`` API
-    has shipped this name for a while). New code should construct an
-    `AdapterTarget` and call ``target.render_canonical(out_dir)``.
+    has shipped this name for a while). New code should construct a
+    ``Target.from_config(...)`` and call ``target.render_canonical(out_dir)``.
     """
     generator = get_generator(job.target)
     spec = generator.sample_spec(job)

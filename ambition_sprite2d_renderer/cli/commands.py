@@ -591,12 +591,10 @@ def _cmd_gifs(args: argparse.Namespace) -> int:
 _TACKON_CATEGORIES = frozenset({"characters", "props", "tiles", "icons"})
 
 
-def _tackon_target_names() -> list[str]:
-    """Names of every tack-on (non-AdapterTarget) target, sorted."""
-    from ..registry import TackonTarget
-
+def _module_target_names() -> list[str]:
+    """Names of every module-authored (non-config) target, sorted."""
     return sorted(
-        name for name, t in _ALL_TARGETS.items() if isinstance(t, TackonTarget)
+        name for name, t in _ALL_TARGETS.items() if getattr(t, "kind", None) == "module"
     )
 
 
@@ -620,7 +618,7 @@ def _render_target(target_name: str, **opts) -> List[Path]:
 def _install_target(target_name: str, dest_root: Path) -> List[Path]:
     target = _get_target(target_name)
     out_dir = generated_dir(target_name)
-    # Both TackonTarget and AdapterTarget implement `install` with a
+    # Every Target implements `install` with a
     # default copy-each-SHEET_FILES; targets that need custom behavior
     # (e.g. mockingbird_boss with its subdirectory of part files)
     # override the method.
@@ -660,7 +658,7 @@ def _cmd_sheet(args: argparse.Namespace) -> int:
         _render_target(args.target, **opts)
         return 0
     return _bulk_over(
-        "sheet", _tackon_target_names(), lambda name: _render_target(name, **opts)
+        "sheet", _module_target_names(), lambda name: _render_target(name, **opts)
     )
 
 
@@ -671,7 +669,7 @@ def _cmd_install(args: argparse.Namespace) -> int:
         return 0 if copied else 1
     return _bulk_over(
         "install",
-        _tackon_target_names(),
+        _module_target_names(),
         lambda name: _install_target(name, args.dest_root),
     )
 
@@ -688,7 +686,7 @@ def _cmd_publish(args: argparse.Namespace) -> int:
         _render_target(name, **opts)
         _install_target(name, args.dest_root)
 
-    return _bulk_over("publish", _tackon_target_names(), _publish_one)
+    return _bulk_over("publish", _module_target_names(), _publish_one)
 
 
 def _cmd_regenerate_all(args: argparse.Namespace) -> int:

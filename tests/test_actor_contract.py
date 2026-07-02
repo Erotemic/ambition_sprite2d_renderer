@@ -402,7 +402,7 @@ def test_every_registered_character_target_has_local_actor_metadata():
     for name, target in targets.items():
         if target.category != "characters" or name in rigdoc_targets:
             continue
-        if type(target).__name__ == "AdapterTarget":
+        if getattr(target, "kind", None) == "config":
             job = getattr(target, "_job")
             local_metadata = bool(
                 job.actor

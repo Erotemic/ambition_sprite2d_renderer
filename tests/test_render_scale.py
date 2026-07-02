@@ -19,7 +19,7 @@ from ambition_sprite2d_renderer.cli.commands import (
     DEFAULT_CONFIG_DIR,
     DEFAULT_REVIEW_CONFIG_DIR,
 )
-from ambition_sprite2d_renderer.registry import AdapterTarget, load_jobs
+from ambition_sprite2d_renderer.registry import Target, load_jobs
 from ambition_sprite2d_renderer.registry.config import RenderConfig
 
 
@@ -81,7 +81,7 @@ def test_fractional_render_scale_publishes_source_scale_sheet():
 
 
 def test_adapter_quality_scale_is_relative_to_normal_render_scale(tmp_path):
-    target = AdapterTarget(
+    target = Target.from_config(
         config_path=DEFAULT_CONFIG_DIR / "player_robot.yaml", category="characters"
     )
     full_dir = tmp_path / "quality_full"
