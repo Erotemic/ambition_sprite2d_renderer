@@ -904,18 +904,21 @@ def _cmd_ultrapack(args: argparse.Namespace) -> int:
     page overlays + pack report land under ``out/diagnostics/`` only with
     ``--debug-views``, so the published pack stays clean by default."""
     from ..authoring.ultrapack import (
+        PackPlan,
         ultrapack,
         ultrapack_rendered,
         write_debug_views,
         write_pack,
     )
 
+    plan = PackPlan.load(args.pack_plan) if args.pack_plan else None
     if args.from_rendered is not None:
         pack = ultrapack_rendered(
             Path(args.from_rendered),
             scale=args.scale,
             min_frame_px=args.min_frame_px,
             page_size=args.page_size,
+            plan=plan,
         )
     else:
         pack = ultrapack(
@@ -923,6 +926,7 @@ def _cmd_ultrapack(args: argparse.Namespace) -> int:
             scale=args.scale,
             min_frame_px=args.min_frame_px,
             page_size=args.page_size,
+            plan=plan,
         )
 
     written = write_pack(pack, args.out, name=args.name)

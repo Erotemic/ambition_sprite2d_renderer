@@ -418,9 +418,29 @@ def build_parser() -> argparse.ArgumentParser:
         help="Basename for the page PNGs + catalog JSON.",
     )
     p.add_argument(
+        "--pack-plan",
+        type=Path,
+        default=None,
+        help=(
+            "PackPlan YAML (groups: {name: [target stems]}). Each group packs "
+            "into its own page sequence (locality); ungrouped targets share "
+            "the general pool."
+        ),
+    )
+    p.add_argument(
         "--debug-views",
         action="store_true",
-        help="Also write labeled page overlays + a pack report under out/diagnostics/.",
+        help="Also write labeled page overlays + a pack report (see --debug-dir).",
+    )
+    p.add_argument(
+        "--debug-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Where --debug-views diagnostics land. Default: out/diagnostics/. "
+            "Pass a staging dir when --out is a runtime asset root so debug "
+            "views never ship."
+        ),
     )
     p.set_defaults(func=_cmd_ultrapack)
 

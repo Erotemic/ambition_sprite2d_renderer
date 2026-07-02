@@ -1,0 +1,19 @@
+# PackPlan: locality groups for ultrapacking (quality-independent policy).
+#
+# Each group's frames pack into their OWN page sequence, so a zone (or the
+# always-loaded cast) stays co-resident and can be loaded/unloaded as a unit.
+# Targets listed in no group land in the shared pool. Group name "shared" is
+# reserved. See docs/planning/engine/data-driven-sprites-and-characters.md
+# (PackPlan target / W7).
+groups:
+  # The player's own rigs — resident for the whole session.
+  always:
+    - player_robot
+    - robot
+  # Intro-zone cast + props (the intro loads first on a fresh save).
+  intro:
+    - intro_cart
+    - creator
+    - interdimensional_gate_ring
+    - interdimensional_gate_portal
+    - news_board

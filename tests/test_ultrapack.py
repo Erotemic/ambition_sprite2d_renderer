@@ -7,7 +7,10 @@ import json
 import yaml
 from PIL import Image, ImageDraw
 
+import pytest
+
 from ambition_sprite2d_renderer.authoring.ultrapack import (
+    PackPlan,
     ultrapack_rendered,
     write_debug_views,
     write_pack,
@@ -73,6 +76,83 @@ def test_min_frame_px_floors_potato_frames(tmp_path):
     potato = ultrapack_rendered(tmp_path, scale=1.0 / 16.0, min_frame_px=8, page_size=256)
     f = potato.frames[0]
     assert f.src_w >= 8 and f.src_h >= 8
+
+
+def test_differential_pack_reconstruction_is_lossless(tmp_path):
+    """W1: the pack pixels ARE the sheet pixels. Reconstruct every logical frame
+    twice — once from the source per-target sheet, once from the packed shared
+    pages via the catalog — and require byte-equality at base scale."""
+    import json as _json
+
+    from ambition_sprite2d_renderer.authoring.ultrapack import (
+        _read_sheet_frames,
+        _reconstruct_logical,
+    )
+
+    sheet_dir = tmp_path / "sheets"
+    sheet_dir.mkdir()
+    _write_sheet(sheet_dir, "alpha", fw=64, fh=64, n_frames=6, cols=3)
+    _write_sheet(sheet_dir, "beta", fw=48, fh=80, n_frames=4, cols=2)
+
+    pack = ultrapack_rendered(sheet_dir, page_size=512)
+    out = tmp_path / "pack"
+    write_pack(pack, out, name="ultrapack")
+    catalog = _json.loads((out / "ultrapack.json").read_text())
+    pages = [Image.open(out / name).convert("RGBA") for name in catalog["pages"]]
+
+    checked = 0
+    for stem in ("alpha", "beta"):
+        source = {
+            (meta["animation"], meta["index"]): fi.image
+            for fi, meta in _read_sheet_frames(sheet_dir, stem, scale=1.0, min_px=1)
+        }
+        for anim, frames in catalog["targets"][stem].items():
+            for fr in frames:
+                packed = _reconstruct_logical(
+                    pages[fr["page"]],
+                    {"x": fr["x"], "y": fr["y"], "w": fr["w"], "h": fr["h"], "off": fr["off"]},
+                    fr["src"][0],
+                    fr["src"][1],
+                )
+                assert packed.tobytes() == source[(anim, fr["index"])].tobytes(), (
+                    stem,
+                    anim,
+                    fr["index"],
+                )
+                checked += 1
+    assert checked == 10  # every frame of both targets was compared
+
+
+def test_pack_plan_groups_isolate_pages(tmp_path):
+    """W7: a plan group's frames land ONLY on that group's pages; ungrouped
+    targets share the general pool; the catalog records per-page groups."""
+    import json as _json
+
+    for stem in ("alpha", "beta", "gamma"):
+        _write_sheet(tmp_path, stem, fw=64, fh=64, n_frames=4, cols=2)
+
+    plan = PackPlan(groups={"zone_a": ["alpha"]})
+    pack = ultrapack_rendered(tmp_path, page_size=256, plan=plan)
+
+    assert len(pack.page_groups) == len(pack.pages)
+    # Locality guarantee: every alpha frame on a zone_a page; every other
+    # frame on a shared page; no page mixes groups.
+    for f in pack.frames:
+        group = pack.page_groups[f.page]
+        assert group == ("zone_a" if f.target == "alpha" else "shared"), (f.target, group)
+
+    out = tmp_path / "out"
+    write_pack(pack, out, name="ultrapack")
+    catalog = _json.loads((out / "ultrapack.json").read_text())
+    assert catalog["page_groups"] == pack.page_groups
+    assert set(catalog["page_groups"]) == {"zone_a", "shared"}
+
+
+def test_pack_plan_rejects_reserved_and_duplicate_stems(tmp_path):
+    with pytest.raises(ValueError):
+        PackPlan(groups={"shared": ["alpha"]})
+    with pytest.raises(ValueError):
+        PackPlan(groups={"a": ["x"], "b": ["x"]})
 
 
 def test_write_pack_is_clean_and_debug_views_are_opt_in(tmp_path):
