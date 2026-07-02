@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Stylized right-facing humanoid character target.
 
 This target is meant to be the "general character" lane for Ambition: a more
@@ -15,6 +13,8 @@ Design goals:
 - structural variation first: presets alter torso, limb, head, and costume
   proportions instead of only changing props and palettes.
 """
+
+from __future__ import annotations
 
 import math
 import random

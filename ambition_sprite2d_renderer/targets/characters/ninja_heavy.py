@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Standalone generator for a heavy ninja sprite.
 
 This target is intentionally bespoke and does not reuse the pirate-heavy
@@ -10,6 +8,8 @@ kanabo.  The pose language is crouched and coiled rather than swaggering.
 It only reuses ``build_sheet`` for the Ambition-compatible spritesheet / YAML /
 RON output pipeline.
 """
+
+from __future__ import annotations
 
 import argparse
 import math

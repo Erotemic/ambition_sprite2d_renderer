@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Standalone generator for a side-profile dinosaur enemy.
 
 This target renders a stylized raptor-like dinosaur enemy built for
@@ -9,6 +7,8 @@ and multiple attack rows that imply distinct combat patterns:
 - tail sweep
 - pounce
 """
+
+from __future__ import annotations
 
 import argparse
 import math

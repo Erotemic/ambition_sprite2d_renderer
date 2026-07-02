@@ -55,15 +55,15 @@ is the review sheet for the richer set.
 
 ## Sandbag target
 
-Sandbag is no longer only a tack-on renderer. `SandbagAdapter` wraps the same
-procedural sandbag drawing code behind `BaseAdapter`, and `configs/sandbag.yaml`
-renders an 11-row runtime-compatible sheet with `crop: false` so 128×128 cells
-are preserved.
+Sandbag is no longer only a tack-on renderer. `SandbagGenerator` wraps the
+same procedural sandbag drawing code behind `CharacterGenerator`, and
+`configs/sandbag.yaml` renders an 11-row runtime-compatible sheet with
+`crop: false` so 128×128 cells are preserved.
 
 The tack-on command renders the sparse idle/hit/death output:
 
 ```bash
-python -m ambition_sprite2d_renderer render sandbag
+python -m ambition_sprite2d_renderer sheet sandbag
 ```
 
 ## Variants
@@ -107,20 +107,24 @@ See `walk_cycle_baseline.md` for the practical recipe, the target list, and the 
 ## Package standards
 
 - Keep target code under `ambition_sprite2d_renderer/targets/<category>/`
-  where category is one of `characters/`, `props/`, `tiles/`, `icons/`.
+  where category is one of `characters/`, `props/`, `tiles/`, `icons/`,
+  `projectiles/`.
   The registry walks these dirs at import time; see
   [`registry/discovery.py`](../ambition_sprite2d_renderer/registry/discovery.py)
   for the discovery contract and the README's "Adding a new sprite"
   section for the practical walkthrough.
-- Generic helpers (drawing primitives, the `build_sheet` pipeline,
-  RON emitters) live at the package root —
-  [`tackon_sheet.py`](../ambition_sprite2d_renderer/authoring/tackon_sheet.py) and
-  [`common_draw.py`](../ambition_sprite2d_renderer/authoring/common_draw.py).
+- Generic helpers (drawing primitives, the `build_sheet` pipeline) live
+  under `authoring/` —
+  [`sheet_build.py`](../ambition_sprite2d_renderer/authoring/sheet_build.py) and
+  [`common_draw.py`](../ambition_sprite2d_renderer/authoring/common_draw.py);
+  the RON emitter and measure primitives live in
+  [`core/`](../ambition_sprite2d_renderer/core/).
 - Character-family helpers (shared by several characters in a family,
   e.g. pirates) live under `targets/characters/` with a leading
   underscore so discovery skips them — see `_pirate_common.py`.
-- Keep historical prototypes in `ambition_sprite2d_renderer/legacy/`.
-- Keep the adapter API small: `animations`, `sample_spec`, `render_frame`.
+- Keep abandoned experiments quarantined (see `pca_legacy/` at the repo
+  root), never on the live render path.
+- Keep the generator API small: `animations`, `sample_spec`, `render_frame`.
 - Keep YAML jobs human-editable and deterministic.
 - Keep generated sprite sheets and manifests outside the package, normally in
   `generated/` or a deliberate asset install destination.

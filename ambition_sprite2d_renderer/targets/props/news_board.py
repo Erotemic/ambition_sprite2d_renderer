@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Procedural news board sprite — a wall-mounted bulletin board used
 in `drain_alley` and other intro slice rooms.
 
@@ -13,6 +11,8 @@ No baked drop shadow (project rule, see memory
 `feedback_no_drop_shadows`). The bottom row of the sprite IS the
 true foot — the in-game `feet_anchor_y` lands directly on it.
 """
+
+from __future__ import annotations
 
 import math
 from pathlib import Path

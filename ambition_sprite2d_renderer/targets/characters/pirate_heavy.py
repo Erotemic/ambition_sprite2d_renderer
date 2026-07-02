@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Standalone generator for several pirate-heavy sprite variants.
 
 This target deliberately does NOT route through the pirate-family
@@ -13,6 +11,8 @@ family of related pirate-heavy variants with different proportions, skin tones,
 accessories, and small facial / costume features so they feel like related crew
 members rather than the exact same sprite recolored.
 """
+
+from __future__ import annotations
 
 import argparse
 import math

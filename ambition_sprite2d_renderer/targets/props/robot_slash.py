@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Robot melee slash effect — a crisp energy arc for the robot's attacks.
 
 A single overlay target with directional variants so the robot's swing
@@ -22,6 +20,8 @@ Variants (one animation row each):
 Anchors per frame: ``origin`` (pivot) and ``tip`` (leading point), plus
 an ``effect`` block (kind + progress) mirroring ``generic_explosions``.
 """
+
+from __future__ import annotations
 
 import math
 from pathlib import Path

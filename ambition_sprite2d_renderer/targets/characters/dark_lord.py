@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Standalone generator for a dark-lord armored boss sprite.
 
 This is *not* a pirate.  It is a heavy dark-fantasy boss / elite enemy:
@@ -18,6 +16,8 @@ The animation rows are chosen to be useful for a side-scrolling action enemy:
 Only ``build_sheet`` is reused for the Ambition-compatible PNG/YAML/RON sheet
 layout.  There is no GUI / registry wiring in this target.
 """
+
+from __future__ import annotations
 
 import argparse
 import math

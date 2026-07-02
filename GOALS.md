@@ -10,7 +10,7 @@ a goal lands or shifts.
 has its own rig for the 5 pirate roles; `toon_side` is a 3,500-line
 monolith with 22 archetype switches inside one renderer; ghoul_skulker
 / weird_hermit / bear_mauler / etc. each draw bespoke geometry. The
-helper layer is thin: `tackon_sheet` provides `build_sheet` +
+helper layer is thin: `sheet_build` provides `build_sheet` +
 `write_canonical` + drawing primitives, but the per-character work
 still re-implements anatomy, pose math, and silhouette construction.
 
@@ -58,7 +58,7 @@ declarative file on top of a shared shape-primitive rig:
 
 **Concrete steps that move us toward this:**
 
-- Extract a `tackon_sheet.rig` module from the patterns repeated in
+- Extract a `sheet_build.rig` module from the patterns repeated in
   `_pirate_common`. Shared bone-rotation math, anatomy primitives
   (limb, torso, head + face), prop attachment points.
 - Add a `scale` parameter to `build_sheet` / `write_canonical` that
@@ -70,9 +70,9 @@ declarative file on top of a shared shape-primitive rig:
 
 ## 2. Unified Target abstraction
 
-**Where we are:** ✅ — `Target` Protocol with `TackonTarget` +
-`AdapterTarget` impls landed in
-[`target_registry.py`](ambition_sprite2d_renderer/target_registry.py).
+**Where we are:** ✅ — one unified `Target` class (module-authored /
+config-authored constructors) landed in
+[`registry/discovery.py`](ambition_sprite2d_renderer/registry/discovery.py).
 Discovery walks tack-ons + main YAML configs + review NPC configs and
 returns one unified `dict[str, Target]`. CLI consumes the registry
 uniformly — `canonical <name>` / `sheet <name>` / `publish <name>`
@@ -81,7 +81,7 @@ work for any surface.
 **Open follow-ups:**
 
 - Bulk-port tack-on targets to expose the optional `render_canonical`
-  hook (3-line wrapper around `tackon_sheet.write_canonical`). Drops
+  hook (3-line wrapper around `sheet_build.write_canonical`). Drops
   the slow-fallback time for the gallery from minutes to seconds.
 - Consider whether main YAML configs should still be a separate
   authoring path or fold into the rig from goal #1.
@@ -120,7 +120,7 @@ size for the regression net was the wrong default while we have a
 
 **Where we are:** README covers the CLI surface, the "Adding a new
 sprite" walkthrough, and the category split. `docs/design.md`
-captures architecture rationale. `target_registry.py` module
+captures architecture rationale. `registry/discovery.py` module
 docstring is the authoritative Target API contract.
 
 **Where we want to be:**
@@ -129,6 +129,6 @@ docstring is the authoritative Target API contract.
 - This file (`GOALS.md`) stays as the strategic direction.
 - `docs/design.md` stays as architecture rationale, kept in sync
   with what's actually in the code.
-- `target_registry.py` docstring stays as the API spec.
+- `registry/discovery.py` docstring stays as the API spec.
 
 Each document has one job. None of them duplicates the others.

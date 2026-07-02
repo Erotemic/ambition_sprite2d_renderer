@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Standalone generator for a heavy Viking warrior sprite sheet.
 
 Redesigned from scratch with a broad opera / saga silhouette:
@@ -11,6 +9,8 @@ Redesigned from scratch with a broad opera / saga silhouette:
 
 Generator only. No registration or GUI wiring.
 """
+
+from __future__ import annotations
 
 import argparse
 import math

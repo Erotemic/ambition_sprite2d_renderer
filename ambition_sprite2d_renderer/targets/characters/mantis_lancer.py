@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Standalone generator for a side-profile mantis lancer enemy.
 
 Designed specifically for side-scrolling readability. The silhouette is a
@@ -7,6 +5,8 @@ forward-facing insectoid lancer with exaggerated blade arms and hind legs, and
 it includes multiple attack animations that suggest distinct gameplay patterns:
 long stab, sweeping slash, and pouncing leap.
 """
+
+from __future__ import annotations
 
 import argparse
 import math

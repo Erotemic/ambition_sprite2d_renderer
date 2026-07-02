@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Procedural sprite-sheet generator for generic explosion FX.
 
 Designed to stay mostly standalone for now so it can be iterated on without
@@ -13,6 +11,8 @@ Rows:
 - ``smoke_burst``   — heavier smoke / ember breakup
 - ``starburst``     — sharper pointy explosion silhouette
 """
+
+from __future__ import annotations
 
 import math
 from pathlib import Path

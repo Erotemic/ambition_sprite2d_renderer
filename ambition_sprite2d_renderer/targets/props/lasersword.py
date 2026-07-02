@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Laser-sword projectile fired by the `lasersword_with_guns` weapon.
 
 Mechanically a fast-traveling projectile; visually a smaller copy of
@@ -19,6 +17,8 @@ Animations:
   blade — the metal hilt stays solid), pommel sparks scatter, and
   the whole sprite fades to nothing on the last frame.
 """
+
+from __future__ import annotations
 
 import math
 from pathlib import Path

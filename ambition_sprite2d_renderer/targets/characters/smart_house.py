@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Standalone generator for a Smart House character sprite sheet.
 
 Concept:
@@ -11,6 +9,8 @@ Concept:
 
 Generator only. No registration or GUI wiring.
 """
+
+from __future__ import annotations
 
 import argparse
 import math

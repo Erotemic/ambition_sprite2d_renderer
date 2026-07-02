@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Shared animation vocabulary for procedural 2D character targets.
 
 The Rust runtime currently consumes a compact core grid, but the renderer can
@@ -7,6 +5,8 @@ produce richer review sheets before engine integration exists.  Keeping those
 names here lets robot, goblin, sandbag, and future character variants agree on
 what an animation row means without every target inventing its own spelling.
 """
+
+from __future__ import annotations
 
 from typing import Dict, Iterable, List, Mapping
 

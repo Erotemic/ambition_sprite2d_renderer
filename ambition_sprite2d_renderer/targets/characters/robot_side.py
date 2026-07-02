@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Cute right-facing side-scroller robot target.
 
 The renderer keeps a fixed canvas, fixed ground anchor, and stable part sizes for
@@ -12,6 +10,8 @@ visor, antenna, face, and shell keep their spatial relationship.  For a
 right-facing model, the far arm is drawn behind the body and the near arm / blade
 is drawn in front.
 """
+
+from __future__ import annotations
 
 import math
 import random

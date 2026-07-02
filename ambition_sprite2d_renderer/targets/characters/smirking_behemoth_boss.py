@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Procedural sprite generator for the Smirking Behemoth boss.
 
 Design goals derived from the repo discussion and the pasted visual refs:
@@ -16,6 +14,8 @@ Design goals derived from the repo discussion and the pasted visual refs:
   bundle through the generic tack-on renderer so the sandbox and catalog can
   load it without bespoke conversion steps.
 """
+
+from __future__ import annotations
 
 import math
 from pathlib import Path

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Procedural interdimensional portal / gate sprite sheets.
 
 This target intentionally evokes a monumental sci-fi portal ring while staying
@@ -8,6 +6,8 @@ inscription "ΛΕΓΑΛΛΥ ΔΙΣΤΙΝΧΤ" on plaque-like chevron housings, w
 at 12 o'clock. The wormhole / portal membrane is rendered as a separate
 transparent overlay sheet so gameplay can layer it over the ring when active.
 """
+
+from __future__ import annotations
 
 import math
 from pathlib import Path

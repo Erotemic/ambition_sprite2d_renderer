@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Standalone generator for a heavy Viking shieldmaiden sprite sheet.
 
 Redesigned from scratch with a distinct, opera-singer inspired silhouette:
@@ -11,6 +9,8 @@ Redesigned from scratch with a distinct, opera-singer inspired silhouette:
 
 Generator only. No registration or GUI wiring.
 """
+
+from __future__ import annotations
 
 import argparse
 import math

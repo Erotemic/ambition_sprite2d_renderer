@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Procedural LDtk-friendly tileset for the intro laboratory.
 
 This target emits a larger 32px tile atlas for the game's opening lab.  It is
@@ -7,6 +5,8 @@ structured for LDtk authoring rather than as a tiny prop sheet: solid / one-way
 collision tiles are separated from background walls, decor, pipes, cables,
 lights, doors, and interactive lab props via metadata in the YAML manifest.
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path

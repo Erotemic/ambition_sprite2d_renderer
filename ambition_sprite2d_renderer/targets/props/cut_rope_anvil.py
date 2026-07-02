@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """Procedural anvil prop for the cut-rope boss arena.
 
 The anvil is a visible Prop with kind ``cut_rope_anvil``. Runtime code
 moves the LDtk prop down when the rope is cut; this sheet only supplies
 its idle art so the entity no longer renders as a generic box.
 """
+
+from __future__ import annotations
 
 from pathlib import Path
 from typing import List, Tuple

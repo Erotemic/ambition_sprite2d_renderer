@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Procedural burning flying shark mount sprite sheet.
 
 A tack-on target for the pirate sky-mount: a broad, side-view shark with a
@@ -7,6 +5,8 @@ combat harness, ember fins, and persistent fire streaming from its dorsal ridge
 and tail. The goal is a readable gameplay silhouette rather than a fully
 realistic shark.
 """
+
+from __future__ import annotations
 
 import math
 from pathlib import Path

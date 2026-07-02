@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Bespoke procedural sprite for the Creator character.
 
 The Creator is intentionally more distinctive than the simple toon-rig cast: a
@@ -7,6 +5,8 @@ robed / tailored figure with an asymmetric mantle, high collar, luminous chest
 sigil, and a small geometric halo frame. The result is meant to read as an
 important authored NPC for the intro rather than a generic townsperson.
 """
+
+from __future__ import annotations
 
 import math
 from pathlib import Path

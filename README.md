@@ -1,24 +1,27 @@
 # Ambition 2D Sprite Renderer
 
-Procedural 2D sprite renderer for Ambition. Two surfaces share the package:
+Procedural 2D sprite renderer for Ambition. Two authoring surfaces share
+the package; discovery unifies both into one `Target` registry:
 
-1. **Adapter targets** — YAML-driven characters built on a `BaseAdapter`
-   class (robot / goblin / ninja / boss / toon / sandbag / …). Jobs in
-   `configs/*.yaml` describe the spec; `adapters.TARGETS` wires each
-   target id to its rig. This is the "character lab" surface formerly
-   published as `proc2d_character_lab`.
-2. **Tack-on targets** — per-target modules under
+1. **Config-authored (generator) targets** — YAML-driven characters built
+   on the `CharacterGenerator` base class (robot / goblin / ninja / boss /
+   toon / sandbag / …). Jobs in `configs/*.yaml` describe the spec;
+   `registry/character_generators.py`'s `GENERATORS` dict wires each
+   target id to its generator. This is the "character lab" surface
+   formerly published as `proc2d_character_lab`.
+2. **Module-authored (tack-on) targets** — per-target modules under
    `targets/<category>/`. Each module exposes a `render()` function;
    discovery walks the tree and registers them automatically. No
    central registration list — dropping a file in the right category
    subdir is the entire integration step.
 
-Tack-on targets are split across four category subdirs:
+Tack-on targets are split across five category subdirs:
 
 | Category | What goes here | Examples |
 |---|---|---|
 | [`targets/characters/`](ambition_sprite2d_renderer/targets/characters/) | Anything controllable by a brain — characters, bosses, tiny enemies | `ghoul_skulker`, `weird_hermit`, `mockingbird_boss/` (multi-file) |
 | [`targets/props/`](ambition_sprite2d_renderer/targets/props/) | Items, weapons, gates, scene dressing, batched entity sheets | `lasersword`, `interdimensional_gate`, `entities` |
+| [`targets/projectiles/`](ambition_sprite2d_renderer/targets/projectiles/) | Thrown / launched sprites | `glider` |
 | [`targets/tiles/`](ambition_sprite2d_renderer/targets/tiles/) | LDtk tileset atlases | `intro_lab_tileset`, `town_tileset` |
 | [`targets/icons/`](ambition_sprite2d_renderer/targets/icons/) | UI ability/item icons | `item_icons` |
 
@@ -30,13 +33,13 @@ The package is organized by role; the import boundary `core` ← `authoring`
 | Dir | Role | Deps |
 |---|---|---|
 | [`core/`](ambition_sprite2d_renderer/core/) | Rendering primitives — draw, pipeline, measure, frameset, the single RON emitter | **Pillow + stdlib only** |
-| [`authoring/`](ambition_sprite2d_renderer/authoring/) | Render spines + per-paradigm helpers (`sheet`, `tackon_sheet`, `adapters`, `skeleton`, `rigdoc`, …) | +PIL |
+| [`authoring/`](ambition_sprite2d_renderer/authoring/) | Render spines + per-paradigm helpers (`sheet`, `sheet_build`, `skeleton`, `rigdoc`, `ultrapack`, …) | +PIL |
 | [`targets/`](ambition_sprite2d_renderer/targets/) | The actual sprite content (characters/props/tiles/icons) | +authoring |
-| [`registry/`](ambition_sprite2d_renderer/registry/) | Target discovery (`discovery`) + adapter render config (`config`) | — |
+| [`registry/`](ambition_sprite2d_renderer/registry/) | Target discovery (`discovery`), job config (`config`), generator roster (`character_generators`), pack policy (`pack_groups`) | — |
 | [`cli/`](ambition_sprite2d_renderer/cli/) | Command-line surface — `commands` (logic), `parser` (argparse + `main`), `console` | — |
 | [`gui/`](ambition_sprite2d_renderer/gui/) | PySide6 rig editor | +PySide6 |
-| [`devtools/`](ambition_sprite2d_renderer/devtools/) | Author-facing inspection (`debug_hitboxes`) | — |
-| `configs/` · `data/` | YAML adapter jobs · rig templates | data |
+| [`devtools/`](ambition_sprite2d_renderer/devtools/) | Author-facing inspection (`debug_hitboxes`) + editor bridges (`ldtk_manifest`) | — |
+| `configs/` · `data/` | YAML generator jobs · rig templates + `pack_plan.yaml` | data |
 
 ## Modal CLI
 
@@ -48,9 +51,11 @@ python -m ambition_sprite2d_renderer canonical [<target>]   # one canonical, or 
 python -m ambition_sprite2d_renderer sheet     [<target>]   # one full sheet, or every tack-on sheet
 python -m ambition_sprite2d_renderer install   [<target>]   # one install, or every tack-on install
 python -m ambition_sprite2d_renderer publish   [<target>]   # sheet + install (one, or every tack-on)
+python -m ambition_sprite2d_renderer gifs      [<target>]   # per-animation GIF previews
+python -m ambition_sprite2d_renderer debug-hitboxes <target> # hitbox/hurtbox overlay strips
 ```
 
-**Adapter-pipeline commands** (take config paths or have unique semantics):
+**Generator-pipeline commands** (take config paths or have unique semantics):
 
 ```
 python -m ambition_sprite2d_renderer draw-all                # render every config in configs/
@@ -63,6 +68,16 @@ python -m ambition_sprite2d_renderer single <cfg> <out>      # one frame from a 
 python -m ambition_sprite2d_renderer regenerate-all          # draw-all + publish + draw-runtime-npcs
 ```
 
+**Pipeline commands** (their own semantics; see `--help` for flags):
+
+```
+python -m ambition_sprite2d_renderer ultrapack ...           # pool ALL targets into shared uniform
+                                                             # atlas pages at one quality tier
+                                                             # (locality via data/pack_plan.yaml)
+python -m ambition_sprite2d_renderer ldtk-manifest --out <f> # LDtk visual manifest for
+                                                             # ambition_ldtk_tools apply-manifest
+```
+
 `sheet` writes to `tools/ambition_sprite2d_renderer/generated/<target>/`.
 `install` copies the canonical sheet files into
 `crates/ambition_gameplay_core/assets/sprites/`. `publish` does both.
@@ -73,7 +88,7 @@ have their own bulk paths (`draw-all` / `draw-runtime-npcs`).
 
 ## Adding a new sprite
 
-Run `python -m ambition_sprite2d_renderer list-targets` to see what's
+Run `python -m ambition_sprite2d_renderer list` to see what's
 already registered before adding a new one.
 
 The **canonical spec for the tack-on API** lives in the module
@@ -92,7 +107,7 @@ That's the source of truth — this section is the practical walkthrough.
 
 A target can move between categories with a plain `git mv` — discovery
 is path-agnostic beyond the category dir, and the relative-import
-depth (`...tackon_sheet` etc.) is the same in every category. No
+depth (`...authoring.sheet_build` etc.) is the same in every category. No
 registration diff is involved.
 
 ### 2. Single-file target (most common)
@@ -105,11 +120,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List
 
-from ...tackon_sheet import build_sheet
+from ...authoring.sheet_build import build_sheet
 
 TARGET_NAME = "my_new_enemy"
-# Optional — defaults to `{TARGET_NAME}_spritesheet.{png,yaml,ron}`
-# which matches what `build_sheet` writes.
+# Optional — defaults to `{TARGET_NAME}_spritesheet.{png,yaml,ron}` plus
+# `{TARGET_NAME}_actor.ron` (the actor-contract sidecar is auto-appended
+# even to explicit lists), matching what `build_sheet` writes.
 SHEET_FILES = [
     f"{TARGET_NAME}_spritesheet.png",
     f"{TARGET_NAME}_spritesheet.yaml",
@@ -135,8 +151,8 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
             outputs["preview"], outputs["canonical"], outputs["canonical_transparent"]]
 ```
 
-That's it. `list-targets` will show it; `render-publish my_new_enemy`
-will write + install it.
+That's it. `list` will show it; `publish my_new_enemy` will write +
+install it.
 
 [`targets/characters/ghoul_skulker.py`](ambition_sprite2d_renderer/targets/characters/ghoul_skulker.py)
 is a good copy-paste starting point for single-file characters.
@@ -186,37 +202,37 @@ Iterable[Path]` and it'll be used instead.
 
 - **Generic drawing + spritesheet building** — lives under
   [`authoring/`](ambition_sprite2d_renderer/authoring/):
-  [`tackon_sheet.py`](ambition_sprite2d_renderer/authoring/tackon_sheet.py)
+  [`sheet_build.py`](ambition_sprite2d_renderer/authoring/sheet_build.py)
   (`build_sheet` + math + draw primitives) and
   [`common_draw.py`](ambition_sprite2d_renderer/authoring/common_draw.py)
-  (adapter-helper drawing primitives). The RON emitter and core draw/measure
-  primitives now live in [`core/`](ambition_sprite2d_renderer/core/). Use these
-  from any target.
+  (generator-helper drawing primitives). The RON emitter and core
+  draw/measure primitives live in
+  [`core/`](ambition_sprite2d_renderer/core/). Use these from any target.
 - **Character-family helpers** (shared by several characters in a
   family) live under `targets/characters/` with a leading underscore
   so discovery skips them — see
   [`targets/characters/_pirate_common.py`](ambition_sprite2d_renderer/targets/characters/_pirate_common.py)
   for the pirate-family rig (Palette + draw_character + animation_pose).
 
-### Adapter target instead of tack-on
+### Generator target instead of tack-on
 
-If your character fits the YAML-driven adapter shape (one parametric
-rig with many archetype variants), the adapter path is preferred:
+If your character fits the YAML-driven generator shape (one parametric
+rig with many archetype variants), the generator path is preferred:
 
-1. Drop a generator class under
-   `targets/characters/<name>_side.py` (`Generator` with
-   `sample_spec` + `render_animation_frame` methods).
-2. Add an `XxxAdapter(BaseAdapter)` to `adapters.py` and register it
-   in the module-level `TARGETS` dict.
+1. Drop a generator class under `targets/characters/<name>_side.py`
+   (subclass `CharacterGenerator` from `authoring/generator.py`;
+   implement `build_spec` + `render_frame`).
+2. Register an instance in the `GENERATORS` dict in
+   [`registry/character_generators.py`](ambition_sprite2d_renderer/registry/character_generators.py).
 3. Add `configs/<name>.yaml` (or a review config under
    `configs/review/`) describing the render parameters.
 4. Add the file's stem to
-   [`ADAPTER_HELPER_STEMS`](ambition_sprite2d_renderer/registry/discovery.py)
+   [`GENERATOR_MODULE_STEMS`](ambition_sprite2d_renderer/registry/discovery.py)
    in `registry/discovery.py` so discovery skips it.
 
 [`targets/characters/robot_side.py`](ambition_sprite2d_renderer/targets/characters/robot_side.py)
 + [`configs/robot.yaml`](ambition_sprite2d_renderer/configs/robot.yaml) is
-the canonical adapter target.
+the canonical generator target.
 
 ## Character specs and review casts
 
@@ -248,9 +264,9 @@ of `absurd_general`.
 
 - Generated outputs live under `generated/` and are gitignored.
 - Targets must be deterministic for a given input (same code → same bytes).
-- Runtime assets are written only by explicit `install` / `render-publish`
-  / `render-publish-all` / `regenerate-all` (or `draw-all` /
-  `draw-canonicals` / `draw-entities` / `draw-icons` for adapter targets).
+- Runtime assets are written only by explicit `install` / `publish` /
+  `regenerate-all` / `draw-runtime-npcs` (or `draw-all` with an explicit
+  `--out-dir` for generator targets).
 - Do not commit `.png`, `.yaml`, etc., from `generated/`.
 
 See [`docs/design.md`](docs/design.md) for the architecture rationale

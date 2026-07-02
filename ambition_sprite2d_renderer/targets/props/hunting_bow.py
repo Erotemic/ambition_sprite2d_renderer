@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Hunting bow — a recurved wooden bow that fires the ``bow_arrow`` prop.
 
 Rendered in the canonical AIMING-RIGHT pose: the wooden limbs arc toward
@@ -19,6 +17,8 @@ Animations:
   flex, so the game can play the draw and read the live nock position
   for arrow placement / release.
 """
+
+from __future__ import annotations
 
 import math
 from pathlib import Path

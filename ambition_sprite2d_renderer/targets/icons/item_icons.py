@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """Procedural ability and item icons for Ambition review builds.
 
 The Rust game does not consume these yet; the goal is to keep ability icon art in
 one deterministic Python pipeline alongside sprites.  Each icon is deliberately
 simple at 64x64: strong silhouette, dark outline, one accent glow, and no text.
 """
+
+from __future__ import annotations
 
 import math
 from dataclasses import asdict, dataclass

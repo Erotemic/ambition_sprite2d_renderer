@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Standalone generator for a weird hunched hermit enemy sprite.
 
 Inspired by a loose sketch vibe: side-profile, droopy cap, long nose,
@@ -7,6 +5,8 @@ moustache, wrinkly face, long creepy fingers, awkward crouch, and shorts.
 The rows support strange side-scroller attack patterns: finger jab, grab,
 and curse sneeze.
 """
+
+from __future__ import annotations
 
 import argparse
 import math

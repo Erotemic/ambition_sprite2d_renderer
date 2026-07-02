@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Standalone generator for an attacking Viking lady warrior sprite sheet.
 
 Concept:
@@ -10,6 +8,8 @@ Concept:
 
 Generator only. No registration or GUI wiring.
 """
+
+from __future__ import annotations
 
 import argparse
 import math

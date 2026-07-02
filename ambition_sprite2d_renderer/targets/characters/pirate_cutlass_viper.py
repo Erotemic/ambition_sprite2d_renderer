@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Standalone generator for a lean pirate duelist with real side/profile rows.
 
 This target deliberately does NOT reuse the shared pirate template. It draws a
@@ -11,6 +9,8 @@ view.
 
 Only ``build_sheet`` is reused for PNG / YAML / RON emission.
 """
+
+from __future__ import annotations
 
 import argparse
 import math

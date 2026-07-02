@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Arrow projectile fired by the ``hunting_bow`` prop.
 
 A thin wooden shaft with a steel broadhead at the point end and three
@@ -15,6 +13,8 @@ Animations:
 - ``idle``: 1-frame straight arrow. The flight projectile and the
   nocked-on-the-string arrow are the same image.
 """
+
+from __future__ import annotations
 
 from pathlib import Path
 from typing import List, Tuple

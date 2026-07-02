@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Shared plumbing for the hand-held weapon props (axe / javelin / bow /
 arrow).
 
@@ -25,6 +23,8 @@ the supersample canvas helpers, and the anchor-meta builder. The
 silhouette of each weapon lives next to that weapon's ``render()`` so
 each prop stays legible on its own.
 """
+
+from __future__ import annotations
 
 from typing import Dict, Tuple
 

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Throwing javelin — a balanced spear meant to be hurled.
 
 A slim wooden shaft with a leaf-shaped steel head at the point end and
@@ -16,6 +14,8 @@ Animations:
   travelling glint; the shaft holds still. The same frames read fine
   spinning in flight because the silhouette is rotationally simple.
 """
+
+from __future__ import annotations
 
 import math
 from pathlib import Path

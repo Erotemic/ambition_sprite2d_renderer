@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Procedural heal/save shrine prop sprites.
 
 The shrine is a world prop, not an icon. This target renders a proper
@@ -12,6 +10,8 @@ The runtime now consumes `sprites/shrine_spritesheet.png` directly. This
 target still publishes a compatibility flat PNG for older callers that
 expect `shrine.png`.
 """
+
+from __future__ import annotations
 
 import math
 import shutil

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Standalone side-profile bear enemy generator.
 
 A corrected bear-specific design for side-scroller readability:
@@ -7,6 +5,8 @@ A corrected bear-specific design for side-scroller readability:
 - Far limbs are darker and tucked so the silhouette reads as a bear, not an insect rig.
 - Rows are gameplay-oriented: swipe, slam, charge, hurt, death.
 """
+
+from __future__ import annotations
 
 import argparse
 import math

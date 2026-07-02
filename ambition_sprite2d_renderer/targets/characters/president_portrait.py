@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Standalone generator for a portrait-inspired president character.
 
 Visual goal:
@@ -12,6 +10,8 @@ Visual goal:
 This character is not a pirate; it is a formal president / commander figure
 that leans into classic portrait styling.
 """
+
+from __future__ import annotations
 
 import argparse
 import math

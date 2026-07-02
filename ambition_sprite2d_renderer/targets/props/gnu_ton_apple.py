@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """Procedural apple sprite for GNU-ton's apple-rain attack.
 
 This is a small, code-generated prop target rather than a full spritesheet.
 The renderer emits a single transparent PNG that the game can use directly
 for the projectile visual.
 """
+
+from __future__ import annotations
 
 import math
 from pathlib import Path

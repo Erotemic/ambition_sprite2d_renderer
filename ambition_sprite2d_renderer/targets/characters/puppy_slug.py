@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Procedural "puppy slug" enemy sprite sheet.
 
 A late-2010s deep-dream homage: an elongated slug-like body with a
@@ -34,6 +32,8 @@ Animations:
 - `death`:       deflating melt. The creature loses structure and
                  the dog faces dissolve back into the slug ridge.
 """
+
+from __future__ import annotations
 
 import math
 from pathlib import Path

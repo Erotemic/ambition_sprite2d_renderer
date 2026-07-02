@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """AI Slop Zeta: a bespoke scary side-scroller boss.
 
 Unlike the robot / goblin targets, this is not a player-like humanoid.  It is a
@@ -14,6 +12,8 @@ Implementation notes:
 - rigid head rendering via a local layer, then rotated/composited as one unit
 - right-facing side-view; far appendages first, near appendages later
 """
+
+from __future__ import annotations
 
 import math
 import random

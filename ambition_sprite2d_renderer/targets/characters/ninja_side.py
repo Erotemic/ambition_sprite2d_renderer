@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Distinct masked ninja / shadow-duelist target.
 
 This target is intentionally semi-independent from the generic toon lane.  It
@@ -13,6 +11,8 @@ idle frame is the art-review source of truth; the other rows provide enough
 movement placeholders to exercise spritesheet + YAML generation until we author
 proper action keys.
 """
+
+from __future__ import annotations
 
 import math
 import random

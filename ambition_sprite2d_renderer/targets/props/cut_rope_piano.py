@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Procedural upright piano prop for the cut-rope boss arena.
 
 The piano is an alternate visible heavy object for the LDtk-authored
@@ -7,6 +5,8 @@ The piano is an alternate visible heavy object for the LDtk-authored
 path stable and swaps only the displayed prop kind according to the replay
 cycle.
 """
+
+from __future__ import annotations
 
 from pathlib import Path
 from typing import List, Tuple

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Procedural intro cart sprite sheet.
 
 A rustic side-view prisoner / travel cart for the opening sequence: heavy wood,
@@ -7,6 +5,8 @@ slatted side walls, iron-rimmed wheels, and a forward hitch pole. The look
 nods toward a Nordic wagon / prisoner-cart motif while remaining a generic
 procedural gameplay asset.
 """
+
+from __future__ import annotations
 
 import math
 from pathlib import Path

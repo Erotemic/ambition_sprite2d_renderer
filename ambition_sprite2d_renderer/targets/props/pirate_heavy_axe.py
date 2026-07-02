@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Boarding axe held by the Pirate Heavy.
 
 A heavy two-hand boarding axe: a thick wooden haft wrapped in leather,
@@ -16,6 +14,8 @@ Animations:
   edge so the blade reads as live metal catching the light rather than
   a flat painted shape; everything else holds still.
 """
+
+from __future__ import annotations
 
 import math
 from pathlib import Path

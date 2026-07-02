@@ -23,8 +23,11 @@
     `acid_tile.png` (32×16 neon-green acid hazard),
     `lava_tile.png` (32×16 red-orange lava hazard),
     `bg_circuit_tile.png` (32×32 hub-style circuit-board parallax).
-- `assets/entities/entity_manifest.yaml` maps each PNG to the Rust-ish gameplay vocabulary it is intended to support.
-- `assets/entities/entity_contact_sheet.png` gives a quick visual review grid.
+- `entity_manifest.yaml` (a render output of `targets/props/entities.py`,
+  installed with the batch — not a tracked file in this package) maps each
+  PNG to the Rust-ish gameplay vocabulary it is intended to support.
+- `entity_contact_sheet.png` (same provenance) gives a quick visual review
+  grid.
 
 ## P0: wire into Rust fallback pipeline (DONE)
 - ✅ `GameAssets` Bevy resource owns optional handles for character sheets,

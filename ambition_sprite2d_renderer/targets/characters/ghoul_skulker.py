@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Standalone generator for a crouched skulking ghoul enemy.
 
 Visual inspiration:
@@ -15,6 +13,8 @@ arena enemy roster.
 
 Only ``build_sheet`` is reused for spritesheet / YAML / RON emission.
 """
+
+from __future__ import annotations
 
 import argparse
 import math

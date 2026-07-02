@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Standalone generator for the Girdle sprite sheet.
 
 Girdle is an important NPC: a severe, funny, unsettling logician inspired by
@@ -7,6 +5,8 @@ Kurt Godel's facial structure and styling.  The sheet prioritizes readable
 front-view, side-view, and turning rows so cutscenes can show him directly
 addressing the camera before rotating back into side-scroller space.
 """
+
+from __future__ import annotations
 
 import argparse
 import math

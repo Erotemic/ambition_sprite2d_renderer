@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Opaque right-facing green goblin target for side-scrolling games.
 
 The ``blink_out`` and ``blink_in`` rows are Ambition's short-range teleport /
@@ -11,6 +9,8 @@ For this right-facing target, the far arm is drawn behind the body and the near
 weapon arm is drawn in front.  The head is drawn as a rigid local layer and then
 rotated as one unit, so ears, snout, eye, mouth, and teeth do not shear apart.
 """
+
+from __future__ import annotations
 
 import math
 import random

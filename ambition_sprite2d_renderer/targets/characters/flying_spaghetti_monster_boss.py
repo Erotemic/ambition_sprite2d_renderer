@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Standalone generator for a Flying Spaghetti Monster boss sprite sheet.
 
 Large floating boss for the side scroller, rendered procedurally with PIL.
@@ -13,6 +11,8 @@ stalk-eyes, with bossy attack animations:
 
 Generator only. No registration or GUI wiring.
 """
+
+from __future__ import annotations
 
 import argparse
 import math

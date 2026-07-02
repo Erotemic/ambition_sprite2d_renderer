@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Standalone generator for a big classic green T-rex enemy.
 
 Design goals:
@@ -10,6 +8,8 @@ Design goals:
 
 Only ``build_sheet`` is reused for PNG / YAML / RON emission.
 """
+
+from __future__ import annotations
 
 import argparse
 import math

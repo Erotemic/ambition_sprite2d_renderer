@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Procedural rope prop for the cut-rope boss arena.
 
 A narrow hanging rope authored as a Prop with kind ``cut_rope_rope``.
@@ -7,6 +5,8 @@ The sprite is intentionally just the visible rope above the anvil; the
 LDtk hitbox is likewise authored above the anvil so players cannot cut
 an invisible extension below it.
 """
+
+from __future__ import annotations
 
 from pathlib import Path
 from typing import List, Tuple

@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Portal gun (blue mode) — see `_portal_gun_art` for the shared geometry."""
+
+from __future__ import annotations
 
 from pathlib import Path
 from typing import List

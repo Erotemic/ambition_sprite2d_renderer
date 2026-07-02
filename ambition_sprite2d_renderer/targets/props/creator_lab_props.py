@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Procedural sci-fi lab prop spritesheet.
 
 This tack-on target renders a sheet of environment objects that could live in
@@ -14,6 +12,8 @@ Invoked through the parent CLI::
     python -m ambition_sprite2d_renderer render creator_lab_props
     python -m ambition_sprite2d_renderer render-publish creator_lab_props
 """
+
+from __future__ import annotations
 
 import math
 from dataclasses import asdict, dataclass

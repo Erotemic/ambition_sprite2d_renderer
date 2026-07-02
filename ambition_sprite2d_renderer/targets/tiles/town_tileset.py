@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Procedural side-scroller town tileset target.
 
 This target replaces the earlier top-down town pass with a side-view town /
@@ -12,6 +10,8 @@ Output:
 - town_tileset.yaml: manifest with tile names, groups, and atlas coordinates
 - town_tileset_contact_sheet.png: labeled visual review sheet
 """
+
+from __future__ import annotations
 
 import math
 from dataclasses import dataclass

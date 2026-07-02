@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Standalone generator for a heavy robot enemy with built-in variants.
 
 This target is authored from scratch and only reuses ``build_sheet`` for
@@ -7,6 +5,8 @@ spritesheet + metadata emission.  The renderer supports multiple curated
 variants so you can generate a small squad of related heavy robots that feel
 like the same faction without reading as exact clones.
 """
+
+from __future__ import annotations
 
 import argparse
 import math

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Shared geometry for the portal gun — a compact sci-fi emitter pistol.
 
 A chunky light-alloy body with a finned heat-sink along the top, an
@@ -14,6 +12,8 @@ This is a `_`-prefixed helper (no top-level ``render``) so the target
 registry does not auto-register it; `portal_gun_blue` / `portal_gun_orange`
 call :func:`build`.
 """
+
+from __future__ import annotations
 
 import math
 from pathlib import Path

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Custom sprite-sheet generators for AI-culture enemy archetypes.
 
 This module intentionally avoids the repo's human / toon rigs. Each target is a
@@ -17,6 +15,8 @@ Targets provided:
 The tack-on registry discovers this module automatically because it exposes a
 TARGETS dict. Each entry renders a separate spritesheet.
 """
+
+from __future__ import annotations
 
 import math
 from pathlib import Path

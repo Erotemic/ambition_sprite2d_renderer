@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """High-tech laser sword with side-mounted gun cluster.
 
 The wielded weapon: a wide cyan leaf-blade mounted on a dense gunmetal
@@ -24,6 +22,8 @@ Animations:
   metal chassis stays solid; pommel sparks scatter; the whole
   sprite fades on the tail end.
 """
+
+from __future__ import annotations
 
 import math
 from pathlib import Path

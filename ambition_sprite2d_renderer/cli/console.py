@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Rich console helpers for copy/pasteable scripts.
 
 Every path emitted by the sprite tooling should be printed through these
@@ -7,6 +5,8 @@ helpers so terminals that support Rich links expose it as an easy-to-open
 ``file://`` link.  The displayed text intentionally remains the original path
 shape supplied by the caller, while the link target is absolute.
 """
+
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Iterable, List
