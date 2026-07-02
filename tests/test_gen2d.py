@@ -4,7 +4,7 @@ import pytest
 from PIL import Image, ImageChops
 import yaml
 
-from ambition_sprite2d_renderer.authoring.generators import get_generator
+from ambition_sprite2d_renderer.registry.character_generators import get_generator
 from ambition_sprite2d_renderer.authoring.animation_vocab import (
     ADVANCED_PLAYER_ANIMATION_ORDER,
     EXTENDED_PLAYER_ANIMATION_ORDER,

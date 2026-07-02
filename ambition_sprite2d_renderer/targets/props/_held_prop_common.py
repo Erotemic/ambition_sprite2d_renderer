@@ -10,7 +10,7 @@ These targets all share the same authoring contract:
   anchor and rotates the whole sprite to face the swing / aim / throw
   direction at runtime, so we never bake rotation frames into the
   sheet (same convention the laser-sword family uses — see
-  ``lasersword_common.py``).
+  ``_lasersword_common.py``).
 - Each frame is drawn on a supersampled canvas (``SUPER`` × the final
   size) and LANCZOS-downsampled, which folds the anti-aliasing away
   without changing the output pixel count.

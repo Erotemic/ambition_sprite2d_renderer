@@ -282,7 +282,9 @@ class RigDocument:
           (height = collision * collision_scale). Raise it to make a character
           render bigger/taller without touching its gameplay collision box.
         - ``frame_sample_inset`` — pixels trimmed off each atlas cell edge.
-        - ``feet_anchor_y_override`` — explicit feet anchor.
+
+        (Feet placement is NOT a tuning knob — it rides
+        ``body_metrics.feet_anchor_norm`` in the emitted record.)
 
         Absent → the runtime's ``DEFAULT_TUNING`` (collision_scale 1.5). This is
         how a rig specifies its own defaults instead of inheriting the fallback."""
@@ -392,7 +394,15 @@ class RigDocument:
         svg_path = self._svg_path()
         if svg_path is None or not svg_path.exists():
             return None
-        key = (part.get("name", ""), int(round(S * 256)))
+        # Key on everything the cached value derives from (subset + pivot +
+        # scale): two sprite parts with the same (or absent) name but a
+        # different SVG include-list or pivot must not share a raster.
+        key = (
+            part.get("name", ""),
+            tuple(part.get("include") or ()),
+            tuple(part.get("pivot", (0.0, 0.0))),
+            int(round(S * 256)),
+        )
         cached = self._sprite_cache.get(key)
         if cached is not None:
             return cached

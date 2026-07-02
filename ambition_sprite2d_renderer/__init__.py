@@ -1,8 +1,10 @@
 """Ambition 2D sprite renderer.
 
-Houses the procedural character lab (robot_side / goblin_side / boss_side /
-robot25d targets driven by adapters + YAML jobs) plus tack-on targets that
-do not yet plug into the adapter system (see ``targets/sandbag.py``).
+One package, two authoring surfaces: YAML-config generator targets
+(``registry/character_generators.py`` + ``configs/*.yaml``) and module
+targets auto-discovered under ``targets/<category>/``. See
+``registry/discovery.py`` for the Target contract and README.md for the
+walkthrough.
 """
 
 __all__ = ["__version__"]

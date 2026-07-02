@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Shared drawing primitives for the laser-sword family.
 
 Two sprite targets build on this module:
@@ -21,6 +19,8 @@ Anchors (grip / muzzle / tip / forward vector) are tracked alongside
 the rendered frame so the game can pin the weapon to a character's
 hand at runtime — see `frame_anchors`.
 """
+
+from __future__ import annotations
 
 import math
 from dataclasses import dataclass

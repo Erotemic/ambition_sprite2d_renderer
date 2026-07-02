@@ -308,7 +308,12 @@ def ultrapack(
     max_dim: int = 16384,
     plan: Optional[PackPlan] = None,
 ) -> UltraPack:
-    """Render every target fresh and pool its frames into uniform pages."""
+    """Render every target fresh and pool its frames into uniform pages.
+
+    Same no-silent-coverage-caps rule as :func:`ultrapack_rendered`: a target
+    whose render/read raises is reported loudly on stderr, never dropped
+    without a trace.
+    """
     pairs: List[Tuple[FrameInput, dict]] = []
     with tempfile.TemporaryDirectory() as td:
         for target in targets:
@@ -318,8 +323,13 @@ def ultrapack(
                 pairs.extend(
                     _frames_from_target(target, tdir, scale=scale, min_px=min_frame_px)
                 )
-            except Exception:
-                continue  # a bespoke target we can't read a standard manifest from
+            except Exception as ex:  # noqa: BLE001 — report, then keep packing the rest
+                print(
+                    f"warning: ultrapack failed to render/read '{target.name}' "
+                    f"({ex!r}) — target DROPPED from this pack",
+                    file=sys.stderr,
+                )
+                continue
     return _pack_pool(pairs, scale=scale, page_size=page_size, max_dim=max_dim, plan=plan)
 
 

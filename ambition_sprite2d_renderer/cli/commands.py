@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 from typing import List
 
-from ..authoring.generators import GENERATORS, get_generator
+from ..registry.character_generators import GENERATORS, get_generator
 from ..authoring.canonical import (
     draw_canonical_of,
     render_canonical,
@@ -367,7 +367,7 @@ def _cmd_ldtk_manifest(args: argparse.Namespace) -> int:
     Producer half of the sprite -> LDtk-editor bridge; the manifest is
     consumed by `ambition_ldtk_tools` `visual-manifest apply-manifest`.
     """
-    from ..ldtk_manifest import build_manifest, write_manifest
+    from ..devtools.ldtk_manifest import build_manifest, write_manifest
 
     sprites_dir = Path(args.sprites_dir) if args.sprites_dir else sandbox_sprites_dir()
     out_path = Path(args.out) if args.out else sprites_dir / "ldtk_sprite_manifest.json"
@@ -702,6 +702,11 @@ def _bulk_over(
     op: "callable",
 ) -> int:
     """Run ``op(name)`` over each ``target_names``; report failures, return rc."""
+    # A target that failed DISCOVERY isn't in `target_names` at all, so a
+    # bulk publish would silently un-ship it. Surface the discovery report
+    # (previously only `list` printed it) so the omission is loud.
+    for line in _REPORT.warnings:
+        print(f"discovery warning: {line}", file=sys.stderr)
     failures: list[str] = []
     for name in target_names:
         print(f"\n# {name}")
@@ -765,13 +770,11 @@ def _cmd_regenerate_all(args: argparse.Namespace) -> int:
     Composes three existing convenience commands so a fresh checkout
     only needs one invocation to be art-current:
 
-    1. `draw-all --out-dir <sandbox assets>` — adapter-driven sheets
-       (player_robot, robot, goblin, ninja, ninja_leader, sandbag,
-       boss, raid_enforcer).
-    2. `publish` (no target) — every tack-on target under `targets/`.
-    3. `draw-runtime-npcs` — review-config toon NPCs that the runtime
-       sprite registry expects (architect, kernel_guide, vault_keeper,
-       merchant_prototype, absurd_general, oiler, erdish).
+    1. `draw-all --out-dir <sandbox assets>` — the runtime adapter-driven
+       sheets (the `runtime_stems` set in `draw_all`).
+    2. `publish` (no target) — every module target under `targets/`.
+    3. `draw-runtime-npcs` — the RUNTIME_REVIEW_NPCS roster of
+       review-config toon NPCs the runtime sprite registry expects.
 
     Errors in any sub-step are reported but don't abort the others.
     """

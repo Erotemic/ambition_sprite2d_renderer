@@ -414,9 +414,9 @@ def composite_polygon(
     """Translucent polygon via REAL alpha compositing (the gnu_ton pattern).
 
     Draws onto a fresh transparent layer and ``alpha_composite``s it over
-    ``img`` in place. This is the only correct way to lay a translucent
-    detail over already-drawn art — drawing directly replaces destination
-    alpha, and ImageDraw's "RGBA" blend mode does not composite reliably."""
+    ``img`` in place. Drawing directly replaces destination alpha; the
+    scratch-layer composite (like ``core.draw.overlay_draw``'s "RGBA" draw
+    mode) blends correctly."""
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw_polygon(ImageDraw.Draw(layer), pts, fill, outline, outline_w)
     img.alpha_composite(layer)

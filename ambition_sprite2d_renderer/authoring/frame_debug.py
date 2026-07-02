@@ -19,7 +19,7 @@ from typing import List, Optional, Tuple
 from PIL import Image, ImageDraw
 
 from .frame_source import FrameSource, render_all_frames, render_animation
-from .rendering import load_font
+from ..core.draw import font as load_font
 
 
 def export_frames(

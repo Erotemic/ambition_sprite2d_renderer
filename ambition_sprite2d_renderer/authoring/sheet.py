@@ -6,13 +6,12 @@ from typing import Any, Dict, List, Tuple
 import yaml
 from PIL import Image, ImageColor, ImageDraw
 
-from .generators import get_generator
+from ..registry.character_generators import get_generator
 from .actor_contract import write_actor_contract_for_adapter
 from ..registry import CharacterJob
 from ..registry.pack_groups import policy_for
 from ..core.measure import measure_body_metrics
 from ..core.manifest_ron import records_to_ron, render_adapter, ron_tuning
-from .rendering import load_font
 
 
 def _parse_bg(value: str):
@@ -93,7 +92,6 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
     src_fh = max(1, round(job.render.frame_height * render_scale))
     label_w = max(0, job.render.label_width)
     border = max(0, job.render.border)
-    max_frames = max(animations[a]["frames"] for a in selected)
 
     # Pass 1: render every frame at full canvas size and accumulate the
     # union of opaque-pixel bboxes.
@@ -152,7 +150,6 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
     max_dim = policy.max_dim
     trim = policy.trim
     page_size = policy.page_size
-    font = load_font(12)
     manifest: Dict[str, Any] = {
         "target": job.target,
         "name": job.name,
@@ -288,10 +285,15 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
         # parts REPLACE the auto-derived bbox above so the player's
         # attack registration only triggers on the central body —
         # not on cosmetic extensions like outstretched arms.
+        # A raising hook is a bug in THIS generator: fail the render
+        # rather than silently publishing auto-derived combat geometry.
         try:
             hurtboxes_by_anim = generator.hurtbox_parts((src_fw, src_fh))
-        except Exception:
-            hurtboxes_by_anim = {}
+        except Exception as ex:
+            raise RuntimeError(
+                f"{type(generator).__name__}.hurtbox_parts raised for "
+                f"frame {src_fw}x{src_fh}: {ex!r}"
+            ) from ex
         for anim_name, hurtbox in (hurtboxes_by_anim or {}).items():
             if not isinstance(hurtbox, dict):
                 continue
@@ -332,10 +334,16 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
 
         # Generator-declared per-animation hitboxes (attack damage
         # geometry). Translated source canvas → cropped frame.
+        # Same fail-fast rule as hurtbox_parts above: a raising hook must
+        # not silently publish a sheet whose attacks fall back to volume
+        # math.
         try:
             hitboxes_by_anim = generator.attack_hitboxes((src_fw, src_fh))
-        except Exception:
-            hitboxes_by_anim = {}
+        except Exception as ex:
+            raise RuntimeError(
+                f"{type(generator).__name__}.attack_hitboxes raised for "
+                f"frame {src_fw}x{src_fh}: {ex!r}"
+            ) from ex
         for anim_name, hitbox in (hitboxes_by_anim or {}).items():
             if anim_name not in anim_metrics:
                 anim_metrics[anim_name] = {}

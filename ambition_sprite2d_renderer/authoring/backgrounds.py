@@ -49,19 +49,6 @@ class BackgroundLayerSpec:
 
 
 
-def soft_layer(
-    size: Tuple[int, int], blur: float = 3.0
-) -> Tuple[Image.Image, ImageDraw.ImageDraw]:
-    layer = Image.new("RGBA", size, (0, 0, 0, 0))
-    return layer, ImageDraw.Draw(layer)
-
-
-def composite_soft(base: Image.Image, layer: Image.Image, blur: float = 2.0) -> None:
-    if blur > 0:
-        layer = layer.filter(ImageFilter.GaussianBlur(radius=blur))
-    base.alpha_composite(layer)
-
-
 def draw_mist_band(
     d: ImageDraw.ImageDraw, y: float, color: Color, s: float, amp: float = 10.0
 ) -> None:

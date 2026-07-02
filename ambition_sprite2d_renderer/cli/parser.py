@@ -13,6 +13,8 @@ Two command families:
       sheet [<target>]            One full sprite sheet, or every tack-on sheet.
       install [<target>]          Copy one target's files to sandbox assets, or all.
       publish [<target>]          sheet + install (one, or every tack-on).
+      gifs [<target>]             Per-animation GIF previews from a rendered sheet.
+      debug-hitboxes <target>     Hitbox/hurtbox overlay strips for one target.
 
 (2) **Adapter-pipeline commands** — take config paths instead of
     target names, scoped to the YAML adapter pipeline. Useful for
@@ -27,6 +29,14 @@ Two command families:
       regenerate-all              draw-all + publish + draw-runtime-npcs.
       spritesheet <config> <out>  One config's sheet to a specific path.
       single <config> <out>       One frame from a config.
+
+Plus two pipeline surfaces with their own semantics:
+
+      ultrapack                   Pool every target's frames into shared
+                                  uniform atlas pages at one quality tier
+                                  (see ``authoring/ultrapack.py``).
+      ldtk-manifest               Emit the LDtk visual manifest consumed by
+                                  ambition_ldtk_tools apply-manifest.
 
 See ``registry/discovery.py`` for the Target protocol contract.
 """
@@ -307,12 +317,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser(
         "draw-runtime-npcs",
         help=(
-            "Render + install every review-config NPC that the runtime "
-            "sprite registry expects at boot (architect, kernel_guide, "
-            "vault_keeper, merchant_prototype, absurd_general, oiler, "
-            "erdish, plus the crypto crew batch 1: alice, bob, eve, "
-            "judy, mallory, trent). These live under configs/review/ "
-            "so draw-all skips them by default."
+            "Render + install every review-config NPC the runtime sprite "
+            "registry expects at boot — the RUNTIME_REVIEW_NPCS roster in "
+            "cli/commands.py (the single authoritative list). These live "
+            "under configs/review/ so draw-all skips them by default."
         ),
     )
     p.add_argument(

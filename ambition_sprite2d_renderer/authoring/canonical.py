@@ -18,9 +18,9 @@ from typing import Iterable, List, Optional, Tuple
 
 from PIL import Image, ImageDraw
 
-from .generators import get_generator
+from ..registry.character_generators import get_generator
 from ..registry import CharacterJob
-from .rendering import load_font
+from ..core.draw import font as load_font
 from ..registry import Target
 
 

@@ -8,7 +8,7 @@ diagnose poses that read wrong — a flipped knee, a foot at the wrong angle, an
 IK target on the wrong side.
 
     from ambition_sprite2d_renderer.authoring.debug_overlay import render_overlay
-    render_overlay(doc, "crouch", 0.0, scale=3).save("/tmp/dbg.png")
+    render_overlay(doc, "crouch", 0.0, scale=3).save("agent-scratch/dbg.png")
 """
 
 from __future__ import annotations

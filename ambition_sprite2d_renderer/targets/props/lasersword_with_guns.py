@@ -32,7 +32,7 @@ from typing import List, Tuple
 from PIL import Image, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
-from ...authoring import lasersword_common as lc
+from . import _lasersword_common as lc
 
 TARGET_NAME = "lasersword_with_guns"
 SHEET_FILES = [f"{TARGET_NAME}_spritesheet.png", f"{TARGET_NAME}_spritesheet.yaml"]

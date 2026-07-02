@@ -135,10 +135,12 @@ def ron_tuning(manifest_or_tuning) -> str:
         return ""
     collision_scale = float(tuning.get("collision_scale", 1.0))
     frame_sample_inset = int(tuning.get("frame_sample_inset", 0))
-    feet_anchor_y = tuning.get("feet_anchor_y_override", tuning.get("feet_anchor_y"))
+    # NOTE: exactly the fields Rust's `SheetTuningSpec` deserializes
+    # (crates/ambition_sprite_sheet). Do not emit extra keys here — serde
+    # ignores unknown fields, so an emitted-but-unparsed knob silently does
+    # nothing (a `feet_anchor_y_override` emit died that way once; feet
+    # placement is authored via `body_metrics.feet_anchor_norm` instead).
     fields = [f"collision_scale: {collision_scale}"]
-    if feet_anchor_y is not None:
-        fields.append(f"feet_anchor_y_override: Some({float(feet_anchor_y)})")
     fields.append(f"frame_sample_inset: {frame_sample_inset}")
     inner = "\n".join(f"        {field}," for field in fields)
     return f"    tuning: Some((\n{inner}\n    )),\n"
@@ -242,7 +244,7 @@ def records_to_ron(target: str, records: List[Dict]) -> str:
     body = "".join(f"{record_to_ron(r)},\n" for r in records)
     return (
         f"// Auto-emitted from {target}_spritesheet.yaml — see\n"
-        f"// `presentation::character_sprites::registry`.\n"
+        f"// `ambition_gameplay_core::character_sprites::registry`.\n"
         f"[\n"
         f"{body}"
         f"]\n"

@@ -14,7 +14,7 @@ helpers.
 
 A target's ``render()`` function typically composes:
 
-    from ...sheet_build import build_sheet
+    from ...authoring.sheet_build import build_sheet
     outputs = build_sheet(
         target=TARGET_NAME,
         rows=ROWS,

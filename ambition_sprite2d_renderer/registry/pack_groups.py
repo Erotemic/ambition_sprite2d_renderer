@@ -15,7 +15,7 @@ here as data, not as defaults sprinkled through the builders.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict
 
 
 @dataclass(frozen=True)
@@ -36,13 +36,9 @@ class PackPolicy:
     page_size: int = 4096
     # GPU max texture dimension guard; the packer never emits a larger page.
     max_dim: int = 16384
-    # Targets sharing a `group` pack their frames onto the same page images
-    # (one set of PNGs, one SheetRecord per target sharing the `images` list).
-    # `None` ⇒ the target owns its own pages. Grouping is the lever for "these
-    # sprites are always resident together" (e.g. a biome's cast); declared here
-    # so the access pattern is data. Single-target (own pages) is today's
-    # default — cross-target packing reads this field when it lands.
-    group: Optional[str] = None
+    # NOTE: cross-target locality grouping landed as the ultrapack PackPlan
+    # (authoring/ultrapack.py + data/pack_plan.yaml), not as a field here —
+    # this policy stays per-target (trim + page geometry only).
 
 
 # Targets whose runtime samples the sheet as a fixed, untrimmed grid with no

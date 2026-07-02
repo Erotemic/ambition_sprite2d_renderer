@@ -31,7 +31,7 @@ from lxml import etree
 
 SVG_NS = "http://www.w3.org/2000/svg"
 INK_NS = "http://www.inkscape.org/namespaces/inkscape"
-SODIPODI_NS = "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+SODIPODI_NS = "http://sodipodi.sourceforge.net/DTD/sodipodi-0.0.dtd"
 XLINK_NS = "http://www.w3.org/1999/xlink"
 
 # Editor session attrs on <sodipodi:namedview> that change every save (window

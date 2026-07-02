@@ -5,7 +5,7 @@ pytestmark = pytest.mark.slow_render
 
 from pathlib import Path
 
-from ambition_sprite2d_renderer.authoring.generators import get_generator
+from ambition_sprite2d_renderer.registry.character_generators import get_generator
 from ambition_sprite2d_renderer.cli import draw_review
 from ambition_sprite2d_renderer.registry import CharacterJob
 

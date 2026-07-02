@@ -8,7 +8,7 @@ full rendered silhouette.
 from __future__ import annotations
 
 from ambition_sprite2d_renderer.authoring.generator import CharacterGenerator
-from ambition_sprite2d_renderer.authoring.generators import get_generator
+from ambition_sprite2d_renderer.registry.character_generators import get_generator
 from ambition_sprite2d_renderer.authoring.sheet import _apply_body_inset
 from ambition_sprite2d_renderer.targets.characters.robot_side import SideRobotGenerator
 

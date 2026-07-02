@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Dict
 
-from .generator import CharacterGenerator
+from ..authoring.generator import CharacterGenerator
 from ..targets.characters.alice_cryptographer import AliceCryptographerGenerator
 from ..targets.characters.bob_engineer import BobEngineerGenerator
 from ..targets.characters.boss_side import AISlopZetaGenerator

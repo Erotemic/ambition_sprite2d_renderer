@@ -5,7 +5,7 @@ player mechanics. Tests reflect the current adapter vocabulary rather than the
 runtime row subset.
 """
 
-from ambition_sprite2d_renderer.authoring.generators import get_generator
+from ambition_sprite2d_renderer.registry.character_generators import get_generator
 from ambition_sprite2d_renderer.authoring.animation_vocab import FULL_PLAYER_ANIMATION_ORDER
 
 

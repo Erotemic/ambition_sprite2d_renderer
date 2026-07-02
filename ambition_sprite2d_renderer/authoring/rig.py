@@ -39,10 +39,3 @@ def add(a: Point, b: Point) -> Point:
     return (a[0] + b[0], a[1] + b[1])
 
 
-def bbox_from_center(center: Point, w: float, h: float):
-    return (
-        center[0] - w / 2.0,
-        center[1] - h / 2.0,
-        center[0] + w / 2.0,
-        center[1] + h / 2.0,
-    )

@@ -20,7 +20,10 @@ from typing import Any, Dict, Optional
 
 
 def measure_body_metrics(frame) -> Optional[Dict[str, Any]]:
-    """Body bbox + feet anchor from ``frame``'s opaque pixels.
+    """Body bbox + feet anchor from ``frame``'s drawn pixels.
+
+    Uses all-channel ``getbbox()`` (NOT alpha-only) for byte-for-byte parity
+    with the legacy measurement; zero-alpha pixels with nonzero RGB count.
 
     Returns ``None`` for a fully transparent frame (callers decide the
     degenerate fallback). Byte-for-byte the legacy ``sheet._measure_body_extent``.

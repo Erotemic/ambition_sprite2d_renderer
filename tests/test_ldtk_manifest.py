@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ambition_sprite2d_renderer.ldtk_manifest import (
+from ambition_sprite2d_renderer.devtools.ldtk_manifest import (
     DEFAULT_ENTITY_SPRITE_MAP,
     build_manifest,
     discover_sheets,

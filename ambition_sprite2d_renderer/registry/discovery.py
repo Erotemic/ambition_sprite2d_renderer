@@ -9,10 +9,10 @@ Target is built one of two ways (see :meth:`Target.from_module` /
   ``render(out_dir, **opts)`` function. The procedural-Python authoring path.
 - **Config-authored** targets: a YAML config in ``configs/*.yaml`` (or
   ``configs/review/*.yaml``) that drives one of the ``CharacterGenerator``s
-  registered in ``authoring/generators.py``. The declarative authoring path.
+  registered in ``registry/character_generators.py``. The declarative authoring path.
 
 The registry's job is just to walk every surface and yield [`Target`]
-instances. Consumers (CLI, gallery, render-publish) iterate the returned dict
+instances. Consumers (CLI, gallery, publish) iterate the returned dict
 without caring which authoring path a target came from.
 """
 
@@ -21,6 +21,7 @@ from __future__ import annotations
 import importlib
 import copy
 import shutil
+import sys
 from pathlib import Path
 from typing import (
     Any,
@@ -55,7 +56,7 @@ CATEGORIES: Tuple[str, ...] = (
 # compat authoring, but its contents now register under `characters`.
 
 # Modules under `targets/characters/` that define a `CharacterGenerator` (or a
-# helper for one) and are driven by YAML configs through `authoring/generators.py`
+# helper for one) and are driven by YAML configs through `registry/character_generators.py`
 # rather than a top-level `render()` function. Discovery silently skips these so
 # they don't show up as "doesn't conform to the Target API" warnings under
 # `list-targets`. (`sandbag` is deliberately absent: it exposes both a generator
@@ -406,7 +407,7 @@ class Target:
         return paths
 
     def _render_canonical_config(self, out_dir: Path, **opts) -> Path:
-        from ..authoring.generators import get_generator
+        from .character_generators import get_generator
 
         del opts  # generator pipeline ignores module-target **opts
         generator = get_generator(self._job.target)
@@ -452,6 +453,20 @@ def _walk_category(category: str) -> Iterator[Tuple[str, str]]:
             yield stem, f"ambition_sprite2d_renderer.targets.{category}.{stem}"
         elif path.is_dir() and (path / "__init__.py").exists():
             yield name, f"ambition_sprite2d_renderer.targets.{category}.{name}"
+        elif (
+            path.is_dir()
+            and any(path.glob("*.py"))
+            and not (cat_dir / f"{name}.py").exists()
+        ):
+            # A would-be multi-file target missing its __init__.py must not
+            # vanish silently (contrast: a module missing render() warns).
+            # Dirs paired with a sibling module of the same name (e.g.
+            # rigged.py + rigged/ holding data + loose scripts) stay quiet.
+            print(
+                f"warning: targets/{category}/{name}/ has .py files but no "
+                f"__init__.py — not a package, so it cannot register",
+                file=sys.stderr,
+            )
 
 
 def _with_actor_sidecar(stem: str, sheet_files: Sequence[str]) -> Tuple[str, ...]:
@@ -566,6 +581,11 @@ def discover_module_targets() -> DiscoveryReport:
             multi = getattr(mod, "TARGETS", None)
             if isinstance(multi, dict):
                 for tgt in _build_module_targets(mod, stem, category, dotted, warnings):
+                    if tgt.name in targets:
+                        warnings.append(
+                            f"{category}/{stem}: TARGETS entry {tgt.name!r} shadows "
+                            f"an earlier target of the same name"
+                        )
                     targets[tgt.name] = tgt
                 continue
             render = getattr(mod, "render", None)
@@ -576,6 +596,10 @@ def discover_module_targets() -> DiscoveryReport:
                     f"module target, or move shared helpers to the package root."
                 )
                 continue
+            if stem in targets:
+                warnings.append(
+                    f"{category}/{stem}: shadows an earlier target of the same name"
+                )
             targets[stem] = _build_module_target(mod, stem, category, dotted, render)
     return DiscoveryReport(targets=targets, warnings=warnings)
 

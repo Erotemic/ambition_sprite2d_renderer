@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """Music-faction character lineup renderer.
 
 This is intentionally a thin layer over the existing per-character YAML jobs.
 The near-term goal is to make faction / leader review sprites feel as data-driven
 as the music cues without forcing every runtime sprite sheet through a new schema.
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -15,7 +15,7 @@ import yaml
 from PIL import Image, ImageDraw
 
 from ..registry import CharacterJob, RenderConfig
-from .rendering import load_font
+from ..core.draw import font as load_font
 from .sheet import write_spritesheet
 from .canonical import render_canonical
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from typing import Iterable, Tuple
 
-from PIL import Image, ImageChops, ImageDraw
+from PIL import Image, ImageDraw
 
 Point = Tuple[float, float]
 Color = Tuple[int, int, int, int]
@@ -12,10 +12,6 @@ try:
     RESAMPLING = Image.Resampling
 except AttributeError:  # pragma: no cover
     RESAMPLING = Image
-
-
-def scaled_color(color: Color) -> Color:
-    return tuple(int(v) for v in color)  # type: ignore[return-value]
 
 
 def draw_capsule(
@@ -119,11 +115,3 @@ def draw_rotated_ellipse(
         layer, (int(center[0] - layer.size[0] / 2), int(center[1] - layer.size[1] / 2))
     )
 
-
-def alpha_bbox(img: Image.Image):
-    return img.getchannel("A").getbbox()
-
-
-def force_opaque_inside(layer: Image.Image, mask: Image.Image) -> None:
-    # Used by goblin parts: opaque filled silhouettes, semi-transparent details allowed only after compositing.
-    layer.putalpha(ImageChops.lighter(layer.getchannel("A"), mask))

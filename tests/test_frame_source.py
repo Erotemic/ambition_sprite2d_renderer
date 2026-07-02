@@ -17,7 +17,7 @@ from ambition_sprite2d_renderer.authoring.frame_source import (
     render_all_frames,
     render_animation,
 )
-from ambition_sprite2d_renderer.authoring.generators import GENERATORS, get_generator
+from ambition_sprite2d_renderer.registry.character_generators import GENERATORS, get_generator
 from ambition_sprite2d_renderer.registry import CharacterJob
 
 import yaml
