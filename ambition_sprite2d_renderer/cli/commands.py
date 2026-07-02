@@ -448,6 +448,58 @@ def _manifest_image_path(manifest_path: Path, manifest: dict) -> Path:
     return image_path
 
 
+def _manifest_page_images(manifest_path: Path, manifest: dict) -> dict[int, "object"]:
+    """Open every page image of a sheet, keyed by page index.
+
+    A multi-page (packed or grid-split) sheet lists its pages in
+    ``images`` (0-indexed, ``page``/``fpage`` address into it); a
+    single-page sheet only has ``image``. Missing files are skipped so a
+    partially-published sheet still yields the pages it has."""
+    from PIL import Image
+
+    names = manifest.get("images") or [
+        manifest.get("image")
+        or manifest.get("spritesheet")
+        or manifest_path.with_suffix(".png").name
+    ]
+    pages: dict[int, object] = {}
+    for idx, name in enumerate(names):
+        path = Path(str(name))
+        if not path.is_absolute():
+            path = manifest_path.parent / path
+        if path.exists():
+            pages[idx] = Image.open(path).convert("RGBA")
+    return pages
+
+
+def _frame_from_rect(rect: dict, pages: dict, fw: int | None, fh: int | None):
+    """Reconstruct one logical frame from a sheet rect (packed or unpacked).
+
+    Crops the (possibly alpha-trimmed) rect from its own page — ``fpage``
+    for packed sheets, ``page`` for the grid layout, else page 0 — then
+    pastes it at the trim offset ``off`` onto a transparent logical
+    ``fw×fh`` canvas. So a trimmed rect and a full grid cell both yield a
+    consistently-sized, anchored frame (no per-frame jitter in the GIF).
+    Returns ``None`` if the rect's page image is unavailable."""
+    from PIL import Image
+
+    page_idx = int(rect.get("fpage", rect.get("page", 0)))
+    sheet = pages.get(page_idx)
+    if sheet is None:
+        sheet = pages.get(0)
+    if sheet is None:
+        return None
+    x, y, w, h = int(rect["x"]), int(rect["y"]), int(rect["w"]), int(rect["h"])
+    crop = sheet.crop((x, y, x + w, y + h))
+    off = rect.get("off") or (0, 0)
+    ox, oy = int(off[0]), int(off[1])
+    if fw and fh and (ox or oy or w != int(fw) or h != int(fh)):
+        canvas = Image.new("RGBA", (int(fw), int(fh)), (0, 0, 0, 0))
+        canvas.alpha_composite(crop, (ox, oy))
+        return canvas
+    return crop
+
+
 def _animation_rows_from_manifest(
     manifest: dict,
 ) -> list[tuple[str, list[dict], int | None]]:
@@ -527,10 +579,13 @@ def write_animation_gifs_for_target(
         manifest = yaml.safe_load(manifest_path.read_text(encoding="utf8")) or {}
         if not isinstance(manifest, dict):
             continue
-        image_path = _manifest_image_path(manifest_path, manifest)
-        if not image_path.exists():
+        # Slice from every page (packed sheets span `.1.png`/`.2.png`/…), not
+        # just the base image — a frame is addressed by its own `fpage`/`page`.
+        pages = _manifest_page_images(manifest_path, manifest)
+        if not pages:
             continue
-        sheet = Image.open(image_path).convert("RGBA")
+        fw = manifest.get("frame_width")
+        fh = manifest.get("frame_height")
         stem = manifest_path.stem
         if stem.endswith("_spritesheet"):
             stem = stem[:-12]
@@ -545,21 +600,28 @@ def write_animation_gifs_for_target(
             durations = []
             for frame in frames:
                 try:
-                    x = int(frame["x"])
-                    y = int(frame["y"])
-                    w = int(frame["w"])
-                    h = int(frame["h"])
+                    img = _frame_from_rect(frame, pages, fw, fh)
                 except Exception:
+                    img = None
+                if img is None:
                     continue
-                images.append(sheet.crop((x, y, x + w, y + h)))
+                images.append(img)
                 durations.append(int(frame.get("duration_ms") or row_duration or 100))
             if not images:
                 continue
             out = target_out / f"{_safe_filename_part(animation)}.gif"
-            images[0].save(
+            # Flatten onto the studio background (same as the canonical/preview
+            # renders) so the transparent logical canvas doesn't index-quantize
+            # to a random palette color.
+            flattened = []
+            for img in images:
+                base = Image.new("RGBA", img.size, (43, 33, 40, 255))
+                base.alpha_composite(img)
+                flattened.append(base.convert("P", palette=Image.Palette.ADAPTIVE))
+            flattened[0].save(
                 out,
                 save_all=True,
-                append_images=images[1:],
+                append_images=flattened[1:],
                 duration=durations,
                 loop=0,
                 disposal=2,
@@ -865,7 +927,9 @@ def _cmd_ultrapack(args: argparse.Namespace) -> int:
 
     written = write_pack(pack, args.out, name=args.name)
     if args.debug_views:
-        written += write_debug_views(pack, args.out, name=args.name)
+        written += write_debug_views(
+            pack, args.out, name=args.name, debug_dir=args.debug_dir
+        )
     print(
         f"ultrapack '{args.name}' @ scale {args.scale:g}: "
         f"{len(pack.frames)} frames from "
