@@ -29,7 +29,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 from ambition_sprite2d_renderer.cli.console import print_paths
 from ambition_sprite2d_renderer.core.manifest_ron import records_to_ron
-from ambition_sprite2d_renderer.authoring.tackon_sheet import layout_sheet_rows
+from ambition_sprite2d_renderer.authoring.sheet_build import layout_sheet_rows
 from ambition_sprite2d_renderer.registry.pack_groups import policy_for
 
 try:

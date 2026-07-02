@@ -13,7 +13,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from ambition_sprite2d_renderer.authoring.tackon_sheet import build_sheet
+from ambition_sprite2d_renderer.authoring.sheet_build import build_sheet
 
 
 def _solid(_anim, _frame_idx, _nframes):

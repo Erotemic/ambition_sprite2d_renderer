@@ -1480,7 +1480,7 @@ def build_pose_rows() -> list[tuple[str, list[Pose]]]:
 # --- tack-on registry hooks ---------------------------------------------------
 #
 # Hooks `render(out_dir, **opts)` into the standard
-# `tackon_sheet.build_sheet` pipeline so the sheet gets the same
+# `sheet_build.build_sheet` pipeline so the sheet gets the same
 # treatment as every other procedural character: auto-cropped to the
 # union alpha bbox across all frames (the same crop is applied to
 # every frame, so poses within a row stay aligned), labeled with
@@ -1524,7 +1524,7 @@ def _build_setup(**opts):
 
 
 def render(out_dir: str | Path, **opts) -> list[Path]:
-    """Render the galwah spritesheet bundle via `tackon_sheet.build_sheet`.
+    """Render the galwah spritesheet bundle via `sheet_build.build_sheet`.
 
     Optional kwargs:
 
@@ -1533,7 +1533,7 @@ def render(out_dir: str | Path, **opts) -> list[Path]:
       across every frame.
     * ``aa`` (default 4) — supersample factor for the renderer.
     """
-    from ...authoring.tackon_sheet import build_sheet  # local import: heavy deps
+    from ...authoring.sheet_build import build_sheet  # local import: heavy deps
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1561,11 +1561,11 @@ def render_canonical(out_dir: str | Path, **opts) -> Path:
     """Fast canonical-only path: render + save just the canonical frame.
 
     Doesn't pay for the full sheet build — uses
-    [`tackon_sheet.write_canonical`] which renders one frame, crops to
+    [`sheet_build.write_canonical`] which renders one frame, crops to
     alpha bbox, and saves it. Shares `_build_setup` with `render()`
     so the canonical pose matches what the full sheet would produce.
     """
-    from ...authoring.tackon_sheet import write_canonical
+    from ...authoring.sheet_build import write_canonical
 
     sheet_rows, render_fn, frame_size = _build_setup(**opts)
     return write_canonical(

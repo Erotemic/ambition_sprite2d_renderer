@@ -14,7 +14,7 @@ helpers.
 
 A target's ``render()`` function typically composes:
 
-    from ...tackon_sheet import build_sheet
+    from ...sheet_build import build_sheet
     outputs = build_sheet(
         target=TARGET_NAME,
         rows=ROWS,
@@ -123,7 +123,7 @@ def diagnose_idle_coverage(target: str, anim_names: List[str]) -> Optional[str]:
     has_idle = any(n in IDLE_ALIASES for n in anim_names)
     if has_character_row and not has_idle:
         return (
-            f"[tackon_sheet] WARN: {target!r} sheet has character-anim rows "
+            f"[sheet_build] WARN: {target!r} sheet has character-anim rows "
             f"{[n for n in anim_names if n in CHARACTER_ANIM_NAMES]!r} but no Idle alias "
             f"(any of {sorted(IDLE_ALIASES)}). The runtime will render this character "
             f"as a colored-rectangle placeholder. Add or rename one row to an Idle alias."

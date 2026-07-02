@@ -32,7 +32,7 @@ from ...authoring.skeleton import (
     rounded_polygon,
     two_bone_ik,
 )
-from ...authoring.tackon_sheet import build_sheet, write_canonical
+from ...authoring.sheet_build import build_sheet, write_canonical
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]

@@ -31,7 +31,7 @@ from typing import List, Tuple
 
 from PIL import Image, ImageDraw, ImageFilter
 
-from ...authoring.tackon_sheet import build_sheet
+from ...authoring.sheet_build import build_sheet
 from ...authoring import lasersword_common as lc
 
 TARGET_NAME = "lasersword_with_guns"

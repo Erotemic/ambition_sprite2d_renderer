@@ -1,5 +1,5 @@
 """Unit tests for the publish-time Idle-row check in
-`tackon_sheet.diagnose_idle_coverage`.
+`sheet_build.diagnose_idle_coverage`.
 
 The check warns when a sheet looks like a character sheet (≥1 row maps
 to `CharacterAnim`) but no row is an Idle alias. The runtime's
@@ -8,7 +8,7 @@ colored-rectangle placeholder; this surfaces it at publish time."""
 
 from __future__ import annotations
 
-from ambition_sprite2d_renderer.authoring.tackon_sheet import diagnose_idle_coverage
+from ambition_sprite2d_renderer.authoring.sheet_build import diagnose_idle_coverage
 
 
 def test_idle_row_present_returns_none():

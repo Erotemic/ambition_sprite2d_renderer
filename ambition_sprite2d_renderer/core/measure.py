@@ -2,7 +2,7 @@
 
 The heart of the metadata model — the renderer measures what it can from the
 art instead of hand-authoring it. This is the one canonical body/feet
-measurement; the two spines (``sheet.py``, ``tackon_sheet.py``) had divergent
+measurement; the two spines (``sheet.py``, ``sheet_build.py``) had divergent
 copies (one used an inclusive last-opaque row for the feet, the other one-past).
 We standardise on the **inclusive last opaque row**, the same "lowest opaque
 pixel" rule the grounded-door fix uses, so feet planting is consistent.

@@ -1,7 +1,7 @@
 """The single RON manifest emitter (stdlib only — no YAML in the write path).
 
 Consolidates the two byte-identical-but-duplicated RON writers that lived in
-``sheet.py`` (adapter spine) and ``tackon_sheet.py`` (tack-on spine). They
+``sheet.py`` (adapter spine) and ``sheet_build.py`` (tack-on spine). They
 produced the same `Vec<SheetRecord>` RON shape the game reads
 (`crates/ambition_sprite_sheet`); the only differences were data-conditional
 (per-animation hit/hurt boxes present for adapters, `tuning` absent everywhere

@@ -31,7 +31,7 @@ def _make_entry(path: Path) -> dict:
     def render_canonical(out_dir: Path, **opts) -> Path:
         del opts
         from ...authoring.rigdoc import RigDocument
-        from ...authoring.tackon_sheet import write_canonical
+        from ...authoring.sheet_build import write_canonical
 
         doc = RigDocument.load(path)
         return write_canonical(doc.name, doc.rows(), doc.render_frame, Path(out_dir))

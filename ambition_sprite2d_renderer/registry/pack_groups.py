@@ -1,7 +1,7 @@
 """The one place sprite-sheet packing / trim policy is decided.
 
 Every build path — the adapter spine (``authoring/sheet.py``), the tack-on spine
-(``authoring/tackon_sheet.py``), and the rigged-doc spine
+(``authoring/sheet_build.py``), and the rigged-doc spine
 (``authoring/rigdoc.py``) — used to carry its own ``trim`` default (adapter
 True, tack-on False, rigged True) plus a per-config opt-out (``boss.yaml``'s
 ``trim: false``). That scattered policy is replaced by ``policy_for(target)``:

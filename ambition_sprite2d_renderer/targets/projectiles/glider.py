@@ -30,7 +30,7 @@ from typing import FrozenSet, List, Set, Tuple
 
 from PIL import Image, ImageDraw
 
-from ...authoring.tackon_sheet import build_sheet, write_canonical
+from ...authoring.sheet_build import build_sheet, write_canonical
 from ...core.draw import rgba
 
 Cell = Tuple[int, int]

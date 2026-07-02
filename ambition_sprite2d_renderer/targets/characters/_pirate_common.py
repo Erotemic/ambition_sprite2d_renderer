@@ -13,7 +13,7 @@ lookout, navigator) re-use the same parametric rig keyed on their
 palette + cohort tags (`SCARFED_KINDS`, `BEARDED_KINDS`,
 `SKULL_MOTIF_KINDS`). Each `targets/characters/pirate_<role>.py`
 module's `render()` calls `render_target(<role>, ...)` here, which
-plumbs through to `tackon_sheet.build_sheet` with the right
+plumbs through to `sheet_build.build_sheet` with the right
 `draw_character` partial.
 
 A handful of non-pirate characters that happened to look pirate-ish
@@ -31,7 +31,7 @@ from typing import Dict, Tuple
 
 from PIL import Image, ImageDraw
 
-from ...authoring.tackon_sheet import (
+from ...authoring.sheet_build import (
     ANIMATIONS,
     BASE_FRAME,
     RGBA,
@@ -778,7 +778,7 @@ def render_target(
     """Build a pirate-family character sheet via the parametric rig.
 
     Thin shim used by the 5 pirate character modules so their per-target
-    ``render()`` is one line. Delegates to `tackon_sheet.build_sheet`
+    ``render()`` is one line. Delegates to `sheet_build.build_sheet`
     with `draw_character(target, ...)` as the per-frame renderer.
 
     Returns the dict that ``build_sheet`` produced — callers flatten it

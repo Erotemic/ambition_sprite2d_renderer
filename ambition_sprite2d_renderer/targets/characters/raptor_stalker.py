@@ -609,10 +609,10 @@ def _render_sheet(renderer: RaptorStalkerRenderer, out_dir: Path):
 
 def render(out_dir: str | Path, **opts):
     """Render the raptor_stalker spritesheet bundle via the shared
-    `tackon_sheet.build_sheet` pipeline (auto-cropped, with the
+    `sheet_build.build_sheet` pipeline (auto-cropped, with the
     runtime-compatible YAML+RON shape). See `bear_mauler.render` for
     the full rationale — same conversion."""
-    from ...authoring.tackon_sheet import build_sheet
+    from ...authoring.sheet_build import build_sheet
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     renderer = RaptorStalkerRenderer()

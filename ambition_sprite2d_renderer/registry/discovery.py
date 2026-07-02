@@ -161,7 +161,7 @@ def _ensure_actor_sidecars(
 ) -> List[Path]:
     """Ensure every rendered ``*_spritesheet.yaml`` has ``*_actor.ron``.
 
-    Most modern targets already emit the sidecar from ``tackon_sheet``. This
+    Most modern targets already emit the sidecar from ``sheet_build``. This
     post-render hook covers older/custom tack-ons and lets module-level
     ``ACTOR_METADATA`` enrich the inferred contract without forcing every
     bespoke renderer through the generic sheet builder immediately. It also

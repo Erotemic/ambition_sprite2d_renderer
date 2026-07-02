@@ -4,7 +4,7 @@ A rig document is plain JSON describing a complete character: bones,
 drawable parts, palette, IK leg bindings, and animation clips whose
 channels are keyframes, math expressions, or constants. This module turns
 documents into rendered frames and spritesheets using the same
-``skeleton`` + ``tackon_sheet`` machinery as the Python-coded targets.
+``skeleton`` + ``sheet_build`` machinery as the Python-coded targets.
 
 Consumers:
 
@@ -588,7 +588,7 @@ def paint_part(
 def render_sheet_for_doc(doc: RigDocument, out_dir: Path) -> List[Path]:
     """Render the document's full spritesheet bundle (PNG + YAML + RON +
     canonical + preview) via the standard tack-on sheet builder."""
-    from .tackon_sheet import build_sheet
+    from .sheet_build import build_sheet
 
     fr = doc.frame
     rs = max(1, int(fr.get("render_scale", 1)))

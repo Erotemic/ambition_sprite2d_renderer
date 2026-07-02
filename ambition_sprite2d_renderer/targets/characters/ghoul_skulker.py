@@ -23,7 +23,7 @@ from typing import List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
-from ...authoring.tackon_sheet import build_sheet
+from ...authoring.sheet_build import build_sheet
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]

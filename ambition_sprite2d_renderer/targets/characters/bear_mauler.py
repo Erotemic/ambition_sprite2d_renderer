@@ -461,7 +461,7 @@ def _render_sheet(renderer: BearMaulerRenderer, out_dir: Path):
 
 def render(out_dir: str | Path, **opts):
     """Render the bear_mauler spritesheet bundle via the shared
-    `tackon_sheet.build_sheet` pipeline.
+    `sheet_build.build_sheet` pipeline.
 
     Routes through the standard auto-cropped + manifested pipeline so
     the sheet (a) gets the union-bbox crop that every other tack-on
@@ -473,7 +473,7 @@ def render(out_dir: str | Path, **opts):
     `_write_yaml` + `_write_ron` helpers stay below for standalone-CLI
     use, but discovery routes through here.
     """
-    from ...authoring.tackon_sheet import build_sheet
+    from ...authoring.sheet_build import build_sheet
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     renderer = BearMaulerRenderer()

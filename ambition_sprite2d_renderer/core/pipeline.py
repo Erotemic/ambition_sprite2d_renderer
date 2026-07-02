@@ -2,7 +2,7 @@
 
 Every drawer-style sprite is produced the same way — rasterize a ``draw(d, s)``
 callable onto a supersampled canvas, downsample, then crop. That logic was
-copied across ``entities.py``, ``tackon_sheet.py``, ``sheet.py`` and others;
+copied across ``entities.py``, ``sheet_build.py``, ``sheet.py`` and others;
 this is the one canonical copy.
 
 The ``scale`` parameter shrinks every dimension proportionally (``scale=0.25``

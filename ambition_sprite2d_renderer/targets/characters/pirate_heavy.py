@@ -4,7 +4,7 @@ from __future__ import annotations
 
 This target deliberately does NOT route through the pirate-family
 ``draw_character`` rig (see ``_pirate_common.draw_character``). It only
-reuses ``build_sheet`` (from ``tackon_sheet``) for the Ambition-compatible PNG/YAML/RON sheet
+reuses ``build_sheet`` (from ``sheet_build``) for the Ambition-compatible PNG/YAML/RON sheet
 layout. The art template is a bespoke heavy bruiser silhouette: huge shoulders,
 big arms, bandana hair, skirt, heavy boots, and a massive cleaver/anchor weapon.
 
@@ -22,7 +22,7 @@ from typing import Dict, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
-from ...authoring.tackon_sheet import build_sheet
+from ...authoring.sheet_build import build_sheet
 
 ACTOR_METADATA = {
     "actor": {"character_id": "npc_pirate_heavy", "display_name": "Pirate Heavy"},

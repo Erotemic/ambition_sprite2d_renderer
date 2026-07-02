@@ -209,12 +209,12 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
         cropped_rows.append(row_imgs)
         anim_union_bbox_src[animation] = anim_bbox
 
-    # One layout seam for both spines (see tackon_sheet.layout_sheet_rows): trim
+    # One layout seam for both spines (see sheet_build.layout_sheet_rows): trim
     # → alpha-trim + MaxRects-pack; untrimmed → the legacy labeled grid. Every
     # adapter generator is trim=True, so this packs exactly as the former inline
     # pack_frames did — the RON and page PNGs are byte-identical (the shared
     # emitter ignores the per-rect index/duration the old inline path carried).
-    from .tackon_sheet import layout_sheet_rows
+    from .sheet_build import layout_sheet_rows
 
     rendered_rows = [
         (
@@ -454,7 +454,7 @@ def write_spritesheet(
     # Sidecar RON: same data, machine-readable shape for the sandbox's
     # SheetRegistry. The adapter pipeline's YAML is `animations:`-keyed,
     # so we translate to the row-ordered SheetRecord shape here. See
-    # `tackon_sheet._emit_sheet_ron` for the tack-on equivalent.
+    # `sheet_build._emit_sheet_ron` for the tack-on equivalent.
     ron_path = manifest_out.with_suffix(".ron")
     manifest_for_sidecars = dict(manifest)
     manifest_for_sidecars["image"] = image_out.name

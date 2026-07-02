@@ -3,7 +3,7 @@
 These dataclasses mirror, field-for-field, the RON schema the game deserializes
 in ``crates/ambition_sprite_sheet/src/lib.rs`` (``SheetRecord`` & friends). They
 are the *target shape* for the single manifest emitter that will replace the two
-divergent RON writers (``sheet.py`` and ``tackon_sheet.py``).
+divergent RON writers (``sheet.py`` and ``sheet_build.py``).
 
 Write format is **RON** (the game is already RON-native), produced with the
 standard library only — **no YAML in the write path** (Jon, 2026-06-21). The

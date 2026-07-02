@@ -449,7 +449,7 @@ def _normalize_socket_value(value: Any) -> RonStruct | Any:
 def _iter_frame_anchors(manifest: Mapping[str, Any]) -> Iterable[tuple[str | None, int | None, str, Mapping[str, Any]]]:
     """Yield anchors exposed by sheet rect metadata.
 
-    `tackon_sheet.build_sheet` already carries per-frame anchor maps through to
+    `sheet_build.build_sheet` already carries per-frame anchor maps through to
     the sheet manifest for weapon/procedural targets.  Promote the first anchor
     of each name into the actor sidecar so the engine has a stable socket bag
     without needing generator-specific parsing.

@@ -15,7 +15,7 @@ from ambition_sprite2d_renderer.authoring.sheet import (
     _adapter_manifest_to_ron,
     _adapter_tuning_to_ron,
 )
-from ambition_sprite2d_renderer.authoring.tackon_sheet import _ron_tuning
+from ambition_sprite2d_renderer.authoring.sheet_build import _ron_tuning
 
 
 def test_character_job_from_dict_picks_up_sheet_tuning():
