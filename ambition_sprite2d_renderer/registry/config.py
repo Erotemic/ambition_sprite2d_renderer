@@ -129,6 +129,14 @@ class CharacterJob:
             data = yaml.safe_load(file) or {}
         if not isinstance(data, dict):
             raise TypeError(f"expected mapping in {path!s}")
+        if "target" not in data:
+            # A YAML without `target:` is not a CharacterJob. Name the file so
+            # a stray non-job document dropped into configs/ fails loudly here
+            # instead of as a bare KeyError deep in from_dict.
+            raise ValueError(
+                f"{path!s}: not a character job (missing `target:` key); "
+                "configs/*.yaml is reserved for CharacterJob documents"
+            )
         return cls.from_dict(data)
 
     def output_stem(self, source_path: str | Path | None = None) -> str:
