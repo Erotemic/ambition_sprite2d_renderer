@@ -244,39 +244,32 @@ def _draw_arm(
     _poly(draw, _blob(hx, hy, 3.4, 3.0, salt, amp=0.8, n=10), _rgba(EYE), _rgba(INK), 1.4)
 
 
-def _draw_quills(draw: ImageDraw.ImageDraw, hx: float, hy: float, lean: float, salt: float) -> None:
-    """Disproportionately long, fat quills off the back of the head, dominated
-    by ONE huge thick spike. Facing right, so they sweep back-left. The lean
-    factor trails them out further when Sanic is leaning into a run."""
-    tr = lean * 0.5  # trailing extension when leaning
-    # The BIG back spike — very long, very thick, swept back and up.
-    big = [
-        (hx - 6, hy - 12),
-        (hx - 22, hy - 17),
-        (hx - 40 - tr, hy - 20),
-        (hx - 52 - tr, hy - 14),   # long tip
-        (hx - 38 - tr, hy - 3),
-        (hx - 18, hy - 1),
-        (hx - 5, hy - 3),
+def _draw_head_spikes(draw: ImageDraw.ImageDraw, hx: float, hy: float, tr: float, salt: float) -> None:
+    """Three thick, longish head spikes sweeping back off the small head.
+    Facing right, so they point back-left. `tr` trails them out on a lean."""
+    spikes = [
+        [(hx - 3, hy - 9), (hx - 14, hy - 12), (hx - 26 - tr, hy - 11), (hx - 15, hy - 3), (hx - 2, hy - 3)],
+        [(hx - 5, hy - 1), (hx - 16, hy - 1), (hx - 28 - tr, hy + 3), (hx - 15, hy + 6), (hx - 4, hy + 4)],
+        [(hx - 4, hy + 5), (hx - 13, hy + 8), (hx - 22 - tr, hy + 12), (hx - 12, hy + 12), (hx - 3, hy + 9)],
     ]
-    _poly(draw, _wobble(big, 3.0, salt), _rgba(BLUE_DK), _rgba(INK), 2.8)
-    # Two subordinate spikes below — still long, a touch thinner.
-    mid = [
-        (hx - 6, hy + 1),
-        (hx - 24, hy + 3),
-        (hx - 42 - tr, hy + 6),
-        (hx - 24, hy + 11),
-        (hx - 6, hy + 8),
+    for i, q in enumerate(spikes):
+        _poly(draw, _wobble(q, 2.4, salt + i * 3), _rgba(BLUE_DK), _rgba(INK), 2.6)
+
+
+def _draw_back_spike(draw: ImageDraw.ImageDraw, rx: float, ry: float, tr: float, salt: float) -> None:
+    """The one big weird spike off the MIDDLE OF THE BACK — huge, thick, long,
+    sweeping back-left and up. `(rx, ry)` is its root on the torso's back;
+    `tr` trails the tip out further on a lean."""
+    spike = [
+        (rx + 3, ry - 10),
+        (rx - 15, ry - 15),
+        (rx - 32 - tr, ry - 14),
+        (rx - 44 - tr, ry - 8),   # long tip, swept up-back
+        (rx - 30 - tr, ry + 3),
+        (rx - 13, ry + 7),
+        (rx + 3, ry + 6),
     ]
-    low = [
-        (hx - 6, hy + 9),
-        (hx - 22, hy + 12),
-        (hx - 36 - tr, hy + 18),
-        (hx - 20, hy + 19),
-        (hx - 6, hy + 15),
-    ]
-    _poly(draw, _wobble(mid, 2.6, salt + 3), _rgba(BLUE_DK), _rgba(INK), 2.6)
-    _poly(draw, _wobble(low, 2.6, salt + 6), _rgba(BLUE_DK), _rgba(INK), 2.6)
+    _poly(draw, _wobble(spike, 3.0, salt), _rgba(BLUE_DK), _rgba(INK), 2.8)
 
 
 def _draw_leg(
@@ -460,7 +453,8 @@ def _draw_sanic(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     hips_x = base_x
     hips_y = ground_y - 42.0 + bob
     head_cx = hips_x + 4.0 + lean
-    head_cy = hips_y - 20.0 + bob * 0.4
+    # Head sits up high on a neck, separated from the body.
+    head_cy = hips_y - 44.0 + bob * 0.4
 
     if fell:
         # Toppled over — rotate the whole layout onto its back-ish. Cheap:
@@ -517,19 +511,37 @@ def _draw_sanic(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         salt + 7,
     )
 
-    # ---- Quills (behind head, poking back-left) — fat and ugly ----
-    _draw_quills(draw, head_cx, head_cy, lean, salt + 4)
+    # Torso placement (deliberately bigger than the head — Sanic is a
+    # small-headed, big-bodied gremlin).
+    tr = lean * 0.5  # trailing extension of the spikes when leaning
+    torso_cx = hips_x + 1.0 + lean * 0.3
+    torso_cy = hips_y - 6.0
 
-    # ---- Torso (lumpy blue, connects head to hips) ----
-    torso_cx = (head_cx + hips_x) / 2.0 - 1.0
-    torso_cy = (head_cy + hips_y) / 2.0 + 6.0
-    # Torso is deliberately bigger than the head — Sanic is a small-headed,
-    # big-bodied gremlin.
-    torso = _blob(torso_cx, torso_cy, 18.0, 20.0, salt + 6, amp=2.0, n=20)
+    # ---- The one BIG weird spike — off the MIDDLE OF THE BACK, behind the
+    # torso (NOT the head).
+    _draw_back_spike(draw, torso_cx - 8.0, torso_cy - 4.0, tr, salt + 4)
+
+    # ---- Neck (connects the separated head to the body) ----
+    if not fell:
+        neck_top = (head_cx - 1.0, head_cy + 9.0)
+        neck_bot = (torso_cx + 1.0, torso_cy - 14.0)
+        neck = [
+            (neck_top[0] - 6.0, neck_top[1]),
+            (neck_top[0] + 6.0, neck_top[1]),
+            (neck_bot[0] + 9.0, neck_bot[1]),
+            (neck_bot[0] - 9.0, neck_bot[1]),
+        ]
+        _poly(draw, _wobble(neck, 1.0, salt + 12), _rgba(BLUE), _rgba(INK), 2.0)
+
+    # ---- Torso ----
+    torso = _blob(torso_cx, torso_cy, 17.0, 18.0, salt + 6, amp=2.0, n=20)
     _poly(draw, torso, _rgba(BLUE), _rgba(INK), 2.4)
     # Tiny peach chest circle on the belly (low enough to peek out below the
     # front arm).
     _poly(draw, _blob(torso_cx + 4.0, torso_cy + 4.0, 6.0, 6.5, salt + 11, amp=1.0, n=14), _rgba(SKIN), _rgba(INK), 1.4)
+
+    # ---- Head spikes (behind the small head) — thick and longish ----
+    _draw_head_spikes(draw, head_cx, head_cy, tr, salt + 4)
 
     # ---- Head (small lumpy blue blob — smaller than the torso) ----
     _poly(draw, _blob(head_cx, head_cy, 14.0, 13.0, salt, amp=1.8, n=20), _rgba(BLUE), _rgba(INK), 2.4)
