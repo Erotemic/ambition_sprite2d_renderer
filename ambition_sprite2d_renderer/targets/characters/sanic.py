@@ -244,6 +244,38 @@ def _draw_arm(
     _poly(draw, _blob(hx, hy, 3.4, 3.0, salt, amp=0.8, n=10), _rgba(EYE), _rgba(INK), 1.4)
 
 
+def _draw_quills(draw: ImageDraw.ImageDraw, hx: float, hy: float, lean: float, salt: float) -> None:
+    """Three fat, ugly, lumpy quills poking back-left off the head — chunky
+    tapering blobs (not thin triangles), wobbled hard so they read as
+    mouse-drawn spikes."""
+    reach = 34.0 + lean
+    # (base_top, mid_top, tip, mid_bot, base_bot) — fat in the middle.
+    quills = [
+        [(hx - 6, hy - 14), (hx - 20, hy - 22), (hx - reach, hy - 24), (hx - 20, hy - 8), (hx - 4, hy - 6)],
+        [(hx - 8, hy - 5), (hx - 24, hy - 8), (hx - reach - 4, hy - 2), (hx - 22, hy + 6), (hx - 6, hy + 3)],
+        [(hx - 8, hy + 6), (hx - 22, hy + 8), (hx - reach + 2, hy + 14), (hx - 20, hy + 16), (hx - 6, hy + 12)],
+    ]
+    for i, q in enumerate(quills):
+        _poly(draw, _wobble(q, 2.6, salt + i * 3), _rgba(BLUE_DK), _rgba(INK), 2.6)
+
+
+def _draw_leg(
+    draw: ImageDraw.ImageDraw, hip: Point, ankle: Point, shade: str, salt: float, bend: float = 0.0
+) -> None:
+    """One long, awful, spindly leg: a thin wobbly two-segment line with a
+    knobbly kicked-out knee."""
+    hpx, hpy = hip
+    apx, apy = ankle
+    kx = (hpx + apx) / 2.0 + bend
+    ky = (hpy + apy) / 2.0 + 1.0
+    pts = _wobble([hip, (kx, ky), ankle], 1.6, salt)
+    scaled = [_pt(x, y) for x, y in pts]
+    draw.line(scaled, fill=_rgba(shade), width=_s(2.6), joint="curve")
+    draw.line(scaled, fill=_rgba(INK), width=_s(0.8), joint="curve")
+    # Knobbly knee joint.
+    _poly(draw, _blob(kx, ky, 2.2, 2.2, salt + 1, amp=0.6, n=8), _rgba(shade), _rgba(INK), 1.0)
+
+
 def _draw_spin_ball(
     img: Image.Image, draw: ImageDraw.ImageDraw, cx: float, cy: float, spin: float, salt: float
 ) -> None:
@@ -281,39 +313,43 @@ def _draw_face(
     look: float,
     mouth: str,
 ) -> None:
-    """The derp face: mismatched googly eyes, fat nose, crude grin. `look`
-    shifts the pupils (-1 back .. +1 forward); `mouth` picks an expression."""
-    # Muzzle — bulbous peach lobe on the front-lower head.
-    _poly(draw, _blob(hx + 16.0, hy + 8.0, 15.0, 12.0, salt + 5, amp=1.8, n=20), _rgba(SKIN), _rgba(INK), 2.2)
-    # Fat black nose at the muzzle tip.
-    _poly(draw, _blob(hx + 28.0, hy + 3.0, 6.2, 5.4, salt + 9, amp=1.0, n=14), _rgba(NOSE), None)
+    """The derp face: mismatched googly eyes with the fat nose wedged *between*
+    them, and a crude grin. `look` shifts the pupils (-1 back .. +1 forward);
+    `mouth` picks an expression."""
+    # Muzzle — bulbous peach lobe under the eyes, protruding forward-down.
+    _poly(draw, _blob(hx + 13.0, hy + 9.0, 14.0, 11.0, salt + 5, amp=1.8, n=20), _rgba(SKIN), _rgba(INK), 2.2)
 
-    # Two mismatched googly eyes (the signature derp): different radii, off by
-    # a few px in height, joined in the middle.
-    lx, ly, lr = hx + 3.0, hy - 6.0, 11.0
-    rx, ry, rr = hx + 16.0, hy - 8.0, 9.5
-    _poly(draw, _blob(lx, ly, lr, lr + 1.5, salt + 1, amp=1.4, n=18), _rgba(EYE), _rgba(INK), 2.0)
-    _poly(draw, _blob(rx, ry, rr, rr + 1.0, salt + 2, amp=1.4, n=18), _rgba(EYE), _rgba(INK), 2.0)
+    # Two mismatched googly eyes (the signature derp): smaller now, different
+    # radii, off by a few px in height, joined in the middle.
+    lx, ly, lr = hx + 4.0, hy - 3.0, 8.0
+    rx, ry, rr = hx + 14.0, hy - 4.5, 6.8
+    _poly(draw, _blob(lx, ly, lr, lr + 1.2, salt + 1, amp=1.2, n=18), _rgba(EYE), _rgba(INK), 2.0)
+    _poly(draw, _blob(rx, ry, rr, rr + 1.0, salt + 2, amp=1.2, n=18), _rgba(EYE), _rgba(INK), 2.0)
+
+    # Fat black nose wedged into the lower junction *between* the two eyes.
+    _poly(draw, _blob(hx + 9.5, hy + 1.5, 5.2, 4.6, salt + 9, amp=1.0, n=14), _rgba(NOSE), None)
+
     if mouth == "dead":
         # X'd-out eyes.
         for (ex, ey, er) in ((lx, ly, lr), (rx, ry, rr)):
             draw.line(_box(ex - er * 0.6, ey - er * 0.6, ex + er * 0.6, ey + er * 0.6), fill=_rgba(INK), width=_s(1.8))
             draw.line(_box(ex - er * 0.6, ey + er * 0.6, ex + er * 0.6, ey - er * 0.6), fill=_rgba(INK), width=_s(1.8))
     else:
-        # Tiny cross-eyed pupils, nudged by `look`.
-        pdx = look * 2.5
-        draw.ellipse(_box(lx + 1.5 + pdx, ly + 1.0, lx + 4.5 + pdx, ly + 5.0), fill=_rgba(INK))
-        draw.ellipse(_box(rx + 1.0 + pdx, ry + 1.0, rx + 3.6 + pdx, ry + 4.6), fill=_rgba(INK))
+        # Tiny cross-eyed pupils (drawn over the nose so they stay visible),
+        # nudged by `look`.
+        pdx = look * 2.0
+        draw.ellipse(_box(lx + 0.6 + pdx, ly - 1.6, lx + 3.0 + pdx, ly + 1.4), fill=_rgba(INK))
+        draw.ellipse(_box(rx - 0.4 + pdx, ry - 1.6, rx + 1.8 + pdx, ry + 1.2), fill=_rgba(INK))
 
-    # Mouth / grin under the nose.
+    # Mouth / grin under the nose on the muzzle.
     if mouth == "grin":
-        draw.arc(_box(hx + 8.0, hy + 8.0, hx + 26.0, hy + 20.0), 10, 150, fill=_rgba(INK), width=_s(1.8))
+        draw.arc(_box(hx + 4.0, hy + 8.0, hx + 22.0, hy + 20.0), 10, 150, fill=_rgba(INK), width=_s(1.8))
     elif mouth == "open":
-        _poly(draw, _wobble([(hx + 12.0, hy + 12.0), (hx + 24.0, hy + 11.0), (hx + 22.0, hy + 19.0), (hx + 14.0, hy + 19.0)], 1.0, salt), _rgba("#7a2b2b"), _rgba(INK), 1.4)
+        _poly(draw, _wobble([(hx + 8.0, hy + 12.0), (hx + 20.0, hy + 11.0), (hx + 18.0, hy + 19.0), (hx + 10.0, hy + 19.0)], 1.0, salt), _rgba("#7a2b2b"), _rgba(INK), 1.4)
     elif mouth == "hurt":
-        draw.arc(_box(hx + 9.0, hy + 14.0, hx + 25.0, hy + 24.0), 190, 350, fill=_rgba(INK), width=_s(1.8))
+        draw.arc(_box(hx + 5.0, hy + 14.0, hx + 21.0, hy + 24.0), 190, 350, fill=_rgba(INK), width=_s(1.8))
     else:  # flat little smirk
-        draw.line(_box(hx + 10.0, hy + 13.0, hx + 22.0, hy + 12.0), fill=_rgba(INK), width=_s(1.6))
+        draw.line(_box(hx + 6.0, hy + 14.0, hx + 18.0, hy + 13.0), fill=_rgba(INK), width=_s(1.6))
 
 
 def _draw_sanic(anim: str, frame_idx: int, nframes: int) -> Image.Image:
@@ -399,9 +435,10 @@ def _draw_sanic(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         look = 0.8
         mouth = "grin"
 
-    # Feet/leg root and head placement (head leans forward by `lean`).
+    # Feet/leg root and head placement (head leans forward by `lean`). Hips
+    # sit high above the ground so the legs come out long and gangly.
     hips_x = base_x
-    hips_y = ground_y - 22.0 + bob
+    hips_y = ground_y - 42.0 + bob
     head_cx = hips_x + 4.0 + lean
     head_cy = hips_y - 22.0 + bob * 0.4
 
@@ -416,35 +453,40 @@ def _draw_sanic(anim: str, frame_idx: int, nframes: int) -> Image.Image:
 
     # ---- Legs + shoes (behind body) ----
     if run_blur:
-        # Classic gotta-go-fast: legs dissolve into a red figure-8 blur.
+        # Classic gotta-go-fast: the long legs dissolve into a red figure-8
+        # blur down below the hips.
         blur = Image.new("RGBA", img.size, (0, 0, 0, 0))
         bd = ImageDraw.Draw(blur, "RGBA")
-        bcx, bcy = hips_x + 2.0, ground_y - 6.0
-        bd.ellipse(_box(bcx - 15, bcy - 9, bcx + 15, bcy + 9), fill=_rgba(SHOE, 150))
-        bd.ellipse(_box(bcx - 11, bcy - 12, bcx + 11, bcy + 12), fill=_rgba(SHOE, 110))
+        bcx, bcy = hips_x + 2.0, ground_y - 8.0
+        bd.ellipse(_box(bcx - 15, bcy - 14, bcx + 15, bcy + 12), fill=_rgba(SHOE, 150))
+        bd.ellipse(_box(bcx - 11, bcy - 18, bcx + 11, bcy + 16), fill=_rgba(SHOE, 110))
         img.alpha_composite(blur)
         for k in range(3):
             ang = cyc * 3.0 + k * math.tau / 3.0
-            sxp = bcx + math.cos(ang) * 11.0
-            syp = bcy + math.sin(ang) * 7.0
+            sxp = bcx + math.cos(ang) * 12.0
+            syp = bcy + math.sin(ang) * 11.0
             _draw_shoe(draw, sxp, syp, salt + k, tilt=math.sin(ang) * 2.0)
     elif airborne:
-        # Both legs tucked forward.
-        for i, dx in enumerate((-2.0, 8.0)):
-            draw.line([_pt(hips_x + i * 4, hips_y + 6), _pt(hips_x + dx, ground_y - 10)], fill=_rgba(SKIN), width=_s(3.2))
-            _draw_shoe(draw, hips_x + dx + 2.0, ground_y - 6.0, salt + i, tilt=-2.0)
+        # Long legs tucked forward (higher on a jump).
+        tuck = 8.0 if anim == "jump" else 0.0
+        for i, dx in enumerate((-1.0, 9.0)):
+            ankle = (hips_x + dx, ground_y - 8.0 - tuck)
+            _draw_leg(draw, (hips_x + i * 3.0, hips_y + 4.0), ankle, SKIN if i else SKIN_DK, salt + i, bend=4.0)
+            _draw_shoe(draw, ankle[0] + 2.0, ankle[1], salt + i, tilt=-2.0)
     elif fell:
-        for i, dx in enumerate((10.0, 16.0)):
-            draw.line([_pt(hips_x + 2, hips_y + 4), _pt(hips_x + dx, hips_y - 6 - i * 4)], fill=_rgba(SKIN), width=_s(3.2))
-            _draw_shoe(draw, hips_x + dx + 4.0, hips_y - 8.0 - i * 4, salt + i, tilt=6.0)
+        # Toppled — the long legs splay up and out.
+        for i, (dx, dy) in enumerate(((14.0, -4.0), (20.0, -12.0))):
+            ankle = (hips_x + dx, hips_y + dy)
+            _draw_leg(draw, (hips_x + 2.0, hips_y + 2.0), ankle, SKIN if i else SKIN_DK, salt + i, bend=6.0)
+            _draw_shoe(draw, ankle[0] + 3.0, ankle[1], salt + i, tilt=6.0)
     else:
-        # Two grounded legs, front one strides with `step`.
-        back_dx = -3.0 - step * 5.0
-        front_dx = 6.0 + step * 6.0
-        for dx, sh in ((back_dx, SKIN_DK), (front_dx, SKIN)):
-            draw.line([_pt(hips_x + 1, hips_y + 6), _pt(hips_x + dx, ground_y - 8)], fill=_rgba(sh), width=_s(3.4))
-        _draw_shoe(draw, hips_x + back_dx + 2.0, ground_y - 4.0, salt, tilt=-step * 2.0)
-        _draw_shoe(draw, hips_x + front_dx + 2.0, ground_y - 4.0, salt + 3, tilt=step * 2.0)
+        # Two long spindly legs, front one strides with `step`.
+        back_ankle = (hips_x - 3.0 - step * 6.0, ground_y - 4.0)
+        front_ankle = (hips_x + 7.0 + step * 7.0, ground_y - 4.0)
+        _draw_leg(draw, (hips_x - 1.0, hips_y + 5.0), back_ankle, SKIN_DK, salt, bend=-3.0 - step * 4.0)
+        _draw_leg(draw, (hips_x + 3.0, hips_y + 5.0), front_ankle, SKIN, salt + 3, bend=2.0 + step * 4.0)
+        _draw_shoe(draw, back_ankle[0] + 2.0, back_ankle[1], salt, tilt=-step * 2.0)
+        _draw_shoe(draw, front_ankle[0] + 2.0, front_ankle[1], salt + 3, tilt=step * 2.0)
 
     # ---- Back arm (behind body) ----
     _draw_arm(
@@ -455,16 +497,17 @@ def _draw_sanic(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         salt + 7,
     )
 
-    # ---- Quills (behind head, poking back-left) ----
-    q_salt = salt + 4
-    quill1 = [(head_cx - 10, head_cy - 6), (head_cx - 34 - lean, head_cy - 20), (head_cx - 6, head_cy + 2)]
-    quill2 = [(head_cx - 12, head_cy + 4), (head_cx - 36 - lean, head_cy + 6), (head_cx - 8, head_cy + 12)]
-    _poly(draw, _wobble(quill1, 1.4, q_salt), _rgba(BLUE_DK), _rgba(INK), 2.2)
-    _poly(draw, _wobble(quill2, 1.4, q_salt + 1), _rgba(BLUE_DK), _rgba(INK), 2.2)
+    # ---- Quills (behind head, poking back-left) — fat and ugly ----
+    _draw_quills(draw, head_cx, head_cy, lean, salt + 4)
 
     # ---- Torso (lumpy blue, connects head to hips) ----
-    torso = _blob((head_cx + hips_x) / 2.0 - 1.0, (head_cy + hips_y) / 2.0 + 6.0, 15.0, 17.0, salt + 6, amp=2.0, n=20)
+    torso_cx = (head_cx + hips_x) / 2.0 - 1.0
+    torso_cy = (head_cy + hips_y) / 2.0 + 6.0
+    torso = _blob(torso_cx, torso_cy, 15.0, 17.0, salt + 6, amp=2.0, n=20)
     _poly(draw, torso, _rgba(BLUE), _rgba(INK), 2.4)
+    # Tiny peach chest circle on the belly (low enough to peek out below the
+    # front arm).
+    _poly(draw, _blob(torso_cx + 4.0, torso_cy + 4.0, 5.5, 6.0, salt + 11, amp=1.0, n=14), _rgba(SKIN), _rgba(INK), 1.4)
 
     # ---- Head (big lumpy blue blob) ----
     _poly(draw, _blob(head_cx, head_cy, 21.0, 20.0, salt, amp=2.4, n=22), _rgba(BLUE), _rgba(INK), 2.6)
