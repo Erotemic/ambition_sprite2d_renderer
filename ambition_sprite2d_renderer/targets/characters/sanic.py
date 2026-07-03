@@ -245,18 +245,38 @@ def _draw_arm(
 
 
 def _draw_quills(draw: ImageDraw.ImageDraw, hx: float, hy: float, lean: float, salt: float) -> None:
-    """Three fat, ugly, lumpy quills poking back-left off the head — chunky
-    tapering blobs (not thin triangles), wobbled hard so they read as
-    mouse-drawn spikes."""
-    reach = 34.0 + lean
-    # (base_top, mid_top, tip, mid_bot, base_bot) — fat in the middle.
-    quills = [
-        [(hx - 6, hy - 14), (hx - 20, hy - 22), (hx - reach, hy - 24), (hx - 20, hy - 8), (hx - 4, hy - 6)],
-        [(hx - 8, hy - 5), (hx - 24, hy - 8), (hx - reach - 4, hy - 2), (hx - 22, hy + 6), (hx - 6, hy + 3)],
-        [(hx - 8, hy + 6), (hx - 22, hy + 8), (hx - reach + 2, hy + 14), (hx - 20, hy + 16), (hx - 6, hy + 12)],
+    """Disproportionately long, fat quills off the back of the head, dominated
+    by ONE huge thick spike. Facing right, so they sweep back-left. The lean
+    factor trails them out further when Sanic is leaning into a run."""
+    tr = lean * 0.5  # trailing extension when leaning
+    # The BIG back spike — very long, very thick, swept back and up.
+    big = [
+        (hx - 6, hy - 12),
+        (hx - 22, hy - 17),
+        (hx - 40 - tr, hy - 20),
+        (hx - 52 - tr, hy - 14),   # long tip
+        (hx - 38 - tr, hy - 3),
+        (hx - 18, hy - 1),
+        (hx - 5, hy - 3),
     ]
-    for i, q in enumerate(quills):
-        _poly(draw, _wobble(q, 2.6, salt + i * 3), _rgba(BLUE_DK), _rgba(INK), 2.6)
+    _poly(draw, _wobble(big, 3.0, salt), _rgba(BLUE_DK), _rgba(INK), 2.8)
+    # Two subordinate spikes below — still long, a touch thinner.
+    mid = [
+        (hx - 6, hy + 1),
+        (hx - 24, hy + 3),
+        (hx - 42 - tr, hy + 6),
+        (hx - 24, hy + 11),
+        (hx - 6, hy + 8),
+    ]
+    low = [
+        (hx - 6, hy + 9),
+        (hx - 22, hy + 12),
+        (hx - 36 - tr, hy + 18),
+        (hx - 20, hy + 19),
+        (hx - 6, hy + 15),
+    ]
+    _poly(draw, _wobble(mid, 2.6, salt + 3), _rgba(BLUE_DK), _rgba(INK), 2.6)
+    _poly(draw, _wobble(low, 2.6, salt + 6), _rgba(BLUE_DK), _rgba(INK), 2.6)
 
 
 def _draw_leg(
@@ -313,43 +333,42 @@ def _draw_face(
     look: float,
     mouth: str,
 ) -> None:
-    """The derp face: mismatched googly eyes with the fat nose wedged *between*
-    them, and a crude grin. `look` shifts the pupils (-1 back .. +1 forward);
-    `mouth` picks an expression."""
-    # Muzzle — bulbous peach lobe under the eyes, protruding forward-down.
-    _poly(draw, _blob(hx + 13.0, hy + 9.0, 14.0, 11.0, salt + 5, amp=1.8, n=20), _rgba(SKIN), _rgba(INK), 2.2)
+    """The derp face on a small head: two beady, close-set, mostly-pupil eyes
+    with the fat nose wedged *between* them, and a crude grin. `look` shifts
+    the pupils (-1 back .. +1 forward); `mouth` picks an expression."""
+    # Muzzle — small peach lobe front-and-under the eyes.
+    _poly(draw, _blob(hx + 7.0, hy + 6.0, 9.0, 8.0, salt + 5, amp=1.4, n=18), _rgba(SKIN), _rgba(INK), 2.0)
 
-    # Two mismatched googly eyes (the signature derp): smaller now, different
-    # radii, off by a few px in height, joined in the middle.
-    lx, ly, lr = hx + 4.0, hy - 3.0, 8.0
-    rx, ry, rr = hx + 14.0, hy - 4.5, 6.8
-    _poly(draw, _blob(lx, ly, lr, lr + 1.2, salt + 1, amp=1.2, n=18), _rgba(EYE), _rgba(INK), 2.0)
-    _poly(draw, _blob(rx, ry, rr, rr + 1.0, salt + 2, amp=1.2, n=18), _rgba(EYE), _rgba(INK), 2.0)
+    # Beady eyes — small, close-set, slightly mismatched.
+    lx, ly, lr = hx + 2.5, hy - 3.0, 3.8
+    rx, ry, rr = hx + 8.5, hy - 4.0, 3.3
+    _poly(draw, _blob(lx, ly, lr, lr, salt + 1, amp=0.6, n=12), _rgba(EYE), _rgba(INK), 1.6)
+    _poly(draw, _blob(rx, ry, rr, rr, salt + 2, amp=0.6, n=12), _rgba(EYE), _rgba(INK), 1.6)
 
-    # Fat black nose wedged into the lower junction *between* the two eyes.
-    _poly(draw, _blob(hx + 9.5, hy + 1.5, 5.2, 4.6, salt + 9, amp=1.0, n=14), _rgba(NOSE), None)
+    # Fat black nose wedged into the junction *between* the two eyes.
+    _poly(draw, _blob(hx + 5.2, hy - 1.0, 3.0, 2.8, salt + 9, amp=0.7, n=12), _rgba(NOSE), None)
 
     if mouth == "dead":
         # X'd-out eyes.
         for (ex, ey, er) in ((lx, ly, lr), (rx, ry, rr)):
-            draw.line(_box(ex - er * 0.6, ey - er * 0.6, ex + er * 0.6, ey + er * 0.6), fill=_rgba(INK), width=_s(1.8))
-            draw.line(_box(ex - er * 0.6, ey + er * 0.6, ex + er * 0.6, ey - er * 0.6), fill=_rgba(INK), width=_s(1.8))
+            draw.line(_box(ex - er, ey - er, ex + er, ey + er), fill=_rgba(INK), width=_s(1.4))
+            draw.line(_box(ex - er, ey + er, ex + er, ey - er), fill=_rgba(INK), width=_s(1.4))
     else:
-        # Tiny cross-eyed pupils (drawn over the nose so they stay visible),
-        # nudged by `look`.
-        pdx = look * 2.0
-        draw.ellipse(_box(lx + 0.6 + pdx, ly - 1.6, lx + 3.0 + pdx, ly + 1.4), fill=_rgba(INK))
-        draw.ellipse(_box(rx - 0.4 + pdx, ry - 1.6, rx + 1.8 + pdx, ry + 1.2), fill=_rgba(INK))
+        # Beady pupils fill most of each eye; nudge by `look`, tiny glint.
+        pdx = look * 1.2
+        draw.ellipse(_box(lx - 2.0 + pdx, ly - 2.0, lx + 2.0 + pdx, ly + 2.0), fill=_rgba(INK))
+        draw.ellipse(_box(rx - 1.8 + pdx, ry - 1.8, rx + 1.8 + pdx, ry + 1.8), fill=_rgba(INK))
+        draw.ellipse(_box(lx - 1.2 + pdx, ly - 1.2, lx - 0.2 + pdx, ly - 0.2), fill=_rgba(EYE))
 
-    # Mouth / grin under the nose on the muzzle.
+    # Mouth on the muzzle below the nose.
     if mouth == "grin":
-        draw.arc(_box(hx + 4.0, hy + 8.0, hx + 22.0, hy + 20.0), 10, 150, fill=_rgba(INK), width=_s(1.8))
+        draw.arc(_box(hx + 1.0, hy + 4.0, hx + 14.0, hy + 13.0), 10, 150, fill=_rgba(INK), width=_s(1.6))
     elif mouth == "open":
-        _poly(draw, _wobble([(hx + 8.0, hy + 12.0), (hx + 20.0, hy + 11.0), (hx + 18.0, hy + 19.0), (hx + 10.0, hy + 19.0)], 1.0, salt), _rgba("#7a2b2b"), _rgba(INK), 1.4)
+        _poly(draw, _wobble([(hx + 3.0, hy + 7.0), (hx + 12.0, hy + 6.0), (hx + 11.0, hy + 12.0), (hx + 4.0, hy + 12.0)], 0.8, salt), _rgba("#7a2b2b"), _rgba(INK), 1.2)
     elif mouth == "hurt":
-        draw.arc(_box(hx + 5.0, hy + 14.0, hx + 21.0, hy + 24.0), 190, 350, fill=_rgba(INK), width=_s(1.8))
+        draw.arc(_box(hx + 2.0, hy + 8.0, hx + 13.0, hy + 15.0), 190, 350, fill=_rgba(INK), width=_s(1.6))
     else:  # flat little smirk
-        draw.line(_box(hx + 6.0, hy + 14.0, hx + 18.0, hy + 13.0), fill=_rgba(INK), width=_s(1.6))
+        draw.line(_box(hx + 2.5, hy + 9.0, hx + 11.0, hy + 8.0), fill=_rgba(INK), width=_s(1.4))
 
 
 def _draw_sanic(anim: str, frame_idx: int, nframes: int) -> Image.Image:
@@ -361,7 +380,8 @@ def _draw_sanic(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     salt = float(frame_idx + 1)
 
     # Ground reference: shoes plant near y=112 so the body has headroom.
-    base_x = 54.0
+    # base_x sits right-of-centre to leave room for the long back spikes.
+    base_x = 60.0
     ground_y = 112.0
 
     # ---- Spin-ball anims short-circuit (dash / slash) ----
@@ -440,7 +460,7 @@ def _draw_sanic(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     hips_x = base_x
     hips_y = ground_y - 42.0 + bob
     head_cx = hips_x + 4.0 + lean
-    head_cy = hips_y - 22.0 + bob * 0.4
+    head_cy = hips_y - 20.0 + bob * 0.4
 
     if fell:
         # Toppled over — rotate the whole layout onto its back-ish. Cheap:
@@ -503,14 +523,16 @@ def _draw_sanic(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     # ---- Torso (lumpy blue, connects head to hips) ----
     torso_cx = (head_cx + hips_x) / 2.0 - 1.0
     torso_cy = (head_cy + hips_y) / 2.0 + 6.0
-    torso = _blob(torso_cx, torso_cy, 15.0, 17.0, salt + 6, amp=2.0, n=20)
+    # Torso is deliberately bigger than the head — Sanic is a small-headed,
+    # big-bodied gremlin.
+    torso = _blob(torso_cx, torso_cy, 18.0, 20.0, salt + 6, amp=2.0, n=20)
     _poly(draw, torso, _rgba(BLUE), _rgba(INK), 2.4)
     # Tiny peach chest circle on the belly (low enough to peek out below the
     # front arm).
-    _poly(draw, _blob(torso_cx + 4.0, torso_cy + 4.0, 5.5, 6.0, salt + 11, amp=1.0, n=14), _rgba(SKIN), _rgba(INK), 1.4)
+    _poly(draw, _blob(torso_cx + 4.0, torso_cy + 4.0, 6.0, 6.5, salt + 11, amp=1.0, n=14), _rgba(SKIN), _rgba(INK), 1.4)
 
-    # ---- Head (big lumpy blue blob) ----
-    _poly(draw, _blob(head_cx, head_cy, 21.0, 20.0, salt, amp=2.4, n=22), _rgba(BLUE), _rgba(INK), 2.6)
+    # ---- Head (small lumpy blue blob — smaller than the torso) ----
+    _poly(draw, _blob(head_cx, head_cy, 14.0, 13.0, salt, amp=1.8, n=20), _rgba(BLUE), _rgba(INK), 2.4)
 
     # ---- Face ----
     _draw_face(draw, head_cx, head_cy, salt, look, mouth)
