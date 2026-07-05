@@ -41,6 +41,12 @@ from ambition_sprite2d_renderer.registry.pack_groups import policy_for
 RGBA = Tuple[int, int, int, int]
 
 TARGET_NAME = "gnu_ton_boss"
+# ADR 0020 mount/rider split (G1): the fused `gnu_ton_boss` giant+scholar sheet
+# is additionally emitted as TWO separate actors — the giant wildebeest MOUNT
+# (scholar-less) and the scholar RIDER drawn alone/centered. The original
+# gnu_ton_boss outputs are UNCHANGED; these are added alongside.
+GIANT_TARGET_NAME = "giant_gnu"
+RIDER_TARGET_NAME = "gnu_ton_rider"
 DATA_DIR = Path(__file__).resolve().parent
 # targets/characters/gnu_ton_boss -> the tool checkout root (display paths).
 TOOL_ROOT = DATA_DIR.parents[3]
@@ -82,6 +88,17 @@ OUTPUT_FILES = [
     f"{TARGET_NAME}_actor.ron",
     f"{TARGET_NAME}_canonical.png",
     f"{TARGET_NAME}_preview_labeled.png",
+    # ADR 0020 split: the giant MOUNT (scholar-less body + shared hands) and the
+    # scholar RIDER (drawn alone, its own tight-trim standalone sheet). Emitted
+    # into the same `gnu_ton_boss/` install dir alongside the fused sheet.
+    f"{GIANT_TARGET_NAME}_spritesheet.png",  # alias: giant body + hands composite
+    f"{GIANT_TARGET_NAME}_body_spritesheet.png",
+    f"{GIANT_TARGET_NAME}_hands_spritesheet.png",
+    f"{GIANT_TARGET_NAME}_spritesheet.ron",
+    f"{GIANT_TARGET_NAME}_actor.ron",
+    f"{RIDER_TARGET_NAME}_spritesheet.png",
+    f"{RIDER_TARGET_NAME}_spritesheet.ron",
+    f"{RIDER_TARGET_NAME}_actor.ron",
 ]
 
 # Review-only output generated next to the sheets. It is intentionally not in
@@ -100,6 +117,47 @@ ACTOR_METADATA = {
     "tags": ["boss", "multipart"],
     "missing_information": [
         "boss schedule/action specials: not authored in the sprite actor contract yet",
+    ],
+}
+
+# ── ADR 0020 mount/rider actor metadata ──────────────────────────────────────
+# The giant GNU is the MOUNT (Mountable): a brainless carried body. The scholar
+# is the RIDER (CanPilot). Full wiring (Mountable::rider_offset, two HP pools)
+# lands in G2; here we only ship the sprites + a recorded shoulder offset so G2
+# can author the rider socket without re-deriving it.
+GIANT_ACTOR_METADATA = {
+    "actor": {"character_id": f"npc_{GIANT_TARGET_NAME}"},
+    "body": {
+        "body_plan": "BossMultipart",
+        "body_kind": "Wide",
+        "traits": ["boss", "multipart", "mount"],
+    },
+    "brain": {"default_preset": "stand_still"},
+    "actions": {"default_preset": "peaceful"},
+    "tags": ["boss", "multipart", "mount"],
+    "missing_information": [
+        # Design-space (giant frame center -> scholar shoulder anchor). Mirrors
+        # _MAN_CENTER_X (44.0) / _MAN_CENTER_Y (_SHOULDER_TOP_Y - 18 = -20.0),
+        # which are defined further down; kept as literals here since this dict
+        # is built at import before those constants exist.
+        "Mountable::rider_offset (design-space): x=44.0, y=-20.0 "
+        "(see _MAN_CENTER_X/_MAN_CENTER_Y) — author in G2",
+    ],
+}
+
+RIDER_ACTOR_METADATA = {
+    "actor": {"character_id": f"npc_{RIDER_TARGET_NAME}"},
+    "body": {
+        "body_plan": "Humanoid",
+        "body_kind": "Small",
+        "traits": ["rider"],
+    },
+    "brain": {"default_preset": "stand_still"},
+    "actions": {"default_preset": "peaceful"},
+    "tags": ["rider"],
+    "missing_information": [
+        "CanPilot classes + rider HP pool: authored in G2, not in the sprite "
+        "contract",
     ],
 }
 
@@ -900,6 +958,16 @@ def draw_frame(
     phase = frame_idx / max(1, frame_count)
     c = Canvas(FRAME_W, FRAME_H, C_BG, scale=SUPERSAMPLE)
 
+    if layer == _SCHOLAR_LAYER:
+        # ADR 0020 RIDER split: the scholar ALONE, centered in its own frame
+        # (man_x=0 at the frame center, NOT the giant shoulder offset
+        # _MAN_CENTER_X/_MAN_CENTER_Y). Same per-row `anim` so the arm poses
+        # still vary. Packed on its own tight trim into `gnu_ton_rider`.
+        draw_gnu_ton_man(
+            c, 0.0, _RIDER_CENTER_Y, phase=phase, anim=anim, show_speech=False
+        )
+        return c.finish()
+
     if anim == "rest":
         _draw_rest(c, phase, frame_idx, layer=layer, parts=parts)
     elif anim == "hand_slam":
@@ -939,6 +1007,13 @@ REST_BODY_Y = 60.0
 _SHOULDER_TOP_Y = REST_BODY_Y - 62  # ≈ -2
 _MAN_CENTER_Y = _SHOULDER_TOP_Y - 18  # ≈ -20
 _MAN_CENTER_X = 44.0  # nudged further onto the right shoulder
+
+# ADR 0020 RIDER split: the standalone scholar frame draws the man CENTERED at
+# man_x=0. The scholar figure spans design-y ≈ (hy-24) wig top .. (hy+19) feet;
+# its midpoint is hy-2.5, so hy=2.5 centers that span on the frame center. The
+# rider sheet is packed on its OWN tight trim, so this only sets the (cosmetic)
+# frame-relative centering — the runtime addresses the trimmed rect + off.
+_RIDER_CENTER_Y = 2.5
 
 # Hand x-anchors. Slightly wider than the older 185 px so the wider 768
 # frame still places hands near the edges.
@@ -1081,7 +1156,7 @@ def _draw_rest(
     man_y = _MAN_CENTER_Y + bob * 0.4
     man_x = _MAN_CENTER_X + wave(phase, 0.7, 0.2) * 1.5
 
-    if layer in ("full", "body"):
+    if layer in ("full", "body", _GIANT_BODY_LAYER):
         _draw_body_layer(
             c,
             REST_BODY_Y,
@@ -1094,6 +1169,7 @@ def _draw_rest(
             anim="rest",
             phase=phase,
             enraged=False,
+            draw_man=layer != _GIANT_BODY_LAYER,
         )
     if layer in ("full", "hands"):
         _draw_hands_layer(c, lhx, lhy, rhx, rhy, anim="rest", phase=phase)
@@ -1137,7 +1213,7 @@ def _draw_hand_slam(
         slam_alpha = lerp(1.0, 0.0, t)
 
     head_y = REST_HEAD_Y
-    if layer in ("full", "body"):
+    if layer in ("full", "body", _GIANT_BODY_LAYER):
         _draw_body_layer(
             c,
             REST_BODY_Y,
@@ -1150,6 +1226,7 @@ def _draw_hand_slam(
             anim="hand_slam",
             phase=phase,
             enraged=True,
+            draw_man=layer != _GIANT_BODY_LAYER,
         )
 
     shockwave_radius = 0.0
@@ -1209,7 +1286,7 @@ def _draw_hand_sweep(
         sweep_prog = lerp(1.0, 0.0, t)
 
     head_y = REST_HEAD_Y
-    if layer in ("full", "body"):
+    if layer in ("full", "body", _GIANT_BODY_LAYER):
         _draw_body_layer(
             c,
             REST_BODY_Y,
@@ -1222,6 +1299,7 @@ def _draw_hand_sweep(
             anim="hand_sweep",
             phase=phase,
             enraged=True,
+            draw_man=layer != _GIANT_BODY_LAYER,
         )
     if layer in ("full", "hands"):
         _draw_hands_layer(
@@ -1271,7 +1349,7 @@ def _draw_head_down(
     lhx = -REST_HAND_X + c_sway
     rhx = REST_HAND_X - c_sway
 
-    if layer in ("full", "body"):
+    if layer in ("full", "body", _GIANT_BODY_LAYER):
         _draw_body_layer(
             c,
             REST_BODY_Y,
@@ -1284,6 +1362,7 @@ def _draw_head_down(
             anim="head_down",
             phase=phase,
             enraged=(enrage_scale > 0.5),
+            draw_man=layer != _GIANT_BODY_LAYER,
         )
     if layer in ("full", "hands"):
         _draw_hands_layer(
@@ -1330,7 +1409,7 @@ def _draw_hit(
     man_x = _MAN_CENTER_X + jolt * 0.4
     man_y = _MAN_CENTER_Y + jolt * 0.2
 
-    if layer in ("full", "body"):
+    if layer in ("full", "body", _GIANT_BODY_LAYER):
         _draw_body_layer(
             c,
             body_y_hit,
@@ -1343,6 +1422,7 @@ def _draw_hit(
             anim="hit",
             phase=phase,
             enraged=False,
+            draw_man=layer != _GIANT_BODY_LAYER,
         )
     if layer in ("full", "hands"):
         _draw_hands_layer(c, lhx, lhy, rhx, rhy, anim="hit", phase=phase)
@@ -1385,7 +1465,7 @@ def _draw_death(
     rhx = lerp(REST_HAND_X, REST_HAND_X + 25, settle)
     rhy = lerp(REST_HAND_Y, 105, smoothstep(settle))
 
-    if layer in ("full", "body"):
+    if layer in ("full", "body", _GIANT_BODY_LAYER):
         _draw_body_layer(
             c,
             body_y,
@@ -1398,7 +1478,7 @@ def _draw_death(
             anim="death",
             phase=phase,
             enraged=False,
-            draw_man=(settle < 0.9),
+            draw_man=(layer != _GIANT_BODY_LAYER) and (settle < 0.9),
         )
     if layer in ("full", "hands"):
         _draw_hands_layer(c, lhx, lhy, rhx, rhy, anim="death", phase=phase)
@@ -1716,15 +1796,27 @@ def _gnu_ton_body_metrics_ron(parts_doc: dict) -> str:
     return "\n".join(lines)
 
 
-def _runtime_spritesheet_ron(rows_meta: list[dict], parts_doc: dict, images: list[str]) -> str:
+def _runtime_spritesheet_ron(
+    rows_meta: list[dict],
+    parts_doc: dict,
+    images: list[str],
+    *,
+    target: str = TARGET_NAME,
+    include_metrics: bool = True,
+) -> str:
     """Compose the `Vec<SheetRecord>` RON.
 
     The frame addressing (explicit rects + per-frame `page`/`off` trim) goes
     through the SHARED [`ron_row`] writer — the same packed-rect algebra every
     other sheet uses. Only the `body_metrics` block stays bespoke: GNU-ton ships
     a richer per-frame multipart hurt/hit schema than the generic writer models,
-    so its emitter ([`_gnu_ton_body_metrics_ron`]) is kept verbatim."""
-    metrics = _gnu_ton_body_metrics_ron(parts_doc)
+    so its emitter ([`_gnu_ton_body_metrics_ron`]) is kept verbatim.
+
+    `target` names both the SheetRecord `target` and its `<target>_spritesheet.png`
+    image (the giant MOUNT and scholar RIDER reuse this writer). `include_metrics`
+    gates the giant's per-frame hurt/hit schema: the giant MOUNT keeps it (same
+    body), the scholar RIDER omits it (it carries none of the giant's parts)."""
+    metrics = f"{_gnu_ton_body_metrics_ron(parts_doc)}\n" if include_metrics else ""
     rows_inner = "\n    ".join(ron_row(r) + "," for r in rows_meta)
     images_field = ""
     if len(images) > 1:
@@ -1733,13 +1825,13 @@ def _runtime_spritesheet_ron(rows_meta: list[dict], parts_doc: dict, images: lis
     return (
         "[\n"
         "(\n"
-        f'    target: "{TARGET_NAME}",\n'
-        f'    image: "{TARGET_NAME}_spritesheet.png",\n'
+        f'    target: "{target}",\n'
+        f'    image: "{target}_spritesheet.png",\n'
         f"{images_field}"
         "    label_width: 0,\n"
         f"    frame_width: {FRAME_W},\n"
         f"    frame_height: {FRAME_H},\n"
-        f"{metrics}\n"
+        f"{metrics}"
         f"    rows: [\n    {rows_inner}\n    ],\n"
         "    tuning: None,\n"
         "),\n"
@@ -1749,10 +1841,20 @@ def _runtime_spritesheet_ron(rows_meta: list[dict], parts_doc: dict, images: lis
 
 # ── Sheet assembly ───────────────────────────────────────────────────────────
 
+# Layers PUBLISHED as the fused `gnu_ton_boss` sheet (unchanged).
 _LAYERS = ("full", "body", "hands")
 
+# ADR 0020 split layers. `giant_body` = the giant body WITHOUT the scholar
+# (`_draw_body_layer(draw_man=False)`), lockstep-packed with full/body/hands so
+# it shares the same per-frame placement (its alpha is a subset of `full`).
+# `scholar` = the scholar drawn ALONE + centered, packed on its OWN tight trim.
+_GIANT_BODY_LAYER = "giant_body"
+_SCHOLAR_LAYER = "scholar"
+# All layers that lockstep-pack onto the shared `full` placement.
+_LOCKSTEP_LAYERS = ("full", "body", "hands", _GIANT_BODY_LAYER)
 
-def _pack_layers(rendered: dict, manifest_rows: list[dict], policy):
+
+def _pack_layers(rendered: dict, manifest_rows: list[dict], policy, layers=_LAYERS):
     """Lockstep-pack the full/body/hands layers onto ONE page each.
 
     GNU-ton's three layers must share an IDENTICAL per-frame layout: the runtime
@@ -1792,7 +1894,7 @@ def _pack_layers(rendered: dict, manifest_rows: list[dict], policy):
 
     layer_pages: dict[str, list[Image.Image]] = {}
     page_size = result.pages[0].size
-    for layer in _LAYERS:
+    for layer in layers:
         if layer == "full":
             layer_pages[layer] = list(result.pages)
             continue
@@ -1828,6 +1930,57 @@ def _pack_layers(rendered: dict, manifest_rows: list[dict], policy):
     return layer_pages, rows_meta, len(result.pages)
 
 
+def _pack_scholar(rendered_scholar: dict, manifest_rows: list[dict], policy):
+    """Pack the standalone scholar (RIDER) frames on their OWN tight trim.
+
+    Unlike [`_pack_layers`], the rider is NOT lockstep with the giant: it packs
+    its own frames directly, so each frame trims to the small scholar silhouette
+    (its own atlas + `off`). Returns ``(page, rows_meta, num_pages)``."""
+    frames = [
+        FrameInput(
+            key=(r["row"], f),
+            image=rendered_scholar[(r["row"], f)],
+            logical_size=(FRAME_W, FRAME_H),
+        )
+        for r in manifest_rows
+        for f in range(r["frames"])
+    ]
+    result = pack_frames(
+        frames,
+        max_dim=policy.max_dim,
+        page_size=policy.page_size,
+        padding=1,
+        trim=policy.trim,
+    )
+    if len(result.pages) != 1:
+        raise ValueError(
+            f"{RIDER_TARGET_NAME}: standalone scholar pack must fit ONE page, got "
+            f"{len(result.pages)} — raise the gnu_ton page_size policy"
+        )
+    rows_meta = []
+    for r in manifest_rows:
+        rects = []
+        for f in range(r["frames"]):
+            pl = result.placements[(r["row"], f)]
+            rect = {"x": pl.x, "y": pl.y, "w": pl.w, "h": pl.h, "fpage": pl.page}
+            if pl.off_x or pl.off_y:
+                rect["off"] = (pl.off_x, pl.off_y)
+            rects.append(rect)
+        dur = r["duration_ms"]
+        rows_meta.append(
+            {
+                "animation": r["name"],
+                "row_index": r["row"],
+                "frame_count": r["frames"],
+                "duration_ms": dur,
+                "duration_secs": round(dur / 1000.0, 6),
+                "page": result.placements[(r["row"], 0)].page if r["frames"] else 0,
+                "rects": rects,
+            }
+        )
+    return result.pages[0], rows_meta, len(result.pages)
+
+
 def build_spritesheet(outdir: Path) -> List[Path]:
     """Render all animation frames and emit runtime sheets + RON metadata.
 
@@ -1844,8 +1997,11 @@ def build_spritesheet(outdir: Path) -> List[Path]:
     rows = len(ANIMATIONS)
 
     # Pass 1: render every frame of every layer into memory + collect the
-    # design-space anchors (gameplay hitboxes) on the full pass.
-    rendered: dict = {layer: {} for layer in _LAYERS}
+    # design-space anchors (gameplay hitboxes) on the full pass. We render the
+    # fused layers (full/body/hands) PLUS the scholar-less `giant_body` (ADR 0020
+    # MOUNT) lockstep, and the centered standalone `scholar` (RIDER) separately.
+    rendered: dict = {layer: {} for layer in _LOCKSTEP_LAYERS}
+    rendered_scholar: dict = {}
     manifest = {
         "target": TARGET_NAME,
         "frame_size": [FRAME_W, FRAME_H],
@@ -1855,11 +2011,14 @@ def build_spritesheet(outdir: Path) -> List[Path]:
     parts: dict = {}
     for row_idx, (anim_name, frame_count, duration_ms) in enumerate(ANIMATIONS):
         for f in range(frame_count):
-            for layer in _LAYERS:
+            for layer in _LOCKSTEP_LAYERS:
                 pass_parts = parts if layer == "full" else None
                 rendered[layer][(row_idx, f)] = draw_frame(
                     anim_name, f, frame_count, layer=layer, parts=pass_parts
                 )
+            rendered_scholar[(row_idx, f)] = draw_frame(
+                anim_name, f, frame_count, layer=_SCHOLAR_LAYER
+            )
         manifest["rows"].append(
             {
                 "name": anim_name,
@@ -1870,11 +2029,14 @@ def build_spritesheet(outdir: Path) -> List[Path]:
         )
         print(f"  [{row_idx + 1}/{rows}] {anim_name} ({frame_count} frames)")
 
-    # Pass 2: lockstep alpha-trim + MaxRects-pack the three layers onto one tight
-    # page each (shared placement → the runtime addresses body + hands with one
-    # flat index + trim). `policy_for` is the single data-driven pack source.
+    # Pass 2: lockstep alpha-trim + MaxRects-pack the fused + giant_body layers
+    # onto one tight page each (shared placement → the runtime addresses body +
+    # hands with one flat index + trim). `policy_for` is the single data-driven
+    # pack source.
     policy = policy_for(TARGET_NAME)
-    layer_pages, rows_meta, num_pages = _pack_layers(rendered, manifest["rows"], policy)
+    layer_pages, rows_meta, num_pages = _pack_layers(
+        rendered, manifest["rows"], policy, layers=_LOCKSTEP_LAYERS
+    )
 
     outputs: List[Path] = []
     for layer in _LAYERS:
@@ -1911,6 +2073,95 @@ def build_spritesheet(outdir: Path) -> List[Path]:
 
     actor_path = _write_actor_contract(outdir, manifest, ron_path)
     outputs.append(actor_path)
+
+    # ── ADR 0020 MOUNT: giant_gnu (scholar-less body + shared hands) ──────────
+    # The giant_body layer lockstep-packed with the fused sheet, so it reuses
+    # the SAME rows_meta (identical placement) and the same runtime body_metrics
+    # (same giant). giant_gnu_body = the scholar-less body page; giant_gnu_hands
+    # = the (identical) hands page; the alias composites the two (hands z-front).
+    giant_body_page = layer_pages[_GIANT_BODY_LAYER][0]
+    giant_hands_page = layer_pages["hands"][0]
+    giant_body_path = outdir / f"{GIANT_TARGET_NAME}_body_spritesheet.png"
+    giant_body_page.save(str(giant_body_path), "PNG")
+    outputs.append(giant_body_path)
+    giant_hands_path = outdir / f"{GIANT_TARGET_NAME}_hands_spritesheet.png"
+    giant_hands_page.save(str(giant_hands_path), "PNG")
+    outputs.append(giant_hands_path)
+    giant_alias = Image.alpha_composite(giant_body_page, giant_hands_page)
+    giant_alias_path = outdir / f"{GIANT_TARGET_NAME}_spritesheet.png"
+    giant_alias.save(str(giant_alias_path), "PNG")
+    outputs.append(giant_alias_path)
+
+    giant_page_names = [f"{GIANT_TARGET_NAME}_spritesheet.png"] + [
+        f"{GIANT_TARGET_NAME}_spritesheet.{k}.png" for k in range(1, num_pages)
+    ]
+    giant_ron_path = outdir / f"{GIANT_TARGET_NAME}_spritesheet.ron"
+    giant_ron_path.write_text(
+        _runtime_spritesheet_ron(
+            rows_meta, parts_doc, giant_page_names, target=GIANT_TARGET_NAME
+        ),
+        encoding="utf8",
+    )
+    outputs.append(giant_ron_path)
+    giant_manifest = {
+        "target": GIANT_TARGET_NAME,
+        "frame_size": [FRAME_W, FRAME_H],
+        "rows": manifest["rows"],
+        "layers": [_GIANT_BODY_LAYER, "hands"],
+    }
+    outputs.append(
+        _write_actor_contract(
+            outdir,
+            giant_manifest,
+            giant_ron_path,
+            target=GIANT_TARGET_NAME,
+            actor_metadata=GIANT_ACTOR_METADATA,
+        )
+    )
+
+    # ── ADR 0020 RIDER: gnu_ton_rider (scholar alone, own tight-trim sheet) ───
+    # Packed SEPARATELY from the giant (its own atlas/off), so it is NOT lockstep
+    # and carries none of the giant's body_metrics.
+    rider_page, rider_rows_meta, rider_num_pages = _pack_scholar(
+        rendered_scholar, manifest["rows"], policy
+    )
+    rider_path = outdir / f"{RIDER_TARGET_NAME}_spritesheet.png"
+    rider_page.save(str(rider_path), "PNG")
+    outputs.append(rider_path)
+    rider_page_names = [f"{RIDER_TARGET_NAME}_spritesheet.png"] + [
+        f"{RIDER_TARGET_NAME}_spritesheet.{k}.png" for k in range(1, rider_num_pages)
+    ]
+    rider_ron_path = outdir / f"{RIDER_TARGET_NAME}_spritesheet.ron"
+    rider_ron_path.write_text(
+        _runtime_spritesheet_ron(
+            rider_rows_meta,
+            parts_doc,
+            rider_page_names,
+            target=RIDER_TARGET_NAME,
+            include_metrics=False,
+        ),
+        encoding="utf8",
+    )
+    outputs.append(rider_ron_path)
+    rider_manifest = {
+        "target": RIDER_TARGET_NAME,
+        "frame_size": [FRAME_W, FRAME_H],
+        "rows": manifest["rows"],
+        "layers": [_SCHOLAR_LAYER],
+    }
+    outputs.append(
+        _write_actor_contract(
+            outdir,
+            rider_manifest,
+            rider_ron_path,
+            target=RIDER_TARGET_NAME,
+            actor_metadata=RIDER_ACTOR_METADATA,
+        )
+    )
+
+    # G3 NOTE: the per-frame hand hit-geometry (`_hand_hit_frames` /
+    # `gnu_hand_*` in `_gnu_ton_body_metrics`) is intentionally LEFT in place —
+    # its removal is coupled to G3's StrikeRect teardown, not this split.
 
     # Review-only hitbox overlay: composite the full-layer frames into a plain
     # GRID (human-only, never a GPU texture) so the per-frame box coordinates
@@ -2023,17 +2274,24 @@ def build_hitbox_debug(
     return path
 
 
-def _write_actor_contract(outdir: Path, manifest: dict, ron_path: Path) -> Path:
+def _write_actor_contract(
+    outdir: Path,
+    manifest: dict,
+    ron_path: Path,
+    *,
+    target: str = TARGET_NAME,
+    actor_metadata: dict = ACTOR_METADATA,
+) -> Path:
     from ambition_sprite2d_renderer.authoring.actor_contract import (
         write_actor_contract_for_tackon,
     )
 
     return write_actor_contract_for_tackon(
-        target=TARGET_NAME,
-        image_out=outdir / f"{TARGET_NAME}_spritesheet.png",
+        target=target,
+        image_out=outdir / f"{target}_spritesheet.png",
         sheet_ron_out=ron_path,
         manifest=manifest,
-        actor_metadata=ACTOR_METADATA,
+        actor_metadata=actor_metadata,
     )
 
 
