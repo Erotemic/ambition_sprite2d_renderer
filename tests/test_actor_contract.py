@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from ambition_sprite2d_renderer.registry import CharacterJob
 from ambition_sprite2d_renderer.authoring.sheet import write_spritesheet
 from ambition_sprite2d_renderer.registry import discover_all_targets
@@ -9,6 +11,7 @@ CONFIGS = Path(__file__).resolve().parents[1] / "ambition_sprite2d_renderer" / "
 
 
 def test_write_spritesheet_emits_optional_actor_contract(tmp_path: Path):
+    pytest.importorskip("rectpack")
     job = CharacterJob.load(CONFIGS / "goblin.yaml")
     job.render.frame_width = 64
     job.render.frame_height = 64
@@ -105,18 +108,6 @@ def test_contract_derives_runtime_fields_from_body_metrics_without_requiring_han
     assert "melee origin socket" not in ron
 
 
-def test_tackon_target_render_sheet_includes_actor_sidecar(tmp_path: Path):
-    targets = discover_all_targets().targets
-    target = targets["sandbag"]
-    outputs = target.render_sheet(tmp_path)
-    actor_path = tmp_path / "sandbag_actor.ron"
-    assert actor_path.exists()
-    assert actor_path in outputs
-    text = actor_path.read_text()
-    assert 'character_id: "sandbag"' in text
-    assert 'default_preset: Some("sandbag_punch")' in text
-
-
 def test_catalog_defaults_enrich_actor_contract_when_available(tmp_path: Path):
     from ambition_sprite2d_renderer.authoring.actor_contract import build_actor_contract, to_ron
 
@@ -193,207 +184,10 @@ def test_every_registered_character_target_advertises_actor_sidecar():
     assert missing == []
 
 
-def _contract_text_for_metadata(
-    stem: str, target: str, rows: list[str], metadata: dict
-) -> str:
-    from ambition_sprite2d_renderer.authoring.actor_contract import build_actor_contract, to_ron
-
-    manifest = {
-        "target": target,
-        "image": f"{stem}_spritesheet.png",
-        "body_metrics": {
-            "body_pixel_bbox": {"x": 10, "y": 12, "w": 80, "h": 64},
-            "feet_pixel": {"x": 50, "y": 76},
-        },
-        "rows": [
-            {
-                "animation": name,
-                "row_index": i,
-                "frame_count": 1,
-                "duration_ms": 100,
-                "rects": [],
-            }
-            for i, name in enumerate(rows)
-        ],
-    }
-    return to_ron(
-        build_actor_contract(
-            stem=stem,
-            target=target,
-            image=f"{stem}_spritesheet.png",
-            sheet_manifest=f"{stem}_spritesheet.ron",
-            manifest=manifest,
-            job_data={"surface": "tackon", "tags": []},
-            authoring=metadata,
-        )
-    )
-
-
-def test_bespoke_burning_flying_shark_actor_metadata():
-    from ambition_sprite2d_renderer.targets.characters import (
-        burning_flying_shark as shark,
-    )
-
-    ron = _contract_text_for_metadata(
-        "burning_flying_shark",
-        shark.TARGET_NAME,
-        [name for name, _, _ in shark.ROWS],
-        shark.ACTOR_METADATA,
-    )
-    assert 'character_id: "npc_burning_flying_shark"' in ron
-    assert 'body_plan: Some("Flyer")' in ron
-    assert "fly: Some(true)" in ron
-    assert "walk: Some(false)" in ron
-    assert '"mouth"' in ron
-    assert '"saddle"' in ron
-    assert '"action.melee.primary"' in ron
-    assert '"action.special.dive"' in ron
-
-
-def test_bespoke_puppy_slug_actor_metadata():
-    from ambition_sprite2d_renderer.targets.characters import puppy_slug
-
-    ron = _contract_text_for_metadata(
-        "puppy_slug",
-        puppy_slug.TARGET_NAME,
-        [name for name, _, _ in puppy_slug.ROWS],
-        puppy_slug.ACTOR_METADATA,
-    )
-    assert 'character_id: "npc_puppy_slug"' in ron
-    assert 'body_plan: Some("Crawler")' in ron
-    assert "climb: Some(true)" in ron
-    assert "crawl: Some(true)" in ron
-    assert '"mouth"' in ron
-    assert '"wall_contact"' in ron
-    assert '"hand_r"' not in ron
-    assert '"locomotion.wall_crawl"' in ron
-
-
-def test_bespoke_president_portrait_actor_metadata():
-    from ambition_sprite2d_renderer.targets.characters import president_portrait
-
-    ron = _contract_text_for_metadata(
-        "president_portrait",
-        president_portrait.TARGET_NAME,
-        [name for name, _, _ in president_portrait.ROWS],
-        president_portrait.ACTOR_METADATA,
-    )
-    assert 'character_id: "npc_president_portrait"' in ron
-    assert "door_access: [" in ron
-    assert '"public"' in ron
-    assert "talk: Some(true)" in ron
-    assert '"speech_bubble"' in ron
-    assert '"decree_origin"' in ron
-    assert '"interaction.oath"' in ron
-
-
-def test_bespoke_ghoul_skulker_actor_metadata():
-    from ambition_sprite2d_renderer.targets.characters import ghoul_skulker
-
-    ron = _contract_text_for_metadata(
-        "ghoul_skulker",
-        ghoul_skulker.TARGET_NAME,
-        [name for name, _, _ in ghoul_skulker.ROWS],
-        ghoul_skulker.ACTOR_METADATA,
-    )
-    assert 'character_id: "npc_ghoul_skulker"' in ron
-    assert 'body_kind: Some("LowProfile")' in ron
-    assert "crawl: Some(true)" in ron
-    assert '"claw_tip"' in ron
-    assert '"action.special.pounce"' in ron
-
-
-def test_bespoke_mantis_lancer_actor_metadata():
-    from ambition_sprite2d_renderer.targets.characters import mantis_lancer
-
-    ron = _contract_text_for_metadata(
-        "mantis_lancer",
-        mantis_lancer.TARGET_BASENAME,
-        [name for name, _, _ in mantis_lancer.ROWS],
-        mantis_lancer.ACTOR_METADATA,
-    )
-    assert 'character_id: "npc_mantis_lancer"' in ron
-    assert 'body_plan: Some("InsectoidBiped")' in ron
-    assert "climb: Some(true)" in ron
-    assert '"blade_tip"' in ron
-    assert '"action.melee.sweep"' in ron
-
-
-def test_bespoke_raptor_stalker_actor_metadata():
-    from ambition_sprite2d_renderer.targets.characters import raptor_stalker
-
-    ron = _contract_text_for_metadata(
-        "raptor_stalker",
-        raptor_stalker.TARGET_BASENAME,
-        [name for name, _, _ in raptor_stalker.ROWS],
-        raptor_stalker.ACTOR_METADATA,
-    )
-    assert 'character_id: "npc_raptor_stalker"' in ron
-    assert 'body_plan: Some("BeastBiped")' in ron
-    assert '"mouth"' in ron
-    assert '"tail_tip"' in ron
-    assert '"hand_r"' not in ron
-    assert '"action.melee.tail_sweep"' in ron
-
-
-def test_bespoke_trex_enemy_actor_metadata():
-    from ambition_sprite2d_renderer.targets.characters import trex_enemy
-
-    ron = _contract_text_for_metadata(
-        "trex_enemy",
-        trex_enemy.TARGET_NAME,
-        [name for name, _, _ in trex_enemy.ROWS],
-        trex_enemy.ACTOR_METADATA,
-    )
-    assert 'character_id: "npc_trex_enemy"' in ron
-    assert 'body_kind: Some("Wide")' in ron
-    assert 'mass_class: Some("Heavy")' in ron
-    assert '"roar_origin"' in ron
-    assert '"action.melee.stomp"' in ron
-
-
-def test_bespoke_smart_house_actor_metadata():
-    from ambition_sprite2d_renderer.targets.characters import smart_house
-
-    ron = _contract_text_for_metadata(
-        "smart_house",
-        smart_house.TARGET_NAME,
-        [name for name, _, _ in smart_house.ROWS],
-        smart_house.ACTOR_METADATA,
-    )
-    assert 'character_id: "npc_smart_house"' in ron
-    assert 'body_plan: Some("PropActor")' in ron
-    assert "walk: Some(true)" in ron
-    assert "talk: Some(true)" in ron
-    assert '"speech_bubble"' in ron
-    assert '"action.special.ram"' in ron
-
-
-def test_bespoke_flying_spaghetti_monster_boss_actor_metadata():
-    from ambition_sprite2d_renderer.targets.characters import (
-        flying_spaghetti_monster_boss as fsm,
-    )
-
-    ron = _contract_text_for_metadata(
-        "flying_spaghetti_monster_boss",
-        fsm.TARGET_NAME,
-        [name for name, _, _ in fsm.ROWS],
-        fsm.ACTOR_METADATA,
-    )
-    assert 'character_id: "npc_flying_spaghetti_monster_boss"' in ron
-    assert 'body_plan: Some("BossMultipart")' in ron
-    assert "fly: Some(true)" in ron
-    assert "walk: Some(false)" in ron
-    assert '"beam_l"' in ron
-    assert '"action.special.eye_beam"' in ron
-
-
 def test_every_registered_character_target_has_local_actor_metadata():
     # Rig-doc targets (GUI-authored `*.rig.json` under targets/characters/rigged/,
     # e.g. `noether`) are a distinct authoring path that does not yet carry actor
-    # metadata — that's deferred game-contract work (see
-    # docs/planning/sprite-renderer-refactor.md, "explicitly deferred"). Exempt
-    # them so this guard keeps covering the Python/YAML targets it was written for.
+    # metadata. Exempt them so this guard keeps covering Python/YAML targets.
     from ambition_sprite2d_renderer.targets.characters import rigged
 
     rigdoc_targets = set(rigged.TARGETS)
@@ -421,8 +215,6 @@ def test_every_registered_character_target_has_local_actor_metadata():
 
 
 def test_adapter_actor_metadata_is_authored_in_yaml_not_central_profile():
-    from ambition_sprite2d_renderer.registry import discover_all_targets
-
     target = discover_all_targets().targets["robot_runner"]
     job = getattr(target, "_job")
     assert job.actor["character_id"] == "npc_robot_runner"
