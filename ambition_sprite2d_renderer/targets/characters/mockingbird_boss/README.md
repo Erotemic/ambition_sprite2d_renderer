@@ -29,7 +29,7 @@ python -m ambition_sprite2d_renderer.targets.characters.mockingbird_boss.part_ed
 
 Renders land in `<tool root>/generated/mockingbird_boss/`; `install` /
 `render-publish` copy into
-`crates/ambition_gameplay_core/assets/sprites/mockingbird_boss/`.
+`crates/ambition_actors/assets/sprites/mockingbird_boss/`.
 
 ## Scene schema
 

@@ -244,7 +244,7 @@ def records_to_ron(target: str, records: List[Dict]) -> str:
     body = "".join(f"{record_to_ron(r)},\n" for r in records)
     return (
         f"// Auto-emitted from {target}_spritesheet.yaml — see\n"
-        f"// `ambition_gameplay_core::character_sprites::registry`.\n"
+        f"// `ambition_sprite_sheet::character::sheets`.\n"
         f"[\n"
         f"{body}"
         f"]\n"

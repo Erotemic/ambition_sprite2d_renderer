@@ -98,7 +98,7 @@ def _add_dest_root_arg(p: argparse.ArgumentParser) -> None:
         "--dest-root",
         type=Path,
         default=sandbox_sprites_dir(),
-        help="install destination (default: crates/ambition_gameplay_core/assets/sprites)",
+        help="install destination (default: crates/ambition_actors/assets/sprites)",
     )
 
 
@@ -330,7 +330,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--out-dir",
         default=str(sandbox_sprites_dir()),
-        help="install destination (default: crates/ambition_gameplay_core/assets/sprites)",
+        help="install destination (default: crates/ambition_actors/assets/sprites)",
     )
     p.set_defaults(func=_cmd_draw_runtime_npcs)
 
@@ -346,7 +346,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--dest-root",
         type=Path,
         default=sandbox_sprites_dir(),
-        help="install destination (default: crates/ambition_gameplay_core/assets/sprites)",
+        help="install destination (default: crates/ambition_actors/assets/sprites)",
     )
     p.set_defaults(func=_cmd_regenerate_all)
 
@@ -361,7 +361,7 @@ def build_parser() -> argparse.ArgumentParser:
         "yaml_or_target",
         help=(
             "Either: a path to the sheet's YAML manifest "
-            "(e.g. `crates/ambition_gameplay_core/assets/sprites/boss_spritesheet.yaml`); "
+            "(e.g. `crates/ambition_actors/assets/sprites/boss_spritesheet.yaml`); "
             "OR a short target name (e.g. `boss`) that resolves to the "
             "expected `<sandbox_sprites>/<target>_spritesheet.yaml`."
         ),

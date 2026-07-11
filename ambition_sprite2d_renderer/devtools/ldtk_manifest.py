@@ -49,7 +49,7 @@ from typing import Any
 # are deliberately left for a follow-up. APPEND clearly-1:1 entries here.
 DEFAULT_ENTITY_SPRITE_MAP: dict[str, str] = {
     # The runtime player file root is `player_robot` (see
-    # crates/ambition_gameplay_core/src/character_sprites/attack_hitbox.rs).
+    # crates/ambition_actors/src/character_sprites/attack_hitbox.rs).
     # ONLY entities with a clear, correct, identity-specific sprite belong
     # here. The generic spawners (NpcSpawn/EnemySpawn/BossSpawn) are 1:many and
     # a single representative misleads ("which boss is this?"), so they get NO

@@ -61,7 +61,7 @@ ANIMATIONS = [
 ]
 
 # Mirror of the Rust `CharacterAnim::from_name` alias table at
-# `crates/ambition_gameplay_core/src/presentation/character_sprites/anim.rs`.
+# `crates/ambition_sprite_sheet/src/character/anim.rs`.
 # Two sets so `is_character_sheet` can detect *any* CharacterAnim row
 # while `IDLE_ALIASES` flags the missing-Idle case specifically.
 IDLE_ALIASES = frozenset(("idle", "opening", "rest", "front_idle", "side_idle"))

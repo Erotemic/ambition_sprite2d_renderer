@@ -1251,7 +1251,7 @@ def install_outputs(render_dir=None, install_dir=None):
         if install_dir
         else repo_root
         / "crates"
-        / "ambition_gameplay_core"
+        / "ambition_actors"
         / "assets"
         / "sprites"
         / TARGET_NAME

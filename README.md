@@ -80,7 +80,7 @@ python -m ambition_sprite2d_renderer ldtk-manifest --out <f> # LDtk visual manif
 
 `sheet` writes to `tools/ambition_sprite2d_renderer/generated/<target>/`.
 `install` copies the canonical sheet files into
-`crates/ambition_gameplay_core/assets/sprites/`. `publish` does both.
+`crates/ambition_actors/assets/sprites/`. `publish` does both.
 
 The bulk forms of `sheet` / `install` / `publish` are scoped to the tack-on
 surface (characters/props/tiles/icons); main YAML configs and review NPCs
@@ -193,7 +193,7 @@ Each entry becomes its own registry key.
 ### Custom install (optional)
 
 The default installer copies each path in `SHEET_FILES` from
-`generated/<name>/` into `crates/ambition_gameplay_core/assets/sprites/`. If
+`generated/<name>/` into `crates/ambition_actors/assets/sprites/`. If
 your target ships a subdirectory of part files (or otherwise needs
 non-flat install behavior), expose `install(render_dir, dest_root) ->
 Iterable[Path]` and it'll be used instead.

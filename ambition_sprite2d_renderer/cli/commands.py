@@ -136,7 +136,7 @@ def _get_target(name: str) -> Target:
 
 
 def sandbox_sprites_dir() -> Path:
-    return repo_root() / "crates" / "ambition_gameplay_core" / "assets" / "sprites"
+    return repo_root() / "crates" / "ambition_actors" / "assets" / "sprites"
 
 
 def generated_dir(target_name: str) -> Path:
