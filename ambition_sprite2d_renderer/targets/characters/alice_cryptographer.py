@@ -1,121 +1,97 @@
-"""Bespoke target for Alice — cryptographer.
+"""Bespoke procedural sprite target for Alice, field cartographer.
 
-Third bespoke template after ``trent_elder`` and ``bob_engineer``. The
-silhouette philosophy is intentionally different from both:
+Alice is part of the cryptography crew, but in Ambition she is the person who
+maps routes that powerful institutions would rather keep legible only to
+themselves.  The sprite therefore reads *field operative first* and
+*cryptography reference second*:
 
-  - **Trent**: robe-first, fully draped, no visible legs. Reads as a
-    council elder.
-  - **Bob**: visible legs + workshop boots + tool belt. Reads as a
-    workshop engineer.
-  - **Alice** (this file): a knee-length traveling coat over the
-    OTP-checker tabard, ankle-cuffed leggings, ankle boots, layered
-    hair with proper bangs + a long side braid. Reads as a working
-    field cryptographer: portable, ready to move, the cipher
-    pattern is a literal panel on her front, the tools are tucked
-    into the coat.
+* a compact expedition jacket with an asymmetric closure;
+* a cross-body survey harness, compass, map folio, and map tube;
+* reinforced trousers and planted field boots rather than a skirt/robe;
+* a high braided ponytail that gives her a fast, unmistakable silhouette;
+* a tiny one-time-pad tape on the harness rather than a literal lab costume.
+* a clean transparent cutout with no painted ground or drop shadow.
 
-Improvements layered on top of the trent + bob lessons:
-
-  - **Layered hair construction.** Hair is a stack of three
-    primitives: back mass (big), side curtains (frames cheeks), and
-    a separate **bangs** strip across the forehead. Each is its
-    own polygon so the front fringe doesn't fight the back mass.
-    The long side braid is a fourth primitive that hangs visibly
-    past the chest.
-  - **Cinched coat with a flared hem.** Not a robe (Trent), not a
-    vest (Bob). A waist-cinched traveling coat that pinches at the
-    waist and flares slightly at the knee-length hem. Two front
-    panels reveal the OTP-tabard underneath.
-  - **Cleaner face geometry.** Smaller pupils, defined upper-lid
-    line, faint eyelash hint, no chin shadow (per the established
-    feminine-archetype rule from toon_side). Mouth is a small soft
-    arc, not a cartoon smile.
-  - **Proper head-to-shoulder distance** via the same
-    ``head_anchor + neck_h + neck_w`` pattern Bob uses, so the head
-    sits naturally above the body with a short visible neck.
-
-Multi-view scope: ships **3/4** (canonical + idle + talk) and
-**side** (walk + idle_side) for now. Front view is queued in TODO
-when the dialog system needs an "Alice looking at the player"
-frame. Single archetype today (``alice``).
+The animation vocabulary stays runtime-compatible with the historical Alice
+sheet (``idle``, ``walk``, ``talk``, ``interact``, ``idle_side``), but every
+view is redrawn.  Idle is a confident three-quarter stance, talk is front-facing,
+walk/idle_side use a real profile, and interact opens a route map while she
+checks a compass.  The profile walk follows the shared PCA-style authored
+contact/down/passing/up baseline with ankle targets and two-bone IK.
 """
 
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from enum import Enum
+from typing import Dict, Iterable, Optional, Sequence, Tuple
+
+from PIL import Image, ImageDraw
 
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
-from enum import Enum
-from typing import Dict, Optional, Tuple
-
-from PIL import Image, ImageColor, ImageDraw
-from ambition_sprite2d_renderer.core.draw import rgba, bbox_from_center as _bbox
+from ambition_sprite2d_renderer.core.draw import rgba
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
-
-
 
 
 def parse_background(value: str) -> Optional[Color]:
     return None if str(value).lower() == "transparent" else rgba(str(value))
 
 
-
-
-def _scale_color(color: Color, factor: float) -> Color:
+def _scaled(color: Color, factor: float) -> Color:
     return (
-        int(max(0, min(255, color[0] * factor))),
-        int(max(0, min(255, color[1] * factor))),
-        int(max(0, min(255, color[2] * factor))),
+        max(0, min(255, round(color[0] * factor))),
+        max(0, min(255, round(color[1] * factor))),
+        max(0, min(255, round(color[2] * factor))),
         color[3],
     )
 
 
-# ── Palette ──────────────────────────────────────────────────────────────────
-
 ALICE_PALETTE: Dict[str, Color] = {
-    "skin": rgba("#E5C5A6"),
-    "skin_shadow": rgba("#B3936F"),
-    # Hair: deep blue-black with a cool shine, so the long mass
-    # reads against the warm skin without looking flat.
-    "hair": rgba("#15131C"),
-    "hair_shine": rgba("#3A3850"),
-    "hair_band": rgba("#C97A4A"),  # the small ribbon at the braid tip
-    # Coat: deep teal with darker shadow + brighter shine.
-    "coat": rgba("#1B5E6E"),
-    "coat_dark": rgba("#0F3A47"),
-    "coat_light": rgba("#28828F"),
-    # OTP tabard underneath: cream with charcoal checker cells.
-    "tabard": rgba("#F0EAD2"),
-    "tabard_dark": rgba("#A89C7A"),
-    "cipher": rgba("#15131C"),  # the dark checker cells
-    # Tights + boots in cool grey-brown.
-    "tights": rgba("#3B3540"),
-    "tights_shade": rgba("#22202A"),
-    "boot": rgba("#2A1F14"),
-    "boot_cuff": rgba("#5A3F22"),
-    # Accent: warm amber for the sash + scroll ribbon.
-    "amber": rgba("#D08A3A"),
-    "amber_dark": rgba("#8A5418"),
-    # Ink + paper for the scroll prop.
-    "paper": rgba("#F5EFE2"),
-    "ink": rgba("#16121A"),
-    "white": rgba("#F8F2E0"),
-    "outline": rgba("#10141A"),
+    "outline": rgba("#0B1118"),
+    "skin": rgba("#E5BFA1"),
+    "skin_shadow": rgba("#B98569"),
+    "skin_light": rgba("#F3D8BD"),
+    "hair": rgba("#101722"),
+    "hair_mid": rgba("#25364B"),
+    "hair_light": rgba("#48627B"),
+    "jacket": rgba("#176878"),
+    "jacket_dark": rgba("#0B3C49"),
+    "jacket_light": rgba("#2A93A2"),
+    "shirt": rgba("#E8E0C7"),
+    "shirt_shadow": rgba("#B7AA88"),
+    "trouser": rgba("#293542"),
+    "trouser_dark": rgba("#18212C"),
+    "boot": rgba("#241C1A"),
+    "boot_light": rgba("#4A342B"),
+    "leather": rgba("#8C4F32"),
+    "leather_dark": rgba("#4F2D22"),
+    "amber": rgba("#D99A3D"),
+    "amber_light": rgba("#F0C36A"),
+    "map": rgba("#F2E5B9"),
+    "map_shadow": rgba("#C9B77C"),
+    "map_ink": rgba("#315C63"),
+    "route": rgba("#C6514B"),
+    "seal": rgba("#B9443D"),
+    "metal": rgba("#D7D8D1"),
+    "metal_dark": rgba("#68727A"),
+    "eye": rgba("#263E4C"),
+    "white": rgba("#FBF4E5"),
 }
 
 
 class AliceView(str, Enum):
     THREE_QUARTER = "three_quarter"
+    FRONT = "front"
     SIDE = "side"
 
 
 ANIMATION_VIEWS: Dict[str, AliceView] = {
     "idle": AliceView.THREE_QUARTER,
-    "talk": AliceView.THREE_QUARTER,
+    "talk": AliceView.FRONT,
     "interact": AliceView.THREE_QUARTER,
     "walk": AliceView.SIDE,
     "idle_side": AliceView.SIDE,
@@ -130,69 +106,97 @@ class AliceSpec:
     name: str
     role: str
     palette_name: str
-    # Design units (~1px at 128 canvas).
-    head_w: float = 23.0
-    head_h: float = 27.5
-    jaw_h: float = 5.0
-    neck_h: float = 2.0
-    head_anchor: float = 0.50
-    neck_w: float = 5.5
-    # Hair — long-haired silhouette is the dominant cue. Trimmed
-    # `back_hair_w_extra` from 6 → 4 so the face has more visual
-    # weight relative to the hair envelope (it was reading as
-    # "small face peeking out of a hood").
-    back_hair_w_extra: float = 4.0
-    back_hair_h_extra: float = 14.0  # how much it extends past the chin
-    bangs_h: float = 3.6  # was 5.0 — was reading as a heavy visor
-    curtain_drop: float = 14.0  # how far cheek curtains hang past the jaw
-    braid_segments: int = 10  # long forward braid (10 stacked ellipses)
-    # Body — slim academic. New scaffold (NOT Trent-derived):
-    # short fitted jacket at the shoulders → skirt at the hips →
-    # leggings + ankle boots. No flowing robe, no waist sash, no
-    # placket/tabard front. The cipher motif lives on a SCARF
-    # draped over one shoulder, not as a front panel.
-    shoulder_w: float = 22.0
-    torso_w: float = 16.0
-    # Hip-length fitted jacket (was the long coat).
-    jacket_top_w: float = 24.0
-    jacket_hem_w: float = 22.0
-    jacket_h: float = 22.0
-    # A-line knee-length skirt — narrower at the waist, wider at
-    # the knee. Distinct from any coat hem in the cast.
-    skirt_top_w: float = 22.0
-    skirt_hem_w: float = 32.0
-    skirt_h: float = 18.0
-    # Leggings under the skirt; ankle boots below.
-    leg_h: float = 16.0
-    leg_w: float = 6.0
-    boot_w: float = 10.0
-    boot_h: float = 6.0
-    # Cipher scarf — wraps the neck and trails down the camera-side
-    # shoulder. Its width is independent of any tabard.
-    scarf_thickness: float = 4.0
-    scarf_drop: float = 28.0
-    # Arms.
-    arm_len: float = 25.0
-    sleeve_w_shoulder: float = 7.0
-    sleeve_w_cuff: float = 5.0
-    cuff_h: float = 2.5
+    head_w: float = 24.0
+    head_h: float = 27.0
+    shoulder_w: float = 27.0
+    torso_h: float = 29.0
+    waist_w: float = 20.0
+    hip_w: float = 23.0
+    thigh_h: float = 18.0
+    shin_h: float = 18.0
+    boot_h: float = 9.0
+    arm_len: float = 27.0
+    pony_segments: int = 6
 
 
 @dataclass
 class AlicePose:
-    view: AliceView = AliceView.THREE_QUARTER
+    view: AliceView
     body_bob: float = 0.0
     head_tilt: float = 0.0
-    talk_open: float = 0.0
     blink: bool = False
-    arm_lift: float = 0.0
-    step_phase: float = 0.0
-    # Off-arm tucks a stack of papers/notes under the elbow — a
-    # different silhouette from Bob (key ring in hand), Trent
-    # (handheld scales), and the old toon Alice (cipher scroll out
-    # to the side). Both arms hang at the side; the papers stick
-    # out forward of the elbow on the camera-far side.
-    carry_notes: bool = True
+    talk_open: float = 0.0
+    step: float = 0.0
+    gesture: float = 0.0
+    map_open: float = 0.0
+    scan: float = 0.0
+    walk_index: int = -1
+    walk_body_y: float = 0.0
+
+
+def _bbox(
+    cx: float, cy: float, w: float, h: float
+) -> Tuple[float, float, float, float]:
+    return (cx - w / 2.0, cy - h / 2.0, cx + w / 2.0, cy + h / 2.0)
+
+
+def _poly(
+    d: ImageDraw.ImageDraw,
+    points: Sequence[Point],
+    *,
+    fill: Color,
+    outline: Color,
+    width: int,
+) -> None:
+    pts = [(round(x), round(y)) for x, y in points]
+    d.polygon(pts, fill=fill)
+    d.line([*pts, pts[0]], fill=outline, width=max(1, width), joint="curve")
+
+
+def _line(
+    d: ImageDraw.ImageDraw,
+    points: Iterable[Point],
+    *,
+    fill: Color,
+    width: int,
+) -> None:
+    d.line(
+        [(round(x), round(y)) for x, y in points],
+        fill=fill,
+        width=max(1, width),
+        joint="curve",
+    )
+
+
+def _ellipse(
+    d: ImageDraw.ImageDraw,
+    box: Tuple[float, float, float, float],
+    *,
+    fill: Color,
+    outline: Optional[Color] = None,
+    width: int = 1,
+) -> None:
+    d.ellipse(
+        tuple(round(v) for v in box), fill=fill, outline=outline, width=max(1, width)
+    )
+
+
+def _rounded(
+    d: ImageDraw.ImageDraw,
+    box: Tuple[float, float, float, float],
+    *,
+    radius: float,
+    fill: Color,
+    outline: Optional[Color] = None,
+    width: int = 1,
+) -> None:
+    d.rounded_rectangle(
+        tuple(round(v) for v in box),
+        radius=max(1, round(radius)),
+        fill=fill,
+        outline=outline,
+        width=max(1, width),
+    )
 
 
 class AliceCryptographerGenerator(CharacterGenerator):
@@ -202,11 +206,29 @@ class AliceCryptographerGenerator(CharacterGenerator):
 
     ANIMATIONS: Dict[str, Dict[str, int]] = {
         "idle": {"frames": 6, "duration_ms": 140},
-        "walk": {"frames": 8, "duration_ms": 100},
+        "walk": {"frames": 8, "duration_ms": 95},
         "talk": {"frames": 6, "duration_ms": 110},
         "interact": {"frames": 6, "duration_ms": 130},
         "idle_side": {"frames": 6, "duration_ms": 140},
     }
+
+    def build_spec(self, job: CharacterJob) -> AliceSpec:
+        if job.archetype != "alice":
+            raise KeyError(
+                "alice_cryptographer ships only the 'alice' archetype; "
+                f"got {job.archetype!r}"
+            )
+        return AliceSpec(
+            target=self.name,
+            seed=job.seed,
+            archetype=job.archetype,
+            name="Alice",
+            role="npc",
+            palette_name="alice_field_cartographer",
+        )
+
+    def canonical_pose(self) -> Tuple[str, int]:
+        return ("idle", 1)
 
     def render_frame(
         self,
@@ -228,57 +250,47 @@ class AliceCryptographerGenerator(CharacterGenerator):
             downsample=job.render.downsample,
         )
 
-    def build_spec(self, job: CharacterJob) -> AliceSpec:
-        seed, archetype = job.seed, job.archetype
-        if archetype != "alice":
-            raise KeyError(
-                f"alice_cryptographer target only ships 'alice' archetype; got {archetype!r}."
-            )
-        return AliceSpec(
-            target=self.name,
-            seed=seed,
-            archetype=archetype,
-            name="Alice",
-            role="npc",
-            palette_name="alice",
-        )
+    def body_inset(self) -> Dict[str, float]:
+        # The braid and carried map are visual extensions, not collision volume.
+        return {"left": 0.08, "right": 0.08, "top": 0.02, "bottom": 0.0}
 
-    # --- pose -----------------------------------------------------------------
-
-    def pose_for_animation(
-        self, animation: str, frame_index: int, frame_count: int
-    ) -> AlicePose:
-        view = ANIMATION_VIEWS.get(animation, AliceView.THREE_QUARTER)
-        p = AlicePose(view=view)
-        t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
+    def pose_for_animation(self, animation: str, frame: int, count: int) -> AlicePose:
+        t = 0.0 if count <= 1 else frame / float(count - 1)
         wave = math.sin(t * math.tau)
-        half_wave = math.sin(t * math.pi)
+        half = math.sin(t * math.pi)
+        pose = AlicePose(view=ANIMATION_VIEWS.get(animation, AliceView.THREE_QUARTER))
         if animation == "idle":
-            p.body_bob = wave * 0.5
-            p.head_tilt = wave * 1.2
-            p.blink = frame_index == frame_count - 1
-        elif animation == "idle_side":
-            p.body_bob = wave * 0.5
-            p.blink = frame_index == frame_count - 1
+            pose.body_bob = 0.45 * wave
+            pose.head_tilt = 0.8 * wave
+            pose.blink = frame == count - 1
+            pose.scan = 0.12 * wave
         elif animation == "walk":
-            # Phase-shifted so frame 0 already shows a stride peak
-            # (sin(pi/2) = +1) instead of the neutral midpoint
-            # (sin(0) = 0). Spot checks of frame 0 should look like
-            # walking, not standing.
-            phase_wave = math.sin((t + 0.25) * math.tau)
-            p.step_phase = phase_wave
-            p.body_bob = abs(phase_wave) * 1.0
-            p.head_tilt = -phase_wave * 0.6
+            # Authored eight-pose contact/down/passing/up loop.  This mirrors
+            # the good PCA/side-biped baseline instead of driving limbs from a
+            # single opposed sine wave.  ``step`` is the near-arm swing value;
+            # feet use their own ankle-target tables in ``_draw_side``.
+            index = frame % 8
+            pose.walk_index = index
+            pose.step = (-1.0, -0.62, -0.18, 0.52, 1.0, 0.58, 0.08, -0.55)[index]
+            pose.walk_body_y = (0.0, 1.15, 0.35, -0.65, 0.0, 1.15, 0.35, -0.65)[index]
+            pose.head_tilt = (0.35, 0.10, -0.15, -0.35, -0.35, -0.10, 0.15, 0.35)[index]
         elif animation == "talk":
-            p.talk_open = (0.5 + 0.5 * wave) * 0.85
-            p.head_tilt = wave * 1.2
-            p.arm_lift = max(0.0, half_wave) * 0.6
+            pose.body_bob = 0.25 * wave
+            pose.talk_open = 0.15 + 0.85 * (0.5 + 0.5 * wave)
+            pose.gesture = max(0.0, half)
+            pose.head_tilt = 0.9 * wave
+            pose.blink = frame == count - 1
         elif animation == "interact":
-            p.arm_lift = half_wave * 1.0
-            p.head_tilt = wave * 0.4
-        return p
-
-    # --- top-level frame ------------------------------------------------------
+            pose.body_bob = -0.35 * half
+            pose.map_open = max(0.0, half)
+            pose.gesture = max(0.0, half)
+            pose.scan = wave
+            pose.head_tilt = -1.3 * half
+        elif animation == "idle_side":
+            pose.body_bob = 0.35 * wave
+            pose.scan = 0.5 + 0.25 * wave
+            pose.blink = frame == count - 1
+        return pose
 
     def render_animation_frame(
         self,
@@ -288,1015 +300,1573 @@ class AliceCryptographerGenerator(CharacterGenerator):
         frame_count: int,
         size: Tuple[int, int],
         *,
-        background: Optional[Color] = None,
-        supersample: int = 4,
-        downsample: str = "lanczos",
+        background: Optional[Color],
+        supersample: int,
+        downsample: str,
     ) -> Image.Image:
-        W, H = size
+        del downsample
+        width, height = size
         ss = max(1, int(supersample))
-        img = Image.new("RGBA", (W * ss, H * ss), background or (0, 0, 0, 0))
-        S = (W / 128.0) * ss
-        pal = ALICE_PALETTE
+        image = Image.new(
+            "RGBA",
+            (width * ss, height * ss),
+            background or (0, 0, 0, 0),
+        )
+        scale = (width / 128.0) * ss
         pose = self.pose_for_animation(animation, frame_index, frame_count)
-
-        cx = 64.0 * S
-        feet_y = 116.0 * S + pose.body_bob * S
-        if pose.view == AliceView.SIDE:
-            self._render_side(img, cx, feet_y, spec, pal, S, pose)
+        cx = 64.0 * scale
+        feet_y = (117.0 + pose.body_bob) * scale
+        if pose.view is AliceView.FRONT:
+            self._draw_front(image, cx, feet_y, spec, pose, scale)
+        elif pose.view is AliceView.SIDE:
+            self._draw_side(image, cx, feet_y, spec, pose, scale)
         else:
-            self._render_three_quarter(img, cx, feet_y, spec, pal, S, pose)
-
+            self._draw_three_quarter(image, cx, feet_y, spec, pose, scale)
         if ss > 1:
-            img = img.resize((W, H), Image.LANCZOS)
-        return img
+            image = image.resize((width, height), Image.Resampling.LANCZOS)
+        return image
 
-    # ─────────────────────────────────────────────────────────────────
-    # THREE-QUARTER view
-    # ─────────────────────────────────────────────────────────────────
+    # ------------------------------------------------------------------
+    # Shared accessories and face details
 
-    def _render_three_quarter(
+    def _solve_two_bone_joint(
         self,
-        base: Image.Image,
-        cx: float,
-        feet_y: float,
-        spec: AliceSpec,
-        pal: Dict[str, Color],
-        S: float,
-        pose: AlicePose,
-    ) -> None:
-        boot_top_y = feet_y - spec.boot_h * S
-        leg_top_y = boot_top_y - spec.leg_h * S
-        # Stack the new scaffold from feet up: legs → skirt → jacket.
-        # The skirt hem sits just above the leggings; the jacket hem
-        # tops the skirt. NO continuous robe, NO waist sash, NO front
-        # placket — explicitly NOT a Trent-derived silhouette.
-        skirt_hem_y = leg_top_y + 0.0 * S
-        skirt_top_y = skirt_hem_y - spec.skirt_h * S
-        jacket_hem_y = skirt_top_y + 1.0 * S
-        shoulder_y = jacket_hem_y - spec.jacket_h * S
-        head_center = (
-            cx + 2.0 * S,
-            shoulder_y - spec.head_h * spec.head_anchor * S - spec.neck_h * S,
+        root: Point,
+        target: Point,
+        upper_len: float,
+        lower_len: float,
+        *,
+        bend_sign: float,
+    ) -> Tuple[Point, Point]:
+        """Solve a two-segment limb while keeping its bend semantically stable.
+
+        Side-view limbs should not flip their elbows or knees merely because a
+        target crosses the body.  ``bend_sign=-1`` places the middle joint on
+        the screen-left/back side of the root-to-target line, which is the
+        natural elbow direction for Alice's right-facing profile.
+        """
+        dx = target[0] - root[0]
+        dy = target[1] - root[1]
+        distance = math.hypot(dx, dy)
+        min_reach = abs(upper_len - lower_len) + 1e-4
+        max_reach = max(min_reach + 1e-4, upper_len + lower_len - 1e-4)
+        clamped_distance = max(min_reach, min(max_reach, distance))
+        if distance > 1e-6 and clamped_distance != distance:
+            ratio = clamped_distance / distance
+            target = (root[0] + dx * ratio, root[1] + dy * ratio)
+            dx = target[0] - root[0]
+            dy = target[1] - root[1]
+        base = math.atan2(dy, dx)
+        cosine = (
+            upper_len * upper_len
+            + clamped_distance * clamped_distance
+            - lower_len * lower_len
+        ) / (2.0 * upper_len * clamped_distance)
+        offset = math.acos(max(-1.0, min(1.0, cosine)))
+        angle = base - bend_sign * offset
+        joint = (
+            root[0] + math.cos(angle) * upper_len,
+            root[1] + math.sin(angle) * upper_len,
         )
+        return joint, target
 
-        self._tq_draw_legs(base, cx, leg_top_y, boot_top_y, feet_y, spec, pal, S)
-        self._tq_draw_skirt(base, cx, skirt_top_y, skirt_hem_y, spec, pal, S)
-        self._tq_draw_arms_back(base, cx, shoulder_y, jacket_hem_y, spec, pal, S, pose)
-        self._tq_draw_jacket(base, cx, shoulder_y, jacket_hem_y, spec, pal, S)
-        self._tq_draw_arms_front(base, cx, shoulder_y, jacket_hem_y, spec, pal, S, pose)
-        # The scarf wraps the neck and drapes down OVER the jacket
-        # front, so it draws after the jacket but before the head.
-        self._tq_draw_scarf(base, cx, shoulder_y, spec, pal, S)
-        self._tq_draw_head(base, head_center, spec, pal, S, pose)
-
-    def _tq_draw_legs(
+    def _draw_two_bone_limb(
         self,
-        base: Image.Image,
-        cx: float,
-        leg_top_y: float,
-        boot_top_y: float,
-        feet_y: float,
-        spec: AliceSpec,
-        pal: Dict[str, Color],
-        S: float,
+        d: ImageDraw.ImageDraw,
+        root: Point,
+        joint: Point,
+        end: Point,
+        s: float,
+        *,
+        fill: Color,
+        width: float,
     ) -> None:
-        d = ImageDraw.Draw(base)
-        outline = pal["outline"]
-        # Spread the legs so they don't merge at the centerline (was
-        # sign * 4.0 with leg_w 6 — gap was 2 design units, hard to
-        # read at downsample). New spacing leaves a clear ankle gap.
-        for sign in (-1, 1):
-            hip_x = cx + sign * 5.5 * S
-            ankle_x = cx + sign * 5.5 * S
-            leg = [
-                (hip_x - spec.leg_w * 0.5 * S, leg_top_y),
-                (hip_x + spec.leg_w * 0.5 * S, leg_top_y),
-                (ankle_x + spec.boot_w * 0.4 * S, boot_top_y),
-                (ankle_x - spec.boot_w * 0.4 * S, boot_top_y),
-            ]
-            d.polygon(leg, fill=pal["tights"], outline=outline)
-            # Boot — short ankle boot with a brown cuff at the top.
-            d.rounded_rectangle(
-                (
-                    ankle_x - spec.boot_w * 0.55 * S,
-                    boot_top_y - 0.5 * S,
-                    ankle_x + spec.boot_w * 0.55 * S,
-                    feet_y,
-                ),
-                radius=2.0 * S,
-                fill=pal["boot"],
-                outline=outline,
-                width=max(1, int(1.0 * S)),
-            )
-            d.rectangle(
-                (
-                    ankle_x - spec.boot_w * 0.55 * S,
-                    boot_top_y - 0.5 * S,
-                    ankle_x + spec.boot_w * 0.55 * S,
-                    boot_top_y + 1.5 * S,
-                ),
-                fill=pal["boot_cuff"],
-                outline=outline,
-                width=max(1, int(0.7 * S)),
-            )
+        """Draw a jointed limb with one continuous, naturally rounded stroke."""
+        outline = ALICE_PALETTE["outline"]
+        _line(d, [root, joint, end], fill=outline, width=round((width + 2.0) * s))
+        _line(d, [root, joint, end], fill=fill, width=round(width * s))
 
-    def _tq_draw_skirt(
+    def _draw_side_boot(
         self,
-        base: Image.Image,
-        cx: float,
-        top_y: float,
-        hem_y: float,
-        spec: AliceSpec,
-        pal: Dict[str, Color],
-        S: float,
+        d: ImageDraw.ImageDraw,
+        ankle: Point,
+        ground_y: float,
+        s: float,
+        *,
+        near: bool,
+        foot_roll: float,
     ) -> None:
-        """A-line knee-length skirt — narrow at the waist, wider at
-        the knee. Drawn before the jacket so the jacket hem covers
-        the top edge of the skirt for a layered read."""
-        d = ImageDraw.Draw(base)
+        """Draw a profile boot anchored to the solved ankle target."""
+        pal = ALICE_PALETTE
         outline = pal["outline"]
-        skirt = [
-            (cx - spec.skirt_top_w * 0.5 * S, top_y),
-            (cx + spec.skirt_top_w * 0.5 * S, top_y),
-            (cx + spec.skirt_hem_w * 0.5 * S, hem_y),
-            (cx - spec.skirt_hem_w * 0.5 * S, hem_y),
+        bottom = max(ankle[1] + 6.5 * s, ground_y)
+        heel = ankle[0] - (4.2 if near else 3.8) * s
+        toe = ankle[0] + (8.0 if near else 7.2) * s
+        roll = foot_roll * s
+        points = [
+            (heel, ankle[1] - 1.2 * s),
+            (ankle[0] + 3.2 * s, ankle[1] - 0.8 * s),
+            (toe, bottom - 3.0 * s - roll),
+            (toe - 0.4 * s, bottom),
+            (heel - 0.3 * s, bottom),
         ]
-        d.polygon(skirt, fill=pal["coat_dark"], outline=outline)
-        # Two pleat folds suggesting the A-line drape.
-        for sign in (-1, 1):
-            d.line(
-                [
-                    (cx + sign * spec.skirt_top_w * 0.18 * S, top_y + 2.0 * S),
-                    (cx + sign * spec.skirt_hem_w * 0.30 * S, hem_y - 1.0 * S),
-                ],
-                fill=pal["coat_dark"],
-                width=max(1, int(0.8 * S)),
-            )
-        # A subtler highlight on the camera-side fold.
-        d.line(
+        _poly(d, points, fill=pal["boot"], outline=outline, width=round(1.0 * s))
+        _line(
+            d,
             [
-                (cx + spec.skirt_top_w * 0.04 * S, top_y + 2.0 * S),
-                (cx + spec.skirt_hem_w * 0.10 * S, hem_y - 1.0 * S),
+                (heel + 0.8 * s, ankle[1] + 1.7 * s),
+                (ankle[0] + 3.8 * s, ankle[1] + 1.7 * s),
             ],
-            fill=pal["coat"],
-            width=max(1, int(0.7 * S)),
-        )
-        # Hem band — thin lighter stripe along the bottom edge.
-        d.line(
-            [
-                (cx - spec.skirt_hem_w * 0.50 * S, hem_y - 0.5 * S),
-                (cx + spec.skirt_hem_w * 0.50 * S, hem_y - 0.5 * S),
-            ],
-            fill=pal["coat"],
-            width=max(1, int(0.9 * S)),
+            fill=pal["boot_light"],
+            width=round(1.2 * s),
         )
 
-    def _tq_draw_jacket(
+    def _draw_braid(
         self,
-        base: Image.Image,
-        cx: float,
-        shoulder_y: float,
-        hem_y: float,
-        spec: AliceSpec,
-        pal: Dict[str, Color],
-        S: float,
+        d: ImageDraw.ImageDraw,
+        points: Sequence[Point],
+        s: float,
+        *,
+        behind: bool = True,
     ) -> None:
-        """Short fitted hip-length jacket. Pinches in slightly at the
-        hip rather than flaring; closed button-front rather than
-        open with a placket. Deliberately not a Trent-style robe."""
-        d = ImageDraw.Draw(base)
+        pal = ALICE_PALETTE
         outline = pal["outline"]
-        jacket = [
-            (cx - spec.jacket_top_w * 0.5 * S, shoulder_y),
-            (cx + spec.jacket_top_w * 0.5 * S, shoulder_y),
-            (cx + spec.jacket_hem_w * 0.5 * S, hem_y),
-            (cx - spec.jacket_hem_w * 0.5 * S, hem_y),
-        ]
-        d.polygon(jacket, fill=pal["coat"], outline=outline)
-        # Three button-front buttons down the center.
-        button_x = cx + 0.5 * S
-        for i in range(3):
-            y = shoulder_y + (4.0 + i * 5.5) * S
-            d.ellipse(
-                _bbox((button_x, y), 1.4 * S, 1.4 * S),
+        for index, (x, y) in enumerate(points):
+            diameter = (6.0 - index * 0.45) * s
+            fill = pal["hair"] if index % 2 == 0 else pal["hair_mid"]
+            _ellipse(
+                d,
+                _bbox(x, y, diameter, diameter * 0.82),
+                fill=fill,
+                outline=outline,
+                width=round(0.9 * s),
+            )
+        if points:
+            x, y = points[-1]
+            _rounded(
+                d,
+                (x - 2.1 * s, y + 1.2 * s, x + 2.1 * s, y + 4.2 * s),
+                radius=1.0 * s,
                 fill=pal["amber"],
                 outline=outline,
-                width=max(1, int(0.5 * S)),
-            )
-        # Jacket collar — a small V-shaped notched lapel at the throat.
-        collar = [
-            (cx - spec.jacket_top_w * 0.30 * S, shoulder_y),
-            (cx + spec.jacket_top_w * 0.30 * S, shoulder_y),
-            (cx + 2.0 * S, shoulder_y + 4.0 * S),
-            (cx, shoulder_y + 6.0 * S),
-            (cx - 2.0 * S, shoulder_y + 4.0 * S),
-        ]
-        d.polygon(collar, fill=pal["coat_dark"], outline=outline)
-        # Subtle highlight along the camera-side seam.
-        d.line(
-            [
-                (cx + spec.jacket_top_w * 0.40 * S, shoulder_y + 2.0 * S),
-                (cx + spec.jacket_hem_w * 0.40 * S, hem_y - 1.0 * S),
-            ],
-            fill=pal["coat_light"],
-            width=max(1, int(0.7 * S)),
-        )
-
-    def _tq_draw_scarf(
-        self,
-        base: Image.Image,
-        cx: float,
-        shoulder_y: float,
-        spec: AliceSpec,
-        pal: Dict[str, Color],
-        S: float,
-    ) -> None:
-        """Long cream scarf wrapped around the neck with a forward
-        drape down the camera-side. The cipher motif lives HERE as
-        ciphertext characters along the trailing edge, not as a
-        front-panel checker tabard. New visual cipher signature
-        that doesn't repeat the previous OTP-grid placement."""
-        d = ImageDraw.Draw(base)
-        outline = pal["outline"]
-        # Wrap loop around the back of the neck (visible as a low
-        # arc just above the collar).
-        wrap_top = shoulder_y - 4.0 * S
-        wrap_bot = shoulder_y + 2.0 * S
-        d.rounded_rectangle(
-            (cx - 9.0 * S, wrap_top, cx + 9.0 * S, wrap_bot),
-            radius=2.0 * S,
-            fill=pal["tabard"],
-            outline=outline,
-            width=max(1, int(0.9 * S)),
-        )
-        # Forward drape — a long rectangle of scarf hanging down the
-        # camera-side, past the jacket hem.
-        drape_top_x = cx + 5.0 * S
-        drape_top_y = shoulder_y + 1.0 * S
-        drape_bot_x = cx + 8.0 * S
-        drape_bot_y = drape_top_y + spec.scarf_drop * S
-        drape = [
-            (drape_top_x - spec.scarf_thickness * 0.5 * S, drape_top_y),
-            (drape_top_x + spec.scarf_thickness * 0.5 * S, drape_top_y),
-            (drape_bot_x + spec.scarf_thickness * 0.55 * S, drape_bot_y),
-            (drape_bot_x - spec.scarf_thickness * 0.55 * S, drape_bot_y),
-        ]
-        d.polygon(drape, fill=pal["tabard"], outline=outline)
-        # Frayed tassel ends at the bottom.
-        for tx in (-1.5, 0.0, 1.5):
-            d.line(
-                [
-                    (drape_bot_x + tx * S, drape_bot_y - 0.5 * S),
-                    (drape_bot_x + tx * S, drape_bot_y + 3.0 * S),
-                ],
-                fill=pal["tabard_dark"],
-                width=max(1, int(0.7 * S)),
-            )
-        # Cipher characters running down the drape — short ink dashes
-        # in alternating orientations, NOT the OTP-grid checker.
-        rng_chars = [(-0.6, 0.6), (0.4, -0.5), (-0.4, 0.4), (0.5, -0.3), (-0.3, 0.5)]
-        for i, (dx_off, dy_off) in enumerate(rng_chars):
-            ch_y = drape_top_y + (4.0 + i * 5.0) * S
-            ch_x = drape_top_x + (drape_bot_x - drape_top_x) * (
-                i / float(len(rng_chars) - 1)
-            )
-            d.line(
-                [
-                    (ch_x - 1.0 * S + dx_off * S, ch_y + dy_off * S),
-                    (ch_x + 1.0 * S + dx_off * S, ch_y - dy_off * S),
-                ],
-                fill=pal["ink"],
-                width=max(1, int(0.6 * S)),
+                width=round(0.8 * s),
             )
 
-    def _tq_draw_arms_back(
-        self,
-        base: Image.Image,
-        cx: float,
-        shoulder_y: float,
-        jacket_hem_y: float,
-        spec: AliceSpec,
-        pal: Dict[str, Color],
-        S: float,
-        pose: AlicePose,
-    ) -> None:
-        d = ImageDraw.Draw(base)
-        outline = pal["outline"]
-        # Far arm — tucks a stack of papers under the elbow. The
-        # sleeve hangs at the side; the papers stick out forward of
-        # the elbow as a small white rectangle peeking out behind
-        # the jacket.
-        sx = cx - spec.shoulder_w * 0.42 * S
-        sy = shoulder_y + 2.0 * S
-        ex = sx - 0.5 * S
-        ey = sy + spec.arm_len * S
-        sleeve = [
-            (sx - spec.sleeve_w_shoulder * 0.5 * S, sy),
-            (sx + spec.sleeve_w_shoulder * 0.5 * S, sy),
-            (ex + spec.sleeve_w_cuff * 0.5 * S, ey),
-            (ex - spec.sleeve_w_cuff * 0.5 * S, ey),
-        ]
-        d.polygon(sleeve, fill=pal["coat_dark"], outline=outline)
-        d.rectangle(
-            (
-                ex - spec.sleeve_w_cuff * 0.6 * S,
-                ey - spec.cuff_h * 0.5 * S,
-                ex + spec.sleeve_w_cuff * 0.6 * S,
-                ey + spec.cuff_h * 0.5 * S,
-            ),
-            fill=pal["coat_light"],
-            outline=outline,
-            width=max(1, int(0.7 * S)),
-        )
-        d.ellipse(
-            _bbox((ex, ey + 3.0 * S), 3.0 * S, 2.6 * S),
-            fill=pal["skin"],
-            outline=outline,
-            width=max(1, int(0.7 * S)),
-        )
-        if pose.carry_notes:
-            # A small stack of papers (3 sheets) clipped to the side
-            # of the body just above the jacket hem. Visible behind
-            # the camera-far elbow.
-            self._draw_papers_stack(
-                d, (cx - spec.shoulder_w * 0.30 * S, jacket_hem_y - 6.0 * S), S, pal
-            )
-
-    def _draw_papers_stack(
-        self, d: ImageDraw.ImageDraw, anchor: Point, S: float, pal: Dict[str, Color]
-    ) -> None:
-        """Three offset sheets of paper tucked under the elbow.
-        Sits on the camera-FAR side so it doesn't fight the scarf."""
-        outline = pal["outline"]
-        for i, (dx, dy) in enumerate(((0.0, 0.0), (-1.5, -1.2), (1.0, -2.4))):
-            sx0 = anchor[0] + dx * S - 5.0 * S
-            sy0 = anchor[1] + dy * S - 6.0 * S
-            sx1 = anchor[0] + dx * S + 5.0 * S
-            sy1 = anchor[1] + dy * S + 6.0 * S
-            d.rectangle(
-                (sx0, sy0, sx1, sy1),
-                fill=pal["paper"],
-                outline=outline,
-                width=max(1, int(0.6 * S)),
-            )
-            # A couple of ink lines on the topmost sheet.
-            if i == 2:
-                for ly in (-3.0, 0.0, 3.0):
-                    d.line(
-                        [
-                            (sx0 + 1.5 * S, anchor[1] + dy * S + ly * S),
-                            (sx1 - 1.5 * S, anchor[1] + dy * S + ly * S),
-                        ],
-                        fill=pal["ink"],
-                        width=max(1, int(0.5 * S)),
-                    )
-
-    def _tq_draw_arms_front(
-        self,
-        base: Image.Image,
-        cx: float,
-        shoulder_y: float,
-        jacket_hem_y: float,
-        spec: AliceSpec,
-        pal: Dict[str, Color],
-        S: float,
-        pose: AlicePose,
-    ) -> None:
-        d = ImageDraw.Draw(base)
-        outline = pal["outline"]
-        # Near arm — hangs at the side with a slight forward lean
-        # during talk/interact (arm_lift). No prop in the front
-        # hand; the prop (papers stack) is tucked under the far arm.
-        sx = cx + spec.shoulder_w * 0.38 * S
-        sy = shoulder_y + 2.0 * S
-        ex = sx + 1.0 * S + pose.arm_lift * 5.0 * S
-        ey = sy + spec.arm_len * S - pose.arm_lift * 8.0 * S
-        sleeve = [
-            (sx - spec.sleeve_w_shoulder * 0.5 * S, sy),
-            (sx + spec.sleeve_w_shoulder * 0.5 * S, sy),
-            (ex + spec.sleeve_w_cuff * 0.55 * S, ey),
-            (ex - spec.sleeve_w_cuff * 0.55 * S, ey),
-        ]
-        d.polygon(sleeve, fill=pal["coat"], outline=outline)
-        d.line(
-            [
-                (sx - 2.0 * S, sy + 1.0 * S),
-                (ex - spec.sleeve_w_cuff * 0.30 * S, ey - 1.0 * S),
-            ],
-            fill=pal["coat_light"],
-            width=max(1, int(0.8 * S)),
-        )
-        d.rectangle(
-            (
-                ex - spec.sleeve_w_cuff * 0.6 * S,
-                ey - spec.cuff_h * 0.5 * S,
-                ex + spec.sleeve_w_cuff * 0.6 * S,
-                ey + spec.cuff_h * 0.5 * S,
-            ),
-            fill=pal["coat_light"],
-            outline=outline,
-            width=max(1, int(0.7 * S)),
-        )
-        hand_c = (ex + 0.5 * S, ey + 3.5 * S)
-        d.ellipse(
-            _bbox(hand_c, 3.6 * S, 3.0 * S),
-            fill=pal["skin"],
-            outline=outline,
-            width=max(1, int(0.8 * S)),
-        )
-
-    def _tq_draw_head(
-        self,
-        base: Image.Image,
-        c: Point,
-        spec: AliceSpec,
-        pal: Dict[str, Color],
-        S: float,
-        pose: AlicePose,
-    ) -> None:
-        d = ImageDraw.Draw(base)
-        outline = pal["outline"]
-        # Hair z-order — explicit, documented stack (previous revision
-        # drew curtains AFTER the face, so the curtain inner edge cut
-        # into the face oval and the cheeks turned dark):
-        #   1. Neck   (chin will cover the top of it)
-        #   2. Back hair mass  (sits behind everything)
-        #   3. Cheek curtains  (sit behind the face so the face oval
-        #                       crops their inner edge cleanly)
-        #   4. Face oval        ← key: drawn AFTER curtains
-        #   5. Bangs            (sit over the upper face only)
-        #   6. Forward braid    (drapes in front of the body)
-        #   7. Eyes / nose / mouth
-        # The order is named with comments so the failure mode
-        # "curtain bites into the cheek" can't recur silently.
-
-        # 1. Neck.
-        self._draw_neck(d, c, spec, pal, S, slant=+0.5)
-        # 2. Back hair mass — extends WIDE and LONG past the head.
-        back_hair_w = (spec.head_w + spec.back_hair_w_extra) * S
-        back_hair_h = (spec.head_h + spec.back_hair_h_extra) * S
-        back_hair_cy = c[1] + spec.back_hair_h_extra * 0.30 * S
-        d.ellipse(
-            _bbox((c[0] - 0.5 * S, back_hair_cy), back_hair_w, back_hair_h),
-            fill=pal["hair"],
-            outline=outline,
-            width=max(1, int(1.0 * S)),
-        )
-        # 3. Side hair curtains BEFORE the face. They start outside
-        # the face (head_w * 0.50) and only their lower-outer halves
-        # show — the face oval cleanly crops the inner part. The
-        # previous shape had sharp polygon corners that read as
-        # triangular hangs; the new vertex set adds an intermediate
-        # bulge so each curtain reads as a softer cascade.
-        for sign in (-1, 1):
-            curtain = [
-                (c[0] + sign * spec.head_w * 0.50 * S, c[1] - spec.head_h * 0.22 * S),
-                (c[0] + sign * (spec.head_w * 0.58) * S, c[1] + spec.head_h * 0.06 * S),
-                (
-                    c[0] + sign * (spec.head_w * 0.54) * S,
-                    c[1] + (spec.head_h * 0.26 + spec.curtain_drop * 0.3) * S,
-                ),
-                (
-                    c[0] + sign * (spec.head_w * 0.42) * S,
-                    c[1] + (spec.head_h * 0.40 + spec.curtain_drop * 0.5) * S,
-                ),
-                (
-                    c[0] + sign * (spec.head_w * 0.28) * S,
-                    c[1] + (spec.head_h * 0.32 + spec.curtain_drop * 0.4) * S,
-                ),
-                (c[0] + sign * (spec.head_w * 0.24) * S, c[1] + spec.head_h * 0.10 * S),
-            ]
-            d.polygon(curtain, fill=pal["hair"], outline=outline)
-        # 4. Face oval — drawn AFTER curtains so the cheeks stay
-        # uncovered. This is the z-order fix.
-        d.ellipse(
-            _bbox(c, spec.head_w * S, spec.head_h * S),
-            fill=pal["skin"],
-            outline=outline,
-            width=max(1, int(1.2 * S)),
-        )
-        # 5. Bangs — across the forehead, drawn over the face top.
-        # Outer corners pulled INSIDE the head_w envelope (was 0.50,
-        # now 0.42) and slightly lower so they tuck under the back
-        # hair top edge instead of poking up past it as the two
-        # pointy "horns" the previous revision had. Top edge slopes
-        # gently from outer to outer for a softer arc.
-        bangs_top = c[1] - spec.head_h * 0.42 * S
-        bangs_bot = bangs_top + spec.bangs_h * S
-        d.polygon(
-            [
-                (c[0] - spec.head_w * 0.42 * S, bangs_top + 0.5 * S),
-                (c[0] - spec.head_w * 0.20 * S, bangs_top - 0.6 * S),
-                (c[0] + spec.head_w * 0.22 * S, bangs_top - 0.6 * S),
-                (c[0] + spec.head_w * 0.42 * S, bangs_top + 0.5 * S),
-                (c[0] + spec.head_w * 0.38 * S, bangs_bot),
-                (c[0] + spec.head_w * 0.04 * S, bangs_bot - 1.0 * S),
-                (c[0] - spec.head_w * 0.10 * S, bangs_bot),
-                (c[0] - spec.head_w * 0.38 * S, bangs_bot - 1.0 * S),
-            ],
-            fill=pal["hair"],
-            outline=outline,
-        )
-        # Tiny skin sliver between the two bang clumps.
-        d.line(
-            [
-                (c[0] - spec.head_w * 0.06 * S, bangs_bot - 0.5 * S),
-                (c[0] + spec.head_w * 0.00 * S, bangs_bot + 1.5 * S),
-            ],
-            fill=pal["skin"],
-            width=max(1, int(0.7 * S)),
-        )
-        # Long forward braid — 10 stacked ellipses falling over the
-        # camera-side shoulder past the chest.
-        braid_anchor_x = c[0] + spec.head_w * 0.34 * S
-        braid_anchor_y = c[1] + spec.head_h * 0.38 * S
-        for i in range(spec.braid_segments):
-            t_seg = i / float(spec.braid_segments - 1)
-            w = (4.6 - t_seg * 2.6) * S
-            dy = (2.0 + i * 5.2) * S
-            seg_c = (braid_anchor_x - t_seg * 4.0 * S, braid_anchor_y + dy)
-            d.ellipse(
-                _bbox(seg_c, w, 3.2 * S),
-                fill=pal["hair"],
-                outline=outline,
-                width=max(1, int(0.9 * S)),
-            )
-            d.ellipse(
-                _bbox((seg_c[0] - 0.8 * S, seg_c[1] - 1.0 * S), 1.5 * S, 0.9 * S),
-                fill=pal["hair_shine"],
-                outline=None,
-            )
-        # Ribbon tying the braid.
-        tip_x = braid_anchor_x - 4.0 * S
-        tip_y = braid_anchor_y + (2.0 + (spec.braid_segments - 1) * 5.2 + 4.0) * S
-        d.rounded_rectangle(
-            (tip_x - 3.0 * S, tip_y - 1.6 * S, tip_x + 1.0 * S, tip_y + 1.4 * S),
-            radius=0.9 * S,
-            fill=pal["hair_band"],
-            outline=outline,
-            width=max(1, int(0.6 * S)),
-        )
-        # Face: eyes, eyelashes, nose, mouth.
-        self._draw_eyes_three_quarter(d, c, spec, pal, S, pose)
-        # Nose (subtle skin-shadow stroke).
-        d.line(
-            [
-                (c[0] + 3.0 * S, c[1] + 1.0 * S),
-                (c[0] + 4.0 * S, c[1] + 3.0 * S),
-                (c[0] + 3.0 * S, c[1] + 4.0 * S),
-            ],
-            fill=pal["skin_shadow"],
-            width=max(1, int(0.7 * S)),
-        )
-        # Mouth — small soft arc, opens during talk.
-        mouth_y = c[1] + spec.head_h * 0.30 * S
-        if pose.talk_open > 0.2:
-            d.ellipse(
-                _bbox(
-                    (c[0] + 2.5 * S, mouth_y), 3.0 * S, (1.0 + pose.talk_open * 1.4) * S
-                ),
-                fill=outline,
-            )
-        else:
-            d.arc(
-                (c[0] + 0.5 * S, mouth_y - 1.2 * S, c[0] + 5.0 * S, mouth_y + 2.0 * S),
-                start=10,
-                end=160,
-                fill=outline,
-                width=max(1, int(0.9 * S)),
-            )
-
-    def _draw_eyes_three_quarter(
+    def _draw_map_folio(
         self,
         d: ImageDraw.ImageDraw,
-        c: Point,
-        spec: AliceSpec,
-        pal: Dict[str, Color],
-        S: float,
-        pose: AlicePose,
+        cx: float,
+        cy: float,
+        s: float,
+        *,
+        angle_hint: float = 0.0,
+        open_amount: float = 0.0,
     ) -> None:
+        """Draw Alice's sealed route folio, optionally opening into a map."""
+        pal = ALICE_PALETTE
         outline = pal["outline"]
-        eye_y = c[1] - 2.0 * S
-        near = (c[0] + 1.0 * S, eye_y)
-        far = (c[0] + 7.0 * S, eye_y - 0.2 * S)
-        if pose.blink:
-            d.line(
-                [(near[0] - 1.6 * S, near[1]), (near[0] + 2.0 * S, near[1])],
-                fill=outline,
-                width=max(1, int(1.0 * S)),
+        if open_amount <= 0.05:
+            w, h = 11.0 * s, 15.0 * s
+            skew = angle_hint * 2.0 * s
+            pts = [
+                (cx - w / 2 + skew, cy - h / 2),
+                (cx + w / 2 + skew, cy - h / 2 + 1.2 * s),
+                (cx + w / 2 - skew, cy + h / 2),
+                (cx - w / 2 - skew, cy + h / 2 - 1.2 * s),
+            ]
+            _poly(d, pts, fill=pal["map"], outline=outline, width=round(1.0 * s))
+            _line(
+                d,
+                [(cx - 4.0 * s, cy - 3.0 * s), (cx + 3.0 * s, cy + 2.0 * s)],
+                fill=pal["map_shadow"],
+                width=round(0.8 * s),
             )
-            d.line(
-                [(far[0] - 1.2 * S, far[1]), (far[0] + 1.2 * S, far[1])],
-                fill=outline,
-                width=max(1, int(0.8 * S)),
+            _ellipse(
+                d,
+                _bbox(cx + 1.5 * s, cy + 1.2 * s, 4.0 * s, 4.0 * s),
+                fill=pal["seal"],
+                outline=outline,
+                width=round(0.7 * s),
             )
             return
-        # Eyes: white sclera + iris + pupil for a slightly finer read
-        # than the toon/bob eye block.
-        d.ellipse(
-            _bbox(near, 3.0 * S, 1.6 * S),
-            fill=pal["white"],
-            outline=outline,
-            width=max(1, int(0.9 * S)),
-        )
-        d.ellipse(
-            _bbox((near[0] + 0.4 * S, near[1]), 1.6 * S, 1.6 * S),
-            fill=pal["coat_dark"],
-            outline=None,
-        )
-        d.ellipse(_bbox((near[0] + 0.4 * S, near[1]), 0.8 * S, 1.0 * S), fill=outline)
-        d.ellipse(
-            _bbox(far, 2.4 * S, 1.4 * S),
-            fill=pal["white"],
-            outline=outline,
-            width=max(1, int(0.8 * S)),
-        )
-        d.ellipse(
-            _bbox((far[0] + 0.3 * S, far[1]), 1.4 * S, 1.4 * S),
-            fill=pal["coat_dark"],
-            outline=None,
-        )
-        d.ellipse(_bbox((far[0] + 0.3 * S, far[1]), 0.7 * S, 0.9 * S), fill=outline)
-        # Single small eyelash tick at the outer corner of each eye.
-        d.line(
+
+        amount = min(1.0, open_amount)
+        w = (14.0 + 23.0 * amount) * s
+        h = (16.0 + 4.0 * amount) * s
+        left = cx - w / 2
+        right = cx + w / 2
+        top = cy - h / 2
+        bottom = cy + h / 2
+        fold = cx + 1.0 * s
+        _poly(
+            d,
             [
-                (near[0] + 1.8 * S, near[1] - 1.4 * S),
-                (near[0] + 2.2 * S, near[1] - 2.4 * S),
+                (left, top + 2.0 * s),
+                (fold, top),
+                (right, top + 2.0 * s),
+                (right - 1.0 * s, bottom),
+                (fold, bottom - 1.0 * s),
+                (left + 1.0 * s, bottom),
             ],
-            fill=outline,
-            width=max(1, int(0.5 * S)),
+            fill=pal["map"],
+            outline=outline,
+            width=round(1.0 * s),
         )
-        d.line(
+        _line(
+            d,
+            [(fold, top), (fold, bottom - 1.0 * s)],
+            fill=pal["map_shadow"],
+            width=round(0.8 * s),
+        )
+        # Topographic marks and a deliberately red private route.
+        for offset in (-5.0, 1.0, 6.0):
+            _line(
+                d,
+                [
+                    (left + 4.0 * s, cy + offset * 0.55 * s),
+                    (cx - 3.0 * s, cy + (offset - 2.0) * 0.55 * s),
+                    (right - 4.0 * s, cy + (offset + 1.0) * 0.55 * s),
+                ],
+                fill=pal["map_ink"],
+                width=round(0.7 * s),
+            )
+        _line(
+            d,
             [
-                (far[0] + 1.4 * S, far[1] - 1.2 * S),
-                (far[0] + 1.7 * S, far[1] - 2.0 * S),
+                (left + 5.0 * s, bottom - 4.0 * s),
+                (cx - 4.0 * s, cy + 1.0 * s),
+                (cx + 5.0 * s, cy - 4.0 * s),
+                (right - 5.0 * s, top + 4.0 * s),
             ],
-            fill=outline,
-            width=max(1, int(0.4 * S)),
+            fill=pal["route"],
+            width=round(1.3 * s),
+        )
+        for x, y in (
+            (left + 5.0 * s, bottom - 4.0 * s),
+            (right - 5.0 * s, top + 4.0 * s),
+        ):
+            _ellipse(
+                d,
+                _bbox(x, y, 2.4 * s, 2.4 * s),
+                fill=pal["route"],
+                outline=outline,
+                width=round(0.5 * s),
+            )
+
+    def _draw_compass(
+        self, d: ImageDraw.ImageDraw, cx: float, cy: float, s: float
+    ) -> None:
+        pal = ALICE_PALETTE
+        outline = pal["outline"]
+        _ellipse(
+            d,
+            _bbox(cx, cy, 7.2 * s, 7.2 * s),
+            fill=pal["amber"],
+            outline=outline,
+            width=round(1.0 * s),
+        )
+        _ellipse(
+            d,
+            _bbox(cx, cy, 4.5 * s, 4.5 * s),
+            fill=pal["shirt"],
+            outline=pal["leather_dark"],
+            width=round(0.6 * s),
+        )
+        _poly(
+            d,
+            [
+                (cx, cy - 2.0 * s),
+                (cx + 1.0 * s, cy + 1.5 * s),
+                (cx, cy + 0.7 * s),
+                (cx - 1.0 * s, cy + 1.5 * s),
+            ],
+            fill=pal["route"],
+            outline=outline,
+            width=round(0.4 * s),
         )
 
-    def _draw_neck(
+    def _draw_front_bust_seam(
         self,
         d: ImageDraw.ImageDraw,
-        head_center: Point,
-        spec: AliceSpec,
-        pal: Dict[str, Color],
-        S: float,
+        cx: float,
+        shoulder_y: float,
+        s: float,
         *,
-        slant: float = 0.0,
+        three_quarter: bool = False,
     ) -> None:
+        """Draw the same shallow jacket contour in every forward-facing frame.
+
+        This is a tailoring seam, not a floating anatomy glyph.  Keeping it in
+        one helper prevents the subtle chest cue from disappearing when Alice
+        changes between idle, talk, and interact animations.  The arch is made
+        from two almost-straight segments so it does not read as a pronounced
+        upside-down U.
+        """
+        pal = ALICE_PALETTE
+        seam = _scaled(pal["jacket_dark"], 1.18)
+        if three_quarter:
+            points = [
+                (cx - 4.6 * s, shoulder_y + 14.0 * s),
+                (cx + 0.8 * s, shoulder_y + 12.8 * s),
+                (cx + 6.2 * s, shoulder_y + 13.8 * s),
+            ]
+        else:
+            points = [
+                (cx - 5.4 * s, shoulder_y + 14.0 * s),
+                (cx, shoulder_y + 12.8 * s),
+                (cx + 5.4 * s, shoulder_y + 14.0 * s),
+            ]
+        _line(d, points, fill=seam, width=round(0.55 * s))
+
+    def _draw_cipher_tape(
+        self, d: ImageDraw.ImageDraw, x: float, y: float, s: float
+    ) -> None:
+        pal = ALICE_PALETTE
         outline = pal["outline"]
-        chin_y = head_center[1] + spec.head_h * 0.42 * S
-        shoulder_y = (
-            head_center[1] + spec.head_h * spec.head_anchor * S + spec.neck_h * S
+        _rounded(
+            d,
+            (x - 3.0 * s, y - 1.0 * s, x + 3.0 * s, y + 12.0 * s),
+            radius=1.0 * s,
+            fill=pal["shirt"],
+            outline=outline,
+            width=round(0.8 * s),
         )
-        top_w = spec.neck_w * 0.80
-        bot_w = spec.neck_w * 1.10
-        neck = [
-            (head_center[0] - top_w * 0.5 * S + slant * S, chin_y),
-            (head_center[0] + top_w * 0.5 * S + slant * S, chin_y),
-            (head_center[0] + bot_w * 0.5 * S, shoulder_y + 1.5 * S),
-            (head_center[0] - bot_w * 0.5 * S, shoulder_y + 1.5 * S),
-        ]
-        d.polygon(neck, fill=pal["skin"], outline=outline)
-        d.line(
-            [
-                (head_center[0] - top_w * 0.40 * S + slant * S, chin_y + 0.5 * S),
-                (head_center[0] - bot_w * 0.42 * S, shoulder_y),
-            ],
-            fill=pal["skin_shadow"],
-            width=max(1, int(0.7 * S)),
-        )
+        for index in range(5):
+            if index in (0, 3, 4):
+                _rounded(
+                    d,
+                    (
+                        x - 1.8 * s,
+                        y + (1.0 + index * 2.0) * s,
+                        x + 1.8 * s,
+                        y + (2.3 + index * 2.0) * s,
+                    ),
+                    radius=0.4 * s,
+                    fill=pal["outline"],
+                )
 
-    # ─────────────────────────────────────────────────────────────────
-    # SIDE view — used for walking. Simpler than 3/4 (one visible eye,
-    # one ear-curtain of hair, no checker visible on the tabard).
-    # ─────────────────────────────────────────────────────────────────
+    # ------------------------------------------------------------------
+    # Three-quarter view
 
-    def _render_side(
+    def _draw_three_quarter(
         self,
-        base: Image.Image,
+        image: Image.Image,
         cx: float,
         feet_y: float,
         spec: AliceSpec,
-        pal: Dict[str, Color],
-        S: float,
         pose: AlicePose,
+        s: float,
     ) -> None:
-        d = ImageDraw.Draw(base)
+        d = ImageDraw.Draw(image)
+        pal = ALICE_PALETTE
         outline = pal["outline"]
-        boot_top_y = feet_y - spec.boot_h * S
-        leg_top_y = boot_top_y - spec.leg_h * S
-        skirt_hem_y = leg_top_y + 0.0 * S
-        skirt_top_y = skirt_hem_y - spec.skirt_h * S
-        jacket_hem_y = skirt_top_y + 1.0 * S
-        shoulder_y = jacket_hem_y - spec.jacket_h * S
-        head_center = (
-            cx + 3.0 * S,
-            shoulder_y - spec.head_h * spec.head_anchor * S - spec.neck_h * S,
+
+        boot_top = feet_y - spec.boot_h * s
+        shin_top = boot_top - spec.shin_h * s
+        hip_y = shin_top - spec.thigh_h * s
+        shoulder_y = hip_y - spec.torso_h * s
+        head_c = (cx + 1.8 * s, shoulder_y - 11.5 * s)
+
+        # Rear braid and map tube establish the silhouette before the body.
+        braid_base = (head_c[0] - 8.0 * s, head_c[1] - 10.0 * s)
+        braid_points = [
+            (
+                braid_base[0] - 4.0 * math.sin(i * 0.7 + pose.scan) * s,
+                braid_base[1] + (5.0 + i * 5.2) * s,
+            )
+            for i in range(spec.pony_segments)
+        ]
+        self._draw_braid(d, braid_points, s)
+        _rounded(
+            d,
+            (cx - 15.0 * s, shoulder_y + 9.0 * s, cx - 8.0 * s, hip_y + 15.0 * s),
+            radius=3.0 * s,
+            fill=pal["leather_dark"],
+            outline=outline,
+            width=round(1.0 * s),
+        )
+        _line(
+            d,
+            [(cx - 13.2 * s, shoulder_y + 13.0 * s), (cx - 10.2 * s, hip_y + 11.0 * s)],
+            fill=pal["amber"],
+            width=round(1.0 * s),
         )
 
-        step = pose.step_phase
-        # Two legs with opposite-phase swing.
-        for side, sgn in (("far", -step), ("near", +step)):
-            knee_x = cx + sgn * 3.0 * S
-            ankle_x = cx + sgn * 6.0 * S
-            knee_y = leg_top_y + spec.leg_h * 0.55 * S
-            ankle_y = boot_top_y - abs(sgn) * 1.2 * S
-            leg = [
-                (cx + sgn * 1.0 * S - spec.leg_w * 0.5 * S, leg_top_y),
-                (cx + sgn * 1.0 * S + spec.leg_w * 0.5 * S, leg_top_y),
-                (knee_x + spec.leg_w * 0.4 * S, knee_y),
-                (ankle_x + spec.boot_w * 0.4 * S, ankle_y),
-                (ankle_x - spec.boot_w * 0.4 * S, ankle_y),
-                (knee_x - spec.leg_w * 0.4 * S, knee_y),
+        # Legs: one planted forward for a confident, non-neutral stance.
+        for near, sign in ((False, -1), (True, 1)):
+            x = cx + sign * (5.2 if near else 4.0) * s
+            forward = (1.5 if near else -1.0) * s
+            thigh = [
+                (x - 3.8 * s, hip_y),
+                (x + 3.8 * s, hip_y),
+                (x + 3.2 * s + forward, shin_top),
+                (x - 3.2 * s + forward, shin_top),
             ]
-            d.polygon(
-                leg,
-                fill=(pal["tights"] if side == "near" else pal["tights_shade"]),
+            _poly(
+                d,
+                thigh,
+                fill=pal["trouser"] if near else pal["trouser_dark"],
                 outline=outline,
+                width=round(1.0 * s),
             )
-            d.rounded_rectangle(
-                (
-                    ankle_x - spec.boot_w * 0.55 * S,
-                    ankle_y - 0.5 * S,
-                    ankle_x + spec.boot_w * 0.90 * S,
-                    ankle_y + spec.boot_h * S,
-                ),
-                radius=2.0 * S,
+            shin = [
+                (x - 3.2 * s + forward, shin_top),
+                (x + 3.2 * s + forward, shin_top),
+                (x + 3.0 * s + 1.4 * forward, boot_top),
+                (x - 3.0 * s + 1.4 * forward, boot_top),
+            ]
+            _poly(
+                d,
+                shin,
+                fill=pal["trouser"] if near else pal["trouser_dark"],
+                outline=outline,
+                width=round(1.0 * s),
+            )
+            boot_x = x + 1.8 * forward
+            _rounded(
+                d,
+                (boot_x - 5.0 * s, boot_top - 1.0 * s, boot_x + 6.8 * s, feet_y),
+                radius=2.5 * s,
                 fill=pal["boot"],
                 outline=outline,
-                width=max(1, int(1.0 * S)),
+                width=round(1.0 * s),
             )
-            d.rectangle(
-                (
-                    ankle_x - spec.boot_w * 0.55 * S,
-                    ankle_y - 0.5 * S,
-                    ankle_x + spec.boot_w * 0.90 * S,
-                    ankle_y + 1.5 * S,
-                ),
-                fill=pal["boot_cuff"],
-                outline=outline,
-                width=max(1, int(0.7 * S)),
-            )
-
-        # Skirt in profile — narrow at waist, flared at hem.
-        skirt = [
-            (cx - spec.skirt_top_w * 0.18 * S, skirt_top_y),
-            (cx + spec.skirt_top_w * 0.30 * S, skirt_top_y),
-            (cx + spec.skirt_hem_w * 0.36 * S, skirt_hem_y),
-            (cx - spec.skirt_hem_w * 0.30 * S, skirt_hem_y),
-        ]
-        d.polygon(skirt, fill=pal["coat_dark"], outline=outline)
-        d.line(
-            [
-                (cx - spec.skirt_hem_w * 0.30 * S, skirt_hem_y - 0.5 * S),
-                (cx + spec.skirt_hem_w * 0.36 * S, skirt_hem_y - 0.5 * S),
-            ],
-            fill=pal["coat"],
-            width=max(1, int(0.9 * S)),
-        )
-
-        # Short fitted jacket in profile.
-        jacket = [
-            (cx - spec.jacket_top_w * 0.18 * S, shoulder_y),
-            (cx + spec.jacket_top_w * 0.36 * S, shoulder_y),
-            (cx + spec.jacket_hem_w * 0.32 * S, jacket_hem_y),
-            (cx - spec.jacket_hem_w * 0.22 * S, jacket_hem_y),
-        ]
-        d.polygon(jacket, fill=pal["coat"], outline=outline)
-        # One visible button on the camera-side front.
-        d.ellipse(
-            _bbox(
-                (cx + spec.jacket_hem_w * 0.20 * S, shoulder_y + 8.0 * S),
-                1.2 * S,
-                1.2 * S,
-            ),
-            fill=pal["amber"],
-            outline=outline,
-            width=max(1, int(0.5 * S)),
-        )
-        # Notched collar.
-        d.polygon(
-            [
-                (cx + spec.jacket_top_w * 0.10 * S, shoulder_y),
-                (cx + spec.jacket_top_w * 0.34 * S, shoulder_y),
-                (cx + spec.jacket_top_w * 0.10 * S, shoulder_y + 5.0 * S),
-            ],
-            fill=pal["coat_dark"],
-            outline=outline,
-        )
-
-        # Cipher scarf — wraps the neck + drapes down the camera-side
-        # over the jacket front.
-        d.rounded_rectangle(
-            (cx - 5.0 * S, shoulder_y - 4.0 * S, cx + 7.0 * S, shoulder_y + 2.0 * S),
-            radius=2.0 * S,
-            fill=pal["tabard"],
-            outline=outline,
-            width=max(1, int(0.9 * S)),
-        )
-        drape_top_x = cx + 5.0 * S
-        drape_bot_x = cx + 8.0 * S
-        drape_top_y = shoulder_y + 1.0 * S
-        drape_bot_y = drape_top_y + spec.scarf_drop * S
-        d.polygon(
-            [
-                (drape_top_x - spec.scarf_thickness * 0.5 * S, drape_top_y),
-                (drape_top_x + spec.scarf_thickness * 0.5 * S, drape_top_y),
-                (drape_bot_x + spec.scarf_thickness * 0.55 * S, drape_bot_y),
-                (drape_bot_x - spec.scarf_thickness * 0.55 * S, drape_bot_y),
-            ],
-            fill=pal["tabard"],
-            outline=outline,
-        )
-        for tx in (-1.5, 0.0, 1.5):
-            d.line(
+            _line(
+                d,
                 [
-                    (drape_bot_x + tx * S, drape_bot_y - 0.5 * S),
-                    (drape_bot_x + tx * S, drape_bot_y + 3.0 * S),
+                    (boot_x - 4.0 * s, boot_top + 2.0 * s),
+                    (boot_x + 4.0 * s, boot_top + 2.0 * s),
                 ],
-                fill=pal["tabard_dark"],
-                width=max(1, int(0.7 * S)),
+                fill=pal["boot_light"],
+                width=round(1.5 * s),
+            )
+            _line(
+                d,
+                [
+                    (boot_x - 4.8 * s, feet_y - 1.1 * s),
+                    (boot_x + 6.8 * s, feet_y - 1.1 * s),
+                ],
+                fill=outline,
+                width=round(1.2 * s),
             )
 
-        # Arms swing opposite the legs.
-        arm_swing = -step
-        far_sh = (cx - spec.shoulder_w * 0.06 * S, shoulder_y + 2.0 * S)
-        far_hand = (cx - 2.5 * S + arm_swing * 4.0 * S, shoulder_y + spec.arm_len * S)
-        d.line(
-            [far_sh, far_hand],
-            fill=pal["coat_dark"],
-            width=max(1, int(spec.sleeve_w_shoulder * 0.7 * S)),
+        # Far arm: holds the folio low unless interact opens it.
+        far_shoulder = (cx - 10.5 * s, shoulder_y + 4.0 * s)
+        far_elbow = (cx - 15.5 * s - pose.gesture * 1.5 * s, shoulder_y + 18.0 * s)
+        far_hand = (
+            cx - 14.0 * s - pose.gesture * 3.0 * s,
+            hip_y + 6.0 * s - pose.gesture * 6.0 * s,
         )
-        d.ellipse(
-            _bbox((far_hand[0], far_hand[1] + 3.0 * S), 3.0 * S, 2.6 * S),
+        _line(
+            d,
+            [far_shoulder, far_elbow, far_hand],
+            fill=pal["jacket_dark"],
+            width=round(7.0 * s),
+        )
+        _line(
+            d, [far_shoulder, far_elbow, far_hand], fill=outline, width=round(1.0 * s)
+        )
+        _ellipse(
+            d,
+            _bbox(far_hand[0], far_hand[1], 5.3 * s, 5.3 * s),
             fill=pal["skin"],
             outline=outline,
-            width=max(1, int(0.7 * S)),
-        )
-        near_sh = (cx + spec.shoulder_w * 0.28 * S, shoulder_y + 2.0 * S)
-        near_hand = (cx + 5.0 * S - arm_swing * 4.0 * S, shoulder_y + spec.arm_len * S)
-        d.line(
-            [near_sh, near_hand],
-            fill=pal["coat"],
-            width=max(1, int(spec.sleeve_w_shoulder * 0.7 * S)),
-        )
-        d.ellipse(
-            _bbox((near_hand[0], near_hand[1] + 3.0 * S), 3.4 * S, 3.0 * S),
-            fill=pal["skin"],
-            outline=outline,
-            width=max(1, int(0.8 * S)),
+            width=round(0.9 * s),
         )
 
-        # Head in profile.
-        self._side_draw_head(base, head_center, spec, pal, S, pose)
-
-    def _side_draw_head(
-        self,
-        base: Image.Image,
-        c: Point,
-        spec: AliceSpec,
-        pal: Dict[str, Color],
-        S: float,
-        pose: AlicePose,
-    ) -> None:
-        d = ImageDraw.Draw(base)
-        outline = pal["outline"]
-        # Neck.
-        self._draw_neck(d, c, spec, pal, S, slant=+1.5)
-        # Back hair — drawn as a polygon that hugs the BACK of the
-        # head (camera-left) and flows down past the shoulder.
-        # Earlier revision used a single ellipse centered slightly
-        # left of c, but in profile that ellipse extended forward
-        # over the face and the head read as a black egg. The
-        # polygon stops at the camera-side hairline (where the bangs
-        # take over) so the face has room to be visible.
-        back_hair = [
-            (
-                c[0] - spec.head_w * 0.34 * S,
-                c[1] - spec.head_h * 0.46 * S,
-            ),  # top-back of skull
-            (c[0] + spec.head_w * 0.10 * S, c[1] - spec.head_h * 0.50 * S),  # crown
-            (
-                c[0] + spec.head_w * 0.20 * S,
-                c[1] - spec.head_h * 0.40 * S,
-            ),  # top-front (just above bang start)
-            (
-                c[0] + spec.head_w * 0.04 * S,
-                c[1] - spec.head_h * 0.16 * S,
-            ),  # behind the temple
-            # Down the back of the neck + shoulder.
-            (c[0] - spec.head_w * 0.20 * S, c[1] + spec.head_h * 0.10 * S),
-            (c[0] - spec.head_w * 0.46 * S, c[1] + spec.head_h * 0.30 * S),
-            (
-                c[0] - spec.head_w * 0.58 * S,
-                c[1] + (spec.head_h * 0.55 + spec.back_hair_h_extra * 0.6) * S,
-            ),
-            (
-                c[0] - spec.head_w * 0.34 * S,
-                c[1] + (spec.head_h * 0.65 + spec.back_hair_h_extra * 0.7) * S,
-            ),
-            (
-                c[0] - spec.head_w * 0.18 * S,
-                c[1] + (spec.head_h * 0.55 + spec.back_hair_h_extra * 0.5) * S,
-            ),
-            (c[0] - spec.head_w * 0.10 * S, c[1] + spec.head_h * 0.30 * S),
-            (c[0] - spec.head_w * 0.36 * S, c[1] + spec.head_h * 0.10 * S),
-            (c[0] - spec.head_w * 0.46 * S, c[1] - spec.head_h * 0.10 * S),
+        # Torso: angular expedition jacket, no robe/skirt silhouette.
+        # Keep the jacket contour simple and clockwise.  The previous five
+        # point contour pinched directly from the back hip to the back waist;
+        # this was legal, but made the torso read unnaturally slab-like next
+        # to the better articulated limbs.  The two shallow camera-right
+        # chest points give Alice a very small, fully clothed human bust while
+        # preserving the compact Lucina-like field-operator silhouette.
+        torso = [
+            (cx - 13.0 * s, shoulder_y),
+            (cx + 14.0 * s, shoulder_y + 1.0 * s),
+            (cx + 14.6 * s, shoulder_y + 8.0 * s),
+            (cx + 14.1 * s, shoulder_y + 12.5 * s),
+            (cx + 10.2 * s, shoulder_y + 20.0 * s),
+            (cx + 12.0 * s, hip_y + 1.0 * s),
+            (cx - 11.0 * s, hip_y),
+            (cx - 10.2 * s, shoulder_y + 18.0 * s),
         ]
-        d.polygon(back_hair, fill=pal["hair"], outline=outline)
-        # Face polygon (forehead → brow → nose → upper lip → chin →
-        # jawline back to cheek).
-        face = [
-            (c[0] - spec.head_w * 0.28 * S, c[1] - spec.head_h * 0.46 * S),
-            (c[0] + spec.head_w * 0.26 * S, c[1] - spec.head_h * 0.38 * S),
-            (c[0] + spec.head_w * 0.32 * S, c[1] - spec.head_h * 0.14 * S),  # brow
-            (c[0] + spec.head_w * 0.44 * S, c[1] - spec.head_h * 0.02 * S),  # nose tip
-            (
-                c[0] + spec.head_w * 0.32 * S,
-                c[1] + spec.head_h * 0.08 * S,
-            ),  # under-nose
-            (c[0] + spec.head_w * 0.36 * S, c[1] + spec.head_h * 0.20 * S),  # upper lip
-            (c[0] + spec.head_w * 0.28 * S, c[1] + spec.head_h * 0.28 * S),  # chin
-            (c[0] + spec.head_w * 0.04 * S, c[1] + spec.head_h * 0.32 * S),
-            (c[0] - spec.head_w * 0.30 * S, c[1] + spec.head_h * 0.20 * S),
-            (c[0] - spec.head_w * 0.36 * S, c[1] - spec.head_h * 0.10 * S),
-        ]
-        d.polygon(face, fill=pal["skin"], outline=outline)
-        # Side bang sweeping across the forehead in profile. Keep it
-        # tight to the brow line so the eye remains visible below.
-        d.polygon(
+        _poly(d, torso, fill=pal["jacket"], outline=outline, width=round(1.2 * s))
+        # Short high collar and cream throat panel.
+        _poly(
+            d,
             [
-                (c[0] - spec.head_w * 0.26 * S, c[1] - spec.head_h * 0.44 * S),
-                (c[0] + spec.head_w * 0.24 * S, c[1] - spec.head_h * 0.36 * S),
-                (c[0] + spec.head_w * 0.16 * S, c[1] - spec.head_h * 0.26 * S),
-                (c[0] - spec.head_w * 0.18 * S, c[1] - spec.head_h * 0.30 * S),
+                (cx - 7.0 * s, shoulder_y),
+                (cx + 6.5 * s, shoulder_y),
+                (cx + 3.0 * s, shoulder_y + 7.0 * s),
+                (cx - 2.0 * s, shoulder_y + 8.0 * s),
             ],
-            fill=pal["hair"],
+            fill=pal["shirt"],
             outline=outline,
+            width=round(1.0 * s),
         )
-        # Single visible eye.
-        eye_x = c[0] + spec.head_w * 0.18 * S
-        eye_y = c[1] - spec.head_h * 0.04 * S
-        if pose.blink:
-            d.line(
-                [(eye_x - 1.2 * S, eye_y), (eye_x + 1.2 * S, eye_y)],
-                fill=outline,
-                width=max(1, int(1.0 * S)),
+        _poly(
+            d,
+            [
+                (cx - 8.0 * s, shoulder_y),
+                (cx - 0.5 * s, shoulder_y + 8.0 * s),
+                (cx - 4.0 * s, shoulder_y + 12.0 * s),
+                (cx - 11.0 * s, shoulder_y + 4.0 * s),
+            ],
+            fill=pal["jacket_dark"],
+            outline=outline,
+            width=round(0.9 * s),
+        )
+        _line(
+            d,
+            [(cx + 7.0 * s, shoulder_y + 3.0 * s), (cx - 1.0 * s, hip_y - 2.0 * s)],
+            fill=pal["amber"],
+            width=round(2.0 * s),
+        )
+        _line(
+            d,
+            [(cx + 8.3 * s, shoulder_y + 3.0 * s), (cx + 0.3 * s, hip_y - 2.0 * s)],
+            fill=outline,
+            width=round(0.7 * s),
+        )
+        _line(
+            d,
+            [
+                (cx + 3.2 * s, shoulder_y + 8.0 * s),
+                (cx + 7.0 * s, shoulder_y + 12.0 * s),
+                (cx + 8.3 * s, shoulder_y + 15.0 * s),
+            ],
+            fill=pal["jacket_dark"],
+            width=round(0.65 * s),
+        )
+        self._draw_front_bust_seam(
+            d, cx, shoulder_y, s, three_quarter=True
+        )
+        # Jacket hem split and highlight.
+        _line(
+            d,
+            [(cx - 10.0 * s, hip_y - 1.0 * s), (cx + 11.0 * s, hip_y)],
+            fill=pal["jacket_light"],
+            width=round(1.0 * s),
+        )
+        _line(
+            d,
+            [(cx + 7.5 * s, shoulder_y + 9.0 * s), (cx + 8.5 * s, hip_y - 5.0 * s)],
+            fill=pal["jacket_light"],
+            width=round(1.0 * s),
+        )
+
+        # Harness, belt, compass, and OTP tape.
+        _line(
+            d,
+            [(cx - 8.5 * s, shoulder_y + 2.0 * s), (cx + 7.0 * s, hip_y - 1.0 * s)],
+            fill=pal["leather_dark"],
+            width=round(4.0 * s),
+        )
+        _line(
+            d,
+            [(cx - 8.5 * s, shoulder_y + 2.0 * s), (cx + 7.0 * s, hip_y - 1.0 * s)],
+            fill=pal["leather"],
+            width=round(2.2 * s),
+        )
+        _rounded(
+            d,
+            (cx - 12.0 * s, hip_y - 3.0 * s, cx + 12.0 * s, hip_y + 2.0 * s),
+            radius=1.5 * s,
+            fill=pal["leather_dark"],
+            outline=outline,
+            width=round(0.8 * s),
+        )
+        self._draw_compass(d, cx + 8.7 * s, hip_y + 3.5 * s, s)
+        self._draw_cipher_tape(d, cx + 3.5 * s, shoulder_y + 9.0 * s, s)
+
+        # Near arm: hand on hip in idle, raised compass hand in interact.
+        near_shoulder = (cx + 11.5 * s, shoulder_y + 4.0 * s)
+        if pose.map_open > 0.05:
+            near_elbow = (cx + 15.0 * s, shoulder_y + 15.0 * s)
+            near_hand = (cx + 13.0 * s, shoulder_y + 24.0 * s - 4.0 * pose.gesture * s)
+        else:
+            near_elbow = (cx + 16.0 * s, shoulder_y + 17.0 * s)
+            near_hand = (cx + 10.5 * s, hip_y - 1.0 * s)
+        _line(
+            d,
+            [near_shoulder, near_elbow, near_hand],
+            fill=outline,
+            width=round(8.0 * s),
+        )
+        _line(
+            d,
+            [near_shoulder, near_elbow, near_hand],
+            fill=pal["jacket"],
+            width=round(6.2 * s),
+        )
+        _rounded(
+            d,
+            (
+                near_hand[0] - 3.2 * s,
+                near_hand[1] - 3.2 * s,
+                near_hand[0] + 3.2 * s,
+                near_hand[1] + 3.2 * s,
+            ),
+            radius=2.0 * s,
+            fill=pal["skin"],
+            outline=outline,
+            width=round(0.9 * s),
+        )
+
+        if pose.map_open > 0.05:
+            map_cx = cx - 4.0 * s
+            map_cy = shoulder_y + 29.0 * s
+            self._draw_map_folio(d, map_cx, map_cy, s, open_amount=pose.map_open)
+            self._draw_compass(
+                d, near_hand[0] + 0.5 * s, near_hand[1] - 1.0 * s, s * 0.82
             )
         else:
-            d.ellipse(
-                _bbox((eye_x, eye_y), 1.8 * S, 1.3 * S),
-                fill=pal["white"],
-                outline=outline,
-                width=max(1, int(0.7 * S)),
+            self._draw_map_folio(
+                d, far_hand[0] - 1.0 * s, far_hand[1] + 2.0 * s, s, angle_hint=-0.35
             )
-            d.ellipse(
-                _bbox((eye_x + 0.2 * S, eye_y), 1.0 * S, 1.2 * S),
-                fill=pal["coat_dark"],
-                outline=None,
-            )
-            d.ellipse(_bbox((eye_x + 0.2 * S, eye_y), 0.6 * S, 0.9 * S), fill=outline)
-            # Tiny outer eyelash tick.
-            d.line(
-                [
-                    (eye_x + 1.4 * S, eye_y - 1.0 * S),
-                    (eye_x + 1.7 * S, eye_y - 1.8 * S),
-                ],
-                fill=outline,
-                width=max(1, int(0.5 * S)),
-            )
-        # Lip line.
-        d.line(
+
+        self._draw_head_three_quarter(d, head_c, pose, s)
+
+    def _draw_head_three_quarter(
+        self, d: ImageDraw.ImageDraw, c: Point, pose: AlicePose, s: float
+    ) -> None:
+        pal = ALICE_PALETTE
+        outline = pal["outline"]
+        cx, cy = c
+        tilt = pose.head_tilt * 0.15 * s
+        # Neck and rear hair cap.
+        _rounded(
+            d,
+            (cx - 3.8 * s, cy + 9.0 * s, cx + 3.8 * s, cy + 16.0 * s),
+            radius=2.0 * s,
+            fill=pal["skin_shadow"],
+            outline=outline,
+            width=round(0.8 * s),
+        )
+        _ellipse(
+            d,
+            _bbox(cx - 1.5 * s, cy - 1.0 * s, 27.0 * s, 30.0 * s),
+            fill=pal["hair"],
+            outline=outline,
+            width=round(1.1 * s),
+        )
+        # Face oval shifted camera-right.
+        _ellipse(
+            d,
+            _bbox(cx + 2.0 * s, cy + 1.0 * s, 21.0 * s, 25.0 * s),
+            fill=pal["skin"],
+            outline=outline,
+            width=round(1.0 * s),
+        )
+        # Ear and side lock.
+        _ellipse(
+            d,
+            _bbox(cx - 8.2 * s, cy + 1.5 * s, 4.3 * s, 6.0 * s),
+            fill=pal["skin_shadow"],
+            outline=outline,
+            width=round(0.8 * s),
+        )
+        fringe = [
+            (cx - 11.0 * s, cy - 10.0 * s),
+            (cx + 10.0 * s, cy - 11.0 * s),
+            (cx + 4.0 * s, cy - 2.5 * s),
+            (cx - 2.0 * s, cy - 5.2 * s),
+            (cx - 7.5 * s, cy + 1.5 * s),
+        ]
+        # Fill the fringe into the rear hair mass without outlining the shared
+        # edge.  A full polygon outline used to leave a cap/bangs seam that
+        # could read as a transparent gap after downsampling.
+        d.polygon([(round(x), round(y)) for x, y in fringe], fill=pal["hair"])
+        _line(
+            d,
+            [fringe[1], fringe[2], fringe[3], fringe[4]],
+            fill=outline,
+            width=round(1.0 * s),
+        )
+        _poly(
+            d,
             [
-                (c[0] + spec.head_w * 0.32 * S, c[1] + spec.head_h * 0.22 * S),
-                (c[0] + spec.head_w * 0.38 * S, c[1] + spec.head_h * 0.22 * S),
+                (cx - 8.0 * s, cy - 6.0 * s),
+                (cx - 4.5 * s, cy - 8.5 * s),
+                (cx - 5.0 * s, cy + 9.0 * s),
+                (cx - 9.0 * s, cy + 7.0 * s),
+            ],
+            fill=pal["hair_mid"],
+            outline=outline,
+            width=round(0.8 * s),
+        )
+        _line(
+            d,
+            [(cx - 4.0 * s, cy - 10.0 * s), (cx + 5.0 * s, cy - 9.0 * s)],
+            fill=pal["hair_light"],
+            width=round(1.2 * s),
+        )
+        # Hair tie / survey pin at braid root.
+        _ellipse(
+            d,
+            _bbox(cx - 9.5 * s, cy - 8.0 * s, 4.0 * s, 4.0 * s),
+            fill=pal["amber"],
+            outline=outline,
+            width=round(0.7 * s),
+        )
+
+        eye_y = cy - 0.5 * s + tilt
+        if pose.blink:
+            _line(
+                d,
+                [(cx - 2.8 * s, eye_y), (cx + 0.2 * s, eye_y + 0.2 * s)],
+                fill=outline,
+                width=round(1.0 * s),
+            )
+            _line(
+                d,
+                [(cx + 5.2 * s, eye_y - 0.2 * s), (cx + 8.1 * s, eye_y - 0.4 * s)],
+                fill=outline,
+                width=round(1.0 * s),
+            )
+        else:
+            for ex, scale in ((cx - 1.2 * s, 1.0), (cx + 6.5 * s, 0.92)):
+                _ellipse(
+                    d,
+                    _bbox(ex, eye_y, 3.4 * scale * s, 2.4 * s),
+                    fill=pal["white"],
+                    outline=outline,
+                    width=round(0.6 * s),
+                )
+                _ellipse(
+                    d,
+                    _bbox(ex + 0.45 * s, eye_y, 1.35 * s, 1.7 * s),
+                    fill=pal["eye"],
+                    outline=outline,
+                    width=round(0.35 * s),
+                )
+        # Assertive eyebrows, with the camera-near one slightly raised.
+        _line(
+            d,
+            [(cx - 3.0 * s, cy - 4.2 * s + tilt), (cx + 0.2 * s, cy - 4.7 * s + tilt)],
+            fill=outline,
+            width=round(1.2 * s),
+        )
+        _line(
+            d,
+            [(cx + 4.6 * s, cy - 4.8 * s + tilt), (cx + 8.5 * s, cy - 5.4 * s + tilt)],
+            fill=outline,
+            width=round(1.2 * s),
+        )
+        # Nose, cheek plane, and a small confident half-smile.
+        _line(
+            d,
+            [
+                (cx + 3.4 * s, cy + 0.3 * s),
+                (cx + 4.4 * s, cy + 3.0 * s),
+                (cx + 3.0 * s, cy + 3.2 * s),
+            ],
+            fill=pal["skin_shadow"],
+            width=round(0.8 * s),
+        )
+        _line(
+            d,
+            [
+                (cx + 2.0 * s, cy + 7.0 * s),
+                (cx + 5.0 * s, cy + 7.4 * s),
+                (cx + 7.0 * s, cy + 6.5 * s),
             ],
             fill=outline,
-            width=max(1, int(0.8 * S)),
+            width=round(0.9 * s),
         )
-        # Forward braid hangs over the camera-side shoulder.
-        braid_anchor_x = c[0] + spec.head_w * 0.16 * S
-        braid_anchor_y = c[1] + spec.head_h * 0.40 * S
-        for i in range(spec.braid_segments):
-            t_seg = i / float(spec.braid_segments - 1)
-            w = (4.2 - t_seg * 2.4) * S
-            dy = (2.0 + i * 5.0) * S
-            seg_c = (braid_anchor_x - t_seg * 3.0 * S, braid_anchor_y + dy)
-            d.ellipse(
-                _bbox(seg_c, w, 3.0 * S),
-                fill=pal["hair"],
+        _line(
+            d,
+            [(cx + 5.8 * s, cy + 7.5 * s), (cx + 7.2 * s, cy + 6.7 * s)],
+            fill=pal["route"],
+            width=round(0.6 * s),
+        )
+
+    # ------------------------------------------------------------------
+    # Front view for dialogue
+
+    def _draw_front(
+        self,
+        image: Image.Image,
+        cx: float,
+        feet_y: float,
+        spec: AliceSpec,
+        pose: AlicePose,
+        s: float,
+    ) -> None:
+        d = ImageDraw.Draw(image)
+        pal = ALICE_PALETTE
+        outline = pal["outline"]
+        boot_top = feet_y - spec.boot_h * s
+        shin_top = boot_top - spec.shin_h * s
+        hip_y = shin_top - spec.thigh_h * s
+        shoulder_y = hip_y - spec.torso_h * s
+        head_c = (cx, shoulder_y - 11.5 * s)
+
+        # Ponytail peeks behind one shoulder in the front view.
+        points = [
+            (cx - 10.0 * s - i * 0.8 * s, head_c[1] - 3.0 * s + i * 5.2 * s)
+            for i in range(spec.pony_segments)
+        ]
+        self._draw_braid(d, points, s)
+
+        # Legs and boots.
+        for sign in (-1, 1):
+            x = cx + sign * 5.5 * s
+            _poly(
+                d,
+                [
+                    (x - 3.7 * s, hip_y),
+                    (x + 3.7 * s, hip_y),
+                    (x + 3.0 * s, boot_top),
+                    (x - 3.0 * s, boot_top),
+                ],
+                fill=pal["trouser"] if sign > 0 else pal["trouser_dark"],
                 outline=outline,
-                width=max(1, int(0.9 * S)),
+                width=round(1.0 * s),
             )
-        # Ribbon tip.
-        tip_x = braid_anchor_x - 3.0 * S
-        tip_y = braid_anchor_y + (2.0 + (spec.braid_segments - 1) * 5.0 + 4.0) * S
-        d.rounded_rectangle(
-            (tip_x - 3.0 * S, tip_y - 1.5 * S, tip_x + 1.0 * S, tip_y + 1.3 * S),
-            radius=0.9 * S,
-            fill=pal["hair_band"],
-            outline=outline,
-            width=max(1, int(0.6 * S)),
+            _rounded(
+                d,
+                (x - 5.0 * s, boot_top - 1.0 * s, x + 5.0 * s, feet_y),
+                radius=2.3 * s,
+                fill=pal["boot"],
+                outline=outline,
+                width=round(1.0 * s),
+            )
+            _line(
+                d,
+                [(x - 4.0 * s, boot_top + 2.0 * s), (x + 4.0 * s, boot_top + 2.0 * s)],
+                fill=pal["boot_light"],
+                width=round(1.3 * s),
+            )
+
+        # Back arm cradles the route folio.
+        left_sh = (cx - 12.0 * s, shoulder_y + 4.0 * s)
+        left_elbow = (cx - 15.0 * s, shoulder_y + 18.0 * s)
+        left_hand = (cx - 9.5 * s, hip_y + 1.5 * s)
+        _line(d, [left_sh, left_elbow, left_hand], fill=outline, width=round(8.0 * s))
+        _line(
+            d,
+            [left_sh, left_elbow, left_hand],
+            fill=pal["jacket_dark"],
+            width=round(6.0 * s),
         )
+        _ellipse(
+            d,
+            _bbox(left_hand[0], left_hand[1], 5.0 * s, 5.0 * s),
+            fill=pal["skin"],
+            outline=outline,
+            width=round(0.8 * s),
+        )
+        self._draw_map_folio(
+            d, left_hand[0] - 2.0 * s, left_hand[1] + 2.0 * s, s, angle_hint=-0.2
+        )
+
+        # Clockwise, non-self-intersecting jacket silhouette.  The former
+        # point order doubled back across the upper torso, cutting a literal
+        # transparent triangle into every raised-hand talk pose.  Mild chest
+        # fullness and waist taper keep the body human without exaggeration.
+        torso = [
+            (cx - 13.5 * s, shoulder_y),
+            (cx + 13.5 * s, shoulder_y),
+            (cx + 12.9 * s, shoulder_y + 8.5 * s),
+            (cx + 10.4 * s, shoulder_y + 19.0 * s),
+            (cx + 11.5 * s, hip_y),
+            (cx - 11.5 * s, hip_y),
+            (cx - 10.4 * s, shoulder_y + 19.0 * s),
+            (cx - 12.9 * s, shoulder_y + 8.5 * s),
+        ]
+        _poly(d, torso, fill=pal["jacket"], outline=outline, width=round(1.2 * s))
+        _poly(
+            d,
+            [
+                (cx - 6.8 * s, shoulder_y),
+                (cx + 6.8 * s, shoulder_y),
+                (cx + 3.0 * s, shoulder_y + 8.0 * s),
+                (cx - 3.0 * s, shoulder_y + 8.0 * s),
+            ],
+            fill=pal["shirt"],
+            outline=outline,
+            width=round(0.9 * s),
+        )
+        _line(
+            d,
+            [(cx - 8.0 * s, shoulder_y + 2.0 * s), (cx + 8.0 * s, hip_y - 2.0 * s)],
+            fill=pal["leather_dark"],
+            width=round(4.0 * s),
+        )
+        _line(
+            d,
+            [(cx - 8.0 * s, shoulder_y + 2.0 * s), (cx + 8.0 * s, hip_y - 2.0 * s)],
+            fill=pal["leather"],
+            width=round(2.0 * s),
+        )
+        _line(
+            d,
+            [(cx + 7.5 * s, shoulder_y + 3.0 * s), (cx - 1.0 * s, hip_y - 1.5 * s)],
+            fill=pal["amber"],
+            width=round(1.7 * s),
+        )
+        # Author one shallow, continuous tailoring contour through a shared
+        # helper.  The same cue is used by every front and three-quarter frame,
+        # so it cannot blink in and out as the animation changes pose.
+        self._draw_front_bust_seam(d, cx, shoulder_y, s)
+        _rounded(
+            d,
+            (cx - 12.0 * s, hip_y - 3.0 * s, cx + 12.0 * s, hip_y + 2.0 * s),
+            radius=1.5 * s,
+            fill=pal["leather_dark"],
+            outline=outline,
+            width=round(0.8 * s),
+        )
+        self._draw_cipher_tape(d, cx + 3.2 * s, shoulder_y + 10.0 * s, s)
+        self._draw_compass(d, cx + 9.0 * s, hip_y + 3.0 * s, s)
+
+        # Talking hand: open palm and changing height make the animation legible.
+        right_sh = (cx + 12.0 * s, shoulder_y + 4.0 * s)
+        right_elbow = (cx + 17.0 * s, shoulder_y + 16.0 * s - 3.0 * pose.gesture * s)
+        right_hand = (
+            cx + 16.0 * s + 3.0 * pose.gesture * s,
+            shoulder_y + 27.0 * s - 11.0 * pose.gesture * s,
+        )
+        _line(
+            d, [right_sh, right_elbow, right_hand], fill=outline, width=round(8.0 * s)
+        )
+        _line(
+            d,
+            [right_sh, right_elbow, right_hand],
+            fill=pal["jacket"],
+            width=round(6.0 * s),
+        )
+        _ellipse(
+            d,
+            _bbox(right_hand[0], right_hand[1], 6.0 * s, 5.0 * s),
+            fill=pal["skin"],
+            outline=outline,
+            width=round(0.9 * s),
+        )
+        if pose.gesture > 0.35:
+            for dy in (-1.8, 0.0, 1.8):
+                _line(
+                    d,
+                    [
+                        (right_hand[0] + 1.5 * s, right_hand[1] + dy * s),
+                        (right_hand[0] + 4.0 * s, right_hand[1] + dy * 0.8 * s),
+                    ],
+                    fill=outline,
+                    width=round(0.55 * s),
+                )
+
+        self._draw_head_front(d, head_c, pose, s)
+
+    def _draw_head_front(
+        self, d: ImageDraw.ImageDraw, c: Point, pose: AlicePose, s: float
+    ) -> None:
+        pal = ALICE_PALETTE
+        outline = pal["outline"]
+        cx, cy = c
+        _rounded(
+            d,
+            (cx - 3.8 * s, cy + 9.0 * s, cx + 3.8 * s, cy + 16.0 * s),
+            radius=2.0 * s,
+            fill=pal["skin_shadow"],
+            outline=outline,
+            width=round(0.8 * s),
+        )
+        _ellipse(
+            d,
+            _bbox(cx, cy - 1.0 * s, 28.0 * s, 30.0 * s),
+            fill=pal["hair"],
+            outline=outline,
+            width=round(1.1 * s),
+        )
+        _ellipse(
+            d,
+            _bbox(cx, cy + 1.0 * s, 22.0 * s, 25.0 * s),
+            fill=pal["skin"],
+            outline=outline,
+            width=round(1.0 * s),
+        )
+        for sign in (-1, 1):
+            _ellipse(
+                d,
+                _bbox(cx + sign * 10.8 * s, cy + 1.5 * s, 4.0 * s, 5.5 * s),
+                fill=pal["skin_shadow"],
+                outline=outline,
+                width=round(0.7 * s),
+            )
+        # Asymmetric swept fringe, still recognizable from the front.
+        fringe = [
+            (cx - 13.0 * s, cy - 10.5 * s),
+            (cx + 11.0 * s, cy - 11.0 * s),
+            (cx + 4.0 * s, cy - 2.0 * s),
+            (cx - 1.0 * s, cy - 5.5 * s),
+            (cx - 8.5 * s, cy - 1.0 * s),
+        ]
+        d.polygon([(round(x), round(y)) for x, y in fringe], fill=pal["hair"])
+        _line(
+            d,
+            [fringe[1], fringe[2], fringe[3], fringe[4]],
+            fill=outline,
+            width=round(1.0 * s),
+        )
+        _line(
+            d,
+            [(cx - 5.0 * s, cy - 10.2 * s), (cx + 5.0 * s, cy - 9.2 * s)],
+            fill=pal["hair_light"],
+            width=round(1.1 * s),
+        )
+        _ellipse(
+            d,
+            _bbox(cx - 11.0 * s, cy - 7.5 * s, 4.0 * s, 4.0 * s),
+            fill=pal["amber"],
+            outline=outline,
+            width=round(0.7 * s),
+        )
+
+        eye_y = cy + 0.1 * s
+        if pose.blink:
+            for sign in (-1, 1):
+                _line(
+                    d,
+                    [(cx + sign * 3.0 * s, eye_y), (cx + sign * 7.0 * s, eye_y)],
+                    fill=outline,
+                    width=round(1.0 * s),
+                )
+        else:
+            for sign in (-1, 1):
+                ex = cx + sign * 5.0 * s
+                _ellipse(
+                    d,
+                    _bbox(ex, eye_y, 3.6 * s, 2.5 * s),
+                    fill=pal["white"],
+                    outline=outline,
+                    width=round(0.6 * s),
+                )
+                _ellipse(
+                    d,
+                    _bbox(ex + sign * 0.25 * s, eye_y, 1.4 * s, 1.8 * s),
+                    fill=pal["eye"],
+                    outline=outline,
+                    width=round(0.35 * s),
+                )
+        _line(
+            d,
+            [(cx - 7.0 * s, cy - 4.0 * s), (cx - 3.0 * s, cy - 4.7 * s)],
+            fill=outline,
+            width=round(1.2 * s),
+        )
+        _line(
+            d,
+            [(cx + 3.0 * s, cy - 4.7 * s), (cx + 7.0 * s, cy - 4.0 * s)],
+            fill=outline,
+            width=round(1.2 * s),
+        )
+        _line(
+            d,
+            [
+                (cx, cy + 1.0 * s),
+                (cx + 0.8 * s, cy + 4.0 * s),
+                (cx - 0.7 * s, cy + 4.3 * s),
+            ],
+            fill=pal["skin_shadow"],
+            width=round(0.8 * s),
+        )
+        mouth_y = cy + 8.0 * s
+        if pose.talk_open > 0.35:
+            _ellipse(
+                d,
+                _bbox(cx + 0.5 * s, mouth_y, 5.0 * s, (1.8 + 3.0 * pose.talk_open) * s),
+                fill=outline,
+                outline=outline,
+                width=round(0.7 * s),
+            )
+            _line(
+                d,
+                [(cx - 1.0 * s, mouth_y + 0.2 * s), (cx + 2.0 * s, mouth_y + 0.2 * s)],
+                fill=pal["route"],
+                width=round(0.7 * s),
+            )
+        else:
+            _line(
+                d,
+                [
+                    (cx - 2.0 * s, mouth_y),
+                    (cx + 1.0 * s, mouth_y + 0.5 * s),
+                    (cx + 3.0 * s, mouth_y - 0.3 * s),
+                ],
+                fill=outline,
+                width=round(0.9 * s),
+            )
+
+    # ------------------------------------------------------------------
+    # Profile views
+
+    def _draw_side(
+        self,
+        image: Image.Image,
+        cx: float,
+        feet_y: float,
+        spec: AliceSpec,
+        pose: AlicePose,
+        s: float,
+    ) -> None:
+        d = ImageDraw.Draw(image)
+        pal = ALICE_PALETTE
+        outline = pal["outline"]
+
+        base_boot_top = feet_y - spec.boot_h * s
+        base_shin_top = base_boot_top - spec.shin_h * s
+        base_hip_y = base_shin_top - spec.thigh_h * s
+        body_shift_y = pose.walk_body_y * s if pose.walk_index >= 0 else 0.0
+        hip_y = base_hip_y + body_shift_y
+        shoulder_y = hip_y - spec.torso_h * s
+        lean = 1.0 * pose.step * s if pose.walk_index >= 0 else 0.8 * pose.scan * s
+
+        # The profile head was drifting too far in front of the ribcage.  Keep
+        # the authored face geometry intact and translate the whole head/neck
+        # unit backward together so the ear, neck, and shoulder stack remain
+        # coherent instead of correcting those pieces independently.
+        head_back = -2.8 * s
+        head_c = (cx + 2.5 * s + lean + head_back, shoulder_y - 11.5 * s)
+
+        # Ponytail trails opposite motion; idle-side hangs with a subtle sweep.
+        trail = -3.2 * pose.step if pose.walk_index >= 0 else -1.5 - 1.2 * pose.scan
+        points = [
+            (
+                head_c[0] - 9.0 * s + trail * (i + 1) * 0.32 * s,
+                head_c[1] - 6.0 * s + i * 5.0 * s,
+            )
+            for i in range(spec.pony_segments)
+        ]
+        self._draw_braid(d, points, s)
+
+        # Alice faces screen-right, so her LEFT arm is the far/back arm.  Draw
+        # it before both the map tube and torso; it must never pop in front of
+        # the body as the walk cycles.  Both arms use the same stable
+        # screen-left elbow bend, avoiding the old inside-out joint poses.
+        # The shoulder joints sit under and slightly behind the neck.  Keeping
+        # them back prevents the profile from looking hunched or as though the
+        # arms have been pasted onto the front of the ribcage.
+        # The shoulder correction is a rigid translation of the complete
+        # arm chain.  In particular, idle-side targets must move with the
+        # shoulder; otherwise IK pulls the elbow and hand back toward the old
+        # forward location and makes the arm look detached.
+        # The far/back arm was pushed too far toward screen-left.  Bring its
+        # complete chain forward (screen-right) while leaving it behind the
+        # torso in z-order.  Shoulder, elbow solution, and hand target all use
+        # the same offset, so the arm remains connected.
+        far_arm_back = -1.4 * s
+        far_shoulder = (cx - 3.8 * s + lean + far_arm_back, shoulder_y + 4.0 * s)
+        if pose.walk_index >= 0:
+            far_swing = -pose.step
+            far_target = (
+                far_shoulder[0] + far_swing * 7.6 * s,
+                shoulder_y + 26.0 * s,
+            )
+        else:
+            far_target = (cx - 4.0 * s + lean + far_arm_back, hip_y + 1.0 * s)
+        far_elbow, far_hand = self._solve_two_bone_joint(
+            far_shoulder,
+            far_target,
+            13.2 * s,
+            13.0 * s,
+            bend_sign=-1.0,
+        )
+        self._draw_two_bone_limb(
+            d,
+            far_shoulder,
+            far_elbow,
+            far_hand,
+            s,
+            fill=pal["jacket_dark"],
+            width=5.5,
+        )
+        _ellipse(
+            d,
+            _bbox(far_hand[0], far_hand[1], 4.6 * s, 4.6 * s),
+            fill=pal["skin_shadow"],
+            outline=outline,
+            width=round(0.8 * s),
+        )
+
+        # Map tube sits on top of the far arm but behind the torso.
+        _rounded(
+            d,
+            (
+                cx - 12.0 * s + lean,
+                shoulder_y + 5.0 * s,
+                cx - 5.0 * s + lean,
+                hip_y + 14.0 * s,
+            ),
+            radius=3.0 * s,
+            fill=pal["leather_dark"],
+            outline=outline,
+            width=round(1.0 * s),
+        )
+        _line(
+            d,
+            [
+                (cx - 10.2 * s + lean, shoulder_y + 8.0 * s),
+                (cx - 7.0 * s + lean, hip_y + 10.0 * s),
+            ],
+            fill=pal["amber"],
+            width=round(1.0 * s),
+        )
+
+        # PCA-inspired eight-pose ankle targets.  The targets encode contact,
+        # down, passing, and up poses; two-bone IK keeps the leg lengths fixed
+        # and ensures both knees continue to bend toward screen-right.
+        if pose.walk_index >= 0:
+            index = pose.walk_index % 8
+            leg_len = (spec.thigh_h + spec.shin_h) * s
+            stride = leg_len * 0.285
+            lift_scale = leg_len * 0.145
+            far_x = (-0.82, -0.46, 0.04, 0.48, 0.62, 0.37, -0.10, -0.60)
+            near_x = (0.95, 0.50, 0.02, -0.43, -0.56, -0.30, 0.14, 0.64)
+            far_lift = (0.00, 0.00, 0.28, 0.08, 0.00, 1.00, 0.42, 0.10)
+            near_lift = (0.00, 0.35, 1.00, 0.12, 0.00, 0.00, 0.25, 0.06)
+            far_roll = (-0.5, -0.1, 0.3, 0.7, 0.2, -0.8, -0.3, 0.0)
+            near_roll = (0.2, -0.8, -0.3, 0.0, -0.5, -0.1, 0.3, 0.7)
+            far_ground = feet_y - far_lift[index] * lift_scale
+            near_ground = feet_y - near_lift[index] * lift_scale
+            far_ankle_target = (
+                cx + far_x[index] * stride + lean,
+                far_ground - 10.5 * s,
+            )
+            near_ankle_target = (
+                cx + near_x[index] * stride + lean,
+                near_ground - 10.5 * s,
+            )
+            far_foot_roll = far_roll[index]
+            near_foot_roll = near_roll[index]
+        else:
+            far_ground = feet_y
+            near_ground = feet_y
+            far_ankle_target = (cx - 1.6 * s + lean, feet_y - 10.5 * s)
+            near_ankle_target = (cx + 2.2 * s + lean, feet_y - 10.5 * s)
+            far_foot_roll = 0.0
+            near_foot_roll = 0.0
+
+        far_hip = (cx - 1.4 * s + lean, hip_y)
+        near_hip = (cx + 2.0 * s + lean, hip_y)
+        far_knee, far_ankle = self._solve_two_bone_joint(
+            far_hip,
+            far_ankle_target,
+            spec.thigh_h * s,
+            spec.shin_h * s,
+            bend_sign=1.0,
+        )
+        near_knee, near_ankle = self._solve_two_bone_joint(
+            near_hip,
+            near_ankle_target,
+            spec.thigh_h * s,
+            spec.shin_h * s,
+            bend_sign=1.0,
+        )
+
+        # Explicit far-then-near leg ordering keeps ownership stable through
+        # crossover frames.  Both remain behind the jacket/belt at the hips.
+        self._draw_two_bone_limb(
+            d,
+            far_hip,
+            far_knee,
+            far_ankle,
+            s,
+            fill=pal["trouser_dark"],
+            width=6.0,
+        )
+        self._draw_side_boot(
+            d,
+            far_ankle,
+            far_ground,
+            s,
+            near=False,
+            foot_roll=far_foot_roll,
+        )
+        self._draw_two_bone_limb(
+            d,
+            near_hip,
+            near_knee,
+            near_ankle,
+            s,
+            fill=pal["trouser"],
+            width=6.2,
+        )
+        self._draw_side_boot(
+            d,
+            near_ankle,
+            near_ground,
+            s,
+            near=True,
+            foot_roll=near_foot_roll,
+        )
+
+        # Draw the complete profile head before the jacket.  The jacket then
+        # owns the shoulder seam and covers the bottom of the neck/hair mass,
+        # which is the physically correct profile layering.  The face remains
+        # unobscured because it terminates above the shoulder line.
+        self._draw_head_side(d, head_c, pose, s)
+
+        # Jacket profile.
+        # Profile jacket: shoulder back beneath the neck, then a tiny forward
+        # chest curve, under-bust return, waist, and hip.  The change is only a
+        # few source pixels so Alice remains compact and athletic rather than
+        # becoming stylized around her bust.
+        torso = [
+            (cx - 6.2 * s + lean, shoulder_y),
+            (cx + 4.6 * s + lean, shoulder_y + 1.0 * s),
+            (cx + 6.8 * s + lean, shoulder_y + 5.5 * s),
+            (cx + 8.2 * s + lean, shoulder_y + 10.8 * s),
+            (cx + 7.1 * s + lean, shoulder_y + 15.3 * s),
+            (cx + 5.7 * s + lean, shoulder_y + 20.5 * s),
+            (cx + 7.6 * s + lean, hip_y),
+            (cx - 5.2 * s + lean, hip_y),
+        ]
+        _poly(d, torso, fill=pal["jacket"], outline=outline, width=round(1.2 * s))
+        _poly(
+            d,
+            [
+                (cx + 2.0 * s + lean, shoulder_y),
+                (cx + 5.8 * s + lean, shoulder_y + 1.0 * s),
+                (cx + 4.0 * s + lean, shoulder_y + 8.0 * s),
+            ],
+            fill=pal["shirt"],
+            outline=outline,
+            width=round(0.9 * s),
+        )
+        _line(
+            d,
+            [
+                (cx - 4.0 * s + lean, shoulder_y + 2.0 * s),
+                (cx + 7.0 * s + lean, hip_y - 1.0 * s),
+            ],
+            fill=pal["leather_dark"],
+            width=round(4.0 * s),
+        )
+        _line(
+            d,
+            [
+                (cx - 4.0 * s + lean, shoulder_y + 2.0 * s),
+                (cx + 7.0 * s + lean, hip_y - 1.0 * s),
+            ],
+            fill=pal["leather"],
+            width=round(2.0 * s),
+        )
+        _line(
+            d,
+            [
+                (cx + 7.0 * s + lean, shoulder_y + 7.0 * s),
+                (cx + 6.2 * s + lean, hip_y - 4.0 * s),
+            ],
+            fill=pal["jacket_light"],
+            width=round(1.0 * s),
+        )
+        _rounded(
+            d,
+            (
+                cx - 6.0 * s + lean,
+                hip_y - 3.0 * s,
+                cx + 9.0 * s + lean,
+                hip_y + 2.0 * s,
+            ),
+            radius=1.4 * s,
+            fill=pal["leather_dark"],
+            outline=outline,
+            width=round(0.8 * s),
+        )
+        self._draw_compass(d, cx + 8.0 * s + lean, hip_y + 3.0 * s, s * 0.85)
+
+        # Near/right arm stays in front of the torso.  It shares the same
+        # backward elbow solution as the far arm, while the hand target swings
+        # opposite the near leg.  idle_side raises the folio without inverting
+        # the elbow.
+        # The near/front arm still sat too far toward Alice's chest.  Move its
+        # complete chain farther toward screen-left (her back).  This offset is
+        # intentionally independent of the far arm: profile overlap needs the
+        # far arm slightly forward and the near arm slightly back.
+        near_arm_back = -7.2 * s
+        near_shoulder = (cx + 7.0 * s + lean + near_arm_back, shoulder_y + 4.0 * s)
+        if pose.walk_index >= 0:
+            near_target = (
+                near_shoulder[0] + pose.step * 8.0 * s,
+                shoulder_y + 26.0 * s,
+            )
+        else:
+            near_target = (
+                cx + 14.0 * s + lean + near_arm_back,
+                shoulder_y + 21.0 * s - pose.scan * 2.0 * s,
+            )
+        near_elbow, near_hand = self._solve_two_bone_joint(
+            near_shoulder,
+            near_target,
+            13.5 * s,
+            13.0 * s,
+            bend_sign=-1.0,
+        )
+        self._draw_two_bone_limb(
+            d,
+            near_shoulder,
+            near_elbow,
+            near_hand,
+            s,
+            fill=pal["jacket"],
+            width=6.0,
+        )
+        _ellipse(
+            d,
+            _bbox(near_hand[0], near_hand[1], 5.2 * s, 5.2 * s),
+            fill=pal["skin"],
+            outline=outline,
+            width=round(0.9 * s),
+        )
+        if pose.walk_index < 0:
+            self._draw_map_folio(
+                d,
+                near_hand[0] + 3.2 * s,
+                near_hand[1] - 1.5 * s,
+                s * 0.9,
+                angle_hint=0.25,
+            )
+
+    def _draw_head_side(
+        self, d: ImageDraw.ImageDraw, c: Point, pose: AlicePose, s: float
+    ) -> None:
+        pal = ALICE_PALETTE
+        outline = pal["outline"]
+        cx, cy = c
+        _rounded(
+            d,
+            (cx - 3.5 * s, cy + 9.0 * s, cx + 3.5 * s, cy + 16.0 * s),
+            radius=2.0 * s,
+            fill=pal["skin_shadow"],
+            outline=outline,
+            width=round(0.8 * s),
+        )
+        # Restore the full rear skull mass from the earlier profile.  The
+        # previous polish accidentally narrowed the crown/back of the head
+        # while trying to repair only the lower hair edge.  Keep the generous
+        # rear silhouette and fix the actual problem at the nape instead.
+        _ellipse(
+            d,
+            _bbox(cx - 3.0 * s, cy - 1.0 * s, 25.0 * s, 29.0 * s),
+            fill=pal["hair"],
+            outline=outline,
+            width=round(1.1 * s),
+        )
+
+        # Fix only the lower side lock.  It falls nearly vertically behind the
+        # ear and neck, then disappears beneath the jacket.  It is painted
+        # before the face so the cheek/jaw cleanly own the foreground edge;
+        # there is no forward hook that can curl back into or eat the head.
+        nape_drape = [
+            (cx - 8.2 * s, cy - 5.0 * s),
+            (cx - 5.0 * s, cy - 6.4 * s),
+            (cx - 4.8 * s, cy + 4.8 * s),
+            (cx - 5.8 * s, cy + 10.5 * s),
+            (cx - 7.8 * s, cy + 12.5 * s),
+            (cx - 9.0 * s, cy + 6.0 * s),
+        ]
+        d.polygon([(round(x), round(y)) for x, y in nape_drape], fill=pal["hair_mid"])
+        _line(
+            d,
+            [nape_drape[1], nape_drape[2], nape_drape[3], nape_drape[4]],
+            fill=outline,
+            width=round(0.8 * s),
+        )
+
+        # The face cuts cleanly across the front of the rear hair mass.  Its
+        # rear cheek/jaw points remain far enough back that the cranium reads
+        # as full rather than flattened.
+        face = [
+            (cx - 7.0 * s, cy - 9.5 * s),
+            (cx + 6.0 * s, cy - 8.0 * s),
+            (cx + 8.5 * s, cy - 2.0 * s),
+            (cx + 12.0 * s, cy + 0.5 * s),
+            (cx + 8.5 * s, cy + 3.0 * s),
+            (cx + 9.5 * s, cy + 6.0 * s),
+            (cx + 5.0 * s, cy + 10.5 * s),
+            (cx - 5.5 * s, cy + 8.0 * s),
+            (cx - 8.0 * s, cy),
+        ]
+        _poly(d, face, fill=pal["skin"], outline=outline, width=round(1.0 * s))
+
+        # Ear remains visible between the swept fringe and the rear drape.
+        _ellipse(
+            d,
+            _bbox(cx - 5.6 * s, cy + 0.5 * s, 3.5 * s, 5.2 * s),
+            fill=pal["skin_shadow"],
+            outline=outline,
+            width=round(0.65 * s),
+        )
+
+        # Bangs overlap the crown by several pixels.  Only the exposed lower
+        # hairline gets an outline, so there is no cap seam or alpha slit where
+        # the fringe joins the main hair mass.
+        fringe = [
+            (cx - 9.5 * s, cy - 10.8 * s),
+            (cx + 7.0 * s, cy - 10.3 * s),
+            (cx + 3.8 * s, cy - 2.5 * s),
+            (cx - 1.8 * s, cy - 5.2 * s),
+            (cx - 6.7 * s, cy + 0.4 * s),
+        ]
+        d.polygon([(round(x), round(y)) for x, y in fringe], fill=pal["hair"])
+        _line(
+            d,
+            [fringe[1], fringe[2], fringe[3], fringe[4]],
+            fill=outline,
+            width=round(1.0 * s),
+        )
+
+        _line(
+            d,
+            [(cx - 4.0 * s, cy - 10.0 * s), (cx + 3.0 * s, cy - 8.8 * s)],
+            fill=pal["hair_light"],
+            width=round(1.1 * s),
+        )
+        _ellipse(
+            d,
+            _bbox(cx - 9.0 * s, cy - 7.0 * s, 4.0 * s, 4.0 * s),
+            fill=pal["amber"],
+            outline=outline,
+            width=round(0.7 * s),
+        )
+
+        eye = (cx + 4.8 * s, cy - 0.5 * s)
+        if pose.blink:
+            _line(
+                d,
+                [(eye[0] - 1.5 * s, eye[1]), (eye[0] + 1.8 * s, eye[1])],
+                fill=outline,
+                width=round(1.0 * s),
+            )
+        else:
+            _ellipse(
+                d,
+                _bbox(eye[0], eye[1], 3.5 * s, 2.4 * s),
+                fill=pal["white"],
+                outline=outline,
+                width=round(0.6 * s),
+            )
+            _ellipse(
+                d,
+                _bbox(eye[0] + 0.5 * s, eye[1], 1.4 * s, 1.8 * s),
+                fill=pal["eye"],
+                outline=outline,
+                width=round(0.35 * s),
+            )
+        _line(
+            d,
+            [(cx + 2.5 * s, cy - 4.3 * s), (cx + 7.0 * s, cy - 5.0 * s)],
+            fill=outline,
+            width=round(1.2 * s),
+        )
+        _line(
+            d,
+            [(cx + 6.0 * s, cy + 7.0 * s), (cx + 9.0 * s, cy + 6.6 * s)],
+            fill=outline,
+            width=round(0.9 * s),
+        )
+
+
+__all__ = ["AliceCryptographerGenerator", "AliceSpec", "AlicePose", "AliceView"]
