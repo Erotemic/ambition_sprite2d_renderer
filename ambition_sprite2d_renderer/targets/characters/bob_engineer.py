@@ -1,133 +1,111 @@
-"""Bespoke target for Bob — practical key/hardware engineer.
+"""Procedural sprite target for Bob, the cryptography crew's hardware engineer.
 
-This is the second bespoke template after `trent_elder`. The design
-goals carry over (no stick-figure capsule limbs, integrated rather
-than applied costume) and add one new capability that Trent didn't
-need:
+Bob is not a generic workshop NPC with a few tiny tools pasted onto him.  He is
+Alice's peer: a capable field engineer who can cut a key, rebuild a lock, probe a
+cipher machine, and keep moving when the job leaves the lab.  The redesign uses
+one coherent silhouette in every view:
 
-  - **Multi-view rendering.** Bob is drawn in three distinct views
-    depending on the animation: a default **three-quarter** view
-    (camera-right facing, used for canonical previews + idle), a
-    **side profile** view (used for walking — feet pointing forward,
-    one shoulder forward, head in pure profile), and a **front**
-    view (used for talking + interact — Bob looks straight at the
-    camera). The animation table picks the view; per-view draw
-    functions handle the geometry differences.
+* broad but human shoulders, rolled work sleeves, and a fitted utility vest;
+* a compact cross-body hardware satchel and readable key/tool hardware;
+* safety glasses pushed onto his forehead rather than a costume hard-hat;
+* a short tousled haircut, sideburns, and a close beard that stay coherent in
+  front, three-quarter, and profile views;
+* planted work boots and an authored eight-pose PCA-style walk cycle;
+* a portable lock/cipher analyzer for the interaction animation.
 
-Improvements layered on top of the trent_elder lessons:
-
-  - **Smoother head.** Trent's polygonal head was a touch flat-
-    topped. Bob's head is an ellipse with separate jaw + chin
-    primitives so the silhouette has a softer organic read.
-  - **Visible legs.** Bob is a workshop figure, not a robed elder.
-    He gets actual leg primitives below the vest, ending in
-    workboots — not a stick-figure capsule pair, but two segmented
-    tapered shapes with a knee bend in walk frames.
-  - **Tool belt.** A wrap-around belt with three hanging tools
-    (key ring, wrench, hammer) — gives him a distinct silhouette
-    at the waist that none of the toon or trent_elder figures have.
-  - **Per-view face geometry.** Front-view eyes vs side-view eyes
-    vs three-quarter eyes are all drawn differently rather than
-    hacking the same eye block. Profile face has only one visible
-    eye, a clearly drawn ear, and a forward-pointing nose; front
-    face is symmetric.
-
-Single-archetype today (`bob`). The shape vocabulary (head + jaw +
-vest + belt + legs + boots) is exposed as constants so future
-"engineer batch 2" characters could reuse it.
+The runtime-facing animation vocabulary is unchanged: ``idle``, ``walk``,
+``talk``, ``interact``, ``idle_front``, and ``idle_side``.  The renderer never
+paints a ground ellipse or drop shadow; scene lighting and contact belong to the
+game renderer, not the sprite texture.
 """
 
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from enum import Enum
+from typing import Dict, Iterable, Optional, Sequence, Tuple
+
+from PIL import Image, ImageDraw
 
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
-from enum import Enum
-from typing import Dict, Optional, Tuple
-
-from PIL import Image, ImageColor, ImageDraw
-from ambition_sprite2d_renderer.core.draw import rgba, bbox_from_center as _bbox
+from ambition_sprite2d_renderer.core.draw import rgba
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
-
-
 
 
 def parse_background(value: str) -> Optional[Color]:
     return None if str(value).lower() == "transparent" else rgba(str(value))
 
 
-
-
-def _scale_color(color: Color, factor: float) -> Color:
+def _scaled(color: Color, factor: float) -> Color:
     return (
-        int(max(0, min(255, color[0] * factor))),
-        int(max(0, min(255, color[1] * factor))),
-        int(max(0, min(255, color[2] * factor))),
+        max(0, min(255, round(color[0] * factor))),
+        max(0, min(255, round(color[1] * factor))),
+        max(0, min(255, round(color[2] * factor))),
         color[3],
     )
 
 
-# ── Palette ──────────────────────────────────────────────────────────────────
-
 BOB_PALETTE: Dict[str, Color] = {
-    # Deeper warm-olive skin so Bob reads as distinctly different
-    # from Alice's lighter peach (#E5C5A6) and Trent's mid-tan
-    # (#C9A78B). The skin_shadow uses the same hue rotated darker
-    # so the 5 o'clock stubble has obvious contrast against the
-    # face without going purple-grey.
-    "skin": rgba("#B58968"),
-    "skin_shadow": rgba("#7E5A3C"),
-    "hair": rgba("#3D2B22"),
-    "hair_shine": rgba("#6A4B3A"),
-    # Workshop vest — warm tan over a slate-blue tee.
-    "vest": rgba("#9D7548"),
-    "vest_dark": rgba("#6A4C2A"),
-    "vest_light": rgba("#B98D60"),
-    "tee": rgba("#3D5A78"),
-    "tee_dark": rgba("#243A53"),
-    # Safety-yellow reflective stripe + accents.
-    "hi_vis": rgba("#F2C752"),
-    "hi_vis_dark": rgba("#A47616"),
-    # Trousers + boots in grimy work tones.
-    "pants": rgba("#2D2B2A"),
-    "pants_shadow": rgba("#1B1A19"),
-    "boot": rgba("#1A1614"),
-    "boot_sole": rgba("#0B0908"),
-    # Tool belt + tools (brass and steel).
-    "leather": rgba("#5A3C20"),
-    "leather_dark": rgba("#2F1E0E"),
-    "steel": rgba("#B0B2B6"),
-    "steel_dark": rgba("#5B5C60"),
-    "brass": rgba("#D89A3A"),
-    "brass_dark": rgba("#8C5E18"),
-    "white": rgba("#FBF0DC"),
-    "outline": rgba("#1A130E"),
-    "shadow": rgba("#000000", 50),
+    "outline": rgba("#11100F"),
+    "skin": rgba("#B98A68"),
+    "skin_light": rgba("#D3A583"),
+    "skin_shadow": rgba("#855C43"),
+    "hair": rgba("#2B201B"),
+    "hair_mid": rgba("#49352B"),
+    "hair_light": rgba("#765445"),
+    "beard": rgba("#4A3329"),
+    "beard_dark": rgba("#2A1D19"),
+    "shirt": rgba("#355A79"),
+    "shirt_dark": rgba("#213A51"),
+    "shirt_light": rgba("#5A819E"),
+    "vest": rgba("#9E7245"),
+    "vest_dark": rgba("#654529"),
+    "vest_light": rgba("#C49662"),
+    "reinforce": rgba("#4C3929"),
+    "hi_vis": rgba("#E6BC47"),
+    "hi_vis_dark": rgba("#92701F"),
+    "pants": rgba("#30343A"),
+    "pants_dark": rgba("#1D2228"),
+    "pants_light": rgba("#4D535B"),
+    "boot": rgba("#241C18"),
+    "boot_light": rgba("#5B4032"),
+    "boot_sole": rgba("#0D0B0A"),
+    "leather": rgba("#704427"),
+    "leather_light": rgba("#A86A3A"),
+    "leather_dark": rgba("#3B2518"),
+    "steel": rgba("#BFC4C8"),
+    "steel_dark": rgba("#596169"),
+    "brass": rgba("#D89A3C"),
+    "brass_light": rgba("#F0C66B"),
+    "brass_dark": rgba("#825315"),
+    "glass": rgba("#A8D7D9"),
+    "glass_dark": rgba("#39747B"),
+    "device": rgba("#D9D3BD"),
+    "device_dark": rgba("#77715F"),
+    "device_screen": rgba("#4AB0A0"),
+    "indicator": rgba("#D45A45"),
+    "white": rgba("#F8F1E4"),
+    "eye": rgba("#2A211D"),
 }
 
 
 class BobView(str, Enum):
-    """Which side of Bob is facing the camera."""
-
     THREE_QUARTER = "three_quarter"
-    SIDE = "side"
     FRONT = "front"
+    SIDE = "side"
 
 
-# Each animation locks a view; the runtime never needs to ask the
-# question "which way is Bob facing in this clip?" — the view is
-# encoded into the animation name + this table.
 ANIMATION_VIEWS: Dict[str, BobView] = {
     "idle": BobView.THREE_QUARTER,
-    "walk": BobView.SIDE,  # ← side profile walking
-    "talk": BobView.FRONT,  # ← facing camera
-    "interact": BobView.FRONT,  # ← facing camera, examining
-    "idle_front": BobView.FRONT,  # ← extra: front idle for dialog
-    "idle_side": BobView.SIDE,  # ← extra: side idle for crowd shots
+    "walk": BobView.SIDE,
+    "talk": BobView.FRONT,
+    "interact": BobView.FRONT,
+    "idle_front": BobView.FRONT,
+    "idle_side": BobView.SIDE,
 }
 
 
@@ -139,63 +117,136 @@ class BobSpec:
     name: str
     role: str
     palette_name: str
-    # All measurements in design units (~1px at 128px canvas).
-    head_w: float = 26.0
-    head_h: float = 28.0
-    head_depth: float = 22.0  # used for side-view head ellipse
-    jaw_h: float = 6.0
-    # Head sits ~2.5 design units above the shoulder yoke; a short
-    # neck polygon fills that gap. Was 4.0 + 0.55 (a 5+ unit gap
-    # that read as a floating head); 2.5 + 0.50 keeps a visible
-    # neck strip without making the head look attached at the
-    # collarbone.
-    neck_h: float = 2.5
-    head_anchor: float = 0.50  # fraction of head_h above shoulder_y
-    neck_w: float = 7.0  # width of the visible neck skin polygon
-    shoulder_w: float = 36.0
-    chest_h: float = 20.0
-    vest_h: float = 26.0
-    waist_w: float = 26.0
-    hip_w: float = 28.0
-    leg_h: float = 28.0
-    leg_w: float = 8.0
-    boot_w: float = 11.0
-    boot_h: float = 6.0
-    arm_len: float = 24.0
-    arm_w: float = 6.0
-    cuff_w: float = 5.5
+    head_w: float = 25.0
+    head_h: float = 27.5
+    shoulder_w: float = 32.0
+    torso_h: float = 29.0
+    waist_w: float = 23.0
+    hip_w: float = 25.0
+    thigh_h: float = 18.0
+    shin_h: float = 18.0
+    boot_h: float = 9.0
+    arm_upper: float = 13.5
+    arm_lower: float = 13.0
 
 
 @dataclass
 class BobPose:
-    view: BobView = BobView.THREE_QUARTER
+    view: BobView
     body_bob: float = 0.0
     head_tilt: float = 0.0
-    arm_lift: float = 0.0
-    # Walk-specific: step phase in [-1, +1]. +1 means the camera-side
-    # leg is forward, -1 means back. Used only by the SIDE view.
-    step_phase: float = 0.0
-    talk_open: float = 0.0
     blink: bool = False
-    hold_keys: bool = True
+    talk_open: float = 0.0
+    gesture: float = 0.0
+    interact: float = 0.0
+    scan: float = 0.0
+    walk_index: int = -1
+    walk_body_y: float = 0.0
+    step: float = 0.0
+
+
+def _bbox(
+    cx: float, cy: float, w: float, h: float
+) -> Tuple[float, float, float, float]:
+    return (cx - w / 2.0, cy - h / 2.0, cx + w / 2.0, cy + h / 2.0)
+
+
+def _poly(
+    d: ImageDraw.ImageDraw,
+    points: Sequence[Point],
+    *,
+    fill: Color,
+    outline: Color,
+    width: int,
+) -> None:
+    pts = [(round(x), round(y)) for x, y in points]
+    d.polygon(pts, fill=fill)
+    d.line([*pts, pts[0]], fill=outline, width=max(1, width), joint="curve")
+
+
+def _line(
+    d: ImageDraw.ImageDraw,
+    points: Iterable[Point],
+    *,
+    fill: Color,
+    width: int,
+) -> None:
+    d.line(
+        [(round(x), round(y)) for x, y in points],
+        fill=fill,
+        width=max(1, width),
+        joint="curve",
+    )
+
+
+def _ellipse(
+    d: ImageDraw.ImageDraw,
+    box: Tuple[float, float, float, float],
+    *,
+    fill: Color,
+    outline: Optional[Color] = None,
+    width: int = 1,
+) -> None:
+    d.ellipse(
+        tuple(round(v) for v in box),
+        fill=fill,
+        outline=outline,
+        width=max(1, width),
+    )
+
+
+def _rounded(
+    d: ImageDraw.ImageDraw,
+    box: Tuple[float, float, float, float],
+    *,
+    radius: float,
+    fill: Color,
+    outline: Optional[Color] = None,
+    width: int = 1,
+) -> None:
+    d.rounded_rectangle(
+        tuple(round(v) for v in box),
+        radius=max(1, round(radius)),
+        fill=fill,
+        outline=outline,
+        width=max(1, width),
+    )
 
 
 class BobEngineerGenerator(CharacterGenerator):
-    """Bespoke geometry for Bob with three view modes."""
-
+    name = "bob_engineer"
     target = "bob_engineer"
     applies_job_name = True
 
-    name = "bob_engineer"
-
     ANIMATIONS: Dict[str, Dict[str, int]] = {
         "idle": {"frames": 6, "duration_ms": 140},
-        "walk": {"frames": 8, "duration_ms": 100},
+        "walk": {"frames": 8, "duration_ms": 95},
         "talk": {"frames": 6, "duration_ms": 110},
         "interact": {"frames": 6, "duration_ms": 130},
         "idle_front": {"frames": 6, "duration_ms": 140},
         "idle_side": {"frames": 6, "duration_ms": 140},
     }
+
+    def build_spec(self, job: CharacterJob) -> BobSpec:
+        if job.archetype != "bob":
+            raise KeyError(
+                f"bob_engineer ships only the 'bob' archetype; got {job.archetype!r}"
+            )
+        return BobSpec(
+            target=self.name,
+            seed=job.seed,
+            archetype=job.archetype,
+            name="Bob",
+            role="npc",
+            palette_name="bob_field_hardware_engineer",
+        )
+
+    def canonical_pose(self) -> Tuple[str, int]:
+        return ("idle", 1)
+
+    def body_inset(self) -> Dict[str, float]:
+        # The satchel, carried keys, and analyzer are silhouette extensions.
+        return {"left": 0.07, "right": 0.07, "top": 0.02, "bottom": 0.0}
 
     def render_frame(
         self,
@@ -217,59 +268,57 @@ class BobEngineerGenerator(CharacterGenerator):
             downsample=job.render.downsample,
         )
 
-    def build_spec(self, job: CharacterJob) -> BobSpec:
-        seed, archetype = job.seed, job.archetype
-        if archetype != "bob":
-            raise KeyError(
-                f"bob_engineer target only ships 'bob' archetype; got {archetype!r}. "
-                f"Add a per-character archetype + proportions if you want to "
-                f"re-use the engineer geometry for another character."
-            )
-        return BobSpec(
-            target=self.name,
-            seed=seed,
-            archetype=archetype,
-            name="Bob",
-            role="npc",
-            palette_name="bob",
-        )
-
-    # --- pose -----------------------------------------------------------------
-
-    def pose_for_animation(
-        self, animation: str, frame_index: int, frame_count: int
-    ) -> BobPose:
-        view = ANIMATION_VIEWS.get(animation, BobView.THREE_QUARTER)
-        p = BobPose(view=view)
-        t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
+    def pose_for_animation(self, animation: str, frame: int, count: int) -> BobPose:
+        t = 0.0 if count <= 1 else frame / float(count - 1)
         wave = math.sin(t * math.tau)
-        if animation == "idle" or animation == "idle_front" or animation == "idle_side":
-            p.body_bob = wave * 0.6
-            p.head_tilt = wave * 1.4
-            # Blink on the last frame of each loop.
-            p.blink = frame_index == frame_count - 1
+        half = math.sin(t * math.pi)
+        pose = BobPose(view=ANIMATION_VIEWS.get(animation, BobView.THREE_QUARTER))
+        if animation == "idle":
+            pose.body_bob = 0.4 * wave
+            pose.head_tilt = 0.7 * wave
+            pose.scan = 0.18 * wave
+            pose.blink = frame == count - 1
         elif animation == "walk":
-            # SIDE view walk — step_phase drives leg + arm swing.
-            # Offset the phase by a quarter cycle so frame 0 is at
-            # a clear stride peak (step_phase = sin(pi/2) = +1), not
-            # the neutral midpoint (step_phase = sin(0) = 0). Spot
-            # checks of frame 0 should show a real walking pose so
-            # the spritesheet preview is honest about motion.
-            phase_wave = math.sin((t + 0.25) * math.tau)
-            p.step_phase = phase_wave
-            p.body_bob = abs(phase_wave) * 1.0
-            # Subtle counter-tilt of head with the gait.
-            p.head_tilt = -phase_wave * 1.0
+            index = frame % 8
+            pose.walk_index = index
+            pose.step = (-1.0, -0.62, -0.18, 0.52, 1.0, 0.58, 0.08, -0.55)[index]
+            pose.walk_body_y = (
+                0.0,
+                1.15,
+                0.35,
+                -0.65,
+                0.0,
+                1.15,
+                0.35,
+                -0.65,
+            )[index]
+            pose.head_tilt = (
+                0.3,
+                0.08,
+                -0.12,
+                -0.28,
+                -0.3,
+                -0.08,
+                0.12,
+                0.28,
+            )[index]
         elif animation == "talk":
-            p.talk_open = (0.5 + 0.5 * wave) * 0.9
-            p.head_tilt = wave * 1.2
-            p.arm_lift = max(0.0, math.sin(t * math.pi)) * 0.5
+            pose.body_bob = 0.22 * wave
+            pose.talk_open = 0.12 + 0.88 * (0.5 + 0.5 * wave)
+            pose.gesture = max(0.0, half)
+            pose.head_tilt = 0.75 * wave
+            pose.blink = frame == count - 1
         elif animation == "interact":
-            p.arm_lift = math.sin(t * math.pi) * 1.0
-            p.head_tilt = wave * 0.4
-        return p
-
-    # --- top-level frame ------------------------------------------------------
+            pose.body_bob = -0.25 * half
+            pose.interact = max(0.0, half)
+            pose.scan = wave
+            pose.head_tilt = -0.8 * half
+        elif animation in {"idle_front", "idle_side"}:
+            pose.body_bob = 0.35 * wave
+            pose.head_tilt = 0.55 * wave
+            pose.scan = 0.25 * wave
+            pose.blink = frame == count - 1
+        return pose
 
     def render_animation_frame(
         self,
@@ -279,1339 +328,1688 @@ class BobEngineerGenerator(CharacterGenerator):
         frame_count: int,
         size: Tuple[int, int],
         *,
-        background: Optional[Color] = None,
-        supersample: int = 4,
-        downsample: str = "lanczos",
+        background: Optional[Color],
+        supersample: int,
+        downsample: str,
     ) -> Image.Image:
-        W, H = size
+        del downsample
+        width, height = size
         ss = max(1, int(supersample))
-        img = Image.new("RGBA", (W * ss, H * ss), background or (0, 0, 0, 0))
-        S = (W / 128.0) * ss
-        pal = BOB_PALETTE
+        image = Image.new(
+            "RGBA",
+            (width * ss, height * ss),
+            background or (0, 0, 0, 0),
+        )
+        scale = (width / 128.0) * ss
         pose = self.pose_for_animation(animation, frame_index, frame_count)
-
-        cx = 64.0 * S
-        feet_y = 116.0 * S + pose.body_bob * S
-        # No drop shadow — the in-game renderer composites characters
-        # over scene geometry that already provides ground contact,
-        # and the baked-in shadow ellipse fought camera angles and
-        # transparent backgrounds for review previews.
-
-        if pose.view == BobView.SIDE:
-            self._render_side(img, cx, feet_y, spec, pal, S, pose)
-        elif pose.view == BobView.FRONT:
-            self._render_front(img, cx, feet_y, spec, pal, S, pose)
+        cx = 64.0 * scale
+        feet_y = (117.0 + pose.body_bob) * scale
+        if pose.view is BobView.FRONT:
+            self._draw_front(image, cx, feet_y, spec, pose, scale)
+        elif pose.view is BobView.SIDE:
+            self._draw_side(image, cx, feet_y, spec, pose, scale)
         else:
-            self._render_three_quarter(img, cx, feet_y, spec, pal, S, pose)
-
+            self._draw_three_quarter(image, cx, feet_y, spec, pose, scale)
         if ss > 1:
-            img = img.resize((W, H), Image.LANCZOS)
-        return img
+            image = image.resize((width, height), Image.Resampling.LANCZOS)
+        return image
 
-    # ─────────────────────────────────────────────────────────────────
-    # THREE-QUARTER view — default canonical pose, idle.
-    # ─────────────────────────────────────────────────────────────────
+    # ------------------------------------------------------------------
+    # Shared mechanics and props
 
-    def _render_three_quarter(
+    def _solve_two_bone_joint(
         self,
-        base: Image.Image,
-        cx: float,
-        feet_y: float,
-        spec: BobSpec,
-        pal: Dict[str, Color],
-        S: float,
-        pose: BobPose,
+        root: Point,
+        target: Point,
+        upper_len: float,
+        lower_len: float,
+        *,
+        bend_sign: float,
+    ) -> Tuple[Point, Point]:
+        dx = target[0] - root[0]
+        dy = target[1] - root[1]
+        distance = math.hypot(dx, dy)
+        min_reach = abs(upper_len - lower_len) + 1e-4
+        max_reach = max(min_reach + 1e-4, upper_len + lower_len - 1e-4)
+        clamped = max(min_reach, min(max_reach, distance))
+        if distance > 1e-6 and clamped != distance:
+            ratio = clamped / distance
+            target = (root[0] + dx * ratio, root[1] + dy * ratio)
+            dx = target[0] - root[0]
+            dy = target[1] - root[1]
+        base = math.atan2(dy, dx)
+        cosine = (upper_len * upper_len + clamped * clamped - lower_len * lower_len) / (
+            2.0 * upper_len * clamped
+        )
+        offset = math.acos(max(-1.0, min(1.0, cosine)))
+        angle = base - bend_sign * offset
+        joint = (
+            root[0] + math.cos(angle) * upper_len,
+            root[1] + math.sin(angle) * upper_len,
+        )
+        return joint, target
+
+    def _draw_two_bone_limb(
+        self,
+        d: ImageDraw.ImageDraw,
+        root: Point,
+        joint: Point,
+        end: Point,
+        s: float,
+        *,
+        fill: Color,
+        width: float,
     ) -> None:
-        # Anchor stack from feet up.
-        boot_top_y = feet_y - spec.boot_h * S
-        pants_top_y = boot_top_y - spec.leg_h * S
-        waist_y = pants_top_y - 2.0 * S
-        vest_top_y = waist_y - spec.vest_h * S
-        shoulder_y = vest_top_y - 4.0 * S
-        head_center = (
-            cx + 2.0 * S,
-            shoulder_y - spec.head_h * spec.head_anchor * S - spec.neck_h * S,
+        outline = BOB_PALETTE["outline"]
+        _line(d, [root, joint, end], fill=outline, width=round((width + 2.1) * s))
+        _line(d, [root, joint, end], fill=fill, width=round(width * s))
+
+    def _draw_hand(
+        self,
+        d: ImageDraw.ImageDraw,
+        center: Point,
+        s: float,
+        *,
+        width: float = 5.4,
+        height: float = 5.2,
+    ) -> None:
+        pal = BOB_PALETTE
+        _ellipse(
+            d,
+            _bbox(center[0], center[1], width * s, height * s),
+            fill=pal["skin"],
+            outline=pal["outline"],
+            width=round(0.9 * s),
         )
 
-        self._tq_draw_legs(
-            base, cx, pants_top_y, boot_top_y, feet_y, spec, pal, S, pose
-        )
-        self._tq_draw_arms_back(base, cx, shoulder_y, spec, pal, S, pose)
-        self._tq_draw_vest(base, cx, vest_top_y, waist_y, spec, pal, S, pose)
-        self._tq_draw_belt(base, cx, waist_y, spec, pal, S, pose)
-        self._tq_draw_arms_front(base, cx, shoulder_y, spec, pal, S, pose)
-        self._tq_draw_head(base, head_center, spec, pal, S, pose)
-
-    def _tq_draw_legs(
+    def _draw_profile_boot(
         self,
-        base: Image.Image,
-        cx: float,
-        pants_top_y: float,
-        boot_top_y: float,
-        feet_y: float,
-        spec: BobSpec,
-        pal: Dict[str, Color],
-        S: float,
-        pose: BobPose,
+        d: ImageDraw.ImageDraw,
+        ankle: Point,
+        ground_y: float,
+        s: float,
+        *,
+        near: bool,
+        foot_roll: float,
     ) -> None:
-        d = ImageDraw.Draw(base)
-        outline = pal["outline"]
-        # Two tapered leg shapes — narrower at the boot, wider at the
-        # hip — in pants color, with a subtle inner-shadow seam.
-        # Spread the legs so they don't visually merge at the centerline:
-        # was hip * 0.22 + leg_w 0.5 (legs touched at x=0); bumped to
-        # hip * 0.38 so there's a clear gap between them.
-        for sign, dx in zip((-1, 1), (-1, 1)):
-            hip = (cx + dx * spec.hip_w * 0.38 * S, pants_top_y)
-            ankle = (cx + dx * spec.boot_w * 0.28 * S, boot_top_y)
-            leg = [
-                (hip[0] - spec.leg_w * 0.5 * S, hip[1]),
-                (hip[0] + spec.leg_w * 0.5 * S, hip[1]),
-                (ankle[0] + spec.boot_w * 0.5 * S, ankle[1]),
-                (ankle[0] - spec.boot_w * 0.5 * S, ankle[1]),
-            ]
-            d.polygon(leg, fill=pal["pants"], outline=outline)
-            # Inner-leg shadow strip.
-            d.line(
-                [(hip[0], hip[1] + 1.0 * S), (ankle[0], ankle[1] - 1.0 * S)],
-                fill=pal["pants_shadow"],
-                width=max(1, int(0.7 * S)),
+        pal = BOB_PALETTE
+        bottom = max(ankle[1] + 6.6 * s, ground_y)
+        heel = ankle[0] - (4.4 if near else 4.0) * s
+        toe = ankle[0] + (8.4 if near else 7.7) * s
+        roll = foot_roll * s
+        points = [
+            (heel, ankle[1] - 1.5 * s),
+            (ankle[0] + 3.4 * s, ankle[1] - 0.8 * s),
+            (toe, bottom - 3.0 * s - roll),
+            (toe - 0.4 * s, bottom),
+            (heel - 0.5 * s, bottom),
+        ]
+        _poly(
+            d,
+            points,
+            fill=pal["boot"],
+            outline=pal["outline"],
+            width=round(1.0 * s),
+        )
+        _line(
+            d,
+            [(heel, bottom - 1.0 * s), (toe - 0.5 * s, bottom - 1.0 * s)],
+            fill=pal["boot_sole"],
+            width=round(1.4 * s),
+        )
+        _line(
+            d,
+            [
+                (heel + 1.0 * s, ankle[1] + 1.5 * s),
+                (ankle[0] + 4.4 * s, ankle[1] + 1.5 * s),
+            ],
+            fill=pal["boot_light"],
+            width=round(1.1 * s),
+        )
+
+    def _draw_keyring(
+        self,
+        d: ImageDraw.ImageDraw,
+        center: Point,
+        s: float,
+        *,
+        scale: float = 1.0,
+        direction: float = 1.0,
+    ) -> None:
+        pal = BOB_PALETTE
+        x, y = center
+        ring = 2.8 * scale * s
+        # Outline-only ring: a transparent fill would punch an alpha hole into
+        # Bob whenever the keys overlap his vest or hand.
+        d.ellipse(
+            tuple(round(v) for v in _bbox(x, y, ring * 2.0, ring * 2.0)),
+            outline=pal["brass_dark"],
+            width=max(1, round(1.0 * scale * s)),
+        )
+        # Two readable keys beat the old glittery three-key tassel at sprite
+        # scale.  Their unequal lengths preserve the silhouette without
+        # obscuring Bob's hand and trousers.
+        for index, dx in enumerate((-1.55, 1.25)):
+            key_x = x + dx * scale * s
+            key_top = y + ring * 0.70
+            length = (5.3 + index * 0.9) * scale * s
+            key_tip_x = key_x + direction * 0.35 * scale * s
+            _line(
+                d,
+                [(key_x, key_top), (key_tip_x, key_top + length)],
+                fill=pal["brass"],
+                width=round(1.05 * scale * s),
             )
-            # Boot — a chunky rounded rectangle with a darker sole.
-            boot_c = (ankle[0], (ankle[1] + feet_y) * 0.5)
-            d.rounded_rectangle(
+            tooth_y = key_top + length - 1.0 * scale * s
+            _line(
+                d,
+                [
+                    (key_tip_x, tooth_y),
+                    (key_tip_x + direction * 1.5 * scale * s, tooth_y),
+                ],
+                fill=pal["brass_dark"],
+                width=round(0.75 * scale * s),
+            )
+
+    def _draw_satchel(
+        self,
+        d: ImageDraw.ImageDraw,
+        center: Point,
+        s: float,
+        *,
+        side: bool = False,
+    ) -> None:
+        pal = BOB_PALETTE
+        x, y = center
+        w = (11.0 if side else 13.0) * s
+        h = 18.0 * s
+        _rounded(
+            d,
+            (x - w / 2.0, y - h / 2.0, x + w / 2.0, y + h / 2.0),
+            radius=2.0 * s,
+            fill=pal["leather"],
+            outline=pal["outline"],
+            width=round(1.0 * s),
+        )
+        _poly(
+            d,
+            [
+                (x - w / 2.0, y - h * 0.18),
+                (x + w / 2.0, y - h * 0.18),
+                (x + w * 0.34, y + h * 0.05),
+                (x - w * 0.34, y + h * 0.05),
+            ],
+            fill=pal["leather_light"],
+            outline=pal["outline"],
+            width=round(0.8 * s),
+        )
+        _rounded(
+            d,
+            (x - 1.6 * s, y - 0.8 * s, x + 1.6 * s, y + 2.4 * s),
+            radius=0.8 * s,
+            fill=pal["brass"],
+            outline=pal["outline"],
+            width=round(0.6 * s),
+        )
+        # One readable driver handle rather than a noisy miniature tool rack.
+        _line(
+            d,
+            [(x + 3.5 * s, y + 3.0 * s), (x + 3.2 * s, y + 10.0 * s)],
+            fill=pal["steel_dark"],
+            width=round(1.4 * s),
+        )
+        _rounded(
+            d,
+            (x + 1.7 * s, y + 7.0 * s, x + 4.8 * s, y + 11.5 * s),
+            radius=0.8 * s,
+            fill=pal["hi_vis"],
+            outline=pal["outline"],
+            width=round(0.6 * s),
+        )
+
+    def _draw_analyzer(
+        self,
+        d: ImageDraw.ImageDraw,
+        center: Point,
+        s: float,
+        *,
+        open_amount: float,
+        scan: float,
+    ) -> None:
+        pal = BOB_PALETTE
+        x, y = center
+        w = (15.0 + 5.0 * open_amount) * s
+        h = 11.0 * s
+        _rounded(
+            d,
+            (x - w / 2.0, y - h / 2.0, x + w / 2.0, y + h / 2.0),
+            radius=2.0 * s,
+            fill=pal["device"],
+            outline=pal["outline"],
+            width=round(1.0 * s),
+        )
+        _rounded(
+            d,
+            (
+                x - w * 0.28,
+                y - h * 0.28,
+                x + w * 0.18,
+                y + h * 0.08,
+            ),
+            radius=0.9 * s,
+            fill=pal["device_screen"],
+            outline=pal["outline"],
+            width=round(0.65 * s),
+        )
+        scan_x = x - w * 0.22 + (0.5 + 0.5 * scan) * w * 0.30
+        _line(
+            d,
+            [(scan_x, y - h * 0.23), (scan_x, y + h * 0.02)],
+            fill=pal["white"],
+            width=round(0.7 * s),
+        )
+        for dx in (-0.05, 0.12, 0.29):
+            _ellipse(
+                d,
+                _bbox(x + w * dx, y + h * 0.27, 2.1 * s, 2.1 * s),
+                fill=pal["indicator"] if dx == 0.29 else pal["steel_dark"],
+                outline=pal["outline"],
+                width=round(0.5 * s),
+            )
+        # A key blank clamped into the right edge sells the hardware role.
+        _line(
+            d,
+            [
+                (x + w / 2.0 - 1.2 * s, y - 0.4 * s),
+                (x + w / 2.0 + 5.3 * s, y - 0.4 * s),
+            ],
+            fill=pal["brass"],
+            width=round(1.4 * s),
+        )
+        _ellipse(
+            d,
+            _bbox(x + w / 2.0 + 5.5 * s, y - 0.4 * s, 3.4 * s, 3.4 * s),
+            fill=pal["brass_dark"],
+            outline=pal["outline"],
+            width=round(0.7 * s),
+        )
+
+    def _draw_goggles_three_quarter(
+        self, d: ImageDraw.ImageDraw, cx: float, cy: float, s: float
+    ) -> None:
+        pal = BOB_PALETTE
+        _line(
+            d,
+            [(cx - 8.5 * s, cy), (cx + 8.0 * s, cy - 1.0 * s)],
+            fill=pal["leather_dark"],
+            width=round(1.3 * s),
+        )
+        for lx in (-4.3, 4.0):
+            _rounded(
+                d,
                 (
-                    boot_c[0] - spec.boot_w * 0.55 * S,
-                    ankle[1] - 0.5 * S,
-                    boot_c[0] + spec.boot_w * 0.55 * S,
+                    cx + (lx - 2.6) * s,
+                    cy - 2.6 * s,
+                    cx + (lx + 2.6) * s,
+                    cy + 2.2 * s,
+                ),
+                radius=1.4 * s,
+                fill=pal["glass"],
+                outline=pal["outline"],
+                width=round(0.75 * s),
+            )
+            _line(
+                d,
+                [
+                    (cx + (lx - 1.2) * s, cy - 1.7 * s),
+                    (cx + (lx + 1.2) * s, cy + 0.8 * s),
+                ],
+                fill=pal["white"],
+                width=round(0.55 * s),
+            )
+
+    # ------------------------------------------------------------------
+    # Three-quarter view
+
+    def _draw_three_quarter(
+        self,
+        image: Image.Image,
+        cx: float,
+        feet_y: float,
+        spec: BobSpec,
+        pose: BobPose,
+        s: float,
+    ) -> None:
+        d = ImageDraw.Draw(image)
+        pal = BOB_PALETTE
+        outline = pal["outline"]
+        boot_top = feet_y - spec.boot_h * s
+        shin_top = boot_top - spec.shin_h * s
+        hip_y = shin_top - spec.thigh_h * s
+        shoulder_y = hip_y - spec.torso_h * s
+        head_c = (
+            cx + 1.5 * s,
+            shoulder_y - 11.0 * s + pose.head_tilt * 0.12 * s,
+        )
+
+        # Rear leg first, then the near leg.  A slight stance gives him weight
+        # without the old pinched, nearly merged trouser silhouette.
+        legs = (
+            (-1, cx - 5.4 * s, pal["pants_dark"]),
+            (1, cx + 5.0 * s, pal["pants"]),
+        )
+        for sign, leg_x, fill in legs:
+            knee_x = leg_x + sign * 0.7 * s
+            ankle_x = leg_x + sign * 0.35 * s
+            _poly(
+                d,
+                [
+                    (leg_x - 4.3 * s, hip_y - 0.5 * s),
+                    (leg_x + 4.3 * s, hip_y - 0.5 * s),
+                    (knee_x + 3.8 * s, shin_top),
+                    (ankle_x + 3.5 * s, boot_top),
+                    (ankle_x - 3.5 * s, boot_top),
+                    (knee_x - 3.8 * s, shin_top),
+                ],
+                fill=fill,
+                outline=outline,
+                width=round(1.0 * s),
+            )
+            _rounded(
+                d,
+                (
+                    ankle_x - 5.7 * s,
+                    boot_top - 0.2 * s,
+                    ankle_x + 5.7 * s,
                     feet_y,
                 ),
-                radius=2.0 * S,
+                radius=2.0 * s,
                 fill=pal["boot"],
                 outline=outline,
-                width=max(1, int(1.0 * S)),
+                width=round(1.0 * s),
             )
-            # Boot sole as a thinner band at the very bottom.
-            d.rectangle(
-                (
-                    boot_c[0] - spec.boot_w * 0.55 * S,
-                    feet_y - 1.6 * S,
-                    boot_c[0] + spec.boot_w * 0.55 * S,
-                    feet_y,
-                ),
+            _line(
+                d,
+                [
+                    (ankle_x - 5.2 * s, feet_y - 1.2 * s),
+                    (ankle_x + 5.2 * s, feet_y - 1.2 * s),
+                ],
                 fill=pal["boot_sole"],
-                outline=outline,
-                width=max(1, int(0.7 * S)),
+                width=round(1.3 * s),
             )
-            # Laces — two short horizontal ticks across the boot face.
-            for ly in (3.0, 1.2):
-                d.line(
-                    [
-                        (boot_c[0] - 2.4 * S, feet_y - ly * S),
-                        (boot_c[0] + 2.4 * S, feet_y - ly * S),
-                    ],
-                    fill=pal["leather"],
-                    width=max(1, int(0.6 * S)),
-                )
+            _line(
+                d,
+                [
+                    (ankle_x - 3.5 * s, boot_top + 2.0 * s),
+                    (ankle_x + 3.5 * s, boot_top + 2.0 * s),
+                ],
+                fill=pal["boot_light"],
+                width=round(1.0 * s),
+            )
 
-    def _tq_draw_arms_back(
-        self,
-        base: Image.Image,
-        cx: float,
-        shoulder_y: float,
-        spec: BobSpec,
-        pal: Dict[str, Color],
-        S: float,
-        pose: BobPose,
-    ) -> None:
-        # Back arm (camera-far). Hangs at the side, mostly hidden
-        # behind the vest. Visible only as a slim sleeve + hand.
-        d = ImageDraw.Draw(base)
-        outline = pal["outline"]
-        sx = cx - spec.shoulder_w * 0.42 * S
-        sy = shoulder_y + 2.0 * S
-        ex = sx - 1.0 * S
-        ey = sy + spec.arm_len * S
-        sleeve = [
-            (sx - 3.0 * S, sy),
-            (sx + 3.0 * S, sy),
-            (ex + spec.cuff_w * 0.5 * S, ey),
-            (ex - spec.cuff_w * 0.5 * S, ey),
-        ]
-        d.polygon(sleeve, fill=pal["tee_dark"], outline=outline)
-        # Hand peek.
-        d.ellipse(
-            _bbox((ex, ey + 3.0 * S), 3.4 * S, 3.0 * S),
-            fill=pal["skin"],
-            outline=outline,
-            width=max(1, int(0.8 * S)),
+        # Satchel and far arm are behind the body.
+        self._draw_satchel(d, (cx - 13.0 * s, hip_y - 10.0 * s), s * 0.92)
+        far_shoulder = (cx - 11.5 * s, shoulder_y + 5.0 * s)
+        far_target = (cx - 13.5 * s, hip_y - 3.0 * s)
+        far_elbow, far_hand = self._solve_two_bone_joint(
+            far_shoulder,
+            far_target,
+            spec.arm_upper * s,
+            spec.arm_lower * s,
+            bend_sign=1.0,
         )
+        self._draw_two_bone_limb(
+            d,
+            far_shoulder,
+            far_elbow,
+            far_hand,
+            s,
+            fill=pal["shirt_dark"],
+            width=5.8,
+        )
+        self._draw_hand(d, far_hand, s)
 
-    def _tq_draw_vest(
-        self,
-        base: Image.Image,
-        cx: float,
-        vest_top_y: float,
-        waist_y: float,
-        spec: BobSpec,
-        pal: Dict[str, Color],
-        S: float,
-        pose: BobPose,
-    ) -> None:
-        d = ImageDraw.Draw(base)
-        outline = pal["outline"]
-        # Tee underneath — visible at neck + shoulders + sleeves stubs.
-        tee = [
-            (cx - spec.shoulder_w * 0.50 * S, vest_top_y - 2.0 * S),
-            (cx + spec.shoulder_w * 0.42 * S, vest_top_y - 2.0 * S),
-            (cx + spec.waist_w * 0.50 * S, waist_y),
-            (cx - spec.waist_w * 0.50 * S, waist_y),
-        ]
-        d.polygon(tee, fill=pal["tee"], outline=outline)
-        # Vest open at the front — drawn as two side panels, leaving
-        # a 6-px-wide strip of the tee visible down the center.
-        for sign in (-1, 1):
-            x_outer = cx + sign * spec.shoulder_w * 0.48 * S
-            x_inner = cx + sign * 3.0 * S
-            panel = [
-                (x_outer, vest_top_y),
-                (x_inner, vest_top_y + 1.0 * S),
-                (cx + sign * spec.waist_w * 0.30 * S, waist_y),
-                (cx + sign * spec.waist_w * 0.48 * S, waist_y),
-            ]
-            d.polygon(panel, fill=pal["vest"], outline=outline)
-            # Reflective hi-vis stripe across each panel at chest level.
-            stripe_y = vest_top_y + spec.vest_h * 0.40 * S
-            stripe_cx = cx + sign * spec.shoulder_w * 0.28 * S
-            d.rectangle(
-                (
-                    stripe_cx - 4.0 * S,
-                    stripe_y,
-                    stripe_cx + 4.0 * S,
-                    stripe_y + 2.4 * S,
-                ),
-                fill=pal["hi_vis"],
-                outline=outline,
-                width=max(1, int(0.6 * S)),
-            )
-        # Vest lapel highlight (camera-right side).
-        d.line(
+        # Under-shirt owns the complete ribcage; vest panels layer over it.
+        _poly(
+            d,
             [
-                (cx + 3.0 * S, vest_top_y + 1.0 * S),
-                (cx + spec.waist_w * 0.32 * S, waist_y - 1.0 * S),
+                (cx - 14.5 * s, shoulder_y + 1.0 * s),
+                (cx + 14.0 * s, shoulder_y + 1.0 * s),
+                (cx + 11.2 * s, hip_y),
+                (cx - 10.8 * s, hip_y),
             ],
-            fill=pal["vest_light"],
-            width=max(1, int(0.9 * S)),
+            fill=pal["shirt"],
+            outline=outline,
+            width=round(1.1 * s),
         )
-        # Chest patch pocket on the camera-right panel.
-        d.rounded_rectangle(
+        # Rolled sleeve cuffs make the arms read as clothing rather than tubes.
+        _rounded(
+            d,
             (
-                cx + 6.0 * S,
-                vest_top_y + spec.vest_h * 0.18 * S,
-                cx + 13.0 * S,
-                vest_top_y + spec.vest_h * 0.42 * S,
+                cx - 15.5 * s,
+                shoulder_y + 5.0 * s,
+                cx - 9.0 * s,
+                shoulder_y + 12.0 * s,
             ),
-            radius=1.2 * S,
+            radius=1.5 * s,
+            fill=pal["shirt_dark"],
+            outline=outline,
+            width=round(0.8 * s),
+        )
+
+        left_panel = [
+            (cx - 11.8 * s, shoulder_y + 2.0 * s),
+            (cx - 2.3 * s, shoulder_y + 3.2 * s),
+            (cx - 1.0 * s, hip_y),
+            (cx - 10.5 * s, hip_y),
+        ]
+        right_panel = [
+            (cx + 1.5 * s, shoulder_y + 3.0 * s),
+            (cx + 12.2 * s, shoulder_y + 2.2 * s),
+            (cx + 10.8 * s, hip_y),
+            (cx + 0.8 * s, hip_y),
+        ]
+        _poly(
+            d,
+            left_panel,
             fill=pal["vest_dark"],
             outline=outline,
-            width=max(1, int(0.6 * S)),
+            width=round(1.0 * s),
         )
-        # Tee crew-neck band (small dark arc at the throat).
-        d.arc(
-            (cx - 6.0 * S, vest_top_y - 3.0 * S, cx + 8.0 * S, vest_top_y + 3.0 * S),
-            start=10,
-            end=170,
-            fill=pal["tee_dark"],
-            width=max(1, int(1.0 * S)),
-        )
-
-    def _tq_draw_belt(
-        self,
-        base: Image.Image,
-        cx: float,
-        waist_y: float,
-        spec: BobSpec,
-        pal: Dict[str, Color],
-        S: float,
-        pose: BobPose,
-    ) -> None:
-        d = ImageDraw.Draw(base)
-        outline = pal["outline"]
-        # Belt strap.
-        d.rounded_rectangle(
-            (
-                cx - spec.waist_w * 0.52 * S,
-                waist_y - 0.5 * S,
-                cx + spec.waist_w * 0.52 * S,
-                waist_y + 3.5 * S,
-            ),
-            radius=1.4 * S,
-            fill=pal["leather"],
+        _poly(
+            d,
+            right_panel,
+            fill=pal["vest"],
             outline=outline,
-            width=max(1, int(0.9 * S)),
+            width=round(1.0 * s),
         )
-        # Belt buckle (steel).
-        d.rectangle(
-            (cx - 2.6 * S, waist_y - 0.3 * S, cx + 2.6 * S, waist_y + 3.3 * S),
-            fill=pal["steel"],
-            outline=outline,
-            width=max(1, int(0.7 * S)),
-        )
-        # Three hanging tools across the belt: key ring (camera-right),
-        # wrench (center), small hammer (camera-left).
-        self._draw_belt_keyring(
-            d, cx + spec.waist_w * 0.30 * S, waist_y + 3.5 * S, S, pal
-        )
-        self._draw_belt_wrench(d, cx + 0.0 * S, waist_y + 3.5 * S, S, pal)
-        self._draw_belt_hammer(
-            d, cx - spec.waist_w * 0.30 * S, waist_y + 3.5 * S, S, pal
-        )
-
-    def _draw_belt_keyring(
-        self,
-        d: ImageDraw.ImageDraw,
-        x: float,
-        y: float,
-        S: float,
-        pal: Dict[str, Color],
-    ) -> None:
-        outline = pal["outline"]
-        # A small carabiner ring with two short keys dangling.
-        ring_c = (x, y + 2.5 * S)
-        d.ellipse(
-            _bbox(ring_c, 2.4 * S, 2.4 * S), outline=outline, width=max(1, int(1.0 * S))
-        )
-        for dx in (-1.6, 1.6):
-            kx = ring_c[0] + dx * S
-            d.line(
-                [(kx, ring_c[1] + 2.4 * S), (kx, ring_c[1] + 8.0 * S)],
-                fill=pal["brass"],
-                width=max(1, int(1.1 * S)),
-            )
-            d.line(
-                [(kx, ring_c[1] + 7.0 * S), (kx + 0.9 * S, ring_c[1] + 7.0 * S)],
-                fill=pal["brass_dark"],
-                width=max(1, int(0.7 * S)),
-            )
-
-    def _draw_belt_wrench(
-        self,
-        d: ImageDraw.ImageDraw,
-        x: float,
-        y: float,
-        S: float,
-        pal: Dict[str, Color],
-    ) -> None:
-        outline = pal["outline"]
-        # Loop attaching wrench to belt.
-        d.ellipse(
-            _bbox((x, y + 1.5 * S), 1.6 * S, 1.6 * S),
-            outline=outline,
-            width=max(1, int(0.8 * S)),
-        )
-        # Wrench body — long shaft + open jaw at the bottom.
-        d.line(
-            [(x, y + 2.5 * S), (x - 0.4 * S, y + 9.0 * S)],
-            fill=pal["steel"],
-            width=max(1, int(1.8 * S)),
-        )
-        d.line(
-            [(x, y + 2.5 * S), (x - 0.4 * S, y + 9.0 * S)],
-            fill=pal["steel_dark"],
-            width=max(1, int(0.9 * S)),
-        )
-        # Wrench jaw — small open-end at the tip.
-        d.polygon(
+        # Broad, integrated lapels and one diagonal reflective tape create a
+        # readable asymmetry without scattering tiny rectangles over the vest.
+        _poly(
+            d,
             [
-                (x - 0.4 * S - 1.8 * S, y + 9.0 * S),
-                (x - 0.4 * S + 1.8 * S, y + 9.0 * S),
-                (x - 0.4 * S + 1.2 * S, y + 11.5 * S),
-                (x - 0.4 * S - 1.2 * S, y + 11.5 * S),
+                (cx - 2.5 * s, shoulder_y + 3.2 * s),
+                (cx + 0.6 * s, shoulder_y + 5.2 * s),
+                (cx - 4.0 * s, shoulder_y + 14.0 * s),
+                (cx - 7.0 * s, shoulder_y + 8.0 * s),
             ],
-            fill=pal["steel"],
-            outline=outline,
-        )
-        d.rectangle(
-            (x - 0.4 * S - 0.6 * S, y + 10.5 * S, x - 0.4 * S + 0.6 * S, y + 11.5 * S),
-            fill=pal["outline"],
-        )
-
-    def _draw_belt_hammer(
-        self,
-        d: ImageDraw.ImageDraw,
-        x: float,
-        y: float,
-        S: float,
-        pal: Dict[str, Color],
-    ) -> None:
-        outline = pal["outline"]
-        # Hammer hanging upside-down (head down, handle clipped to belt).
-        d.ellipse(
-            _bbox((x, y + 1.5 * S), 1.4 * S, 1.4 * S),
-            outline=outline,
-            width=max(1, int(0.8 * S)),
-        )
-        # Handle.
-        d.line(
-            [(x, y + 2.4 * S), (x + 0.4 * S, y + 8.0 * S)],
-            fill=pal["leather"],
-            width=max(1, int(1.4 * S)),
-        )
-        d.line(
-            [(x, y + 2.4 * S), (x + 0.4 * S, y + 8.0 * S)],
-            fill=pal["leather_dark"],
-            width=max(1, int(0.7 * S)),
-        )
-        # Head — steel rectangle perpendicular to the handle.
-        head_c = (x + 0.4 * S, y + 8.5 * S)
-        d.rectangle(
-            (
-                head_c[0] - 3.2 * S,
-                head_c[1] - 0.5 * S,
-                head_c[0] + 1.8 * S,
-                head_c[1] + 2.5 * S,
-            ),
-            fill=pal["steel"],
-            outline=outline,
-            width=max(1, int(0.8 * S)),
-        )
-        # Claw on the back of the head.
-        d.polygon(
-            [
-                (head_c[0] - 3.2 * S, head_c[1] - 0.5 * S),
-                (head_c[0] - 4.4 * S, head_c[1] + 0.3 * S),
-                (head_c[0] - 4.4 * S, head_c[1] + 1.6 * S),
-                (head_c[0] - 3.2 * S, head_c[1] + 2.5 * S),
-            ],
-            fill=pal["steel_dark"],
-            outline=outline,
-        )
-
-    def _tq_draw_arms_front(
-        self,
-        base: Image.Image,
-        cx: float,
-        shoulder_y: float,
-        spec: BobSpec,
-        pal: Dict[str, Color],
-        S: float,
-        pose: BobPose,
-    ) -> None:
-        d = ImageDraw.Draw(base)
-        outline = pal["outline"]
-        # Front arm (camera-near). Held slightly forward; hand visible
-        # at hip level, holding a key ring (the iconic Bob prop).
-        sx = cx + spec.shoulder_w * 0.38 * S
-        sy = shoulder_y + 2.0 * S
-        ex = sx + 1.5 * S + pose.arm_lift * 6.0 * S
-        ey = sy + spec.arm_len * S - pose.arm_lift * 8.0 * S
-        sleeve = [
-            (sx - 3.0 * S, sy),
-            (sx + 4.0 * S, sy),
-            (ex + spec.cuff_w * 0.55 * S, ey),
-            (ex - spec.cuff_w * 0.55 * S, ey),
-        ]
-        d.polygon(sleeve, fill=pal["tee"], outline=outline)
-        # Sleeve highlight along the upper edge.
-        d.line(
-            [(sx - 2.0 * S, sy + 1.0 * S), (ex - spec.cuff_w * 0.30 * S, ey - 1.0 * S)],
             fill=pal["vest_light"],
-            width=max(1, int(0.7 * S)),
-        )
-        # Hand.
-        hand_c = (ex + 1.0 * S, ey + 3.5 * S)
-        d.ellipse(
-            _bbox(hand_c, 3.8 * S, 3.4 * S),
-            fill=pal["skin"],
             outline=outline,
-            width=max(1, int(0.8 * S)),
+            width=round(0.75 * s),
         )
-        if pose.hold_keys:
-            self._draw_held_keyring(d, hand_c, S, pal)
-
-    def _draw_held_keyring(
-        self, d: ImageDraw.ImageDraw, hand: Point, S: float, pal: Dict[str, Color]
-    ) -> None:
-        outline = pal["outline"]
-        # Larger key ring than the belt one — Bob's primary prop.
-        ring_c = (hand[0] + 5.0 * S, hand[1] + 0.0 * S)
-        d.ellipse(
-            _bbox(ring_c, 3.4 * S, 3.4 * S), outline=outline, width=max(1, int(1.2 * S))
-        )
-        # Three keys hanging.
-        for i, ddx in enumerate((-2.5, 0.0, 2.5)):
-            key_top = (ring_c[0] + ddx * S, ring_c[1] + 3.4 * S)
-            key_tip = (ring_c[0] + ddx * S, ring_c[1] + 10.0 * S)
-            d.line([key_top, key_tip], fill=pal["brass"], width=max(1, int(1.3 * S)))
-            for ty in (7.0, 9.5):
-                d.line(
-                    [
-                        (ring_c[0] + ddx * S, ring_c[1] + ty * S),
-                        (ring_c[0] + (ddx + 1.4) * S, ring_c[1] + ty * S),
-                    ],
-                    fill=pal["brass_dark"],
-                    width=max(1, int(0.9 * S)),
-                )
-            d.ellipse(
-                _bbox((ring_c[0] + ddx * S, ring_c[1] + 4.2 * S), 1.0 * S, 1.2 * S),
-                fill=pal["brass_dark"],
-                outline=outline,
-                width=max(1, int(0.5 * S)),
-            )
-
-    def _tq_draw_head(
-        self,
-        base: Image.Image,
-        c: Point,
-        spec: BobSpec,
-        pal: Dict[str, Color],
-        S: float,
-        pose: BobPose,
-    ) -> None:
-        """Three-quarter view head.
-
-        Z-order (matches the pattern documented in
-        alice_cryptographer._tq_draw_head — even though Bob has no
-        cheek curtains, the structure stays parallel so a future
-        long-haired engineer-style character can reuse this scaffold
-        without re-deriving the layering):
-          1. Neck    (chin will cover the top of it)
-          2. Back hair mass
-          3. Face oval        ← if curtains existed, they'd go here
-                                BEFORE the face oval, like Alice
-          4. Five o'clock shadow over the lower face
-          5. Tousled-crop bangs (forehead clumps, drawn over the face)
-          6. Eyes / nose / mouth
-        """
-        d = ImageDraw.Draw(base)
-        outline = pal["outline"]
-        # 1. Neck strip — chin will overlap the top of it.
-        self._draw_neck(d, c, spec, pal, S, slant=+0.5)
-        # 2. Back hair mass. Was offset to (c[0]-1, c[1]-4) which
-        # made the silhouette asymmetric and left the camera-right
-        # side of the head with visible "bald edge" between face and
-        # bangs. Now centered on c[0] with a taller envelope so it
-        # wraps the skull and meets the bangs without a visible seam.
-        d.ellipse(
-            _bbox(
-                (c[0] + 0.5 * S, c[1] - 3.0 * S),
-                (spec.head_w + 6.0) * S,
-                (spec.head_h * 0.92) * S,
-            ),
-            fill=pal["hair"],
-            outline=outline,
-            width=max(1, int(1.0 * S)),
-        )
-        # 3. Face oval.
-        d.ellipse(
-            _bbox(c, spec.head_w * S, spec.head_h * S),
-            fill=pal["skin"],
-            outline=outline,
-            width=max(1, int(1.2 * S)),
-        )
-        # Five o'clock shadow: a FLATTER ellipse following the jaw
-        # line instead of the previous near-circular blob. Was
-        # head_w*0.74 wide × jaw_h*2.4 tall (≈19×14 — basically a
-        # circle pooling on the chin). New shape is wider + much
-        # flatter (head_w*0.78 × jaw_h*1.4 ≈ 20×8) and centered
-        # lower so it traces the underside of the jaw rather than
-        # the cheeks. Drawn before the mouth so the mouth line still
-        # reads through the stubble.
-        d.ellipse(
-            _bbox(
-                (c[0] + 1.0 * S, c[1] + spec.head_h * 0.34 * S),
-                (spec.head_w * 0.78) * S,
-                (spec.jaw_h * 1.4) * S,
-            ),
-            fill=pal["skin_shadow"],
-            outline=None,
-        )
-        # Tousled-crop bangs — tightened to two cleaner clumps that
-        # don't fight the eyes below. Previous version had a
-        # randomish "+/- (3 + sign * 4)" geometry that looked noisy
-        # at downsample. New version uses a deliberate left clump +
-        # right clump with a small forehead skin gap between them.
-        left_clump = [
-            (c[0] - spec.head_w * 0.42 * S, c[1] - spec.head_h * 0.48 * S),
-            (c[0] - spec.head_w * 0.06 * S, c[1] - spec.head_h * 0.46 * S),
-            (c[0] - spec.head_w * 0.10 * S, c[1] - spec.head_h * 0.22 * S),
-            (c[0] - spec.head_w * 0.34 * S, c[1] - spec.head_h * 0.18 * S),
-        ]
-        right_clump = [
-            (c[0] + spec.head_w * 0.00 * S, c[1] - spec.head_h * 0.48 * S),
-            (c[0] + spec.head_w * 0.34 * S, c[1] - spec.head_h * 0.42 * S),
-            (c[0] + spec.head_w * 0.30 * S, c[1] - spec.head_h * 0.18 * S),
-            (c[0] + spec.head_w * 0.02 * S, c[1] - spec.head_h * 0.22 * S),
-        ]
-        d.polygon(left_clump, fill=pal["hair"], outline=outline)
-        d.polygon(right_clump, fill=pal["hair"], outline=outline)
-        # Brow strokes for expression — one above each eye, drawn in
-        # the hair color so they tie the face to the hair without
-        # being as heavy as the outline.
-        d.line(
+        _poly(
+            d,
             [
-                (c[0] - spec.head_w * 0.10 * S, c[1] - spec.head_h * 0.10 * S),
-                (c[0] + spec.head_w * 0.06 * S, c[1] - spec.head_h * 0.12 * S),
+                (cx + 1.3 * s, shoulder_y + 3.2 * s),
+                (cx + 5.5 * s, shoulder_y + 7.0 * s),
+                (cx + 3.4 * s, shoulder_y + 13.8 * s),
+                (cx + 0.2 * s, shoulder_y + 5.5 * s),
             ],
-            fill=pal["hair"],
-            width=max(1, int(0.9 * S)),
-        )
-        d.line(
-            [
-                (c[0] + spec.head_w * 0.18 * S, c[1] - spec.head_h * 0.12 * S),
-                (c[0] + spec.head_w * 0.34 * S, c[1] - spec.head_h * 0.10 * S),
-            ],
-            fill=pal["hair"],
-            width=max(1, int(0.8 * S)),
-        )
-        # 3/4 eyes.
-        self._draw_eyes_three_quarter(d, c, spec, pal, S, pose)
-        # Nose.
-        d.line(
-            [
-                (c[0] + 3.5 * S, c[1] + 1.5 * S),
-                (c[0] + 5.0 * S, c[1] + 3.5 * S),
-                (c[0] + 3.5 * S, c[1] + 4.5 * S),
-            ],
-            fill=pal["skin_shadow"],
-            width=max(1, int(0.9 * S)),
-        )
-        # Mouth — drawn LAST (on top of the 5 o'clock shadow) so the
-        # lip line stays visible through the stubble.
-        mouth_y = c[1] + spec.head_h * 0.28 * S
-        if pose.talk_open > 0.2:
-            d.ellipse(
-                _bbox(
-                    (c[0] + 3.0 * S, mouth_y), 3.6 * S, (1.0 + pose.talk_open * 1.6) * S
-                ),
-                fill=outline,
-            )
-        else:
-            d.arc(
-                (c[0] + 0.0 * S, mouth_y - 1.5 * S, c[0] + 6.0 * S, mouth_y + 2.5 * S),
-                start=10,
-                end=160,
-                fill=outline,
-                width=max(1, int(1.0 * S)),
-            )
-
-    def _draw_neck(
-        self,
-        d: ImageDraw.ImageDraw,
-        head_center: Point,
-        spec: BobSpec,
-        pal: Dict[str, Color],
-        S: float,
-        *,
-        slant: float = 0.0,
-    ) -> None:
-        """Draw a short skin-colored neck strip below the head.
-
-        The neck runs from a point just inside the face's bottom
-        (head_h * 0.42 below center) down to the shoulder yoke. The
-        shoulder yoke's vertical position is reconstructed from
-        ``spec.head_anchor`` + ``spec.neck_h`` rather than being
-        passed in — this keeps the neck function callable from any
-        view's head renderer without threading an extra argument.
-
-        ``slant`` lets the neck tilt a few units to one side so the
-        3/4 and side views can suggest a tiny head turn. Front view
-        passes 0.0 for a perfectly vertical neck.
-        """
-        outline = pal["outline"]
-        chin_y = head_center[1] + spec.head_h * 0.42 * S
-        shoulder_y = (
-            head_center[1] + spec.head_h * spec.head_anchor * S + spec.neck_h * S
-        )
-        # 4-point polygon: narrower at the chin, slightly wider at
-        # the shoulder where it meets the trapezius.
-        top_w = spec.neck_w * 0.85
-        bot_w = spec.neck_w * 1.10
-        neck = [
-            (head_center[0] - top_w * 0.5 * S + slant * S, chin_y),
-            (head_center[0] + top_w * 0.5 * S + slant * S, chin_y),
-            (head_center[0] + bot_w * 0.5 * S, shoulder_y + 1.5 * S),
-            (head_center[0] - bot_w * 0.5 * S, shoulder_y + 1.5 * S),
-        ]
-        d.polygon(neck, fill=pal["skin"], outline=outline)
-        # Subtle shadow on the camera-far side of the neck so it
-        # doesn't read as a flat tab of skin.
-        d.line(
-            [
-                (head_center[0] - top_w * 0.40 * S + slant * S, chin_y + 0.5 * S),
-                (head_center[0] - bot_w * 0.42 * S, shoulder_y),
-            ],
-            fill=pal["skin_shadow"],
-            width=max(1, int(0.7 * S)),
-        )
-
-    def _draw_eyes_three_quarter(
-        self,
-        d: ImageDraw.ImageDraw,
-        c: Point,
-        spec: BobSpec,
-        pal: Dict[str, Color],
-        S: float,
-        pose: BobPose,
-    ) -> None:
-        outline = pal["outline"]
-        eye_y = c[1] - 2.0 * S
-        near = (c[0] + 1.0 * S, eye_y)
-        far = (c[0] + 8.0 * S, eye_y - 0.2 * S)
-        if pose.blink:
-            d.line(
-                [(near[0] - 2.0 * S, near[1]), (near[0] + 2.0 * S, near[1])],
-                fill=outline,
-                width=max(1, int(1.1 * S)),
-            )
-            d.line(
-                [(far[0] - 1.4 * S, far[1]), (far[0] + 1.4 * S, far[1])],
-                fill=outline,
-                width=max(1, int(0.9 * S)),
-            )
-            return
-        d.ellipse(
-            _bbox(near, 3.4 * S, 1.6 * S),
-            fill=pal["white"],
+            fill=pal["vest_light"],
             outline=outline,
-            width=max(1, int(0.9 * S)),
+            width=round(0.75 * s),
         )
-        d.ellipse(_bbox((near[0] + 0.4 * S, near[1]), 1.2 * S, 1.8 * S), fill=outline)
-        d.ellipse(
-            _bbox(far, 2.6 * S, 1.4 * S),
-            fill=pal["white"],
-            outline=outline,
-            width=max(1, int(0.8 * S)),
-        )
-        d.ellipse(_bbox((far[0] + 0.3 * S, far[1]), 0.9 * S, 1.4 * S), fill=outline)
-
-    # ─────────────────────────────────────────────────────────────────
-    # SIDE view — pure profile, used for walking.
-    # ─────────────────────────────────────────────────────────────────
-
-    def _render_side(
-        self,
-        base: Image.Image,
-        cx: float,
-        feet_y: float,
-        spec: BobSpec,
-        pal: Dict[str, Color],
-        S: float,
-        pose: BobPose,
-    ) -> None:
-        d = ImageDraw.Draw(base)
-        outline = pal["outline"]
-        # Phase-driven leg + arm swing for the walk loop.
-        step = pose.step_phase  # -1 (back) .. +1 (forward)
-        boot_top_y = feet_y - spec.boot_h * S
-        pants_top_y = boot_top_y - spec.leg_h * S
-        waist_y = pants_top_y - 2.0 * S
-        vest_top_y = waist_y - spec.vest_h * S
-        shoulder_y = vest_top_y - 4.0 * S
-        # In profile, the head sits forward of the shoulder centerline.
-        head_center = (
-            cx + 3.0 * S,
-            shoulder_y - spec.head_h * spec.head_anchor * S - spec.neck_h * S,
-        )
-
-        # Back leg first (gets covered by the body), then front leg.
-        # camera-near leg follows +step (forward when step > 0),
-        # camera-far leg follows -step.
-        for side, sgn in (("far", -step), ("near", +step)):
-            knee_x = cx + sgn * 4.0 * S
-            ankle_x = cx + sgn * 8.0 * S
-            knee_y = pants_top_y + spec.leg_h * 0.55 * S
-            ankle_y = boot_top_y - abs(sgn) * 1.5 * S  # tiny lift on the swing leg
-            hip = (cx + sgn * 1.0 * S, pants_top_y)
-            leg = [
-                (hip[0] - spec.leg_w * 0.5 * S, hip[1]),
-                (hip[0] + spec.leg_w * 0.5 * S, hip[1]),
-                (knee_x + spec.leg_w * 0.45 * S, knee_y),
-                (ankle_x + spec.boot_w * 0.5 * S, ankle_y),
-                (ankle_x - spec.boot_w * 0.5 * S, ankle_y),
-                (knee_x - spec.leg_w * 0.45 * S, knee_y),
-            ]
-            leg_fill = pal["pants"] if side == "near" else pal["pants_shadow"]
-            d.polygon(leg, fill=leg_fill, outline=outline)
-            # Boot.
-            d.rounded_rectangle(
-                (
-                    ankle_x - spec.boot_w * 0.55 * S,
-                    ankle_y - 0.5 * S,
-                    ankle_x + spec.boot_w * 0.95 * S,
-                    ankle_y + spec.boot_h * S,
-                ),
-                radius=2.0 * S,
-                fill=pal["boot"],
-                outline=outline,
-                width=max(1, int(1.0 * S)),
-            )
-            d.rectangle(
-                (
-                    ankle_x - spec.boot_w * 0.55 * S,
-                    ankle_y + spec.boot_h * S - 1.6 * S,
-                    ankle_x + spec.boot_w * 0.95 * S,
-                    ankle_y + spec.boot_h * S,
-                ),
-                fill=pal["boot_sole"],
-                outline=outline,
-                width=max(1, int(0.7 * S)),
-            )
-
-        # Torso in profile — narrower than 3/4 view, vest visible as a
-        # single side-panel polygon.
-        body_back = cx - spec.shoulder_w * 0.12 * S  # back-of-shoulder
-        body_front = cx + spec.shoulder_w * 0.34 * S  # front-of-chest
-        torso = [
-            (body_back, shoulder_y),
-            (body_front, shoulder_y),
-            (cx + spec.waist_w * 0.34 * S, waist_y),
-            (cx - spec.waist_w * 0.18 * S, waist_y),
-        ]
-        d.polygon(torso, fill=pal["vest"], outline=outline)
-        # Tee collar peeking at the throat.
-        d.polygon(
+        _line(
+            d,
             [
-                (cx + spec.shoulder_w * 0.14 * S, shoulder_y - 1.0 * S),
-                (cx + spec.shoulder_w * 0.30 * S, shoulder_y - 1.0 * S),
-                (cx + spec.shoulder_w * 0.26 * S, shoulder_y + 4.0 * S),
-                (cx + spec.shoulder_w * 0.10 * S, shoulder_y + 4.0 * S),
+                (cx - 9.5 * s, shoulder_y + 15.2 * s),
+                (cx + 8.8 * s, shoulder_y + 21.0 * s),
             ],
-            fill=pal["tee"],
-            outline=outline,
+            fill=pal["hi_vis_dark"],
+            width=round(3.8 * s),
         )
-        # Hi-vis stripe across the side of the vest at chest level.
-        stripe_y = shoulder_y + spec.vest_h * 0.50 * S
-        d.rectangle(
-            (
-                cx - spec.shoulder_w * 0.10 * S,
-                stripe_y,
-                cx + spec.shoulder_w * 0.32 * S,
-                stripe_y + 2.4 * S,
-            ),
+        _line(
+            d,
+            [
+                (cx - 9.5 * s, shoulder_y + 15.2 * s),
+                (cx + 8.8 * s, shoulder_y + 21.0 * s),
+            ],
             fill=pal["hi_vis"],
-            outline=outline,
-            width=max(1, int(0.6 * S)),
+            width=round(2.0 * s),
         )
-        # Belt.
-        d.rounded_rectangle(
+        _rounded(
+            d,
             (
-                cx - spec.waist_w * 0.22 * S,
-                waist_y - 0.5 * S,
-                cx + spec.waist_w * 0.40 * S,
-                waist_y + 3.5 * S,
+                cx + 4.7 * s,
+                shoulder_y + 8.0 * s,
+                cx + 10.0 * s,
+                shoulder_y + 13.5 * s,
             ),
-            radius=1.2 * S,
+            radius=1.1 * s,
+            fill=pal["reinforce"],
+            outline=outline,
+            width=round(0.7 * s),
+        )
+
+        # Harness and belt unify the props with his body instead of floating.
+        _line(
+            d,
+            [
+                (cx + 7.0 * s, shoulder_y + 1.0 * s),
+                (cx - 6.5 * s, hip_y + 1.0 * s),
+            ],
+            fill=pal["leather_dark"],
+            width=round(4.2 * s),
+        )
+        _line(
+            d,
+            [
+                (cx + 7.0 * s, shoulder_y + 1.0 * s),
+                (cx - 6.5 * s, hip_y + 1.0 * s),
+            ],
             fill=pal["leather"],
-            outline=outline,
-            width=max(1, int(0.9 * S)),
+            width=round(2.3 * s),
         )
-        d.rectangle(
-            (
-                cx + spec.waist_w * 0.06 * S,
-                waist_y - 0.3 * S,
-                cx + spec.waist_w * 0.14 * S,
-                waist_y + 3.3 * S,
-            ),
+        _rounded(
+            d,
+            (cx - 12.5 * s, hip_y - 2.5 * s, cx + 12.5 * s, hip_y + 2.6 * s),
+            radius=1.3 * s,
+            fill=pal["leather_dark"],
+            outline=outline,
+            width=round(0.8 * s),
+        )
+        _rounded(
+            d,
+            (cx - 2.8 * s, hip_y - 2.0 * s, cx + 2.8 * s, hip_y + 2.2 * s),
+            radius=0.8 * s,
             fill=pal["steel"],
             outline=outline,
-            width=max(1, int(0.7 * S)),
+            width=round(0.65 * s),
         )
-        # One hanging tool (the wrench) — keep it simple in profile.
-        self._draw_belt_wrench(
-            d, cx + spec.waist_w * 0.20 * S, waist_y + 3.5 * S, S, pal
-        )
+        self._draw_keyring(d, (cx + 8.3 * s, hip_y + 4.5 * s), s, scale=0.60)
 
-        # Arms — opposite phase to the legs.
-        arm_swing = -step
-        # Far arm (drawn first, gets clipped by torso).
-        far_shoulder = (cx - spec.shoulder_w * 0.06 * S, shoulder_y + 2.0 * S)
-        far_hand = (cx - 3.0 * S + arm_swing * 4.0 * S, shoulder_y + spec.arm_len * S)
-        d.line(
-            [far_shoulder, far_hand],
-            fill=pal["tee_dark"],
-            width=max(1, int(spec.arm_w * S)),
+        # Near arm and iconic key ring.
+        near_shoulder = (cx + 11.8 * s, shoulder_y + 5.0 * s)
+        near_target = (
+            cx + 13.0 * s + pose.scan * 1.5 * s,
+            hip_y - 4.0 * s,
         )
-        d.ellipse(
-            _bbox((far_hand[0], far_hand[1] + 3.0 * S), 3.0 * S, 2.6 * S),
-            fill=pal["skin"],
-            outline=outline,
-            width=max(1, int(0.7 * S)),
+        near_elbow, near_hand = self._solve_two_bone_joint(
+            near_shoulder,
+            near_target,
+            spec.arm_upper * s,
+            spec.arm_lower * s,
+            bend_sign=-1.0,
         )
-        # Near arm.
-        near_shoulder = (cx + spec.shoulder_w * 0.28 * S, shoulder_y + 2.0 * S)
-        near_hand = (cx + 6.0 * S + arm_swing * -4.0 * S, shoulder_y + spec.arm_len * S)
-        d.line(
-            [near_shoulder, near_hand],
-            fill=pal["tee"],
-            width=max(1, int(spec.arm_w * S)),
+        self._draw_two_bone_limb(
+            d,
+            near_shoulder,
+            near_elbow,
+            near_hand,
+            s,
+            fill=pal["shirt"],
+            width=6.0,
         )
-        d.ellipse(
-            _bbox((near_hand[0], near_hand[1] + 3.0 * S), 3.4 * S, 3.0 * S),
-            fill=pal["skin"],
-            outline=outline,
-            width=max(1, int(0.8 * S)),
-        )
-
-        # Head in profile.
-        self._side_draw_head(base, head_center, spec, pal, S, pose)
-
-    def _side_draw_head(
-        self,
-        base: Image.Image,
-        c: Point,
-        spec: BobSpec,
-        pal: Dict[str, Color],
-        S: float,
-        pose: BobPose,
-    ) -> None:
-        """Profile head with a proper inline neck that connects the
-        jawline down to the shoulder.
-
-        Z-order (explicit, matches Alice's documented pattern):
-          1. Inline profile neck  (chin will overlap the top edge)
-          2. Back hair cap
-          3. Full face polygon    (extends to head_h * 0.46 chin — a
-                                   real jaw, not the truncated 0.34
-                                   polygon the previous revision used)
-          4. Stub / 5-oc shadow over the lower face
-          5. Ear (camera-far side)
-          6. Forward bang sweep
-          7. Eye + brow
-          8. Mouth lip line
-        """
-        d = ImageDraw.Draw(base)
-        outline = pal["outline"]
-
-        # 1. Inline profile neck — connects the jaw point to the
-        # shoulder. The generic `_draw_neck` helper centers the neck
-        # under head_center.x, but in profile the chin is offset
-        # forward (+head_w * 0.34) and the neck needs to angle back
-        # to the shoulder. Draw the neck polygon explicitly here so
-        # the front edge follows the chin and the back edge follows
-        # the nape.
-        shoulder_y = c[1] + spec.head_h * spec.head_anchor * S + spec.neck_h * S
-        chin_front_x = c[0] + spec.head_w * 0.36 * S
-        chin_front_y = c[1] + spec.head_h * 0.36 * S
-        nape_x = c[0] - spec.head_w * 0.10 * S
-        nape_y = c[1] + spec.head_h * 0.32 * S
-        neck = [
-            (chin_front_x, chin_front_y),
-            (chin_front_x - 1.5 * S, shoulder_y + 2.0 * S),
-            (nape_x - 1.0 * S, shoulder_y + 2.0 * S),
-            (nape_x, nape_y),
-        ]
-        d.polygon(neck, fill=pal["skin"], outline=outline)
-        # Throat shadow — a thin darker stroke along the back of the
-        # neck so the front-vs-back planes read.
-        d.line(
-            [
-                (nape_x + 0.5 * S, nape_y + 1.0 * S),
-                (nape_x - 0.5 * S, shoulder_y + 1.0 * S),
-            ],
-            fill=pal["skin_shadow"],
-            width=max(1, int(0.7 * S)),
-        )
-
-        # 2. Back hair cap.
-        d.ellipse(
+        _rounded(
+            d,
             _bbox(
-                (c[0] - 2.0 * S, c[1] - 3.0 * S),
-                (spec.head_w + 4.0) * S,
-                (spec.head_h * 0.86) * S,
+                near_shoulder[0] + 0.4 * s,
+                near_shoulder[1] + 5.5 * s,
+                6.5 * s,
+                7.0 * s,
             ),
-            fill=pal["hair"],
+            radius=1.4 * s,
+            fill=pal["shirt_dark"],
             outline=outline,
-            width=max(1, int(1.0 * S)),
+            width=round(0.75 * s),
+        )
+        self._draw_hand(d, near_hand, s)
+        self._draw_keyring(
+            d,
+            (near_hand[0] + 4.8 * s, near_hand[1] + 1.0 * s),
+            s,
+            scale=0.62,
         )
 
-        # 3. Face polygon — extended down to head_h * 0.46 chin
-        # (was 0.34, which cut the bottom of the head off and left a
-        # gap above the neck). The forward-chin point is at the same
-        # x as the neck top so the silhouette connects cleanly.
-        face = [
-            (c[0] - spec.head_w * 0.30 * S, c[1] - spec.head_h * 0.46 * S),
-            (c[0] + spec.head_w * 0.28 * S, c[1] - spec.head_h * 0.36 * S),
-            (c[0] + spec.head_w * 0.40 * S, c[1] - spec.head_h * 0.14 * S),  # brow
-            (
-                c[0] + spec.head_w * 0.54 * S,
-                c[1] - spec.head_h * 0.02 * S,
-            ),  # nose bridge
-            (c[0] + spec.head_w * 0.56 * S, c[1] + spec.head_h * 0.06 * S),  # nose tip
-            (
-                c[0] + spec.head_w * 0.40 * S,
-                c[1] + spec.head_h * 0.14 * S,
-            ),  # under-nose
-            (c[0] + spec.head_w * 0.44 * S, c[1] + spec.head_h * 0.22 * S),  # upper lip
-            (c[0] + spec.head_w * 0.40 * S, c[1] + spec.head_h * 0.30 * S),  # lower lip
-            (
-                c[0] + spec.head_w * 0.36 * S,
-                c[1] + spec.head_h * 0.36 * S,
-            ),  # chin connects to neck top
-            (
-                c[0] + spec.head_w * 0.10 * S,
-                c[1] + spec.head_h * 0.46 * S,
-            ),  # jaw under-chin
-            (
-                c[0] - spec.head_w * 0.10 * S,
-                c[1] + spec.head_h * 0.36 * S,
-            ),  # nape connects to neck top
-            (
-                c[0] - spec.head_w * 0.36 * S,
-                c[1] + spec.head_h * 0.18 * S,
-            ),  # jaw back corner
-            (c[0] - spec.head_w * 0.42 * S, c[1] - spec.head_h * 0.10 * S),  # cheek
-        ]
-        d.polygon(face, fill=pal["skin"], outline=outline)
+        self._draw_head_three_quarter(d, head_c, pose, s)
 
-        # 4. Five o'clock shadow on the lower face — repositioned to
-        # follow the new larger jawline. Covers from the cheekbone
-        # down to the chin including the mouth area.
-        stub = [
-            (c[0] - spec.head_w * 0.34 * S, c[1] + spec.head_h * 0.10 * S),
-            (c[0] + spec.head_w * 0.40 * S, c[1] + spec.head_h * 0.16 * S),
-            (c[0] + spec.head_w * 0.44 * S, c[1] + spec.head_h * 0.26 * S),
-            (c[0] + spec.head_w * 0.36 * S, c[1] + spec.head_h * 0.36 * S),
-            (c[0] + spec.head_w * 0.10 * S, c[1] + spec.head_h * 0.44 * S),
-            (c[0] - spec.head_w * 0.10 * S, c[1] + spec.head_h * 0.34 * S),
-            (c[0] - spec.head_w * 0.34 * S, c[1] + spec.head_h * 0.20 * S),
-        ]
-        d.polygon(stub, fill=pal["skin_shadow"], outline=None)
+    def _draw_head_three_quarter(
+        self,
+        d: ImageDraw.ImageDraw,
+        center: Point,
+        pose: BobPose,
+        s: float,
+    ) -> None:
+        pal = BOB_PALETTE
+        outline = pal["outline"]
+        cx, cy = center
 
-        # 5. Ear (camera-far side) — slightly lower + larger than
-        # before so the silhouette reads as having a real ear.
-        ear_c = (c[0] - spec.head_w * 0.22 * S, c[1] + spec.head_h * 0.04 * S)
-        d.ellipse(
-            _bbox(ear_c, 3.4 * S, 4.6 * S),
+        # Short neck behind the head, then a full cranium and a softer jaw.
+        _rounded(
+            d,
+            (cx - 4.1 * s, cy + 9.5 * s, cx + 4.1 * s, cy + 17.0 * s),
+            radius=2.0 * s,
+            fill=pal["skin_shadow"],
+            outline=outline,
+            width=round(0.8 * s),
+        )
+        _ellipse(
+            d,
+            _bbox(cx, cy - 0.8 * s, 25.5 * s, 27.5 * s),
             fill=pal["skin"],
             outline=outline,
-            width=max(1, int(0.8 * S)),
+            width=round(1.1 * s),
         )
-        # Ear inner crease.
-        d.line(
-            [
-                (ear_c[0] + 0.5 * S, ear_c[1] - 1.5 * S),
-                (ear_c[0] - 0.5 * S, ear_c[1] + 1.5 * S),
-            ],
+        # Ear on the far side.
+        _ellipse(
+            d,
+            _bbox(cx - 10.8 * s, cy + 1.0 * s, 4.0 * s, 6.0 * s),
             fill=pal["skin_shadow"],
-            width=max(1, int(0.7 * S)),
+            outline=outline,
+            width=round(0.7 * s),
         )
 
-        # 6. Forward bang sweep across the forehead.
-        d.polygon(
-            [
-                (c[0] - spec.head_w * 0.30 * S, c[1] - spec.head_h * 0.46 * S),
-                (c[0] + spec.head_w * 0.30 * S, c[1] - spec.head_h * 0.34 * S),
-                (c[0] + spec.head_w * 0.26 * S, c[1] - spec.head_h * 0.20 * S),
-                (c[0] - spec.head_w * 0.20 * S, c[1] - spec.head_h * 0.18 * S),
-            ],
+        # Hair is one full cap plus a few deliberate tufts.  It follows the
+        # skull instead of reading as a flat brown lid.
+        hair_mass = [
+            (cx - 11.8 * s, cy - 2.0 * s),
+            (cx - 10.5 * s, cy - 9.0 * s),
+            (cx - 5.5 * s, cy - 13.5 * s),
+            (cx + 2.0 * s, cy - 14.2 * s),
+            (cx + 9.0 * s, cy - 10.5 * s),
+            (cx + 11.0 * s, cy - 4.0 * s),
+            (cx + 6.0 * s, cy - 6.0 * s),
+            (cx + 2.0 * s, cy - 3.8 * s),
+            (cx - 2.0 * s, cy - 6.8 * s),
+            (cx - 6.8 * s, cy - 3.8 * s),
+        ]
+        _poly(
+            d,
+            hair_mass,
             fill=pal["hair"],
             outline=outline,
+            width=round(1.0 * s),
         )
-
-        # 7. Eye + brow.
-        eye_x = c[0] + spec.head_w * 0.22 * S
-        eye_y = c[1] - spec.head_h * 0.06 * S
-        # Brow stroke (subtle).
-        d.line(
+        _poly(
+            d,
             [
-                (c[0] + spec.head_w * 0.12 * S, c[1] - spec.head_h * 0.14 * S),
-                (c[0] + spec.head_w * 0.32 * S, c[1] - spec.head_h * 0.12 * S),
+                (cx - 6.5 * s, cy - 11.5 * s),
+                (cx - 1.5 * s, cy - 15.2 * s),
+                (cx + 0.5 * s, cy - 8.0 * s),
             ],
+            fill=pal["hair_mid"],
+            outline=outline,
+            width=round(0.65 * s),
+        )
+        _poly(
+            d,
+            [
+                (cx + 0.5 * s, cy - 13.8 * s),
+                (cx + 6.5 * s, cy - 12.2 * s),
+                (cx + 3.3 * s, cy - 7.0 * s),
+            ],
+            fill=pal["hair_mid"],
+            outline=outline,
+            width=round(0.65 * s),
+        )
+        _line(
+            d,
+            [(cx - 3.5 * s, cy - 12.0 * s), (cx + 4.5 * s, cy - 10.8 * s)],
+            fill=pal["hair_light"],
+            width=round(1.1 * s),
+        )
+        self._draw_goggles_three_quarter(d, cx, cy - 8.5 * s, s)
+
+        # Brows and eyes carry more confidence than the old sleepy dots.
+        _line(
+            d,
+            [(cx - 7.0 * s, cy - 2.5 * s), (cx - 2.2 * s, cy - 3.2 * s)],
             fill=pal["hair"],
-            width=max(1, int(0.8 * S)),
+            width=round(1.0 * s),
+        )
+        _line(
+            d,
+            [(cx + 2.2 * s, cy - 3.4 * s), (cx + 7.4 * s, cy - 2.0 * s)],
+            fill=pal["hair"],
+            width=round(1.0 * s),
         )
         if pose.blink:
-            d.line(
-                [(eye_x - 1.2 * S, eye_y), (eye_x + 1.2 * S, eye_y)],
+            _line(
+                d,
+                [(cx - 6.4 * s, cy), (cx - 2.5 * s, cy)],
                 fill=outline,
-                width=max(1, int(1.0 * S)),
+                width=round(1.0 * s),
+            )
+            _line(
+                d,
+                [(cx + 2.5 * s, cy), (cx + 6.2 * s, cy + 0.3 * s)],
+                fill=outline,
+                width=round(1.0 * s),
             )
         else:
-            d.ellipse(
-                _bbox((eye_x, eye_y), 2.0 * S, 1.4 * S),
-                fill=pal["white"],
-                outline=outline,
-                width=max(1, int(0.7 * S)),
-            )
-            d.ellipse(_bbox((eye_x + 0.4 * S, eye_y), 1.0 * S, 1.2 * S), fill=outline)
-
-        # 8. Mouth lip line.
-        d.line(
-            [
-                (c[0] + spec.head_w * 0.34 * S, c[1] + spec.head_h * 0.24 * S),
-                (c[0] + spec.head_w * 0.42 * S, c[1] + spec.head_h * 0.24 * S),
-            ],
-            fill=outline,
-            width=max(1, int(0.9 * S)),
-        )
-
-    # ─────────────────────────────────────────────────────────────────
-    # FRONT view — facing the camera, used for talk + interact.
-    # ─────────────────────────────────────────────────────────────────
-
-    def _render_front(
-        self,
-        base: Image.Image,
-        cx: float,
-        feet_y: float,
-        spec: BobSpec,
-        pal: Dict[str, Color],
-        S: float,
-        pose: BobPose,
-    ) -> None:
-        d = ImageDraw.Draw(base)
-        outline = pal["outline"]
-        boot_top_y = feet_y - spec.boot_h * S
-        pants_top_y = boot_top_y - spec.leg_h * S
-        waist_y = pants_top_y - 2.0 * S
-        vest_top_y = waist_y - spec.vest_h * S
-        shoulder_y = vest_top_y - 4.0 * S
-        head_center = (
-            cx,
-            shoulder_y - spec.head_h * spec.head_anchor * S - spec.neck_h * S,
-        )
-
-        # Legs (symmetric).
-        for sgn in (-1, 1):
-            hip = (cx + sgn * 5.0 * S, pants_top_y)
-            ankle = (cx + sgn * 5.0 * S, boot_top_y)
-            leg = [
-                (hip[0] - spec.leg_w * 0.5 * S, hip[1]),
-                (hip[0] + spec.leg_w * 0.5 * S, hip[1]),
-                (ankle[0] + spec.boot_w * 0.4 * S, ankle[1]),
-                (ankle[0] - spec.boot_w * 0.4 * S, ankle[1]),
-            ]
-            d.polygon(leg, fill=pal["pants"], outline=outline)
-            d.rounded_rectangle(
-                (
-                    ankle[0] - spec.boot_w * 0.55 * S,
-                    ankle[1] - 0.5 * S,
-                    ankle[0] + spec.boot_w * 0.55 * S,
-                    feet_y,
-                ),
-                radius=2.0 * S,
-                fill=pal["boot"],
-                outline=outline,
-                width=max(1, int(1.0 * S)),
-            )
-            d.rectangle(
-                (
-                    ankle[0] - spec.boot_w * 0.55 * S,
-                    feet_y - 1.6 * S,
-                    ankle[0] + spec.boot_w * 0.55 * S,
-                    feet_y,
-                ),
-                fill=pal["boot_sole"],
-                outline=outline,
-                width=max(1, int(0.7 * S)),
-            )
-
-        # Tee (symmetric).
-        tee = [
-            (cx - spec.shoulder_w * 0.50 * S, vest_top_y - 2.0 * S),
-            (cx + spec.shoulder_w * 0.50 * S, vest_top_y - 2.0 * S),
-            (cx + spec.waist_w * 0.50 * S, waist_y),
-            (cx - spec.waist_w * 0.50 * S, waist_y),
-        ]
-        d.polygon(tee, fill=pal["tee"], outline=outline)
-        # Vest open at front — two side panels.
-        for sgn in (-1, 1):
-            panel = [
-                (cx + sgn * spec.shoulder_w * 0.48 * S, vest_top_y),
-                (cx + sgn * 3.0 * S, vest_top_y + 1.0 * S),
-                (cx + sgn * spec.waist_w * 0.30 * S, waist_y),
-                (cx + sgn * spec.waist_w * 0.48 * S, waist_y),
-            ]
-            d.polygon(panel, fill=pal["vest"], outline=outline)
-            # Hi-vis stripe on each panel.
-            stripe_y = vest_top_y + spec.vest_h * 0.40 * S
-            d.rectangle(
-                (
-                    cx + sgn * spec.shoulder_w * 0.30 * S - 4.0 * S,
-                    stripe_y,
-                    cx + sgn * spec.shoulder_w * 0.30 * S + 4.0 * S,
-                    stripe_y + 2.4 * S,
-                ),
-                fill=pal["hi_vis"],
-                outline=outline,
-                width=max(1, int(0.6 * S)),
-            )
-        # Tee crew-neck band.
-        d.arc(
-            (cx - 7.0 * S, vest_top_y - 3.0 * S, cx + 7.0 * S, vest_top_y + 3.0 * S),
-            start=10,
-            end=170,
-            fill=pal["tee_dark"],
-            width=max(1, int(1.0 * S)),
-        )
-        # Belt (symmetric).
-        d.rounded_rectangle(
-            (
-                cx - spec.waist_w * 0.52 * S,
-                waist_y - 0.5 * S,
-                cx + spec.waist_w * 0.52 * S,
-                waist_y + 3.5 * S,
-            ),
-            radius=1.4 * S,
-            fill=pal["leather"],
-            outline=outline,
-            width=max(1, int(0.9 * S)),
-        )
-        d.rectangle(
-            (cx - 2.6 * S, waist_y - 0.3 * S, cx + 2.6 * S, waist_y + 3.3 * S),
-            fill=pal["steel"],
-            outline=outline,
-            width=max(1, int(0.7 * S)),
-        )
-        # Tools laid out across the belt (both sides).
-        self._draw_belt_keyring(
-            d, cx + spec.waist_w * 0.32 * S, waist_y + 3.5 * S, S, pal
-        )
-        self._draw_belt_hammer(
-            d, cx - spec.waist_w * 0.32 * S, waist_y + 3.5 * S, S, pal
-        )
-
-        # Arms (symmetric).
-        for sgn in (-1, 1):
-            sx = cx + sgn * spec.shoulder_w * 0.46 * S
-            sy = shoulder_y + 2.0 * S
-            ex = sx + sgn * 1.0 * S
-            ey = sy + spec.arm_len * S - pose.arm_lift * 8.0 * S
-            sleeve = [
-                (sx - spec.cuff_w * 0.6 * S, sy),
-                (sx + spec.cuff_w * 0.6 * S, sy),
-                (ex + spec.cuff_w * 0.55 * S, ey),
-                (ex - spec.cuff_w * 0.55 * S, ey),
-            ]
-            d.polygon(sleeve, fill=pal["tee"], outline=outline)
-            d.ellipse(
-                _bbox((ex, ey + 3.0 * S), 3.6 * S, 3.0 * S),
-                fill=pal["skin"],
-                outline=outline,
-                width=max(1, int(0.8 * S)),
-            )
-
-        # Head front-view.
-        self._front_draw_head(base, head_center, spec, pal, S, pose)
-
-    def _front_draw_head(
-        self,
-        base: Image.Image,
-        c: Point,
-        spec: BobSpec,
-        pal: Dict[str, Color],
-        S: float,
-        pose: BobPose,
-    ) -> None:
-        d = ImageDraw.Draw(base)
-        outline = pal["outline"]
-        # Neck strip (front view: vertical, no slant).
-        self._draw_neck(d, c, spec, pal, S, slant=0.0)
-        # Back hair cap.
-        d.ellipse(
-            _bbox(
-                (c[0], c[1] - 3.0 * S),
-                (spec.head_w + 4.0) * S,
-                (spec.head_h * 0.86) * S,
-            ),
-            fill=pal["hair"],
-            outline=outline,
-            width=max(1, int(1.0 * S)),
-        )
-        # Face.
-        d.ellipse(
-            _bbox(c, spec.head_w * S, spec.head_h * S),
-            fill=pal["skin"],
-            outline=outline,
-            width=max(1, int(1.2 * S)),
-        )
-        # Five o'clock shadow (symmetric, lower than the previous
-        # `jaw shadow` so it covers the mouth area).
-        d.ellipse(
-            _bbox(
-                (c[0], c[1] + spec.head_h * 0.32 * S),
-                (spec.head_w * 0.78) * S,
-                (spec.jaw_h * 2.4) * S,
-            ),
-            fill=pal["skin_shadow"],
-            outline=None,
-        )
-        # Ears (two, one per side).
-        for sgn in (-1, 1):
-            d.ellipse(
-                _bbox(
-                    (c[0] + sgn * spec.head_w * 0.48 * S, c[1] + 0.5 * S),
-                    2.6 * S,
-                    3.4 * S,
-                ),
-                fill=pal["skin"],
-                outline=outline,
-                width=max(1, int(0.7 * S)),
-            )
-        # Tousled-crop bangs — symmetric three-clump fringe.
-        for dx in (-7.0, 0.0, 7.0):
-            d.polygon(
-                [
-                    (c[0] + (dx - 3.0) * S, c[1] - spec.head_h * 0.48 * S),
-                    (c[0] + (dx + 3.0) * S, c[1] - spec.head_h * 0.48 * S),
-                    (c[0] + (dx + 4.0) * S, c[1] - spec.head_h * 0.20 * S),
-                    (c[0] + (dx - 4.0) * S, c[1] - spec.head_h * 0.20 * S),
-                ],
-                fill=pal["hair"],
-                outline=outline,
-            )
-        # Symmetric brow strokes — one above each eye, in hair color.
-        for sgn in (-1, 1):
-            ex = c[0] + sgn * spec.head_w * 0.18 * S
-            d.line(
-                [
-                    (ex - 2.4 * S, c[1] - spec.head_h * 0.12 * S),
-                    (ex + 2.4 * S, c[1] - spec.head_h * 0.12 * S),
-                ],
-                fill=pal["hair"],
-                width=max(1, int(0.9 * S)),
-            )
-        # Two symmetric eyes.
-        eye_y = c[1] - 2.0 * S
-        for sgn in (-1, 1):
-            ex = c[0] + sgn * spec.head_w * 0.18 * S
-            if pose.blink:
-                d.line(
-                    [(ex - 2.0 * S, eye_y), (ex + 2.0 * S, eye_y)],
-                    fill=outline,
-                    width=max(1, int(1.1 * S)),
-                )
-            else:
-                d.ellipse(
-                    _bbox((ex, eye_y), 2.8 * S, 1.6 * S),
+            for eye_x, eye_y in ((cx - 4.5 * s, cy), (cx + 4.3 * s, cy + 0.2 * s)):
+                _ellipse(
+                    d,
+                    _bbox(eye_x, eye_y, 3.0 * s, 3.5 * s),
                     fill=pal["white"],
                     outline=outline,
-                    width=max(1, int(0.9 * S)),
+                    width=round(0.65 * s),
                 )
-                d.ellipse(_bbox((ex, eye_y), 1.2 * S, 1.6 * S), fill=outline)
-        # Symmetric nose: a small triangle.
-        d.polygon(
-            [
-                (c[0] - 1.4 * S, c[1] + 1.0 * S),
-                (c[0] + 1.4 * S, c[1] + 1.0 * S),
-                (c[0] + 0.0 * S, c[1] + 4.5 * S),
-            ],
+                _ellipse(
+                    d,
+                    _bbox(eye_x + 0.5 * s, eye_y + 0.2 * s, 1.4 * s, 1.8 * s),
+                    fill=pal["eye"],
+                )
+
+        # Nose, beard mask, and mouth are integrated rather than a floating
+        # moustache strip.  The beard follows cheek and jaw planes.
+        _line(
+            d,
+            [(cx + 1.0 * s, cy + 0.6 * s), (cx + 2.8 * s, cy + 3.0 * s)],
             fill=pal["skin_shadow"],
-            outline=None,
+            width=round(0.8 * s),
         )
-        # Mouth.
-        mouth_y = c[1] + spec.head_h * 0.30 * S
-        if pose.talk_open > 0.2:
-            d.ellipse(
-                _bbox((c[0], mouth_y), 4.0 * S, (1.0 + pose.talk_open * 1.6) * S),
-                fill=outline,
+        beard = [
+            (cx - 8.4 * s, cy + 3.6 * s),
+            (cx - 4.0 * s, cy + 5.2 * s),
+            (cx + 1.5 * s, cy + 4.6 * s),
+            (cx + 7.5 * s, cy + 3.8 * s),
+            (cx + 6.8 * s, cy + 8.0 * s),
+            (cx + 2.0 * s, cy + 11.5 * s),
+            (cx - 3.5 * s, cy + 11.0 * s),
+            (cx - 7.6 * s, cy + 8.2 * s),
+        ]
+        d.polygon([(round(x), round(y)) for x, y in beard], fill=pal["beard"])
+        _line(
+            d,
+            [beard[0], beard[1], beard[2], beard[3]],
+            fill=pal["beard_dark"],
+            width=round(0.7 * s),
+        )
+        _line(
+            d,
+            [(cx - 3.8 * s, cy + 6.2 * s), (cx + 4.8 * s, cy + 6.5 * s)],
+            fill=outline,
+            width=round(1.0 * s),
+        )
+        _line(
+            d,
+            [(cx - 1.8 * s, cy + 9.4 * s), (cx + 2.5 * s, cy + 9.5 * s)],
+            fill=pal["hair_light"],
+            width=round(0.65 * s),
+        )
+
+    # ------------------------------------------------------------------
+    # Front view
+
+    def _draw_front(
+        self,
+        image: Image.Image,
+        cx: float,
+        feet_y: float,
+        spec: BobSpec,
+        pose: BobPose,
+        s: float,
+    ) -> None:
+        d = ImageDraw.Draw(image)
+        pal = BOB_PALETTE
+        outline = pal["outline"]
+        boot_top = feet_y - spec.boot_h * s
+        shin_top = boot_top - spec.shin_h * s
+        hip_y = shin_top - spec.thigh_h * s
+        shoulder_y = hip_y - spec.torso_h * s
+        head_c = (cx, shoulder_y - 11.0 * s + pose.head_tilt * 0.1 * s)
+
+        # Legs and boots.
+        for sign, fill in ((-1, pal["pants_dark"]), (1, pal["pants"])):
+            leg_x = cx + sign * 5.1 * s
+            _poly(
+                d,
+                [
+                    (leg_x - 4.2 * s, hip_y),
+                    (leg_x + 4.2 * s, hip_y),
+                    (leg_x + 3.6 * s, boot_top),
+                    (leg_x - 3.6 * s, boot_top),
+                ],
+                fill=fill,
+                outline=outline,
+                width=round(1.0 * s),
+            )
+            _rounded(
+                d,
+                (
+                    leg_x - 5.5 * s,
+                    boot_top,
+                    leg_x + 5.5 * s,
+                    feet_y,
+                ),
+                radius=2.0 * s,
+                fill=pal["boot"],
+                outline=outline,
+                width=round(1.0 * s),
+            )
+            _line(
+                d,
+                [
+                    (leg_x - 5.1 * s, feet_y - 1.1 * s),
+                    (leg_x + 5.1 * s, feet_y - 1.1 * s),
+                ],
+                fill=pal["boot_sole"],
+                width=round(1.25 * s),
+            )
+            _line(
+                d,
+                [
+                    (leg_x - 3.4 * s, boot_top + 2.0 * s),
+                    (leg_x + 3.4 * s, boot_top + 2.0 * s),
+                ],
+                fill=pal["boot_light"],
+                width=round(1.0 * s),
+            )
+
+        # Far-side satchel is partially visible behind the body.
+        self._draw_satchel(d, (cx - 15.0 * s, hip_y - 10.0 * s), s * 0.88)
+
+        # Back arm.  During interaction both arms move inward to own the device;
+        # during talk the camera-left arm remains relaxed behind the vest.
+        left_shoulder = (cx - 12.5 * s, shoulder_y + 5.0 * s)
+        if pose.interact > 0.0:
+            left_target = (
+                cx - (8.5 - 3.5 * pose.interact) * s,
+                shoulder_y + (22.5 - 5.0 * pose.interact) * s,
             )
         else:
-            d.arc(
-                (c[0] - 3.5 * S, mouth_y - 1.5 * S, c[0] + 3.5 * S, mouth_y + 2.5 * S),
-                start=10,
-                end=170,
-                fill=outline,
-                width=max(1, int(1.0 * S)),
+            left_target = (cx - 14.0 * s, hip_y - 3.0 * s)
+        left_elbow, left_hand = self._solve_two_bone_joint(
+            left_shoulder,
+            left_target,
+            spec.arm_upper * s,
+            spec.arm_lower * s,
+            bend_sign=1.0,
+        )
+        self._draw_two_bone_limb(
+            d,
+            left_shoulder,
+            left_elbow,
+            left_hand,
+            s,
+            fill=pal["shirt_dark"],
+            width=5.9,
+        )
+        self._draw_hand(d, left_hand, s)
+
+        # Torso underlayer.
+        _poly(
+            d,
+            [
+                (cx - 15.0 * s, shoulder_y + 1.0 * s),
+                (cx + 15.0 * s, shoulder_y + 1.0 * s),
+                (cx + 11.5 * s, hip_y),
+                (cx - 11.5 * s, hip_y),
+            ],
+            fill=pal["shirt"],
+            outline=outline,
+            width=round(1.1 * s),
+        )
+        # Collar and henley placket.
+        _poly(
+            d,
+            [
+                (cx - 6.0 * s, shoulder_y + 1.2 * s),
+                (cx, shoulder_y + 6.2 * s),
+                (cx + 6.0 * s, shoulder_y + 1.2 * s),
+            ],
+            fill=pal["shirt_dark"],
+            outline=outline,
+            width=round(0.75 * s),
+        )
+        _rounded(
+            d,
+            (cx - 1.4 * s, shoulder_y + 5.0 * s, cx + 1.4 * s, shoulder_y + 15.0 * s),
+            radius=0.8 * s,
+            fill=pal["shirt_light"],
+            outline=outline,
+            width=round(0.55 * s),
+        )
+        for y_off in (8.0, 11.5):
+            _ellipse(
+                d,
+                _bbox(cx, shoulder_y + y_off * s, 1.4 * s, 1.4 * s),
+                fill=pal["steel_dark"],
             )
+
+        # Clean vest panels with no self-intersections or alpha wedges.
+        _poly(
+            d,
+            [
+                (cx - 13.0 * s, shoulder_y + 2.5 * s),
+                (cx - 3.2 * s, shoulder_y + 3.5 * s),
+                (cx - 1.2 * s, hip_y),
+                (cx - 11.0 * s, hip_y),
+            ],
+            fill=pal["vest_dark"],
+            outline=outline,
+            width=round(1.0 * s),
+        )
+        _poly(
+            d,
+            [
+                (cx + 3.2 * s, shoulder_y + 3.5 * s),
+                (cx + 13.0 * s, shoulder_y + 2.5 * s),
+                (cx + 11.0 * s, hip_y),
+                (cx + 1.2 * s, hip_y),
+            ],
+            fill=pal["vest"],
+            outline=outline,
+            width=round(1.0 * s),
+        )
+        _poly(
+            d,
+            [
+                (cx - 3.4 * s, shoulder_y + 3.4 * s),
+                (cx - 0.2 * s, shoulder_y + 6.0 * s),
+                (cx - 4.5 * s, shoulder_y + 14.0 * s),
+                (cx - 7.2 * s, shoulder_y + 8.2 * s),
+            ],
+            fill=pal["vest_light"],
+            outline=outline,
+            width=round(0.7 * s),
+        )
+        _poly(
+            d,
+            [
+                (cx + 3.4 * s, shoulder_y + 3.4 * s),
+                (cx + 0.2 * s, shoulder_y + 6.0 * s),
+                (cx + 4.5 * s, shoulder_y + 14.0 * s),
+                (cx + 7.2 * s, shoulder_y + 8.2 * s),
+            ],
+            fill=pal["vest_light"],
+            outline=outline,
+            width=round(0.7 * s),
+        )
+        # Horizontal reflective band appears in every front frame.
+        _line(
+            d,
+            [
+                (cx - 10.5 * s, shoulder_y + 18.0 * s),
+                (cx + 10.5 * s, shoulder_y + 18.0 * s),
+            ],
+            fill=pal["hi_vis_dark"],
+            width=round(3.8 * s),
+        )
+        _line(
+            d,
+            [
+                (cx - 10.5 * s, shoulder_y + 18.0 * s),
+                (cx + 10.5 * s, shoulder_y + 18.0 * s),
+            ],
+            fill=pal["hi_vis"],
+            width=round(2.0 * s),
+        )
+        _rounded(
+            d,
+            (
+                cx + 5.0 * s,
+                shoulder_y + 8.0 * s,
+                cx + 10.2 * s,
+                shoulder_y + 13.3 * s,
+            ),
+            radius=1.0 * s,
+            fill=pal["reinforce"],
+            outline=outline,
+            width=round(0.65 * s),
+        )
+        _rounded(
+            d,
+            (cx - 12.8 * s, hip_y - 2.5 * s, cx + 12.8 * s, hip_y + 2.6 * s),
+            radius=1.3 * s,
+            fill=pal["leather_dark"],
+            outline=outline,
+            width=round(0.8 * s),
+        )
+        _rounded(
+            d,
+            (cx - 2.8 * s, hip_y - 2.0 * s, cx + 2.8 * s, hip_y + 2.2 * s),
+            radius=0.8 * s,
+            fill=pal["steel"],
+            outline=outline,
+            width=round(0.65 * s),
+        )
+        self._draw_keyring(d, (cx + 8.5 * s, hip_y + 4.5 * s), s, scale=0.58)
+
+        # Near/right arm: gesture during talk, device grip during interaction.
+        right_shoulder = (cx + 12.5 * s, shoulder_y + 5.0 * s)
+        if pose.interact > 0.0:
+            right_target = (
+                cx + (8.5 - 3.5 * pose.interact) * s,
+                shoulder_y + (22.5 - 5.0 * pose.interact) * s,
+            )
+        elif pose.gesture > 0.0:
+            right_target = (
+                cx + (14.0 + 5.0 * pose.gesture) * s,
+                shoulder_y + (22.0 - 10.0 * pose.gesture) * s,
+            )
+        else:
+            right_target = (cx + 14.0 * s, hip_y - 3.0 * s)
+        right_elbow, right_hand = self._solve_two_bone_joint(
+            right_shoulder,
+            right_target,
+            spec.arm_upper * s,
+            spec.arm_lower * s,
+            bend_sign=-1.0,
+        )
+        self._draw_two_bone_limb(
+            d,
+            right_shoulder,
+            right_elbow,
+            right_hand,
+            s,
+            fill=pal["shirt"],
+            width=6.0,
+        )
+        self._draw_hand(d, right_hand, s)
+        if pose.interact <= 0.0 and pose.gesture <= 0.05:
+            self._draw_keyring(
+                d,
+                (right_hand[0] + 4.5 * s, right_hand[1] + 0.8 * s),
+                s,
+                scale=0.68,
+            )
+
+        if pose.interact > 0.02:
+            self._draw_analyzer(
+                d,
+                (cx, shoulder_y + 19.0 * s),
+                s,
+                open_amount=pose.interact,
+                scan=pose.scan,
+            )
+
+        self._draw_head_front(d, head_c, pose, s)
+
+    def _draw_head_front(
+        self,
+        d: ImageDraw.ImageDraw,
+        center: Point,
+        pose: BobPose,
+        s: float,
+    ) -> None:
+        pal = BOB_PALETTE
+        outline = pal["outline"]
+        cx, cy = center
+        _rounded(
+            d,
+            (cx - 4.2 * s, cy + 9.5 * s, cx + 4.2 * s, cy + 17.0 * s),
+            radius=2.0 * s,
+            fill=pal["skin_shadow"],
+            outline=outline,
+            width=round(0.8 * s),
+        )
+        _ellipse(
+            d,
+            _bbox(cx, cy - 0.8 * s, 25.5 * s, 27.5 * s),
+            fill=pal["skin"],
+            outline=outline,
+            width=round(1.1 * s),
+        )
+        for sign in (-1, 1):
+            _ellipse(
+                d,
+                _bbox(cx + sign * 11.5 * s, cy + 1.0 * s, 4.0 * s, 6.0 * s),
+                fill=pal["skin_shadow"],
+                outline=outline,
+                width=round(0.65 * s),
+            )
+
+        hair = [
+            (cx - 12.0 * s, cy - 2.0 * s),
+            (cx - 10.5 * s, cy - 9.0 * s),
+            (cx - 5.5 * s, cy - 13.5 * s),
+            (cx, cy - 14.5 * s),
+            (cx + 6.5 * s, cy - 13.0 * s),
+            (cx + 11.5 * s, cy - 8.0 * s),
+            (cx + 12.0 * s, cy - 2.0 * s),
+            (cx + 6.5 * s, cy - 5.5 * s),
+            (cx + 2.0 * s, cy - 3.5 * s),
+            (cx - 2.0 * s, cy - 6.5 * s),
+            (cx - 7.0 * s, cy - 3.5 * s),
+        ]
+        _poly(d, hair, fill=pal["hair"], outline=outline, width=round(1.0 * s))
+        _poly(
+            d,
+            [
+                (cx - 6.0 * s, cy - 11.8 * s),
+                (cx - 1.0 * s, cy - 15.0 * s),
+                (cx + 0.8 * s, cy - 7.8 * s),
+            ],
+            fill=pal["hair_mid"],
+            outline=outline,
+            width=round(0.6 * s),
+        )
+        _poly(
+            d,
+            [
+                (cx + 0.8 * s, cy - 14.0 * s),
+                (cx + 6.8 * s, cy - 12.2 * s),
+                (cx + 3.4 * s, cy - 7.0 * s),
+            ],
+            fill=pal["hair_mid"],
+            outline=outline,
+            width=round(0.6 * s),
+        )
+        self._draw_goggles_three_quarter(d, cx, cy - 8.5 * s, s)
+
+        _line(
+            d,
+            [(cx - 7.2 * s, cy - 2.5 * s), (cx - 2.2 * s, cy - 3.0 * s)],
+            fill=pal["hair"],
+            width=round(1.0 * s),
+        )
+        _line(
+            d,
+            [(cx + 2.2 * s, cy - 3.0 * s), (cx + 7.2 * s, cy - 2.5 * s)],
+            fill=pal["hair"],
+            width=round(1.0 * s),
+        )
+        if pose.blink:
+            for sign in (-1, 1):
+                _line(
+                    d,
+                    [
+                        (cx + sign * 6.2 * s, cy),
+                        (cx + sign * 2.6 * s, cy),
+                    ],
+                    fill=outline,
+                    width=round(1.0 * s),
+                )
+        else:
+            for sign in (-1, 1):
+                ex = cx + sign * 4.4 * s
+                _ellipse(
+                    d,
+                    _bbox(ex, cy, 3.0 * s, 3.5 * s),
+                    fill=pal["white"],
+                    outline=outline,
+                    width=round(0.65 * s),
+                )
+                _ellipse(
+                    d,
+                    _bbox(ex, cy + 0.2 * s, 1.4 * s, 1.8 * s),
+                    fill=pal["eye"],
+                )
+
+        _line(
+            d,
+            [(cx, cy + 0.7 * s), (cx + 1.3 * s, cy + 3.0 * s)],
+            fill=pal["skin_shadow"],
+            width=round(0.8 * s),
+        )
+        beard = [
+            (cx - 8.6 * s, cy + 3.7 * s),
+            (cx - 4.0 * s, cy + 5.0 * s),
+            (cx, cy + 4.6 * s),
+            (cx + 4.0 * s, cy + 5.0 * s),
+            (cx + 8.6 * s, cy + 3.7 * s),
+            (cx + 7.0 * s, cy + 8.2 * s),
+            (cx + 2.5 * s, cy + 11.4 * s),
+            (cx - 2.5 * s, cy + 11.4 * s),
+            (cx - 7.0 * s, cy + 8.2 * s),
+        ]
+        d.polygon([(round(x), round(y)) for x, y in beard], fill=pal["beard"])
+        _line(
+            d,
+            [beard[0], beard[1], beard[2], beard[3], beard[4]],
+            fill=pal["beard_dark"],
+            width=round(0.7 * s),
+        )
+        if pose.talk_open > 0.18:
+            mouth_h = (1.2 + 2.0 * pose.talk_open) * s
+            _ellipse(
+                d,
+                _bbox(cx, cy + 6.6 * s, 6.8 * s, mouth_h),
+                fill=pal["beard_dark"],
+                outline=outline,
+                width=round(0.7 * s),
+            )
+            _line(
+                d,
+                [
+                    (cx - 2.2 * s, cy + 6.4 * s),
+                    (cx + 2.2 * s, cy + 6.4 * s),
+                ],
+                fill=pal["white"],
+                width=round(0.6 * s),
+            )
+        else:
+            _line(
+                d,
+                [(cx - 3.7 * s, cy + 6.5 * s), (cx + 3.7 * s, cy + 6.5 * s)],
+                fill=outline,
+                width=round(1.0 * s),
+            )
+
+    # ------------------------------------------------------------------
+    # Side view
+
+    def _draw_side(
+        self,
+        image: Image.Image,
+        cx: float,
+        feet_y: float,
+        spec: BobSpec,
+        pose: BobPose,
+        s: float,
+    ) -> None:
+        d = ImageDraw.Draw(image)
+        pal = BOB_PALETTE
+        outline = pal["outline"]
+        base_boot_top = feet_y - spec.boot_h * s
+        base_shin_top = base_boot_top - spec.shin_h * s
+        base_hip_y = base_shin_top - spec.thigh_h * s
+        body_shift = pose.walk_body_y * s if pose.walk_index >= 0 else 0.0
+        hip_y = base_hip_y + body_shift
+        shoulder_y = hip_y - spec.torso_h * s
+        lean = 0.8 * pose.step * s if pose.walk_index >= 0 else 0.5 * pose.scan * s
+        head_c = (cx + 1.8 * s + lean, shoulder_y - 11.0 * s)
+
+        # Satchel and far arm are behind the torso.
+        self._draw_satchel(
+            d, (cx - 8.5 * s + lean, hip_y - 10.0 * s), s * 0.92, side=True
+        )
+        far_shoulder = (cx - 3.6 * s + lean, shoulder_y + 5.0 * s)
+        if pose.walk_index >= 0:
+            far_target = (
+                far_shoulder[0] - pose.step * 8.0 * s,
+                shoulder_y + 26.0 * s,
+            )
+        else:
+            far_target = (cx - 5.8 * s + lean, hip_y - 3.0 * s)
+        far_elbow, far_hand = self._solve_two_bone_joint(
+            far_shoulder,
+            far_target,
+            spec.arm_upper * s,
+            spec.arm_lower * s,
+            bend_sign=1.0,
+        )
+        self._draw_two_bone_limb(
+            d,
+            far_shoulder,
+            far_elbow,
+            far_hand,
+            s,
+            fill=pal["shirt_dark"],
+            width=5.8,
+        )
+        self._draw_hand(d, far_hand, s, width=4.9, height=5.0)
+
+        # Authored foot targets: near leg begins at rear contact while far leg
+        # begins at front contact.  The phases include down, passing, and up,
+        # avoiding the old scissor-leg interpolation.
+        if pose.walk_index >= 0:
+            near_targets = (
+                (-8.5, 0.0, 0.0),
+                (-5.0, 0.0, 0.0),
+                (0.0, -2.0, 0.6),
+                (5.0, -4.2, 1.5),
+                (8.5, 0.0, 0.0),
+                (5.0, 0.0, 0.0),
+                (0.0, -2.0, 0.6),
+                (-5.0, -4.2, 1.5),
+            )
+            far_targets = (
+                (8.5, 0.0, 0.0),
+                (5.0, 0.0, 0.0),
+                (0.0, -2.0, 0.6),
+                (-5.0, -4.2, 1.5),
+                (-8.5, 0.0, 0.0),
+                (-5.0, 0.0, 0.0),
+                (0.0, -2.0, 0.6),
+                (5.0, -4.2, 1.5),
+            )
+            near_dx, near_lift, near_roll = near_targets[pose.walk_index]
+            far_dx, far_lift, far_roll = far_targets[pose.walk_index]
+        else:
+            near_dx, near_lift, near_roll = (3.2, 0.0, 0.0)
+            far_dx, far_lift, far_roll = (-3.2, 0.0, 0.0)
+
+        far_hip = (cx - 1.4 * s + lean, hip_y)
+        near_hip = (cx + 2.8 * s + lean, hip_y)
+        far_ground = feet_y
+        near_ground = feet_y
+        far_ankle_target = (
+            cx + far_dx * s + lean,
+            base_boot_top + far_lift * s,
+        )
+        near_ankle_target = (
+            cx + near_dx * s + lean,
+            base_boot_top + near_lift * s,
+        )
+        far_knee, far_ankle = self._solve_two_bone_joint(
+            far_hip,
+            far_ankle_target,
+            spec.thigh_h * s,
+            spec.shin_h * s,
+            bend_sign=1.0,
+        )
+        near_knee, near_ankle = self._solve_two_bone_joint(
+            near_hip,
+            near_ankle_target,
+            spec.thigh_h * s,
+            spec.shin_h * s,
+            bend_sign=1.0,
+        )
+        self._draw_two_bone_limb(
+            d,
+            far_hip,
+            far_knee,
+            far_ankle,
+            s,
+            fill=pal["pants_dark"],
+            width=6.2,
+        )
+        self._draw_profile_boot(
+            d,
+            far_ankle,
+            far_ground,
+            s,
+            near=False,
+            foot_roll=far_roll,
+        )
+        self._draw_two_bone_limb(
+            d,
+            near_hip,
+            near_knee,
+            near_ankle,
+            s,
+            fill=pal["pants"],
+            width=6.4,
+        )
+        self._draw_profile_boot(
+            d,
+            near_ankle,
+            near_ground,
+            s,
+            near=True,
+            foot_roll=near_roll,
+        )
+
+        # Head and neck are behind the torso shoulder seam, so the jacket owns
+        # the lower-neck overlap and Bob never looks decapitated or pasted on.
+        self._draw_head_side(d, head_c, pose, s)
+
+        torso = [
+            (cx - 7.0 * s + lean, shoulder_y),
+            (cx + 5.0 * s + lean, shoulder_y + 1.0 * s),
+            (cx + 8.0 * s + lean, shoulder_y + 9.0 * s),
+            (cx + 7.0 * s + lean, shoulder_y + 20.0 * s),
+            (cx + 7.8 * s + lean, hip_y),
+            (cx - 6.3 * s + lean, hip_y),
+        ]
+        _poly(d, torso, fill=pal["shirt"], outline=outline, width=round(1.1 * s))
+        vest = [
+            (cx - 5.5 * s + lean, shoulder_y + 1.5 * s),
+            (cx + 2.0 * s + lean, shoulder_y + 2.8 * s),
+            (cx + 6.5 * s + lean, shoulder_y + 10.0 * s),
+            (cx + 5.8 * s + lean, hip_y),
+            (cx - 5.5 * s + lean, hip_y),
+        ]
+        _poly(d, vest, fill=pal["vest"], outline=outline, width=round(1.0 * s))
+        _poly(
+            d,
+            [
+                (cx - 4.8 * s + lean, shoulder_y + 2.0 * s),
+                (cx + 1.5 * s + lean, shoulder_y + 3.2 * s),
+                (cx - 1.0 * s + lean, shoulder_y + 11.5 * s),
+            ],
+            fill=pal["vest_light"],
+            outline=outline,
+            width=round(0.7 * s),
+        )
+        _line(
+            d,
+            [
+                (cx - 3.8 * s + lean, shoulder_y + 16.0 * s),
+                (cx + 5.8 * s + lean, shoulder_y + 18.5 * s),
+            ],
+            fill=pal["hi_vis_dark"],
+            width=round(3.6 * s),
+        )
+        _line(
+            d,
+            [
+                (cx - 3.8 * s + lean, shoulder_y + 16.0 * s),
+                (cx + 5.8 * s + lean, shoulder_y + 18.5 * s),
+            ],
+            fill=pal["hi_vis"],
+            width=round(1.9 * s),
+        )
+        _line(
+            d,
+            [
+                (cx + 1.0 * s + lean, shoulder_y + 1.5 * s),
+                (cx - 4.8 * s + lean, hip_y),
+            ],
+            fill=pal["leather_dark"],
+            width=round(4.0 * s),
+        )
+        _line(
+            d,
+            [
+                (cx + 1.0 * s + lean, shoulder_y + 1.5 * s),
+                (cx - 4.8 * s + lean, hip_y),
+            ],
+            fill=pal["leather"],
+            width=round(2.2 * s),
+        )
+        _rounded(
+            d,
+            (
+                cx - 6.5 * s + lean,
+                hip_y - 2.5 * s,
+                cx + 8.2 * s + lean,
+                hip_y + 2.6 * s,
+            ),
+            radius=1.2 * s,
+            fill=pal["leather_dark"],
+            outline=outline,
+            width=round(0.8 * s),
+        )
+        self._draw_keyring(
+            d,
+            (cx + 6.5 * s + lean, hip_y + 4.5 * s),
+            s,
+            scale=0.55,
+        )
+
+        # Near arm in front, with shoulder positioned beneath the neck rather
+        # than pasted onto the front edge of the chest.
+        near_shoulder = (cx + 3.8 * s + lean, shoulder_y + 5.0 * s)
+        if pose.walk_index >= 0:
+            near_target = (
+                near_shoulder[0] + pose.step * 8.0 * s,
+                shoulder_y + 26.0 * s,
+            )
+        else:
+            near_target = (cx + 6.5 * s + lean, hip_y - 3.0 * s)
+        near_elbow, near_hand = self._solve_two_bone_joint(
+            near_shoulder,
+            near_target,
+            spec.arm_upper * s,
+            spec.arm_lower * s,
+            bend_sign=-1.0,
+        )
+        self._draw_two_bone_limb(
+            d,
+            near_shoulder,
+            near_elbow,
+            near_hand,
+            s,
+            fill=pal["shirt"],
+            width=6.0,
+        )
+        self._draw_hand(d, near_hand, s, width=5.0, height=5.1)
+        if pose.walk_index < 0:
+            self._draw_keyring(
+                d,
+                (near_hand[0] + 4.2 * s, near_hand[1] + 0.8 * s),
+                s,
+                scale=0.62,
+            )
+
+    def _draw_head_side(
+        self,
+        d: ImageDraw.ImageDraw,
+        center: Point,
+        pose: BobPose,
+        s: float,
+    ) -> None:
+        pal = BOB_PALETTE
+        outline = pal["outline"]
+        cx, cy = center
+        _rounded(
+            d,
+            (cx - 3.5 * s, cy + 9.5 * s, cx + 3.5 * s, cy + 17.0 * s),
+            radius=2.0 * s,
+            fill=pal["skin_shadow"],
+            outline=outline,
+            width=round(0.75 * s),
+        )
+        # Full rear skull, then the face plane.  Bob faces screen-right.
+        # The rear mass follows a haircut silhouette instead of a complete
+        # circle, so the profile reads as hair over a head rather than a hood.
+        rear_hair = [
+            (cx - 10.5 * s, cy + 5.5 * s),
+            (cx - 11.2 * s, cy - 2.5 * s),
+            (cx - 8.5 * s, cy - 9.5 * s),
+            (cx - 3.0 * s, cy - 13.8 * s),
+            (cx + 3.5 * s, cy - 13.2 * s),
+            (cx + 7.4 * s, cy - 9.2 * s),
+            (cx + 5.8 * s, cy - 6.0 * s),
+            (cx + 1.5 * s, cy - 7.2 * s),
+            (cx - 2.0 * s, cy - 5.2 * s),
+            (cx - 5.8 * s, cy - 2.5 * s),
+            (cx - 6.2 * s, cy + 5.8 * s),
+            (cx - 8.4 * s, cy + 9.0 * s),
+        ]
+        _poly(
+            d,
+            rear_hair,
+            fill=pal["hair"],
+            outline=outline,
+            width=round(1.0 * s),
+        )
+        face = [
+            (cx - 6.8 * s, cy - 9.0 * s),
+            (cx + 5.5 * s, cy - 8.0 * s),
+            (cx + 8.0 * s, cy - 2.5 * s),
+            (cx + 11.5 * s, cy + 0.2 * s),
+            (cx + 8.2 * s, cy + 2.6 * s),
+            (cx + 8.7 * s, cy + 6.0 * s),
+            (cx + 4.0 * s, cy + 10.2 * s),
+            (cx - 4.8 * s, cy + 8.0 * s),
+            (cx - 7.2 * s, cy + 0.5 * s),
+        ]
+        _poly(d, face, fill=pal["skin"], outline=outline, width=round(1.0 * s))
+        _ellipse(
+            d,
+            _bbox(cx - 5.3 * s, cy + 0.6 * s, 3.8 * s, 5.6 * s),
+            fill=pal["skin_shadow"],
+            outline=outline,
+            width=round(0.65 * s),
+        )
+
+        # Hairline and crown tufts drape over, not into, the face plane.
+        fringe = [
+            (cx - 9.0 * s, cy - 9.8 * s),
+            (cx + 5.5 * s, cy - 10.2 * s),
+            (cx + 2.5 * s, cy - 4.4 * s),
+            (cx - 1.5 * s, cy - 6.5 * s),
+            (cx - 5.8 * s, cy - 3.8 * s),
+        ]
+        d.polygon([(round(x), round(y)) for x, y in fringe], fill=pal["hair"])
+        _line(
+            d,
+            [fringe[1], fringe[2], fringe[3], fringe[4]],
+            fill=outline,
+            width=round(0.9 * s),
+        )
+        _poly(
+            d,
+            [
+                (cx - 4.5 * s, cy - 11.8 * s),
+                (cx + 0.5 * s, cy - 14.5 * s),
+                (cx + 1.5 * s, cy - 8.2 * s),
+            ],
+            fill=pal["hair_mid"],
+            outline=outline,
+            width=round(0.6 * s),
+        )
+        _line(
+            d,
+            [(cx - 3.8 * s, cy - 11.0 * s), (cx + 3.0 * s, cy - 10.0 * s)],
+            fill=pal["hair_light"],
+            width=round(1.0 * s),
+        )
+
+        # Profile safety glasses rest on the forehead.
+        _line(
+            d,
+            [(cx - 7.0 * s, cy - 7.2 * s), (cx + 5.0 * s, cy - 7.8 * s)],
+            fill=pal["leather_dark"],
+            width=round(1.2 * s),
+        )
+        _rounded(
+            d,
+            (cx - 0.5 * s, cy - 10.0 * s, cx + 5.2 * s, cy - 5.6 * s),
+            radius=1.3 * s,
+            fill=pal["glass"],
+            outline=outline,
+            width=round(0.7 * s),
+        )
+        _line(
+            d,
+            [(cx + 0.6 * s, cy - 9.1 * s), (cx + 3.8 * s, cy - 6.5 * s)],
+            fill=pal["white"],
+            width=round(0.5 * s),
+        )
+
+        # Sideburn and beard follow the rear jaw, with the mouth left readable.
+        beard = [
+            (cx - 4.8 * s, cy + 2.5 * s),
+            (cx + 0.5 * s, cy + 4.5 * s),
+            (cx + 6.8 * s, cy + 3.8 * s),
+            (cx + 7.0 * s, cy + 7.2 * s),
+            (cx + 3.2 * s, cy + 10.0 * s),
+            (cx - 2.5 * s, cy + 8.8 * s),
+            (cx - 5.2 * s, cy + 6.0 * s),
+        ]
+        d.polygon([(round(x), round(y)) for x, y in beard], fill=pal["beard"])
+        _line(
+            d,
+            [beard[0], beard[1], beard[2]],
+            fill=pal["beard_dark"],
+            width=round(0.7 * s),
+        )
+        eye = (cx + 4.2 * s, cy - 0.8 * s)
+        if pose.blink:
+            _line(
+                d,
+                [(eye[0] - 1.5 * s, eye[1]), (eye[0] + 1.7 * s, eye[1])],
+                fill=outline,
+                width=round(1.0 * s),
+            )
+        else:
+            _ellipse(
+                d,
+                _bbox(eye[0], eye[1], 3.0 * s, 3.4 * s),
+                fill=pal["white"],
+                outline=outline,
+                width=round(0.65 * s),
+            )
+            _ellipse(
+                d,
+                _bbox(eye[0] + 0.5 * s, eye[1], 1.4 * s, 1.7 * s),
+                fill=pal["eye"],
+            )
+        _line(
+            d,
+            [(cx + 1.8 * s, cy - 3.2 * s), (cx + 6.0 * s, cy - 2.8 * s)],
+            fill=pal["hair"],
+            width=round(1.0 * s),
+        )
+        _line(
+            d,
+            [(cx + 6.5 * s, cy + 5.5 * s), (cx + 9.0 * s, cy + 5.2 * s)],
+            fill=outline,
+            width=round(0.9 * s),
+        )
