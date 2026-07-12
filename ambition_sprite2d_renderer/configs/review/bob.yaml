@@ -6,8 +6,56 @@ archetype: bob
 animations:
 - idle
 - walk
-- talk
+- run
+- jump
+- fall
+- slash
+- hit
+- death
+- blink_out
+- blink_in
+- dash
+- crouch
+- wall_slide
+- wall_jump
+- ledge_grab
+- climb
+- swim
 - interact
+- talk
+- block
+- land
+- roll
+- slide
+- crouch_walk
+- pickup
+- throw
+- aim
+- shoot
+- charge
+- cast
+- celebrate
+- sit
+- sleep
+- hover
+- stomp
+- dash_startup
+- land_hard
+- land_recovery
+- wall_grab
+- ledge_climb
+- ledge_getup
+- ledge_roll
+- ledge_getup_attack
+- float_glide
+- attack_side
+- attack_up
+- attack_down
+- air_neutral
+- air_forward
+- air_back
+- air_down
+- air_up
 - idle_front
 - idle_side
 render:
@@ -34,7 +82,6 @@ body:
   - story
   - humanoid
   - engineer
-  - story
   locomotion_hint: Walk
 capabilities:
   traversal:
@@ -70,6 +117,30 @@ animation_bindings:
   interaction.use:
     animation: interact
     events: []
+  locomotion.run:
+    animation: run
+    events: []
+  locomotion.jump:
+    animation: jump
+    events: []
+  locomotion.fall:
+    animation: fall
+    events: []
+  action.melee.primary:
+    animation: slash
+    events:
+    - t: 0.3
+      event: hitbox_active_start
+      source: explicit.profile.bob
+    - t: 0.68
+      event: hitbox_active_end
+      source: explicit.profile.bob
+  action.ranged.primary:
+    animation: shoot
+    events:
+    - t: 0.5
+      event: projectile_release
+      source: explicit.profile.bob
 sockets:
   head:
     source: explicit.profile.humanoid
@@ -96,7 +167,18 @@ sockets:
     point:
       x: 64.0
       y: 8.0
+  muzzle:
+    source: explicit.profile.bob
+    point:
+      x: 94.0
+      y: 58.0
+  projectile_origin:
+    source: explicit.profile.bob
+    point:
+      x: 94.0
+      y: 58.0
 tags:
 - story
 - humanoid
 - engineer
+- player_candidate

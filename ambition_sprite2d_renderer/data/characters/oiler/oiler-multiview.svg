@@ -1,0 +1,2695 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="960mm"
+   height="420mm"
+   viewBox="0 0 960 420"
+   version="1.1"
+   data-character-design="euler-mechanic-v1"
+   id="svg328"
+   sodipodi:docname="oiler-multiview.svg"
+   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   data-rig-hierarchy="pca-style-v1"
+   data-authoring-layer-vocabulary="anatomical-left-right-v1"
+   data-nose-design="euler-straight-bridge-projections-v2"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview330"
+     pagecolor="#505050"
+     bordercolor="#ffffff"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     inkscape:deskcolor="#505050"
+     inkscape:document-units="mm"
+     showgrid="false"
+     inkscape:zoom="0.36104601"
+     inkscape:cx="2546.7668"
+     inkscape:cy="533.17305"
+     inkscape:window-width="2560"
+     inkscape:window-height="1371"
+     inkscape:window-x="0"
+     inkscape:window-y="1472"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="side-head-face-shape" />
+  <defs
+     id="defs4">
+    <!-- Flat fills are intentional: the sprites must remain gradient-free. -->
+    <style
+       id="style2">
+      .outline { stroke:#17120e; stroke-width:5; stroke-linejoin:round; stroke-linecap:round; }
+      .detail { fill:none; stroke:#17120e; stroke-width:3; stroke-linejoin:round; stroke-linecap:round; }
+      .thin { fill:none; stroke:#17120e; stroke-width:2.2; stroke-linejoin:round; stroke-linecap:round; }
+      .joint { fill:#ff3eb5; fill-opacity:.28; stroke:#17120e; stroke-width:1.2; }
+    </style>
+  </defs>
+  <!--
+    The SVG is deliberately direct-editable and organized like the manually
+    authored PCA sheet: each view contains Arm, Leg, Torso, Head, and Joints
+    layers with human-readable sublayers.
+
+    Machine bindings are separate from Inkscape labels:
+      data-rig-part / data-rig-bone / data-rig-z / data-rig-opacity
+      data-rig-joint
+
+    This separation keeps the layer panel pleasant to edit while preserving an
+    explicit, rename-safe rig contract. Generated element ids are irrelevant.
+    Character SVGs contain anatomy and clothing only; props are external.
+  -->
+  <g
+     inkscape:groupmode="layer"
+     inkscape:label="Oiler - Three Quarter"
+     id="view-oiler-three-quarter">
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Arm - Left"
+       id="tq-arm-far"
+       transform="translate(6.1358318,4.2917265)">
+      <g
+         inkscape:label="Upper Arm - Left"
+         id="tq-part-far-arm-u"
+         inkscape:groupmode="layer"
+         data-rig-part="far_arm_u"
+         data-rig-bone="far_arm_u"
+         data-rig-z="8">
+        <path
+           id="tq-far-upperarm-outline"
+           d="m 177,150 c 6,18 12,36 14,48"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="25"
+           stroke-linecap="round" />
+        <path
+           id="tq-far-upperarm"
+           d="m 177,150 c 6,18 12,36 14,48"
+           fill="none"
+           stroke="#2f7187"
+           stroke-width="19"
+           stroke-linecap="round" />
+        <path
+           id="tq-far-sleeve-cuff"
+           d="m 185,187 11,3"
+           class="detail" />
+        <path
+           id="tq-far-sleeve-band"
+           d="m 184,185 11,4"
+           fill="none"
+           stroke="#28323a"
+           stroke-width="5"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Lower Arm - Left"
+         id="tq-part-far-arm-l"
+         inkscape:groupmode="layer"
+         data-rig-part="far_arm_l"
+         data-rig-bone="far_arm_l"
+         data-rig-z="9">
+        <path
+           id="tq-far-forearm-outline"
+           d="m 191,198 c -2,16 -6,32 -8,41"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="20"
+           stroke-linecap="round" />
+        <path
+           id="tq-far-forearm"
+           d="m 191,198 c -2,16 -6,32 -8,41"
+           fill="none"
+           stroke="#d5a77d"
+           stroke-width="14"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Hand - Left"
+         id="tq-part-far-hand"
+         inkscape:groupmode="layer"
+         data-rig-part="far_hand"
+         data-rig-bone="far_arm_hand"
+         data-rig-z="10">
+        <path
+           id="tq-far-hand-shape"
+           d="m 177,235 c 0,8 2,16 7,19 6,-4 7,-12 4,-18 z"
+           fill="#d5a77d"
+           class="outline" />
+      </g>
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Leg - Left"
+       id="tq-leg-far">
+      <g
+         inkscape:label="Upper Leg - Left"
+         id="tq-part-far-leg-u"
+         inkscape:groupmode="layer"
+         data-rig-part="far_leg_u"
+         data-rig-bone="far_leg_u"
+         data-rig-z="5">
+        <path
+           id="tq-far-thigh-outline"
+           d="M170 219 C172 239 175 259 177 278"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="28.0"
+           stroke-linecap="round" />
+        <path
+           id="tq-far-thigh"
+           d="M170 219 C172 239 175 259 177 278"
+           fill="none"
+           stroke="#36454b"
+           stroke-width="22"
+           stroke-linecap="round" />
+        <path
+           id="tq-far-thigh-hi"
+           d="M167 224 C169 241 172 256 173 270"
+           fill="none"
+           stroke="#66777c"
+           stroke-width="5"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Lower Leg - Left"
+         id="tq-part-far-leg-l"
+         inkscape:groupmode="layer"
+         data-rig-part="far_leg_l"
+         data-rig-bone="far_leg_l"
+         data-rig-z="6">
+        <path
+           id="tq-far-shin-outline"
+           d="M177 278 C178 302 179 325 180 342"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="25.0"
+           stroke-linecap="round" />
+        <path
+           id="tq-far-shin"
+           d="M177 278 C178 302 179 325 180 342"
+           fill="none"
+           stroke="#303d42"
+           stroke-width="19"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Foot - Left"
+         id="tq-part-far-foot"
+         inkscape:groupmode="layer"
+         data-rig-part="far_leg_foot"
+         data-rig-bone="far_leg_foot"
+         data-rig-z="7">
+        <path
+           id="tq-far-boot-outline"
+           d="M180 342 C185 348 192 352 199 354"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="23.0"
+           stroke-linecap="round" />
+        <path
+           id="tq-far-boot"
+           d="M180 342 C185 348 192 352 199 354"
+           fill="none"
+           stroke="#2b211b"
+           stroke-width="17"
+           stroke-linecap="round" />
+        <path
+           id="tq-far-sole"
+           d="M180 354 C188 357 196 357 202 355"
+           class="detail" />
+      </g>
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Leg - Right"
+       id="tq-leg-near">
+      <g
+         inkscape:label="Upper Leg - Right"
+         id="tq-part-near-leg-u"
+         inkscape:groupmode="layer"
+         data-rig-part="near_leg_u"
+         data-rig-bone="near_leg_u"
+         data-rig-z="20">
+        <path
+           id="tq-near-thigh-outline"
+           d="M151 220 C148 240 144 262 141 282"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="29.0"
+           stroke-linecap="round" />
+        <path
+           id="tq-near-thigh"
+           d="M151 220 C148 240 144 262 141 282"
+           fill="none"
+           stroke="#405158"
+           stroke-width="23"
+           stroke-linecap="round" />
+        <path
+           id="tq-near-thigh-hi"
+           d="M155 226 C152 243 148 258 145 272"
+           fill="none"
+           stroke="#66777c"
+           stroke-width="5"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Lower Leg - Right"
+         id="tq-part-near-leg-l"
+         inkscape:groupmode="layer"
+         data-rig-part="near_leg_l"
+         data-rig-bone="near_leg_l"
+         data-rig-z="41">
+        <path
+           id="tq-near-shin-outline"
+           d="M141 282 C140 305 139 328 139 344"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="26.0"
+           stroke-linecap="round" />
+        <path
+           id="tq-near-shin"
+           d="M141 282 C140 305 139 328 139 344"
+           fill="none"
+           stroke="#39484e"
+           stroke-width="20"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Foot - Right"
+         id="tq-part-near-foot"
+         inkscape:groupmode="layer"
+         data-rig-part="near_leg_foot"
+         data-rig-bone="near_leg_foot"
+         data-rig-z="42">
+        <path
+           id="tq-near-boot-outline"
+           d="M139 344 C134 350 127 353 120 355"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="24.0"
+           stroke-linecap="round" />
+        <path
+           id="tq-near-boot"
+           d="M139 344 C134 350 127 353 120 355"
+           fill="none"
+           stroke="#2b211b"
+           stroke-width="18"
+           stroke-linecap="round" />
+        <path
+           id="tq-near-sole"
+           d="M139 355 C131 358 122 358 116 356"
+           class="detail" />
+      </g>
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Torso"
+       id="tq-torso">
+      <g
+         inkscape:label="Pelvis"
+         id="tq-part-pelvis-yoke"
+         inkscape:groupmode="layer"
+         data-rig-part="pelvis_yoke"
+         data-rig-bone="pelvis"
+         data-rig-z="21">
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Pelvis Base"
+           id="tq-pelvis-yoke-pelvis-base">
+          <path
+             id="tq-pelvis-yoke"
+             d="M143 207 C151 202 170 202 180 207 L179 226 C171 233 151 234 142 227 Z"
+             fill="#36464c"
+             class="outline" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Pelvis Details"
+           id="tq-pelvis-yoke-pelvis-details">
+          <path
+             id="tq-pelvis-fly"
+             d="M161 211 C160 217 160 222 161 228"
+             class="thin" />
+          <path
+             id="tq-pelvis-seam"
+             d="M147 211 C156 215 170 214 177 210"
+             fill="none"
+             stroke="#617279"
+             stroke-width="2.4"
+             stroke-linecap="round" />
+        </g>
+      </g>
+      <g
+         inkscape:label="Coat and Torso"
+         id="tq-part-torso"
+         inkscape:groupmode="layer"
+         data-rig-part="torso"
+         data-rig-bone="torso"
+         data-rig-z="22">
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Coat Base"
+           id="tq-torso-coat-base">
+          <path
+             id="tq-coat-body"
+             d="M136 143 C126 157 124 183 128 211 C131 233 143 246 160 249 C180 248 194 235 196 211 C198 183 190 155 179 142 C168 135 148 135 136 143 Z"
+             fill="#2f7187"
+             class="outline" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Neckcloth and Cravat"
+           id="g2349"
+           transform="translate(-315.05406,4.4944078)"
+           data-oiler-role="neckcloth-and-cravat">
+          <path
+             id="path2341"
+             d="m 464.73558,137.34121 c 3.77641,8.64043 9.00679,12.65909 16.55961,12.65909 7.55284,0 12.89018,-4.16931 16.66659,-12.80974 l 3.17811,18.01886 c -5.66462,6.72034 -11.18542,12.5919 -18.73826,13.55195 -7.55282,-0.96005 -15.26798,-2.44025 -20.9326,-9.16059 z"
+             fill="#e8dfcf"
+             class="outline"
+             sodipodi:nodetypes="csccccc" />
+          <path
+             id="path2343"
+             d="m 478.61644,148.13064 c 3.70628,-3.94692 9.2657,-3.94692 12.97199,0 l -0.92657,8.88057 c -3.70629,2.96018 -7.41257,2.96018 -11.11885,0 z"
+             fill="#f4ecdc"
+             class="outline" />
+          <path
+             id="path2345"
+             d="m 479.65091,157.56986 c 3,9 2,20 -3,32 6,-3 10,-16 8,-30 z"
+             fill="#e8dfcf"
+             class="outline" />
+          <path
+             id="path2347"
+             d="m 489.4372,158.74731 c -2.63752,8.43549 -1.75835,18.74553 2.63752,29.99285 -5.27504,-2.81183 -8.79173,-14.99642 -7.03339,-28.11829 z"
+             fill="#d9cfbf"
+             class="outline" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Lapels and Upper Coat Trim"
+           id="tq-torso-lapels-trim"
+           data-oiler-role="lapels-and-upper-coat-trim">
+          <path
+             id="tq-dark-lapel-far"
+             d="m 182.55527,139.8495 -6.97954,27.90264 6.78895,9.93824 7.31594,-23.9607 z"
+             fill="#28323a"
+             class="outline"
+             sodipodi:nodetypes="ccccc" />
+          <path
+             id="tq-dark-lapel-near"
+             d="m 145.0084,143.12739 13.19836,22.54903 -2.57433,17.37172 -19.98845,-25.75258 z"
+             fill="#28323a"
+             class="outline"
+             sodipodi:nodetypes="ccccc" />
+          <path
+             id="tq-coat-band-far"
+             d="M184 155 C188 172 190 193 188 211"
+             fill="none"
+             stroke="#28323a"
+             stroke-width="7"
+             stroke-linecap="round" />
+          <path
+             id="tq-coat-band-near"
+             d="M135 157 C131 175 132 194 134 211"
+             fill="none"
+             stroke="#28323a"
+             stroke-width="7"
+             stroke-linecap="round" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Coat Buttons"
+           id="tq-torso-buttons"
+           data-authoring-placeholder="true" />
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Lower Coat Panel"
+           id="tq-torso-lower-panel">
+          <path
+             id="tq-coat-panel"
+             d="M144 194 C153 198 174 198 184 193"
+             fill="none"
+             stroke="#4b8da0"
+             stroke-width="3"
+             stroke-linecap="round" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Belt and Buckle"
+           id="tq-torso-belt-fastenings">
+          <path
+             id="tq-belt"
+             d="M130 211 C147 216 177 216 194 210"
+             fill="none"
+             stroke="#2c211a"
+             stroke-width="9"
+             stroke-linecap="round" />
+          <circle
+             id="tq-belt-brass"
+             cx="164"
+             cy="214"
+             r="6"
+             fill="#d39a3b"
+             class="outline" />
+        </g>
+      </g>
+      <g
+         inkscape:label="Apron"
+         id="tq-part-apron"
+         inkscape:groupmode="layer"
+         data-rig-part="apron"
+         data-rig-bone="torso"
+         data-rig-z="24"
+         transform="translate(12.257323,-3.5346218)">
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Apron Base"
+           id="tq-apron-apron-base">
+          <path
+             id="tq-waist-apron"
+             d="m 137.27568,215.6856 c 11.80828,4.95506 33.84864,2.6513 44.67289,-3.29477 l -1.80783,27.8419 c -10.82425,7.9281 -29.16524,11.20802 -40.97352,2.28891 z"
+             fill="#4b3428"
+             class="outline"
+             sodipodi:nodetypes="ccccc" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Apron Details"
+           id="tq-apron-apron-details"
+           data-oiler-role="apron-details">
+          <path
+             id="tq-apron-pocket"
+             d="m 148.10943,223.02634 c 8,3 19.12005,2.85578 26.12005,-1.14422 l 0.0182,13.76955 c -8.00004,4 -17.60802,7.96759 -25.60802,3.96759 z"
+             fill="#76513a"
+             class="outline"
+             sodipodi:nodetypes="ccccc" />
+          <path
+             id="tq-apron-spiral"
+             d="m 156.5531,231.48268 c 3.05188,-4.57783 10.60736,-3.95138 11.87428,-0.32378 0.80491,3.74697 -7.29645,6.42755 -8.05942,1.84971 0,-3.05187 3.86783,-2.95774 4.6308,-0.66882"
+             stroke="#e4d6ad"
+             stroke-width="1.83113"
+             fill="none"
+             stroke-linecap="round"
+             sodipodi:nodetypes="cccc" />
+        </g>
+      </g>
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Head"
+       id="g101">
+      <g
+         inkscape:label="Head Base"
+         id="tq-part-head"
+         inkscape:groupmode="layer"
+         data-rig-part="head"
+         data-rig-bone="head"
+         data-rig-z="30">
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Cloth Cap - Back and Tail"
+           id="tq-head-cap-back"
+           data-oiler-role="cap-back-and-tail">
+          <path
+             id="tq-cap-tail-back"
+             d="m 185.08584,67.75147 c 17,-2 22.00918,12.233529 23.00918,24.233529 1,11.000001 -0.009,13.766471 -13.00918,17.766471 l -7,-15 z"
+             fill="#706d72"
+             class="outline"
+             sodipodi:nodetypes="ccccc" />
+          <path
+             id="path2393"
+             d="m 153.24181,71.978169 c -16,-4 -30,1 -35,12 -4,10 3,21.000001 17,27.000001 l 14,-13.000001 z"
+             fill="#706d72"
+             class="outline"
+             inkscape:label="cap-back" />
+          <path
+             id="tq-cap-hanging-tail"
+             d="m 192.17794,87.721796 c 10,5 13,19.000004 10,37.000004 -10.08543,16.56581 -8,18 -13,16 l -3,-30 z"
+             fill="#858188"
+             class="outline"
+             sodipodi:nodetypes="ccccc" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Face Shape and Ears"
+           id="tq-head-face-shape"
+           data-oiler-role="face-shape-and-ears">
+          <path
+             id="tq-ear"
+             d="m 189.44313,100.50052 c 12,-1.999998 13,17 1,20"
+             fill="#d8ae88"
+             class="outline" />
+          <path
+             id="tq-head"
+             d="M 134.97158,87.735562 C 137.97158,69.735562 155,61 171,62 c 17,1 27,15 26,33 1.83075,8.1582 -0.58913,16.65561 -3,24 -4,17 -16,29 -32,31 -15,-1 -25,-13 -28,-29 -2,-13 -4.02842,-24.264438 0.97158,-33.264438 z"
+             fill="#d8ae88"
+             class="outline"
+             sodipodi:nodetypes="ccccccc" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Cloth Cap - Crown and Folds"
+           id="tq-head-cap-main"
+           data-oiler-role="cap-crown-and-folds">
+          <path
+             id="tq-cap-crown"
+             d="m 134,87 c 1,-15 10,-25 19,-30 7,-9 17,-9 24,-2 10,-6 22,-1 26,8 8,4 9.04484,10.977755 5.04484,19.977755 C 190.04484,77.977755 169,80 145,90 Z"
+             fill="#b9b4ad"
+             class="outline"
+             sodipodi:nodetypes="ccccccc" />
+          <path
+             id="tq-cap-dark-fold"
+             d="M153 57 C164 51 176 54 182 64 C190 58 199 60 205 67 C193 68 181 72 173 80 C167 70 160 63 153 57 Z"
+             fill="#77737a"
+             class="outline" />
+          <path
+             id="tq-cap-front-fold"
+             d="m 136.19956,82 c 15,-9 44.80044,-9 71.80044,0 -5,7 -13,11 -24,9 -15,-4 -37.93953,-2.120423 -49.93953,2.879577 l -0.21134,-3.405539 z"
+             fill="#d6d1c9"
+             class="outline"
+             sodipodi:nodetypes="cccccc" />
+          <path
+             id="tq-cap-fold-line"
+             d="M145 79 C161 84 184 83 201 78"
+             fill="none"
+             stroke="#8a8580"
+             stroke-width="3"
+             stroke-linecap="round" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Hair"
+           id="tq-head-hair" />
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Facial Features and Age Lines"
+           id="tq-head-face-details">
+          <path
+             id="tq-brow-near"
+             d="M169 99 C175 95 182 96 186 100"
+             class="detail" />
+          <path
+             id="tq-brow-far"
+             d="M146 100 C151 97 157 97 161 101"
+             class="detail" />
+          <path
+             id="tq-eye-far-squint"
+             d="M149 106 C153 108 157 108 160 105"
+             class="thin" />
+          <ellipse
+             id="tq-eye-near"
+             cx="178"
+             cy="106"
+             rx="3.3"
+             ry="4.2"
+             fill="#28211d" />
+          <g
+             inkscape:groupmode="layer"
+             inkscape:label="Nose"
+             id="tq-head-nose"
+             data-oiler-role="nose-construction"
+             data-nose-form="straight-bridge-soft-tip"
+             data-nose-projection="three-quarter-left">
+            <path
+               id="tq-nose-bridge"
+               d="m 169.26253,107.47083 c 0.8,5 1.3,9 1.7,12 0.4,1.6 1.7,2.7 3.3,3.2"
+               class="thin" />
+            <path
+               id="tq-nostril"
+               d="m 168.50419,122.87083 c 1.7,1.1 4,1.2 5.6,0.1"
+               class="thin" />
+          </g>
+          <path
+             id="tq-cheek"
+             d="m 147.37948,115.88928 c 3,2 6,3 9,2"
+             class="thin" />
+          <path
+             id="tq-mouth-closed"
+             d="M157 132 C164 135 172 134 178 130"
+             class="thin" />
+          <path
+             id="tq-chin"
+             d="M157 142 C163 145 171 143 175 139"
+             class="thin" />
+          <path
+             id="tq-age-line"
+             d="m 156.05896,115.3068 c -3.4842,0.34605 -8.99396,-2.4774 -9.99396,-5.4774"
+             class="thin"
+             sodipodi:nodetypes="cc" />
+          <path
+             id="path2388"
+             d="m 137.01803,103.02289 c -11.18971,-1.36939 -14.26107,18.09527 2.10487,16.85595 2.46805,-5.30282 1.39222,-10.76752 -2.10487,-16.85595 z"
+             fill="#d8ae88"
+             class="outline"
+             sodipodi:nodetypes="ccc"
+             inkscape:label="front-left-earr"
+             style="display:inline" />
+        </g>
+      </g>
+      <g
+         inkscape:label="Blink"
+         id="tq-part-blink"
+         inkscape:groupmode="layer"
+         data-rig-part="blink"
+         data-rig-bone="head"
+         data-rig-z="34"
+         data-rig-opacity="blink_vis">
+        <path
+           id="tq-blink-near"
+           d="M173 106 L183 106"
+           class="detail" />
+        <path
+           id="tq-blink-far"
+           d="M149 106 L159 106"
+           class="detail" />
+      </g>
+      <g
+         inkscape:label="Talk Mouth"
+         id="tq-part-talk-mouth"
+         inkscape:groupmode="layer"
+         data-rig-part="talk_mouth"
+         data-rig-bone="head"
+         data-rig-z="35"
+         data-rig-opacity="talk_vis">
+        <ellipse
+           id="tq-open-mouth"
+           cx="168"
+           cy="132"
+           rx="6"
+           ry="4.5"
+           fill="#5b2b24"
+           class="outline" />
+        <path
+           id="tq-open-mouth-teeth"
+           d="M163 130 H173"
+           stroke="#fff1dc"
+           stroke-width="2.5" />
+      </g>
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Arm - Right"
+       id="tq-arm-near">
+      <g
+         inkscape:label="Upper Arm - Right"
+         id="tq-part-near-arm-u"
+         inkscape:groupmode="layer"
+         data-rig-part="near_arm_u"
+         data-rig-bone="near_arm_u"
+         data-rig-z="60"
+         transform="translate(-9.1310993,3.2366329)">
+        <path
+           id="tq-near-upperarm-outline"
+           d="m 143,149 c -6,15 -12,34 -14,45"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="26"
+           stroke-linecap="round" />
+        <path
+           id="tq-near-upperarm"
+           d="m 143,149 c -6,15 -12,34 -14,45"
+           fill="none"
+           stroke="#2f7187"
+           stroke-width="20"
+           stroke-linecap="round" />
+        <path
+           id="tq-near-sleeve-cuff"
+           d="m 123,185 12,4"
+           class="detail" />
+        <path
+           id="tq-near-sleeve-band"
+           d="m 124,184 12,4"
+           fill="none"
+           stroke="#28323a"
+           stroke-width="5"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Lower Arm - Right"
+         id="tq-part-near-arm-l"
+         inkscape:groupmode="layer"
+         data-rig-part="near_arm_l"
+         data-rig-bone="near_arm_l"
+         data-rig-z="61"
+         transform="translate(-10.540982,7.1771359)">
+        <path
+           id="tq-near-forearm-outline"
+           d="m 129,194 c 2,16 7,32 10,41"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="21"
+           stroke-linecap="round" />
+        <path
+           id="tq-near-forearm"
+           d="m 129.12343,194 c 2,16 7,32 10,41"
+           fill="none"
+           stroke="#d5a77d"
+           stroke-width="15"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Hand - Right"
+         id="tq-part-near-hand"
+         inkscape:groupmode="layer"
+         data-rig-part="near_hand"
+         data-rig-bone="near_arm_hand"
+         data-rig-z="62"
+         transform="translate(-10.085665,10.745162)">
+        <path
+           id="tq-near-hand-shape"
+           d="m 134,232 c -2,8 1,17 6,20 7,-3 8,-11 4,-19 z"
+           fill="#d5a77d"
+           class="outline" />
+      </g>
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Joints"
+       id="tq-joints">
+      <g
+         inkscape:groupmode="layer"
+         inkscape:label="Core Joints"
+         id="tq-core-joints">
+        <circle
+           inkscape:label="Waist"
+           id="tq-j-waist"
+           cx="160"
+           cy="205"
+           r="3.2"
+           class="joint"
+           data-rig-joint="waist" />
+        <circle
+           inkscape:label="Neck"
+           id="tq-j-neck"
+           cx="162"
+           cy="130"
+           r="3.2"
+           class="joint"
+           data-rig-joint="neck" />
+      </g>
+      <g
+         inkscape:groupmode="layer"
+         inkscape:label="Arm Joints - Left"
+         id="tq-arm-joints-far">
+        <circle
+           inkscape:label="Shoulder - Far"
+           id="tq-j-far-shoulder"
+           cx="183.19664"
+           cy="149.58858"
+           r="3.2"
+           class="joint"
+           data-rig-joint="far_shoulder" />
+        <circle
+           inkscape:label="Elbow - Far"
+           id="tq-j-far-elbow"
+           cx="199.75864"
+           cy="200.44331"
+           r="3.2"
+           class="joint"
+           data-rig-joint="far_elbow" />
+        <circle
+           inkscape:label="Wrist - Far"
+           id="tq-j-far-wrist"
+           cx="190.49579"
+           cy="241.68811"
+           r="3.2"
+           class="joint"
+           data-rig-joint="far_wrist" />
+        <circle
+           inkscape:label="Handtip - Far"
+           id="tq-j-far-handtip"
+           cx="190.02441"
+           cy="256.02682"
+           r="3.2"
+           class="joint"
+           data-rig-joint="far_handtip" />
+      </g>
+      <g
+         inkscape:groupmode="layer"
+         inkscape:label="Arm Joints - Right"
+         id="tq-arm-joints-near">
+        <circle
+           inkscape:label="Shoulder - Near"
+           id="tq-j-near-shoulder"
+           cx="134.83693"
+           cy="150.57777"
+           r="3.2"
+           class="joint"
+           data-rig-joint="near_shoulder" />
+        <circle
+           inkscape:label="Elbow - Near"
+           id="tq-j-near-elbow"
+           cx="117.61922"
+           cy="200.34752"
+           r="3.2"
+           class="joint"
+           data-rig-joint="near_elbow" />
+        <circle
+           inkscape:label="Wrist - Near"
+           id="tq-j-near-wrist"
+           cx="129.0753"
+           cy="241.95467"
+           r="3.2"
+           class="joint"
+           data-rig-joint="near_wrist" />
+        <circle
+           inkscape:label="Handtip - Near"
+           id="tq-j-near-handtip"
+           cx="130.21132"
+           cy="256.85733"
+           r="3.2"
+           class="joint"
+           data-rig-joint="near_handtip" />
+      </g>
+      <g
+         inkscape:groupmode="layer"
+         inkscape:label="Leg Joints - Left"
+         id="tq-leg-joints-far">
+        <circle
+           inkscape:label="Hip - Far"
+           id="tq-j-far-hip"
+           cx="179.73756"
+           cy="231.56273"
+           r="3.2"
+           class="joint"
+           data-rig-joint="far_hip" />
+        <circle
+           inkscape:label="Knee - Far"
+           id="tq-j-far-knee"
+           cx="177"
+           cy="278"
+           r="3.2"
+           class="joint"
+           data-rig-joint="far_knee" />
+        <circle
+           inkscape:label="Ankle - Far"
+           id="tq-j-far-ankle"
+           cx="180"
+           cy="342"
+           r="3.2"
+           class="joint"
+           data-rig-joint="far_ankle" />
+        <circle
+           inkscape:label="Toe - Far"
+           id="tq-j-far-toe"
+           cx="199"
+           cy="354"
+           r="3.2"
+           class="joint"
+           data-rig-joint="far_toe" />
+      </g>
+      <g
+         inkscape:groupmode="layer"
+         inkscape:label="Leg Joints - Right"
+         id="tq-leg-joints-near">
+        <circle
+           inkscape:label="Hip - Near"
+           id="tq-j-near-hip"
+           cx="145.42981"
+           cy="232.70325"
+           r="3.2"
+           class="joint"
+           data-rig-joint="near_hip" />
+        <circle
+           inkscape:label="Knee - Near"
+           id="tq-j-near-knee"
+           cx="141"
+           cy="282"
+           r="3.2"
+           class="joint"
+           data-rig-joint="near_knee" />
+        <circle
+           inkscape:label="Ankle - Near"
+           id="tq-j-near-ankle"
+           cx="139"
+           cy="344"
+           r="3.2"
+           class="joint"
+           data-rig-joint="near_ankle" />
+        <circle
+           inkscape:label="Toe - Near"
+           id="tq-j-near-toe"
+           cx="120"
+           cy="355"
+           r="3.2"
+           class="joint"
+           data-rig-joint="near_toe" />
+      </g>
+    </g>
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     inkscape:label="Oiler - Front"
+     id="view-oiler-front"
+     data-view-construction="authored-front-v3"
+     data-front-axis-x="480"
+     data-front-hip-layout="pelvis-sockets-v3"
+     data-front-face-volume="full-volume-v3"
+     data-rig-side-map="left=far,right=near"
+     style="display:inline">
+    <!--
+      This is a genuinely front-authored view, not a sheared three-quarter pose.
+      The skull, coat, pelvis, shoulders, and feet are built around x=480; only
+      Euler's folded cap and characteristic uneven gaze break the bilateral read.
+    -->
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Leg - Left"
+       id="front-leg-left">
+      <g
+         inkscape:label="Upper Leg - Left"
+         id="front-part-left-leg-u"
+         inkscape:groupmode="layer"
+         data-rig-part="left_leg_u"
+         data-rig-bone="left_leg_u"
+         data-rig-z="5">
+        <path
+           id="front-left-thigh-outline"
+           d="m 497,229 c 1,19 2,40 3,57"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="28"
+           stroke-linecap="round" />
+        <path
+           id="front-left-thigh"
+           d="m 497,229 c 1,19 2,40 3,57"
+           fill="none"
+           stroke="#36454b"
+           stroke-width="22"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Lower Leg - Left"
+         id="front-part-left-leg-l"
+         inkscape:groupmode="layer"
+         data-rig-part="left_leg_l"
+         data-rig-bone="left_leg_l"
+         data-rig-z="6">
+        <path
+           id="front-left-shin-outline"
+           d="m 500,286 c 0,21 0,42 0,59"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="25"
+           stroke-linecap="round" />
+        <path
+           id="front-left-shin"
+           d="m 500,286 c 0,21 0,42 0,59"
+           fill="none"
+           stroke="#303d42"
+           stroke-width="19"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Foot - Left"
+         id="front-part-left-foot"
+         inkscape:groupmode="layer"
+         data-rig-part="left_leg_foot"
+         data-rig-bone="left_leg_foot"
+         data-rig-z="7">
+        <path
+           id="front-left-boot-outline"
+           d="m 500,345 c 9,6 18,10 26,12"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="24"
+           stroke-linecap="round" />
+        <path
+           id="front-left-boot"
+           d="m 500,345 c 9,6 18,10 26,12"
+           fill="none"
+           stroke="#2b211b"
+           stroke-width="18"
+           stroke-linecap="round" />
+        <path
+           id="front-left-sole"
+           d="m 502,357 c 9,5 18,6 26,2"
+           class="detail" />
+      </g>
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Leg - Right"
+       id="front-leg-right">
+      <g
+         inkscape:label="Upper Leg - Right"
+         id="front-part-right-leg-u"
+         inkscape:groupmode="layer"
+         data-rig-part="right_leg_u"
+         data-rig-bone="right_leg_u"
+         data-rig-z="20">
+        <path
+           id="front-right-thigh-outline"
+           d="m 463,229 c -1,19 -2,40 -3,57"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="29"
+           stroke-linecap="round" />
+        <path
+           id="front-right-thigh"
+           d="m 463,229 c -1,19 -2,40 -3,57"
+           fill="none"
+           stroke="#405158"
+           stroke-width="23"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Lower Leg - Right"
+         id="front-part-right-leg-l"
+         inkscape:groupmode="layer"
+         data-rig-part="right_leg_l"
+         data-rig-bone="right_leg_l"
+         data-rig-z="41">
+        <path
+           id="front-right-shin-outline"
+           d="m 460,286 c 0,21 0,42 0,59"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="26"
+           stroke-linecap="round" />
+        <path
+           id="front-right-shin"
+           d="m 460,286 c 0,21 0,42 0,59"
+           fill="none"
+           stroke="#39484e"
+           stroke-width="20"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Foot - Right"
+         id="front-part-right-foot"
+         inkscape:groupmode="layer"
+         data-rig-part="right_leg_foot"
+         data-rig-bone="right_leg_foot"
+         data-rig-z="42">
+        <path
+           id="front-right-boot-outline"
+           d="m 460,345 c -9,6 -18,10 -26,12"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="24"
+           stroke-linecap="round" />
+        <path
+           id="front-right-boot"
+           d="m 460,345 c -9,6 -18,10 -26,12"
+           fill="none"
+           stroke="#2b211b"
+           stroke-width="18"
+           stroke-linecap="round" />
+        <path
+           id="front-right-sole"
+           d="m 458,357 c -9,5 -18,6 -26,2"
+           class="detail" />
+      </g>
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Torso"
+       id="front-torso">
+      <g
+         inkscape:label="Pelvis"
+         id="front-part-pelvis-yoke"
+         inkscape:groupmode="layer"
+         data-rig-part="pelvis_yoke"
+         data-rig-bone="pelvis"
+         data-rig-z="21">
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Pelvis Base"
+           id="front-pelvis-yoke-pelvis-base">
+          <path
+             id="front-pelvis-yoke"
+             d="m 455,207 c 11,-5 39,-5 50,0 l -1,24 c -10,8 -38,8 -48,0 z"
+             fill="#36464c"
+             class="outline" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Pelvis Details"
+           id="front-pelvis-yoke-pelvis-details">
+          <path
+             id="front-pelvis-fly"
+             d="m 480,211 v 22"
+             class="thin" />
+          <path
+             id="front-pelvis-seam"
+             d="m 462,211 c 10,5 26,5 36,0"
+             fill="none"
+             stroke="#617279"
+             stroke-width="2.4"
+             stroke-linecap="round" />
+        </g>
+      </g>
+      <g
+         inkscape:label="Coat and Torso"
+         id="front-part-torso"
+         inkscape:groupmode="layer"
+         data-rig-part="torso"
+         data-rig-bone="torso"
+         data-rig-z="22">
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Coat Base"
+           id="front-torso-coat-base">
+          <path
+             id="front-coat-body"
+             d="M 446.14679,144.8273 C 440.14679,152.8273 443,169 444,188 l 3,24 c 2,19 13,32 33,36 20,-4 31,-17 33,-36 l 3,-24 c 1,-19 2.46531,-35.00269 -3.53469,-43.00269 -14,-7 -52.31852,-7.17001 -66.31852,-0.17001 z"
+             fill="#2f7187"
+             class="outline"
+             sodipodi:nodetypes="cccccccc" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Neckcloth and Cravat"
+           id="front-torso-neckcloth-cravat"
+           data-oiler-role="neckcloth-and-cravat">
+          <path
+             id="front-neckcloth"
+             d="m 462,135 c 4,9 10,14 18,14 8,0 14,-5 18,-14 l 3,24 c -6,7 -13,11 -21,12 -8,-1 -15,-5 -21,-12 z"
+             fill="#e8dfcf"
+             class="outline" />
+          <path
+             id="front-cravat-knot"
+             d="m 473,148 c 4,-4 10,-4 14,0 l -1,9 c -4,3 -8,3 -12,0 z"
+             fill="#f4ecdc"
+             class="outline" />
+          <path
+             id="front-cravat-tail-left"
+             d="m 475,156 c 3,9 2,20 -3,32 6,-3 10,-16 8,-30 z"
+             fill="#e8dfcf"
+             class="outline" />
+          <path
+             id="front-cravat-tail-right"
+             d="m 485,156 c -3,9 -2,20 3,32 -6,-3 -10,-16 -8,-30 z"
+             fill="#d9cfbf"
+             class="outline" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Lapels and Upper Coat Trim"
+           id="front-torso-lapels-trim"
+           data-oiler-role="lapels-and-upper-coat-trim">
+          <path
+             id="front-dark-lapel-left"
+             d="M 450.39276,143.19018 472,171 l -9,20 -19.09861,-36.48361 z"
+             fill="#28323a"
+             class="outline"
+             sodipodi:nodetypes="ccccc" />
+          <path
+             id="front-dark-lapel-right"
+             d="M 508.08661,143.6106 488,171 l 9,20 19.42795,-34.3139 -6.07896,-7.2869 z"
+             fill="#28323a"
+             class="outline"
+             sodipodi:nodetypes="cccccc" />
+          <path
+             id="front-coat-band-left"
+             d="m 450,158 c -4,19 -3,38 -1,54"
+             fill="none"
+             stroke="#28323a"
+             stroke-width="7"
+             stroke-linecap="round" />
+          <path
+             id="front-coat-band-right"
+             d="m 510,158 c 4,19 3,38 1,54"
+             fill="none"
+             stroke="#28323a"
+             stroke-width="7"
+             stroke-linecap="round" />
+          <path
+             id="front-coat-center-seam"
+             d="m 480,171 v 38"
+             fill="none"
+             stroke="#21576a"
+             stroke-width="2.6"
+             stroke-linecap="round" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Coat Buttons"
+           id="front-torso-buttons">
+          <circle
+             id="front-coat-button-upper"
+             cx="480"
+             cy="184"
+             r="2.7"
+             fill="#d39a3b"
+             stroke="#17120e"
+             stroke-width="1.8" />
+          <circle
+             id="front-coat-button-lower"
+             cx="480"
+             cy="200"
+             r="2.7"
+             fill="#d39a3b"
+             stroke="#17120e"
+             stroke-width="1.8" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Lower Coat Panel"
+           id="front-torso-lower-panel">
+          <path
+             id="front-coat-panel"
+             d="m 460,194 c 10,4 30,4 40,0"
+             fill="none"
+             stroke="#4b8da0"
+             stroke-width="3"
+             stroke-linecap="round" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Belt and Buckle"
+           id="front-torso-belt-fastenings">
+          <path
+             id="front-belt"
+             d="m 447,211 c 18,5 48,5 66,0"
+             fill="none"
+             stroke="#2c211a"
+             stroke-width="9"
+             stroke-linecap="round" />
+          <circle
+             id="front-belt-brass"
+             cx="480"
+             cy="214"
+             r="6"
+             fill="#d39a3b"
+             class="outline" />
+        </g>
+      </g>
+      <g
+         inkscape:label="Apron"
+         id="front-part-apron"
+         inkscape:groupmode="layer"
+         data-rig-part="apron"
+         data-rig-bone="torso"
+         data-rig-z="24">
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Apron Base"
+           id="front-apron-apron-base">
+          <path
+             id="front-waist-apron"
+             d="m 458,213 c 12,5 32,5 44,0 v 26 c -11,9 -33,9 -44,0 z"
+             fill="#4b3428"
+             class="outline" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Apron Details"
+           id="front-apron-apron-details"
+           data-oiler-role="apron-details">
+          <path
+             id="front-apron-pocket"
+             d="m 467,222 c 8,4 18,4 26,0 v 15 c -7,5 -19,5 -26,0 z"
+             fill="#76513a"
+             class="outline" />
+          <path
+             id="front-apron-spiral"
+             d="m 472,231 c 4,-6 14,-6 17,0 2,7 -11,8 -13,2 -1,-4 7,-4 8,-1"
+             stroke="#e4d6ad"
+             stroke-width="2.4"
+             fill="none"
+             stroke-linecap="round" />
+        </g>
+      </g>
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Arm - Left"
+       id="front-arm-left"
+       transform="translate(3.6719942,-0.11718754)"
+       style="display:inline">
+      <g
+         inkscape:label="Upper Arm - Left"
+         id="front-part-left-arm-u"
+         inkscape:groupmode="layer"
+         data-rig-part="left_arm_u"
+         data-rig-bone="left_arm_u"
+         data-rig-z="8">
+        <path
+           id="front-left-upperarm-outline"
+           d="m 512,153 c 7,17 12,37 15,53"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="25"
+           stroke-linecap="round" />
+        <path
+           id="front-left-upperarm"
+           d="m 512,153 c 7,17 12,37 15,53"
+           fill="none"
+           stroke="#2f7187"
+           stroke-width="19"
+           stroke-linecap="round" />
+        <path
+           id="front-left-sleeve-band"
+           d="m 519,190 10,3"
+           fill="none"
+           stroke="#28323a"
+           stroke-width="5"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Lower Arm - Left"
+         id="front-part-left-arm-l"
+         inkscape:groupmode="layer"
+         data-rig-part="left_arm_l"
+         data-rig-bone="left_arm_l"
+         data-rig-z="9">
+        <path
+           id="front-left-forearm-outline"
+           d="m 527,206 c -1,17 -4,35 -7,47"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="20"
+           stroke-linecap="round" />
+        <path
+           id="front-left-forearm"
+           d="m 527,206 c -1,17 -4,35 -7,47"
+           fill="none"
+           stroke="#d5a77d"
+           stroke-width="14"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Hand - Left"
+         id="front-part-left-hand"
+         inkscape:groupmode="layer"
+         data-rig-part="left_hand"
+         data-rig-bone="left_arm_hand"
+         data-rig-z="10">
+        <path
+           id="front-left-hand-shape"
+           d="m 515,249 c -2,8 0,17 5,21 5,-4 7,-13 5,-21 z"
+           fill="#d5a77d"
+           class="outline" />
+      </g>
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Arm - Right"
+       id="front-arm-right"
+       transform="translate(-4.9466989,1.0428793)"
+       style="display:inline">
+      <g
+         inkscape:label="Upper Arm - Right"
+         id="front-part-right-arm-u"
+         inkscape:groupmode="layer"
+         data-rig-part="right_arm_u"
+         data-rig-bone="right_arm_u"
+         data-rig-z="60">
+        <path
+           id="front-right-upperarm-outline"
+           d="m 448,153 c -7,17 -12,37 -15,53"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="26"
+           stroke-linecap="round" />
+        <path
+           id="front-right-upperarm"
+           d="m 448,153 c -7,17 -12,37 -15,53"
+           fill="none"
+           stroke="#2f7187"
+           stroke-width="20"
+           stroke-linecap="round" />
+        <path
+           id="front-right-sleeve-band"
+           d="m 431,193 10,-3"
+           fill="none"
+           stroke="#28323a"
+           stroke-width="5"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Lower Arm - Right"
+         id="front-part-right-arm-l"
+         inkscape:groupmode="layer"
+         data-rig-part="right_arm_l"
+         data-rig-bone="right_arm_l"
+         data-rig-z="61">
+        <path
+           id="front-right-forearm-outline"
+           d="m 433,206 c 1,17 4,35 7,47"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="21"
+           stroke-linecap="round" />
+        <path
+           id="front-right-forearm"
+           d="m 433,206 c 1,17 4,35 7,47"
+           fill="none"
+           stroke="#d5a77d"
+           stroke-width="15"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Hand - Right"
+         id="front-part-right-hand"
+         inkscape:groupmode="layer"
+         data-rig-part="right_hand"
+         data-rig-bone="right_arm_hand"
+         data-rig-z="62">
+        <path
+           id="front-right-hand-shape"
+           d="m 435,249 c -2,8 0,17 5,21 5,-4 7,-13 5,-21 z"
+           fill="#d5a77d"
+           class="outline" />
+      </g>
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Head"
+       id="g247">
+      <g
+         inkscape:label="Head Base"
+         id="front-part-head"
+         data-face-construction="full-volume-v3"
+         inkscape:groupmode="layer"
+         data-rig-part="head"
+         data-rig-bone="head"
+         data-rig-z="30">
+        <!-- The tail is deliberately asymmetric, but the cap sits on a frontal skull. -->
+        <!-- Euler's characteristic uneven gaze, placed on a truly frontal eye line. -->
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Cloth Cap - Back and Tail"
+           id="front-head-cap-back"
+           style="display:inline"
+           transform="translate(-0.69299038,8.2608523)"
+           data-oiler-role="cap-back-and-tail">
+          <path
+             id="front-cap-tail-back"
+             d="m 505,64 c 13,-2 23,5 24,16 1,11 -7,20 -19,25 l -8,-15 z"
+             fill="#706d72"
+             class="outline" />
+          <path
+             id="front-cap-hanging-tail"
+             d="m 511,82 c 9,6 11,19 8,35 1.22606,3.38261 -7.33376,9.94457 -12.45306,8.22627 L 504,103 Z"
+             fill="#858188"
+             class="outline"
+             sodipodi:nodetypes="ccccc" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Face Shape and Ears"
+           id="front-head-face-shape"
+           data-oiler-role="face-shape-and-ears">
+          <path
+             id="front-ear-left"
+             d="m 446.70207,101.02415 c -10.99779,-2.002504 -9.05927,14.15952 5.32586,19.45438 -0.32553,-5.46783 -3.32586,-13.45438 -5.32586,-19.45438 z"
+             fill="#d8ae88"
+             class="outline"
+             sodipodi:nodetypes="ccc" />
+          <path
+             id="front-ear-right"
+             d="m 511.04032,98.930644 c 14.79091,0.3227 11.28062,18.496926 -2.47438,21.421626 -2,-6 0.47438,-15.42163 2.47438,-21.421626 z"
+             fill="#d8ae88"
+             class="outline"
+             sodipodi:nodetypes="ccc" />
+          <path
+             id="front-head"
+             d="m 449.93452,87.326429 c 4.53383,-14.826176 14.3121,-22.869989 30.3121,-24.869989 16,2 23.4895,10.288767 28.5122,25.779564 C 512.75882,98.236004 510,109 508,119 c -2,15 -10,26 -22,31 -4,2 -8,2 -12,0 -12,-5 -20,-16 -22,-31 -0.65618,-3.28091 -2.08314,-6.98524 -2.27776,-10.26498 -0.43679,-7.36066 -2.47535,-14.689505 0.21228,-21.408591 z"
+             fill="#d8ae88"
+             class="outline"
+             sodipodi:nodetypes="cccccccsc" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Cloth Cap - Crown and Folds"
+           id="front-head-cap-main"
+           style="display:inline"
+           data-oiler-role="cap-crown-and-folds">
+          <path
+             id="front-cap-crown"
+             d="m 445,82 c -1,-13 6,-22 17,-26 4,-8 14,-11 22,-5 10,-3 18.69361,2.051364 24.69361,11.051364 8,4 11,12 8,20 C 496.69361,77.051364 461,78 445,82 Z"
+             fill="#b9b4ad"
+             class="outline"
+             sodipodi:nodetypes="cccccc" />
+          <path
+             id="front-cap-dark-fold"
+             d="m 463,59 c 7,-9 16,-10 23,-4 8,-4 17,-1 24,6 -10,2 -19,7 -26,15 -6,-8 -13,-13 -21,-17 z"
+             fill="#77737a"
+             class="outline" />
+          <path
+             id="front-cap-light-fold"
+             d="m 452,70 c 7,-9 17,-11 26,-7 -7,5 -12,10 -16,17 -4,-3 -7,-6 -10,-10 z"
+             fill="#c8c3bc"
+             class="outline" />
+          <path
+             id="front-cap-front-fold"
+             d="m 445.12907,82.438181 c 17,-6 53.85373,-3.442157 70.85373,2.557843 C 512.9828,92.996024 499,92 489,90 c -6,-1 -14.87093,1.438181 -20.87093,2.438181 -10,2 -20,-2 -23,-10 z"
+             fill="#d6d1c9"
+             class="outline"
+             sodipodi:nodetypes="ccccc" />
+          <path
+             id="front-cap-center-pleat"
+             d="m 480,54 c 1,8 2,15 4,22"
+             fill="none"
+             stroke="#8a8580"
+             stroke-width="3"
+             stroke-linecap="round" />
+          <path
+             id="front-cap-fold-line-left"
+             d="m 454,79 c 8,3 17,4 26,3"
+             fill="none"
+             stroke="#8a8580"
+             stroke-width="3"
+             stroke-linecap="round" />
+          <path
+             id="front-cap-fold-line-right"
+             d="m 480,82 c 10,1 19,-1 26,-4"
+             fill="none"
+             stroke="#8a8580"
+             stroke-width="3"
+             stroke-linecap="round" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Hair"
+           id="front-head-hair"
+           data-authoring-placeholder="true" />
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Facial Features and Age Lines"
+           id="front-head-face-details">
+          <path
+             id="front-brow-left"
+             d="m 459,99 c 6,-4 13,-4 17,0"
+             class="detail" />
+          <path
+             id="front-brow-right"
+             d="m 484,99 c 5,-4 12,-4 17,1"
+             class="detail" />
+          <path
+             id="front-eye-left-squint"
+             d="m 462,106 c 5,3 10,3 14,-1"
+             class="thin" />
+          <ellipse
+             id="front-eye-right"
+             cx="492"
+             cy="106"
+             rx="3.3"
+             ry="4.1999998"
+             fill="#28211d" />
+          <g
+             inkscape:groupmode="layer"
+             inkscape:label="Nose"
+             id="front-head-nose"
+             data-oiler-role="nose-construction"
+             data-nose-form="straight-bridge-soft-tip"
+             data-nose-projection="front">
+            <path
+               id="front-nose-bridge"
+               d="M480 111 C479.5 115 479.5 119 480 121"
+               class="thin" />
+            <path
+               id="front-nostril-left"
+               d="M475.5 123.2 C476.8 124.2 478.4 124.3 479.5 123.4"
+               class="thin" />
+            <path
+               id="front-nostril-right"
+               d="M480.6 123.4 C481.8 124.3 483.6 124.2 485 123.1"
+               class="thin" />
+          </g>
+          <path
+             id="front-cheek-left"
+             d="m 457,116 c 4,4 8,5 12,5"
+             class="thin" />
+          <path
+             id="front-cheek-right"
+             d="m 491,121 c 4,-1 8,-4 11,-8"
+             class="thin" />
+          <path
+             id="front-mouth-closed"
+             d="m 469,132 c 7,4 15,4 22,0"
+             class="thin" />
+          <path
+             id="front-chin"
+             d="m 472,142 c 5,5 11,5 16,0"
+             class="thin" />
+          <path
+             id="front-age-line-left"
+             d="m 459,109 c 3,4 6,7 10,8"
+             class="thin" />
+          <path
+             id="front-age-line-right"
+             d="m 492,110 c 4,3 7,6 8,10"
+             class="thin" />
+        </g>
+      </g>
+      <g
+         inkscape:label="Blink"
+         id="front-part-blink"
+         inkscape:groupmode="layer"
+         data-rig-part="blink"
+         data-rig-bone="head"
+         data-rig-z="34"
+         data-rig-opacity="blink_vis">
+        <path
+           id="front-blink-left"
+           d="m 462,106 h 14"
+           class="detail" />
+        <path
+           id="front-blink-right"
+           d="m 485,106 h 14"
+           class="detail" />
+      </g>
+      <g
+         inkscape:label="Talk Mouth"
+         id="front-part-talk-mouth"
+         inkscape:groupmode="layer"
+         data-rig-part="talk_mouth"
+         data-rig-bone="head"
+         data-rig-z="35"
+         data-rig-opacity="talk_vis"
+         style="display:inline">
+        <ellipse
+           id="front-open-mouth"
+           cx="480"
+           cy="133"
+           rx="6.5"
+           ry="4.6999998"
+           fill="#5b2b24"
+           class="outline" />
+        <path
+           id="front-open-mouth-teeth"
+           d="m 474,131 h 12"
+           stroke="#fff1dc"
+           stroke-width="2.5" />
+      </g>
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Joints"
+       id="front-joints">
+      <g
+         inkscape:groupmode="layer"
+         inkscape:label="Core Joints"
+         id="front-core-joints">
+        <circle
+           inkscape:label="Waist"
+           id="front-j-waist"
+           cx="480"
+           cy="205"
+           r="3.2"
+           class="joint"
+           data-rig-joint="waist" />
+        <circle
+           inkscape:label="Neck"
+           id="front-j-neck"
+           cx="480"
+           cy="131"
+           r="3.2"
+           class="joint"
+           data-rig-joint="neck" />
+      </g>
+      <g
+         inkscape:groupmode="layer"
+         inkscape:label="Arm Joints - Left"
+         id="front-arm-joints-left">
+        <circle
+           inkscape:label="Shoulder - Left"
+           id="front-j-left-shoulder"
+           cx="515.27124"
+           cy="150.70943"
+           r="3.2"
+           class="joint"
+           data-rig-joint="left_shoulder" />
+        <circle
+           inkscape:label="Elbow - Left"
+           id="front-j-left-elbow"
+           cx="531.83661"
+           cy="206.72487"
+           r="3.2"
+           class="joint"
+           data-rig-joint="left_elbow" />
+        <circle
+           inkscape:label="Wrist - Left"
+           id="front-j-left-wrist"
+           cx="523.27136"
+           cy="252.66875"
+           r="3.2"
+           class="joint"
+           data-rig-joint="left_wrist" />
+        <circle
+           inkscape:label="Handtip - Left"
+           id="front-j-left-handtip"
+           cx="523.4776"
+           cy="265.67462"
+           r="3.2"
+           class="joint"
+           data-rig-joint="left_handtip" />
+      </g>
+      <g
+         inkscape:groupmode="layer"
+         inkscape:label="Arm Joints - Right"
+         id="front-arm-joints-right">
+        <circle
+           inkscape:label="Shoulder - Right"
+           id="front-j-right-shoulder"
+           cx="448"
+           cy="153"
+           r="3.2"
+           class="joint"
+           data-rig-joint="right_shoulder" />
+        <circle
+           inkscape:label="Elbow - Right"
+           id="front-j-right-elbow"
+           cx="429.15131"
+           cy="205.57785"
+           r="3.2"
+           class="joint"
+           data-rig-joint="right_elbow" />
+        <circle
+           inkscape:label="Wrist - Right"
+           id="front-j-right-wrist"
+           cx="435.58215"
+           cy="253.0007"
+           r="3.2"
+           class="joint"
+           data-rig-joint="right_wrist" />
+        <circle
+           inkscape:label="Handtip - Right"
+           id="front-j-right-handtip"
+           class="joint"
+           r="3.2"
+           cy="268.90918"
+           cx="435.00253"
+           data-rig-joint="right_handtip" />
+      </g>
+      <g
+         inkscape:groupmode="layer"
+         inkscape:label="Leg Joints - Left"
+         id="front-leg-joints-left">
+        <circle
+           inkscape:label="Hip - Left"
+           id="front-j-left-hip"
+           cx="497"
+           cy="229"
+           r="3.2"
+           class="joint"
+           data-rig-joint="left_hip" />
+        <circle
+           inkscape:label="Knee - Left"
+           id="front-j-left-knee"
+           cx="500"
+           cy="286"
+           r="3.2"
+           class="joint"
+           data-rig-joint="left_knee" />
+        <circle
+           inkscape:label="Ankle - Left"
+           id="front-j-left-ankle"
+           cx="500"
+           cy="345"
+           r="3.2"
+           class="joint"
+           data-rig-joint="left_ankle" />
+        <circle
+           inkscape:label="Toe - Left"
+           id="front-j-left-toe"
+           cx="526"
+           cy="357"
+           r="3.2"
+           class="joint"
+           data-rig-joint="left_toe" />
+      </g>
+      <g
+         inkscape:groupmode="layer"
+         inkscape:label="Leg Joints - Right"
+         id="front-leg-joints-right">
+        <circle
+           inkscape:label="Hip - Right"
+           id="front-j-right-hip"
+           cx="463"
+           cy="229"
+           r="3.2"
+           class="joint"
+           data-rig-joint="right_hip" />
+        <circle
+           inkscape:label="Knee - Right"
+           id="front-j-right-knee"
+           cx="460"
+           cy="286"
+           r="3.2"
+           class="joint"
+           data-rig-joint="right_knee" />
+        <circle
+           inkscape:label="Ankle - Right"
+           id="front-j-right-ankle"
+           cx="460"
+           cy="345"
+           r="3.2"
+           class="joint"
+           data-rig-joint="right_ankle" />
+        <circle
+           inkscape:label="Toe - Right"
+           id="front-j-right-toe"
+           cx="434"
+           cy="357"
+           r="3.2"
+           class="joint"
+           data-rig-joint="right_toe" />
+      </g>
+    </g>
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     inkscape:label="Oiler - Side Right"
+     id="view-oiler-side-right"
+     data-side-profile-construction="authored-profile-v3"
+     data-side-arm-hinge="shoulder-back-elbow-back-wrist-forward-v3"
+     data-side-pouch-construction="narrow-profile-gusset-v2"
+     data-side-lapel-construction="single-profile-lapel-v2"
+     data-side-face-construction="integrated-profile-features-v3">
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Arm - Left"
+       id="side-arm-far">
+      <g
+         inkscape:label="Upper Arm - Left"
+         id="side-part-far-arm-u"
+         inkscape:groupmode="layer"
+         data-rig-part="far_arm_u"
+         data-rig-bone="far_arm_u"
+         data-rig-z="8">
+        <path
+           id="side-far-upperarm-outline"
+           d="M789 154 C786 168 782 184 781 195"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="25.0"
+           stroke-linecap="round" />
+        <path
+           id="side-far-upperarm"
+           d="M789 154 C786 168 782 184 781 195"
+           fill="none"
+           stroke="#2f7187"
+           stroke-width="19"
+           stroke-linecap="round" />
+        <path
+           id="side-far-sleeve-band"
+           d="M778 183 L789 186"
+           fill="none"
+           stroke="#28323a"
+           stroke-width="5"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Lower Arm - Left"
+         id="side-part-far-arm-l"
+         inkscape:groupmode="layer"
+         data-rig-part="far_arm_l"
+         data-rig-bone="far_arm_l"
+         data-rig-z="9">
+        <path
+           id="side-far-forearm-outline"
+           d="M781 195 C783 209 788 223 792 232"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="20.0"
+           stroke-linecap="round" />
+        <path
+           id="side-far-forearm"
+           d="M781 195 C783 209 788 223 792 232"
+           fill="none"
+           stroke="#d5a77d"
+           stroke-width="14"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Hand - Left"
+         id="side-part-far-hand"
+         inkscape:groupmode="layer"
+         data-rig-part="far_hand"
+         data-rig-bone="far_arm_hand"
+         data-rig-z="10">
+        <path
+           id="side-far-hand-shape"
+           d="M787 229 C787 237 791 244 797 247 C803 243 803 235 798 229 Z"
+           fill="#d5a77d"
+           class="outline" />
+      </g>
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Leg - Left"
+       id="side-leg-far">
+      <g
+         inkscape:label="Upper Leg - Left"
+         id="side-part-far-leg-u"
+         inkscape:groupmode="layer"
+         data-rig-part="far_leg_u"
+         data-rig-bone="far_leg_u"
+         data-rig-z="5">
+        <path
+           id="side-far-thigh-outline"
+           d="M797 220 C793 240 789 260 788 280"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="28.0"
+           stroke-linecap="round" />
+        <path
+           id="side-far-thigh"
+           d="M797 220 C793 240 789 260 788 280"
+           fill="none"
+           stroke="#36454b"
+           stroke-width="22"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Lower Leg - Left"
+         id="side-part-far-leg-l"
+         inkscape:groupmode="layer"
+         data-rig-part="far_leg_l"
+         data-rig-bone="far_leg_l"
+         data-rig-z="6">
+        <path
+           id="side-far-shin-outline"
+           d="M788 280 C790 303 793 328 794 345"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="25.0"
+           stroke-linecap="round" />
+        <path
+           id="side-far-shin"
+           d="M788 280 C790 303 793 328 794 345"
+           fill="none"
+           stroke="#303d42"
+           stroke-width="19"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Foot - Left"
+         id="side-part-far-foot"
+         inkscape:groupmode="layer"
+         data-rig-part="far_leg_foot"
+         data-rig-bone="far_leg_foot"
+         data-rig-z="7">
+        <path
+           id="side-far-boot-outline"
+           d="M794 345 C801 351 809 354 816 355"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="24.0"
+           stroke-linecap="round" />
+        <path
+           id="side-far-boot"
+           d="M794 345 C801 351 809 354 816 355"
+           fill="none"
+           stroke="#2b211b"
+           stroke-width="18"
+           stroke-linecap="round" />
+      </g>
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Leg - Right"
+       id="side-leg-near">
+      <g
+         inkscape:label="Upper Leg - Right"
+         id="side-part-near-leg-u"
+         inkscape:groupmode="layer"
+         data-rig-part="near_leg_u"
+         data-rig-bone="near_leg_u"
+         data-rig-z="20">
+        <path
+           id="side-near-thigh-outline"
+           d="M804 221 C808 241 812 260 814 279"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="29.0"
+           stroke-linecap="round" />
+        <path
+           id="side-near-thigh"
+           d="M804 221 C808 241 812 260 814 279"
+           fill="none"
+           stroke="#405158"
+           stroke-width="23"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Lower Leg - Right"
+         id="side-part-near-leg-l"
+         inkscape:groupmode="layer"
+         data-rig-part="near_leg_l"
+         data-rig-bone="near_leg_l"
+         data-rig-z="41">
+        <path
+           id="side-near-shin-outline"
+           d="M814 279 C812 303 809 328 807 345"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="26.0"
+           stroke-linecap="round" />
+        <path
+           id="side-near-shin"
+           d="M814 279 C812 303 809 328 807 345"
+           fill="none"
+           stroke="#39484e"
+           stroke-width="20"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Foot - Right"
+         id="side-part-near-foot"
+         inkscape:groupmode="layer"
+         data-rig-part="near_leg_foot"
+         data-rig-bone="near_leg_foot"
+         data-rig-z="42">
+        <path
+           id="side-near-boot-outline"
+           d="M807 345 C814 351 822 354 829 355"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="24.0"
+           stroke-linecap="round" />
+        <path
+           id="side-near-boot"
+           d="M807 345 C814 351 822 354 829 355"
+           fill="none"
+           stroke="#2b211b"
+           stroke-width="18"
+           stroke-linecap="round" />
+        <path
+           id="side-near-sole"
+           d="M807 356 C817 358 826 358 833 356"
+           class="detail" />
+      </g>
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Torso"
+       id="side-torso">
+      <g
+         inkscape:label="Pelvis"
+         id="side-part-pelvis-yoke"
+         inkscape:groupmode="layer"
+         data-rig-part="pelvis_yoke"
+         data-rig-bone="pelvis"
+         data-rig-z="21">
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Pelvis Base"
+           id="side-pelvis-yoke-pelvis-base">
+          <path
+             id="side-pelvis-yoke"
+             d="M783 207 C794 202 813 202 824 208 L826 225 C818 232 795 234 785 227 Z"
+             fill="#36464c"
+             class="outline" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Pelvis Details"
+           id="side-pelvis-yoke-pelvis-details">
+          <path
+             id="side-pelvis-fly"
+             d="M807 210 C811 216 812 222 811 228"
+             class="thin" />
+          <path
+             id="side-pelvis-seam"
+             d="M789 211 C799 215 814 214 821 211"
+             fill="none"
+             stroke="#617279"
+             stroke-width="2.4"
+             stroke-linecap="round" />
+        </g>
+      </g>
+      <g
+         inkscape:label="Coat and Torso"
+         id="side-part-torso"
+         inkscape:groupmode="layer"
+         data-rig-part="torso"
+         data-rig-bone="torso"
+         data-rig-z="22">
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Coat Base"
+           id="side-torso-coat-base">
+          <path
+             id="side-coat-body"
+             d="M779 143 C770 158 768 184 773 211 C777 233 790 246 806 247 C820 247 831 239 835 225 C840 206 836 180 827 158 C823 149 817 143 811 139 C800 136 788 136 779 143 Z"
+             fill="#2f7187"
+             class="outline" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Neckcloth and Cravat"
+           id="side-torso-neckcloth-cravat"
+           data-oiler-role="neckcloth-and-cravat">
+          <path
+             id="side-neckcloth"
+             d="M789 136 C794 145 802 148 810 146 C814 144 817 140 819 136 L822 159 C815 166 807 169 799 167 C794 165 790 162 787 158 Z"
+             fill="#e8dfcf"
+             class="outline" />
+          <path
+             id="side-cravat-knot"
+             d="M799 148 C804 144 810 144 814 148 L812 157 C808 160 804 160 800 157 Z"
+             fill="#f4ecdc"
+             class="outline" />
+          <path
+             id="side-cravat-tail"
+             d="M801 156 C804 164 804 176 800 188 C806 184 811 171 811 157 Z"
+             fill="#e8dfcf"
+             class="outline" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Lapels and Upper Coat Trim"
+           id="side-torso-lapels-trim"
+           data-oiler-role="lapels-and-upper-coat-trim">
+          <path
+             id="side-dark-lapel"
+             d="M802 141 C808 144 813 149 816 155 L811 160 L815 170 C811 168 808 165 805 159 L800 153 L798 148 Z"
+             fill="#28323a"
+             class="outline" />
+          <path
+             id="side-dark-lapel-far"
+             d="M796 142 L802 147 L799 153 L793 149 Z"
+             fill="#28323a"
+             class="outline" />
+          <path
+             id="side-lapel-edge"
+             d="M804 151 C808 156 811 162 813 168"
+             fill="none"
+             stroke="#17120e"
+             stroke-width="2.2"
+             stroke-linecap="round" />
+          <path
+             id="side-coat-band"
+             d="M780 158 C775 177 776 196 778 212"
+             fill="none"
+             stroke="#28323a"
+             stroke-width="7"
+             stroke-linecap="round" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Coat Buttons"
+           id="side-torso-buttons"
+           data-authoring-placeholder="true" />
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Lower Coat Panel"
+           id="side-torso-lower-panel">
+          <path
+             id="side-coat-panel"
+             d="M794 194 C807 198 822 196 830 190"
+             fill="none"
+             stroke="#4b8da0"
+             stroke-width="3"
+             stroke-linecap="round" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Belt and Buckle"
+           id="side-torso-belt-fastenings">
+          <path
+             id="side-belt"
+             d="M774 211 C792 216 819 215 835 208"
+             fill="none"
+             stroke="#2c211a"
+             stroke-width="9"
+             stroke-linecap="round" />
+          <circle
+             id="side-belt-brass"
+             cx="809"
+             cy="213"
+             r="6"
+             fill="#d39a3b"
+             class="outline" />
+        </g>
+      </g>
+      <g
+         inkscape:label="Apron"
+         id="side-part-apron"
+         inkscape:groupmode="layer"
+         data-rig-part="apron"
+         data-rig-bone="torso"
+         data-rig-z="24">
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Apron Base"
+           id="side-apron-apron-base">
+          <path
+             id="side-waist-apron"
+             d="M818 211 C825 212 832 214 835 219 L836 239 C833 244 828 246 822 244 L818 226 Z"
+             fill="#4b3428"
+             class="outline" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Apron Details"
+           id="side-apron-apron-details"
+           data-oiler-role="apron-details">
+          <path
+             id="side-apron-pocket"
+             d="M821 216 C827 217 832 219 834 223 L835 238 C832 242 828 243 825 241 L822 225 Z"
+             fill="#76513a"
+             class="outline" />
+          <path
+             id="side-apron-pocket-flap"
+             d="M821 216 C827 219 832 220 835 218 L835 224 C831 226 826 225 822 223 Z"
+             fill="#8b6246"
+             stroke="#17120e"
+             stroke-width="2.4"
+             stroke-linejoin="round" />
+          <path
+             id="side-apron-pocket-gusset"
+             d="M831 224 C833 230 833 237 831 242"
+             fill="none"
+             stroke="#4b3428"
+             stroke-width="2.2"
+             stroke-linecap="round" />
+          <path
+             id="side-apron-belt-loop"
+             d="M819 211 L827 213 L826 219 L819 217 Z"
+             fill="#6b4935"
+             class="outline" />
+        </g>
+      </g>
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Head"
+       id="g369">
+      <g
+         inkscape:label="Head Base"
+         id="side-part-head"
+         inkscape:groupmode="layer"
+         data-rig-part="head"
+         data-rig-bone="head"
+         data-rig-z="30">
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Cloth Cap - Back and Tail"
+           id="side-head-cap-back"
+           data-oiler-role="cap-back-and-tail">
+          <path
+             id="side-cap-tail-back"
+             d="M786 66 C770 62 756 67 751 78 C747 88 754 99 768 105 L782 92 Z"
+             fill="#706d72"
+             class="outline" />
+          <path
+             id="side-cap-hanging-tail"
+             d="M766 81 C756 89 755 104 760 121 C764 132 770 138 775 134 L778 102 Z"
+             fill="#858188"
+             class="outline" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Hair"
+           id="side-head-hair">
+          <path
+             id="side-nape-hair-outline"
+             d="M774 91 C767 103 768 120 776 132"
+             fill="none"
+             stroke="#17120e"
+             stroke-width="10"
+             stroke-linecap="round" />
+          <path
+             id="side-nape-hair"
+             d="M774 91 C767 103 768 120 776 132"
+             fill="none"
+             stroke="#aba69e"
+             stroke-width="5"
+             stroke-linecap="round" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Face Shape and Ears"
+           id="side-head-face-shape"
+           data-oiler-role="face-shape-and-ears">
+          <path
+             id="side-head"
+             d="M777 88 C779 70 790 61 804 62 C819 63 828 75 830 92 C830 99 831.5 106 834 111 C837 113 840 115 840 117.5 C840 120 837.5 121.5 833 121.5 C832 124 830.5 126 829 128 C830 135 825 141 818 145 C803 152 789 147 780 136 C772 126 770 111 773 98 C774 94 776 90 777 88 Z"
+             fill="#d8ae88"
+             class="outline" />
+          <path
+             id="side-ear"
+             d="M782 99 C776 98 772 104 772 111 C772 119 777 124 782 122 C786 119 786 113 783 109 C786 106 786 102 782 99 Z"
+             fill="#d8ae88"
+             stroke="#17120e"
+             stroke-width="3"
+             stroke-linejoin="round" />
+          <path
+             id="side-ear-inner"
+             d="M780 105 C776 107 776 114 780 118 C782 115 782 110 780 105"
+             fill="none"
+             stroke="#8f5f50"
+             stroke-width="2.1"
+             stroke-linecap="round" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Cloth Cap - Crown and Folds"
+           id="side-head-cap-main"
+           data-oiler-role="cap-crown-and-folds">
+          <path
+             id="side-cap-crown"
+             d="M772 87 C773 70 782 61 791 56 C798 47 808 49 814 56 C825 51 837 57 841 67 C849 72 851 81 846 88 C827 82 802 81 779 92 Z"
+             fill="#b9b4ad"
+             class="outline" />
+          <path
+             id="side-cap-dark-fold"
+             d="M791 56 C801 50 812 54 818 64 C826 58 836 61 843 69 C830 69 818 73 810 81 C804 70 798 62 791 56 Z"
+             fill="#77737a"
+             class="outline" />
+          <path
+             id="side-cap-front-fold"
+             d="M774 82 C790 73 820 74 846 83 C841 90 832 94 822 92 C807 88 791 89 778 94 Z"
+             fill="#d6d1c9"
+             class="outline" />
+          <path
+             id="side-cap-fold-line"
+             d="M781 79 C798 84 823 84 839 79"
+             fill="none"
+             stroke="#8a8580"
+             stroke-width="3"
+             stroke-linecap="round" />
+        </g>
+        <g
+           inkscape:groupmode="layer"
+           inkscape:label="Facial Features and Age Lines"
+           id="side-head-face-details">
+          <path
+             id="side-brow"
+             d="M811 98 C818 94 825 96 828 100"
+             class="detail" />
+          <ellipse
+             id="side-eye"
+             cx="821"
+             cy="106"
+             rx="3.3"
+             ry="4.3"
+             fill="#28211d" />
+          <path
+             id="side-under-eye"
+             d="M817 113 C821 115 825 115 828 113"
+             class="thin" />
+          <g
+             inkscape:groupmode="layer"
+             inkscape:label="Nose"
+             id="side-head-nose"
+             data-oiler-role="nose-construction"
+             data-nose-form="straight-bridge-soft-tip"
+             data-nose-projection="profile-right">
+            <path
+               id="side-nostril"
+               d="M833.5 120 C835 120.8 836.8 120.7 838 119.7"
+               class="thin" />
+          </g>
+          <path
+             id="side-philtrum"
+             d="M830.5 123 C829 125 828 127 828 129"
+             fill="none"
+             stroke="#8f5f50"
+             stroke-width="1.8"
+             stroke-linecap="round" />
+          <path
+             id="side-mouth-closed"
+             d="M819 130 C823 128.5 827.5 128.7 831 130 C828 132 824 132.5 819 132 Z"
+             fill="#7a4039"
+             stroke="#17120e"
+             stroke-width="1.6"
+             stroke-linejoin="round" />
+          <path
+             id="side-lower-lip"
+             d="M821 134 C824 135 828 134 830 133"
+             fill="none"
+             stroke="#8f5f50"
+             stroke-width="1.8"
+             stroke-linecap="round" />
+          <path
+             id="side-chin"
+             d="M811 141 C817 146 823 143 826 138"
+             class="thin" />
+          <path
+             id="side-cheek"
+             d="M830 123 C832 125 832 127 831 129"
+             class="thin" />
+        </g>
+      </g>
+      <g
+         inkscape:label="Blink"
+         id="side-part-blink"
+         inkscape:groupmode="layer"
+         data-rig-part="blink"
+         data-rig-bone="head"
+         data-rig-z="34"
+         data-rig-opacity="blink_vis">
+        <path
+           id="side-blink"
+           d="M815 106 H827"
+           class="detail" />
+      </g>
+      <g
+         inkscape:groupmode="layer"
+         inkscape:label="Talk Mouth"
+         id="side-part-talk-mouth-authoring"
+         data-authoring-placeholder="true" />
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Arm - Right"
+       id="side-arm-near">
+      <g
+         inkscape:label="Upper Arm - Right"
+         id="side-part-near-arm-u"
+         inkscape:groupmode="layer"
+         data-rig-part="near_arm_u"
+         data-rig-bone="near_arm_u"
+         data-rig-z="60">
+        <path
+           id="side-near-upperarm-outline"
+           d="M797 154 C794 168 790 183 788 194"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="26.0"
+           stroke-linecap="round" />
+        <path
+           id="side-near-upperarm"
+           d="M797 154 C794 168 790 183 788 194"
+           fill="none"
+           stroke="#2f7187"
+           stroke-width="20"
+           stroke-linecap="round" />
+        <path
+           id="side-near-sleeve-band"
+           d="M785 182 L797 185"
+           fill="none"
+           stroke="#28323a"
+           stroke-width="5"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Lower Arm - Right"
+         id="side-part-near-arm-l"
+         inkscape:groupmode="layer"
+         data-rig-part="near_arm_l"
+         data-rig-bone="near_arm_l"
+         data-rig-z="61">
+        <path
+           id="side-near-forearm-outline"
+           d="M788 194 C790 208 796 223 800 232"
+           fill="none"
+           stroke="#17120e"
+           stroke-width="21.0"
+           stroke-linecap="round" />
+        <path
+           id="side-near-forearm"
+           d="M788 194 C790 208 796 223 800 232"
+           fill="none"
+           stroke="#d5a77d"
+           stroke-width="15"
+           stroke-linecap="round" />
+      </g>
+      <g
+         inkscape:label="Hand - Right"
+         id="side-part-near-hand"
+         inkscape:groupmode="layer"
+         data-rig-part="near_hand"
+         data-rig-bone="near_arm_hand"
+         data-rig-z="62">
+        <path
+           id="side-near-hand-shape"
+           d="M795 229 C794 237 798 244 804 247 C810 243 810 235 805 229 Z"
+           fill="#d5a77d"
+           class="outline" />
+      </g>
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       inkscape:label="Joints"
+       id="side-joints">
+      <g
+         inkscape:groupmode="layer"
+         inkscape:label="Core Joints"
+         id="side-core-joints">
+        <circle
+           inkscape:label="Waist"
+           id="side-j-waist"
+           cx="800"
+           cy="205"
+           r="3.2"
+           class="joint"
+           data-rig-joint="waist" />
+        <circle
+           inkscape:label="Neck"
+           id="side-j-neck"
+           cx="794"
+           cy="130"
+           r="3.2"
+           class="joint"
+           data-rig-joint="neck" />
+      </g>
+      <g
+         inkscape:groupmode="layer"
+         inkscape:label="Arm Joints - Left"
+         id="side-arm-joints-far">
+        <circle
+           inkscape:label="Shoulder - Far"
+           id="side-j-far-shoulder"
+           cx="789"
+           cy="154"
+           r="3.2"
+           class="joint"
+           data-rig-joint="far_shoulder" />
+        <circle
+           inkscape:label="Elbow - Far"
+           id="side-j-far-elbow"
+           cx="781"
+           cy="195"
+           r="3.2"
+           class="joint"
+           data-rig-joint="far_elbow" />
+        <circle
+           inkscape:label="Wrist - Far"
+           id="side-j-far-wrist"
+           cx="792"
+           cy="232"
+           r="3.2"
+           class="joint"
+           data-rig-joint="far_wrist" />
+        <circle
+           inkscape:label="Handtip - Far"
+           id="side-j-far-handtip"
+           cx="797"
+           cy="245"
+           r="3.2"
+           class="joint"
+           data-rig-joint="far_handtip" />
+      </g>
+      <g
+         inkscape:groupmode="layer"
+         inkscape:label="Arm Joints - Right"
+         id="side-arm-joints-near">
+        <circle
+           inkscape:label="Shoulder - Near"
+           id="side-j-near-shoulder"
+           cx="797"
+           cy="154"
+           r="3.2"
+           class="joint"
+           data-rig-joint="near_shoulder" />
+        <circle
+           inkscape:label="Elbow - Near"
+           id="side-j-near-elbow"
+           cx="788"
+           cy="194"
+           r="3.2"
+           class="joint"
+           data-rig-joint="near_elbow" />
+        <circle
+           inkscape:label="Wrist - Near"
+           id="side-j-near-wrist"
+           cx="800"
+           cy="232"
+           r="3.2"
+           class="joint"
+           data-rig-joint="near_wrist" />
+        <circle
+           inkscape:label="Handtip - Near"
+           id="side-j-near-handtip"
+           cx="805"
+           cy="245"
+           r="3.2"
+           class="joint"
+           data-rig-joint="near_handtip" />
+      </g>
+      <g
+         inkscape:groupmode="layer"
+         inkscape:label="Leg Joints - Left"
+         id="side-leg-joints-far">
+        <circle
+           inkscape:label="Hip - Far"
+           id="side-j-far-hip"
+           cx="797"
+           cy="220"
+           r="3.2"
+           class="joint"
+           data-rig-joint="far_hip" />
+        <circle
+           inkscape:label="Knee - Far"
+           id="side-j-far-knee"
+           cx="788"
+           cy="280"
+           r="3.2"
+           class="joint"
+           data-rig-joint="far_knee" />
+        <circle
+           inkscape:label="Ankle - Far"
+           id="side-j-far-ankle"
+           cx="794"
+           cy="345"
+           r="3.2"
+           class="joint"
+           data-rig-joint="far_ankle" />
+        <circle
+           inkscape:label="Toe - Far"
+           id="side-j-far-toe"
+           cx="816"
+           cy="355"
+           r="3.2"
+           class="joint"
+           data-rig-joint="far_toe" />
+      </g>
+      <g
+         inkscape:groupmode="layer"
+         inkscape:label="Leg Joints - Right"
+         id="side-leg-joints-near">
+        <circle
+           inkscape:label="Hip - Near"
+           id="side-j-near-hip"
+           cx="804"
+           cy="221"
+           r="3.2"
+           class="joint"
+           data-rig-joint="near_hip" />
+        <circle
+           inkscape:label="Knee - Near"
+           id="side-j-near-knee"
+           cx="814"
+           cy="279"
+           r="3.2"
+           class="joint"
+           data-rig-joint="near_knee" />
+        <circle
+           inkscape:label="Ankle - Near"
+           id="side-j-near-ankle"
+           cx="807"
+           cy="345"
+           r="3.2"
+           class="joint"
+           data-rig-joint="near_ankle" />
+        <circle
+           inkscape:label="Toe - Near"
+           id="side-j-near-toe"
+           cx="829"
+           cy="355"
+           r="3.2"
+           class="joint"
+           data-rig-joint="near_toe" />
+      </g>
+    </g>
+  </g>
+</svg>

@@ -21,13 +21,16 @@ import random
 from dataclasses import dataclass
 from typing import Callable, Dict, Optional, Tuple
 
-from PIL import Image, ImageColor, ImageDraw
+from PIL import Image, ImageDraw
 from ambition_sprite2d_renderer.core.draw import rgba, with_alpha, bbox_from_center as _bbox
 
 from ...authoring.common_draw import RESAMPLING, draw_capsule, draw_rotated_ellipse, draw_rotated_rounded_rect
 from ...authoring.rig import add, clamp, ease_in_out_sine, ease_out_cubic, smoothstep, vec
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
+from ._toon_palettes import PALETTES as _TOON_PALETTES
+from ._toon_presets import PRESETS as _TOON_PRESETS
+from .oiler_mechanic import OilerMechanicGenerator, OilerSpec
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -148,12 +151,10 @@ class ToonPose:
     dead: bool = False
 
 
-from ._toon_palettes import PALETTES as _TOON_PALETTES
-from ._toon_presets import PRESETS as _TOON_PRESETS
-
 
 class ToonSideGenerator(CharacterGenerator):
     target = "toon"
+    _oiler = OilerMechanicGenerator()
     applies_job_name = True
 
     PALETTES = _TOON_PALETTES
@@ -180,12 +181,14 @@ class ToonSideGenerator(CharacterGenerator):
 
     def render_frame(
         self,
-        spec: ToonSpec,
+        spec: ToonSpec | OilerSpec,
         animation: str,
         frame_index: int,
         size: Tuple[int, int],
         job: CharacterJob,
     ) -> Image.Image:
+        if isinstance(spec, OilerSpec):
+            return self._oiler.render_frame(spec, animation, frame_index, size, job)
         anim = self.animations()[animation]
         return self.render_animation_frame(
             spec,
@@ -198,8 +201,10 @@ class ToonSideGenerator(CharacterGenerator):
             downsample=job.render.downsample,
         )
 
-    def build_spec(self, job: CharacterJob) -> ToonSpec:
+    def build_spec(self, job: CharacterJob) -> ToonSpec | OilerSpec:
         seed, archetype = job.seed, job.archetype
+        if archetype == "oiler":
+            return self._oiler.build_spec(job)
         try:
             preset = dict(self.PRESETS[archetype])
         except KeyError as ex:
@@ -581,7 +586,6 @@ class ToonSideGenerator(CharacterGenerator):
             # wider as they go down. Each tier is a row of small
             # ellipses for the "tight ringlet" texture.
             for tier_idx, dy in enumerate((-2.0, 5.0, 12.0)):
-                tier_w = (spec.head_w * 0.46 + tier_idx * 3.0) * S
                 tier_y = c[1] + dy * S
                 for sign in (-1, 1):
                     base_x = c[0] + sign * (spec.head_w * 0.42 + tier_idx * 1.2) * S
@@ -1921,7 +1925,6 @@ class ToonSideGenerator(CharacterGenerator):
             draw_rotated_rounded_rect(base, add(hand, vec(7.0 * S, angle - 6.0)), (11.0 * S, 14.0 * S), angle - 8.0, 2.0 * S, pal["accent"], outline, 1.0 * S)
             d = ImageDraw.Draw(base)
             for i in range(3):
-                yoff = -3 + i * 3
                 d.line([add(hand, vec(2.0 * S, angle - 45)) , add(hand, vec(8.0 * S, angle - 45))], fill=pal["outfit_dark"], width=max(1, int(0.9 * S)))
         elif prop == "blueprint":
             draw_rotated_rounded_rect(base, add(hand, vec(10.0 * S, angle - 4.0)), (15.0 * S, 5.0 * S), angle - 4.0, 2.0 * S, pal["white"], outline, 1.0 * S)
@@ -2151,7 +2154,6 @@ class ToonSideGenerator(CharacterGenerator):
         p = self.pose_for_animation(animation, frame_index, frame_count, spec)
         shift = self._body_plan_shift(spec)
 
-        feet_base = (44.0 * S + p.root_x * S, 102.0 * S + p.root_y * S)
         hip_center = (44.0 * S + p.root_x * S + p.lean * S, 74.0 * S + p.root_y * S - p.body_bob * S + shift["hip_y"] * S)
         torso_center = (hip_center[0] + 0.5 * S, hip_center[1] - spec.torso_h * 0.52 * S + shift["shoulder_y"] * S)
         head_center = (torso_center[0] + 4.0 * S, torso_center[1] - spec.torso_h * 0.62 * S - spec.neck_h * S + shift["head_y"] * S)

@@ -68,6 +68,7 @@ GENERATOR_MODULE_STEMS: frozenset[str] = frozenset(
         "boss_side",
         "goblin_side",
         "ninja_side",
+        "oiler_mechanic",
         "robot25d",
         "robot_side",
         "toon_side",

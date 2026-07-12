@@ -13,10 +13,12 @@ one coherent silhouette in every view:
 * planted work boots and an authored eight-pose PCA-style walk cycle;
 * a portable lock/cipher analyzer for the interaction animation.
 
-The runtime-facing animation vocabulary is unchanged: ``idle``, ``walk``,
-``talk``, ``interact``, ``idle_front``, and ``idle_side``.  The renderer never
-paints a ground ellipse or drop shadow; scene lighting and contact belong to the
-game renderer, not the sprite texture.
+Bob now carries the same broad player-grade animation vocabulary as the main
+robot: walk/run, aerial and wall traversal, dodge/landing states, blink travel,
+directional wrench attacks, blocking, aiming, shooting, and charge/cast poses,
+while retaining his richer conversation and analyzer interactions.  The
+renderer never paints a ground ellipse or drop shadow; scene lighting and
+contact belong to the game renderer, not the sprite texture.
 """
 
 from __future__ import annotations
@@ -24,10 +26,16 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Iterable, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, Optional, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...authoring.animation_vocab import (
+    DEFAULT_ADVANCED_TIMINGS,
+    DEFAULT_DIRECTIONAL_ATTACK_TIMINGS,
+    DEFAULT_EXTENDED_TIMINGS,
+    DEFAULT_TRAVERSAL_POLISH_TIMINGS,
+)
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
 from ambition_sprite2d_renderer.core.draw import rgba
@@ -47,6 +55,19 @@ def _scaled(color: Color, factor: float) -> Color:
         max(0, min(255, round(color[2] * factor))),
         color[3],
     )
+
+
+def _clamp01(value: float) -> float:
+    return max(0.0, min(1.0, value))
+
+
+def _smoothstep(value: float) -> float:
+    t = _clamp01(value)
+    return t * t * (3.0 - 2.0 * t)
+
+
+def _lerp(a: float, b: float, t: float) -> float:
+    return a + (b - a) * t
 
 
 BOB_PALETTE: Dict[str, Color] = {
@@ -99,9 +120,12 @@ class BobView(str, Enum):
     SIDE = "side"
 
 
+# Gameplay actions default to the right-facing profile used by the player
+# robot.  Bob keeps front/three-quarter rows for conversation and portrait
+# acting, but every traversal/combat row shares one side-view body instead of
+# becoming a disconnected alternate costume.
 ANIMATION_VIEWS: Dict[str, BobView] = {
     "idle": BobView.THREE_QUARTER,
-    "walk": BobView.SIDE,
     "talk": BobView.FRONT,
     "interact": BobView.FRONT,
     "idle_front": BobView.FRONT,
@@ -143,6 +167,28 @@ class BobPose:
     walk_index: int = -1
     walk_body_y: float = 0.0
     step: float = 0.0
+
+    # Shared player-grade action controls. Coordinates are authored in the
+    # 128px source space and interpreted relative to Bob's side-view body.
+    root_x: float = 0.0
+    root_y: float = 0.0
+    lean: float = 0.0
+    crouch: float = 0.0
+    gait_scale: float = 1.0
+    arm_swing: float = 1.0
+    far_hand: Optional[Point] = None
+    near_hand: Optional[Point] = None
+    far_foot: Optional[Point] = None
+    near_foot: Optional[Point] = None
+    far_bend: float = 1.0
+    near_bend: float = -1.0
+    prop: str = "keys"
+    tool_angle: float = 0.0
+    effect: str = ""
+    effect_strength: float = 0.0
+    rotation: float = 0.0
+    opacity: float = 1.0
+    hit_flash: float = 0.0
 
 
 def _bbox(
@@ -218,13 +264,28 @@ class BobEngineerGenerator(CharacterGenerator):
     target = "bob_engineer"
     applies_job_name = True
 
+    # Bob now authors the same broad movement/combat vocabulary as the player
+    # robot.  The review config chooses the runtime-relevant subset; keeping the
+    # complete table here makes Bob a genuine player-candidate rather than an
+    # NPC sheet with a walk row bolted on.
     ANIMATIONS: Dict[str, Dict[str, int]] = {
-        "idle": {"frames": 6, "duration_ms": 140},
+        "idle": {"frames": 8, "duration_ms": 120},
         "walk": {"frames": 8, "duration_ms": 95},
-        "talk": {"frames": 6, "duration_ms": 110},
-        "interact": {"frames": 6, "duration_ms": 130},
-        "idle_front": {"frames": 6, "duration_ms": 140},
-        "idle_side": {"frames": 6, "duration_ms": 140},
+        "run": {"frames": 8, "duration_ms": 75},
+        "jump": {"frames": 6, "duration_ms": 95},
+        "fall": {"frames": 6, "duration_ms": 95},
+        "slash": {"frames": 8, "duration_ms": 75},
+        "hit": {"frames": 5, "duration_ms": 90},
+        "death": {"frames": 8, "duration_ms": 110},
+        "blink_out": {"frames": 6, "duration_ms": 62},
+        "blink_in": {"frames": 6, "duration_ms": 62},
+        "dash": {"frames": 6, "duration_ms": 65},
+        **DEFAULT_EXTENDED_TIMINGS,
+        **DEFAULT_ADVANCED_TIMINGS,
+        **DEFAULT_TRAVERSAL_POLISH_TIMINGS,
+        **DEFAULT_DIRECTIONAL_ATTACK_TIMINGS,
+        "idle_front": {"frames": 8, "duration_ms": 120},
+        "idle_side": {"frames": 8, "duration_ms": 120},
     }
 
     def build_spec(self, job: CharacterJob) -> BobSpec:
@@ -247,6 +308,40 @@ class BobEngineerGenerator(CharacterGenerator):
     def body_inset(self) -> Dict[str, float]:
         # The satchel, carried keys, and analyzer are silhouette extensions.
         return {"left": 0.07, "right": 0.07, "top": 0.02, "bottom": 0.0}
+
+    def attack_hitboxes(self, size: Tuple[int, int]) -> Dict[str, Dict[str, Any]]:
+        """Right-facing gameplay volumes for Bob's wrench attacks.
+
+        The runtime mirrors these when Bob faces left.  Cosmetic wrench arcs
+        extend beyond the body, so the hitboxes are authored explicitly rather
+        than inferred from alpha.
+        """
+        w, h = size
+        cx = w * 0.5
+
+        def hitbox(x: float, y: float, width: float, height: float) -> Dict[str, Any]:
+            return {
+                "bbox": (round(x), round(y), round(width), round(height)),
+                "active_frames": [2, 3, 4, 5],
+            }
+
+        forward = hitbox(cx + w * 0.04, h * 0.25, w * 0.53, h * 0.55)
+        upward = hitbox(cx - w * 0.18, -h * 0.02, w * 0.48, h * 0.58)
+        downward = hitbox(cx - w * 0.02, h * 0.48, w * 0.43, h * 0.52)
+        backward = hitbox(cx - w * 0.48, h * 0.24, w * 0.48, h * 0.56)
+        neutral = hitbox(cx - w * 0.38, h * 0.18, w * 0.78, h * 0.66)
+        return {
+            "slash": dict(forward),
+            "attack_side": dict(forward),
+            "ledge_getup_attack": dict(forward),
+            "air_forward": dict(forward),
+            "attack_up": dict(upward),
+            "air_up": dict(upward),
+            "attack_down": dict(downward),
+            "air_down": dict(downward),
+            "air_back": dict(backward),
+            "air_neutral": dict(neutral),
+        }
 
     def render_frame(
         self,
@@ -272,47 +367,338 @@ class BobEngineerGenerator(CharacterGenerator):
         t = 0.0 if count <= 1 else frame / float(count - 1)
         wave = math.sin(t * math.tau)
         half = math.sin(t * math.pi)
-        pose = BobPose(view=ANIMATION_VIEWS.get(animation, BobView.THREE_QUARTER))
+        pose = BobPose(view=ANIMATION_VIEWS.get(animation, BobView.SIDE))
+
         if animation == "idle":
             pose.body_bob = 0.4 * wave
             pose.head_tilt = 0.7 * wave
             pose.scan = 0.18 * wave
             pose.blink = frame == count - 1
-        elif animation == "walk":
+        elif animation in {"walk", "run", "crouch_walk"}:
             index = frame % 8
             pose.walk_index = index
             pose.step = (-1.0, -0.62, -0.18, 0.52, 1.0, 0.58, 0.08, -0.55)[index]
-            pose.walk_body_y = (
-                0.0,
-                1.15,
-                0.35,
-                -0.65,
-                0.0,
-                1.15,
-                0.35,
-                -0.65,
-            )[index]
-            pose.head_tilt = (
-                0.3,
-                0.08,
-                -0.12,
-                -0.28,
-                -0.3,
-                -0.08,
-                0.12,
-                0.28,
-            )[index]
+            pose.walk_body_y = (0.0, 1.15, 0.35, -0.65, 0.0, 1.15, 0.35, -0.65)[index]
+            pose.head_tilt = (0.3, 0.08, -0.12, -0.28, -0.3, -0.08, 0.12, 0.28)[index]
+            pose.prop = "none"
+            if animation == "run":
+                pose.gait_scale = 1.38
+                pose.arm_swing = 1.38
+                pose.lean = -5.0
+                pose.walk_body_y *= 1.35
+            elif animation == "crouch_walk":
+                pose.gait_scale = 0.56
+                pose.arm_swing = 0.42
+                pose.crouch = 0.72
+                pose.lean = -2.0
+        elif animation == "jump":
+            launch = _smoothstep((t - 0.10) / 0.42)
+            preload = 1.0 - _smoothstep(t / 0.24)
+            pose.root_y = 4.5 * preload - 11.0 * launch
+            pose.lean = -4.0 - 3.0 * launch
+            pose.crouch = 0.55 * preload
+            pose.near_hand = (-2.0, 8.0)
+            pose.far_hand = (-9.0, 13.0)
+            pose.near_foot = (4.0, -5.0 - 4.0 * launch)
+            pose.far_foot = (-4.0, -2.0 - 6.0 * launch)
+            pose.prop = "none"
+        elif animation == "fall":
+            pose.root_y = -9.0 + 9.0 * t
+            pose.lean = 3.0 + 3.0 * t
+            pose.near_hand = (10.0, 13.0)
+            pose.far_hand = (-8.0, 11.0)
+            pose.near_foot = (5.0, -5.0)
+            pose.far_foot = (-5.0, -3.0)
+            pose.prop = "none"
+        elif animation in {"hover", "float_glide"}:
+            pose.root_y = -8.0 + 1.2 * wave
+            pose.lean = -9.0 if animation == "float_glide" else -2.0
+            pose.near_hand = (12.0, 12.0 if animation == "float_glide" else 18.0)
+            pose.far_hand = (-8.0, 8.0)
+            pose.near_foot = (7.0, -5.0 + wave)
+            pose.far_foot = (-6.0, -3.0 - wave)
+            pose.prop = "none"
+            pose.effect = "hover"
+            pose.effect_strength = 0.7 + 0.3 * abs(wave)
+        elif animation in {"dash", "dash_startup"}:
+            charge = _smoothstep(t)
+            pose.crouch = 0.35 + (0.35 * charge if animation == "dash_startup" else 0.0)
+            pose.lean = -8.0 - 8.0 * charge
+            pose.root_x = 4.0 * charge if animation == "dash" else -2.5 * charge
+            pose.near_hand = (-8.0, 18.0)
+            pose.far_hand = (-12.0, 15.0)
+            pose.near_foot = (7.0, 0.0)
+            pose.far_foot = (-8.0, -1.0)
+            pose.prop = "none"
+            pose.effect = "speed"
+            pose.effect_strength = charge
+        elif animation in {"crouch", "slide"}:
+            pose.crouch = 0.72 if animation == "crouch" else 0.9
+            pose.lean = -2.0 if animation == "crouch" else -12.0
+            pose.root_x = 4.0 * t if animation == "slide" else 0.0
+            pose.near_hand = (7.0, 20.0)
+            pose.far_hand = (-7.0, 18.0)
+            pose.near_foot = (9.0, 0.0)
+            pose.far_foot = (-7.0, 0.0)
+            pose.prop = "none"
+            if animation == "slide":
+                pose.effect = "speed"
+                pose.effect_strength = half
+        elif animation in {"land", "land_hard", "land_recovery"}:
+            if animation == "land_recovery":
+                impact = 1.0 - _smoothstep(t)
+            else:
+                impact = math.sin(math.pi * _clamp01(t / 0.72))
+            pose.root_y = -8.0 * (1.0 - _smoothstep(t / 0.42))
+            pose.crouch = (0.45 if animation == "land" else 0.92) * impact
+            pose.lean = -5.0 * impact
+            pose.near_hand = (8.0, 21.0)
+            pose.far_hand = (-8.0, 18.0)
+            pose.near_foot = (7.0, 0.0)
+            pose.far_foot = (-6.0, 0.0)
+            pose.prop = "none"
+            pose.effect = "impact"
+            pose.effect_strength = impact
+        elif animation in {"roll", "ledge_roll"}:
+            pose.crouch = 0.82
+            pose.root_x = _lerp(-5.0, 7.0, t)
+            pose.root_y = -1.5 * math.sin(math.pi * t)
+            pose.rotation = -360.0 * t
+            pose.near_hand = (2.0, 20.0)
+            pose.far_hand = (-4.0, 19.0)
+            pose.near_foot = (5.0, -2.0)
+            pose.far_foot = (-5.0, -2.0)
+            pose.prop = "none"
+        elif animation in {"wall_slide", "wall_grab", "ledge_grab"}:
+            pose.root_x = 7.0
+            pose.root_y = -11.0 + (4.0 * t if animation == "wall_slide" else 0.0)
+            pose.lean = 5.0
+            pose.near_hand = (14.0, 2.0 if animation == "ledge_grab" else 11.0)
+            pose.far_hand = (12.0, 8.0 if animation == "ledge_grab" else 15.0)
+            pose.near_foot = (8.0, -7.0)
+            pose.far_foot = (7.0, 1.0)
+            pose.near_bend = 1.0
+            pose.prop = "none"
+        elif animation == "wall_jump":
+            spring = _smoothstep(t)
+            pose.root_x = 8.0 - 15.0 * spring
+            pose.root_y = -5.0 - 6.0 * math.sin(math.pi * t)
+            pose.lean = 8.0 - 18.0 * spring
+            pose.near_hand = (12.0 - 18.0 * spring, 10.0)
+            pose.far_hand = (10.0 - 14.0 * spring, 16.0)
+            pose.near_foot = (8.0 - 12.0 * spring, -5.0)
+            pose.far_foot = (6.0 - 10.0 * spring, -1.0)
+            pose.prop = "none"
+        elif animation in {"climb", "ledge_climb", "ledge_getup"}:
+            climb = _smoothstep(t)
+            alternate = math.sin(t * math.tau)
+            pose.root_y = -8.0 * climb if animation != "climb" else -6.0 + 1.5 * wave
+            pose.root_x = 5.0 * (1.0 - climb) if animation != "climb" else 6.0
+            pose.crouch = 0.35 * (1.0 - climb) if animation != "climb" else 0.15
+            pose.near_hand = (12.0, 5.0 + 5.0 * alternate)
+            pose.far_hand = (10.0, 12.0 - 5.0 * alternate)
+            pose.near_foot = (7.0, -5.0 - 4.0 * alternate)
+            pose.far_foot = (5.0, -1.0 + 4.0 * alternate)
+            pose.near_bend = 1.0
+            pose.prop = "none"
+        elif animation == "swim":
+            pose.root_y = -12.0 + 1.2 * wave
+            pose.lean = -13.0
+            pose.rotation = -8.0 + 3.0 * wave
+            pose.near_hand = (15.0 + 4.0 * wave, 13.0)
+            pose.far_hand = (-8.0 - 4.0 * wave, 13.0)
+            pose.near_foot = (8.0 - 3.0 * wave, -3.0)
+            pose.far_foot = (-8.0 + 3.0 * wave, -1.0)
+            pose.prop = "none"
+            pose.effect = "water"
+            pose.effect_strength = 0.7
+        elif animation == "hit":
+            recoil = math.sin(math.pi * t)
+            pose.root_x = -5.0 * recoil
+            pose.lean = 11.0 * recoil
+            pose.near_hand = (-5.0, 9.0)
+            pose.far_hand = (-10.0, 14.0)
+            pose.near_foot = (5.0, 0.0)
+            pose.far_foot = (-5.0, 0.0)
+            pose.prop = "none"
+            pose.hit_flash = recoil
+            pose.effect = "hit"
+            pose.effect_strength = recoil
+        elif animation == "death":
+            collapse = _smoothstep(t)
+            pose.root_x = -4.0 * collapse
+            pose.root_y = 5.0 * collapse
+            pose.crouch = 0.45 * collapse
+            pose.rotation = 88.0 * collapse
+            pose.opacity = 1.0 - 0.18 * _smoothstep((t - 0.82) / 0.18)
+            pose.near_hand = (-2.0, 20.0)
+            pose.far_hand = (-8.0, 18.0)
+            pose.prop = "none"
+        elif animation in {"blink_out", "blink_in"}:
+            amount = _smoothstep(t)
+            if animation == "blink_out":
+                pose.opacity = max(0.08, 1.0 - amount)
+                pose.root_x = 6.0 * amount
+                pose.lean = -10.0 * amount
+            else:
+                pose.opacity = max(0.08, amount)
+                pose.root_x = 6.0 * (1.0 - amount)
+                pose.lean = -10.0 * (1.0 - amount)
+            pose.crouch = 0.25 * math.sin(math.pi * t)
+            pose.prop = "none"
+            pose.effect = animation
+            pose.effect_strength = math.sin(math.pi * t)
+        elif animation in {"slash", "attack_side", "ledge_getup_attack"}:
+            swing = _smoothstep((t - 0.12) / 0.68)
+            pose.root_x = 4.0 * swing
+            pose.lean = -8.0 + 14.0 * swing
+            pose.crouch = 0.22 * math.sin(math.pi * t)
+            pose.near_hand = (8.0 + 7.0 * swing, 8.0 + 9.0 * swing)
+            pose.far_hand = (1.0 + 6.0 * swing, 12.0 + 6.0 * swing)
+            pose.tool_angle = -118.0 + 190.0 * swing
+            pose.prop = "wrench"
+            pose.effect = "slash_side"
+            pose.effect_strength = math.sin(math.pi * t)
+            if animation == "ledge_getup_attack":
+                pose.root_y = -10.0 * _smoothstep(t / 0.45)
+                pose.crouch += 0.45 * (1.0 - _smoothstep(t / 0.35))
+        elif animation in {"attack_up", "air_up"}:
+            swing = _smoothstep((t - 0.12) / 0.66)
+            pose.root_y = -11.0 if animation == "air_up" else 0.0
+            pose.near_hand = (5.0, 5.0)
+            pose.far_hand = (-2.0, 10.0)
+            pose.tool_angle = 30.0 - 145.0 * swing
+            pose.prop = "wrench"
+            pose.effect = "slash_up"
+            pose.effect_strength = math.sin(math.pi * t)
+        elif animation in {"attack_down", "air_down"}:
+            swing = _smoothstep((t - 0.10) / 0.70)
+            pose.root_y = -12.0 if animation == "air_down" else 0.0
+            pose.crouch = 0.5 if animation == "attack_down" else 0.0
+            pose.near_hand = (9.0, 15.0)
+            pose.far_hand = (1.0, 14.0)
+            pose.tool_angle = -35.0 + 118.0 * swing
+            pose.prop = "wrench"
+            pose.effect = "slash_down"
+            pose.effect_strength = math.sin(math.pi * t)
+        elif animation == "air_forward":
+            swing = _smoothstep((t - 0.10) / 0.72)
+            pose.root_y = -12.0
+            pose.lean = -7.0
+            pose.near_hand = (12.0 + 5.0 * swing, 11.0)
+            pose.far_hand = (3.0, 13.0)
+            pose.near_foot = (6.0, -4.0)
+            pose.far_foot = (-6.0, -2.0)
+            pose.tool_angle = -85.0 + 155.0 * swing
+            pose.prop = "wrench"
+            pose.effect = "slash_side"
+            pose.effect_strength = math.sin(math.pi * t)
+        elif animation == "air_back":
+            swing = _smoothstep((t - 0.10) / 0.72)
+            pose.root_y = -12.0
+            pose.lean = 5.0
+            pose.near_hand = (-7.0 - 5.0 * swing, 10.0)
+            pose.far_hand = (-10.0, 14.0)
+            pose.near_foot = (5.0, -4.0)
+            pose.far_foot = (-5.0, -2.0)
+            pose.tool_angle = -30.0 - 150.0 * swing
+            pose.prop = "wrench"
+            pose.effect = "slash_back"
+            pose.effect_strength = math.sin(math.pi * t)
+        elif animation == "air_neutral":
+            pose.root_y = -12.0
+            pose.rotation = -18.0 * math.sin(math.pi * t)
+            pose.near_hand = (10.0, 10.0)
+            pose.far_hand = (-9.0, 11.0)
+            pose.near_foot = (6.0, -4.0)
+            pose.far_foot = (-6.0, -2.0)
+            pose.tool_angle = -90.0 + 360.0 * t
+            pose.prop = "wrench"
+            pose.effect = "slash_spin"
+            pose.effect_strength = math.sin(math.pi * t)
+        elif animation == "block":
+            brace = math.sin(math.pi * t)
+            pose.crouch = 0.28 * brace
+            pose.lean = -3.0
+            pose.near_hand = (14.0, 11.0)
+            pose.far_hand = (8.0, 16.0)
+            pose.near_bend = 1.0
+            pose.prop = "guard"
+            pose.effect = "block"
+            pose.effect_strength = brace
+        elif animation in {"aim", "shoot"}:
+            recoil = math.sin(math.pi * t) if animation == "shoot" else 0.0
+            pose.lean = -4.0 + 6.0 * recoil
+            pose.near_hand = (15.0 - 3.0 * recoil, 11.0)
+            pose.far_hand = (8.0 - 2.0 * recoil, 14.0)
+            pose.near_bend = 1.0
+            pose.prop = "projector"
+            pose.tool_angle = 0.0
+            if animation == "shoot":
+                pose.effect = "muzzle"
+                pose.effect_strength = max(0.0, 1.0 - abs(t - 0.48) / 0.24)
+        elif animation in {"charge", "cast"}:
+            charge = _smoothstep(t) if animation == "charge" else math.sin(math.pi * t)
+            pose.near_hand = (13.0, 8.0)
+            pose.far_hand = (7.0, 13.0)
+            pose.near_bend = 1.0
+            pose.prop = "projector"
+            pose.tool_angle = -12.0
+            pose.effect = "charge" if animation == "charge" else "cast"
+            pose.effect_strength = charge
+        elif animation == "stomp":
+            impact = math.sin(math.pi * t)
+            pose.root_y = -10.0 * math.sin(math.pi * min(1.0, t * 1.3))
+            pose.crouch = 0.65 * _smoothstep((t - 0.55) / 0.30)
+            pose.near_hand = (9.0, 7.0)
+            pose.far_hand = (-7.0, 8.0)
+            pose.near_foot = (6.0, 0.0)
+            pose.far_foot = (-4.0, -5.0)
+            pose.prop = "none"
+            pose.effect = "impact"
+            pose.effect_strength = impact
         elif animation == "talk":
+            pose.view = BobView.FRONT
             pose.body_bob = 0.22 * wave
             pose.talk_open = 0.12 + 0.88 * (0.5 + 0.5 * wave)
             pose.gesture = max(0.0, half)
             pose.head_tilt = 0.75 * wave
             pose.blink = frame == count - 1
         elif animation == "interact":
+            pose.view = BobView.FRONT
             pose.body_bob = -0.25 * half
             pose.interact = max(0.0, half)
             pose.scan = wave
             pose.head_tilt = -0.8 * half
+        elif animation in {"pickup", "throw"}:
+            action = _smoothstep(t)
+            pose.crouch = (
+                (math.sin(math.pi * t) * 0.55) if animation == "pickup" else 0.2
+            )
+            pose.near_hand = (10.0 + 5.0 * action, 24.0 - 18.0 * action)
+            pose.far_hand = (2.0 + 4.0 * action, 21.0 - 13.0 * action)
+            pose.prop = "parcel"
+            pose.effect = "throw" if animation == "throw" else ""
+            pose.effect_strength = action
+        elif animation == "celebrate":
+            pose.root_y = -5.0 * abs(math.sin(math.pi * t))
+            pose.near_hand = (8.0, -5.0)
+            pose.far_hand = (-8.0, -4.0)
+            pose.prop = "wrench"
+            pose.tool_angle = -55.0 + 12.0 * wave
+        elif animation in {"sit", "sleep"}:
+            pose.crouch = 1.0
+            pose.root_y = 0.0 if animation == "sit" else -2.0
+            pose.lean = -3.0 if animation == "sit" else 8.0
+            pose.rotation = 0.0 if animation == "sit" else 7.0
+            pose.near_hand = (5.0, 21.0)
+            pose.far_hand = (-5.0, 20.0)
+            pose.near_foot = (10.0, 0.0)
+            pose.far_foot = (-2.0, 0.0)
+            pose.prop = "none"
+            if animation == "sleep":
+                pose.effect = "sleep"
+                pose.effect_strength = 0.65 + 0.35 * wave
         elif animation in {"idle_front", "idle_side"}:
             pose.body_bob = 0.35 * wave
             pose.head_tilt = 0.55 * wave
@@ -335,24 +721,54 @@ class BobEngineerGenerator(CharacterGenerator):
         del downsample
         width, height = size
         ss = max(1, int(supersample))
-        image = Image.new(
+        canvas = Image.new(
             "RGBA",
             (width * ss, height * ss),
             background or (0, 0, 0, 0),
         )
+        actor = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
         scale = (width / 128.0) * ss
         pose = self.pose_for_animation(animation, frame_index, frame_count)
-        cx = 64.0 * scale
-        feet_y = (117.0 + pose.body_bob) * scale
+        cx = (64.0 + pose.root_x) * scale
+        feet_y = (117.0 + pose.body_bob + pose.root_y) * scale
         if pose.view is BobView.FRONT:
-            self._draw_front(image, cx, feet_y, spec, pose, scale)
+            self._draw_front(actor, cx, feet_y, spec, pose, scale)
         elif pose.view is BobView.SIDE:
-            self._draw_side(image, cx, feet_y, spec, pose, scale)
+            self._draw_side(actor, cx, feet_y, spec, pose, scale)
+            self._draw_action_effects(actor, cx, feet_y, pose, scale)
         else:
-            self._draw_three_quarter(image, cx, feet_y, spec, pose, scale)
+            self._draw_three_quarter(actor, cx, feet_y, spec, pose, scale)
+
+        if abs(pose.rotation) > 0.01:
+            pivot = (round(cx), round(feet_y - 41.0 * scale))
+            actor = actor.rotate(
+                -pose.rotation,
+                resample=Image.Resampling.BICUBIC,
+                center=pivot,
+                expand=False,
+            )
+
+        if pose.hit_flash > 0.0:
+            alpha = actor.getchannel("A")
+            strength = _clamp01(pose.hit_flash)
+            tint = Image.new(
+                "RGBA",
+                actor.size,
+                (255, 226, 196, round(160 * strength)),
+            )
+            tint.putalpha(alpha.point(lambda value: round(value * 0.62 * strength)))
+            actor = Image.alpha_composite(actor, tint)
+
+        if pose.opacity < 0.999:
+            alpha = actor.getchannel("A")
+            actor.putalpha(
+                alpha.point(lambda value: round(value * _clamp01(pose.opacity)))
+            )
+
+        canvas.alpha_composite(actor)
         if ss > 1:
-            image = image.resize((width, height), Image.Resampling.LANCZOS)
-        return image
+            canvas = canvas.resize((width, height), Image.Resampling.LANCZOS)
+        return canvas
 
     # ------------------------------------------------------------------
     # Shared mechanics and props
@@ -1213,8 +1629,10 @@ class BobEngineerGenerator(CharacterGenerator):
         device_left_hand = (cx - 6.2 * s, shoulder_y + 19.0 * s)
         mix = max(0.0, min(1.0, pose.interact))
         left_elbow = (
-            relaxed_left_elbow[0] + (device_left_elbow[0] - relaxed_left_elbow[0]) * mix,
-            relaxed_left_elbow[1] + (device_left_elbow[1] - relaxed_left_elbow[1]) * mix,
+            relaxed_left_elbow[0]
+            + (device_left_elbow[0] - relaxed_left_elbow[0]) * mix,
+            relaxed_left_elbow[1]
+            + (device_left_elbow[1] - relaxed_left_elbow[1]) * mix,
         )
         left_hand = (
             relaxed_left_hand[0] + (device_left_hand[0] - relaxed_left_hand[0]) * mix,
@@ -1598,6 +2016,312 @@ class BobEngineerGenerator(CharacterGenerator):
     # ------------------------------------------------------------------
     # Side view
 
+    def _draw_wrench(
+        self,
+        d: ImageDraw.ImageDraw,
+        hand: Point,
+        angle_deg: float,
+        s: float,
+    ) -> None:
+        """Draw Bob's oversized adjustable wrench in hand-local orientation."""
+        pal = BOB_PALETTE
+        angle = math.radians(angle_deg)
+        ux, uy = math.cos(angle), math.sin(angle)
+        px, py = -uy, ux
+        tail = (hand[0] - ux * 4.0 * s, hand[1] - uy * 4.0 * s)
+        head = (hand[0] + ux * 21.0 * s, hand[1] + uy * 21.0 * s)
+        _line(d, [tail, head], fill=pal["outline"], width=round(4.6 * s))
+        _line(d, [tail, head], fill=pal["steel"], width=round(2.8 * s))
+        jaw_base = (head[0] - ux * 2.0 * s, head[1] - uy * 2.0 * s)
+        jaw_a = (head[0] + px * 5.0 * s, head[1] + py * 5.0 * s)
+        jaw_b = (head[0] - px * 5.0 * s, head[1] - py * 5.0 * s)
+        notch_a = (
+            head[0] + ux * 3.5 * s + px * 2.0 * s,
+            head[1] + uy * 3.5 * s + py * 2.0 * s,
+        )
+        notch_b = (
+            head[0] + ux * 3.5 * s - px * 2.0 * s,
+            head[1] + uy * 3.5 * s - py * 2.0 * s,
+        )
+        _poly(
+            d,
+            [jaw_base, jaw_a, notch_a, notch_b, jaw_b],
+            fill=pal["steel"],
+            outline=pal["outline"],
+            width=round(1.0 * s),
+        )
+        _ellipse(
+            d,
+            _bbox(tail[0], tail[1], 3.2 * s, 3.2 * s),
+            fill=pal["leather_dark"],
+            outline=pal["outline"],
+            width=round(0.6 * s),
+        )
+
+    def _draw_projector(
+        self,
+        d: ImageDraw.ImageDraw,
+        hand: Point,
+        angle_deg: float,
+        s: float,
+    ) -> Point:
+        """Compact diagnostic pulse projector; returns its muzzle point."""
+        pal = BOB_PALETTE
+        angle = math.radians(angle_deg)
+        ux, uy = math.cos(angle), math.sin(angle)
+        px, py = -uy, ux
+        center = (hand[0] + ux * 5.5 * s, hand[1] + uy * 5.5 * s)
+        half_l, half_w = 6.2 * s, 3.5 * s
+        body = [
+            (
+                center[0] - ux * half_l - px * half_w,
+                center[1] - uy * half_l - py * half_w,
+            ),
+            (
+                center[0] + ux * half_l - px * half_w,
+                center[1] + uy * half_l - py * half_w,
+            ),
+            (
+                center[0] + ux * half_l + px * half_w,
+                center[1] + uy * half_l + py * half_w,
+            ),
+            (
+                center[0] - ux * half_l + px * half_w,
+                center[1] - uy * half_l + py * half_w,
+            ),
+        ]
+        _poly(d, body, fill=pal["device"], outline=pal["outline"], width=round(0.9 * s))
+        muzzle = (center[0] + ux * 8.5 * s, center[1] + uy * 8.5 * s)
+        _line(d, [center, muzzle], fill=pal["steel_dark"], width=round(3.4 * s))
+        _line(d, [center, muzzle], fill=pal["steel"], width=round(1.8 * s))
+        _ellipse(
+            d,
+            _bbox(center[0], center[1], 4.2 * s, 4.2 * s),
+            fill=pal["device_screen"],
+            outline=pal["outline"],
+            width=round(0.6 * s),
+        )
+        return muzzle
+
+    def _draw_guard_plate(
+        self,
+        d: ImageDraw.ImageDraw,
+        hand: Point,
+        s: float,
+    ) -> None:
+        pal = BOB_PALETTE
+        _rounded(
+            d,
+            (
+                hand[0] - 1.0 * s,
+                hand[1] - 12.0 * s,
+                hand[0] + 11.0 * s,
+                hand[1] + 12.0 * s,
+            ),
+            radius=3.0 * s,
+            fill=pal["device"],
+            outline=pal["outline"],
+            width=round(1.2 * s),
+        )
+        _line(
+            d,
+            [
+                (hand[0] + 2.0 * s, hand[1] - 8.0 * s),
+                (hand[0] + 7.5 * s, hand[1] + 7.0 * s),
+            ],
+            fill=pal["hi_vis"],
+            width=round(2.0 * s),
+        )
+        _ellipse(
+            d,
+            _bbox(hand[0] + 5.0 * s, hand[1], 4.0 * s, 4.0 * s),
+            fill=pal["device_screen"],
+            outline=pal["outline"],
+            width=round(0.6 * s),
+        )
+
+    def _draw_action_effects(
+        self,
+        image: Image.Image,
+        cx: float,
+        feet_y: float,
+        pose: BobPose,
+        s: float,
+    ) -> None:
+        """Line-based gameplay effects. Never paints a ground/drop shadow."""
+        if not pose.effect or pose.effect_strength <= 0.001:
+            return
+        d = ImageDraw.Draw(image)
+        pal = BOB_PALETTE
+        strength = _clamp01(pose.effect_strength)
+        body_y = feet_y - 45.0 * s
+        glow = (*pal["device_screen"][:3], round(215 * strength))
+        brass = (*pal["brass_light"][:3], round(220 * strength))
+
+        if pose.effect.startswith("slash"):
+            if pose.effect == "slash_up":
+                box = (cx - 23 * s, body_y - 43 * s, cx + 31 * s, body_y + 10 * s)
+                start, end = 190, 330
+            elif pose.effect == "slash_down":
+                box = (cx - 8 * s, body_y - 2 * s, cx + 44 * s, body_y + 50 * s)
+                start, end = 15, 145
+            elif pose.effect == "slash_back":
+                box = (cx - 48 * s, body_y - 24 * s, cx + 5 * s, body_y + 31 * s)
+                start, end = 215, 345
+            elif pose.effect == "slash_spin":
+                box = (cx - 38 * s, body_y - 34 * s, cx + 38 * s, body_y + 38 * s)
+                start, end = 0, 350
+            else:
+                box = (cx - 5 * s, body_y - 30 * s, cx + 50 * s, body_y + 31 * s)
+                start, end = 205, 350
+            d.arc(
+                tuple(round(v) for v in box),
+                start=start,
+                end=end,
+                fill=brass,
+                width=max(1, round(2.4 * s)),
+            )
+            inner = tuple(
+                round(v)
+                for v in (
+                    box[0] + 5 * s,
+                    box[1] + 5 * s,
+                    box[2] - 5 * s,
+                    box[3] - 5 * s,
+                )
+            )
+            d.arc(inner, start=start, end=end, fill=glow, width=max(1, round(1.2 * s)))
+        elif pose.effect == "speed":
+            for i, yoff in enumerate((-11.0, 1.0, 13.0)):
+                length = (14.0 + 5.0 * i) * strength
+                _line(
+                    d,
+                    [
+                        (cx - (15.0 + length) * s, body_y + yoff * s),
+                        (cx - 15.0 * s, body_y + yoff * s),
+                    ],
+                    fill=glow,
+                    width=round((1.2 + 0.25 * i) * s),
+                )
+        elif pose.effect in {"blink_out", "blink_in"}:
+            direction = -1.0 if pose.effect == "blink_out" else 1.0
+            for i in range(5):
+                y = body_y + (-24.0 + i * 12.0) * s
+                x0 = cx + direction * (8.0 + i * 2.0) * s
+                x1 = cx + direction * (25.0 + i * 3.0) * s
+                _line(d, [(x0, y), (x1, y)], fill=glow, width=round(1.4 * s))
+        elif pose.effect == "muzzle":
+            origin = (cx + 30.0 * s, body_y + 3.0 * s)
+            rays = [(-6.0, -6.0), (10.0, 0.0), (-5.0, 7.0)]
+            for dx, dy in rays:
+                _line(
+                    d,
+                    [
+                        origin,
+                        (origin[0] + dx * s * strength, origin[1] + dy * s * strength),
+                    ],
+                    fill=brass,
+                    width=round(1.7 * s),
+                )
+            _ellipse(
+                d,
+                _bbox(origin[0], origin[1], 7.0 * s * strength, 7.0 * s * strength),
+                fill=glow,
+            )
+        elif pose.effect in {"charge", "cast"}:
+            center = (
+                cx + 28.0 * s,
+                body_y - (4.0 if pose.effect == "cast" else 0.0) * s,
+            )
+            radius = (4.0 + 9.0 * strength) * s
+            _ellipse(
+                d,
+                _bbox(center[0], center[1], radius * 2, radius * 2),
+                fill=(*pal["device_screen"][:3], round(75 * strength)),
+                outline=glow,
+                width=round(1.5 * s),
+            )
+            d.arc(
+                tuple(
+                    round(v)
+                    for v in _bbox(center[0], center[1], radius * 2.8, radius * 1.5)
+                ),
+                15,
+                320,
+                fill=brass,
+                width=max(1, round(1.0 * s)),
+            )
+        elif pose.effect == "block":
+            box = (cx + 6 * s, body_y - 28 * s, cx + 39 * s, body_y + 28 * s)
+            d.arc(
+                tuple(round(v) for v in box),
+                255,
+                105,
+                fill=glow,
+                width=max(1, round(2.0 * s)),
+            )
+        elif pose.effect == "impact":
+            y = feet_y - 1.0 * s
+            for dx in (-13.0, -6.0, 7.0, 14.0):
+                _line(
+                    d,
+                    [(cx + dx * s, y), (cx + dx * 1.35 * s, y - 6.0 * s * strength)],
+                    fill=brass,
+                    width=round(1.2 * s),
+                )
+        elif pose.effect == "hover":
+            for dx in (-6.0, 5.0):
+                _line(
+                    d,
+                    [
+                        (cx + dx * s, feet_y - 3 * s),
+                        (cx + dx * s, feet_y + (4.0 + 6.0 * strength) * s),
+                    ],
+                    fill=glow,
+                    width=round(1.3 * s),
+                )
+        elif pose.effect == "water":
+            for i in range(3):
+                y = feet_y - (5.0 + i * 5.0) * s
+                d.arc(
+                    (
+                        round(cx - 30 * s),
+                        round(y - 3 * s),
+                        round(cx - 7 * s),
+                        round(y + 3 * s),
+                    ),
+                    180,
+                    350,
+                    fill=glow,
+                    width=max(1, round(1.0 * s)),
+                )
+        elif pose.effect == "hit":
+            center = (cx + 9.0 * s, body_y - 2.0 * s)
+            for angle in range(0, 360, 60):
+                r = math.radians(angle)
+                _line(
+                    d,
+                    [
+                        center,
+                        (
+                            center[0] + math.cos(r) * 9.0 * s * strength,
+                            center[1] + math.sin(r) * 9.0 * s * strength,
+                        ),
+                    ],
+                    fill=brass,
+                    width=round(1.2 * s),
+                )
+        elif pose.effect == "sleep":
+            for i in range(3):
+                x = cx + (18.0 + i * 6.0) * s
+                y = body_y - (18.0 + i * 7.0) * s
+                _line(
+                    d,
+                    [(x, y), (x + 4 * s, y), (x, y - 5 * s), (x + 4 * s, y - 5 * s)],
+                    fill=glow,
+                    width=round(1.0 * s),
+                )
+
     def _draw_side(
         self,
         image: Image.Image,
@@ -1614,9 +2338,17 @@ class BobEngineerGenerator(CharacterGenerator):
         base_shin_top = base_boot_top - spec.shin_h * s
         base_hip_y = base_shin_top - spec.thigh_h * s
         body_shift = pose.walk_body_y * s if pose.walk_index >= 0 else 0.0
-        hip_y = base_hip_y + body_shift
-        shoulder_y = hip_y - spec.torso_h * s
-        lean = 0.8 * pose.step * s if pose.walk_index >= 0 else 0.5 * pose.scan * s
+        crouch = _clamp01(pose.crouch)
+        hip_y = base_hip_y + body_shift + 4.5 * crouch * s
+        shoulder_y = hip_y - (spec.torso_h - 6.0 * crouch) * s
+        lean = (
+            (
+                0.8 * pose.step * pose.arm_swing
+                if pose.walk_index >= 0
+                else 0.5 * pose.scan
+            )
+            + pose.lean
+        ) * s
         head_c = (cx + 1.8 * s + lean, shoulder_y - 11.0 * s)
 
         # Satchel and far arm are behind the torso.
@@ -1624,9 +2356,14 @@ class BobEngineerGenerator(CharacterGenerator):
             d, (cx - 8.5 * s + lean, hip_y - 10.0 * s), s * 0.92, side=True
         )
         far_shoulder = (cx - 3.6 * s + lean, shoulder_y + 5.0 * s)
-        if pose.walk_index >= 0:
+        if pose.far_hand is not None:
             far_target = (
-                far_shoulder[0] - pose.step * 8.0 * s,
+                cx + pose.far_hand[0] * s + lean,
+                shoulder_y + pose.far_hand[1] * s,
+            )
+        elif pose.walk_index >= 0:
+            far_target = (
+                far_shoulder[0] - pose.step * 8.0 * pose.arm_swing * s,
                 shoulder_y + 26.0 * s,
             )
         else:
@@ -1636,7 +2373,7 @@ class BobEngineerGenerator(CharacterGenerator):
             far_target,
             spec.arm_upper * s,
             spec.arm_lower * s,
-            bend_sign=1.0,
+            bend_sign=pose.far_bend,
         )
         self._draw_two_bone_limb(
             d,
@@ -1675,6 +2412,10 @@ class BobEngineerGenerator(CharacterGenerator):
             )
             near_dx, near_lift, near_roll = near_targets[pose.walk_index]
             far_dx, far_lift, far_roll = far_targets[pose.walk_index]
+            near_dx *= pose.gait_scale
+            far_dx *= pose.gait_scale
+            near_lift *= pose.gait_scale
+            far_lift *= pose.gait_scale
         else:
             near_dx, near_lift, near_roll = (3.2, 0.0, 0.0)
             far_dx, far_lift, far_roll = (-3.2, 0.0, 0.0)
@@ -1683,14 +2424,26 @@ class BobEngineerGenerator(CharacterGenerator):
         near_hip = (cx + 2.8 * s + lean, hip_y)
         far_ground = feet_y
         near_ground = feet_y
-        far_ankle_target = (
-            cx + far_dx * s + lean,
-            base_boot_top + far_lift * s,
-        )
-        near_ankle_target = (
-            cx + near_dx * s + lean,
-            base_boot_top + near_lift * s,
-        )
+        if pose.far_foot is not None:
+            far_ankle_target = (
+                cx + pose.far_foot[0] * s + lean,
+                base_boot_top + pose.far_foot[1] * s,
+            )
+        else:
+            far_ankle_target = (
+                cx + far_dx * s + lean,
+                base_boot_top + far_lift * s,
+            )
+        if pose.near_foot is not None:
+            near_ankle_target = (
+                cx + pose.near_foot[0] * s + lean,
+                base_boot_top + pose.near_foot[1] * s,
+            )
+        else:
+            near_ankle_target = (
+                cx + near_dx * s + lean,
+                base_boot_top + near_lift * s,
+            )
         far_knee, far_ankle = self._solve_two_bone_joint(
             far_hip,
             far_ankle_target,
@@ -1831,9 +2584,14 @@ class BobEngineerGenerator(CharacterGenerator):
         # Near arm in front, with shoulder positioned beneath the neck rather
         # than pasted onto the front edge of the chest.
         near_shoulder = (cx + 3.8 * s + lean, shoulder_y + 5.0 * s)
-        if pose.walk_index >= 0:
+        if pose.near_hand is not None:
             near_target = (
-                near_shoulder[0] + pose.step * 8.0 * s,
+                cx + pose.near_hand[0] * s + lean,
+                shoulder_y + pose.near_hand[1] * s,
+            )
+        elif pose.walk_index >= 0:
+            near_target = (
+                near_shoulder[0] + pose.step * 8.0 * pose.arm_swing * s,
                 shoulder_y + 26.0 * s,
             )
         else:
@@ -1843,7 +2601,7 @@ class BobEngineerGenerator(CharacterGenerator):
             near_target,
             spec.arm_upper * s,
             spec.arm_lower * s,
-            bend_sign=-1.0,
+            bend_sign=pose.near_bend,
         )
         self._draw_two_bone_limb(
             d,
@@ -1855,12 +2613,41 @@ class BobEngineerGenerator(CharacterGenerator):
             width=6.0,
         )
         self._draw_hand(d, near_hand, s, width=5.0, height=5.1)
-        if pose.walk_index < 0:
+        if pose.prop == "keys":
             self._draw_keyring(
                 d,
                 (near_hand[0] + 4.2 * s, near_hand[1] + 0.8 * s),
                 s,
                 scale=0.62,
+            )
+        elif pose.prop == "wrench":
+            self._draw_wrench(d, near_hand, pose.tool_angle, s)
+        elif pose.prop == "projector":
+            self._draw_projector(d, near_hand, pose.tool_angle, s)
+        elif pose.prop == "guard":
+            self._draw_guard_plate(d, near_hand, s)
+        elif pose.prop == "parcel":
+            _rounded(
+                d,
+                (
+                    near_hand[0] - 4.5 * s,
+                    near_hand[1] - 4.0 * s,
+                    near_hand[0] + 7.5 * s,
+                    near_hand[1] + 5.5 * s,
+                ),
+                radius=1.2 * s,
+                fill=pal["device"],
+                outline=outline,
+                width=round(0.8 * s),
+            )
+            _line(
+                d,
+                [
+                    (near_hand[0] + 1.5 * s, near_hand[1] - 4.0 * s),
+                    (near_hand[0] + 1.5 * s, near_hand[1] + 5.5 * s),
+                ],
+                fill=pal["indicator"],
+                width=round(1.0 * s),
             )
 
     def _draw_head_side(

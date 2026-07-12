@@ -38,6 +38,9 @@ Document shape (all geometry in base-frame pixels, y down, facing +x)::
       "ik_legs": [{"upper": "near_leg_u", "lower": "near_leg_l",
                    "foot": "near_foot", "channel_prefix": "near_foot",
                    "rest_x": 5.0, "bend": 1.0}],
+      "ik_chains": [{"upper": "near_arm_u", "lower": "near_arm_l",
+                     "end": "near_hand", "channel_prefix": "near_hand",
+                     "rest_x": 18.0, "rest_y": -34.0, "bend": -1.0}],
       "clips": {
         "idle": {"loop": true, "frames": 8, "duration_ms": 120,
                  "channels": {
@@ -217,6 +220,7 @@ class RigDocument:
                      "fill": "shell", "outline": "outline", "outline_w": 1.15},
                 ],
                 "ik_legs": [],
+                "ik_chains": [],
                 "clips": {
                     "idle": {"loop": True, "frames": 8, "duration_ms": 120, "channels": {}},
                 },
@@ -252,6 +256,17 @@ class RigDocument:
     @property
     def ik_legs(self) -> List[dict]:
         return self.data.setdefault("ik_legs", [])
+
+    @property
+    def ik_chains(self) -> List[dict]:
+        """Generic two-bone IK chains (typically arms).
+
+        A chain targets ``(center_x + <prefix>_x, ground_y + <prefix>_y)`` in
+        frame/world space. ``rest_x`` / ``rest_y`` reproduce the authored rest
+        pose when a clip does not drive the channels. ``end`` is optional; when
+        present, ``<prefix>_pitch`` controls its world angle.
+        """
+        return self.data.setdefault("ik_chains", [])
 
     @property
     def features(self) -> Dict[str, bool]:
@@ -306,6 +321,8 @@ class RigDocument:
         out = set()
         for leg in self.ik_legs:
             out.update({leg.get("upper"), leg.get("lower"), leg.get("foot")})
+        for chain in self.ik_chains:
+            out.update({chain.get("upper"), chain.get("lower"), chain.get("end")})
         out.discard(None)
         return out
 
@@ -338,7 +355,7 @@ class RigDocument:
         }
 
     def solve(self, clip_name: str, t: float):
-        """Sample channels, run IK legs, return (bone worlds, params)."""
+        """Sample channels, run leg + generic two-bone IK, return worlds/params."""
         s = self.sample(clip_name, t)
         fr = self.frame
         cx = float(fr.get("center_x", fr["width"] / 2))
@@ -348,29 +365,58 @@ class RigDocument:
         sk = self.build_skeleton()
         angles = {n: v for n, v in s.items() if n in sk.bones}
         w0 = sk.world(angles, root=root)
-        for leg in self.ik_legs:
-            up, lo = leg["upper"], leg["lower"]
+        def solve_chain(
+            chain: dict,
+            target: Point,
+            *,
+            end_name: Optional[str],
+            pitch: Optional[float],
+        ) -> None:
+            up, lo = chain["upper"], chain["lower"]
             if up not in sk.bones or lo not in sk.bones:
-                continue
-            pre = leg.get("channel_prefix", "foot")
-            hip = w0[up].origin
-            # rest_x/rest_lift/rest_pitch default the foot to its drawn stance, so
-            # a clip only needs to drive the channels it actually animates.
-            x = s.get(f"{pre}_x", float(leg.get("rest_x", 0.0)))
-            lift = s.get(f"{pre}_lift", float(leg.get("rest_lift", 0.0)))
-            ankle = (cx + x, gy - ankle_h - lift)
+                return
+            origin = w0[up].origin
             a1, a2 = two_bone_ik(
-                hip, ankle, sk.bones[up].length, sk.bones[lo].length,
-                bend=float(leg.get("bend", 1.0)),
+                origin, target, sk.bones[up].length, sk.bones[lo].length,
+                bend=float(chain.get("bend", 1.0)),
             )
             parent = sk.bones[up].parent
             parent_angle = w0[parent].angle if parent else 0.0
             angles[up] = a1 - parent_angle - sk.bones[up].rest_angle
             angles[lo] = a2 - a1 - sk.bones[lo].rest_angle
-            foot = leg.get("foot")
-            if foot and foot in sk.bones:
-                pitch = s.get(f"{pre}_pitch", float(leg.get("rest_pitch", 0.0)))
-                angles[foot] = pitch - a2 - sk.bones[foot].rest_angle
+            if end_name and end_name in sk.bones and pitch is not None:
+                angles[end_name] = pitch - a2 - sk.bones[end_name].rest_angle
+
+        for leg in self.ik_legs:
+            pre = leg.get("channel_prefix", "foot")
+            # rest_x/rest_lift/rest_pitch default the foot to its drawn stance, so
+            # a clip only needs to drive the channels it actually animates.
+            x = s.get(f"{pre}_x", float(leg.get("rest_x", 0.0)))
+            lift = s.get(f"{pre}_lift", float(leg.get("rest_lift", 0.0)))
+            pitch = s.get(f"{pre}_pitch", float(leg.get("rest_pitch", 0.0)))
+            solve_chain(
+                leg,
+                (cx + x, gy - ankle_h - lift),
+                end_name=leg.get("foot"),
+                pitch=pitch,
+            )
+
+        for chain in self.ik_chains:
+            pre = chain.get("channel_prefix", "target")
+            x = s.get(f"{pre}_x", float(chain.get("rest_x", 0.0)))
+            y = s.get(f"{pre}_y", float(chain.get("rest_y", 0.0)))
+            end_name = chain.get("end")
+            pitch = None
+            if end_name:
+                pitch = s.get(
+                    f"{pre}_pitch", float(chain.get("rest_pitch", 0.0))
+                )
+            solve_chain(
+                chain,
+                (cx + x, gy + y),
+                end_name=end_name,
+                pitch=pitch,
+            )
         return sk.world(angles, root=root), s
 
     # ---- Sprite parts (rasterized SVG subsets) ------------------------------

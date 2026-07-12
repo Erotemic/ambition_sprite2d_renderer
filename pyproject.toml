@@ -52,4 +52,5 @@ ambition_sprite2d_renderer = [
   "data/**/*",
   "targets/characters/mockingbird_boss/*.yaml",
   "targets/characters/rigged/*.rig.json",
+  "targets/characters/rigged/oiler/*.rig.json",
 ]
