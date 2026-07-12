@@ -750,14 +750,13 @@ class BobEngineerGenerator(CharacterGenerator):
         # Satchel and far arm are behind the body.
         self._draw_satchel(d, (cx - 13.0 * s, hip_y - 10.0 * s), s * 0.92)
         far_shoulder = (cx - 11.5 * s, shoulder_y + 5.0 * s)
-        far_target = (cx - 13.5 * s, hip_y - 3.0 * s)
-        far_elbow, far_hand = self._solve_two_bone_joint(
-            far_shoulder,
-            far_target,
-            spec.arm_upper * s,
-            spec.arm_lower * s,
-            bend_sign=1.0,
-        )
+        # Author the relaxed elbow explicitly.  The previous IK solution put
+        # the elbow on the inside of the arm, making the limb fold across the
+        # ribcage like a backwards hinge.  In a relaxed standing pose the
+        # upper arm falls slightly outward and the forearm returns gently
+        # toward the hip.
+        far_elbow = (cx - 14.2 * s, shoulder_y + 17.0 * s)
+        far_hand = (cx - 13.2 * s, hip_y - 3.0 * s)
         self._draw_two_bone_limb(
             d,
             far_shoulder,
@@ -920,16 +919,13 @@ class BobEngineerGenerator(CharacterGenerator):
 
         # Near arm and iconic key ring.
         near_shoulder = (cx + 11.8 * s, shoulder_y + 5.0 * s)
-        near_target = (
-            cx + 13.0 * s + pose.scan * 1.5 * s,
-            hip_y - 4.0 * s,
+        near_elbow = (
+            cx + 14.5 * s + pose.scan * 0.25 * s,
+            shoulder_y + 17.0 * s,
         )
-        near_elbow, near_hand = self._solve_two_bone_joint(
-            near_shoulder,
-            near_target,
-            spec.arm_upper * s,
-            spec.arm_lower * s,
-            bend_sign=-1.0,
+        near_hand = (
+            cx + 13.2 * s + pose.scan * 0.65 * s,
+            hip_y - 4.0 * s,
         )
         self._draw_two_bone_limb(
             d,
@@ -1104,12 +1100,18 @@ class BobEngineerGenerator(CharacterGenerator):
             (cx - 4.0 * s, cy + 5.2 * s),
             (cx + 1.5 * s, cy + 4.6 * s),
             (cx + 7.5 * s, cy + 3.8 * s),
-            (cx + 6.8 * s, cy + 8.0 * s),
-            (cx + 2.0 * s, cy + 11.5 * s),
-            (cx - 3.5 * s, cy + 11.0 * s),
-            (cx - 7.6 * s, cy + 8.2 * s),
+            (cx + 7.0 * s, cy + 8.5 * s),
+            (cx + 2.2 * s, cy + 12.3 * s),
+            (cx - 3.7 * s, cy + 11.8 * s),
+            (cx - 7.8 * s, cy + 8.5 * s),
         ]
-        d.polygon([(round(x), round(y)) for x, y in beard], fill=pal["beard"])
+        _poly(
+            d,
+            beard,
+            fill=pal["beard"],
+            outline=outline,
+            width=round(0.75 * s),
+        )
         _line(
             d,
             [beard[0], beard[1], beard[2], beard[3]],
@@ -1200,22 +1202,23 @@ class BobEngineerGenerator(CharacterGenerator):
         # Far-side satchel is partially visible behind the body.
         self._draw_satchel(d, (cx - 15.0 * s, hip_y - 10.0 * s), s * 0.88)
 
-        # Back arm.  During interaction both arms move inward to own the device;
-        # during talk the camera-left arm remains relaxed behind the vest.
+        # Back arm.  Front-view elbows must remain lateral to their shoulders:
+        # upper arms drop slightly outward, then forearms return inward.  The
+        # previous generic IK solution sometimes selected the opposite branch
+        # and produced an anatomically backwards zig-zag across Bob's torso.
         left_shoulder = (cx - 12.5 * s, shoulder_y + 5.0 * s)
-        if pose.interact > 0.0:
-            left_target = (
-                cx - (8.5 - 3.5 * pose.interact) * s,
-                shoulder_y + (22.5 - 5.0 * pose.interact) * s,
-            )
-        else:
-            left_target = (cx - 14.0 * s, hip_y - 3.0 * s)
-        left_elbow, left_hand = self._solve_two_bone_joint(
-            left_shoulder,
-            left_target,
-            spec.arm_upper * s,
-            spec.arm_lower * s,
-            bend_sign=1.0,
+        relaxed_left_elbow = (cx - 15.2 * s, shoulder_y + 17.2 * s)
+        relaxed_left_hand = (cx - 14.0 * s, hip_y - 3.0 * s)
+        device_left_elbow = (cx - 13.8 * s, shoulder_y + 18.0 * s)
+        device_left_hand = (cx - 6.2 * s, shoulder_y + 19.0 * s)
+        mix = max(0.0, min(1.0, pose.interact))
+        left_elbow = (
+            relaxed_left_elbow[0] + (device_left_elbow[0] - relaxed_left_elbow[0]) * mix,
+            relaxed_left_elbow[1] + (device_left_elbow[1] - relaxed_left_elbow[1]) * mix,
+        )
+        left_hand = (
+            relaxed_left_hand[0] + (device_left_hand[0] - relaxed_left_hand[0]) * mix,
+            relaxed_left_hand[1] + (device_left_hand[1] - relaxed_left_hand[1]) * mix,
         )
         self._draw_two_bone_limb(
             d,
@@ -1367,26 +1370,34 @@ class BobEngineerGenerator(CharacterGenerator):
         )
         self._draw_keyring(d, (cx + 8.5 * s, hip_y + 4.5 * s), s, scale=0.58)
 
-        # Near/right arm: gesture during talk, device grip during interaction.
+        # Near/right arm.  As above, keep the elbow outside the shoulder in
+        # every front-view pose.  Interaction rotates the forearm inward around
+        # a low, stable elbow; talking rotates it outward and upward rather than
+        # reversing the elbow hinge.
         right_shoulder = (cx + 12.5 * s, shoulder_y + 5.0 * s)
-        if pose.interact > 0.0:
-            right_target = (
-                cx + (8.5 - 3.5 * pose.interact) * s,
-                shoulder_y + (22.5 - 5.0 * pose.interact) * s,
-            )
-        elif pose.gesture > 0.0:
-            right_target = (
-                cx + (14.0 + 5.0 * pose.gesture) * s,
-                shoulder_y + (22.0 - 10.0 * pose.gesture) * s,
-            )
-        else:
-            right_target = (cx + 14.0 * s, hip_y - 3.0 * s)
-        right_elbow, right_hand = self._solve_two_bone_joint(
-            right_shoulder,
-            right_target,
-            spec.arm_upper * s,
-            spec.arm_lower * s,
-            bend_sign=-1.0,
+        relaxed_right_elbow = (cx + 15.2 * s, shoulder_y + 17.2 * s)
+        relaxed_right_hand = (cx + 14.0 * s, hip_y - 3.0 * s)
+        device_right_elbow = (cx + 13.8 * s, shoulder_y + 18.0 * s)
+        device_right_hand = (cx + 6.2 * s, shoulder_y + 19.0 * s)
+        gesture_right_elbow = (cx + 15.5 * s, shoulder_y + 16.0 * s)
+        gesture_right_hand = (cx + 20.0 * s, shoulder_y + 11.5 * s)
+        interact_mix = max(0.0, min(1.0, pose.interact))
+        gesture_mix = 0.0 if interact_mix > 0.0 else max(0.0, min(1.0, pose.gesture))
+        right_elbow = (
+            relaxed_right_elbow[0]
+            + (device_right_elbow[0] - relaxed_right_elbow[0]) * interact_mix
+            + (gesture_right_elbow[0] - relaxed_right_elbow[0]) * gesture_mix,
+            relaxed_right_elbow[1]
+            + (device_right_elbow[1] - relaxed_right_elbow[1]) * interact_mix
+            + (gesture_right_elbow[1] - relaxed_right_elbow[1]) * gesture_mix,
+        )
+        right_hand = (
+            relaxed_right_hand[0]
+            + (device_right_hand[0] - relaxed_right_hand[0]) * interact_mix
+            + (gesture_right_hand[0] - relaxed_right_hand[0]) * gesture_mix,
+            relaxed_right_hand[1]
+            + (device_right_hand[1] - relaxed_right_hand[1]) * interact_mix
+            + (gesture_right_hand[1] - relaxed_right_hand[1]) * gesture_mix,
         )
         self._draw_two_bone_limb(
             d,
@@ -1540,12 +1551,18 @@ class BobEngineerGenerator(CharacterGenerator):
             (cx, cy + 4.6 * s),
             (cx + 4.0 * s, cy + 5.0 * s),
             (cx + 8.6 * s, cy + 3.7 * s),
-            (cx + 7.0 * s, cy + 8.2 * s),
-            (cx + 2.5 * s, cy + 11.4 * s),
-            (cx - 2.5 * s, cy + 11.4 * s),
-            (cx - 7.0 * s, cy + 8.2 * s),
+            (cx + 7.3 * s, cy + 8.7 * s),
+            (cx + 2.7 * s, cy + 12.4 * s),
+            (cx - 2.7 * s, cy + 12.4 * s),
+            (cx - 7.3 * s, cy + 8.7 * s),
         ]
-        d.polygon([(round(x), round(y)) for x, y in beard], fill=pal["beard"])
+        _poly(
+            d,
+            beard,
+            fill=pal["beard"],
+            outline=outline,
+            width=round(0.75 * s),
+        )
         _line(
             d,
             [beard[0], beard[1], beard[2], beard[3], beard[4]],
@@ -1856,30 +1873,38 @@ class BobEngineerGenerator(CharacterGenerator):
         pal = BOB_PALETTE
         outline = pal["outline"]
         cx, cy = center
+
+        # The old profile was materially smaller than Bob's front and
+        # three-quarter heads.  Scale the cranium and face together around the
+        # same neck anchor so his identity and apparent body scale do not jump
+        # when the animation changes view.
+        hs = 1.10 * s
+        cy -= 0.35 * s
         _rounded(
             d,
-            (cx - 3.5 * s, cy + 9.5 * s, cx + 3.5 * s, cy + 17.0 * s),
+            (cx - 3.8 * s, cy + 10.2 * hs, cx + 3.8 * s, cy + 17.0 * s),
             radius=2.0 * s,
             fill=pal["skin_shadow"],
             outline=outline,
             width=round(0.75 * s),
         )
-        # Full rear skull, then the face plane.  Bob faces screen-right.
-        # The rear mass follows a haircut silhouette instead of a complete
-        # circle, so the profile reads as hair over a head rather than a hood.
+
+        # Full rear skull, then the face plane.  Bob faces screen-right.  The
+        # haircut owns the rear volume while the face carries a clear brow,
+        # nose, cheek, and jaw; neither shape is a shrunken profile cutout.
         rear_hair = [
-            (cx - 10.5 * s, cy + 5.5 * s),
-            (cx - 11.2 * s, cy - 2.5 * s),
-            (cx - 8.5 * s, cy - 9.5 * s),
-            (cx - 3.0 * s, cy - 13.8 * s),
-            (cx + 3.5 * s, cy - 13.2 * s),
-            (cx + 7.4 * s, cy - 9.2 * s),
-            (cx + 5.8 * s, cy - 6.0 * s),
-            (cx + 1.5 * s, cy - 7.2 * s),
-            (cx - 2.0 * s, cy - 5.2 * s),
-            (cx - 5.8 * s, cy - 2.5 * s),
-            (cx - 6.2 * s, cy + 5.8 * s),
-            (cx - 8.4 * s, cy + 9.0 * s),
+            (cx - 10.7 * hs, cy + 5.8 * hs),
+            (cx - 11.4 * hs, cy - 2.5 * hs),
+            (cx - 8.8 * hs, cy - 9.8 * hs),
+            (cx - 3.2 * hs, cy - 14.0 * hs),
+            (cx + 3.8 * hs, cy - 13.5 * hs),
+            (cx + 7.6 * hs, cy - 9.3 * hs),
+            (cx + 6.0 * hs, cy - 5.8 * hs),
+            (cx + 1.6 * hs, cy - 7.0 * hs),
+            (cx - 2.1 * hs, cy - 5.0 * hs),
+            (cx - 5.9 * hs, cy - 2.2 * hs),
+            (cx - 6.4 * hs, cy + 6.1 * hs),
+            (cx - 8.7 * hs, cy + 9.3 * hs),
         ]
         _poly(
             d,
@@ -1889,32 +1914,33 @@ class BobEngineerGenerator(CharacterGenerator):
             width=round(1.0 * s),
         )
         face = [
-            (cx - 6.8 * s, cy - 9.0 * s),
-            (cx + 5.5 * s, cy - 8.0 * s),
-            (cx + 8.0 * s, cy - 2.5 * s),
-            (cx + 11.5 * s, cy + 0.2 * s),
-            (cx + 8.2 * s, cy + 2.6 * s),
-            (cx + 8.7 * s, cy + 6.0 * s),
-            (cx + 4.0 * s, cy + 10.2 * s),
-            (cx - 4.8 * s, cy + 8.0 * s),
-            (cx - 7.2 * s, cy + 0.5 * s),
+            (cx - 6.9 * hs, cy - 9.0 * hs),
+            (cx + 5.7 * hs, cy - 8.1 * hs),
+            (cx + 8.2 * hs, cy - 2.6 * hs),
+            (cx + 11.7 * hs, cy + 0.1 * hs),
+            (cx + 8.4 * hs, cy + 2.7 * hs),
+            (cx + 8.9 * hs, cy + 6.2 * hs),
+            (cx + 4.1 * hs, cy + 10.5 * hs),
+            (cx - 4.9 * hs, cy + 8.3 * hs),
+            (cx - 7.3 * hs, cy + 0.5 * hs),
         ]
         _poly(d, face, fill=pal["skin"], outline=outline, width=round(1.0 * s))
         _ellipse(
             d,
-            _bbox(cx - 5.3 * s, cy + 0.6 * s, 3.8 * s, 5.6 * s),
+            _bbox(cx - 5.4 * hs, cy + 0.7 * hs, 3.9 * hs, 5.8 * hs),
             fill=pal["skin_shadow"],
             outline=outline,
             width=round(0.65 * s),
         )
 
-        # Hairline and crown tufts drape over, not into, the face plane.
+        # Hairline and crown tufts drape over the face plane while preserving
+        # enough forehead to keep the larger head readable.
         fringe = [
-            (cx - 9.0 * s, cy - 9.8 * s),
-            (cx + 5.5 * s, cy - 10.2 * s),
-            (cx + 2.5 * s, cy - 4.4 * s),
-            (cx - 1.5 * s, cy - 6.5 * s),
-            (cx - 5.8 * s, cy - 3.8 * s),
+            (cx - 9.1 * hs, cy - 9.8 * hs),
+            (cx + 5.7 * hs, cy - 10.3 * hs),
+            (cx + 2.7 * hs, cy - 4.4 * hs),
+            (cx - 1.5 * hs, cy - 6.4 * hs),
+            (cx - 5.9 * hs, cy - 3.7 * hs),
         ]
         d.polygon([(round(x), round(y)) for x, y in fringe], fill=pal["hair"])
         _line(
@@ -1926,9 +1952,9 @@ class BobEngineerGenerator(CharacterGenerator):
         _poly(
             d,
             [
-                (cx - 4.5 * s, cy - 11.8 * s),
-                (cx + 0.5 * s, cy - 14.5 * s),
-                (cx + 1.5 * s, cy - 8.2 * s),
+                (cx - 4.6 * hs, cy - 11.9 * hs),
+                (cx + 0.5 * hs, cy - 14.6 * hs),
+                (cx + 1.6 * hs, cy - 8.2 * hs),
             ],
             fill=pal["hair_mid"],
             outline=outline,
@@ -1936,7 +1962,7 @@ class BobEngineerGenerator(CharacterGenerator):
         )
         _line(
             d,
-            [(cx - 3.8 * s, cy - 11.0 * s), (cx + 3.0 * s, cy - 10.0 * s)],
+            [(cx - 3.9 * hs, cy - 11.1 * hs), (cx + 3.1 * hs, cy - 10.1 * hs)],
             fill=pal["hair_light"],
             width=round(1.0 * s),
         )
@@ -1944,13 +1970,13 @@ class BobEngineerGenerator(CharacterGenerator):
         # Profile safety glasses rest on the forehead.
         _line(
             d,
-            [(cx - 7.0 * s, cy - 7.2 * s), (cx + 5.0 * s, cy - 7.8 * s)],
+            [(cx - 7.1 * hs, cy - 7.2 * hs), (cx + 5.2 * hs, cy - 7.8 * hs)],
             fill=pal["leather_dark"],
             width=round(1.2 * s),
         )
         _rounded(
             d,
-            (cx - 0.5 * s, cy - 10.0 * s, cx + 5.2 * s, cy - 5.6 * s),
+            (cx - 0.5 * hs, cy - 10.0 * hs, cx + 5.4 * hs, cy - 5.6 * hs),
             radius=1.3 * s,
             fill=pal["glass"],
             outline=outline,
@@ -1958,58 +1984,67 @@ class BobEngineerGenerator(CharacterGenerator):
         )
         _line(
             d,
-            [(cx + 0.6 * s, cy - 9.1 * s), (cx + 3.8 * s, cy - 6.5 * s)],
+            [(cx + 0.6 * hs, cy - 9.1 * hs), (cx + 4.0 * hs, cy - 6.5 * hs)],
             fill=pal["white"],
             width=round(0.5 * s),
         )
 
-        # Sideburn and beard follow the rear jaw, with the mouth left readable.
+        # The beard is part of the jaw silhouette, not a floating patch.  Its
+        # lower contour shares the face's chin point exactly and is outlined as
+        # one continuous form.
         beard = [
-            (cx - 4.8 * s, cy + 2.5 * s),
-            (cx + 0.5 * s, cy + 4.5 * s),
-            (cx + 6.8 * s, cy + 3.8 * s),
-            (cx + 7.0 * s, cy + 7.2 * s),
-            (cx + 3.2 * s, cy + 10.0 * s),
-            (cx - 2.5 * s, cy + 8.8 * s),
-            (cx - 5.2 * s, cy + 6.0 * s),
+            (cx - 5.0 * hs, cy + 2.4 * hs),
+            (cx + 0.4 * hs, cy + 4.5 * hs),
+            (cx + 7.0 * hs, cy + 3.8 * hs),
+            (cx + 7.3 * hs, cy + 7.2 * hs),
+            (cx + 4.1 * hs, cy + 10.5 * hs),
+            (cx - 2.7 * hs, cy + 9.2 * hs),
+            (cx - 5.4 * hs, cy + 6.1 * hs),
         ]
-        d.polygon([(round(x), round(y)) for x, y in beard], fill=pal["beard"])
+        _poly(
+            d,
+            beard,
+            fill=pal["beard"],
+            outline=outline,
+            width=round(0.75 * s),
+        )
         _line(
             d,
             [beard[0], beard[1], beard[2]],
             fill=pal["beard_dark"],
             width=round(0.7 * s),
         )
-        eye = (cx + 4.2 * s, cy - 0.8 * s)
+
+        eye = (cx + 4.3 * hs, cy - 0.8 * hs)
         if pose.blink:
             _line(
                 d,
-                [(eye[0] - 1.5 * s, eye[1]), (eye[0] + 1.7 * s, eye[1])],
+                [(eye[0] - 1.5 * hs, eye[1]), (eye[0] + 1.7 * hs, eye[1])],
                 fill=outline,
                 width=round(1.0 * s),
             )
         else:
             _ellipse(
                 d,
-                _bbox(eye[0], eye[1], 3.0 * s, 3.4 * s),
+                _bbox(eye[0], eye[1], 3.0 * hs, 3.4 * hs),
                 fill=pal["white"],
                 outline=outline,
                 width=round(0.65 * s),
             )
             _ellipse(
                 d,
-                _bbox(eye[0] + 0.5 * s, eye[1], 1.4 * s, 1.7 * s),
+                _bbox(eye[0] + 0.5 * hs, eye[1], 1.4 * hs, 1.7 * hs),
                 fill=pal["eye"],
             )
         _line(
             d,
-            [(cx + 1.8 * s, cy - 3.2 * s), (cx + 6.0 * s, cy - 2.8 * s)],
+            [(cx + 1.9 * hs, cy - 3.2 * hs), (cx + 6.2 * hs, cy - 2.8 * hs)],
             fill=pal["hair"],
             width=round(1.0 * s),
         )
         _line(
             d,
-            [(cx + 6.5 * s, cy + 5.5 * s), (cx + 9.0 * s, cy + 5.2 * s)],
+            [(cx + 6.7 * hs, cy + 5.6 * hs), (cx + 9.2 * hs, cy + 5.3 * hs)],
             fill=outline,
             width=round(0.9 * s),
         )
