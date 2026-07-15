@@ -1,4 +1,8 @@
-"""Toon archetype preset: erdish.
+"""Legacy toon archetype preset for Erdish.
+
+The runtime review config now uses the bespoke ``erdish_scholar`` generator.
+Keep this fallback prop-free so ad-hoc toon jobs cannot reintroduce the old
+tablet or satchel into base character poses.
 
 One archetype per file so adding / editing a single character
 doesn't require touching the shared preset module. The
@@ -18,8 +22,8 @@ PRESET = {
     "body_plan": "tall",
     "outfit": "long_coat",
     "hair_style": "combed_back_balding",
-    "prop": "tablet",
-    "accessory": "satchel",
+    "prop": "none",
+    "accessory": "none",
     "head_w": 23.0,
     "head_h": 28.0,
     "chin_h": 6.2,
@@ -41,5 +45,5 @@ PRESET = {
     "cape_len": 0.0,
     "hair_volume": 7.0,
     "nose_len": 3.4,
-    "satchel_size": 8.5,
+    "satchel_size": 0.0,
 }

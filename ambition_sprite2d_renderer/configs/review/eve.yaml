@@ -1,4 +1,4 @@
-target: toon
+target: eve_eavesdropper
 name: Eve
 output_name: eve
 seed: 523
@@ -31,7 +31,8 @@ body:
   traits:
   - story
   - humanoid
-  - story
+  - eavesdropper
+  - cloak_first
   locomotion_hint: Walk
 capabilities:
   traversal:

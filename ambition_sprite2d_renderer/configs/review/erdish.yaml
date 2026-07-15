@@ -1,4 +1,4 @@
-target: toon
+target: erdish_scholar
 name: Erdish
 output_name: erdish
 seed: 731
@@ -6,6 +6,26 @@ archetype: erdish
 animations:
 - idle
 - walk
+- run
+- crouch
+- crouch_walk
+- jump
+- fall
+- dash_startup
+- dash
+- slide
+- roll
+- wall_grab
+- wall_jump
+- ledge_grab
+- ledge_climb
+- ledge_getup
+- ledge_roll
+- climb
+- swim
+- block
+- hit
+- death
 - talk
 - interact
 render:
@@ -31,15 +51,16 @@ body:
   - intro
   - story
   - scheduled_candidate
+  - playable_candidate
   locomotion_hint: Walk
 capabilities:
   traversal:
     walk: true
-    jump: null
-    climb: null
+    jump: true
+    climb: true
     fly: null
-    swim: null
-    crawl: null
+    swim: true
+    crawl: true
     use_lifts: true
     door_access:
     - public
@@ -65,6 +86,24 @@ animation_bindings:
   locomotion.walk:
     animation: walk
     events: []
+  locomotion.run:
+    animation: run
+    events: []
+  traversal.jump:
+    animation: jump
+    events: []
+  traversal.fall:
+    animation: fall
+    events: []
+  action.defense.roll:
+    animation: roll
+    events:
+    - t: 0.15
+      event: iframes_start
+      source: explicit.profile.erdish
+    - t: 0.75
+      event: iframes_end
+      source: explicit.profile.erdish
   interaction.talk:
     animation: talk
     events: []
@@ -102,3 +141,4 @@ tags:
 - humanoid
 - intro
 - scheduled_candidate
+- playable_candidate

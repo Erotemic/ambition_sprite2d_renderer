@@ -37,6 +37,54 @@ def test_write_spritesheet_emits_optional_actor_contract(tmp_path: Path):
     assert '"weapon_tip"' in text
 
 
+def test_character_job_preserves_art_lineage_in_actor_provenance():
+    from ambition_sprite2d_renderer.authoring.actor_contract import (
+        build_actor_contract,
+        to_ron,
+    )
+
+    job = CharacterJob.from_dict(
+        {
+            "target": "toon",
+            "name": "Lineage Example",
+            "lineage": {
+                "family": "lineage_example",
+                "variant": "opus_branch",
+                "parents": ["lineage_example/original"],
+                "creator": {"kind": "model", "model": "Opus 4.8"},
+                "method": "procedural_python_pillow",
+            },
+        }
+    )
+    assert job.to_dict()["lineage"]["variant"] == "opus_branch"
+
+    ron = to_ron(
+        build_actor_contract(
+            stem="lineage_example",
+            target="toon",
+            image="lineage_example_spritesheet.png",
+            sheet_manifest="lineage_example_spritesheet.ron",
+            manifest={
+                "rows": [
+                    {
+                        "animation": "idle",
+                        "row_index": 0,
+                        "frame_count": 1,
+                        "duration_ms": 100,
+                        "rects": [],
+                    }
+                ]
+            },
+            job_data={"surface": "adapter", "tags": []},
+            authoring={"lineage": job.lineage},
+        )
+    )
+    assert 'variant: "opus_branch"' in ron
+    assert 'model: "Opus 4.8"' in ron
+    assert 'parents: [' in ron
+    assert '"lineage_example/original"' in ron
+
+
 def test_character_job_accepts_sparse_actor_contract_fields():
     job = CharacterJob.from_dict(
         {
@@ -200,6 +248,7 @@ def test_every_registered_character_target_has_local_actor_metadata():
             job = getattr(target, "_job")
             local_metadata = bool(
                 job.actor
+                or job.lineage
                 or job.body
                 or job.capabilities
                 or job.brain

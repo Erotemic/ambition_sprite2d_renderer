@@ -1267,14 +1267,14 @@ ENTITY_SPECS: List[EntitySpriteSpec] = [
     EntitySpriteSpec(
         "npc_terminal",
         "npc_terminal.png",
-        "FeatureVisualKind::Npc",
+        "FeatureVisualKind::Actor",
         "InteractionKind::Npc",
         "talkable terminal NPC",
     ),
     EntitySpriteSpec(
         "boss_core",
         "boss_core.png",
-        "FeatureVisualKind::Boss",
+        "FeatureVisualKind::Actor",
         "BossDormant/BossPhase",
         "boss core placeholder",
     ),

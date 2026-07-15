@@ -154,10 +154,9 @@ PALETTES = {
         "shadow": rgba("#000000", 46),
         "white": rgba("#FBEAC9"),
     },
-    # Erdish — wandering graph-theory eccentric. Dusty travel coat,
-    # ink-stained satchel, ash-violet trim. Hair is gray and
-    # combed back, slightly receding, slightly wild — "open mind,
-    # possibly also open door."
+    # Legacy Erdish toon fallback. The runtime sheet now uses the bespoke
+    # prop-free erdish_scholar renderer; keep this palette only for old
+    # review jobs that still request the shared toon target.
     "erdish": {
         "skin": rgba("#D6C2B0"),
         "skin_shadow": rgba("#A78F7B"),

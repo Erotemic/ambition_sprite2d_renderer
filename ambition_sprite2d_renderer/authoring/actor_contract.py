@@ -821,6 +821,7 @@ def build_actor_contract(
     # table participates here.
     authoring = dict(authoring or {})
     actor_block = _normalize_authoring_block(authoring.get("actor"))
+    lineage = _as_mapping(authoring.get("lineage"))
     rows = _rows_from_manifest(manifest)
     explicit_character_id = actor_block.get("character_id") or authoring.get("character_id")
     catalog_profile = _catalog_profile_for(stem, explicit_character_id)
@@ -949,6 +950,7 @@ def build_actor_contract(
             variant=job_data.get("variant", None),
             held_item=job_data.get("held_item", None),
             source_config=job_data.get("source_config", None),
+            lineage=some(_mapping_to_struct(lineage)) if lineage else None,
         )),
         visual=some(visual),
         body=some(body),
@@ -991,6 +993,7 @@ def write_actor_contract_for_adapter(
     }
     authoring = {
         "actor": getattr(job, "actor", {}) or {},
+        "lineage": getattr(job, "lineage", {}) or {},
         "visual": getattr(job, "visual", {}) or {},
         "body": getattr(job, "body", {}) or {},
         "capabilities": getattr(job, "capabilities", {}) or {},

@@ -73,6 +73,9 @@ class CharacterJob:
     # loose dictionaries so existing configs remain compatible while the
     # renderer grows a richer actor-spec vocabulary.
     actor: Dict[str, Any] = field(default_factory=dict)
+    # Optional art-authoring lineage. This stays local to each character source
+    # and is copied into the generated actor sidecar provenance for future use.
+    lineage: Dict[str, Any] = field(default_factory=dict)
     visual: Dict[str, Any] = field(default_factory=dict)
     body: Dict[str, Any] = field(default_factory=dict)
     capabilities: Dict[str, Any] = field(default_factory=dict)
@@ -113,6 +116,7 @@ class CharacterJob:
             tags=list(data.get("tags") or []),
             sheet_tuning=sheet_tuning,
             actor=dict(data.get("actor") or {}),
+            lineage=dict(data.get("lineage") or {}),
             visual=dict(data.get("visual") or {}),
             body=dict(data.get("body") or {}),
             capabilities=dict(data.get("capabilities") or {}),
@@ -168,6 +172,7 @@ class CharacterJob:
             if self.sheet_tuning is not None
             else None,
             "actor": dict(self.actor),
+            "lineage": dict(self.lineage),
             "visual": dict(self.visual),
             "body": dict(self.body),
             "capabilities": dict(self.capabilities),

@@ -13,6 +13,7 @@ from typing import Dict
 from ..authoring.generator import CharacterGenerator
 from ..targets.characters.alice_cryptographer import AliceCryptographerGenerator
 from ..targets.characters.bob_engineer import BobEngineerGenerator
+from ..targets.characters.eve_eavesdropper import EveEavesdropperGenerator
 from ..targets.characters.boss_side import AISlopZetaGenerator
 from ..targets.characters.goblin_side import SideGoblinGenerator
 from ..targets.characters.ninja_side import NinjaSideGenerator
@@ -24,6 +25,7 @@ from ..targets.characters.trent_elder import TrentElderGenerator
 GENERATORS: Dict[str, CharacterGenerator] = {
     "alice_cryptographer": AliceCryptographerGenerator(),
     "bob_engineer": BobEngineerGenerator(),
+    "eve_eavesdropper": EveEavesdropperGenerator(),
     "boss": AISlopZetaGenerator(),
     "goblin": SideGoblinGenerator(),
     "ninja": NinjaSideGenerator(),
