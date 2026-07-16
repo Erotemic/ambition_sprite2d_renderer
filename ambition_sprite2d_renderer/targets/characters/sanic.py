@@ -114,7 +114,7 @@ BALL_ANIMS: Dict[str, float] = {
     "jump": 1.0,
     "dash": 2.0,
     "dash_startup": 1.0,
-    "roll": 2.0,
+    "ball": 2.0,
     "air_neutral": 1.0,
     "air_down": 2.0,
     "special": 2.0,
@@ -473,7 +473,7 @@ def _ball_frame(skin: Skin, anim: str, frame_idx: int, nframes: int) -> Image.Im
     elif anim == "dash_startup":
         cx, cy = BASE_X, GROUND_Y - 14.0
         _draw_spin_ball(img, draw, skin, cx, cy, spin, salt, lines="trail", dust=True, r=15.0)
-    elif anim == "roll":
+    elif anim == "ball":
         cx, cy = BASE_X + 2.0, GROUND_Y - 13.0
         _draw_spin_ball(img, draw, skin, cx, cy, spin, salt, lines="trail", dust=True, r=15.0)
     elif anim == "air_neutral":
@@ -651,6 +651,11 @@ def _draw_sanic(skin: Skin, anim: str, frame_idx: int, nframes: int) -> Image.Im
     elif anim == "land_recovery":
         rise = 1.0 - t
         p = dict(crouch=0.5 * rise, look=0.4, fh=(16.0, 4.0 * rise + 2.0), bh=(-13.0, 4.0 * rise + 2.0))
+    elif anim == "skid":  # braking against travel — lean back hard, dig the heels in
+        j = math.sin(cyc * 2) * 1.5
+        p = dict(crouch=0.3, lean=-14.0, look=0.6, mouth="open", fx="dust",
+                 fh=(18.0, -8.0 + j), bh=(-16.0, 4.0 - j),
+                 fa=(16.0, GROUND_Y - 4.0 - (GROUND_Y - 42.0)), ba=(-10.0, GROUND_Y - 4.0 - (GROUND_Y - 42.0)))
     elif anim == "slash":  # jab
         ext = math.sin(min(1.0, t * 1.6) * math.pi)
         p = dict(look=0.7, mouth="grin", fx="arc_fwd" if ext > 0.4 else None,
@@ -746,11 +751,12 @@ ROWS: List[Tuple[str, int, int]] = [
     ("crouch", 2, 160),
     ("dash_startup", 6, 70),
     ("dash", 6, 60),
-    ("roll", 6, 60),
+    ("ball", 6, 60),
     ("jump", 6, 80),
     ("fall", 4, 90),
     ("land_hard", 3, 70),
     ("land_recovery", 4, 90),
+    ("skid", 3, 80),
     ("slash", 5, 60),
     ("punch", 4, 55),
     ("attack_side", 6, 70),
@@ -782,7 +788,7 @@ ANIMATION_KEY_MAP: Dict[str, str] = {
     name: name
     for name, _n, _ms in ROWS
     if name in {
-        "idle", "walk", "run", "crouch", "jump", "fall", "dash", "roll",
+        "idle", "walk", "run", "crouch", "jump", "fall", "dash", "ball", "skid",
         "slash", "punch", "attack_side", "attack_up", "attack_down",
         "air_neutral", "air_forward", "air_back", "air_up", "air_down",
         "special", "block", "wall_grab", "ledge_grab", "ledge_getup_attack",
@@ -852,7 +858,7 @@ def _animation_bindings(source: str) -> dict:
         "action.special.dash_charge": {"animation": "dash_startup", "events": []},
         # defense / ledge options
         "action.defense.block": {"animation": "block", "events": []},
-        "action.defense.roll": {"animation": "roll", "events": [{"t": 0.15, "event": "iframes_start", "source": source}, {"t": 0.75, "event": "iframes_end", "source": source}]},
+        "action.defense.roll": {"animation": "ball", "events": [{"t": 0.15, "event": "iframes_start", "source": source}, {"t": 0.75, "event": "iframes_end", "source": source}]},
         "action.ledge.getup": {"animation": "ledge_getup", "events": []},
         "action.ledge.getup_attack": {"animation": "ledge_getup_attack", "events": _melee_events(0.36, 0.64, source)},
         "action.ledge.roll": {"animation": "ledge_roll", "events": []},
