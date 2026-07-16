@@ -15,6 +15,7 @@ from ..targets.characters.alice_cryptographer import AliceCryptographerGenerator
 from ..targets.characters.bob_engineer import BobEngineerGenerator
 from ..targets.characters.eve_eavesdropper import EveEavesdropperGenerator
 from ..targets.characters.boss_side import AISlopZetaGenerator
+from ..targets.characters.mallory_interceptor import MalloryInterceptorGenerator
 from ..targets.characters.goblin_side import SideGoblinGenerator
 from ..targets.characters.ninja_side import NinjaSideGenerator
 from ..targets.characters.robot_side import SideRobotGenerator
@@ -27,6 +28,7 @@ GENERATORS: Dict[str, CharacterGenerator] = {
     "bob_engineer": BobEngineerGenerator(),
     "eve_eavesdropper": EveEavesdropperGenerator(),
     "boss": AISlopZetaGenerator(),
+    "mallory_interceptor": MalloryInterceptorGenerator(),
     "goblin": SideGoblinGenerator(),
     "ninja": NinjaSideGenerator(),
     "robot": SideRobotGenerator(),

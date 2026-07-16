@@ -1,4 +1,4 @@
-target: toon
+target: mallory_interceptor
 name: Mallory
 output_name: mallory
 seed: 527
@@ -31,7 +31,8 @@ body:
   traits:
   - story
   - humanoid
-  - story
+  - active_interceptor
+  - propless_signal_interceptor
   locomotion_hint: Walk
 capabilities:
   traversal:
@@ -93,6 +94,35 @@ sockets:
     point:
       x: 64.0
       y: 8.0
+provenance:
+  variant_family: mallory
+  variant_id: gpt_5_6_bespoke_revert_polish_2026_07_16
+  lineage:
+  - revision_id: legacy_unattributed
+    creator_kind: unknown
+    creator: unattributed
+    contribution: predecessor_toon_design
+    certainty: unknown
+  - revision_id: gpt_5_6_interceptor_redesign_2026_07_15
+    creator_kind: model
+    creator: gpt-5.6-thinking
+    contribution: bespoke_visual_redesign_and_animation_polish
+    parent_revision_id: legacy_unattributed
+    date: "2026-07-15"
+  - revision_id: gpt_5_6_svg_rig_redesign_2026_07_16
+    creator_kind: model
+    creator: gpt-5.6-thinking
+    contribution: propless_multiview_svg_rig_redesign
+    parent_revision_id: gpt_5_6_interceptor_redesign_2026_07_15
+    date: "2026-07-16"
+  - revision_id: gpt_5_6_bespoke_revert_polish_2026_07_16
+    creator_kind: model
+    creator: gpt-5.6-thinking
+    contribution: revert_to_bespoke_renderer_propless_motion_and_frame_fit_polish
+    parent_revision_id: gpt_5_6_svg_rig_redesign_2026_07_16
+    date: "2026-07-16"
 tags:
 - story
 - humanoid
+- active_interceptor
+- propless_signal_interceptor
