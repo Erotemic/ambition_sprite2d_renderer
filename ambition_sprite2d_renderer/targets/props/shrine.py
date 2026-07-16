@@ -268,6 +268,15 @@ def render_frame(animation: str, frame_idx: int, n_frames: int) -> Image.Image:
     return _downsample(img)
 
 
+# A shrine is a static PROP (a structure you approach), not a character. Declare
+# an explicit `prop_` id so the actor-contract emitter doesn't default it to the
+# `npc_` catalog namespace (which would misfile it as an NPC — see the
+# actor-contract `_character_id_for` fallback).
+ACTOR_METADATA = {
+    "actor": {"character_id": "prop_shrine", "display_name": "Shrine"},
+}
+
+
 def render(out_dir: str | Path, **opts) -> List[Path]:
     del opts
     out_dir = Path(out_dir)
@@ -280,6 +289,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         frame_size=FRAME_SIZE,
         label_width=112,
         auto_crop=False,
+        actor_metadata=ACTOR_METADATA,
     )
     shrine_png = out_dir / f"{TARGET_NAME}.png"
     shutil.copy2(outputs["canonical_transparent"], shrine_png)

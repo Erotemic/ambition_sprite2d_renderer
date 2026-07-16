@@ -139,6 +139,15 @@ def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     return _draw_phase(_PHASES[frame_idx % len(_PHASES)])
 
 
+# The glider is a projectile/decorative Life pattern, not a character. Declare an
+# explicit `prop_` id so the actor-contract emitter doesn't default it to the
+# `npc_` catalog namespace (which would misfile it as an NPC — see the
+# actor-contract `_character_id_for` fallback).
+ACTOR_METADATA = {
+    "actor": {"character_id": "prop_glider", "display_name": "Glider"},
+}
+
+
 def render(out_dir: Path, **opts) -> List[Path]:
     del opts
     outputs = build_sheet(
@@ -149,6 +158,7 @@ def render(out_dir: Path, **opts) -> List[Path]:
         frame_size=(FRAME_W, FRAME_H),
         label_width=100,
         auto_crop=True,
+        actor_metadata=ACTOR_METADATA,
     )
     keys = ("spritesheet", "yaml", "ron", "actor", "canonical", "canonical_transparent", "preview")
     return [Path(outputs[k]) for k in keys if outputs.get(k)]
