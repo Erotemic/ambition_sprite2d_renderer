@@ -7,13 +7,13 @@
     "ground_y": 118.0,
     "ankle_h": 9.1433,
     "supersample": 4,
-    "render_scale": 2
+    "render_scale": 3
   },
   "svg_source": {
     "path": "../../../../data/characters/m_leblanc/m_leblanc-multiview.svg",
     "view": "Madam LeBlanc - Three Quarter",
     "ref_dpi": 25.4,
-    "scale": 2.02128
+    "scale": 0.42852
   },
   "palette": {},
   "bones": [
@@ -179,8 +179,8 @@
         "tq-far-foot-shape-sole"
       ],
       "pivot": [
-        26.715,
-        56.378
+        126.073,
+        266.01
       ],
       "rest_angle": 57.529
     },
@@ -194,8 +194,8 @@
         "tq-near-foot-shape-sole"
       ],
       "pivot": [
-        38.68,
-        56.67
+        182.513,
+        267.386
       ],
       "rest_angle": 53.973
     },
@@ -209,8 +209,8 @@
         "tq-far-leg-u-shape-fill"
       ],
       "pivot": [
-        29.049,
-        33.615
+        137.086,
+        158.638
       ],
       "rest_angle": 97.696
     },
@@ -224,8 +224,8 @@
         "tq-far-leg-l-shape-fill"
       ],
       "pivot": [
-        27.59,
-        44.413
+        130.203,
+        209.571
       ],
       "rest_angle": 94.185
     },
@@ -239,8 +239,8 @@
         "tq-near-leg-u-shape-fill"
       ],
       "pivot": [
-        35.47,
-        33.906
+        167.371,
+        160.014
       ],
       "rest_angle": 79.287
     },
@@ -254,8 +254,8 @@
         "tq-near-leg-l-shape-fill"
       ],
       "pivot": [
-        37.513,
-        44.705
+        177.007,
+        210.947
       ],
       "rest_angle": 84.428
     },
@@ -270,8 +270,8 @@
         "tq-skirt-far-pleat-1"
       ],
       "pivot": [
-        29.049,
-        33.615
+        137.086,
+        158.638
       ],
       "rest_angle": 97.696
     },
@@ -288,8 +288,8 @@
         "tq-skirt-center-pleat-2"
       ],
       "pivot": [
-        32.26,
-        33.761
+        152.228,
+        159.326
       ],
       "rest_angle": 0.0
     },
@@ -304,8 +304,8 @@
         "tq-skirt-near-pleat-1"
       ],
       "pivot": [
-        35.47,
-        33.906
+        167.371,
+        160.014
       ],
       "rest_angle": 79.287
     },
@@ -323,8 +323,8 @@
         "tq-waist-bow-tail-r"
       ],
       "pivot": [
-        32.26,
-        33.761
+        152.228,
+        159.326
       ],
       "rest_angle": 0.0
     },
@@ -338,8 +338,8 @@
         "tq-far-arm-u-shape-fill"
       ],
       "pivot": [
-        27.59,
-        26.611
+        130.203,
+        125.6
       ],
       "rest_angle": 109.026
     },
@@ -354,8 +354,8 @@
         "tq-far-arm-l-shape-cuff"
       ],
       "pivot": [
-        24.672,
-        35.074
+        116.438,
+        165.52
       ],
       "rest_angle": 87.955
     },
@@ -368,8 +368,8 @@
         "tq-far-hand-shape"
       ],
       "pivot": [
-        24.672,
-        35.074
+        116.438,
+        165.52
       ],
       "rest_angle": 87.955
     },
@@ -384,8 +384,8 @@
         "tq-bodice-line"
       ],
       "pivot": [
-        31.968,
-        32.739
+        150.852,
+        154.508
       ],
       "rest_angle": 0.0
     },
@@ -399,8 +399,8 @@
         "tq-near-arm-u-shape-fill"
       ],
       "pivot": [
-        37.221,
-        26.319
+        175.63,
+        124.224
       ],
       "rest_angle": 65.095
     },
@@ -415,8 +415,8 @@
         "tq-near-arm-l-shape-cuff"
       ],
       "pivot": [
-        41.015,
-        34.49
+        193.525,
+        162.767
       ],
       "rest_angle": 87.955
     },
@@ -429,8 +429,8 @@
         "tq-near-hand-shape"
       ],
       "pivot": [
-        41.015,
-        34.49
+        193.525,
+        162.767
       ],
       "rest_angle": 87.955
     },
@@ -472,8 +472,8 @@
         "tq-hair-ribbon-tail-r"
       ],
       "pivot": [
-        31.968,
-        25.443
+        150.852,
+        120.094
       ],
       "rest_angle": 0.0
     },
@@ -487,8 +487,8 @@
         "tq-blink-far"
       ],
       "pivot": [
-        31.968,
-        25.443
+        150.852,
+        120.094
       ],
       "rest_angle": 0.0,
       "opacity_channel": "blink_vis"
@@ -502,8 +502,8 @@
         "tq-talk-mouth"
       ],
       "pivot": [
-        31.968,
-        25.443
+        150.852,
+        120.094
       ],
       "rest_angle": 0.0,
       "opacity_channel": "talk_vis"
