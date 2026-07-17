@@ -29,7 +29,13 @@ def test_registered_targets_have_installable_sheet_contracts():
                 problems.append(f"{name}: non-local sheet file {fname!r}")
         if not any(fname.endswith(".png") for fname in target.sheet_files):
             problems.append(f"{name}: no png output declared")
-        if not any(fname.endswith((".yaml", ".json")) for fname in target.sheet_files):
+        # A manifest can be the renderer's intermediate YAML/JSON or the RON
+        # sheet manifest the engine actually loads; a target that emits only the
+        # `.ron` (e.g. the gnu_ton boss, which skips the YAML intermediate) still
+        # declares a manifest.
+        if not any(
+            fname.endswith((".yaml", ".json", ".ron")) for fname in target.sheet_files
+        ):
             problems.append(f"{name}: no manifest output declared")
     assert problems == []
 

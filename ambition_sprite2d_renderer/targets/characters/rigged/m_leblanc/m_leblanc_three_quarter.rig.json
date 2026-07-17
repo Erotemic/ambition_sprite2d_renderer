@@ -13,7 +13,7 @@
     "path": "../../../../data/characters/m_leblanc/m_leblanc-multiview.svg",
     "view": "Madam LeBlanc - Three Quarter",
     "ref_dpi": 25.4,
-    "scale": 0.58988764
+    "scale": 2.02128
   },
   "palette": {},
   "bones": [
@@ -179,10 +179,10 @@
         "tq-far-foot-shape-sole"
       ],
       "pivot": [
-        132.0,
-        226.0
+        26.715,
+        56.378
       ],
-      "rest_angle": 57.5288
+      "rest_angle": 57.529
     },
     {
       "name": "near_leg_foot",
@@ -194,10 +194,10 @@
         "tq-near-foot-shape-sole"
       ],
       "pivot": [
-        173.0,
-        227.0
+        38.68,
+        56.67
       ],
-      "rest_angle": 53.9726
+      "rest_angle": 53.973
     },
     {
       "name": "far_leg_u",
@@ -209,10 +209,10 @@
         "tq-far-leg-u-shape-fill"
       ],
       "pivot": [
-        140.0,
-        148.0
+        29.049,
+        33.615
       ],
-      "rest_angle": 97.6961
+      "rest_angle": 97.696
     },
     {
       "name": "far_leg_l",
@@ -224,10 +224,10 @@
         "tq-far-leg-l-shape-fill"
       ],
       "pivot": [
-        135.0,
-        185.0
+        27.59,
+        44.413
       ],
-      "rest_angle": 94.1849
+      "rest_angle": 94.185
     },
     {
       "name": "near_leg_u",
@@ -239,10 +239,10 @@
         "tq-near-leg-u-shape-fill"
       ],
       "pivot": [
-        162.0,
-        149.0
+        35.47,
+        33.906
       ],
-      "rest_angle": 79.2869
+      "rest_angle": 79.287
     },
     {
       "name": "near_leg_l",
@@ -254,10 +254,10 @@
         "tq-near-leg-l-shape-fill"
       ],
       "pivot": [
-        169.0,
-        186.0
+        37.513,
+        44.705
       ],
-      "rest_angle": 84.4278
+      "rest_angle": 84.428
     },
     {
       "name": "skirt_far",
@@ -270,10 +270,10 @@
         "tq-skirt-far-pleat-1"
       ],
       "pivot": [
-        140.0,
-        148.0
+        29.049,
+        33.615
       ],
-      "rest_angle": 97.6961
+      "rest_angle": 97.696
     },
     {
       "name": "skirt_center",
@@ -288,8 +288,8 @@
         "tq-skirt-center-pleat-2"
       ],
       "pivot": [
-        151.0,
-        148.5
+        32.26,
+        33.761
       ],
       "rest_angle": 0.0
     },
@@ -304,10 +304,10 @@
         "tq-skirt-near-pleat-1"
       ],
       "pivot": [
-        162.0,
-        149.0
+        35.47,
+        33.906
       ],
-      "rest_angle": 79.2869
+      "rest_angle": 79.287
     },
     {
       "name": "pelvis_yoke",
@@ -323,8 +323,8 @@
         "tq-waist-bow-tail-r"
       ],
       "pivot": [
-        151.0,
-        148.5
+        32.26,
+        33.761
       ],
       "rest_angle": 0.0
     },
@@ -338,10 +338,10 @@
         "tq-far-arm-u-shape-fill"
       ],
       "pivot": [
-        135.0,
-        124.0
+        27.59,
+        26.611
       ],
-      "rest_angle": 109.0256
+      "rest_angle": 109.026
     },
     {
       "name": "far_arm_l",
@@ -354,10 +354,10 @@
         "tq-far-arm-l-shape-cuff"
       ],
       "pivot": [
-        125.0,
-        153.0
+        24.672,
+        35.074
       ],
-      "rest_angle": 87.9546
+      "rest_angle": 87.955
     },
     {
       "name": "far_hand",
@@ -368,10 +368,10 @@
         "tq-far-hand-shape"
       ],
       "pivot": [
-        125.0,
-        153.0
+        24.672,
+        35.074
       ],
-      "rest_angle": 87.9546
+      "rest_angle": 87.955
     },
     {
       "name": "torso",
@@ -384,8 +384,8 @@
         "tq-bodice-line"
       ],
       "pivot": [
-        150.0,
-        145.0
+        31.968,
+        32.739
       ],
       "rest_angle": 0.0
     },
@@ -399,10 +399,10 @@
         "tq-near-arm-u-shape-fill"
       ],
       "pivot": [
-        168.0,
-        123.0
+        37.221,
+        26.319
       ],
-      "rest_angle": 65.0952
+      "rest_angle": 65.095
     },
     {
       "name": "near_arm_l",
@@ -415,10 +415,10 @@
         "tq-near-arm-l-shape-cuff"
       ],
       "pivot": [
-        181.0,
-        151.0
+        41.015,
+        34.49
       ],
-      "rest_angle": 87.9546
+      "rest_angle": 87.955
     },
     {
       "name": "near_hand",
@@ -429,10 +429,10 @@
         "tq-near-hand-shape"
       ],
       "pivot": [
-        181.0,
-        151.0
+        41.015,
+        34.49
       ],
-      "rest_angle": 87.9546
+      "rest_angle": 87.955
     },
     {
       "name": "head",
@@ -472,8 +472,8 @@
         "tq-hair-ribbon-tail-r"
       ],
       "pivot": [
-        150.0,
-        120.0
+        31.968,
+        25.443
       ],
       "rest_angle": 0.0
     },
@@ -487,8 +487,8 @@
         "tq-blink-far"
       ],
       "pivot": [
-        150.0,
-        120.0
+        31.968,
+        25.443
       ],
       "rest_angle": 0.0,
       "opacity_channel": "blink_vis"
@@ -502,55 +502,11 @@
         "tq-talk-mouth"
       ],
       "pivot": [
-        150.0,
-        120.0
+        31.968,
+        25.443
       ],
       "rest_angle": 0.0,
       "opacity_channel": "talk_vis"
-    }
-  ],
-  "ik_legs": [
-    {
-      "upper": "near_leg_u",
-      "lower": "near_leg_l",
-      "foot": "near_leg_foot",
-      "channel_prefix": "near_foot",
-      "rest_x": 12.9775,
-      "rest_lift": -0.2949,
-      "rest_pitch": 53.9726,
-      "bend": 1.0
-    },
-    {
-      "upper": "far_leg_u",
-      "lower": "far_leg_l",
-      "foot": "far_leg_foot",
-      "channel_prefix": "far_foot",
-      "rest_x": -11.2079,
-      "rest_lift": 0.2949,
-      "rest_pitch": 57.5288,
-      "bend": -1.0
-    }
-  ],
-  "ik_chains": [
-    {
-      "upper": "near_arm_u",
-      "lower": "near_arm_l",
-      "end": "near_arm_hand",
-      "channel_prefix": "near_hand",
-      "rest_x": 18.2865,
-      "rest_y": -37.1629,
-      "rest_pitch": 84.2894,
-      "bend": 1.0
-    },
-    {
-      "upper": "far_arm_u",
-      "lower": "far_arm_l",
-      "end": "far_arm_hand",
-      "channel_prefix": "far_hand",
-      "rest_x": -14.7472,
-      "rest_y": -35.9831,
-      "rest_pitch": 78.6901,
-      "bend": -1.0
     }
   ],
   "clips": {
@@ -599,46 +555,6 @@
           0.5,
           0.4,
           0.1
-        ],
-        "near_arm_u": [
-          10.0,
-          9.0,
-          8.0,
-          8.5,
-          9.5,
-          10.5,
-          11.0,
-          10.5
-        ],
-        "near_arm_l": [
-          14.0,
-          13.0,
-          12.0,
-          12.5,
-          13.5,
-          14.0,
-          14.5,
-          14.0
-        ],
-        "far_arm_u": [
-          -14.0,
-          -15.0,
-          -15.5,
-          -15.0,
-          -14.0,
-          -13.0,
-          -13.0,
-          -13.5
-        ],
-        "far_arm_l": [
-          -10.0,
-          -9.5,
-          -9.0,
-          -9.5,
-          -10.0,
-          -10.5,
-          -10.5,
-          -10.0
         ],
         "blink_vis": [
           0.0,
@@ -690,38 +606,6 @@
           0.0,
           0.0
         ],
-        "near_arm_u": [
-          18.0,
-          8.0,
-          -6.0,
-          -10.0,
-          0.0,
-          14.0
-        ],
-        "near_arm_l": [
-          26.0,
-          16.0,
-          4.0,
-          -4.0,
-          8.0,
-          22.0
-        ],
-        "far_arm_u": [
-          -12.0,
-          -10.0,
-          -8.0,
-          -10.0,
-          -12.0,
-          -12.0
-        ],
-        "far_arm_l": [
-          -12.0,
-          -9.0,
-          -7.0,
-          -8.0,
-          -10.0,
-          -11.0
-        ],
         "blink_vis": [
           0.0,
           0.0,
@@ -761,38 +645,6 @@
           0.35,
           0.0,
           -0.2
-        ],
-        "near_arm_u": [
-          12.0,
-          10.0,
-          7.0,
-          5.0,
-          8.0,
-          12.0
-        ],
-        "near_arm_l": [
-          12.0,
-          2.0,
-          -6.0,
-          -2.0,
-          6.0,
-          12.0
-        ],
-        "far_arm_u": [
-          -12.0,
-          -10.0,
-          -8.0,
-          -7.0,
-          -9.0,
-          -12.0
-        ],
-        "far_arm_l": [
-          -10.0,
-          -6.0,
-          0.0,
-          -2.0,
-          -7.0,
-          -10.0
         ],
         "talk_vis": [
           0.0,
@@ -856,86 +708,6 @@
           -0.2,
           0.0,
           0.1,
-          0.0
-        ],
-        "near_arm_u": [
-          14.0,
-          12.0,
-          8.0,
-          4.0,
-          2.0,
-          5.0,
-          10.0,
-          14.0
-        ],
-        "near_arm_l": [
-          18.0,
-          12.0,
-          4.0,
-          -4.0,
-          -6.0,
-          0.0,
-          10.0,
-          18.0
-        ],
-        "far_arm_u": [
-          -16.0,
-          -18.0,
-          -22.0,
-          -26.0,
-          -24.0,
-          -20.0,
-          -18.0,
-          -16.0
-        ],
-        "far_arm_l": [
-          -10.0,
-          -14.0,
-          -20.0,
-          -24.0,
-          -20.0,
-          -14.0,
-          -10.0,
-          -10.0
-        ],
-        "near_leg_u": [
-          0.0,
-          1.0,
-          3.0,
-          6.0,
-          4.0,
-          1.0,
-          0.0,
-          0.0
-        ],
-        "near_leg_l": [
-          0.0,
-          -2.0,
-          -5.0,
-          -8.0,
-          -5.0,
-          -2.0,
-          0.0,
-          0.0
-        ],
-        "far_leg_u": [
-          0.0,
-          -1.0,
-          -3.0,
-          -6.0,
-          -4.0,
-          -1.0,
-          0.0,
-          0.0
-        ],
-        "far_leg_l": [
-          0.0,
-          2.0,
-          5.0,
-          8.0,
-          5.0,
-          2.0,
-          0.0,
           0.0
         ],
         "blink_vis": [
