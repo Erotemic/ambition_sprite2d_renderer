@@ -1,0 +1,957 @@
+{
+  "name": "m_leblanc_three_quarter",
+  "frame": {
+    "width": 128,
+    "height": 128,
+    "center_x": 64.0,
+    "ground_y": 118.0,
+    "ankle_h": 9.1433,
+    "supersample": 4,
+    "render_scale": 2
+  },
+  "svg_source": {
+    "path": "../../../../data/characters/m_leblanc/m_leblanc-multiview.svg",
+    "view": "Madam LeBlanc - Three Quarter",
+    "ref_dpi": 25.4,
+    "scale": 0.58988764
+  },
+  "palette": {},
+  "bones": [
+    {
+      "name": "pelvis",
+      "parent": null,
+      "offset": [
+        0.0,
+        -55.1545
+      ],
+      "length": 0.0,
+      "rest_angle": 0.0
+    },
+    {
+      "name": "torso",
+      "parent": "pelvis",
+      "offset": [
+        -0.5899,
+        -2.0646
+      ],
+      "length": 0.0,
+      "rest_angle": 0.0
+    },
+    {
+      "name": "head",
+      "parent": "torso",
+      "offset": [
+        0.0,
+        -14.7472
+      ],
+      "length": 0.0,
+      "rest_angle": 0.0
+    },
+    {
+      "name": "far_arm_u",
+      "parent": "torso",
+      "offset": [
+        -8.8483,
+        -12.3876
+      ],
+      "length": 18.0952,
+      "rest_angle": 109.0256
+    },
+    {
+      "name": "far_arm_l",
+      "parent": "far_arm_u",
+      "offset": [
+        18.0952,
+        -0.0
+      ],
+      "length": 16.5274,
+      "rest_angle": -21.071
+    },
+    {
+      "name": "far_arm_hand",
+      "parent": "far_arm_l",
+      "offset": [
+        16.5274,
+        -0.0
+      ],
+      "length": 6.0157,
+      "rest_angle": -9.2645
+    },
+    {
+      "name": "far_leg_u",
+      "parent": "pelvis",
+      "offset": [
+        -6.4888,
+        -0.2949
+      ],
+      "length": 22.0242,
+      "rest_angle": 97.6961
+    },
+    {
+      "name": "far_leg_l",
+      "parent": "far_leg_u",
+      "offset": [
+        22.0242,
+        0.0
+      ],
+      "length": 24.2501,
+      "rest_angle": -3.5111
+    },
+    {
+      "name": "far_leg_foot",
+      "parent": "far_leg_l",
+      "offset": [
+        24.2501,
+        -0.0
+      ],
+      "length": 7.6912,
+      "rest_angle": -36.6561
+    },
+    {
+      "name": "near_arm_u",
+      "parent": "torso",
+      "offset": [
+        10.618,
+        -12.9775
+      ],
+      "length": 18.2102,
+      "rest_angle": 65.0952
+    },
+    {
+      "name": "near_arm_l",
+      "parent": "near_arm_u",
+      "offset": [
+        18.2102,
+        0.0
+      ],
+      "length": 16.5274,
+      "rest_angle": 22.8594
+    },
+    {
+      "name": "near_arm_hand",
+      "parent": "near_arm_l",
+      "offset": [
+        16.5274,
+        -0.0
+      ],
+      "length": 5.9283,
+      "rest_angle": -3.6652
+    },
+    {
+      "name": "near_leg_u",
+      "parent": "pelvis",
+      "offset": [
+        6.4888,
+        0.2949
+      ],
+      "length": 22.213,
+      "rest_angle": 79.2869
+    },
+    {
+      "name": "near_leg_l",
+      "parent": "near_leg_u",
+      "offset": [
+        22.213,
+        0.0
+      ],
+      "length": 24.3002,
+      "rest_angle": 5.1409
+    },
+    {
+      "name": "near_leg_foot",
+      "parent": "near_leg_l",
+      "offset": [
+        24.3002,
+        0.0
+      ],
+      "length": 8.0233,
+      "rest_angle": -30.4552
+    }
+  ],
+  "parts": [
+    {
+      "name": "far_leg_foot",
+      "bone": "far_leg_foot",
+      "z": 1.0,
+      "kind": "sprite",
+      "include": [
+        "tq-far-foot-shape-boot",
+        "tq-far-foot-shape-sole"
+      ],
+      "pivot": [
+        132.0,
+        226.0
+      ],
+      "rest_angle": 57.5288
+    },
+    {
+      "name": "near_leg_foot",
+      "bone": "near_leg_foot",
+      "z": 1.2,
+      "kind": "sprite",
+      "include": [
+        "tq-near-foot-shape-boot",
+        "tq-near-foot-shape-sole"
+      ],
+      "pivot": [
+        173.0,
+        227.0
+      ],
+      "rest_angle": 53.9726
+    },
+    {
+      "name": "far_leg_u",
+      "bone": "far_leg_u",
+      "z": 1.8,
+      "kind": "sprite",
+      "include": [
+        "tq-far-leg-u-shape-outline",
+        "tq-far-leg-u-shape-fill"
+      ],
+      "pivot": [
+        140.0,
+        148.0
+      ],
+      "rest_angle": 97.6961
+    },
+    {
+      "name": "far_leg_l",
+      "bone": "far_leg_l",
+      "z": 1.9,
+      "kind": "sprite",
+      "include": [
+        "tq-far-leg-l-shape-outline",
+        "tq-far-leg-l-shape-fill"
+      ],
+      "pivot": [
+        135.0,
+        185.0
+      ],
+      "rest_angle": 94.1849
+    },
+    {
+      "name": "near_leg_u",
+      "bone": "near_leg_u",
+      "z": 2.4,
+      "kind": "sprite",
+      "include": [
+        "tq-near-leg-u-shape-outline",
+        "tq-near-leg-u-shape-fill"
+      ],
+      "pivot": [
+        162.0,
+        149.0
+      ],
+      "rest_angle": 79.2869
+    },
+    {
+      "name": "near_leg_l",
+      "bone": "near_leg_l",
+      "z": 2.5,
+      "kind": "sprite",
+      "include": [
+        "tq-near-leg-l-shape-outline",
+        "tq-near-leg-l-shape-fill"
+      ],
+      "pivot": [
+        169.0,
+        186.0
+      ],
+      "rest_angle": 84.4278
+    },
+    {
+      "name": "skirt_far",
+      "bone": "far_leg_u",
+      "z": 3.3,
+      "kind": "sprite",
+      "include": [
+        "tq-skirt-far-body",
+        "tq-skirt-far-pleat-0",
+        "tq-skirt-far-pleat-1"
+      ],
+      "pivot": [
+        140.0,
+        148.0
+      ],
+      "rest_angle": 97.6961
+    },
+    {
+      "name": "skirt_center",
+      "bone": "pelvis",
+      "z": 4.0,
+      "kind": "sprite",
+      "include": [
+        "tq-skirt-center-body",
+        "tq-skirt-center-band",
+        "tq-skirt-center-pleat-0",
+        "tq-skirt-center-pleat-1",
+        "tq-skirt-center-pleat-2"
+      ],
+      "pivot": [
+        151.0,
+        148.5
+      ],
+      "rest_angle": 0.0
+    },
+    {
+      "name": "skirt_near",
+      "bone": "near_leg_u",
+      "z": 4.7,
+      "kind": "sprite",
+      "include": [
+        "tq-skirt-near-body",
+        "tq-skirt-near-pleat-0",
+        "tq-skirt-near-pleat-1"
+      ],
+      "pivot": [
+        162.0,
+        149.0
+      ],
+      "rest_angle": 79.2869
+    },
+    {
+      "name": "pelvis_yoke",
+      "bone": "pelvis",
+      "z": 4.9,
+      "kind": "sprite",
+      "include": [
+        "tq-waist-band",
+        "tq-waist-bow-left",
+        "tq-waist-bow-right",
+        "tq-waist-bow-knot",
+        "tq-waist-bow-tail-l",
+        "tq-waist-bow-tail-r"
+      ],
+      "pivot": [
+        151.0,
+        148.5
+      ],
+      "rest_angle": 0.0
+    },
+    {
+      "name": "far_arm_u",
+      "bone": "far_arm_u",
+      "z": 5.5,
+      "kind": "sprite",
+      "include": [
+        "tq-far-arm-u-shape-outline",
+        "tq-far-arm-u-shape-fill"
+      ],
+      "pivot": [
+        135.0,
+        124.0
+      ],
+      "rest_angle": 109.0256
+    },
+    {
+      "name": "far_arm_l",
+      "bone": "far_arm_l",
+      "z": 6.1,
+      "kind": "sprite",
+      "include": [
+        "tq-far-arm-l-shape-outline",
+        "tq-far-arm-l-shape-fill",
+        "tq-far-arm-l-shape-cuff"
+      ],
+      "pivot": [
+        125.0,
+        153.0
+      ],
+      "rest_angle": 87.9546
+    },
+    {
+      "name": "far_hand",
+      "bone": "far_arm_l",
+      "z": 6.6,
+      "kind": "sprite",
+      "include": [
+        "tq-far-hand-shape"
+      ],
+      "pivot": [
+        125.0,
+        153.0
+      ],
+      "rest_angle": 87.9546
+    },
+    {
+      "name": "torso",
+      "bone": "torso",
+      "z": 8.4,
+      "kind": "sprite",
+      "include": [
+        "tq-torso-bodice",
+        "tq-collar",
+        "tq-bodice-line"
+      ],
+      "pivot": [
+        150.0,
+        145.0
+      ],
+      "rest_angle": 0.0
+    },
+    {
+      "name": "near_arm_u",
+      "bone": "near_arm_u",
+      "z": 9.8,
+      "kind": "sprite",
+      "include": [
+        "tq-near-arm-u-shape-outline",
+        "tq-near-arm-u-shape-fill"
+      ],
+      "pivot": [
+        168.0,
+        123.0
+      ],
+      "rest_angle": 65.0952
+    },
+    {
+      "name": "near_arm_l",
+      "bone": "near_arm_l",
+      "z": 10.8,
+      "kind": "sprite",
+      "include": [
+        "tq-near-arm-l-shape-outline",
+        "tq-near-arm-l-shape-fill",
+        "tq-near-arm-l-shape-cuff"
+      ],
+      "pivot": [
+        181.0,
+        151.0
+      ],
+      "rest_angle": 87.9546
+    },
+    {
+      "name": "near_hand",
+      "bone": "near_arm_l",
+      "z": 11.3,
+      "kind": "sprite",
+      "include": [
+        "tq-near-hand-shape"
+      ],
+      "pivot": [
+        181.0,
+        151.0
+      ],
+      "rest_angle": 87.9546
+    },
+    {
+      "name": "head",
+      "bone": "head",
+      "z": 14.0,
+      "kind": "sprite",
+      "include": [
+        "tq-hair-back",
+        "tq-face",
+        "tq-hair-front",
+        "tq-curl-left",
+        "tq-curl-right",
+        "tq-cheek-l",
+        "tq-cheek-r",
+        "tq-brow-main",
+        "tq-brow-far",
+        "tq-eye-main-white",
+        "tq-eye-main-upper-lid",
+        "tq-eye-main-iris",
+        "tq-eye-main-pupil",
+        "tq-eye-far-white",
+        "tq-eye-far-upper-lid",
+        "tq-eye-far-iris",
+        "tq-eye-far-pupil",
+        "tq-nose",
+        "tq-mouth",
+        "tq-lip-shadow",
+        "tq-neck-bow-left",
+        "tq-neck-bow-right",
+        "tq-neck-bow-knot",
+        "tq-neck-bow-tail-l",
+        "tq-neck-bow-tail-r",
+        "tq-hair-ribbon-left",
+        "tq-hair-ribbon-right",
+        "tq-hair-ribbon-knot",
+        "tq-hair-ribbon-tail-l",
+        "tq-hair-ribbon-tail-r"
+      ],
+      "pivot": [
+        150.0,
+        120.0
+      ],
+      "rest_angle": 0.0
+    },
+    {
+      "name": "blink",
+      "bone": "head",
+      "z": 15.0,
+      "kind": "sprite",
+      "include": [
+        "tq-blink-main",
+        "tq-blink-far"
+      ],
+      "pivot": [
+        150.0,
+        120.0
+      ],
+      "rest_angle": 0.0,
+      "opacity_channel": "blink_vis"
+    },
+    {
+      "name": "talk_mouth",
+      "bone": "head",
+      "z": 15.0,
+      "kind": "sprite",
+      "include": [
+        "tq-talk-mouth"
+      ],
+      "pivot": [
+        150.0,
+        120.0
+      ],
+      "rest_angle": 0.0,
+      "opacity_channel": "talk_vis"
+    }
+  ],
+  "ik_legs": [
+    {
+      "upper": "near_leg_u",
+      "lower": "near_leg_l",
+      "foot": "near_leg_foot",
+      "channel_prefix": "near_foot",
+      "rest_x": 12.9775,
+      "rest_lift": -0.2949,
+      "rest_pitch": 53.9726,
+      "bend": 1.0
+    },
+    {
+      "upper": "far_leg_u",
+      "lower": "far_leg_l",
+      "foot": "far_leg_foot",
+      "channel_prefix": "far_foot",
+      "rest_x": -11.2079,
+      "rest_lift": 0.2949,
+      "rest_pitch": 57.5288,
+      "bend": -1.0
+    }
+  ],
+  "ik_chains": [
+    {
+      "upper": "near_arm_u",
+      "lower": "near_arm_l",
+      "end": "near_arm_hand",
+      "channel_prefix": "near_hand",
+      "rest_x": 18.2865,
+      "rest_y": -37.1629,
+      "rest_pitch": 84.2894,
+      "bend": 1.0
+    },
+    {
+      "upper": "far_arm_u",
+      "lower": "far_arm_l",
+      "end": "far_arm_hand",
+      "channel_prefix": "far_hand",
+      "rest_x": -14.7472,
+      "rest_y": -35.9831,
+      "rest_pitch": 78.6901,
+      "bend": -1.0
+    }
+  ],
+  "clips": {
+    "idle": {
+      "name": "idle",
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 110,
+      "channels": {
+        "root_y": [
+          0.0,
+          -0.8,
+          -1.2,
+          -0.6,
+          0.2,
+          0.8,
+          0.4,
+          -0.2
+        ],
+        "torso": [
+          0.0,
+          0.2,
+          0.35,
+          0.2,
+          0.0,
+          -0.2,
+          -0.15,
+          0.0
+        ],
+        "head": [
+          0.0,
+          -0.1,
+          -0.2,
+          -0.1,
+          0.0,
+          0.1,
+          0.1,
+          0.0
+        ],
+        "pelvis": [
+          0.0,
+          -0.4,
+          -0.6,
+          -0.2,
+          0.2,
+          0.5,
+          0.4,
+          0.1
+        ],
+        "near_arm_u": [
+          10.0,
+          9.0,
+          8.0,
+          8.5,
+          9.5,
+          10.5,
+          11.0,
+          10.5
+        ],
+        "near_arm_l": [
+          14.0,
+          13.0,
+          12.0,
+          12.5,
+          13.5,
+          14.0,
+          14.5,
+          14.0
+        ],
+        "far_arm_u": [
+          -14.0,
+          -15.0,
+          -15.5,
+          -15.0,
+          -14.0,
+          -13.0,
+          -13.0,
+          -13.5
+        ],
+        "far_arm_l": [
+          -10.0,
+          -9.5,
+          -9.0,
+          -9.5,
+          -10.0,
+          -10.5,
+          -10.5,
+          -10.0
+        ],
+        "blink_vis": [
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "interact": {
+      "name": "interact",
+      "loop": true,
+      "frames": 6,
+      "duration_ms": 120,
+      "channels": {
+        "root_y": [
+          0.0,
+          -0.6,
+          -1.0,
+          -0.2,
+          0.4,
+          0.0
+        ],
+        "torso": [
+          0.0,
+          0.4,
+          0.8,
+          0.5,
+          -0.2,
+          0.0
+        ],
+        "head": [
+          0.0,
+          -0.3,
+          -0.5,
+          -0.3,
+          0.2,
+          0.0
+        ],
+        "pelvis": [
+          0.0,
+          -1.5,
+          -2.0,
+          -1.0,
+          0.0,
+          0.0
+        ],
+        "near_arm_u": [
+          18.0,
+          8.0,
+          -6.0,
+          -10.0,
+          0.0,
+          14.0
+        ],
+        "near_arm_l": [
+          26.0,
+          16.0,
+          4.0,
+          -4.0,
+          8.0,
+          22.0
+        ],
+        "far_arm_u": [
+          -12.0,
+          -10.0,
+          -8.0,
+          -10.0,
+          -12.0,
+          -12.0
+        ],
+        "far_arm_l": [
+          -12.0,
+          -9.0,
+          -7.0,
+          -8.0,
+          -10.0,
+          -11.0
+        ],
+        "blink_vis": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ]
+      }
+    },
+    "talk": {
+      "name": "talk",
+      "loop": true,
+      "frames": 6,
+      "duration_ms": 100,
+      "channels": {
+        "root_y": [
+          0.0,
+          -0.6,
+          0.0,
+          0.6,
+          0.0,
+          -0.4
+        ],
+        "torso": [
+          0.0,
+          -0.2,
+          0.15,
+          0.25,
+          0.0,
+          -0.15
+        ],
+        "head": [
+          0.0,
+          0.3,
+          -0.2,
+          0.35,
+          0.0,
+          -0.2
+        ],
+        "near_arm_u": [
+          12.0,
+          10.0,
+          7.0,
+          5.0,
+          8.0,
+          12.0
+        ],
+        "near_arm_l": [
+          12.0,
+          2.0,
+          -6.0,
+          -2.0,
+          6.0,
+          12.0
+        ],
+        "far_arm_u": [
+          -12.0,
+          -10.0,
+          -8.0,
+          -7.0,
+          -9.0,
+          -12.0
+        ],
+        "far_arm_l": [
+          -10.0,
+          -6.0,
+          0.0,
+          -2.0,
+          -7.0,
+          -10.0
+        ],
+        "talk_vis": [
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "blink_vis": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ]
+      }
+    },
+    "curtsy": {
+      "name": "curtsy",
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 110,
+      "channels": {
+        "root_y": [
+          0.0,
+          -0.8,
+          -1.5,
+          -2.5,
+          -1.0,
+          0.2,
+          0.8,
+          0.0
+        ],
+        "pelvis": [
+          0.0,
+          -1.5,
+          -3.0,
+          -5.0,
+          -2.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        "torso": [
+          0.0,
+          0.2,
+          0.5,
+          0.8,
+          0.5,
+          0.2,
+          0.0,
+          0.0
+        ],
+        "head": [
+          0.0,
+          -0.1,
+          -0.2,
+          -0.3,
+          -0.2,
+          0.0,
+          0.1,
+          0.0
+        ],
+        "near_arm_u": [
+          14.0,
+          12.0,
+          8.0,
+          4.0,
+          2.0,
+          5.0,
+          10.0,
+          14.0
+        ],
+        "near_arm_l": [
+          18.0,
+          12.0,
+          4.0,
+          -4.0,
+          -6.0,
+          0.0,
+          10.0,
+          18.0
+        ],
+        "far_arm_u": [
+          -16.0,
+          -18.0,
+          -22.0,
+          -26.0,
+          -24.0,
+          -20.0,
+          -18.0,
+          -16.0
+        ],
+        "far_arm_l": [
+          -10.0,
+          -14.0,
+          -20.0,
+          -24.0,
+          -20.0,
+          -14.0,
+          -10.0,
+          -10.0
+        ],
+        "near_leg_u": [
+          0.0,
+          1.0,
+          3.0,
+          6.0,
+          4.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "near_leg_l": [
+          0.0,
+          -2.0,
+          -5.0,
+          -8.0,
+          -5.0,
+          -2.0,
+          0.0,
+          0.0
+        ],
+        "far_leg_u": [
+          0.0,
+          -1.0,
+          -3.0,
+          -6.0,
+          -4.0,
+          -1.0,
+          0.0,
+          0.0
+        ],
+        "far_leg_l": [
+          0.0,
+          2.0,
+          5.0,
+          8.0,
+          5.0,
+          2.0,
+          0.0,
+          0.0
+        ],
+        "blink_vis": [
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    }
+  },
+  "sprite_tuning": {
+    "collision_scale": 1.7
+  }
+}
