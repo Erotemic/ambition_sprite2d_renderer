@@ -35,7 +35,8 @@ ROWS: List[Tuple[str, int, int]] = [
     ("interact", 10, 92),
     ("hint", 10, 92),
     ("visualize_2d", 12, 92),
-    ("shout_1000", 12, 78),
+    ("shout_14", 12, 78),
+    ("shout_3", 12, 78),
     ("manifold_shrinkwrap", 16, 82),
     ("transform_armor", 18, 82),
     # Runtime-recognized defensive alias. On the armored sheet it uses the
@@ -106,14 +107,25 @@ ACTOR_METADATA = {
         "interaction.use": {"animation": "interact", "events": []},
         "interaction.hint": {"animation": "hint", "events": []},
         "emote.visualize_2d": {"animation": "visualize_2d", "events": []},
-        "emote.shout_1000": {"animation": "shout_1000", "events": []},
+        "emote.shout_14": {"animation": "shout_14", "events": []},
+        "emote.shout_3": {"animation": "shout_3", "events": []},
         "ability.manifold_shrinkwrap": {"animation": "manifold_shrinkwrap", "events": []},
         "ability.transform_armor": {"animation": "transform_armor", "events": []},
         "defense.block": {"animation": "block", "events": []},
     },
 }
 
-ARMORED_DEFAULT_ANIMATIONS = {"idle", "walk", "talk", "interact", "hint", "visualize_2d", "shout_1000", "taunt"}
+ARMORED_DEFAULT_ANIMATIONS = {
+    "idle",
+    "walk",
+    "talk",
+    "interact",
+    "hint",
+    "visualize_2d",
+    "shout_14",
+    "shout_3",
+    "taunt",
+}
 
 # Muted academic clothing makes the silver hair, glasses, gestures, and effects
 # do the identifying work without turning the character into a costume gag.
@@ -370,6 +382,7 @@ class Pose:
     hint_strength: float = 0.0
     shout_strength: float = 0.0
     shout_phase: float = 0.0
+    shout_text: str = "14"
     manifold_strength: float = 0.0
     manifold_progress: float = 0.0
     manifold_phase: float = 0.0
@@ -414,6 +427,7 @@ class Pose:
         self.hint_strength = 0.0
         self.shout_strength = 0.0
         self.shout_phase = t
+        self.shout_text = "14"
         self.manifold_strength = 0.0
         self.manifold_progress = 0.0
         self.manifold_phase = phase
@@ -663,7 +677,11 @@ class Pose:
             self.far_ankle = (56.0, 149.0)
             self.blink = frame_idx == nframes - 2
 
-        elif animation in {"shout_1000", "taunt"}:
+        elif animation in {"shout_14", "shout_3", "taunt"}:
+            # ``14`` parodies the classic high-dimensional visualization
+            # trick; ``3`` is Jeff trying to recover the missing depth axis
+            # of this deliberately two-dimensional game.
+            self.shout_text = "3" if animation == "shout_3" else "14"
             inhale = _smoothstep(min(1.0, t / 0.26))
             blast = _smoothstep((t - 0.22) / 0.18)
             decay = _smoothstep((t - 0.66) / 0.34)
@@ -1390,13 +1408,20 @@ class JeffHinterRenderer:
         # intentionally diegetic sprite FX, not dialogue UI.
         pop = _smoothstep(min(1.0, strength * 1.35))
         wobble = math.sin(pose.shout_phase * math.pi * 9.0) * (1.0 - pose.shout_phase) * 1.5
-        size = 10.0 + 10.0 * pop
+        text = pose.shout_text
+        # A single digit can flare larger than the two-digit scientific
+        # reference while staying inside the 160 px frame.
+        if text == "3":
+            size = 13.0 + 14.0 * pop
+            x_offset = 29.0 + 2.0 * pop
+        else:
+            size = 12.0 + 12.0 * pop
+            x_offset = 32.0 + 3.0 * pop
         font = _font(size, bold=True)
         origin = (
-            head_center[0] + 31.0 + 3.0 * pop,
+            head_center[0] + x_offset,
             head_center[1] - 15.0 - 9.0 * pop + wobble,
         )
-        text = "1000"
         stroke_width = max(1, _s(0.9 + 0.5 * pop))
         draw.text(
             _pt(origin),
@@ -1408,7 +1433,7 @@ class JeffHinterRenderer:
             anchor="mm",
         )
 
-        # Expanding sound rays and tiny duplicate zeroes sell absurd volume.
+        # Expanding sound rays and smaller numeral echoes sell absurd volume.
         ray_alpha = int(220 * strength)
         ray = (SHOUT[0], SHOUT[1], SHOUT[2], ray_alpha)
         ray_origin = (head_center[0] + 19.0, head_center[1] + 6.0)
@@ -1423,7 +1448,7 @@ class JeffHinterRenderer:
             fade = strength * (0.55 + 0.15 * index)
             draw.text(
                 _pt((head_center[0] + dx, head_center[1] + dy)),
-                "0",
+                text,
                 font=small_font,
                 fill=(SHOUT[0], SHOUT[1], SHOUT[2], int(190 * fade)),
                 anchor="mm",
