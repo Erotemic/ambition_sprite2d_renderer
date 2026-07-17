@@ -34,7 +34,9 @@ from ._sanic_support_prop_common import (
 TARGET_NAME = "sanic_ring_prop"
 SHEET_FILES = tuple(f"{TARGET_NAME}{suffix}" for suffix in SHEET_FILES_SUFFIXES)
 ROWS: List[Tuple[str, int, int]] = [
-    ("idle", 8, 72),
+    # A calmer spin: 8 frames * 150ms ~= 1.2s per revolution (the 72ms original
+    # read as a frantic blur once wired as a live pickup).
+    ("idle", 8, 150),
     ("collect", 7, 54),
 ]
 
