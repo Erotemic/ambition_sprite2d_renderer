@@ -1,9 +1,11 @@
-"""Standalone generator for a weird hunched hermit enemy sprite.
+"""Polished renderer for the original Weird Hermit design.
 
-Inspired by a loose sketch vibe: side-profile, droopy cap, long nose,
-moustache, wrinkly face, long creepy fingers, awkward crouch, and shorts.
-The rows support strange side-scroller attack patterns: finger jab, grab,
-and curse sneeze.
+This keeps the character's original read intact: a compact, hunched,
+side-profile hermit with a floppy head rag, absurdly long nose, moustache,
+wrinkled bare torso, shorts, knobby legs, and unsettlingly long fingers.  The
+polish pass improves silhouette separation, anatomy, color planes, facial
+readability, and attack staging without replacing him with a hooded wizard or
+adding a prop.  There is no baked drop shadow.
 """
 
 from __future__ import annotations
@@ -16,38 +18,59 @@ from typing import List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
-ACTOR_METADATA = {'actor': {'character_id': 'npc_weird_hermit', 'display_name': 'Weird Hermit'},
- 'body': {'body_plan': 'HumanoidBiped',
-          'body_kind': 'Standard',
-          'mass_class': 'Medium',
-          'traits': ['story', 'humanoid', 'story', 'hermit'],
-          'locomotion_hint': 'Walk'},
- 'capabilities': {'traversal': {'walk': True,
-                                'jump': None,
-                                'climb': None,
-                                'fly': None,
-                                'swim': None,
-                                'crawl': None,
-                                'use_lifts': True,
-                                'door_access': ['public']},
-                  'interactions': {'talk': True,
-                                   'trade': None,
-                                   'carry': None,
-                                   'open_doors': ['public']}},
- 'brain': {'default_preset': 'patrol_peaceful'},
- 'actions': {'default_preset': 'peaceful'},
- 'visual': {'default_pose': 'idle'},
- 'tags': ['story', 'humanoid', 'story', 'hermit'],
- 'sockets': {'head': {'source': 'explicit.profile.humanoid', 'point': {'x': 64.0, 'y': 24.0}},
-             'chest': {'source': 'explicit.profile.humanoid', 'point': {'x': 64.0, 'y': 54.0}},
-             'hand_l': {'source': 'explicit.profile.humanoid', 'point': {'x': 48.0, 'y': 64.0}},
-             'hand_r': {'source': 'explicit.profile.humanoid', 'point': {'x': 80.0, 'y': 64.0}},
-             'speech_bubble': {'source': 'explicit.profile.humanoid',
-                               'point': {'x': 64.0, 'y': 8.0}}},
- 'animation_bindings': {'default': {'animation': 'idle', 'events': []},
-                        'locomotion.walk': {'animation': 'walk', 'events': []},
-                        'interaction.talk': {'animation': 'talk', 'events': []},
-                        'interaction.use': {'animation': 'interact', 'events': []}}}
+ACTOR_METADATA = {
+    "actor": {"character_id": "npc_weird_hermit", "display_name": "Weird Hermit"},
+    "body": {
+        "body_plan": "HumanoidBiped",
+        "body_kind": "Standard",
+        "mass_class": "Medium",
+        "traits": ["story", "humanoid", "hermit", "sideways_seer"],
+        "locomotion_hint": "Walk",
+    },
+    "capabilities": {
+        "traversal": {
+            "walk": True,
+            "jump": None,
+            "climb": None,
+            "fly": None,
+            "swim": None,
+            "crawl": None,
+            "use_lifts": True,
+            "door_access": ["public"],
+        },
+        "interactions": {
+            "talk": True,
+            "trade": None,
+            "carry": None,
+            "open_doors": ["public"],
+        },
+    },
+    "brain": {"default_preset": "patrol_peaceful"},
+    "actions": {"default_preset": "peaceful"},
+    "visual": {"default_pose": "idle"},
+    "tags": ["story", "humanoid", "hermit", "sideways_seer"],
+    "sockets": {
+        "head": {"source": "explicit.profile.humanoid", "point": {"x": 113.0, "y": 51.0}},
+        "chest": {"source": "explicit.profile.humanoid", "point": {"x": 101.0, "y": 105.0}},
+        "hand_l": {"source": "explicit.profile.humanoid", "point": {"x": 108.0, "y": 142.0}},
+        "hand_r": {"source": "explicit.profile.humanoid", "point": {"x": 143.0, "y": 139.0}},
+        "speech_bubble": {
+            "source": "explicit.profile.humanoid",
+            "point": {"x": 113.0, "y": 13.0},
+        },
+    },
+    "animation_bindings": {
+        "default": {"animation": "idle", "events": []},
+        "locomotion.walk": {"animation": "creep", "events": []},
+        "action.melee.primary": {"animation": "finger_jab", "events": []},
+        "action.melee.secondary": {"animation": "grab", "events": []},
+        "action.cast": {"animation": "curse_sneeze", "events": []},
+        "interaction.talk": {"animation": "idle", "events": []},
+        "interaction.use": {"animation": "grab", "events": []},
+        "damage.hit": {"animation": "hurt", "events": []},
+        "damage.death": {"animation": "death", "events": []},
+    },
+}
 
 
 RGBA = Tuple[int, int, int, int]
@@ -64,7 +87,9 @@ SHEET_FILES = [
     f"{TARGET_BASENAME}_spritesheet.ron",
 ]
 FRAME_SIZE = (240, 224)
-WORK_FRAME_SIZE = (480, 448)
+# The original used a large work canvas and therefore rendered unusually small.
+# This tighter canvas preserves the same proportions while making him readable.
+WORK_FRAME_SIZE = (360, 336)
 SUPER = 4
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 6, 130),
@@ -76,20 +101,26 @@ ROWS: List[Tuple[str, int, int]] = [
     ("death", 8, 110),
 ]
 
-OUTLINE = (24, 20, 18, 255)
-SKIN = (206, 170, 132, 255)
-SKIN_SHADOW = (152, 112, 84, 255)
-SKIN_LIGHT = (232, 204, 170, 255)
-NOSE = (194, 136, 104, 255)
-MOUSTACHE = (66, 52, 42, 255)
-CLOTH = (224, 213, 190, 255)
-CLOTH_SHADOW = (154, 144, 126, 255)
-SHORTS = (76, 68, 70, 255)
-SHORTS_HI = (118, 106, 108, 255)
+OUTLINE = (22, 19, 18, 255)
+OUTLINE_SOFT = (71, 54, 45, 255)
+SKIN = (195, 151, 111, 255)
+SKIN_SHADOW = (135, 91, 67, 255)
+SKIN_LIGHT = (226, 187, 139, 255)
+SKIN_DEEP = (96, 60, 48, 255)
+NOSE = (181, 121, 86, 255)
+NOSE_LIGHT = (214, 156, 111, 255)
+MOUSTACHE = (62, 48, 39, 255)
+MOUSTACHE_HI = (105, 84, 64, 255)
+CLOTH = (215, 207, 183, 255)
+CLOTH_LIGHT = (237, 231, 208, 255)
+CLOTH_SHADOW = (139, 130, 111, 255)
+SHORTS = (73, 62, 69, 255)
+SHORTS_HI = (117, 99, 107, 255)
+WRAP = (133, 91, 68, 255)
+EYE_WHITE = (245, 236, 208, 255)
 EYE = (34, 30, 28, 255)
 CURSE = (116, 220, 176, 145)
-DUST = (205, 168, 125, 115)
-SHADOW = (0, 0, 0, 40)
+CURSE_CORE = (188, 245, 203, 175)
 
 
 @dataclass
@@ -294,24 +325,39 @@ def _downsample(img: Image.Image) -> Image.Image:
 
 
 class WeirdHermitRenderer:
+    """Draw the original Weird Hermit silhouette with cleaner construction."""
+
+    USES_PROPS = False
+    USES_DROP_SHADOW = False
+
     def render_frame(self, anim: str, frame_idx: int, nframes: int) -> Image.Image:
-        img = Image.new("RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0))
+        img = Image.new(
+            "RGBA",
+            (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER),
+            (0, 0, 0, 0),
+        )
         draw = ImageDraw.Draw(img, "RGBA")
         pose = Pose(anim, frame_idx, nframes)
-        root = (WORK_FRAME_SIZE[0] * 0.43 + pose.root_x, WORK_FRAME_SIZE[1] * 0.80 + pose.root_y + pose.bob)
-        global_tilt = pose.lean
+        # Keep the original compact scale and profile, but use more of the frame.
+        base_x = 0.42 if anim != "death" else 0.47
+        root = (
+            WORK_FRAME_SIZE[0] * base_x + pose.root_x,
+            WORK_FRAME_SIZE[1] * 0.82 + pose.root_y + pose.bob,
+        )
+        global_tilt = pose.lean * (0.90 if anim != "death" else 0.78)
 
         def P(x: float, y: float) -> Point:
             rx, ry = _rot_local(x, y, global_tilt)
             return (root[0] + rx, root[1] + ry)
 
-        # No baked ground drop shadow; the scene renderer owns contact shadows.
+        # No floor ellipse or baked contact shadow.
         self._draw_far_leg(draw, P, pose)
         self._draw_far_arm(draw, P, pose)
         self._draw_torso(draw, P, pose)
-        self._draw_head(draw, P, pose)
         self._draw_near_leg(draw, P, pose)
         self._draw_near_arm(draw, P, pose)
+        # The expressive profile is always the top body layer.
+        self._draw_head(draw, P, pose)
         if pose.jab > 0.2:
             self._draw_jab_fx(draw, P, pose)
         if pose.grab > 0.2:
@@ -320,97 +366,256 @@ class WeirdHermitRenderer:
             self._draw_sneeze_fx(draw, P, pose)
         return _downsample(img)
 
-    def _draw_shadow(self, draw, P, pose):
-        c = P(-2, 17)
-        _ellipse(draw, c[0], c[1], 46, 10, SHADOW, outline=(0, 0, 0, 0), width=0)
-
     def _draw_torso(self, draw, P, pose):
-        # Long hunched torso with sloped shoulders and pot belly.
+        # Same bare, hunched, pot-bellied body as the original, but with a
+        # cleaner back curve and readable shoulder / belly planes.
         torso = [
-            P(-30, -122 - pose.crouch), P(8, -150 - pose.crouch), P(38, -128 - pose.crouch),
-            P(48, -82), P(38, -44), P(4, -32), P(-28, -48), P(-42, -88)
+            P(-32, -120 - pose.crouch),
+            P(-19, -139 - pose.crouch),
+            P(5, -151 - pose.crouch),
+            P(31, -137 - pose.crouch),
+            P(43, -116 - pose.crouch),
+            P(49, -83),
+            P(40, -49),
+            P(16, -34),
+            P(-10, -35),
+            P(-31, -51),
+            P(-43, -86),
         ]
-        _poly(draw, torso, SKIN, OUTLINE, 1.6)
-        belly = [P(-6, -94), P(28, -90), P(40, -66), P(28, -48), P(0, -52), P(-12, -72)]
-        _poly(draw, belly, SKIN_LIGHT, OUTLINE, 0.8)
-        chest_mark = [P(2, -112), P(10, -116), P(15, -106), P(8, -100)]
-        _poly(draw, chest_mark, SKIN_SHADOW, OUTLINE, 0.6)
-        _ellipse(draw, *P(20, -98), 3.0, 4.0, SKIN_SHADOW, OUTLINE, 0.5)
-        # Shorts / loincloth, angled around the crouch.
-        shorts = [P(-24, -45), P(42, -44), P(52, -20), P(20, -7), P(-18, -16), P(-34, -32)]
-        _poly(draw, shorts, SHORTS, OUTLINE, 1.2)
-        _line(draw, [P(-18, -40), P(36, -40)], SHORTS_HI, 0.9)
-        _line(draw, [P(14, -38), P(18, -10)], SHORTS_HI, 0.8)
+        _poly(draw, torso, SKIN, OUTLINE, 1.8)
+
+        # Lit belly plane and darker folded back preserve his odd, naked-hermit
+        # read without making the body look flat or balloon-like.
+        belly = [
+            P(-4, -100),
+            P(24, -98),
+            P(42, -82),
+            P(43, -62),
+            P(29, -47),
+            P(3, -49),
+            P(-14, -68),
+            P(-14, -87),
+        ]
+        _poly(draw, belly, SKIN_LIGHT, outline=None, width=0)
+        back_plane = [
+            P(-31, -116 - pose.crouch),
+            P(-18, -137 - pose.crouch),
+            P(-5, -142 - pose.crouch),
+            P(-12, -70),
+            P(-29, -53),
+            P(-40, -85),
+        ]
+        _poly(draw, back_plane, SKIN_SHADOW, outline=None, width=0)
+
+        # Sparse age marks, ribs, and navel: intrinsic anatomy, not costume.
+        _line(draw, [P(-1, -118), P(11, -121), P(19, -113)], SKIN_DEEP, 1.0)
+        _line(draw, [P(-3, -108), P(10, -105)], SKIN_SHADOW, 0.75)
+        _line(draw, [P(1, -91), P(12, -87)], SKIN_SHADOW, 0.75)
+        _ellipse(draw, *P(21, -76), 2.4, 3.1, SKIN_DEEP, OUTLINE_SOFT, 0.35)
+        _poly(draw, [P(-2, -110), P(5, -117), P(12, -108), P(6, -100)], SKIN_SHADOW, OUTLINE_SOFT, 0.45)
+        _ellipse(draw, *P(22, -99), 2.8, 3.5, SKIN_SHADOW, OUTLINE_SOFT, 0.35)
+
+        # Retain the original angular shorts / loincloth silhouette, but give it
+        # a waistband, side patch, and leg separation.
+        shorts = [
+            P(-25, -47),
+            P(41, -46),
+            P(52, -26),
+            P(42, -15),
+            P(19, -7),
+            P(-18, -14),
+            P(-34, -31),
+        ]
+        _poly(draw, shorts, SHORTS, OUTLINE, 1.4)
+        waistband = [P(-23, -46), P(39, -45), P(43, -38), P(-26, -38)]
+        _poly(draw, waistband, SHORTS_HI, OUTLINE_SOFT, 0.5)
+        _line(draw, [P(12, -38), P(17, -10)], OUTLINE_SOFT, 0.85)
+        patch = [P(-18, -33), P(-2, -34), P(0, -23), P(-15, -21)]
+        _poly(draw, patch, WRAP, OUTLINE_SOFT, 0.55)
+        _line(draw, [P(-14, -31), P(-4, -24)], CLOTH_LIGHT, 0.45)
+        _line(draw, [P(-5, -32), P(-13, -24)], CLOTH_LIGHT, 0.45)
 
     def _draw_head(self, draw, P, pose):
-        hx, hy = P(12, -158 - pose.crouch * 0.35 + pose.head_tilt * 0.14)
-        # Floppy cloth cap / head rag.
-        cap = [(hx - 16, hy - 34), (hx + 2, hy - 48), (hx + 36, hy - 42), (hx + 55 + pose.cap_swing * 0.25, hy - 24), (hx + 42 + pose.cap_swing * 0.45, hy - 6), (hx + 18, hy - 22)]
-        _poly(draw, cap, CLOTH, OUTLINE, 1.0)
-        flap = [(hx + 34, hy - 34), (hx + 78 + pose.cap_swing * 0.35, hy - 40), (hx + 72 + pose.cap_swing * 0.5, hy - 10), (hx + 38, hy - 8)]
-        _poly(draw, flap, CLOTH_SHADOW, OUTLINE, 1.0)
-        head = [(hx - 22, hy - 28), (hx + 12, hy - 36), (hx + 38, hy - 18), (hx + 40, hy + 10), (hx + 18, hy + 32), (hx - 12, hy + 26), (hx - 30, hy + 0)]
-        _poly(draw, head, SKIN, OUTLINE, 1.3)
-        # Long nose and sagging face are the primary read.
-        nose = [(hx + 18, hy - 8), (hx + 62, hy - 6), (hx + 74, hy + 2), (hx + 54, hy + 10), (hx + 20, hy + 6)]
-        _poly(draw, nose, NOSE, OUTLINE, 1.0)
-        _circle(draw, (hx + 61, hy + 2), 2.2, OUTLINE, OUTLINE, 0.4)
-        chin = [(hx + 10, hy + 18), (hx + 38, hy + 20 + pose.jaw * 18), (hx + 26, hy + 38 + pose.jaw * 14), (hx + 4, hy + 30)]
-        _poly(draw, chin, SKIN_SHADOW, OUTLINE, 0.8)
-        # Moustache, brows, eye.
-        _line(draw, [(hx + 20, hy + 8), (hx + 36, hy + 16), (hx + 50, hy + 12)], MOUSTACHE, 2.3)
-        _line(draw, [(hx + 20, hy + 10), (hx + 31, hy + 23)], MOUSTACHE, 1.8)
-        _line(draw, [(hx - 8, hy - 15), (hx + 10, hy - 18)], OUTLINE, 1.3)
+        hx, hy = P(11, -158 - pose.crouch * 0.35 + pose.head_tilt * 0.14)
+
+        # Preserve the original floppy cloth cap / head rag.  The pointed flap
+        # is the secondary silhouette after the nose.
+        cap = [
+            (hx - 18, hy - 31),
+            (hx - 6, hy - 45),
+            (hx + 17, hy - 47),
+            (hx + 38, hy - 36),
+            (hx + 48 + pose.cap_swing * 0.22, hy - 21),
+            (hx + 38 + pose.cap_swing * 0.34, hy - 7),
+            (hx + 17, hy - 19),
+        ]
+        _poly(draw, cap, CLOTH, OUTLINE, 1.15)
+        cap_light = [
+            (hx - 10, hy - 39),
+            (hx + 12, hy - 42),
+            (hx + 31, hy - 34),
+            (hx + 20, hy - 29),
+            (hx - 4, hy - 30),
+        ]
+        _poly(draw, cap_light, CLOTH_LIGHT, outline=None, width=0)
+        flap = [
+            (hx + 31, hy - 34),
+            (hx + 73 + pose.cap_swing * 0.34, hy - 38),
+            (hx + 67 + pose.cap_swing * 0.48, hy - 10),
+            (hx + 36, hy - 7),
+        ]
+        _poly(draw, flap, CLOTH_SHADOW, OUTLINE, 1.05)
+        _line(draw, [(hx + 34, hy - 31), (hx + 63 + pose.cap_swing * 0.30, hy - 31)], CLOTH_LIGHT, 0.75)
+
+        head = [
+            (hx - 24, hy - 27),
+            (hx - 8, hy - 37),
+            (hx + 14, hy - 35),
+            (hx + 34, hy - 20),
+            (hx + 39, hy + 5),
+            (hx + 28, hy + 26),
+            (hx + 9, hy + 34),
+            (hx - 13, hy + 26),
+            (hx - 29, hy + 4),
+        ]
+        _poly(draw, head, SKIN, OUTLINE, 1.45)
+        _poly(
+            draw,
+            [(hx - 18, hy - 23), (hx - 4, hy - 32), (hx + 9, hy - 29), (hx + 5, hy - 6), (hx - 18, hy - 2)],
+            SKIN_LIGHT,
+            outline=None,
+            width=0,
+        )
+        _poly(
+            draw,
+            [(hx + 13, hy + 3), (hx + 33, hy + 7), (hx + 25, hy + 24), (hx + 8, hy + 31), (hx + 4, hy + 17)],
+            SKIN_SHADOW,
+            outline=None,
+            width=0,
+        )
+
+        # Long nose and sagging face are still the primary read, now with a
+        # clear bridge, bulb, nostril, and highlight.
+        nose = [
+            (hx + 13, hy - 10),
+            (hx + 31, hy - 11),
+            (hx + 60, hy - 6),
+            (hx + 74, hy + 1),
+            (hx + 67, hy + 9),
+            (hx + 48, hy + 12),
+            (hx + 19, hy + 6),
+        ]
+        _poly(draw, nose, NOSE, OUTLINE, 1.15)
+        nose_light = [
+            (hx + 24, hy - 7),
+            (hx + 57, hy - 3),
+            (hx + 67, hy + 1),
+            (hx + 53, hy + 4),
+            (hx + 27, hy + 1),
+        ]
+        _poly(draw, nose_light, NOSE_LIGHT, outline=None, width=0)
+        _circle(draw, (hx + 64, hy + 4), 2.2, SKIN_DEEP, SKIN_DEEP, 0.2)
+        _line(draw, [(hx + 18, hy - 8), (hx + 24, hy + 4)], SKIN_DEEP, 0.75)
+
+        chin = [
+            (hx + 8, hy + 17),
+            (hx + 34, hy + 19 + pose.jaw * 18),
+            (hx + 27, hy + 37 + pose.jaw * 14),
+            (hx + 5, hy + 31),
+            (hx - 2, hy + 23),
+        ]
+        _poly(draw, chin, SKIN_SHADOW, OUTLINE, 0.9)
+
+        # Split moustache keeps the original ratty expression but reads at game
+        # scale better than one straight line.
+        left_moustache = [(hx + 18, hy + 7), (hx + 31, hy + 14), (hx + 38, hy + 13)]
+        right_moustache = [(hx + 35, hy + 13), (hx + 47, hy + 15), (hx + 54, hy + 10)]
+        _line(draw, left_moustache, OUTLINE, 3.4)
+        _line(draw, left_moustache, MOUSTACHE, 2.2)
+        _line(draw, right_moustache, OUTLINE, 3.2)
+        _line(draw, right_moustache, MOUSTACHE, 2.0)
+        _line(draw, [(hx + 24, hy + 12), (hx + 31, hy + 21)], MOUSTACHE_HI, 0.7)
+
+        # Ear, brow, single visible eye, and multiple crooked wrinkles.
+        _ellipse(draw, hx - 23, hy - 1, 6.5, 10.5, SKIN_SHADOW, OUTLINE, 0.9)
+        _line(draw, [(hx - 24, hy - 3), (hx - 20, hy + 2), (hx - 23, hy + 7)], SKIN_DEEP, 0.55)
+        _line(draw, [(hx - 8, hy - 15), (hx + 11, hy - 18)], MOUSTACHE, 1.45)
         if pose.x_eyes:
-            _line(draw, [(hx + 2, hy - 10), (hx + 12, hy + 0)], OUTLINE, 1.0)
-            _line(draw, [(hx + 2, hy + 0), (hx + 12, hy - 10)], OUTLINE, 1.0)
+            _line(draw, [(hx + 1, hy - 10), (hx + 12, hy + 0)], OUTLINE, 1.15)
+            _line(draw, [(hx + 1, hy + 0), (hx + 12, hy - 10)], OUTLINE, 1.15)
         elif pose.blink:
-            _line(draw, [(hx + 2, hy - 7), (hx + 14, hy - 7)], OUTLINE, 1.0)
+            _line(draw, [(hx + 1, hy - 7), (hx + 14, hy - 7)], OUTLINE, 1.1)
         else:
-            _ellipse(draw, hx + 8, hy - 8, 4.0, 2.8, (245, 236, 208, 255), OUTLINE, 0.6)
-            _circle(draw, (hx + 9, hy - 8), 1.2, EYE, OUTLINE, 0.3)
-        # Ear and wrinkles.
-        _ellipse(draw, hx - 22, hy - 2, 6, 10, SKIN_SHADOW, OUTLINE, 0.8)
-        _line(draw, [(hx + 0, hy + 6), (hx + 12, hy + 10)], SKIN_SHADOW, 0.8)
-        _line(draw, [(hx - 2, hy + 14), (hx + 10, hy + 18)], SKIN_SHADOW, 0.7)
+            _ellipse(draw, hx + 8, hy - 8, 4.3, 3.0, EYE_WHITE, OUTLINE, 0.65)
+            _circle(draw, (hx + 9.2, hy - 8.0), 1.3, EYE, EYE, 0.2)
+            _circle(draw, (hx + 9.7, hy - 8.6), 0.35, SKIN_LIGHT, None, 0)
+        _line(draw, [(hx - 3, hy + 5), (hx + 10, hy + 9)], SKIN_DEEP, 0.75)
+        _line(draw, [(hx - 4, hy + 13), (hx + 8, hy + 17)], SKIN_DEEP, 0.65)
+        _line(draw, [(hx - 7, hy + 20), (hx + 5, hy + 23)], SKIN_SHADOW, 0.55)
 
     def _draw_arm(self, draw, shoulder, elbow, hand, front: bool, reach: float):
         skin = SKIN if front else SKIN_SHADOW
-        _line(draw, [shoulder, elbow], skin, 7.5 if front else 6.0)
-        _line(draw, [elbow, hand], skin, 6.8 if front else 5.4)
-        _line(draw, [shoulder, elbow, hand], OUTLINE, 1.8 if front else 1.3)
-        _ellipse(draw, elbow[0], elbow[1], 6.5 if front else 5.0, 8.0 if front else 6.0, skin, OUTLINE, 0.8)
-        _circle(draw, hand, 5.2 if front else 4.2, skin, OUTLINE, 0.8)
-        # Four long creepy fingers, anchored at the hand.
-        for idx, dy in enumerate((-6, -2, 2, 6)):
-            length = (18 + idx * 2 + reach * 0.10) if front else (13 + idx)
-            tip = (hand[0] + length, hand[1] + dy + idx * 1.0)
-            base = (hand[0] + 3, hand[1] + dy * 0.4)
-            _line(draw, [base, tip], skin, 1.5 if front else 1.0)
-            _line(draw, [base, tip], OUTLINE, 0.55)
+        highlight = SKIN_LIGHT if front else SKIN
+        upper_w = 8.4 if front else 6.8
+        lower_w = 7.4 if front else 5.8
+
+        # Proper outlined tubes instead of a dark line painted through the limb.
+        _line(draw, [shoulder, elbow], OUTLINE, upper_w + 3.0)
+        _line(draw, [shoulder, elbow], skin, upper_w)
+        _line(draw, [elbow, hand], OUTLINE, lower_w + 2.8)
+        _line(draw, [elbow, hand], skin, lower_w)
+        _ellipse(draw, elbow[0], elbow[1], 6.8 if front else 5.3, 8.2 if front else 6.4, skin, OUTLINE, 0.9)
+        _line(draw, [(elbow[0] - 2, elbow[1] - 2), (elbow[0] + 2, elbow[1] + 2)], highlight, 0.7)
+        _ellipse(draw, hand[0], hand[1], 5.8 if front else 4.7, 5.0 if front else 4.0, skin, OUTLINE, 0.9)
+
+        # Four long, crooked fingers are integral to the original character.
+        # Each bends slightly rather than reading as detached straight whiskers.
+        spreads = (-6.0, -2.0, 2.2, 6.0)
+        for idx, dy in enumerate(spreads):
+            length = (19.0 + idx * 2.2 + reach * 0.10) if front else (14.0 + idx * 1.4)
+            base = (hand[0] + 3.0, hand[1] + dy * 0.38)
+            knuckle = (hand[0] + length * 0.55, hand[1] + dy + (idx - 1.5) * 0.6)
+            tip = (hand[0] + length, hand[1] + dy + idx * 1.05)
+            finger_w = 1.65 if front else 1.15
+            _line(draw, [base, knuckle, tip], OUTLINE, finger_w + 1.3)
+            _line(draw, [base, knuckle, tip], skin, finger_w)
+            _circle(draw, knuckle, 1.15 if front else 0.85, highlight, OUTLINE_SOFT, 0.25)
 
     def _draw_near_arm(self, draw, P, pose):
-        shoulder = P(28, -112)
+        shoulder = P(29, -112)
         elbow = P(42 + pose.near_arm * 0.10 + pose.near_reach * 0.22, -76 + pose.near_arm * 0.18)
-        hand = P(54 + pose.near_arm * 0.20 + pose.near_reach, -47 + pose.near_arm * 0.14)
+        hand = P(55 + pose.near_arm * 0.20 + pose.near_reach, -47 + pose.near_arm * 0.14)
         self._draw_arm(draw, shoulder, elbow, hand, True, pose.near_reach)
 
     def _draw_far_arm(self, draw, P, pose):
-        shoulder = P(4, -112)
-        elbow = P(12 + pose.far_arm * 0.10 + pose.far_reach * 0.16, -78 + pose.far_arm * 0.14)
-        hand = P(24 + pose.far_arm * 0.16 + pose.far_reach, -54 + pose.far_arm * 0.12)
+        shoulder = P(2, -112)
+        elbow = P(10 + pose.far_arm * 0.10 + pose.far_reach * 0.16, -78 + pose.far_arm * 0.14)
+        hand = P(23 + pose.far_arm * 0.16 + pose.far_reach, -54 + pose.far_arm * 0.12)
         self._draw_arm(draw, shoulder, elbow, hand, False, pose.far_reach)
 
     def _draw_leg(self, draw, hip, knee, foot, front: bool):
         skin = SKIN if front else SKIN_SHADOW
-        _line(draw, [hip, knee], skin, 9.0 if front else 7.2)
-        _line(draw, [knee, foot], skin, 8.0 if front else 6.4)
-        _line(draw, [hip, knee, foot], OUTLINE, 1.9 if front else 1.3)
-        _ellipse(draw, knee[0], knee[1], 7.0 if front else 5.6, 9.0 if front else 7.0, skin, OUTLINE, 0.8)
-        toes = [(foot[0] - 12, foot[1] + 3), (foot[0] + 22, foot[1] + 1), (foot[0] + 26, foot[1] + 7), (foot[0] - 10, foot[1] + 8)]
-        _poly(draw, toes, skin, OUTLINE, 0.9)
-        for dx in (8, 15, 22):
-            _line(draw, [(foot[0] + dx, foot[1] + 3), (foot[0] + dx + 4, foot[1] + 7)], OUTLINE, 0.6)
+        highlight = SKIN_LIGHT if front else SKIN
+        thigh_w = 10.0 if front else 8.0
+        shin_w = 8.5 if front else 6.8
+        _line(draw, [hip, knee], OUTLINE, thigh_w + 3.2)
+        _line(draw, [hip, knee], skin, thigh_w)
+        _line(draw, [knee, foot], OUTLINE, shin_w + 3.0)
+        _line(draw, [knee, foot], skin, shin_w)
+        _ellipse(draw, knee[0], knee[1], 7.5 if front else 6.0, 9.3 if front else 7.4, skin, OUTLINE, 0.9)
+        _line(draw, [(knee[0] - 2, knee[1] - 2), (knee[0] + 2, knee[1] + 1)], highlight, 0.7)
+        _ellipse(draw, foot[0], foot[1] + 1.0, 5.0 if front else 4.2, 5.5 if front else 4.6, skin, OUTLINE, 0.7)
+        toes = [
+            (foot[0] - 12, foot[1] + 2),
+            (foot[0] + 21, foot[1] + 1),
+            (foot[0] + 27, foot[1] + 7),
+            (foot[0] + 18, foot[1] + 10),
+            (foot[0] - 10, foot[1] + 9),
+        ]
+        _poly(draw, toes, skin, OUTLINE, 1.0)
+        _line(draw, [(foot[0] - 5, foot[1] + 5), (foot[0] + 15, foot[1] + 5)], highlight, 0.55)
+        for dx in (7, 14, 21):
+            _line(draw, [(foot[0] + dx, foot[1] + 3), (foot[0] + dx + 4, foot[1] + 8)], OUTLINE_SOFT, 0.6)
 
     def _draw_near_leg(self, draw, P, pose):
         hip = P(30, -22)
@@ -425,21 +630,51 @@ class WeirdHermitRenderer:
         self._draw_leg(draw, hip, knee, foot, False)
 
     def _draw_jab_fx(self, draw, P, pose):
-        c = P(108 + pose.near_reach * 0.35, -48)
-        _line(draw, [(c[0] - 14, c[1]), (c[0] + 18, c[1] - 2)], (255, 235, 180, 115), 2.0)
-        _line(draw, [(c[0] - 6, c[1] - 8), (c[0] + 12, c[1] - 14)], (255, 235, 180, 80), 1.1)
+        c = P(109 + pose.near_reach * 0.35, -48)
+        # Two attached scratch-lines make the finger extension legible without
+        # turning the attack into a held weapon.
+        _line(draw, [(c[0] - 17, c[1]), (c[0] + 20, c[1] - 2)], OUTLINE, 3.1)
+        _line(draw, [(c[0] - 17, c[1]), (c[0] + 20, c[1] - 2)], (255, 235, 180, 170), 1.5)
+        _line(draw, [(c[0] - 7, c[1] - 8), (c[0] + 13, c[1] - 15)], (255, 235, 180, 125), 1.1)
 
     def _draw_grab_fx(self, draw, P, pose):
-        c = P(104 + pose.near_reach * 0.25, -52)
+        c = P(105 + pose.near_reach * 0.25, -52)
         box = (_s(c[0] - 38), _s(c[1] - 28), _s(c[0] + 38), _s(c[1] + 28))
-        draw.arc(box, 200, 340, fill=(255, 230, 160, 110), width=_s(3.0))
+        draw.arc(box, 200, 340, fill=OUTLINE, width=_s(4.2))
+        draw.arc(box, 200, 340, fill=(255, 230, 160, 155), width=_s(2.2))
+        _line(draw, [(c[0] - 23, c[1] + 13), (c[0] - 10, c[1] + 4)], (255, 230, 160, 135), 1.0)
 
     def _draw_sneeze_fx(self, draw, P, pose):
-        origin = P(74, -154)
-        for i, (dx, dy, r) in enumerate([(24, -5, 10), (42, -10, 14), (61, -5, 18), (82, 4, 13)]):
-            alpha = int(80 + pose.sneeze * 65 - i * 10)
-            _ellipse(draw, origin[0] + dx, origin[1] + dy, r, r * 0.7, (*CURSE[:3], max(0, alpha)), outline=(0, 0, 0, 0), width=0)
-        _line(draw, [(origin[0] + 12, origin[1] + 2), (origin[0] + 78, origin[1] - 4)], (*CURSE[:3], 130), 2.0)
+        origin = P(76, -154)
+        plume = [
+            (origin[0], origin[1]),
+            (origin[0] + 18, origin[1] - 4),
+            (origin[0] + 38, origin[1] - 8),
+            (origin[0] + 62, origin[1] - 4),
+            (origin[0] + 84, origin[1] + 4),
+        ]
+        _line(draw, plume, OUTLINE, 4.6)
+        _line(draw, plume, (*CURSE[:3], 170), 2.6)
+        for i, (dx, dy, r) in enumerate([(24, -5, 9), (43, -10, 13), (63, -5, 17), (83, 4, 12)]):
+            alpha = int(100 + pose.sneeze * 70 - i * 10)
+            _ellipse(
+                draw,
+                origin[0] + dx,
+                origin[1] + dy,
+                r,
+                r * 0.70,
+                (*CURSE[:3], max(0, alpha)),
+                outline=OUTLINE_SOFT,
+                width=0.55,
+            )
+            _circle(
+                draw,
+                (origin[0] + dx + r * 0.15, origin[1] + dy - r * 0.10),
+                max(1.0, r * 0.20),
+                CURSE_CORE,
+                outline=None,
+                width=0,
+            )
 
 
 def _write_yaml(path: Path) -> None:
