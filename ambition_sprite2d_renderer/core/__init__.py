@@ -10,17 +10,21 @@ Heavy/optional dependencies live at the edges:
   * ``rich``    — CLI prettiness only.
   * ``PySide6`` — the rig editor GUI only.
 
-The core's job is the one render spine every authoring style flows through:
+The core owns portable operations that several authoring families can share:
 
-    FrameSet  ──▶  supersample → downsample → crop → measure → assemble → emit
+    authored frames ──▶ supersample → downsample → crop → measure → assemble → emit
 
-The seam between *authoring* (plural: drawers, imperative generators, YAML
-adapters, rig docs) and the spine is :class:`~.frameset.FrameSet`. The output
-contract the game reads is mirrored by :mod:`~.manifest` (written as RON, no
-YAML in the write path).
+:class:`~.frameset.FrameSet` is one useful authoring seam for drawers and other
+pipelines that naturally describe themselves as scalable frame painters. It is
+not the universal character representation: module targets, config-driven
+generators, rig documents, SVG parts, scene graphs, and bespoke pipelines may
+retain different internal models. The universal boundary is the registered
+target's published sprite-sheet pages and metadata, mirrored by
+:mod:`~.manifest` and written as RON without YAML in the write path.
 
-This package is being grown incrementally; today it holds the seam types. The
-spine implementation lands as the existing emitters are consolidated onto it.
+This package is grown incrementally as genuinely shared operations are
+identified. Consolidation must not force unrelated artistic pipelines through a
+common rig or pose model.
 """
 
 from .frameset import (  # noqa: F401

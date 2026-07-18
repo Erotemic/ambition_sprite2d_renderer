@@ -1,7 +1,8 @@
 # Ambition 2D Sprite Renderer
 
-Procedural 2D sprite renderer for Ambition. Two authoring surfaces share
-the package; discovery unifies both into one `Target` registry:
+Procedural 2D sprite renderer for Ambition. Discovery unifies registered
+outputs into one `Target` registry while preserving plural authoring methods.
+Two registration surfaces share the package:
 
 1. **Config-authored (generator) targets** — YAML-driven characters built
    on the `CharacterGenerator` base class (robot / goblin / ninja / boss /
@@ -14,6 +15,12 @@ the package; discovery unifies both into one `Target` registry:
    discovery walks the tree and registers them automatically. No
    central registration list — dropping a file in the right category
    subdir is the entire integration step.
+
+These registration surfaces do not prescribe how a sprite is constructed. A
+module or generator may use direct procedural Python, shared family helpers, a
+bone rig, SVG parts, a scene graph, or a specialized hybrid. **A character rig
+is always optional.** The common boundary is the published sprite sheet and its
+runtime-facing metadata.
 
 Tack-on targets are split across five category subdirs:
 
@@ -39,7 +46,45 @@ The package is organized by role; the import boundary `core` ← `authoring`
 | [`cli/`](ambition_sprite2d_renderer/cli/) | Command-line surface — `commands` (logic), `parser` (argparse + `main`), `console` | — |
 | [`gui/`](ambition_sprite2d_renderer/gui/) | PySide6 rig editor | +PySide6 |
 | [`devtools/`](ambition_sprite2d_renderer/devtools/) | Author-facing inspection (`debug_hitboxes`) + editor bridges (`ldtk_manifest`) | — |
-| `configs/` · `data/` | YAML generator jobs · rig templates + `pack_plan.yaml` | data |
+| `configs/` · `data/` | YAML generator jobs · optional rig templates + `pack_plan.yaml` | data |
+
+## Published target contract
+
+The registry and runtime care about reproducible published products, not the
+source character representation. A normal character publish produces:
+
+- sprite-sheet image page(s),
+- animation/frame layout manifests,
+- an actor sidecar with body geometry, anchors, sockets, animation bindings, and
+  other available metadata, and
+- canonical review images.
+
+A target may later publish additional products such as dialog portrait sheets.
+Those products extend the target contract; they do not require every target to
+share a pose model or rig implementation.
+
+Metadata such as a face guide, head anchor, or default pose is cross-family
+output metadata. Direct Python and specialized renderers can emit it just as a
+rig can. Keep rig-internal bones private unless a published consumer actually
+needs them.
+
+## Choosing an authoring family
+
+Choose the method that best expresses the sprite:
+
+- use a **single-file procedural target** for focused bespoke geometry;
+- use a **multi-file target** for a large character with its own scene, parts,
+  editor, or helper modules;
+- use a **config-driven generator family** when many variants genuinely share a
+  renderer and parameter schema;
+- use a **rig/rig-document or SVG-part family** when articulated parts, reusable
+  poses, IK, or editor-backed authoring are useful;
+- extract a **shared family helper** when several related characters already
+  repeat the same anatomy, pose, or composition concepts.
+
+Do not move a character into a rig or another family merely to make the source
+tree uniform. Family consolidation should preserve or improve the artistic
+result and make the implementation easier to understand.
 
 ## Modal CLI
 
@@ -198,7 +243,7 @@ your target ships a subdirectory of part files (or otherwise needs
 non-flat install behavior), expose `install(render_dir, dest_root) ->
 Iterable[Path]` and it'll be used instead.
 
-### Helpers (drawing primitives, shared rigs)
+### Helpers and authoring families
 
 - **Generic drawing + spritesheet building** — lives under
   [`authoring/`](ambition_sprite2d_renderer/authoring/):
@@ -208,16 +253,19 @@ Iterable[Path]` and it'll be used instead.
   (generator-helper drawing primitives). The RON emitter and core
   draw/measure primitives live in
   [`core/`](ambition_sprite2d_renderer/core/). Use these from any target.
-- **Character-family helpers** (shared by several characters in a
-  family) live under `targets/characters/` with a leading underscore
-  so discovery skips them — see
+- **Character-family helpers** shared by several related characters live
+  under `targets/characters/` with a leading underscore so discovery skips
+  them. A family helper may be procedural, rigged, part-based, or hybrid. See
   [`targets/characters/_pirate_common.py`](ambition_sprite2d_renderer/targets/characters/_pirate_common.py)
-  for the pirate-family rig (Palette + draw_character + animation_pose).
+  for a pirate-specific parametric rig; it is an example of a useful family,
+  not a base class all characters should adopt.
+- **Rig and rig-document helpers** are available for sprites that benefit from
+  articulated parts or editor-backed posing. Their use is optional.
 
-### Generator target instead of tack-on
+### Config-driven generator target instead of a module target
 
-If your character fits the YAML-driven generator shape (one parametric
-rig with many archetype variants), the generator path is preferred:
+Use the YAML-driven generator surface when a character naturally belongs to a
+family with a reusable renderer and parameter schema:
 
 1. Drop a generator class under `targets/characters/<name>_side.py`
    (subclass `CharacterGenerator` from `authoring/generator.py`;
@@ -231,8 +279,9 @@ rig with many archetype variants), the generator path is preferred:
    in `registry/discovery.py` so discovery skips it.
 
 [`targets/characters/robot_side.py`](ambition_sprite2d_renderer/targets/characters/robot_side.py)
-+ [`configs/robot.yaml`](ambition_sprite2d_renderer/configs/robot.yaml) is
-the canonical generator target.
++ [`configs/robot.yaml`](ambition_sprite2d_renderer/configs/robot.yaml) is a
+canonical config-driven generator example. It is not a mandate to convert
+bespoke module targets into parameterized humanoid variants.
 
 ## Character specs and review casts
 
@@ -264,6 +313,8 @@ of `absurd_general`.
 
 - Generated outputs live under `generated/` and are gitignored.
 - Targets must be deterministic for a given input (same code → same bytes).
+- The publishing contract is shared; the internal authoring representation is
+  not. Do not require rigs, bones, or a universal pose model from every target.
 - Runtime assets are written only by explicit `install` / `publish` /
   `regenerate-all` / `draw-runtime-npcs` (or `draw-all` with an explicit
   `--out-dir` for generator targets).

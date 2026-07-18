@@ -1,19 +1,56 @@
 # Design notes
 
-## Direction
+## Universal target contract
 
-The sprite renderer now uses one shared character pipeline for robot, goblin,
-boss, and sandbag:
+The renderer unifies **registered outputs**, not character internals.
+Publishing a character target reproducibly produces the runtime-facing visual
+artifacts needed by the game:
+
+- one or more sprite-sheet image pages,
+- animation/frame layout metadata,
+- actor metadata such as body geometry, anchors, sockets, and animation
+  bindings where available, and
+- canonical review output.
+
+A future output such as a dialog portrait sheet belongs beside those products.
+The contract does not prescribe how the character is drawn or posed before the
+artifacts are assembled.
+
+## Plural authoring families
+
+A character may be authored with bespoke procedural Python, a config-driven
+`CharacterGenerator`, shared family helpers, a bone/rig document, SVG parts, a
+scene graph, or a specialized hybrid. These are implementation families beneath
+the same target/publishing boundary.
+
+A rig is always optional. Use one when articulated parts, IK, reusable poses, or
+an editor-backed workflow improve the character. Do not migrate a distinctive
+procedural or specialized renderer onto a rig merely to make the repository
+look uniform. Conversely, consolidate targets into a shared family when several
+characters genuinely use the same anatomy, composition, or pose model.
+
+The two registry authoring surfaces are orthogonal to those families:
+
+- **module-authored targets** expose Python publishing hooks and may use any
+  internal family;
+- **config-authored targets** bind YAML jobs to a `CharacterGenerator`, whose
+  implementation may itself be procedural, rigged, part-based, or hybrid.
+
+## Config-driven character pipeline
+
+Robot, goblin, boss, sandbag, and related targets use a shared config-driven
+pipeline:
 
 1. load a small YAML job,
-2. choose a target adapter,
+2. choose a target generator,
 3. sample a deterministic spec,
 4. render animation frames,
-5. compose a labeled sprite sheet and manifest.
+5. compose a labeled sprite sheet and manifests.
 
-The adapter layer keeps target-specific drawing isolated while config shape,
+This pipeline keeps target-specific drawing isolated while config shape,
 manifest shape, body metrics, canonical previews, and generated-sheet naming
-stay stable.
+stay stable. It is a useful family/publishing surface, not the required internal
+shape of every character.
 
 ## Shared animation vocabulary
 
@@ -69,7 +106,7 @@ python -m ambition_sprite2d_renderer sheet sandbag
 ## Variants
 
 `draw-all` uses the config filename as the output stem. This allows several
-jobs for the same adapter without overwriting outputs:
+jobs for the same generator without overwriting outputs:
 
 ```text
 robot_spritesheet.png
@@ -78,31 +115,43 @@ robot_guardian_spritesheet.png
 player_extended_spritesheet.png
 ```
 
-Future variants should normally be new YAML jobs first. Add new target code only
-when a variant needs a different body plan or renderer.
+Future variants should normally be new YAML jobs when they remain members of
+the same generator family. Add new target code when a variant needs a different
+body plan, construction technique, or renderer.
 
-## Shared rig primitives
+## Optional rig family and cross-family metadata
 
-`rig.py` defines future reusable rig pieces:
+The rig-related modules provide reusable articulated-character machinery such
+as bones, sockets, part ordering, pose validation, IK, and editor-backed rig
+documents. Those concepts are valuable for characters that benefit from them;
+they are not prerequisites for character registration or publication.
 
-- `Bone`
-- `SocketSpec`
-- `FaceGuide`
-- `Rig.validate()`
+Some metadata is useful across all authoring families and must not be confused
+with rig internals:
 
-The robot target demonstrates the desired direction; future goblin and sandbag
-work should migrate toward named sockets, consistent face guides, weapon
-sockets, and validator-friendly pose data.
+- a `FaceGuide` or portrait framing region can be emitted by direct Python,
+  SVG, rigged, or specialized renderers;
+- gameplay sockets and anchors may be authored directly, derived from pixels,
+  or exported from a rig;
+- body bounds and feet positions are normally measured from rendered frames;
+- default poses and animation semantics describe published assets, not the
+  method used to construct them.
+
+Keep rig-only data private unless a published consumer needs it. Promote a
+concept into shared metadata because sheets, portraits, or runtime systems use
+it — not because one family happens to represent it with bones.
 
 ## Side-view walk-cycle baseline
 
-The side-facing biped lanes now share one authored walk/run philosophy: an
+Several side-facing biped families share one authored walk/run philosophy: an
 8-frame contact/down/passing/up loop driven by ankle targets, with the knee
 solved by a two-bone IK pass and an explicit near/far limb draw order. This
 produces planted feet, cleaner silhouettes, and more stable depth reads than
 the older direct-angle-only leg swing.
 
-See `walk_cycle_baseline.md` for the practical recipe, the target list, and the warning that mostly-front-facing rigs such as ninja should not borrow this side-profile treatment.
+See `walk_cycle_baseline.md` for the practical recipe, the target list, and the
+warning that mostly-front-facing characters such as ninja should not borrow
+this side-profile treatment merely because both are humanoid.
 
 ## Package standards
 
@@ -113,18 +162,21 @@ See `walk_cycle_baseline.md` for the practical recipe, the target list, and the 
   [`registry/discovery.py`](../ambition_sprite2d_renderer/registry/discovery.py)
   for the discovery contract and the README's "Adding a new sprite"
   section for the practical walkthrough.
-- Generic helpers (drawing primitives, the `build_sheet` pipeline) live
+- Generic helpers (drawing primitives and sheet-building infrastructure) live
   under `authoring/` —
   [`sheet_build.py`](../ambition_sprite2d_renderer/authoring/sheet_build.py) and
   [`common_draw.py`](../ambition_sprite2d_renderer/authoring/common_draw.py);
   the RON emitter and measure primitives live in
   [`core/`](../ambition_sprite2d_renderer/core/).
-- Character-family helpers (shared by several characters in a family,
-  e.g. pirates) live under `targets/characters/` with a leading
-  underscore so discovery skips them — see `_pirate_common.py`.
-- Keep abandoned experiments quarantined (see `pca_legacy/` at the repo
-  root), never on the live render path.
-- Keep the generator API small: `animations`, `sample_spec`, `render_frame`.
-- Keep YAML jobs human-editable and deterministic.
+- Character-family helpers shared by several related characters live under
+  `targets/characters/` with a leading underscore so discovery skips them — see
+  `_pirate_common.py`. A family helper may be procedural, rigged, part-based, or
+  hybrid.
+- Keep abandoned experiments quarantined (see `pca_legacy/` at the repo root),
+  never on the live render path.
+- Keep each family API as small as its use cases allow. Do not invent a global
+  pose or rig abstraction solely to make unrelated characters conform.
+- Keep YAML jobs human-editable and deterministic where YAML is the chosen
+  authoring surface.
 - Keep generated sprite sheets and manifests outside the package, normally in
   `generated/` or a deliberate asset install destination.

@@ -3,6 +3,24 @@
 This submodule contains renderer framework code and authored sprite content. Keep
 those two concerns separate when adding tests.
 
+## Authoring architecture
+
+The universal contract is a registered target that reproducibly publishes
+sprite-sheet page(s), animation/frame metadata, actor metadata, and review
+artifacts. The target's internal drawing or posing representation is not part of
+that contract.
+
+Character rigs are optional. Some characters use bone or SVG rigs; others use
+config-driven procedural generators, shared family helpers, scene graphs, or
+bespoke Python drawing. Do not migrate a target onto a rig merely for
+consistency, and do not describe direct procedural rendering as a temporary
+legacy path when it remains the clearest expression of the art.
+
+Unify at the family level when multiple related targets genuinely share anatomy,
+pose math, part composition, or animation construction. Keep cross-family output
+metadata such as bounds, anchors, sockets, face guides, and default poses
+independent of rig internals.
+
 ## Test policy
 
 Prefer tests that protect renderer and tooling invariants:

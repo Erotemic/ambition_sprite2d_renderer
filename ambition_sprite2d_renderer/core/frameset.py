@@ -1,25 +1,30 @@
-"""The authoring seam: :class:`FrameSet`.
+"""A portable authoring seam: :class:`FrameSet`.
 
-Every authoring style — a drawer function, an imperative per-character
-generator, a YAML-config adapter, or a bone/rig doc — ultimately produces a
-``FrameSet``: a named set of animations, each a list of frames, on a known
-logical canvas. The render spine consumes *only* a ``FrameSet`` and does the
-rest (supersample → downsample → crop → measure → assemble → emit), so the four
-authoring styles stop each re-implementing that spine.
+``FrameSet`` represents a target that naturally describes itself as scalable
+frame-painting callables: named animations, ordered frames, and a known logical
+canvas. Shared pipeline code can supersample, downsample, crop, measure,
+assemble, and emit those frames without each compatible family reimplementing
+that machinery.
+
+It is deliberately **not** the universal character representation. Bespoke
+procedural modules, config-driven generators, bone/rig documents, SVG-part
+renderers, scene graphs, and other specialized targets may use ``FrameSet``
+when it is a good fit or publish through another family-specific path. Their
+common contract is the resulting sprite sheet and rich metadata, not this
+source type.
 
 Coordinate frame (matches the existing drawers): logical pixels, origin
 top-left, +x right, +y down, angles clockwise. A frame is drawn by a callable
 ``draw(d, s)`` where ``d`` is a ``PIL.ImageDraw`` over a canvas of
 ``base_size * s`` and ``s`` is the working scale the spine chooses (supersample
 × the requested output ``scale``). Authoring multiplies its coordinates by
-``s`` — exactly the convention ``targets/props/entities.py`` already uses — so a
-``scale`` of 0.25 yields a 32×32 thumbnail and 1.0 the full canvas, which is
-what makes fast (millisecond) render tests possible.
+``s`` — exactly the convention ``targets/props/entities.py`` already uses.
 
-Pillow + stdlib only. No metadata is *required*; the spine measures feet, body
-extent, and hurtboxes from the rendered pixels. ``FrameSpec.meta`` carries only
-the things pixels can't express (sockets, an explicit collision box, declared
-attack hitboxes) — "measure by default, declare the exceptions."
+Pillow + stdlib only. No metadata is *required*; compatible pipeline code can
+measure feet and body extent from rendered pixels. ``FrameSpec.meta`` carries
+facts pixels cannot express reliably, such as sockets, explicit collision
+boxes, or declared attack hitboxes — "measure by default, declare the
+exceptions."
 """
 from __future__ import annotations
 

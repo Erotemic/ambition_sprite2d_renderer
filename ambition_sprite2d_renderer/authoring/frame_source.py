@@ -1,9 +1,15 @@
-"""The canonical thing the sheet pipeline consumes: a ``FrameSource``.
+"""A shared sheet-pipeline input: ``FrameSource``.
 
-A ``FrameSource`` is "a character or prop ready to render, at any size". It is
-the one contract behind every distinct drawing backend — procedural PIL
-generators, bone rigs, plain frame callables. Each backend *produces* a
-FrameSource; none is reshaped into one by an adapter.
+``FrameSource`` is an authoring-side convenience for generators, rigs, and
+frame callables that can expose a common frame-query surface. It is not the
+universal sprite-target contract and does not prescribe how every character is
+posed or drawn. The stable cross-family boundary remains the published sprite
+sheet and metadata.
+
+The requested ``size`` is the output raster size. Implementations may rerender
+natively, render at a safe internal size and downsample, or adapt a legacy
+fixed-size callable. Consumers that require newly rendered high-resolution
+detail must use an explicit capability rather than infer it from this protocol.
 
 The build pipeline asks a FrameSource four kinds of question:
 
@@ -37,7 +43,7 @@ class FrameSource(Protocol):
     def frame(
         self, animation: str, index: int, count: int, size: Tuple[int, int]
     ) -> Image.Image:
-        """Render frame ``index`` of ``animation`` (``count`` frames total) at ``size``."""
+        """Return frame ``index`` at output ``size``; native rerendering is not implied."""
 
     def canonical_pose(self) -> Tuple[str, int]:
         """The ``(animation, frame_index)`` used as the single canonical still."""

@@ -2,9 +2,9 @@
 
 Extracted from `toon_side.py` to keep that file under 2500 lines —
 adding a new palette is a one-block edit here without scrolling
-through 800 lines of rig code. See GOALS.md goal #1 for the
-larger direction (shared shape-primitive rig with declarative
-per-character files).
+through the family renderer. See GOALS.md goal #1 for the larger
+direction: coherent optional generator families behind one published
+sprite-sheet and metadata contract.
 """
 
 from __future__ import annotations
