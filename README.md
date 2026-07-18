@@ -313,18 +313,29 @@ canonical config-driven generator example. It is not a mandate to convert
 bespoke module targets into parameterized humanoid variants.
 
 Config-driven characters automatically receive a native default portrait. A
-job may refine the cross-family face guide without changing its generator:
+job may refine the cross-family face guide and declare named still or animated
+clips without changing its generator:
 
 ```yaml
 visual:
   default_pose: idle
   portrait:
-    animation: idle
-    frame: 1
     face_guide:
       center: [64, 27]
       size: [24, 29]
       source_size: [128, 128]
+  portraits:
+    default:
+      animation: idle
+      frame: 1
+    speaking:
+      animation: talk
+      frames: [0, 1, 2, 3, 4, 5]
+      duration_ms: 105
+      looping: true
+    focused:
+      animation: interact
+      frame: 4
 ```
 
 The guide uses logical source-canvas coordinates. It is equally valid for a

@@ -994,9 +994,8 @@ def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
 
 
 def render_portraits(out_dir: Path, **opts) -> List[Path]:
-    """Publish Pipi Tau's native head-and-shoulders dialog portrait."""
+    """Publish Pipi Tau's native close-up expressions and talk loop."""
     del opts
-    source = _render_native_frame("idle", 1, 8)
     face = FaceGuide(
         center_x=65.0,
         center_y=28.0,
@@ -1005,15 +1004,32 @@ def render_portraits(out_dir: Path, **opts) -> List[Path]:
         source_width=FRAME_W,
         source_height=FRAME_H,
     )
-    image = render_framed_portrait(
-        source,
-        face,
-        view_width=58.0,
-        center_y=42.0,
-    )
-    return write_portrait_sheet(
-        TARGET_NAME, {"default": PortraitClip.still(image)}, Path(out_dir)
-    )
+
+    def portrait_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
+        return render_framed_portrait(
+            _render_native_frame(animation, frame_idx, frame_count),
+            face,
+            view_width=58.0,
+            center_y=42.0,
+        )
+
+    clips = {
+        "default": PortraitClip.still(portrait_frame("idle", 1, 8)),
+        "explaining": PortraitClip(
+            tuple(portrait_frame("talk", frame, 8) for frame in range(8)),
+            duration_ms=104,
+            looping=True,
+        ),
+        "thinking": PortraitClip(
+            tuple(
+                portrait_frame("compressed_sense", frame, 8)
+                for frame in (1, 3, 5, 7)
+            ),
+            duration_ms=118,
+            looping=True,
+        ),
+    }
+    return write_portrait_sheet(TARGET_NAME, clips, Path(out_dir))
 
 
 def _body_metrics_override(fw: int, fh: int):

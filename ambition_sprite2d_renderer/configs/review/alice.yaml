@@ -25,6 +25,18 @@ actor:
   display_name: Alice
 visual:
   default_pose: idle
+  portraits:
+    default:
+      animation: idle
+      frame: 1
+    speaking:
+      animation: talk
+      frames: [0, 1, 2, 3, 4, 5]
+      duration_ms: 105
+      looping: true
+    focused:
+      animation: interact
+      frame: 4
 body:
   body_plan: HumanoidBiped
   body_kind: Standard

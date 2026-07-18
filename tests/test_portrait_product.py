@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from PIL import Image, ImageDraw
+import pytest
 
 from ambition_sprite2d_renderer.authoring.generator import CharacterGenerator
 from ambition_sprite2d_renderer.authoring.portrait import (
@@ -118,6 +119,54 @@ def test_generator_default_rerenders_at_native_portrait_source_resolution(tmp_pa
     assert Image.open(outputs[0]).getchannel("A").getbbox() is not None
 
 
+def test_generator_named_clip_rerenders_every_authored_frame(tmp_path):
+    job = CharacterJob.from_dict(
+        {
+            "target": "recording",
+            "output_name": "recording",
+            "animations": ["idle", "talk"],
+            "render": {"frame_width": 128, "frame_height": 128},
+            "visual": {
+                "default_pose": "idle",
+                "portraits": {
+                    "default": {"animation": "idle", "frame": 0},
+                    "speaking": {
+                        "animation": "talk",
+                        "frames": [0, 2],
+                        "duration_ms": 90,
+                        "looping": True,
+                    },
+                },
+            },
+            "sockets": {"head": {"point": {"x": 64, "y": 24}}},
+        }
+    )
+    generator = _RecordingGenerator()
+    outputs = generator.render_portraits(
+        _Spec(), job, target="recording", out_dir=str(tmp_path)
+    )
+    assert generator.requested_sizes == [(512, 512)] * 3
+    manifest = outputs[1].read_text(encoding="utf8")
+    assert '"speaking": (' in manifest
+    assert "duration_ms: 90" in manifest
+    assert "looping: true" in manifest
+    assert manifest.count("(x:") == 3
+
+
+def test_animated_portrait_clip_requires_duration(tmp_path):
+    with pytest.raises(ValueError, match="positive duration_ms"):
+        write_portrait_sheet(
+            "broken",
+            {
+                "default": PortraitClip.still(_sample_frame()),
+                "speaking": PortraitClip(
+                    (_sample_frame(), _sample_frame()), duration_ms=0, looping=True
+                ),
+            },
+            tmp_path,
+        )
+
+
 def test_module_portrait_hook_is_installed_as_part_of_target_bundle(tmp_path):
     rendered = tmp_path / "rendered"
     installed = tmp_path / "installed"
@@ -166,21 +215,51 @@ def test_vertical_slice_targets_cover_three_authoring_families():
     assert targets["oiler"].supports_portraits
 
 
+def test_alice_config_publishes_named_expression_clips(tmp_path):
+    target = discover_all_targets().targets["alice"]
+    outputs = target.render_portraits(tmp_path)
+    manifest = outputs[1].read_text(encoding="utf8")
+    assert [path.name for path in outputs] == [
+        "alice_portraits.png",
+        "alice_portraits.ron",
+    ]
+    assert Image.open(outputs[0]).size == (256 * 8, 320)
+    assert '"speaking": (' in manifest
+    assert '"focused": (' in manifest
+    assert manifest.count("(x:") == 8
+
+
+def test_pipi_tau_publishes_bespoke_expression_clips(tmp_path):
+    from ambition_sprite2d_renderer.targets.characters import pipi_tau
+
+    outputs = pipi_tau.render_portraits(tmp_path)
+    manifest = outputs[1].read_text(encoding="utf8")
+    assert [path.name for path in outputs] == [
+        "pipi_tau_portraits.png",
+        "pipi_tau_portraits.ron",
+    ]
+    assert Image.open(outputs[0]).size == (256 * 8, 320 * 2)
+    assert '"explaining": (' in manifest
+    assert '"thinking": (' in manifest
+    assert manifest.count("(x:") == 13
+
+
 def test_oiler_portrait_hook_requests_native_svg_scale(monkeypatch, tmp_path):
     from ambition_sprite2d_renderer.targets.characters import oiler
+
+    calls: list[tuple[str, int, int, int]] = []
 
     class _FakeRigDocument:
         frame = {"width": 128, "height": 128}
 
         def frame_time(self, clip_name, frame_index, frame_count):
-            assert clip_name == "idle"
-            assert (frame_index, frame_count) == (1, 8)
-            return 0.125
+            calls.append((clip_name, frame_index, frame_count, 0))
+            return frame_index / max(1, frame_count)
 
         def render_at(self, clip_name, time, *, scale):
-            assert clip_name == "idle"
-            assert time == 0.125
             assert scale == 4
+            assert 0.0 <= time <= 1.0
+            calls.append((clip_name, 0, 0, scale))
             image = Image.new("RGBA", (512, 512), (0, 0, 0, 0))
             draw = ImageDraw.Draw(image)
             draw.ellipse((200, 35, 312, 175), fill=(230, 190, 150, 255))
@@ -193,8 +272,14 @@ def test_oiler_portrait_hook_requests_native_svg_scale(monkeypatch, tmp_path):
         "oiler_portraits.png",
         "oiler_portraits.ron",
     ]
-    assert Image.open(outputs[0]).size == (256, 320)
+    assert Image.open(outputs[0]).size == (256 * 8, 320)
     assert Image.open(outputs[0]).getchannel("A").getbbox() is not None
+    render_calls = [call for call in calls if call[3] == 4]
+    assert len(render_calls) == 8
+    assert {call[0] for call in render_calls} == {"idle", "talk", "interact"}
+    manifest = outputs[1].read_text(encoding="utf8")
+    assert '"talking": (' in manifest
+    assert '"inspecting": (' in manifest
 
 
 def test_module_character_without_hook_uses_fresh_canonical_fallback(tmp_path):

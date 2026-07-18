@@ -54,10 +54,15 @@ class PortraitClip:
 
 @dataclass(frozen=True)
 class PortraitPose:
-    """Author-time request for a generator-backed portrait frame."""
+    """Author-time request for one named generator-backed portrait clip.
+
+    ``frame_indices`` makes animation an authoring concern of the generator
+    family rather than the runtime. A one-frame tuple is a still expression;
+    multiple indices become a timed portrait clip in the published manifest.
+    """
 
     animation: str
-    frame_index: int = 0
+    frame_indices: tuple[int, ...] = (0,)
     duration_ms: int = 0
     looping: bool = False
 
@@ -150,9 +155,9 @@ def default_portrait_poses(generator: Any, job: Any) -> dict[str, PortraitPose]:
     """Resolve named portrait poses for a config-backed generator.
 
     ``visual.portraits`` is an optional mapping whose values may specify
-    ``animation``, ``frame``, ``duration_ms``, and ``looping``.  Overlay 1 uses
-    the required static ``default`` clip, while the shape deliberately supports
-    later expression and animation work without changing the product manifest.
+    ``animation``, either ``frame`` or ``frames``, ``duration_ms``, and
+    ``looping``. A one-frame declaration is a still; multiple frame indices are
+    freshly rerendered and published as one animated clip.
     """
 
     default_animation, default_frame = generator.canonical_pose()
@@ -163,9 +168,20 @@ def default_portrait_poses(generator: Any, job: Any) -> dict[str, PortraitPose]:
         for name, raw in configured.items():
             if not isinstance(raw, Mapping):
                 continue
+            raw_frames = raw.get("frames")
+            if isinstance(raw_frames, Sequence) and not isinstance(
+                raw_frames, (str, bytes)
+            ):
+                frame_indices = tuple(int(frame) for frame in raw_frames)
+            else:
+                frame_indices = (
+                    int(raw.get("frame", raw.get("frame_index", default_frame))),
+                )
+            if not frame_indices:
+                raise ValueError(f"portrait clip {name!r} has no frame indices")
             poses[str(name)] = PortraitPose(
                 animation=str(raw.get("animation", default_animation)),
-                frame_index=int(raw.get("frame", raw.get("frame_index", default_frame))),
+                frame_indices=frame_indices,
                 duration_ms=max(0, int(raw.get("duration_ms", 0))),
                 looping=bool(raw.get("looping", False)),
             )
@@ -179,8 +195,8 @@ def default_portrait_poses(generator: Any, job: Any) -> dict[str, PortraitPose]:
                     visual.get("default_pose", default_animation),
                 )
             ),
-            frame_index=int(
-                portrait.get("frame", portrait.get("frame_index", default_frame))
+            frame_indices=(
+                int(portrait.get("frame", portrait.get("frame_index", default_frame))),
             ),
         )
     return poses
@@ -260,16 +276,20 @@ def render_generator_portraits(
             source_size[0] * DEFAULT_PORTRAIT_SUPERSAMPLE,
             source_size[1] * DEFAULT_PORTRAIT_SUPERSAMPLE,
         )
-        source = generator.render_frame(
-            spec,
-            pose.animation,
-            pose.frame_index,
-            native_size,
-            job,
-        )
-        frame = render_framed_portrait(source, face, output_size=output_size)
+        frames: list[Image.Image] = []
+        for frame_index in pose.frame_indices:
+            source = generator.render_frame(
+                spec,
+                pose.animation,
+                frame_index,
+                native_size,
+                job,
+            )
+            frames.append(
+                render_framed_portrait(source, face, output_size=output_size)
+            )
         clips[name] = PortraitClip(
-            frames=(frame,),
+            frames=tuple(frames),
             duration_ms=pose.duration_ms,
             looping=pose.looping,
         )
@@ -586,6 +606,10 @@ def write_portrait_sheet(
             raise ValueError("portrait clip names must be non-empty")
         if not clip.frames:
             raise ValueError(f"portrait clip {name!r} has no frames")
+        if len(clip.frames) > 1 and int(clip.duration_ms) <= 0:
+            raise ValueError(
+                f"animated portrait clip {name!r} must have a positive duration_ms"
+            )
         frames: list[Image.Image] = []
         for frame in clip.frames:
             image = frame.convert("RGBA") if frame.mode != "RGBA" else frame.copy()

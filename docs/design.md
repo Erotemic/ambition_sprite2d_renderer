@@ -129,9 +129,10 @@ A dialog portrait is a separately published sprite-sheet product:
 <target>_portraits.ron
 ```
 
-The manifest names a required `default` clip and is already shaped for later
-static expressions and animated clips. The runtime catalog references this
-product independently from the gameplay sheet.
+The manifest names a required `default` clip plus any authored static or
+animated expressions. Each clip owns ordered frame rectangles, duration, and
+looping policy. The runtime catalog references this product independently from
+the gameplay sheet.
 
 Portrait production remains family-specific:
 
@@ -150,7 +151,10 @@ Portrait production remains family-specific:
 `FaceGuide` is cross-family authoring metadata. It describes a logical face
 region in the source character canvas and does not imply bones, IK, or a rig.
 The common portrait packer owns only the published PNG/RON vocabulary; it does
-not own the character's pose representation.
+not own the character's pose representation. Config generators may declare
+multiple frame indices for a named clip, while module targets remain free to
+construct equivalent clips through bespoke procedural, SVG, rigged, or other
+family-specific authoring code.
 
 ## Optional rig family and cross-family metadata
 

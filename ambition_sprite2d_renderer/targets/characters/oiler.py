@@ -122,23 +122,37 @@ def _render_frame(animation: str, frame_idx: int, frame_count: int):
 
 
 def render_portraits(out_dir: str | Path, **opts):
-    """Publish Oiler's portrait directly from the scalable SVG rig."""
+    """Publish Oiler's close-up expressions directly from the scalable SVG rig."""
     del opts
-    filename, clip = CLIP_SOURCE["idle"]
-    doc = _load_doc(filename)
-    source = doc.render_at(clip, doc.frame_time(clip, 1, 8), scale=4)
-    face = FaceGuide(
-        center_x=64.0,
-        center_y=24.0,
-        width=27.0,
-        height=31.0,
-        source_width=float(doc.frame["width"]),
-        source_height=float(doc.frame["height"]),
-    )
-    image = render_framed_portrait(source, face)
-    return write_portrait_sheet(
-        TARGET_NAME, {"default": PortraitClip.still(image)}, Path(out_dir)
-    )
+
+    def portrait_frame(animation: str, frame_idx: int, frame_count: int):
+        filename, clip = CLIP_SOURCE[animation]
+        doc = _load_doc(filename)
+        source = doc.render_at(
+            clip,
+            doc.frame_time(clip, frame_idx, frame_count),
+            scale=4,
+        )
+        face = FaceGuide(
+            center_x=64.0,
+            center_y=24.0,
+            width=27.0,
+            height=31.0,
+            source_width=float(doc.frame["width"]),
+            source_height=float(doc.frame["height"]),
+        )
+        return render_framed_portrait(source, face)
+
+    clips = {
+        "default": PortraitClip.still(portrait_frame("idle", 1, 8)),
+        "talking": PortraitClip(
+            tuple(portrait_frame("talk", frame, 6) for frame in range(6)),
+            duration_ms=100,
+            looping=True,
+        ),
+        "inspecting": PortraitClip.still(portrait_frame("interact", 4, 6)),
+    }
+    return write_portrait_sheet(TARGET_NAME, clips, Path(out_dir))
 
 
 def render(out_dir: str | Path, **opts):
