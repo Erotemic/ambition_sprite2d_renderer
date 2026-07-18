@@ -13,7 +13,9 @@ implements only what is genuinely its own:
 * :meth:`build_spec` — sample the per-character spec from a :class:`CharacterJob`;
 * :meth:`render_frame` — render one frame of one animation;
 * optionally, the authored gameplay geometry for *that* character
-  (:meth:`attack_hitboxes` / :meth:`hurtbox_parts` / :meth:`body_inset`).
+  (:meth:`attack_hitboxes` / :meth:`hurtbox_parts` / :meth:`body_inset`); and
+* optionally, :meth:`render_portraits` when the family needs something more
+  specific than the native high-resolution face-guide compositor.
 """
 
 from __future__ import annotations
@@ -46,7 +48,12 @@ def dataclass_dict(obj: Any) -> Dict[str, Any]:
 
 
 class CharacterGenerator:
-    """Base for every procedural character/prop generator."""
+    """Base for the config-driven generator family.
+
+    This is one optional authoring family, not the universal representation of
+    a sprite character. Its published outputs conform to the same target
+    contract as bespoke Python, rigged, SVG, and specialized module targets.
+    """
 
     #: Registry id; also the ``target:`` in the target's YAML config.
     target: str = ""
@@ -119,6 +126,27 @@ class CharacterGenerator:
     def render_canonical(self, spec: Any, job: CharacterJob) -> Image.Image:
         animation, frame_index = self.canonical_pose()
         return self.render_single(spec, animation, frame_index, job)
+
+    def render_portraits(
+        self,
+        spec: Any,
+        job: CharacterJob,
+        *,
+        target: str,
+        out_dir: str,
+    ):
+        """Render this character's separate portrait-sheet product.
+
+        The default implementation reruns :meth:`render_frame` at portrait
+        source resolution and composes a logical face guide.  Generator
+        families may override this method for bespoke detail or framing; no rig
+        or other particular pose representation is required.
+        """
+        from .portrait import render_generator_portraits
+
+        return render_generator_portraits(
+            self, spec, job, target=target, out_dir=out_dir
+        )
 
     # -- authored gameplay geometry (defaults: none) ----------------------
 

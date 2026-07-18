@@ -10,9 +10,10 @@ Two command families:
 
       list                        Show every registered target, grouped by category.
       canonical [<target>]        One canonical pose, or the full gallery.
-      sheet [<target>]            One full sprite sheet, or every tack-on sheet.
+      sheet [<target>]            One full gameplay sheet, or every tack-on sheet.
+      portraits [<target>]        Native portrait sheet(s) for supported characters.
       install [<target>]          Copy one target's files to sandbox assets, or all.
-      publish [<target>]          sheet + install (one, or every tack-on).
+      publish [<target>]          gameplay sheet + portraits + install.
       gifs [<target>]             Per-animation GIF previews from a rendered sheet.
       debug-hitboxes <target>     Hitbox/hurtbox overlay strips for one target.
 
@@ -64,6 +65,7 @@ from .commands import (
     _cmd_ldtk_manifest,
     _cmd_list_targets,
     _cmd_publish,
+    _cmd_portraits,
     _cmd_regenerate_all,
     _cmd_sheet,
     _cmd_single,
@@ -181,6 +183,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=_cmd_sheet)
 
     p = sub.add_parser(
+        "portraits",
+        help=(
+            "Render a character's independent native portrait sheet into "
+            "generated/, or every portrait-capable character if omitted."
+        ),
+    )
+    _add_optional_target_arg(p)
+    p.set_defaults(func=_cmd_portraits)
+
+    p = sub.add_parser(
         "install",
         help=(
             "Copy a single target's rendered files into the sandbox sprites "
@@ -194,7 +206,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser(
         "publish",
         help=(
-            "sheet + install for one target, or bulk for every tack-on target "
+            "gameplay sheet + native portraits + install for one target, or "
+            "bulk for every tack-on target "
             "if no name is given."
         ),
     )

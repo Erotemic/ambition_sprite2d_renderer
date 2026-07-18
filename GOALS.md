@@ -41,10 +41,10 @@ represents the same artistic abstraction.
 - Bespoke targets remain bespoke when sharing would flatten their silhouette,
   motion, or construction.
 - Every registered character publishes the same validated runtime-facing
-  products: sprite-sheet image page(s), animation/frame layout metadata, actor
-  metadata, and canonical review output. Additional products such as dialog
-  portrait sheets may extend this contract without prescribing how they are
-  rendered.
+  gameplay products: sprite-sheet image page(s), animation/frame layout
+  metadata, actor metadata, and canonical review output. Portrait-capable
+  characters additionally publish an independent portrait sheet and named-clip
+  manifest without prescribing how the source portrait is rendered.
 - Cross-family metadata such as body bounds, anchors, sockets, face guides, and
   default poses can be authored or derived without requiring a bone rig.
 - A renderer advertises capabilities honestly. Producing a requested raster
@@ -112,9 +112,12 @@ renderer implementation, or source-file format.
 - Bulk-port tack-on targets to expose the optional `render_canonical`
   hook (a small wrapper around `sheet_build.write_canonical`) where it
   removes the gallery's slow full-sheet fallback.
-- Make additional published products, such as dialog portraits, first-class
-  target outputs without requiring all authoring families to share one internal
-  rendering representation.
+- ✅ Static dialog portraits are now a first-class optional target output:
+  config generators have a native high-resolution default, module targets may
+  expose `render_portraits`, and publish/install carry the PNG/RON product.
+- Expand default portrait coverage family by family, add gallery/review tooling,
+  and then add named expression/animation selection without imposing a common
+  pose representation.
 - Consolidate config and module machinery only where doing so simplifies the
   target/output contract; preserve both surfaces when they remain useful.
 

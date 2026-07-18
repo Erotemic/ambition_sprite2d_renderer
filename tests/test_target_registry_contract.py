@@ -37,6 +37,17 @@ def test_registered_targets_have_installable_sheet_contracts():
             fname.endswith((".yaml", ".json", ".ron")) for fname in target.sheet_files
         ):
             problems.append(f"{name}: no manifest output declared")
+        if target.portrait_files:
+            if not target.supports_portraits:
+                problems.append(f"{name}: portrait files declared without renderer")
+            for fname in target.portrait_files:
+                path = Path(fname)
+                if path.is_absolute() or ".." in path.parts:
+                    problems.append(f"{name}: non-local portrait file {fname!r}")
+            if not any(fname.endswith(".png") for fname in target.portrait_files):
+                problems.append(f"{name}: portrait product has no png")
+            if not any(fname.endswith(".ron") for fname in target.portrait_files):
+                problems.append(f"{name}: portrait product has no ron manifest")
     assert problems == []
 
 

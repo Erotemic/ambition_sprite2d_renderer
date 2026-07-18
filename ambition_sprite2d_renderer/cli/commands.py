@@ -667,6 +667,15 @@ def _module_target_names() -> list[str]:
     )
 
 
+def _portrait_target_names() -> list[str]:
+    """Every character target that can natively publish portraits."""
+    return sorted(
+        name
+        for name, target in _ALL_TARGETS.items()
+        if target.category == "characters" and target.supports_portraits
+    )
+
+
 def _target_render_opts(args: argparse.Namespace) -> dict[str, object]:
     opts: dict[str, object] = {}
     if getattr(args, "quality_scale", None) is not None:
@@ -681,6 +690,26 @@ def _render_target(target_name: str, **opts) -> List[Path]:
     out_dir = generated_dir(target_name)
     paths = list(target.render_sheet(out_dir, **opts))
     print_paths(paths)
+    return paths
+
+
+def _render_portraits_target(target_name: str, **opts) -> List[Path]:
+    target = _get_target(target_name)
+    if not target.supports_portraits:
+        raise SystemExit(
+            f"error: target {target_name!r} has no native portrait renderer; "
+            "add a module-level render_portraits hook or use a config generator"
+        )
+    paths = list(target.render_portraits(generated_dir(target_name), **opts))
+    print_paths(paths)
+    return paths
+
+
+def _render_target_bundle(target_name: str, **opts) -> List[Path]:
+    paths = _render_target(target_name, **opts)
+    target = _get_target(target_name)
+    if target.supports_portraits:
+        paths.extend(_render_portraits_target(target_name, **opts))
     return paths
 
 
@@ -736,6 +765,19 @@ def _cmd_sheet(args: argparse.Namespace) -> int:
     )
 
 
+def _cmd_portraits(args: argparse.Namespace) -> int:
+    """`portraits [<name>]` — render native portrait products."""
+    opts = _target_render_opts(args)
+    if args.target:
+        _render_portraits_target(args.target, **opts)
+        return 0
+    return _bulk_over(
+        "portraits",
+        _portrait_target_names(),
+        lambda name: _render_portraits_target(name, **opts),
+    )
+
+
 def _cmd_install(args: argparse.Namespace) -> int:
     """`install [<name>]` — install one target's files, or every tack-on's."""
     if args.target:
@@ -749,15 +791,15 @@ def _cmd_install(args: argparse.Namespace) -> int:
 
 
 def _cmd_publish(args: argparse.Namespace) -> int:
-    """`publish [<name>]` — sheet + install for one target, or all tack-ons."""
+    """Publish gameplay plus supported portraits, then install the bundle."""
     opts = _target_render_opts(args)
     if args.target:
-        _render_target(args.target, **opts)
+        _render_target_bundle(args.target, **opts)
         copied = _install_target(args.target, args.dest_root)
         return 0 if copied else 1
 
     def _publish_one(name: str) -> None:
-        _render_target(name, **opts)
+        _render_target_bundle(name, **opts)
         _install_target(name, args.dest_root)
 
     return _bulk_over("publish", _module_target_names(), _publish_one)

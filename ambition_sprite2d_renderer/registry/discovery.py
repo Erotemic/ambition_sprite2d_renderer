@@ -6,14 +6,17 @@ Target is built one of two ways (see :meth:`Target.from_module` /
 
 - **Module-authored** targets: a Python module under ``targets/<category>/``
   (a single ``.py`` file or a package directory) that exposes a module-level
-  ``render(out_dir, **opts)`` function. The procedural-Python authoring path.
+  ``render(out_dir, **opts)`` function. Character modules may additionally
+  expose ``render_portraits(out_dir, **opts)`` for an independent native
+  portrait product.
 - **Config-authored** targets: a YAML config in ``configs/*.yaml`` (or
   ``configs/review/*.yaml``) that drives one of the ``CharacterGenerator``s
-  registered in ``registry/character_generators.py``. The declarative authoring path.
+  registered in ``registry/character_generators.py``. Character generators
+  receive a default native portrait implementation that families may override.
 
-The registry's job is just to walk every surface and yield [`Target`]
-instances. Consumers (CLI, gallery, publish) iterate the returned dict
-without caring which authoring path a target came from.
+The registry unifies discovery and published outputs, not drawing or posing
+internals. Consumers (CLI, gallery, publish) iterate the returned dict without
+caring which authoring family produced a target.
 """
 
 from __future__ import annotations
@@ -245,11 +248,11 @@ class Target:
 
     * :meth:`from_module` — a Python module under ``targets/<category>/`` that
       exposes a ``render(out_dir, **opts)`` function (and optionally
-      ``render_canonical`` / ``install`` / ``ACTOR_METADATA``). The
-      procedural-Python authoring path.
+      ``render_canonical`` / ``render_portraits`` / ``install`` /
+      ``ACTOR_METADATA``). The module may use any authoring family internally.
     * :meth:`from_config` — a YAML config in ``configs/`` that drives a
       :class:`~ambition_sprite2d_renderer.authoring.generator.CharacterGenerator`.
-      The declarative authoring path.
+      The generator may be procedural, rigged, part-based, or hybrid.
 
     ``kind`` (``"module"`` / ``"config"``) records which path built it, for the
     rare consumer that needs to know (e.g. listing only module-authored props).
@@ -261,16 +264,19 @@ class Target:
         name: str,
         category: str,
         sheet_files: Tuple[str, ...],
+        portrait_files: Tuple[str, ...] = (),
         kind: str,
     ) -> None:
         self.name = name
         self.category = category
         self.sheet_files = sheet_files
+        self.portrait_files = portrait_files
         self.kind = kind
         # Module-authored fields.
         self.module_path: Optional[str] = None
         self._render_fn: Optional[Callable] = None
         self._render_canonical_fn: Optional[Callable] = None
+        self._render_portraits_fn: Optional[Callable] = None
         self._install_fn: Optional[Callable] = None
         self._actor_metadata: Dict[str, Any] = {}
         # Config-authored fields.
@@ -290,13 +296,22 @@ class Target:
         sheet_files: Tuple[str, ...],
         install: Optional[Callable] = None,
         render_canonical: Optional[Callable] = None,
+        render_portraits: Optional[Callable] = None,
+        portrait_files: Tuple[str, ...] = (),
         actor_metadata: Mapping[str, Any] | None = None,
     ) -> "Target":
-        self = cls(name=name, category=category, sheet_files=sheet_files, kind="module")
+        self = cls(
+            name=name,
+            category=category,
+            sheet_files=sheet_files,
+            portrait_files=portrait_files,
+            kind="module",
+        )
         self.module_path = module_path
         self._render_fn = render
         self._install_fn = install
         self._render_canonical_fn = render_canonical
+        self._render_portraits_fn = render_portraits
         self._actor_metadata = dict(actor_metadata or {})
         return self
 
@@ -319,6 +334,10 @@ class Target:
                 f"{name}_spritesheet.ron",
                 f"{name}_actor.ron",
             ),
+            portrait_files=(
+                f"{name}_portraits.png",
+                f"{name}_portraits.ron",
+            ),
         )
         self._config_path = config_path
         self._job = job
@@ -340,15 +359,44 @@ class Target:
             return self._render_canonical_module(out_dir, **opts)
         return self._render_canonical_config(out_dir, **opts)
 
+    @property
+    def supports_portraits(self) -> bool:
+        return self.kind == "config" or self._render_portraits_fn is not None
+
+    def render_portraits(self, out_dir: Path, **opts) -> List[Path]:
+        """Render the target's independent portrait-sheet product.
+
+        Portrait support is a publishing capability, not an authoring-style
+        requirement. Config generators receive the scalable default; module
+        targets opt in with a module-level ``render_portraits`` hook.
+        """
+        out_dir = Path(out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        if self.kind == "module":
+            if self._render_portraits_fn is None:
+                return []
+            return list(self._render_portraits_fn(out_dir, **opts))
+        return self._render_portraits_config(out_dir, **opts)
+
     def install(self, render_dir: Path, dest_root: Path) -> List[Path]:
-        """Copy each path in ``sheet_files``. Module targets may override with a
-        module-level ``install`` (e.g. mockingbird_boss ships a subdirectory)."""
+        """Install every declared gameplay and portrait product.
+
+        Module targets may override gameplay installation with a module-level
+        ``install`` (for example, a multipart boss that ships a subdirectory).
+        Declared portrait files are still copied by the common target contract.
+        """
         render_dir = Path(render_dir)
         dest_root = Path(dest_root)
-        if self._install_fn is not None:
-            return list(self._install_fn(render_dir, dest_root))
         dest_root.mkdir(parents=True, exist_ok=True)
-        return _copy_sheet_files(self.sheet_files, render_dir, dest_root)
+        if self._install_fn is not None:
+            copied = list(self._install_fn(render_dir, dest_root))
+            copied.extend(_copy_sheet_files(self.portrait_files, render_dir, dest_root))
+            return copied
+        return _copy_sheet_files(
+            tuple(dict.fromkeys((*self.sheet_files, *self.portrait_files))),
+            render_dir,
+            dest_root,
+        )
 
     # -- module-authored strategy -----------------------------------------
 
@@ -419,6 +467,26 @@ class Target:
         out = out_dir / f"{self.name}_canonical_transparent.png"
         img.save(out)
         return out
+
+    def _render_portraits_config(self, out_dir: Path, **opts) -> List[Path]:
+        from .character_generators import get_generator
+
+        # Gameplay quality flags tune the gameplay sheet. Portraits have their
+        # own native render resolution and must not be post-scaled from it.
+        opts.pop("quality_scale", None)
+        opts.pop("downsample", None)
+        if opts:
+            unknown = ", ".join(sorted(opts))
+            raise TypeError(
+                f"config target render_portraits got unknown option(s): {unknown}"
+            )
+        generator = get_generator(self._job.target)
+        spec = generator.sample_spec(self._job)
+        return list(
+            generator.render_portraits(
+                spec, self._job, target=self.name, out_dir=str(out_dir)
+            )
+        )
 
 
 # ---- Discovery ---------------------------------------------------------------
@@ -505,6 +573,18 @@ def _build_module_target(
     render_canonical_fn = getattr(mod, "render_canonical", None)
     if not callable(render_canonical_fn):
         render_canonical_fn = None
+    render_portraits_fn = getattr(mod, "render_portraits", None)
+    if not callable(render_portraits_fn):
+        render_portraits_fn = None
+    portrait_files = tuple(
+        getattr(
+            mod,
+            "PORTRAIT_FILES",
+            (f"{stem}_portraits.png", f"{stem}_portraits.ron")
+            if render_portraits_fn is not None
+            else (),
+        )
+    )
     return Target.from_module(
         name=stem,
         category=category,
@@ -513,6 +593,8 @@ def _build_module_target(
         sheet_files=sheet_files,
         install=install_fn,
         render_canonical=render_canonical_fn,
+        render_portraits=render_portraits_fn,
+        portrait_files=portrait_files,
         actor_metadata=getattr(mod, "ACTOR_METADATA", None),
     )
 
@@ -542,6 +624,17 @@ def _build_module_targets(
         render_canonical_fn = spec.get("render_canonical")
         if render_canonical_fn is not None and not callable(render_canonical_fn):
             render_canonical_fn = None
+        render_portraits_fn = spec.get("render_portraits")
+        if render_portraits_fn is not None and not callable(render_portraits_fn):
+            render_portraits_fn = None
+        portrait_files = tuple(
+            spec.get(
+                "portrait_files",
+                (f"{sub_name}_portraits.png", f"{sub_name}_portraits.ron")
+                if render_portraits_fn is not None
+                else (),
+            )
+        )
         results.append(
             Target.from_module(
                 name=sub_name,
@@ -551,6 +644,8 @@ def _build_module_targets(
                 sheet_files=sheet_files,
                 install=install_fn,
                 render_canonical=render_canonical_fn,
+                render_portraits=render_portraits_fn,
+                portrait_files=portrait_files,
                 actor_metadata=merge_actor_metadata(
                     getattr(mod, "ACTOR_METADATA", None), spec.get("actor_metadata")
                 ),

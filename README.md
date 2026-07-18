@@ -59,9 +59,17 @@ source character representation. A normal character publish produces:
   other available metadata, and
 - canonical review images.
 
-A target may later publish additional products such as dialog portrait sheets.
-Those products extend the target contract; they do not require every target to
-share a pose model or rig implementation.
+Character targets may also publish an independent dialog-portrait product:
+
+- ``<target>_portraits.png`` — one or more close-up frames, and
+- ``<target>_portraits.ron`` — named clips, frame rectangles, timing, and the
+  required ``default`` clip.
+
+Portraits are rerendered from the character's native authoring source; they are
+never enlarged from the gameplay sheet. Config generators receive a default
+face-guide compositor. Module targets opt in with ``render_portraits`` and may
+use a family helper or fully custom detailed art. This extends the target
+contract without requiring a shared pose model or rig implementation.
 
 Metadata such as a face guide, head anchor, or default pose is cross-family
 output metadata. Direct Python and specialized renderers can emit it just as a
@@ -93,9 +101,10 @@ result and make the implementation easier to understand.
 ```
 python -m ambition_sprite2d_renderer list                   # every registered target, grouped by category
 python -m ambition_sprite2d_renderer canonical [<target>]   # one canonical, or the full gallery
-python -m ambition_sprite2d_renderer sheet     [<target>]   # one full sheet, or every tack-on sheet
-python -m ambition_sprite2d_renderer install   [<target>]   # one install, or every tack-on install
-python -m ambition_sprite2d_renderer publish   [<target>]   # sheet + install (one, or every tack-on)
+python -m ambition_sprite2d_renderer sheet     [<target>]   # gameplay sheet only
+python -m ambition_sprite2d_renderer portraits [<target>]   # native portrait product for supported characters
+python -m ambition_sprite2d_renderer install   [<target>]   # install rendered products
+python -m ambition_sprite2d_renderer publish   [<target>]   # gameplay sheet + portraits + install
 python -m ambition_sprite2d_renderer gifs      [<target>]   # per-animation GIF previews
 python -m ambition_sprite2d_renderer debug-hitboxes <target> # hitbox/hurtbox overlay strips
 ```
@@ -123,9 +132,11 @@ python -m ambition_sprite2d_renderer ldtk-manifest --out <f> # LDtk visual manif
                                                              # ambition_ldtk_tools apply-manifest
 ```
 
-`sheet` writes to `tools/ambition_sprite2d_renderer/generated/<target>/`.
-`install` copies the canonical sheet files into
-`crates/ambition_actors/assets/sprites/`. `publish` does both.
+`sheet` and `portraits` write their products to
+`tools/ambition_sprite2d_renderer/generated/<target>/`. `install` copies every
+declared product into `crates/ambition_actors/assets/sprites/`. `publish`
+renders the gameplay sheet, renders portraits when supported, and installs the
+complete bundle.
 
 The bulk forms of `sheet` / `install` / `publish` are scoped to the tack-on
 surface (characters/props/tiles/icons); main YAML configs and review NPCs
@@ -196,6 +207,20 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
             outputs["preview"], outputs["canonical"], outputs["canonical_transparent"]]
 ```
 
+A character module may additionally expose:
+
+```python
+def render_portraits(out_dir: str | Path, **opts) -> List[Path]:
+    # Rerender from this target's native source, then write
+    # my_new_enemy_portraits.png + my_new_enemy_portraits.ron.
+    ...
+```
+
+The common helpers in `authoring/portrait.py` provide face-guide framing and
+manifest packing, but the hook may be entirely bespoke. It must not read or
+enlarge the published gameplay sheet. Discovery automatically declares the
+canonical portrait filenames when the hook exists.
+
 That's it. `list` will show it; `publish my_new_enemy` will write +
 install it.
 
@@ -237,11 +262,11 @@ Each entry becomes its own registry key.
 
 ### Custom install (optional)
 
-The default installer copies each path in `SHEET_FILES` from
-`generated/<name>/` into `crates/ambition_actors/assets/sprites/`. If
-your target ships a subdirectory of part files (or otherwise needs
-non-flat install behavior), expose `install(render_dir, dest_root) ->
-Iterable[Path]` and it'll be used instead.
+The default installer copies every declared gameplay and portrait product
+from `generated/<name>/` into `crates/ambition_actors/assets/sprites/`. If your
+target ships a subdirectory of part files (or otherwise needs non-flat gameplay
+installation), expose `install(render_dir, dest_root) -> Iterable[Path]`. The
+common target installer still adds declared portrait files afterward.
 
 ### Helpers and authoring families
 
@@ -282,6 +307,25 @@ family with a reusable renderer and parameter schema:
 + [`configs/robot.yaml`](ambition_sprite2d_renderer/configs/robot.yaml) is a
 canonical config-driven generator example. It is not a mandate to convert
 bespoke module targets into parameterized humanoid variants.
+
+Config-driven characters automatically receive a native default portrait. A
+job may refine the cross-family face guide without changing its generator:
+
+```yaml
+visual:
+  default_pose: idle
+  portrait:
+    animation: idle
+    frame: 1
+    face_guide:
+      center: [64, 27]
+      size: [24, 29]
+      source_size: [128, 128]
+```
+
+The guide uses logical source-canvas coordinates. It is equally valid for a
+procedural, part-based, or rigged generator and does not prescribe how the
+character is posed.
 
 ## Character specs and review casts
 

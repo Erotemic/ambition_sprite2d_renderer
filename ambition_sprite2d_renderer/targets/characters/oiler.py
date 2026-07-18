@@ -12,6 +12,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Tuple
 
+from ...authoring.portrait import (
+    FaceGuide,
+    PortraitClip,
+    render_framed_portrait,
+    write_portrait_sheet,
+)
 from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet
 
@@ -115,6 +121,26 @@ def _render_frame(animation: str, frame_idx: int, frame_count: int):
     return _load_doc(filename).render_frame(clip, frame_idx, frame_count)
 
 
+def render_portraits(out_dir: str | Path, **opts):
+    """Publish Oiler's portrait directly from the scalable SVG rig."""
+    del opts
+    filename, clip = CLIP_SOURCE["idle"]
+    doc = _load_doc(filename)
+    source = doc.render_at(clip, doc.frame_time(clip, 1, 8), scale=4)
+    face = FaceGuide(
+        center_x=64.0,
+        center_y=24.0,
+        width=27.0,
+        height=31.0,
+        source_width=float(doc.frame["width"]),
+        source_height=float(doc.frame["height"]),
+    )
+    image = render_framed_portrait(source, face)
+    return write_portrait_sheet(
+        TARGET_NAME, {"default": PortraitClip.still(image)}, Path(out_dir)
+    )
+
+
 def render(out_dir: str | Path, **opts):
     del opts
     outputs = build_sheet(
@@ -141,4 +167,4 @@ def render(out_dir: str | Path, **opts):
     return [Path(outputs[key]) for key in keys if outputs.get(key)]
 
 
-__all__ = ["ACTOR_METADATA", "render"]
+__all__ = ["ACTOR_METADATA", "render", "render_portraits"]

@@ -10,9 +10,10 @@ artifacts needed by the game:
 - animation/frame layout metadata,
 - actor metadata such as body geometry, anchors, sockets, and animation
   bindings where available, and
-- canonical review output.
+- canonical review output, and
+- for portrait-capable characters, an independent portrait-sheet image and
+  named-clip manifest.
 
-A future output such as a dialog portrait sheet belongs beside those products.
 The contract does not prescribe how the character is drawn or posed before the
 artifacts are assembled.
 
@@ -118,6 +119,35 @@ player_extended_spritesheet.png
 Future variants should normally be new YAML jobs when they remain members of
 the same generator family. Add new target code when a variant needs a different
 body plan, construction technique, or renderer.
+
+## Portrait product
+
+A dialog portrait is a separately published sprite-sheet product:
+
+```text
+<target>_portraits.png
+<target>_portraits.ron
+```
+
+The manifest names a required `default` clip and is already shaped for later
+static expressions and animated clips. The runtime catalog references this
+product independently from the gameplay sheet.
+
+Portrait production remains family-specific:
+
+- config-driven `CharacterGenerator` targets receive a default compositor that
+  rerenders a canonical pose at high source resolution and frames it from a
+  logical face guide;
+- module-authored characters opt in with `render_portraits`, which may reuse a
+  procedural family helper, render an SVG/rig document at a larger scale, or
+  draw custom portrait-specific detail;
+- targets that cannot natively rerender must provide an explicit portrait path
+  rather than enlarge pixels from the gameplay sheet.
+
+`FaceGuide` is cross-family authoring metadata. It describes a logical face
+region in the source character canvas and does not imply bones, IK, or a rig.
+The common portrait packer owns only the published PNG/RON vocabulary; it does
+not own the character's pose representation.
 
 ## Optional rig family and cross-family metadata
 

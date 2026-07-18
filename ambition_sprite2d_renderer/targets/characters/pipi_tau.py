@@ -31,6 +31,12 @@ from typing import List, Sequence, Tuple
 
 from PIL import Image, ImageDraw, ImageFont
 
+from ...authoring.portrait import (
+    FaceGuide,
+    PortraitClip,
+    render_framed_portrait,
+    write_portrait_sheet,
+)
 from ...authoring.sheet_build import build_sheet, write_canonical
 
 RGBA = Tuple[int, int, int, int]
@@ -964,7 +970,8 @@ def _draw_ability_effects_front(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
         _line(draw, [hand, (hand[0] + 28.0 * release, hand[1] + 2.0)], _fade(FIELD, release * 0.75), 1.0)
 
 
-def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
+def _render_native_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
+    """Render into the authored supersampled canvas without raster scaling."""
     pose = _pose(animation, frame_idx, nframes)
     image = Image.new("RGBA", (FRAME_W * SUPER, FRAME_H * SUPER), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image, "RGBA")
@@ -977,8 +984,36 @@ def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     _draw_arm(draw, pose, pose.near_shoulder, pose.near_elbow, pose.near_hand, pose.near_hand_mode, far=False)
     _draw_ability_effects_front(draw, pose)
     _draw_head(draw, pose)
+    return image
 
-    return image.resize((FRAME_W, FRAME_H), Image.Resampling.LANCZOS)
+
+def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
+    return _render_native_frame(animation, frame_idx, nframes).resize(
+        (FRAME_W, FRAME_H), Image.Resampling.LANCZOS
+    )
+
+
+def render_portraits(out_dir: Path, **opts) -> List[Path]:
+    """Publish Pipi Tau's native head-and-shoulders dialog portrait."""
+    del opts
+    source = _render_native_frame("idle", 1, 8)
+    face = FaceGuide(
+        center_x=65.0,
+        center_y=28.0,
+        width=27.0,
+        height=31.0,
+        source_width=FRAME_W,
+        source_height=FRAME_H,
+    )
+    image = render_framed_portrait(
+        source,
+        face,
+        view_width=58.0,
+        center_y=42.0,
+    )
+    return write_portrait_sheet(
+        TARGET_NAME, {"default": PortraitClip.still(image)}, Path(out_dir)
+    )
 
 
 def _body_metrics_override(fw: int, fh: int):
@@ -1036,6 +1071,9 @@ def render_canonical(out_dir: Path, **opts) -> Path:
         Path(out_dir),
         frame_size=(FRAME_W, FRAME_H),
     )
+
+
+__all__ = ["ACTOR_METADATA", "render", "render_canonical", "render_portraits"]
 
 
 def main(argv: Sequence[str] | None = None) -> int:
