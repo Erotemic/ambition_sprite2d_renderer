@@ -12,6 +12,8 @@ Two command families:
       canonical [<target>]        One canonical pose, or the full gallery.
       sheet [<target>]            One full gameplay sheet, or every tack-on sheet.
       portraits [<target>]        Native portrait sheet(s) for supported characters.
+      portrait-gallery           Contact sheet of installed default portraits.
+      portrait-files <target>    Installed-relative portrait product paths.
       install [<target>]          Copy one target's files to sandbox assets, or all.
       publish [<target>]          gameplay sheet + portraits + install.
       gifs [<target>]             Per-animation GIF previews from a rendered sheet.
@@ -66,6 +68,8 @@ from .commands import (
     _cmd_list_targets,
     _cmd_publish,
     _cmd_portraits,
+    _cmd_portrait_gallery,
+    _cmd_portrait_files,
     _cmd_regenerate_all,
     _cmd_sheet,
     _cmd_single,
@@ -191,6 +195,32 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_optional_target_arg(p)
     p.set_defaults(func=_cmd_portraits)
+
+    p = sub.add_parser(
+        "portrait-gallery",
+        help="Build a labeled contact sheet from installed portrait products.",
+    )
+    p.add_argument(
+        "--source-dir",
+        type=Path,
+        default=sandbox_sprites_dir(),
+        help="Directory recursively containing *_portraits.ron products.",
+    )
+    p.add_argument(
+        "--out",
+        type=Path,
+        default=DEFAULT_ASSET_DIR / "portrait_gallery.png",
+        help="Output gallery PNG.",
+    )
+    p.add_argument("--columns", type=int, default=8)
+    p.set_defaults(func=_cmd_portrait_gallery)
+
+    p = sub.add_parser(
+        "portrait-files",
+        help="Print installed-relative portrait product files for one target.",
+    )
+    p.add_argument("target")
+    p.set_defaults(func=_cmd_portrait_files)
 
     p = sub.add_parser(
         "install",

@@ -21,6 +21,11 @@ from typing import List, Tuple
 from PIL import Image, ImageColor, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
+from ...authoring.portrait import (
+    PortraitClip,
+    render_canonical_portrait,
+    write_portrait_sheet,
+)
 
 RGBA = Tuple[int, int, int, int]
 
@@ -189,6 +194,17 @@ def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     if animation == "idle":
         return _render_idle_frame(frame_idx, nframes)
     raise ValueError(f"unknown animation: {animation}")
+
+
+def render_portraits(out_dir: str | Path, **opts) -> List[Path]:
+    """Publish the Hall-visible board as a complete-subject portrait."""
+
+    del opts
+    source = render_frame("idle", 1, ROWS[0][1])
+    portrait = render_canonical_portrait(source)
+    return write_portrait_sheet(
+        TARGET_NAME, {"default": PortraitClip.still(portrait)}, out_dir
+    )
 
 
 def render(out_dir: str | Path, **opts) -> List[Path]:

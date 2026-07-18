@@ -22,6 +22,7 @@ from . import sprite_generator
 
 TARGET_NAME = sprite_generator.TARGET_NAME
 SHEET_FILES = list(sprite_generator.OUTPUT_FILES) + [f"{TARGET_NAME}_actor.ron"]
+PORTRAIT_INSTALL_SUBDIR = TARGET_NAME
 
 ACTOR_METADATA = {
     "actor": {"character_id": f"npc_{TARGET_NAME}"},
@@ -47,6 +48,15 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
             quick=bool(opts.get("quick", False)),
         )
     )
+
+
+def render_canonical(out_dir: str | Path, **opts) -> Path:
+    """Render one fresh canonical without assembling or packing the boss sheet."""
+
+    del opts
+    out_dir = Path(out_dir)
+    sprite_generator.render_outputs(outdir=out_dir, quick=True)
+    return out_dir / f"{TARGET_NAME}_canonical_transparent.png"
 
 
 def install(render_dir: str | Path, dest_root: str | Path) -> List[Path]:

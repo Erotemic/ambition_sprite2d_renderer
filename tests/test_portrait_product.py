@@ -195,3 +195,202 @@ def test_oiler_portrait_hook_requests_native_svg_scale(monkeypatch, tmp_path):
     ]
     assert Image.open(outputs[0]).size == (256, 320)
     assert Image.open(outputs[0]).getchannel("A").getbbox() is not None
+
+
+def test_module_character_without_hook_uses_fresh_canonical_fallback(tmp_path):
+    calls: list[str] = []
+
+    def render_sheet(out_dir, **opts):
+        del out_dir, opts
+        raise AssertionError("portrait fallback must not sample a gameplay sheet")
+
+    def render_canonical(out_dir, **opts):
+        del opts
+        calls.append("canonical")
+        out = Path(out_dir) / "fallback_canonical_transparent.png"
+        _sample_frame((160, 200)).save(out)
+        return out
+
+    target = Target.from_module(
+        name="fallback",
+        category="characters",
+        module_path="tests.fallback",
+        render=render_sheet,
+        render_canonical=render_canonical,
+        sheet_files=("fallback_spritesheet.png",),
+        portrait_files=("fallback_portraits.png", "fallback_portraits.ron"),
+        actor_metadata={"body": {"body_plan": "HumanoidBiped"}},
+    )
+    assert target.supports_portraits
+    outputs = target.render_portraits(tmp_path)
+    assert calls == ["canonical"]
+    assert [path.name for path in outputs] == [
+        "fallback_portraits.png",
+        "fallback_portraits.ron",
+    ]
+    assert Image.open(outputs[0]).size == (256, 320)
+
+
+def test_portrait_install_subdirectory_is_independent_of_gameplay_install(tmp_path):
+    rendered = tmp_path / "rendered"
+    installed = tmp_path / "installed"
+    rendered.mkdir()
+    (rendered / "boss_spritesheet.png").write_bytes(b"sheet")
+    write_portrait_sheet(
+        "boss", {"default": PortraitClip.still(_sample_frame())}, rendered
+    )
+    target = Target.from_module(
+        name="boss",
+        category="characters",
+        module_path="tests.boss",
+        render=lambda *_args, **_kwargs: [],
+        sheet_files=("boss_spritesheet.png",),
+        portrait_files=("boss_portraits.png", "boss_portraits.ron"),
+        portrait_install_subdir="boss",
+    )
+    target.install(rendered, installed)
+    assert (installed / "boss_spritesheet.png").exists()
+    assert (installed / "boss" / "boss_portraits.png").exists()
+    assert (installed / "boss" / "boss_portraits.ron").exists()
+
+
+def test_every_discovered_character_declares_portrait_support():
+    report = discover_all_targets()
+    unsupported = sorted(
+        target.name
+        for target in report.targets.values()
+        if target.category == "characters" and not target.supports_portraits
+    )
+    assert unsupported == []
+
+
+def test_portrait_gallery_discovers_nested_products(tmp_path):
+    from ambition_sprite2d_renderer.authoring.portrait import write_portrait_gallery
+
+    write_portrait_sheet(
+        "flat", {"default": PortraitClip.still(_sample_frame())}, tmp_path
+    )
+    nested = tmp_path / "boss"
+    write_portrait_sheet(
+        "nested", {"default": PortraitClip.still(_sample_frame())}, nested
+    )
+    out, warnings = write_portrait_gallery(tmp_path, tmp_path / "gallery.png", columns=2)
+    assert warnings == []
+    assert out.exists()
+    assert Image.open(out).getchannel("A").getbbox() is not None
+
+
+def test_sheet_build_canonical_mode_draws_only_one_fresh_frame(tmp_path):
+    from ambition_sprite2d_renderer.authoring.frame_source import CallableFrameSource
+    from ambition_sprite2d_renderer.authoring.sheet_build import (
+        canonical_render_only,
+        render_sheet,
+    )
+
+    calls: list[tuple[str, int, int]] = []
+
+    def render_frame(animation, index, count):
+        calls.append((animation, index, count))
+        return _sample_frame((64, 80))
+
+    source = CallableFrameSource(
+        target="family_member",
+        rows=[("idle", 4, 100), ("walk", 8, 80)],
+        render_fn=render_frame,
+        frame_size=(64, 80),
+        auto_crop=False,
+    )
+    with canonical_render_only():
+        outputs = render_sheet(source, tmp_path)
+
+    assert calls == [("idle", 1, 4)]
+    assert outputs["canonical"].exists()
+    assert outputs["canonical_transparent"].exists()
+    assert not outputs["spritesheet"].exists()
+
+
+def test_sandbag_portrait_uses_its_procedural_authoring_path(tmp_path, monkeypatch):
+    from ambition_sprite2d_renderer.targets.characters import sandbag
+
+    calls: list[tuple[str, int, int]] = []
+
+    def render_frame(animation, frame_index, frame_count):
+        calls.append((animation, frame_index, frame_count))
+        return _sample_frame((512, 512))
+
+    monkeypatch.setattr(sandbag, "render_sandbag_frame", render_frame)
+    outputs = sandbag.render_portraits(tmp_path)
+
+    assert calls == [("idle", 1, 6)]
+    assert [path.name for path in outputs] == [
+        "sandbag_portraits.png",
+        "sandbag_portraits.ron",
+    ]
+
+
+def test_robot_heavy_portraits_cover_concrete_variants(tmp_path, monkeypatch):
+    from ambition_sprite2d_renderer.targets.characters import robot_heavy
+
+    calls: list[tuple[str, str, int, int]] = []
+
+    def render_frame(self, animation, frame_index, frame_count):
+        calls.append((self.spec.target_name, animation, frame_index, frame_count))
+        return _sample_frame((512, 512))
+
+    monkeypatch.setattr(robot_heavy.RobotHeavyRenderer, "render_frame", render_frame)
+    outputs = robot_heavy.render_portraits(tmp_path)
+
+    expected_targets = [spec.target_name for spec in robot_heavy.VARIANTS.values()]
+    assert [call[0] for call in calls] == expected_targets
+    assert all(call[1:] == ("idle", 1, 6) for call in calls)
+    assert {path.name for path in outputs} == {
+        name
+        for target in expected_targets
+        for name in (f"{target}_portraits.png", f"{target}_portraits.ron")
+    }
+
+
+def test_gnu_ton_portraits_cover_multipart_hall_actors(tmp_path, monkeypatch):
+    from ambition_sprite2d_renderer.targets.characters import gnu_ton_boss
+
+    calls: list[tuple[str, int, int, str]] = []
+
+    def draw_frame(animation, frame_index, frame_count, *, layer):
+        calls.append((animation, frame_index, frame_count, layer))
+        return _sample_frame((768, 576))
+
+    monkeypatch.setattr(gnu_ton_boss.sprite_generator, "draw_frame", draw_frame)
+    outputs = gnu_ton_boss.render_portraits(tmp_path)
+
+    assert calls == [
+        ("rest", 1, 10, "full"),
+        ("rest", 1, 10, "giant_body"),
+        ("rest", 1, 10, "hands"),
+    ]
+    assert {path.name for path in outputs} == set(gnu_ton_boss.PORTRAIT_FILES)
+
+
+def test_mockingbird_fallback_uses_quick_canonical_path(tmp_path, monkeypatch):
+    from ambition_sprite2d_renderer.targets.characters import mockingbird_boss
+
+    calls: list[bool] = []
+
+    def render_outputs(*, outdir, quick):
+        calls.append(quick)
+        outdir = Path(outdir)
+        outdir.mkdir(parents=True, exist_ok=True)
+        canonical = outdir / "mockingbird_boss_canonical_transparent.png"
+        _sample_frame((512, 512)).save(canonical)
+        return [canonical]
+
+    monkeypatch.setattr(
+        mockingbird_boss.sprite_generator, "render_outputs", render_outputs
+    )
+    target = discover_all_targets().targets["mockingbird_boss"]
+    outputs = target.render_portraits(tmp_path)
+
+    assert calls == [True]
+    assert [path.name for path in outputs] == [
+        "mockingbird_boss_portraits.png",
+        "mockingbird_boss_portraits.ron",
+    ]

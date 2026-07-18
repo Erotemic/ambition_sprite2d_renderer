@@ -112,12 +112,14 @@ renderer implementation, or source-file format.
 - Bulk-port tack-on targets to expose the optional `render_canonical`
   hook (a small wrapper around `sheet_build.write_canonical`) where it
   removes the gallery's slow full-sheet fallback.
-- ✅ Static dialog portraits are now a first-class optional target output:
-  config generators have a native high-resolution default, module targets may
-  expose `render_portraits`, and publish/install carry the PNG/RON product.
-- Expand default portrait coverage family by family, add gallery/review tooling,
-  and then add named expression/animation selection without imposing a common
-  pose representation.
+- ✅ Static dialog portraits are a first-class character-target output:
+  config generators have a native high-resolution default, module targets have
+  a fresh-canonical fallback, families may expose custom `render_portraits`, and
+  publish/install carry the PNG/RON product.
+- ✅ Full Hall default coverage, convention-derived catalog paths, a hard
+  regeneration coverage gate, and portrait-gallery review tooling have landed.
+- Add named expression/animation selection without imposing a common pose
+  representation.
 - Consolidate config and module machinery only where doing so simplifies the
   target/output contract; preserve both surfaces when they remain useful.
 

@@ -33,6 +33,8 @@ discovery API.
 from __future__ import annotations
 
 import math
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -46,6 +48,58 @@ from ..core.manifest_ron import record_to_ron, records_to_ron, ron_tuning
 from ..registry.pack_groups import policy_for
 
 RGBA = Tuple[int, int, int, int]
+
+_CANONICAL_ONLY = ContextVar("ambition_sheet_build_canonical_only", default=False)
+
+
+@contextmanager
+def canonical_render_only():
+    """Limit this procedural-sheet family to a freshly drawn canonical.
+
+    The target's normal ``render`` function still runs, preserving its private
+    authoring implementation, but :func:`render_sheet` skips frame enumeration,
+    packing, and manifests. This is the efficient default-portrait adapter for
+    modules built on ``sheet_build``; it is not a universal character model.
+    """
+
+    token = _CANONICAL_ONLY.set(True)
+    try:
+        yield
+    finally:
+        _CANONICAL_ONLY.reset(token)
+
+
+def _render_canonical_only(source: FrameSource, out_dir: Path) -> dict[str, Path]:
+    target = source.target
+    rows = source.rows
+    anim, nframes, _duration = rows[0]
+    image = source.render_fn(anim, min(1, nframes - 1), nframes).convert("RGBA")
+    if source.auto_crop:
+        bbox = image.getchannel("A").getbbox()
+        if bbox is not None:
+            margin = int(source.crop_margin)
+            x1 = max(0, bbox[0] - margin)
+            y1 = max(0, bbox[1] - margin)
+            x2 = min(image.width, bbox[2] + margin)
+            y2 = min(image.height, bbox[3] + margin)
+            image = image.crop((x1, y1, x2, y2))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    canonical = out_dir / f"{target}_canonical.png"
+    transparent = out_dir / f"{target}_canonical_transparent.png"
+    background = Image.new("RGBA", image.size, (43, 33, 40, 255))
+    background.alpha_composite(image)
+    background.save(canonical)
+    image.save(transparent)
+    return {
+        "canonical": canonical,
+        "canonical_transparent": transparent,
+        "spritesheet": out_dir / f"{target}_spritesheet.png",
+        "yaml": out_dir / f"{target}_spritesheet.yaml",
+        "ron": out_dir / f"{target}_spritesheet.ron",
+        "actor": out_dir / f"{target}_actor.ron",
+        "preview": out_dir / f"{target}_preview_labeled.png",
+    }
+
 
 SCALE = 4
 BASE_FRAME = (128, 128)
@@ -439,6 +493,9 @@ def render_sheet(source: FrameSource, out_dir: Path):
     rects, merged in as ``animations[key].hitbox`` — for boss attacks
     whose damage geometry the sprite author wants to pin.
     """
+    if _CANONICAL_ONLY.get():
+        return _render_canonical_only(source, Path(out_dir))
+
     target = source.target
     rows = source.rows
     render_fn = source.render_fn

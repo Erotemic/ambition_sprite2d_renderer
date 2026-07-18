@@ -15,6 +15,7 @@ import yaml
 from PIL import Image, ImageDraw
 
 from ..registry import CharacterJob, RenderConfig
+from ..registry.character_generators import get_generator
 from ..core.draw import font as load_font
 from .sheet import write_spritesheet
 from .canonical import render_canonical
@@ -208,6 +209,14 @@ def write_faction_lineup(config_path: str | Path, out_dir: str | Path) -> List[P
         image_out = out_dir / f"{stem}_spritesheet.png"
         manifest_out = out_dir / f"{stem}_spritesheet.yaml"
         outputs.extend(write_spritesheet(job, image_out, manifest_out))
+        generator = get_generator(job.target)
+        spec = generator.sample_spec(job)
+        portrait_paths = list(
+            generator.render_portraits(
+                spec, job, target=stem, out_dir=str(out_dir)
+            )
+        )
+        outputs.extend(portrait_paths)
         img = render_canonical(job)
         canonical_out = out_dir / f"{stem}_canonical.png"
         img.save(canonical_out)
@@ -235,6 +244,8 @@ def write_faction_lineup(config_path: str | Path, out_dir: str | Path) -> List[P
                     "spritesheet": image_out.name,
                     "manifest": manifest_out.name,
                     "canonical": canonical_out.name,
+                    "portrait_image": f"{stem}_portraits.png",
+                    "portrait_manifest": f"{stem}_portraits.ron",
                 },
             }
         )

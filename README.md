@@ -67,8 +67,9 @@ Character targets may also publish an independent dialog-portrait product:
 
 Portraits are rerendered from the character's native authoring source; they are
 never enlarged from the gameplay sheet. Config generators receive a default
-face-guide compositor. Module targets opt in with ``render_portraits`` and may
-use a family helper or fully custom detailed art. This extends the target
+face-guide compositor. Module characters receive a conservative default from a
+fresh canonical authoring render, and may override it with ``render_portraits``
+for family-specific or fully custom detailed art. This extends the target
 contract without requiring a shared pose model or rig implementation.
 
 Metadata such as a face guide, head anchor, or default pose is cross-family
@@ -207,7 +208,9 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
             outputs["preview"], outputs["canonical"], outputs["canonical_transparent"]]
 ```
 
-A character module may additionally expose:
+Every character module automatically receives a default portrait by freshly
+invoking its canonical authoring path. A family or bespoke target may override
+that fallback:
 
 ```python
 def render_portraits(out_dir: str | Path, **opts) -> List[Path]:
@@ -216,10 +219,11 @@ def render_portraits(out_dir: str | Path, **opts) -> List[Path]:
     ...
 ```
 
-The common helpers in `authoring/portrait.py` provide face-guide framing and
-manifest packing, but the hook may be entirely bespoke. It must not read or
-enlarge the published gameplay sheet. Discovery automatically declares the
-canonical portrait filenames when the hook exists.
+The common helpers in `authoring/portrait.py` provide canonical and face-guide
+framing plus manifest packing, but the hook may be entirely bespoke. It must not
+read or enlarge the published gameplay sheet. Discovery declares canonical
+portrait filenames for all character targets; multipart publishers may declare
+additional files and an install subdirectory.
 
 That's it. `list` will show it; `publish my_new_enemy` will write +
 install it.

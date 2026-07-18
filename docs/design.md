@@ -138,11 +138,14 @@ Portrait production remains family-specific:
 - config-driven `CharacterGenerator` targets receive a default compositor that
   rerenders a canonical pose at high source resolution and frames it from a
   logical face guide;
-- module-authored characters opt in with `render_portraits`, which may reuse a
-  procedural family helper, render an SVG/rig document at a larger scale, or
-  draw custom portrait-specific detail;
-- targets that cannot natively rerender must provide an explicit portrait path
-  rather than enlarge pixels from the gameplay sheet.
+- module-authored characters receive a conservative default by freshly invoking
+  their canonical authoring path; `sheet_build` families can do this in a
+  canonical-only mode without enumerating or packing every animation;
+- a module may override the fallback with `render_portraits`, reusing a
+  procedural family helper, rendering an SVG/rig document at a larger scale, or
+  drawing custom portrait-specific detail;
+- targets that cannot freshly produce a canonical or portrait render must add an
+  explicit hook rather than enlarge pixels from the gameplay sheet.
 
 `FaceGuide` is cross-family authoring metadata. It describes a logical face
 region in the source character canvas and does not imply bones, IK, or a rig.

@@ -17,6 +17,11 @@ from typing import Dict, Iterable, List, Sequence, Tuple
 from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
+from ...authoring.portrait import (
+    PortraitClip,
+    render_canonical_portrait,
+    write_portrait_sheet,
+)
 
 ACTOR_METADATA = {'actor': {'character_id': 'npc_robot_heavy', 'display_name': 'Robot Heavy'},
  'body': {'body_plan': 'HumanoidBiped',
@@ -213,6 +218,16 @@ VARIANTS: Dict[str, VariantSpec] = {
         belt_fins=True,
     ),
 }
+
+
+PORTRAIT_FILES = tuple(
+    filename
+    for spec in VARIANTS.values()
+    for filename in (
+        f"{spec.target_name}_portraits.png",
+        f"{spec.target_name}_portraits.ron",
+    )
+)
 
 
 @dataclass
@@ -680,6 +695,34 @@ class RobotHeavyRenderer:
         for dx in (-18, -4, 10, 22):
             spark = [P(52 + dx, 6), P(58 + dx, -4), P(66 + dx, 4)]
             _poly(draw, spark, spec.glow_hot, spec.glow, 0.5)
+
+
+def render_portraits(
+    out_dir: str | Path, variant: str = "all", **opts
+) -> List[Path]:
+    """Publish defaults for the concrete heavy-robot variants.
+
+    ``robot_heavy`` is an authoring-family publisher rather than a catalog
+    character of its own, so its portrait bundle is keyed by the real variant
+    target names.
+    """
+
+    del opts
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    selected = VARIANTS.values() if variant == "all" else (VARIANTS[variant],)
+    outputs: List[Path] = []
+    for spec in selected:
+        source = RobotHeavyRenderer(spec).render_frame("idle", 1, 6)
+        portrait = render_canonical_portrait(source, actor_metadata=ACTOR_METADATA)
+        outputs.extend(
+            write_portrait_sheet(
+                spec.target_name,
+                {"default": PortraitClip.still(portrait)},
+                out_dir,
+            )
+        )
+    return outputs
 
 
 def render(out_dir: str | Path, variant: str = "bastion", **opts) -> List[Path]:

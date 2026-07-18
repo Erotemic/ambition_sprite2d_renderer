@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
+import re
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -275,6 +276,258 @@ def render_generator_portraits(
     return write_portrait_sheet(target, clips, out_dir)
 
 
+def render_canonical_portrait(
+    source: Image.Image,
+    *,
+    actor_metadata: Mapping[str, Any] | None = None,
+    output_size: tuple[int, int] = DEFAULT_PORTRAIT_SIZE,
+) -> Image.Image:
+    """Compose a default portrait from a freshly authored canonical render.
+
+    This is the module-target coverage fallback. ``source`` must come from the
+    target's current authoring code during this invocation; callers must never
+    pass an installed gameplay sheet or a frame extracted from one. Bespoke and
+    scalable families should override this fallback when they can rerender a
+    more detailed face or pose.
+
+    Humanoid canonicals are framed to their upper body. Other body plans keep
+    the complete visible subject so beasts, props, swarms, and unusual bosses
+    receive a useful default without pretending that they share humanoid face
+    geometry.
+    """
+
+    image = source.convert("RGBA") if source.mode != "RGBA" else source.copy()
+    bbox = image.getchannel("A").getbbox()
+    if bbox is None:
+        return Image.new("RGBA", output_size, (0, 0, 0, 0))
+
+    x1, y1, x2, y2 = (float(v) for v in bbox)
+    subject_w = max(1.0, x2 - x1)
+    subject_h = max(1.0, y2 - y1)
+    metadata = dict(actor_metadata or {})
+    body = metadata.get("body")
+    body = dict(body) if isinstance(body, Mapping) else {}
+    body_plan = str(body.get("body_plan", ""))
+
+    if body_plan == "HumanoidBiped":
+        # Head, torso, and enough upper arms to preserve silhouette. The
+        # canonical source is already alpha-trimmed, so proportional framing
+        # remains valid across procedural, rigged, SVG, and part-based families.
+        crop_x1 = x1 - subject_w * 0.08
+        crop_x2 = x2 + subject_w * 0.08
+        crop_y1 = y1 - subject_h * 0.04
+        crop_y2 = y1 + subject_h * 0.64
+    else:
+        crop_x1 = x1 - subject_w * 0.08
+        crop_x2 = x2 + subject_w * 0.08
+        crop_y1 = y1 - subject_h * 0.08
+        crop_y2 = y2 + subject_h * 0.08
+
+    out_w, out_h = output_size
+    crop_w = max(1.0, crop_x2 - crop_x1)
+    crop_h = max(1.0, crop_y2 - crop_y1)
+    target_aspect = out_w / out_h
+    current_aspect = crop_w / crop_h
+    if current_aspect < target_aspect:
+        wanted_w = crop_h * target_aspect
+        extra = (wanted_w - crop_w) * 0.5
+        crop_x1 -= extra
+        crop_x2 += extra
+    else:
+        wanted_h = crop_w / target_aspect
+        extra = (wanted_h - crop_h) * 0.5
+        crop_y1 -= extra
+        crop_y2 += extra
+
+    crop = image.crop(
+        (
+            int(math.floor(crop_x1)),
+            int(math.floor(crop_y1)),
+            int(math.ceil(crop_x2)),
+            int(math.ceil(crop_y2)),
+        )
+    )
+    if crop.size != output_size:
+        crop = crop.resize(output_size, Image.Resampling.LANCZOS)
+    return crop
+
+
+def write_default_portrait_from_canonical(
+    target: str,
+    canonical_path: str | Path,
+    out_dir: str | Path,
+    *,
+    actor_metadata: Mapping[str, Any] | None = None,
+    output_size: tuple[int, int] = DEFAULT_PORTRAIT_SIZE,
+) -> list[Path]:
+    """Publish a one-frame ``default`` clip from a fresh canonical render."""
+
+    with Image.open(canonical_path) as source:
+        portrait = render_canonical_portrait(
+            source, actor_metadata=actor_metadata, output_size=output_size
+        )
+    return write_portrait_sheet(
+        target, {"default": PortraitClip.still(portrait)}, out_dir
+    )
+
+
+@dataclass(frozen=True)
+class PortraitProduct:
+    """One installed portrait sheet discovered for visual review."""
+
+    target: str
+    image_path: Path
+    manifest_path: Path
+    frame_width: int
+    frame_height: int
+    default_clip: str
+    default_rect: tuple[int, int, int, int]
+
+
+def _ron_field(text: str, name: str) -> str:
+    match = re.search(rf"\b{name}:\s*\"([^\"]+)\"", text)
+    if match is None:
+        raise ValueError(f"portrait manifest missing string field {name!r}")
+    return match.group(1)
+
+
+def _ron_int_field(text: str, name: str) -> int:
+    match = re.search(rf"\b{name}:\s*(\d+)", text)
+    if match is None:
+        raise ValueError(f"portrait manifest missing integer field {name!r}")
+    return int(match.group(1))
+
+
+def read_portrait_product(manifest_path: str | Path) -> PortraitProduct:
+    """Read the controlled portrait-manifest subset needed by review tools.
+
+    The runtime owns the complete RON schema. This lightweight reader is
+    intentionally limited to manifests emitted by :func:`write_portrait_sheet`
+    and avoids making the renderer depend on a general-purpose RON parser.
+    """
+
+    manifest_path = Path(manifest_path)
+    text = manifest_path.read_text(encoding="utf8")
+    target = _ron_field(text, "target")
+    image_name = _ron_field(text, "image")
+    frame_width = _ron_int_field(text, "frame_width")
+    frame_height = _ron_int_field(text, "frame_height")
+    default_clip = _ron_field(text, "default_clip")
+    marker = f'{_ron_string(default_clip)}: ('
+    clip_start = text.find(marker)
+    if clip_start < 0:
+        raise ValueError(
+            f"portrait manifest {manifest_path} has no default clip {default_clip!r}"
+        )
+    rect_match = re.search(
+        r"\(x:\s*(\d+),\s*y:\s*(\d+),\s*w:\s*(\d+),\s*h:\s*(\d+)\)",
+        text[clip_start:],
+    )
+    if rect_match is None:
+        raise ValueError(
+            f"portrait manifest {manifest_path} default clip has no frame rect"
+        )
+    rect = tuple(int(value) for value in rect_match.groups())
+    return PortraitProduct(
+        target=target,
+        image_path=manifest_path.parent / image_name,
+        manifest_path=manifest_path,
+        frame_width=frame_width,
+        frame_height=frame_height,
+        default_clip=default_clip,
+        default_rect=rect,
+    )
+
+
+def discover_portrait_products(source_dir: str | Path) -> tuple[list[PortraitProduct], list[str]]:
+    """Discover installed portrait products recursively for gallery review."""
+
+    source_dir = Path(source_dir)
+    products: list[PortraitProduct] = []
+    warnings: list[str] = []
+    for manifest in sorted(source_dir.rglob("*_portraits.ron")):
+        try:
+            product = read_portrait_product(manifest)
+            if not product.image_path.exists():
+                raise FileNotFoundError(product.image_path)
+        except Exception as ex:  # noqa: BLE001 - report every malformed product
+            warnings.append(f"{manifest}: {ex}")
+            continue
+        products.append(product)
+    return products, warnings
+
+
+def load_default_portrait_frame(product: PortraitProduct) -> Image.Image:
+    """Load one product's named default frame as an independent RGBA image."""
+
+    x, y, w, h = product.default_rect
+    with Image.open(product.image_path) as sheet:
+        return sheet.convert("RGBA").crop((x, y, x + w, y + h))
+
+
+def write_portrait_gallery(
+    source_dir: str | Path,
+    out_path: str | Path,
+    *,
+    columns: int = 8,
+) -> tuple[Path, list[str]]:
+    """Write a labeled contact sheet of every installed default portrait."""
+
+    from ..core.draw import font as load_font
+    from PIL import ImageDraw
+
+    products, warnings = discover_portrait_products(source_dir)
+    if not products:
+        raise ValueError(f"no portrait products found under {Path(source_dir)}")
+    columns = max(1, min(int(columns), len(products)))
+    image_w, image_h = 176, 220
+    card_w, card_h = 208, 270
+    rows = math.ceil(len(products) / columns)
+    gallery = Image.new(
+        "RGBA", (columns * card_w, rows * card_h), (24, 25, 31, 255)
+    )
+    draw = ImageDraw.Draw(gallery)
+    label_font = load_font(12)
+    small_font = load_font(10)
+    for index, product in enumerate(products):
+        col, row = index % columns, index // columns
+        x, y = col * card_w, row * card_h
+        draw.rounded_rectangle(
+            (x + 5, y + 5, x + card_w - 5, y + card_h - 5),
+            radius=10,
+            fill=(36, 38, 48, 255),
+            outline=(76, 80, 100, 255),
+            width=1,
+        )
+        frame = load_default_portrait_frame(product)
+        scale = min(image_w / frame.width, image_h / frame.height)
+        shown = frame.resize(
+            (max(1, round(frame.width * scale)), max(1, round(frame.height * scale))),
+            Image.Resampling.LANCZOS,
+        )
+        gallery.alpha_composite(
+            shown,
+            (x + (card_w - shown.width) // 2, y + 14 + (image_h - shown.height) // 2),
+        )
+        draw.text(
+            (x + 10, y + 238),
+            product.target,
+            font=label_font,
+            fill=(245, 246, 252, 255),
+        )
+        rel = product.manifest_path.relative_to(Path(source_dir))
+        draw.text(
+            (x + 10, y + 254),
+            str(rel.parent),
+            font=small_font,
+            fill=(172, 178, 198, 255),
+        )
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    gallery.save(out_path)
+    return out_path, warnings
+
+
 def _ron_string(value: str) -> str:
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
@@ -395,7 +648,14 @@ __all__ = [
     "default_portrait_poses",
     "face_guide_from_metadata",
     "portrait_files",
+    "render_canonical_portrait",
     "render_framed_portrait",
     "render_generator_portraits",
+    "write_default_portrait_from_canonical",
+    "PortraitProduct",
+    "discover_portrait_products",
+    "load_default_portrait_frame",
+    "read_portrait_product",
+    "write_portrait_gallery",
     "write_portrait_sheet",
 ]

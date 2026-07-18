@@ -27,6 +27,7 @@ from ..registry import CharacterJob, load_jobs
 from ..authoring.faction_lineup import write_faction_lineup
 from ..devtools.debug_hitboxes import render_debug_overlay
 from ..authoring.sheet import write_spritesheet
+from ..authoring.portrait import write_portrait_gallery
 from ..registry import (
     CATEGORIES,
     DiscoveryReport,
@@ -143,6 +144,20 @@ def generated_dir(target_name: str) -> Path:
     return DEFAULT_ASSET_DIR / target_name
 
 
+def _render_job_portraits(
+    job: CharacterJob, stem: str, out_dir: str | Path
+) -> List[Path]:
+    """Render the standard portrait product for one config-backed job."""
+
+    generator = get_generator(job.target)
+    spec = generator.sample_spec(job)
+    return list(
+        generator.render_portraits(
+            spec, job, target=stem, out_dir=str(Path(out_dir))
+        )
+    )
+
+
 # ---- Adapter (character lab) commands -----------------------------------------
 
 
@@ -181,6 +196,7 @@ def draw_all(
         outputs.extend(
             write_spritesheet(job, image_out, manifest_out, source_config=path)
         )
+        outputs.extend(_render_job_portraits(job, stem, out_dir))
     return outputs
 
 
@@ -291,6 +307,7 @@ def draw_character(
     outputs = [canonical_out, image_out, yaml_out]
     if actor_out.exists():
         outputs.append(actor_out)
+    outputs.extend(_render_job_portraits(job, stem, out_dir))
     return outputs
 
 
@@ -358,6 +375,18 @@ def _cmd_draw_character(args: argparse.Namespace) -> int:
 
 def _cmd_draw_factions(args: argparse.Namespace) -> int:
     print_paths(draw_factions(args.config, args.out_dir))
+    return 0
+
+
+def _cmd_portrait_gallery(args: argparse.Namespace) -> int:
+    """Build a visual contact sheet from installed portrait products."""
+
+    out, warnings = write_portrait_gallery(
+        args.source_dir, args.out, columns=args.columns
+    )
+    for warning in warnings:
+        print(f"warning: {warning}", file=sys.stderr)
+    print_path(out)
     return 0
 
 
@@ -668,7 +697,7 @@ def _module_target_names() -> list[str]:
 
 
 def _portrait_target_names() -> list[str]:
-    """Every character target that can natively publish portraits."""
+    """Every character target that publishes the portrait product."""
     return sorted(
         name
         for name, target in _ALL_TARGETS.items()
@@ -697,8 +726,9 @@ def _render_portraits_target(target_name: str, **opts) -> List[Path]:
     target = _get_target(target_name)
     if not target.supports_portraits:
         raise SystemExit(
-            f"error: target {target_name!r} has no native portrait renderer; "
-            "add a module-level render_portraits hook or use a config generator"
+            f"error: target {target_name!r} does not publish portraits; "
+            "portrait products are required for character targets and optional "
+            "for other target categories"
         )
     paths = list(target.render_portraits(generated_dir(target_name), **opts))
     print_paths(paths)
@@ -776,6 +806,16 @@ def _cmd_portraits(args: argparse.Namespace) -> int:
         _portrait_target_names(),
         lambda name: _render_portraits_target(name, **opts),
     )
+
+
+def _cmd_portrait_files(args: argparse.Namespace) -> int:
+    """Print installed-relative portrait product paths for cache tooling."""
+
+    target = _get_target(args.target)
+    prefix = Path(target.portrait_install_subdir or "")
+    for filename in target.portrait_files:
+        print((prefix / filename).as_posix())
+    return 0
 
 
 def _cmd_install(args: argparse.Namespace) -> int:

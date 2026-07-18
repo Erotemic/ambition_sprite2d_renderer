@@ -27,6 +27,11 @@ from ...authoring.animation_vocab import (
     ordered_subset,
 )
 from ...authoring.generator import CharacterGenerator
+from ...authoring.portrait import (
+    PortraitClip,
+    render_canonical_portrait,
+    write_portrait_sheet,
+)
 from ...registry import CharacterJob
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -1133,3 +1138,23 @@ def render(out_dir: Path) -> List[Path]:
     """Render the sparse sandbag spritesheet (idle/hit/death) into ``out_dir``."""
     out_dir.mkdir(parents=True, exist_ok=True)
     return list(write_outputs(out_dir))
+
+
+def render_portraits(out_dir: Path, **opts) -> List[Path]:
+    """Publish a fresh default portrait from the procedural frame painter.
+
+    The compatibility ``render`` entry point assembles its sheet without the
+    shared ``sheet_build`` canonical seam, so Sandbag opts into portraits
+    explicitly.  This invokes the authored Python drawing routine directly at
+    its native supersampled resolution; it never samples an installed gameplay
+    sheet.
+    """
+
+    del opts
+    source = render_sandbag_frame("idle", 1, 6)
+    portrait = render_canonical_portrait(source, actor_metadata=ACTOR_METADATA)
+    return write_portrait_sheet(
+        TARGET_NAME,
+        {"default": PortraitClip.still(portrait)},
+        out_dir,
+    )

@@ -34,7 +34,6 @@ from typing import List, Optional, Tuple
 
 from PIL import Image, ImageDraw, ImageFilter
 
-from ambition_sprite2d_renderer.authoring.packer import FrameInput, pack_frames
 from ambition_sprite2d_renderer.core.manifest_ron import ron_row
 from ambition_sprite2d_renderer.registry.pack_groups import policy_for
 
@@ -1866,6 +1865,8 @@ def _pack_layers(rendered: dict, manifest_rows: list[dict], policy, layers=_LAYE
 
     Returns ``(layer_pages, rows_meta, num_pages)`` where ``layer_pages`` maps
     each layer name to its list of page images (single page)."""
+    from ambition_sprite2d_renderer.authoring.packer import FrameInput, pack_frames
+
     frames = [
         FrameInput(
             key=(r["row"], f),
@@ -1936,6 +1937,8 @@ def _pack_scholar(rendered_scholar: dict, manifest_rows: list[dict], policy):
     Unlike [`_pack_layers`], the rider is NOT lockstep with the giant: it packs
     its own frames directly, so each frame trims to the small scholar silhouette
     (its own atlas + `off`). Returns ``(page, rows_meta, num_pages)``."""
+    from ambition_sprite2d_renderer.authoring.packer import FrameInput, pack_frames
+
     frames = [
         FrameInput(
             key=(r["row"], f),

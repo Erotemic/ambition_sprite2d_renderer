@@ -23,6 +23,11 @@ from typing import Dict, List, Sequence, Tuple
 from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
+from ...authoring.portrait import (
+    PortraitClip,
+    render_canonical_portrait,
+    write_portrait_sheet,
+)
 
 ACTOR_METADATA = {
     "actor": {"character_id": "npc_pirate_heavy", "display_name": "Pirate Heavy"},
@@ -1085,6 +1090,38 @@ def render_variant(spec: VariantSpec, out_dir: str | Path, **opts) -> List[Path]
         outputs["canonical"],
         outputs["canonical_transparent"],
     ]
+
+
+PORTRAIT_FILES = tuple(
+    name
+    for slug in VARIANTS
+    for name in (
+        f"{BASE_TARGET_NAME}_{slug}_portraits.png",
+        f"{BASE_TARGET_NAME}_{slug}_portraits.ron",
+    )
+)
+
+
+def render_portraits(out_dir: str | Path, variant: str = "all", **opts) -> List[Path]:
+    """Publish freshly rendered default portraits for every heavy variant."""
+
+    del opts
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    selected = VARIANTS.items() if variant == "all" else [(variant, VARIANTS[variant])]
+    outputs: List[Path] = []
+    for slug, spec in selected:
+        source = _draw_variant("idle", 1, 6, spec)
+        portrait = render_canonical_portrait(
+            source, actor_metadata=ACTOR_METADATA
+        )
+        target = f"{BASE_TARGET_NAME}_{slug}"
+        outputs.extend(
+            write_portrait_sheet(
+                target, {"default": PortraitClip.still(portrait)}, out_dir
+            )
+        )
+    return outputs
 
 
 def render(out_dir: str | Path, variant: str = "all", **opts) -> List[Path]:

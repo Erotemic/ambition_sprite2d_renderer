@@ -265,12 +265,14 @@ class Target:
         category: str,
         sheet_files: Tuple[str, ...],
         portrait_files: Tuple[str, ...] = (),
+        portrait_install_subdir: str | None = None,
         kind: str,
     ) -> None:
         self.name = name
         self.category = category
         self.sheet_files = sheet_files
         self.portrait_files = portrait_files
+        self.portrait_install_subdir = portrait_install_subdir
         self.kind = kind
         # Module-authored fields.
         self.module_path: Optional[str] = None
@@ -298,6 +300,7 @@ class Target:
         render_canonical: Optional[Callable] = None,
         render_portraits: Optional[Callable] = None,
         portrait_files: Tuple[str, ...] = (),
+        portrait_install_subdir: str | None = None,
         actor_metadata: Mapping[str, Any] | None = None,
     ) -> "Target":
         self = cls(
@@ -305,6 +308,7 @@ class Target:
             category=category,
             sheet_files=sheet_files,
             portrait_files=portrait_files,
+            portrait_install_subdir=portrait_install_subdir,
             kind="module",
         )
         self.module_path = module_path
@@ -361,21 +365,49 @@ class Target:
 
     @property
     def supports_portraits(self) -> bool:
-        return self.kind == "config" or self._render_portraits_fn is not None
+        """Whether this target publishes the standard portrait product.
+
+        Every registered character has a default portrait path. Authoring
+        families may provide a native ``render_portraits`` hook; otherwise a
+        module target receives the conservative freshly-rendered canonical
+        fallback. Non-character targets do not acquire portrait products.
+        """
+        return self.category == "characters" or self._render_portraits_fn is not None
 
     def render_portraits(self, out_dir: Path, **opts) -> List[Path]:
         """Render the target's independent portrait-sheet product.
 
         Portrait support is a publishing capability, not an authoring-style
-        requirement. Config generators receive the scalable default; module
-        targets opt in with a module-level ``render_portraits`` hook.
+        requirement. Config generators receive the scalable default. Module
+        targets may override it with a native hook; otherwise the target's
+        authoring code is invoked afresh for a canonical render and the common
+        compositor derives a conservative default portrait from that source.
         """
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
+        if not self.supports_portraits:
+            return []
         if self.kind == "module":
-            if self._render_portraits_fn is None:
-                return []
-            return list(self._render_portraits_fn(out_dir, **opts))
+            if self._render_portraits_fn is not None:
+                return list(self._render_portraits_fn(out_dir, **opts))
+            from tempfile import TemporaryDirectory
+
+            from ..authoring.portrait import write_default_portrait_from_canonical
+
+            # Use a clean staging directory so the portrait path must invoke
+            # the authoring code again. It cannot accidentally reuse a
+            # canonical or gameplay raster left by render_sheet().
+            with TemporaryDirectory(prefix=f"{self.name}-portrait-") as temp_dir:
+                from ..authoring.sheet_build import canonical_render_only
+
+                with canonical_render_only():
+                    canonical = self._render_canonical_module(Path(temp_dir), **opts)
+                return write_default_portrait_from_canonical(
+                    self.name,
+                    canonical,
+                    out_dir,
+                    actor_metadata=self._actor_metadata,
+                )
         return self._render_portraits_config(out_dir, **opts)
 
     def install(self, render_dir: Path, dest_root: Path) -> List[Path]:
@@ -388,15 +420,20 @@ class Target:
         render_dir = Path(render_dir)
         dest_root = Path(dest_root)
         dest_root.mkdir(parents=True, exist_ok=True)
+        portrait_dest = (
+            dest_root / self.portrait_install_subdir
+            if self.portrait_install_subdir
+            else dest_root
+        )
         if self._install_fn is not None:
             copied = list(self._install_fn(render_dir, dest_root))
-            copied.extend(_copy_sheet_files(self.portrait_files, render_dir, dest_root))
+            copied.extend(
+                _copy_sheet_files(self.portrait_files, render_dir, portrait_dest)
+            )
             return copied
-        return _copy_sheet_files(
-            tuple(dict.fromkeys((*self.sheet_files, *self.portrait_files))),
-            render_dir,
-            dest_root,
-        )
+        copied = _copy_sheet_files(self.sheet_files, render_dir, dest_root)
+        copied.extend(_copy_sheet_files(self.portrait_files, render_dir, portrait_dest))
+        return copied
 
     # -- module-authored strategy -----------------------------------------
 
@@ -413,19 +450,29 @@ class Target:
         return paths
 
     def _render_canonical_module(self, out_dir: Path, **opts) -> Path:
-        # Fast path: a target-provided hook. Otherwise run the full sheet and
-        # locate the {name}_canonical_transparent.png it emits (~16x slower).
+        # Reuse a canonical emitted earlier in the same publish invocation.
+        # This is authored source output, not a gameplay-sheet crop.
+        candidates = (
+            out_dir / f"{self.name}_canonical_transparent.png",
+            out_dir / f"{self.name}_canonical.png",
+        )
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+
+        # Fast path: a target-provided canonical hook. Otherwise run the full
+        # target authoring path and locate its canonical output.
         if self._render_canonical_fn is not None:
             return Path(self._render_canonical_fn(out_dir, **opts))
         self._render_fn(out_dir, **opts)
-        candidate = out_dir / f"{self.name}_canonical_transparent.png"
-        if candidate.exists():
-            return candidate
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+        expected = " or ".join(candidate.name for candidate in candidates)
         raise FileNotFoundError(
-            f"{self.category}/{self.name}: full render completed but "
-            f"{candidate.name} is missing — target's render() may not go "
-            f"through `sheet_build.build_sheet`. Add a `render_canonical` "
-            f"hook (see e.g. galwah.py) to fix."
+            f"{self.category}/{self.name}: full render completed but {expected} "
+            "is missing — add a `render_canonical` or `render_portraits` hook "
+            "for this authoring family."
         )
 
     # -- config-authored strategy -----------------------------------------
@@ -581,10 +628,11 @@ def _build_module_target(
             mod,
             "PORTRAIT_FILES",
             (f"{stem}_portraits.png", f"{stem}_portraits.ron")
-            if render_portraits_fn is not None
+            if category == "characters" or render_portraits_fn is not None
             else (),
         )
     )
+    portrait_install_subdir = getattr(mod, "PORTRAIT_INSTALL_SUBDIR", None)
     return Target.from_module(
         name=stem,
         category=category,
@@ -595,6 +643,7 @@ def _build_module_target(
         render_canonical=render_canonical_fn,
         render_portraits=render_portraits_fn,
         portrait_files=portrait_files,
+        portrait_install_subdir=portrait_install_subdir,
         actor_metadata=getattr(mod, "ACTOR_METADATA", None),
     )
 
@@ -631,9 +680,13 @@ def _build_module_targets(
             spec.get(
                 "portrait_files",
                 (f"{sub_name}_portraits.png", f"{sub_name}_portraits.ron")
-                if render_portraits_fn is not None
+                if category == "characters" or render_portraits_fn is not None
                 else (),
             )
+        )
+        portrait_install_subdir = spec.get(
+            "portrait_install_subdir",
+            getattr(mod, "PORTRAIT_INSTALL_SUBDIR", None),
         )
         results.append(
             Target.from_module(
@@ -646,6 +699,7 @@ def _build_module_targets(
                 render_canonical=render_canonical_fn,
                 render_portraits=render_portraits_fn,
                 portrait_files=portrait_files,
+                portrait_install_subdir=portrait_install_subdir,
                 actor_metadata=merge_actor_metadata(
                     getattr(mod, "ACTOR_METADATA", None), spec.get("actor_metadata")
                 ),
