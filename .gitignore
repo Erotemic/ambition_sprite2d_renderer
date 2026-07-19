@@ -50,3 +50,4 @@ temp/
 .profiles/
 *.lprof
 profile_output*.txt
+*.tar.gz

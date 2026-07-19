@@ -122,6 +122,31 @@ def render_debug_overlay(yaml_path: Path, out_path: Optional[Path] = None) -> Pa
     metrics = manifest.get("body_metrics") or {}
     anim_metrics = metrics.get("animations") or {}
     animations = manifest.get("animations") or {}
+    if not animations:
+        rows = manifest.get("rows") or []
+        row_animations = {}
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            name = row.get("animation")
+            rects = row.get("rects") or []
+            if not name or not isinstance(rects, list):
+                continue
+            frames = []
+            for rect in rects:
+                if not isinstance(rect, dict):
+                    continue
+                frames.append(
+                    {
+                        "x": int(rect.get("x", 0)),
+                        "y": int(rect.get("y", 0)),
+                        "w": int(rect.get("w", 0)),
+                        "h": int(rect.get("h", 0)),
+                    }
+                )
+            if frames:
+                row_animations[str(name)] = {"frames": frames}
+        animations = row_animations
 
     overlay = Image.new("RGBA", sheet.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay, "RGBA")
