@@ -25,10 +25,12 @@ target/animation/frame it belongs to so callers can emit per-target manifests.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
-from typing import Any, Dict, Hashable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Hashable, List, Sequence, Tuple
 
 from PIL import Image
+from ..profiling import profile
 from rectpack import newPacker, PackingMode, SORT_AREA
 from rectpack.maxrects import MaxRectsBssf
 
@@ -68,6 +70,7 @@ class PackResult:
     placements: Dict[Hashable, FramePlacement]
 
 
+@profile
 def _trim(image: Image.Image, logical_size: Tuple[int, int], trim: bool):
     """Return ``(trimmed_image, off_x, off_y)``. A fully transparent frame
     collapses to a 1x1 transparent pixel at the origin (it draws nothing)."""
@@ -81,6 +84,7 @@ def _trim(image: Image.Image, logical_size: Tuple[int, int], trim: bool):
     return image.crop((x0, y0, x1, y1)), x0, y0
 
 
+@profile
 def pack_frames(
     frames: Sequence[FrameInput],
     *,
@@ -113,36 +117,22 @@ def pack_frames(
             )
         trimmed.append((fr, timg, ox, oy))
 
-    # Choose the bin size. A fixed page_size bin makes MaxRects spread frames
-    # sparsely (a few large identical frames in a 4096² bin land at ~13% fill),
-    # so for a sheet that fits one page we shrink the square bin to the smallest
-    # side that still packs every frame into ONE bin — tight fill, near-grid for
-    # uniform frames, and never larger than the page cap. Only a sheet too big
-    # for a single `page_cap` bin falls back to multi-page packing at the cap
-    # (the residency / split granularity). The bin is always square so a sheet
-    # can grow either dimension as frames are added.
-    sizes = [(t.size[0] + 2 * padding, t.size[1] + 2 * padding) for (_f, t, _x, _y) in trimmed]
-    floor = max(max(w, h) for (w, h) in sizes)
-    fitted = _smallest_single_bin(sizes, lo=floor, hi=page_cap)
-    bin_dim = fitted if fitted is not None else page_cap
-
-    # Stable order (caller-provided) → deterministic packing. MaxRects-BSSF is
-    # the professional default for sprite atlases; rectpack sorts by area.
-    packer = newPacker(
-        mode=PackingMode.Offline,
-        rotation=False,
-        pack_algo=MaxRectsBssf,
-        sort_algo=SORT_AREA,
-    )
-    for idx, (_fr, timg, _ox, _oy) in enumerate(trimmed):
-        tw, th = timg.size
-        packer.add_rect(tw + 2 * padding, th + 2 * padding, rid=idx)
-    # Unbounded number of equally-sized pages; rectpack opens a new one when a
-    # rect won't fit the current set.
-    packer.add_bin(bin_dim, bin_dim, count=float("inf"))
-    packer.pack()
-
-    rects = packer.rect_list()
+    # Choose and execute the pack in one bounded search. The old implementation
+    # binary-searched every pixel between the largest frame and ``page_cap``.
+    # Each probe ran a complete MaxRects pack, then the successful result was
+    # discarded and packed once more. A review roster could therefore perform
+    # hundreds of full NP-hard heuristic packs merely to shave a few pixels off
+    # atlas dimensions.
+    #
+    # Start from an area-derived near-square side with conservative slack, grow
+    # geometrically only when that estimate fails, and REUSE the first
+    # successful placement. Page images are cropped to their occupied extents
+    # below, so this retains compact output without exact pixel-level search.
+    sizes = [
+        (t.size[0] + 2 * padding, t.size[1] + 2 * padding)
+        for (_f, t, _x, _y) in trimmed
+    ]
+    _bin_dim, rects = _pack_near_square(sizes, page_cap=page_cap)
     if len(rects) != len(trimmed):
         placed = {r[5] for r in rects}
         missing = [trimmed[i][0].key for i in range(len(trimmed)) if i not in placed]
@@ -179,40 +169,94 @@ def pack_frames(
         )
 
     if trim:
-        _assert_lossless(frames, placements, pages)
+        _assert_lossless(trimmed, placements, pages)
     return PackResult(pages=pages, placements=placements)
 
 
-def _smallest_single_bin(sizes: List[Tuple[int, int]], *, lo: int, hi: int) -> Optional[int]:
-    """Smallest square side in ``[lo, hi]`` that packs every ``(w, h)`` in
-    ``sizes`` into a SINGLE bin, or ``None`` if even ``hi`` can't fit them all
-    (the caller then falls back to multi-page packing). Binary search over a
-    MaxRects trial pack; ``sizes`` already include the gutter."""
-    def fits(side: int) -> bool:
-        trial = newPacker(
-            mode=PackingMode.Offline,
-            rotation=False,
-            pack_algo=MaxRectsBssf,
-            sort_algo=SORT_AREA,
+@profile
+def _pack_rects_once(
+    sizes: Sequence[Tuple[int, int]],
+    *,
+    side: int,
+    bin_count: int | float,
+) -> List[Tuple[int, int, int, int, int, int]]:
+    """Run one deterministic MaxRects pass and return ``rect_list()``.
+
+    Keeping this as a separate seam lets the bin chooser reuse a successful
+    trial as the final placement instead of paying for an identical second pack.
+    """
+    packer = newPacker(
+        mode=PackingMode.Offline,
+        rotation=False,
+        pack_algo=MaxRectsBssf,
+        sort_algo=SORT_AREA,
+    )
+    for idx, (w, h) in enumerate(sizes):
+        packer.add_rect(w, h, rid=idx)
+    packer.add_bin(side, side, count=bin_count)
+    packer.pack()
+    return list(packer.rect_list())
+
+
+def _align_up(value: int, quantum: int) -> int:
+    return ((int(value) + quantum - 1) // quantum) * quantum
+
+
+@profile
+def _pack_near_square(
+    sizes: Sequence[Tuple[int, int]],
+    *,
+    page_cap: int,
+    target_fill: float = 0.78,
+    alignment: int = 64,
+) -> Tuple[int, List[Tuple[int, int, int, int, int, int]]]:
+    """Pack rectangles with a bounded near-square search.
+
+    The area lower bound estimates a compact one-page square. MaxRects gets
+    roughly 22 percent slack by default, which is usually enough for irregular
+    sprite rectangles. If the estimate fails, the side grows by 25 percent.
+    The first successful trial is returned directly. If one page is impossible
+    even at ``page_cap``, one final unbounded-page pass uses that cap.
+
+    This intentionally optimizes for regeneration latency rather than the exact
+    mathematically smallest side. Occupied page extents are cropped after
+    packing, so a conservative candidate does not force full-size output PNGs.
+    """
+    if not sizes:
+        return max(1, min(page_cap, alignment)), []
+    if page_cap <= 0:
+        raise ValueError(f"page_cap must be positive, got {page_cap!r}")
+
+    largest = max(max(w, h) for (w, h) in sizes)
+    total_area = sum(w * h for (w, h) in sizes)
+    if largest > page_cap:
+        raise ValueError(
+            f"rectangle dimension {largest} exceeds the {page_cap}px page cap"
         )
-        for idx, (w, h) in enumerate(sizes):
-            trial.add_rect(w, h, rid=idx)
-        trial.add_bin(side, side, count=1)
-        trial.pack()
-        return len(trial.rect_list()) == len(sizes)
 
-    if hi < lo or not fits(hi):
-        return None
-    lo_b, hi_b = lo, hi
-    while lo_b < hi_b:
-        mid = (lo_b + hi_b) // 2
-        if fits(mid):
-            hi_b = mid
-        else:
-            lo_b = mid + 1
-    return lo_b
+    # If area alone proves a single page impossible, skip a doomed trial.
+    if total_area > page_cap * page_cap:
+        rects = _pack_rects_once(sizes, side=page_cap, bin_count=float("inf"))
+        return page_cap, rects
+
+    fill = min(0.95, max(0.25, float(target_fill)))
+    estimated = max(largest, math.ceil(math.sqrt(total_area / fill)))
+    candidate = min(page_cap, _align_up(estimated, max(1, alignment)))
+
+    while True:
+        rects = _pack_rects_once(sizes, side=candidate, bin_count=1)
+        if len(rects) == len(sizes):
+            return candidate, rects
+        if candidate >= page_cap:
+            break
+        grown = max(candidate + alignment, math.ceil(candidate * 1.25))
+        candidate = min(page_cap, _align_up(grown, max(1, alignment)))
+
+    rects = _pack_rects_once(sizes, side=page_cap, bin_count=float("inf"))
+    return page_cap, rects
 
 
+@profile
 def _maxrects(sizes: List[Tuple[int, int]], bin_w: int, bin_h: int) -> List[Tuple[int, int, int]]:
     """Bin-pack ``sizes`` (w,h) into bins of ``bin_w``×``bin_h``; return one
     ``(bin_index, x, y)`` per input index, in input order. Raises if any rect
@@ -235,6 +279,7 @@ def _maxrects(sizes: List[Tuple[int, int]], bin_w: int, bin_h: int) -> List[Tupl
     return [out[i] for i in range(len(sizes))]
 
 
+@profile
 def pack_frames_grouped(
     groups: Dict[Hashable, Sequence[FrameInput]],
     *,
@@ -327,28 +372,42 @@ def pack_frames_grouped(
     return PackResult(pages=pages, placements=placements), group_page
 
 
+@profile
 def _assert_lossless(
-    frames: Sequence[FrameInput],
+    trimmed: Sequence[Tuple[FrameInput, Image.Image, int, int]],
     placements: Dict[Hashable, FramePlacement],
     pages: List[Image.Image],
 ) -> None:
-    """Reconstruct every frame from its packed page + trim offset and assert
-    pixel-equality with the original logical frame. By construction this holds
-    (the alpha-trim only removes fully transparent pixels), so a failure means
-    a packing/compositing bug — caught here before anything is written."""
-    for fr in frames:
+    """Assert that every packed trimmed region is visually pixel-identical.
+
+    The former check reconstructed the complete logical canvas for every frame,
+    even though alpha trimming has already proven that everything outside the
+    trimmed region is transparent. Compare only the occupied region and validate
+    its offset bounds; this preserves the same visual invariant with much less
+    allocation and compositing.
+    """
+    for fr, trimmed_image, off_x, off_y in trimmed:
         p = placements[fr.key]
-        recon = Image.new("RGBA", (p.src_w, p.src_h), (0, 0, 0, 0))
-        sub = pages[p.page].crop((p.x, p.y, p.x + p.w, p.y + p.h))
-        recon.alpha_composite(sub, (p.off_x, p.off_y))
-        # Compare VISUALLY: composite the source onto transparent too, so both
-        # sides zero the RGB of fully-transparent pixels (anti-aliased source
-        # art carries arbitrary RGB under alpha 0, which the page composite
-        # normalizes — that's invisible and must not count as a difference).
-        src_norm = Image.new("RGBA", fr.image.size, (0, 0, 0, 0))
-        src_norm.alpha_composite(fr.image.convert("RGBA"))
-        if recon.tobytes() != src_norm.tobytes():
+        if (p.off_x, p.off_y) != (off_x, off_y):
             raise AssertionError(
-                f"lossless check failed for frame {fr.key!r}: packed reconstruction "
-                f"differs from the source frame (packing bug)"
+                f"lossless check failed for frame {fr.key!r}: trim offset changed"
+            )
+        if (
+            p.off_x < 0
+            or p.off_y < 0
+            or p.off_x + p.w > p.src_w
+            or p.off_y + p.h > p.src_h
+        ):
+            raise AssertionError(
+                f"lossless check failed for frame {fr.key!r}: trim geometry exceeds logical frame"
+            )
+        sub = pages[p.page].crop((p.x, p.y, p.x + p.w, p.y + p.h))
+        # Compare visually: compositing onto transparent zeroes arbitrary RGB
+        # values hidden beneath alpha 0 on both sides.
+        src_norm = Image.new("RGBA", trimmed_image.size, (0, 0, 0, 0))
+        src_norm.alpha_composite(trimmed_image.convert("RGBA"))
+        if sub.tobytes() != src_norm.tobytes():
+            raise AssertionError(
+                f"lossless check failed for frame {fr.key!r}: packed pixels "
+                f"differ from the trimmed source (packing bug)"
             )

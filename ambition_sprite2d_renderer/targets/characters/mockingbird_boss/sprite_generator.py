@@ -33,7 +33,7 @@ from ambition_sprite2d_renderer.authoring.sheet_build import layout_sheet_rows
 from ambition_sprite2d_renderer.registry.pack_groups import policy_for
 
 try:
-    import yaml
+    from ambition_sprite2d_renderer.yaml_io import safe_dump, safe_load
 except Exception as ex:
     raise SystemExit("Missing dependency: python -m pip install pyyaml") from ex
 
@@ -210,11 +210,11 @@ class Scene:
     @classmethod
     def load(cls, fpath):
         with open(fpath, "r") as f:
-            return cls(yaml.safe_load(f))
+            return cls(safe_load(f))
 
     def save(self, fpath):
         with open(fpath, "w") as f:
-            yaml.safe_dump(self.data, f, sort_keys=False, width=120)
+            f.write(safe_dump(self.data, sort_keys=False, width=120))
 
     def color(self, value, default=(255, 255, 255, 255)):
         if value is None:

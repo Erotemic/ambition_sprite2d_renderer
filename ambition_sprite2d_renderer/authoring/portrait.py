@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from PIL import Image
+from ..profiling import profile
 
 DEFAULT_PORTRAIT_SIZE = (256, 320)
 DEFAULT_PORTRAIT_SUPERSAMPLE = 4
@@ -202,6 +203,7 @@ def default_portrait_poses(generator: Any, job: Any) -> dict[str, PortraitPose]:
     return poses
 
 
+@profile
 def render_framed_portrait(
     source: Image.Image,
     face: FaceGuide,
@@ -252,6 +254,7 @@ def render_framed_portrait(
     return crop
 
 
+@profile
 def render_generator_portraits(
     generator: Any,
     spec: Any,
@@ -296,6 +299,7 @@ def render_generator_portraits(
     return write_portrait_sheet(target, clips, out_dir)
 
 
+@profile
 def render_canonical_portrait(
     source: Image.Image,
     *,
@@ -372,6 +376,7 @@ def render_canonical_portrait(
     return crop
 
 
+@profile
 def write_default_portrait_from_canonical(
     target: str,
     canonical_path: str | Path,
@@ -459,6 +464,7 @@ def read_portrait_product(manifest_path: str | Path) -> PortraitProduct:
     )
 
 
+@profile
 def discover_portrait_products(source_dir: str | Path) -> tuple[list[PortraitProduct], list[str]]:
     """Discover installed portrait products recursively for gallery review."""
 
@@ -477,6 +483,7 @@ def discover_portrait_products(source_dir: str | Path) -> tuple[list[PortraitPro
     return products, warnings
 
 
+@profile
 def load_default_portrait_frame(product: PortraitProduct) -> Image.Image:
     """Load one product's named default frame as an independent RGBA image."""
 
@@ -485,6 +492,7 @@ def load_default_portrait_frame(product: PortraitProduct) -> Image.Image:
         return sheet.convert("RGBA").crop((x, y, x + w, y + h))
 
 
+@profile
 def write_portrait_gallery(
     source_dir: str | Path,
     out_path: str | Path,
@@ -585,6 +593,7 @@ def _manifest_to_ron(
     return "\n".join(lines)
 
 
+@profile
 def write_portrait_sheet(
     target: str,
     clips: Mapping[str, PortraitClip],

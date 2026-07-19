@@ -40,8 +40,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
-import yaml
 from PIL import Image, ImageDraw
+from ..profiling import profile
+from ..yaml_io import safe_load
 
 from .packer import FrameInput, pack_frames
 
@@ -149,7 +150,7 @@ class PackPlan:
 
     @classmethod
     def load(cls, path: Path) -> "PackPlan":
-        doc = yaml.safe_load(Path(path).read_text()) or {}
+        doc = safe_load(Path(path).read_text()) or {}
         return cls(groups={str(g): [str(s) for s in stems] for g, stems in (doc.get("groups") or {}).items()})
 
     def group_of(self, stem: str) -> str:
@@ -159,6 +160,7 @@ class PackPlan:
         return list(self.groups)
 
 
+@profile
 def _reconstruct_logical(page: Image.Image, rect: dict, src_w: int, src_h: int) -> Image.Image:
     """Rebuild a frame's logical (untrimmed) image from a sheet: crop the packed
     rect and paste it back at its trim offset in a transparent logical canvas."""
@@ -170,6 +172,7 @@ def _reconstruct_logical(page: Image.Image, rect: dict, src_w: int, src_h: int) 
     return logical
 
 
+@profile
 def _scale_logical(
     logical: Image.Image, scale: float, min_px: int
 ) -> Tuple[Image.Image, Tuple[int, int]]:
@@ -189,6 +192,7 @@ def _scale_logical(
     return logical.resize((nw, nh), resample), (nw, nh)
 
 
+@profile
 def _read_sheet_frames(
     sheet_dir: Path, stem: str, *, scale: float, min_px: int
 ) -> List[Tuple[FrameInput, dict]]:
@@ -202,7 +206,7 @@ def _read_sheet_frames(
     manifest_path = sheet_dir / f"{stem}_spritesheet.yaml"
     if not manifest_path.exists():
         return []
-    manifest = yaml.safe_load(manifest_path.read_text()) or {}
+    manifest = safe_load(manifest_path.read_text()) or {}
     fw = int(manifest.get("frame_width", 0))
     fh = int(manifest.get("frame_height", 0))
     if fw <= 0 or fh <= 0:
@@ -234,6 +238,7 @@ def _read_sheet_frames(
     return out
 
 
+@profile
 def _frames_from_target(
     target, tmp: Path, *, scale: float, min_px: int
 ) -> List[Tuple[FrameInput, dict]]:
@@ -242,6 +247,7 @@ def _frames_from_target(
     return _read_sheet_frames(tmp, target.name, scale=scale, min_px=min_px)
 
 
+@profile
 def _pack_pool(
     pairs: Sequence[Tuple[FrameInput, dict]],
     *,
@@ -299,6 +305,7 @@ def _pack_pool(
     return packed
 
 
+@profile
 def ultrapack(
     targets,
     *,
@@ -333,6 +340,7 @@ def ultrapack(
     return _pack_pool(pairs, scale=scale, page_size=page_size, max_dim=max_dim, plan=plan)
 
 
+@profile
 def ultrapack_rendered(
     sheet_dir: Path,
     *,
@@ -384,6 +392,7 @@ def ultrapack_rendered(
     return _pack_pool(pairs, scale=scale, page_size=page_size, max_dim=max_dim, plan=plan)
 
 
+@profile
 def write_pack(pack: UltraPack, out_dir: Path, *, name: str = "ultrapack") -> List[Path]:
     """Write the shared page PNGs + a catalog JSON (runtime artifacts only).
 
@@ -416,6 +425,7 @@ def _checkerboard(size: Tuple[int, int], cell: int = 16) -> Image.Image:
     return board
 
 
+@profile
 def write_debug_views(
     pack: UltraPack,
     out_dir: Path,

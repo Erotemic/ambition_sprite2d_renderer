@@ -123,6 +123,70 @@ python -m ambition_sprite2d_renderer single <cfg> <out>      # one frame from a 
 python -m ambition_sprite2d_renderer regenerate-all          # draw-all + publish + draw-runtime-npcs
 ```
 
+## Profiling regeneration
+
+The renderer keeps optional `line_profiler` decorators in the expensive command,
+sheet-building, packing, portrait, and representative generator-family paths.
+They are inert when `line_profiler` is absent and when profiling is not enabled.
+Install the profiler once into the existing sprite-renderer environment:
+
+```bash
+cd tools/ambition_sprite2d_renderer
+uv pip install --python .venv/bin/python line_profiler
+cd ../..
+```
+
+Then profile a complete uncached regeneration with the ordinary script:
+
+```bash
+LINE_PROFILE=1 ./regen_sprites.sh --force
+```
+
+The shell orchestrator profiles only expensive sprite-renderer subprocesses;
+helper probes and machine-readable commands run with profiling disabled. Normal
+full regeneration batches explicit target rosters through `publish-many`, so
+registry imports and YAML discovery are amortized across dozens of targets
+instead of repeated for every character. Each expensive subprocess receives a
+unique output prefix under:
+
+```text
+tools/ambition_sprite2d_renderer/.profiles/regen-<timestamp>-<pid>/
+```
+
+This avoids the modern decorator interface's default `profile_output.lprof`
+being overwritten by the many Python processes involved in a full regeneration.
+The regeneration wrapper also disables the profiler's very large stdout report
+and duplicate timestamped text copy. By default each subprocess writes only its
+compact `.lprof` file and prints explicit start/finish markers. Long roster
+commands emit flushed per-character progress, so a profile file appearing only
+at process exit is not mistaken for a hung renderer. Set
+`AMBITION_LINE_PROFILE_TEXT=1` to additionally write one detailed `.txt` sidecar.
+
+Inspect an individual report using the command printed at the end of the run:
+
+```bash
+tools/ambition_sprite2d_renderer/.venv/bin/python \
+    -m line_profiler -rtmz path/to/report.lprof
+```
+
+For a faster first pass, isolate one target or skip atlas repacking:
+
+```bash
+LINE_PROFILE=1 ./regen_sprites.sh --target pipi_tau
+AMBITION_ULTRAPACK=0 LINE_PROFILE=1 ./regen_sprites.sh --force
+```
+
+`run_developer_setup.sh` is not part of this loop. Use it for initial bootstrap
+or when project dependencies, the selected Python version, submodules, or host
+packages change; normal profiling and regeneration reuse the existing `.venv`.
+
+Atlas packing uses an area-derived near-square MaxRects pass and reuses the
+first successful placement. It does not binary-search every possible pixel
+width for an exactly minimal square: that former search repeated the NP-hard
+heuristic many times per sheet and dominated profiled roster regeneration.
+Published pages are still cropped to occupied extents and validated by a
+lossless packed-pixel check.
+
 **Pipeline commands** (their own semantics; see `--help` for flags):
 
 ```
@@ -137,7 +201,9 @@ python -m ambition_sprite2d_renderer ldtk-manifest --out <f> # LDtk visual manif
 `tools/ambition_sprite2d_renderer/generated/<target>/`. `install` copies every
 declared product into `crates/ambition_actors/assets/sprites/`. `publish`
 renders the gameplay sheet, renders portraits when supported, and installs the
-complete bundle.
+complete bundle. `publish-many` performs the same operation for an explicit
+list while loading the target registry once; regeneration uses it after its
+per-target cache has selected the stale subset.
 
 The bulk forms of `sheet` / `install` / `publish` are scoped to the tack-on
 surface (characters/props/tiles/icons); main YAML configs and review NPCs

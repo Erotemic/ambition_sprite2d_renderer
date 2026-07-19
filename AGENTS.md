@@ -21,6 +21,16 @@ pose math, part composition, or animation construction. Keep cross-family output
 metadata such as bounds, anchors, sockets, face guides, and default poses
 independent of rig internals.
 
+## Optional profiling instrumentation
+
+Expensive shared render-spine functions and representative generator-family
+entry points may keep the committed `@profile` decorator imported from
+`ambition_sprite2d_renderer.profiling`. That module must retain its no-op
+fallback so `line_profiler` is never a required runtime or test dependency.
+Do not replace this with unconditional profiler imports. A full profile run is
+started with `LINE_PROFILE=1 ./regen_sprites.sh --force`; the shell script gives
+each expensive subprocess a separate output prefix.
+
 ## Test policy
 
 Prefer tests that protect renderer and tooling invariants:

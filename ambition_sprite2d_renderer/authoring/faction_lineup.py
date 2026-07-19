@@ -11,10 +11,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-import yaml
 from PIL import Image, ImageDraw
 
+from ..yaml_io import safe_dump, safe_load
 from ..registry import CharacterJob, RenderConfig
+from ..profiling import profile
 from ..registry.character_generators import get_generator
 from ..core.draw import font as load_font
 from .sheet import write_spritesheet
@@ -109,7 +110,7 @@ class FactionLineup:
     def load(cls, path: str | Path) -> "FactionLineup":
         path = Path(path)
         with path.open("r", encoding="utf8") as file:
-            data = yaml.safe_load(file) or {}
+            data = safe_load(file) or {}
         if not isinstance(data, dict):
             raise TypeError(f"expected mapping in {path}")
         default_animations = list(
@@ -145,6 +146,7 @@ def _safe_name(value: str) -> str:
     ).strip("_")
 
 
+@profile
 def _write_contact_sheet(tiles: List[Tuple[str, str, Image.Image]], out: Path) -> None:
     if not tiles:
         return
@@ -194,6 +196,7 @@ def _write_contact_sheet(tiles: List[Tuple[str, str, Image.Image]], out: Path) -
     contact.save(out)
 
 
+@profile
 def write_faction_lineup(config_path: str | Path, out_dir: str | Path) -> List[Path]:
     lineup = FactionLineup.load(config_path)
     out_dir = Path(out_dir)
@@ -250,8 +253,7 @@ def write_faction_lineup(config_path: str | Path, out_dir: str | Path) -> List[P
             }
         )
     manifest_out = out_dir / "faction_lineup_manifest.yaml"
-    with manifest_out.open("w", encoding="utf8") as file:
-        yaml.safe_dump(manifest, file, sort_keys=False)
+    manifest_out.write_text(safe_dump(manifest, sort_keys=False), encoding="utf8")
     outputs.append(manifest_out)
     contact_out = out_dir / "faction_leaders_contact_sheet.png"
     _write_contact_sheet(tiles, contact_out)

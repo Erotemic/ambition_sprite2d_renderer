@@ -45,3 +45,8 @@ temp/
 *.bak
 *.orig
 *.rej
+
+# Optional line_profiler reports (LINE_PROFILE=1 ./regen_sprites.sh).
+.profiles/
+*.lprof
+profile_output*.txt

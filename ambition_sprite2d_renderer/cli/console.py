@@ -13,6 +13,7 @@ from typing import Iterable, List
 
 from rich import print as rich_print
 from rich.markup import escape
+import os
 
 
 def _path_uri(path: Path) -> str:
@@ -31,10 +32,30 @@ def print_path(path: str | Path, *, prefix: str = "", suffix: str = "") -> None:
 
 
 def print_paths(paths: Iterable[str | Path], *, prefix: str = "") -> None:
-    """Print paths, one per line, as Rich file links."""
+    """Print generated paths according to ``AMBITION_SPRITE_PATH_OUTPUT``.
+
+    ``full`` retains one path per line. ``summary`` reports the count and common
+    directory. ``quiet`` suppresses path-only output while preserving warnings
+    and progress emitted by the owning operation.
+    """
     outputs: List[str | Path] = list(paths)
+    mode = os.environ.get("AMBITION_SPRITE_PATH_OUTPUT", "full").strip().lower()
+    if mode in {"0", "off", "none", "quiet"} or not outputs:
+        return
+    if mode in {"summary", "compact"}:
+        resolved = [Path(path).resolve() for path in outputs]
+        try:
+            common = Path(os.path.commonpath([str(path.parent) for path in resolved]))
+        except ValueError:
+            common = Path.cwd()
+        rich_print(
+            f"{prefix}[dim]wrote {len(outputs)} file(s) under "
+            f"{path_link(common)}[/dim]"
+        )
+        return
     for path in outputs:
         print_path(path, prefix=prefix)
+
 
 
 def print_canonical_outputs(paths: Iterable[str | Path]) -> None:

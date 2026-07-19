@@ -24,6 +24,7 @@ from typing import Callable, Dict, Optional, Tuple
 from PIL import Image, ImageDraw
 from ambition_sprite2d_renderer.core.draw import rgba, with_alpha, bbox_from_center as _bbox
 
+from ...profiling import profile
 from ...authoring.common_draw import RESAMPLING, draw_capsule, draw_rotated_ellipse, draw_rotated_rounded_rect
 from ...authoring.rig import add, clamp, ease_in_out_sine, ease_out_cubic, smoothstep, vec
 from ...authoring.generator import CharacterGenerator
@@ -179,6 +180,7 @@ class ToonSideGenerator(CharacterGenerator):
 
 
 
+    @profile
     def render_frame(
         self,
         spec: ToonSpec | OilerSpec,
@@ -2133,6 +2135,7 @@ class ToonSideGenerator(CharacterGenerator):
             # rather than silently falling through.
             pass
 
+    @profile
     def render_animation_frame(
         self,
         spec: ToonSpec,

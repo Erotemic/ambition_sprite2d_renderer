@@ -20,6 +20,7 @@ from typing import Callable, Dict, Iterable, Mapping, Optional, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...profiling import profile
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
 from ambition_sprite2d_renderer.core.draw import rgba
@@ -801,6 +802,7 @@ class MalloryInterceptorGenerator(CharacterGenerator):
         # scale keeps them inside the gameplay frame with comfortable margins.
         return {"left": 0.10, "right": 0.10, "top": 0.04, "bottom": 0.04}
 
+    @profile
     def render_frame(
         self,
         spec: MallorySpec,

@@ -7,6 +7,7 @@ import yaml
 from PIL import Image, ImageColor, ImageDraw
 
 from ..registry.character_generators import get_generator
+from ..profiling import profile
 from .actor_contract import write_actor_contract_for_adapter
 from ..registry import CharacterJob
 from ..registry.pack_groups import policy_for
@@ -56,6 +57,7 @@ def _apply_body_inset(bbox: Dict[str, int], inset: Dict[str, float]) -> Dict[str
 _DEFAULT_CROP_PADDING = 2
 
 
+@profile
 def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, Any]]:
     """Render every frame at the configured canvas size, then crop the entire
     sheet to the *union* of all opaque-pixel bboxes across every frame.
@@ -435,6 +437,7 @@ def _page_image_names(image_out: Path, num_pages: int) -> List[str]:
     return [base] + [f"{stem}.{k}.{ext}" for k in range(1, num_pages)]
 
 
+@profile
 def write_spritesheet(
     job: CharacterJob,
     image_out: str | Path,

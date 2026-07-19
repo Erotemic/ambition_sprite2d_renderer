@@ -30,6 +30,7 @@ from typing import Any, Dict, Iterable, Optional, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...profiling import profile
 from ...authoring.animation_vocab import (
     DEFAULT_ADVANCED_TIMINGS,
     DEFAULT_DIRECTIONAL_ATTACK_TIMINGS,
@@ -343,6 +344,7 @@ class BobEngineerGenerator(CharacterGenerator):
             "air_neutral": dict(neutral),
         }
 
+    @profile
     def render_frame(
         self,
         spec: BobSpec,
@@ -706,6 +708,7 @@ class BobEngineerGenerator(CharacterGenerator):
             pose.blink = frame == count - 1
         return pose
 
+    @profile
     def render_animation_frame(
         self,
         spec: BobSpec,

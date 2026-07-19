@@ -31,6 +31,7 @@ from typing import Any, Dict, Iterable, Optional, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...profiling import profile
 from ...authoring.animation_vocab import (
     DEFAULT_ADVANCED_TIMINGS,
     DEFAULT_DIRECTIONAL_ATTACK_TIMINGS,
@@ -293,6 +294,7 @@ class AliceCryptographerGenerator(CharacterGenerator):
     def canonical_pose(self) -> Tuple[str, int]:
         return ("idle", 1)
 
+    @profile
     def render_frame(
         self,
         spec: AliceSpec,
@@ -694,6 +696,7 @@ class AliceCryptographerGenerator(CharacterGenerator):
             pose.prop = "folio"
         return pose
 
+    @profile
     def render_animation_frame(
         self,
         spec: AliceSpec,

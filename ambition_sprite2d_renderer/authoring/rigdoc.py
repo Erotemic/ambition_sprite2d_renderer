@@ -498,7 +498,11 @@ class RigDocument:
             paint_part(img, draw, part, world, S, params, self.palette, sprite=sprite)
         if ss == 1:
             return img
-        return img.resize((w * rs, h * rs), Image.Resampling.LANCZOS)
+        return img.resize(
+            (w * rs, h * rs),
+            Image.Resampling.LANCZOS,
+            reducing_gap=3.0,
+        )
 
     def frame_time(self, clip_name: str, frame_idx: int, nframes: Optional[int] = None) -> float:
         """Normalized time for a frame index under the loop conventions:

@@ -19,6 +19,7 @@ from typing import Iterable, List, Optional, Tuple
 from PIL import Image, ImageDraw
 
 from ..registry.character_generators import get_generator
+from ..profiling import profile
 from ..registry import CharacterJob
 from ..core.draw import font as load_font
 from ..registry import Target
@@ -33,6 +34,7 @@ _TILE_BG = (44, 44, 52, 255)
 _TILE_BORDER = (72, 72, 84, 255)
 
 
+@profile
 def render_canonical(job: CharacterJob) -> Image.Image:
     """Legacy in-memory config-target canonical renderer.
 
@@ -60,6 +62,7 @@ def _autocrop_transparent(img: Image.Image, pad: int = 4) -> Image.Image:
     return img.crop((x1, y1, x2, y2))
 
 
+@profile
 def draw_canonical_of(
     target: Target,
     out_dir: str | Path,
@@ -84,6 +87,7 @@ def draw_canonical_of(
     return gallery_out
 
 
+@profile
 def _collect_tiles(
     targets: Iterable[Target],
     out_dir: Path,
@@ -109,6 +113,7 @@ def _collect_tiles(
     return tiles, warnings
 
 
+@profile
 def _grid_contact_sheet(
     tiles: List[CanonicalTile],
     *,
@@ -187,7 +192,14 @@ def _grid_contact_sheet(
     return contact
 
 
-def write_canonicals(config_dir: str | Path, out_dir: str | Path) -> List[Path]:
+@profile
+def write_canonicals(
+    config_dir: str | Path,
+    out_dir: str | Path,
+    *,
+    jobs: list[tuple[Path, CharacterJob]] | None = None,
+    progress: bool = False,
+) -> List[Path]:
     """Legacy adapter-only path: walk YAML configs in ``config_dir``.
 
     Preserved for callers (notably ``draw_review``) that explicitly
@@ -198,13 +210,17 @@ def write_canonicals(config_dir: str | Path, out_dir: str | Path) -> List[Path]:
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    job_items = list(load_jobs(Path(config_dir)) if jobs is None else jobs)
     tiles: List[CanonicalTile] = []
-    for path, job in load_jobs(Path(config_dir)):
+    total = len(job_items)
+    for index, (path, job) in enumerate(job_items, start=1):
+        stem = job.output_stem(path)
+        if progress:
+            print(f"    [canonical {index}/{total}] {stem}", flush=True)
         img = render_canonical(job)
         if img.mode != "RGBA":
             img = img.convert("RGBA")
         img = _autocrop_transparent(img)
-        stem = job.output_stem(path)
         out = out_dir / f"{stem}_canonical.png"
         img.save(out)
         label = job.name or stem.replace("_", " ").title()
@@ -218,6 +234,7 @@ def write_canonicals(config_dir: str | Path, out_dir: str | Path) -> List[Path]:
     return outputs
 
 
+@profile
 def write_gallery(
     out_dir: str | Path,
     targets: Iterable[Target],

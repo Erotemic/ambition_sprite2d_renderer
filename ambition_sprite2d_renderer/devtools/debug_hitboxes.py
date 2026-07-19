@@ -21,9 +21,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-import yaml
 from PIL import Image, ImageDraw
 
+from ..yaml_io import safe_load
 from ..authoring.canonical import load_font
 
 HURTBOX_OUTLINE = (0, 230, 255, 230)  # cyan
@@ -112,7 +112,7 @@ def render_debug_overlay(yaml_path: Path, out_path: Optional[Path] = None) -> Pa
     yaml_path = Path(yaml_path)
     if not yaml_path.exists():
         raise FileNotFoundError(yaml_path)
-    manifest = yaml.safe_load(yaml_path.read_text())
+    manifest = safe_load(yaml_path.read_text())
     image_name = manifest.get("image") or (yaml_path.stem + ".png")
     image_path = yaml_path.parent / image_name
     if not image_path.exists():

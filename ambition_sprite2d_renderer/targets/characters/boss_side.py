@@ -23,6 +23,7 @@ from typing import Any, Dict, Optional, Tuple
 from PIL import Image, ImageColor, ImageDraw
 from ambition_sprite2d_renderer.core.draw import rgba, with_alpha, bbox_from_center as _bbox
 
+from ...profiling import profile
 from ...authoring.common_draw import (
     RESAMPLING,
     draw_capsule,
@@ -140,6 +141,7 @@ class AISlopZetaGenerator(CharacterGenerator):
     def canonical_pose(self) -> Tuple[str, int]:
         return ("rest", 1)
 
+    @profile
     def render_frame(
         self,
         spec: ZetaSpec,
@@ -1110,6 +1112,7 @@ class AISlopZetaGenerator(CharacterGenerator):
         img.alpha_composite(character_img)
         return img
 
+    @profile
     def render_animation_frame(
         self,
         spec: ZetaSpec,

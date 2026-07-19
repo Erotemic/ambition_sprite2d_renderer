@@ -40,6 +40,7 @@ from typing import (
 )
 
 from ..authoring.actor_profiles import merge_actor_metadata
+from ..profiling import profile
 
 CATEGORIES: Tuple[str, ...] = (
     # Tack-on categories — Python authoring under `targets/<category>/`.
@@ -175,9 +176,10 @@ def _ensure_actor_sidecars(
     """
     from ..authoring.actor_contract import write_actor_contract_for_tackon
     import json
-    import yaml
+    from ..yaml_io import safe_load
 
     extras: List[Path] = []
+    declared_paths = {Path(path) for path in paths}
 
     def maybe_emit(
         *,
@@ -202,8 +204,15 @@ def _ensure_actor_sidecars(
     for path in list(paths):
         path = Path(path)
         if path.suffix == ".yaml" and path.name.endswith("_spritesheet.yaml"):
+            # Generic sheet builders already emitted and returned this sidecar.
+            # Do not parse the just-written YAML and regenerate identical RON.
+            declared_actor = path.with_name(
+                path.name.replace("_spritesheet.yaml", "_actor.ron")
+            )
+            if declared_actor in declared_paths and declared_actor.exists():
+                continue
             try:
-                manifest = yaml.safe_load(path.read_text(encoding="utf8")) or {}
+                manifest = safe_load(path.read_text(encoding="utf8")) or {}
             except Exception:
                 continue
             if not isinstance(manifest, dict):
@@ -349,6 +358,7 @@ class Target:
 
     # -- render / install (dispatch by authoring kind) --------------------
 
+    @profile
     def render_sheet(self, out_dir: Path, **opts) -> List[Path]:
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -356,6 +366,7 @@ class Target:
             return self._render_sheet_module(out_dir, **opts)
         return self._render_sheet_config(out_dir, **opts)
 
+    @profile
     def render_canonical(self, out_dir: Path, **opts) -> Path:
         out_dir = Path(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -374,6 +385,7 @@ class Target:
         """
         return self.category == "characters" or self._render_portraits_fn is not None
 
+    @profile
     def render_portraits(self, out_dir: Path, **opts) -> List[Path]:
         """Render the target's independent portrait-sheet product.
 
@@ -410,6 +422,7 @@ class Target:
                 )
         return self._render_portraits_config(out_dir, **opts)
 
+    @profile
     def install(self, render_dir: Path, dest_root: Path) -> List[Path]:
         """Install every declared gameplay and portrait product.
 
@@ -437,6 +450,7 @@ class Target:
 
     # -- module-authored strategy -----------------------------------------
 
+    @profile
     def _render_sheet_module(self, out_dir: Path, **opts) -> List[Path]:
         paths = list(self._render_fn(out_dir, **opts))
         paths.extend(
@@ -449,6 +463,7 @@ class Target:
         )
         return paths
 
+    @profile
     def _render_canonical_module(self, out_dir: Path, **opts) -> Path:
         # Reuse a canonical emitted earlier in the same publish invocation.
         # This is authored source output, not a gameplay-sheet crop.
@@ -477,6 +492,7 @@ class Target:
 
     # -- config-authored strategy -----------------------------------------
 
+    @profile
     def _render_sheet_config(self, out_dir: Path, **opts) -> List[Path]:
         from ..authoring.sheet import write_spritesheet
 
@@ -502,6 +518,7 @@ class Target:
             paths.append(actor_out)
         return paths
 
+    @profile
     def _render_canonical_config(self, out_dir: Path, **opts) -> Path:
         from .character_generators import get_generator
 
@@ -515,6 +532,7 @@ class Target:
         img.save(out)
         return out
 
+    @profile
     def _render_portraits_config(self, out_dir: Path, **opts) -> List[Path]:
         from .character_generators import get_generator
 
@@ -708,6 +726,7 @@ def _build_module_targets(
     return results
 
 
+@profile
 def discover_module_targets() -> DiscoveryReport:
     """Walk ``targets/<category>/`` and register every conformant module.
 
@@ -775,6 +794,7 @@ def _discover_yaml_configs(
     return targets, warnings
 
 
+@profile
 def discover_all_targets() -> DiscoveryReport:
     """Walk every surface (module- + config-authored) into one Target dict.
 

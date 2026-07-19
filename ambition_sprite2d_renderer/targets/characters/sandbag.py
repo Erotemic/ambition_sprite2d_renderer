@@ -20,6 +20,7 @@ from __future__ import annotations
 import math
 from dataclasses import asdict, dataclass
 
+from ...profiling import profile
 from ...authoring.actor_contract import write_actor_contract_for_tackon
 from ...authoring.animation_vocab import (
     DEFAULT_ADVANCED_TIMINGS,
@@ -444,6 +445,7 @@ class SandbagGenerator(CharacterGenerator):
     def spec_dict(self, spec: SandbagSpec) -> Dict[str, object]:
         return spec.to_dict()
 
+    @profile
     def render_frame(
         self,
         spec: SandbagSpec,

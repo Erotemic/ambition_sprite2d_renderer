@@ -20,6 +20,7 @@ from typing import Any, Dict, Optional, Tuple
 from PIL import Image, ImageDraw
 from ambition_sprite2d_renderer.core.draw import bbox_from_center as _bbox
 
+from ...profiling import profile
 from ...authoring.common_draw import RESAMPLING, draw_capsule, draw_rotated_rounded_rect
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
@@ -111,6 +112,7 @@ class SideRobotGenerator(CharacterGenerator):
         "shadow": _rgba("#000000", 38),
     }
 
+    @profile
     def render_frame(
         self,
         spec: BotSpec,
@@ -2164,6 +2166,7 @@ class SideRobotGenerator(CharacterGenerator):
 
         return img
 
+    @profile
     def render_animation_frame(
         self,
         spec: BotSpec,

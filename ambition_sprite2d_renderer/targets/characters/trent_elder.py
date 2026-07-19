@@ -38,6 +38,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from ...profiling import profile
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
 from typing import Dict, Optional, Tuple
@@ -142,6 +143,7 @@ class TrentElderGenerator(CharacterGenerator):
         "interact": {"frames": 6, "duration_ms": 130},
     }
 
+    @profile
     def render_frame(
         self,
         spec: TrentSpec,
@@ -207,6 +209,7 @@ class TrentElderGenerator(CharacterGenerator):
 
     # --- rendering ------------------------------------------------------------
 
+    @profile
     def render_animation_frame(
         self,
         spec: TrentSpec,

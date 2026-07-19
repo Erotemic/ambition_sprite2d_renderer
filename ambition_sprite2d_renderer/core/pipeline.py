@@ -20,6 +20,7 @@ from typing import Callable, Tuple
 from PIL import Image, ImageDraw
 
 from .draw import downsample
+from ..profiling import profile
 
 DrawFn = Callable[["ImageDraw.ImageDraw", float], None]
 Size = Tuple[int, int]
@@ -33,6 +34,7 @@ CROP_GROUND = "ground"
 CROP_NONE = "none"
 
 
+@profile
 def render_frame(
     draw: DrawFn,
     base_size: Size = (128, 128),

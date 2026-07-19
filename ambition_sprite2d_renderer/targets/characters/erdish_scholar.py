@@ -30,6 +30,7 @@ from typing import Dict, Iterable, Optional, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...profiling import profile
 from ...authoring.generator import CharacterGenerator
 from ...core.draw import rgba
 from ...registry import CharacterJob
@@ -273,6 +274,7 @@ class ErdishScholarGenerator(CharacterGenerator):
             palette_name="erdish",
         )
 
+    @profile
     def render_frame(
         self,
         spec: ErdishSpec,
@@ -726,6 +728,7 @@ class ErdishScholarGenerator(CharacterGenerator):
 
     # --------------------------------------------------------------- rendering
 
+    @profile
     def render_animation_frame(
         self,
         spec: ErdishSpec,

@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import List
 
 from ..registry.character_generators import GENERATORS, get_generator
+from ..profiling import profile
+from ..yaml_io import safe_load
 from ..authoring.canonical import (
     draw_canonical_of,
     render_canonical,
@@ -34,6 +36,7 @@ from ..registry import (
     Target,
     discover_all_targets,
 )
+import time
 
 
 def package_dir() -> Path:
@@ -57,6 +60,22 @@ DEFAULT_CONFIG_DIR = Path(__file__).resolve().parent.parent / "configs"
 DEFAULT_REVIEW_CONFIG_DIR = DEFAULT_CONFIG_DIR / "review"
 DEFAULT_ASSET_DIR = package_dir() / "generated"
 DEFAULT_FACTION_CONFIG = DEFAULT_CONFIG_DIR / "factions" / "music_factions.yaml"
+
+
+def _render_progress_enabled() -> bool:
+    value = os.environ.get("AMBITION_RENDER_PROGRESS")
+    return value is not None and value.strip().lower() not in {
+        "",
+        "0",
+        "false",
+        "no",
+        "off",
+    }
+
+
+def _render_progress(message: str) -> None:
+    if _render_progress_enabled():
+        print(message, flush=True)
 
 
 # ---- Target registry ---------------------------------------------------------
@@ -161,8 +180,12 @@ def _render_job_portraits(
 # ---- Adapter (character lab) commands -----------------------------------------
 
 
+@profile
 def draw_all(
-    config_dir: str | Path = DEFAULT_CONFIG_DIR, out_dir: str | Path = DEFAULT_ASSET_DIR
+    config_dir: str | Path = DEFAULT_CONFIG_DIR,
+    out_dir: str | Path = DEFAULT_ASSET_DIR,
+    *,
+    jobs: list[tuple[Path, CharacterJob]] | None = None,
 ) -> List[Path]:
     out_dir = Path(out_dir)
     config_dir_path = Path(config_dir)
@@ -179,27 +202,33 @@ def draw_all(
     default_runtime_dir = (
         config_dir_path.resolve() == Path(DEFAULT_CONFIG_DIR).resolve()
     )
-    outputs: List[Path] = []
-    for path, job in load_jobs(config_dir_path):
+    job_items = list(load_jobs(config_dir_path) if jobs is None else jobs)
+    selected_jobs: list[tuple[Path, CharacterJob, str]] = []
+    for path, job in job_items:
         # The default configs/ directory has accumulated a few older review
         # jobs for compatibility. Keep draw-all focused on the runtime sheets
         # so it stays quick and does not unexpectedly publish review variants.
         # Custom config dirs still render every .yaml they contain.
-        stem = path.stem
-        if default_runtime_dir and stem not in runtime_stems:
+        config_stem = path.stem
+        if default_runtime_dir and config_stem not in runtime_stems:
             continue
-        # Use an explicit output_name when provided, otherwise the config stem,
-        # so multiple variants of the same adapter do not overwrite each other.
-        stem = job.output_stem(path)
+        selected_jobs.append((path, job, job.output_stem(path)))
+
+    outputs: List[Path] = []
+    total = len(selected_jobs)
+    for index, (path, job, stem) in enumerate(selected_jobs, start=1):
+        _render_progress(f"    [sheet {index}/{total}] {stem}")
         image_out = out_dir / f"{stem}_spritesheet.png"
         manifest_out = out_dir / f"{stem}_spritesheet.yaml"
         outputs.extend(
             write_spritesheet(job, image_out, manifest_out, source_config=path)
         )
+        _render_progress(f"    [portrait {index}/{total}] {stem}")
         outputs.extend(_render_job_portraits(job, stem, out_dir))
     return outputs
 
 
+@profile
 def draw_review(
     config_dir: str | Path = DEFAULT_REVIEW_CONFIG_DIR,
     out_dir: str | Path = DEFAULT_ASSET_DIR / "review",
@@ -208,11 +237,20 @@ def draw_review(
     # path rather than `draw_canonicals` (which now does the full
     # adapters + tack-ons + review-NPCs gallery and would balloon a
     # review-of-this-dir into a full-roster render).
-    outputs = draw_all(config_dir, out_dir)
-    outputs += write_canonicals(config_dir, Path(out_dir) / "canonicals")
+    job_items = list(load_jobs(Path(config_dir)))
+    _render_progress(f"    [draw-review] {len(job_items)} configured character(s)")
+    outputs = draw_all(config_dir, out_dir, jobs=job_items)
+    _render_progress("    [draw-review] canonical gallery pass")
+    outputs += write_canonicals(
+        config_dir,
+        Path(out_dir) / "canonicals",
+        jobs=job_items,
+        progress=_render_progress_enabled(),
+    )
     return outputs
 
 
+@profile
 def draw_canonicals(
     config_dir: str | Path = DEFAULT_CONFIG_DIR,
     out_dir: str | Path = DEFAULT_ASSET_DIR / "canonicals",
@@ -270,6 +308,7 @@ def resolve_config_path(value: str | Path) -> Path:
     )
 
 
+@profile
 def draw_character(
     config: str | Path, out_dir: str | Path = DEFAULT_ASSET_DIR
 ) -> List[Path]:
@@ -311,6 +350,7 @@ def draw_character(
     return outputs
 
 
+@profile
 def draw_factions(
     config: str | Path = DEFAULT_FACTION_CONFIG,
     out_dir: str | Path = DEFAULT_ASSET_DIR / "factions",
@@ -592,7 +632,6 @@ def write_animation_gifs_for_target(
     one combined review strip.  Output goes under generated/gifs/<target>/ by
     default so quick-review GIFs never clutter the runtime sprite directory.
     """
-    import yaml
     from PIL import Image
 
     target = _get_target(target_name)
@@ -612,7 +651,7 @@ def write_animation_gifs_for_target(
     )
     written: list[Path] = []
     for manifest_path in manifest_paths:
-        manifest = yaml.safe_load(manifest_path.read_text(encoding="utf8")) or {}
+        manifest = safe_load(manifest_path.read_text(encoding="utf8")) or {}
         if not isinstance(manifest, dict):
             continue
         # Slice from every page (packed sheets span `.1.png`/`.2.png`/…), not
@@ -714,6 +753,34 @@ def _target_render_opts(args: argparse.Namespace) -> dict[str, object]:
     return opts
 
 
+@profile
+def _publish_target(
+    target_name: str,
+    dest_root: Path,
+    *,
+    quiet: bool = False,
+    **opts,
+) -> List[Path]:
+    """Render and install one complete target bundle with one registry lookup.
+
+    The older composition routed through three independently user-facing CLI
+    helpers, causing repeated lookups and printing generated paths that were
+    immediately copied elsewhere. Full regeneration uses this compact seam and
+    may suppress per-file output while retaining per-target progress lines.
+    """
+
+    target = _get_target(target_name)
+    out_dir = generated_dir(target_name)
+    target.render_sheet(out_dir, **opts)
+    if target.supports_portraits:
+        target.render_portraits(out_dir, **opts)
+    copied = list(target.install(out_dir, dest_root))
+    if not quiet:
+        print_paths(copied)
+    return copied
+
+
+@profile
 def _render_target(target_name: str, **opts) -> List[Path]:
     target = _get_target(target_name)
     out_dir = generated_dir(target_name)
@@ -722,6 +789,7 @@ def _render_target(target_name: str, **opts) -> List[Path]:
     return paths
 
 
+@profile
 def _render_portraits_target(target_name: str, **opts) -> List[Path]:
     target = _get_target(target_name)
     if not target.supports_portraits:
@@ -735,6 +803,7 @@ def _render_portraits_target(target_name: str, **opts) -> List[Path]:
     return paths
 
 
+@profile
 def _render_target_bundle(target_name: str, **opts) -> List[Path]:
     paths = _render_target(target_name, **opts)
     target = _get_target(target_name)
@@ -743,6 +812,7 @@ def _render_target_bundle(target_name: str, **opts) -> List[Path]:
     return paths
 
 
+@profile
 def _install_target(target_name: str, dest_root: Path) -> List[Path]:
     target = _get_target(target_name)
     out_dir = generated_dir(target_name)
@@ -755,33 +825,78 @@ def _install_target(target_name: str, dest_root: Path) -> List[Path]:
     return copied
 
 
+@profile
 def _bulk_over(
     op_name: str,
     target_names: list[str],
     op: "callable",
 ) -> int:
-    """Run ``op(name)`` over each ``target_names``; report failures, return rc."""
-    # A target that failed DISCOVERY isn't in `target_names` at all, so a
-    # bulk publish would silently un-ship it. Surface the discovery report
-    # (previously only `list` printed it) so the omission is loud.
+    """Run an operation over targets with durable elapsed/ETA reporting."""
     for line in _REPORT.warnings:
         print(f"discovery warning: {line}", file=sys.stderr)
+
+    names = list(target_names)
+    total = len(names)
+    started = time.perf_counter()
+    recent: list[float] = []
     failures: list[str] = []
-    for name in target_names:
-        print(f"\n# {name}")
+
+    def fmt(seconds: float) -> str:
+        seconds = max(0, int(round(seconds)))
+        hours, rem = divmod(seconds, 3600)
+        minutes, secs = divmod(rem, 60)
+        return f"{hours:d}:{minutes:02d}:{secs:02d}" if hours else f"{minutes:d}:{secs:02d}"
+
+    for index, name in enumerate(names, 1):
+        elapsed = time.perf_counter() - started
+        if recent:
+            rolling = sum(recent[-8:]) / len(recent[-8:])
+            eta_text = f" | eta {fmt(rolling * (total - index + 1))}"
+        else:
+            eta_text = ""
+        width = len(str(max(1, total)))
+        print(
+            f"[{index:>{width}}/{total} {100.0 * (index - 1) / max(1, total):5.1f}%] "
+            f"{op_name} {name} | elapsed {fmt(elapsed)}{eta_text}",
+            flush=True,
+        )
+        item_started = time.perf_counter()
         try:
             op(name)
-        except Exception as ex:  # noqa: BLE001 - report and continue
-            print(f"error: target {name!r} failed: {ex}", file=sys.stderr)
+        except KeyboardInterrupt:
+            duration = time.perf_counter() - item_started
+            print(
+                f"interrupted during {name} after {fmt(duration)} "
+                f"({index - 1}/{total} completed)",
+                file=sys.stderr,
+                flush=True,
+            )
+            raise
+        except Exception as ex:  # noqa: BLE001 - bulk operation reports and continues
+            duration = time.perf_counter() - item_started
+            print(f"error: target {name!r} failed after {fmt(duration)}: {ex}", file=sys.stderr)
             failures.append(name)
+        else:
+            duration = time.perf_counter() - item_started
+            recent.append(duration)
+            rolling = sum(recent[-8:]) / len(recent[-8:])
+            print(
+                f"    done {name} in {fmt(duration)} | {index}/{total} complete | "
+                f"eta {fmt(rolling * (total - index))}",
+                flush=True,
+            )
+
+    elapsed = time.perf_counter() - started
     if failures:
         print(
-            f"\n{op_name} completed with {len(failures)} failure(s): "
-            + ", ".join(failures),
+            f"\n{op_name} finished in {fmt(elapsed)} with {len(failures)} "
+            f"failure(s): " + ", ".join(failures),
             file=sys.stderr,
         )
         return 1
+    print(f"{op_name} finished: {total} target(s) in {fmt(elapsed)}", flush=True)
     return 0
+
 
 
 def _cmd_sheet(args: argparse.Namespace) -> int:
@@ -809,12 +924,26 @@ def _cmd_portraits(args: argparse.Namespace) -> int:
 
 
 def _cmd_portrait_files(args: argparse.Namespace) -> int:
-    """Print installed-relative portrait product paths for cache tooling."""
+    """Print installed-relative portrait products for cache tooling.
 
-    target = _get_target(args.target)
-    prefix = Path(target.portrait_install_subdir or "")
-    for filename in target.portrait_files:
-        print((prefix / filename).as_posix())
+    Multiple target names are resolved in one process so regeneration can
+    inspect a whole batch without paying registry discovery once per target.
+    ``--with-target`` emits tab-separated target/path records suitable for a
+    shell cache map; the historical one-target plain-path output remains the
+    default.
+    """
+
+    targets = list(args.targets)
+    include_target = bool(args.with_target or len(targets) > 1)
+    for target_name in targets:
+        target = _get_target(target_name)
+        prefix = Path(target.portrait_install_subdir or "")
+        for filename in target.portrait_files:
+            rel = (prefix / filename).as_posix()
+            if include_target:
+                print(f"{target_name}\t{rel}")
+            else:
+                print(rel)
     return 0
 
 
@@ -830,21 +959,39 @@ def _cmd_install(args: argparse.Namespace) -> int:
     )
 
 
+@profile
 def _cmd_publish(args: argparse.Namespace) -> int:
     """Publish gameplay plus supported portraits, then install the bundle."""
     opts = _target_render_opts(args)
     if args.target:
-        _render_target_bundle(args.target, **opts)
-        copied = _install_target(args.target, args.dest_root)
+        copied = _publish_target(args.target, args.dest_root, **opts)
         return 0 if copied else 1
 
-    def _publish_one(name: str) -> None:
-        _render_target_bundle(name, **opts)
-        _install_target(name, args.dest_root)
+    return _bulk_over(
+        "publish",
+        _module_target_names(),
+        lambda name: _publish_target(name, args.dest_root, **opts),
+    )
 
-    return _bulk_over("publish", _module_target_names(), _publish_one)
+
+@profile
+def _cmd_publish_many(args: argparse.Namespace) -> int:
+    """Publish an explicit target batch after one registry discovery pass."""
+
+    opts = _target_render_opts(args)
+    return _bulk_over(
+        "publish-many",
+        list(dict.fromkeys(args.targets)),
+        lambda name: _publish_target(
+            name,
+            args.dest_root,
+            quiet=args.quiet,
+            **opts,
+        ),
+    )
 
 
+@profile
 def _cmd_regenerate_all(args: argparse.Namespace) -> int:
     """Single-button regen: render + install every sprite the sandbox
     runtime can consume.
@@ -952,6 +1099,7 @@ def _resolve_sheet_yaml(value: str | Path) -> Path | None:
     return None
 
 
+@profile
 def _cmd_draw_runtime_npcs(args: argparse.Namespace) -> int:
     """Render + install every review-config NPC that the runtime sprite
     registry expects at boot. These configs live under `configs/review/`
@@ -990,6 +1138,7 @@ def _cmd_draw_runtime_npcs(args: argparse.Namespace) -> int:
     return 0
 
 
+@profile
 def _cmd_ultrapack(args: argparse.Namespace) -> int:
     """Pool every target's frames into shared uniform atlas pages at one quality
     tier. Writes pages + catalog (runtime artifacts) to ``--out``; the labeled

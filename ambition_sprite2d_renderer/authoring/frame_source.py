@@ -28,6 +28,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Protocol, Tuple, runtime_checkable
 
 from PIL import Image
+from ..profiling import profile
 
 
 @runtime_checkable
@@ -80,6 +81,7 @@ class RenderedFrame:
         return (self.animation, self.index)
 
 
+@profile
 def render_animation(
     source: FrameSource, animation: str, size: Tuple[int, int]
 ) -> List[RenderedFrame]:
@@ -99,6 +101,7 @@ def render_animation(
     ]
 
 
+@profile
 def render_all_frames(source: FrameSource, size: Tuple[int, int]) -> List[RenderedFrame]:
     """Render every frame of every animation independently at ``size``.
 

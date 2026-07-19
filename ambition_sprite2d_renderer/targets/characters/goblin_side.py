@@ -20,6 +20,7 @@ from typing import Dict, Optional, Tuple
 from PIL import Image, ImageColor, ImageDraw
 from ambition_sprite2d_renderer.core.draw import rgba, with_alpha, bbox_from_center as _bbox
 
+from ...profiling import profile
 from ...authoring.common_draw import RESAMPLING, draw_capsule, draw_rotated_ellipse, draw_rotated_rounded_rect
 from ...authoring.generator import CharacterGenerator
 from ...authoring.rig import add, clamp, ease_in_out_sine, ease_out_cubic, lerp, smoothstep, vec
@@ -835,6 +836,7 @@ class SideGoblinGenerator(CharacterGenerator):
             img.alpha_composite(character_img)
         return img
 
+    @profile
     def render_animation_frame(
         self,
         spec: GoblinSpec,
@@ -850,6 +852,7 @@ class SideGoblinGenerator(CharacterGenerator):
         resample = RESAMPLING.NEAREST if downsample == "nearest" else RESAMPLING.LANCZOS
         return high.resize(size, resample)
 
+    @profile
     def render_frame(
         self,
         spec: GoblinSpec,

@@ -22,6 +22,7 @@ from typing import Dict, Optional, Tuple
 from PIL import Image, ImageColor, ImageDraw
 from ambition_sprite2d_renderer.core.draw import rgba, with_alpha
 
+from ...profiling import profile
 from ...authoring.animation_vocab import CORE_CHARACTER_ANIMATION_ORDER, DEFAULT_CORE_TIMINGS, ordered_subset
 from ...authoring.rig import add, clamp, vec
 from ...authoring.common_draw import RESAMPLING, draw_capsule, draw_rotated_ellipse, draw_rotated_rounded_rect
@@ -225,6 +226,7 @@ class NinjaSideGenerator(CharacterGenerator):
     def spec_dict(self, spec: NinjaSpec) -> Dict[str, object]:
         return spec.to_dict()
 
+    @profile
     def render_frame(
         self,
         spec: NinjaSpec,
@@ -774,6 +776,7 @@ class NinjaSideGenerator(CharacterGenerator):
             # Brief red rim on hit frames.
             d.arc((sc(28.0), sc(22.0), sc(101.0), sc(118.0)), 205, 305, fill=with_alpha(pal["eye"], int(110 * p.hit)), width=max(1, int(sc(2.0))))
 
+    @profile
     def render_animation_frame(
         self,
         spec: NinjaSpec,

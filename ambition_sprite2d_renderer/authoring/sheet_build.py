@@ -34,18 +34,22 @@ from __future__ import annotations
 
 import math
 from contextlib import contextmanager
+from functools import lru_cache
 from contextvars import ContextVar
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-import yaml
 from PIL import Image, ImageDraw, ImageFont
 
+from ..yaml_io import safe_dump
 from .actor_contract import write_actor_contract_for_tackon
+from ..profiling import profile
 from .frame_source import CallableFrameSource, FrameSource
 from ..core.measure import measure_body_metrics
 from ..core.manifest_ron import record_to_ron, records_to_ron, ron_tuning
 from ..registry.pack_groups import policy_for
+import os
+import time
 
 RGBA = Tuple[int, int, int, int]
 
@@ -69,6 +73,7 @@ def canonical_render_only():
         _CANONICAL_ONLY.reset(token)
 
 
+@profile
 def _render_canonical_only(source: FrameSource, out_dir: Path) -> dict[str, Path]:
     target = source.target
     rows = source.rows
@@ -186,7 +191,15 @@ def diagnose_idle_coverage(target: str, anim_names: List[str]) -> Optional[str]:
     return None
 
 
+@lru_cache(maxsize=None)
 def font(size: int = 14):
+    """Return a cached label font.
+
+    Sheet generation draws the same two label sizes for every animation row.
+    Loading the TrueType file for each draw dominated labeled-grid layout in
+    profiles, so keep one immutable Pillow font object per size.
+    """
+
     try:
         return ImageFont.truetype("DejaVuSans.ttf", size)
     except Exception:
@@ -295,6 +308,7 @@ def alpha_bbox_metrics(frame: Image.Image):
     }
 
 
+@profile
 def _grid_sheet_rows(target, rendered_rows, fw, fh, label_width, max_dim):
     """Legacy layout: one animation per labeled row, stacked vertically and
     split into page images only when the column would exceed ``max_dim``.
@@ -316,14 +330,23 @@ def _grid_sheet_rows(target, rendered_rows, fw, fh, label_width, max_dim):
         page_sheets.append(img)
         page_draws.append(ImageDraw.Draw(img, "RGBA"))
     rows_meta = []
+    title_font = font(14)
+    detail_font = font(11)
     for row_idx, (anim, nframes, duration_ms, frames_data) in enumerate(rendered_rows):
         page = row_idx // rows_per_page
         y = (row_idx % rows_per_page) * fh
         draw_sheet, sheet = page_draws[page], page_sheets[page]
-        draw_sheet.rectangle((0, y, label_width - 1, y + fh - 1), fill=(18, 22, 30, 235))
-        draw_sheet.text((8, y + 10), anim, fill=(236, 240, 244, 255), font=font(14))
+        draw_sheet.rectangle(
+            (0, y, label_width - 1, y + fh - 1), fill=(18, 22, 30, 235)
+        )
         draw_sheet.text(
-            (8, y + 30), f"{nframes}f @ {duration_ms}ms", fill=(160, 170, 184, 255), font=font(11)
+            (8, y + 10), anim, fill=(236, 240, 244, 255), font=title_font
+        )
+        draw_sheet.text(
+            (8, y + 30),
+            f"{nframes}f @ {duration_ms}ms",
+            fill=(160, 170, 184, 255),
+            font=detail_font,
         )
         rects = []
         for frame_idx, (frame, meta) in enumerate(frames_data):
@@ -347,6 +370,7 @@ def _grid_sheet_rows(target, rendered_rows, fw, fh, label_width, max_dim):
     return page_sheets, rows_meta, num_pages
 
 
+@profile
 def _packed_sheet_rows(target, rendered_rows, fw, fh, max_dim, page_size=4096):
     """Professional layout: alpha-trim every frame + MaxRects-pack ALL frames
     freely onto tight square pages (best fill). Frames of one animation may
@@ -390,6 +414,7 @@ def _packed_sheet_rows(target, rendered_rows, fw, fh, max_dim, page_size=4096):
     return result.pages, rows_meta, len(result.pages)
 
 
+@profile
 def layout_sheet_rows(
     target,
     rendered_rows,
@@ -414,6 +439,7 @@ def layout_sheet_rows(
     return _grid_sheet_rows(target, rendered_rows, fw, fh, label_width, max_dim)
 
 
+@profile
 def build_sheet(
     target: str,
     rows: List[Tuple[str, int, int]],
@@ -458,6 +484,7 @@ def build_sheet(
     return render_sheet(source, out_dir)
 
 
+@profile
 def render_sheet(source: FrameSource, out_dir: Path):
     """Build a sheet from any frame source with a callable-style recipe.
 
@@ -525,7 +552,18 @@ def render_sheet(source: FrameSource, out_dir: Path):
     # We need all frames in hand before we can compute the union alpha
     # bbox for auto-crop.
     rendered_rows: List[Tuple[str, int, int, List[Tuple[Image.Image, dict]]]] = []
+    progress_value = os.environ.get("AMBITION_SPRITE_PROGRESS", "0").strip().lower()
+    progress_enabled = progress_value not in {"", "0", "false", "no", "off"}
+    sheet_started = time.perf_counter()
+    row_durations: List[float] = []
     for row_idx, (anim, nframes, duration_ms) in enumerate(rows):
+        row_started = time.perf_counter()
+        if progress_enabled:
+            print(
+                f"      [animation {row_idx + 1}/{len(rows)}] "
+                f"{target}:{anim} ({nframes} frames)",
+                flush=True,
+            )
         frames_data: List[Tuple[Image.Image, dict]] = []
         for frame_idx in range(nframes):
             frame = render_fn(anim, frame_idx, nframes)
@@ -536,14 +574,23 @@ def render_sheet(source: FrameSource, out_dir: Path):
                     meta = dict(extra)
             frames_data.append((frame, meta))
         rendered_rows.append((anim, nframes, duration_ms, frames_data))
-    # Canonical pose: use the first row (typically "idle", but pick the
-    # first row defensively so targets that name their default animation
-    # differently — e.g. galwah's "turn" — still get a useful canonical
-    # instead of crashing on a hardcoded "idle" lookup). Frame index 1
-    # rather than 0 because most idle cycles start at a neutral pose and
-    # frame 1 has a touch more character; falls back to 0 for single-frame rows.
-    canon_anim, canon_nframes, _ = rows[0]
-    canonical_raw = render_fn(canon_anim, min(1, canon_nframes - 1), canon_nframes)
+        row_duration = time.perf_counter() - row_started
+        row_durations.append(row_duration)
+        if progress_enabled:
+            remaining = len(rows) - row_idx - 1
+            rolling = sum(row_durations[-5:]) / len(row_durations[-5:])
+            elapsed = time.perf_counter() - sheet_started
+            print(
+                f"          done in {row_duration:.1f}s | elapsed {elapsed:.1f}s | "
+                f"eta {rolling * remaining:.1f}s",
+                flush=True,
+            )
+    # Canonical pose: reuse the already-rendered first-row frame instead of
+    # invoking the target renderer a second time. Most idle cycles start at a
+    # neutral pose, so frame 1 has a touch more character; single-frame rows
+    # fall back to frame 0. The copy keeps subsequent cropping independent.
+    canon_index = min(1, rows[0][1] - 1)
+    canonical_raw = rendered_rows[0][3][canon_index][0].copy()
 
     # ---- Auto-crop pass (optional) --------------------------------------
     # Union alpha bbox across every frame in the sheet AND the canonical.
@@ -619,26 +666,7 @@ def render_sheet(source: FrameSource, out_dir: Path):
     #   - trim=False: the legacy one-animation-per-row grid, split into page
     #     images only when it would exceed the GPU texture limit. Byte-identical
     #     to the pre-packer output for every existing (non-trimmed) target.
-    max_frames = max(n for _, n, _ in rows)
-    preview_w = label_width + fw * max_frames
-    preview = Image.new("RGBA", (preview_w, fh * len(rows)), (34, 34, 40, 255))
-    draw_prev = ImageDraw.Draw(preview, "RGBA")
-    draw_prev.rectangle((0, 0, preview.width, preview.height), fill=(43, 33, 40, 255))
-    first = None
-    for row_idx, (anim, nframes, duration_ms, frames_data) in enumerate(rendered_rows):
-        y_prev = row_idx * fh
-        draw_prev.rectangle((0, y_prev, label_width - 1, y_prev + fh - 1), fill=(18, 22, 30, 235))
-        draw_prev.text((8, y_prev + 10), anim, fill=(236, 240, 244, 255), font=font(14))
-        draw_prev.text(
-            (8, y_prev + 30),
-            f"{nframes}f @ {duration_ms}ms",
-            fill=(160, 170, 184, 255),
-            font=font(11),
-        )
-        for frame_idx, (frame, meta) in enumerate(frames_data):
-            if first is None:
-                first = frame.copy()
-            preview.alpha_composite(frame, (label_width + frame_idx * fw, y_prev))
+    first = rendered_rows[0][3][0][0].copy()
 
     page_sheets, rows_meta, num_pages = layout_sheet_rows(
         target,
@@ -650,6 +678,49 @@ def render_sheet(source: FrameSource, out_dir: Path):
         max_dim=max_sheet_dimension,
         page_size=policy.page_size,
     )
+
+    # The untrimmed runtime pages already contain the complete labeled grid.
+    # Build the human preview by flattening and vertically stitching those
+    # pages rather than drawing every label and compositing every frame twice.
+    # Trimmed pages use packed frame geometry, so they still need the explicit
+    # logical-row preview path.
+    max_frames = max(n for _, n, _ in rows)
+    preview_w = label_width + fw * max_frames
+    preview = Image.new("RGBA", (preview_w, fh * len(rows)), (43, 33, 40, 255))
+    if not trim:
+        preview_y = 0
+        for page in page_sheets:
+            preview.alpha_composite(page, (0, preview_y))
+            preview_y += page.height
+    else:
+        draw_prev = ImageDraw.Draw(preview, "RGBA")
+        title_font = font(14)
+        detail_font = font(11)
+        for row_idx, (anim, nframes, duration_ms, frames_data) in enumerate(
+            rendered_rows
+        ):
+            y_prev = row_idx * fh
+            draw_prev.rectangle(
+                (0, y_prev, label_width - 1, y_prev + fh - 1),
+                fill=(18, 22, 30, 235),
+            )
+            draw_prev.text(
+                (8, y_prev + 10),
+                anim,
+                fill=(236, 240, 244, 255),
+                font=title_font,
+            )
+            draw_prev.text(
+                (8, y_prev + 30),
+                f"{nframes}f @ {duration_ms}ms",
+                fill=(160, 170, 184, 255),
+                font=detail_font,
+            )
+            for frame_idx, (frame, _meta) in enumerate(frames_data):
+                preview.alpha_composite(
+                    frame,
+                    (label_width + frame_idx * fw, y_prev),
+                )
 
     can = canonical_raw
     can_bg = Image.new("RGBA", (fw, fh), (43, 33, 40, 255))
@@ -666,11 +737,11 @@ def render_sheet(source: FrameSource, out_dir: Path):
     page_image_names = [sheet_path.name]
     for k in range(1, num_pages):
         page_image_names.append(f"{target}_spritesheet.{k}.png")
-    can_bg.save(canonical_path)
+    can_bg.save(canonical_path, compress_level=1)
     can.save(canonical_transparent_path)
     for img, name in zip(page_sheets, page_image_names):
         img.save(out_dir / name)
-    preview.save(preview_path)
+    preview.save(preview_path, compress_level=1)
 
     body_metrics = alpha_bbox_metrics(first or can)
     if body_metrics_fn is not None:
@@ -744,7 +815,7 @@ def render_sheet(source: FrameSource, out_dir: Path):
         # the runtime SheetRegistry uses it for in-game display size /
         # sampling instead of the DEFAULT_TUNING fallback.
         manifest["sheet_tuning"] = dict(sheet_tuning)
-    yaml_path.write_text(yaml.safe_dump(manifest, sort_keys=False, width=120))
+    yaml_path.write_text(safe_dump(manifest, sort_keys=False, width=120))
     # Sidecar RON manifest consumed at runtime by the sandbox's
     # SheetRegistry. The YAML is the human-readable sidecar; RON is
     # what gameplay code deserializes. Keep both in lockstep — they
@@ -791,6 +862,7 @@ def _emit_sheet_ron(manifest):
     return records_to_ron(manifest["target"], [manifest])
 
 
+@profile
 def write_canonical(
     target: str,
     rows: List[Tuple[str, int, int]],

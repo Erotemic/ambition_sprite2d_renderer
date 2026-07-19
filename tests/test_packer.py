@@ -72,3 +72,48 @@ def test_untrimmed_passthrough_keeps_full_frames():
         p = res.placements[fr.key]
         assert (p.w, p.h) == (64, 64)
         assert (p.off_x, p.off_y) == (0, 0)
+
+
+def test_near_square_search_reuses_first_success(monkeypatch):
+    import ambition_sprite2d_renderer.authoring.packer as packer_mod
+
+    calls = []
+
+    def fake_pack(sizes, *, side, bin_count):
+        calls.append((side, bin_count))
+        if bin_count == 1 and side < 320:
+            return []
+        return [(0, i * 10, 0, w, h, i) for i, (w, h) in enumerate(sizes)]
+
+    monkeypatch.setattr(packer_mod, "_pack_rects_once", fake_pack)
+    side, rects = packer_mod._pack_near_square(
+        [(100, 100)] * 4,
+        page_cap=512,
+        target_fill=0.95,
+        alignment=64,
+    )
+
+    assert side == 320
+    assert len(rects) == 4
+    # The successful trial is returned directly; there is no duplicate final pack.
+    assert calls == [(256, 1), (320, 1)]
+
+
+def test_near_square_skips_impossible_single_page_trial(monkeypatch):
+    import ambition_sprite2d_renderer.authoring.packer as packer_mod
+
+    calls = []
+
+    def fake_pack(sizes, *, side, bin_count):
+        calls.append((side, bin_count))
+        return [(i, 0, 0, w, h, i) for i, (w, h) in enumerate(sizes)]
+
+    monkeypatch.setattr(packer_mod, "_pack_rects_once", fake_pack)
+    side, rects = packer_mod._pack_near_square(
+        [(200, 200), (200, 200)],
+        page_cap=256,
+    )
+
+    assert side == 256
+    assert len(rects) == 2
+    assert calls == [(256, float("inf"))]

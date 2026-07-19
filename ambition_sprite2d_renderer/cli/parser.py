@@ -16,6 +16,7 @@ Two command families:
       portrait-files <target>    Installed-relative portrait product paths.
       install [<target>]          Copy one target's files to sandbox assets, or all.
       publish [<target>]          gameplay sheet + portraits + install.
+      publish-many <target>...     Explicit batch with one discovery pass.
       gifs [<target>]             Per-animation GIF previews from a rendered sheet.
       debug-hitboxes <target>     Hitbox/hurtbox overlay strips for one target.
 
@@ -45,6 +46,7 @@ See ``registry/discovery.py`` for the Target protocol contract.
 """
 
 from __future__ import annotations
+from ..profiling import profile
 
 import argparse
 from pathlib import Path
@@ -67,6 +69,7 @@ from .commands import (
     _cmd_ldtk_manifest,
     _cmd_list_targets,
     _cmd_publish,
+    _cmd_publish_many,
     _cmd_portraits,
     _cmd_portrait_gallery,
     _cmd_portrait_files,
@@ -217,9 +220,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser(
         "portrait-files",
-        help="Print installed-relative portrait product files for one target.",
+        help="Print installed-relative portrait product files for target(s).",
     )
-    p.add_argument("target")
+    p.add_argument("targets", metavar="TARGET", nargs="+")
+    p.add_argument(
+        "--with-target",
+        action="store_true",
+        help="Prefix each path with TARGET and a tab for batch cache tooling.",
+    )
     p.set_defaults(func=_cmd_portrait_files)
 
     p = sub.add_parser(
@@ -245,6 +253,23 @@ def build_parser() -> argparse.ArgumentParser:
     _add_dest_root_arg(p)
     _add_quality_render_args(p)
     p.set_defaults(func=_cmd_publish)
+
+    p = sub.add_parser(
+        "publish-many",
+        help=(
+            "Render and install an explicit target batch in one process, "
+            "amortizing registry discovery across the batch."
+        ),
+    )
+    p.add_argument("targets", metavar="TARGET", nargs="+")
+    _add_dest_root_arg(p)
+    _add_quality_render_args(p)
+    p.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Print target progress but suppress per-file path listings.",
+    )
+    p.set_defaults(func=_cmd_publish_many)
 
     p = sub.add_parser(
         "list", help="Show every registered target, grouped by category."
@@ -498,6 +523,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+@profile
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)

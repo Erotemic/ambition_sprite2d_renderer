@@ -20,6 +20,7 @@ from typing import Callable, Dict, Iterable, Mapping, Optional, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...profiling import profile
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
 from ambition_sprite2d_renderer.core.draw import rgba
@@ -923,6 +924,7 @@ class EveEavesdropperGenerator(CharacterGenerator):
         # The trumpet and trailing hood are visual extensions, not collision.
         return {"left": 0.05, "right": 0.20, "top": 0.01, "bottom": 0.0}
 
+    @profile
     def render_frame(
         self,
         spec: EveSpec,

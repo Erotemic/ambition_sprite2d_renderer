@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import yaml
+from ..yaml_io import safe_load
 
 DEFAULT_ANIMATIONS = [
     "idle",
@@ -130,7 +130,7 @@ class CharacterJob:
     @classmethod
     def load(cls, path: str | Path) -> "CharacterJob":
         with open(path, "r", encoding="utf8") as file:
-            data = yaml.safe_load(file) or {}
+            data = safe_load(file) or {}
         if not isinstance(data, dict):
             raise TypeError(f"expected mapping in {path!s}")
         if "target" not in data:
