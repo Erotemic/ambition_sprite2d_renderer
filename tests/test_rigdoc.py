@@ -156,6 +156,43 @@ class TestTemplateDocument:
                 ankle = world[side].origin
                 assert ankle[1] == pytest.approx(gy - ankle_h, abs=0.05), (side, t)
 
+    def test_ik_bend_channel_can_change_joint_side_per_pose(self, doc):
+        doc.data["ik_chains"] = [
+            {
+                "upper": "near_arm_u",
+                "lower": "near_arm_l",
+                "channel_prefix": "near_hand",
+                "rest_x": 0.0,
+                "rest_y": -32.0,
+                "bend": -1.0,
+            }
+        ]
+        doc.data["clips"]["bend_negative"] = {
+            "loop": False,
+            "frames": 1,
+            "duration_ms": 0,
+            "channels": {
+                "near_hand_x": {"const": 0.0},
+                "near_hand_y": {"const": -32.0},
+                "near_hand_bend": {"const": -1.0},
+            },
+        }
+        doc.data["clips"]["bend_positive"] = {
+            "loop": False,
+            "frames": 1,
+            "duration_ms": 0,
+            "channels": {
+                "near_hand_x": {"const": 0.0},
+                "near_hand_y": {"const": -32.0},
+                "near_hand_bend": {"const": 1.0},
+            },
+        }
+        negative, _ = doc.solve("bend_negative", 0.0)
+        positive, _ = doc.solve("bend_positive", 0.0)
+        negative_elbow_x = negative["near_arm_l"].origin[0]
+        positive_elbow_x = positive["near_arm_l"].origin[0]
+        assert positive_elbow_x - negative_elbow_x > 1.0
+
     def test_blade_hidden_outside_slash(self, doc):
         # opacity_channel parts default to invisible when their channel is
         # absent: idle must not paint the blade.

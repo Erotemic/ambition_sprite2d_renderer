@@ -1,0 +1,197 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="512mm" height="512mm" viewBox="0 0 512 512" version="1.1">
+  <defs>
+    <style>
+      .ol { stroke:#241b18; stroke-width:4.3; stroke-linecap:round; stroke-linejoin:round; }
+      .ol2 { stroke:#241b18; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+      .none { fill:none; }
+      .skin { fill:#8f6049; }
+      .skin2 { fill:#a97358; }
+      .skin3 { fill:#724937; }
+      .hair { fill:#241b18; }
+      .hair2 { fill:#41312a; }
+      .coat { fill:#5a3144; }
+      .coat2 { fill:#71435a; }
+      .vest { fill:#263f68; }
+      .vest2 { fill:#3c6091; }
+      .shirt { fill:#efe5d6; }
+      .shirt2 { fill:#ddd1bd; }
+      .pants { fill:#495767; }
+      .pants2 { fill:#617386; }
+      .shoe { fill:#2d2522; }
+      .shoe2 { fill:#4a3d38; }
+      .bow { fill:#79b650; }
+      .bow2 { fill:#98d56f; }
+      .gold { fill:#d8be63; }
+      .grass { fill:#63aa4b; }
+      .grass2 { fill:#8fd56a; }
+      .cosmos { stroke:#88bfe8; stroke-width:4.5; stroke-linecap:round; stroke-linejoin:round; fill:none; }
+      .spark { fill:#efe7a0; }
+      .clothstar { fill:#f1d86f; stroke:#3b2d2a; stroke-width:0.8; stroke-linejoin:round; }
+      .clothstar2 { fill:#f8f4df; }
+      .constellation { fill:none; stroke:#b4d7ec; stroke-width:1.4; stroke-linecap:round; opacity:0.80; }
+      .black { fill:#191514; }
+      .white { fill:#fdf8ef; }
+      .mouth { fill:#7b2d2d; }
+      .tongue { fill:#d7988e; }
+    </style>
+  </defs>
+  <g id="layer-three-quarter" inkscape:groupmode="layer" inkscape:label="three-quarter">
+
+    <g id="far_leg_u">
+      <g transform="translate(287 312) scale(1.10 1.00) translate(-287 -312)" data-polish-wrapper="1"><path class="ol pants" d="M270 310 C282 304, 296 304, 306 312 L302 387 C293 393, 280 393, 272 386 Z" />
+      <path class="ol2 none" d="M278 321 C286 318, 294 321, 299 329" />
+    </g></g>
+
+    <g id="far_leg_l">
+      <g transform="translate(287 386) scale(1.08 1.00) translate(-287 -386)" data-polish-wrapper="1"><path class="ol pants2" d="M275 383 C284 378, 295 378, 301 384 L301 455 C295 461, 284 463, 276 457 Z" />
+      <path class="ol2 none" d="M283 392 C289 408, 291 427, 291 451" />
+    </g></g>
+
+    <g id="far_foot">
+      <path class="ol shoe" d="M281 452 C298 452, 315 459, 326 468 C328 476, 323 481, 312 482 L287 482 C278 481, 273 476, 273 470 C273 464, 277 457, 281 452 Z" />
+      <path class="ol2 shoe2 none" d="M289 461 C300 461, 311 465, 319 471" />
+    </g>
+
+    <g id="far_arm_u">
+      <g transform="translate(306 186) scale(1.06 1.02) translate(-306 -186)" data-polish-wrapper="1"><path class="ol coat" d="M295 184 C304 180, 313 182, 318 191 L322 245 C317 252, 308 255, 300 252 L293 192 Z" />
+      <path class="ol shirt" d="M307 245 C312 244, 317 245, 320 248 L319 258 C314 260, 309 261, 305 258 Z" />
+    </g></g>
+
+    <g id="far_arm_l">
+      <g transform="translate(311 249) scale(1.04 1.02) translate(-311 -249)" data-polish-wrapper="1"><path class="ol coat2" d="M300 248 C308 245, 317 247, 322 255 L326 305 C322 312, 315 316, 307 314 L299 258 Z" />
+      <path class="ol shirt" d="M311 306 C315 305, 321 306, 324 309 L323 318 C319 321, 314 321, 310 319 Z" />
+    </g></g>
+
+    <g id="far_hand">
+      <path class="ol skin" d="M309 316 C318 314, 326 317, 331 324 C333 331, 329 337, 322 339 C314 340, 305 336, 301 329 C300 323, 303 318, 309 316 Z" />
+      <path class="ol2 none" d="M311 322 C318 324, 323 328, 326 334" />
+    </g>
+
+    <g id="near_leg_u">
+      <g transform="translate(226 312) scale(1.12 1.00) translate(-226 -312)" data-polish-wrapper="1"><path class="ol pants2" d="M210 308 C222 302, 238 302, 249 311 L245 389 C235 395, 220 396, 211 388 Z" />
+      <path class="ol2 none" d="M219 320 C228 317, 238 320, 243 329" />
+    </g></g>
+
+    <g id="near_leg_l">
+      <g transform="translate(226 387) scale(1.10 1.00) translate(-226 -387)" data-polish-wrapper="1"><path class="ol pants" d="M213 384 C223 380, 235 381, 241 388 L241 458 C234 464, 223 466, 214 460 Z" />
+      <path class="ol2 none" d="M221 392 C227 408, 229 430, 229 454" />
+    </g></g>
+
+    <g id="near_foot">
+      <path class="ol shoe" d="M217 455 C234 454, 250 459, 261 468 C264 476, 259 481, 248 482 L220 482 C211 481, 206 476, 206 470 C206 464, 211 458, 217 455 Z" />
+      <path class="ol2 shoe2 none" d="M225 461 C237 462, 246 466, 254 471" />
+    </g>
+
+    <g id="pelvis">
+      <g transform="translate(256 309) scale(1.24 1.10) translate(-256 -309)" data-polish-wrapper="1"><path class="ol coat" d="M219 289 C237 283, 277 283, 296 289 L299 322 C283 331, 234 332, 214 323 Z" />
+      <path class="ol2 none" d="M221 300 C240 308, 276 308, 294 300" />
+    </g></g>
+
+    <g id="torso">
+      <g transform="translate(258 240) scale(1.20 1.08) translate(-258 -240)" data-polish-wrapper="1"><path class="ol coat" d="M218 176 C233 166, 282 166, 296 177 L304 296 C293 308, 221 308, 210 296 Z" />
+      <path class="ol coat2 none" d="M224 186 C233 202, 237 228, 237 286" />
+      <path class="ol coat2 none" d="M291 187 C282 204, 278 230, 278 286" />
+      <path class="ol vest" d="M235 188 C246 180, 269 180, 279 188 L283 286 C270 295, 246 295, 232 286 Z" />
+      <g id="cloth_stars"><path class="constellation" d="M239 211 L246 230 L240 251 L246 273" /><path class="constellation" d="M276 211 L270 230 L276 251 L270 273" /><path class="clothstar2" d="M 240.00 206.40 L 241.38 209.62 L 244.60 211.00 L 241.38 212.38 L 240.00 215.60 L 238.62 212.38 L 235.40 211.00 L 238.62 209.62 Z" /><path class="clothstar" d="M 246.00 222.20 L 247.14 224.86 L 249.80 226.00 L 247.14 227.14 L 246.00 229.80 L 244.86 227.14 L 242.20 226.00 L 244.86 224.86 Z" /><path class="clothstar2" d="M 240.00 239.80 L 241.26 242.74 L 244.20 244.00 L 241.26 245.26 L 240.00 248.20 L 238.74 245.26 L 235.80 244.00 L 238.74 242.74 Z" /><path class="clothstar" d="M 246.00 257.20 L 247.44 260.56 L 250.80 262.00 L 247.44 263.44 L 246.00 266.80 L 244.56 263.44 L 241.20 262.00 L 244.56 260.56 Z" /><path class="clothstar2" d="M 240.00 275.20 L 241.14 277.86 L 243.80 279.00 L 241.14 280.14 L 240.00 282.80 L 238.86 280.14 L 236.20 279.00 L 238.86 277.86 Z" /><path class="clothstar" d="M 276.00 208.00 L 277.20 210.80 L 280.00 212.00 L 277.20 213.20 L 276.00 216.00 L 274.80 213.20 L 272.00 212.00 L 274.80 210.80 Z" /><path class="clothstar2" d="M 270.00 222.20 L 271.44 225.56 L 274.80 227.00 L 271.44 228.44 L 270.00 231.80 L 268.56 228.44 L 265.20 227.00 L 268.56 225.56 Z" /><path class="clothstar" d="M 276.00 240.20 L 277.14 242.86 L 279.80 244.00 L 277.14 245.14 L 276.00 247.80 L 274.86 245.14 L 272.20 244.00 L 274.86 242.86 Z" /><path class="clothstar2" d="M 270.00 255.80 L 271.26 258.74 L 274.20 260.00 L 271.26 261.26 L 270.00 264.20 L 268.74 261.26 L 265.80 260.00 L 268.74 258.74 Z" /><path class="clothstar" d="M 276.00 273.20 L 277.44 276.56 L 280.80 278.00 L 277.44 279.44 L 276.00 282.80 L 274.56 279.44 L 271.20 278.00 L 274.56 276.56 Z" /><circle class="clothstar2" cx="244" cy="238" r="1.8" /><circle class="clothstar2" cx="242" cy="270" r="1.6" /><circle class="clothstar2" cx="272" cy="237" r="1.7" /><circle class="clothstar2" cx="274" cy="269" r="1.8" /></g><path class="ol shirt" d="M251 185 C255 181, 260 181, 265 185 L266 275 C262 280, 255 280, 251 275 Z" />
+      <path class="ol bow" d="M245 193 L254 188 L258 194 L254 203 L245 200 Z" />
+      <path class="ol bow" d="M271 193 L262 188 L258 194 L262 203 L271 200 Z" />
+      <circle class="ol gold" cx="258" cy="195" r="4" />
+      <path class="ol2 none" d="M257 205 L257 276" />
+      <circle class="ol2 gold" cx="258" cy="224" r="2.5" />
+      <circle class="ol2 gold" cx="258" cy="241" r="2.5" />
+      <circle class="ol2 gold" cx="258" cy="258" r="2.5" />
+      <path class="ol2 none" d="M242 190 L254 212" />
+      <path class="ol2 none" d="M274 190 L262 212" />
+      <path class="ol2 none" d="M227 296 C244 302, 274 302, 289 296" />
+      <path class="ol2 gold none" d="M282 210 C288 210, 292 214, 294 220" />
+    </g></g>
+
+    <g id="grass_fx">
+      <g transform="translate(245 430) scale(1.10 1.05) translate(-245 -430)" data-polish-wrapper="1"><path class="ol grass" d="M188 436 C191 414, 203 395, 218 385 C212 408, 212 426, 214 448 Z" />
+      <path class="ol grass2" d="M208 440 C212 417, 226 395, 243 380 C237 406, 237 425, 239 448 Z" />
+      <path class="ol grass" d="M230 444 C235 421, 252 396, 270 382 C264 408, 262 427, 264 448 Z" />
+      <path class="ol grass2" d="M255 444 C270 430, 289 422, 308 421 C292 432, 281 441, 275 449 Z" />
+    </g></g>
+
+    <g id="cosmos_fx">
+      <g transform="translate(258 140) scale(1.10 1.06) translate(-258 -140)" data-polish-wrapper="1"><path class="cosmos" d="M181 135 C196 101, 235 84, 281 86 C325 89, 361 111, 361 139 C360 170, 327 191, 284 192 C247 193, 208 181, 186 160" />
+      <path class="cosmos" d="M190 164 C212 175, 238 180, 270 179 C307 177, 335 166, 351 148" />
+      <circle class="spark" cx="198" cy="113" r="5" />
+      <circle class="spark" cx="336" cy="112" r="4" />
+      <circle class="spark" cx="320" cy="175" r="4" />
+      <circle class="spark" cx="210" cy="171" r="3.5" />
+    </g></g>
+
+    <g id="head">
+      <g transform="translate(258 132) scale(1.24 1.16) translate(-258 -132)" data-polish-wrapper="1"><g transform="translate(258 132) scale(1.18) translate(-258 -132)">
+      <path class="ol shirt" d="M242 157 C247 154, 269 154, 274 157 L274 176 C267 181, 248 181, 242 176 Z" />
+      <circle class="ol hair" cx="214" cy="132" r="14" />
+      <circle class="ol hair" cx="226" cy="112" r="18" />
+      <circle class="ol hair" cx="247" cy="100" r="20" />
+      <circle class="ol hair" cx="270" cy="98" r="20" />
+      <circle class="ol hair" cx="292" cy="108" r="18" />
+      <circle class="ol hair" cx="306" cy="128" r="14" />
+      <ellipse class="ol skin" cx="258" cy="130" rx="48" ry="42" />
+      <ellipse class="ol skin" cx="213" cy="136" rx="9" ry="12" />
+      <ellipse class="ol skin" cx="303" cy="133" rx="8" ry="11" />
+      <path class="ol hair" d="M216 116 C223 95, 241 83, 270 83 C292 84, 310 96, 318 116 C313 118, 305 120, 298 121 C288 111, 275 106, 258 106 C241 106, 227 110, 217 120 Z" />
+      <path class="ol2 none" d="M230 120 C245 111, 274 109, 289 120" />
+      <path class="ol2 none" d="M232 124 C246 117, 272 116, 286 124" />
+      <path class="ol2 none" d="M232 138 C238 132, 247 131, 254 134" />
+      <path class="ol2 none" d="M263 134 C270 131, 279 132, 285 138" />
+      <ellipse class="white" cx="241" cy="138" rx="7" ry="5.5" />
+      <ellipse class="white" cx="277" cy="138" rx="7" ry="5.5" />
+      <circle class="black" cx="242" cy="138" r="3.5" />
+      <circle class="black" cx="276" cy="138" r="3.5" />
+      <circle class="white" cx="240.5" cy="136.5" r="1.2" />
+      <circle class="white" cx="274.8" cy="136.5" r="1.2" />
+      <path class="ol2 none" d="M259 139 C263 146, 264 154, 260 160" />
+      <path class="ol hair" d="M236 160 C245 155, 273 155, 281 160 C277 166, 269 170, 258 170 C247 170, 239 166, 236 160 Z" />
+      <path class="ol hair" d="M245 165 C250 162, 266 162, 271 165 C271 177, 267 186, 258 189 C249 186, 245 177, 245 165 Z" />
+      <path class="ol2 none" d="M242 172 C247 177, 268 177, 274 172" />
+      <path class="ol2 none" d="M250 184 C254 187, 262 187, 266 184" />
+      <path class="ol2 none" d="M227 144 C231 156, 234 168, 241 176" />
+      <path class="ol2 none" d="M287 176 C293 168, 296 156, 300 145" />
+      </g>
+    </g></g>
+
+    <g id="blink">
+      <g transform="translate(258 132) scale(1.24 1.16) translate(-258 -132)" data-polish-wrapper="1"><g transform="translate(258 132) scale(1.18) translate(-258 -132)">
+      <path class="ol skin" d="M232 138 C237 134, 246 134, 251 138 C246 142, 237 142, 232 138 Z" />
+      <path class="ol skin" d="M267 138 C272 134, 281 134, 286 138 C281 142, 272 142, 267 138 Z" />
+      <path class="ol2 none" d="M233 138 C238 140, 245 140, 250 138" />
+      <path class="ol2 none" d="M268 138 C273 140, 280 140, 285 138" />
+      </g>
+    </g></g>
+
+    <g id="mouth_closed">
+      <g transform="translate(258 132) scale(1.24 1.16) translate(-258 -132)" data-polish-wrapper="1"><g transform="translate(258 132) scale(1.18) translate(-258 -132)">
+      <path class="ol2 none" d="M243 172 C248 177, 267 177, 273 172" />
+      </g>
+    </g></g>
+
+    <g id="mouth_open">
+      <g transform="translate(258 132) scale(1.24 1.16) translate(-258 -132)" data-polish-wrapper="1"><g transform="translate(258 132) scale(1.18) translate(-258 -132)">
+      <ellipse class="ol mouth" cx="258" cy="173" rx="11" ry="8" />
+      <path class="ol2 tongue" d="M251 176 C255 179, 261 179, 265 176" />
+      </g>
+    </g></g>
+
+    <g id="near_arm_u">
+      <g transform="translate(209 186) scale(1.08 1.02) translate(-209 -186)" data-polish-wrapper="1"><path class="ol coat2" d="M199 182 C208 177, 219 180, 224 190 L223 247 C217 253, 207 256, 198 252 L193 193 Z" />
+      <path class="ol shirt" d="M198 245 C203 243, 208 243, 212 246 L212 257 C208 260, 202 260, 197 258 Z" />
+    </g></g>
+
+    <g id="near_arm_l">
+      <g transform="translate(206 249) scale(1.06 1.02) translate(-206 -249)" data-polish-wrapper="1"><path class="ol coat" d="M195 247 C204 243, 214 245, 220 253 L223 307 C218 315, 210 319, 201 316 L194 258 Z" />
+      <path class="ol shirt" d="M205 308 C210 307, 215 307, 219 310 L219 320 C214 323, 208 323, 204 320 Z" />
+    </g></g>
+
+    <g id="near_hand">
+      <path class="ol skin2" d="M201 317 C210 314, 220 316, 228 323 C231 331, 228 338, 219 341 C210 343, 199 339, 193 331 C192 324, 195 319, 201 317 Z" />
+      <path class="ol2 none" d="M202 323 C209 324, 216 329, 220 335" />
+    </g>
+
+  </g>
+</svg>

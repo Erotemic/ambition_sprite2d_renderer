@@ -1,0 +1,2578 @@
+{
+  "name": "Neil Ongras Turfson",
+  "frame": {
+    "width": 128,
+    "height": 128,
+    "center_x": 64,
+    "ground_y": 118,
+    "ankle_h": 0
+  },
+  "svg_source": {
+    "path": "/mnt/data/neil_work/ambition-agent-source-20260720T141847Z-3d0057ba65c5/tools/ambition_sprite2d_renderer/data/characters/neil_ongras_turfson/neil_ongras_turfson_multiview.svg",
+    "view": "three-quarter",
+    "scale": 0.25,
+    "ref_dpi": 25.4
+  },
+  "bones": [
+    {
+      "name": "pelvis",
+      "parent": null,
+      "offset": [
+        0.0,
+        -40.0
+      ],
+      "length": 0.0,
+      "rest_angle": 0.0
+    },
+    {
+      "name": "torso",
+      "parent": "pelvis",
+      "offset": [
+        0.0,
+        -16.0
+      ],
+      "length": 0.0,
+      "rest_angle": 0.0
+    },
+    {
+      "name": "head",
+      "parent": "torso",
+      "offset": [
+        0.0,
+        -31.0
+      ],
+      "length": 0.0,
+      "rest_angle": 0.0
+    },
+    {
+      "name": "far_arm_u",
+      "parent": "torso",
+      "offset": [
+        12.0,
+        -13.25
+      ],
+      "length": 16.12,
+      "rest_angle": 76.0
+    },
+    {
+      "name": "far_arm_l",
+      "parent": "far_arm_u",
+      "offset": [
+        16.12,
+        0.0
+      ],
+      "length": 17.898,
+      "rest_angle": 28.0
+    },
+    {
+      "name": "far_arm_hand",
+      "parent": "far_arm_l",
+      "offset": [
+        17.898,
+        0.0
+      ],
+      "length": 6.0,
+      "rest_angle": -12.0
+    },
+    {
+      "name": "near_arm_u",
+      "parent": "torso",
+      "offset": [
+        -12.25,
+        -13.25
+      ],
+      "length": 16.085,
+      "rest_angle": 105.0
+    },
+    {
+      "name": "near_arm_l",
+      "parent": "near_arm_u",
+      "offset": [
+        16.085,
+        0.0
+      ],
+      "length": 17.612,
+      "rest_angle": -35.0
+    },
+    {
+      "name": "near_arm_hand",
+      "parent": "near_arm_l",
+      "offset": [
+        17.612,
+        0.0
+      ],
+      "length": 6.0,
+      "rest_angle": 6.0
+    },
+    {
+      "name": "far_leg_u",
+      "parent": "pelvis",
+      "offset": [
+        8.0,
+        0.0
+      ],
+      "length": 18.0,
+      "rest_angle": 90.0
+    },
+    {
+      "name": "far_leg_l",
+      "parent": "far_leg_u",
+      "offset": [
+        18.0,
+        0.0
+      ],
+      "length": 18.0,
+      "rest_angle": -7.0
+    },
+    {
+      "name": "far_leg_foot",
+      "parent": "far_leg_l",
+      "offset": [
+        18.0,
+        0.0
+      ],
+      "length": 8.0,
+      "rest_angle": 20.0
+    },
+    {
+      "name": "near_leg_u",
+      "parent": "pelvis",
+      "offset": [
+        -9.0,
+        -1.0
+      ],
+      "length": 18.0,
+      "rest_angle": 95.0
+    },
+    {
+      "name": "near_leg_l",
+      "parent": "near_leg_u",
+      "offset": [
+        18.0,
+        0.0
+      ],
+      "length": 19.0,
+      "rest_angle": -8.0
+    },
+    {
+      "name": "near_leg_foot",
+      "parent": "near_leg_l",
+      "offset": [
+        19.0,
+        0.0
+      ],
+      "length": 8.0,
+      "rest_angle": 48.0
+    }
+  ],
+  "parts": [
+    {
+      "name": "far_leg_u",
+      "bone": "far_leg_u",
+      "z": 5,
+      "kind": "sprite",
+      "include": [
+        "far_leg_u"
+      ],
+      "pivot": [
+        287.0,
+        312.0
+      ],
+      "rest_angle": 90.0
+    },
+    {
+      "name": "far_leg_l",
+      "bone": "far_leg_l",
+      "z": 6,
+      "kind": "sprite",
+      "include": [
+        "far_leg_l"
+      ],
+      "pivot": [
+        287.0,
+        385.0
+      ],
+      "rest_angle": 83.0
+    },
+    {
+      "name": "far_foot",
+      "bone": "far_leg_foot",
+      "z": 7,
+      "kind": "sprite",
+      "include": [
+        "far_foot"
+      ],
+      "pivot": [
+        289.0,
+        457.0
+      ],
+      "rest_angle": 20.0
+    },
+    {
+      "name": "far_arm_u",
+      "bone": "far_arm_u",
+      "z": 8,
+      "kind": "sprite",
+      "include": [
+        "far_arm_u"
+      ],
+      "pivot": [
+        306.0,
+        186.0
+      ],
+      "rest_angle": 85.28
+    },
+    {
+      "name": "far_arm_l",
+      "bone": "far_arm_l",
+      "z": 9,
+      "kind": "sprite",
+      "include": [
+        "far_arm_l"
+      ],
+      "pivot": [
+        311.0,
+        249.0
+      ],
+      "rest_angle": 85.84
+    },
+    {
+      "name": "far_hand",
+      "bone": "far_arm_hand",
+      "z": 10,
+      "kind": "sprite",
+      "include": [
+        "far_hand"
+      ],
+      "pivot": [
+        316.0,
+        319.0
+      ],
+      "rest_angle": 92.0
+    },
+    {
+      "name": "near_leg_u",
+      "bone": "near_leg_u",
+      "z": 11,
+      "kind": "sprite",
+      "include": [
+        "near_leg_u"
+      ],
+      "pivot": [
+        228.0,
+        311.0
+      ],
+      "rest_angle": 95.0
+    },
+    {
+      "name": "near_leg_l",
+      "bone": "near_leg_l",
+      "z": 12,
+      "kind": "sprite",
+      "include": [
+        "near_leg_l"
+      ],
+      "pivot": [
+        226.0,
+        386.0
+      ],
+      "rest_angle": 87.0
+    },
+    {
+      "name": "near_foot",
+      "bone": "near_leg_foot",
+      "z": 13,
+      "kind": "sprite",
+      "include": [
+        "near_foot"
+      ],
+      "pivot": [
+        225.0,
+        458.0
+      ],
+      "rest_angle": 48.0
+    },
+    {
+      "name": "pelvis",
+      "bone": "pelvis",
+      "z": 20,
+      "kind": "sprite",
+      "include": [
+        "pelvis"
+      ],
+      "pivot": [
+        256.0,
+        309.0
+      ],
+      "rest_angle": 0.0
+    },
+    {
+      "name": "torso",
+      "bone": "torso",
+      "z": 21,
+      "kind": "sprite",
+      "include": [
+        "torso"
+      ],
+      "pivot": [
+        257.0,
+        239.0
+      ],
+      "rest_angle": 0.0
+    },
+    {
+      "name": "grass_fx",
+      "bone": "pelvis",
+      "z": 22,
+      "kind": "sprite",
+      "include": [
+        "grass_fx"
+      ],
+      "pivot": [
+        256.0,
+        309.0
+      ],
+      "rest_angle": 0.0,
+      "opacity_channel": "grass_vis"
+    },
+    {
+      "name": "cosmos_fx",
+      "bone": "torso",
+      "z": 23,
+      "kind": "sprite",
+      "include": [
+        "cosmos_fx"
+      ],
+      "pivot": [
+        256.0,
+        238.0
+      ],
+      "rest_angle": 0.0,
+      "opacity_channel": "cosmos_vis"
+    },
+    {
+      "name": "head",
+      "bone": "head",
+      "z": 60,
+      "kind": "sprite",
+      "include": [
+        "head"
+      ],
+      "pivot": [
+        258.0,
+        132.0
+      ],
+      "rest_angle": 0.0
+    },
+    {
+      "name": "blink",
+      "bone": "head",
+      "z": 61,
+      "kind": "sprite",
+      "include": [
+        "blink"
+      ],
+      "pivot": [
+        258.0,
+        132.0
+      ],
+      "rest_angle": 0.0,
+      "opacity_channel": "blink_vis"
+    },
+    {
+      "name": "mouth_closed",
+      "bone": "head",
+      "z": 62,
+      "kind": "sprite",
+      "include": [
+        "mouth_closed"
+      ],
+      "pivot": [
+        258.0,
+        132.0
+      ],
+      "rest_angle": 0.0,
+      "opacity_channel": "mouth_closed_vis"
+    },
+    {
+      "name": "mouth_open",
+      "bone": "head",
+      "z": 63,
+      "kind": "sprite",
+      "include": [
+        "mouth_open"
+      ],
+      "pivot": [
+        258.0,
+        132.0
+      ],
+      "rest_angle": 0.0,
+      "opacity_channel": "mouth_open_vis"
+    },
+    {
+      "name": "near_arm_u",
+      "bone": "near_arm_u",
+      "z": 70,
+      "kind": "sprite",
+      "include": [
+        "near_arm_u"
+      ],
+      "pivot": [
+        209.0,
+        186.0
+      ],
+      "rest_angle": 92.89
+    },
+    {
+      "name": "near_arm_l",
+      "bone": "near_arm_l",
+      "z": 71,
+      "kind": "sprite",
+      "include": [
+        "near_arm_l"
+      ],
+      "pivot": [
+        206.0,
+        249.0
+      ],
+      "rest_angle": 87.41
+    },
+    {
+      "name": "near_hand",
+      "bone": "near_arm_hand",
+      "z": 72,
+      "kind": "sprite",
+      "include": [
+        "near_hand"
+      ],
+      "pivot": [
+        209.0,
+        318.0
+      ],
+      "rest_angle": 71.0
+    }
+  ],
+  "ik_legs": [
+    {
+      "upper": "near_leg_u",
+      "lower": "near_leg_l",
+      "foot": "near_leg_foot",
+      "channel_prefix": "near_foot",
+      "rest_x": -9.0,
+      "rest_lift": 0.0,
+      "rest_pitch": 48.0,
+      "bend": -1.0
+    },
+    {
+      "upper": "far_leg_u",
+      "lower": "far_leg_l",
+      "foot": "far_leg_foot",
+      "channel_prefix": "far_foot",
+      "rest_x": 8.0,
+      "rest_lift": 0.0,
+      "rest_pitch": 20.0,
+      "bend": -1.0
+    }
+  ],
+  "ik_chains": [
+    {
+      "upper": "near_arm_u",
+      "lower": "near_arm_l",
+      "end": "near_arm_hand",
+      "channel_prefix": "near_hand",
+      "rest_x": -12.0,
+      "rest_y": -43.0,
+      "rest_pitch": 74.0,
+      "bend": -1.0
+    },
+    {
+      "upper": "far_arm_u",
+      "lower": "far_arm_l",
+      "end": "far_arm_hand",
+      "channel_prefix": "far_hand",
+      "rest_x": 12.0,
+      "rest_y": -43.0,
+      "rest_pitch": 92.0,
+      "bend": 1.0
+    }
+  ],
+  "clips": {
+    "idle": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 145,
+      "channels": {
+        "root_y": {
+          "expr": "-0.7*sin(tau*t)"
+        },
+        "pelvis": {
+          "expr": "0.8*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "-1.4*sin(tau*t)"
+        },
+        "head": {
+          "expr": "1.2*sin(tau*(t-0.04))"
+        },
+        "near_hand_x": {
+          "const": -18.0
+        },
+        "near_hand_y": {
+          "const": -46.0
+        },
+        "near_hand_pitch": {
+          "const": 82.0
+        },
+        "far_hand_x": {
+          "const": 17.0
+        },
+        "far_hand_y": {
+          "const": -46.0
+        },
+        "far_hand_pitch": {
+          "const": 96.0
+        },
+        "blink_vis": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.17,
+              0.0,
+              "linear"
+            ],
+            [
+              0.21,
+              1.0,
+              "linear"
+            ],
+            [
+              0.25,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              0.78,
+              1.0,
+              "linear"
+            ],
+            [
+              0.82,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "mouth_closed_vis": {
+          "const": 1.0
+        },
+        "mouth_open_vis": {
+          "const": 0.0
+        },
+        "cosmos_vis": {
+          "const": 0.0
+        },
+        "grass_vis": {
+          "const": 0.0
+        },
+        "near_hand_bend": {
+          "const": -1.0
+        },
+        "far_hand_bend": {
+          "const": 1.0
+        }
+      }
+    },
+    "walk": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 104,
+      "channels": {
+        "root_y": {
+          "expr": "0.8*cos(2*tau*t)-0.3"
+        },
+        "pelvis": {
+          "expr": "2.0*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "-2.2*sin(tau*t)"
+        },
+        "head": {
+          "expr": "1.3*sin(tau*(t-0.07))"
+        },
+        "near_hand_x": {
+          "expr": "-18 + 7*cos(tau*t)"
+        },
+        "near_hand_y": {
+          "expr": "-46 + 1.2*sin(2*tau*t)"
+        },
+        "near_hand_pitch": {
+          "expr": "82 + 12*cos(tau*t)"
+        },
+        "far_hand_x": {
+          "expr": "17 - 7*cos(tau*t)"
+        },
+        "far_hand_y": {
+          "expr": "-46 - 1.2*sin(2*tau*t)"
+        },
+        "far_hand_pitch": {
+          "expr": "96 - 12*cos(tau*t)"
+        },
+        "near_foot_x": {
+          "keys": [
+            [
+              0.0,
+              9.0,
+              "sine"
+            ],
+            [
+              0.55,
+              -4.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_foot_lift": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.4,
+              0.0,
+              "linear"
+            ],
+            [
+              0.55,
+              2.0,
+              "linear"
+            ],
+            [
+              0.8,
+              5.0,
+              "sine"
+            ]
+          ]
+        },
+        "near_foot_pitch": {
+          "keys": [
+            [
+              0.0,
+              -8.0,
+              "linear"
+            ],
+            [
+              0.15,
+              0.0,
+              "linear"
+            ],
+            [
+              0.45,
+              0.0,
+              "linear"
+            ],
+            [
+              0.6,
+              18.0,
+              "linear"
+            ],
+            [
+              0.9,
+              -8.0,
+              "smooth"
+            ]
+          ]
+        },
+        "far_foot_x": {
+          "keys": [
+            [
+              0.05,
+              -9.0,
+              "linear"
+            ],
+            [
+              0.5,
+              4.0,
+              "sine"
+            ]
+          ]
+        },
+        "far_foot_lift": {
+          "keys": [
+            [
+              0.05,
+              2.0,
+              "linear"
+            ],
+            [
+              0.26,
+              5.0,
+              "sine"
+            ],
+            [
+              0.5,
+              0.0,
+              "linear"
+            ],
+            [
+              0.9,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_foot_pitch": {
+          "keys": [
+            [
+              0.05,
+              18.0,
+              "linear"
+            ],
+            [
+              0.4,
+              -8.0,
+              "smooth"
+            ],
+            [
+              0.52,
+              -8.0,
+              "linear"
+            ],
+            [
+              0.64,
+              0.0,
+              "linear"
+            ],
+            [
+              0.9,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "blink_vis": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.17,
+              0.0,
+              "linear"
+            ],
+            [
+              0.21,
+              1.0,
+              "linear"
+            ],
+            [
+              0.25,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              0.78,
+              1.0,
+              "linear"
+            ],
+            [
+              0.82,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "mouth_closed_vis": {
+          "const": 1.0
+        },
+        "mouth_open_vis": {
+          "const": 0.0
+        },
+        "cosmos_vis": {
+          "const": 0.0
+        },
+        "grass_vis": {
+          "const": 0.0
+        },
+        "near_hand_bend": {
+          "const": -1.0
+        },
+        "far_hand_bend": {
+          "const": 1.0
+        }
+      }
+    },
+    "run": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 76,
+      "channels": {
+        "root_y": {
+          "expr": "1.8*cos(2*tau*t)-0.8"
+        },
+        "pelvis": {
+          "expr": "3.0*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "-4.0*sin(tau*t)-3"
+        },
+        "head": {
+          "expr": "2.0*sin(tau*(t-0.04))+1.2"
+        },
+        "near_hand_x": {
+          "expr": "-15 + 10*cos(tau*t)"
+        },
+        "near_hand_y": {
+          "expr": "-45 + 1.5*sin(2*tau*t)"
+        },
+        "near_hand_pitch": {
+          "expr": "78 + 18*cos(tau*t)"
+        },
+        "far_hand_x": {
+          "expr": "14 - 10*cos(tau*t)"
+        },
+        "far_hand_y": {
+          "expr": "-45 - 1.5*sin(2*tau*t)"
+        },
+        "far_hand_pitch": {
+          "expr": "100 - 18*cos(tau*t)"
+        },
+        "near_foot_x": {
+          "keys": [
+            [
+              0.0,
+              10.0,
+              "sine"
+            ],
+            [
+              0.5,
+              -6.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_foot_lift": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.33,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              3.0,
+              "linear"
+            ],
+            [
+              0.75,
+              8.0,
+              "sine"
+            ]
+          ]
+        },
+        "near_foot_pitch": {
+          "keys": [
+            [
+              0.0,
+              -10.0,
+              "linear"
+            ],
+            [
+              0.16,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              18.0,
+              "linear"
+            ],
+            [
+              0.9,
+              -10.0,
+              "smooth"
+            ]
+          ]
+        },
+        "far_foot_x": {
+          "keys": [
+            [
+              0.0,
+              -10.0,
+              "linear"
+            ],
+            [
+              0.5,
+              6.0,
+              "sine"
+            ]
+          ]
+        },
+        "far_foot_lift": {
+          "keys": [
+            [
+              0.0,
+              3.0,
+              "linear"
+            ],
+            [
+              0.25,
+              8.0,
+              "sine"
+            ],
+            [
+              0.5,
+              0.0,
+              "linear"
+            ],
+            [
+              0.85,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_foot_pitch": {
+          "keys": [
+            [
+              0.0,
+              18.0,
+              "linear"
+            ],
+            [
+              0.4,
+              -10.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              -10.0,
+              "linear"
+            ],
+            [
+              0.64,
+              0.0,
+              "linear"
+            ],
+            [
+              0.85,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "blink_vis": {
+          "const": 0.0
+        },
+        "mouth_closed_vis": {
+          "const": 1.0
+        },
+        "mouth_open_vis": {
+          "const": 0.0
+        },
+        "cosmos_vis": {
+          "const": 0.0
+        },
+        "grass_vis": {
+          "const": 0.0
+        },
+        "near_hand_bend": {
+          "const": -1.0
+        },
+        "far_hand_bend": {
+          "const": 1.0
+        }
+      }
+    },
+    "crouch": {
+      "loop": true,
+      "frames": 6,
+      "duration_ms": 92,
+      "channels": {
+        "root_y": {
+          "expr": "5.5 + 0.7*sin(tau*t)"
+        },
+        "pelvis": {
+          "expr": "1.5*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "-10 + 1.2*sin(tau*t)"
+        },
+        "head": {
+          "expr": "7 - 1.0*sin(tau*t)"
+        },
+        "near_hand_x": {
+          "const": -21.0
+        },
+        "near_hand_y": {
+          "const": -43.0
+        },
+        "near_hand_pitch": {
+          "const": 108.0
+        },
+        "far_hand_x": {
+          "const": 18.0
+        },
+        "far_hand_y": {
+          "const": -43.0
+        },
+        "far_hand_pitch": {
+          "const": 72.0
+        },
+        "near_foot_x": {
+          "const": -10.0
+        },
+        "near_foot_lift": {
+          "const": 0.0
+        },
+        "near_foot_pitch": {
+          "const": 36.0
+        },
+        "far_foot_x": {
+          "const": 7.0
+        },
+        "far_foot_lift": {
+          "const": 0.0
+        },
+        "far_foot_pitch": {
+          "const": 18.0
+        },
+        "blink_vis": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.17,
+              0.0,
+              "linear"
+            ],
+            [
+              0.21,
+              1.0,
+              "linear"
+            ],
+            [
+              0.25,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              0.78,
+              1.0,
+              "linear"
+            ],
+            [
+              0.82,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "mouth_closed_vis": {
+          "const": 1.0
+        },
+        "mouth_open_vis": {
+          "const": 0.0
+        },
+        "cosmos_vis": {
+          "const": 0.0
+        },
+        "grass_vis": {
+          "const": 0.0
+        },
+        "near_hand_bend": {
+          "const": -1.0
+        },
+        "far_hand_bend": {
+          "const": 1.0
+        }
+      }
+    },
+    "jump": {
+      "loop": false,
+      "frames": 6,
+      "duration_ms": 84,
+      "channels": {
+        "root_y": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.4,
+              -8.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              -4.0,
+              "smooth"
+            ]
+          ]
+        },
+        "torso": {
+          "keys": [
+            [
+              0.0,
+              -6.0,
+              "smooth"
+            ],
+            [
+              0.4,
+              -14.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              -4.0,
+              "smooth"
+            ]
+          ]
+        },
+        "head": {
+          "keys": [
+            [
+              0.0,
+              2.0,
+              "smooth"
+            ],
+            [
+              0.4,
+              7.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
+        },
+        "near_hand_x": {
+          "const": -26.0
+        },
+        "near_hand_y": {
+          "const": -80.0
+        },
+        "near_hand_pitch": {
+          "const": 145.0
+        },
+        "far_hand_x": {
+          "const": 25.0
+        },
+        "far_hand_y": {
+          "const": -81.0
+        },
+        "far_hand_pitch": {
+          "const": 35.0
+        },
+        "near_foot_x": {
+          "keys": [
+            [
+              0.0,
+              -9.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              -4.0,
+              "smooth"
+            ]
+          ]
+        },
+        "near_foot_lift": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.6,
+              8.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              12.0,
+              "smooth"
+            ]
+          ]
+        },
+        "near_foot_pitch": {
+          "const": 70.0
+        },
+        "far_foot_x": {
+          "keys": [
+            [
+              0.0,
+              8.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              4.0,
+              "smooth"
+            ]
+          ]
+        },
+        "far_foot_lift": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.6,
+              8.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              12.0,
+              "smooth"
+            ]
+          ]
+        },
+        "far_foot_pitch": {
+          "const": 10.0
+        },
+        "blink_vis": {
+          "const": 0.0
+        },
+        "mouth_closed_vis": {
+          "const": 1.0
+        },
+        "mouth_open_vis": {
+          "const": 0.0
+        },
+        "cosmos_vis": {
+          "const": 0.0
+        },
+        "grass_vis": {
+          "const": 0.0
+        },
+        "near_hand_bend": {
+          "const": 1.0
+        },
+        "far_hand_bend": {
+          "const": -1.0
+        }
+      }
+    },
+    "fall": {
+      "loop": true,
+      "frames": 6,
+      "duration_ms": 92,
+      "channels": {
+        "root_y": {
+          "expr": "-6 + 1*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "3*sin(tau*t)"
+        },
+        "head": {
+          "expr": "-2*sin(tau*t)"
+        },
+        "near_hand_x": {
+          "const": -31.0
+        },
+        "near_hand_y": {
+          "const": -68.0
+        },
+        "near_hand_pitch": {
+          "const": 120.0
+        },
+        "far_hand_x": {
+          "const": 30.0
+        },
+        "far_hand_y": {
+          "const": -69.0
+        },
+        "far_hand_pitch": {
+          "const": 58.0
+        },
+        "near_foot_x": {
+          "const": -5.0
+        },
+        "near_foot_lift": {
+          "const": 8.0
+        },
+        "near_foot_pitch": {
+          "const": 62.0
+        },
+        "far_foot_x": {
+          "const": 5.0
+        },
+        "far_foot_lift": {
+          "const": 10.0
+        },
+        "far_foot_pitch": {
+          "const": 10.0
+        },
+        "blink_vis": {
+          "const": 0.0
+        },
+        "mouth_closed_vis": {
+          "const": 0.0
+        },
+        "mouth_open_vis": {
+          "const": 1.0
+        },
+        "cosmos_vis": {
+          "const": 0.0
+        },
+        "grass_vis": {
+          "const": 0.0
+        },
+        "near_hand_bend": {
+          "const": -1.0
+        },
+        "far_hand_bend": {
+          "const": 1.0
+        }
+      }
+    },
+    "land": {
+      "loop": false,
+      "frames": 6,
+      "duration_ms": 76,
+      "channels": {
+        "root_y": {
+          "keys": [
+            [
+              0.0,
+              6.0,
+              "smooth"
+            ],
+            [
+              0.35,
+              9.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
+        },
+        "torso": {
+          "keys": [
+            [
+              0.0,
+              -12.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              2.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
+        },
+        "head": {
+          "keys": [
+            [
+              0.0,
+              8.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              -2.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
+        },
+        "near_hand_x": {
+          "const": -23.0
+        },
+        "near_hand_y": {
+          "const": -43.0
+        },
+        "near_hand_pitch": {
+          "const": 112.0
+        },
+        "far_hand_x": {
+          "const": 20.0
+        },
+        "far_hand_y": {
+          "const": -43.0
+        },
+        "far_hand_pitch": {
+          "const": 68.0
+        },
+        "near_foot_x": {
+          "const": -10.0
+        },
+        "near_foot_lift": {
+          "const": 0.0
+        },
+        "near_foot_pitch": {
+          "const": 42.0
+        },
+        "far_foot_x": {
+          "const": 7.0
+        },
+        "far_foot_lift": {
+          "const": 0.0
+        },
+        "far_foot_pitch": {
+          "const": 18.0
+        },
+        "blink_vis": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.17,
+              0.0,
+              "linear"
+            ],
+            [
+              0.21,
+              1.0,
+              "linear"
+            ],
+            [
+              0.25,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              0.78,
+              1.0,
+              "linear"
+            ],
+            [
+              0.82,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "mouth_closed_vis": {
+          "const": 1.0
+        },
+        "mouth_open_vis": {
+          "const": 0.0
+        },
+        "cosmos_vis": {
+          "const": 0.0
+        },
+        "grass_vis": {
+          "const": 0.0
+        },
+        "near_hand_bend": {
+          "const": -1.0
+        },
+        "far_hand_bend": {
+          "const": 1.0
+        }
+      }
+    },
+    "talk": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 104,
+      "channels": {
+        "root_y": {
+          "expr": "-0.8*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "-2.2*sin(tau*t) - 0.6*cos(2*tau*t)"
+        },
+        "head": {
+          "expr": "2.4*sin(tau*(t-0.08)) + 0.8"
+        },
+        "near_hand_x": {
+          "expr": "-26 + 3*sin(tau*t)"
+        },
+        "near_hand_y": {
+          "expr": "-60 - 2*cos(tau*t)"
+        },
+        "near_hand_pitch": {
+          "expr": "110 + 12*sin(tau*t)"
+        },
+        "far_hand_x": {
+          "expr": "18 + 2*sin(tau*(t+0.12))"
+        },
+        "far_hand_y": {
+          "expr": "-51 - 1.5*sin(tau*t)"
+        },
+        "far_hand_pitch": {
+          "expr": "72 - 8*sin(tau*t)"
+        },
+        "blink_vis": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.33,
+              0.0,
+              "linear"
+            ],
+            [
+              0.36,
+              1.0,
+              "linear"
+            ],
+            [
+              0.4,
+              0.0,
+              "linear"
+            ],
+            [
+              0.8,
+              0.0,
+              "linear"
+            ],
+            [
+              0.84,
+              1.0,
+              "linear"
+            ],
+            [
+              0.88,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "mouth_closed_vis": {
+          "expr": "1-(0.25 + 0.75*max(0,sin(4*tau*t)))"
+        },
+        "mouth_open_vis": {
+          "expr": "0.25 + 0.75*max(0,sin(4*tau*t))"
+        },
+        "cosmos_vis": {
+          "const": 0.0
+        },
+        "grass_vis": {
+          "const": 0.0
+        },
+        "near_hand_bend": {
+          "const": -1.0
+        },
+        "far_hand_bend": {
+          "const": 1.0
+        }
+      }
+    },
+    "interact": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 90,
+      "channels": {
+        "root_y": {
+          "expr": "-0.4*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "-1.0*sin(tau*t)"
+        },
+        "head": {
+          "expr": "0.8*sin(tau*t)"
+        },
+        "near_hand_x": {
+          "expr": "-6 + 1.5*sin(tau*t)"
+        },
+        "near_hand_y": {
+          "expr": "-58 - 1.0*sin(tau*t)"
+        },
+        "near_hand_pitch": {
+          "const": 42.0
+        },
+        "far_hand_x": {
+          "expr": "22 + 1.0*sin(tau*t)"
+        },
+        "far_hand_y": {
+          "expr": "-58 + 1.0*sin(tau*t)"
+        },
+        "far_hand_pitch": {
+          "const": 138.0
+        },
+        "blink_vis": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.17,
+              0.0,
+              "linear"
+            ],
+            [
+              0.21,
+              1.0,
+              "linear"
+            ],
+            [
+              0.25,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              0.78,
+              1.0,
+              "linear"
+            ],
+            [
+              0.82,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "mouth_closed_vis": {
+          "const": 1.0
+        },
+        "mouth_open_vis": {
+          "const": 0.0
+        },
+        "cosmos_vis": {
+          "const": 0.0
+        },
+        "grass_vis": {
+          "const": 0.0
+        },
+        "near_hand_bend": {
+          "const": -1.0
+        },
+        "far_hand_bend": {
+          "const": 1.0
+        }
+      }
+    },
+    "point_sky": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 80,
+      "channels": {
+        "root_y": {
+          "expr": "-1.0*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "-5.2 + 1.0*sin(tau*t)"
+        },
+        "head": {
+          "expr": "8.0 + 1.3*sin(tau*t)"
+        },
+        "near_hand_x": {
+          "const": -21.0
+        },
+        "near_hand_y": {
+          "const": -98.0
+        },
+        "near_hand_pitch": {
+          "const": 165.0
+        },
+        "far_hand_x": {
+          "const": 18.0
+        },
+        "far_hand_y": {
+          "const": -50.0
+        },
+        "far_hand_pitch": {
+          "const": 72.0
+        },
+        "blink_vis": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.17,
+              0.0,
+              "linear"
+            ],
+            [
+              0.21,
+              1.0,
+              "linear"
+            ],
+            [
+              0.25,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              0.78,
+              1.0,
+              "linear"
+            ],
+            [
+              0.82,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "mouth_closed_vis": {
+          "const": 1.0
+        },
+        "mouth_open_vis": {
+          "const": 0.0
+        },
+        "cosmos_vis": {
+          "const": 0.0
+        },
+        "grass_vis": {
+          "const": 0.0
+        },
+        "near_hand_bend": {
+          "const": 1.0
+        },
+        "far_hand_bend": {
+          "const": 1.0
+        }
+      }
+    },
+    "cosmic_lecture": {
+      "loop": true,
+      "frames": 10,
+      "duration_ms": 82,
+      "channels": {
+        "root_y": {
+          "expr": "-1.0*sin(tau*t)"
+        },
+        "pelvis": {
+          "expr": "1.8*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "-4.5*sin(tau*t) - 2.5"
+        },
+        "head": {
+          "expr": "5.0 + 1.5*sin(tau*t)"
+        },
+        "near_hand_x": {
+          "expr": "-32 - 2*sin(tau*t)"
+        },
+        "near_hand_y": {
+          "expr": "-84 - 3*cos(tau*t)"
+        },
+        "near_hand_pitch": {
+          "expr": "160 - 5*sin(tau*t)"
+        },
+        "far_hand_x": {
+          "expr": "31 + 2*sin(tau*t)"
+        },
+        "far_hand_y": {
+          "expr": "-84 + 3*cos(tau*t)"
+        },
+        "far_hand_pitch": {
+          "expr": "20 + 5*sin(tau*t)"
+        },
+        "blink_vis": {
+          "const": 0.0
+        },
+        "mouth_closed_vis": {
+          "expr": "1-(0.40 + 0.60*max(0,sin(3*tau*t)))"
+        },
+        "mouth_open_vis": {
+          "expr": "0.40 + 0.60*max(0,sin(3*tau*t))"
+        },
+        "cosmos_vis": {
+          "expr": "0.55 + 0.45*max(0,sin(2*tau*t))"
+        },
+        "grass_vis": {
+          "const": 0.0
+        },
+        "near_hand_bend": {
+          "const": 1.0
+        },
+        "far_hand_bend": {
+          "const": -1.0
+        }
+      }
+    },
+    "kneel": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 88,
+      "channels": {
+        "root_y": {
+          "expr": "7 + 0.6*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "-6 + 1*sin(tau*t)"
+        },
+        "head": {
+          "expr": "3 - 0.8*sin(tau*t)"
+        },
+        "near_hand_x": {
+          "const": -25.0
+        },
+        "near_hand_y": {
+          "const": -44.0
+        },
+        "near_hand_pitch": {
+          "const": 112.0
+        },
+        "far_hand_x": {
+          "const": 14.0
+        },
+        "far_hand_y": {
+          "const": -40.0
+        },
+        "far_hand_pitch": {
+          "const": 70.0
+        },
+        "near_foot_x": {
+          "const": -11.0
+        },
+        "near_foot_lift": {
+          "const": 0.0
+        },
+        "near_foot_pitch": {
+          "const": 34.0
+        },
+        "far_foot_x": {
+          "const": 4.0
+        },
+        "far_foot_lift": {
+          "const": 4.0
+        },
+        "far_foot_pitch": {
+          "const": -10.0
+        },
+        "blink_vis": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.17,
+              0.0,
+              "linear"
+            ],
+            [
+              0.21,
+              1.0,
+              "linear"
+            ],
+            [
+              0.25,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              0.78,
+              1.0,
+              "linear"
+            ],
+            [
+              0.82,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "mouth_closed_vis": {
+          "const": 1.0
+        },
+        "mouth_open_vis": {
+          "const": 0.0
+        },
+        "cosmos_vis": {
+          "const": 0.0
+        },
+        "grass_vis": {
+          "const": 0.0
+        },
+        "near_hand_bend": {
+          "const": -1.0
+        },
+        "far_hand_bend": {
+          "const": 1.0
+        }
+      }
+    },
+    "touch_grass": {
+      "loop": true,
+      "frames": 10,
+      "duration_ms": 84,
+      "channels": {
+        "root_y": {
+          "expr": "10 + 0.8*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "-18 + 1.4*sin(tau*t)"
+        },
+        "head": {
+          "expr": "12 - 1.2*sin(tau*t)"
+        },
+        "near_hand_x": {
+          "expr": "-24 + 2*sin(tau*t)"
+        },
+        "near_hand_y": {
+          "expr": "-26 + 1.0*sin(tau*t)"
+        },
+        "near_hand_pitch": {
+          "const": 158.0
+        },
+        "far_hand_x": {
+          "expr": "5 + 1*sin(tau*t)"
+        },
+        "far_hand_y": {
+          "expr": "-39 - 1.0*sin(tau*t)"
+        },
+        "far_hand_pitch": {
+          "const": 70.0
+        },
+        "near_foot_x": {
+          "const": -11.0
+        },
+        "near_foot_lift": {
+          "const": 0.0
+        },
+        "near_foot_pitch": {
+          "const": 34.0
+        },
+        "far_foot_x": {
+          "const": 6.0
+        },
+        "far_foot_lift": {
+          "const": 0.0
+        },
+        "far_foot_pitch": {
+          "const": 16.0
+        },
+        "blink_vis": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.17,
+              0.0,
+              "linear"
+            ],
+            [
+              0.21,
+              1.0,
+              "linear"
+            ],
+            [
+              0.25,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              0.78,
+              1.0,
+              "linear"
+            ],
+            [
+              0.82,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "mouth_closed_vis": {
+          "const": 1.0
+        },
+        "mouth_open_vis": {
+          "const": 0.0
+        },
+        "cosmos_vis": {
+          "const": 0.0
+        },
+        "grass_vis": {
+          "expr": "0.55 + 0.45*sin(tau*t)"
+        },
+        "near_hand_bend": {
+          "const": -1.0
+        },
+        "far_hand_bend": {
+          "const": 1.0
+        }
+      }
+    },
+    "grass_sweep": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 76,
+      "channels": {
+        "root_y": {
+          "expr": "8 + 0.8*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "-15 + 2.8*sin(tau*t)"
+        },
+        "head": {
+          "expr": "9 - 2.2*sin(tau*t)"
+        },
+        "near_hand_x": {
+          "expr": "-20 + 10*sin(tau*t)"
+        },
+        "near_hand_y": {
+          "expr": "-28 + 1.5*cos(tau*t)"
+        },
+        "near_hand_pitch": {
+          "expr": "155 - 30*sin(tau*t)"
+        },
+        "far_hand_x": {
+          "const": 5.0
+        },
+        "far_hand_y": {
+          "const": -39.0
+        },
+        "far_hand_pitch": {
+          "const": 68.0
+        },
+        "near_foot_x": {
+          "const": -11.0
+        },
+        "near_foot_lift": {
+          "const": 0.0
+        },
+        "near_foot_pitch": {
+          "const": 34.0
+        },
+        "far_foot_x": {
+          "const": 6.0
+        },
+        "far_foot_lift": {
+          "const": 0.0
+        },
+        "far_foot_pitch": {
+          "const": 16.0
+        },
+        "blink_vis": {
+          "const": 0.0
+        },
+        "mouth_closed_vis": {
+          "const": 1.0
+        },
+        "mouth_open_vis": {
+          "const": 0.0
+        },
+        "cosmos_vis": {
+          "const": 0.0
+        },
+        "grass_vis": {
+          "const": 1.0
+        },
+        "near_hand_bend": {
+          "const": -1.0
+        },
+        "far_hand_bend": {
+          "const": 1.0
+        }
+      }
+    },
+    "block": {
+      "loop": true,
+      "frames": 6,
+      "duration_ms": 82,
+      "channels": {
+        "torso": {
+          "expr": "-2 + 0.6*sin(tau*t)"
+        },
+        "head": {
+          "expr": "1 + 0.4*sin(tau*t)"
+        },
+        "near_hand_x": {
+          "const": -2.0
+        },
+        "near_hand_y": {
+          "const": -64.0
+        },
+        "near_hand_pitch": {
+          "const": 20.0
+        },
+        "far_hand_x": {
+          "const": 1.0
+        },
+        "far_hand_y": {
+          "const": -64.0
+        },
+        "far_hand_pitch": {
+          "const": 160.0
+        },
+        "blink_vis": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.17,
+              0.0,
+              "linear"
+            ],
+            [
+              0.21,
+              1.0,
+              "linear"
+            ],
+            [
+              0.25,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              0.78,
+              1.0,
+              "linear"
+            ],
+            [
+              0.82,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "mouth_closed_vis": {
+          "const": 1.0
+        },
+        "mouth_open_vis": {
+          "const": 0.0
+        },
+        "cosmos_vis": {
+          "const": 0.0
+        },
+        "grass_vis": {
+          "const": 0.0
+        },
+        "near_hand_bend": {
+          "const": -1.0
+        },
+        "far_hand_bend": {
+          "const": 1.0
+        }
+      }
+    },
+    "hit": {
+      "loop": false,
+      "frames": 5,
+      "duration_ms": 88,
+      "channels": {
+        "root_y": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.25,
+              1.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
+        },
+        "pelvis": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.2,
+              4.0,
+              "smooth"
+            ],
+            [
+              0.7,
+              -3.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
+        },
+        "torso": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.2,
+              8.0,
+              "smooth"
+            ],
+            [
+              0.7,
+              -5.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
+        },
+        "head": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.2,
+              10.0,
+              "smooth"
+            ],
+            [
+              0.7,
+              -4.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
+        },
+        "near_hand_x": {
+          "const": -30.0
+        },
+        "near_hand_y": {
+          "const": -58.0
+        },
+        "near_hand_pitch": {
+          "const": 115.0
+        },
+        "far_hand_x": {
+          "const": 31.0
+        },
+        "far_hand_y": {
+          "const": -60.0
+        },
+        "far_hand_pitch": {
+          "const": 62.0
+        },
+        "blink_vis": {
+          "const": 0.0
+        },
+        "mouth_closed_vis": {
+          "const": 0.0
+        },
+        "mouth_open_vis": {
+          "const": 1.0
+        },
+        "cosmos_vis": {
+          "const": 0.0
+        },
+        "grass_vis": {
+          "const": 0.0
+        },
+        "near_hand_bend": {
+          "const": -1.0
+        },
+        "far_hand_bend": {
+          "const": 1.0
+        }
+      }
+    },
+    "celebrate": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 88,
+      "channels": {
+        "root_y": {
+          "expr": "-2.0 + 1.6*sin(2*tau*t)"
+        },
+        "pelvis": {
+          "expr": "2.0*sin(2*tau*t)"
+        },
+        "torso": {
+          "expr": "-3.0*sin(2*tau*t)"
+        },
+        "head": {
+          "expr": "1.8*sin(2*tau*t)"
+        },
+        "near_hand_x": {
+          "expr": "-29 - 2*sin(tau*t)"
+        },
+        "near_hand_y": {
+          "expr": "-94 - 2*cos(tau*t)"
+        },
+        "near_hand_pitch": {
+          "const": 165.0
+        },
+        "far_hand_x": {
+          "expr": "28 + 2*sin(tau*t)"
+        },
+        "far_hand_y": {
+          "expr": "-94 + 2*cos(tau*t)"
+        },
+        "far_hand_pitch": {
+          "const": 15.0
+        },
+        "blink_vis": {
+          "const": 0.0
+        },
+        "mouth_closed_vis": {
+          "const": 0.0
+        },
+        "mouth_open_vis": {
+          "const": 1.0
+        },
+        "cosmos_vis": {
+          "expr": "0.5 + 0.5*max(0,sin(2*tau*t))"
+        },
+        "grass_vis": {
+          "const": 0.0
+        },
+        "near_hand_bend": {
+          "const": 1.0
+        },
+        "far_hand_bend": {
+          "const": -1.0
+        }
+      }
+    },
+    "taunt": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 94,
+      "channels": {
+        "root_y": {
+          "expr": "-0.4*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "-1.5*sin(tau*t) + 1"
+        },
+        "head": {
+          "expr": "-1.0 + 0.8*sin(tau*t)"
+        },
+        "near_hand_x": {
+          "expr": "-22 + 2*sin(tau*t)"
+        },
+        "near_hand_y": {
+          "expr": "-62 + 1*cos(tau*t)"
+        },
+        "near_hand_pitch": {
+          "const": 118.0
+        },
+        "far_hand_x": {
+          "expr": "29 + 1*sin(tau*t)"
+        },
+        "far_hand_y": {
+          "expr": "-63 - 1*sin(tau*t)"
+        },
+        "far_hand_pitch": {
+          "const": 45.0
+        },
+        "blink_vis": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.17,
+              0.0,
+              "linear"
+            ],
+            [
+              0.21,
+              1.0,
+              "linear"
+            ],
+            [
+              0.25,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              0.78,
+              1.0,
+              "linear"
+            ],
+            [
+              0.82,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "mouth_closed_vis": {
+          "expr": "1-(max(0,0.2+0.5*sin(2*tau*t)))"
+        },
+        "mouth_open_vis": {
+          "expr": "max(0,0.2+0.5*sin(2*tau*t))"
+        },
+        "cosmos_vis": {
+          "const": 0.0
+        },
+        "grass_vis": {
+          "const": 0.0
+        },
+        "near_hand_bend": {
+          "const": -1.0
+        },
+        "far_hand_bend": {
+          "const": 1.0
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="160mm" height="160mm" viewBox="0 0 160 160" version="1.1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+  <defs>
+    <style>
+      .outline { fill:none; stroke:#1f1715; stroke-width:4.2; stroke-linejoin:round; stroke-linecap:round; }
+      .thin { fill:none; stroke:#2d2321; stroke-width:2.2; stroke-linejoin:round; stroke-linecap:round; }
+      .skin { fill:#d7ad8c; stroke:#1f1715; stroke-width:4.0; stroke-linejoin:round; stroke-linecap:round; }
+      .skinsoft { fill:#ebc6a5; stroke:none; }
+      .hair { fill:#2f241f; stroke:#1f1715; stroke-width:4.0; stroke-linejoin:round; stroke-linecap:round; }
+      .hairsoft { fill:#59453d; stroke:none; }
+      .shirt { fill:#efe8db; stroke:#1f1715; stroke-width:4.0; stroke-linejoin:round; stroke-linecap:round; }
+      .vest { fill:#314453; stroke:#1f1715; stroke-width:4.0; stroke-linejoin:round; stroke-linecap:round; }
+      .vestsoft { fill:#496173; stroke:none; }
+      .apron { fill:#f5f1e7; stroke:#1f1715; stroke-width:4.0; stroke-linejoin:round; stroke-linecap:round; }
+      .stripeR { fill:#cb4f52; stroke:none; }
+      .stripeB { fill:#5d8dbf; stroke:none; }
+      .pant { fill:#3b3d52; stroke:#1f1715; stroke-width:4.0; stroke-linejoin:round; stroke-linecap:round; }
+      .shoe { fill:#5a3f2d; stroke:#1f1715; stroke-width:3.0; stroke-linejoin:round; stroke-linecap:round; }
+      .metal { fill:#d7d8d8; stroke:#1f1715; stroke-width:2.6; stroke-linejoin:round; stroke-linecap:round; }
+      .eye { fill:#1a1311; stroke:none; }
+      .foam { fill:#f8f8f4; stroke:none; }
+      .mouth { fill:#9a4d4f; stroke:#1f1715; stroke-width:2.2; stroke-linejoin:round; stroke-linecap:round; }
+      .loopR { fill:none; stroke:#cb4f52; stroke-width:3.0; stroke-linejoin:round; stroke-linecap:round; }
+      .loopB { fill:none; stroke:#5d8dbf; stroke-width:3.0; stroke-linejoin:round; stroke-linecap:round; }
+      .loopW { fill:none; stroke:#f4efe6; stroke-width:2.0; stroke-linejoin:round; stroke-linecap:round; }
+      .accent { fill:#d2b360; stroke:#1f1715; stroke-width:2.4; stroke-linejoin:round; stroke-linecap:round; }
+    </style>
+  </defs>
+  <g inkscape:groupmode="layer" inkscape:label="Paradox Barber - Front" id="view-front">
+    <g id="part-leg-l-u">
+      <path class="pant" d="M 67 112 C 62 118, 61 131, 64 142 C 67 146, 71 147, 75 144 C 78 137, 77 123, 73 113 Z"/>
+      <path class="vestsoft" d="M 67 116 C 65 123, 66 134, 68 141 C 70 142, 72 140, 72 137 C 71 129, 70 122, 69 116 Z"/>
+    </g>
+    <g id="part-leg-l-l">
+      <path class="pant" d="M 69 139 C 65 146, 65 154, 68 159 H 80 C 82 154, 80 146, 76 139 Z"/>
+      <path class="shoe" d="M 67 159 H 81 C 81 156, 79 154, 76 153 H 69 Z"/>
+    </g>
+    <g id="part-leg-r-u">
+      <path class="pant" d="M 92 112 C 97 118, 98 131, 95 142 C 92 146, 88 147, 84 144 C 81 137, 82 123, 86 113 Z"/>
+      <path class="vestsoft" d="M 92 116 C 94 123, 93 134, 91 141 C 89 142, 87 140, 87 137 C 88 129, 89 122, 90 116 Z"/>
+    </g>
+    <g id="part-leg-r-l">
+      <path class="pant" d="M 91 139 C 95 146, 95 154, 92 159 H 80 C 78 154, 80 146, 84 139 Z"/>
+      <path class="shoe" d="M 79 159 H 93 C 93 156, 91 154, 88 153 H 81 Z"/>
+    </g>
+    <g id="part-arm-l-u">
+      <path class="shirt" d="M 51 74 C 43 79, 35 89, 33 100 C 33 105, 37 108, 42 106 C 48 101, 54 90, 57 80 Z"/>
+      <path class="vestsoft" d="M 47 81 C 44 86, 42 90, 40 95 C 44 96, 48 95, 52 92 L 52 84 Z"/>
+    </g>
+    <g id="part-arm-l-l">
+      <path class="skin" d="M 38 97 C 30 103, 24 115, 24 126 C 25 130, 29 132, 33 130 C 38 125, 41 114, 43 101 Z"/>
+      <ellipse class="foam" cx="31" cy="122" rx="4" ry="6"/>
+      <path class="thin" d="M 30 118 C 33 120, 34 124, 33 128"/>
+    </g>
+    <g id="part-body">
+      <path class="shirt" d="M 49 69 C 40 76, 37 89, 39 111 C 41 130, 47 145, 57 151 C 65 155, 95 155, 103 151 C 114 145, 120 130, 121 111 C 123 90, 119 76, 111 69 C 101 63, 59 63, 49 69 Z"/>
+      <path class="vest" d="M 52 71 C 60 66, 100 66, 108 71 C 112 79, 113 91, 112 111 C 110 131, 106 144, 100 149 C 95 151, 88 152, 80 152 C 72 152, 65 151, 60 149 C 54 144, 50 131, 48 111 C 47 91, 48 79, 52 71 Z"/>
+      <path class="shirt" d="M 70 72 C 67 86, 66 106, 68 150 H 92 C 94 106, 93 86, 90 72 Z"/>
+      <path class="apron" d="M 63 84 C 69 80, 91 80, 97 84 C 99 98, 99 124, 96 148 C 91 151, 69 151, 64 148 C 61 124, 61 98, 63 84 Z"/>
+      <path class="stripeR" d="M 70 86 L 76 86 L 70 148 L 64 148 Z"/>
+      <path class="stripeB" d="M 76 86 L 82 86 L 77 148 L 71 148 Z"/>
+      <path class="stripeR" d="M 82 86 L 88 86 L 89 148 L 83 148 Z"/>
+      <path class="stripeB" d="M 88 86 L 94 86 L 96 148 L 90 148 Z"/>
+      <path class="accent" d="M 74 77 C 77 75, 83 75, 86 77 L 85 84 H 75 Z"/>
+      <path class="thin" d="M 79 76 C 78 80, 78 84, 78 88"/>
+      <path class="thin" d="M 81 76 C 82 80, 82 84, 82 88"/>
+      <path class="thin" d="M 68 104 C 74 98, 86 97, 93 103"/>
+      <path class="thin" d="M 69 112 C 75 118, 86 119, 92 112"/>
+      <path class="thin" d="M 70 123 C 75 116, 85 116, 90 123"/>
+      <path class="thin" d="M 69 132 C 75 138, 86 139, 92 132"/>
+      <path class="thin" d="M 60 90 L 68 96"/>
+      <path class="thin" d="M 100 90 L 92 96"/>
+    </g>
+    <g id="part-arm-r-u">
+      <path class="shirt" d="M 109 74 C 118 78, 126 89, 128 100 C 128 105, 124 108, 119 106 C 113 101, 107 90, 104 80 Z"/>
+      <path class="vestsoft" d="M 113 81 C 116 86, 118 90, 120 95 C 116 96, 112 95, 108 92 L 108 84 Z"/>
+    </g>
+    <g id="part-arm-r-l">
+      <path class="skin" d="M 123 97 C 131 103, 136 115, 136 126 C 135 130, 131 132, 127 130 C 122 125, 119 114, 118 101 Z"/>
+      <path class="metal" d="M 126 114 C 131 115, 134 118, 134 122 C 132 125, 128 126, 124 125 C 122 122, 123 118, 126 114 Z"/>
+      <path class="thin" d="M 125 119 C 128 120, 130 121, 132 124"/>
+    </g>
+    <g id="part-head">
+      <ellipse class="skin" cx="80" cy="52" rx="23" ry="27"/>
+      <path class="hair" d="M 58 49 C 57 38, 61 28, 70 24 C 82 21, 95 23, 101 30 C 105 35, 106 43, 103 49 C 98 42, 89 39, 80 39 C 71 39, 63 42, 58 49 Z"/>
+      <path class="hairsoft" d="M 70 27 C 77 24, 89 25, 96 30 C 92 33, 85 35, 78 35 C 74 35, 71 33, 69 30 Z"/>
+      <path class="hair" d="M 58 49 C 59 61, 65 70, 72 76 C 67 76, 62 74, 59 69 C 56 63, 55 55, 58 49 Z"/>
+      <ellipse class="skinsoft" cx="72" cy="58" rx="6" ry="8"/>
+      <ellipse class="skinsoft" cx="88" cy="58" rx="6" ry="8"/>
+      <ellipse class="eye" cx="72" cy="56" rx="2" ry="3"/>
+      <ellipse class="eye" cx="88" cy="56" rx="2" ry="3"/>
+      <path class="thin" d="M 66 49 C 69 47, 73 47, 76 49"/>
+      <path class="thin" d="M 84 49 C 87 47, 91 47, 94 49"/>
+      <path class="skinsoft" d="M 63 68 C 67 65, 71 64, 75 66 C 78 67, 79 71, 76 73 C 71 75, 67 74, 63 72 Z"/>
+      <path class="foam" d="M 61 65 C 64 62, 70 61, 74 62 C 76 64, 75 68, 72 69 C 68 70, 64 69, 61 67 Z"/>
+      <path class="hair" d="M 76 65 C 80 63, 90 63, 97 66 C 96 70, 92 73, 88 74 C 83 75, 78 74, 75 72 C 74 69, 74 67, 76 65 Z"/>
+      <path class="hairsoft" d="M 79 69 C 84 67, 90 67, 94 69 C 91 72, 86 73, 81 72 Z"/>
+      <path class="hair" d="M 64 61 C 70 58, 76 58, 80 60 C 77 62, 73 63, 68 63 Z"/>
+      <path class="hair" d="M 80 60 C 84 58, 90 58, 96 61 C 92 63, 87 63, 80 60 Z"/>
+      <path class="mouth" d="M 77 70 C 79 72, 82 72, 84 70 C 84 74, 82 76, 80 76 C 78 76, 76 74, 77 70 Z"/>
+      <path class="thin" d="M 80 39 C 81 44, 81 49, 80 55"/>
+    </g>
+    <g id="part-loop">
+      <path class="loopR" d="M 56 95 C 60 86, 71 81, 80 81 C 92 81, 102 88, 104 98 C 106 107, 100 116, 90 118"/>
+      <path class="loopB" d="M 104 98 C 100 107, 89 112, 80 112 C 68 112, 58 105, 56 95 C 54 86, 60 77, 70 75"/>
+      <path class="loopW" d="M 70 75 C 75 73, 85 73, 90 75"/>
+      <path class="loopW" d="M 70 118 C 75 120, 85 120, 90 118"/>
+    </g>
+  </g>
+</svg>

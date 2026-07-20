@@ -53,7 +53,10 @@ Channel conventions match the Python targets: names that are bones become
 pose angles (degrees); ``root_x``/``root_y`` offset the root from
 ``(center_x, ground_y)``; ``<prefix>_x`` / ``_lift`` / ``_pitch`` drive IK
 feet (x is offset from ``center_x`` in WORLD space so planted feet stay
-put); anything else is a free parameter (e.g. an ``opacity_channel``).
+put); generic two-bone chains use ``<prefix>_x`` / ``_y`` / ``_pitch``.
+Both IK forms may animate ``<prefix>_bend`` to choose the joint side per
+pose instead of being locked to the document's static ``bend`` value.
+Anything else is a free parameter (e.g. an ``opacity_channel``).
 
 Colors are palette keys, ``#RRGGBB``, or ``#RRGGBBAA``. Translucent parts
 are painted on a scratch layer and alpha-composited (the gnu_ton rule).
@@ -371,14 +374,18 @@ class RigDocument:
             *,
             end_name: Optional[str],
             pitch: Optional[float],
+            bend: Optional[float] = None,
         ) -> None:
             up, lo = chain["upper"], chain["lower"]
             if up not in sk.bones or lo not in sk.bones:
                 return
             origin = w0[up].origin
             a1, a2 = two_bone_ik(
-                origin, target, sk.bones[up].length, sk.bones[lo].length,
-                bend=float(chain.get("bend", 1.0)),
+                origin,
+                target,
+                sk.bones[up].length,
+                sk.bones[lo].length,
+                bend=float(chain.get("bend", 1.0) if bend is None else bend),
             )
             parent = sk.bones[up].parent
             parent_angle = w0[parent].angle if parent else 0.0
@@ -394,11 +401,13 @@ class RigDocument:
             x = s.get(f"{pre}_x", float(leg.get("rest_x", 0.0)))
             lift = s.get(f"{pre}_lift", float(leg.get("rest_lift", 0.0)))
             pitch = s.get(f"{pre}_pitch", float(leg.get("rest_pitch", 0.0)))
+            bend = s.get(f"{pre}_bend", float(leg.get("bend", 1.0)))
             solve_chain(
                 leg,
                 (cx + x, gy - ankle_h - lift),
                 end_name=leg.get("foot"),
                 pitch=pitch,
+                bend=bend,
             )
 
         for chain in self.ik_chains:
@@ -411,11 +420,13 @@ class RigDocument:
                 pitch = s.get(
                     f"{pre}_pitch", float(chain.get("rest_pitch", 0.0))
                 )
+            bend = s.get(f"{pre}_bend", float(chain.get("bend", 1.0)))
             solve_chain(
                 chain,
                 (cx + x, gy + y),
                 end_name=end_name,
                 pitch=pitch,
+                bend=bend,
             )
         return sk.world(angles, root=root), s
 
