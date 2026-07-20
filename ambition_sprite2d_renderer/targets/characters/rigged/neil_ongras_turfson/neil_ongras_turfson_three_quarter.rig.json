@@ -8,7 +8,7 @@
     "ankle_h": 0
   },
   "svg_source": {
-    "path": "/mnt/data/neil_work/ambition-agent-source-20260720T141847Z-3d0057ba65c5/tools/ambition_sprite2d_renderer/data/characters/neil_ongras_turfson/neil_ongras_turfson_multiview.svg",
+    "path": "../../../../data/characters/neil_ongras_turfson/neil_ongras_turfson_multiview.svg",
     "view": "three-quarter",
     "scale": 0.25,
     "ref_dpi": 25.4

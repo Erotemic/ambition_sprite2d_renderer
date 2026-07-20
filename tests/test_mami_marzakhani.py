@@ -3,10 +3,10 @@ from __future__ import annotations
 from PIL import Image
 
 from ambition_sprite2d_renderer.registry.discovery import discover_module_targets
-from ambition_sprite2d_renderer.targets.characters import mary_marzakhani as target
+from ambition_sprite2d_renderer.targets.characters import mami_marzakhani as target
 
 
-def test_mary_marzakhani_frames_remain_inside_authored_canvas():
+def test_mami_marzakhani_frames_remain_inside_authored_canvas():
     for animation, nframes, _duration_ms in target.ROWS:
         for frame_idx in range(nframes):
             frame = target.render_frame(animation, frame_idx, nframes)
@@ -20,18 +20,18 @@ def test_mary_marzakhani_frames_remain_inside_authored_canvas():
             assert bottom < target.FRAME_H, (animation, frame_idx, bbox)
 
 
-def test_mary_marzakhani_has_prop_free_shadow_free_authoring_contract():
+def test_mami_marzakhani_has_prop_free_shadow_free_authoring_contract():
     assert target.USES_PROPS is False
     assert target.USES_DROP_SHADOW is False
     assert target.source_uses_forbidden_raster_effects() is False
     assert not any(name == "SHADOW" or name.endswith("_SHADOW") for name in vars(target) if name != "USES_DROP_SHADOW")
 
 
-def test_mary_marzakhani_publishes_native_named_portraits(tmp_path):
+def test_mami_marzakhani_publishes_native_named_portraits(tmp_path):
     outputs = target.render_portraits(tmp_path)
     assert [path.name for path in outputs] == [
-        "mary_marzakhani_portraits.png",
-        "mary_marzakhani_portraits.ron",
+        "mami_marzakhani_portraits.png",
+        "mami_marzakhani_portraits.ron",
     ]
     sheet = Image.open(outputs[0])
     assert sheet.width % target.PORTRAIT_W == 0
@@ -53,7 +53,7 @@ def test_mary_marzakhani_publishes_native_named_portraits(tmp_path):
     assert "duration_ms: 128" in manifest
 
 
-def test_mary_marzakhani_actions_have_visible_motion_and_math_identity():
+def test_mami_marzakhani_actions_have_visible_motion_and_math_identity():
     for animation in ("walk", "geodesic_sweep", "boundary_fold", "moduli_bloom"):
         nframes = next(n for name, n, _duration in target.ROWS if name == animation)
         first = target.render_frame(animation, 0, nframes)
@@ -68,7 +68,7 @@ def test_mary_marzakhani_actions_have_visible_motion_and_math_identity():
     assert moduli.moduli > 0.75
 
 
-def test_mary_marzakhani_is_auto_discovered_as_character_target():
+def test_mami_marzakhani_is_auto_discovered_as_character_target():
     report = discover_module_targets()
     assert target.TARGET_NAME in report.targets
     assert report.targets[target.TARGET_NAME].category == "characters"

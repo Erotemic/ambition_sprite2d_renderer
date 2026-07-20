@@ -5,7 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List
 
-from ._runge_kutta_duo import DuoStyle, render_target, render_target_canonical, render_target_portraits
+from ._runge_kutta_duo import (
+    DuoStyle,
+    _make_actor_metadata,
+    render_target,
+    render_target_canonical,
+    render_target_portraits,
+)
 
 STYLE = DuoStyle(
     target_name="martin_cutta",
@@ -49,3 +55,6 @@ def render_canonical(out_dir: Path | str = Path(".")) -> Path:
 
 def render_portraits(out_dir: Path | str = Path(".")) -> List[Path]:
     return render_target_portraits(STYLE, Path(out_dir))
+
+
+ACTOR_METADATA = _make_actor_metadata(STYLE)

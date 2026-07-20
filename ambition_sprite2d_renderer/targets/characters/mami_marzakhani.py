@@ -1,6 +1,6 @@
-"""Procedural full-action renderer for Mary Marzakhani.
+"""Procedural full-action renderer for Mami Marzakhani.
 
-Mary is a modern geometer whose silhouette is carried by a broad halo of dark
+Mami is a modern geometer whose silhouette is carried by a broad halo of dark
 curls, a long asymmetrical garnet jacket, an ivory collar, and quick expressive
 hands.  Her mathematical effects are contour lines, boundaries, and geodesics
 that grow directly from her gestures.  The base character uses no held prop and
@@ -28,7 +28,7 @@ from ...authoring.sheet_build import build_sheet, write_canonical
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
-TARGET_NAME = "mary_marzakhani"
+TARGET_NAME = "mami_marzakhani"
 FRAME_W = 128
 FRAME_H = 128
 SUPER = 4
@@ -68,8 +68,8 @@ ROWS: List[Tuple[str, int, int]] = [
 
 ACTOR_METADATA = {
     "actor": {
-        "character_id": "npc_mary_marzakhani",
-        "display_name": "Mary Marzakhani",
+        "character_id": "npc_mami_marzakhani",
+        "display_name": "Mami Marzakhani",
     },
     "body": {
         "body_plan": "HumanoidBiped",
@@ -125,23 +125,23 @@ ACTOR_METADATA = {
     ],
     "sockets": {
         "head": {
-            "source": "explicit.mary_marzakhani",
+            "source": "explicit.mami_marzakhani",
             "point": {"x": 64.0, "y": 31.0},
         },
         "chest": {
-            "source": "explicit.mary_marzakhani",
+            "source": "explicit.mami_marzakhani",
             "point": {"x": 64.0, "y": 68.0},
         },
         "hand_l": {
-            "source": "explicit.mary_marzakhani",
+            "source": "explicit.mami_marzakhani",
             "point": {"x": 43.0, "y": 78.0},
         },
         "hand_r": {
-            "source": "explicit.mary_marzakhani",
+            "source": "explicit.mami_marzakhani",
             "point": {"x": 86.0, "y": 77.0},
         },
         "speech_bubble": {
-            "source": "explicit.mary_marzakhani",
+            "source": "explicit.mami_marzakhani",
             "point": {"x": 64.0, "y": 4.0},
         },
     },
@@ -165,17 +165,24 @@ ACTOR_METADATA = {
         "variant_id": "gpt_5_6_thinking_original_2026_07_20",
         "lineage": [
             {
-                "revision_id": "mary_marzakhani_name_and_direction",
+                "revision_id": "mami_marzakhani_name_and_direction",
                 "creator_kind": "human",
                 "creator": "Jon Crall",
                 "contribution": "character_name_quality_bar_and_no_drop_shadow_direction",
             },
             {
-                "revision_id": "mary_marzakhani_procedural_sprite_v1",
+                "revision_id": "mami_marzakhani_procedural_sprite_v1",
                 "creator_kind": "model",
                 "creator": "gpt-5.6-thinking",
-                "parent_revision_id": "mary_marzakhani_name_and_direction",
+                "parent_revision_id": "mami_marzakhani_name_and_direction",
                 "contribution": "procedural_full_action_sprite_and_native_portrait_authoring",
+            },
+            {
+                "revision_id": "mami_marzakhani_rename_from_mary",
+                "creator_kind": "human",
+                "creator": "Jon Crall",
+                "parent_revision_id": "mami_marzakhani_procedural_sprite_v1",
+                "contribution": "renamed_character_mary_to_mami_across_target_and_assets",
             },
         ],
     },
@@ -792,7 +799,7 @@ def _pose(animation: str, frame_idx: int, nframes: int) -> Pose:
             expression="wry",
         )
 
-    raise KeyError(f"unknown Mary Marzakhani animation: {animation}")
+    raise KeyError(f"unknown Mami Marzakhani animation: {animation}")
 
 
 def _transform(point: Point, pose: Pose) -> Point:

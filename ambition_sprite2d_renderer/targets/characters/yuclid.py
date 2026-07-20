@@ -74,7 +74,7 @@ ROWS: List[Tuple[str, int, int]] = [
 ]
 
 ACTOR_METADATA = {
-    "actor": {"character_id": "boss_yuclid", "display_name": "Yuclid"},
+    "actor": {"character_id": "npc_yuclid", "display_name": "Yuclid"},
     "body": {
         "body_plan": "HumanoidBiped",
         "body_kind": "Standard",
