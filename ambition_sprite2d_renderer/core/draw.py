@@ -136,14 +136,20 @@ class _BlendingDraw:
         "point": ("fill",),
     }
 
+    # Mode contract (three distinct behaviors, one helper):
+    #   RGBA — Pillow's draw REPLACES pixels (incl. alpha); translucent inks
+    #          route through a scratch layer + alpha_composite (real blend).
+    #   RGB  — Pillow natively blends RGBA inks via Draw(img, "RGBA"); no
+    #          scratch needed (there is no destination alpha to clobber).
+    #   L/P/other — scalar/index inks only (their native contract); RGBA
+    #          tuples raise, exactly as with a plain ImageDraw.
     def __init__(self, img: Image.Image) -> None:
         self._img = img
-        # Non-RGBA images (masks, palette tiles) cannot alpha-blend and
-        # Pillow rejects mode="RGBA" for them — plain clobber IS their only
-        # semantics, so route them straight through.
-        self._blendable = img.mode == "RGBA"
-        self._draw = ImageDraw.Draw(img, "RGBA") if self._blendable \
-            else ImageDraw.Draw(img)
+        self._scratch_blend = img.mode == "RGBA"
+        if img.mode in ("RGBA", "RGB"):
+            self._draw = ImageDraw.Draw(img, "RGBA")
+        else:
+            self._draw = ImageDraw.Draw(img)
 
     # Ops whose SECOND positional argument is the fill ink.
     _POS_FILL = {"polygon", "line", "ellipse", "rectangle", "point"}
@@ -159,7 +165,7 @@ class _BlendingDraw:
             a = _ink_alpha(args[1])
             if a is not None:
                 alphas.append(a)
-        if self._blendable and any(0 < a < 255 for a in alphas):
+        if self._scratch_blend and any(0 < a < 255 for a in alphas):
             layer, d = overlay_draw(self._img)
             getattr(d, name)(*args, **kwargs)
             self._img.alpha_composite(layer)
