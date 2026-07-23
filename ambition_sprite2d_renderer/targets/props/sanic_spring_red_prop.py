@@ -29,7 +29,6 @@ from ._sanic_support_prop_common import (
     rgba,
     rounded_rect,
     scaled_points,
-    soft_shadow,
     star,
 )
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -118,7 +117,8 @@ def _draw_spring(img: Image.Image, spec: dict[str, float]) -> None:
     coil_bottom = 87.0
     amp = 20.0 - 9.0 * c
 
-    soft_shadow(d, 64, 111, 78, 12, strength=48)
+    # No baked drop shadow: shadows extend the union crop and detach the
+    # base from the frame edge (see feedback: no drop shadows on sprites).
     _draw_motion_lines(d, overshoot + spark * 0.45)
 
     # Base and lower cap.

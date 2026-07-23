@@ -27,7 +27,6 @@ from ._sanic_support_prop_common import (
     new_frame,
     pulse,
     rgba,
-    soft_shadow,
     star,
 )
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -108,7 +107,7 @@ def _draw_ring_core(img: Image.Image, spec: dict[str, float]) -> None:
     h = spec["h"]
     phase = spec["phase"]
 
-    soft_shadow(d, 64, 96, 48 + w * 0.25, 9, strength=int(34 * a))
+    # No baked drop shadow (rule: shadows break crop/anchor alignment).
     glow_ellipse(img, cx, cy, w + 7, h + 7, color=alpha(GOLD_HI, 0.32 * a), width=5.2, blur=1.6)
 
     # Layered ellipse outlines give a thick torus while keeping the center truly transparent.

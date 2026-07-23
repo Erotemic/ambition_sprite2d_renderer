@@ -123,10 +123,6 @@ def poly(draw: ImageDraw.ImageDraw, points: Iterable[Point], *, fill: RGBA, outl
     draw.polygon(pts, fill=fill, outline=outline)
 
 
-def soft_shadow(draw: ImageDraw.ImageDraw, cx: float, cy: float, w: float, h: float, *, strength: int = 42) -> None:
-    draw.ellipse(bbox(cx, cy, w, h), fill=(0, 0, 0, strength))
-
-
 def glow_ellipse(
     img: Image.Image,
     cx: float,
