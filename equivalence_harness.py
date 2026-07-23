@@ -41,6 +41,7 @@ import argparse
 import shutil
 import sys
 import tempfile
+from collections import namedtuple
 from pathlib import Path
 from typing import List, Optional
 
@@ -219,6 +220,100 @@ def _classify_status(complete: bool, unsupported, dangling, failed: int,
     return "sampled"
 
 
+def _shift_onto_transparent(img, dx: int, dy: int):
+    """Translate ``img`` by ``(dx, dy)`` onto a transparent canvas.
+
+    Unlike ``ImageChops.offset`` this does NOT wrap pixels around the opposite
+    edge — content shifted off the canvas is lost and the vacated band stays
+    transparent, which is what a genuine alignment search wants.
+    """
+    from PIL import Image
+
+    out = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    out.paste(img, (dx, dy))
+    return out
+
+
+# Two independent defect fractions for a candidate frame alignment:
+#   occupancy — solid geometry present in one frame but absent in the other,
+#               over the union of solid pixels (0 = geometrically complete);
+#   rgb       — solid-in-both pixels whose colour disagrees, over the overlap
+#               (0 = colour-identical where both are solid).
+# They are graded separately on purpose: occupancy is the COMPLETENESS bar GPT's
+# review is about (a dropped arm or invented shape must fail) and is held tight;
+# rgb is the pre-existing rasterizer/AA tolerance (resvg vs Pillow render solid
+# regions with slightly different colour) and is held looser. A single blended
+# number cannot be both — tight enough to catch a missing part yet loose enough
+# for colour noise — which is exactly how the old intersection-only test let a
+# half-empty frame pass.
+_FrameDefect = namedtuple("_FrameDefect", "occupancy rgb")
+# A complete, complex frame still shows a few % occupancy "defect" purely from
+# resvg-vs-Pillow edge AA and translucent-core boundaries (mockingbird's longest
+# frame — an extended translucent thruster beam — floors at ~4%). The bar sits
+# just above that noise floor: it reliably catches GPT's defect class (an omitted
+# arm / weapon / thruster / half a character == 5-50% of the union) but, like any
+# raster check, cannot resolve a single small primitive from fringe noise.
+_OCC_TOL = 0.05   # union missing+extra past this == real dropped/added geometry
+_RGB_TOL = 0.12   # colour disagreement over the overlap (rasterizer/AA slack)
+
+
+def _frame_defects(pub, ras, solid: int = 200, rgb_tol: int = 16,
+                   shift: int = 1) -> "_FrameDefect":
+    """Best-aligned (occupancy, rgb) defect fractions for ``pub`` vs ``ras``.
+
+    Occupancy is measured over the UNION of solid pixels, so anything the SVG
+    dropped (a missing arm/thruster) or invented (stray geometry) is scored —
+    unlike the old metric, which compared colour only inside the *intersection*
+    and could pass a half-empty frame. ``solid`` gates on near-opaque alpha, so
+    anti-aliased fringes and the deliberately-divergent translucent glow (Pillow
+    clobber vs SVG composite) sit outside both occupancy and rgb — by-design
+    divergence stays ignored, while a present-but-translucent region where the
+    source is solid is caught as *missing* occupancy.
+
+    The ±``shift`` search translates ``ras`` onto a transparent canvas (never
+    ``ImageChops.offset``, which wraps content around the opposite edge) and the
+    alignment with the least occupancy defect is returned. Returns (1.0, 1.0)
+    when neither frame has any solid content to compare.
+    """
+    from PIL import ImageChops
+
+    pa = pub.split()[3].point(lambda v: 255 if v > solid else 0)
+    pub_rgb = pub.convert("RGB")
+    best = _FrameDefect(1.0, 1.0)
+    for dx in range(-shift, shift + 1):
+        for dy in range(-shift, shift + 1):
+            b = _shift_onto_transparent(ras, dx, dy)
+            ba = b.split()[3].point(lambda v: 255 if v > solid else 0)
+            union = ImageChops.lighter(pa, ba)
+            n_union = sum(union.histogram()[1:])
+            if not n_union:
+                continue
+            missing = ImageChops.subtract(pa, ba)   # pub-solid, ras-absent
+            extra = ImageChops.subtract(ba, pa)     # ras-solid, pub-absent
+            occ = (sum(missing.histogram()[1:]) + sum(extra.histogram()[1:])) / n_union
+            overlap = ImageChops.multiply(pa, ba)
+            n_overlap = sum(overlap.histogram()[1:])
+            diff = ImageChops.difference(pub_rgb, b.convert("RGB"))
+            merged = diff.split()[0]
+            for band in diff.split()[1:]:
+                merged = ImageChops.lighter(merged, band)
+            rgb_bad = ImageChops.multiply(
+                merged.point(lambda v: 255 if v > rgb_tol else 0), overlap)
+            rgb = sum(rgb_bad.histogram()[1:]) / n_overlap if n_overlap else 1.0
+            if occ < best.occupancy:
+                best = _FrameDefect(occ, rgb)
+    return best
+
+
+def _frame_verified(pub, ras) -> bool:
+    """True only when the frame is geometrically COMPLETE (tight occupancy bar)
+    and colour-consistent (looser rasterizer bar). A dropped/added part fails
+    occupancy; a mistranslated frame beyond the search fails occupancy; only
+    rasterizer/AA colour noise is absorbed by the rgb bar."""
+    d = _frame_defects(pub, ras)
+    return d.occupancy <= _OCC_TOL and d.rgb <= _RGB_TOL
+
+
 def _autoconvert_one(name: str, target, out_dir: Path, verify_frames: int = 6,
                      full: bool = False):
     """Auto-capture one target -> saved scene + fidelity stats.
@@ -309,25 +404,11 @@ def _autoconvert_one(name: str, target, out_dir: Path, verify_frames: int = 6,
             pub.alpha_composite(
                 page.crop((r["x"], r["y"], r["x"] + r["w"], r["y"] + r["h"])),
                 (int(off[0]), int(off[1])))
-            # Judge solid content (translucent divergence = alpha semantics).
-            best = 1.0
-            for dx in (-1, 0, 1):
-                for dy in (-1, 0, 1):
-                    b = ImageChops.offset(ras, dx, dy)
-                    mask = ImageChops.multiply(
-                        pub.split()[3].point(lambda v: 255 if v > 200 else 0),
-                        b.split()[3].point(lambda v: 255 if v > 200 else 0))
-                    n_mask = sum(mask.histogram()[1:])
-                    if not n_mask:
-                        continue
-                    diff = ImageChops.difference(pub.convert("RGB"), b.convert("RGB"))
-                    merged = diff.split()[0]
-                    for band in diff.split()[1:]:
-                        merged = ImageChops.lighter(merged, band)
-                    over = merged.point(lambda v: 255 if v > 16 else 0)
-                    bad = sum(ImageChops.multiply(over, mask).histogram()[1:])
-                    best = min(best, bad / n_mask)
-            if best <= 0.10:
+            # Symmetric fidelity: a frame is verified only when solid geometry
+            # is COMPLETE (tight occupancy bar over the union — an omitted or
+            # invented part fails) and colour-consistent (looser rasterizer/AA
+            # bar). Translucent glow stays excluded (by-design alpha divergence).
+            if _frame_verified(pub, ras):
                 verified += 1
             else:
                 failed += 1
