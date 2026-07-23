@@ -196,17 +196,39 @@ def cmd_rebuild(args) -> int:
     return 0
 
 
-def _autoconvert_one(name: str, target, out_dir: Path, verify_frames: int = 6):
+def _classify_status(complete: bool, unsupported, dangling, failed: int,
+                     verified: int, total: int, full: bool) -> str:
+    """Honest conversion status — ``captured`` means *fully* verified.
+
+    captured — capture is complete, has no gaps, and EVERY published frame was
+               re-rendered from the saved scene and matched;
+    sampled  — capture is complete and clean, but only a subset of frames was
+               fidelity-checked (roster-speed sampling). Not proof for the
+               unchecked frames — final per-character approval must run --full;
+    partial  — a real gap: unsupported ops, dangling refs, missing frames, a
+               failed verification, or nothing verifiable at all.
+
+    A pure function so the poison test can pin the boundary directly.
+    """
+    if not complete or unsupported or dangling or failed > 0:
+        return "partial"
+    if verified == 0:
+        return "partial"  # could not establish fidelity for any frame
+    if full and verified >= total:
+        return "captured"
+    return "sampled"
+
+
+def _autoconvert_one(name: str, target, out_dir: Path, verify_frames: int = 6,
+                     full: bool = False):
     """Auto-capture one target -> saved scene + fidelity stats.
 
-    Status semantics (per the 2026-07-23 conversion review):
-      captured   — every published frame captured at the semantic seam, no
-                   unsupported ops, and the SAVED scene re-renders to match
-                   the published pixels on every sampled frame;
-      partial    — captured with gaps (unsupported ops, missing frames, or
-                   sampled-frame mismatches) — a diagnostic candidate scene;
-      needs-seam — the renderer never crossed the build_sheet publication
-                   seam; no trustworthy frame association exists.
+    Status semantics (per the 2026-07-23 conversion review): see
+    :func:`_classify_status`. ``needs-seam`` (returned earlier) means the
+    renderer never crossed the ``build_sheet`` publication seam, so no
+    trustworthy frame association exists. With ``full=True`` every captured
+    frame is verified — the bar for calling a single character ``captured``;
+    otherwise a strided sample is checked and a clean result is ``sampled``.
     """
     import io
 
@@ -253,7 +275,10 @@ def _autoconvert_one(name: str, target, out_dir: Path, verify_frames: int = 6):
     loaded = ComponentScene.load(scene_path)
     verified = failed = 0
     dangling = loaded.missing_part_refs()
-    sample = sorted(semantic)[:: max(1, len(semantic) // verify_frames)][:verify_frames]
+    if full:
+        sample = sorted(semantic)  # final approval: verify every frame
+    else:
+        sample = sorted(semantic)[:: max(1, len(semantic) // verify_frames)][:verify_frames]
     try:
         import resvg_py
     except ImportError:
@@ -356,8 +381,8 @@ def _autoconvert_one(name: str, target, out_dir: Path, verify_frames: int = 6):
         pass  # the compare strip is best-effort review aid, never a failure
 
     complete = len(semantic) == expected and expected > 0
-    ok = complete and not unsupported and not dangling and failed == 0 and verified > 0
-    status = "captured" if ok else "partial"
+    status = _classify_status(complete, unsupported, dangling, failed,
+                              verified, len(semantic), full)
     return {
         "status": status,
         "frames": len(semantic),
@@ -366,6 +391,7 @@ def _autoconvert_one(name: str, target, out_dir: Path, verify_frames: int = 6):
         "part_uses": scene.stats()["part_uses"],
         "verified": verified,
         "verify_failed": failed,
+        "verify_full": full,
         "dangling_refs": dangling,
         "unsupported": sorted(unsupported),
         "scene": str(scene_path),
@@ -379,7 +405,8 @@ def cmd_autoconvert(args) -> int:
         raise SystemExit(f"unknown target {args.target!r}")
     out = Path(args.out) if args.out else (DRIFT_DIR / "auto_scenes")
     out.mkdir(parents=True, exist_ok=True)
-    stats = _autoconvert_one(args.target, targets[args.target], out)
+    stats = _autoconvert_one(args.target, targets[args.target], out,
+                             full=args.full)
     for k, v in stats.items():
         print(f"  {k}: {v}")
     return 0
@@ -400,7 +427,8 @@ def cmd_coverage(args) -> int:
     report = {}
     for i, name in enumerate(names, 1):
         try:
-            report[name] = _autoconvert_one(name, targets[name], out)
+            report[name] = _autoconvert_one(name, targets[name], out,
+                                            full=args.full)
         except Exception as exc:
             report[name] = {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
             if args.verbose:
@@ -470,11 +498,15 @@ def main() -> int:
                         help="capture ANY target's render into a component scene (no code changes)")
     pa.add_argument("--target", required=True)
     pa.add_argument("--out", help="scene output dir (default: tmp/sprite-drift/auto_scenes)")
+    pa.add_argument("--full", action="store_true",
+                    help="verify EVERY frame (required to reach 'captured', not just 'sampled')")
     pa.set_defaults(func=cmd_autoconvert)
 
     pv = sub.add_parser("coverage", help="run the universal converter across the roster")
     pv.add_argument("--targets", help="comma-separated subset (default: all)")
     pv.add_argument("--verbose", action="store_true")
+    pv.add_argument("--full", action="store_true",
+                    help="verify EVERY frame per target (slow; lets a target reach 'captured')")
     pv.add_argument("--strict", action="store_true",
                     help="also exit nonzero on partial / needs-seam results")
     pv.set_defaults(func=cmd_coverage)

@@ -55,6 +55,157 @@ def _emit_points(pts: Sequence[Point]) -> str:
     return " ".join(f"{_fmt(x)},{_fmt(y)}" for x, y in pts)
 
 
+# --- affine transforms (a,b,c,d,e,f): x' = a*x + c*y + e ; y' = b*x + d*y + f
+_IDENTITY = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
+_XFORM_RE = re.compile(r"(\w+)\s*\(([^)]*)\)")
+
+
+def _mat_mul(m, n):
+    """Compose two affine matrices: the result applies ``n`` then ``m``."""
+    a1, b1, c1, d1, e1, f1 = m
+    a2, b2, c2, d2, e2, f2 = n
+    return (
+        a1 * a2 + c1 * b2,
+        b1 * a2 + d1 * b2,
+        a1 * c2 + c1 * d2,
+        b1 * c2 + d1 * d2,
+        a1 * e2 + c1 * f2 + e1,
+        b1 * e2 + d1 * f2 + f1,
+    )
+
+
+def _parse_transform(s: Optional[str]):
+    """An SVG ``transform`` attribute -> a composed (a,b,c,d,e,f) matrix."""
+    m = _IDENTITY
+    for name, arg in _XFORM_RE.findall(s or ""):
+        v = [float(x) for x in re.split(r"[\s,]+", arg.strip()) if x]
+        if not v:
+            continue
+        if name == "translate":
+            m = _mat_mul(m, (1, 0, 0, 1, v[0], v[1] if len(v) > 1 else 0.0))
+        elif name == "scale":
+            sx = v[0]
+            sy = v[1] if len(v) > 1 else sx
+            m = _mat_mul(m, (sx, 0, 0, sy, 0, 0))
+        elif name == "rotate":
+            r = math.radians(v[0])
+            c, s = math.cos(r), math.sin(r)
+            rot = (c, s, -s, c, 0, 0)
+            if len(v) >= 3:
+                cx, cy = v[1], v[2]
+                m = _mat_mul(m, (1, 0, 0, 1, cx, cy))
+                m = _mat_mul(m, rot)
+                m = _mat_mul(m, (1, 0, 0, 1, -cx, -cy))
+            else:
+                m = _mat_mul(m, rot)
+        elif name == "matrix" and len(v) >= 6:
+            m = _mat_mul(m, tuple(v[:6]))
+    return m
+
+
+def _apply(m, x: float, y: float) -> Point:
+    a, b, c, d, e, f = m
+    return (a * x + c * y + e, b * x + d * y + f)
+
+
+def _mat_str(m) -> str:
+    return "matrix(" + " ".join(_fmt(v) for v in m) + ")"
+
+
+def _is_identity(m) -> bool:
+    return all(abs(a - b) < 1e-9 for a, b in zip(m, _IDENTITY))
+
+
+def _flatten_tree(el, m):
+    """Compose ancestor transforms into leaf geometry before part discovery.
+
+    Returns a *list* of elements: a group that exists only to position its
+    children (a ``transform`` and nothing else) is spliced away, so a shape
+    reached via a fold/resize/rotate wrapper matches an identical shape drawn
+    at the same place directly — they must share one part def, not split on the
+    incidental grouping.
+
+    Part matching must compare shapes in a single composed coordinate space, or
+    two occurrences that differ only by an *ancestor* transform — a
+    composite-fold ``translate``, a resize ``scale``, a layer ``rotate``, or
+    two separately-transformed sibling layers — collapse onto one placement
+    (the def keeps the first occurrence's transform; every other occurrence is
+    placed by the untranslated centroid, so it renders at the first's
+    location). This pushes every flattenable transform down into
+    ``polygon``/``polyline`` points and axis-aligned ``ellipse`` centres. A
+    transform a plain shape cannot absorb (a rotated/sheared ellipse or image,
+    a ``<use>``, a filtered group whose filter region is defined in local
+    space) is kept as a residual ``transform`` attribute, which discovery then
+    treats as an opaque unit rather than silently dropping it.
+    """
+    import xml.etree.ElementTree as ET
+
+    tag = el.tag.rsplit("}", 1)[-1]
+    local = el.get("transform")
+    m2 = _mat_mul(m, _parse_transform(local)) if local else m
+
+    if tag == "defs":  # resolution-independent (filters): copy verbatim
+        return [ET.fromstring(ET.tostring(el, encoding="unicode"))]
+
+    if tag in ("polygon", "polyline"):
+        new = ET.Element(el.tag, dict(el.attrib))
+        new.attrib.pop("transform", None)
+        pts = _parse_points(ET.tostring(el, encoding="unicode")) or []
+        new.set("points", _emit_points([_apply(m2, x, y) for x, y in pts]))
+        return [new]
+
+    if tag == "ellipse":
+        new = ET.Element(el.tag, dict(el.attrib))
+        new.attrib.pop("transform", None)
+        try:
+            cx, cy = float(el.get("cx")), float(el.get("cy"))
+            rx, ry = float(el.get("rx")), float(el.get("ry"))
+        except (TypeError, ValueError):
+            if not _is_identity(m2):
+                new.set("transform", _mat_str(m2))
+            return [new]
+        a, b, c, d, _e, _f = m2
+        if abs(b) < 1e-9 and abs(c) < 1e-9:  # translate + axis scale only
+            ncx, ncy = _apply(m2, cx, cy)
+            new.set("cx", _fmt(ncx))
+            new.set("cy", _fmt(ncy))
+            new.set("rx", _fmt(rx * abs(a)))
+            new.set("ry", _fmt(ry * abs(d)))
+        else:  # rotation/shear: keep a residual matrix (opaque to matching)
+            new.set("transform", _mat_str(m2))
+        return [new]
+
+    if tag == "g" and el.get("filter") is not None:
+        # The filter region is defined in the group's own coordinate space, so
+        # transform the group as a unit instead of pushing through the filter.
+        new = ET.Element(el.tag, dict(el.attrib))
+        new.attrib.pop("transform", None)
+        for child in el:
+            new.append(ET.fromstring(ET.tostring(child, encoding="unicode")))
+        if not _is_identity(m2):
+            new.set("transform", _mat_str(m2))
+        return [new]
+
+    if tag == "g":
+        children: list = []
+        for child in el:
+            children.extend(_flatten_tree(child, m2))
+        keep = {k: v for k, v in el.attrib.items() if k != "transform"}
+        if not keep:  # pure positioning group: splice its children up
+            return children
+        new = ET.Element(el.tag, keep)
+        for c in children:
+            new.append(c)
+        return [new]
+
+    # image / use / unknown leaf: keep the composed transform as a residual.
+    new = ET.Element(el.tag, dict(el.attrib))
+    new.attrib.pop("transform", None)
+    if not _is_identity(m2):
+        new.set("transform", _mat_str(m2))
+    return [new]
+
+
 SVG_NS = "http://www.w3.org/2000/svg"
 XLINK_NS = "http://www.w3.org/1999/xlink"
 INK_NS = "http://www.inkscape.org/namespaces/inkscape"
@@ -175,6 +326,11 @@ def discover_parts(frames: Dict[Any, Any]) -> "tuple[dict, dict]":
 
         def walk(el) -> bool:
             t = _tag(el)
+            if el.get("transform") is not None:
+                # A residual (unflattenable) transform marks an opaque unit —
+                # its raw coordinates are NOT its on-screen position, so it
+                # must never join a matchable point cloud.
+                return False
             if t == "g":
                 sig_parts.append("g")
                 for child in el:
@@ -225,31 +381,62 @@ def discover_parts(frames: Dict[Any, Any]) -> "tuple[dict, dict]":
         shift(node)
         return ET.tostring(node, encoding="unicode")
 
+    def _identity(node, sig: str, label_path: "tuple") -> "tuple[str, Optional[str]]":
+        """(class key, semantic path) for a candidate subtree.
+
+        Semantic component identity is authoritative: a node under any
+        Inkscape-labelled ancestor is keyed by its full label path, so two
+        geometrically identical but differently-named parts (``left_thruster``
+        vs ``right_thruster``) never merge, and editing one leaves the other
+        untouched. Unlabelled geometry is keyed by shape+style only — that is
+        *inferred* reuse and may be deduplicated automatically.
+        """
+        own = node.get(LABEL_ATTR)
+        path = label_path + ((own,) if own else ())
+        if path:
+            return "sem:" + "/".join(path) + "|" + sig, "/".join(path)
+        return "geo:" + sig, None
+
+    def _child_path(node, label_path: "tuple") -> "tuple":
+        own = node.get(LABEL_ATTR)
+        return label_path + ((own,) if own else ())
+
     # ---- PASS A: collect candidates at every level -------------------------
     frame_trees: Dict[Any, "tuple[str, str, list]"] = {}
-    classes: Dict[str, dict] = {}  # sig -> {"ref": cloud, "count": int}
+    classes: Dict[str, dict] = {}  # class key -> {"ref": cloud, "count": int}
 
-    def collect(node) -> None:
+    def collect(node, label_path: "tuple" = ()) -> None:
         cloud, sig = _cloud_and_sig(node)
         if cloud is not None:
-            cls = classes.setdefault(sig, {"ref": cloud, "count": 0})
+            key, _sem = _identity(node, sig, label_path)
+            cls = classes.setdefault(key, {"ref": cloud, "count": 0})
             if _Congruence.match(
                     _Congruence.canonical(cls["ref"])[1], cloud) is not None:
                 cls["count"] += 1
-        if _tag(node) == "g":
+        # Descend only through transform-free groups; a residual transform
+        # marks an opaque unit whose interior must not be mined for parts.
+        if _tag(node) == "g" and node.get("transform") is None:
+            cp = _child_path(node, label_path)
             for child in node:
-                collect(child)
+                collect(child, cp)
 
     for key in sorted(frames, key=repr):
         raw = frames[key]
         if isinstance(raw, list):
             prefix, suffix, elems = "", "", raw
         else:
+            # Peel the shared sole-child outer wrapper (per-frame crop/resize)
+            # so matching stays in the large, stable pre-downsample space where
+            # the congruence tolerance and float precision are meaningful; the
+            # prefix re-applies it at render. Then flatten the transforms that
+            # remain INSIDE the frame — separately-transformed sibling layers,
+            # nested groups — which the peel cannot reach and whose omission
+            # was collapsing distinct placements onto one (the reviewed bug).
             prefix, suffix, elems = descend_wrappers(raw)
         trees = []
         for e in elems:
             try:
-                trees.append(ET.fromstring(e))
+                trees.extend(_flatten_tree(ET.fromstring(e), _IDENTITY))
             except ET.ParseError:
                 trees.append(e)  # unparseable (uses with prefixes): verbatim
         frame_trees[key] = (prefix, suffix, trees)
@@ -259,26 +446,31 @@ def discover_parts(frames: Dict[Any, Any]) -> "tuple[dict, dict]":
 
     # ---- PASS B: rebuild, placing parts at the largest recurring level -----
     part_defs: Dict[str, Tuple[str, str]] = {}
-    registered: Dict[str, str] = {}  # sig -> pid
+    registered: Dict[str, str] = {}  # class key -> pid
     serial = 0
 
-    def rebuild(node) -> str:
+    def rebuild(node, label_path: "tuple" = ()) -> str:
         nonlocal serial
         if isinstance(node, str):
             return node
         cloud, sig = _cloud_and_sig(node)
-        cls = classes.get(sig) if cloud is not None else None
+        key = sem = None
+        if cloud is not None:
+            key, sem = _identity(node, sig, label_path)
+        cls = classes.get(key) if key is not None else None
         if cls is not None and cls["count"] >= 2:
             local_ref = _Congruence.canonical(cls["ref"])[1]
             m = _Congruence.match(local_ref, cloud)
             if m is not None:
                 (ox, oy), deg = m
-                pid = registered.get(sig)
+                pid = registered.get(key)
                 if pid is None:
                     pid = f"part_{serial:03d}"
                     serial += 1
-                    registered[sig] = pid
-                    name = node.get(LABEL_ATTR) or _tag(node)
+                    registered[key] = pid
+                    # Named component -> its semantic path; unlabelled geometry
+                    # -> an explicit ``geomNNN`` (inferred reuse, not identity).
+                    name = sem if sem else f"geom{serial - 1:03d}"
                     body = _localize(node, -ox, -oy)
                     if abs(deg) > 0.01:
                         # Def must live in the reference orientation: this
@@ -289,8 +481,9 @@ def discover_parts(frames: Dict[Any, Any]) -> "tuple[dict, dict]":
                 if abs(deg) > 0.01:
                     t += f" rotate({_fmt(deg)})"
                 return f'<use href="#{pid}" xlink:href="#{pid}" transform="{t}"/>'
-        if _tag(node) == "g":
-            inner = "".join(rebuild(child) for child in node)
+        if _tag(node) == "g" and node.get("transform") is None:
+            cp = _child_path(node, label_path)
+            inner = "".join(rebuild(child, cp) for child in node)
             attrs = "".join(
                 f' {k.replace("{" + INK_NS + "}", "inkscape:")}="{v}"'
                 for k, v in node.attrib.items())
