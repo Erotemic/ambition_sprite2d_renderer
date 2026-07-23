@@ -107,6 +107,11 @@ def _render_canonical_only(source: FrameSource, out_dir: Path) -> dict[str, Path
     }
 
 
+# Optional semantic frame-publication hook. Capture tooling assigns a
+# callable(target, anim, frame_idx, frame_image) here for the duration of a
+# capture run; production rendering leaves it None (zero overhead).
+FRAME_CAPTURE_HOOK = None
+
 SCALE = 4
 BASE_FRAME = (128, 128)
 LABEL_WIDTH = 100
@@ -568,6 +573,12 @@ def render_sheet(source: FrameSource, out_dir: Path):
         frames_data: List[Tuple[Image.Image, dict]] = []
         for frame_idx in range(nframes):
             frame = render_fn(anim, frame_idx, nframes)
+            # Semantic frame-publication seam: capture tooling (see
+            # authoring/auto_capture.py) registers a hook here so a vector
+            # recording is associated with the EXACT (target, anim, frame)
+            # being published — never inferred from image creation order.
+            if FRAME_CAPTURE_HOOK is not None:
+                FRAME_CAPTURE_HOOK(target, anim, frame_idx, frame)
             meta = {}
             if frame_meta_fn is not None:
                 extra = frame_meta_fn(anim, frame_idx, nframes)

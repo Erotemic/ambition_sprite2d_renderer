@@ -197,95 +197,103 @@ def cmd_rebuild(args) -> int:
 
 
 def _autoconvert_one(name: str, target, out_dir: Path, verify_frames: int = 6):
-    """Auto-capture one target -> scene file + fidelity stats dict."""
+    """Auto-capture one target -> saved scene + fidelity stats.
+
+    Status semantics (per the 2026-07-23 conversion review):
+      captured   — every published frame captured at the semantic seam, no
+                   unsupported ops, and the SAVED scene re-renders to match
+                   the published pixels on every sampled frame;
+      partial    — captured with gaps (unsupported ops, missing frames, or
+                   sampled-frame mismatches) — a diagnostic candidate scene;
+      needs-seam — the renderer never crossed the build_sheet publication
+                   seam; no trustworthy frame association exists.
+    """
     import io
 
-    from PIL import Image
+    from PIL import Image, ImageChops
 
     from ambition_sprite2d_renderer.authoring.auto_capture import (
-        capture_target_frames, discover_parts,
+        capture_target_frames, discover_parts, split_elements,
     )
-    from ambition_sprite2d_renderer.authoring.sheet_build import downsample
     from ambition_sprite2d_renderer.authoring.svg_scene import ComponentScene
-    from ambition_sprite2d_renderer.core.equivalence import (
-        _pixel_delta, _registered_delta, parse_ron,
-    )
+    from ambition_sprite2d_renderer.core.equivalence import parse_ron
 
-    files, recorders, _ = capture_target_frames(target)
+    files, semantic, diagnostics = capture_target_frames(target)
+    if not semantic:
+        return {"status": "needs-seam", "diagnostic_recorders": len(diagnostics)}
 
-    manifests = [k for k in files if k.endswith("_spritesheet.ron")]
-    if not manifests:
-        return {"status": "no-manifest"}
-    sheet = parse_ron(files[manifests[0]].decode())[0]
-    rows = sheet.get("rows", [])
-    expected = sum(r.get("frame_count", 0) for r in rows)
-    stem = manifests[0][: -len("_spritesheet.ron")]
-    page = Image.open(io.BytesIO(files[f"{stem}_spritesheet.png"])).convert("RGBA") \
-        if f"{stem}_spritesheet.png" in files else None
+    manifests = {k[: -len("_spritesheet.ron")]: parse_ron(v.decode())[0]
+                 for k, v in files.items() if k.endswith("_spritesheet.ron")}
+    expected = sum(r.get("frame_count", 0)
+                   for sheet in manifests.values() for r in sheet.get("rows", []))
 
-    # Frame recorders: the dominant canvas size among captures, in order.
-    sizes = {}
-    for i, rec in recorders.items():
-        sizes.setdefault((rec.width, rec.height), []).append(i)
-    if not sizes:
-        return {"status": "no-draws"}
-    frame_ids = max(sizes.values(), key=len)
-    status = "captured" if len(frame_ids) == expected else "partial"
+    stems = {k[0] for k in semantic}
+    multi = len(stems) > 1
 
-    # Map captures to (anim, idx) in row order.
-    keys = []
-    for r in rows:
-        for i in range(r.get("frame_count", 0)):
-            keys.append((r.get("animation"), i))
-    mapping = dict(zip(keys, (recorders[i] for i in frame_ids)))
     unsupported = set()
-    for rec in mapping.values():
+    for rec in semantic.values():
         unsupported |= rec.unsupported
 
-    # Verify a sample: rasterize capture -> downsample -> vs published crop.
+    # Build the scene from XML-split elements (never regex).
+    frames_elems = {}
+    canvas = None
+    for (stem, anim, idx), rec in semantic.items():
+        key = (f"{stem}:{anim}" if multi else anim, idx)
+        frames_elems[key] = split_elements(rec.body_svg())
+        canvas = canvas or (rec.width, rec.height)
+    parts, bodies = discover_parts(frames_elems)
+    scene = ComponentScene(canvas or (128, 128))
+    scene.parts = parts
+    scene.frames = bodies
+    scene_path = out_dir / f"{name}.svg"
+    scene.save(scene_path)
+
+    # Final fidelity: reload the SAVED scene, render its frame docs, compare
+    # against the actually-published sheet pixels in frame coordinates.
+    loaded = ComponentScene.load(scene_path)
     verified = failed = 0
-    if page is not None and mapping:
+    dangling = loaded.missing_part_refs()
+    sample = sorted(semantic)[:: max(1, len(semantic) // verify_frames)][:verify_frames]
+    try:
         import resvg_py
-
-        frame_wh = (int(sheet.get("frame_width", 128)), int(sheet.get("frame_height", 128)))
-        by_anim = {r.get("animation"): r for r in rows}
-        def tight(im, floor=20):
-            # Ignore near-invisible spill (SVG blur reaches further than
-            # Pillow's) so the content bbox matches the published one.
-            a = im.split()[3].point(lambda v: v if v > floor else 0)
-            box = a.getbbox()
-            return im.crop(box) if box else im
-
-        sample = list(mapping)[:: max(1, len(mapping) // verify_frames)][:verify_frames]
-        for anim, idx in sample:
-            rec = mapping[(anim, idx)]
-            png = resvg_py.svg_to_bytes(svg_string=rec.to_svg())
-            ras = tight(Image.open(io.BytesIO(bytes(png))).convert("RGBA"))
-            rect = by_anim[anim]["rects"][idx]
-            crop = tight(page.crop((rect["x"], rect["y"], rect["x"] + rect["w"],
-                                    rect["y"] + rect["h"])))
-            # The sheet assembler crops/fits/re-anchors content, so verify
-            # scale-normalized; judge SOLID content only — Pillow's ImageDraw
-            # clobbers alpha (the gnu_ton rule) while SVG composites properly,
-            # so translucent glow can never match pixel-wise and is a known,
-            # accepted divergence class, not a capture failure.
-            from PIL import ImageChops
-
-            ras = ras.resize(crop.size, Image.LANCZOS)
+    except ImportError:
+        resvg_py = None
+    if resvg_py is not None and not dangling:
+        for (stem, anim, idx) in sample:
+            sheet = manifests.get(stem) or next(iter(manifests.values()))
+            row = next((r for r in sheet.get("rows", [])
+                        if r.get("animation") == anim), None)
+            page_name = f"{stem}_spritesheet.png"
+            if row is None or page_name not in files or idx >= len(row["rects"]):
+                failed += 1
+                continue
+            fw, fh = int(sheet["frame_width"]), int(sheet["frame_height"])
+            doc = loaded.frame_doc(f"{stem}:{anim}" if multi else anim, idx)
+            png = resvg_py.svg_to_bytes(svg_string=doc)
+            ras = Image.open(io.BytesIO(bytes(png))).convert("RGBA")
+            if ras.size != (fw, fh):
+                ras = ras.resize((fw, fh), Image.LANCZOS)
+            page = Image.open(io.BytesIO(files[page_name])).convert("RGBA")
+            r = row["rects"][idx]
+            pub = Image.new("RGBA", (fw, fh), (0, 0, 0, 0))
+            off = r.get("off") or [0, 0]
+            pub.alpha_composite(
+                page.crop((r["x"], r["y"], r["x"] + r["w"], r["y"] + r["h"])),
+                (int(off[0]), int(off[1])))
+            # Judge solid content (translucent divergence = alpha semantics).
             best = 1.0
             for dx in (-1, 0, 1):
                 for dy in (-1, 0, 1):
                     b = ImageChops.offset(ras, dx, dy)
-                    solid_a = crop.split()[3].point(lambda v: 255 if v > 200 else 0)
-                    solid_b = b.split()[3].point(lambda v: 255 if v > 200 else 0)
-                    mask = ImageChops.multiply(solid_a, solid_b)
+                    mask = ImageChops.multiply(
+                        pub.split()[3].point(lambda v: 255 if v > 200 else 0),
+                        b.split()[3].point(lambda v: 255 if v > 200 else 0))
                     n_mask = sum(mask.histogram()[1:])
                     if not n_mask:
                         continue
-                    diff = ImageChops.difference(crop.convert("RGB"), b.convert("RGB"))
-                    bands = diff.split()
-                    merged = bands[0]
-                    for band in bands[1:]:
+                    diff = ImageChops.difference(pub.convert("RGB"), b.convert("RGB"))
+                    merged = diff.split()[0]
+                    for band in diff.split()[1:]:
                         merged = ImageChops.lighter(merged, band)
                     over = merged.point(lambda v: 255 if v > 16 else 0)
                     bad = sum(ImageChops.multiply(over, mask).histogram()[1:])
@@ -294,29 +302,19 @@ def _autoconvert_one(name: str, target, out_dir: Path, verify_frames: int = 6):
                 verified += 1
             else:
                 failed += 1
-    if failed:
-        status = "partial"
 
-    # Part discovery over the captured element lists -> component scene.
-    elem_re = __import__("re").compile(r"<[a-z]+ [^>]*/>|<g [^>]*>.*?</g>")
-    frames_elems = {k: elem_re.findall(rec.body_svg()) for k, rec in mapping.items()}
-    parts, bodies = discover_parts(frames_elems)
-    rec0 = mapping[next(iter(mapping))] if mapping else None
-    canvas = (rec0.width, rec0.height) if rec0 else (512, 512)
-    scene = ComponentScene(canvas)
-    scene.parts = parts
-    scene.frames = bodies
-    scene_path = out_dir / f"{name}.svg"
-    scene.save(scene_path)
-
+    complete = len(semantic) == expected and expected > 0
+    ok = complete and not unsupported and not dangling and failed == 0 and verified > 0
+    status = "captured" if ok else "partial"
     return {
         "status": status,
-        "frames": len(mapping),
+        "frames": len(semantic),
         "expected": expected,
         "parts": len(parts),
         "part_uses": scene.stats()["part_uses"],
         "verified": verified,
         "verify_failed": failed,
+        "dangling_refs": dangling,
         "unsupported": sorted(unsupported),
         "scene": str(scene_path),
     }
@@ -365,6 +363,10 @@ def cmd_coverage(args) -> int:
     for s in report.values():
         counts[s["status"]] = counts.get(s["status"], 0) + 1
     print(f"\ncoverage: {counts} -> scenes in {out}, report in {DRIFT_DIR/'coverage.json'}")
+    if counts.get("error"):
+        return 1
+    if args.strict and (counts.get("partial") or counts.get("needs-seam")):
+        return 1
     return 0
 
 
@@ -421,6 +423,8 @@ def main() -> int:
     pv = sub.add_parser("coverage", help="run the universal converter across the roster")
     pv.add_argument("--targets", help="comma-separated subset (default: all)")
     pv.add_argument("--verbose", action="store_true")
+    pv.add_argument("--strict", action="store_true",
+                    help="also exit nonzero on partial / needs-seam results")
     pv.set_defaults(func=cmd_coverage)
 
     pl = sub.add_parser("list", help="list renderable targets")

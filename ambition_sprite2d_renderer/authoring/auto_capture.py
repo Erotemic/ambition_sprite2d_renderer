@@ -55,6 +55,28 @@ def _emit_points(pts: Sequence[Point]) -> str:
     return " ".join(f"{_fmt(x)},{_fmt(y)}" for x, y in pts)
 
 
+SVG_NS = "http://www.w3.org/2000/svg"
+XLINK_NS = "http://www.w3.org/1999/xlink"
+INK_NS = "http://www.inkscape.org/namespaces/inkscape"
+
+
+def split_elements(body: str) -> List[str]:
+    """Split a recorder body into top-level elements via a real XML parser.
+
+    Never regex: nested groups, ``<defs>``, filters and namespaced attributes
+    must survive intact. Each returned string is one whole top-level element
+    (a nested group travels as a single unit).
+    """
+    import xml.etree.ElementTree as ET
+
+    for prefix, uri in (("", SVG_NS), ("xlink", XLINK_NS), ("inkscape", INK_NS)):
+        ET.register_namespace(prefix, uri)
+    root = ET.fromstring(
+        f'<root xmlns="{SVG_NS}" xmlns:xlink="{XLINK_NS}" '
+        f'xmlns:inkscape="{INK_NS}">{body}</root>')
+    return [ET.tostring(child, encoding="unicode") for child in root]
+
+
 class _Congruence:
     """Rigid-motion (translate+rotate) matcher for ordered point lists."""
 
@@ -99,6 +121,11 @@ def discover_parts(frames: Dict[Any, List[str]]) -> "tuple[dict, dict]":
     ``(part_defs, frame_bodies)`` in ComponentScene shape: parts hold
     centroid-local geometry; matched occurrences become ``<use>`` with the
     recovered transform; unmatched elements stay inline.
+
+    Discovered parts are GEOMETRIC reuse candidates ("geomNNN"), not semantic
+    parts: congruence can merge semantically distinct twins (two eyes, rivets,
+    repeated tiles). They become named editable parts only through review or a
+    cooperative ``part()`` scope in the paint code.
     """
     registry: List[Tuple[str, List[Point], str, str]] = []  # (style, local, pid, body)
     part_defs: Dict[str, Tuple[str, str]] = {}
@@ -128,11 +155,11 @@ def discover_parts(frames: Dict[Any, List[str]]) -> "tuple[dict, dict]":
                     break
             if not placed:
                 centroid, local = _Congruence.canonical(pts)
-                pid = f"part_auto{serial:03d}"
+                pid = f"part_geom{serial:03d}"
                 serial += 1
                 body = _POINTS_RE.sub(f'points="{_emit_points(local)}"', elem, count=1)
                 registry.append((style, local, pid, body))
-                part_defs[pid] = (f"auto{serial - 1:03d}", body)
+                part_defs[pid] = (f"geom{serial - 1:03d}", body)
                 (ox, oy) = centroid
                 out.append(f'<use href="#{pid}" xlink:href="#{pid}" '
                            f'transform="translate({_fmt(ox)} {_fmt(oy)})"/>')
@@ -181,54 +208,114 @@ class _TeeDraw:
         return tee
 
 
-def capture_target_frames(target) -> "tuple[dict, dict, set]":
-    """Render ``target`` normally while capturing vector recorders per frame.
+def capture_target_frames(target):
+    """Render ``target`` normally while capturing vector recordings.
 
-    Returns ``(published_files, recorders_by_image_order, unsupported_ops)``.
-    ``published_files``: relpath -> bytes of the real render (untouched).
-    Recorders keyed by creation order; mapping to manifest frames and fidelity
-    verification are the caller's job (see the harness coverage command).
+    Returns ``(published_files, semantic_frames, diagnostic_recorders)``:
+
+    * ``published_files``: relpath -> bytes of the real render (untouched);
+    * ``semantic_frames``: {(sheet_target, anim, frame_idx) -> DrawRecorder}
+      associated at the ``sheet_build`` frame-publication seam — the recorder
+      is in FINAL frame coordinates because crop/resize/composite chains are
+      propagated. Empty for renderers that bypass ``build_sheet``.
+    * ``diagnostic_recorders``: creation-ordered leftovers for renderers with
+      no semantic seam — diagnostic only, never proof of association.
+
+    Pillow ops with no vector meaning (paste with mask, rotate, transpose,
+    unpropagated filters, source-cropped composites) mark the affected
+    recorder's ``unsupported`` set; callers must downgrade accordingly.
     """
     import tempfile
+    import shutil
     from pathlib import Path
     from unittest import mock
 
     from PIL import Image, ImageDraw
 
+    from . import sheet_build
+
     recorders: Dict[int, DrawRecorder] = {}
     images: Dict[int, Any] = {}
     order: List[int] = []
-    consumed: set = set()  # scratch layers folded into a destination
+    consumed: set = set()
+    semantic: Dict[Any, DrawRecorder] = {}
     real_draw = ImageDraw.Draw
     real_composite = Image.Image.alpha_composite
+    real_mod_composite = Image.alpha_composite
     real_filter = Image.Image.filter
+    real_crop = Image.Image.crop
+    real_resize = Image.Image.resize
+    real_paste = Image.Image.paste
+    real_rotate = Image.Image.rotate
+    real_transpose = Image.Image.transpose
+
+    def _adopt(img, rec):
+        recorders[id(img)] = rec
+        images[id(img)] = img
+        order.append(id(img))
+
+    def _derive(src_img, res, wrap, op_name=None):
+        """Propagate src_img's recording onto derived image ``res``."""
+        src_rec = recorders.get(id(src_img))
+        if src_rec is None or not src_rec.calls:
+            return
+        rec = DrawRecorder(res.size)
+        rec._emit(wrap(src_rec.body_svg()))
+        rec.calls = src_rec.calls
+        rec.unsupported |= src_rec.unsupported
+        if op_name:
+            rec.unsupported.add(op_name)
+        for pid, v in src_rec.part_defs.items():
+            rec.part_defs.setdefault(pid, v)
+        _adopt(res, rec)
+        consumed.add(id(src_img))
 
     def hooked_draw(img, mode=None):
         real = real_draw(img, mode) if mode else real_draw(img)
-        key = id(img)
-        if key not in recorders:
-            recorders[key] = DrawRecorder(img.size)
-            images[key] = img
-            order.append(key)
-        return _TeeDraw(real, recorders[key])
+        if id(img) not in recorders:
+            _adopt(img, DrawRecorder(img.size))
+        return _TeeDraw(real, recorders[id(img)])
+
+    def _fold(dest, src, dest_pos, bad=None):
+        src_rec = recorders.get(id(src))
+        if src_rec is None or not src_rec.calls:
+            return
+        dst_rec = recorders.get(id(dest))
+        if dst_rec is None:
+            dst_rec = DrawRecorder(dest.size)
+            _adopt(dest, dst_rec)
+        dx, dy = dest_pos
+        dst_rec._emit(
+            f'<g transform="translate({_fmt(dx)} {_fmt(dy)})">'
+            f"{src_rec.body_svg()}</g>")
+        dst_rec.calls += src_rec.calls
+        dst_rec.unsupported |= src_rec.unsupported
+        if bad:
+            dst_rec.unsupported.add(bad)
+        for pid, v in src_rec.part_defs.items():
+            dst_rec.part_defs.setdefault(pid, v)
+        consumed.add(id(src))
 
     def hooked_composite(dest, src, dest_pos=(0, 0), source=(0, 0)):
-        # Fold a recorded scratch layer into its destination's recording.
-        src_rec = recorders.get(id(src))
-        dst_rec = recorders.get(id(dest))
-        if src_rec is not None and src_rec.calls and dst_rec is None:
-            recorders[id(dest)] = dst_rec = DrawRecorder(dest.size)
-            images[id(dest)] = dest
-            order.append(id(dest))
-        if src_rec is not None and src_rec.calls and dst_rec is not None:
-            dx, dy = dest_pos
-            dst_rec._emit(
-                f'<g transform="translate({_fmt(dx)} {_fmt(dy)})">'
-                f"{src_rec.body_svg()}</g>")
-            dst_rec.calls += src_rec.calls
-            dst_rec.unsupported |= src_rec.unsupported
-            consumed.add(id(src))
+        _fold(dest, src, dest_pos,
+              bad=None if tuple(source) == (0, 0) else "composite-source-crop")
         return real_composite(dest, src, dest_pos, source)
+
+    def hooked_mod_composite(im1, im2):
+        res = real_mod_composite(im1, im2)
+        r1, r2 = recorders.get(id(im1)), recorders.get(id(im2))
+        if (r1 and r1.calls) or (r2 and r2.calls):
+            rec = DrawRecorder(res.size)
+            for r, img in ((r1, im1), (r2, im2)):
+                if r and r.calls:
+                    rec._emit(r.body_svg())
+                    rec.calls += r.calls
+                    rec.unsupported |= r.unsupported
+                    for pid, v in r.part_defs.items():
+                        rec.part_defs.setdefault(pid, v)
+                    consumed.add(id(img))
+            _adopt(res, rec)
+        return res
 
     blur_serial = [0]
 
@@ -236,42 +323,88 @@ def capture_target_frames(target) -> "tuple[dict, dict, set]":
         res = real_filter(img, flt)
         src_rec = recorders.get(id(img))
         if src_rec is not None and src_rec.calls:
-            rec = DrawRecorder(res.size)
             radius = getattr(flt, "radius", None)
             if type(flt).__name__ == "GaussianBlur" and radius:
-                # SVG-native blur: wrap the recorded geometry in a filter.
                 fid = f"acblur{blur_serial[0]}"
                 blur_serial[0] += 1
-                rec._emit(
+                _derive(img, res, lambda body: (
                     f'<defs><filter id="{fid}" x="-50%" y="-50%" width="200%" '
                     f'height="200%"><feGaussianBlur stdDeviation="{_fmt(float(radius))}"/>'
-                    f'</filter></defs>'
-                    f'<g filter="url(#{fid})">{src_rec.body_svg()}</g>')
+                    f'</filter></defs><g filter="url(#{fid})">{body}</g>'))
             else:
-                rec._emit(src_rec.body_svg())
-                rec.unsupported.add(f"filter:{type(flt).__name__}")
-            rec.calls = src_rec.calls
-            rec.unsupported |= src_rec.unsupported
-            recorders[id(res)] = rec
-            images[id(res)] = res
-            order.append(id(res))
-            consumed.add(id(img))
+                _derive(img, res, lambda body: body,
+                        op_name=f"filter:{type(flt).__name__}")
         return res
 
+    def hooked_crop(img, box=None):
+        res = real_crop(img, box)
+        if box is not None:
+            x0, y0 = box[0], box[1]
+            _derive(img, res,
+                    lambda body: f'<g transform="translate({_fmt(-x0)} {_fmt(-y0)})">{body}</g>')
+        return res
+
+    def hooked_resize(img, size, *args, **kwargs):
+        res = real_resize(img, size, *args, **kwargs)
+        if img.width and img.height:
+            sx, sy = size[0] / img.width, size[1] / img.height
+            _derive(img, res,
+                    lambda body: f'<g transform="scale({sx:.6f} {sy:.6f})">{body}</g>')
+        return res
+
+    def hooked_paste(img, im, box=None, mask=None):
+        rec = recorders.get(id(img))
+        src_rec = recorders.get(id(im)) if not isinstance(im, (int, tuple)) else None
+        if (rec and rec.calls) or (src_rec and src_rec.calls):
+            if rec is None:
+                rec = DrawRecorder(img.size)
+                _adopt(img, rec)
+            rec.unsupported.add("paste")
+        return real_paste(img, im, box, mask)
+
+    def hooked_rotate(img, *args, **kwargs):
+        res = real_rotate(img, *args, **kwargs)
+        _derive(img, res, lambda body: body, op_name="rotate")
+        return res
+
+    def hooked_transpose(img, method):
+        res = real_transpose(img, method)
+        _derive(img, res, lambda body: body, op_name="transpose")
+        return res
+
+    def frame_hook(sheet_target, anim, frame_idx, frame_img):
+        rec = recorders.get(id(frame_img))
+        if rec is None:
+            rec = DrawRecorder(frame_img.size)  # empty -> capture gap, visible
+            rec.unsupported.add("no-vector-source")
+        semantic[(sheet_target, anim, frame_idx)] = rec
+        consumed.add(id(frame_img))
+
     out = Path(tempfile.mkdtemp(prefix="autocap_"))
-    with mock.patch.object(ImageDraw, "Draw", hooked_draw), \
-         mock.patch.object(Image.Image, "alpha_composite", hooked_composite), \
-         mock.patch.object(Image.Image, "filter", hooked_filter):
-        target.render_sheet(out)
+    prev_hook = sheet_build.FRAME_CAPTURE_HOOK
+    sheet_build.FRAME_CAPTURE_HOOK = frame_hook
+    try:
+        with mock.patch.object(ImageDraw, "Draw", hooked_draw), \
+             mock.patch.object(Image.Image, "alpha_composite", hooked_composite), \
+             mock.patch.object(Image, "alpha_composite", hooked_mod_composite), \
+             mock.patch.object(Image.Image, "filter", hooked_filter), \
+             mock.patch.object(Image.Image, "crop", hooked_crop), \
+             mock.patch.object(Image.Image, "resize", hooked_resize), \
+             mock.patch.object(Image.Image, "paste", hooked_paste), \
+             mock.patch.object(Image.Image, "rotate", hooked_rotate), \
+             mock.patch.object(Image.Image, "transpose", hooked_transpose):
+            target.render_sheet(out)
+        files: Dict[str, bytes] = {}
+        for f in sorted(out.rglob("*")):
+            if f.is_file():
+                files[str(f.relative_to(out))] = f.read_bytes()
+    finally:
+        sheet_build.FRAME_CAPTURE_HOOK = prev_hook
+        shutil.rmtree(out, ignore_errors=True)
 
-    files: Dict[str, bytes] = {}
-    for f in sorted(out.rglob("*")):
-        if f.is_file():
-            files[str(f.relative_to(out))] = f.read_bytes()
-
-    ordered = {}
+    diagnostics = {}
     for i, key in enumerate(order):
         rec = recorders[key]
         if rec.calls and key not in consumed:
-            ordered[i] = rec
-    return files, ordered, set()
+            diagnostics[i] = rec
+    return files, semantic, diagnostics
