@@ -6,9 +6,11 @@ This is the file a human opens in Inkscape. Structure:
     on a labelled grid below the frame area. This is the *editable source*:
     each part is a named group; editing its nodes/colours updates every frame
     that uses it, because...
-  * one hidden layer per **animation**, containing one sub-layer per frame,
-    whose content is ``<use href="#part_...">`` placements (plus any
-    frame-local "dynamic" geometry that is not yet a registered part).
+  * one visible layer per **animation**, one sub-layer per frame, laid out on
+    a spritesheet-style grid (row per animation, column per frame) so the whole
+    scene is evaluable at a glance — nothing hidden, nothing overlapping. Frame
+    content is ``<use href="#part_...">`` placements plus any frame-local
+    "dynamic" geometry that is not yet a registered part.
 
 ``ComponentScene`` also round-trips: ``load()`` parses a (possibly
 human-edited) scene back, and ``frame_doc()`` emits a standalone renderable
@@ -92,13 +94,21 @@ class ComponentScene:
     # -- the editable document ----------------------------------------------
     def to_editable_svg(self) -> str:
         w, h = self.canvas
-        rows = (len(self.parts) + _COLS - 1) // _COLS
-        total_h = h + rows * _CELL + _CELL // 2
+        anim_names = sorted({a for a, _ in self.frames})
+        n_rows = max(1, len(anim_names))
+        max_cols = max(
+            [sum(1 for a, _ in self.frames if a == name) for name in anim_names] or [1]
+        )
+        grid_h = n_rows * h
+        grid_w = max(w, max_cols * w)
+        part_rows = (len(self.parts) + _COLS - 1) // _COLS
+        total_h = grid_h + part_rows * _CELL + _CELL // 2
+        total_w = max(grid_w, _COLS * _CELL)
 
         gallery: List[str] = []
         for i, (pid, (name, body)) in enumerate(self.parts.items()):
             gx = _CELL // 2 + (i % _COLS) * _CELL
-            gy = h + _CELL // 2 + (i // _COLS) * _CELL
+            gy = grid_h + _CELL // 2 + (i // _COLS) * _CELL
             gallery.append(
                 f'<g transform="translate({gx} {gy})">'
                 f'<g id="{pid}" inkscape:label="{name}">{body}</g></g>'
@@ -108,29 +118,34 @@ class ComponentScene:
         for (anim, idx), body in self.frames.items():
             anims.setdefault(anim, []).append((idx, body))
 
-        layers: List[str] = [
+        # Frames lay out like a spritesheet — one row per animation, one
+        # column per frame, EVERYTHING visible — so the scene is evaluable at
+        # a glance in Inkscape (PIL sprites author frames independently; the
+        # grid respects that while parts reuse grows through manual edits).
+        # Each frame's content sits inside a "frame-slot" wrapper carrying the
+        # grid offset; load() strips the wrapper so rebuilds are unaffected.
+        layers: List[str] = []
+        for row, anim in enumerate(sorted(anims)):
+            sub = "".join(
+                f'<g inkscape:label="{anim}/{idx:02d}" inkscape:groupmode="layer">'
+                f'<g class="frame-slot" transform="translate({col * w} {row * h})">'
+                f"{body}</g></g>"
+                for col, (idx, body) in enumerate(sorted(anims[anim]))
+            )
+            layers.append(
+                f'<g inkscape:label="anim:{anim}" inkscape:groupmode="layer">{sub}</g>'
+            )
+        layers.append(
             f'<g inkscape:label="parts" inkscape:groupmode="layer">'
             f'{"".join(gallery)}</g>'
-        ]
-        first = True
-        for anim in sorted(anims):
-            sub = "".join(
-                f'<g inkscape:label="{anim}/{idx:02d}" inkscape:groupmode="layer"'
-                f'{"" if first and idx == min(i for i, _ in anims[anim]) else " style=\"display:none\""}>'
-                f"{body}</g>"
-                for idx, body in sorted(anims[anim])
-            )
-            style = "" if first else ' style="display:none"'
-            layers.append(
-                f'<g inkscape:label="anim:{anim}" inkscape:groupmode="layer"{style}>{sub}</g>'
-            )
-            first = False
+        )
 
         return (
             f'<svg xmlns="{SVG_NS}" xmlns:xlink="{XLINK_NS}" '
             f'xmlns:inkscape="{INK_NS}" '
             f'data-frame-canvas="{w} {h}" '
-            f'width="{w}px" height="{total_h}px" viewBox="0 0 {w} {total_h}">'
+            f'width="{total_w}px" height="{total_h}px" '
+            f'viewBox="0 0 {total_w} {total_h}">'
             f'{"".join(layers)}</svg>'
         )
 
@@ -175,10 +190,16 @@ class ComponentScene:
                     m = re.fullmatch(rf"{re.escape(anim)}/(\d+)", flabel)
                     if not m:
                         continue
-                    # Strip the visibility style the editable doc added.
-                    if frame_layer.get("style") == "display:none":
-                        del frame_layer.attrib["style"]
-                    scene.frames[(anim, int(m.group(1)))] = serialize_children(frame_layer)
+                    # Unwrap the grid-placement "frame-slot" wrapper so the
+                    # stored body is in frame coordinates. Human-added
+                    # elements inside the slot are preserved.
+                    kids = list(frame_layer)
+                    if (len(kids) == 1
+                            and kids[0].get("class") == "frame-slot"):
+                        body = serialize_children(kids[0])
+                    else:
+                        body = serialize_children(frame_layer)
+                    scene.frames[(anim, int(m.group(1)))] = body
         return scene
 
     # -- summary -------------------------------------------------------------
