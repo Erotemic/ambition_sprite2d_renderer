@@ -234,8 +234,9 @@ def capture_target_frames(target):
 
     from . import sheet_build
 
+    import weakref
+
     recorders: Dict[int, DrawRecorder] = {}
-    images: Dict[int, Any] = {}
     order: List[int] = []
     consumed: set = set()
     semantic: Dict[Any, DrawRecorder] = {}
@@ -250,9 +251,13 @@ def capture_target_frames(target):
     real_transpose = Image.Image.transpose
 
     def _adopt(img, rec):
-        recorders[id(img)] = rec
-        images[id(img)] = img
-        order.append(id(img))
+        # No strong image refs (a roster run OOMs otherwise). A finalizer
+        # retires the recorder entry when the image dies, so a recycled id
+        # can never resurrect another image's recording.
+        key = id(img)
+        recorders[key] = rec
+        order.append(key)
+        weakref.finalize(img, recorders.pop, key, None)
 
     def _derive(src_img, res, wrap, op_name=None):
         """Propagate src_img's recording onto derived image ``res``."""
@@ -404,7 +409,7 @@ def capture_target_frames(target):
 
     diagnostics = {}
     for i, key in enumerate(order):
-        rec = recorders[key]
-        if rec.calls and key not in consumed:
+        rec = recorders.get(key)  # finalizers retire dead images' entries
+        if rec is not None and rec.calls and key not in consumed:
             diagnostics[i] = rec
     return files, semantic, diagnostics
