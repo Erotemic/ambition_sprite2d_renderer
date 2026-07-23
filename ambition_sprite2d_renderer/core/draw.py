@@ -138,7 +138,12 @@ class _BlendingDraw:
 
     def __init__(self, img: Image.Image) -> None:
         self._img = img
-        self._draw = ImageDraw.Draw(img, "RGBA")
+        # Non-RGBA images (masks, palette tiles) cannot alpha-blend and
+        # Pillow rejects mode="RGBA" for them — plain clobber IS their only
+        # semantics, so route them straight through.
+        self._blendable = img.mode == "RGBA"
+        self._draw = ImageDraw.Draw(img, "RGBA") if self._blendable \
+            else ImageDraw.Draw(img)
 
     # Ops whose SECOND positional argument is the fill ink.
     _POS_FILL = {"polygon", "line", "ellipse", "rectangle", "point"}
@@ -154,7 +159,7 @@ class _BlendingDraw:
             a = _ink_alpha(args[1])
             if a is not None:
                 alphas.append(a)
-        if any(0 < a < 255 for a in alphas):
+        if self._blendable and any(0 < a < 255 for a in alphas):
             layer, d = overlay_draw(self._img)
             getattr(d, name)(*args, **kwargs)
             self._img.alpha_composite(layer)
