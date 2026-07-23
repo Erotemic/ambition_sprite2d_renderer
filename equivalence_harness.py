@@ -234,82 +234,109 @@ def _shift_onto_transparent(img, dx: int, dy: int):
     return out
 
 
-# Two independent defect fractions for a candidate frame alignment:
-#   occupancy — solid geometry present in one frame but absent in the other,
-#               over the union of solid pixels (0 = geometrically complete);
-#   rgb       — solid-in-both pixels whose colour disagrees, over the overlap
-#               (0 = colour-identical where both are solid).
-# They are graded separately on purpose: occupancy is the COMPLETENESS bar GPT's
-# review is about (a dropped arm or invented shape must fail) and is held tight;
-# rgb is the pre-existing rasterizer/AA tolerance (resvg vs Pillow render solid
-# regions with slightly different colour) and is held looser. A single blended
-# number cannot be both — tight enough to catch a missing part yet loose enough
-# for colour noise — which is exactly how the old intersection-only test let a
-# half-empty frame pass.
+# Two independent defect fractions for a candidate frame alignment, computed on
+# a CONTINUOUS alpha-aware basis (no near-opaque cutoff — an earlier version
+# thresholded alpha at >200, which discarded every translucent glow/beam/cloth
+# pixel, so a missing or invented translucent component scored zero and passed):
+#   occupancy — how much of the total alpha "mass" is present in one frame but
+#               absent (or at a different alpha) in the other, over the union of
+#               meaningful alpha. This is the COMPLETENESS bar (a dropped or
+#               invented part — opaque OR translucent — must fail) and is tight.
+#   rgb       — straight colour disagreement, weighted by how confidently BOTH
+#               frames occupy each pixel (min alpha), over that mutual mass. The
+#               pre-existing resvg-vs-Pillow rasterizer/AA slack, held looser.
+# Two gates, not one blend: a single number cannot be both tight enough to catch
+# a missing part and loose enough for colour noise. Premultiplied/alpha-weighted
+# throughout, so a soft anti-aliased or blurred edge (where both frames agree on
+# the gradient) contributes ~0 while a whole missing translucent limb does not.
 _FrameDefect = namedtuple("_FrameDefect", "occupancy rgb")
-# A complete, complex frame still shows a few % occupancy "defect" purely from
-# resvg-vs-Pillow edge AA and translucent-core boundaries (mockingbird's longest
-# frame — an extended translucent thruster beam — floors at ~4%). The bar sits
-# just above that noise floor: it reliably catches GPT's defect class (an omitted
-# arm / weapon / thruster / half a character == 5-50% of the union) but, like any
-# raster check, cannot resolve a single small primitive from fringe noise.
-_OCC_TOL = 0.05   # union missing+extra past this == real dropped/added geometry
-_RGB_TOL = 0.12   # colour disagreement over the overlap (rasterizer/AA slack)
+_MEANINGFUL = 12          # alpha (0-255) below this is noise, not content
+# A complete, complex frame still shows a few % defect purely from resvg-vs-Pillow
+# edge AA and translucent-gradient (blur) rasterization. The occupancy bar sits
+# just above that noise floor: it reliably catches the reviewer's defect class (an
+# omitted/invented arm / weapon / thruster / glow == a meaningful share of the
+# alpha mass) but, like any raster check, cannot resolve a single small primitive
+# from fringe noise.
+# Measured floor: mockingbird's complete frames run to ~0.056 occupancy, driven
+# by its extended translucent thruster beam (resvg vs Pillow rasterize the soft
+# gradient's alpha differently); the bar clears that with headroom.
+_OCC_TOL = 0.07   # union alpha-mass mismatch past this == real dropped/added geom
+_RGB_TOL = 0.12   # colour disagreement over the mutually-occupied mass (AA slack)
 
 
-def _frame_defects(pub, ras, solid: int = 200, rgb_tol: int = 16,
+def _np_shift(arr, dx: int, dy: int):
+    """Translate ``arr`` (H×W×C) by ``(dx, dy)`` with zero fill — no wraparound."""
+    import numpy as np
+
+    out = np.zeros_like(arr)
+    h, w = arr.shape[:2]
+    sx0, sx1 = max(0, -dx), w - max(0, dx)
+    dx0, dx1 = max(0, dx), w - max(0, -dx)
+    sy0, sy1 = max(0, -dy), h - max(0, dy)
+    dy0, dy1 = max(0, dy), h - max(0, -dy)
+    if sx1 > sx0 and sy1 > sy0:
+        out[dy0:dy1, dx0:dx1] = arr[sy0:sy1, sx0:sx1]
+    return out
+
+
+def _frame_defects(pub, ras, meaningful: int = _MEANINGFUL, rgb_tol: int = 16,
                    shift: int = 1) -> "_FrameDefect":
     """Best-aligned (occupancy, rgb) defect fractions for ``pub`` vs ``ras``.
 
-    Occupancy is measured over the UNION of solid pixels, so anything the SVG
-    dropped (a missing arm/thruster) or invented (stray geometry) is scored —
-    unlike the old metric, which compared colour only inside the *intersection*
-    and could pass a half-empty frame. ``solid`` gates on near-opaque alpha, so
-    anti-aliased fringes and the deliberately-divergent translucent glow (Pillow
-    clobber vs SVG composite) sit outside both occupancy and rgb — by-design
-    divergence stays ignored, while a present-but-translucent region where the
-    source is solid is caught as *missing* occupancy.
+    Alpha-aware and symmetric. For each ±``shift`` alignment (``ras`` translated
+    with zero fill — never wrapped) let ``ap``/``ar`` be the [0,1] alphas:
 
-    The ±``shift`` search translates ``ras`` onto a transparent canvas (never
-    ``ImageChops.offset``, which wraps content around the opposite edge) and the
-    alignment with the least occupancy defect is returned. Returns (1.0, 1.0)
-    when neither frame has any solid content to compare.
+    * **occupancy** ``= Σ|ap-ar| / Σ max(ap,ar)`` over the union of meaningful
+      alpha. Missing, invented, AND wrong-alpha geometry all land here, at any
+      opacity — a translucent beam the SVG drops contributes its full alpha mass,
+      while a soft edge both frames render the same (``ap≈ar``) contributes ~0.
+    * **rgb** ``= Σ min(ap,ar)·|rgb_p-rgb_r| / Σ min(ap,ar)`` over the mutually
+      occupied region — straight colour disagreement weighted toward pixels both
+      frames confidently fill, so a colour drift is caught but a missing part
+      (``min=0`` there) does not leak into the colour term.
+
+    The alignment with the least occupancy defect is returned. Returns (1.0, 1.0)
+    when neither frame has any meaningful content to compare. ``rgb_tol`` clamps
+    sub-threshold per-channel colour noise to zero before weighting.
     """
-    from PIL import ImageChops
+    import numpy as np
 
-    pa = pub.split()[3].point(lambda v: 255 if v > solid else 0)
-    pub_rgb = pub.convert("RGB")
+    m = meaningful / 255.0
+    P = np.asarray(pub.convert("RGBA"), dtype=np.float32)
+    R0 = np.asarray(ras.convert("RGBA"), dtype=np.float32)
+    ap = P[..., 3] / 255.0
+    prgb = P[..., :3]
     best = _FrameDefect(1.0, 1.0)
     for dx in range(-shift, shift + 1):
         for dy in range(-shift, shift + 1):
-            b = _shift_onto_transparent(ras, dx, dy)
-            ba = b.split()[3].point(lambda v: 255 if v > solid else 0)
-            union = ImageChops.lighter(pa, ba)
-            n_union = sum(union.histogram()[1:])
-            if not n_union:
+            R = _np_shift(R0, dx, dy)
+            ar = R[..., 3] / 255.0
+            union = np.maximum(ap, ar)
+            meaningful_mask = union > m
+            n_union = float(union[meaningful_mask].sum())
+            if n_union <= 0.0:
                 continue
-            missing = ImageChops.subtract(pa, ba)   # pub-solid, ras-absent
-            extra = ImageChops.subtract(ba, pa)     # ras-solid, pub-absent
-            occ = (sum(missing.histogram()[1:]) + sum(extra.histogram()[1:])) / n_union
-            overlap = ImageChops.multiply(pa, ba)
-            n_overlap = sum(overlap.histogram()[1:])
-            diff = ImageChops.difference(pub_rgb, b.convert("RGB"))
-            merged = diff.split()[0]
-            for band in diff.split()[1:]:
-                merged = ImageChops.lighter(merged, band)
-            rgb_bad = ImageChops.multiply(
-                merged.point(lambda v: 255 if v > rgb_tol else 0), overlap)
-            rgb = sum(rgb_bad.histogram()[1:]) / n_overlap if n_overlap else 1.0
+            occ = float(np.abs(ap - ar)[meaningful_mask].sum()) / n_union
+            ov = np.minimum(ap, ar)
+            n_ov = float(ov.sum())
+            if n_ov > 0.0:
+                # per-channel |Δ|, clamp sub-tol noise, average the 3 channels
+                chan = np.abs(prgb - R[..., :3])
+                chan = np.where(chan > rgb_tol, chan, 0.0).mean(axis=2) / 255.0
+                rgb = float((ov * chan).sum()) / n_ov
+            else:
+                rgb = 1.0
             if occ < best.occupancy:
                 best = _FrameDefect(occ, rgb)
     return best
 
 
 def _frame_verified(pub, ras) -> bool:
-    """True only when the frame is geometrically COMPLETE (tight occupancy bar)
-    and colour-consistent (looser rasterizer bar). A dropped/added part fails
-    occupancy; a mistranslated frame beyond the search fails occupancy; only
-    rasterizer/AA colour noise is absorbed by the rgb bar."""
+    """True only when the frame is COMPLETE at every opacity (tight alpha-mass
+    occupancy bar — a dropped/added/wrong-alpha part, opaque or translucent,
+    fails) and colour-consistent where both frames occupy (looser rasterizer
+    bar). A mistranslation beyond the search fails occupancy; only resvg-vs-Pillow
+    AA/blur colour noise is absorbed by the rgb bar."""
     d = _frame_defects(pub, ras)
     return d.occupancy <= _OCC_TOL and d.rgb <= _RGB_TOL
 

@@ -1,22 +1,27 @@
-"""Poison tests for the symmetric frame-fidelity metric (GPT 5.6 review).
+"""Poison tests for the symmetric, alpha-aware frame-fidelity metric.
 
-The bug this pins: the verifier compared colour only inside the *intersection*
-of opaque pixels, so a frame that DROPPED geometry (a missing arm/thruster) or
-INVENTED geometry scored zero bad pixels and was called ``captured``. A source
-with two shapes vs a render with one reproduced as a clean pass.
+Two GPT 5.6 review rounds shaped this:
 
-The fix grades two independent defect fractions (``_frame_defects`` ->
-``occupancy`` and ``rgb``) and a frame is ``_frame_verified`` only when BOTH
-pass: a tight occupancy bar (completeness — GPT's concern) and a looser rgb bar
-(pre-existing resvg-vs-Pillow rasterizer/AA colour slack). These pin:
+1. The verifier first compared colour only inside the *intersection* of opaque
+   pixels, so DROPPED or INVENTED geometry was never scored — a half-empty
+   frame passed as ``captured``.
+2. The first fix still thresholded alpha at ``>200`` to build a binary "solid"
+   mask, which discarded EVERY translucent pixel. A missing/invented/wrong-alpha
+   translucent component (glow, beam, cloth, effect) then scored ``(0.0, 0.0)``
+   and passed anyway.
 
-* an omitted shape fails on occupancy,
-* an invented shape fails on occupancy,
-* correct RGB but wrong (translucent) alpha fails on occupancy,
-* a within-tolerance 1px shift still verifies (no edge wrap),
-* a shift beyond tolerance fails,
-* pure rasterizer colour noise over complete geometry still verifies
-  (occupancy near zero) — mockingbird's real regime.
+The metric is now continuous and alpha-aware (``_frame_defects`` ->
+``occupancy`` over the union of meaningful alpha *mass*, and ``rgb`` weighted by
+mutual occupancy). A frame is ``_frame_verified`` only when both pass a tight
+occupancy bar (completeness, any opacity) and a looser rgb bar (rasterizer/AA
+colour slack). These tests pin:
+
+* omitted / invented OPAQUE geometry fails,
+* omitted / invented / wrong-alpha TRANSLUCENT geometry fails (the round-2 hole),
+* a translucent component is never silently discarded (nonzero occupancy),
+* correct RGB but wrong alpha fails,
+* in-tolerance 1px shift verifies (no edge wrap), beyond-tolerance fails,
+* colour noise over complete geometry still verifies.
 """
 from __future__ import annotations
 
@@ -34,95 +39,137 @@ from equivalence_harness import (  # noqa: E402
     _shift_onto_transparent,
 )
 
-W = H = 64
+W = H = 96
 
 
 def _canvas() -> Image.Image:
     return Image.new("RGBA", (W, H), (0, 0, 0, 0))
 
 
-def _two_shapes() -> Image.Image:
-    img = _canvas()
-    d = ImageDraw.Draw(img)
-    d.rectangle((6, 6, 22, 22), fill=(255, 0, 0, 255))
-    d.rectangle((42, 42, 58, 58), fill=(0, 0, 255, 255))
+def _body(img: Image.Image) -> Image.Image:
+    """A big matching opaque body, present in every fixture so the frames are
+    otherwise-identical and the appendage is what the metric must catch."""
+    ImageDraw.Draw(img).rectangle((8, 8, 60, 88), fill=(200, 60, 40, 255))
     return img
 
 
-def _one_shape() -> Image.Image:
-    img = _canvas()
-    ImageDraw.Draw(img).rectangle((6, 6, 22, 22), fill=(255, 0, 0, 255))
+def _translucent_appendage(img: Image.Image, alpha: int) -> Image.Image:
+    """A sizeable translucent limb/beam beside the body."""
+    ImageDraw.Draw(img).rectangle((66, 20, 90, 78), fill=(40, 180, 255, alpha))
     return img
 
 
 def test_identical_frames_verify() -> None:
-    a = _two_shapes()
+    a = _translucent_appendage(_body(_canvas()), 120)
     d = _frame_defects(a, a.copy())
     assert d.occupancy == 0.0 and d.rgb == 0.0
     assert _frame_verified(a, a.copy())
 
 
-def test_omitted_shape_fails_on_occupancy() -> None:
-    """The core repro: source has two shapes, render has one. The missing
-    shape must register as occupancy defect, not be masked away."""
-    d = _frame_defects(_two_shapes(), _one_shape())
-    assert d.occupancy > _OCC_TOL, d
-    assert not _frame_verified(_two_shapes(), _one_shape())
+# --- round 1: opaque geometry --------------------------------------------------
+def _two_opaque() -> Image.Image:
+    img = _canvas()
+    d = ImageDraw.Draw(img)
+    d.rectangle((8, 8, 40, 40), fill=(255, 0, 0, 255))
+    d.rectangle((56, 56, 88, 88), fill=(0, 0, 255, 255))
+    return img
 
 
-def test_invented_shape_fails_on_occupancy() -> None:
-    """Symmetric: render adds geometry the source never had."""
-    d = _frame_defects(_one_shape(), _two_shapes())
+def _one_opaque() -> Image.Image:
+    img = _canvas()
+    ImageDraw.Draw(img).rectangle((8, 8, 40, 40), fill=(255, 0, 0, 255))
+    return img
+
+
+def test_omitted_opaque_fails() -> None:
+    d = _frame_defects(_two_opaque(), _one_opaque())
     assert d.occupancy > _OCC_TOL, d
-    assert not _frame_verified(_one_shape(), _two_shapes())
+    assert not _frame_verified(_two_opaque(), _one_opaque())
+
+
+def test_invented_opaque_fails() -> None:
+    assert not _frame_verified(_one_opaque(), _two_opaque())
+
+
+# --- round 2: translucent geometry (the reported hole) -------------------------
+def test_omitted_translucent_component_fails() -> None:
+    """GPT's core round-2 repro: matching opaque body, but the render DROPS a
+    translucent appendage. Under the old >200 mask this scored (0,0) and passed;
+    it must now register real occupancy and fail."""
+    src = _translucent_appendage(_body(_canvas()), 120)
+    dropped = _body(_canvas())  # body only, no appendage
+    d = _frame_defects(src, dropped)
+    assert d.occupancy > _OCC_TOL, d
+    assert not _frame_verified(src, dropped)
+
+
+def test_invented_translucent_component_fails() -> None:
+    src = _body(_canvas())
+    invented = _translucent_appendage(_body(_canvas()), 120)
+    assert not _frame_verified(src, invented)
+
+
+def test_wrong_subthreshold_alpha_fails() -> None:
+    """Two meaningful but sub-threshold alphas (90 vs 200): both would have been
+    lumped as either <200 or >200 by the old cutoff. The alpha error must be
+    scored on a continuous basis and fail."""
+    src = _translucent_appendage(_body(_canvas()), 90)
+    wrong = _translucent_appendage(_body(_canvas()), 200)
+    d = _frame_defects(src, wrong)
+    assert d.occupancy > _OCC_TOL, d
+    assert not _frame_verified(src, wrong)
+
+
+def test_translucent_component_is_never_discarded() -> None:
+    """Property test: even a SMALL missing translucent component produces
+    strictly-positive occupancy — it is no longer thrown away by an alpha
+    cutoff, whether or not it crosses the pass threshold."""
+    src = _canvas()
+    ImageDraw.Draw(src).rectangle((8, 8, 60, 88), fill=(200, 60, 40, 255))
+    ImageDraw.Draw(src).rectangle((70, 40, 78, 56), fill=(40, 180, 255, 100))
+    dropped = _canvas()
+    ImageDraw.Draw(dropped).rectangle((8, 8, 60, 88), fill=(200, 60, 40, 255))
+    assert _frame_defects(src, dropped).occupancy > 0.0
 
 
 def test_correct_rgb_wrong_alpha_fails() -> None:
-    """Same colours, but the render draws the shapes translucent where the
-    source is solid — solid occupancy disagrees, so it must not verify."""
-    faded = _canvas()
-    d = ImageDraw.Draw(faded)
-    d.rectangle((6, 6, 22, 22), fill=(255, 0, 0, 80))
-    d.rectangle((42, 42, 58, 58), fill=(0, 0, 255, 80))
-    assert not _frame_verified(_two_shapes(), faded)
-    assert _frame_defects(_two_shapes(), faded).occupancy > _OCC_TOL
+    """Same colours, shapes drawn far more translucent than the source — the
+    alpha-mass mismatch must fail even though hue matches."""
+    src = _translucent_appendage(_body(_canvas()), 255)
+    faded = _translucent_appendage(_body(_canvas()), 40)
+    assert not _frame_verified(src, faded)
 
 
+# --- alignment -----------------------------------------------------------------
 def test_within_tolerance_shift_verifies() -> None:
-    """A 1px translation is inside the alignment search and must realign to a
-    clean pass — and must NOT wrap edge content around."""
-    shifted = _shift_onto_transparent(_two_shapes(), 1, 1)
-    assert _frame_verified(_two_shapes(), shifted)
+    src = _translucent_appendage(_body(_canvas()), 120)
+    shifted = _shift_onto_transparent(src, 1, 1)
+    assert _frame_verified(src, shifted)
 
 
 def test_beyond_tolerance_shift_fails() -> None:
-    """A 3px translation cannot be corrected by the ±1 search, so the
-    displaced solid pixels register as missing+extra and it fails."""
-    shifted = _shift_onto_transparent(_two_shapes(), 3, 3)
-    assert not _frame_verified(_two_shapes(), shifted)
-    assert _frame_defects(_two_shapes(), shifted).occupancy > _OCC_TOL
+    src = _translucent_appendage(_body(_canvas()), 120)
+    shifted = _shift_onto_transparent(src, 4, 4)
+    assert not _frame_verified(src, shifted)
+    assert _frame_defects(src, shifted).occupancy > _OCC_TOL
 
 
 def test_colour_noise_over_complete_geometry_verifies() -> None:
-    """Mockingbird's real regime: geometry is complete but resvg vs Pillow
-    disagree on interior colour across a minority of solid pixels. Occupancy is
-    ~0, so the frame must still verify — completeness, not pixel-exactness, is
-    the bar. (Occupancy and colour are graded separately for exactly this.)"""
-    src = _two_shapes()  # two 17x17 shapes -> 578 solid px
-    noisy = src.copy()
-    # Recolour a thin interior strip of one shape: ~9% of the overlap disagrees,
-    # like resvg-vs-Pillow AA fringes, well under the whole-region miscolour a
-    # dropped/wrong part would produce. Footprint is untouched -> occupancy 0.
-    ImageDraw.Draw(noisy).rectangle((6, 6, 22, 8), fill=(20, 235, 40, 255))
-    defect = _frame_defects(src, noisy)
-    assert defect.occupancy <= _OCC_TOL, defect
-    assert 0.0 < defect.rgb <= 0.12, defect
+    """Mockingbird's regime: geometry complete at every opacity, but resvg vs
+    Pillow disagree on interior colour across a minority of pixels. Occupancy
+    ~0, so it must still verify — completeness, not pixel-exactness, is the bar."""
+    src = _translucent_appendage(_body(_canvas()), 200)
+    noisy = _translucent_appendage(_body(_canvas()), 200)
+    # nudge a thin interior strip's colour; footprint + alpha untouched
+    ImageDraw.Draw(noisy).rectangle((8, 8, 60, 14), fill=(160, 40, 30, 255))
+    d = _frame_defects(src, noisy)
+    assert d.occupancy <= _OCC_TOL, d
+    assert d.rgb > 0.0, "the colour nudge should register as rgb defect"
     assert _frame_verified(src, noisy)
 
 
 def test_shift_does_not_wrap() -> None:
-    """The translate helper must lose off-canvas content, not wrap it — else a
-    shape pushed off one edge would reappear on the other and hide a defect."""
+    """The translate helper must lose off-canvas content, not wrap it."""
     edge = _canvas()
     ImageDraw.Draw(edge).rectangle((0, 0, 6, 6), fill=(255, 0, 0, 255))
     moved = _shift_onto_transparent(edge, -10, 0)
