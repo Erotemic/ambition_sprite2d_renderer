@@ -867,11 +867,19 @@ class Renderer:
         if node.get("kind") == "shape":
             pts_all += self.draw_shape(draw, node, M, anim_name, phase)
         else:
+            # Semantic scoping seam: assembly nodes (an arm, a thruster) open
+            # a named component so vector capture groups their primitives as
+            # one editable unit. No-op for plain raster drawing.
+            begin = getattr(draw, "begin_component", None)
+            if begin is not None:
+                begin(str(node.get("id", "group")))
             children = node.get("children", [])
             for child in sorted(
                 children, key=lambda n: (int(n.get("z_order", 0)), str(n.get("id", "")))
             ):
                 pts_all += self.render_node(draw, child, M, anim_name, phase)
+            if begin is not None:
+                draw.end_component()
         self.update_bounds(node["id"], pts_all)
         return pts_all
 

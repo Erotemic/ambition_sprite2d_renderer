@@ -148,96 +148,158 @@ def descend_wrappers(body: str) -> "tuple[str, str, List[str]]":
         )
 
 
-def discover_parts(frames: Dict[Any, List[str]]) -> "tuple[dict, dict]":
-    """Match congruent elements across frames; register them as parts.
+def discover_parts(frames: Dict[Any, Any]) -> "tuple[dict, dict]":
+    """Match rigid units across frames; register them once as parts.
 
-    ``frames``: key -> list of element strings (z-order). Returns
-    ``(part_defs, frame_bodies)`` in ComponentScene shape: parts hold
-    centroid-local geometry; matched occurrences become ``<use>`` with the
-    recovered transform; unmatched elements stay inline.
-
-    Discovered parts are GEOMETRIC reuse candidates ("geomNNN"), not semantic
-    parts: congruence can merge semantically distinct twins (two eyes, rivets,
-    repeated tiles). They become named editable parts only through review or a
-    cooperative ``part()`` scope in the paint code.
+    Two passes. PASS A walks every frame's element tree collecting candidate
+    subtrees (labelled groups and bare leaves) with a coordinate-stripped
+    signature and an ordered point cloud. Candidates cluster by signature +
+    rigid congruence. PASS B rebuilds each frame top-down: a subtree whose
+    congruence class recurs (>= 2 members) becomes a registered part placed by
+    ``<use>``; a group that is NOT rigid across frames (an articulated arm)
+    descends into its children — so the gallery ends up holding the MAXIMAL
+    rigid assemblies (a thruster, an upper arm), not geometric confetti and
+    not whole frames.
     """
-    registry: List[Tuple[str, List[Point], str, str]] = []  # (style, local, pid, body)
-    part_defs: Dict[str, Tuple[str, str]] = {}
-    frame_bodies: Dict[Any, str] = {}
-    serial = 0
+    import xml.etree.ElementTree as ET
 
-    def _matchable(elem: str):
-        """Points of a LEAF polygon/polyline, else None.
+    LABEL_ATTR = f"{{{INK_NS}}}label"
+    SHAPE_TAGS = {"polygon", "polyline", "ellipse"}
 
-        Compound elements (groups, defs, filters) must never be matched by
-        the points of their first child — that registered whole frames as
-        'parts' placed at one interior polygon's centroid (the scattered-limb
-        bug Jon caught on jeff_hinter). They stay inline, intact.
-        """
-        import xml.etree.ElementTree as ET
+    def _tag(node) -> str:
+        return node.tag.rsplit("}", 1)[-1]
 
-        try:
-            node = ET.fromstring(elem)
-        except ET.ParseError:
-            return None
-        if node.tag.rsplit("}", 1)[-1] not in ("polygon", "polyline"):
-            return None
-        if len(node):
-            return None
-        return _parse_points(elem)
+    def _cloud_and_sig(node):
+        cloud: List[Point] = []
+        sig_parts: List[str] = []
+
+        def walk(el) -> bool:
+            t = _tag(el)
+            if t == "g":
+                sig_parts.append("g")
+                for child in el:
+                    if not walk(child):
+                        return False
+                sig_parts.append("/g")
+                return True
+            if t in ("polygon", "polyline"):
+                raw = ET.tostring(el, encoding="unicode")
+                pts = _parse_points(raw)
+                if pts is None:
+                    return False
+                cloud.extend(pts)
+                sig_parts.append(_style_key(raw))
+                return True
+            if t == "ellipse":
+                try:
+                    cx, cy = float(el.get("cx")), float(el.get("cy"))
+                    rx = float(el.get("rx"))
+                except (TypeError, ValueError):
+                    return False
+                cloud.append((cx, cy))
+                cloud.append((cx + rx, cy))
+                attrs = {k: v for k, v in el.attrib.items() if k not in ("cx", "cy")}
+                sig_parts.append("ellipse" + repr(sorted(attrs.items())))
+                return True
+            return False
+
+        ok = walk(node)
+        if not ok or len(cloud) < 3:
+            return None, ""
+        return cloud, "|".join(sig_parts)
+
+    def _localize(node, dx: float, dy: float) -> str:
+        node = ET.fromstring(ET.tostring(node, encoding="unicode"))
+
+        def shift(el) -> None:
+            t = _tag(el)
+            if t in ("polygon", "polyline"):
+                pts = _parse_points(ET.tostring(el, encoding="unicode")) or []
+                el.set("points", _emit_points([(x + dx, y + dy) for x, y in pts]))
+            elif t == "ellipse":
+                el.set("cx", _fmt(float(el.get("cx")) + dx))
+                el.set("cy", _fmt(float(el.get("cy")) + dy))
+            for child in el:
+                shift(child)
+
+        shift(node)
+        return ET.tostring(node, encoding="unicode")
+
+    # ---- PASS A: collect candidates at every level -------------------------
+    frame_trees: Dict[Any, "tuple[str, str, list]"] = {}
+    classes: Dict[str, dict] = {}  # sig -> {"ref": cloud, "count": int}
+
+    def collect(node) -> None:
+        cloud, sig = _cloud_and_sig(node)
+        if cloud is not None:
+            cls = classes.setdefault(sig, {"ref": cloud, "count": 0})
+            if _Congruence.match(
+                    _Congruence.canonical(cls["ref"])[1], cloud) is not None:
+                cls["count"] += 1
+        if _tag(node) == "g":
+            for child in node:
+                collect(child)
 
     for key in sorted(frames, key=repr):
-        prefix, suffix, elems = ("", "", frames[key]) \
-            if isinstance(frames[key], list) else descend_wrappers(frames[key])
-        out: List[str] = []
-        for elem in elems:
-            pts = _matchable(elem)
-            if pts is None or len(pts) < 3:
-                out.append(elem)  # compound/short elements: inline, exact
-                continue
-            style = _style_key(elem)
-            placed = False
-            for rstyle, rlocal, pid, _body in registry:
-                if rstyle != style:
-                    continue
-                m = _Congruence.match(rlocal, pts)
-                if m is not None:
-                    (ox, oy), deg = m
-                    t = f"translate({_fmt(ox)} {_fmt(oy)})"
+        raw = frames[key]
+        if isinstance(raw, list):
+            prefix, suffix, elems = "", "", raw
+        else:
+            prefix, suffix, elems = descend_wrappers(raw)
+        trees = []
+        for e in elems:
+            try:
+                trees.append(ET.fromstring(e))
+            except ET.ParseError:
+                trees.append(e)  # unparseable (uses with prefixes): verbatim
+        frame_trees[key] = (prefix, suffix, trees)
+        for t in trees:
+            if not isinstance(t, str):
+                collect(t)
+
+    # ---- PASS B: rebuild, placing parts at the largest recurring level -----
+    part_defs: Dict[str, Tuple[str, str]] = {}
+    registered: Dict[str, str] = {}  # sig -> pid
+    serial = 0
+
+    def rebuild(node) -> str:
+        nonlocal serial
+        if isinstance(node, str):
+            return node
+        cloud, sig = _cloud_and_sig(node)
+        cls = classes.get(sig) if cloud is not None else None
+        if cls is not None and cls["count"] >= 2:
+            local_ref = _Congruence.canonical(cls["ref"])[1]
+            m = _Congruence.match(local_ref, cloud)
+            if m is not None:
+                (ox, oy), deg = m
+                pid = registered.get(sig)
+                if pid is None:
+                    pid = f"part_{serial:03d}"
+                    serial += 1
+                    registered[sig] = pid
+                    name = node.get(LABEL_ATTR) or _tag(node)
+                    body = _localize(node, -ox, -oy)
                     if abs(deg) > 0.01:
-                        t += f" rotate({_fmt(deg)})"
-                    out.append(f'<use href="#{pid}" xlink:href="#{pid}" transform="{t}"/>')
-                    placed = True
-                    break
-            if not placed:
-                centroid, local = _Congruence.canonical(pts)
-                pid = f"part_geom{serial:03d}"
-                serial += 1
-                body = _POINTS_RE.sub(f'points="{_emit_points(local)}"', elem, count=1)
-                registry.append((style, local, pid, body))
-                part_defs[pid] = (f"geom{serial - 1:03d}", body)
-                (ox, oy) = centroid
-                out.append(f'<use href="#{pid}" xlink:href="#{pid}" '
-                           f'transform="translate({_fmt(ox)} {_fmt(oy)})"/>')
-        frame_bodies[key] = prefix + "".join(out) + suffix
+                        # Def must live in the reference orientation: this
+                        # occurrence is rotated by ``deg`` relative to it.
+                        body = f'<g transform="rotate({_fmt(-deg)})">{body}</g>'
+                    part_defs[pid] = (name, body)
+                t = f"translate({_fmt(ox)} {_fmt(oy)})"
+                if abs(deg) > 0.01:
+                    t += f" rotate({_fmt(deg)})"
+                return f'<use href="#{pid}" xlink:href="#{pid}" transform="{t}"/>'
+        if _tag(node) == "g":
+            inner = "".join(rebuild(child) for child in node)
+            attrs = "".join(
+                f' {k.replace("{" + INK_NS + "}", "inkscape:")}="{v}"'
+                for k, v in node.attrib.items())
+            return f"<g{attrs}>{inner}</g>"
+        return ET.tostring(node, encoding="unicode")
 
-    # Parts used only once carry no reuse value — inline them back.
-    all_bodies = "".join(frame_bodies.values())
-    for pid in list(part_defs):
-        if all_bodies.count(f'#{pid}"') <= 2:  # href + xlink:href of ONE use
-            name, body = part_defs.pop(pid)
-            for key, fb in frame_bodies.items():
-                pattern = re.compile(
-                    rf'<use href="#{pid}" xlink:href="#{pid}" '
-                    rf'transform="translate\(([-\d.]+) ([-\d.]+)\)( rotate\(([-\d.]+)\))?"/>')
-
-                def _inline(m: "re.Match[str]") -> str:
-                    t = f'translate({m.group(1)} {m.group(2)})'
-                    if m.group(4):
-                        t += f' rotate({m.group(4)})'
-                    return f'<g transform="{t}">{body}</g>'
-
-                frame_bodies[key] = pattern.sub(_inline, fb)
+    frame_bodies: Dict[Any, str] = {}
+    for key, (prefix, suffix, trees) in frame_trees.items():
+        frame_bodies[key] = prefix + "".join(rebuild(t) for t in trees) + suffix
     return part_defs, frame_bodies
 
 
@@ -249,8 +311,15 @@ class _TeeDraw:
         self._rec = rec
 
     def __getattr__(self, name: str) -> Any:
-        real_attr = getattr(self._real, name)
         rec_fn = getattr(self._rec, name, None)
+        try:
+            real_attr = getattr(self._real, name)
+        except AttributeError:
+            # Recorder-only surface (component()/part() scoping): forward so
+            # semantic grouping reaches the recording even through the tee.
+            if rec_fn is not None:
+                return rec_fn
+            raise
         if not callable(real_attr) or rec_fn is None:
             return real_attr
 
@@ -321,7 +390,7 @@ def capture_target_frames(target):
         if src_rec is None or not src_rec.calls:
             return
         rec = DrawRecorder(res.size)
-        rec._emit(wrap(src_rec.body_svg()))
+        rec._emit(wrap(src_rec.snapshot_svg()))
         rec.calls = src_rec.calls
         rec.unsupported |= src_rec.unsupported
         if op_name:
@@ -379,7 +448,7 @@ def capture_target_frames(target):
         dx, dy = dest_pos
         dst_rec._emit(
             f'<g transform="translate({_fmt(dx)} {_fmt(dy)})">'
-            f"{src_rec.body_svg()}</g>")
+            f"{src_rec.snapshot_svg()}</g>")
         dst_rec.calls += src_rec.calls
         dst_rec.unsupported |= src_rec.unsupported
         if bad:
@@ -408,7 +477,7 @@ def capture_target_frames(target):
             rec = DrawRecorder(res.size)
             for r, img in ((r1, im1), (r2, im2)):
                 if r and r.calls:
-                    rec._emit(r.body_svg())
+                    rec._emit(r.snapshot_svg())
                     rec.calls += r.calls
                     rec.unsupported |= r.unsupported
                     for pid, v in r.part_defs.items():

@@ -279,6 +279,22 @@ class DrawRecorder:
         assert not self._part_stack, "unclosed part() scope"
         return "".join(self._groups[0][1])
 
+    def snapshot_svg(self) -> str:
+        """Serialize current content, virtually closing any open scopes.
+
+        Composite hooks fold a layer's recording mid-paint, while the painter
+        may legitimately have component() scopes open; the snapshot closes
+        them in the serialization only — recording state is untouched.
+        """
+        out = "".join(self._groups[0][1])
+        tail = ""
+        for name, elems in self._groups[1:]:
+            safe = name.replace('"', "'")
+            out += (f'<g inkscape:label="{safe}" inkscape:groupmode="layer">'
+                    + "".join(elems))
+            tail += "</g>"
+        return out + tail
+
     def to_svg(self) -> str:
         w, h = self.width, self.height
         return (
