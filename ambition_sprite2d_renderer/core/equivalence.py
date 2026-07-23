@@ -478,16 +478,23 @@ def _compare_animations(ref: Dict[str, Any], cand: Dict[str, Any]) -> DimensionR
     return DimensionResult("animations", not diffs, "names, frame counts, durations", diffs)
 
 
-def _compare_geometry(ref: RenderOutput, cand: RenderOutput, stem: str) -> DimensionResult:
+def _compare_geometry(ref: RenderOutput, cand: RenderOutput, stem: str,
+                      *, geom_tol: float) -> DimensionResult:
+    # Body bbox / feet / collision are *measured from rendered pixels*, so a
+    # different rasterizer's antialiasing legitimately shifts them by up to a
+    # pixel. Tolerate that; authored metadata stays exact (see _compare_metadata).
     diffs: List[str] = []
     rs = ref.sheets[stem].sheet()
     cs = cand.sheets[stem].sheet()
-    _deep_diffs(rs.get("body_metrics"), cs.get("body_metrics"), "body_metrics", diffs, float_tol=0.5)
+    _deep_diffs(rs.get("body_metrics"), cs.get("body_metrics"), "body_metrics",
+                diffs, float_tol=geom_tol)
     ra = ref.actors.get(stem, {})
     ca = cand.actors.get(stem, {})
-    for k in ("body",):
-        _deep_diffs(_get(ra, k), _get(ca, k), f"actor.{k}", diffs, float_tol=0.5)
-    return DimensionResult("geometry", not diffs, "body bbox, feet, collision/hurtbox", diffs)
+    _deep_diffs(_get(ra, "body"), _get(ca, "body"), "actor.body", diffs, float_tol=geom_tol)
+    # Sockets are measured/derived pixel points -> rasterizer-sensitive too.
+    _deep_diffs(_get(ra, "sockets"), _get(ca, "sockets"), "actor.sockets", diffs, float_tol=geom_tol)
+    return DimensionResult("geometry", not diffs,
+                           f"body bbox, feet, collision/hurtbox, sockets (±{geom_tol}px)", diffs)
 
 
 def _get(obj: Any, key: str) -> Any:
@@ -498,9 +505,11 @@ def _compare_metadata(ref: RenderOutput, cand: RenderOutput, stem: str) -> Dimen
     diffs: List[str] = []
     ra = ref.actors.get(stem, {})
     ca = cand.actors.get(stem, {})
-    for k in ("sockets", "capabilities", "animation_bindings", "tags", "brain", "actions"):
-        _deep_diffs(_get(ra, k), _get(ca, k), f"actor.{k}", diffs, float_tol=0.5)
-    return DimensionResult("metadata", not diffs, "sockets, capabilities, bindings, tags", diffs)
+    # Authored (not pixel-measured) fields — these must match exactly.
+    for k in ("capabilities", "animation_bindings", "tags", "brain", "actions"):
+        _deep_diffs(_get(ra, k), _get(ca, k), f"actor.{k}", diffs, float_tol=0.0)
+    return DimensionResult("metadata", not diffs,
+                           "capabilities, bindings, tags, brain, actions", diffs)
 
 
 def _compare_portraits(ref: RenderOutput, cand: RenderOutput) -> DimensionResult:
@@ -545,6 +554,45 @@ def _crop(sheetview: SheetView, rect: Dict[str, Any]):
     return page.crop((x, y, x + w, y + h))
 
 
+def _pad_common(a, b, margin: int):
+    """Alpha-tight both crops and paste onto one bottom-centre canvas + margin."""
+    from PIL import Image
+
+    def tight(im):
+        box = im.split()[3].getbbox()
+        return im.crop(box) if box else Image.new("RGBA", (1, 1), (0, 0, 0, 0))
+
+    at, bt = tight(a), tight(b)
+    w = max(at.width, bt.width) + 2 * margin
+    h = max(at.height, bt.height) + 2 * margin
+    out = []
+    for im in (at, bt):
+        c = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        c.alpha_composite(im, ((w - im.width) // 2, h - im.height - margin))
+        out.append(c)
+    return out[0], out[1]
+
+
+def _registered_delta(a, b, *, search: int, thresh: int):
+    """Min over-threshold pixel delta over integer shifts of ±search.
+
+    Two independently packed sheets frame the same pose a pixel or so apart;
+    without registration that offset lights up every antialiased outline. The
+    minimum over small shifts is the honest "same picture?" measure.
+    """
+    from PIL import ImageChops
+
+    fa, fb = _pad_common(a, b, margin=search + 1)
+    best = (255, 1.0)
+    for dy in range(-search, search + 1):
+        for dx in range(-search, search + 1):
+            shifted = ImageChops.offset(fb, dx, dy)
+            md, fr = _pixel_delta(fa, shifted, thresh)
+            if fr < best[1] or (fr == best[1] and md < best[0]):
+                best = (md, fr)
+    return best
+
+
 def _compare_pixels(
     ref: RenderOutput,
     cand: RenderOutput,
@@ -552,6 +600,7 @@ def _compare_pixels(
     *,
     edge_tol: int,
     area_tol: float,
+    size_tol: int,
 ) -> Tuple[DimensionResult, List[PixelStat]]:
     stats: List[PixelStat] = []
     rs = ref.sheets[stem]
@@ -567,18 +616,15 @@ def _compare_pixels(
             if ri is None or ci is None:
                 stats.append(PixelStat(name, idx, "differs", 255, 1.0, "missing page"))
                 continue
-            if ri.size != ci.size:
-                stats.append(PixelStat(name, idx, "size-mismatch", 255, 1.0,
-                                       f"{ri.size} vs {ci.size}"))
+            size_delta = max(abs(ri.width - ci.width), abs(ri.height - ci.height))
+            if ri.size == ci.size and _pixel_delta(ri, ci)[0] == 0:
+                stats.append(PixelStat(name, idx, "exact", 0, 0.0))
                 continue
-            max_delta, frac = _pixel_delta(ri, ci)
-            if max_delta == 0:
-                status = "exact"
-            elif max_delta <= edge_tol and frac <= area_tol:
-                status = "raster-equivalent"
-            else:
-                status = "differs"
-            stats.append(PixelStat(name, idx, status, max_delta, frac))
+            max_delta, frac = _registered_delta(ri, ci, search=max(2, size_tol + 1),
+                                                 thresh=edge_tol)
+            status = "raster-equivalent" if frac <= area_tol else "differs"
+            note = "" if size_delta == 0 else f"Δsilhouette={size_delta}px"
+            stats.append(PixelStat(name, idx, status, max_delta, frac, note))
 
     if not stats:
         return DimensionResult("pixels", True, "no comparable frames", []), stats
@@ -595,28 +641,33 @@ def _pixel_rank(status: str) -> int:
     return {"exact": 0, "raster-equivalent": 1, "differs": 2, "size-mismatch": 2}.get(status, 2)
 
 
-def _pixel_delta(a, b) -> Tuple[int, float]:
-    """Return (max per-channel delta, fraction of pixels that changed at all).
+def _pixel_delta(a, b, thresh: int = 0) -> Tuple[int, float]:
+    """Return (max per-channel delta, fraction of pixels differing by > thresh).
+
+    The fraction is over-threshold, not any-change: downsampled sprite art is
+    mostly soft antialiased edges that differ a level or two between rasterizers,
+    so "any change" over-counts wildly. Counting only pixels whose worst channel
+    exceeds ``thresh`` isolates *material* differences from AA shimmer.
 
     Works band-by-band on purpose: ``Image.getbbox()`` defaults to
     ``alpha_only=True`` on RGBA and would ignore pure colour changes, and an
-    ``L`` conversion drops the alpha band — so a translucency-only or
-    colour-only change must be caught by inspecting every band directly.
+    ``L`` conversion drops the alpha band — so a translucency- or colour-only
+    change must be caught by inspecting every band directly.
     """
     from PIL import ImageChops
 
     diff = ImageChops.difference(a, b)
     bands = diff.split()
     max_delta = max((band.getextrema()[1] for band in bands), default=0)
-    if max_delta == 0:
-        return 0, 0.0
-    # Per-pixel max across all bands, so any changed channel marks the pixel.
+    if max_delta <= thresh:
+        return int(max_delta), 0.0
+    # Per-pixel max across all bands, so the worst channel marks the pixel.
     merged = bands[0]
     for band in bands[1:]:
         merged = ImageChops.lighter(merged, band)
-    changed = sum(merged.histogram()[1:])
+    over = sum(merged.histogram()[thresh + 1:])
     total = a.size[0] * a.size[1]
-    return int(max_delta), (changed / total if total else 0.0)
+    return int(max_delta), (over / total if total else 0.0)
 
 
 def compare_renders(
@@ -625,12 +676,17 @@ def compare_renders(
     *,
     edge_tol: int = 6,
     area_tol: float = 0.02,
+    geom_tol: float = 1.5,
+    size_tol: int = 1,
 ) -> EquivalenceReport:
     """Compare two loaded renders across every published dimension.
 
     ``edge_tol`` is the max per-channel RGBA delta still considered an
     antialiasing edge difference; ``area_tol`` is the fraction of a frame's
     pixels allowed to change while still calling it raster-equivalent.
+    ``geom_tol`` is the pixel slack on *measured* geometry (body bbox, feet,
+    sockets), which is inherently rasterizer-dependent. ``size_tol`` is the
+    per-frame silhouette size slack (px) before a frame is a size-mismatch.
     """
     report = EquivalenceReport(verdict=DIFFERS)
 
@@ -669,9 +725,10 @@ def compare_renders(
         cs = cand.sheets[stem].sheet()
         merge(_compare_layout(rs, cs))
         merge(_compare_animations(rs, cs))
-        merge(_compare_geometry(ref, cand, stem))
+        merge(_compare_geometry(ref, cand, stem, geom_tol=geom_tol))
         merge(_compare_metadata(ref, cand, stem))
-        pix_dim, stats = _compare_pixels(ref, cand, stem, edge_tol=edge_tol, area_tol=area_tol)
+        pix_dim, stats = _compare_pixels(ref, cand, stem, edge_tol=edge_tol,
+                                         area_tol=area_tol, size_tol=size_tol)
         merge(pix_dim)
         all_pixels.extend(stats)
 

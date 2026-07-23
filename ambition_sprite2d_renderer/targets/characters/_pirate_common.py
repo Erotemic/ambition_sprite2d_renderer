@@ -542,13 +542,19 @@ def draw_face(
         poly(draw, beard_pts, pal.beard, pal.outline, width=3)
 
 
-def draw_character(
-    kind: str, anim: str, frame_idx: int, nframes: int, frame_size=BASE_FRAME
-) -> Image.Image:
+def paint_character(
+    draw, kind: str, anim: str, frame_idx: int, nframes: int, frame_size=BASE_FRAME
+) -> None:
+    """Paint one supersampled character frame into ``draw``.
+
+    ``draw`` is anything exposing the ImageDraw ``polygon`` / ``line`` /
+    ``ellipse`` / ``arc`` subset — a real Pillow draw for raster output, or a
+    :class:`~ambition_sprite2d_renderer.authoring.draw_recorder.DrawRecorder`
+    to capture the same geometry as an editable SVG scene. The pirate family's
+    whole vocabulary bottoms out in those calls, so one paint pass serves both.
+    """
     pal = PALETTES[kind]
     w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img, "RGBA")
     pose = animation_pose(anim, frame_idx, nframes)
 
     cx = w * (0.48 if kind == "pirate_admiral" else 0.50)
@@ -769,7 +775,35 @@ def draw_character(
     if anim == "death":
         draw.line((0, ground + 24, w, ground + 24), fill=(0, 0, 0, 0), width=1)
 
+
+def draw_character(
+    kind: str, anim: str, frame_idx: int, nframes: int, frame_size=BASE_FRAME
+) -> Image.Image:
+    """Render one supersampled-then-downsampled pirate frame (PIL raster)."""
+    w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img, "RGBA")
+    paint_character(draw, kind, anim, frame_idx, nframes, frame_size)
     return downsample(img, frame_size)
+
+
+def capture_character_svg(
+    kind: str, anim: str, frame_idx: int, nframes: int, frame_size=BASE_FRAME
+) -> str:
+    """Capture one pirate frame as an SVG document — the PIL->SVG conversion.
+
+    Paints the identical parts into a :class:`DrawRecorder` at the supersampled
+    resolution instead of a raster. Rasterizing the result and downsampling it
+    the same way ``draw_character`` does lands within antialiasing tolerance of
+    the shipped frame (``raster-equivalent`` in the equivalence harness). See
+    ``docs/planning/engine/svg-component-character-migration.md``.
+    """
+    from ...authoring.draw_recorder import DrawRecorder
+
+    w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
+    rec = DrawRecorder((w, h))
+    paint_character(rec, kind, anim, frame_idx, nframes, frame_size)
+    return rec.to_svg()
 
 
 def render_target(
@@ -796,6 +830,35 @@ def render_target(
             nframes,
             frame_size=frame_size,
         ),
+        out_dir=out_dir,
+        frame_size=frame_size,
+    )
+
+
+def render_target_svg(
+    target: str, out_dir: Path, frame_size: Tuple[int, int] = BASE_FRAME
+) -> Dict[str, Path]:
+    """Build the same pirate sheet from the **SVG authority**.
+
+    Identical to :func:`render_target` but each frame is captured to SVG and
+    re-rasterized instead of drawn straight to a raster. It routes through the
+    same ``build_sheet`` measurement/packing/metadata pipeline, so the output
+    is a drop-in second authority the equivalence harness can compare against
+    the PIL render (``equivalence_harness.py compare --ref pil --cand svg``).
+    """
+    from ...authoring.draw_recorder import rasterize_svg
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
+
+    def render_fn(anim, frame_idx, nframes):
+        svg = capture_character_svg(target, anim, frame_idx, nframes, frame_size)
+        return downsample(rasterize_svg(svg, (w, h)), frame_size)
+
+    return build_sheet(
+        target=target,
+        rows=ANIMATIONS,
+        render_fn=render_fn,
         out_dir=out_dir,
         frame_size=frame_size,
     )

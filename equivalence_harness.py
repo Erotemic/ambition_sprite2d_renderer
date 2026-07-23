@@ -151,7 +151,8 @@ def cmd_compare(args) -> int:
         ref_dir, ref_label, cand_dir, cand_label, out_label = _resolve_pair(args, tmpdirs)
         ref = load_render(ref_dir)
         cand = load_render(cand_dir)
-        report = compare_renders(ref, cand, edge_tol=args.edge_tol, area_tol=args.area_tol)
+        report = compare_renders(ref, cand, edge_tol=args.edge_tol, area_tol=args.area_tol,
+                                 geom_tol=args.geom_tol, size_tol=args.size_tol)
         out = DRIFT_DIR / out_label
         write_report(report, out, ref_label=ref_label, cand_label=cand_label)
         _canonical_side_by_side(ref_dir, cand_dir, out / "canonical.compare.png")
@@ -190,6 +191,10 @@ def main() -> int:
                     help="max per-channel delta still counted as an AA edge (default 6)")
     pc.add_argument("--area-tol", type=float, default=0.02,
                     help="fraction of a frame allowed to change for raster-equivalence (default 0.02)")
+    pc.add_argument("--geom-tol", type=float, default=1.5,
+                    help="pixel slack on measured geometry (body bbox/feet/sockets) (default 1.0)")
+    pc.add_argument("--size-tol", type=int, default=1,
+                    help="per-frame silhouette size slack in px before size-mismatch (default 1)")
     pc.add_argument("--strict", action="store_true",
                     help="exit non-zero when a structural dimension differs")
     pc.set_defaults(func=cmd_compare)

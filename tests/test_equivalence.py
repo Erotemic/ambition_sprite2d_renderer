@@ -134,12 +134,24 @@ def test_duration_drift_breaks_contract(tmp_path: Path) -> None:
 
 
 def test_socket_drift_breaks_contract(tmp_path: Path) -> None:
+    # Sockets are measured pixel points -> compared in the geometry dimension,
+    # with a small tolerance. A 5px shift is well past it.
     a = _write_render(tmp_path / "a", feet_y=14.0)
     b = _write_render(tmp_path / "b", feet_y=9.0)
     rep = compare_renders(load_render(a), load_render(b))
     assert rep.verdict == DIFFERS
-    meta = next(d for d in rep.dimensions if d.name == "metadata")
-    assert not meta.ok and any("feet" in x for x in meta.diffs)
+    geom = next(d for d in rep.dimensions if d.name == "geometry")
+    assert not geom.ok and any("feet" in x for x in geom.diffs)
+
+
+def test_measured_geometry_within_tolerance_is_ok(tmp_path: Path) -> None:
+    # A sub-pixel-ish socket shift (< geom_tol) must NOT break the contract —
+    # measured geometry is rasterizer-sensitive by nature.
+    a = _write_render(tmp_path / "a", feet_y=14.0)
+    b = _write_render(tmp_path / "b", feet_y=13.0)
+    rep = compare_renders(load_render(a), load_render(b), geom_tol=1.5)
+    geom = next(d for d in rep.dimensions if d.name == "geometry")
+    assert geom.ok
 
 
 def test_pixel_only_redesign_is_contract_match(tmp_path: Path) -> None:
