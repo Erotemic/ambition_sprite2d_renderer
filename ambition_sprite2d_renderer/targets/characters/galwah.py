@@ -103,7 +103,6 @@ PAPER_LINE = (125, 100, 75, 255)
 METAL = (110, 116, 122, 255)
 WOOD = (110, 76, 46, 255)
 RED = (156, 60, 58, 255)
-SHADOW = (0, 0, 0, 36)
 PREVIEW_BG = (243, 240, 233, 255)
 LABEL = (55, 52, 58, 255)
 
@@ -277,14 +276,8 @@ class GalwahRenderer:
         img = Image.new("RGBA", (self.W, self.H), BG)
         draw = blending_draw(img)
 
-        # Shadow / ground anchor.
-        ellipse(
-            draw,
-            self.pt(48, 88 + pose.body_y * 0.18),
-            self.S(18 - 8 * pose.collapse),
-            self.S(4 + 2 * pose.collapse),
-            SHADOW,
-        )
+        # No baked drop shadow (rule: shadows break crop/anchor alignment;
+        # cast shadows belong to the ECS visual layer, not the source sheet).
 
         # Body scaffold.
         facing = 1 if pose.facing >= 0 else -1

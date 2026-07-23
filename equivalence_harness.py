@@ -307,6 +307,54 @@ def _autoconvert_one(name: str, target, out_dir: Path, verify_frames: int = 6):
             else:
                 failed += 1
 
+    # Review artifact: PIL (published) | SVG (scene render) | diff for the
+    # first frame of each animation, so pre-existing-vs-conversion questions
+    # answer themselves at a glance (Jon's triage request).
+    try:
+        if resvg_py is not None:
+            strips = []
+            seen_anims = set()
+            for (stem, anim, idx) in sorted(semantic):
+                if (stem, anim) in seen_anims or idx != 0:
+                    continue
+                seen_anims.add((stem, anim))
+                sheet = manifests.get(stem) or next(iter(manifests.values()))
+                row = next((r for r in sheet.get("rows", [])
+                            if r.get("animation") == anim), None)
+                page_name = f"{stem}_spritesheet.png"
+                if row is None or page_name not in files or not row["rects"]:
+                    continue
+                fw, fh = int(sheet["frame_width"]), int(sheet["frame_height"])
+                doc = loaded.frame_doc(f"{stem}:{anim}" if multi else anim, 0)
+                png = resvg_py.svg_to_bytes(svg_string=doc)
+                ras = Image.open(io.BytesIO(bytes(png))).convert("RGBA")
+                if ras.size != (fw, fh):
+                    continue
+                page = Image.open(io.BytesIO(files[page_name])).convert("RGBA")
+                r = row["rects"][0]
+                pub = Image.new("RGBA", (fw, fh), (0, 0, 0, 0))
+                off = r.get("off") or [0, 0]
+                pub.alpha_composite(
+                    page.crop((r["x"], r["y"], r["x"] + r["w"], r["y"] + r["h"])),
+                    (int(off[0]), int(off[1])))
+                diff = ImageChops.difference(pub.convert("RGB"), ras.convert("RGB")).convert("RGBA")
+                strip = Image.new("RGBA", (fw * 3 + 12, fh), (30, 30, 36, 255))
+                strip.alpha_composite(pub, (0, 0))
+                strip.alpha_composite(ras, (fw + 6, 0))
+                strip.alpha_composite(diff, (fw * 2 + 12, 0))
+                strips.append(strip)
+            if strips:
+                W = max(st.width for st in strips)
+                H = sum(st.height + 4 for st in strips)
+                canvas = Image.new("RGBA", (W, H), (30, 30, 36, 255))
+                y = 0
+                for st in strips:
+                    canvas.alpha_composite(st, (0, y))
+                    y += st.height + 4
+                canvas.save(out_dir / f"{name}_compare.png")
+    except Exception:
+        pass  # the compare strip is best-effort review aid, never a failure
+
     complete = len(semantic) == expected and expected > 0
     ok = complete and not unsupported and not dangling and failed == 0 and verified > 0
     status = "captured" if ok else "partial"

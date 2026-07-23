@@ -212,22 +212,6 @@ def bottom_center_canvas(
 
 
 
-def sprite_shadow(
-    frame_size: tuple[int, int],
-    *,
-    width: int,
-    height: int,
-    y: int,
-    x: int | None = None,
-    color: RGBA = SHADOW,
-) -> Image.Image:
-    img = Image.new("RGBA", frame_size, TRANSPARENT)
-    draw = blending_draw(img)
-    if x is None:
-        x = frame_size[0] // 2
-    draw.ellipse((x - width // 2, y - height // 2, x + width // 2, y + height // 2), fill=color)
-    return img
-
 
 
 def label_font(size: int = 9) -> ImageFont.ImageFont:

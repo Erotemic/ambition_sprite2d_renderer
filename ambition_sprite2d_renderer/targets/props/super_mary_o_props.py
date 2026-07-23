@@ -30,7 +30,6 @@ from ..super_mary_o_common import (
     COIN_GOLD_LIGHT,
     bottom_center_canvas,
     rasterize_logical,
-    sprite_shadow,
 )
 
 FRAME = (96, 96)
@@ -75,9 +74,7 @@ def _pipe_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
 
     sprite = rasterize_logical(LOGICAL, SCALE, painter)
     frame = bottom_center_canvas(sprite, FRAME)
-    shadow = sprite_shadow(FRAME, width=42, height=8, y=88)
-    shadow.alpha_composite(frame)
-    return shadow
+    return frame
 
 
 
@@ -103,9 +100,7 @@ def _milk_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
 
     sprite = rasterize_logical(LOGICAL, SCALE, painter)
     frame = bottom_center_canvas(sprite, FRAME)
-    shadow = sprite_shadow(FRAME, width=28, height=7, y=88)
-    shadow.alpha_composite(frame)
-    return shadow
+    return frame
 
 
 
@@ -128,9 +123,7 @@ def _gas_tank_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image
 
     sprite = rasterize_logical(LOGICAL, SCALE, painter)
     frame = bottom_center_canvas(sprite, FRAME)
-    shadow = sprite_shadow(FRAME, width=30, height=7, y=88)
-    shadow.alpha_composite(frame)
-    return shadow
+    return frame
 
 
 
@@ -154,9 +147,7 @@ def _coin_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
 
     sprite = rasterize_logical(LOGICAL, SCALE, painter)
     frame = bottom_center_canvas(sprite, FRAME, offset_y=-4)
-    shadow = sprite_shadow(FRAME, width=24, height=6, y=88)
-    shadow.alpha_composite(frame)
-    return shadow
+    return frame
 
 
 SPECS: Dict[str, PropSpec] = {
