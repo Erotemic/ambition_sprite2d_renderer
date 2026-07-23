@@ -971,6 +971,13 @@ def _render_rows(scene, frame_size):
                 center=tuple(scene.render_cfg.get("frame_center", [0.5, 0.53])),
             )
             frames_data.append((frame, {}))
+            # Semantic frame-publication seam (see authoring/auto_capture.py):
+            # lets the SVG converter associate its vector recording with the
+            # exact frame being published by this bespoke pipeline.
+            from ambition_sprite2d_renderer.authoring import sheet_build as _sb
+
+            if _sb.FRAME_CAPTURE_HOOK is not None:
+                _sb.FRAME_CAPTURE_HOOK(TARGET_NAME, name, c, frame)
         rendered.append((name, nframes, dur, frames_data))
     return rendered
 
