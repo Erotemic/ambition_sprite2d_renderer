@@ -166,6 +166,20 @@ def cmd_compare(args) -> int:
             shutil.rmtree(d, ignore_errors=True)
 
 
+def cmd_export(args) -> int:
+    """Write a convertible target's editable componentized SVGs to disk."""
+    from ambition_sprite2d_renderer.targets.characters import _pirate_common as pirates
+
+    if not pirates.is_pirate_family(args.target):
+        raise SystemExit(
+            f"{args.target!r} has no SVG-capture seam yet; only the pirate family "
+            f"(paint_character/capture_character_svg) is convertible so far")
+    out = Path(args.out) if args.out else (DRIFT_DIR / args.target / "svg")
+    written = pirates.export_svgs(args.target, out)
+    print(f"exported {len(written)} componentized SVGs -> {out}")
+    return 0
+
+
 def cmd_list(args) -> int:
     for name in sorted(_discover()):
         print(name)
@@ -198,6 +212,11 @@ def main() -> int:
     pc.add_argument("--strict", action="store_true",
                     help="exit non-zero when a structural dimension differs")
     pc.set_defaults(func=cmd_compare)
+
+    pe = sub.add_parser("export", help="write a target's editable componentized SVGs to disk")
+    pe.add_argument("--target", required=True)
+    pe.add_argument("--out", help="output dir (default: tmp/sprite-drift/<target>/svg)")
+    pe.set_defaults(func=cmd_export)
 
     pl = sub.add_parser("list", help="list renderable targets")
     pl.set_defaults(func=cmd_list)

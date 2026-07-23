@@ -74,17 +74,23 @@ class DrawRecorder:
         self.unsupported: set = set()
 
     # -- component scoping --------------------------------------------------
+    def begin_component(self, name: str) -> None:
+        self._groups.append((name, []))
+
+    def end_component(self) -> None:
+        name, elems = self._groups.pop()
+        if elems:
+            body = "".join(elems)
+            safe = name.replace('"', "'")
+            self._emit(f'<g inkscape:label="{safe}" inkscape:groupmode="layer">{body}</g>')
+
     @contextmanager
     def component(self, name: str):
-        self._groups.append((name, []))
+        self.begin_component(name)
         try:
             yield self
         finally:
-            name, elems = self._groups.pop()
-            if elems:
-                body = "".join(elems)
-                safe = name.replace('"', "'")
-                self._emit(f'<g inkscape:label="{safe}" inkscape:groupmode="layer">{body}</g>')
+            self.end_component()
 
     def _emit(self, element: str) -> None:
         self._groups[-1][1].append(element)

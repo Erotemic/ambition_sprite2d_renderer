@@ -27,7 +27,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 from PIL import Image, ImageDraw
 
@@ -542,6 +542,19 @@ def draw_face(
         poly(draw, beard_pts, pal.beard, pal.outline, width=3)
 
 
+def _begin(draw, name: str) -> None:
+    """Open a named component scope if ``draw`` records SVG; no-op for Pillow."""
+    fn = getattr(draw, "begin_component", None)
+    if fn is not None:
+        fn(name)
+
+
+def _end(draw) -> None:
+    fn = getattr(draw, "end_component", None)
+    if fn is not None:
+        fn()
+
+
 def paint_character(
     draw, kind: str, anim: str, frame_idx: int, nframes: int, frame_size=BASE_FRAME
 ) -> None:
@@ -613,6 +626,7 @@ def paint_character(
         (8, 30 - pose["right_foot_lift"]), right_knee, deg=pose["right_leg"] * 0.3
     )
 
+    _begin(draw, "legs")
     for hip_pt, knee_pt, foot_pt, ang in [
         (left_hip, left_knee, left_foot, pose["left_leg"]),
         (right_hip, right_knee, right_foot, pose["right_leg"]),
@@ -620,8 +634,10 @@ def paint_character(
         line(draw, [hip_pt, knee_pt, foot_pt], pal.pants, width=13)
         line(draw, [hip_pt, knee_pt, foot_pt], pal.outline, width=4)
         draw_boot(draw, foot_pt, 24, 18, ang * 0.2, pal)
+    _end(draw)
 
     # Body / shirt / coat
+    _begin(draw, "body")
     torso_pts = [
         transform(p, chest, deg=global_tilt)
         for p in [(-34, -8), (30, -8), (42, 58), (0, 76), (-44, 58)]
@@ -667,8 +683,10 @@ def paint_character(
     ]
     poly(draw, tail_left, pal.coat, pal.outline, width=4)
     poly(draw, tail_right, pal.coat, pal.outline, width=4)
+    _end(draw)
 
     # Back arm
+    _begin(draw, "arms")
     back_elbow = transform((4, 52), back_shoulder, deg=pose["left_arm"])
     back_hand = transform((0, 48), back_elbow, deg=pose["left_arm"] * 0.55)
     line(draw, [back_shoulder, back_elbow, back_hand], pal.coat, width=12)
@@ -718,7 +736,10 @@ def paint_character(
             width=2,
         )
 
+    _end(draw)
+
     # Neck / head / hat
+    _begin(draw, "head")
     draw_human_neck(draw, chest, head_center, global_tilt, pal, kind=kind)
 
     head_bbox = (
@@ -746,7 +767,9 @@ def paint_character(
         skull=True,
         tilt=pose["hat_tilt"] + global_tilt * 0.15,
     )
+    _end(draw)
 
+    _begin(draw, "chest_motif")
     if kind in SKULL_MOTIF_KINDS:
         # chest skull motif
         chest_c = transform((0, 14), chest, deg=global_tilt)
@@ -770,6 +793,7 @@ def paint_character(
             pal.outline,
             width=2,
         )
+    _end(draw)
 
     # Death settle pose, ground line accent
     if anim == "death":
@@ -833,6 +857,35 @@ def render_target(
         out_dir=out_dir,
         frame_size=frame_size,
     )
+
+
+def is_pirate_family(target: str) -> bool:
+    """True when ``target`` is drawn by this family's parametric rig."""
+    return target in PALETTES
+
+
+def export_svgs(
+    target: str, out_dir: Path, frame_size: Tuple[int, int] = BASE_FRAME
+) -> List[Path]:
+    """Write every animation frame's componentized SVG under ``out_dir``.
+
+    The editable artifact of the conversion: one ``<anim>/<frame>.svg`` per pose,
+    each carrying named ``legs``/``body``/``arms``/``head`` Inkscape layers so it
+    opens cleanly in a vector editor. These per-frame SVGs are the mechanical
+    "first representation"; folding them into a single rest-pose component scene
+    plus a pose program is the next tier (see the migration plan).
+    """
+    out_dir = Path(out_dir)
+    written: List[Path] = []
+    for anim, nframes, _ms in ANIMATIONS:
+        adir = out_dir / anim
+        adir.mkdir(parents=True, exist_ok=True)
+        for i in range(nframes):
+            svg = capture_character_svg(target, anim, i, nframes, frame_size)
+            path = adir / f"{i:02d}.svg"
+            path.write_text(svg)
+            written.append(path)
+    return written
 
 
 def render_target_svg(

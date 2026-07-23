@@ -91,8 +91,9 @@ def test_pirate_capture_is_faithful_at_supersample() -> None:
     assert over < 0.03, f"capture drifted {over:.2%} of pixels beyond edge tol"
 
 
-def test_pirate_svg_authority_matches_contract(tmp_path: Path) -> None:
-    """The SVG-authority pirate publishes the same contract as the PIL one."""
+@pytest.mark.parametrize("target", ["pirate_raider", "pirate_admiral", "pirate_lookout"])
+def test_pirate_svg_authority_matches_contract(tmp_path: Path, target: str) -> None:
+    """Every pirate publishes the same contract from its SVG authority."""
     pytest.importorskip("resvg_py")
 
     import ambition_sprite2d_renderer.targets.characters._pirate_common as pc
@@ -101,8 +102,28 @@ def test_pirate_svg_authority_matches_contract(tmp_path: Path) -> None:
     )
 
     pil_dir, svg_dir = tmp_path / "pil", tmp_path / "svg"
-    pc.render_target("pirate_raider", pil_dir)
-    pc.render_target_svg("pirate_raider", svg_dir)
+    pc.render_target(target, pil_dir)
+    pc.render_target_svg(target, svg_dir)
     rep = compare_renders(load_render(pil_dir), load_render(svg_dir))
     assert rep.structural_ok, [d.diffs for d in rep.dimensions if not d.ok]
     assert rep.verdict in (EXACT, RASTER, CONTRACT)
+
+
+def test_captured_svg_has_named_component_layers() -> None:
+    import xml.etree.ElementTree as ET
+
+    import ambition_sprite2d_renderer.targets.characters._pirate_common as pc
+
+    svg = pc.capture_character_svg("pirate_raider", "idle", 0, 6)
+    ink = "{http://www.inkscape.org/namespaces/inkscape}label"
+    labels = {g.get(ink) for g in ET.fromstring(svg).iter() if g.tag.endswith("}g")}
+    assert {"legs", "body", "arms", "head"} <= labels
+
+
+def test_export_svgs_writes_editable_files(tmp_path: Path) -> None:
+    import ambition_sprite2d_renderer.targets.characters._pirate_common as pc
+
+    written = pc.export_svgs("pirate_raider", tmp_path)
+    assert written and all(p.suffix == ".svg" and p.exists() for p in written)
+    # one file per frame across all animation rows
+    assert len(written) == sum(nf for _a, nf, _ms in pc.ANIMATIONS)
