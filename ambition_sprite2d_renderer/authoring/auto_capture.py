@@ -337,8 +337,39 @@ def capture_target_frames(target):
             _adopt(img, DrawRecorder(img.size))
         return _TeeDraw(real, recorders[id(img)])
 
+    def _embed(img) -> str:
+        """A positioned data-URI <image> for content with no vector source.
+
+        Per the migration plan, per-pixel/algorithmic layers (and text) remain
+        embedded raster components rather than blocking conversion — the scene
+        stays visually faithful; the embedded part just is not node-editable.
+        """
+        import base64
+        import io as _io
+
+        buf = _io.BytesIO()
+        img.save(buf, format="PNG")
+        b64 = base64.b64encode(buf.getvalue()).decode()
+        return (f'<image x="0" y="0" width="{img.width}" height="{img.height}" '
+                f'href="data:image/png;base64,{b64}" '
+                f'xlink:href="data:image/png;base64,{b64}"/>')
+
     def _fold(dest, src, dest_pos, bad=None):
         src_rec = recorders.get(id(src))
+        if (src_rec is None or not src_rec.calls) and src.mode == "RGBA" \
+                and src.getchannel("A").getbbox() is not None:
+            # Real pixels with no vector recording: embed the layer itself.
+            dst_rec = recorders.get(id(dest))
+            if dst_rec is None:
+                dst_rec = DrawRecorder(dest.size)
+                _adopt(dest, dst_rec)
+            dx, dy = dest_pos
+            dst_rec._emit(
+                f'<g transform="translate({_fmt(dx)} {_fmt(dy)})">'
+                f"{_embed(src)}</g>")
+            dst_rec.calls += 1
+            dst_rec.unsupported.add("raster-embed")
+            return
         if src_rec is None or not src_rec.calls:
             return
         dst_rec = recorders.get(id(dest))
@@ -433,9 +464,27 @@ def capture_target_frames(target):
             rec.unsupported.add("paste")
         return real_paste(img, im, box, mask)
 
-    def hooked_rotate(img, *args, **kwargs):
-        res = real_rotate(img, *args, **kwargs)
-        _derive(img, res, lambda body: body, op_name="rotate")
+    def hooked_rotate(img, angle, resample=0, expand=False, center=None,
+                      translate=None, fillcolor=None):
+        res = real_rotate(img, angle, resample, expand, center, translate,
+                          fillcolor)
+        # PIL rotates counterclockwise in a y-down raster; SVG rotate() is
+        # clockwise there, hence -angle. With expand (and default center) PIL
+        # re-centers the enlarged canvas on the original image centre.
+        if fillcolor is not None or (expand and center is not None):
+            _derive(img, res, lambda body: body, op_name="rotate")
+            return res
+        cx, cy = center if center is not None else (img.width / 2.0,
+                                                    img.height / 2.0)
+        dx, dy = translate if translate is not None else (0, 0)
+        if expand:
+            dx += res.width / 2.0 - cx
+            dy += res.height / 2.0 - cy
+        t = ""
+        if dx or dy:
+            t += f"translate({_fmt(dx)} {_fmt(dy)}) "
+        t += f"rotate({_fmt(-angle)} {_fmt(cx)} {_fmt(cy)})"
+        _derive(img, res, lambda body: f'<g transform="{t}">{body}</g>')
         return res
 
     def hooked_transpose(img, method):
@@ -446,8 +495,12 @@ def capture_target_frames(target):
     def frame_hook(sheet_target, anim, frame_idx, frame_img):
         rec = recorders.get(id(frame_img))
         if rec is None:
-            rec = DrawRecorder(frame_img.size)  # empty -> capture gap, visible
-            rec.unsupported.add("no-vector-source")
+            # No vector chain reached the published frame: embed its raster so
+            # the scene is faithful, flagged as a non-editable component.
+            rec = DrawRecorder(frame_img.size)
+            rec._emit(_embed(frame_img))
+            rec.calls = 1
+            rec.unsupported.add("raster-embed")
         semantic[(sheet_target, anim, frame_idx)] = rec
         consumed.add(id(frame_img))
 
