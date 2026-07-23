@@ -23,6 +23,7 @@ from ..profiling import profile
 from ..registry import CharacterJob
 from ..core.draw import font as load_font
 from ..registry import Target
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 
 # (target-id, display-label, transparent-RGBA-image)
@@ -150,7 +151,7 @@ def _grid_contact_sheet(
     sheet_h = max(sheet_h, cell_h + pad * 2)
 
     contact = Image.new("RGBA", (sheet_w, sheet_h), _GALLERY_BG)
-    draw = ImageDraw.Draw(contact)
+    draw = blending_draw(contact)
 
     tile_iter = iter(tiles)
     y = pad

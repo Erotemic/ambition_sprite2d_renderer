@@ -23,6 +23,7 @@ from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
 from . import _held_prop_common as hp
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 TARGET_NAME = "bow_arrow"
 SHEET_FILES = (
@@ -113,7 +114,7 @@ def _draw_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     if anim != "idle":
         raise ValueError(f"unknown animation: {anim}")
     canvas = hp.new_super(FRAME_SIZE)
-    d = ImageDraw.Draw(canvas, "RGBA")
+    d = blending_draw(canvas)
     _draw_arrow(d)
     return hp.finalize(canvas, FRAME_SIZE)
 

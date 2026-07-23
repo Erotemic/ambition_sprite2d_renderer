@@ -14,6 +14,7 @@ from ambition_sprite2d_renderer.core.draw import (
     rgba,
     with_alpha,
 )
+from ambition_sprite2d_renderer.core.draw import blending_draw
 from ambition_sprite2d_renderer.core.pipeline import (
     CROP_GROUND,
     CROP_NONE,
@@ -1570,7 +1571,7 @@ def build_entity_contact_sheet(
     cell_h = 154
     rows = (len(tiles) + cols - 1) // cols
     sheet = Image.new("RGBA", (cols * cell_w, rows * cell_h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(sheet)
+    d = blending_draw(sheet)
     fnt = font(12)
     for idx, (spec, img) in enumerate(tiles):
         col = idx % cols

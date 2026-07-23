@@ -27,6 +27,7 @@ from ...authoring.animation_vocab import (
     FULL_PLAYER_ANIMATION_ORDER,
     ordered_subset,
 )
+from ambition_sprite2d_renderer.core.draw import blending_draw
 from ...authoring.generator import CharacterGenerator
 from ...authoring.portrait import (
     PortraitClip,
@@ -232,7 +233,7 @@ def _draw_sandbag_body(
     Proportions, strap shape, seam layout, and shading are distinct from the
     reference so this remains an original procedural asset.
     """
-    draw = ImageDraw.Draw(layer, "RGBA")
+    draw = blending_draw(layer)
 
     def tone(rgb: Tuple[int, int, int], alpha: int = 255) -> RGBA:
         return tuple(max(0, min(255, int(v * tint))) for v in rgb) + (alpha,)
@@ -393,7 +394,7 @@ def _draw_sandbag_body(
 
 
 def _impact_marks(canvas: Image.Image, frame_index: int) -> None:
-    draw = ImageDraw.Draw(canvas, "RGBA")
+    draw = blending_draw(canvas)
     alpha = max(50, 215 - frame_index * 45)
     yellow = _rgba("ffe56f", alpha)
     orange = _rgba("ff8740", alpha)
@@ -416,7 +417,7 @@ def _impact_marks(canvas: Image.Image, frame_index: int) -> None:
 def _dust(
     canvas: Image.Image, frame_index: int, base_x: float = 68.0, base_y: float = 112.0
 ) -> None:
-    draw = ImageDraw.Draw(canvas, "RGBA")
+    draw = blending_draw(canvas)
     for i in range(5):
         x = base_x - 20 + i * 10 + frame_index * (1.4 - i * 0.25)
         y = base_y + (i % 2) * 3 - frame_index * 0.45
@@ -465,7 +466,7 @@ class SandbagGenerator(CharacterGenerator):
 
 def render_sandbag_frame(animation: str, frame_index: int, frame_count: int) -> Image.Image:
     canvas = Image.new("RGBA", (FRAME_W * SCALE, FRAME_H * SCALE), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(canvas, "RGBA")
+    draw = blending_draw(canvas)
 
     phase = math.sin((frame_index / max(1, frame_count)) * math.tau)
     cx = 65.0
@@ -828,7 +829,7 @@ def render_sandbag_frame(animation: str, frame_index: int, frame_count: int) -> 
     if animation == "death" and frame_index >= 3:
         _dust(canvas, frame_index, base_x=76, base_y=114)
     if animation == "slash":
-        d = ImageDraw.Draw(canvas, "RGBA")
+        d = blending_draw(canvas)
         t = frame_index / max(1, frame_count - 1)
         if 0.20 <= t <= 0.74:
             alpha = int(160 * math.sin((t - 0.20) / 0.54 * math.pi))
@@ -840,30 +841,30 @@ def render_sandbag_frame(animation: str, frame_index: int, frame_count: int) -> 
                 width=_s(3.2),
             )
     if animation == "dash":
-        d = ImageDraw.Draw(canvas, "RGBA")
+        d = blending_draw(canvas)
         for i in range(4):
             y = 44 + i * 12 + math.sin(frame_index + i) * 2.0
             d.line(
                 _box(18, y, 48 - i * 4, y - 2), fill=_rgba("dfe7ff", 78), width=_s(1.2)
             )
     if animation in {"blink_out", "blink_in"}:
-        d = ImageDraw.Draw(canvas, "RGBA")
+        d = blending_draw(canvas)
         t = frame_index / max(1, frame_count - 1)
         alpha = int(120 * (1.0 - abs(t - 0.5)))
         d.ellipse(_box(43, 32, 62, 94), outline=_rgba("c5b8ff", alpha), width=_s(1.5))
     if animation == "interact":
-        d = ImageDraw.Draw(canvas, "RGBA")
+        d = blending_draw(canvas)
         alpha = int(140 * math.sin((frame_index / max(1, frame_count - 1)) * math.pi))
         d.line(_box(92, 50, 105, 42), fill=_rgba("fff4a3", alpha), width=_s(1.8))
         d.line(_box(94, 61, 110, 61), fill=_rgba("fff4a3", alpha), width=_s(1.8))
     if animation == "talk":
-        d = ImageDraw.Draw(canvas, "RGBA")
+        d = blending_draw(canvas)
         if frame_index % 2 == 0:
             d.arc(
                 _box(58, 70, 72, 78), 10, 170, fill=_rgba("14131d", 180), width=_s(1.5)
             )
     if animation == "block":
-        d = ImageDraw.Draw(canvas, "RGBA")
+        d = blending_draw(canvas)
         d.rounded_rectangle(
             _box(28, 38, 39, 91),
             radius=_s(5),
@@ -872,7 +873,7 @@ def render_sandbag_frame(animation: str, frame_index: int, frame_count: int) -> 
             width=_s(1.3),
         )
     if animation in {"land", "stomp"}:
-        d = ImageDraw.Draw(canvas, "RGBA")
+        d = blending_draw(canvas)
         t = frame_index / max(1, frame_count - 1)
         impact = 1.0 - min(1.0, abs(t - 0.52) / 0.52)
         if impact > 0.02:
@@ -884,7 +885,7 @@ def render_sandbag_frame(animation: str, frame_index: int, frame_count: int) -> 
                 width=_s(1.5),
             )
     if animation in {"slide", "roll"}:
-        d = ImageDraw.Draw(canvas, "RGBA")
+        d = blending_draw(canvas)
         for i in range(3):
             d.line(
                 _box(39 - i * 10, 101 + i * 4, 19 - i * 9, 105 + i * 4),
@@ -892,10 +893,10 @@ def render_sandbag_frame(animation: str, frame_index: int, frame_count: int) -> 
                 width=_s(1.2),
             )
     if animation in {"aim", "shoot"}:
-        d = ImageDraw.Draw(canvas, "RGBA")
+        d = blending_draw(canvas)
         d.ellipse(_box(103, 53, 117, 67), outline=_rgba("ffe56f", 145), width=_s(1.2))
     if animation == "shoot":
-        d = ImageDraw.Draw(canvas, "RGBA")
+        d = blending_draw(canvas)
         t = frame_index / max(1, frame_count - 1)
         flash = 1.0 - min(1.0, t * 2.2)
         if flash > 0.03:
@@ -904,7 +905,7 @@ def render_sandbag_frame(animation: str, frame_index: int, frame_count: int) -> 
                 fill=_rgba("ffe56f", int(190 * flash)),
             )
     if animation in {"charge", "cast"}:
-        d = ImageDraw.Draw(canvas, "RGBA")
+        d = blending_draw(canvas)
         t = frame_index / max(1, frame_count - 1)
         r = 9 + 17 * min(1.0, t * 1.2)
         d.ellipse(
@@ -913,7 +914,7 @@ def render_sandbag_frame(animation: str, frame_index: int, frame_count: int) -> 
             width=_s(1.4),
         )
     if animation == "throw":
-        d = ImageDraw.Draw(canvas, "RGBA")
+        d = blending_draw(canvas)
         t = frame_index / max(1, frame_count - 1)
         if t > 0.2:
             u = min(1.0, (t - 0.2) / 0.8)
@@ -926,7 +927,7 @@ def render_sandbag_frame(animation: str, frame_index: int, frame_count: int) -> 
                 width=_s(1.0),
             )
     if animation == "sleep":
-        d = ImageDraw.Draw(canvas, "RGBA")
+        d = blending_draw(canvas)
         for i in range(3):
             u = ((frame_index + i * 2) % max(1, frame_count)) / max(1, frame_count - 1)
             d.text(
@@ -935,7 +936,7 @@ def render_sandbag_frame(animation: str, frame_index: int, frame_count: int) -> 
                 fill=_rgba("4b4d60", int(155 * (1.0 - u * 0.4))),
             )
     if animation == "celebrate":
-        d = ImageDraw.Draw(canvas, "RGBA")
+        d = blending_draw(canvas)
         for i, (x, y) in enumerate([(38, 38), (54, 27), (78, 30), (94, 42), (48, 55)]):
             yy = y + ((frame_index + i) % max(1, frame_count)) * 2
             d.rectangle(
@@ -943,7 +944,7 @@ def render_sandbag_frame(animation: str, frame_index: int, frame_count: int) -> 
                 fill=_rgba("ffe56f" if i % 2 else "c5b8ff", 165),
             )
     if animation == "hover":
-        d = ImageDraw.Draw(canvas, "RGBA")
+        d = blending_draw(canvas)
         flame = 0.6 + 0.4 * math.sin(frame_index * 1.8)
         d.polygon(
             [
@@ -1034,7 +1035,7 @@ def build_sheet(
     sheet = Image.new(
         "RGBA", (LABEL_W + max_frames * FRAME_W, len(rows) * FRAME_H), sheet_background
     )
-    draw = ImageDraw.Draw(sheet, "RGBA")
+    draw = blending_draw(sheet)
     font = _font(12)
     small = _font(10)
     manifest: Dict[str, object] = {

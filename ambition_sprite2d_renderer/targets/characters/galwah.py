@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Iterable, Sequence
 
 from PIL import Image, ImageDraw, ImageFont
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 ACTOR_METADATA = {
     "actor": {"character_id": "npc_galwah", "display_name": "Galwah"},
@@ -274,7 +275,7 @@ class GalwahRenderer:
 
     def render_pose(self, pose: Pose) -> Image.Image:
         img = Image.new("RGBA", (self.W, self.H), BG)
-        draw = ImageDraw.Draw(img, "RGBA")
+        draw = blending_draw(img)
 
         # Shadow / ground anchor.
         ellipse(
@@ -1609,7 +1610,7 @@ def assemble_preview(
         (label_w + cols * frame_w + pad * 2, header_h + len(rows) * frame_h + pad * 2),
         PREVIEW_BG,
     )
-    draw = ImageDraw.Draw(out, "RGBA")
+    draw = blending_draw(out)
     font = ImageFont.load_default()
 
     # Column labels

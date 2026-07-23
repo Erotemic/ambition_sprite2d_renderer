@@ -13,6 +13,7 @@ from ...authoring.portrait import (
     render_framed_portrait,
     write_portrait_sheet,
 )
+from ambition_sprite2d_renderer.core.draw import blending_draw
 from ...authoring.sheet_build import build_sheet
 
 RGBA = Tuple[int, int, int, int]
@@ -311,7 +312,7 @@ def render_frame(variant_name: str, anim: str, frame_idx: int, nframes: int) -> 
     st = _frame_state(anim, frame_idx, nframes, spec)
 
     img = Image.new("RGBA", (CANVAS_W, CANVAS_H), TRANSPARENT)
-    draw = ImageDraw.Draw(img, "RGBA")
+    draw = blending_draw(img)
 
     can = spec.confidence
     slouch = spec.slouch

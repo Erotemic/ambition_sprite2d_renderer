@@ -17,6 +17,7 @@ from PIL import Image, ImageDraw
 
 from ...authoring.portrait import FaceGuide, PortraitClip, render_framed_portrait, write_portrait_sheet
 from ...authoring.sheet_build import build_sheet, write_canonical
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -719,7 +720,7 @@ def _draw_effects_front(draw: ImageDraw.ImageDraw, style: DuoStyle, pose: Pose) 
 def _render_native_frame(style: DuoStyle, animation: str, frame_idx: int, frame_count: int) -> Image.Image:
     pose = _pose(style, animation, frame_idx, frame_count)
     image = Image.new("RGBA", (FRAME_W * SUPER, FRAME_H * SUPER), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image, "RGBA")
+    draw = blending_draw(image)
     _draw_effects_back(draw, style, pose)
     _draw_leg(draw, style, pose.far_hip, pose.far_knee, pose.far_ankle, far=True)
     _draw_leg(draw, style, pose.near_hip, pose.near_knee, pose.near_ankle, far=False)

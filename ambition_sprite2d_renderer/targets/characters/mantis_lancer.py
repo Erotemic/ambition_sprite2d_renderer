@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 
 RGBA = Tuple[int, int, int, int]
@@ -335,7 +336,7 @@ def _downsample(img: Image.Image) -> Image.Image:
 class MantisLancerRenderer:
     def render_frame(self, anim: str, frame_idx: int, nframes: int) -> Image.Image:
         img = Image.new("RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img, "RGBA")
+        draw = blending_draw(img)
         pose = Pose(anim, frame_idx, nframes)
 
         root = (
@@ -535,7 +536,7 @@ def _render_sheet(renderer: MantisLancerRenderer, out_dir: Path):
     sheet_h = len(ROWS) * frame_h
     sheet = Image.new("RGBA", (sheet_w, sheet_h), (0, 0, 0, 0))
     preview = Image.new("RGBA", (sheet_w + 112, sheet_h), (250, 248, 244, 255))
-    pdraw = ImageDraw.Draw(preview)
+    pdraw = blending_draw(preview)
     canonical = None
     for row_idx, (name, nframes, _ms) in enumerate(ROWS):
         pdraw.text((8, row_idx * frame_h + 8), name, fill=(32, 32, 32, 255))

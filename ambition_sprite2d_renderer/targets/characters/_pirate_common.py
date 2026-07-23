@@ -51,6 +51,7 @@ from ...authoring.sheet_build import (
     rotated_rect_points,
     transform,
 )
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 
 @dataclass
@@ -765,7 +766,7 @@ def draw_character(
 
     w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    draw = PillowPartDraw(ImageDraw.Draw(img, "RGBA"))
+    draw = PillowPartDraw(blending_draw(img))
     paint_character(draw, kind, anim, frame_idx, nframes, frame_size)
     return downsample(img, frame_size)
 

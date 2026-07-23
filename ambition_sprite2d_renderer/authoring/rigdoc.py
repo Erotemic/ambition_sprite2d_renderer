@@ -81,6 +81,7 @@ from .skeleton import (
     rounded_polygon,
     two_bone_ik,
 )
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -502,7 +503,7 @@ class RigDocument:
         ss = max(1, int(supersample if supersample is not None else fr.get("supersample", 4)))
         S = float(rs * ss)
         img = Image.new("RGBA", (int(w * S), int(h * S)), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
+        draw = blending_draw(img)
         world, params = self.solve(clip_name, t)
         for part in visible_parts(self.parts, self.features):
             sprite = self.sprite_image(part, S) if part.get("kind") == "sprite" else None
@@ -608,7 +609,7 @@ def paint_part(
         # gnu_ton rule: translucent shapes composite via a scratch layer;
         # drawing them directly would replace destination alpha.
         target = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        tdraw = ImageDraw.Draw(target)
+        tdraw = blending_draw(target)
     else:
         target, tdraw = img, draw
     bw = world[bone_name]

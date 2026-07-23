@@ -15,6 +15,7 @@ from typing import Iterable, List
 from PIL import Image, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 TARGET_NAME = "gnu_ton_apple"
 SHEET_FILES = (
@@ -42,7 +43,7 @@ def _rgba(r: int, g: int, b: int, a: int = 255) -> tuple[int, int, int, int]:
 
 def _make_body_mask() -> Image.Image:
     mask = Image.new("L", (WORK_SIZE, WORK_SIZE), 0)
-    draw = ImageDraw.Draw(mask)
+    draw = blending_draw(mask)
     # Main apple silhouette: three overlapping lobes and a lower bulge
     # give the body a round but natural outline.
     draw.ellipse((102, 112, 410, 456), fill=255)
@@ -83,7 +84,7 @@ def _body_image(mask: Image.Image) -> Image.Image:
 def _make_leaf() -> Image.Image:
     layer = Image.new("RGBA", (WORK_SIZE, WORK_SIZE), (0, 0, 0, 0))
     mask = Image.new("L", (WORK_SIZE, WORK_SIZE), 0)
-    draw = ImageDraw.Draw(mask)
+    draw = blending_draw(mask)
     draw.polygon([(252, 122), (352, 88), (404, 140), (350, 196), (258, 178)], fill=255)
     draw.polygon([(246, 126), (176, 158), (216, 214), (282, 184)], fill=200)
     mask = mask.filter(ImageFilter.GaussianBlur(radius=1.3))
@@ -100,7 +101,7 @@ def _make_leaf() -> Image.Image:
             b = int(round(28 + 14 * (1.0 - t)))
             px[x, y] = (r, g, b, alpha)
 
-    draw = ImageDraw.Draw(layer, "RGBA")
+    draw = blending_draw(layer)
     # Central vein and some fiber highlights.
     draw.line((266, 160, 374, 126), fill=(208, 220, 98, 210), width=7)
     draw.line((288, 169, 337, 146), fill=(234, 242, 166, 110), width=3)
@@ -110,7 +111,7 @@ def _make_leaf() -> Image.Image:
 
 def _make_stem() -> Image.Image:
     layer = Image.new("RGBA", (WORK_SIZE, WORK_SIZE), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(layer, "RGBA")
+    draw = blending_draw(layer)
     draw.line((286, 130, 266, 62), fill=(92, 55, 26, 255), width=18)
     draw.line((282, 126, 270, 70), fill=(138, 84, 42, 155), width=6)
     draw.line((281, 118, 272, 76), fill=(194, 141, 80, 110), width=3)
@@ -125,7 +126,7 @@ def _render_apple() -> Image.Image:
     canvas.alpha_composite(body)
 
     shade = Image.new("RGBA", (WORK_SIZE, WORK_SIZE), (0, 0, 0, 0))
-    sdraw = ImageDraw.Draw(shade, "RGBA")
+    sdraw = blending_draw(shade)
     sdraw.ellipse((300, 164, 444, 404), fill=(72, 0, 0, 82))
     sdraw.ellipse((86, 154, 222, 396), fill=(255, 182, 132, 86))
     sdraw.ellipse((146, 92, 294, 176), fill=(255, 224, 180, 102))
@@ -133,7 +134,7 @@ def _render_apple() -> Image.Image:
     canvas.alpha_composite(shade)
 
     highlight = Image.new("RGBA", (WORK_SIZE, WORK_SIZE), (0, 0, 0, 0))
-    hdraw = ImageDraw.Draw(highlight, "RGBA")
+    hdraw = blending_draw(highlight)
     hdraw.ellipse((116, 138, 256, 304), fill=(255, 236, 210, 88))
     hdraw.ellipse((148, 156, 236, 226), fill=(255, 255, 255, 100))
     highlight = highlight.filter(ImageFilter.GaussianBlur(radius=17))
@@ -144,7 +145,7 @@ def _render_apple() -> Image.Image:
 
     # Small bloom around the top notch to soften the stem join.
     bloom = Image.new("RGBA", (WORK_SIZE, WORK_SIZE), (0, 0, 0, 0))
-    bdraw = ImageDraw.Draw(bloom, "RGBA")
+    bdraw = blending_draw(bloom)
     bdraw.ellipse((210, 96, 306, 176), fill=(255, 204, 130, 36))
     bloom = bloom.filter(ImageFilter.GaussianBlur(radius=10))
     canvas.alpha_composite(bloom)

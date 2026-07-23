@@ -23,6 +23,7 @@ from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
 from . import _held_prop_common as hp
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 
@@ -163,7 +164,7 @@ def build(
         t = frame_idx / max(1, nframes - 1)
         pulse = 0.5 - 0.5 * math.cos(t * 2.0 * math.pi)
         canvas = hp.new_super(FRAME_SIZE)
-        d = ImageDraw.Draw(canvas, "RGBA")
+        d = blending_draw(canvas)
         _draw_grip(d)
         _draw_body(d, accent)
         _draw_heatsink(d, t)

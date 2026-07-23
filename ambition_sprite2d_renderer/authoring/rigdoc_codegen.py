@@ -19,6 +19,7 @@ imported from a scratch directory in tests).
 from __future__ import annotations
 
 from .rigdoc import RigDocument, visible_parts
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 
 def _fmt_value(v) -> str:
@@ -75,6 +76,8 @@ def doc_to_python(doc: RigDocument) -> str:
     a("from typing import Dict, List, Tuple")
     a("")
     a("from PIL import Image, ImageDraw")
+    a("")
+    a("from ambition_sprite2d_renderer.core.draw import blending_draw")
     a("")
     a("from ambition_sprite2d_renderer.authoring.rig import clamp, lerp, smoothstep  # noqa: F401 - for lambdas")
     a("from ambition_sprite2d_renderer.authoring.rigdoc import paint_part")
@@ -171,7 +174,7 @@ def doc_to_python(doc: RigDocument) -> str:
     a("    t = frame_idx / max(1, nframes) if clip.loop else frame_idx / max(1, nframes - 1)")
     a("    S = float(RENDER_SCALE * SS)")
     a("    img = Image.new('RGBA', (int(FRAME_W * S), int(FRAME_H * S)), (0, 0, 0, 0))")
-    a("    draw = ImageDraw.Draw(img)")
+    a("    draw = blending_draw(img)")
     a("    world, params = _solve(animation, t)")
     a("    for part in PARTS:")
     a("        paint_part(img, draw, part, world, S, params, PALETTE)")

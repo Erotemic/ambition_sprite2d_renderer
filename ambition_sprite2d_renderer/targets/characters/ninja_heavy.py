@@ -19,6 +19,7 @@ from typing import List, Sequence, Tuple
 from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 ACTOR_METADATA = {
     "actor": {"character_id": "npc_ninja_heavy", "display_name": "Ninja Heavy"},
@@ -1282,7 +1283,7 @@ def _render_frame(
         (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER),
         TRANSPARENT,
     )
-    draw = ImageDraw.Draw(image, "RGBA")
+    draw = blending_draw(image)
     pose = Pose(anim, frame_idx, nframes)
     rig, local = _build_rig(pose)
 

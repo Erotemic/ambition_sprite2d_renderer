@@ -28,6 +28,7 @@ from ...authoring.portrait import (
     render_canonical_portrait,
     write_portrait_sheet,
 )
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 ACTOR_METADATA = {
     "actor": {"character_id": "npc_pirate_heavy", "display_name": "Pirate Heavy"},
@@ -979,7 +980,7 @@ def _draw_variant(
     img = Image.new(
         "RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0)
     )
-    draw = ImageDraw.Draw(img, "RGBA")
+    draw = blending_draw(img)
     pose = Pose(anim, frame_idx, nframes)
     pal = spec.palette
 

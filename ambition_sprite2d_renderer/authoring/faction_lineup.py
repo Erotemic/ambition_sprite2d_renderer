@@ -20,6 +20,7 @@ from ..registry.character_generators import get_generator
 from ..core.draw import font as load_font
 from .sheet import write_spritesheet
 from .canonical import render_canonical
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 
 @dataclass(frozen=True)
@@ -153,13 +154,13 @@ def _write_contact_sheet(tiles: List[Tuple[str, str, Image.Image]], out: Path) -
     font = load_font(12)
     small = load_font(10)
     probe = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
-    draw_probe = ImageDraw.Draw(probe)
+    draw_probe = blending_draw(probe)
     tile_w = 178
     tile_h = 170
     cols = min(6, max(1, len(tiles)))
     rows = (len(tiles) + cols - 1) // cols
     contact = Image.new("RGBA", (cols * tile_w, rows * tile_h), (18, 20, 27, 255))
-    draw = ImageDraw.Draw(contact)
+    draw = blending_draw(contact)
     for idx, (name, subtitle, img) in enumerate(tiles):
         col = idx % cols
         row = idx // cols

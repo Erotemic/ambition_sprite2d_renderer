@@ -18,6 +18,7 @@ from typing import Any, Mapping, Sequence
 
 from PIL import Image
 from ..profiling import profile
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 DEFAULT_PORTRAIT_SIZE = (256, 320)
 DEFAULT_PORTRAIT_SUPERSAMPLE = 4
@@ -514,7 +515,7 @@ def write_portrait_gallery(
     gallery = Image.new(
         "RGBA", (columns * card_w, rows * card_h), (24, 25, 31, 255)
     )
-    draw = ImageDraw.Draw(gallery)
+    draw = blending_draw(gallery)
     label_font = load_font(12)
     small_font = load_font(10)
     for index, product in enumerate(products):

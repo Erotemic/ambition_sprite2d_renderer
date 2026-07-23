@@ -51,6 +51,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 from PIL import Image, ImageColor, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -202,7 +203,7 @@ def _spike(cx: float, cy: float, dx: float, dy: float, length: float, width: flo
 
 def _draw_speed_lines(img: Image.Image, skin: Skin, cx: float, cy: float, phase: float, intensity: float, direction: Point = (-1.0, 0.0)) -> None:
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer, "RGBA")
+    d = blending_draw(layer)
     dx, dy = direction
     nx, ny = -dy, dx
     for i in range(6):
@@ -218,7 +219,7 @@ def _draw_speed_lines(img: Image.Image, skin: Skin, cx: float, cy: float, phase:
 
 def _swoosh(img: Image.Image, skin: Skin, cx: float, cy: float, r: float, a0: float, a1: float) -> None:
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer, "RGBA")
+    d = blending_draw(layer)
     d.arc(_box(cx - r, cy - r, cx + r, cy + r), a0, a1, fill=_rgba(skin.eye, 225), width=_s(3.2))
     d.arc(_box(cx - r + 2.2, cy - r + 2.2, cx + r - 2.2, cy + r - 2.2), a0 + 8, a1 - 8, fill=_rgba(skin.body, 180), width=_s(1.6))
     img.alpha_composite(layer)
@@ -226,7 +227,7 @@ def _swoosh(img: Image.Image, skin: Skin, cx: float, cy: float, r: float, a0: fl
 
 def _stars(img: Image.Image, skin: Skin, cx: float, cy: float, salt: float, n: int = 4) -> None:
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer, "RGBA")
+    d = blending_draw(layer)
     for i in range(n):
         jx, jy = _jitter(i, salt)
         sx, sy = cx + jx * 7.0, cy + jy * 7.0
@@ -238,14 +239,14 @@ def _stars(img: Image.Image, skin: Skin, cx: float, cy: float, salt: float, n: i
 
 def _shield_bubble(img: Image.Image, skin: Skin, cx: float, cy: float, r: float) -> None:
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer, "RGBA")
+    d = blending_draw(layer)
     d.ellipse(_box(cx - r, cy - r, cx + r, cy + r), fill=_rgba(skin.shield, 70), outline=_rgba("#c8f2ff", 170), width=_s(1.6))
     img.alpha_composite(layer)
 
 
 def _dust(img: Image.Image, cx: float, cy: float, salt: float) -> None:
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer, "RGBA")
+    d = blending_draw(layer)
     for i in range(4):
         jx, _ = _jitter(i, salt)
         px = cx + (i - 1.5) * 8.0 + jx * 2.0
@@ -260,12 +261,12 @@ def _aura(img: Image.Image, skin: Skin, cx: float, cy: float, r: float, salt: fl
     if not skin.aura:
         return
     glow = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    gd = ImageDraw.Draw(glow, "RGBA")
+    gd = blending_draw(glow)
     gd.ellipse(_box(cx - r, cy - r * 1.15, cx + r, cy + r * 1.15), fill=_rgba(skin.aura, 95))
     glow = glow.filter(ImageFilter.GaussianBlur(radius=SUPER * 3.2))
     img.alpha_composite(glow)
     spk = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    sd = ImageDraw.Draw(spk, "RGBA")
+    sd = blending_draw(spk)
     for i in range(7):
         jx, jy = _jitter(i, salt + 3)
         sx, sy = cx + jx * (r * 0.95), cy + jy * (r * 1.05)
@@ -432,7 +433,7 @@ def _draw_spin_ball(
 
     # Red streak wrapping the ball, starting at `spin` (rotates with the spin).
     streak = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    sd = ImageDraw.Draw(streak, "RGBA")
+    sd = blending_draw(streak)
     a0 = int(math.degrees(spin)) % 360
     sd.arc(_box(cx - r + 1, cy - r + 1, cx + r - 1, cy + r - 1), a0, a0 + (250 if emphasize else 200), fill=_rgba(skin.shoe, 215), width=_s(3.2))
     img.alpha_composite(streak)
@@ -447,7 +448,7 @@ def _draw_spin_ball(
 
     if emphasize:
         halo = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        hd = ImageDraw.Draw(halo, "RGBA")
+        hd = blending_draw(halo)
         for k in range(8):
             a = spin * 1.5 + k * math.tau / 8.0
             x0, y0 = cx + math.cos(a) * (r + 6), cy + math.sin(a) * (r + 6)
@@ -458,7 +459,7 @@ def _draw_spin_ball(
 
 def _ball_frame(skin: Skin, anim: str, frame_idx: int, nframes: int) -> Image.Image:
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img, "RGBA")
+    draw = blending_draw(img)
     t = frame_idx / max(1, nframes)
     salt = float(frame_idx + 1)
     turns = BALL_ANIMS[anim]
@@ -546,7 +547,7 @@ def _render_humanoid(
     # ---- Legs + shoes ----
     if leg_blur:
         blur = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        bd = ImageDraw.Draw(blur, "RGBA")
+        bd = blending_draw(blur)
         bcx, bcy = hips_x + 2.0, GROUND_Y - 8.0
         bd.ellipse(_box(bcx - 15, bcy - 14, bcx + 15, bcy + 12), fill=_rgba(skin.shoe, 150))
         bd.ellipse(_box(bcx - 11, bcy - 18, bcx + 11, bcy + 16), fill=_rgba(skin.shoe, 110))
@@ -619,7 +620,7 @@ def _draw_sanic(skin: Skin, anim: str, frame_idx: int, nframes: int) -> Image.Im
         return _ball_frame(skin, anim, frame_idx, nframes)
 
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img, "RGBA")
+    draw = blending_draw(img)
     t = frame_idx / max(1, nframes)
     cyc = math.tau * t
     salt = float(frame_idx + 1)

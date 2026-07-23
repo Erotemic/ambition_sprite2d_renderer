@@ -35,6 +35,7 @@ from ...authoring.portrait import (
     PortraitClip,
     write_portrait_sheet,
 )
+from ambition_sprite2d_renderer.core.draw import blending_draw
 from ...authoring.sheet_build import build_sheet, write_canonical
 
 RGBA = Tuple[int, int, int, int]
@@ -1082,15 +1083,15 @@ def _render_native_frame(animation: str, frame_idx: int, nframes: int) -> Image.
     body = Image.new("RGBA", size, (0, 0, 0, 0))
     front = Image.new("RGBA", size, (0, 0, 0, 0))
 
-    _draw_ability_effects_behind(ImageDraw.Draw(behind, "RGBA"), pose)
-    draw = ImageDraw.Draw(body, "RGBA")
+    _draw_ability_effects_behind(blending_draw(behind), pose)
+    draw = blending_draw(body)
     _draw_leg(draw, pose, pose.far_hip, pose.far_knee, pose.far_ankle, far=True)
     _draw_leg(draw, pose, pose.near_hip, pose.near_knee, pose.near_ankle, far=False)
     _draw_torso(draw, pose)
     _draw_arm(draw, pose, pose.far_shoulder, pose.far_elbow, pose.far_hand, pose.far_hand_mode, far=True)
     _draw_arm(draw, pose, pose.near_shoulder, pose.near_elbow, pose.near_hand, pose.near_hand_mode, far=False)
     _draw_head(draw, pose)
-    _draw_ability_effects_front(ImageDraw.Draw(front, "RGBA"), pose)
+    _draw_ability_effects_front(blending_draw(front), pose)
 
     return Image.alpha_composite(Image.alpha_composite(behind, body), front)
 
@@ -1160,9 +1161,9 @@ def _render_native_portrait(expression: str, phase: float = 0.0) -> Image.Image:
     behind = Image.new("RGBA", size, (0, 0, 0, 0))
     body = Image.new("RGBA", size, (0, 0, 0, 0))
     front = Image.new("RGBA", size, (0, 0, 0, 0))
-    bd = ImageDraw.Draw(behind, "RGBA")
-    d = ImageDraw.Draw(body, "RGBA")
-    fd = ImageDraw.Draw(front, "RGBA")
+    bd = blending_draw(behind)
+    d = blending_draw(body)
+    fd = blending_draw(front)
 
     if wonder:
         arc(bd, (128.0, 182.0), 91.0, 112.0, 196, 344, _fade(NEBULA_BLUE, 0.72), 4.0)

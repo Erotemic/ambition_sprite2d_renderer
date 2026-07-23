@@ -32,6 +32,7 @@ from ...registry import CharacterJob
 from ._toon_palettes import PALETTES as _TOON_PALETTES
 from ._toon_presets import PRESETS as _TOON_PRESETS
 from .oiler_mechanic import OilerMechanicGenerator, OilerSpec
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -465,7 +466,7 @@ class ToonSideGenerator(CharacterGenerator):
     def _draw_head(self, base: Image.Image, center: Point, spec: ToonSpec, pal: Dict[str, Color], S: float, pose: ToonPose) -> None:
         pad = int(max(spec.head_w, spec.head_h) * S * 1.7)
         layer = Image.new("RGBA", (pad * 2, pad * 2), (0, 0, 0, 0))
-        d = ImageDraw.Draw(layer)
+        d = blending_draw(layer)
         c = (pad, pad)
         outline = pal["outline"]
         # Hood / back hair mass first.
@@ -1181,8 +1182,8 @@ class ToonSideGenerator(CharacterGenerator):
                 (center[0] + spec.hip_w * 0.32 * S, center[1] + spec.torso_h * 0.50 * S + spec.coat_len * 0.25 * S),
                 (center[0] - spec.hip_w * 0.38 * S, center[1] + spec.torso_h * 0.50 * S),
             ]
-            ImageDraw.Draw(base).polygon(pts, fill=pal["outfit"], outline=outline)
-            d = ImageDraw.Draw(base)
+            blending_draw(base).polygon(pts, fill=pal["outfit"], outline=outline)
+            d = blending_draw(base)
             d.polygon([
                 (center[0] - 4.8 * S, center[1] - spec.torso_h * 0.42 * S),
                 (center[0] + 1.8 * S, center[1] - 2.0 * S),
@@ -1191,7 +1192,7 @@ class ToonSideGenerator(CharacterGenerator):
             ], fill=pal["outfit_dark"], outline=outline)
             d.ellipse(_bbox((center[0] + 4.0 * S, center[1] - 2.0 * S), 5.8 * S, 6.0 * S), fill=pal["accent"], outline=outline, width=max(1, int(1.0 * S)))
         elif spec.outfit == "general_uniform":
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             jacket = [
                 (center[0] - spec.shoulder_w * 0.62 * S, center[1] - spec.torso_h * 0.52 * S),
                 (center[0] + spec.shoulder_w * 0.54 * S, center[1] - spec.torso_h * 0.48 * S),
@@ -1240,7 +1241,7 @@ class ToonSideGenerator(CharacterGenerator):
                 d.rectangle((x, y, x + 3.2 * S, y + 5.0 * S), fill=color, outline=outline, width=max(1, int(0.8 * S)))
                 d.ellipse(_bbox((x + 1.6 * S, y + 6.3 * S), 3.2 * S, 3.2 * S), fill=pal["accent"], outline=outline, width=max(1, int(0.8 * S)))
         elif spec.outfit == "storm_uniform":
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             tunic = [
                 (center[0] - spec.shoulder_w * 0.58 * S, center[1] - spec.torso_h * 0.48 * S),
                 (center[0] + spec.shoulder_w * 0.48 * S, center[1] - spec.torso_h * 0.42 * S),
@@ -1279,7 +1280,7 @@ class ToonSideGenerator(CharacterGenerator):
             d.ellipse(_bbox((center[0] + 1.5 * S, center[1] - spec.torso_h * 0.27 * S), 0.8 * S, 0.8 * S), fill=outline)
             d.rectangle((center[0] - 0.1 * S, center[1] - spec.torso_h * 0.24 * S, center[0] + 1.9 * S, center[1] - spec.torso_h * 0.06 * S), fill=outline)
         elif spec.outfit == "poncho":
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             shawl = [
                 (center[0] - spec.shoulder_w * 0.70 * S, center[1] - spec.torso_h * 0.48 * S),
                 (center[0] + spec.shoulder_w * 0.60 * S, center[1] - spec.torso_h * 0.22 * S),
@@ -1294,12 +1295,12 @@ class ToonSideGenerator(CharacterGenerator):
             ], fill=pal["accent"], outline=outline)
             d.rounded_rectangle((center[0] - 6.0 * S, center[1] - 4.0 * S, center[0] + 4.0 * S, center[1] + 14.0 * S), radius=3 * S, fill=pal["outfit_dark"], outline=outline, width=max(1, int(1.0 * S)))
         elif spec.outfit == "apron":
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             d.ellipse(_bbox((center[0] - 1.0 * S, center[1] + 2.0 * S), spec.torso_w * 1.18 * S, spec.torso_h * 1.20 * S), fill=pal["outfit"], outline=outline, width=max(1, int(1.2 * S)))
             d.rounded_rectangle((center[0] - 5.0 * S, center[1] - 3.5 * S, center[0] + 9.0 * S, center[1] + spec.torso_h * 0.58 * S), radius=3 * S, fill=pal["accent"], outline=outline, width=max(1, int(1.0 * S)))
             d.line([(center[0] - 8.0 * S, center[1] - 6.0 * S), (center[0] + 8.0 * S, center[1] - 1.0 * S)], fill=outline, width=max(1, int(1.0 * S)))
         elif spec.outfit == "keeper_robe":
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             robe = [
                 (center[0] - spec.shoulder_w * 0.72 * S, center[1] - spec.torso_h * 0.50 * S),
                 (center[0] + spec.shoulder_w * 0.58 * S, center[1] - spec.torso_h * 0.42 * S),
@@ -1316,7 +1317,7 @@ class ToonSideGenerator(CharacterGenerator):
             ]
             d.polygon(collar, fill=pal["accent"], outline=outline)
         elif spec.outfit == "long_coat":
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             coat = [
                 (center[0] - spec.shoulder_w * 0.46 * S, center[1] - spec.torso_h * 0.48 * S),
                 (center[0] + spec.shoulder_w * 0.28 * S, center[1] - spec.torso_h * 0.44 * S),
@@ -1343,7 +1344,7 @@ class ToonSideGenerator(CharacterGenerator):
             # at the waist, and (5) a sparse paisley-dot pattern in the
             # accent color so the silk reads as patterned rather than
             # a flat block.
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             shirt = pal.get("white", rgba("#FFF6E0"))
             sash = pal.get("accent_dark", pal["outfit_dark"])
             silk_dot = pal.get("accent", pal["outfit_dark"])
@@ -1422,7 +1423,7 @@ class ToonSideGenerator(CharacterGenerator):
             # diagonal reflective stripes across the chest in the
             # accent color make the silhouette pop and signal
             # "practical engineer" instantly.
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             # Tee underneath (visible at sleeves and collar).
             tee = [
                 (center[0] - spec.shoulder_w * 0.50 * S, center[1] - spec.torso_h * 0.46 * S),
@@ -1471,7 +1472,7 @@ class ToonSideGenerator(CharacterGenerator):
             # feminine without leaning on body-type stereotype. Same
             # one-time-pad checker survives so the cipher signature
             # stays.
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             # Under-jacket — slim through the waist.
             waist_y_top = center[1] + spec.torso_h * 0.06 * S
             waist_y_bot = center[1] + spec.torso_h * 0.20 * S
@@ -1540,7 +1541,7 @@ class ToonSideGenerator(CharacterGenerator):
             # the waist and slightly tapered torso. The chest strap
             # + zip + pockets all carry over from the original; the
             # belt is the silhouette cue.
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             waist_y_top = center[1] + spec.torso_h * 0.10 * S
             waist_y_bot = center[1] + spec.torso_h * 0.22 * S
             jacket = [
@@ -1607,7 +1608,7 @@ class ToonSideGenerator(CharacterGenerator):
             # patterned like a one-time pad. The checker pattern is
             # the locking visual: 4×8 grid of small squares in white
             # + accent_dark covers the chest panel down to the hem.
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             # Jacket underneath (close-fitting).
             jacket = [
                 (center[0] - spec.shoulder_w * 0.48 * S, center[1] - spec.torso_h * 0.46 * S),
@@ -1662,7 +1663,7 @@ class ToonSideGenerator(CharacterGenerator):
             # with a side-clasp at the throat. Quieter than the
             # poncho's diagonal shawl; reads as someone trying not
             # to be noticed.
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             cloak = [
                 (center[0] - spec.shoulder_w * 0.55 * S, center[1] - spec.torso_h * 0.50 * S),
                 (center[0] + spec.shoulder_w * 0.42 * S, center[1] - spec.torso_h * 0.44 * S),
@@ -1702,7 +1703,7 @@ class ToonSideGenerator(CharacterGenerator):
             # straps and a zip down the middle. Multiple visible
             # rectangular pockets read as "kit ready to go" without
             # any military-cap accessories.
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             jacket = [
                 (center[0] - spec.shoulder_w * 0.48 * S, center[1] - spec.torso_h * 0.46 * S),
                 (center[0] + spec.shoulder_w * 0.36 * S, center[1] - spec.torso_h * 0.42 * S),
@@ -1748,7 +1749,7 @@ class ToonSideGenerator(CharacterGenerator):
             # Trent — long secular council robe with a square placket
             # down the front (lighter than keeper_robe's narrow
             # accent collar). Reads as "civic, not religious."
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             robe = [
                 (center[0] - spec.shoulder_w * 0.66 * S, center[1] - spec.torso_h * 0.50 * S),
                 (center[0] + spec.shoulder_w * 0.56 * S, center[1] - spec.torso_h * 0.44 * S),
@@ -1785,7 +1786,7 @@ class ToonSideGenerator(CharacterGenerator):
             # and white cuffs. Same broad silhouette as formal_robe
             # but the crimson and the wider sleeves separate Judy
             # from Trent at a glance.
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             robe = [
                 (center[0] - spec.shoulder_w * 0.68 * S, center[1] - spec.torso_h * 0.50 * S),
                 (center[0] + spec.shoulder_w * 0.58 * S, center[1] - spec.torso_h * 0.44 * S),
@@ -1819,7 +1820,7 @@ class ToonSideGenerator(CharacterGenerator):
                     width=max(1, int(0.7 * S)),
                 )
         # accessory overlays that belong to the silhouette, not random doodads.
-        d = ImageDraw.Draw(base)
+        d = blending_draw(base)
         if spec.accessory == "scarf":
             d.polygon([
                 (center[0] - 5 * S, center[1] - spec.torso_h * 0.40 * S),
@@ -1879,7 +1880,7 @@ class ToonSideGenerator(CharacterGenerator):
         outline = pal["outline"]
         prop = spec.prop
         if prop == "blade":
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             tip = add(hand, vec(22.0 * S, angle - 8.0))
             guard = add(hand, vec(6.0 * S, angle + 90.0))
             guard2 = add(hand, vec(6.0 * S, angle - 90.0))
@@ -1887,7 +1888,7 @@ class ToonSideGenerator(CharacterGenerator):
             d.line([guard, guard2], fill=pal["accent"], width=max(1, int(2.0 * S)))
             d.line([hand, add(hand, vec(8.0 * S, angle + 180.0))], fill=pal["outfit_dark"], width=max(1, int(2.0 * S)))
         elif prop == "baton":
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             baton_angle = angle - 8.0
             tip = add(hand, vec(32.0 * S, baton_angle))
             base_pt = add(hand, vec(5.0 * S, baton_angle + 180.0))
@@ -1898,7 +1899,7 @@ class ToonSideGenerator(CharacterGenerator):
             d.ellipse(_bbox(tip, 5.2 * S, 5.2 * S), fill=pal["accent"], outline=outline, width=max(1, int(1.0 * S)))
             d.ellipse(_bbox(base_pt, 3.5 * S, 3.5 * S), fill=pal["accent"], outline=outline, width=max(1, int(0.9 * S)))
         elif prop == "rifle":
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             rifle_angle = angle - 6.0
             butt = add(hand, vec(5.0 * S, rifle_angle + 180.0))
             muzzle = add(hand, vec(34.0 * S, rifle_angle))
@@ -1918,23 +1919,23 @@ class ToonSideGenerator(CharacterGenerator):
             d.polygon([bayonet_base, bayonet_tip, bayonet_low], fill=pal["white"], outline=outline)
         elif prop == "tablet":
             draw_rotated_rounded_rect(base, add(hand, vec(8.0 * S, angle - 10.0)), (10.0 * S, 14.0 * S), angle - 12.0, 2.0 * S, pal["outfit_dark"], outline, 1.0 * S)
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             d.line([add(hand, vec(4 * S, angle - 40)), add(hand, vec(10 * S, angle - 40))], fill=pal["accent"], width=max(1, int(1.0 * S)))
         elif prop == "coin_pouch":
             draw_rotated_ellipse(base, add(hand, vec(5.0 * S, angle - 10.0)), (9.0 * S, 11.0 * S), angle, pal["accent_dark"], outline, 1.0 * S)
-            ImageDraw.Draw(base).line([add(hand, vec(4 * S, angle + 150)), add(hand, vec(7 * S, angle - 30))], fill=pal["accent"], width=max(1, int(1.0 * S)))
+            blending_draw(base).line([add(hand, vec(4 * S, angle + 150)), add(hand, vec(7 * S, angle - 30))], fill=pal["accent"], width=max(1, int(1.0 * S)))
         elif prop == "ledger":
             draw_rotated_rounded_rect(base, add(hand, vec(7.0 * S, angle - 6.0)), (11.0 * S, 14.0 * S), angle - 8.0, 2.0 * S, pal["accent"], outline, 1.0 * S)
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             for i in range(3):
                 d.line([add(hand, vec(2.0 * S, angle - 45)) , add(hand, vec(8.0 * S, angle - 45))], fill=pal["outfit_dark"], width=max(1, int(0.9 * S)))
         elif prop == "blueprint":
             draw_rotated_rounded_rect(base, add(hand, vec(10.0 * S, angle - 4.0)), (15.0 * S, 5.0 * S), angle - 4.0, 2.0 * S, pal["white"], outline, 1.0 * S)
-            ImageDraw.Draw(base).line([add(hand, vec(4 * S, angle - 20)), add(hand, vec(12 * S, angle - 20))], fill=pal["accent_dark"], width=max(1, int(1.0 * S)))
+            blending_draw(base).line([add(hand, vec(4 * S, angle - 20)), add(hand, vec(12 * S, angle - 20))], fill=pal["accent_dark"], width=max(1, int(1.0 * S)))
         elif prop == "key_ring":
             # Bob — a carabiner ring with three pendant keys hanging
             # below it. Reads as "key custodian" at a glance.
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             ring_c = add(hand, vec(6.0 * S, angle - 20.0))
             d.ellipse(_bbox(ring_c, 4.0 * S, 4.0 * S), outline=outline, width=max(1, int(1.4 * S)))
             # Three keys hanging from the bottom of the ring.
@@ -1960,7 +1961,7 @@ class ToonSideGenerator(CharacterGenerator):
             # Alice — a tightly-rolled scroll about half the size of
             # a tablet, with a ribbon tied around it and a sliver of
             # cipher text visible on the exposed edge.
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             scroll_c = add(hand, vec(6.0 * S, angle - 12.0))
             # Body of the scroll.
             draw_rotated_rounded_rect(base, scroll_c, (12.0 * S, 4.0 * S), angle - 14.0, 1.6 * S, pal["white"], outline, 0.9 * S)
@@ -1988,7 +1989,7 @@ class ToonSideGenerator(CharacterGenerator):
             # she's cupping it forward to overhear something. The
             # cone widens away from the grip so the silhouette reads
             # as a horn even at small scale.
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             grip = hand
             mid = add(grip, vec(9.0 * S, angle - 25.0))
             wide = add(grip, vec(15.0 * S, angle - 25.0))
@@ -2016,7 +2017,7 @@ class ToonSideGenerator(CharacterGenerator):
             # Trent — a small handheld balance: a central pillar
             # rising from the fist, two side arms, two shallow pans
             # at the arm tips. Universal "fair arbitration" read.
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             pillar_base = hand
             pillar_top = add(hand, vec(14.0 * S, angle - 75.0))
             d.line([pillar_base, pillar_top], fill=pal["accent_dark"], width=max(1, int(1.6 * S)))
@@ -2048,7 +2049,7 @@ class ToonSideGenerator(CharacterGenerator):
             # Judy — judicial gavel: a cylindrical wooden head with a
             # darker handle. Held with the head out so the silhouette
             # reads "gavel" even at small render sizes.
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             handle_a = hand
             handle_b = add(hand, vec(11.0 * S, angle - 8.0))
             head_c = add(handle_b, vec(3.0 * S, angle - 8.0))
@@ -2066,7 +2067,7 @@ class ToonSideGenerator(CharacterGenerator):
             )
         elif prop == "lockpick":
             # Trudy — a slim L-shaped lockpick + tension wrench.
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             tip = add(hand, vec(14.0 * S, angle - 30.0))
             d.line([hand, tip], fill=pal["accent_dark"], width=max(1, int(1.4 * S)))
             d.line([hand, tip], fill=_scale_color(pal["accent"], 1.05), width=max(1, int(0.7 * S)))
@@ -2080,7 +2081,7 @@ class ToonSideGenerator(CharacterGenerator):
         elif prop == "stethoscope":
             # Craig — safe-cracker's stethoscope. Drum at the end +
             # tubing curving back to the ear pieces.
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             drum_c = add(hand, vec(10.0 * S, angle - 20.0))
             d.ellipse(_bbox(drum_c, 4.6 * S, 4.6 * S), fill=pal["accent"], outline=outline, width=max(1, int(1.0 * S)))
             d.ellipse(_bbox(drum_c, 2.8 * S, 2.8 * S), fill=pal["accent_dark"], outline=None)
@@ -2091,7 +2092,7 @@ class ToonSideGenerator(CharacterGenerator):
             # Sybil — a stack of three small masks held by the
             # strings. Each mask in a different palette tone so the
             # "many identities" signal reads.
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             colors = [pal["accent"], pal["outfit"], pal["accent_dark"]]
             for i, fill in enumerate(colors):
                 mask_c = add(hand, vec((6.0 + i * 1.4) * S, angle - 18.0 - i * 4.0))
@@ -2101,7 +2102,7 @@ class ToonSideGenerator(CharacterGenerator):
                 d.ellipse(_bbox((mask_c[0] + 1.2 * S, mask_c[1] - 0.4 * S), 0.6 * S, 0.6 * S), fill=outline)
         elif prop == "magnifier":
             # Victor — small lens-on-handle magnifier.
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             handle_tip = add(hand, vec(6.0 * S, angle - 30.0))
             lens_c = add(handle_tip, vec(4.5 * S, angle - 30.0))
             d.line([hand, handle_tip], fill=pal["accent_dark"], width=max(1, int(1.8 * S)))
@@ -2109,7 +2110,7 @@ class ToonSideGenerator(CharacterGenerator):
             d.ellipse(_bbox(lens_c, 4.0 * S, 4.0 * S), fill=_scale_color(pal["white"], 0.95), outline=None)
         elif prop == "long_pointer":
             # Peggy — a long pointer / wand ~28 design pixels long.
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             tip = add(hand, vec(28.0 * S, angle - 12.0))
             d.line([hand, tip], fill=pal["accent_dark"], width=max(1, int(1.6 * S)))
             d.ellipse(_bbox(tip, 1.8 * S, 1.8 * S), fill=pal["accent"], outline=outline, width=max(1, int(0.6 * S)))
@@ -2117,7 +2118,7 @@ class ToonSideGenerator(CharacterGenerator):
         elif prop == "lantern":
             # Walter — handheld brass lantern with a glowing
             # interior + a small wire handle.
-            d = ImageDraw.Draw(base)
+            d = blending_draw(base)
             lantern_c = add(hand, vec(6.0 * S, angle - 30.0))
             # Body — vertical rectangle with rounded top.
             body = (lantern_c[0] - 3.6 * S, lantern_c[1] - 5.0 * S,
@@ -2151,7 +2152,7 @@ class ToonSideGenerator(CharacterGenerator):
         W, H = size
         ss = max(1, int(supersample))
         img = Image.new("RGBA", (W * ss, H * ss), background or (0, 0, 0, 0))
-        d = ImageDraw.Draw(img)
+        d = blending_draw(img)
         S = (W / 128.0) * ss
         pal = self._palette(spec)
         p = self.pose_for_animation(animation, frame_index, frame_count, spec)
@@ -2167,7 +2168,7 @@ class ToonSideGenerator(CharacterGenerator):
         # angles and transparent backgrounds.
         if p.dash > 0.0:
             trail = Image.new("RGBA", img.size, (0, 0, 0, 0))
-            trail_d = ImageDraw.Draw(trail)
+            trail_d = blending_draw(trail)
             for i, alpha in enumerate([55, 32, 18]):
                 xoff = (i + 1) * 6.0 * S
                 trail_d.rounded_rectangle((torso_center[0] - 18*S - xoff, torso_center[1] - 10*S, torso_center[0] + 12*S - xoff, torso_center[1] + 16*S), radius=6*S, fill=with_alpha(pal["accent"], alpha))
@@ -2304,7 +2305,7 @@ class ToonSideGenerator(CharacterGenerator):
             layer_w = max(8, int(10.0 * scale * S))
             layer_h = max(8, int(10.0 * scale * S))
             layer = Image.new("RGBA", (layer_w, layer_h), (0, 0, 0, 0))
-            ld = ImageDraw.Draw(layer)
+            ld = blending_draw(layer)
             cx = layer_w / 2.0
             cy = layer_h / 2.0
             ld.polygon([

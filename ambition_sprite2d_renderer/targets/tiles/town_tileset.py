@@ -20,6 +20,7 @@ from typing import Any, Callable, Dict, Iterable, List, Sequence, Tuple
 
 import yaml
 from PIL import Image, ImageDraw, ImageFont
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 
@@ -375,7 +376,7 @@ def _brick_wall_base(draw: ImageDraw.ImageDraw, *, color: str = "red") -> None:
 def _render_terrain(spec: TileSpec) -> Image.Image:
     variant = spec.params["variant"]
     img = _tile_canvas()
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     if variant == "grass_top":
         _dirt_pattern(d)
         _grass_pattern(d)
@@ -388,15 +389,15 @@ def _render_terrain(spec: TileSpec) -> Image.Image:
         _dirt_pattern(d)
         d.rectangle(_box(0, 0, TILE, 22), fill=(0, 0, 0, 0))
         _grass_pattern(d)
-        draw_grass = ImageDraw.Draw(img, "RGBA")
+        draw_grass = blending_draw(img)
         draw_grass.rectangle(_box(0, 22, TILE, TILE), fill=(0, 0, 0, 0))
         # build final top cap
         _dirt_pattern(d)
         cap = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        cd = ImageDraw.Draw(cap, "RGBA")
+        cd = blending_draw(cap)
         _grass_pattern(cd)
         mask = Image.new("L", img.size, 0)
-        md = ImageDraw.Draw(mask)
+        md = blending_draw(mask)
         md.rectangle(_box(0, 0, TILE, 22), fill=255)
         md.polygon(
             [
@@ -418,10 +419,10 @@ def _render_terrain(spec: TileSpec) -> Image.Image:
     elif variant == "grass_left":
         _dirt_pattern(d)
         cap = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        cd = ImageDraw.Draw(cap, "RGBA")
+        cd = blending_draw(cap)
         _grass_pattern(cd)
         mask = Image.new("L", img.size, 0)
-        md = ImageDraw.Draw(mask)
+        md = blending_draw(mask)
         md.rectangle(_box(0, 0, 22, 28), fill=255)
         md.polygon(
             [
@@ -439,10 +440,10 @@ def _render_terrain(spec: TileSpec) -> Image.Image:
     elif variant == "grass_right":
         _dirt_pattern(d)
         cap = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        cd = ImageDraw.Draw(cap, "RGBA")
+        cd = blending_draw(cap)
         _grass_pattern(cd)
         mask = Image.new("L", img.size, 0)
-        md = ImageDraw.Draw(mask)
+        md = blending_draw(mask)
         md.rectangle(_box(42, 0, 64, 28), fill=255)
         md.polygon(
             [
@@ -460,17 +461,17 @@ def _render_terrain(spec: TileSpec) -> Image.Image:
     elif variant == "slope_up":
         _dirt_pattern(d)
         cap = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        cd = ImageDraw.Draw(cap, "RGBA")
+        cd = blending_draw(cap)
         _grass_pattern(cd)
         mask = Image.new("L", img.size, 0)
-        md = ImageDraw.Draw(mask)
+        md = blending_draw(mask)
         md.polygon(
             [(_s(0), _s(22)), (_s(64), _s(0)), (_s(64), _s(16)), (_s(0), _s(38))],
             fill=255,
         )
         img = Image.composite(cap, img, mask)
         # dirt body under slope
-        dd = ImageDraw.Draw(img, "RGBA")
+        dd = blending_draw(img)
         dd.polygon(
             [(_s(0), _s(22)), (_s(64), _s(0)), (_s(64), _s(64)), (_s(0), _s(64))],
             fill=_rgba("9F7A55", 0),
@@ -479,10 +480,10 @@ def _render_terrain(spec: TileSpec) -> Image.Image:
     elif variant == "slope_down":
         _dirt_pattern(d)
         cap = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        cd = ImageDraw.Draw(cap, "RGBA")
+        cd = blending_draw(cap)
         _grass_pattern(cd)
         mask = Image.new("L", img.size, 0)
-        md = ImageDraw.Draw(mask)
+        md = blending_draw(mask)
         md.polygon(
             [(_s(0), _s(0)), (_s(64), _s(22)), (_s(64), _s(38)), (_s(0), _s(16))],
             fill=255,
@@ -491,10 +492,10 @@ def _render_terrain(spec: TileSpec) -> Image.Image:
     elif variant == "grass_flowers":
         _dirt_pattern(d)
         cap = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        cd = ImageDraw.Draw(cap, "RGBA")
+        cd = blending_draw(cap)
         _grass_pattern(cd, flowers=True)
         mask = Image.new("L", img.size, 0)
-        md = ImageDraw.Draw(mask)
+        md = blending_draw(mask)
         md.rectangle(_box(0, 0, TILE, 24), fill=255)
         md.polygon(
             [
@@ -529,10 +530,10 @@ def _render_terrain(spec: TileSpec) -> Image.Image:
                 width=_s(0.5),
             )
         cap = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        cd = ImageDraw.Draw(cap, "RGBA")
+        cd = blending_draw(cap)
         _grass_pattern(cd)
         mask = Image.new("L", img.size, 0)
-        md = ImageDraw.Draw(mask)
+        md = blending_draw(mask)
         md.rectangle(_box(0, 0, TILE, 20), fill=255)
         md.polygon(
             [
@@ -555,7 +556,7 @@ def _render_terrain(spec: TileSpec) -> Image.Image:
 def _render_foundation(spec: TileSpec) -> Image.Image:
     variant = spec.params["variant"]
     img = _tile_canvas()
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     if variant == "cobble_walk":
         _stone_pattern(
             d, base=_rgba("8C949A"), dark=_rgba("5D646B"), light=_rgba("AAB2BA")
@@ -659,7 +660,7 @@ def _render_plaster_wall(spec: TileSpec) -> Image.Image:
     variant = spec.params["variant"]
     tone = spec.params.get("tone", "warm")
     img = _tile_canvas()
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     _plaster_wall_base(d, tone=tone)
     trim = _rgba("B5956A") if tone == "warm" else _rgba("8AA0B2")
     dark = _rgba("6A5038") if tone == "warm" else _rgba("60707E")
@@ -729,7 +730,7 @@ def _render_plaster_wall(spec: TileSpec) -> Image.Image:
 def _render_timber_wall(spec: TileSpec) -> Image.Image:
     variant = spec.params["variant"]
     img = _tile_canvas()
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     _timber_wall_base(d)
     timber = _rgba("6B4A33")
     if variant == "plain":
@@ -777,7 +778,7 @@ def _render_brick_wall(spec: TileSpec) -> Image.Image:
     variant = spec.params["variant"]
     color = spec.params.get("color", "red")
     img = _tile_canvas()
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     _brick_wall_base(d, color=color)
     trim = _rgba("855142") if color == "red" else _rgba("625467")
     light_trim = _rgba("B37460") if color == "red" else _rgba("86769A")
@@ -973,7 +974,7 @@ def _render_window(spec: TileSpec) -> Image.Image:
     wall = spec.params.get("wall", "plaster")
     tone = spec.params.get("tone", "warm")
     img = _tile_canvas()
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     _window_wall(d, wall=wall, tone=tone)
     if variant == "small_green":
         _window_frame(d, 20, 14, 44, 42, shutter=True)
@@ -1095,7 +1096,7 @@ def _render_door(spec: TileSpec) -> Image.Image:
     variant = spec.params["variant"]
     wall = spec.params.get("wall", "plaster")
     img = _tile_canvas()
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     _window_wall(d, wall=wall)
     d.rectangle(_box(0, 54, 64, 64), fill=_rgba("8E8170"))
     if variant == "wood":
@@ -1156,7 +1157,7 @@ def _render_roof(spec: TileSpec) -> Image.Image:
         base, light, dark = _rgba("546E8B"), _rgba("7796BF"), _rgba("394B60")
         wood = _rgba("5A4F46")
     img = _tile_canvas()
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     _roof_pattern(d, base=base, light=light, dark=dark)
     if variant == "mid":
         pass
@@ -1220,7 +1221,7 @@ def _render_roof(spec: TileSpec) -> Image.Image:
 def _render_platform(spec: TileSpec) -> Image.Image:
     variant = spec.params["variant"]
     img = _tile_canvas(transparent=True)
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     wood = _rgba("8D633E")
     dark = _rgba("583821")
     stone = _rgba("8B8C90")
@@ -1292,7 +1293,7 @@ def _render_platform(spec: TileSpec) -> Image.Image:
 def _render_street_prop(spec: TileSpec) -> Image.Image:
     variant = spec.params["variant"]
     img = _tile_canvas(transparent=True)
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     if variant == "lamp_post":
         _shadow(d, 24, 54, 40, 60, 30)
         d.rectangle(_box(30, 12, 34, 56), fill=_rgba("37414A"))
@@ -1439,7 +1440,7 @@ def _render_street_prop(spec: TileSpec) -> Image.Image:
 def _render_civic_prop(spec: TileSpec) -> Image.Image:
     variant = spec.params["variant"]
     img = _tile_canvas(transparent=True)
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     if variant == "well":
         _shadow(d, 12, 50, 52, 60, 24)
         d.rounded_rectangle(
@@ -2685,7 +2686,7 @@ def build_contact_sheet(tiles: Sequence[TileSpec] = TILES) -> Image.Image:
     cols = CONTACT_COLUMNS
     rows = math.ceil(len(tiles) / cols)
     img = Image.new("RGBA", (cols * cell_w, rows * cell_h), (18, 20, 27, 255))
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     name_font = _font(11)
     meta_font = _font(10)
     for idx, spec in enumerate(tiles):

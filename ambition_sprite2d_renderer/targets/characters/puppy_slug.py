@@ -42,6 +42,7 @@ from typing import List, Tuple
 from PIL import Image, ImageColor, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -256,7 +257,7 @@ def _draw_slime_trail(
     if trail_strength <= 0.01:
         return
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer, "RGBA")
+    d = blending_draw(layer)
     # The "down" relative to body pitch.
     dx = math.sin(pitch)
     dy = math.cos(pitch)
@@ -294,7 +295,7 @@ def _draw_body(
     grav_y = math.cos(pitch + math.pi / 2.0)
 
     body_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    bd = ImageDraw.Draw(body_layer, "RGBA")
+    bd = blending_draw(body_layer)
 
     # Pass 1: dark base silhouette (a chubby outline).
     for i, (x, y) in enumerate(centerline):
@@ -391,7 +392,7 @@ def _draw_pup_head(
         return
     cx, cy = center
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer, "RGBA")
+    d = blending_draw(layer)
 
     head_w = radius * 2.4 * (1.0 - 0.6 * melt)
     head_h = radius * 2.1 * (1.0 - 0.6 * melt)

@@ -27,6 +27,7 @@ from typing import List, Sequence, Tuple
 from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 ACTOR_METADATA = {
     "actor": {"character_id": "npc_dark_lord", "display_name": "Dark Lord"},
@@ -675,7 +676,7 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     img = Image.new(
         "RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0)
     )
-    draw = ImageDraw.Draw(img, "RGBA")
+    draw = blending_draw(img)
     pose = Pose(anim, frame_idx, nframes)
 
     root = (

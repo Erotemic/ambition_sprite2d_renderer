@@ -15,6 +15,7 @@ from typing import List, Tuple
 from PIL import Image, ImageColor, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 
@@ -55,7 +56,7 @@ def _downsample(img: Image.Image) -> Image.Image:
 
 def _draw_glow(base: Image.Image, bbox, fill: RGBA, blur: float = 3.0) -> None:
     layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(layer, "RGBA")
+    draw = blending_draw(layer)
     draw.ellipse(bbox, fill=fill)
     layer = layer.filter(ImageFilter.GaussianBlur(radius=blur * SUPER / 2.0))
     base.alpha_composite(layer)
@@ -100,7 +101,7 @@ def _draw_wheel(
 
 def _draw_cart(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img, "RGBA")
+    draw = blending_draw(img)
 
     t = frame_idx / max(1, nframes)
     cyc = math.tau * t
@@ -119,7 +120,7 @@ def _draw_cart(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     # layer as a separate primitive if a room wants them.
 
     cart = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    cd = ImageDraw.Draw(cart, "RGBA")
+    cd = blending_draw(cart)
 
     wood_dark = _rgba("#402918")
     wood = _rgba("#7a5432")

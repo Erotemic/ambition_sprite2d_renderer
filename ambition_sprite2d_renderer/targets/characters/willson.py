@@ -20,6 +20,7 @@ from typing import Callable, Dict, Iterable, List, Mapping, Sequence, Tuple
 from PIL import Image, ImageColor, ImageDraw
 
 from ...authoring.sheet_build import build_sheet, write_canonical
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -249,7 +250,7 @@ def _ellipse_points(center: Point, rx: float, ry: float, angle: float = 0.0, ste
 class VDraw:
     def __init__(self, image: Image.Image, scale: int) -> None:
         self.image = image
-        self.draw = ImageDraw.Draw(image)
+        self.draw = blending_draw(image)
         self.scale = scale
 
     def point(self, point: Point) -> Point:

@@ -28,6 +28,7 @@ from PIL import Image, ImageDraw
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
 from ambition_sprite2d_renderer.core.draw import rgba
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -673,7 +674,7 @@ class OilerMechanicGenerator(CharacterGenerator):
         pose: OilerPose,
         s: float,
     ) -> None:
-        d = ImageDraw.Draw(image)
+        d = blending_draw(image)
         pal = OILER_PALETTE
         outline = pal["outline"]
         boot_top = feet_y - spec.boot_h * s
@@ -876,7 +877,7 @@ class OilerMechanicGenerator(CharacterGenerator):
         pose: OilerPose,
         s: float,
     ) -> None:
-        d = ImageDraw.Draw(image)
+        d = blending_draw(image)
         pal = OILER_PALETTE
         outline = pal["outline"]
         boot_top = feet_y - spec.boot_h * s
@@ -1031,7 +1032,7 @@ class OilerMechanicGenerator(CharacterGenerator):
         pose: OilerPose,
         s: float,
     ) -> None:
-        d = ImageDraw.Draw(image)
+        d = blending_draw(image)
         pal = OILER_PALETTE
         outline = pal["outline"]
         base_boot_top = feet_y - spec.boot_h * s

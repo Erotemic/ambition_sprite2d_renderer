@@ -45,6 +45,7 @@ from ..profiling import profile
 from ..yaml_io import safe_load
 
 from .packer import FrameInput, pack_frames
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 
 @dataclass
@@ -417,7 +418,7 @@ def _checkerboard(size: Tuple[int, int], cell: int = 16) -> Image.Image:
     """Opaque grey checkerboard so packed transparency reads in a debug view."""
     w, h = size
     board = Image.new("RGBA", size, (52, 52, 60, 255))
-    draw = ImageDraw.Draw(board)
+    draw = blending_draw(board)
     for y in range(0, h, cell):
         for x in range(0, w, cell):
             if ((x // cell) + (y // cell)) % 2 == 0:
@@ -444,7 +445,7 @@ def write_debug_views(
     for i, page in enumerate(pack.pages):
         view = _checkerboard(page.size)
         view.alpha_composite(page)
-        draw = ImageDraw.Draw(view)
+        draw = blending_draw(view)
         for f in pack.frames:
             if f.page != i:
                 continue

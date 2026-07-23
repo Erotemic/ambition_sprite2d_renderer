@@ -35,6 +35,7 @@ from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Uni
 from PIL import Image, ImageDraw
 
 from .rig import add, clamp, ease_in_out_sine, ease_out_cubic, lerp, smoothstep, vec
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Point = Tuple[float, float]
 Color = Tuple[int, int, int, int]
@@ -418,5 +419,5 @@ def composite_polygon(
     scratch-layer composite (like ``core.draw.overlay_draw``'s "RGBA" draw
     mode) blends correctly."""
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    draw_polygon(ImageDraw.Draw(layer), pts, fill, outline, outline_w)
+    draw_polygon(blending_draw(layer), pts, fill, outline, outline_w)
     img.alpha_composite(layer)

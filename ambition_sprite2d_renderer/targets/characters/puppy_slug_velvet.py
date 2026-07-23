@@ -24,6 +24,7 @@ from typing import Iterable, Mapping, Sequence
 from PIL import Image, ImageColor, ImageDraw
 
 from ...authoring.sheet_build import build_sheet, write_canonical
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 TARGET_NAME = "puppy_slug_velvet"
 FRAME_SIZE = (128, 128)
@@ -587,7 +588,7 @@ def _draw_poly(
     outline: str | RGBA | None = None,
     width: float = 1.0,
 ) -> None:
-    d = ImageDraw.Draw(layer, "RGBA")
+    d = blending_draw(layer)
     fill_rgba = _rgba(fill) if isinstance(fill, str) else fill
     outline_rgba = _rgba(outline) if isinstance(outline, str) else outline
     p = _pts(points)
@@ -602,7 +603,7 @@ def _draw_line(
     fill: str | RGBA,
     width: float,
 ) -> None:
-    d = ImageDraw.Draw(layer, "RGBA")
+    d = blending_draw(layer)
     rgba = _rgba(fill) if isinstance(fill, str) else fill
     d.line(_pts(points), fill=rgba, width=_s(width), joint="curve")
 

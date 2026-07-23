@@ -27,6 +27,7 @@ from ..super_mary_o_common import (
     SKY_BLUE,
     label_font,
 )
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 TARGET_NAME = "super_mary_o_tileset"
 TILE = 16
@@ -68,7 +69,7 @@ TILES: Sequence[TileSpec] = [
 
 def _new_tile() -> tuple[Image.Image, ImageDraw.ImageDraw]:
     img = Image.new("RGBA", (TILE, TILE), BG)
-    return img, ImageDraw.Draw(img, "RGBA")
+    return img, blending_draw(img)
 
 
 
@@ -228,7 +229,7 @@ def _preview_image(sheet: Image.Image) -> Image.Image:
     cell_w = 96
     cell_h = TILE + label_h + 10
     preview = Image.new("RGBA", (COLS * cell_w + pad * 2, ROWS * cell_h + pad * 2), (24, 30, 44, 255))
-    draw = ImageDraw.Draw(preview, "RGBA")
+    draw = blending_draw(preview)
     for idx, spec in enumerate(TILES):
         col = idx % COLS
         row = idx // COLS

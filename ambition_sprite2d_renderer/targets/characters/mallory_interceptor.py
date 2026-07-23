@@ -24,6 +24,7 @@ from ...profiling import profile
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
 from ambition_sprite2d_renderer.core.draw import rgba
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -147,7 +148,7 @@ class VDraw:
     def __init__(self, image: Image.Image, scale: float) -> None:
         self.image = image
         self.scale = scale
-        self.draw = ImageDraw.Draw(image)
+        self.draw = blending_draw(image)
 
     def p(self, point: Point) -> Point:
         cx, cy = DESIGN_CENTER

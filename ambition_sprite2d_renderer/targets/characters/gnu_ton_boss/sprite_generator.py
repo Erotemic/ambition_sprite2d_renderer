@@ -36,6 +36,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 from ambition_sprite2d_renderer.core.manifest_ron import ron_row
 from ambition_sprite2d_renderer.registry.pack_groups import policy_for
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 
@@ -236,7 +237,7 @@ class Canvas:
         self.sw = w * scale
         self.sh = h * scale
         self.img = Image.new("RGBA", (self.sw, self.sh), bg)
-        self.draw = ImageDraw.Draw(self.img)
+        self.draw = blending_draw(self.img)
         # Origin in scaled pixel space
         self.ox = (w // 2) * scale
         self.oy = (h // 2) * scale
@@ -296,7 +297,7 @@ class Canvas:
     ):
         """Draw a translucent ellipse using real alpha compositing."""
         layer = Image.new("RGBA", (self.sw, self.sh), (0, 0, 0, 0))
-        d = ImageDraw.Draw(layer, "RGBA")
+        d = blending_draw(layer)
 
         p0 = self.P(cx - rx, cy - ry)
         p1 = self.P(cx + rx, cy + ry)
@@ -316,7 +317,7 @@ class Canvas:
             )
 
         self.img = Image.alpha_composite(self.img, layer)
-        self.draw = ImageDraw.Draw(self.img)
+        self.draw = blending_draw(self.img)
 
     def line(self, pts, fill: RGBA, width: float = 2.0):
         px = self.Ps(pts)
@@ -1431,7 +1432,7 @@ def _draw_hit(
     if layer == "full" and flash_alpha > 0:
         flash_img = Image.new("RGBA", (c.sw, c.sh), (255, 140, 40, flash_alpha))
         c.img = Image.alpha_composite(c.img, flash_img)
-        c.draw = ImageDraw.Draw(c.img)
+        c.draw = blending_draw(c.img)
 
     _record_parts(
         parts,
@@ -1487,7 +1488,7 @@ def _draw_death(
         if grey_blend > 0:
             grey = Image.new("RGBA", (c.sw, c.sh), (100, 90, 80, int(grey_blend * 140)))
             c.img = Image.alpha_composite(c.img, grey)
-            c.draw = ImageDraw.Draw(c.img)
+            c.draw = blending_draw(c.img)
 
     _record_parts(
         parts,
@@ -2234,7 +2235,7 @@ def build_hitbox_debug(
     """Write a per-frame visual review of the exact RON hit/hurt boxes."""
     metrics = _gnu_ton_body_metrics(parts_doc)
     overlay = Image.new("RGBA", full_sheet.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay, "RGBA")
+    draw = blending_draw(overlay)
     for row in manifest["rows"]:
         anim = row["name"]
         row_index = int(row["row"])

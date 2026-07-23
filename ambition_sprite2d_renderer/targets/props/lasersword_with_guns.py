@@ -33,6 +33,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
 from . import _lasersword_common as lc
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 TARGET_NAME = "lasersword_with_guns"
 SHEET_FILES = [f"{TARGET_NAME}_spritesheet.png", f"{TARGET_NAME}_spritesheet.yaml"]
@@ -169,7 +170,7 @@ def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
         t = p["fade"]
         super_size = (FRAME_SIZE[0] * lc.SUPER, FRAME_SIZE[1] * lc.SUPER)
         spark_layer = Image.new("RGBA", super_size, (0, 0, 0, 0))
-        sd = ImageDraw.Draw(spark_layer, "RGBA")
+        sd = blending_draw(spark_layer)
         anchors = lc.frame_anchors(
             angle_deg=p["angle_deg"],
             with_barrels=True,

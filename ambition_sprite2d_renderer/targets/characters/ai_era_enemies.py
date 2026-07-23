@@ -25,6 +25,7 @@ from typing import Callable, Dict, Iterable, List, Sequence, Tuple
 from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -194,7 +195,7 @@ def _alpha_ellipse(
     hurt tint erases the body wherever the ellipse covers.
     """
     overlay = Image.new("RGBA", target.size, (0, 0, 0, 0))
-    od = ImageDraw.Draw(overlay, "RGBA")
+    od = blending_draw(overlay)
     od.ellipse(_box(cx, cy, rx, ry), fill=fill)
     target.alpha_composite(overlay)
 
@@ -315,7 +316,7 @@ def _downsample(img: Image.Image) -> Image.Image:
 
 def _new_frame() -> Tuple[Image.Image, ImageDraw.ImageDraw]:
     img = Image.new("RGBA", WORK_FRAME_SIZE, (0, 0, 0, 0))
-    return img, ImageDraw.Draw(img, "RGBA")
+    return img, blending_draw(img)
 
 
 def _emotion_eye(
@@ -460,7 +461,7 @@ def _draw_puppy_head(
 ) -> None:
     fur, fur_hi, muzzle = palette
     head = Image.new("RGBA", WORK_FRAME_SIZE, (0, 0, 0, 0))
-    hd = ImageDraw.Draw(head, "RGBA")
+    hd = blending_draw(head)
     _ellipse(hd, cx, cy, 7.5 * scale, 6.2 * scale, fur, OUTLINE, 0.8)
     _poly(
         hd,
@@ -685,7 +686,7 @@ def _render_synthetic_friend(anim: str, frame_idx: int, nframes: int) -> Image.I
     cx = 82 + pose["x"]
     cy = 82 + pose["y"]
     panel = Image.new("RGBA", WORK_FRAME_SIZE, (0, 0, 0, 0))
-    pd = ImageDraw.Draw(panel, "RGBA")
+    pd = blending_draw(panel)
     # Halo ring / beauty light.
     _ellipse(pd, cx, cy - 2, 28, 34, (236, 240, 252, 120), (186, 212, 252, 180), 1.2)
     _ellipse(pd, cx, cy - 2, 23, 29, (10, 18, 24, 0), (210, 226, 248, 110), 1.2)
@@ -693,7 +694,7 @@ def _render_synthetic_friend(anim: str, frame_idx: int, nframes: int) -> Image.I
     offs = [(-8, -2, -8), (7, 3, 10)]
     for ox, oy, tilt in offs:
         p = Image.new("RGBA", WORK_FRAME_SIZE, (0, 0, 0, 0))
-        qd = ImageDraw.Draw(p, "RGBA")
+        qd = blending_draw(p)
         _rounded_rect(
             qd,
             (cx - 20 + ox, cy - 30 + oy, cx + 17 + ox, cy + 32 + oy),
@@ -717,7 +718,7 @@ def _render_synthetic_friend(anim: str, frame_idx: int, nframes: int) -> Image.I
         panel.alpha_composite(p)
     # Main face-card.
     main = Image.new("RGBA", WORK_FRAME_SIZE, (0, 0, 0, 0))
-    md = ImageDraw.Draw(main, "RGBA")
+    md = blending_draw(main)
     _rounded_rect(
         md,
         (cx - 22, cy - 33, cx + 22, cy + 37),
@@ -872,7 +873,7 @@ def _render_hand_saint(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     cx = 80
     cy = 84 + pose["bob"]
     robe = Image.new("RGBA", WORK_FRAME_SIZE, (0, 0, 0, 0))
-    rd = ImageDraw.Draw(robe, "RGBA")
+    rd = blending_draw(robe)
     robe_pts = [
         (cx - 18, cy + 12),
         (cx - 28, cy + 40),
@@ -1200,7 +1201,7 @@ def _render_helpful_liar(anim: str, frame_idx: int, nframes: int) -> Image.Image
     cy = 88 + pose["bob"]
     # Base stand.
     body = Image.new("RGBA", WORK_FRAME_SIZE, (0, 0, 0, 0))
-    bd = ImageDraw.Draw(body, "RGBA")
+    bd = blending_draw(body)
     _capsule(bd, (cx, cy + 28), (cx, cy + 48), 5.0, (168, 176, 198, 255), OUTLINE, None)
     _capsule(
         bd,
@@ -1383,7 +1384,7 @@ def _draw_card(
     play: bool = False,
 ) -> None:
     layer = Image.new("RGBA", WORK_FRAME_SIZE, (0, 0, 0, 0))
-    ld = ImageDraw.Draw(layer, "RGBA")
+    ld = blending_draw(layer)
     _rounded_rect(ld, (x, y, x + w, y + h), base, (210, 214, 226, 230), 0.8, 3.0)
     header_h = max(3.5, h * 0.18)
     media_y = y + header_h + 3
@@ -1462,7 +1463,7 @@ def _render_ai_slop(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     cx = 80 + pose["x"]
     cy = 92 + pose["bob"]
     body_layer = Image.new("RGBA", WORK_FRAME_SIZE, (0, 0, 0, 0))
-    bd = ImageDraw.Draw(body_layer, "RGBA")
+    bd = blending_draw(body_layer)
 
     # Ragged collage body silhouette.
     blob = [

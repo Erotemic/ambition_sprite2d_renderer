@@ -30,6 +30,7 @@ from ...authoring.common_draw import (
     draw_rotated_ellipse,
     draw_rotated_rounded_rect,
 )
+from ambition_sprite2d_renderer.core.draw import blending_draw
 from ...authoring.generator import CharacterGenerator
 from ...authoring.rig import add, clamp, ease_in_out_sine, ease_out_cubic, lerp, smoothstep, vec
 from ...registry import CharacterJob
@@ -438,7 +439,7 @@ class AISlopZetaGenerator(CharacterGenerator):
         frame_index: int,
         frame_count: int,
     ) -> None:
-        d = ImageDraw.Draw(img)
+        d = blending_draw(img)
         t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
         ring = 18 + 24 * smoothstep(t)
         for i, color in enumerate(
@@ -483,7 +484,7 @@ class AISlopZetaGenerator(CharacterGenerator):
         frame_index: int,
         frame_count: int,
     ) -> None:
-        d = ImageDraw.Draw(img)
+        d = blending_draw(img)
         t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
         p = 1.0 - smoothstep(t)
         ring = 18 + 22 * p
@@ -592,7 +593,7 @@ class AISlopZetaGenerator(CharacterGenerator):
     ) -> None:
         pad = int(math.ceil(42 * S))
         layer = Image.new("RGBA", (pad * 2, pad * 2), (0, 0, 0, 0))
-        d = ImageDraw.Draw(layer)
+        d = blending_draw(layer)
         cx, cy = float(pad), float(pad)
         outline = max(1, int(round(1.7 * S)))
 
@@ -721,7 +722,7 @@ class AISlopZetaGenerator(CharacterGenerator):
     ) -> None:
         pad = int(math.ceil(58 * S))
         layer = Image.new("RGBA", (pad * 2, pad * 2), (0, 0, 0, 0))
-        d = ImageDraw.Draw(layer)
+        d = blending_draw(layer)
         cx, cy = float(pad), float(pad)
         w = spec.cloak_w * S * (1.0 + flare * 0.22 - collapse * 0.10)
         h = spec.cloak_h * S * (1.0 - collapse * 0.08)
@@ -766,7 +767,7 @@ class AISlopZetaGenerator(CharacterGenerator):
         strength: float,
         S: float,
     ) -> None:
-        d = ImageDraw.Draw(img)
+        d = blending_draw(img)
         if strength <= 0:
             return
         tip = add(mouth, vec((14 + 18 * strength) * S, direction))
@@ -788,7 +789,7 @@ class AISlopZetaGenerator(CharacterGenerator):
     def _draw_beam_fx(
         self, img: Image.Image, mouth: Point, charge: float, fire: float, S: float
     ) -> None:
-        d = ImageDraw.Draw(img)
+        d = blending_draw(img)
         if charge > 0:
             for r, a in [(10, 70), (16, 60), (22, 48)]:
                 d.ellipse(
@@ -819,7 +820,7 @@ class AISlopZetaGenerator(CharacterGenerator):
     ) -> None:
         if amount <= 0:
             return
-        d = ImageDraw.Draw(img)
+        d = blending_draw(img)
         rad = (16 + 28 * amount) * S
         d.arc(
             (root_x - rad, ground_y - 16 * S, root_x + rad, ground_y + 16 * S),
@@ -846,7 +847,7 @@ class AISlopZetaGenerator(CharacterGenerator):
     ) -> None:
         if amount <= 0:
             return
-        d = ImageDraw.Draw(img)
+        d = blending_draw(img)
         for sign in (-1, 1):
             orb = (
                 root_x + sign * (18 + 8 * amount) * S,
@@ -876,7 +877,7 @@ class AISlopZetaGenerator(CharacterGenerator):
     ) -> None:
         if amount <= 0:
             return
-        d = ImageDraw.Draw(img)
+        d = blending_draw(img)
         alpha = int(70 + 120 * amount)
         # Wide horizontal claw arc matching BossAttackKind::SideSweep.
         box = (
@@ -913,7 +914,7 @@ class AISlopZetaGenerator(CharacterGenerator):
     ) -> None:
         if amount <= 0:
             return
-        d = ImageDraw.Draw(img)
+        d = blending_draw(img)
         radius = (20 + 18 * amount) * S
         cx, cy = root_x + 2 * S, center_y - 10 * S
         for i in range(12):
@@ -949,7 +950,7 @@ class AISlopZetaGenerator(CharacterGenerator):
     ) -> None:
         if amount <= 0:
             return
-        d = ImageDraw.Draw(img)
+        d = blending_draw(img)
         # Horizontal echo streaks: the body itself draws later, these imply a fast dash clone.
         for i in range(5):
             y = ground_y - (25 + i * 9) * S
@@ -997,7 +998,7 @@ class AISlopZetaGenerator(CharacterGenerator):
             self._draw_dash_echo_fx(img, root_x, ground_y, p.dash_echo, S)
 
         character_img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        character_draw = ImageDraw.Draw(character_img)
+        character_draw = blending_draw(character_img)
 
         collapse = p.collapse
         body_center = (
@@ -1096,7 +1097,7 @@ class AISlopZetaGenerator(CharacterGenerator):
                 (near_hand, 110),
                 ((shoulder_far[0] - 8 * S, shoulder_far[1] + 14 * S), 80),
             ]:
-                ImageDraw.Draw(character_img).arc(
+                blending_draw(character_img).arc(
                     (
                         hand[0] - 12 * S,
                         hand[1] - 12 * S,

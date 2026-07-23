@@ -22,6 +22,7 @@ from PIL import Image, ImageDraw, ImageFilter
 from ambition_sprite2d_renderer.core.draw import with_alpha
 
 from ...authoring.sheet_build import build_sheet
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 
@@ -138,7 +139,7 @@ def _draw_base(img: Image.Image, draw: ImageDraw.ImageDraw, params: dict) -> Non
     # Backlit aura. The activation animation broadens the glow and pushes it
     # brighter without changing the shrine's footprint.
     aura = Image.new("RGBA", (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER), (0, 0, 0, 0))
-    ad = ImageDraw.Draw(aura, "RGBA")
+    ad = blending_draw(aura)
     aura_layers = [
         (48, 22, 18, 0.16),
         (38, 18, 28, 0.18),
@@ -180,7 +181,7 @@ def _draw_base(img: Image.Image, draw: ImageDraw.ImageDraw, params: dict) -> Non
     # Soft inner light running up the obelisk during activation.
     if activation > 0.0:
         glow = Image.new("RGBA", (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER), (0, 0, 0, 0))
-        gd = ImageDraw.Draw(glow, "RGBA")
+        gd = blending_draw(glow)
         gd.polygon(
             [(_s(41), _s(118)), (_s(47), _s(118)), (_s(45), _s(48)), (_s(43), _s(48))],
             fill=with_alpha(accent, int(115 * activation)),
@@ -226,7 +227,7 @@ def _draw_base(img: Image.Image, draw: ImageDraw.ImageDraw, params: dict) -> Non
 
     # Small orbiting sparks on activation, more subdued in idle.
     spark_layer = Image.new("RGBA", (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER), (0, 0, 0, 0))
-    sd = ImageDraw.Draw(spark_layer, "RGBA")
+    sd = blending_draw(spark_layer)
     sparks = 3 if params["mode"] == "idle" else 6
     for i in range(sparks):
         phase = (i / max(1, sparks)) * math.tau + params["activation"] * math.pi * 1.5
@@ -263,7 +264,7 @@ def _draw_base(img: Image.Image, draw: ImageDraw.ImageDraw, params: dict) -> Non
 def render_frame(animation: str, frame_idx: int, n_frames: int) -> Image.Image:
     params = _frame_params(animation, frame_idx, n_frames)
     img = Image.new("RGBA", (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img, "RGBA")
+    draw = blending_draw(img)
     _draw_base(img, draw, params)
     return _downsample(img)
 

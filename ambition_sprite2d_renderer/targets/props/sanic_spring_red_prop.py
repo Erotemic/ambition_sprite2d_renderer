@@ -32,6 +32,7 @@ from ._sanic_support_prop_common import (
     soft_shadow,
     star,
 )
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 TARGET_NAME = "sanic_spring_red_prop"
 SHEET_FILES = tuple(f"{TARGET_NAME}{suffix}" for suffix in SHEET_FILES_SUFFIXES)
@@ -105,7 +106,7 @@ def _draw_motion_lines(d: ImageDraw.ImageDraw, amount: float) -> None:
 
 
 def _draw_spring(img: Image.Image, spec: dict[str, float]) -> None:
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     c = clamp01(spec["compression"])
     overshoot = spec["overshoot"]
     spark = spec["spark"]

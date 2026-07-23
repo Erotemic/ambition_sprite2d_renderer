@@ -20,6 +20,7 @@ from PIL import Image, ImageDraw
 
 from .frame_source import FrameSource, render_all_frames, render_animation
 from ..core.draw import font as load_font
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 
 def export_frames(
@@ -119,7 +120,7 @@ def contact_sheet(
     grid_w = max(1, max_cols) * cell_w + 90
     grid_h = max(1, len(animations)) * cell_h
     sheet = Image.new("RGBA", (grid_w, grid_h), bg)
-    draw = ImageDraw.Draw(sheet, "RGBA")
+    draw = blending_draw(sheet)
     font = load_font(11)
 
     for row, animation in enumerate(animations):

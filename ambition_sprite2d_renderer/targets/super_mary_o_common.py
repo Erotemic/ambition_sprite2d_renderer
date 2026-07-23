@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Callable, Iterable, Tuple
 
 from PIL import Image, ImageColor, ImageDraw, ImageFont
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -190,7 +191,7 @@ def rasterize_logical(
         (logical_size[0] * scale, logical_size[1] * scale),
         TRANSPARENT,
     )
-    px = PixelCanvas(ImageDraw.Draw(img, "RGBA"), scale)
+    px = PixelCanvas(blending_draw(img), scale)
     painter(px)
     return img
 
@@ -221,7 +222,7 @@ def sprite_shadow(
     color: RGBA = SHADOW,
 ) -> Image.Image:
     img = Image.new("RGBA", frame_size, TRANSPARENT)
-    draw = ImageDraw.Draw(img, "RGBA")
+    draw = blending_draw(img)
     if x is None:
         x = frame_size[0] // 2
     draw.ellipse((x - width // 2, y - height // 2, x + width // 2, y + height // 2), fill=color)

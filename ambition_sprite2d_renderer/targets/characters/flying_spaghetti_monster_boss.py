@@ -23,6 +23,7 @@ from typing import List, Sequence, Tuple
 from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -539,7 +540,7 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     img = Image.new(
         "RGBA", (_s(WORK_FRAME_SIZE[0]), _s(WORK_FRAME_SIZE[1])), (0, 0, 0, 0)
     )
-    draw = ImageDraw.Draw(img, "RGBA")
+    draw = blending_draw(img)
 
     root = (160.0 + p.root_x, 152.0 + p.root_y + p.bob)
 
@@ -743,7 +744,7 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
             _poly(draw, core, BEAM, None, 0)
     if anim == "hurt" and p.hurt > 0.1:
         overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        overlay_draw = ImageDraw.Draw(overlay, "RGBA")
+        overlay_draw = blending_draw(overlay)
 
         _ellipse(
             overlay_draw,
@@ -757,7 +758,7 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         )
 
         img = Image.alpha_composite(img, overlay)
-        draw = ImageDraw.Draw(img, "RGBA")
+        draw = blending_draw(img)
 
     # Death smear / floor pile.
     if anim == "death" and p.collapse > 0.15:

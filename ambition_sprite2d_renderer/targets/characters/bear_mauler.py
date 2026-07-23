@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 ACTOR_METADATA = {'actor': {'character_id': 'npc_bear_mauler', 'display_name': 'Bear Mauler'},
  'body': {'body_plan': 'Quadruped',
@@ -291,7 +292,7 @@ def _downsample(img: Image.Image) -> Image.Image:
 class BearMaulerRenderer:
     def render_frame(self, anim: str, frame_idx: int, nframes: int) -> Image.Image:
         img = Image.new("RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img, "RGBA")
+        draw = blending_draw(img)
         pose = Pose(anim, frame_idx, nframes)
 
         root = (WORK_FRAME_SIZE[0] * 0.42 + pose.root_x, WORK_FRAME_SIZE[1] * 0.78 + pose.root_y + pose.bob)
@@ -432,7 +433,7 @@ def _render_sheet(renderer: BearMaulerRenderer, out_dir: Path):
     sheet_h = len(ROWS) * fh
     sheet = Image.new("RGBA", (sheet_w, sheet_h), (0, 0, 0, 0))
     preview = Image.new("RGBA", (sheet_w + 128, sheet_h), (248, 246, 242, 255))
-    pdraw = ImageDraw.Draw(preview)
+    pdraw = blending_draw(preview)
     canonical = None
     for row_idx, (name, nframes, _ms) in enumerate(ROWS):
         pdraw.text((8, row_idx * fh + 8), name, fill=(36, 36, 36, 255))

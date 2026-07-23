@@ -35,6 +35,7 @@ from ...authoring.skeleton import (
     rounded_polygon,
     two_bone_ik,
 )
+from ambition_sprite2d_renderer.core.draw import blending_draw
 from ...authoring.sheet_build import build_sheet, write_canonical
 
 Color = Tuple[int, int, int, int]
@@ -844,7 +845,7 @@ def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     else:
         t = frame_idx / max(1, nframes - 1)
     img = Image.new("RGBA", (FRAME_W * SS, FRAME_H * SS), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
+    draw = blending_draw(img)
     world, params = _solve(animation, t)
     params = dict(params)
     params["animation"] = animation

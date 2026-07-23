@@ -37,6 +37,7 @@ from ...authoring.animation_vocab import (
     DEFAULT_EXTENDED_TIMINGS,
     DEFAULT_TRAVERSAL_POLISH_TIMINGS,
 )
+from ambition_sprite2d_renderer.core.draw import blending_draw
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
 from ambition_sprite2d_renderer.core.draw import rgba
@@ -1099,7 +1100,7 @@ class BobEngineerGenerator(CharacterGenerator):
         pose: BobPose,
         s: float,
     ) -> None:
-        d = ImageDraw.Draw(image)
+        d = blending_draw(image)
         pal = BOB_PALETTE
         outline = pal["outline"]
         boot_top = feet_y - spec.boot_h * s
@@ -1562,7 +1563,7 @@ class BobEngineerGenerator(CharacterGenerator):
         pose: BobPose,
         s: float,
     ) -> None:
-        d = ImageDraw.Draw(image)
+        d = blending_draw(image)
         pal = BOB_PALETTE
         outline = pal["outline"]
         boot_top = feet_y - spec.boot_h * s
@@ -2154,7 +2155,7 @@ class BobEngineerGenerator(CharacterGenerator):
         """Line-based gameplay effects. Never paints a ground/drop shadow."""
         if not pose.effect or pose.effect_strength <= 0.001:
             return
-        d = ImageDraw.Draw(image)
+        d = blending_draw(image)
         pal = BOB_PALETTE
         strength = _clamp01(pose.effect_strength)
         body_y = feet_y - 45.0 * s
@@ -2334,7 +2335,7 @@ class BobEngineerGenerator(CharacterGenerator):
         pose: BobPose,
         s: float,
     ) -> None:
-        d = ImageDraw.Draw(image)
+        d = blending_draw(image)
         pal = BOB_PALETTE
         outline = pal["outline"]
         base_boot_top = feet_y - spec.boot_h * s

@@ -37,6 +37,7 @@ from ...authoring.portrait import (
     render_framed_portrait,
     write_portrait_sheet,
 )
+from ambition_sprite2d_renderer.core.draw import blending_draw
 from ...authoring.sheet_build import build_sheet, write_canonical
 
 RGBA = Tuple[int, int, int, int]
@@ -974,7 +975,7 @@ def _render_native_frame(animation: str, frame_idx: int, nframes: int) -> Image.
     """Render into the authored supersampled canvas without raster scaling."""
     pose = _pose(animation, frame_idx, nframes)
     image = Image.new("RGBA", (FRAME_W * SUPER, FRAME_H * SUPER), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image, "RGBA")
+    draw = blending_draw(image)
 
     _draw_ability_effects_behind(draw, pose)
     _draw_leg(draw, pose, pose.far_hip, pose.far_knee, pose.far_ankle, far=True)

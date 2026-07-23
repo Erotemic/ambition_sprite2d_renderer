@@ -45,6 +45,7 @@ from typing import Dict, Optional, Tuple
 
 from PIL import Image, ImageColor, ImageDraw
 from ambition_sprite2d_renderer.core.draw import rgba, bbox_from_center as _bbox
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -266,7 +267,7 @@ class TrentElderGenerator(CharacterGenerator):
         S: float,
         pose: TrentPose,
     ) -> None:
-        d = ImageDraw.Draw(base)
+        d = blending_draw(base)
         outline = pal["outline"]
         # Main robe silhouette — a hex-ish shape with shoulder yoke,
         # waist pinch, and flared hem. Pure polygon, no stacked
@@ -358,7 +359,7 @@ class TrentElderGenerator(CharacterGenerator):
         S: float,
         pose: TrentPose,
     ) -> None:
-        d = ImageDraw.Draw(base)
+        d = blending_draw(base)
         outline = pal["outline"]
         # Both arms are tapered sleeves (wide at shoulder, narrow at
         # cuff). The near arm (camera-right, +x) optionally holds the
@@ -451,7 +452,7 @@ class TrentElderGenerator(CharacterGenerator):
     def _draw_scales(
         self, base: Image.Image, hand: Point, pal: Dict[str, Color], S: float
     ) -> None:
-        d = ImageDraw.Draw(base)
+        d = blending_draw(base)
         outline = pal["outline"]
         # Pillar rising from the hand.
         pillar_top = (hand[0] + 0.5 * S, hand[1] - 16.0 * S)
@@ -501,7 +502,7 @@ class TrentElderGenerator(CharacterGenerator):
         S: float,
         pose: TrentPose,
     ) -> None:
-        d = ImageDraw.Draw(base)
+        d = blending_draw(base)
         outline = pal["outline"]
 
         # Side fringe of hair (cream/white) wrapping the back of the
@@ -696,7 +697,7 @@ class TrentElderGenerator(CharacterGenerator):
         S: float,
         pose: TrentPose,
     ) -> None:
-        d = ImageDraw.Draw(base)
+        d = blending_draw(base)
         outline = pal["outline"]
         # Chain of office — a U-shape of small gold links spanning the
         # robe yoke, with a larger pendant medallion centered on the

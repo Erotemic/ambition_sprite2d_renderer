@@ -34,6 +34,7 @@ from ...profiling import profile
 from ...authoring.generator import CharacterGenerator
 from ...core.draw import rgba
 from ...registry import CharacterJob
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -782,7 +783,7 @@ class ErdishScholarGenerator(CharacterGenerator):
         pose: ErdishPose,
         scale: float,
     ) -> None:
-        draw = ImageDraw.Draw(image, "RGBA")
+        draw = blending_draw(image)
         pal = PALETTE
         cx = 64.0 + pose.lean_x
         body_top = 52.5 + pose.bob + pose.root_y + pose.body_y

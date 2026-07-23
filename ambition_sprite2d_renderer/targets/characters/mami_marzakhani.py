@@ -24,6 +24,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from ...authoring.portrait import PortraitClip, write_portrait_sheet
 from ...authoring.sheet_build import build_sheet, write_canonical
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -1086,7 +1087,7 @@ def _draw_effects_front(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
 def _render_native_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     pose = _pose(animation, frame_idx, nframes)
     image = Image.new("RGBA", (FRAME_W * SUPER, FRAME_H * SUPER), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image, "RGBA")
+    draw = blending_draw(image)
 
     _draw_effects_behind(draw, pose)
     _draw_hair_back(draw, pose)
@@ -1154,7 +1155,7 @@ def _portrait_expression_frame(expression: str, frame_idx: int = 0, nframes: int
     phase = frame_idx / max(1, nframes)
     gesture = math.sin(phase * math.tau)
     image = Image.new("RGBA", (PORTRAIT_W * PORTRAIT_SUPER, PORTRAIT_H * PORTRAIT_SUPER), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image, "RGBA")
+    draw = blending_draw(image)
 
     # Shoulders and long jacket.  The portrait is authored directly at this
     # scale and contains details that do not exist in the gameplay render.

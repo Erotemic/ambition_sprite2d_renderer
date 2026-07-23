@@ -25,6 +25,7 @@ from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
 from . import _held_prop_common as hp
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 TARGET_NAME = "throwing_javelin"
 SHEET_FILES = (
@@ -161,7 +162,7 @@ def _draw_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     if anim != "idle":
         raise ValueError(f"unknown animation: {anim}")
     canvas = hp.new_super(FRAME_SIZE)
-    d = ImageDraw.Draw(canvas, "RGBA")
+    d = blending_draw(canvas)
     _draw_shaft(d)
     _draw_fletching(d)
     _draw_grip(d)

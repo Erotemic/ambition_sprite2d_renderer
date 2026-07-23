@@ -26,6 +26,7 @@ from PIL import Image, ImageDraw
 
 from ambition_sprite2d_renderer.core.draw import bbox, poly_scaled, rgba
 from ambition_sprite2d_renderer.core.pipeline import CROP_GROUND, CROP_TIGHT, render_frame
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -238,7 +239,7 @@ def build_contact_sheet(tiles: List[Tuple[SupportEntitySpriteSpec, Image.Image]]
     cell_h = 150
     label_h = 20
     sheet = Image.new("RGBA", (cell_w * len(tiles), cell_h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(sheet)
+    d = blending_draw(sheet)
     for idx, (spec, img) in enumerate(tiles):
         x = idx * cell_w
         sheet.alpha_composite(img, (x + (cell_w - img.width) // 2, label_h + (118 - img.height) // 2))

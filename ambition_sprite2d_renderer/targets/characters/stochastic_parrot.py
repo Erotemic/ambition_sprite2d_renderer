@@ -37,6 +37,7 @@ from ...authoring.skeleton import (
     rounded_polygon,
     two_bone_ik,
 )
+from ambition_sprite2d_renderer.core.draw import blending_draw
 from ...authoring.sheet_build import build_sheet, write_canonical
 
 Color = Tuple[int, int, int, int]
@@ -889,7 +890,7 @@ def _solve(animation: str, t: float):
 
 def _render_side_actor(world, params: Dict[str, float], mirrored: bool = False) -> Image.Image:
     actor = Image.new("RGBA", (FRAME_W * SS, FRAME_H * SS), (0, 0, 0, 0))
-    _RIG.draw(actor, ImageDraw.Draw(actor), world, SS, params)
+    _RIG.draw(actor, blending_draw(actor), world, SS, params)
     if mirrored:
         actor = ImageOps.mirror(actor)
     return actor
@@ -1071,7 +1072,7 @@ def _draw_turn_front_wing(img: Image.Image, draw: ImageDraw.ImageDraw, cx: float
 
 def _render_turn_three_quarter(params: Dict[str, float], mirrored: bool = False) -> Image.Image:
     img = Image.new("RGBA", (FRAME_W * SS, FRAME_H * SS), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
+    draw = blending_draw(img)
     cx = (CENTER_X + params.get("root_x", 0.0)) * SS
     airborne = params.get("airborne", 0.0) > 0.5
     default_root_y = -21.0 if airborne else -1.0
@@ -1161,7 +1162,7 @@ def _render_turn_three_quarter(params: Dict[str, float], mirrored: bool = False)
 
 def _render_turn_front(params: Dict[str, float]) -> Image.Image:
     img = Image.new("RGBA", (FRAME_W * SS, FRAME_H * SS), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
+    draw = blending_draw(img)
     cx = (CENTER_X + params.get("root_x", 0.0)) * SS
     airborne = params.get("airborne", 0.0) > 0.5
     default_root_y = -19.0 if airborne else -0.5

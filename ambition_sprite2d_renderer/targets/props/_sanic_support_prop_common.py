@@ -11,6 +11,7 @@ import math
 from typing import Iterable, Tuple
 
 from PIL import Image, ImageColor, ImageDraw, ImageFilter
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -138,7 +139,7 @@ def glow_ellipse(
     blur: float,
 ) -> None:
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer, "RGBA")
+    d = blending_draw(layer)
     ellipse_outline(d, cx, cy, w, h, color=color, width=width)
     layer = layer.filter(ImageFilter.GaussianBlur(radius=max(0.0, blur * SUPER)))
     img.alpha_composite(layer)

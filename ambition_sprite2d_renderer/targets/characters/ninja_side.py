@@ -28,6 +28,7 @@ from ...authoring.rig import add, clamp, vec
 from ...authoring.common_draw import RESAMPLING, draw_capsule, draw_rotated_ellipse, draw_rotated_rounded_rect
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -402,7 +403,7 @@ class NinjaSideGenerator(CharacterGenerator):
         )
 
     def _draw_blade(self, img: Image.Image, hilt: Point, angle: float, length: float, width: float, pal: Dict[str, Color], alpha: int = 255) -> None:
-        d = ImageDraw.Draw(img, "RGBA")
+        d = blending_draw(img)
         ux, uy = math.cos(math.radians(angle)), math.sin(math.radians(angle))
         nx, ny = -uy, ux
         tip = (hilt[0] + ux * length, hilt[1] + uy * length)
@@ -430,7 +431,7 @@ class NinjaSideGenerator(CharacterGenerator):
         d.line([base_l, tip], fill=edge, width=1)
 
     def _draw_ninja(self, img: Image.Image, spec: NinjaSpec, p: NinjaPose, scale: float) -> None:
-        d = ImageDraw.Draw(img, "RGBA")
+        d = blending_draw(img)
         pal = self._palette(spec)
         S = scale
         leader = spec.rank == "leader"
@@ -530,7 +531,7 @@ class NinjaSideGenerator(CharacterGenerator):
             self._draw_blade(img, sp(hilt), p.sword_angle, sc(spec.sword_len), sc(8.4 * spec.armor_bulk), pal, alpha=int(255 * (1.0 - p.fade)))
         if p.slash > 0.08:
             slash_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-            sd = ImageDraw.Draw(slash_layer, "RGBA")
+            sd = blending_draw(slash_layer)
             for off, alpha in ((0, 52), (7, 32), (14, 18)):
                 arc_box = (
                     sc(29 + off + p.root_x),

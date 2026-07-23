@@ -31,6 +31,7 @@ from ambition_sprite2d_renderer.cli.console import print_paths
 from ambition_sprite2d_renderer.core.manifest_ron import records_to_ron
 from ambition_sprite2d_renderer.authoring.sheet_build import layout_sheet_rows
 from ambition_sprite2d_renderer.registry.pack_groups import policy_for
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 try:
     from ambition_sprite2d_renderer.yaml_io import safe_dump, safe_load
@@ -877,7 +878,7 @@ class Renderer:
     def render(self, anim_name="rest", frame_index=0, nframes=1, debug=False):
         W, H = self.frame_size
         img = Image.new("RGBA", (W * self.aa, H * self.aa), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img, "RGBA")
+        draw = blending_draw(img)
         self.bounds_by_id = {}
         self.nodes_by_id = {}
         phase = 0 if nframes <= 1 else frame_index / nframes
@@ -896,7 +897,7 @@ class Renderer:
         if bool(self.scene.render_cfg.get("global_outline", False)):
             img = add_outline(img, self.scene.color("outline"))
         if debug:
-            d = ImageDraw.Draw(img, "RGBA")
+            d = blending_draw(img)
             for node_id, box in self.bounds_by_id.items():
                 x1, y1, x2, y2 = box
                 d.rectangle((x1, y1, x2, y2), outline=(255, 0, 255, 120), width=1)
@@ -983,7 +984,7 @@ def _labeled_preview(rendered_rows, frame_size):
     sheet = Image.new(
         "RGBA", (label_w + fw * max_frames, fh * len(rendered_rows)), (0, 0, 0, 0)
     )
-    d = ImageDraw.Draw(sheet, "RGBA")
+    d = blending_draw(sheet)
     for r, (name, nframes, dur, frames_data) in enumerate(rendered_rows):
         d.rounded_rectangle(
             (8, r * fh + 10, label_w - 10, r * fh + fh - 10),
@@ -1036,7 +1037,7 @@ def make_parts_debug(scene, bg_color=None):
         (cols * cell_w, rows * cell_h),
         tuple(bg_color or scene.background_rgba()),
     )
-    d = ImageDraw.Draw(bg, "RGBA")
+    d = blending_draw(bg)
     for i, (name, img) in enumerate(entries):
         col, row = i % cols, i // cols
         x0 = col * cell_w

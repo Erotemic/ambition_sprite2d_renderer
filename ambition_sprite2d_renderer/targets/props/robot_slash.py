@@ -28,6 +28,7 @@ from typing import List, Sequence, Tuple
 from PIL import Image, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 TARGET_NAME = "robot_slash"
 SHEET_FILES = (
@@ -218,7 +219,7 @@ def _draw_sweep_frame(t: float) -> Image.Image:
     # Broad blurred envelope first. It is intentionally substantial, but the
     # opaque white body still defines the player-readable damage region.
     halo = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    halo_draw = ImageDraw.Draw(halo, "RGBA")
+    halo_draw = blending_draw(halo)
     halo_draw.polygon(
         _scaled(_sweep_polygon(progress, width, width_scale=1.34)),
         fill=(EDGE[0], EDGE[1], EDGE[2], int(128 * amp)),
@@ -230,7 +231,7 @@ def _draw_sweep_frame(t: float) -> Image.Image:
     halo = halo.filter(ImageFilter.GaussianBlur(radius=int(3.4 * SUPER)))
     canvas.alpha_composite(halo)
 
-    draw = ImageDraw.Draw(canvas, "RGBA")
+    draw = blending_draw(canvas)
     draw.polygon(
         _scaled(_sweep_polygon(progress, width, width_scale=1.08)),
         fill=(DEEP[0], DEEP[1], DEEP[2], int(220 * amp)),
@@ -325,7 +326,7 @@ def _draw_poke_frame_raw(t: float) -> Image.Image:
         return canvas.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
 
     halo = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    halo_draw = ImageDraw.Draw(halo, "RGBA")
+    halo_draw = blending_draw(halo)
     halo_draw.polygon(
         _scaled(_poke_polygon(progress, width, 1.28)),
         fill=(EDGE[0], EDGE[1], EDGE[2], int(128 * amp)),
@@ -333,7 +334,7 @@ def _draw_poke_frame_raw(t: float) -> Image.Image:
     halo = halo.filter(ImageFilter.GaussianBlur(radius=int(3.0 * SUPER)))
     canvas.alpha_composite(halo)
 
-    draw = ImageDraw.Draw(canvas, "RGBA")
+    draw = blending_draw(canvas)
     for width_scale, color, alpha in (
         (1.00, DEEP, 220),
         (0.78, BODY, 238),

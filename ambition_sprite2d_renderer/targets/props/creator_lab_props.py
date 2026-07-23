@@ -22,6 +22,7 @@ from typing import Callable, Dict, List, Tuple
 
 import yaml
 from PIL import Image, ImageDraw, ImageFont
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 
@@ -239,7 +240,7 @@ def _glass_overlay(
     outline: RGBA,
     highlight_alpha: int = 85,
 ) -> None:
-    d = ImageDraw.Draw(layer, "RGBA")
+    d = blending_draw(layer)
     x1, y1, x2, y2 = box_xy
     d.rounded_rectangle(
         _box(x1, y1, x2, y2), radius=_s(8), fill=fill, outline=outline, width=_s(1.3)
@@ -263,7 +264,7 @@ def _glass_overlay(
 
 def _draw_genesis_vat(frame_index: int, frame_count: int) -> Image.Image:
     img = _base_canvas()
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     p = _phase(frame_index, frame_count)
     cool = _rgba("5FD2E7")
     cool_soft = _rgba("A5F0FF", 120)
@@ -345,7 +346,7 @@ def _draw_genesis_vat(frame_index: int, frame_count: int) -> Image.Image:
 
 def _draw_specimen_jar(frame_index: int, frame_count: int) -> Image.Image:
     img = _base_canvas()
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     p = _phase(frame_index, frame_count)
     glass = _rgba("A6F4F8", 38)
     outline = _rgba("D4FFFF", 118)
@@ -402,7 +403,7 @@ def _draw_specimen_jar(frame_index: int, frame_count: int) -> Image.Image:
 
 def _draw_neural_console(frame_index: int, frame_count: int) -> Image.Image:
     img = _base_canvas()
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     p = _phase(frame_index, frame_count)
     steel = _rgba("425167")
     steel_dark = _rgba("1E2635")
@@ -445,7 +446,7 @@ def _draw_neural_console(frame_index: int, frame_count: int) -> Image.Image:
 
 def _draw_resonance_coil(frame_index: int, frame_count: int) -> Image.Image:
     img = _base_canvas()
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     p = _phase(frame_index, frame_count)
     steel = _rgba("465066")
     amber = _rgba("F6B55E")
@@ -495,7 +496,7 @@ def _draw_resonance_coil(frame_index: int, frame_count: int) -> Image.Image:
 
 def _draw_power_core(frame_index: int, frame_count: int) -> Image.Image:
     img = _base_canvas()
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     p = _phase(frame_index, frame_count)
     steel = _rgba("47546A")
     violet = _rgba("B88CFF")
@@ -552,7 +553,7 @@ def _draw_power_core(frame_index: int, frame_count: int) -> Image.Image:
 
 def _draw_repair_cradle(frame_index: int, frame_count: int) -> Image.Image:
     img = _base_canvas()
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     p = _phase(frame_index, frame_count)
     steel = _rgba("4A556A")
     orange = _rgba("F4B255")
@@ -607,7 +608,7 @@ def _draw_repair_cradle(frame_index: int, frame_count: int) -> Image.Image:
 
 def _draw_drone_cradle(frame_index: int, frame_count: int) -> Image.Image:
     img = _base_canvas()
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     p = _phase(frame_index, frame_count)
     steel = _rgba("4A556A")
     red = _rgba("E65B5B")
@@ -643,7 +644,7 @@ def _draw_drone_cradle(frame_index: int, frame_count: int) -> Image.Image:
 
 def _draw_portal_calibrator(frame_index: int, frame_count: int) -> Image.Image:
     img = _base_canvas()
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     p = _phase(frame_index, frame_count)
     steel = _rgba("4D586E")
     violet = _rgba("BA8BFF")
@@ -697,7 +698,7 @@ def build_sheet(
     width = LABEL_W + max_frames * FRAME_W
     height = len(props) * FRAME_H
     sheet = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(sheet, "RGBA")
+    draw = blending_draw(sheet)
     font = _font(12)
     small = _font(10)
 
@@ -762,7 +763,7 @@ def build_contact_sheet(
     cell_h = FRAME_H + 28
     rows = math.ceil(len(thumbs) / columns)
     sheet = Image.new("RGBA", (columns * cell_w, rows * cell_h), (18, 20, 28, 255))
-    draw = ImageDraw.Draw(sheet, "RGBA")
+    draw = blending_draw(sheet)
     font = _font(11)
     for idx, (spec, img) in enumerate(zip(props, thumbs)):
         col = idx % columns

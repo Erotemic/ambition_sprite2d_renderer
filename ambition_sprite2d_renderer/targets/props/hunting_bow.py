@@ -28,6 +28,7 @@ from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet, ease_in_out
 from . import _held_prop_common as hp
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 TARGET_NAME = "hunting_bow"
 SHEET_FILES = (
@@ -144,7 +145,7 @@ def _draw_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         raise ValueError(f"unknown animation: {anim}")
     depth, pull = _params(anim, frame_idx, nframes)
     canvas = hp.new_super(FRAME_SIZE)
-    d = ImageDraw.Draw(canvas, "RGBA")
+    d = blending_draw(canvas)
     _draw_string(d, depth, pull)
     _draw_bow(d, depth)
     return hp.finalize(canvas, FRAME_SIZE)

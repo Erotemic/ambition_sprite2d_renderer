@@ -16,6 +16,7 @@ from typing import List, Sequence, Tuple
 from PIL import Image, ImageColor, ImageDraw, ImageFilter, ImageFont
 
 from ...authoring.sheet_build import build_sheet
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -159,7 +160,7 @@ def _make_glyph_chevron(glyph: str, glow_strength: float) -> Image.Image:
     """
     tile_size = 40 * SUPER
     tile = Image.new("RGBA", (tile_size, tile_size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(tile, "RGBA")
+    draw = blending_draw(tile)
     cx = cy = tile_size / 2.0
 
     # Slightly bigger border / housing to give the glyph more visual breathing
@@ -202,7 +203,7 @@ def _make_glyph_chevron(glyph: str, glow_strength: float) -> Image.Image:
     # Render the glyph on a temporary layer, then recentre it by its actual
     # alpha bounds so the symbol center sits close to the icon center.
     core_layer = Image.new("RGBA", tile.size, (0, 0, 0, 0))
-    core_draw = ImageDraw.Draw(core_layer, "RGBA")
+    core_draw = blending_draw(core_layer)
     bbox = font.getbbox(glyph)
     tx = int(round(cx - (bbox[0] + bbox[2]) / 2.0))
     ty = int(round(cy - (bbox[1] + bbox[3]) / 2.0))
@@ -211,7 +212,7 @@ def _make_glyph_chevron(glyph: str, glow_strength: float) -> Image.Image:
     core_layer = _center_layer_to(core_layer, (cx, cy))
 
     glow_layer = Image.new("RGBA", tile.size, (0, 0, 0, 0))
-    glow_draw = ImageDraw.Draw(glow_layer, "RGBA")
+    glow_draw = blending_draw(glow_layer)
     glow_color = _rgba("#ff9f3d", int(245 * glow_strength))
     alpha_bbox = core_layer.getchannel("A").getbbox()
     if alpha_bbox is not None:
@@ -226,7 +227,7 @@ def _make_glyph_chevron(glyph: str, glow_strength: float) -> Image.Image:
     tile.alpha_composite(core_layer)
 
     ember = Image.new("RGBA", tile.size, (0, 0, 0, 0))
-    ember_draw = ImageDraw.Draw(ember, "RGBA")
+    ember_draw = blending_draw(ember)
     dot_r = 0.95 * SUPER
     ember_draw.ellipse(
         (cx - dot_r, cy + 4.7 * SUPER - dot_r, cx + dot_r, cy + 4.7 * SUPER + dot_r),
@@ -242,7 +243,7 @@ def _draw_gate_ring_base(
     img = Image.new(
         "RGBA", (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER), (0, 0, 0, 0)
     )
-    draw = ImageDraw.Draw(img, "RGBA")
+    draw = blending_draw(img)
 
     shadow_bbox = (
         CENTER[0] - 50 * SUPER,
@@ -253,7 +254,7 @@ def _draw_gate_ring_base(
     draw.ellipse(shadow_bbox, fill=(0, 0, 0, 56))
 
     ring = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    rd = ImageDraw.Draw(ring, "RGBA")
+    rd = blending_draw(ring)
 
     rd.ellipse(
         _ring_bbox(OUTER_R), fill=_rgba("#454b57"), outline=_rgba("#1a1e28"), width=12
@@ -321,7 +322,7 @@ def _draw_gate_ring_base(
     img.alpha_composite(ring)
 
     rim = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    rim_draw = ImageDraw.Draw(rim, "RGBA")
+    rim_draw = blending_draw(rim)
     rim_alpha = 78 if idle_mode else 106
     rim_draw.ellipse(
         _ring_bbox(INNER_R + 2.5 * SUPER), outline=_rgba("#ff9d4b", rim_alpha), width=4
@@ -351,7 +352,7 @@ def render_ring_frame(animation: str, frame_index: int, nframes: int) -> Image.I
 
 def _portal_mask(radius: float) -> Image.Image:
     mask = Image.new("L", (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER), 0)
-    md = ImageDraw.Draw(mask)
+    md = blending_draw(mask)
     md.ellipse(_ring_bbox(radius), fill=255)
     return mask
 
@@ -420,7 +421,7 @@ def render_portal_frame(animation: str, frame_index: int, nframes: int) -> Image
         return _downsample(img)
 
     portal = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(portal, "RGBA")
+    draw = blending_draw(portal)
     radius = PORTAL_R * max(0.14, strength)
 
     inner_col = _rgba("#75e9ff", int(110 * strength))
@@ -435,7 +436,7 @@ def render_portal_frame(animation: str, frame_index: int, nframes: int) -> Image
     _draw_star_specks(draw, motion_t, radius, strength)
 
     rim = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    rd = ImageDraw.Draw(rim, "RGBA")
+    rd = blending_draw(rim)
     for i in range(6):
         rr = radius * (0.92 + i * 0.06)
         alpha = int((130 - i * 16) * strength)

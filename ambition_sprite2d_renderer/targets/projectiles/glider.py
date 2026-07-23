@@ -32,6 +32,7 @@ from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ...core.draw import rgba
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Cell = Tuple[int, int]
 
@@ -115,7 +116,7 @@ def _cell_box(col: float, row: float, inset: float, s: float):
 def _draw_phase(phase: FrozenSet[Cell]) -> Image.Image:
     s = float(SUPERSAMPLE)
     img = Image.new("RGBA", (FRAME_W * SUPERSAMPLE, FRAME_H * SUPERSAMPLE), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     dark = rgba(_DARK)
 
     # Live cells: energised squares with a bright core + specular glint.

@@ -50,6 +50,7 @@ from ..core.manifest_ron import record_to_ron, records_to_ron, ron_tuning
 from ..registry.pack_groups import policy_for
 import os
 import time
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 
@@ -328,7 +329,7 @@ def _grid_sheet_rows(target, rendered_rows, fw, fh, label_width, max_dim):
         rows_on_page = min(rows_per_page, len(rendered_rows) - p * rows_per_page)
         img = Image.new("RGBA", (page_w, fh * rows_on_page), (0, 0, 0, 0))
         page_sheets.append(img)
-        page_draws.append(ImageDraw.Draw(img, "RGBA"))
+        page_draws.append(blending_draw(img))
     rows_meta = []
     title_font = font(14)
     detail_font = font(11)
@@ -693,7 +694,7 @@ def render_sheet(source: FrameSource, out_dir: Path):
             preview.alpha_composite(page, (0, preview_y))
             preview_y += page.height
     else:
-        draw_prev = ImageDraw.Draw(preview, "RGBA")
+        draw_prev = blending_draw(preview)
         title_font = font(14)
         detail_font = font(11)
         for row_idx, (anim, nframes, duration_ms, frames_data) in enumerate(

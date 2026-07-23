@@ -28,6 +28,7 @@ from typing import Optional, Tuple
 
 from PIL import Image, ImageColor, ImageDraw, ImageFilter
 from ambition_sprite2d_renderer.core.draw import rgba
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -384,7 +385,7 @@ def draw_blade_layer(
 
     # Outer halo
     glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    gd = ImageDraw.Draw(glow, "RGBA")
+    gd = blending_draw(glow)
     halo_w = BLADE_MID_HALFW * (1.45 + 0.20 * pulse)
     halo_pts = _leaf_polygon(halo_w, blade_y0 - 2.0, blade_y1 + 2.0)
     gd.polygon(
@@ -398,7 +399,7 @@ def draw_blade_layer(
     rim_w = BLADE_MID_HALFW * (1.06 + 0.04 * pulse)
     rim_pts = _leaf_polygon(rim_w, blade_y0 + 0.5, blade_y1 + 0.5)
     rim_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    rd = ImageDraw.Draw(rim_layer, "RGBA")
+    rd = blending_draw(rim_layer)
     rd.polygon(
         [(cx + s(x), cy + s(y)) for (x, y) in rim_pts],
         fill=with_alpha(BLADE_RIM, int(220 * pulse)),
@@ -409,7 +410,7 @@ def draw_blade_layer(
     body_w = BLADE_MID_HALFW
     body_pts = _leaf_polygon(body_w, blade_y0, blade_y1)
     body_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    bd = ImageDraw.Draw(body_layer, "RGBA")
+    bd = blending_draw(body_layer)
     bd.polygon(
         [(cx + s(x), cy + s(y)) for (x, y) in body_pts],
         fill=BLADE_PRIMARY,
@@ -419,7 +420,7 @@ def draw_blade_layer(
     # Mid tone (slight darker gradient toward edges).
     mid_pts = _leaf_polygon(body_w * 0.90, blade_y0 + 0.5, blade_y1 - 0.5)
     mid_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    md = ImageDraw.Draw(mid_layer, "RGBA")
+    md = blending_draw(mid_layer)
     md.polygon(
         [(cx + s(x), cy + s(y)) for (x, y) in mid_pts],
         fill=BLADE_MID,
@@ -432,7 +433,7 @@ def draw_blade_layer(
     # Hot inner core leaf.
     inner_pts = _leaf_polygon(body_w * 0.55, blade_y0 + 2.0, blade_y1 - 1.0)
     inner_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    id_ = ImageDraw.Draw(inner_layer, "RGBA")
+    id_ = blending_draw(inner_layer)
     id_.polygon(
         [(cx + s(x), cy + s(y)) for (x, y) in inner_pts],
         fill=BLADE_HOT,
@@ -445,7 +446,7 @@ def draw_blade_layer(
     # Bright spine — thin near-white line down the middle.
     spine_pts = _leaf_polygon(body_w * 0.18, blade_y0 + 3.0, blade_y1 - 2.0)
     spine_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    sd_ = ImageDraw.Draw(spine_layer, "RGBA")
+    sd_ = blending_draw(spine_layer)
     sd_.polygon(
         [(cx + s(x), cy + s(y)) for (x, y) in spine_pts],
         fill=BLADE_CORE,
@@ -459,7 +460,7 @@ def draw_blade_layer(
     # exercised by the default animations).
     if slash_streak > 0.01:
         streak = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        sd = ImageDraw.Draw(streak, "RGBA")
+        sd = blending_draw(streak)
         for i in range(8):
             t = i / 8.0
             y0_ = blade_y0 + blade_len * (0.10 + 0.78 * t)
@@ -485,7 +486,7 @@ def draw_blade_layer(
         # in-range region.
         dot_y = blade_y0 + blade_len * pulse_position
         pulse_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        pd = ImageDraw.Draw(pulse_layer, "RGBA")
+        pd = blending_draw(pulse_layer)
         # Trail: short capsule extending BACK toward the hilt.
         trail_len = blade_len * 0.18
         trail_y0 = dot_y - trail_len
@@ -532,7 +533,7 @@ def draw_blade_layer(
     # `tip_flare > 0`.
     if tip_flare > 0.001:
         tip_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        td = ImageDraw.Draw(tip_layer, "RGBA")
+        td = blending_draw(tip_layer)
         tip_y = cy + s(blade_y1)
         for r, a in [(5.5, 70), (3.0, 145), (1.6, 245)]:
             td.ellipse(
@@ -561,7 +562,7 @@ def draw_hilt_layer(
     we skip it so the blade looks like just-blade-plus-hilt.
     """
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer, "RGBA")
+    d = blending_draw(layer)
     cx, cy = W / 2, H / 2
 
     # --- Pommel cap ---
@@ -775,7 +776,7 @@ def draw_hilt_layer(
     # projectile, which omits the receiver).
     em_y, _ = blade_y_range(with_receiver)
     emitter_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ed = ImageDraw.Draw(emitter_layer, "RGBA")
+    ed = blending_draw(emitter_layer)
     em_half = BLADE_MID_HALFW * 0.65
     # Bright horizontal band glow at the emission line.
     for off, alpha in (
@@ -817,7 +818,7 @@ def draw_gun_cluster_layer(*, charge: float = 0.0, flash: float = 0.0) -> Image.
     blade base for extra silhouette interest.
     """
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer, "RGBA")
+    d = blending_draw(layer)
     cx, cy = W / 2, H / 2
 
     # --- Mounting bracket from the receiver out to the cluster -------------
@@ -925,7 +926,7 @@ def draw_gun_cluster_layer(*, charge: float = 0.0, flash: float = 0.0) -> Image.
         # Charge glow.
         if charge > 0.01:
             glow_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-            gd_ = ImageDraw.Draw(glow_layer, "RGBA")
+            gd_ = blending_draw(glow_layer)
             for r, a in ((4.0, 60), (2.4, 130), (1.3, 215)):
                 gd_.ellipse(
                     (
@@ -943,7 +944,7 @@ def draw_gun_cluster_layer(*, charge: float = 0.0, flash: float = 0.0) -> Image.
         # Muzzle flash.
         if flash > 0.01:
             flash_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-            fd = ImageDraw.Draw(flash_layer, "RGBA")
+            fd = blending_draw(flash_layer)
             fcx = cx + s(bx)
             fcy = cy + s(b_y1 + 1.4)
             spikes = []

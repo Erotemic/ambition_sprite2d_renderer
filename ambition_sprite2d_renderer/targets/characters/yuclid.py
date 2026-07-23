@@ -37,6 +37,7 @@ from ...authoring.portrait import (
     render_framed_portrait,
     write_portrait_sheet,
 )
+from ambition_sprite2d_renderer.core.draw import blending_draw
 from ...authoring.sheet_build import build_sheet, write_canonical
 
 RGBA = Tuple[int, int, int, int]
@@ -1002,7 +1003,7 @@ def _draw_effects_front(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
 def _render_native_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
     pose = _pose(animation, frame_idx, frame_count)
     image = Image.new("RGBA", (FRAME_W * SUPER, FRAME_H * SUPER), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image, "RGBA")
+    draw = blending_draw(image)
 
     _draw_effects_back(draw, pose)
     _draw_leg(draw, pose.far_hip, pose.far_knee, pose.far_ankle, far=True, pose=pose)

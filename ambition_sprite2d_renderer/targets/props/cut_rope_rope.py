@@ -14,6 +14,7 @@ from typing import List, Tuple
 from PIL import Image, ImageColor, ImageDraw
 
 from ...authoring.sheet_build import build_sheet, write_canonical
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 
@@ -93,7 +94,7 @@ def _draw_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     if anim != "idle":
         raise ValueError(f"unknown animation: {anim}")
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img, "RGBA")
+    draw = blending_draw(img)
 
     cx = 24.0
 

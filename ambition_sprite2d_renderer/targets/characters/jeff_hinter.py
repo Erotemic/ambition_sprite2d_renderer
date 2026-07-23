@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Iterable, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw, ImageFont
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -631,7 +632,7 @@ class JeffHinterRenderer:
             (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER),
             (0, 0, 0, 0),
         )
-        draw = ImageDraw.Draw(image, "RGBA")
+        draw = blending_draw(image)
         pose = Pose(animation, frame_idx, nframes)
 
         pivot = (73.0 + pose.body_x, 112.0 + pose.body_y)
@@ -655,7 +656,7 @@ class JeffHinterRenderer:
             # Armor therefore lives on a temporary layer so partial convergence
             # tints the clothing rather than punching translucent holes through it.
             overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
-            overlay_draw = ImageDraw.Draw(overlay, "RGBA")
+            overlay_draw = blending_draw(overlay)
             paint(overlay_draw)
             image.alpha_composite(overlay)
 
@@ -663,12 +664,12 @@ class JeffHinterRenderer:
         self._draw_legs(draw, pose, T)
         if pose.armor_strength > 0.01:
             composite_armor(lambda layer: self._draw_leg_armor(layer, pose, T))
-            draw = ImageDraw.Draw(image, "RGBA")
+            draw = blending_draw(image)
 
         self._draw_torso(draw, pose, T)
         if pose.armor_strength > 0.01:
             composite_armor(lambda layer: self._draw_torso_armor(layer, pose, T))
-            draw = ImageDraw.Draw(image, "RGBA")
+            draw = blending_draw(image)
 
         # Both arms are deliberately in front of the torso.
         far_shoulder = T(pose.far_shoulder)
@@ -681,7 +682,7 @@ class JeffHinterRenderer:
                     layer, pose, far_shoulder, far_elbow, far_hand, far=True
                 )
             )
-            draw = ImageDraw.Draw(image, "RGBA")
+            draw = blending_draw(image)
 
         near_shoulder = T(pose.near_shoulder)
         near_elbow = T(pose.near_elbow)
@@ -695,7 +696,7 @@ class JeffHinterRenderer:
                 self._draw_armor_collar(layer, pose, T)
 
             composite_armor(paint_near_armor)
-            draw = ImageDraw.Draw(image, "RGBA")
+            draw = blending_draw(image)
 
         head_center = T((72.0 + pose.head_x, 48.0 + pose.head_y))
         self._draw_head(image, draw, head_center, pose)
@@ -1010,11 +1011,11 @@ class JeffHinterRenderer:
         far_center = R((cx - 2.3, cy - 4.7))
         near_center = R((cx + 7.0, cy - 4.5))
         overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
-        od = ImageDraw.Draw(overlay, "RGBA")
+        od = blending_draw(overlay)
         _rounded(od, (far_center[0] - 4.6, far_center[1] - 3.8, far_center[0] + 4.6, far_center[1] + 3.8), 1.6, GLASS_TINT, None, 0)
         _rounded(od, (near_center[0] - 5.3, near_center[1] - 4.2, near_center[0] + 5.3, near_center[1] + 4.2), 1.8, GLASS_TINT, None, 0)
         image.alpha_composite(overlay)
-        draw = ImageDraw.Draw(image, "RGBA")
+        draw = blending_draw(image)
         _rounded(draw, (far_center[0] - 4.6, far_center[1] - 3.8, far_center[0] + 4.6, far_center[1] + 3.8), 1.6, None, GLASS_FRAME, 0.95)
         _rounded(draw, (near_center[0] - 5.3, near_center[1] - 4.2, near_center[0] + 5.3, near_center[1] + 4.2), 1.8, None, GLASS_FRAME, 1.05)
         _line(draw, [R((cx + 2.3, cy - 4.6)), R((cx + 2.7, cy - 4.6))], GLASS_FRAME, 0.8)
@@ -1302,7 +1303,7 @@ class JeffHinterRenderer:
         if strength <= 0.0:
             return
         overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
-        draw = ImageDraw.Draw(overlay, "RGBA")
+        draw = blending_draw(overlay)
 
         # The word starts near the mouth and expands sharply to the right.  It is
         # intentionally diegetic sprite FX, not dialogue UI.

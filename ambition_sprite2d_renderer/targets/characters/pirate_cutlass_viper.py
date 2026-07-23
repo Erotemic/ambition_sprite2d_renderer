@@ -20,6 +20,7 @@ from typing import List, Sequence, Tuple
 from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 ACTOR_METADATA = {
     "actor": {
@@ -722,7 +723,7 @@ def _render_front(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     img = Image.new(
         "RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0)
     )
-    draw = ImageDraw.Draw(img, "RGBA")
+    draw = blending_draw(img)
     pose = FrontPose(anim, frame_idx, nframes)
     root = (
         WORK_FRAME_SIZE[0] * 0.47 + pose.root_x + pose.dead_t * 8.0,
@@ -785,7 +786,7 @@ def _render_side(
     img = Image.new(
         "RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0)
     )
-    draw = ImageDraw.Draw(img, "RGBA")
+    draw = blending_draw(img)
     pose = SidePose(turn_side, openness, frame_idx, nframes, walkish=walkish)
     side = pose.side
     root = (

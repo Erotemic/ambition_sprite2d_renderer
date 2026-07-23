@@ -36,6 +36,7 @@ from ...authoring.skeleton import (
     rounded_polygon,
     two_bone_ik,
 )
+from ambition_sprite2d_renderer.core.draw import blending_draw
 from ...authoring.sheet_build import build_sheet, write_canonical
 
 Color = Tuple[int, int, int, int]
@@ -472,10 +473,10 @@ def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     actor = Image.new("RGBA", img.size, (0, 0, 0, 0))
     # Opaque parts draw directly; translucent details inside the painters
     # go through composite_polygon (scratch layer + alpha_composite).
-    _RIG.draw(actor, ImageDraw.Draw(actor), world, SS, params)
+    _RIG.draw(actor, blending_draw(actor), world, SS, params)
     if animation == "slash":
         fx = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        _draw_slash_fx(ImageDraw.Draw(fx), t, world, params)
+        _draw_slash_fx(blending_draw(fx), t, world, params)
         # During the windup the cocked blade sits behind the body so it
         # never crosses the face; from the sweep onward it leads the swing.
         layers = (fx, actor) if t < 0.40 else (actor, fx)

@@ -30,6 +30,7 @@ from ._sanic_support_prop_common import (
     soft_shadow,
     star,
 )
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 TARGET_NAME = "sanic_ring_prop"
 SHEET_FILES = tuple(f"{TARGET_NAME}{suffix}" for suffix in SHEET_FILES_SUFFIXES)
@@ -99,7 +100,7 @@ def _ring_geometry(anim: str, frame_idx: int, nframes: int) -> dict[str, float]:
 
 
 def _draw_ring_core(img: Image.Image, spec: dict[str, float]) -> None:
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     a = spec["alpha"]
     cx = spec["cx"]
     cy = spec["cy"]

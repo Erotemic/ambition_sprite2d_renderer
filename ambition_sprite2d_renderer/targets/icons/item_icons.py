@@ -1060,7 +1060,7 @@ def render_icon(
 ) -> Image.Image:
     s = max(1, int(supersample))
     img = Image.new("RGBA", (size[0] * s, size[1] * s), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
+    d = blending_draw(img)
     accent = rgba(spec.accent)
     _base(d, float(s), accent)
     DRAWERS[spec.drawer](d, float(s), accent)
@@ -1077,7 +1077,7 @@ def render_item_object(
     alpha bbox and float the item)."""
     s = max(1, int(supersample))
     img = Image.new("RGBA", (size[0] * s, size[1] * s), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
+    d = blending_draw(img)
     DRAWERS[spec.drawer](d, float(s), rgba(spec.accent))
     return img.resize(size, RESAMPLING.LANCZOS)
 
@@ -1147,6 +1147,7 @@ def write_gauntlet_props(
 # wrapper here so the runtime's existing import path continues to work.
 
 from ..props.shrine import write_shrine_prop
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 
 def draw_mark_beacon(d: ImageDraw.ImageDraw, s: float) -> None:
@@ -1206,7 +1207,7 @@ def render_mark_beacon(
 ) -> Image.Image:
     s = max(1, int(supersample))
     img = Image.new("RGBA", (size[0] * s, size[1] * s), (0, 0, 0, 0))
-    draw_mark_beacon(ImageDraw.Draw(img), float(s))
+    draw_mark_beacon(blending_draw(img), float(s))
     return img.resize(size, RESAMPLING.LANCZOS)
 
 

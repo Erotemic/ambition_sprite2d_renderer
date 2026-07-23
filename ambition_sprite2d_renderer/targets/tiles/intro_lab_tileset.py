@@ -15,6 +15,7 @@ from typing import Callable, Dict, Iterable, List, Tuple
 import math
 import yaml
 from PIL import Image, ImageColor, ImageDraw, ImageFont
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 
@@ -2028,7 +2029,7 @@ def _rows() -> int:
 
 def render_tile(tile: TileSpec) -> Image.Image:
     img = Image.new("RGBA", (CANVAS_TILE, CANVAS_TILE), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img, "RGBA")
+    draw = blending_draw(img)
     tile.draw(draw)
     return _downsample(img)
 
@@ -2038,7 +2039,7 @@ def _write_preview(tile_images: Dict[str, Image.Image], out_path: Path) -> None:
     preview_w = COLS * (OUTPUT_TILE + PREVIEW_PAD) + PREVIEW_PAD
     preview_h = rows * (OUTPUT_TILE + 18 + PREVIEW_PAD) + PREVIEW_PAD
     preview = Image.new("RGBA", (preview_w, preview_h), _rgba("#1f2028"))
-    d = ImageDraw.Draw(preview, "RGBA")
+    d = blending_draw(preview)
     font = ImageFont.load_default()
     for idx, tile in enumerate(TILES):
         col = idx % COLS

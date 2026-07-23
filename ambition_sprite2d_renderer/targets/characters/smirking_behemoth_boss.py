@@ -24,6 +24,7 @@ from typing import Dict, List, Tuple
 from PIL import Image, ImageColor, ImageDraw
 
 from ...authoring.sheet_build import build_sheet, write_canonical
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -152,7 +153,7 @@ def _overlay_draw(img: Image.Image) -> tuple[Image.Image, ImageDraw.ImageDraw]:
     with `alpha_composite` instead.
     """
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    return layer, ImageDraw.Draw(layer, "RGBA")
+    return layer, blending_draw(layer)
 
 
 def _composite_ellipse(
@@ -301,7 +302,7 @@ def _erase_ellipse(
 ) -> None:
     """Punch a transparent elliptical chip out of the supersampled frame."""
     mask = Image.new("L", img.size, 0)
-    mask_draw = ImageDraw.Draw(mask)
+    mask_draw = blending_draw(mask)
     mask_draw.ellipse(_box(x1, y1, x2, y2), fill=255)
     img.paste((0, 0, 0, 0), (0, 0), mask)
 
@@ -309,7 +310,7 @@ def _erase_ellipse(
 def _erase_polygon(img: Image.Image, points: List[Point]) -> None:
     """Punch a transparent polygonal chip out of the supersampled frame."""
     mask = Image.new("L", img.size, 0)
-    mask_draw = ImageDraw.Draw(mask)
+    mask_draw = blending_draw(mask)
     mask_draw.polygon([_pt(x, y) for x, y in points], fill=255)
     img.paste((0, 0, 0, 0), (0, 0), mask)
 
@@ -845,7 +846,7 @@ def _draw_dust(draw: ImageDraw.ImageDraw, g: Dict[str, float]) -> None:
 
 def _draw_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img, "RGBA")
+    draw = blending_draw(img)
     g = _body_geometry(anim, frame_idx, nframes)
 
     _draw_body(draw, g)
@@ -854,7 +855,7 @@ def _draw_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     if anim == "death":
         _erode_death_body(img, g)
         _draw_death_explosions(img, g)
-        draw = ImageDraw.Draw(img, "RGBA")
+        draw = blending_draw(img)
         # Death turns front-facing: two separated cracked eyes plus central maw.
         _draw_eye(
             draw,

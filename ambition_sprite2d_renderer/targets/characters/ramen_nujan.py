@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import Iterable, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -1011,7 +1012,7 @@ def _bent_tube(
 
 def _lens_tint(image: Image.Image, center: Point, rx: float, ry: float) -> None:
     overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay, "RGBA")
+    draw = blending_draw(overlay)
     _ellipse(draw, center, rx, ry, GLASS_TINT, outline=None, width=0)
     image.alpha_composite(overlay)
 
@@ -1138,7 +1139,7 @@ class RamenNujanRenderer:
 
     def render_frame(self, animation: str, frame_idx: int, nframes: int) -> Image.Image:
         image = Image.new("RGBA", (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(image, "RGBA")
+        draw = blending_draw(image)
         pose = Pose(animation, frame_idx, nframes)
         self._reproportion_pose(pose, animation, frame_idx, nframes)
 

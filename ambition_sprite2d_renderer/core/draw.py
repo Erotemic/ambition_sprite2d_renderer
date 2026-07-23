@@ -95,6 +95,88 @@ def overlay_draw(img: Image.Image):
     return layer, ImageDraw.Draw(layer, "RGBA")
 
 
+def _ink_alpha(ink):
+    """Alpha of a Pillow ink: None for absent, else 0..255."""
+    if ink is None:
+        return None
+    if isinstance(ink, (tuple, list)) and len(ink) >= 4:
+        return int(ink[3])
+    return 255
+
+
+class _BlendingDraw:
+    """An ImageDraw twin that composites translucent inks instead of clobbering.
+
+    The systemic fix for the alpha-clobber class (the "gnu_ton rule"): every
+    ink-bearing op checks its fill/outline alphas —
+
+    * all opaque (or absent) → drawn directly (byte-identical fast path);
+    * any alpha == 0        → drawn directly (deliberate eraser semantics);
+    * any 0 < alpha < 255   → drawn on a scratch layer and alpha_composited,
+      so translucent shapes BLEND over existing content instead of replacing
+      the destination pixels (including alpha) the way raw ImageDraw does.
+
+    Blending onto a fully transparent ground equals clobbering it, so swapping
+    ``ImageDraw.Draw(img)`` for :func:`blending_draw` changes output *only*
+    where the clobber bug was actually corrupting pixels.
+
+    Non-ink or unlisted methods (``text``, ``textbbox``, ...) pass through to
+    the real draw unchanged.
+    """
+
+    _INK_OPS = {
+        "polygon": ("fill", "outline"),
+        "line": ("fill",),
+        "ellipse": ("fill", "outline"),
+        "rectangle": ("fill", "outline"),
+        "rounded_rectangle": ("fill", "outline"),
+        "arc": ("fill",),
+        "chord": ("fill", "outline"),
+        "pieslice": ("fill", "outline"),
+        "point": ("fill",),
+    }
+
+    def __init__(self, img: Image.Image) -> None:
+        self._img = img
+        self._draw = ImageDraw.Draw(img, "RGBA")
+
+    # Ops whose SECOND positional argument is the fill ink.
+    _POS_FILL = {"polygon", "line", "ellipse", "rectangle", "point"}
+
+    def _op(self, name, args, kwargs):
+        sig_inks = self._INK_OPS[name]
+        alphas = []
+        for key in sig_inks:
+            a = _ink_alpha(kwargs.get(key))
+            if a is not None:
+                alphas.append(a)
+        if len(args) > 1 and name in self._POS_FILL:
+            a = _ink_alpha(args[1])
+            if a is not None:
+                alphas.append(a)
+        if any(0 < a < 255 for a in alphas):
+            layer, d = overlay_draw(self._img)
+            getattr(d, name)(*args, **kwargs)
+            self._img.alpha_composite(layer)
+        else:
+            getattr(self._draw, name)(*args, **kwargs)
+
+    def __getattr__(self, name):
+        if name in self._INK_OPS:
+            def call(*args, **kwargs):
+                # Normalize positional inks into kwargs so alpha inspection
+                # sees them (Pillow's ink params are all keyword-friendly).
+                return self._op(name, args, kwargs)
+
+            return call
+        return getattr(self._draw, name)
+
+
+def blending_draw(img: Image.Image) -> _BlendingDraw:
+    """The canonical way to get a draw object for RGBA *content* images."""
+    return _BlendingDraw(img)
+
+
 def composite_polygon(img, pts, fill, outline=None, width=0):
     """Translucent polygon via real alpha compositing (see :func:`overlay_draw`)."""
     layer, d = overlay_draw(img)

@@ -25,6 +25,7 @@ from ...authoring.common_draw import RESAMPLING, draw_capsule, draw_rotated_elli
 from ...authoring.generator import CharacterGenerator
 from ...authoring.rig import add, clamp, ease_in_out_sine, ease_out_cubic, lerp, smoothstep, vec
 from ...registry import CharacterJob
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -464,7 +465,7 @@ class SideGoblinGenerator(CharacterGenerator):
         draw_rotated_ellipse(img, (center[0] + 2 * S, center[1] + 2 * S), (spec.body_w * 0.58 * S, spec.body_h * 0.60 * S), angle, pal["belly"], None, 0)
         # Opaque cloth silhouette over body.
         layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        d = ImageDraw.Draw(layer)
+        d = blending_draw(layer)
         x, y = center
         cloth = [(x - 8 * S, y + 7 * S), (x + 8 * S, y + 7 * S), (x + 11 * S, y + 15 * S), (x - 6 * S, y + 13 * S)]
         d.polygon(cloth, fill=pal["cloth"], outline=outline)
@@ -474,7 +475,7 @@ class SideGoblinGenerator(CharacterGenerator):
     def _draw_rigid_head(self, img: Image.Image, center: Point, spec: GoblinSpec, pal: Dict[str, Color], S: float, angle: float, blink: bool, squint: float, dead: bool) -> Point:
         pad = int(math.ceil(54 * S))
         layer = Image.new("RGBA", (pad * 2, pad * 2), (0, 0, 0, 0))
-        d = ImageDraw.Draw(layer)
+        d = blending_draw(layer)
         cx, cy = float(pad), float(pad)
         outline = pal["outline"]
         ow = 1.8 * S
@@ -497,7 +498,7 @@ class SideGoblinGenerator(CharacterGenerator):
         d.ellipse(snout_inner, fill=pal["skin_shadow"])
         # Semi-transparent highlight composited over opaque base, preserving alpha.
         detail = Image.new("RGBA", layer.size, (0, 0, 0, 0))
-        hd = ImageDraw.Draw(detail)
+        hd = blending_draw(detail)
         hd.ellipse((cx - 8 * S, cy - 10 * S, cx + 12 * S, cy + 1 * S), fill=with_alpha(pal["skin_top"], 125))
         layer.alpha_composite(detail)
         # Eye.
@@ -584,7 +585,7 @@ class SideGoblinGenerator(CharacterGenerator):
             d.line([handle, tip], fill=pal["metal"], width=max(1, int(1.7 * S)))
 
     def _draw_blink_out_fx(self, img: Image.Image, root_x: float, ground_y: float, S: float, frame_index: int, frame_count: int, pal: Dict[str, Color]) -> None:
-        d = ImageDraw.Draw(img)
+        d = blending_draw(img)
         t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
         charge = smoothstep(clamp(t / 0.56, 0.0, 1.0))
         burst = smoothstep(clamp((t - 0.32) / 0.48, 0.0, 1.0))
@@ -620,7 +621,7 @@ class SideGoblinGenerator(CharacterGenerator):
             d.ellipse((source_x - 18 * S, ground_y - 7 * S, source_x + 15 * S, ground_y + 1 * S), outline=with_alpha(pal["cloth"], ripple_alpha), width=max(1, int(1.0 * S)))
 
     def _draw_blink_in_fx(self, img: Image.Image, root_x: float, ground_y: float, S: float, frame_index: int, frame_count: int, pal: Dict[str, Color]) -> None:
-        d = ImageDraw.Draw(img)
+        d = blending_draw(img)
         t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
         appear = smoothstep(clamp(t / 0.60, 0.0, 1.0))
         settle = ease_out_cubic(appear)
@@ -745,7 +746,7 @@ class SideGoblinGenerator(CharacterGenerator):
         p = self.pose_for_animation(animation, frame_index, frame_count)
         ground_y = (101.0 + p.root_y) * S
         root_x = (60.0 + p.root_x) * S
-        d = ImageDraw.Draw(img)
+        d = blending_draw(img)
         # No baked ground drop shadow; the scene renderer owns contact shadows.
 
         if animation == "blink_out":
@@ -759,7 +760,7 @@ class SideGoblinGenerator(CharacterGenerator):
                 d.line([(14 * S, y), ((40 - i * 3) * S, y - 2 * S)], fill=(150, 212, 105, 90), width=max(1, int(1.5 * S)))
 
         character_img = img if animation not in {"blink_out", "blink_in"} else Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        character_draw = ImageDraw.Draw(character_img)
+        character_draw = blending_draw(character_img)
 
         collapse = p.collapse
         body_center = (root_x + lerp(0, 12 * S, collapse), ground_y - lerp(37 * S, 11 * S, collapse) + p.body_bob * S)

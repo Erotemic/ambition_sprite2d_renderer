@@ -15,6 +15,7 @@ from typing import List, Tuple
 from PIL import Image, ImageColor, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 ACTOR_METADATA = {
     "actor": {
@@ -126,7 +127,7 @@ def _downsample(img: Image.Image) -> Image.Image:
 
 def _glow_ellipse(base: Image.Image, bbox, fill: RGBA, blur: float = 4.0) -> None:
     layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(layer, "RGBA")
+    draw = blending_draw(layer)
     draw.ellipse(bbox, fill=fill)
     layer = layer.filter(ImageFilter.GaussianBlur(radius=blur * SUPER / 2.0))
     base.alpha_composite(layer)
@@ -134,7 +135,7 @@ def _glow_ellipse(base: Image.Image, bbox, fill: RGBA, blur: float = 4.0) -> Non
 
 def _glow_polygon(base: Image.Image, pts, fill: RGBA, blur: float = 4.0) -> None:
     layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(layer, "RGBA")
+    draw = blending_draw(layer)
     draw.polygon([_pt(x, y) for x, y in pts], fill=fill)
     layer = layer.filter(ImageFilter.GaussianBlur(radius=blur * SUPER / 2.0))
     base.alpha_composite(layer)
@@ -142,7 +143,7 @@ def _glow_polygon(base: Image.Image, pts, fill: RGBA, blur: float = 4.0) -> None
 
 def _draw_creator(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img, "RGBA")
+    draw = blending_draw(img)
 
     t = frame_idx / max(1, nframes)
     cyc = math.tau * t
@@ -384,7 +385,7 @@ def _draw_creator(anim: str, frame_idx: int, nframes: int) -> Image.Image:
 
     # Halo frame behind the head.
     halo = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    hd = ImageDraw.Draw(halo, "RGBA")
+    hd = blending_draw(halo)
     halo_cx = 81.0
     halo_cy = head_y + 10.0
     outer_r = 23.0
@@ -474,7 +475,7 @@ def _draw_creator(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     if anim in {"gesture", "speak"}:
         particle_amp = 0.55 if anim == "gesture" else 0.35
         p_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        pd = ImageDraw.Draw(p_layer, "RGBA")
+        pd = blending_draw(p_layer)
         for i in range(5):
             ang = cyc * 0.8 + i * 1.18
             px = l2[0] + math.cos(ang) * (9.0 + i * 1.4)

@@ -4,6 +4,7 @@ import math
 from typing import Iterable, Tuple
 
 from PIL import Image, ImageDraw
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Point = Tuple[float, float]
 Color = Tuple[int, int, int, int]
@@ -57,7 +58,7 @@ def draw_rotated_rounded_rect(
     )
     pad = int(max(w, h) * 0.35 + abs(outline_w) + 4)
     layer = Image.new("RGBA", (w + pad * 2, h + pad * 2), (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer)
+    d = blending_draw(layer)
     box = (
         pad + outline_w,
         pad + outline_w,
@@ -94,7 +95,7 @@ def draw_rotated_ellipse(
     )
     pad = int(max(w, h) * 0.35 + abs(outline_w) + 4)
     layer = Image.new("RGBA", (w + pad * 2, h + pad * 2), (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer)
+    d = blending_draw(layer)
     box = (
         pad + outline_w,
         pad + outline_w,

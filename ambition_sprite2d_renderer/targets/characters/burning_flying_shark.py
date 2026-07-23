@@ -15,6 +15,7 @@ from typing import List, Tuple
 from PIL import Image, ImageColor, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -150,7 +151,7 @@ def _draw_glow(
     base: Image.Image, points: list[Point], color: RGBA, blur: float = 4.0
 ) -> None:
     layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(layer, "RGBA")
+    draw = blending_draw(layer)
     draw.polygon([_pt(x, y) for x, y in points], fill=color)
     layer = layer.filter(ImageFilter.GaussianBlur(radius=blur * SUPER / 2.0))
     base.alpha_composite(layer)
@@ -206,7 +207,7 @@ def _draw_flame_plume(
     ]
     _draw_glow(base, outer, _rgba("#ff621d", 120), blur=5.0 * scale)
     _draw_glow(base, mid, _rgba("#ff9d2f", 150), blur=3.2 * scale)
-    draw = ImageDraw.Draw(base, "RGBA")
+    draw = blending_draw(base)
     draw.polygon([_pt(x, y) for x, y in outer], fill=_rgba("#ff7a22", 170))
     draw.polygon([_pt(x, y) for x, y in mid], fill=_rgba("#ffb142", 195))
     draw.polygon([_pt(x, y) for x, y in inner], fill=_rgba("#fff3b0", 215))
@@ -214,7 +215,7 @@ def _draw_flame_plume(
 
 def _draw_shark(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img, "RGBA")
+    draw = blending_draw(img)
 
     t = frame_idx / max(1, nframes)
     cyc = math.tau * t
@@ -358,7 +359,7 @@ def _draw_shark(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         fill=_rgba("#1c0b08"),
     )
     eye_glow = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    eg = ImageDraw.Draw(eye_glow, "RGBA")
+    eg = blending_draw(eye_glow)
     eg.ellipse(
         _box(120.4, cy - 6.6 + nose_drop * 0.35, 124.8, cy - 2.6 + nose_drop * 0.35),
         fill=_rgba("#ff8b29", 220),
@@ -438,7 +439,7 @@ def _draw_shark(anim: str, frame_idx: int, nframes: int) -> Image.Image:
 
     # Ember specks.
     ember = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    ed = ImageDraw.Draw(ember, "RGBA")
+    ed = blending_draw(ember)
     for i in range(12):
         ex = 58.0 - i * 5.8 + math.sin(cyc + i) * 1.7
         ey = cy - 22.0 + (i % 5) * 7.0 + math.cos(cyc * 1.8 + i * 0.7) * 1.6

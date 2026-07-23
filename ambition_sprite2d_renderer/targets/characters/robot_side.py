@@ -31,6 +31,7 @@ from ...authoring.animation_vocab import (
     DEFAULT_EXTENDED_TIMINGS,
     DEFAULT_TRAVERSAL_POLISH_TIMINGS,
 )
+from ambition_sprite2d_renderer.core.draw import blending_draw
 from ...authoring.rig import add, clamp, ease_in_out_sine, ease_out_cubic, lerp, smoothstep, vec
 
 Color = Tuple[int, int, int, int]
@@ -1544,11 +1545,11 @@ class SideRobotGenerator(CharacterGenerator):
         draw_rotated_rounded_rect(img, foot_center, foot_size, foot_angle, 3.0 * pixel_scale, tint, outline_color, outline * 0.7)
 
     def _draw_shadow(self, img: Image.Image, ground_y: float, x: float, width: float, alpha: int) -> None:
-        d = ImageDraw.Draw(img)
+        d = blending_draw(img)
         d.ellipse((x - width / 2, ground_y - 5, x + width / 2, ground_y + 6), fill=(0, 0, 0, alpha))
 
     def _draw_blink_out_fx(self, img: Image.Image, root_x: float, ground_y: float, S: float, frame_index: int, frame_count: int) -> None:
-        d = ImageDraw.Draw(img)
+        d = blending_draw(img)
         t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
         charge = smoothstep(clamp(t / 0.56, 0.0, 1.0))
         burst = smoothstep(clamp((t - 0.30) / 0.50, 0.0, 1.0))
@@ -1588,7 +1589,7 @@ class SideRobotGenerator(CharacterGenerator):
             d.ellipse((source_x - 18 * S, ground_y - 7 * S, source_x + 16 * S, ground_y + 1 * S), outline=_with_alpha(accent, ripple_alpha), width=max(1, int(1.0 * S)))
 
     def _draw_blink_in_fx(self, img: Image.Image, root_x: float, ground_y: float, S: float, frame_index: int, frame_count: int) -> None:
-        d = ImageDraw.Draw(img)
+        d = blending_draw(img)
         t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
         appear = smoothstep(clamp(t / 0.60, 0.0, 1.0))
         settle = ease_out_cubic(appear)
@@ -1664,7 +1665,7 @@ class SideRobotGenerator(CharacterGenerator):
         # preserves the older in-repo rigid 2.5D-head idea while remaining pure 2D.
         pad = int(math.ceil(48 * S))
         layer = Image.new("RGBA", (pad * 2, pad * 2), (0, 0, 0, 0))
-        d = ImageDraw.Draw(layer)
+        d = blending_draw(layer)
         cx, cy = float(pad), float(pad)
         outline = max(1, int(round(1.8 * S)))
         head_w = spec.head_w * S
@@ -1687,7 +1688,7 @@ class SideRobotGenerator(CharacterGenerator):
         # the layer replaces the destination alpha and leaves the mouth/shadow
         # area partially transparent after rotation/compositing.
         detail = Image.new("RGBA", layer.size, (0, 0, 0, 0))
-        hd = ImageDraw.Draw(detail)
+        hd = blending_draw(detail)
         hd.rounded_rectangle((inner[0] + 4 * S, inner[1] + 3 * S, inner[2] - 5 * S, cy - 1 * S), radius=7 * S, fill=_with_alpha((255, 255, 255, 255), 205))
         hd.rounded_rectangle((inner[0] + 8 * S, cy + 1 * S, inner[2] - 2 * S, inner[3] - 3 * S), radius=7 * S, fill=_with_alpha(pal["shell_side"], 190))
         layer.alpha_composite(detail)
@@ -1772,7 +1773,7 @@ class SideRobotGenerator(CharacterGenerator):
 
         # Ground shadow removed; the in-game renderer composites the
         # robot over floor geometry that already provides contact.
-        d = ImageDraw.Draw(img)
+        d = blending_draw(img)
 
         if animation == "blink_out":
             self._draw_blink_out_fx(img, root_x, ground_y, S, frame_index, frame_count)
@@ -1938,7 +1939,7 @@ class SideRobotGenerator(CharacterGenerator):
         # duplicate torso.  Keeping the actor isolated also avoids
         # alpha-compositing the canvas onto itself for non-teleport rows.
         character_img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        character_draw = ImageDraw.Draw(character_img)
+        character_draw = blending_draw(character_img)
 
         # Stable body reference. Death moves to a lying pose without scaling.
         collapse = p.collapse

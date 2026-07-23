@@ -18,6 +18,7 @@ from typing import Dict, Tuple
 from PIL import Image, ImageDraw
 
 from .rigdoc import RigDocument
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Color = Tuple[int, int, int, int]
 
@@ -60,7 +61,7 @@ def render_overlay(
         base = Image.blend(Image.new("RGBA", base.size, (38, 38, 46, 255)), base, 0.5)
     else:
         base = Image.new("RGBA", (w, h), (38, 38, 46, 255))
-    d = ImageDraw.Draw(base)
+    d = blending_draw(base)
 
     world, params = doc.solve(clip_name, t)
     sk = doc.build_skeleton()

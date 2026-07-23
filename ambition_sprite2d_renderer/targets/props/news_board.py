@@ -26,6 +26,7 @@ from ...authoring.portrait import (
     render_canonical_portrait,
     write_portrait_sheet,
 )
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 
@@ -83,7 +84,7 @@ LED_DIM = _rgba("#1A4A2F")
 
 def _render_idle_frame(frame_idx: int, n_frames: int) -> Image.Image:
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
 
     # --- Outer frame (dark wooden / gunmetal border) -------------
     d.rectangle(
