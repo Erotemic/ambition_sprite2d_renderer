@@ -573,12 +573,6 @@ def render_sheet(source: FrameSource, out_dir: Path):
         frames_data: List[Tuple[Image.Image, dict]] = []
         for frame_idx in range(nframes):
             frame = render_fn(anim, frame_idx, nframes)
-            # Semantic frame-publication seam: capture tooling (see
-            # authoring/auto_capture.py) registers a hook here so a vector
-            # recording is associated with the EXACT (target, anim, frame)
-            # being published — never inferred from image creation order.
-            if FRAME_CAPTURE_HOOK is not None:
-                FRAME_CAPTURE_HOOK(target, anim, frame_idx, frame)
             meta = {}
             if frame_meta_fn is not None:
                 extra = frame_meta_fn(anim, frame_idx, nframes)
@@ -665,6 +659,16 @@ def render_sheet(source: FrameSource, out_dir: Path):
             rendered_rows = cropped_rows
             canonical_raw = canonical_raw.crop((crop_x, crop_y, crop_x1, crop_y1))
             fw, fh = new_fw, new_fh
+
+    # Semantic frame-publication seam: capture tooling (see
+    # authoring/auto_capture.py) registers a hook here, AFTER the uniform
+    # auto-crop, so a vector recording is associated with the EXACT frame
+    # image being published — same coordinate system as the manifest, never
+    # inferred from image creation order.
+    if FRAME_CAPTURE_HOOK is not None:
+        for anim, nframes, _duration_ms, frames_data in rendered_rows:
+            for frame_idx, (frame, _meta) in enumerate(frames_data):
+                FRAME_CAPTURE_HOOK(target, anim, frame_idx, frame)
 
     # ---- Pass 2: assemble the spritesheet from the (cropped) frames. ----
     #

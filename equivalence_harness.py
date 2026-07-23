@@ -272,7 +272,11 @@ def _autoconvert_one(name: str, target, out_dir: Path, verify_frames: int = 6):
             png = resvg_py.svg_to_bytes(svg_string=doc)
             ras = Image.open(io.BytesIO(bytes(png))).convert("RGBA")
             if ras.size != (fw, fh):
-                ras = ras.resize((fw, fh), Image.LANCZOS)
+                # Never resize to compensate: the scene must already be in
+                # published-frame coordinates (the seam fires post-crop). A
+                # mismatch is a real capture defect.
+                failed += 1
+                continue
             page = Image.open(io.BytesIO(files[page_name])).convert("RGBA")
             r = row["rects"][idx]
             pub = Image.new("RGBA", (fw, fh), (0, 0, 0, 0))

@@ -321,10 +321,18 @@ def capture_target_frames(target):
             dst_rec.part_defs.setdefault(pid, v)
         consumed.add(id(src))
 
+    in_composite = [0]
+
     def hooked_composite(dest, src, dest_pos=(0, 0), source=(0, 0)):
         _fold(dest, src, dest_pos,
               bad=None if tuple(source) == (0, 0) else "composite-source-crop")
-        return real_composite(dest, src, dest_pos, source)
+        # Pillow implements alpha_composite via an internal self.paste();
+        # guard so that internal call is not misflagged as a raster paste.
+        in_composite[0] += 1
+        try:
+            return real_composite(dest, src, dest_pos, source)
+        finally:
+            in_composite[0] -= 1
 
     def hooked_mod_composite(im1, im2):
         res = real_mod_composite(im1, im2)
@@ -378,6 +386,8 @@ def capture_target_frames(target):
         return res
 
     def hooked_paste(img, im, box=None, mask=None):
+        if in_composite[0]:
+            return real_paste(img, im, box, mask)
         rec = recorders.get(id(img))
         src_rec = recorders.get(id(im)) if not isinstance(im, (int, tuple)) else None
         if (rec and rec.calls) or (src_rec and src_rec.calls):
