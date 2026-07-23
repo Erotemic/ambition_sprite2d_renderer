@@ -167,16 +167,32 @@ def cmd_compare(args) -> int:
 
 
 def cmd_export(args) -> int:
-    """Write a convertible target's editable componentized SVGs to disk."""
+    """Write a convertible target's editable component scene SVG to disk."""
     from ambition_sprite2d_renderer.targets.characters import _pirate_common as pirates
 
     if not pirates.is_pirate_family(args.target):
         raise SystemExit(
-            f"{args.target!r} has no SVG-capture seam yet; only the pirate family "
-            f"(paint_character/capture_character_svg) is convertible so far")
-    out = Path(args.out) if args.out else (DRIFT_DIR / args.target / "svg")
-    written = pirates.export_svgs(args.target, out)
-    print(f"exported {len(written)} componentized SVGs -> {out}")
+            f"{args.target!r} has no cooperative part seam yet — use "
+            f"`autoconvert` for the interception-based converter")
+    out = Path(args.out) if args.out else (DRIFT_DIR / args.target / f"{args.target}.svg")
+    path = pirates.export_scene(args.target, out)
+    scene = pirates.build_scene(args.target)
+    print(f"exported component scene -> {path}  {scene.stats()}")
+    return 0
+
+
+def cmd_rebuild(args) -> int:
+    """Rebuild a target's published sheet FROM a (human-edited) scene file."""
+    from ambition_sprite2d_renderer.targets.characters import _pirate_common as pirates
+
+    if not pirates.is_pirate_family(args.target):
+        raise SystemExit(f"{args.target!r} is not scene-rebuildable yet")
+    out = Path(args.out) if args.out else (DRIFT_DIR / args.target / "rebuilt")
+    out.mkdir(parents=True, exist_ok=True)
+    pirates.render_target_svg(args.target, out, scene_path=Path(args.scene))
+    print(f"rebuilt sheet from {args.scene} -> {out}")
+    print("compare against the PIL authority with:")
+    print(f"  equivalence_harness.py compare --target {args.target} --against {out}")
     return 0
 
 
@@ -213,10 +229,16 @@ def main() -> int:
                     help="exit non-zero when a structural dimension differs")
     pc.set_defaults(func=cmd_compare)
 
-    pe = sub.add_parser("export", help="write a target's editable componentized SVGs to disk")
+    pe = sub.add_parser("export", help="write a target's editable component scene SVG")
     pe.add_argument("--target", required=True)
-    pe.add_argument("--out", help="output dir (default: tmp/sprite-drift/<target>/svg)")
+    pe.add_argument("--out", help="output file (default: tmp/sprite-drift/<target>/<target>.svg)")
     pe.set_defaults(func=cmd_export)
+
+    pr = sub.add_parser("rebuild", help="rebuild the sheet from a (human-edited) scene SVG")
+    pr.add_argument("--target", required=True)
+    pr.add_argument("--scene", required=True, help="path to the edited scene SVG")
+    pr.add_argument("--out", help="output dir (default: tmp/sprite-drift/<target>/rebuilt)")
+    pr.set_defaults(func=cmd_rebuild)
 
     pl = sub.add_parser("list", help="list renderable targets")
     pl.set_defaults(func=cmd_list)

@@ -327,27 +327,31 @@ def animation_pose(anim, frame_idx, nframes):
 
 
 def draw_boot(draw, center, w, h, angle, pal, foot_forward=1):
-    pts = rotated_rect_points(center, w, h * 0.58, angle)
-    poly(draw, pts, pal.boots, pal.outline, width=3)
-    toe = [
-        transform((w * 0.28, -h * 0.10), center, angle),
-        transform((w * 0.50, -h * 0.05), center, angle),
-        transform((w * 0.50, h * 0.16), center, angle),
-        transform((w * 0.15, h * 0.22), center, angle),
-    ]
-    poly(draw, toe, pal.boots, pal.outline, width=3)
+    # Local geometry in the boot's own frame; placement via the part scope.
+    hw, hh = w / 2.0, (h * 0.58) / 2.0
+    with draw.part("boot", center, angle):
+        poly(draw, [(-hw, -hh), (hw, -hh), (hw, hh), (-hw, hh)],
+             pal.boots, pal.outline, width=3)
+        toe = [
+            (w * 0.28, -h * 0.10),
+            (w * 0.50, -h * 0.05),
+            (w * 0.50, h * 0.16),
+            (w * 0.15, h * 0.22),
+        ]
+        poly(draw, toe, pal.boots, pal.outline, width=3)
 
 
 def draw_sword(draw, hand, angle, length, pal, curve=0.0):
-    guard = rotated_rect_points(transform((0, 2), hand, angle), 18, 6, angle)
-    poly(draw, guard, pal.gold, pal.outline, width=3)
-    grip = rotated_rect_points(transform((-6, 1), hand, angle), 10, 5, angle)
-    poly(draw, grip, (68, 43, 27, 255), pal.outline, width=3)
-    p0 = transform((6, 0), hand, angle)
-    p1 = transform((length * 0.35, curve * 0.12), hand, angle)
-    p2 = transform((length, curve), hand, angle)
-    line(draw, [p0, p1, p2], pal.metal, width=5)
-    line(draw, [p0, p1, p2], pal.outline, width=1)
+    def rect_at(cx, cy, w, h):
+        return [(cx - w / 2, cy - h / 2), (cx + w / 2, cy - h / 2),
+                (cx + w / 2, cy + h / 2), (cx - w / 2, cy + h / 2)]
+
+    with draw.part("sword", hand, angle):
+        poly(draw, rect_at(0, 2, 18, 6), pal.gold, pal.outline, width=3)
+        poly(draw, rect_at(-6, 1, 10, 5), (68, 43, 27, 255), pal.outline, width=3)
+        blade = [(6, 0), (length * 0.35, curve * 0.12), (length, curve)]
+        line(draw, blade, pal.metal, width=5)
+        line(draw, blade, pal.outline, width=1)
 
 
 def draw_human_neck(draw, chest, head_center, global_tilt, pal, kind="pirate_admiral"):
@@ -417,33 +421,24 @@ def draw_human_neck(draw, chest, head_center, global_tilt, pal, kind="pirate_adm
 
 
 def draw_hat(draw, head_center, hat_scale, pal, skull=False, tilt=0.0):
-    hx, hy = head_center
-    brim_local = [(-44, -38), (-16, -48), (18, -46), (44, -36), (16, -30), (-20, -31)]
-    crown_local = [(-18, -34), (-8, -62), (8, -63), (18, -34)]
-    brim = [
-        transform((x * hat_scale, y * hat_scale), head_center, deg=tilt)
-        for x, y in brim_local
-    ]
-    crown = [
-        transform((x * hat_scale, y * hat_scale), head_center, deg=tilt)
-        for x, y in crown_local
-    ]
-    poly(draw, brim, pal.hat, pal.outline, width=4)
-    poly(draw, crown, pal.hat, pal.outline, width=4)
-    if skull:
-        skull_c = transform((6 * hat_scale, -46 * hat_scale), head_center, deg=tilt)
-        circle(draw, skull_c, 6 * hat_scale, (232, 230, 226, 255), pal.outline, width=2)
-        l1 = transform((2 * hat_scale, -42 * hat_scale), head_center, deg=tilt)
-        l2 = transform((10 * hat_scale, -42 * hat_scale), head_center, deg=tilt)
-        l3 = transform((6 * hat_scale, -40 * hat_scale), head_center, deg=tilt)
-        l4 = transform((6 * hat_scale, -37 * hat_scale), head_center, deg=tilt)
-        line(draw, [l1, l2], pal.outline, width=2)
-        line(draw, [l3, l4], pal.outline, width=2)
+    s = hat_scale
+    brim = [(x * s, y * s) for x, y in
+            [(-44, -38), (-16, -48), (18, -46), (44, -36), (16, -30), (-20, -31)]]
+    crown = [(x * s, y * s) for x, y in
+             [(-18, -34), (-8, -62), (8, -63), (18, -34)]]
+    with draw.part("hat", head_center, tilt):
+        poly(draw, brim, pal.hat, pal.outline, width=4)
+        poly(draw, crown, pal.hat, pal.outline, width=4)
+        if skull:
+            circle(draw, (6 * s, -46 * s), 6 * s, (232, 230, 226, 255),
+                   pal.outline, width=2)
+            line(draw, [(2 * s, -42 * s), (10 * s, -42 * s)], pal.outline, width=2)
+            line(draw, [(6 * s, -40 * s), (6 * s, -37 * s)], pal.outline, width=2)
 
 
 def draw_face(
     draw,
-    head_bbox,
+    head_center,
     pal,
     eyepatch=False,
     beard=False,
@@ -452,8 +447,16 @@ def draw_face(
     blink=False,
     mouth_open=0.0,
 ):
-    x1, y1, x2, y2 = head_bbox
-    ellipse(draw, head_bbox, pal.skin, pal.outline, width=4)
+    # Local face frame: the head ellipse's half-extents, placed by part scope.
+    x1, y1, x2, y2 = -28.0, -34.0, 28.0, 34.0
+    with draw.part("face", head_center, 0.0):
+        _paint_face(draw, (x1, y1, x2, y2), pal, eyepatch, beard, mean,
+                    x_eyes, blink, mouth_open)
+
+
+def _paint_face(draw, bbox, pal, eyepatch, beard, mean, x_eyes, blink, mouth_open):
+    x1, y1, x2, y2 = bbox
+    ellipse(draw, (x1, y1, x2, y2), pal.skin, pal.outline, width=4)
     nose = [
         (lerp(x1, x2, 0.53), lerp(y1, y2, 0.42)),
         (lerp(x1, x2, 0.60), lerp(y1, y2, 0.56)),
@@ -636,53 +639,30 @@ def paint_character(
         draw_boot(draw, foot_pt, 24, 18, ang * 0.2, pal)
     _end(draw)
 
-    # Body / shirt / coat
+    # Body / shirt / coat — the whole torso is ONE rigid part in the chest
+    # frame, so it registers once and every frame just re-places it.
     _begin(draw, "body")
-    torso_pts = [
-        transform(p, chest, deg=global_tilt)
-        for p in [(-34, -8), (30, -8), (42, 58), (0, 76), (-44, 58)]
-    ]
-    poly(draw, torso_pts, pal.coat, pal.outline, width=5)
-    shirt_pts = [
-        transform(p, chest, deg=global_tilt)
-        for p in [(-10, -4), (18, -4), (14, 52), (-16, 52)]
-    ]
-    poly(draw, shirt_pts, pal.shirt, pal.outline, width=4)
-    lapel_left = [
-        transform(p, chest, deg=global_tilt)
-        for p in [(-16, -6), (-2, 16), (-10, 44), (-20, 18)]
-    ]
-    lapel_right = [
-        transform(p, chest, deg=global_tilt)
-        for p in [(8, -6), (20, 16), (16, 42), (4, 18)]
-    ]
-    poly(draw, lapel_left, pal.coat2, pal.outline, width=3)
-    poly(draw, lapel_right, pal.coat2, pal.outline, width=3)
-    sash_box = rotated_rect_points(
-        transform((0, 24), chest, deg=global_tilt), 44, 12, global_tilt
-    )
-    poly(draw, sash_box, pal.sash, pal.outline, width=3)
-    for bx in [-10, 0, 10]:
-        circle(
-            draw,
-            transform((bx, 4), chest, deg=global_tilt),
-            3,
-            pal.gold,
-            pal.outline,
-            width=1,
-        )
+    with draw.part("torso", chest, global_tilt):
+        poly(draw, [(-34, -8), (30, -8), (42, 58), (0, 76), (-44, 58)],
+             pal.coat, pal.outline, width=5)
+        poly(draw, [(-10, -4), (18, -4), (14, 52), (-16, 52)],
+             pal.shirt, pal.outline, width=4)
+        poly(draw, [(-16, -6), (-2, 16), (-10, 44), (-20, 18)],
+             pal.coat2, pal.outline, width=3)
+        poly(draw, [(8, -6), (20, 16), (16, 42), (4, 18)],
+             pal.coat2, pal.outline, width=3)
+        poly(draw, [(-22, 18), (22, 18), (22, 30), (-22, 30)],
+             pal.sash, pal.outline, width=3)
+        for bx in [-10, 0, 10]:
+            circle(draw, (bx, 4), 3, pal.gold, pal.outline, width=1)
 
     coat_sway = pose["coat_sway"]
-    tail_left = [
-        transform(p, hip, deg=global_tilt + coat_sway)
-        for p in [(-36, 0), (-8, -2), (-8, 48), (-30, 58)]
-    ]
-    tail_right = [
-        transform(p, hip, deg=global_tilt - coat_sway)
-        for p in [(8, -2), (34, 0), (28, 58), (6, 48)]
-    ]
-    poly(draw, tail_left, pal.coat, pal.outline, width=4)
-    poly(draw, tail_right, pal.coat, pal.outline, width=4)
+    with draw.part("coat_tail_left", hip, global_tilt + coat_sway):
+        poly(draw, [(-36, 0), (-8, -2), (-8, 48), (-30, 58)],
+             pal.coat, pal.outline, width=4)
+    with draw.part("coat_tail_right", hip, global_tilt - coat_sway):
+        poly(draw, [(8, -2), (34, 0), (28, 58), (6, 48)],
+             pal.coat, pal.outline, width=4)
     _end(draw)
 
     # Back arm
@@ -742,15 +722,9 @@ def paint_character(
     _begin(draw, "head")
     draw_human_neck(draw, chest, head_center, global_tilt, pal, kind=kind)
 
-    head_bbox = (
-        head_center[0] - 28,
-        head_center[1] - 34,
-        head_center[0] + 28,
-        head_center[1] + 34,
-    )
     draw_face(
         draw,
-        head_bbox,
+        head_center,
         pal,
         eyepatch=(kind == "pirate_admiral"),
         beard=(kind in BEARDED_KINDS),
@@ -771,28 +745,11 @@ def paint_character(
 
     _begin(draw, "chest_motif")
     if kind in SKULL_MOTIF_KINDS:
-        # chest skull motif
         chest_c = transform((0, 14), chest, deg=global_tilt)
-        circle(
-            draw,
-            (chest_c[0], chest_c[1] - 4),
-            8,
-            (242, 236, 230, 255),
-            pal.outline,
-            width=2,
-        )
-        line(
-            draw,
-            [(chest_c[0] - 7, chest_c[1] + 5), (chest_c[0] + 7, chest_c[1] + 5)],
-            (242, 236, 230, 255),
-            width=3,
-        )
-        line(
-            draw,
-            [(chest_c[0], chest_c[1] + 1), (chest_c[0], chest_c[1] + 9)],
-            pal.outline,
-            width=2,
-        )
+        with draw.part("chest_skull", chest_c, 0.0):
+            circle(draw, (0, -4), 8, (242, 236, 230, 255), pal.outline, width=2)
+            line(draw, [(-7, 5), (7, 5)], (242, 236, 230, 255), width=3)
+            line(draw, [(0, 1), (0, 9)], pal.outline, width=2)
     _end(draw)
 
     # Death settle pose, ground line accent
@@ -804,9 +761,11 @@ def draw_character(
     kind: str, anim: str, frame_idx: int, nframes: int, frame_size=BASE_FRAME
 ) -> Image.Image:
     """Render one supersampled-then-downsampled pirate frame (PIL raster)."""
+    from ...authoring.draw_recorder import PillowPartDraw
+
     w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img, "RGBA")
+    draw = PillowPartDraw(ImageDraw.Draw(img, "RGBA"))
     paint_character(draw, kind, anim, frame_idx, nframes, frame_size)
     return downsample(img, frame_size)
 
@@ -864,48 +823,65 @@ def is_pirate_family(target: str) -> bool:
     return target in PALETTES
 
 
-def export_svgs(
-    target: str, out_dir: Path, frame_size: Tuple[int, int] = BASE_FRAME
-) -> List[Path]:
-    """Write every animation frame's componentized SVG under ``out_dir``.
+def build_scene(target: str, frame_size: Tuple[int, int] = BASE_FRAME):
+    """Capture every frame and fold them into ONE component scene.
 
-    The editable artifact of the conversion: one ``<anim>/<frame>.svg`` per pose,
-    each carrying named ``legs``/``body``/``arms``/``head`` Inkscape layers so it
-    opens cleanly in a vector editor. These per-frame SVGs are the mechanical
-    "first representation"; folding them into a single rest-pose component scene
-    plus a pose program is the next tier (see the migration plan).
+    Parts (hat, face variants, torso, boots, sword, coat tails, chest motif)
+    register once each; frames become ``<use>`` placements plus the dynamic
+    limb/neck geometry. The scene is the editable Inkscape artifact.
     """
-    out_dir = Path(out_dir)
-    written: List[Path] = []
+    from ...authoring.draw_recorder import DrawRecorder
+    from ...authoring.svg_scene import ComponentScene
+
+    w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
+    recorders = {}
     for anim, nframes, _ms in ANIMATIONS:
-        adir = out_dir / anim
-        adir.mkdir(parents=True, exist_ok=True)
         for i in range(nframes):
-            svg = capture_character_svg(target, anim, i, nframes, frame_size)
-            path = adir / f"{i:02d}.svg"
-            path.write_text(svg)
-            written.append(path)
-    return written
+            rec = DrawRecorder((w, h))
+            paint_character(rec, target, anim, i, nframes, frame_size)
+            recorders[(anim, i)] = rec
+    return ComponentScene.from_recorders((w, h), recorders)
+
+
+def export_scene(
+    target: str, path: Path, frame_size: Tuple[int, int] = BASE_FRAME
+) -> Path:
+    """Write the target's editable component scene SVG to ``path``."""
+    return build_scene(target, frame_size).save(Path(path))
 
 
 def render_target_svg(
-    target: str, out_dir: Path, frame_size: Tuple[int, int] = BASE_FRAME
+    target: str,
+    out_dir: Path,
+    frame_size: Tuple[int, int] = BASE_FRAME,
+    scene_path: Path | None = None,
 ) -> Dict[str, Path]:
     """Build the same pirate sheet from the **SVG authority**.
 
-    Identical to :func:`render_target` but each frame is captured to SVG and
-    re-rasterized instead of drawn straight to a raster. It routes through the
-    same ``build_sheet`` measurement/packing/metadata pipeline, so the output
-    is a drop-in second authority the equivalence harness can compare against
-    the PIL render (``equivalence_harness.py compare --ref pil --cand svg``).
+    Every frame is assembled from the component scene's registered parts and
+    rasterized, then routed through the same ``build_sheet`` measurement /
+    packing / metadata pipeline. With ``scene_path`` the scene is loaded from
+    disk instead of captured fresh — that is the human-in-the-loop path: edit
+    the parts in Inkscape, rebuild the sheet from the edited file, and let the
+    equivalence harness report what changed.
     """
     from ...authoring.draw_recorder import rasterize_svg
+    from ...authoring.svg_scene import ComponentScene
 
     out_dir.mkdir(parents=True, exist_ok=True)
     w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
+    if scene_path is not None:
+        scene = ComponentScene.load(Path(scene_path))
+        missing = scene.missing_part_refs()
+        if missing:
+            raise ValueError(
+                f"scene {scene_path} has dangling part references: {missing}")
+    else:
+        scene = build_scene(target, frame_size)
 
     def render_fn(anim, frame_idx, nframes):
-        svg = capture_character_svg(target, anim, frame_idx, nframes, frame_size)
+        del nframes
+        svg = scene.frame_doc(anim, frame_idx)
         return downsample(rasterize_svg(svg, (w, h)), frame_size)
 
     return build_sheet(

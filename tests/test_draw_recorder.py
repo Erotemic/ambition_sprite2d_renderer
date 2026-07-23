@@ -120,10 +120,72 @@ def test_captured_svg_has_named_component_layers() -> None:
     assert {"legs", "body", "arms", "head"} <= labels
 
 
-def test_export_svgs_writes_editable_files(tmp_path: Path) -> None:
-    import ambition_sprite2d_renderer.targets.characters._pirate_common as pc
+def test_part_scope_registers_and_places() -> None:
+    rec = DrawRecorder((64, 64))
+    for _frame in range(3):
+        with rec.part("hat", (10, 20), 15.0):
+            rec.polygon([(0, 0), (4, 0), (2, 4)], fill=(1, 2, 3, 255))
+    assert len(rec.part_defs) == 1          # identical geometry -> ONE def
+    svg = rec.to_svg()
+    assert svg.count("<use ") == 3          # ...placed three times
+    assert "<defs>" in svg and "rotate(15)" in svg
 
-    written = pc.export_svgs("pirate_raider", tmp_path)
-    assert written and all(p.suffix == ".svg" and p.exists() for p in written)
-    # one file per frame across all animation rows
-    assert len(written) == sum(nf for _a, nf, _ms in pc.ANIMATIONS)
+
+def test_pillow_part_draw_matches_world_math() -> None:
+    from ambition_sprite2d_renderer.authoring.draw_recorder import PillowPartDraw
+    from ambition_sprite2d_renderer.authoring.sheet_build import transform
+
+    captured = {}
+
+    class Spy:
+        def polygon(self, pts, fill=None):
+            captured["pts"] = pts
+
+    d = PillowPartDraw(Spy())
+    origin, deg = (37.5, 91.25), 23.0
+    local = [(-4.0, 2.5), (6.0, -3.25)]
+    with d.part("x", origin, deg):
+        d.polygon(local, fill=None)
+    want = [transform(p, origin, deg=deg) for p in local]
+    assert captured["pts"] == want          # byte-faithful to the old math
+
+
+def test_component_scene_round_trips(tmp_path: Path) -> None:
+    import ambition_sprite2d_renderer.targets.characters._pirate_common as pc
+    from ambition_sprite2d_renderer.authoring.svg_scene import ComponentScene
+
+    scene = pc.build_scene("pirate_raider")
+    stats = scene.stats()
+    assert stats["parts"] >= 8 and stats["frames"] == 38
+    assert stats["part_uses"] > stats["parts"]   # real reuse across frames
+    path = scene.save(tmp_path / "pirate_raider.svg")
+    loaded = ComponentScene.load(path)
+    assert loaded.stats() == stats
+    assert loaded.missing_part_refs() == []
+    # every frame doc is standalone-renderable XML with defs + uses
+    doc = loaded.frame_doc("idle", 0)
+    import xml.etree.ElementTree as ET
+    root = ET.fromstring(doc)
+    assert any(el.tag.endswith("defs") for el in root)
+
+
+def test_part_edit_propagates_to_frames(tmp_path: Path) -> None:
+    """The human-loop property: edit ONE part in the scene file, every frame
+    that uses it changes."""
+    import re
+
+    import ambition_sprite2d_renderer.targets.characters._pirate_common as pc
+    from ambition_sprite2d_renderer.authoring.svg_scene import ComponentScene
+
+    path = pc.export_scene("pirate_raider", tmp_path / "s.svg")
+    text = path.read_text()
+    m = re.search(r'<g id="(part_hat_[a-f0-9]+)"', text)
+    assert m
+    edited = tmp_path / "edited.svg"
+    edited.write_text(text.replace("rgb(31,23,32)", "rgb(96,40,160)"))
+    a, b = ComponentScene.load(path), ComponentScene.load(edited)
+    changed = sum(
+        1 for key in a.frames
+        if a.frame_doc(*key) != b.frame_doc(*key)
+    )
+    assert changed == len(a.frames)         # hat used in every frame
