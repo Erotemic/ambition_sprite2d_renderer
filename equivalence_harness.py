@@ -196,6 +196,178 @@ def cmd_rebuild(args) -> int:
     return 0
 
 
+def _autoconvert_one(name: str, target, out_dir: Path, verify_frames: int = 6):
+    """Auto-capture one target -> scene file + fidelity stats dict."""
+    import io
+
+    from PIL import Image
+
+    from ambition_sprite2d_renderer.authoring.auto_capture import (
+        capture_target_frames, discover_parts,
+    )
+    from ambition_sprite2d_renderer.authoring.sheet_build import downsample
+    from ambition_sprite2d_renderer.authoring.svg_scene import ComponentScene
+    from ambition_sprite2d_renderer.core.equivalence import (
+        _pixel_delta, _registered_delta, parse_ron,
+    )
+
+    files, recorders, _ = capture_target_frames(target)
+
+    manifests = [k for k in files if k.endswith("_spritesheet.ron")]
+    if not manifests:
+        return {"status": "no-manifest"}
+    sheet = parse_ron(files[manifests[0]].decode())[0]
+    rows = sheet.get("rows", [])
+    expected = sum(r.get("frame_count", 0) for r in rows)
+    stem = manifests[0][: -len("_spritesheet.ron")]
+    page = Image.open(io.BytesIO(files[f"{stem}_spritesheet.png"])).convert("RGBA") \
+        if f"{stem}_spritesheet.png" in files else None
+
+    # Frame recorders: the dominant canvas size among captures, in order.
+    sizes = {}
+    for i, rec in recorders.items():
+        sizes.setdefault((rec.width, rec.height), []).append(i)
+    if not sizes:
+        return {"status": "no-draws"}
+    frame_ids = max(sizes.values(), key=len)
+    status = "captured" if len(frame_ids) == expected else "partial"
+
+    # Map captures to (anim, idx) in row order.
+    keys = []
+    for r in rows:
+        for i in range(r.get("frame_count", 0)):
+            keys.append((r.get("animation"), i))
+    mapping = dict(zip(keys, (recorders[i] for i in frame_ids)))
+    unsupported = set()
+    for rec in mapping.values():
+        unsupported |= rec.unsupported
+
+    # Verify a sample: rasterize capture -> downsample -> vs published crop.
+    verified = failed = 0
+    if page is not None and mapping:
+        import resvg_py
+
+        frame_wh = (int(sheet.get("frame_width", 128)), int(sheet.get("frame_height", 128)))
+        by_anim = {r.get("animation"): r for r in rows}
+        def tight(im, floor=20):
+            # Ignore near-invisible spill (SVG blur reaches further than
+            # Pillow's) so the content bbox matches the published one.
+            a = im.split()[3].point(lambda v: v if v > floor else 0)
+            box = a.getbbox()
+            return im.crop(box) if box else im
+
+        sample = list(mapping)[:: max(1, len(mapping) // verify_frames)][:verify_frames]
+        for anim, idx in sample:
+            rec = mapping[(anim, idx)]
+            png = resvg_py.svg_to_bytes(svg_string=rec.to_svg())
+            ras = tight(Image.open(io.BytesIO(bytes(png))).convert("RGBA"))
+            rect = by_anim[anim]["rects"][idx]
+            crop = tight(page.crop((rect["x"], rect["y"], rect["x"] + rect["w"],
+                                    rect["y"] + rect["h"])))
+            # The sheet assembler crops/fits/re-anchors content, so verify
+            # scale-normalized; judge SOLID content only — Pillow's ImageDraw
+            # clobbers alpha (the gnu_ton rule) while SVG composites properly,
+            # so translucent glow can never match pixel-wise and is a known,
+            # accepted divergence class, not a capture failure.
+            from PIL import ImageChops
+
+            ras = ras.resize(crop.size, Image.LANCZOS)
+            best = 1.0
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    b = ImageChops.offset(ras, dx, dy)
+                    solid_a = crop.split()[3].point(lambda v: 255 if v > 200 else 0)
+                    solid_b = b.split()[3].point(lambda v: 255 if v > 200 else 0)
+                    mask = ImageChops.multiply(solid_a, solid_b)
+                    n_mask = sum(mask.histogram()[1:])
+                    if not n_mask:
+                        continue
+                    diff = ImageChops.difference(crop.convert("RGB"), b.convert("RGB"))
+                    bands = diff.split()
+                    merged = bands[0]
+                    for band in bands[1:]:
+                        merged = ImageChops.lighter(merged, band)
+                    over = merged.point(lambda v: 255 if v > 16 else 0)
+                    bad = sum(ImageChops.multiply(over, mask).histogram()[1:])
+                    best = min(best, bad / n_mask)
+            if best <= 0.10:
+                verified += 1
+            else:
+                failed += 1
+    if failed:
+        status = "partial"
+
+    # Part discovery over the captured element lists -> component scene.
+    elem_re = __import__("re").compile(r"<[a-z]+ [^>]*/>|<g [^>]*>.*?</g>")
+    frames_elems = {k: elem_re.findall(rec.body_svg()) for k, rec in mapping.items()}
+    parts, bodies = discover_parts(frames_elems)
+    rec0 = mapping[next(iter(mapping))] if mapping else None
+    canvas = (rec0.width, rec0.height) if rec0 else (512, 512)
+    scene = ComponentScene(canvas)
+    scene.parts = parts
+    scene.frames = bodies
+    scene_path = out_dir / f"{name}.svg"
+    scene.save(scene_path)
+
+    return {
+        "status": status,
+        "frames": len(mapping),
+        "expected": expected,
+        "parts": len(parts),
+        "part_uses": scene.stats()["part_uses"],
+        "verified": verified,
+        "verify_failed": failed,
+        "unsupported": sorted(unsupported),
+        "scene": str(scene_path),
+    }
+
+
+def cmd_autoconvert(args) -> int:
+    """Universal converter: capture any target's render into a component scene."""
+    targets = _discover()
+    if args.target not in targets:
+        raise SystemExit(f"unknown target {args.target!r}")
+    out = Path(args.out) if args.out else (DRIFT_DIR / "auto_scenes")
+    out.mkdir(parents=True, exist_ok=True)
+    stats = _autoconvert_one(args.target, targets[args.target], out)
+    for k, v in stats.items():
+        print(f"  {k}: {v}")
+    return 0
+
+
+def cmd_coverage(args) -> int:
+    """Run the universal converter across the roster; write a status report."""
+    import json
+    import traceback
+
+    targets = _discover()
+    names = sorted(targets)
+    if args.targets:
+        wanted = [t.strip() for t in args.targets.split(",")]
+        names = [n for n in names if n in wanted]
+    out = DRIFT_DIR / "auto_scenes"
+    out.mkdir(parents=True, exist_ok=True)
+    report = {}
+    for i, name in enumerate(names, 1):
+        try:
+            report[name] = _autoconvert_one(name, targets[name], out)
+        except Exception as exc:
+            report[name] = {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
+            if args.verbose:
+                traceback.print_exc()
+        s = report[name]
+        print(f"[{i}/{len(names)}] {name}: {s['status']}"
+              f" frames={s.get('frames', 0)}/{s.get('expected', '?')}"
+              f" parts={s.get('parts', 0)} verified={s.get('verified', 0)}"
+              f"{' unsupported=' + ','.join(s['unsupported']) if s.get('unsupported') else ''}")
+    (DRIFT_DIR / "coverage.json").write_text(json.dumps(report, indent=1, sort_keys=True))
+    counts: dict = {}
+    for s in report.values():
+        counts[s["status"]] = counts.get(s["status"], 0) + 1
+    print(f"\ncoverage: {counts} -> scenes in {out}, report in {DRIFT_DIR/'coverage.json'}")
+    return 0
+
+
 def cmd_list(args) -> int:
     for name in sorted(_discover()):
         print(name)
@@ -239,6 +411,17 @@ def main() -> int:
     pr.add_argument("--scene", required=True, help="path to the edited scene SVG")
     pr.add_argument("--out", help="output dir (default: tmp/sprite-drift/<target>/rebuilt)")
     pr.set_defaults(func=cmd_rebuild)
+
+    pa = sub.add_parser("autoconvert",
+                        help="capture ANY target's render into a component scene (no code changes)")
+    pa.add_argument("--target", required=True)
+    pa.add_argument("--out", help="scene output dir (default: tmp/sprite-drift/auto_scenes)")
+    pa.set_defaults(func=cmd_autoconvert)
+
+    pv = sub.add_parser("coverage", help="run the universal converter across the roster")
+    pv.add_argument("--targets", help="comma-separated subset (default: all)")
+    pv.add_argument("--verbose", action="store_true")
+    pv.set_defaults(func=cmd_coverage)
 
     pl = sub.add_parser("list", help="list renderable targets")
     pl.set_defaults(func=cmd_list)
