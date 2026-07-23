@@ -132,12 +132,32 @@ def discover_parts(frames: Dict[Any, List[str]]) -> "tuple[dict, dict]":
     frame_bodies: Dict[Any, str] = {}
     serial = 0
 
+    def _matchable(elem: str):
+        """Points of a LEAF polygon/polyline, else None.
+
+        Compound elements (groups, defs, filters) must never be matched by
+        the points of their first child — that registered whole frames as
+        'parts' placed at one interior polygon's centroid (the scattered-limb
+        bug Jon caught on jeff_hinter). They stay inline, intact.
+        """
+        import xml.etree.ElementTree as ET
+
+        try:
+            node = ET.fromstring(elem)
+        except ET.ParseError:
+            return None
+        if node.tag.rsplit("}", 1)[-1] not in ("polygon", "polyline"):
+            return None
+        if len(node):
+            return None
+        return _parse_points(elem)
+
     for key in sorted(frames, key=repr):
         out: List[str] = []
         for elem in frames[key]:
-            pts = _parse_points(elem)
+            pts = _matchable(elem)
             if pts is None or len(pts) < 3:
-                out.append(elem)  # ellipses/short lines: inline (cheap, exact)
+                out.append(elem)  # compound/short elements: inline, exact
                 continue
             style = _style_key(elem)
             placed = False
