@@ -114,6 +114,40 @@ class _Congruence:
         return centroid, deg
 
 
+def descend_wrappers(body: str) -> "tuple[str, str, List[str]]":
+    """Unwrap sole-child transform-only groups around a frame body.
+
+    Post-crop semantic recorders arrive as nested wrapper groups (crop
+    translate -> composite translate -> scale -> ...) around the actual
+    geometry, whose coordinates live in the stable pre-downsample space that
+    IS comparable across frames. Returns ``(prefix, suffix, elements)`` where
+    ``prefix + "".join(elements) + suffix`` reproduces the body and
+    ``elements`` are the innermost children, ready for part matching.
+    """
+    import xml.etree.ElementTree as ET
+
+    prefix, suffix = "", ""
+    while True:
+        elems = split_elements(body)
+        if len(elems) != 1:
+            return prefix, suffix, elems
+        try:
+            node = ET.fromstring(elems[0])
+        except ET.ParseError:
+            return prefix, suffix, elems
+        tag = node.tag.rsplit("}", 1)[-1]
+        attrs = set(node.attrib)
+        if tag != "g" or not attrs <= {"transform"}:
+            return prefix, suffix, elems
+        t = node.attrib.get("transform", "")
+        open_tag = f'<g transform="{t}">' if t else "<g>"
+        prefix += open_tag
+        suffix = "</g>" + suffix
+        body = "".join(
+            ET.tostring(child, encoding="unicode") for child in node
+        )
+
+
 def discover_parts(frames: Dict[Any, List[str]]) -> "tuple[dict, dict]":
     """Match congruent elements across frames; register them as parts.
 
@@ -153,8 +187,10 @@ def discover_parts(frames: Dict[Any, List[str]]) -> "tuple[dict, dict]":
         return _parse_points(elem)
 
     for key in sorted(frames, key=repr):
+        prefix, suffix, elems = ("", "", frames[key]) \
+            if isinstance(frames[key], list) else descend_wrappers(frames[key])
         out: List[str] = []
-        for elem in frames[key]:
+        for elem in elems:
             pts = _matchable(elem)
             if pts is None or len(pts) < 3:
                 out.append(elem)  # compound/short elements: inline, exact
@@ -183,7 +219,7 @@ def discover_parts(frames: Dict[Any, List[str]]) -> "tuple[dict, dict]":
                 (ox, oy) = centroid
                 out.append(f'<use href="#{pid}" xlink:href="#{pid}" '
                            f'transform="translate({_fmt(ox)} {_fmt(oy)})"/>')
-        frame_bodies[key] = "".join(out)
+        frame_bodies[key] = prefix + "".join(out) + suffix
 
     # Parts used only once carry no reuse value — inline them back.
     all_bodies = "".join(frame_bodies.values())

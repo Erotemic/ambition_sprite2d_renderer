@@ -213,7 +213,7 @@ def _autoconvert_one(name: str, target, out_dir: Path, verify_frames: int = 6):
     from PIL import Image, ImageChops
 
     from ambition_sprite2d_renderer.authoring.auto_capture import (
-        capture_target_frames, discover_parts, split_elements,
+        capture_target_frames, discover_parts,
     )
     from ambition_sprite2d_renderer.authoring.svg_scene import ComponentScene
     from ambition_sprite2d_renderer.core.equivalence import parse_ron
@@ -239,7 +239,7 @@ def _autoconvert_one(name: str, target, out_dir: Path, verify_frames: int = 6):
     canvas = None
     for (stem, anim, idx), rec in semantic.items():
         key = (f"{stem}:{anim}" if multi else anim, idx)
-        frames_elems[key] = split_elements(rec.body_svg())
+        frames_elems[key] = rec.body_svg()
         canvas = canvas or (rec.width, rec.height)
     parts, bodies = discover_parts(frames_elems)
     scene = ComponentScene(canvas or (128, 128))
