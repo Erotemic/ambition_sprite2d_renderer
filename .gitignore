@@ -3,8 +3,10 @@ generated/
 output/
 *.png
 
-# Differential-harness baselines + iteration scratch (see parity_harness.py).
+# Differential-harness baselines + iteration scratch (see parity_harness.py
+# and equivalence_harness.py).
 .parity-baseline/
+.equivalence-baseline/
 agent-scratch/
 
 # Per-sheet regen cache (regen_sprites.sh).
