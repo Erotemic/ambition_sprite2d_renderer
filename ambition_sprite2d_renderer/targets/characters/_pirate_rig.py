@@ -29,9 +29,11 @@ from ...authoring.sheet_build import SCALE, transform
 
 Point = Tuple[float, float]
 
-# Admiral sits its shoulders slightly narrower; every other pirate shares one
-# socket layout. Kept here so the skeleton — not the paint pass — owns the one
-# per-kind geometry difference.
+# The admiral differs from the other pirates in two bits of skeleton geometry:
+# slightly narrower shoulder sockets (see the shoulder bones below) and a stance
+# nudged left of centre (see root_origin). Both live here so the skeleton — not
+# the paint pass — owns per-kind geometry. (Purely painted per-kind traits — the
+# admiral's eyepatch, longer blade, scarf blade-curve — stay in paint_character.)
 _ADMIRAL = "pirate_admiral"
 
 

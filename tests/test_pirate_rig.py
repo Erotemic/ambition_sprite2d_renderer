@@ -70,8 +70,9 @@ def test_admiral_narrows_the_shoulders() -> None:
 
 
 def test_golden_walk_pose() -> None:
-    """Locks the exact joint geometry for one known frame; guards the offsets
-    and root layout against silent drift."""
+    """Locks the exact geometry of EVERY joint for one known frame, so a silent
+    offset/angle drift in any bone — not just the six a smaller sample would
+    cover — fails here rather than relying on the SVG-fidelity test to notice."""
     pose = animation_pose("walk", 3, 8)
     J = R.evaluate(pose, "pirate_raider", W, H, pose["body_tilt"])
     golden = {
@@ -79,9 +80,20 @@ def test_golden_walk_pose() -> None:
         "hip": ((266.771, 376.045), 3.536),
         "chest": ((270.609, 313.931), 3.536),
         "head": ((276.929, 233.540), 1.657),
+        "back_shoulder": ((295.412, 301.669), 3.536),
+        "front_shoulder": ((245.507, 298.586), 3.536),
+        "left_hip": ((250.555, 379.050), 3.536),
+        "right_hip": ((284.490, 381.147), 3.536),
         "left_knee": ((250.727, 409.315), -7.920),
+        "right_knee": ((284.319, 411.412), 7.920),
+        "left_foot": ((243.977, 439.621), -2.376),
+        "right_foot": ((291.420, 433.240), 2.376),
+        "back_elbow": ((281.775, 352.009), 19.556),
+        "back_hand": ((272.817, 399.165), 10.756),
+        "front_elbow": ((277.286, 337.652), -32.284),
         "front_hand": ((288.679, 382.219), -14.340),
     }
+    assert set(golden) == set(J), "every evaluated joint must be pinned"
     for name, ((gx, gy), ga) in golden.items():
         b = J[name]
         assert math.isclose(b.point[0], gx, abs_tol=1e-2), (name, b.point)

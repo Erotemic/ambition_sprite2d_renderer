@@ -41,13 +41,10 @@ from ...authoring.sheet_build import (
     downsample,
     ease_in_out,
     ellipse,
-    font,
     lerp,
     line,
     oscillate,
     poly,
-    rot,
-    rotated_rect,
     rotated_rect_points,
     transform,
 )
@@ -328,7 +325,7 @@ def animation_pose(anim, frame_idx, nframes):
     return pose
 
 
-def draw_boot(draw, center, w, h, angle, pal, foot_forward=1):
+def draw_boot(draw, center, w, h, angle, pal):
     # Local geometry in the boot's own frame; placement via the part scope.
     hw, hh = w / 2.0, (h * 0.58) / 2.0
     with draw.part("boot", center, angle):
@@ -729,7 +726,10 @@ def paint_character(
             line(draw, [(0, 1), (0, 9)], pal.outline, width=2)
     _end(draw)
 
-    # Death settle pose, ground line accent
+    # NOT dead code: an alpha-0 stroke is an ERASER through blending_draw (its
+    # zero-alpha ops carve rather than no-op), so this clears a 1px seam just
+    # below the feet on the death settle. Removing it changes the death frames
+    # (verified: the parity hash shifts). Kept to reproduce the current sprite.
     if anim == "death":
         ground = h * 0.83
         draw.line((0, ground + 24, w, ground + 24), fill=(0, 0, 0, 0), width=1)
