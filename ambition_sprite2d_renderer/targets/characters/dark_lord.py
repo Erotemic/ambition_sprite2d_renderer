@@ -28,6 +28,7 @@ from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
+from . import _dark_lord_rig as _dark_lord_rig
 
 ACTOR_METADATA = {
     "actor": {"character_id": "npc_dark_lord", "display_name": "Dark Lord"},
@@ -620,14 +621,16 @@ def _draw_torso(draw: ImageDraw.ImageDraw, P, pose: Pose) -> None:
     _line(draw, [P(-8, 8), P(0, 28), P(9, 8)], SHADOW_RED, 0.8)
 
 
-def _draw_limbs(draw: ImageDraw.ImageDraw, P, pose: Pose) -> Tuple[Point, Point]:
-    # legs behind tabard
-    far_hip = P(-16, -45)
-    near_hip = P(18, -45)
-    far_knee = P(-18 + pose.far_leg * 0.22, -7)
-    near_knee = P(20 + pose.near_leg * 0.22, -5)
-    far_foot = P(-23 + pose.far_leg * 0.20, 54 - pose.far_lift)
-    near_foot = P(24 + pose.near_leg * 0.20, 55 - pose.near_lift)
+def _draw_limbs(
+    draw: ImageDraw.ImageDraw, J: "_dark_lord_rig.DarkLordJoints", pose: Pose
+) -> Tuple[Point, Point]:
+    # legs behind tabard (anchors come from the explicit skeleton)
+    far_hip = J.far_hip
+    near_hip = J.near_hip
+    far_knee = J.far_knee
+    near_knee = J.near_knee
+    far_foot = J.far_foot
+    near_foot = J.near_foot
     _line(draw, [far_hip, far_knee, far_foot], METAL_DARK, 10.5)
     _line(draw, [far_hip, far_knee, far_foot], OUTLINE, 1.3)
     _draw_boot(draw, far_foot, -1, 0.92)
@@ -636,20 +639,16 @@ def _draw_limbs(draw: ImageDraw.ImageDraw, P, pose: Pose) -> Tuple[Point, Point]
     _draw_boot(draw, near_foot, 1, 1.05)
 
     # arms
-    far_shoulder = P(-35, -99)
-    far_elbow = P(-49 + pose.far_arm * 0.09, -70 + pose.far_arm * 0.16)
-    far_hand = P(-35 + pose.far_arm * 0.18, -36 + pose.far_arm * 0.21)
+    far_shoulder = J.far_shoulder
+    far_elbow = J.far_elbow
+    far_hand = J.far_hand
     _line(draw, [far_shoulder, far_elbow, far_hand], METAL_DARK, 10.0)
     _line(draw, [far_shoulder, far_elbow, far_hand], OUTLINE, 1.4)
     _poly(draw, _rect(far_elbow, 16, 20, pose.tilt * 0.2), METAL, OUTLINE, 0.8)
 
-    near_shoulder = P(38, -99)
-    near_elbow = P(
-        54 + pose.near_arm * 0.08, -68 + pose.near_arm * 0.16 + pose.weapon_lift * 0.15
-    )
-    near_hand = P(
-        39 + pose.near_arm * 0.19, -34 + pose.near_arm * 0.23 + pose.weapon_lift
-    )
+    near_shoulder = J.near_shoulder
+    near_elbow = J.near_elbow
+    near_hand = J.near_hand
     _line(draw, [near_shoulder, near_elbow, near_hand], METAL_MID, 11.0)
     _line(draw, [near_shoulder, near_elbow, near_hand], OUTLINE, 1.4)
     _poly(draw, _rect(near_elbow, 18, 22, pose.tilt * 0.2), METAL_HI, OUTLINE, 0.8)
@@ -679,11 +678,12 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     draw = blending_draw(img)
     pose = Pose(anim, frame_idx, nframes)
 
-    root = (
-        WORK_FRAME_SIZE[0] * 0.47 + pose.root_x + pose.dead_t * 7.0,
-        WORK_FRAME_SIZE[1] * 0.70 + pose.root_y + pose.bob,
-    )
-    tilt = pose.tilt
+    # Joints come from the explicit skeleton (see _dark_lord_rig): the animation
+    # lives on declared anchors instead of inline body-frame maths, and this
+    # paint pass places its geometry at them.
+    J = _dark_lord_rig.evaluate(pose, WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1])
+    root = J.root
+    tilt = J.body_ang
 
     def P(x: float, y: float) -> Point:
         rx, ry = _rot(x, y, tilt)
@@ -704,7 +704,7 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         draw.arc(box, 214, 330, fill=(255, 184, 140, 110), width=_s(2.5))
 
     _draw_torso(draw, P, pose)
-    far_hand, near_hand = _draw_limbs(draw, P, pose)
+    far_hand, near_hand = _draw_limbs(draw, J, pose)
     _poly(
         draw,
         [P(-9, -128), P(11, -128), P(9, -112), P(-8, -112)],
@@ -715,9 +715,7 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     _draw_helmet(draw, P, pose)
 
     if weapon_front:
-        hand = P(
-            39 + pose.near_arm * 0.19, -34 + pose.near_arm * 0.23 + pose.weapon_lift
-        )
+        hand = J.near_hand
         _draw_halberd(draw, hand, pose.weapon + tilt, front=True)
 
     # magic / guard / summon effects in front

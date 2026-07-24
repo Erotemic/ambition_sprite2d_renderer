@@ -21,6 +21,7 @@ from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
+from . import _viking_heavy_shieldmaiden_rig as _viking_heavy_shieldmaiden_rig
 
 ACTOR_METADATA = {
     "actor": {
@@ -487,18 +488,21 @@ def _render_frame(anim: str, idx: int, n: int) -> Image.Image:
     draw = blending_draw(img)
     pose = Pose(anim, idx, n)
 
-    root = (
-        WORK_FRAME_SIZE[0] * 0.48 + pose.root_x,
-        WORK_FRAME_SIZE[1] * 0.80 + pose.root_y + pose.bob,
+    # Joints come from the explicit skeleton (see _viking_heavy_shieldmaiden_rig):
+    # the paint pass reads every limb/head anchor from the rig instead of
+    # recomputing it, so the drawn result is byte-identical.
+    J = _viking_heavy_shieldmaiden_rig.evaluate(
+        pose, WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1]
     )
-    body_ang = pose.lean
+    root = J.root
+    body_ang = J.body_ang
 
     def P(x: float, y: float) -> Point:
         rx, ry = _rot(x, y, body_ang)
         return (root[0] + rx, root[1] + ry)
 
     # Back leg / body mass.
-    far_hip = P(20, -118)
+    far_hip = J.far_hip
     _draw_leg(draw, far_hip, 94 + pose.right_leg, pose.right_lift, front=False)
     dress_back = [
         P(-44, -164),
@@ -552,13 +556,13 @@ def _render_frame(anim: str, idx: int, n: int) -> Image.Image:
     _poly(draw, collar, STEEL, OUTLINE, 0.7)
 
     # Back arm (weapon).
-    far_shoulder = P(42, -226)
-    far_elbow = P(68 + pose.weapon_arm * 0.22, -180 + pose.weapon_arm * 0.18)
-    far_hand = P(84 + pose.weapon_arm * 0.35, -122 + pose.weapon_arm * 0.24)
+    far_shoulder = J.far_shoulder
+    far_elbow = J.far_elbow
+    far_hand = J.far_hand
     _draw_beefy_arm(draw, far_shoulder, far_elbow, far_hand, SKIN_SHADE)
 
-    head_root = P(-4, -270)
-    head_ang = body_ang + pose.head
+    head_root = J.head_root
+    head_ang = J.head_ang
 
     def H(x: float, y: float) -> Point:
         rx, ry = _rot(x, y, head_ang)
@@ -677,7 +681,7 @@ def _render_frame(anim: str, idx: int, n: int) -> Image.Image:
         _ellipse(draw, H(2, 22)[0], H(2, 22)[1], 5.2, 2.0, LIP, OUTLINE, 0.25)
 
     # Front leg / arm.
-    near_hip = P(-18, -118)
+    near_hip = J.near_hip
     near_foot = _draw_leg(
         draw, near_hip, 94 + pose.left_leg, pose.left_lift, front=True
     )
@@ -694,12 +698,9 @@ def _render_frame(anim: str, idx: int, n: int) -> Image.Image:
         _line(draw, [P(x, -154), P(x + 4, -8)], DRESS_SHADE, 0.9)
     hem_cover = [P(-34, -86), P(8, -80), P(18, -12), P(-22, -8), P(-42, -42)]
     _poly(draw, hem_cover, DRESS, OUTLINE, 0.6)
-    near_shoulder = P(-44, -224)
-    near_elbow = P(-70 + pose.shield_arm * 0.18, -176 + pose.shield_arm * 0.16)
-    near_hand = P(
-        -88 + pose.shield_arm * 0.32 - pose.shield_push * 10,
-        -120 + pose.shield_arm * 0.12,
-    )
+    near_shoulder = J.near_shoulder
+    near_elbow = J.near_elbow
+    near_hand = J.near_hand
     _draw_beefy_arm(draw, near_shoulder, near_elbow, near_hand, SKIN)
     shield_center = near_hand
     _draw_saw_shield(draw, shield_center, 46)

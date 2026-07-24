@@ -20,6 +20,7 @@ from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
+from . import _viking_shieldmaiden_rig
 
 ACTOR_METADATA = {
     "actor": {
@@ -473,18 +474,18 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     draw = blending_draw(img)
     pose = Pose(anim, frame_idx, nframes)
 
-    root = (
-        WORK_FRAME_SIZE[0] * 0.48 + pose.root_x,
-        WORK_FRAME_SIZE[1] * 0.78 + pose.root_y + pose.bob,
+    J = _viking_shieldmaiden_rig.evaluate(
+        pose, WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1]
     )
-    body_ang = pose.lean
+    root = J.root
+    body_ang = J.body_ang
 
     def P(x: float, y: float) -> Point:
         rx, ry = _rot(x, y, body_ang)
         return (root[0] + rx, root[1] + ry)
 
     # far leg and skirt back
-    far_hip = P(10, -106)
+    far_hip = J.far_hip
     _draw_leg(draw, far_hip, 92 + pose.right_leg, pose.right_lift, front=False)
 
     skirt_back = [
@@ -541,15 +542,15 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         _line(draw, [P(x, y), P(x + 6, y + 8)], FUR_SHADE, 0.8)
 
     # far arm / shield arm behind body sometimes
-    far_shoulder = P(28, -184)
-    far_elbow = P(48 + pose.weapon_arm * 0.18, -146 + pose.weapon_arm * 0.12)
-    far_hand = P(56 + pose.weapon_arm * 0.28, -100 + pose.weapon_arm * 0.14)
+    far_shoulder = J.far_shoulder
+    far_elbow = J.far_elbow
+    far_hand = J.far_hand
     _line(draw, [far_shoulder, far_elbow, far_hand], SKIN_SHADE, 6.4)
     _line(draw, [far_shoulder, far_elbow, far_hand], OUTLINE, 0.9)
 
     # head
-    head_root = P(-2, -244)
-    head_ang = body_ang + pose.head
+    head_root = J.head_root
+    head_ang = J.head_ang
 
     def H(x: float, y: float) -> Point:
         rx, ry = _rot(x, y, head_ang)
@@ -637,7 +638,7 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         _line(draw, [H(-1, 14), H(5, 16), H(11, 14)], MOUTH, 0.7)
 
     # near leg
-    near_hip = P(-12, -106)
+    near_hip = J.near_hip
     near_foot = _draw_leg(
         draw, near_hip, 92 + pose.left_leg, pose.left_lift, front=True
     )
@@ -656,12 +657,9 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     _line(draw, [P(2, -98), P(8, -14)], SKIRT_SHADE, 0.9)
 
     # near arm / shield on top
-    near_shoulder = P(-30, -184)
-    near_elbow = P(-46 + pose.shield_arm * 0.15, -148 + pose.shield_arm * 0.12)
-    near_hand = P(
-        -58 + pose.shield_arm * 0.26 + pose.shield_push * -8,
-        -108 + pose.shield_arm * 0.10,
-    )
+    near_shoulder = J.near_shoulder
+    near_elbow = J.near_elbow
+    near_hand = J.near_hand
     _line(draw, [near_shoulder, near_elbow, near_hand], SKIN, 6.8)
     _line(draw, [near_shoulder, near_elbow, near_hand], OUTLINE, 0.95)
     shield_center = (near_hand[0] - 12 - pose.shield_push * 12, near_hand[1] - 2)

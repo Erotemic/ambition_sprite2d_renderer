@@ -25,6 +25,7 @@ from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
+from . import _ghoul_skulker_rig
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -460,23 +461,21 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     draw = blending_draw(img)
     pose = Pose(anim, frame_idx, nframes)
 
-    root = (
-        WORK_FRAME_SIZE[0] * 0.47 + pose.root_x + pose.dead_t * 8.0,
-        WORK_FRAME_SIZE[1] * 0.75 + pose.root_y + pose.bob,
-    )
-    tilt = pose.lean
+    J = _ghoul_skulker_rig.evaluate(pose, WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1])
+    root = J.root
+    tilt = J.body_ang
 
     def P(x: float, y: float) -> Point:
         rx, ry = _rot(x, y, tilt)
         return (root[0] + rx, root[1] + ry)
 
     # legs behind / base crouch
-    left_hip = P(-14, -56)
-    right_hip = P(20, -52)
-    left_knee = P(-30 + pose.left_leg * 0.32, -12)
-    right_knee = P(18 + pose.right_leg * 0.26, -6)
-    left_foot = P(-42 + pose.left_leg * 0.22, 26 - pose.left_lift)
-    right_foot = P(42 + pose.right_leg * 0.18, 28 - pose.right_lift)
+    left_hip = J.left_hip
+    right_hip = J.right_hip
+    left_knee = J.left_knee
+    right_knee = J.right_knee
+    left_foot = J.left_foot
+    right_foot = J.right_foot
 
     # far leg first
     _line(draw, [right_hip, right_knee, right_foot], SKIN_SHADE, 7.5)
@@ -516,9 +515,9 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     _line(draw, [P(-5, -70), P(2, -66), P(10, -64)], SKIN_SHADE, 0.8)
 
     # far arm first
-    right_shoulder = P(28, -104)
-    right_elbow = P(48 + pose.right_arm * 0.10, -78 + pose.right_arm * 0.16)
-    right_hand = P(58 + pose.right_arm * 0.28, -46 + pose.right_arm * 0.22)
+    right_shoulder = J.right_shoulder
+    right_elbow = J.right_elbow
+    right_hand = J.right_hand
     _line(draw, [right_shoulder, right_elbow], SKIN_SHADE, 6.2)
     _line(draw, [right_elbow, right_hand], SKIN_SHADE, 5.2)
     _line(draw, [right_shoulder, right_elbow, right_hand], OUTLINE, 1.0)
@@ -528,8 +527,8 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     )
 
     # head and cap
-    head_root = P(0, -128)
-    head_tilt = tilt + pose.head_tilt
+    head_root = J.head_root
+    head_tilt = J.head_ang
 
     def H(x: float, y: float) -> Point:
         rx, ry = _rot(x, y, head_tilt)
@@ -609,9 +608,9 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     _draw_foot(draw, left_foot, 1)
 
     # front arm on top
-    left_shoulder = P(-18, -106)
-    left_elbow = P(-52 + pose.left_arm * 0.12, -74 + pose.left_arm * 0.18)
-    left_hand = P(-70 + pose.left_arm * 0.34, -42 + pose.left_arm * 0.28)
+    left_shoulder = J.left_shoulder
+    left_elbow = J.left_elbow
+    left_hand = J.left_hand
     _line(draw, [left_shoulder, left_elbow], SKIN, 7.0)
     _line(draw, [left_elbow, left_hand], SKIN, 5.8)
     _line(draw, [left_shoulder, left_elbow, left_hand], OUTLINE, 1.1)

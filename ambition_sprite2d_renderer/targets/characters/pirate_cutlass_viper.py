@@ -21,6 +21,7 @@ from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
+from . import _pirate_cutlass_viper_rig
 
 ACTOR_METADATA = {
     "actor": {
@@ -679,14 +680,14 @@ def _draw_front_torso(draw: ImageDraw.ImageDraw, P, pose: FrontPose) -> None:
 
 
 def _draw_front_limbs(
-    draw: ImageDraw.ImageDraw, P, pose: FrontPose
+    draw: ImageDraw.ImageDraw, pose: FrontPose, J
 ) -> Tuple[Point, Point]:
-    left_hip = P(-14, -47)
-    right_hip = P(16, -47)
-    left_knee = P(-18 + pose.left_leg * 0.18, -18)
-    right_knee = P(18 + pose.right_leg * 0.18, -18)
-    left_foot = P(-22 + pose.left_leg * 0.18, 5 - pose.left_foot_lift)
-    right_foot = P(24 + pose.right_leg * 0.18, 6 - pose.right_foot_lift)
+    left_hip = J.left_hip
+    right_hip = J.right_hip
+    left_knee = J.left_knee
+    right_knee = J.right_knee
+    left_foot = J.left_foot
+    right_foot = J.right_foot
     for hip, knee, foot in [
         (left_hip, left_knee, left_foot),
         (right_hip, right_knee, right_foot),
@@ -695,22 +696,18 @@ def _draw_front_limbs(
         _line(draw, [hip, knee, foot], OUTLINE, 1.4)
         _draw_boot_front(draw, foot, 1 if foot[0] > hip[0] else -1)
 
-    left_shoulder = P(-33, -96)
-    left_elbow = P(-41 + pose.left_arm * 0.08, -68 + pose.left_arm * 0.14)
-    left_hand = P(-25 + pose.left_arm * 0.24, -43 + pose.left_arm * 0.20)
+    left_shoulder = J.left_shoulder
+    left_elbow = J.left_elbow
+    left_hand = J.left_hand
     _line(draw, [left_shoulder, left_elbow], SKIN_SHADOW, 7.2)
     _line(draw, [left_elbow, left_hand], SKIN, 6.4)
     _line(draw, [left_shoulder, left_elbow, left_hand], OUTLINE, 1.7)
     _ellipse(draw, left_elbow[0], left_elbow[1], 6.3, 7.2, SKIN, OUTLINE, 1.0)
     _circle(draw, left_hand, 5.5, SKIN, OUTLINE, 1.0)
 
-    right_shoulder = P(34, -96)
-    right_elbow = P(
-        42 + pose.right_arm * 0.08, -67 + pose.right_arm * 0.16 + pose.blade_lift * 0.18
-    )
-    right_hand = P(
-        26 + pose.right_arm * 0.24, -44 + pose.right_arm * 0.23 + pose.blade_lift
-    )
+    right_shoulder = J.right_shoulder
+    right_elbow = J.right_elbow
+    right_hand = J.right_hand
     _line(draw, [right_shoulder, right_elbow], SKIN_SHADOW, 7.2)
     _line(draw, [right_elbow, right_hand], SKIN, 6.4)
     _line(draw, [right_shoulder, right_elbow, right_hand], OUTLINE, 1.7)
@@ -725,18 +722,22 @@ def _render_front(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     )
     draw = blending_draw(img)
     pose = FrontPose(anim, frame_idx, nframes)
-    root = (
-        WORK_FRAME_SIZE[0] * 0.47 + pose.root_x + pose.dead_t * 8.0,
-        WORK_FRAME_SIZE[1] * 0.68 + pose.root_y + pose.bob,
+
+    # Joints come from the explicit skeleton (see _pirate_cutlass_viper_rig): the
+    # animation lives on declared anchors instead of inline body-frame maths, and
+    # this paint pass places its geometry at them.
+    J = _pirate_cutlass_viper_rig.evaluate_front(
+        pose, WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1]
     )
-    tilt = pose.lean
+    root = J.root
+    tilt = J.body_ang
 
     def P(x: float, y: float) -> Point:
         rx, ry = _rot(x, y, tilt)
         return (root[0] + rx, root[1] + ry)
 
     if anim != "slash":
-        back_hand = P(23 + pose.right_arm * 0.18, -44 + pose.blade_lift)
+        back_hand = J.back_hand
         _draw_cutlass(draw, back_hand, pose.blade + tilt, front=False)
 
     if anim == "slash" and pose.impact > 0.1:
@@ -745,14 +746,12 @@ def _render_front(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         draw.arc(box, 192, 342, fill=SLASH, width=_s(5.8 + pose.impact * 1.8))
         draw.arc(box, 205, 330, fill=(255, 255, 255, 120), width=_s(2.2))
 
-    _draw_front_limbs(draw, P, pose)
+    _draw_front_limbs(draw, pose, J)
     _draw_front_torso(draw, P, pose)
     _draw_front_head(draw, P, pose)
 
     if anim == "slash":
-        hand = P(
-            26 + pose.right_arm * 0.24, -44 + pose.right_arm * 0.23 + pose.blade_lift
-        )
+        hand = J.right_hand
         _draw_cutlass(draw, hand, pose.blade + tilt, front=True)
 
     if anim == "slash" and pose.impact > 0.46:
@@ -789,23 +788,27 @@ def _render_side(
     draw = blending_draw(img)
     pose = SidePose(turn_side, openness, frame_idx, nframes, walkish=walkish)
     side = pose.side
-    root = (
-        WORK_FRAME_SIZE[0] * 0.47 + pose.root_x,
-        WORK_FRAME_SIZE[1] * 0.68 + pose.root_y + pose.bob,
+
+    # Joints come from the explicit skeleton (see _pirate_cutlass_viper_rig): the
+    # animation lives on declared anchors instead of inline body-frame maths, and
+    # this paint pass places its geometry at them.
+    J = _pirate_cutlass_viper_rig.evaluate_side(
+        pose, WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1]
     )
-    tilt = pose.lean
+    root = J.root
+    tilt = J.body_ang
 
     def P(x: float, y: float) -> Point:
         rx, ry = _rot(x, y, tilt)
         return (root[0] + rx, root[1] + ry)
 
     # --- legs: back leg behind, front leg leading the pose ---------------
-    back_hip = P(-7 * side * (1.0 - openness), -47)
-    front_hip = P(7 * side * (0.6 + 0.25 * openness), -46)
-    back_knee = P(-6 * side, -18 + pose.back_leg * 0.25)
-    front_knee = P(10 * side, -16 + pose.front_leg * 0.28)
-    back_foot = P(-3 * side, 5 - pose.back_foot_lift)
-    front_foot = P(18 * side, 6 - pose.front_foot_lift)
+    back_hip = J.back_hip
+    front_hip = J.front_hip
+    back_knee = J.back_knee
+    front_knee = J.front_knee
+    back_foot = J.back_foot
+    front_foot = J.front_foot
 
     _line(draw, [back_hip, back_knee, back_foot], SKIN_SHADOW, 4.4)
     _line(draw, [back_hip, back_knee, back_foot], OUTLINE, 1.1)
@@ -816,9 +819,9 @@ def _render_side(
     _draw_boot_side(draw, front_foot[0], front_foot[1], side, scale=1.0, lifted=0.0)
 
     # --- back arm / off arm ----------------------------------------------
-    back_shoulder = P(-8 * side, -98)
-    back_elbow = P(-11 * side + pose.back_arm * 0.12 * side, -70 + pose.back_arm * 0.14)
-    back_hand = P(-5 * side + pose.back_arm * 0.20 * side, -45 + pose.back_arm * 0.18)
+    back_shoulder = J.back_shoulder
+    back_elbow = J.back_elbow
+    back_hand = J.back_hand
     _line(draw, [back_shoulder, back_elbow], SKIN_SHADOW, 4.7)
     _line(draw, [back_elbow, back_hand], SKIN, 4.4)
     _line(draw, [back_shoulder, back_elbow, back_hand], OUTLINE, 1.1)
@@ -933,15 +936,9 @@ def _render_side(
     )
 
     # --- weapon arm in front ---------------------------------------------
-    front_shoulder = P(12 * side, -98)
-    front_elbow = P(
-        20 * side + pose.front_arm * 0.13 * side,
-        -70 + pose.front_arm * 0.12 + pose.sword_lift * 0.3,
-    )
-    front_hand = P(
-        16 * side + pose.front_arm * 0.18 * side,
-        -46 + pose.front_arm * 0.18 + pose.sword_lift,
-    )
+    front_shoulder = J.front_shoulder
+    front_elbow = J.front_elbow
+    front_hand = J.front_hand
     _line(draw, [front_shoulder, front_elbow], SKIN_SHADOW, 6.0)
     _line(draw, [front_elbow, front_hand], SKIN, 5.4)
     _line(draw, [front_shoulder, front_elbow, front_hand], OUTLINE, 1.3)

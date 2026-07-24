@@ -21,6 +21,7 @@ from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
+from . import _viking_heavy_warrior_rig
 
 ACTOR_METADATA = {
     "actor": {
@@ -446,17 +447,17 @@ def _render_frame(anim: str, idx: int, n: int) -> Image.Image:
     draw = blending_draw(img)
     pose = Pose(anim, idx, n)
 
-    root = (
-        WORK_FRAME_SIZE[0] * 0.48 + pose.root_x,
-        WORK_FRAME_SIZE[1] * 0.80 + pose.root_y + pose.bob,
+    J = _viking_heavy_warrior_rig.evaluate(
+        pose, WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1]
     )
-    body_ang = pose.lean
+    root = J.root
+    body_ang = J.body_ang
 
     def P(x: float, y: float) -> Point:
         rx, ry = _rot(x, y, body_ang)
         return (root[0] + rx, root[1] + ry)
 
-    far_hip = P(18, -120)
+    far_hip = J.far_hip
     _draw_leg(draw, far_hip, 94 + pose.right_leg, pose.right_lift, front=False)
     tunic_back = [
         P(-48, -180),
@@ -506,13 +507,13 @@ def _render_frame(anim: str, idx: int, n: int) -> Image.Image:
     _poly(draw, belt, LEATHER, OUTLINE, 0.7)
     _ellipse(draw, P(-4, -123)[0], P(-4, -123)[1], 7, 5, GOLD, OUTLINE, 0.35)
 
-    far_shoulder = P(44, -224)
-    far_elbow = P(70 + pose.right_arm * 0.18, -180 + pose.right_arm * 0.16)
-    far_hand = P(84 + pose.right_arm * 0.28, -126 + pose.right_arm * 0.22)
+    far_shoulder = J.far_shoulder
+    far_elbow = J.far_elbow
+    far_hand = J.far_hand
     _draw_beefy_arm(draw, far_shoulder, far_elbow, far_hand, SKIN_SHADE)
 
-    head_root = P(-4, -304)
-    head_ang = body_ang + pose.head
+    head_root = J.head_root
+    head_ang = J.head_ang
 
     def H(x: float, y: float) -> Point:
         rx, ry = _rot(x, y, head_ang)
@@ -610,7 +611,7 @@ def _render_frame(anim: str, idx: int, n: int) -> Image.Image:
     else:
         _line(draw, [H(-2, 18), H(4, 20), H(10, 18)], MOUTH, 0.7)
 
-    near_hip = P(-20, -120)
+    near_hip = J.near_hip
     near_foot = _draw_leg(
         draw, near_hip, 94 + pose.left_leg, pose.left_lift, front=True
     )
@@ -626,9 +627,9 @@ def _render_frame(anim: str, idx: int, n: int) -> Image.Image:
     for x in [-24, -4, 16, 34]:
         _line(draw, [P(x, -166), P(x + 6, -8)], TUNIC_SHADE, 0.9)
 
-    near_shoulder = P(-48, -224)
-    near_elbow = P(-74 + pose.left_arm * 0.18, -180 + pose.left_arm * 0.16)
-    near_hand = P(-90 + pose.left_arm * 0.32, -124 + pose.left_arm * 0.22)
+    near_shoulder = J.near_shoulder
+    near_elbow = J.near_elbow
+    near_hand = J.near_hand
     _draw_beefy_arm(draw, near_shoulder, near_elbow, near_hand, SKIN)
 
     axe_tip = _draw_double_axe(
