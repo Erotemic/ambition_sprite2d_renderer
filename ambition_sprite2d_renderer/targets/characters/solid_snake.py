@@ -17,6 +17,7 @@ from typing import Iterable, List, Sequence, Tuple
 from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -418,7 +419,7 @@ def _draw_emerge(draw: ImageDraw.ImageDraw, frame_idx: int, nframes: int) -> Non
 
 def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     img = Image.new("RGBA", (CANVAS_W, CANVAS_H), TRANSPARENT)
-    draw = ImageDraw.Draw(img)
+    draw = blending_draw(img)
 
     if anim == "retreat":
         _draw_retreat_frame(draw, frame_idx, nframes)

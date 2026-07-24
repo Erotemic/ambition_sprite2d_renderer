@@ -76,12 +76,17 @@ def _pipe_body_frame(animation: str, frame_idx: int, nframes: int) -> Image.Imag
     def painter(px: PixelCanvas) -> None:
         # No horizontal outline: the first and last rows are intentionally the
         # same, so any number of body segments can meet without a dark seam.
-        px.rect(4.0, 0.0, 12.0, 8.0, fill=PIPE_GREEN)
-        px.rect(4.0, 0.0, 4.5, 8.0, fill=OUTLINE)
-        px.rect(11.5, 0.0, 12.0, 8.0, fill=OUTLINE)
-        px.rect(4.5, 0.0, 6.0, 8.0, fill=PIPE_GREEN_LIGHT)
-        px.rect(6.0, 0.0, 7.0, 8.0, fill=(55, 188, 101, 255))
-        px.rect(10.0, 0.0, 11.5, 8.0, fill=PIPE_GREEN_DARK)
+        #
+        # The shaft fills most of the frame (13 of 16 logical units). It used to
+        # be 8 — half the frame — against a 14-unit lip, so the pipe read as a
+        # thin tube wearing a hat three times too wide for it, and a body sliding
+        # down it was wider than the tube it was supposedly inside.
+        px.rect(1.5, 0.0, 14.5, 8.0, fill=PIPE_GREEN)
+        px.rect(1.5, 0.0, 2.0, 8.0, fill=OUTLINE)
+        px.rect(14.0, 0.0, 14.5, 8.0, fill=OUTLINE)
+        px.rect(2.0, 0.0, 4.0, 8.0, fill=PIPE_GREEN_LIGHT)
+        px.rect(4.0, 0.0, 5.5, 8.0, fill=(55, 188, 101, 255))
+        px.rect(12.0, 0.0, 14.0, 8.0, fill=PIPE_GREEN_DARK)
 
     return rasterize_logical(PIPE_LOGICAL, SCALE, painter)
 
@@ -92,19 +97,22 @@ def _pipe_top_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image
     def painter(px: PixelCanvas) -> None:
         # The lower neck is byte-for-byte the same vertical cross-section as
         # the body target.  The lip overhangs without changing the seam.
-        px.rect(4.0, 3.5, 12.0, 8.0, fill=PIPE_GREEN)
-        px.rect(4.0, 3.5, 4.5, 8.0, fill=OUTLINE)
-        px.rect(11.5, 3.5, 12.0, 8.0, fill=OUTLINE)
-        px.rect(4.5, 3.5, 6.0, 8.0, fill=PIPE_GREEN_LIGHT)
-        px.rect(6.0, 3.5, 7.0, 8.0, fill=(55, 188, 101, 255))
-        px.rect(10.0, 3.5, 11.5, 8.0, fill=PIPE_GREEN_DARK)
+        px.rect(1.5, 3.5, 14.5, 8.0, fill=PIPE_GREEN)
+        px.rect(1.5, 3.5, 2.0, 8.0, fill=OUTLINE)
+        px.rect(14.0, 3.5, 14.5, 8.0, fill=OUTLINE)
+        px.rect(2.0, 3.5, 4.0, 8.0, fill=PIPE_GREEN_LIGHT)
+        px.rect(4.0, 3.5, 5.5, 8.0, fill=(55, 188, 101, 255))
+        px.rect(12.0, 3.5, 14.0, 8.0, fill=PIPE_GREEN_DARK)
 
-        px.rect(1.0, 0.5, 15.0, 4.5, fill=OUTLINE)
-        px.rect(1.5, 1.0, 14.5, 4.0, fill=PIPE_GREEN)
-        px.rect(1.5, 1.0, 4.0, 4.0, fill=PIPE_GREEN_LIGHT)
-        px.rect(4.0, 1.0, 5.0, 4.0, fill=(55, 188, 101, 255))
-        px.rect(12.0, 1.0, 14.5, 4.0, fill=PIPE_GREEN_DARK)
-        px.rect(2.0, 3.5, 14.0, 4.0, fill=(14, 75, 40, 255))
+        # The lip overhangs the neck by ONE logical unit each side. It used to
+        # overhang by three, which is what made the rim read as far too wide for
+        # its own pipe.
+        px.rect(0.5, 0.5, 15.5, 4.5, fill=OUTLINE)
+        px.rect(1.0, 1.0, 15.0, 4.0, fill=PIPE_GREEN)
+        px.rect(1.0, 1.0, 3.5, 4.0, fill=PIPE_GREEN_LIGHT)
+        px.rect(3.5, 1.0, 5.0, 4.0, fill=(55, 188, 101, 255))
+        px.rect(12.5, 1.0, 15.0, 4.0, fill=PIPE_GREEN_DARK)
+        px.rect(1.5, 3.5, 14.5, 4.0, fill=(14, 75, 40, 255))
 
     return rasterize_logical(PIPE_LOGICAL, SCALE, painter)
 
