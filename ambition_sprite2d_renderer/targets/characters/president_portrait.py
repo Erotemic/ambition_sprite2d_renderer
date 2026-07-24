@@ -22,6 +22,7 @@ from PIL import Image, ImageDraw
 
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
+from . import _president_portrait_rig
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -423,18 +424,16 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     draw = blending_draw(img)
     pose = Pose(anim, frame_idx, nframes)
 
-    root = (
-        WORK_FRAME_SIZE[0] * 0.47 + pose.root_x,
-        WORK_FRAME_SIZE[1] * 0.77 + pose.root_y + pose.bob,
-    )
-    tilt = pose.tilt
+    J = _president_portrait_rig.evaluate(pose, WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1])
+    root = J.root
+    tilt = J.body_ang
 
     def P(x: float, y: float) -> Point:
         rx, ry = _rot(x, y, tilt)
         return (root[0] + rx, root[1] + ry)
 
     # far leg first
-    far_hip = P(10, -104)
+    far_hip = J.far_hip
     _draw_leg(draw, far_hip, 92 + pose.right_leg, pose.right_lift, False)
 
     # coat tails behind body
@@ -503,16 +502,16 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     _ellipse(draw, P(18, -112)[0], P(18, -112)[1], 5.0, 5.0, GOLD, OUTLINE, 0.45)
 
     # far arm
-    far_shoulder = P(28, -182)
-    far_elbow = P(40 + pose.right_arm * 0.18, -138 + pose.right_arm * 0.10)
-    far_hand = P(46 + pose.right_arm * 0.28, -92 + pose.right_arm * 0.12)
+    far_shoulder = J.far_shoulder
+    far_elbow = J.far_elbow
+    far_hand = J.far_hand
     _line(draw, [far_shoulder, far_elbow, far_hand], COAT, 7.2)
     _line(draw, [far_shoulder, far_elbow, far_hand], OUTLINE, 1.0)
     _draw_hand(draw, far_hand, 4.2)
 
     # head + wig
-    head_root = P(-2, -246)
-    head_ang = tilt + pose.head
+    head_root = J.head_root
+    head_ang = J.head_ang
 
     def H(x: float, y: float) -> Point:
         rx, ry = _rot(x, y, head_ang)
@@ -603,7 +602,7 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         _line(draw, [H(2, 14), H(8, 15), H(14, 14)], (114, 76, 72, 255), 0.7)
 
     # near leg
-    near_hip = P(-12, -104)
+    near_hip = J.near_hip
     _draw_leg(draw, near_hip, 92 + pose.left_leg, pose.left_lift, True)
 
     # Render breeches / coat-skirt over the tops of the legs so the pants sit
@@ -611,9 +610,9 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     _draw_breeches_overlay(draw, P)
 
     # near arm with weapon / gesturing
-    near_shoulder = P(-28, -182)
-    near_elbow = P(-40 + pose.left_arm * 0.20, -140 + pose.left_arm * 0.10)
-    near_hand = P(-46 + pose.left_arm * 0.36, -96 + pose.left_arm * 0.14)
+    near_shoulder = J.near_shoulder
+    near_elbow = J.near_elbow
+    near_hand = J.near_hand
     _line(draw, [near_shoulder, near_elbow, near_hand], COAT, 7.6)
     _line(draw, [near_shoulder, near_elbow, near_hand], OUTLINE, 1.0)
     _draw_hand(draw, near_hand, 4.4)
