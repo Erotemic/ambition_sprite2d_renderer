@@ -29,6 +29,7 @@ from ...authoring.portrait import (
     write_portrait_sheet,
 )
 from ambition_sprite2d_renderer.core.draw import blending_draw
+from ._pirate_heavy_rig import PirateHeavyJoints, evaluate as _rig_evaluate
 
 ACTOR_METADATA = {
     "actor": {"character_id": "npc_pirate_heavy", "display_name": "Pirate Heavy"},
@@ -890,18 +891,16 @@ def _draw_torso(draw: ImageDraw.ImageDraw, p, pose: Pose, spec: VariantSpec) -> 
 
 
 def _draw_limbs(
-    draw: ImageDraw.ImageDraw, p, pose: Pose, spec: VariantSpec
+    draw: ImageDraw.ImageDraw, p, pose: Pose, spec: VariantSpec, J: PirateHeavyJoints
 ) -> Tuple[Point, Point]:
     pal = spec.palette
     P = p
-    left_hip = P(-22 * spec.hip_scale, -47)
-    right_hip = P(21 * spec.hip_scale, -47)
-    left_knee = P(-25 * spec.hip_scale + pose.left_leg * 0.18, -18)
-    right_knee = P(24 * spec.hip_scale + pose.right_leg * 0.18, -18)
-    left_foot = P(-29 * spec.hip_scale + pose.left_leg * 0.16, 5 - pose.left_foot_lift)
-    right_foot = P(
-        31 * spec.hip_scale + pose.right_leg * 0.16, 5 - pose.right_foot_lift
-    )
+    left_hip = J.left_hip
+    right_hip = J.right_hip
+    left_knee = J.left_knee
+    right_knee = J.right_knee
+    left_foot = J.left_foot
+    right_foot = J.right_foot
     for hip, knee, foot in [
         (left_hip, left_knee, left_foot),
         (right_hip, right_knee, right_foot),
@@ -910,13 +909,9 @@ def _draw_limbs(
         _line(draw, [hip, knee, foot], OUTLINE, 1.8)
         _draw_boot(draw, foot, 1 if foot[0] > hip[0] else -1, pal)
 
-    left_shoulder = P(-44 * spec.shoulder_scale, -95)
-    left_elbow = P(
-        -55 * spec.shoulder_scale + pose.left_arm * 0.06, -63 + pose.left_arm * 0.15
-    )
-    left_hand = P(
-        -42 * spec.shoulder_scale + pose.left_arm * 0.22, -41 + pose.left_arm * 0.24
-    )
+    left_shoulder = J.left_shoulder
+    left_elbow = J.left_elbow
+    left_hand = J.left_hand
     _line(draw, [left_shoulder, left_elbow], pal.skin_shadow, 9.5 * spec.arm_scale)
     _line(draw, [left_elbow, left_hand], pal.skin, 8.4 * spec.arm_scale)
     _line(draw, [left_shoulder, left_elbow, left_hand], OUTLINE, 2.2)
@@ -932,15 +927,9 @@ def _draw_limbs(
     )
     _circle(draw, left_hand, 7.5 * spec.arm_scale, pal.skin, OUTLINE, 1.5)
 
-    right_shoulder = P(44 * spec.shoulder_scale, -96)
-    right_elbow = P(
-        55 * spec.shoulder_scale + pose.right_arm * 0.05,
-        -64 + pose.right_arm * 0.16 + pose.weapon_lift * 0.2,
-    )
-    right_hand = P(
-        43 * spec.shoulder_scale + pose.right_arm * 0.24,
-        -41 + pose.right_arm * 0.27 + pose.weapon_lift,
-    )
+    right_shoulder = J.right_shoulder
+    right_elbow = J.right_elbow
+    right_hand = J.right_hand
     _line(draw, [right_shoulder, right_elbow], pal.skin_shadow, 10.0 * spec.arm_scale)
     _line(draw, [right_elbow, right_hand], pal.skin, 9.0 * spec.arm_scale)
     _line(draw, [right_shoulder, right_elbow, right_hand], OUTLINE, 2.2)
@@ -984,11 +973,9 @@ def _draw_variant(
     pose = Pose(anim, frame_idx, nframes)
     pal = spec.palette
 
-    root = (
-        WORK_FRAME_SIZE[0] * 0.46 + pose.root_x + pose.death_t * 8.0,
-        WORK_FRAME_SIZE[1] * 0.67 + pose.root_y + pose.bob,
-    )
-    tilt = pose.tilt
+    J = _rig_evaluate(pose, spec, WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1])
+    root = J.root
+    tilt = J.tilt
 
     def P(x: float, y: float) -> Point:
         rx, ry = _rot_local(x, y, tilt)
@@ -996,9 +983,7 @@ def _draw_variant(
 
     weapon_in_front = anim == "slash"
     if not weapon_in_front:
-        back_hand = P(
-            38 * spec.shoulder_scale + pose.right_arm * 0.12, -44 + pose.weapon_lift
-        )
+        back_hand = J.back_hand
         _draw_cleaver(
             draw,
             back_hand,
@@ -1014,7 +999,7 @@ def _draw_variant(
         draw.arc(box, 204, 334, fill=pal.slash, width=_s(6.0 + pose.impact * 2.0))
         draw.arc(box, 214, 326, fill=(255, 255, 255, 115), width=_s(2.5))
 
-    head = P(0, -125 + pose.head_tilt * 0.10)
+    head = J.head
     hair_shadow = [
         P(-22, -137),
         P(-8, -153),
@@ -1027,7 +1012,7 @@ def _draw_variant(
     ]
     _poly(draw, hair_shadow, pal.hair, OUTLINE, 1.4)
 
-    _draw_limbs(draw, P, pose, spec)
+    _draw_limbs(draw, P, pose, spec, J)
     _draw_torso(draw, P, pose, spec)
     _poly(
         draw,
@@ -1039,10 +1024,7 @@ def _draw_variant(
     _draw_face(draw, head, pose, spec)
 
     if weapon_in_front:
-        hand = P(
-            43 * spec.shoulder_scale + pose.right_arm * 0.24,
-            -41 + pose.right_arm * 0.27 + pose.weapon_lift,
-        )
+        hand = J.right_hand
         _draw_cleaver(
             draw,
             hand,
