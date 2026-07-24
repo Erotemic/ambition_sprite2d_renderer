@@ -52,6 +52,7 @@ from ...authoring.sheet_build import (
     transform,
 )
 from ambition_sprite2d_renderer.core.draw import blending_draw
+from . import _pirate_rig as pirate_rig
 
 
 @dataclass
@@ -574,19 +575,8 @@ def paint_character(
     w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
     pose = animation_pose(anim, frame_idx, nframes)
 
-    cx = w * (0.48 if kind == "pirate_admiral" else 0.50)
-    ground = h * 0.83
-    bob = pose["bob"] * SCALE
-    root = (cx, ground + bob)
     global_tilt = pose["body_tilt"] + (
         5 if kind in SCARFED_KINDS and anim == "taunt" else 0
-    )
-    death_t = pose["death_t"]
-
-    # Whole body offsets / lean for death.
-    char_origin = (
-        root[0] + pose["root_x"] * SCALE + death_t * 12 * SCALE,
-        root[1] + death_t * 5 * SCALE,
     )
 
     # No baked drop shadow. A shadow ellipse below the feet extends the
@@ -596,39 +586,25 @@ def paint_character(
     # gameplay state belong on the ECS visual layer, not the source PNG.
     # See agent memory: [[feedback-no-drop-shadows-on-sprites]].
 
-    # Local joints.
-    hip = transform((0, -60), char_origin, deg=global_tilt)
-    chest = transform((0, -124 + pose["shoulder_bounce"]), char_origin, deg=global_tilt)
-    head_center = transform(
-        (8, -202 + pose["head_y"]), char_origin, deg=global_tilt + pose["head_tilt"]
-    )
-
-    # Back arm / weapon arm first.
-    if kind == "pirate_admiral":
-        back_shoulder = transform((20, -136), char_origin, deg=global_tilt)
-        front_shoulder = transform((-22, -136), char_origin, deg=global_tilt)
-    else:
-        back_shoulder = transform((24, -136), char_origin, deg=global_tilt)
-        front_shoulder = transform((-26, -136), char_origin, deg=global_tilt)
-
-    # Legs. Upper-leg offsets put the knee mostly DOWN from the hip
-    # with only a small outward bias, so the pants render as columns
-    # instead of an inverted-V splay. Lower-leg offsets keep the same
-    # ~30 px drop, giving a roughly even thigh/shin split for the
-    # body's overall height. Previously the offsets were (-18, 4) and
-    # (12, 4) — near-horizontal "thighs" that produced the bow-legged
-    # silhouette and let leg-angle rotations sweep the upper leg
-    # across the body centerline.
-    left_hip = transform((-16, -56), char_origin, deg=global_tilt)
-    right_hip = transform((18, -56), char_origin, deg=global_tilt)
-    left_knee = transform((-4, 30), left_hip, deg=pose["left_leg"])
-    right_knee = transform((4, 30), right_hip, deg=pose["right_leg"])
-    left_foot = transform(
-        (-8, 30 - pose["left_foot_lift"]), left_knee, deg=pose["left_leg"] * 0.3
-    )
-    right_foot = transform(
-        (8, 30 - pose["right_foot_lift"]), right_knee, deg=pose["right_leg"] * 0.3
-    )
+    # Joints come from the pirate's explicit skeleton (see _pirate_rig): the
+    # animation lives on declared bones instead of inline transforms, and this
+    # paint pass just places its parts at the evaluated joints. The upper-leg
+    # offsets put the knee mostly DOWN from the hip with a small outward bias so
+    # the pants read as columns, not an inverted-V splay — see _pirate_rig for
+    # the socket layout and the world-swing leg convention.
+    joints = pirate_rig.evaluate(pose, kind, w, h, global_tilt)
+    char_origin = joints["root"].point
+    hip = joints["hip"].point
+    chest = joints["chest"].point
+    head_center = joints["head"].point
+    back_shoulder = joints["back_shoulder"].point
+    front_shoulder = joints["front_shoulder"].point
+    left_hip = joints["left_hip"].point
+    right_hip = joints["right_hip"].point
+    left_knee = joints["left_knee"].point
+    right_knee = joints["right_knee"].point
+    left_foot = joints["left_foot"].point
+    right_foot = joints["right_foot"].point
 
     _begin(draw, "legs")
     for hip_pt, knee_pt, foot_pt, ang in [
@@ -668,8 +644,8 @@ def paint_character(
 
     # Back arm
     _begin(draw, "arms")
-    back_elbow = transform((4, 52), back_shoulder, deg=pose["left_arm"])
-    back_hand = transform((0, 48), back_elbow, deg=pose["left_arm"] * 0.55)
+    back_elbow = joints["back_elbow"].point
+    back_hand = joints["back_hand"].point
     line(draw, [back_shoulder, back_elbow, back_hand], pal.coat, width=12)
     line(draw, [back_shoulder, back_elbow, back_hand], pal.outline, width=4)
     circle(draw, back_hand, 7, pal.skin, pal.outline, width=2)
@@ -682,8 +658,8 @@ def paint_character(
         )
 
     # Front arm / weapon
-    front_elbow = transform((6, 50), front_shoulder, deg=pose["right_arm"])
-    front_hand = transform((0, 46), front_elbow, deg=pose["weapon"] * 0.35)
+    front_elbow = joints["front_elbow"].point
+    front_hand = joints["front_hand"].point
     line(draw, [front_shoulder, front_elbow, front_hand], pal.coat, width=13)
     line(draw, [front_shoulder, front_elbow, front_hand], pal.outline, width=4)
     circle(draw, front_hand, 8, pal.skin, pal.outline, width=2)
@@ -755,6 +731,7 @@ def paint_character(
 
     # Death settle pose, ground line accent
     if anim == "death":
+        ground = h * 0.83
         draw.line((0, ground + 24, w, ground + 24), fill=(0, 0, 0, 0), width=1)
 
 
