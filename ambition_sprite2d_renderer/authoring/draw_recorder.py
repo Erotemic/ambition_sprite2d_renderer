@@ -200,10 +200,7 @@ class DrawRecorder:
             fill: Any = None, width: int = 1) -> None:
         # Pillow draws an elliptical arc, angles in degrees clockwise from the
         # +x axis (y points down). Sample it into a stroked polyline — faithful
-        # to a few tenths of a pixel and trivially rasterizable. (A native SVG
-        # elliptical-arc path was measured and reproduced Pillow no better — the
-        # residual on the pirate slash swoosh is translucent compositing, not arc
-        # geometry — so the simpler sampled form stays.)
+        # to a few tenths of a pixel and trivially rasterizable.
         self.calls += 1
         x0, y0, x1, y1 = xy
         cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
