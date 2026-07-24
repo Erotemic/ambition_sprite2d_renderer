@@ -109,6 +109,8 @@ ACTOR_METADATA = {
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
+from . import _viking_warrior_rig as _viking_warrior_rig
+
 TARGET_NAME = "viking_warrior"
 # Files the tack-on installer copies into the sandbox sprites dir.
 # Names match what `build_sheet` writes (target_spritesheet.{png,yaml,ron}).
@@ -462,17 +464,18 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     draw = blending_draw(img)
     pose = Pose(anim, frame_idx, nframes)
 
-    root = (
-        WORK_FRAME_SIZE[0] * 0.47 + pose.root_x,
-        WORK_FRAME_SIZE[1] * 0.79 + pose.root_y + pose.bob,
-    )
-    body_ang = pose.lean
+    # Joints come from the explicit skeleton (see _viking_warrior_rig): the
+    # animation lives on declared anchors instead of inline body-frame maths, and
+    # this paint pass places its geometry at them.
+    J = _viking_warrior_rig.evaluate(pose, WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1])
+    root = J.root
+    body_ang = J.body_ang
 
     def P(x: float, y: float) -> Point:
         rx, ry = _rot(x, y, body_ang)
         return (root[0] + rx, root[1] + ry)
 
-    far_hip = P(12, -108)
+    far_hip = J.far_hip
     _draw_leg(draw, far_hip, 92 + pose.right_leg, pose.right_lift, front=False)
 
     # hips / tunic back
@@ -522,15 +525,15 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         _line(draw, [P(x, y), P(x + 6, y + 8)], FUR_SHADE, 0.8)
 
     # far arm
-    far_shoulder = P(30, -186)
-    far_elbow = P(44 + pose.right_arm * 0.22, -148 + pose.right_arm * 0.16)
-    far_hand = P(52 + pose.right_arm * 0.34, -102 + pose.right_arm * 0.18)
+    far_shoulder = J.far_shoulder
+    far_elbow = J.far_elbow
+    far_hand = J.far_hand
     _line(draw, [far_shoulder, far_elbow, far_hand], SKIN_SHADE, 7.0)
     _line(draw, [far_shoulder, far_elbow, far_hand], OUTLINE, 0.95)
 
     # head
-    head_root = P(-2, -248)
-    head_ang = body_ang + pose.head
+    head_root = J.head_root
+    head_ang = J.head_ang
 
     def H(x: float, y: float) -> Point:
         rx, ry = _rot(x, y, head_ang)
@@ -628,7 +631,7 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     else:
         _line(draw, [H(-1, 12), H(5, 14), H(11, 12)], MOUTH, 0.7)
 
-    near_hip = P(-12, -108)
+    near_hip = J.near_hip
     near_foot = _draw_leg(
         draw, near_hip, 92 + pose.left_leg, pose.left_lift, front=True
     )
@@ -650,9 +653,9 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     _ellipse(draw, P(-4, -117)[0], P(-4, -117)[1], 5.0, 4.0, GOLD, OUTLINE, 0.3)
 
     # near arm / both hands grip axe shaft
-    near_shoulder = P(-32, -186)
-    near_elbow = P(-44 + pose.left_arm * 0.20, -148 + pose.left_arm * 0.18)
-    near_hand = P(-52 + pose.left_arm * 0.34, -102 + pose.left_arm * 0.22)
+    near_shoulder = J.near_shoulder
+    near_elbow = J.near_elbow
+    near_hand = J.near_hand
     _line(draw, [near_shoulder, near_elbow, near_hand], SKIN, 7.2)
     _line(draw, [near_shoulder, near_elbow, near_hand], OUTLINE, 1.0)
 
