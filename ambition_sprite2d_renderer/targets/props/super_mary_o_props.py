@@ -127,6 +127,59 @@ def _gas_tank_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image
 
 
 
+def _spark_blossom_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
+    """The spark-blossom (fire-flower) pickup.
+
+    The runtime has referenced ``super_mary_o_spark_blossom`` through
+    ``WorldItemArt`` since the spark form landed, but no generator target ever
+    produced it — so the item was collectible and completely invisible. This is
+    that missing target.
+
+    Four petals around a bright core on a two-leaf stem, cycling the core
+    between gold and red so a dropped blossom reads as "live" at a glance the
+    way the milk carton's bob does.
+    """
+    bob = [0.0, -0.6, -1.0, -0.4][frame_idx % 4]
+    pulse = [0.0, 0.55, 1.0, 0.45][frame_idx % 4]
+    core = (
+        int(COIN_GOLD[0] + (GAS_RED[0] - COIN_GOLD[0]) * pulse),
+        int(COIN_GOLD[1] + (GAS_RED[1] - COIN_GOLD[1]) * pulse),
+        int(COIN_GOLD[2] + (GAS_RED[2] - COIN_GOLD[2]) * pulse),
+        255,
+    )
+
+    def painter(px) -> None:
+        cx = 14.0
+        cy = 12.0 + bob
+        # Stem + the two leaves, so the blossom sits on the ground rather than
+        # floating like the coin does.
+        px.rect(cx - 0.7, cy + 3.0, cx + 0.7, 22.5, fill=PIPE_GREEN_DARK)
+        px.ellipse(cx - 6.0, 17.0, cx - 0.8, 20.4, fill=PIPE_GREEN, outline=OUTLINE, width=0.6)
+        px.ellipse(cx + 0.8, 18.6, cx + 6.0, 22.0, fill=PIPE_GREEN, outline=OUTLINE, width=0.6)
+        # Four petals, drawn before the core so the core caps their seams.
+        petal = 4.4
+        for dx, dy in ((0.0, -1.0), (0.0, 1.0), (-1.0, 0.0), (1.0, 0.0)):
+            px.ellipse(
+                cx + dx * 3.1 - petal / 2.0,
+                cy + dy * 3.1 - petal / 2.0,
+                cx + dx * 3.1 + petal / 2.0,
+                cy + dy * 3.1 + petal / 2.0,
+                fill=MILK_WHITE,
+                outline=OUTLINE,
+                width=0.6,
+            )
+        px.ellipse(cx - 3.0, cy - 3.0, cx + 3.0, cy + 3.0, fill=core, outline=OUTLINE, width=0.7)
+        px.ellipse(cx - 1.3, cy - 1.6, cx + 0.9, cy + 0.4, fill=COIN_GOLD_LIGHT, outline=None)
+        # Deliberately NO glow halo. A translucent ellipse over the transparent
+        # canvas composites as a visible disc rather than a glow (the same class
+        # of trap as alpha-0 blending acting as an eraser), and the classic
+        # flower has no aura anyway — the pulsing core is the whole tell.
+
+    sprite = rasterize_logical(LOGICAL, SCALE, painter)
+    frame = bottom_center_canvas(sprite, FRAME)
+    return frame
+
+
 def _coin_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     phase = frame_idx % max(1, nframes)
     widths = [7.6, 4.2, 2.4, 4.2, 7.6, 4.8]
@@ -164,6 +217,13 @@ SPECS: Dict[str, PropSpec] = {
         rows=[("idle", 4, 125)],
         renderer=_milk_frame,
         traits=("pickup", "milk", "powerup", "retro"),
+    ),
+    "super_mary_o_spark_blossom": PropSpec(
+        target_name="super_mary_o_spark_blossom",
+        display_name="Spark Blossom Power-Up",
+        rows=[("idle", 4, 125)],
+        renderer=_spark_blossom_frame,
+        traits=("pickup", "spark", "powerup", "retro"),
     ),
     "super_mary_o_gasoline_tank": PropSpec(
         target_name="super_mary_o_gasoline_tank",
