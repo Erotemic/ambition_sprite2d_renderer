@@ -244,6 +244,44 @@ def test_pipi_tau_publishes_bespoke_expression_clips(tmp_path):
     assert manifest.count("(x:") == 13
 
 
+def test_hunny_horror_portraits_publish_dialogue_flash_clips(tmp_path, monkeypatch):
+    from ambition_sprite2d_renderer.targets.characters import hunny_horror_boss
+
+    calls: list[tuple[str, int, int, int]] = []
+
+    class _FakeRigDocument:
+        frame = {"width": 160, "height": 160}
+
+        def frame_time(self, clip_name, frame_index, frame_count):
+            calls.append((clip_name, frame_index, frame_count, 0))
+            return frame_index / max(1, frame_count)
+
+        def render_at(self, clip_name, time, *, scale):
+            assert scale == 4
+            assert 0.0 <= time <= 1.0
+            calls.append((clip_name, 0, 0, scale))
+            image = Image.new("RGBA", (640, 640), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(image)
+            draw.ellipse((180, 80, 460, 360), fill=(220, 190, 90, 255))
+            draw.rectangle((120, 310, 520, 620), fill=(90, 50, 30, 255))
+            return image
+
+    monkeypatch.setattr(hunny_horror_boss, "load_doc", lambda: _FakeRigDocument())
+    outputs = hunny_horror_boss.render_portraits(tmp_path)
+    manifest = outputs[1].read_text(encoding="utf8")
+    assert [path.name for path in outputs] == [
+        "hunny_horror_boss_portraits.png",
+        "hunny_horror_boss_portraits.ron",
+    ]
+    assert Image.open(outputs[0]).size == (256 * 8, 320 * 3)
+    render_calls = [call for call in calls if call[3] == 4]
+    assert len(render_calls) == 21
+    assert {call[0] for call in render_calls} == {"rest", "walk", "roar", "swipe"}
+    assert '"speaking": (' in manifest
+    assert '"evil_flash": (' in manifest
+    assert '"evil_hold": (' in manifest
+
+
 def test_oiler_portrait_hook_requests_native_svg_scale(monkeypatch, tmp_path):
     from ambition_sprite2d_renderer.targets.characters import oiler
 

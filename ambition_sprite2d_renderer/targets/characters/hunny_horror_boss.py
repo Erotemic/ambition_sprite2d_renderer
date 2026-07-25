@@ -27,8 +27,11 @@ ROWS: List[Tuple[str, int, int]] = [
     ("rest", 8, 130),
     ("walk", 8, 105),
     ("swipe", 8, 92),
-    ("roar", 8, 104),
-    ("death", 8, 118),
+    ("maul", 10, 78),
+    ("slam", 10, 84),
+    ("roar", 10, 104),
+    ("stagger", 6, 86),
+    ("death", 12, 108),
 ]
 
 ACTOR_METADATA = {
@@ -61,6 +64,31 @@ ACTOR_METADATA = {
                 {"t": 0.72, "event": "hitbox_active_end", "source": TARGET_NAME},
             ],
         },
+        "action.melee.heavy": {
+            "animation": "maul",
+            "events": [
+                {"t": 0.18, "event": "telegraph_peak", "source": TARGET_NAME},
+                {"t": 0.34, "event": "hitbox_active_start", "source": TARGET_NAME},
+                {"t": 0.46, "event": "hitbox_active_end", "source": TARGET_NAME},
+                {"t": 0.60, "event": "hitbox_active_start", "source": TARGET_NAME},
+                {"t": 0.74, "event": "hitbox_active_end", "source": TARGET_NAME},
+            ],
+        },
+        "action.special.primary": {
+            "animation": "slam",
+            "events": [
+                {"t": 0.30, "event": "telegraph_peak", "source": TARGET_NAME},
+                {"t": 0.66, "event": "ground_impact", "source": TARGET_NAME},
+            ],
+        },
+        "action.special.secondary": {
+            "animation": "roar",
+            "events": [
+                {"t": 0.26, "event": "roar_charge_start", "source": TARGET_NAME},
+                {"t": 0.58, "event": "roar_peak", "source": TARGET_NAME},
+                {"t": 0.78, "event": "roar_release", "source": TARGET_NAME},
+            ],
+        },
         "action.special.roar": {
             "animation": "roar",
             "events": [
@@ -69,6 +97,8 @@ ACTOR_METADATA = {
                 {"t": 0.78, "event": "roar_release", "source": TARGET_NAME},
             ],
         },
+        "damage.hit": {"animation": "stagger", "events": []},
+        "interaction.talk": {"animation": "roar", "events": []},
         "death": {"animation": "death", "events": []},
     },
     "sockets": {
@@ -94,6 +124,14 @@ def render_frame(animation: str, frame_idx: int, frame_count: int):
 def render_portraits(out_dir: str | Path, **opts):
     del opts
     doc = load_doc()
+    face = FaceGuide(
+        center_x=80.0,
+        center_y=57.0,
+        width=34.0,
+        height=34.0,
+        source_width=float(doc.frame["width"]),
+        source_height=float(doc.frame["height"]),
+    )
 
     def portrait_frame(animation: str, frame_idx: int, frame_count: int):
         source = doc.render_at(
@@ -101,20 +139,38 @@ def render_portraits(out_dir: str | Path, **opts):
             doc.frame_time(animation, frame_idx, frame_count),
             scale=4,
         )
-        face = FaceGuide(
-            center_x=80.0,
-            center_y=57.0,
-            width=34.0,
-            height=34.0,
-            source_width=float(doc.frame["width"]),
-            source_height=float(doc.frame["height"]),
-        )
         return render_framed_portrait(source, face, view_width=56.0, center_y=71.0)
+
+    def portrait_frames(animation: str, frame_indices: tuple[int, ...], frame_count: int):
+        return tuple(
+            portrait_frame(animation, frame_idx, frame_count)
+            for frame_idx in frame_indices
+        )
 
     clips = {
         "default": PortraitClip.still(portrait_frame("rest", 1, 8)),
-        "roar": PortraitClip(tuple(portrait_frame("roar", i, 8) for i in range(8)), duration_ms=104, looping=True),
-        "snarl": PortraitClip.still(portrait_frame("swipe", 4, 8)),
+        "speaking": PortraitClip(
+            portrait_frames("rest", (0, 2, 4, 6), 8),
+            duration_ms=130,
+            looping=True,
+        ),
+        "evil_flash": PortraitClip(
+            (
+                portrait_frame("rest", 1, 8),
+                portrait_frame("roar", 2, 10),
+                portrait_frame("rest", 1, 8),
+                portrait_frame("swipe", 4, 8),
+            ),
+            duration_ms=95,
+            looping=True,
+        ),
+        "evil_hold": PortraitClip.still(portrait_frame("roar", 6, 10)),
+        "roar": PortraitClip(
+            portrait_frames("roar", tuple(range(10)), 10),
+            duration_ms=104,
+            looping=True,
+        ),
+        "snarl": PortraitClip.still(portrait_frame("maul", 3, 10)),
     }
     return write_portrait_sheet(TARGET_NAME, clips, Path(out_dir))
 

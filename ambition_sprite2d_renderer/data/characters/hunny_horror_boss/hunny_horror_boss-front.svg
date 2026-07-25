@@ -18,6 +18,10 @@
       .muzzle-soft { fill:#f2dda8; stroke:none; }
       .feature { fill:#72674f; stroke:none; }
       .shine { fill:#f7e9c5; stroke:none; opacity:0.52; }
+      .evilglow { fill:#cf2e2e; stroke:none; opacity:0.82; }
+      .evilcore { fill:#ff8a72; stroke:none; opacity:0.88; }
+      .fang { fill:#f6efdf; stroke:#72674f; stroke-width:1.25; stroke-linejoin:round; stroke-linecap:round; }
+      .sound { fill:none; stroke:#72674f; stroke-width:2.4; stroke-linejoin:round; stroke-linecap:round; }
     </style>
   </defs>
   <g inkscape:groupmode="layer" inkscape:label="Hunny Horror Boss - Front" id="view-front">
@@ -43,6 +47,11 @@
       <path class="fur" d="M 37 97 C 33 101, 31 108, 33 113 C 37 116, 44 116, 49 113 C 50 108, 49 102, 46 98 Z" />
       <path class="thin" d="M 35 112 C 39 110, 44 110, 48 112" />
     </g>
+    <g id="part-claws-l">
+      <path class="fang" d="M 36.8 109.8 L 31.6 118.4 L 37.5 114.7 Z" />
+      <path class="fang" d="M 40.8 111.0 L 36.7 121.1 L 42.2 116.2 Z" />
+      <path class="fang" d="M 44.8 109.8 L 44.0 120.5 L 47.9 114.8 Z" />
+    </g>
 
     <g id="part-body">
       <path class="fur" d="M 53 77 C 45 80, 41 89, 40 102 C 39 122, 45 140, 56 148 C 64 152, 95 152, 104 148 C 115 140, 121 122, 120 102 C 119 89, 115 80, 107 77 C 100 74, 60 74, 53 77 Z" />
@@ -57,6 +66,11 @@
     <g id="part-arm-r-l">
       <path class="fur" d="M 123 97 C 127 101, 129 108, 127 113 C 123 116, 116 116, 111 113 C 110 108, 111 102, 114 98 Z" />
       <path class="thin" d="M 112 112 C 116 110, 121 110, 125 112" />
+    </g>
+    <g id="part-claws-r">
+      <path class="fang" d="M 123.2 109.8 L 128.4 118.4 L 122.5 114.7 Z" />
+      <path class="fang" d="M 119.2 111.0 L 123.3 121.1 L 117.8 116.2 Z" />
+      <path class="fang" d="M 115.2 109.8 L 116.0 120.5 L 112.1 114.8 Z" />
     </g>
 
     <g id="part-head">
@@ -73,14 +87,41 @@
       <path class="line" d="M 59 43 C 56 49, 55 58, 57 65" opacity="0.13" />
     </g>
 
+    <g id="part-mouth-teeth-upper">
+      <path class="fang" d="M 69.4 67.0 L 72.2 73.1 L 74.4 66.8 Z" />
+      <path class="fang" d="M 74.8 66.6 L 77.5 74.0 L 79.5 66.4 Z" />
+      <path class="fang" d="M 79.5 66.3 L 80.0 75.0 L 80.5 66.3 Z" />
+      <path class="fang" d="M 82.2 66.5 L 84.1 74.0 L 86.8 66.6 Z" />
+      <path class="fang" d="M 85.6 66.8 L 87.8 73.1 L 90.6 67.0 Z" />
+    </g>
+
     <g id="part-eyes-glow">
-      <ellipse class="shine" cx="72" cy="55" rx="3.1" ry="2.2" />
-      <ellipse class="shine" cx="88" cy="55" rx="3.1" ry="2.2" />
+      <ellipse class="evilglow" cx="72" cy="55" rx="4.2" ry="3.1" />
+      <ellipse class="evilglow" cx="88" cy="55" rx="4.2" ry="3.1" />
+      <ellipse class="evilcore" cx="72" cy="55" rx="2.0" ry="1.45" />
+      <ellipse class="evilcore" cx="88" cy="55" rx="2.0" ry="1.45" />
     </g>
 
     <g id="part-jaw">
       <path class="muzzle" d="M 72.5 67.8 C 74.2 71.2, 77 73.6, 80 74.2 C 83 73.6, 85.8 71.2, 87.5 67.8 C 85.1 69.1, 82.8 69.7, 80 69.7 C 77.2 69.7, 74.9 69.1, 72.5 67.8 Z" />
       <path class="thin" d="M 76.7 72.6 C 78.0 71.8, 82.0 71.8, 83.3 72.6" />
+    </g>
+
+    <g id="part-mouth-teeth-lower">
+      <path class="fang" d="M 71.8 69.9 L 73.6 75.0 L 75.2 70.1 Z" />
+      <path class="fang" d="M 75.8 70.2 L 77.4 75.9 L 78.8 70.2 Z" />
+      <path class="fang" d="M 79.0 70.4 L 80.0 76.4 L 81.0 70.4 Z" />
+      <path class="fang" d="M 81.2 70.2 L 82.6 75.9 L 84.2 70.2 Z" />
+      <path class="fang" d="M 84.8 70.1 L 86.4 75.0 L 88.2 69.9 Z" />
+    </g>
+
+    <g id="part-roar-sound">
+      <path class="sound" d="M 55.0 57.0 C 50.0 60.0, 47.0 65.0, 46.0 71.0" />
+      <path class="sound" d="M 49.0 52.0 C 42.0 57.0, 38.0 64.0, 37.0 72.5" />
+      <path class="sound" d="M 45.0 46.5 C 36.0 54.0, 31.5 63.5, 30.8 75.0" />
+      <path class="sound" d="M 105.0 57.0 C 110.0 60.0, 113.0 65.0, 114.0 71.0" />
+      <path class="sound" d="M 111.0 52.0 C 118.0 57.0, 122.0 64.0, 123.0 72.5" />
+      <path class="sound" d="M 115.0 46.5 C 124.0 54.0, 128.5 63.5, 129.2 75.0" />
     </g>
   </g>
 </svg>
