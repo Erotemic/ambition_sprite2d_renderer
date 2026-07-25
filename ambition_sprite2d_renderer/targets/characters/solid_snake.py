@@ -461,6 +461,15 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         auto_crop=False,
         trim=False,
         actor_metadata=ACTOR_METADATA,
+        # The snake's silhouette CHANGES SHAPE between poses more than almost
+        # any other body in the tree: sprawled it is a long low serpent, boxed
+        # it is a small cardboard cube. Publishing per-row hurtboxes is what
+        # lets the runtime take its collision + hurt box FROM THE ART for the
+        # pose it is actually showing, instead of one idle-frame box that is
+        # wrong for half the withdraw cycle. Row names are the gameplay keys
+        # here (the runtime maps them through `CharacterAnim::from_name`), so
+        # the identity map is the honest mapping.
+        animation_key_map={name: name for name, _frames, _duration in ROWS},
     )
     return [
         outputs["spritesheet"],
