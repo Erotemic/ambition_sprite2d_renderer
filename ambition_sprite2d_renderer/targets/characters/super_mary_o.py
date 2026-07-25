@@ -63,7 +63,7 @@ MARY_FIRE = MaryPalette(
 
 SHORT_ROWS: List[Tuple[str, int, int]] = [
     ("idle", 1, 160),
-    ("dead", 1, 120),
+    ("death", 1, 120),
     ("walk", 3, 95),
     ("jump", 1, 120),
     ("skid", 1, 110),
@@ -73,7 +73,7 @@ SHORT_ROWS: List[Tuple[str, int, int]] = [
 
 TALL_ROWS: List[Tuple[str, int, int]] = [
     ("idle", 1, 160),
-    ("dead", 1, 120),
+    ("death", 1, 120),
     ("walk", 3, 95),
     ("jump", 1, 120),
     ("skid", 1, 110),
@@ -85,7 +85,7 @@ TALL_ROWS: List[Tuple[str, int, int]] = [
 
 FIRE_ROWS: List[Tuple[str, int, int]] = [
     ("idle", 1, 160),
-    ("dead", 1, 120),
+    ("death", 1, 120),
     ("walk", 3, 95),
     ("jump", 1, 120),
     ("skid", 1, 110),
@@ -170,7 +170,7 @@ FIRE_FORM = FormSpec(
 
 SHORT_POSES: Dict[str, List[Pose]] = {
     "idle": [Pose()],
-    "dead": [Pose(mode="dead", bob=-4.2)],
+    "death": [Pose(mode="dead", bob=-4.2)],
     "walk": [
         Pose(
             body_lean=0.5,
@@ -242,7 +242,7 @@ SHORT_POSES: Dict[str, List[Pose]] = {
 
 TALL_LIKE_POSES: Dict[str, List[Pose]] = {
     "idle": [Pose()],
-    "dead": [Pose(mode="dead", bob=-4.4)],
+    "death": [Pose(mode="dead", bob=-4.4)],
     "walk": [
         Pose(
             body_lean=0.5,
@@ -364,7 +364,7 @@ ACTOR_METADATA_BASE = {
         "locomotion.skid": {"animation": "skid", "events": []},
         "locomotion.climb": {"animation": "climb", "events": []},
         "locomotion.swim": {"animation": "swim", "events": []},
-        "state.dead": {"animation": "dead", "events": []},
+        "state.dead": {"animation": "death", "events": []},
     },
     "tags": ["hero", "platformer", "mary_o", "retro"],
 }
