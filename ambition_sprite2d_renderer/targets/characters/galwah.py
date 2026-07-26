@@ -83,6 +83,31 @@ ACTOR_METADATA = {
 }
 
 
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Galwah is a young, urgent parody of Evariste Galois, with the misspelled name echoing "
+            "how 'Galois' is often pronounced. His characterization centers on group-theoretic "
+            "symmetry, the impossibility of general quintic formulas, revolutionary intensity, and "
+            "the final night spent writing before his fatal duel."
+        ),
+        "gameplay_description": (
+            "Use as a brilliant but time-starved mathematician, duelist, quest giver, or fragile "
+            "high-burst playable character. His abilities should reveal hidden symmetries, classify "
+            "what can be solved, and trade safety for one decisive night of work."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'The structure of a problem decides what is permitted to solve it.',
+        'I have no time.',
+        'Speak quickly. The morning is not patient.',
+    ],
+)
+
+
 # --- palette -----------------------------------------------------------------
 BG = (0, 0, 0, 0)
 OUTLINE = (28, 24, 24, 255)

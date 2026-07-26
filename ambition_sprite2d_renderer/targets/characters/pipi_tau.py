@@ -164,6 +164,32 @@ ACTOR_METADATA = {
     },
 }
 
+
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Pipi Tau is a loose Terence Tao-inspired polymath parody rather than a biographical "
+            "portrait. The name turns Tao into tau and doubles pi for a full circle; the character "
+            "emphasizes breadth, collaboration, compression, rotating problems into known forms, and "
+            "reducing impossible goals to reachable lemmas."
+        ),
+        "gameplay_description": (
+            "Use as a fast generalist, collaborative mathematician, traversal coach, or playable "
+            "problem solver. His toolkit should chain small techniques across domains, rotate problem "
+            "geometry, and win by repeatedly reaching the next lemma instead of unveiling one grand "
+            "trick."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'One pi gets you halfway home. Tau finishes the trip.',
+        'I rotate it until it resembles a problem somebody else already knows how to annoy.',
+        'Do not solve the whole level. Reach the next platform.',
+    ],
+)
+
 OUTLINE = (13, 20, 25, 255)
 OUTLINE_SOFT = (30, 47, 53, 255)
 SKIN = (190, 137, 101, 255)

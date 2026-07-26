@@ -85,6 +85,50 @@ def test_character_job_preserves_art_lineage_in_actor_provenance():
     assert '"lineage_example/original"' in ron
 
 
+
+def test_authoring_description_roundtrips_and_is_published():
+    from ambition_sprite2d_renderer.authoring.actor_contract import (
+        build_actor_contract,
+        to_ron,
+    )
+
+    description = (
+        "A behind-the-scenes parody note that names the source subject and "
+        "separates biographical inspiration from gameplay invention."
+    )
+    job = CharacterJob.from_dict(
+        {
+            "target": "toon",
+            "name": "Description Example",
+            "authoring_description": description,
+        }
+    )
+    assert job.authoring_description == description
+    assert job.to_dict()["authoring_description"] == description
+
+    ron = to_ron(
+        build_actor_contract(
+            stem="description_example",
+            target="toon",
+            image="description_example_spritesheet.png",
+            sheet_manifest="description_example_spritesheet.ron",
+            manifest={
+                "rows": [
+                    {
+                        "animation": "idle",
+                        "row_index": 0,
+                        "frame_count": 1,
+                        "duration_ms": 100,
+                        "rects": [],
+                    }
+                ]
+            },
+            authoring={"authoring_description": description},
+        )
+    )
+    assert "authoring_description: Some" in ron
+    assert "behind-the-scenes parody note" in ron
+
 def test_character_job_accepts_sparse_actor_contract_fields():
     job = CharacterJob.from_dict(
         {

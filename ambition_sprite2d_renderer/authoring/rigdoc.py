@@ -675,6 +675,7 @@ def render_sheet_for_doc(doc: RigDocument, out_dir: Path) -> List[Path]:
         out_dir=Path(out_dir),
         frame_size=(int(fr["width"]) * rs, int(fr["height"]) * rs),
         sheet_tuning=doc.sprite_tuning or None,
+        actor_metadata=doc.data.get("actor_metadata"),
         trim=fr.get("trim"),
     )
     keys = ("spritesheet", "yaml", "ron", "actor", "canonical", "canonical_transparent", "preview")

@@ -58,3 +58,27 @@ def render_portraits(out_dir: Path | str = Path(".")) -> List[Path]:
 
 
 ACTOR_METADATA = _make_actor_metadata(STYLE)
+
+
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Martin Cutta is the lean, exacting half of the Runge-Kutta duo, parodying mathematician "
+            "Martin Kutta. He resents Runga receiving first billing and quietly knows that the famous "
+            "method does not work without his coefficients."
+        ),
+        "gameplay_description": (
+            "Use as the calculating partner to Carl Runga: a technical rival, co-boss, or "
+            "precision-oriented playable character. He should correct Runga's rounding, expose error "
+            "terms, and turn bravado into a stable method."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'The method does not work without me.',
+        'He contributes the first and the volume.',
+        'He may show his error term.',
+    ],
+)

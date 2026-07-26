@@ -112,6 +112,31 @@ ACTOR_METADATA = {
 }
 
 
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Hunny Horror is a grotesque horror inversion of Winnie-the-Pooh: the gentle "
+            "honey-obsessed bear becomes an enormous, starving thing whose nursery warmth has curdled "
+            "into appetite. Keep the spelling and imagery transformed rather than presenting the "
+            "original character directly."
+        ),
+        "gameplay_description": (
+            "Use as a stalking or arena boss driven by hunger. Honey pots, rumbly-tummy tells, sticky "
+            "traps, reaching paws, and falsely comforting speech should make childhood familiarity "
+            "work against the player."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'Have you brought any? No? Then stand a little closer.',
+        'There was always a pot...',
+        'First the voice. Then the paw. Then the pot.',
+    ],
+)
+
+
 @lru_cache(maxsize=1)
 def load_doc() -> RigDocument:
     return RigDocument.load(RIG_PATH)

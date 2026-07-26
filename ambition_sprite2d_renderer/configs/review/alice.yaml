@@ -3,6 +3,20 @@ name: Alice
 output_name: alice
 seed: 540
 archetype: alice
+authoring_description: >-
+  Alice is the conventional sender in cryptography and security examples, personified here as an
+  actual courier-adventurer. She is not a parody of a historical person; the character turns the
+  textbook phrase 'Alice sends a message to Bob' into a life spent carrying secrets through rooms that
+  may be listening. They are "cartographers" in the game, as stated in the brainstorm.
+gameplay_description: >-
+  Use as a messenger, cryptographer, protagonist, or tutorial guide. She should think about routes,
+  keys, envelopes, and unseen intermediaries, with interactions that establish who may read or alter a
+  message.
+dialogue_hints:
+  barks:
+  - 'Official maps are for people who enjoy being found.'
+  - 'Carry this to Bob. Do not unfold it where the walls can read.'
+  - 'There is always a someone in the middle.'
 animations:
 - idle
 - walk

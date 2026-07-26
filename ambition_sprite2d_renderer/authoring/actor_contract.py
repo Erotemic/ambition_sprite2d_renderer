@@ -941,6 +941,11 @@ def build_actor_contract(
         character_id=character_id,
         actor_id=actor_block.get("actor_id", None),
         display_name=some(str(display_name)) if display_name else None,
+        authoring_description=(
+            some(str(authoring.get("authoring_description")))
+            if authoring.get("authoring_description")
+            else None
+        ),
         provenance=some(struct(
             surface=job_data.get("surface", "adapter" if job_data else "tackon"),
             renderer_target=target or stem,
@@ -992,6 +997,7 @@ def write_actor_contract_for_adapter(
         "tags": list(getattr(job, "tags", []) or []),
     }
     authoring = {
+        "authoring_description": getattr(job, "authoring_description", None),
         "actor": getattr(job, "actor", {}) or {},
         "lineage": getattr(job, "lineage", {}) or {},
         "visual": getattr(job, "visual", {}) or {},

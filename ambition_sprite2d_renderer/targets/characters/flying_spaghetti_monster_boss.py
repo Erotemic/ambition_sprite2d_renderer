@@ -187,6 +187,31 @@ ACTOR_METADATA = {
     "tags": ["boss", "floating", "multipart"],
 }
 
+
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "The Flying Spaghetti Monster Boss turns the Flying Spaghetti Monster satire into a "
+            "sincere, oversized noodle deity. It should preserve the affectionate absurdity of the "
+            "original parody religion: noodly appendages, marinara grace, and mock-theological "
+            "confidence rather than generic pasta jokes."
+        ),
+        "gameplay_description": (
+            "Use as a floating boss, strange benefactor, faction deity, or comic source of blessings. "
+            "Attacks should extend through noodles, meatballs, sauce, and improbable grace; speech "
+            "should sound doctrinal while remaining knowingly ridiculous."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'You came within range of My noodly appendage, and so you are blessed.',
+        'Everything is sacred if you season it correctly.',
+        'You have been touched by marinara. Ramen.',
+    ],
+)
+
 OUTLINE = (52, 42, 34, 255)
 NOODLE = (234, 220, 182, 255)
 NOODLE_SHADE = (202, 184, 146, 255)

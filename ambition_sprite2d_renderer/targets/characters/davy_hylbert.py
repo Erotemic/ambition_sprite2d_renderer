@@ -161,6 +161,30 @@ ACTOR_METADATA = {
     },
 }
 
+
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Davy Hylbert is a flamboyant parody of David Hilbert, especially Hilbert's Hotel and the "
+            "formalist dream of organizing mathematics through axioms. He treats infinity as a "
+            "hospitality and logistics problem that can always admit one more guest."
+        ),
+        "gameplay_description": (
+            "Use as an infinite-hotel proprietor, axiomatic showman, puzzle master, or spatial boss. "
+            "His mechanics should shift every occupant, relabel rooms, and make apparently full "
+            "spaces accept additional entities."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'Every room is occupied, and yet we continue admitting guests.',
+        'Infinity rewards orderly management.',
+        'When a level feels full, try a shift.',
+    ],
+)
+
 OUTLINE = (20, 18, 22, 255)
 OUTLINE_SOFT = (51, 45, 49, 255)
 SKIN = (214, 174, 142, 255)

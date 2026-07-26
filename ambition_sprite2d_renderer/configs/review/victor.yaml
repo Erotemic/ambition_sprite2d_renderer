@@ -3,6 +3,19 @@ name: Victor
 output_name: victor
 seed: 606
 archetype: victor
+authoring_description: >-
+  Victor is the verifier paired with Peggy in zero-knowledge proof examples. He repeatedly becomes
+  convinced that Peggy knows a secret while learning nothing about the secret itself, making
+  skepticism and disciplined challenge-response his defining traits.
+gameplay_description: >-
+  Use as a verifier, examiner, skeptical ally, or protocol gatekeeper. He should issue unpredictable
+  challenges, check responses, and accept proof without demanding that private knowledge be
+  surrendered.
+dialogue_hints:
+  barks:
+  - 'Peggy proves. I verify.'
+  - 'I walk away convinced and still do not know the secret.'
+  - "That's not failure. It's the whole point."
 animations:
 - idle
 - walk

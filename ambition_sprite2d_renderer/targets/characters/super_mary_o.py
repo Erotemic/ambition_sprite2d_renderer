@@ -827,6 +827,25 @@ def _actor_metadata(form: FormSpec) -> dict:
                 "foot_l": {"source": f"{form.target_name}.geometry", "point": {"x": 35.0, "y": 88.0}},
             },
             "tags": [*ACTOR_METADATA_BASE["tags"], form.power],
+            "authoring_description": (
+                "Super Mary-O is an original heroine built as an affectionate parody of "
+                "Mario and classic Super Mario platformers. The altered name, silhouette, "
+                "power states, and movement vocabulary should evoke the genre while keeping "
+                "Mary-O a distinct character rather than a direct copy."
+            ),
+            "gameplay_description": (
+                f"Use the {form.display_name} sheet as a responsive retro-platform hero "
+                f"in her {form.power} state. Games may opt into running, jumping, skidding, "
+                "climbing, swimming, growth, or fireball actions according to the form's "
+                "published animation set."
+            ),
+            "dialogue_hints": {
+                "barks": [
+                    "A clear jump is a kind of argument.",
+                    "The level can keep its royal road. I brought running shoes.",
+                    "One more platform.",
+                ]
+            },
         }
     )
     bindings = metadata["animation_bindings"]

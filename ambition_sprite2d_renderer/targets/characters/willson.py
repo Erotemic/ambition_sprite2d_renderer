@@ -97,6 +97,31 @@ ACTOR_METADATA = {
 }
 
 
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Willson is a pelican riding a bicycle, built from the kind of compositional prompt that "
+            "image-generation systems notoriously mishandle. The extra L distinguishes him from "
+            "unrelated Wilson characters and makes him a living benchmark for whether an intelligence "
+            "can keep rider, bird, wheels, and motion coherent."
+        ),
+        "gameplay_description": (
+            "Use as a benchmark mascot, composite traversal character, courier, or comic evaluator of "
+            "generated art. Pelican and bicycle are one actor: he can pedal, dismount, carry the "
+            "bicycle in flight, and complain whenever a depiction loses a wheel."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'Draw me riding this bicycle. SVG only.',
+        'Every intelligence arrives with a brass band. Then it gives the bicycle one wheel.',
+        'A benchmark that cannot molt is just homework with a leaderboard.',
+    ],
+)
+
+
 def _rgba(value: str, alpha: int = 255) -> Color:
     r, g, b = ImageColor.getrgb(value)
     return (r, g, b, alpha)

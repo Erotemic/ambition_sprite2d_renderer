@@ -70,6 +70,31 @@ ACTOR_METADATA = {
 }
 
 
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "The Paradox Barber personifies Bertrand Russell's barber paradox: he shaves every man "
+            "who does not shave himself, and only those men, leaving his own grooming logically "
+            "impossible. The split face and immaculate shop make self-reference visible before the "
+            "dialogue explains it."
+        ),
+        "gameplay_description": (
+            "Use as a logic puzzle NPC, gatekeeper, comic boss, or rule-system tutorial. Interactions "
+            "should force the player to examine who a rule applies to, especially when the rule "
+            "refers to its own enforcer."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'I shave every man here who does not shave himself, and only those men.',
+        'I have been mid-stroke for eleven years.',
+        'Stop letting a collection contain itself.',
+    ],
+)
+
+
 @lru_cache(maxsize=1)
 def load_doc() -> RigDocument:
     return RigDocument.load(RIG_PATH)

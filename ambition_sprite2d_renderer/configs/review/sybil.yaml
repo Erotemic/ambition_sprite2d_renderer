@@ -3,6 +3,19 @@ name: Sybil
 output_name: sybil
 seed: 605
 archetype: sybil
+authoring_description: >-
+  Sybil personifies a Sybil attack: one actor presenting many apparently independent identities to
+  overwhelm systems that count participants rather than establishing who they are. The name comes from
+  the established security term, itself derived from the famous multiple-personality case and book.
+gameplay_description: >-
+  Use as a crowd impostor, vote manipulator, clone enemy, or identity-system tutorial. She should
+  multiply faces cheaply, exploit one-entity-one-vote assumptions, and become weaker when identities
+  require costly proof or persistent history.
+dialogue_hints:
+  barks:
+  - 'How many of me did you count?'
+  - 'One vote each. I brought a great many votes.'
+  - 'Wrong is the entire trick.'
 animations:
 - idle
 - walk

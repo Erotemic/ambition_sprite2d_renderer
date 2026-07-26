@@ -105,6 +105,31 @@ ACTOR_METADATA = {
 }
 
 
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Oiler is a practical mechanic parody of Leonhard Euler. His name reflects an English "
+            "pronunciation of Euler, while his workshop, Kernel, formulas, and broad competence turn "
+            "one of mathematics' most prolific figures into the person who keeps the game's machinery "
+            "moving."
+        ),
+        "gameplay_description": (
+            "Use as a mechanic, early mentor, systems guide, or versatile playable engineer. He "
+            "should solve problems with tools and compact identities, value motion over polish, and "
+            "understand nearly every subsystem without acting like a ceremonial professor."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'I am a man with tools and poor boundaries.',
+        'Small things are the ones that take the big things down.',
+        "You're not scrap until you stop moving.",
+    ],
+)
+
+
 @lru_cache(maxsize=3)
 def _load_doc(filename: str) -> RigDocument:
     path = RIG_DIR / filename

@@ -106,6 +106,24 @@ OUTPUT_FILES = [
 HITBOX_DEBUG_FILE = f"{TARGET_NAME}_hitboxes_debug.png"
 
 ACTOR_METADATA = {
+    "authoring_description": (
+        "GNU-ton is an Isaac Newton parody mounted on a giant GNU: Newton becomes "
+        "GNU-ton through the recursive free-software acronym and a literal horned "
+        "wildebeest. Apples, gravity, calculus rivalry, and the absurd mount should all "
+        "remain legible parts of the same boss concept."
+    ),
+    "gameplay_description": (
+        "Use as a multipart gravity boss or set-piece encounter. The scholar directs "
+        "the giant mount while apples fall, trajectories bend, and separate rider and "
+        "mount phases let games split the joke into distinct combat bodies."
+    ),
+    "dialogue_hints": {
+        "barks": [
+            "I have discovered gravity. You are demonstrating it.",
+            "The apple was evidence, not ammunition. Until now.",
+            "GNU-ton is recursively inevitable.",
+        ]
+    },
     "actor": {"character_id": f"npc_{TARGET_NAME}"},
     "body": {
         "body_plan": "BossMultipart",
@@ -126,6 +144,17 @@ ACTOR_METADATA = {
 # lands in G2; here we only ship the sprites + a recorded shoulder offset so G2
 # can author the rider socket without re-deriving it.
 GIANT_ACTOR_METADATA = {
+    "authoring_description": (
+        "The Giant GNU is the literal wildebeest mount in the GNU-ton Isaac Newton "
+        "parody. It carries the visual weight of the recursive GNU pun and should still "
+        "read as a formidable horned animal when published without its scholar rider."
+    ),
+    "gameplay_description": (
+        "Use as a mount, independent boss body, charging hazard, or second phase. It is "
+        "brainless by design and should communicate through weight, horns, hands, and "
+        "gravity-driven movement rather than scholarly dialogue."
+    ),
+    "dialogue_hints": {"barks": ["GNU.", "The recursion has hooves."]},
     "actor": {"character_id": f"npc_{GIANT_TARGET_NAME}"},
     "body": {
         "body_plan": "BossMultipart",
@@ -146,6 +175,22 @@ GIANT_ACTOR_METADATA = {
 }
 
 RIDER_ACTOR_METADATA = {
+    "authoring_description": (
+        "The GNU-ton Rider is the Isaac Newton parody separated from his giant GNU "
+        "mount. Alone he should read as a severe early-modern scholar whose gravity, "
+        "apple, optics, and calculus motifs explain the fused boss's human half."
+    ),
+    "gameplay_description": (
+        "Use as a rider, dismounted boss phase, scholar NPC, or gravity caster. His "
+        "standalone sheet lets games give the rider a separate health pool, dialogue, "
+        "and precise spell-like control after the mount is lost."
+    ),
+    "dialogue_hints": {
+        "barks": [
+            "I have discovered gravity. You are demonstrating it.",
+            "The apple was evidence, not ammunition. Until now.",
+        ]
+    },
     "actor": {"character_id": f"npc_{RIDER_TARGET_NAME}"},
     "body": {
         "body_plan": "Humanoid",

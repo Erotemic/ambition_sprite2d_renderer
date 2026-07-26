@@ -81,6 +81,31 @@ ACTOR_METADATA = {
 }
 
 
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "The Stochastic Parrot literalizes the 'stochastic parrots' critique of language models: "
+            "a vivid mimic that produces fluent, noisy continuations without necessarily "
+            "understanding what it repeats. It is a concept parody, not a caricature of any one "
+            "researcher."
+        ),
+        "gameplay_description": (
+            "Use as a mimic enemy, unreliable narrator, ambient chatter source, or procedural "
+            "dialogue hazard. It should repeat fragments with high confidence, remix nearby speech, "
+            "and occasionally land on something useful by statistical accident."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'I have predicted the next squawk.',
+        'Fluent! Therefore correct!',
+        'I heard that somewhere nearby.',
+    ],
+)
+
+
 def _rgba(hex_color: str, alpha: int = 255) -> Color:
     r, g, b = ImageColor.getrgb(hex_color)
     return (r, g, b, alpha)

@@ -3,6 +3,19 @@ name: Trent
 output_name: trent
 seed: 530
 archetype: trent
+authoring_description: >-
+  Trent is the trusted third party in security examples, personified as an elder whose authority is
+  both useful and dangerously central. The character should embody the convenience and fragility of a
+  system that works because everyone assumes one person will remain trustworthy.
+gameplay_description: >-
+  Use as a certificate authority, gatekeeper, elder, key distributor, or compromised-trust plot
+  device. Games may let players rely on Trent, distribute trust around him, or confront the
+  consequences of one central assumption failing.
+dialogue_hints:
+  barks:
+  - "Everyone trusts me. That's the job, and that's the wound."
+  - 'The whole web of trust is just people guessing about each other.'
+  - 'Spread the trust around.'
 animations:
 - idle
 - walk

@@ -83,6 +83,32 @@ ACTOR_METADATA = {
 }
 
 
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Madam LeBlanc is a parody of Sophie Germain through the male pseudonym 'M. LeBlanc' that "
+            "she used to correspond and submit work when institutions excluded women. The character "
+            "keeps the false name as a title of defiance and foregrounds number theory, elasticity, "
+            "and locked academic doors."
+        ),
+        "gameplay_description": (
+            "Use as a number theorist, disguised scholar, resilient quest giver, or precision "
+            "playable character. Her mechanics should reward proofs that arrive with witnesses, false "
+            "keys that open unjust gates, and attacks based on Sophie Germain primes or vibrating "
+            "plates."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'I sent the proof anyway, signed Madam LeBlanc, and let the theorem argue.',
+        'A locked door deserves a false key.',
+        'I admire a number that arrives with its own witness.',
+    ],
+)
+
+
 @lru_cache(maxsize=8)
 def load_doc(name: str = "m_leblanc_three_quarter.rig.json") -> RigDocument:
     doc = RigDocument.load(RIGGED_DIR / name)

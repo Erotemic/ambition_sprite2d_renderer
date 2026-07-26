@@ -83,6 +83,31 @@ ACTOR_METADATA = {
     },
 }
 
+
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Girdle is a severe parody of Kurt Godel, named by bending the sound of Godel into an "
+            "ordinary object. He personifies incompleteness, self-reference, consistency anxiety, and "
+            "the unnerving discovery that sufficiently strong formal systems contain truths they "
+            "cannot prove from within."
+        ),
+        "gameplay_description": (
+            "Use as a logician, unsettling advisor, precision fighter, or rule-breaking boss. His "
+            "gameplay should expose statements outside a system, weaponize self-reference, and make "
+            "apparently complete structures reveal inaccessible rooms."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'Every consistent structure has one room it cannot enter.',
+        'Do not tell me the structure is sound.',
+        'The proof cannot live entirely inside the thing it judges.',
+    ],
+)
+
 TARGET_BASENAME = "girdle"
 FRAME_SIZE = (128, 128)
 SUPER = 4

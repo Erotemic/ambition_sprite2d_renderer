@@ -109,6 +109,37 @@ ACTOR_METADATA = {
 }
 
 
+ACTOR_METADATA.update(
+    {
+        # Note the second half is GPT 5.6 and it is partially right, but I
+        # think it misses the DBZ joke.
+        "authoring_description": (
+            """
+            Parody of Imperfect Cell from DBZ. Combined with CS fun.
+
+            "The Imperfect Cellular Automaton personifies cellular-automaton mathematics as a "
+            "character who sometimes violates its own local rule. It is a philosophical foil to the "
+            "Perfect Cellular Automaton: asymmetry, mutation, accumulated exceptions, and emergent "
+            "evolution are treated as identity rather than damage."
+            """
+        ),
+        "gameplay_description": (
+            "Use as an adaptive enemy, unstable ally, mutation mechanic, or playable rule-breaker. "
+            "Its state should visibly propagate across cells while occasional exceptions create "
+            "abilities or futures that a flawless deterministic counterpart cannot reach."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'I follow my rule MOSTLY.',
+        'The exceptions become the new rule.',
+        "I'm the written-down noise.",
+    ],
+)
+
+
 def _rgba(hex_color: str, alpha: int = 255) -> Color:
     r, g, b = ImageColor.getrgb(hex_color)
     return (r, g, b, alpha)

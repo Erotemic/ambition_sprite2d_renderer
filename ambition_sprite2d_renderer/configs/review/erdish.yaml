@@ -3,6 +3,19 @@ name: Erdish
 output_name: erdish
 seed: 731
 archetype: erdish
+authoring_description: >-
+  Erdish is an affectionate parody of Paul Erdos: an itinerant mathematician fueled by coffee,
+  collaboration, number theory, and the conviction that proofs belong to a shared mathematical world.
+  The altered name keeps the reference recognizable without making the character a literal biography.
+gameplay_description: >-
+  Use as a wandering collaborator, theorem quest giver, support character, or playable mathematical
+  generalist. He should seek coauthors, trade small lemmas, talk to primes as old friends, and treat
+  ownership of ideas as less important than getting the proof into the world.
+dialogue_hints:
+  barks:
+  - 'My brain is a machine for turning coffee into theorems.'
+  - 'I co-author with everyone.'
+  - "The primes never run out. Isn't that a kindness?"
 animations:
 - idle
 - walk

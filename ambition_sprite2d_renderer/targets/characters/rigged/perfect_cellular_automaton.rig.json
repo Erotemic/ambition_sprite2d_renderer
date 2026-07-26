@@ -1,5 +1,16 @@
 {
  "name": "perfect_cellular_automaton",
+ "actor_metadata": {
+  "authoring_description": "Parody of DBZ Perfect Cell, with a bit of DBZA personality. GPT 5.6 seemed to miss this. The Perfect Cellular Automaton personifies the ideal of a flawless cellular automaton: one local rule applied uniformly to every cell and every tick, with unbounded computation emerging from absolute consistency. Its vanity is the joke; it treats determinism as both mathematical virtue and personal superiority.",
+  "gameplay_description": "Use as a deterministic boss, oracle, simulation engine, or rigid ally. Its attacks and state changes should be rule-driven and predictable once understood, allowing players to exploit the same perfection that makes the character powerful.",
+  "dialogue_hints": {
+   "barks": [
+    "One rule. The same flawless law on every cell, every tick.",
+    "I am simple, applied with absolute conviction.",
+    "I have already run every future in this room to its end."
+   ]
+  }
+ },
  "frame": {
   "width": 128,
   "height": 192,

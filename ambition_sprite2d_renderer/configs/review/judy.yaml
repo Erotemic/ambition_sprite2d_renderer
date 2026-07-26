@@ -3,6 +3,19 @@ name: Judy
 output_name: judy
 seed: 524
 archetype: judy
+authoring_description: >-
+  Judy is the judge or adjudicator role used in cryptographic protocol stories. She personifies the
+  neutral party asked to decide which claimant, signature, transcript, or story is authentic when
+  other participants disagree.
+gameplay_description: >-
+  Use as an arbiter, courtroom NPC, dispute-resolution mechanic, or truth-testing boss. She should
+  compare evidence, reveal contradictions, and force stories to expose the seams where they fail to
+  agree.
+dialogue_hints:
+  barks:
+  - "Someone has to decide who's telling the truth."
+  - 'Stories crack along their seams.'
+  - "That's the difference between a judge and a critic."
 animations:
 - idle
 - walk

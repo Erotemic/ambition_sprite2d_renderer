@@ -36,8 +36,9 @@ import math
 from contextlib import contextmanager
 from functools import lru_cache
 from contextvars import ContextVar
+from copy import deepcopy
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, List, Mapping, MutableMapping, Optional, Tuple
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -53,6 +54,36 @@ import time
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
+
+
+def publish_character_notes(
+    manifest: MutableMapping[str, Any],
+    metadata: Mapping[str, Any] | None,
+) -> None:
+    """Copy portable, freeform character-writing notes into sheet YAML.
+
+    These fields are intentionally not part of the runtime actor contract. They
+    travel with the art so a game, dialogue tool, or future author can opt into
+    the suggested characterization without treating it as a normalized identity
+    database.
+    """
+    if not metadata:
+        return
+    for key in ("authoring_description", "gameplay_description"):
+        value = metadata.get(key)
+        if isinstance(value, str) and value.strip():
+            manifest[key] = value.strip()
+    hints = metadata.get("dialogue_hints")
+    if isinstance(hints, Mapping):
+        copied = deepcopy(dict(hints))
+        barks = copied.get("barks")
+        if isinstance(barks, (list, tuple)):
+            copied["barks"] = [
+                str(bark).strip() for bark in barks if str(bark).strip()
+            ]
+        if copied:
+            manifest["dialogue_hints"] = copied
+
 
 _CANONICAL_ONLY = ContextVar("ambition_sheet_build_canonical_only", default=False)
 
@@ -826,6 +857,7 @@ def render_sheet(source: FrameSource, out_dir: Path):
     # their RON stays byte-identical to the pre-paging emitter.
     if num_pages > 1:
         manifest["images"] = page_image_names
+    publish_character_notes(manifest, actor_metadata)
     if sheet_tuning:
         # Emitted to the RON `tuning` field (ron_tuning reads `sheet_tuning`);
         # the runtime SheetRegistry uses it for in-game display size /

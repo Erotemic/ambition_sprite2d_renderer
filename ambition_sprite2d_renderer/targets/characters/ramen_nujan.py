@@ -113,6 +113,31 @@ ACTOR_METADATA = {
     },
 }
 
+
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Ramen-nujan is a respectful noodle-inflected parody of Srinivasa Ramanujan. He remains a "
+            "human mathematical visionary, not a food mascot: dreams supply astonishing identities, "
+            "while waking life is spent constructing the proof-path back to them. His ramen motifs "
+            "connect him to the Flying Spaghetti Monster faction."
+        ),
+        "gameplay_description": (
+            "Use as an intuitive number theorist, dream oracle, glass-cannon mathematician, or quest "
+            "giver. His abilities should leap to summations, partitions, factorial bursts, and "
+            "unexpected constants, then ask the player to build the missing proof or route."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'Last night I dreamt an infinite bowl of noodles.',
+        'The dream gives me the summit; proof is the path I build after waking.',
+        'A taxicab with excellent secrets.',
+    ],
+)
+
 TARGET_BASENAME = "ramen_nujan"
 FRAME_SIZE = (128, 128)
 SUPER = 4

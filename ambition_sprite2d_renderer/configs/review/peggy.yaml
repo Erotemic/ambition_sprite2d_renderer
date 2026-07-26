@@ -3,6 +3,19 @@ name: Peggy
 output_name: peggy
 seed: 605
 archetype: peggy
+authoring_description: >-
+  Peggy is the prover in zero-knowledge proof stories. She can convince Victor that she knows a secret
+  without revealing the secret itself, turning an abstract protocol role into a confident performer
+  whose best demonstrations teach the observer nothing except that she succeeded.
+gameplay_description: >-
+  Use as a prover, magician, authentication guide, or puzzle NPC. Her gameplay should demonstrate
+  possession or access repeatedly while withholding the witness, route, password, or mechanism that
+  makes the feat possible.
+dialogue_hints:
+  barks:
+  - 'I can prove that I know the way without showing you the way.'
+  - "You'll learn nothing. That's the guarantee."
+  - 'Ask again; the secret stays mine.'
 animations:
 - idle
 - walk

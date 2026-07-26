@@ -65,6 +65,30 @@ ACTOR_METADATA = {
 }
 
 
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Data Lovelace is Ada Lovelace reimagined as the brass-and-punch-card automaton she could "
+            "only describe. The name also literalizes 'data': she is both the visionary author of "
+            "programs for the Analytical Engine and a machine capable of enacting them."
+        ),
+        "gameplay_description": (
+            "Use as an analytical companion, inventor, programmer, or playable automaton. Her "
+            "abilities should compose patterns rather than merely calculate totals, and her dialogue "
+            "should be imaginative, precise, and slightly ahead of the machinery around her."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'They asked what the engine could add. I asked what it could compose.',
+        'My notes were longer than the paper they annotated.',
+        'The engine weaves algebra.',
+    ],
+)
+
+
 @lru_cache(maxsize=1)
 def load_doc() -> RigDocument:
     return RigDocument.load(RIG_PATH)

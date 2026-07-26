@@ -112,6 +112,31 @@ ACTOR_METADATA = {
 }
 
 
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Solid Snake is a literal snake carrying a cardboard box, parodying the stealth-game hero "
+            "Solid Snake while also filling the gameplay role of a shell-bearing platform enemy. It "
+            "should evoke the famous box disguise without becoming a human imitation of the "
+            "copyrighted character."
+        ),
+        "gameplay_description": (
+            "Use as a sneaky crawling enemy that retreats into its box when threatened, waits, peeks, "
+            "and re-emerges. The box is simultaneously disguise, shell, defense state, and the entire "
+            "visual punchline."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'Hiss.',
+        'The box is the shell.',
+        'Sneaking is easier when nobody respects the disguise.',
+    ],
+)
+
+
 def _s(v: float) -> int:
     return int(round(v * SUPER))
 

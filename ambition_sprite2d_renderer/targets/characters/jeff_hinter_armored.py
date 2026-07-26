@@ -116,6 +116,32 @@ ACTOR_METADATA = {
     },
 }
 
+
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Armored Jeff Hinter is the converged combat form of the Geoffrey Hinton parody. His "
+            "abstract manifold has shrink-wrapped into literal segmented armor, preserving the "
+            "glasses, hair, academic posture, and dimensional jokes beneath a body-sized optimization "
+            "result."
+        ),
+        "gameplay_description": (
+            "Use as a transformed ally, miniboss, or defensive playable form. The armor should feel "
+            "mathematically fitted rather than forged: deploy it through convergence, let attacks "
+            "follow learned surfaces, and retain Jeff's tendency to explain the representation while "
+            "under fire."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'THREE! The armor has depth...',
+        'Please attack conventionally.',
+        'When everything glows, leave.',
+    ],
+)
+
 ARMORED_DEFAULT_ANIMATIONS = {
     "idle",
     "walk",

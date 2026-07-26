@@ -65,6 +65,12 @@ class CharacterJob:
     role: Optional[str] = None
     music_cue: Optional[str] = None
     tags: List[str] = field(default_factory=list)
+    # Freeform creative guidance published with the sprite-sheet YAML. These
+    # deliberately remain prose rather than a structured parody/source schema:
+    # they are prompts for future authors and optional defaults for games.
+    authoring_description: Optional[str] = None
+    gameplay_description: Optional[str] = None
+    dialogue_hints: Dict[str, Any] = field(default_factory=dict)
     # Optional legacy sheet tuning emitted into the SheetRecord RON.
     # `sheet_tuning:` is canonical; `tuning:` is accepted as a YAML alias.
     sheet_tuning: Optional[Dict[str, Any]] = None
@@ -114,6 +120,9 @@ class CharacterJob:
             role=data.get("role"),
             music_cue=data.get("music_cue"),
             tags=list(data.get("tags") or []),
+            authoring_description=data.get("authoring_description"),
+            gameplay_description=data.get("gameplay_description"),
+            dialogue_hints=dict(data.get("dialogue_hints") or {}),
             sheet_tuning=sheet_tuning,
             actor=dict(data.get("actor") or {}),
             lineage=dict(data.get("lineage") or {}),
@@ -168,6 +177,9 @@ class CharacterJob:
             "role": self.role,
             "music_cue": self.music_cue,
             "tags": list(self.tags),
+            "authoring_description": self.authoring_description,
+            "gameplay_description": self.gameplay_description,
+            "dialogue_hints": dict(self.dialogue_hints),
             "sheet_tuning": dict(self.sheet_tuning)
             if self.sheet_tuning is not None
             else None,

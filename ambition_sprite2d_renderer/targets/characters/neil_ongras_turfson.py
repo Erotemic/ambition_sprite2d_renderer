@@ -97,6 +97,30 @@ ACTOR_METADATA = {
     },
 }
 
+
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Neil onGras Turfson is a pun-heavy parody of Neil deGrasse Tyson: the name sends him 'on "
+            "grass turf,' while the character enthusiastically audits the physics of platforming and "
+            "explains that even ordinary ground is made from stellar material."
+        ),
+        "gameplay_description": (
+            "Use as a science commentator, tutorial critic, narrator, or playable explainer. He "
+            "should notice impossible jumps, distinguish game feel from physical law, direct "
+            "attention upward, and continue explaining long after nearby characters have left."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'The universe did not consent to that jump.',
+        'The universe is under no obligation to make your platforming feel good.',
+        'Look up more.',
+    ],
+)
+
 RIG_DIR = Path(__file__).resolve().parent / "rigged" / TARGET_NAME
 DOC_FILE = RIG_DIR / "neil_ongras_turfson_three_quarter.rig.json"
 

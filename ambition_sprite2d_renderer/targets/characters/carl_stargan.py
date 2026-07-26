@@ -170,6 +170,30 @@ ACTOR_METADATA = {
     },
 }
 
+
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Carl Stargan is a warm, theatrically cosmic parody of science communicator Carl Sagan. "
+            "The name bends 'Sagan' toward stars while the character pairs wonder, scale, skepticism, "
+            "and an inability to discuss a room without locating it in the universe."
+        ),
+        "gameplay_description": (
+            "Use as a science guide, narrator, lecturer, or playable explorer whose hints reframe "
+            "local obstacles at cosmic scale. He should inspire curiosity but ultimately defer to "
+            "evidence rather than vibes."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'Billions and billions of pedestals in this hall...',
+        'Scale is not decoration, it is the point.',
+        'Wonder gets me to the question. Evidence decides who leaves with it.',
+    ],
+)
+
 OUTLINE = (23, 17, 18, 255)
 OUTLINE_SOFT = (58, 40, 35, 255)
 SKIN = (184, 126, 91, 255)

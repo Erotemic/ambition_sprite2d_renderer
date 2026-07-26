@@ -184,6 +184,36 @@ ACTOR_METADATA: Dict[str, Dict] = {
     for name, spec in VARIANTS.items()
 }
 
+ACTOR_METADATA["genghis_can"].update(
+    {
+        "authoring_description": (
+            "Genghis Can is the unstoppable half of a paired Genghis Khan parody. "
+            "He turns the conqueror's name into pure affirmative momentum: move first, "
+            "claim the horizon, and correct mistakes while already advancing."
+        ),
+        "gameplay_description": (
+            "Use as an aggressive commander, rushdown rival, quest instigator, or paired "
+            "boss. He should favor immediate expansion and confident improvisation, in "
+            "contrast to his reflective brother Genghis Can't."
+        ),
+    }
+)
+ACTOR_METADATA["genghis_cant"].update(
+    {
+        "authoring_description": (
+            "Genghis Can't is the hesitant, ethically reflective half of a paired Genghis "
+            "Khan parody. The name turns conquest into doubt: he has the same potential "
+            "horde as his brother but cannot stop calculating whether taking something is "
+            "worth its human cost."
+        ),
+        "gameplay_description": (
+            "Use as a cautious commander, defensive rival, advisor, or paired boss. He "
+            "should delay, inspect consequences, and sometimes discover that refusing an "
+            "action is the stronger move."
+        ),
+    }
+)
+
 
 def _rgba(color: str, alpha: int = 255) -> RGBA:
     r, g, b = ImageColor.getrgb(color)

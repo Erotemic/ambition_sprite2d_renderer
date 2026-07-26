@@ -25,6 +25,22 @@ SHEET_FILES = list(sprite_generator.OUTPUT_FILES) + [f"{TARGET_NAME}_actor.ron"]
 PORTRAIT_INSTALL_SUBDIR = TARGET_NAME
 
 ACTOR_METADATA = {
+    "authoring_description": (
+        "The Mockingbird Boss adapts the old How to Kill a Mockingbird Flash-animation "
+        "creature into a giant mimic that steals songs, voices, and fighting styles while "
+        "remaining one surprise behind the original."
+    ),
+    "gameplay_description": (
+        "Use as a multipart aerial mimic boss. Its copied attacks should be recognizable "
+        "but imperfectly timed, leaving a novelty gap where the player can escape or counter."
+    ),
+    "dialogue_hints": {
+        "barks": [
+            "I've learned every fighter in this hall by heart.",
+            "My version of you is always one surprise behind.",
+            "You can copy the form forever and never reach the why.",
+        ]
+    },
     "actor": {"character_id": f"npc_{TARGET_NAME}"},
     "body": {
         "body_plan": "BossMultipart",

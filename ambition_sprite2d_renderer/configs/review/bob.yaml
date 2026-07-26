@@ -3,6 +3,19 @@ name: Bob
 output_name: bob
 seed: 510
 archetype: bob
+authoring_description: >-
+  Bob is the conventional receiver in cryptography examples, personified as the engineer waiting at
+  the other end of Alice's channel. His apparent passivity is the joke: receiving an authentic message
+  that only he can open is a technically and emotionally demanding role.
+gameplay_description: >-
+  Use as a receiver, engineer, cooperative player, or endpoint tutorial NPC. His gameplay may focus on
+  opening, authenticating, acknowledging, and correctly interpreting what Alice or another sender
+  transmits.
+dialogue_hints:
+  barks:
+  - 'I receive. Alice sends, I get it.'
+  - "Try receiving a message you can't open and tell me it's passive."
+  - "The roles are just where you're standing in the sentence."
 animations:
 - idle
 - walk

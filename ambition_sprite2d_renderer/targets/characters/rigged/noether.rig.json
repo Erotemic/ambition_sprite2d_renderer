@@ -1,5 +1,16 @@
 {
  "name": "noether",
+ "actor_metadata": {
+  "authoring_description": "Emmy No-Ether is an affectionate parody of Emmy Noether. The name turns Noether into 'no ether,' linking her revolutionary work on symmetry and conservation laws to the rejection of a privileged physical medium or frame. She should read as a formidable abstract algebraist, not merely a generic professor.",
+  "gameplay_description": "Use as a symmetry guide, conservation-law caster, traversal character, or playable mathematician. Her abilities should pair transformations with conserved quantities, exchange floors and ceilings, and reveal invariants beneath changing poses.",
+  "dialogue_hints": {
+   "barks": [
+    "Every symmetry hides a conservation law.",
+    "There's no privileged frame.",
+    "The ceiling is just a floor that hasn't been voted in yet."
+   ]
+  }
+ },
  "frame": {
   "width": 128,
   "height": 128,

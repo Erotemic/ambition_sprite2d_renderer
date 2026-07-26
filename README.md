@@ -77,6 +77,15 @@ output metadata. Direct Python and specialized renderers can emit it just as a
 rig can. Keep rig-internal bones private unless a published consumer actually
 needs them.
 
+Every newly authored character must also carry an ``authoring_description`` in
+its local source metadata. This is a behind-the-scenes note, not in-world lore:
+it identifies the person, work, or genre being parodied; records the
+biographical, visual, and mechanical inspirations; and distinguishes deliberate
+gameplay inventions from claims about the source subject. Python targets put the
+same string in local ``ACTOR_METADATA``; YAML jobs use a top-level
+``authoring_description:`` field. The actor sidecar publishes it so review tools
+and future catalogs do not have to recover design intent from filenames.
+
 ## Choosing an authoring family
 
 Choose the method that best expresses the sprite:

@@ -3,6 +3,18 @@ name: Craig
 output_name: craig
 seed: 605
 archetype: craig
+authoring_description: >-
+  Craig is the password-cracker role sometimes added to cryptographic casts. He is not a specific
+  person: his ordinary name hides a specialist who attacks weak secrets by guessing, searching, and
+  exploiting what users thought nobody would try.
+gameplay_description: >-
+  Use as a cracker, lock tester, puzzle rival, or tutorial for password entropy. He should be laconic,
+  patient, and much more dangerous around reused patterns than around genuinely random secrets.
+dialogue_hints:
+  barks:
+  - "I'm Craig."
+  - 'Most secrets are shorter than their owners think.'
+  - 'I only need the guess you reused.'
 animations:
 - idle
 - walk

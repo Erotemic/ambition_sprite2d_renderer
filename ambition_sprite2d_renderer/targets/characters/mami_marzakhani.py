@@ -189,6 +189,31 @@ ACTOR_METADATA = {
     },
 }
 
+
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Mami Marzakhani is a warm, energetic parody of Maryam Mirzakhani. She is a modern "
+            "geometer who draws sprawling surfaces on the floor, follows geodesics through curved "
+            "spaces, and treats loops, moduli, and route-finding as one continuous act of visual "
+            "thought."
+        ),
+        "gameplay_description": (
+            "Use as a geometer, route-finding guide, contour-based fighter, or playable traversal "
+            "specialist. Her abilities should bend surfaces, expose cheap geodesics, count loops, and "
+            "turn chalk-like drawings into paths or boundaries."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'Careful where you say straight line in here.',
+        'You already solve this. You call it finding the route.',
+        'Stop fighting the geometry and ask what it makes cheap.',
+    ],
+)
+
 # A restrained, warm palette.  Hair and clothing use several close values so
 # the sprite reads as dimensional without relying on blur, gradients, or a cast
 # floor shadow.

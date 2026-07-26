@@ -137,6 +137,31 @@ ACTOR_METADATA = {
     "tags": ["npc", "animal", "worker", "beaver", "construction"],
 }
 
+
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Busy Beaver personifies the computability-theory Busy Beaver function: a tiny, "
+            "industrious creature whose apparent work schedule grows beyond any computable bound. The "
+            "construction-worker beaver joke should read immediately, while the deeper reference "
+            "rewards mathematically literate players."
+        ),
+        "gameplay_description": (
+            "Use as a compulsively productive worker, foreman, quest giver, or deceptively dangerous "
+            "escalation character. He should treat idleness as a technical defect and ordinary jobs "
+            "as if they might never terminate."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'Busy, busy, busy.',
+        'That log is out of specification.',
+        'No idle paws on my shift.',
+    ],
+)
+
 # Palette: dark low-register browns with a small safety-yellow accent.
 OUTLINE = "#17110d"
 OUTLINE_SOFT = "#33251d"

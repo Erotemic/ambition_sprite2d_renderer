@@ -889,6 +889,27 @@ ACTOR_METADATA_SANIC = {
     "animation_bindings": _animation_bindings("sanic"),
     "tags": ["meme", "fast", "runner", "fighter", "platformer"],
 }
+ACTOR_METADATA_SANIC.update(
+    {
+        "authoring_description": (
+            "Sanic is the deliberately crude internet-meme mutation of Sonic the "
+            "Hedgehog: frantic, badly proportioned, overconfident, and defined by the "
+            "demand to go fast rather than by polished mascot heroism."
+        ),
+        "gameplay_description": (
+            "Use as an absurdly fast runner, rival, playable fighter, or unstable speed "
+            "tutorial. Movement should outrun composure, with skids, wall actions, spin "
+            "attacks, and dialogue that treats standing still as abuse."
+        ),
+        "dialogue_hints": {
+            "barks": [
+                "The pedestal asked me to idle. I have reported it for abuse.",
+                "I can stop whenever I want. I do not want.",
+                "Fast enough to outrun the answer.",
+            ]
+        },
+    }
+)
 
 # Super Sanic — the transformation. Same body/moveset/geometry; the golden,
 # spikes-up, invincible power form. It flies and hits harder; the sprite is the
@@ -911,6 +932,27 @@ ACTOR_METADATA_SUPER = {
     "animation_bindings": _animation_bindings("super_sanic"),
     "tags": ["meme", "fast", "runner", "fighter", "platformer", "super", "transformation"],
 }
+ACTOR_METADATA_SUPER.update(
+    {
+        "authoring_description": (
+            "Super Sanic is the golden, airborne transformation of the Sanic meme, "
+            "combining the crude Sonic parody with the invincible super-form spectacle "
+            "of collected power and impossible speed."
+        ),
+        "gameplay_description": (
+            "Use as a temporary transformation, boss phase, or overpowered unlock. He "
+            "should fly, ignore ordinary hazards, and behave as though reality itself is "
+            "too slow to enforce its rules."
+        ),
+        "dialogue_hints": {
+            "barks": [
+                "I am not glowing. The air is falling behind.",
+                "Immortality is a budget with excellent music.",
+                "The universe may submit a written request.",
+            ]
+        },
+    }
+)
 
 
 def _render_form(target_name: str, skin: Skin, actor_metadata: dict, out_dir: str | Path) -> List[Path]:

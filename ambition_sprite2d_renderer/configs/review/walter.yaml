@@ -3,6 +3,19 @@ name: Walter
 output_name: walter
 seed: 606
 archetype: walter
+authoring_description: >-
+  Walter is the warden in cryptographic stories about prisoners communicating under surveillance. He
+  reads every message crossing his desk yet still faces protocols that allow Alice and Bob to
+  coordinate or exchange secrets without exposing their content.
+gameplay_description: >-
+  Use as a surveillance gatekeeper, prison administrator, censor, or communications puzzle antagonist.
+  He should inspect every overt channel while remaining vulnerable to encodings, shared context, and
+  protocols whose meaning is hidden in plain sight.
+dialogue_hints:
+  barks:
+  - 'Every note crosses my desk first.'
+  - 'They still get secrets past me.'
+  - 'It keeps me humble. It keeps me up.'
 animations:
 - idle
 - walk

@@ -85,6 +85,37 @@ ACTOR_METADATA = {
     "tags": ["boss", "behemoth", "eye_beam"],
 }
 
+
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            """
+            Parody of the Grinning Colosus
+
+            https://en.wikipedia.org/wiki/You_Have_to_Burn_the_Rope
+            https://www.newgrounds.com/portal/view/432872
+            """
+            # This is the GPT 5.6 description and interestingly, it is wrong.
+            # "The Smirking Behemoth is a parody of the enormous grinning slab-boss archetype from "
+            # "rope-cut mobile puzzle games. Its health bar and smug face deliberately pull attention "
+            # "away from the suspended piano, anvil, rope, and environmental solution above it."
+        ),
+        "gameplay_description": (
+            "Use as a tutorial boss for indirect combat and environmental awareness. Direct attacks "
+            "should be possible but foolish; the intended joke is that the boss openly tells the "
+            "player to ignore the ceiling while telegraphing the rope-cut solution."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'The rope above me is decorative and you should absolutely ignore it.',
+        'Every hero sees a health bar and forgets the ceiling exists.',
+        'An anvil. A piano. Consequences.',
+    ],
+)
+
 # Row 0 intentionally uses the Idle alias `rest`; this is the mouth-closed pose.
 ROWS: List[Tuple[str, int, int]] = [
     ("rest", 6, 125),

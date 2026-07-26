@@ -127,6 +127,31 @@ ACTOR_METADATA = {
 }
 
 
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Stochastic Parrot v2 is the polished second rendering of the 'stochastic parrots' "
+            "language-model critique. The larger scarlet-macaw silhouette improves readability but "
+            "keeps the same joke: impressive continuation and mimicry are not automatically "
+            "comprehension."
+        ),
+        "gameplay_description": (
+            "Use as the preferred high-readability mimic enemy or chatter NPC. It can fly, strafe, "
+            "peck, and remix dialogue; games may choose this version while retaining the original as "
+            "lineage or a weaker variant."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'Version two: twice the plumage, same epistemology.',
+        'Fluent! Therefore correct!',
+        'I can continue that sentence for you.',
+    ],
+)
+
+
 def _rgba(hex_color: str, alpha: int = 255) -> Color:
     r, g, b = ImageColor.getrgb(hex_color)
     return (r, g, b, alpha)

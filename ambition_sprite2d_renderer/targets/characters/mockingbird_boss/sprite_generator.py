@@ -1215,6 +1215,9 @@ def render_outputs(
         ),
         "quick": quick,
         "source_urls": scene.meta.get("source_urls", []),
+        "authoring_description": scene.meta.get("authoring_description"),
+        "gameplay_description": scene.meta.get("gameplay_description"),
+        "dialogue_hints": scene.meta.get("dialogue_hints", {}),
         "rows": rows_meta,
     }
     (outdir / f"{TARGET_NAME}_spritesheet_manifest.json").write_text(

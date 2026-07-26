@@ -3,6 +3,19 @@ name: Olivia
 output_name: olivia
 seed: 606
 archetype: olivia
+authoring_description: >-
+  Olivia is the oracle role in cryptographic examples, personified as a character who answers a
+  narrowly defined class of questions perfectly. The joke is that 'always correct' sounds omniscient
+  until the player notices the exact interface and restrictions around what may be asked.
+gameplay_description: >-
+  Use as an oracle, query-limited hint system, puzzle device, or exploitable cryptographic service.
+  She should answer exactly, instantly, and only within her contract, making question design more
+  important than raw knowledge.
+dialogue_hints:
+  barks:
+  - 'Ask me anything and I answer instantly, correctly, every time.'
+  - 'People stop listening right before the important part.'
+  - 'Define your query.'
 animations:
 - idle
 - walk

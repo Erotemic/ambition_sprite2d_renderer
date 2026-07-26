@@ -58,3 +58,27 @@ def render_portraits(out_dir: Path | str = Path(".")) -> List[Path]:
 
 
 ACTOR_METADATA = _make_actor_metadata(STYLE)
+
+
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Carl Runga is the loud, broad half of a Runge-Kutta duo, parodying German numerical "
+            "analyst Carl Runge. He thinks in sampled slopes, insists that four evaluations beat "
+            "Oiler's first guess, and tries to seize Oiler's Kernel with Martin Cutta."
+        ),
+        "gameplay_description": (
+            "Use as a forceful numerical-methods rival, co-boss, mechanic, or playable bruiser. His "
+            "actions should sample, correct, average, and then commit; he supplies confidence and "
+            "momentum while Cutta supplies precision."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'I sample four times and average.',
+        'Cutta does the coefficients. I do the conviction.',
+        'Check the middle. Check it twice.',
+    ],
+)

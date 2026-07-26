@@ -3,6 +3,19 @@ name: Eve
 output_name: eve
 seed: 523
 archetype: eve
+authoring_description: >-
+  Eve is the conventional passive eavesdropper in cryptography examples, turned into a quiet character
+  who listens without changing the channel. Her name comes from eavesdropping, not from a specific
+  historical woman; the characterization should make observation itself feel invasive.
+gameplay_description: >-
+  Use as a stealth observer, information broker, surveillance antagonist, or tutorial for
+  confidentiality. Eve should learn from proximity and intercepted traffic while leaving little
+  evidence that she was present.
+dialogue_hints:
+  barks:
+  - "I don't change anything — I only listen."
+  - 'A perfect eavesdropper leaves the conversation exactly as loud as she found it.'
+  - 'The whole art of secrecy exists because of people like me.'
 animations:
 - idle
 - walk

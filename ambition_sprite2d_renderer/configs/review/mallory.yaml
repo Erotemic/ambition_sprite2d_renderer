@@ -3,6 +3,19 @@ name: Mallory
 output_name: mallory
 seed: 527
 archetype: mallory
+authoring_description: >-
+  Mallory is the conventional malicious active attacker in security examples. Unlike Eve, she
+  intercepts, edits, impersonates, and relays; the name is a mnemonic for malicious behavior rather
+  than a parody of a real person.
+gameplay_description: >-
+  Use as a man-in-the-middle villain, saboteur, shapeshifter, or active network hazard. Her mechanics
+  should replace messages, impersonate both endpoints, and exploit trust between characters who
+  believe they are speaking directly.
+dialogue_hints:
+  barks:
+  - 'Eve just listens. I edit.'
+  - 'I sit between two people who trust each other and quietly become both of them.'
+  - 'People built whole cathedrals of math just to ruin my afternoon.'
 animations:
 - idle
 - walk

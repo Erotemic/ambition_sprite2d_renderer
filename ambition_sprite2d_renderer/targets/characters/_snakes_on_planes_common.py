@@ -84,7 +84,32 @@ CARTESIAN_SPEC = PlaneSpec(
 
 
 def actor_metadata(spec: PlaneSpec) -> dict:
+    if spec.kind == "cartesian":
+        authoring_description = (
+            "Snakes on a Cartesian Plane parodies the title Snakes on a Plane by "
+            "putting a snake swarm on a literal coordinate grid. The joke should read "
+            "both as airborne action-movie nonsense and as a mathematics pun about "
+            "domains, axes, quadrants, and coordinates."
+        )
+        gameplay_description = (
+            "Use as a flying swarm enemy whose motion, attacks, or weaknesses are tied "
+            "to coordinates and quadrants. It can announce the player's location, cross "
+            "axes, and weaponize positive and negative space."
+        )
+    else:
+        authoring_description = (
+            "Snakes on a Paper Plane parodies the title Snakes on a Plane at the most "
+            "literal possible scale: several snakes have folded themselves onto a paper "
+            "airplane. The fragile craft and overconfident passengers are the visual joke."
+        )
+        gameplay_description = (
+            "Use as a light flying swarm enemy that banks, folds, crumples, and hisses. "
+            "Its paper aircraft should make it agile but vulnerable to fire, water, or "
+            "violent changes in direction."
+        )
     return {
+        "authoring_description": authoring_description,
+        "gameplay_description": gameplay_description,
         "actor": {
             "character_id": spec.character_id,
             "display_name": spec.display_name,

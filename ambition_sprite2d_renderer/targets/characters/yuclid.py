@@ -154,6 +154,31 @@ ACTOR_METADATA = {
     },
 }
 
+
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Yuclid is a stern parody of Euclid, with the name shifted toward 'you' because he "
+            "personally enforces the axioms. He treats straightedge geometry as law, rejects portal "
+            "shortcuts, and turns definitions, constructions, and the absence of a royal road into "
+            "combat doctrine."
+        ),
+        "gameplay_description": (
+            "Use as a geometer, anti-portal boss, construction puzzle master, or exacting lecturer. "
+            "His mechanics should create lines and circles, deny non-Euclidean shortcuts, and force "
+            "the player to build a valid path from permitted operations."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'You did not walk here. You were placed here.',
+        'Between any two points there is one straight line.',
+        'There is no royal road to geometry.',
+    ],
+)
+
 OUTLINE = (15, 19, 24, 255)
 OUTLINE_SOFT = (39, 47, 55, 255)
 SKIN = (189, 151, 118, 255)

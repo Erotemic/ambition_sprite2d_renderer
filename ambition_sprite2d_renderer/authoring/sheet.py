@@ -9,6 +9,7 @@ from PIL import Image, ImageColor, ImageDraw
 from ..registry.character_generators import get_generator
 from ..profiling import profile
 from .actor_contract import write_actor_contract_for_adapter
+from .sheet_build import publish_character_notes
 from ..registry import CharacterJob
 from ..registry.pack_groups import policy_for
 from ..core.measure import measure_body_metrics
@@ -180,6 +181,14 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
             "padding_px": crop_padding,
         },
     }
+    publish_character_notes(
+        manifest,
+        {
+            "authoring_description": job.authoring_description,
+            "gameplay_description": job.gameplay_description,
+            "dialogue_hints": job.dialogue_hints,
+        },
+    )
     body_metric_frame: Image.Image | None = None
     # Per-animation union alpha bboxes in **source canvas** coords (before the
     # sheet-wide crop) → per-animation hurtboxes. Layout-independent.

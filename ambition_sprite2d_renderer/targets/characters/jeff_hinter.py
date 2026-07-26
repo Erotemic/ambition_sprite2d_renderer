@@ -120,6 +120,32 @@ ACTOR_METADATA = {
     },
 }
 
+
+ACTOR_METADATA.update(
+    {
+        "authoring_description": (
+            "Jeff Hinter is an affectionate caricature of Geoffrey Hinton, recast as an "
+            "overenthusiastic hint NPC. He thinks in representations, dimensions, optimization "
+            "landscapes, and manifold geometry, but is liable to shout the missing dimension before "
+            "noticing that the game remains stubbornly two-dimensional."
+        ),
+        "gameplay_description": (
+            "Use as a hint giver, machine-learning sage, comic lecturer, or transformation-capable "
+            "support character. His hints should become useful before they become lectures; his "
+            "special effects should project, compress, optimize, and occasionally lose something "
+            "important."
+        ),
+    }
+)
+ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
+    "barks",
+    [
+        'THREE! ...No. Still two-dimensional.',
+        'A hint should become useful before it becomes a lecture.',
+        'I projected away something important, usually a ladder.',
+    ],
+)
+
 # Muted academic clothing makes the silver hair, glasses, gestures, and effects
 # do the identifying work without turning the character into a costume gag.
 OUTLINE: RGBA = (16, 20, 26, 255)

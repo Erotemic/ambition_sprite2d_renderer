@@ -3,6 +3,18 @@ name: Trudy
 output_name: trudy
 seed: 605
 archetype: trudy
+authoring_description: >-
+  Trudy is the intruder role in security examples; the pun is embedded in 'inTRUDer.' She represents
+  unauthorized entry more generally than Mallory's active channel manipulation and approaches every
+  boundary as a system waiting to be tested.
+gameplay_description: >-
+  Use as an infiltrator, red-team rival, lock bypasser, or security tutorial character. She should
+  probe assumptions, find side doors, and narrate defenses in terms of how she would get through them.
+dialogue_hints:
+  barks:
+  - 'Trudy intrudes.'
+  - "I've stopped apologizing for it."
+  - "I'm thinking about how I'd get into the exhibit."
 animations:
 - idle
 - walk
