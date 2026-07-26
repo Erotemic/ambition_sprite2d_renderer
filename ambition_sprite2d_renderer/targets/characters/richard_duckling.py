@@ -140,6 +140,20 @@ ACTOR_METADATA = {
         "display_name": "Richard Duckling, the Selfish Meme",
     },
     "authoring_description": AUTHORING_DESCRIPTION,
+    "dialogue_hints": {
+        "suggested_barks": [
+            'That criticism lacked peer review!',
+            'An adverse selection event!',
+            'I practically invented memes. Where are the ducks?',
+            'No, that is a goose meme. Entirely different clade.',
+        ],
+        "fallback_dialogue": [
+            'I named the thing, you know. One might expect at least one excellent duck template by now.',
+            'A meme is not merely an image with text. Unfortunately, most images with text have not heard this.',
+            'I am applying artificial selection. Natural selection has had decades and produced nothing usable.',
+            'The ducklings are not followers. They are independent replicators with suspiciously similar opinions.',
+        ],
+    },
     "body": {
         "body_plan": "AvianBiped",
         "body_kind": "Standard",

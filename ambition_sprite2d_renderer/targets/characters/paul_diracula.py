@@ -140,6 +140,20 @@ ACTOR_METADATA = {
         "fallback_dialogue": FALLBACK_DIALOGUE,
         "animation_scaffold": "polished_full_action_mathematician",
     },
+    "dialogue_hints": {
+        "suggested_barks": [
+            'I vant to annihilate your positron.',
+            'The equation demanded a mirror. I merely opened it.',
+            'Antimatter, darling. Not undeath.',
+            'Symmetry. Always symmetry.',
+        ],
+        "fallback_dialogue": [
+            'The mathematics predicted a partner nobody had seen. I trusted the mathematics.',
+            'Beauty in an equation is not decoration. It is usually a load-bearing wall.',
+            'Every particle has a reflection waiting to cancel it. I find that romantic.',
+            'I speak rarely. When the algebra is correct there is not much left to add.',
+        ],
+    },
     "body": {
         "body_plan": "HumanoidBiped",
         "body_kind": "Standard",

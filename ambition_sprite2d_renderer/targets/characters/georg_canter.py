@@ -110,6 +110,20 @@ ACTOR_METADATA = {
         "character_id": "npc_georg_canter",
         "display_name": "Georg Canter",
     },
+    "dialogue_hints": {
+        "suggested_barks": [
+            'Some infinities are roomier.',
+            'You cannot list us all. I have checked.',
+            'Count again. Slower.',
+            'There is always one more.',
+        ],
+        "fallback_dialogue": [
+            'I showed the line holds more than the counting numbers, and was told this was indecent.',
+            'Between any two of your objections there is another objection. That is the shape of the problem.',
+            'The set of things you have not tried is strictly larger than the set of things you have.',
+            'A diagonal is a very quiet kind of proof.',
+        ],
+    },
     "body": {
         "body_plan": "Centauroid",
         "body_kind": "Wide",

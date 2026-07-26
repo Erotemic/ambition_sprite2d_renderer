@@ -106,6 +106,20 @@ ACTOR_METADATA = {
         "character_id": "npc_leib_knives",
         "display_name": "Gottfried Leib-Knives",
     },
+    "dialogue_hints": {
+        "suggested_barks": [
+            'An infinitesimal cut still counts.',
+            'You have mistaken notation for weakness.',
+            'That was neither necessary nor sufficient.',
+            'Very well. Let us differentiate.',
+        ],
+        "fallback_dialogue": [
+            'I prefer notation that reveals the operation instead of concealing it. A symbol should do useful work.',
+            'GNU Ton and I reached similar techniques by different roads. Posterity then paved the roads with arguments.',
+            'A derivative tells you how quickly the present is becoming the future. In a duel, that is practical information.',
+            'An integral gathers countless small changes into one result. Do not stand inside the result.',
+        ],
+    },
     "body": {
         "body_plan": "HumanoidBiped",
         "body_kind": "Standard",

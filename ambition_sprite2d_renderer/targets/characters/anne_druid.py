@@ -113,6 +113,20 @@ ACTOR_METADATA = {
         "display_name": "Anne Druid",
     },
     "authoring_description": AUTHORING_DESCRIPTION,
+    "dialogue_hints": {
+        "suggested_barks": [
+            'The record is not a time capsule. It is an introduction.',
+            'Listen long enough and the universe stops sounding empty.',
+            'Wonder without skepticism is fog.',
+            'The map points home. If you can read a pulsar.',
+        ],
+        "fallback_dialogue": [
+            'We sent music, greetings, a heartbeat, and the sound of a kiss. Optimism is sometimes an engineering decision.',
+            'A message for strangers begins with the hope that strangers can understand.',
+            'Skepticism without wonder is a locked door.',
+            'I do not know who finds it. That was never the point of sending it.',
+        ],
+    },
     "body": {
         "body_plan": "HumanoidBiped",
         "body_kind": "Standard",

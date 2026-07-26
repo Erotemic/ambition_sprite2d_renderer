@@ -113,6 +113,20 @@ ACTOR_METADATA = {
         "creator": {"kind": "model", "model": "GPT-5.6 Thinking"},
         "method": "procedural_python_pillow",
     },
+    "dialogue_hints": {
+        "suggested_barks": [
+            'Everything decomposes. Be patient.',
+            'That was a single frequency. Rude.',
+            'Heat always finds the edges.',
+            'I am cold. This is not a metaphor.',
+        ],
+        "fallback_dialogue": [
+            'Any shape at all, given enough simple waves. It sounds like a trick until you check it.',
+            'I wrapped myself in blankets and studied how warmth leaves a room. The two facts are related.',
+            'A sharp corner costs infinitely many terms. Corners usually do.',
+            'People hear a chord. I hear the sum.',
+        ],
+    },
     "body": {
         "body_plan": "HumanoidBiped",
         "body_kind": "Standard",
