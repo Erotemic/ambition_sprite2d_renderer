@@ -821,6 +821,7 @@ def build_actor_contract(
     # table participates here.
     authoring = dict(authoring or {})
     actor_block = _normalize_authoring_block(authoring.get("actor"))
+    authoring_description = _as_mapping(authoring.get("authoring_description"))
     lineage = _as_mapping(authoring.get("lineage"))
     rows = _rows_from_manifest(manifest)
     explicit_character_id = actor_block.get("character_id") or authoring.get("character_id")
@@ -942,8 +943,8 @@ def build_actor_contract(
         actor_id=actor_block.get("actor_id", None),
         display_name=some(str(display_name)) if display_name else None,
         authoring_description=(
-            some(str(authoring.get("authoring_description")))
-            if authoring.get("authoring_description")
+            some(_mapping_to_struct(authoring_description))
+            if authoring_description
             else None
         ),
         provenance=some(struct(
@@ -997,8 +998,8 @@ def write_actor_contract_for_adapter(
         "tags": list(getattr(job, "tags", []) or []),
     }
     authoring = {
-        "authoring_description": getattr(job, "authoring_description", None),
         "actor": getattr(job, "actor", {}) or {},
+        "authoring_description": getattr(job, "authoring_description", {}) or {},
         "lineage": getattr(job, "lineage", {}) or {},
         "visual": getattr(job, "visual", {}) or {},
         "body": getattr(job, "body", {}) or {},

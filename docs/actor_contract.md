@@ -36,6 +36,10 @@ open vocabularies:
     character_id: "npc_erdish",
     actor_id: None,
     display_name: Some("Erdish"),
+    authoring_description: Some((
+        parody_of: "Paul Erdős",
+        concept: "A wandering mathematical scholar recast for Ambition.",
+    )),
     provenance: Some((
         surface: "adapter",
         renderer_target: "toon",
@@ -96,6 +100,15 @@ actor:
   character_id: npc_zombie_shambler
   actor_id: erdish
   display_name: Erdish
+authoring_description:
+  parody_of: "A specific historical or contemporary figure"
+  concept: "What the parody transforms into an Ambition character"
+  visual_inspiration:
+    - "The silhouette, costume, props, and effects to preserve"
+  gameplay_inspiration:
+    - "The ideas translated into movement or attacks"
+  boundaries:
+    - "Notes that prevent future revisions from collapsing into a plain likeness"
 visual:
   default_pose: shamble_idle
 body:
@@ -130,6 +143,12 @@ character authoring surface:
 - Single Python tack-ons expose module-level `ACTOR_METADATA`.
 - Multi-target Python modules attach per-target `actor_metadata` inside their
   local `TARGETS` table.
+
+New character sources should also carry an `authoring_description`. This is a
+behind-the-scenes record rather than dialogue or lore: identify who or what is
+being parodied, explain the visual/gameplay inspiration, and record the design
+boundaries a later author should preserve. Python targets place the mapping in
+`ACTOR_METADATA`; YAML targets use a top-level `authoring_description:` block.
 
 Omitted low-level geometry is still derived conservatively from generated sheet
 rows and body metrics. The contract builder currently populates several

@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+     width="512mm" height="512mm" viewBox="0 0 512 512"
+     data-character-design="charley-beagle-svg-rig-v1"
+     data-flat-art="true">
+  <g inkscape:groupmode="layer" inkscape:label="Charley Beagle - Side Right" id="charley-beagle-side-right">
+    <g id="adapt-halo" data-rig-part="adapt_halo" data-rig-bone="torso" data-rig-z="0">
+      <circle cx="256" cy="246" r="83" fill="#9fd58b" fill-opacity="0.16" stroke="#70b566" stroke-width="6" stroke-dasharray="12 10"/>
+      <path d="M 305 182 C 333 180 350 197 345 218 C 326 215 310 205 305 182 Z" fill="#bfe7a8" stroke="#253025" stroke-width="4"/>
+      <path d="M 179 277 C 151 278 137 297 143 317 C 162 314 178 302 179 277 Z" fill="#bfe7a8" stroke="#253025" stroke-width="4"/>
+    </g>
+
+    <g id="tail" data-rig-part="tail" data-rig-bone="tail" data-rig-z="2">
+      <path d="M 220 292 C 192 288 169 274 157 252" fill="none" stroke="#25242a" stroke-width="28" stroke-linecap="round"/>
+      <path d="M 220 292 C 192 288 169 274 157 252" fill="none" stroke="#f4f1e8" stroke-width="18" stroke-linecap="round"/>
+      <path d="M 168 263 C 161 257 157 252 154 247" fill="none" stroke="#1f2024" stroke-width="18" stroke-linecap="round"/>
+    </g>
+
+    <g id="far-leg-upper" data-rig-part="far_leg_u" data-rig-bone="far_leg_u" data-rig-z="5">
+      <line x1="238" y1="296" x2="226" y2="366" stroke="#25242a" stroke-width="34" stroke-linecap="round"/>
+      <line x1="238" y1="296" x2="226" y2="366" stroke="#604332" stroke-width="24" stroke-linecap="round"/>
+      <circle cx="238" cy="296" r="13" fill="#604332" stroke="#25242a" stroke-width="5"/>
+      <circle cx="226" cy="366" r="13" fill="#604332" stroke="#25242a" stroke-width="5"/>
+    </g>
+    <g id="far-leg-lower" data-rig-part="far_leg_l" data-rig-bone="far_leg_l" data-rig-z="6">
+      <line x1="226" y1="366" x2="238" y2="438" stroke="#25242a" stroke-width="30" stroke-linecap="round"/>
+      <line x1="226" y1="366" x2="238" y2="438" stroke="#e9e6dd" stroke-width="20" stroke-linecap="round"/>
+      <circle cx="226" cy="366" r="12" fill="#e9e6dd" stroke="#25242a" stroke-width="5"/>
+      <circle cx="238" cy="438" r="11" fill="#e9e6dd" stroke="#25242a" stroke-width="5"/>
+    </g>
+    <g id="far-foot" data-rig-part="far_foot" data-rig-bone="far_leg_foot" data-rig-z="7">
+      <path d="M 232 430 C 249 429 270 438 290 451 C 291 463 282 470 263 469 L 232 461 C 223 452 224 440 232 430 Z" fill="#2f292b" stroke="#25242a" stroke-width="5"/>
+      <path d="M 244 444 C 260 447 273 452 282 457" fill="none" stroke="#6d5c5b" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <g id="far-arm-upper" data-rig-part="far_arm_u" data-rig-bone="far_arm_u" data-rig-z="8">
+      <line x1="226" y1="210" x2="212" y2="268" stroke="#25242a" stroke-width="32" stroke-linecap="round"/>
+      <line x1="226" y1="210" x2="212" y2="268" stroke="#d9c64e" stroke-width="22" stroke-linecap="round"/>
+      <circle cx="226" cy="210" r="12" fill="#d9c64e" stroke="#25242a" stroke-width="5"/>
+      <circle cx="212" cy="268" r="12" fill="#d9c64e" stroke="#25242a" stroke-width="5"/>
+    </g>
+    <g id="far-arm-lower" data-rig-part="far_arm_l" data-rig-bone="far_arm_l" data-rig-z="9">
+      <line x1="212" y1="268" x2="232" y2="318" stroke="#25242a" stroke-width="28" stroke-linecap="round"/>
+      <line x1="212" y1="268" x2="232" y2="318" stroke="#f4f1e8" stroke-width="18" stroke-linecap="round"/>
+      <circle cx="212" cy="268" r="11" fill="#f4f1e8" stroke="#25242a" stroke-width="5"/>
+      <circle cx="232" cy="318" r="10" fill="#f4f1e8" stroke="#25242a" stroke-width="5"/>
+    </g>
+    <g id="far-hand" data-rig-part="far_hand" data-rig-bone="far_arm_hand" data-rig-z="10">
+      <ellipse cx="243" cy="323" rx="18" ry="13" transform="rotate(24 243 323)" fill="#f4f1e8" stroke="#25242a" stroke-width="5"/>
+      <path d="M 245 319 L 258 326" stroke="#a7a49c" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <g id="pelvis-yoke" data-rig-part="pelvis_yoke" data-rig-bone="pelvis" data-rig-z="20">
+      <path d="M 216 279 C 231 268 281 267 299 281 L 301 314 C 286 324 232 325 214 314 Z" fill="#604332" stroke="#25242a" stroke-width="7"/>
+      <path d="M 221 286 C 244 298 273 298 295 286" fill="none" stroke="#9b7654" stroke-width="5" stroke-linecap="round"/>
+    </g>
+
+    <g id="near-leg-upper" data-rig-part="near_leg_u" data-rig-bone="near_leg_u" data-rig-z="22">
+      <line x1="272" y1="296" x2="288" y2="366" stroke="#25242a" stroke-width="36" stroke-linecap="round"/>
+      <line x1="272" y1="296" x2="288" y2="366" stroke="#76533a" stroke-width="25" stroke-linecap="round"/>
+      <circle cx="272" cy="296" r="14" fill="#76533a" stroke="#25242a" stroke-width="5"/>
+      <circle cx="288" cy="366" r="13" fill="#76533a" stroke="#25242a" stroke-width="5"/>
+    </g>
+    <g id="near-leg-lower" data-rig-part="near_leg_l" data-rig-bone="near_leg_l" data-rig-z="23">
+      <line x1="288" y1="366" x2="306" y2="438" stroke="#25242a" stroke-width="32" stroke-linecap="round"/>
+      <line x1="288" y1="366" x2="306" y2="438" stroke="#f7f4ec" stroke-width="21" stroke-linecap="round"/>
+      <circle cx="288" cy="366" r="12" fill="#f7f4ec" stroke="#25242a" stroke-width="5"/>
+      <circle cx="306" cy="438" r="11" fill="#f7f4ec" stroke="#25242a" stroke-width="5"/>
+    </g>
+    <g id="near-foot" data-rig-part="near_foot" data-rig-bone="near_leg_foot" data-rig-z="24">
+      <path d="M 299 430 C 321 429 343 438 361 452 C 364 464 353 471 333 470 L 301 461 C 292 451 292 440 299 430 Z" fill="#3a3031" stroke="#25242a" stroke-width="5"/>
+      <path d="M 313 444 C 329 447 344 453 354 458" fill="none" stroke="#796564" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <g id="torso" data-rig-part="torso" data-rig-bone="torso" data-rig-z="30">
+      <path d="M 214 188 C 228 173 278 171 303 190 C 317 217 314 264 297 297 C 277 316 228 315 209 293 C 195 261 196 216 214 188 Z" fill="#f4f1e8" stroke="#25242a" stroke-width="8"/>
+      <path d="M 211 203 C 228 189 276 188 298 205 L 302 275 C 280 291 228 291 205 273 Z" fill="#ecd64f" stroke="#25242a" stroke-width="6"/>
+      <path d="M 209 227 L 229 239 L 247 226 L 264 239 L 282 226 L 300 238" fill="none" stroke="#25242a" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M 204 197 C 214 180 226 175 239 172 L 237 280 L 209 274 Z" fill="#6e9859" stroke="#25242a" stroke-width="5"/>
+      <path d="M 287 188 C 302 195 310 208 312 226 L 302 275 L 279 280 L 280 176 Z" fill="#769f60" stroke="#25242a" stroke-width="5"/>
+      <path d="M 230 181 L 218 267" fill="none" stroke="#c49a62" stroke-width="7" stroke-linecap="round"/>
+      <path d="M 214 262 C 228 252 249 255 255 271 L 252 300 C 237 308 217 302 210 289 Z" fill="#9a6d43" stroke="#25242a" stroke-width="5"/>
+      <circle cx="217" cy="214" r="5" fill="#f7efb0" stroke="#25242a" stroke-width="2"/>
+      <circle cx="294" cy="214" r="5" fill="#f7efb0" stroke="#25242a" stroke-width="2"/>
+    </g>
+
+    <g id="head" data-rig-part="head" data-rig-bone="head" data-rig-z="40">
+      <path d="M 241 110 C 259 82 315 74 346 101 C 366 119 364 157 349 181 C 334 207 284 218 251 196 C 221 177 220 137 241 110 Z" fill="#f7f4ec" stroke="#25242a" stroke-width="8"/>
+      <path d="M 245 105 C 229 114 215 140 218 169 C 219 191 233 211 251 213 C 257 185 257 139 245 105 Z" fill="#202126" stroke="#25242a" stroke-width="7"/>
+      <path d="M 304 154 C 326 144 356 149 372 166 C 375 183 363 197 344 202 L 306 198 C 292 188 291 167 304 154 Z" fill="#f0ede4" stroke="#25242a" stroke-width="6"/>
+      <ellipse cx="363" cy="172" rx="12" ry="10" fill="#202126" stroke="#25242a" stroke-width="4"/>
+      <ellipse cx="316" cy="124" rx="11" ry="13" fill="#ffffff" stroke="#25242a" stroke-width="4"/>
+      <circle cx="319" cy="127" r="4" fill="#16171a"/>
+      <path d="M 301 107 C 312 99 325 98 334 104" fill="none" stroke="#25242a" stroke-width="6" stroke-linecap="round"/>
+      <path d="M 272 85 C 292 69 323 68 342 83 L 340 101 C 315 93 286 94 262 108 Z" fill="#6e9859" stroke="#25242a" stroke-width="6"/>
+      <path d="M 264 102 C 289 92 326 92 351 102" fill="none" stroke="#25242a" stroke-width="8" stroke-linecap="round"/>
+      <path d="M 268 185 C 277 204 294 215 309 218 C 295 224 274 219 262 204 Z" fill="#f7f4ec" stroke="#25242a" stroke-width="5"/>
+    </g>
+    <g id="mouth-closed" data-rig-part="mouth_closed" data-rig-bone="head" data-rig-z="41">
+      <path d="M 326 187 C 336 192 347 191 355 185" fill="none" stroke="#25242a" stroke-width="5" stroke-linecap="round"/>
+    </g>
+    <g id="mouth-open" data-rig-part="mouth_open" data-rig-bone="head" data-rig-z="42">
+      <path d="M 326 184 C 337 180 352 183 359 191 C 353 204 335 208 325 196 Z" fill="#8d3d4a" stroke="#25242a" stroke-width="5"/>
+      <path d="M 334 198 C 342 196 350 197 354 200" fill="none" stroke="#df8991" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <g id="near-arm-upper" data-rig-part="near_arm_u" data-rig-bone="near_arm_u" data-rig-z="45">
+      <line x1="286" y1="208" x2="322" y2="252" stroke="#25242a" stroke-width="34" stroke-linecap="round"/>
+      <line x1="286" y1="208" x2="322" y2="252" stroke="#ead54f" stroke-width="23" stroke-linecap="round"/>
+      <circle cx="286" cy="208" r="13" fill="#ead54f" stroke="#25242a" stroke-width="5"/>
+      <circle cx="322" cy="252" r="12" fill="#ead54f" stroke="#25242a" stroke-width="5"/>
+    </g>
+    <g id="near-arm-lower" data-rig-part="near_arm_l" data-rig-bone="near_arm_l" data-rig-z="46">
+      <line x1="322" y1="252" x2="334" y2="304" stroke="#25242a" stroke-width="30" stroke-linecap="round"/>
+      <line x1="322" y1="252" x2="334" y2="304" stroke="#f7f4ec" stroke-width="20" stroke-linecap="round"/>
+      <circle cx="322" cy="252" r="12" fill="#f7f4ec" stroke="#25242a" stroke-width="5"/>
+      <circle cx="334" cy="304" r="11" fill="#f7f4ec" stroke="#25242a" stroke-width="5"/>
+    </g>
+    <g id="near-hand" data-rig-part="near_hand" data-rig-bone="near_arm_hand" data-rig-z="47">
+      <ellipse cx="345" cy="308" rx="19" ry="13" transform="rotate(22 345 308)" fill="#f7f4ec" stroke="#25242a" stroke-width="5"/>
+      <path d="M 347 304 L 360 311" stroke="#aaa79f" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <g id="notebook" data-rig-part="notebook" data-rig-bone="far_arm_hand" data-rig-z="50">
+      <path d="M 226 303 L 273 297 L 278 333 L 232 338 Z" fill="#f9f7ef" stroke="#25242a" stroke-width="5"/>
+      <path d="M 251 300 L 255 335" stroke="#25242a" stroke-width="3"/>
+      <path d="M 234 311 L 246 309 M 235 319 L 247 317 M 259 307 L 271 305 M 260 315 L 272 313 M 261 323 L 273 321" stroke="#6c8fc6" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <g id="magnifier" data-rig-part="magnifier" data-rig-bone="near_arm_hand" data-rig-z="51">
+      <circle cx="370" cy="292" r="22" fill="#bde9f8" fill-opacity="0.55" stroke="#c79a47" stroke-width="7"/>
+      <path d="M 355 307 L 334 328" stroke="#c79a47" stroke-width="10" stroke-linecap="round"/>
+      <path d="M 355 307 L 334 328" stroke="#25242a" stroke-width="3" stroke-linecap="round"/>
+    </g>
+  </g>
+</svg>

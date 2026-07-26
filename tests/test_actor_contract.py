@@ -85,33 +85,31 @@ def test_character_job_preserves_art_lineage_in_actor_provenance():
     assert '"lineage_example/original"' in ron
 
 
-
-def test_authoring_description_roundtrips_and_is_published():
+def test_character_job_preserves_authoring_description_in_actor_sidecar():
     from ambition_sprite2d_renderer.authoring.actor_contract import (
         build_actor_contract,
         to_ron,
     )
 
-    description = (
-        "A behind-the-scenes parody note that names the source subject and "
-        "separates biographical inspiration from gameplay invention."
-    )
     job = CharacterJob.from_dict(
         {
             "target": "toon",
-            "name": "Description Example",
-            "authoring_description": description,
+            "name": "Parody Example",
+            "authoring_description": {
+                "parody_of": "Example Scientist",
+                "concept": "A behind-the-scenes design note.",
+                "visual_inspiration": ["one readable silhouette"],
+            },
         }
     )
-    assert job.authoring_description == description
-    assert job.to_dict()["authoring_description"] == description
+    assert job.to_dict()["authoring_description"]["parody_of"] == "Example Scientist"
 
     ron = to_ron(
         build_actor_contract(
-            stem="description_example",
+            stem="parody_example",
             target="toon",
-            image="description_example_spritesheet.png",
-            sheet_manifest="description_example_spritesheet.ron",
+            image="parody_example_spritesheet.png",
+            sheet_manifest="parody_example_spritesheet.ron",
             manifest={
                 "rows": [
                     {
@@ -123,11 +121,17 @@ def test_authoring_description_roundtrips_and_is_published():
                     }
                 ]
             },
-            authoring={"authoring_description": description},
+            job_data={"surface": "adapter", "tags": []},
+            authoring={
+                "authoring_description": job.authoring_description,
+            },
         )
     )
     assert "authoring_description: Some" in ron
-    assert "behind-the-scenes parody note" in ron
+    assert 'parody_of: "Example Scientist"' in ron
+    assert "visual_inspiration: [" in ron
+    assert '"one readable silhouette"' in ron
+
 
 def test_character_job_accepts_sparse_actor_contract_fields():
     job = CharacterJob.from_dict(
