@@ -9,10 +9,12 @@ from __future__ import annotations
 from typing import Optional
 
 from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
+    QGroupBox,
     QHBoxLayout,
     QInputDialog,
     QLabel,
@@ -30,6 +32,8 @@ from PySide6.QtWidgets import (
 )
 
 from ..authoring.rigdoc import EASE_NAMES
+from .keyframe_strip import KeyframeStrip
+from .pose_colors import after_pose_color, before_pose_color
 from .state import EditorState
 
 try:
@@ -109,12 +113,96 @@ class TimelinePanel(QWidget):
         row.addWidget(self.frame_label)
         root.addLayout(row)
 
+        # ---- pose-key overview ------------------------------------------------
+        pose_row = QHBoxLayout()
+        self.pose_status = QLabel()
+        self.pose_status.setMinimumWidth(360)
+        pose_row.addWidget(self.pose_status, stretch=1)
+        self.prev_pose_btn = QPushButton("◀ previous pose")
+        self.prev_pose_btn.clicked.connect(self._jump_previous_pose)
+        pose_row.addWidget(self.prev_pose_btn)
+        self.pose_key_btn = QPushButton("Mark key pose")
+        self.pose_key_btn.clicked.connect(self._toggle_pose_key)
+        pose_row.addWidget(self.pose_key_btn)
+        self.next_pose_btn = QPushButton("next pose ▶")
+        self.next_pose_btn.clicked.connect(self._jump_next_pose)
+        pose_row.addWidget(self.next_pose_btn)
+        root.addLayout(pose_row)
+
+        self.key_strip = KeyframeStrip(state)
+        root.addWidget(self.key_strip)
+
+        plant_row = QHBoxLayout()
+        self.plant_status = QLabel()
+        self.plant_status.setMinimumWidth(320)
+        self.plant_status.setWordWrap(True)
+        plant_row.addWidget(self.plant_status, stretch=1)
+        self.plant_selected_btn = QPushButton("Pin selected part")
+        self.plant_selected_btn.setToolTip(
+            "Continuously hold the selected part's complete world transform for "
+            "the entire clip. Position and rotation stay fixed on in-betweens."
+        )
+        self.plant_selected_btn.clicked.connect(self._pin_selected_part)
+        plant_row.addWidget(self.plant_selected_btn)
+        self.plant_both_btn = QPushButton("Pin both complete feet")
+        self.plant_both_btn.setToolTip(
+            "Best starting point for idle animations: each foot's complete "
+            "position and orientation remain fixed while the body bobs."
+        )
+        self.plant_both_btn.clicked.connect(self._pin_both_feet)
+        plant_row.addWidget(self.plant_both_btn)
+        self.release_plant_btn = QPushButton("Release selected")
+        self.release_plant_btn.clicked.connect(self._release_selected_part)
+        plant_row.addWidget(self.release_plant_btn)
+        root.addLayout(plant_row)
+
+        self.pose_help = QLabel(
+            "Diamonds are important poses; dots and gray bars are raw channel keys. "
+            "When every frame is keyed, simplify the clip so the frames between poses "
+            "become editable interpolations."
+        )
+        self.pose_help.setWordWrap(True)
+        self.pose_help.setStyleSheet("color: #aaa4b2; padding: 0 4px 4px 4px;")
+        root.addWidget(self.pose_help)
+
+        key_actions = QHBoxLayout()
+        self.key_selected_btn = QPushButton("Key selected")
+        self.key_selected_btn.setToolTip("Insert keys only for the selected channel or selected bone")
+        self.key_selected_btn.clicked.connect(self._key_selected_here)
+        key_actions.addWidget(self.key_selected_btn)
+        self.key_pose_btn = QPushButton("Key full pose")
+        self.key_pose_btn.setToolTip("Insert sampled keys for every driven channel at this frame")
+        self.key_pose_btn.clicked.connect(self._key_full_pose_here)
+        key_actions.addWidget(self.key_pose_btn)
+        self.reset_selected_btn = QPushButton("Return selected to interpolation")
+        self.reset_selected_btn.setToolTip("Remove this frame's selected key so neighboring keys control it")
+        self.reset_selected_btn.clicked.connect(self._reset_selected_to_interpolation)
+        key_actions.addWidget(self.reset_selected_btn)
+        self.simplify_selected_btn = QPushButton("Simplify selected")
+        self.simplify_selected_btn.setToolTip(
+            "Keep this channel only at important pose frames so the in-betweens interpolate"
+        )
+        self.simplify_selected_btn.clicked.connect(self._simplify_selected)
+        key_actions.addWidget(self.simplify_selected_btn)
+        self.simplify_clip_btn = QPushButton("Simplify full clip")
+        self.simplify_clip_btn.setToolTip(
+            "Reduce baked per-frame channel keys to the important pose frames"
+        )
+        self.simplify_clip_btn.clicked.connect(self._simplify_full_clip)
+        key_actions.addWidget(self.simplify_clip_btn)
+        key_actions.addStretch(1)
+        root.addLayout(key_actions)
+
         # ---- channels + key editor -------------------------------------------
-        body = QHBoxLayout()
+        self.channel_details = QGroupBox("Advanced channel editor")
+        self.channel_details.setCheckable(True)
+        self.channel_details.setChecked(False)
+        channel_body = QWidget()
+        body = QHBoxLayout(channel_body)
         left = QVBoxLayout()
         left.addWidget(QLabel("channels"))
         self.channel_list = QListWidget()
-        self.channel_list.currentTextChanged.connect(lambda _: self._refresh_editor())
+        self.channel_list.currentTextChanged.connect(self._on_channel_selected)
         left.addWidget(self.channel_list)
         chrow = QHBoxLayout()
         addch = QPushButton("Add channel")
@@ -175,12 +263,79 @@ class TimelinePanel(QWidget):
         self.editor_stack.addWidget(const_page)
         right.addWidget(self.editor_stack)
         body.addLayout(right, stretch=2)
-        root.addLayout(body)
+        details_layout = QVBoxLayout(self.channel_details)
+        details_layout.addWidget(channel_body)
+        channel_body.setVisible(False)
+        self.channel_details.toggled.connect(channel_body.setVisible)
+        self.channel_details.toggled.connect(self._on_channel_details_toggled)
+        root.addWidget(self.channel_details)
 
         state.docChanged.connect(self.refresh)
         state.animationChanged.connect(self._refresh_animation_edit)
+        state.animationChanged.connect(lambda _channels: self._refresh_pose_status())
         state.timeChanged.connect(self._refresh_transport)
+        state.timeChanged.connect(self._refresh_pose_status)
+        state.poseKeysChanged.connect(self._refresh_pose_status)
+        state.selectionChanged.connect(self._refresh_pose_status)
+        state.selectionChanged.connect(self._refresh_plant_controls)
+        state.timeChanged.connect(self._refresh_plant_controls)
+        state.constraintsChanged.connect(self._refresh_plant_controls)
         self.refresh()
+
+    # ---- continuous transform pins -----------------------------------------
+
+    def _refresh_plant_controls(self) -> None:
+        candidate = self.state.selected_pinnable_part()
+        selected_pin = self.state.selected_part_pin()
+        pinned = sorted(self.state.pinned_parts())
+        if selected_pin is not None:
+            artwork = self.state.selected_pin_artwork_names()
+            summary = ", ".join(artwork[:4]) or str(selected_pin.get("bone", "part"))
+            if selected_pin.get("lock_rotation", False):
+                detail = "Position and orientation are solved continuously"
+            else:
+                detail = "Position is solved continuously; rotation follows IK"
+            self.plant_status.setText(
+                f"Pinned: {summary}. {detail} on every frame; drag the green pin "
+                "to move it."
+            )
+        elif pinned:
+            self.plant_status.setText(
+                f"Pinned parts in this clip: {', '.join(pinned)}. Select one to "
+                "move or release it, or pin another endpoint part."
+            )
+        else:
+            self.plant_status.setText(
+                "No continuous part pins. Select a foot, hand, or other endpoint "
+                "part and pin it; for idle bobbing, Pin both complete feet."
+            )
+        self.plant_selected_btn.setEnabled(candidate is not None and selected_pin is None)
+        self.release_plant_btn.setEnabled(selected_pin is not None)
+        self.plant_both_btn.setEnabled(bool(self.state.pinnable_feet()))
+        if selected_pin is not None:
+            self.plant_selected_btn.setText("Selected part is pinned")
+        elif candidate is not None and not candidate.get("lock_rotation_supported", True):
+            self.plant_selected_btn.setText("Pin selected point")
+        else:
+            self.plant_selected_btn.setText("Pin selected part")
+
+    def _pin_selected_part(self) -> None:
+        self.state.push_undo()
+        if not self.state.pin_selected_part_entire_clip():
+            self.state.discard_last_undo()
+        self._refresh_plant_controls()
+
+    def _pin_both_feet(self) -> None:
+        self.state.push_undo()
+        if not self.state.pin_all_feet_entire_clip():
+            self.state.discard_last_undo()
+        self._refresh_plant_controls()
+
+    def _release_selected_part(self) -> None:
+        self.state.push_undo()
+        if not self.state.release_selected_part_pin():
+            self.state.discard_last_undo()
+        self._refresh_plant_controls()
 
     # ---- helpers ----------------------------------------------------------------
 
@@ -194,13 +349,146 @@ class TimelinePanel(QWidget):
             return None
         return self.state.clip().get("channels", {}).get(name)
 
+    def _on_channel_selected(self, _text: str) -> None:
+        self.key_strip.set_selected_channel(self._channel_name())
+        self._refresh_editor()
+        self._refresh_pose_status()
+
+    def _on_channel_details_toggled(self, expanded: bool) -> None:
+        if not expanded:
+            self.channel_list.clearSelection()
+            self.channel_list.setCurrentRow(-1)
+            self.key_strip.set_selected_channel(None)
+            self._refresh_pose_status()
+
+    def _selected_edit_channels(self) -> list[str]:
+        channel = self._channel_name()
+        if channel:
+            return [channel]
+        return self.state.selected_animation_channels()
+
+    def _toggle_pose_key(self) -> None:
+        self.state.push_undo()
+        if not self.state.toggle_pose_key():
+            self.state.discard_last_undo()
+        self._refresh_pose_status()
+
+    def _jump_previous_pose(self) -> None:
+        previous, _following = self.state.neighboring_pose_keys()
+        if previous is not None:
+            self.state.set_frame(previous)
+
+    def _jump_next_pose(self) -> None:
+        _previous, following = self.state.neighboring_pose_keys()
+        if following is not None:
+            self.state.set_frame(following)
+
+    def _key_selected_here(self) -> None:
+        channels = self._selected_edit_channels()
+        self.state.push_undo()
+        if not self.state.insert_keys_here(channels):
+            self.state.discard_last_undo()
+
+    def _key_full_pose_here(self) -> None:
+        self.state.push_undo()
+        if not self.state.insert_keys_here([]):
+            self.state.discard_last_undo()
+
+    def _reset_selected_to_interpolation(self) -> None:
+        channels = self._selected_edit_channels()
+        if not channels:
+            return
+        self.state.push_undo()
+        if not self.state.remove_keys_here(channels):
+            self.state.discard_last_undo()
+
+    def _simplify_selected(self) -> None:
+        channels = self._selected_edit_channels()
+        if not channels:
+            return
+        self.state.push_undo()
+        if not self.state.simplify_channels_to_pose_keys(channels):
+            self.state.discard_last_undo()
+
+    def _simplify_full_clip(self) -> None:
+        dense = self.state.dense_keyed_channels()
+        if not dense:
+            return
+        answer = QMessageBox.question(
+            self,
+            "Simplify animation keys",
+            "Keep the current important poses, remove redundant per-frame keys, "
+            "and let the frames between them interpolate?\n\n"
+            f"This will simplify {len(dense)} densely keyed channel(s).",
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        self.state.push_undo()
+        if not self.state.simplify_channels_to_pose_keys(dense):
+            self.state.discard_last_undo()
+
+    def _refresh_pose_status(self) -> None:
+        pose_keys, explicit = self.state.pose_key_frames()
+        current = self.state.frame_idx
+        is_pose = current in pose_keys
+        keyed = self.state.keyed_channels_at_frame(current)
+        previous, following = self.state.neighboring_pose_keys()
+        source = "saved" if explicit else "suggested"
+        if is_pose:
+            description = f"KEY POSE ({source})"
+        else:
+            description = "IN-BETWEEN"
+        dense = self.state.dense_keyed_channels()
+        dense_note = (
+            f" · {len(dense)} channel(s) keyed every frame" if dense else ""
+        )
+        self.pose_status.setText(
+            f"Frame {current + 1}/{self.state.frames()} · {description} · "
+            f"{len(keyed)} channel key{'' if len(keyed) == 1 else 's'} here"
+            f"{dense_note}"
+        )
+        self.pose_key_btn.setText("Unmark key pose" if is_pose else "Mark key pose")
+        self.prev_pose_btn.setEnabled(previous is not None)
+        self.next_pose_btn.setEnabled(following is not None)
+        self.prev_pose_btn.setText(
+            f"◀ BEFORE · pose {previous + 1}"
+            if previous is not None
+            else "◀ BEFORE pose"
+        )
+        self.next_pose_btn.setText(
+            f"AFTER · pose {following + 1} ▶"
+            if following is not None
+            else "AFTER pose ▶"
+        )
+        self.prev_pose_btn.setStyleSheet(
+            f"color: {before_pose_color().name()}; font-weight: 600;"
+            if previous is not None
+            else ""
+        )
+        self.next_pose_btn.setStyleSheet(
+            f"color: {after_pose_color().name()}; font-weight: 600;"
+            if following is not None
+            else ""
+        )
+        selected = self._selected_edit_channels()
+        self.key_selected_btn.setEnabled(bool(selected))
+        selected_has_key = any(name in keyed for name in selected)
+        self.reset_selected_btn.setEnabled(bool(selected) and selected_has_key)
+        selected_dense = any(name in dense for name in selected)
+        self.simplify_selected_btn.setEnabled(bool(selected) and selected_dense)
+        self.simplify_clip_btn.setEnabled(bool(dense))
+        self.key_strip.update()
+
     # ---- refresh ------------------------------------------------------------------
 
     def _channel_rows(self) -> list[str]:
         rows = []
+        current = self.state.frame_idx
+        key_map = self.state.channel_key_frames()
         for name, spec in self.state.clip().get("channels", {}).items():
             kind = "keys" if "keys" in spec else ("expr" if "expr" in spec else "const")
-            rows.append(f"{name}  [{kind}]")
+            marker = "●" if current in key_map.get(name, set()) else "·"
+            rows.append(f"{name}  {marker} [{kind}]")
         return rows
 
     def _replace_channel_rows(self, rows: list[str], current: Optional[str]) -> None:
@@ -227,7 +515,10 @@ class TimelinePanel(QWidget):
             current = self._channel_name()
             self._replace_channel_rows(self._channel_rows(), current)
             self._refresh_transport()
+            self.key_strip.set_selected_channel(self._channel_name())
             self._refresh_editor()
+            self._refresh_pose_status()
+            self._refresh_plant_controls()
         finally:
             self._refreshing = False
 
@@ -268,6 +559,14 @@ class TimelinePanel(QWidget):
             self.frame_slider.setMaximum(n - 1)
             self.frame_slider.setValue(self.state.frame_idx)
             self.frame_label.setText(f"{self.state.frame_idx + 1}/{n}")
+            current = self._channel_name()
+            desired = self._channel_rows()
+            displayed = [
+                self.channel_list.item(index).text()
+                for index in range(self.channel_list.count())
+            ]
+            if displayed != desired:
+                self._replace_channel_rows(desired, current)
         finally:
             self._refreshing = was
 
@@ -288,9 +587,20 @@ class TimelinePanel(QWidget):
                 self.keys_table.setRowCount(len(keys))
                 for r, k in enumerate(keys):
                     ease = k[2] if len(k) > 2 else "smooth"
-                    self.keys_table.setItem(r, 0, QTableWidgetItem(f"{float(k[0]):.4g}"))
-                    self.keys_table.setItem(r, 1, QTableWidgetItem(f"{float(k[1]):.4g}"))
-                    self.keys_table.setItem(r, 2, QTableWidgetItem(str(ease)))
+                    items = [
+                        QTableWidgetItem(f"{float(k[0]):.4g}"),
+                        QTableWidgetItem(f"{float(k[1]):.4g}"),
+                        QTableWidgetItem(str(ease)),
+                    ]
+                    from ..authoring.animation_keys import time_to_frame
+
+                    if time_to_frame(
+                        float(k[0]), self.state.frames(), bool(self.state.clip().get("loop", True))
+                    ) == self.state.frame_idx:
+                        for item in items:
+                            item.setBackground(QBrush(QColor(80, 70, 98)))
+                    for col, item in enumerate(items):
+                        self.keys_table.setItem(r, col, item)
             elif "expr" in spec:
                 self.type_combo.setCurrentText("expr")
                 self.editor_stack.setCurrentIndex(1)
@@ -515,7 +825,8 @@ class TimelinePanel(QWidget):
 
         value = sample_channel_spec(spec, self.state.t(), loop) if spec else 0.0
         self.state.push_undo()
-        self.state.write_key(name, round(value, 3))
+        if not self.state.write_key(name, round(value, 3)):
+            self.state.discard_last_undo()
 
     def _del_key(self) -> None:
         spec = self._spec()

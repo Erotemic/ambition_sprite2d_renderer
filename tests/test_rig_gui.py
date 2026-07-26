@@ -124,6 +124,68 @@ class TestEditorState:
         assert state.redo()
         assert state.doc.data["name"] == "mutated"
 
+    def test_selected_foot_can_be_planted_and_dragged_without_keys(self, doc):
+        from ambition_sprite2d_renderer.gui.state import EditorState
+
+        state = EditorState(doc, None)
+        state.set_clip("idle")
+        state.selected_bone = "near_foot"
+        original_channels = json.dumps(state.clip().get("channels", {}), sort_keys=True)
+        events = []
+        state.constraintsChanged.connect(lambda: events.append(True))
+
+        assert state.plant_selected_foot_entire_clip()
+        assert state.selected_foot_plant() is not None
+        assert events == [True]
+        assert state.move_selected_foot_plant((70.0, 96.0))
+        assert json.dumps(state.clip().get("channels", {}), sort_keys=True) == original_channels
+        world, _ = state.doc.solve("idle", 0.37)
+        assert world["near_foot"].origin == pytest.approx((70.0, 96.0))
+        assert state.release_selected_foot_plant()
+        assert state.selected_foot_plant() is None
+
+    def test_plant_all_feet_creates_one_constraint_per_leg(self, doc):
+        from ambition_sprite2d_renderer.gui.state import EditorState
+
+        state = EditorState(doc, None)
+        state.set_clip("idle")
+        assert state.plant_all_feet_entire_clip() == len(doc.ik_legs)
+        assert state.planted_feet() == {"near_foot", "far_foot"}
+
+    def test_any_endpoint_part_can_be_pinned_and_moved(self, doc):
+        from ambition_sprite2d_renderer.gui.state import EditorState
+
+        state = EditorState(doc, None)
+        state.set_clip("idle")
+        # ``near_hand`` is a visual part attached to ``near_arm_l``; this rig
+        # intentionally has no redundant skeleton bone named ``near_hand``.
+        state.selected_bone = "near_hand"
+        candidate = state.selected_pinnable_part()
+        assert candidate is not None
+        assert candidate["bone"] == "near_arm_l"
+        assert candidate["upper"] == "near_arm_u"
+        assert candidate["lower"] == "near_arm_l"
+        assert candidate["solver_mode"] == "point_on_lower"
+        assert not candidate["lock_rotation_supported"]
+
+        before, _ = state.doc.solve("idle", state.t())
+        anchor = before[candidate["bone"]].to_world(candidate["anchor_local"])
+        assert state.pin_selected_part_entire_clip(anchor_frame=anchor)
+        pin = state.selected_part_pin()
+        assert pin is not None
+        assert pin["solver"]["mode"] == "point_on_lower"
+        assert not pin["lock_rotation"]
+
+        assert state.move_selected_part_pin((78.0, 66.0))
+        pin = state.selected_part_pin()
+        assert pin["target"] == [78.0, 66.0]
+        after, _ = state.doc.solve("idle", 0.37)
+        pinned_anchor = after[candidate["bone"]].to_world(candidate["anchor_local"])
+        assert pinned_anchor == pytest.approx((78.0, 66.0))
+
+        assert state.release_selected_part_pin()
+        assert state.selected_part_pin() is None
+
 
 class TestCanvas:
     def test_preview_quality_is_stable_during_pose_edits(self, window):
@@ -361,3 +423,145 @@ class TestPartsZOrder:
         window.state.selected_part = front
         parts_panel._bump_z(+1)
         assert doc.parts[front]["z"] == before
+
+
+def test_pose_key_bookmarks_separate_important_poses_from_dense_channel_keys():
+    from ambition_sprite2d_renderer.gui.state import EditorState
+
+    doc = RigDocument.new_empty("pose_keys")
+    doc.data["clips"]["idle"] = {
+        "loop": True,
+        "frames": 8,
+        "duration_ms": 100,
+        "channels": {
+            "torso": {
+                "keys": [
+                    [i / 8.0, value, "smooth"]
+                    for i, value in enumerate((0, 20, 40, 20, 0, -20, -40, -20))
+                ]
+            }
+        },
+    }
+    state = EditorState(doc)
+    suggestions, explicit = state.pose_key_frames()
+    assert explicit is False
+    assert 3 <= len(suggestions) < 8
+    assert state.dense_keyed_channels() == ["torso"]
+
+    state.set_frame(1)
+    state.write_key("torso", 12.0)
+    saved, explicit = state.pose_key_frames()
+    assert explicit is True
+    assert 1 in saved
+
+
+def test_simplify_dense_channel_preserves_key_poses_and_creates_inbetweens():
+    from ambition_sprite2d_renderer.gui.state import EditorState
+
+    doc = RigDocument.new_empty("simplify")
+    values = (0, 20, 40, 20, 0, -20, -40, -20)
+    doc.data["clips"]["idle"] = {
+        "loop": True,
+        "frames": 8,
+        "duration_ms": 100,
+        "pose_keys": [0, 2, 4, 6],
+        "channels": {
+            "torso": {
+                "keys": [[i / 8.0, value, "smooth"] for i, value in enumerate(values)]
+            }
+        },
+    }
+    state = EditorState(doc)
+    before = {
+        frame: doc.sample("idle", doc.frame_time("idle", frame))["torso"]
+        for frame in (0, 2, 4, 6)
+    }
+    assert state.simplify_channels_to_pose_keys(["torso"]) == 1
+    keys = doc.clips["idle"]["channels"]["torso"]["keys"]
+    assert len(keys) == 4
+    after = {
+        frame: doc.sample("idle", doc.frame_time("idle", frame))["torso"]
+        for frame in (0, 2, 4, 6)
+    }
+    assert after == pytest.approx(before)
+    assert state.dense_keyed_channels() == []
+
+
+def test_view_overlays_are_independent_and_geometry_editing_defaults_safe():
+    from ambition_sprite2d_renderer.gui.state import EditorState
+
+    state = EditorState(RigDocument.new_empty("views"))
+    assert state.geometry_edit_enabled is False
+    state.set_view_options(
+        key_pose_ghosts=False,
+        frame_onion=True,
+        motion_trail=False,
+        intermediate_chain_ghosts=True,
+    )
+    assert state.show_key_pose_ghosts is False
+    assert state.show_frame_onion is True
+    assert state.show_motion_trail is False
+    assert state.show_intermediate_chain_ghosts is True
+    # Gameplay overlays remain independently visible.
+    assert state.show_collision_geometry
+    assert state.show_hurtbox_geometry
+    assert state.show_hitbox_geometry
+
+
+def test_temporal_direction_colors_match_canvas_and_timeline(window, qapp):
+    from ambition_sprite2d_renderer.gui.pose_colors import (
+        after_pose_color,
+        before_pose_color,
+    )
+
+    state = window.state
+    state.set_clip("idle")
+    state.set_frame(0)
+    qapp.processEvents()
+
+    assert "BEFORE" in window.timeline.prev_pose_btn.text()
+    assert "AFTER" in window.timeline.next_pose_btn.text()
+    assert before_pose_color().name() in window.timeline.prev_pose_btn.styleSheet()
+    assert after_pose_color().name() in window.timeline.next_pose_btn.styleSheet()
+
+
+def test_pin_ik_foot_holds_world_position_at_pose_keys(window):
+    state = window.state
+    state.set_clip("idle")
+    state.set_frame(0)
+    state.selected_bone = "near_foot"
+    pose_frames, _explicit = state.pose_key_frames()
+    world, _params = state.doc.solve(state.clip_name, state.t())
+    target = world["near_foot"].origin
+    target_angle = world["near_foot"].angle
+
+    changed, affected = state.pin_selected_endpoint_to_pose_keys("both")
+
+    assert changed >= 2
+    assert affected == len(pose_frames)
+    for frame in pose_frames:
+        world, _params = state.doc.solve(
+            state.clip_name, state.doc.frame_time(state.clip_name, frame)
+        )
+        assert world["near_foot"].origin == pytest.approx(target, abs=0.05)
+        assert world["near_foot"].angle == pytest.approx(target_angle, abs=0.05)
+
+
+def test_live_preview_is_independent_of_editing_playhead(window, qapp):
+    state = window.state
+    preview = window.preview
+    state.set_clip("idle")
+    state.set_frame(3)
+    editing_frame = state.frame_idx
+
+    preview.canvas._tick()
+    qapp.processEvents()
+
+    assert state.frame_idx == editing_frame
+    assert preview.clip_label.text() == "Loop: idle"
+    assert preview.canvas._image is not None
+
+    state.set_clip("walk")
+    qapp.processEvents()
+    assert preview.clip_label.text() == "Loop: walk"
+    assert state.frame_idx == 0

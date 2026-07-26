@@ -39,6 +39,16 @@ Document shape (all geometry in base-frame pixels, y down, facing +x)::
         "collision": null, "hurtboxes": {"clips": {}},
         "hitboxes": {"clips": {}}
       },
+      "animation_constraints": {
+        "version": 2,
+        "clips": {"idle": {"pins": [
+          {"bone": "near_foot", "anchor_local": [0.0, 0.0],
+           "target": [69.0, 96.9], "rotation": 0.0,
+           "lock_rotation": true, "scope": "clip",
+           "solver": {"upper": "near_leg_u", "lower": "near_leg_l",
+                      "bend": 1.0}, "role": "foot"}
+        ]}}
+      },
 
       "ik_legs": [{"upper": "near_leg_u", "lower": "near_leg_l",
                    "foot": "near_foot", "channel_prefix": "near_foot",
@@ -78,6 +88,11 @@ from typing import Dict, List, Optional, Tuple, Union
 
 from PIL import Image, ImageDraw
 
+from .animation_constraints import (
+    constraints_root,
+    pin_active,
+    transform_pins,
+)
 from .common_draw import draw_capsule
 from .rig import clamp, lerp, smoothstep
 from .skeleton import (
@@ -379,6 +394,16 @@ class RigDocument:
         return self.data.setdefault("svg_source", {})
 
     @property
+    def animation_constraints(self) -> dict:
+        """Authoring constraints evaluated continuously by the rig solver.
+
+        Transform pins keep arbitrary selected parts fixed in frame space and
+        are stored separately from generated channel data so rebuild scripts
+        can preserve them while replacing clips.
+        """
+        return constraints_root(self)
+
+    @property
     def gameplay_geometry(self) -> dict:
         """Authoring-only collision/hurt/hit geometry and cue bindings.
 
@@ -544,6 +569,97 @@ class RigDocument:
                 pitch=pitch,
                 bend=bend,
             )
+
+        # Continuous transform pins are applied after ordinary FK/IK sampling.
+        # They constrain an arbitrary local anchor on a selected bone and may
+        # preserve its world rotation. Pinning a foot bone therefore holds the
+        # complete boot/toe artwork rigidly while parent bob is absorbed by IK.
+        clip = self.clips.get(clip_name) or {}
+        for pin in transform_pins(self, clip_name, create=False):
+            if not pin_active(clip, pin, t):
+                continue
+            bone_name = str(pin.get("bone") or "")
+            solver = pin.get("solver") or {}
+            upper = str(solver.get("upper") or "")
+            lower = str(solver.get("lower") or "")
+            if (
+                not bone_name
+                or bone_name not in sk.bones
+                or upper not in sk.bones
+                or lower not in sk.bones
+            ):
+                continue
+
+            current_world = sk.world(angles, root=root)
+            sampled = current_world.get(bone_name)
+            if sampled is None:
+                continue
+            raw_anchor = pin.get("anchor_local") or (0.0, 0.0)
+            anchor_local = (float(raw_anchor[0]), float(raw_anchor[1]))
+            sampled_anchor = sampled.to_world(anchor_local)
+            raw_target = pin.get("target") or sampled_anchor
+            anchor_target = (
+                float(raw_target[0]) if pin.get("lock_x", True) else sampled_anchor[0],
+                float(raw_target[1]) if pin.get("lock_y", True) else sampled_anchor[1],
+            )
+            mode = str(solver.get("mode", "endpoint_bone"))
+            chain_root = current_world[upper].origin
+            parent = sk.bones[upper].parent
+            parent_angle = current_world[parent].angle if parent else 0.0
+
+            if mode == "point_on_lower":
+                # The visual endpoint is authored directly on the terminal
+                # lower bone (for example a hand circle centered at arm_l's
+                # tip), so there is no separate wrist/hand bone whose rotation
+                # can absorb an orientation lock.  Solve the selected local
+                # point exactly and let the lower-bone rotation follow IK.
+                radius = math.hypot(anchor_local[0], anchor_local[1])
+                if radius <= 1e-6:
+                    continue
+                anchor_angle = math.degrees(
+                    math.atan2(anchor_local[1], anchor_local[0])
+                )
+                a1, anchor_world_angle = two_bone_ik(
+                    chain_root,
+                    anchor_target,
+                    sk.bones[upper].length,
+                    radius,
+                    bend=float(solver.get("bend", 1.0)),
+                )
+                lower_world_angle = anchor_world_angle - anchor_angle
+                angles[upper] = a1 - parent_angle - sk.bones[upper].rest_angle
+                angles[lower] = (
+                    lower_world_angle - a1 - sk.bones[lower].rest_angle
+                )
+                continue
+
+            desired_angle = (
+                float(pin.get("rotation", sampled.angle))
+                if pin.get("lock_rotation", True)
+                else sampled.angle
+            )
+            radians = math.radians(desired_angle)
+            rotated_anchor = (
+                anchor_local[0] * math.cos(radians)
+                - anchor_local[1] * math.sin(radians),
+                anchor_local[0] * math.sin(radians)
+                + anchor_local[1] * math.cos(radians),
+            )
+            origin_target = (
+                anchor_target[0] - rotated_anchor[0],
+                anchor_target[1] - rotated_anchor[1],
+            )
+
+            a1, a2 = two_bone_ik(
+                chain_root,
+                origin_target,
+                sk.bones[upper].length,
+                sk.bones[lower].length,
+                bend=float(solver.get("bend", 1.0)),
+            )
+            angles[upper] = a1 - parent_angle - sk.bones[upper].rest_angle
+            angles[lower] = a2 - a1 - sk.bones[lower].rest_angle
+            angles[bone_name] = desired_angle - a2 - sk.bones[bone_name].rest_angle
         return sk.world(angles, root=root), s
 
     # ---- Sprite parts (rasterized SVG subsets) ------------------------------
