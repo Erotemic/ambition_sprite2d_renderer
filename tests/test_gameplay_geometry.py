@@ -10,9 +10,20 @@ from ambition_sprite2d_renderer.authoring.gameplay_geometry import (
     generate_collision,
     generate_hitbox,
     generate_hurtboxes,
+    convert_shape,
+    entry_shapes,
     geometry_root,
     hitbox_entry,
+    hurtbox_clip_binding,
     hurtbox_entry,
+    hurtbox_profile_users,
+    hurtbox_profiles,
+    hurtbox_source,
+    make_hurtbox_override,
+    remove_hurtbox_override,
+    point_in_shape,
+    polygon_is_convex,
+    translate_shape,
 )
 from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
 
@@ -83,13 +94,14 @@ def test_generate_collision_and_hurtboxes_are_saved_authoring_data():
     result = generate_collision(doc)
     assert result.count == 1
     collision = collision_entry(doc)
-    assert collision["shape"]["w"] > 0
+    assert entry_shapes(collision)[0]["w"] > 0
     assert collision["provenance"]["method"] == "reference_alpha_bbox_v1"
 
     result = generate_hurtboxes(doc)
-    assert result.count == 2
-    assert hurtbox_entry(doc, "idle")["shape"]["h"] > 0
-    assert hurtbox_entry(doc, "attack_side")["provenance"]["frames"] == 3
+    assert result.count >= 1
+    assert entry_shapes(hurtbox_entry(doc, "idle"))[0]["h"] > 0
+    assert hurtbox_clip_binding(doc, "idle")["profile"] in hurtbox_profiles(doc)
+    assert hurtbox_source(doc, "idle").kind == "profile"
 
 
 def test_generators_are_non_destructive_by_default():
@@ -107,7 +119,7 @@ def test_generate_hitbox_has_window_and_empty_presentation_bindings():
     assert result.count == 1
     entry = hitbox_entry(doc, "attack_side")
     assert entry["active_frames"] == [1, 1]
-    assert entry["shapes"][0]["w"] > 0
+    assert entry_shapes(entry)[0]["w"] > 0
     assert entry["bindings"] == {"vfx": [], "sfx": []}
     assert entry["provenance"]["terminal"] == "hand"
 
@@ -140,3 +152,78 @@ def test_player_robot_builder_preserves_existing_geometry(tmp_path, monkeypatch)
     monkeypatch.setattr(module, "RIG_JSON", rig_path)
     preserved = module._preserved_gameplay_geometry()
     assert preserved["collision"]["shape"]["w"] == 3
+
+
+def test_shape_conversion_translation_and_hit_testing():
+    rect = {"name": "body", "kind": "rect", "x": 10.0, "y": 20.0, "w": 30.0, "h": 40.0}
+    capsule = convert_shape(rect, "capsule")
+    assert capsule["name"] == "body"
+    assert point_in_shape(capsule, (25.0, 40.0))
+    translate_shape(capsule, 5.0, -2.0)
+    assert point_in_shape(capsule, (30.0, 38.0))
+
+    polygon = convert_shape(rect, "polygon")
+    assert polygon_is_convex(polygon["points"])
+    assert point_in_shape(polygon, (25.0, 40.0))
+    assert not point_in_shape(polygon, (0.0, 0.0))
+
+
+def test_legacy_singular_shape_migrates_only_for_mutation():
+    entry = {"shape": {"kind": "circle", "cx": 2, "cy": 3, "r": 4}}
+    viewed = entry_shapes(entry)
+    assert viewed[0]["kind"] == "circle"
+    assert "shape" in entry and "shapes" not in entry
+    mutated = entry_shapes(entry, create=True)
+    assert mutated[0]["r"] == 4
+    assert "shape" not in entry and "shapes" in entry
+
+
+def test_shared_hurtbox_profile_edits_propagate_and_override_detaches():
+    doc = _test_doc()
+    generate_hurtboxes(doc)
+    idle_binding = hurtbox_clip_binding(doc, "idle")
+    attack_binding = hurtbox_clip_binding(doc, "attack_side")
+
+    # Force two clips to demonstrate the same shared-profile semantics even if
+    # the visual clustering correctly generated separate defaults for them.
+    attack_binding.clear()
+    attack_binding["profile"] = idle_binding["profile"]
+    profile_name = idle_binding["profile"]
+    assert hurtbox_profile_users(doc, profile_name) == ("attack_side", "idle")
+
+    idle_shape = entry_shapes(hurtbox_entry(doc, "idle"))[0]
+    attack_shape = entry_shapes(hurtbox_entry(doc, "attack_side"))[0]
+    assert idle_shape is attack_shape
+    idle_shape["x"] += 3.0
+    assert entry_shapes(hurtbox_entry(doc, "attack_side"))[0]["x"] == idle_shape["x"]
+
+    override = make_hurtbox_override(doc, "attack_side")
+    override_shape = entry_shapes(override)[0]
+    assert override_shape is not idle_shape
+    override_shape["x"] += 10.0
+    assert entry_shapes(hurtbox_entry(doc, "idle"))[0]["x"] != override_shape["x"]
+    assert hurtbox_source(doc, "attack_side").kind == "override"
+    assert hurtbox_profile_users(doc, profile_name) == ("idle",)
+
+    assert remove_hurtbox_override(doc, "attack_side")
+    assert hurtbox_source(doc, "attack_side").kind == "profile"
+    assert entry_shapes(hurtbox_entry(doc, "attack_side"))[0] is idle_shape
+
+
+def test_generated_hurtboxes_use_fewer_profiles_than_clips_when_shapes_match():
+    doc = _test_doc()
+    # Both clips are deliberately changed to the same visual pose family and
+    # dimensions so the profile generator should share one result.
+    doc.data["clips"]["attack_side"]["channels"] = {}
+    result = generate_hurtboxes(doc)
+    assert result.count < len(doc.clips)
+    assert hurtbox_clip_binding(doc, "idle")["profile"] == hurtbox_clip_binding(doc, "attack_side")["profile"]
+
+
+def test_hurtbox_generation_is_non_destructive_by_default():
+    doc = _test_doc()
+    generate_hurtboxes(doc)
+    original = copy.deepcopy(doc.data["gameplay_geometry"]["hurtboxes"])
+    with pytest.raises(ExistingGeometryError):
+        generate_hurtboxes(doc)
+    assert doc.data["gameplay_geometry"]["hurtboxes"] == original
