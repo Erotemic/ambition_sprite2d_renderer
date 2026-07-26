@@ -232,3 +232,26 @@ class TestRiggedRegistration:
         targets = rigged._discover()
         assert "test_rigged_bot" in targets
         assert callable(targets["test_rigged_bot"]["render"])
+
+
+def test_build_skeleton_reuses_cached_topology_and_invalidates_on_edit():
+    doc = RigDocument.new_empty("cache_test")
+    first = doc.build_skeleton()
+    second = doc.build_skeleton()
+    assert first is second
+
+    doc.bones[0]["offset"][0] += 1.0
+    third = doc.build_skeleton()
+    assert third is not first
+
+
+def test_render_at_accepts_a_precomputed_solve(monkeypatch):
+    doc = RigDocument.new_empty("solved_render")
+    solved = doc.solve("idle", 0.0)
+
+    def unexpected_solve(*args, **kwargs):
+        raise AssertionError("render_at recomputed a supplied solve")
+
+    monkeypatch.setattr(doc, "solve", unexpected_solve)
+    image = doc.render_at("idle", 0.0, supersample=1, solved=solved)
+    assert image.size == (128, 128)

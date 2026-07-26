@@ -83,6 +83,35 @@ class TestEditorState:
         assert "keys" in spec and "expr" not in spec
         assert len(spec["keys"]) == int(doc.clips["idle"]["frames"])
 
+    def test_write_keys_batches_notifications(self, doc):
+        from ambition_sprite2d_renderer.gui.state import EditorState
+
+        state = EditorState(doc, None)
+        animation_events = []
+        pose_events = []
+        document_events = []
+        state.animationChanged.connect(animation_events.append)
+        state.poseChanged.connect(lambda: pose_events.append(True))
+        state.docChanged.connect(lambda: document_events.append(True))
+
+        changed = state.write_keys({"root_x": 3.0, "root_y": -2.0})
+
+        assert changed == 2
+        assert animation_events == [("root_x", "root_y")]
+        assert len(pose_events) == 1
+        assert document_events == []
+
+    def test_identical_key_write_is_a_noop(self, doc):
+        from ambition_sprite2d_renderer.gui.state import EditorState
+
+        state = EditorState(doc, None)
+        state.write_key("root_x", 3.0)
+        events = []
+        state.animationChanged.connect(events.append)
+
+        assert not state.write_key("root_x", 3.0)
+        assert events == []
+
     def test_undo_redo_round_trip(self, doc):
         from ambition_sprite2d_renderer.gui.state import EditorState
 
@@ -104,6 +133,42 @@ class TestCanvas:
         head_pos = canvas.frame_to_widget(world["head"].origin)
         hit = canvas._hit_test(head_pos)
         assert hit is not None
+
+    def test_frame_cache_reuses_render_for_view_only_changes(self, window, monkeypatch):
+        canvas = window.canvas
+        state = canvas.state
+        canvas._on_render_changed()
+        calls = []
+        original = state.doc.render_at
+
+        def counted(*args, **kwargs):
+            calls.append((args, kwargs))
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(state.doc, "render_at", counted)
+        first = canvas._render_qimage(state.clip_name, state.t(), 1)
+        canvas.zoom *= 1.25
+        second = canvas._render_qimage(state.clip_name, state.t(), 1)
+
+        assert first is second
+        assert len(calls) == 1
+
+    def test_pose_change_invalidates_frame_cache(self, window, monkeypatch):
+        canvas = window.canvas
+        state = canvas.state
+        calls = []
+        original = state.doc.render_at
+
+        def counted(*args, **kwargs):
+            calls.append((args, kwargs))
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(state.doc, "render_at", counted)
+        canvas._render_qimage(state.clip_name, state.t(), 1)
+        state.write_key("root_x", 7.0)
+        canvas._render_qimage(state.clip_name, state.t(), 1)
+
+        assert len(calls) == 2
 
     def test_rotate_drag_writes_key(self, window, qapp):
         from PySide6.QtCore import QPointF, Qt

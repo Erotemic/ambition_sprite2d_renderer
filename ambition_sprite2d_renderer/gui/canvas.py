@@ -21,21 +21,32 @@ Interactions:
 from __future__ import annotations
 
 import math
+from collections import OrderedDict
 from typing import Dict, Optional, Tuple
 
 from PIL import Image
-from PySide6.QtCore import QPoint, QPointF, Qt, Signal
+from PySide6.QtCore import QPoint, QPointF, QRectF, Qt, Signal
 from PySide6.QtGui import QColor, QImage, QPainter, QPen
 from PySide6.QtWidgets import QWidget
 
 from ..authoring.skeleton import BoneWorld, two_bone_ik
 from .state import EditorState
 
+try:
+    from line_profiler import profile
+except ImportError:  # Optional developer dependency.
+    from ..profiling import profile
+
 Point = Tuple[float, float]
 
 SELECT_RADIUS_PX = 12.0
+PREVIEW_SUPERSAMPLE = 1
+ONION_SUPERSAMPLE = 1
+FRAME_CACHE_SIZE = 12
+SOLVE_CACHE_SIZE = 24
 
 
+@profile
 def pil_to_qimage(img: Image.Image) -> QImage:
     data = img.tobytes("raw", "RGBA")
     qimg = QImage(data, img.width, img.height, QImage.Format.Format_RGBA8888)
@@ -57,9 +68,11 @@ class CanvasWidget(QWidget):
         self._drag_bone: Optional[str] = None
         self._ik_bend: float = 1.0
         self._pan_anchor = QPoint()
+        self._frame_cache: OrderedDict[tuple, QImage] = OrderedDict()
+        self._solve_cache: OrderedDict[tuple, tuple] = OrderedDict()
         self.setMinimumSize(360, 360)
         self.setMouseTracking(False)
-        state.docChanged.connect(self.update)
+        state.poseChanged.connect(self._on_render_changed)
         state.timeChanged.connect(self.update)
         state.selectionChanged.connect(self.update)
 
@@ -91,6 +104,51 @@ class CanvasWidget(QWidget):
 
     # ---- painting ------------------------------------------------------------
 
+    def _on_render_changed(self) -> None:
+        self._frame_cache.clear()
+        self._solve_cache.clear()
+        self.update()
+
+    def _cache_key(self, clip: str, t: float, quality: int) -> tuple:
+        return (
+            id(self.state.doc),
+            self.state.render_revision,
+            clip,
+            round(float(t), 8),
+            int(quality),
+        )
+
+    @profile
+    def _solve_at(self, clip: str, t: float):
+        key = self._cache_key(clip, t, -1)
+        cached = self._solve_cache.get(key)
+        if cached is not None:
+            self._solve_cache.move_to_end(key)
+            return cached
+        solved = self.state.doc.solve(clip, t)
+        self._solve_cache[key] = solved
+        if len(self._solve_cache) > SOLVE_CACHE_SIZE:
+            self._solve_cache.popitem(last=False)
+        return solved
+
+    @profile
+    def _render_qimage(self, clip: str, t: float, supersample: int) -> QImage:
+        key = self._cache_key(clip, t, supersample)
+        cached = self._frame_cache.get(key)
+        if cached is not None:
+            self._frame_cache.move_to_end(key)
+            return cached
+        solved = self._solve_at(clip, t)
+        image = self.state.doc.render_at(
+            clip, t, supersample=supersample, solved=solved
+        )
+        qimage = pil_to_qimage(image)
+        self._frame_cache[key] = qimage
+        if len(self._frame_cache) > FRAME_CACHE_SIZE:
+            self._frame_cache.popitem(last=False)
+        return qimage
+
+    @profile
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
         painter.fillRect(self.rect(), QColor(34, 30, 36))
@@ -107,18 +165,18 @@ class CanvasWidget(QWidget):
         painter.drawLine(g0, g1)
 
         clip = self.state.clip_name
+        t = self.state.t()
         try:
             if self.onion_skin and self.state.frames() > 1:
                 for di, alpha in ((-1, 0.22), (1, 0.22)):
                     idx = (self.state.frame_idx + di) % self.state.frames()
-                    ghost = self.state.doc.render_at(
-                        clip, self.state.doc.frame_time(clip, idx), supersample=2
-                    )
+                    ghost_t = self.state.doc.frame_time(clip, idx)
+                    ghost = self._render_qimage(clip, ghost_t, ONION_SUPERSAMPLE)
                     painter.setOpacity(alpha)
                     self._draw_frame_image(painter, ghost, fw, fh)
                 painter.setOpacity(1.0)
-            img = self.state.doc.render_at(clip, self.state.t())
-            self._draw_frame_image(painter, img, fw, fh)
+            image = self._render_qimage(clip, t, PREVIEW_SUPERSAMPLE)
+            self._draw_frame_image(painter, image, fw, fh)
         except Exception as ex:  # noqa: BLE001 - mid-edit docs can be invalid
             painter.setOpacity(1.0)
             painter.setPen(QPen(QColor(255, 120, 120), 1))
@@ -126,29 +184,21 @@ class CanvasWidget(QWidget):
 
         if self.show_bones:
             try:
-                world, _params = self.state.doc.solve(clip, self.state.t())
+                world, _params = self._solve_at(clip, t)
                 self._draw_overlay(painter, world)
             except Exception as ex:  # noqa: BLE001
                 painter.setPen(QPen(QColor(255, 120, 120), 1))
                 painter.drawText(20, 50, f"solve error: {type(ex).__name__}: {ex}")
         painter.end()
 
-    def _draw_frame_image(self, painter: QPainter, img: Image.Image, fw: float, fh: float) -> None:
-        qimg = pil_to_qimage(img)
+    @profile
+    def _draw_frame_image(self, painter: QPainter, image: QImage, fw: float, fh: float) -> None:
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, self.zoom < 3.0)
         tl = self.frame_to_widget((0, 0))
-        painter.drawImage(
-            QPointF(tl.x(), tl.y()).toPoint().x(),
-            QPointF(tl.x(), tl.y()).toPoint().y(),
-            qimg.scaled(
-                int(fw * self.zoom),
-                int(fh * self.zoom),
-                Qt.AspectRatioMode.IgnoreAspectRatio,
-                Qt.TransformationMode.FastTransformation
-                if self.zoom >= 3.0
-                else Qt.TransformationMode.SmoothTransformation,
-            ),
-        )
+        target = QRectF(tl.x(), tl.y(), fw * self.zoom, fh * self.zoom)
+        # Let QPainter scale the cached image directly. Avoid allocating another
+        # full-size QImage on every pan, zoom, selection change, or expose event.
+        painter.drawImage(target, image, QRectF(image.rect()))
 
     def _draw_overlay(self, painter: QPainter, world: Dict[str, BoneWorld]) -> None:
         sel = self.state.selected_bone
@@ -172,7 +222,7 @@ class CanvasWidget(QWidget):
 
     def _hit_test(self, pos: QPointF) -> Optional[str]:
         try:
-            world, _ = self.state.doc.solve(self.state.clip_name, self.state.t())
+            world, _ = self._solve_at(self.state.clip_name, self.state.t())
         except Exception:  # noqa: BLE001
             return None
         best, best_d = None, SELECT_RADIUS_PX
@@ -205,7 +255,7 @@ class CanvasWidget(QWidget):
         both ways for the current tip and pick the closer elbow/knee."""
         try:
             sk = self.state.doc.build_skeleton()
-            world, _ = self.state.doc.solve(self.state.clip_name, self.state.t())
+            world, _ = self._solve_at(self.state.clip_name, self.state.t())
         except Exception:  # noqa: BLE001
             return 1.0
         up, lo = chain
@@ -276,6 +326,7 @@ class CanvasWidget(QWidget):
             self._drag_bone = hit
             self.state.push_undo()
 
+    @profile
     def mouseMoveEvent(self, event) -> None:
         if self._drag_mode == "pan":
             delta = event.position().toPoint() - self._pan_anchor
@@ -300,13 +351,17 @@ class CanvasWidget(QWidget):
             pre = leg.get("channel_prefix", "foot")
             x_off = fp[0] - float(fr.get("center_x", 64.0))
             lift = (float(fr.get("ground_y", 101.0)) - float(fr.get("ankle_h", 2.6))) - fp[1]
-            self.state.write_key(f"{pre}_x", round(x_off, 2))
-            self.state.write_key(f"{pre}_lift", round(max(-1.0, lift), 2))
+            self.state.write_keys(
+                {
+                    f"{pre}_x": round(x_off, 2),
+                    f"{pre}_lift": round(max(-1.0, lift), 2),
+                }
+            )
             return
         # rotate
         try:
             sk = self.state.doc.build_skeleton()
-            world, _ = self.state.doc.solve(self.state.clip_name, self.state.t())
+            world, _ = self._solve_at(self.state.clip_name, self.state.t())
         except Exception:  # noqa: BLE001
             return
         bw = world.get(self._drag_bone)
@@ -318,6 +373,7 @@ class CanvasWidget(QWidget):
         pose = (pose + 180.0) % 360.0 - 180.0
         self.state.write_key(self._drag_bone, round(pose, 1))
 
+    @profile
     def _drag_limb_to(self, fp: Point) -> None:
         """Editor-side two-bone IK: place the dragged bone's origin at ``fp``
         by writing FK pose keys for its grandparent and parent."""
@@ -326,7 +382,7 @@ class CanvasWidget(QWidget):
             return
         try:
             sk = self.state.doc.build_skeleton()
-            world, _ = self.state.doc.solve(self.state.clip_name, self.state.t())
+            world, _ = self._solve_at(self.state.clip_name, self.state.t())
         except Exception:  # noqa: BLE001
             return
         up, lo = chain
@@ -338,10 +394,13 @@ class CanvasWidget(QWidget):
         parent_angle = world[parent].angle if parent else 0.0
         pose_up = w1 - parent_angle - sk.bones[up].rest_angle
         pose_lo = w2 - w1 - sk.bones[lo].rest_angle
+        values = {}
         for name, pose in ((up, pose_up), (lo, pose_lo)):
             pose = (pose + 180.0) % 360.0 - 180.0
-            self.state.write_key(name, round(pose, 1))
+            values[name] = round(pose, 1)
+        self.state.write_keys(values)
 
+    @profile
     def _drag_offset_to(self, fp: Point) -> None:
         """Move the dragged bone's attachment so its origin lands at frame
         point ``fp``: new offset = R(-parent_world_angle) · (fp - parent_origin)."""
@@ -349,7 +408,7 @@ class CanvasWidget(QWidget):
         if bone is None:
             return
         try:
-            world, _ = self.state.doc.solve(self.state.clip_name, self.state.t())
+            world, _ = self._solve_at(self.state.clip_name, self.state.t())
         except Exception:  # noqa: BLE001
             return
         bw = world.get(self._drag_bone)
@@ -367,11 +426,16 @@ class CanvasWidget(QWidget):
         a = math.radians(-pa)
         c, s = math.cos(a), math.sin(a)
         bone["offset"] = [round(rel[0] * c - rel[1] * s, 2), round(rel[0] * s + rel[1] * c, 2)]
-        self.state.mark_changed()
+        self.state.mark_pose_changed()
 
     def mouseReleaseEvent(self, event) -> None:
+        drag_mode = self._drag_mode
         self._drag_mode = None
         self._drag_bone = None
+        if drag_mode == "offset":
+            # Refresh the bone property form once after the interactive drag,
+            # rather than rebuilding every side panel per mouse event.
+            self.state.docChanged.emit()
 
     def wheelEvent(self, event) -> None:
         factor = 1.25 if event.angleDelta().y() > 0 else 0.8

@@ -2,27 +2,42 @@
 
 One ``EditorState`` instance is owned by the main window and handed to
 every panel. Panels mutate ``state.doc.data`` directly, then emit the
-matching signal; everything else refreshes off the signals. Undo is
-snapshot-based: callers ``push_undo()`` once before a mutation (or before
-a drag begins), and undo/redo swap whole-document JSON snapshots.
+matching signal. High-frequency pose edits deliberately use narrower
+signals than structural document edits so dragging a joint does not rebuild
+every editor panel on every mouse-move event.
+
+Undo is snapshot-based: callers ``push_undo()`` once before a mutation (or
+before a drag begins), and undo/redo swap whole-document JSON snapshots.
 """
 
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from typing import List, Optional
 
 from PySide6.QtCore import QObject, Signal
 
 from ..authoring.rigdoc import RigDocument, sample_channel_spec
 
+try:
+    from line_profiler import profile
+except ImportError:  # Optional developer dependency.
+    from ..profiling import profile
+
 MAX_UNDO = 200
 
 
 class EditorState(QObject):
-    docChanged = Signal()  # any document mutation -> re-render + refresh panels
-    selectionChanged = Signal()  # selected bone / part changed
-    timeChanged = Signal()  # clip / frame cursor moved
+    # Broad document/schema mutation. Expensive panels refresh from this.
+    docChanged = Signal()
+    # Any mutation that changes the rendered frame. The canvas refreshes from this.
+    poseChanged = Signal()
+    # Animation-channel edits, carrying the tuple of channels that changed.
+    animationChanged = Signal(object)
+    selectionChanged = Signal()
+    timeChanged = Signal()
+    dirtyChanged = Signal()
 
     def __init__(self, doc: RigDocument, path: Optional[str] = None) -> None:
         super().__init__()
@@ -34,6 +49,7 @@ class EditorState(QObject):
         self.selected_part: Optional[int] = None  # index into doc.parts
         self.dirty: bool = False
         self.pose_clipboard: Optional[dict] = None  # {channel: value}
+        self.render_revision: int = 0
         self._undo: List[str] = []
         self._redo: List[str] = []
 
@@ -47,20 +63,48 @@ class EditorState(QObject):
         self.selected_bone = None
         self.selected_part = None
         self.dirty = False
+        self.render_revision += 1
         self._undo.clear()
         self._redo.clear()
         self.docChanged.emit()
+        self.poseChanged.emit()
         self.timeChanged.emit()
         self.selectionChanged.emit()
+        self.dirtyChanged.emit()
+
+    def _set_dirty(self) -> None:
+        if not self.dirty:
+            self.dirty = True
+            self.dirtyChanged.emit()
+
+    def _mark_render_changed(self) -> None:
+        self._set_dirty()
+        self.render_revision += 1
+        self.poseChanged.emit()
 
     def mark_changed(self) -> None:
-        self.dirty = True
+        """Mark a broad structural/content edit.
+
+        Use this for bone/part/palette/clip structure edits. Interactive pose
+        edits should use :meth:`write_keys` or :meth:`mark_pose_changed` so the
+        expensive side panels are not rebuilt continuously.
+        """
+        self._mark_render_changed()
         self.docChanged.emit()
+
+    def mark_pose_changed(self) -> None:
+        """Mark a render-affecting edit without rebuilding structural panels."""
+        self._mark_render_changed()
 
     # ---- Undo ----------------------------------------------------------------
 
+    @profile
+    def _snapshot(self) -> str:
+        # Compact snapshots reduce both serialization time and undo memory.
+        return json.dumps(self.doc.data, separators=(",", ":"), ensure_ascii=False)
+
     def push_undo(self) -> None:
-        self._undo.append(json.dumps(self.doc.data))
+        self._undo.append(self._snapshot())
         if len(self._undo) > MAX_UNDO:
             self._undo.pop(0)
         self._redo.clear()
@@ -68,7 +112,7 @@ class EditorState(QObject):
     def undo(self) -> bool:
         if not self._undo:
             return False
-        self._redo.append(json.dumps(self.doc.data))
+        self._redo.append(self._snapshot())
         self.doc.data = json.loads(self._undo.pop())
         self._after_history_swap()
         return True
@@ -76,7 +120,7 @@ class EditorState(QObject):
     def redo(self) -> bool:
         if not self._redo:
             return False
-        self._undo.append(json.dumps(self.doc.data))
+        self._undo.append(self._snapshot())
         self.doc.data = json.loads(self._redo.pop())
         self._after_history_swap()
         return True
@@ -88,12 +132,12 @@ class EditorState(QObject):
             self.selected_part = None
         if self.selected_bone and self.doc.bone(self.selected_bone) is None:
             self.selected_bone = None
-        self.dirty = True
+        self._mark_render_changed()
         self.docChanged.emit()
         self.timeChanged.emit()
         self.selectionChanged.emit()
 
-    # ---- Time cursor -----------------------------------------------------------
+    # ---- Time cursor -------------------------------------------------------
 
     def clip(self) -> dict:
         return self.doc.clips.setdefault(
@@ -118,59 +162,99 @@ class EditorState(QObject):
             self.frame_idx = 0
             self.timeChanged.emit()
 
-    # ---- Key authoring (canvas drags + timeline edits) ----------------------------
+    # ---- Key authoring (canvas drags + timeline edits) ---------------------
 
-    def write_key(self, channel: str, value: float, ease: str = "smooth") -> None:
-        """Set ``channel`` to ``value`` at the current frame time, converting
-        expr/const channels to baked per-frame keys first (statusbar-level
-        surprise is better than silently discarding an expression edit)."""
+    @profile
+    def _write_key_value(self, channel: str, value: float, ease: str) -> bool:
+        """Write one key without emitting signals. Return whether data changed."""
         clip = self.clip()
         channels = clip.setdefault("channels", {})
         spec = channels.get(channel)
         loop = bool(clip.get("loop", True))
+        changed = False
         if spec is not None and "keys" not in spec:
             n = self.frames()
             spec = {
                 "keys": [
                     [
                         round(self.doc.frame_time(self.clip_name, i), 4),
-                        round(sample_channel_spec(spec, self.doc.frame_time(self.clip_name, i), loop), 3),
+                        round(
+                            sample_channel_spec(
+                                spec, self.doc.frame_time(self.clip_name, i), loop
+                            ),
+                            3,
+                        ),
                         "linear",
                     ]
                     for i in range(n)
                 ]
             }
             channels[channel] = spec
+            changed = True
         elif spec is None:
             spec = {"keys": []}
             channels[channel] = spec
+            changed = True
+
         keys = spec["keys"]
         t = round(self.t(), 4)
-        for k in keys:
-            if abs(float(k[0]) - t) < 1e-4:
-                k[1] = round(float(value), 3)
+        rounded = round(float(value), 3)
+        for key in keys:
+            if abs(float(key[0]) - t) < 1e-4:
+                if float(key[1]) != rounded:
+                    key[1] = rounded
+                    changed = True
                 break
         else:
-            keys.append([t, round(float(value), 3), ease])
-            keys.sort(key=lambda k: float(k[0]))
-        self.mark_changed()
+            keys.append([t, rounded, ease])
+            keys.sort(key=lambda key: float(key[0]))
+            changed = True
+        return changed
 
-    # ---- Pose clipboard (copy a frame's full pose, paste as keys) -----------------
+    @profile
+    def write_keys(
+        self,
+        values: Mapping[str, float],
+        ease: str = "smooth",
+    ) -> int:
+        """Write multiple current-frame keys and notify the editor once.
+
+        Returns the number of channels whose stored data changed. This is the
+        path used by foot dragging, two-bone IK, and pose paste so one mouse
+        event cannot trigger several complete render/refresh cycles.
+        """
+        changed = tuple(
+            channel
+            for channel, value in values.items()
+            if self._write_key_value(channel, value, ease)
+        )
+        if changed:
+            self._mark_render_changed()
+            self.animationChanged.emit(changed)
+        return len(changed)
+
+    def write_key(self, channel: str, value: float, ease: str = "smooth") -> bool:
+        """Set one channel at the current frame, baking expr/const channels."""
+        return bool(self.write_keys({channel: value}, ease=ease))
+
+    # ---- Pose clipboard ----------------------------------------------------
 
     def copy_pose(self) -> int:
-        """Sample every driven channel at the current frame into the pose
-        clipboard. Returns the number of channels captured."""
+        """Sample every driven channel into the pose clipboard."""
         self.pose_clipboard = {
-            name: round(v, 3) for name, v in self.doc.sample(self.clip_name, self.t()).items()
+            name: round(value, 3)
+            for name, value in self.doc.sample(self.clip_name, self.t()).items()
         }
         return len(self.pose_clipboard)
 
+    @profile
     def paste_pose(self) -> int:
-        """Write the clipboard pose as keys at the current frame (any clip).
-        Returns the number of channels written; 0 if the clipboard is empty."""
+        """Write the clipboard pose as one batched current-frame edit."""
         if not self.pose_clipboard:
             return 0
         self.push_undo()
-        for name, value in self.pose_clipboard.items():
-            self.write_key(name, value)
-        return len(self.pose_clipboard)
+        changed = self.write_keys(self.pose_clipboard)
+        if not changed:
+            # Avoid retaining a useless undo point when the pose was identical.
+            self._undo.pop()
+        return changed

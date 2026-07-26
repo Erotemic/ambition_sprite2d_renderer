@@ -83,6 +83,11 @@ from .skeleton import (
 )
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
+try:
+    from line_profiler import profile
+except ImportError:  # Optional developer dependency.
+    from ..profiling import profile
+
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
@@ -171,8 +176,9 @@ def parse_color(value, palette: Dict[str, str], opacity: float = 1.0) -> Optiona
 class RigDocument:
     """A mutable rig document: thin helpers over the plain ``data`` dict.
 
-    The GUI edits ``data`` in place; everything here derives from it on
-    demand (documents are editor-scale, tens of bones, so no caching)."""
+    The GUI edits ``data`` in place. Expensive immutable derivations are
+    cached behind content signatures so repeated editor paints do not rebuild
+    the same skeleton while direct dictionary mutation remains safe."""
 
     def __init__(self, data: dict, source_path=None) -> None:
         self.data = data
@@ -181,6 +187,8 @@ class RigDocument:
         # keyed per instance (so a sheet rasterizes each part once).
         self.source_path = Path(source_path) if source_path is not None else None
         self._sprite_cache: Dict[Tuple[str, int], Tuple[Image.Image, Point]] = {}
+        self._skeleton_cache_key: Optional[tuple] = None
+        self._skeleton_cache: Optional[Skeleton] = None
 
     # ---- I/O -------------------------------------------------------------
 
@@ -338,18 +346,34 @@ class RigDocument:
 
     # ---- Evaluation ----------------------------------------------------------
 
+    @profile
     def build_skeleton(self) -> Skeleton:
-        sk = Skeleton()
-        for b in self.bones:
-            sk.bone(
-                b["name"],
-                parent=b.get("parent"),
-                offset=tuple(b.get("offset", (0.0, 0.0))),
-                length=float(b.get("length", 0.0)),
-                rest_angle=float(b.get("rest_angle", 0.0)),
+        key = tuple(
+            (
+                bone["name"],
+                bone.get("parent"),
+                tuple(bone.get("offset", (0.0, 0.0))),
+                float(bone.get("length", 0.0)),
+                float(bone.get("rest_angle", 0.0)),
             )
+            for bone in self.bones
+        )
+        if key == self._skeleton_cache_key and self._skeleton_cache is not None:
+            return self._skeleton_cache
+        sk = Skeleton()
+        for name, parent, offset, length, rest_angle in key:
+            sk.bone(
+                name,
+                parent=parent,
+                offset=offset,
+                length=length,
+                rest_angle=rest_angle,
+            )
+        self._skeleton_cache_key = key
+        self._skeleton_cache = sk
         return sk
 
+    @profile
     def sample(self, clip_name: str, t: float) -> Dict[str, float]:
         clip = self.clips.get(clip_name) or {"channels": {}}
         loop = bool(clip.get("loop", True))
@@ -358,6 +382,7 @@ class RigDocument:
             for name, spec in clip.get("channels", {}).items()
         }
 
+    @profile
     def solve(self, clip_name: str, t: float):
         """Sample channels, run leg + generic two-bone IK, return worlds/params."""
         s = self.sample(clip_name, t)
@@ -442,6 +467,7 @@ class RigDocument:
             p = (self.source_path.parent / p).resolve()
         return p
 
+    @profile
     def sprite_image(self, part: dict, S: float) -> Optional[Tuple[Image.Image, Point]]:
         """Rasterize a ``sprite`` part's SVG subset at composite scale ``S``.
 
@@ -484,18 +510,22 @@ class RigDocument:
 
     # ---- Painting -----------------------------------------------------------
 
+    @profile
     def render_at(
         self,
         clip_name: str,
         t: float,
         supersample: Optional[int] = None,
         scale: Optional[int] = None,
+        solved=None,
     ) -> Image.Image:
         """Render one frame at normalized time ``t`` (continuous — the GUI
         scrubs with this). Output size is ``(width*scale, height*scale)``;
         ``scale`` defaults to the document's ``frame.render_scale`` (1), so
         a doc can publish at 2x/4x resolution while geometry stays authored
-        in base-frame units."""
+        in base-frame units. ``solved`` may provide a previously computed
+        ``(world, params)`` pair so the editor can share one solve between the
+        sprite render, bone overlay, and hit testing."""
         fr = self.frame
         w, h = int(fr["width"]), int(fr["height"])
         rs = int(scale if scale is not None else fr.get("render_scale", 1))
@@ -504,7 +534,7 @@ class RigDocument:
         S = float(rs * ss)
         img = Image.new("RGBA", (int(w * S), int(h * S)), (0, 0, 0, 0))
         draw = blending_draw(img)
-        world, params = self.solve(clip_name, t)
+        world, params = solved if solved is not None else self.solve(clip_name, t)
         for part in visible_parts(self.parts, self.features):
             sprite = self.sprite_image(part, S) if part.get("kind") == "sprite" else None
             paint_part(img, draw, part, world, S, params, self.palette, sprite=sprite)
@@ -534,6 +564,7 @@ class RigDocument:
 # same part vocabulary without carrying a RigDocument around.
 
 
+@profile
 def blit_rotated(
     canvas: Image.Image,
     sprite: Image.Image,
@@ -563,6 +594,7 @@ def blit_rotated(
     )
 
 
+@profile
 def paint_part(
     img: Image.Image,
     draw: ImageDraw.ImageDraw,

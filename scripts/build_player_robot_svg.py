@@ -235,12 +235,11 @@ def make_clips(doc: dict) -> dict:
                 canonical[upper_name] + upper_delta[i] + poses[i].whole_body_rotation
                 for i in range(nframes)
             ]
-            # The SVG has one black leg strut, not independently drawn thigh and
-            # shin pieces. Damp knee articulation so the boot remains attached.
+            # The canonical SVG authors distinct upper-leg, lower-leg, and foot
+            # parts, so preserve the full knee motion from the source pose.
             lower_world = [
                 canonical[lower_name]
-                + upper_delta[i]
-                + 0.22 * (lower_delta[i] - upper_delta[i])
+                + lower_delta[i]
                 + poses[i].whole_body_rotation
                 for i in range(nframes)
             ]
@@ -308,28 +307,13 @@ def build_doc() -> dict:
     doc["ik_chains"] = []
     doc["ik_legs"] = []
 
-    # Normalize paper-doll draw order. The far arm is a background chain,
-    # behind both torso layers. The near arm is above the torso but remains
-    # below the head, avoiding the old "arm pasted across the visor" failure.
-    part_z = {
-        "far_hand": 8.0,
-        "far_arm_l": 9.0,
-        "far_arm_u": 10.0,
-        "torso_back": 20.0,
-        "neck": 21.0,
-        "torso_front": 40.0,
-        "near_arm_u": 44.0,
-        "near_arm_l": 45.0,
-        "near_hand": 46.0,
-        "head": 60.0,
-    }
-    for part in doc.get("parts", []):
-        if part.get("name") in part_z:
-            part["z"] = part_z[part["name"]]
+    # Part grouping and z-order are authored in the canonical SVG. The builder
+    # must not silently replace those artist-editable values with a second copy.
 
     doc["clips"] = make_clips(doc)
     doc["features"] = {
         "paper_doll": True,
+        "split_leg_artwork": True,
         "fingers_locked_to_hands": True,
         "toe_caps_locked_to_boots": True,
         "source_animation_vocabulary": "configs/player_robot.yaml",

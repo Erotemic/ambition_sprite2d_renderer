@@ -62,6 +62,7 @@ class MainWindow(QMainWindow):
 
         self._build_menus()
         state.docChanged.connect(self._refresh_title)
+        state.dirtyChanged.connect(self._refresh_title)
         self._refresh_title()
         self.resize(1380, 900)
 

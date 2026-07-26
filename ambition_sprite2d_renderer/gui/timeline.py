@@ -32,6 +32,11 @@ from PySide6.QtWidgets import (
 from ..authoring.rigdoc import EASE_NAMES
 from .state import EditorState
 
+try:
+    from line_profiler import profile
+except ImportError:  # Optional developer dependency.
+    from ..profiling import profile
+
 
 class FrameSlider(QSlider):
     """Horizontal slider that advances exactly one frame per wheel notch.
@@ -173,6 +178,7 @@ class TimelinePanel(QWidget):
         root.addLayout(body)
 
         state.docChanged.connect(self.refresh)
+        state.animationChanged.connect(self._refresh_animation_edit)
         state.timeChanged.connect(self._refresh_transport)
         self.refresh()
 
@@ -190,6 +196,23 @@ class TimelinePanel(QWidget):
 
     # ---- refresh ------------------------------------------------------------------
 
+    def _channel_rows(self) -> list[str]:
+        rows = []
+        for name, spec in self.state.clip().get("channels", {}).items():
+            kind = "keys" if "keys" in spec else ("expr" if "expr" in spec else "const")
+            rows.append(f"{name}  [{kind}]")
+        return rows
+
+    def _replace_channel_rows(self, rows: list[str], current: Optional[str]) -> None:
+        self.channel_list.clear()
+        self.channel_list.addItems(rows)
+        if current:
+            for index in range(self.channel_list.count()):
+                if self.channel_list.item(index).text().split("  ")[0] == current:
+                    self.channel_list.setCurrentRow(index)
+                    break
+
+    @profile
     def refresh(self) -> None:
         self._refreshing = True
         try:
@@ -202,17 +225,32 @@ class TimelinePanel(QWidget):
             self.dur_spin.setValue(int(clip.get("duration_ms", 100)))
             self.loop_check.setChecked(bool(clip.get("loop", True)))
             current = self._channel_name()
-            self.channel_list.clear()
-            for name, spec in clip.get("channels", {}).items():
-                kind = "keys" if "keys" in spec else ("expr" if "expr" in spec else "const")
-                self.channel_list.addItem(f"{name}  [{kind}]")
-            if current:
-                for i in range(self.channel_list.count()):
-                    if self.channel_list.item(i).text().split("  ")[0] == current:
-                        self.channel_list.setCurrentRow(i)
-                        break
+            self._replace_channel_rows(self._channel_rows(), current)
             self._refresh_transport()
             self._refresh_editor()
+        finally:
+            self._refreshing = False
+
+
+    @profile
+    def _refresh_animation_edit(self, changed_channels) -> None:
+        """Refresh only the channel UI touched by an interactive pose edit."""
+        if self._refreshing:
+            return
+        self._refreshing = True
+        try:
+            current = self._channel_name()
+            desired = self._channel_rows()
+            displayed = [
+                self.channel_list.item(index).text()
+                for index in range(self.channel_list.count())
+            ]
+            rows_changed = displayed != desired
+            if rows_changed:
+                self._replace_channel_rows(desired, current)
+            selected = self._channel_name()
+            if rows_changed or selected in set(changed_channels or ()):
+                self._refresh_editor()
         finally:
             self._refreshing = False
 
@@ -233,6 +271,7 @@ class TimelinePanel(QWidget):
         finally:
             self._refreshing = was
 
+    @profile
     def _refresh_editor(self) -> None:
         was = self._refreshing
         self._refreshing = True

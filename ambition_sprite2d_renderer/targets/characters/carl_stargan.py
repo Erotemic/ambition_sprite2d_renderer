@@ -75,6 +75,9 @@ ROWS: List[Tuple[str, int, int]] = [
     ("death", 8, 108),
     ("talk", 8, 108),
     ("interact", 8, 92),
+    ("think", 8, 112),
+    ("use_telescope", 10, 96),
+    ("stargaze", 10, 108),
     ("jab", 5, 58),
     ("punch", 7, 70),
     ("planetary_orbit", 9, 72),
@@ -165,7 +168,9 @@ ACTOR_METADATA = {
         "action.defense.block": {"animation": "block", "events": []},
         "action.defense.roll": {"animation": "roll", "events": []},
         "interaction.talk": {"animation": "talk", "events": []},
-        "interaction.use": {"animation": "interact", "events": []},
+        "interaction.use": {"animation": "use_telescope", "events": []},
+        "emote.think": {"animation": "think", "events": []},
+        "emote.inspire": {"animation": "stargaze", "events": []},
         "emote.taunt": {"animation": "taunt", "events": []},
     },
 }
@@ -175,8 +180,12 @@ ACTOR_METADATA.update(
     {
         "authoring_description": (
             "Carl Stargan is a warm, theatrically cosmic parody of science communicator Carl Sagan. "
-            "The name bends 'Sagan' toward stars while the character pairs wonder, scale, skepticism, "
-            "and an inability to discuss a room without locating it in the universe."
+            "The name bends Sagan toward stars while the character pairs wonder, scale, skepticism, "
+            "and an inability to discuss a room without locating it in the universe. The visual target "
+            "is a warmly caricatured 1970s science presenter: soft brown jacket, black turtleneck, dark "
+            "trousers, expressive hands, swept wavy hair, and a pocket telescope used as a recurring prop. "
+            "Cosmic effects are gameplay inventions inspired by Sagan's public language about starstuff, "
+            "the pale blue dot, planetary scale, and evidence-led wonder."
         ),
         "gameplay_description": (
             "Use as a science guide, narrator, lecturer, or playable explorer whose hints reframe "
@@ -194,27 +203,27 @@ ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
     ],
 )
 
-OUTLINE = (23, 17, 18, 255)
-OUTLINE_SOFT = (58, 40, 35, 255)
-SKIN = (184, 126, 91, 255)
-SKIN_LIGHT = (221, 166, 122, 255)
-SKIN_HIGHLIGHT = (210, 153, 112, 255)
-SKIN_SHADE = (137, 84, 65, 255)
-HAIR = (25, 20, 20, 255)
-HAIR_MID = (39, 29, 27, 255)
-HAIR_GLEAM = (87, 63, 49, 255)
-JACKET = (171, 118, 69, 255)
-JACKET_LIGHT = (207, 157, 95, 255)
-JACKET_DARK = (121, 76, 45, 255)
-JACKET_DEEP = (78, 48, 34, 255)
-TURTLENECK = (25, 28, 34, 255)
-TURTLENECK_LIGHT = (57, 60, 68, 255)
-TROUSER = (111, 42, 52, 255)
-TROUSER_LIGHT = (149, 62, 68, 255)
-TROUSER_DARK = (72, 28, 39, 255)
-SHOE = (76, 48, 35, 255)
-SHOE_LIGHT = (125, 82, 54, 255)
-SOLE = (29, 24, 22, 255)
+OUTLINE = (25, 20, 22, 255)
+OUTLINE_SOFT = (64, 47, 42, 255)
+SKIN = (190, 126, 88, 255)
+SKIN_LIGHT = (224, 164, 116, 255)
+SKIN_HIGHLIGHT = (211, 148, 104, 255)
+SKIN_SHADE = (128, 78, 61, 255)
+HAIR = (31, 25, 26, 255)
+HAIR_MID = (48, 35, 32, 255)
+HAIR_GLEAM = (93, 67, 51, 255)
+JACKET = (119, 78, 48, 255)
+JACKET_LIGHT = (151, 105, 64, 255)
+JACKET_DARK = (78, 50, 37, 255)
+JACKET_DEEP = (51, 34, 31, 255)
+TURTLENECK = (22, 28, 34, 255)
+TURTLENECK_LIGHT = (47, 57, 65, 255)
+TROUSER = (39, 48, 55, 255)
+TROUSER_LIGHT = (57, 65, 70, 255)
+TROUSER_DARK = (25, 31, 38, 255)
+SHOE = (53, 39, 35, 255)
+SHOE_LIGHT = (97, 67, 49, 255)
+SOLE = (20, 20, 22, 255)
 EYE = (30, 24, 22, 255)
 EYE_LIGHT = (228, 216, 188, 255)
 MOUTH = (112, 54, 49, 255)
@@ -295,6 +304,27 @@ def _segment_quad(a: Point, b: Point, ra: float, rb: float) -> List[Point]:
         (b[0] + normal[0] * rb, b[1] + normal[1] * rb),
         (b[0] - normal[0] * rb, b[1] - normal[1] * rb),
         (a[0] - normal[0] * ra, a[1] - normal[1] * ra),
+    ]
+
+
+def _jointed_strip(a: Point, b: Point, c: Point, wa: float, wb: float, wc: float) -> List[Point]:
+    """Return one continuous tapered polygon through a bent limb."""
+    _, n1, _ = _unit(a, b)
+    _, n2, _ = _unit(b, c)
+    nx = n1[0] + n2[0]
+    ny = n1[1] + n2[1]
+    norm = math.hypot(nx, ny)
+    if norm < 1.0e-6:
+        nj = n1
+    else:
+        nj = (nx / norm, ny / norm)
+    return [
+        (a[0] + n1[0] * wa, a[1] + n1[1] * wa),
+        (b[0] + nj[0] * wb, b[1] + nj[1] * wb),
+        (c[0] + n2[0] * wc, c[1] + n2[1] * wc),
+        (c[0] - n2[0] * wc, c[1] - n2[1] * wc),
+        (b[0] - nj[0] * wb, b[1] - nj[1] * wb),
+        (a[0] - n1[0] * wa, a[1] - n1[1] * wa),
     ]
 
 
@@ -410,6 +440,9 @@ class Pose:
     billions: float = 0.0
     starstuff: float = 0.0
     cosmic_trail: float = 0.0
+    telescope: float = 0.0
+    thinking: float = 0.0
+    stargaze: float = 0.0
 
 
 def _pose(animation: str, frame_idx: int, nframes: int) -> Pose:
@@ -628,6 +661,45 @@ def _pose(animation: str, frame_idx: int, nframes: int) -> Pose:
         p.near_hand = (101.0, 63.0)
         p.near_hand_mode = "point"
         p.far_hand = (53.0, 81.0)
+    elif animation == "think":
+        p.thinking = 0.65 + 0.35 * _pulse(t)
+        p.skeptical = 0.20
+        p.brow = 0.65
+        p.smile = 0.16
+        p.near_elbow = (82.0, 71.0)
+        p.near_hand = (69.0, 43.5 + 0.8 * math.sin(cyc))
+        p.near_hand_mode = "relaxed"
+        p.far_elbow = (51.0, 73.0)
+        p.far_hand = (62.0, 82.0)
+        p.far_hand_mode = "relaxed"
+        p.head_tilt = -3.0 + 1.5 * math.sin(cyc)
+    elif animation == "use_telescope":
+        raise_scope = _smooth(min(1.0, t * 1.8))
+        settle = _smooth(max(0.0, (t - 0.35) / 0.65))
+        p.telescope = raise_scope
+        p.body_lean = 2.5 * settle
+        p.head_x = 1.5 * settle
+        p.head_y = -0.8 * settle
+        p.near_elbow = (84.0, 64.0)
+        p.near_hand = (89.0, 54.0)
+        p.near_hand_mode = "grip"
+        p.far_elbow = (64.0, 67.0)
+        p.far_hand = (76.0, 58.0)
+        p.far_hand_mode = "grip"
+        p.wonder = 0.25
+    elif animation == "stargaze":
+        lift = _smooth(t)
+        p.stargaze = 0.35 + 0.65 * _pulse(t)
+        p.wonder = 0.8
+        p.brow = 0.85
+        p.smile = 0.64
+        p.head_tilt = -8.0 * lift
+        p.near_elbow = (86.0, 57.0)
+        p.near_hand = (93.0, 38.0 - 4.0 * lift)
+        p.near_hand_mode = "open"
+        p.far_elbow = (47.0, 69.0)
+        p.far_hand = (51.0, 82.0)
+        p.far_hand_mode = "open"
     elif animation in {"jab", "punch", "planetary_orbit"}:
         strike = _pulse(t)
         p.body_lean = 10.0 * strike
@@ -763,26 +835,34 @@ def _draw_leg(
     T = lambda q: _transform(q, pose)
     hip_t, knee_t, ankle_t = T(hip), T(knee), T(ankle)
     trouser = TROUSER_DARK if far else TROUSER
-    trouser_hi = TROUSER if far else TROUSER_LIGHT
-    _polygon(draw, _segment_quad(hip_t, knee_t, 5.2, 4.5), trouser, OUTLINE, 1.0)
-    # A slight 1970s flare helps the lower-body silhouette read at sprite scale.
-    _polygon(draw, _segment_quad(knee_t, ankle_t, 4.5, 4.4), trouser_hi, OUTLINE, 1.0)
-    _ellipse(draw, knee_t, 4.6, 3.8, trouser_hi, OUTLINE, 0.8)
+    highlight = TROUSER if far else TROUSER_LIGHT
+
+    # One continuous trouser leg avoids the banded, mannequin-like knee joints
+    # of the previous construction.
+    _polygon(draw, _jointed_strip(hip_t, knee_t, ankle_t, 4.9, 4.4, 4.7), trouser, OUTLINE, 1.0)
+    outer = _lerp_point(knee_t, ankle_t, 0.48)
+    _line(draw, [_lerp_point(hip_t, knee_t, 0.14), outer], highlight, 0.62)
+
     along, normal, _ = _unit(knee_t, ankle_t)
     toe = (
-        ankle_t[0] + along[0] * 2.7 + normal[0] * 5.0,
-        ankle_t[1] + along[1] * 2.7 + normal[1] * 5.0,
+        ankle_t[0] + along[0] * 2.2 + normal[0] * 5.6,
+        ankle_t[1] + along[1] * 2.2 + normal[1] * 5.6,
+    )
+    heel = (
+        ankle_t[0] - along[0] * 1.6 - normal[0] * 2.8,
+        ankle_t[1] - along[1] * 1.6 - normal[1] * 2.8,
     )
     shoe_poly = [
-        (ankle_t[0] - normal[0] * 3.8, ankle_t[1] - normal[1] * 3.8),
-        (ankle_t[0] + normal[0] * 3.9, ankle_t[1] + normal[1] * 3.9),
-        (toe[0] + normal[0] * 3.3, toe[1] + normal[1] * 3.3),
-        (toe[0] - normal[0] * 2.7, toe[1] - normal[1] * 2.7),
+        (ankle_t[0] - normal[0] * 3.6, ankle_t[1] - normal[1] * 3.6),
+        (ankle_t[0] + normal[0] * 3.8, ankle_t[1] + normal[1] * 3.8),
+        (toe[0] + normal[0] * 2.8, toe[1] + normal[1] * 2.8),
+        (toe[0] - normal[0] * 2.2, toe[1] - normal[1] * 2.2),
+        heel,
     ]
     _polygon(draw, shoe_poly, SHOE if not far else JACKET_DEEP, OUTLINE, 1.0)
-    _line(draw, [shoe_poly[2], shoe_poly[3]], SOLE, 1.8)
+    _line(draw, [shoe_poly[2], shoe_poly[3], heel], SOLE, 1.45)
     if not far:
-        _line(draw, [_lerp_point(ankle_t, toe, 0.30), _lerp_point(ankle_t, toe, 0.70)], SHOE_LIGHT, 0.75)
+        _arc(draw, _lerp_point(ankle_t, toe, 0.58), 3.5, 1.8, 190, 342, SHOE_LIGHT, 0.6)
 
 
 def _draw_neck(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
@@ -802,45 +882,53 @@ def _draw_neck(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
 
 def _draw_torso(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
     T = lambda q: _transform(q, pose)
-    # Wide shoulders, long jacket, and broad lapels produce the specific
-    # broadcaster silhouette before any facial detail is visible.
+
+    # A soft, broad sport-coat silhouette: rounded shoulders, a slightly open
+    # front, and a low hem. The design deliberately avoids repeated horizontal
+    # bands, segmented armor shapes, and dense corduroy hatching.
     jacket = [
-        T((46.5, 56.0)),
-        T((55.5, 50.2)),
-        T((72.0, 49.8)),
-        T((82.8, 55.0)),
-        T((86.0, 72.0)),
-        T((79.0, 91.0)),
-        T((67.0, 94.0)),
-        T((51.5, 90.5)),
-        T((43.8, 71.0)),
+        T((45.0, 57.0)), T((51.5, 52.0)), T((57.0, 49.5)),
+        T((71.0, 49.2)), T((78.0, 52.0)), T((84.0, 57.0)),
+        T((86.2, 71.0)), T((82.0, 88.5)), T((73.5, 94.0)),
+        T((64.0, 95.5)), T((53.0, 93.0)), T((45.8, 86.0)), T((42.5, 70.0)),
     ]
-    _polygon(draw, jacket, JACKET_DARK, OUTLINE, 1.25)
-    far_panel = [T((47.2, 57.0)), T((57.0, 51.2)), T((62.0, 92.0)), T((52.0, 88.7)), T((45.5, 70.0))]
-    near_panel = [T((70.0, 51.0)), T((81.4, 56.0)), T((84.2, 71.0)), T((77.0, 89.0)), T((66.0, 93.0))]
-    _polygon(draw, far_panel, JACKET, OUTLINE_SOFT, 0.72)
-    _polygon(draw, near_panel, JACKET_LIGHT, OUTLINE_SOFT, 0.72)
+    _polygon(draw, jacket, JACKET, OUTLINE, 1.25)
 
-    # Black turtleneck, not a shirt-and-tie academic uniform.
-    shirt = [T((57.0, 52.0)), T((70.5, 51.8)), T((74.0, 68.0)), T((67.0, 79.0)), T((55.5, 68.5))]
+    # Gentle plane changes make the coat dimensional without turning it into a
+    # collection of mechanical plates.
+    far_shadow = [
+        T((45.2, 57.0)), T((54.0, 50.8)), T((59.0, 57.0)),
+        T((57.8, 90.5)), T((51.0, 89.2)), T((45.2, 83.5)), T((42.8, 70.0)),
+    ]
+    near_light = [
+        T((71.0, 50.2)), T((78.8, 53.0)), T((83.5, 58.5)),
+        T((84.5, 70.8)), T((80.5, 87.5)), T((73.0, 92.0)), T((67.0, 94.0)),
+    ]
+    _polygon(draw, far_shadow, JACKET_DARK, None, 0.0)
+    _polygon(draw, near_light, JACKET_LIGHT, None, 0.0)
+
+    # Black turtleneck and restrained lapels are the key costume read from the
+    # reference design.
+    shirt = [T((57.0, 51.0)), T((70.5, 50.8)), T((73.0, 67.0)), T((67.0, 81.0)), T((55.0, 68.0))]
     _polygon(draw, shirt, TURTLENECK, OUTLINE_SOFT, 0.7)
-    _ellipse(draw, T((64.0, 53.2)), 6.6, 3.2, TURTLENECK, None, 0.0)
-    _arc(draw, T((64.0, 54.7)), 6.5, 3.7, 190, 350, TURTLENECK_LIGHT, 0.9)
+    _ellipse(draw, T((64.0, 52.0)), 6.8, 3.4, TURTLENECK, None, 0.0)
+    _arc(draw, T((64.0, 53.8)), 6.6, 3.8, 190, 350, TURTLENECK_LIGHT, 0.75)
 
-    # Generous lapels with a strong V frame the turtleneck and survive downsample.
-    left_lapel = [T((56.5, 51.2)), T((61.5, 56.0)), T((57.0, 73.5)), T((48.5, 57.0))]
-    right_lapel = [T((70.5, 51.1)), T((65.0, 56.0)), T((71.0, 72.0)), T((81.5, 56.0))]
-    _polygon(draw, left_lapel, JACKET_LIGHT, OUTLINE_SOFT, 0.75)
-    _polygon(draw, right_lapel, JACKET, OUTLINE_SOFT, 0.75)
-    _line(draw, [T((63.7, 55.0)), T((65.5, 92.2))], JACKET_DEEP, 0.8)
+    left_lapel = [T((56.0, 50.4)), T((62.0, 55.8)), T((57.2, 73.5)), T((48.6, 56.5))]
+    right_lapel = [T((71.2, 50.4)), T((65.0, 55.8)), T((70.5, 72.2)), T((80.7, 56.0))]
+    _polygon(draw, left_lapel, JACKET_LIGHT, OUTLINE_SOFT, 0.72)
+    _polygon(draw, right_lapel, JACKET_DARK, OUTLINE_SOFT, 0.72)
 
-    # Corduroy ribs are restrained, following each panel instead of becoming noise.
-    for x in (50.8, 54.0, 57.2):
-        _line(draw, [T((x, 60.0)), T((x + 2.2, 84.5))], JACKET_DEEP, 0.45)
-    for x in (72.2, 75.5, 78.5):
-        _line(draw, [T((x, 59.0)), T((x - 1.8, 84.0))], JACKET_DEEP, 0.42)
-    _ellipse(draw, T((47.8, 57.0)), 6.2, 5.5, JACKET, OUTLINE, 0.9)
-    _ellipse(draw, T((81.2, 56.3)), 6.5, 5.6, JACKET_LIGHT, OUTLINE, 0.9)
+    _line(draw, [T((64.0, 56.0)), T((64.5, 92.5))], JACKET_DEEP, 0.65)
+    _arc(draw, T((64.0, 92.0)), 8.6, 2.0, 8, 172, JACKET_DEEP, 0.72)
+    _ellipse(draw, T((73.5, 78.0)), 0.8, 0.8, STAR_GOLD, OUTLINE_SOFT, 0.35)
+    _line(draw, [T((48.5, 83.0)), T((55.0, 85.0))], JACKET_DEEP, 0.5)
+    _line(draw, [T((72.0, 84.0)), T((78.0, 82.5))], JACKET_DEEP, 0.5)
+
+    # Rounded shoulder caps integrate into the coat rather than reading as
+    # detached pads.
+    _ellipse(draw, T((46.7, 58.0)), 6.0, 5.6, JACKET_DARK, OUTLINE, 0.85)
+    _ellipse(draw, T((81.6, 57.8)), 6.3, 5.6, JACKET_LIGHT, OUTLINE, 0.85)
 
 
 def _draw_arm(
@@ -855,23 +943,21 @@ def _draw_arm(
 ) -> None:
     T = lambda q: _transform(q, pose)
     shoulder_t, elbow_t, hand_t = T(shoulder), T(elbow), T(hand)
-    # Both arms retain the same skin value; depth is carried by jacket panels and
-    # overlap, avoiding the mismatched-arm artifact of older front-facing sprites.
-    skin = SKIN_LIGHT
-    sleeve = JACKET if far else JACKET_LIGHT
+    sleeve = JACKET_DARK if far else JACKET_LIGHT
+    sleeve_hi = JACKET if far else JACKET_LIGHT
+
     along, _, length = _unit(elbow_t, hand_t)
     wrist = (
-        hand_t[0] - along[0] * min(3.1, length * 0.28),
-        hand_t[1] - along[1] * min(3.1, length * 0.28),
+        hand_t[0] - along[0] * min(3.0, length * 0.26),
+        hand_t[1] - along[1] * min(3.0, length * 0.26),
     )
-    upper_end = _lerp_point(shoulder_t, elbow_t, 0.67)
-    _polygon(draw, _segment_quad(shoulder_t, upper_end, 5.4, 4.2), sleeve, OUTLINE, 0.95)
-    _polygon(draw, _segment_quad(upper_end, elbow_t, 4.2, 3.7), sleeve, OUTLINE, 0.9)
-    _polygon(draw, _segment_quad(elbow_t, wrist, 3.6, 2.8), skin, OUTLINE, 0.9)
-    _ellipse(draw, elbow_t, 3.8, 3.4, sleeve, OUTLINE, 0.75)
-    # Fine sleeve ribs give the jacket texture without depending on a texture asset.
-    _line(draw, [_lerp_point(shoulder_t, upper_end, 0.25), _lerp_point(shoulder_t, upper_end, 0.80)], JACKET_DEEP, 0.45)
-    _draw_hand(draw, wrist, hand_t, mode, skin)
+
+    # Full-length, continuous jacket sleeve. This removes the old exposed
+    # forearm and stacked horizontal joints that made Carl look robotic.
+    _polygon(draw, _jointed_strip(shoulder_t, elbow_t, wrist, 5.5, 4.4, 3.2), sleeve, OUTLINE, 0.95)
+    _line(draw, [_lerp_point(shoulder_t, elbow_t, 0.18), _lerp_point(elbow_t, wrist, 0.78)], sleeve_hi, 0.55)
+    _arc(draw, wrist, 3.4, 1.5, 8, 172, JACKET_DEEP, 0.55)
+    _draw_hand(draw, wrist, hand_t, mode, SKIN_LIGHT)
 
 
 def _draw_hand(draw: ImageDraw.ImageDraw, wrist: Point, hand: Point, mode: str, skin: RGBA) -> None:
@@ -903,87 +989,81 @@ def _draw_hand(draw: ImageDraw.ImageDraw, wrist: Point, hand: Point, mode: str, 
 
 def _draw_head(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
     T = lambda q: _transform(q, pose)
-    center = T((64.0 + pose.head_x, 30.0 + pose.head_y))
+    center = T((64.0 + pose.head_x, 29.2 + pose.head_y))
 
     def H(point: Point) -> Point:
         q = T((point[0] + pose.head_x, point[1] + pose.head_y))
         return _rotate(q, center, pose.head_tilt)
 
     _draw_neck(draw, pose)
-    _ellipse(draw, H((49.8, 31.0)), 3.8, 5.9, SKIN, OUTLINE, 0.8)
-    _ellipse(draw, H((78.1, 30.5)), 3.2, 5.4, SKIN_LIGHT, OUTLINE, 0.75)
+    _ellipse(draw, H((49.6, 31.0)), 3.9, 5.8, SKIN, OUTLINE, 0.8)
+    _ellipse(draw, H((78.3, 30.6)), 3.5, 5.6, SKIN_LIGHT, OUTLINE, 0.75)
 
+    # Slightly broader, shorter, friendlier face than the previous long mask.
     face = [
-        H((51.0, 18.5)),
-        H((61.0, 13.8)),
-        H((71.8, 15.0)),
-        H((78.2, 22.0)),
-        H((79.2, 32.5)),
-        H((75.3, 43.1)),
-        H((67.0, 48.8)),
-        H((58.1, 46.2)),
-        H((51.6, 38.7)),
-        H((49.3, 28.0)),
+        H((51.0, 18.8)), H((59.2, 13.8)), H((69.7, 14.0)), H((77.4, 20.5)),
+        H((79.3, 30.7)), H((76.2, 40.8)), H((69.2, 47.0)), H((61.0, 47.5)),
+        H((53.7, 42.0)), H((49.7, 34.0)), H((49.2, 25.5)),
     ]
-    _polygon(draw, face, SKIN, OUTLINE, 1.2)
+    _polygon(draw, face, SKIN, OUTLINE, 1.15)
+    _polygon(draw, [H((51.3, 23.0)), H((57.5, 17.0)), H((58.5, 42.0)), H((52.5, 37.5))], SKIN_SHADE, None, 0.0)
+    _polygon(draw, [H((69.5, 17.0)), H((76.0, 22.5)), H((75.0, 37.8)), H((69.0, 42.2))], SKIN_HIGHLIGHT, None, 0.0)
 
-    # Strong cheek plane and long central nose keep the face recognizable at 128px.
-    _polygon(draw, [H((53.0, 23.0)), H((59.0, 17.0)), H((58.0, 42.0)), H((52.0, 37.0))], (157, 99, 73, 255), None, 0.0)
-    _polygon(draw, [H((69.0, 18.0)), H((75.0, 23.0)), H((74.0, 38.0)), H((69.0, 42.0))], (198, 139, 101, 255), None, 0.0)
-
-    # Dense, swept, wavy hair: a connected cap plus discrete curls around the edge.
-    hair = [
-        H((49.2, 29.0)), H((48.8, 20.7)), H((52.5, 13.5)), H((58.0, 8.9)),
-        H((65.0, 8.2)), H((72.0, 10.2)), H((78.4, 15.4)), H((81.0, 22.0)),
-        H((78.5, 26.2)), H((73.5, 21.7)), H((68.5, 18.8)), H((63.0, 18.0)),
-        H((58.0, 20.0)), H((54.0, 25.5)),
+    # Swept, wavy side-part based on the supplied concept art. The curls overlap
+    # into one mass instead of forming a row of identical round beads.
+    hair_mass = [
+        H((48.6, 28.0)), H((48.2, 20.5)), H((52.0, 13.4)), H((58.0, 9.2)),
+        H((65.2, 8.1)), H((72.8, 10.1)), H((79.0, 15.2)), H((81.7, 21.8)),
+        H((79.3, 27.0)), H((75.0, 23.0)), H((70.5, 19.8)), H((65.2, 19.0)),
+        H((60.8, 20.0)), H((56.0, 23.5)), H((52.8, 28.0)),
     ]
-    _polygon(draw, hair, HAIR, OUTLINE, 1.05)
+    _polygon(draw, hair_mass, HAIR, OUTLINE, 1.0)
     for c, rx, ry in [
-        ((52.5, 14.5), 4.6, 3.8), ((58.0, 10.2), 5.0, 3.7), ((64.0, 9.0), 5.2, 3.5),
-        ((70.3, 10.5), 5.0, 3.8), ((76.0, 14.7), 4.5, 4.0), ((78.5, 20.2), 3.8, 4.4),
-        ((52.0, 22.0), 3.7, 4.8),
+        ((52.3, 16.0), 4.7, 4.2), ((58.1, 11.3), 5.0, 3.8), ((64.3, 9.7), 5.2, 3.6),
+        ((70.8, 11.1), 5.0, 3.8), ((76.0, 15.0), 4.5, 4.0), ((78.6, 20.4), 3.8, 4.4),
+        ((52.1, 22.5), 3.8, 4.8),
     ]:
-        _ellipse(draw, H(c), rx, ry, HAIR, OUTLINE_SOFT, 0.48)
-    _arc(draw, H((62.0, 11.5)), 8.8, 4.2, 195, 350, HAIR_GLEAM, 0.75)
-    _arc(draw, H((72.0, 14.2)), 5.8, 3.7, 180, 340, HAIR_GLEAM, 0.65)
-    _arc(draw, H((53.5, 19.0)), 4.8, 5.8, 265, 75, HAIR_GLEAM, 0.55)
+        _ellipse(draw, H(c), rx, ry, HAIR, OUTLINE_SOFT, 0.42)
+    _arc(draw, H((60.8, 12.0)), 9.0, 4.2, 200, 350, HAIR_GLEAM, 0.72)
+    _arc(draw, H((72.4, 14.0)), 5.6, 3.6, 180, 340, HAIR_GLEAM, 0.60)
+    _line(draw, [H((50.5, 24.5)), H((50.8, 34.0))], HAIR_MID, 1.25)
+    _line(draw, [H((78.3, 23.0)), H((78.0, 33.0))], HAIR_MID, 1.05)
 
-    left_eye = H((58.4, 29.0))
-    right_eye = H((70.1, 28.5))
-    left_brow_y = 24.8 - 0.8 * pose.brow + 0.65 * pose.skeptical
-    right_brow_y = 24.5 - 0.8 * pose.brow - 0.85 * pose.skeptical
-    _line(draw, [H((54.7, left_brow_y + 0.5)), H((61.7, left_brow_y - 0.4))], HAIR, 1.35)
-    _line(draw, [H((66.5, right_brow_y - 0.2)), H((73.7, right_brow_y + 0.5))], HAIR, 1.35)
+    left_eye = H((58.2, 29.0))
+    right_eye = H((70.1, 28.7))
+    left_brow_y = 24.4 - 0.85 * pose.brow + 0.65 * pose.skeptical
+    right_brow_y = 24.2 - 0.85 * pose.brow - 0.85 * pose.skeptical
+    _line(draw, [H((54.5, left_brow_y + 0.5)), H((61.5, left_brow_y - 0.4))], HAIR, 1.25)
+    _line(draw, [H((66.4, right_brow_y - 0.2)), H((73.6, right_brow_y + 0.5))], HAIR, 1.25)
 
     if pose.blink:
-        _arc(draw, left_eye, 3.2, 1.2, 8, 172, OUTLINE, 0.9)
-        _arc(draw, right_eye, 3.2, 1.2, 8, 172, OUTLINE, 0.9)
+        _arc(draw, left_eye, 3.1, 1.2, 8, 172, OUTLINE, 0.9)
+        _arc(draw, right_eye, 3.1, 1.2, 8, 172, OUTLINE, 0.9)
     else:
-        eye_ry = 1.28 + 0.24 * pose.wonder
-        _ellipse(draw, left_eye, 2.75, eye_ry, EYE_LIGHT, OUTLINE, 0.65)
-        _ellipse(draw, right_eye, 2.85, eye_ry, EYE_LIGHT, OUTLINE, 0.65)
-        _ellipse(draw, H((58.8, 29.1)), 0.95, 1.05, EYE, None, 0.0)
-        _ellipse(draw, H((70.5, 28.6)), 0.95, 1.05, EYE, None, 0.0)
-        _ellipse(draw, H((59.2, 28.7)), 0.25, 0.25, STAR_WHITE, None, 0.0)
-        _ellipse(draw, H((70.9, 28.2)), 0.25, 0.25, STAR_WHITE, None, 0.0)
+        eye_ry = 1.35 + 0.28 * pose.wonder
+        _ellipse(draw, left_eye, 2.8, eye_ry, EYE_LIGHT, OUTLINE, 0.62)
+        _ellipse(draw, right_eye, 2.9, eye_ry, EYE_LIGHT, OUTLINE, 0.62)
+        _ellipse(draw, H((58.7, 29.0)), 0.92, 1.03, EYE, None, 0.0)
+        _ellipse(draw, H((70.6, 28.7)), 0.92, 1.03, EYE, None, 0.0)
+        _ellipse(draw, H((59.0, 28.6)), 0.24, 0.24, STAR_WHITE, None, 0.0)
+        _ellipse(draw, H((70.9, 28.3)), 0.24, 0.24, STAR_WHITE, None, 0.0)
 
-    # Prominent long nose, softened with a lit bridge and a clear tip.
-    _line(draw, [H((64.0, 27.0)), H((63.2, 36.1)), H((60.8, 38.5))], SKIN_SHADE, 0.9)
-    _line(draw, [H((65.0, 27.4)), H((65.7, 35.7)), H((67.2, 37.2))], SKIN_HIGHLIGHT, 0.62)
-    _arc(draw, H((63.7, 38.1)), 3.3, 1.8, 15, 175, OUTLINE_SOFT, 0.6)
+    # Long but softer nose, subtle smile lines, and the friendly half-smile that
+    # carries much of the reference portrait's personality.
+    _line(draw, [H((64.0, 27.0)), H((63.4, 35.7)), H((61.4, 38.0))], SKIN_SHADE, 0.82)
+    _line(draw, [H((65.0, 27.4)), H((65.7, 35.4)), H((67.0, 36.8))], SKIN_HIGHLIGHT, 0.55)
+    _arc(draw, H((64.0, 38.1)), 3.2, 1.7, 15, 175, OUTLINE_SOFT, 0.55)
 
-    mouth_y = 42.2
+    mouth_y = 41.7
     if pose.mouth_open > 0.12:
-        _ellipse(draw, H((64.2, mouth_y)), 3.5 + 0.7 * pose.smile, 1.0 + 2.1 * pose.mouth_open, MOUTH, OUTLINE, 0.7)
+        _ellipse(draw, H((64.1, mouth_y)), 3.4 + 0.7 * pose.smile, 1.0 + 2.0 * pose.mouth_open, MOUTH, OUTLINE, 0.66)
         if pose.mouth_open > 0.42:
-            _arc(draw, H((64.2, mouth_y + 0.3)), 2.4, 1.0, 190, 350, SKIN_HIGHLIGHT, 0.45)
+            _arc(draw, H((64.1, mouth_y + 0.3)), 2.3, 1.0, 190, 350, SKIN_HIGHLIGHT, 0.42)
     else:
         lift = 1.0 * pose.smile
-        _arc(draw, H((64.0, mouth_y - lift * 0.25)), 4.3, 2.2 + lift, 12, 168, MOUTH, 0.85)
-    _line(draw, [H((61.8, 46.2)), H((66.8, 46.6))], (151, 91, 68, 255), 0.55)
-    _arc(draw, H((54.8, 36.0)), 4.0, 5.0, 300, 70, (204, 145, 106, 255), 0.5)
-    _arc(draw, H((73.5, 36.0)), 4.0, 5.0, 110, 235, (158, 100, 74, 255), 0.5)
+        _arc(draw, H((64.0, mouth_y - lift * 0.22)), 4.3, 2.0 + lift, 12, 168, MOUTH, 0.78)
+    _arc(draw, H((54.5, 35.2)), 3.7, 4.7, 300, 70, SKIN_HIGHLIGHT, 0.42)
+    _arc(draw, H((73.5, 35.0)), 3.8, 4.8, 110, 235, SKIN_SHADE, 0.42)
 
 
 def _draw_star(draw: ImageDraw.ImageDraw, center: Point, radius: float, color: RGBA, alpha: float = 1.0) -> None:
@@ -1000,6 +1080,57 @@ def _draw_star(draw: ImageDraw.ImageDraw, center: Point, radius: float, color: R
 def _orbit_point(center: Point, rx: float, ry: float, phase: float) -> Point:
     angle = math.tau * phase
     return (center[0] + math.cos(angle) * rx, center[1] + math.sin(angle) * ry)
+
+
+def _draw_telescope(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
+    if pose.telescope <= 0.02:
+        return
+    T = lambda q: _transform(q, pose)
+    amount = _clamp01(pose.telescope)
+    pivot = T((79.0, 61.0))
+    angle = math.radians(-13.0)
+    axis = (math.cos(angle), math.sin(angle))
+    normal = (-axis[1], axis[0])
+    length = 30.0 * amount
+    rear = (pivot[0] - axis[0] * 7.0, pivot[1] - axis[1] * 7.0)
+    front = (rear[0] + axis[0] * length, rear[1] + axis[1] * length)
+    body = [
+        (rear[0] + normal[0] * 3.1, rear[1] + normal[1] * 3.1),
+        (front[0] + normal[0] * 4.0, front[1] + normal[1] * 4.0),
+        (front[0] - normal[0] * 4.0, front[1] - normal[1] * 4.0),
+        (rear[0] - normal[0] * 3.1, rear[1] - normal[1] * 3.1),
+    ]
+    _polygon(draw, body, (105, 116, 121, 255), OUTLINE, 0.85)
+    _line(draw, [_lerp_point(rear, front, 0.18), _lerp_point(rear, front, 0.82)], (178, 190, 191, 255), 0.65)
+    _ellipse(draw, front, 4.7, 4.7, (68, 83, 92, 255), OUTLINE, 0.75)
+    _ellipse(draw, (front[0] + axis[0] * 0.8, front[1] + axis[1] * 0.8), 2.8, 2.8, PALE_BLUE, STAR_WHITE, 0.45)
+    _ellipse(draw, rear, 3.5, 3.5, (50, 59, 64, 255), OUTLINE, 0.7)
+
+    # Compact folding tripod, visible only when the scope has nearly settled.
+    tripod_alpha = _smooth(max(0.0, (amount - 0.42) / 0.58))
+    if tripod_alpha > 0.01:
+        hub = (pivot[0] + 2.0, pivot[1] + 10.0)
+        _line(draw, [pivot, hub], _fade((129, 139, 143, 255), tripod_alpha), 1.5)
+        for foot in ((67.0, 118.0), (82.0, 119.0), (94.0, 117.0)):
+            _line(draw, [hub, T(foot)], _fade((99, 107, 111, 255), tripod_alpha), 1.35)
+            _line(draw, [T(foot), (T(foot)[0] + 3.0, T(foot)[1])], _fade(OUTLINE, tripod_alpha), 1.1)
+
+
+def _draw_stargaze_effect(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
+    if pose.stargaze <= 0.02:
+        return
+    T = lambda q: _transform(q, pose)
+    hand = T(pose.near_hand)
+    amount = pose.stargaze
+    center = (hand[0] + 9.0, hand[1] - 8.0)
+    _arc(draw, center, 10.0, 6.0, 20, 320, _fade(NEBULA_VIOLET, 0.65 * amount), 1.3)
+    _arc(draw, center, 7.0, 4.2, 160, 500, _fade(NEBULA_BLUE, 0.75 * amount), 1.1)
+    _ellipse(draw, center, 1.8, 1.8, STAR_GOLD, STAR_WHITE, 0.45)
+    for i in range(10):
+        angle = i * 2.399963229728653 + pose.orbit_phase * math.tau
+        radius = 9.0 + (i % 4) * 4.0
+        point = (center[0] + math.cos(angle) * radius, center[1] + math.sin(angle) * radius * 0.65)
+        _draw_star(draw, point, 0.8 + 0.25 * (i % 3), STAR_WHITE if i % 2 == 0 else STAR_GOLD, amount * (0.45 + 0.05 * i))
 
 
 def _draw_ability_effects_behind(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
@@ -1080,6 +1211,9 @@ def _draw_ability_effects_front(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
                 x = hand[0] + sign * (4.0 + 4.8 * i) * spread
                 y = hand[1] + math.sin(i * 2.1 + pose.orbit_phase * math.tau) * (2.0 + 7.0 * spread)
                 _draw_star(draw, (x, y), 0.9 + 0.22 * i, STAR_WHITE if i % 2 == 0 else STAR_GOLD, 0.35 + 0.65 * spread)
+
+    _draw_telescope(draw, pose)
+    _draw_stargaze_effect(draw, pose)
 
     if pose.starstuff > 0.02:
         # A front spiral arm crosses the body, making the transformation read as
@@ -1277,13 +1411,16 @@ def _render_native_portrait(expression: str, phase: float = 0.0) -> Image.Image:
     arc(d, (151, 151), 10, 11, 116, 238, (190, 127, 93, 255), 1.0)
     line(d, [(121, 171), (139, 172)], (151, 91, 69, 255), 1.2)
 
-    # Wide lapels and corduroy ribs are redrawn over the shoulder mass.
-    poly(d, [(62, 209), (101, 192), (119, 221), (90, 283), (37, 239)], JACKET_LIGHT, OUTLINE_SOFT, 2.2)
-    poly(d, [(154, 193), (195, 210), (219, 239), (165, 282), (137, 220)], JACKET, OUTLINE_SOFT, 2.2)
-    for x in (48, 58, 69, 80):
-        line(d, [(x, 235), (x + 25, 313)], JACKET_DEEP, 1.0)
-    for x in (178, 189, 200, 211):
-        line(d, [(x, 230), (x - 25, 313)], JACKET_DEEP, 1.0)
+    # Broad but soft lapels. The previous portrait used repeated rib lines that
+    # looked like horizontal/diagonal striping at display scale; retain only
+    # the costume-defining seams and large light planes.
+    poly(d, [(62, 209), (101, 192), (118, 220), (92, 278), (40, 240)], JACKET_LIGHT, OUTLINE_SOFT, 2.0)
+    poly(d, [(154, 193), (194, 210), (217, 239), (165, 278), (138, 220)], JACKET_DARK, OUTLINE_SOFT, 2.0)
+    poly(d, [(31, 244), (61, 218), (88, 284), (80, 320), (24, 320)], JACKET_DARK, None)
+    poly(d, [(195, 216), (226, 244), (235, 320), (172, 320), (166, 281)], JACKET_LIGHT, None)
+    line(d, [(44, 285), (92, 298)], JACKET_DEEP, 1.1)
+    line(d, [(169, 296), (212, 282)], JACKET_DEEP, 1.1)
+    ellipse(d, (177, 269), 2.0, 2.0, STAR_GOLD, OUTLINE_SOFT, 0.8)
 
     # Expression-specific hands enter from the crop edges, supporting the face
     # rather than becoming permanent props.
@@ -1370,6 +1507,7 @@ def render(out_dir: Path, **opts) -> List[Path]:
             "pale_blue_dot": {"bbox": {"x": 86, "y": 42, "w": 41, "h": 40}},
             "cosmic_calendar": {"bbox": {"x": 22, "y": 23, "w": 84, "h": 86}},
             "billions_and_billions": {"bbox": {"x": 13, "y": 26, "w": 111, "h": 75}},
+            "stargaze": {"bbox": {"x": 80, "y": 16, "w": 46, "h": 50}},
         },
     )
     keys = (

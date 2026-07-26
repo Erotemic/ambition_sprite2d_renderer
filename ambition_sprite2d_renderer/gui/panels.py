@@ -36,6 +36,11 @@ from PySide6.QtWidgets import (
 from ..authoring.rigdoc import PART_KINDS, parse_color
 from .state import EditorState
 
+try:
+    from line_profiler import profile
+except ImportError:  # Optional developer dependency.
+    from ..profiling import profile
+
 
 def _dspin(lo=-512.0, hi=512.0, step=0.5, decimals=2) -> QDoubleSpinBox:
     s = QDoubleSpinBox()
@@ -93,6 +98,7 @@ class BonesPanel(QWidget):
 
     # ---- refresh -------------------------------------------------------------
 
+    @profile
     def refresh(self) -> None:
         self._refreshing = True
         try:
@@ -112,6 +118,7 @@ class BonesPanel(QWidget):
         finally:
             self._refreshing = False
 
+    @profile
     def refresh_selection(self) -> None:
         if self._refreshing:
             return
@@ -324,6 +331,7 @@ class PartsPanel(QWidget):
             return None
         return parts[i]
 
+    @profile
     def refresh(self) -> None:
         self._refreshing = True
         try:
@@ -598,6 +606,7 @@ class PalettePanel(QWidget):
         state.docChanged.connect(self.refresh)
         self.refresh()
 
+    @profile
     def refresh(self) -> None:
         self._refreshing = True
         try:
