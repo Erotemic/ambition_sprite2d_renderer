@@ -20,16 +20,26 @@ Interactions:
 
 from __future__ import annotations
 
+import copy
 import math
 from collections import OrderedDict
 from typing import Dict, Optional, Tuple
 
 from PIL import Image
 from PySide6.QtCore import QPoint, QPointF, QRectF, Qt, Signal
-from PySide6.QtGui import QBrush, QColor, QImage, QPainter, QPen
+from PySide6.QtGui import QBrush, QColor, QImage, QPainter, QPainterPath, QPen, QPolygonF
 from PySide6.QtWidgets import QWidget
 
-from ..authoring.gameplay_geometry import collision_entry, hitbox_entry, hurtbox_entry
+from ..authoring.gameplay_geometry import (
+    collision_entry,
+    entry_shapes,
+    hitbox_entry,
+    hurtbox_entry,
+    layer_entry,
+    layer_shapes,
+    mark_entry_edited,
+    point_in_shape,
+)
 from ..authoring.skeleton import BoneWorld, two_bone_ik
 from .state import EditorState
 
@@ -69,6 +79,7 @@ class CanvasWidget(QWidget):
         self._drag_bone: Optional[str] = None
         self._ik_bend: float = 1.0
         self._pan_anchor = QPoint()
+        self._geometry_drag: Optional[dict] = None
         self._frame_cache: OrderedDict[tuple, QImage] = OrderedDict()
         self._solve_cache: OrderedDict[tuple, tuple] = OrderedDict()
         self.setMinimumSize(360, 360)
@@ -78,6 +89,7 @@ class CanvasWidget(QWidget):
         state.selectionChanged.connect(self.update)
         state.geometryChanged.connect(self.update)
         state.geometryVisibilityChanged.connect(self.update)
+        state.geometrySelectionChanged.connect(self.update)
 
     # ---- coordinate transforms ------------------------------------------------
 
@@ -218,49 +230,154 @@ class CanvasWidget(QWidget):
         # full-size QImage on every pan, zoom, selection change, or expose event.
         painter.drawImage(target, image, QRectF(image.rect()))
 
-    def _draw_gameplay_rect(
-        self, painter: QPainter, rect: dict, color: QColor, *, dashed: bool = False
+    def _geometry_color(self, layer: str, *, live: bool = True) -> QColor:
+        if layer == "collision":
+            return QColor(255, 210, 70, 230)
+        if layer == "hurtbox":
+            return QColor(60, 220, 235, 230)
+        return QColor(255, 70, 70, 235 if live else 110)
+
+    def _shape_handle_points(self, shape: dict) -> list[tuple[str, Point]]:
+        kind = shape.get("kind", "rect")
+        if kind == "rect":
+            x = float(shape.get("x", 0.0))
+            y = float(shape.get("y", 0.0))
+            w = float(shape.get("w", 0.0))
+            h = float(shape.get("h", 0.0))
+            return [
+                ("nw", (x, y)),
+                ("ne", (x + w, y)),
+                ("se", (x + w, y + h)),
+                ("sw", (x, y + h)),
+            ]
+        if kind == "circle":
+            cx = float(shape.get("cx", 0.0))
+            cy = float(shape.get("cy", 0.0))
+            r = float(shape.get("r", 0.0))
+            return [("center", (cx, cy)), ("radius", (cx + r, cy))]
+        if kind == "capsule":
+            ax = float(shape.get("ax", 0.0))
+            ay = float(shape.get("ay", 0.0))
+            bx = float(shape.get("bx", ax))
+            by = float(shape.get("by", ay))
+            r = float(shape.get("r", 0.0))
+            mx, my = (ax + bx) / 2.0, (ay + by) / 2.0
+            dx, dy = bx - ax, by - ay
+            length = math.hypot(dx, dy)
+            if length <= 1e-8:
+                nx, ny = 1.0, 0.0
+            else:
+                nx, ny = -dy / length, dx / length
+            return [
+                ("a", (ax, ay)),
+                ("b", (bx, by)),
+                ("radius", (mx + nx * r, my + ny * r)),
+            ]
+        return [
+            (f"vertex:{index}", (float(point[0]), float(point[1])))
+            for index, point in enumerate(shape.get("points") or [])
+        ]
+
+    def _draw_gameplay_shape(
+        self,
+        painter: QPainter,
+        shape: dict,
+        color: QColor,
+        *,
+        dashed: bool = False,
+        selected: bool = False,
     ) -> None:
-        if rect.get("kind", "rect") != "rect":
-            return
-        x = float(rect.get("x", 0.0))
-        y = float(rect.get("y", 0.0))
-        w = float(rect.get("w", 0.0))
-        h = float(rect.get("h", 0.0))
-        if w <= 0 or h <= 0:
-            return
-        tl = self.frame_to_widget((x, y))
-        target = QRectF(tl.x(), tl.y(), w * self.zoom, h * self.zoom)
+        kind = shape.get("kind", "rect")
         fill = QColor(color)
-        fill.setAlpha(28)
-        painter.setBrush(QBrush(fill))
+        fill.setAlpha(32 if selected else 24)
         style = Qt.PenStyle.DashLine if dashed else Qt.PenStyle.SolidLine
-        painter.setPen(QPen(color, 2, style))
-        painter.drawRect(target)
+        painter.setBrush(QBrush(fill))
+        painter.setPen(QPen(color, 3 if selected else 2, style))
+
+        if kind == "rect":
+            x = float(shape.get("x", 0.0))
+            y = float(shape.get("y", 0.0))
+            w = float(shape.get("w", 0.0))
+            h = float(shape.get("h", 0.0))
+            if w > 0 and h > 0:
+                tl = self.frame_to_widget((x, y))
+                painter.drawRect(QRectF(tl.x(), tl.y(), w * self.zoom, h * self.zoom))
+        elif kind == "circle":
+            cx = float(shape.get("cx", 0.0))
+            cy = float(shape.get("cy", 0.0))
+            r = max(0.0, float(shape.get("r", 0.0)))
+            center = self.frame_to_widget((cx, cy))
+            painter.drawEllipse(center, r * self.zoom, r * self.zoom)
+        elif kind == "capsule":
+            ax = float(shape.get("ax", 0.0))
+            ay = float(shape.get("ay", 0.0))
+            bx = float(shape.get("bx", ax))
+            by = float(shape.get("by", ay))
+            r = max(0.0, float(shape.get("r", 0.0)))
+            a = self.frame_to_widget((ax, ay))
+            b = self.frame_to_widget((bx, by))
+            # A round-capped thick line is exactly a capsule. Draw its translucent
+            # body first, then a narrow outline so it remains legible over the art.
+            body_pen = QPen(fill, max(1.0, 2.0 * r * self.zoom), style)
+            body_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.setPen(body_pen)
+            painter.drawLine(a, b)
+            edge_pen = QPen(color, 2 if not selected else 3, style)
+            edge_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            painter.setPen(edge_pen)
+            painter.drawLine(a, b)
+            painter.drawEllipse(a, r * self.zoom, r * self.zoom)
+            painter.drawEllipse(b, r * self.zoom, r * self.zoom)
+        elif kind == "polygon":
+            points = [self.frame_to_widget((float(p[0]), float(p[1]))) for p in shape.get("points") or []]
+            if len(points) >= 3:
+                painter.drawPolygon(QPolygonF(points))
+
         painter.setBrush(Qt.BrushStyle.NoBrush)
+        if selected and self.state.geometry_edit_enabled:
+            painter.setPen(QPen(QColor(255, 255, 255, 235), 1))
+            painter.setBrush(QBrush(color))
+            for _handle, point in self._shape_handle_points(shape):
+                wp = self.frame_to_widget(point)
+                painter.drawRect(QRectF(wp.x() - 4, wp.y() - 4, 8, 8))
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+
+    def _draw_layer_shapes(
+        self,
+        painter: QPainter,
+        layer: str,
+        shapes: list[dict],
+        *,
+        live: bool = True,
+    ) -> None:
+        color = self._geometry_color(layer, live=live)
+        for index, shape in enumerate(shapes):
+            selected = layer == self.state.geometry_layer and index == self.state.geometry_shape_index
+            self._draw_gameplay_shape(
+                painter,
+                shape,
+                color,
+                dashed=(layer == "hitbox" and not live),
+                selected=selected,
+            )
 
     def _draw_gameplay_geometry(
         self, painter: QPainter, clip: str, frame_idx: int
     ) -> None:
         collision = collision_entry(self.state.doc)
         if self.state.show_collision_geometry and collision:
-            self._draw_gameplay_rect(
-                painter, collision.get("shape") or {}, QColor(255, 210, 70, 230)
-            )
+            self._draw_layer_shapes(painter, "collision", entry_shapes(collision))
 
         hurt = hurtbox_entry(self.state.doc, clip)
         if self.state.show_hurtbox_geometry and hurt:
-            self._draw_gameplay_rect(
-                painter, hurt.get("shape") or {}, QColor(60, 220, 235, 230)
-            )
+            self._draw_layer_shapes(painter, "hurtbox", entry_shapes(hurt))
 
         hit = hitbox_entry(self.state.doc, clip)
         if self.state.show_hitbox_geometry and hit:
             active = hit.get("active_frames") or [0, self.state.frames() - 1]
             live = int(active[0]) <= frame_idx <= int(active[-1])
-            color = QColor(255, 70, 70, 235 if live else 110)
-            for shape in hit.get("shapes") or []:
-                self._draw_gameplay_rect(painter, shape, color, dashed=not live)
+            self._draw_layer_shapes(painter, "hitbox", entry_shapes(hit), live=live)
 
     def _draw_overlay(self, painter: QPainter, world: Dict[str, BoneWorld]) -> None:
         sel = self.state.selected_bone
@@ -281,6 +398,132 @@ class CanvasWidget(QWidget):
                 painter.drawRect(int(o.x()) - 6, int(o.y()) - 6, 12, 12)
 
     # ---- interaction -----------------------------------------------------------
+
+    def _geometry_layer_visible(self, layer: str) -> bool:
+        return {
+            "collision": self.state.show_collision_geometry,
+            "hurtbox": self.state.show_hurtbox_geometry,
+            "hitbox": self.state.show_hitbox_geometry,
+        }[layer]
+
+    def _geometry_hit_test(self, pos: QPointF) -> Optional[tuple[int, str]]:
+        if not self.state.geometry_edit_enabled:
+            return None
+        layer = self.state.geometry_layer
+        if not self._geometry_layer_visible(layer):
+            return None
+        shapes = layer_shapes(self.state.doc, layer, self.state.clip_name)
+        if not shapes:
+            return None
+        handle_radius = 10.0
+        # Prefer handles, selected shape first, then later-drawn shapes.
+        order = list(range(len(shapes) - 1, -1, -1))
+        selected = self.state.geometry_shape_index
+        if selected in order:
+            order.remove(selected)
+            order.insert(0, selected)
+        for index in order:
+            for handle, point in self._shape_handle_points(shapes[index]):
+                wp = self.frame_to_widget(point)
+                if math.hypot(wp.x() - pos.x(), wp.y() - pos.y()) <= handle_radius:
+                    return index, handle
+        fp = self.widget_to_frame(pos)
+        for index in order:
+            if point_in_shape(shapes[index], fp):
+                return index, "body"
+        return None
+
+    def _begin_geometry_drag(self, index: int, handle: str, pos: QPointF) -> None:
+        shapes = layer_shapes(self.state.doc, self.state.geometry_layer, self.state.clip_name, create=True)
+        if not 0 <= index < len(shapes):
+            return
+        self.state.set_geometry_selection(self.state.geometry_layer, index)
+        self.state.push_undo()
+        self._drag_mode = "geometry"
+        self._geometry_drag = {
+            "layer": self.state.geometry_layer,
+            "index": index,
+            "handle": handle,
+            "start": self.widget_to_frame(pos),
+            "shape": copy.deepcopy(shapes[index]),
+        }
+        self.statusMessage.emit(f"editing {self.state.geometry_layer} shape {index + 1}: {handle}")
+
+    @staticmethod
+    def _round_shape(shape: dict) -> None:
+        for key, value in tuple(shape.items()):
+            if isinstance(value, float):
+                shape[key] = round(value, 2)
+            elif key == "points":
+                shape[key] = [[round(float(x), 2), round(float(y), 2)] for x, y in value]
+
+    def _drag_geometry_to(self, fp: Point) -> None:
+        drag = self._geometry_drag
+        if not drag:
+            return
+        shapes = layer_shapes(self.state.doc, drag["layer"], self.state.clip_name, create=True)
+        index = int(drag["index"])
+        if not 0 <= index < len(shapes):
+            return
+        original = copy.deepcopy(drag["shape"])
+        start_x, start_y = drag["start"]
+        dx, dy = fp[0] - start_x, fp[1] - start_y
+        handle = drag["handle"]
+        kind = original.get("kind", "rect")
+
+        if handle == "body":
+            from ..authoring.gameplay_geometry import translate_shape
+            translate_shape(original, dx, dy)
+        elif kind == "rect":
+            x0 = float(original.get("x", 0.0))
+            y0 = float(original.get("y", 0.0))
+            x1 = x0 + float(original.get("w", 0.0))
+            y1 = y0 + float(original.get("h", 0.0))
+            if "w" in handle:
+                x0 = fp[0]
+            if "e" in handle:
+                x1 = fp[0]
+            if "n" in handle:
+                y0 = fp[1]
+            if "s" in handle:
+                y1 = fp[1]
+            original.update({
+                "x": min(x0, x1),
+                "y": min(y0, y1),
+                "w": max(0.5, abs(x1 - x0)),
+                "h": max(0.5, abs(y1 - y0)),
+            })
+        elif kind == "circle":
+            if handle == "center":
+                original["cx"], original["cy"] = fp
+            else:
+                original["r"] = max(0.5, math.hypot(
+                    fp[0] - float(original.get("cx", 0.0)),
+                    fp[1] - float(original.get("cy", 0.0)),
+                ))
+        elif kind == "capsule":
+            if handle == "a":
+                original["ax"], original["ay"] = fp
+            elif handle == "b":
+                original["bx"], original["by"] = fp
+            else:
+                ax = float(original.get("ax", 0.0))
+                ay = float(original.get("ay", 0.0))
+                bx = float(original.get("bx", ax))
+                by = float(original.get("by", ay))
+                from ..authoring.gameplay_geometry import point_segment_distance
+                original["r"] = max(0.5, point_segment_distance(fp, (ax, ay), (bx, by)))
+        elif kind == "polygon" and handle.startswith("vertex:"):
+            vertex = int(handle.split(":", 1)[1])
+            points = [list(point) for point in original.get("points") or []]
+            if 0 <= vertex < len(points):
+                points[vertex] = [fp[0], fp[1]]
+                original["points"] = points
+
+        self._round_shape(original)
+        shapes[index] = original
+        mark_entry_edited(layer_entry(self.state.doc, drag["layer"], self.state.clip_name))
+        self.state.mark_geometry_changed()
 
     def _hit_test(self, pos: QPointF) -> Optional[str]:
         try:
@@ -342,6 +585,10 @@ class CanvasWidget(QWidget):
             return
         if event.button() != Qt.MouseButton.LeftButton:
             return
+        geometry_hit = self._geometry_hit_test(event.position())
+        if geometry_hit is not None:
+            self._begin_geometry_drag(geometry_hit[0], geometry_hit[1], event.position())
+            return
         hit = self._hit_test(event.position())
         if hit != self.state.selected_bone:
             self.state.selected_bone = hit
@@ -395,6 +642,9 @@ class CanvasWidget(QWidget):
             self._pan_anchor = event.position().toPoint()
             self.pan += QPointF(delta.x(), delta.y())
             self.update()
+            return
+        if self._drag_mode == "geometry":
+            self._drag_geometry_to(self.widget_to_frame(event.position()))
             return
         if self._drag_mode not in ("rotate", "foot", "offset", "limb_ik") or self._drag_bone is None:
             return
@@ -494,6 +744,7 @@ class CanvasWidget(QWidget):
         drag_mode = self._drag_mode
         self._drag_mode = None
         self._drag_bone = None
+        self._geometry_drag = None
         if drag_mode == "offset":
             # Refresh the bone property form once after the interactive drag,
             # rather than rebuilding every side panel per mouse event.

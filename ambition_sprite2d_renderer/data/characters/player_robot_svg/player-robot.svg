@@ -25,14 +25,14 @@
      inkscape:document-units="mm"
      showgrid="false"
      inkscape:zoom="3.0191898"
-     inkscape:cx="120.89336"
-     inkscape:cy="170.40995"
+     inkscape:cx="-103.33898"
+     inkscape:cy="190.61405"
      inkscape:window-width="2560"
      inkscape:window-height="1403"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
-     inkscape:current-layer="part-head" />
+     inkscape:current-layer="part-far-foot" />
   <!--Canonical Player Robot SVG rig. Part grouping, depth, and joint markers are authored here.-->
   <g
      id="view-player-robot-side-right"
@@ -246,60 +246,6 @@
          inkscape:label="finger-line3" />
     </g>
     <g
-       id="part-face-open"
-       inkscape:label="Face / Visor - Open"
-       inkscape:groupmode="layer"
-       data-rig-part="face_open"
-       data-rig-bone="head"
-       data-rig-z="61"
-       data-rig-opacity="face_open_vis">
-      <path
-         style="stroke:#000000;stroke-opacity:1;fill:#000000;fill-opacity:1;display:inline;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none"
-         d="m 266.92815,140.16245 c -1.72885,0.58768 -5.90634,13.63679 -1.99284,19.94878 2.02892,1.29292 10.20675,3.71987 21.11187,1.13487 2.52863,-2.01121 4.77298,-10.43771 3.04606,-18.27175 -0.92483,-2.20298 -14.0111,-6.17417 -22.16509,-2.8119 z"
-         id="face-open-visor"
-         sodipodi:nodetypes="ccccc"
-         inkscape:label="visor-open" />
-      <path
-         id="face-open-eye-right"
-         style="stroke:none;stroke-opacity:1;fill:#0defff;fill-opacity:1;opacity:1;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"
-         d="m 276.74461,150.79666 c 0,3.7612 -1.29409,6.32262 -3.43825,6.32262 -2.14416,-1e-5 -2.50224,-1.91735 -2.50224,-5.67854 0,-3.76119 1.31695,-6.27855 3.46111,-6.27856 2.14416,-1e-5 2.47938,1.87328 2.47938,5.63448 z"
-         sodipodi:nodetypes="zsszz"
-         inkscape:label="right-eye-open" />
-      <path
-         id="face-open-eye-left"
-         style="stroke:none;stroke-opacity:1;fill:#0defff;fill-opacity:1;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round"
-         d="m 286.13002,151.58727 c 0,3.7612 -0.87026,6.05755 -3.01442,6.05755 -2.14416,-1e-5 -2.0653,-2.11882 -2.0653,-5.88001 0,-3.76119 0.86268,-5.70096 2.96535,-5.57947 1.93044,0.11154 2.11437,1.64073 2.11437,5.40193 z"
-         sodipodi:nodetypes="zssaz"
-         inkscape:label="left-eye-open" />
-    </g>
-    <g
-       id="part-face-blink"
-       inkscape:label="Face / Visor - Blink"
-       inkscape:groupmode="layer"
-       data-rig-part="face_blink"
-       data-rig-bone="head"
-       data-rig-z="62"
-       data-rig-opacity="blink_vis">
-      <path
-         id="face-blink-visor"
-         style="display:inline;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1"
-         d="m 267.1,143.1 c 4.6,-2.4 15.9,-1.9 20.7,1.1 1.9,3.5 1.1,10.0 -2.3,13.0 -7.0,2.5 -14.7,1.3 -18.9,-1.8 -1.8,-3.7 -1.6,-8.8 0.5,-12.3 z"
-         sodipodi:nodetypes="ccccc"
-         inkscape:label="visor-blink" />
-      <path
-         id="face-blink-eye-right"
-         style="fill:none;fill-opacity:1;stroke:#0defff;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1"
-         d="m 269.7,151.7 c 1.5,2.1 4.2,2.6 6.0,0.3"
-         sodipodi:nodetypes="cc"
-         inkscape:label="right-eye-blink" />
-      <path
-         id="face-blink-eye-left"
-         style="fill:none;fill-opacity:1;stroke:#0defff;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1"
-         d="m 280.3,152.4 c 1.5,2.0 4.2,2.3 5.8,0.1"
-         sodipodi:nodetypes="cc"
-         inkscape:label="left-eye-blink" />
-    </g>
-    <g
        id="part-near-arm-u"
        inkscape:label="Upper Arm - Near"
        inkscape:groupmode="layer"
@@ -336,11 +282,11 @@
        data-rig-bone="far_leg_l"
        data-rig-z="15">
       <path
-         style="stroke:#000000;stroke-opacity:1;fill:#ffffff;fill-opacity:1;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none"
-         d="m 264.59844,192.66184 c -2.62537,2.62356 -1.37518,7.39606 -1.64184,11.01295 0,0 15.48082,-0.96104 15.95682,-1.1699 0.74322,-0.32612 -0.17445,-4.10553 -0.43413,-5.80007 -0.40575,-2.64779 -1.42231,-5.17949 -2.24428,-5.76959 -0.97565,-0.70043 -8.86282,-1.04523 -11.63657,1.72661 z"
+         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1"
+         d="m 264.59844,192.66184 c -2.62537,2.62356 -1.37518,7.39606 -1.64184,11.01295 0,0 3.22762,0.0685 6.80939,0.12427 4.34346,0.0677 9.20772,0.11662 9.46859,0.002 0.74322,-0.32612 -0.49561,-5.40186 -0.75529,-7.0964 -0.40575,-2.64779 -1.42231,-5.17949 -2.24428,-5.76959 -0.97565,-0.70043 -8.86282,-1.04523 -11.63657,1.72661 z"
          id="path4617"
          inkscape:label="boot-left"
-         sodipodi:nodetypes="acsssa" />
+         sodipodi:nodetypes="acssssa" />
     </g>
     <g
        id="part-far-foot"
@@ -350,11 +296,11 @@
        data-rig-bone="far_leg_foot"
        data-rig-z="16">
       <path
-         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-dasharray:none"
-         d="m 262.95773,203.64179 19.17576,0.60687 c -0.32503,-4.04787 -2.00074,-4.8581 -3.03263,-5.56382 -1.77324,-0.68134 -4.45142,-2.14213 -10.41455,2.52659"
+         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1"
+         d="m 266.96545,203.64498 c 0.79331,0.32215 1.85044,0.35018 3.10599,0.38606 l 12.06205,0.21762 c -0.32503,-4.04787 -2.00074,-4.8581 -3.03263,-5.56382 -1.77324,-0.68134 -4.45142,-2.14213 -10.41455,2.52659"
          id="path4629"
          inkscape:label="toes-left"
-         sodipodi:nodetypes="cccc" />
+         sodipodi:nodetypes="ccccc" />
     </g>
     <g
        id="part-near-leg-l"
@@ -378,8 +324,8 @@
        data-rig-bone="near_leg_foot"
        data-rig-z="44">
       <path
-         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-dasharray:none"
-         d="m 248.88473,200.84022 c 0.42842,-0.57619 8.06272,-4.03222 11.44473,-0.67413 0.82929,0.9809 1.94654,2.12789 1.12539,4.6032 -12.67052,0.76117 -17.43845,-0.55111 -18.22647,-0.98281"
+         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1"
+         d="m 248.88473,200.84022 c 0.42842,-0.57619 8.06272,-4.03222 11.44473,-0.67413 0.82929,0.9809 1.94654,2.12789 1.12539,4.6032 -12.67052,0.76117 -12.61363,-0.11717 -13.40165,-0.54887"
          id="path4627"
          inkscape:label="toes-right"
          sodipodi:nodetypes="cccc" />
@@ -426,6 +372,62 @@
          id="path4737"
          sodipodi:nodetypes="zzaaz"
          inkscape:label="antena-divit" />
+    </g>
+    <g
+       id="part-face-blink"
+       inkscape:label="Face / Visor - Blink"
+       inkscape:groupmode="layer"
+       data-rig-part="face_blink"
+       data-rig-bone="head"
+       data-rig-z="62"
+       data-rig-opacity="blink_vis"
+       style="display:inline">
+      <path
+         id="face-blink-visor"
+         style="display:inline;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1"
+         d="m 267.1,143.1 c 4.6,-2.4 15.9,-1.9 20.7,1.1 1.9,3.5 1.1,10 -2.3,13 -7,2.5 -14.7,1.3 -18.9,-1.8 -1.8,-3.7 -1.6,-8.8 0.5,-12.3 z"
+         sodipodi:nodetypes="ccccc"
+         inkscape:label="visor-blink" />
+      <path
+         id="face-blink-eye-right"
+         style="fill:none;fill-opacity:1;stroke:#0defff;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1"
+         d="m 269.7,151.7 c 1.5,2.1 4.2,2.6 6,0.3"
+         sodipodi:nodetypes="cc"
+         inkscape:label="right-eye-blink" />
+      <path
+         id="face-blink-eye-left"
+         style="fill:none;fill-opacity:1;stroke:#0defff;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1"
+         d="m 280.3,152.4 c 1.5,2 4.2,2.3 5.8,0.1"
+         sodipodi:nodetypes="cc"
+         inkscape:label="left-eye-blink" />
+    </g>
+    <g
+       id="part-face-open"
+       inkscape:label="Face / Visor - Open"
+       inkscape:groupmode="layer"
+       data-rig-part="face_open"
+       data-rig-bone="head"
+       data-rig-z="61"
+       data-rig-opacity="face_open_vis"
+       style="display:inline">
+      <path
+         style="display:inline;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1"
+         d="m 266.92815,140.16245 c -1.72885,0.58768 -5.90634,13.63679 -1.99284,19.94878 2.02892,1.29292 10.20675,3.71987 21.11187,1.13487 2.52863,-2.01121 4.77298,-10.43771 3.04606,-18.27175 -0.92483,-2.20298 -14.0111,-6.17417 -22.16509,-2.8119 z"
+         id="face-open-visor"
+         sodipodi:nodetypes="ccccc"
+         inkscape:label="visor-open" />
+      <path
+         id="face-open-eye-right"
+         style="opacity:1;fill:#0defff;fill-opacity:1;stroke:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1"
+         d="m 276.74461,150.79666 c 0,3.7612 -1.29409,6.32262 -3.43825,6.32262 -2.14416,-1e-5 -2.50224,-1.91735 -2.50224,-5.67854 0,-3.76119 1.31695,-6.27855 3.46111,-6.27856 2.14416,-1e-5 2.47938,1.87328 2.47938,5.63448 z"
+         sodipodi:nodetypes="zsszz"
+         inkscape:label="right-eye-open" />
+      <path
+         id="face-open-eye-left"
+         style="fill:#0defff;fill-opacity:1;stroke:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1"
+         d="m 286.13002,151.58727 c 0,3.7612 -0.87026,6.05755 -3.01442,6.05755 -2.14416,-1e-5 -2.0653,-2.11882 -2.0653,-5.88001 0,-3.76119 0.86268,-5.70096 2.96535,-5.57947 1.93044,0.11154 2.11437,1.64073 2.11437,5.40193 z"
+         sodipodi:nodetypes="zssaz"
+         inkscape:label="left-eye-open" />
     </g>
     <g
        id="rig-joints"

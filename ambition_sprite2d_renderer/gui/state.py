@@ -41,6 +41,7 @@ class EditorState(QObject):
     # Authoring-only gameplay geometry changed; does not invalidate sprite pixels.
     geometryChanged = Signal()
     geometryVisibilityChanged = Signal()
+    geometrySelectionChanged = Signal()
 
     def __init__(self, doc: RigDocument, path: Optional[str] = None) -> None:
         super().__init__()
@@ -56,6 +57,9 @@ class EditorState(QObject):
         self.show_collision_geometry: bool = True
         self.show_hurtbox_geometry: bool = True
         self.show_hitbox_geometry: bool = True
+        self.geometry_layer: str = "hurtbox"
+        self.geometry_shape_index: int = 0
+        self.geometry_edit_enabled: bool = True
         self._undo: List[str] = []
         self._redo: List[str] = []
 
@@ -78,6 +82,7 @@ class EditorState(QObject):
         self.selectionChanged.emit()
         self.dirtyChanged.emit()
         self.geometryChanged.emit()
+        self.geometrySelectionChanged.emit()
 
     def _set_dirty(self) -> None:
         if not self.dirty:
@@ -122,6 +127,24 @@ class EditorState(QObject):
                 changed = True
         if changed:
             self.geometryVisibilityChanged.emit()
+
+    def set_geometry_selection(
+        self, layer: str, shape_index: int = 0
+    ) -> None:
+        if layer not in {"collision", "hurtbox", "hitbox"}:
+            raise ValueError(layer)
+        shape_index = max(0, int(shape_index))
+        if layer == self.geometry_layer and shape_index == self.geometry_shape_index:
+            return
+        self.geometry_layer = layer
+        self.geometry_shape_index = shape_index
+        self.geometrySelectionChanged.emit()
+
+    def set_geometry_edit_enabled(self, enabled: bool) -> None:
+        enabled = bool(enabled)
+        if enabled != self.geometry_edit_enabled:
+            self.geometry_edit_enabled = enabled
+            self.geometrySelectionChanged.emit()
 
     # ---- Undo ----------------------------------------------------------------
 
@@ -169,6 +192,7 @@ class EditorState(QObject):
         self.timeChanged.emit()
         self.selectionChanged.emit()
         self.geometryChanged.emit()
+        self.geometrySelectionChanged.emit()
 
     # ---- Time cursor -------------------------------------------------------
 
