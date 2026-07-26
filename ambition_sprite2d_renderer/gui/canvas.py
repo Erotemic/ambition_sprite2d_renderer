@@ -40,7 +40,7 @@ except ImportError:  # Optional developer dependency.
 Point = Tuple[float, float]
 
 SELECT_RADIUS_PX = 12.0
-PREVIEW_SUPERSAMPLE = 1
+PREVIEW_SUPERSAMPLE = 2
 ONION_SUPERSAMPLE = 1
 FRAME_CACHE_SIZE = 12
 SOLVE_CACHE_SIZE = 24
@@ -73,7 +73,7 @@ class CanvasWidget(QWidget):
         self.setMinimumSize(360, 360)
         self.setMouseTracking(False)
         state.poseChanged.connect(self._on_render_changed)
-        state.timeChanged.connect(self.update)
+        state.timeChanged.connect(self._on_time_changed)
         state.selectionChanged.connect(self.update)
 
     # ---- coordinate transforms ------------------------------------------------
@@ -108,6 +108,19 @@ class CanvasWidget(QWidget):
         self._frame_cache.clear()
         self._solve_cache.clear()
         self.update()
+
+    def _on_time_changed(self) -> None:
+        self.update()
+
+    def _preview_supersample(self) -> int:
+        """Return one stable preview quality for all editor interactions.
+
+        Switching between 1x during a click/drag and 2x after a short timer made
+        the sprite visibly pop even when the user merely selected a bone. The
+        optimized part compositor is fast enough to keep the high-resolution
+        preview active continuously.
+        """
+        return PREVIEW_SUPERSAMPLE
 
     def _cache_key(self, clip: str, t: float, quality: int) -> tuple:
         return (
@@ -175,7 +188,7 @@ class CanvasWidget(QWidget):
                     painter.setOpacity(alpha)
                     self._draw_frame_image(painter, ghost, fw, fh)
                 painter.setOpacity(1.0)
-            image = self._render_qimage(clip, t, PREVIEW_SUPERSAMPLE)
+            image = self._render_qimage(clip, t, self._preview_supersample())
             self._draw_frame_image(painter, image, fw, fh)
         except Exception as ex:  # noqa: BLE001 - mid-edit docs can be invalid
             painter.setOpacity(1.0)

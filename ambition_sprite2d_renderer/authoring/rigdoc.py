@@ -64,10 +64,12 @@ are painted on a scratch layer and alpha-composited (the gnu_ton rule).
 
 from __future__ import annotations
 
+from collections import OrderedDict
+from dataclasses import dataclass
 import json
 import math
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 from PIL import Image, ImageDraw
 
@@ -93,6 +95,7 @@ Point = Tuple[float, float]
 
 PART_KINDS = ("polygon", "capsule", "circle", "sprite")
 EASE_NAMES = ("linear", "smooth", "out", "in", "sine")
+SPRITE_TRANSFORM_CACHE_BYTES = 64 * 1024 * 1024
 
 # Restricted namespace for expression channels. Documents are local,
 # Jon-authored content; this keeps expressions to math, not a sandbox.
@@ -115,6 +118,73 @@ _EXPR_GLOBALS = {
     "smoothstep": smoothstep,
 }
 _EXPR_CACHE: Dict[str, object] = {}
+
+
+def normalize_degrees(value: float) -> float:
+    """Canonicalize equivalent rotations while preserving exact pose values."""
+    angle = (float(value) + 180.0) % 360.0 - 180.0
+    # Avoid separate cache entries for -0.0 and 0.0.
+    return 0.0 if angle == 0.0 else angle
+
+
+@dataclass(frozen=True)
+class SpriteRaster:
+    """One SVG part raster prepared for cheap repeated pose composition.
+
+    ``image`` remains cropped for the zero-rotation fast path. ``padded`` is
+    centered on the authored pivot and is reused by every non-zero rotation.
+    ``cache_key`` identifies the source subset, pivot, and raster scale.
+    """
+
+    image: Image.Image
+    pivot: Point
+    padded: Image.Image
+    radius: int
+    cache_key: tuple
+
+
+class SpriteTransformCache:
+    """Byte-bounded LRU of full-opacity rotated part rasters.
+
+    The editor changes only a few bones per drag event, so most part angles are
+    identical between consecutive poses even when the complete-frame cache must
+    miss. Reusing those transformed parts avoids repeating PIL's relatively
+    expensive bicubic rotation for the unchanged body.
+    """
+
+    def __init__(self, max_bytes: int = SPRITE_TRANSFORM_CACHE_BYTES) -> None:
+        self.max_bytes = max(0, int(max_bytes))
+        self._items: OrderedDict[tuple, Image.Image] = OrderedDict()
+        self._bytes = 0
+
+    def clear(self) -> None:
+        self._items.clear()
+        self._bytes = 0
+
+    @profile
+    def rotated(self, sprite: SpriteRaster, delta_deg: float) -> Image.Image:
+        # Preserve exact render semantics. The normalized angle only aliases
+        # equivalent full turns; it does not quantize animation values.
+        angle = normalize_degrees(delta_deg)
+        key = (id(sprite.image), sprite.cache_key, angle)
+        cached = self._items.get(key)
+        if cached is not None:
+            self._items.move_to_end(key)
+            return cached
+
+        rot = sprite.padded.rotate(
+            -angle,
+            resample=Image.Resampling.BICUBIC,
+            center=(sprite.radius, sprite.radius),
+        )
+        size_bytes = rot.width * rot.height * 4
+        if self.max_bytes > 0 and size_bytes <= self.max_bytes:
+            while self._items and self._bytes + size_bytes > self.max_bytes:
+                _old_key, old = self._items.popitem(last=False)
+                self._bytes -= old.width * old.height * 4
+            self._items[key] = rot
+            self._bytes += size_bytes
+        return rot
 
 
 def eval_expr(expr: str, t: float) -> float:
@@ -186,7 +256,10 @@ class RigDocument:
         # SVG relative to this, and the per-resolution sprite raster cache is
         # keyed per instance (so a sheet rasterizes each part once).
         self.source_path = Path(source_path) if source_path is not None else None
-        self._sprite_cache: Dict[Tuple[str, int], Tuple[Image.Image, Point]] = {}
+        self._sprite_cache: Dict[tuple, SpriteRaster] = {}
+        self._sprite_transform_cache = SpriteTransformCache()
+        self._svg_path_cache_key: Optional[tuple] = None
+        self._svg_path_cache: Optional[Path] = None
         self._skeleton_cache_key: Optional[tuple] = None
         self._skeleton_cache: Optional[Skeleton] = None
 
@@ -462,9 +535,14 @@ class RigDocument:
         src = self.svg_source.get("path")
         if not src:
             return None
+        cache_key = (str(src), str(self.source_path) if self.source_path else None)
+        if cache_key == self._svg_path_cache_key:
+            return self._svg_path_cache
         p = Path(str(src))
         if not p.is_absolute() and self.source_path is not None:
             p = (self.source_path.parent / p).resolve()
+        self._svg_path_cache_key = cache_key
+        self._svg_path_cache = p
         return p
 
     @profile
@@ -475,13 +553,25 @@ class RigDocument:
         joint (``pivot``, in reference px) located inside the cropped raster.
         Cached per ``(part, round(S))`` so a whole sheet rasterizes each part
         once. ``None`` if the SVG is unavailable or the subset renders empty."""
-        svg_path = self._svg_path()
-        if svg_path is None or not svg_path.exists():
+        sprite = self.sprite_raster(part, S)
+        if sprite is None:
             return None
+        return sprite.image, sprite.pivot
+
+    @profile
+    def sprite_raster(self, part: dict, S: float) -> Optional[SpriteRaster]:
+        """Return a cached SVG part plus its reusable pivot-centered raster."""
+        src = self.svg_source
         # Key on everything the cached value derives from (subset + pivot +
-        # scale): two sprite parts with the same (or absent) name but a
-        # different SVG include-list or pivot must not share a raster.
+        # source + scale): two sprite parts with the same (or absent) name but
+        # a different SVG include-list, pivot, source, or scale must not share
+        # a raster. Build and check this key before touching the filesystem;
+        # cache hits are the overwhelmingly common editor path.
         key = (
+            str(src.get("path", "")),
+            str(src.get("view", "")),
+            float(src.get("ref_dpi", 96.0)),
+            float(src.get("scale", 1.0)),
             part.get("name", ""),
             tuple(part.get("include") or ()),
             tuple(part.get("pivot", (0.0, 0.0))),
@@ -490,9 +580,12 @@ class RigDocument:
         cached = self._sprite_cache.get(key)
         if cached is not None:
             return cached
+
+        svg_path = self._svg_path()
+        if svg_path is None or not svg_path.exists():
+            return None
         from .svg_parts import rasterize_subset
 
-        src = self.svg_source
         ref_dpi = float(src.get("ref_dpi", 96.0))
         scale = float(src.get("scale", 1.0))  # base-frame units per reference px
         view = str(src.get("view", ""))
@@ -505,8 +598,28 @@ class RigDocument:
             return None
         px, py = part.get("pivot", (0.0, 0.0))
         pivot = (px * scale * S - off_x, py * scale * S - off_y)
-        self._sprite_cache[key] = (img, pivot)
-        return img, pivot
+        radius = int(math.ceil(max(
+            math.hypot(cx - pivot[0], cy - pivot[1])
+            for cx in (0, img.width)
+            for cy in (0, img.height)
+        ))) + 2
+        padded = Image.new("RGBA", (2 * radius, 2 * radius), (0, 0, 0, 0))
+        padded.alpha_composite(
+            img,
+            (
+                radius - int(round(pivot[0])),
+                radius - int(round(pivot[1])),
+            ),
+        )
+        prepared = SpriteRaster(
+            image=img,
+            pivot=pivot,
+            padded=padded,
+            radius=radius,
+            cache_key=key,
+        )
+        self._sprite_cache[key] = prepared
+        return prepared
 
     # ---- Painting -----------------------------------------------------------
 
@@ -536,8 +649,18 @@ class RigDocument:
         draw = blending_draw(img)
         world, params = solved if solved is not None else self.solve(clip_name, t)
         for part in visible_parts(self.parts, self.features):
-            sprite = self.sprite_image(part, S) if part.get("kind") == "sprite" else None
-            paint_part(img, draw, part, world, S, params, self.palette, sprite=sprite)
+            sprite = self.sprite_raster(part, S) if part.get("kind") == "sprite" else None
+            paint_part(
+                img,
+                draw,
+                part,
+                world,
+                S,
+                params,
+                self.palette,
+                sprite=sprite,
+                transform_cache=self._sprite_transform_cache,
+            )
         if ss == 1:
             return img
         return img.resize(
@@ -572,22 +695,67 @@ def blit_rotated(
     world_px: Point,
     delta_deg: float,
     opacity: float = 1.0,
+    *,
+    prepared: Optional[SpriteRaster] = None,
+    transform_cache: Optional[SpriteTransformCache] = None,
 ) -> None:
     """Rotate ``sprite`` about its ``pivot`` by ``delta_deg`` and composite it so
-    the pivot lands at ``world_px``. The sprite is padded into a square centered
-    on the pivot so the rotation keeps the pivot fixed."""
+    the pivot lands at ``world_px``.
+
+    Rig documents pass a prepared pivot-centered raster and a bounded transform
+    cache. Standalone callers retain the original behavior through the public
+    ``sprite`` / ``pivot`` arguments.
+    """
+    angle = normalize_degrees(delta_deg)
     px, py = pivot
-    w, h = sprite.size
-    radius = max(
-        math.hypot(cx - px, cy - py) for cx in (0, w) for cy in (0, h)
-    )
-    R = int(math.ceil(radius)) + 2
-    pad = Image.new("RGBA", (2 * R, 2 * R), (0, 0, 0, 0))
-    pad.alpha_composite(sprite, (R - int(round(px)), R - int(round(py))))
-    # The toolkit's angles are clockwise-positive in screen space (+y down); PIL's
-    # rotate() is counter-clockwise-positive, so negate to match the bones.
-    rot = pad.rotate(-delta_deg, resample=Image.Resampling.BICUBIC, center=(R, R))
+
+    # Most rigid torso/head pieces and every part at its rest pose need no
+    # rotation. Composite the cropped source directly instead of allocating a
+    # padded square and asking PIL to resample an unchanged image.
+    if angle == 0.0:
+        source = sprite
+        if opacity < 1.0:
+            source = sprite.copy()
+            source.putalpha(
+                source.getchannel("A").point(lambda value: int(value * opacity))
+            )
+        canvas.alpha_composite(
+            source,
+            (
+                int(round(world_px[0])) - int(round(px)),
+                int(round(world_px[1])) - int(round(py)),
+            ),
+        )
+        return
+
+    if prepared is not None:
+        R = prepared.radius
+        if transform_cache is not None:
+            rot = transform_cache.rotated(prepared, angle)
+        else:
+            rot = prepared.padded.rotate(
+                -angle,
+                resample=Image.Resampling.BICUBIC,
+                center=(R, R),
+            )
+    else:
+        w, h = sprite.size
+        radius = max(
+            math.hypot(cx - px, cy - py) for cx in (0, w) for cy in (0, h)
+        )
+        R = int(math.ceil(radius)) + 2
+        pad = Image.new("RGBA", (2 * R, 2 * R), (0, 0, 0, 0))
+        pad.alpha_composite(sprite, (R - int(round(px)), R - int(round(py))))
+        # The toolkit's angles are clockwise-positive in screen space (+y down);
+        # PIL's rotate() is counter-clockwise-positive, so negate to match bones.
+        rot = pad.rotate(
+            -angle,
+            resample=Image.Resampling.BICUBIC,
+            center=(R, R),
+        )
     if opacity < 1.0:
+        # Cached rotations stay full-opacity and immutable; fade a throwaway copy.
+        rot = rot.copy()
         rot.putalpha(rot.getchannel("A").point(lambda v: int(v * opacity)))
     canvas.alpha_composite(
         rot, (int(round(world_px[0])) - R, int(round(world_px[1])) - R)
@@ -603,7 +771,8 @@ def paint_part(
     S: float,
     params: Dict[str, float],
     palette: Dict[str, str],
-    sprite: Optional[Tuple[Image.Image, Point]] = None,
+    sprite: Optional[Union[SpriteRaster, Tuple[Image.Image, Point]]] = None,
+    transform_cache: Optional[SpriteTransformCache] = None,
 ) -> None:
     bone_name = part.get("bone")
     if bone_name not in world:
@@ -625,10 +794,22 @@ def paint_part(
         if sprite is None:
             return
         bw = world[bone_name]
-        spr_img, pivot = sprite
+        if isinstance(sprite, SpriteRaster):
+            spr_img, pivot = sprite.image, sprite.pivot
+            prepared = sprite
+        else:
+            spr_img, pivot = sprite
+            prepared = None
         delta = bw.angle - float(part.get("rest_angle", 0.0))
         blit_rotated(
-            img, spr_img, pivot, (bw.origin[0] * S, bw.origin[1] * S), delta, opacity
+            img,
+            spr_img,
+            pivot,
+            (bw.origin[0] * S, bw.origin[1] * S),
+            delta,
+            opacity,
+            prepared=prepared,
+            transform_cache=transform_cache,
         )
         return
     fill = parse_color(part.get("fill", "#FFFFFF"), palette, opacity)

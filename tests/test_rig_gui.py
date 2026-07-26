@@ -126,6 +126,21 @@ class TestEditorState:
 
 
 class TestCanvas:
+    def test_preview_quality_is_stable_during_pose_edits(self, window):
+        canvas = window.canvas
+        state = canvas.state
+
+        assert canvas._preview_supersample() == 2
+        state.write_key("root_x", 1.0)
+        assert canvas._preview_supersample() == 2
+
+        # A click-release that selects an editable bone must not temporarily
+        # downgrade the rendered image and then pop back to a sharper version.
+        canvas._drag_mode = "rotate"
+        canvas._drag_bone = "head"
+        canvas.mouseReleaseEvent(None)
+        assert canvas._preview_supersample() == 2
+
     def test_hit_test_finds_selected_bone(self, window):
         canvas = window.canvas
         canvas.fit()

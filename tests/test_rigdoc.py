@@ -255,3 +255,120 @@ def test_render_at_accepts_a_precomputed_solve(monkeypatch):
     monkeypatch.setattr(doc, "solve", unexpected_solve)
     image = doc.render_at("idle", 0.0, supersample=1, solved=solved)
     assert image.size == (128, 128)
+
+
+def _prepared_sprite_for_test():
+    from PIL import Image, ImageDraw
+    from ambition_sprite2d_renderer.authoring.rigdoc import SpriteRaster
+
+    image = Image.new("RGBA", (13, 9), (0, 0, 0, 0))
+    ImageDraw.Draw(image).rectangle((2, 1, 11, 7), fill=(20, 180, 240, 255))
+    pivot = (4.25, 3.5)
+    radius = 13
+    padded = Image.new("RGBA", (2 * radius, 2 * radius), (0, 0, 0, 0))
+    padded.alpha_composite(
+        image,
+        (radius - int(round(pivot[0])), radius - int(round(pivot[1]))),
+    )
+    return SpriteRaster(image, pivot, padded, radius, ("test", 256))
+
+
+def test_sprite_raster_cache_hit_does_not_touch_svg_path(tmp_path, monkeypatch):
+    from PIL import Image
+    from ambition_sprite2d_renderer.authoring import svg_parts
+
+    svg_path = tmp_path / "part.svg"
+    svg_path.write_text("<svg/>", encoding="utf8")
+    rig_path = tmp_path / "test.rig.json"
+    doc = RigDocument.new_empty("sprite_cache")
+    doc.source_path = rig_path
+    doc.data["svg_source"] = {
+        "path": "part.svg",
+        "view": "side",
+        "ref_dpi": 96.0,
+        "scale": 1.0,
+    }
+    part = {
+        "name": "arm",
+        "kind": "sprite",
+        "include": ["arm"],
+        "pivot": [3.0, 4.0],
+    }
+    calls = []
+
+    def fake_rasterize(*args, **kwargs):
+        calls.append((args, kwargs))
+        return Image.new("RGBA", (8, 10), (255, 0, 0, 255)), (0, 0), 1.0
+
+    monkeypatch.setattr(svg_parts, "rasterize_subset", fake_rasterize)
+    first = doc.sprite_raster(part, 1.0)
+    assert first is not None
+
+    def unexpected_path_lookup():
+        raise AssertionError("a sprite cache hit resolved the SVG path")
+
+    monkeypatch.setattr(doc, "_svg_path", unexpected_path_lookup)
+    second = doc.sprite_raster(part, 1.0)
+
+    assert second is first
+    assert len(calls) == 1
+
+
+def test_prepared_rotation_matches_standalone_renderer():
+    from PIL import Image
+    from ambition_sprite2d_renderer.authoring.rigdoc import (
+        SpriteTransformCache,
+        blit_rotated,
+    )
+
+    sprite = _prepared_sprite_for_test()
+    expected = Image.new("RGBA", (80, 80), (0, 0, 0, 0))
+    actual = Image.new("RGBA", (80, 80), (0, 0, 0, 0))
+    blit_rotated(expected, sprite.image, sprite.pivot, (40, 40), 33.0)
+    blit_rotated(
+        actual,
+        sprite.image,
+        sprite.pivot,
+        (40, 40),
+        33.0,
+        prepared=sprite,
+        transform_cache=SpriteTransformCache(),
+    )
+    assert actual.tobytes() == expected.tobytes()
+
+
+def test_transform_cache_reuses_unchanged_part_rotation():
+    from ambition_sprite2d_renderer.authoring.rigdoc import SpriteTransformCache
+
+    sprite = _prepared_sprite_for_test()
+    cache = SpriteTransformCache(max_bytes=1024 * 1024)
+    first = cache.rotated(sprite, 27.5)
+    second = cache.rotated(sprite, 27.5)
+    equivalent_turn = cache.rotated(sprite, 387.5)
+
+    assert second is first
+    assert equivalent_turn is first
+
+
+def test_zero_rotation_skips_transform_cache():
+    from PIL import Image
+    from ambition_sprite2d_renderer.authoring.rigdoc import (
+        SpriteTransformCache,
+        blit_rotated,
+    )
+
+    sprite = _prepared_sprite_for_test()
+    cache = SpriteTransformCache(max_bytes=1024 * 1024)
+    canvas = Image.new("RGBA", (80, 80), (0, 0, 0, 0))
+    blit_rotated(
+        canvas,
+        sprite.image,
+        sprite.pivot,
+        (40, 40),
+        0.0,
+        prepared=sprite,
+        transform_cache=cache,
+    )
+
+    assert not cache._items
+    assert canvas.getchannel("A").getbbox() is not None
