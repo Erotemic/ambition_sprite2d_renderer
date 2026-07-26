@@ -152,6 +152,23 @@ class TestEditorState:
         assert state.plant_all_feet_entire_clip() == len(doc.ik_legs)
         assert state.planted_feet() == {"near_foot", "far_foot"}
 
+    def test_plant_all_feet_ignores_stale_parts_panel_selection(self, doc):
+        from ambition_sprite2d_renderer.gui.state import EditorState
+
+        state = EditorState(doc, None)
+        state.set_clip("idle")
+        state.selected_part = next(
+            index
+            for index, part in enumerate(doc.parts)
+            if part.get("name") == "near_hand"
+        )
+        state.selected_bone = "near_arm_l"
+
+        assert state.plant_all_feet_entire_clip() == len(doc.ik_legs)
+        assert state.planted_feet() == {"near_foot", "far_foot"}
+        assert state.selected_part is not None
+        assert state.selected_bone == "near_arm_l"
+
     def test_any_endpoint_part_can_be_pinned_and_moved(self, doc):
         from ambition_sprite2d_renderer.gui.state import EditorState
 

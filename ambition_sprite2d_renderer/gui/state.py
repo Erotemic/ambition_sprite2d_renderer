@@ -728,10 +728,18 @@ class EditorState(QObject):
         return True
 
     def pin_all_feet_entire_clip(self, *, lock_rotation: bool = True) -> int:
-        """Pin every foot as a rigid boot/toe transform at the current pose."""
+        """Pin every foot endpoint transform at the current pose.
+
+        A stale Parts-panel selection must not override the temporary foot-bone
+        selection used by this loop.  The old implementation could therefore
+        pin the same unrelated visual part twice while the UI claimed both feet
+        were planted.
+        """
         original_selection = self.selected_bone
+        original_part = self.selected_part
         changed = 0
         try:
+            self.selected_part = None
             for candidate in self.pinnable_feet():
                 self.selected_bone = str(candidate["bone"])
                 changed += int(
@@ -739,6 +747,7 @@ class EditorState(QObject):
                 )
         finally:
             self.selected_bone = original_selection
+            self.selected_part = original_part
         if changed:
             self.selectionChanged.emit()
         return changed
@@ -774,6 +783,16 @@ class EditorState(QObject):
     def selected_pin_artwork_names(self) -> list[str]:
         """Visual parts following the selected pin's controlled bone/subtree."""
         candidate = self.selected_pinnable_part()
+        return self.pin_artwork_names(candidate)
+
+    def pin_artwork_names(self, candidate: Optional[Mapping]) -> list[str]:
+        """Visual parts rigidly controlled by ``candidate``'s selected bone.
+
+        This deliberately does not include artwork attached to parent bones.
+        For the current Player Robot, the ``*_foot`` pin controls the toes/foot
+        sprite, while the SVG's ``Lower Leg / Boot`` sprite remains attached to
+        ``*_leg_l`` and must rotate as part of the knee solve.
+        """
         selected = str(candidate.get("bone")) if candidate is not None else ""
         if not selected:
             return []
@@ -790,6 +809,30 @@ class EditorState(QObject):
             str(part.get("name") or part.get("bone") or "part")
             for part in self.doc.parts
             if part.get("bone") in descendants
+        ]
+
+    def selected_pin_adjacent_artwork_names(self) -> list[str]:
+        """Return nearby parent-bone artwork that a pin cannot hold rigidly.
+
+        This makes visual rigging limitations explicit.  A transform pin can
+        lock one endpoint bone and descendants.  It cannot simultaneously lock
+        artwork on the lower-leg/forearm parent while that parent rotates to
+        satisfy IK.
+        """
+        candidate = self.selected_pinnable_part()
+        if candidate is None:
+            return []
+        controlled = set(self.pin_artwork_names(candidate))
+        nearby_bones = {
+            str(candidate.get("lower") or ""),
+            str(candidate.get("upper") or ""),
+        }
+        nearby_bones.discard("")
+        return [
+            str(part.get("name") or part.get("bone") or "part")
+            for part in self.doc.parts
+            if str(part.get("bone") or "") in nearby_bones
+            and str(part.get("name") or part.get("bone") or "part") not in controlled
         ]
 
     # Backward-compatible aliases retained for the foot-oriented controls and

@@ -80,6 +80,7 @@ class CanvasWidget(QWidget):
         self._fitted = False
         self._drag_mode: Optional[str] = None  # "rotate" | "foot" | "limb_ik" | "offset" | "pan"
         self._drag_bone: Optional[str] = None
+        self._pin_drag_offset: Point = (0.0, 0.0)
         self._ik_bend: float = 1.0
         self._pan_anchor = QPoint()
         self._geometry_drag: Optional[dict] = None
@@ -909,6 +910,7 @@ class CanvasWidget(QWidget):
             return
         artwork = self.state.selected_pin_artwork_names()
         summary = ", ".join(artwork[:4]) or bone
+        adjacent = self.state.selected_pin_adjacent_artwork_names()
         pin = self.state.selected_part_pin() or {}
         if pin.get("lock_rotation", False):
             detail = "Position and orientation are solved continuously on every frame."
@@ -917,8 +919,16 @@ class CanvasWidget(QWidget):
                 "The selected point is solved continuously on every frame; "
                 "rotation follows the two-joint IK chain."
             )
+        warning = ""
+        if adjacent:
+            warning = (
+                " Nearby artwork on parent bones is not rigidly controlled: "
+                f"{', '.join(adjacent[:4])}. That artwork must rotate with IK or "
+                "be regrouped onto the pinned bone."
+            )
         self.statusMessage.emit(
-            f"Pinned {summary} for the entire {self.state.clip_name} clip. {detail}"
+            f"Pinned {summary} for the entire {self.state.clip_name} clip. "
+            f"{detail}{warning}"
         )
 
     def _run_plant_all_feet(self) -> None:
@@ -929,7 +939,7 @@ class CanvasWidget(QWidget):
             self.statusMessage.emit("No foot pins needed changing")
             return
         self.statusMessage.emit(
-            f"Pinned {changed} complete foot assemblies for the entire "
+            f"Pinned {changed} foot-bone assemblies for the entire "
             f"{self.state.clip_name} clip. Drag a pin to reposition its target."
         )
 
@@ -979,6 +989,7 @@ class CanvasWidget(QWidget):
         hit = self._hit_test(QPointF(event.pos()))
         if hit is not None and hit != self.state.selected_bone:
             self.state.selected_bone = hit
+            self.state.selected_part = None
             self.state.selectionChanged.emit()
         bone = self.state.selected_bone
         if not bone:
@@ -1032,15 +1043,25 @@ class CanvasWidget(QWidget):
             else:
                 status = menu.addAction("✓ Whole selected part is pinned")
                 status.setEnabled(False)
+                move_here = menu.addAction("Move pin target to this point")
+                move_here.setStatusTip(
+                    "Reposition the persistent pin without creating animation keys"
+                )
+                move_here.triggered.connect(
+                    lambda _checked=False, target=click_frame: self._move_selected_pin_here(
+                        target
+                    )
+                )
                 release = menu.addAction("Release selected part pin")
                 release.triggered.connect(
                     lambda _checked=False: self._run_release_part_pin()
                 )
             if selected_pin_candidate.get("role") == "foot":
-                pin_both = menu.addAction("Pin both complete feet for entire clip")
+                pin_both = menu.addAction("Pin both foot-bone assemblies for entire clip")
                 pin_both.setStatusTip(
-                    "Ideal for idle: each foot's position and orientation remain "
-                    "fixed while pelvis/root bob bends the knees."
+                    "Ideal for idle: each foot bone and its attached artwork stay "
+                    "fixed while pelvis/root bob bends the knees. Artwork attached "
+                    "to lower-leg bones still rotates with the leg."
                 )
                 pin_both.triggered.connect(
                     lambda _checked=False: self._run_plant_all_feet()
@@ -1072,7 +1093,7 @@ class CanvasWidget(QWidget):
     def _pin_hit_test(self, widget_pos: QPointF) -> Optional[str]:
         """Return the bone owning a transform-pin handle near ``widget_pos``."""
         best_name: Optional[str] = None
-        best_distance = 14.0
+        best_distance = 22.0
         for pin in transform_pins(
             self.state.doc, self.state.clip_name, create=False
         ):
@@ -1089,6 +1110,104 @@ class CanvasWidget(QWidget):
                 best_distance = distance
         return best_name
 
+    def _pin_descendants(self, root_bone: str) -> set[str]:
+        descendants = {root_bone}
+        changed = True
+        while changed:
+            changed = False
+            for bone in self.state.doc.bones:
+                name = str(bone.get("name") or "")
+                if bone.get("parent") in descendants and name not in descendants:
+                    descendants.add(name)
+                    changed = True
+        return descendants
+
+    def _pinned_artwork_hit_test(self, widget_pos: QPointF) -> Optional[str]:
+        """Hit-test visible sprite pixels owned by a persistent pin.
+
+        Previously only the small green target could be dragged.  Authors
+        naturally tried to drag the pinned foot/hand itself, but the ordinary
+        bone hit test frequently selected a parent joint instead.  This maps
+        the cursor back into cached SVG part rasters and returns the owning pin.
+        """
+        pins = transform_pins(self.state.doc, self.state.clip_name, create=False)
+        if not pins:
+            return None
+        try:
+            world, _params = self._solve_at(self.state.clip_name, self.state.t())
+        except Exception:  # noqa: BLE001
+            return None
+        frame_point = self.widget_to_frame(widget_pos)
+        parts = sorted(
+            self.state.doc.parts,
+            key=lambda part: float(part.get("z", 0.0)),
+            reverse=True,
+        )
+        for pin in reversed(pins):
+            owner = str(pin.get("bone") or "")
+            if not owner:
+                continue
+            descendants = self._pin_descendants(owner)
+            for part in parts:
+                if part.get("kind") != "sprite" or part.get("bone") not in descendants:
+                    continue
+                bw = world.get(str(part.get("bone") or ""))
+                raster = self.state.doc.sprite_raster(part, 1.0)
+                if bw is None or raster is None:
+                    continue
+                delta = bw.angle - float(part.get("rest_angle", 0.0))
+                radians = math.radians(delta)
+                dx = frame_point[0] - bw.origin[0]
+                dy = frame_point[1] - bw.origin[1]
+                local_x = dx * math.cos(radians) + dy * math.sin(radians)
+                local_y = -dx * math.sin(radians) + dy * math.cos(radians)
+                px = int(round(raster.pivot[0] + local_x))
+                py = int(round(raster.pivot[1] + local_y))
+                if not (0 <= px < raster.image.width and 0 <= py < raster.image.height):
+                    continue
+                if raster.image.getpixel((px, py))[3] > 16:
+                    return owner
+        return None
+
+    def _begin_pin_drag(self, bone_name: str, click_frame: Point) -> None:
+        pin = next(
+            (
+                item
+                for item in transform_pins(
+                    self.state.doc, self.state.clip_name, create=False
+                )
+                if str(item.get("bone") or "") == bone_name
+            ),
+            None,
+        )
+        if pin is None:
+            return
+        raw_target = pin.get("target") or click_frame
+        self._pin_drag_offset = (
+            float(raw_target[0]) - click_frame[0],
+            float(raw_target[1]) - click_frame[1],
+        )
+        self.state.selected_bone = bone_name
+        self.state.selected_part = None
+        self.state.selectionChanged.emit()
+        self._drag_mode = "pin"
+        self._drag_bone = bone_name
+        self.state.push_undo()
+        self.statusMessage.emit(
+            f"moving persistent {bone_name} pin; the attached artwork follows and "
+            "no pose keys will be added"
+        )
+
+    def _move_selected_pin_here(self, target: Point) -> None:
+        self.state.push_undo()
+        if not self.state.move_selected_part_pin(target):
+            self.state.discard_last_undo()
+            self.statusMessage.emit("The selected part has no movable pin")
+            return
+        self.statusMessage.emit(
+            f"Moved the selected pin to ({target[0]:.1f}, {target[1]:.1f})"
+        )
+
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.MiddleButton:
             self._drag_mode = "pan"
@@ -1096,17 +1215,12 @@ class CanvasWidget(QWidget):
             return
         if event.button() != Qt.MouseButton.LeftButton:
             return
+        click_frame = self.widget_to_frame(event.position())
         pin_hit = self._pin_hit_test(event.position())
+        if pin_hit is None:
+            pin_hit = self._pinned_artwork_hit_test(event.position())
         if pin_hit is not None:
-            if pin_hit != self.state.selected_bone:
-                self.state.selected_bone = pin_hit
-                self.state.selectionChanged.emit()
-            self._drag_mode = "pin"
-            self._drag_bone = pin_hit
-            self.state.push_undo()
-            self.statusMessage.emit(
-                f"moving persistent {pin_hit} rigid-part pin; no pose keys will be added"
-            )
+            self._begin_pin_drag(pin_hit, click_frame)
             return
         geometry_hit = self._geometry_hit_test(event.position())
         if geometry_hit is not None:
@@ -1115,6 +1229,7 @@ class CanvasWidget(QWidget):
         hit = self._hit_test(event.position())
         if hit != self.state.selected_bone:
             self.state.selected_bone = hit
+            self.state.selected_part = None
             self.state.selectionChanged.emit()
         if hit is None:
             self._drag_mode = None
@@ -1192,7 +1307,9 @@ class CanvasWidget(QWidget):
             return
         fp = self.widget_to_frame(event.position())
         if self._drag_mode == "pin":
-            self.state.move_selected_part_pin(fp)
+            self.state.move_selected_part_pin(
+                (fp[0] + self._pin_drag_offset[0], fp[1] + self._pin_drag_offset[1])
+            )
             return
         if self._drag_mode == "offset":
             self._drag_offset_to(fp)
@@ -1298,6 +1415,7 @@ class CanvasWidget(QWidget):
         drag_mode = self._drag_mode
         self._drag_mode = None
         self._drag_bone = None
+        self._pin_drag_offset = (0.0, 0.0)
         self._geometry_drag = None
         if drag_mode == "offset":
             # Refresh the bone property form once after the interactive drag,

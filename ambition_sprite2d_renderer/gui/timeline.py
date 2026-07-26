@@ -144,10 +144,11 @@ class TimelinePanel(QWidget):
         )
         self.plant_selected_btn.clicked.connect(self._pin_selected_part)
         plant_row.addWidget(self.plant_selected_btn)
-        self.plant_both_btn = QPushButton("Pin both complete feet")
+        self.plant_both_btn = QPushButton("Pin both foot-bone assemblies")
         self.plant_both_btn.setToolTip(
-            "Best starting point for idle animations: each foot's complete "
-            "position and orientation remain fixed while the body bobs."
+            "Best starting point for idle animations: each foot bone and the "
+            "artwork attached to it stay fixed while the body bobs. Lower-leg "
+            "artwork still rotates with the knee solve."
         )
         self.plant_both_btn.clicked.connect(self._pin_both_feet)
         plant_row.addWidget(self.plant_both_btn)
@@ -291,14 +292,21 @@ class TimelinePanel(QWidget):
         if selected_pin is not None:
             artwork = self.state.selected_pin_artwork_names()
             summary = ", ".join(artwork[:4]) or str(selected_pin.get("bone", "part"))
+            adjacent = self.state.selected_pin_adjacent_artwork_names()
             if selected_pin.get("lock_rotation", False):
                 detail = "Position and orientation are solved continuously"
             else:
                 detail = "Position is solved continuously; rotation follows IK"
-            self.plant_status.setText(
+            message = (
                 f"Pinned: {summary}. {detail} on every frame; drag the green pin "
-                "to move it."
+                "or drag the pinned artwork itself to move it."
             )
+            if adjacent:
+                message += (
+                    " Not controlled by this pin: "
+                    f"{', '.join(adjacent[:4])}. Those parts belong to parent bones."
+                )
+            self.plant_status.setText(message)
         elif pinned:
             self.plant_status.setText(
                 f"Pinned parts in this clip: {', '.join(pinned)}. Select one to "
@@ -307,7 +315,7 @@ class TimelinePanel(QWidget):
         else:
             self.plant_status.setText(
                 "No continuous part pins. Select a foot, hand, or other endpoint "
-                "part and pin it; for idle bobbing, Pin both complete feet."
+                "part and pin it; for idle bobbing, pin both foot-bone assemblies."
             )
         self.plant_selected_btn.setEnabled(candidate is not None and selected_pin is None)
         self.release_plant_btn.setEnabled(selected_pin is not None)

@@ -162,6 +162,7 @@ class BonesPanel(QWidget):
         name = sel[0].text(0) if sel else None
         if name != self.state.selected_bone:
             self.state.selected_bone = name
+            self.state.selected_part = None
             self.state.selectionChanged.emit()
 
     def _apply_field(self, key, value) -> None:
@@ -408,6 +409,10 @@ class PartsPanel(QWidget):
             return
         item = self.listw.item(row) if row >= 0 else None
         self.state.selected_part = item.data(Qt.ItemDataRole.UserRole) if item else None
+        if self.state.selected_part is not None:
+            part = self.state.doc.parts[self.state.selected_part]
+            self.state.selected_bone = str(part.get("bone") or "") or None
+        self.state.selectionChanged.emit()
         self._refreshing = True
         try:
             self._refresh_form()

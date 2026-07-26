@@ -42,6 +42,13 @@ RIGGED_DIR = Path(__file__).resolve().parent.parent / "targets" / "characters" /
 class MainWindow(QMainWindow):
     def __init__(self, state: EditorState) -> None:
         super().__init__()
+        # Be explicit about ordinary desktop-window controls.  Some Linux
+        # window managers infer a restricted dialog-like window when a Qt
+        # application is mostly docks; retaining the maximize hint keeps the
+        # native title-bar button enabled.  The View menu also exposes an
+        # application-side maximize/restore command for environments where the
+        # compositor ignores the title-bar request.
+        self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, True)
         self.state = state
         self.canvas = CanvasWidget(state)
         self.setCentralWidget(self.canvas)
@@ -104,8 +111,18 @@ class MainWindow(QMainWindow):
         self._action(editm, "Undo", QKeySequence.StandardKey.Undo, self._undo)
         self._action(editm, "Redo", QKeySequence.StandardKey.Redo, self._redo)
         editm.addSeparator()
-        self._action(editm, "Copy pose", "Ctrl+Shift+C", self._copy_pose)
-        self._action(editm, "Paste pose", "Ctrl+Shift+V", self._paste_pose)
+        self._action(
+            editm,
+            "Copy pose",
+            [QKeySequence.StandardKey.Copy, "Ctrl+Shift+C"],
+            self._copy_context,
+        )
+        self._action(
+            editm,
+            "Paste pose",
+            [QKeySequence.StandardKey.Paste, "Ctrl+Shift+V"],
+            self._paste_context,
+        )
         editm.addSeparator()
         self._action(editm, "Mark / unmark key pose", "P", self.timeline._toggle_pose_key)
         self._action(editm, "Key selected", "I", self.timeline._key_selected_here)
@@ -177,13 +194,43 @@ class MainWindow(QMainWindow):
         preview_action = self.preview_dock.toggleViewAction()
         preview_action.setText("Live loop preview")
         viewm.addAction(preview_action)
+        viewm.addSeparator()
+        maximize_action = self._action(
+            viewm,
+            "Maximize / restore editor",
+            "Ctrl+M",
+            self._toggle_maximized,
+        )
+        maximize_action.setToolTip(
+            "Explicitly maximize or restore the main editor window"
+        )
+        fullscreen_action = self._action(
+            viewm,
+            "Toggle full screen",
+            "F11",
+            self._toggle_fullscreen,
+        )
+        fullscreen_action.setToolTip(
+            "Use full screen when the desktop maximize button is unavailable"
+        )
+        toolbar.addAction(maximize_action)
         fit_action = self._action(viewm, "Fit view", "F", self.canvas.fit)
         toolbar.addAction(fit_action)
 
     def _action(self, menu, text, shortcut, fn, checkable=False) -> QAction:
         act = QAction(text, self)
         if shortcut:
-            act.setShortcut(QKeySequence(shortcut))
+            if isinstance(shortcut, (list, tuple)):
+                act.setShortcuts(
+                    [
+                        value
+                        if isinstance(value, QKeySequence)
+                        else QKeySequence(value)
+                        for value in shortcut
+                    ]
+                )
+            else:
+                act.setShortcut(QKeySequence(shortcut))
         act.setCheckable(checkable)
         if checkable:
             act.toggled.connect(fn)
@@ -429,6 +476,39 @@ class MainWindow(QMainWindow):
 
     # ---- edit ops -----------------------------------------------------------------
 
+    @staticmethod
+    def _dispatch_focused_widget_command(name: str) -> bool:
+        """Let text/numeric editors keep ordinary copy and paste behavior.
+
+        ``Ctrl+C`` and ``Ctrl+V`` are also the natural pose shortcuts when the
+        canvas or timeline has focus.  Qt actions otherwise tend to steal those
+        keys from line edits, so dispatch to the focused widget first when it
+        exposes the matching operation.
+        """
+        widget = QApplication.focusWidget()
+        if widget is None:
+            return False
+        command = getattr(widget, name, None)
+        if not callable(command):
+            return False
+        # Do not redirect the command back into the main editor widgets.  The
+        # canvas and panels intentionally fall through to pose copy/paste.
+        if isinstance(widget, (QMainWindow, QDockWidget, QTabWidget, QToolBar)):
+            return False
+        try:
+            command()
+        except TypeError:
+            return False
+        return True
+
+    def _copy_context(self) -> None:
+        if not self._dispatch_focused_widget_command("copy"):
+            self._copy_pose()
+
+    def _paste_context(self) -> None:
+        if not self._dispatch_focused_widget_command("paste"):
+            self._paste_pose()
+
     def _copy_pose(self) -> None:
         n = self.state.copy_pose()
         self.statusBar().showMessage(
@@ -453,6 +533,20 @@ class MainWindow(QMainWindow):
     def _redo(self) -> None:
         if not self.state.redo():
             self.statusBar().showMessage("Nothing to redo", 2000)
+
+    def _toggle_maximized(self) -> None:
+        if self.isFullScreen():
+            self.showNormal()
+        elif self.isMaximized():
+            self.showNormal()
+        else:
+            self.showMaximized()
+
+    def _toggle_fullscreen(self) -> None:
+        if self.isFullScreen():
+            self.showNormal()
+        else:
+            self.showFullScreen()
 
     def _toggle_bones(self, checked: bool) -> None:
         self.canvas.show_bones = checked
