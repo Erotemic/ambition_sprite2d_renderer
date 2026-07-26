@@ -24,9 +24,11 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QTabWidget,
+    QToolBar,
 )
 
 from ..authoring.rigdoc import RigDocument, render_gifs_for_doc, render_sheet_for_doc
+from .animation_preview import AnimationPreviewPanel
 from .canvas import CanvasWidget
 from .geometry_panel import GeometryPanel
 from .panels import BonesPanel, PalettePanel, PartsPanel
@@ -57,16 +59,29 @@ class MainWindow(QMainWindow):
         right.setWidget(tabs)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, right)
 
+        self.preview_dock = QDockWidget("Live Loop Preview", self)
+        self.preview = AnimationPreviewPanel(state)
+        self.preview_dock.setWidget(self.preview)
+        self.preview_dock.setMinimumWidth(250)
+        self.preview_dock.setMinimumHeight(230)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.preview_dock)
+        self.splitDockWidget(right, self.preview_dock, Qt.Orientation.Vertical)
+
         bottom = QDockWidget("Timeline", self)
         self.timeline = TimelinePanel(state)
         bottom.setWidget(self.timeline)
+        bottom.setMinimumHeight(300)
         self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, bottom)
 
         self._build_menus()
+        state.geometryVisibilityChanged.connect(self._sync_view_actions)
+        state.geometrySelectionChanged.connect(self._sync_view_actions)
+        state.viewOptionsChanged.connect(self._sync_view_actions)
+        self._sync_view_actions()
         state.docChanged.connect(self._refresh_title)
         state.dirtyChanged.connect(self._refresh_title)
         self._refresh_title()
-        self.resize(1380, 900)
+        self.resize(1480, 920)
 
     # ---- menus ------------------------------------------------------------------
 
@@ -92,16 +107,78 @@ class MainWindow(QMainWindow):
         self._action(editm, "Copy pose", "Ctrl+Shift+C", self._copy_pose)
         self._action(editm, "Paste pose", "Ctrl+Shift+V", self._paste_pose)
         editm.addSeparator()
+        self._action(editm, "Mark / unmark key pose", "P", self.timeline._toggle_pose_key)
+        self._action(editm, "Key selected", "I", self.timeline._key_selected_here)
+        self._action(editm, "Key full pose", "Shift+I", self.timeline._key_full_pose_here)
+        self._action(editm, "Previous key pose", "[", self.timeline._jump_previous_pose)
+        self._action(editm, "Next key pose", "]", self.timeline._jump_next_pose)
+        editm.addSeparator()
         self._action(editm, "Rename character…", None, self.rename_character)
         self._action(editm, "Frame settings…", None, self.frame_settings)
         self._action(editm, "Edit document JSON in $VISUAL", "Ctrl+J", self.edit_doc_in_visual)
 
         viewm = bar.addMenu("&View")
-        bones_act = self._action(viewm, "Bone overlay", "B", self._toggle_bones, checkable=True)
-        bones_act.setChecked(True)
-        onion_act = self._action(viewm, "Onion skin", "O", self._toggle_onion, checkable=True)
-        onion_act.setChecked(False)
-        self._action(viewm, "Fit view", "F", self.canvas.fit)
+        toolbar = QToolBar("Viewport overlays", self)
+        toolbar.setMovable(False)
+        toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        self.addToolBar(toolbar)
+        self._view_actions: dict[str, QAction] = {}
+
+        def overlay_action(key, text, shortcut, checked, callback, tooltip):
+            action = self._action(viewm, text, shortcut, callback, checkable=True)
+            action.setChecked(checked)
+            action.setToolTip(tooltip)
+            toolbar.addAction(action)
+            self._view_actions[key] = action
+            return action
+
+        overlay_action(
+            "bones", "Bones", "B", True, self._toggle_bones,
+            "Show the current skeleton and draggable joints",
+        )
+        overlay_action(
+            "key_ghosts", "Key ghosts", "K", True, self._toggle_key_ghosts,
+            "Ghost the previous and next important poses",
+        )
+        overlay_action(
+            "frame_onion", "Frame onion", "O", False, self._toggle_onion,
+            "Also ghost the immediately adjacent frames",
+        )
+        overlay_action(
+            "motion_trail", "Motion trail", "T", True, self._toggle_motion_trail,
+            "Trace the selected bone endpoint through the complete clip",
+        )
+        overlay_action(
+            "chain_ghosts", "In-betweens", "G", True, self._toggle_chain_ghosts,
+            "Show intermediate poses for the selected bone chain",
+        )
+        toolbar.addSeparator()
+        viewm.addSeparator()
+        overlay_action(
+            "collision", "Collision", None, True, self._toggle_collision,
+            "Show global movement collision geometry",
+        )
+        overlay_action(
+            "hurt", "Hurt", None, True, self._toggle_hurt,
+            "Show the current clip's resolved hurtbox profile",
+        )
+        overlay_action(
+            "hit", "Hit", None, True, self._toggle_hit,
+            "Show hitboxes and their active/inactive state",
+        )
+        overlay_action(
+            "geometry_edit", "Edit geometry", "E", False, self._toggle_geometry_edit,
+            "Let gameplay geometry intercept canvas dragging; turn off to edit bones",
+        )
+        toolbar.addSeparator()
+        viewm.addSeparator()
+        self._action(viewm, "Show all overlays", None, self._show_all_overlays)
+        viewm.addSeparator()
+        preview_action = self.preview_dock.toggleViewAction()
+        preview_action.setText("Live loop preview")
+        viewm.addAction(preview_action)
+        fit_action = self._action(viewm, "Fit view", "F", self.canvas.fit)
+        toolbar.addAction(fit_action)
 
     def _action(self, menu, text, shortcut, fn, checkable=False) -> QAction:
         act = QAction(text, self)
@@ -114,6 +191,29 @@ class MainWindow(QMainWindow):
             act.triggered.connect(fn)
         menu.addAction(act)
         return act
+
+    def _sync_view_actions(self) -> None:
+        """Keep toolbar state synchronized with controls in other panels."""
+        if not hasattr(self, "_view_actions"):
+            return
+        values = {
+            "bones": self.canvas.show_bones,
+            "key_ghosts": self.state.show_key_pose_ghosts,
+            "frame_onion": self.state.show_frame_onion,
+            "motion_trail": self.state.show_motion_trail,
+            "chain_ghosts": self.state.show_intermediate_chain_ghosts,
+            "collision": self.state.show_collision_geometry,
+            "hurt": self.state.show_hurtbox_geometry,
+            "hit": self.state.show_hitbox_geometry,
+            "geometry_edit": self.state.geometry_edit_enabled,
+        }
+        for key, checked in values.items():
+            action = self._view_actions.get(key)
+            if action is None:
+                continue
+            previous = action.blockSignals(True)
+            action.setChecked(bool(checked))
+            action.blockSignals(previous)
 
     # ---- file ops -----------------------------------------------------------------
 
@@ -357,10 +457,43 @@ class MainWindow(QMainWindow):
     def _toggle_bones(self, checked: bool) -> None:
         self.canvas.show_bones = checked
         self.canvas.update()
+        self._sync_view_actions()
+
+    def _toggle_key_ghosts(self, checked: bool) -> None:
+        self.state.set_view_options(key_pose_ghosts=checked)
 
     def _toggle_onion(self, checked: bool) -> None:
-        self.canvas.onion_skin = checked
-        self.canvas.update()
+        self.canvas.onion_skin = False
+        self.state.set_view_options(frame_onion=checked)
+
+    def _toggle_motion_trail(self, checked: bool) -> None:
+        self.state.set_view_options(motion_trail=checked)
+
+    def _toggle_chain_ghosts(self, checked: bool) -> None:
+        self.state.set_view_options(intermediate_chain_ghosts=checked)
+
+    def _toggle_collision(self, checked: bool) -> None:
+        self.state.set_geometry_visibility(collision=checked)
+
+    def _toggle_hurt(self, checked: bool) -> None:
+        self.state.set_geometry_visibility(hurtbox=checked)
+
+    def _toggle_hit(self, checked: bool) -> None:
+        self.state.set_geometry_visibility(hitbox=checked)
+
+    def _toggle_geometry_edit(self, checked: bool) -> None:
+        self.state.set_geometry_edit_enabled(checked)
+        self.statusBar().showMessage(
+            "Gameplay geometry editing enabled" if checked else "Bone animation editing enabled",
+            2500,
+        )
+
+    def _show_all_overlays(self) -> None:
+        for key in (
+            "bones", "key_ghosts", "frame_onion", "motion_trail", "chain_ghosts",
+            "collision", "hurt", "hit",
+        ):
+            self._view_actions[key].setChecked(True)
 
     def _refresh_title(self) -> None:
         star = " *" if self.state.dirty else ""

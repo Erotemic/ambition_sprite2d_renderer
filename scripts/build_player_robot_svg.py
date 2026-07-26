@@ -335,28 +335,35 @@ def build_doc() -> dict:
     return doc
 
 
-def _preserved_gameplay_geometry() -> dict | None:
-    """Keep GUI-authored geometry across deterministic rig regeneration.
+def _preserved_authoring_blocks() -> dict[str, dict]:
+    """Keep GUI-authored metadata across deterministic rig regeneration.
 
-    The builder still owns SVG/bone/clip generation, but it must not erase the
-    authoring-only gameplay_geometry block while that workflow is being
-    developed.  Publication does not consume the block yet.
+    The builder owns SVG/bone/clip generation, but it must not erase manually
+    authored gameplay geometry or continuous animation constraints.
     """
     if not RIG_JSON.exists():
-        return None
+        return {}
     try:
         existing = json.loads(RIG_JSON.read_text(encoding="utf8"))
     except (OSError, ValueError):
-        return None
-    geometry = existing.get("gameplay_geometry")
-    return geometry if isinstance(geometry, dict) else None
+        return {}
+    preserved = {}
+    for key in ("gameplay_geometry", "animation_constraints"):
+        value = existing.get(key)
+        if isinstance(value, dict):
+            preserved[key] = value
+    return preserved
+
+
+def _preserved_gameplay_geometry() -> dict | None:
+    """Backward-compatible accessor retained for existing tests/tools."""
+    return _preserved_authoring_blocks().get("gameplay_geometry")
 
 
 def cmd_build() -> None:
-    preserved_geometry = _preserved_gameplay_geometry()
+    preserved = _preserved_authoring_blocks()
     doc = build_doc()
-    if preserved_geometry is not None:
-        doc["gameplay_geometry"] = preserved_geometry
+    doc.update(preserved)
     RIG_JSON.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf8")
     print(RIG_JSON)
 

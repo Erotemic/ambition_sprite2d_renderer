@@ -146,12 +146,15 @@ def test_player_robot_builder_preserves_existing_geometry(tmp_path, monkeypatch)
 
     rig_path = tmp_path / "player_robot.rig.json"
     rig_path.write_text(
-        '{"gameplay_geometry":{"version":1,"collision":{"shape":{"kind":"rect","x":1,"y":2,"w":3,"h":4}}}}',
+        '{"gameplay_geometry":{"version":1,"collision":{"shape":{"kind":"rect","x":1,"y":2,"w":3,"h":4}}},'
+        '"animation_constraints":{"version":1,"clips":{"idle":{"foot_plants":[{"foot":"near_leg_foot"}]}}}}',
         encoding="utf8",
     )
     monkeypatch.setattr(module, "RIG_JSON", rig_path)
     preserved = module._preserved_gameplay_geometry()
     assert preserved["collision"]["shape"]["w"] == 3
+    blocks = module._preserved_authoring_blocks()
+    assert blocks["animation_constraints"]["clips"]["idle"]["foot_plants"][0]["foot"] == "near_leg_foot"
 
 
 def test_shape_conversion_translation_and_hit_testing():

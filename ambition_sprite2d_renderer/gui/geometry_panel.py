@@ -286,7 +286,7 @@ class GeometryPanel(QWidget):
         buttons.addWidget(self.gen_hit, 1, 0, 1, 2)
         layout.addLayout(buttons)
 
-        sharing = QGroupBox("Current clip hurtbox source")
+        sharing = QGroupBox("Hurtbox sharing for current animation")
         sharing_form = QFormLayout(sharing)
         self.hurt_source = QLabel()
         self.hurt_source.setWordWrap(True)
@@ -297,10 +297,10 @@ class GeometryPanel(QWidget):
         profile_buttons = QWidget()
         profile_buttons_layout = QGridLayout(profile_buttons)
         profile_buttons_layout.setContentsMargins(0, 0, 0, 0)
-        self.new_profile = QPushButton("New empty profile")
-        self.duplicate_profile = QPushButton("Duplicate current geometry")
-        self.make_override = QPushButton("Make local override")
-        self.remove_override = QPushButton("Use shared profile")
+        self.new_profile = QPushButton("Create new shared hurtbox")
+        self.duplicate_profile = QPushButton("Copy as new shared hurtbox")
+        self.make_override = QPushButton("Make unique for this animation")
+        self.remove_override = QPushButton("Rejoin shared hurtbox")
         self.new_profile.clicked.connect(self._new_hurtbox_profile)
         self.duplicate_profile.clicked.connect(self._duplicate_hurtbox_profile)
         self.make_override.clicked.connect(self._make_hurtbox_override)
@@ -309,19 +309,19 @@ class GeometryPanel(QWidget):
         profile_buttons_layout.addWidget(self.duplicate_profile, 0, 1)
         profile_buttons_layout.addWidget(self.make_override, 1, 0)
         profile_buttons_layout.addWidget(self.remove_override, 1, 1)
-        sharing_form.addRow("source", self.hurt_source)
-        sharing_form.addRow("assigned profile", self.hurt_profile)
-        sharing_form.addRow("profile users", self.hurt_used_by)
+        sharing_form.addRow("current geometry", self.hurt_source)
+        sharing_form.addRow("shared hurtbox", self.hurt_profile)
+        sharing_form.addRow("animations affected", self.hurt_used_by)
         sharing_form.addRow("actions", profile_buttons)
         layout.addWidget(sharing)
 
-        selection = QGroupBox("Canvas editing target")
+        selection = QGroupBox("Direct geometry editing")
         selection_form = QFormLayout(selection)
         self.layer = QComboBox()
         for key, label in _LAYER_LABELS.items():
             self.layer.addItem(label, key)
         self.shape = QComboBox()
-        self.edit_canvas = QCheckBox("Edit selected layer by dragging on canvas")
+        self.edit_canvas = QCheckBox("Drag geometry on canvas (turn off to edit bones)")
         self.edit_canvas.setChecked(state.geometry_edit_enabled)
         self.edit_canvas.toggled.connect(state.set_geometry_edit_enabled)
         add_row = QWidget()
@@ -371,6 +371,7 @@ class GeometryPanel(QWidget):
         state.docChanged.connect(self.refresh)
         state.geometryChanged.connect(self.refresh)
         state.geometrySelectionChanged.connect(self.refresh)
+        state.geometryVisibilityChanged.connect(self.refresh)
         state.timeChanged.connect(self.refresh)
         self.refresh()
 
@@ -658,6 +659,11 @@ class GeometryPanel(QWidget):
         self._refreshing = True
         try:
             doc = self.state.doc
+            self.show_collision.setChecked(self.state.show_collision_geometry)
+            self.show_hurt.setChecked(self.state.show_hurtbox_geometry)
+            self.show_hit.setChecked(self.state.show_hitbox_geometry)
+            self.edit_canvas.setChecked(self.state.geometry_edit_enabled)
+
             root = geometry_root(doc, create=False)
             collision = collision_entry(doc)
             profiles = hurtbox_profiles(doc)
