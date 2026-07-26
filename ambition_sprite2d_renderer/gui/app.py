@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 
 from ..authoring.rigdoc import RigDocument, render_gifs_for_doc, render_sheet_for_doc
 from .canvas import CanvasWidget
+from .geometry_panel import GeometryPanel
 from .panels import BonesPanel, PalettePanel, PartsPanel
 from .state import EditorState
 from .timeline import TimelinePanel
@@ -52,6 +53,7 @@ class MainWindow(QMainWindow):
         tabs = QTabWidget()
         tabs.addTab(PartsPanel(state), "Parts")
         tabs.addTab(PalettePanel(state), "Palette")
+        tabs.addTab(GeometryPanel(state), "Geometry")
         right.setWidget(tabs)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, right)
 

@@ -34,6 +34,11 @@ Document shape (all geometry in base-frame pixels, y down, facing +x)::
         ... optional "feature": "hairpin" tags a part as an optional accessory ...
       ],
       "features": {"hairpin": false, "glasses": true},  # toggle optional parts
+      "gameplay_geometry": {  # authoring-only; ignored by publication for now
+        "version": 1, "space": "rig_frame_pixels",
+        "collision": null, "hurtboxes": {"clips": {}},
+        "hitboxes": {"clips": {}}
+      },
 
       "ik_legs": [{"upper": "near_leg_u", "lower": "near_leg_l",
                    "foot": "near_foot", "channel_prefix": "near_foot",
@@ -372,6 +377,18 @@ class RigDocument:
         per reference pixel, so the same art drives both the bone geometry and
         the rendered raster."""
         return self.data.setdefault("svg_source", {})
+
+    @property
+    def gameplay_geometry(self) -> dict:
+        """Authoring-only collision/hurt/hit geometry and cue bindings.
+
+        Sheet publication and game runtime intentionally ignore this block in
+        the first authoring slice.  Accessing it creates the versioned container
+        so editor mutations have one stable location.
+        """
+        from .gameplay_geometry import geometry_root
+
+        return geometry_root(self)
 
     @property
     def sprite_tuning(self) -> Dict[str, float]:

@@ -38,6 +38,9 @@ class EditorState(QObject):
     selectionChanged = Signal()
     timeChanged = Signal()
     dirtyChanged = Signal()
+    # Authoring-only gameplay geometry changed; does not invalidate sprite pixels.
+    geometryChanged = Signal()
+    geometryVisibilityChanged = Signal()
 
     def __init__(self, doc: RigDocument, path: Optional[str] = None) -> None:
         super().__init__()
@@ -50,6 +53,9 @@ class EditorState(QObject):
         self.dirty: bool = False
         self.pose_clipboard: Optional[dict] = None  # {channel: value}
         self.render_revision: int = 0
+        self.show_collision_geometry: bool = True
+        self.show_hurtbox_geometry: bool = True
+        self.show_hitbox_geometry: bool = True
         self._undo: List[str] = []
         self._redo: List[str] = []
 
@@ -71,6 +77,7 @@ class EditorState(QObject):
         self.timeChanged.emit()
         self.selectionChanged.emit()
         self.dirtyChanged.emit()
+        self.geometryChanged.emit()
 
     def _set_dirty(self) -> None:
         if not self.dirty:
@@ -96,6 +103,26 @@ class EditorState(QObject):
         """Mark a render-affecting edit without rebuilding structural panels."""
         self._mark_render_changed()
 
+    def mark_geometry_changed(self) -> None:
+        """Mark authoring geometry dirty without invalidating rendered sprites."""
+        self._set_dirty()
+        self.geometryChanged.emit()
+
+    def set_geometry_visibility(
+        self, *, collision=None, hurtbox=None, hitbox=None
+    ) -> None:
+        changed = False
+        for attr, value in (
+            ("show_collision_geometry", collision),
+            ("show_hurtbox_geometry", hurtbox),
+            ("show_hitbox_geometry", hitbox),
+        ):
+            if value is not None and bool(value) != bool(getattr(self, attr)):
+                setattr(self, attr, bool(value))
+                changed = True
+        if changed:
+            self.geometryVisibilityChanged.emit()
+
     # ---- Undo ----------------------------------------------------------------
 
     @profile
@@ -108,6 +135,11 @@ class EditorState(QObject):
         if len(self._undo) > MAX_UNDO:
             self._undo.pop(0)
         self._redo.clear()
+
+    def discard_last_undo(self) -> None:
+        """Drop a speculative undo snapshot after a cancelled/no-op edit."""
+        if self._undo:
+            self._undo.pop()
 
     def undo(self) -> bool:
         if not self._undo:
@@ -136,6 +168,7 @@ class EditorState(QObject):
         self.docChanged.emit()
         self.timeChanged.emit()
         self.selectionChanged.emit()
+        self.geometryChanged.emit()
 
     # ---- Time cursor -------------------------------------------------------
 

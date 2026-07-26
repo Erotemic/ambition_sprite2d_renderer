@@ -26,9 +26,10 @@ from typing import Dict, Optional, Tuple
 
 from PIL import Image
 from PySide6.QtCore import QPoint, QPointF, QRectF, Qt, Signal
-from PySide6.QtGui import QColor, QImage, QPainter, QPen
+from PySide6.QtGui import QBrush, QColor, QImage, QPainter, QPen
 from PySide6.QtWidgets import QWidget
 
+from ..authoring.gameplay_geometry import collision_entry, hitbox_entry, hurtbox_entry
 from ..authoring.skeleton import BoneWorld, two_bone_ik
 from .state import EditorState
 
@@ -75,6 +76,8 @@ class CanvasWidget(QWidget):
         state.poseChanged.connect(self._on_render_changed)
         state.timeChanged.connect(self._on_time_changed)
         state.selectionChanged.connect(self.update)
+        state.geometryChanged.connect(self.update)
+        state.geometryVisibilityChanged.connect(self.update)
 
     # ---- coordinate transforms ------------------------------------------------
 
@@ -195,6 +198,8 @@ class CanvasWidget(QWidget):
             painter.setPen(QPen(QColor(255, 120, 120), 1))
             painter.drawText(20, 30, f"render error: {type(ex).__name__}: {ex}")
 
+        self._draw_gameplay_geometry(painter, clip, self.state.frame_idx)
+
         if self.show_bones:
             try:
                 world, _params = self._solve_at(clip, t)
@@ -212,6 +217,50 @@ class CanvasWidget(QWidget):
         # Let QPainter scale the cached image directly. Avoid allocating another
         # full-size QImage on every pan, zoom, selection change, or expose event.
         painter.drawImage(target, image, QRectF(image.rect()))
+
+    def _draw_gameplay_rect(
+        self, painter: QPainter, rect: dict, color: QColor, *, dashed: bool = False
+    ) -> None:
+        if rect.get("kind", "rect") != "rect":
+            return
+        x = float(rect.get("x", 0.0))
+        y = float(rect.get("y", 0.0))
+        w = float(rect.get("w", 0.0))
+        h = float(rect.get("h", 0.0))
+        if w <= 0 or h <= 0:
+            return
+        tl = self.frame_to_widget((x, y))
+        target = QRectF(tl.x(), tl.y(), w * self.zoom, h * self.zoom)
+        fill = QColor(color)
+        fill.setAlpha(28)
+        painter.setBrush(QBrush(fill))
+        style = Qt.PenStyle.DashLine if dashed else Qt.PenStyle.SolidLine
+        painter.setPen(QPen(color, 2, style))
+        painter.drawRect(target)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+
+    def _draw_gameplay_geometry(
+        self, painter: QPainter, clip: str, frame_idx: int
+    ) -> None:
+        collision = collision_entry(self.state.doc)
+        if self.state.show_collision_geometry and collision:
+            self._draw_gameplay_rect(
+                painter, collision.get("shape") or {}, QColor(255, 210, 70, 230)
+            )
+
+        hurt = hurtbox_entry(self.state.doc, clip)
+        if self.state.show_hurtbox_geometry and hurt:
+            self._draw_gameplay_rect(
+                painter, hurt.get("shape") or {}, QColor(60, 220, 235, 230)
+            )
+
+        hit = hitbox_entry(self.state.doc, clip)
+        if self.state.show_hitbox_geometry and hit:
+            active = hit.get("active_frames") or [0, self.state.frames() - 1]
+            live = int(active[0]) <= frame_idx <= int(active[-1])
+            color = QColor(255, 70, 70, 235 if live else 110)
+            for shape in hit.get("shapes") or []:
+                self._draw_gameplay_rect(painter, shape, color, dashed=not live)
 
     def _draw_overlay(self, painter: QPainter, world: Dict[str, BoneWorld]) -> None:
         sel = self.state.selected_bone

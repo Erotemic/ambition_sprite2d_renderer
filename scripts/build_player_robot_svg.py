@@ -264,9 +264,16 @@ def make_clips(doc: dict) -> dict:
 
         # Non-bone channels remain editable in the rig editor and drive target
         # presentation effects (blade, teleport pixels, shield, thrusters, etc.).
-        channels["blink_vis"] = _channel(
-            [1.0 if p.blink else 0.0 for p in poses], loop=loop
+        # Facial blink is authored as two mutually exclusive SVG parts. The
+        # open visor owns the ordinary eyes; the blink visor has a slightly
+        # softer silhouette and closed cyan eye arcs. Keeping both states as
+        # explicit rig parts makes the blink visible/editable in the timeline
+        # without special-case drawing code or runtime alpha-bound derivation.
+        blink_values = [1.0 if pose.blink else 0.0 for pose in poses]
+        channels["face_open_vis"] = _channel(
+            [1.0 - value for value in blink_values], loop=loop
         )
+        channels["blink_vis"] = _channel(blink_values, loop=loop)
         channels["eye_squint"] = _channel(
             [p.eye_squint for p in poses], loop=loop
         )
@@ -322,12 +329,34 @@ def build_doc() -> dict:
         "roll_has_expanded_canvas": True,
         "far_arm_behind_torso": True,
         "near_arm_above_torso": True,
+        "authored_face_states": ["face_open", "face_blink"],
+        "idle_eye_blink": True,
     }
     return doc
 
 
+def _preserved_gameplay_geometry() -> dict | None:
+    """Keep GUI-authored geometry across deterministic rig regeneration.
+
+    The builder still owns SVG/bone/clip generation, but it must not erase the
+    authoring-only gameplay_geometry block while that workflow is being
+    developed.  Publication does not consume the block yet.
+    """
+    if not RIG_JSON.exists():
+        return None
+    try:
+        existing = json.loads(RIG_JSON.read_text(encoding="utf8"))
+    except (OSError, ValueError):
+        return None
+    geometry = existing.get("gameplay_geometry")
+    return geometry if isinstance(geometry, dict) else None
+
+
 def cmd_build() -> None:
+    preserved_geometry = _preserved_gameplay_geometry()
     doc = build_doc()
+    if preserved_geometry is not None:
+        doc["gameplay_geometry"] = preserved_geometry
     RIG_JSON.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf8")
     print(RIG_JSON)
 
