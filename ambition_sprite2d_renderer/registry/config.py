@@ -79,6 +79,14 @@ class CharacterJob:
     # future authors should preserve. This is emitted into the optional actor
     # sidecar and is not consumed by the runtime.
     authoring_description: Dict[str, Any] = field(default_factory=dict)
+    # Suggested combat identity for the same character: the role and mechanics
+    # its source ideas translate into. Guidance for whoever authors the kit,
+    # never a replacement for the live brain/action-set authorities.
+    gameplay_description: Dict[str, Any] = field(default_factory=dict)
+    # Lines the character could say -- `suggested_barks` for short ones,
+    # `fallback_dialogue` for longer. These travel with the ART so a character
+    # is never mute the day it lands; the game folds them into its catalog row.
+    dialogue_hints: Dict[str, Any] = field(default_factory=dict)
     # Optional art-authoring lineage. This stays local to each character source
     # and is copied into the generated actor sidecar provenance for future use.
     lineage: Dict[str, Any] = field(default_factory=dict)
@@ -123,6 +131,8 @@ class CharacterJob:
             sheet_tuning=sheet_tuning,
             actor=dict(data.get("actor") or {}),
             authoring_description=dict(data.get("authoring_description") or {}),
+            gameplay_description=dict(data.get("gameplay_description") or {}),
+            dialogue_hints=dict(data.get("dialogue_hints") or {}),
             lineage=dict(data.get("lineage") or {}),
             visual=dict(data.get("visual") or {}),
             body=dict(data.get("body") or {}),
@@ -180,6 +190,8 @@ class CharacterJob:
             else None,
             "actor": dict(self.actor),
             "authoring_description": dict(self.authoring_description),
+            "gameplay_description": dict(self.gameplay_description),
+            "dialogue_hints": dict(self.dialogue_hints),
             "lineage": dict(self.lineage),
             "visual": dict(self.visual),
             "body": dict(self.body),
