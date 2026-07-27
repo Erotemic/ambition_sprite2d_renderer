@@ -71,7 +71,12 @@ def publish_character_notes(
         return
     for key in ("authoring_description", "gameplay_description"):
         value = metadata.get(key)
-        if isinstance(value, str) and value.strip():
+        # These notes are keyed mappings now (prose-era configs are lifted into
+        # the same shape by the loader). Publish either form: dropping mappings
+        # would silently strip the notes from every structured character.
+        if isinstance(value, Mapping) and value:
+            manifest[key] = deepcopy(dict(value))
+        elif isinstance(value, str) and value.strip():
             manifest[key] = value.strip()
     hints = metadata.get("dialogue_hints")
     if isinstance(hints, Mapping):

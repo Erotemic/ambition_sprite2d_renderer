@@ -198,6 +198,12 @@ def draw_all(
         "player_robot",
         "robot",
         "sandbag",
+        # Sandbox combat-variety enemies: the kiter plus the two volatile mites.
+        # The game's regen postcondition requires these sheets, so omitting them
+        # here fails every fresh-clone asset regen.
+        "ranged_skirmisher",
+        "exploding_mite",
+        "dividing_mite",
     }
     default_runtime_dir = (
         config_dir_path.resolve() == Path(DEFAULT_CONFIG_DIR).resolve()
