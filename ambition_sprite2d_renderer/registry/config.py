@@ -49,6 +49,23 @@ class RenderConfig:
     # build path consults. Add a target there to change how it packs.
 
 
+def _notes_mapping(value: Any, prose_key: str) -> Dict[str, Any]:
+    """Normalize an authoring/gameplay notes block to the structured mapping.
+
+    These fields started life as freeform prose and grew into a keyed schema
+    (``parody_of`` / ``core_joke`` / … for authoring, ``role`` /
+    ``combat_identity`` / … for gameplay). Configs authored before that change
+    still carry a bare string, so lift prose into the richer shape under its
+    freeform key rather than keeping two shapes alive downstream. Loading a
+    prose-era config must not be a hard error: `dict("some prose")` raises, and
+    that took down every sprite regen for configs/review/*.yaml.
+    """
+    if isinstance(value, str):
+        text = value.strip()
+        return {prose_key: text} if text else {}
+    return dict(value or {})
+
+
 @dataclass
 class CharacterJob:
     target: str
@@ -130,8 +147,12 @@ class CharacterJob:
             tags=list(data.get("tags") or []),
             sheet_tuning=sheet_tuning,
             actor=dict(data.get("actor") or {}),
-            authoring_description=dict(data.get("authoring_description") or {}),
-            gameplay_description=dict(data.get("gameplay_description") or {}),
+            authoring_description=_notes_mapping(
+                data.get("authoring_description"), "design_notes"
+            ),
+            gameplay_description=_notes_mapping(
+                data.get("gameplay_description"), "authoring_notes"
+            ),
             dialogue_hints=dict(data.get("dialogue_hints") or {}),
             lineage=dict(data.get("lineage") or {}),
             visual=dict(data.get("visual") or {}),
