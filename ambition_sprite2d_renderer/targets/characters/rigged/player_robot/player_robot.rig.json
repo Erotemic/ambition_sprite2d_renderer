@@ -236,7 +236,7 @@
       "z": 15.0,
       "kind": "sprite",
       "include": [
-        "path4617"
+        "path-far-shin-link"
       ],
       "pivot": [
         37.5,
@@ -250,6 +250,7 @@
       "z": 16.0,
       "kind": "sprite",
       "include": [
+        "path4617",
         "path4629"
       ],
       "pivot": [
@@ -350,7 +351,7 @@
       "z": 43.0,
       "kind": "sprite",
       "include": [
-        "path4615"
+        "path-near-shin-link"
       ],
       "pivot": [
         23.5,
@@ -364,6 +365,7 @@
       "z": 44.0,
       "kind": "sprite",
       "include": [
+        "path4615",
         "path4627"
       ],
       "pivot": [

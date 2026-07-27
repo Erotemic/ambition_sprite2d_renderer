@@ -14,7 +14,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet, write_canonical
@@ -181,55 +181,119 @@ def _pixel_scatter(draw: ImageDraw.ImageDraw, seed: int, center, amount: float, 
 
 
 def _draw_thruster_plume(
-    draw: ImageDraw.ImageDraw,
+    layer: Image.Image,
     origin,
     *,
     phase: float,
-    glide: bool,
+    size: float,
+    intensity: float,
+    angle_deg: float,
 ) -> None:
-    """Draw a broad, long, three-layer boot jet.
+    """Draw a layered, gently irregular boot-thruster plume.
 
-    The prior SVG replacement used a 6px-wide / 14px-long triangle, which read
-    as a tiny detached spark. This keeps the old player's white-hot/cyan flame
-    construction, but deliberately makes the silhouette wider and longer.
+    ``size`` controls the silhouette independently of ``intensity`` so slow
+    fall can use a visibly smaller exhaust without looking like a dimmed copy
+    of full flight.  The shapes are deliberately asymmetric and mildly
+    animated: a perfectly mirrored triangle reads as a UI marker, whereas the
+    tapered shoulders, waist, and wandering tip read as hot moving exhaust.
     """
-    flicker = 0.72 + 0.28 * math.sin(phase)
-    ox, oy = origin
-    # Glide thrust leans slightly backward; hover thrust stays vertical.
-    angle = math.radians(100.0 if glide else 90.0)
+    size = max(0.1, float(size))
+    intensity = max(0.0, min(1.0, float(intensity)))
+
+    # Keep flicker subtle enough that the nozzle remains visually attached to
+    # the boot.  Most of the motion happens at the plume tip.
+    pulse = 0.94 + 0.08 * math.sin(phase)
+    tip_wander = math.sin(phase * 1.73 + 0.6)
+    angle = math.radians(angle_deg + 1.8 * tip_wander)
     dx, dy = math.cos(angle), math.sin(angle)
     px, py = -dy, dx
+    ox, oy = origin
+
+    # Make both hover and slow-fall exhaust read as punchier boot jets:
+    # shorter overall but with a broader silhouette.
+    length = 34.0 * size * pulse
+    width = 13.5 * size * (0.98 + 0.07 * math.cos(phase * 1.31))
 
     def point(distance: float, lateral: float = 0.0):
-        return (ox + dx * distance + px * lateral, oy + dy * distance + py * lateral)
+        return (
+            ox + dx * distance + px * lateral,
+            oy + dy * distance + py * lateral,
+        )
 
-    halo_len = 38.0 + 14.0 * flicker
-    halo_w = 10.0 + 3.0 * flicker
+    def plume_points(length_scale: float, width_scale: float, wander: float):
+        plume_len = length * length_scale
+        plume_w = width * width_scale
+        # Broad nozzle shoulders taper through a narrow waist before ending in
+        # an off-center tip.  The unequal sides avoid the old flat triangle.
+        return [
+            point(0.0, -plume_w * 0.42),
+            point(0.0, plume_w * 0.42),
+            point(plume_len * 0.14, plume_w * 0.82),
+            point(plume_len * 0.38, plume_w * 0.56),
+            point(plume_len * 0.68, plume_w * 0.34),
+            point(plume_len, plume_w * 0.13 * wander),
+            point(plume_len * 0.66, -plume_w * 0.29),
+            point(plume_len * 0.36, -plume_w * 0.50),
+            point(plume_len * 0.13, -plume_w * 0.74),
+        ]
+
+    outer = plume_points(1.0, 1.0, tip_wander)
+    middle = plume_points(0.72, 0.68, -tip_wander)
+    core = plume_points(0.42, 0.38, tip_wander * 0.35)
+
+    # A blurred cyan bloom provides volume without turning the flame into a
+    # solid opaque wedge.  It is intentionally much softer during slow fall.
+    glow = Image.new("RGBA", layer.size, (0, 0, 0, 0))
+    glow_draw = ImageDraw.Draw(glow, "RGBA")
+    glow_draw.polygon(
+        outer,
+        fill=(20, 231, 255, int((42 + 42 * intensity) * intensity)),
+    )
+    nozzle_r = 4.0 * size
+    glow_draw.ellipse(
+        (ox - nozzle_r, oy - nozzle_r, ox + nozzle_r, oy + nozzle_r),
+        fill=(154, 250, 255, int(75 + 65 * intensity)),
+    )
+    glow = glow.filter(ImageFilter.GaussianBlur(radius=2.0 + 2.5 * size))
+    layer.alpha_composite(glow)
+
+    draw = ImageDraw.Draw(layer, "RGBA")
     draw.polygon(
-        [point(-1.0, 0.0), point(halo_len, -halo_w), point(halo_len, halo_w)],
-        fill=(20, 231, 255, int(64 + 28 * flicker)),
+        outer,
+        fill=(18, 208, 255, int(115 + 90 * intensity)),
+    )
+    draw.polygon(
+        middle,
+        fill=(76, 236, 255, int(160 + 72 * intensity)),
+    )
+    draw.polygon(
+        core,
+        fill=(250, 255, 244, int(205 + 45 * intensity)),
     )
 
-    outer_len = 31.0 + 11.0 * flicker
-    outer_w = 7.5 + 2.0 * flicker
-    draw.polygon(
-        [point(1.0, 0.0), point(outer_len, -outer_w), point(outer_len, outer_w)],
-        fill=(20, 231, 255, int(165 + 40 * flicker)),
+    # Short bright nozzle lip and tiny exhaust motes make the source read as a
+    # boot engine rather than a detached flame sprite.
+    lip_a = point(0.8, -width * 0.31)
+    lip_b = point(0.8, width * 0.31)
+    draw.line(
+        [lip_a, lip_b],
+        fill=(232, 255, 255, 235),
+        width=max(1, round(2 * size)),
     )
 
-    inner_len = 21.0 + 7.0 * flicker
-    inner_w = 4.2 + 1.0 * flicker
-    draw.polygon(
-        [point(2.0, 0.0), point(inner_len, -inner_w), point(inner_len, inner_w)],
-        fill=(255, 235, 130, int(195 + 35 * flicker)),
-    )
-
-    core_len = 12.0 + 5.0 * flicker
-    core_w = 2.0 + 0.4 * flicker
-    draw.polygon(
-        [point(2.0, 0.0), point(core_len, -core_w), point(core_len, core_w)],
-        fill=(255, 255, 245, int(225 + 25 * flicker)),
-    )
+    mote_count = 2 if size >= 0.8 else 1
+    for index in range(mote_count):
+        mote_phase = phase + index * 2.1
+        distance = length * (
+            0.78 + 0.13 * index + 0.035 * math.sin(mote_phase)
+        )
+        lateral = width * 0.18 * math.sin(mote_phase * 1.9)
+        mx, my = point(distance, lateral)
+        radius = max(0.7, size * (1.15 - index * 0.25))
+        draw.ellipse(
+            (mx - radius, my - radius, mx + radius, my + radius),
+            fill=(92, 239, 255, int(95 + 70 * intensity)),
+        )
 
 
 def _boot_thruster_origin(foot_world):
@@ -256,14 +320,20 @@ def _apply_fx(img: Image.Image, animation: str, frame_idx: int, nframes: int) ->
             bd.line([(8 + i * 3, y), (43 + i * 2, y - 2)], fill=(35, 228, 255, int(150 * strength - i * 18)), width=max(1, 4 - i // 2))
 
     if animation in {"hover", "float_glide"}:
+        # Full flight uses a long, bright plume.  ``float_glide`` is the slow-
+        # fall state, so its jets are deliberately smaller, softer, and angled
+        # slightly backward instead of reusing the full-flight silhouette.
+        slow_fall = animation == "float_glide"
         for side_idx, side in enumerate(("far", "near")):
             foot = world[f"{side}_leg_foot"]
             origin = _boot_thruster_origin(foot)
             _draw_thruster_plume(
-                fd,
+                foreground,
                 origin,
                 phase=frame_idx * 1.7 + side_idx * math.pi / 2.0,
-                glide=animation == "float_glide",
+                size=0.56 if slow_fall else 1.0,
+                intensity=0.68 if slow_fall else 1.0,
+                angle_deg=102.0 if slow_fall else 90.0,
             )
 
     if animation == "swim":

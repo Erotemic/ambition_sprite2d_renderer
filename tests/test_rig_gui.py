@@ -582,3 +582,38 @@ def test_live_preview_is_independent_of_editing_playhead(window, qapp):
     qapp.processEvents()
     assert preview.clip_label.text() == "Loop: walk"
     assert state.frame_idx == 0
+
+
+def test_terminal_signal_handler_requests_clean_qt_shutdown(qapp):
+    import signal
+
+    from ambition_sprite2d_renderer.gui.__main__ import (
+        _install_terminal_signal_handlers,
+    )
+
+    class FakeApp:
+        def __init__(self):
+            self.quit_calls = 0
+
+        def quit(self):
+            self.quit_calls += 1
+
+    fake_app = FakeApp()
+    old_int = signal.getsignal(signal.SIGINT)
+    old_term = signal.getsignal(signal.SIGTERM) if hasattr(signal, "SIGTERM") else None
+    timer = None
+    try:
+        timer, received = _install_terminal_signal_handlers(
+            fake_app, poll_interval_ms=25
+        )
+        assert timer.isActive()
+        handler = signal.getsignal(signal.SIGINT)
+        handler(signal.SIGINT, None)
+        assert fake_app.quit_calls == 1
+        assert received == [signal.SIGINT]
+    finally:
+        if timer is not None:
+            timer.stop()
+        signal.signal(signal.SIGINT, old_int)
+        if hasattr(signal, "SIGTERM") and old_term is not None:
+            signal.signal(signal.SIGTERM, old_term)

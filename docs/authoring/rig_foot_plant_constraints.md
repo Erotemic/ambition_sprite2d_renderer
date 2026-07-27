@@ -95,20 +95,15 @@ unavailable rather than silently disconnecting the skeleton.
 
 ### Player Robot boot grouping
 
-The current Player Robot SVG has two separate lower-limb visual groups:
+The canonical Player Robot SVG now assigns each complete white boot shell,
+sole, and toe to its foot bone:
 
-- `near_leg_l` / `far_leg_l`, labeled **Lower Leg / Boot**, are attached to the
-  lower-leg bones;
-- `near_foot` / `far_foot`, labeled **Foot / Toes**, are attached to the foot
-  bones.
+- `near_foot` / `far_foot` own the complete rigid boot and toe artwork;
+- `near_leg_l` / `far_leg_l` own only the dark articulating shin links.
 
-A foot pin exactly holds the foot-bone origin, orientation, and every visual
-part attached to that bone. The lower-leg/boot group still rotates while the
-knee bends, which is correct for its current bone ownership. If the white boot
-shell is intended to remain rigid with the toes, the SVG must be redrawn or
-split so the rigid shoe artwork belongs to the foot bone and only the shin
-artwork belongs to the lower-leg bone. Trying to constrain both existing groups
-while also allowing arbitrary pelvis bob would overconstrain the two-joint leg.
+A foot pin therefore holds the complete visible boot in place and orientation
+while the lower-leg link rotates and the knee bends during pelvis bobbing. This
+is the intended decomposition for a rigid shoe on an articulated leg.
 
 ## Scope
 
