@@ -103,7 +103,11 @@ from .skeleton import (
     rounded_polygon,
     two_bone_ik,
 )
-from ambition_sprite2d_renderer.core.draw import blending_draw
+from ambition_sprite2d_renderer.core.draw import (
+    blending_draw,
+    resize_transparent_sprite,
+    rotate_transparent_sprite,
+)
 
 try:
     from line_profiler import profile
@@ -192,9 +196,9 @@ class SpriteTransformCache:
             self._items.move_to_end(key)
             return cached
 
-        rot = sprite.padded.rotate(
+        rot = rotate_transparent_sprite(
+            sprite.padded,
             -angle,
-            resample=Image.Resampling.BICUBIC,
             center=(sprite.radius, sprite.radius),
         )
         size_bytes = rot.width * rot.height * 4
@@ -796,9 +800,12 @@ class RigDocument:
             )
         if ss == 1:
             return img
-        return img.resize(
+        # SVG parts are already antialiased at the supersample resolution.
+        # Lanczos adds negative-lobe ringing around high-contrast white shells,
+        # which survives as isolated pale pixels around the transparent sprite.
+        return resize_transparent_sprite(
+            img,
             (w * rs, h * rs),
-            Image.Resampling.LANCZOS,
             reducing_gap=3.0,
         )
 
@@ -866,9 +873,9 @@ def blit_rotated(
         if transform_cache is not None:
             rot = transform_cache.rotated(prepared, angle)
         else:
-            rot = prepared.padded.rotate(
+            rot = rotate_transparent_sprite(
+                prepared.padded,
                 -angle,
-                resample=Image.Resampling.BICUBIC,
                 center=(R, R),
             )
     else:
@@ -881,9 +888,9 @@ def blit_rotated(
         pad.alpha_composite(sprite, (R - int(round(px)), R - int(round(py))))
         # The toolkit's angles are clockwise-positive in screen space (+y down);
         # PIL's rotate() is counter-clockwise-positive, so negate to match bones.
-        rot = pad.rotate(
+        rot = rotate_transparent_sprite(
+            pad,
             -angle,
-            resample=Image.Resampling.BICUBIC,
             center=(R, R),
         )
     if opacity < 1.0:

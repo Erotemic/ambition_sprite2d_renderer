@@ -58,6 +58,60 @@ def downsample(img: Image.Image, size: Tuple[int, int]) -> Image.Image:
     return img.resize(size, RESAMPLING.LANCZOS)
 
 
+def resize_transparent_sprite(
+    img: Image.Image,
+    size: Tuple[int, int],
+    *,
+    resample=RESAMPLING.BICUBIC,
+    reducing_gap=None,
+) -> Image.Image:
+    """Resize RGBA sprite art without a pale Lanczos fringe.
+
+    Sprite silhouettes are high-contrast signals laid over transparency.  A
+    Lanczos kernel has negative lobes, so supersample reduction can create
+    faint non-zero-alpha pixels several texels outside a white silhouette.
+    Those pixels become the familiar light, pixelated halo once the texture is
+    enlarged or linearly filtered in game.
+
+    Use a premultiplied-alpha working image so transparent RGB cannot leak into
+    the edge, and default to bicubic filtering because it is smooth without
+    Lanczos's out-of-support ringing.  Callers may select another non-ringing
+    filter explicitly when a product requires it.
+    """
+    kwargs = {}
+    if reducing_gap is not None:
+        kwargs["reducing_gap"] = reducing_gap
+    if img.mode == "RGBA":
+        return (
+            img.convert("RGBa")
+            .resize(size, resample=resample, **kwargs)
+            .convert("RGBA")
+        )
+    return img.resize(size, resample=resample, **kwargs)
+
+
+def rotate_transparent_sprite(
+    img: Image.Image,
+    angle: float,
+    *,
+    resample=RESAMPLING.BICUBIC,
+    center=None,
+    expand: bool = False,
+) -> Image.Image:
+    """Rotate RGBA sprite art in premultiplied-alpha space.
+
+    SVG rig parts are transformed independently before composition.  The
+    premultiplied working mode makes that transform independent of arbitrary
+    RGB values hidden beneath fully transparent source pixels.
+    """
+    kwargs = {"resample": resample, "expand": expand}
+    if center is not None:
+        kwargs["center"] = center
+    if img.mode == "RGBA":
+        return img.convert("RGBa").rotate(angle, **kwargs).convert("RGBA")
+    return img.rotate(angle, **kwargs)
+
+
 def font(size: int):
     """A bold DejaVu TrueType font at ``size`` px, falling back gracefully."""
     for name in ("DejaVuSans-Bold.ttf", "DejaVuSans.ttf"):
