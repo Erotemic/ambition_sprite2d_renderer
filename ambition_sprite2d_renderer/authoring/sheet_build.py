@@ -351,6 +351,29 @@ def alpha_bbox_metrics(frame: Image.Image):
 
 
 @profile
+def _fit_text(draw, text, font, max_px):
+    """`text` shortened until it MEASURES no wider than `max_px`.
+
+    A label column is a fixed pixel width and these fonts are proportional, so
+    "how many characters fit" has no answer — only "how wide is this string"
+    does. Returns the longest prefix plus an ellipsis that still fits.
+    """
+    if max_px <= 0:
+        # No column was declared, so there is nothing to clip TO. Returning the
+        # text unchanged preserves the existing behaviour exactly; returning ""
+        # would erase a label instead of fitting it.
+        return text
+    if draw.textlength(text, font=font) <= max_px:
+        return text
+    ellipsis = "…"
+    if draw.textlength(ellipsis, font=font) > max_px:
+        return ""
+    for cut in range(len(text) - 1, 0, -1):
+        if draw.textlength(text[:cut] + ellipsis, font=font) <= max_px:
+            return text[:cut] + ellipsis
+    return ellipsis
+
+
 def _grid_sheet_rows(target, rendered_rows, fw, fh, label_width, max_dim):
     """Legacy layout: one animation per labeled row, stacked vertically and
     split into page images only when the column would exceed ``max_dim``.
@@ -381,12 +404,37 @@ def _grid_sheet_rows(target, rendered_rows, fw, fh, label_width, max_dim):
         draw_sheet.rectangle(
             (0, y, label_width - 1, y + fh - 1), fill=(18, 22, 30, 235)
         )
+        # Clipped to the column, for the reason `creator_lab_props` learned the
+        # expensive way: text drawn into a label column is composited UNDER the
+        # frames, and prop/character art is mostly transparent, so anything that
+        # overflows `label_width` shows THROUGH the sprite in game. There it was a
+        # 44-character truncation on a proportional font; here there was no limit
+        # at all, so a long animation name is one rename away from the same
+        # artifact (2026-07-29).
+        #
+        # Nothing shipping overflows today (verified: `player_robot` renders
+        # byte-identical with and without this). It is the guard, not a repair.
+        #
+        # ⚠ and a guard must not become the bug it guards against. A sheet that
+        # declares NO column (`label_width == 0`) has always drawn its labels
+        # straight over frame 0, and clipping to a zero-width column would
+        # silently DELETE that text rather than clip it. Deleting a label nobody
+        # asked me to delete is a worse change than the overflow — so no column
+        # means no clipping, and the caller keeps exactly what it had.
         draw_sheet.text(
-            (8, y + 10), anim, fill=(236, 240, 244, 255), font=title_font
+            (8, y + 10),
+            _fit_text(draw_sheet, anim, title_font, label_width - 16),
+            fill=(236, 240, 244, 255),
+            font=title_font,
         )
         draw_sheet.text(
             (8, y + 30),
-            f"{nframes}f @ {duration_ms}ms",
+            _fit_text(
+                draw_sheet,
+                f"{nframes}f @ {duration_ms}ms",
+                detail_font,
+                label_width - 16,
+            ),
             fill=(160, 170, 184, 255),
             font=detail_font,
         )
