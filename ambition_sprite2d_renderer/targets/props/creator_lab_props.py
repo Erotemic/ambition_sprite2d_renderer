@@ -200,6 +200,28 @@ def _outline_text(
     draw.text((x, y), text, font=font, fill=fill)
 
 
+def _fit(draw, text, font, max_px):
+    """`text` shortened until it MEASURES no wider than `max_px`.
+
+    The annotation column is a fixed pixel width and the font is proportional,
+    so "how many characters fit" has no answer — only "how wide is this string"
+    does. Returns the longest prefix plus an ellipsis that still fits, or an
+    empty string if even the ellipsis does not.
+    """
+    if draw.textlength(text, font=font) <= max_px:
+        return text
+    ellipsis = "…"
+    if draw.textlength(ellipsis, font=font) > max_px:
+        return ""
+    # Longest prefix that fits WITH the ellipsis. Linear from the end because
+    # these strings are short and a bisection would be harder to read than the
+    # thing it speeds up.
+    for cut in range(len(text) - 1, 0, -1):
+        if draw.textlength(text[:cut] + ellipsis, font=font) <= max_px:
+            return text[:cut] + ellipsis
+    return ellipsis
+
+
 def _draw_led(
     draw: ImageDraw.ImageDraw,
     x: float,
@@ -719,12 +741,38 @@ def build_sheet(
     for row_idx, spec in enumerate(props):
         y = row_idx * FRAME_H
         draw.rectangle((0, y, LABEL_W, y + FRAME_H), fill=(22, 24, 34, 204))
-        draw.text((10, y + 10), spec.display_name, fill=(238, 240, 255, 255), font=font)
-        draw.text((10, y + 28), spec.category, fill=(135, 226, 244, 255), font=small)
-        desc = spec.description
-        if len(desc) > 44:
-            desc = desc[:43] + "…"
-        draw.text((10, y + 44), desc, fill=(182, 188, 210, 255), font=small)
+        # ⚠ **EVERY line is clipped to the column WIDTH, not to a character
+        # count.** This truncated the description at 44 CHARACTERS, and 44
+        # characters of this font is far wider than the 150px the column
+        # actually has — so the tail ran past `LABEL_W` and into frame 0.
+        #
+        # Frames are `alpha_composite`d over that text and prop art is mostly
+        # transparent, so the overflow showed THROUGH the sprite: the opening
+        # room of the game rendered its Neural Console with "…holographic … la…"
+        # written across it, and the Genesis Vat and Power Core the same. It read
+        # as a UI layer drawing behind the props; it was pixels baked into the
+        # sheet (found by capturing `intro_wake_room`, 2026-07-29).
+        #
+        # A character count cannot express "fits in the column" for a
+        # proportional font. Measuring can.
+        draw.text(
+            (10, y + 10),
+            _fit(draw, spec.display_name, font, LABEL_W - 20),
+            fill=(238, 240, 255, 255),
+            font=font,
+        )
+        draw.text(
+            (10, y + 28),
+            _fit(draw, spec.category, small, LABEL_W - 20),
+            fill=(135, 226, 244, 255),
+            font=small,
+        )
+        draw.text(
+            (10, y + 44),
+            _fit(draw, spec.description, small, LABEL_W - 20),
+            fill=(182, 188, 210, 255),
+            font=small,
+        )
         draw.text(
             (10, y + 97), f"{spec.frames}f idle", fill=(205, 205, 222, 255), font=small
         )
