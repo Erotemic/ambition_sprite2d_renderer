@@ -1,7 +1,7 @@
 """Shipping player robot, rendered from the user-authored SVG paper-doll rig.
 
-This module intentionally has the same target name as ``configs/player_robot.yaml``.
-Module targets win discovery conflicts, so publishing ``player_robot`` now uses
+This module intentionally has the same target name as ``configs/player_robot_v3.yaml``.
+Module targets win discovery conflicts, so publishing ``player_robot_v3`` now uses
 this SVG/bone rig while preserving the existing runtime filenames, animation
 row vocabulary, timings, actor id, and attack hitbox metadata.
 """
@@ -20,11 +20,11 @@ from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet, write_canonical
 from .robot_side import SideRobotGenerator
 
-TARGET_NAME = "player_robot"
+TARGET_NAME = "player_robot_v3"
 FRAME_SIZE = (224, 224)
 RIG_PATH = (
     Path(__file__).resolve().parent
-    / "rigged/player_robot/player_robot.rig.json"
+    / "rigged/player_robot_v3/player_robot_v3.rig.json"
 )
 
 ANIMATION_ORDER = [
@@ -114,7 +114,7 @@ def load_doc() -> RigDocument:
     if not RIG_PATH.exists():
         raise FileNotFoundError(
             f"missing rig {RIG_PATH}; rebuild it with "
-            "`uv run python scripts/build_player_robot_svg.py build`"
+            "`uv run python scripts/build_player_robot_v3_svg.py build`"
         )
     return RigDocument.load(RIG_PATH)
 

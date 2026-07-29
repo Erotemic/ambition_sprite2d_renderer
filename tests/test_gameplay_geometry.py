@@ -134,17 +134,17 @@ def test_generated_geometry_is_not_used_by_rendering():
     assert before == after
 
 
-def test_player_robot_builder_preserves_existing_geometry(tmp_path, monkeypatch):
+def test_player_robot_v3_builder_preserves_existing_geometry(tmp_path, monkeypatch):
     import importlib.util
     from pathlib import Path
 
-    script = Path(__file__).parents[1] / "scripts" / "build_player_robot_svg.py"
-    spec = importlib.util.spec_from_file_location("build_player_robot_svg_test", script)
+    script = Path(__file__).parents[1] / "scripts" / "build_player_robot_v3_svg.py"
+    spec = importlib.util.spec_from_file_location("build_player_robot_v3_svg_test", script)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     spec.loader.exec_module(module)
 
-    rig_path = tmp_path / "player_robot.rig.json"
+    rig_path = tmp_path / "player_robot_v3.rig.json"
     rig_path.write_text(
         '{"gameplay_geometry":{"version":1,"collision":{"shape":{"kind":"rect","x":1,"y":2,"w":3,"h":4}}},'
         '"animation_constraints":{"version":1,"clips":{"idle":{"foot_plants":[{"foot":"near_leg_foot"}]}}}}',

@@ -108,15 +108,15 @@ def test_active_lookup_is_non_mutating_when_constraints_are_absent():
     assert "animation_constraints" not in doc.data
 
 
-def test_fk_player_robot_feet_can_be_continuously_planted():
+def test_fk_player_robot_v3_feet_can_be_continuously_planted():
     rig = (
         Path(__file__).resolve().parent.parent
         / "ambition_sprite2d_renderer"
         / "targets"
         / "characters"
         / "rigged"
-        / "player_robot"
-        / "player_robot.rig.json"
+        / "player_robot_v3"
+        / "player_robot_v3.rig.json"
     )
     doc = RigDocument.load(rig)
     initial, _ = doc.solve("idle", 0.0)
@@ -159,8 +159,8 @@ def test_rigid_foot_pin_holds_boot_origin_and_toe_together():
         / "targets"
         / "characters"
         / "rigged"
-        / "player_robot"
-        / "player_robot.rig.json"
+        / "player_robot_v3"
+        / "player_robot_v3.rig.json"
     )
     doc = RigDocument.load(rig)
     initial, _ = doc.solve("idle", 0.0)
@@ -193,8 +193,8 @@ def test_any_two_segment_endpoint_part_can_be_pinned_rigidly():
         / "targets"
         / "characters"
         / "rigged"
-        / "player_robot"
-        / "player_robot.rig.json"
+        / "player_robot_v3"
+        / "player_robot_v3.rig.json"
     )
     doc = RigDocument.load(rig)
     initial, _ = doc.solve("idle", 0.0)

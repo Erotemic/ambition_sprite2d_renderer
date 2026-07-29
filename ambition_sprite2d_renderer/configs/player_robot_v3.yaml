@@ -1,6 +1,6 @@
 target: robot
-name: player_robot
-output_name: player_robot
+name: player_robot_v3
+output_name: player_robot_v3
 seed: 7
 archetype: player_compact
 animations:

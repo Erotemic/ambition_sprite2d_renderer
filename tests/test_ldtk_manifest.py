@@ -27,7 +27,7 @@ def test_default_entity_map_covers_the_placeable_characters() -> None:
     # would mislead — they stay on the plain region box until per-instance
     # editor visuals land (see the rationale on DEFAULT_ENTITY_SPRITE_MAP).
     assert DEFAULT_ENTITY_SPRITE_MAP == {
-        "PlayerStart": "player_robot",
+        "PlayerStart": "player_robot_v3",
     }
 
 

@@ -19,10 +19,10 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument, sample_channel_spec
 from ambition_sprite2d_renderer.authoring.skeleton import BoneWorld, two_bone_ik
-from ambition_sprite2d_renderer.targets.characters import player_robot as player_robot_target
+from ambition_sprite2d_renderer.targets.characters import player_robot_v3 as player_robot_v3_target
 
 AUTHOR_RIG_PATH = ROOT / "assets" / "rigs" / "author_vanity" / "author_vanity.rig.json"
-ROBOT_RIG_PATH = player_robot_target.RIG_PATH
+ROBOT_RIG_PATH = player_robot_v3_target.RIG_PATH
 GAMEPAD_SVG_PATH = ROOT / "assets" / "gamepad-draft.svg"
 DEFAULT_OUT_DIR = ROOT / "agent-scratch" / "author_vanity_dialog"
 
@@ -151,7 +151,7 @@ def ensure_rigs_exist() -> None:
         ),
         (
             ROBOT_RIG_PATH,
-            [sys.executable, str(ROOT / "scripts" / "build_player_robot_svg.py"), "build"],
+            [sys.executable, str(ROOT / "scripts" / "build_player_robot_v3_svg.py"), "build"],
         ),
     ]
     for path, command in checks:
@@ -845,7 +845,7 @@ def build_dialog_sequence(out_dir: Path) -> List[Path]:
     frames_dir.mkdir(parents=True, exist_ok=True)
 
     author_doc = RigDocument.load(AUTHOR_RIG_PATH)
-    robot_doc = player_robot_target.load_doc()
+    robot_doc = player_robot_v3_target.load_doc()
     author_hands_doc = hand_only_doc(author_doc)
     robot_hands_doc = hand_only_doc(robot_doc)
     author_near_arm_doc = parts_include_doc(author_doc, ["near_arm_u", "near_arm_l", "near_sleeve", "near_hand"])

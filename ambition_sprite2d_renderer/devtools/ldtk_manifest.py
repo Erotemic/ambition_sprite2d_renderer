@@ -16,12 +16,12 @@ Manifest shape (matches `visual_manifest.normalize_manifest`):
 
     {
       "tilesets": [
-        {"identifier": "sprite_player_robot",
-         "path": "crates/.../sprites/player_robot_spritesheet.png",
+        {"identifier": "sprite_player_robot_v3",
+         "path": "crates/.../sprites/player_robot_v3_spritesheet.png",
          "tile_width": 96, "tile_height": 112, "tags": ["sprite"]}
       ],
       "entity_icons": {
-        "PlayerStart": {"tileset": "sprite_player_robot", "tile": [0, 0, 96, 112]}
+        "PlayerStart": {"tileset": "sprite_player_robot_v3", "tile": [0, 0, 96, 112]}
       }
     }
 
@@ -48,7 +48,7 @@ from typing import Any
 # field that carries each placed character's frame) are the right answer and
 # are deliberately left for a follow-up. APPEND clearly-1:1 entries here.
 DEFAULT_ENTITY_SPRITE_MAP: dict[str, str] = {
-    # The runtime player file root is `player_robot` (see
+    # The runtime player file root is `player_robot_v3` (see
     # crates/ambition_actors/src/character_sprites/attack_hitbox.rs).
     # ONLY entities with a clear, correct, identity-specific sprite belong
     # here. The generic spawners (NpcSpawn/EnemySpawn/BossSpawn) are 1:many and
@@ -56,7 +56,7 @@ DEFAULT_ENTITY_SPRITE_MAP: dict[str, str] = {
     # sprite — they fall back to a plain colored region box. Per-instance
     # canvas art needs an LDtk-schema change (enum field carrying each
     # character's tileRect); see main-machine-review.md §2.
-    "PlayerStart": "player_robot",
+    "PlayerStart": "player_robot_v3",
 }
 
 _AUX_PNG_SUFFIXES = ("_canonical", "_preview", "_debug")

@@ -14,9 +14,9 @@ from ambition_sprite2d_renderer.targets.characters.robot_side import SideRobotGe
 
 ROOT = Path(__file__).resolve().parents[1]
 PKG = ROOT / "ambition_sprite2d_renderer"
-SVG_PATH = PKG / "data/characters/player_robot_svg/player-robot.svg"
-RIG_DIR = PKG / "targets/characters/rigged/player_robot"
-RIG_JSON = RIG_DIR / "player_robot.rig.json"
+SVG_PATH = PKG / "data/characters/player_robot_v3_svg/player-robot-v3.svg"
+RIG_DIR = PKG / "targets/characters/rigged/player_robot_v3"
+RIG_JSON = RIG_DIR / "player_robot_v3.rig.json"
 VIEW_LABEL = "Player Robot - Side Right"
 
 FRAME_WIDTH = 224
@@ -24,7 +24,7 @@ FRAME_HEIGHT = 224
 CENTER_X = 112.0
 GROUND_Y = 158.0
 
-# Exact row vocabulary currently published by configs/player_robot.yaml.
+# Exact row vocabulary currently published by configs/player_robot_v3.yaml.
 ANIMATION_ORDER = [
     "idle",
     "walk",
@@ -297,7 +297,7 @@ def build_doc() -> dict:
     RIG_DIR.mkdir(parents=True, exist_ok=True)
     spec = HumanoidViewSpec(
         view=VIEW_LABEL,
-        name="player_robot",
+        name="player_robot_v3",
         frame_width=FRAME_WIDTH,
         frame_height=FRAME_HEIGHT,
         center_x=CENTER_X,
@@ -323,7 +323,7 @@ def build_doc() -> dict:
         "split_leg_artwork": True,
         "fingers_locked_to_hands": True,
         "toe_caps_locked_to_boots": True,
-        "source_animation_vocabulary": "configs/player_robot.yaml",
+        "source_animation_vocabulary": "configs/player_robot_v3.yaml",
         "logical_frame": [FRAME_WIDTH, FRAME_HEIGHT],
         "trimmed_runtime_frames": True,
         "roll_has_expanded_canvas": True,

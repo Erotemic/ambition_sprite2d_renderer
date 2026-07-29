@@ -50,7 +50,7 @@ def test_render_scale_doubles_resolution_across_generator_families():
     jobs = _jobs()
     # One representative per generator family: toon (scale-to-width) +
     # robot/goblin/boss (128-base, fixed to scale-proportionally).
-    for name in ("absurd_general", "player_robot", "goblin", "boss"):
+    for name in ("absurd_general", "player_robot_v3", "goblin", "boss"):
         job = jobs.get(name)
         if job is None:
             continue
@@ -67,7 +67,7 @@ def test_render_scale_doubles_resolution_across_generator_families():
 
 
 def test_fractional_render_scale_publishes_source_scale_sheet():
-    job = _jobs()["player_robot"]
+    job = _jobs()["player_robot_v3"]
     job.render.supersample = 1
     job.animations = job.animations[:1]
     w_full, h_full = _published_frame(job, 2)
@@ -82,15 +82,15 @@ def test_fractional_render_scale_publishes_source_scale_sheet():
 
 def test_adapter_quality_scale_is_relative_to_normal_render_scale(tmp_path):
     target = Target.from_config(
-        config_path=DEFAULT_CONFIG_DIR / "player_robot.yaml", category="characters"
+        config_path=DEFAULT_CONFIG_DIR / "player_robot_v3.yaml", category="characters"
     )
     full_dir = tmp_path / "quality_full"
     target.render_sheet(full_dir)
-    full = yaml.safe_load((full_dir / "player_robot_spritesheet.yaml").read_text())
+    full = yaml.safe_load((full_dir / "player_robot_v3_spritesheet.yaml").read_text())
 
     out_dir = tmp_path / "quality_half"
     target.render_sheet(out_dir, quality_scale=0.5)
-    half = yaml.safe_load((out_dir / "player_robot_spritesheet.yaml").read_text())
+    half = yaml.safe_load((out_dir / "player_robot_v3_spritesheet.yaml").read_text())
 
     assert 0.45 < (half["frame_width"] / full["frame_width"]) < 0.55
     assert 0.45 < (half["frame_height"] / full["frame_height"]) < 0.55

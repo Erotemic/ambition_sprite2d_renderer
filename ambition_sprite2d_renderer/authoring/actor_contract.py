@@ -222,7 +222,7 @@ def _catalog_profile_for(stem: str, explicit_character_id: str | None = None) ->
 
 
 BASE_CHARACTER_IDS = {
-    "player_robot": "player",
+    "player_robot_v3": "player",
     "robot": "robot",
     "goblin": "goblin",
     "sandbag": "sandbag",

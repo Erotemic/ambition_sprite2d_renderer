@@ -1,5 +1,5 @@
 # The PREVIOUS shipping player robot, preserved as a character in its own
-# right rather than as history. `player_robot` now renders from the authored
+# right rather than as history. `player_robot_v3` now renders from the authored
 # SVG rig; this keeps the procedural `target: robot` build that shipped before
 # it, under its own output name so both sheets exist side by side.
 #

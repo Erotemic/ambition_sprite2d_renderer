@@ -195,7 +195,7 @@ def draw_all(
         "goblin",
         "ninja",
         "ninja_leader",
-        "player_robot",
+        "player_robot_v3",
         "robot",
         "sandbag",
         # Sandbox combat-variety enemies: the kiter plus the two volatile mites.

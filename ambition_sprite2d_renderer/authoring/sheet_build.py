@@ -412,7 +412,7 @@ def _grid_sheet_rows(target, rendered_rows, fw, fh, label_width, max_dim):
         # at all, so a long animation name is one rename away from the same
         # artifact (2026-07-29).
         #
-        # Nothing shipping overflows today (verified: `player_robot` renders
+        # Nothing shipping overflows today (verified: `player_robot_v3` renders
         # byte-identical with and without this). It is the guard, not a repair.
         #
         # ⚠ and a guard must not become the bug it guards against. A sheet that

@@ -9,24 +9,24 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 SVG_PATH = (
     ROOT
-    / "ambition_sprite2d_renderer/data/characters/player_robot_svg/player-robot.svg"
+    / "ambition_sprite2d_renderer/data/characters/player_robot_v3_svg/player-robot-v3.svg"
 )
 RIG_PATH = (
     ROOT
-    / "ambition_sprite2d_renderer/targets/characters/rigged/player_robot/player_robot.rig.json"
+    / "ambition_sprite2d_renderer/targets/characters/rigged/player_robot_v3/player_robot_v3.rig.json"
 )
-BUILD_SCRIPT = ROOT / "scripts/build_player_robot_svg.py"
+BUILD_SCRIPT = ROOT / "scripts/build_player_robot_v3_svg.py"
 
 
 def _load_builder():
-    spec = importlib.util.spec_from_file_location("build_player_robot_svg", BUILD_SCRIPT)
+    spec = importlib.util.spec_from_file_location("build_player_robot_v3_svg", BUILD_SCRIPT)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
-def test_player_robot_svg_has_explicit_open_and_blink_faces():
+def test_player_robot_v3_svg_has_explicit_open_and_blink_faces():
     root = ET.parse(SVG_PATH).getroot()
     parts = {
         elem.attrib.get("data-rig-part"): elem

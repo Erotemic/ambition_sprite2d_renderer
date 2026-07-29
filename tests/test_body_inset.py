@@ -30,7 +30,7 @@ def test_robot_inset_is_half_width_top_trim():
 
 
 def test_apply_inset_halves_width_and_trims_top():
-    # The player_robot idle box measured today.
+    # The player_robot_v3 idle box measured today.
     box = {"x": 73, "y": 38, "w": 117, "h": 165}
     out = _apply_body_inset(box, SideRobotGenerator().body_inset())
     assert out == {"x": 102, "y": 71, "w": 58, "h": 132}

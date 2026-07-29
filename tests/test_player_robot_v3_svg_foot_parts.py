@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 SVG_PATH = (
     ROOT
-    / "ambition_sprite2d_renderer/data/characters/player_robot_svg/player-robot.svg"
+    / "ambition_sprite2d_renderer/data/characters/player_robot_v3_svg/player-robot-v3.svg"
 )
 
 

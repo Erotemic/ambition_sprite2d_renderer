@@ -130,7 +130,7 @@ class PackPlan:
 
         groups:
           intro: [intro_cart, creator, interdimensional_gate_ring]
-          always: [player_robot, robot]
+          always: [player_robot_v3, robot]
     """
 
     SHARED = "shared"

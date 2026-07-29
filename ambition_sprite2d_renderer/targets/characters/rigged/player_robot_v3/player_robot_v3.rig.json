@@ -1,5 +1,5 @@
 {
-  "name": "player_robot",
+  "name": "player_robot_v3",
   "frame": {
     "width": 224,
     "height": 224,
@@ -10,7 +10,7 @@
     "render_scale": 1
   },
   "svg_source": {
-    "path": "../../../../data/characters/player_robot_svg/player-robot.svg",
+    "path": "../../../../data/characters/player_robot_v3_svg/player-robot-v3.svg",
     "view": "Player Robot - Side Right",
     "ref_dpi": 25.4,
     "scale": 1.16091954
@@ -33123,7 +33123,7 @@
     "split_leg_artwork": true,
     "fingers_locked_to_hands": true,
     "toe_caps_locked_to_boots": true,
-    "source_animation_vocabulary": "configs/player_robot.yaml",
+    "source_animation_vocabulary": "configs/player_robot_v3.yaml",
     "logical_frame": [
       224,
       224

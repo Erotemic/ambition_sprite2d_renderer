@@ -83,7 +83,7 @@ class SideRobotGenerator(CharacterGenerator):
         # frames (slash_arc = t), so the slash + hitbox are live the whole swing
         # (active_frames=[0,1,2]) with no windup/recover beat. Authored feel —
         # verify with `python -m ambition_sprite2d_renderer debug-hitboxes
-        # player_robot`. Enemies use `slash` (8f) via pick_enemy_anim, so this
+        # player_robot_v3`. Enemies use `slash` (8f) via pick_enemy_anim, so this
         # only changes the player's read.
         "attack_side": {"frames": 3, "duration_ms": 60},
         # The rest of the directional/aerial attacks share the 3-frame sweep:
