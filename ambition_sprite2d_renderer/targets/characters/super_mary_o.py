@@ -84,6 +84,18 @@ WING_PEARL = (255, 246, 235, 255)
 AURA_PINK = (255, 200, 228, 255)
 AURA_GOLD = (255, 213, 118, 255)
 
+# A form-transition clip is authored on the sheet of the form it ARRIVES AT, so
+# the runtime plays it from the identity it has already switched to and nothing
+# has to defer a swap to show it. Read the three lists together and each sheet
+# answers "how did I get here":
+#
+#   short:  shrink (from tall), big_shrink (from fire)
+#   tall:   grow   (from short), shrink     (from fire)
+#   fire:   transform (from tall)
+#
+# The frames themselves draw whatever silhouettes the transition needs — the
+# short sheet's `shrink` opens on the TALL body — so hosting is about who OWNS
+# the clip, not about which forms appear in it.
 SHORT_ROWS: List[Tuple[str, int, int]] = [
     ("idle", 1, 160),
     ("death", 1, 120),
@@ -92,6 +104,8 @@ SHORT_ROWS: List[Tuple[str, int, int]] = [
     ("skid", 1, 110),
     ("climb", 2, 120),
     ("swim", 4, 100),
+    ("shrink", 4, 85),
+    ("big_shrink", 8, 85),
 ]
 
 TALL_ROWS: List[Tuple[str, int, int]] = [
@@ -104,8 +118,7 @@ TALL_ROWS: List[Tuple[str, int, int]] = [
     ("climb", 2, 120),
     ("swim", 6, 100),
     ("grow", 4, 70),
-    ("transform", 8, 80),
-    ("hurt", 4, 85),
+    ("shrink", 6, 85),
 ]
 
 FIRE_ROWS: List[Tuple[str, int, int]] = [
@@ -118,8 +131,7 @@ FIRE_ROWS: List[Tuple[str, int, int]] = [
     ("climb", 2, 120),
     ("swim", 6, 100),
     ("fireball", 1, 120),
-    ("hurt", 6, 85),
-    ("big_hurt", 8, 85),
+    ("transform", 8, 80),
 ]
 
 
@@ -1262,7 +1274,10 @@ def _poses_for(form: FormSpec) -> Dict[str, List[Pose]]:
 
 def _draw_form(form: FormSpec, animation: str, frame_idx: int, nframes: int) -> Image.Image:
     if animation == "grow":
-        alt_form = SHORT_FORM if frame_idx % 2 == 0 else form
+        # Hosted by the TALL sheet (the form arrived at). Named explicitly
+        # rather than taken from `form` so the clip keeps meaning "small becomes
+        # tall" wherever it is hosted, and ends on the form it arrives at.
+        alt_form = SHORT_FORM if frame_idx % 2 == 0 else TALL_FORM
         return _draw_form(alt_form, "idle", 0, 1)
 
     if animation == "transform":
@@ -1299,8 +1314,11 @@ def _draw_form(form: FormSpec, animation: str, frame_idx: int, nframes: int) -> 
         sprite = rasterize_logical(LOGICAL_SIZE, SCALE, painter)
         return bottom_center_canvas(sprite, FRAME_SIZE)
 
-    if animation == "hurt":
-        if form.power == "fire":
+    if animation == "shrink":
+        # Two hosts, two clips: the TALL sheet's shrink is "fire became tall"
+        # and the SHORT sheet's is "tall became small". Both end on the sheet's
+        # own form, which is what makes the arriving-sheet rule hold.
+        if form.power == "tall":
             fire_dull_1 = _mix_outfit_palette(MARY_FIRE, MARY_NORMAL, 0.28)
             fire_dull_2 = _mix_outfit_palette(MARY_FIRE, MARY_NORMAL, 0.52)
             fire_dull_3 = _mix_outfit_palette(MARY_FIRE, MARY_NORMAL, 0.78)
@@ -1320,7 +1338,7 @@ def _draw_form(form: FormSpec, animation: str, frame_idx: int, nframes: int) -> 
                     px,
                     active_form,
                     pose,
-                    animation="hurt",
+                    animation="shrink",
                     wing_boost=wing_boost,
                     sleeve_wing_boost=sleeve_wing_boost,
                     extra_star_phase=extra_star_phase,
@@ -1340,42 +1358,44 @@ def _draw_form(form: FormSpec, animation: str, frame_idx: int, nframes: int) -> 
 
             def painter(px) -> None:
                 _draw_power_loss_sparkles(px, frame_idx, fire=False)
-                _draw_side_pose(px, active_form, pose, animation="hurt", extra_star_phase=extra_star_phase)
+                _draw_side_pose(px, active_form, pose, animation="shrink", extra_star_phase=extra_star_phase)
 
             sprite = rasterize_logical(LOGICAL_SIZE, SCALE, painter)
             return bottom_center_canvas(sprite, FRAME_SIZE)
 
-    if animation == "big_hurt":
-        if form.power == "fire":
-            fire_dull_1 = _mix_outfit_palette(MARY_FIRE, MARY_NORMAL, 0.28)
-            fire_dull_2 = _mix_outfit_palette(MARY_FIRE, MARY_NORMAL, 0.58)
-            fire_dull_3 = _mix_outfit_palette(MARY_FIRE, MARY_NORMAL, 0.84)
-            big_hurt_seq = [
-                (FIRE_FORM, Pose(mode="fireball", bob=0.1, arm_front_angle=35, arm_back_angle=-18, leg_front_angle=-12, leg_back_angle=22), 0.95, 1.05, 2),
-                (_form_with_palette(FIRE_FORM, fire_dull_1), Pose(bob=0.35, body_lean=-0.1, arm_front_angle=24, arm_back_angle=-36, leg_front_angle=-8, leg_back_angle=18), 0.60, 0.72, 1),
-                (_form_with_palette(FIRE_FORM, fire_dull_2), Pose(bob=0.7, body_lean=-0.16, arm_front_angle=12, arm_back_angle=-58, leg_front_angle=4, leg_back_angle=12), 0.18, 0.32, 0),
-                (_form_with_palette(FIRE_FORM, fire_dull_3), Pose(bob=0.95, body_lean=-0.08, arm_front_angle=84, arm_back_angle=-76, leg_front_angle=12, leg_back_angle=4), 0.0, 0.0, 0),
-                (TALL_FORM, Pose(bob=0.55, body_lean=-0.02, arm_front_angle=58, arm_back_angle=-22, leg_front_angle=-2, leg_back_angle=8), 0.0, 0.0, 0),
-                (SHORT_FORM, Pose(bob=0.78, body_lean=-0.02, arm_front_angle=36, arm_back_angle=-18, leg_front_angle=-2, leg_back_angle=8), 0.0, 0.0, 0),
-                (TALL_FORM, Pose(bob=0.48, body_lean=0.0, arm_front_angle=72, arm_back_angle=-28, leg_front_angle=4, leg_back_angle=2), 0.0, 0.0, 0),
-                (SHORT_FORM, Pose(bob=0.25, body_lean=0.0, arm_front_angle=46, arm_back_angle=-10, leg_front_angle=0, leg_back_angle=0), 0.0, 0.0, 0),
-            ]
-            active_form, pose, wing_boost, sleeve_wing_boost, extra_star_phase = big_hurt_seq[frame_idx % len(big_hurt_seq)]
+    if animation == "big_shrink":
+        # Hosted by the SHORT sheet: fire loses two tiers at once and arrives
+        # small. No power guard — the sheet that owns the clip is the one it
+        # ends on, and only the short sheet lists this row.
+        fire_dull_1 = _mix_outfit_palette(MARY_FIRE, MARY_NORMAL, 0.28)
+        fire_dull_2 = _mix_outfit_palette(MARY_FIRE, MARY_NORMAL, 0.58)
+        fire_dull_3 = _mix_outfit_palette(MARY_FIRE, MARY_NORMAL, 0.84)
+        big_shrink_seq = [
+            (FIRE_FORM, Pose(mode="fireball", bob=0.1, arm_front_angle=35, arm_back_angle=-18, leg_front_angle=-12, leg_back_angle=22), 0.95, 1.05, 2),
+            (_form_with_palette(FIRE_FORM, fire_dull_1), Pose(bob=0.35, body_lean=-0.1, arm_front_angle=24, arm_back_angle=-36, leg_front_angle=-8, leg_back_angle=18), 0.60, 0.72, 1),
+            (_form_with_palette(FIRE_FORM, fire_dull_2), Pose(bob=0.7, body_lean=-0.16, arm_front_angle=12, arm_back_angle=-58, leg_front_angle=4, leg_back_angle=12), 0.18, 0.32, 0),
+            (_form_with_palette(FIRE_FORM, fire_dull_3), Pose(bob=0.95, body_lean=-0.08, arm_front_angle=84, arm_back_angle=-76, leg_front_angle=12, leg_back_angle=4), 0.0, 0.0, 0),
+            (TALL_FORM, Pose(bob=0.55, body_lean=-0.02, arm_front_angle=58, arm_back_angle=-22, leg_front_angle=-2, leg_back_angle=8), 0.0, 0.0, 0),
+            (SHORT_FORM, Pose(bob=0.78, body_lean=-0.02, arm_front_angle=36, arm_back_angle=-18, leg_front_angle=-2, leg_back_angle=8), 0.0, 0.0, 0),
+            (TALL_FORM, Pose(bob=0.48, body_lean=0.0, arm_front_angle=72, arm_back_angle=-28, leg_front_angle=4, leg_back_angle=2), 0.0, 0.0, 0),
+            (SHORT_FORM, Pose(bob=0.25, body_lean=0.0, arm_front_angle=46, arm_back_angle=-10, leg_front_angle=0, leg_back_angle=0), 0.0, 0.0, 0),
+        ]
+        active_form, pose, wing_boost, sleeve_wing_boost, extra_star_phase = big_shrink_seq[frame_idx % len(big_shrink_seq)]
 
-            def painter(px) -> None:
-                _draw_power_loss_sparkles(px, frame_idx, fire=True)
-                _draw_side_pose(
-                    px,
-                    active_form,
-                    pose,
-                    animation="big_hurt",
-                    wing_boost=wing_boost,
-                    sleeve_wing_boost=sleeve_wing_boost,
-                    extra_star_phase=extra_star_phase,
-                )
+        def painter(px) -> None:
+            _draw_power_loss_sparkles(px, frame_idx, fire=True)
+            _draw_side_pose(
+                px,
+                active_form,
+                pose,
+                animation="big_shrink",
+                wing_boost=wing_boost,
+                sleeve_wing_boost=sleeve_wing_boost,
+                extra_star_phase=extra_star_phase,
+            )
 
-            sprite = rasterize_logical(LOGICAL_SIZE, SCALE, painter)
-            return bottom_center_canvas(sprite, FRAME_SIZE)
+        sprite = rasterize_logical(LOGICAL_SIZE, SCALE, painter)
+        return bottom_center_canvas(sprite, FRAME_SIZE)
 
     pose_seq = _poses_for(form).get(animation) or SHORT_POSES["idle"]
     pose = pose_seq[frame_idx % len(pose_seq)]
@@ -1435,14 +1455,19 @@ def _actor_metadata(form: FormSpec) -> dict:
     bindings = metadata["animation_bindings"]
     if form.tall:
         bindings["locomotion.crouch"] = {"animation": "crouch", "events": []}
+    # Each sheet publishes the transitions that ARRIVE at it (see the row
+    # tables): the short form knows how it was shrunk into, the tall form knows
+    # how it was grown or dropped into, and the fire form knows how it was
+    # transformed into.
+    if form.power == "short":
+        bindings["power.shrink"] = {"animation": "shrink", "events": []}
+        bindings["power.big_shrink"] = {"animation": "big_shrink", "events": []}
     if form.power == "tall":
         bindings["power.grow"] = {"animation": "grow", "events": []}
-        bindings["power.transform_fire"] = {"animation": "transform", "events": []}
-        bindings["power.hurt"] = {"animation": "hurt", "events": []}
+        bindings["power.shrink"] = {"animation": "shrink", "events": []}
     if form.power == "fire":
         bindings["ability.fireball"] = {"animation": "fireball", "events": []}
-        bindings["power.hurt"] = {"animation": "hurt", "events": []}
-        bindings["power.big_hurt"] = {"animation": "big_hurt", "events": []}
+        bindings["power.transform"] = {"animation": "transform", "events": []}
     return metadata
 
 
