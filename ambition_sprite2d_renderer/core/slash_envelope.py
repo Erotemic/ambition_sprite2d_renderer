@@ -106,7 +106,7 @@ class SwingDescriptor:
     hull_margin: float = 1.11
     #: Where the swing stops, as a fraction of `reach`. Both consumers must
     #: agree, which is exactly what they previously did not.
-    tip: float = TIP
+    tip: float = 0.96
     #: How far the art pulls inside the container, so a blurred edge still lands
     #: within the volume.
     art_inset: float = 0.885
@@ -227,5 +227,5 @@ def _convex_hull(points):
 PLAYER_ROBOT_SWING = SwingDescriptor(
     reach=128 * 1.53,
     half=83.0,
-    rise=128 * 0.22,
+    rise=0.0,
 )
