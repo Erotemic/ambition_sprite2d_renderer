@@ -25,7 +25,7 @@ import math
 from pathlib import Path
 from typing import List, Sequence, Tuple
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -40,11 +40,16 @@ SHEET_FILES = (
 
 FRAME_SIZE = (160, 160)
 SUPER = 4
+# 5 frames x 20 ms = 100 ms, which is exactly the melee ACTIVE window
+# (`SwipeSpec.active_s = 0.10`). At 24 ms the effect outlived the hitbox by a
+# fifth of its own life, so the last thing a player saw of a swing was a blade
+# that no longer hurt anything (Jon, 2026-08-02: "the vfx should be trimmed to
+# the damage window").
 ROWS: List[Tuple[str, int, int]] = [
-    ("side", 5, 24),
-    ("up", 5, 24),
-    ("down", 5, 24),
-    ("poke", 5, 24),
+    ("side", 5, 20),
+    ("up", 5, 20),
+    ("down", 5, 20),
+    ("poke", 5, 20),
 ]
 
 CORE = (255, 255, 255, 255)
@@ -91,103 +96,82 @@ def _amplitude(t: float) -> float:
     return 0.82 * (1.0 - _smoothstep(0.62, 1.0, t))
 
 
-def _cubic_point(
-    p0: Tuple[float, float],
-    p1: Tuple[float, float],
-    p2: Tuple[float, float],
-    p3: Tuple[float, float],
-    t: float,
-) -> Tuple[float, float]:
-    omt = 1.0 - t
-    return (
-        omt ** 3 * p0[0]
-        + 3.0 * omt * omt * t * p1[0]
-        + 3.0 * omt * t * t * p2[0]
-        + t ** 3 * p3[0],
-        omt ** 3 * p0[1]
-        + 3.0 * omt * omt * t * p1[1]
-        + 3.0 * omt * t * t * p2[1]
-        + t ** 3 * p3[1],
-    )
+# ── The swept region, in SWING SPACE ─────────────────────────────────────────
+#
+# The frame IS the swing: `x = 0` is the body, `x = REACH` the tip, and `y` runs
+# across the arc about `AXIS_Y`. `SwingShape` hands the renderer a quad with
+# exactly those axes, so art authored here lands ON the hit polygon rather than
+# near it.
+#
+# These mirror `robot_side.py::attack_hitboxes`'s `half_disc` station for
+# station — flat and tall against the body, bulging through the belly, bevelled
+# at the shoulder, blunt point at reach. The polygon and the art are the same
+# shape by construction, which is the only way "the vfx matches the hitbox"
+# survives someone editing one of them.
+AXIS_Y = 80.0
+REACH = 158.0
+NEAR_HALF = 68.0
+BELLY_HALF = 78.0
+FAR_HALF = 31.0
+_STATIONS = (
+    (0.00, NEAR_HALF),
+    (0.42, BELLY_HALF),
+    (0.66, FAR_HALF + (BELLY_HALF - FAR_HALF) * 0.45),
+    (0.88, FAR_HALF),
+    (1.00, 0.0),
+)
 
 
-def _cubic_tangent(
-    p0: Tuple[float, float],
-    p1: Tuple[float, float],
-    p2: Tuple[float, float],
-    p3: Tuple[float, float],
-    t: float,
-) -> Tuple[float, float]:
-    omt = 1.0 - t
-    dx = (
-        3.0 * omt * omt * (p1[0] - p0[0])
-        + 6.0 * omt * t * (p2[0] - p1[0])
-        + 3.0 * t * t * (p3[0] - p2[0])
-    )
-    dy = (
-        3.0 * omt * omt * (p1[1] - p0[1])
-        + 6.0 * omt * t * (p2[1] - p1[1])
-        + 3.0 * t * t * (p3[1] - p2[1])
-    )
-    length = math.hypot(dx, dy) or 1.0
-    return dx / length, dy / length
-
-
-def _width_profile(u: float, max_width: float) -> float:
-    """Thin at the ends, broad and bowl-shaped through the center volume."""
-    bowl = math.sin(math.pi * _clamp(u)) ** 0.34
-    center_bias = 0.88 + 0.46 * math.sin(math.pi * _clamp(u)) ** 2
-    return max_width * bowl * center_bias
-
-
-def _sweep_polygon(
-    progress: float,
-    max_width: float,
-    *,
-    y_shift: float = 0.0,
-    width_scale: float = 1.0,
-    samples: int = 56,
-) -> List[Tuple[float, float]]:
-    """A body-to-tip swoop with an exaggerated U-shaped belly.
-
-    The attack should feel like a forward swhoop in front of the robot rather
-    than a diagonal crescent pasted above it. The centerline therefore dips
-    much deeper through the lower middle of the frame before curling back up
-    toward the leading tip.
-    """
-    p0 = (12.0, 82.0 + y_shift)
-    p1 = (26.0, 148.0 + y_shift)
-    p2 = (112.0, 152.0 + y_shift)
-    p3 = (154.0, 58.0 + y_shift)
-    end = _clamp(progress, 0.06, 1.0)
-    outer: List[Tuple[float, float]] = []
-    inner: List[Tuple[float, float]] = []
-    for index in range(samples + 1):
-        u = end * index / samples
-        x, y = _cubic_point(p0, p1, p2, p3, u)
-        tx, ty = _cubic_tangent(p0, p1, p2, p3, u)
-        nx, ny = -ty, tx
-        local_u = index / samples
-        width = _width_profile(local_u, max_width * width_scale)
-        outer.append((x + nx * width * 0.52, y + ny * width * 0.52))
-        inner.append((x - nx * width * 0.48, y - ny * width * 0.48))
-    return outer + list(reversed(inner))
-
-
-def _scaled(points: Sequence[Tuple[float, float]]) -> List[Tuple[float, float]]:
+def _scaled(points):
     return [(_px(x), _px(y)) for x, y in points]
 
 
-def _rotate_point_ccw(point: Tuple[float, float], center: Tuple[float, float] = (80.0, 80.0)) -> Tuple[float, float]:
-    x, y = point
-    cx, cy = center
-    dx = x - cx
-    dy = y - cy
-    return (cx - dy, cy + dx)
+def _half_at(t: float) -> float:
+    """Half-height of the swept region a fraction `t` along the swing."""
+    t = _clamp(t)
+    for (t0, h0), (t1, h1) in zip(_STATIONS, _STATIONS[1:]):
+        if t <= t1:
+            span = (t1 - t0) or 1.0
+            return _lerp(h0, h1, (t - t0) / span)
+    return 0.0
 
 
-def _rotate_frame_ccw(image: Image.Image) -> Image.Image:
-    return image.rotate(90, resample=Image.Resampling.BICUBIC, center=(80, 80))
+def _half_disc(reach_scale: float = 1.0, width_scale: float = 1.0, samples: int = 48):
+    """The swept half disc as a closed outline, in swing space."""
+    top = []
+    bottom = []
+    for i in range(samples + 1):
+        u = i / samples
+        x = REACH * reach_scale * u
+        half = _half_at(u) * width_scale
+        top.append((x, AXIS_Y - half))
+        bottom.append((x, AXIS_Y + half))
+    return top + list(reversed(bottom))
+
+
+def _band_image(size, outer_reach: float, inner_reach: float, width_scale: float,
+                color, alpha: int) -> Image.Image:
+    """The BLADE band: an outer half disc with an inner one punched out.
+
+    The punch-out is what makes it read as a crescent rather than a wedge, and
+    how deep it goes is the "bend". A shallow cut is the old shallow swoosh; a
+    deep one is the Hollow Knight arc that curls back on itself.
+
+    Built with a mask rather than one clever polygon: a crescent traced as a
+    single closed path has to double back through itself, and PIL's even-odd
+    fill of that path is not the shape anybody drew.
+    """
+    band = Image.new("RGBA", size, (0, 0, 0, 0))
+    blending_draw(band).polygon(
+        _scaled(_half_disc(outer_reach, width_scale)),
+        fill=(color[0], color[1], color[2], alpha),
+    )
+    hole = Image.new("L", size, 0)
+    ImageDraw.Draw(hole).polygon(
+        _scaled(_half_disc(inner_reach, width_scale * 0.94)), fill=255
+    )
+    band.putalpha(ImageChops.subtract(band.getchannel("A"), hole))
+    return band
 
 
 def _arc_state(t: float) -> dict:
@@ -202,85 +186,65 @@ def _arc_state(t: float) -> dict:
 
 
 def _draw_sweep_frame(t: float) -> Image.Image:
+    """One frame of the forehand slash, drawn in SWING SPACE.
+
+    Three layers, and the middle one is the fix. Measured on the old art, the
+    first 30% of the swing had ZERO pixels and the first half was under 40%
+    covered, while the polygon damaged across all of it — a region that hurt and
+    showed nothing (Jon, 2026-08-02: "there is a big empty part of the hitpoly
+    between the arc of the slash and the player that does hurt the enemy, but
+    there is no vfx to indicate to the user that it would").
+
+      1. WASH   — the whole swept half disc at low alpha. This is the layer that
+                  says "all of this hurts". It reaches the body because the
+                  polygon does.
+      2. BAND   — the bright blade, hugging the outer boundary, deeply cut so it
+                  curls like a crescent instead of sitting flat.
+      3. EDGE   — a thin hot rim on the leading arc, so the blade still has a
+                  front.
+
+    Over the five frames the wash fades first and the band retreats toward the
+    tip: the swing dissipates from the handle outward, which is the direction a
+    real one leaves the air.
+    """
     state = _arc_state(t)
     amp = state["amp"]
-    canvas = Image.new(
-        "RGBA",
-        (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER),
-        (0, 0, 0, 0),
-    )
+    size = (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER)
+    canvas = Image.new("RGBA", size, (0, 0, 0, 0))
     if amp <= 0.01:
         return canvas.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
 
-    progress = state["progress"]
-    width = state["width"]
     release = state["release"]
+    # The blade's reach never shrinks (the hitbox does not), but the trailing
+    # wash and the band's inner cut both retreat outward as the swing spends.
+    wash_alpha = int(96 * amp * (1.0 - 0.72 * release))
+    inner_cut = _lerp(0.42, 0.78, _smoothstep(0.0, 0.9, t))
+    width_scale = _lerp(1.0, 0.86, release)
 
-    # Broad blurred envelope first. It is intentionally substantial, but the
-    # opaque white body still defines the player-readable damage region.
-    halo = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    halo_draw = blending_draw(halo)
-    halo_draw.polygon(
-        _scaled(_sweep_polygon(progress, width, width_scale=1.34)),
-        fill=(EDGE[0], EDGE[1], EDGE[2], int(128 * amp)),
+    # 1. WASH — a soft envelope over the whole swept region.
+    wash = Image.new("RGBA", size, (0, 0, 0, 0))
+    blending_draw(wash).polygon(
+        _scaled(_half_disc(1.0, width_scale)),
+        fill=(EDGE[0], EDGE[1], EDGE[2], wash_alpha),
     )
-    halo_draw.polygon(
-        _scaled(_sweep_polygon(progress * 0.93, width, y_shift=5.0, width_scale=0.96)),
-        fill=(BODY[0], BODY[1], BODY[2], int(92 * amp * (1.0 - 0.35 * release))),
-    )
-    halo = halo.filter(ImageFilter.GaussianBlur(radius=int(3.4 * SUPER)))
-    canvas.alpha_composite(halo)
+    wash = wash.filter(ImageFilter.GaussianBlur(radius=int(2.6 * SUPER)))
+    canvas.alpha_composite(wash)
 
-    draw = blending_draw(canvas)
-    draw.polygon(
-        _scaled(_sweep_polygon(progress, width, width_scale=1.08)),
-        fill=(DEEP[0], DEEP[1], DEEP[2], int(220 * amp)),
-    )
-    draw.polygon(
-        _scaled(_sweep_polygon(progress, width, y_shift=-1.0, width_scale=0.84)),
-        fill=(BODY[0], BODY[1], BODY[2], int(238 * amp)),
-    )
-    draw.polygon(
-        _scaled(_sweep_polygon(progress, width, y_shift=-3.0, width_scale=0.58)),
-        fill=(HOT[0], HOT[1], HOT[2], int(250 * amp)),
-    )
-    draw.polygon(
-        _scaled(_sweep_polygon(progress, width, y_shift=-5.0, width_scale=0.31)),
-        fill=(CORE[0], CORE[1], CORE[2], int(255 * amp)),
-    )
+    # 2. BAND — the blade, brightening inward through the stack.
+    for inner, color, alpha in (
+        (inner_cut - 0.10, DEEP, int(215 * amp)),
+        (inner_cut, BODY, int(238 * amp)),
+        (inner_cut + 0.11, HOT, int(248 * amp)),
+        (inner_cut + 0.19, CORE, int(255 * amp)),
+    ):
+        canvas.alpha_composite(
+            _band_image(size, 1.0, _clamp(inner, 0.05, 0.95), width_scale, color, alpha)
+        )
 
-    # Feathered trailing streaks remain inside the same broad sweep footprint.
-    if progress > 0.55:
-        for y_shift, width_scale, alpha in ((8.0, 0.22, 122), (13.0, 0.12, 78)):
-            draw.polygon(
-                _scaled(
-                    _sweep_polygon(
-                        progress * _lerp(0.78, 0.94, release),
-                        width,
-                        y_shift=y_shift,
-                        width_scale=width_scale,
-                    )
-                ),
-                fill=(HOT[0], HOT[1], HOT[2], int(alpha * amp)),
-            )
-
-    if release > 0.05:
-        for x, y, radius, alpha in (
-            (42.0, 122.0, 1.7, 124),
-            (74.0, 130.0, 1.25, 102),
-            (116.0, 114.0, 1.0, 82),
-        ):
-            drift = release * 8.0
-            draw.ellipse(
-                (
-                    _px(x - radius),
-                    _px(y + drift - radius),
-                    _px(x + radius),
-                    _px(y + drift + radius),
-                ),
-                fill=(HOT[0], HOT[1], HOT[2], int(alpha * amp)),
-            )
-
+    # 3. EDGE — the hot leading rim.
+    canvas.alpha_composite(
+        _band_image(size, 1.0, 0.955, width_scale, CORE, int(255 * amp))
+    )
     return canvas.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
@@ -294,58 +258,62 @@ def _draw_down_frame_raw(t: float) -> Image.Image:
     return side.rotate(-90, resample=Image.Resampling.BICUBIC, center=(80, 80))
 
 
-def _poke_polygon(progress: float, max_width: float, width_scale: float = 1.0):
-    x0 = 5.0
-    x1 = _lerp(70.0, 155.0, _clamp(progress))
-    cy = 82.0
-    width = max_width * width_scale
+def _poke_polygon(progress: float, width_scale: float = 1.0):
+    """A straight THRUST, in swing space — the down-tilt, and only it.
+
+    Jon keeps this one a "Marth-like" poke while every other attack becomes a
+    half disc: a thrust reads by reach, not by area. So the shape is a long
+    lens, full height through the middle and tapered at both ends, with the
+    taper at the BODY end short — a spear does not start at a point, the hand
+    is already holding something.
+
+    Full height is right, not generous: the poke's hit volume is thin, so the
+    quad the renderer stretches this into is thin, and art that left margin here
+    would draw a thrust narrower than the one that hurts.
+    """
+    x1 = REACH * _clamp(progress, 0.30, 1.0)
+    half = 78.0 * width_scale
     return [
-        (x0, cy - width * 0.22),
-        (x0 + (x1 - x0) * 0.32, cy - width * 0.50),
-        (x1 - width * 0.34, cy - width * 0.22),
-        (x1, cy),
-        (x1 - width * 0.34, cy + width * 0.22),
-        (x0 + (x1 - x0) * 0.32, cy + width * 0.50),
-        (x0, cy + width * 0.22),
+        (0.0, AXIS_Y - half * 0.62),
+        (x1 * 0.22, AXIS_Y - half),
+        (x1 * 0.82, AXIS_Y - half * 0.78),
+        (x1, AXIS_Y),
+        (x1 * 0.82, AXIS_Y + half * 0.78),
+        (x1 * 0.22, AXIS_Y + half),
+        (0.0, AXIS_Y + half * 0.62),
     ]
 
 
 def _draw_poke_frame_raw(t: float) -> Image.Image:
     shrink = _smoothstep(0.0, 0.82, t)
     release = _smoothstep(0.62, 1.0, t)
-    progress = _lerp(1.0, 0.44, shrink)
-    width = _lerp(50.0, 13.0, shrink) * _lerp(1.0, 0.76, release)
+    progress = _lerp(1.0, 0.62, shrink)
     amp = _amplitude(t)
 
-    canvas = Image.new(
-        "RGBA",
-        (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER),
-        (0, 0, 0, 0),
-    )
+    size = (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER)
+    canvas = Image.new("RGBA", size, (0, 0, 0, 0))
     if amp <= 0.01:
         return canvas.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
 
-    halo = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    halo_draw = blending_draw(halo)
-    halo_draw.polygon(
-        _scaled(_poke_polygon(progress, width, 1.28)),
-        fill=(EDGE[0], EDGE[1], EDGE[2], int(128 * amp)),
+    halo = Image.new("RGBA", size, (0, 0, 0, 0))
+    blending_draw(halo).polygon(
+        _scaled(_poke_polygon(progress, 1.0)),
+        fill=(EDGE[0], EDGE[1], EDGE[2], int(120 * amp)),
     )
     halo = halo.filter(ImageFilter.GaussianBlur(radius=int(3.0 * SUPER)))
     canvas.alpha_composite(halo)
 
     draw = blending_draw(canvas)
     for width_scale, color, alpha in (
-        (1.00, DEEP, 220),
-        (0.78, BODY, 238),
-        (0.50, HOT, 250),
+        (0.94, DEEP, 220),
+        (0.74, BODY, 238),
+        (0.48, HOT, 250),
         (0.20, CORE, 255),
     ):
         draw.polygon(
-            _scaled(_poke_polygon(progress, width, width_scale)),
+            _scaled(_poke_polygon(progress, width_scale * _lerp(1.0, 0.82, release))),
             fill=(color[0], color[1], color[2], int(alpha * amp)),
         )
-
     return canvas.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
@@ -359,20 +327,24 @@ def _draw_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image
         image = _draw_poke_frame_raw(t)
     else:
         image = _draw_sweep_frame(t)
-    return _rotate_frame_ccw(image)
+    # NO global rotation. Every row above is drawn in SWING SPACE — x is the
+    # swing axis, which is the axis `SwingShape` hands the renderer — so a
+    # blanket 90-degree turn here would put the art across its own hitbox.
+    return image
 
 
 def _frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
     t = frame_idx / max(1, frame_count - 1)
+    # Swing space: every row runs body -> tip along +x about the axis. `up` and
+    # `down` are the side sweep turned a quarter turn by `_draw_*_frame_raw`,
+    # so their anchors turn with them.
     anchors = {
-        "side": ((12.0, 82.0), (154.0, 58.0)),
-        "up": ((64.0, 152.0), (97.0, 7.0)),
-        "down": ((96.0, 8.0), (63.0, 153.0)),
-        "poke": ((5.0, 82.0), (155.0, 82.0)),
+        "side": ((0.0, AXIS_Y), (REACH, AXIS_Y)),
+        "up": ((AXIS_Y, FRAME_SIZE[1] - 2.0), (AXIS_Y, FRAME_SIZE[1] - REACH)),
+        "down": ((AXIS_Y, 2.0), (AXIS_Y, REACH)),
+        "poke": ((0.0, AXIS_Y), (REACH, AXIS_Y)),
     }
     origin, tip = anchors[animation]
-    origin = _rotate_point_ccw(origin)
-    tip = _rotate_point_ccw(tip)
     return {
         "anchors": {
             "origin": {"x": origin[0], "y": origin[1]},

@@ -138,40 +138,81 @@ class SideRobotGenerator(CharacterGenerator):
         """Per-attack hitboxes for the player's 3-frame continuous-sweep melee.
 
         Every attack carries a coarse bbox (fallback) PLUS a directional convex
-        ``poly`` that surrounds its slash effect — narrow at the body, flaring
-        wide at the far end (the crescent's tip), via the ``cone`` helper. Active
-        across all three frames. Authored for the right-facing robot; the runtime
-        mirrors x by facing and reads the poly as a ``CombatVolume::Convex``.
-        Coords are source-canvas pixels (NOT frame-clamped, so they reach past
-        the sprite edge)."""
+        ``poly``. Active across all three frames. Authored for the right-facing
+        robot; the runtime mirrors x by facing and reads the poly as a
+        ``CombatVolume::Convex``. Coords are source-canvas pixels (NOT
+        frame-clamped, so they reach past the sprite edge).
+
+        **Slashes are HALF DISCS, not cones** (Jon, 2026-08-02, with a sketch).
+        A cone is narrow at the body and flares outward, which is backwards for a
+        swing: close to the pivot the blade passes through every angle of the
+        arc, and only the forward part of it ever reaches full distance. So the
+        swept region is flat and TALL against the body, bulging outward, tapering
+        to a blunt point — "closer to a half circle than to a cone, still not
+        quite a half circle". The down-tilt is the one exception and stays a
+        Marth-like poke.
+
+        The numbers below come from measuring that sketch: the polygon is 6.6
+        player-widths across and 1.9 player-heights tall, its near edge is 86% of
+        its full height and its far edge 38%, and it sits about a third of a
+        body-height above the player's centre.
+
+        ⚠ SCALE ASSUMPTION. The sketch's player box is drawn at aspect 0.31 and
+        the real collision body is 0.63, so scaling by its width and scaling by
+        its height disagree by 2x (reach 197 vs 99 world units). These use the
+        HEIGHT reading, which keeps reach where it already was and makes this a
+        pure SHAPE change rather than a shape-and-balance one. `SLASH_REACH` is
+        the single knob if that was the wrong guess."""
         w, h = size
         cx = w // 2
         # Body anchor the swings originate from (chest-ish), source pixels.
         body_cy = h * 0.47
+        # The swept-region envelope, shared by every slash so the whole moveset
+        # reads as one weapon (Jon: "similar in size for all attacks but maybe
+        # slight changes"). Per-attack deviation is a multiplier at the call
+        # site, never a second set of numbers here.
+        slash_reach = w * 1.53
+        slash_near = h * 0.59
+        slash_far = h * 0.27
+        # How far above the body's centre the swing's axis sits. A slash comes
+        # down across the chest, not out of the navel.
+        slash_rise = h * 0.28
 
-        def box(x: float, y: float, ww: float, hh: float) -> Dict[str, Any]:
-            # Active across all 3 frames of the continuous-sweep attack (the
-            # blade arcs through its hitbox the whole swing), not just frame 0.
-            return {"bbox": (int(x), int(y), int(ww), int(hh)), "active_frames": [0, 1, 2]}
+        def half_disc(ox, oy, dx, dy, reach, near_half, far_half, belly=1.16):
+            """The swept region of a SLASH: flat against the body, round outside.
 
-        def cone(ox, oy, dx, dy, length, near_w, far_w, tip=0.18):
-            """Slash-arc cone: NARROW (near_w) at the body-side point (ox,oy),
-            flaring to a wide FAN at the far end (far_w) with a forward tip — the
-            lasersword arc spreading at the end of the swing. `(dx,dy)` is the
-            CARDINAL swing direction (no diagonal tilt). Perpendicular half-
-            widths; 5-point convex hull. Authored for the right-facing robot
-            (runtime mirrors x by facing); may reach past the frame (unclamped)."""
+            `(ox, oy)` is the midpoint of the flat near edge and `(dx, dy)` the
+            cardinal swing direction. The outline runs up the near edge, bulges
+            through `belly`, bevels in at the shoulder and closes on a blunt
+            point at `reach` — a half disc squashed forward, which is the shape
+            in Jon's sketch. Nine points, convex by construction.
+
+            The opposite taper to `cone`: `near_half > far_half` here, and that
+            inversion is the whole point. Presentation is fine with it —
+            `SwingShape::oriented_bounds` takes the wider END, so a near-heavy
+            volume still gets a correct enclosing quad with no runtime change.
+            """
             plen = math.hypot(dx, dy) or 1.0
             ux, uy = dx / plen, dy / plen
             px, py = -uy, ux  # perpendicular
-            fx, fy = ox + ux * length, oy + uy * length
-            tx, ty = ox + ux * length * (1.0 + tip), oy + uy * length * (1.0 + tip)
+            shoulder = far_half + (near_half - far_half) * 0.45
+
+            def at(t: float, half: float) -> Tuple[float, float]:
+                return (
+                    ox + ux * reach * t + px * half,
+                    oy + uy * reach * t + py * half,
+                )
+
             return [
-                (ox + px * near_w, oy + py * near_w),  # near, one side
-                (fx + px * far_w, fy + py * far_w),    # far fan, one side
-                (tx, ty),                              # forward tip
-                (fx - px * far_w, fy - py * far_w),    # far fan, other side
-                (ox - px * near_w, oy - py * near_w),  # near, other side
+                at(0.0, near_half),
+                at(0.42, near_half * belly),
+                at(0.66, shoulder),
+                at(0.88, far_half),
+                at(1.0, 0.0),
+                at(0.88, -far_half),
+                at(0.66, -shoulder),
+                at(0.42, -near_half * belly),
+                at(0.0, -near_half),
             ]
 
         def poke(ox, oy, dx, dy, length, half_w):
@@ -200,56 +241,95 @@ class SideRobotGenerator(CharacterGenerator):
                 (ox + rx * 0.5, oy + ry * 0.87),
             ]
 
-        def shaped(b, poly):
-            b["poly"] = poly
-            return b
+        def shaped(poly):
+            """One authored shape, and a bbox DERIVED from it.
+
+            The bbox used to be hand-written beside the poly and the two
+            disagreed badly — for `attack_side` the hull reached 1.8x further and
+            stood 1.7x taller than the rectangle next to it, and which one hurt
+            you depended on which system did the asking. Deriving it means the
+            fallback can no longer contradict the shape it is a fallback for.
+            """
+            xs = [p[0] for p in poly]
+            ys = [p[1] for p in poly]
+            x0, y0 = int(math.floor(min(xs))), int(math.floor(min(ys)))
+            x1, y1 = int(math.ceil(max(xs))), int(math.ceil(max(ys)))
+            return {
+                # Active across all 3 frames of the continuous-sweep attack (the
+                # blade arcs through its hitbox the whole swing), not just frame 0.
+                "active_frames": [0, 1, 2],
+                "bbox": (x0, y0, x1 - x0, y1 - y0),
+                "poly": poly,
+            }
 
         # Each attack carries the coarse bbox (fallback) PLUS a convex `poly`
         # surrounding its slash effect. Arcs are CONES that flare into a fan at
         # the tip; the down-tilt is a straight POKE. All directions are CARDINAL
         # (forward = +x, up = -y, down = +y) — no diagonal tilt.
+        # The swing's axis: chest height for a horizontal slash, and every
+        # vertical swing pivots from the same place.
+        slash_y = body_cy - slash_rise
         return {
-            # Forehand slash: forward cone, flaring tall into a fan at the tip to
-            # cover the whole arc.
+            # Forehand slash — the reference shape the rest grow toward.
             "attack_side": shaped(
-                box(cx + w * 0.26, h * 0.12, w * 0.60, h * 0.72),
-                cone(cx - w * 0.06, body_cy, 1.0, 0.0, w * 1.34, h * 0.22, h * 0.62),
+                half_disc(
+                    cx - w * 0.06, slash_y, 1.0, 0.0, slash_reach, slash_near, slash_far
+                )
             ),
-            # Up-tilt slash: straight overhead cone (cardinal up).
+            # Up-tilt: the same half disc turned overhead. Slightly shorter,
+            # because an overhead swing has less room than a forehand.
             "attack_up": shaped(
-                box(cx - w * 0.12, -h * 0.08, w * 0.58, h * 0.62),
-                cone(cx, body_cy - h * 0.04, 0.0, -1.0, h * 1.0, w * 0.20, w * 0.54),
+                half_disc(
+                    cx, body_cy - h * 0.04, 0.0, -1.0,
+                    slash_reach * 0.88, slash_near * 0.92, slash_far,
+                )
             ),
-            # Aerial up: straight overhead cone.
+            # Aerial up: the up-tilt with a touch less reach.
             "air_up": shaped(
-                box(cx - w * 0.22, -h * 0.10, w * 0.55, h * 0.62),
-                cone(cx, body_cy - h * 0.04, 0.0, -1.0, h * 1.0, w * 0.18, w * 0.48),
+                half_disc(
+                    cx, body_cy - h * 0.04, 0.0, -1.0,
+                    slash_reach * 0.84, slash_near * 0.88, slash_far,
+                )
             ),
-            # Down-tilt: a straight forward-low POKE (jab), not a cone.
+            # ⚠ Down-tilt is the ONE attack that is NOT a slash: a Marth-like
+            # low poke, and it keeps its own primitive (Jon, 2026-08-02). Longer,
+            # lower and thinner than it was — a thrust reads by reach, not by
+            # area — but this is a first pass and wants a look before it settles.
             "attack_down": shaped(
-                box(cx + w * 0.16, h * 0.50, w * 0.58, h * 0.46),
-                poke(cx, body_cy + h * 0.16, 1.0, 0.0, w * 1.04, h * 0.13),
+                poke(cx, body_cy + h * 0.22, 1.0, 0.0, w * 1.30, h * 0.11)
             ),
-            # Aerial down: straight-down cone.
+            # Aerial down: the half disc pointed at the floor. This is the pogo,
+            # so its near edge matters — that is the part that lands on a head.
             "air_down": shaped(
-                box(cx - w * 0.28, h * 0.52, w * 0.62, h * 0.58),
-                cone(cx, body_cy + h * 0.04, 0.0, 1.0, h * 1.0, w * 0.18, w * 0.48),
+                half_disc(
+                    cx, body_cy + h * 0.04, 0.0, 1.0,
+                    slash_reach * 0.84, slash_near * 0.88, slash_far,
+                )
             ),
-            # Aerial forward: straight forward cone.
+            # Aerial forward: the forehand, airborne.
             "air_forward": shaped(
-                box(cx + w * 0.22, h * 0.22, w * 0.60, h * 0.58),
-                cone(cx - w * 0.02, body_cy, 1.0, 0.0, w * 1.22, h * 0.20, h * 0.56),
+                half_disc(
+                    cx - w * 0.02, slash_y, 1.0, 0.0,
+                    slash_reach * 0.94, slash_near, slash_far,
+                )
             ),
-            # Aerial back: straight BACKWARD cone (left of centre).
+            # Aerial back: the forehand reversed. Shorter — a back-air is a
+            # heel, not a lunge.
             "air_back": shaped(
-                box(cx - w * 0.72, h * 0.22, w * 0.62, h * 0.58),
-                cone(cx + w * 0.02, body_cy, -1.0, 0.0, w * 1.12, h * 0.20, h * 0.52),
+                half_disc(
+                    cx + w * 0.02, slash_y, -1.0, 0.0,
+                    slash_reach * 0.86, slash_near * 0.94, slash_far,
+                )
             ),
-            # Aerial neutral: a wide spin all the way around the body.
-            "air_neutral": shaped(
-                box(cx - w * 0.42, h * 0.18, w * 0.92, h * 0.68),
-                ring(cx, body_cy, w * 0.78, h * 0.62),
-            ),
+            # Aerial neutral: a spin all the way around the body, so it is a
+            # RING and cannot be a half disc — a half disc has a direction and a
+            # spin has none.
+            #
+            # ⚠ No move binds this row. `directional_attack_variants` maps the
+            # six aerials + tilts and none of them names `air_neutral`, so this
+            # geometry is authored and unreachable. Left as-is rather than
+            # reshaped: changing a polygon nothing swings is motion without work.
+            "air_neutral": shaped(ring(cx, body_cy, w * 0.78, h * 0.62)),
         }
 
     def body_inset(self) -> Dict[str, float]:
