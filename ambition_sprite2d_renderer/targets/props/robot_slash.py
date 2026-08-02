@@ -5,7 +5,7 @@ the attack pose. The runtime rotates rows only with the gravity frame and uses
 a local horizontal mirror for left-facing side attacks, so facing never turns
 the asymmetric accent layers upside down.
 
-The five-frame, 120 ms rows preserve the existing lifetime, but now begin in
+The five-frame, 100 ms rows match the melee ACTIVE window exactly, and begin in
 the fully active state for Hollow-Knight-like responsiveness:
 
 - impact: a broad white cut is already out on frame 0,
@@ -103,22 +103,47 @@ def _amplitude(t: float) -> float:
 # exactly those axes, so art authored here lands ON the hit polygon rather than
 # near it.
 #
-# These mirror `robot_side.py::attack_hitboxes`'s `half_disc` station for
-# station — flat and tall against the body, bulging through the belly, bevelled
-# at the shoulder, blunt point at reach. The polygon and the art are the same
-# shape by construction, which is the only way "the vfx matches the hitbox"
-# survives someone editing one of them.
+# **The art sits INSIDE the polygon, never outside it.** Jon's rule: it is fine
+# if the hitbox slightly overreaches the effect, but 100% of what is drawn must
+# hit, "the player should never feel like they should have hit when they
+# didn't". The wash is blurred, and a blur spreads, so the envelope is inset far
+# enough that the spread still lands inside the hull the generator authors.
+ART_INSET = 0.93
 AXIS_Y = 80.0
-REACH = 158.0
-NEAR_HALF = 68.0
-BELLY_HALF = 78.0
-FAR_HALF = 31.0
-_STATIONS = (
-    (0.00, NEAR_HALF),
-    (0.42, BELLY_HALF),
-    (0.66, FAR_HALF + (BELLY_HALF - FAR_HALF) * 0.45),
-    (0.88, FAR_HALF),
-    (1.00, 0.0),
+REACH = 158.0 * ART_INSET
+NEAR_HALF = 68.0 * ART_INSET  # kept for the poke's reference only
+BELLY_HALF = 80.0 * ART_INSET
+FAR_HALF = 31.0 * ART_INSET
+# ⚠ MEASURED, not invented. These are the hit polygon's own half-width profile
+# expressed in the QUAD the renderer stretches this frame into — sampled off
+# `player_robot_v3`'s `attack_side` hull with the same projection
+# `CombatVolume::swing_shape` performs, then scaled by `ART_INSET`.
+#
+# Authoring them by eye is what leaked: the polygon is TALL and flat against the
+# body, but the quad's axis runs from the ATTACKER, so the near edge's corner is
+# the nearest point and the shape comes to a POINT at t=0 in quad space rather
+# than starting at full height. Art drawn to the abstract half-disc profile put
+# 16% of its ink outside the volume — visible swing that did not hit, which is
+# the exact thing Jon ruled out.
+#
+# ⚠ v3's numbers. The sheet is still shared, so another character swinging it
+# gets a silhouette tuned to the protagonist's polygon. That is what the
+# per-character VFX work fixes; until then this is the character that matters.
+_STATIONS = tuple(
+    (t, half * ART_INSET)
+    for t, half in (
+        (0.00, 0.0),
+        (0.10, 62.6),
+        (0.20, 67.9),
+        (0.30, 73.2),
+        (0.42, 74.1),
+        (0.55, 64.4),
+        (0.66, 54.7),
+        (0.80, 42.3),
+        (0.88, 35.3),
+        (0.95, 21.2),
+        (1.00, 0.0),
+    )
 )
 
 
@@ -126,14 +151,50 @@ def _scaled(points):
     return [(_px(x), _px(y)) for x, y in points]
 
 
+def _spline_through(control, steps: int = 12):
+    """Catmull-Rom through the envelope's control points, clamped at the ends.
+
+    The SAME curve `player_robot_v3.py` runs its hit polygon through, for the
+    same reason: a blade's edge is a curve, and interpolating the control points
+    linearly gives a faceted polyline exactly where the blade is widest — "we
+    need to make the arc of the curve smooth like a sword slash".
+    """
+    pts = []
+    ext = [control[0]] + list(control) + [control[-1]]
+    for i in range(len(ext) - 3):
+        p0, p1, p2, p3 = ext[i], ext[i + 1], ext[i + 2], ext[i + 3]
+        for s in range(steps):
+            u = s / steps
+            u2, u3 = u * u, u * u * u
+            pts.append(
+                tuple(
+                    0.5
+                    * (
+                        2 * p1[k]
+                        + (-p0[k] + p2[k]) * u
+                        + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * u2
+                        + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * u3
+                    )
+                    for k in (0, 1)
+                )
+            )
+    pts.append(control[-1])
+    return pts
+
+
+_ARC = _spline_through(_STATIONS)
+
+
 def _half_at(t: float) -> float:
     """Half-height of the swept region a fraction `t` along the swing."""
     t = _clamp(t)
-    for (t0, h0), (t1, h1) in zip(_STATIONS, _STATIONS[1:]):
-        if t <= t1:
-            span = (t1 - t0) or 1.0
-            return _lerp(h0, h1, (t - t0) / span)
-    return 0.0
+    lo, hi = _ARC[0], _ARC[-1]
+    for a, b in zip(_ARC, _ARC[1:]):
+        if a[0] <= t <= b[0]:
+            lo, hi = a, b
+            break
+    span = (hi[0] - lo[0]) or 1.0
+    return max(0.0, _lerp(lo[1], hi[1], (t - lo[0]) / span))
 
 
 def _half_disc(reach_scale: float = 1.0, width_scale: float = 1.0, samples: int = 48):
@@ -227,7 +288,7 @@ def _draw_sweep_frame(t: float) -> Image.Image:
         _scaled(_half_disc(1.0, width_scale)),
         fill=(EDGE[0], EDGE[1], EDGE[2], wash_alpha),
     )
-    wash = wash.filter(ImageFilter.GaussianBlur(radius=int(2.6 * SUPER)))
+    wash = wash.filter(ImageFilter.GaussianBlur(radius=int(1.8 * SUPER)))
     canvas.alpha_composite(wash)
 
     # 2. BAND — the blade, brightening inward through the stack.

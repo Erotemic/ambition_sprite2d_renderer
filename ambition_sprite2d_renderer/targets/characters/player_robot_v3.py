@@ -435,15 +435,206 @@ def frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
 
 
 
+# ── The protagonist's slash geometry ─────────────────────────────────────────
+#
+# ⚠ THIS BELONGS TO v3, and lives here for that reason (Jon, 2026-08-02: "not
+# every character should inherit this particular slash vfx, sfx, hurtbox. This
+# belongs to the player v3"). `SideRobotGenerator` is shared by every robot in
+# the family — the enemies and their variants — so authoring the protagonist's
+# swing there gave a goblin-tier robot the hero's reach.
+#
+# **Slashes are HALF DISCS, not cones.** A cone is narrow at the body and flares
+# outward, which is backwards for a swing: close to the pivot the blade passes
+# through every angle of the arc, and only the forward part of it ever reaches
+# full distance. So the swept region is flat and TALL against the body, bulges,
+# and tapers to a blunt point.
+#
+# The numbers come from measuring Jon's sketch: 6.6 player-widths across, 1.9
+# player-heights tall, near edge 86% of full height and far end 38%.
+#
+# ⚠ SCALE ASSUMPTION. The sketch's player box is drawn at aspect 0.31 where the
+# real collision body is 0.63, so scaling by its width and by its height
+# disagree by 2x (reach 197 vs 99 world units). These take the HEIGHT reading,
+# which keeps reach where it already was and makes this a pure SHAPE change
+# rather than a shape-and-balance one. `SLASH_REACH` is the single knob.
+SLASH_REACH = 128 * 1.53
+SLASH_NEAR = 128 * 0.59
+SLASH_FAR = 128 * 0.27
+# How far above the body's centre the swing's axis sits. A slash comes down
+# across the chest, not out of the navel — but it was h*0.28 and Jon read that
+# as "tilts too much upward in the side jab", so it is a nudge now, not a lift.
+SLASH_RISE = 128 * 0.0
+# Samples per control-point segment on the arc. The outline used to be the five
+# control points themselves, which read as a faceted polyline exactly where the
+# blade is widest.
+SLASH_ARC_STEPS = 6
+
+
+def _slash_spline(control, steps: int = SLASH_ARC_STEPS):
+    """Catmull-Rom through the envelope's control points, clamped at the ends.
+
+    The control points ARE the shape's definition — editing the swing means
+    editing them — and this only decides how smoothly the outline passes
+    through them. "Smooth like a sword slash" is a curve, not a polyline.
+    """
+    pts = []
+    ext = [control[0]] + list(control) + [control[-1]]
+    for i in range(len(ext) - 3):
+        p0, p1, p2, p3 = ext[i], ext[i + 1], ext[i + 2], ext[i + 3]
+        for s in range(steps):
+            u = s / steps
+            u2, u3 = u * u, u * u * u
+            pts.append(
+                tuple(
+                    0.5
+                    * (
+                        2 * p1[k]
+                        + (-p0[k] + p2[k]) * u
+                        + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * u2
+                        + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * u3
+                    )
+                    for k in (0, 1)
+                )
+            )
+    pts.append(control[-1])
+    return pts
+
+
+def _convex_hull(points):
+    """Monotone-chain hull, counter-clockwise.
+
+    **The authored polygon must BE the tested polygon.** The runtime lowers a
+    convex volume through `ConvexPolygon::from_convex_hull`, so a concave
+    authored outline is silently played as its hull — a shape nobody drew and
+    the debug overlay does not show. Catmull-Rom overshoots slightly at the
+    belly, which is exactly enough to make that happen. Hulling here also gives
+    Jon's rule for free: the volume is a convex poly AROUND the art, never
+    inside it, so nothing that is drawn fails to hit.
+    """
+    pts = sorted(set((round(x, 4), round(y, 4)) for x, y in points))
+    if len(pts) < 3:
+        return list(pts)
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower = []
+    for p in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+            lower.pop()
+        lower.append(p)
+    upper = []
+    for p in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+            upper.pop()
+        upper.append(p)
+    return lower[:-1] + upper[:-1]
+
+
+def _half_disc(ox, oy, dx, dy, reach, near_half, far_half, belly=1.16):
+    """The swept region of a SLASH: flat against the body, round outside.
+
+    `(ox, oy)` is the midpoint of the flat near edge and `(dx, dy)` the cardinal
+    swing direction. The outline runs up the near edge, bulges through `belly`,
+    bevels in at the shoulder and closes on a blunt point at `reach`.
+
+    The opposite taper to a cone: `near_half > far_half`, and that inversion is
+    the point. Presentation is fine with it — `SwingShape::oriented_bounds`
+    takes the wider END, so a near-heavy volume gets a correct enclosing quad
+    with no runtime change.
+    """
+    plen = math.hypot(dx, dy) or 1.0
+    ux, uy = dx / plen, dy / plen
+    px, py = -uy, ux
+    shoulder = far_half + (near_half - far_half) * 0.45
+    control = [
+        (0.0, near_half),
+        (0.42, near_half * belly),
+        (0.66, shoulder),
+        (0.88, far_half),
+        (1.0, 0.0),
+    ]
+    arc = _slash_spline(control)
+
+    def at(t, half):
+        return (ox + ux * reach * t + px * half, oy + uy * reach * t + py * half)
+
+    outline = [at(t, half) for t, half in arc]
+    outline += [at(t, -half) for t, half in reversed(arc[:-1])]
+    return _convex_hull(outline)
+
+
+def _player_attack_hitboxes(size: Tuple[int, int]) -> Dict[str, dict]:
+    """v3's OWN attack geometry. Half discs everywhere but the down-tilt.
+
+    The down-tilt stays a Marth-like poke by Jon's call: a thrust reads by
+    reach, not by area. `air_neutral` stays the family's ring — a half disc has
+    a direction and a spin has none — and no move binds that row anyway.
+    """
+    w, h = size
+    cx = w // 2
+    body_cy = h * 0.47
+    slash_y = body_cy - SLASH_RISE
+    family = SideRobotGenerator().attack_hitboxes(size)
+
+    def shaped(poly):
+        """One authored shape, and a bbox DERIVED from it.
+
+        The bbox used to be hand-written beside the poly and the two disagreed
+        badly — the hull reached 1.8x further than the rectangle next to it, and
+        which one hurt you depended on which system did the asking.
+        """
+        xs = [p[0] for p in poly]
+        ys = [p[1] for p in poly]
+        x0, y0 = int(math.floor(min(xs))), int(math.floor(min(ys)))
+        x1, y1 = int(math.ceil(max(xs))), int(math.ceil(max(ys)))
+        return {
+            "active_frames": [0, 1, 2],
+            "bbox": (x0, y0, x1 - x0, y1 - y0),
+            "poly": poly,
+        }
+
+    return {
+        "attack_side": shaped(
+            _half_disc(cx - w * 0.06, slash_y, 1.0, 0.0, SLASH_REACH, SLASH_NEAR, SLASH_FAR)
+        ),
+        "attack_up": shaped(
+            _half_disc(cx, body_cy - h * 0.04, 0.0, -1.0,
+                       SLASH_REACH * 0.88, SLASH_NEAR * 0.92, SLASH_FAR)
+        ),
+        "air_up": shaped(
+            _half_disc(cx, body_cy - h * 0.04, 0.0, -1.0,
+                       SLASH_REACH * 0.84, SLASH_NEAR * 0.88, SLASH_FAR)
+        ),
+        # The one attack that is not a slash.
+        "attack_down": family["attack_down"],
+        "air_down": shaped(
+            _half_disc(cx, body_cy + h * 0.04, 0.0, 1.0,
+                       SLASH_REACH * 0.84, SLASH_NEAR * 0.88, SLASH_FAR)
+        ),
+        "air_forward": shaped(
+            _half_disc(cx - w * 0.02, slash_y, 1.0, 0.0,
+                       SLASH_REACH * 0.94, SLASH_NEAR, SLASH_FAR)
+        ),
+        "air_back": shaped(
+            _half_disc(cx + w * 0.02, slash_y, -1.0, 0.0,
+                       SLASH_REACH * 0.86, SLASH_NEAR * 0.94, SLASH_FAR)
+        ),
+        # Unbound by any move, and a ring rather than a half disc. Left as the
+        # family authored it.
+        "air_neutral": family["air_neutral"],
+    }
+
+
 def _translated_legacy_hitboxes() -> Dict[str, dict]:
-    """Keep legacy combat geometry at its authored 128px size.
+    """Keep combat geometry at its authored 128px size.
 
     The SVG rig uses a larger logical canvas so a rotating roll and long boot
-    flames cannot clip. Scaling the old hitbox authoring with that canvas would
-    incorrectly enlarge every attack, so translate the original 128px geometry
-    into the new root/ground coordinate system without changing its dimensions.
+    flames cannot clip. Scaling the hitbox authoring with that canvas would
+    incorrectly enlarge every attack, so translate the 128px geometry into the
+    new root/ground coordinate system without changing its dimensions.
     """
-    hitboxes: Dict[str, dict] = SideRobotGenerator().attack_hitboxes((128, 128))
+    hitboxes: Dict[str, dict] = _player_attack_hitboxes((128, 128))
     dx = load_doc().frame["center_x"] - 64.0
     dy = load_doc().frame["ground_y"] - 118.0
     for spec in hitboxes.values():
@@ -458,6 +649,7 @@ def _translated_legacy_hitboxes() -> Dict[str, dict]:
                 for x, y in poly
             ]
     return hitboxes
+
 
 def render(out_dir: str | Path, **opts):
     del opts
