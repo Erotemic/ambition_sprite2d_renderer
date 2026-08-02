@@ -18,6 +18,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet, write_canonical
+from ...core import slash_envelope
 from .robot_side import SideRobotGenerator
 
 TARGET_NAME = "player_robot_v3"
@@ -437,144 +438,86 @@ def frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
 
 # ── The protagonist's slash geometry ─────────────────────────────────────────
 #
-# ⚠ THIS BELONGS TO v3, and lives here for that reason (Jon, 2026-08-02: "not
-# every character should inherit this particular slash vfx, sfx, hurtbox. This
-# belongs to the player v3"). `SideRobotGenerator` is shared by every robot in
-# the family — the enemies and their variants — so authoring the protagonist's
-# swing there gave a goblin-tier robot the hero's reach.
+# ⚠ THIS BELONGS TO v3 (Jon, 2026-08-02: "not every character should inherit
+# this particular slash vfx, sfx, hurtbox. This belongs to the player v3").
+# `SideRobotGenerator` is shared by every robot in the family, so authoring the
+# protagonist's swing there gave a goblin-tier robot the hero's reach.
 #
-# **Slashes are HALF DISCS, not cones.** A cone is narrow at the body and flares
-# outward, which is backwards for a swing: close to the pivot the blade passes
-# through every angle of the arc, and only the forward part of it ever reaches
-# full distance. So the swept region is flat and TALL against the body, bulges,
-# and tapers to a blunt point.
+# The SHAPE lives in `core/slash_envelope.py`, because the effect and the
+# polygon are the same swing and must not be two authorings of it. What differs
+# is density: the art samples the envelope finely and smoothly, this samples it
+# COARSELY and hulls the result. "The hit poly should be a low res convex poly
+# around it — we only need a small number of vertices, and no curvature on the
+# hit poly." It is a container, not a drawing.
 #
-# The numbers come from measuring Jon's sketch: 6.6 player-widths across, 1.9
-# player-heights tall, near edge 86% of full height and far end 38%.
-#
-# ⚠ SCALE ASSUMPTION. The sketch's player box is drawn at aspect 0.31 where the
+# ⚠ SCALE ASSUMPTION. Jon's sketch draws its player box at aspect 0.31 where the
 # real collision body is 0.63, so scaling by its width and by its height
 # disagree by 2x (reach 197 vs 99 world units). These take the HEIGHT reading,
-# which keeps reach where it already was and makes this a pure SHAPE change
-# rather than a shape-and-balance one. `SLASH_REACH` is the single knob.
+# which keeps reach where it already was. `SLASH_REACH` is the single knob.
 SLASH_REACH = 128 * 1.53
-SLASH_NEAR = 128 * 0.59
-SLASH_FAR = 128 * 0.27
-# How far above the body's centre the swing's axis sits. A slash comes down
-# across the chest, not out of the navel — but it was h*0.28 and Jon read that
-# as "tilts too much upward in the side jab", so it is a nudge now, not a lift.
-SLASH_RISE = 128 * 0.0
-# Samples per control-point segment on the arc. The outline used to be the five
-# control points themselves, which read as a faceted polyline exactly where the
-# blade is widest.
-SLASH_ARC_STEPS = 6
+# Peak half-width. The envelope is normalised to a peak of 1, so this is the
+# only size the profile needs.
+SLASH_HALF = 83.0
+# How far the container sits OUTSIDE the effect. A hull of points on a curve
+# cuts the chord between them, so this covers that sag and Jon's "it's ok if it
+# slightly gives a hit outside the vfx, just slightly though".
+SLASH_HULL_MARGIN = 1.11
+# The point is blunt, not needle-sharp: a spike adds reach the art never draws.
+SLASH_TIP = 0.96
+# ⚠ THE SWING'S AXIS MUST PASS THROUGH THE ATTACKER, and the attacker is the
+# body's CENTRE, not the anchor the rest of this file measures from.
+#
+# The runtime derives the drawn quad from the attacker to the volume's centroid.
+# Put the swing's origin anywhere off that point across the axis and the quad
+# tilts while the art does not, so the effect slides off the polygon — 6.4
+# degrees of tilt was worth 7.6% of the drawn slash landing outside the volume.
+#
+# `118` is this authoring frame's ground line (see `_translated_legacy_hitboxes`),
+# and the collision body is 48 world units tall at 0.50625 world units per frame
+# pixel, so its centre sits half that above the feet.
+BODY_CENTER_Y = 118.0 - (48.0 / 0.50625) / 2
 
 
-def _slash_spline(control, steps: int = SLASH_ARC_STEPS):
-    """Catmull-Rom through the envelope's control points, clamped at the ends.
+def _slash_poly(ox, oy, dx, dy, reach, half):
+    """The swept region as a COARSE convex polygon, in frame pixels.
 
-    The control points ARE the shape's definition — editing the swing means
-    editing them — and this only decides how smoothly the outline passes
-    through them. "Smooth like a sword slash" is a curve, not a polyline.
-    """
-    pts = []
-    ext = [control[0]] + list(control) + [control[-1]]
-    for i in range(len(ext) - 3):
-        p0, p1, p2, p3 = ext[i], ext[i + 1], ext[i + 2], ext[i + 3]
-        for s in range(steps):
-            u = s / steps
-            u2, u3 = u * u, u * u * u
-            pts.append(
-                tuple(
-                    0.5
-                    * (
-                        2 * p1[k]
-                        + (-p0[k] + p2[k]) * u
-                        + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * u2
-                        + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * u3
-                    )
-                    for k in (0, 1)
-                )
-            )
-    pts.append(control[-1])
-    return pts
-
-
-def _convex_hull(points):
-    """Monotone-chain hull, counter-clockwise.
-
-    **The authored polygon must BE the tested polygon.** The runtime lowers a
-    convex volume through `ConvexPolygon::from_convex_hull`, so a concave
-    authored outline is silently played as its hull — a shape nobody drew and
-    the debug overlay does not show. Catmull-Rom overshoots slightly at the
-    belly, which is exactly enough to make that happen. Hulling here also gives
-    Jon's rule for free: the volume is a convex poly AROUND the art, never
-    inside it, so nothing that is drawn fails to hit.
-    """
-    pts = sorted(set((round(x, 4), round(y, 4)) for x, y in points))
-    if len(pts) < 3:
-        return list(pts)
-
-    def cross(o, a, b):
-        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
-
-    lower = []
-    for p in pts:
-        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
-            lower.pop()
-        lower.append(p)
-    upper = []
-    for p in reversed(pts):
-        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
-            upper.pop()
-        upper.append(p)
-    return lower[:-1] + upper[:-1]
-
-
-def _half_disc(ox, oy, dx, dy, reach, near_half, far_half, belly=1.16):
-    """The swept region of a SLASH: flat against the body, round outside.
-
-    `(ox, oy)` is the midpoint of the flat near edge and `(dx, dy)` the cardinal
-    swing direction. The outline runs up the near edge, bulges through `belly`,
-    bevels in at the shoulder and closes on a blunt point at `reach`.
-
-    The opposite taper to a cone: `near_half > far_half`, and that inversion is
-    the point. Presentation is fine with it — `SwingShape::oriented_bounds`
-    takes the wider END, so a near-heavy volume gets a correct enclosing quad
-    with no runtime change.
+    `(ox, oy)` is where the swing starts and `(dx, dy)` its cardinal direction.
     """
     plen = math.hypot(dx, dy) or 1.0
     ux, uy = dx / plen, dy / plen
     px, py = -uy, ux
-    shoulder = far_half + (near_half - far_half) * 0.45
-    control = [
-        (0.0, near_half),
-        (0.42, near_half * belly),
-        (0.66, shoulder),
-        (0.88, far_half),
-        (1.0, 0.0),
+    return [
+        (ox + ux * reach * t + px * h * half, oy + uy * reach * t + py * h * half)
+        for t, h in slash_envelope.hull_points(SLASH_HULL_MARGIN, SLASH_TIP)
     ]
-    arc = _slash_spline(control)
 
-    def at(t, half):
-        return (ox + ux * reach * t + px * half, oy + uy * reach * t + py * half)
 
-    outline = [at(t, half) for t, half in arc]
-    outline += [at(t, -half) for t, half in reversed(arc[:-1])]
-    return _convex_hull(outline)
+# The thrust: long, thin, parallel-sided. Four vertices is the whole shape.
+POKE_REACH = 128 * 1.30
+POKE_HALF = 128 * 0.11
+
+
+def _poke_poly(ox, oy, dx, dy, reach, half):
+    plen = math.hypot(dx, dy) or 1.0
+    ux, uy = dx / plen, dy / plen
+    px, py = -uy, ux
+
+    def at(t, h):
+        return (ox + ux * reach * t + px * h, oy + uy * reach * t + py * h)
+
+    return [at(0.0, half), at(0.86, half), at(1.0, 0.0), at(0.86, -half), at(0.0, -half)]
 
 
 def _player_attack_hitboxes(size: Tuple[int, int]) -> Dict[str, dict]:
-    """v3's OWN attack geometry. Half discs everywhere but the down-tilt.
+    """v3's OWN attack geometry. Slashes everywhere but the down-tilt.
 
     The down-tilt stays a Marth-like poke by Jon's call: a thrust reads by
-    reach, not by area. `air_neutral` stays the family's ring — a half disc has
-    a direction and a spin has none — and no move binds that row anyway.
+    reach, not by area. `air_neutral` stays the family's ring — a swing envelope
+    has a direction and a spin has none — and no move binds that row anyway.
     """
     w, h = size
     cx = w // 2
-    body_cy = h * 0.47
-    slash_y = body_cy - SLASH_RISE
+    body_cy = BODY_CENTER_Y
     family = SideRobotGenerator().attack_hitboxes(size)
 
     def shaped(poly):
@@ -594,33 +537,40 @@ def _player_attack_hitboxes(size: Tuple[int, int]) -> Dict[str, dict]:
             "poly": poly,
         }
 
+    # ⚠ The swing starts ON the body's centre line and runs along a cardinal.
+    # That symmetry is load-bearing, not tidiness: the runtime derives the quad
+    # from the ATTACKER to the volume's centroid, so an origin offset across the
+    # axis tilts the quad and the art no longer lands on the polygon. A `rise`
+    # of h*0.28 put 16% of the drawn slash outside the volume, and Jon read the
+    # same number as "it tilts too much upward in the side jab".
     return {
         "attack_side": shaped(
-            _half_disc(cx - w * 0.06, slash_y, 1.0, 0.0, SLASH_REACH, SLASH_NEAR, SLASH_FAR)
+            _slash_poly(cx - w * 0.06, body_cy, 1.0, 0.0, SLASH_REACH, SLASH_HALF)
         ),
         "attack_up": shaped(
-            _half_disc(cx, body_cy - h * 0.04, 0.0, -1.0,
-                       SLASH_REACH * 0.88, SLASH_NEAR * 0.92, SLASH_FAR)
+            _slash_poly(cx, body_cy, 0.0, -1.0, SLASH_REACH * 0.88, SLASH_HALF * 0.92)
         ),
         "air_up": shaped(
-            _half_disc(cx, body_cy - h * 0.04, 0.0, -1.0,
-                       SLASH_REACH * 0.84, SLASH_NEAR * 0.88, SLASH_FAR)
+            _slash_poly(cx, body_cy, 0.0, -1.0, SLASH_REACH * 0.84, SLASH_HALF * 0.88)
         ),
-        # The one attack that is not a slash.
-        "attack_down": family["attack_down"],
+        # The one attack that is not a slash — a Marth-like poke by Jon's call:
+        # a thrust reads by reach, not by area. It is v3's own rather than the
+        # family's, because the family anchors it below the body and the runtime
+        # measures the quad from the attacker: that offset tilts the quad and
+        # cost 33.7% of the drawn thrust landing outside the volume.
+        "attack_down": shaped(_poke_poly(cx, body_cy, 1.0, 0.0,
+                                         POKE_REACH, POKE_HALF)),
         "air_down": shaped(
-            _half_disc(cx, body_cy + h * 0.04, 0.0, 1.0,
-                       SLASH_REACH * 0.84, SLASH_NEAR * 0.88, SLASH_FAR)
+            _slash_poly(cx, body_cy, 0.0, 1.0, SLASH_REACH * 0.84, SLASH_HALF * 0.88)
         ),
         "air_forward": shaped(
-            _half_disc(cx - w * 0.02, slash_y, 1.0, 0.0,
-                       SLASH_REACH * 0.94, SLASH_NEAR, SLASH_FAR)
+            _slash_poly(cx - w * 0.02, body_cy, 1.0, 0.0, SLASH_REACH * 0.94, SLASH_HALF)
         ),
         "air_back": shaped(
-            _half_disc(cx + w * 0.02, slash_y, -1.0, 0.0,
-                       SLASH_REACH * 0.86, SLASH_NEAR * 0.94, SLASH_FAR)
+            _slash_poly(cx + w * 0.02, body_cy, -1.0, 0.0,
+                        SLASH_REACH * 0.86, SLASH_HALF * 0.94)
         ),
-        # Unbound by any move, and a ring rather than a half disc. Left as the
+        # Unbound by any move, and a ring rather than a swing. Left as the
         # family authored it.
         "air_neutral": family["air_neutral"],
     }

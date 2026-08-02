@@ -7,6 +7,7 @@ swap in SMB1-like pickups / scenery without touching runtime code first.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import cos, pi, sin
 from pathlib import Path
 from typing import Callable, Dict, List, Tuple
 
@@ -37,6 +38,16 @@ LOGICAL = (28, 28)
 SCALE = 3
 LABEL_WIDTH = 120
 
+WAND_PINK = (224, 72, 148, 255)
+WAND_PINK_DARK = (139, 42, 96, 255)
+WAND_VIOLET = (119, 83, 196, 255)
+BRASS = (187, 119, 47, 255)
+BRASS_LIGHT = (242, 190, 83, 255)
+BRASS_DARK = (102, 62, 34, 255)
+EMBER_ORANGE = (239, 91, 38, 255)
+EMBER_YELLOW = (255, 218, 92, 255)
+LANTERN_GLASS = (255, 174, 61, 145)
+
 
 @dataclass(frozen=True)
 class PropSpec:
@@ -56,6 +67,22 @@ def _outlined_rect(px, x1, y1, x2, y2, *, fill, inset: float = 0.4) -> None:
         px.rect(x1, y1, x2, y2, fill=fill)
         return
     px.rect(ix1, iy1, ix2, iy2, fill=fill)
+
+
+def _star_points(
+    cx: float,
+    cy: float,
+    outer_radius: float,
+    inner_radius: float,
+    *,
+    rotation: float = -pi / 2.0,
+) -> List[Tuple[float, float]]:
+    points: List[Tuple[float, float]] = []
+    for index in range(10):
+        radius = outer_radius if index % 2 == 0 else inner_radius
+        angle = rotation + index * pi / 5.0
+        points.append((cx + cos(angle) * radius, cy + sin(angle) * radius))
+    return points
 
 
 
@@ -180,6 +207,156 @@ def _spark_blossom_frame(animation: str, frame_idx: int, nframes: int) -> Image.
     return frame
 
 
+def _star_wand_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
+    """Magical-girl wand pickup: Mary-O's invincibility-grade star item."""
+    bob = [0.0, -0.5, -0.9, -0.5, 0.0, -0.3][frame_idx % 6]
+    pulse = [0.15, 0.45, 1.0, 0.55, 0.25, 0.7][frame_idx % 6]
+    sparkle_slot = frame_idx % 3
+
+    def painter(px) -> None:
+        # A diagonal silhouette reads as a held wand rather than a generic
+        # collectible star. The ribbon wings below the crown supply the
+        # magical-girl read at the tiny 28 px authoring scale.
+        px.line([(8.0, 23.0 + bob), (16.4, 11.3 + bob)], fill=OUTLINE, width=3.0)
+        px.line([(8.0, 23.0 + bob), (16.4, 11.3 + bob)], fill=WAND_PINK, width=1.55)
+        px.line([(9.1, 21.7 + bob), (15.8, 12.2 + bob)], fill=(255, 174, 216, 255), width=0.45)
+
+        # Pommel and grip collar.
+        px.ellipse(5.8, 21.0 + bob, 9.8, 25.0 + bob, fill=WAND_VIOLET, outline=OUTLINE, width=0.7)
+        px.ellipse(6.8, 21.8 + bob, 8.8, 23.8 + bob, fill=(199, 162, 255, 255), outline=None)
+        px.polygon(
+            [(13.1, 14.4 + bob), (15.0, 11.8 + bob), (17.1, 13.5 + bob), (15.2, 15.5 + bob)],
+            fill=WAND_PINK_DARK,
+            outline=OUTLINE,
+            width=0.55,
+        )
+
+        # Ribbon / wing flourishes make the head more ornate without turning
+        # the entire pickup into an unreadable halo.
+        px.polygon(
+            [(14.6, 12.2 + bob), (10.5, 11.3 + bob), (12.8, 14.2 + bob)],
+            fill=WAND_PINK,
+            outline=OUTLINE,
+            width=0.55,
+        )
+        px.polygon(
+            [(17.1, 11.9 + bob), (20.9, 10.5 + bob), (18.9, 13.9 + bob)],
+            fill=WAND_PINK,
+            outline=OUTLINE,
+            width=0.55,
+        )
+
+        # Star crown: outlined first, then a smaller gold inset so the shape
+        # survives nearest-neighbor scaling and still reads against bright sky.
+        crown_x = 17.1
+        crown_y = 8.0 + bob
+        px.polygon(
+            _star_points(crown_x, crown_y, 5.5, 2.5),
+            fill=OUTLINE,
+        )
+        px.polygon(
+            _star_points(crown_x, crown_y, 4.55, 2.0),
+            fill=COIN_GOLD,
+        )
+        gem = (
+            int(WAND_PINK[0] + (255 - WAND_PINK[0]) * pulse * 0.35),
+            int(WAND_PINK[1] + (205 - WAND_PINK[1]) * pulse * 0.35),
+            int(WAND_PINK[2] + (236 - WAND_PINK[2]) * pulse * 0.35),
+            255,
+        )
+        px.ellipse(crown_x - 1.65, crown_y - 1.65, crown_x + 1.65, crown_y + 1.65, fill=gem, outline=OUTLINE, width=0.45)
+        px.ellipse(crown_x - 0.75, crown_y - 1.0, crown_x + 0.25, crown_y, fill=WHITE, outline=None)
+
+        # Tiny hard-edged glints animate around the crown. These are deliberately
+        # sparse pixels, not translucent discs, so the pickup remains crisp.
+        sparkle_positions = ((22.6, 5.0), (21.9, 14.1), (11.2, 5.9))
+        sx, sy = sparkle_positions[sparkle_slot]
+        sy += bob
+        px.rect(sx - 0.35, sy - 1.1, sx + 0.35, sy + 1.1, fill=COIN_GOLD_LIGHT)
+        px.rect(sx - 1.1, sy - 0.35, sx + 1.1, sy + 0.35, fill=COIN_GOLD_LIGHT)
+
+    sprite = rasterize_logical(LOGICAL, SCALE, painter)
+    return bottom_center_canvas(sprite, FRAME)
+
+
+def _cinder_beacon_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
+    """Ornate hand lantern with an ember that visibly flickers."""
+    bob = [0.0, -0.4, -0.8, -0.3][frame_idx % 4]
+    flicker = [0.25, 0.75, 1.0, 0.45][frame_idx % 4]
+
+    def painter(px) -> None:
+        # Angular handle approximates a forged arch and keeps the silhouette
+        # pixel-clean. It is doubled with an outline like the rest of the prop.
+        handle = [
+            (9.8, 10.2 + bob),
+            (9.8, 7.2 + bob),
+            (12.0, 4.8 + bob),
+            (16.0, 4.8 + bob),
+            (18.2, 7.2 + bob),
+            (18.2, 10.2 + bob),
+        ]
+        px.line(handle, fill=OUTLINE, width=2.2)
+        px.line(handle, fill=BRASS, width=1.0)
+
+        # Crown and foot use stepped finials so this reads as an ornate hand
+        # lantern rather than a modern camping lamp.
+        px.polygon(
+            [(9.0, 10.0 + bob), (11.0, 8.5 + bob), (17.0, 8.5 + bob), (19.0, 10.0 + bob), (17.7, 12.0 + bob), (10.3, 12.0 + bob)],
+            fill=BRASS_DARK,
+            outline=OUTLINE,
+            width=0.55,
+        )
+        px.rect(10.2, 9.6 + bob, 17.8, 11.2 + bob, fill=BRASS_LIGHT)
+        px.ellipse(13.0, 7.3 + bob, 15.0, 9.3 + bob, fill=BRASS_LIGHT, outline=OUTLINE, width=0.45)
+
+        # Glass chamber and forged ribs.
+        px.polygon(
+            [(10.3, 11.0 + bob), (17.7, 11.0 + bob), (18.5, 20.5 + bob), (9.5, 20.5 + bob)],
+            fill=LANTERN_GLASS,
+            outline=OUTLINE,
+            width=0.75,
+        )
+        px.polygon(
+            [(11.4, 12.0 + bob), (16.6, 12.0 + bob), (17.1, 19.4 + bob), (10.9, 19.4 + bob)],
+            fill=(118, 46, 28, 120),
+        )
+        px.line([(11.2, 11.0 + bob), (10.4, 20.5 + bob)], fill=BRASS, width=0.8)
+        px.line([(16.8, 11.0 + bob), (17.6, 20.5 + bob)], fill=BRASS, width=0.8)
+        px.line([(14.0, 11.0 + bob), (14.0, 20.5 + bob)], fill=BRASS_DARK, width=0.65)
+
+        # Ember flame: broad orange body, bright inner tongue, then a one-pixel
+        # white-hot fleck at peak intensity.
+        flame_top = 13.2 + bob - flicker * 0.9
+        px.polygon(
+            [(14.0, flame_top), (16.1, 16.7 + bob), (15.3, 19.0 + bob), (12.7, 19.0 + bob), (11.9, 16.7 + bob)],
+            fill=EMBER_ORANGE,
+            outline=OUTLINE,
+            width=0.45,
+        )
+        px.polygon(
+            [(14.0, 15.0 + bob - flicker * 0.55), (15.0, 17.1 + bob), (14.4, 18.3 + bob), (13.3, 18.3 + bob), (13.0, 17.1 + bob)],
+            fill=EMBER_YELLOW,
+        )
+        if flicker > 0.7:
+            px.rect(13.7, 16.3 + bob, 14.3, 17.4 + bob, fill=WHITE)
+
+        # Heavy base, side curls, and jewel-like rivets complete the beacon.
+        px.polygon(
+            [(9.4, 20.0 + bob), (18.6, 20.0 + bob), (19.2, 22.0 + bob), (17.0, 23.0 + bob), (11.0, 23.0 + bob), (8.8, 22.0 + bob)],
+            fill=BRASS_DARK,
+            outline=OUTLINE,
+            width=0.65,
+        )
+        px.rect(10.2, 20.3 + bob, 17.8, 21.5 + bob, fill=BRASS_LIGHT)
+        px.ellipse(7.8, 14.0 + bob, 10.1, 16.3 + bob, fill=BRASS, outline=OUTLINE, width=0.45)
+        px.ellipse(17.9, 14.0 + bob, 20.2, 16.3 + bob, fill=BRASS, outline=OUTLINE, width=0.45)
+        px.ellipse(8.45, 14.65 + bob, 9.45, 15.65 + bob, fill=EMBER_ORANGE, outline=None)
+        px.ellipse(18.55, 14.65 + bob, 19.55, 15.65 + bob, fill=EMBER_ORANGE, outline=None)
+
+    sprite = rasterize_logical(LOGICAL, SCALE, painter)
+    return bottom_center_canvas(sprite, FRAME)
+
+
 def _coin_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     phase = frame_idx % max(1, nframes)
     widths = [7.6, 4.2, 2.4, 4.2, 7.6, 4.8]
@@ -224,6 +401,20 @@ SPECS: Dict[str, PropSpec] = {
         rows=[("idle", 4, 125)],
         renderer=_spark_blossom_frame,
         traits=("pickup", "spark", "powerup", "retro"),
+    ),
+    "super_mary_o_star_wand": PropSpec(
+        target_name="super_mary_o_star_wand",
+        display_name="Starlight Wand Power-Up",
+        rows=[("idle", 6, 90)],
+        renderer=_star_wand_frame,
+        traits=("pickup", "wand", "star", "invincibility", "magic", "retro"),
+    ),
+    "super_mary_o_cinder_beacon": PropSpec(
+        target_name="super_mary_o_cinder_beacon",
+        display_name="Cinder Beacon",
+        rows=[("idle", 4, 115)],
+        renderer=_cinder_beacon_frame,
+        traits=("pickup", "lantern", "fire", "magic", "retro"),
     ),
     "super_mary_o_gasoline_tank": PropSpec(
         target_name="super_mary_o_gasoline_tank",

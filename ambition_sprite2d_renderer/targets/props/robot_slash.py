@@ -28,6 +28,7 @@ from typing import List, Sequence, Tuple
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
+from ...core import slash_envelope
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
 TARGET_NAME = "robot_slash"
@@ -105,96 +106,44 @@ def _amplitude(t: float) -> float:
 #
 # **The art sits INSIDE the polygon, never outside it.** Jon's rule: it is fine
 # if the hitbox slightly overreaches the effect, but 100% of what is drawn must
-# hit, "the player should never feel like they should have hit when they
-# didn't". The wash is blurred, and a blur spreads, so the envelope is inset far
-# enough that the spread still lands inside the hull the generator authors.
-ART_INSET = 0.93
+# hit — "the player should never feel like they should have hit when they
+# didn't". The polygon is the envelope scaled OUT by its own margin, so drawing
+# at the same peak divided by a little more than that margin lands inside it,
+# with room left for the wash's blur to feather across.
 AXIS_Y = 80.0
-REACH = 158.0 * ART_INSET
-NEAR_HALF = 68.0 * ART_INSET  # kept for the poke's reference only
-BELLY_HALF = 80.0 * ART_INSET
-FAR_HALF = 31.0 * ART_INSET
-# ⚠ MEASURED, not invented. These are the hit polygon's own half-width profile
-# expressed in the QUAD the renderer stretches this frame into — sampled off
-# `player_robot_v3`'s `attack_side` hull with the same projection
-# `CombatVolume::swing_shape` performs, then scaled by `ART_INSET`.
-#
-# Authoring them by eye is what leaked: the polygon is TALL and flat against the
-# body, but the quad's axis runs from the ATTACKER, so the near edge's corner is
-# the nearest point and the shape comes to a POINT at t=0 in quad space rather
-# than starting at full height. Art drawn to the abstract half-disc profile put
-# 16% of its ink outside the volume — visible swing that did not hit, which is
-# the exact thing Jon ruled out.
-#
-# ⚠ v3's numbers. The sheet is still shared, so another character swinging it
-# gets a silhouette tuned to the protagonist's polygon. That is what the
-# per-character VFX work fixes; until then this is the character that matters.
-_STATIONS = tuple(
-    (t, half * ART_INSET)
-    for t, half in (
-        (0.00, 0.0),
-        (0.10, 62.6),
-        (0.20, 67.9),
-        (0.30, 73.2),
-        (0.42, 74.1),
-        (0.55, 64.4),
-        (0.66, 54.7),
-        (0.80, 42.3),
-        (0.88, 35.3),
-        (0.95, 21.2),
-        (1.00, 0.0),
-    )
-)
+REACH = 158.0
+PEAK_HALF = 80.0 / 1.13
+T_INSET_NEAR = 0.05
+T_INSET_FAR = 0.06
 
 
 def _scaled(points):
     return [(_px(x), _px(y)) for x, y in points]
 
 
-def _spline_through(control, steps: int = 12):
-    """Catmull-Rom through the envelope's control points, clamped at the ends.
-
-    The SAME curve `player_robot_v3.py` runs its hit polygon through, for the
-    same reason: a blade's edge is a curve, and interpolating the control points
-    linearly gives a faceted polyline exactly where the blade is widest — "we
-    need to make the arc of the curve smooth like a sword slash".
-    """
-    pts = []
-    ext = [control[0]] + list(control) + [control[-1]]
-    for i in range(len(ext) - 3):
-        p0, p1, p2, p3 = ext[i], ext[i + 1], ext[i + 2], ext[i + 3]
-        for s in range(steps):
-            u = s / steps
-            u2, u3 = u * u, u * u * u
-            pts.append(
-                tuple(
-                    0.5
-                    * (
-                        2 * p1[k]
-                        + (-p0[k] + p2[k]) * u
-                        + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * u2
-                        + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * u3
-                    )
-                    for k in (0, 1)
-                )
-            )
-    pts.append(control[-1])
-    return pts
-
-
-_ARC = _spline_through(_STATIONS)
-
-
 def _half_at(t: float) -> float:
-    """Half-height of the swept region a fraction `t` along the swing."""
-    t = _clamp(t)
-    lo, hi = _ARC[0], _ARC[-1]
-    for a, b in zip(_ARC, _ARC[1:]):
-        if a[0] <= t <= b[0]:
-            lo, hi = a, b
-            break
-    span = (hi[0] - lo[0]) or 1.0
-    return max(0.0, _lerp(lo[1], hi[1], (t - lo[0]) / span))
+    """Half-height of the swept region a fraction `t` along the swing.
+
+    ⚠ THIS WAS A MEASURED TABLE and the table is why the effect wobbled. It
+    sampled the polygon's profile off a rasterised scan, which imported the
+    scan's 1-pixel quantisation as ripple, and then ran a spline through the
+    noise — a wobble with extra steps. The analytic envelope cannot ripple:
+    there is nothing between the samples to disagree with.
+
+    `slash_envelope.TIP` is folded in because the frame maps to the QUAD, and
+    the quad spans the polygon's extent — which stops at the blunt tip, not at
+    t=1.
+    """
+    # SHORTENED at both ends, not remapped. The envelope goes to zero at the
+    # body and at the tip, so the polygon comes to a point there and no amount
+    # of perpendicular margin can contain a blurred pixel drawn past it —
+    # widening the container from 1.07 to 1.16 moved the leak by 0.03%. The art
+    # instead occupies a slightly shorter span of the frame and reaches zero
+    # width INSIDE the volume's points.
+    u = (t - T_INSET_NEAR) / max(1e-6, 1.0 - T_INSET_NEAR - T_INSET_FAR)
+    if u <= 0.0 or u >= 1.0:
+        return 0.0
+    return slash_envelope.half_at(u * slash_envelope.TIP) * PEAK_HALF
 
 
 def _half_disc(reach_scale: float = 1.0, width_scale: float = 1.0, samples: int = 48):
@@ -309,14 +258,29 @@ def _draw_sweep_frame(t: float) -> Image.Image:
     return canvas.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
+# ⚠ `up` and `down` are NOT pre-rotated any more, and that is a contract change
+# shared with `slash_visuals.rs`.
+#
+# The rows used to be drawn turned a quarter turn because the renderer added a
+# per-pose rotation offset on top of the swing direction — an up-swing came out
+# at rotation zero, so its artwork had to be drawn already pointing up. That was
+# coherent when the sprite was a SQUARE: rotating a square changes nothing about
+# which side is long.
+#
+# It stopped being coherent when the quad became the swing's own extent. The
+# renderer sizes the sprite (length along the swing, width across it) on the
+# sprite's LOCAL axes, so a row drawn a quarter turn out has its long dimension
+# across the swing instead of along it — measured at 8.8% of the drawn ink
+# landing outside the volume for the up attacks and 9.2% for the down.
+#
+# So: every row is drawn in swing space, and orientation is the swing axis
+# alone. `pose` now selects WHICH artwork, never how it is turned.
 def _draw_up_frame_raw(t: float) -> Image.Image:
-    side = _draw_sweep_frame(t)
-    return side.rotate(90, resample=Image.Resampling.BICUBIC, center=(80, 80))
+    return _draw_sweep_frame(t)
 
 
 def _draw_down_frame_raw(t: float) -> Image.Image:
-    side = _draw_sweep_frame(t)
-    return side.rotate(-90, resample=Image.Resampling.BICUBIC, center=(80, 80))
+    return _draw_sweep_frame(t)
 
 
 def _poke_polygon(progress: float, width_scale: float = 1.0):
@@ -332,16 +296,20 @@ def _poke_polygon(progress: float, width_scale: float = 1.0):
     quad the renderer stretches this into is thin, and art that left margin here
     would draw a thrust narrower than the one that hurts.
     """
-    x1 = REACH * _clamp(progress, 0.30, 1.0)
-    half = 78.0 * width_scale
+    # Inside the volume, like every other row: the thrust's polygon is
+    # parallel-sided at the quad's own half-height, so art drawn at the frame
+    # edge leaks the moment the halo blurs. 0.86 leaves the blur somewhere to go.
+    x0 = 0.06 * REACH
+    x1 = x0 + (REACH * 0.90 - x0) * _clamp(progress, 0.30, 1.0)
+    half = 69.0 * width_scale
     return [
-        (0.0, AXIS_Y - half * 0.62),
-        (x1 * 0.22, AXIS_Y - half),
-        (x1 * 0.82, AXIS_Y - half * 0.78),
+        (x0, AXIS_Y - half * 0.62),
+        (x0 + (x1 - x0) * 0.22, AXIS_Y - half),
+        (x0 + (x1 - x0) * 0.82, AXIS_Y - half * 0.78),
         (x1, AXIS_Y),
-        (x1 * 0.82, AXIS_Y + half * 0.78),
-        (x1 * 0.22, AXIS_Y + half),
-        (0.0, AXIS_Y + half * 0.62),
+        (x0 + (x1 - x0) * 0.82, AXIS_Y + half * 0.78),
+        (x0 + (x1 - x0) * 0.22, AXIS_Y + half),
+        (x0, AXIS_Y + half * 0.62),
     ]
 
 
