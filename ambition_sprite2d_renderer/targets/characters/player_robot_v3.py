@@ -491,12 +491,16 @@ BODY_CENTER_Y = 118.0 - (48.0 / 0.50625) / 2
 # already collected ("tilts too much upward" at h*0.28, "still tilts downward"
 # at zero).
 #
-# The fix is not a better value here. It is for `CombatVolume::swing_shape` to
-# take the axis from the VOLUME's own near-to-far principal axis rather than
-# from the attacker's centroid, using the attacker only to decide which end is
-# the handle. Then a polygon at chest height is level by construction and this
-# becomes a free feel knob. Until that lands, zero is the only value that keeps
-# the art and the polygon pointing the same way.
+# ✔ THAT FIX HAS LANDED. `CombatVolume::swing_shape` takes the axis from the
+# volume's own near-to-far extremes now and uses the attacker only to decide
+# which end is the handle, so a polygon at chest height is level by
+# construction and this is a free feel knob at last.
+#
+# 0.22 of the authoring frame puts the swing across the chest of the DRAWN
+# robot rather than its collision box. Jon has read both ends of this scale on
+# the same jab — 0.28 "tilts too much upward", 0.0 "still tilts downward" — but
+# both readings were taken while the value bought angle as well as height, so
+# neither is evidence about the height alone. This wants an eye on it.
 #
 # The collision body is 48 units tall; the DRAWN robot is half again that, feet
 # planted at the box's bottom. So the visible chest is well above the collision
@@ -509,7 +513,7 @@ BODY_CENTER_Y = 118.0 - (48.0 / 0.50625) / 2
 # centroid, so any rise tilts that quad while the polygon stays put. The art is
 # drawn inside the polygon with margin rather than filling the quad, which is
 # what buys the tolerance to spend here.
-SLASH_RISE = 128 * 0.0
+SLASH_RISE = 128 * 0.22
 
 
 def _slash_poly(ox, oy, dx, dy, reach, half):

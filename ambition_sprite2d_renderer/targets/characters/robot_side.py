@@ -201,7 +201,24 @@ class SideRobotGenerator(CharacterGenerator):
             ]
 
         def shaped(b, poly):
+            """One authored shape, and a bbox DERIVED from it.
+
+            The bbox used to be hand-written beside the poly and the two
+            disagreed badly — for `attack_side` the hull reached 1.8x further
+            and stood 1.7x taller than the rectangle next to it, and which one
+            hurt you depended on which system did the asking. The rect is the
+            hull's bounds now, so the fallback can no longer contradict the
+            shape it is a fallback for.
+            """
             b["poly"] = poly
+            xs = [p[0] for p in poly]
+            ys = [p[1] for p in poly]
+            b["bbox"] = (
+                int(math.floor(min(xs))),
+                int(math.floor(min(ys))),
+                int(math.ceil(max(xs)) - math.floor(min(xs))),
+                int(math.ceil(max(ys)) - math.floor(min(ys))),
+            )
             return b
 
         # Each attack carries the coarse bbox (fallback) PLUS a convex `poly`

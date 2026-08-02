@@ -221,8 +221,46 @@ class AISlopZetaGenerator(CharacterGenerator):
         are source canvas pixels (128×128). ``hit`` reuses the rest pair so the
         player can keep attacking the stunned boss; ``death`` skips parts."""
         del size
-        head = {"name": "head", "x": 46, "y": 5, "w": 36, "h": 25}
-        body = {"name": "body", "x": 42, "y": 28, "w": 44, "h": 58}
+        # ⚠ SHAPED, and wider than the rects that preceded them. The old pair
+        # covered x 42..86 of a body whose own pixel bbox spans 8..114 — barely
+        # the middle 40% — so a strike that plainly connected with the cloak
+        # passed through it. The narrowness was deliberate (keep the sweeping
+        # ARMS out of the hurtbox) and the rectangle was the wrong instrument
+        # for it: excluding the arms and covering the torso are only in conflict
+        # while the shape has to be a box.
+        #
+        # A hull each: the hood widens above the chin, and the cloak flares
+        # toward the floor. Both stay inside the arms' reach at every height.
+        head = {
+            "name": "head",
+            "x": 44,
+            "y": 5,
+            "w": 40,
+            "h": 25,
+            "poly": [
+                (52.0, 5.0),
+                (76.0, 5.0),
+                (84.0, 15.0),
+                (80.0, 27.0),
+                (48.0, 27.0),
+                (44.0, 15.0),
+            ],
+        }
+        body = {
+            "name": "body",
+            "x": 36,
+            "y": 27,
+            "w": 56,
+            "h": 60,
+            "poly": [
+                (48.0, 27.0),
+                (80.0, 27.0),
+                (88.0, 52.0),
+                (92.0, 82.0),
+                (36.0, 82.0),
+                (40.0, 52.0),
+            ],
+        }
         per_anim_parts = [head, body]
         return {
             anim: {"parts": [dict(p) for p in per_anim_parts]}
