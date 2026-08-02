@@ -163,43 +163,70 @@ def _envelope_outline(width_scale: float = 1.0, samples: int = 96):
     return top + list(reversed(bottom))
 
 
-def _blade_gradient(mask: Image.Image, reach_bias: float) -> Image.Image:
-    """A smooth ramp from the body to the blade — no bands, no steps.
+# How far back the blade's horns sit from its point, as a fraction of reach. The
+# leading edge is a curve between them.
+HORN_PULL = 0.42
 
-    ⚠ This replaces four nested polygons in four colours. Subtracting a shorter
-    copy of the envelope from a longer one leaves a solid eye shape, and the
-    boundaries between the colour layers are hard edges: Jon saw a blob sitting
-    on the player and "angles in the vfx" even though every outline was a smooth
-    quadratic sampled 96 times. The facets were never the outline. They were the
-    fill.
 
-    So the fill is one continuous function of DISTANCE BEHIND THE LEADING EDGE:
-    white at the edge, falling away toward the body. A blade with a trail, drawn
-    as a gradient, which cannot facet because nothing in it is a polygon.
+def _far_edge_x(dy: float, width_scale: float) -> float:
+    """The BLADE's leading edge at height `dy` off the axis — a smooth curve.
 
-    The near and far edges are read off the rasterised MASK, per row. Deriving
-    them from the envelope instead looks cheaper and is wrong: the profile never
-    narrows to zero, so no sampling of it ever names a row near the axis, and
-    the first attempt filled only two thin lenses along the top and bottom and
-    left the middle of the swing empty.
+    ⚠ NOT the polygon's front. The polygon ends in a blunt vertical chord,
+    because it is a coarse convex container and a chord is the cheapest honest
+    way to close one. Following that chord with the bright edge drew a straight
+    vertical line down the middle of the swing with curves only at the top and
+    bottom — the "weird tip" and the jaggedness, in a shape whose every
+    definition is smooth.
+    
+    So the art gets its own front: a parabola from the point back to the horns.
+    It is inside the chord everywhere except its single tangent point, so
+    containment is unaffected and nothing drawn is straight.
     """
-    w, h = mask.size
-    grad = Image.new("L", mask.size, 0)
-    mpx = mask.load()
-    gpx = grad.load()
+    half = max(1e-6, PEAK_HALF * width_scale)
+    k = _clamp(abs(dy) / half)
+    # A hair short of the polygon's blunt chord, so the bright edge never lands
+    # exactly on it — a tangent there shows as a small flat tick at the point.
+    tip_x = REACH * slash_envelope.TIP * 0.98
+    return tip_x - (tip_x * HORN_PULL) * k * k
+
+
+def _blade_gradient(size, width_scale: float, trail: float) -> Image.Image:
+    """A RIBBON behind the leading edge: constant width, smooth everywhere.
+
+    The blade is the front of the swing, and what follows it is the air it came
+    through. So brightness is a function of one thing — how far a pixel sits
+    BEHIND the analytic leading edge — and `trail` is how long the wake is.
+
+    ⚠ This is the third fill this effect has had, and the reason each previous
+    one failed is worth keeping. Nested polygons in stepped colours gave a solid
+    lens with hard edges between the layers ("angles in the vfx"). A per-row
+    normalised ramp gave smooth colour but stepped between rows ("still feels
+    like the arc is jagged"). A closed-form distance behind a closed-form edge
+    has neither: no layer boundaries and no rows.
+    """
+    w, h = size
+    grad = Image.new("L", size, 0)
+    px = grad.load()
+    sx = w / FRAME_SIZE[0]
+    sy = h / FRAME_SIZE[1]
+    trail_px = trail * sx
     for row in range(h):
-        near = far = None
-        for col in range(w):
-            if mpx[col, row]:
-                if near is None:
-                    near = col
-                far = col
-        if near is None or far is None or far <= near:
+        dy = row / sy - AXIS_Y
+        fx = _far_edge_x(dy, width_scale)
+        if fx < 0.0:
             continue
-        depth = float(far - near)
-        for col in range(near, far + 1):
-            k = _clamp((col - near) / depth)
-            gpx[col, row] = int(255 * (k ** reach_bias))
+        fx *= sx
+        lo = max(0, int(fx - trail_px))
+        hi = min(w - 1, int(fx))
+        for col in range(lo, hi + 1):
+            # 1 at the blade, 0 a full trail behind it. Squared so the bright
+            # core hugs the edge and the wake stays a wash.
+            k = 1.0 - (fx - col) / max(1e-6, trail_px)
+            # A FLOOR under the wake. Falling to zero left the near half of the
+            # swing invisible again at a glance, which is the original
+            # complaint; a fifth of full alpha keeps the whole swept region
+            # faintly lit and blue, and reads as air the blade came through.
+            px[col, row] = int(255 * (0.20 + 0.80 * _clamp(k) ** 1.7))
     return grad
 
 
@@ -233,11 +260,15 @@ def _draw_sweep_frame(t: float) -> Image.Image:
     width_scale = _lerp(1.0, 0.88, release)
     # The trail retreats toward the blade as the swing spends: early frames are
     # a full sweep, late ones a thin leading line.
-    reach_bias = _lerp(3.4, 7.5, _smoothstep(0.0, 0.9, t))
+    # How far the wake reaches back from the blade, in frame units. It starts
+    # long enough to cover the swept region — the whole point is that the part
+    # of the polygon nearest the player visibly hurts — and shortens to a thin
+    # leading line as the swing spends.
+    trail = _lerp(REACH * 0.92, REACH * 0.30, _smoothstep(0.0, 0.9, t))
 
     mask = Image.new("L", size, 0)
     ImageDraw.Draw(mask).polygon(_scaled(_envelope_outline(width_scale)), fill=255)
-    grad = _blade_gradient(mask, reach_bias)
+    grad = _blade_gradient(size, width_scale, trail)
     grad = grad.filter(ImageFilter.GaussianBlur(radius=int(1.2 * SUPER)))
     grad = ImageChops.multiply(grad, mask)
 
@@ -248,7 +279,10 @@ def _draw_sweep_frame(t: float) -> Image.Image:
     # something closer to soot than to a blue flash — Jon: "make the color more
     # pale, still blue, but paler blue". The deepest stop a pixel can take now
     # is the mid blue that used to be the SECOND stop.
-    stops = ((0.00, EDGE), (0.50, BODY), (0.80, HOT), (1.00, CORE))
+    # More blue and more present than the first pale pass, which Jon read as
+    # washed out. The wake keeps a real mid blue instead of drifting to
+    # near-white, and only the last stop before the edge goes white.
+    stops = ((0.00, DEEP), (0.35, EDGE), (0.72, BODY), (0.90, HOT), (1.00, CORE))
     ramp = []
     for i in range(256):
         k = i / 255.0

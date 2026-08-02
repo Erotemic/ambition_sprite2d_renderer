@@ -105,7 +105,7 @@ TALL_ROWS: List[Tuple[str, int, int]] = [
     ("swim", 6, 100),
     ("grow", 4, 70),
     ("transform", 8, 80),
-    ("hurt", 5, 85),
+    ("hurt", 4, 85),
 ]
 
 FIRE_ROWS: List[Tuple[str, int, int]] = [
@@ -119,6 +119,7 @@ FIRE_ROWS: List[Tuple[str, int, int]] = [
     ("swim", 6, 100),
     ("fireball", 1, 120),
     ("hurt", 6, 85),
+    ("big_hurt", 8, 85),
 ]
 
 
@@ -503,7 +504,7 @@ def _draw_rotated_arm(
     length: float = 4.4,
 ) -> None:
     pal = form.palette
-    hand_fill = pal.gloves if front else pal.skin
+    hand_fill = pal.gloves if form.power != "normal" else pal.skin
     end_x, end_y = _rotated_endpoint(shoulder_x, shoulder_y, angle_deg, length)
     _draw_segment(px, shoulder_x, shoulder_y, end_x, end_y, half_w=0.8, fill=pal.shirt)
     if form.magic_stage >= 1:
@@ -845,7 +846,7 @@ def _draw_body_front(px, form: FormSpec, x: float, y: float, *, crouch: float = 
 
 def _draw_arm(px, x: float, y: float, *, front: bool, form: FormSpec, length: float = 4.2, glove_down: bool = True) -> None:
     pal = form.palette
-    glove_fill = pal.gloves if front else pal.skin
+    glove_fill = pal.gloves if form.power != "normal" else pal.skin
     _outlined_rect(px, x, y, x + 1.6, y + length, fill=pal.shirt)
     glove_y = y + (length - 0.5 if glove_down else -1.2)
     if form.magic_stage >= 1:
@@ -1328,13 +1329,11 @@ def _draw_form(form: FormSpec, animation: str, frame_idx: int, nframes: int) -> 
             sprite = rasterize_logical(LOGICAL_SIZE, SCALE, painter)
             return bottom_center_canvas(sprite, FRAME_SIZE)
         else:
-            tall_dull_1 = _mix_outfit_palette(MARY_NORMAL, MARY_FIRE_FLASH, 0.08)
-            tall_dull_2 = _mix_outfit_palette(MARY_NORMAL, MARY_FIRE_FLASH, 0.03)
+            tall_dull = _mix_outfit_palette(MARY_NORMAL, MARY_FIRE_FLASH, 0.06)
             hurt_seq = [
-                (TALL_FORM, Pose(bob=0.1, arm_front_angle=26, arm_back_angle=-8, leg_front_angle=-10, leg_back_angle=18), 1),
-                (_form_with_palette(TALL_FORM, tall_dull_1), Pose(bob=0.45, body_lean=-0.06, arm_front_angle=8, arm_back_angle=-34, leg_front_angle=-4, leg_back_angle=12), 1),
-                (_form_with_palette(TALL_FORM, tall_dull_2), Pose(bob=0.9, body_lean=-0.12, arm_front_angle=82, arm_back_angle=-66, leg_front_angle=8, leg_back_angle=5), 0),
-                (_form_with_palette(TALL_FORM, MARY_NORMAL), Pose(bob=1.05, body_lean=-0.03, arm_front_angle=112, arm_back_angle=-42, leg_front_angle=9, leg_back_angle=2), 0),
+                (TALL_FORM, Pose(bob=0.2, body_lean=-0.06, arm_front_angle=24, arm_back_angle=-18, leg_front_angle=-10, leg_back_angle=18), 1),
+                (SHORT_FORM, Pose(bob=0.55, body_lean=-0.02, arm_front_angle=40, arm_back_angle=-18, leg_front_angle=-4, leg_back_angle=10), 0),
+                (_form_with_palette(TALL_FORM, tall_dull), Pose(bob=0.85, body_lean=-0.10, arm_front_angle=88, arm_back_angle=-54, leg_front_angle=8, leg_back_angle=6), 0),
                 (SHORT_FORM, Pose(bob=0.35, body_lean=0.0, arm_front_angle=46, arm_back_angle=-10, leg_front_angle=0, leg_back_angle=0), 0),
             ]
             active_form, pose, extra_star_phase = hurt_seq[frame_idx % len(hurt_seq)]
@@ -1342,6 +1341,38 @@ def _draw_form(form: FormSpec, animation: str, frame_idx: int, nframes: int) -> 
             def painter(px) -> None:
                 _draw_power_loss_sparkles(px, frame_idx, fire=False)
                 _draw_side_pose(px, active_form, pose, animation="hurt", extra_star_phase=extra_star_phase)
+
+            sprite = rasterize_logical(LOGICAL_SIZE, SCALE, painter)
+            return bottom_center_canvas(sprite, FRAME_SIZE)
+
+    if animation == "big_hurt":
+        if form.power == "fire":
+            fire_dull_1 = _mix_outfit_palette(MARY_FIRE, MARY_NORMAL, 0.28)
+            fire_dull_2 = _mix_outfit_palette(MARY_FIRE, MARY_NORMAL, 0.58)
+            fire_dull_3 = _mix_outfit_palette(MARY_FIRE, MARY_NORMAL, 0.84)
+            big_hurt_seq = [
+                (FIRE_FORM, Pose(mode="fireball", bob=0.1, arm_front_angle=35, arm_back_angle=-18, leg_front_angle=-12, leg_back_angle=22), 0.95, 1.05, 2),
+                (_form_with_palette(FIRE_FORM, fire_dull_1), Pose(bob=0.35, body_lean=-0.1, arm_front_angle=24, arm_back_angle=-36, leg_front_angle=-8, leg_back_angle=18), 0.60, 0.72, 1),
+                (_form_with_palette(FIRE_FORM, fire_dull_2), Pose(bob=0.7, body_lean=-0.16, arm_front_angle=12, arm_back_angle=-58, leg_front_angle=4, leg_back_angle=12), 0.18, 0.32, 0),
+                (_form_with_palette(FIRE_FORM, fire_dull_3), Pose(bob=0.95, body_lean=-0.08, arm_front_angle=84, arm_back_angle=-76, leg_front_angle=12, leg_back_angle=4), 0.0, 0.0, 0),
+                (TALL_FORM, Pose(bob=0.55, body_lean=-0.02, arm_front_angle=58, arm_back_angle=-22, leg_front_angle=-2, leg_back_angle=8), 0.0, 0.0, 0),
+                (SHORT_FORM, Pose(bob=0.78, body_lean=-0.02, arm_front_angle=36, arm_back_angle=-18, leg_front_angle=-2, leg_back_angle=8), 0.0, 0.0, 0),
+                (TALL_FORM, Pose(bob=0.48, body_lean=0.0, arm_front_angle=72, arm_back_angle=-28, leg_front_angle=4, leg_back_angle=2), 0.0, 0.0, 0),
+                (SHORT_FORM, Pose(bob=0.25, body_lean=0.0, arm_front_angle=46, arm_back_angle=-10, leg_front_angle=0, leg_back_angle=0), 0.0, 0.0, 0),
+            ]
+            active_form, pose, wing_boost, sleeve_wing_boost, extra_star_phase = big_hurt_seq[frame_idx % len(big_hurt_seq)]
+
+            def painter(px) -> None:
+                _draw_power_loss_sparkles(px, frame_idx, fire=True)
+                _draw_side_pose(
+                    px,
+                    active_form,
+                    pose,
+                    animation="big_hurt",
+                    wing_boost=wing_boost,
+                    sleeve_wing_boost=sleeve_wing_boost,
+                    extra_star_phase=extra_star_phase,
+                )
 
             sprite = rasterize_logical(LOGICAL_SIZE, SCALE, painter)
             return bottom_center_canvas(sprite, FRAME_SIZE)
@@ -1411,6 +1442,7 @@ def _actor_metadata(form: FormSpec) -> dict:
     if form.power == "fire":
         bindings["ability.fireball"] = {"animation": "fireball", "events": []}
         bindings["power.hurt"] = {"animation": "hurt", "events": []}
+        bindings["power.big_hurt"] = {"animation": "big_hurt", "events": []}
     return metadata
 
 
