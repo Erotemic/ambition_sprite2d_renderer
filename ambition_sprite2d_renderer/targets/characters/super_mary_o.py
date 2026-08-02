@@ -744,6 +744,8 @@ def _draw_body_side(px, form: FormSpec, x: float, y: float, crouch: float) -> No
             outline=OUTLINE,
             width=0.35,
         )
+        _outlined_rect(px, x + 4.1, y + body_h + 0.2, x + 5.0, y + body_h + 1.1, fill=pal.buttons, inset=0.18)
+        _outlined_rect(px, x + 7.0, y + body_h + 0.2, x + 7.9, y + body_h + 1.1, fill=pal.buttons, inset=0.18)
     _outlined_rect(px, x + 1.0, y + 0.0, x + 1.0 + body_w, y + body_h, fill=pal.shirt)
     px.polygon(
         [

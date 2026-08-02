@@ -47,6 +47,11 @@ BRASS_DARK = (102, 62, 34, 255)
 EMBER_ORANGE = (239, 91, 38, 255)
 EMBER_YELLOW = (255, 218, 92, 255)
 LANTERN_GLASS = (255, 174, 61, 145)
+QUASAR_VIOLET = (109, 70, 203, 255)
+QUASAR_INDIGO = (57, 44, 124, 255)
+QUASAR_PINK = (236, 103, 182, 255)
+QUASAR_CYAN = (117, 232, 249, 255)
+QUASAR_CORE = (255, 240, 183, 255)
 
 
 @dataclass(frozen=True)
@@ -357,6 +362,52 @@ def _cinder_beacon_frame(animation: str, frame_idx: int, nframes: int) -> Image.
     return bottom_center_canvas(sprite, FRAME)
 
 
+def _cosmic_quasar_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
+    """Mary-O's cosmic invincibility pickup: a star-core quasar with orbiting light."""
+    bob = [0.0, -0.4, -0.8, -0.4, 0.0, -0.2][frame_idx % 6]
+    ring_phase = frame_idx % 6
+    pulse = [0.3, 0.55, 0.9, 1.0, 0.7, 0.45][frame_idx % 6]
+
+    def painter(px) -> None:
+        cx = 14.0
+        cy = 13.0 + bob
+
+        # Outer cosmic shell with a strong star silhouette so it still reads at small scale.
+        px.polygon(_star_points(cx, cy, 6.4, 3.0), fill=OUTLINE)
+        px.polygon(_star_points(cx, cy, 5.5, 2.5), fill=QUASAR_VIOLET)
+        px.polygon(_star_points(cx, cy, 4.2, 1.8, rotation=-pi / 2.0 + pi / 10.0), fill=QUASAR_PINK)
+        px.ellipse(cx - 2.2, cy - 2.2, cx + 2.2, cy + 2.2, fill=QUASAR_CORE, outline=OUTLINE, width=0.45)
+        px.ellipse(cx - 0.9, cy - 1.2, cx + 0.2, cy - 0.1, fill=WHITE, outline=None)
+
+        # Bright equatorial ring shifts through a few orientations to suggest orbital motion.
+        ring_y = [0.0, -0.3, -0.6, 0.0, 0.5, 0.2][ring_phase]
+        left = [7.0, 7.8, 8.8, 7.2, 8.2, 7.4][ring_phase]
+        right = [21.0, 20.2, 19.2, 20.8, 19.8, 20.6][ring_phase]
+        px.line([(left, cy + ring_y), (right, cy + ring_y + 0.4)], fill=OUTLINE, width=2.8)
+        px.line([(left + 0.4, cy + ring_y), (right - 0.4, cy + ring_y + 0.4)], fill=QUASAR_CYAN, width=1.3)
+        px.line([(left + 1.4, cy + ring_y + 0.1), (right - 1.1, cy + ring_y + 0.45)], fill=(214, 255, 255, 255), width=0.45)
+
+        # Small orbiting glint / moonlet.
+        orbit_positions = [(22.3, 9.0), (21.1, 7.4), (18.8, 6.4), (6.0, 15.9), (7.5, 18.0), (20.9, 17.2)]
+        ox, oy = orbit_positions[ring_phase]
+        oy += bob
+        px.ellipse(ox - 1.4, oy - 1.4, ox + 1.4, oy + 1.4, fill=QUASAR_CYAN, outline=OUTLINE, width=0.4)
+        px.ellipse(ox - 0.55, oy - 0.55, ox + 0.55, oy + 0.55, fill=WHITE, outline=None)
+
+        # Sparse star glints keep the pickup lively without turning into haze.
+        sparkle_fill = COIN_GOLD_LIGHT if pulse > 0.75 else QUASAR_CYAN
+        for sx, sy in ((5.0, 8.0), (23.0, 13.5), (10.2, 22.0)):
+            sy += bob * 0.3
+            px.rect(sx - 0.25, sy - 0.9, sx + 0.25, sy + 0.9, fill=sparkle_fill)
+            px.rect(sx - 0.9, sy - 0.25, sx + 0.9, sy + 0.25, fill=sparkle_fill)
+
+        if pulse > 0.85:
+            px.ellipse(cx - 3.3, cy - 3.3, cx + 3.3, cy + 3.3, fill=(255, 247, 212, 70), outline=None)
+
+    sprite = rasterize_logical(LOGICAL, SCALE, painter)
+    return bottom_center_canvas(sprite, FRAME)
+
+
 def _coin_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     phase = frame_idx % max(1, nframes)
     widths = [7.6, 4.2, 2.4, 4.2, 7.6, 4.8]
@@ -415,6 +466,13 @@ SPECS: Dict[str, PropSpec] = {
         rows=[("idle", 4, 115)],
         renderer=_cinder_beacon_frame,
         traits=("pickup", "lantern", "fire", "magic", "retro"),
+    ),
+    "super_mary_o_cosmic_quasar": PropSpec(
+        target_name="super_mary_o_cosmic_quasar",
+        display_name="Cosmic Quasar",
+        rows=[("idle", 6, 90)],
+        renderer=_cosmic_quasar_frame,
+        traits=("pickup", "quasar", "cosmic", "invincibility", "magic", "retro"),
     ),
     "super_mary_o_gasoline_tank": PropSpec(
         target_name="super_mary_o_gasoline_tank",
