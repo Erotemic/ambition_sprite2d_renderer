@@ -28,38 +28,47 @@ describe a 99-unit forehand and a shorter aerial.
 
 ## Why this profile
 
-`t**RISE * (1 - t)**FALL`, normalised. Smooth everywhere, single-peaked, and
-zero at both ends — which is what the swept region actually does once it is
-expressed against the axis the runtime measures from (the near edge is
-perpendicular to that axis, so its corner is the nearest point and the shape
-comes to a point there, not to full height).
+A quadratic through three authored points: the near edge, the belly, and a
+BLUNT far end. Jon's sketch measures 86% of full height at the body, 100% at the
+bulge and 38% at the far end — it is a half disc squashed forward, not a spike,
+and a profile that runs to zero is "too pokey at the end".
 
-`RISE < FALL` puts the peak early: the blade is already wide just past the hand
-and thins toward the tip. That is the Hollow-Knight read, and it is not a
-circular arc — "not a perfect arc" — because a circle peaks in the middle.
+Quadratic on purpose. It is the lowest-order curve that can hit three points,
+it has no inflection to ripple through, and a hull sampled evenly across it
+stays close — which is what lets the containing polygon be coarse.
 """
 
 from __future__ import annotations
 
 from typing import List, Tuple
 
-# Peak sits at RISE / (RISE + FALL) ~= 0.29 along the swing.
-# The point is blunt, not needle-sharp, and BOTH consumers must agree on where
-# it stops: the polygon's extent is what the runtime turns into the quad the art
-# is stretched into, so an art frame that ran to t=1 while the polygon stopped
-# at 0.96 would draw a tip past the volume.
-TIP = 0.96
-RISE = 0.36
-FALL = 0.88
-_PEAK_T = RISE / (RISE + FALL)
-_PEAK_V = (_PEAK_T ** RISE) * ((1.0 - _PEAK_T) ** FALL)
+# The three authored stations, measured off Jon's sketch (see
+# `player_robot_v3.py`): half-width at the body, at the bulge, and at the blunt
+# far end, as fractions of the peak.
+NEAR = 0.86
+FAR = 0.38
+BELLY_T = 0.42
+# Both consumers must agree where the swing STOPS, because the polygon's extent
+# is what the runtime turns into the quad the art is stretched into. The profile
+# ends blunt now, so the swing runs its full length — the old 0.96 existed only
+# to blunt a spike the profile no longer has.
+TIP = 1.0
+
+# Quadratic through (0, NEAR), (BELLY_T, 1.0), (1.0, FAR).
+_A = ((1.0 - NEAR) - BELLY_T * (FAR - NEAR)) / (BELLY_T * BELLY_T - BELLY_T)
+_B = (FAR - NEAR) - _A
+_C = NEAR
 
 
 def half_at(t: float) -> float:
-    """Half-width of the swing at `t` along it, normalised to a peak of 1."""
-    if t <= 0.0 or t >= 1.0:
+    """Half-width of the swing at `t` along it, peaking at 1.
+
+    Never zero: the swing is TALL where it leaves the body and still has real
+    height at its blunt end. Only outside `[0, 1]` is there nothing.
+    """
+    if t < 0.0 or t > 1.0:
         return 0.0
-    return ((t ** RISE) * ((1.0 - t) ** FALL)) / _PEAK_V
+    return _A * t * t + _B * t + _C
 
 
 def outline(samples: int, scale: float = 1.0) -> List[Tuple[float, float]]:
@@ -73,12 +82,10 @@ def outline(samples: int, scale: float = 1.0) -> List[Tuple[float, float]]:
     return top + [(t, -h) for t, h in reversed(top[1:-1])]
 
 
-# Where the coarse container puts its vertices. NOT uniform, and that is the
-# whole trick: the envelope climbs almost vertically off the body and then falls
-# away slowly, so a hull sampled evenly cuts a chord straight across the climb
-# and leaves the art hanging outside it. Evenly-spaced stations cost 7.4% of the
-# drawn slash; these cost a fraction of that for the same vertex count.
-HULL_STATIONS = (0.0, 0.05, 0.12, 0.24, 0.42, 0.64, 0.84, 1.0)
+# Where the coarse container puts its vertices. Even spacing is fine for a
+# quadratic — it has no steep climb for a chord to cut across, which the
+# previous profile did. Six stations, ~10 vertices, no curvature of its own.
+HULL_STATIONS = (0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
 
 
 def hull_points(

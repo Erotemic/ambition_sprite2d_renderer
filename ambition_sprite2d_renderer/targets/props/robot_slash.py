@@ -141,7 +141,7 @@ def _half_at(t: float) -> float:
     # instead occupies a slightly shorter span of the frame and reaches zero
     # width INSIDE the volume's points.
     u = (t - T_INSET_NEAR) / max(1e-6, 1.0 - T_INSET_NEAR - T_INSET_FAR)
-    if u <= 0.0 or u >= 1.0:
+    if u < 0.0 or u > 1.0:
         return 0.0
     return slash_envelope.half_at(u * slash_envelope.TIP) * PEAK_HALF
 

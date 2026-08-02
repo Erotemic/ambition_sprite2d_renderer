@@ -476,6 +476,20 @@ SLASH_TIP = 0.96
 # and the collision body is 48 world units tall at 0.50625 world units per frame
 # pixel, so its centre sits half that above the feet.
 BODY_CENTER_Y = 118.0 - (48.0 / 0.50625) / 2
+# ⚠ HOW HIGH THE SWING SITS, and the one number here I cannot check.
+#
+# The collision body is 48 units tall; the DRAWN robot is half again that, feet
+# planted at the box's bottom. So the visible chest is well above the collision
+# centre, and a swing centred on the box reads low on the character even though
+# the geometry is level. Both readings are Jon's, on the same jab: `h*0.28` was
+# "tilts too much upward", `0.0` was "still tilts downward instead of being
+# effectively purely horizontal". This splits them.
+#
+# It is not free: the runtime derives the quad from the attacker to the volume's
+# centroid, so any rise tilts that quad while the polygon stays put. The art is
+# drawn inside the polygon with margin rather than filling the quad, which is
+# what buys the tolerance to spend here.
+SLASH_RISE = 128 * 0.0
 
 
 def _slash_poly(ox, oy, dx, dy, reach, half):
@@ -517,7 +531,7 @@ def _player_attack_hitboxes(size: Tuple[int, int]) -> Dict[str, dict]:
     """
     w, h = size
     cx = w // 2
-    body_cy = BODY_CENTER_Y
+    body_cy = BODY_CENTER_Y - SLASH_RISE
     family = SideRobotGenerator().attack_hitboxes(size)
 
     def shaped(poly):
