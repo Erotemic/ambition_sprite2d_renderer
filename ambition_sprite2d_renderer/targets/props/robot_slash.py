@@ -53,11 +53,15 @@ ROWS: List[Tuple[str, int, int]] = [
     ("poke", 5, 20),
 ]
 
+# Paler, still blue (Jon, 2026-08-02). The old ramp bottomed out at a heavy
+# navy, which read as a solid object rather than a flash of motion; every stop
+# moves toward white and loses saturation, and the deepest is now a mid blue
+# instead of a near-black one.
 CORE = (255, 255, 255, 255)
-HOT = (226, 247, 255, 255)
-BODY = (174, 226, 255, 255)
-EDGE = (76, 163, 239, 255)
-DEEP = (29, 83, 177, 255)
+HOT = (240, 251, 255, 255)
+BODY = (206, 238, 255, 255)
+EDGE = (150, 205, 245, 255)
+DEEP = (96, 158, 214, 255)
 
 
 def _px(value: float) -> float:
@@ -146,42 +150,57 @@ def _half_at(t: float) -> float:
     return slash_envelope.half_at(u * slash_envelope.TIP) * PEAK_HALF
 
 
-def _half_disc(reach_scale: float = 1.0, width_scale: float = 1.0, samples: int = 48):
-    """The swept half disc as a closed outline, in swing space."""
+def _envelope_outline(width_scale: float = 1.0, samples: int = 96):
+    """The swept region's outline, in swing space. Dense: this is ART."""
     top = []
     bottom = []
     for i in range(samples + 1):
         u = i / samples
-        x = REACH * reach_scale * u
+        x = REACH * u
         half = _half_at(u) * width_scale
         top.append((x, AXIS_Y - half))
         bottom.append((x, AXIS_Y + half))
     return top + list(reversed(bottom))
 
 
-def _band_image(size, outer_reach: float, inner_reach: float, width_scale: float,
-                color, alpha: int) -> Image.Image:
-    """The BLADE band: an outer half disc with an inner one punched out.
+def _blade_gradient(mask: Image.Image, reach_bias: float) -> Image.Image:
+    """A smooth ramp from the body to the blade — no bands, no steps.
 
-    The punch-out is what makes it read as a crescent rather than a wedge, and
-    how deep it goes is the "bend". A shallow cut is the old shallow swoosh; a
-    deep one is the Hollow Knight arc that curls back on itself.
+    ⚠ This replaces four nested polygons in four colours. Subtracting a shorter
+    copy of the envelope from a longer one leaves a solid eye shape, and the
+    boundaries between the colour layers are hard edges: Jon saw a blob sitting
+    on the player and "angles in the vfx" even though every outline was a smooth
+    quadratic sampled 96 times. The facets were never the outline. They were the
+    fill.
 
-    Built with a mask rather than one clever polygon: a crescent traced as a
-    single closed path has to double back through itself, and PIL's even-odd
-    fill of that path is not the shape anybody drew.
+    So the fill is one continuous function of DISTANCE BEHIND THE LEADING EDGE:
+    white at the edge, falling away toward the body. A blade with a trail, drawn
+    as a gradient, which cannot facet because nothing in it is a polygon.
+
+    The near and far edges are read off the rasterised MASK, per row. Deriving
+    them from the envelope instead looks cheaper and is wrong: the profile never
+    narrows to zero, so no sampling of it ever names a row near the axis, and
+    the first attempt filled only two thin lenses along the top and bottom and
+    left the middle of the swing empty.
     """
-    band = Image.new("RGBA", size, (0, 0, 0, 0))
-    blending_draw(band).polygon(
-        _scaled(_half_disc(outer_reach, width_scale)),
-        fill=(color[0], color[1], color[2], alpha),
-    )
-    hole = Image.new("L", size, 0)
-    ImageDraw.Draw(hole).polygon(
-        _scaled(_half_disc(inner_reach, width_scale * 0.94)), fill=255
-    )
-    band.putalpha(ImageChops.subtract(band.getchannel("A"), hole))
-    return band
+    w, h = mask.size
+    grad = Image.new("L", mask.size, 0)
+    mpx = mask.load()
+    gpx = grad.load()
+    for row in range(h):
+        near = far = None
+        for col in range(w):
+            if mpx[col, row]:
+                if near is None:
+                    near = col
+                far = col
+        if near is None or far is None or far <= near:
+            continue
+        depth = float(far - near)
+        for col in range(near, far + 1):
+            k = _clamp((col - near) / depth)
+            gpx[col, row] = int(255 * (k ** reach_bias))
+    return grad
 
 
 def _arc_state(t: float) -> dict:
@@ -196,26 +215,12 @@ def _arc_state(t: float) -> dict:
 
 
 def _draw_sweep_frame(t: float) -> Image.Image:
-    """One frame of the forehand slash, drawn in SWING SPACE.
+    """One frame of the slash: a blade edge with a trail behind it.
 
-    Three layers, and the middle one is the fix. Measured on the old art, the
-    first 30% of the swing had ZERO pixels and the first half was under 40%
-    covered, while the polygon damaged across all of it — a region that hurt and
-    showed nothing (Jon, 2026-08-02: "there is a big empty part of the hitpoly
-    between the arc of the slash and the player that does hurt the enemy, but
-    there is no vfx to indicate to the user that it would").
-
-      1. WASH   — the whole swept half disc at low alpha. This is the layer that
-                  says "all of this hurts". It reaches the body because the
-                  polygon does.
-      2. BAND   — the bright blade, hugging the outer boundary, deeply cut so it
-                  curls like a crescent instead of sitting flat.
-      3. EDGE   — a thin hot rim on the leading arc, so the blade still has a
-                  front.
-
-    Over the five frames the wash fades first and the band retreats toward the
-    tip: the swing dissipates from the handle outward, which is the direction a
-    real one leaves the air.
+    The whole swept region carries ink — that is the fix for "a big empty part
+    of the hitpoly ... there is no vfx to indicate to the user that it would"
+    hit — but its brightness is a smooth ramp toward the leading edge rather
+    than a stack of filled shapes, so it reads as a swing and not as an object.
     """
     state = _arc_state(t)
     amp = state["amp"]
@@ -225,36 +230,45 @@ def _draw_sweep_frame(t: float) -> Image.Image:
         return canvas.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
 
     release = state["release"]
-    # The blade's reach never shrinks (the hitbox does not), but the trailing
-    # wash and the band's inner cut both retreat outward as the swing spends.
-    wash_alpha = int(96 * amp * (1.0 - 0.72 * release))
-    inner_cut = _lerp(0.42, 0.78, _smoothstep(0.0, 0.9, t))
-    width_scale = _lerp(1.0, 0.86, release)
+    width_scale = _lerp(1.0, 0.88, release)
+    # The trail retreats toward the blade as the swing spends: early frames are
+    # a full sweep, late ones a thin leading line.
+    reach_bias = _lerp(3.4, 7.5, _smoothstep(0.0, 0.9, t))
 
-    # 1. WASH — a soft envelope over the whole swept region.
-    wash = Image.new("RGBA", size, (0, 0, 0, 0))
-    blending_draw(wash).polygon(
-        _scaled(_half_disc(1.0, width_scale)),
-        fill=(EDGE[0], EDGE[1], EDGE[2], wash_alpha),
-    )
-    wash = wash.filter(ImageFilter.GaussianBlur(radius=int(1.8 * SUPER)))
-    canvas.alpha_composite(wash)
+    mask = Image.new("L", size, 0)
+    ImageDraw.Draw(mask).polygon(_scaled(_envelope_outline(width_scale)), fill=255)
+    grad = _blade_gradient(mask, reach_bias)
+    grad = grad.filter(ImageFilter.GaussianBlur(radius=int(1.2 * SUPER)))
+    grad = ImageChops.multiply(grad, mask)
 
-    # 2. BAND — the blade, brightening inward through the stack.
-    for inner, color, alpha in (
-        (inner_cut - 0.10, DEEP, int(215 * amp)),
-        (inner_cut, BODY, int(238 * amp)),
-        (inner_cut + 0.11, HOT, int(248 * amp)),
-        (inner_cut + 0.19, CORE, int(255 * amp)),
-    ):
-        canvas.alpha_composite(
-            _band_image(size, 1.0, _clamp(inner, 0.05, 0.95), width_scale, color, alpha)
-        )
+    # Colour by the same ramp: the deep stop far from the edge, white at it.
+    # ⚠ COLOUR AND ALPHA ARE DECOUPLED. Alpha carries the fade; the colour stays
+    # PALE the whole way down. Running the ramp to a deep blue meant the faint
+    # trail was both dark and transparent, which over a dark stage composites to
+    # something closer to soot than to a blue flash — Jon: "make the color more
+    # pale, still blue, but paler blue". The deepest stop a pixel can take now
+    # is the mid blue that used to be the SECOND stop.
+    stops = ((0.00, EDGE), (0.50, BODY), (0.80, HOT), (1.00, CORE))
+    ramp = []
+    for i in range(256):
+        k = i / 255.0
+        lo, hi = stops[0], stops[-1]
+        for a, b in zip(stops, stops[1:]):
+            if a[0] <= k <= b[0]:
+                lo, hi = a, b
+                break
+        f = (k - lo[0]) / max(1e-6, hi[0] - lo[0])
+        ramp.append(tuple(int(_lerp(lo[1][c], hi[1][c], f)) for c in range(3)))
 
-    # 3. EDGE — the hot leading rim.
-    canvas.alpha_composite(
-        _band_image(size, 1.0, 0.955, width_scale, CORE, int(255 * amp))
-    )
+    gpx = grad.load()
+    cpx = canvas.load()
+    for y in range(size[1]):
+        for x in range(size[0]):
+            v = gpx[x, y]
+            if v == 0:
+                continue
+            r, g, b = ramp[v]
+            cpx[x, y] = (r, g, b, int(v * amp))
     return canvas.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
 
 

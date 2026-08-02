@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import copy
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -61,6 +61,29 @@ MARY_FIRE = MaryPalette(
     accent=(255, 219, 108, 255),
 )
 
+MARY_FIRE_FLASH = MaryPalette(
+    cap=(255, 176, 120, 255),
+    shirt=(255, 237, 162, 255),
+    overalls=(255, 252, 248, 255),
+    buttons=(255, 232, 152, 255),
+    gloves=(255, 255, 250, 255),
+    hair=MARY_NORMAL.hair,
+    skin=MARY_NORMAL.skin,
+    shoes=(168, 116, 76, 255),
+    accent=(255, 242, 178, 255),
+)
+
+RIBBON_PINK = (255, 179, 210, 255)
+BROOCH_GOLD = (255, 221, 114, 255)
+BROOCH_LIGHT = (255, 244, 205, 255)
+EMBER_ORANGE = (255, 159, 76, 255)
+EMBER_CORE = (255, 240, 190, 255)
+BLUSH = (244, 157, 146, 255)
+LIP = (178, 89, 91, 255)
+WING_PEARL = (255, 246, 235, 255)
+AURA_PINK = (255, 200, 228, 255)
+AURA_GOLD = (255, 213, 118, 255)
+
 SHORT_ROWS: List[Tuple[str, int, int]] = [
     ("idle", 1, 160),
     ("death", 1, 120),
@@ -81,6 +104,8 @@ TALL_ROWS: List[Tuple[str, int, int]] = [
     ("climb", 2, 120),
     ("swim", 6, 100),
     ("grow", 4, 70),
+    ("transform", 8, 80),
+    ("hurt", 5, 85),
 ]
 
 FIRE_ROWS: List[Tuple[str, int, int]] = [
@@ -93,6 +118,7 @@ FIRE_ROWS: List[Tuple[str, int, int]] = [
     ("climb", 2, 120),
     ("swim", 6, 100),
     ("fireball", 1, 120),
+    ("hurt", 6, 85),
 ]
 
 
@@ -128,6 +154,7 @@ class FormSpec:
     palette: MaryPalette
     power: str
     tall: bool
+    magic_stage: int
     rows: List[Tuple[str, int, int]]
 
 
@@ -140,6 +167,7 @@ SHORT_FORM = FormSpec(
     palette=MARY_NORMAL,
     power="short",
     tall=False,
+    magic_stage=0,
     rows=SHORT_ROWS,
 )
 
@@ -152,6 +180,7 @@ TALL_FORM = FormSpec(
     palette=MARY_NORMAL,
     power="tall",
     tall=True,
+    magic_stage=1,
     rows=TALL_ROWS,
 )
 
@@ -164,8 +193,32 @@ FIRE_FORM = FormSpec(
     palette=MARY_FIRE,
     power="fire",
     tall=True,
+    magic_stage=2,
     rows=FIRE_ROWS,
 )
+
+
+def _lerp_rgba(a: tuple[int, int, int, int], b: tuple[int, int, int, int], t: float) -> tuple[int, int, int, int]:
+    t = max(0.0, min(1.0, t))
+    return tuple(int(round(x + (y - x) * t)) for x, y in zip(a, b))
+
+
+def _mix_outfit_palette(base: MaryPalette, target: MaryPalette, t: float) -> MaryPalette:
+    return MaryPalette(
+        cap=_lerp_rgba(base.cap, target.cap, t),
+        shirt=_lerp_rgba(base.shirt, target.shirt, t),
+        overalls=_lerp_rgba(base.overalls, target.overalls, t),
+        buttons=_lerp_rgba(base.buttons, target.buttons, t),
+        gloves=_lerp_rgba(base.gloves, target.gloves, t),
+        hair=base.hair,
+        skin=base.skin,
+        shoes=_lerp_rgba(base.shoes, target.shoes, t),
+        accent=_lerp_rgba(base.accent, target.accent, t),
+    )
+
+
+def _form_with_palette(form: FormSpec, palette: MaryPalette) -> FormSpec:
+    return replace(form, palette=palette)
 
 
 SHORT_POSES: Dict[str, List[Pose]] = {
@@ -406,19 +459,57 @@ def _rotated_endpoint(pivot_x: float, pivot_y: float, angle_deg: float, length: 
     )
 
 
+def _draw_star(px, cx: float, cy: float, *, outer: float, inner: float, fill, outline=OUTLINE, width: float = 0.45) -> None:
+    pts: List[Tuple[float, float]] = []
+    for idx in range(10):
+        angle = math.radians(-90 + idx * 36)
+        radius = outer if idx % 2 == 0 else inner
+        pts.append((cx + math.cos(angle) * radius, cy + math.sin(angle) * radius))
+    px.polygon(pts, fill=fill, outline=outline, width=width)
+
+
+def _draw_ribbon_tail(px, x: float, y: float, *, flip: bool, fill, long: bool = False) -> None:
+    sign = -1.0 if flip else 1.0
+    loop_dx = 1.5 * sign
+    px.polygon(
+        [(x, y), (x + loop_dx, y - 1.0), (x + loop_dx * 1.2, y + 0.9)],
+        fill=fill,
+        outline=OUTLINE,
+        width=0.45,
+    )
+    px.polygon(
+        [(x, y), (x + loop_dx, y + 1.0), (x + loop_dx * 1.1, y + 2.1)],
+        fill=fill,
+        outline=OUTLINE,
+        width=0.45,
+    )
+    tail_len = 4.2 if long else 3.0
+    px.polygon(
+        [(x, y + 0.4), (x + sign * 0.9, y + 2.0), (x + sign * 0.4, y + tail_len), (x - sign * 0.3, y + 2.6)],
+        fill=fill,
+        outline=OUTLINE,
+        width=0.45,
+    )
+
+
 def _draw_rotated_arm(
     px,
     shoulder_x: float,
     shoulder_y: float,
     *,
     front: bool,
-    palette: MaryPalette,
+    form: FormSpec,
     angle_deg: float,
     length: float = 4.4,
 ) -> None:
-    hand_fill = palette.gloves if front else palette.skin
+    pal = form.palette
+    hand_fill = pal.gloves if front else pal.skin
     end_x, end_y = _rotated_endpoint(shoulder_x, shoulder_y, angle_deg, length)
-    _draw_segment(px, shoulder_x, shoulder_y, end_x, end_y, half_w=0.8, fill=palette.shirt)
+    _draw_segment(px, shoulder_x, shoulder_y, end_x, end_y, half_w=0.8, fill=pal.shirt)
+    if form.magic_stage >= 1:
+        cuff_fill = pal.accent if form.magic_stage == 1 else pal.buttons
+        cuff_x, cuff_y = _rotated_endpoint(shoulder_x, shoulder_y, angle_deg, max(0.0, length - 0.9))
+        _draw_segment(px, cuff_x, cuff_y, end_x, end_y, half_w=0.9, fill=cuff_fill)
     _outlined_rect(px, end_x - 1.0, end_y - 0.9, end_x + 1.0, end_y + 0.9, fill=hand_fill, inset=0.15)
 
 
@@ -427,18 +518,21 @@ def _draw_rotated_leg(
     hip_x: float,
     hip_y: float,
     *,
-    palette: MaryPalette,
+    form: FormSpec,
     angle_deg: float,
     length: float = 5.4,
     front: bool = False,
 ) -> None:
-    fill = palette.overalls
+    pal = form.palette
     end_x, end_y = _rotated_endpoint(hip_x, hip_y, angle_deg, length)
-    _draw_segment(px, hip_x, hip_y, end_x, end_y, half_w=0.95, fill=fill)
+    _draw_segment(px, hip_x, hip_y, end_x, end_y, half_w=0.95, fill=pal.overalls)
     shoe_dir = 1.0 if math.sin(math.radians(angle_deg)) >= 0 else -1.0
     x1 = end_x - 0.5 if shoe_dir > 0 else end_x - 2.7
     x2 = end_x + 2.3 if shoe_dir > 0 else end_x + 0.5
-    _outlined_rect(px, x1, end_y - 0.4, x2, end_y + 1.0, fill=palette.shoes, inset=0.15)
+    if form.magic_stage >= 1:
+        cuff_fill = pal.accent if form.magic_stage == 1 else pal.buttons
+        _outlined_rect(px, x1 + 0.2, end_y - 1.3, x2 - 0.2, end_y - 0.1, fill=cuff_fill, inset=0.15)
+    _outlined_rect(px, x1, end_y - 0.4, x2, end_y + 1.0, fill=pal.shoes, inset=0.15)
 
 
 def _draw_head_side(px, form: FormSpec, x: float, y: float, *, lookback: bool = False) -> None:
@@ -466,6 +560,15 @@ def _draw_head_side(px, form: FormSpec, x: float, y: float, *, lookback: bool = 
             outline=OUTLINE,
             width=0.75,
         )
+        if form.magic_stage >= 1:
+            _draw_ribbon_tail(px, x + 10.7, y + 4.3, flip=False, fill=RIBBON_PINK, long=form.magic_stage >= 2)
+            if form.magic_stage >= 2:
+                px.polygon(
+                    [(x + 11.0, y + 1.4), (x + 13.2, y + 2.6), (x + 11.8, y + 4.1)],
+                    fill=pal.buttons,
+                    outline=OUTLINE,
+                    width=0.4,
+                )
         px.ellipse(x + 1.0, y + 0.1, x + 10.6, y + 5.0, fill=pal.cap, outline=OUTLINE, width=0.7)
         _outlined_rect(px, x + 0.8, y + 3.2, x + 10.2, y + 4.8, fill=pal.accent, inset=0.25)
         px.polygon(
@@ -474,6 +577,8 @@ def _draw_head_side(px, form: FormSpec, x: float, y: float, *, lookback: bool = 
             outline=OUTLINE,
             width=0.5,
         )
+        if form.magic_stage >= 1:
+            _draw_star(px, x + 5.2, y + 2.4, outer=1.4 if form.magic_stage >= 2 else 1.1, inner=0.55, fill=BROOCH_GOLD)
         _outlined_rect(px, x + 2.1, y + 4.9, x + 9.1, y + 11.1, fill=pal.skin)
         px.polygon(
             [(x + 6.3, y + 4.8), (x + 9.0, y + 4.8), (x + 8.1, y + 7.2)],
@@ -485,8 +590,10 @@ def _draw_head_side(px, form: FormSpec, x: float, y: float, *, lookback: bool = 
         _outlined_rect(px, eye_x, y + 6.2, eye_x + 1.3, y + 7.3, fill=WHITE, inset=0.2)
         _outlined_rect(px, eye_x + 0.2, y + 6.5, eye_x + 0.6, y + 7.0, fill=OUTLINE, inset=0.0)
         px.line([(x + 4.5, y + 6.0), (x + 3.6, y + 5.7)], fill=OUTLINE, width=0.35)
-        px.rect(x + 3.4, y + 8.6, x + 4.8, y + 9.3, fill=(178, 89, 91, 255))
-        px.rect(x + 2.8, y + 7.7, x + 3.8, y + 8.4, fill=(244, 157, 146, 255))
+        px.rect(x + 3.4, y + 8.6, x + 4.8, y + 9.3, fill=LIP)
+        px.rect(x + 2.8, y + 7.7, x + 3.8, y + 8.4, fill=BLUSH)
+        if form.magic_stage >= 2:
+            _draw_star(px, x + 8.7, y + 6.0, outer=0.7, inner=0.3, fill=BROOCH_LIGHT, width=0.25)
         return
 
     px.polygon(
@@ -511,6 +618,15 @@ def _draw_head_side(px, form: FormSpec, x: float, y: float, *, lookback: bool = 
         outline=OUTLINE,
         width=0.75,
     )
+    if form.magic_stage >= 1:
+        _draw_ribbon_tail(px, x + 1.2, y + 4.2, flip=True, fill=RIBBON_PINK, long=form.magic_stage >= 2)
+        if form.magic_stage >= 2:
+            px.polygon(
+                [(x - 0.8, y + 1.5), (x - 2.8, y + 2.7), (x - 1.5, y + 4.3)],
+                fill=pal.buttons,
+                outline=OUTLINE,
+                width=0.4,
+            )
     px.ellipse(x + 1.0, y + 0.1, x + 10.6, y + 5.0, fill=pal.cap, outline=OUTLINE, width=0.7)
     _outlined_rect(px, x + 1.4, y + 3.2, x + 10.8, y + 4.8, fill=pal.accent, inset=0.25)
     px.polygon(
@@ -519,6 +635,8 @@ def _draw_head_side(px, form: FormSpec, x: float, y: float, *, lookback: bool = 
         outline=OUTLINE,
         width=0.5,
     )
+    if form.magic_stage >= 1:
+        _draw_star(px, x + 6.3, y + 2.4, outer=1.4 if form.magic_stage >= 2 else 1.1, inner=0.55, fill=BROOCH_GOLD)
     _outlined_rect(px, x + 2.5, y + 4.9, x + 9.5, y + 11.1, fill=pal.skin)
     px.polygon(
         [(x + 2.4, y + 4.8), (x + 5.1, y + 4.8), (x + 3.2, y + 7.2)],
@@ -530,8 +648,10 @@ def _draw_head_side(px, form: FormSpec, x: float, y: float, *, lookback: bool = 
     _outlined_rect(px, eye_x, y + 6.2, eye_x + 1.3, y + 7.3, fill=WHITE, inset=0.2)
     _outlined_rect(px, eye_x + 0.8, y + 6.5, eye_x + 1.2, y + 7.0, fill=OUTLINE, inset=0.0)
     px.line([(x + 7.4, y + 6.1), (x + 8.2, y + 5.7)], fill=OUTLINE, width=0.35)
-    px.rect(x + 7.4, y + 8.6, x + 8.8, y + 9.3, fill=(178, 89, 91, 255))
-    px.rect(x + 8.0, y + 7.7, x + 9.0, y + 8.4, fill=(244, 157, 146, 255))
+    px.rect(x + 7.4, y + 8.6, x + 8.8, y + 9.3, fill=LIP)
+    px.rect(x + 8.0, y + 7.7, x + 9.0, y + 8.4, fill=BLUSH)
+    if form.magic_stage >= 2:
+        _draw_star(px, x + 2.8, y + 6.0, outer=0.7, inner=0.3, fill=BROOCH_LIGHT, width=0.25)
 
 
 def _draw_head_front(px, form: FormSpec, x: float, y: float) -> None:
@@ -548,8 +668,26 @@ def _draw_head_front(px, form: FormSpec, x: float, y: float) -> None:
         outline=OUTLINE,
         width=0.75,
     )
+    if form.magic_stage >= 1:
+        _draw_ribbon_tail(px, x + 1.3, y + 4.4, flip=True, fill=RIBBON_PINK, long=form.magic_stage >= 2)
+        _draw_ribbon_tail(px, x + 9.7, y + 4.4, flip=False, fill=RIBBON_PINK, long=form.magic_stage >= 2)
     px.ellipse(x + 0.6, y + 0.2, x + 10.4, y + 5.0, fill=pal.cap, outline=OUTLINE, width=0.7)
     _outlined_rect(px, x + 1.0, y + 3.3, x + 10.0, y + 4.9, fill=pal.accent, inset=0.25)
+    if form.magic_stage >= 1:
+        _draw_star(px, x + 5.4, y + 2.4, outer=1.5 if form.magic_stage >= 2 else 1.2, inner=0.6, fill=BROOCH_GOLD)
+        if form.magic_stage >= 2:
+            px.polygon(
+                [(x + 0.8, y + 2.5), (x - 1.2, y + 3.3), (x + 0.1, y + 5.0)],
+                fill=pal.buttons,
+                outline=OUTLINE,
+                width=0.35,
+            )
+            px.polygon(
+                [(x + 10.2, y + 2.5), (x + 12.2, y + 3.3), (x + 10.9, y + 5.0)],
+                fill=pal.buttons,
+                outline=OUTLINE,
+                width=0.35,
+            )
     _outlined_rect(px, x + 2.0, y + 4.8, x + 9.0, y + 11.1, fill=pal.skin)
     px.polygon(
         [(x + 2.2, y + 4.6), (x + 8.8, y + 4.6), (x + 7.6, y + 6.2), (x + 3.4, y + 6.2)],
@@ -562,7 +700,9 @@ def _draw_head_front(px, form: FormSpec, x: float, y: float) -> None:
     _outlined_rect(px, x + 4.0, y + 6.8, x + 4.4, y + 7.3, fill=OUTLINE, inset=0.0)
     _outlined_rect(px, x + 6.8, y + 6.8, x + 7.2, y + 7.3, fill=OUTLINE, inset=0.0)
     px.line([(x + 5.4, y + 7.2), (x + 5.1, y + 8.6), (x + 5.8, y + 8.8)], fill=OUTLINE, width=0.35)
-    px.rect(x + 4.2, y + 9.2, x + 6.8, y + 9.9, fill=(178, 89, 91, 255))
+    px.rect(x + 4.2, y + 9.2, x + 6.8, y + 9.9, fill=LIP)
+    px.rect(x + 2.6, y + 7.7, x + 3.6, y + 8.4, fill=BLUSH)
+    px.rect(x + 7.4, y + 7.7, x + 8.4, y + 8.4, fill=BLUSH)
 
 
 def _draw_body_side(px, form: FormSpec, x: float, y: float, crouch: float) -> None:
@@ -570,6 +710,27 @@ def _draw_body_side(px, form: FormSpec, x: float, y: float, crouch: float) -> No
     body_h = form.body_height - 0.55 * crouch
     body_w = form.body_width + 0.4 * min(crouch, 1.4)
     waist = y + body_h * 0.63
+    if form.magic_stage >= 1:
+        skirt_fill = pal.accent if form.magic_stage == 1 else pal.shirt
+        hem_fill = pal.buttons if form.magic_stage == 1 else BROOCH_LIGHT
+        px.polygon(
+            [
+                (x + 1.0, waist - 0.1),
+                (x + 1.0 + body_w - 0.6, waist + 0.1),
+                (x + 1.0 + body_w + 1.2, y + body_h + 1.9),
+                (x + 0.5, y + body_h + 1.7),
+            ],
+            fill=skirt_fill,
+            outline=OUTLINE,
+            width=0.55,
+        )
+        px.line([(x + 1.5, y + body_h + 1.2), (x + 1.0 + body_w + 0.6, y + body_h + 1.2)], fill=hem_fill, width=0.6)
+        px.polygon(
+            [(x + 0.6, waist + 0.2), (x - 1.0, waist - 0.6), (x - 0.2, waist + 1.0)],
+            fill=RIBBON_PINK if form.magic_stage == 1 else pal.buttons,
+            outline=OUTLINE,
+            width=0.35,
+        )
     _outlined_rect(px, x + 1.0, y + 0.0, x + 1.0 + body_w, y + body_h, fill=pal.shirt)
     px.polygon(
         [
@@ -587,12 +748,62 @@ def _draw_body_side(px, form: FormSpec, x: float, y: float, crouch: float) -> No
     px.line([(x + 2.0, waist), (x + 1.0 + body_w - 0.9, waist)], fill=OUTLINE, width=0.45)
     _outlined_rect(px, x + 3.5, y + 3.0, x + 4.5, y + 4.1, fill=pal.buttons, inset=0.2)
     _outlined_rect(px, x + 6.5, y + 3.0, x + 7.5, y + 4.1, fill=pal.buttons, inset=0.2)
+    if form.magic_stage >= 1:
+        _draw_star(px, x + 5.7, y + 2.3, outer=1.0 if form.magic_stage == 1 else 1.3, inner=0.45, fill=BROOCH_GOLD, width=0.35)
+        px.polygon(
+            [(x + 5.7, y + 2.9), (x + 4.6, y + 4.1), (x + 6.8, y + 4.1)],
+            fill=RIBBON_PINK if form.magic_stage == 1 else pal.accent,
+            outline=OUTLINE,
+            width=0.3,
+        )
+        if form.magic_stage >= 2:
+            px.polygon(
+                [(x + 1.2, y + 1.2), (x - 0.9, y + 2.3), (x + 0.4, y + 5.4)],
+                fill=pal.buttons,
+                outline=OUTLINE,
+                width=0.35,
+            )
+            px.polygon(
+                [(x + 10.2, y + 1.0), (x + 12.0, y + 2.2), (x + 9.8, y + 5.6)],
+                fill=pal.buttons,
+                outline=OUTLINE,
+                width=0.35,
+            )
+        _draw_suspender_fasteners_side(px, x, y, form)
 
 
 def _draw_body_front(px, form: FormSpec, x: float, y: float, *, crouch: float = 0.0) -> None:
     pal = form.palette
     body_h = form.body_height - 0.55 * crouch
     body_w = form.body_width + 0.4 * min(crouch, 1.4)
+    waist = y + body_h * 0.63
+    if form.magic_stage >= 1:
+        skirt_fill = pal.accent if form.magic_stage == 1 else pal.shirt
+        hem_fill = pal.buttons if form.magic_stage == 1 else BROOCH_LIGHT
+        px.polygon(
+            [
+                (x + 1.4, waist),
+                (x + 1.2 + body_w - 0.2, waist),
+                (x + 1.2 + body_w + 0.8, y + body_h + 1.9),
+                (x + 0.4, y + body_h + 1.9),
+            ],
+            fill=skirt_fill,
+            outline=OUTLINE,
+            width=0.55,
+        )
+        px.line([(x + 1.0, y + body_h + 1.2), (x + 1.2 + body_w, y + body_h + 1.2)], fill=hem_fill, width=0.6)
+        px.polygon(
+            [(x + 1.2, waist + 0.2), (x - 0.9, waist - 0.6), (x - 0.1, waist + 1.2)],
+            fill=RIBBON_PINK if form.magic_stage == 1 else pal.buttons,
+            outline=OUTLINE,
+            width=0.35,
+        )
+        px.polygon(
+            [(x + 1.2 + body_w, waist + 0.2), (x + 3.3 + body_w, waist - 0.6), (x + 2.5 + body_w, waist + 1.2)],
+            fill=RIBBON_PINK if form.magic_stage == 1 else pal.buttons,
+            outline=OUTLINE,
+            width=0.35,
+        )
     _outlined_rect(px, x + 1.2, y + 0.0, x + 1.2 + body_w, y + body_h, fill=pal.shirt)
     px.polygon(
         [
@@ -609,23 +820,264 @@ def _draw_body_front(px, form: FormSpec, x: float, y: float, *, crouch: float = 
     px.line([(x + 8.8, y + 0.6), (x + 7.2, y + 4.6)], fill=pal.overalls, width=1.2)
     _outlined_rect(px, x + 4.0, y + 2.8, x + 5.0, y + 4.0, fill=pal.buttons, inset=0.2)
     _outlined_rect(px, x + 7.0, y + 2.8, x + 8.0, y + 4.0, fill=pal.buttons, inset=0.2)
+    if form.magic_stage >= 1:
+        _draw_star(px, x + 5.9, y + 2.1, outer=1.0 if form.magic_stage == 1 else 1.35, inner=0.45, fill=BROOCH_GOLD, width=0.35)
+        px.polygon(
+            [(x + 5.9, y + 2.8), (x + 4.7, y + 4.1), (x + 7.1, y + 4.1)],
+            fill=RIBBON_PINK if form.magic_stage == 1 else pal.accent,
+            outline=OUTLINE,
+            width=0.3,
+        )
+        if form.magic_stage >= 2:
+            px.polygon(
+                [(x + 1.4, y + 1.0), (x - 1.0, y + 2.0), (x + 1.0, y + 5.4)],
+                fill=pal.buttons,
+                outline=OUTLINE,
+                width=0.35,
+            )
+            px.polygon(
+                [(x + 10.8, y + 1.0), (x + 13.2, y + 2.0), (x + 11.2, y + 5.4)],
+                fill=pal.buttons,
+                outline=OUTLINE,
+                width=0.35,
+            )
 
 
-def _draw_arm(px, x: float, y: float, *, front: bool, palette: MaryPalette, length: float = 4.2, glove_down: bool = True) -> None:
-    glove_fill = palette.gloves if front else palette.skin
-    shirt_fill = palette.shirt
-    _outlined_rect(px, x, y, x + 1.6, y + length, fill=shirt_fill)
+def _draw_arm(px, x: float, y: float, *, front: bool, form: FormSpec, length: float = 4.2, glove_down: bool = True) -> None:
+    pal = form.palette
+    glove_fill = pal.gloves if front else pal.skin
+    _outlined_rect(px, x, y, x + 1.6, y + length, fill=pal.shirt)
     glove_y = y + (length - 0.5 if glove_down else -1.2)
-    _outlined_rect(px, x - 0.2, glove_y, x + 1.8, glove_y + 1.7, fill=glove_fill)
+    if form.magic_stage >= 1:
+        cuff_fill = pal.accent if form.magic_stage == 1 else pal.buttons
+        _outlined_rect(px, x - 0.1, glove_y - 0.8, x + 1.7, glove_y + 0.1, fill=cuff_fill, inset=0.15)
+    _outlined_rect(px, x - 0.2, glove_y, x + 1.8, glove_y + 1.7, fill=glove_fill, inset=0.15)
 
 
-def _draw_leg(px, x: float, y: float, *, palette: MaryPalette, length: float = 5.2, front: bool = False) -> None:
-    skin_fill = palette.overalls
-    _outlined_rect(px, x + 0.2, y, x + 2.0, y + length, fill=skin_fill)
-    _outlined_rect(px, x - 0.4, y + length - 0.4, x + 2.8, y + length + 1.2, fill=palette.shoes)
+def _draw_leg(px, x: float, y: float, *, form: FormSpec, length: float = 5.2, front: bool = False) -> None:
+    pal = form.palette
+    _outlined_rect(px, x + 0.2, y, x + 2.0, y + length, fill=pal.overalls)
+    if form.magic_stage >= 1:
+        cuff_fill = pal.accent if form.magic_stage == 1 else pal.buttons
+        _outlined_rect(px, x, y + length - 1.1, x + 2.2, y + length - 0.2, fill=cuff_fill, inset=0.15)
+    _outlined_rect(px, x - 0.4, y + length - 0.4, x + 2.8, y + length + 1.2, fill=pal.shoes)
 
 
-def _draw_dead_front(px, form: FormSpec, pose: Pose) -> None:
+def _draw_fire_orb(px, x: float, y: float) -> None:
+    px.ellipse(x - 2.0, y - 2.0, x + 2.0, y + 2.0, fill=EMBER_ORANGE, outline=OUTLINE, width=0.45)
+    px.ellipse(x - 1.0, y - 1.0, x + 1.0, y + 1.0, fill=EMBER_CORE, outline=OUTLINE, width=0.3)
+    _draw_star(px, x + 2.3, y - 1.4, outer=0.8, inner=0.35, fill=BROOCH_LIGHT, width=0.25)
+
+
+def _draw_suspender_fasteners_front(px, x: float, y: float, form: FormSpec) -> None:
+    # Keep the classic overall-button read from the base Mary-O sprite.
+    for cx in (x + 4.5, x + 7.5):
+        px.ellipse(cx - 0.9, y + 2.65, cx + 0.9, y + 4.15, fill=form.palette.buttons, outline=OUTLINE, width=0.34)
+        px.ellipse(cx - 0.28, y + 2.95, cx + 0.28, y + 3.50, fill=BROOCH_LIGHT, outline=None)
+
+
+def _draw_suspender_fasteners_side(px, x: float, y: float, form: FormSpec) -> None:
+    # Side views still keep two readable gold fasteners so the silhouette maps
+    # back to the corresponding detail in the short/base form.
+    for cx in (x + 4.15, x + 7.05):
+        px.ellipse(cx - 0.84, y + 2.75, cx + 0.84, y + 4.18, fill=form.palette.buttons, outline=OUTLINE, width=0.34)
+        px.ellipse(cx - 0.24, y + 3.02, cx + 0.24, y + 3.56, fill=BROOCH_LIGHT, outline=None)
+
+
+def _draw_transform_outfit_stars(px, body_x: float, body_top: float, *, phase: int, form: FormSpec) -> None:
+    star_fill = AURA_GOLD if form.magic_stage >= 2 else BROOCH_GOLD
+    positions = [
+        (body_x + 8.6, body_top + 2.2, 0.9),
+        (body_x + 6.0, body_top + 6.3, 0.8),
+        (body_x + 3.5, body_top + 9.2, 0.72),
+    ]
+    for sx, sy, outer in positions[: max(0, min(phase, len(positions)))]:
+        _draw_star(px, sx, sy, outer=outer, inner=outer * 0.42, fill=star_fill, width=0.22)
+
+
+def _draw_sleeve_wing_side(px, anchor_x: float, anchor_y: float, *, form: FormSpec, strength: float = 1.0, facing: float = 1.0) -> None:
+    if strength <= 0.0 or form.magic_stage < 1:
+        return
+    outer = form.palette.buttons if form.magic_stage >= 2 else form.palette.accent
+    inner = WING_PEARL if form.magic_stage >= 2 else BROOCH_LIGHT
+    span = 1.3 + 0.8 * strength + (0.45 if form.magic_stage >= 2 else 0.0)
+    lift = 0.8 + 0.35 * strength
+    px.polygon(
+        [
+            (anchor_x, anchor_y),
+            (anchor_x + facing * span, anchor_y - lift),
+            (anchor_x + facing * 0.2, anchor_y + 0.9),
+        ],
+        fill=outer,
+        outline=OUTLINE,
+        width=0.3,
+    )
+    px.polygon(
+        [
+            (anchor_x + facing * 0.1, anchor_y + 0.35),
+            (anchor_x + facing * (span + 0.5), anchor_y + 0.1),
+            (anchor_x + facing * 0.25, anchor_y + 1.2),
+        ],
+        fill=inner,
+        outline=OUTLINE,
+        width=0.28,
+    )
+    if form.magic_stage >= 2 or strength > 0.8:
+        px.polygon(
+            [
+                (anchor_x + facing * 0.15, anchor_y + 0.8),
+                (anchor_x + facing * (span * 0.9), anchor_y + 1.35),
+                (anchor_x + facing * 0.2, anchor_y + 1.55),
+            ],
+            fill=outer,
+            outline=OUTLINE,
+            width=0.28,
+        )
+
+
+def _draw_wing_side(px, anchor_x: float, anchor_y: float, *, form: FormSpec, spread: float = 0.0) -> None:
+    if form.magic_stage < 1:
+        return
+    pal = form.palette
+    phase = form.magic_stage + spread
+    outer = pal.buttons if form.magic_stage >= 2 else pal.accent
+    inner = WING_PEARL if form.magic_stage >= 2 else BROOCH_LIGHT
+    fire_bonus = 0.9 if form.magic_stage >= 2 else 0.0
+    depth = 2.4 + 0.8 * phase + fire_bonus
+    height = 1.4 + 0.45 * phase + 0.35 * fire_bonus
+    lift = 0.5 * spread + 0.2 * fire_bonus
+    px.polygon(
+        [
+            (anchor_x, anchor_y + 0.4),
+            (anchor_x - depth, anchor_y - height - lift),
+            (anchor_x - 0.4, anchor_y - 0.3),
+        ],
+        fill=outer,
+        outline=OUTLINE,
+        width=0.35,
+    )
+    px.polygon(
+        [
+            (anchor_x, anchor_y + 0.8),
+            (anchor_x - depth - 0.8, anchor_y + 0.6),
+            (anchor_x - 0.4, anchor_y + 1.1),
+        ],
+        fill=inner,
+        outline=OUTLINE,
+        width=0.35,
+    )
+    if form.magic_stage >= 2 or spread >= 0.45:
+        px.polygon(
+            [
+                (anchor_x + 0.2, anchor_y + 1.0),
+                (anchor_x - depth * 0.9, anchor_y + height + 1.3 + lift),
+                (anchor_x - 0.2, anchor_y + 1.8),
+            ],
+            fill=outer,
+            outline=OUTLINE,
+            width=0.35,
+        )
+        if form.magic_stage >= 2:
+            px.polygon(
+                [
+                    (anchor_x + 0.35, anchor_y + 0.1),
+                    (anchor_x - depth * 0.72, anchor_y - height * 0.2),
+                    (anchor_x + 0.15, anchor_y + 0.95),
+                ],
+                fill=inner,
+                outline=OUTLINE,
+                width=0.28,
+            )
+        _draw_star(px, anchor_x - depth * 0.7, anchor_y - height - 0.4, outer=0.7, inner=0.3, fill=AURA_GOLD, width=0.25)
+
+
+def _draw_wings_front(px, center_x: float, shoulder_y: float, *, form: FormSpec, spread: float = 0.0) -> None:
+    if form.magic_stage < 1:
+        return
+    pal = form.palette
+    outer = pal.buttons if form.magic_stage >= 2 else pal.accent
+    inner = WING_PEARL if form.magic_stage >= 2 else BROOCH_LIGHT
+    fire_bonus = 0.8 if form.magic_stage >= 2 else 0.0
+    wing_h = 2.6 + 0.7 * (form.magic_stage + spread) + 0.5 * fire_bonus
+    wing_w = 3.8 + 0.9 * (form.magic_stage + spread) + 0.9 * fire_bonus
+    for sign in (-1, 1):
+        px.polygon(
+            [
+                (center_x + sign * 1.4, shoulder_y + 0.6),
+                (center_x + sign * wing_w, shoulder_y - wing_h),
+                (center_x + sign * 2.2, shoulder_y + 0.4),
+            ],
+            fill=outer,
+            outline=OUTLINE,
+            width=0.35,
+        )
+        px.polygon(
+            [
+                (center_x + sign * 1.6, shoulder_y + 1.2),
+                (center_x + sign * (wing_w + 0.3), shoulder_y + 0.8),
+                (center_x + sign * 2.0, shoulder_y + 2.0),
+            ],
+            fill=inner,
+            outline=OUTLINE,
+            width=0.35,
+        )
+    if form.magic_stage >= 2 or spread >= 0.5:
+        for sign in (-1, 1):
+            px.polygon(
+                [
+                    (center_x + sign * 1.5, shoulder_y + 1.7),
+                    (center_x + sign * (wing_w + 0.5), shoulder_y + 2.2),
+                    (center_x + sign * 2.0, shoulder_y + 2.8),
+                ],
+                fill=outer,
+                outline=OUTLINE,
+                width=0.28,
+            )
+        _draw_star(px, center_x - wing_w - 0.6, shoulder_y - wing_h + 0.2, outer=0.7, inner=0.3, fill=AURA_GOLD, width=0.25)
+        _draw_star(px, center_x + wing_w + 0.6, shoulder_y - wing_h + 0.2, outer=0.7, inner=0.3, fill=AURA_GOLD, width=0.25)
+
+
+def _draw_transform_aura(px, frame_idx: int) -> None:
+    sparkle_sets = [
+        [(3.6, 8.0, 0.55), (20.5, 9.0, 0.55), (5.5, 18.2, 0.45)],
+        [(3.0, 7.0, 0.65), (20.5, 6.8, 0.65), (4.6, 17.2, 0.55), (19.0, 18.2, 0.45)],
+        [(2.8, 6.2, 0.8), (20.8, 6.0, 0.8), (6.0, 15.8, 0.6), (18.2, 16.2, 0.6)],
+        [(2.4, 5.4, 0.95), (21.2, 5.4, 0.95), (4.0, 14.8, 0.75), (18.8, 14.8, 0.75), (12.0, 4.0, 0.7)],
+        [(2.3, 5.0, 1.05), (21.3, 5.0, 1.05), (4.4, 13.8, 0.82), (18.2, 13.8, 0.82), (12.0, 3.6, 0.82), (11.8, 19.8, 0.7)],
+        [(3.2, 6.0, 0.9), (20.5, 6.0, 0.9), (4.4, 14.8, 0.7), (18.4, 15.0, 0.7), (12.0, 4.0, 0.65)],
+        [(4.0, 7.0, 0.75), (20.0, 7.0, 0.75), (5.0, 15.8, 0.6), (18.0, 15.8, 0.6)],
+        [(4.2, 7.4, 0.65), (19.6, 7.4, 0.65), (5.8, 16.1, 0.55), (17.7, 16.1, 0.55)],
+    ]
+    for x, y, outer in sparkle_sets[frame_idx % len(sparkle_sets)]:
+        fill = AURA_GOLD if outer >= 0.75 else AURA_PINK
+        _draw_star(px, x, y, outer=outer, inner=outer * 0.45, fill=fill, width=0.22)
+
+
+def _draw_power_loss_sparkles(px, frame_idx: int, *, fire: bool = False) -> None:
+    sparkle_sets = [
+        [(6.0, 8.4, 0.7), (17.8, 9.2, 0.6), (11.8, 18.4, 0.5)],
+        [(7.0, 10.1, 0.65), (18.0, 11.0, 0.55), (12.0, 19.6, 0.45)],
+        [(8.4, 12.0, 0.55), (17.0, 13.0, 0.45)],
+        [(9.4, 14.0, 0.5), (15.8, 14.8, 0.4)],
+        [(10.3, 15.2, 0.42)],
+        [],
+    ]
+    for x, y, outer in sparkle_sets[min(frame_idx, len(sparkle_sets) - 1)]:
+        fill = AURA_GOLD if fire and outer >= 0.55 else AURA_PINK
+        _draw_star(px, x, y, outer=outer, inner=max(0.2, outer * 0.42), fill=fill, width=0.22)
+    if fire and frame_idx <= 3:
+        # a few embers trail downward as the power drains away
+        ember_sets = [
+            [(18.8, 13.5), (20.3, 15.2)],
+            [(18.1, 14.7), (19.4, 16.4)],
+            [(17.2, 16.0)],
+            [(16.4, 17.2)],
+        ]
+        for ex, ey in ember_sets[min(frame_idx, len(ember_sets) - 1)]:
+            px.ellipse(ex - 0.55, ey - 0.55, ex + 0.55, ey + 0.55, fill=EMBER_ORANGE, outline=OUTLINE, width=0.2)
+
+
+def _draw_dead_front(px, form: FormSpec, pose: Pose, *, wing_boost: float = 0.0) -> None:
     body_x = 6.0
     foot_y = 28.8 + pose.bob
     torso_bottom = foot_y - form.leg_height
@@ -639,7 +1091,7 @@ def _draw_dead_front(px, form: FormSpec, pose: Pose) -> None:
         px,
         left_hip_x,
         hip_y,
-        palette=form.palette,
+        form=form,
         angle_deg=-14.0,
         length=form.leg_height - 0.4,
         front=True,
@@ -648,12 +1100,13 @@ def _draw_dead_front(px, form: FormSpec, pose: Pose) -> None:
         px,
         right_hip_x,
         hip_y,
-        palette=form.palette,
+        form=form,
         angle_deg=14.0,
         length=form.leg_height - 0.4,
         front=True,
     )
 
+    _draw_wings_front(px, body_x + 6.0, body_top + 2.2, form=form, spread=wing_boost)
     _draw_body_front(px, form, body_x, body_top)
     _draw_head_front(px, form, body_x + 0.3, head_top)
 
@@ -663,7 +1116,7 @@ def _draw_dead_front(px, form: FormSpec, pose: Pose) -> None:
         body_x + 3.0,
         shoulder_y,
         front=True,
-        palette=form.palette,
+        form=form,
         angle_deg=-135.0,
         length=5.3,
     )
@@ -672,13 +1125,13 @@ def _draw_dead_front(px, form: FormSpec, pose: Pose) -> None:
         body_x + 9.0,
         shoulder_y,
         front=True,
-        palette=form.palette,
+        form=form,
         angle_deg=135.0,
         length=5.3,
     )
 
 
-def _draw_side_pose(px, form: FormSpec, pose: Pose) -> None:
+def _draw_side_pose(px, form: FormSpec, pose: Pose, *, animation: str = "idle", wing_boost: float = 0.0, sleeve_wing_boost: float = 0.0, extra_star_phase: int = 0) -> None:
     foot_y = 30.2 + pose.bob
     torso_bottom = foot_y - form.leg_height + 0.4 * pose.crouch
     body_top = torso_bottom - form.body_height + 0.6 * pose.crouch
@@ -705,7 +1158,7 @@ def _draw_side_pose(px, form: FormSpec, pose: Pose) -> None:
             back_shoulder[0],
             back_shoulder[1],
             front=False,
-            palette=form.palette,
+            form=form,
             angle_deg=pose.arm_back_angle,
             length=4.4 if pose.mode != "climb" else 4.8,
         )
@@ -715,7 +1168,7 @@ def _draw_side_pose(px, form: FormSpec, pose: Pose) -> None:
             body_x - 1.4 + pose.arm_back_dx,
             body_top + 1.1 + pose.arm_back_dy,
             front=False,
-            palette=form.palette,
+            form=form,
             length=4.0,
         )
 
@@ -724,7 +1177,7 @@ def _draw_side_pose(px, form: FormSpec, pose: Pose) -> None:
             px,
             back_hip[0],
             back_hip[1],
-            palette=form.palette,
+            form=form,
             angle_deg=pose.leg_back_angle,
             length=form.leg_height - 0.5 * pose.crouch,
             front=False,
@@ -734,39 +1187,25 @@ def _draw_side_pose(px, form: FormSpec, pose: Pose) -> None:
             px,
             body_x + 2.1 + pose.leg_back_dx,
             torso_bottom + pose.leg_back_dy,
-            palette=form.palette,
+            form=form,
             length=form.leg_height - 0.6 * pose.crouch,
         )
 
-    _draw_body_side(px, form, body_x, body_top, pose.crouch)
-    _draw_head_side(px, form, body_x - 0.4 + pose.head_dx, head_top, lookback=pose.mode == "lookback")
+    side_wing_boost = wing_boost + (0.45 if form.power == "fire" else 0.0) + (0.25 if animation == "fireball" else 0.0)
+    sleeve_boost = sleeve_wing_boost + (0.85 if form.power == "fire" else 0.0)
+    _draw_wing_side(px, body_x + 1.6, body_top + 3.4, form=form, spread=side_wing_boost)
+    if form.magic_stage >= 2:
+        _draw_wing_side(px, body_x + 2.6, body_top + 5.1, form=form, spread=max(0.0, side_wing_boost - 0.15))
+    if sleeve_boost > 0.0:
+        _draw_sleeve_wing_side(px, back_shoulder[0] - 0.3, back_shoulder[1] + 1.1, form=form, strength=max(0.45, sleeve_boost * 0.8), facing=-1.0)
 
-    if pose.arm_front_angle is not None:
-        _draw_rotated_arm(
-            px,
-            front_shoulder[0],
-            front_shoulder[1],
-            front=True,
-            palette=form.palette,
-            angle_deg=pose.arm_front_angle,
-            length=5.2 if pose.mode == "fireball" else (4.8 if pose.mode in {"swim", "climb"} else 4.4),
-        )
-    else:
-        _draw_arm(
-            px,
-            body_x + 8.3 + pose.arm_front_dx,
-            body_top + 0.8 + pose.arm_front_dy,
-            front=True,
-            palette=form.palette,
-            length=4.0,
-        )
-
+    # Keep the front leg tucked behind the dress / skirt silhouette in side view.
     if pose.leg_front_angle is not None:
         _draw_rotated_leg(
             px,
             front_hip[0],
             front_hip[1],
-            palette=form.palette,
+            form=form,
             angle_deg=pose.leg_front_angle,
             length=form.leg_height - 0.5 * pose.crouch,
             front=True,
@@ -776,10 +1215,42 @@ def _draw_side_pose(px, form: FormSpec, pose: Pose) -> None:
             px,
             body_x + 5.1 + pose.leg_front_dx,
             torso_bottom + pose.leg_front_dy,
-            palette=form.palette,
+            form=form,
             length=form.leg_height - 0.6 * pose.crouch,
             front=True,
         )
+
+    _draw_body_side(px, form, body_x, body_top, pose.crouch)
+    if extra_star_phase > 0:
+        _draw_transform_outfit_stars(px, body_x, body_top, phase=extra_star_phase, form=form)
+    _draw_head_side(px, form, body_x - 0.4 + pose.head_dx, head_top, lookback=pose.mode == "lookback")
+
+    if sleeve_boost > 0.0:
+        _draw_sleeve_wing_side(px, front_shoulder[0] + 0.2, front_shoulder[1] + 1.0, form=form, strength=sleeve_boost, facing=1.0)
+    if pose.arm_front_angle is not None:
+        _draw_rotated_arm(
+            px,
+            front_shoulder[0],
+            front_shoulder[1],
+            front=True,
+            form=form,
+            angle_deg=pose.arm_front_angle,
+            length=5.2 if pose.mode == "fireball" else (4.8 if pose.mode in {"swim", "climb"} else 4.4),
+        )
+    else:
+        _draw_arm(
+            px,
+            body_x + 8.3 + pose.arm_front_dx,
+            body_top + 0.8 + pose.arm_front_dy,
+            front=True,
+            form=form,
+            length=4.0,
+        )
+
+    if form.power == "fire" and animation == "fireball":
+        orb_x = front_shoulder[0] + 5.0
+        orb_y = front_shoulder[1] + 0.8
+        _draw_fire_orb(px, orb_x, orb_y)
 
 
 def _poses_for(form: FormSpec) -> Dict[str, List[Pose]]:
@@ -793,6 +1264,88 @@ def _draw_form(form: FormSpec, animation: str, frame_idx: int, nframes: int) -> 
         alt_form = SHORT_FORM if frame_idx % 2 == 0 else form
         return _draw_form(alt_form, "idle", 0, 1)
 
+    if animation == "transform":
+        fire_flash_1 = _mix_outfit_palette(MARY_NORMAL, MARY_FIRE_FLASH, 0.68)
+        fire_flash_2 = MARY_FIRE_FLASH
+        fire_reveal_1 = _mix_outfit_palette(MARY_FIRE_FLASH, MARY_FIRE, 0.35)
+        fire_reveal_2 = _mix_outfit_palette(MARY_FIRE_FLASH, MARY_FIRE, 0.72)
+        transform_seq = [
+            (_form_with_palette(TALL_FORM, MARY_NORMAL), Pose(), 0.00, 0.00, 0, False),
+            (_form_with_palette(TALL_FORM, MARY_NORMAL), Pose(bob=-0.4, arm_front_angle=118, arm_back_angle=42, leg_front_angle=8, leg_back_angle=-8), 0.12, 0.00, 2, False),
+            (_form_with_palette(TALL_FORM, MARY_NORMAL), Pose(bob=-0.8, body_lean=0.05, arm_front_angle=92, arm_back_angle=26, leg_front_angle=14, leg_back_angle=-10), 0.60, 0.85, 3, False),
+            (_form_with_palette(FIRE_FORM, fire_flash_1), Pose(bob=-1.05, body_lean=0.10, arm_front_angle=86, arm_back_angle=18, leg_front_angle=16, leg_back_angle=-12), 0.90, 1.00, 3, False),
+            (_form_with_palette(FIRE_FORM, fire_flash_2), Pose(bob=-1.15, body_lean=0.12, arm_front_angle=102, arm_back_angle=22, leg_front_angle=18, leg_back_angle=-14), 1.20, 1.15, 3, True),
+            (_form_with_palette(FIRE_FORM, fire_reveal_1), Pose(bob=-0.9, body_lean=0.14, arm_front_angle=110, arm_back_angle=20, leg_front_angle=18, leg_back_angle=-12), 1.25, 1.15, 3, True),
+            (_form_with_palette(FIRE_FORM, fire_reveal_2), Pose(bob=-0.5, body_lean=0.10, arm_front_angle=70, arm_back_angle=-4, leg_front_angle=10, leg_back_angle=-6), 1.15, 1.05, 3, True),
+            (FIRE_FORM, TALL_LIKE_POSES["fireball"][0], 0.90, 1.0, 3, True),
+        ]
+        active_form, pose, wing_boost, sleeve_wing_boost, extra_star_phase, show_orb = transform_seq[frame_idx % len(transform_seq)]
+
+        def painter(px) -> None:
+            _draw_transform_aura(px, frame_idx)
+            _draw_side_pose(
+                px,
+                active_form,
+                pose,
+                animation="transform",
+                wing_boost=wing_boost,
+                sleeve_wing_boost=sleeve_wing_boost,
+                extra_star_phase=extra_star_phase,
+            )
+            if show_orb:
+                _draw_fire_orb(px, 19.4, 13.2 + 0.3 * math.sin(frame_idx))
+
+        sprite = rasterize_logical(LOGICAL_SIZE, SCALE, painter)
+        return bottom_center_canvas(sprite, FRAME_SIZE)
+
+    if animation == "hurt":
+        if form.power == "fire":
+            fire_dull_1 = _mix_outfit_palette(MARY_FIRE, MARY_NORMAL, 0.28)
+            fire_dull_2 = _mix_outfit_palette(MARY_FIRE, MARY_NORMAL, 0.52)
+            fire_dull_3 = _mix_outfit_palette(MARY_FIRE, MARY_NORMAL, 0.78)
+            hurt_seq = [
+                (FIRE_FORM, Pose(mode="fireball", bob=0.1, arm_front_angle=35, arm_back_angle=-18, leg_front_angle=-12, leg_back_angle=22), 0.85, 0.95, 2),
+                (_form_with_palette(FIRE_FORM, fire_dull_1), Pose(bob=0.35, body_lean=-0.1, arm_front_angle=24, arm_back_angle=-36, leg_front_angle=-8, leg_back_angle=18), 0.55, 0.70, 1),
+                (_form_with_palette(FIRE_FORM, fire_dull_2), Pose(bob=0.7, body_lean=-0.18, arm_front_angle=10, arm_back_angle=-58, leg_front_angle=5, leg_back_angle=10), 0.20, 0.35, 1),
+                (_form_with_palette(FIRE_FORM, fire_dull_3), Pose(bob=1.0, body_lean=-0.08, arm_front_angle=88, arm_back_angle=-80, leg_front_angle=14, leg_back_angle=4), 0.0, 0.08, 0),
+                (_form_with_palette(TALL_FORM, _mix_outfit_palette(MARY_NORMAL, MARY_FIRE, 0.18)), Pose(bob=0.75, body_lean=0.02, arm_front_angle=118, arm_back_angle=-48, leg_front_angle=10, leg_back_angle=-2), 0.0, 0.0, 0),
+                (TALL_FORM, Pose(bob=0.3, body_lean=0.0, arm_front_angle=52, arm_back_angle=-12, leg_front_angle=0, leg_back_angle=0), 0.0, 0.0, 0),
+            ]
+            active_form, pose, wing_boost, sleeve_wing_boost, extra_star_phase = hurt_seq[frame_idx % len(hurt_seq)]
+
+            def painter(px) -> None:
+                _draw_power_loss_sparkles(px, frame_idx, fire=True)
+                _draw_side_pose(
+                    px,
+                    active_form,
+                    pose,
+                    animation="hurt",
+                    wing_boost=wing_boost,
+                    sleeve_wing_boost=sleeve_wing_boost,
+                    extra_star_phase=extra_star_phase,
+                )
+
+            sprite = rasterize_logical(LOGICAL_SIZE, SCALE, painter)
+            return bottom_center_canvas(sprite, FRAME_SIZE)
+        else:
+            tall_dull_1 = _mix_outfit_palette(MARY_NORMAL, MARY_FIRE_FLASH, 0.08)
+            tall_dull_2 = _mix_outfit_palette(MARY_NORMAL, MARY_FIRE_FLASH, 0.03)
+            hurt_seq = [
+                (TALL_FORM, Pose(bob=0.1, arm_front_angle=26, arm_back_angle=-8, leg_front_angle=-10, leg_back_angle=18), 1),
+                (_form_with_palette(TALL_FORM, tall_dull_1), Pose(bob=0.45, body_lean=-0.06, arm_front_angle=8, arm_back_angle=-34, leg_front_angle=-4, leg_back_angle=12), 1),
+                (_form_with_palette(TALL_FORM, tall_dull_2), Pose(bob=0.9, body_lean=-0.12, arm_front_angle=82, arm_back_angle=-66, leg_front_angle=8, leg_back_angle=5), 0),
+                (_form_with_palette(TALL_FORM, MARY_NORMAL), Pose(bob=1.05, body_lean=-0.03, arm_front_angle=112, arm_back_angle=-42, leg_front_angle=9, leg_back_angle=2), 0),
+                (SHORT_FORM, Pose(bob=0.35, body_lean=0.0, arm_front_angle=46, arm_back_angle=-10, leg_front_angle=0, leg_back_angle=0), 0),
+            ]
+            active_form, pose, extra_star_phase = hurt_seq[frame_idx % len(hurt_seq)]
+
+            def painter(px) -> None:
+                _draw_power_loss_sparkles(px, frame_idx, fire=False)
+                _draw_side_pose(px, active_form, pose, animation="hurt", extra_star_phase=extra_star_phase)
+
+            sprite = rasterize_logical(LOGICAL_SIZE, SCALE, painter)
+            return bottom_center_canvas(sprite, FRAME_SIZE)
+
     pose_seq = _poses_for(form).get(animation) or SHORT_POSES["idle"]
     pose = pose_seq[frame_idx % len(pose_seq)]
 
@@ -800,7 +1353,7 @@ def _draw_form(form: FormSpec, animation: str, frame_idx: int, nframes: int) -> 
         if pose.mode == "dead":
             _draw_dead_front(px, form, pose)
         else:
-            _draw_side_pose(px, form, pose)
+            _draw_side_pose(px, form, pose, animation=animation)
 
     sprite = rasterize_logical(LOGICAL_SIZE, SCALE, painter)
     return bottom_center_canvas(sprite, FRAME_SIZE)
@@ -853,8 +1406,11 @@ def _actor_metadata(form: FormSpec) -> dict:
         bindings["locomotion.crouch"] = {"animation": "crouch", "events": []}
     if form.power == "tall":
         bindings["power.grow"] = {"animation": "grow", "events": []}
+        bindings["power.transform_fire"] = {"animation": "transform", "events": []}
+        bindings["power.hurt"] = {"animation": "hurt", "events": []}
     if form.power == "fire":
         bindings["ability.fireball"] = {"animation": "fireball", "events": []}
+        bindings["power.hurt"] = {"animation": "hurt", "events": []}
     return metadata
 
 

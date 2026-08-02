@@ -476,7 +476,27 @@ SLASH_TIP = 0.96
 # and the collision body is 48 world units tall at 0.50625 world units per frame
 # pixel, so its centre sits half that above the feet.
 BODY_CENTER_Y = 118.0 - (48.0 / 0.50625) / 2
-# ⚠ HOW HIGH THE SWING SITS, and the one number here I cannot check.
+# ⚠ HOW HIGH THE SWING SITS — and why it is ZERO despite the swing reading low
+# on the drawn robot.
+#
+# A rise raises the polygon, which is what the character wants: the collision
+# body is 48 units tall, the DRAWN robot is half again that with its feet at the
+# box's bottom, so a swing centred on the box crosses the belly of what you see.
+#
+# But the runtime derives the drawn quad from the ATTACKER to the volume's
+# centroid, and the attacker is the body's centre. Raise the polygon and the
+# quad tilts up to meet it: measured, h*0.10 of rise buys 8 degrees of tilt in
+# the ART while the POLYGON stays level. So a rise trades a swing that sits low
+# for a swing that points up, which is the pair of complaints this number has
+# already collected ("tilts too much upward" at h*0.28, "still tilts downward"
+# at zero).
+#
+# The fix is not a better value here. It is for `CombatVolume::swing_shape` to
+# take the axis from the VOLUME's own near-to-far principal axis rather than
+# from the attacker's centroid, using the attacker only to decide which end is
+# the handle. Then a polygon at chest height is level by construction and this
+# becomes a free feel knob. Until that lands, zero is the only value that keeps
+# the art and the polygon pointing the same way.
 #
 # The collision body is 48 units tall; the DRAWN robot is half again that, feet
 # planted at the box's bottom. So the visible chest is well above the collision
