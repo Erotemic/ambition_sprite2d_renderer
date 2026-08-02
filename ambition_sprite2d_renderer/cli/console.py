@@ -35,14 +35,20 @@ def print_paths(paths: Iterable[str | Path], *, prefix: str = "") -> None:
     """Print generated paths according to ``AMBITION_SPRITE_PATH_OUTPUT``.
 
     ``full`` retains one path per line. ``summary`` reports the count and common
-    directory. ``quiet`` suppresses path-only output while preserving warnings
-    and progress emitted by the owning operation.
+    directory. ``both`` does each path AND the summary — the useful default for
+    a focused regen, where the count tells you the shape of the run and the
+    paths tell you which files to go and look at. ``quiet`` suppresses
+    path-only output while preserving warnings and progress emitted by the
+    owning operation.
     """
     outputs: List[str | Path] = list(paths)
     mode = os.environ.get("AMBITION_SPRITE_PATH_OUTPUT", "full").strip().lower()
     if mode in {"0", "off", "none", "quiet"} or not outputs:
         return
-    if mode in {"summary", "compact"}:
+    if mode in {"both", "full+summary", "all"}:
+        for path in outputs:
+            print_path(path, prefix=prefix)
+    if mode in {"summary", "compact", "both", "full+summary", "all"}:
         resolved = [Path(path).resolve() for path in outputs]
         try:
             common = Path(os.path.commonpath([str(path.parent) for path in resolved]))
