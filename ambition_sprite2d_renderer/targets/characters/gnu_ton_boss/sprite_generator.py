@@ -94,6 +94,7 @@ OUTPUT_FILES = [
     f"{GIANT_TARGET_NAME}_spritesheet.png",  # alias: giant body + hands composite
     f"{GIANT_TARGET_NAME}_body_spritesheet.png",
     f"{GIANT_TARGET_NAME}_hands_spritesheet.png",
+    f"{GIANT_TARGET_NAME}_hands_spritesheet.ron",
     f"{GIANT_TARGET_NAME}_spritesheet.ron",
     f"{GIANT_TARGET_NAME}_actor.ron",
     f"{RIDER_TARGET_NAME}_spritesheet.png",
@@ -2167,6 +2168,24 @@ def build_spritesheet(outdir: Path) -> List[Path]:
             actor_metadata=GIANT_ACTOR_METADATA,
         )
     )
+
+    # The hands page is cataloged as its own Hall character
+    # (`npc_giant_gnu_hands` in character_catalog.ron), which asks for a
+    # manifest of its own. It is lockstep-packed with the giant, so it carries
+    # the same rows_meta — only the page it names differs.
+    hands_target = f"{GIANT_TARGET_NAME}_hands"
+    hands_ron_path = outdir / f"{hands_target}_spritesheet.ron"
+    hands_ron_path.write_text(
+        _runtime_spritesheet_ron(
+            rows_meta,
+            parts_doc,
+            [f"{hands_target}_spritesheet.png"]
+            + [f"{hands_target}_spritesheet.{k}.png" for k in range(1, num_pages)],
+            target=hands_target,
+        ),
+        encoding="utf8",
+    )
+    outputs.append(hands_ron_path)
 
     # ── ADR 0020 RIDER: gnu_ton_rider (scholar alone, own tight-trim sheet) ───
     # Packed SEPARATELY from the giant (its own atlas/off), so it is NOT lockstep

@@ -20,6 +20,11 @@ from ambition_sprite2d_renderer.core.draw import blending_draw
 TARGET_NAME = "gnu_ton_apple"
 SHEET_FILES = (
     f"{TARGET_NAME}.png",
+    # The sidecars below describe the packed sheet, so it ships too. The
+    # projectile itself loads the flat `{TARGET_NAME}.png`
+    # (game/ambition_content/src/projectiles.rs), but a published manifest
+    # naming an unpublished page is a broken package contract.
+    f"{TARGET_NAME}_spritesheet.png",
     f"{TARGET_NAME}_spritesheet.yaml",
     f"{TARGET_NAME}_spritesheet.ron",
     f"{TARGET_NAME}_actor.ron",

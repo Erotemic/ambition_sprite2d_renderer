@@ -156,7 +156,16 @@ def _get_target(name: str) -> Target:
 
 
 def sandbox_sprites_dir() -> Path:
-    return repo_root() / "crates" / "ambition_actors" / "assets" / "sprites"
+    # `ambition_actors` was folded into the platformer2d monolith. The old path
+    # simply stopped existing, and a default pointing at a missing directory is
+    # silent: `ldtk-manifest` globbed nothing and wrote an empty manifest.
+    return (
+        repo_root()
+        / "crates"
+        / "ambition_platformer2d_actor_monolith"
+        / "assets"
+        / "sprites"
+    )
 
 
 def generated_dir(target_name: str) -> Path:
