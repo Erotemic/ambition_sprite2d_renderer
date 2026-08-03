@@ -678,22 +678,25 @@ def make_actor_for_state(
     )
 
 
-def render_frame(
+def compose_actors(
     state: TimelineState,
     author_doc: RigDocument,
     author_hands_doc: RigDocument,
-    author_body_doc: RigDocument,
-    author_near_arm_doc: RigDocument,
     author_style: ActorStyle,
     robot_doc: RigDocument,
     robot_hands_doc: RigDocument,
     robot_style: ActorStyle,
-    prop: Image.Image,
-) -> Image.Image:
-    canvas = Image.new("RGBA", CANVAS_SIZE, (0, 0, 0, 0))
-    draw_background(canvas)
+    prop_width: int,
+) -> Tuple[ActorPlacement, ActorPlacement]:
+    """Solve both actors for one frame — the IK, the reach, the head tilts.
 
-    prop_half = prop.width * 0.32
+    Split out of :func:`render_frame` so the ENGINE EXPORT and the GIF share one
+    definition of where everybody is. Exporting baked placements from a second
+    copy of this arithmetic would produce a card that agrees with itself and
+    with nothing else; when the choreography is retuned here, both outputs move
+    together or neither does.
+    """
+    prop_half = prop_width * 0.32
     robot_targets = None
     if state.robot_arm_strength > 0.02:
         lower_y = state.gamepad_center[1] + 5.0
@@ -743,6 +746,35 @@ def render_frame(
             "pelvis": 1.5 * state.author_body_lean,
         },
     )
+    return robot, author
+
+
+def render_frame(
+    state: TimelineState,
+    author_doc: RigDocument,
+    author_hands_doc: RigDocument,
+    author_body_doc: RigDocument,
+    author_near_arm_doc: RigDocument,
+    author_style: ActorStyle,
+    robot_doc: RigDocument,
+    robot_hands_doc: RigDocument,
+    robot_style: ActorStyle,
+    prop: Image.Image,
+) -> Image.Image:
+    canvas = Image.new("RGBA", CANVAS_SIZE, (0, 0, 0, 0))
+    draw_background(canvas)
+
+    robot, author = compose_actors(
+        state,
+        author_doc,
+        author_hands_doc,
+        author_style,
+        robot_doc,
+        robot_hands_doc,
+        robot_style,
+        prop.width,
+    )
+
     author_body_layer, _ = render_layer(
         author_body_doc, state.author_clip, state.author_t, author.world, author.params,
         author_style, state.author_x, FLOOR_Y, mirrored=False
