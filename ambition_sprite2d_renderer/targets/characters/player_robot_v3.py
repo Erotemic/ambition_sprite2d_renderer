@@ -453,76 +453,43 @@ def frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
 # ⚠ SCALE ASSUMPTION. Jon's sketch draws its player box at aspect 0.31 where the
 # real collision body is 0.63, so scaling by its width and by its height
 # disagree by 2x (reach 197 vs 99 world units). These take the HEIGHT reading,
-# which keeps reach where it already was. `SLASH_REACH` is the single knob.
-SLASH_REACH = 128 * 1.53
-# Peak half-width. The envelope is normalised to a peak of 1, so this is the
-# only size the profile needs.
-SLASH_HALF = 83.0
-# How far the container sits OUTSIDE the effect. A hull of points on a curve
-# cuts the chord between them, so this covers that sag and Jon's "it's ok if it
-# slightly gives a hit outside the vfx, just slightly though".
-SLASH_HULL_MARGIN = 1.11
-# The point is blunt, not needle-sharp: a spike adds reach the art never draws.
-SLASH_TIP = 0.96
-# ⚠ THE SWING'S AXIS MUST PASS THROUGH THE ATTACKER, and the attacker is the
-# body's CENTRE, not the anchor the rest of this file measures from.
+# which keeps reach where it already was. `SwingDescriptor.reach` is the single knob.
+# ⚠ THE NUMBERS LIVE IN `core/slash_envelope.py` NOW, as one `SwingDescriptor`
+# the effect reads too. They used to be here AND restated in the art's own frame
+# units, and the two had already drifted: this file passed a tip of 0.96 into a
+# sampler whose shared default was 1.0, so the two ends of the same swing
+# disagreed by 4% of its reach.
 #
-# The runtime derives the drawn quad from the attacker to the volume's centroid.
-# Put the swing's origin anywhere off that point across the axis and the quad
-# tilts while the art does not, so the effect slides off the polygon — 6.4
-# degrees of tilt was worth 7.6% of the drawn slash landing outside the volume.
-#
-# `118` is this authoring frame's ground line (see `_translated_legacy_hitboxes`),
-# and the collision body is 48 world units tall at 0.50625 world units per frame
+# The scale reading behind the sizes, kept here because it is a decision about
+# this character: Jon's sketch draws its player box at aspect 0.31 where the
+# real collision body is 0.63, so scaling by its width and by its height
+# disagree by 2x (reach 197 vs 99 world units). The descriptor takes the HEIGHT
+# reading, which keeps reach where it already was.
+SWING = slash_envelope.PLAYER_ROBOT_SWING
+# ⚠ The swing's axis must pass through the ATTACKER, and the attacker is the
+# body's CENTRE — not the anchor the rest of this file measures from. `118` is
+# this authoring frame's ground line (see `_translated_legacy_hitboxes`), and
+# the collision body is 48 world units tall at 0.50625 world units per frame
 # pixel, so its centre sits half that above the feet.
 BODY_CENTER_Y = 118.0 - (48.0 / 0.50625) / 2
-# ⚠ HOW HIGH THE SWING SITS — and why it is ZERO despite the swing reading low
-# on the drawn robot.
-#
-# A rise raises the polygon, which is what the character wants: the collision
-# body is 48 units tall, the DRAWN robot is half again that with its feet at the
-# box's bottom, so a swing centred on the box crosses the belly of what you see.
-#
-# But the runtime derives the drawn quad from the ATTACKER to the volume's
-# centroid, and the attacker is the body's centre. Raise the polygon and the
-# quad tilts up to meet it: measured, h*0.10 of rise buys 8 degrees of tilt in
-# the ART while the POLYGON stays level. So a rise trades a swing that sits low
-# for a swing that points up, which is the pair of complaints this number has
-# already collected ("tilts too much upward" at h*0.28, "still tilts downward"
-# at zero).
-#
-# The fix is not a better value here. It is for `CombatVolume::swing_shape` to
-# take the axis from the VOLUME's own near-to-far principal axis rather than
-# from the attacker's centroid, using the attacker only to decide which end is
-# the handle. Then a polygon at chest height is level by construction and this
-# becomes a free feel knob. Until that lands, zero is the only value that keeps
-# the art and the polygon pointing the same way.
-#
-# The collision body is 48 units tall; the DRAWN robot is half again that, feet
-# planted at the box's bottom. So the visible chest is well above the collision
-# centre, and a swing centred on the box reads low on the character even though
-# the geometry is level. Both readings are Jon's, on the same jab: `h*0.28` was
-# "tilts too much upward", `0.0` was "still tilts downward instead of being
-# effectively purely horizontal". This splits them.
-#
-# It is not free: the runtime derives the quad from the attacker to the volume's
-# centroid, so any rise tilts that quad while the polygon stays put. The art is
-# drawn inside the polygon with margin rather than filling the quad, which is
-# what buys the tolerance to spend here.
-SLASH_RISE = 128 * 0.0
 
 
-def _slash_poly(ox, oy, dx, dy, reach, half):
+def _slash_poly(ox, oy, dx, dy, swing: slash_envelope.SwingDescriptor):
     """The swept region as a COARSE convex polygon, in frame pixels.
 
-    `(ox, oy)` is where the swing starts and `(dx, dy)` its cardinal direction.
+    `(ox, oy)` is where the swing starts and `(dx, dy)` its cardinal direction;
+    everything about its SIZE comes from the descriptor, which the effect reads
+    too.
     """
     plen = math.hypot(dx, dy) or 1.0
     ux, uy = dx / plen, dy / plen
     px, py = -uy, ux
     return [
-        (ox + ux * reach * t + px * h * half, oy + uy * reach * t + py * h * half)
-        for t, h in slash_envelope.hull_points(SLASH_HULL_MARGIN, SLASH_TIP)
+        (
+            ox + ux * swing.reach * t + px * h * swing.half,
+            oy + uy * swing.reach * t + py * h * swing.half,
+        )
+        for t, h in swing.hull()
     ]
 
 
@@ -551,7 +518,7 @@ def _player_attack_hitboxes(size: Tuple[int, int]) -> Dict[str, dict]:
     """
     w, h = size
     cx = w // 2
-    body_cy = BODY_CENTER_Y - SLASH_RISE
+    body_cy = BODY_CENTER_Y - SWING.rise
     family = SideRobotGenerator().attack_hitboxes(size)
 
     def shaped(poly):
@@ -579,13 +546,13 @@ def _player_attack_hitboxes(size: Tuple[int, int]) -> Dict[str, dict]:
     # same number as "it tilts too much upward in the side jab".
     return {
         "attack_side": shaped(
-            _slash_poly(cx - w * 0.06, body_cy, 1.0, 0.0, SLASH_REACH, SLASH_HALF)
+            _slash_poly(cx - w * 0.06, body_cy, 1.0, 0.0, SWING)
         ),
         "attack_up": shaped(
-            _slash_poly(cx, body_cy, 0.0, -1.0, SLASH_REACH * 0.88, SLASH_HALF * 0.92)
+            _slash_poly(cx, body_cy, 0.0, -1.0, SWING.scaled(reach=0.88, half=0.92))
         ),
         "air_up": shaped(
-            _slash_poly(cx, body_cy, 0.0, -1.0, SLASH_REACH * 0.84, SLASH_HALF * 0.88)
+            _slash_poly(cx, body_cy, 0.0, -1.0, SWING.scaled(reach=0.84, half=0.88))
         ),
         # The one attack that is not a slash — a Marth-like poke by Jon's call:
         # a thrust reads by reach, not by area. It is v3's own rather than the
@@ -595,14 +562,14 @@ def _player_attack_hitboxes(size: Tuple[int, int]) -> Dict[str, dict]:
         "attack_down": shaped(_poke_poly(cx, body_cy, 1.0, 0.0,
                                          POKE_REACH, POKE_HALF)),
         "air_down": shaped(
-            _slash_poly(cx, body_cy, 0.0, 1.0, SLASH_REACH * 0.84, SLASH_HALF * 0.88)
+            _slash_poly(cx, body_cy, 0.0, 1.0, SWING.scaled(reach=0.84, half=0.88))
         ),
         "air_forward": shaped(
-            _slash_poly(cx - w * 0.02, body_cy, 1.0, 0.0, SLASH_REACH * 0.94, SLASH_HALF)
+            _slash_poly(cx - w * 0.02, body_cy, 1.0, 0.0, SWING.scaled(reach=0.94))
         ),
         "air_back": shaped(
             _slash_poly(cx + w * 0.02, body_cy, -1.0, 0.0,
-                        SLASH_REACH * 0.86, SLASH_HALF * 0.94)
+                        SWING.scaled(reach=0.86, half=0.94))
         ),
         # Unbound by any move, and a ring rather than a swing. Left as the
         # family authored it.

@@ -114,9 +114,26 @@ def _amplitude(t: float) -> float:
 # didn't". The polygon is the envelope scaled OUT by its own margin, so drawing
 # at the same peak divided by a little more than that margin lands inside it,
 # with room left for the wash's blur to feather across.
-AXIS_Y = 80.0
-REACH = 158.0
-PEAK_HALF = 80.0 / 1.13
+# ⚠ THE FRAME IS THE SWING, and its size is DERIVED, not restated.
+#
+# The runtime stretches this frame into the quad it computes from the hit
+# POLYGON, so the frame's width is the polygon's extent and its half-height is
+# the polygon's widest station. Naming pixel sizes here was therefore naming the
+# polygon's numbers a second time in different units, and they had already
+# drifted: the polygon stopped its swing at 0.96 of reach while this file drew
+# to 1.0.
+#
+# `SwingDescriptor` is the one spelling both read. When a second character gets
+# its own sheet this becomes a parameter rather than a module constant, which is
+# what makes sharing an effect mean sharing the RECIPE — the same generator run
+# against another character's descriptor, drawing for ITS volume.
+SWING = slash_envelope.PLAYER_ROBOT_SWING
+AXIS_Y = FRAME_SIZE[1] / 2.0
+REACH = float(FRAME_SIZE[0])
+PEAK_HALF = SWING.art_peak_half(FRAME_SIZE[1])
+# The art's own margin at the two ENDS, where the envelope narrows and no
+# perpendicular inset can help: the polygon closes to a point there, so the
+# effect starts and stops slightly inside it.
 T_INSET_NEAR = 0.05
 T_INSET_FAR = 0.06
 
@@ -134,7 +151,7 @@ def _half_at(t: float) -> float:
     noise — a wobble with extra steps. The analytic envelope cannot ripple:
     there is nothing between the samples to disagree with.
 
-    `slash_envelope.TIP` is folded in because the frame maps to the QUAD, and
+    The descriptor's `tip` is folded in because the frame maps to the QUAD, and
     the quad spans the polygon's extent — which stops at the blunt tip, not at
     t=1.
     """
@@ -147,7 +164,7 @@ def _half_at(t: float) -> float:
     u = (t - T_INSET_NEAR) / max(1e-6, 1.0 - T_INSET_NEAR - T_INSET_FAR)
     if u < 0.0 or u > 1.0:
         return 0.0
-    return slash_envelope.half_at(u * slash_envelope.TIP) * PEAK_HALF
+    return slash_envelope.half_at(u * SWING.tip) * PEAK_HALF
 
 
 def _envelope_outline(width_scale: float = 1.0, samples: int = 96):
@@ -165,7 +182,7 @@ def _envelope_outline(width_scale: float = 1.0, samples: int = 96):
 
 # How far back the blade's horns sit from its point, as a fraction of reach. The
 # leading edge is a curve between them.
-HORN_PULL = 0.42
+HORN_PULL = SWING.horn_pull
 
 
 def _far_edge_x(dy: float, width_scale: float) -> float:
@@ -186,7 +203,7 @@ def _far_edge_x(dy: float, width_scale: float) -> float:
     k = _clamp(abs(dy) / half)
     # A hair short of the polygon's blunt chord, so the bright edge never lands
     # exactly on it — a tangent there shows as a small flat tick at the point.
-    tip_x = REACH * slash_envelope.TIP * 0.98
+    tip_x = REACH * SWING.tip * 0.98
     return tip_x - (tip_x * HORN_PULL) * k * k
 
 

@@ -57,20 +57,42 @@ ATTACKER_COLOUR = (120, 255, 120, 255)
 def _swing_quad(poly: Sequence[Tuple[float, float]], attacker: Tuple[float, float]):
     """`CombatVolume::swing_shape`, reproduced.
 
-    Axis from the attacker toward the volume's centre; `t` along it; the extent
-    is whatever the volume's own points project to. Keep this in step with
-    `ambition_geometry::swing_shape` — a preview that models the pipeline minus
-    one step is a confident wrong answer, not a weaker one.
+    Axis from the volume's NEAREST point to the attacker toward its FARTHEST;
+    `t` along it; the extent is whatever the volume's own points project to.
+    Keep this in step with `ambition_geometry::swing_shape` — a preview that
+    models the pipeline minus one step is a confident wrong answer, not a weaker
+    one, and this file has already caught that failure once.
+
+    ⚠ It was `attacker → centroid`, matching the runtime at the time. When the
+    runtime moved (so that raising a swing to chest height stopped tilting it),
+    this did not, and it promptly reported 7% of a contained slash outside its
+    polygon — measuring the art against a quad the game no longer builds.
     """
-    cx = (min(p[0] for p in poly) + max(p[0] for p in poly)) / 2
-    cy = (min(p[1] for p in poly) + max(p[1] for p in poly)) / 2
-    ax, ay = cx - attacker[0], cy - attacker[1]
+    def _d2(p):
+        return (p[0] - attacker[0]) ** 2 + (p[1] - attacker[1]) ** 2
+
+    tip = max(poly, key=_d2)
+    # The ROOT is the near edge's midpoint, not its nearest vertex: a symmetric
+    # swing has two vertices equally near the wielder, and picking either gives
+    # an axis running diagonally from a corner to the tip.
+    band = max(min(_d2(p) for p in poly), 1.0) * 1.35
+    near_set = [p for p in poly if _d2(p) <= band] or [tip]
+    root = (
+        sum(p[0] for p in near_set) / len(near_set),
+        sum(p[1] for p in near_set) / len(near_set),
+    )
+    ax, ay = tip[0] - root[0], tip[1] - root[1]
     alen = math.hypot(ax, ay) or 1.0
     ux, uy = ax / alen, ay / alen
     px, py = -uy, ux
-    ts = [(p[0] - attacker[0]) * ux + (p[1] - attacker[1]) * uy for p in poly]
-    offs = [abs((p[0] - attacker[0]) * px + (p[1] - attacker[1]) * py) for p in poly]
-    return (ux, uy, px, py, min(ts), max(ts) - min(ts), max(offs))
+    # ⚠ Measured from the ROOT, not the wielder — the quad is centred on the
+    # SWING. Measuring from a line through the attacker centres it on the
+    # attacker, so a swing authored across the chest yields a quad reaching as
+    # far below the body as the swing reaches above it, and the art lands half
+    # the rise low: the swing looks like it droops whatever the axis says.
+    ts = [(p[0] - root[0]) * ux + (p[1] - root[1]) * uy for p in poly]
+    offs = [abs((p[0] - root[0]) * px + (p[1] - root[1]) * py) for p in poly]
+    return (ux, uy, px, py, min(ts), max(ts) - min(ts), max(offs), root)
 
 
 def _inside(poly: Sequence[Tuple[float, float]], pt: Tuple[float, float]) -> bool:
@@ -94,7 +116,7 @@ def containment(
     Zero outside is the goal and the only number worth reporting to an artist:
     "the player should never feel like they should have hit when they didn't".
     """
-    ux, uy, px, py, t_min, length, far_half = _swing_quad(poly, attacker)
+    ux, uy, px, py, t_min, length, far_half, root = _swing_quad(poly, attacker)
     alpha = effect.getchannel("A").load()
     w, h = effect.size
     total = outside = 0
@@ -105,10 +127,7 @@ def containment(
             total += 1
             t = t_min + (ix / w) * length
             o = ((iy / h) - 0.5) * 2 * far_half
-            world = (
-                attacker[0] + ux * t + px * o,
-                attacker[1] + uy * t + py * o,
-            )
+            world = (root[0] + ux * t + px * o, root[1] + uy * t + py * o)
             if not _inside(poly, world):
                 outside += 1
     return total, outside
@@ -123,7 +142,7 @@ def render_preview(
     pad: int = 70,
 ) -> Tuple[int, int]:
     """Compose character + polygon + effect, and return the containment counts."""
-    ux, uy, px, py, t_min, length, far_half = _swing_quad(poly, attacker)
+    ux, uy, px, py, t_min, length, far_half, root = _swing_quad(poly, attacker)
 
     xs = [p[0] for p in poly] + [attacker[0], 0.0, float(character_frame.width)]
     ys = [p[1] for p in poly] + [attacker[1], 0.0, float(character_frame.height)]
@@ -146,8 +165,8 @@ def render_preview(
         expand=True,
     )
     centre = (
-        attacker[0] + ux * (t_min + length / 2),
-        attacker[1] + uy * (t_min + length / 2),
+        root[0] + ux * (t_min + length / 2),
+        root[1] + uy * (t_min + length / 2),
     )
     canvas.alpha_composite(
         art,
@@ -162,7 +181,7 @@ def render_preview(
             fill=POLY_COLOUR,
         )
     corners = [
-        (attacker[0] + ux * t + px * o, attacker[1] + uy * t + py * o)
+        (root[0] + ux * t + px * o, root[1] + uy * t + py * o)
         for t, o in (
             (t_min, -far_half),
             (t_min + length, -far_half),

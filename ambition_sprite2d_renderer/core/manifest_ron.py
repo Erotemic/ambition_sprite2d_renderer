@@ -50,12 +50,21 @@ def _ron_animation_box(box) -> str:
     inner = []
     parts = box.get("parts")
     if isinstance(parts, list) and parts:
-        formatted = ", ".join(
-            f'(name: "{_ron_escape(str(p.get("name", "")))}", '
-            f"x: {int(p['x'])}, y: {int(p['y'])}, w: {int(p['w'])}, h: {int(p['h'])})"
-            for p in parts
-            if isinstance(p, dict)
-        )
+        def _part(p):
+            head = (
+                f'(name: "{_ron_escape(str(p.get("name", "")))}", '
+                f"x: {int(p['x'])}, y: {int(p['y'])}, "
+                f"w: {int(p['w'])}, h: {int(p['h'])}"
+            )
+            # A part may be SHAPED. Its rect stays as the bounds and the
+            # fallback; the hull is what a consumer that can express one uses.
+            poly = p.get("poly")
+            if isinstance(poly, list) and len(poly) >= 3:
+                pts = ", ".join(f"({float(x)}, {float(y)})" for x, y in poly)
+                head += f", poly: [{pts}]"
+            return head + ")"
+
+        formatted = ", ".join(_part(p) for p in parts if isinstance(p, dict))
         inner.append(f"parts: [{formatted}]")
     bbox = box.get("bbox")
     if isinstance(bbox, dict):
