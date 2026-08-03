@@ -53,6 +53,7 @@ TILES: Sequence[TileSpec] = [
     TileSpec("brick_shadowed", "brick", "solid", "MarySolids", "brick with lower shadow"),
     TileSpec("block_solid", "block", "solid", "MarySolids", "plain solid bonus block"),
     TileSpec("coin_block", "block", "solid", "MarySolids", "coin-marker block"),
+    TileSpec("block_spent", "block", "solid", "MarySolids", "used bonus block, dim and glyphless"),
     TileSpec("ground_top", "ground", "solid", "MarySolids", "top edge of dirt ground"),
     TileSpec("ground_fill", "ground", "solid", "MarySolids", "interior dirt fill"),
     TileSpec("pipe_cap_left", "pipe", "solid", "MarySolids", "left cap of pipe"),
@@ -91,15 +92,61 @@ def _brick_lines(draw: ImageDraw.ImageDraw, *, fill, mortar, variant: str = "pla
 
 
 
-def _block_tile(coin: bool = False) -> Image.Image:
+#: The interrobang, pixel by pixel, on the 16x16 cell.
+#:
+#: Jon asked for "actual question mark blocks... although we should probably make
+#: them interrobang blocks as a parody", and the glyph is the joke: a `?` hook and
+#: a `!` stem are the SAME stroke once you draw them small. The hook curls in from
+#: the top and lands on a straight stem, and the stem gets the exclamation's
+#: detached dot. Read it either way — that is the point.
+#:
+#: Authored as explicit runs rather than a font glyph because at 16px a font is
+#: unreadable mush, and because `ImageFont` would make the tileset depend on which
+#: fonts happen to be installed.
+_INTERROBANG_RUNS: Sequence[Tuple[int, int, int]] = (
+    # (y, x_start, x_end) — the hook, opening at the top-left like a `?`
+    (3, 6, 9),
+    (4, 5, 6),
+    (4, 9, 10),
+    (5, 9, 10),
+    (6, 8, 9),
+    # ...landing on the shared stem, which is also the `!`
+    (7, 7, 8),
+    (8, 7, 8),
+    (9, 7, 8),
+    (10, 7, 8),
+    # the detached dot
+    (12, 7, 8),
+)
+
+
+def _block_tile(coin: bool = False, spent: bool = False) -> Image.Image:
+    """A bonus block. `spent` draws the used state: dim, flat, and glyphless."""
     img, draw = _new_tile()
+    if spent:
+        # ⭐ **A SPENT BLOCK READS AS SPENT WITHOUT ANIMATION.** Jon: "in mary-o
+        # blocks that are used need a new texture so they are visually
+        # distinguishable." Darker, and the inner highlight is dropped so it reads
+        # as flat rather than lit — a block that has nothing left to give.
+        draw.rectangle((0, 0, 15, 15), fill=(138, 106, 52, 255), outline=OUTLINE, width=1)
+        draw.rectangle((2, 2, 13, 13), outline=(112, 86, 42, 255), width=1)
+        return img
     draw.rectangle((0, 0, 15, 15), fill=(210, 162, 76, 255), outline=OUTLINE, width=1)
     draw.rectangle((2, 2, 13, 13), outline=(244, 217, 142, 255), width=1)
     if coin:
         draw.ellipse((5, 4, 10, 11), fill=(248, 198, 60, 255), outline=OUTLINE, width=1)
         draw.line((7, 5, 7, 10), fill=OUTLINE, width=1)
     else:
-        draw.rectangle((6, 5, 9, 10), fill=(248, 198, 60, 255), outline=OUTLINE, width=1)
+        # It was a featureless bar — `draw.rectangle((6, 5, 9, 10))` — which is why
+        # a `?`-block did not read as one.
+        # DARK on the gold, the way the classic blocks read — a bright glyph on a
+        # bright block washes out at this size, which the first pass proved.
+        for y, x0, x1 in _INTERROBANG_RUNS:
+            draw.rectangle((x0, y, x1, y), fill=(74, 48, 18, 255))
+        # ⚠ **no drop shadow.** A one-pixel offset copy was tried and it muddied
+        # the stem at 16px — the straight stroke is what carries the `!` half of
+        # the joke, and softening it left only the `?`. (The repo's standing
+        # no-drop-shadow rule says the same thing for characters.)
     return img
 
 
@@ -172,6 +219,8 @@ def _tile_image(key: str) -> Image.Image:
         return _block_tile(False)
     if key == "coin_block":
         return _block_tile(True)
+    if key == "block_spent":
+        return _block_tile(False, spent=True)
     if key == "ground_top":
         return _ground_tile("top")
     if key == "ground_fill":
