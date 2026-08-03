@@ -205,6 +205,7 @@ class CallableFrameSource:
         auto_crop: bool = True,
         crop_margin: int = 2,
         actor_metadata: Optional[Dict[str, Any]] = None,
+        body_inset: Optional[Dict[str, float]] = None,
         frame_meta_fn=None,
         body_metrics_fn=None,
         animation_key_map: Optional[Dict[str, str]] = None,
@@ -222,6 +223,7 @@ class CallableFrameSource:
         self.auto_crop = auto_crop
         self.crop_margin = crop_margin
         self._actor_metadata = actor_metadata
+        self._body_inset = body_inset
         self.frame_meta_fn = frame_meta_fn
         self.body_metrics_fn = body_metrics_fn
         self.animation_key_map = animation_key_map
@@ -257,7 +259,17 @@ class CallableFrameSource:
         return {}
 
     def body_inset(self) -> Optional[Dict[str, float]]:
-        return None
+        """The authored gameplay body, tighter than the measured silhouette.
+
+        ⛔ **this returned `None` unconditionally**, so the inset seam existed for
+        class-based `CharacterGenerator` targets and NOT for the ~50
+        module-authored ones — and nothing said so. Mary-O is module-authored, so
+        her collision body was her raw alpha bbox: hat and outstretched arms
+        included, ~36px wide against a 32px tile. The row read as "her generator
+        overrides nothing", and the truth was that her KIND of target had nothing
+        to override.
+        """
+        return self._body_inset
 
     def actor_metadata(self) -> Optional[Dict[str, Any]]:
         return self._actor_metadata

@@ -547,6 +547,7 @@ def build_sheet(
     attack_hitboxes=None,
     max_sheet_dimension: int = 16384,
     trim: Optional[bool] = None,
+    body_inset=None,
 ):
     """Build one module target's sheet from a frame callable + rows.
 
@@ -564,6 +565,7 @@ def build_sheet(
         auto_crop=auto_crop,
         crop_margin=crop_margin,
         actor_metadata=actor_metadata,
+        body_inset=body_inset,
         body_metrics_fn=body_metrics_fn,
         sheet_tuning=sheet_tuning,
         animation_key_map=animation_key_map,
