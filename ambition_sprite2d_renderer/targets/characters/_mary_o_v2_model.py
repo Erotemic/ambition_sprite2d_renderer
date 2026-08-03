@@ -154,6 +154,31 @@ class Pose:
     mode: str = "side"
 
 
+# --- Authored gameplay collision box -----------------------------------------
+#
+# The sheet builder's default body box is the idle frame's ALPHA bbox, which
+# swallows her cap tip, her ponytail, her sleeves, and (on fire) the flame
+# frills. Colliding on any of those reads as unfair, and it also let the fire
+# form drift 22% wider than the tall form purely on decoration. So the gameplay
+# body is stated here instead of measured.
+#
+# ONE width for every form, centred on the leg column all three share
+# (x 64..93, centre 78.5), so growing or catching fire never changes how wide
+# she is. 64 px is the widest form's authored torso (fire, body_width 9.6
+# logical -> 64.0 px) and lands at 0.80 tiles, inside the 0.75-0.88 band the
+# classic 16 px hitbox this demo emulates occupies.
+BODY_BOX_WIDTH = 64
+BODY_BOX_CENTER_X = 78.5
+
+# Per-form top/bottom in frame pixels. The bottom is her shoe line, because the
+# box bottom is what stands on the ground. The top is set below the cap's narrow
+# tip so a ceiling catches her head, not her hat.
+#
+# The tall/short height ratio is held at the shipped 88/63 = 1.397 (168/120 =
+# 1.400, a 0.2% difference), so every pipe and ceiling in the level still fits
+# her exactly as it does today.
+
+
 @dataclass(frozen=True)
 class FormSpec:
     target_name: str
@@ -166,6 +191,18 @@ class FormSpec:
     tall: bool
     magic_stage: int
     rows: List[Tuple[str, int, int]]
+    collision_top_px: int
+    collision_bottom_px: int
+
+
+def form_collision_box(form: FormSpec) -> Dict[str, int]:
+    """The authored gameplay body box for one form, in frame pixels."""
+    return {
+        "x": int(round(BODY_BOX_CENTER_X - BODY_BOX_WIDTH / 2.0)),
+        "y": form.collision_top_px,
+        "w": BODY_BOX_WIDTH,
+        "h": form.collision_bottom_px - form.collision_top_px,
+    }
 
 
 SHORT_FORM = FormSpec(
@@ -179,6 +216,9 @@ SHORT_FORM = FormSpec(
     tall=False,
     magic_stage=0,
     rows=SHORT_ROWS,
+    # Cap tip starts at y=60; the box starts at the brim.
+    collision_top_px=70,
+    collision_bottom_px=190,
 )
 
 TALL_FORM = FormSpec(
@@ -192,6 +232,9 @@ TALL_FORM = FormSpec(
     tall=True,
     magic_stage=1,
     rows=TALL_ROWS,
+    # Cap tip starts at y=8.
+    collision_top_px=24,
+    collision_bottom_px=192,
 )
 
 FIRE_FORM = FormSpec(
@@ -205,6 +248,9 @@ FIRE_FORM = FormSpec(
     tall=True,
     magic_stage=2,
     rows=FIRE_ROWS,
+    # Same height as tall: the fire form is the same body wearing flames.
+    collision_top_px=22,
+    collision_bottom_px=190,
 )
 
 

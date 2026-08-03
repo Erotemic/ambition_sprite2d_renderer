@@ -42,6 +42,7 @@ from ._mary_o_v2_model import (
     TALL_LIKE_POSES,
     FormSpec,
     Pose,
+    form_collision_box,
     _form_with_palette,
     _mix_outfit_palette,
     _transition_form,
@@ -293,6 +294,25 @@ def _render_form(form: FormSpec, out_dir: str | Path) -> List[Path]:
     def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
         return _draw_form(form, animation, frame_idx, nframes)
 
+    def body_metrics(fw: int, fh: int):
+        """Author the gameplay body instead of measuring the alpha bbox.
+
+        See ``BODY_BOX_WIDTH`` in the model for why: the measured box includes
+        her cap tip, ponytail, sleeves, and flame frills, none of which should
+        stop her against a wall.
+        """
+        box = form_collision_box(form)
+        feet_x = box["x"] + box["w"] / 2.0
+        feet_y = float(box["y"] + box["h"])
+        return {
+            "body_pixel_bbox": box,
+            "feet_pixel": {"x": round(feet_x, 3), "y": round(feet_y, 3)},
+            "feet_anchor_norm": {
+                "x": round(feet_x / fw - 0.5, 6),
+                "y": round(0.5 - feet_y / fh, 6),
+            },
+        }
+
     outputs = build_sheet(
         target=form.target_name,
         rows=form.rows,
@@ -302,6 +322,7 @@ def _render_form(form: FormSpec, out_dir: str | Path) -> List[Path]:
         label_width=LABEL_WIDTH,
         auto_crop=False,
         actor_metadata=_actor_metadata(form),
+        body_metrics_fn=body_metrics,
         trim=False,
     )
     return [

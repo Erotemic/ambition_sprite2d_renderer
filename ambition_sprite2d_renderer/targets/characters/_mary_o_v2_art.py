@@ -533,6 +533,7 @@ def _draw_short_body_side(px, form: FormSpec, x: float, y: float, crouch: float,
         _outlined_rect(px, x + 4.1, y + body_h + 0.2, x + 5.0, y + body_h + 1.1, fill=pal.buttons, inset=0.18)
         _outlined_rect(px, x + 7.0, y + body_h + 0.2, x + 7.9, y + body_h + 1.1, fill=pal.buttons, inset=0.18)
     _outlined_rect(px, x + 1.0, y + 0.0, x + 1.0 + body_w, y + body_h, fill=pal.shirt)
+    # Side view of the same pinafore skirt panel, straps, and skirt buttons.
     px.polygon(
         [
             (x + 2.0, y + 1.5),
@@ -573,6 +574,45 @@ def _draw_short_body_side(px, form: FormSpec, x: float, y: float, crouch: float,
         _draw_suspender_fasteners_side(px, x, y, form)
 
 
+def _short_skirt_front_points(x: float, y: float, body_w: float, body_h: float) -> List[Tuple[float, float]]:
+    """Outline of the short form's pinafore panel in front view.
+
+    Mirrors the side view: the panel flares out below the waist instead of
+    tapering in, so the skirt reads as a skirt.
+    """
+    return [
+        (x + 2.2, y + 1.5),
+        (x + 1.2 + body_w - 0.8, y + 1.5),
+        (x + 1.2 + body_w, y + body_h + 0.9),
+        (x + 1.2, y + body_h + 0.9),
+    ]
+
+
+def _draw_short_skirt_buttons_front(px, x: float, y: float, *, fill) -> None:
+    """The two gold buttons the short form carries on her skirt line."""
+    _outlined_rect(px, x + 4.0, y + 2.8, x + 5.0, y + 4.0, fill=fill, inset=0.2)
+    _outlined_rect(px, x + 7.0, y + 2.8, x + 8.0, y + 4.0, fill=fill, inset=0.2)
+
+
+def _draw_short_pinafore_front(px, form: FormSpec, x: float, y: float, body_w: float, body_h: float, waist: float) -> None:
+    """The short form's pinafore: skirt panel, straps, skirt line, and buttons.
+
+    The dead pose repaints this over the hair, so front and side keep the same
+    garment.
+    """
+    pal = form.palette
+    px.polygon(
+        _short_skirt_front_points(x, y, body_w, body_h),
+        fill=pal.overalls,
+        outline=OUTLINE,
+        width=0.75,
+    )
+    px.line([(x + 3.2, y + 0.6), (x + 4.8, waist)], fill=pal.overalls, width=1.2)
+    px.line([(x + 8.8, y + 0.6), (x + 7.2, waist)], fill=pal.overalls, width=1.2)
+    px.line([(x + 2.2, waist), (x + 1.2 + body_w - 0.9, waist)], fill=OUTLINE, width=0.45)
+    _draw_short_skirt_buttons_front(px, x, y, fill=pal.buttons)
+
+
 def _draw_short_body_front(px, form: FormSpec, x: float, y: float, *, crouch: float = 0.0) -> None:
     pal = form.palette
     body_h = form.body_height - 0.55 * crouch
@@ -606,21 +646,9 @@ def _draw_short_body_front(px, form: FormSpec, x: float, y: float, *, crouch: fl
             width=0.35,
         )
     _outlined_rect(px, x + 1.2, y + 0.0, x + 1.2 + body_w, y + body_h, fill=pal.shirt)
-    px.polygon(
-        [
-            (x + 2.0, y + 1.4),
-            (x + 1.2 + body_w - 0.8, y + 1.4),
-            (x + 1.2 + body_w - 1.4, y + body_h + 0.8),
-            (x + 2.8, y + body_h + 0.8),
-        ],
-        fill=pal.overalls,
-        outline=OUTLINE,
-        width=0.75,
-    )
-    px.line([(x + 3.2, y + 0.6), (x + 4.8, y + 4.6)], fill=pal.overalls, width=1.2)
-    px.line([(x + 8.8, y + 0.6), (x + 7.2, y + 4.6)], fill=pal.overalls, width=1.2)
-    _outlined_rect(px, x + 4.0, y + 2.8, x + 5.0, y + 4.0, fill=pal.buttons, inset=0.2)
-    _outlined_rect(px, x + 7.0, y + 2.8, x + 8.0, y + 4.0, fill=pal.buttons, inset=0.2)
+    # The short form wears a one-piece pinafore: the panel below the skirt line
+    # is her skirt, hung from the two shoulder straps.
+    _draw_short_pinafore_front(px, form, x, y, body_w, body_h, waist)
     if form.magic_stage >= 1:
         _draw_star(px, x + 5.9, y + 2.1, outer=1.0 if form.magic_stage == 1 else 1.35, inner=0.45, fill=BROOCH_GOLD, width=0.35)
         px.polygon(
@@ -752,10 +780,21 @@ def _draw_dead_front(px, form: FormSpec, pose: Pose, *, wing_boost: float = 0.0)
     _draw_head_front(px, form, head_x, head_top)
     _draw_dead_eyes_front(px, head_x, head_top)
     if pose.mode == "dead":
+        # Front-view hair falls across the torso, so the garment is repainted on
+        # top of it. Reusing the same drawing the body uses keeps the skirt line
+        # and the star brooch identical to the side pose.
         if form.magic_stage >= 1:
-            cover_fill = form.palette.overalls if form.magic_stage <= 1 else V2_IVORY
-            px.polygon([(body_x + 2.25, body_top + 3.55), (body_x + 9.75, body_top + 3.55), (body_x + 8.95, body_top + 10.8), (body_x + 3.05, body_top + 10.8)], fill=cover_fill, outline=None)
-            px.line([(body_x + 2.45, body_top + 4.15), (body_x + 9.2, body_top + 4.15)], fill=OUTLINE, width=0.34)
+            _draw_powered_front_garment(px, form, body_x, body_top)
+        else:
+            _draw_short_pinafore_front(
+                px,
+                form,
+                body_x,
+                body_top,
+                form.body_width,
+                form.body_height,
+                body_top + form.body_height * 0.63,
+            )
         _draw_dead_mouth_front(px, head_x, head_top)
 
     shoulder_y = body_top + 1.0
@@ -1227,8 +1266,9 @@ def _draw_dead_mouth_side(px, x: float, y: float, *, lookback: bool = False) -> 
 
 
 def _draw_dead_mouth_front(px, x: float, y: float) -> None:
-    px.ellipse(x + 4.72, y + 9.03, x + 6.38, y + 10.23, fill=LIP, outline=OUTLINE, width=0.22)
-    px.ellipse(x + 5.10, y + 9.30, x + 6.00, y + 9.96, fill=(56, 20, 34, 255), outline=None)
+    # A lip ring around a smaller inner ellipse only survives at the corners at
+    # this size, which reads as a cross. One wide rectangle reads as open.
+    _outlined_rect(px, x + 4.85, y + 9.25, x + 6.25, y + 10.35, fill=(56, 20, 34, 255), inset=0.22)
 
 
 def _draw_dead_eyes_front(px, x: float, y: float) -> None:
@@ -1287,9 +1327,17 @@ def _draw_head_front(px, form: FormSpec, x: float, y: float, *, variant_name: st
             )
 
 
-def _draw_v2_button(px, cx: float, cy: float, fill) -> None:
-    px.ellipse(cx - 0.78, cy - 0.72, cx + 0.78, cy + 0.72, fill=fill, outline=OUTLINE, width=0.32)
-    px.ellipse(cx - 0.21, cy - 0.20, cx + 0.21, cy + 0.20, fill=BROOCH_LIGHT, outline=None)
+def _with_alpha(color: Tuple[int, int, int, int], opacity: float) -> Tuple[int, int, int, int]:
+    opacity = max(0.0, min(1.0, opacity))
+    return (color[0], color[1], color[2], int(round(color[3] * opacity)))
+
+
+def _draw_v2_button(px, cx: float, cy: float, fill, *, opacity: float = 1.0) -> None:
+    """One skirt button. ``opacity`` lets the fire outfit dissolve the pair away."""
+    if opacity <= 0.0:
+        return
+    px.ellipse(cx - 0.78, cy - 0.72, cx + 0.78, cy + 0.72, fill=_with_alpha(fill, opacity), outline=_with_alpha(OUTLINE, opacity), width=0.32)
+    px.ellipse(cx - 0.21, cy - 0.20, cx + 0.21, cy + 0.20, fill=_with_alpha(BROOCH_LIGHT, opacity), outline=None)
 
 
 def _draw_hand_outline(px, x1: float, y1: float, x2: float, y2: float) -> None:
@@ -1335,8 +1383,6 @@ def _draw_body_side(px, form: FormSpec, x: float, y: float, crouch: float, *, co
     strap = _lerp_rgba(V2_TEAL_DARK, V2_GOLD_DARK, fire_t)
     px.line([(x + 2.5, y + 0.25), (x + 4.05, y + 3.0)], fill=strap, width=1.1)
     px.line([(x + body_w - 0.65, y + 0.25), (x + 7.05, y + 3.0)], fill=strap, width=1.1)
-    _draw_v2_button(px, x + 4.05, y + 3.1, pal.buttons)
-    _draw_v2_button(px, x + 7.05, y + 3.1, pal.buttons)
 
     flare = 1.45 + 0.55 * fire_t
     skirt_fill = _lerp_rgba(pal.overalls, V2_IVORY, fire_t)
@@ -1360,6 +1406,11 @@ def _draw_body_side(px, form: FormSpec, x: float, y: float, crouch: float, *, co
         px.line([(x + 4.0, waist + 0.8), (x + 3.65, bottom + 1.0)], fill=pleat, width=0.28)
         px.line([(x + 7.0, waist + 0.8), (x + 7.45, bottom + 1.0)], fill=pleat, width=0.28)
 
+    # The tall form carries the short form's buttons on the skirt line; the fire
+    # outfit drops them, fading across the transform rather than popping.
+    _draw_v2_button(px, x + 4.05, waist + 0.85, pal.buttons, opacity=1.0 - fire_t)
+    _draw_v2_button(px, x + 7.05, waist + 0.85, pal.buttons, opacity=1.0 - fire_t)
+
     _draw_star(px, x + 5.65, y + 4.25, outer=1.45 + 0.27 * fire_t, inner=0.68, fill=pal.buttons, width=0.34)
     # A small bow at the back echoes the generated second-draft concept.
     bow = _lerp_rgba(V2_PINK_LIGHT, V2_GOLD, fire_t)
@@ -1376,30 +1427,46 @@ def _draw_body_side(px, form: FormSpec, x: float, y: float, crouch: float, *, co
             px.polygon([(ax, y + 1.5), (ax + sign * (span + 0.4), y + 1.7), (ax + sign * 0.5, y + 3.0)], fill=V2_ORANGE, outline=OUTLINE, width=0.3)
 
 
-def _draw_body_front(px, form: FormSpec, x: float, y: float, *, crouch: float = 0.0) -> None:
+def _draw_powered_front_garment(px, form: FormSpec, x: float, y: float, *, crouch: float = 0.0) -> None:
+    """Bodice, straps, skirt, hem, skirt buttons, and star for a powered body.
+
+    The dead pose repaints this over the hair, so the front keeps the same skirt
+    line and full-size star brooch the side pose has.
+    """
     pal = form.palette
-    stage = _magic_stage_value(form)
     fire_t = _fire_transition_t(form)
     body_h = form.body_height - 0.55 * crouch
     body_w = form.body_width + 0.4 * min(crouch, 1.4)
-    waist = y + body_h * (0.58 if stage else 0.62)
+    waist = y + body_h * 0.58
     bottom = y + body_h
-    _outlined_rect(px, x + 1.2, y, x + 1.2 + body_w, waist + 0.7, fill=pal.shirt, inset=0.42)
-
-    if stage == 0:
-        return _draw_short_body_front(px, form, x, y, crouch=crouch)
 
     px.polygon([(x + 2.1, y + 1.0), (x + body_w + 0.3, y + 1.0), (x + body_w - 0.25, waist + 0.7), (x + 1.8, waist + 0.7)], fill=pal.overalls, outline=OUTLINE, width=0.7)
     strap = _lerp_rgba(V2_TEAL_DARK, V2_GOLD_DARK, fire_t)
     px.line([(x + 3.1, y + 0.25), (x + 4.7, y + 3.0)], fill=strap, width=1.1)
     px.line([(x + 9.0, y + 0.25), (x + 7.35, y + 3.0)], fill=strap, width=1.1)
-    _draw_v2_button(px, x + 4.7, y + 3.1, pal.buttons)
-    _draw_v2_button(px, x + 7.35, y + 3.1, pal.buttons)
     flare = 1.55 + 0.60 * fire_t
     skirt_fill = _lerp_rgba(pal.overalls, V2_IVORY, fire_t)
     px.polygon([(x + 1.8, waist + 0.35), (x + body_w + 0.55, waist + 0.35), (x + body_w + flare, bottom + 2.0), (x + 0.6 - flare * 0.2, bottom + 2.0)], fill=skirt_fill, outline=OUTLINE, width=0.72)
     px.line([(x + 0.9, bottom + 1.25), (x + body_w + flare - 0.2, bottom + 1.25)], fill=_lerp_rgba(V2_GOLD, V2_ORANGE, fire_t), width=0.82)
+    # The tall form carries the short form's buttons on the skirt line; the fire
+    # outfit drops them, fading across the transform rather than popping.
+    _draw_v2_button(px, x + 4.7, waist + 0.8, pal.buttons, opacity=1.0 - fire_t)
+    _draw_v2_button(px, x + 7.35, waist + 0.8, pal.buttons, opacity=1.0 - fire_t)
     _draw_star(px, x + 6.0, y + 4.15, outer=1.5 + 0.25 * fire_t, inner=0.7, fill=pal.buttons, width=0.34)
+
+
+def _draw_body_front(px, form: FormSpec, x: float, y: float, *, crouch: float = 0.0) -> None:
+    pal = form.palette
+    stage = _magic_stage_value(form)
+    body_h = form.body_height - 0.55 * crouch
+    body_w = form.body_width + 0.4 * min(crouch, 1.4)
+    waist = y + body_h * (0.58 if stage else 0.62)
+    _outlined_rect(px, x + 1.2, y, x + 1.2 + body_w, waist + 0.7, fill=pal.shirt, inset=0.42)
+
+    if stage == 0:
+        return _draw_short_body_front(px, form, x, y, crouch=crouch)
+
+    _draw_powered_front_garment(px, form, x, y, crouch=crouch)
 
 
 def _draw_arm(px, x: float, y: float, *, front: bool, form: FormSpec, length: float = 4.2, glove_down: bool = True) -> None:

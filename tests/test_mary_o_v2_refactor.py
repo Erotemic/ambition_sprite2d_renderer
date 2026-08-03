@@ -5,6 +5,7 @@ import hashlib
 from collections import Counter
 from pathlib import Path
 
+import yaml
 from PIL import Image
 
 from ambition_sprite2d_renderer.targets.characters import mary_o_v2
@@ -38,11 +39,11 @@ def test_mary_o_v2_matches_reviewed_visual_baseline(tmp_path: Path) -> None:
 
     expected = {
         "mary_o_v2_canonical.png": "77d632375b90672b59b48a673acfaef7feb5eeeeece0c1b942336a9d2565db55",
-        "mary_o_v2_spritesheet.png": "726d94c62a32abceef417323c0c756ba14660f22de9bc8e89057dea2e17467e7",
-        "mary_o_v2_tall_canonical.png": "2ed66e24dd8aeefb13c1b18bcbfde0bed513c0d1d77b5551beb3f941a36ef806",
-        "mary_o_v2_tall_spritesheet.png": "8d874757ce0427f8f7ee1dfcb6353ca5b1b9cf207b99b48189654b51ee265089",
-        "mary_o_v2_fire_canonical.png": "d0658021b0fb59aa9197090bd6f32b7b51d5baacaf6485539c047bb89368fc56",
-        "mary_o_v2_fire_spritesheet.png": "4568da6bbe463c4ff46ef97d29f31947c6238e6e5aa971f68c4836ec0ff7f8f4",
+        "mary_o_v2_spritesheet.png": "f3d5c308398d82669fdee80e953fafb94d612c706ac41efb77427f0a5dd1cc14",
+        "mary_o_v2_tall_canonical.png": "93d0d3cdfb419f733fb70e93d79c0bdeec390e8beab168c17b1646ad4b563d21",
+        "mary_o_v2_tall_spritesheet.png": "caadcfd5cc6bc36d46c9f245c59097e28ef3f2f8cc95c56c72a83b23e0296576",
+        "mary_o_v2_fire_canonical.png": "9be563c6141d79b0dbdf52e01766c29a40131f67b5d3fd7259cd64b05a465122",
+        "mary_o_v2_fire_spritesheet.png": "8a49ecf66afb9748a38710f415136d6e214e2d83dcb8a2919a4837eec3bf2157",
     }
     actual = {name: _pixel_digest(tmp_path / name) for name in expected}
     assert actual == expected
@@ -151,3 +152,53 @@ def test_side_nose_flips_horizontally_for_lookback() -> None:
     east_center_x = (east_bbox[0] + east_bbox[2]) / 2
     west_center_x = (west_bbox[0] + west_bbox[2]) / 2
     assert west_center_x < east_center_x
+
+
+def _idle_alpha_bbox(sheet_png: Path, yaml_path: Path):
+    """Alpha extent of the idle frame — what the box is deliberately tighter than."""
+    meta = yaml.safe_load(yaml_path.read_text())
+    rect = {row["animation"]: row for row in meta["rows"]}["idle"]["rects"][0]
+    frame = Image.open(sheet_png).convert("RGBA").crop(
+        (rect["x"], rect["y"], rect["x"] + rect["w"], rect["y"] + rect["h"])
+    )
+    return frame.getchannel("A").getbbox(), meta
+
+
+def test_mary_o_v2_collision_box_is_authored_not_measured(tmp_path: Path) -> None:
+    """The gameplay body is stated by the target, not read off the alpha bbox.
+
+    The measured bbox includes her cap tip, ponytail, sleeves, and the fire
+    form's flame frills. Colliding on those reads as unfair, and it let the fire
+    form drift 22% wider than the tall form on decoration alone.
+    """
+    renders = {
+        "mary_o_v2": mary_o_v2.render_mary_o_v2,
+        "mary_o_v2_tall": mary_o_v2.render_mary_o_v2_tall,
+        "mary_o_v2_fire": mary_o_v2.render_mary_o_v2_fire,
+    }
+    boxes = {}
+    for target, render in renders.items():
+        render(tmp_path)
+        alpha, meta = _idle_alpha_bbox(
+            tmp_path / f"{target}_spritesheet.png", tmp_path / f"{target}_spritesheet.yaml"
+        )
+        box = meta["body_metrics"]["body_pixel_bbox"]
+        boxes[target] = box
+
+        # Forgiveness on the sides: narrower than everything she visibly has out.
+        assert box["w"] < (alpha[2] - alpha[0]), target
+        # Forgiveness on the cap tip: the box starts below the top of the art.
+        assert box["y"] > alpha[1], target
+        # ...but her feet are still enclosed, since the box bottom is what stands.
+        assert box["y"] + box["h"] >= alpha[3], target
+
+    # One width for every form, so growing or catching fire never changes how
+    # wide she is.
+    widths = {t: b["w"] for t, b in boxes.items()}
+    assert len(set(widths.values())) == 1, widths
+
+    # Tall stays taller than short, at the ratio the shipped art had (88/63),
+    # so every ceiling and pipe in the level still fits her as it does today.
+    ratio = boxes["mary_o_v2_tall"]["h"] / boxes["mary_o_v2"]["h"]
+    assert abs(ratio - 88 / 63) < 0.01, ratio
+    assert boxes["mary_o_v2_fire"]["h"] == boxes["mary_o_v2_tall"]["h"]
