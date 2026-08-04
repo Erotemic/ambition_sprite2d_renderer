@@ -602,6 +602,50 @@ def _translated_legacy_hitboxes() -> Dict[str, dict]:
     return hitboxes
 
 
+# --- Authored gameplay collision box -----------------------------------------
+#
+# The sheet builder's default body box is the idle frame's ALPHA bbox, and for
+# v3 that measured x 79..149, y 57..157 — which is wrong in two ways a player
+# feels:
+#
+#   * the TOP sat at y=57, on a 7..14 px antenna spike. The head proper starts
+#     at y≈67, so ~10 px of the collider was empty air above his head;
+#   * the WIDTH came from the arms at full span (x 79..148 across y 87..97).
+#     The torso and legs are 47..56 px wide, so he collided with walls on
+#     outstretched arms.
+#
+# Stated here instead of measured, the same way Mary-O's forms author theirs.
+# ⚠ the BASE and the feet anchor are deliberately unchanged (bottom edge 158,
+# `feet_pixel` 114.0/157.0): this is a collider change, not a change to where he
+# stands, and moving both at once would make the standing shift look like a
+# physics regression.
+BODY_BOX_TOP_PX = 67       # head crest, antenna excluded
+BODY_BOX_BOTTOM_PX = 158   # unchanged — the shoe line the old box already used
+BODY_BOX_WIDTH_PX = 57     # torso/legs, not the arm span (was 71)
+BODY_BOX_CENTER_X = 114.5  # unchanged centroid of the old box
+
+
+def body_metrics(fw: int, fh: int):
+    """Author the gameplay body instead of measuring the idle alpha bbox."""
+    x = int(round(BODY_BOX_CENTER_X - BODY_BOX_WIDTH_PX / 2.0))
+    box = {
+        "x": x,
+        "y": BODY_BOX_TOP_PX,
+        "w": BODY_BOX_WIDTH_PX,
+        "h": BODY_BOX_BOTTOM_PX - BODY_BOX_TOP_PX,
+    }
+    # The feet stay exactly where the generated metrics had them.
+    feet_x, feet_y = 114.0, 157.0
+    return {
+        "body_pixel_bbox": box,
+        "feet_pixel": {"x": feet_x, "y": feet_y},
+        "feet_anchor_norm": {
+            "x": round(feet_x / fw - 0.5, 6),
+            "y": round(0.5 - feet_y / fh, 6),
+        },
+    }
+
+
 def render(out_dir: str | Path, **opts):
     del opts
     out_dir = Path(out_dir)
@@ -617,6 +661,7 @@ def render(out_dir: str | Path, **opts):
         auto_crop=False,
         actor_metadata=ACTOR_METADATA,
         sheet_tuning={"collision_scale": 1.65},
+        body_metrics_fn=body_metrics,
         animation_key_map={name: name for name in ANIMATION_ORDER},
         attack_hitboxes=hitboxes,
         trim=True,
