@@ -1701,3 +1701,45 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
     """Render every entity sprite in ``ENTITY_SPECS`` into ``out_dir``."""
     supersample = int(opts.get("supersample", 4))
     return write_entity_sprites(out_dir, supersample=supersample)
+
+
+#: Runtime entity textures load from ``assets/sprites/entities/``, not from the
+#: sprite root — `EntitySprite::asset_path` says `"entities/<name>.png"`.
+INSTALL_SUBDIR = "entities"
+
+
+def install(render_dir: str | Path, dest_root: str | Path) -> List[Path]:
+    """Install under ``assets/sprites/entities`` from the normal sprite root.
+
+    ⛔ **this target had NO install hook until 2026-08-04, and
+    ``regen_sprites.sh`` carried the rule as a special case instead** — it
+    rewrote ``dest_root`` to ``$sprites_dir/entities`` for ``target = entities``
+    and nothing else did. So the shell path installed correctly and
+    ``python3 -m ambition_sprite2d_renderer publish entities`` — the documented
+    CLI, and the obvious thing to run — wrote the files a directory too high,
+    where the loader never looks.
+
+    Nothing reported it. `publish` succeeded (it wrote what it meant to), and
+    `load_entity_sprites` skips an id the catalog cannot resolve without a word,
+    so a newly added entity sprite was declared, drawn, published, listed in the
+    manifest, and invisible. It cost a photograph of a running game to find
+    (queue D21).
+
+    ⭐ the sibling target `sanic_support_entities` had already solved this the
+    right way, and its docstring says why: *"keep this target additive by giving
+    it its own install hook instead of editing the shell script's special
+    cases."* One rule, in one place, that both callers get.
+    """
+    render_dir = Path(render_dir)
+    dest_root = Path(dest_root)
+    dest_dir = dest_root / INSTALL_SUBDIR
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    installed: List[Path] = []
+    for spec in ENTITY_SPECS:
+        src = render_dir / spec.filename
+        if not src.exists():
+            continue
+        dst = dest_dir / spec.filename
+        dst.write_bytes(src.read_bytes())
+        installed.append(dst)
+    return installed
