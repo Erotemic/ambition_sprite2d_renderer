@@ -635,9 +635,9 @@ def render_sheet(source: FrameSource, out_dir: Path):
     per-animation boxes are MEASURED — alpha unions, motion smear included —
     while the static one may be AUTHORED, and emitting the measured one
     unconditionally meant the authored box could never win. Player robot v3
-    authors a ``57x91`` body and his measured rows include a ``128``-wide
+    authors a ``57x91`` body and their measured rows include a ``128``-wide
     ``block`` and a ``143``-wide ``dash``; a body driven by those inflates every
-    time he flourishes. The fallback was unreachable, not unused.
+    time they flourish. The fallback was unreachable, not unused.
     """
     if _CANONICAL_ONLY.get():
         return _render_canonical_only(source, Path(out_dir))

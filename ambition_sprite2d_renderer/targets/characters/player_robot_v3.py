@@ -609,15 +609,15 @@ def _translated_legacy_hitboxes() -> Dict[str, dict]:
 # feels:
 #
 #   * the TOP sat at y=57, on a 7..14 px antenna spike. The head proper starts
-#     at y≈67, so ~10 px of the collider was empty air above his head;
+#     at y≈67, so ~10 px of the collider was empty air above their head;
 #   * the WIDTH came from the arms at full span (x 79..148 across y 87..97).
-#     The torso and legs are 47..56 px wide, so he collided with walls on
+#     The torso and legs are 47..56 px wide, so they collided with walls on
 #     outstretched arms.
 #
 # Stated here instead of measured, the same way Mary-O's forms author theirs.
 # ⚠ the BASE and the feet anchor are deliberately unchanged (bottom edge 158,
-# `feet_pixel` 114.0/157.0): this is a collider change, not a change to where he
-# stands, and moving both at once would make the standing shift look like a
+# `feet_pixel` 114.0/157.0): this is a collider change, not a change to where they
+# stand, and moving both at once would make the standing shift look like a
 # physics regression.
 BODY_BOX_TOP_PX = 67       # head crest, antenna excluded
 BODY_BOX_BOTTOM_PX = 158   # unchanged — the shoe line the old box already used
@@ -664,11 +664,11 @@ def render(out_dir: str | Path, **opts):
         body_metrics_fn=body_metrics,
         animation_key_map={name: name for name in ANIMATION_ORDER},
         attack_hitboxes=hitboxes,
-        # His limbs move; his BODY does not. The rows are mapped for their
+        # Their limbs move; their BODY does not. The rows are mapped for their
         # authored attack hitboxes, and publishing a measured hurtbox beside
         # each one would outrank the body box above — `block` measures 128 px
         # wide and `dash` 143 against a 57 px torso, so a body that followed the
-        # art would inflate every time he flourishes.
+        # art would inflate every time they flourish.
         pose_bodies="authored",
         trim=True,
     )
