@@ -64,6 +64,27 @@ FIRE_MARY = MaryPalette(
 PIPE_COPPER = (181, 108, 53, 255)
 PIPE_COPPER_DARK = (118, 66, 30, 255)
 PIPE_COPPER_LIGHT = (224, 158, 96, 255)
+#: The pipe's inner SHEEN stripe — the bright vertical highlight down its lit
+#: side.
+#:
+#: ⛔ **this was an inline `(55, 188, 101, 255)` literal in three places, so the
+#: palette rename could not see it and the pipes came out copper with a GREEN
+#: stripe.** Caught by reading the generated sprite's colour histogram rather
+#: than looking at it: 224 pixels of the old hue survived, which is invisible at
+#: 16px and obvious in a count (2026-08-04).
+#:
+#: ⭐ a constant exists precisely so a recolour reaches every use. Three inline
+#: copies of a colour are three places a rename will miss.
+PIPE_COPPER_SHEEN = (243, 190, 140, 255)
+#: The shadow line under a pipe's lip, where the cap overhangs the body.
+#:
+#: ⛔ **a SECOND inline green, found only after fixing the first.** The sheen
+#: literal appeared three times and this one once, so the histogram came back
+#: clean for the pipe BODY and still showed 159 green pixels on the pipe TOP.
+#: ⚠ **checking one sprite of a family is not checking the family** — the cap and
+#: the body are separate targets drawn by separate functions, and the one I
+#: sampled first happened to be the clean one.
+PIPE_COPPER_SHADOW = (46, 24, 10, 255)
 COIN_GOLD = (240, 189, 44, 255)
 COIN_GOLD_LIGHT = (255, 235, 129, 255)
 BRICK = (171, 101, 54, 255)

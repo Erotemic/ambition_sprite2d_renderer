@@ -27,6 +27,8 @@ from ...authoring.sheet_build import build_sheet
 from ..super_mary_o_common import (
     OUTLINE,
     PIPE_COPPER,
+    PIPE_COPPER_SHADOW,
+    PIPE_COPPER_SHEEN,
     PIPE_COPPER_DARK,
     PIPE_COPPER_LIGHT,
     SKY_BLUE,
@@ -85,7 +87,7 @@ def _pipe_body_frame(animation: str, frame_idx: int, nframes: int) -> Image.Imag
         px.rect(1.5, 0.0, 2.0, 8.0, fill=OUTLINE)
         px.rect(14.0, 0.0, 14.5, 8.0, fill=OUTLINE)
         px.rect(2.0, 0.0, 4.0, 8.0, fill=PIPE_COPPER_LIGHT)
-        px.rect(4.0, 0.0, 5.5, 8.0, fill=(55, 188, 101, 255))
+        px.rect(4.0, 0.0, 5.5, 8.0, fill=PIPE_COPPER_SHEEN)
         px.rect(12.0, 0.0, 14.0, 8.0, fill=PIPE_COPPER_DARK)
 
     return rasterize_logical(PIPE_LOGICAL, SCALE, painter)
@@ -101,7 +103,7 @@ def _pipe_top_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image
         px.rect(1.5, 3.5, 2.0, 8.0, fill=OUTLINE)
         px.rect(14.0, 3.5, 14.5, 8.0, fill=OUTLINE)
         px.rect(2.0, 3.5, 4.0, 8.0, fill=PIPE_COPPER_LIGHT)
-        px.rect(4.0, 3.5, 5.5, 8.0, fill=(55, 188, 101, 255))
+        px.rect(4.0, 3.5, 5.5, 8.0, fill=PIPE_COPPER_SHEEN)
         px.rect(12.0, 3.5, 14.0, 8.0, fill=PIPE_COPPER_DARK)
 
         # The lip overhangs the neck by ONE logical unit each side. It used to
@@ -110,9 +112,9 @@ def _pipe_top_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image
         px.rect(0.5, 0.5, 15.5, 4.5, fill=OUTLINE)
         px.rect(1.0, 1.0, 15.0, 4.0, fill=PIPE_COPPER)
         px.rect(1.0, 1.0, 3.5, 4.0, fill=PIPE_COPPER_LIGHT)
-        px.rect(3.5, 1.0, 5.0, 4.0, fill=(55, 188, 101, 255))
+        px.rect(3.5, 1.0, 5.0, 4.0, fill=PIPE_COPPER_SHEEN)
         px.rect(12.5, 1.0, 15.0, 4.0, fill=PIPE_COPPER_DARK)
-        px.rect(1.5, 3.5, 14.5, 4.0, fill=(14, 75, 40, 255))
+        px.rect(1.5, 3.5, 14.5, 4.0, fill=PIPE_COPPER_SHADOW)
 
     return rasterize_logical(PIPE_LOGICAL, SCALE, painter)
 
