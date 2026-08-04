@@ -620,6 +620,59 @@ def _seamless_brick_pattern(
             )
 
 
+#: The interrobang, at 2x the tileset's 16px authoring, as explicit runs.
+#:
+#: Jon asked for "actual question mark blocks... although we should probably make
+#: them interrobang blocks as a parody". The glyph is the joke: a `?` hook and a
+#: `!` stem are the SAME stroke once you draw them small.
+#:
+#: ⚠ these runs are the 16px ones from
+#: `targets/tiles/super_mary_o_tileset.py` doubled, deliberately COPIED rather
+#: than imported: that module authors a packed LDtk TILESET for a tile-layer
+#: workflow, and this one authors standalone 32px entity textures. Importing
+#: across would tie two independent pipelines together to save ten lines, and the
+#: tileset's cell size is free to change without breaking this.
+_INTERROBANG_RUNS_32 = (
+    (6, 12, 19),
+    (8, 10, 13),
+    (8, 18, 21),
+    (10, 18, 21),
+    (12, 16, 19),
+    (14, 14, 17),
+    (16, 14, 17),
+    (18, 14, 17),
+    (20, 14, 17),
+    (24, 14, 17),
+)
+
+
+def bonus_block_tile(d: ImageDraw.ImageDraw, s: float) -> None:
+    """A live bonus block: warm plate, riveted corners, interrobang glyph.
+
+    ⛔ **the block a game must be able to tell apart from a wall.** Art came from
+    `BlockKind` alone, so a bonus block, the used block it becomes and an
+    ordinary solid were one texture (queue D11). The `BlockArt` component is the
+    seam that lets a game say otherwise; this is what it says for a LIVE block.
+    The USED state needs no art of its own -- a spent block is a plain solid, so
+    it simply drops the override and falls back to the kind's tile.
+    """
+    plate = rgba("#C8892E")
+    edge = rgba("#8A5A16")
+    highlight = rgba("#F0C46A")
+    glyph = rgba("#4A2F08")
+
+    d.rectangle((0, 0, 32 * s - 1, 32 * s - 1), fill=plate)
+    # Bevelled frame: light from the top-left, exactly as the tileset reads.
+    d.rectangle((0, 0, 32 * s - 1, 32 * s - 1), outline=edge, width=max(1, int(2 * s)))
+    d.line([(2 * s, 2 * s), (29 * s, 2 * s)], fill=highlight, width=max(1, int(1 * s)))
+    d.line([(2 * s, 2 * s), (2 * s, 29 * s)], fill=highlight, width=max(1, int(1 * s)))
+    # Rivets, one per corner, the pixel shorthand for "this is a device".
+    for cx, cy in ((5, 5), (26, 5), (5, 26), (26, 26)):
+        d.rectangle((cx * s, cy * s, (cx + 1) * s, (cy + 1) * s), fill=edge)
+    for y, x0, x1 in _INTERROBANG_RUNS_32:
+        d.rectangle((x0 * s, y * s, x1 * s, (y + 2) * s - 1), fill=glyph)
+
+
 def solid_tile(d: ImageDraw.ImageDraw, s: float) -> None:
     """Stone brick tile for IntGrid Solid surfaces. Cool gray
     palette so it reads as "structural wall / floor" against the
@@ -1363,6 +1416,15 @@ ENTITY_SPECS: List[EntitySpriteSpec] = [
     # without smearing. `tight_crop=False` keeps the full canvas so
     # the tiling math is straightforward.
     EntitySpriteSpec(
+        "bonus_block_tile",
+        "bonus_block_tile.png",
+        "BlockArt override (a live bonus block)",
+        "bonus block",
+        "interrobang bonus block, the live state",
+        size=(32, 32),
+        tight_crop=False,
+    ),
+    EntitySpriteSpec(
         "solid_tile",
         "solid_tile.png",
         "BlockKind::Solid (IntGrid)",
@@ -1533,6 +1595,7 @@ DRAWERS: Dict[str, Callable[[ImageDraw.ImageDraw, float], None]] = {
     "door_zone": door_zone,
     "edge_exit": edge_exit,
     "projectile_energy": projectile_energy,
+    "bonus_block_tile": bonus_block_tile,
     "solid_tile": solid_tile,
     "one_way_tile": one_way_tile,
     "hazard_tile": hazard_tile,
