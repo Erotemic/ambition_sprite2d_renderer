@@ -259,6 +259,11 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
             metrics["body_pixel_bbox"] = _apply_body_inset(
                 metrics["body_pixel_bbox"], body_inset
             )
+            # An inset box is an AUTHORED gameplay body, not the measured alpha
+            # extent it was carved from, and a consumer has to be able to tell:
+            # scaling a character by its art gives you its hat, scaling it by its
+            # body gives you its body. Emitted only when true.
+            metrics["authored_body"] = True
         # Per-animation hurtbox: each animation's alpha-bbox in
         # cropped-frame coords (subtract the sheet crop offset).
         # Per-animation hitbox: generator-declared rects, also

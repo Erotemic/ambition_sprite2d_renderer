@@ -664,6 +664,12 @@ def render(out_dir: str | Path, **opts):
         body_metrics_fn=body_metrics,
         animation_key_map={name: name for name in ANIMATION_ORDER},
         attack_hitboxes=hitboxes,
+        # His limbs move; his BODY does not. The rows are mapped for their
+        # authored attack hitboxes, and publishing a measured hurtbox beside
+        # each one would outrank the body box above — `block` measures 128 px
+        # wide and `dash` 143 against a 57 px torso, so a body that followed the
+        # art would inflate every time he flourishes.
+        pose_bodies="authored",
         trim=True,
     )
     keys = (

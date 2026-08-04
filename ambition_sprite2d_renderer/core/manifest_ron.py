@@ -107,6 +107,10 @@ def _ron_body_metrics(bm) -> str:
     anim_metrics = bm.get("animations")
     if isinstance(anim_metrics, dict) and anim_metrics:
         parts.append(f"animations: {_ron_anim_metrics_map(anim_metrics)}")
+    # Emitted only when TRUE, so every sheet that measures its box rather than
+    # authoring one keeps a byte-identical RON.
+    if bm.get("authored_body"):
+        parts.append("authored_body: true")
     return _ron_some(f"({', '.join(parts)})")
 
 

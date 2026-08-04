@@ -213,6 +213,7 @@ class CallableFrameSource:
         sheet_tuning: Optional[Dict[str, Any]] = None,
         trim: Optional[bool] = None,
         max_sheet_dimension: int = 16384,
+        pose_bodies: str = "art",
     ) -> None:
         self.target = target
         self.rows = list(rows)
@@ -231,6 +232,7 @@ class CallableFrameSource:
         self.sheet_tuning = sheet_tuning
         self.trim = trim
         self.max_sheet_dimension = max_sheet_dimension
+        self.pose_bodies = pose_bodies
 
     def animations(self) -> Dict[str, Dict[str, int]]:
         return {

@@ -548,6 +548,7 @@ def build_sheet(
     max_sheet_dimension: int = 16384,
     trim: Optional[bool] = None,
     body_inset=None,
+    pose_bodies: str = "art",
 ):
     """Build one module target's sheet from a frame callable + rows.
 
@@ -572,6 +573,7 @@ def build_sheet(
         attack_hitboxes=attack_hitboxes,
         max_sheet_dimension=max_sheet_dimension,
         trim=trim,
+        pose_bodies=pose_bodies,
     )
     return render_sheet(source, out_dir)
 
@@ -611,6 +613,31 @@ def render_sheet(source: FrameSource, out_dir: Path):
     keyed by the same gameplay keys) supplies authored attack-damage
     rects, merged in as ``animations[key].hitbox`` — for boss attacks
     whose damage geometry the sprite author wants to pin.
+
+    ``pose_bodies`` says WHERE this character's per-pose gameplay body comes
+    from, and it exists because the two answers were sharing one field:
+
+    ``"art"`` (default)
+        each mapped row publishes its union alpha bbox, so the body follows the
+        drawing pose by pose. Right for a silhouette that changes SHAPE — the
+        snake that withdraws into a cardboard box is a long low serpent in
+        ``walk`` and a small cube in ``boxed_idle`` because its art is.
+    ``"authored"``
+        publish no per-animation hurtbox at all; the one authored
+        ``body_pixel_bbox`` is the body in every pose. Right for a rigid
+        character whose limbs move but whose BODY does not — which is most of
+        them.
+
+    ⛔ **why this is a declaration and not a default.** The runtime's
+    ``BodyMetrics::pose_body_bbox`` prefers a per-animation hurtbox and falls
+    back to the static box, and its docstring calls that fallback *"the whole
+    answer for the common characters whose silhouette barely moves"*. But the
+    per-animation boxes are MEASURED — alpha unions, motion smear included —
+    while the static one may be AUTHORED, and emitting the measured one
+    unconditionally meant the authored box could never win. Player robot v3
+    authors a ``57x91`` body and his measured rows include a ``128``-wide
+    ``block`` and a ``143``-wide ``dash``; a body driven by those inflates every
+    time he flourishes. The fallback was unreachable, not unused.
     """
     if _CANONICAL_ONLY.get():
         return _render_canonical_only(source, Path(out_dir))
@@ -630,6 +657,13 @@ def render_sheet(source: FrameSource, out_dir: Path):
     attack_hitboxes = source.attack_hitboxes(source.frame_size)
     max_sheet_dimension = source.max_sheet_dimension
     trim = source.trim
+    # `getattr`, because the recipe fields are optional on the FrameSource
+    # protocol and a source predating this one means the old behaviour.
+    pose_bodies = getattr(source, "pose_bodies", "art")
+    if pose_bodies not in ("art", "authored"):
+        raise ValueError(
+            f"{target}: pose_bodies must be 'art' or 'authored', got {pose_bodies!r}"
+        )
 
     fw, fh = frame_size
 
@@ -854,6 +888,13 @@ def render_sheet(source: FrameSource, out_dir: Path):
         # can keep gameplay hurtboxes tight to the true character body while the
         # rendered frame still includes decorations.
         body_metrics = body_metrics_fn(fw, fh)
+        # **Say which of the two rectangles this is.** `body_pixel_bbox` means
+        # "the alpha extent of the drawn art" by default and "the gameplay body"
+        # when a target authors one, and a consumer could not tell them apart —
+        # so a runtime that wanted the body had no way to ask for it, and one
+        # that scaled by the art got a hat and a pair of outstretched arms. The
+        # flag is only ever emitted TRUE; its absence is the measured default.
+        body_metrics = {**body_metrics, "authored_body": True}
 
     # Authoritative per-animation hurtboxes (+ optional authored hitboxes), so a
     # boss can register hits on the per-pose body instead of the coarse idle
@@ -883,7 +924,11 @@ def render_sheet(source: FrameSource, out_dir: Path):
                     ]
                 )
             entry = anim_metrics.setdefault(key, {})
-            if union is not None:
+            # An `authored` body still wants its per-animation HITBOXES — those
+            # are declared, not measured, and they are the reason a rigid
+            # character maps its rows at all. It is only the measured hurtbox
+            # that would outrank the authored body.
+            if union is not None and pose_bodies == "art":
                 entry["hurtbox"] = {
                     "bbox": {
                         "x": int(union[0]),
