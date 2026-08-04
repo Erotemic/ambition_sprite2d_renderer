@@ -632,18 +632,34 @@ def _seamless_brick_pattern(
 #: workflow, and this one authors standalone 32px entity textures. Importing
 #: across would tie two independent pipelines together to save ten lines, and the
 #: tileset's cell size is free to change without breaking this.
-_INTERROBANG_RUNS_32 = (
-    (6, 12, 19),
-    (8, 10, 13),
-    (8, 18, 21),
-    (10, 18, 21),
-    (12, 16, 19),
-    (14, 14, 17),
-    (16, 14, 17),
-    (18, 14, 17),
-    (20, 14, 17),
-    (24, 14, 17),
+#: The EROTEME's hook — the `?` curve alone, WITHOUT a descending stem.
+#:
+#: ⛔ **twice wrong before this.** The first pass was a thin hook that tapered
+#: into a stem and read as a plain `?`. The second made the stem bolder and
+#: longer, which Jon called exactly right: *"it looks like an eroteme with a
+#: long stem."* Sharing one stroke between the two marks is what makes them
+#: illegible as two marks.
+#:
+#: ⭐ **an interrobang is a `!` stroke CROSSING the hook**, per Jon: *"an
+#: interrobang has the ! stroke cross the hook of the eroteme, often at a very
+#: slight slant so you can see the two are composed."* So the hook owns no stem
+#: at all; the exclamation bar is drawn separately, over it, slanted, and
+#: extends ABOVE the curve — that overlap is the whole glyph.
+_EROTEME_HOOK_RUNS_32 = (
+    # the crown
+    (5, 11, 21),
+    # shoulders, left and right
+    (7, 9, 12),
+    (7, 19, 22),
+    # the right side coming down
+    (9, 19, 22),
+    # curving back in toward the centre and THROUGH the exclamation stroke,
+    # emerging on its far side — the hook must not simply meet the bar and stop,
+    # or the two marks merge into one stem again.
+    (11, 16, 21),
+    (13, 12, 19),
 )
+
 
 
 def bonus_block_tile(d: ImageDraw.ImageDraw, s: float) -> None:
@@ -669,8 +685,46 @@ def bonus_block_tile(d: ImageDraw.ImageDraw, s: float) -> None:
     # Rivets, one per corner, the pixel shorthand for "this is a device".
     for cx, cy in ((5, 5), (26, 5), (5, 26), (26, 26)):
         d.rectangle((cx * s, cy * s, (cx + 1) * s, (cy + 1) * s), fill=edge)
-    for y, x0, x1 in _INTERROBANG_RUNS_32:
+    # The eroteme's hook first, two pixels thick so it holds its own against the
+    # stroke that crosses it.
+    for y, x0, x1 in _EROTEME_HOOK_RUNS_32:
         d.rectangle((x0 * s, y * s, x1 * s, (y + 2) * s - 1), fill=glyph)
+    # ...then the exclamation stroke OVER it. It starts ABOVE the crown and ends
+    # below the hook's tail, so it crosses the curve twice — that crossing is the
+    # glyph. The slight lean is what keeps the two marks readable as two.
+    for step, y in enumerate(range(3, 21)):
+        x0 = 16.6 - step / 12.0
+        d.rectangle((x0 * s, y * s, (x0 + 2.0) * s, (y + 1) * s - 1), fill=glyph)
+    # The detached dot, under the stroke's foot.
+    d.rectangle((15.0 * s, 24.0 * s, 17.0 * s, 26.0 * s - 1), fill=glyph)
+
+
+def spent_block_tile(d: ImageDraw.ImageDraw, s: float) -> None:
+    """A USED bonus block: the same plate, drained of colour and glyphless.
+
+    Jon, 2026-08-04: *"A used questionmark block should get an inert texture."*
+
+    ⛔ **the first design let a spent block fall back to the KIND's plain stone
+    tile, and that was wrong twice over.** It read as a wall rather than as a
+    thing that had given up its prize, and it made the block's history invisible
+    to a player deciding whether to bother hitting it. An inert block should
+    still look like a BLOCK — same bevel, same rivets, same silhouette — and
+    simply be spent.
+
+    Desaturated toward the mortar grey of the surrounding stone, so a row of
+    used blocks reads as furniture instead of as targets.
+    """
+    plate = rgba("#8A7A62")
+    edge = rgba("#5C503F")
+    highlight = rgba("#A9884F")
+
+    d.rectangle((0, 0, 32 * s - 1, 32 * s - 1), fill=plate)
+    d.rectangle((0, 0, 32 * s - 1, 32 * s - 1), outline=edge, width=max(1, int(2 * s)))
+    d.line([(2 * s, 2 * s), (29 * s, 2 * s)], fill=highlight, width=max(1, int(1 * s)))
+    d.line([(2 * s, 2 * s), (2 * s, 29 * s)], fill=highlight, width=max(1, int(1 * s)))
+    # The rivets stay: a spent block is still a BLOCK, not a wall.
+    for cx, cy in ((5, 5), (26, 5), (5, 26), (26, 26)):
+        d.rectangle((cx * s, cy * s, (cx + 1) * s, (cy + 1) * s), fill=edge)
 
 
 def solid_tile(d: ImageDraw.ImageDraw, s: float) -> None:
@@ -1416,6 +1470,15 @@ ENTITY_SPECS: List[EntitySpriteSpec] = [
     # without smearing. `tight_crop=False` keeps the full canvas so
     # the tiling math is straightforward.
     EntitySpriteSpec(
+        "spent_block_tile",
+        "spent_block_tile.png",
+        "BlockArt override (a used bonus block)",
+        "spent block",
+        "inert bonus block, drained and glyphless",
+        size=(32, 32),
+        tight_crop=False,
+    ),
+    EntitySpriteSpec(
         "bonus_block_tile",
         "bonus_block_tile.png",
         "BlockArt override (a live bonus block)",
@@ -1596,6 +1659,7 @@ DRAWERS: Dict[str, Callable[[ImageDraw.ImageDraw, float], None]] = {
     "edge_exit": edge_exit,
     "projectile_energy": projectile_energy,
     "bonus_block_tile": bonus_block_tile,
+    "spent_block_tile": spent_block_tile,
     "solid_tile": solid_tile,
     "one_way_tile": one_way_tile,
     "hazard_tile": hazard_tile,

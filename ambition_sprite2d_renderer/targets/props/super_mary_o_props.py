@@ -21,9 +21,9 @@ from ..super_mary_o_common import (
     MILK_BLUE,
     MILK_WHITE,
     OUTLINE,
-    PIPE_GREEN,
-    PIPE_GREEN_DARK,
-    PIPE_GREEN_LIGHT,
+    PIPE_COPPER,
+    PIPE_COPPER_DARK,
+    PIPE_COPPER_LIGHT,
     STEEL,
     STEEL_DARK,
     WHITE,
@@ -95,13 +95,13 @@ def _pipe_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     bob = [0.0, -0.2, 0.0, 0.2][frame_idx % 4] if nframes > 1 else 0.0
 
     def painter(px) -> None:
-        _outlined_rect(px, 7, 20 + bob, 21, 27 + bob, fill=PIPE_GREEN)
-        _outlined_rect(px, 5, 11 + bob, 23, 17 + bob, fill=PIPE_GREEN)
-        px.rect(5.8, 12.0 + bob, 9.0, 16.2 + bob, fill=PIPE_GREEN_LIGHT)
-        px.rect(10.0, 12.0 + bob, 13.8, 16.2 + bob, fill=PIPE_GREEN)
-        px.rect(14.5, 12.0 + bob, 22.0, 16.2 + bob, fill=PIPE_GREEN_DARK)
-        px.rect(19.2, 11.6 + bob, 22.0, 27.0 + bob, fill=PIPE_GREEN_DARK)
-        px.rect(6.0, 18.0 + bob, 20.0, 19.0 + bob, fill=PIPE_GREEN_LIGHT)
+        _outlined_rect(px, 7, 20 + bob, 21, 27 + bob, fill=PIPE_COPPER)
+        _outlined_rect(px, 5, 11 + bob, 23, 17 + bob, fill=PIPE_COPPER)
+        px.rect(5.8, 12.0 + bob, 9.0, 16.2 + bob, fill=PIPE_COPPER_LIGHT)
+        px.rect(10.0, 12.0 + bob, 13.8, 16.2 + bob, fill=PIPE_COPPER)
+        px.rect(14.5, 12.0 + bob, 22.0, 16.2 + bob, fill=PIPE_COPPER_DARK)
+        px.rect(19.2, 11.6 + bob, 22.0, 27.0 + bob, fill=PIPE_COPPER_DARK)
+        px.rect(6.0, 18.0 + bob, 20.0, 19.0 + bob, fill=PIPE_COPPER_LIGHT)
         px.rect(8.2, 13.8 + bob, 20.0, 15.0 + bob, fill=(0, 0, 0, 110))
 
     sprite = rasterize_logical(LOGICAL, SCALE, painter)
@@ -185,9 +185,9 @@ def _spark_blossom_frame(animation: str, frame_idx: int, nframes: int) -> Image.
         cy = 12.0 + bob
         # Stem + the two leaves, so the blossom sits on the ground rather than
         # floating like the coin does.
-        px.rect(cx - 0.7, cy + 3.0, cx + 0.7, 22.5, fill=PIPE_GREEN_DARK)
-        px.ellipse(cx - 6.0, 17.0, cx - 0.8, 20.4, fill=PIPE_GREEN, outline=OUTLINE, width=0.6)
-        px.ellipse(cx + 0.8, 18.6, cx + 6.0, 22.0, fill=PIPE_GREEN, outline=OUTLINE, width=0.6)
+        px.rect(cx - 0.7, cy + 3.0, cx + 0.7, 22.5, fill=PIPE_COPPER_DARK)
+        px.ellipse(cx - 6.0, 17.0, cx - 0.8, 20.4, fill=PIPE_COPPER, outline=OUTLINE, width=0.6)
+        px.ellipse(cx + 0.8, 18.6, cx + 6.0, 22.0, fill=PIPE_COPPER, outline=OUTLINE, width=0.6)
         # Four petals, drawn before the core so the core caps their seams.
         petal = 4.4
         for dx, dy in ((0.0, -1.0), (0.0, 1.0), (-1.0, 0.0), (1.0, 0.0)):

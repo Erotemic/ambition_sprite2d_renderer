@@ -52,9 +52,18 @@ FIRE_MARY = MaryPalette(
     accent=(248, 157, 52, 255),
 )
 
-PIPE_GREEN = (29, 159, 75, 255)
-PIPE_GREEN_DARK = (20, 102, 49, 255)
-PIPE_GREEN_LIGHT = (94, 214, 137, 255)
+#: Warp-pipe body, shadow side, and lit side.
+#:
+#: ⚠ **copper since 2026-08-04, at Jon's request** — *"we should tweak the pipe
+#: sprites so they are copper colored instead of green"*. The names moved with
+#: the colour: `PIPE_COPPER` holding a copper value is the kind of lie that
+#: survives for years and makes the next reader distrust every constant near it.
+#:
+#: The three keep their original value RELATIONSHIPS (mid / ~0.65x / ~1.4x) so the
+#: bevel reads exactly as it did; only the hue moved.
+PIPE_COPPER = (181, 108, 53, 255)
+PIPE_COPPER_DARK = (118, 66, 30, 255)
+PIPE_COPPER_LIGHT = (224, 158, 96, 255)
 COIN_GOLD = (240, 189, 44, 255)
 COIN_GOLD_LIGHT = (255, 235, 129, 255)
 BRICK = (171, 101, 54, 255)

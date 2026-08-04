@@ -21,9 +21,9 @@ from ..super_mary_o_common import (
     GROUND_BROWN_DARK,
     GROUND_BROWN_LIGHT,
     OUTLINE,
-    PIPE_GREEN,
-    PIPE_GREEN_DARK,
-    PIPE_GREEN_LIGHT,
+    PIPE_COPPER,
+    PIPE_COPPER_DARK,
+    PIPE_COPPER_LIGHT,
     SKY_BLUE,
     label_font,
 )
@@ -178,20 +178,20 @@ def _ground_tile(kind: str) -> Image.Image:
 
 def _pipe_tile(kind: str) -> Image.Image:
     img, draw = _new_tile()
-    draw.rectangle((0, 0, 15, 15), fill=PIPE_GREEN, outline=OUTLINE, width=1)
-    draw.rectangle((1, 1, 4, 14), fill=PIPE_GREEN_LIGHT)
-    draw.rectangle((12, 1, 14, 14), fill=PIPE_GREEN_DARK)
+    draw.rectangle((0, 0, 15, 15), fill=PIPE_COPPER, outline=OUTLINE, width=1)
+    draw.rectangle((1, 1, 4, 14), fill=PIPE_COPPER_LIGHT)
+    draw.rectangle((12, 1, 14, 14), fill=PIPE_COPPER_DARK)
     draw.line((5, 0, 5, 15), fill=(20, 99, 53, 255), width=1)
     draw.line((11, 0, 11, 15), fill=(20, 99, 53, 255), width=1)
     if kind.startswith("cap"):
-        draw.rectangle((0, 0, 15, 5), fill=PIPE_GREEN, outline=OUTLINE, width=1)
-        draw.rectangle((1, 1, 4, 4), fill=PIPE_GREEN_LIGHT)
-        draw.rectangle((12, 1, 14, 4), fill=PIPE_GREEN_DARK)
+        draw.rectangle((0, 0, 15, 5), fill=PIPE_COPPER, outline=OUTLINE, width=1)
+        draw.rectangle((1, 1, 4, 4), fill=PIPE_COPPER_LIGHT)
+        draw.rectangle((12, 1, 14, 4), fill=PIPE_COPPER_DARK)
         draw.rectangle((4, 5, 11, 7), fill=(10, 70, 39, 255))
     if kind.endswith("left"):
-        draw.rectangle((8, 0, 15, 15), fill=PIPE_GREEN)
+        draw.rectangle((8, 0, 15, 15), fill=PIPE_COPPER)
     if kind.endswith("right"):
-        draw.rectangle((0, 0, 7, 15), fill=PIPE_GREEN)
+        draw.rectangle((0, 0, 7, 15), fill=PIPE_COPPER)
     return img
 
 
