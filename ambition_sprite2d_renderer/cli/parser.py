@@ -57,6 +57,7 @@ from .commands import (
     DEFAULT_FACTION_CONFIG,
     DEFAULT_REVIEW_CONFIG_DIR,
     sandbox_sprites_dir,
+    _cmd_audit_installed,
     _cmd_canonical,
     _cmd_debug_hitboxes,
     _cmd_draw_all,
@@ -353,6 +354,29 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--format", choices=["text", "json"], default="text")
     p.set_defaults(func=_cmd_ldtk_manifest)
+
+    p = sub.add_parser(
+        "audit-installed",
+        help="Report which installed sprite files no producer claims. "
+        "REPORT ONLY — it has no delete flag, deliberately: the obvious "
+        "garbage collector was measured to remove live assets.",
+    )
+    p.add_argument(
+        "--sprites-dir",
+        default=None,
+        help="Install root to audit (default: the sandbox sprites dir).",
+    )
+    p.add_argument(
+        "--format", choices=["text", "json"], default="text", dest="format"
+    )
+    p.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Also list files a producer claims that are NOT installed here — "
+        "the signal that a regen was partial, not that files are stale.",
+    )
+    p.set_defaults(func=_cmd_audit_installed)
 
     p = sub.add_parser(
         "spritesheet", help="Render one config's sheet to a specific path."

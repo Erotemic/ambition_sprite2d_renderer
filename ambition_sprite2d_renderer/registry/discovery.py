@@ -70,6 +70,23 @@ GENERATOR_MODULE_STEMS: frozenset[str] = frozenset(
         "alice_cryptographer",
         "bob_engineer",
         "boss_side",
+        # These three register a `CharacterGenerator` in
+        # `registry/character_generators.py` exactly like the rest of this set,
+        # and were simply never added here — so `list-targets` warned about
+        # three conforming generator modules on every run. A warning nobody can
+        # act on is a warning nobody reads, and the install audit refuses to
+        # report orphans while discovery is warning, so this omission was load-
+        # bearing.
+        # These three register a `CharacterGenerator` in
+        # `registry/character_generators.py` exactly like the rest of this set,
+        # and were simply never added here — so `list-targets` warned about
+        # three conforming generator modules on every run. A warning nobody can
+        # act on is a warning nobody reads, and the install audit refuses to
+        # report orphans while discovery is warning, so this omission was load-
+        # bearing.
+        "erdish_scholar",
+        "eve_eavesdropper",
+        "mallory_interceptor",
         "goblin_side",
         "ninja_side",
         "oiler_mechanic",
@@ -82,6 +99,29 @@ GENERATOR_MODULE_STEMS: frozenset[str] = frozenset(
 
 
 # ---- Shared install helpers --------------------------------------------------
+
+
+def install_companions(fname: str) -> List[str]:
+    """Sidecars that ride along with ``fname`` whenever it is installed.
+
+    Runtime-compatible sheets have long shipped ``*_spritesheet.ron`` next to
+    their YAML manifests, and the renderer also emits optional ``*_actor.ron``
+    contracts. Both are copied opportunistically rather than declared, so a
+    target's ``SHEET_FILES`` under-states what it installs — which is why this
+    rule is a named function and not a closure: the installer copies by it and
+    the install audit claims by it, and the two must not drift.
+    """
+    out: List[str] = []
+    if fname.endswith(".yaml"):
+        out.append(fname[:-5] + ".ron")
+    stem = None
+    for suffix in ("_spritesheet.yaml", "_spritesheet.ron", "_spritesheet.png"):
+        if fname.endswith(suffix):
+            stem = fname[: -len(suffix)]
+            break
+    if stem:
+        out.append(f"{stem}_actor.ron")
+    return out
 
 
 def _copy_sheet_files(
@@ -112,19 +152,6 @@ def _copy_sheet_files(
         copied.append(dst)
         copied_names.add(fname)
 
-    def companions_for(fname: str) -> List[str]:
-        out: List[str] = []
-        if fname.endswith(".yaml"):
-            out.append(fname[:-5] + ".ron")
-        stem = None
-        for suffix in ("_spritesheet.yaml", "_spritesheet.ron", "_spritesheet.png"):
-            if fname.endswith(suffix):
-                stem = fname[: -len(suffix)]
-                break
-        if stem:
-            out.append(f"{stem}_actor.ron")
-        return out
-
     def page_siblings_for(fname: str) -> List[str]:
         """Extra page PNGs for a split sheet: `<stem>_spritesheet.1.png`,
         `.2.png`, … emitted next to `<stem>_spritesheet.png` when the sheet was
@@ -142,7 +169,7 @@ def _copy_sheet_files(
 
     for fname in sheet_files:
         copy_if_exists(fname)
-        for companion in companions_for(fname):
+        for companion in install_companions(fname):
             if companion not in listed:
                 copy_if_exists(companion)
         for page in page_siblings_for(fname):
@@ -274,6 +301,7 @@ class Target:
         category: str,
         sheet_files: Tuple[str, ...],
         portrait_files: Tuple[str, ...] = (),
+        install_subdir: str | None = None,
         portrait_install_subdir: str | None = None,
         kind: str,
     ) -> None:
@@ -281,6 +309,7 @@ class Target:
         self.category = category
         self.sheet_files = sheet_files
         self.portrait_files = portrait_files
+        self.install_subdir = install_subdir
         self.portrait_install_subdir = portrait_install_subdir
         self.kind = kind
         # Module-authored fields.
@@ -309,6 +338,7 @@ class Target:
         render_canonical: Optional[Callable] = None,
         render_portraits: Optional[Callable] = None,
         portrait_files: Tuple[str, ...] = (),
+        install_subdir: str | None = None,
         portrait_install_subdir: str | None = None,
         actor_metadata: Mapping[str, Any] | None = None,
     ) -> "Target":
@@ -317,6 +347,7 @@ class Target:
             category=category,
             sheet_files=sheet_files,
             portrait_files=portrait_files,
+            install_subdir=install_subdir,
             portrait_install_subdir=portrait_install_subdir,
             kind="module",
         )
@@ -433,6 +464,9 @@ class Target:
         render_dir = Path(render_dir)
         dest_root = Path(dest_root)
         dest_root.mkdir(parents=True, exist_ok=True)
+        sheet_dest = (
+            dest_root / self.install_subdir if self.install_subdir else dest_root
+        )
         portrait_dest = (
             dest_root / self.portrait_install_subdir
             if self.portrait_install_subdir
@@ -444,9 +478,45 @@ class Target:
                 _copy_sheet_files(self.portrait_files, render_dir, portrait_dest)
             )
             return copied
-        copied = _copy_sheet_files(self.sheet_files, render_dir, dest_root)
+        copied = _copy_sheet_files(self.sheet_files, render_dir, sheet_dest)
         copied.extend(_copy_sheet_files(self.portrait_files, render_dir, portrait_dest))
         return copied
+
+    # -- claimed install surface ------------------------------------------
+
+    def claimed_install_names(self) -> List[str]:
+        """Every path under the install root this target is responsible for.
+
+        Paths are POSIX-relative to the install root (``assets/sprites``), so a
+        subdir-installing target reports ``entities/spike.png`` rather than a
+        bare basename. This is a DECLARATION, not an observation: it does not
+        read the renderer's ``generated/`` tree, because that tree records what
+        one machine happened to render. A target that has never been rendered
+        here still claims its files.
+
+        Two things this cannot see, both of which the install audit handles
+        separately: page siblings (``*_spritesheet.1.png``, which the installer
+        discovers by globbing the render dir) and any file a custom module-level
+        ``install`` hook copies without declaring it in ``SHEET_FILES``.
+        """
+        claimed: List[str] = []
+        seen: set[str] = set()
+
+        def add(subdir: str | None, fname: str) -> None:
+            rel = f"{subdir}/{fname}" if subdir else fname
+            if rel not in seen:
+                seen.add(rel)
+                claimed.append(rel)
+
+        for group, subdir in (
+            (self.sheet_files, self.install_subdir),
+            (self.portrait_files, self.portrait_install_subdir),
+        ):
+            for fname in group:
+                add(subdir, fname)
+                for companion in install_companions(fname):
+                    add(subdir, companion)
+        return claimed
 
     # -- module-authored strategy -----------------------------------------
 
@@ -661,6 +731,7 @@ def _build_module_target(
         render_canonical=render_canonical_fn,
         render_portraits=render_portraits_fn,
         portrait_files=portrait_files,
+        install_subdir=getattr(mod, "INSTALL_SUBDIR", None),
         portrait_install_subdir=portrait_install_subdir,
         actor_metadata=getattr(mod, "ACTOR_METADATA", None),
     )
@@ -702,6 +773,10 @@ def _build_module_targets(
                 else (),
             )
         )
+        install_subdir = spec.get(
+            "install_subdir",
+            getattr(mod, "INSTALL_SUBDIR", None),
+        )
         portrait_install_subdir = spec.get(
             "portrait_install_subdir",
             getattr(mod, "PORTRAIT_INSTALL_SUBDIR", None),
@@ -717,6 +792,7 @@ def _build_module_targets(
                 render_canonical=render_canonical_fn,
                 render_portraits=render_portraits_fn,
                 portrait_files=portrait_files,
+                install_subdir=install_subdir,
                 portrait_install_subdir=portrait_install_subdir,
                 actor_metadata=merge_actor_metadata(
                     getattr(mod, "ACTOR_METADATA", None), spec.get("actor_metadata")

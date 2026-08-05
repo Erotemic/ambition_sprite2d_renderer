@@ -472,6 +472,35 @@ def _cmd_ldtk_manifest(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_audit_installed(args: argparse.Namespace) -> int:
+    """`audit-installed` — name the installed files no producer claims.
+
+    ⛔ REPORT ONLY, and there is no flag that changes that. Deciding an asset is
+    dead is a maintainer's call; this command only produces the list to decide
+    from. See `devtools/installed_audit.py` for why the obvious garbage
+    collector would have deleted live assets.
+
+    Exit codes are the verdict: 0 clean, 1 orphans found, 2 refused because the
+    target registry could not be trusted to say what is claimed.
+    """
+    from ..devtools.installed_audit import audit, format_json, format_report
+
+    install_root = (
+        Path(args.sprites_dir) if args.sprites_dir else sandbox_sprites_dir()
+    )
+    if not install_root.is_dir():
+        print(f"error: no such install root: {install_root}", file=sys.stderr)
+        return 2
+    result = audit(install_root)
+    if args.format == "json":
+        print(format_json(result))
+    else:
+        print(format_report(result, verbose=args.verbose))
+    if result.refused:
+        return 2
+    return 1 if result.orphans else 0
+
+
 def _cmd_list_targets(args: argparse.Namespace) -> int:
     print(
         "# procedural generators (driven by configs/*.yaml — renders via draw-character / draw-all):"

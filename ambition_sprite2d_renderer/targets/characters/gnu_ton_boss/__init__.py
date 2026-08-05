@@ -21,6 +21,11 @@ from . import sprite_generator
 TARGET_NAME = sprite_generator.TARGET_NAME
 SHEET_FILES = list(sprite_generator.OUTPUT_FILES)
 ACTOR_METADATA = sprite_generator.ACTOR_METADATA
+# The multipart boss ships a folder, not loose files at the sprite root. Declare
+# the destination rather than only spelling it inside `install` below: a subdir
+# that exists only as a local in an install hook is invisible to every reader
+# and to the install audit, which then reads the whole folder as unclaimed.
+INSTALL_SUBDIR = TARGET_NAME
 PORTRAIT_INSTALL_SUBDIR = TARGET_NAME
 PORTRAIT_FILES = (
     f"{TARGET_NAME}_portraits.png",
@@ -70,7 +75,7 @@ def render_portraits(out_dir: str | Path, **opts) -> List[Path]:
 
 def install(render_dir: str | Path, dest_root: str | Path) -> List[Path]:
     render_dir = Path(render_dir)
-    install_dir = Path(dest_root) / TARGET_NAME
+    install_dir = Path(dest_root) / INSTALL_SUBDIR
     return list(
         sprite_generator.install_outputs(
             render_dir=render_dir,

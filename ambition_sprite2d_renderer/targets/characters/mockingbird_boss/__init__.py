@@ -22,6 +22,9 @@ from . import sprite_generator
 
 TARGET_NAME = sprite_generator.TARGET_NAME
 SHEET_FILES = list(sprite_generator.OUTPUT_FILES) + [f"{TARGET_NAME}_actor.ron"]
+# See the sibling note in `gnu_ton_boss`: the destination subdir is part of what
+# this target claims, so declare it instead of hiding it in `install`.
+INSTALL_SUBDIR = TARGET_NAME
 PORTRAIT_INSTALL_SUBDIR = TARGET_NAME
 
 ACTOR_METADATA = {
@@ -77,7 +80,7 @@ def render_canonical(out_dir: str | Path, **opts) -> Path:
 
 def install(render_dir: str | Path, dest_root: str | Path) -> List[Path]:
     render_dir = Path(render_dir)
-    install_dir = Path(dest_root) / TARGET_NAME
+    install_dir = Path(dest_root) / INSTALL_SUBDIR
     copied = list(
         sprite_generator.install_outputs(
             render_dir=render_dir,

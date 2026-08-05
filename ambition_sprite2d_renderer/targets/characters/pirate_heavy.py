@@ -1084,6 +1084,21 @@ PORTRAIT_FILES = tuple(
     )
 )
 
+# This target installs one sheet PER VARIANT, not one sheet named after itself,
+# so the default `<target>_spritesheet.*` list described files it never writes
+# and omitted every file it does. `install` below is the authority on what gets
+# copied; this declaration exists so a reader — and the install audit — can tell
+# what this target is responsible for without running it.
+SHEET_FILES = tuple(
+    name
+    for slug in VARIANTS
+    for name in (
+        f"{BASE_TARGET_NAME}_{slug}_spritesheet.png",
+        f"{BASE_TARGET_NAME}_{slug}_spritesheet.yaml",
+        f"{BASE_TARGET_NAME}_{slug}_spritesheet.ron",
+    )
+)
+
 
 def render_portraits(out_dir: str | Path, variant: str = "all", **opts) -> List[Path]:
     """Publish freshly rendered default portraits for every heavy variant."""
