@@ -100,6 +100,22 @@ OUTPUT_FILES = [
     f"{RIDER_TARGET_NAME}_spritesheet.png",
     f"{RIDER_TARGET_NAME}_spritesheet.ron",
     f"{RIDER_TARGET_NAME}_actor.ron",
+    # ⛔ **`{TARGET_NAME}_spritesheet_manifest.json` IS NOT DECLARED HERE, and
+    # that is correct — nothing in this package writes one.** It was very nearly
+    # added on 2026-08-05 on the report that the generator emits it and the
+    # declaration was merely missing. It does not: the only `_spritesheet_
+    # manifest.json` writer in the renderer is `mockingbird_boss`, which both
+    # writes and declares its own. Declaring an output nothing produces is the
+    # defect `pirate_heavy` was just fixed for, one target over.
+    #
+    # ⚠ **the installed copy is an ORPHANED INPUT, which is worse than stale.**
+    # `ambition_ldtk_tools/synth_boss_manifest.py` reads it by name and this
+    # renderer's `devtools/ldtk_manifest.py` reads its `frame_size` before
+    # falling back to the `.ron` — but the file on disk predates the sheets
+    # beside it, so a clean regeneration would not produce it and both readers
+    # would silently lose their source. Deleting it is not the fix and neither
+    # is declaring it; somebody has to decide whether those readers still need
+    # it, and if so what writes it.
 ]
 
 # Review-only output generated next to the sheets. It is intentionally not in
