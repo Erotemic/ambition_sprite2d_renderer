@@ -40,7 +40,7 @@ PORTRAIT_SIZE = (192, 192)
 
 AUTHORING_DESCRIPTION = {
     "parody_of": "Richard Dawkins",
-    "character_name": "Richard Duckling, the Selfish Meme",
+    "character_name": "Richard Duckling",
     "concept": (
         "An anthropomorphic public-intellectual duck who helped popularize the word "
         "meme and now cannot understand why internet culture has failed to produce "
