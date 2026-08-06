@@ -1,0 +1,216 @@
+"""Small supersampled effect compositor for SVG-rigged fighter targets.
+
+Character anatomy stays in the canonical SVG/rig. This module only supplies
+reusable, resolution-independent effect drawing around solved rig poses.
+"""
+
+from __future__ import annotations
+
+import math
+from pathlib import Path
+from typing import Callable, Iterable, Mapping, Sequence
+
+from PIL import Image, ImageFont
+
+from ...authoring.rigdoc import RigDocument
+from ...core.draw import blending_draw
+
+Color = tuple[int, int, int, int]
+Point = tuple[float, float]
+World = Mapping[str, object]
+EffectFn = Callable[["FxCanvas", float, World, Mapping[str, float]], None]
+
+
+def clamp01(value: float) -> float:
+    return max(0.0, min(1.0, float(value)))
+
+
+def smooth(value: float) -> float:
+    x = clamp01(value)
+    return x * x * (3.0 - 2.0 * x)
+
+
+def pulse(value: float) -> float:
+    return math.sin(math.pi * clamp01(value))
+
+
+def fade(color: Color, alpha: float) -> Color:
+    return color[:3] + (int(round(color[3] * clamp01(alpha))),)
+
+
+def mix(a: Color, b: Color, amount: float) -> Color:
+    q = clamp01(amount)
+    return tuple(int(round(x + (y - x) * q)) for x, y in zip(a, b))  # type: ignore[return-value]
+
+
+def bone_origin(world: World, name: str, fallback: Point) -> Point:
+    transform = world.get(name)
+    origin = getattr(transform, "origin", None)
+    if origin is None:
+        return fallback
+    return float(origin[0]), float(origin[1])
+
+
+class FxCanvas:
+    """Transparent supersampled canvas with base-frame coordinates."""
+
+    def __init__(self, size: tuple[int, int], scale: int = 3):
+        self.size = size
+        self.scale = max(1, int(scale))
+        self.image = Image.new(
+            "RGBA",
+            (size[0] * self.scale, size[1] * self.scale),
+            (0, 0, 0, 0),
+        )
+        self.draw = blending_draw(self.image)
+
+    def p(self, point: Point) -> tuple[int, int]:
+        return (
+            int(round(point[0] * self.scale)),
+            int(round(point[1] * self.scale)),
+        )
+
+    def box(self, center: Point, rx: float, ry: float) -> tuple[int, int, int, int]:
+        x, y = center
+        return (
+            int(round((x - rx) * self.scale)),
+            int(round((y - ry) * self.scale)),
+            int(round((x + rx) * self.scale)),
+            int(round((y + ry) * self.scale)),
+        )
+
+    def line(self, points: Sequence[Point], fill: Color, width: float = 1.0, joint: str = "curve") -> None:
+        self.draw.line(
+            [self.p(point) for point in points],
+            fill=fill,
+            width=max(1, int(round(width * self.scale))),
+            joint=joint,
+        )
+
+    def polygon(self, points: Sequence[Point], fill: Color, outline: Color | None = None, width: float = 1.0) -> None:
+        mapped = [self.p(point) for point in points]
+        self.draw.polygon(mapped, fill=fill)
+        if outline is not None:
+            self.draw.line(
+                [*mapped, mapped[0]],
+                fill=outline,
+                width=max(1, int(round(width * self.scale))),
+                joint="curve",
+            )
+
+    def ellipse(self, center: Point, rx: float, ry: float, fill: Color | None, outline: Color | None = None, width: float = 1.0) -> None:
+        self.draw.ellipse(
+            self.box(center, rx, ry),
+            fill=fill,
+            outline=outline,
+            width=max(1, int(round(width * self.scale))) if outline else 1,
+        )
+
+    def arc(self, center: Point, rx: float, ry: float, start: float, end: float, fill: Color, width: float = 1.0) -> None:
+        self.draw.arc(
+            self.box(center, rx, ry),
+            start=start,
+            end=end,
+            fill=fill,
+            width=max(1, int(round(width * self.scale))),
+        )
+
+    def text(self, center: Point, text: str, fill: Color, size: float = 6.0, *, bold: bool = True, stroke: Color | None = None) -> None:
+        font_name = "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"
+        try:
+            font = ImageFont.truetype(font_name, max(5, int(round(size * self.scale))))
+        except OSError:
+            font = ImageFont.load_default()
+        bbox = self.draw.textbbox((0, 0), text, font=font, stroke_width=1 if stroke else 0)
+        x = center[0] * self.scale - (bbox[2] - bbox[0]) / 2
+        y = center[1] * self.scale - (bbox[3] - bbox[1]) / 2
+        self.draw.text(
+            (int(round(x)), int(round(y))),
+            text,
+            font=font,
+            fill=fill,
+            stroke_width=max(1, self.scale // 2) if stroke else 0,
+            stroke_fill=stroke,
+        )
+
+    def star(self, center: Point, radius: float, fill: Color, *, points: int = 5, inner: float = 0.43, rotation: float = -90.0, outline: Color | None = None) -> None:
+        vertices: list[Point] = []
+        for index in range(points * 2):
+            angle = math.radians(rotation + index * 180.0 / points)
+            r = radius if index % 2 == 0 else radius * inner
+            vertices.append((center[0] + math.cos(angle) * r, center[1] + math.sin(angle) * r))
+        self.polygon(vertices, fill, outline, 0.7)
+
+    def arrow(self, start: Point, end: Point, fill: Color, width: float = 1.2, head: float = 4.0) -> None:
+        self.line([start, end], fill, width)
+        angle = math.atan2(end[1] - start[1], end[0] - start[0])
+        for offset in (-0.55, 0.55):
+            tip = (
+                end[0] - math.cos(angle + offset) * head,
+                end[1] - math.sin(angle + offset) * head,
+            )
+            self.line([end, tip], fill, width)
+
+    def finish(self) -> Image.Image:
+        if self.scale == 1:
+            return self.image
+        return self.image.resize(self.size, Image.Resampling.LANCZOS)
+
+
+def compose_rig_frame(
+    doc: RigDocument,
+    animation: str,
+    frame_idx: int,
+    frame_count: int,
+    *,
+    behind: EffectFn | None = None,
+    front: EffectFn | None = None,
+) -> Image.Image:
+    t = doc.frame_time(animation, frame_idx, frame_count)
+    solved = doc.solve(animation, t)
+    world, params = solved
+    size = (int(doc.frame["width"]), int(doc.frame["height"]))
+    result = Image.new("RGBA", size, (0, 0, 0, 0))
+    if behind is not None:
+        layer = FxCanvas(size)
+        behind(layer, t, world, params)
+        result.alpha_composite(layer.finish())
+    result.alpha_composite(doc.render_at(animation, t, solved=solved))
+    if front is not None:
+        layer = FxCanvas(size)
+        front(layer, t, world, params)
+        result.alpha_composite(layer.finish())
+    return result
+
+
+def orbit_point(center: Point, rx: float, ry: float, phase: float) -> Point:
+    angle = phase * math.tau
+    return center[0] + math.cos(angle) * rx, center[1] + math.sin(angle) * ry
+
+
+def clock(canvas: FxCanvas, center: Point, radius: float, phase: float, color: Color) -> None:
+    canvas.ellipse(center, radius, radius, fade((245, 239, 215, 255), color[3] / 255), color, 1.0)
+    for i in range(12):
+        angle = i * math.tau / 12.0
+        a = (center[0] + math.cos(angle) * radius * 0.72, center[1] + math.sin(angle) * radius * 0.72)
+        b = (center[0] + math.cos(angle) * radius * 0.88, center[1] + math.sin(angle) * radius * 0.88)
+        canvas.line([a, b], color, 0.55)
+    minute = phase * math.tau
+    hour = phase * math.tau * 0.27
+    canvas.line([center, (center[0] + math.sin(hour) * radius * 0.52, center[1] - math.cos(hour) * radius * 0.52)], color, 0.9)
+    canvas.line([center, (center[0] + math.sin(minute) * radius * 0.72, center[1] - math.cos(minute) * radius * 0.72)], color, 0.7)
+    canvas.ellipse(center, 0.8, 0.8, color)
+
+
+__all__ = [
+    "FxCanvas",
+    "bone_origin",
+    "clamp01",
+    "clock",
+    "compose_rig_frame",
+    "fade",
+    "mix",
+    "orbit_point",
+    "pulse",
+    "smooth",
+]
