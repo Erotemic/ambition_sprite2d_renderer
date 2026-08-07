@@ -74,6 +74,7 @@ class HumanoidViewSpec:
     supersample: int = 4
     render_scale: int = 2
     collision_scale: float = 1.65
+    part_order: str = "attribute"
 
 
 @dataclass(frozen=True)
@@ -83,6 +84,7 @@ class _PartBinding:
     z: float
     include: Tuple[str, ...]
     opacity_channel: Optional[str] = None
+    source_order: int = 0
 
 
 def _parse_side_map(layer: ET.Element) -> Dict[str, str]:
@@ -214,6 +216,7 @@ def _collect_parts(root: ET.Element, view: str) -> List[_PartBinding]:
     layer = _view_root(root, view)
     side_map = _parse_side_map(layer)
     parts: List[_PartBinding] = []
+    source_order = 0
     for elem in layer.iter():
         parsed = _parse_part_element(elem)
         if parsed is None:
@@ -226,7 +229,8 @@ def _collect_parts(root: ET.Element, view: str) -> List[_PartBinding]:
             raise ValueError(
                 f"SVG part group {_label(elem)!r} contains no drawable ids"
             )
-        parts.append(_PartBinding(name, bone, z, include, opacity))
+        parts.append(_PartBinding(name, bone, z, include, opacity, source_order))
+        source_order += 1
     if not parts:
         raise ValueError(f"SVG view {view!r} contains no rig-part groups")
     names = [p.name for p in parts]
@@ -252,6 +256,26 @@ def _collect_joint_ids(root: ET.Element, view: str) -> Dict[str, str]:
             raise ValueError(f"duplicate joint marker {name!r} in {view!r}")
         out[name] = eid
     return out
+
+
+def _drawable_ids_in_view(root: ET.Element, view: str) -> List[str]:
+    """Return drawable ids in the view that are not joint markers."""
+
+    layer = _view_root(root, view)
+    ids: List[str] = []
+    for elem in layer.iter():
+        if _local(elem.tag) not in _DRAWABLE:
+            continue
+        if _joint_name(elem) is not None:
+            continue
+        eid = elem.get("id")
+        if not eid:
+            raise ValueError(
+                f"drawable in SVG view {view!r} has no id; save from Inkscape "
+                "or assign stable ids before extracting"
+            )
+        ids.append(eid)
+    return ids
 
 
 def _joint_positions(
@@ -327,6 +351,7 @@ def build_humanoid_view_document(
     spec: HumanoidViewSpec,
     *,
     clips: Optional[Mapping[str, dict]] = None,
+    preserve_svg_draw_order: bool = False,
 ) -> dict:
     """Extract one labelled SVG view into a complete ``RigDocument`` mapping."""
 
@@ -335,6 +360,27 @@ def build_humanoid_view_document(
     root = ET.fromstring(svg_path.read_bytes())
     parts = _collect_parts(root, spec.view)
     joint_ids = _collect_joint_ids(root, spec.view)
+    drawable_ids = set(_drawable_ids_in_view(root, spec.view))
+    ownership: Dict[str, List[str]] = {}
+    for binding in parts:
+        for drawable_id in binding.include:
+            ownership.setdefault(drawable_id, []).append(binding.name)
+    unassigned = sorted(drawable_ids - set(ownership))
+    multiply_assigned = {
+        drawable_id: owners
+        for drawable_id, owners in sorted(ownership.items())
+        if len(owners) > 1
+    }
+    if unassigned or multiply_assigned:
+        details: List[str] = []
+        if unassigned:
+            details.append(f"unassigned={unassigned}")
+        if multiply_assigned:
+            details.append(f"multiply_assigned={multiply_assigned}")
+        raise ValueError(
+            f"SVG view {spec.view!r} does not have one-to-one drawable ownership: "
+            + "; ".join(details)
+        )
     joints = _joint_positions(svg_path, spec.view, joint_ids, spec.ref_dpi)
 
     missing = sorted(set(_required_joints()) - set(joints))
@@ -455,8 +501,14 @@ def build_humanoid_view_document(
         world[name] = (origin, angle)
 
     bone_names = {b["name"] for b in bones}
+    if spec.part_order not in {"attribute", "document"}:
+        raise ValueError(
+            f"unsupported SVG part order policy {spec.part_order!r}; "
+            "expected 'attribute' or 'document'"
+        )
+
     rig_parts: List[dict] = []
-    for binding in parts:
+    for document_index, binding in enumerate(parts):
         if binding.bone not in bone_names:
             raise ValueError(
                 f"part {binding.name!r} in {spec.view!r} binds unknown bone "
@@ -466,16 +518,26 @@ def build_humanoid_view_document(
         part = {
             "name": binding.name,
             "bone": binding.bone,
-            "z": binding.z,
+            "z": (
+                float(document_index)
+                if spec.part_order == "document"
+                else binding.z
+            ),
             "kind": "sprite",
             "include": list(binding.include),
             "pivot": [round(pivot[0], 3), round(pivot[1], 3)],
             "rest_angle": round(world[binding.bone][1], 4),
+            "svg_source_order": int(binding.source_order),
         }
         if binding.opacity_channel:
             part["opacity_channel"] = binding.opacity_channel
         rig_parts.append(part)
-    rig_parts.sort(key=lambda p: float(p["z"]))
+    rig_parts.sort(
+        key=lambda p: (
+            float(p["z"]),
+            int(p.get("svg_source_order", 0)),
+        )
+    )
 
     ankle_y = (mapped["near_ankle"][1] + mapped["far_ankle"][1]) / 2.0
     ankle_h = spec.ground_y - ankle_y
@@ -540,7 +602,10 @@ def build_humanoid_view_document(
         "ik_legs": ik_legs,
         "ik_chains": ik_chains,
         "clips": dict(clips or {}),
-        "sprite_tuning": {"collision_scale": spec.collision_scale},
+        "sprite_tuning": {
+            "collision_scale": spec.collision_scale,
+            "part_order": spec.part_order,
+        },
     }
 
 

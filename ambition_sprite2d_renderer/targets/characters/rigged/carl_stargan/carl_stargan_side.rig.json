@@ -170,9 +170,24 @@
   ],
   "parts": [
     {
+      "name": "torso_backing",
+      "bone": "torso",
+      "z": 0.0,
+      "kind": "sprite",
+      "include": [
+        "path2046"
+      ],
+      "pivot": [
+        499.0,
+        533.0
+      ],
+      "rest_angle": 0.0,
+      "svg_source_order": 0
+    },
+    {
       "name": "far_leg_u",
       "bone": "far_leg_u",
-      "z": 5.0,
+      "z": 1.0,
       "kind": "sprite",
       "include": [
         "path2054"
@@ -181,26 +196,13 @@
         463.5,
         589.5
       ],
-      "rest_angle": 131.3007
-    },
-    {
-      "name": "far_leg_l",
-      "bone": "far_leg_l",
-      "z": 6.0,
-      "kind": "sprite",
-      "include": [
-        "path2058"
-      ],
-      "pivot": [
-        355.0,
-        713.0
-      ],
-      "rest_angle": 108.203
+      "rest_angle": 131.3007,
+      "svg_source_order": 1
     },
     {
       "name": "far_foot",
       "bone": "far_leg_foot",
-      "z": 7.0,
+      "z": 2.0,
       "kind": "sprite",
       "include": [
         "path2064"
@@ -209,12 +211,28 @@
         294.0,
         898.5
       ],
-      "rest_angle": 158.4287
+      "rest_angle": 158.4287,
+      "svg_source_order": 2
+    },
+    {
+      "name": "far_leg_l",
+      "bone": "far_leg_l",
+      "z": 3.0,
+      "kind": "sprite",
+      "include": [
+        "path2058"
+      ],
+      "pivot": [
+        355.0,
+        713.0
+      ],
+      "rest_angle": 108.203,
+      "svg_source_order": 3
     },
     {
       "name": "far_arm_u",
       "bone": "far_arm_u",
-      "z": 8.0,
+      "z": 4.0,
       "kind": "sprite",
       "include": [
         "path2066"
@@ -223,26 +241,13 @@
         424.0,
         319.5
       ],
-      "rest_angle": 163.0812
-    },
-    {
-      "name": "far_arm_l",
-      "bone": "far_arm_l",
-      "z": 9.0,
-      "kind": "sprite",
-      "include": [
-        "path2068"
-      ],
-      "pivot": [
-        292.5,
-        359.5
-      ],
-      "rest_angle": 178.5121
+      "rest_angle": 163.0812,
+      "svg_source_order": 4
     },
     {
       "name": "far_hand",
       "bone": "far_arm_hand",
-      "z": 10.0,
+      "z": 5.0,
       "kind": "sprite",
       "include": [
         "path2129",
@@ -252,12 +257,43 @@
         177.0,
         362.5
       ],
-      "rest_angle": 179.6102
+      "rest_angle": 179.6102,
+      "svg_source_order": 5
+    },
+    {
+      "name": "far_arm_l",
+      "bone": "far_arm_l",
+      "z": 6.0,
+      "kind": "sprite",
+      "include": [
+        "path2068"
+      ],
+      "pivot": [
+        292.5,
+        359.5
+      ],
+      "rest_angle": 178.5121,
+      "svg_source_order": 6
+    },
+    {
+      "name": "near_foot",
+      "bone": "near_leg_foot",
+      "z": 7.0,
+      "kind": "sprite",
+      "include": [
+        "path2064-3"
+      ],
+      "pivot": [
+        794.0,
+        896.5
+      ],
+      "rest_angle": 153.189,
+      "svg_source_order": 7
     },
     {
       "name": "pelvis",
       "bone": "pelvis",
-      "z": 11.0,
+      "z": 8.0,
       "kind": "sprite",
       "include": [
         "path2052"
@@ -266,12 +302,43 @@
         518.25,
         590.75
       ],
-      "rest_angle": 0.0
+      "rest_angle": 0.0,
+      "svg_source_order": 8
+    },
+    {
+      "name": "near_leg_u",
+      "bone": "near_leg_u",
+      "z": 9.0,
+      "kind": "sprite",
+      "include": [
+        "path2056"
+      ],
+      "pivot": [
+        573.0,
+        592.0
+      ],
+      "rest_angle": 66.1089,
+      "svg_source_order": 9
+    },
+    {
+      "name": "near_leg_l",
+      "bone": "near_leg_l",
+      "z": 10.0,
+      "kind": "sprite",
+      "include": [
+        "path2060"
+      ],
+      "pivot": [
+        639.0,
+        741.0
+      ],
+      "rest_angle": 45.0923,
+      "svg_source_order": 10
     },
     {
       "name": "torso",
       "bone": "torso",
-      "z": 12.0,
+      "z": 11.0,
       "kind": "sprite",
       "include": [
         "path2050",
@@ -283,12 +350,13 @@
         499.0,
         533.0
       ],
-      "rest_angle": 0.0
+      "rest_angle": 0.0,
+      "svg_source_order": 11
     },
     {
       "name": "neck",
       "bone": "torso",
-      "z": 13.0,
+      "z": 12.0,
       "kind": "sprite",
       "include": [
         "path2032",
@@ -298,29 +366,13 @@
         499.0,
         533.0
       ],
-      "rest_angle": 0.0
-    },
-    {
-      "name": "hair_back",
-      "bone": "head",
-      "z": 14.0,
-      "kind": "sprite",
-      "include": [
-        "path1935",
-        "path1953",
-        "path1955",
-        "path1957"
-      ],
-      "pivot": [
-        489.0,
-        235.0
-      ],
-      "rest_angle": 0.0
+      "rest_angle": 0.0,
+      "svg_source_order": 12
     },
     {
       "name": "head",
       "bone": "head",
-      "z": 15.0,
+      "z": 13.0,
       "kind": "sprite",
       "include": [
         "path1547",
@@ -349,7 +401,42 @@
         489.0,
         235.0
       ],
-      "rest_angle": 0.0
+      "rest_angle": 0.0,
+      "svg_source_order": 13
+    },
+    {
+      "name": "torso_front_overlay",
+      "bone": "torso",
+      "z": 14.0,
+      "kind": "sprite",
+      "include": [
+        "path2036",
+        "path2044"
+      ],
+      "pivot": [
+        499.0,
+        533.0
+      ],
+      "rest_angle": 0.0,
+      "svg_source_order": 14
+    },
+    {
+      "name": "hair_back",
+      "bone": "head",
+      "z": 15.0,
+      "kind": "sprite",
+      "include": [
+        "path1935",
+        "path1953",
+        "path1955",
+        "path1957"
+      ],
+      "pivot": [
+        489.0,
+        235.0
+      ],
+      "rest_angle": 0.0,
+      "svg_source_order": 15
     },
     {
       "name": "hair_front",
@@ -365,54 +452,13 @@
         489.0,
         235.0
       ],
-      "rest_angle": 0.0
-    },
-    {
-      "name": "near_leg_u",
-      "bone": "near_leg_u",
-      "z": 17.0,
-      "kind": "sprite",
-      "include": [
-        "path2056"
-      ],
-      "pivot": [
-        573.0,
-        592.0
-      ],
-      "rest_angle": 66.1089
-    },
-    {
-      "name": "near_leg_l",
-      "bone": "near_leg_l",
-      "z": 18.0,
-      "kind": "sprite",
-      "include": [
-        "path2060"
-      ],
-      "pivot": [
-        639.0,
-        741.0
-      ],
-      "rest_angle": 45.0923
-    },
-    {
-      "name": "near_foot",
-      "bone": "near_leg_foot",
-      "z": 19.0,
-      "kind": "sprite",
-      "include": [
-        "path2064-3"
-      ],
-      "pivot": [
-        794.0,
-        896.5
-      ],
-      "rest_angle": 153.189
+      "rest_angle": 0.0,
+      "svg_source_order": 16
     },
     {
       "name": "near_arm_u",
       "bone": "near_arm_u",
-      "z": 20.0,
+      "z": 17.0,
       "kind": "sprite",
       "include": [
         "path2070"
@@ -421,26 +467,13 @@
         602.0,
         310.5
       ],
-      "rest_angle": 17.8787
-    },
-    {
-      "name": "near_arm_l",
-      "bone": "near_arm_l",
-      "z": 21.0,
-      "kind": "sprite",
-      "include": [
-        "path2072"
-      ],
-      "pivot": [
-        726.0,
-        350.5
-      ],
-      "rest_angle": 5.3558
+      "rest_angle": 17.8787,
+      "svg_source_order": 17
     },
     {
       "name": "near_hand",
       "bone": "near_arm_hand",
-      "z": 22.0,
+      "z": 18.0,
       "kind": "sprite",
       "include": [
         "path2133",
@@ -450,7 +483,23 @@
         870.0,
         364.0
       ],
-      "rest_angle": 7.7977
+      "rest_angle": 7.7977,
+      "svg_source_order": 18
+    },
+    {
+      "name": "near_arm_l",
+      "bone": "near_arm_l",
+      "z": 19.0,
+      "kind": "sprite",
+      "include": [
+        "path2072"
+      ],
+      "pivot": [
+        726.0,
+        350.5
+      ],
+      "rest_angle": 5.3558,
+      "svg_source_order": 19
     }
   ],
   "ik_legs": [
@@ -18404,17 +18453,29 @@
     }
   },
   "sprite_tuning": {
-    "collision_scale": 1.58
+    "collision_scale": 1.58,
+    "part_order": "document"
   },
   "features": {
     "paper_doll": true,
     "canonical_svg": true,
     "facing": "left",
-    "source_authority": "assets/carl-stargan.svg"
+    "source_authority": "assets/carl-stargan.svg",
+    "part_order_policy": "svg-document-order"
   },
   "asset_metadata": {
     "source_kind": "manual-svg-paperdoll",
     "builder": "scripts/build_scientist_fighter_rigs.py",
     "character": "carl_stargan"
+  },
+  "build_provenance": {
+    "schema": "canonical-svg-rig-v3",
+    "builder_version": 7,
+    "renderer": "resvg_py",
+    "renderer_version": "0.3.3",
+    "renderer_backend": "native-extension",
+    "svg_sha256": "17ad999922fc5b85dde907905f71762bed4c70bf03b6fd0d54467953c8242fb7",
+    "part_order_policy": "svg-document-order",
+    "part_order": "svg-document"
   }
 }

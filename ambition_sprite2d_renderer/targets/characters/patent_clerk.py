@@ -15,6 +15,7 @@ from typing import List, Tuple
 from PIL import Image
 
 from ...authoring.portrait import FaceGuide, PortraitClip, render_framed_portrait, write_portrait_sheet
+from ...authoring.canonical_scientist_rig import load_scientist_rig
 from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ._svg_fighter_effects import (
@@ -30,7 +31,6 @@ from ._svg_fighter_effects import (
 
 TARGET_NAME = "patent_clerk"
 FRAME_SIZE = (176, 176)
-RIG_PATH = Path(__file__).resolve().parent / "rigged" / TARGET_NAME / "patent_clerk_side.rig.json"
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 8, 148), ("walk", 8, 106), ("run", 8, 76),
     ("crouch", 6, 94), ("crouch_walk", 8, 90), ("jump", 6, 88),
@@ -187,12 +187,7 @@ INK = (48, 43, 45, 255)
 
 @lru_cache(maxsize=1)
 def _doc() -> RigDocument:
-    if not RIG_PATH.exists():
-        raise FileNotFoundError(
-            f"missing Patent Clerk rig {RIG_PATH}; run "
-            "`python3 scripts/build_scientist_fighter_rigs.py build patent_clerk`"
-        )
-    return RigDocument.load(RIG_PATH)
+    return load_scientist_rig("patent_clerk")
 
 
 def _label(canvas: FxCanvas, center: tuple[float, float], text: str, color=STAMP, size: float = 5.0) -> None:

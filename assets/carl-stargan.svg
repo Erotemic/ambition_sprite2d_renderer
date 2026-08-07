@@ -44,7 +44,10 @@
     <g
    inkscape:groupmode="layer"
    id="layer1"
-   inkscape:label="Torso - BackingParts"><path
+   inkscape:label="Torso - BackingParts"
+   data-rig-part="torso_backing"
+   data-rig-bone="torso"
+   data-rig-z="0"><path
      style="fill:#a97a42;stroke:#171419;stroke-width:0.86;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
      d="m 89.810253,94.301989 -12.44773,4.165978 c 0,0 -5.04575,10.072343 -5.04575,11.234443 0,1.1621 -1.263208,18.86549 -1.263208,18.86549 l -1.916502,20.1738 -7.021943,25.6314 c 0,0 -2.680949,5.86156 -0.637315,7.63835 2.043636,1.77679 3.389611,1.58755 3.389611,1.58755 l 9.134785,-1.19222 13.545288,-4.16826 1.974844,-21.90143 z"
      id="path2046"
@@ -54,7 +57,7 @@
    inkscape:label="Upper Leg - Far Right"
    data-rig-part="far_leg_u"
    data-rig-bone="far_leg_u"
-   data-rig-z="5">
+   data-rig-z="1">
       <path
    style="fill:#b5a086;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;fill-opacity:1"
    d="m 80.315463,176.16139 -9.805321,9.53606 -12.812897,18.52261 c 0,0 -4.595553,2.80759 -4.161748,5.18642 0.433806,2.37883 0.722998,10.8262 0.722998,10.8262 l 13.032994,4.80928 12.720653,-8.49244 25.602368,-25.14577 2.16718,-7.4154 -12.297061,-10.68018 z"
@@ -66,7 +69,7 @@
    inkscape:label="Foot - Far Right"
    data-rig-part="far_foot"
    data-rig-bone="far_leg_foot"
-   data-rig-z="7">
+   data-rig-z="2">
       <path
    style="fill:#4b2d1e;stroke:#171419;stroke-width:0.92;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
    d="m 36.550155,258.98861 -4.699402,5.39061 -9.58109,5.51168 -5.64559,1.68045 c 0,0 -6.8686282,0.20552 -7.5771958,0.73443 -0.7085677,0.5289 -3.815707,5.25015 -3.815707,5.25015 l -1.7208582,1.47854 0.7065994,2.83271 c 0,0 10.5174946,3.06205 13.6293736,2.77286 3.111879,-0.28919 14.071691,-0.50247 15.89957,-1.3444 1.827879,-0.84193 7.447457,-2.89523 7.447457,-2.89523 l 3.030778,-0.4114 0.561899,2.77829 c 0,0 10.577978,-0.76007 11.758742,-1.01299 1.180763,-0.25291 1.737455,-1.13255 1.737455,-1.13255 l 0.144595,-5.8461 -0.876843,-0.38949 c 0,0 1.197171,-3.3124 0.276625,-4.64196 -0.920544,-1.32955 -3.521443,-5.77107 -3.521443,-5.77107 l -6.041919,-5.38479 -7.387905,-1.51005 z"
@@ -79,7 +82,7 @@
    inkscape:label="Lower Leg - Far Right"
    data-rig-part="far_leg_l"
    data-rig-bone="far_leg_l"
-   data-rig-z="6">
+   data-rig-z="3">
       <path
    style="fill:#b5a086;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;fill-opacity:1"
    d="m 58.493024,211.31183 -6.510954,2.86847 -10.286759,29.68227 -5.736584,12.81448 1.749986,6.24481 12.791347,4.94307 10.330222,-6.08784 3.588078,-7.72386 8.83118,-26.3419 0.550336,-2.09531 3.219879,-2.52945 -0.433787,-5.02162 -2.126858,-7.36481 -10.354681,-2.08324 z"
@@ -93,7 +96,7 @@
    inkscape:label="Upper Arm - Far Right"
    data-rig-part="far_arm_u"
    data-rig-bone="far_arm_u"
-   data-rig-z="8">
+   data-rig-z="4">
       <path
    style="fill:#c89a58;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;fill-opacity:1"
    d="m 85.43741,96.423492 -8.84256,2.424721 -5.318551,5.362437 -2.770907,1.09745 -2.499394,-0.57747 -2.795773,2.594 -8.959408,1.94329 -7.140017,1.56015 -6.344179,6.57422 -0.144597,7.91568 5.513003,4.44434 5.518235,-0.0797 22.556369,-2.29643 11.137601,-3.65773 z"
@@ -107,7 +110,7 @@
    inkscape:label="Hand - Far Right"
    data-rig-part="far_hand"
    data-rig-bone="far_arm_hand"
-   data-rig-z="10">
+   data-rig-z="5">
       
       <path
    style="fill:#efad7d;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
@@ -125,7 +128,7 @@
    inkscape:label="Lower Arm - Far Right"
    data-rig-part="far_arm_l"
    data-rig-bone="far_arm_l"
-   data-rig-z="9">
+   data-rig-z="6">
       <path
    style="fill:#c89a58;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;fill-opacity:1"
    d="m 50.527613,115.24744 -7.147533,-4.07523 -27.323064,0.31206 c 0,0 1.879165,1.52689 2.646558,3.82521 0.767394,2.29832 2.876271,9.4044 1.535776,11.81812 -1.340495,2.41372 -3.483169,5.10292 -3.483169,5.10292 l 5.233266,0.59851 25.729683,-2.23321 4.548868,-5.17094 z"
@@ -137,7 +140,7 @@
    inkscape:label="Foot - Near Left"
    data-rig-part="near_foot"
    data-rig-bone="near_leg_foot"
-   data-rig-z="19">
+   data-rig-z="7">
       <path
    style="fill:#4b2d1e;stroke:#171419;stroke-width:0.92;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
    d="m 171.24096,260.4543 -4.6994,5.39061 -9.58109,5.51168 -5.64559,1.68045 c 0,0 -6.86863,0.20552 -7.5772,0.73443 -0.70857,0.5289 -3.81571,5.25015 -3.81571,5.25015 l -1.72085,1.47854 0.7066,2.83271 c 0,0 10.51749,3.06205 13.62937,2.77286 3.11188,-0.28919 14.07169,-0.50247 15.89957,-1.3444 1.82788,-0.84193 7.44746,-2.89523 7.44746,-2.89523 l 3.03077,-0.4114 0.5619,2.77829 c 0,0 10.57798,-0.76007 11.75874,-1.01299 1.18077,-0.25291 1.73746,-1.13255 1.73746,-1.13255 l 0.14459,-5.8461 -0.87684,-0.38949 c 0,0 1.19717,-3.3124 0.27663,-4.64196 -0.92055,-1.32955 -3.52145,-5.77107 -3.52145,-5.77107 l -6.04192,-5.38479 -7.3879,-1.51005 z"
@@ -149,7 +152,7 @@
    inkscape:label="Pelvis"
    data-rig-part="pelvis"
    data-rig-bone="pelvis"
-   data-rig-z="11">
+   data-rig-z="8">
       <path
    style="fill:#b5a086;stroke:#171419;stroke-width:0.92;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;fill-opacity:1"
    d="m 83.290872,157.28598 0.360799,7.02576 -1.866323,2.16244 -0.55472,4.3035 -2.92811,2.62705 0.278652,3.34196 18.797174,11.53167 7.230426,2.32044 16.13767,-1.71668 18.99028,-7.48389 -8.38774,-19.78375 -1.4569,-6.8201 -15.03242,3.05825 -11.29328,1.52367 -8.597702,-0.20816 -7.123271,-0.62884 z"
@@ -161,7 +164,7 @@
    inkscape:label="Upper Leg - Near Left"
    data-rig-part="near_leg_u"
    data-rig-bone="near_leg_u"
-   data-rig-z="17">
+   data-rig-z="9">
       <path
    style="fill:#b5a086;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;fill-opacity:1"
    d="m 100.56174,187.28651 11.91042,12.38924 22.54189,22.58865 12.24949,4.10226 11.94229,-6.34085 -1.99193,-10.58399 -10.85654,-18.77574 -4.46613,-8.86727 -10.54641,-11.12081 -15.93963,1.1543 -12.74192,8.66936 z"
@@ -173,7 +176,7 @@
    inkscape:label="Lower Leg - Near Left"
    data-rig-part="near_leg_l"
    data-rig-bone="near_leg_l"
-   data-rig-z="18">
+   data-rig-z="10">
       <path
    style="fill:#b5a086;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;fill-opacity:1"
    d="m 140.79979,219.77156 0.74448,10.50855 20.11899,23.9951 5.29801,7.68216 7.7412,2.69589 11.45048,-1.34722 2.73845,-10.19097 -0.27762,-4.45718 -8.75195,-13.73297 -8.89747,-10.97215 -7.85492,-7.31316 -8.69988,-2.04777 -10.25552,1.26168 z"
@@ -186,7 +189,7 @@
    inkscape:label="Torso-Mid-Parts"
    data-rig-part="torso"
    data-rig-bone="torso"
-   data-rig-z="12"
+   data-rig-z="11"
    style="display:inline">
       <g
    id="torso-coat-far"
@@ -235,7 +238,7 @@
    inkscape:label="Neck and Turtleneck"
    data-rig-part="neck"
    data-rig-bone="torso"
-   data-rig-z="13"
+   data-rig-z="12"
    style="display:inline">
       <path
    style="fill:#efad7d;stroke:#171419;stroke-width:0.82;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
@@ -257,7 +260,7 @@
    inkscape:label="Head"
    data-rig-part="head"
    data-rig-bone="head"
-   data-rig-z="15">
+   data-rig-z="13">
       <g
    id="head-base"
    inkscape:groupmode="layer"
@@ -382,7 +385,10 @@
     </g><g
    inkscape:groupmode="layer"
    id="layer2"
-   inkscape:label="Torso-Front-Parts"><g
+   inkscape:label="Torso-Front-Parts"
+   data-rig-part="torso_front_overlay"
+   data-rig-bone="torso"
+   data-rig-z="14"><g
      id="torso-lapel-near"
      inkscape:groupmode="layer"
      inkscape:label="Lapel - Near Side">
@@ -401,7 +407,7 @@
    inkscape:label="Hair - Back"
    data-rig-part="hair_back"
    data-rig-bone="head"
-   data-rig-z="14">
+   data-rig-z="15">
       <path
    style="fill:#302019;stroke:#171419;stroke-width:0.92;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
    d="m 85.908538,30.473549 c 0,0 7.292535,-0.405548 10.641311,0.02357 3.348776,0.42912 18.251551,3.289486 19.770821,5.386928 1.51926,2.097444 8.4653,5.914257 9.97208,9.402064 1.50679,3.487806 3.65649,9.319566 3.1584,10.602343 -0.49809,1.282777 -1.5796,5.595673 -0.11491,6.809497 1.46469,1.213823 2.85865,3.257806 3.54339,3.613274 0.68475,0.355465 0.41808,0.868278 -1.1601,0.57776 -1.57818,-0.290515 -3.25734,-0.583205 -3.66505,-1.194271 -0.40772,-0.611063 1.74646,1.355661 2.08438,3.128298 0.33792,1.772637 0.60566,2.625556 0.53336,3.538038 -0.0723,0.912484 0.29758,1.674712 1.48141,0.966912 1.18384,-0.707801 1.12229,-0.707801 1.12229,-0.707801 0,0 0.21351,2.348664 -1.09598,2.709831 -1.30948,0.361167 -3.19924,1.527498 -4.11892,1.073552 -0.91968,-0.453945 -1.46814,-0.809728 -1.87882,-1.548492 -0.41069,-0.738764 -0.41069,-0.738764 -0.41069,-0.738764 0,0 2.12525,2.232099 2.05206,3.847464 -0.0732,1.615369 -1.66678,4.049057 -1.66678,4.049057 0,0 -0.53728,1.407345 -1.3827,1.440894 -0.84542,0.03355 -2.16339,-0.76994 -2.29972,-1.919285 -0.13634,-1.149344 0.50509,-0.09656 0.0221,1.190824 -0.48299,1.287385 -0.74971,1.957477 -2.2352,2.446133 -1.4855,0.488657 -3.24109,-0.416967 -3.50128,-1.312312 -0.26019,-0.895344 -2.5116,-0.195566 -2.68936,-1.144455 -0.17776,-0.948888 -0.093,-0.948888 -0.093,-0.948888 l -1.5458,1.897901 c 0,0 -1.15756,0.699635 -0.93384,-1.167106 0.22371,-1.866744 -0.20861,-3.243242 -0.20861,-3.243242 0,0 -1.51586,0.01556 -1.40547,1.55416 0.1104,1.538608 0.17722,2.18762 0.17722,2.18762 0,0 -0.75775,0.629126 -1.20616,-0.225988 -0.4484,-0.855112 -0.56793,-1.706528 -0.4484,-2.649903 0.11953,-0.943372 0.23521,-1.058309 0.23521,-1.058309 l -0.43379,3.637036 c 0,0 -1.27278,-0.16269 -1.34508,-1.498166 -0.0723,-1.335479 0.13683,-2.239595 0.13683,-2.239595 0,0 1.58428,0.352645 -1.0295,0.424945 -2.61378,0.0723 -2.61378,0.0723 -2.61378,0.0723 0,0 2.27438,-0.930801 2.34668,-2.12235 0.0723,-1.191548 1.15364,-3.210766 1.15364,-3.210766 0,0 2.91217,-5.349925 2.24328,-6.439011 -0.66888,-1.089086 -2.27052,-3.761335 -2.86426,-3.999754 -0.59373,-0.238418 -3.05704,2.16803 -5.19265,-0.06998 -2.135613,-2.238013 -5.369448,-4.019876 -5.070088,-8.02626 0.299357,-4.006387 1.00512,-6.367796 0.438536,-7.936905 -0.566584,-1.569106 -0.389617,-2.782697 -1.410853,-3.303957 -1.021234,-0.521264 -6.536796,-6.486912 -7.85889,-9.252162 -1.322094,-2.765253 -1.538986,-5.106932 -1.538986,-5.106932 z"
@@ -456,7 +462,7 @@
    inkscape:label="Upper Arm - Near Left"
    data-rig-part="near_arm_u"
    data-rig-bone="near_arm_u"
-   data-rig-z="20">
+   data-rig-z="17">
       <path
    style="fill:#c89a58;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;fill-opacity:1"
    d="m 132.06473,92.217197 c 0,0 6.99687,0.701259 8.64566,2.221264 1.64878,1.520005 4.05705,4.092548 4.05705,4.092548 l 3.4484,1.858331 4.06044,-0.11336 2.50852,3.06444 c 0,0 13.96996,2.13352 15.82155,3.84051 1.85159,1.707 4.59519,9.38311 4.59519,9.38311 l -5.17362,6.98054 -6.06527,2.49068 -25.33393,-3.44384 -6.48045,-0.97885 -7.45262,-11.98784 0.92923,-13.721089 z"
@@ -468,7 +474,7 @@
    inkscape:label="Hand - Near Left"
    data-rig-part="near_hand"
    data-rig-bone="near_arm_hand"
-   data-rig-z="22">
+   data-rig-z="18">
       
       <path
    style="fill:#efad7d;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
@@ -486,7 +492,7 @@
    inkscape:label="Lower Arm - Near Left"
    data-rig-part="near_arm_l"
    data-rig-bone="near_arm_l"
-   data-rig-z="21">
+   data-rig-z="19">
       <path
    style="fill:#c89a58;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;fill-opacity:1"
    d="m 167.96799,109.5061 5.01708,-1.9437 2.02222,-0.0518 c 0,0 17.59719,3.42188 19.81955,3.34959 2.22235,-0.0723 12.11924,1.38922 12.11924,1.38922 l 1.22675,3.98624 -3.90854,15.45013 -3.25886,1.72319 -36.03636,-6.70455 -3.9776,-6.22898 1.91529,-8.65649 z"

@@ -172,7 +172,7 @@
     {
       "name": "far_leg_u",
       "bone": "far_leg_u",
-      "z": 5.0,
+      "z": 0.0,
       "kind": "sprite",
       "include": [
         "path1161"
@@ -184,23 +184,9 @@
       "rest_angle": 105.1314
     },
     {
-      "name": "far_leg_l",
-      "bone": "far_leg_l",
-      "z": 6.0,
-      "kind": "sprite",
-      "include": [
-        "path1163"
-      ],
-      "pivot": [
-        344.0,
-        703.0
-      ],
-      "rest_angle": 112.1533
-    },
-    {
       "name": "far_foot",
       "bone": "far_leg_foot",
-      "z": 7.0,
+      "z": 1.0,
       "kind": "sprite",
       "include": [
         "path1165"
@@ -212,9 +198,37 @@
       "rest_angle": 146.2369
     },
     {
+      "name": "far_leg_l",
+      "bone": "far_leg_l",
+      "z": 2.0,
+      "kind": "sprite",
+      "include": [
+        "path1163"
+      ],
+      "pivot": [
+        344.0,
+        703.0
+      ],
+      "rest_angle": 112.1533
+    },
+    {
+      "name": "far_arm_l",
+      "bone": "far_arm_l",
+      "z": 3.0,
+      "kind": "sprite",
+      "include": [
+        "path1145"
+      ],
+      "pivot": [
+        257.0,
+        363.0
+      ],
+      "rest_angle": 170.4968
+    },
+    {
       "name": "far_arm_u",
       "bone": "far_arm_u",
-      "z": 8.0,
+      "z": 4.0,
       "kind": "sprite",
       "include": [
         "path1143",
@@ -227,23 +241,9 @@
       "rest_angle": 171.3394
     },
     {
-      "name": "far_arm_l",
-      "bone": "far_arm_l",
-      "z": 9.0,
-      "kind": "sprite",
-      "include": [
-        "path1145"
-      ],
-      "pivot": [
-        257.0,
-        363.0
-      ],
-      "rest_angle": 170.4968
-    },
-    {
       "name": "far_hand",
       "bone": "far_arm_hand",
-      "z": 10.0,
+      "z": 5.0,
       "kind": "sprite",
       "include": [
         "path1178"
@@ -257,7 +257,7 @@
     {
       "name": "pelvis",
       "bone": "pelvis",
-      "z": 11.0,
+      "z": 6.0,
       "kind": "sprite",
       "include": [
         "path1153"
@@ -271,7 +271,7 @@
     {
       "name": "torso",
       "bone": "torso",
-      "z": 12.0,
+      "z": 7.0,
       "kind": "sprite",
       "include": [
         "path1115",
@@ -291,7 +291,7 @@
     {
       "name": "neck",
       "bone": "torso",
-      "z": 13.0,
+      "z": 8.0,
       "kind": "sprite",
       "include": [
         "path1115"
@@ -305,7 +305,7 @@
     {
       "name": "head",
       "bone": "head",
-      "z": 14.0,
+      "z": 9.0,
       "kind": "sprite",
       "include": [
         "path973",
@@ -332,9 +332,23 @@
       "rest_angle": 0.0
     },
     {
+      "name": "near_foot",
+      "bone": "near_leg_foot",
+      "z": 10.0,
+      "kind": "sprite",
+      "include": [
+        "path1172"
+      ],
+      "pivot": [
+        650.0,
+        850.5
+      ],
+      "rest_angle": 148.6504
+    },
+    {
       "name": "near_leg_u",
       "bone": "near_leg_u",
-      "z": 15.0,
+      "z": 11.0,
       "kind": "sprite",
       "include": [
         "path1156"
@@ -348,7 +362,7 @@
     {
       "name": "near_leg_l",
       "bone": "near_leg_l",
-      "z": 16.0,
+      "z": 12.0,
       "kind": "sprite",
       "include": [
         "path1158"
@@ -360,23 +374,23 @@
       "rest_angle": 58.5015
     },
     {
-      "name": "near_foot",
-      "bone": "near_leg_foot",
-      "z": 17.0,
+      "name": "near_arm_l",
+      "bone": "near_arm_l",
+      "z": 13.0,
       "kind": "sprite",
       "include": [
-        "path1172"
+        "path1150"
       ],
       "pivot": [
-        650.0,
-        850.5
+        673.0,
+        363.0
       ],
-      "rest_angle": 148.6504
+      "rest_angle": 8.452
     },
     {
       "name": "near_arm_u",
       "bone": "near_arm_u",
-      "z": 18.0,
+      "z": 14.0,
       "kind": "sprite",
       "include": [
         "path1148",
@@ -389,23 +403,9 @@
       "rest_angle": 12.2903
     },
     {
-      "name": "near_arm_l",
-      "bone": "near_arm_l",
-      "z": 19.0,
-      "kind": "sprite",
-      "include": [
-        "path1150"
-      ],
-      "pivot": [
-        673.0,
-        363.0
-      ],
-      "rest_angle": 8.452
-    },
-    {
       "name": "near_hand",
       "bone": "near_arm_hand",
-      "z": 20.0,
+      "z": 15.0,
       "kind": "sprite",
       "include": [
         "path1182"
@@ -14012,17 +14012,29 @@
     }
   },
   "sprite_tuning": {
-    "collision_scale": 1.66
+    "collision_scale": 1.66,
+    "part_order": "document"
   },
   "features": {
     "paper_doll": true,
     "canonical_svg": true,
     "facing": "left",
-    "source_authority": "assets/patent-clerk.svg"
+    "source_authority": "assets/patent-clerk.svg",
+    "part_order_policy": "svg-document-order"
   },
   "asset_metadata": {
     "source_kind": "manual-svg-paperdoll",
     "builder": "scripts/build_scientist_fighter_rigs.py",
     "character": "patent_clerk"
+  },
+  "build_provenance": {
+    "schema": "canonical-svg-rig-v3",
+    "builder_version": 4,
+    "renderer": "resvg_py",
+    "renderer_version": "0.3.3",
+    "renderer_backend": "native-extension",
+    "svg_sha256": "0b6fa49fec26b4f1e48f032846280229e3620b63e76b7f2adbc20e8bf389d445",
+    "part_order_policy": "svg-document-order",
+    "part_order": "svg-document"
   }
 }

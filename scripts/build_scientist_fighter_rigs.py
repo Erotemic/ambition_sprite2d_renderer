@@ -9,47 +9,134 @@ never recreates character geometry.
 from __future__ import annotations
 
 import argparse
+import hashlib
+import importlib
+import importlib.machinery
+import importlib.metadata
+import importlib.util
+import inspect
 import json
 import math
 import os
 import sys
 import tempfile
-import types
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Mapping, Sequence
+
+from PIL import ImageChops
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
-def _install_resvg_fallback() -> str:
-    try:
-        import resvg_py  # noqa: F401
-        return "resvg_py"
-    except ModuleNotFoundError:
+BUILDER_VERSION = 7
+
+
+def _is_extension_path(path: Path) -> bool:
+    """Return whether *path* names a CPython native extension module."""
+
+    value = str(path)
+    return any(value.endswith(suffix) for suffix in importlib.machinery.EXTENSION_SUFFIXES)
+
+
+def _native_resvg_origin(resvg_py: object) -> Path | None:
+    """Locate the compiled implementation behind the public package wrapper.
+
+    ``resvg_py`` is distributed as a normal Python package whose public
+    ``__init__.py`` re-exports functions from a PyO3 extension module.  The
+    package's own ``__file__`` is therefore expected to end in ``.py`` even
+    though ``svg_to_bytes`` is native code.
+    """
+
+    svg_to_bytes = getattr(resvg_py, "svg_to_bytes", None)
+    if not callable(svg_to_bytes) or not inspect.isbuiltin(svg_to_bytes):
+        return None
+
+    candidates: list[Path] = []
+
+    implementation_name = getattr(svg_to_bytes, "__module__", "")
+    if implementation_name:
         try:
-            import cairosvg
-        except ModuleNotFoundError as ex:
+            implementation = importlib.import_module(implementation_name)
+        except (ImportError, ValueError):
+            implementation = None
+        implementation_path = Path(getattr(implementation, "__file__", ""))
+        if implementation_path.name:
+            candidates.append(implementation_path)
+
+    package_name = getattr(resvg_py, "__name__", "resvg_py")
+    for child_name in ("resvg_py", "_resvg_py"):
+        try:
+            child_spec = importlib.util.find_spec(f"{package_name}.{child_name}")
+        except (ImportError, ModuleNotFoundError, ValueError):
+            child_spec = None
+        if child_spec is not None and child_spec.origin:
+            candidates.append(Path(child_spec.origin))
+
+    package_path = Path(getattr(resvg_py, "__file__", ""))
+    if package_path.name:
+        package_dir = package_path.parent
+        for suffix in importlib.machinery.EXTENSION_SUFFIXES:
+            candidates.extend(sorted(package_dir.glob(f"*{suffix}")))
+
+    for candidate in candidates:
+        if candidate.name and _is_extension_path(candidate):
+            return candidate.resolve()
+
+    return None
+
+
+def _require_native_resvg() -> tuple[str, str]:
+    """Return the native implementation path and installed package version.
+
+    The canonical rig geometry depends on resvg's exact SVG rasterization.
+    Substituting another renderer changes part bounds and joint centers, so we
+    deliberately reject Python shims and fallback renderers here while
+    accepting the official package's Python ``__init__.py`` wrapper.
+    """
+
+    try:
+        import resvg_py
+    except ModuleNotFoundError as ex:
+        raise RuntimeError(
+            "canonical scientist SVG rigs require the native resvg_py package; "
+            "run `uv sync` from tools/ambition_sprite2d_renderer, then rerun "
+            "this command"
+        ) from ex
+
+    if not callable(getattr(resvg_py, "svg_to_bytes", None)):
+        raise RuntimeError("native resvg_py is missing svg_to_bytes")
+
+    native_path = _native_resvg_origin(resvg_py)
+    if native_path is None:
+        package_path = Path(getattr(resvg_py, "__file__", ""))
+        implementation_name = getattr(resvg_py.svg_to_bytes, "__module__", "<unknown>")
+        raise RuntimeError(
+            "resvg_py imported, but its compiled PyO3 implementation could not "
+            f"be located (package={package_path or '<unknown>'}, "
+            f"svg_to_bytes.__module__={implementation_name!r}); refusing a "
+            "pure-Python SVG fallback"
+        )
+
+    try:
+        version = importlib.metadata.version("resvg-py")
+    except importlib.metadata.PackageNotFoundError:
+        try:
+            version = importlib.metadata.version("resvg_py")
+        except importlib.metadata.PackageNotFoundError as ex:
             raise RuntimeError(
-                "building SVG rigs requires resvg_py or CairoSVG"
+                "resvg_py imported, but no installed package metadata was found; "
+                "refusing to build unverifiable canonical rig geometry"
             ) from ex
-        module = types.ModuleType("resvg_py")
-
-        def svg_to_bytes(*, svg_string: str, dpi: float = 96.0):
-            return cairosvg.svg2png(
-                bytestring=svg_string.encode("utf-8"),
-                dpi=float(dpi),
-            )
-
-        module.svg_to_bytes = svg_to_bytes  # type: ignore[attr-defined]
-        sys.modules["resvg_py"] = module
-        return "cairosvg fallback"
+    return str(native_path), version
 
 
-_RENDERER = _install_resvg_fallback()
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
 
 from ambition_sprite2d_renderer.authoring.humanoid_svg_rig import (  # noqa: E402
     HumanoidViewSpec,
@@ -520,6 +607,160 @@ def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, 
     return clips
 
 
+def _canonical_svg_part_order(svg_path: Path, view: str) -> list[str]:
+    """Return rig-part names in the canonical SVG document order.
+
+    The SVG paint order is authoritative. Numeric ``data-rig-z`` metadata is
+    required to mirror that order so both document-order and legacy
+    attribute-order consumers produce the same composition.
+    """
+
+    root = ET.fromstring(svg_path.read_bytes())
+    layer = next(
+        (elem for elem in root.iter() if elem.get(INK_LABEL) == view),
+        None,
+    )
+    if layer is None:
+        raise ValueError(f"{svg_path} has no SVG view {view!r}")
+
+    names: list[str] = []
+    for elem in layer.iter():
+        name = elem.get("data-rig-part")
+        if name is None:
+            continue
+        if name in names:
+            raise ValueError(f"duplicate SVG rig part {name!r} in {view!r}")
+        expected_z = float(len(names))
+        raw_z = elem.get("data-rig-z")
+        try:
+            actual_z = float(raw_z) if raw_z is not None else None
+        except ValueError as ex:
+            raise ValueError(
+                f"SVG rig part {name!r} has invalid data-rig-z={raw_z!r}"
+            ) from ex
+        if actual_z != expected_z:
+            raise ValueError(
+                f"SVG rig part {name!r} has data-rig-z={actual_z!r}, but its "
+                f"canonical document-order z is {expected_z!r}"
+            )
+        names.append(name)
+    if not names:
+        raise ValueError(f"{svg_path} view {view!r} contains no rig parts")
+    return names
+
+
+def _enforce_canonical_part_order(doc: dict, spec: CharacterSpec) -> None:
+    """Rewrite extracted rig order from the canonical SVG, defensively."""
+
+    source_order = _canonical_svg_part_order(spec.svg_path, spec.view)
+    by_name = {str(part["name"]): part for part in doc.get("parts", [])}
+    if set(by_name) != set(source_order):
+        raise ValueError(
+            f"{spec.name} extracted part set differs from canonical SVG: "
+            f"missing={sorted(set(source_order) - set(by_name))}, "
+            f"extra={sorted(set(by_name) - set(source_order))}"
+        )
+    ordered = []
+    for index, name in enumerate(source_order):
+        part = by_name[name]
+        part["z"] = float(index)
+        part["svg_source_order"] = index
+        ordered.append(part)
+    doc["parts"] = ordered
+
+
+def _part_by_name(doc: RigDocument, name: str) -> dict:
+    return next(part for part in doc.parts if str(part.get("name")) == name)
+
+
+def _sprite_overlap_pixels(
+    doc: RigDocument,
+    first_name: str,
+    second_name: str,
+    *,
+    composite_scale: float = 4.0,
+) -> int:
+    """Count overlapping nontransparent pixels with both parts pivot-aligned.
+
+    Parts bound to the same bone must share the same authored pivot. Measuring
+    overlap in pivot-local raster space catches an omitted, empty, or displaced
+    overlay even when its numeric z value looks correct.
+    """
+
+    first = doc.sprite_raster(_part_by_name(doc, first_name), composite_scale)
+    second = doc.sprite_raster(_part_by_name(doc, second_name), composite_scale)
+    if first is None or second is None:
+        return 0
+
+    first_x = -int(round(first.pivot[0]))
+    first_y = -int(round(first.pivot[1]))
+    second_x = -int(round(second.pivot[0]))
+    second_y = -int(round(second.pivot[1]))
+    left = max(first_x, second_x)
+    top = max(first_y, second_y)
+    right = min(first_x + first.image.width, second_x + second.image.width)
+    bottom = min(first_y + first.image.height, second_y + second.image.height)
+    if right <= left or bottom <= top:
+        return 0
+
+    first_alpha = first.image.getchannel("A").crop(
+        (left - first_x, top - first_y, right - first_x, bottom - first_y)
+    )
+    second_alpha = second.image.getchannel("A").crop(
+        (left - second_x, top - second_y, right - second_x, bottom - second_y)
+    )
+    overlap = ImageChops.multiply(first_alpha, second_alpha)
+    return sum(overlap.histogram()[1:])
+
+
+def _validate_carl_layer_model(doc: RigDocument) -> None:
+    """Validate Carl's multiple same-bone paint slices and head overlays."""
+
+    part_names = [str(part["name"]) for part in doc.parts]
+    ordered_slices = (
+        "torso_backing",
+        "torso",
+        "head",
+        "torso_front_overlay",
+        "hair_back",
+        "hair_front",
+    )
+    indices = [part_names.index(name) for name in ordered_slices]
+    if indices != sorted(indices):
+        raise ValueError(
+            "Carl Stargan canonical paint slices are out of order: "
+            f"{list(zip(ordered_slices, indices))!r}"
+        )
+
+    expected_bones = {
+        "torso_backing": "torso",
+        "torso": "torso",
+        "torso_front_overlay": "torso",
+        "head": "head",
+        "hair_back": "head",
+        "hair_front": "head",
+    }
+    actual_bones = {
+        name: str(_part_by_name(doc, name).get("bone"))
+        for name in expected_bones
+    }
+    wrong_bones = {
+        name: (actual_bones[name], expected)
+        for name, expected in expected_bones.items()
+        if actual_bones[name] != expected
+    }
+    if wrong_bones:
+        raise ValueError(f"Carl Stargan canonical paint slices bind wrong bones: {wrong_bones}")
+
+    back_overlap = _sprite_overlap_pixels(doc, "head", "hair_back")
+    front_overlap = _sprite_overlap_pixels(doc, "head", "hair_front")
+    if back_overlap < 500 or front_overlap < 150:
+        raise ValueError(
+            "Carl Stargan hair rasters do not cover the skull as authored: "
+            f"head/hair_back={back_overlap}px, head/hair_front={front_overlap}px"
+        )
+
+
 def _visible_joint_copy(svg_path: Path) -> Path:
     root = ET.fromstring(svg_path.read_bytes())
     found = False
@@ -537,6 +778,7 @@ def _visible_joint_copy(svg_path: Path) -> Path:
 
 
 def build_one(spec: CharacterSpec) -> Path:
+    renderer_path, renderer_version = _require_native_resvg()
     if not spec.svg_path.exists():
         raise FileNotFoundError(spec.svg_path)
     temporary = _visible_joint_copy(spec.svg_path)
@@ -557,11 +799,13 @@ def build_one(spec: CharacterSpec) -> Path:
                 supersample=4,
                 render_scale=1,
                 collision_scale=spec.collision_scale,
+                part_order="document",
             ),
         )
     finally:
         temporary.unlink(missing_ok=True)
 
+    _enforce_canonical_part_order(doc, spec)
     doc["svg_source"]["path"] = os.path.relpath(spec.svg_path, spec.rig_dir)
     doc["clips"] = (
         _patent_clips(spec, doc)
@@ -573,11 +817,22 @@ def build_one(spec: CharacterSpec) -> Path:
         "canonical_svg": True,
         "facing": "left",
         "source_authority": str(spec.svg_path.relative_to(ROOT)),
+        "part_order_policy": "svg-document-order",
     }
     doc["asset_metadata"] = {
         "source_kind": "manual-svg-paperdoll",
         "builder": "scripts/build_scientist_fighter_rigs.py",
         "character": spec.name,
+    }
+    doc["build_provenance"] = {
+        "schema": "canonical-svg-rig-v3",
+        "builder_version": BUILDER_VERSION,
+        "renderer": "resvg_py",
+        "renderer_version": renderer_version,
+        "renderer_backend": "native-extension",
+        "svg_sha256": _sha256(spec.svg_path),
+        "part_order_policy": "svg-document-order",
+        "part_order": "svg-document",
     }
     spec.rig_dir.mkdir(parents=True, exist_ok=True)
     text = json.dumps(doc, indent=2, sort_keys=False) + "\n"
@@ -605,7 +860,39 @@ def validate_one(spec: CharacterSpec) -> None:
     missing = required_parts - parts
     if missing:
         raise ValueError(f"{spec.name} rig missing parts: {sorted(missing)}")
-    print(f"{spec.name}: {len(doc.parts)} parts, {len(doc.bones)} bones, {len(doc.clips)} clips -> {path}")
+
+    provenance = doc.data.get("build_provenance") or {}
+    if provenance.get("renderer") != "resvg_py":
+        raise ValueError(f"{spec.name} rig was not built by native resvg_py")
+    if provenance.get("svg_sha256") != _sha256(spec.svg_path):
+        raise ValueError(f"{spec.name} rig source hash does not match its SVG")
+    if provenance.get("part_order") != "svg-document":
+        raise ValueError(f"{spec.name} rig does not preserve SVG document order")
+
+    z_values = [float(part.get("z", 0.0)) for part in doc.parts]
+    expected_z = [float(index) for index in range(len(doc.parts))]
+    if z_values != expected_z:
+        raise ValueError(
+            f"{spec.name} rig part z-order is not canonical SVG document order: "
+            f"{z_values!r}"
+        )
+    if spec.name == "carl_stargan":
+        _validate_carl_layer_model(doc)
+
+    rendered_frames = 0
+    for animation, frames, _duration in spec.rows:
+        for frame_idx in range(frames):
+            image = doc.render_frame(animation, frame_idx, frames)
+            if image.mode != "RGBA":
+                raise ValueError(f"{spec.name}:{animation}:{frame_idx} is not RGBA")
+            if image.getbbox() is None:
+                raise ValueError(f"{spec.name}:{animation}:{frame_idx} rendered empty")
+            rendered_frames += 1
+
+    print(
+        f"{spec.name}: {len(doc.parts)} parts, {len(doc.bones)} bones, "
+        f"{len(doc.clips)} clips, {rendered_frames} native-resvg frames -> {path}"
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -614,7 +901,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("characters", nargs="*", choices=tuple(SPECS), default=None)
     args = parser.parse_args(argv)
     names = args.characters or list(SPECS)
-    print(f"SVG renderer: {_RENDERER}")
+    renderer_path, renderer_version = _require_native_resvg()
+    print(f"SVG renderer: resvg_py {renderer_version} ({renderer_path})")
     for name in names:
         if args.command == "validate":
             validate_one(SPECS[name])

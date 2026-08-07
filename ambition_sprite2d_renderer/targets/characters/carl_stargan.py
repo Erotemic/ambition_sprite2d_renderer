@@ -15,6 +15,7 @@ from typing import List, Tuple
 from PIL import Image
 
 from ...authoring.portrait import FaceGuide, PortraitClip, render_framed_portrait, write_portrait_sheet
+from ...authoring.canonical_scientist_rig import ensure_scientist_rig
 from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ._svg_fighter_effects import (
@@ -29,7 +30,6 @@ from ._svg_fighter_effects import (
 
 TARGET_NAME = "carl_stargan"
 FRAME_SIZE = (160, 160)
-RIG_PATH = Path(__file__).resolve().parent / "rigged" / TARGET_NAME / "carl_stargan_side.rig.json"
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 8, 150), ("walk", 8, 108), ("run", 8, 82),
     ("crouch", 6, 96), ("crouch_walk", 8, 90), ("jump", 6, 92),
@@ -160,14 +160,16 @@ TELESCOPE = (72, 72, 82, 255)
 TELESCOPE_LIGHT = (151, 151, 162, 255)
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=4)
+def _load_doc_cached(path_text: str, mtime_ns: int, size: int) -> RigDocument:
+    del mtime_ns, size
+    return RigDocument.load(path_text)
+
+
 def _doc() -> RigDocument:
-    if not RIG_PATH.exists():
-        raise FileNotFoundError(
-            f"missing Carl Stargan rig {RIG_PATH}; run "
-            "`python3 scripts/build_scientist_fighter_rigs.py build carl_stargan`"
-        )
-    return RigDocument.load(RIG_PATH)
+    path = ensure_scientist_rig("carl_stargan")
+    stat = path.stat()
+    return _load_doc_cached(str(path), stat.st_mtime_ns, stat.st_size)
 
 
 def _stars(canvas: FxCanvas, center: tuple[float, float], count: int, radius: float, phase: float, alpha: float = 1.0) -> None:
