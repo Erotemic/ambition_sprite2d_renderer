@@ -181,7 +181,8 @@
         370.5,
         605.0
       ],
-      "rest_angle": 105.1314
+      "rest_angle": 105.1314,
+      "svg_source_order": 0
     },
     {
       "name": "far_foot",
@@ -195,7 +196,8 @@
         287.0,
         843.0
       ],
-      "rest_angle": 146.2369
+      "rest_angle": 146.2369,
+      "svg_source_order": 1
     },
     {
       "name": "far_leg_l",
@@ -209,7 +211,8 @@
         344.0,
         703.0
       ],
-      "rest_angle": 112.1533
+      "rest_angle": 112.1533,
+      "svg_source_order": 2
     },
     {
       "name": "far_arm_l",
@@ -223,7 +226,8 @@
         257.0,
         363.0
       ],
-      "rest_angle": 170.4968
+      "rest_angle": 170.4968,
+      "svg_source_order": 3
     },
     {
       "name": "far_arm_u",
@@ -238,7 +242,8 @@
         408.0,
         340.0
       ],
-      "rest_angle": 171.3394
+      "rest_angle": 171.3394,
+      "svg_source_order": 4
     },
     {
       "name": "far_hand",
@@ -252,7 +257,8 @@
         143.5,
         382.0
       ],
-      "rest_angle": 180.0
+      "rest_angle": 180.0,
+      "svg_source_order": 5
     },
     {
       "name": "pelvis",
@@ -266,7 +272,8 @@
         417.75,
         610.5
       ],
-      "rest_angle": 0.0
+      "rest_angle": 0.0,
+      "svg_source_order": 6
     },
     {
       "name": "torso",
@@ -274,7 +281,6 @@
       "z": 7.0,
       "kind": "sprite",
       "include": [
-        "path1115",
         "path1109",
         "path1118",
         "path1105",
@@ -286,7 +292,8 @@
         468.5,
         536.5
       ],
-      "rest_angle": 0.0
+      "rest_angle": 0.0,
+      "svg_source_order": 7
     },
     {
       "name": "neck",
@@ -300,7 +307,8 @@
         468.5,
         536.5
       ],
-      "rest_angle": 0.0
+      "rest_angle": 0.0,
+      "svg_source_order": 8
     },
     {
       "name": "head",
@@ -329,7 +337,8 @@
         465.0,
         336.5
       ],
-      "rest_angle": 0.0
+      "rest_angle": 0.0,
+      "svg_source_order": 9
     },
     {
       "name": "near_foot",
@@ -343,7 +352,8 @@
         650.0,
         850.5
       ],
-      "rest_angle": 148.6504
+      "rest_angle": 148.6504,
+      "svg_source_order": 10
     },
     {
       "name": "near_leg_u",
@@ -357,7 +367,8 @@
         465.0,
         616.0
       ],
-      "rest_angle": 45.9963
+      "rest_angle": 45.9963,
+      "svg_source_order": 11
     },
     {
       "name": "near_leg_l",
@@ -371,7 +382,8 @@
         578.0,
         733.0
       ],
-      "rest_angle": 58.5015
+      "rest_angle": 58.5015,
+      "svg_source_order": 12
     },
     {
       "name": "near_arm_l",
@@ -385,7 +397,8 @@
         673.0,
         363.0
       ],
-      "rest_angle": 8.452
+      "rest_angle": 8.452,
+      "svg_source_order": 13
     },
     {
       "name": "near_arm_u",
@@ -400,7 +413,8 @@
         533.0,
         332.5
       ],
-      "rest_angle": 12.2903
+      "rest_angle": 12.2903,
+      "svg_source_order": 14
     },
     {
       "name": "near_hand",
@@ -414,7 +428,8 @@
         797.5,
         381.5
       ],
-      "rest_angle": 0.2703
+      "rest_angle": 0.2703,
+      "svg_source_order": 15
     }
   ],
   "ik_legs": [
@@ -14029,11 +14044,11 @@
   },
   "build_provenance": {
     "schema": "canonical-svg-rig-v3",
-    "builder_version": 4,
+    "builder_version": 7,
     "renderer": "resvg_py",
     "renderer_version": "0.3.3",
     "renderer_backend": "native-extension",
-    "svg_sha256": "0b6fa49fec26b4f1e48f032846280229e3620b63e76b7f2adbc20e8bf389d445",
+    "svg_sha256": "d3cc13f2b46fc1b5e54439690c72fef3834b3190692cdd240925dfb0495f41e8",
     "part_order_policy": "svg-document-order",
     "part_order": "svg-document"
   }

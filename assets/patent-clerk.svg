@@ -47,7 +47,7 @@
    inkscape:label="Upper Leg - Far Right"
    data-rig-part="far_leg_u"
    data-rig-bone="far_leg_u"
-   data-rig-z="5">
+   data-rig-z="0">
       <path
    style="fill:#2f323b;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;fill-opacity:1"
    d="m 69.868753,193.51211 -10.228652,19.57543 -3.054807,11.4143 2.53356,7.69537 8.968565,4.18719 9.406686,-2.86917 4.0313,-6.28724 18.33046,-26.27978 -0.722979,-8.73059 -10.835939,-5.89277 -14.90554,2.43545 z"
@@ -61,7 +61,7 @@
    inkscape:label="Foot - Far Right"
    data-rig-part="far_foot"
    data-rig-bone="far_leg_foot"
-   data-rig-z="7">
+   data-rig-z="1">
       <path
    style="fill:#22242b;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
    d="m 48.024491,256.98168 -3.208213,3.03652 -8.398788,4.65562 c 0,0 -8.768349,0.0966 -11.634021,3.90845 -2.865672,3.81185 -2.865672,3.81185 -2.865672,3.81185 l 0.311635,4.63214 c 0,0 3.923629,3.11923 7.314202,2.7014 3.390572,-0.41783 10.282097,-0.42421 10.282097,-0.42421 l 13.508201,-1.92992 4.259736,-0.15063 0.545926,1.55707 12.29074,-1.2991 -0.884582,-19.05997 -19.779051,-4.28773 z"
@@ -73,7 +73,7 @@
    inkscape:label="Lower Leg - Far Right"
    data-rig-part="far_leg_l"
    data-rig-bone="far_leg_l"
-   data-rig-z="6">
+   data-rig-z="2">
       <path
    style="fill:#2f323b;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;fill-opacity:1"
    d="m 63.306134,219.09479 -6.88729,4.51646 -3.808563,15.36191 -1.823341,5.54134 -2.571848,2.31914 -2.577325,10.51072 26.243415,6.70261 2.582111,-8.66648 -1.476116,-1.21089 3.910171,-16.92542 3.068656,-4.19672 -0.287393,-4.56085 -3.648556,-7.62609 -8.179758,-3.23544 z"
@@ -87,7 +87,7 @@
    inkscape:label="Lower Arm - Far Right"
    data-rig-part="far_arm_l"
    data-rig-bone="far_arm_l"
-   data-rig-z="9">
+   data-rig-z="3">
       <path
    style="fill:#f2aa88;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
    d="m 9.1339711,134.88427 31.7299589,-4.67209 8.807182,0.70631 0.760127,11.77728 -4.410678,2.45889 -10.202548,-0.96375 -24.881783,-1.3824 -3.766774,-3.74321 z"
@@ -99,7 +99,7 @@
    inkscape:label="Upper Arm - Far Right"
    data-rig-part="far_arm_u"
    data-rig-bone="far_arm_u"
-   data-rig-z="8">
+   data-rig-z="4">
       <path
    style="fill:#f2efe7;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
    d="m 80.376844,123.72614 -25.070533,4.30137 -16.296949,1.18175 -1.182201,14.35459 26.462551,2.76619 14.675188,-2.62107 5.653802,-8.10177 z"
@@ -117,7 +117,7 @@
    inkscape:label="Hand - Far Right"
    data-rig-part="far_hand"
    data-rig-bone="far_arm_hand"
-   data-rig-z="10">
+   data-rig-z="5">
       <path
    style="fill:#f2aa88;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
    d="m 12.761136,135.84284 c 0,0 -2.489158,-5.42301 -5.2423839,-5.72974 -2.7532259,-0.30674 -7.36149713,-1.49053 -7.36149713,-1.49053 l -4.56549267,-3.40452 c 0,0 -2.89199,-2.17665 -3.1846517,0.64715 -0.2926619,2.82381 -0.2926619,2.82381 -0.2926619,2.82381 0,0 2.8104014,3.72789 4.0398284,3.93238 1.2294268,0.20449 1.2294268,0.20449 1.2294268,0.20449 0,0 -17.5392049,-0.75668 -17.9994439,0.52117 -0.460239,1.27786 -2.411095,2.92083 -0.773575,3.88542 1.637519,0.96458 1.637519,0.96458 1.637519,0.96458 l 7.031979,-0.28922 -9.035349,2.9442 c 0,0 -2.79988,1.11907 -1.570272,2.64776 1.229608,1.52868 2.87944,1.35318 2.87944,1.35318 l 9.387009,-1.7326 -5.878723,3.13932 c 0,0 -1.600046,1.55858 -0.472333,2.13886 1.127713,0.58028 3.95716,0.27354 3.95716,0.27354 l 5.1889332,-0.71805 -2.2900232,3.10195 c 0,0 -0.882728,1.04045 0.436276,1.7322 1.3190031,0.69174 3.4522451,0.28276 3.4522451,0.28276 0,0 3.1866549,-1.35425 4.4149961,-2.48872 1.2283411,-1.13448 2.70932353,-2.41929 2.70932353,-2.41929 0,0 4.88557517,-0.0362 6.05797647,-0.60085 1.172401,-0.56469 1.2262755,-0.56469 1.2262755,-0.56469 0,0 4.4073393,-1.29405 4.7580433,-2.93451 0.350705,-1.64046 0.350705,-2.86598 0.350705,-2.86598 z"
@@ -130,7 +130,7 @@
    inkscape:label="Pelvis"
    data-rig-part="pelvis"
    data-rig-bone="pelvis"
-   data-rig-z="11">
+   data-rig-z="6">
       <path
    style="fill:#2f323b;stroke:#171419;stroke-width:0.92;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;fill-opacity:1"
    d="m 72.2695,176.35201 -3.07185,13.69696 0.01254,3.39603 20.955058,8.47419 c 0,0 6.194464,1.83175 9.720191,1.62114 3.525731,-0.21061 21.188121,-3.64771 21.188121,-3.64771 l 8.34907,-6.81613 c 0,0 0.0671,-7.02526 -0.15441,-7.99089 -0.22155,-0.96564 -2.69188,-11.49594 -2.69188,-11.49594 z"
@@ -143,21 +143,9 @@
    inkscape:label="Torso"
    data-rig-part="torso"
    data-rig-bone="torso"
-   data-rig-z="12">
-      
+   data-rig-z="7">
+
       <g
-   id="part-neck"
-   inkscape:groupmode="layer"
-   inkscape:label="Neck"
-   data-rig-part="neck"
-   data-rig-bone="torso"
-   data-rig-z="13">
-      <path
-   style="fill:#f2aa88;stroke:#171419;stroke-width:0.82;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
-   d="m 83.13925,114.02376 -2.708156,10.53531 3.481856,8.20164 31.79035,-1.02518 1.82555,-8.76654 -10.09568,-21.65752 -13.064633,0.64789 z"
-   id="path1115"
-   inkscape:label="Neck" />
-    </g><g
    id="torso-shirt"
    inkscape:groupmode="layer"
    inkscape:label="Shirt">
@@ -210,16 +198,29 @@
      d="m 89.405088,130.07518 0.924367,-5.90627 2.129851,-2.25737 17.570984,-8.81864 4.87735,-1.11934 2.52132,6.96699 -8.28072,6.0656 -7.38193,9.1321 -6.106638,-7.53818 -1.928128,-1.01352 z"
      id="path1113"
      inkscape:label="Neck-Cuff-Left" /></g>
-      
+
     </g>
-    
+    <g
+   id="part-neck"
+   inkscape:groupmode="layer"
+   inkscape:label="Neck"
+   data-rig-part="neck"
+   data-rig-bone="torso"
+   data-rig-z="8">
+      <path
+   style="fill:#f2aa88;stroke:#171419;stroke-width:0.82;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
+   d="m 83.13925,114.02376 -2.708156,10.53531 3.481856,8.20164 31.79035,-1.02518 1.82555,-8.76654 -10.09568,-21.65752 -13.064633,0.64789 z"
+   id="path1115"
+   inkscape:label="Neck" />
+    </g>
+
     <g
    id="part-head"
    inkscape:groupmode="layer"
    inkscape:label="Head"
    data-rig-part="head"
    data-rig-bone="head"
-   data-rig-z="14">
+   data-rig-z="9">
       <g
    id="head-base"
    inkscape:groupmode="layer"
@@ -324,7 +325,7 @@
    inkscape:label="Foot - Near Left"
    data-rig-part="near_foot"
    data-rig-bone="near_leg_foot"
-   data-rig-z="17">
+   data-rig-z="10">
       <path
    style="fill:#22242b;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
    d="m 144.36235,258.76652 -3.20822,3.03652 -8.39879,4.65562 c 0,0 -8.76834,0.0966 -11.63402,3.90845 -2.86567,3.81185 -2.86567,3.81185 -2.86567,3.81185 l 0.31164,4.63214 c 0,0 3.92363,3.11923 7.3142,2.7014 3.39057,-0.41783 10.2821,-0.42421 10.2821,-0.42421 l 13.5082,-1.92992 4.25973,-0.15063 0.54593,1.55707 12.29074,-1.2991 -0.88458,-19.05997 -19.77905,-4.28773 z"
@@ -336,7 +337,7 @@
    inkscape:label="Upper Leg - Near Left"
    data-rig-part="near_leg_u"
    data-rig-bone="near_leg_u"
-   data-rig-z="15">
+   data-rig-z="11">
       <path
    style="fill:#2f323b;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;fill-opacity:1"
    d="m 93.753166,197.04584 21.744224,26.85052 9.46685,10.46554 6.93113,3.27307 11.72725,-2.84208 1.00312,-10.50552 -5.19603,-15.9486 -9.24432,-15.23279 -8.85264,-6.62666 -12.97605,-0.61566 z"
@@ -349,7 +350,7 @@
    inkscape:label="Lower Leg - Near Left"
    data-rig-part="near_leg_l"
    data-rig-bone="near_leg_l"
-   data-rig-z="16">
+   data-rig-z="12">
       <path
    style="fill:#2f323b;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;fill-opacity:1"
    d="m 125.2798,228.13287 0.98439,9.56303 12.43843,16.15622 -0.57478,3.9439 5.20058,8.98563 25.09807,-6.73957 -3.10465,-8.51835 -5.58615,-3.03119 -10.17892,-19.34742 -7.5461,-6.50592 -9.48794,0.19215 z"
@@ -364,7 +365,7 @@
    inkscape:label="Lower Arm - Near Left"
    data-rig-part="near_arm_l"
    data-rig-bone="near_arm_l"
-   data-rig-z="19">
+   data-rig-z="13">
       <path
    style="fill:#f2aa88;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
    d="m 149.56747,128.69312 32.90743,5.94576 6.26375,1.30538 1.13052,3.50457 -0.9723,1.81971 -5.47666,2.30673 -36.99703,1.41911 -5.59939,-7.60175 0.57839,-6.40296 z"
@@ -377,7 +378,7 @@
    inkscape:label="Upper Arm - Near Left"
    data-rig-part="near_arm_u"
    data-rig-bone="near_arm_u"
-   data-rig-z="18">
+   data-rig-z="14">
       <path
    style="fill:#f2efe7;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
    d="m 112.96238,120.64106 40.20241,8.52248 4.75195,0.80335 -2.48073,10.12138 -0.40833,4.77725 -37.26873,2.13327 -7.80908,-3.85165 z"
@@ -394,7 +395,7 @@
    inkscape:label="Hand - Near Left"
    data-rig-part="near_hand"
    data-rig-bone="near_arm_hand"
-   data-rig-z="20">
+   data-rig-z="15">
       <path
    style="fill:#f2aa88;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
    d="m 181.14956,134.87745 c 0,0 2.31556,-3.48142 4.37286,-4.36113 2.0573,-0.87971 7.68211,-1.99311 7.68211,-1.99311 0,0 1.06563,0.11011 3.05341,-1.00217 1.98778,-1.11229 3.92004,-2.39361 3.92004,-2.39361 l 2.10097,-0.30548 c 0,0 1.52568,-0.15761 1.31992,1.8099 -0.20576,1.96751 -2.03893,4.54561 -2.03893,4.54561 l -2.37208,1.37622 15.56496,0.7081 c 0,0 3.23718,0.71742 2.46362,2.05435 -0.77354,1.33693 -1.78733,2.79315 -1.78733,2.79315 0,0 -0.58659,0.23498 -1.02909,0.30674 -0.4425,0.0718 -7.16115,-0.0161 -7.16115,-0.0161 l 9.01574,2.10972 c 0,0 2.29853,1.91355 1.93593,3.11976 -0.3626,1.20621 -1.27923,1.4107 -1.27923,1.4107 0,0 -0.40646,0.10225 -2.77531,0.10225 -2.36886,0 -7.92137,-1.92074 -7.92137,-1.92074 0,0 5.49383,1.9095 5.78775,2.74713 0.29391,0.83763 0.0894,1.98149 0.0894,1.98149 0,0 -1.22963,2.1463 -2.71045,1.47509 -1.48081,-0.67121 -1.48081,-0.67121 -1.48081,-0.67121 l -7.40227,-2.40844 4.38881,3.52754 c 0,0 0.56052,1.7135 -0.0901,2.36414 -0.65064,0.65063 -2.80539,1.19991 -2.80539,1.19991 0,0 -1.78573,-0.50606 -2.96983,-1.47747 -1.18411,-0.97141 -1.8716,-2.54802 -1.8716,-2.54802 l -1.49241,-1.00716 c 0,0 -5.9488,-0.18133 -7.7209,-0.94983 -1.7721,-0.76849 -4.26985,-2.35865 -4.26985,-2.35865 0,0 -1.83027,-1.18791 -2.33069,-2.53582 -0.50041,-1.34791 -0.18674,-7.68291 -0.18674,-7.68291 z"
