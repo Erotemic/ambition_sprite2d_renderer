@@ -37,10 +37,13 @@ RENDER_SCALE = 2
 SUPERSAMPLE = 2
 FLOOR_Y = 326
 ROBOT_X_END = 330.0
+# Where the robot ends up after backing away from the handoff. Far enough that
+# the two are no longer sharing a beat, near enough to stay in the same shot.
+ROBOT_X_BACK = 232.0
 AUTHOR_X = 450.0
 ROBOT_TARGET_HEIGHT = 190.0
 AUTHOR_TARGET_HEIGHT = 264.0
-ANIMATION_FRAMES = 80
+ANIMATION_FRAMES = 92
 FRAME_DURATION_MS = 95
 
 
@@ -448,53 +451,74 @@ def timeline_state(frame_index: int) -> TimelineState:
             None, None, False,
         )
 
-    # 44-49: author straightens and lifts the gamepad up closer to inspect it.
-    if frame_index <= 49:
-        t = _smoothstep(_phase(frame_index, 44, 49))
-        gamepad = _lerp_point((388.0, 214.0), (418.0, 182.0), t)
-        return TimelineState(
-            frame_index, ROBOT_X_END - 4.0 * t, AUTHOR_X,
-            "idle", (0.52 + 0.06 * t) % 1.0,
-            "vanity_receive", 0.70 + 0.20 * t,
-            gamepad, 8.0 + 12.0 * t, False, True,
-            0.18 * (1.0 - t), 0.34, 0.04 * (1.0 - t), 12.0 + 4.0 * t, 0.0,
-            None, None, False,
-        )
-
-    # 50-57: contemplative inspection pause while holding the gamepad up.
+    # 44-57: the robot lets go and backs off; the author draws the prop in.
+    #
+    # The walk clip is sampled with a NEGATIVE rate, which is the whole trick to
+    # backing up: same cycle, run in reverse, so the legs reach behind instead of
+    # ahead and the robot reads as retreating rather than strolling away. 1.5
+    # cycles over the beat is three steps.
+    #
+    # ⚠ the lean is RAMPED OUT here, not dropped. The take ends leaning 0.75 and
+    # the beat that used to follow opened at 0.04, which snapped the author's
+    # torso thirteen degrees between two adjacent frames.
     if frame_index <= 57:
-        hold = _phase(frame_index, 50, 57)
-        bob = math.sin(hold * math.pi)
+        t = _smoothstep(_phase(frame_index, 44, 57))
+        settle = _smoothstep(_phase(frame_index, 44, 52))
+        gamepad = _lerp_point((388.0, 214.0), (410.0, 200.0), settle)
         return TimelineState(
-            frame_index, ROBOT_X_END - 4.0, AUTHOR_X,
-            "idle", (0.56 + 0.08 * hold) % 1.0,
-            "vanity_receive", 0.90 + 0.04 * hold,
-            (418.0, 182.0 - 1.5 * bob), 20.0, False, True,
-            0.0, 0.34, 0.0, 16.0, 0.0,
+            frame_index, _lerp(ROBOT_X_END, ROBOT_X_BACK, t), AUTHOR_X,
+            "walk", (-frame_index * 0.107) % 1.0,
+            "vanity_receive", 0.68 + 0.14 * settle,
+            gamepad, 6.0 + 8.0 * settle, False, True,
+            0.0, 0.34, 0.75 * (1.0 - settle), 14.0 - 6.0 * settle, 0.0,
             None, None, False,
         )
 
-    # 58-61: author delivers the line after the inspect beat.
-    if frame_index <= 61:
-        hold = _phase(frame_index, 58, 61)
+    # 58-69: the author looks DOWN at the prop and contemplates it. This is the
+    # beat the second claim lands on, so it is the longest silent one: the joke
+    # is that he has to think about it first.
+    #
+    # ⚠ a NEGATIVE head tilt is the one that looks down. Positive is chin-up, and
+    # the earlier beats use positive on purpose — leaning the torso over the robot
+    # while holding the face up is what keeps it readable. Chosen off a rendered
+    # sweep of six candidates, not off the sign convention.
+    if frame_index <= 69:
+        t = _smoothstep(_phase(frame_index, 58, 64))
+        hold = _phase(frame_index, 58, 69)
+        bob = math.sin(hold * math.pi)
+        gamepad = _lerp_point((410.0, 200.0), (408.0, 190.0), t)
         return TimelineState(
-            frame_index, ROBOT_X_END - 4.0, AUTHOR_X,
-            "idle", (0.60 + 0.05 * hold) % 1.0,
-            "vanity_receive", 0.92 + 0.02 * hold,
-            (418.0, 182.0), 20.0, False, True,
-            0.0, 0.34, 0.0, 16.0, 0.0,
+            frame_index, ROBOT_X_BACK, AUTHOR_X,
+            "idle", (0.30 + 0.10 * hold) % 1.0,
+            "vanity_receive", 0.82 + 0.06 * hold,
+            (gamepad[0], gamepad[1] - 1.2 * bob), 14.0 + 8.0 * t, False, True,
+            0.0, 0.34, 0.10 * t, 8.0 - 38.0 * t, 0.0,
+            None, None, False,
+        )
+
+    # 70-75: the line, delivered to the PROP rather than to the robot — he never
+    # looks up, which is what makes it a claim rather than an answer.
+    if frame_index <= 75:
+        hold = _phase(frame_index, 70, 75)
+        return TimelineState(
+            frame_index, ROBOT_X_BACK, AUTHOR_X,
+            "idle", (0.40 + 0.06 * hold) % 1.0,
+            "vanity_receive", 0.88 + 0.02 * hold,
+            (408.0, 190.0), 22.0, False, True,
+            0.0, 0.34, 0.10, -30.0 + 2.0 * hold, 0.0,
             "author", "I made this.", False,
         )
 
-    # 62-79: robot closes its eyes, tips its head down, and the shot lingers.
-    linger = _phase(frame_index, 62, 79)
+    # 76-91: the robot's reaction — head down, eyes shut, and the shot holds.
+    linger = _phase(frame_index, 76, 91)
+    droop = _smoothstep(_phase(frame_index, 76, 82))
     author_bob = math.sin(linger * 2.0 * math.pi)
     return TimelineState(
-        frame_index, ROBOT_X_END - 4.0, AUTHOR_X,
-        "idle", (0.64 + 0.10 * linger) % 1.0,
+        frame_index, ROBOT_X_BACK, AUTHOR_X,
+        "idle", (0.46 + 0.10 * linger) % 1.0,
         "vanity_receive", 0.90 + 0.04 * linger,
-        (418.0, 182.0 - 1.2 * author_bob), 20.0, False, True,
-        0.0, 0.34, 0.0, 16.0, 10.0,
+        (408.0, 190.0 - 1.2 * author_bob), 22.0, False, True,
+        0.0, 0.34, 0.10, -28.0, 12.0 * droop,
         "author", "I made this.", True,
     )
 
@@ -830,16 +854,16 @@ def gif_frame_from_rgba(frame: Image.Image) -> Image.Image:
 
 
 def save_storyboards(frames: Sequence[Image.Image], out_dir: Path) -> List[Path]:
-    key_indices = [0, 14, 26, 39, 47, 54, 60, 74]
+    key_indices = [0, 14, 26, 39, 50, 66, 73, 86]
     labels = [
         "walk in",
         "robot claim",
         "author reaction",
         "take it",
-        "lift up",
-        "inspect",
+        "robot backs off",
+        "contemplate",
         "author claim",
-        "linger",
+        "robot reacts",
     ]
     key_frames = [frames[index] for index in key_indices]
     strip = Image.new("RGBA", (CANVAS_SIZE[0] * len(key_frames), CANVAS_SIZE[1] + 28), (0, 0, 0, 0))
@@ -944,8 +968,8 @@ def build_dialog_sequence(out_dir: Path) -> List[Path]:
                 f"author_rig={AUTHOR_RIG_PATH.relative_to(ROOT)}",
                 f"robot_rig={ROBOT_RIG_PATH.relative_to(ROOT)}",
                 f"prop={GAMEPAD_SVG_PATH.relative_to(ROOT)}",
-                "robot path: walk in -> stop -> lift prop -> handoff -> relax",
-                "author path: idle -> look/question -> IK reach down -> take -> hold",
+                "robot path: walk in -> stop -> lift prop -> handoff -> back off -> head down",
+                "author path: idle -> look/question -> IK reach down -> take -> contemplate -> claim",
                 "blink: discrete open/closed visibility only; no opacity tween",
             ]
         )
