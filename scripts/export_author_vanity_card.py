@@ -193,20 +193,28 @@ def part_draws(
 
 
 def prop_draw(atlas: PartAtlas, prop: Image.Image, state) -> dict:
+    """Place the prop, whose TEXTURE is `PART_OVERSAMPLE` denser than its size.
+
+    ⚠ `w`/`h` are canvas units, not texture pixels. They were the raw pixel size
+    when the two happened to be equal, which is precisely what left the gamepad
+    the only thing on the card with no oversample: every rig part goes through
+    `unit = effective_scale / raster_scale` and this one went through nothing.
+    """
     key = ("prop", "gamepad")
     if key not in atlas.index:
         atlas.index[key] = len(atlas.order)
         atlas.order.append("prop_gamepad")
         atlas.images.append(prop)
         atlas.pivots.append((prop.width / 2.0, prop.height / 2.0))
-        atlas.scales.append(1.0)
+        atlas.scales.append(PART_OVERSAMPLE)
     slot = atlas.index[key]
+    unit = 1.0 / PART_OVERSAMPLE
     return {
         "part": slot,
         "x": state.gamepad_center[0],
         "y": state.gamepad_center[1],
-        "w": float(prop.width),
-        "h": float(prop.height),
+        "w": prop.width * unit,
+        "h": prop.height * unit,
         # `draw_rotated_prop` rotates the PIL image by `angle` counter-clockwise,
         # so the screen-clockwise angle the engine wants is its negation.
         "deg": -float(state.gamepad_angle),
@@ -222,7 +230,13 @@ def bake(verify: bool) -> Tuple[dict, PartAtlas]:
     robot_hands_doc = dialog.hand_only_doc(robot_doc)
     author_style = dialog.calculate_style(author_doc, "vanity_idle", dialog.AUTHOR_TARGET_HEIGHT)
     robot_style = dialog.calculate_style(robot_doc, "idle", dialog.ROBOT_TARGET_HEIGHT)
-    prop = dialog.render_gamepad()
+    # TWO rasters of the same prop, and they are not interchangeable. The atlas
+    # wants the dense one; everything that reasons about WHERE things are — the
+    # IK hand targets below, and the reference render `--verify` diffs against —
+    # wants the canvas-sized one. Handing the dense texture to either would move
+    # the author's hands four times too far apart.
+    prop = dialog.render_gamepad(oversample=PART_OVERSAMPLE)
+    prop_canvas = dialog.render_gamepad()
 
     atlas = PartAtlas()
     frames: List[dict] = []
@@ -237,7 +251,7 @@ def bake(verify: bool) -> Tuple[dict, PartAtlas]:
             robot_doc,
             robot_hands_doc,
             robot_style,
-            prop.width,
+            prop_canvas.width,
         )
 
         draws: List[dict] = []
@@ -279,7 +293,7 @@ def bake(verify: bool) -> Tuple[dict, PartAtlas]:
                 robot_doc,
                 robot_hands_doc,
                 robot_style,
-                prop,
+                prop_canvas,
             )
 
     manifest = {
@@ -321,9 +335,13 @@ def verify_frame(
     robot_doc,
     robot_hands_doc,
     robot_style,
-    prop,
+    prop_canvas,
 ) -> None:
     """Diff the baked composition against the renderer's own output.
+
+    ⚠ `prop_canvas` is the CANVAS-sized prop, never the dense atlas texture. The
+    reference side of this diff is a real `render_frame`, which draws the prop at
+    whatever pixel size it is handed.
 
     Bubbles and the backdrop are excluded — the engine draws those as UI, so they
     are not part of what the bake claims. What IS claimed is that every rig part
@@ -351,7 +369,7 @@ def verify_frame(
             robot_doc,
             robot_hands_doc,
             robot_style,
-            prop,
+            prop_canvas,
         )
     finally:
         dialog.draw_background = painted_background

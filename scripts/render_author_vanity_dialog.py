@@ -46,6 +46,19 @@ AUTHOR_TARGET_HEIGHT = 264.0
 ANIMATION_FRAMES = 92
 FRAME_DURATION_MS = 95
 
+# The prop's width in CANVAS units. This is the number the choreography and the
+# IK hand targets are written against; how many TEXTURE pixels back it is a
+# separate question, answered by `render_gamepad`'s `oversample`.
+PROP_CANVAS_WIDTH = 72
+# Cheap raster used only to measure how much of the page the art covers.
+PROP_PROBE_DPI = 96.0
+# Headroom over the target width, so the final resize is always a downsample.
+PROP_OVERSCAN = 1.5
+# The art is a small corner of an A4 page, so the DPI needed to fill a few
+# hundred pixels rasterizes a very large sheet to throw most of away. The cap is
+# what keeps a big `oversample` from asking for a gigapixel intermediate.
+PROP_MAX_DPI = 600.0
+
 
 @dataclass(frozen=True)
 class ActorStyle:
@@ -482,6 +495,11 @@ def timeline_state(frame_index: int) -> TimelineState:
     # the earlier beats use positive on purpose — leaning the torso over the robot
     # while holding the face up is what keeps it readable. Chosen off a rendered
     # sweep of six candidates, not off the sign convention.
+    #
+    # ⚠ and the number is PIVOT-DEPENDENT, so re-sweep it whenever the author's
+    # neck joint moves in the SVG. -30 read as a clear downward gaze against the
+    # old head origin and as barely a glance once that origin moved up ~11 units;
+    # the angle is the same, the pivot is not.
     if frame_index <= 69:
         t = _smoothstep(_phase(frame_index, 58, 64))
         hold = _phase(frame_index, 58, 69)
@@ -492,7 +510,7 @@ def timeline_state(frame_index: int) -> TimelineState:
             "idle", (0.30 + 0.10 * hold) % 1.0,
             "vanity_receive", 0.82 + 0.06 * hold,
             (gamepad[0], gamepad[1] - 1.2 * bob), 14.0 + 8.0 * t, False, True,
-            0.0, 0.34, 0.10 * t, 8.0 - 38.0 * t, 0.0,
+            0.0, 0.34, 0.10 * t, 8.0 - 46.0 * t, 0.0,
             None, None, False,
         )
 
@@ -505,7 +523,7 @@ def timeline_state(frame_index: int) -> TimelineState:
             "idle", (0.40 + 0.06 * hold) % 1.0,
             "vanity_receive", 0.88 + 0.02 * hold,
             (408.0, 190.0), 22.0, False, True,
-            0.0, 0.34, 0.10, -30.0 + 2.0 * hold, 0.0,
+            0.0, 0.34, 0.10, -38.0 + 2.0 * hold, 0.0,
             "author", "I made this.", False,
         )
 
@@ -518,12 +536,12 @@ def timeline_state(frame_index: int) -> TimelineState:
         "idle", (0.46 + 0.10 * linger) % 1.0,
         "vanity_receive", 0.90 + 0.04 * linger,
         (408.0, 190.0 - 1.2 * author_bob), 22.0, False, True,
-        0.0, 0.34, 0.10, -28.0, 12.0 * droop,
+        0.0, 0.34, 0.10, -36.0, 12.0 * droop,
         "author", "I made this.", True,
     )
 
 
-def render_gamepad(width: int = 72) -> Image.Image:
+def _rasterize_gamepad_svg(dpi: float) -> Image.Image:
     if not GAMEPAD_SVG_PATH.exists():
         raise FileNotFoundError(f"required prop SVG is missing: {GAMEPAD_SVG_PATH}")
     errors: List[str] = []
@@ -531,25 +549,55 @@ def render_gamepad(width: int = 72) -> Image.Image:
         import resvg_py
 
         png = resvg_py.svg_to_bytes(
-            svg_string=GAMEPAD_SVG_PATH.read_text(encoding="utf-8"), dpi=96.0
+            svg_string=GAMEPAD_SVG_PATH.read_text(encoding="utf-8"), dpi=dpi
         )
-        image = Image.open(io.BytesIO(bytes(png))).convert("RGBA")
+        return Image.open(io.BytesIO(bytes(png))).convert("RGBA")
     except Exception as ex:
         errors.append(f"resvg_py: {ex}")
-        try:
-            import cairosvg
+    try:
+        import cairosvg
 
-            png = cairosvg.svg2png(url=str(GAMEPAD_SVG_PATH))
-            image = Image.open(io.BytesIO(png)).convert("RGBA")
-        except Exception as ex2:
-            errors.append(f"cairosvg: {ex2}")
-            raise RuntimeError("could not rasterize gamepad-draft.svg: " + "; ".join(errors))
-    bbox = image.getbbox()
-    if bbox is None:
+        png = cairosvg.svg2png(url=str(GAMEPAD_SVG_PATH), dpi=dpi)
+        return Image.open(io.BytesIO(png)).convert("RGBA")
+    except Exception as ex2:
+        errors.append(f"cairosvg: {ex2}")
+    raise RuntimeError("could not rasterize gamepad-draft.svg: " + "; ".join(errors))
+
+
+def render_gamepad(width: int = PROP_CANVAS_WIDTH, oversample: float = 1.0) -> Image.Image:
+    """The prop, rasterized `oversample` times denser than its canvas size.
+
+    ⚠ the DPI is DERIVED from how much of the page the art actually covers, not
+    fixed at 96. The gamepad is a small corner of an A4 Inkscape page, so 96 dpi
+    puts about 105x52 pixels of real art on the sheet — enough to downsample a
+    72-unit prop for the GIF, and nothing left over. The engine bakes every rig
+    part at 4 to 8 texture pixels per canvas pixel (MEASURED) and was handed this
+    prop at 1.0, which is why the gamepad alone looked soft on a device.
+
+    A cheap probe raster measures the art, the real raster is sized from it with
+    headroom to spare, and the result is always reached by DOWNsampling. Deriving
+    it also means an edit to the SVG that moves or resizes the art on the page
+    cannot quietly starve the prop again.
+    """
+    target = max(1, int(round(width * oversample)))
+    probe = _rasterize_gamepad_svg(PROP_PROBE_DPI)
+    box = probe.getbbox()
+    if box is None:
         raise RuntimeError("gamepad-draft.svg rendered empty")
-    image = image.crop(bbox)
-    height = max(1, int(round(image.height * width / image.width)))
-    return image.resize((width, height), Image.Resampling.LANCZOS)
+    art_width = max(1, box[2] - box[0])
+
+    dpi = _clamp(
+        PROP_PROBE_DPI * (target / art_width) * PROP_OVERSCAN,
+        PROP_PROBE_DPI,
+        PROP_MAX_DPI,
+    )
+    image = probe if dpi <= PROP_PROBE_DPI else _rasterize_gamepad_svg(dpi)
+    box = image.getbbox()
+    if box is None:
+        raise RuntimeError("gamepad-draft.svg rendered empty")
+    image = image.crop(box)
+    height = max(1, int(round(image.height * target / image.width)))
+    return image.resize((target, height), Image.Resampling.LANCZOS)
 
 
 _FONT_CACHE: Dict[int, ImageFont.ImageFont] = {}
