@@ -41,8 +41,8 @@
       "name": "head",
       "parent": "torso",
       "offset": [
-        6.2171,
-        -71.9408
+        7.9934,
+        -82.5987
       ],
       "length": 0.0,
       "rest_angle": 0.0
@@ -181,7 +181,8 @@
         90.5,
         161.0
       ],
-      "rest_angle": 0.0
+      "rest_angle": 0.0,
+      "svg_source_order": 0
     },
     {
       "name": "far_arm_u",
@@ -195,7 +196,8 @@
         83.0,
         127.0
       ],
-      "rest_angle": 102.6804
+      "rest_angle": 102.6804,
+      "svg_source_order": 1
     },
     {
       "name": "far_arm_l",
@@ -209,7 +211,8 @@
         78.5,
         147.0
       ],
-      "rest_angle": 109.0256
+      "rest_angle": 109.0256,
+      "svg_source_order": 2
     },
     {
       "name": "far_sleeve",
@@ -223,7 +226,8 @@
         83.0,
         127.0
       ],
-      "rest_angle": 102.6804
+      "rest_angle": 102.6804,
+      "svg_source_order": 3
     },
     {
       "name": "far_hand",
@@ -241,7 +245,8 @@
         73.5,
         161.5
       ],
-      "rest_angle": 101.3099
+      "rest_angle": 101.3099,
+      "svg_source_order": 4
     },
     {
       "name": "far_foot",
@@ -261,7 +266,8 @@
         89.0,
         215.0
       ],
-      "rest_angle": 148.7363
+      "rest_angle": 148.7363,
+      "svg_source_order": 5
     },
     {
       "name": "far_leg_u",
@@ -275,7 +281,8 @@
         86.0,
         168.0
       ],
-      "rest_angle": 96.6325
+      "rest_angle": 96.6325,
+      "svg_source_order": 6
     },
     {
       "name": "far_leg_l",
@@ -289,7 +296,8 @@
         83.5,
         189.5
       ],
-      "rest_angle": 77.8285
+      "rest_angle": 77.8285,
+      "svg_source_order": 7
     },
     {
       "name": "far_cuff",
@@ -303,7 +311,8 @@
         83.5,
         189.5
       ],
-      "rest_angle": 77.8285
+      "rest_angle": 77.8285,
+      "svg_source_order": 8
     },
     {
       "name": "near_foot",
@@ -323,7 +332,8 @@
         105.0,
         217.5
       ],
-      "rest_angle": 154.8852
+      "rest_angle": 154.8852,
+      "svg_source_order": 9
     },
     {
       "name": "near_leg_u",
@@ -337,7 +347,8 @@
         99.0,
         167.0
       ],
-      "rest_angle": 94.2364
+      "rest_angle": 94.2364,
+      "svg_source_order": 10
     },
     {
       "name": "near_leg_l",
@@ -351,7 +362,8 @@
         97.0,
         194.0
       ],
-      "rest_angle": 71.2001
+      "rest_angle": 71.2001,
+      "svg_source_order": 11
     },
     {
       "name": "near_cuff",
@@ -365,7 +377,8 @@
         97.0,
         194.0
       ],
-      "rest_angle": 71.2001
+      "rest_angle": 71.2001,
+      "svg_source_order": 12
     },
     {
       "name": "pelvis",
@@ -384,7 +397,8 @@
         92.5,
         167.5
       ],
-      "rest_angle": 0.0
+      "rest_angle": 0.0,
+      "svg_source_order": 13
     },
     {
       "name": "torso",
@@ -398,7 +412,8 @@
         90.5,
         161.0
       ],
-      "rest_angle": 0.0
+      "rest_angle": 0.0,
+      "svg_source_order": 14
     },
     {
       "name": "near_arm_u",
@@ -412,7 +427,8 @@
         106.0,
         127.0
       ],
-      "rest_angle": 70.71
+      "rest_angle": 70.71,
+      "svg_source_order": 15
     },
     {
       "name": "near_arm_l",
@@ -420,13 +436,15 @@
       "z": 51.0,
       "kind": "sprite",
       "include": [
-        "near-arm-l-art-01"
+        "near-arm-l-art-01",
+        "path581-3"
       ],
       "pivot": [
         113.0,
         147.0
       ],
-      "rest_angle": 108.4349
+      "rest_angle": 108.4349,
+      "svg_source_order": 16
     },
     {
       "name": "near_sleeve",
@@ -434,13 +452,15 @@
       "z": 52.0,
       "kind": "sprite",
       "include": [
-        "near-sleeve-art-01"
+        "near-sleeve-art-01",
+        "path4426"
       ],
       "pivot": [
         106.0,
         127.0
       ],
-      "rest_angle": 70.71
+      "rest_angle": 70.71,
+      "svg_source_order": 17
     },
     {
       "name": "near_hand",
@@ -451,13 +471,15 @@
         "near-hand-art-01",
         "near-hand-art-02",
         "near-hand-art-03",
-        "near-hand-art-04"
+        "near-hand-art-04",
+        "path581"
       ],
       "pivot": [
         108.0,
         162.0
       ],
-      "rest_angle": 118.4429
+      "rest_angle": 118.4429,
+      "svg_source_order": 18
     },
     {
       "name": "head",
@@ -502,10 +524,11 @@
         "head-art-35"
       ],
       "pivot": [
-        94.0,
-        120.5
+        95.0,
+        114.5
       ],
-      "rest_angle": 0.0
+      "rest_angle": 0.0,
+      "svg_source_order": 19
     }
   ],
   "ik_legs": [
@@ -962,7 +985,8 @@
     }
   },
   "sprite_tuning": {
-    "collision_scale": 1.0
+    "collision_scale": 1.0,
+    "part_order": "attribute"
   },
   "features": {
     "paper_doll": true,
