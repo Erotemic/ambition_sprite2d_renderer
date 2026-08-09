@@ -345,8 +345,18 @@ def _apply_fx(img: Image.Image, animation: str, frame_idx: int, nframes: int) ->
             fd.ellipse((x - r, y - r, x + r, y + r), outline=(60, 226, 255, 150), width=1)
 
     if animation == "block":
+        # ⛔ the centre was the literal `(64, 63)`, and the body is not there:
+        # the torso origin for this frame is (112.3, 129.0), so the shield was
+        # drawn (-48, -66) from the robot it belongs to. Jon, 2026-08-09: "the
+        # bubble in the wrong place, just kinda to the upper left."
+        #
+        # Every BODY-ATTACHED effect in this function already positions from a
+        # `world[..]` anchor — the blade from `hand.tip`, the aim glow from
+        # `base`. The AMBIENT ones (swim bubbles, hit sparks) hardcode, and are
+        # right to, because they are attached to nothing. A shield is attached.
         pulse = 1.0 + 0.05 * math.sin(t * math.tau)
-        box = (64 - 40 * pulse, 63 - 48 * pulse, 64 + 40 * pulse, 63 + 48 * pulse)
+        cx, cy = world["torso"].origin
+        box = (cx - 40 * pulse, cy - 48 * pulse, cx + 40 * pulse, cy + 48 * pulse)
         fd.ellipse(box, fill=(65, 222, 255, 24), outline=(63, 229, 255, 190), width=2)
 
     hand = world["near_arm_hand"]
