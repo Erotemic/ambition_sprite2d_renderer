@@ -3,7 +3,7 @@
    version="1.1"
    xml:space="preserve"
    inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
-   sodipodi:docname="patent-clerk-full.svg"
+   sodipodi:docname="patent-clerk.svg"
    id="patent-clerk-svg"
    width="252mm"
    height="254mm"
@@ -25,15 +25,15 @@
    inkscape:deskcolor="#505050"
    inkscape:document-units="mm"
    showgrid="false"
-   inkscape:zoom="0.91490602"
-   inkscape:cx="408.78516"
-   inkscape:cy="431.19183"
-   inkscape:window-width="2560"
-   inkscape:window-height="1371"
-   inkscape:window-x="0"
-   inkscape:window-y="1472"
-   inkscape:window-maximized="1"
-   inkscape:current-layer="view-patent-clerk-side-left" />
+   inkscape:zoom="1.2938725"
+   inkscape:cx="567.28928"
+   inkscape:cy="512.02881"
+   inkscape:window-width="1080"
+   inkscape:window-height="1233"
+   inkscape:window-x="673"
+   inkscape:window-y="202"
+   inkscape:window-maximized="0"
+   inkscape:current-layer="rig-joints" />
   <defs
    id="defs2" />
   
@@ -81,25 +81,30 @@
    inkscape:label="lower-leg-far-right" />
     </g>
     
+    
     <g
-   id="part-far-arm-l"
    inkscape:groupmode="layer"
-   inkscape:label="Lower Arm - Far Right"
-   data-rig-part="far_arm_l"
-   data-rig-bone="far_arm_l"
-   data-rig-z="3">
+   id="layer3"
+   inkscape:label="Arm - Far Right"
+   style="display:inline"><g
+     id="part-far-arm-l"
+     inkscape:groupmode="layer"
+     inkscape:label="Lower Arm - Far Right"
+     data-rig-part="far_arm_l"
+     data-rig-bone="far_arm_l"
+     data-rig-z="3">
       <path
    style="fill:#f2aa88;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
    d="m 9.1339711,134.88427 31.7299589,-4.67209 8.807182,0.70631 0.760127,11.77728 -4.410678,2.45889 -10.202548,-0.96375 -24.881783,-1.3824 -3.766774,-3.74321 z"
    id="path1145"
    inkscape:label="lower-arm-far-right" />
     </g><g
-   id="part-far-arm-u"
-   inkscape:groupmode="layer"
-   inkscape:label="Upper Arm - Far Right"
-   data-rig-part="far_arm_u"
-   data-rig-bone="far_arm_u"
-   data-rig-z="4">
+     id="part-far-arm-u"
+     inkscape:groupmode="layer"
+     inkscape:label="Upper Arm - Far Right"
+     data-rig-part="far_arm_u"
+     data-rig-bone="far_arm_u"
+     data-rig-z="4">
       <path
    style="fill:#f2efe7;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
    d="m 80.376844,123.72614 -25.070533,4.30137 -16.296949,1.18175 -1.182201,14.35459 26.462551,2.76619 14.675188,-2.62107 5.653802,-8.10177 z"
@@ -110,20 +115,19 @@
    d="m 31.770277,131.6725 0.858724,-3.91468 c 0,0 5.467821,-2.40021 8.567515,-1.97345 3.099697,0.42677 3.238291,0.47828 3.238291,0.47828 0,0 3.55341,5.46696 3.481112,8.6884 -0.0723,3.22144 1.418045,12.60818 0.454271,13.23399 -0.963771,0.62581 -0.963771,0.62581 -0.963771,0.62581 l -7.139022,-0.48249 c 0,0 0.511064,1.11725 -1.361971,1.17981 -1.873036,0.0626 -2.400692,-1.0209 -2.400692,-1.0209 0,0 -3.038671,-4.45313 -3.969996,-7.6576 -0.931328,-3.20447 -0.764461,-9.15717 -0.764461,-9.15717 z"
    id="path1349"
    inkscape:label="far-right-arm-cuff" />
-    </g>
-    <g
-   id="part-far-hand"
-   inkscape:groupmode="layer"
-   inkscape:label="Hand - Far Right"
-   data-rig-part="far_hand"
-   data-rig-bone="far_arm_hand"
-   data-rig-z="5">
+    </g><g
+     id="part-far-hand"
+     inkscape:groupmode="layer"
+     inkscape:label="Hand - Far Right"
+     data-rig-part="far_hand"
+     data-rig-bone="far_arm_hand"
+     data-rig-z="5">
       <path
    style="fill:#f2aa88;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
    d="m 12.761136,135.84284 c 0,0 -2.489158,-5.42301 -5.2423839,-5.72974 -2.7532259,-0.30674 -7.36149713,-1.49053 -7.36149713,-1.49053 l -4.56549267,-3.40452 c 0,0 -2.89199,-2.17665 -3.1846517,0.64715 -0.2926619,2.82381 -0.2926619,2.82381 -0.2926619,2.82381 0,0 2.8104014,3.72789 4.0398284,3.93238 1.2294268,0.20449 1.2294268,0.20449 1.2294268,0.20449 0,0 -17.5392049,-0.75668 -17.9994439,0.52117 -0.460239,1.27786 -2.411095,2.92083 -0.773575,3.88542 1.637519,0.96458 1.637519,0.96458 1.637519,0.96458 l 7.031979,-0.28922 -9.035349,2.9442 c 0,0 -2.79988,1.11907 -1.570272,2.64776 1.229608,1.52868 2.87944,1.35318 2.87944,1.35318 l 9.387009,-1.7326 -5.878723,3.13932 c 0,0 -1.600046,1.55858 -0.472333,2.13886 1.127713,0.58028 3.95716,0.27354 3.95716,0.27354 l 5.1889332,-0.71805 -2.2900232,3.10195 c 0,0 -0.882728,1.04045 0.436276,1.7322 1.3190031,0.69174 3.4522451,0.28276 3.4522451,0.28276 0,0 3.1866549,-1.35425 4.4149961,-2.48872 1.2283411,-1.13448 2.70932353,-2.41929 2.70932353,-2.41929 0,0 4.88557517,-0.0362 6.05797647,-0.60085 1.172401,-0.56469 1.2262755,-0.56469 1.2262755,-0.56469 0,0 4.4073393,-1.29405 4.7580433,-2.93451 0.350705,-1.64046 0.350705,-2.86598 0.350705,-2.86598 z"
    id="path1178"
    inkscape:label="hand-far-right-base" />
-    </g>
+    </g></g>
     <g
    id="part-pelvis"
    inkscape:groupmode="layer"
@@ -137,7 +141,20 @@
    id="path1153"
    inkscape:label="Pelvis-Base" />
     </g>
+    
     <g
+   id="part-neck"
+   inkscape:groupmode="layer"
+   inkscape:label="Neck"
+   data-rig-part="neck"
+   data-rig-bone="torso"
+   data-rig-z="8">
+      <path
+   style="fill:#f2aa88;stroke:#171419;stroke-width:0.82;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
+   d="m 83.13925,114.02376 -2.708156,10.53531 3.481856,8.20164 31.79035,-1.02518 1.82555,-8.76654 -10.09568,-21.65752 -13.064633,0.64789 z"
+   id="path1115"
+   inkscape:label="Neck" />
+    </g><g
    id="part-torso"
    inkscape:groupmode="layer"
    inkscape:label="Torso"
@@ -199,19 +216,6 @@
      id="path1113"
      inkscape:label="Neck-Cuff-Left" /></g>
 
-    </g>
-    <g
-   id="part-neck"
-   inkscape:groupmode="layer"
-   inkscape:label="Neck"
-   data-rig-part="neck"
-   data-rig-bone="torso"
-   data-rig-z="8">
-      <path
-   style="fill:#f2aa88;stroke:#171419;stroke-width:0.82;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
-   d="m 83.13925,114.02376 -2.708156,10.53531 3.481856,8.20164 31.79035,-1.02518 1.82555,-8.76654 -10.09568,-21.65752 -13.064633,0.64789 z"
-   id="path1115"
-   inkscape:label="Neck" />
     </g>
 
     <g
@@ -359,26 +363,32 @@
     </g>
     
     
+    
     <g
-   id="part-near-arm-l"
    inkscape:groupmode="layer"
-   inkscape:label="Lower Arm - Near Left"
-   data-rig-part="near_arm_l"
-   data-rig-bone="near_arm_l"
-   data-rig-z="13">
+   id="layer2"
+   inkscape:label="Arm - Near Left"
+   style="display:inline"
+   transform="translate(3.5915215,2.4032009)"><g
+     id="part-near-arm-l"
+     inkscape:groupmode="layer"
+     inkscape:label="Lower Arm - Near Left"
+     data-rig-part="near_arm_l"
+     data-rig-bone="near_arm_l"
+     data-rig-z="13"
+     style="display:inline">
       <path
    style="fill:#f2aa88;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
    d="m 149.56747,128.69312 32.90743,5.94576 6.26375,1.30538 1.13052,3.50457 -0.9723,1.81971 -5.47666,2.30673 -36.99703,1.41911 -5.59939,-7.60175 0.57839,-6.40296 z"
    id="path1150"
    inkscape:label="Lower-arm-near-left" />
-    </g>
-    <g
-   id="part-near-arm-u"
-   inkscape:groupmode="layer"
-   inkscape:label="Upper Arm - Near Left"
-   data-rig-part="near_arm_u"
-   data-rig-bone="near_arm_u"
-   data-rig-z="14">
+    </g><g
+     id="part-near-arm-u"
+     inkscape:groupmode="layer"
+     inkscape:label="Upper Arm - Near Left"
+     data-rig-part="near_arm_u"
+     data-rig-bone="near_arm_u"
+     data-rig-z="14">
       <path
    style="fill:#f2efe7;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
    d="m 112.96238,120.64106 40.20241,8.52248 4.75195,0.80335 -2.48073,10.12138 -0.40833,4.77725 -37.26873,2.13327 -7.80908,-3.85165 z"
@@ -390,166 +400,166 @@
    id="path1352"
    inkscape:label="arm-near-left-cuff" />
     </g><g
-   id="part-near-hand"
-   inkscape:groupmode="layer"
-   inkscape:label="Hand - Near Left"
-   data-rig-part="near_hand"
-   data-rig-bone="near_arm_hand"
-   data-rig-z="15">
+     id="part-near-hand"
+     inkscape:groupmode="layer"
+     inkscape:label="Hand - Near Left"
+     data-rig-part="near_hand"
+     data-rig-bone="near_arm_hand"
+     data-rig-z="15">
       <path
    style="fill:#f2aa88;stroke:#171419;stroke-width:0.9;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4"
    d="m 181.14956,134.87745 c 0,0 2.31556,-3.48142 4.37286,-4.36113 2.0573,-0.87971 7.68211,-1.99311 7.68211,-1.99311 0,0 1.06563,0.11011 3.05341,-1.00217 1.98778,-1.11229 3.92004,-2.39361 3.92004,-2.39361 l 2.10097,-0.30548 c 0,0 1.52568,-0.15761 1.31992,1.8099 -0.20576,1.96751 -2.03893,4.54561 -2.03893,4.54561 l -2.37208,1.37622 15.56496,0.7081 c 0,0 3.23718,0.71742 2.46362,2.05435 -0.77354,1.33693 -1.78733,2.79315 -1.78733,2.79315 0,0 -0.58659,0.23498 -1.02909,0.30674 -0.4425,0.0718 -7.16115,-0.0161 -7.16115,-0.0161 l 9.01574,2.10972 c 0,0 2.29853,1.91355 1.93593,3.11976 -0.3626,1.20621 -1.27923,1.4107 -1.27923,1.4107 0,0 -0.40646,0.10225 -2.77531,0.10225 -2.36886,0 -7.92137,-1.92074 -7.92137,-1.92074 0,0 5.49383,1.9095 5.78775,2.74713 0.29391,0.83763 0.0894,1.98149 0.0894,1.98149 0,0 -1.22963,2.1463 -2.71045,1.47509 -1.48081,-0.67121 -1.48081,-0.67121 -1.48081,-0.67121 l -7.40227,-2.40844 4.38881,3.52754 c 0,0 0.56052,1.7135 -0.0901,2.36414 -0.65064,0.65063 -2.80539,1.19991 -2.80539,1.19991 0,0 -1.78573,-0.50606 -2.96983,-1.47747 -1.18411,-0.97141 -1.8716,-2.54802 -1.8716,-2.54802 l -1.49241,-1.00716 c 0,0 -5.9488,-0.18133 -7.7209,-0.94983 -1.7721,-0.76849 -4.26985,-2.35865 -4.26985,-2.35865 0,0 -1.83027,-1.18791 -2.33069,-2.53582 -0.50041,-1.34791 -0.18674,-7.68291 -0.18674,-7.68291 z"
    id="path1182"
    inkscape:label="hand-near-left-base" />
-    </g>
+    </g></g>
     <g
    id="rig-joints"
    inkscape:groupmode="layer"
    inkscape:label="Rig Joints"
-   style="display:none">
+   style="display:inline">
       <circle
    id="joint-waist"
    inkscape:label="Waist"
    data-rig-joint="waist"
-   cx="96.000"
-   cy="176.000"
-   r="2.250"
+   cx="95.109032"
+   cy="177.44832"
+   r="2.25"
    style="fill:#ff3eb5;fill-opacity:0.42;stroke:#5a183f;stroke-width:0.48;stroke-linecap:round;stroke-linejoin:round" />
       <circle
    id="joint-neck"
    inkscape:label="Neck"
    data-rig-joint="neck"
-   cx="95.000"
-   cy="123.000"
-   r="2.250"
+   cx="97.836479"
+   cy="108.73228"
+   r="2.25"
    style="fill:#ff3eb5;fill-opacity:0.42;stroke:#5a183f;stroke-width:0.48;stroke-linecap:round;stroke-linejoin:round" />
       <circle
    id="joint-far-shoulder"
    inkscape:label="Far Right Shoulder"
    data-rig-joint="far_shoulder"
-   cx="80.000"
-   cy="124.000"
-   r="2.250"
+   cx="79.240005"
+   cy="133.63503"
+   r="2.25"
    style="fill:#ff3eb5;fill-opacity:0.42;stroke:#5a183f;stroke-width:0.48;stroke-linecap:round;stroke-linejoin:round" />
       <circle
    id="joint-far-elbow"
    inkscape:label="Far Right Elbow"
    data-rig-joint="far_elbow"
-   cx="40.000"
-   cy="130.000"
-   r="2.250"
+   cx="40.381882"
+   cy="137.20602"
+   r="2.25"
    style="fill:#ff3eb5;fill-opacity:0.42;stroke:#5a183f;stroke-width:0.48;stroke-linecap:round;stroke-linejoin:round" />
       <circle
    id="joint-far-wrist"
    inkscape:label="Far Right Wrist"
    data-rig-joint="far_wrist"
-   cx="10.000"
-   cy="135.000"
-   r="2.250"
+   cx="11.758211"
+   cy="138.2813"
+   r="2.25"
    style="fill:#ff3eb5;fill-opacity:0.42;stroke:#5a183f;stroke-width:0.48;stroke-linecap:round;stroke-linejoin:round" />
       <circle
    id="joint-far-handtip"
    inkscape:label="Far Right Hand Tip"
    data-rig-joint="far_handtip"
-   cx="-13.000"
-   cy="135.000"
-   r="2.250"
+   cx="-20.646982"
+   cy="142.13358"
+   r="2.25"
    style="fill:#ff3eb5;fill-opacity:0.42;stroke:#5a183f;stroke-width:0.48;stroke-linecap:round;stroke-linejoin:round" />
       <circle
    id="joint-near-shoulder"
    inkscape:label="Near Left Shoulder"
    data-rig-joint="near_shoulder"
-   cx="113.000"
-   cy="122.000"
-   r="2.250"
+   cx="122.22648"
+   cy="133.18172"
+   r="2.25"
    style="fill:#ff3eb5;fill-opacity:0.42;stroke:#5a183f;stroke-width:0.48;stroke-linecap:round;stroke-linejoin:round" />
       <circle
    id="joint-near-elbow"
    inkscape:label="Near Left Elbow"
    data-rig-joint="near_elbow"
-   cx="150.000"
-   cy="130.000"
-   r="2.250"
+   cx="157.85123"
+   cy="139.88748"
+   r="2.25"
    style="fill:#ff3eb5;fill-opacity:0.42;stroke:#5a183f;stroke-width:0.48;stroke-linecap:round;stroke-linejoin:round" />
       <circle
    id="joint-near-wrist"
    inkscape:label="Near Left Wrist"
    data-rig-joint="near_wrist"
-   cx="183.000"
-   cy="135.000"
-   r="2.250"
+   cx="185.50493"
+   cy="140.88492"
+   r="2.25"
    style="fill:#ff3eb5;fill-opacity:0.42;stroke:#5a183f;stroke-width:0.48;stroke-linecap:round;stroke-linejoin:round" />
       <circle
    id="joint-near-handtip"
    inkscape:label="Near Left Hand Tip"
    data-rig-joint="near_handtip"
-   cx="211.000"
-   cy="135.000"
-   r="2.250"
+   cx="217.97009"
+   cy="144.09453"
+   r="2.25"
    style="fill:#ff3eb5;fill-opacity:0.42;stroke:#5a183f;stroke-width:0.48;stroke-linecap:round;stroke-linejoin:round" />
       <circle
    id="joint-far-hip"
    inkscape:label="Far Right Hip"
    data-rig-joint="far_hip"
-   cx="70.000"
-   cy="194.000"
-   r="2.250"
+   cx="83.931618"
+   cy="194.68404"
+   r="2.25"
    style="fill:#ff3eb5;fill-opacity:0.42;stroke:#5a183f;stroke-width:0.48;stroke-linecap:round;stroke-linejoin:round" />
       <circle
    id="joint-far-knee"
    inkscape:label="Far Right Knee"
    data-rig-joint="far_knee"
-   cx="63.000"
-   cy="220.000"
-   r="2.250"
+   cx="69.137054"
+   cy="223.18466"
+   r="2.25"
    style="fill:#ff3eb5;fill-opacity:0.42;stroke:#5a183f;stroke-width:0.48;stroke-linecap:round;stroke-linejoin:round" />
       <circle
    id="joint-far-ankle"
    inkscape:label="Far Right Ankle"
    data-rig-joint="far_ankle"
-   cx="48.000"
-   cy="257.000"
-   r="2.250"
+   cx="63.707298"
+   cy="261.33026"
+   r="2.25"
    style="fill:#ff3eb5;fill-opacity:0.42;stroke:#5a183f;stroke-width:0.48;stroke-linecap:round;stroke-linejoin:round" />
       <circle
    id="joint-far-toe"
    inkscape:label="Far Right Toe"
    data-rig-joint="far_toe"
-   cx="24.000"
-   cy="273.000"
-   r="2.250"
+   cx="24"
+   cy="273"
+   r="2.25"
    style="fill:#ff3eb5;fill-opacity:0.42;stroke:#5a183f;stroke-width:0.48;stroke-linecap:round;stroke-linejoin:round" />
       <circle
    id="joint-near-hip"
    inkscape:label="Near Left Hip"
    data-rig-joint="near_hip"
-   cx="95.000"
-   cy="197.000"
-   r="2.250"
+   cx="113.36913"
+   cy="194.48782"
+   r="2.25"
    style="fill:#ff3eb5;fill-opacity:0.42;stroke:#5a183f;stroke-width:0.48;stroke-linecap:round;stroke-linejoin:round" />
       <circle
    id="joint-near-knee"
    inkscape:label="Near Left Knee"
    data-rig-joint="near_knee"
-   cx="125.000"
-   cy="228.000"
-   r="2.250"
+   cx="132.75745"
+   cy="226.20451"
+   r="2.25"
    style="fill:#ff3eb5;fill-opacity:0.42;stroke:#5a183f;stroke-width:0.48;stroke-linecap:round;stroke-linejoin:round" />
       <circle
    id="joint-near-ankle"
    inkscape:label="Near Left Ankle"
    data-rig-joint="near_ankle"
-   cx="144.000"
-   cy="259.000"
-   r="2.250"
+   cx="158.88087"
+   cy="258.59103"
+   r="2.25"
    style="fill:#ff3eb5;fill-opacity:0.42;stroke:#5a183f;stroke-width:0.48;stroke-linecap:round;stroke-linejoin:round" />
       <circle
    id="joint-near-toe"
    inkscape:label="Near Left Toe"
    data-rig-joint="near_toe"
-   cx="121.000"
-   cy="273.000"
-   r="2.250"
+   cx="121"
+   cy="273"
+   r="2.25"
    style="fill:#ff3eb5;fill-opacity:0.42;stroke:#5a183f;stroke-width:0.48;stroke-linecap:round;stroke-linejoin:round" />
     </g>
   </g>
