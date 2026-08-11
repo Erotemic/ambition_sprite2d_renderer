@@ -207,3 +207,139 @@ def test_player_robot_v3_authored_body_tracks_publish_padding():
     assert metrics["body_pixel_bbox"]["x"] == 86 + left
     assert metrics["body_pixel_bbox"]["y"] == robot_target.BODY_BOX_TOP_PX + top
     assert metrics["feet_pixel"] == {"x": 114.0 + left, "y": 157.0 + top}
+
+
+def test_carl_stargan_covers_every_current_applicable_motion_category():
+    from ambition_sprite2d_renderer.targets.characters.carl_stargan_motion import (
+        APPLICABLE_MOTION_SCOPES as CARL_SCOPES,
+        CARL_ROWS,
+        FIGHTER_MOTION_COVERAGE as CARL_COVERAGE,
+    )
+
+    required = applicable_categories(CARL_SCOPES)
+    row_names = {name for name, _frames, _duration in CARL_ROWS}
+
+    assert set(CARL_COVERAGE) == required
+    validate_motion_coverage(
+        row_names=row_names,
+        coverage=CARL_COVERAGE,
+        scopes=CARL_SCOPES,
+        character="carl_stargan",
+    )
+
+
+def test_carl_stargan_builder_authors_every_declared_row():
+    from ambition_sprite2d_renderer.targets.characters import carl_stargan as carl_target
+    from ambition_sprite2d_renderer.targets.characters.carl_stargan_motion import CARL_ROWS
+
+    source = {
+        "ik_legs": [
+            {
+                "channel_prefix": "near_foot",
+                "rest_x": 10.0,
+                "rest_lift": 0.0,
+                "rest_pitch": 0.0,
+                "bend": 1.0,
+            },
+            {
+                "channel_prefix": "far_foot",
+                "rest_x": -10.0,
+                "rest_lift": 0.0,
+                "rest_pitch": 0.0,
+                "bend": 1.0,
+            },
+        ],
+        "ik_chains": [
+            {
+                "channel_prefix": "near_hand",
+                "rest_x": 17.0,
+                "rest_y": -48.0,
+                "rest_pitch": 0.0,
+                "bend": 1.0,
+            },
+            {
+                "channel_prefix": "far_hand",
+                "rest_x": -13.0,
+                "rest_y": -47.0,
+                "rest_pitch": 0.0,
+                "bend": 1.0,
+            },
+        ],
+    }
+    clips = scientist_builder._stargan_clips(
+        scientist_builder.SPECS["carl_stargan"],
+        source,
+    )
+    row_names = {name for name, _frames, _duration in CARL_ROWS}
+
+    assert set(clips) == row_names
+    assert carl_target.ROWS == list(CARL_ROWS)
+    assert all(int(clips[name]["frames"]) > 0 for name in row_names)
+    assert all(int(clips[name]["duration_ms"]) > 0 for name in row_names)
+    assert clips["roll"]["channels"]["pelvis"]["keys"][1][1] < 0
+    assert clips["roll_back"]["channels"]["pelvis"]["keys"][1][1] > 0
+
+
+def test_carl_stargan_keeps_cosmic_signature_specials():
+    from ambition_sprite2d_renderer.targets.characters.carl_stargan_motion import (
+        FIGHTER_MOTION_COVERAGE as coverage,
+    )
+
+    assert coverage["special_neutral"] == "pale_blue_dot"
+    assert coverage["special_side"] == "cosmic_calendar"
+    assert coverage["special_up"] == "cosmic_drift"
+    assert coverage["special_down"] == "billions_and_billions"
+    assert coverage["final_smash"] == "starstuff"
+
+
+def test_pca_covers_every_current_applicable_motion_category():
+    from ambition_sprite2d_renderer.targets.characters.pca_motion import (
+        APPLICABLE_MOTION_SCOPES as PCA_SCOPES,
+        FIGHTER_MOTION_COVERAGE as PCA_COVERAGE,
+        PCA_ROWS,
+    )
+
+    required = applicable_categories(PCA_SCOPES)
+    row_names = {name for name, _frames, _duration in PCA_ROWS}
+
+    assert set(PCA_COVERAGE) == required
+    validate_motion_coverage(
+        row_names=row_names,
+        coverage=PCA_COVERAGE,
+        scopes=PCA_SCOPES,
+        character="perfect_cellular_automaton",
+    )
+
+
+def test_pca_checked_in_rig_has_full_fighter_rows_and_real_back_roll():
+    import json
+    from pathlib import Path
+
+    from ambition_sprite2d_renderer.targets.characters.pca_motion import PCA_ROWS
+
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "ambition_sprite2d_renderer"
+        / "targets"
+        / "characters"
+        / "rigged"
+        / "perfect_cellular_automaton.rig.json"
+    )
+    doc = json.loads(path.read_text(encoding="utf8"))
+    row_names = {name for name, _frames, _duration in PCA_ROWS}
+
+    assert row_names <= set(doc["clips"])
+    assert doc["clips"]["roll"]["channels"]["pelvis"]["keys"][1][1] > 0
+    assert doc["clips"]["roll_back"]["channels"]["pelvis"]["keys"][1][1] < 0
+
+
+def test_pca_keeps_existing_signature_specials():
+    from ambition_sprite2d_renderer.targets.characters.pca_motion import (
+        FIGHTER_MOTION_COVERAGE as coverage,
+    )
+
+    assert coverage["special_neutral"] == "shoot"
+    assert coverage["special_side"] == "special"
+    assert coverage["special_up"] == "fly"
+    assert coverage["special_down"] == "charge"
+    assert coverage["final_smash"] == "final_smash"
