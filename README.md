@@ -437,9 +437,16 @@ supplied source list.
 
 Patent Clerk's current row list and category-to-row coverage live together in
 [`targets/characters/patent_clerk_motion.py`](ambition_sprite2d_renderer/targets/characters/patent_clerk_motion.py).
-The SVG rig builder and the renderer both import that same row declaration, so
-adding a motion cannot update one side while leaving the other stale. Coverage
-is checked with:
+Player Robot v3 uses the same contract in
+[`targets/characters/player_robot_v3_motion.py`](ambition_sprite2d_renderer/targets/characters/player_robot_v3_motion.py).
+Both SVG rig builders and shipping renderers import their character's one row
+declaration, so adding a motion cannot update generation while leaving sheet
+publication stale. Robot v3 keeps its Ambition-specific blink, flight, ranged,
+and interaction rows alongside the full applicable fighter-category surface;
+its Smash special coverage currently resolves neutral to shoot, side to
+blink_out (with blink_in retained as the paired arrival row), up to hover /
+boot-thruster flight, and down to the charge stance. These are visual bindings only; gameplay move semantics remain
+owned by the game-side moveset data. Coverage is checked with:
 
 ```bash
 uv run python -m pytest tests/test_fighter_motion_vocabulary.py -q

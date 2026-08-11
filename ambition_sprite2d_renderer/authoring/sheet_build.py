@@ -110,12 +110,93 @@ def canonical_render_only():
         _CANONICAL_ONLY.reset(token)
 
 
+def _normalize_frame_padding(frame_padding: Any) -> Tuple[int, int, int, int]:
+    """Return ``(left, top, right, bottom)`` publish padding.
+
+    The common shorthand ``N`` means the same transparent border on every side,
+    and ``(x, y)`` means horizontal/vertical padding. The result is always
+    non-negative integers so callers can safely add it to frame geometry.
+    """
+
+    if frame_padding is None:
+        return (0, 0, 0, 0)
+    if isinstance(frame_padding, (int, float)):
+        n = max(0, int(frame_padding))
+        return (n, n, n, n)
+    values = tuple(int(v) for v in frame_padding)
+    if len(values) == 2:
+        x, y = values
+        return (max(0, x), max(0, y), max(0, x), max(0, y))
+    if len(values) == 4:
+        left, top, right, bottom = values
+        return tuple(max(0, v) for v in (left, top, right, bottom))
+    raise ValueError(
+        "frame_padding must be None, a single integer, a 2-tuple, or a 4-tuple"
+    )
+
+
+def _shift_xy_payload(payload: Any, dx: float, dy: float) -> Any:
+    """Translate common point payloads by ``(dx, dy)``.
+
+    This handles the coordinate containers the sprite pipeline already emits:
+    ``{x, y}``, ``[x, y]`` / ``(x, y)``, and nested mappings/lists containing
+    those shapes. Non-coordinate payloads pass through unchanged.
+    """
+
+    if isinstance(payload, Mapping):
+        if "x" in payload and "y" in payload:
+            shifted = dict(payload)
+            shifted["x"] = round(float(payload["x"]) + dx, 3)
+            shifted["y"] = round(float(payload["y"]) + dy, 3)
+            return shifted
+        return {k: _shift_xy_payload(v, dx, dy) for k, v in payload.items()}
+    if isinstance(payload, tuple) and len(payload) == 2 and all(isinstance(v, (int, float)) for v in payload):
+        return (round(float(payload[0]) + dx, 3), round(float(payload[1]) + dy, 3))
+    if isinstance(payload, list) and len(payload) == 2 and all(isinstance(v, (int, float)) for v in payload):
+        return [round(float(payload[0]) + dx, 3), round(float(payload[1]) + dy, 3)]
+    if isinstance(payload, list):
+        return [_shift_xy_payload(v, dx, dy) for v in payload]
+    return payload
+
+
+def _pad_rgba_frame(frame: Image.Image, frame_padding: Tuple[int, int, int, int]) -> Image.Image:
+    left, top, right, bottom = frame_padding
+    if left == top == right == bottom == 0:
+        return frame
+    padded = Image.new(
+        "RGBA",
+        (frame.width + left + right, frame.height + top + bottom),
+        (0, 0, 0, 0),
+    )
+    padded.alpha_composite(frame, (left, top))
+    return padded
+
+
+def _translate_actor_metadata(actor_metadata: Any, dx: float, dy: float) -> Any:
+    if not actor_metadata:
+        return actor_metadata
+    shifted = deepcopy(actor_metadata)
+    sockets = shifted.get("sockets")
+    if isinstance(sockets, Mapping):
+        for socket in sockets.values():
+            if isinstance(socket, MutableMapping) and "point" in socket:
+                socket["point"] = _shift_xy_payload(socket["point"], dx, dy)
+    return shifted
+
+
+def _translate_attack_hitboxes(attack_hitboxes: Any, dx: float, dy: float) -> Any:
+    if not attack_hitboxes:
+        return attack_hitboxes
+    return deepcopy(_shift_xy_payload(attack_hitboxes, dx, dy))
+
+
 @profile
 def _render_canonical_only(source: FrameSource, out_dir: Path) -> dict[str, Path]:
     target = source.target
     rows = source.rows
     anim, nframes, _duration = rows[0]
     image = source.render_fn(anim, min(1, nframes - 1), nframes).convert("RGBA")
+    image = _pad_rgba_frame(image, _normalize_frame_padding(getattr(source, "frame_padding", None)))
     if source.auto_crop:
         bbox = image.getchannel("A").getbbox()
         if bbox is not None:
@@ -540,6 +621,7 @@ def build_sheet(
     frame_meta_fn=None,
     auto_crop: bool = True,
     crop_margin: int = 2,
+    frame_padding=None,
     actor_metadata=None,
     body_metrics_fn=None,
     sheet_tuning=None,
@@ -565,6 +647,7 @@ def build_sheet(
         frame_meta_fn=frame_meta_fn,
         auto_crop=auto_crop,
         crop_margin=crop_margin,
+        frame_padding=frame_padding,
         actor_metadata=actor_metadata,
         body_inset=body_inset,
         body_metrics_fn=body_metrics_fn,
@@ -655,6 +738,8 @@ def render_sheet(source: FrameSource, out_dir: Path):
     sheet_tuning = source.sheet_tuning
     animation_key_map = source.animation_key_map
     attack_hitboxes = source.attack_hitboxes(source.frame_size)
+    frame_padding = _normalize_frame_padding(getattr(source, "frame_padding", None))
+    pad_left, pad_top, pad_right, pad_bottom = frame_padding
     max_sheet_dimension = source.max_sheet_dimension
     trim = source.trim
     # `getattr`, because the recipe fields are optional on the FrameSource
@@ -693,11 +778,16 @@ def render_sheet(source: FrameSource, out_dir: Path):
         frames_data: List[Tuple[Image.Image, dict]] = []
         for frame_idx in range(nframes):
             frame = render_fn(anim, frame_idx, nframes)
+            if frame.mode != "RGBA":
+                frame = frame.convert("RGBA")
+            frame = _pad_rgba_frame(frame, frame_padding)
             meta = {}
             if frame_meta_fn is not None:
                 extra = frame_meta_fn(anim, frame_idx, nframes)
                 if extra:
                     meta = dict(extra)
+                    if pad_left or pad_top:
+                        meta = _shift_xy_payload(meta, pad_left, pad_top)
             frames_data.append((frame, meta))
         rendered_rows.append((anim, nframes, duration_ms, frames_data))
         row_duration = time.perf_counter() - row_started
@@ -717,6 +807,10 @@ def render_sheet(source: FrameSource, out_dir: Path):
     # fall back to frame 0. The copy keeps subsequent cropping independent.
     canon_index = min(1, rows[0][1] - 1)
     canonical_raw = rendered_rows[0][3][canon_index][0].copy()
+    actor_metadata = _translate_actor_metadata(actor_metadata, pad_left, pad_top)
+    attack_hitboxes = _translate_attack_hitboxes(attack_hitboxes, pad_left, pad_top)
+    fw += pad_left + pad_right
+    fh += pad_top + pad_bottom
 
     # ---- Auto-crop pass (optional) --------------------------------------
     # Union alpha bbox across every frame in the sheet AND the canonical.
@@ -1019,6 +1113,7 @@ def write_canonical(
     *,
     frame_size: Tuple[int, int] = BASE_FRAME,
     crop_margin: int = 4,
+    frame_padding=None,
 ) -> Path:
     """Render ONLY the canonical frame for ``target`` and save it.
 
@@ -1041,6 +1136,7 @@ def write_canonical(
     img = render_fn(anim, frame_idx, nframes)
     if img.mode != "RGBA":
         img = img.convert("RGBA")
+    img = _pad_rgba_frame(img, _normalize_frame_padding(frame_padding))
     bbox = img.getchannel("A").getbbox()
     if bbox is not None:
         x1, y1, x2, y2 = bbox

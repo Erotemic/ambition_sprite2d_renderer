@@ -204,6 +204,7 @@ class CallableFrameSource:
         label_width: int = 0,
         auto_crop: bool = True,
         crop_margin: int = 2,
+        frame_padding = None,
         actor_metadata: Optional[Dict[str, Any]] = None,
         body_inset: Optional[Dict[str, float]] = None,
         frame_meta_fn=None,
@@ -223,6 +224,7 @@ class CallableFrameSource:
         self.label_width = label_width
         self.auto_crop = auto_crop
         self.crop_margin = crop_margin
+        self.frame_padding = frame_padding
         self._actor_metadata = actor_metadata
         self._body_inset = body_inset
         self.frame_meta_fn = frame_meta_fn

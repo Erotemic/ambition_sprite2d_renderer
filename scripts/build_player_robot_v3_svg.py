@@ -2,15 +2,24 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 from typing import Dict, Iterable, Sequence, Tuple
 
+from ambition_sprite2d_renderer.authoring.fighter_motion_catalog import validate_motion_coverage
 from ambition_sprite2d_renderer.authoring.humanoid_svg_rig import (
     HumanoidViewSpec,
     build_humanoid_view_document,
 )
 from ambition_sprite2d_renderer.targets.characters.robot25d import Pose
 from ambition_sprite2d_renderer.targets.characters.robot_side import SideRobotGenerator
+from ambition_sprite2d_renderer.targets.characters.player_robot_v3_motion import (
+    APPLICABLE_MOTION_SCOPES,
+    FIGHTER_MOTION_COVERAGE,
+    LOOPING_ROWS,
+    POSE_ALIASES,
+    ROBOT_ROWS,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 PKG = ROOT / "ambition_sprite2d_renderer"
@@ -24,69 +33,15 @@ FRAME_HEIGHT = 224
 CENTER_X = 112.0
 GROUND_Y = 158.0
 
-# Exact row vocabulary currently published by configs/player_robot_v3.yaml.
-ANIMATION_ORDER = [
-    "idle",
-    "walk",
-    "run",
-    "jump",
-    "fall",
-    "slash",
-    "hit",
-    "death",
-    "blink_out",
-    "blink_in",
-    "dash",
-    "hover",
-    "ledge_grab",
-    "dash_startup",
-    "land_hard",
-    "land_recovery",
-    "wall_grab",
-    "ledge_climb",
-    "ledge_getup",
-    "float_glide",
-    "attack_side",
-    "attack_up",
-    "attack_down",
-    "air_neutral",
-    "air_forward",
-    "air_back",
-    "air_down",
-    "air_up",
-    "ledge_roll",
-    "ledge_getup_attack",
-    "crouch",
-    "crouch_walk",
-    "slide",
-    "climb",
-    "swim",
-    "block",
-    "roll",
-    "wall_jump",
-    "shoot",
-    "aim",
-    "charge",
-    "interact",
-]
-
-LOOPING = {
-    "idle",
-    "walk",
-    "run",
-    "fall",
-    "hover",
-    "ledge_grab",
-    "wall_grab",
-    "float_glide",
-    "crouch",
-    "crouch_walk",
-    "climb",
-    "swim",
-    "block",
-    "aim",
-    "charge",
+# The shipping target and this builder share one row declaration. The full
+# future vocabulary remains in data/fighter_motion_vocabulary.yaml; ROBOT_ROWS
+# is the current-art category surface plus retained Ambition-specific rows.
+ANIMATION_ORDER = [name for name, _frames, _duration in ROBOT_ROWS]
+ROW_INFO = {
+    name: {"frames": int(frames), "duration_ms": int(duration)}
+    for name, frames, duration in ROBOT_ROWS
 }
+LOOPING = set(LOOPING_ROWS)
 
 Pair = Tuple[float, float]
 
@@ -145,18 +100,314 @@ def _foot_pitch(animation: str, frame: int, side: str, body_tilt: float) -> floa
     return 0.0
 
 
+def _smooth01(value: float) -> float:
+    q = max(0.0, min(1.0, float(value)))
+    return q * q * (3.0 - 2.0 * q)
+
+
+def _sample_pose(generator: SideRobotGenerator, animation: str, t: float) -> Pose:
+    # Use a dense virtual clip so source choreography can be resampled into a
+    # different destination frame count without coupling to its legacy timing.
+    count = 101
+    index = int(round(max(0.0, min(1.0, t)) * (count - 1)))
+    return generator.pose_for_animation(animation, index, count)
+
+
+def _blend_pose(first: Pose, second: Pose, amount: float) -> Pose:
+    q = _smooth01(amount)
+    out = Pose()
+    for name in Pose.__dataclass_fields__:
+        a = getattr(first, name)
+        b = getattr(second, name)
+        if isinstance(a, bool):
+            value = b if q >= 0.5 else a
+        elif isinstance(a, (int, float)) and isinstance(b, (int, float)):
+            value = float(a) + (float(b) - float(a)) * q
+        else:
+            value = b if q >= 0.5 else a
+        setattr(out, name, value)
+    return out
+
+
+def _pose_for_motion(
+    generator: SideRobotGenerator,
+    animation: str,
+    frame_index: int,
+    frame_count: int,
+) -> Pose:
+    """Resolve one v3 fighter verb into current robot choreography.
+
+    Several current-art categories deliberately borrow a mature source motion,
+    but the category remains a real clip and may add a category-specific pose
+    adjustment here. This keeps the visual vocabulary complete without making
+    SideRobotGenerator's whole robot family inherit protagonist-only Smash rows.
+    """
+
+    t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
+    source = POSE_ALIASES.get(animation, animation)
+
+    # Transition rows use a controlled portion of an existing loop/one-shot.
+    if animation == "crouch_start":
+        pose = _sample_pose(generator, "crouch", 0.5 * t)
+    elif animation == "crouch_end":
+        pose = _sample_pose(generator, "crouch", 0.5 + 0.5 * t)
+    elif animation == "jump_squat":
+        pose = _sample_pose(generator, "jump", 0.22 * t)
+    elif animation == "shield_raise":
+        pose = _blend_pose(Pose(), _sample_pose(generator, "block", 0.25), t)
+    elif animation == "shield_release":
+        pose = _blend_pose(_sample_pose(generator, "block", 0.25), Pose(), t)
+    elif animation == "sleep_start":
+        pose = _blend_pose(Pose(), _sample_pose(generator, "sleep", 0.25), t)
+    elif animation == "wake":
+        pose = _blend_pose(_sample_pose(generator, "sleep", 0.25), Pose(), t)
+    elif animation in {"prone", "trip_idle"}:
+        pose = _sample_pose(generator, "death", 1.0)
+    elif animation in {"getup", "trip_getup", "shield_break_recover"}:
+        pose = _sample_pose(generator, "death", 1.0 - t)
+        pose.dead = False
+        pose.collapse = max(0.0, pose.collapse * (1.0 - t))
+    else:
+        pose = generator.pose_for_animation(source, frame_index, frame_count)
+
+    wave = math.sin(t * math.tau)
+    arc = math.sin(t * math.pi)
+
+    if animation == "idle_look_up":
+        pose.head_tilt -= 16.0
+        pose.head_dy -= 1.5
+        pose.eye_squint *= 0.4
+    elif animation == "walk_stop":
+        pose.root_x += 4.0 * (1.0 - _smooth01(t))
+        pose.body_tilt -= 7.0 * (1.0 - _smooth01(t))
+    elif animation == "turnaround":
+        pose.head_look = 1.0 - 2.0 * _smooth01(t)
+        pose.body_tilt += 8.0 * arc
+        pose.head_tilt -= 5.0 * arc
+        pose.near_arm_upper -= 10.0 * arc
+        pose.far_arm_upper += 10.0 * arc
+    elif animation == "stumble":
+        pose.root_x += 4.0 * wave
+        pose.body_tilt += 12.0 * wave
+        pose.head_tilt -= 7.0 * wave
+    elif animation == "double_jump":
+        pose.root_x *= 0.35
+        pose.root_y -= 8.0 * arc
+        pose.body_tilt *= 0.55
+        pose.whole_body_rotation = -72.0 * arc
+    elif animation == "fall_special":
+        pose.root_y += 4.0 * t
+        pose.body_tilt += 8.0
+        pose.eye_squint = max(pose.eye_squint, 0.20)
+    elif animation == "tumble":
+        pose.root_x *= 0.22
+        pose.root_y = -12.0 + 6.0 * t
+        pose.whole_body_rotation = -360.0 * _smooth01(t)
+    elif animation == "roll_back":
+        pose.root_x = -pose.root_x
+        pose.whole_body_rotation = -pose.whole_body_rotation
+    elif animation == "spot_dodge":
+        pose.root_x *= 0.08
+        pose.root_y -= 5.0 * arc
+        pose.whole_body_rotation *= 0.12
+        pose.body_tilt += 18.0 * wave
+    elif animation == "air_dodge":
+        pose.root_x = 10.0 * math.sin((t - 0.5) * math.pi)
+        pose.root_y = -12.0 - 4.0 * arc
+        pose.body_tilt = -22.0 + 44.0 * t
+        pose.near_leg_upper += 18.0 * arc
+        pose.far_leg_upper -= 18.0 * arc
+    elif animation == "platform_drop":
+        pose.root_y += 8.0 * _smooth01(t)
+        pose.body_tilt += 6.0
+    elif animation == "footstool_jump":
+        pose.root_y -= 7.0 * arc
+        pose.near_leg_lower += 22.0 * arc
+        pose.far_leg_lower += 22.0 * arc
+    elif animation == "teeter_start":
+        pose.body_tilt += 11.0 * _smooth01(t)
+        pose.head_tilt -= 8.0 * _smooth01(t)
+    elif animation == "teeter":
+        pose.body_tilt += 11.0 + 4.0 * wave
+        pose.head_tilt -= 8.0 + 3.0 * wave
+        pose.near_arm_upper -= 12.0 * wave
+        pose.far_arm_upper += 12.0 * wave
+    elif animation == "parry":
+        pose.body_tilt -= 7.0 * arc
+        pose.head_tilt -= 4.0 * arc
+        pose.eye_squint = 0.08
+    elif animation == "shield_hit":
+        pose.root_x -= 4.0 * arc
+        pose.body_tilt += 14.0 * arc
+        pose.eye_squint = 0.35
+    elif animation == "launch":
+        pose.root_x += 14.0 * t
+        pose.root_y -= 10.0 * arc
+        pose.whole_body_rotation = -120.0 * t
+    elif animation == "meteor":
+        pose.root_y += 15.0 * _smooth01(t)
+        pose.whole_body_rotation = 120.0 * t
+    elif animation in {"impact", "splat", "prone_damage", "grabbed_pummel"}:
+        pose.body_tilt += 10.0 * wave
+        pose.head_tilt -= 8.0 * wave
+    elif animation == "ground_bounce":
+        pose.root_y -= 8.0 * arc
+        pose.whole_body_rotation = 36.0 * wave
+    elif animation == "knockdown":
+        pose.dead = False
+        pose.collapse *= 0.85
+    elif animation == "getup_attack":
+        pose.root_x += 3.0 * arc
+    elif animation in {"getup_roll", "tech_roll", "trip_roll", "grab_escape"}:
+        pose.root_x *= 0.75
+    elif animation == "wall_tech":
+        pose.root_x -= 4.0
+        pose.body_tilt *= 0.4
+    elif animation == "ceiling_tech":
+        pose.root_y = -14.0 + 8.0 * _smooth01(t)
+        pose.whole_body_rotation = 180.0 * (1.0 - _smooth01(t))
+    elif animation == "shield_break_launch":
+        pose.root_y -= 14.0 * arc
+        pose.whole_body_rotation = -180.0 * t
+    elif animation == "shield_break_fall":
+        pose.whole_body_rotation = -90.0 - 90.0 * t
+    elif animation == "shield_break_collapse":
+        pose.dead = False
+        pose.eye_squint = 0.45
+    elif animation == "dizzy":
+        pose.head_tilt += 12.0 * wave
+        pose.head_look = math.sin(t * math.tau * 2.0)
+        pose.eye_squint = 0.45
+    elif animation == "bury_start":
+        pose.root_y += 10.0 * _smooth01(t)
+    elif animation == "buried":
+        pose.root_y += 12.0
+        pose.body_tilt *= 0.3
+    elif animation == "bury_escape":
+        pose.root_y -= 10.0 * arc
+        pose.near_arm_upper -= 30.0 * wave
+        pose.far_arm_upper += 30.0 * wave
+    elif animation == "jab":
+        pose.root_x *= 0.35
+        pose.body_tilt *= 0.55
+        pose.slash *= 0.65
+    elif animation == "dash_attack":
+        pose.root_x += 9.0 * _smooth01(t)
+        pose.body_tilt -= 11.0
+    elif animation == "smash_forward":
+        pose.root_x += 5.0 * arc
+        pose.body_tilt -= 10.0 * arc
+        pose.slash = max(1.0, pose.slash)
+    elif animation == "smash_up":
+        pose.root_y -= 4.0 * arc
+        pose.slash = max(1.0, pose.slash)
+    elif animation == "smash_down":
+        pose.root_y += 3.0 * arc
+        pose.slash = max(1.0, pose.slash)
+    elif animation == "air_land":
+        pose.root_y += 2.0 * arc
+    elif animation == "final_smash":
+        pose.root_y -= 4.0 * arc
+        pose.body_tilt -= 10.0 * arc
+        pose.near_arm_upper -= 35.0 * arc
+        pose.far_arm_upper += 35.0 * arc
+        pose.eye_squint = 0.08
+    elif animation == "grab":
+        pose.root_x += 3.0 * arc
+        pose.near_arm_upper -= 20.0 * arc
+        pose.near_arm_lower -= 26.0 * arc
+    elif animation == "grab_hold":
+        pose.near_arm_upper -= 18.0
+        pose.near_arm_lower -= 22.0
+        pose.far_arm_upper += 12.0
+    elif animation == "pummel":
+        pose.root_x += 2.0 * arc
+        pose.near_arm_upper -= 15.0 * arc
+    elif animation == "grabbed":
+        pose.near_arm_upper -= 25.0
+        pose.far_arm_upper += 25.0
+        pose.near_leg_upper += 12.0
+        pose.far_leg_upper -= 12.0
+    elif animation.startswith("throw_"):
+        if animation == "throw_back":
+            pose.body_tilt += 18.0 * arc
+            pose.whole_body_rotation = 35.0 * arc
+        elif animation == "throw_up":
+            pose.root_y -= 5.0 * arc
+            pose.near_arm_upper -= 28.0 * arc
+        elif animation == "throw_down":
+            pose.root_y += 4.0 * arc
+            pose.near_arm_upper += 24.0 * arc
+        else:
+            pose.root_x += 5.0 * arc
+    elif animation == "ledge_catch":
+        pose.root_y -= 4.0 * (1.0 - _smooth01(t))
+    elif animation == "ledge_jump":
+        pose.root_x *= 0.55
+        pose.root_y -= 6.0 * arc
+    elif animation == "ledge_drop":
+        pose.root_y += 10.0 * _smooth01(t)
+    elif animation == "trip_fall":
+        pose.dead = False
+        pose.collapse *= 0.65
+        pose.whole_body_rotation *= 0.35
+    elif animation == "trip_attack":
+        pose.root_y += 2.0
+    elif animation == "item_hold":
+        pose.near_arm_upper -= 12.0
+        pose.near_arm_lower -= 18.0
+    elif animation == "item_hold_crouch":
+        pose.near_arm_upper -= 10.0
+        pose.near_arm_lower -= 12.0
+    elif animation == "item_heavy_pickup":
+        pose.body_tilt -= 10.0 * arc
+        pose.near_arm_upper -= 16.0 * arc
+        pose.far_arm_upper += 16.0 * arc
+    elif animation == "item_heavy_carry":
+        pose.body_tilt -= 8.0
+        pose.near_arm_upper -= 18.0
+        pose.far_arm_upper += 18.0
+    elif animation == "item_drop":
+        pose.near_arm_upper += 15.0 * _smooth01(t)
+    elif animation == "item_swing":
+        # Body choreography only; the held-item system supplies the item.
+        pose.slash = 0.0
+    elif animation == "taunt":
+        pose.head_tilt -= 8.0 * arc
+        pose.head_look = 1.0 - 0.5 * arc
+    elif animation == "victory_hold":
+        pose.body_bob *= 0.35
+        pose.head_tilt -= 5.0
+    elif animation == "loss":
+        pose.body_tilt += 10.0
+        pose.head_tilt += 12.0
+        pose.eye_squint = 0.28
+
+    return pose
+
+
 def make_clips(doc: dict) -> dict:
     generator = SideRobotGenerator()
     default = Pose()
     rest, _parent, canonical = _bone_maps(doc)
 
+    validate_motion_coverage(
+        row_names=ANIMATION_ORDER,
+        coverage=FIGHTER_MOTION_COVERAGE,
+        scopes=APPLICABLE_MOTION_SCOPES,
+        character="player_robot_v3",
+    )
+
     clips: dict[str, dict] = {}
     for animation in ANIMATION_ORDER:
-        info = generator.ANIMATIONS[animation]
+        info = ROW_INFO[animation]
         nframes = int(info["frames"])
         duration_ms = int(info["duration_ms"])
         loop = animation in LOOPING
-        poses = [generator.pose_for_animation(animation, i, nframes) for i in range(nframes)]
+        poses = [
+            _pose_for_motion(generator, animation, i, nframes)
+            for i in range(nframes)
+        ]
 
         channels: dict[str, dict] = {}
 
@@ -245,7 +496,7 @@ def make_clips(doc: dict) -> dict:
             ]
             foot_world = [
                 canonical[foot_name]
-                + _foot_pitch(animation, i, side, poses[i].body_tilt)
+                + _foot_pitch(POSE_ALIASES.get(animation, animation), i, side, poses[i].body_tilt)
                 + poses[i].whole_body_rotation
                 for i in range(nframes)
             ]
@@ -323,7 +574,8 @@ def build_doc() -> dict:
         "split_leg_artwork": True,
         "fingers_locked_to_hands": True,
         "toe_caps_locked_to_boots": True,
-        "source_animation_vocabulary": "configs/player_robot_v3.yaml",
+        "source_animation_vocabulary": "data/fighter_motion_vocabulary.yaml",
+        "motion_profile": "targets/characters/player_robot_v3_motion.py",
         "logical_frame": [FRAME_WIDTH, FRAME_HEIGHT],
         "trimmed_runtime_frames": True,
         "roll_has_expanded_canvas": True,
