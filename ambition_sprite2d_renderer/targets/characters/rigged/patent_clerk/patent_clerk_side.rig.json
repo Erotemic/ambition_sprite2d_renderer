@@ -5,7 +5,7 @@
     "height": 176,
     "center_x": 88.0,
     "ground_y": 150.0,
-    "ankle_h": 11.7421,
+    "ankle_h": 10.8092,
     "supersample": 4,
     "render_scale": 1
   },
@@ -22,7 +22,7 @@
       "parent": null,
       "offset": [
         0.0,
-        -42.1429
+        -42.5932
       ],
       "length": 0.0,
       "rest_angle": 0.0
@@ -31,8 +31,8 @@
       "name": "torso",
       "parent": "pelvis",
       "offset": [
-        6.5305,
-        -9.5224
+        -1.705,
+        -8.3642
       ],
       "length": 0.0,
       "rest_angle": 0.0
@@ -41,8 +41,8 @@
       "name": "head",
       "parent": "torso",
       "offset": [
-        -0.4504,
-        -25.7361
+        1.2868,
+        -33.3926
       ],
       "length": 0.0,
       "rest_angle": 0.0
@@ -51,121 +51,121 @@
       "name": "far_arm_u",
       "parent": "torso",
       "offset": [
-        -7.7852,
-        -25.2857
+        -7.7208,
+        -21.2966
       ],
-      "length": 19.6549,
-      "rest_angle": 171.3394
+      "length": 18.9956,
+      "rest_angle": 174.7529
     },
     {
       "name": "far_arm_l",
       "parent": "far_arm_u",
       "offset": [
-        19.6549,
+        18.9956,
         -0.0
       ],
-      "length": 14.8085,
-      "rest_angle": -0.8426
+      "length": 13.9713,
+      "rest_angle": 3.1358
     },
     {
       "name": "far_arm_hand",
       "parent": "far_arm_l",
       "offset": [
-        14.8085,
-        0.0
+        13.9713,
+        -0.0
       ],
-      "length": 11.1952,
-      "rest_angle": 9.5032
+      "length": 15.8095,
+      "rest_angle": -4.6666
     },
     {
       "name": "far_leg_u",
       "parent": "pelvis",
       "offset": [
-        -6.0802,
-        -0.7077
+        -7.1739,
+        0.0643
       ],
-      "length": 13.0636,
-      "rest_angle": 105.1314
+      "length": 15.5976,
+      "rest_angle": 117.5164
     },
     {
       "name": "far_leg_l",
       "parent": "far_leg_u",
       "offset": [
-        13.0636,
+        15.5976,
         0.0
       ],
-      "length": 19.4512,
-      "rest_angle": 7.022
+      "length": 18.7168,
+      "rest_angle": -19.4141
     },
     {
       "name": "far_leg_foot",
       "parent": "far_leg_l",
       "offset": [
-        19.4512,
-        -0.0
+        18.7168,
+        0.0
       ],
-      "length": 14.0082,
-      "rest_angle": 34.0836
+      "length": 20.1336,
+      "rest_angle": 65.3739
     },
     {
       "name": "near_arm_u",
       "parent": "torso",
       "offset": [
-        8.2999,
-        -26.2508
+        13.1897,
+        -21.4896
       ],
-      "length": 18.4378,
-      "rest_angle": 12.2903
+      "length": 17.604,
+      "rest_angle": 10.5296
     },
     {
       "name": "near_arm_l",
       "parent": "near_arm_u",
       "offset": [
-        18.4378,
+        17.604,
         0.0
       ],
-      "length": 16.1966,
-      "rest_angle": -3.8383
+      "length": 13.457,
+      "rest_angle": -8.3375
     },
     {
       "name": "near_arm_hand",
       "parent": "near_arm_l",
       "offset": [
-        16.1966,
+        13.457,
         0.0
       ],
-      "length": 13.6403,
-      "rest_angle": -8.1817
+      "length": 15.8388,
+      "rest_angle": 3.4027
     },
     {
       "name": "near_leg_u",
       "parent": "pelvis",
       "offset": [
-        6.0802,
-        0.7077
+        7.1739,
+        -0.0643
       ],
-      "length": 20.9311,
-      "rest_angle": 45.9963
+      "length": 18.0745,
+      "rest_angle": 58.6865
     },
     {
       "name": "near_leg_l",
       "parent": "near_leg_u",
       "offset": [
-        20.9311,
-        -0.0
+        18.0745,
+        0.0
       ],
-      "length": 17.7328,
-      "rest_angle": 12.5051
+      "length": 20.2676,
+      "rest_angle": -7.6303
     },
     {
       "name": "near_leg_foot",
       "parent": "near_leg_l",
       "offset": [
-        17.7328,
+        20.2676,
         0.0
       ],
-      "length": 13.109,
-      "rest_angle": 90.149
+      "length": 19.7526,
+      "rest_angle": 108.1475
     }
   ],
   "parts": [
@@ -178,10 +178,10 @@
         "path1161"
       ],
       "pivot": [
-        370.5,
-        605.0
+        423.0,
+        607.5
       ],
-      "rest_angle": 105.1314,
+      "rest_angle": 117.5164,
       "svg_source_order": 0
     },
     {
@@ -193,10 +193,10 @@
         "path1165"
       ],
       "pivot": [
-        287.0,
-        843.0
+        346.5,
+        859.0
       ],
-      "rest_angle": 146.2369,
+      "rest_angle": 163.4761,
       "svg_source_order": 1
     },
     {
@@ -208,10 +208,10 @@
         "path1163"
       ],
       "pivot": [
-        344.0,
-        703.0
+        367.0,
+        715.0
       ],
-      "rest_angle": 112.1533,
+      "rest_angle": 98.1022,
       "svg_source_order": 2
     },
     {
@@ -223,10 +223,10 @@
         "path1145"
       ],
       "pivot": [
-        257.0,
-        363.0
+        258.5,
+        390.0
       ],
-      "rest_angle": 170.4968,
+      "rest_angle": 177.8887,
       "svg_source_order": 3
     },
     {
@@ -239,10 +239,10 @@
         "path1349"
       ],
       "pivot": [
-        408.0,
-        340.0
+        405.5,
+        376.5
       ],
-      "rest_angle": 171.3394,
+      "rest_angle": 174.7529,
       "svg_source_order": 4
     },
     {
@@ -254,10 +254,10 @@
         "path1178"
       ],
       "pivot": [
-        143.5,
-        382.0
+        150.0,
+        394.0
       ],
-      "rest_angle": 180.0,
+      "rest_angle": 173.2221,
       "svg_source_order": 5
     },
     {
@@ -269,16 +269,31 @@
         "path1153"
       ],
       "pivot": [
-        417.75,
-        610.5
+        478.75,
+        607.0
       ],
       "rest_angle": 0.0,
       "svg_source_order": 6
     },
     {
-      "name": "torso",
+      "name": "neck",
       "bone": "torso",
       "z": 7.0,
+      "kind": "sprite",
+      "include": [
+        "path1115"
+      ],
+      "pivot": [
+        465.5,
+        542.0
+      ],
+      "rest_angle": 0.0,
+      "svg_source_order": 7
+    },
+    {
+      "name": "torso",
+      "bone": "torso",
+      "z": 8.0,
       "kind": "sprite",
       "include": [
         "path1109",
@@ -289,23 +304,8 @@
         "path1113"
       ],
       "pivot": [
-        468.5,
-        536.5
-      ],
-      "rest_angle": 0.0,
-      "svg_source_order": 7
-    },
-    {
-      "name": "neck",
-      "bone": "torso",
-      "z": 8.0,
-      "kind": "sprite",
-      "include": [
-        "path1115"
-      ],
-      "pivot": [
-        468.5,
-        536.5
+        465.5,
+        542.0
       ],
       "rest_angle": 0.0,
       "svg_source_order": 8
@@ -334,8 +334,8 @@
         "path1102"
       ],
       "pivot": [
-        465.0,
-        336.5
+        475.5,
+        282.5
       ],
       "rest_angle": 0.0,
       "svg_source_order": 9
@@ -349,10 +349,10 @@
         "path1172"
       ],
       "pivot": [
-        650.0,
-        850.5
+        706.5,
+        849.0
       ],
-      "rest_angle": 148.6504,
+      "rest_angle": 159.2037,
       "svg_source_order": 10
     },
     {
@@ -364,10 +364,10 @@
         "path1156"
       ],
       "pivot": [
-        465.0,
-        616.0
+        534.5,
+        606.5
       ],
-      "rest_angle": 45.9963,
+      "rest_angle": 58.6865,
       "svg_source_order": 11
     },
     {
@@ -379,10 +379,10 @@
         "path1158"
       ],
       "pivot": [
-        578.0,
-        733.0
+        607.5,
+        726.5
       ],
-      "rest_angle": 58.5015,
+      "rest_angle": 51.0561,
       "svg_source_order": 12
     },
     {
@@ -394,10 +394,10 @@
         "path1150"
       ],
       "pivot": [
-        673.0,
-        363.0
+        702.5,
+        400.0
       ],
-      "rest_angle": 8.452,
+      "rest_angle": 2.1921,
       "svg_source_order": 13
     },
     {
@@ -410,10 +410,10 @@
         "path1352"
       ],
       "pivot": [
-        533.0,
-        332.5
+        568.0,
+        375.0
       ],
-      "rest_angle": 12.2903,
+      "rest_angle": 10.5296,
       "svg_source_order": 14
     },
     {
@@ -425,10 +425,10 @@
         "path1182"
       ],
       "pivot": [
-        797.5,
-        381.5
+        807.0,
+        404.0
       ],
-      "rest_angle": 0.2703,
+      "rest_angle": 5.5948,
       "svg_source_order": 15
     }
   ],
@@ -438,20 +438,20 @@
       "lower": "near_leg_l",
       "foot": "near_leg_foot",
       "channel_prefix": "near_foot",
-      "rest_x": 29.886,
-      "rest_lift": -0.4826,
-      "rest_pitch": 148.6504,
-      "bend": 1.0
+      "rest_x": 29.307,
+      "rest_lift": 0.6434,
+      "rest_pitch": 159.2037,
+      "bend": -1.0
     },
     {
       "upper": "far_leg_u",
       "lower": "far_leg_l",
       "foot": "far_leg_foot",
       "channel_prefix": "far_foot",
-      "rest_x": -16.825,
-      "rest_lift": 0.4826,
-      "rest_pitch": 146.2369,
-      "bend": 1.0
+      "rest_x": -17.018,
+      "rest_lift": -0.6434,
+      "rest_pitch": 163.4761,
+      "bend": -1.0
     }
   ],
   "ik_chains": [
@@ -460,20 +460,24 @@
       "lower": "near_arm_l",
       "end": "near_arm_hand",
       "channel_prefix": "near_hand",
-      "rest_x": 48.8664,
-      "rest_y": -71.6107,
-      "rest_pitch": 0.2703,
-      "bend": -1.0
+      "rest_x": -12.0,
+      "rest_y": -57.0,
+      "rest_pitch": 5.5948,
+      "bend": 1.0,
+      "pose_authority": "explicit-hint",
+      "max_reach_ratio": 0.98
     },
     {
       "upper": "far_arm_u",
       "lower": "far_arm_l",
       "end": "far_arm_hand",
       "channel_prefix": "far_hand",
-      "rest_x": -35.2906,
-      "rest_y": -71.5463,
-      "rest_pitch": 180.0,
-      "bend": -1.0
+      "rest_x": -20.0,
+      "rest_y": -49.0,
+      "rest_pitch": 173.2221,
+      "bend": 1.0,
+      "pose_authority": "explicit-hint",
+      "max_reach_ratio": 0.98
     }
   ],
   "clips": {
@@ -483,22 +487,16 @@
       "duration_ms": 148,
       "channels": {
         "near_hand_x": {
-          "const": 17.0
+          "const": -12.0
         },
         "near_hand_y": {
-          "expr": "-50+0.8*sin(tau*t)"
-        },
-        "near_hand_pitch": {
-          "const": 80.0
+          "expr": "-57.0+0.8*sin(tau*t)"
         },
         "far_hand_x": {
-          "const": -13.0
+          "const": -20.0
         },
         "far_hand_y": {
-          "expr": "-49-0.6*sin(tau*t)"
-        },
-        "far_hand_pitch": {
-          "const": 100.0
+          "expr": "-49.0-0.6*sin(tau*t)"
         },
         "near_foot_x": {
           "const": 10.0
@@ -507,7 +505,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -516,7 +514,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "root_y": {
           "expr": "0.65*sin(tau*t)"
@@ -535,22 +533,16 @@
       "duration_ms": 106,
       "channels": {
         "near_hand_x": {
-          "expr": "17-5.0*sin(tau*t)"
+          "expr": "-12.0-5.0*sin(tau*t)"
         },
         "near_hand_y": {
-          "expr": "-50+2*sin(tau*t)"
-        },
-        "near_hand_pitch": {
-          "const": 80.0
+          "expr": "-57.0+2*sin(tau*t)"
         },
         "far_hand_x": {
-          "expr": "-13+5.0*sin(tau*t)"
+          "expr": "-20.0+5.0*sin(tau*t)"
         },
         "far_hand_y": {
-          "expr": "-49-2*sin(tau*t)"
-        },
-        "far_hand_pitch": {
-          "const": 100.0
+          "expr": "-49.0-2*sin(tau*t)"
         },
         "near_foot_x": {
           "expr": "10+10.0*sin(tau*t)"
@@ -559,7 +551,7 @@
           "expr": "6.0*max(0,-sin(tau*t))"
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "expr": "-10-10.0*sin(tau*t)"
@@ -568,7 +560,7 @@
           "expr": "6.0*max(0,sin(tau*t))"
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "root_y": {
           "expr": "1.0*abs(sin(tau*t))-0.4"
@@ -590,22 +582,16 @@
       "duration_ms": 76,
       "channels": {
         "near_hand_x": {
-          "expr": "17-8.0*sin(tau*t)"
+          "expr": "-12.0-8.0*sin(tau*t)"
         },
         "near_hand_y": {
-          "expr": "-50+2*sin(tau*t)"
-        },
-        "near_hand_pitch": {
-          "const": 80.0
+          "expr": "-57.0+2*sin(tau*t)"
         },
         "far_hand_x": {
-          "expr": "-13+8.0*sin(tau*t)"
+          "expr": "-20.0+8.0*sin(tau*t)"
         },
         "far_hand_y": {
-          "expr": "-49-2*sin(tau*t)"
-        },
-        "far_hand_pitch": {
-          "const": 100.0
+          "expr": "-49.0-2*sin(tau*t)"
         },
         "near_foot_x": {
           "expr": "10+15.0*sin(tau*t)"
@@ -614,7 +600,7 @@
           "expr": "9.0*max(0,-sin(tau*t))"
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "expr": "-10-15.0*sin(tau*t)"
@@ -623,7 +609,7 @@
           "expr": "9.0*max(0,sin(tau*t))"
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "root_y": {
           "expr": "1.8*abs(sin(tau*t))-0.8"
@@ -648,32 +634,32 @@
           "keys": [
             [
               0.0,
-              9.0,
+              -20.0,
               "smooth"
             ],
             [
               0.2,
-              7.0,
+              -22.0,
               "smooth"
             ],
             [
               0.4,
-              5.0,
+              -24.0,
               "smooth"
             ],
             [
               0.6,
-              7.0,
+              -22.0,
               "smooth"
             ],
             [
               0.8,
-              9.0,
+              -20.0,
               "smooth"
             ],
             [
               1.0,
-              8.0,
+              -21.0,
               "smooth"
             ]
           ]
@@ -682,66 +668,32 @@
           "keys": [
             [
               0.0,
-              -42.0,
+              -49.0,
               "smooth"
             ],
             [
               0.2,
-              -40.0,
+              -47.0,
               "smooth"
             ],
             [
               0.4,
-              -39.0,
+              -46.0,
               "smooth"
             ],
             [
               0.6,
-              -40.0,
+              -47.0,
               "smooth"
             ],
             [
               0.8,
-              -42.0,
+              -49.0,
               "smooth"
             ],
             [
               1.0,
-              -41.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              65.0,
-              "smooth"
-            ],
-            [
-              0.2,
-              65.0,
-              "smooth"
-            ],
-            [
-              0.4,
-              65.0,
-              "smooth"
-            ],
-            [
-              0.6,
-              65.0,
-              "smooth"
-            ],
-            [
-              0.8,
-              65.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              65.0,
+              -48.0,
               "smooth"
             ]
           ]
@@ -750,32 +702,32 @@
           "keys": [
             [
               0.0,
-              -8.0,
+              -15.0,
               "smooth"
             ],
             [
               0.2,
-              -7.0,
+              -14.0,
               "smooth"
             ],
             [
               0.4,
-              -6.0,
+              -13.0,
               "smooth"
             ],
             [
               0.6,
-              -7.0,
+              -14.0,
               "smooth"
             ],
             [
               0.8,
-              -8.0,
+              -15.0,
               "smooth"
             ],
             [
               1.0,
-              -8.0,
+              -15.0,
               "smooth"
             ]
           ]
@@ -814,40 +766,6 @@
             ]
           ]
         },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              115.0,
-              "smooth"
-            ],
-            [
-              0.2,
-              115.0,
-              "smooth"
-            ],
-            [
-              0.4,
-              115.0,
-              "smooth"
-            ],
-            [
-              0.6,
-              115.0,
-              "smooth"
-            ],
-            [
-              0.8,
-              115.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              115.0,
-              "smooth"
-            ]
-          ]
-        },
         "near_foot_x": {
           "const": 10.0
         },
@@ -855,7 +773,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -864,7 +782,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "root_y": {
           "keys": [
@@ -979,37 +897,37 @@
           "keys": [
             [
               0.0,
-              9.0,
+              -20.0,
               "smooth"
             ],
             [
               0.166667,
-              7.0,
+              -22.0,
               "smooth"
             ],
             [
               0.333333,
-              5.0,
+              -24.0,
               "smooth"
             ],
             [
               0.5,
-              7.0,
+              -22.0,
               "smooth"
             ],
             [
               0.666667,
-              9.0,
+              -20.0,
               "smooth"
             ],
             [
               0.833333,
-              8.0,
+              -21.0,
               "smooth"
             ],
             [
               1.0,
-              9.0,
+              -20.0,
               "smooth"
             ]
           ]
@@ -1018,76 +936,37 @@
           "keys": [
             [
               0.0,
-              -42.0,
+              -49.0,
               "smooth"
             ],
             [
               0.166667,
-              -40.0,
+              -47.0,
               "smooth"
             ],
             [
               0.333333,
-              -39.0,
+              -46.0,
               "smooth"
             ],
             [
               0.5,
-              -40.0,
+              -47.0,
               "smooth"
             ],
             [
               0.666667,
-              -42.0,
+              -49.0,
               "smooth"
             ],
             [
               0.833333,
-              -41.0,
+              -48.0,
               "smooth"
             ],
             [
               1.0,
-              -42.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              65.0,
-              "smooth"
-            ],
-            [
-              0.166667,
-              65.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              65.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              65.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              65.0,
-              "smooth"
-            ],
-            [
-              0.833333,
-              65.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              65.0,
+              -49.0,
               "smooth"
             ]
           ]
@@ -1096,37 +975,37 @@
           "keys": [
             [
               0.0,
-              -8.0,
+              -15.0,
               "smooth"
             ],
             [
               0.166667,
-              -7.0,
+              -14.0,
               "smooth"
             ],
             [
               0.333333,
-              -6.0,
+              -13.0,
               "smooth"
             ],
             [
               0.5,
-              -7.0,
+              -14.0,
               "smooth"
             ],
             [
               0.666667,
-              -8.0,
+              -15.0,
               "smooth"
             ],
             [
               0.833333,
-              -8.0,
+              -15.0,
               "smooth"
             ],
             [
               1.0,
-              -8.0,
+              -15.0,
               "smooth"
             ]
           ]
@@ -1170,45 +1049,6 @@
             ]
           ]
         },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              115.0,
-              "smooth"
-            ],
-            [
-              0.166667,
-              115.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              115.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              115.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              115.0,
-              "smooth"
-            ],
-            [
-              0.833333,
-              115.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              115.0,
-              "smooth"
-            ]
-          ]
-        },
         "near_foot_x": {
           "const": 10.0
         },
@@ -1216,7 +1056,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -1225,7 +1065,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "root_y": {
           "keys": [
@@ -1385,32 +1225,32 @@
           "keys": [
             [
               0.0,
-              14.0,
+              -15.0,
               "smooth"
             ],
             [
               0.2,
-              8.0,
+              -21.0,
               "smooth"
             ],
             [
               0.4,
-              1.0,
+              -28.0,
               "smooth"
             ],
             [
               0.6,
-              -2.0,
+              -31.0,
               "smooth"
             ],
             [
               0.8,
-              4.0,
+              -25.0,
               "smooth"
             ],
             [
               1.0,
-              12.0,
+              -17.0,
               "smooth"
             ]
           ]
@@ -1419,66 +1259,32 @@
           "keys": [
             [
               0.0,
-              -54.0,
+              -61.0,
               "smooth"
             ],
             [
               0.2,
-              -62.0,
+              -69.0,
               "smooth"
             ],
             [
               0.4,
-              -72.0,
+              -79.0,
               "smooth"
             ],
             [
               0.6,
-              -78.0,
+              -85.0,
               "smooth"
             ],
             [
               0.8,
-              -68.0,
+              -75.0,
               "smooth"
             ],
             [
               1.0,
-              -56.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              70.0,
-              "smooth"
-            ],
-            [
-              0.2,
-              50.0,
-              "smooth"
-            ],
-            [
-              0.4,
-              30.0,
-              "smooth"
-            ],
-            [
-              0.6,
-              20.0,
-              "smooth"
-            ],
-            [
-              0.8,
-              40.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              65.0,
+              -63.0,
               "smooth"
             ]
           ]
@@ -1487,32 +1293,32 @@
           "keys": [
             [
               0.0,
-              -11.0,
+              -18.0,
               "smooth"
             ],
             [
               0.2,
-              -5.0,
+              -12.0,
               "smooth"
             ],
             [
               0.4,
-              2.0,
+              -5.0,
               "smooth"
             ],
             [
               0.6,
-              4.0,
+              -3.0,
               "smooth"
             ],
             [
               0.8,
-              -2.0,
+              -9.0,
               "smooth"
             ],
             [
               1.0,
-              -9.0,
+              -16.0,
               "smooth"
             ]
           ]
@@ -1547,40 +1353,6 @@
             [
               1.0,
               -55.0,
-              "smooth"
-            ]
-          ]
-        },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              110.0,
-              "smooth"
-            ],
-            [
-              0.2,
-              130.0,
-              "smooth"
-            ],
-            [
-              0.4,
-              150.0,
-              "smooth"
-            ],
-            [
-              0.6,
-              160.0,
-              "smooth"
-            ],
-            [
-              0.8,
-              140.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              115.0,
               "smooth"
             ]
           ]
@@ -1657,32 +1429,32 @@
           "keys": [
             [
               0.0,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.2,
-              140.6504,
+              151.2037,
               "smooth"
             ],
             [
               0.4,
-              132.6504,
+              143.2037,
               "smooth"
             ],
             [
               0.6,
-              130.6504,
+              141.2037,
               "smooth"
             ],
             [
               0.8,
-              140.6504,
+              151.2037,
               "smooth"
             ],
             [
               1.0,
-              148.6504,
+              159.2037,
               "smooth"
             ]
           ]
@@ -1759,32 +1531,32 @@
           "keys": [
             [
               0.0,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.2,
-              154.2369,
+              171.4761,
               "smooth"
             ],
             [
               0.4,
-              162.2369,
+              179.4761,
               "smooth"
             ],
             [
               0.6,
-              164.2369,
+              181.4761,
               "smooth"
             ],
             [
               0.8,
-              154.2369,
+              171.4761,
               "smooth"
             ],
             [
               1.0,
-              146.2369,
+              163.4761,
               "smooth"
             ]
           ]
@@ -1902,37 +1674,37 @@
           "keys": [
             [
               0.0,
-              6.0,
+              -23.0,
               "smooth"
             ],
             [
               0.166667,
-              4.0,
+              -25.0,
               "smooth"
             ],
             [
               0.333333,
-              3.0,
+              -26.0,
               "smooth"
             ],
             [
               0.5,
-              4.0,
+              -25.0,
               "smooth"
             ],
             [
               0.666667,
-              6.0,
+              -23.0,
               "smooth"
             ],
             [
               0.833333,
-              7.0,
+              -22.0,
               "smooth"
             ],
             [
               1.0,
-              6.0,
+              -23.0,
               "smooth"
             ]
           ]
@@ -1941,76 +1713,37 @@
           "keys": [
             [
               0.0,
-              -66.0,
+              -73.0,
               "smooth"
             ],
             [
               0.166667,
-              -69.0,
+              -76.0,
               "smooth"
             ],
             [
               0.333333,
+              -78.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              -76.0,
+              "smooth"
+            ],
+            [
+              0.666667,
+              -73.0,
+              "smooth"
+            ],
+            [
+              0.833333,
               -71.0,
               "smooth"
             ],
             [
-              0.5,
-              -69.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              -66.0,
-              "smooth"
-            ],
-            [
-              0.833333,
-              -64.0,
-              "smooth"
-            ],
-            [
               1.0,
-              -66.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              35.0,
-              "smooth"
-            ],
-            [
-              0.166667,
-              30.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              25.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              30.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              35.0,
-              "smooth"
-            ],
-            [
-              0.833333,
-              40.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              35.0,
+              -73.0,
               "smooth"
             ]
           ]
@@ -2019,37 +1752,37 @@
           "keys": [
             [
               0.0,
-              -3.0,
+              -10.0,
               "smooth"
             ],
             [
               0.166667,
-              -1.0,
+              -8.0,
               "smooth"
             ],
             [
               0.333333,
-              0.0,
+              -7.0,
               "smooth"
             ],
             [
               0.5,
-              -1.0,
+              -8.0,
               "smooth"
             ],
             [
               0.666667,
-              -3.0,
+              -10.0,
               "smooth"
             ],
             [
               0.833333,
-              -4.0,
+              -11.0,
               "smooth"
             ],
             [
               1.0,
-              -3.0,
+              -10.0,
               "smooth"
             ]
           ]
@@ -2093,45 +1826,6 @@
             ]
           ]
         },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              145.0,
-              "smooth"
-            ],
-            [
-              0.166667,
-              150.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              155.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              150.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              145.0,
-              "smooth"
-            ],
-            [
-              0.833333,
-              140.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              145.0,
-              "smooth"
-            ]
-          ]
-        },
         "near_foot_x": {
           "const": 10.0
         },
@@ -2139,7 +1833,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -2148,7 +1842,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "root_y": {
           "keys": [
@@ -2278,37 +1972,37 @@
           "keys": [
             [
               0.0,
-              10.0,
+              -19.0,
               "smooth"
             ],
             [
               0.166667,
-              7.0,
+              -22.0,
               "smooth"
             ],
             [
               0.333333,
-              3.0,
+              -26.0,
               "smooth"
             ],
             [
               0.5,
-              1.0,
+              -28.0,
               "smooth"
             ],
             [
               0.666667,
-              4.0,
+              -25.0,
               "smooth"
             ],
             [
               0.833333,
-              8.0,
+              -21.0,
               "smooth"
             ],
             [
               1.0,
-              12.0,
+              -17.0,
               "smooth"
             ]
           ]
@@ -2317,76 +2011,37 @@
           "keys": [
             [
               0.0,
-              -55.0,
+              -62.0,
               "smooth"
             ],
             [
               0.166667,
-              -45.0,
+              -52.0,
               "smooth"
             ],
             [
               0.333333,
-              -37.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              -34.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              -39.0,
-              "smooth"
-            ],
-            [
-              0.833333,
               -44.0,
               "smooth"
             ],
             [
-              1.0,
-              -48.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              70.0,
-              "smooth"
-            ],
-            [
-              0.166667,
-              65.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              60.0,
-              "smooth"
-            ],
-            [
               0.5,
-              55.0,
+              -41.0,
               "smooth"
             ],
             [
               0.666667,
-              60.0,
+              -46.0,
               "smooth"
             ],
             [
               0.833333,
-              70.0,
+              -51.0,
               "smooth"
             ],
             [
               1.0,
-              75.0,
+              -55.0,
               "smooth"
             ]
           ]
@@ -2395,37 +2050,37 @@
           "keys": [
             [
               0.0,
-              -8.0,
+              -15.0,
               "smooth"
             ],
             [
               0.166667,
-              -5.0,
+              -12.0,
               "smooth"
             ],
             [
               0.333333,
-              -2.0,
+              -9.0,
               "smooth"
             ],
             [
               0.5,
-              0.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              -3.0,
-              "smooth"
-            ],
-            [
-              0.833333,
               -7.0,
               "smooth"
             ],
             [
-              1.0,
+              0.666667,
               -10.0,
+              "smooth"
+            ],
+            [
+              0.833333,
+              -14.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              -17.0,
               "smooth"
             ]
           ]
@@ -2469,45 +2124,6 @@
             ]
           ]
         },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              110.0,
-              "smooth"
-            ],
-            [
-              0.166667,
-              115.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              120.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              125.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              120.0,
-              "smooth"
-            ],
-            [
-              0.833333,
-              110.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              105.0,
-              "smooth"
-            ]
-          ]
-        },
         "near_foot_x": {
           "const": 10.0
         },
@@ -2515,7 +2131,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -2524,7 +2140,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "root_y": {
           "keys": [
@@ -2654,22 +2270,22 @@
           "keys": [
             [
               0.0,
-              12.0,
+              -17.0,
               "smooth"
             ],
             [
               0.333333,
-              7.0,
+              -22.0,
               "smooth"
             ],
             [
               0.666667,
-              1.0,
+              -28.0,
               "smooth"
             ],
             [
               1.0,
-              -4.0,
+              -33.0,
               "smooth"
             ]
           ]
@@ -2678,46 +2294,22 @@
           "keys": [
             [
               0.0,
-              -49.0,
+              -56.0,
               "smooth"
             ],
             [
               0.333333,
-              -47.0,
+              -54.0,
               "smooth"
             ],
             [
               0.666667,
-              -45.0,
+              -52.0,
               "smooth"
             ],
             [
               1.0,
-              -43.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              80.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              72.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              65.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              58.0,
+              -50.0,
               "smooth"
             ]
           ]
@@ -2726,22 +2318,22 @@
           "keys": [
             [
               0.0,
-              -9.0,
+              -16.0,
               "smooth"
             ],
             [
               0.333333,
-              -4.0,
+              -11.0,
               "smooth"
             ],
             [
               0.666667,
-              2.0,
+              -5.0,
               "smooth"
             ],
             [
               1.0,
-              7.0,
+              0.0,
               "smooth"
             ]
           ]
@@ -2766,30 +2358,6 @@
             [
               1.0,
               -42.0,
-              "smooth"
-            ]
-          ]
-        },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              100.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              108.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              115.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              122.0,
               "smooth"
             ]
           ]
@@ -2846,22 +2414,22 @@
           "keys": [
             [
               0.0,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.333333,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.666667,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               1.0,
-              148.6504,
+              159.2037,
               "smooth"
             ]
           ]
@@ -2918,22 +2486,22 @@
           "keys": [
             [
               0.0,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.333333,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.666667,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               1.0,
-              146.2369,
+              163.4761,
               "smooth"
             ]
           ]
@@ -3021,37 +2589,37 @@
           "keys": [
             [
               0.0,
-              12.0,
+              -17.0,
               "smooth"
             ],
             [
               0.166667,
-              7.0,
+              -22.0,
               "smooth"
             ],
             [
               0.333333,
-              1.0,
+              -28.0,
               "smooth"
             ],
             [
               0.5,
-              -4.0,
+              -33.0,
               "smooth"
             ],
             [
               0.666667,
-              -1.0,
+              -30.0,
               "smooth"
             ],
             [
               0.833333,
-              5.0,
+              -24.0,
               "smooth"
             ],
             [
               1.0,
-              12.0,
+              -17.0,
               "smooth"
             ]
           ]
@@ -3060,76 +2628,37 @@
           "keys": [
             [
               0.0,
-              -49.0,
+              -56.0,
               "smooth"
             ],
             [
               0.166667,
-              -47.0,
+              -54.0,
               "smooth"
             ],
             [
               0.333333,
-              -45.0,
+              -52.0,
               "smooth"
             ],
             [
               0.5,
-              -43.0,
+              -50.0,
               "smooth"
             ],
             [
               0.666667,
-              -45.0,
+              -52.0,
               "smooth"
             ],
             [
               0.833333,
-              -48.0,
+              -55.0,
               "smooth"
             ],
             [
               1.0,
-              -49.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              80.0,
-              "smooth"
-            ],
-            [
-              0.166667,
-              72.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              65.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              58.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              65.0,
-              "smooth"
-            ],
-            [
-              0.833333,
-              74.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              80.0,
+              -56.0,
               "smooth"
             ]
           ]
@@ -3138,37 +2667,37 @@
           "keys": [
             [
               0.0,
-              -9.0,
+              -16.0,
               "smooth"
             ],
             [
               0.166667,
-              -4.0,
+              -11.0,
               "smooth"
             ],
             [
               0.333333,
-              2.0,
+              -5.0,
               "smooth"
             ],
             [
               0.5,
-              7.0,
+              0.0,
               "smooth"
             ],
             [
               0.666667,
-              4.0,
+              -3.0,
               "smooth"
             ],
             [
               0.833333,
-              -2.0,
+              -9.0,
               "smooth"
             ],
             [
               1.0,
-              -9.0,
+              -16.0,
               "smooth"
             ]
           ]
@@ -3208,45 +2737,6 @@
             [
               1.0,
               -48.0,
-              "smooth"
-            ]
-          ]
-        },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              100.0,
-              "smooth"
-            ],
-            [
-              0.166667,
-              108.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              115.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              122.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              115.0,
-              "smooth"
-            ],
-            [
-              0.833333,
-              106.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              100.0,
               "smooth"
             ]
           ]
@@ -3333,37 +2823,37 @@
           "keys": [
             [
               0.0,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.166667,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.333333,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.5,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.666667,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.833333,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               1.0,
-              148.6504,
+              159.2037,
               "smooth"
             ]
           ]
@@ -3450,37 +2940,37 @@
           "keys": [
             [
               0.0,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.166667,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.333333,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.5,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.666667,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.833333,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               1.0,
-              146.2369,
+              163.4761,
               "smooth"
             ]
           ]
@@ -3613,32 +3103,32 @@
           "keys": [
             [
               0.0,
-              4.0,
+              -25.0,
               "smooth"
             ],
             [
               0.2,
-              0.0,
+              -29.0,
               "smooth"
             ],
             [
               0.4,
-              -4.0,
+              -33.0,
               "smooth"
             ],
             [
               0.6,
-              -2.0,
+              -31.0,
               "smooth"
             ],
             [
               0.8,
-              3.0,
+              -26.0,
               "smooth"
             ],
             [
               1.0,
-              8.0,
+              -21.0,
               "smooth"
             ]
           ]
@@ -3647,66 +3137,32 @@
           "keys": [
             [
               0.0,
-              -42.0,
+              -49.0,
               "smooth"
             ],
             [
               0.2,
-              -39.0,
+              -46.0,
               "smooth"
             ],
             [
               0.4,
-              -37.0,
+              -44.0,
               "smooth"
             ],
             [
               0.6,
-              -38.0,
-              "smooth"
-            ],
-            [
-              0.8,
-              -41.0,
-              "smooth"
-            ],
-            [
-              1.0,
               -45.0,
               "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              55.0,
-              "smooth"
-            ],
-            [
-              0.2,
-              50.0,
-              "smooth"
-            ],
-            [
-              0.4,
-              45.0,
-              "smooth"
-            ],
-            [
-              0.6,
-              50.0,
-              "smooth"
             ],
             [
               0.8,
-              60.0,
+              -48.0,
               "smooth"
             ],
             [
               1.0,
-              70.0,
+              -52.0,
               "smooth"
             ]
           ]
@@ -3715,32 +3171,32 @@
           "keys": [
             [
               0.0,
-              -3.0,
+              -10.0,
               "smooth"
             ],
             [
               0.2,
-              0.0,
+              -7.0,
               "smooth"
             ],
             [
               0.4,
-              4.0,
+              -3.0,
               "smooth"
             ],
             [
               0.6,
-              2.0,
+              -5.0,
               "smooth"
             ],
             [
               0.8,
-              -2.0,
+              -9.0,
               "smooth"
             ],
             [
               1.0,
-              -7.0,
+              -14.0,
               "smooth"
             ]
           ]
@@ -3779,40 +3235,6 @@
             ]
           ]
         },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              125.0,
-              "smooth"
-            ],
-            [
-              0.2,
-              130.0,
-              "smooth"
-            ],
-            [
-              0.4,
-              135.0,
-              "smooth"
-            ],
-            [
-              0.6,
-              130.0,
-              "smooth"
-            ],
-            [
-              0.8,
-              120.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              110.0,
-              "smooth"
-            ]
-          ]
-        },
         "near_foot_x": {
           "const": 10.0
         },
@@ -3820,7 +3242,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -3829,7 +3251,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "root_y": {
           "keys": [
@@ -3944,42 +3366,42 @@
           "keys": [
             [
               0.0,
-              8.0,
+              -18.0,
               "smooth"
             ],
             [
               0.142857,
-              1.0,
+              -24.0,
               "smooth"
             ],
             [
               0.285714,
-              -6.0,
+              -30.0,
               "smooth"
             ],
             [
               0.428571,
-              -10.0,
+              -34.0,
               "smooth"
             ],
             [
               0.571429,
-              -6.0,
+              -32.0,
               "smooth"
             ],
             [
               0.714286,
-              1.0,
+              -27.0,
               "smooth"
             ],
             [
               0.857143,
-              8.0,
+              -20.0,
               "smooth"
             ],
             [
               1.0,
-              14.0,
+              -14.0,
               "smooth"
             ]
           ]
@@ -3988,22 +3410,22 @@
           "keys": [
             [
               0.0,
-              -48.0,
+              -54.0,
               "smooth"
             ],
             [
               0.142857,
-              -42.0,
+              -46.0,
               "smooth"
             ],
             [
               0.285714,
-              -38.0,
+              -40.0,
               "smooth"
             ],
             [
               0.428571,
-              -36.0,
+              -37.0,
               "smooth"
             ],
             [
@@ -4013,61 +3435,17 @@
             ],
             [
               0.714286,
-              -42.0,
+              -43.0,
               "smooth"
             ],
             [
               0.857143,
-              -48.0,
+              -50.0,
               "smooth"
             ],
             [
               1.0,
-              -52.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              70.0,
-              "smooth"
-            ],
-            [
-              0.142857,
-              45.0,
-              "smooth"
-            ],
-            [
-              0.285714,
-              20.0,
-              "smooth"
-            ],
-            [
-              0.428571,
-              0.0,
-              "smooth"
-            ],
-            [
-              0.571429,
-              160.0,
-              "smooth"
-            ],
-            [
-              0.714286,
-              135.0,
-              "smooth"
-            ],
-            [
-              0.857143,
-              105.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              80.0,
+              -56.0,
               "smooth"
             ]
           ]
@@ -4076,42 +3454,42 @@
           "keys": [
             [
               0.0,
-              -6.0,
+              -16.0,
               "smooth"
             ],
             [
               0.142857,
-              1.0,
+              -11.0,
               "smooth"
             ],
             [
               0.285714,
-              7.0,
-              "smooth"
-            ],
-            [
-              0.428571,
-              10.0,
-              "smooth"
-            ],
-            [
-              0.571429,
-              7.0,
-              "smooth"
-            ],
-            [
-              0.714286,
-              1.0,
-              "smooth"
-            ],
-            [
-              0.857143,
               -6.0,
               "smooth"
             ],
             [
+              0.428571,
+              -3.0,
+              "smooth"
+            ],
+            [
+              0.571429,
+              -4.0,
+              "smooth"
+            ],
+            [
+              0.714286,
+              -8.0,
+              "smooth"
+            ],
+            [
+              0.857143,
+              -14.0,
+              "smooth"
+            ],
+            [
               1.0,
-              -11.0,
+              -19.0,
               "smooth"
             ]
           ]
@@ -4120,148 +3498,350 @@
           "keys": [
             [
               0.0,
-              -47.0,
+              -46.0,
               "smooth"
             ],
             [
               0.142857,
-              -41.0,
+              -38.0,
               "smooth"
             ],
             [
               0.285714,
-              -37.0,
+              -32.0,
               "smooth"
             ],
             [
               0.428571,
+              -29.0,
+              "smooth"
+            ],
+            [
+              0.571429,
+              -30.0,
+              "smooth"
+            ],
+            [
+              0.714286,
               -35.0,
               "smooth"
             ],
             [
-              0.571429,
-              -37.0,
-              "smooth"
-            ],
-            [
-              0.714286,
-              -41.0,
-              "smooth"
-            ],
-            [
               0.857143,
-              -47.0,
+              -42.0,
               "smooth"
             ],
             [
               1.0,
-              -51.0,
-              "smooth"
-            ]
-          ]
-        },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              110.0,
-              "smooth"
-            ],
-            [
-              0.142857,
-              135.0,
-              "smooth"
-            ],
-            [
-              0.285714,
-              160.0,
-              "smooth"
-            ],
-            [
-              0.428571,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.571429,
-              20.0,
-              "smooth"
-            ],
-            [
-              0.714286,
-              45.0,
-              "smooth"
-            ],
-            [
-              0.857143,
-              75.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              100.0,
+              -48.0,
               "smooth"
             ]
           ]
         },
         "near_foot_x": {
-          "const": 10.0
+          "keys": [
+            [
+              0.0,
+              9.0,
+              "smooth"
+            ],
+            [
+              0.142857,
+              5.0,
+              "smooth"
+            ],
+            [
+              0.285714,
+              1.0,
+              "smooth"
+            ],
+            [
+              0.428571,
+              -3.0,
+              "smooth"
+            ],
+            [
+              0.571429,
+              -2.0,
+              "smooth"
+            ],
+            [
+              0.714286,
+              2.0,
+              "smooth"
+            ],
+            [
+              0.857143,
+              7.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              10.0,
+              "smooth"
+            ]
+          ]
         },
         "near_foot_lift": {
-          "const": 0.0
+          "keys": [
+            [
+              0.0,
+              2.0,
+              "smooth"
+            ],
+            [
+              0.142857,
+              10.0,
+              "smooth"
+            ],
+            [
+              0.285714,
+              20.0,
+              "smooth"
+            ],
+            [
+              0.428571,
+              27.0,
+              "smooth"
+            ],
+            [
+              0.571429,
+              25.0,
+              "smooth"
+            ],
+            [
+              0.714286,
+              18.0,
+              "smooth"
+            ],
+            [
+              0.857143,
+              9.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              2.0,
+              "smooth"
+            ]
+          ]
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "keys": [
+            [
+              0.0,
+              159.2037,
+              "smooth"
+            ],
+            [
+              0.142857,
+              151.2037,
+              "smooth"
+            ],
+            [
+              0.285714,
+              141.2037,
+              "smooth"
+            ],
+            [
+              0.428571,
+              131.2037,
+              "smooth"
+            ],
+            [
+              0.571429,
+              137.2037,
+              "smooth"
+            ],
+            [
+              0.714286,
+              147.2037,
+              "smooth"
+            ],
+            [
+              0.857143,
+              155.2037,
+              "smooth"
+            ],
+            [
+              1.0,
+              159.2037,
+              "smooth"
+            ]
+          ]
         },
         "far_foot_x": {
-          "const": -10.0
+          "keys": [
+            [
+              0.0,
+              -9.0,
+              "smooth"
+            ],
+            [
+              0.142857,
+              -5.0,
+              "smooth"
+            ],
+            [
+              0.285714,
+              -1.0,
+              "smooth"
+            ],
+            [
+              0.428571,
+              3.0,
+              "smooth"
+            ],
+            [
+              0.571429,
+              2.0,
+              "smooth"
+            ],
+            [
+              0.714286,
+              -2.0,
+              "smooth"
+            ],
+            [
+              0.857143,
+              -7.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              -10.0,
+              "smooth"
+            ]
+          ]
         },
         "far_foot_lift": {
-          "const": 0.0
+          "keys": [
+            [
+              0.0,
+              1.0,
+              "smooth"
+            ],
+            [
+              0.142857,
+              9.0,
+              "smooth"
+            ],
+            [
+              0.285714,
+              18.0,
+              "smooth"
+            ],
+            [
+              0.428571,
+              25.0,
+              "smooth"
+            ],
+            [
+              0.571429,
+              24.0,
+              "smooth"
+            ],
+            [
+              0.714286,
+              17.0,
+              "smooth"
+            ],
+            [
+              0.857143,
+              8.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              1.0,
+              "smooth"
+            ]
+          ]
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "keys": [
+            [
+              0.0,
+              163.4761,
+              "smooth"
+            ],
+            [
+              0.142857,
+              171.4761,
+              "smooth"
+            ],
+            [
+              0.285714,
+              181.4761,
+              "smooth"
+            ],
+            [
+              0.428571,
+              191.4761,
+              "smooth"
+            ],
+            [
+              0.571429,
+              185.4761,
+              "smooth"
+            ],
+            [
+              0.714286,
+              175.4761,
+              "smooth"
+            ],
+            [
+              0.857143,
+              167.4761,
+              "smooth"
+            ],
+            [
+              1.0,
+              163.4761,
+              "smooth"
+            ]
+          ]
         },
         "root_y": {
           "keys": [
             [
               0.0,
-              -3.0,
+              5.0,
               "smooth"
             ],
             [
               0.142857,
-              -4.0,
+              9.0,
               "smooth"
             ],
             [
               0.285714,
-              -6.0,
+              13.0,
               "smooth"
             ],
             [
               0.428571,
-              -10.0,
+              16.0,
               "smooth"
             ],
             [
               0.571429,
-              -10.0,
+              15.0,
               "smooth"
             ],
             [
               0.714286,
-              -6.0,
+              11.0,
               "smooth"
             ],
             [
               0.857143,
-              -4.0,
+              7.0,
               "smooth"
             ],
             [
               1.0,
-              -3.0,
+              3.0,
               "smooth"
             ]
           ]
@@ -4275,37 +3855,37 @@
             ],
             [
               0.142857,
-              45.0,
+              -35.0,
               "smooth"
             ],
             [
               0.285714,
-              90.0,
+              -82.0,
               "smooth"
             ],
             [
               0.428571,
-              135.0,
+              -132.0,
               "smooth"
             ],
             [
               0.571429,
-              180.0,
+              -184.0,
               "smooth"
             ],
             [
               0.714286,
-              225.0,
+              -236.0,
               "smooth"
             ],
             [
               0.857143,
-              270.0,
+              -286.0,
               "smooth"
             ],
             [
               1.0,
-              315.0,
+              -328.0,
               "smooth"
             ]
           ]
@@ -4314,42 +3894,42 @@
           "keys": [
             [
               0.0,
-              0.0,
+              -4.0,
               "smooth"
             ],
             [
               0.142857,
-              20.0,
+              -14.0,
               "smooth"
             ],
             [
               0.285714,
-              35.0,
+              -27.0,
               "smooth"
             ],
             [
               0.428571,
-              45.0,
+              -39.0,
               "smooth"
             ],
             [
               0.571429,
-              35.0,
+              -43.0,
               "smooth"
             ],
             [
               0.714286,
-              20.0,
+              -34.0,
               "smooth"
             ],
             [
               0.857143,
-              8.0,
+              -19.0,
               "smooth"
             ],
             [
               1.0,
-              0.0,
+              -5.0,
               "smooth"
             ]
           ]
@@ -4358,42 +3938,42 @@
           "keys": [
             [
               0.0,
-              0.0,
+              3.0,
               "smooth"
             ],
             [
               0.142857,
-              -15.0,
+              9.0,
               "smooth"
             ],
             [
               0.285714,
-              -25.0,
+              16.0,
               "smooth"
             ],
             [
               0.428571,
-              -30.0,
+              22.0,
               "smooth"
             ],
             [
               0.571429,
-              -25.0,
+              24.0,
               "smooth"
             ],
             [
               0.714286,
-              -15.0,
+              18.0,
               "smooth"
             ],
             [
               0.857143,
-              -6.0,
+              10.0,
               "smooth"
             ],
             [
               1.0,
-              0.0,
+              3.0,
               "smooth"
             ]
           ]
@@ -4409,37 +3989,37 @@
           "keys": [
             [
               0.0,
-              -30.0,
+              -59.0,
               "smooth"
             ],
             [
               0.166667,
-              -31.0,
+              -60.0,
               "smooth"
             ],
             [
               0.333333,
-              -32.0,
+              -61.0,
               "smooth"
             ],
             [
               0.5,
-              -31.0,
+              -60.0,
               "smooth"
             ],
             [
               0.666667,
-              -30.0,
+              -59.0,
               "smooth"
             ],
             [
               0.833333,
-              -29.0,
+              -58.0,
               "smooth"
             ],
             [
               1.0,
-              -30.0,
+              -59.0,
               "smooth"
             ]
           ]
@@ -4448,76 +4028,37 @@
           "keys": [
             [
               0.0,
-              -78.0,
+              -85.0,
               "smooth"
             ],
             [
               0.166667,
-              -79.0,
+              -86.0,
               "smooth"
             ],
             [
               0.333333,
-              -80.0,
+              -87.0,
               "smooth"
             ],
             [
               0.5,
-              -79.0,
+              -86.0,
               "smooth"
             ],
             [
               0.666667,
-              -78.0,
+              -85.0,
               "smooth"
             ],
             [
               0.833333,
-              -77.0,
+              -84.0,
               "smooth"
             ],
             [
               1.0,
-              -78.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.166667,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.833333,
-              180.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              180.0,
+              -85.0,
               "smooth"
             ]
           ]
@@ -4526,37 +4067,37 @@
           "keys": [
             [
               0.0,
-              -24.0,
+              -31.0,
               "smooth"
             ],
             [
               0.166667,
-              -25.0,
+              -32.0,
               "smooth"
             ],
             [
               0.333333,
-              -26.0,
+              -33.0,
               "smooth"
             ],
             [
               0.5,
-              -25.0,
+              -32.0,
               "smooth"
             ],
             [
               0.666667,
-              -24.0,
+              -31.0,
               "smooth"
             ],
             [
               0.833333,
-              -23.0,
+              -30.0,
               "smooth"
             ],
             [
               1.0,
-              -24.0,
+              -31.0,
               "smooth"
             ]
           ]
@@ -4596,45 +4137,6 @@
             [
               1.0,
               -65.0,
-              "smooth"
-            ]
-          ]
-        },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.166667,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.833333,
-              180.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              180.0,
               "smooth"
             ]
           ]
@@ -4721,37 +4223,37 @@
           "keys": [
             [
               0.0,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.166667,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.333333,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.5,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.666667,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.833333,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               1.0,
-              148.6504,
+              159.2037,
               "smooth"
             ]
           ]
@@ -4838,37 +4340,37 @@
           "keys": [
             [
               0.0,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.166667,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.333333,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.5,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.666667,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.833333,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               1.0,
-              146.2369,
+              163.4761,
               "smooth"
             ]
           ]
@@ -5001,37 +4503,37 @@
           "keys": [
             [
               0.0,
-              -30.0,
+              -59.0,
               "smooth"
             ],
             [
               0.166667,
-              -31.0,
+              -60.0,
               "smooth"
             ],
             [
               0.333333,
-              -32.0,
+              -61.0,
               "smooth"
             ],
             [
               0.5,
-              -31.0,
+              -60.0,
               "smooth"
             ],
             [
               0.666667,
-              -30.0,
+              -59.0,
               "smooth"
             ],
             [
               0.833333,
-              -29.0,
+              -58.0,
               "smooth"
             ],
             [
               1.0,
-              -30.0,
+              -59.0,
               "smooth"
             ]
           ]
@@ -5040,76 +4542,37 @@
           "keys": [
             [
               0.0,
-              -78.0,
+              -85.0,
               "smooth"
             ],
             [
               0.166667,
-              -79.0,
+              -86.0,
               "smooth"
             ],
             [
               0.333333,
-              -80.0,
+              -87.0,
               "smooth"
             ],
             [
               0.5,
-              -79.0,
+              -86.0,
               "smooth"
             ],
             [
               0.666667,
-              -78.0,
+              -85.0,
               "smooth"
             ],
             [
               0.833333,
-              -77.0,
+              -84.0,
               "smooth"
             ],
             [
               1.0,
-              -78.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.166667,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.833333,
-              180.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              180.0,
+              -85.0,
               "smooth"
             ]
           ]
@@ -5118,37 +4581,37 @@
           "keys": [
             [
               0.0,
-              -24.0,
+              -31.0,
               "smooth"
             ],
             [
               0.166667,
-              -25.0,
+              -32.0,
               "smooth"
             ],
             [
               0.333333,
-              -26.0,
+              -33.0,
               "smooth"
             ],
             [
               0.5,
-              -25.0,
+              -32.0,
               "smooth"
             ],
             [
               0.666667,
-              -24.0,
+              -31.0,
               "smooth"
             ],
             [
               0.833333,
-              -23.0,
+              -30.0,
               "smooth"
             ],
             [
               1.0,
-              -24.0,
+              -31.0,
               "smooth"
             ]
           ]
@@ -5188,45 +4651,6 @@
             [
               1.0,
               -65.0,
-              "smooth"
-            ]
-          ]
-        },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.166667,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.833333,
-              180.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              180.0,
               "smooth"
             ]
           ]
@@ -5313,37 +4737,37 @@
           "keys": [
             [
               0.0,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.166667,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.333333,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.5,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.666667,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.833333,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               1.0,
-              148.6504,
+              159.2037,
               "smooth"
             ]
           ]
@@ -5430,37 +4854,37 @@
           "keys": [
             [
               0.0,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.166667,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.333333,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.5,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.666667,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.833333,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               1.0,
-              146.2369,
+              163.4761,
               "smooth"
             ]
           ]
@@ -5593,32 +5017,32 @@
           "keys": [
             [
               0.0,
-              -28.0,
+              -57.0,
               "smooth"
             ],
             [
               0.2,
-              -22.0,
+              -51.0,
               "smooth"
             ],
             [
               0.4,
-              -12.0,
+              -41.0,
               "smooth"
             ],
             [
               0.6,
-              0.0,
+              -29.0,
               "smooth"
             ],
             [
               0.8,
-              8.0,
+              -21.0,
               "smooth"
             ],
             [
               1.0,
-              14.0,
+              -15.0,
               "smooth"
             ]
           ]
@@ -5627,66 +5051,32 @@
           "keys": [
             [
               0.0,
-              -76.0,
+              -83.0,
               "smooth"
             ],
             [
               0.2,
+              -79.0,
+              "smooth"
+            ],
+            [
+              0.4,
               -72.0,
               "smooth"
             ],
             [
-              0.4,
+              0.6,
               -65.0,
               "smooth"
             ],
             [
-              0.6,
-              -58.0,
-              "smooth"
-            ],
-            [
               0.8,
-              -53.0,
+              -60.0,
               "smooth"
             ],
             [
               1.0,
-              -50.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.2,
-              160.0,
-              "smooth"
-            ],
-            [
-              0.4,
-              130.0,
-              "smooth"
-            ],
-            [
-              0.6,
-              100.0,
-              "smooth"
-            ],
-            [
-              0.8,
-              85.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              80.0,
+              -57.0,
               "smooth"
             ]
           ]
@@ -5695,32 +5085,32 @@
           "keys": [
             [
               0.0,
-              -22.0,
+              -29.0,
               "smooth"
             ],
             [
               0.2,
-              -17.0,
+              -24.0,
               "smooth"
             ],
             [
               0.4,
-              -8.0,
+              -15.0,
               "smooth"
             ],
             [
               0.6,
-              2.0,
+              -5.0,
               "smooth"
             ],
             [
               0.8,
-              8.0,
+              1.0,
               "smooth"
             ],
             [
               1.0,
-              12.0,
+              5.0,
               "smooth"
             ]
           ]
@@ -5759,40 +5149,6 @@
             ]
           ]
         },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.2,
-              155.0,
-              "smooth"
-            ],
-            [
-              0.4,
-              130.0,
-              "smooth"
-            ],
-            [
-              0.6,
-              110.0,
-              "smooth"
-            ],
-            [
-              0.8,
-              100.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              100.0,
-              "smooth"
-            ]
-          ]
-        },
         "near_foot_x": {
           "const": 10.0
         },
@@ -5800,7 +5156,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -5809,7 +5165,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "root_y": {
           "keys": [
@@ -5924,32 +5280,32 @@
           "keys": [
             [
               0.0,
-              -28.0,
+              -57.0,
               "smooth"
             ],
             [
               0.2,
-              -22.0,
+              -51.0,
               "smooth"
             ],
             [
               0.4,
-              -12.0,
+              -41.0,
               "smooth"
             ],
             [
               0.6,
-              0.0,
+              -29.0,
               "smooth"
             ],
             [
               0.8,
-              8.0,
+              -21.0,
               "smooth"
             ],
             [
               1.0,
-              14.0,
+              -15.0,
               "smooth"
             ]
           ]
@@ -5958,66 +5314,32 @@
           "keys": [
             [
               0.0,
-              -76.0,
+              -83.0,
               "smooth"
             ],
             [
               0.2,
+              -79.0,
+              "smooth"
+            ],
+            [
+              0.4,
               -72.0,
               "smooth"
             ],
             [
-              0.4,
+              0.6,
               -65.0,
               "smooth"
             ],
             [
-              0.6,
-              -58.0,
-              "smooth"
-            ],
-            [
               0.8,
-              -53.0,
+              -60.0,
               "smooth"
             ],
             [
               1.0,
-              -50.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.2,
-              160.0,
-              "smooth"
-            ],
-            [
-              0.4,
-              130.0,
-              "smooth"
-            ],
-            [
-              0.6,
-              100.0,
-              "smooth"
-            ],
-            [
-              0.8,
-              85.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              80.0,
+              -57.0,
               "smooth"
             ]
           ]
@@ -6026,32 +5348,32 @@
           "keys": [
             [
               0.0,
-              -22.0,
+              -29.0,
               "smooth"
             ],
             [
               0.2,
-              -17.0,
+              -24.0,
               "smooth"
             ],
             [
               0.4,
-              -8.0,
+              -15.0,
               "smooth"
             ],
             [
               0.6,
-              2.0,
+              -5.0,
               "smooth"
             ],
             [
               0.8,
-              8.0,
+              1.0,
               "smooth"
             ],
             [
               1.0,
-              12.0,
+              5.0,
               "smooth"
             ]
           ]
@@ -6090,40 +5412,6 @@
             ]
           ]
         },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.2,
-              155.0,
-              "smooth"
-            ],
-            [
-              0.4,
-              130.0,
-              "smooth"
-            ],
-            [
-              0.6,
-              110.0,
-              "smooth"
-            ],
-            [
-              0.8,
-              100.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              100.0,
-              "smooth"
-            ]
-          ]
-        },
         "near_foot_x": {
           "const": 10.0
         },
@@ -6131,7 +5419,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -6140,7 +5428,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "root_y": {
           "keys": [
@@ -6255,47 +5543,47 @@
           "keys": [
             [
               0.0,
-              -4.0,
+              -33.0,
               "smooth"
             ],
             [
               0.125,
-              -14.0,
+              -43.0,
               "smooth"
             ],
             [
               0.25,
-              -22.0,
+              -51.0,
               "smooth"
             ],
             [
               0.375,
-              -10.0,
+              -39.0,
               "smooth"
             ],
             [
               0.5,
-              5.0,
+              -24.0,
               "smooth"
             ],
             [
               0.625,
-              14.0,
+              -15.0,
               "smooth"
             ],
             [
               0.75,
-              8.0,
+              -21.0,
               "smooth"
             ],
             [
               0.875,
-              0.0,
+              -29.0,
               "smooth"
             ],
             [
               1.0,
-              -4.0,
+              -33.0,
               "smooth"
             ]
           ]
@@ -6304,96 +5592,47 @@
           "keys": [
             [
               0.0,
-              -64.0,
+              -71.0,
               "smooth"
             ],
             [
               0.125,
-              -74.0,
+              -81.0,
               "smooth"
             ],
             [
               0.25,
-              -80.0,
+              -87.0,
               "smooth"
             ],
             [
               0.375,
-              -70.0,
+              -77.0,
               "smooth"
             ],
             [
               0.5,
-              -58.0,
+              -65.0,
               "smooth"
             ],
             [
               0.625,
-              -50.0,
+              -57.0,
               "smooth"
             ],
             [
               0.75,
-              -56.0,
+              -63.0,
               "smooth"
             ],
             [
               0.875,
-              -62.0,
+              -69.0,
               "smooth"
             ],
             [
               1.0,
-              -64.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              45.0,
-              "smooth"
-            ],
-            [
-              0.125,
-              25.0,
-              "smooth"
-            ],
-            [
-              0.25,
-              10.0,
-              "smooth"
-            ],
-            [
-              0.375,
-              30.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              70.0,
-              "smooth"
-            ],
-            [
-              0.625,
-              95.0,
-              "smooth"
-            ],
-            [
-              0.75,
-              80.0,
-              "smooth"
-            ],
-            [
-              0.875,
-              55.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              45.0,
+              -71.0,
               "smooth"
             ]
           ]
@@ -6402,47 +5641,47 @@
           "keys": [
             [
               0.0,
-              5.0,
+              -2.0,
               "smooth"
             ],
             [
               0.125,
-              14.0,
+              7.0,
               "smooth"
             ],
             [
               0.25,
-              20.0,
+              13.0,
               "smooth"
             ],
             [
               0.375,
-              10.0,
+              3.0,
               "smooth"
             ],
             [
               0.5,
-              -4.0,
+              -11.0,
               "smooth"
             ],
             [
               0.625,
-              -14.0,
+              -21.0,
               "smooth"
             ],
             [
               0.75,
-              -8.0,
+              -15.0,
               "smooth"
             ],
             [
               0.875,
-              1.0,
+              -6.0,
               "smooth"
             ],
             [
               1.0,
-              5.0,
+              -2.0,
               "smooth"
             ]
           ]
@@ -6492,55 +5731,6 @@
             [
               1.0,
               -55.0,
-              "smooth"
-            ]
-          ]
-        },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              135.0,
-              "smooth"
-            ],
-            [
-              0.125,
-              155.0,
-              "smooth"
-            ],
-            [
-              0.25,
-              170.0,
-              "smooth"
-            ],
-            [
-              0.375,
-              150.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              110.0,
-              "smooth"
-            ],
-            [
-              0.625,
-              85.0,
-              "smooth"
-            ],
-            [
-              0.75,
-              100.0,
-              "smooth"
-            ],
-            [
-              0.875,
-              125.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              135.0,
               "smooth"
             ]
           ]
@@ -6647,47 +5837,47 @@
           "keys": [
             [
               0.0,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.125,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.25,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.375,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.5,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.625,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.75,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.875,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               1.0,
-              148.6504,
+              159.2037,
               "smooth"
             ]
           ]
@@ -6794,47 +5984,47 @@
           "keys": [
             [
               0.0,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.125,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.25,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.375,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.5,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.625,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.75,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.875,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               1.0,
-              146.2369,
+              163.4761,
               "smooth"
             ]
           ]
@@ -6997,47 +6187,47 @@
           "keys": [
             [
               0.0,
-              -4.0,
+              -33.0,
               "smooth"
             ],
             [
               0.125,
-              -14.0,
+              -43.0,
               "smooth"
             ],
             [
               0.25,
-              -22.0,
+              -51.0,
               "smooth"
             ],
             [
               0.375,
-              -10.0,
+              -39.0,
               "smooth"
             ],
             [
               0.5,
-              5.0,
+              -24.0,
               "smooth"
             ],
             [
               0.625,
-              14.0,
+              -15.0,
               "smooth"
             ],
             [
               0.75,
-              8.0,
+              -21.0,
               "smooth"
             ],
             [
               0.875,
-              0.0,
+              -29.0,
               "smooth"
             ],
             [
               1.0,
-              -4.0,
+              -33.0,
               "smooth"
             ]
           ]
@@ -7046,96 +6236,47 @@
           "keys": [
             [
               0.0,
-              -64.0,
+              -71.0,
               "smooth"
             ],
             [
               0.125,
-              -74.0,
+              -81.0,
               "smooth"
             ],
             [
               0.25,
-              -80.0,
+              -87.0,
               "smooth"
             ],
             [
               0.375,
-              -70.0,
+              -77.0,
               "smooth"
             ],
             [
               0.5,
-              -58.0,
+              -65.0,
               "smooth"
             ],
             [
               0.625,
-              -50.0,
+              -57.0,
               "smooth"
             ],
             [
               0.75,
-              -56.0,
+              -63.0,
               "smooth"
             ],
             [
               0.875,
-              -62.0,
+              -69.0,
               "smooth"
             ],
             [
               1.0,
-              -64.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              45.0,
-              "smooth"
-            ],
-            [
-              0.125,
-              25.0,
-              "smooth"
-            ],
-            [
-              0.25,
-              10.0,
-              "smooth"
-            ],
-            [
-              0.375,
-              30.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              70.0,
-              "smooth"
-            ],
-            [
-              0.625,
-              95.0,
-              "smooth"
-            ],
-            [
-              0.75,
-              80.0,
-              "smooth"
-            ],
-            [
-              0.875,
-              55.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              45.0,
+              -71.0,
               "smooth"
             ]
           ]
@@ -7144,47 +6285,47 @@
           "keys": [
             [
               0.0,
-              5.0,
+              -2.0,
               "smooth"
             ],
             [
               0.125,
-              14.0,
+              7.0,
               "smooth"
             ],
             [
               0.25,
-              20.0,
+              13.0,
               "smooth"
             ],
             [
               0.375,
-              10.0,
+              3.0,
               "smooth"
             ],
             [
               0.5,
-              -4.0,
+              -11.0,
               "smooth"
             ],
             [
               0.625,
-              -14.0,
+              -21.0,
               "smooth"
             ],
             [
               0.75,
-              -8.0,
+              -15.0,
               "smooth"
             ],
             [
               0.875,
-              1.0,
+              -6.0,
               "smooth"
             ],
             [
               1.0,
-              5.0,
+              -2.0,
               "smooth"
             ]
           ]
@@ -7234,55 +6375,6 @@
             [
               1.0,
               -55.0,
-              "smooth"
-            ]
-          ]
-        },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              135.0,
-              "smooth"
-            ],
-            [
-              0.125,
-              155.0,
-              "smooth"
-            ],
-            [
-              0.25,
-              170.0,
-              "smooth"
-            ],
-            [
-              0.375,
-              150.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              110.0,
-              "smooth"
-            ],
-            [
-              0.625,
-              85.0,
-              "smooth"
-            ],
-            [
-              0.75,
-              100.0,
-              "smooth"
-            ],
-            [
-              0.875,
-              125.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              135.0,
               "smooth"
             ]
           ]
@@ -7389,47 +6481,47 @@
           "keys": [
             [
               0.0,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.125,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.25,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.375,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.5,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.625,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.75,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               0.875,
-              148.6504,
+              159.2037,
               "smooth"
             ],
             [
               1.0,
-              148.6504,
+              159.2037,
               "smooth"
             ]
           ]
@@ -7536,47 +6628,47 @@
           "keys": [
             [
               0.0,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.125,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.25,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.375,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.5,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.625,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.75,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               0.875,
-              146.2369,
+              163.4761,
               "smooth"
             ],
             [
               1.0,
-              146.2369,
+              163.4761,
               "smooth"
             ]
           ]
@@ -7739,37 +6831,37 @@
           "keys": [
             [
               0.0,
-              -15.0,
+              -44.0,
               "smooth"
             ],
             [
               0.166667,
-              -17.0,
+              -46.0,
               "smooth"
             ],
             [
               0.333333,
-              -18.0,
+              -47.0,
               "smooth"
             ],
             [
               0.5,
-              -17.0,
+              -46.0,
               "smooth"
             ],
             [
               0.666667,
-              -15.0,
+              -44.0,
               "smooth"
             ],
             [
               0.833333,
-              -14.0,
+              -43.0,
               "smooth"
             ],
             [
               1.0,
-              -15.0,
+              -44.0,
               "smooth"
             ]
           ]
@@ -7778,76 +6870,37 @@
           "keys": [
             [
               0.0,
-              -70.0,
+              -77.0,
               "smooth"
             ],
             [
               0.166667,
-              -72.0,
+              -79.0,
               "smooth"
             ],
             [
               0.333333,
-              -73.0,
+              -80.0,
               "smooth"
             ],
             [
               0.5,
-              -72.0,
+              -79.0,
               "smooth"
             ],
             [
               0.666667,
-              -70.0,
+              -77.0,
               "smooth"
             ],
             [
               0.833333,
-              -69.0,
+              -76.0,
               "smooth"
             ],
             [
               1.0,
-              -70.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              165.0,
-              "smooth"
-            ],
-            [
-              0.166667,
-              165.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              165.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              165.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              165.0,
-              "smooth"
-            ],
-            [
-              0.833333,
-              165.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              165.0,
+              -77.0,
               "smooth"
             ]
           ]
@@ -7856,37 +6909,37 @@
           "keys": [
             [
               0.0,
-              -7.0,
+              -14.0,
               "smooth"
             ],
             [
               0.166667,
-              -9.0,
+              -16.0,
               "smooth"
             ],
             [
               0.333333,
-              -10.0,
+              -17.0,
               "smooth"
             ],
             [
               0.5,
-              -9.0,
+              -16.0,
               "smooth"
             ],
             [
               0.666667,
-              -7.0,
+              -14.0,
               "smooth"
             ],
             [
               0.833333,
-              -6.0,
+              -13.0,
               "smooth"
             ],
             [
               1.0,
-              -7.0,
+              -14.0,
               "smooth"
             ]
           ]
@@ -7930,45 +6983,6 @@
             ]
           ]
         },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              160.0,
-              "smooth"
-            ],
-            [
-              0.166667,
-              160.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              160.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              160.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              160.0,
-              "smooth"
-            ],
-            [
-              0.833333,
-              160.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              160.0,
-              "smooth"
-            ]
-          ]
-        },
         "near_foot_x": {
           "const": 10.0
         },
@@ -7976,7 +6990,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -7985,7 +6999,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "root_y": {
           "keys": [
@@ -8115,94 +7129,7 @@
           "keys": [
             [
               0.0,
-              17.0,
-              "smooth"
-            ],
-            [
-              0.25,
-              24.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              12.0,
-              "smooth"
-            ],
-            [
-              0.75,
-              19.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              17.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_y": {
-          "keys": [
-            [
-              0.0,
-              -50.0,
-              "smooth"
-            ],
-            [
-              0.25,
-              -43.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              -56.0,
-              "smooth"
-            ],
-            [
-              0.75,
-              -48.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              -50.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              80.0,
-              "smooth"
-            ],
-            [
-              0.25,
-              105.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              60.0,
-              "smooth"
-            ],
-            [
-              0.75,
-              85.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              80.0,
-              "smooth"
-            ]
-          ]
-        },
-        "far_hand_x": {
-          "keys": [
-            [
-              0.0,
-              -13.0,
+              -12.0,
               "smooth"
             ],
             [
@@ -8212,17 +7139,75 @@
             ],
             [
               0.5,
-              -20.0,
+              -17.0,
               "smooth"
             ],
             [
               0.75,
-              -11.0,
+              -10.0,
               "smooth"
             ],
             [
               1.0,
-              -13.0,
+              -12.0,
+              "smooth"
+            ]
+          ]
+        },
+        "near_hand_y": {
+          "keys": [
+            [
+              0.0,
+              -57.0,
+              "smooth"
+            ],
+            [
+              0.25,
+              -50.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              -63.0,
+              "smooth"
+            ],
+            [
+              0.75,
+              -55.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              -57.0,
+              "smooth"
+            ]
+          ]
+        },
+        "far_hand_x": {
+          "keys": [
+            [
+              0.0,
+              -20.0,
+              "smooth"
+            ],
+            [
+              0.25,
+              -12.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              -27.0,
+              "smooth"
+            ],
+            [
+              0.75,
+              -18.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              -20.0,
               "smooth"
             ]
           ]
@@ -8256,35 +7241,6 @@
             ]
           ]
         },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              100.0,
-              "smooth"
-            ],
-            [
-              0.25,
-              75.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              120.0,
-              "smooth"
-            ],
-            [
-              0.75,
-              95.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              100.0,
-              "smooth"
-            ]
-          ]
-        },
         "near_foot_x": {
           "const": 10.0
         },
@@ -8292,7 +7248,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -8301,7 +7257,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "root_y": {
           "keys": [
@@ -8401,169 +7357,22 @@
           "keys": [
             [
               0.0,
-              17.0,
-              "smooth"
-            ],
-            [
-              0.125,
-              19.0,
-              "smooth"
-            ],
-            [
-              0.25,
-              23.0,
-              "smooth"
-            ],
-            [
-              0.375,
-              28.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              31.0,
-              "smooth"
-            ],
-            [
-              0.625,
-              32.0,
-              "smooth"
-            ],
-            [
-              0.75,
-              32.0,
-              "smooth"
-            ],
-            [
-              0.875,
-              32.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              32.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_y": {
-          "keys": [
-            [
-              0.0,
-              -50.0,
-              "smooth"
-            ],
-            [
-              0.125,
-              -48.0,
-              "smooth"
-            ],
-            [
-              0.25,
-              -42.0,
-              "smooth"
-            ],
-            [
-              0.375,
-              -32.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              -20.0,
-              "smooth"
-            ],
-            [
-              0.625,
               -12.0,
               "smooth"
             ],
             [
-              0.75,
-              -8.0,
-              "smooth"
-            ],
-            [
-              0.875,
-              -7.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              -7.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              80.0,
-              "smooth"
-            ],
-            [
               0.125,
-              75.0,
-              "smooth"
-            ],
-            [
-              0.25,
-              60.0,
-              "smooth"
-            ],
-            [
-              0.375,
-              35.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              10.0,
-              "smooth"
-            ],
-            [
-              0.625,
               -10.0,
               "smooth"
             ],
             [
-              0.75,
-              -20.0,
-              "smooth"
-            ],
-            [
-              0.875,
-              -25.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              -25.0,
-              "smooth"
-            ]
-          ]
-        },
-        "far_hand_x": {
-          "keys": [
-            [
-              0.0,
-              -13.0,
-              "smooth"
-            ],
-            [
-              0.125,
-              -11.0,
-              "smooth"
-            ],
-            [
               0.25,
-              -7.0,
+              -6.0,
               "smooth"
             ],
             [
               0.375,
-              -2.0,
+              -1.0,
               "smooth"
             ],
             [
@@ -8573,22 +7382,120 @@
             ],
             [
               0.625,
-              4.0,
+              3.0,
               "smooth"
             ],
             [
               0.75,
-              4.0,
+              3.0,
               "smooth"
             ],
             [
               0.875,
-              4.0,
+              3.0,
               "smooth"
             ],
             [
               1.0,
-              4.0,
+              3.0,
+              "smooth"
+            ]
+          ]
+        },
+        "near_hand_y": {
+          "keys": [
+            [
+              0.0,
+              -57.0,
+              "smooth"
+            ],
+            [
+              0.125,
+              -55.0,
+              "smooth"
+            ],
+            [
+              0.25,
+              -49.0,
+              "smooth"
+            ],
+            [
+              0.375,
+              -39.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              -27.0,
+              "smooth"
+            ],
+            [
+              0.625,
+              -19.0,
+              "smooth"
+            ],
+            [
+              0.75,
+              -15.0,
+              "smooth"
+            ],
+            [
+              0.875,
+              -14.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              -14.0,
+              "smooth"
+            ]
+          ]
+        },
+        "far_hand_x": {
+          "keys": [
+            [
+              0.0,
+              -20.0,
+              "smooth"
+            ],
+            [
+              0.125,
+              -18.0,
+              "smooth"
+            ],
+            [
+              0.25,
+              -14.0,
+              "smooth"
+            ],
+            [
+              0.375,
+              -9.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              -5.0,
+              "smooth"
+            ],
+            [
+              0.625,
+              -3.0,
+              "smooth"
+            ],
+            [
+              0.75,
+              -3.0,
+              "smooth"
+            ],
+            [
+              0.875,
+              -3.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              -3.0,
               "smooth"
             ]
           ]
@@ -8642,55 +7549,6 @@
             ]
           ]
         },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              100.0,
-              "smooth"
-            ],
-            [
-              0.125,
-              105.0,
-              "smooth"
-            ],
-            [
-              0.25,
-              120.0,
-              "smooth"
-            ],
-            [
-              0.375,
-              145.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              170.0,
-              "smooth"
-            ],
-            [
-              0.625,
-              190.0,
-              "smooth"
-            ],
-            [
-              0.75,
-              200.0,
-              "smooth"
-            ],
-            [
-              0.875,
-              205.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              205.0,
-              "smooth"
-            ]
-          ]
-        },
         "near_foot_x": {
           "const": 10.0
         },
@@ -8698,7 +7556,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -8707,7 +7565,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "root_y": {
           "keys": [
@@ -8916,47 +7774,47 @@
           "keys": [
             [
               0.0,
-              17.0,
+              -12.0,
               "smooth"
             ],
             [
               0.125,
-              10.0,
+              -19.0,
               "smooth"
             ],
             [
               0.25,
-              2.0,
+              -27.0,
               "smooth"
             ],
             [
               0.375,
-              -4.0,
+              -33.0,
               "smooth"
             ],
             [
               0.5,
-              0.0,
+              -29.0,
               "smooth"
             ],
             [
               0.625,
-              8.0,
+              -21.0,
               "smooth"
             ],
             [
               0.75,
-              14.0,
+              -15.0,
               "smooth"
             ],
             [
               0.875,
-              17.0,
+              -12.0,
               "smooth"
             ],
             [
               1.0,
-              17.0,
+              -12.0,
               "smooth"
             ]
           ]
@@ -8965,108 +7823,56 @@
           "keys": [
             [
               0.0,
-              -50.0,
-              "smooth"
-            ],
-            [
-              0.125,
-              -55.0,
-              "smooth"
-            ],
-            [
-              0.25,
-              -62.0,
-              "smooth"
-            ],
-            [
-              0.375,
-              -67.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              -63.0,
-              "smooth"
-            ],
-            [
-              0.625,
               -57.0,
               "smooth"
             ],
             [
-              0.75,
-              -52.0,
-              "smooth"
-            ],
-            [
-              0.875,
-              -50.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              -50.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              80.0,
-              "smooth"
-            ],
-            [
               0.125,
-              70.0,
+              -62.0,
               "smooth"
             ],
             [
               0.25,
-              55.0,
+              -69.0,
               "smooth"
             ],
             [
               0.375,
-              45.0,
+              -74.0,
               "smooth"
             ],
             [
               0.5,
-              55.0,
+              -70.0,
               "smooth"
             ],
             [
               0.625,
-              65.0,
+              -64.0,
               "smooth"
             ],
             [
               0.75,
-              75.0,
+              -59.0,
               "smooth"
             ],
             [
               0.875,
-              80.0,
+              -57.0,
               "smooth"
             ],
             [
               1.0,
-              80.0,
+              -57.0,
               "smooth"
             ]
           ]
         },
         "far_hand_x": {
-          "const": -13.0
+          "const": -20.0
         },
         "far_hand_y": {
           "const": -49.0
-        },
-        "far_hand_pitch": {
-          "const": 100.0
         },
         "near_foot_x": {
           "const": 10.0
@@ -9075,7 +7881,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -9084,7 +7890,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "root_y": {
           "keys": [
@@ -9244,47 +8050,47 @@
           "keys": [
             [
               0.0,
-              17.0,
+              -12.0,
               "smooth"
             ],
             [
               0.125,
-              8.0,
+              -21.0,
               "smooth"
             ],
             [
               0.25,
-              -4.0,
+              -33.0,
               "smooth"
             ],
             [
               0.375,
-              -14.0,
+              -43.0,
               "smooth"
             ],
             [
               0.5,
-              -10.0,
+              -39.0,
               "smooth"
             ],
             [
               0.625,
-              -2.0,
+              -31.0,
               "smooth"
             ],
             [
               0.75,
-              8.0,
+              -21.0,
               "smooth"
             ],
             [
               0.875,
-              17.0,
+              -12.0,
               "smooth"
             ],
             [
               1.0,
-              17.0,
+              -12.0,
               "smooth"
             ]
           ]
@@ -9293,108 +8099,56 @@
           "keys": [
             [
               0.0,
-              -50.0,
-              "smooth"
-            ],
-            [
-              0.125,
-              -53.0,
-              "smooth"
-            ],
-            [
-              0.25,
               -57.0,
               "smooth"
             ],
             [
-              0.375,
-              -61.0,
-              "smooth"
-            ],
-            [
-              0.5,
+              0.125,
               -60.0,
               "smooth"
             ],
             [
-              0.625,
-              -57.0,
-              "smooth"
-            ],
-            [
-              0.75,
-              -53.0,
-              "smooth"
-            ],
-            [
-              0.875,
-              -50.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              -50.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              80.0,
-              "smooth"
-            ],
-            [
-              0.125,
-              70.0,
-              "smooth"
-            ],
-            [
               0.25,
-              60.0,
+              -64.0,
               "smooth"
             ],
             [
               0.375,
-              50.0,
+              -68.0,
               "smooth"
             ],
             [
               0.5,
-              55.0,
+              -67.0,
               "smooth"
             ],
             [
               0.625,
-              65.0,
+              -64.0,
               "smooth"
             ],
             [
               0.75,
-              75.0,
+              -60.0,
               "smooth"
             ],
             [
               0.875,
-              80.0,
+              -57.0,
               "smooth"
             ],
             [
               1.0,
-              80.0,
+              -57.0,
               "smooth"
             ]
           ]
         },
         "far_hand_x": {
-          "const": -13.0
+          "const": -20.0
         },
         "far_hand_y": {
           "const": -49.0
-        },
-        "far_hand_pitch": {
-          "const": 100.0
         },
         "near_foot_x": {
           "const": 10.0
@@ -9403,7 +8157,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -9412,7 +8166,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "torso": {
           "keys": [
@@ -9523,47 +8277,47 @@
           "keys": [
             [
               0.0,
-              17.0,
+              -12.0,
               "smooth"
             ],
             [
               0.125,
-              8.0,
+              -21.0,
               "smooth"
             ],
             [
               0.25,
-              -5.0,
+              -34.0,
               "smooth"
             ],
             [
               0.375,
-              -14.0,
+              -43.0,
               "smooth"
             ],
             [
               0.5,
-              -8.0,
+              -37.0,
               "smooth"
             ],
             [
               0.625,
-              2.0,
+              -27.0,
               "smooth"
             ],
             [
               0.75,
-              11.0,
+              -18.0,
               "smooth"
             ],
             [
               0.875,
-              17.0,
+              -12.0,
               "smooth"
             ],
             [
               1.0,
-              17.0,
+              -12.0,
               "smooth"
             ]
           ]
@@ -9572,96 +8326,47 @@
           "keys": [
             [
               0.0,
-              -50.0,
+              -57.0,
               "smooth"
             ],
             [
               0.125,
-              -61.0,
+              -68.0,
               "smooth"
             ],
             [
               0.25,
-              -75.0,
+              -82.0,
               "smooth"
             ],
             [
               0.375,
-              -84.0,
+              -91.0,
               "smooth"
             ],
             [
               0.5,
-              -78.0,
+              -85.0,
               "smooth"
             ],
             [
               0.625,
-              -66.0,
+              -73.0,
               "smooth"
             ],
             [
               0.75,
-              -56.0,
+              -63.0,
               "smooth"
             ],
             [
               0.875,
-              -50.0,
+              -57.0,
               "smooth"
             ],
             [
               1.0,
-              -50.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              80.0,
-              "smooth"
-            ],
-            [
-              0.125,
-              55.0,
-              "smooth"
-            ],
-            [
-              0.25,
-              30.0,
-              "smooth"
-            ],
-            [
-              0.375,
-              15.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              30.0,
-              "smooth"
-            ],
-            [
-              0.625,
-              50.0,
-              "smooth"
-            ],
-            [
-              0.75,
-              70.0,
-              "smooth"
-            ],
-            [
-              0.875,
-              80.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              80.0,
+              -57.0,
               "smooth"
             ]
           ]
@@ -9670,47 +8375,47 @@
           "keys": [
             [
               0.0,
-              -13.0,
+              -20.0,
               "smooth"
             ],
             [
               0.125,
-              -5.0,
+              -12.0,
               "smooth"
             ],
             [
               0.25,
-              6.0,
-              "smooth"
-            ],
-            [
-              0.375,
-              14.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              8.0,
-              "smooth"
-            ],
-            [
-              0.625,
               -1.0,
               "smooth"
             ],
             [
+              0.375,
+              7.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              1.0,
+              "smooth"
+            ],
+            [
+              0.625,
+              -8.0,
+              "smooth"
+            ],
+            [
               0.75,
-              -9.0,
+              -16.0,
               "smooth"
             ],
             [
               0.875,
-              -13.0,
+              -20.0,
               "smooth"
             ],
             [
               1.0,
-              -13.0,
+              -20.0,
               "smooth"
             ]
           ]
@@ -9764,55 +8469,6 @@
             ]
           ]
         },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              100.0,
-              "smooth"
-            ],
-            [
-              0.125,
-              125.0,
-              "smooth"
-            ],
-            [
-              0.25,
-              150.0,
-              "smooth"
-            ],
-            [
-              0.375,
-              165.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              150.0,
-              "smooth"
-            ],
-            [
-              0.625,
-              130.0,
-              "smooth"
-            ],
-            [
-              0.75,
-              110.0,
-              "smooth"
-            ],
-            [
-              0.875,
-              100.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              100.0,
-              "smooth"
-            ]
-          ]
-        },
         "near_foot_x": {
           "const": 10.0
         },
@@ -9820,7 +8476,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -9829,7 +8485,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "root_y": {
           "keys": [
@@ -9989,47 +8645,47 @@
           "keys": [
             [
               0.0,
-              17.0,
+              -12.0,
               "smooth"
             ],
             [
               0.125,
-              4.0,
+              -25.0,
               "smooth"
             ],
             [
               0.25,
-              -8.0,
+              -37.0,
               "smooth"
             ],
             [
               0.375,
-              -15.0,
+              -44.0,
               "smooth"
             ],
             [
               0.5,
-              -10.0,
+              -39.0,
               "smooth"
             ],
             [
               0.625,
-              0.0,
+              -29.0,
               "smooth"
             ],
             [
               0.75,
-              11.0,
+              -18.0,
               "smooth"
             ],
             [
               0.875,
-              17.0,
+              -12.0,
               "smooth"
             ],
             [
               1.0,
-              17.0,
+              -12.0,
               "smooth"
             ]
           ]
@@ -10038,96 +8694,47 @@
           "keys": [
             [
               0.0,
-              -50.0,
-              "smooth"
-            ],
-            [
-              0.125,
               -57.0,
               "smooth"
             ],
             [
+              0.125,
+              -64.0,
+              "smooth"
+            ],
+            [
               0.25,
-              -65.0,
+              -72.0,
               "smooth"
             ],
             [
               0.375,
-              -69.0,
+              -76.0,
               "smooth"
             ],
             [
               0.5,
+              -73.0,
+              "smooth"
+            ],
+            [
+              0.625,
               -66.0,
               "smooth"
             ],
             [
-              0.625,
-              -59.0,
-              "smooth"
-            ],
-            [
               0.75,
-              -53.0,
+              -60.0,
               "smooth"
             ],
             [
               0.875,
-              -50.0,
+              -57.0,
               "smooth"
             ],
             [
               1.0,
-              -50.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              80.0,
-              "smooth"
-            ],
-            [
-              0.125,
-              65.0,
-              "smooth"
-            ],
-            [
-              0.25,
-              50.0,
-              "smooth"
-            ],
-            [
-              0.375,
-              40.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              50.0,
-              "smooth"
-            ],
-            [
-              0.625,
-              65.0,
-              "smooth"
-            ],
-            [
-              0.75,
-              75.0,
-              "smooth"
-            ],
-            [
-              0.875,
-              80.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              80.0,
+              -57.0,
               "smooth"
             ]
           ]
@@ -10136,47 +8743,47 @@
           "keys": [
             [
               0.0,
-              -13.0,
+              -20.0,
               "smooth"
             ],
             [
               0.125,
-              -8.0,
+              -15.0,
               "smooth"
             ],
             [
               0.25,
-              -2.0,
+              -9.0,
               "smooth"
             ],
             [
               0.375,
-              3.0,
+              -4.0,
               "smooth"
             ],
             [
               0.5,
-              1.0,
+              -6.0,
               "smooth"
             ],
             [
               0.625,
-              -5.0,
+              -12.0,
               "smooth"
             ],
             [
               0.75,
-              -10.0,
+              -17.0,
               "smooth"
             ],
             [
               0.875,
-              -13.0,
+              -20.0,
               "smooth"
             ],
             [
               1.0,
-              -13.0,
+              -20.0,
               "smooth"
             ]
           ]
@@ -10230,55 +8837,6 @@
             ]
           ]
         },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              100.0,
-              "smooth"
-            ],
-            [
-              0.125,
-              105.0,
-              "smooth"
-            ],
-            [
-              0.25,
-              110.0,
-              "smooth"
-            ],
-            [
-              0.375,
-              115.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              112.0,
-              "smooth"
-            ],
-            [
-              0.625,
-              108.0,
-              "smooth"
-            ],
-            [
-              0.75,
-              103.0,
-              "smooth"
-            ],
-            [
-              0.875,
-              100.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              100.0,
-              "smooth"
-            ]
-          ]
-        },
         "near_foot_x": {
           "const": 10.0
         },
@@ -10286,7 +8844,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -10295,7 +8853,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "torso": {
           "keys": [
@@ -10406,37 +8964,37 @@
           "keys": [
             [
               0.0,
-              17.0,
+              -12.0,
               "smooth"
             ],
             [
               0.166667,
-              5.0,
+              -24.0,
               "smooth"
             ],
             [
               0.333333,
-              -8.0,
+              -37.0,
               "smooth"
             ],
             [
               0.5,
-              -23.0,
+              -52.0,
               "smooth"
             ],
             [
               0.666667,
-              -28.0,
+              -57.0,
               "smooth"
             ],
             [
               0.833333,
-              -16.0,
+              -45.0,
               "smooth"
             ],
             [
               1.0,
-              17.0,
+              -12.0,
               "smooth"
             ]
           ]
@@ -10445,88 +9003,46 @@
           "keys": [
             [
               0.0,
-              -50.0,
+              -57.0,
               "smooth"
             ],
             [
               0.166667,
-              -55.0,
-              "smooth"
-            ],
-            [
-              0.333333,
               -62.0,
               "smooth"
             ],
             [
+              0.333333,
+              -69.0,
+              "smooth"
+            ],
+            [
               0.5,
-              -66.0,
+              -73.0,
               "smooth"
             ],
             [
               0.666667,
+              -72.0,
+              "smooth"
+            ],
+            [
+              0.833333,
               -65.0,
               "smooth"
             ],
             [
-              0.833333,
-              -58.0,
-              "smooth"
-            ],
-            [
               1.0,
-              -50.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              80.0,
-              "smooth"
-            ],
-            [
-              0.166667,
-              65.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              50.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              25.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              15.0,
-              "smooth"
-            ],
-            [
-              0.833333,
-              40.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              80.0,
+              -57.0,
               "smooth"
             ]
           ]
         },
         "far_hand_x": {
-          "const": -13.0
+          "const": -20.0
         },
         "far_hand_y": {
           "const": -49.0
-        },
-        "far_hand_pitch": {
-          "const": 100.0
         },
         "near_foot_x": {
           "const": 10.0
@@ -10535,7 +9051,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -10544,7 +9060,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "torso": {
           "keys": [
@@ -10635,32 +9151,32 @@
           "keys": [
             [
               0.0,
-              17.0,
-              "smooth"
-            ],
-            [
-              0.2,
-              8.0,
-              "smooth"
-            ],
-            [
-              0.4,
-              -2.0,
-              "smooth"
-            ],
-            [
-              0.6,
               -12.0,
               "smooth"
             ],
             [
+              0.2,
+              -21.0,
+              "smooth"
+            ],
+            [
+              0.4,
+              -31.0,
+              "smooth"
+            ],
+            [
+              0.6,
+              -41.0,
+              "smooth"
+            ],
+            [
               0.8,
-              -20.0,
+              -49.0,
               "smooth"
             ],
             [
               1.0,
-              -8.0,
+              -37.0,
               "smooth"
             ]
           ]
@@ -10669,66 +9185,32 @@
           "keys": [
             [
               0.0,
-              -50.0,
+              -57.0,
               "smooth"
             ],
             [
               0.2,
-              -54.0,
-              "smooth"
-            ],
-            [
-              0.4,
-              -59.0,
-              "smooth"
-            ],
-            [
-              0.6,
-              -62.0,
-              "smooth"
-            ],
-            [
-              0.8,
               -61.0,
               "smooth"
             ],
             [
-              1.0,
-              -52.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              80.0,
-              "smooth"
-            ],
-            [
-              0.2,
-              70.0,
-              "smooth"
-            ],
-            [
               0.4,
-              60.0,
+              -66.0,
               "smooth"
             ],
             [
               0.6,
-              45.0,
+              -69.0,
               "smooth"
             ],
             [
               0.8,
-              30.0,
+              -68.0,
               "smooth"
             ],
             [
               1.0,
-              70.0,
+              -59.0,
               "smooth"
             ]
           ]
@@ -10737,32 +9219,32 @@
           "keys": [
             [
               0.0,
-              -13.0,
+              -20.0,
               "smooth"
             ],
             [
               0.2,
-              -7.0,
+              -14.0,
               "smooth"
             ],
             [
               0.4,
-              0.0,
+              -7.0,
               "smooth"
             ],
             [
               0.6,
-              7.0,
+              0.0,
               "smooth"
             ],
             [
               0.8,
-              12.0,
+              5.0,
               "smooth"
             ],
             [
               1.0,
-              -8.0,
+              -15.0,
               "smooth"
             ]
           ]
@@ -10801,40 +9283,6 @@
             ]
           ]
         },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              100.0,
-              "smooth"
-            ],
-            [
-              0.2,
-              110.0,
-              "smooth"
-            ],
-            [
-              0.4,
-              120.0,
-              "smooth"
-            ],
-            [
-              0.6,
-              135.0,
-              "smooth"
-            ],
-            [
-              0.8,
-              145.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              105.0,
-              "smooth"
-            ]
-          ]
-        },
         "near_foot_x": {
           "const": 10.0
         },
@@ -10842,7 +9290,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -10851,7 +9299,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "torso": {
           "keys": [
@@ -10932,37 +9380,37 @@
           "keys": [
             [
               0.0,
-              17.0,
-              "smooth"
-            ],
-            [
-              0.166667,
-              4.0,
-              "smooth"
-            ],
-            [
-              0.333333,
               -12.0,
               "smooth"
             ],
             [
+              0.166667,
+              -25.0,
+              "smooth"
+            ],
+            [
+              0.333333,
+              -41.0,
+              "smooth"
+            ],
+            [
               0.5,
-              -32.0,
+              -61.0,
               "smooth"
             ],
             [
               0.666667,
-              -39.0,
+              -68.0,
               "smooth"
             ],
             [
               0.833333,
-              -20.0,
+              -49.0,
               "smooth"
             ],
             [
               1.0,
-              17.0,
+              -12.0,
               "smooth"
             ]
           ]
@@ -10971,88 +9419,46 @@
           "keys": [
             [
               0.0,
-              -50.0,
+              -57.0,
               "smooth"
             ],
             [
               0.166667,
-              -52.0,
+              -59.0,
               "smooth"
             ],
             [
               0.333333,
-              -54.0,
+              -61.0,
               "smooth"
             ],
             [
               0.5,
-              -56.0,
+              -63.0,
               "smooth"
             ],
             [
               0.666667,
-              -55.0,
+              -62.0,
               "smooth"
             ],
             [
               0.833333,
-              -52.0,
+              -59.0,
               "smooth"
             ],
             [
               1.0,
-              -50.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              80.0,
-              "smooth"
-            ],
-            [
-              0.166667,
-              65.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              45.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              15.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              5.0,
-              "smooth"
-            ],
-            [
-              0.833333,
-              35.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              80.0,
+              -57.0,
               "smooth"
             ]
           ]
         },
         "far_hand_x": {
-          "const": -13.0
+          "const": -20.0
         },
         "far_hand_y": {
           "const": -49.0
-        },
-        "far_hand_pitch": {
-          "const": 100.0
         },
         "near_foot_x": {
           "const": 10.0
@@ -11061,7 +9467,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -11070,7 +9476,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "torso": {
           "keys": [
@@ -11161,42 +9567,42 @@
           "keys": [
             [
               0.0,
-              17.0,
+              -12.0,
               "smooth"
             ],
             [
               0.142857,
-              6.0,
+              -23.0,
               "smooth"
             ],
             [
               0.285714,
-              -10.0,
+              -39.0,
               "smooth"
             ],
             [
               0.428571,
-              -28.0,
+              -57.0,
               "smooth"
             ],
             [
               0.571429,
-              -42.0,
+              -71.0,
               "smooth"
             ],
             [
               0.714286,
-              -44.0,
+              -73.0,
               "smooth"
             ],
             [
               0.857143,
-              -30.0,
+              -59.0,
               "smooth"
             ],
             [
               1.0,
-              17.0,
+              -12.0,
               "smooth"
             ]
           ]
@@ -11205,86 +9611,42 @@
           "keys": [
             [
               0.0,
-              -50.0,
+              -57.0,
               "smooth"
             ],
             [
               0.142857,
-              -55.0,
+              -62.0,
               "smooth"
             ],
             [
               0.285714,
-              -61.0,
-              "smooth"
-            ],
-            [
-              0.428571,
-              -66.0,
-              "smooth"
-            ],
-            [
-              0.571429,
               -68.0,
               "smooth"
             ],
             [
-              0.714286,
-              -67.0,
-              "smooth"
-            ],
-            [
-              0.857143,
-              -60.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              -50.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              80.0,
-              "smooth"
-            ],
-            [
-              0.142857,
-              65.0,
-              "smooth"
-            ],
-            [
-              0.285714,
-              45.0,
-              "smooth"
-            ],
-            [
               0.428571,
-              20.0,
+              -73.0,
               "smooth"
             ],
             [
               0.571429,
-              0.0,
+              -75.0,
               "smooth"
             ],
             [
               0.714286,
-              -5.0,
+              -74.0,
               "smooth"
             ],
             [
               0.857143,
-              25.0,
+              -67.0,
               "smooth"
             ],
             [
               1.0,
-              80.0,
+              -57.0,
               "smooth"
             ]
           ]
@@ -11293,42 +9655,42 @@
           "keys": [
             [
               0.0,
-              -13.0,
+              -20.0,
               "smooth"
             ],
             [
               0.142857,
-              -8.0,
+              -15.0,
               "smooth"
             ],
             [
               0.285714,
-              -2.0,
+              -9.0,
               "smooth"
             ],
             [
               0.428571,
-              4.0,
+              -3.0,
               "smooth"
             ],
             [
               0.571429,
-              7.0,
+              0.0,
               "smooth"
             ],
             [
               0.714286,
-              4.0,
+              -3.0,
               "smooth"
             ],
             [
               0.857143,
-              -2.0,
+              -9.0,
               "smooth"
             ],
             [
               1.0,
-              -13.0,
+              -20.0,
               "smooth"
             ]
           ]
@@ -11377,50 +9739,6 @@
             ]
           ]
         },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              100.0,
-              "smooth"
-            ],
-            [
-              0.142857,
-              105.0,
-              "smooth"
-            ],
-            [
-              0.285714,
-              110.0,
-              "smooth"
-            ],
-            [
-              0.428571,
-              118.0,
-              "smooth"
-            ],
-            [
-              0.571429,
-              125.0,
-              "smooth"
-            ],
-            [
-              0.714286,
-              118.0,
-              "smooth"
-            ],
-            [
-              0.857143,
-              108.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              100.0,
-              "smooth"
-            ]
-          ]
-        },
         "near_foot_x": {
           "const": 10.0
         },
@@ -11428,7 +9746,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -11437,7 +9755,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "root_y": {
           "keys": [
@@ -11582,47 +9900,47 @@
           "keys": [
             [
               0.0,
-              17.0,
+              -12.0,
               "smooth"
             ],
             [
               0.125,
-              24.0,
+              -5.0,
               "smooth"
             ],
             [
               0.25,
-              31.0,
+              2.0,
               "smooth"
             ],
             [
               0.375,
-              38.0,
+              9.0,
               "smooth"
             ],
             [
               0.5,
-              42.0,
+              13.0,
               "smooth"
             ],
             [
               0.625,
-              38.0,
+              9.0,
               "smooth"
             ],
             [
               0.75,
-              30.0,
+              1.0,
               "smooth"
             ],
             [
               0.875,
-              23.0,
+              -6.0,
               "smooth"
             ],
             [
               1.0,
-              17.0,
+              -12.0,
               "smooth"
             ]
           ]
@@ -11631,96 +9949,47 @@
           "keys": [
             [
               0.0,
-              -50.0,
-              "smooth"
-            ],
-            [
-              0.125,
               -57.0,
               "smooth"
             ],
             [
-              0.25,
-              -65.0,
-              "smooth"
-            ],
-            [
-              0.375,
-              -72.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              -76.0,
-              "smooth"
-            ],
-            [
-              0.625,
-              -72.0,
-              "smooth"
-            ],
-            [
-              0.75,
+              0.125,
               -64.0,
               "smooth"
             ],
             [
-              0.875,
-              -56.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              -50.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              80.0,
-              "smooth"
-            ],
-            [
-              0.125,
-              72.0,
-              "smooth"
-            ],
-            [
               0.25,
-              60.0,
+              -72.0,
               "smooth"
             ],
             [
               0.375,
-              45.0,
+              -79.0,
               "smooth"
             ],
             [
               0.5,
-              30.0,
+              -83.0,
               "smooth"
             ],
             [
               0.625,
-              45.0,
+              -79.0,
               "smooth"
             ],
             [
               0.75,
-              60.0,
+              -71.0,
               "smooth"
             ],
             [
               0.875,
-              72.0,
+              -63.0,
               "smooth"
             ],
             [
               1.0,
-              80.0,
+              -57.0,
               "smooth"
             ]
           ]
@@ -11729,47 +9998,47 @@
           "keys": [
             [
               0.0,
-              -13.0,
+              -20.0,
               "smooth"
             ],
             [
               0.125,
-              -20.0,
+              -27.0,
               "smooth"
             ],
             [
               0.25,
-              -27.0,
-              "smooth"
-            ],
-            [
-              0.375,
               -34.0,
               "smooth"
             ],
             [
+              0.375,
+              -41.0,
+              "smooth"
+            ],
+            [
               0.5,
-              -39.0,
+              -46.0,
               "smooth"
             ],
             [
               0.625,
-              -35.0,
+              -42.0,
               "smooth"
             ],
             [
               0.75,
-              -27.0,
+              -34.0,
               "smooth"
             ],
             [
               0.875,
-              -20.0,
+              -27.0,
               "smooth"
             ],
             [
               1.0,
-              -13.0,
+              -20.0,
               "smooth"
             ]
           ]
@@ -11823,55 +10092,6 @@
             ]
           ]
         },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              100.0,
-              "smooth"
-            ],
-            [
-              0.125,
-              108.0,
-              "smooth"
-            ],
-            [
-              0.25,
-              120.0,
-              "smooth"
-            ],
-            [
-              0.375,
-              135.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              150.0,
-              "smooth"
-            ],
-            [
-              0.625,
-              135.0,
-              "smooth"
-            ],
-            [
-              0.75,
-              120.0,
-              "smooth"
-            ],
-            [
-              0.875,
-              108.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              100.0,
-              "smooth"
-            ]
-          ]
-        },
         "near_foot_x": {
           "const": 10.0
         },
@@ -11879,7 +10099,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -11888,7 +10108,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "torso": {
           "keys": [
@@ -11999,47 +10219,47 @@
           "keys": [
             [
               0.0,
-              17.0,
+              -12.0,
               "smooth"
             ],
             [
               0.125,
-              12.0,
+              -17.0,
               "smooth"
             ],
             [
               0.25,
-              5.0,
+              -24.0,
               "smooth"
             ],
             [
               0.375,
-              -2.0,
+              -31.0,
               "smooth"
             ],
             [
               0.5,
-              -7.0,
+              -36.0,
               "smooth"
             ],
             [
               0.625,
-              -4.0,
+              -33.0,
               "smooth"
             ],
             [
               0.75,
-              2.0,
+              -27.0,
               "smooth"
             ],
             [
               0.875,
-              10.0,
+              -19.0,
               "smooth"
             ],
             [
               1.0,
-              17.0,
+              -12.0,
               "smooth"
             ]
           ]
@@ -12048,96 +10268,47 @@
           "keys": [
             [
               0.0,
-              -50.0,
+              -57.0,
               "smooth"
             ],
             [
               0.125,
-              -61.0,
+              -68.0,
               "smooth"
             ],
             [
               0.25,
-              -72.0,
+              -79.0,
               "smooth"
             ],
             [
               0.375,
-              -82.0,
+              -89.0,
               "smooth"
             ],
             [
               0.5,
+              -98.0,
+              "smooth"
+            ],
+            [
+              0.625,
               -91.0,
               "smooth"
             ],
             [
-              0.625,
-              -84.0,
-              "smooth"
-            ],
-            [
               0.75,
-              -72.0,
+              -79.0,
               "smooth"
             ],
             [
               0.875,
-              -60.0,
+              -67.0,
               "smooth"
             ],
             [
               1.0,
-              -50.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              80.0,
-              "smooth"
-            ],
-            [
-              0.125,
-              60.0,
-              "smooth"
-            ],
-            [
-              0.25,
-              40.0,
-              "smooth"
-            ],
-            [
-              0.375,
-              20.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              5.0,
-              "smooth"
-            ],
-            [
-              0.625,
-              20.0,
-              "smooth"
-            ],
-            [
-              0.75,
-              40.0,
-              "smooth"
-            ],
-            [
-              0.875,
-              60.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              80.0,
+              -57.0,
               "smooth"
             ]
           ]
@@ -12146,47 +10317,47 @@
           "keys": [
             [
               0.0,
-              -13.0,
+              -20.0,
               "smooth"
             ],
             [
               0.125,
-              -8.0,
+              -15.0,
               "smooth"
             ],
             [
               0.25,
-              -2.0,
+              -9.0,
               "smooth"
             ],
             [
               0.375,
-              5.0,
+              -2.0,
               "smooth"
             ],
             [
               0.5,
-              10.0,
+              3.0,
               "smooth"
             ],
             [
               0.625,
-              7.0,
+              0.0,
               "smooth"
             ],
             [
               0.75,
-              1.0,
+              -6.0,
               "smooth"
             ],
             [
               0.875,
-              -7.0,
+              -14.0,
               "smooth"
             ],
             [
               1.0,
-              -13.0,
+              -20.0,
               "smooth"
             ]
           ]
@@ -12240,55 +10411,6 @@
             ]
           ]
         },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              100.0,
-              "smooth"
-            ],
-            [
-              0.125,
-              120.0,
-              "smooth"
-            ],
-            [
-              0.25,
-              140.0,
-              "smooth"
-            ],
-            [
-              0.375,
-              160.0,
-              "smooth"
-            ],
-            [
-              0.5,
-              175.0,
-              "smooth"
-            ],
-            [
-              0.625,
-              160.0,
-              "smooth"
-            ],
-            [
-              0.75,
-              140.0,
-              "smooth"
-            ],
-            [
-              0.875,
-              120.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              100.0,
-              "smooth"
-            ]
-          ]
-        },
         "near_foot_x": {
           "const": 10.0
         },
@@ -12296,7 +10418,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -12305,7 +10427,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "root_y": {
           "keys": [
@@ -12465,52 +10587,52 @@
           "keys": [
             [
               0.0,
-              17.0,
+              -12.0,
               "smooth"
             ],
             [
               0.111111,
-              9.0,
-              "smooth"
-            ],
-            [
-              0.222222,
-              0.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              -10.0,
-              "smooth"
-            ],
-            [
-              0.444444,
               -20.0,
               "smooth"
             ],
             [
-              0.555556,
+              0.222222,
               -29.0,
               "smooth"
             ],
             [
+              0.333333,
+              -39.0,
+              "smooth"
+            ],
+            [
+              0.444444,
+              -49.0,
+              "smooth"
+            ],
+            [
+              0.555556,
+              -58.0,
+              "smooth"
+            ],
+            [
               0.666667,
-              -23.0,
+              -52.0,
               "smooth"
             ],
             [
               0.777778,
-              -10.0,
+              -39.0,
               "smooth"
             ],
             [
               0.888889,
-              4.0,
+              -25.0,
               "smooth"
             ],
             [
               1.0,
-              17.0,
+              -12.0,
               "smooth"
             ]
           ]
@@ -12519,106 +10641,52 @@
           "keys": [
             [
               0.0,
-              -50.0,
+              -57.0,
               "smooth"
             ],
             [
               0.111111,
-              -55.0,
+              -62.0,
               "smooth"
             ],
             [
               0.222222,
-              -60.0,
+              -67.0,
               "smooth"
             ],
             [
               0.333333,
-              -65.0,
+              -72.0,
               "smooth"
             ],
             [
               0.444444,
+              -75.0,
+              "smooth"
+            ],
+            [
+              0.555556,
+              -73.0,
+              "smooth"
+            ],
+            [
+              0.666667,
               -68.0,
               "smooth"
             ],
             [
-              0.555556,
-              -66.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              -61.0,
-              "smooth"
-            ],
-            [
               0.777778,
-              -56.0,
+              -63.0,
               "smooth"
             ],
             [
               0.888889,
-              -52.0,
+              -59.0,
               "smooth"
             ],
             [
               1.0,
-              -50.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              80.0,
-              "smooth"
-            ],
-            [
-              0.111111,
-              70.0,
-              "smooth"
-            ],
-            [
-              0.222222,
-              60.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              50.0,
-              "smooth"
-            ],
-            [
-              0.444444,
-              35.0,
-              "smooth"
-            ],
-            [
-              0.555556,
-              20.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              35.0,
-              "smooth"
-            ],
-            [
-              0.777778,
-              50.0,
-              "smooth"
-            ],
-            [
-              0.888889,
-              65.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              80.0,
+              -57.0,
               "smooth"
             ]
           ]
@@ -12627,52 +10695,52 @@
           "keys": [
             [
               0.0,
-              -13.0,
+              -20.0,
               "smooth"
             ],
             [
               0.111111,
-              -5.0,
+              -12.0,
               "smooth"
             ],
             [
               0.222222,
-              4.0,
+              -3.0,
               "smooth"
             ],
             [
               0.333333,
-              14.0,
+              7.0,
               "smooth"
             ],
             [
               0.444444,
-              24.0,
+              17.0,
               "smooth"
             ],
             [
               0.555556,
-              31.0,
+              24.0,
               "smooth"
             ],
             [
               0.666667,
-              25.0,
+              18.0,
               "smooth"
             ],
             [
               0.777778,
-              12.0,
+              5.0,
               "smooth"
             ],
             [
               0.888889,
-              0.0,
+              -7.0,
               "smooth"
             ],
             [
               1.0,
-              -13.0,
+              -20.0,
               "smooth"
             ]
           ]
@@ -12731,60 +10799,6 @@
             ]
           ]
         },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              100.0,
-              "smooth"
-            ],
-            [
-              0.111111,
-              110.0,
-              "smooth"
-            ],
-            [
-              0.222222,
-              120.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              130.0,
-              "smooth"
-            ],
-            [
-              0.444444,
-              145.0,
-              "smooth"
-            ],
-            [
-              0.555556,
-              160.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              145.0,
-              "smooth"
-            ],
-            [
-              0.777778,
-              130.0,
-              "smooth"
-            ],
-            [
-              0.888889,
-              115.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              100.0,
-              "smooth"
-            ]
-          ]
-        },
         "near_foot_x": {
           "const": 10.0
         },
@@ -12792,7 +10806,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -12801,7 +10815,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "torso": {
           "keys": [
@@ -12922,52 +10936,52 @@
           "keys": [
             [
               0.0,
-              17.0,
-              "smooth"
-            ],
-            [
-              0.111111,
-              10.0,
-              "smooth"
-            ],
-            [
-              0.222222,
-              3.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              -5.0,
-              "smooth"
-            ],
-            [
-              0.444444,
               -12.0,
               "smooth"
             ],
             [
+              0.111111,
+              -19.0,
+              "smooth"
+            ],
+            [
+              0.222222,
+              -26.0,
+              "smooth"
+            ],
+            [
+              0.333333,
+              -34.0,
+              "smooth"
+            ],
+            [
+              0.444444,
+              -41.0,
+              "smooth"
+            ],
+            [
               0.555556,
-              -8.0,
+              -37.0,
               "smooth"
             ],
             [
               0.666667,
-              0.0,
+              -29.0,
               "smooth"
             ],
             [
               0.777778,
-              9.0,
+              -20.0,
               "smooth"
             ],
             [
               0.888889,
-              15.0,
+              -14.0,
               "smooth"
             ],
             [
               1.0,
-              17.0,
+              -12.0,
               "smooth"
             ]
           ]
@@ -12976,106 +10990,52 @@
           "keys": [
             [
               0.0,
-              -50.0,
+              -57.0,
               "smooth"
             ],
             [
               0.111111,
-              -55.0,
+              -62.0,
               "smooth"
             ],
             [
               0.222222,
-              -60.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              -64.0,
-              "smooth"
-            ],
-            [
-              0.444444,
               -67.0,
               "smooth"
             ],
             [
-              0.555556,
-              -64.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              -59.0,
-              "smooth"
-            ],
-            [
-              0.777778,
-              -54.0,
-              "smooth"
-            ],
-            [
-              0.888889,
-              -51.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              -50.0,
-              "smooth"
-            ]
-          ]
-        },
-        "near_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              80.0,
-              "smooth"
-            ],
-            [
-              0.111111,
-              70.0,
-              "smooth"
-            ],
-            [
-              0.222222,
-              60.0,
-              "smooth"
-            ],
-            [
               0.333333,
-              50.0,
+              -71.0,
               "smooth"
             ],
             [
               0.444444,
-              40.0,
+              -74.0,
               "smooth"
             ],
             [
               0.555556,
-              50.0,
+              -71.0,
               "smooth"
             ],
             [
               0.666667,
-              60.0,
+              -66.0,
               "smooth"
             ],
             [
               0.777778,
-              70.0,
+              -61.0,
               "smooth"
             ],
             [
               0.888889,
-              78.0,
+              -58.0,
               "smooth"
             ],
             [
               1.0,
-              80.0,
+              -57.0,
               "smooth"
             ]
           ]
@@ -13084,52 +11044,52 @@
           "keys": [
             [
               0.0,
-              -13.0,
+              -20.0,
               "smooth"
             ],
             [
               0.111111,
-              -6.0,
+              -13.0,
               "smooth"
             ],
             [
               0.222222,
-              1.0,
+              -6.0,
               "smooth"
             ],
             [
               0.333333,
-              9.0,
+              2.0,
               "smooth"
             ],
             [
               0.444444,
-              16.0,
+              9.0,
               "smooth"
             ],
             [
               0.555556,
-              12.0,
+              5.0,
               "smooth"
             ],
             [
               0.666667,
-              4.0,
+              -3.0,
               "smooth"
             ],
             [
               0.777778,
-              -5.0,
+              -12.0,
               "smooth"
             ],
             [
               0.888889,
-              -11.0,
+              -18.0,
               "smooth"
             ],
             [
               1.0,
-              -13.0,
+              -20.0,
               "smooth"
             ]
           ]
@@ -13188,60 +11148,6 @@
             ]
           ]
         },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              100.0,
-              "smooth"
-            ],
-            [
-              0.111111,
-              110.0,
-              "smooth"
-            ],
-            [
-              0.222222,
-              120.0,
-              "smooth"
-            ],
-            [
-              0.333333,
-              130.0,
-              "smooth"
-            ],
-            [
-              0.444444,
-              140.0,
-              "smooth"
-            ],
-            [
-              0.555556,
-              130.0,
-              "smooth"
-            ],
-            [
-              0.666667,
-              120.0,
-              "smooth"
-            ],
-            [
-              0.777778,
-              110.0,
-              "smooth"
-            ],
-            [
-              0.888889,
-              102.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              100.0,
-              "smooth"
-            ]
-          ]
-        },
         "near_foot_x": {
           "const": 10.0
         },
@@ -13249,7 +11155,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -13258,7 +11164,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "root_y": {
           "keys": [
@@ -13433,62 +11339,62 @@
           "keys": [
             [
               0.0,
-              17.0,
+              -12.0,
               "smooth"
             ],
             [
               0.090909,
-              10.0,
+              -19.0,
               "smooth"
             ],
             [
               0.181818,
-              1.0,
-              "smooth"
-            ],
-            [
-              0.272727,
-              -10.0,
-              "smooth"
-            ],
-            [
-              0.363636,
-              -22.0,
-              "smooth"
-            ],
-            [
-              0.454545,
-              -34.0,
-              "smooth"
-            ],
-            [
-              0.545455,
-              -42.0,
-              "smooth"
-            ],
-            [
-              0.636364,
-              -38.0,
-              "smooth"
-            ],
-            [
-              0.727273,
               -28.0,
               "smooth"
             ],
             [
+              0.272727,
+              -39.0,
+              "smooth"
+            ],
+            [
+              0.363636,
+              -51.0,
+              "smooth"
+            ],
+            [
+              0.454545,
+              -63.0,
+              "smooth"
+            ],
+            [
+              0.545455,
+              -71.0,
+              "smooth"
+            ],
+            [
+              0.636364,
+              -67.0,
+              "smooth"
+            ],
+            [
+              0.727273,
+              -57.0,
+              "smooth"
+            ],
+            [
               0.818182,
-              -15.0,
+              -44.0,
               "smooth"
             ],
             [
               0.909091,
-              2.0,
+              -27.0,
               "smooth"
             ],
             [
               1.0,
-              17.0,
+              -12.0,
               "smooth"
             ]
           ]
@@ -13497,106 +11403,106 @@
           "keys": [
             [
               0.0,
-              -50.0,
+              -57.0,
               "smooth"
             ],
             [
               0.090909,
-              -59.0,
+              -66.0,
               "smooth"
             ],
             [
               0.181818,
-              -69.0,
+              -76.0,
               "smooth"
             ],
             [
               0.272727,
-              -79.0,
+              -86.0,
               "smooth"
             ],
             [
               0.363636,
-              -88.0,
+              -95.0,
               "smooth"
             ],
             [
               0.454545,
-              -94.0,
+              -101.0,
               "smooth"
             ],
             [
               0.545455,
-              -96.0,
+              -103.0,
               "smooth"
             ],
             [
               0.636364,
-              -90.0,
+              -97.0,
               "smooth"
             ],
             [
               0.727273,
-              -79.0,
+              -86.0,
               "smooth"
             ],
             [
               0.818182,
-              -67.0,
+              -74.0,
               "smooth"
             ],
             [
               0.909091,
-              -56.0,
+              -63.0,
               "smooth"
             ],
             [
               1.0,
-              -50.0,
+              -57.0,
               "smooth"
             ]
           ]
         },
-        "near_hand_pitch": {
+        "far_hand_x": {
           "keys": [
             [
               0.0,
-              80.0,
+              -20.0,
               "smooth"
             ],
             [
               0.090909,
-              65.0,
+              -13.0,
               "smooth"
             ],
             [
               0.181818,
-              50.0,
+              -4.0,
               "smooth"
             ],
             [
               0.272727,
-              35.0,
+              7.0,
               "smooth"
             ],
             [
               0.363636,
-              20.0,
+              19.0,
               "smooth"
             ],
             [
               0.454545,
-              8.0,
+              31.0,
               "smooth"
             ],
             [
               0.545455,
-              0.0,
+              39.0,
               "smooth"
             ],
             [
               0.636364,
-              10.0,
+              35.0,
               "smooth"
             ],
             [
@@ -13606,81 +11512,17 @@
             ],
             [
               0.818182,
-              45.0,
+              12.0,
               "smooth"
             ],
             [
               0.909091,
-              65.0,
+              -3.0,
               "smooth"
             ],
             [
               1.0,
-              80.0,
-              "smooth"
-            ]
-          ]
-        },
-        "far_hand_x": {
-          "keys": [
-            [
-              0.0,
-              -13.0,
-              "smooth"
-            ],
-            [
-              0.090909,
-              -6.0,
-              "smooth"
-            ],
-            [
-              0.181818,
-              3.0,
-              "smooth"
-            ],
-            [
-              0.272727,
-              14.0,
-              "smooth"
-            ],
-            [
-              0.363636,
-              26.0,
-              "smooth"
-            ],
-            [
-              0.454545,
-              38.0,
-              "smooth"
-            ],
-            [
-              0.545455,
-              46.0,
-              "smooth"
-            ],
-            [
-              0.636364,
-              42.0,
-              "smooth"
-            ],
-            [
-              0.727273,
-              32.0,
-              "smooth"
-            ],
-            [
-              0.818182,
-              19.0,
-              "smooth"
-            ],
-            [
-              0.909091,
-              4.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              -13.0,
+              -20.0,
               "smooth"
             ]
           ]
@@ -13749,70 +11591,6 @@
             ]
           ]
         },
-        "far_hand_pitch": {
-          "keys": [
-            [
-              0.0,
-              100.0,
-              "smooth"
-            ],
-            [
-              0.090909,
-              115.0,
-              "smooth"
-            ],
-            [
-              0.181818,
-              130.0,
-              "smooth"
-            ],
-            [
-              0.272727,
-              145.0,
-              "smooth"
-            ],
-            [
-              0.363636,
-              160.0,
-              "smooth"
-            ],
-            [
-              0.454545,
-              172.0,
-              "smooth"
-            ],
-            [
-              0.545455,
-              180.0,
-              "smooth"
-            ],
-            [
-              0.636364,
-              170.0,
-              "smooth"
-            ],
-            [
-              0.727273,
-              155.0,
-              "smooth"
-            ],
-            [
-              0.818182,
-              135.0,
-              "smooth"
-            ],
-            [
-              0.909091,
-              115.0,
-              "smooth"
-            ],
-            [
-              1.0,
-              100.0,
-              "smooth"
-            ]
-          ]
-        },
         "near_foot_x": {
           "const": 10.0
         },
@@ -13820,7 +11598,7 @@
           "const": 0.0
         },
         "near_foot_pitch": {
-          "const": 148.6504
+          "const": 159.2037
         },
         "far_foot_x": {
           "const": -10.0
@@ -13829,7 +11607,7 @@
           "const": 0.0
         },
         "far_foot_pitch": {
-          "const": 146.2369
+          "const": 163.4761
         },
         "root_y": {
           "keys": [
@@ -14035,7 +11813,33 @@
     "canonical_svg": true,
     "facing": "left",
     "source_authority": "assets/patent-clerk.svg",
+    "source_pose_role": "geometry-layout-only",
+    "natural_pose_authority": "character-spec",
     "part_order_policy": "svg-document-order"
+  },
+  "natural_pose": {
+    "arms": {
+      "near": {
+        "hand": [
+          -12.0,
+          -57.0
+        ],
+        "elbow": [
+          2.5,
+          -64.0
+        ]
+      },
+      "far": {
+        "hand": [
+          -20.0,
+          -49.0
+        ],
+        "elbow": [
+          -9.0,
+          -59.0
+        ]
+      }
+    }
   },
   "asset_metadata": {
     "source_kind": "manual-svg-paperdoll",
@@ -14044,11 +11848,11 @@
   },
   "build_provenance": {
     "schema": "canonical-svg-rig-v3",
-    "builder_version": 7,
+    "builder_version": 13,
     "renderer": "resvg_py",
     "renderer_version": "0.3.3",
     "renderer_backend": "native-extension",
-    "svg_sha256": "d3cc13f2b46fc1b5e54439690c72fef3834b3190692cdd240925dfb0495f41e8",
+    "svg_sha256": "04dfaafc643446f1001caa7278486c3655da134dad5ddba8b0c5195ced13c197",
     "part_order_policy": "svg-document-order",
     "part_order": "svg-document"
   }

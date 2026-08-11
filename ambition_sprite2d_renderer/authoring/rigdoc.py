@@ -79,6 +79,7 @@ are painted on a scratch layer and alpha-composited (the gnu_ton rule).
 
 from __future__ import annotations
 
+import math
 from collections import OrderedDict
 from dataclasses import dataclass
 import json
@@ -525,11 +526,23 @@ class RigDocument:
             if up not in sk.bones or lo not in sk.bones:
                 return
             origin = w0[up].origin
+            upper_len = sk.bones[up].length
+            lower_len = sk.bones[lo].length
+            max_reach_ratio = chain.get("max_reach_ratio")
+            if max_reach_ratio is not None:
+                ratio = max(0.0, min(1.0, float(max_reach_ratio)))
+                dx = target[0] - origin[0]
+                dy = target[1] - origin[1]
+                distance = math.hypot(dx, dy)
+                max_distance = (upper_len + lower_len) * ratio
+                if distance > max_distance and distance > 1e-9:
+                    scale = max_distance / distance
+                    target = (origin[0] + dx * scale, origin[1] + dy * scale)
             a1, a2 = two_bone_ik(
                 origin,
                 target,
-                sk.bones[up].length,
-                sk.bones[lo].length,
+                upper_len,
+                lower_len,
                 bend=float(chain.get("bend", 1.0) if bend is None else bend),
             )
             parent = sk.bones[up].parent
@@ -561,10 +574,12 @@ class RigDocument:
             y = s.get(f"{pre}_y", float(chain.get("rest_y", 0.0)))
             end_name = chain.get("end")
             pitch = None
-            if end_name:
-                pitch = s.get(
-                    f"{pre}_pitch", float(chain.get("rest_pitch", 0.0))
-                )
+            if end_name and f"{pre}_pitch" in s:
+                # Hand/world pitch is opt-in.  When a clip does not author an
+                # explicit wrist pitch, keeping the hand on the lower-arm axis
+                # produces a much more natural default than pinning it to an
+                # absolute world-space angle sampled from the source stance.
+                pitch = s[f"{pre}_pitch"]
             bend = s.get(f"{pre}_bend", float(chain.get("bend", 1.0)))
             solve_chain(
                 chain,

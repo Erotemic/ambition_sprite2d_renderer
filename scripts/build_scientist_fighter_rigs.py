@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Build the canonical SVG rigs for Patent Clerk and Carl Stargan.
 
-The manually traced SVGs in ``assets/`` are the art authority. This builder only
-extracts their explicit part/joint annotations and authors animation clips; it
-never recreates character geometry.
+The manually traced SVGs in ``assets/`` are the art/geometry authority.  Their
+source pose may be intentionally exploded or splayed to expose rigid pieces;
+natural gameplay pose and IK anatomy are authored separately here.  This
+builder extracts explicit part/joint geometry and authors animation clips; it
+never recreates character artwork.
 """
 
 from __future__ import annotations
@@ -32,7 +34,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
-BUILDER_VERSION = 7
+BUILDER_VERSION = 13
 
 
 def _is_extension_path(path: Path) -> bool:
@@ -140,6 +142,7 @@ def _sha256(path: Path) -> str:
 
 from ambition_sprite2d_renderer.authoring.humanoid_svg_rig import (  # noqa: E402
     HumanoidViewSpec,
+    LimbPoseHint,
     build_humanoid_view_document,
 )
 from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument  # noqa: E402
@@ -158,6 +161,9 @@ class CharacterSpec:
     ground_margin: float
     collision_scale: float
     rows: tuple[tuple[str, int, int], ...]
+    hands_follow_forearms: bool = False
+    natural_arm_pose: Mapping[str, LimbPoseHint] | None = None
+    arm_max_reach_ratio: float | None = None
 
     @property
     def svg_path(self) -> Path:
@@ -229,6 +235,19 @@ SPECS = {
         ground_margin=26.0,
         collision_scale=1.66,
         rows=PATENT_ROWS,
+        hands_follow_forearms=True,
+        # The SVG is deliberately splayed so all rigid pieces are visible.
+        # Natural gameplay anatomy is authored separately.  Each hint is in
+        # frame coordinates relative to (center_x, ground_y): hand target plus
+        # the elbow position that identifies the intended two-bone IK branch.
+        # Both lower arms point generally west with a small relaxed bend.
+        natural_arm_pose={
+            "near": LimbPoseHint(target=(-12.0, -57.0), joint=(2.5, -64.0)),
+            "far": LimbPoseHint(target=(-20.0, -49.0), joint=(-9.0, -59.0)),
+        },
+        # Keep a small visible elbow bend even when a gesture reaches beyond
+        # the physical chain length instead of letting IK snap ruler-straight.
+        arm_max_reach_ratio=0.98,
     ),
     "carl_stargan": CharacterSpec(
         name="carl_stargan",
@@ -262,7 +281,12 @@ def keys(values: Sequence[float], *, loop: bool, ease: str = "smooth") -> dict:
     return {"keys": rows}
 
 
-def _rest(doc: Mapping[str, object]) -> dict[str, float]:
+def _rest(
+    doc: Mapping[str, object],
+    *,
+    hands_follow_forearms: bool = False,
+    natural_arm_pose: Mapping[str, LimbPoseHint] | None = None,
+) -> dict[str, float]:
     out: dict[str, float] = {}
     for entry in doc.get("ik_legs", []):  # type: ignore[union-attr]
         prefix = str(entry["channel_prefix"])
@@ -276,6 +300,15 @@ def _rest(doc: Mapping[str, object]) -> dict[str, float]:
         out[f"{prefix}_y"] = float(entry["rest_y"])
         out[f"{prefix}_pitch"] = float(entry["rest_pitch"])
         out[f"{prefix}_bend"] = float(entry["bend"])
+    if hands_follow_forearms:
+        out["_hands_follow_forearms"] = 1.0
+    if natural_arm_pose is not None:
+        for side in ("near", "far"):
+            hint = natural_arm_pose.get(side)
+            if hint is None:
+                continue
+            out[f"_natural_{side}_hand_x"] = float(hint.target[0])
+            out[f"_natural_{side}_hand_y"] = float(hint.target[1])
     return out
 
 
@@ -288,15 +321,60 @@ def _clip(frames: int, duration_ms: int, *, loop: bool, channels: Mapping[str, d
     }
 
 
+def _hand_anchor(
+    rest: Mapping[str, float], prefix: str, *, compact: bool
+) -> tuple[float, float]:
+    if prefix == "near_hand":
+        legacy_x = 17.0
+        legacy_y = -50.0 if compact else -48.0
+    elif prefix == "far_hand":
+        legacy_x = -13.0
+        legacy_y = -49.0 if compact else -47.0
+    else:
+        raise ValueError(f"unknown hand prefix {prefix!r}")
+    return (
+        float(rest.get(f"_natural_{prefix}_x", legacy_x)),
+        float(rest.get(f"_natural_{prefix}_y", legacy_y)),
+    )
+
+
+def _rebase_hand_trajectory(
+    rest: Mapping[str, float],
+    prefix: str,
+    xs: Sequence[float],
+    ys: Sequence[float],
+    *,
+    compact: bool,
+) -> tuple[list[float], list[float]]:
+    """Move legacy pose deltas onto the character's natural side-view arms.
+
+    Scientist clips were originally authored around generic neutral anchors
+    (near=(17,-50), far=(-13,-49) for compact sheets).  Patent Clerk's SVG is
+    an exploded/splayed authoring layout, not a neutral pose.  Rebase the
+    existing gesture deltas onto his natural wrist targets so all ordinary
+    clips keep the intended motion while both forearms rest toward west.
+    """
+    anchor_x, anchor_y = _hand_anchor(rest, prefix, compact=compact)
+    if prefix == "near_hand":
+        legacy_x = 17.0
+        legacy_y = -50.0 if compact else -48.0
+    else:
+        legacy_x = -13.0
+        legacy_y = -49.0 if compact else -47.0
+    return (
+        [anchor_x + (float(value) - legacy_x) for value in xs],
+        [anchor_y + (float(value) - legacy_y) for value in ys],
+    )
+
+
 def _neutral(rest: Mapping[str, float], *, compact: bool) -> dict[str, dict]:
-    hand_y = -50.0 if compact else -48.0
+    near_x, near_y = _hand_anchor(rest, "near_hand", compact=compact)
+    far_x, far_y = _hand_anchor(rest, "far_hand", compact=compact)
     return {
-        "near_hand_x": const(17.0),
-        "near_hand_y": const(hand_y),
-        "near_hand_pitch": const(80.0),
-        "far_hand_x": const(-13.0),
-        "far_hand_y": const(hand_y + 1.0),
-        "far_hand_pitch": const(100.0),
+        "near_hand_x": const(near_x),
+        "near_hand_y": const(near_y),
+        "far_hand_x": const(far_x),
+        "far_hand_y": const(far_y),
         "near_foot_x": const(10.0),
         "near_foot_lift": const(0.0),
         "near_foot_pitch": const(rest["near_foot_pitch"]),
@@ -310,6 +388,8 @@ def _locomotion(rest: Mapping[str, float], frames: int, duration: int, *, run: b
     stride = 15.0 if run else 10.0
     lift = 9.0 if run else 6.0
     arm = 8.0 if run else 5.0
+    near_hand_x, near_hand_y = _hand_anchor(rest, "near_hand", compact=compact)
+    far_hand_x, far_hand_y = _hand_anchor(rest, "far_hand", compact=compact)
     base = _neutral(rest, compact=compact)
     base.update(
         {
@@ -321,10 +401,10 @@ def _locomotion(rest: Mapping[str, float], frames: int, duration: int, *, run: b
             "near_foot_lift": expr(f"{lift}*max(0,-sin(tau*t))"),
             "far_foot_x": expr(f"-10-{stride}*sin(tau*t)"),
             "far_foot_lift": expr(f"{lift}*max(0,sin(tau*t))"),
-            "near_hand_x": expr(f"17-{arm}*sin(tau*t)"),
-            "near_hand_y": expr(f"{-50 if compact else -48}+2*sin(tau*t)"),
-            "far_hand_x": expr(f"-13+{arm}*sin(tau*t)"),
-            "far_hand_y": expr(f"{-49 if compact else -47}-2*sin(tau*t)"),
+            "near_hand_x": expr(f"{near_hand_x}-{arm}*sin(tau*t)"),
+            "near_hand_y": expr(f"{near_hand_y}+2*sin(tau*t)"),
+            "far_hand_x": expr(f"{far_hand_x}+{arm}*sin(tau*t)"),
+            "far_hand_y": expr(f"{far_hand_y}-2*sin(tau*t)"),
         }
     )
     return _clip(frames, duration, loop=True, channels=base)
@@ -344,9 +424,13 @@ def _pose(rest: Mapping[str, float], frames: int, duration: int, *, loop: bool =
             channels[name] = keys(values, loop=loop)
     for prefix, triplet in (("near_hand", near_hand), ("far_hand", far_hand)):
         if triplet is not None:
-            channels[f"{prefix}_x"] = keys(triplet[0], loop=loop)
-            channels[f"{prefix}_y"] = keys(triplet[1], loop=loop)
-            channels[f"{prefix}_pitch"] = keys(triplet[2], loop=loop)
+            x_values, y_values = _rebase_hand_trajectory(
+                rest, prefix, triplet[0], triplet[1], compact=compact
+            )
+            channels[f"{prefix}_x"] = keys(x_values, loop=loop)
+            channels[f"{prefix}_y"] = keys(y_values, loop=loop)
+            if not rest.get("_hands_follow_forearms", 0.0):
+                channels[f"{prefix}_pitch"] = keys(triplet[2], loop=loop)
     for prefix, triplet in (("near_foot", near_foot), ("far_foot", far_foot)):
         if triplet is not None:
             channels[f"{prefix}_x"] = keys(triplet[0], loop=loop)
@@ -356,17 +440,23 @@ def _pose(rest: Mapping[str, float], frames: int, duration: int, *, loop: bool =
 
 
 def _common_clips(spec: CharacterSpec, doc: Mapping[str, object], *, compact: bool) -> dict[str, dict]:
-    r = _rest(doc)
+    r = _rest(
+        doc,
+        hands_follow_forearms=spec.hands_follow_forearms,
+        natural_arm_pose=spec.natural_arm_pose,
+    )
     rows = {name: (frames, duration) for name, frames, duration in spec.rows}
     clips: dict[str, dict] = {}
     f, d = rows["idle"]
     idle = _neutral(r, compact=compact)
+    _near_idle_x, near_idle_y = _hand_anchor(r, "near_hand", compact=compact)
+    _far_idle_x, far_idle_y = _hand_anchor(r, "far_hand", compact=compact)
     idle.update({
         "root_y": expr("0.65*sin(tau*t)"),
         "torso": expr("1.1*sin(tau*t)"),
         "head": expr("-0.8*sin(tau*t)"),
-        "near_hand_y": expr(f"{-50 if compact else -48}+0.8*sin(tau*t)"),
-        "far_hand_y": expr(f"{-49 if compact else -47}-0.6*sin(tau*t)"),
+        "near_hand_y": expr(f"{near_idle_y}+0.8*sin(tau*t)"),
+        "far_hand_y": expr(f"{far_idle_y}-0.6*sin(tau*t)"),
     })
     clips["idle"] = _clip(f, d, loop=True, channels=idle)
     clips["walk"] = _locomotion(r, *rows["walk"], run=False, compact=compact)
@@ -431,11 +521,21 @@ def _common_clips(spec: CharacterSpec, doc: Mapping[str, object], *, compact: bo
                 near_hand=([4,0,-4,-2,3,8],[-42,-39,-37,-38,-41,-45],[55,50,45,50,60,70]),
                 far_hand=([-3,0,4,2,-2,-7],[-41,-38,-36,-37,-40,-44],[125,130,135,130,120,110]))
         else:
+            # Both scientist sheets face west.  A forward roll therefore turns
+            # counter-clockwise in screen space (negative bone rotation).  The
+            # old positive sweep made the body read as a backward somersault,
+            # and its planted default feet fought the rotating pelvis.  Keep
+            # the centre of mass low, tuck all four IK targets around the body,
+            # then open back into the authored stance.
             clips[name] = _pose(r, f, d, compact=compact,
-                root_y=[-3,-4,-6,-10,-10,-6,-4,-3], pelvis=[0,45,90,135,180,225,270,315],
-                torso=[0,20,35,45,35,20,8,0], head=[0,-15,-25,-30,-25,-15,-6,0],
-                near_hand=([8,1,-6,-10,-6,1,8,14],[-48,-42,-38,-36,-38,-42,-48,-52],[70,45,20,0,160,135,105,80]),
-                far_hand=([-6,1,7,10,7,1,-6,-11],[-47,-41,-37,-35,-37,-41,-47,-51],[110,135,160,180,20,45,75,100]))
+                root_y=[5,9,13,16,15,11,7,3],
+                pelvis=[0,-35,-82,-132,-184,-236,-286,-328],
+                torso=[-4,-14,-27,-39,-43,-34,-19,-5],
+                head=[3,9,16,22,24,18,10,3],
+                near_hand=([11,5,-1,-5,-3,2,9,15],[-47,-39,-33,-30,-31,-36,-43,-49],[75,55,35,20,5,25,55,78]),
+                far_hand=([-9,-4,1,4,3,-1,-7,-12],[-46,-38,-32,-29,-30,-35,-42,-48],[105,125,145,160,175,150,120,102]),
+                near_foot=([9,5,1,-3,-2,2,7,10],[2,10,20,27,25,18,9,2],[r["near_foot_pitch"],r["near_foot_pitch"]-8,r["near_foot_pitch"]-18,r["near_foot_pitch"]-28,r["near_foot_pitch"]-22,r["near_foot_pitch"]-12,r["near_foot_pitch"]-4,r["near_foot_pitch"]]),
+                far_foot=([-9,-5,-1,3,2,-2,-7,-10],[1,9,18,25,24,17,8,1],[r["far_foot_pitch"],r["far_foot_pitch"]+8,r["far_foot_pitch"]+18,r["far_foot_pitch"]+28,r["far_foot_pitch"]+22,r["far_foot_pitch"]+12,r["far_foot_pitch"]+4,r["far_foot_pitch"]]))
 
     for name in ("wall_grab", "ledge_grab"):
         if name in rows:
@@ -503,7 +603,11 @@ def _common_clips(spec: CharacterSpec, doc: Mapping[str, object], *, compact: bo
 
 def _patent_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, dict]:
     clips = _common_clips(spec, doc, compact=True)
-    r = _rest(doc)
+    r = _rest(
+        doc,
+        hands_follow_forearms=spec.hands_follow_forearms,
+        natural_arm_pose=spec.natural_arm_pose,
+    )
     rows = {name: (frames, duration) for name, frames, duration in spec.rows}
     action_specs = {
         "known_result": dict(loop=False, torso=[0,3,6,8,5,2,0], head=[0,-2,-5,-7,-4,-1,0],
@@ -610,9 +714,12 @@ def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, 
 def _canonical_svg_part_order(svg_path: Path, view: str) -> list[str]:
     """Return rig-part names in the canonical SVG document order.
 
-    The SVG paint order is authoritative. Numeric ``data-rig-z`` metadata is
-    required to mirror that order so both document-order and legacy
-    attribute-order consumers produce the same composition.
+    Paint order is authored by moving the part groups in Inkscape, so document
+    order is the only z-order authority for these canonical scientist rigs.
+    ``data-rig-z`` remains readable by the generic SVG-rig importer for older
+    attribute-ordered documents, but its numeric value is deliberately ignored
+    here.  That keeps a legitimate group reorder from requiring a second, easy
+    to forget renumbering pass over redundant metadata.
     """
 
     root = ET.fromstring(svg_path.read_bytes())
@@ -630,19 +737,6 @@ def _canonical_svg_part_order(svg_path: Path, view: str) -> list[str]:
             continue
         if name in names:
             raise ValueError(f"duplicate SVG rig part {name!r} in {view!r}")
-        expected_z = float(len(names))
-        raw_z = elem.get("data-rig-z")
-        try:
-            actual_z = float(raw_z) if raw_z is not None else None
-        except ValueError as ex:
-            raise ValueError(
-                f"SVG rig part {name!r} has invalid data-rig-z={raw_z!r}"
-            ) from ex
-        if actual_z != expected_z:
-            raise ValueError(
-                f"SVG rig part {name!r} has data-rig-z={actual_z!r}, but its "
-                f"canonical document-order z is {expected_z!r}"
-            )
         names.append(name)
     if not names:
         raise ValueError(f"{svg_path} view {view!r} contains no rig parts")
@@ -800,6 +894,8 @@ def build_one(spec: CharacterSpec) -> Path:
                 render_scale=1,
                 collision_scale=spec.collision_scale,
                 part_order="document",
+                arm_pose_hints=spec.natural_arm_pose,
+                arm_max_reach_ratio=spec.arm_max_reach_ratio,
             ),
         )
     finally:
@@ -817,8 +913,20 @@ def build_one(spec: CharacterSpec) -> Path:
         "canonical_svg": True,
         "facing": "left",
         "source_authority": str(spec.svg_path.relative_to(ROOT)),
+        "source_pose_role": "geometry-layout-only",
+        "natural_pose_authority": "character-spec",
         "part_order_policy": "svg-document-order",
     }
+    if spec.natural_arm_pose:
+        doc["natural_pose"] = {
+            "arms": {
+                side: {
+                    "hand": [float(hint.target[0]), float(hint.target[1])],
+                    "elbow": [float(hint.joint[0]), float(hint.joint[1])],
+                }
+                for side, hint in spec.natural_arm_pose.items()
+            }
+        }
     doc["asset_metadata"] = {
         "source_kind": "manual-svg-paperdoll",
         "builder": "scripts/build_scientist_fighter_rigs.py",

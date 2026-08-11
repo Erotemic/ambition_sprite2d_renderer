@@ -193,6 +193,33 @@ class TestTemplateDocument:
         positive_elbow_x = positive["near_arm_l"].origin[0]
         assert positive_elbow_x - negative_elbow_x > 1.0
 
+    def test_ik_arm_max_reach_ratio_keeps_a_visible_elbow_bend(self, doc):
+        doc.data["ik_chains"] = [
+            {
+                "upper": "near_arm_u",
+                "lower": "near_arm_l",
+                "channel_prefix": "near_hand",
+                "rest_x": -200.0,
+                "rest_y": -20.0,
+                "bend": 1.0,
+                "max_reach_ratio": 0.98,
+            }
+        ]
+        doc.data["clips"]["soft_reach"] = {
+            "loop": False,
+            "frames": 1,
+            "duration_ms": 0,
+            "channels": {
+                "near_hand_x": {"const": -200.0},
+                "near_hand_y": {"const": -20.0},
+            },
+        }
+        world, _ = doc.solve("soft_reach", 0.0)
+        upper = world["near_arm_u"].angle
+        lower = world["near_arm_l"].angle
+        bend = abs((lower - upper + 180.0) % 360.0 - 180.0)
+        assert bend > 10.0
+
     def test_blade_hidden_outside_slash(self, doc):
         # opacity_channel parts default to invisible when their channel is
         # absent: idle must not paint the blade.

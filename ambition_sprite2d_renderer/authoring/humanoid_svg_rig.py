@@ -30,6 +30,12 @@ resulting document uses the standard pelvis/torso/head + two-arm + two-leg
 skeleton and emits generic two-bone IK chains for both arms as well as the
 existing planted-foot IK bindings.
 
+The source drawing is allowed to be an exploded or splayed authoring layout.
+Joint markers still define attachment geometry and segment lengths, but callers
+that care about anatomical IK direction should supply ``LimbPoseHint`` values.
+Those pose-space hints choose elbow/knee branches without treating the SVG's
+convenient source arrangement as an idle/rest-pose authority.
+
 The art hierarchy is explicit on purpose.  Unlike PCA's compatibility
 extractor, there are no heuristics based on English group names, bounding-box
 joint guesses, or character-specific element ids.  A reshaped path keeps its
@@ -75,6 +81,28 @@ class HumanoidViewSpec:
     render_scale: int = 2
     collision_scale: float = 1.65
     part_order: str = "attribute"
+    arm_pose_hints: Optional[Mapping[str, "LimbPoseHint"]] = None
+    leg_pose_hints: Optional[Mapping[str, "LimbPoseHint"]] = None
+    arm_bend_overrides: Optional[Mapping[str, float]] = None
+    leg_bend_overrides: Optional[Mapping[str, float]] = None
+    arm_max_reach_ratio: Optional[float] = None
+
+
+@dataclass(frozen=True)
+class LimbPoseHint:
+    """Pose-space target used to choose an IK branch independently of SVG layout.
+
+    ``target`` and ``joint`` are offsets from the rig frame's
+    ``(center_x, ground_y)``.  They describe an intended posed limb, not the
+    exploded/source arrangement used to expose artwork in the SVG.
+
+    The generated rig still measures segment lengths and part pivots from the
+    SVG.  This hint controls only which analytic two-bone solution is considered
+    anatomically correct.
+    """
+
+    target: Point
+    joint: Point
 
 
 @dataclass(frozen=True)
@@ -329,6 +357,31 @@ def _choose_bend(
     return best
 
 
+def _bend_for_side(
+    pose_hints: Optional[Mapping[str, LimbPoseHint]],
+    overrides: Optional[Mapping[str, float]],
+    side: str,
+    *,
+    center_x: float,
+    ground_y: float,
+    root: Point,
+    joint: Point,
+    target: Point,
+    l1: float,
+    l2: float,
+) -> float:
+    """Choose the IK branch from pose authority before consulting SVG layout."""
+    if pose_hints is not None and side in pose_hints:
+        hint = pose_hints[side]
+        hinted_joint = (center_x + hint.joint[0], ground_y + hint.joint[1])
+        hinted_target = (center_x + hint.target[0], ground_y + hint.target[1])
+        return _choose_bend(root, hinted_joint, hinted_target, l1, l2)
+    if overrides is not None and side in overrides:
+        value = float(overrides[side])
+        return 1.0 if value >= 0.0 else -1.0
+    return _choose_bend(root, joint, target, l1, l2)
+
+
 def _world_to_parent_offset(
     origin: Point, parent_origin: Point, parent_angle: float
 ) -> Point:
@@ -563,21 +616,60 @@ def build_humanoid_view_document(
                 "rest_x": round(ankle[0] - spec.center_x, 4),
                 "rest_lift": round(ankle_y - ankle[1], 4),
                 "rest_pitch": round(world[f"{side}_leg_foot"][1], 4),
-                "bend": _choose_bend(hip, knee, ankle, leg_u, leg_l),
+                "bend": _bend_for_side(
+                    spec.leg_pose_hints,
+                    spec.leg_bend_overrides,
+                    side,
+                    center_x=spec.center_x,
+                    ground_y=spec.ground_y,
+                    root=hip,
+                    joint=knee,
+                    target=ankle,
+                    l1=leg_u,
+                    l2=leg_l,
+                ),
             }
         )
-        ik_chains.append(
-            {
-                "upper": f"{side}_arm_u",
-                "lower": f"{side}_arm_l",
-                "end": f"{side}_arm_hand",
-                "channel_prefix": f"{side}_hand",
-                "rest_x": round(wrist[0] - spec.center_x, 4),
-                "rest_y": round(wrist[1] - spec.ground_y, 4),
-                "rest_pitch": round(world[f"{side}_arm_hand"][1], 4),
-                "bend": _choose_bend(shoulder, elbow, wrist, arm_u, arm_l),
-            }
+        arm_pose_hint = (
+            spec.arm_pose_hints.get(side)
+            if spec.arm_pose_hints is not None
+            else None
         )
+        arm_rest_x = (
+            float(arm_pose_hint.target[0])
+            if arm_pose_hint is not None
+            else wrist[0] - spec.center_x
+        )
+        arm_rest_y = (
+            float(arm_pose_hint.target[1])
+            if arm_pose_hint is not None
+            else wrist[1] - spec.ground_y
+        )
+        arm_chain = {
+            "upper": f"{side}_arm_u",
+            "lower": f"{side}_arm_l",
+            "end": f"{side}_arm_hand",
+            "channel_prefix": f"{side}_hand",
+            "rest_x": round(arm_rest_x, 4),
+            "rest_y": round(arm_rest_y, 4),
+            "rest_pitch": round(world[f"{side}_arm_hand"][1], 4),
+            "bend": _bend_for_side(
+                spec.arm_pose_hints,
+                spec.arm_bend_overrides,
+                side,
+                center_x=spec.center_x,
+                ground_y=spec.ground_y,
+                root=shoulder,
+                joint=elbow,
+                target=wrist,
+                l1=arm_u,
+                l2=arm_l,
+            ),
+            "pose_authority": "explicit-hint" if arm_pose_hint is not None else "svg-layout",
+        }
+        if spec.arm_max_reach_ratio is not None:
+            arm_chain["max_reach_ratio"] = float(spec.arm_max_reach_ratio)
+        ik_chains.append(arm_chain)
 
     return {
         "name": spec.name,
