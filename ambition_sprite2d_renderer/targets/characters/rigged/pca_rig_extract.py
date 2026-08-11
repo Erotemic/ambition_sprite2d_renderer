@@ -78,6 +78,7 @@ from targets.characters.pca_motion import (  # noqa: E402
     PCA_ROWS,
     POSE_ALIASES,
 )
+from targets.characters.pca_combat_authoring import author_pca_combat_clips  # noqa: E402
 
 TOOL_ROOT = Path(__file__).resolve().parents[4]
 SVG = TOOL_ROOT / "assets/perfect-cellular-automaton/PCA-multiview.svg"
@@ -514,6 +515,7 @@ def cmd_build(args):
     if RIG_OUT.exists() and not getattr(args, "fresh", False):
         existing = json.loads(RIG_OUT.read_text(encoding="utf8"))
     doc = ensure_fighter_motion(merge_doc(existing, generated))
+    doc = author_pca_combat_clips(doc)
     RIG_OUT.write_text(json.dumps(doc, indent=1) + "\n", encoding="utf8")
     print(
         f"wrote {RIG_OUT}  ({len(doc['bones'])} bones, {len(doc['parts'])} parts, "

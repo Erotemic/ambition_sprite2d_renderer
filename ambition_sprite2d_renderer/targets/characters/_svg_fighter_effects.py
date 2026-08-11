@@ -66,9 +66,11 @@ class FxCanvas:
         scale: int = 3,
         *,
         origin: Point = (0.0, 0.0),
+        unit_scale: float = 1.0,
     ):
         self.size = size
         self.scale = max(1, int(scale))
+        self.unit_scale = max(0.001, float(unit_scale))
         self.origin = (float(origin[0]), float(origin[1]))
         self.image = Image.new(
             "RGBA",
@@ -77,27 +79,33 @@ class FxCanvas:
         )
         self.draw = blending_draw(self.image)
 
+    @property
+    def draw_scale(self) -> float:
+        return self.scale * self.unit_scale
+
     def p(self, point: Point) -> tuple[int, int]:
+        q = self.draw_scale
         return (
-            int(round((point[0] + self.origin[0]) * self.scale)),
-            int(round((point[1] + self.origin[1]) * self.scale)),
+            int(round((point[0] + self.origin[0]) * q)),
+            int(round((point[1] + self.origin[1]) * q)),
         )
 
     def box(self, center: Point, rx: float, ry: float) -> tuple[int, int, int, int]:
         x = center[0] + self.origin[0]
         y = center[1] + self.origin[1]
+        q = self.draw_scale
         return (
-            int(round((x - rx) * self.scale)),
-            int(round((y - ry) * self.scale)),
-            int(round((x + rx) * self.scale)),
-            int(round((y + ry) * self.scale)),
+            int(round((x - rx) * q)),
+            int(round((y - ry) * q)),
+            int(round((x + rx) * q)),
+            int(round((y + ry) * q)),
         )
 
     def line(self, points: Sequence[Point], fill: Color, width: float = 1.0, joint: str = "curve") -> None:
         self.draw.line(
             [self.p(point) for point in points],
             fill=fill,
-            width=max(1, int(round(width * self.scale))),
+            width=max(1, int(round(width * self.draw_scale))),
             joint=joint,
         )
 
@@ -108,7 +116,7 @@ class FxCanvas:
             self.draw.line(
                 [*mapped, mapped[0]],
                 fill=outline,
-                width=max(1, int(round(width * self.scale))),
+                width=max(1, int(round(width * self.draw_scale))),
                 joint="curve",
             )
 
@@ -117,7 +125,7 @@ class FxCanvas:
             self.box(center, rx, ry),
             fill=fill,
             outline=outline,
-            width=max(1, int(round(width * self.scale))) if outline else 1,
+            width=max(1, int(round(width * self.draw_scale))) if outline else 1,
         )
 
     def arc(self, center: Point, rx: float, ry: float, start: float, end: float, fill: Color, width: float = 1.0) -> None:
@@ -126,18 +134,19 @@ class FxCanvas:
             start=start,
             end=end,
             fill=fill,
-            width=max(1, int(round(width * self.scale))),
+            width=max(1, int(round(width * self.draw_scale))),
         )
 
     def text(self, center: Point, text: str, fill: Color, size: float = 6.0, *, bold: bool = True, stroke: Color | None = None) -> None:
         font_name = "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"
         try:
-            font = ImageFont.truetype(font_name, max(5, int(round(size * self.scale))))
+            font = ImageFont.truetype(font_name, max(5, int(round(size * self.draw_scale))))
         except OSError:
             font = ImageFont.load_default()
         bbox = self.draw.textbbox((0, 0), text, font=font, stroke_width=1 if stroke else 0)
-        x = (center[0] + self.origin[0]) * self.scale - (bbox[2] - bbox[0]) / 2
-        y = (center[1] + self.origin[1]) * self.scale - (bbox[3] - bbox[1]) / 2
+        q = self.draw_scale
+        x = (center[0] + self.origin[0]) * q - (bbox[2] - bbox[0]) / 2
+        y = (center[1] + self.origin[1]) * q - (bbox[3] - bbox[1]) / 2
         self.draw.text(
             (int(round(x)), int(round(y))),
             text,
@@ -186,21 +195,23 @@ def compose_rig_frame(
     world, params = solved
     base_size = (int(doc.frame["width"]), int(doc.frame["height"]))
     pad_left, pad_top, pad_right, pad_bottom = normalize_render_padding(padding)
-    size = (
+    render_scale = max(1, int(doc.frame.get("render_scale", 1)))
+    logical_size = (
         base_size[0] + pad_left + pad_right,
         base_size[1] + pad_top + pad_bottom,
     )
+    size = (logical_size[0] * render_scale, logical_size[1] * render_scale)
     origin = (float(pad_left), float(pad_top))
     result = Image.new("RGBA", size, (0, 0, 0, 0))
     if behind is not None:
-        layer = FxCanvas(size, origin=origin)
+        layer = FxCanvas(size, origin=origin, unit_scale=render_scale)
         behind(layer, t, world, params)
         result.alpha_composite(layer.finish())
     result.alpha_composite(
         doc.render_at(animation, t, solved=solved, padding=padding)
     )
     if front is not None:
-        layer = FxCanvas(size, origin=origin)
+        layer = FxCanvas(size, origin=origin, unit_scale=render_scale)
         front(layer, t, world, params)
         result.alpha_composite(layer.finish())
     return result
