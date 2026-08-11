@@ -24,7 +24,7 @@ import os
 import sys
 import tempfile
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Iterable, Mapping, Sequence
 
@@ -35,7 +35,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
-BUILDER_VERSION = 17
+BUILDER_VERSION = 19
 
 
 def _is_extension_path(path: Path) -> bool:
@@ -142,6 +142,7 @@ def _sha256(path: Path) -> str:
 
 
 from ambition_sprite2d_renderer.authoring.humanoid_svg_rig import (  # noqa: E402
+    AuxiliaryBoneSpec,
     HumanoidViewSpec,
     LimbPoseHint,
     build_humanoid_view_document,
@@ -164,6 +165,11 @@ from ambition_sprite2d_renderer.targets.characters.carl_stargan_motion import ( 
     LOOPING_ROWS as CARL_LOOPING_ROWS,
     POSE_ALIASES as CARL_POSE_ALIASES,
 )
+from ambition_sprite2d_renderer.targets.characters.noether_motion import (  # noqa: E402
+    APPLICABLE_MOTION_SCOPES as NOETHER_MOTION_SCOPES,
+    FIGHTER_MOTION_COVERAGE as NOETHER_MOTION_COVERAGE,
+    NOETHER_ROWS,
+)
 
 INK_NS = "http://www.inkscape.org/namespaces/inkscape"
 INK_LABEL = f"{{{INK_NS}}}label"
@@ -182,6 +188,9 @@ class CharacterSpec:
     hands_follow_forearms: bool = False
     natural_arm_pose: Mapping[str, LimbPoseHint] | None = None
     arm_max_reach_ratio: float | None = None
+    label_binding_mode: str = "explicit"
+    auxiliary_bones: tuple[AuxiliaryBoneSpec, ...] = ()
+    facing: str = "west"
 
     @property
     def svg_path(self) -> Path:
@@ -249,6 +258,32 @@ SPECS = {
             "far": LimbPoseHint(target=(-22.0, -52.0), joint=(-12.8, -61.5)),
         },
         arm_max_reach_ratio=0.98,
+    ),
+    "noether": CharacterSpec(
+        name="noether",
+        svg_name="noether.svg",
+        view="Noether - Side Left",
+        frame_size=(192, 208),
+        target_height=164.0,
+        ground_margin=18.0,
+        collision_scale=1.86,
+        rows=NOETHER_ROWS,
+        hands_follow_forearms=True,
+        # This source view faces east. The trace is a geometry/pivot authority,
+        # not a neutral gameplay pose; both natural forearms point east with a
+        # relaxed bend independently of the one-forward/one-back source layout.
+        natural_arm_pose={
+            "near": LimbPoseHint(target=(5.0, -98.0), joint=(-10.0, -110.0)),
+            "far": LimbPoseHint(target=(35.0, -104.0), joint=(22.0, -112.0)),
+        },
+        arm_max_reach_ratio=0.98,
+        label_binding_mode="standard-humanoid",
+        auxiliary_bones=(
+            AuxiliaryBoneSpec("far_skirt", "pelvis", "far_skirt_pivot"),
+            AuxiliaryBoneSpec("center_skirt", "pelvis", "center_skirt_pivot"),
+            AuxiliaryBoneSpec("near_skirt", "pelvis", "near_skirt_pivot"),
+        ),
+        facing="east",
     ),
 }
 
@@ -992,12 +1027,198 @@ def _patent_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, d
         )
     return clips
 
+
+_NOETHER_SIGNATURE_FROM_PATENT = {
+    "known_result": "invariant_parry",
+    "application_review": "symmetry_proof",
+    "margin_correction": "generator_strike",
+    "light_argument": "conservation_law",
+    "reference_frame": "symmetry_shift",
+    "elevator_thought": "ethereal_lift",
+    "synchronize_clocks": "invariant_field",
+    "mass_energy_conversion": "symmetry_break",
+    "annus_mirabilis": "noether_theorem",
+}
+_NOETHER_SIGNATURE_TO_PATENT = {
+    value: key for key, value in _NOETHER_SIGNATURE_FROM_PATENT.items()
+}
+
+
+def _negate_channel_spec(channel: dict) -> None:
+    if "const" in channel:
+        channel["const"] = -float(channel["const"])
+    if isinstance(channel.get("keys"), list):
+        for key in channel["keys"]:
+            if isinstance(key, list) and len(key) >= 2 and isinstance(key[1], (int, float)):
+                key[1] = -float(key[1])
+    if "expr" in channel:
+        channel["expr"] = f"-({channel['expr']})"
+
+
+def _mirror_noether_pose_channels(clips: Mapping[str, dict]) -> dict[str, dict]:
+    """Mirror west-authored scientist choreography for Noether's east view.
+
+    Near/far remain depth identities; only screen-x targets and signed body
+    rotations are mirrored. Hand pitch follows forearms, so no world-pitch
+    compensation is required here.
+    """
+
+    out = deepcopy(dict(clips))
+    for clip in out.values():
+        channels = clip.get("channels") or {}
+        for name in (
+            "root_x",
+            "near_hand_x",
+            "far_hand_x",
+            "near_foot_x",
+            "far_foot_x",
+            "pelvis",
+            "torso",
+            "head",
+        ):
+            spec = channels.get(name)
+            if isinstance(spec, dict):
+                _negate_channel_spec(spec)
+    return out
+
+
+def _add_noether_skirt_motion(clips: Mapping[str, dict]) -> dict[str, dict]:
+    """Add restrained three-panel secondary motion to Noether's paper-doll dress."""
+
+    out = deepcopy(dict(clips))
+    looping_sway = {
+        "idle": (1.4, -0.8, -1.2),
+        "idle_look_up": (1.0, -0.5, -0.8),
+        "walk": (4.5, -1.6, -4.0),
+        "run": (7.0, -2.4, -6.0),
+        "crouch_walk": (3.5, -1.2, -3.0),
+        "teeter": (2.0, -0.8, -1.7),
+        "swim": (5.0, -1.5, -4.5),
+        "climb": (3.0, -1.0, -2.7),
+        "victory_hold": (1.6, -0.7, -1.3),
+        "loss": (1.0, -0.4, -0.8),
+        "talk": (1.2, -0.5, -1.0),
+        "taunt": (2.2, -0.8, -1.9),
+    }
+    flare_rows = {
+        "crouch_start", "crouch", "crouch_end", "jump_squat", "jump",
+        "double_jump", "fall", "fall_special", "land_light", "land_hard",
+        "dash_attack", "attack_up", "attack_down", "generator_strike",
+        "smash_charge", "symmetry_break", "smash_up", "smash_down",
+        "air_neutral", "air_forward", "air_back", "air_up", "air_down",
+        "conservation_law", "symmetry_shift", "ethereal_lift", "invariant_field",
+        "noether_theorem", "getup", "getup_attack", "getup_roll", "tech_roll",
+        "ledge_getup", "ledge_attack", "ledge_roll", "ledge_jump",
+        "item_pickup", "item_heavy_pickup", "item_throw", "item_swing",
+        "entrance", "celebrate",
+    }
+    locked_rows = {
+        "roll", "roll_back", "spot_dodge", "tumble", "prone", "sleep",
+        "buried", "knockdown", "ground_bounce", "splat", "wall_grab",
+        "ledge_grab",
+    }
+    for name, clip in out.items():
+        channels = clip.setdefault("channels", {})
+        if name in looping_sway:
+            near, center, far = looping_sway[name]
+            channels["near_skirt"] = expr(f"{near}*sin(tau*t)")
+            channels["center_skirt"] = expr(f"{center}*sin(tau*t)")
+            channels["far_skirt"] = expr(f"{far}*sin(tau*t)")
+        elif name in flare_rows:
+            channels["near_skirt"] = expr("6.0*sin(pi*t)")
+            channels["center_skirt"] = expr("-1.8*sin(pi*t)")
+            channels["far_skirt"] = expr("-5.0*sin(pi*t)")
+        elif name in locked_rows:
+            # Whole-body rotation already carries the dress. Avoid extra panel
+            # flutter in poses where seams would otherwise separate visibly.
+            channels["near_skirt"] = const(0.0)
+            channels["center_skirt"] = const(0.0)
+            channels["far_skirt"] = const(0.0)
+        else:
+            channels["near_skirt"] = expr("2.5*sin(pi*t)")
+            channels["center_skirt"] = expr("-0.8*sin(pi*t)")
+            channels["far_skirt"] = expr("-2.1*sin(pi*t)")
+    return out
+
+
+def _noether_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, dict]:
+    """Build Noether's complete fighter surface from the shared scientist poses.
+
+    The current art deliberately reuses the mature scientist-fighter
+    choreography where a bespoke silhouette is not yet justified. Signature
+    rows are renamed for Noether, mirrored for her east-facing source view, and
+    receive conservative three-panel dress motion.
+    """
+
+    west_pose = {
+        side: LimbPoseHint(
+            target=(-float(hint.target[0]), float(hint.target[1])),
+            joint=(-float(hint.joint[0]), float(hint.joint[1])),
+        )
+        for side, hint in (spec.natural_arm_pose or {}).items()
+    }
+    surrogate_rows = tuple(
+        (_NOETHER_SIGNATURE_TO_PATENT.get(name, name), frames, duration)
+        for name, frames, duration in spec.rows
+    )
+    surrogate = replace(spec, rows=surrogate_rows, natural_arm_pose=west_pose, facing="west")
+    clips = _patent_clips(surrogate, doc)
+    clips = {
+        _NOETHER_SIGNATURE_FROM_PATENT.get(name, name): clip
+        for name, clip in clips.items()
+    }
+    clips = _mirror_noether_pose_channels(clips)
+    if "shield_break_fall" in clips and "fall_special" in clips:
+        frames, duration = next(
+            (f, d) for row, f, d in spec.rows if row == "shield_break_fall"
+        )
+        clips["shield_break_fall"] = deepcopy(clips["fall_special"])
+        clips["shield_break_fall"]["frames"] = frames
+        clips["shield_break_fall"]["duration_ms"] = duration
+        clips["shield_break_fall"]["loop"] = False
+    # Geometry-audit repair: whole-body rotations and a handful of large
+    # scientist gestures can make world-authored wrist targets cross a
+    # shoulder between adjacent samples. Reconstruct those wrists in the
+    # current torso frame so Noether never asks analytic IK to jump branches.
+    for repair_row in (
+        "roll", "roll_back", "ledge_roll", "getup_roll", "tech_roll",
+        "tumble", "climb", "swim", "death", "celebrate",
+        "symmetry_shift", "ethereal_lift", "invariant_field",
+        "noether_theorem", "air_neutral", "air_back",
+        "shield_break_fall", "bury_start", "buried", "bury_escape",
+    ):
+        if repair_row in clips:
+            clips[repair_row] = _retarget_clip_arms_to_torso(
+                doc, clips, repair_row, reach_scale=0.76
+            )
+    # Preserve the expressive near arm on these reactions while keeping the
+    # far arm on a stable anatomical side of the torso.  Native resvg geometry
+    # is slightly different from the fallback authoring geometry, and these
+    # two rows were the remaining native-only natural-cone failures.
+    for repair_row in ("shield_hit", "stumble"):
+        if repair_row in clips:
+            clips[repair_row] = _retarget_clip_arms_to_torso(
+                doc, clips, repair_row, reach_scale=0.80, sides=("far",)
+            )
+    clips = _add_noether_skirt_motion(clips)
+    if "shield_break_fall" in clips:
+        clips["shield_break_fall"]["loop"] = False
+    expected = {name for name, _frames, _duration in spec.rows}
+    if set(clips) != expected:
+        raise ValueError(
+            f"Noether motion authoring mismatch: missing={sorted(expected-set(clips))}, "
+            f"extra={sorted(set(clips)-expected)}"
+        )
+    return clips
+
+
 def _retarget_clip_arms_to_torso(
     doc: Mapping[str, object],
     clips: Mapping[str, dict],
     name: str,
     *,
     reach_scale: float = 0.78,
+    sides: Sequence[str] = ("near", "far"),
 ) -> dict:
     """Keep both wrists in a stable torso-local relationship through a clip.
 
@@ -1025,8 +1246,13 @@ def _retarget_clip_arms_to_torso(
     reference_world, _ = rig.solve("idle", 0.0)
     reference_torso = reference_world.get("torso")
     reference_angle = float(reference_torso.angle if reference_torso is not None else 0.0)
+    requested_sides = tuple(dict.fromkeys(sides))
+    invalid_sides = [side for side in requested_sides if side not in {"near", "far"}]
+    if invalid_sides:
+        raise ValueError(f"unknown arm side(s) for torso retarget: {invalid_sides}")
+
     reference_vectors: dict[str, tuple[float, float]] = {}
-    for side in ("near", "far"):
+    for side in requested_sides:
         shoulder = reference_world[f"{side}_arm_u"].origin
         wrist = reference_world[f"{side}_arm_hand"].origin
         reference_vectors[side] = (
@@ -1040,8 +1266,7 @@ def _retarget_clip_arms_to_torso(
     cx = float(rig.frame.get("center_x", rig.frame["width"] / 2.0))
     gy = float(rig.frame.get("ground_y", rig.frame["height"] - 2.0))
     targets: dict[str, tuple[list[float], list[float]]] = {
-        "near": ([], []),
-        "far": ([], []),
+        side: ([], []) for side in requested_sides
     }
     for frame_idx in range(frames):
         t = rig.frame_time(name, frame_idx, frames)
@@ -1052,7 +1277,7 @@ def _retarget_clip_arms_to_torso(
         )
         c = math.cos(angle)
         s = math.sin(angle)
-        for side in ("near", "far"):
+        for side in requested_sides:
             vx, vy = reference_vectors[side]
             rotated = (c * vx - s * vy, s * vx + c * vy)
             shoulder = world[f"{side}_arm_u"].origin
@@ -1061,7 +1286,7 @@ def _retarget_clip_arms_to_torso(
             ys.append(shoulder[1] + rotated[1] - gy)
 
     channels = clip.setdefault("channels", {})
-    for side in ("near", "far"):
+    for side in requested_sides:
         xs, ys = targets[side]
         channels[f"{side}_hand_x"] = keys(xs, loop=loop)
         channels[f"{side}_hand_y"] = keys(ys, loop=loop)
@@ -1348,6 +1573,17 @@ def _canonical_svg_part_order(svg_path: Path, view: str) -> list[str]:
 def _enforce_canonical_part_order(doc: dict, spec: CharacterSpec) -> None:
     """Rewrite extracted rig order from the canonical SVG, defensively."""
 
+    if spec.label_binding_mode == "standard-humanoid":
+        ordered = sorted(
+            doc.get("parts", []),
+            key=lambda part: int(part.get("svg_source_order", 0)),
+        )
+        for index, part in enumerate(ordered):
+            part["z"] = float(index)
+            part["svg_source_order"] = index
+        doc["parts"] = ordered
+        return
+
     source_order = _canonical_svg_part_order(spec.svg_path, spec.view)
     by_name = {str(part["name"]): part for part in doc.get("parts", [])}
     if set(by_name) != set(source_order):
@@ -1457,6 +1693,33 @@ def _validate_carl_layer_model(doc: RigDocument) -> None:
         )
 
 
+def _validate_noether_view_contract(spec: CharacterSpec) -> None:
+    """Require only the small view-level contract agreed with SVG authoring."""
+
+    root = ET.fromstring(spec.svg_path.read_bytes())
+    layer = next((elem for elem in root.iter() if elem.get(INK_LABEL) == spec.view), None)
+    if layer is None:
+        raise ValueError(f"{spec.svg_path} has no SVG view {spec.view!r}")
+    expected = {
+        "data-rig-facing": "east",
+        "data-rig-projection": "three-quarter",
+        "data-rig-side-map": "right=near,left=far",
+        "data-rig-pose-authority": "geometry-only",
+        "data-rig-part-order": "document",
+    }
+    mismatches = {
+        key: (layer.get(key), value)
+        for key, value in expected.items()
+        if layer.get(key) != value
+    }
+    if mismatches:
+        raise ValueError(
+            f"Noether SVG view metadata mismatch: {mismatches}. "
+            "Keep anatomy/view semantics on the top-level character view; "
+            "individual parts may remain label-driven."
+        )
+
+
 def _visible_joint_copy(svg_path: Path) -> Path:
     root = ET.fromstring(svg_path.read_bytes())
     found = False
@@ -1488,6 +1751,14 @@ def build_one(spec: CharacterSpec) -> Path:
             scopes=CARL_MOTION_SCOPES,
             character="carl_stargan",
         )
+    elif spec.name == "noether":
+        validate_motion_coverage(
+            row_names=[name for name, _frames, _duration in spec.rows],
+            coverage=NOETHER_MOTION_COVERAGE,
+            scopes=NOETHER_MOTION_SCOPES,
+            character="noether",
+        )
+        _validate_noether_view_contract(spec)
 
     renderer_path, renderer_version = _require_native_resvg()
     if not spec.svg_path.exists():
@@ -1513,6 +1784,8 @@ def build_one(spec: CharacterSpec) -> Path:
                 part_order="document",
                 arm_pose_hints=spec.natural_arm_pose,
                 arm_max_reach_ratio=spec.arm_max_reach_ratio,
+                label_binding_mode=spec.label_binding_mode,
+                auxiliary_bones=spec.auxiliary_bones,
             ),
         )
     finally:
@@ -1520,15 +1793,18 @@ def build_one(spec: CharacterSpec) -> Path:
 
     _enforce_canonical_part_order(doc, spec)
     doc["svg_source"]["path"] = os.path.relpath(spec.svg_path, spec.rig_dir)
-    doc["clips"] = (
-        _patent_clips(spec, doc)
-        if spec.name == "patent_clerk"
-        else _stargan_clips(spec, doc)
-    )
+    if spec.name == "patent_clerk":
+        doc["clips"] = _patent_clips(spec, doc)
+    elif spec.name == "carl_stargan":
+        doc["clips"] = _stargan_clips(spec, doc)
+    elif spec.name == "noether":
+        doc["clips"] = _noether_clips(spec, doc)
+    else:
+        raise ValueError(f"no clip authoring policy for {spec.name!r}")
     doc["features"] = {
         "paper_doll": True,
         "canonical_svg": True,
-        "facing": "left",
+        "facing": spec.facing,
         "source_authority": str(spec.svg_path.relative_to(ROOT)),
         "source_pose_role": "geometry-layout-only",
         "natural_pose_authority": "character-spec",
@@ -1582,6 +1858,8 @@ def validate_one(spec: CharacterSpec) -> None:
         "far_leg_u", "far_leg_l", "far_foot",
     }
     parts = {str(part["name"]) for part in doc.parts}
+    if spec.name == "noether":
+        required_parts.update({"dress_back", "near_skirt", "center_skirt", "far_skirt"})
     missing = required_parts - parts
     if missing:
         raise ValueError(f"{spec.name} rig missing parts: {sorted(missing)}")
@@ -1603,6 +1881,13 @@ def validate_one(spec: CharacterSpec) -> None:
         )
     if spec.name == "carl_stargan":
         _validate_carl_layer_model(doc)
+    if spec.name == "noether":
+        bone_names = {str(bone["name"]) for bone in doc.bones}
+        expected_skirt_bones = {"near_skirt", "center_skirt", "far_skirt"}
+        if not expected_skirt_bones <= bone_names:
+            raise ValueError(
+                f"noether rig missing skirt bones: {sorted(expected_skirt_bones-bone_names)}"
+            )
 
     rendered_frames = 0
     for animation, frames, _duration in spec.rows:

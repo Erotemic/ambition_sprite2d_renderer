@@ -21,15 +21,17 @@ from .rigdoc import RigDocument
 ROOT = Path(__file__).resolve().parents[2]
 BUILDER_PATH = ROOT / "scripts" / "build_scientist_fighter_rigs.py"
 EXPECTED_SCHEMA = "canonical-svg-rig-v3"
-EXPECTED_BUILDER_VERSION = 17
+EXPECTED_BUILDER_VERSION = 19
 
 _SVG_NAMES = {
     "patent_clerk": "patent-clerk.svg",
     "carl_stargan": "carl-stargan.svg",
+    "noether": "noether.svg",
 }
 _RIG_NAMES = {
     "patent_clerk": "patent_clerk_side.rig.json",
     "carl_stargan": "carl_stargan_side.rig.json",
+    "noether": "noether_side.rig.json",
 }
 
 

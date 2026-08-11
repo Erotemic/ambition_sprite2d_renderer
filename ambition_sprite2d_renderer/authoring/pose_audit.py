@@ -41,6 +41,7 @@ Point = tuple[float, float]
 _FIGHTER_MOTION_MODULES: Mapping[str, str] = {
     "patent_clerk": "ambition_sprite2d_renderer.targets.characters.patent_clerk_motion",
     "carl_stargan": "ambition_sprite2d_renderer.targets.characters.carl_stargan_motion",
+    "noether": "ambition_sprite2d_renderer.targets.characters.noether_motion",
     "player_robot_v3": "ambition_sprite2d_renderer.targets.characters.player_robot_v3_motion",
     "perfect_cellular_automaton": "ambition_sprite2d_renderer.targets.characters.pca_motion",
 }
@@ -847,13 +848,34 @@ def find_rig_document(target: str, *, explicit: Path | None = None) -> Path:
             raise FileNotFoundError(path)
         return path
 
+    # Canonical SVG fighters have a stronger lifecycle than loose rig JSON:
+    # freshness-check (and rebuild when necessary) before auditing so an old
+    # compatibility document cannot silently win by filename. The import is
+    # local to keep the generic geometry auditor independent of that builder.
+    try:
+        from .canonical_scientist_rig import ensure_scientist_rig, svg_path
+
+        svg_path(target)  # raises KeyError when this is not a canonical fighter
+    except KeyError:
+        pass
+    else:
+        return ensure_scientist_rig(target).resolve()
+
     package_root = Path(__file__).resolve().parents[1]
     rig_root = package_root / "targets" / "characters" / "rigged"
-    candidates = [
+    # A target-specific rig directory is the canonical/published authoring
+    # location and intentionally outranks an older loose compatibility rig of
+    # the same document name. This lets characters migrate to generated SVG
+    # rigs without forcing an overlay archive to delete the legacy file.
+    preferred = [
         rig_root / target / f"{target}.rig.json",
         rig_root / target / f"{target}_side.rig.json",
-        rig_root / f"{target}.rig.json",
     ]
+    for path in preferred:
+        if path.exists():
+            return path.resolve()
+
+    candidates = [rig_root / f"{target}.rig.json"]
     existing = [path.resolve() for path in candidates if path.exists()]
     if len(existing) == 1:
         return existing[0]

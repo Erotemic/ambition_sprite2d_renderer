@@ -36,11 +36,15 @@ that care about anatomical IK direction should supply ``LimbPoseHint`` values.
 Those pose-space hints choose elbow/knee branches without treating the SVG's
 convenient source arrangement as an idle/rest-pose authority.
 
-The art hierarchy is explicit on purpose.  Unlike PCA's compatibility
-extractor, there are no heuristics based on English group names, bounding-box
-joint guesses, or character-specific element ids.  A reshaped path keeps its
-binding; a renamed generated id is irrelevant; manual SVG editing remains the
-primary authoring workflow.
+The default art hierarchy remains explicit on purpose. Unlike PCA's
+compatibility extractor, explicit mode has no heuristics based on English group
+names, bounding-box joint guesses, or character-specific generated element ids.
+For manually traced paper dolls that follow Ambition's standard labels, callers
+may opt into ``standard-humanoid`` label binding: labels such as ``Upper Arm -
+Near Right`` and ``Hand Tip - Far`` are interpreted together with the view's
+``data-rig-side-map``. That mode still never depends on generated XML ids and
+validates contradictory anatomy/depth labels as errors. Manual SVG editing
+remains the primary authoring workflow.
 """
 
 from __future__ import annotations
@@ -63,6 +67,7 @@ _PART_Z_ATTR = "data-rig-z"
 _PART_OPACITY_ATTR = "data-rig-opacity"
 _JOINT_ATTR = "data-rig-joint"
 _SIDE_MAP_ATTR = "data-rig-side-map"
+_LABEL_BINDING_MODES = {"explicit", "standard-humanoid"}
 
 
 @dataclass(frozen=True)
@@ -86,6 +91,24 @@ class HumanoidViewSpec:
     arm_bend_overrides: Optional[Mapping[str, float]] = None
     leg_bend_overrides: Optional[Mapping[str, float]] = None
     arm_max_reach_ratio: Optional[float] = None
+    label_binding_mode: str = "explicit"
+    auxiliary_bones: Tuple["AuxiliaryBoneSpec", ...] = ()
+
+
+@dataclass(frozen=True)
+class AuxiliaryBoneSpec:
+    """One non-humanoid rigid bone anchored by a labelled SVG joint marker.
+
+    Auxiliary bones are for paper-doll appendages such as coat tails, skirt
+    panels, antennae, or other rigid secondary-motion pieces. The SVG remains
+    art/pivot authority; animation clips own the bone rotation channel named by
+    ``name``.
+    """
+
+    name: str
+    parent: str
+    joint: str
+    rest_angle: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -155,6 +178,195 @@ def _map_side_prefix(name: str, aliases: Mapping[str, str]) -> str:
         if name.startswith(prefix):
             return f"{target}_{name[len(prefix) :]}"
     return name
+
+
+def _normal_label(label: str) -> str:
+    """Normalize an artist-facing Inkscape label for convention matching."""
+
+    return " ".join(
+        label.lower()
+        .replace("_", " ")
+        .replace("-", " ")
+        .replace("/", " ")
+        .split()
+    )
+
+
+def _side_from_standard_label(label: str, aliases: Mapping[str, str]) -> Optional[str]:
+    """Resolve anatomical/depth words in a standardized artist label.
+
+    Labels may say either ``near``/``far``, anatomical ``left``/``right``, or
+    both (for example ``Upper Leg - Near Right``). When both are present they
+    must agree with ``data-rig-side-map`` on the view layer. This keeps labels
+    human-readable while making accidental anatomy/depth contradictions a hard
+    authoring error instead of a silent rig flip.
+    """
+
+    words = set(_normal_label(label).split())
+    depth = [side for side in ("near", "far") if side in words]
+    anatomical = [side for side in aliases if side in words]
+    if len(depth) > 1:
+        raise ValueError(f"ambiguous near/far side in SVG label {label!r}")
+    if len(anatomical) > 1:
+        raise ValueError(f"ambiguous anatomical side in SVG label {label!r}")
+    mapped = aliases[anatomical[0]] if anatomical else None
+    explicit = depth[0] if depth else None
+    if mapped and explicit and mapped != explicit:
+        raise ValueError(
+            f"SVG label {label!r} contradicts data-rig-side-map: "
+            f"anatomical {anatomical[0]!r} maps to {mapped!r}, not {explicit!r}"
+        )
+    return explicit or mapped
+
+
+def _standard_part_from_label(
+    elem: ET.Element,
+    aliases: Mapping[str, str],
+    source_order: int,
+) -> Optional[_PartBinding]:
+    """Interpret Ambition's standardized-ish artist labels as rigid parts.
+
+    This mode is deliberately opt-in per character/view. It never inspects
+    generated XML ids and therefore survives ordinary Inkscape regrouping and
+    id churn. Container labels such as ``Torso`` and ``Arm - Near`` remain
+    non-parts; their leaf semantic groups (``Shirt``, ``Upper Arm - Near``,
+    ``Hair - Back``...) own the artwork. Dress panel leaf paths are supported
+    because a paper-doll skirt needs independent pivots even when the artist
+    keeps all panels inside one convenient ``Dress`` group.
+    """
+
+    raw = _label(elem) or ""
+    label = _normal_label(raw)
+    if not label:
+        return None
+    side = _side_from_standard_label(raw, aliases)
+    is_group = _local(elem.tag) == "g"
+
+    limb_kind = None
+    if is_group and "upper arm" in label:
+        limb_kind = ("arm_u", "arm_u")
+    elif is_group and "lower arm" in label:
+        limb_kind = ("arm_l", "arm_l")
+    elif is_group and (label.startswith("hand ") or label == "hand"):
+        limb_kind = ("hand", "arm_hand")
+    elif is_group and "upper leg" in label:
+        limb_kind = ("leg_u", "leg_u")
+    elif is_group and "lower leg" in label:
+        limb_kind = ("leg_l", "leg_l")
+    elif is_group and (label.startswith("foot ") or label == "foot"):
+        limb_kind = ("foot", "leg_foot")
+    if limb_kind is not None:
+        if side is None:
+            raise ValueError(f"standard humanoid part label needs a side: {raw!r}")
+        name_suffix, bone_suffix = limb_kind
+        include = _direct_drawable_ids(elem)
+        if not include:
+            return None
+        return _PartBinding(
+            f"{side}_{name_suffix}",
+            f"{side}_{bone_suffix}",
+            float(source_order),
+            include,
+            None,
+            source_order,
+        )
+
+    fixed = {
+        "pelvis": ("pelvis", "pelvis"),
+        "neck": ("neck", "torso"),
+        "shirt": ("torso_shirt", "torso"),
+        "shirt details": ("torso_details", "torso"),
+        "buttons": ("torso_buttons", "torso"),
+        "bodice near": ("torso_bodice_near", "torso"),
+        "bodice far": ("torso_bodice_far", "torso"),
+        "collar bow": ("torso_collar", "torso"),
+        "head base": ("head_base", "head"),
+        "facial features": ("head_features", "head"),
+        "hair back": ("hair_back", "head"),
+        "hair mid": ("hair_mid", "head"),
+        "hair front": ("hair_front", "head"),
+    }
+    if is_group and label in fixed:
+        include = _direct_drawable_ids(elem)
+        if not include:
+            return None
+        name, bone = fixed[label]
+        return _PartBinding(name, bone, float(source_order), include, None, source_order)
+
+    if is_group and label == "head":
+        include = _direct_drawable_ids(elem)
+        if include:
+            return _PartBinding(
+                "head_misc", "head", float(source_order), include, None, source_order
+            )
+
+    # Noether-style panelled dress. Anatomical labels are resolved through the
+    # view-level side map so the same convention remains valid in another view.
+    if label == "dress base":
+        eid = elem.get("id")
+        if not eid:
+            raise ValueError("dress-base drawable has no SVG id")
+        return _PartBinding(
+            "dress_back", "center_skirt", float(source_order), (eid,), None, source_order
+        )
+    if label == "dress fabric center":
+        eid = elem.get("id")
+        if not eid:
+            raise ValueError("center dress panel has no SVG id")
+        return _PartBinding(
+            "center_skirt", "center_skirt", float(source_order), (eid,), None, source_order
+        )
+    if label.startswith("dress fabric "):
+        panel_side = _side_from_standard_label(raw, aliases)
+        if panel_side is None:
+            raise ValueError(f"dress panel label needs left/right or near/far: {raw!r}")
+        eid = elem.get("id")
+        if not eid:
+            raise ValueError(f"dress panel {raw!r} has no SVG id")
+        return _PartBinding(
+            f"{panel_side}_skirt",
+            f"{panel_side}_skirt",
+            float(source_order),
+            (eid,),
+            None,
+            source_order,
+        )
+    return None
+
+
+def _standard_joint_from_label(
+    elem: ET.Element, aliases: Mapping[str, str]
+) -> Optional[str]:
+    raw = _label(elem) or ""
+    label = _normal_label(raw)
+    if not label:
+        return None
+    if label in {"waist", "neck"}:
+        return label
+    if label == "skirt pivot center":
+        return "center_skirt_pivot"
+    if label.startswith("skirt pivot "):
+        side = _side_from_standard_label(raw, aliases)
+        if side is None:
+            return None
+        return f"{side}_skirt_pivot"
+
+    side = _side_from_standard_label(raw, aliases)
+    if side is None:
+        return None
+    for phrase, suffix in (
+        ("hand tip", "handtip"),
+        ("shoulder", "shoulder"),
+        ("elbow", "elbow"),
+        ("wrist", "wrist"),
+        ("hip", "hip"),
+        ("knee", "knee"),
+        ("ankle", "ankle"),
+        ("toe", "toe"),
+    ):
+        if phrase in label:
+            return f"{side}_{suffix}"
+    return None
 
 
 def _parse_part_label(label: str) -> Optional[Tuple[str, str, float, Optional[str]]]:
@@ -232,6 +444,27 @@ def _descendant_ids(group: ET.Element) -> Tuple[str, ...]:
     return tuple(ids)
 
 
+def _direct_drawable_ids(group: ET.Element) -> Tuple[str, ...]:
+    """Drawable ids directly owned by one standardized label group.
+
+    Nested semantic groups are separate rigid parts, so standard-label mode
+    deliberately does not absorb their descendants into the parent.
+    """
+
+    ids: List[str] = []
+    for elem in list(group):
+        if _local(elem.tag) not in _DRAWABLE:
+            continue
+        eid = elem.get("id")
+        if not eid:
+            raise ValueError(
+                f"drawable under {_label(group)!r} has no id; save from Inkscape "
+                "or add stable ids before extracting"
+            )
+        ids.append(eid)
+    return tuple(ids)
+
+
 def _view_root(root: ET.Element, view: str) -> ET.Element:
     for elem in root.iter():
         if _label(elem) == view:
@@ -240,12 +473,41 @@ def _view_root(root: ET.Element, view: str) -> ET.Element:
     raise KeyError(f"SVG view {view!r} not found; labelled groups include {available}")
 
 
-def _collect_parts(root: ET.Element, view: str) -> List[_PartBinding]:
+def _collect_parts(
+    root: ET.Element, view: str, *, binding_mode: str = "explicit"
+) -> List[_PartBinding]:
     layer = _view_root(root, view)
     side_map = _parse_side_map(layer)
+    if binding_mode not in _LABEL_BINDING_MODES:
+        raise ValueError(
+            f"unsupported SVG label binding mode {binding_mode!r}; "
+            f"expected one of {sorted(_LABEL_BINDING_MODES)}"
+        )
     parts: List[_PartBinding] = []
     source_order = 0
+    drawable_order = {
+        elem.get("id"): index
+        for index, elem in enumerate(layer.iter())
+        if _local(elem.tag) in _DRAWABLE and elem.get("id")
+    }
     for elem in layer.iter():
+        if binding_mode == "standard-humanoid":
+            binding = _standard_part_from_label(elem, side_map, source_order)
+            if binding is None:
+                continue
+            actual_order = min(drawable_order[eid] for eid in binding.include)
+            parts.append(
+                _PartBinding(
+                    binding.name,
+                    binding.bone,
+                    float(actual_order),
+                    binding.include,
+                    binding.opacity_channel,
+                    actual_order,
+                )
+            )
+            source_order += 1
+            continue
         parsed = _parse_part_element(elem)
         if parsed is None:
             continue
@@ -261,6 +523,8 @@ def _collect_parts(root: ET.Element, view: str) -> List[_PartBinding]:
         source_order += 1
     if not parts:
         raise ValueError(f"SVG view {view!r} contains no rig-part groups")
+    if binding_mode == "standard-humanoid":
+        parts.sort(key=lambda part: part.source_order)
     names = [p.name for p in parts]
     if len(names) != len(set(names)):
         dupes = sorted({n for n in names if names.count(n) > 1})
@@ -268,12 +532,25 @@ def _collect_parts(root: ET.Element, view: str) -> List[_PartBinding]:
     return parts
 
 
-def _collect_joint_ids(root: ET.Element, view: str) -> Dict[str, str]:
+def _collect_joint_ids(
+    root: ET.Element, view: str, *, binding_mode: str = "explicit"
+) -> Dict[str, str]:
     layer = _view_root(root, view)
     side_map = _parse_side_map(layer)
+    if binding_mode not in _LABEL_BINDING_MODES:
+        raise ValueError(
+            f"unsupported SVG label binding mode {binding_mode!r}; "
+            f"expected one of {sorted(_LABEL_BINDING_MODES)}"
+        )
     out: Dict[str, str] = {}
     for elem in layer.iter():
         name = _joint_name(elem)
+        if (
+            name is None
+            and binding_mode == "standard-humanoid"
+            and _local(elem.tag) in {"circle", "ellipse"}
+        ):
+            name = _standard_joint_from_label(elem, side_map)
         if name is None:
             continue
         name = _map_side_prefix(name, side_map)
@@ -286,15 +563,24 @@ def _collect_joint_ids(root: ET.Element, view: str) -> Dict[str, str]:
     return out
 
 
-def _drawable_ids_in_view(root: ET.Element, view: str) -> List[str]:
+def _drawable_ids_in_view(
+    root: ET.Element, view: str, *, binding_mode: str = "explicit"
+) -> List[str]:
     """Return drawable ids in the view that are not joint markers."""
 
     layer = _view_root(root, view)
+    side_map = _parse_side_map(layer)
     ids: List[str] = []
     for elem in layer.iter():
         if _local(elem.tag) not in _DRAWABLE:
             continue
         if _joint_name(elem) is not None:
+            continue
+        if (
+            binding_mode == "standard-humanoid"
+            and _local(elem.tag) in {"circle", "ellipse"}
+            and _standard_joint_from_label(elem, side_map) is not None
+        ):
             continue
         eid = elem.get("id")
         if not eid:
@@ -411,9 +697,17 @@ def build_humanoid_view_document(
     svg_path = Path(svg_path).resolve()
     rig_dir = Path(rig_dir).resolve()
     root = ET.fromstring(svg_path.read_bytes())
-    parts = _collect_parts(root, spec.view)
-    joint_ids = _collect_joint_ids(root, spec.view)
-    drawable_ids = set(_drawable_ids_in_view(root, spec.view))
+    parts = _collect_parts(
+        root, spec.view, binding_mode=spec.label_binding_mode
+    )
+    joint_ids = _collect_joint_ids(
+        root, spec.view, binding_mode=spec.label_binding_mode
+    )
+    drawable_ids = set(
+        _drawable_ids_in_view(
+            root, spec.view, binding_mode=spec.label_binding_mode
+        )
+    )
     ownership: Dict[str, List[str]] = {}
     for binding in parts:
         for drawable_id in binding.include:
@@ -436,7 +730,9 @@ def build_humanoid_view_document(
         )
     joints = _joint_positions(svg_path, spec.view, joint_ids, spec.ref_dpi)
 
-    missing = sorted(set(_required_joints()) - set(joints))
+    required_joints = set(_required_joints())
+    required_joints.update(aux.joint for aux in spec.auxiliary_bones)
+    missing = sorted(required_joints - set(joints))
     if missing:
         raise ValueError(f"SVG view {spec.view!r} is missing joints: {missing}")
 
@@ -468,6 +764,8 @@ def build_humanoid_view_document(
         ("torso", "pelvis", mapped["waist"], None),
         ("head", "torso", mapped["neck"], None),
     ]
+    for aux in spec.auxiliary_bones:
+        bone_specs.append((aux.name, aux.parent, mapped[aux.joint], None))
     for side in ("far", "near"):
         bone_specs.extend(
             [
@@ -517,6 +815,8 @@ def build_humanoid_view_document(
         "torso": joints["waist"],
         "head": joints["neck"],
     }
+    for aux in spec.auxiliary_bones:
+        source_pivot[aux.name] = joints[aux.joint]
     for side in ("far", "near"):
         source_pivot.update(
             {
@@ -529,9 +829,10 @@ def build_humanoid_view_document(
             }
         )
 
+    auxiliary_rest_angles = {aux.name: float(aux.rest_angle) for aux in spec.auxiliary_bones}
     for name, parent, origin, distal in bone_specs:
         if distal is None:
-            angle, length = 0.0, 0.0
+            angle, length = auxiliary_rest_angles.get(name, 0.0), 0.0
         else:
             angle = math.degrees(
                 math.atan2(distal[1] - origin[1], distal[0] - origin[0])
@@ -733,6 +1034,7 @@ def merge_generated_geometry(existing: Mapping[str, object], generated: dict) ->
 
 
 __all__ = [
+    "AuxiliaryBoneSpec",
     "HumanoidViewSpec",
     "build_humanoid_view_document",
     "merge_generated_geometry",

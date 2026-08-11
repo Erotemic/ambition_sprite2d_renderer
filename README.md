@@ -647,3 +647,48 @@ of `absurd_general`.
 See [`docs/design.md`](docs/design.md) for the architecture rationale
 and [`docs/ENTITY_TODOS.md`](docs/ENTITY_TODOS.md) for outstanding
 entity-sprite work.
+
+### Label-driven traced humanoids and Noether's panelled dress
+
+Canonical traced humanoids normally use explicit `data-rig-part` /
+`data-rig-joint` attributes.  A traced paper doll may instead opt into the
+`standard-humanoid` label contract when its Inkscape labels follow the existing
+Ambition vocabulary (`Upper Arm - Near Right`, `Lower Leg - Far Left`,
+`Hand Tip - Near`, and so on).  Generated XML ids are never semantic authority.
+An anatomical `left`/`right` token is checked against the view's
+`data-rig-side-map`; if the same label also says `near`/`far`, the two must
+agree.
+
+Noether uses that label-driven path.  Her `Noether - Side Left` view carries the
+small amount of metadata that cannot be inferred safely from labels:
+
+```text
+facing:          east
+projection:      three-quarter
+side map:        right=near,left=far
+pose authority:  geometry-only
+part order:      document
+```
+
+Her long dress is not cloth-simulated.  The traced `dress-base` plus left,
+center, and right dress panels are bound to three pelvis-child skirt bones using
+the `Skirt-Pivot-Left`, `Skirt-Pivot-Center`, and `Skirt-Pivot-Right` markers.
+The side panels receive restrained secondary rotation while the real upper/lower
+legs remain underneath for collision, IK, crouches, jumps, and kicks.  Natural
+arm pose and elbow anatomy live in the generated rig specification rather than
+being inferred from the source drawing.
+
+Build, audit, and render Noether with:
+
+```bash
+uv run python scripts/build_scientist_fighter_rigs.py build noether
+uv run ambition-sprite2d-renderer audit-poses noether --fail-on warning
+uv run ambition-sprite2d-renderer sheet noether
+```
+
+The build reads `assets/noether.svg` but never rewrites it.  The generated rig
+lives under `ambition_sprite2d_renderer/targets/characters/rigged/noether/`.
+Noether currently participates in the same complete `fighter_core` +
+`generic_item` motion contract as the other full fighters; her signature rows
+are symmetry/conservation themed and the SVG's east-facing view receives
+mirrored fighter choreography automatically.

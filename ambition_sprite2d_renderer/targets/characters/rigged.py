@@ -45,11 +45,19 @@ def _discover() -> Dict[str, dict]:
     targets: Dict[str, dict] = {}
     if not RIGGED_DIR.is_dir():
         return targets
+    characters_dir = RIGGED_DIR.parent
     for path in sorted(RIGGED_DIR.glob("*.rig.json")):
         try:
             name = str(json.loads(path.read_text(encoding="utf8")).get("name", path.stem))
         except Exception:
             continue  # malformed doc: skip registration, GUI can still open it
+        # A dedicated character module is a stronger publication contract than
+        # the generic loose-rig adapter (it can freshness-check canonical SVGs,
+        # add render overscan, portraits/effects, actor metadata, etc.). Keep the
+        # loose document editable, but do not let it shadow that module merely
+        # because rigged.py sorts later during discovery.
+        if (characters_dir / f"{name}.py").exists():
+            continue
         targets[name] = _make_entry(path)
     return targets
 
