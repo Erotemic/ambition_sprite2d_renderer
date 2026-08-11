@@ -10,7 +10,6 @@ from __future__ import annotations
 import math
 from functools import lru_cache
 from pathlib import Path
-from typing import List, Tuple
 
 from PIL import Image
 
@@ -27,31 +26,11 @@ from ._svg_fighter_effects import (
     pulse,
     smooth,
 )
+from .carl_stargan_motion import CARL_ROWS, EFFECT_ALIASES
 
 TARGET_NAME = "carl_stargan"
 FRAME_SIZE = (160, 160)
-ROWS: List[Tuple[str, int, int]] = [
-    ("idle", 8, 150), ("walk", 8, 108), ("run", 8, 82),
-    ("crouch", 6, 96), ("crouch_walk", 8, 90), ("jump", 6, 92),
-    ("fall", 6, 92), ("land_hard", 8, 92),
-    ("land_recovery", 6, 74), ("dash_startup", 4, 52),
-    ("dash", 6, 62), ("cosmic_drift", 8, 58), ("slide", 6, 70),
-    ("roll", 8, 58), ("wall_grab", 6, 105),
-    ("wall_jump", 6, 82), ("ledge_grab", 6, 98),
-    ("ledge_climb", 6, 98), ("ledge_getup", 6, 44),
-    ("ledge_roll", 8, 40), ("climb", 8, 98), ("swim", 8, 104),
-    ("float_glide", 8, 108), ("block", 6, 84), ("hit", 5, 88),
-    ("death", 8, 108), ("talk", 8, 108), ("interact", 8, 92),
-    ("think", 8, 112), ("use_telescope", 10, 96),
-    ("stargaze", 10, 108), ("jab", 5, 58), ("punch", 7, 70),
-    ("planetary_orbit", 9, 72), ("attack_up", 8, 66),
-    ("attack_down", 8, 66), ("air_neutral", 8, 62),
-    ("air_forward", 7, 62), ("air_back", 7, 62),
-    ("air_down", 7, 70), ("air_up", 7, 62),
-    ("pale_blue_dot", 9, 78), ("cosmic_calendar", 10, 78),
-    ("billions_and_billions", 10, 76), ("starstuff", 10, 76),
-    ("celebrate", 8, 90), ("taunt", 8, 94),
-]
+ROWS = list(CARL_ROWS)
 
 ACTOR_METADATA = {'actor': {'character_id': 'npc_carl_stargan', 'display_name': 'Carl Stargan'},
  'body': {'body_plan': 'HumanoidBiped',
@@ -94,6 +73,9 @@ ACTOR_METADATA = {'actor': {'character_id': 'npc_carl_stargan', 'display_name': 
                         'action.ranged.primary': {'animation': 'pale_blue_dot', 'events': []},
                         'action.special.primary': {'animation': 'cosmic_calendar', 'events': []},
                         'action.special.secondary': {'animation': 'billions_and_billions', 'events': []},
+                        'action.special.up': {'animation': 'cosmic_drift', 'events': []},
+                        'action.special.down': {'animation': 'billions_and_billions', 'events': []},
+                        'action.super': {'animation': 'starstuff', 'events': []},
                         'action.defense.block': {'animation': 'block', 'events': []},
                         'action.defense.roll': {'animation': 'roll', 'events': []},
                         'interaction.talk': {'animation': 'talk', 'events': []},
@@ -287,13 +269,14 @@ def _front(animation: str, canvas: FxCanvas, t: float, world, params) -> None:
 
 
 def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
+    effect_animation = EFFECT_ALIASES.get(animation, animation)
     return compose_rig_frame(
         _doc(),
         animation,
         frame_idx,
         frame_count,
-        behind=lambda canvas, t, world, params: _behind(animation, canvas, t, world, params),
-        front=lambda canvas, t, world, params: _front(animation, canvas, t, world, params),
+        behind=lambda canvas, t, world, params: _behind(effect_animation, canvas, t, world, params),
+        front=lambda canvas, t, world, params: _front(effect_animation, canvas, t, world, params),
     )
 
 

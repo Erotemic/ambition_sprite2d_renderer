@@ -105,3 +105,43 @@ def test_patent_natural_arm_pose_is_separate_from_svg_splay():
         for hint in spec.natural_arm_pose.values()
     )
     assert spec.arm_max_reach_ratio == 0.98
+
+
+def _carl_rest():
+    return {
+        "near_hand_x": 40.2822,
+        "near_hand_y": -72.0327,
+        "near_hand_pitch": 7.7977,
+        "far_hand_x": -39.0798,
+        "far_hand_y": -72.2045,
+        "far_hand_pitch": 179.6102,
+        "near_foot_pitch": 0.0,
+        "far_foot_pitch": 0.0,
+        "_natural_near_hand_x": -12.0,
+        "_natural_near_hand_y": -58.0,
+        "_natural_far_hand_x": -22.0,
+        "_natural_far_hand_y": -52.0,
+        "_hands_follow_forearms": 1.0,
+    }
+
+
+def test_carl_neutral_uses_natural_rig_pose_not_svg_splay():
+    rest = _carl_rest()
+    neutral = _neutral(rest, compact=False)
+    assert neutral["near_hand_x"] == {"const": -12.0}
+    assert neutral["near_hand_y"] == {"const": -58.0}
+    assert neutral["far_hand_x"] == {"const": -22.0}
+    assert neutral["far_hand_y"] == {"const": -52.0}
+    assert "near_hand_pitch" not in neutral
+    assert "far_hand_pitch" not in neutral
+
+
+def test_carl_natural_arm_pose_is_separate_from_svg_splay():
+    spec = SPECS["carl_stargan"]
+    assert spec.natural_arm_pose is not None
+    assert set(spec.natural_arm_pose) == {"near", "far"}
+    assert all(
+        hint.target[0] < hint.joint[0]
+        for hint in spec.natural_arm_pose.values()
+    )
+    assert spec.arm_max_reach_ratio == 0.98

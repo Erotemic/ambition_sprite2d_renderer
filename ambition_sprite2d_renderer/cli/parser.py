@@ -19,6 +19,7 @@ Two command families:
       publish-many <target>...     Explicit batch with one discovery pass.
       gifs [<target>]             Per-animation GIF previews from a rendered sheet.
       debug-hitboxes <target>     Hitbox/hurtbox overlay strips for one target.
+      audit-poses <target>         Geometry-only rig pose audit + skeleton sheets.
 
 (2) **Adapter-pipeline commands** — take config paths instead of
     target names, scoped to the YAML adapter pipeline. Useful for
@@ -58,6 +59,7 @@ from .commands import (
     DEFAULT_REVIEW_CONFIG_DIR,
     sandbox_sprites_dir,
     _cmd_audit_installed,
+    _cmd_audit_poses,
     _cmd_canonical,
     _cmd_debug_hitboxes,
     _cmd_draw_all,
@@ -441,6 +443,39 @@ def build_parser() -> argparse.ArgumentParser:
         help="install destination (default: crates/ambition_platformer2d_actor_monolith/assets/sprites)",
     )
     p.set_defaults(func=_cmd_regenerate_all)
+
+    p = sub.add_parser(
+        "audit-poses",
+        help=(
+            "Audit a rigged target's FK/IK geometry without rasterizing its SVG. "
+            "Writes JSON plus full and flagged skeleton contact sheets."
+        ),
+    )
+    p.add_argument("target", help="Rigged target name, e.g. carl_stargan.")
+    p.add_argument(
+        "--rig",
+        type=Path,
+        default=None,
+        help="Explicit .rig.json path. Normally resolved from the target name.",
+    )
+    p.add_argument(
+        "--out-dir",
+        type=Path,
+        default=None,
+        help="Output directory. Default: generated/<target>/diagnostics/pose_audit.",
+    )
+    p.add_argument(
+        "--no-art",
+        action="store_true",
+        help="Skip the optional flagged-art sheet even when resvg_py is available.",
+    )
+    p.add_argument(
+        "--fail-on",
+        choices=("never", "error", "warning"),
+        default="never",
+        help="Optional CI exit policy. Default reports findings but exits successfully.",
+    )
+    p.set_defaults(func=_cmd_audit_poses)
 
     p = sub.add_parser(
         "debug-hitboxes",

@@ -35,7 +35,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
-BUILDER_VERSION = 14
+BUILDER_VERSION = 16
 
 
 def _is_extension_path(path: Path) -> bool:
@@ -147,11 +147,22 @@ from ambition_sprite2d_renderer.authoring.humanoid_svg_rig import (  # noqa: E40
     build_humanoid_view_document,
 )
 from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument  # noqa: E402
-from ambition_sprite2d_renderer.authoring.fighter_motion_catalog import validate_motion_coverage  # noqa: E402
+from ambition_sprite2d_renderer.authoring.fighter_motion_catalog import (  # noqa: E402
+    invert_rotation_channel,
+    materialize_motion_rows,
+    validate_motion_coverage,
+)
 from ambition_sprite2d_renderer.targets.characters.patent_clerk_motion import (  # noqa: E402
-    APPLICABLE_MOTION_SCOPES,
-    FIGHTER_MOTION_COVERAGE,
+    APPLICABLE_MOTION_SCOPES as PATENT_MOTION_SCOPES,
+    FIGHTER_MOTION_COVERAGE as PATENT_MOTION_COVERAGE,
     PATENT_ROWS,
+)
+from ambition_sprite2d_renderer.targets.characters.carl_stargan_motion import (  # noqa: E402
+    APPLICABLE_MOTION_SCOPES as CARL_MOTION_SCOPES,
+    CARL_ROWS,
+    FIGHTER_MOTION_COVERAGE as CARL_MOTION_COVERAGE,
+    LOOPING_ROWS as CARL_LOOPING_ROWS,
+    POSE_ALIASES as CARL_POSE_ALIASES,
 )
 
 INK_NS = "http://www.inkscape.org/namespaces/inkscape"
@@ -192,29 +203,6 @@ class CharacterSpec:
         return self.rig_dir / f"{self.name}_side.rig.json"
 
 
-STARGAN_ROWS = (
-    ("idle", 8, 150), ("walk", 8, 108), ("run", 8, 82),
-    ("crouch", 6, 96), ("crouch_walk", 8, 90), ("jump", 6, 92),
-    ("fall", 6, 92), ("land_hard", 8, 92),
-    ("land_recovery", 6, 74), ("dash_startup", 4, 52),
-    ("dash", 6, 62), ("cosmic_drift", 8, 58), ("slide", 6, 70),
-    ("roll", 8, 58), ("wall_grab", 6, 105),
-    ("wall_jump", 6, 82), ("ledge_grab", 6, 98),
-    ("ledge_climb", 6, 98), ("ledge_getup", 6, 44),
-    ("ledge_roll", 8, 40), ("climb", 8, 98), ("swim", 8, 104),
-    ("float_glide", 8, 108), ("block", 6, 84), ("hit", 5, 88),
-    ("death", 8, 108), ("talk", 8, 108), ("interact", 8, 92),
-    ("think", 8, 112), ("use_telescope", 10, 96),
-    ("stargaze", 10, 108), ("jab", 5, 58), ("punch", 7, 70),
-    ("planetary_orbit", 9, 72), ("attack_up", 8, 66),
-    ("attack_down", 8, 66), ("air_neutral", 8, 62),
-    ("air_forward", 7, 62), ("air_back", 7, 62),
-    ("air_down", 7, 70), ("air_up", 7, 62),
-    ("pale_blue_dot", 9, 78), ("cosmic_calendar", 10, 78),
-    ("billions_and_billions", 10, 76), ("starstuff", 10, 76),
-    ("celebrate", 8, 90), ("taunt", 8, 94),
-)
-
 SPECS = {
     "patent_clerk": CharacterSpec(
         name="patent_clerk",
@@ -247,7 +235,20 @@ SPECS = {
         target_height=112.0,
         ground_margin=24.0,
         collision_scale=1.58,
-        rows=STARGAN_ROWS,
+        rows=CARL_ROWS,
+        hands_follow_forearms=True,
+        # Carl's SVG is also authored as a fully splayed paper-doll layout so
+        # every rigid piece stays visible while tracing. Gameplay motion should
+        # instead start from a relaxed west-facing stance with both forearms
+        # folding back toward the body.
+        natural_arm_pose={
+            # Targets are deliberately comfortably inside each chain's reach:
+            # Carl should retain a visible elbow bend instead of snapping into
+            # the straight-armed SVG paper-doll stance.
+            "near": LimbPoseHint(target=(-12.0, -58.0), joint=(-4.3, -72.7)),
+            "far": LimbPoseHint(target=(-22.0, -52.0), joint=(-12.8, -61.5)),
+        },
+        arm_max_reach_ratio=0.98,
     ),
 }
 
@@ -993,7 +994,11 @@ def _patent_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, d
 
 def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, dict]:
     clips = _common_clips(spec, doc, compact=False)
-    r = _rest(doc)
+    r = _rest(
+        doc,
+        hands_follow_forearms=spec.hands_follow_forearms,
+        natural_arm_pose=spec.natural_arm_pose,
+    )
     rows = {name: (frames, duration) for name, frames, duration in spec.rows}
     if "cosmic_drift" in rows:
         f, d = rows["cosmic_drift"]
@@ -1057,6 +1062,17 @@ def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, 
         clips[name] = _pose(r, f, d, compact=False,
             root_y=[-8,-10,-12,-10,-8,-6,-7,-8][:f], torso=[-3,-5,-6,-4,-1,1,0,-2][:f], head=[2,4,5,3,1,-1,0,1][:f],
             near_hand=(xs[:f], ys[:f], [70,55,35,20,35,55,75,80][:f]))
+
+    had_back_roll = "roll_back" in clips
+    clips = materialize_motion_rows(
+        rows=spec.rows,
+        clips=clips,
+        aliases=CARL_POSE_ALIASES,
+        looping_rows=CARL_LOOPING_ROWS,
+        character="carl_stargan",
+    )
+    if not had_back_roll:
+        clips["roll_back"] = invert_rotation_channel(clips["roll_back"], "pelvis")
     return clips
 
 
@@ -1224,9 +1240,16 @@ def build_one(spec: CharacterSpec) -> Path:
     if spec.name == "patent_clerk":
         validate_motion_coverage(
             row_names=[name for name, _frames, _duration in spec.rows],
-            coverage=FIGHTER_MOTION_COVERAGE,
-            scopes=APPLICABLE_MOTION_SCOPES,
+            coverage=PATENT_MOTION_COVERAGE,
+            scopes=PATENT_MOTION_SCOPES,
             character="patent_clerk",
+        )
+    elif spec.name == "carl_stargan":
+        validate_motion_coverage(
+            row_names=[name for name, _frames, _duration in spec.rows],
+            coverage=CARL_MOTION_COVERAGE,
+            scopes=CARL_MOTION_SCOPES,
+            character="carl_stargan",
         )
 
     renderer_path, renderer_version = _require_native_resvg()

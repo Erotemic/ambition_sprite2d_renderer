@@ -564,11 +564,23 @@ class RigDocument:
             if up not in sk.bones or lo not in sk.bones:
                 return
             origin = w0[up].origin
+            upper_len = sk.bones[up].length
+            lower_len = sk.bones[lo].length
+            max_reach_ratio = chain.get("max_reach_ratio")
+            if max_reach_ratio is not None:
+                ratio = max(0.0, min(1.0, float(max_reach_ratio)))
+                dx = target[0] - origin[0]
+                dy = target[1] - origin[1]
+                distance = math.hypot(dx, dy)
+                max_distance = (upper_len + lower_len) * ratio
+                if distance > max_distance and distance > 1e-9:
+                    scale = max_distance / distance
+                    target = (origin[0] + dx * scale, origin[1] + dy * scale)
             a1, a2 = two_bone_ik(
                 origin,
                 target,
-                sk.bones[up].length,
-                sk.bones[lo].length,
+                upper_len,
+                lower_len,
                 bend=float(chain.get("bend", 1.0) if bend is None else bend),
             )
             parent = sk.bones[up].parent
@@ -601,9 +613,16 @@ class RigDocument:
             end_name = chain.get("end")
             pitch = None
             if end_name:
-                pitch = s.get(
-                    f"{pre}_pitch", float(chain.get("rest_pitch", 0.0))
-                )
+                pitch_key = f"{pre}_pitch"
+                pitch_mode = str(chain.get("pitch_mode", "world"))
+                if pitch_key in s:
+                    pitch = s[pitch_key]
+                elif pitch_mode == "world":
+                    pitch = float(chain.get("rest_pitch", 0.0))
+                elif pitch_mode != "follow_lower":
+                    raise ValueError(
+                        f"unknown IK hand pitch_mode {pitch_mode!r} for {pre!r}"
+                    )
             bend = s.get(f"{pre}_bend", float(chain.get("bend", 1.0)))
             solve_chain(
                 chain,

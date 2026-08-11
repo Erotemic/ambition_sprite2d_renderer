@@ -418,3 +418,78 @@ def test_zero_rotation_skips_transform_cache():
 
     assert not cache._items
     assert canvas.getchannel("A").getbbox() is not None
+
+
+def test_arm_max_reach_ratio_preserves_visible_elbow_bend(doc):
+    doc.data["ik_chains"] = [
+        {
+            "upper": "near_arm_u",
+            "lower": "near_arm_l",
+            "channel_prefix": "near_hand",
+            "rest_x": 80.0,
+            "rest_y": -20.0,
+            "bend": -1.0,
+            "pitch_mode": "follow_lower",
+            "max_reach_ratio": 0.90,
+        }
+    ]
+    doc.data["clips"]["reach_probe"] = {
+        "loop": False,
+        "frames": 1,
+        "duration_ms": 0,
+        "channels": {
+            "near_hand_x": {"const": 80.0},
+            "near_hand_y": {"const": -20.0},
+        },
+    }
+    world, _ = doc.solve("reach_probe", 0.0)
+    shoulder = world["near_arm_u"].origin
+    elbow = world["near_arm_l"].origin
+    wrist = world["near_arm_l"].tip
+    ax, ay = shoulder[0] - elbow[0], shoulder[1] - elbow[1]
+    bx, by = wrist[0] - elbow[0], wrist[1] - elbow[1]
+    import math
+    cosine = (ax * bx + ay * by) / (math.hypot(ax, ay) * math.hypot(bx, by))
+    angle = math.degrees(math.acos(max(-1.0, min(1.0, cosine))))
+    assert angle < 170.0
+
+
+def test_follow_lower_hand_pitch_does_not_pin_hand_to_svg_world_angle(doc):
+    lower = next(bone for bone in doc.bones if bone["name"] == "near_arm_l")
+    doc.bones.append(
+        {
+            "name": "near_arm_hand",
+            "parent": "near_arm_l",
+            "offset": [float(lower["length"]), 0.0],
+            "length": 4.0,
+            "rest_angle": 11.0,
+        }
+    )
+    doc.data["ik_chains"] = [
+        {
+            "upper": "near_arm_u",
+            "lower": "near_arm_l",
+            "end": "near_arm_hand",
+            "channel_prefix": "near_hand",
+            "rest_x": -18.0,
+            "rest_y": -20.0,
+            "rest_pitch": 5.0,
+            "bend": -1.0,
+            "pitch_mode": "follow_lower",
+        }
+    ]
+    doc.data["clips"]["pitch_probe"] = {
+        "loop": False,
+        "frames": 1,
+        "duration_ms": 0,
+        "channels": {
+            "near_hand_x": {"const": -18.0},
+            "near_hand_y": {"const": -20.0},
+        },
+    }
+    world, _ = doc.solve("pitch_probe", 0.0)
+    relative = (world["near_arm_hand"].angle - world["near_arm_l"].angle + 180.0) % 360.0 - 180.0
+    rest_relative = next(
+        bone["rest_angle"] for bone in doc.bones if bone["name"] == "near_arm_hand"
+    )
+    assert relative == pytest.approx(rest_relative)

@@ -65,6 +65,19 @@ if str(_AUTHORING) not in sys.path:
 from authoring.svg_parts import (  # noqa: E402
     rasterize_subset, _local, _label,
 )
+from authoring.fighter_motion_catalog import (  # noqa: E402
+    invert_rotation_channel,
+    materialize_motion_rows,
+    validate_motion_coverage,
+)
+from targets.characters.pca_motion import (  # noqa: E402
+    APPLICABLE_MOTION_SCOPES,
+    FIGHTER_MOTION_COVERAGE,
+    LOOPING_ROWS,
+    PCA_ANIMATION_BINDINGS,
+    PCA_ROWS,
+    POSE_ALIASES,
+)
 
 TOOL_ROOT = Path(__file__).resolve().parents[4]
 SVG = TOOL_ROOT / "assets/perfect-cellular-automaton/PCA-multiview.svg"
@@ -460,13 +473,47 @@ def merge_doc(existing: dict, generated: dict) -> dict:
     return doc
 
 
+def ensure_fighter_motion(doc: dict) -> dict:
+    """Materialize PCA's complete current fighter surface without erasing art.
+
+    Existing authored clips always win, so GUI-polished rows survive future SVG
+    geometry refreshes. Only missing semantic rows are seeded from established
+    PCA choreography.
+    """
+
+    validate_motion_coverage(
+        row_names=[name for name, _frames, _duration in PCA_ROWS],
+        coverage=FIGHTER_MOTION_COVERAGE,
+        scopes=APPLICABLE_MOTION_SCOPES,
+        character="perfect_cellular_automaton",
+    )
+    existing = dict(doc.get("clips") or {})
+    had_back_roll = "roll_back" in existing
+    clips = materialize_motion_rows(
+        rows=PCA_ROWS,
+        clips=existing,
+        aliases=POSE_ALIASES,
+        looping_rows=LOOPING_ROWS,
+        character="perfect_cellular_automaton",
+        keep_extra=True,
+    )
+    if not had_back_roll:
+        clips["roll_back"] = invert_rotation_channel(clips["roll_back"], "pelvis")
+    doc["clips"] = clips
+    actor_metadata = doc.setdefault("actor_metadata", {})
+    actor_metadata["animation_bindings"] = {
+        key: dict(value) for key, value in PCA_ANIMATION_BINDINGS.items()
+    }
+    return doc
+
+
 def cmd_build(args):
     RIGGED_DIR.mkdir(parents=True, exist_ok=True)
     generated = build_doc()
     existing = {}
     if RIG_OUT.exists() and not getattr(args, "fresh", False):
         existing = json.loads(RIG_OUT.read_text(encoding="utf8"))
-    doc = merge_doc(existing, generated)
+    doc = ensure_fighter_motion(merge_doc(existing, generated))
     RIG_OUT.write_text(json.dumps(doc, indent=1) + "\n", encoding="utf8")
     print(
         f"wrote {RIG_OUT}  ({len(doc['bones'])} bones, {len(doc['parts'])} parts, "

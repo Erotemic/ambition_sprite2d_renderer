@@ -763,6 +763,55 @@ def _cmd_gifs(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_audit_poses(args: argparse.Namespace) -> int:
+    """Run the geometry-only rig pose auditor for one target."""
+    from ..authoring.pose_audit import find_rig_document, run_pose_audit
+
+    rig_path = find_rig_document(args.target, explicit=args.rig)
+    out_dir = (
+        Path(args.out_dir)
+        if args.out_dir is not None
+        else DEFAULT_ASSET_DIR / args.target / "diagnostics" / "pose_audit"
+    )
+    result = run_pose_audit(
+        target=args.target,
+        rig_path=rig_path,
+        out_dir=out_dir,
+        with_art=not args.no_art,
+    )
+    summary = result.summary()
+    rich_print(
+        f"[bold]Pose audit: {args.target}[/bold] "
+        f"{summary['animations']} animations / {summary['frames']} frames | "
+        f"[red]{summary['errors']} errors[/red] | "
+        f"[yellow]{summary['warnings']} warnings[/yellow] | "
+        f"{summary['info']} notes | {summary['flagged_frames']} flagged frames"
+    )
+    for code, count in summary["findings_by_code"].items():
+        rich_print(f"  {code}: {count}")
+    priority_frames = [
+        frame
+        for frame in result.frames
+        if frame.severity == "error"
+        or any(finding.code != "arm_target_clamped" for finding in frame.findings)
+    ]
+    priority_frames.sort(
+        key=lambda frame: (0 if frame.severity == "error" else 1, -len(frame.findings), frame.animation, frame.frame)
+    )
+    if priority_frames:
+        rich_print("[bold]Priority frames:[/bold]")
+        for frame in priority_frames[:12]:
+            codes = ", ".join(finding.code for finding in frame.findings[:3])
+            rich_print(f"  {frame.animation}:{frame.frame} [{frame.severity}] {codes}")
+    print_paths(result.output_paths.values(), prefix="  ")
+
+    if args.fail_on == "warning" and (result.error_count or result.warning_count):
+        return 2
+    if args.fail_on == "error" and result.error_count:
+        return 2
+    return 0
+
+
 # ---- Target sheet / install / publish commands -------------------------------
 
 # Tack-on categories that bulk operations scope to. The adapter

@@ -653,6 +653,10 @@ def build_humanoid_view_document(
             "rest_x": round(arm_rest_x, 4),
             "rest_y": round(arm_rest_y, 4),
             "rest_pitch": round(world[f"{side}_arm_hand"][1], 4),
+            # Explicit natural-pose rigs want the hand artwork to inherit the
+            # lower forearm unless a clip deliberately authors a world pitch.
+            # Legacy SVG-layout rigs retain the historic world-pitch fallback.
+            "pitch_mode": "follow_lower" if arm_pose_hint is not None else "world",
             "bend": _bend_for_side(
                 spec.arm_pose_hints,
                 spec.arm_bend_overrides,

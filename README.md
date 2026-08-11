@@ -128,6 +128,7 @@ uv run ambition-sprite2d-renderer install   [<target>]    # install rendered pro
 uv run ambition-sprite2d-renderer publish   [<target>]    # gameplay sheet + portraits + install
 uv run ambition-sprite2d-renderer gifs      [<target>]    # per-animation GIF previews
 uv run ambition-sprite2d-renderer debug-hitboxes <target> # hitbox/hurtbox overlay strips
+uv run ambition-sprite2d-renderer audit-poses <target>     # geometry-only rig pose diagnostics
 ```
 
 `python -m ambition_sprite2d_renderer ...` is also supported by a complete
@@ -435,18 +436,39 @@ Ambition-specific additions such as `idle_look_up` and `crouch_walk` live in the
 catalog's `ambition_extensions` section rather than silently changing the
 supplied source list.
 
-Patent Clerk's current row list and category-to-row coverage live together in
-[`targets/characters/patent_clerk_motion.py`](ambition_sprite2d_renderer/targets/characters/patent_clerk_motion.py).
-Player Robot v3 uses the same contract in
-[`targets/characters/player_robot_v3_motion.py`](ambition_sprite2d_renderer/targets/characters/player_robot_v3_motion.py).
-Both SVG rig builders and shipping renderers import their character's one row
-declaration, so adding a motion cannot update generation while leaving sheet
-publication stale. Robot v3 keeps its Ambition-specific blink, flight, ranged,
-and interaction rows alongside the full applicable fighter-category surface;
-its Smash special coverage currently resolves neutral to shoot, side to
-blink_out (with blink_in retained as the paired arrival row), up to hover /
-boot-thruster flight, and down to the charge stance. These are visual bindings only; gameplay move semantics remain
-owned by the game-side moveset data. Coverage is checked with:
+The current full-fighter profiles live beside their character authoring:
+
+- [`patent_clerk_motion.py`](ambition_sprite2d_renderer/targets/characters/patent_clerk_motion.py)
+- [`player_robot_v3_motion.py`](ambition_sprite2d_renderer/targets/characters/player_robot_v3_motion.py)
+- [`carl_stargan_motion.py`](ambition_sprite2d_renderer/targets/characters/carl_stargan_motion.py)
+- [`pca_motion.py`](ambition_sprite2d_renderer/targets/characters/pca_motion.py)
+
+The generated scientist fighters import their row declaration directly in
+`scripts/build_scientist_fighter_rigs.py`, so Carl Stargan and Patent Clerk use
+the same row authority for rig generation and sheet publication. For Carl:
+
+```bash
+uv run python scripts/build_scientist_fighter_rigs.py build carl_stargan
+uv run ambition-sprite2d-renderer sheet carl_stargan
+```
+
+Player Robot v3 follows the same pattern through its dedicated builder. PCA is
+slightly different: its extractor preserves hand-authored clips, then materializes only
+missing semantic rows from established PCA choreography, so later GUI-polished
+clips survive SVG geometry rebuilds. Its refresh command is:
+
+```bash
+uv run python ambition_sprite2d_renderer/targets/characters/rigged/pca_rig_extract.py build
+uv run ambition-sprite2d-renderer sheet perfect_cellular_automaton
+```
+
+Character-specific special mappings stay visual. Robot v3 resolves neutral to
+shoot, side to blink, up to boot-thruster hover, and down to charge. Carl uses
+pale-blue-dot, cosmic-calendar, cosmic-drift recovery, and
+billions-and-billions, with starstuff as his Final Smash. PCA keeps its existing
+shoot / special / fly / charge vocabulary, with a dedicated Final Smash row.
+Gameplay damage, knockback, cancels, and move semantics remain game-side.
+Coverage is checked with:
 
 ```bash
 uv run python -m pytest tests/test_fighter_motion_vocabulary.py -q
@@ -456,6 +478,64 @@ This coverage file is deliberately an authoring contract, not gameplay move
 data. Damage, knockback, cancels, charge rules, and move-to-clip binding belong
 to the game-side character/moveset definition; the sprite repository owns the
 visual motion rows those moves can request.
+
+#### Rig pose auditing
+
+Full fighters now have enough animation rows that visual review alone is a poor
+first line of defense. Run the geometry-only pose auditor before reviewing the
+full spritesheet:
+
+```bash
+uv run ambition-sprite2d-renderer audit-poses carl_stargan
+uv run ambition-sprite2d-renderer sheet carl_stargan
+```
+
+`audit-poses` loads the `.rig.json` directly and evaluates the same FK/IK solve
+used by publication. The core audit does **not** rasterize SVG art, so it works
+on machines without `resvg_py` and is suitable for agent/CI inspection. It
+checks, among other things:
+
+- elbow and knee IK branch consistency;
+- natural/recovery forearms that point away from the explicitly authored
+  natural arm pose;
+- nearly straight elbows and overreaching hand trajectories;
+- hand orientation drifting far away from its normal forearm relationship;
+- large wrist/forearm discontinuities between adjacent animation frames;
+- planted-foot movement in poses expected to hold still; and
+- bones leaving the logical rig frame, which is a cue to verify render
+  overscan rather than post-render padding.
+
+For canonical SVG paper dolls, `features.source_pose_role =
+"geometry-layout-only"` means `natural_pose.arms` is required anatomy authority.
+The exploded SVG itself must not silently decide how a neutral elbow bends or
+which way a resting forearm points.
+
+The default output directory is:
+
+```text
+generated/<target>/diagnostics/pose_audit/
+```
+
+It contains:
+
+- `pose_audit.json` — machine-readable per-frame metrics and findings;
+- `pose_skeletons.png` — every sampled animation frame as a compact skeleton
+  contact sheet;
+- `pose_flagged_skeletons.png` — only animations/frames with findings;
+- `pose_flagged_detail.png` — larger annotated tiles for the highest-priority
+  suspicious frames; and
+- `pose_flagged_art.png` when `resvg_py` is available, with the solved skeleton
+  overlaid on the rasterized rig art.
+
+The command reports findings but exits successfully by default. CI or strict
+authoring checks can opt into a gate:
+
+```bash
+uv run ambition-sprite2d-renderer audit-poses carl_stargan --fail-on error
+uv run ambition-sprite2d-renderer audit-poses carl_stargan --fail-on warning
+```
+
+Use `--no-art` when only deterministic geometry products are desired.
 
 ### Helpers and authoring families
 
