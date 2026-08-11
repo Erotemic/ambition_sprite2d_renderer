@@ -9,16 +9,18 @@ and per-frame anchors.  Nothing rewrites the SVG.
 from __future__ import annotations
 
 from copy import deepcopy
+from functools import lru_cache
 from pathlib import Path
 from typing import List, Tuple
 
 from PIL import Image
 
 from ...authoring.rigdoc import RigDocument
+from ...profiling import profile
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ._svg_fighter_effects import compose_rig_frame
 from .pca_combat_authoring import author_pca_combat_clips
-from .pca_effects import draw_pca_behind, draw_pca_front
+from .pca_effects import EFFECTFUL_ANIMATIONS, draw_pca_behind, draw_pca_front
 from .pca_gameplay import (
     ATTACK_HITBOXES,
     PADDING,
@@ -38,9 +40,27 @@ FRAME_SIZE = (
     (RIG_SIZE[1] + 2 * PADDING) * RENDER_SCALE,
 )
 
+# PCA already publishes at 3x logical resolution. Rendering every SVG part at
+# the rig document's legacy 4x supersample would therefore transform at 12x
+# logical resolution before shrinking back to 3x. The profile for the complete
+# fighter sheet showed almost all frame time in those oversized part rotations.
+# Native 3x SVG rasters plus Pillow's bicubic rotation are the publication
+# resolution here; the game/display can still downsample the finished sheet.
+RIG_RENDER_SUPERSAMPLE = 1
 
-def _doc() -> RigDocument:
-    doc = RigDocument.load(RIG_PATH)
+
+@lru_cache(maxsize=4)
+@profile
+def _load_doc_cached(path_text: str, mtime_ns: int, size: int) -> RigDocument:
+    """Load and author one PCA rig revision exactly once per process.
+
+    Keeping the same :class:`RigDocument` alive is important beyond avoiding
+    JSON parsing: the document owns the expensive SVG-part raster and rotated
+    sprite caches. Reconstructing it per frame used to throw those caches away
+    and could invoke native SVG rasterization hundreds of times per sheet.
+    """
+    del mtime_ns, size
+    doc = RigDocument.load(path_text)
     author_pca_combat_clips(doc.data)
     missing = [name for name, _frames, _duration in ROWS if name not in doc.clips]
     if missing:
@@ -53,6 +73,37 @@ def _doc() -> RigDocument:
     return doc
 
 
+@profile
+def _doc() -> RigDocument:
+    stat = RIG_PATH.stat()
+    return _load_doc_cached(str(RIG_PATH), stat.st_mtime_ns, stat.st_size)
+
+
+@lru_cache(maxsize=8)
+@profile
+def _frame_solution_cached(
+    animation: str,
+    frame_idx: int,
+    frame_count: int,
+    mtime_ns: int,
+    size: int,
+):
+    """Share the solve used by render_frame with the immediately-following metadata pass."""
+    del mtime_ns, size
+    doc = _doc()
+    t = doc.frame_time(animation, frame_idx, frame_count)
+    return t, doc.solve(animation, t)
+
+
+@profile
+def _frame_solution(animation: str, frame_idx: int, frame_count: int):
+    stat = RIG_PATH.stat()
+    return _frame_solution_cached(
+        animation, frame_idx, frame_count, stat.st_mtime_ns, stat.st_size
+    )
+
+
+@profile
 def _actor_metadata(doc: RigDocument) -> dict:
     metadata = deepcopy(doc.data.get("actor_metadata") or {})
     metadata.setdefault("actor", {})
@@ -101,10 +152,10 @@ def _out_point(point) -> dict:
     }
 
 
+@profile
 def frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
-    doc = _doc()
-    t = doc.frame_time(animation, frame_idx, frame_count)
-    world, _params = doc.solve(animation, t)
+    _t, solved = _frame_solution(animation, frame_idx, frame_count)
+    world, _params = solved
 
     near = world.get("near_arm_hand")
     far = world.get("far_arm_hand")
@@ -128,13 +179,30 @@ def frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
     return {"anchors": anchors}
 
 
+@profile
 def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
     doc = _doc()
+    t, solved = _frame_solution(animation, frame_idx, frame_count)
+
+    # Most of the 900+ PCA sheet frames have no cellular effect at all. Avoid
+    # allocating and downsampling two large transparent FX canvases for those
+    # rows; render the rig directly while still sharing the solved pose with
+    # frame_meta().
+    if animation not in EFFECTFUL_ANIMATIONS:
+        return doc.render_at(
+            animation,
+            t,
+            solved=solved,
+            padding=PADDING,
+            supersample=RIG_RENDER_SUPERSAMPLE,
+        )
+
     return compose_rig_frame(
         doc,
         animation,
         frame_idx,
         frame_count,
+        solved=solved,
         behind=lambda canvas, t, world, params: draw_pca_behind(
             animation, canvas, t, world, params
         ),
@@ -142,9 +210,11 @@ def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Imag
             animation, canvas, t, world, params
         ),
         padding=PADDING,
+        rig_supersample=RIG_RENDER_SUPERSAMPLE,
     )
 
 
+@profile
 def render(out_dir: str | Path, **opts):
     del opts
     doc = _doc()
@@ -177,6 +247,7 @@ def render(out_dir: str | Path, **opts):
     return [Path(outputs[key]) for key in keys if outputs.get(key)]
 
 
+@profile
 def render_canonical(out_dir: str | Path, **opts):
     del opts
     return write_canonical(

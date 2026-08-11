@@ -11,6 +11,8 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Mapping, MutableMapping, Sequence
 
+from ...profiling import profile
+
 
 def _keys(values: Sequence[float], times: Sequence[float] | None = None, *, ease: str = "smooth") -> dict:
     vals = [float(v) for v in values]
@@ -33,6 +35,7 @@ def _replace_channels(clip: Mapping[str, object], replacements: Mapping[str, obj
     return out
 
 
+@profile
 def author_pca_combat_clips(data: MutableMapping[str, object]) -> MutableMapping[str, object]:
     """Make the alias-heavy Smash rows genuinely PCA-specific.
 

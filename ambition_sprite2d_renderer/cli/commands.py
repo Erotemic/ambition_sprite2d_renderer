@@ -875,9 +875,19 @@ def _publish_target(
 
 @profile
 def _render_target(target_name: str, **opts) -> List[Path]:
+    started = time.perf_counter()
+    _render_progress(f"[render] resolve {target_name}")
     target = _get_target(target_name)
     out_dir = generated_dir(target_name)
+    _render_progress(
+        f"[render] start {target_name} | module={getattr(target, 'module_path', '<adapter>')} "
+        f"| out={out_dir}"
+    )
     paths = list(target.render_sheet(out_dir, **opts))
+    _render_progress(
+        f"[render] complete {target_name} in {time.perf_counter() - started:.2f}s "
+        f"| outputs={len(paths)}"
+    )
     print_paths(paths)
     return paths
 
@@ -993,7 +1003,15 @@ def _bulk_over(
 
 
 def _cmd_sheet(args: argparse.Namespace) -> int:
-    """`sheet [<name>]` — render one sheet, or every tack-on sheet."""
+    """`sheet [<name>]` — render one sheet, or every tack-on sheet.
+
+    Sheet generation is expensive enough that silent execution is hostile to
+    diagnosis. Enable target + per-animation progress by default for this CLI
+    entry point; developers can still opt out with either environment variable
+    set to ``0``.
+    """
+    os.environ.setdefault("AMBITION_RENDER_PROGRESS", "1")
+    os.environ.setdefault("AMBITION_SPRITE_PROGRESS", "1")
     opts = _target_render_opts(args)
     if args.target:
         _render_target(args.target, **opts)

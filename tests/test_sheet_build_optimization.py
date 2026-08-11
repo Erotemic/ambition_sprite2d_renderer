@@ -40,3 +40,22 @@ def test_sheet_label_fonts_are_cached_by_size():
     assert font(14) is font(14)
     assert font(11) is font(11)
     assert font(14) is not font(11)
+
+
+
+def test_trimmed_preview_uses_local_opaque_label_drawing():
+    from ambition_sprite2d_renderer.authoring.sheet_build import _trimmed_labeled_preview
+
+    frame0 = Image.new("RGBA", (8, 8), (0, 0, 0, 0))
+    frame0.putpixel((1, 1), (255, 255, 255, 255))
+    frame1 = Image.new("RGBA", (8, 8), (0, 0, 0, 0))
+    frame1.putpixel((2, 1), (255, 255, 255, 255))
+    rendered_rows = [
+        ("idle", 2, 100, [(frame0, {}), (frame1, {})]),
+        ("wave", 1, 120, [(frame0, {})]),
+    ]
+
+    preview = _trimmed_labeled_preview(rendered_rows, 8, 8, 64)
+    assert preview.size == (80, 16)
+    assert preview.getpixel((1, 1)) == (20, 23, 31, 255)
+    assert preview.getpixel((64 + 1, 1)) == (255, 255, 255, 255)

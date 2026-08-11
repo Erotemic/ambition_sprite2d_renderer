@@ -211,6 +211,7 @@ class CallableFrameSource:
         body_metrics_fn=None,
         animation_key_map: Optional[Dict[str, str]] = None,
         attack_hitboxes: Optional[Dict[str, Any]] = None,
+        hurtbox_parts: Optional[Dict[str, Any]] = None,
         sheet_tuning: Optional[Dict[str, Any]] = None,
         trim: Optional[bool] = None,
         max_sheet_dimension: int = 16384,
@@ -231,6 +232,7 @@ class CallableFrameSource:
         self.body_metrics_fn = body_metrics_fn
         self.animation_key_map = animation_key_map
         self._attack_hitboxes = attack_hitboxes
+        self._hurtbox_parts = hurtbox_parts
         self.sheet_tuning = sheet_tuning
         self.trim = trim
         self.max_sheet_dimension = max_sheet_dimension
@@ -259,8 +261,8 @@ class CallableFrameSource:
         return dict(self._attack_hitboxes or {})
 
     def hurtbox_parts(self, size: Tuple[int, int]) -> Dict[str, Dict[str, Any]]:
-        del size  # module targets derive per-anim hurtboxes via animation_key_map
-        return {}
+        del size  # authored in native-frame pixels
+        return dict(self._hurtbox_parts or {})
 
     def body_inset(self) -> Optional[Dict[str, float]]:
         """The authored gameplay body, tighter than the measured silhouette.

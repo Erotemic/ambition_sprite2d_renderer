@@ -44,7 +44,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from ..yaml_io import safe_dump
 from .actor_contract import write_actor_contract_for_tackon
-from ..profiling import profile
+from ..profiling import profile, profile_checkpoint
 from .frame_source import CallableFrameSource, FrameSource
 from ..core.measure import measure_body_metrics
 from ..core.manifest_ron import record_to_ron, records_to_ron, ron_tuning
@@ -586,6 +586,51 @@ def _packed_sheet_rows(target, rendered_rows, fw, fh, max_dim, page_size=4096):
 
 
 @profile
+
+
+@profile
+def _trimmed_labeled_preview(rendered_rows, fw: int, fh: int, label_width: int) -> Image.Image:
+    """Build the human-only labeled preview without full-canvas blend scratches.
+
+    The preview background is opaque. Preblend the one translucent label-strip
+    color once, then use ordinary Pillow drawing so each label touches only its
+    own pixels. This matters for full fighter sheets whose preview can be
+    hundreds of megapixels.
+    """
+    max_frames = max(nframes for _anim, nframes, _duration_ms, _frames_data in rendered_rows)
+    preview_w = label_width + fw * max_frames
+    preview = Image.new("RGBA", (preview_w, fh * len(rendered_rows)), (43, 33, 40, 255))
+    draw_prev = ImageDraw.Draw(preview)
+    # (18, 22, 30, 235) composited over (43, 33, 40, 255).
+    label_fill = (20, 23, 31, 255)
+    title_font = font(14)
+    detail_font = font(11)
+    for row_idx, (anim, nframes, duration_ms, frames_data) in enumerate(rendered_rows):
+        y_prev = row_idx * fh
+        draw_prev.rectangle(
+            (0, y_prev, label_width - 1, y_prev + fh - 1),
+            fill=label_fill,
+        )
+        draw_prev.text(
+            (8, y_prev + 10),
+            anim,
+            fill=(236, 240, 244, 255),
+            font=title_font,
+        )
+        draw_prev.text(
+            (8, y_prev + 30),
+            f"{nframes}f @ {duration_ms}ms",
+            fill=(160, 170, 184, 255),
+            font=detail_font,
+        )
+        for frame_idx, (frame, _meta) in enumerate(frames_data):
+            preview.alpha_composite(
+                frame,
+                (label_width + frame_idx * fw, y_prev),
+            )
+    return preview
+
+
 def layout_sheet_rows(
     target,
     rendered_rows,
@@ -627,6 +672,7 @@ def build_sheet(
     sheet_tuning=None,
     animation_key_map=None,
     attack_hitboxes=None,
+    hurtbox_parts=None,
     max_sheet_dimension: int = 16384,
     trim: Optional[bool] = None,
     body_inset=None,
@@ -654,6 +700,7 @@ def build_sheet(
         sheet_tuning=sheet_tuning,
         animation_key_map=animation_key_map,
         attack_hitboxes=attack_hitboxes,
+        hurtbox_parts=hurtbox_parts,
         max_sheet_dimension=max_sheet_dimension,
         trim=trim,
         pose_bodies=pose_bodies,
@@ -738,6 +785,7 @@ def render_sheet(source: FrameSource, out_dir: Path):
     sheet_tuning = source.sheet_tuning
     animation_key_map = source.animation_key_map
     attack_hitboxes = source.attack_hitboxes(source.frame_size)
+    hurtbox_parts = source.hurtbox_parts(source.frame_size)
     frame_padding = _normalize_frame_padding(getattr(source, "frame_padding", None))
     pad_left, pad_top, pad_right, pad_bottom = frame_padding
     max_sheet_dimension = source.max_sheet_dimension
@@ -765,42 +813,83 @@ def render_sheet(source: FrameSource, out_dir: Path):
     rendered_rows: List[Tuple[str, int, int, List[Tuple[Image.Image, dict]]]] = []
     progress_value = os.environ.get("AMBITION_SPRITE_PROGRESS", "0").strip().lower()
     progress_enabled = progress_value not in {"", "0", "false", "no", "off"}
+    slow_frame_seconds = float(os.environ.get("AMBITION_SPRITE_SLOW_FRAME_SECONDS", "1.0"))
+    total_frames = sum(nframes for _anim, nframes, _duration in rows)
     sheet_started = time.perf_counter()
     row_durations: List[float] = []
+    render_seconds = 0.0
+    metadata_seconds = 0.0
+    frames_completed = 0
+
+    def progress(message: str) -> None:
+        if progress_enabled:
+            print(f"[sheet:{target}] {message}", flush=True)
+
+    progress(
+        f"start | {len(rows)} animations | {total_frames} frames | "
+        f"frame={fw}x{fh} | trim={trim}"
+    )
+    progress("phase render: begin")
+
     for row_idx, (anim, nframes, duration_ms) in enumerate(rows):
         row_started = time.perf_counter()
-        if progress_enabled:
-            print(
-                f"      [animation {row_idx + 1}/{len(rows)}] "
-                f"{target}:{anim} ({nframes} frames)",
-                flush=True,
-            )
+        row_render_seconds = 0.0
+        row_metadata_seconds = 0.0
+        progress(
+            f"animation {row_idx + 1}/{len(rows)}: {anim} | "
+            f"{nframes} frames @ {duration_ms}ms"
+        )
         frames_data: List[Tuple[Image.Image, dict]] = []
         for frame_idx in range(nframes):
+            frame_started = time.perf_counter()
+            render_started = frame_started
             frame = render_fn(anim, frame_idx, nframes)
+            render_elapsed = time.perf_counter() - render_started
+            render_seconds += render_elapsed
+            row_render_seconds += render_elapsed
             if frame.mode != "RGBA":
                 frame = frame.convert("RGBA")
             frame = _pad_rgba_frame(frame, frame_padding)
             meta = {}
             if frame_meta_fn is not None:
+                metadata_started = time.perf_counter()
                 extra = frame_meta_fn(anim, frame_idx, nframes)
+                metadata_elapsed = time.perf_counter() - metadata_started
+                metadata_seconds += metadata_elapsed
+                row_metadata_seconds += metadata_elapsed
                 if extra:
                     meta = dict(extra)
                     if pad_left or pad_top:
                         meta = _shift_xy_payload(meta, pad_left, pad_top)
             frames_data.append((frame, meta))
+            frames_completed += 1
+            frame_elapsed = time.perf_counter() - frame_started
+            if progress_enabled and frame_elapsed >= slow_frame_seconds:
+                progress(
+                    f"  slow frame {anim} {frame_idx + 1}/{nframes}: "
+                    f"{frame_elapsed:.2f}s "
+                    f"(render {render_elapsed:.2f}s, meta "
+                    f"{(metadata_elapsed if frame_meta_fn is not None else 0.0):.2f}s)"
+                )
         rendered_rows.append((anim, nframes, duration_ms, frames_data))
         row_duration = time.perf_counter() - row_started
         row_durations.append(row_duration)
-        if progress_enabled:
-            remaining = len(rows) - row_idx - 1
-            rolling = sum(row_durations[-5:]) / len(row_durations[-5:])
-            elapsed = time.perf_counter() - sheet_started
-            print(
-                f"          done in {row_duration:.1f}s | elapsed {elapsed:.1f}s | "
-                f"eta {rolling * remaining:.1f}s",
-                flush=True,
-            )
+        remaining = len(rows) - row_idx - 1
+        rolling = sum(row_durations[-5:]) / len(row_durations[-5:])
+        elapsed = time.perf_counter() - sheet_started
+        progress(
+            f"  done {anim} in {row_duration:.2f}s | "
+            f"render={row_render_seconds:.2f}s meta={row_metadata_seconds:.2f}s | "
+            f"frames {frames_completed}/{total_frames} | elapsed {elapsed:.1f}s | "
+            f"row-eta {rolling * remaining:.1f}s"
+        )
+        profile_checkpoint(f"{target}:{anim}")
+
+    progress(
+        f"phase render: done in {time.perf_counter() - sheet_started:.2f}s | "
+        f"render calls={render_seconds:.2f}s | metadata calls={metadata_seconds:.2f}s"
+    )
+    profile_checkpoint(f"{target}:render-pass", force=True)
     # Canonical pose: reuse the already-rendered first-row frame instead of
     # invoking the target renderer a second time. Most idle cycles start at a
     # neutral pose, so frame 1 has a touch more character; single-frame rows
@@ -818,6 +907,8 @@ def render_sheet(source: FrameSource, out_dir: Path):
     # required for the spritesheet grid to tile correctly — and the
     # canonical also gets the same crop so still poses and animated
     # frames are visually consistent.
+    crop_started = time.perf_counter()
+    progress(f"phase crop: begin | enabled={auto_crop}")
     if auto_crop:
         union_bbox: Optional[List[int]] = None
         all_frames_iter = []
@@ -873,16 +964,20 @@ def render_sheet(source: FrameSource, out_dir: Path):
             rendered_rows = cropped_rows
             canonical_raw = canonical_raw.crop((crop_x, crop_y, crop_x1, crop_y1))
             fw, fh = new_fw, new_fh
+    progress(f"phase crop: done in {time.perf_counter() - crop_started:.2f}s | frame={fw}x{fh}")
 
     # Semantic frame-publication seam: capture tooling (see
     # authoring/auto_capture.py) registers a hook here, AFTER the uniform
     # auto-crop, so a vector recording is associated with the EXACT frame
     # image being published — same coordinate system as the manifest, never
     # inferred from image creation order.
+    capture_started = time.perf_counter()
     if FRAME_CAPTURE_HOOK is not None:
+        progress("phase capture-hook: begin")
         for anim, nframes, _duration_ms, frames_data in rendered_rows:
             for frame_idx, (frame, _meta) in enumerate(frames_data):
                 FRAME_CAPTURE_HOOK(target, anim, frame_idx, frame)
+        progress(f"phase capture-hook: done in {time.perf_counter() - capture_started:.2f}s")
 
     # ---- Pass 2: assemble the spritesheet from the (cropped) frames. ----
     #
@@ -898,6 +993,8 @@ def render_sheet(source: FrameSource, out_dir: Path):
     #     to the pre-packer output for every existing (non-trimmed) target.
     first = rendered_rows[0][3][0][0].copy()
 
+    layout_started = time.perf_counter()
+    progress("phase layout/pack: begin")
     page_sheets, rows_meta, num_pages = layout_sheet_rows(
         target,
         rendered_rows,
@@ -908,49 +1005,34 @@ def render_sheet(source: FrameSource, out_dir: Path):
         max_dim=max_sheet_dimension,
         page_size=policy.page_size,
     )
+    progress(
+        f"phase layout/pack: done in {time.perf_counter() - layout_started:.2f}s | "
+        f"pages={num_pages}"
+    )
+    profile_checkpoint(f"{target}:layout", force=True)
 
     # The untrimmed runtime pages already contain the complete labeled grid.
     # Build the human preview by flattening and vertically stitching those
     # pages rather than drawing every label and compositing every frame twice.
     # Trimmed pages use packed frame geometry, so they still need the explicit
     # logical-row preview path.
-    max_frames = max(n for _, n, _ in rows)
-    preview_w = label_width + fw * max_frames
-    preview = Image.new("RGBA", (preview_w, fh * len(rows)), (43, 33, 40, 255))
+    preview_started = time.perf_counter()
+    progress("phase preview: begin")
     if not trim:
+        preview_w = max(page.width for page in page_sheets)
+        preview_h = sum(page.height for page in page_sheets)
+        preview = Image.new("RGBA", (preview_w, preview_h), (43, 33, 40, 255))
         preview_y = 0
         for page in page_sheets:
             preview.alpha_composite(page, (0, preview_y))
             preview_y += page.height
     else:
-        draw_prev = blending_draw(preview)
-        title_font = font(14)
-        detail_font = font(11)
-        for row_idx, (anim, nframes, duration_ms, frames_data) in enumerate(
-            rendered_rows
-        ):
-            y_prev = row_idx * fh
-            draw_prev.rectangle(
-                (0, y_prev, label_width - 1, y_prev + fh - 1),
-                fill=(18, 22, 30, 235),
-            )
-            draw_prev.text(
-                (8, y_prev + 10),
-                anim,
-                fill=(236, 240, 244, 255),
-                font=title_font,
-            )
-            draw_prev.text(
-                (8, y_prev + 30),
-                f"{nframes}f @ {duration_ms}ms",
-                fill=(160, 170, 184, 255),
-                font=detail_font,
-            )
-            for frame_idx, (frame, _meta) in enumerate(frames_data):
-                preview.alpha_composite(
-                    frame,
-                    (label_width + frame_idx * fw, y_prev),
-                )
+        preview = _trimmed_labeled_preview(rendered_rows, fw, fh, label_width)
+        preview_w, preview_h = preview.size
+    progress(
+        f"phase preview: done in {time.perf_counter() - preview_started:.2f}s | "
+        f"preview={preview_w}x{preview_h}"
+    )
 
     can = canonical_raw
     can_bg = Image.new("RGBA", (fw, fh), (43, 33, 40, 255))
@@ -964,6 +1046,8 @@ def render_sheet(source: FrameSource, out_dir: Path):
     preview_path = out_dir / f"{target}_preview_labeled.png"
 
     # Page 0 → `<target>_spritesheet.png`; extra pages → `.1.png`, `.2.png`, …
+    image_write_started = time.perf_counter()
+    progress("phase image-write: begin")
     page_image_names = [sheet_path.name]
     for k in range(1, num_pages):
         page_image_names.append(f"{target}_spritesheet.{k}.png")
@@ -972,7 +1056,10 @@ def render_sheet(source: FrameSource, out_dir: Path):
     for img, name in zip(page_sheets, page_image_names):
         img.save(out_dir / name)
     preview.save(preview_path, compress_level=1)
+    progress(f"phase image-write: done in {time.perf_counter() - image_write_started:.2f}s")
 
+    metrics_started = time.perf_counter()
+    progress("phase metadata: begin")
     body_metrics = alpha_bbox_metrics(first or can)
     if body_metrics_fn is not None:
         # Optional target-authored override for sheets whose visible alpha bbox
@@ -1022,7 +1109,9 @@ def render_sheet(source: FrameSource, out_dir: Path):
             # are declared, not measured, and they are the reason a rigid
             # character maps its rows at all. It is only the measured hurtbox
             # that would outrank the authored body.
-            if union is not None and pose_bodies == "art":
+            if hurtbox_parts and key in hurtbox_parts:
+                entry["hurtbox"] = hurtbox_parts[key]
+            elif union is not None and pose_bodies == "art":
                 entry["hurtbox"] = {
                     "bbox": {
                         "x": int(union[0]),
@@ -1037,6 +1126,8 @@ def render_sheet(source: FrameSource, out_dir: Path):
         anim_metrics = {k: v for k, v in anim_metrics.items() if v}
         if anim_metrics:
             body_metrics = {**body_metrics, "animations": anim_metrics}
+
+    progress(f"phase metadata: geometry done in {time.perf_counter() - metrics_started:.2f}s")
 
     manifest = {
         "target": target,
@@ -1057,6 +1148,8 @@ def render_sheet(source: FrameSource, out_dir: Path):
         # the runtime SheetRegistry uses it for in-game display size /
         # sampling instead of the DEFAULT_TUNING fallback.
         manifest["sheet_tuning"] = dict(sheet_tuning)
+    sidecar_started = time.perf_counter()
+    progress("phase sidecars: begin")
     yaml_path.write_text(safe_dump(manifest, sort_keys=False, width=120))
     # Sidecar RON manifest consumed at runtime by the sandbox's
     # SheetRegistry. The YAML is the human-readable sidecar; RON is
@@ -1082,6 +1175,9 @@ def render_sheet(source: FrameSource, out_dir: Path):
         import sys as _sys
 
         print(warning, file=_sys.stderr)
+    progress(f"phase sidecars: done in {time.perf_counter() - sidecar_started:.2f}s")
+    progress(f"complete in {time.perf_counter() - sheet_started:.2f}s")
+    profile_checkpoint(f"{target}:complete", force=True)
     return {
         "canonical": canonical_path,
         "canonical_transparent": canonical_transparent_path,

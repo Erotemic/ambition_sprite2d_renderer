@@ -14,6 +14,7 @@ from PIL import Image, ImageFont
 
 from ...authoring.rigdoc import RigDocument, RenderPadding, normalize_render_padding
 from ...core.draw import blending_draw
+from ...profiling import profile
 
 Color = tuple[int, int, int, int]
 Point = tuple[float, float]
@@ -180,6 +181,7 @@ class FxCanvas:
         return self.image.resize(self.size, Image.Resampling.LANCZOS)
 
 
+@profile
 def compose_rig_frame(
     doc: RigDocument,
     animation: str,
@@ -189,9 +191,12 @@ def compose_rig_frame(
     behind: EffectFn | None = None,
     front: EffectFn | None = None,
     padding: RenderPadding | None = None,
+    solved=None,
+    rig_supersample: int | None = None,
 ) -> Image.Image:
     t = doc.frame_time(animation, frame_idx, frame_count)
-    solved = doc.solve(animation, t)
+    if solved is None:
+        solved = doc.solve(animation, t)
     world, params = solved
     base_size = (int(doc.frame["width"]), int(doc.frame["height"]))
     pad_left, pad_top, pad_right, pad_bottom = normalize_render_padding(padding)
@@ -203,15 +208,35 @@ def compose_rig_frame(
     size = (logical_size[0] * render_scale, logical_size[1] * render_scale)
     origin = (float(pad_left), float(pad_top))
     result = Image.new("RGBA", size, (0, 0, 0, 0))
+    # Keep roughly 3x logical-pixel effect sampling. A rig already publishing
+    # at 3x does not need another 3x supersample layer (which would create a 9x
+    # logical-pixel intermediate for every foreground/background effect).
+    effect_supersample = max(1, int(math.ceil(3.0 / render_scale)))
     if behind is not None:
-        layer = FxCanvas(size, origin=origin, unit_scale=render_scale)
+        layer = FxCanvas(
+            size,
+            scale=effect_supersample,
+            origin=origin,
+            unit_scale=render_scale,
+        )
         behind(layer, t, world, params)
         result.alpha_composite(layer.finish())
     result.alpha_composite(
-        doc.render_at(animation, t, solved=solved, padding=padding)
+        doc.render_at(
+            animation,
+            t,
+            solved=solved,
+            padding=padding,
+            supersample=rig_supersample,
+        )
     )
     if front is not None:
-        layer = FxCanvas(size, origin=origin, unit_scale=render_scale)
+        layer = FxCanvas(
+            size,
+            scale=effect_supersample,
+            origin=origin,
+            unit_scale=render_scale,
+        )
         front(layer, t, world, params)
         result.alpha_composite(layer.finish())
     return result

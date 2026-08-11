@@ -1,6 +1,15 @@
 from __future__ import annotations
 
+import importlib.util
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+import pytest
+
 from ambition_sprite2d_renderer import profiling
+
 
 def test_optional_profile_decorator_is_safe_when_disabled():
     def sample(value: int) -> int:
@@ -9,6 +18,7 @@ def test_optional_profile_decorator_is_safe_when_disabled():
     wrapped = profiling.profile(sample)
     assert wrapped(3) == 4
 
+
 def test_env_truthy_matches_shell_toggle_convention():
     for value in [None, "", "0", "false", "FALSE", "no", "off"]:
         assert not profiling._env_truthy(value)
@@ -16,75 +26,49 @@ def test_env_truthy_matches_shell_toggle_convention():
         assert profiling._env_truthy(value)
 
 
-def test_explicit_profile_output_is_quiet_and_lprof_only_by_default(tmp_path):
-    import os
-    import subprocess
-    import sys
+def test_profile_checkpoint_is_always_inert():
+    assert not profiling.profile_checkpoint("unit-test", force=True)
 
-    output_prefix = tmp_path / "profile"
+
+def test_renderer_does_not_override_line_profiler_output_policy():
+    source = Path(profiling.__file__).read_text(encoding="utf8")
+    assert "profile.enable(" not in source
+    assert "profile.write_config" not in source
+    assert "AMBITION_LINE_PROFILE_OUTPUT" not in source
+    assert "AMBITION_LINE_PROFILE_TEXT" not in source
+    assert "AMBITION_LINE_PROFILE_CHECKPOINT_SECONDS" not in source
+
+
+def test_line_profile_uses_upstream_default_cwd_output(tmp_path):
+    if importlib.util.find_spec("line_profiler") is None:
+        pytest.skip("optional line_profiler dependency is not installed")
+
     code = """
 from ambition_sprite2d_renderer.profiling import profile
 
 @profile
 def sample():
     total = 0
-    for value in range(10):
+    for value in range(100):
         total += value
     return total
 
-assert sample() == 45
+assert sample() == 4950
 """
     env = os.environ.copy()
-    env.update(
-        {
-            "LINE_PROFILE": "1",
-            "AMBITION_LINE_PROFILE_OUTPUT": str(output_prefix),
-        }
-    )
-    proc = subprocess.run(
-        [sys.executable, "-c", code],
-        env=env,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-
-    assert "Timer unit:" not in proc.stdout
-    assert output_prefix.with_suffix(".lprof").exists()
-    assert not output_prefix.with_suffix(".txt").exists()
-    assert not list(tmp_path.glob("profile_*.txt"))
-
-def test_explicit_profile_text_sidecar_is_opt_in(tmp_path):
-    import os
-    import subprocess
-    import sys
-
-    output_prefix = tmp_path / "profile"
-    code = """
-from ambition_sprite2d_renderer.profiling import profile
-
-@profile
-def sample():
-    return sum(range(10))
-
-assert sample() == 45
-"""
-    env = os.environ.copy()
-    env.update(
-        {
-            "LINE_PROFILE": "1",
-            "AMBITION_LINE_PROFILE_OUTPUT": str(output_prefix),
-            "AMBITION_LINE_PROFILE_TEXT": "1",
-        }
-    )
+    env["LINE_PROFILE"] = "1"
+    env.pop("AMBITION_LINE_PROFILE_OUTPUT", None)
+    env.pop("AMBITION_LINE_PROFILE_TEXT", None)
+    env.pop("AMBITION_LINE_PROFILE_CHECKPOINT_SECONDS", None)
     subprocess.run(
         [sys.executable, "-c", code],
+        cwd=tmp_path,
         env=env,
         check=True,
         capture_output=True,
         text=True,
     )
 
-    assert output_prefix.with_suffix(".lprof").exists()
-    assert output_prefix.with_suffix(".txt").exists()
-    assert not list(tmp_path.glob("profile_*.txt"))
+    # Do not prescribe the upstream filename; merely require that its normal
+    # managed-profiler text output lands in the process working directory.
+    assert list(tmp_path.glob("*.txt"))

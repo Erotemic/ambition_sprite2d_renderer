@@ -36,3 +36,30 @@ def test_lanczos_reducing_gap_keeps_dimensions_and_flat_pixels():
     reduced = image.resize((64, 48), Image.Resampling.LANCZOS, reducing_gap=3.0)
     assert reduced.size == (64, 48)
     assert reduced.tobytes() == regular.tobytes()
+
+
+def test_build_sheet_progress_reports_phases_and_animation_timing(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("AMBITION_SPRITE_PROGRESS", "1")
+    monkeypatch.setenv("AMBITION_SPRITE_SLOW_FRAME_SECONDS", "999")
+
+    def render(_anim, _frame_idx, _nframes):
+        return Image.new("RGBA", (16, 16), (255, 255, 255, 255))
+
+    build_sheet(
+        target="progress_probe",
+        rows=[("idle", 1, 100), ("walk", 1, 100)],
+        render_fn=render,
+        out_dir=tmp_path,
+        frame_size=(16, 16),
+        auto_crop=False,
+        trim=False,
+    )
+
+    out = capsys.readouterr().out
+    assert "[sheet:progress_probe] start" in out
+    assert "phase render: begin" in out
+    assert "animation 1/2: idle" in out
+    assert "phase layout/pack: begin" in out
+    assert "phase image-write: begin" in out
+    assert "phase sidecars: begin" in out
+    assert "complete in" in out

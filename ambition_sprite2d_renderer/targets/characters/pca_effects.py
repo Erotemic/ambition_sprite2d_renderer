@@ -11,6 +11,8 @@ from __future__ import annotations
 import math
 from typing import Mapping, Sequence
 
+from ...profiling import profile
+
 from ._svg_fighter_effects import FxCanvas, bone_origin, clamp01, fade, pulse, smooth
 
 Color = tuple[int, int, int, int]
@@ -75,6 +77,7 @@ def _hands(world: World) -> tuple[Point, Point]:
     return (a, b) if a[0] >= b[0] else (b, a)
 
 
+@profile
 def _cell(
     canvas: FxCanvas,
     center: Point,
@@ -113,6 +116,7 @@ def _rule110_step(row: Sequence[int]) -> list[int]:
     return out
 
 
+@profile
 def _rule_rows(width: int, steps: int, *, seed: int = 0) -> list[list[int]]:
     row = [0] * width
     row[width // 2] = 1
@@ -125,6 +129,7 @@ def _rule_rows(width: int, steps: int, *, seed: int = 0) -> list[list[int]]:
     return rows
 
 
+@profile
 def _draw_rule_strip(
     canvas: FxCanvas,
     origin: Point,
@@ -161,6 +166,7 @@ def _glider(canvas: FxCanvas, center: Point, size: float, color: Color, alpha: f
         )
 
 
+@profile
 def _lattice(canvas: FxCanvas, center: Point, rx: float, ry: float, step: float, alpha: float) -> None:
     x = -rx
     while x <= rx + 0.01:
@@ -180,6 +186,7 @@ def _lattice(canvas: FxCanvas, center: Point, rx: float, ry: float, step: float,
         y += step
 
 
+@profile
 def _generation_beam(canvas: FxCanvas, t: float, world: World, *, front: bool) -> None:
     hand, _other = _hands(world)
     q = _window(t, 0.50)
@@ -202,6 +209,7 @@ def _generation_beam(canvas: FxCanvas, t: float, world: World, *, front: bool) -
     canvas.ellipse(hand, 5.0 + 2.0 * pulse(t), 5.0 + 2.0 * pulse(t), fade(ACID, 0.28 * q), fade(ACID_LIGHT, 0.86 * q), 0.85)
 
 
+@profile
 def _causal_cone(canvas: FxCanvas, t: float, world: World, *, front: bool) -> None:
     core = _core(world)
     hand, _ = _hands(world)
@@ -226,6 +234,7 @@ def _causal_cone(canvas: FxCanvas, t: float, world: World, *, front: bool) -> No
     canvas.arrow(apex, (137.0, core[1]), fade(CYAN, 0.64 * q), 0.8, 3.2)
 
 
+@profile
 def _fixed_point(canvas: FxCanvas, t: float, world: World, *, front: bool) -> None:
     core = _core(world)
     q = 0.55 + 0.45 * pulse(t)
@@ -248,6 +257,7 @@ def _fixed_point(canvas: FxCanvas, t: float, world: World, *, front: bool) -> No
                 _cell(canvas, (core[0] + ix * 7.2, core[1] + iy * 7.2), 5.2, ACID if stable else CYAN, alpha=alpha)
 
 
+@profile
 def _glider_ascent(canvas: FxCanvas, t: float, world: World, *, front: bool) -> None:
     core = _core(world)
     q = 0.52 + 0.48 * pulse(t)
@@ -263,6 +273,7 @@ def _glider_ascent(canvas: FxCanvas, t: float, world: World, *, front: bool) -> 
             canvas.ellipse((core[0], 159.0), r, r * 0.28, None, fade(ACID_LIGHT, (0.52 - r * 0.009) * q), 0.8)
 
 
+@profile
 def _final_lattice(canvas: FxCanvas, t: float, world: World, *, front: bool) -> None:
     core = _core(world)
     q = _window(t, 0.62)
@@ -290,6 +301,7 @@ def _final_lattice(canvas: FxCanvas, t: float, world: World, *, front: bool) -> 
     canvas.star(core, 5.3 + 2.0 * pulse(t), fade(CERAMIC, 0.42 * q), points=4, inner=0.36, outline=fade(ACID_LIGHT, 0.82 * q))
 
 
+@profile
 def _parry(canvas: FxCanvas, t: float, world: World) -> None:
     core = _core(world)
     q = _window(t, 0.48)
@@ -305,6 +317,7 @@ def _parry(canvas: FxCanvas, t: float, world: World) -> None:
         _cell(canvas, (core[0] + ix * 20.0, core[1] + iy * 26.0), 5.0, ACID, alpha=0.70 * q)
 
 
+@profile
 def _smash_forward(canvas: FxCanvas, t: float, world: World, *, front: bool) -> None:
     hand, _ = _hands(world)
     q = _window(t, 0.62)
@@ -318,6 +331,7 @@ def _smash_forward(canvas: FxCanvas, t: float, world: World, *, front: bool) -> 
         canvas.arrow(hand, (134.0, hand[1]), fade(ACID_LIGHT, 0.72 * q), 1.1, 4.5)
 
 
+@profile
 def _smash_up(canvas: FxCanvas, t: float, world: World, *, front: bool) -> None:
     core = _core(world)
     q = _window(t, 0.58)
@@ -332,6 +346,7 @@ def _smash_up(canvas: FxCanvas, t: float, world: World, *, front: bool) -> None:
             canvas.line([(core[0] + a[0], a[1]), (core[0] + b[0], b[1])], fade(ACID_LIGHT, 0.48 * q), 0.75)
 
 
+@profile
 def _smash_down(canvas: FxCanvas, t: float, world: World, *, front: bool) -> None:
     core = _core(world)
     q = _window(t, 0.60)
@@ -345,6 +360,7 @@ def _smash_down(canvas: FxCanvas, t: float, world: World, *, front: bool) -> Non
                 _cell(canvas, (x, y - i * 1.4), 6.0 + 0.6 * i, ACID if i % 2 == 0 else VIOLET_LIGHT, alpha=(0.78 - i * 0.08) * q)
 
 
+@profile
 def _air_cells(canvas: FxCanvas, t: float, world: World, animation: str) -> None:
     core = _core(world)
     q = _window(t, 0.50)
@@ -368,6 +384,7 @@ def _air_cells(canvas: FxCanvas, t: float, world: World, animation: str) -> None
         _cell(canvas, (x, y), 6.0, ACID if i < 3 else VIOLET_LIGHT, alpha=(0.78 - i * 0.08) * q)
 
 
+@profile
 def _blink_cells(canvas: FxCanvas, t: float, world: World, *, entering: bool) -> None:
     core = _core(world)
     q = smooth(t) if entering else smooth(1.0 - t)
@@ -379,6 +396,7 @@ def _blink_cells(canvas: FxCanvas, t: float, world: World, *, entering: bool) ->
         _cell(canvas, p, 4.6, ACID if i % 3 else MAGENTA, alpha=0.54 + 0.34 * q)
 
 
+@profile
 def draw_pca_behind(
     animation: str,
     canvas: FxCanvas,
@@ -407,6 +425,7 @@ def draw_pca_behind(
         _smash_down(canvas, t, world, front=False)
 
 
+@profile
 def draw_pca_front(
     animation: str,
     canvas: FxCanvas,

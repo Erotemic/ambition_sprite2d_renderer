@@ -69,3 +69,38 @@ def test_no_key_map_leaves_body_metrics_single_bbox():
         )
         ron = Path(outputs["ron"]).read_text()
     assert "animations:" not in ron
+
+
+def test_module_target_can_publish_authored_hurtbox_parts():
+    """Module targets can publish explicit multipart hurtboxes.
+
+    PCA and Noether use this seam so cloth / decorative silhouette does not
+    become gameplay anatomy. Keep this regression on build_sheet itself: the
+    previous clobber failed at argument binding before either target rendered.
+    """
+    rows = [("guard", 1, 100)]
+    with tempfile.TemporaryDirectory() as d:
+        outputs = build_sheet(
+            target="authored_hurtbox_probe",
+            rows=rows,
+            render_fn=_solid,
+            out_dir=Path(d),
+            frame_size=(64, 64),
+            auto_crop=False,
+            animation_key_map={"guard": "guard"},
+            hurtbox_parts={
+                "guard": {
+                    "parts": [
+                        {"name": "core", "x": 20, "y": 18, "w": 18, "h": 22}
+                    ]
+                }
+            },
+            pose_bodies="authored",
+            trim=False,
+        )
+        ron = Path(outputs["ron"]).read_text()
+
+    assert 'parts: [(name: "core", x: 20, y: 18, w: 18, h: 22)]' in ron
+    # Explicit authored hurtboxes must survive even when measured pose bodies
+    # are disabled.
+    assert '"guard": (' in ron
