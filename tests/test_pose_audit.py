@@ -141,3 +141,20 @@ def test_carl_walk_stop_now_stays_inside_natural_arm_cone():
         for frame in walk_stop
         for finding in frame.findings
     } & forbidden
+
+
+def test_carl_fighter_pose_audit_has_no_structural_failures():
+    """Carl's generated fighter surface should be geometry-clean before art review."""
+
+    rig_path = (
+        Path(__file__).resolve().parents[1]
+        / "ambition_sprite2d_renderer"
+        / "targets"
+        / "characters"
+        / "rigged"
+        / "carl_stargan"
+        / "carl_stargan_side.rig.json"
+    )
+    result = audit_document(RigDocument.load(rig_path), target="carl_stargan")
+    assert result.error_count == 0
+    assert result.warning_count == 0

@@ -21,7 +21,7 @@ from .rigdoc import RigDocument
 ROOT = Path(__file__).resolve().parents[2]
 BUILDER_PATH = ROOT / "scripts" / "build_scientist_fighter_rigs.py"
 EXPECTED_SCHEMA = "canonical-svg-rig-v3"
-EXPECTED_BUILDER_VERSION = 16
+EXPECTED_BUILDER_VERSION = 17
 
 _SVG_NAMES = {
     "patent_clerk": "patent-clerk.svg",

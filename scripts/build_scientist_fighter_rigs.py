@@ -35,7 +35,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
-BUILDER_VERSION = 16
+BUILDER_VERSION = 17
 
 
 def _is_extension_path(path: Path) -> bool:
@@ -146,7 +146,7 @@ from ambition_sprite2d_renderer.authoring.humanoid_svg_rig import (  # noqa: E40
     LimbPoseHint,
     build_humanoid_view_document,
 )
-from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument  # noqa: E402
+from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument, sample_channel_spec  # noqa: E402
 from ambition_sprite2d_renderer.authoring.fighter_motion_catalog import (  # noqa: E402
     invert_rotation_channel,
     materialize_motion_rows,
@@ -992,6 +992,123 @@ def _patent_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, d
         )
     return clips
 
+def _retarget_clip_arms_to_torso(
+    doc: Mapping[str, object],
+    clips: Mapping[str, dict],
+    name: str,
+    *,
+    reach_scale: float = 0.78,
+) -> dict:
+    """Keep both wrists in a stable torso-local relationship through a clip.
+
+    Whole-body rotations such as rolls move the shoulders through large arcs.
+    World-space wrist keys can cross a shoulder between adjacent samples even
+    when the authored numbers look smooth, which forces analytic IK through a
+    near-180-degree lower-arm swing.  Reconstruct the wrist trajectory from the
+    solved shoulder and the natural idle shoulder-to-wrist vector instead.
+    """
+
+    if name not in clips or "idle" not in clips:
+        return deepcopy(clips[name])
+    # Some unit-level builder tests exercise clip authoring with only IK rest
+    # metadata and intentionally omit the physical skeleton/frame.  The
+    # torso-lock is a geometry refinement, so leave the authored clip intact
+    # when there is no geometry to solve.
+    if "frame" not in doc or "bones" not in doc:
+        return deepcopy(clips[name])
+    data = deepcopy(dict(doc))
+    data["clips"] = {
+        "idle": deepcopy(clips["idle"]),
+        name: deepcopy(clips[name]),
+    }
+    rig = RigDocument(data)
+    reference_world, _ = rig.solve("idle", 0.0)
+    reference_torso = reference_world.get("torso")
+    reference_angle = float(reference_torso.angle if reference_torso is not None else 0.0)
+    reference_vectors: dict[str, tuple[float, float]] = {}
+    for side in ("near", "far"):
+        shoulder = reference_world[f"{side}_arm_u"].origin
+        wrist = reference_world[f"{side}_arm_hand"].origin
+        reference_vectors[side] = (
+            (wrist[0] - shoulder[0]) * reach_scale,
+            (wrist[1] - shoulder[1]) * reach_scale,
+        )
+
+    clip = deepcopy(clips[name])
+    frames = max(1, int(clip.get("frames", 1)))
+    loop = bool(clip.get("loop", False))
+    cx = float(rig.frame.get("center_x", rig.frame["width"] / 2.0))
+    gy = float(rig.frame.get("ground_y", rig.frame["height"] - 2.0))
+    targets: dict[str, tuple[list[float], list[float]]] = {
+        "near": ([], []),
+        "far": ([], []),
+    }
+    for frame_idx in range(frames):
+        t = rig.frame_time(name, frame_idx, frames)
+        world, _ = rig.solve(name, t)
+        torso = world.get("torso")
+        angle = math.radians(
+            float(torso.angle if torso is not None else reference_angle) - reference_angle
+        )
+        c = math.cos(angle)
+        s = math.sin(angle)
+        for side in ("near", "far"):
+            vx, vy = reference_vectors[side]
+            rotated = (c * vx - s * vy, s * vx + c * vy)
+            shoulder = world[f"{side}_arm_u"].origin
+            xs, ys = targets[side]
+            xs.append(shoulder[0] + rotated[0] - cx)
+            ys.append(shoulder[1] + rotated[1] - gy)
+
+    channels = clip.setdefault("channels", {})
+    for side in ("near", "far"):
+        xs, ys = targets[side]
+        channels[f"{side}_hand_x"] = keys(xs, loop=loop)
+        channels[f"{side}_hand_y"] = keys(ys, loop=loop)
+        channels.pop(f"{side}_hand_pitch", None)
+    return clip
+
+
+def _freeze_clip_pose(
+    doc: Mapping[str, object],
+    clips: Mapping[str, dict],
+    *,
+    name: str,
+    source: str,
+    frames: int,
+    duration_ms: int,
+) -> dict:
+    """Publish a stable looping hold from the final sampled source pose."""
+
+    source_clip = clips[source]
+    source_channels = source_clip.get("channels", {})
+    if "frame" not in doc or "bones" not in doc:
+        channels = {
+            channel: const(
+                sample_channel_spec(
+                    channel_spec,
+                    1.0,
+                    bool(source_clip.get("loop", False)),
+                )
+            )
+            for channel, channel_spec in source_channels.items()
+        }
+        return _clip(frames, duration_ms, loop=True, channels=channels)
+
+    data = deepcopy(dict(doc))
+    data["clips"] = {source: deepcopy(source_clip)}
+    rig = RigDocument(data)
+    source_frames = max(1, int(source_clip.get("frames", 1)))
+    t = rig.frame_time(source, source_frames - 1, source_frames)
+    _world, params = rig.solve(source, t)
+    channels = {
+        channel: const(params[channel])
+        for channel in source_channels
+        if channel in params
+    }
+    return _clip(frames, duration_ms, loop=True, channels=channels)
+
+
 def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, dict]:
     clips = _common_clips(spec, doc, compact=False)
     r = _rest(
@@ -1020,7 +1137,10 @@ def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, 
             far_hand=([-13,-5,4,13,20,23,20,12,0,-13],[-47,-55,-63,-71,-77,-79,-76,-69,-57,-47],[100,115,130,145,160,165,160,145,125,100])),
         "stargaze": dict(loop=False, root_y=[0,-2,-5,-8,-11,-13,-11,-7,-3,0], torso=[0,-3,-7,-11,-14,-16,-13,-9,-4,0], head=[0,3,7,11,14,16,13,9,4,0],
             near_hand=([17,10,2,-7,-16,-24,-18,-8,5,17],[-48,-59,-71,-82,-92,-98,-91,-79,-63,-48],[80,65,50,35,20,10,20,40,60,80]),
-            far_hand=([-13,-6,2,11,20,28,22,12,0,-13],[-47,-58,-70,-81,-91,-97,-90,-78,-62,-47],[100,115,130,145,160,170,160,140,120,100])),
+            # Keep the far hand on Carl's west-facing side while it rises.  The
+            # older arc crossed through the shoulder late in the gesture and
+            # made the lower arm snap roughly ninety degrees in one frame.
+            far_hand=([-13,-14,-16,-18,-20,-21,-20,-18,-15,-13],[-47,-56,-65,-73,-80,-84,-78,-68,-56,-47],[100,112,124,136,148,155,148,132,116,100])),
         "jab": dict(loop=False, torso=[0,5,12,9,3], head=[0,-3,-7,-5,-1],
             near_hand=([17,2,-28,-40,17],[-48,-50,-53,-54,-48],[80,55,15,0,80])),
         "punch": dict(loop=False, torso=[0,4,9,15,12,6,0], head=[0,-2,-5,-8,-6,-3,0],
@@ -1043,8 +1163,10 @@ def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, 
             near_hand=([17,10,3,-4,-10,-4,8,22,30,17],[-48,-54,-60,-65,-68,-65,-59,-53,-50,-48],[80,70,60,50,40,50,65,75,80,80]),
             far_hand=([-13,-6,1,8,14,8,-4,-18,-26,-13],[-47,-53,-59,-64,-67,-64,-58,-52,-49,-47],[100,110,120,130,140,130,115,105,100,100])),
         "starstuff": dict(loop=False, root_y=[0,-2,-5,-9,-13,-16,-14,-10,-5,0], pelvis=[0,8,18,30,45,60,48,32,15,0], torso=[0,-4,-9,-14,-19,-23,-19,-13,-6,0], head=[0,3,7,11,15,18,15,10,5,0],
-            near_hand=([17,12,6,-1,-8,-14,-10,-3,7,17],[-48,-59,-70,-80,-89,-94,-88,-77,-61,-48],[80,65,50,35,20,10,20,40,60,80]),
-            far_hand=([-13,-8,-2,5,12,18,14,7,-3,-13],[-47,-58,-69,-79,-88,-93,-87,-76,-60,-47],[100,115,130,145,160,170,160,140,120,100])),
+            near_hand=([17,10,2,-7,-14,-18,-14,-7,5,17],[-48,-59,-70,-80,-88,-92,-87,-77,-62,-48],[80,65,50,35,20,12,22,42,62,80]),
+            # A broad two-arm cosmic lift, but both wrists remain on stable IK
+            # arcs instead of crossing a shoulder as the torso pitches back.
+            far_hand=([-13,-14,-16,-18,-20,-21,-20,-18,-15,-13],[-47,-56,-65,-74,-82,-86,-80,-70,-58,-47],[100,112,124,136,148,158,150,134,118,100])),
     }
     for name, kwargs in action_specs.items():
         f, d = rows[name]
@@ -1063,6 +1185,97 @@ def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, 
             root_y=[-8,-10,-12,-10,-8,-6,-7,-8][:f], torso=[-3,-5,-6,-4,-1,1,0,-2][:f], head=[2,4,5,3,1,-1,0,1][:f],
             near_hand=(xs[:f], ys[:f], [70,55,35,20,35,55,75,80][:f]))
 
+    # ---- Pose-quality overrides -----------------------------------------
+    # The complete fighter-motion surface deliberately reuses choreography,
+    # but a semantic alias must not turn a transition into a looping pose or
+    # inherit an IK singularity.  These representative rows get explicit,
+    # conservative silhouettes that remain useful until the art merits finer
+    # variation.
+    if "fall_special" in rows:
+        f, d = rows["fall_special"]
+        clips["fall_special"] = deepcopy(clips["fall"])
+        clips["fall_special"]["frames"] = f
+        clips["fall_special"]["duration_ms"] = d
+        clips["fall_special"]["loop"] = True
+
+    for name in ("prone", "sleep", "trip_idle"):
+        if name in rows:
+            f, d = rows[name]
+            clips[name] = _freeze_clip_pose(
+                doc, clips, name=name, source="death", frames=f, duration_ms=d
+            )
+
+    def static_hold(
+        name: str,
+        *,
+        near: tuple[float, float],
+        far: tuple[float, float],
+        torso_angle: float = 2.0,
+        head_angle: float = -1.0,
+    ) -> None:
+        if name not in rows:
+            return
+        f, d = rows[name]
+        channels = _neutral(r, compact=False)
+        channels.update(
+            {
+                "torso": const(torso_angle),
+                "head": const(head_angle),
+                "near_hand_x": const(near[0]),
+                "near_hand_y": const(near[1]),
+                "far_hand_x": const(far[0]),
+                "far_hand_y": const(far[1]),
+            }
+        )
+        clips[name] = _clip(f, d, loop=True, channels=channels)
+
+    static_hold("grab_hold", near=(-28.0, -57.0), far=(-25.0, -50.0), torso_angle=4.0)
+    static_hold("item_hold", near=(-24.0, -55.0), far=(-19.0, -47.0))
+
+    # Climb/swim used broad mirrored arcs copied from an older scientist. The
+    # far wrist crossed the shoulder twice per cycle.  Keep the alternating
+    # action but constrain both ellipses to Carl's west-facing side.
+    if "climb" in clips:
+        climb = deepcopy(clips["climb"])
+        climb_channels = climb["channels"]
+        climb_channels["near_hand_x"] = expr(f"{r['_natural_near_hand_x'] - 5.0}+4*sin(tau*t)")
+        climb_channels["near_hand_y"] = expr(f"{r['_natural_near_hand_y'] - 14.0}-8*sin(tau*t)")
+        climb_channels["far_hand_x"] = expr(f"{r['_natural_far_hand_x'] - 5.0}-4*sin(tau*t)")
+        climb_channels["far_hand_y"] = expr(f"{r['_natural_far_hand_y'] - 12.0}+8*sin(tau*t)")
+        clips["climb"] = climb
+    if "swim" in clips:
+        swim = deepcopy(clips["swim"])
+        swim_channels = swim["channels"]
+        swim_channels["near_hand_x"] = expr(f"{r['_natural_near_hand_x'] - 10.0}-10*sin(tau*t)")
+        swim_channels["near_hand_y"] = expr(f"{r['_natural_near_hand_y']}+4*cos(tau*t)")
+        swim_channels["far_hand_x"] = expr(f"{r['_natural_far_hand_x'] - 8.0}+10*sin(tau*t)")
+        swim_channels["far_hand_y"] = expr(f"{r['_natural_far_hand_y']}-4*cos(tau*t)")
+        clips["swim"] = swim
+
+    if "ledge_getup" in clips:
+        ledge = deepcopy(clips["ledge_getup"])
+        ledge["channels"]["near_hand_x"] = keys([-46,-42,-34,-26,-18,-12], loop=False)
+        ledge["channels"]["near_hand_y"] = keys([-78,-74,-66,-60,-56,-54], loop=False)
+        ledge["channels"]["far_hand_x"] = keys([-38,-34,-28,-24,-20,-19], loop=False)
+        ledge["channels"]["far_hand_y"] = keys([-68,-66,-62,-56,-50,-47], loop=False)
+        clips["ledge_getup"] = ledge
+
+    if "celebrate" in rows:
+        f, d = rows["celebrate"]
+        channels = _neutral(r, compact=False)
+        channels.update(
+            {
+                "root_y": keys([0,-2,-4,-2,0,1,0,-1], loop=True),
+                "torso": keys([0,-4,-7,-4,0,3,1,-1], loop=True),
+                "head": keys([0,3,6,3,0,-2,-1,0], loop=True),
+                "near_hand_x": keys([-11,-14,-18,-20,-18,-15,-12,-11], loop=True),
+                "near_hand_y": keys([-54,-62,-72,-78,-72,-64,-58,-54], loop=True),
+                "far_hand_x": keys([-19,-18,-16,-14,-15,-17,-18,-19], loop=True),
+                "far_hand_y": keys([-47,-56,-66,-74,-70,-60,-52,-47], loop=True),
+            }
+        )
+        clips["celebrate"] = _clip(f, d, loop=True, channels=channels)
+
     had_back_roll = "roll_back" in clips
     clips = materialize_motion_rows(
         rows=spec.rows,
@@ -1073,6 +1286,30 @@ def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, 
     )
     if not had_back_roll:
         clips["roll_back"] = invert_rotation_channel(clips["roll_back"], "pelvis")
+
+    # World-space roll targets were the source of the 170+ degree elbow pops
+    # reported by the pose auditor.  Lock the hands to the rotating torso for
+    # every row currently borrowing the roll silhouette, including the reverse
+    # roll after its pelvis direction has been inverted.
+    for name in (
+        "roll",
+        "roll_back",
+        "tumble",
+        "spot_dodge",
+        "getup_roll",
+        "tech_roll",
+        "grab_escape",
+        "trip_roll",
+    ):
+        if name in clips:
+            clips[name] = _retarget_clip_arms_to_torso(doc, clips, name, reach_scale=0.78)
+
+    # The prone/sleep/trip holds use the final collapse body pose but keep Carl's
+    # normal arm anatomy in that rotated torso frame.  This avoids both the old
+    # death-transition loop seam and wrists pointing back through his shoulders.
+    for name in ("prone", "sleep", "trip_idle"):
+        if name in clips:
+            clips[name] = _retarget_clip_arms_to_torso(doc, clips, name, reach_scale=0.76)
     return clips
 
 

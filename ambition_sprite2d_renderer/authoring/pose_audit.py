@@ -71,8 +71,6 @@ _NATURAL_ARM_CATEGORIES = frozenset(
         "shield_hold",
         "shield_release",
         "shield_hit",
-        "grab_hold",
-        "grabbed",
         "prone",
         "getup",
         "dizzy",
@@ -81,15 +79,9 @@ _NATURAL_ARM_CATEGORIES = frozenset(
         "buried",
         "teeter_start",
         "teeter",
-        "ledge_hang",
-        "ledge_getup",
         "trip_idle",
         "trip_getup",
-        "victory_hold",
         "loss",
-        "item_hold",
-        "item_hold_crouch",
-        "item_heavy_carry",
     }
 )
 
@@ -101,18 +93,13 @@ _PLANTED_CATEGORIES = frozenset(
         "idle_look_up",
         "crouch",
         "shield_hold",
-        "grab_hold",
         "prone",
         "dizzy",
         "sleep",
         "buried",
         "teeter",
-        "ledge_hang",
         "trip_idle",
-        "victory_hold",
         "loss",
-        "item_hold",
-        "item_hold_crouch",
     }
 )
 
@@ -484,7 +471,23 @@ def _audit_chain(
     natural_angle = None
     natural_vector = natural_vectors.get(side)
     if natural_vector is not None:
-        natural_angle = _angle_between(lower_vector, natural_vector)
+        # Natural arm authority is authored in the neutral torso frame.  Compare
+        # against that direction after carrying it with the current torso
+        # rotation; otherwise a perfectly sensible arm on a prone/rolling body
+        # looks 90-180 degrees "wrong" simply because the whole character
+        # rotated in world space.
+        torso = frame.world.get("torso")
+        if torso is not None:
+            angle = math.radians(float(torso.angle))
+            c = math.cos(angle)
+            s = math.sin(angle)
+            expected_natural = (
+                c * natural_vector[0] - s * natural_vector[1],
+                s * natural_vector[0] + c * natural_vector[1],
+            )
+        else:
+            expected_natural = natural_vector
+        natural_angle = _angle_between(lower_vector, expected_natural)
 
     hand_offset = None
     hand_offset_delta = None
