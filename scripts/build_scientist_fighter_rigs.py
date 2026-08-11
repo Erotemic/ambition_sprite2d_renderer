@@ -11,6 +11,7 @@ never recreates character artwork.
 from __future__ import annotations
 
 import argparse
+from copy import deepcopy
 import hashlib
 import importlib
 import importlib.machinery
@@ -34,7 +35,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
-BUILDER_VERSION = 13
+BUILDER_VERSION = 14
 
 
 def _is_extension_path(path: Path) -> bool:
@@ -146,6 +147,12 @@ from ambition_sprite2d_renderer.authoring.humanoid_svg_rig import (  # noqa: E40
     build_humanoid_view_document,
 )
 from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument  # noqa: E402
+from ambition_sprite2d_renderer.authoring.fighter_motion_catalog import validate_motion_coverage  # noqa: E402
+from ambition_sprite2d_renderer.targets.characters.patent_clerk_motion import (  # noqa: E402
+    APPLICABLE_MOTION_SCOPES,
+    FIGHTER_MOTION_COVERAGE,
+    PATENT_ROWS,
+)
 
 INK_NS = "http://www.inkscape.org/namespaces/inkscape"
 INK_LABEL = f"{{{INK_NS}}}label"
@@ -184,23 +191,6 @@ class CharacterSpec:
     def rig_path(self) -> Path:
         return self.rig_dir / f"{self.name}_side.rig.json"
 
-
-PATENT_ROWS = (
-    ("idle", 8, 148), ("walk", 8, 106), ("run", 8, 76),
-    ("crouch", 6, 94), ("crouch_walk", 8, 90), ("jump", 6, 88),
-    ("fall", 6, 92), ("land_hard", 7, 80), ("dash_startup", 4, 50),
-    ("dash", 6, 58), ("slide", 6, 68), ("roll", 8, 58),
-    ("wall_grab", 6, 102), ("wall_jump", 6, 80),
-    ("ledge_grab", 6, 96), ("ledge_climb", 6, 92),
-    ("climb", 8, 96), ("swim", 8, 102), ("block", 6, 80),
-    ("known_result", 7, 62), ("hit", 5, 82), ("death", 9, 102),
-    ("talk", 8, 104), ("interact", 8, 92),
-    ("application_review", 6, 58), ("margin_correction", 7, 64),
-    ("light_argument", 8, 66), ("reference_frame", 9, 72),
-    ("elevator_thought", 9, 72), ("synchronize_clocks", 10, 78),
-    ("mass_energy_conversion", 10, 80), ("annus_mirabilis", 12, 82),
-    ("celebrate", 8, 88), ("taunt", 8, 92),
-)
 
 STARGAN_ROWS = (
     ("idle", 8, 150), ("walk", 8, 108), ("run", 8, 82),
@@ -602,6 +592,14 @@ def _common_clips(spec: CharacterSpec, doc: Mapping[str, object], *, compact: bo
 
 
 def _patent_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, dict]:
+    """Author Patent Clerk's current full-fighter motion surface.
+
+    The canonical vocabulary is intentionally larger than the current art.
+    Variants collapse onto representative rows in ``patent_clerk_motion.py``;
+    every row declared here, however, is an intentional silhouette rather than
+    an accidental neutral fallback.
+    """
+
     clips = _common_clips(spec, doc, compact=True)
     r = _rest(
         doc,
@@ -609,6 +607,26 @@ def _patent_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, d
         natural_arm_pose=spec.natural_arm_pose,
     )
     rows = {name: (frames, duration) for name, frames, duration in spec.rows}
+
+    def add_pose(name: str, *, loop: bool = False, **kwargs) -> None:
+        f, d = rows[name]
+        clips[name] = _pose(r, f, d, loop=loop, compact=True, **kwargs)
+
+    def clone(name: str, source: str, *, loop: bool | None = None) -> None:
+        f, d = rows[name]
+        base = deepcopy(clips[source])
+        base["frames"] = f
+        base["duration_ms"] = d
+        if loop is not None:
+            base["loop"] = loop
+        clips[name] = base
+
+    # ---- Character-concept actions -------------------------------------
+    # These remain the visual language used by the fighter-facing coverage map:
+    # margin correction = f-tilt, light argument = neutral special, reference
+    # frame = side special, accelerating elevator = up special, synchronized
+    # clocks = down special, mass/energy conversion = forward smash, and the
+    # annus mirabilis sequence = final smash.
     action_specs = {
         "known_result": dict(loop=False, torso=[0,3,6,8,5,2,0], head=[0,-2,-5,-7,-4,-1,0],
             near_hand=([17,5,-8,-23,-28,-16,17],[-50,-55,-62,-66,-65,-58,-50],[80,65,50,25,15,40,80])),
@@ -637,10 +655,341 @@ def _patent_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, d
             far_hand=([-13,-6,3,14,26,38,46,42,32,19,4,-13],[-49,-58,-68,-78,-87,-93,-95,-89,-78,-66,-55,-49],[100,115,130,145,160,172,180,170,155,135,115,100])),
     }
     for name, kwargs in action_specs.items():
-        f, d = rows[name]
-        clips[name] = _pose(r, f, d, compact=True, **kwargs)
-    return clips
+        add_pose(name, **kwargs)
 
+    # ---- Stance, locomotion, jumps, falls -------------------------------
+    add_pose("idle_look_up", loop=True,
+        root_y=[0,-1,-1,0,1,1,0,0], torso=[0,-1,-2,-2,-1,0,0,0],
+        head=[0,4,8,11,10,7,3,0])
+    add_pose("walk_stop",
+        root_y=[1,2,3,2,1,0], torso=[-6,-3,2,4,2,0], head=[4,2,-1,-3,-1,0],
+        near_foot=([18,15,12,10,10,10],[2,1,0,0,0,0],[r["near_foot_pitch"]]*6),
+        far_foot=([-17,-14,-12,-10,-10,-10],[1,0,0,0,0,0],[r["far_foot_pitch"]]*6))
+    add_pose("turnaround",
+        root_y=[0,1,2,1,0,0], pelvis=[0,8,18,14,6,0], torso=[0,-9,-18,-14,-6,0],
+        head=[0,8,16,13,6,0],
+        near_hand=([17,10,2,-2,6,17],[-50,-48,-47,-48,-49,-50],[80]*6),
+        far_hand=([-13,-5,2,5,-3,-13],[-49,-48,-47,-47,-48,-49],[100]*6))
+    add_pose("stumble",
+        root_y=[0,3,7,4,1,0], pelvis=[0,-5,-12,-7,-2,0], torso=[0,-10,-24,-15,-5,0],
+        head=[0,8,18,12,4,0],
+        near_hand=([17,24,31,26,21,17],[-50,-45,-39,-43,-47,-50],[80]*6),
+        far_hand=([-13,-20,-27,-22,-17,-13],[-49,-44,-38,-42,-46,-49],[100]*6))
+    add_pose("crouch_start",
+        root_y=[0,3,7,10,11], torso=[0,3,7,9,9], head=[0,-2,-4,-5,-5],
+        near_hand=([17,14,11,9,9],[-50,-47,-44,-42,-42],[80]*5),
+        far_hand=([-13,-11,-9,-8,-8],[-49,-46,-44,-43,-43],[100]*5))
+    add_pose("crouch_end",
+        root_y=[11,9,6,3,0], torso=[9,8,5,2,0], head=[-5,-4,-3,-1,0],
+        near_hand=([9,10,12,15,17],[-42,-44,-46,-48,-50],[80]*5),
+        far_hand=([-8,-9,-10,-12,-13],[-43,-44,-46,-48,-49],[100]*5))
+    add_pose("land_light",
+        root_y=[-2,2,5,3,0], torso=[-2,4,7,4,0], head=[2,-3,-5,-3,0],
+        near_hand=([14,11,8,12,17],[-52,-47,-44,-47,-50],[80]*5),
+        far_hand=([-11,-8,-5,-8,-13],[-51,-46,-43,-46,-49],[100]*5))
+    add_pose("jump_squat",
+        root_y=[0,4,9,12,7], torso=[0,4,9,12,5], head=[0,-2,-5,-7,-3],
+        near_hand=([17,13,9,6,10],[-50,-47,-44,-42,-46],[80]*5),
+        far_hand=([-13,-10,-7,-5,-8],[-49,-46,-43,-41,-45],[100]*5))
+    add_pose("double_jump",
+        root_y=[-5,-11,-20,-28,-24,-15,-7], pelvis=[0,-12,-25,-38,-24,-10,0],
+        torso=[0,5,10,14,9,4,0], head=[0,-3,-6,-8,-5,-2,0],
+        near_hand=([17,8,-4,-15,-8,4,17],[-50,-61,-74,-84,-76,-62,-50],[80]*7),
+        far_hand=([-13,-4,7,16,9,-2,-13],[-49,-60,-73,-83,-75,-61,-49],[100]*7),
+        near_foot=([10,6,1,-4,0,6,10],[1,7,15,21,15,7,1],[r["near_foot_pitch"]]*7),
+        far_foot=([-10,-6,-1,4,0,-6,-10],[1,7,15,21,15,7,1],[r["far_foot_pitch"]]*7))
+    add_pose("fall_special", loop=True,
+        root_y=[-7,-8,-9,-8,-7,-6,-7], pelvis=[0,2,4,2,0,-2,0],
+        torso=[5,7,8,7,5,4,5], head=[-3,-4,-5,-4,-3,-2,-3],
+        near_hand=([6,5,4,5,6,7,6],[-38,-37,-36,-37,-38,-39,-38],[80]*7),
+        far_hand=([-4,-3,-2,-3,-4,-5,-4],[-37,-36,-35,-36,-37,-38,-37],[100]*7))
+    add_pose("tumble", loop=True,
+        root_y=[-10,-12,-14,-13,-11,-9,-8,-9],
+        pelvis=[0,45,90,135,180,225,270,315], torso=[0,-8,-13,-8,0,8,13,8], head=[0,6,10,6,0,-6,-10,-6],
+        near_hand=([7,2,-3,-7,-5,0,5,8],[-49,-44,-40,-42,-48,-54,-56,-52],[80]*8),
+        far_hand=([-5,0,5,8,6,1,-4,-6],[-48,-43,-39,-41,-47,-53,-55,-51],[100]*8))
+    add_pose("roll_back",
+        root_y=[5,9,13,16,15,11,7,3],
+        pelvis=[0,35,82,132,184,236,286,328], torso=[4,14,27,39,43,34,19,5], head=[-3,-9,-16,-22,-24,-18,-10,-3],
+        near_hand=([11,5,-1,-5,-3,2,9,15],[-47,-39,-33,-30,-31,-36,-43,-49],[80]*8),
+        far_hand=([-9,-4,1,4,3,-1,-7,-12],[-46,-38,-32,-29,-30,-35,-42,-48],[100]*8),
+        near_foot=([9,5,1,-3,-2,2,7,10],[2,10,20,27,25,18,9,2],[r["near_foot_pitch"]]*8),
+        far_foot=([-9,-5,-1,3,2,-2,-7,-10],[1,9,18,25,24,17,8,1],[r["far_foot_pitch"]]*8))
+    add_pose("spot_dodge",
+        root_y=[0,-1,-3,-5,-3,-1,0], torso=[0,7,15,22,15,7,0], head=[0,-5,-10,-14,-10,-5,0],
+        near_hand=([17,14,9,4,9,14,17],[-50,-47,-43,-40,-43,-47,-50],[80]*7),
+        far_hand=([-13,-10,-5,0,-5,-10,-13],[-49,-46,-42,-39,-42,-46,-49],[100]*7))
+    add_pose("air_dodge",
+        root_y=[-9,-11,-13,-12,-10,-8,-9], pelvis=[0,-9,-20,-28,-20,-9,0],
+        torso=[0,5,11,15,11,5,0], head=[0,-4,-8,-10,-8,-4,0],
+        near_hand=([8,3,-2,-5,-2,3,8],[-48,-42,-38,-36,-38,-42,-48],[80]*7),
+        far_hand=([-6,-1,4,7,4,-1,-6],[-47,-41,-37,-35,-37,-41,-47],[100]*7),
+        near_foot=([5,2,-2,-4,-2,2,5],[5,12,17,19,17,12,5],[r["near_foot_pitch"]]*7),
+        far_foot=([-5,-2,2,4,2,-2,-5],[5,12,17,19,17,12,5],[r["far_foot_pitch"]]*7))
+    add_pose("platform_drop",
+        root_y=[6,10,15,21,27], torso=[8,10,8,4,1], head=[-5,-6,-4,-2,0],
+        near_hand=([10,8,7,8,10],[-43,-41,-40,-42,-45],[80]*5),
+        far_hand=([-8,-6,-5,-6,-8],[-42,-40,-39,-41,-44],[100]*5))
+    clone("footstool_jump", "double_jump", loop=False)
+    add_pose("teeter_start",
+        root_y=[0,0,1,2,1], torso=[0,-7,-15,-20,-18], head=[0,5,10,14,12],
+        near_hand=([17,23,28,31,29],[-50,-45,-41,-39,-40],[80]*5),
+        far_hand=([-13,-19,-24,-27,-25],[-49,-44,-40,-38,-39],[100]*5))
+    add_pose("teeter", loop=True,
+        root_y=[1,2,1,0,1,2,1,0], torso=[-18,-20,-22,-20,-18,-16,-17,-18], head=[12,14,16,14,12,10,11,12],
+        near_hand=([29,31,33,31,29,27,28,29],[-40,-39,-38,-39,-40,-41,-41,-40],[80]*8),
+        far_hand=([-25,-27,-29,-27,-25,-23,-24,-25],[-39,-38,-37,-38,-39,-40,-40,-39],[100]*8))
+
+    # ---- Shield / parry -------------------------------------------------
+    add_pose("shield_raise",
+        torso=[0,2,4,6,6], head=[0,-1,-2,-3,-3],
+        near_hand=([17,9,1,-9,-15],[-50,-56,-63,-68,-70],[80]*5),
+        far_hand=([-13,-10,-8,-7,-7],[-49,-53,-57,-59,-60],[100]*5))
+    add_pose("shield_release",
+        torso=[6,5,3,1,0], head=[-3,-3,-2,-1,0],
+        near_hand=([-15,-9,-1,9,17],[-70,-68,-63,-56,-50],[80]*5),
+        far_hand=([-7,-7,-8,-10,-13],[-60,-59,-57,-53,-49],[100]*5))
+    add_pose("shield_hit",
+        root_y=[0,2,-1,1,0], torso=[6,12,2,8,6], head=[-3,-8,1,-5,-3],
+        near_hand=([-15,-20,-11,-17,-15],[-70,-66,-73,-69,-70],[80]*5),
+        far_hand=([-7,-11,-4,-9,-7],[-60,-57,-63,-59,-60],[100]*5))
+
+    # ---- Normals / smashes / aerials -----------------------------------
+    add_pose("jab",
+        torso=[0,3,7,11,5,0], head=[0,-2,-4,-6,-3,0],
+        near_hand=([17,5,-14,-32,-7,17],[-50,-51,-52,-52,-51,-50],[80]*6),
+        far_hand=([-13,-10,-7,-5,-9,-13],[-49,-47,-46,-46,-47,-49],[100]*6))
+    add_pose("dash_attack",
+        root_y=[0,-1,-3,-4,-2,0,0], torso=[10,16,22,27,20,12,6], head=[-6,-9,-13,-16,-12,-7,-3],
+        near_hand=([8,-4,-19,-36,-40,-15,10],[-48,-49,-50,-51,-50,-49,-48],[80]*7),
+        far_hand=([-4,1,8,13,10,2,-5],[-47,-44,-42,-41,-42,-45,-47],[100]*7))
+    add_pose("attack_up",
+        torso=[0,-2,-6,-10,-12,-8,-3,0], head=[0,2,5,8,10,7,3,0],
+        near_hand=([17,10,2,-7,-15,-9,4,17],[-50,-62,-75,-87,-97,-90,-69,-50],[80]*8))
+    add_pose("attack_down",
+        root_y=[0,2,5,7,6,3,1,0], torso=[0,4,9,14,16,11,5,0], head=[0,-2,-5,-8,-10,-7,-3,0],
+        near_hand=([17,7,-5,-18,-30,-24,-7,17],[-50,-47,-43,-39,-35,-38,-44,-50],[80]*8))
+    add_pose("smash_charge", loop=True,
+        root_y=[4,5,6,5,4,3,4,5], torso=[10,12,14,13,11,9,10,12], head=[-6,-7,-8,-8,-7,-5,-6,-7],
+        near_hand=([10,13,16,15,11,8,9,11],[-45,-42,-40,-41,-44,-47,-46,-44],[80]*8),
+        far_hand=([-8,-11,-14,-13,-9,-6,-7,-9],[-44,-41,-39,-40,-43,-46,-45,-43],[100]*8))
+    add_pose("smash_up",
+        root_y=[2,1,-2,-5,-7,-4,-1,0,0], torso=[4,0,-5,-11,-16,-12,-5,0,0], head=[-2,1,5,9,13,10,4,1,0],
+        near_hand=([12,7,1,-6,-13,-8,1,10,17],[-49,-61,-75,-90,-101,-93,-76,-60,-50],[80]*9),
+        far_hand=([-9,-4,2,8,14,9,1,-7,-13],[-48,-60,-74,-89,-100,-92,-75,-59,-49],[100]*9))
+    add_pose("smash_down",
+        root_y=[0,3,7,10,12,10,6,2,0], torso=[0,5,10,16,20,16,9,3,0], head=[0,-3,-6,-10,-13,-10,-6,-2,0],
+        near_hand=([17,8,-3,-16,-30,-36,-24,-5,17],[-50,-47,-43,-39,-35,-33,-37,-44,-50],[80]*9),
+        far_hand=([-13,-5,4,14,24,31,22,5,-13],[-49,-46,-42,-38,-34,-32,-36,-43,-49],[100]*9))
+    air_specs = {
+        "air_neutral": dict(pelvis=[0,-18,-38,-56,-38,-18,0,0],
+            near_hand=([8,-1,-9,-14,-9,-1,8,12],[-61,-69,-75,-77,-74,-67,-60,-58],[80]*8),
+            far_hand=([-6,3,11,16,11,3,-6,-10],[-60,-68,-74,-76,-73,-66,-59,-57],[100]*8)),
+        "air_forward": dict(torso=[0,4,9,14,10,4,0], head=[0,-2,-5,-8,-6,-2,0],
+            near_hand=([17,5,-12,-31,-42,-17,17],[-50,-55,-60,-63,-62,-56,-50],[80]*7)),
+        "air_back": dict(torso=[0,-3,-7,-11,-8,-3,0], head=[0,2,5,7,5,2,0],
+            far_hand=([-13,-2,12,27,35,9,-13],[-49,-54,-59,-61,-60,-55,-49],[100]*7)),
+        "air_up": dict(torso=[0,-2,-6,-10,-8,-3,0], head=[0,2,5,8,6,2,0],
+            near_hand=([17,8,-3,-14,-19,-7,17],[-50,-64,-80,-95,-102,-83,-50],[80]*7)),
+        "air_down": dict(torso=[0,3,7,11,8,3,0], head=[0,-2,-5,-8,-6,-2,0],
+            near_hand=([17,8,-3,-14,-20,-7,17],[-50,-45,-39,-32,-27,-37,-50],[80]*7)),
+    }
+    for name, kwargs in air_specs.items():
+        add_pose(name, root_y=[-9,-11,-13,-12,-10,-8,-9,-9], **kwargs)
+    add_pose("air_land",
+        root_y=[-2,3,6,4,1,0], torso=[-3,5,9,6,2,0], head=[2,-3,-6,-4,-1,0])
+
+    # ---- Grabs / throws / grabbed reactions ----------------------------
+    add_pose("grab",
+        torso=[0,4,9,13,9,3,0], head=[0,-2,-4,-6,-4,-1,0],
+        near_hand=([17,8,-6,-22,-31,-12,17],[-50,-54,-57,-58,-57,-53,-50],[80]*7),
+        far_hand=([-13,-5,5,16,22,6,-13],[-49,-53,-56,-57,-56,-52,-49],[100]*7))
+    add_pose("grab_hold", loop=True,
+        torso=[7,8,9,8,7,6,7,8], head=[-3,-4,-5,-4,-3,-2,-3,-4],
+        near_hand=([-18,-19,-20,-19,-18,-17,-18,-19],[-57,-58,-59,-58,-57,-56,-57,-58],[80]*8),
+        far_hand=([12,13,14,13,12,11,12,13],[-56,-57,-58,-57,-56,-55,-56,-57],[100]*8))
+    add_pose("pummel",
+        torso=[7,10,14,9,7], head=[-3,-5,-7,-4,-3],
+        near_hand=([-18,-10,-27,-12,-18],[-57,-55,-58,-56,-57],[80]*5))
+    add_pose("grab_release",
+        torso=[7,5,3,1,0], head=[-3,-2,-1,0,0],
+        near_hand=([-18,-9,0,9,17],[-57,-55,-53,-51,-50],[80]*5),
+        far_hand=([12,5,-2,-8,-13],[-56,-54,-52,-50,-49],[100]*5))
+    throw_specs = {
+        "throw_forward": dict(torso=[0,4,10,17,20,12,5,0], head=[0,-2,-5,-9,-11,-7,-3,0],
+            near_hand=([-18,-25,-33,-42,-48,-31,-7,17],[-57,-58,-59,-58,-56,-54,-52,-50],[80]*8)),
+        "throw_back": dict(pelvis=[0,8,18,28,22,12,4,0], torso=[0,-5,-11,-17,-14,-8,-3,0], head=[0,3,7,10,8,4,2,0],
+            far_hand=([12,20,29,38,44,28,5,-13],[-56,-57,-58,-57,-55,-53,-51,-49],[100]*8)),
+        "throw_up": dict(root_y=[0,-1,-3,-5,-4,-2,0,0], torso=[0,-3,-8,-13,-15,-9,-3,0], head=[0,2,5,8,10,6,2,0],
+            near_hand=([-18,-12,-5,2,7,1,-7,17],[-57,-68,-80,-92,-99,-88,-70,-50],[80]*8)),
+        "throw_down": dict(root_y=[0,2,5,8,9,6,2,0], torso=[0,4,9,15,18,12,5,0], head=[0,-2,-5,-9,-11,-7,-3,0],
+            near_hand=([-18,-21,-24,-27,-30,-20,-4,17],[-57,-50,-43,-36,-31,-36,-43,-50],[80]*8)),
+    }
+    for name, kwargs in throw_specs.items():
+        add_pose(name, **kwargs)
+    add_pose("grabbed", loop=True,
+        root_y=[0,1,0,-1,0,1,0,0], torso=[-5,-6,-7,-6,-5,-4,-5,-6], head=[5,6,7,6,5,4,5,6],
+        near_hand=([5,4,3,4,5,6,5,4],[-45,-44,-43,-44,-45,-46,-45,-44],[80]*8),
+        far_hand=([-3,-2,-1,-2,-3,-4,-3,-2],[-44,-43,-42,-43,-44,-45,-44,-43],[100]*8))
+    add_pose("grabbed_pummel",
+        root_y=[0,2,-1,1,0], torso=[-5,-13,4,-8,-5], head=[5,12,-3,9,5])
+    add_pose("grab_escape",
+        root_y=[0,-1,-2,-1,0,0,0], torso=[-5,-9,-13,-8,-3,0,0], head=[5,8,11,7,3,0,0],
+        near_hand=([5,-3,-11,-4,5,12,17],[-45,-52,-60,-54,-49,-47,-50],[80]*7),
+        far_hand=([-3,5,13,6,-3,-10,-13],[-44,-51,-59,-53,-48,-46,-49],[100]*7))
+
+    # ---- Damage, knockdown, get-up, tech -------------------------------
+    add_pose("launch",
+        root_y=[0,-6,-14,-24,-33,-41,-47], pelvis=[0,-12,-28,-48,-68,-86,-102],
+        torso=[0,-5,-10,-15,-20,-24,-27], head=[0,4,8,12,16,19,21],
+        near_hand=([17,21,26,31,35,38,40],[-50,-45,-39,-32,-24,-17,-12],[80]*7),
+        far_hand=([-13,-17,-22,-27,-31,-34,-36],[-49,-44,-38,-31,-23,-16,-11],[100]*7))
+    add_pose("meteor",
+        root_y=[-8,-3,5,15,27,38,48], pelvis=[0,10,25,43,62,80,95],
+        torso=[0,5,10,15,20,24,27], head=[0,-4,-8,-12,-16,-19,-21])
+    add_pose("impact",
+        root_y=[0,3,-2,1,0], torso=[0,-20,12,-7,0], head=[0,15,-9,5,0],
+        near_hand=([17,25,10,20,17],[-50,-42,-57,-47,-50],[80]*5),
+        far_hand=([-13,-5,-22,-10,-13],[-49,-41,-56,-46,-49],[100]*5))
+    add_pose("splat", loop=True,
+        root_y=[1,2,3,2,1,0,1,2], torso=[-24,-26,-28,-26,-24,-22,-23,-25], head=[16,18,20,18,16,14,15,17],
+        near_hand=([24,25,26,25,24,23,24,25],[-44,-43,-42,-43,-44,-45,-44,-43],[80]*8),
+        far_hand=([-20,-21,-22,-21,-20,-19,-20,-21],[-43,-42,-41,-42,-43,-44,-43,-42],[100]*8))
+    add_pose("ground_bounce",
+        root_y=[-10,-4,7,15,9,3,0], pelvis=[70,82,94,92,88,86,86], torso=[0,6,12,10,6,3,0], head=[0,-5,-10,-8,-5,-2,0])
+    add_pose("knockdown",
+        root_y=[0,4,9,14,18,20], pelvis=[0,18,40,62,78,86], torso=[0,-5,-10,-12,-9,-4], head=[0,4,8,10,7,3])
+    add_pose("prone", loop=True,
+        root_y=[20,21,20,19,20,21,20,19], pelvis=[86,86,87,86,86,85,86,86], torso=[-4,-5,-4,-3,-4,-5,-4,-3], head=[3,4,3,2,3,4,3,2])
+    add_pose("prone_damage",
+        root_y=[20,23,18,22,20], pelvis=[86,92,80,90,86], torso=[-4,-12,6,-10,-4], head=[3,10,-5,8,3])
+    add_pose("getup",
+        root_y=[20,18,14,10,6,3,1,0], pelvis=[86,75,60,45,30,18,8,0], torso=[-4,-2,2,5,6,4,2,0], head=[3,2,0,-2,-3,-2,-1,0])
+    add_pose("getup_attack",
+        root_y=[20,18,14,10,7,4,2,0], pelvis=[86,74,58,42,28,16,7,0], torso=[-4,0,6,12,15,10,4,0], head=[3,1,-2,-5,-7,-5,-2,0],
+        near_hand=([8,-2,-14,-28,-39,-24,-3,17],[-42,-45,-48,-50,-49,-47,-48,-50],[80]*8))
+    clone("getup_roll", "roll", loop=False)
+    add_pose("tech",
+        root_y=[8,5,2,0,0,0], pelvis=[18,12,6,2,0,0], torso=[7,5,3,1,0,0], head=[-4,-3,-2,-1,0,0])
+    clone("tech_roll", "roll", loop=False)
+    add_pose("wall_tech",
+        root_y=[-4,-2,0,1,0,0], torso=[-20,-14,-8,-3,0,0], head=[14,10,6,2,0,0],
+        near_hand=([-30,-24,-16,-7,3,17],[-76,-70,-63,-57,-53,-50],[80]*6))
+    add_pose("wall_tech_jump",
+        root_y=[0,-5,-13,-22,-27,-18,-8], torso=[-16,-10,-2,7,12,7,1], head=[11,7,2,-5,-8,-5,-1],
+        near_hand=([-28,-20,-10,0,8,13,17],[-74,-70,-64,-59,-55,-52,-50],[80]*7))
+    add_pose("ceiling_tech",
+        root_y=[-22,-18,-12,-7,-3,0], pelvis=[180,155,115,70,30,0], torso=[0,-4,-6,-4,-2,0], head=[0,3,5,3,1,0])
+    clone("shield_break_launch", "launch", loop=False)
+    add_pose("shield_break_fall", loop=True,
+        root_y=[-12,-11,-10,-9,-10,-11,-12], pelvis=[20,35,50,65,80,95,110], torso=[3,5,7,5,3,1,3], head=[-2,-4,-6,-4,-2,0,-2])
+    add_pose("shield_break_collapse",
+        root_y=[0,5,11,17,20,20,20,20], pelvis=[0,14,32,55,75,86,88,88], torso=[0,-4,-8,-12,-10,-6,-4,-4], head=[0,3,6,9,7,4,3,3])
+    clone("shield_break_recover", "getup", loop=False)
+    add_pose("dizzy", loop=True,
+        root_y=[0,1,2,1,0,-1,0,1,2,1], torso=[0,3,5,3,0,-3,-5,-3,0,3], head=[-8,-14,-17,-13,-6,3,10,13,7,-2],
+        near_hand=([10,11,12,11,10,9,8,9,10,11],[-45,-44,-43,-44,-45,-46,-47,-46,-45,-44],[80]*10),
+        far_hand=([-8,-9,-10,-9,-8,-7,-6,-7,-8,-9],[-44,-43,-42,-43,-44,-45,-46,-45,-44,-43],[100]*10))
+    add_pose("sleep_start",
+        root_y=[0,4,9,14,18,20,20], pelvis=[0,14,30,48,65,78,86], torso=[0,-3,-6,-9,-8,-5,-4], head=[0,3,6,8,7,4,3])
+    clone("sleep", "prone", loop=True)
+    clone("wake", "getup", loop=False)
+    add_pose("bury_start",
+        root_y=[0,5,11,18,25,31,35], torso=[0,2,5,7,8,6,4], head=[0,-1,-3,-5,-6,-4,-2],
+        near_hand=([17,12,6,1,-3,0,5],[-50,-55,-60,-65,-69,-65,-60],[80]*7),
+        far_hand=([-13,-8,-2,3,7,4,-1],[-49,-54,-59,-64,-68,-64,-59],[100]*7))
+    add_pose("buried", loop=True,
+        root_y=[35,36,35,34,35,36,35,34], torso=[4,5,6,5,4,3,4,5], head=[-2,-3,-4,-3,-2,-1,-2,-3])
+    add_pose("bury_escape",
+        root_y=[35,31,26,20,13,7,2,0], torso=[4,6,9,12,9,5,2,0], head=[-2,-4,-6,-8,-6,-3,-1,0],
+        near_hand=([5,-1,-8,-14,-9,0,10,17],[-60,-66,-72,-77,-72,-64,-56,-50],[80]*8),
+        far_hand=([-1,5,12,18,13,4,-6,-13],[-59,-65,-71,-76,-71,-63,-55,-49],[100]*8))
+
+    # ---- Ledge ----------------------------------------------------------
+    add_pose("ledge_catch",
+        root_y=[2,-1,-4,-5,-4], torso=[0,-5,-9,-10,-9], head=[0,3,6,7,6],
+        near_hand=([-10,-20,-28,-31,-30],[-63,-70,-77,-80,-78],[80]*5),
+        far_hand=([-5,-13,-20,-24,-23],[-57,-61,-65,-67,-65],[100]*5))
+    add_pose("ledge_getup",
+        root_y=[-5,-3,0,3,5,3,1], torso=[-9,-5,0,6,9,5,1], head=[6,3,0,-4,-6,-3,-1],
+        near_hand=([-30,-24,-16,-7,2,10,17],[-78,-73,-67,-61,-56,-53,-50],[80]*7),
+        far_hand=([-23,-18,-12,-5,2,-6,-13],[-65,-62,-59,-55,-52,-50,-49],[100]*7))
+    add_pose("ledge_attack",
+        root_y=[-4,-2,1,4,5,3,1,0], torso=[-8,-3,4,11,15,10,4,0], head=[5,2,-2,-6,-8,-5,-2,0],
+        near_hand=([-29,-20,-8,-22,-40,-25,-4,17],[-76,-69,-61,-55,-53,-54,-48,-50],[80]*8))
+    clone("ledge_roll", "roll", loop=False)
+    add_pose("ledge_jump",
+        root_y=[-4,-9,-17,-26,-31,-23,-12], torso=[-8,-3,4,10,13,8,2], head=[5,2,-3,-7,-9,-5,-1],
+        near_hand=([-29,-22,-14,-6,1,8,14],[-76,-71,-66,-61,-57,-54,-51],[80]*7),
+        far_hand=([-23,-17,-10,-3,4,-3,-10],[-64,-61,-58,-55,-52,-50,-49],[100]*7))
+    add_pose("ledge_drop",
+        root_y=[-4,0,5,11,18], torso=[-9,-7,-4,-2,0], head=[6,5,3,1,0],
+        near_hand=([-30,-24,-16,-3,10],[-78,-72,-65,-57,-50],[80]*5),
+        far_hand=([-23,-19,-13,-8,-13],[-65,-62,-58,-54,-49],[100]*5))
+
+    # ---- Generic dynamic-item body poses --------------------------------
+    # No prop is baked into these frames: held items are separate runtime art.
+    add_pose("item_hold", loop=True,
+        torso=[0,1,2,1,0,-1,0,1], head=[0,-1,-2,-1,0,1,0,-1],
+        near_hand=([-6,-7,-8,-7,-6,-5,-6,-7],[-55,-56,-57,-56,-55,-54,-55,-56],[80]*8),
+        far_hand=([-2,-3,-4,-3,-2,-1,-2,-3],[-54,-55,-56,-55,-54,-53,-54,-55],[100]*8))
+    add_pose("item_hold_crouch", loop=True,
+        root_y=[11,12,13,12,11,10,11,12], torso=[8,9,10,9,8,7,8,9], head=[-5,-6,-7,-6,-5,-4,-5,-6],
+        near_hand=([-5,-6,-7,-6,-5,-4,-5,-6],[-47,-48,-49,-48,-47,-46,-47,-48],[80]*8),
+        far_hand=([-1,-2,-3,-2,-1,0,-1,-2],[-46,-47,-48,-47,-46,-45,-46,-47],[100]*8))
+    add_pose("item_pickup",
+        root_y=[0,4,9,12,8,3,0], torso=[0,6,13,17,11,4,0], head=[0,-3,-7,-9,-6,-2,0],
+        near_hand=([17,10,2,-5,-1,8,17],[-50,-43,-36,-31,-36,-44,-50],[80]*7))
+    add_pose("item_heavy_pickup",
+        root_y=[0,5,11,15,12,7,2,0], torso=[0,8,16,21,17,10,4,0], head=[0,-4,-8,-11,-9,-5,-2,0],
+        near_hand=([17,10,2,-5,-9,-3,7,17],[-50,-44,-38,-34,-32,-36,-43,-50],[80]*8),
+        far_hand=([-13,-6,2,9,13,7,-3,-13],[-49,-43,-37,-33,-31,-35,-42,-49],[100]*8))
+    add_pose("item_heavy_carry", loop=True,
+        root_y=[2,3,4,3,2,1,2,3], torso=[8,10,11,10,8,7,8,9], head=[-5,-6,-7,-6,-5,-4,-5,-6],
+        near_hand=([-8,-9,-10,-9,-8,-7,-8,-9],[-57,-58,-59,-58,-57,-56,-57,-58],[80]*8),
+        far_hand=([3,4,5,4,3,2,3,4],[-56,-57,-58,-57,-56,-55,-56,-57],[100]*8))
+    add_pose("item_throw",
+        torso=[0,4,10,16,19,12,5], head=[0,-2,-5,-8,-10,-6,-2],
+        near_hand=([-6,-15,-27,-40,-49,-26,7],[-55,-56,-57,-56,-53,-51,-50],[80]*7),
+        far_hand=([-2,2,7,11,12,5,-5],[-54,-52,-50,-49,-49,-51,-53],[100]*7))
+    add_pose("item_drop",
+        torso=[0,3,6,3,0], head=[0,-2,-4,-2,0],
+        near_hand=([-6,-4,-1,4,17],[-55,-50,-44,-39,-50],[80]*5))
+    add_pose("item_swing",
+        torso=[0,4,9,14,10,4,0], head=[0,-2,-5,-8,-6,-2,0],
+        near_hand=([-6,-14,-26,-39,-43,-23,-6],[-55,-58,-59,-57,-52,-50,-55],[80]*7))
+
+    # ---- Entrance / results --------------------------------------------
+    add_pose("entrance",
+        root_y=[24,18,12,7,3,1,0,0,0,0], torso=[8,6,4,2,1,0,0,0,0,0], head=[-5,-4,-3,-2,-1,0,0,0,0,0],
+        near_hand=([7,8,10,12,14,16,17,17,17,17],[-42,-44,-46,-48,-49,-50,-50,-50,-50,-50],[80]*10),
+        far_hand=([-5,-6,-8,-10,-11,-12,-13,-13,-13,-13],[-41,-43,-45,-47,-48,-49,-49,-49,-49,-49],[100]*10))
+    add_pose("victory_hold", loop=True,
+        root_y=[0,-1,-1,0,1,1,0,0], torso=[-4,-5,-6,-5,-4,-3,-4,-5], head=[6,7,8,7,6,5,6,7],
+        near_hand=([-12,-13,-14,-13,-12,-11,-12,-13],[-78,-79,-80,-79,-78,-77,-78,-79],[80]*8),
+        far_hand=([8,9,10,9,8,7,8,9],[-70,-71,-72,-71,-70,-69,-70,-71],[100]*8))
+    add_pose("loss", loop=True,
+        root_y=[2,3,4,3,2,1,2,3], torso=[12,14,16,14,12,10,11,13], head=[-9,-10,-11,-10,-9,-8,-9,-10],
+        near_hand=([9,8,7,8,9,10,9,8],[-40,-39,-38,-39,-40,-41,-40,-39],[80]*8),
+        far_hand=([-7,-6,-5,-6,-7,-8,-7,-6],[-39,-38,-37,-38,-39,-40,-39,-38],[100]*8))
+
+    # Rows that are intentional present-day aliases rather than separate art.
+    # This keeps the sheet compact while the coverage map can still distinguish
+    # categories such as trip vs knockdown or heavy vs light item grip.
+    intentional_aliases = {
+        # No unique row needed: coverage maps these categories directly to the
+        # named source row in patent_clerk_motion.py.
+    }
+    del intentional_aliases
+
+    missing = set(rows) - set(clips)
+    extra = set(clips) - set(rows)
+    if missing or extra:
+        raise ValueError(
+            f"Patent Clerk motion authoring mismatch: missing={sorted(missing)}, "
+            f"extra={sorted(extra)}"
+        )
+    return clips
 
 def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, dict]:
     clips = _common_clips(spec, doc, compact=False)
@@ -872,6 +1221,14 @@ def _visible_joint_copy(svg_path: Path) -> Path:
 
 
 def build_one(spec: CharacterSpec) -> Path:
+    if spec.name == "patent_clerk":
+        validate_motion_coverage(
+            row_names=[name for name, _frames, _duration in spec.rows],
+            coverage=FIGHTER_MOTION_COVERAGE,
+            scopes=APPLICABLE_MOTION_SCOPES,
+            character="patent_clerk",
+        )
+
     renderer_path, renderer_version = _require_native_resvg()
     if not spec.svg_path.exists():
         raise FileNotFoundError(spec.svg_path)

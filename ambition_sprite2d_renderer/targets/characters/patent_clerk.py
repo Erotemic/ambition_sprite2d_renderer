@@ -18,6 +18,7 @@ from ...authoring.portrait import FaceGuide, PortraitClip, render_framed_portrai
 from ...authoring.canonical_scientist_rig import load_scientist_rig
 from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet, write_canonical
+from .patent_clerk_motion import EFFECT_ALIASES, FIGHTER_MOTION_COVERAGE, PATENT_ROWS
 from ._svg_fighter_effects import (
     FxCanvas,
     bone_origin,
@@ -30,23 +31,13 @@ from ._svg_fighter_effects import (
 )
 
 TARGET_NAME = "patent_clerk"
-FRAME_SIZE = (176, 176)
-ROWS: List[Tuple[str, int, int]] = [
-    ("idle", 8, 148), ("walk", 8, 106), ("run", 8, 76),
-    ("crouch", 6, 94), ("crouch_walk", 8, 90), ("jump", 6, 88),
-    ("fall", 6, 92), ("land_hard", 7, 80), ("dash_startup", 4, 50),
-    ("dash", 6, 58), ("slide", 6, 68), ("roll", 8, 58),
-    ("wall_grab", 6, 102), ("wall_jump", 6, 80),
-    ("ledge_grab", 6, 96), ("ledge_climb", 6, 92),
-    ("climb", 8, 96), ("swim", 8, 102), ("block", 6, 80),
-    ("known_result", 7, 62), ("hit", 5, 82), ("death", 9, 102),
-    ("talk", 8, 104), ("interact", 8, 92),
-    ("application_review", 6, 58), ("margin_correction", 7, 64),
-    ("light_argument", 8, 66), ("reference_frame", 9, 72),
-    ("elevator_thought", 9, 72), ("synchronize_clocks", 10, 78),
-    ("mass_energy_conversion", 10, 80), ("annus_mirabilis", 12, 82),
-    ("celebrate", 8, 88), ("taunt", 8, 92),
-]
+RIG_FRAME_SIZE = (176, 176)
+RIG_RENDER_PADDING = 24
+FRAME_SIZE = (
+    RIG_FRAME_SIZE[0] + RIG_RENDER_PADDING * 2,
+    RIG_FRAME_SIZE[1] + RIG_RENDER_PADDING * 2,
+)
+ROWS: List[Tuple[str, int, int]] = list(PATENT_ROWS)
 
 ACTOR_METADATA = {'actor': {'character_id': 'special_patent_clerk', 'display_name': 'Patent Clerk'},
  'body': {'body_plan': 'HumanoidBiped',
@@ -172,6 +163,31 @@ ACTOR_METADATA["provenance"] = {
     ],
 }
 
+# The canonical rig remains authored in its compact 176x176 coordinate space.
+# Publication adds symmetric render overscan so large rotations (especially the
+# roll) cannot lose pixels at the logical-frame edge. Published sockets and the
+# portrait guide therefore move by the same origin offset.
+for _socket in ACTOR_METADATA.get("sockets", {}).values():
+    _point = _socket.get("point") if isinstance(_socket, dict) else None
+    if isinstance(_point, dict):
+        _point["x"] = float(_point.get("x", 0.0)) + RIG_RENDER_PADDING
+        _point["y"] = float(_point.get("y", 0.0)) + RIG_RENDER_PADDING
+
+_portrait_guide = (
+    ACTOR_METADATA.get("visual", {})
+    .get("portrait", {})
+    .get("face_guide")
+)
+if isinstance(_portrait_guide, dict):
+    _center = _portrait_guide.get("center")
+    if isinstance(_center, dict):
+        _center["x"] = float(_center.get("x", 0.0)) + RIG_RENDER_PADDING
+        _center["y"] = float(_center.get("y", 0.0)) + RIG_RENDER_PADDING
+    _source_size = _portrait_guide.get("source_size")
+    if isinstance(_source_size, dict):
+        _source_size["w"], _source_size["h"] = FRAME_SIZE
+
+
 OUTLINE = (28, 26, 30, 255)
 STAMP = (181, 57, 52, 255)
 STAMP_LIGHT = (242, 114, 91, 255)
@@ -208,6 +224,7 @@ def _label(canvas: FxCanvas, center: tuple[float, float], text: str, color=STAMP
 
 def _behind(animation: str, canvas: FxCanvas, t: float, world, params) -> None:
     del params
+    animation = EFFECT_ALIASES.get(animation, animation)
     center = (88.0, 89.0)
     if animation == "reference_frame":
         q = smooth(t)
@@ -252,6 +269,7 @@ def _behind(animation: str, canvas: FxCanvas, t: float, world, params) -> None:
 
 def _front(animation: str, canvas: FxCanvas, t: float, world, params) -> None:
     del params
+    animation = EFFECT_ALIASES.get(animation, animation)
     hand = bone_origin(world, "near_arm_hand", (62, 95))
     far_hand = bone_origin(world, "far_arm_hand", (82, 97))
     if animation == "application_review":
@@ -308,6 +326,7 @@ def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Imag
         frame_count,
         behind=lambda canvas, t, world, params: _behind(animation, canvas, t, world, params),
         front=lambda canvas, t, world, params: _front(animation, canvas, t, world, params),
+        padding=RIG_RENDER_PADDING,
     )
 
 
@@ -350,12 +369,13 @@ def render(out_dir: str | Path, **opts):
         render_fn=render_frame,
         out_dir=Path(out_dir),
         frame_size=FRAME_SIZE,
-        auto_crop=True,
-        crop_margin=4,
+        auto_crop=False,
         actor_metadata=ACTOR_METADATA,
         sheet_tuning=doc.sprite_tuning or {"collision_scale": 1.66},
         animation_key_map={name: name for name, _frames, _duration in ROWS},
-        trim=False,
+        # The 224px logical frame protects large rotations; packed trim keeps
+        # that safety margin from becoming permanent atlas residency.
+        trim=True,
     )
     keys = ("spritesheet", "yaml", "ron", "actor", "canonical", "canonical_transparent", "preview")
     return [Path(outputs[key]) for key in keys if outputs.get(key)]
@@ -371,6 +391,6 @@ def source_uses_forbidden_raster_effects() -> bool:
 
 
 __all__ = [
-    "ACTOR_METADATA", "ROWS", "TARGET_NAME", "render", "render_canonical",
+    "ACTOR_METADATA", "FIGHTER_MOTION_COVERAGE", "ROWS", "TARGET_NAME", "render", "render_canonical",
     "render_frame", "render_portraits", "source_uses_forbidden_raster_effects",
 ]

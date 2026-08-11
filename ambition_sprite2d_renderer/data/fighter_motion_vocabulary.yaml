@@ -1,0 +1,1380 @@
+schema_version: 1
+name: fighter_motion_vocabulary
+policy:
+  intent: Canonical long-term fighter animation vocabulary. Full variation coverage is aspirational; current characters
+    must cover each applicable baseline_slot.
+  variation_rule: Several motions may share one baseline_slot until art quality and gameplay justify bespoke variants.
+  capability_rule: fighter_core applies to every full fighter; generic_item applies to fighters using the dynamic
+    held-item system; specialized item/status scopes apply only when those systems are supported.
+  source_note: The ordered motion labels were supplied by the Ambition author on 2026-08-10.
+  category_rule: Current fighter art must cover each applicable category. future_slot preserves the finer animation
+    slot so later variants can split without renaming the catalog.
+motions:
+- id: primary_idle
+  label: Primary idle
+  scope: fighter_core
+  future_slot: idle
+  category: idle
+- id: idle_variation_2
+  label: Idle variation 2
+  scope: fighter_core
+  future_slot: idle
+  category: idle
+- id: idle_variation_3
+  label: Idle variation 3
+  scope: fighter_core
+  future_slot: idle
+  category: idle
+- id: slow_walk
+  label: Slow walk
+  scope: fighter_core
+  future_slot: walk
+  category: walk
+- id: medium_walk
+  label: Medium walk
+  scope: fighter_core
+  future_slot: walk
+  category: walk
+- id: fast_walk
+  label: Fast walk
+  scope: fighter_core
+  future_slot: walk
+  category: walk
+- id: walk_stop_right
+  label: Walk stop right
+  scope: fighter_core
+  future_slot: walk_stop
+  category: locomotion_stop
+- id: walk_stop_left
+  label: Walk stop left
+  scope: fighter_core
+  future_slot: walk_stop
+  category: locomotion_stop
+- id: standing_turnaround
+  label: Standing turnaround
+  scope: fighter_core
+  future_slot: turnaround
+  category: turnaround
+- id: initial_dash
+  label: Initial dash
+  scope: fighter_core
+  future_slot: dash_startup
+  category: dash_startup
+- id: turnaround_dash
+  label: Turnaround dash
+  scope: fighter_core
+  future_slot: dash_turnaround
+  category: turnaround
+- id: run
+  label: Run
+  scope: fighter_core
+  future_slot: run
+  category: run
+- id: run_stop_right
+  label: Run stop right
+  scope: fighter_core
+  future_slot: run_stop
+  category: locomotion_stop
+- id: run_stop_left
+  label: Run stop left
+  scope: fighter_core
+  future_slot: run_stop
+  category: locomotion_stop
+- id: running_turnaround
+  label: Running turnaround
+  scope: fighter_core
+  future_slot: run_turnaround
+  category: turnaround
+- id: running_turnaround_brake
+  label: Running turnaround brake
+  scope: fighter_core
+  future_slot: run_turnaround
+  category: turnaround
+- id: walk_stumble_right
+  label: Walk stumble right
+  scope: fighter_core
+  future_slot: stumble
+  category: stumble
+- id: walk_stumble_left
+  label: Walk stumble left
+  scope: fighter_core
+  future_slot: stumble
+  category: stumble
+- id: run_stumble_right
+  label: Run stumble right
+  scope: fighter_core
+  future_slot: stumble
+  category: stumble
+- id: run_stumble_left
+  label: Run stumble left
+  scope: fighter_core
+  future_slot: stumble
+  category: stumble
+- id: crouch_start
+  label: Crouch start
+  scope: fighter_core
+  future_slot: crouch_start
+  category: crouch_start
+- id: crouch_idle
+  label: Crouch idle
+  scope: fighter_core
+  future_slot: crouch
+  category: crouch
+- id: crouch_end
+  label: Crouch end
+  scope: fighter_core
+  future_slot: crouch_end
+  category: crouch_end
+- id: light_landing
+  label: Light landing
+  scope: fighter_core
+  future_slot: land_light
+  category: land_light
+- id: heavy_landing
+  label: Heavy landing
+  scope: fighter_core
+  future_slot: land_hard
+  category: land_hard
+- id: jump_squat
+  label: Jump squat
+  scope: fighter_core
+  future_slot: jump_squat
+  category: jump_squat
+- id: forward_full_hop
+  label: Forward full hop
+  scope: fighter_core
+  future_slot: jump
+  category: jump
+- id: backward_full_hop
+  label: Backward full hop
+  scope: fighter_core
+  future_slot: jump
+  category: jump
+- id: forward_short_hop
+  label: Forward short hop
+  scope: fighter_core
+  future_slot: short_hop
+  category: jump
+- id: backward_short_hop
+  label: Backward short hop
+  scope: fighter_core
+  future_slot: short_hop
+  category: jump
+- id: forward_double_jump
+  label: Forward double jump
+  scope: fighter_core
+  future_slot: double_jump
+  category: double_jump
+- id: backward_double_jump
+  label: Backward double jump
+  scope: fighter_core
+  future_slot: double_jump
+  category: double_jump
+- id: neutral_fall
+  label: Neutral fall
+  scope: fighter_core
+  future_slot: fall
+  category: fall
+- id: forward_fall
+  label: Forward fall
+  scope: fighter_core
+  future_slot: fall
+  category: fall
+- id: backward_fall
+  label: Backward fall
+  scope: fighter_core
+  future_slot: fall
+  category: fall
+- id: post_double_jump_fall
+  label: Post-double-jump fall
+  scope: fighter_core
+  future_slot: fall_double
+  category: fall
+- id: post_double_jump_forward_fall
+  label: Post-double-jump forward fall
+  scope: fighter_core
+  future_slot: fall_double
+  category: fall
+- id: post_double_jump_backward_fall
+  label: Post-double-jump backward fall
+  scope: fighter_core
+  future_slot: fall_double
+  category: fall
+- id: special_fall
+  label: Special fall
+  scope: fighter_core
+  future_slot: fall_special
+  category: fall_special
+- id: special_fall_forward
+  label: Special fall forward
+  scope: fighter_core
+  future_slot: fall_special
+  category: fall_special
+- id: special_fall_backward
+  label: Special fall backward
+  scope: fighter_core
+  future_slot: fall_special
+  category: fall_special
+- id: special_fall_landing
+  label: Special-fall landing
+  scope: fighter_core
+  future_slot: land_special
+  category: land_special
+- id: damage_tumble_fall
+  label: Damage tumble fall
+  scope: fighter_core
+  future_slot: tumble
+  category: tumble
+- id: shield_raise
+  label: Shield raise
+  scope: fighter_core
+  future_slot: shield_raise
+  category: shield_raise
+- id: shield_hold
+  label: Shield hold
+  scope: fighter_core
+  future_slot: shield_hold
+  category: shield_hold
+- id: shield_release
+  label: Shield release
+  scope: fighter_core
+  future_slot: shield_release
+  category: shield_release
+- id: parry_release
+  label: Parry release
+  scope: fighter_core
+  future_slot: parry
+  category: parry
+- id: shield_hit_reaction
+  label: Shield hit reaction
+  scope: fighter_core
+  future_slot: shield_hit
+  category: shield_hit
+- id: spot_dodge
+  label: Spot dodge
+  scope: fighter_core
+  future_slot: spot_dodge
+  category: spot_dodge
+- id: forward_roll
+  label: Forward roll
+  scope: fighter_core
+  future_slot: roll_forward
+  category: roll_forward
+- id: backward_roll
+  label: Backward roll
+  scope: fighter_core
+  future_slot: roll_backward
+  category: roll_backward
+- id: neutral_air_dodge
+  label: Neutral air dodge
+  scope: fighter_core
+  future_slot: air_dodge
+  category: air_dodge
+- id: directional_air_dodge
+  label: Directional air dodge
+  scope: fighter_core
+  future_slot: air_dodge_directional
+  category: air_dodge
+- id: jab_1
+  label: Jab 1
+  scope: fighter_core
+  future_slot: jab
+  category: jab
+- id: jab_2
+  label: Jab 2
+  scope: fighter_core
+  future_slot: jab
+  category: jab
+- id: jab_3
+  label: Jab 3
+  scope: fighter_core
+  future_slot: jab
+  category: jab
+- id: dash_attack
+  label: Dash attack
+  scope: fighter_core
+  future_slot: dash_attack
+  category: dash_attack
+- id: forward_tilt
+  label: Forward tilt
+  scope: fighter_core
+  future_slot: attack_side
+  category: attack_side
+- id: up_tilt
+  label: Up tilt
+  scope: fighter_core
+  future_slot: attack_up
+  category: attack_up
+- id: down_tilt
+  label: Down tilt
+  scope: fighter_core
+  future_slot: attack_down
+  category: attack_down
+- id: forward_smash_charge
+  label: Forward smash charge
+  scope: fighter_core
+  future_slot: smash_charge_forward
+  category: smash_charge_forward
+- id: forward_smash
+  label: Forward smash
+  scope: fighter_core
+  future_slot: smash_forward
+  category: smash_forward
+- id: up_smash_charge
+  label: Up smash charge
+  scope: fighter_core
+  future_slot: smash_charge_up
+  category: smash_charge_up
+- id: up_smash
+  label: Up smash
+  scope: fighter_core
+  future_slot: smash_up
+  category: smash_up
+- id: down_smash_charge
+  label: Down smash charge
+  scope: fighter_core
+  future_slot: smash_charge_down
+  category: smash_charge_down
+- id: down_smash
+  label: Down smash
+  scope: fighter_core
+  future_slot: smash_down
+  category: smash_down
+- id: neutral_aerial
+  label: Neutral aerial
+  scope: fighter_core
+  future_slot: air_neutral
+  category: air_neutral
+- id: forward_aerial
+  label: Forward aerial
+  scope: fighter_core
+  future_slot: air_forward
+  category: air_forward
+- id: back_aerial
+  label: Back aerial
+  scope: fighter_core
+  future_slot: air_back
+  category: air_back
+- id: up_aerial
+  label: Up aerial
+  scope: fighter_core
+  future_slot: air_up
+  category: air_up
+- id: down_aerial
+  label: Down aerial
+  scope: fighter_core
+  future_slot: air_down
+  category: air_down
+- id: neutral_air_landing
+  label: Neutral-air landing
+  scope: fighter_core
+  future_slot: air_land_neutral
+  category: air_land
+- id: forward_air_landing
+  label: Forward-air landing
+  scope: fighter_core
+  future_slot: air_land_forward
+  category: air_land
+- id: back_air_landing
+  label: Back-air landing
+  scope: fighter_core
+  future_slot: air_land_back
+  category: air_land
+- id: up_air_landing
+  label: Up-air landing
+  scope: fighter_core
+  future_slot: air_land_up
+  category: air_land
+- id: down_air_landing
+  label: Down-air landing
+  scope: fighter_core
+  future_slot: air_land_down
+  category: air_land
+- id: grounded_neutral_special
+  label: Grounded neutral special
+  scope: fighter_core
+  future_slot: special_neutral
+  category: special_neutral
+- id: aerial_neutral_special
+  label: Aerial neutral special
+  scope: fighter_core
+  future_slot: special_neutral
+  category: special_neutral
+- id: grounded_side_special
+  label: Grounded side special
+  scope: fighter_core
+  future_slot: special_side
+  category: special_side
+- id: aerial_side_special
+  label: Aerial side special
+  scope: fighter_core
+  future_slot: special_side
+  category: special_side
+- id: grounded_up_special
+  label: Grounded up special
+  scope: fighter_core
+  future_slot: special_up
+  category: special_up
+- id: aerial_up_special
+  label: Aerial up special
+  scope: fighter_core
+  future_slot: special_up
+  category: special_up
+- id: grounded_down_special
+  label: Grounded down special
+  scope: fighter_core
+  future_slot: special_down
+  category: special_down
+- id: aerial_down_special
+  label: Aerial down special
+  scope: fighter_core
+  future_slot: special_down
+  category: special_down
+- id: grounded_final_smash
+  label: Grounded Final Smash
+  scope: fighter_core
+  future_slot: final_smash
+  category: final_smash
+- id: aerial_final_smash
+  label: Aerial Final Smash
+  scope: fighter_core
+  future_slot: final_smash
+  category: final_smash
+- id: standing_grab
+  label: Standing grab
+  scope: fighter_core
+  future_slot: grab
+  category: grab
+- id: dash_grab
+  label: Dash grab
+  scope: fighter_core
+  future_slot: grab
+  category: grab
+- id: pivot_grab
+  label: Pivot grab
+  scope: fighter_core
+  future_slot: grab
+  category: grab
+- id: grab_hold
+  label: Grab hold
+  scope: fighter_core
+  future_slot: grab_hold
+  category: grab_hold
+- id: pummel
+  label: Pummel
+  scope: fighter_core
+  future_slot: pummel
+  category: pummel
+- id: grab_release
+  label: Grab release
+  scope: fighter_core
+  future_slot: grab_release
+  category: grab_release
+- id: forward_throw
+  label: Forward throw
+  scope: fighter_core
+  future_slot: throw_forward
+  category: throw_forward
+- id: back_throw
+  label: Back throw
+  scope: fighter_core
+  future_slot: throw_back
+  category: throw_back
+- id: up_throw
+  label: Up throw
+  scope: fighter_core
+  future_slot: throw_up
+  category: throw_up
+- id: down_throw
+  label: Down throw
+  scope: fighter_core
+  future_slot: throw_down
+  category: throw_down
+- id: grabbed_high_pull_in
+  label: Grabbed high pull-in
+  scope: fighter_core
+  future_slot: grabbed_pull
+  category: grabbed
+- id: grabbed_high_hold
+  label: Grabbed high hold
+  scope: fighter_core
+  future_slot: grabbed_hold
+  category: grabbed
+- id: grabbed_high_pummel_reaction
+  label: Grabbed high pummel reaction
+  scope: fighter_core
+  future_slot: grabbed_pummel
+  category: grabbed_pummel
+- id: grabbed_low_pull_in
+  label: Grabbed low pull-in
+  scope: fighter_core
+  future_slot: grabbed_pull
+  category: grabbed
+- id: grabbed_low_hold
+  label: Grabbed low hold
+  scope: fighter_core
+  future_slot: grabbed_hold
+  category: grabbed
+- id: grabbed_low_pummel_reaction
+  label: Grabbed low pummel reaction
+  scope: fighter_core
+  future_slot: grabbed_pummel
+  category: grabbed_pummel
+- id: grab_release_victim
+  label: Grab release victim
+  scope: fighter_core
+  future_slot: grabbed_release
+  category: grab_escape
+- id: grab_escape_victim
+  label: Grab escape victim
+  scope: fighter_core
+  future_slot: grabbed_escape
+  category: grab_escape
+- id: high_hit_reaction_1
+  label: High hit reaction 1
+  scope: fighter_core
+  future_slot: hit_high
+  category: hit
+- id: high_hit_reaction_2
+  label: High hit reaction 2
+  scope: fighter_core
+  future_slot: hit_high
+  category: hit
+- id: high_hit_reaction_3
+  label: High hit reaction 3
+  scope: fighter_core
+  future_slot: hit_high
+  category: hit
+- id: mid_hit_reaction_1
+  label: Mid hit reaction 1
+  scope: fighter_core
+  future_slot: hit_mid
+  category: hit
+- id: mid_hit_reaction_2
+  label: Mid hit reaction 2
+  scope: fighter_core
+  future_slot: hit_mid
+  category: hit
+- id: mid_hit_reaction_3
+  label: Mid hit reaction 3
+  scope: fighter_core
+  future_slot: hit_mid
+  category: hit
+- id: low_hit_reaction_1
+  label: Low hit reaction 1
+  scope: fighter_core
+  future_slot: hit_low
+  category: hit
+- id: low_hit_reaction_2
+  label: Low hit reaction 2
+  scope: fighter_core
+  future_slot: hit_low
+  category: hit
+- id: low_hit_reaction_3
+  label: Low hit reaction 3
+  scope: fighter_core
+  future_slot: hit_low
+  category: hit
+- id: aerial_hit_reaction_1
+  label: Aerial hit reaction 1
+  scope: fighter_core
+  future_slot: hit_air
+  category: hit
+- id: aerial_hit_reaction_2
+  label: Aerial hit reaction 2
+  scope: fighter_core
+  future_slot: hit_air
+  category: hit
+- id: aerial_hit_reaction_3
+  label: Aerial hit reaction 3
+  scope: fighter_core
+  future_slot: hit_air
+  category: hit
+- id: upward_launch
+  label: Upward launch
+  scope: fighter_core
+  future_slot: launch_up
+  category: launch
+- id: horizontal_launch
+  label: Horizontal launch
+  scope: fighter_core
+  future_slot: launch_horizontal
+  category: launch
+- id: downward_launch
+  label: Downward launch
+  scope: fighter_core
+  future_slot: launch_down
+  category: launch
+- id: vertical_launch
+  label: Vertical launch
+  scope: fighter_core
+  future_slot: launch_vertical
+  category: launch
+- id: spinning_tumble
+  label: Spinning tumble
+  scope: fighter_core
+  future_slot: tumble_spin
+  category: tumble
+- id: meteor_launch
+  label: Meteor launch
+  scope: fighter_core
+  future_slot: meteor
+  category: meteor
+- id: wall_impact
+  label: Wall impact
+  scope: fighter_core
+  future_slot: wall_impact
+  category: impact
+- id: wall_splat
+  label: Wall splat
+  scope: fighter_core
+  future_slot: wall_splat
+  category: splat
+- id: ceiling_impact
+  label: Ceiling impact
+  scope: fighter_core
+  future_slot: ceiling_impact
+  category: impact
+- id: ceiling_splat
+  label: Ceiling splat
+  scope: fighter_core
+  future_slot: ceiling_splat
+  category: splat
+- id: face_up_ground_bounce
+  label: Face-up ground bounce
+  scope: fighter_core
+  future_slot: ground_bounce
+  category: ground_bounce
+- id: face_up_prone_idle
+  label: Face-up prone idle
+  scope: fighter_core
+  future_slot: prone
+  category: prone
+- id: face_up_prone_damage
+  label: Face-up prone damage
+  scope: fighter_core
+  future_slot: prone_damage
+  category: prone_damage
+- id: face_up_neutral_get_up
+  label: Face-up neutral get-up
+  scope: fighter_core
+  future_slot: getup
+  category: getup
+- id: face_up_get_up_attack
+  label: Face-up get-up attack
+  scope: fighter_core
+  future_slot: getup_attack
+  category: getup_attack
+- id: face_up_forward_get_up_roll
+  label: Face-up forward get-up roll
+  scope: fighter_core
+  future_slot: getup_roll_forward
+  category: getup_roll
+- id: face_up_backward_get_up_roll
+  label: Face-up backward get-up roll
+  scope: fighter_core
+  future_slot: getup_roll_backward
+  category: getup_roll
+- id: face_up_knockdown_transition
+  label: Face-up knockdown transition
+  scope: fighter_core
+  future_slot: knockdown
+  category: knockdown
+- id: face_down_ground_bounce
+  label: Face-down ground bounce
+  scope: fighter_core
+  future_slot: ground_bounce
+  category: ground_bounce
+- id: face_down_prone_idle
+  label: Face-down prone idle
+  scope: fighter_core
+  future_slot: prone
+  category: prone
+- id: face_down_prone_damage
+  label: Face-down prone damage
+  scope: fighter_core
+  future_slot: prone_damage
+  category: prone_damage
+- id: face_down_neutral_get_up
+  label: Face-down neutral get-up
+  scope: fighter_core
+  future_slot: getup
+  category: getup
+- id: face_down_get_up_attack
+  label: Face-down get-up attack
+  scope: fighter_core
+  future_slot: getup_attack
+  category: getup_attack
+- id: face_down_forward_get_up_roll
+  label: Face-down forward get-up roll
+  scope: fighter_core
+  future_slot: getup_roll_forward
+  category: getup_roll
+- id: face_down_backward_get_up_roll
+  label: Face-down backward get-up roll
+  scope: fighter_core
+  future_slot: getup_roll_backward
+  category: getup_roll
+- id: face_down_knockdown_transition
+  label: Face-down knockdown transition
+  scope: fighter_core
+  future_slot: knockdown
+  category: knockdown
+- id: floor_tech_in_place
+  label: Floor tech in place
+  scope: fighter_core
+  future_slot: tech
+  category: tech
+- id: forward_tech_roll
+  label: Forward tech roll
+  scope: fighter_core
+  future_slot: tech_roll_forward
+  category: tech_roll
+- id: backward_tech_roll
+  label: Backward tech roll
+  scope: fighter_core
+  future_slot: tech_roll_backward
+  category: tech_roll
+- id: wall_tech
+  label: Wall tech
+  scope: fighter_core
+  future_slot: wall_tech
+  category: wall_tech
+- id: wall_tech_jump
+  label: Wall-tech jump
+  scope: fighter_core
+  future_slot: wall_tech_jump
+  category: wall_tech_jump
+- id: ceiling_tech
+  label: Ceiling tech
+  scope: fighter_core
+  future_slot: ceiling_tech
+  category: ceiling_tech
+- id: shield_break_launch
+  label: Shield-break launch
+  scope: fighter_core
+  future_slot: shield_break_launch
+  category: shield_break_launch
+- id: shield_break_fall
+  label: Shield-break fall
+  scope: fighter_core
+  future_slot: shield_break_fall
+  category: shield_break_fall
+- id: shield_break_face_up_collapse
+  label: Shield-break face-up collapse
+  scope: fighter_core
+  future_slot: shield_break_collapse
+  category: shield_break_collapse
+- id: shield_break_face_down_collapse
+  label: Shield-break face-down collapse
+  scope: fighter_core
+  future_slot: shield_break_collapse
+  category: shield_break_collapse
+- id: shield_break_face_up_recovery
+  label: Shield-break face-up recovery
+  scope: fighter_core
+  future_slot: shield_break_recover
+  category: shield_break_recover
+- id: shield_break_face_down_recovery
+  label: Shield-break face-down recovery
+  scope: fighter_core
+  future_slot: shield_break_recover
+  category: shield_break_recover
+- id: dizzy_loop
+  label: Dizzy loop
+  scope: fighter_core
+  future_slot: dizzy
+  category: dizzy
+- id: sleep_start
+  label: Sleep start
+  scope: fighter_core
+  future_slot: sleep_start
+  category: sleep_start
+- id: sleep_loop
+  label: Sleep loop
+  scope: fighter_core
+  future_slot: sleep
+  category: sleep
+- id: wake_up
+  label: Wake up
+  scope: fighter_core
+  future_slot: wake
+  category: wake
+- id: bury_start
+  label: Bury start
+  scope: fighter_core
+  future_slot: bury_start
+  category: bury_start
+- id: buried_loop
+  label: Buried loop
+  scope: fighter_core
+  future_slot: buried
+  category: buried
+- id: bury_escape
+  label: Bury escape
+  scope: fighter_core
+  future_slot: bury_escape
+  category: bury_escape
+- id: footstool_jump
+  label: Footstool jump
+  scope: fighter_core
+  future_slot: footstool_jump
+  category: footstool_jump
+- id: footstooled_reaction
+  label: Footstooled reaction
+  scope: fighter_core
+  future_slot: footstooled
+  category: footstooled
+- id: platform_drop_through
+  label: Platform drop-through
+  scope: fighter_core
+  future_slot: platform_drop
+  category: platform_drop
+- id: teeter_start
+  label: Teeter start
+  scope: fighter_core
+  future_slot: teeter_start
+  category: teeter_start
+- id: teeter_idle
+  label: Teeter idle
+  scope: fighter_core
+  future_slot: teeter
+  category: teeter
+- id: lose_footing
+  label: Lose footing
+  scope: fighter_core
+  future_slot: lose_footing
+  category: lose_footing
+- id: ledge_catch
+  label: Ledge catch
+  scope: fighter_core
+  future_slot: ledge_catch
+  category: ledge_catch
+- id: ledge_hang
+  label: Ledge hang
+  scope: fighter_core
+  future_slot: ledge_hang
+  category: ledge_hang
+- id: ledge_neutral_get_up
+  label: Ledge neutral get-up
+  scope: fighter_core
+  future_slot: ledge_getup
+  category: ledge_getup
+- id: ledge_attack
+  label: Ledge attack
+  scope: fighter_core
+  future_slot: ledge_attack
+  category: ledge_attack
+- id: ledge_roll
+  label: Ledge roll
+  scope: fighter_core
+  future_slot: ledge_roll
+  category: ledge_roll
+- id: ledge_jump_start
+  label: Ledge jump start
+  scope: fighter_core
+  future_slot: ledge_jump
+  category: ledge_jump
+- id: ledge_jump_continuation
+  label: Ledge jump continuation
+  scope: fighter_core
+  future_slot: ledge_jump
+  category: ledge_jump
+- id: ledge_drop
+  label: Ledge drop
+  scope: fighter_core
+  future_slot: ledge_drop
+  category: ledge_drop
+- id: trip_fall
+  label: Trip fall
+  scope: fighter_core
+  future_slot: trip_fall
+  category: trip_fall
+- id: trip_landing
+  label: Trip landing
+  scope: fighter_core
+  future_slot: trip_land
+  category: trip_land
+- id: trip_idle
+  label: Trip idle
+  scope: fighter_core
+  future_slot: trip_idle
+  category: trip_idle
+- id: trip_neutral_get_up
+  label: Trip neutral get-up
+  scope: fighter_core
+  future_slot: trip_getup
+  category: trip_getup
+- id: trip_get_up_attack
+  label: Trip get-up attack
+  scope: fighter_core
+  future_slot: trip_attack
+  category: trip_attack
+- id: trip_forward_roll
+  label: Trip forward roll
+  scope: fighter_core
+  future_slot: trip_roll_forward
+  category: trip_roll
+- id: trip_backward_roll
+  label: Trip backward roll
+  scope: fighter_core
+  future_slot: trip_roll_backward
+  category: trip_roll
+- id: up_taunt_right
+  label: Up taunt right
+  scope: fighter_core
+  future_slot: taunt_up
+  category: taunt
+- id: up_taunt_left
+  label: Up taunt left
+  scope: fighter_core
+  future_slot: taunt_up
+  category: taunt
+- id: side_taunt_right
+  label: Side taunt right
+  scope: fighter_core
+  future_slot: taunt_side
+  category: taunt
+- id: side_taunt_left
+  label: Side taunt left
+  scope: fighter_core
+  future_slot: taunt_side
+  category: taunt
+- id: down_taunt_right
+  label: Down taunt right
+  scope: fighter_core
+  future_slot: taunt_down
+  category: taunt
+- id: down_taunt_left
+  label: Down taunt left
+  scope: fighter_core
+  future_slot: taunt_down
+  category: taunt
+- id: entrance_animation
+  label: Entrance animation
+  scope: fighter_core
+  future_slot: entrance
+  category: entrance
+- id: victory_pose_1
+  label: Victory pose 1
+  scope: fighter_core
+  future_slot: victory
+  category: victory
+- id: victory_pose_1_hold
+  label: Victory pose 1 hold
+  scope: fighter_core
+  future_slot: victory_hold
+  category: victory_hold
+- id: victory_pose_2
+  label: Victory pose 2
+  scope: fighter_core
+  future_slot: victory
+  category: victory
+- id: victory_pose_2_hold
+  label: Victory pose 2 hold
+  scope: fighter_core
+  future_slot: victory_hold
+  category: victory_hold
+- id: victory_pose_3
+  label: Victory pose 3
+  scope: fighter_core
+  future_slot: victory
+  category: victory
+- id: victory_pose_3_hold
+  label: Victory pose 3 hold
+  scope: fighter_core
+  future_slot: victory_hold
+  category: victory_hold
+- id: results_loss_applause
+  label: Results loss/applause
+  scope: fighter_core
+  future_slot: loss
+  category: loss
+- id: standing_item_hold
+  label: Standing item hold
+  scope: generic_item
+  future_slot: item_hold
+  category: item_hold
+- id: crouching_item_hold
+  label: Crouching item hold
+  scope: generic_item
+  future_slot: item_hold_crouch
+  category: item_hold_crouch
+- id: item_pickup
+  label: Item pickup
+  scope: generic_item
+  future_slot: item_pickup
+  category: item_pickup
+- id: item_in_hand_pose
+  label: Item-in-hand pose
+  scope: generic_item
+  future_slot: item_hold
+  category: item_hold
+- id: item_grip
+  label: Item grip
+  scope: generic_item
+  future_slot: item_grip
+  category: item_grip
+- id: smash_item_grip
+  label: Smash-item grip
+  scope: generic_item
+  future_slot: item_grip_smash
+  category: item_grip
+- id: light_item_pickup
+  label: Light-item pickup
+  scope: generic_item
+  future_slot: item_pickup
+  category: item_pickup
+- id: heavy_item_pickup
+  label: Heavy-item pickup
+  scope: generic_item
+  future_slot: item_heavy_pickup
+  category: item_heavy_pickup
+- id: heavy_item_carry_idle
+  label: Heavy-item carry idle
+  scope: generic_item
+  future_slot: item_heavy_carry
+  category: item_heavy_carry
+- id: heavy_item_carry_walk
+  label: Heavy-item carry walk
+  scope: generic_item
+  future_slot: item_heavy_walk
+  category: item_heavy_carry
+- id: heavy_item_carry_turn
+  label: Heavy-item carry turn
+  scope: generic_item
+  future_slot: item_heavy_turn
+  category: item_heavy_carry
+- id: light_item_throw_forward
+  label: Light-item throw forward
+  scope: generic_item
+  future_slot: item_throw
+  category: item_throw
+- id: light_item_throw_backward
+  label: Light-item throw backward
+  scope: generic_item
+  future_slot: item_throw
+  category: item_throw
+- id: light_item_throw_up
+  label: Light-item throw up
+  scope: generic_item
+  future_slot: item_throw
+  category: item_throw
+- id: light_item_throw_down
+  label: Light-item throw down
+  scope: generic_item
+  future_slot: item_throw
+  category: item_throw
+- id: light_item_dash_throw
+  label: Light-item dash throw
+  scope: generic_item
+  future_slot: item_throw
+  category: item_throw
+- id: light_item_drop
+  label: Light-item drop
+  scope: generic_item
+  future_slot: item_drop
+  category: item_drop
+- id: aerial_item_throw_forward
+  label: Aerial item throw forward
+  scope: generic_item
+  future_slot: item_throw
+  category: item_throw
+- id: aerial_item_throw_backward
+  label: Aerial item throw backward
+  scope: generic_item
+  future_slot: item_throw
+  category: item_throw
+- id: aerial_item_throw_up
+  label: Aerial item throw up
+  scope: generic_item
+  future_slot: item_throw
+  category: item_throw
+- id: aerial_item_throw_down
+  label: Aerial item throw down
+  scope: generic_item
+  future_slot: item_throw
+  category: item_throw
+- id: heavy_item_throw_forward
+  label: Heavy-item throw forward
+  scope: generic_item
+  future_slot: item_throw
+  category: item_throw
+- id: heavy_item_throw_backward
+  label: Heavy-item throw backward
+  scope: generic_item
+  future_slot: item_throw
+  category: item_throw
+- id: heavy_item_throw_up
+  label: Heavy-item throw up
+  scope: generic_item
+  future_slot: item_throw
+  category: item_throw
+- id: heavy_item_throw_down
+  label: Heavy-item throw down
+  scope: generic_item
+  future_slot: item_throw
+  category: item_throw
+- id: smash_item_throw_forward
+  label: Smash item throw forward
+  scope: generic_item
+  future_slot: item_throw
+  category: item_throw
+- id: smash_item_throw_backward
+  label: Smash item throw backward
+  scope: generic_item
+  future_slot: item_throw
+  category: item_throw
+- id: smash_item_throw_up
+  label: Smash item throw up
+  scope: generic_item
+  future_slot: item_throw
+  category: item_throw
+- id: smash_item_throw_down
+  label: Smash item throw down
+  scope: generic_item
+  future_slot: item_throw
+  category: item_throw
+- id: item_neutral_swing
+  label: Item neutral swing
+  scope: generic_item
+  future_slot: item_swing
+  category: item_swing
+- id: item_tilt_swing
+  label: Item tilt swing
+  scope: generic_item
+  future_slot: item_swing
+  category: item_swing
+- id: item_smash_swing
+  label: Item smash swing
+  scope: generic_item
+  future_slot: item_swing
+  category: item_swing
+- id: item_smash_charge
+  label: Item smash charge
+  scope: generic_item
+  future_slot: item_smash_charge
+  category: item_swing
+- id: item_dash_swing
+  label: Item dash swing
+  scope: generic_item
+  future_slot: item_swing
+  category: item_swing
+- id: ray_gun_fire_grounded
+  label: Ray-gun fire grounded
+  scope: item_ray_gun
+  future_slot: ray_gun_fire
+  category: ray_gun_fire
+- id: ray_gun_fire_aerial
+  label: Ray-gun fire aerial
+  scope: item_ray_gun
+  future_slot: ray_gun_fire
+  category: ray_gun_fire
+- id: empty_ray_gun_grounded
+  label: Empty ray-gun grounded
+  scope: item_ray_gun
+  future_slot: ray_gun_empty
+  category: ray_gun_empty
+- id: empty_ray_gun_aerial
+  label: Empty ray-gun aerial
+  scope: item_ray_gun
+  future_slot: ray_gun_empty
+  category: ray_gun_empty
+- id: fire_flower_fire_grounded
+  label: Fire Flower fire grounded
+  scope: item_fire_flower
+  future_slot: fire_flower
+  category: fire_flower
+- id: fire_flower_fire_aerial
+  label: Fire Flower fire aerial
+  scope: item_fire_flower
+  future_slot: fire_flower
+  category: fire_flower
+- id: scoped_weapon_start
+  label: Scoped weapon start
+  scope: item_scoped_weapon
+  future_slot: scoped_start
+  category: scoped_start
+- id: scoped_weapon_aim
+  label: Scoped weapon aim
+  scope: item_scoped_weapon
+  future_slot: scoped_aim
+  category: scoped_aim
+- id: scoped_weapon_fire
+  label: Scoped weapon fire
+  scope: item_scoped_weapon
+  future_slot: scoped_fire
+  category: scoped_fire
+- id: scoped_weapon_end
+  label: Scoped weapon end
+  scope: item_scoped_weapon
+  future_slot: scoped_end
+  category: scoped_end
+- id: scoped_weapon_fall
+  label: Scoped weapon fall
+  scope: item_scoped_weapon
+  future_slot: scoped_fall
+  category: scoped_fall
+- id: scoped_weapon_aerial_start
+  label: Scoped weapon aerial start
+  scope: item_scoped_weapon
+  future_slot: scoped_start
+  category: scoped_start
+- id: scoped_weapon_aerial_aim
+  label: Scoped weapon aerial aim
+  scope: item_scoped_weapon
+  future_slot: scoped_aim
+  category: scoped_aim
+- id: scoped_weapon_aerial_fire
+  label: Scoped weapon aerial fire
+  scope: item_scoped_weapon
+  future_slot: scoped_fire
+  category: scoped_fire
+- id: scoped_weapon_aerial_end
+  label: Scoped weapon aerial end
+  scope: item_scoped_weapon
+  future_slot: scoped_end
+  category: scoped_end
+- id: scoped_weapon_upward_aim
+  label: Scoped weapon upward aim
+  scope: item_scoped_weapon
+  future_slot: scoped_aim
+  category: scoped_aim
+- id: scoped_weapon_upward_fire
+  label: Scoped weapon upward fire
+  scope: item_scoped_weapon
+  future_slot: scoped_fire
+  category: scoped_fire
+- id: scoped_weapon_empty_start
+  label: Scoped weapon empty start
+  scope: item_scoped_weapon
+  future_slot: scoped_empty_start
+  category: scoped_empty_start
+- id: scoped_weapon_empty_aim
+  label: Scoped weapon empty aim
+  scope: item_scoped_weapon
+  future_slot: scoped_empty_aim
+  category: scoped_empty_aim
+- id: scoped_weapon_empty_fire
+  label: Scoped weapon empty fire
+  scope: item_scoped_weapon
+  future_slot: scoped_empty_fire
+  category: scoped_empty_fire
+- id: scoped_weapon_empty_end
+  label: Scoped weapon empty end
+  scope: item_scoped_weapon
+  future_slot: scoped_empty_end
+  category: scoped_empty_end
+- id: parasol_open
+  label: Parasol open
+  scope: item_parasol
+  future_slot: parasol_open
+  category: parasol_open
+- id: parasol_fall
+  label: Parasol fall
+  scope: item_parasol
+  future_slot: parasol_fall
+  category: parasol_fall
+- id: parasol_special_fall
+  label: Parasol special fall
+  scope: item_parasol
+  future_slot: parasol_special_fall
+  category: parasol_special_fall
+- id: parasol_damage_fall
+  label: Parasol damage fall
+  scope: item_parasol
+  future_slot: parasol_damage_fall
+  category: parasol_damage_fall
+- id: hammer_idle
+  label: Hammer idle
+  scope: item_hammer
+  future_slot: hammer_idle
+  category: hammer_idle
+- id: hammer_movement
+  label: Hammer movement
+  scope: item_hammer
+  future_slot: hammer_move
+  category: hammer_move
+- id: hammer_jump
+  label: Hammer jump
+  scope: item_hammer
+  future_slot: hammer_jump
+  category: hammer_jump
+- id: hammer_fall
+  label: Hammer fall
+  scope: item_hammer
+  future_slot: hammer_fall
+  category: hammer_fall
+- id: hammer_landing
+  label: Hammer landing
+  scope: item_hammer
+  future_slot: hammer_land
+  category: hammer_land
+- id: giant_transformation_grounded
+  label: Giant transformation grounded
+  scope: status_size
+  future_slot: giant_start
+  category: giant_start
+- id: giant_transformation_aerial
+  label: Giant transformation aerial
+  scope: status_size
+  future_slot: giant_start
+  category: giant_start
+- id: giant_transformation_end_grounded
+  label: Giant transformation end grounded
+  scope: status_size
+  future_slot: giant_end
+  category: giant_end
+- id: giant_transformation_end_aerial
+  label: Giant transformation end aerial
+  scope: status_size
+  future_slot: giant_end
+  category: giant_end
+- id: tiny_transformation_grounded
+  label: Tiny transformation grounded
+  scope: status_size
+  future_slot: tiny_start
+  category: tiny_start
+- id: tiny_transformation_aerial
+  label: Tiny transformation aerial
+  scope: status_size
+  future_slot: tiny_start
+  category: tiny_start
+- id: tiny_transformation_end_grounded
+  label: Tiny transformation end grounded
+  scope: status_size
+  future_slot: tiny_end
+  category: tiny_end
+- id: tiny_transformation_end_aerial
+  label: Tiny transformation end aerial
+  scope: status_size
+  future_slot: tiny_end
+  category: tiny_end
+- id: frozen_pose
+  label: Frozen pose
+  scope: status_freeze
+  future_slot: frozen
+  category: frozen
+- id: frozen_breakout
+  label: Frozen breakout
+  scope: status_freeze
+  future_slot: frozen_breakout
+  category: frozen_breakout
+- id: electric_hit_reaction
+  label: Electric hit reaction
+  scope: status_electric
+  future_slot: electric_hit
+  category: electric_hit
+ambition_extensions:
+- id: idle_look_up
+  label: Idle look up
+  scope: fighter_core
+  note: Explicit Ambition fighter review request; not in the supplied source list.
+  future_slot: idle_look_up
+  category: idle_look_up
+- id: crouch_walk
+  label: Crouch walk
+  scope: fighter_core
+  note: Existing Ambition locomotion category; retained as a baseline slot.
+  future_slot: crouch_walk
+  category: crouch_walk

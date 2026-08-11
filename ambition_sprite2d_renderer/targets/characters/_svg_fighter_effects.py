@@ -12,7 +12,7 @@ from typing import Callable, Iterable, Mapping, Sequence
 
 from PIL import Image, ImageFont
 
-from ...authoring.rigdoc import RigDocument
+from ...authoring.rigdoc import RigDocument, RenderPadding, normalize_render_padding
 from ...core.draw import blending_draw
 
 Color = tuple[int, int, int, int]
@@ -52,11 +52,24 @@ def bone_origin(world: World, name: str, fallback: Point) -> Point:
 
 
 class FxCanvas:
-    """Transparent supersampled canvas with base-frame coordinates."""
+    """Transparent supersampled canvas with base-frame coordinates.
 
-    def __init__(self, size: tuple[int, int], scale: int = 3):
+    ``origin`` lets an effect keep using the rig's logical coordinates while
+    being drawn into a larger overscan raster. This is intentionally a canvas
+    concern: effect authors should not have to rewrite every hardcoded point
+    merely because publication needs more room around a rotating character.
+    """
+
+    def __init__(
+        self,
+        size: tuple[int, int],
+        scale: int = 3,
+        *,
+        origin: Point = (0.0, 0.0),
+    ):
         self.size = size
         self.scale = max(1, int(scale))
+        self.origin = (float(origin[0]), float(origin[1]))
         self.image = Image.new(
             "RGBA",
             (size[0] * self.scale, size[1] * self.scale),
@@ -66,12 +79,13 @@ class FxCanvas:
 
     def p(self, point: Point) -> tuple[int, int]:
         return (
-            int(round(point[0] * self.scale)),
-            int(round(point[1] * self.scale)),
+            int(round((point[0] + self.origin[0]) * self.scale)),
+            int(round((point[1] + self.origin[1]) * self.scale)),
         )
 
     def box(self, center: Point, rx: float, ry: float) -> tuple[int, int, int, int]:
-        x, y = center
+        x = center[0] + self.origin[0]
+        y = center[1] + self.origin[1]
         return (
             int(round((x - rx) * self.scale)),
             int(round((y - ry) * self.scale)),
@@ -122,8 +136,8 @@ class FxCanvas:
         except OSError:
             font = ImageFont.load_default()
         bbox = self.draw.textbbox((0, 0), text, font=font, stroke_width=1 if stroke else 0)
-        x = center[0] * self.scale - (bbox[2] - bbox[0]) / 2
-        y = center[1] * self.scale - (bbox[3] - bbox[1]) / 2
+        x = (center[0] + self.origin[0]) * self.scale - (bbox[2] - bbox[0]) / 2
+        y = (center[1] + self.origin[1]) * self.scale - (bbox[3] - bbox[1]) / 2
         self.draw.text(
             (int(round(x)), int(round(y))),
             text,
@@ -165,19 +179,28 @@ def compose_rig_frame(
     *,
     behind: EffectFn | None = None,
     front: EffectFn | None = None,
+    padding: RenderPadding | None = None,
 ) -> Image.Image:
     t = doc.frame_time(animation, frame_idx, frame_count)
     solved = doc.solve(animation, t)
     world, params = solved
-    size = (int(doc.frame["width"]), int(doc.frame["height"]))
+    base_size = (int(doc.frame["width"]), int(doc.frame["height"]))
+    pad_left, pad_top, pad_right, pad_bottom = normalize_render_padding(padding)
+    size = (
+        base_size[0] + pad_left + pad_right,
+        base_size[1] + pad_top + pad_bottom,
+    )
+    origin = (float(pad_left), float(pad_top))
     result = Image.new("RGBA", size, (0, 0, 0, 0))
     if behind is not None:
-        layer = FxCanvas(size)
+        layer = FxCanvas(size, origin=origin)
         behind(layer, t, world, params)
         result.alpha_composite(layer.finish())
-    result.alpha_composite(doc.render_at(animation, t, solved=solved))
+    result.alpha_composite(
+        doc.render_at(animation, t, solved=solved, padding=padding)
+    )
     if front is not None:
-        layer = FxCanvas(size)
+        layer = FxCanvas(size, origin=origin)
         front(layer, t, world, params)
         result.alpha_composite(layer.finish())
     return result

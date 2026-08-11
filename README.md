@@ -106,30 +106,44 @@ result and make the implementation easier to understand.
 
 ## Modal CLI
 
+Run commands from the renderer checkout root. In an Ambition checkout that is
+usually `tools/ambition_sprite2d_renderer/`. The preferred command surface is
+the project entry point installed by `uv`; it makes the active project explicit
+and avoids accidentally invoking a stale globally installed package.
+
+If output unexpectedly lands in another checkout, verify the imported source:
+
+```bash
+uv run python -c 'import ambition_sprite2d_renderer as a; print(a.__file__)'
+```
+
 **Unified Target commands** (take an optional `<TARGET>` from `list`; no arg = bulk):
 
+```bash
+uv run ambition-sprite2d-renderer list                    # every registered target, grouped by category
+uv run ambition-sprite2d-renderer canonical [<target>]    # one canonical, or the full gallery
+uv run ambition-sprite2d-renderer sheet     [<target>]    # gameplay sheet only
+uv run ambition-sprite2d-renderer portraits [<target>]    # native portrait product for supported characters
+uv run ambition-sprite2d-renderer install   [<target>]    # install rendered products
+uv run ambition-sprite2d-renderer publish   [<target>]    # gameplay sheet + portraits + install
+uv run ambition-sprite2d-renderer gifs      [<target>]    # per-animation GIF previews
+uv run ambition-sprite2d-renderer debug-hitboxes <target> # hitbox/hurtbox overlay strips
 ```
-python -m ambition_sprite2d_renderer list                   # every registered target, grouped by category
-python -m ambition_sprite2d_renderer canonical [<target>]   # one canonical, or the full gallery
-python -m ambition_sprite2d_renderer sheet     [<target>]   # gameplay sheet only
-python -m ambition_sprite2d_renderer portraits [<target>]   # native portrait product for supported characters
-python -m ambition_sprite2d_renderer install   [<target>]   # install rendered products
-python -m ambition_sprite2d_renderer publish   [<target>]   # gameplay sheet + portraits + install
-python -m ambition_sprite2d_renderer gifs      [<target>]   # per-animation GIF previews
-python -m ambition_sprite2d_renderer debug-hitboxes <target> # hitbox/hurtbox overlay strips
-```
+
+`python -m ambition_sprite2d_renderer ...` is also supported by a complete
+checkout, but the console entry point above is the recommended authoring loop.
 
 **Generator-pipeline commands** (take config paths or have unique semantics):
 
-```
-python -m ambition_sprite2d_renderer draw-all                # render every config in configs/
-python -m ambition_sprite2d_renderer draw-review             # render every config in configs/review/
-python -m ambition_sprite2d_renderer draw-character <cfg>    # one config: canonical + spritesheet + YAML
-python -m ambition_sprite2d_renderer draw-factions           # music-faction lineup review render
-python -m ambition_sprite2d_renderer draw-runtime-npcs       # render+install the curated runtime-NPC subset
-python -m ambition_sprite2d_renderer spritesheet <cfg> <out> # one config's sheet to a specific path
-python -m ambition_sprite2d_renderer single <cfg> <out>      # one frame from a config
-python -m ambition_sprite2d_renderer regenerate-all          # draw-all + publish + draw-runtime-npcs
+```bash
+uv run ambition-sprite2d-renderer draw-all                 # render every config in configs/
+uv run ambition-sprite2d-renderer draw-review              # render every config in configs/review/
+uv run ambition-sprite2d-renderer draw-character <cfg>     # one config: canonical + spritesheet + YAML
+uv run ambition-sprite2d-renderer draw-factions            # music-faction lineup review render
+uv run ambition-sprite2d-renderer draw-runtime-npcs        # render+install the curated runtime-NPC subset
+uv run ambition-sprite2d-renderer spritesheet <cfg> <out>  # one config's sheet to a specific path
+uv run ambition-sprite2d-renderer single <cfg> <out>       # one frame from a config
+uv run ambition-sprite2d-renderer regenerate-all           # draw-all + publish + draw-runtime-npcs
 ```
 
 ## Profiling regeneration
@@ -346,6 +360,95 @@ from `generated/<name>/` into `crates/ambition_actors/assets/sprites/`. If your
 target ships a subdirectory of part files (or otherwise needs non-flat gameplay
 installation), expose `install(render_dir, dest_root) -> Iterable[Path]`. The
 common target installer still adds declared portrait files afterward.
+
+### Working with procedural and rigged characters
+
+The registry command is the same for every character; what changes is the
+authoring source that must be updated before `sheet` is run.
+
+**Direct/procedural module target.** Edit the Python target (and any private
+family helpers it owns), then render the target directly:
+
+```bash
+uv run ambition-sprite2d-renderer sheet weird_hermit
+uv run ambition-sprite2d-renderer gifs weird_hermit
+```
+
+There is no rig rebuild step unless that particular target explicitly owns one.
+
+**Canonical SVG + generated rig.** The SVG supplies part art and attachment
+geometry, while the rig/builder supplies anatomy, natural pose, IK, and clips.
+When the SVG changes, rebuild the generated rig *before* opening that rig in the
+GUI; opening a `.rig.json` directly does not refresh it from its SVG. Patent
+Clerk's normal edit/review loop is:
+
+```bash
+uv run python scripts/build_scientist_fighter_rigs.py build patent_clerk
+uv run --extra gui python -m ambition_sprite2d_renderer.gui \
+  ambition_sprite2d_renderer/targets/characters/rigged/patent_clerk/patent_clerk_side.rig.json
+uv run ambition-sprite2d-renderer sheet patent_clerk
+uv run ambition-sprite2d-renderer gifs patent_clerk
+```
+
+The source SVG may intentionally use a splayed/exploded pose so every part is
+easy to see. That layout is art/geometry authoring, not the character's neutral
+stance. Natural limb targets and bend direction belong to rig authoring.
+
+Player Robot v3 is also SVG-rigged but has its own builder:
+
+```bash
+uv run python scripts/build_player_robot_v3_svg.py build
+uv run --extra gui python -m ambition_sprite2d_renderer.gui \
+  ambition_sprite2d_renderer/targets/characters/rigged/player_robot_v3/player_robot_v3.rig.json
+uv run ambition-sprite2d-renderer sheet player_robot_v3
+```
+
+A rig's logical authoring frame and its published raster need not be identical.
+Large rotations such as rolls should use rig-render overscan so parts are painted
+outside the logical frame before publication crops or packs them. Padding a
+finished frame is too late: pixels clipped during rig composition are already
+lost. Keep the logical coordinates stable and add overscan at the rig render
+seam when a motion envelope needs more room.
+
+Generated products remain under `generated/<target>/`; they are review/build
+artifacts and are not committed.
+
+#### Fighter motion vocabulary and coverage
+
+The long-term fighter animation vocabulary is recorded in
+[`data/fighter_motion_vocabulary.yaml`](ambition_sprite2d_renderer/data/fighter_motion_vocabulary.yaml).
+It preserves the full motion list even when current art does not justify every
+left/right, grounded/aerial, hit-reaction, item, or results variation.
+
+Each catalog entry has two useful levels:
+
+- `future_slot` is the fine-grained eventual animation slot. This is where later
+  art can split variants without renaming or losing the original requirement.
+- `category` is the current-art coverage unit. A mature fighter should cover
+  every category whose `scope` applies to that fighter, but several future
+  variants may intentionally share that one row today.
+
+`fighter_core` applies to a full fighter. `generic_item` applies when the
+character participates in the dynamic held-item system. Specialized item and
+status scopes are capability-gated rather than mandatory for every character.
+Ambition-specific additions such as `idle_look_up` and `crouch_walk` live in the
+catalog's `ambition_extensions` section rather than silently changing the
+supplied source list.
+
+Patent Clerk's current row list and category-to-row coverage live together in
+[`targets/characters/patent_clerk_motion.py`](ambition_sprite2d_renderer/targets/characters/patent_clerk_motion.py).
+The SVG rig builder and the renderer both import that same row declaration, so
+adding a motion cannot update one side while leaving the other stale. Coverage
+is checked with:
+
+```bash
+uv run python -m pytest tests/test_fighter_motion_vocabulary.py -q
+```
+
+This coverage file is deliberately an authoring contract, not gameplay move
+data. Damage, knockback, cancels, charge rules, and move-to-clip binding belong
+to the game-side character/moveset definition; the sprite repository owns the
+visual motion rows those moves can request.
 
 ### Helpers and authoring families
 

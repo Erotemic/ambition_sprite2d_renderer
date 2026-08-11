@@ -193,33 +193,6 @@ class TestTemplateDocument:
         positive_elbow_x = positive["near_arm_l"].origin[0]
         assert positive_elbow_x - negative_elbow_x > 1.0
 
-    def test_ik_arm_max_reach_ratio_keeps_a_visible_elbow_bend(self, doc):
-        doc.data["ik_chains"] = [
-            {
-                "upper": "near_arm_u",
-                "lower": "near_arm_l",
-                "channel_prefix": "near_hand",
-                "rest_x": -200.0,
-                "rest_y": -20.0,
-                "bend": 1.0,
-                "max_reach_ratio": 0.98,
-            }
-        ]
-        doc.data["clips"]["soft_reach"] = {
-            "loop": False,
-            "frames": 1,
-            "duration_ms": 0,
-            "channels": {
-                "near_hand_x": {"const": -200.0},
-                "near_hand_y": {"const": -20.0},
-            },
-        }
-        world, _ = doc.solve("soft_reach", 0.0)
-        upper = world["near_arm_u"].angle
-        lower = world["near_arm_l"].angle
-        bend = abs((lower - upper + 180.0) % 360.0 - 180.0)
-        assert bend > 10.0
-
     def test_blade_hidden_outside_slash(self, doc):
         # opacity_channel parts default to invisible when their channel is
         # absent: idle must not paint the blade.
@@ -282,6 +255,52 @@ def test_render_at_accepts_a_precomputed_solve(monkeypatch):
     monkeypatch.setattr(doc, "solve", unexpected_solve)
     image = doc.render_at("idle", 0.0, supersample=1, solved=solved)
     assert image.size == (128, 128)
+
+
+def test_render_padding_preserves_art_outside_logical_frame():
+    doc = RigDocument.new_empty("overscan")
+    doc.data["frame"] = {
+        "width": 40,
+        "height": 40,
+        "supersample": 1,
+        "ground_y": 20.0,
+        "center_x": 4.0,
+        "ankle_h": 0.0,
+    }
+    doc.data["bones"] = [
+        {
+            "name": "root",
+            "parent": None,
+            "offset": [0.0, 0.0],
+            "length": 0.0,
+            "rest_angle": 0.0,
+        }
+    ]
+    doc.data["parts"] = [
+        {
+            "name": "wide",
+            "bone": "root",
+            "z": 0,
+            "kind": "polygon",
+            "points": [[-10, -5], [10, -5], [10, 5], [-10, 5]],
+            "fill": "#FFFFFF",
+            "outline_w": 0.0,
+        }
+    ]
+    doc.data["clips"] = {
+        "idle": {"loop": True, "frames": 1, "duration_ms": 100, "channels": {}}
+    }
+
+    clipped = doc.render_frame("idle", 0, 1)
+    overscanned = doc.render_frame("idle", 0, 1, padding=12)
+
+    assert clipped.size == (40, 40)
+    assert overscanned.size == (64, 64)
+    clipped_bbox = clipped.getchannel("A").getbbox()
+    overscan_bbox = overscanned.getchannel("A").getbbox()
+    assert clipped_bbox is not None and clipped_bbox[0] == 0
+    assert overscan_bbox is not None and overscan_bbox[0] > 0
+    assert overscan_bbox[2] - overscan_bbox[0] > clipped_bbox[2] - clipped_bbox[0]
 
 
 def _prepared_sprite_for_test():

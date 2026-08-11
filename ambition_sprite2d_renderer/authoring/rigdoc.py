@@ -79,7 +79,6 @@ are painted on a scratch layer and alpha-composited (the gnu_ton rule).
 
 from __future__ import annotations
 
-import math
 from collections import OrderedDict
 from dataclasses import dataclass
 import json
@@ -117,6 +116,45 @@ except ImportError:  # Optional developer dependency.
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
+
+RenderPadding = Union[int, Tuple[int, int], Tuple[int, int, int, int]]
+
+
+def normalize_render_padding(value: Optional[RenderPadding]) -> Tuple[int, int, int, int]:
+    """Normalize rig render overscan to ``(left, top, right, bottom)``.
+
+    Rig animation coordinates stay in the original logical frame. Padding only
+    enlarges the temporary/output raster and translates world-space painting,
+    so rotations can leave the logical frame without losing pixels.
+    """
+    if value is None:
+        return (0, 0, 0, 0)
+    if isinstance(value, int):
+        n = max(0, int(value))
+        return (n, n, n, n)
+    values = tuple(int(v) for v in value)
+    if len(values) == 2:
+        x, y = values
+        return (max(0, x), max(0, y), max(0, x), max(0, y))
+    if len(values) == 4:
+        left, top, right, bottom = values
+        return tuple(max(0, v) for v in (left, top, right, bottom))
+    raise ValueError(
+        "render padding must be an int, (x, y), or (left, top, right, bottom)"
+    )
+
+
+def translate_bone_worlds(
+    world: Dict[str, BoneWorld], dx: float, dy: float
+) -> Dict[str, BoneWorld]:
+    """Translate solved bone origins without changing pose angles/lengths."""
+    if dx == 0.0 and dy == 0.0:
+        return world
+    return {
+        name: BoneWorld((bone.origin[0] + dx, bone.origin[1] + dy), bone.angle, bone.length)
+        for name, bone in world.items()
+    }
+
 
 PART_KINDS = ("polygon", "capsule", "circle", "sprite")
 EASE_NAMES = ("linear", "smooth", "out", "in", "sine")
@@ -526,23 +564,11 @@ class RigDocument:
             if up not in sk.bones or lo not in sk.bones:
                 return
             origin = w0[up].origin
-            upper_len = sk.bones[up].length
-            lower_len = sk.bones[lo].length
-            max_reach_ratio = chain.get("max_reach_ratio")
-            if max_reach_ratio is not None:
-                ratio = max(0.0, min(1.0, float(max_reach_ratio)))
-                dx = target[0] - origin[0]
-                dy = target[1] - origin[1]
-                distance = math.hypot(dx, dy)
-                max_distance = (upper_len + lower_len) * ratio
-                if distance > max_distance and distance > 1e-9:
-                    scale = max_distance / distance
-                    target = (origin[0] + dx * scale, origin[1] + dy * scale)
             a1, a2 = two_bone_ik(
                 origin,
                 target,
-                upper_len,
-                lower_len,
+                sk.bones[up].length,
+                sk.bones[lo].length,
                 bend=float(chain.get("bend", 1.0) if bend is None else bend),
             )
             parent = sk.bones[up].parent
@@ -574,12 +600,10 @@ class RigDocument:
             y = s.get(f"{pre}_y", float(chain.get("rest_y", 0.0)))
             end_name = chain.get("end")
             pitch = None
-            if end_name and f"{pre}_pitch" in s:
-                # Hand/world pitch is opt-in.  When a clip does not author an
-                # explicit wrist pitch, keeping the hand on the lower-arm axis
-                # produces a much more natural default than pinning it to an
-                # absolute world-space angle sampled from the source stance.
-                pitch = s[f"{pre}_pitch"]
+            if end_name:
+                pitch = s.get(
+                    f"{pre}_pitch", float(chain.get("rest_pitch", 0.0))
+                )
             bend = s.get(f"{pre}_bend", float(chain.get("bend", 1.0)))
             solve_chain(
                 chain,
@@ -783,6 +807,7 @@ class RigDocument:
         supersample: Optional[int] = None,
         scale: Optional[int] = None,
         solved=None,
+        padding: Optional[RenderPadding] = None,
     ) -> Image.Image:
         """Render one frame at normalized time ``t`` (continuous — the GUI
         scrubs with this). Output size is ``(width*scale, height*scale)``;
@@ -790,16 +815,24 @@ class RigDocument:
         a doc can publish at 2x/4x resolution while geometry stays authored
         in base-frame units. ``solved`` may provide a previously computed
         ``(world, params)`` pair so the editor can share one solve between the
-        sprite render, bone overlay, and hit testing."""
+        sprite render, bone overlay, and hit testing. ``padding`` adds
+        transparent render overscan around the logical frame *before* parts are
+        painted; unlike padding a finished frame, this preserves pixels from
+        rotations that would otherwise be clipped at the logical-frame edge.
+        """
         fr = self.frame
         w, h = int(fr["width"]), int(fr["height"])
+        pad_left, pad_top, pad_right, pad_bottom = normalize_render_padding(padding)
+        out_w = w + pad_left + pad_right
+        out_h = h + pad_top + pad_bottom
         rs = int(scale if scale is not None else fr.get("render_scale", 1))
         rs = max(1, rs)
         ss = max(1, int(supersample if supersample is not None else fr.get("supersample", 4)))
         S = float(rs * ss)
-        img = Image.new("RGBA", (int(w * S), int(h * S)), (0, 0, 0, 0))
+        img = Image.new("RGBA", (int(out_w * S), int(out_h * S)), (0, 0, 0, 0))
         draw = blending_draw(img)
         world, params = solved if solved is not None else self.solve(clip_name, t)
+        world = translate_bone_worlds(world, float(pad_left), float(pad_top))
         for part in visible_parts(self.parts, self.features):
             sprite = self.sprite_raster(part, S) if part.get("kind") == "sprite" else None
             paint_part(
@@ -820,7 +853,7 @@ class RigDocument:
         # which survives as isolated pale pixels around the transparent sprite.
         return resize_transparent_sprite(
             img,
-            (w * rs, h * rs),
+            (out_w * rs, out_h * rs),
             reducing_gap=3.0,
         )
 
@@ -833,8 +866,19 @@ class RigDocument:
             return frame_idx / max(1, n)
         return frame_idx / max(1, n - 1)
 
-    def render_frame(self, clip_name: str, frame_idx: int, nframes: int) -> Image.Image:
-        return self.render_at(clip_name, self.frame_time(clip_name, frame_idx, nframes))
+    def render_frame(
+        self,
+        clip_name: str,
+        frame_idx: int,
+        nframes: int,
+        *,
+        padding: Optional[RenderPadding] = None,
+    ) -> Image.Image:
+        return self.render_at(
+            clip_name,
+            self.frame_time(clip_name, frame_idx, nframes),
+            padding=padding,
+        )
 
 
 # ---- Part painting -----------------------------------------------------------
