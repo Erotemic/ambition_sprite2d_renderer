@@ -15,7 +15,15 @@ from PIL import Image
 from ...authoring.canonical_scientist_rig import load_scientist_rig
 from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet, write_canonical
-from .noether_motion import FIGHTER_MOTION_COVERAGE, NOETHER_ROWS
+from ._svg_fighter_effects import compose_rig_frame
+from .noether_gameplay import (
+    ATTACK_HITBOXES,
+    NOETHER_MOVE_BLUEPRINT,
+    body_metrics as authored_body_metrics,
+    hurtbox_parts_for_rows,
+)
+from .noether_effects import draw_noether_behind, draw_noether_front
+from .noether_motion import EFFECT_ALIASES, FIGHTER_MOTION_COVERAGE, NOETHER_ROWS
 
 TARGET_NAME = "noether"
 RIG_FRAME_SIZE = (192, 208)
@@ -28,7 +36,7 @@ ROWS: List[Tuple[str, int, int]] = list(NOETHER_ROWS)
 
 ACTOR_METADATA = {
     "actor": {
-        "character_id": "npc_noether",
+        "character_id": "noether",
         "display_name": "Emmy No-Ether",
     },
     "body": {
@@ -63,7 +71,10 @@ ACTOR_METADATA = {
         "default_pose": "idle",
         "canonical_source": "assets/noether.svg",
     },
-    "actions": {"default_preset": "noether"},
+    "actions": {
+        "default_preset": "noether",
+        "authored_moves": NOETHER_MOVE_BLUEPRINT,
+    },
     "animation_bindings": {
         "default": {"animation": "idle", "events": []},
         "locomotion.walk": {"animation": "walk", "events": []},
@@ -101,10 +112,18 @@ def _doc() -> RigDocument:
 
 
 def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
-    return _doc().render_frame(
+    effect_animation = EFFECT_ALIASES.get(animation, animation)
+    return compose_rig_frame(
+        _doc(),
         animation,
         frame_idx,
         frame_count,
+        behind=lambda canvas, t, world, params: draw_noether_behind(
+            effect_animation, canvas, t, world, params
+        ),
+        front=lambda canvas, t, world, params: draw_noether_front(
+            effect_animation, canvas, t, world, params
+        ),
         padding=RIG_RENDER_PADDING,
     )
 
@@ -120,8 +139,12 @@ def render(out_dir: str | Path, **opts):
         frame_size=FRAME_SIZE,
         auto_crop=False,
         actor_metadata=ACTOR_METADATA,
+        body_metrics_fn=authored_body_metrics,
         sheet_tuning=doc.sprite_tuning or {"collision_scale": 1.86},
         animation_key_map={name: name for name, _frames, _duration in ROWS},
+        attack_hitboxes=ATTACK_HITBOXES,
+        hurtbox_parts=hurtbox_parts_for_rows(ROWS),
+        pose_bodies="authored",
         trim=True,
     )
     keys = (

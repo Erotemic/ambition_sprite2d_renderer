@@ -6,6 +6,7 @@ from scripts.build_scientist_fighter_rigs import (
     _neutral,
     _pose,
     _rebase_hand_trajectory,
+    _retarget_clip_arms_to_torso,
 )
 from ambition_sprite2d_renderer.authoring.humanoid_svg_rig import LimbPoseHint
 
@@ -145,3 +146,69 @@ def test_carl_natural_arm_pose_is_separate_from_svg_splay():
         for hint in spec.natural_arm_pose.values()
     )
     assert spec.arm_max_reach_ratio == 0.98
+
+
+def _two_arm_geometry_doc():
+    return {
+        "name": "two_arm_test",
+        "frame": {
+            "width": 128,
+            "height": 128,
+            "center_x": 64.0,
+            "ground_y": 100.0,
+            "ankle_h": 2.0,
+            "supersample": 1,
+        },
+        "palette": {},
+        "parts": [],
+        "bones": [
+            {"name": "pelvis", "parent": None, "offset": [0.0, -20.0], "length": 0.0, "rest_angle": 0.0},
+            {"name": "torso", "parent": "pelvis", "offset": [0.0, -10.0], "length": 0.0, "rest_angle": 0.0},
+            {"name": "near_arm_u", "parent": "torso", "offset": [0.0, -8.0], "length": 18.0, "rest_angle": 0.0},
+            {"name": "near_arm_l", "parent": "near_arm_u", "offset": [18.0, 0.0], "length": 16.0, "rest_angle": 0.0},
+            {"name": "near_arm_hand", "parent": "near_arm_l", "offset": [16.0, 0.0], "length": 0.0, "rest_angle": 0.0},
+            {"name": "far_arm_u", "parent": "torso", "offset": [0.0, -4.0], "length": 18.0, "rest_angle": 0.0},
+            {"name": "far_arm_l", "parent": "far_arm_u", "offset": [18.0, 0.0], "length": 16.0, "rest_angle": 0.0},
+            {"name": "far_arm_hand", "parent": "far_arm_l", "offset": [16.0, 0.0], "length": 0.0, "rest_angle": 0.0},
+        ],
+        "ik_legs": [],
+        "ik_chains": [
+            {"upper": "near_arm_u", "lower": "near_arm_l", "end": "near_arm_hand", "channel_prefix": "near_hand", "rest_x": 26.0, "rest_y": -38.0, "bend": -1.0},
+            {"upper": "far_arm_u", "lower": "far_arm_l", "end": "far_arm_hand", "channel_prefix": "far_hand", "rest_x": 26.0, "rest_y": -34.0, "bend": -1.0},
+        ],
+    }
+
+
+def test_torso_arm_retarget_can_repair_only_one_side():
+    doc = _two_arm_geometry_doc()
+    clips = {
+        "idle": {
+            "loop": True,
+            "frames": 1,
+            "duration_ms": 100,
+            "channels": {
+                "near_hand_x": {"const": 26.0},
+                "near_hand_y": {"const": -38.0},
+                "far_hand_x": {"const": 26.0},
+                "far_hand_y": {"const": -34.0},
+            },
+        },
+        "reaction": {
+            "loop": False,
+            "frames": 2,
+            "duration_ms": 100,
+            "channels": {
+                "near_hand_x": {"keys": [[0.0, 20.0], [1.0, -18.0]]},
+                "near_hand_y": {"keys": [[0.0, -30.0], [1.0, -55.0]]},
+                "far_hand_x": {"keys": [[0.0, 10.0], [1.0, -22.0]]},
+                "far_hand_y": {"keys": [[0.0, -18.0], [1.0, -50.0]]},
+            },
+        },
+    }
+    repaired = _retarget_clip_arms_to_torso(
+        doc, clips, "reaction", reach_scale=0.8, sides=("far",)
+    )
+    assert repaired["channels"]["near_hand_x"] == clips["reaction"]["channels"]["near_hand_x"]
+    assert repaired["channels"]["near_hand_y"] == clips["reaction"]["channels"]["near_hand_y"]
+    assert repaired["channels"]["far_hand_x"] != clips["reaction"]["channels"]["far_hand_x"]
+    assert repaired["channels"]["far_hand_y"] != clips["reaction"]["channels"]["far_hand_y"]

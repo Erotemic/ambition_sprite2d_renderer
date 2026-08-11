@@ -826,7 +826,26 @@ def discover_module_targets() -> DiscoveryReport:
             multi = getattr(mod, "TARGETS", None)
             if isinstance(multi, dict):
                 for tgt in _build_module_targets(mod, stem, category, dotted, warnings):
-                    if tgt.name in targets:
+                    existing = targets.get(tgt.name)
+                    if existing is not None:
+                        existing_stem = (
+                            existing.module_path.rsplit(".", 1)[-1]
+                            if existing.module_path
+                            else ""
+                        )
+                        # A dedicated module whose filename is the target name is
+                        # the strongest module publication contract. Multi-target
+                        # adapters such as characters/rigged.py are convenience
+                        # discovery surfaces and must never silently replace a
+                        # dedicated character module merely because they sort
+                        # later during the filesystem walk.
+                        if existing_stem == tgt.name and stem != tgt.name:
+                            warnings.append(
+                                f"{category}/{stem}: TARGETS entry {tgt.name!r} "
+                                f"ignored because dedicated module "
+                                f"{existing.module_path!r} owns that target name"
+                            )
+                            continue
                         warnings.append(
                             f"{category}/{stem}: TARGETS entry {tgt.name!r} shadows "
                             f"an earlier target of the same name"

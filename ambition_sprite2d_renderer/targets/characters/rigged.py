@@ -7,9 +7,9 @@ through the standard pipeline::
 
     ./regen_sprites.sh --target <doc name>
 
-Keep document names distinct from existing Python targets — on a name
-collision the registry keeps whichever loads later, which silently
-shadows one of the two.
+Loose rig documents are a fallback publication surface. A dedicated Python
+character module with the same target name always wins; the loose document can
+remain editable without becoming runtime publication authority.
 """
 
 from __future__ import annotations

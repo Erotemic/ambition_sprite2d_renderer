@@ -64,3 +64,10 @@ def test_target_names_are_unique_after_discovery():
     report = discover_all_targets()
     names = list(report.targets)
     assert len(names) == len(set(names))
+
+
+def test_noether_dedicated_module_outranks_legacy_loose_rig():
+    report = discover_module_targets()
+    target = report.targets["noether"]
+    assert target.module_path == "ambition_sprite2d_renderer.targets.characters.noether"
+

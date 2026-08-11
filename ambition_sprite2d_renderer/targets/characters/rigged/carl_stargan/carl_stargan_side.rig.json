@@ -533,8 +533,8 @@
       "rest_x": -12.0,
       "rest_y": -58.0,
       "rest_pitch": 7.7977,
-      "bend": -1.0,
       "pitch_mode": "follow_lower",
+      "bend": -1.0,
       "pose_authority": "explicit-hint",
       "max_reach_ratio": 0.98
     },
@@ -546,8 +546,8 @@
       "rest_x": -22.0,
       "rest_y": -52.0,
       "rest_pitch": 179.6102,
-      "bend": 1.0,
       "pitch_mode": "follow_lower",
+      "bend": 1.0,
       "pose_authority": "explicit-hint",
       "max_reach_ratio": 0.98
     }
@@ -39508,22 +39508,9 @@
     "canonical_svg": true,
     "facing": "left",
     "source_authority": "assets/carl-stargan.svg",
+    "source_pose_role": "geometry-layout-only",
+    "natural_pose_authority": "character-spec",
     "part_order_policy": "svg-document-order"
-  },
-  "asset_metadata": {
-    "source_kind": "manual-svg-paperdoll",
-    "builder": "scripts/build_scientist_fighter_rigs.py",
-    "character": "carl_stargan"
-  },
-  "build_provenance": {
-    "schema": "canonical-svg-rig-v3",
-    "builder_version": 17,
-    "renderer": "resvg_py",
-    "renderer_version": "0.3.3",
-    "renderer_backend": "native-extension",
-    "svg_sha256": "17ad999922fc5b85dde907905f71762bed4c70bf03b6fd0d54467953c8242fb7",
-    "part_order_policy": "svg-document-order",
-    "part_order": "svg-document"
   },
   "natural_pose": {
     "arms": {
@@ -39548,5 +39535,20 @@
         ]
       }
     }
+  },
+  "asset_metadata": {
+    "source_kind": "manual-svg-paperdoll",
+    "builder": "scripts/build_scientist_fighter_rigs.py",
+    "character": "carl_stargan"
+  },
+  "build_provenance": {
+    "schema": "canonical-svg-rig-v3",
+    "builder_version": 17,
+    "renderer": "resvg_py",
+    "renderer_version": "0.3.3",
+    "renderer_backend": "native-extension",
+    "svg_sha256": "17ad999922fc5b85dde907905f71762bed4c70bf03b6fd0d54467953c8242fb7",
+    "part_order_policy": "svg-document-order",
+    "part_order": "svg-document"
   }
 }
