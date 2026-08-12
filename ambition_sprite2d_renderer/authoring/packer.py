@@ -1,4 +1,4 @@
-"""Professional sprite-atlas packing: per-frame alpha-trim + MaxRects bin
+"""Professional sprite-atlas packing: per-frame alpha-trim + rectpack atlas
 packing across one or more page images.
 
 Our generated sheets are 84-97% transparent because every frame reserves the
@@ -7,10 +7,11 @@ width, and idle/rest frames waste the rest). This module reclaims that space:
 
   1. **Trim** each frame to its opaque alpha bounding box, recording the offset
      of the trimmed rect within the original (logical) frame.
-  2. **Pack** the trimmed rects into pages no larger than ``max_dim`` using the
-     ``rectpack`` MaxRects bin packer (the NP-hard heuristic we deliberately do
-     NOT reinvent). No rotation — Bevy's ``TextureAtlas`` can't render rotated
-     atlas frames without a custom mesh.
+  2. **Pack** the trimmed rects into pages no larger than ``max_dim`` using
+     a deterministic height-sorted shelf packer. Atlas publication values
+     regeneration latency over squeezing the final few percent of density out
+     of an NP-hard placement problem. No rotation — Bevy's ``TextureAtlas``
+     can't render rotated atlas frames without a custom mesh.
   3. **Extrude/gutter**: a transparent ``padding`` border around each frame so
      bilinear filtering at a frame edge never samples a neighbouring frame.
 
@@ -31,8 +32,6 @@ from typing import Any, Dict, Hashable, List, Sequence, Tuple
 
 from PIL import Image
 from ..profiling import profile
-from rectpack import newPacker, PackingMode, SORT_AREA
-from rectpack.maxrects import MaxRectsBssf
 
 
 @dataclass
@@ -94,7 +93,7 @@ def pack_frames(
     trim: bool = True,
     background: Tuple[int, int, int, int] = (0, 0, 0, 0),
 ) -> PackResult:
-    """Trim + MaxRects-pack ``frames`` freely into square pages of ``page_size``
+    """Trim + shelf-pack ``frames`` freely into square pages of ``page_size``
     (spilling to more pages as needed). Frames of one logical animation may land
     on different pages — the runtime addresses each frame by its own page, so
     this maximizes fill. ``page_size`` is clamped to ``max_dim`` (the GPU limit).
@@ -180,22 +179,81 @@ def _pack_rects_once(
     side: int,
     bin_count: int | float,
 ) -> List[Tuple[int, int, int, int, int, int]]:
-    """Run one deterministic MaxRects pass and return ``rect_list()``.
+    """Pack rectangles with deterministic first-fit-decreasing shelves.
 
-    Keeping this as a separate seam lets the bin chooser reuse a successful
-    trial as the final placement instead of paying for an identical second pack.
+    Runtime sprite publication needs stable, lossless placement much more than
+    a globally near-optimal bin solution. The previous MaxRects search consumed
+    minutes of a full regeneration. This O(n * shelves) packer sorts by height
+    once, fills existing shelves by best remaining width, and opens a new shelf
+    or page only when necessary. It performs no rotations.
+
+    The return shape matches ``rectpack.rect_list()``:
+    ``(page, x, y, w, h, input_index)``. With ``bin_count=1`` a failed one-page
+    trial returns the placements completed before the first overflow so the
+    near-square caller can cheaply grow the candidate side and retry.
     """
-    packer = newPacker(
-        mode=PackingMode.Offline,
-        rotation=False,
-        pack_algo=MaxRectsBssf,
-        sort_algo=SORT_AREA,
+    if side <= 0:
+        raise ValueError(f"side must be positive, got {side!r}")
+    if not sizes:
+        return []
+
+    max_bins = None if isinstance(bin_count, float) and math.isinf(bin_count) else max(0, int(bin_count))
+    if max_bins == 0:
+        return []
+
+    order = sorted(
+        range(len(sizes)),
+        key=lambda rid: (-sizes[rid][1], -sizes[rid][0], -(sizes[rid][0] * sizes[rid][1]), rid),
     )
-    for idx, (w, h) in enumerate(sizes):
-        packer.add_rect(w, h, rid=idx)
-    packer.add_bin(side, side, count=bin_count)
-    packer.pack()
-    return list(packer.rect_list())
+    # Each page is ``[used_height, shelves]``; each shelf is mutable
+    # ``[y, height, used_width]``. Height-sorted input guarantees that a later
+    # rectangle never needs to make an existing shelf taller.
+    pages: List[list] = []
+    out: List[Tuple[int, int, int, int, int, int]] = []
+
+    for rid in order:
+        w, h = sizes[rid]
+        if w > side or h > side:
+            continue
+
+        placed = False
+        for page_idx, page in enumerate(pages):
+            used_height, shelves = page
+            best_shelf = None
+            best_remaining = None
+            for shelf_idx, shelf in enumerate(shelves):
+                sy, sh, sx = shelf
+                if h <= sh and sx + w <= side:
+                    remaining = side - (sx + w)
+                    if best_remaining is None or remaining < best_remaining:
+                        best_remaining = remaining
+                        best_shelf = shelf_idx
+            if best_shelf is not None:
+                shelf = shelves[best_shelf]
+                x, y = shelf[2], shelf[0]
+                shelf[2] += w
+                out.append((page_idx, x, y, w, h, rid))
+                placed = True
+                break
+
+            if used_height + h <= side:
+                y = used_height
+                shelves.append([y, h, w])
+                page[0] = used_height + h
+                out.append((page_idx, 0, y, w, h, rid))
+                placed = True
+                break
+
+        if placed:
+            continue
+
+        if max_bins is not None and len(pages) >= max_bins:
+            break
+        page_idx = len(pages)
+        pages.append([h, [[0, h, w]]])
+        out.append((page_idx, 0, 0, w, h, rid))
+
+    return out
 
 
 def _align_up(value: int, quantum: int) -> int:
@@ -212,9 +270,10 @@ def _pack_near_square(
 ) -> Tuple[int, List[Tuple[int, int, int, int, int, int]]]:
     """Pack rectangles with a bounded near-square search.
 
-    The area lower bound estimates a compact one-page square. MaxRects gets
-    roughly 22 percent slack by default, which is usually enough for irregular
-    sprite rectangles. If the estimate fails, the side grows by 25 percent.
+    The area lower bound estimates a compact one-page square. The deterministic
+    shelf heuristic gets roughly 22 percent slack by default, which is usually
+    enough for irregular sprite rectangles. If the estimate fails, the side
+    grows by 25 percent.
     The first successful trial is returned directly. If one page is impossible
     even at ``page_cap``, one final unbounded-page pass uses that cap.
 
@@ -258,9 +317,15 @@ def _pack_near_square(
 
 @profile
 def _maxrects(sizes: List[Tuple[int, int]], bin_w: int, bin_h: int) -> List[Tuple[int, int, int]]:
-    """Bin-pack ``sizes`` (w,h) into bins of ``bin_w``×``bin_h``; return one
-    ``(bin_index, x, y)`` per input index, in input order. Raises if any rect
-    can't be placed (i.e. is larger than a bin)."""
+    """Legacy dense grouped-pack helper.
+
+    The normal publication path no longer depends on rectpack. Grouped legacy
+    callers retain MaxRects for their stricter one-animation-per-page block
+    contract, and import the optional dependency only when that path is used.
+    """
+    from rectpack import newPacker, PackingMode, SORT_AREA
+    from rectpack.maxrects import MaxRectsBssf
+
     packer = newPacker(
         mode=PackingMode.Offline,
         rotation=False,

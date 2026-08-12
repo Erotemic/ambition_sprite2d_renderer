@@ -104,6 +104,7 @@ from .skeleton import (
     two_bone_ik,
 )
 from ambition_sprite2d_renderer.core.draw import (
+    RESAMPLING,
     blending_draw,
     resize_transparent_sprite,
     rotate_transparent_sprite,
@@ -204,6 +205,11 @@ class SpriteRaster:
     padded: Image.Image
     radius: int
     cache_key: tuple
+    # Effective source pixels per authored logical pixel. High-resolution rig
+    # publication already provides its own antialiasing budget, so rotations at
+    # >=3x can use Pillow's substantially cheaper bilinear kernel and still be
+    # filtered again at the publication boundary.
+    working_scale: float = 1.0
 
 
 class SpriteTransformCache:
@@ -213,16 +219,38 @@ class SpriteTransformCache:
     identical between consecutive poses even when the complete-frame cache must
     miss. Reusing those transformed parts avoids repeating PIL's relatively
     expensive bicubic rotation for the unchanged body.
+
+    Once the byte budget is full, a one-off transform is not allowed to evict a
+    useful resident immediately. It enters a small probation set instead; only
+    a second observation earns admission. This keeps animation streams with many
+    unique angles from turning the LRU into an eviction conveyor belt while
+    preserving first-hit caching when there is still free capacity.
     """
 
-    def __init__(self, max_bytes: int = SPRITE_TRANSFORM_CACHE_BYTES) -> None:
+    def __init__(
+        self,
+        max_bytes: int = SPRITE_TRANSFORM_CACHE_BYTES,
+        *,
+        max_probation_keys: int = 8192,
+    ) -> None:
         self.max_bytes = max(0, int(max_bytes))
+        self.max_probation_keys = max(0, int(max_probation_keys))
         self._items: OrderedDict[tuple, Image.Image] = OrderedDict()
+        self._probation: OrderedDict[tuple, None] = OrderedDict()
         self._bytes = 0
 
     def clear(self) -> None:
         self._items.clear()
+        self._probation.clear()
         self._bytes = 0
+
+    def _remember_probation(self, key: tuple) -> None:
+        if self.max_probation_keys <= 0:
+            return
+        self._probation[key] = None
+        self._probation.move_to_end(key)
+        while len(self._probation) > self.max_probation_keys:
+            self._probation.popitem(last=False)
 
     @profile
     def rotated(self, sprite: SpriteRaster, delta_deg: float) -> Image.Image:
@@ -235,18 +263,42 @@ class SpriteTransformCache:
             self._items.move_to_end(key)
             return cached
 
+        # Bicubic is useful when a rig is rendered near its final pixel size.
+        # At >=3 source pixels per logical pixel, however, the part is already
+        # supersampled. Bilinear rotation is ~2-3x cheaper in Pillow and the
+        # later whole-frame reduction (or native 3x publication) supplies the
+        # final antialiasing pass. Keep the low-resolution/editor path bicubic.
+        resample = (
+            RESAMPLING.BILINEAR
+            if sprite.working_scale >= 3.0
+            else RESAMPLING.BICUBIC
+        )
         rot = rotate_transparent_sprite(
             sprite.padded,
             -angle,
             center=(sprite.radius, sprite.radius),
+            resample=resample,
         )
         size_bytes = rot.width * rot.height * 4
-        if self.max_bytes > 0 and size_bytes <= self.max_bytes:
-            while self._items and self._bytes + size_bytes > self.max_bytes:
-                _old_key, old = self._items.popitem(last=False)
-                self._bytes -= old.width * old.height * 4
-            self._items[key] = rot
-            self._bytes += size_bytes
+        if self.max_bytes <= 0 or size_bytes > self.max_bytes:
+            return rot
+
+        # Admit immediately while there is genuinely free space. Once an
+        # admission would evict residents, require the transform to have been
+        # observed before. The first miss is still returned normally; it simply
+        # does not poison the resident set.
+        would_evict = self._bytes + size_bytes > self.max_bytes
+        repeated = key in self._probation
+        if would_evict and not repeated:
+            self._remember_probation(key)
+            return rot
+
+        self._probation.pop(key, None)
+        while self._items and self._bytes + size_bytes > self.max_bytes:
+            _old_key, old = self._items.popitem(last=False)
+            self._bytes -= old.width * old.height * 4
+        self._items[key] = rot
+        self._bytes += size_bytes
         return rot
 
 
@@ -812,6 +864,7 @@ class RigDocument:
             padded=padded,
             radius=radius,
             cache_key=key,
+            working_scale=float(S),
         )
         self._sprite_cache[key] = prepared
         return prepared

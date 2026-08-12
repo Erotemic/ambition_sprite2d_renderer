@@ -79,6 +79,11 @@ class FxCanvas:
             (0, 0, 0, 0),
         )
         self.draw = blending_draw(self.image)
+        self._dirty = False
+
+    @property
+    def dirty(self) -> bool:
+        return self._dirty
 
     @property
     def draw_scale(self) -> float:
@@ -103,6 +108,7 @@ class FxCanvas:
         )
 
     def line(self, points: Sequence[Point], fill: Color, width: float = 1.0, joint: str = "curve") -> None:
+        self._dirty = True
         self.draw.line(
             [self.p(point) for point in points],
             fill=fill,
@@ -111,6 +117,7 @@ class FxCanvas:
         )
 
     def polygon(self, points: Sequence[Point], fill: Color, outline: Color | None = None, width: float = 1.0) -> None:
+        self._dirty = True
         mapped = [self.p(point) for point in points]
         self.draw.polygon(mapped, fill=fill)
         if outline is not None:
@@ -122,6 +129,7 @@ class FxCanvas:
             )
 
     def ellipse(self, center: Point, rx: float, ry: float, fill: Color | None, outline: Color | None = None, width: float = 1.0) -> None:
+        self._dirty = True
         self.draw.ellipse(
             self.box(center, rx, ry),
             fill=fill,
@@ -130,6 +138,7 @@ class FxCanvas:
         )
 
     def arc(self, center: Point, rx: float, ry: float, start: float, end: float, fill: Color, width: float = 1.0) -> None:
+        self._dirty = True
         self.draw.arc(
             self.box(center, rx, ry),
             start=start,
@@ -139,6 +148,7 @@ class FxCanvas:
         )
 
     def text(self, center: Point, text: str, fill: Color, size: float = 6.0, *, bold: bool = True, stroke: Color | None = None) -> None:
+        self._dirty = True
         font_name = "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"
         try:
             font = ImageFont.truetype(font_name, max(5, int(round(size * self.draw_scale))))
@@ -207,11 +217,12 @@ def compose_rig_frame(
     )
     size = (logical_size[0] * render_scale, logical_size[1] * render_scale)
     origin = (float(pad_left), float(pad_top))
-    result = Image.new("RGBA", size, (0, 0, 0, 0))
     # Keep roughly 3x logical-pixel effect sampling. A rig already publishing
     # at 3x does not need another 3x supersample layer (which would create a 9x
     # logical-pixel intermediate for every foreground/background effect).
     effect_supersample = max(1, int(math.ceil(3.0 / render_scale)))
+
+    behind_image = None
     if behind is not None:
         layer = FxCanvas(
             size,
@@ -220,16 +231,25 @@ def compose_rig_frame(
             unit_scale=render_scale,
         )
         behind(layer, t, world, params)
-        result.alpha_composite(layer.finish())
-    result.alpha_composite(
-        doc.render_at(
-            animation,
-            t,
-            solved=solved,
-            padding=padding,
-            supersample=rig_supersample,
-        )
+        if layer.dirty:
+            behind_image = layer.finish()
+
+    # ``render_at`` already returns a fresh RGBA image. Use it as the result
+    # directly when there is no behind effect instead of allocating a blank
+    # full-frame canvas and compositing the rig onto transparency first.
+    rig_image = doc.render_at(
+        animation,
+        t,
+        solved=solved,
+        padding=padding,
+        supersample=rig_supersample,
     )
+    if behind_image is None:
+        result = rig_image
+    else:
+        result = behind_image
+        result.alpha_composite(rig_image)
+
     if front is not None:
         layer = FxCanvas(
             size,
@@ -238,7 +258,8 @@ def compose_rig_frame(
             unit_scale=render_scale,
         )
         front(layer, t, world, params)
-        result.alpha_composite(layer.finish())
+        if layer.dirty:
+            result.alpha_composite(layer.finish())
     return result
 
 

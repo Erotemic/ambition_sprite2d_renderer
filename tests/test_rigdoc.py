@@ -396,6 +396,28 @@ def test_transform_cache_reuses_unchanged_part_rotation():
     assert equivalent_turn is first
 
 
+def test_transform_cache_probation_prevents_one_off_eviction():
+    from PIL import Image
+    import ambition_sprite2d_renderer.authoring.rigdoc as rigdoc_mod
+    from ambition_sprite2d_renderer.authoring.rigdoc import SpriteRaster, SpriteTransformCache
+
+    sprite = _prepared_sprite_for_test()
+    # One 26x26 RGBA rotation fits, two do not. The resident first angle should
+    # survive a one-off second angle; seeing the second angle again admits it.
+    cache = SpriteTransformCache(max_bytes=26 * 26 * 4 + 8)
+    first = cache.rotated(sprite, 10.0)
+    one_off = cache.rotated(sprite, 20.0)
+    assert len(cache._items) == 1
+    assert next(iter(cache._items.values())) is first
+    assert len(cache._probation) == 1
+
+    repeated = cache.rotated(sprite, 20.0)
+    assert repeated is not one_off
+    assert len(cache._items) == 1
+    assert next(iter(cache._items.values())) is repeated
+    assert not cache._probation
+
+
 def test_zero_rotation_skips_transform_cache():
     from PIL import Image
     from ambition_sprite2d_renderer.authoring.rigdoc import (
@@ -493,3 +515,29 @@ def test_follow_lower_hand_pitch_does_not_pin_hand_to_svg_world_angle(doc):
         bone["rest_angle"] for bone in doc.bones if bone["name"] == "near_arm_hand"
     )
     assert relative == pytest.approx(rest_relative)
+
+
+def test_high_resolution_transform_cache_uses_bilinear_rotation(monkeypatch):
+    from PIL import Image
+    import ambition_sprite2d_renderer.authoring.rigdoc as rigdoc_mod
+    from ambition_sprite2d_renderer.authoring.rigdoc import SpriteRaster, SpriteTransformCache
+
+    sprite = _prepared_sprite_for_test()
+    sprite = SpriteRaster(
+        sprite.image,
+        sprite.pivot,
+        sprite.padded,
+        sprite.radius,
+        sprite.cache_key,
+        working_scale=4.0,
+    )
+    seen = []
+
+    def fake_rotate(img, angle, *, resample, center=None, expand=False):
+        seen.append(resample)
+        return Image.new("RGBA", img.size, (0, 0, 0, 0))
+
+    monkeypatch.setattr(rigdoc_mod, "rotate_transparent_sprite", fake_rotate)
+    SpriteTransformCache(max_bytes=1024 * 1024).rotated(sprite, 17.0)
+
+    assert seen == [rigdoc_mod.RESAMPLING.BILINEAR]

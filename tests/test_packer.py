@@ -117,3 +117,38 @@ def test_near_square_skips_impossible_single_page_trial(monkeypatch):
     assert side == 256
     assert len(rects) == 2
     assert calls == [(256, float("inf"))]
+
+
+def test_normal_pack_path_does_not_use_legacy_maxrects(monkeypatch):
+    import ambition_sprite2d_renderer.authoring.packer as packer_mod
+
+    monkeypatch.setattr(
+        packer_mod,
+        "_maxrects",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("legacy MaxRects used")),
+    )
+    frames = [
+        FrameInput(key=i, image=_blob(96, 96, 48, 48, 18), logical_size=(96, 96))
+        for i in range(40)
+    ]
+    result = packer_mod.pack_frames(frames, max_dim=512, page_size=512, padding=1, trim=True)
+
+    assert len(result.placements) == len(frames)
+
+
+def test_shelf_packer_is_deterministic_and_non_overlapping():
+    import ambition_sprite2d_renderer.authoring.packer as packer_mod
+
+    sizes = [(90, 40), (70, 60), (55, 55), (40, 80), (25, 25), (80, 30)]
+    first = packer_mod._pack_rects_once(sizes, side=160, bin_count=float("inf"))
+    second = packer_mod._pack_rects_once(sizes, side=160, bin_count=float("inf"))
+    assert first == second
+    assert len(first) == len(sizes)
+
+    by_page = {}
+    for page, x, y, w, h, rid in first:
+        assert 0 <= x and x + w <= 160
+        assert 0 <= y and y + h <= 160
+        for ox, oy, ow, oh, _orid in by_page.setdefault(page, []):
+            assert x + w <= ox or ox + ow <= x or y + h <= oy or oy + oh <= y
+        by_page[page].append((x, y, w, h, rid))

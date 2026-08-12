@@ -5,6 +5,8 @@ from pathlib import Path
 import json
 from types import SimpleNamespace
 
+from PIL import Image
+
 from ambition_sprite2d_renderer.targets.characters._svg_fighter_effects import FxCanvas, compose_rig_frame
 from ambition_sprite2d_renderer.targets.characters.pca_combat_authoring import author_pca_combat_clips
 from ambition_sprite2d_renderer.targets.characters.pca_effects import (
@@ -283,3 +285,46 @@ def test_compose_rig_frame_forwards_rig_supersample():
         "padding": 0,
         "supersample": 1,
     }
+
+
+def test_fx_canvas_dirty_only_after_drawing():
+    canvas = FxCanvas((16, 16), scale=1)
+    assert not canvas.dirty
+    canvas.line([(1.0, 1.0), (4.0, 4.0)], (255, 255, 255, 255))
+    assert canvas.dirty
+
+
+def test_compose_rig_frame_skips_empty_effect_finishes(monkeypatch):
+    import ambition_sprite2d_renderer.targets.characters._svg_fighter_effects as effects
+
+    class FakeDoc:
+        frame = {"width": 8, "height": 8, "render_scale": 1}
+
+        def frame_time(self, animation, frame_idx, frame_count):
+            return 0.5
+
+        def solve(self, animation, t):
+            return ({}, {})
+
+        def render_at(self, animation, t, *, solved, padding, supersample):
+            return Image.new("RGBA", (8, 8), (10, 20, 30, 255))
+
+    finish_calls = []
+    original_finish = effects.FxCanvas.finish
+
+    def counting_finish(self):
+        finish_calls.append(self.dirty)
+        return original_finish(self)
+
+    monkeypatch.setattr(effects.FxCanvas, "finish", counting_finish)
+    image = effects.compose_rig_frame(
+        FakeDoc(),
+        "idle",
+        0,
+        1,
+        behind=lambda canvas, t, world, params: None,
+        front=lambda canvas, t, world, params: None,
+    )
+
+    assert finish_calls == []
+    assert image.getpixel((0, 0)) == (10, 20, 30, 255)

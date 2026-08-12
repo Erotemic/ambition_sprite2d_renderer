@@ -57,10 +57,10 @@ def _hide(elem: ET.Element) -> None:
     elem.set("style", (style + ";" if style else "") + "display:none")
 
 
-@lru_cache(maxsize=8)
-def _parse(svg_path: str, mtime: float) -> bytes:
-    """Cached raw bytes of the SVG (keyed on path + mtime so edits reload)."""
-    del mtime
+@lru_cache(maxsize=16)
+def _parse(svg_path: str, mtime_ns: int, size: int) -> bytes:
+    """Cached raw SVG bytes, invalidated by source-file identity changes."""
+    del mtime_ns, size
     return Path(svg_path).read_bytes()
 
 
@@ -89,11 +89,39 @@ def rasterize_subset(
     drawable descendants). Returns ``(image_or_None, (off_x, off_y), px_per_unit)``
     where the offset is the cropped image's top-left in full-canvas pixels and
     ``px_per_unit`` converts SVG user units to those pixels. ``None`` when the
-    subset renders empty (e.g. a fully off-screen or transparent selection)."""
+    subset renders empty (e.g. a fully off-screen or transparent selection).
+
+    The expensive resvg result is cached process-wide by source-file identity,
+    view, subset, and DPI. ``RigDocument`` also has a per-document prepared-part
+    cache; this outer cache bridges sheet/canonical/portrait documents that use
+    the same immutable SVG subset during one regeneration process. A copy is
+    returned so callers cannot mutate the shared cache entry.
+    """
+    svg_path = Path(svg_path)
+    stat = svg_path.stat()
+    image, offset, px_per_unit = _rasterize_subset_cached(
+        str(svg_path),
+        int(stat.st_mtime_ns),
+        int(stat.st_size),
+        str(view),
+        tuple(str(i) for i in include_ids),
+        float(dpi),
+    )
+    return (image.copy() if image is not None else None), offset, px_per_unit
+
+
+@lru_cache(maxsize=256)
+def _rasterize_subset_cached(
+    svg_path: str,
+    mtime_ns: int,
+    size: int,
+    view: str,
+    include_ids: Tuple[str, ...],
+    dpi: float,
+) -> Tuple[Optional[Image.Image], Tuple[int, int], float]:
     import resvg_py  # heavy + optional; only needed for sprite parts
 
-    svg_path = Path(svg_path)
-    raw = _parse(str(svg_path), svg_path.stat().st_mtime)
+    raw = _parse(svg_path, mtime_ns, size)
     root = ET.fromstring(raw)
 
     by_id: Dict[str, ET.Element] = {}
