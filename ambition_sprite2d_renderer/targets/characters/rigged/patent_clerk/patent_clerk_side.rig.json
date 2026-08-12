@@ -463,6 +463,7 @@
       "rest_x": -12.0,
       "rest_y": -57.0,
       "rest_pitch": 5.5948,
+      "pitch_mode": "follow_lower",
       "bend": 1.0,
       "pose_authority": "explicit-hint",
       "max_reach_ratio": 0.98
@@ -475,6 +476,7 @@
       "rest_x": -20.0,
       "rest_y": -49.0,
       "rest_pitch": 173.2221,
+      "pitch_mode": "follow_lower",
       "bend": 1.0,
       "pose_authority": "explicit-hint",
       "max_reach_ratio": 0.98
@@ -37310,7 +37312,7 @@
   "features": {
     "paper_doll": true,
     "canonical_svg": true,
-    "facing": "left",
+    "facing": "west",
     "source_authority": "assets/patent-clerk.svg",
     "source_pose_role": "geometry-layout-only",
     "natural_pose_authority": "character-spec",
@@ -37347,7 +37349,7 @@
   },
   "build_provenance": {
     "schema": "canonical-svg-rig-v3",
-    "builder_version": 14,
+    "builder_version": 19,
     "renderer": "resvg_py",
     "renderer_version": "0.3.3",
     "renderer_backend": "native-extension",

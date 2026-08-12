@@ -39506,7 +39506,7 @@
   "features": {
     "paper_doll": true,
     "canonical_svg": true,
-    "facing": "left",
+    "facing": "west",
     "source_authority": "assets/carl-stargan.svg",
     "source_pose_role": "geometry-layout-only",
     "natural_pose_authority": "character-spec",
@@ -39543,7 +39543,7 @@
   },
   "build_provenance": {
     "schema": "canonical-svg-rig-v3",
-    "builder_version": 17,
+    "builder_version": 19,
     "renderer": "resvg_py",
     "renderer_version": "0.3.3",
     "renderer_backend": "native-extension",
