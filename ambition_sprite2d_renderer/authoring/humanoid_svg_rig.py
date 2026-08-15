@@ -259,7 +259,7 @@ def _standard_part_from_label(
         if side is None:
             raise ValueError(f"standard humanoid part label needs a side: {raw!r}")
         name_suffix, bone_suffix = limb_kind
-        include = _direct_drawable_ids(elem)
+        include = _direct_drawable_ids(elem, absorb_nested_groups=True, aliases=aliases)
         if not include:
             return None
         return _PartBinding(
@@ -287,14 +287,14 @@ def _standard_part_from_label(
         "hair front": ("hair_front", "head"),
     }
     if is_group and label in fixed:
-        include = _direct_drawable_ids(elem)
+        include = _direct_drawable_ids(elem, absorb_nested_groups=True, aliases=aliases)
         if not include:
             return None
         name, bone = fixed[label]
         return _PartBinding(name, bone, float(source_order), include, None, source_order)
 
     if is_group and label == "head":
-        include = _direct_drawable_ids(elem)
+        include = _direct_drawable_ids(elem, absorb_nested_groups=True, aliases=aliases)
         if include:
             return _PartBinding(
                 "head_misc", "head", float(source_order), include, None, source_order
@@ -444,24 +444,107 @@ def _descendant_ids(group: ET.Element) -> Tuple[str, ...]:
     return tuple(ids)
 
 
-def _direct_drawable_ids(group: ET.Element) -> Tuple[str, ...]:
-    """Drawable ids directly owned by one standardized label group.
+def _is_standard_part_container(
+    elem: ET.Element, aliases: Mapping[str, str]
+) -> bool:
+    """Return whether ``elem`` is a standardized rigid-part boundary.
 
-    Nested semantic groups are separate rigid parts, so standard-label mode
-    deliberately does not absorb their descendants into the parent.
+    Standard-humanoid authoring primarily uses flat semantic groups, but it is
+    still useful to allow purely organizational nested groups (for example a
+    scalable eye assembly or a hair-detail bundle). Those container groups
+    should be absorbed into the surrounding rigid part, while true standardized
+    part groups remain ownership boundaries.
+    """
+
+    if _local(elem.tag) != "g":
+        return False
+    raw = _label(elem) or ""
+    label = _normal_label(raw)
+    if not label:
+        return False
+    if (
+        "upper arm" in label
+        or "lower arm" in label
+        or label.startswith("hand ")
+        or label == "hand"
+        or "upper leg" in label
+        or "lower leg" in label
+        or label.startswith("foot ")
+        or label == "foot"
+    ):
+        return True
+    if label in {
+        "pelvis",
+        "neck",
+        "shirt",
+        "shirt details",
+        "buttons",
+        "bodice near",
+        "bodice far",
+        "collar bow",
+        "head base",
+        "facial features",
+        "hair back",
+        "hair mid",
+        "hair front",
+        "head",
+    }:
+        return True
+    if label == "dress base" or label == "dress fabric center":
+        return True
+    if label.startswith("dress fabric "):
+        return True
+    # Side-bearing labels that would normally resolve into a standard part must
+    # still count as boundaries even if the current view's side-map would later
+    # reject them for ambiguity.
+    if _side_from_standard_label(raw, aliases) is not None and label.startswith(
+        ("dress fabric ",)
+    ):
+        return True
+    return False
+
+
+
+def _direct_drawable_ids(
+    group: ET.Element,
+    *,
+    absorb_nested_groups: bool = False,
+    aliases: Optional[Mapping[str, str]] = None,
+) -> Tuple[str, ...]:
+    """Drawable ids owned by one standardized label group.
+
+    By default this returns only direct child drawables. In standard-humanoid
+    mode we also allow purely organizational nested groups and absorb their
+    descendants, as long as those nested groups are not themselves standardized
+    rigid-part boundaries.
     """
 
     ids: List[str] = []
+    child_aliases: Mapping[str, str] = aliases or {}
     for elem in list(group):
-        if _local(elem.tag) not in _DRAWABLE:
+        local = _local(elem.tag)
+        if local in _DRAWABLE:
+            eid = elem.get("id")
+            if not eid:
+                raise ValueError(
+                    f"drawable under {_label(group)!r} has no id; save from Inkscape "
+                    "or add stable ids before extracting"
+                )
+            ids.append(eid)
             continue
-        eid = elem.get("id")
-        if not eid:
-            raise ValueError(
-                f"drawable under {_label(group)!r} has no id; save from Inkscape "
-                "or add stable ids before extracting"
+        if not absorb_nested_groups or local != "g":
+            continue
+        if _parse_part_element(elem) is not None:
+            continue
+        if _is_standard_part_container(elem, child_aliases):
+            continue
+        ids.extend(
+            _direct_drawable_ids(
+                elem,
+                absorb_nested_groups=True,
+                aliases=child_aliases,
             )
-        ids.append(eid)
+        )
     return tuple(ids)
 
 
