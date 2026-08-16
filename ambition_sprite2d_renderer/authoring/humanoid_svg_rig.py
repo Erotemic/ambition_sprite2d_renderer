@@ -52,7 +52,7 @@ from __future__ import annotations
 import math
 import os
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Dict, Iterable, List, Mapping, Optional, Tuple
 
@@ -555,6 +555,46 @@ def _view_root(root: ET.Element, view: str) -> ET.Element:
     available = sorted({lbl for e in root.iter() if (lbl := _label(e))})
     raise KeyError(f"SVG view {view!r} not found; labelled groups include {available}")
 
+def _resolve_nested_ownership(
+    entries: List[Tuple[int, "_PartBinding"]],
+) -> List["_PartBinding"]:
+    """**The most specific layer owns the art.**
+
+    ⛔ **an artist nesting one recognised part inside another used to break the
+    build.** Jon reorganised Carl Stargan's SVG so his hair sublayers sit inside
+    `Head`, and the Patent Clerk's hands inside the forearms — both perfectly
+    ordinary Inkscape structure — and the rig refused to build at all:
+    *"does not have one-to-one drawable ownership: multiply_assigned={'path1933':
+    ['head', 'hair_front'], ...}"*. The container absorbs nested groups so its
+    leftovers (`head_misc`) can be drawn, which means it also absorbed the
+    sublayers that are parts in their own right.
+
+    So a drawable claimed by several bindings goes to the DEEPEST one, and a
+    container keeps only what no child part claimed. That is what "leftovers"
+    meant all along; it was just never subtracted. A container left with nothing
+    is dropped rather than published empty.
+
+    ⚠ the one-to-one check downstream is NOT relaxed — it still fails on art a
+    binding genuinely cannot place, which is the error worth keeping.
+    """
+
+    owner: Dict[str, Tuple[int, int]] = {}
+    for index, (depth, binding) in enumerate(entries):
+        for drawable_id in binding.include:
+            best = owner.get(drawable_id)
+            if best is None or depth > best[0]:
+                owner[drawable_id] = (depth, index)
+    resolved: List[_PartBinding] = []
+    for index, (_depth, binding) in enumerate(entries):
+        keep = tuple(
+            drawable_id
+            for drawable_id in binding.include
+            if owner[drawable_id][1] == index
+        )
+        if keep:
+            resolved.append(replace(binding, include=keep))
+    return resolved
+
 
 def _collect_parts(
     root: ET.Element, view: str, *, binding_mode: str = "explicit"
@@ -573,20 +613,30 @@ def _collect_parts(
         for index, elem in enumerate(layer.iter())
         if _local(elem.tag) in _DRAWABLE and elem.get("id")
     }
+    # How deep each element sits under the view layer, so nested parts can be
+    # resolved most-specific-first (see `_resolve_nested_ownership`).
+    depths: Dict[int, int] = {id(layer): 0}
+    for parent in layer.iter():
+        for child in parent:
+            depths[id(child)] = depths.get(id(parent), 0) + 1
+    nested: List[Tuple[int, _PartBinding]] = []
     for elem in layer.iter():
         if binding_mode == "standard-humanoid":
             binding = _standard_part_from_label(elem, side_map, source_order)
             if binding is None:
                 continue
             actual_order = min(drawable_order[eid] for eid in binding.include)
-            parts.append(
-                _PartBinding(
-                    binding.name,
-                    binding.bone,
-                    float(actual_order),
-                    binding.include,
-                    binding.opacity_channel,
-                    actual_order,
+            nested.append(
+                (
+                    depths.get(id(elem), 0),
+                    _PartBinding(
+                        binding.name,
+                        binding.bone,
+                        float(actual_order),
+                        binding.include,
+                        binding.opacity_channel,
+                        actual_order,
+                    ),
                 )
             )
             source_order += 1
@@ -602,8 +652,17 @@ def _collect_parts(
             raise ValueError(
                 f"SVG part group {_label(elem)!r} contains no drawable ids"
             )
-        parts.append(_PartBinding(name, bone, z, include, opacity, source_order))
+        nested.append(
+            (
+                depths.get(id(elem), 0),
+                _PartBinding(name, bone, z, include, opacity, source_order),
+            )
+        )
         source_order += 1
+    # Both binding modes take descendants, so both can nest — Carl Stargan's
+    # hair inside his head is `explicit`, the Patent Clerk's hands inside his
+    # forearms are too.
+    parts = _resolve_nested_ownership(nested)
     if not parts:
         raise ValueError(f"SVG view {view!r} contains no rig-part groups")
     if binding_mode == "standard-humanoid":

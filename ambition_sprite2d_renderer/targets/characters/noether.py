@@ -151,9 +151,28 @@ def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Imag
     )
 
 
+def _silhouette_profile() -> dict:
+    """Per-column alpha coverage of her idle pose, on the published frame.
+
+    The measurement `body_metrics` trims into a body box. Rendering one frame to
+    ask where the character actually IS costs about a second and replaces a
+    guessed fraction of her stature — see `noether_gameplay.body_from_silhouette`.
+    """
+    frame = render_frame("idle", 0, 8)
+    alpha = frame.getchannel("A")
+    bounds = alpha.getbbox() or (0, 0, frame.width, frame.height)
+    pixels = alpha.load()
+    columns = [
+        sum(1 for y in range(bounds[1], bounds[3]) if pixels[x, y] > 16)
+        for x in range(frame.width)
+    ]
+    return {"columns": columns, "bounds": bounds}
+
+
 def render(out_dir: str | Path, **opts):
     del opts
     doc = _doc()
+    profile = _silhouette_profile()
     outputs = build_sheet(
         target=TARGET_NAME,
         rows=ROWS,
@@ -162,7 +181,7 @@ def render(out_dir: str | Path, **opts):
         frame_size=frame_size(),
         auto_crop=False,
         actor_metadata=ACTOR_METADATA,
-        body_metrics_fn=authored_body_metrics,
+        body_metrics_fn=lambda fw, fh: authored_body_metrics(fw, fh, profile),
         sheet_tuning=doc.sprite_tuning or {"collision_scale": 1.86},
         animation_key_map={name: name for name, _frames, _duration in ROWS},
         attack_hitboxes=attack_hitboxes(),

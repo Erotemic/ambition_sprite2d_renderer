@@ -262,23 +262,70 @@ def hurtbox_parts_for_rows(rows: Iterable[tuple[str, int, int]]) -> dict:
     return out
 
 
-def body_metrics(fw: int, fh: int) -> dict:
+#: A column of the drawn frame counts as BODY when it carries at least this
+#: fraction of the silhouette's height. Her outstretched hand occupies about
+#: 11% of her rows and her skirt about 30%, so the two separate cleanly — and
+#: the rule is a measurement rather than a taste call, which is what lets it
+#: survive a new pose.
+BODY_COLUMN_COVERAGE = 0.15
+
+
+def body_from_silhouette(profile: dict) -> tuple[float, float, float, float]:
+    """The drawn body, trimmed of what is reaching.
+
+    ⭐ **the picture IS the body, minus the arm that is pointing.** Jon,
+    2026-08-16: *"very tiny hitboxes"*. The box published before this was a
+    fraction of her stature guessed at authoring time — 100px wide against a
+    200px drawing — so half her silhouette could not be hit. Measuring it and
+    dropping the thin columns gives a box that covers her, and gives it for free
+    to any future pose.
+
+    `profile` is `{"columns": [rows_of_alpha_per_column], "bounds": (x0, y0, x1,
+    y1)}` over the published frame.
+    """
+    x0, y0, x1, y1 = profile["bounds"]
+    columns = profile["columns"]
+    span = max(1.0, float(y1 - y0))
+    keep = [x for x, rows in enumerate(columns) if rows / span >= BODY_COLUMN_COVERAGE]
+    if keep:
+        x0, x1 = float(min(keep)), float(max(keep) + 1)
+    return (x0, float(y0), x1, float(y1))
+
+
+def body_metrics(fw: int, fh: int, profile: dict | None = None) -> dict:
     """Where Noether's body and feet are in the published frame.
 
-    ⭐ **the feet point is the rig's OWN ground line**, which is the whole fix: a
-    body placed by its feet stands ON the floor rather than forty pixels above it.
-    The box spans her standing silhouette without the flourishes — hair above the
-    head bone and an outstretched arm are drawing, not body.
+    ⭐ **the feet point is the rig's OWN ground line**, which is the hover fix: a
+    body placed by its feet stands ON the floor rather than forty pixels above
+    it. The rig is asked because the rig is what drew the picture.
+
+    ⭐ **the box is the DRAWING**, trimmed by [`body_from_silhouette`] — not a
+    fraction of her stature. Without a measured `profile` it falls back to the
+    skeleton envelope, which is honest but narrower than she looks; every real
+    publish passes one.
     """
     frame = _frame()
     world, _params = _rig().solve("idle", 0.0)
-    stature = _stature()
     ground = float(frame["ground_y"])
     centre = float(frame["center_x"])
 
-    half_width = 0.19 * stature
-    top = float(world["head"].origin[1]) - _HEAD_HALF * stature
-    body = _rect_px(centre - half_width, top, centre + half_width, ground)
+    if profile is not None:
+        # ⚠ already in PUBLISHED pixels — the profile is measured on the composed
+        # frame — so this does not go through `_px`, which converts from rig
+        # space. Mixing the two spaces is the exact mistake this file exists to
+        # correct.
+        x0, y0, x1, y1 = body_from_silhouette(profile)
+        body = {
+            "x": int(round(x0)),
+            "y": int(round(y0)),
+            "w": max(1, int(round(x1 - x0))),
+            "h": max(1, int(round(y1 - y0))),
+        }
+    else:
+        stature = _stature()
+        half_width = 0.19 * stature
+        top = float(world["head"].origin[1]) - _HEAD_HALF * stature
+        body = _rect_px(centre - half_width, top, centre + half_width, ground)
 
     feet_x = float(_px(centre))
     feet_y = float(_px(ground))

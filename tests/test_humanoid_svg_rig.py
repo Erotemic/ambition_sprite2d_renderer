@@ -1,7 +1,11 @@
+from pathlib import Path
+
 from ambition_sprite2d_renderer.authoring.humanoid_svg_rig import (
     LimbPoseHint,
     _bend_for_side,
 )
+
+ROOT = Path(__file__).resolve().parent.parent
 
 
 def test_pose_hint_controls_ik_branch_independent_of_svg_splay():
@@ -51,3 +55,43 @@ def test_svg_joint_layout_remains_fallback_without_pose_authority():
 
     assert left_joint == 1.0
     assert right_joint == -1.0
+
+
+def test_a_part_nested_inside_another_belongs_to_the_deeper_one():
+    """**An artist may nest one recognised part inside another.**
+
+    ⛔ this was a hard build failure until 2026-08-16. Jon reorganised Carl
+    Stargan's SVG so his hair sublayers sit inside `Head`, and the Patent Clerk's
+    hands inside the forearms — ordinary Inkscape structure — and the rig refused
+    to build: *"does not have one-to-one drawable ownership: multiply_assigned=
+    {'path1933': ['head', 'hair_front'], ...}"*. The container takes descendants
+    so its leftovers can still be drawn, which meant it also took the sublayers
+    that are parts in their own right. Both characters then shipped their OLD art
+    for four days, because a failed rig build leaves the previous sheet in place.
+
+    ⭐ the deepest owner wins, and the container keeps only what no child claimed.
+    """
+
+    import xml.etree.ElementTree as ET
+
+    from ambition_sprite2d_renderer.authoring.humanoid_svg_rig import _collect_parts
+
+    root = ET.parse(ROOT / "assets" / "carl-stargan.svg").getroot()
+    parts = _collect_parts(root, "Carl Stargan - Side Left")
+
+    owners: dict[str, list[str]] = {}
+    for part in parts:
+        for drawable in part.include:
+            owners.setdefault(drawable, []).append(part.name)
+    doubled = {k: v for k, v in owners.items() if len(v) > 1}
+    assert not doubled, f"a drawable may have exactly one owner: {doubled}"
+
+    by_name = {part.name: set(part.include) for part in parts}
+    # ⛔ the non-vacuity: the nesting this is about must actually be present, or
+    # the assertion above is a statement about an SVG with no nested parts.
+    assert by_name.get("hair_front"), "Carl's hair is a part in its own right"
+    assert by_name.get("hair_back"), "…both halves of it"
+    assert by_name.get("head"), "…and the head still owns its leftovers"
+    assert not (by_name["head"] & (by_name["hair_front"] | by_name["hair_back"])), (
+        "the head must not also claim the hair it contains"
+    )
