@@ -182,7 +182,8 @@
     497.0,
     229.0
    ],
-   "rest_angle": 86.9872
+   "rest_angle": 86.9872,
+   "svg_source_order": 0
   },
   {
    "name": "far_leg_l",
@@ -197,7 +198,8 @@
     500.0,
     286.0
    ],
-   "rest_angle": 90.0
+   "rest_angle": 90.0,
+   "svg_source_order": 1
   },
   {
    "name": "far_leg_foot",
@@ -213,7 +215,8 @@
     500.0,
     345.0
    ],
-   "rest_angle": 24.7751
+   "rest_angle": 24.7751,
+   "svg_source_order": 2
   },
   {
    "name": "far_arm_u",
@@ -229,7 +232,8 @@
     515.0,
     151.0
    ],
-   "rest_angle": 73.1132
+   "rest_angle": 73.1132,
+   "svg_source_order": 9
   },
   {
    "name": "far_arm_l",
@@ -244,7 +248,8 @@
     532.0,
     207.0
    ],
-   "rest_angle": 101.0702
+   "rest_angle": 101.0702,
+   "svg_source_order": 10
   },
   {
    "name": "far_hand",
@@ -258,7 +263,8 @@
     523.0,
     253.0
    ],
-   "rest_angle": 87.7974
+   "rest_angle": 87.7974,
+   "svg_source_order": 11
   },
   {
    "name": "near_leg_u",
@@ -273,7 +279,8 @@
     463.0,
     229.0
    ],
-   "rest_angle": 93.0128
+   "rest_angle": 93.0128,
+   "svg_source_order": 3
   },
   {
    "name": "pelvis_yoke",
@@ -289,7 +296,8 @@
     480.0,
     229.0
    ],
-   "rest_angle": 0.0
+   "rest_angle": 0.0,
+   "svg_source_order": 6
   },
   {
    "name": "torso",
@@ -317,7 +325,8 @@
     480.0,
     205.0
    ],
-   "rest_angle": 0.0
+   "rest_angle": 0.0,
+   "svg_source_order": 7
   },
   {
    "name": "apron",
@@ -333,7 +342,8 @@
     480.0,
     205.0
    ],
-   "rest_angle": 0.0
+   "rest_angle": 0.0,
+   "svg_source_order": 8
   },
   {
    "name": "head",
@@ -371,7 +381,8 @@
     480.0,
     131.0
    ],
-   "rest_angle": 0.0
+   "rest_angle": 0.0,
+   "svg_source_order": 15
   },
   {
    "name": "blink",
@@ -387,6 +398,7 @@
     131.0
    ],
    "rest_angle": 0.0,
+   "svg_source_order": 16,
    "opacity_channel": "blink_vis"
   },
   {
@@ -403,6 +415,7 @@
     131.0
    ],
    "rest_angle": 0.0,
+   "svg_source_order": 17,
    "opacity_channel": "talk_vis"
   },
   {
@@ -418,7 +431,8 @@
     460.0,
     286.0
    ],
-   "rest_angle": 90.0
+   "rest_angle": 90.0,
+   "svg_source_order": 4
   },
   {
    "name": "near_leg_foot",
@@ -434,7 +448,8 @@
     460.0,
     345.0
    ],
-   "rest_angle": 155.2249
+   "rest_angle": 155.2249,
+   "svg_source_order": 5
   },
   {
    "name": "near_arm_u",
@@ -450,7 +465,8 @@
     448.0,
     153.0
    ],
-   "rest_angle": 109.8954
+   "rest_angle": 109.8954,
+   "svg_source_order": 12
   },
   {
    "name": "near_arm_l",
@@ -465,7 +481,8 @@
     429.0,
     205.5
    ],
-   "rest_angle": 82.2079
+   "rest_angle": 82.2079,
+   "svg_source_order": 13
   },
   {
    "name": "near_hand",
@@ -479,7 +496,8 @@
     435.5,
     253.0
    ],
-   "rest_angle": 91.7899
+   "rest_angle": 91.7899,
+   "svg_source_order": 14
   }
  ],
  "ik_legs": [
@@ -513,7 +531,9 @@
    "rest_x": -14.4213,
    "rest_y": -37.5926,
    "rest_pitch": 91.7899,
-   "bend": -1.0
+   "pitch_mode": "world",
+   "bend": -1.0,
+   "pose_authority": "svg-layout"
   },
   {
    "upper": "far_arm_u",
@@ -523,7 +543,9 @@
    "rest_x": 13.9352,
    "rest_y": -37.5926,
    "rest_pitch": 87.7974,
-   "bend": 1.0
+   "pitch_mode": "world",
+   "bend": 1.0,
+   "pose_authority": "svg-layout"
   }
  ],
  "clips": {
@@ -638,32 +660,32 @@
      "keys": [
       [
        0.0,
-       -8.722,
+       -14.4213,
        "smooth"
       ],
       [
        0.166667,
-       -11.4393,
+       -17.0463,
        "smooth"
       ],
       [
        0.333333,
-       -14.7603,
+       -20.2546,
        "smooth"
       ],
       [
        0.5,
-       -13.2508,
+       -18.7963,
        "smooth"
       ],
       [
        0.666667,
-       -9.9297,
+       -15.588,
        "smooth"
       ],
       [
        0.833333,
-       -8.722,
+       -14.4213,
        "smooth"
       ]
      ]
@@ -672,32 +694,32 @@
      "keys": [
       [
        0.0,
-       -43.2748,
+       -37.5926,
        "smooth"
       ],
       [
        0.166667,
-       -46.0927,
+       -40.3148,
        "smooth"
       ],
       [
        0.333333,
-       -51.3259,
+       -45.3704,
        "smooth"
       ],
       [
        0.5,
-       -48.9106,
+       -43.037,
        "smooth"
       ],
       [
        0.666667,
-       -44.4825,
+       -38.7593,
        "smooth"
       ],
       [
        0.833333,
-       -43.2748,
+       -37.5926,
        "smooth"
       ]
      ]
@@ -706,32 +728,32 @@
      "keys": [
       [
        0.0,
-       90.0,
+       91.7899,
        "smooth"
       ],
       [
        0.166667,
-       82.0,
+       83.7899,
        "smooth"
       ],
       [
        0.333333,
-       74.0,
+       75.7899,
        "smooth"
       ],
       [
        0.5,
-       83.0,
+       84.7899,
        "smooth"
       ],
       [
        0.666667,
-       90.0,
+       91.7899,
        "smooth"
       ],
       [
        0.833333,
-       90.0,
+       91.7899,
        "smooth"
       ]
      ]
@@ -740,32 +762,32 @@
      "keys": [
       [
        0.0,
-       7.7157,
+       13.9352,
        "smooth"
       ],
       [
        0.166667,
-       8.9157,
+       15.1352,
        "smooth"
       ],
       [
        0.333333,
-       9.7157,
+       15.9352,
        "smooth"
       ],
       [
        0.5,
-       8.7157,
+       14.9352,
        "smooth"
       ],
       [
        0.666667,
-       7.7157,
+       13.9352,
        "smooth"
       ],
       [
        0.833333,
-       7.7157,
+       13.9352,
        "smooth"
       ]
      ]
@@ -774,38 +796,38 @@
      "keys": [
       [
        0.0,
-       -42.6038,
+       -37.5926,
        "smooth"
       ],
       [
        0.166667,
-       -43.1038,
+       -38.0926,
        "smooth"
       ],
       [
        0.333333,
-       -43.6038,
+       -38.5926,
        "smooth"
       ],
       [
        0.5,
-       -43.1038,
+       -38.0926,
        "smooth"
       ],
       [
        0.666667,
-       -42.6038,
+       -37.5926,
        "smooth"
       ],
       [
        0.833333,
-       -42.6038,
+       -37.5926,
        "smooth"
       ]
      ]
     },
     "far_hand_pitch": {
-     "const": 90.0
+     "const": 87.7974
     },
     "talk_vis": {
      "const": 0.0
@@ -817,6 +839,7 @@
   }
  },
  "sprite_tuning": {
-  "collision_scale": 1.72
+  "collision_scale": 1.72,
+  "part_order": "attribute"
  }
 }

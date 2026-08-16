@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -536,6 +537,26 @@ def _keys(values, *, ease: str = "smooth") -> dict:
     }
 
 
+def _shot(values, *, ease: str = "smooth") -> dict:
+    """Keys for a ONE-SHOT clip, spaced the way one-shots are sampled.
+
+    ``RigDocument.frame_time`` samples a loop at ``i/n`` and a one-shot at
+    ``i/(n-1)`` -- so a one-shot authored with :func:`_keys` puts its last key at
+    ``(n-1)/n`` and its last FRAME at ``1.0``, which clamps and spends the final
+    frame repeating the one before it.  For a walk cycle that is invisible; for
+    an attack it eats the recovery frame, which is the one the eye reads as "the
+    swing is over".  These land on the frames.
+    """
+
+    n = len(values)
+    return {
+        "keys": [
+            [round(i / max(1, n - 1), 6), round(float(value), 4), ease]
+            for i, value in enumerate(values)
+        ]
+    }
+
+
 def _rest(doc: dict, prefix: str, axis: str) -> float:
     for chain in doc.get("ik_chains", []):
         if chain.get("channel_prefix") == prefix:
@@ -736,7 +757,404 @@ def _side_clips(doc: dict) -> dict:
             "blink_vis": _keys([0, 0, 0, 0, 0, 0, 1, 0], ease="linear"),
         }
     )
-    return {"walk": {"loop": True, "frames": 8, "duration_ms": 100, "channels": walk}}
+    clips = {"walk": {"loop": True, "frames": 8, "duration_ms": 100, "channels": walk}}
+    clips.update(_side_fight_clips(doc))
+    return clips
+
+
+def _arm_envelope(doc: dict, prefix: str) -> tuple:
+    """Where this arm hangs from, and how far it can get -- in CHANNEL units.
+
+    IK hand channels are frame offsets from ``(center_x, ground_y)``, and the
+    shoulder is a fact of the SVG, so hardcoding either would silently rot the
+    moment the drawing moves.  Returns ``(shoulder_x, shoulder_y, reach)``.
+    """
+
+    document = RigDocument(doc)
+    skeleton = document.build_skeleton()
+    frame = doc["frame"]
+    cx = float(frame["center_x"])
+    gy = float(frame["ground_y"])
+    chain = next(
+        c for c in doc["ik_chains"] if c.get("channel_prefix") == prefix
+    )
+    world = skeleton.world({}, root=(cx, gy))
+    shoulder = world[chain["upper"]].origin
+    reach = skeleton.bones[chain["upper"]].length + skeleton.bones[chain["lower"]].length
+    return (shoulder[0] - cx, shoulder[1] - gy, reach)
+
+
+def _side_fight_clips(doc: dict) -> dict:
+    """**The rows Oiler needed before he could fight.**
+
+    His sheet published four: idle, walk, talk, interact.  A platform-fighter
+    move names the row it wants and settles for ``attack_side`` -> ``attack`` ->
+    ``slash`` -> ``idle``, so every swing in a sixteen-move repertoire drew the
+    STANDING POSE -- and cost the gameplay nothing to do it, which is why it
+    stayed broken.  These are the rows that table names
+    (``game/ambition_content/src/oiler_moveset.rs``).
+
+    Side view, because a platform fighter is a side-on game and it is the
+    silhouette his walk already reads in.
+
+    NB the art is contractually propless -- no wrench, no oil can, no satchel --
+    so every pose here is MIMED at the hand sockets.  A tool belongs on
+    ``sockets.tool_grip`` at runtime, never in the SVG.
+
+    !! **poses are authored as ANGLES on the arm's reachable circle, not as
+    (x, y) guesses.**  Oiler's arms are short and already near full extension
+    at rest -- a 26.5px reach from a shoulder 25.6px above the hanging wrist --
+    so a target picked by eye lands outside the circle, gets clamped by the IK,
+    and every "big" swing collapses onto the same 45-degree pose.  The first
+    draft of these clips did exactly that and read as a man shrugging.
+    """
+
+    sx, sy, reach = _arm_envelope(doc, "near_hand")
+    fsx, fsy, freach = _arm_envelope(doc, "far_hand")
+    nhp = _rest_pitch(doc, "near_hand")
+    fhp = _rest_pitch(doc, "far_hand")
+    nfx = _rest(doc, "near_foot", "x")
+    ffx = _rest(doc, "far_foot", "x")
+
+    # Forward is +x: the side rig's own geometry check requires the wrist to
+    # return forward of the elbow and the elbow to sit behind the shoulder.
+    # Angles are measured from straight-forward, positive downward, so the
+    # hanging rest pose is +90 and straight overhead is -90.
+    REST_DEG = 90.0
+
+    def near(deg: float, frac: float = 0.94) -> tuple:
+        rad = math.radians(deg)
+        return (sx + reach * frac * math.cos(rad), sy + reach * frac * math.sin(rad))
+
+    def far(deg: float, frac: float = 0.94) -> tuple:
+        rad = math.radians(deg)
+        return (
+            fsx + freach * frac * math.cos(rad),
+            fsy + freach * frac * math.sin(rad),
+        )
+
+    def pitch(rest: float, deg: float) -> float:
+        """Hand pitch that follows the arm, calibrated off its own rest pose."""
+        return rest + (deg - REST_DEG)
+
+    def arm(poses, *, side="near"):
+        """Expand ``[(deg, frac), ...]`` into the three channels one arm needs."""
+        place = near if side == "near" else far
+        rest = nhp if side == "near" else fhp
+        targets = [place(deg, frac) for deg, frac in poses]
+        prefix = "near_hand" if side == "near" else "far_hand"
+        return {
+            f"{prefix}_x": _shot([t[0] for t in targets]),
+            f"{prefix}_y": _shot([t[1] for t in targets]),
+            f"{prefix}_pitch": _shot([pitch(rest, deg) for deg, _ in poses]),
+        }
+
+    # ---- the swings ------------------------------------------------------
+    # A flat wrench swing at chest height: wind back over the shoulder, come
+    # through level, follow through low.
+    attack_side = _with_visibility(
+        {
+            "root_x": _shot([0.0, -2.0, 0.0, 2.5, 3.0, 0.5]),
+            "torso": _shot([0.0, -7.0, 0.0, 9.0, 8.0, 2.0]),
+            "head": _shot([0.0, 4.0, 0.0, -5.0, -4.0, -1.0]),
+            **arm(
+                [
+                    (REST_DEG, 0.90),
+                    (152.0, 0.72),
+                    (118.0, 0.80),
+                    (18.0, 0.98),
+                    (2.0, 0.99),
+                    (52.0, 0.92),
+                ]
+            ),
+            **arm(
+                [
+                    (REST_DEG, 0.92),
+                    (128.0, 0.78),
+                    (110.0, 0.82),
+                    (56.0, 0.92),
+                    (44.0, 0.94),
+                    (78.0, 0.92),
+                ],
+                side="far",
+            ),
+            "near_foot_x": _shot([nfx + 2, nfx, nfx + 3, nfx + 8, nfx + 9, nfx + 3]),
+            "far_foot_x": _shot([ffx - 1, ffx - 3, ffx - 4, ffx - 6, ffx - 6, ffx - 2]),
+        }
+    )
+
+    # The gauge needle sweeping: an overhead arc that beats a shorthop.
+    attack_up = _with_visibility(
+        {
+            "root_y": _shot([0.0, 1.5, 0.0, -1.5, -2.0, -0.5]),
+            "torso": _shot([0.0, 6.0, -2.0, -10.0, -11.0, -3.0]),
+            "head": _shot([0.0, -4.0, 2.0, 8.0, 9.0, 3.0]),
+            **arm(
+                [
+                    (REST_DEG, 0.90),
+                    (128.0, 0.70),
+                    (28.0, 0.78),
+                    (-52.0, 0.96),
+                    (-76.0, 0.99),
+                    (-24.0, 0.90),
+                ]
+            ),
+            **arm(
+                [
+                    (REST_DEG, 0.92),
+                    (104.0, 0.80),
+                    (78.0, 0.84),
+                    (36.0, 0.88),
+                    (24.0, 0.90),
+                    (64.0, 0.90),
+                ],
+                side="far",
+            ),
+            "near_foot_x": _shot([nfx, nfx - 1, nfx + 1, nfx + 3, nfx + 3, nfx]),
+        }
+    )
+
+    # Oil dragged forward at shin height.  He drops onto the trailing leg for
+    # it, because the arm alone cannot get anywhere near the floor.
+    attack_down = _with_visibility(
+        {
+            "root_y": _shot([0.0, 1.0, 5.0, 8.5, 9.0, 2.5]),
+            "torso": _shot([0.0, -4.0, 5.0, 13.0, 14.0, 4.0]),
+            "head": _shot([0.0, 3.0, -4.0, -9.0, -10.0, -3.0]),
+            **arm(
+                [
+                    (REST_DEG, 0.90),
+                    (146.0, 0.72),
+                    (110.0, 0.84),
+                    (46.0, 0.98),
+                    (34.0, 0.99),
+                    (74.0, 0.92),
+                ]
+            ),
+            **arm(
+                [
+                    (REST_DEG, 0.92),
+                    (124.0, 0.78),
+                    (112.0, 0.84),
+                    (86.0, 0.90),
+                    (80.0, 0.92),
+                    (86.0, 0.92),
+                ],
+                side="far",
+            ),
+            "near_foot_x": _shot([nfx + 1, nfx, nfx + 5, nfx + 10, nfx + 11, nfx + 3]),
+            "far_foot_x": _shot([ffx - 1, ffx - 3, ffx - 6, ffx - 9, ffx - 9, ffx - 3]),
+        }
+    )
+
+    # THE TORQUE SPEC -- Oiler's one kill move.  Four frames of visible windup,
+    # because a heavyweight swing nobody can see coming is not a smash.
+    smash_forward = _with_visibility(
+        {
+            "root_x": _shot([0.0, -2.5, -4.5, -4.5, 0.0, 4.0, 5.0, 1.5]),
+            "root_y": _shot([0.0, 1.0, 2.5, 3.0, 1.0, -1.0, -1.5, 0.0]),
+            "torso": _shot([0.0, -8.0, -13.0, -14.0, 0.0, 12.0, 15.0, 4.0]),
+            "head": _shot([0.0, 5.0, 8.0, 9.0, 0.0, -8.0, -10.0, -3.0]),
+            **arm(
+                [
+                    (REST_DEG, 0.90),
+                    (150.0, 0.74),
+                    (176.0, 0.86),
+                    (182.0, 0.90),
+                    (108.0, 0.80),
+                    (16.0, 0.99),
+                    (4.0, 1.00),
+                    (56.0, 0.92),
+                ]
+            ),
+            **arm(
+                [
+                    (REST_DEG, 0.92),
+                    (136.0, 0.80),
+                    (158.0, 0.86),
+                    (162.0, 0.88),
+                    (114.0, 0.82),
+                    (52.0, 0.94),
+                    (42.0, 0.96),
+                    (80.0, 0.92),
+                ],
+                side="far",
+            ),
+            "near_foot_x": _shot(
+                [nfx, nfx - 3, nfx - 4, nfx - 4, nfx + 2, nfx + 9, nfx + 10, nfx + 3]
+            ),
+            "far_foot_x": _shot(
+                [ffx, ffx - 1, ffx - 2, ffx - 2, ffx - 4, ffx - 7, ffx - 7, ffx - 2]
+            ),
+        }
+    )
+
+    # THE GEYSER, and the pose every special borrows: both hands down to a valve
+    # at his feet, brace, and then flung up as the line lets go.
+    special = _with_visibility(
+        {
+            "root_y": _shot([0.0, 2.5, 6.0, 7.0, 3.0, -2.0, -4.0, -2.5]),
+            "root_x": _shot([0.0, 0.5, 1.5, 1.5, 0.5, -1.0, -1.5, -1.0]),
+            "torso": _shot([0.0, 6.0, 13.0, 15.0, 5.0, -9.0, -16.0, -11.0]),
+            "head": _shot([0.0, -4.0, -9.0, -11.0, -3.0, 7.0, 13.0, 9.0]),
+            **arm(
+                [
+                    (REST_DEG, 0.90),
+                    (76.0, 0.94),
+                    (58.0, 0.99),
+                    (52.0, 1.00),
+                    (74.0, 0.92),
+                    (-16.0, 0.90),
+                    (-64.0, 0.99),
+                    (-48.0, 0.94),
+                ]
+            ),
+            **arm(
+                [
+                    (REST_DEG, 0.92),
+                    (80.0, 0.94),
+                    (64.0, 0.98),
+                    (58.0, 0.99),
+                    (78.0, 0.92),
+                    (-8.0, 0.90),
+                    (-56.0, 0.98),
+                    (-40.0, 0.94),
+                ],
+                side="far",
+            ),
+            "near_foot_x": _shot(
+                [nfx, nfx + 2, nfx + 4, nfx + 4, nfx + 2, nfx, nfx - 1, nfx]
+            ),
+            "far_foot_x": _shot(
+                [ffx, ffx - 2, ffx - 4, ffx - 4, ffx - 2, ffx, ffx + 1, ffx]
+            ),
+        }
+    )
+
+    # Struck: snapped back off his heels, and back to stance.
+    hit = _with_visibility(
+        {
+            "root_x": _shot([0.0, -4.5, -3.0, -1.0, 0.0]),
+            "root_y": _shot([0.0, -1.5, -0.5, 0.0, 0.0]),
+            "torso": _shot([0.0, 13.0, 8.0, 3.0, 0.0]),
+            "head": _shot([0.0, -15.0, -10.0, -4.0, 0.0]),
+            **arm(
+                [
+                    (REST_DEG, 0.90),
+                    (126.0, 0.72),
+                    (112.0, 0.78),
+                    (98.0, 0.86),
+                    (REST_DEG, 0.90),
+                ]
+            ),
+            **arm(
+                [
+                    (REST_DEG, 0.92),
+                    (134.0, 0.74),
+                    (118.0, 0.80),
+                    (100.0, 0.88),
+                    (REST_DEG, 0.92),
+                ],
+                side="far",
+            ),
+            "near_foot_x": _shot([nfx, nfx - 5, nfx - 3, nfx - 1, nfx]),
+            "far_foot_x": _shot([ffx, ffx - 3, ffx - 2, ffx - 1, ffx]),
+        }
+    )
+    # !! after `_with_visibility`, which writes both gates as consts.
+    hit["blink_vis"] = _shot([0.0, 1.0, 1.0, 0.0, 0.0], ease="linear")
+
+    # Down: he folds backwards over the hip and stays there.  The lean stops at
+    # 30 degrees so his head never leaves the logical frame.
+    death = _with_visibility(
+        {
+            "root_x": _shot([0.0, -1.5, -4.0, -6.0, -7.5, -8.0]),
+            "root_y": _shot([0.0, -1.0, 3.0, 8.0, 12.0, 14.0]),
+            "torso": _shot([0.0, 7.0, 15.0, 23.0, 28.0, 30.0]),
+            "head": _shot([0.0, -7.0, -12.0, -16.0, -18.0, -19.0]),
+            **arm(
+                [
+                    (REST_DEG, 0.90),
+                    (108.0, 0.84),
+                    (126.0, 0.76),
+                    (142.0, 0.70),
+                    (152.0, 0.66),
+                    (156.0, 0.64),
+                ]
+            ),
+            **arm(
+                [
+                    (REST_DEG, 0.92),
+                    (104.0, 0.86),
+                    (120.0, 0.78),
+                    (136.0, 0.72),
+                    (146.0, 0.68),
+                    (150.0, 0.66),
+                ],
+                side="far",
+            ),
+            "near_foot_x": _shot([nfx, nfx + 2, nfx + 5, nfx + 8, nfx + 10, nfx + 11]),
+            "near_foot_lift": _shot([0.0, 0.0, 0.5, 1.5, 2.0, 2.0]),
+            "far_foot_x": _shot([ffx, ffx + 1, ffx + 3, ffx + 5, ffx + 6, ffx + 6]),
+        },
+        blink=1.0,
+    )
+
+    # Wipes his hands on the apron, then points at the mess you are about to be.
+    taunt = _with_visibility(
+        {
+            "root_y": _shot([0.0, 0.5, 1.0, 0.5, 0.0, -0.5, -1.0, -0.5]),
+            "torso": _shot([0.0, 3.0, 6.0, 3.0, 0.0, -3.0, -6.0, -3.0]),
+            "head": _shot([0.0, -2.0, -3.0, -2.0, 0.0, 3.0, 6.0, 3.0]),
+            **arm(
+                [
+                    (REST_DEG, 0.90),
+                    (98.0, 0.66),
+                    (104.0, 0.58),
+                    (98.0, 0.66),
+                    (REST_DEG, 0.90),
+                    (46.0, 0.86),
+                    (6.0, 0.99),
+                    (48.0, 0.92),
+                ]
+            ),
+            **arm(
+                [
+                    (REST_DEG, 0.92),
+                    (94.0, 0.68),
+                    (100.0, 0.60),
+                    (94.0, 0.68),
+                    (REST_DEG, 0.92),
+                    (96.0, 0.90),
+                    (98.0, 0.92),
+                    (94.0, 0.92),
+                ],
+                side="far",
+            ),
+        }
+    )
+    taunt["blink_vis"] = _shot(
+        [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0], ease="linear"
+    )
+
+    def one_shot(frames: int, duration_ms: int, channels: dict) -> dict:
+        return {
+            "loop": False,
+            "frames": frames,
+            "duration_ms": duration_ms,
+            "channels": channels,
+        }
+
+    return {
+        "attack_side": one_shot(6, 70, attack_side),
+        "attack_up": one_shot(6, 66, attack_up),
+        "attack_down": one_shot(6, 70, attack_down),
+        "smash_forward": one_shot(8, 64, smash_forward),
+        "special": one_shot(8, 72, special),
+        "hit": one_shot(5, 80, hit),
+        "death": one_shot(6, 90, death),
+        "taunt": one_shot(8, 100, taunt),
+    }
 
 
 def seed_clips(view_name: str, doc: dict) -> dict:

@@ -183,7 +183,8 @@
     180.0,
     231.5
    ],
-   "rest_angle": 93.6914
+   "rest_angle": 93.6914,
+   "svg_source_order": 3
   },
   {
    "name": "far_leg_l",
@@ -198,7 +199,8 @@
     177.0,
     278.0
    ],
-   "rest_angle": 87.3162
+   "rest_angle": 87.3162,
+   "svg_source_order": 4
   },
   {
    "name": "far_leg_foot",
@@ -214,7 +216,8 @@
     180.0,
     342.0
    ],
-   "rest_angle": 32.2756
+   "rest_angle": 32.2756,
+   "svg_source_order": 5
   },
   {
    "name": "far_arm_u",
@@ -231,7 +234,8 @@
     183.0,
     149.5
    ],
-   "rest_angle": 71.5651
+   "rest_angle": 71.5651,
+   "svg_source_order": 0
   },
   {
    "name": "far_arm_l",
@@ -246,7 +250,8 @@
     200.0,
     200.5
    ],
-   "rest_angle": 102.8937
+   "rest_angle": 102.8937,
+   "svg_source_order": 1
   },
   {
    "name": "far_hand",
@@ -260,7 +265,8 @@
     190.5,
     242.0
    ],
-   "rest_angle": 92.0454
+   "rest_angle": 92.0454,
+   "svg_source_order": 2
   },
   {
    "name": "near_leg_u",
@@ -276,7 +282,8 @@
     145.5,
     233.0
    ],
-   "rest_angle": 95.2471
+   "rest_angle": 95.2471,
+   "svg_source_order": 6
   },
   {
    "name": "pelvis_yoke",
@@ -292,7 +299,8 @@
     162.75,
     232.25
    ],
-   "rest_angle": 0.0
+   "rest_angle": 0.0,
+   "svg_source_order": 9
   },
   {
    "name": "torso",
@@ -317,7 +325,8 @@
     160.0,
     205.0
    ],
-   "rest_angle": 0.0
+   "rest_angle": 0.0,
+   "svg_source_order": 10
   },
   {
    "name": "apron",
@@ -333,7 +342,8 @@
     160.0,
     205.0
    ],
-   "rest_angle": 0.0
+   "rest_angle": 0.0,
+   "svg_source_order": 11
   },
   {
    "name": "head",
@@ -366,7 +376,8 @@
     162.0,
     130.0
    ],
-   "rest_angle": 0.0
+   "rest_angle": 0.0,
+   "svg_source_order": 12
   },
   {
    "name": "blink",
@@ -382,6 +393,7 @@
     130.0
    ],
    "rest_angle": 0.0,
+   "svg_source_order": 13,
    "opacity_channel": "blink_vis"
   },
   {
@@ -398,6 +410,7 @@
     130.0
    ],
    "rest_angle": 0.0,
+   "svg_source_order": 14,
    "opacity_channel": "talk_vis"
   },
   {
@@ -413,7 +426,8 @@
     141.0,
     282.0
    ],
-   "rest_angle": 91.8476
+   "rest_angle": 91.8476,
+   "svg_source_order": 7
   },
   {
    "name": "near_leg_foot",
@@ -429,7 +443,8 @@
     139.0,
     344.0
    ],
-   "rest_angle": 149.9314
+   "rest_angle": 149.9314,
+   "svg_source_order": 8
   },
   {
    "name": "near_arm_u",
@@ -446,7 +461,8 @@
     135.0,
     150.5
    ],
-   "rest_angle": 109.29
+   "rest_angle": 109.29,
+   "svg_source_order": 15
   },
   {
    "name": "near_arm_l",
@@ -461,7 +477,8 @@
     117.5,
     200.5
    ],
-   "rest_angle": 74.5115
+   "rest_angle": 74.5115,
+   "svg_source_order": 16
   },
   {
    "name": "near_hand",
@@ -475,7 +492,8 @@
     129.0,
     242.0
    ],
-   "rest_angle": 86.1859
+   "rest_angle": 86.1859,
+   "svg_source_order": 17
   }
  ],
  "ik_legs": [
@@ -509,7 +527,9 @@
    "rest_x": -11.0742,
    "rest_y": -41.0156,
    "rest_pitch": 86.1859,
-   "bend": -1.0
+   "pitch_mode": "world",
+   "bend": -1.0,
+   "pose_authority": "svg-layout"
   },
   {
    "upper": "far_arm_u",
@@ -519,7 +539,9 @@
    "rest_x": 9.1055,
    "rest_y": -41.0156,
    "rest_pitch": 92.0454,
-   "bend": 1.0
+   "pitch_mode": "world",
+   "bend": 1.0,
+   "pose_authority": "svg-layout"
   }
  ],
  "clips": {
@@ -538,22 +560,22 @@
      "expr": "-0.5*sin(tau*t)"
     },
     "near_hand_x": {
-     "expr": "-7.3295 - 0.7*sin(tau*t)"
+     "expr": "-11.0742 - 0.7*sin(tau*t)"
     },
     "near_hand_y": {
-     "expr": "-45.0000 + 0.5*sin(tau*t)"
+     "expr": "-41.0156 + 0.5*sin(tau*t)"
     },
     "near_hand_pitch": {
-     "const": 85.9144
+     "const": 86.1859
     },
     "far_hand_x": {
-     "expr": "7.6705 + 0.5*sin(tau*t)"
+     "expr": "9.1055 + 0.5*sin(tau*t)"
     },
     "far_hand_y": {
-     "expr": "-43.6364 - 0.35*sin(tau*t)"
+     "expr": "-41.0156 - 0.35*sin(tau*t)"
     },
     "far_hand_pitch": {
-     "const": 94.0856
+     "const": 92.0454
     },
     "blink_vis": {
      "const": 0.0
@@ -674,32 +696,32 @@
      "keys": [
       [
        0.0,
-       -7.3295,
+       -11.0742,
        "smooth"
       ],
       [
        0.166667,
-       -5.0284,
+       -8.8594,
        "smooth"
       ],
       [
        0.333333,
-       -2.2159,
+       -6.1523,
        "smooth"
       ],
       [
        0.5,
-       -3.2386,
+       -7.1367,
        "smooth"
       ],
       [
        0.666667,
-       -2.2159,
+       -6.1523,
        "smooth"
       ],
       [
        0.833333,
-       -7.3295,
+       -11.0742,
        "smooth"
       ]
      ]
@@ -708,32 +730,32 @@
      "keys": [
       [
        0.0,
-       -45.0,
+       -41.0156,
        "smooth"
       ],
       [
        0.166667,
-       -42.9545,
+       -39.0468,
        "smooth"
       ],
       [
        0.333333,
-       -39.8864,
+       -36.0937,
        "smooth"
       ],
       [
        0.5,
-       -40.9091,
+       -37.0781,
        "smooth"
       ],
       [
        0.666667,
-       -39.8864,
+       -36.0937,
        "smooth"
       ],
       [
        0.833333,
-       -45.0,
+       -41.0156,
        "smooth"
       ]
      ]
@@ -742,32 +764,32 @@
      "keys": [
       [
        0.0,
-       85.9144,
+       86.1859,
        "smooth"
       ],
       [
        0.166667,
-       89.9144,
+       90.1859,
        "smooth"
       ],
       [
        0.333333,
-       98.9144,
+       99.1859,
        "smooth"
       ],
       [
        0.5,
-       78.9144,
+       79.1859,
        "smooth"
       ],
       [
        0.666667,
-       97.9144,
+       98.1859,
        "smooth"
       ],
       [
        0.833333,
-       85.9144,
+       86.1859,
        "smooth"
       ]
      ]
@@ -776,32 +798,32 @@
      "keys": [
       [
        0.0,
-       7.6705,
+       9.1055,
        "smooth"
       ],
       [
        0.166667,
-       10.0569,
+       11.4024,
        "smooth"
       ],
       [
        0.333333,
-       10.0569,
+       11.4024,
        "smooth"
       ],
       [
        0.5,
-       10.0569,
+       11.4024,
        "smooth"
       ],
       [
        0.666667,
-       7.6705,
+       9.1055,
        "smooth"
       ],
       [
        0.833333,
-       7.6705,
+       9.1055,
        "smooth"
       ]
      ]
@@ -810,38 +832,38 @@
      "keys": [
       [
        0.0,
-       -43.6364,
+       -41.0156,
        "smooth"
       ],
       [
        0.166667,
-       -43.2955,
+       -40.6875,
        "smooth"
       ],
       [
        0.333333,
-       -43.2955,
+       -40.6875,
        "smooth"
       ],
       [
        0.5,
-       -43.6364,
+       -41.0156,
        "smooth"
       ],
       [
        0.666667,
-       -43.6364,
+       -41.0156,
        "smooth"
       ],
       [
        0.833333,
-       -43.6364,
+       -41.0156,
        "smooth"
       ]
      ]
     },
     "far_hand_pitch": {
-     "const": 94.0856
+     "const": 92.0454
     },
     "blink_vis": {
      "const": 0.0
@@ -853,6 +875,7 @@
   }
  },
  "sprite_tuning": {
-  "collision_scale": 1.72
+  "collision_scale": 1.72,
+  "part_order": "attribute"
  }
 }

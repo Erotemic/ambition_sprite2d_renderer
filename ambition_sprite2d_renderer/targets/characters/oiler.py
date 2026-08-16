@@ -24,11 +24,26 @@ from ...authoring.sheet_build import build_sheet
 TARGET_NAME = "oiler"
 RIG_DIR = Path(__file__).resolve().parent / "rigged" / "oiler"
 FRAME_SIZE = (256, 256)
+# The four the Hall needs, then the eight a fight needs.  A platform-fighter
+# move names the row it wants and settles for ``attack_side`` -> ``attack`` ->
+# ``slash`` -> ``idle``, so before the second group existed every swing in
+# Oiler's repertoire drew his STANDING POSE -- and cost the gameplay nothing to
+# do it, which is why it stayed broken.  See
+# ``game/ambition_content/src/oiler_moveset.rs``; a Rust test asserts every move
+# in that table names a row published here.
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 8, 120),
     ("walk", 8, 100),
     ("talk", 6, 100),
     ("interact", 6, 105),
+    ("attack_side", 6, 70),
+    ("attack_up", 6, 66),
+    ("attack_down", 6, 70),
+    ("smash_forward", 8, 64),
+    ("special", 8, 72),
+    ("hit", 5, 80),
+    ("death", 6, 90),
+    ("taunt", 8, 100),
 ]
 
 # Animation -> (view document, clip inside that document).
@@ -37,6 +52,16 @@ CLIP_SOURCE: Dict[str, Tuple[str, str]] = {
     "walk": ("oiler_side.rig.json", "walk"),
     "talk": ("oiler_front.rig.json", "talk"),
     "interact": ("oiler_three_quarter.rig.json", "interact"),
+    # Every fight row is SIDE view: a platform fighter is a side-on game, and it
+    # is the silhouette his walk already reads in.
+    "attack_side": ("oiler_side.rig.json", "attack_side"),
+    "attack_up": ("oiler_side.rig.json", "attack_up"),
+    "attack_down": ("oiler_side.rig.json", "attack_down"),
+    "smash_forward": ("oiler_side.rig.json", "smash_forward"),
+    "special": ("oiler_side.rig.json", "special"),
+    "hit": ("oiler_side.rig.json", "hit"),
+    "death": ("oiler_side.rig.json", "death"),
+    "taunt": ("oiler_side.rig.json", "taunt"),
 }
 
 ACTOR_METADATA = {
@@ -68,12 +93,23 @@ ACTOR_METADATA = {
         },
     },
     "brain": {"default_preset": "patrol_peaceful"},
-    "actions": {"default_preset": "peaceful"},
+    # What he does in the Hall is a POLICY (``patrol_peaceful``); whether he may
+    # swing is a capability, and since 2026-08-16 he authors a sixteen-move smash
+    # repertoire, so his catalog row names ``striker_swipe``.
+    "actions": {"default_preset": "striker_swipe"},
     "animation_bindings": {
         "default": {"animation": "idle", "events": []},
         "locomotion.walk": {"animation": "walk", "events": []},
         "interaction.talk": {"animation": "talk", "events": []},
         "interaction.use": {"animation": "interact", "events": []},
+        "action.attack.side": {"animation": "attack_side", "events": []},
+        "action.attack.up": {"animation": "attack_up", "events": []},
+        "action.attack.down": {"animation": "attack_down", "events": []},
+        "action.attack.smash": {"animation": "smash_forward", "events": []},
+        "action.attack.special": {"animation": "special", "events": []},
+        "reaction.hit": {"animation": "hit", "events": []},
+        "reaction.death": {"animation": "death", "events": []},
+        "emote.taunt": {"animation": "taunt", "events": []},
     },
     "sockets": {
         "head": {
