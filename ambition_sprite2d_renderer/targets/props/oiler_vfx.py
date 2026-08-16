@@ -64,9 +64,12 @@ ROWS: List[Tuple[str, int, int]] = [
     ("pressure_vent", 10, 54),
     ("portal_leak", 12, 70),
     ("unit_circle_rotation", 10, 56),
+    ("oil_geyser_emerge", 9, 48),
+    ("oil_geyser_stream", 12, 56),
+    ("oil_geyser_impact", 8, 46),
 ]
 
-LOOPS = {"invariant_loop", "gate_calibration", "portal_leak"}
+LOOPS = {"invariant_loop", "gate_calibration", "portal_leak", "oil_geyser_stream"}
 
 # Palette shared conceptually with oiler_mechanic.py, copied here rather than
 # importing a body renderer so detached VFX remain independently renderable.
@@ -300,6 +303,41 @@ EFFECT_SPECS: Dict[str, dict] = {
         relationship="active",
         blend="alpha_or_additive",
         sfx="vfx.oiler.unit_circle_rotation",
+    ),
+    "oil_geyser_emerge": _spec(
+        "oil_attack",
+        "A pressurized brass outlet coughs open and throws the first heavy crown of dark oil into the shot direction.",
+        placement="emitter_socket",
+        orientation="positive_x_is_forward",
+        mirror_x=True,
+        relationship="startup",
+        attachment="follow_source_optional",
+        blend="alpha_or_additive",
+        size=116,
+        sfx="vfx.oiler.oil_geyser_emerge",
+    ),
+    "oil_geyser_stream": _spec(
+        "oil_attack",
+        "A sustained high-pressure oil jet with a coherent core, shearing spray, and detached droplets to shove anything in its path.",
+        placement="emitter_socket",
+        orientation="positive_x_is_forward",
+        mirror_x=True,
+        loop=True,
+        attachment="follow_source_optional",
+        blend="alpha_or_additive",
+        size=124,
+        sfx="vfx.oiler.oil_geyser_stream.loop",
+    ),
+    "oil_geyser_impact": _spec(
+        "oil_attack",
+        "A forceful oily impact bloom: thick splat crown, rebound droplets, and a shove-mark where the pressurized stream lands.",
+        placement="contact_point",
+        orientation="surface_normal",
+        mirror_x=True,
+        relationship="impact",
+        blend="alpha_or_additive",
+        size=112,
+        sfx="vfx.oiler.oil_geyser_impact",
     ),
 }
 
@@ -636,6 +674,86 @@ def _draw_unit_circle_rotation(img: Image.Image, p: float) -> None:
     _arc(img,(48,48,80,80),180,180+math.degrees(a)+180,_alpha(CHALK_HI,0.55),1.0)
 
 
+def _draw_oil_geyser_emerge(img: Image.Image, p: float) -> None:
+    q=_ease(p); fade=1-_smooth(max(0,(p-0.72)/0.28))
+    ox,oy=22,64
+    _ellipse(img,(12,54,28,74),fill=_alpha(BRASS,0.86*fade),outline=_alpha(OUTLINE,0.78*fade),width=1.0)
+    _ellipse(img,(19,58,30,70),fill=_alpha(STEEL_HI,0.9*fade),outline=_alpha(OUTLINE,0.5*fade),width=0.8)
+    crown_len=_lerp(10,30,q)
+    for i,dy in enumerate((-11,-5,0,5,11)):
+        x0=26
+        x1=26+crown_len*(0.62+0.1*i)
+        y0=64+dy*0.25
+        y1=64+dy
+        w=7-(i%3)
+        _line(img,[(x0,y0),(x1,y1)],_alpha(OIL,0.88*fade),w)
+        _line(img,[(x0+2,y0-1.2),(x1-2,y1-1.4)],_alpha(OIL_GLEAM,0.42*fade),max(1.0,w*0.22))
+    for i in range(5):
+        a=-0.8+i*0.4
+        r=_lerp(8,20+3*i,q)
+        x=28+math.cos(a)*r
+        y=64+math.sin(a)*r
+        rr=2.0+(i%2)*1.2
+        _ellipse(img,(x-rr,y-rr,x+rr,y+rr),fill=_alpha(OIL_HI,0.74*fade),outline=_alpha(OUTLINE,0.35*fade),width=0.6)
+    flash=_smooth(min(1,p/0.22))*(1-_smooth(max(0,(p-0.28)/0.24)))
+    if flash>0:
+        _arc(img,(10,48,38,80),292,68,_alpha(BRASS_HI,0.8*flash),2.0)
+
+
+def _draw_oil_geyser_stream(img: Image.Image, p: float) -> None:
+    phase=math.tau*p
+    ox,oy=18,64
+    _ellipse(img,(10,55,26,73),fill=_alpha(BRASS,0.78),outline=_alpha(OUTLINE,0.72),width=1.0)
+    _ellipse(img,(17,59,27,69),fill=_alpha(STEEL_HI,0.82),outline=_alpha(OUTLINE,0.45),width=0.8)
+    upper=[]
+    lower=[]
+    center=[]
+    for i in range(18):
+        t=i/17
+        x=_lerp(24,106,t)
+        sway=math.sin(phase*1.8+t*math.tau*2.1)
+        spread=8.5+3.5*math.sin(phase+t*math.tau*1.3)
+        cy=64+sway*3.6
+        upper.append((x,cy-spread))
+        lower.append((x,cy+spread*0.82))
+        center.append((x,cy))
+    _poly(img, upper + list(reversed(lower)), fill=_alpha(OIL,0.86), outline=_alpha(OUTLINE,0.55), width=1.0)
+    _line(img, center, _alpha(OIL_HI,0.52), 5.0)
+    gleam=[(x, y-2.3-0.8*math.sin(phase*2+t*11)) for t,(x,y) in zip([i/17 for i in range(18)], center)]
+    _line(img, gleam, _alpha(OIL_GLEAM,0.34), 1.5)
+    for i in range(7):
+        t=(i/7 + p*0.85)%1.0
+        x=_lerp(30,102,t)
+        y=64+math.sin(t*math.tau*2.6+phase*1.3)*(9+2*(i%2))
+        rr=1.8+(i%3)*0.65
+        _ellipse(img,(x-rr,y-rr,x+rr,y+rr),fill=_alpha(OIL_HI,0.7*(1-0.22*t)),outline=_alpha(OUTLINE,0.22),width=0.5)
+
+
+def _draw_oil_geyser_impact(img: Image.Image, p: float) -> None:
+    q=_ease(p); fade=1-_smooth(max(0,(p-0.58)/0.42))
+    cx,cy=92,64
+    _ellipse(img,(cx-10-14*q,cy-8-10*q,cx+10+18*q,cy+8+10*q),fill=_alpha(OIL,0.82*fade),outline=_alpha(OUTLINE,0.62*fade),width=1.0)
+    for i in range(8):
+        a=-2.25+i*0.42
+        r0=9+6*q
+        r1=_lerp(16,34+(i%3)*3,q)
+        x0,y0=cx+math.cos(a)*r0,cy+math.sin(a)*r0
+        x1,y1=cx+math.cos(a)*r1,cy+math.sin(a)*r1
+        w=4-(i%3)*0.7
+        _line(img,[(x0,y0),(x1,y1)],_alpha(OIL_HI,0.72*fade),w)
+    for i in range(9):
+        a=-1.9+i*0.36
+        r=_lerp(10,36+(i%2)*5,q)
+        x=cx+math.cos(a)*r
+        y=cy+math.sin(a)*r*0.82
+        rr=2.2+(i%3)*0.8
+        _ellipse(img,(x-rr,y-rr,x+rr,y+rr),fill=_alpha(OIL_HI,0.82*fade),outline=_alpha(OUTLINE,0.35*fade),width=0.6)
+    _line(img,[(cx-18,cy),(cx+14,cy)],_alpha(OIL_GLEAM,0.44*fade),1.6)
+    shove=max(0.0,1-abs(p-0.28)/0.28)
+    if shove>0:
+        _arc(img,(76,44,116,84),242,118,_alpha(BRASS_HI,0.58*shove),1.4)
+
+
 DRAWERS = {
     "chalk_spiral": _draw_chalk_spiral,
     "curve_trace": _draw_curve_trace,
@@ -657,6 +775,9 @@ DRAWERS = {
     "pressure_vent": _draw_pressure_vent,
     "portal_leak": _draw_portal_leak,
     "unit_circle_rotation": _draw_unit_circle_rotation,
+    "oil_geyser_emerge": _draw_oil_geyser_emerge,
+    "oil_geyser_stream": _draw_oil_geyser_stream,
+    "oil_geyser_impact": _draw_oil_geyser_impact,
 }
 
 
@@ -665,8 +786,10 @@ def _origin_for(anim: str) -> Point:
         return 64.0, 89.0
     if anim == "oil_drip":
         return 64.0, 32.0
-    if anim == "pressure_vent":
+    if anim in {"pressure_vent", "oil_geyser_emerge", "oil_geyser_stream"}:
         return 22.0, 64.0
+    if anim == "oil_geyser_impact":
+        return 92.0, 64.0
     if anim in {"wrench_strike", "brass_spark", "friction_tick"}:
         return 64.0, 64.0
     return 64.0, 64.0
@@ -679,7 +802,7 @@ def _progress(anim: str, frame_idx: int, frames: int) -> float:
 def _phase(anim: str, p: float) -> str:
     if anim in LOOPS:
         return "loop"
-    if anim in {"oil_splash", "brass_spark", "wrench_strike", "friction_tick"}:
+    if anim in {"oil_splash", "brass_spark", "wrench_strike", "friction_tick", "oil_geyser_impact"}:
         return "impact" if p < 0.34 else "dissipate"
     if anim in {"stabilizer_spinup", "gauge_sweep", "convergence_ticks", "tolerance_brackets"}:
         return "calibrate" if p < 0.72 else "settle"
@@ -701,6 +824,8 @@ def _frame_meta(anim: str, frame_idx: int, frames: int) -> dict:
     p = _progress(anim, frame_idx, frames)
     ox, oy = _origin_for(anim)
     anchors = {"origin": {"x": ox, "y": oy}}
+    if anim == "oil_geyser_stream":
+        anchors["target"] = {"x": 104.0, "y": 64.0}
     placement = EFFECT_SPECS[anim]["placement"]
     if placement in {"surface_contact", "contact_point", "surface_or_feature_point", "target_point", "feature_point"}:
         anchors["contact"] = {"x": ox, "y": oy}
