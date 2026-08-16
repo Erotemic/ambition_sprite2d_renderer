@@ -38,7 +38,7 @@ from functools import lru_cache
 from contextvars import ContextVar
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, List, Mapping, MutableMapping, Optional, Tuple
+from typing import Any, Dict, List, Mapping, MutableMapping, Optional, Tuple
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -170,6 +170,85 @@ def _pad_rgba_frame(frame: Image.Image, frame_padding: Tuple[int, int, int, int]
     )
     padded.alpha_composite(frame, (left, top))
     return padded
+
+
+#: How far inward to look for the taper that tells a tip from a truncation.
+_CLIP_DEPTH = 6
+#: Below this many opaque pixels an edge is a detail, not a severed shape.
+_CLIP_MIN_RUN = 6
+#: A cut edge is already at least this fraction of the width the shape reaches
+#: just inside it — i.e. it never narrowed on its way out.
+_CLIP_NO_TAPER = 0.5
+_CLIP_OPAQUE = 200
+
+
+def clipped_frame_edges(frame: Image.Image) -> List[str]:
+    """Edges of `frame` where the drawing appears to have been CUT OFF.
+
+    ⭐ **the drawing canvas IS the logical frame, so overflow is lost here and
+    nowhere else.** Everything downstream sees only what survived: the packer
+    trims each frame to its opaque bbox, and auto-crop then fits the sheet's
+    frame to the union of those bboxes — a crop can only hug what was drawn. The
+    packer's own losslessness assert compares trim geometry against the logical
+    frame and therefore cannot see ink that was never there. That is why this
+    check has to run on `render_fn`'s output, before padding, before trim.
+
+    Found because Jon reported super Sanic's spikes looking cut. They were: the
+    super skin is the base body with `spikes_up=True`, and only the super sheet
+    was affected. A roster scan then found the same signature on 23 of 133 sheets
+    (2026-08-16).
+
+    ⚠ **"touches the edge" is NOT the test, and using it would cry wolf on 74
+    sheets** — with `auto_crop` the frame is fitted to the art, so touching the
+    boundary is the normal case rather than a defect.
+
+    ⛔ **and "a wide enough run along the edge" is not the test either, which
+    cost a wrong number before this landed.** That phrasing hides a denominator:
+    *wide relative to what?* Against the trimmed rect's width it flags
+    `super_sanic`; against the logical frame's width it does not, and nothing
+    justifies either choice. A criterion that changes its answer with an
+    arbitrary denominator is not a criterion.
+
+    ⭐ **so the test is the one thing that was actually measured: a truncated
+    shape does not TAPER.** Compare the edge line against the widest the shape
+    reaches within `_CLIP_DEPTH` lines inside it. A tip narrows on its way out; a
+    cut arrives at the boundary already near full width. Denominator-free, and it
+    matches every profile on the shipped roster:
+
+        super_sanic idle   12 14 17 18 20 22 24 25   <- 12 vs 24 inward: CUT
+        sanic       idle    0  0  0  0  3  6  8 11   <- empty edge: clean
+        sanic       jump    0  0  0  0  0  0  0  0   <- touches, not cut
+        v3          idle    0  7  9 11 11 13 13 13   <- empty edge: clean
+
+    Returns the edge names, so a caller can say WHAT it saw rather than only that
+    something was wrong.
+    """
+    if frame.width < 2 or frame.height < 2:
+        return []
+    alpha = frame.getchannel("A")
+    width, height = frame.size
+    depth = min(_CLIP_DEPTH, width // 2, height // 2)
+    if depth < 1:
+        return []
+
+    def opaque_on(points) -> int:
+        return sum(1 for point in points if alpha.getpixel(point) > _CLIP_OPAQUE)
+
+    edges: List[str] = []
+    for name, line_at in (
+        ("top", lambda d: [(x, d) for x in range(width)]),
+        ("bottom", lambda d: [(x, height - 1 - d) for x in range(width)]),
+        ("left", lambda d: [(d, y) for y in range(height)]),
+        ("right", lambda d: [(width - 1 - d, y) for y in range(height)]),
+    ):
+        counts = [opaque_on(line_at(d)) for d in range(depth + 1)]
+        at_edge = counts[0]
+        if at_edge < _CLIP_MIN_RUN:
+            continue
+        inward = max(counts[1:], default=0)
+        if at_edge >= max(_CLIP_MIN_RUN, _CLIP_NO_TAPER * inward):
+            edges.append(name)
+    return edges
 
 
 def _translate_actor_metadata(actor_metadata: Any, dx: float, dy: float) -> Any:
@@ -811,6 +890,11 @@ def render_sheet(source: FrameSource, out_dir: Path):
     # We need all frames in hand before we can compute the union alpha
     # bbox for auto-crop.
     rendered_rows: List[Tuple[str, int, int, List[Tuple[Image.Image, dict]]]] = []
+    # (animation, frame index, edges) for every frame whose drawing ran off the
+    # logical frame. Reported once at the end rather than per frame: a clipped
+    # pose is usually clipped in most of its frames, and 40 identical lines is
+    # how a real warning gets scrolled past.
+    clipped_frames: List[Tuple[str, int, str]] = []
     progress_value = os.environ.get("AMBITION_SPRITE_PROGRESS", "0").strip().lower()
     progress_enabled = progress_value not in {"", "0", "false", "no", "off"}
     slow_frame_seconds = float(os.environ.get("AMBITION_SPRITE_SLOW_FRAME_SECONDS", "1.0"))
@@ -849,6 +933,11 @@ def render_sheet(source: FrameSource, out_dir: Path):
             row_render_seconds += render_elapsed
             if frame.mode != "RGBA":
                 frame = frame.convert("RGBA")
+            # BEFORE padding: this is the drawing canvas, and the only place a
+            # clipped edge is still visible. See `clipped_frame_edges`.
+            clipped = clipped_frame_edges(frame)
+            if clipped:
+                clipped_frames.append((anim, frame_idx, ",".join(clipped)))
             frame = _pad_rgba_frame(frame, frame_padding)
             meta = {}
             if frame_meta_fn is not None:
@@ -889,6 +978,32 @@ def render_sheet(source: FrameSource, out_dir: Path):
         f"phase render: done in {time.perf_counter() - sheet_started:.2f}s | "
         f"render calls={render_seconds:.2f}s | metadata calls={metadata_seconds:.2f}s"
     )
+    if clipped_frames:
+        # ⚠ printed unconditionally, NOT through `progress()`: this is a defect
+        # in the art, not progress chatter, and it must be visible in a quiet
+        # regen. It WARNS rather than raising because 23 of 133 shipped sheets
+        # already trip it (2026-08-16) and failing the build would stop everyone
+        # from regenerating anything until all of them are redrawn. Whoever fixes
+        # the roster can decide to make it fatal; the useful thing today is that
+        # a NEW one is visible the moment it is drawn.
+        by_edge: Dict[str, List[str]] = {}
+        for anim, frame_idx, edges in clipped_frames:
+            by_edge.setdefault(edges, []).append(f"{anim}#{frame_idx}")
+        print(
+            f"⚠ [sheet:{target}] DRAWING RUNS OFF THE LOGICAL FRAME "
+            f"({fw}x{fh}) in {len(clipped_frames)} frame(s) — the art outside it "
+            f"is gone, and nothing downstream can recover it:",
+            flush=True,
+        )
+        for edges, where in sorted(by_edge.items()):
+            shown = ", ".join(where[:6])
+            more = f" (+{len(where) - 6} more)" if len(where) > 6 else ""
+            print(f"    {edges:22s} {shown}{more}", flush=True)
+        print(
+            "    ⇒ either draw smaller or give the target a bigger frame_size; "
+            "a flat run of opaque pixels along an edge is a cut, not a tip.",
+            flush=True,
+        )
     profile_checkpoint(f"{target}:render-pass", force=True)
     # Canonical pose: reuse the already-rendered first-row frame instead of
     # invoking the target renderer a second time. Most idle cycles start at a
