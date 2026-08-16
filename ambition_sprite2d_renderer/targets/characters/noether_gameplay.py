@@ -1,62 +1,129 @@
 """Sprite-side gameplay geometry for the Noether fighter.
 
-Noether's rig is authored in the logical 128x128 space her ``noether.rig.json``
-declares (``ground_y = 101``, ``center_x = 64``, ``render_scale = 2``), and the
-target composes it with :data:`noether.RIG_RENDER_PADDING`.  Every number in this
-module is written in that RIG space and mapped to published pixels once, at the
-boundary, by :func:`_px` / :func:`_len` — the same discipline
-``pca_gameplay.py`` follows.
+⛔⛔ **THIS FILE USED TO RESTATE THE RIG'S FRAME CONSTANTS, AND THE RIG MOVED
+UNDER IT.** Jon, 2026-08-16: *"We have an issue with Emmy's sprite metadata. It
+has her 'hovering' over the ground."* The header said, in as many words, that it
+restated ``ground_y = 101``, ``center_x = 64`` and ``render_scale = 2`` "so a
+reader of this file does not have to open the JSON". The JSON now says
+``ground_y = 190``, ``center_x = 96``, ``render_scale = 1`` — the rig was rebuilt
+at a different size AND different proportions — and nothing connected the two
+numbers, so every rectangle this module published was measured from a floor that
+had moved. Her published feet sat at 258 in a frame whose drawn art ends at 219:
+forty pixels of phantom body below her shoes, which the runtime dutifully planted
+on the ground while the picture floated above it.
 
-⭐ **the geometry is DERIVED from the rig's own bone chain, not eyeballed.** The
-pelvis sits ``20.5`` above the ground line, the torso ``4`` above that and the
-head ``26`` above the torso; arms hang from the torso at ``-9.5`` with a ``9.5``
-upper and an ``8`` lower; legs run from the pelvis to the floor through a ``10``
-upper, an ``8.5`` lower and a ``6`` foot.  Reading those numbers rather than
-inventing a silhouette is what keeps combat geometry honest when the ART moves:
-a wider coat or a longer skirt changes the drawing and must not silently inflate
-the boxes a fighter is hit by.
+⇒ **the frame constants are now READ from the rig document, never restated**, and
+the per-pose hurtboxes are SOLVED from the rig's own bone chain rather than
+hand-listed. A rig rebuild moves the boxes with it, which is the property whose
+absence caused this.
+
+⭐ **what is still authored here, and why.** Strike volumes are reach and taste —
+how far a committed swing carries, whether a low sweep denies the ground — and no
+skeleton can answer that. They stay authored, in a NORMALIZED body space (x from
+her centre line, y above the floor, in units where her head bone stands
+:data:`AUTHORED_STATURE` above it) and are mapped to published pixels once, at
+the boundary. Because the space is normalized against a fact the rig publishes,
+those numbers survive the next rebuild too.
 
 ⚠ **the source SVG and the rig remain presentation authority.** Nothing here
 feeds back into them, and the timings/damage of Noether's moves are the GAME's
-(``CharacterDefinition`` + ``MovesetContract``), never this file's.  What lives
+(``CharacterDefinition`` + ``MovesetContract``), never this file's. What lives
 here is what the SHEET knows: where her body is in each pose, and which frames of
 an authored clip carry a strike.
 """
 
 from __future__ import annotations
 
+import math
+from functools import lru_cache
 from typing import Iterable, Sequence
 
-# The rig document's own frame, restated so a reader of this file does not have
-# to open the JSON to follow the numbers below.
-RIG_SIZE = (128, 128)
-GROUND_Y = 101.0
-CENTER_X = 64.0
-RENDER_SCALE = 2
+TARGET_NAME = "noether"
+
+#: Transparent margin, in rig units, that :mod:`noether` composes around the rig
+#: frame (``RIG_RENDER_PADDING``). It lives here because every coordinate in this
+#: module has to cross it, and it is imported there rather than restated — the
+#: mistake this whole file is a correction for.
 PADDING = 28
+
+#: The rig this module's authored rectangles were written against, stated as the
+#: one measurement both rigs can be compared by: the head bone's height above the
+#: floor. The original was ``pelvis(20.5) + torso(4) + head(26)``.
+#:
+#: ⚠ it is a RATIO's denominator, not a coordinate. Nothing below is in this
+#: space by the time it reaches the sheet.
+AUTHORED_STATURE = 50.5
+
+
+@lru_cache(maxsize=1)
+def _rig():
+    # Imported lazily: loading the document can rebuild a stale rig, and importing
+    # a module should not do that.
+    from ...authoring.canonical_scientist_rig import load_scientist_rig
+
+    return load_scientist_rig(TARGET_NAME)
+
+
+def _frame() -> dict:
+    return _rig().frame
+
+
+@lru_cache(maxsize=1)
+def _stature() -> float:
+    """Her head bone's height above the floor, in live rig units.
+
+    The one number that makes an authored proportion portable across a rebuild.
+    """
+    world, _params = _rig().solve("idle", 0.0)
+    return float(_frame()["ground_y"]) - float(world["head"].origin[1])
+
+
+def _scale() -> float:
+    """Authored body units → live rig units."""
+    return _stature() / AUTHORED_STATURE
 
 
 def _px(value: float) -> int:
-    """A rig coordinate, in published pixels."""
-    return int(round((float(value) + PADDING) * RENDER_SCALE))
+    """A LIVE rig coordinate, in published pixels."""
+    return int(round((float(value) + PADDING) * int(_frame().get("render_scale", 1))))
 
 
 def _len(value: float) -> int:
-    """A rig LENGTH, in published pixels — padding is an offset, not a size."""
-    return int(round(float(value) * RENDER_SCALE))
+    """A LIVE rig LENGTH, in published pixels — padding is an offset, not a size."""
+    return int(round(float(value) * int(_frame().get("render_scale", 1))))
 
 
-def _rect(name: str, x: float, y: float, w: float, h: float) -> dict:
-    return {"name": name, "x": _px(x), "y": _px(y), "w": _len(w), "h": _len(h)}
+def _rect_px(x0: float, y0: float, x1: float, y1: float, name: str | None = None) -> dict:
+    """A live-rig rectangle, published. Corners rather than origin+size, because
+    every derivation below produces corners and converting twice loses a pixel."""
+    out = {
+        "x": _px(x0),
+        "y": _px(y0),
+        "w": max(1, _px(x1) - _px(x0)),
+        "h": max(1, _px(y1) - _px(y0)),
+    }
+    if name is not None:
+        return {"name": name, **out}
+    return out
 
 
-def _bbox(x: float, y: float, w: float, h: float) -> dict:
-    return {"x": _px(x), "y": _px(y), "w": _len(w), "h": _len(h)}
+def _authored(dx: float, above_floor: float, w: float, h: float) -> dict:
+    """One rectangle authored in NORMALIZED body space, published.
+
+    ``dx`` runs from her centre line and ``above_floor`` names the rectangle's TOP
+    as a height above the ground line — both in units where her head bone stands
+    :data:`AUTHORED_STATURE` up. Widths and heights are lengths in that same space.
+    """
+    frame = _frame()
+    scale = _scale()
+    x0 = float(frame["center_x"]) + dx * scale
+    y0 = float(frame["ground_y"]) - above_floor * scale
+    return _rect_px(x0, y0, x0 + w * scale, y0 + h * scale)
 
 
 def _attack(
-    x: float,
-    y: float,
+    dx: float,
+    above_floor: float,
     w: float,
     h: float,
     *,
@@ -68,146 +135,153 @@ def _attack(
     recovery frames are simply absent from it, which is what lets a sheet author
     a slow tell and a fast hit without a second timing vocabulary.
     """
-    return {"bbox": _bbox(x, y, w, h), "active_frames": list(active)}
+    return {"bbox": _authored(dx, above_floor, w, h), "active_frames": list(active)}
 
 
-# ── hurtboxes, by pose family ────────────────────────────────────────────────
+# ── hurtboxes, SOLVED from the rig ───────────────────────────────────────────
 #
 # ⭐ **seven parts, and they are the rig's own limbs.** A single body rectangle
 # cannot say that a fighter's outstretched arm is hittable while her head is not,
 # which is the whole reason the sheet publishes parts rather than one box.
+#
+# ⛔ **and they are no longer SEVEN HAND-LISTED POSE FAMILIES.** This file used to
+# carry standing/crouch/air/prone/ledge/shielded/buried rectangle sets plus six
+# name tables deciding which row got which — 120 lines whose only job was to
+# approximate what the rig already knows exactly, and which silently kept
+# approximating it after the rig was rebuilt. A row's boxes now come from
+# SOLVING that row's own clip: a crouch is low because the crouch pose is low,
+# and a knocked-down body is long because she is lying down in it.
 
-STANDING_HURTBOX = [
-    # head bone: pelvis(-20.5) + torso(-4) + head(-26) = 50.5 above the floor.
-    _rect("head", CENTER_X - 8, GROUND_Y - 62, 16, 15),
-    _rect("upper_torso", CENTER_X - 10, GROUND_Y - 47, 20, 18),
-    _rect("pelvis", CENTER_X - 9, GROUND_Y - 29, 18, 10),
-    # arms hang from the torso at -9.5, upper 9.5 + lower 8.
-    _rect("rear_arm", CENTER_X + 1, GROUND_Y - 44, 8, 20),
-    _rect("front_arm", CENTER_X - 9, GROUND_Y - 44, 8, 20),
-    # legs: pelvis to floor through 10 + 8.5 + 6.
-    _rect("rear_leg", CENTER_X, GROUND_Y - 20, 8, 20),
-    _rect("front_leg", CENTER_X - 8, GROUND_Y - 20, 8, 20),
-]
+#: Half-thicknesses, as fractions of :func:`_stature`, so a rebuilt rig keeps its
+#: proportions. A limb is a segment and a segment has no width; this is the only
+#: thing about a hurtbox a skeleton cannot state.
+_LIMB_HALF = 0.045
+_TORSO_HALF = 0.11
+_PELVIS_HALF = 0.12
+_HEAD_HALF = 0.13
 
-CROUCH_HURTBOX = [
-    _rect("head", CENTER_X - 8, GROUND_Y - 47, 16, 14),
-    _rect("upper_torso", CENTER_X - 11, GROUND_Y - 34, 22, 15),
-    _rect("pelvis", CENTER_X - 10, GROUND_Y - 20, 20, 9),
-    _rect("rear_arm", CENTER_X + 1, GROUND_Y - 33, 8, 16),
-    _rect("front_arm", CENTER_X - 9, GROUND_Y - 33, 8, 16),
-    _rect("rear_leg", CENTER_X, GROUND_Y - 12, 8, 12),
-    _rect("front_leg", CENTER_X - 8, GROUND_Y - 12, 8, 12),
-]
-
-# ⚠ airborne is the standing set lifted, NOT a smaller one. A fighter does not
-# become harder to hit by leaving the ground; only her feet stop touching it.
-AIR_HURTBOX = [
-    _rect("head", CENTER_X - 8, GROUND_Y - 65, 16, 15),
-    _rect("upper_torso", CENTER_X - 10, GROUND_Y - 50, 20, 18),
-    _rect("pelvis", CENTER_X - 9, GROUND_Y - 32, 18, 10),
-    _rect("rear_arm", CENTER_X + 1, GROUND_Y - 47, 8, 19),
-    _rect("front_arm", CENTER_X - 9, GROUND_Y - 47, 8, 19),
-    _rect("rear_leg", CENTER_X, GROUND_Y - 23, 8, 18),
-    _rect("front_leg", CENTER_X - 8, GROUND_Y - 23, 8, 18),
-]
-
-# Prone is the body ROTATED onto the floor: long in x, short in y, and the head
-# leads. Reusing the standing boxes here would leave a knocked-down fighter
-# hittable through empty air above her.
-PRONE_HURTBOX = [
-    _rect("head", CENTER_X + 12, GROUND_Y - 13, 13, 12),
-    _rect("upper_torso", CENTER_X - 4, GROUND_Y - 14, 16, 13),
-    _rect("pelvis", CENTER_X - 15, GROUND_Y - 12, 11, 11),
-    _rect("rear_leg", CENTER_X - 26, GROUND_Y - 10, 11, 9),
-    _rect("front_leg", CENTER_X - 34, GROUND_Y - 8, 12, 8),
-]
-
-LEDGE_HURTBOX = [
-    _rect("head", CENTER_X - 7, GROUND_Y - 49, 15, 14),
-    _rect("upper_torso", CENTER_X - 9, GROUND_Y - 35, 19, 16),
-    _rect("pelvis", CENTER_X - 8, GROUND_Y - 19, 17, 11),
-    _rect("rear_leg", CENTER_X, GROUND_Y - 9, 8, 16),
-    _rect("front_leg", CENTER_X - 8, GROUND_Y - 9, 8, 16),
-]
-
-# A guarded body pulls its limbs IN — the shield covers what the arms leave.
-SHIELDED_HURTBOX = [
-    _rect("head", CENTER_X - 7, GROUND_Y - 59, 15, 14),
-    _rect("upper_torso", CENTER_X - 10, GROUND_Y - 45, 21, 18),
-    _rect("pelvis", CENTER_X - 9, GROUND_Y - 27, 19, 10),
-    _rect("rear_leg", CENTER_X, GROUND_Y - 18, 8, 18),
-    _rect("front_leg", CENTER_X - 8, GROUND_Y - 18, 8, 18),
-]
-
-BURIED_HURTBOX = [
-    _rect("head", CENTER_X - 8, GROUND_Y - 26, 16, 14),
-    _rect("upper_torso", CENTER_X - 10, GROUND_Y - 13, 20, 12),
-]
-
-_CROUCH = {"crouch_start", "crouch", "crouch_walk", "crouch_end"}
-_AIR = {
-    "jump", "double_jump", "fall", "fall_special", "tumble", "air_dodge",
-    "air_neutral", "air_forward", "air_back", "air_up", "air_down", "air_land",
-    "fly", "hover", "float_glide", "wall_jump", "ledge_jump",
-    # ⭐ her signature traversal is an AERIAL pose, whatever it is named.
-    "ethereal_lift",
+#: bone chains behind each published part name.
+_ARM_CHAINS = {
+    "rear_arm": ("far_arm_u", "far_arm_l", "far_arm_hand"),
+    "front_arm": ("near_arm_u", "near_arm_l", "near_arm_hand"),
+    "rear_leg": ("far_leg_u", "far_leg_l", "far_leg_foot"),
+    "front_leg": ("near_leg_u", "near_leg_l", "near_leg_foot"),
 }
-_PRONE = {
-    "knockdown", "prone", "prone_damage", "getup_attack", "getup_roll",
-    "trip_fall", "trip_idle", "trip_attack", "trip_roll", "sleep", "death",
-    "shield_break_fall", "shield_break_collapse",
-}
-_LEDGE = {
-    "ledge_catch", "ledge_grab", "ledge_climb", "ledge_getup", "ledge_attack",
-    "ledge_roll", "ledge_drop", "ledge_getup_attack", "wall_grab", "ladder_climb",
-}
-_BURIED = {"bury_start", "buried", "bury_escape"}
-_SHIELDED = {
-    "block", "shield_raise", "shield_release", "parry", "shield_hit", "spot_dodge",
-    "roll", "roll_back", "shield_break_launch", "shield_break_recover",
-    # ⭐ the parry she is named for is a GUARD pose, not a strike.
-    "invariant_parry",
-}
+
+
+def _segment(world, bone: str) -> tuple[float, float, float, float]:
+    """A bone's two endpoints in rig space. A zero-length bone is a point."""
+    entry = world[bone]
+    x0, y0 = entry.origin
+    angle = math.radians(entry.angle)
+    return (
+        float(x0),
+        float(y0),
+        float(x0) + math.cos(angle) * float(entry.length),
+        float(y0) + math.sin(angle) * float(entry.length),
+    )
+
+
+def _chain_box(world, bones: Iterable[str], pad: float) -> tuple[float, float, float, float]:
+    xs: list[float] = []
+    ys: list[float] = []
+    for bone in bones:
+        x0, y0, x1, y1 = _segment(world, bone)
+        xs += [x0, x1]
+        ys += [y0, y1]
+    return (min(xs) - pad, min(ys) - pad, max(xs) + pad, max(ys) + pad)
+
+
+def _parts_for_pose(world) -> list[dict]:
+    """The seven published parts, read off one solved pose."""
+    stature = _stature()
+    head_x, head_y = (float(v) for v in world["head"].origin)
+    torso_x, torso_y = (float(v) for v in world["torso"].origin)
+    pelvis_x, pelvis_y = (float(v) for v in world["pelvis"].origin)
+    head_half = _HEAD_HALF * stature
+    torso_half = _TORSO_HALF * stature
+    pelvis_half = _PELVIS_HALF * stature
+    limb_half = _LIMB_HALF * stature
+
+    parts = [
+        _rect_px(
+            head_x - head_half,
+            head_y - head_half,
+            head_x + head_half,
+            head_y + head_half,
+            name="head",
+        ),
+        # The torso runs from just inside the head down to the pelvis joint, so a
+        # hit to the chest is not a hit to the face.
+        _rect_px(
+            torso_x - torso_half,
+            min(head_y + head_half * 0.2, torso_y),
+            torso_x + torso_half,
+            max(head_y + head_half * 0.2, torso_y),
+            name="upper_torso",
+        ),
+        _rect_px(
+            pelvis_x - pelvis_half,
+            min(torso_y, pelvis_y),
+            pelvis_x + pelvis_half,
+            max(torso_y, pelvis_y) + pelvis_half * 0.6,
+            name="pelvis",
+        ),
+    ]
+    for name, bones in _ARM_CHAINS.items():
+        x0, y0, x1, y1 = _chain_box(world, bones, limb_half)
+        parts.append(_rect_px(x0, y0, x1, y1, name=name))
+    return parts
+
+
+@lru_cache(maxsize=256)
+def _parts_for_row(row: str) -> tuple[tuple[tuple[str, int], ...], ...]:
+    """Cached, hashable part set for one authored row.
+
+    ⚠ **every row gets an answer**, and the fallback is the IDLE pose rather than
+    nothing: a row the rig cannot solve is still a body that can be hit, and
+    publishing no parts for it would make her invulnerable in that pose.
+    """
+    doc = _rig()
+    for animation in (row, "idle"):
+        try:
+            world, _params = doc.solve(animation, 0.5)
+        except Exception:  # noqa: BLE001 — a rig that cannot solve a row is data, not a crash
+            continue
+        return tuple(tuple(sorted(part.items())) for part in _parts_for_pose(world))
+    return ()
 
 
 def hurtbox_parts_for_rows(rows: Iterable[tuple[str, int, int]]) -> dict:
-    """One part set per authored row, chosen by pose family.
-
-    ⚠ **every row gets an answer**, and the fallback is STANDING rather than
-    nothing: a row this file has not classified is still a body that can be hit,
-    and publishing no parts for it would make her invulnerable in that pose.
-    """
+    """One part set per authored row, solved from that row's own pose."""
     out = {}
     for name, _frames, _duration in rows:
-        if name in _BURIED:
-            parts = BURIED_HURTBOX
-        elif name in _CROUCH:
-            parts = CROUCH_HURTBOX
-        elif name in _AIR:
-            parts = AIR_HURTBOX
-        elif name in _PRONE:
-            parts = PRONE_HURTBOX
-        elif name in _LEDGE:
-            parts = LEDGE_HURTBOX
-        elif name in _SHIELDED:
-            parts = SHIELDED_HURTBOX
-        else:
-            parts = STANDING_HURTBOX
-        out[name] = {"parts": [dict(part) for part in parts]}
+        parts = [dict(part) for part in _parts_for_row(name)]
+        if parts:
+            out[name] = {"parts": parts}
     return out
 
 
 def body_metrics(fw: int, fh: int) -> dict:
     """Where Noether's body and feet are in the published frame.
 
-    The bbox spans her natural pose — antenna tip to floor, arm to arm — and the
-    feet point is the rig's own ground line under its centre, so a body placed by
-    its feet stands ON the floor rather than through it.
+    ⭐ **the feet point is the rig's OWN ground line**, which is the whole fix: a
+    body placed by its feet stands ON the floor rather than forty pixels above it.
+    The box spans her standing silhouette without the flourishes — hair above the
+    head bone and an outstretched arm are drawing, not body.
     """
-    body = _bbox(CENTER_X - 13, GROUND_Y - 70, 26, 70)
-    feet_x = float(_px(CENTER_X))
-    feet_y = float(_px(GROUND_Y))
+    frame = _frame()
+    world, _params = _rig().solve("idle", 0.0)
+    stature = _stature()
+    ground = float(frame["ground_y"])
+    centre = float(frame["center_x"])
+
+    half_width = 0.19 * stature
+    top = float(world["head"].origin[1]) - _HEAD_HALF * stature
+    body = _rect_px(centre - half_width, top, centre + half_width, ground)
+
+    feet_x = float(_px(centre))
+    feet_y = float(_px(ground))
     return {
         "body_pixel_bbox": body,
         "feet_pixel": {"x": feet_x, "y": feet_y},
@@ -226,42 +300,57 @@ def body_metrics(fw: int, fh: int) -> dict:
 # reaches and WHICH of its frames are the strike. A second combat database here
 # would be the `character_archetypes.ron` mistake in Python.
 #
-# ⚠ her blade bone is 26 long off a hand at +8, so a committed swing reaches
-# roughly 30 rig units ahead of centre — that is the number the reaches below are
-# scaled against rather than a taste call.
+# ⚠ her blade reaches roughly 30 authored units ahead of centre on a committed
+# swing — that is the number the reaches below are scaled against rather than a
+# taste call. `dx` runs from her centre line, and the second argument is the
+# rectangle's TOP as a height above the floor.
 
-ATTACK_HITBOXES = {
-    # ── ordinary fighter surface ────────────────────────────────────────────
-    "jab": _attack(CENTER_X + 6, GROUND_Y - 48, 20, 14, active=[2]),
-    "punch": _attack(CENTER_X + 6, GROUND_Y - 47, 24, 16, active=[2, 3]),
-    "slash": _attack(CENTER_X + 4, GROUND_Y - 54, 30, 28, active=[2, 3, 4]),
-    "dash_attack": _attack(CENTER_X + 5, GROUND_Y - 44, 27, 22, active=[2, 3, 4]),
-    "attack_side": _attack(CENTER_X + 6, GROUND_Y - 48, 27, 20, active=[2, 3]),
-    "attack_up": _attack(CENTER_X - 9, GROUND_Y - 76, 20, 24, active=[2, 3]),
-    "attack_down": _attack(CENTER_X - 2, GROUND_Y - 16, 28, 16, active=[2, 3]),
-    "smash_forward": _attack(CENTER_X + 5, GROUND_Y - 56, 32, 32, active=[3, 4, 5]),
-    "smash_up": _attack(CENTER_X - 11, GROUND_Y - 84, 24, 32, active=[3, 4, 5]),
-    "smash_down": _attack(CENTER_X - 20, GROUND_Y - 14, 42, 14, active=[3, 4, 5]),
-    "air_neutral": _attack(CENTER_X - 14, GROUND_Y - 56, 30, 26, active=[2, 3]),
-    "air_forward": _attack(CENTER_X + 5, GROUND_Y - 56, 28, 24, active=[2, 3]),
-    "air_back": _attack(CENTER_X - 32, GROUND_Y - 54, 28, 22, active=[2, 3]),
-    "air_up": _attack(CENTER_X - 10, GROUND_Y - 80, 22, 24, active=[2, 3]),
-    "air_down": _attack(CENTER_X - 9, GROUND_Y - 22, 20, 26, active=[2, 3]),
-    "ledge_attack": _attack(CENTER_X + 3, GROUND_Y - 34, 26, 18, active=[2, 3]),
-    "getup_attack": _attack(CENTER_X - 22, GROUND_Y - 16, 46, 16, active=[2, 3]),
-    # ── the signature clips `noether_motion` renames ────────────────────────
-    #
-    # ⚠ each is the pose the renamed row DRAWS, which is why they are not all the
-    # same shape: a conservation law is a held field, a generator strike is a
-    # committed swing, and a symmetry break is the biggest thing she does.
-    "generator_strike": _attack(CENTER_X + 4, GROUND_Y - 58, 34, 34, active=[2, 3, 4]),
-    "conservation_law": _attack(CENTER_X - 18, GROUND_Y - 60, 40, 44, active=[3, 4, 5, 6]),
-    "symmetry_shift": _attack(CENTER_X - 14, GROUND_Y - 52, 32, 30, active=[2, 3, 4]),
-    "symmetry_proof": _attack(CENTER_X + 2, GROUND_Y - 52, 30, 26, active=[2, 3, 4]),
-    "invariant_field": _attack(CENTER_X - 26, GROUND_Y - 34, 56, 34, active=[3, 4, 5, 6]),
-    "symmetry_break": _attack(CENTER_X - 24, GROUND_Y - 72, 52, 60, active=[4, 5, 6]),
-    "noether_theorem": _attack(CENTER_X - 34, GROUND_Y - 86, 72, 86, active=[5, 6, 7, 8]),
-}
+
+def _attack_table() -> dict:
+    return {
+        # ── ordinary fighter surface ────────────────────────────────────────
+        "jab": _attack(6, 48, 20, 14, active=[2]),
+        "punch": _attack(6, 47, 24, 16, active=[2, 3]),
+        "slash": _attack(4, 54, 30, 28, active=[2, 3, 4]),
+        "dash_attack": _attack(5, 44, 27, 22, active=[2, 3, 4]),
+        "attack_side": _attack(6, 48, 27, 20, active=[2, 3]),
+        "attack_up": _attack(-9, 76, 20, 24, active=[2, 3]),
+        "attack_down": _attack(-2, 16, 28, 16, active=[2, 3]),
+        "smash_forward": _attack(5, 56, 32, 32, active=[3, 4, 5]),
+        "smash_up": _attack(-11, 84, 24, 32, active=[3, 4, 5]),
+        "smash_down": _attack(-20, 14, 42, 14, active=[3, 4, 5]),
+        "air_neutral": _attack(-14, 56, 30, 26, active=[2, 3]),
+        "air_forward": _attack(5, 56, 28, 24, active=[2, 3]),
+        "air_back": _attack(-32, 54, 28, 22, active=[2, 3]),
+        "air_up": _attack(-10, 80, 22, 24, active=[2, 3]),
+        "air_down": _attack(-9, 22, 20, 26, active=[2, 3]),
+        "ledge_attack": _attack(3, 34, 26, 18, active=[2, 3]),
+        "getup_attack": _attack(-22, 16, 46, 16, active=[2, 3]),
+        # ── the signature clips `noether_motion` renames ────────────────────
+        #
+        # ⚠ each is the pose the renamed row DRAWS, which is why they are not all
+        # the same shape: a conservation law is a held field, a generator strike
+        # is a committed swing, and a symmetry break is the biggest thing she
+        # does.
+        "generator_strike": _attack(4, 58, 34, 34, active=[2, 3, 4]),
+        "conservation_law": _attack(-18, 60, 40, 44, active=[3, 4, 5, 6]),
+        "symmetry_shift": _attack(-14, 52, 32, 30, active=[2, 3, 4]),
+        "symmetry_proof": _attack(2, 52, 30, 26, active=[2, 3, 4]),
+        "invariant_field": _attack(-26, 34, 56, 34, active=[3, 4, 5, 6]),
+        "symmetry_break": _attack(-24, 72, 52, 60, active=[4, 5, 6]),
+        "noether_theorem": _attack(-34, 86, 72, 86, active=[5, 6, 7, 8]),
+    }
+
+
+@lru_cache(maxsize=1)
+def attack_hitboxes() -> dict:
+    """The strike table, resolved against the live rig.
+
+    ⚠ **a function, not a module constant.** Resolving it needs the rig document,
+    and a module that loads (and can rebuild) a rig at import time is a module
+    nobody can import cheaply.
+    """
+    return _attack_table()
 
 
 NOETHER_MOVE_BLUEPRINT = {
@@ -316,8 +405,10 @@ NOETHER_MOVE_BLUEPRINT = {
 
 
 __all__ = [
-    "ATTACK_HITBOXES",
     "NOETHER_MOVE_BLUEPRINT",
+    "PADDING",
+    "TARGET_NAME",
+    "attack_hitboxes",
     "body_metrics",
     "hurtbox_parts_for_rows",
 ]

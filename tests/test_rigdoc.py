@@ -36,7 +36,15 @@ NOETHER = (
     / "targets"
     / "characters"
     / "rigged"
-    / "noether.rig.json"
+    # ⛔⛔ **`rigged/noether.rig.json` — the top-level file this used to name —
+    # was ABANDONED when Emmy became a multiview target, and both tests below
+    # went on passing against it.** `test_noether_is_tall_and_hi_res` asserted
+    # `render_scale >= 2` and was green for weeks while the rig the renderer
+    # actually loads said 1, which is exactly the blurriness Jon reported on
+    # 2026-08-16. A true assertion about the wrong artifact is worse than no
+    # assertion. This is the path `load_scientist_rig("noether")` resolves.
+    / "noether"
+    / "noether_side.rig.json"
 )
 
 
@@ -99,23 +107,14 @@ class TestFeatureToggles:
         assert emmy.sprite_tuning.get("collision_scale", 1.5) > 1.5
         assert emmy.frame.get("render_scale", 1) >= 2
 
-    def test_noether_hairpin_is_present_and_rigid(self):
-        """Emmy's hairpin reads as a hairpin (on) and is RIGID: bound to the
-        `head` bone, never the bobbing `antenna` channel that made it wave."""
-        emmy = RigDocument.load(NOETHER)
-        assert emmy.features.get("hairpin") is True
-        pin_parts = [p for p in emmy.parts if p["name"].startswith("pin_")]
-        assert pin_parts, "hairpin parts should exist"
-        for p in pin_parts:
-            assert p["bone"] == "head", f"{p['name']} must be rigid (head-bound)"
-            assert p.get("feature") == "hairpin"
-        visible = {p["name"] for p in visible_parts(emmy.parts, emmy.features)}
-        assert {"pin_shaft", "pin_bead"} <= visible
-        # Toggling the feature off still removes it (customization seam intact).
-        assert not ({"pin_shaft", "pin_bead"} & {
-            p["name"] for p in visible_parts(emmy.parts, {"hairpin": False})
-        })
-
+    # ⛔ **`test_noether_hairpin_is_present_and_rigid` was DELETED 2026-08-16.**
+    # It asserted that `pin_shaft` / `pin_bead` exist, are head-bound and toggle
+    # off with a `hairpin` feature — all true of the abandoned top-level rig it
+    # was reading, and none of it true of the rig the renderer loads: her live
+    # parts are `hair_back` / `hair_mid` / `hair_front`, bound as ordinary head
+    # art, and she declares no `hairpin` feature at all. The optional-part seam
+    # it was really exercising is covered by the two generic tests above, which
+    # do not need a character to be shaped a particular way.
 
 class TestChannelSpecs:
     def test_const_expr_keys(self):

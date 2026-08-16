@@ -191,6 +191,14 @@ class CharacterSpec:
     label_binding_mode: str = "explicit"
     auxiliary_bones: tuple[AuxiliaryBoneSpec, ...] = ()
     facing: str = "west"
+    #: Published pixels per rig unit. Jon, 2026-08-16: *"She also needs to be
+    #: rendered at a higher resolution. She's blury compared to the other
+    #: portraits and sprites."* A rig's canvas is chosen for the ANATOMY it has
+    #: to hold; how many pixels that canvas is worth is a separate decision, and
+    #: it used to be hardcoded to 1 for every character here while the rigged
+    #: characters this fighter stands beside publish at 2x (Oiler) and 3x (the
+    #: Perfect Cellular Automaton).
+    render_scale: int = 1
 
     @property
     def svg_path(self) -> Path:
@@ -267,6 +275,10 @@ SPECS = {
         target_height=164.0,
         ground_margin=18.0,
         collision_scale=1.86,
+        # 2x, so her 164-unit figure publishes ~330 pixels tall rather than 166
+        # — between Oiler's 211 and the PCA's 576, and enough that the fine
+        # detail in her face and hands survives being drawn at fighter size.
+        render_scale=2,
         rows=NOETHER_ROWS,
         hands_follow_forearms=True,
         # This source view faces east. The trace is a geometry/pivot authority,
@@ -1779,7 +1791,7 @@ def build_one(spec: CharacterSpec) -> Path:
                 target_height=spec.target_height,
                 ref_dpi=96.0,
                 supersample=4,
-                render_scale=1,
+                render_scale=spec.render_scale,
                 collision_scale=spec.collision_scale,
                 part_order="document",
                 arm_pose_hints=spec.natural_arm_pose,

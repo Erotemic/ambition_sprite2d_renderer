@@ -17,8 +17,9 @@ from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ._svg_fighter_effects import compose_rig_frame
 from .noether_gameplay import (
-    ATTACK_HITBOXES,
     NOETHER_MOVE_BLUEPRINT,
+    PADDING as RIG_RENDER_PADDING,
+    attack_hitboxes,
     body_metrics as authored_body_metrics,
     hurtbox_parts_for_rows,
 )
@@ -26,12 +27,29 @@ from .noether_effects import draw_noether_behind, draw_noether_front
 from .noether_motion import EFFECT_ALIASES, FIGHTER_MOTION_COVERAGE, NOETHER_ROWS
 
 TARGET_NAME = "noether"
-RIG_FRAME_SIZE = (192, 208)
-RIG_RENDER_PADDING = 28
-FRAME_SIZE = (
-    RIG_FRAME_SIZE[0] + RIG_RENDER_PADDING * 2,
-    RIG_FRAME_SIZE[1] + RIG_RENDER_PADDING * 2,
-)
+
+
+def frame_size() -> Tuple[int, int]:
+    """The published frame: the RIG's own canvas plus this target's padding.
+
+    ⛔ **not a restated constant.** This used to read `RIG_FRAME_SIZE = (192, 208)`
+    beside a `noether_gameplay` that restated the rig's ground line, and when the
+    rig was rebuilt only one of the two copies moved — which is how Emmy ended up
+    hovering forty pixels above the floor. A function, so the rig document is
+    read at render time rather than rebuilt at import time.
+    """
+    frame = _doc().frame
+    # ⚠ `render_scale` is the third term and it is easy to forget: the composer
+    # pads in RIG units and scales the padded canvas, so a rig published at 2x
+    # emits a frame twice this wide. Dropping it here would hand `build_sheet` a
+    # frame size the renderer never produces.
+    scale = max(1, int(frame.get("render_scale", 1)))
+    return (
+        (int(frame["width"]) + RIG_RENDER_PADDING * 2) * scale,
+        (int(frame["height"]) + RIG_RENDER_PADDING * 2) * scale,
+    )
+
+
 ROWS: List[Tuple[str, int, int]] = list(NOETHER_ROWS)
 
 ACTOR_METADATA = {
@@ -141,13 +159,13 @@ def render(out_dir: str | Path, **opts):
         rows=ROWS,
         render_fn=render_frame,
         out_dir=Path(out_dir),
-        frame_size=FRAME_SIZE,
+        frame_size=frame_size(),
         auto_crop=False,
         actor_metadata=ACTOR_METADATA,
         body_metrics_fn=authored_body_metrics,
         sheet_tuning=doc.sprite_tuning or {"collision_scale": 1.86},
         animation_key_map={name: name for name, _frames, _duration in ROWS},
-        attack_hitboxes=ATTACK_HITBOXES,
+        attack_hitboxes=attack_hitboxes(),
         hurtbox_parts=hurtbox_parts_for_rows(ROWS),
         pose_bodies="authored",
         trim=True,
@@ -171,7 +189,7 @@ def render_canonical(out_dir: str | Path, **opts):
         ROWS,
         render_frame,
         Path(out_dir),
-        frame_size=FRAME_SIZE,
+        frame_size=frame_size(),
     )
 
 
@@ -179,6 +197,7 @@ __all__ = [
     "ACTOR_METADATA",
     "FIGHTER_MOTION_COVERAGE",
     "ROWS",
+    "frame_size",
     "TARGET_NAME",
     "render",
     "render_canonical",

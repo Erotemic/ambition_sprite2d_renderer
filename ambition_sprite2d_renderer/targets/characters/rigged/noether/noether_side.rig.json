@@ -7,7 +7,7 @@
     "ground_y": 190.0,
     "ankle_h": 14.9052,
     "supersample": 4,
-    "render_scale": 1
+    "render_scale": 2
   },
   "svg_source": {
     "path": "../../../../../assets/noether.svg",
