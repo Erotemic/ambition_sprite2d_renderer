@@ -56,12 +56,13 @@ def _alpha_scaled(alpha: Image.Image, factor: float) -> Image.Image:
 
 @profile
 def apply_ethereal_hum(frame: Image.Image, rig_image: Image.Image, t: float) -> Image.Image:
-    """Add Emmy's low, breathing silhouette aura behind the composed frame.
+    """Add Emmy's prominent breathing silhouette field behind the composed frame.
 
     The hum is derived from the solved rig alpha rather than from screen-space
     decorations, so it follows every authored animation and pose.  It never
-    changes collision/rig geometry and deliberately stays much quieter than her
-    move-specific mathematical effects.
+    changes collision/rig geometry.  The field deliberately breathes in both
+    radius and intensity: a cyan body-adjacent shell anchors the silhouette
+    while a much larger violet atmosphere visibly swells and recedes.
     """
     if frame.mode != "RGBA":
         frame = frame.convert("RGBA")
@@ -69,27 +70,38 @@ def apply_ethereal_hum(frame: Image.Image, rig_image: Image.Image, t: float) -> 
         rig_image = rig_image.convert("RGBA")
 
     alpha = rig_image.getchannel("A")
-    # Two soft shells: a close cyan edge and a broader violet atmosphere. The
-    # amplitudes drift out of phase so the result reads as a steady hum rather
-    # than a flashing combat effect.
-    cyan_pulse = 0.74 + 0.26 * (0.5 + 0.5 * math.sin(t * math.tau * 2.0))
-    violet_pulse = 0.72 + 0.28 * (0.5 + 0.5 * math.sin(t * math.tau * 2.0 + 1.7))
 
-    # Blur the body alpha directly. Because these layers are composited behind
-    # the character, the interior is naturally covered by opaque body pixels;
-    # translucent skirt fabric picks up a little inner light, which reinforces
-    # the intended spectral material. Gaussian blur is also dramatically
-    # cheaper than morphological dilation across the full 2x publication frame.
-    close = alpha.filter(ImageFilter.GaussianBlur(3.0))
-    broad = alpha.filter(ImageFilter.GaussianBlur(7.0))
+    # One slow breath per normalized animation cycle.  Squaring the 0..1 wave
+    # makes the field linger near its quiet state and then bloom decisively, so
+    # the motion reads even in peripheral vision instead of looking like minor
+    # antialiasing fluctuation.
+    breath = 0.5 + 0.5 * math.sin(t * math.tau - math.pi * 0.5)
+    bloom = breath * breath
+
+    # Keep this to two full-frame Gaussian passes: the hum should be visually
+    # large without surrendering the SVG-rig performance gains.  Both radii move
+    # with the breath, making the aura expand roughly a dozen publication pixels
+    # over the cycle rather than only changing alpha in place.
+    close_radius = 5.5 + 3.5 * breath
+    broad_radius = 18.0 + 16.0 * bloom
+    close = alpha.filter(ImageFilter.GaussianBlur(close_radius))
+    broad = alpha.filter(ImageFilter.GaussianBlur(broad_radius))
 
     aura = Image.new("RGBA", frame.size, (0, 0, 0, 0))
+
+    # The outer violet atmosphere is intentionally conspicuous.  Its minimum is
+    # still plainly visible; at full bloom it becomes a broad spectral field.
     violet = Image.new("RGBA", frame.size, VIOLET[:3] + (0,))
-    violet.putalpha(_alpha_scaled(broad, 0.12 * violet_pulse))
+    violet_strength = 0.28 + 0.30 * bloom
+    violet.putalpha(_alpha_scaled(broad, violet_strength))
     aura.alpha_composite(violet)
 
+    # The close cyan shell has a smaller amplitude swing so Emmy retains a
+    # luminous outline throughout the cycle while the violet field does most of
+    # the breathing.
     cyan = Image.new("RGBA", frame.size, ETHER[:3] + (0,))
-    cyan.putalpha(_alpha_scaled(close, 0.34 * cyan_pulse))
+    cyan_strength = 0.55 + 0.30 * breath
+    cyan.putalpha(_alpha_scaled(close, cyan_strength))
     aura.alpha_composite(cyan)
 
     aura.alpha_composite(frame)
