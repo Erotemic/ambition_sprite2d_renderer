@@ -1,4 +1,4 @@
-"""Generate the `noether` rig document (Emmy No-Ether, the symmetry guide).
+"""Generate the `noether` rig document (Emmy Ethereal, the symmetry guide).
 
 Reuses the proven `player_robot_fable` skeleton + two-bone-IK legs + idle/walk
 clips (so feet plant and the bob/sway read correctly) and replaces only the

@@ -1,4 +1,4 @@
-"""Geometric special-move effects for Emmy No-Ether.
+"""Geometric special-move effects for Emmy Ethereal.
 
 The SVG remains the character-art authority. These effects are procedural,
 resolution-independent sprite-side presentation layered around the solved rig.

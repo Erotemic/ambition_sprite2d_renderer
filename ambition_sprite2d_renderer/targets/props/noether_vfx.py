@@ -1,4 +1,4 @@
-"""Detached mathematical VFX authored for Emmy No-Ether.
+"""Detached mathematical VFX authored for Emmy Ethereal.
 
 The visual rule is structural: symmetry, conservation, generators, equivalence,
 and invariant objects must be visible in the geometry itself.  These sprites are
@@ -294,9 +294,9 @@ def render(out_dir: str | Path, **opts):
     del opts
     return publish_catalog(
         target_name=TARGET_NAME,
-        display_name="Emmy No-Ether Detached VFX",
+        display_name="Emmy Ethereal Detached VFX",
         character_context_id="npc_noether",
-        character_context_display="Emmy No-Ether",
+        character_context_display="Emmy Ethereal",
         rows=ROWS,
         drawers=DRAWERS,
         specs=SPECS,

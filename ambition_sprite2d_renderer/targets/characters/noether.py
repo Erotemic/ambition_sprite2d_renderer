@@ -60,7 +60,7 @@ ACTOR_METADATA = {
         # Ambition's catalog row is `npc_noether`. A mismatch here is what the
         # game-side identity waiver existed for.
         "character_id": "npc_noether",
-        "display_name": "Emmy No-Ether",
+        "display_name": "Emmy Ethereal",
     },
     "body": {
         "body_plan": "HumanoidBiped",
