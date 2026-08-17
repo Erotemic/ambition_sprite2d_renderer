@@ -60,6 +60,7 @@ def test_oiler_svg_extracts_to_a_complete_humanoid_rig(tmp_path):
     assert len(data["bones"]) == 15
     assert len(data["ik_legs"]) == 2
     assert len(data["ik_chains"]) == 2
+    assert data["frame"]["supersample"] == 2
     assert {p["bone"] for p in data["parts"]} >= {
         "torso",
         "head",

@@ -393,7 +393,7 @@ def build_doc() -> dict:
     fr = sk["frame"]
     # Source art is vector, so publish at higher pixel resolution (render_scale)
     # without touching the authored geometry or the in-game display size.
-    fr.update(supersample=4, render_scale=RENDER_SCALE)
+    fr.update(supersample=2, render_scale=RENDER_SCALE)
 
     # IK rest targets measured from the drawn stance so the default pose matches
     # the artwork (no crossed legs, no bent knees). ankle_h is shared, so each

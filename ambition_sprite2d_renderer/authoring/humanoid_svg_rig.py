@@ -82,7 +82,7 @@ class HumanoidViewSpec:
     ground_y: float = 118.0
     target_height: float = 104.0
     ref_dpi: float = 25.4
-    supersample: int = 4
+    supersample: int = 2
     render_scale: int = 2
     collision_scale: float = 1.65
     part_order: str = "attribute"

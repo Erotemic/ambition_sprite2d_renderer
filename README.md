@@ -200,6 +200,19 @@ LINE_PROFILE=1 ./regen_sprites.sh --target pipi_tau
 AMBITION_ULTRAPACK=0 LINE_PROFILE=1 ./regen_sprites.sh --force
 ```
 
+For SVG-rigged characters, independent part rotations are prepared concurrently
+before the frame is composited in authoritative SVG z-order. The shared transform
+cache defaults to 128 MiB and at most four rotation workers. Tune those authoring
+resources without changing render semantics via:
+
+```bash
+AMBITION_SPRITE_TRANSFORM_CACHE_MB=256 ambition-sprite2d-renderer sheet noether
+AMBITION_SPRITE_ROTATE_WORKERS=1 LINE_PROFILE=1 ambition-sprite2d-renderer sheet noether
+```
+
+`AMBITION_SPRITE_ROTATE_WORKERS=1` is useful for a strictly sequential diagnostic
+profile; ordinary publication uses the bounded parallel transform path.
+
 `run_developer_setup.sh` is not part of this loop. Use it for initial bootstrap
 or when project dependencies, the selected Python version, submodules, or host
 packages change; normal profiling and regeneration reuse the existing `.venv`.
@@ -509,6 +522,13 @@ For canonical SVG paper dolls, `features.source_pose_role =
 "geometry-layout-only"` means `natural_pose.arms` is required anatomy authority.
 The exploded SVG itself must not silently decide how a neutral elbow bends or
 which way a resting forearm points.
+
+When native `resvg_py` is unavailable, SVG-backed character rendering also has a
+**CairoSVG review fallback**. It emits a loud `RuntimeWarning` and records
+`cairosvg` provenance when it has to rebuild a scientist rig. Use that path for
+authoring/visual inspection only: CairoSVG can shift antialiasing and derived
+part bounds slightly, so native resvg remains the publication/canonical backend
+and will replace a fallback-built rig when it is available again.
 
 The default output directory is:
 

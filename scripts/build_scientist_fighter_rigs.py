@@ -23,6 +23,7 @@ import math
 import os
 import sys
 import tempfile
+import warnings
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -92,7 +93,7 @@ def _native_resvg_origin(resvg_py: object) -> Path | None:
     return None
 
 
-def _require_native_resvg() -> tuple[str, str]:
+def _native_resvg_info() -> tuple[str, str]:
     """Return the native implementation path and installed package version.
 
     The canonical rig geometry depends on resvg's exact SVG rasterization.
@@ -103,7 +104,7 @@ def _require_native_resvg() -> tuple[str, str]:
 
     try:
         import resvg_py
-    except ModuleNotFoundError as ex:
+    except (ImportError, ModuleNotFoundError) as ex:
         raise RuntimeError(
             "canonical scientist SVG rigs require the native resvg_py package; "
             "run `uv sync` from tools/ambition_sprite2d_renderer, then rerun "
@@ -135,6 +136,36 @@ def _require_native_resvg() -> tuple[str, str]:
                 "refusing to build unverifiable canonical rig geometry"
             ) from ex
     return str(native_path), version
+
+
+def _resolve_svg_renderer() -> tuple[str, str, str, str]:
+    """Return renderer name, origin, version, and backend description.
+
+    Native resvg remains canonical. CairoSVG exists only so constrained
+    authoring/review environments can rebuild and render scientist rigs instead
+    of being completely blocked by a missing wheel. The fallback is recorded in
+    provenance and warned loudly because its raster bounds can differ.
+    """
+    try:
+        path, version = _native_resvg_info()
+        return "resvg_py", path, version, "native-extension"
+    except RuntimeError as native_error:
+        try:
+            import cairosvg
+        except ModuleNotFoundError:
+            raise native_error
+        version = getattr(cairosvg, "__version__", "unknown")
+        path = str(Path(getattr(cairosvg, "__file__", "<unknown>")))
+        warnings.warn(
+            "SVG RASTERIZER FALLBACK: canonical scientist rig build is using "
+            "CairoSVG because native resvg_py is unavailable. This is suitable "
+            "for authoring/review, but pixel bounds and derived rig geometry may "
+            "differ. A machine with resvg-py will rebuild this fallback rig "
+            "before treating it as canonical.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return "cairosvg", path, str(version), "fallback-review"
 
 
 def _sha256(path: Path) -> str:
@@ -1818,7 +1849,7 @@ def build_one(spec: CharacterSpec) -> Path:
     # per-character branch above.
     _validate_view_facing(spec)
 
-    renderer_path, renderer_version = _require_native_resvg()
+    renderer_name, renderer_path, renderer_version, renderer_backend = _resolve_svg_renderer()
     if not spec.svg_path.exists():
         raise FileNotFoundError(spec.svg_path)
     temporary = _visible_joint_copy(spec.svg_path)
@@ -1836,7 +1867,7 @@ def build_one(spec: CharacterSpec) -> Path:
                 ground_y=height - spec.ground_margin,
                 target_height=spec.target_height,
                 ref_dpi=96.0,
-                supersample=4,
+                supersample=2,
                 render_scale=spec.render_scale,
                 collision_scale=spec.collision_scale,
                 part_order="document",
@@ -1886,9 +1917,10 @@ def build_one(spec: CharacterSpec) -> Path:
     doc["build_provenance"] = {
         "schema": "canonical-svg-rig-v3",
         "builder_version": BUILDER_VERSION,
-        "renderer": "resvg_py",
+        "renderer": renderer_name,
         "renderer_version": renderer_version,
-        "renderer_backend": "native-extension",
+        "renderer_backend": renderer_backend,
+        "renderer_origin": renderer_path,
         "svg_sha256": _sha256(spec.svg_path),
         "part_order_policy": "svg-document-order",
         "part_order": "svg-document",
@@ -1923,8 +1955,11 @@ def validate_one(spec: CharacterSpec) -> None:
         raise ValueError(f"{spec.name} rig missing parts: {sorted(missing)}")
 
     provenance = doc.data.get("build_provenance") or {}
-    if provenance.get("renderer") != "resvg_py":
-        raise ValueError(f"{spec.name} rig was not built by native resvg_py")
+    if provenance.get("renderer") not in {"resvg_py", "cairosvg"}:
+        raise ValueError(
+            f"{spec.name} rig has unsupported SVG renderer provenance: "
+            f"{provenance.get('renderer')!r}"
+        )
     if provenance.get("svg_sha256") != _sha256(spec.svg_path):
         raise ValueError(f"{spec.name} rig source hash does not match its SVG")
     if provenance.get("part_order") != "svg-document":
@@ -1957,9 +1992,10 @@ def validate_one(spec: CharacterSpec) -> None:
                 raise ValueError(f"{spec.name}:{animation}:{frame_idx} rendered empty")
             rendered_frames += 1
 
+    renderer_name = str(provenance.get("renderer") or "unknown-renderer")
     print(
         f"{spec.name}: {len(doc.parts)} parts, {len(doc.bones)} bones, "
-        f"{len(doc.clips)} clips, {rendered_frames} native-resvg frames -> {path}"
+        f"{len(doc.clips)} clips, {rendered_frames} {renderer_name} frames -> {path}"
     )
 
 
@@ -1969,13 +2005,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("characters", nargs="*", choices=tuple(SPECS), default=None)
     args = parser.parse_args(argv)
     names = args.characters or list(SPECS)
-    renderer_path, renderer_version = _require_native_resvg()
-    print(f"SVG renderer: resvg_py {renderer_version} ({renderer_path})")
+    renderer_name, renderer_path, renderer_version, renderer_backend = _resolve_svg_renderer()
+    print(
+        f"SVG renderer: {renderer_name} {renderer_version} "
+        f"[{renderer_backend}] ({renderer_path})"
+    )
     for name in names:
         if args.command == "validate":
             validate_one(SPECS[name])
         else:
-            print(build_one(SPECS[name]))
+            print(f"rebuilt rig: {build_one(SPECS[name])}")
+    if args.command == "build":
+        print(
+            "Rig geometry rebuilt. This command does not render sprite pixels; "
+            "publish/review a target with: "
+            "uv run ambition-sprite2d-renderer sheet <character>"
+        )
     return 0
 
 

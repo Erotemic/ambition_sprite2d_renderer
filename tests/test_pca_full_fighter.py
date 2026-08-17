@@ -287,6 +287,32 @@ def test_compose_rig_frame_forwards_rig_supersample():
     }
 
 
+def test_compose_rig_frame_can_reuse_a_pre_rendered_rig_image():
+    image = Image.new("RGBA", (8, 8), (10, 20, 30, 255))
+
+    class FakeDoc:
+        frame = {"width": 8, "height": 8, "render_scale": 1}
+
+        def frame_time(self, animation, frame_idx, frame_count):
+            return 0.5
+
+        def solve(self, animation, t):
+            return ({}, {})
+
+        def render_at(self, *args, **kwargs):
+            raise AssertionError("pre-rendered rig image should bypass render_at")
+
+    result = compose_rig_frame(
+        FakeDoc(),
+        "idle",
+        0,
+        1,
+        solved=({}, {}),
+        rig_image=image,
+    )
+    assert result is image
+
+
 def test_fx_canvas_dirty_only_after_drawing():
     canvas = FxCanvas((16, 16), scale=1)
     assert not canvas.dirty

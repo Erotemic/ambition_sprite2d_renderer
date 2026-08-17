@@ -315,7 +315,14 @@ def _prepared_sprite_for_test():
         image,
         (radius - int(round(pivot[0])), radius - int(round(pivot[1]))),
     )
-    return SpriteRaster(image, pivot, padded, radius, ("test", 256))
+    return SpriteRaster(
+        image,
+        pivot,
+        padded,
+        radius,
+        ("test", 256),
+        premultiplied=image.convert("RGBa"),
+    )
 
 
 def test_sprite_raster_cache_hit_does_not_touch_svg_path(tmp_path, monkeypatch):
@@ -356,7 +363,64 @@ def test_sprite_raster_cache_hit_does_not_touch_svg_path(tmp_path, monkeypatch):
     second = doc.sprite_raster(part, 1.0)
 
     assert second is first
+    assert first.premultiplied is not None
+    assert first.premultiplied.mode == "RGBa"
     assert len(calls) == 1
+
+
+def test_transform_cache_defaults_are_environment_tunable(monkeypatch):
+    from ambition_sprite2d_renderer.authoring.rigdoc import SpriteTransformCache
+
+    monkeypatch.setenv("AMBITION_SPRITE_TRANSFORM_CACHE_MB", "7")
+    monkeypatch.setenv("AMBITION_SPRITE_ROTATE_WORKERS", "3")
+    cache = SpriteTransformCache()
+
+    assert cache.max_bytes == 7 * 1024 * 1024
+    assert cache.max_workers == 3
+
+
+def test_batched_transform_cache_matches_sequential_rotations():
+    from ambition_sprite2d_renderer.authoring.rigdoc import SpriteTransformCache
+
+    sprite = _prepared_sprite_for_test()
+    angles = [17.0, -31.5, 89.0, 17.0]
+    sequential = SpriteTransformCache(max_bytes=8 * 1024 * 1024, max_workers=1)
+    batched = SpriteTransformCache(max_bytes=8 * 1024 * 1024, max_workers=4)
+
+    expected = [sequential.rotated(sprite, angle) for angle in angles]
+    actual = batched.rotated_many([(sprite, angle) for angle in angles])
+
+    assert [image.tobytes() for image in actual] == [
+        image.tobytes() for image in expected
+    ]
+    assert actual[3] is actual[0]
+
+
+def test_batched_transform_cache_runs_independent_misses_concurrently(monkeypatch):
+    import threading
+    from dataclasses import replace
+    from PIL import Image
+    from ambition_sprite2d_renderer.authoring.rigdoc import (
+        SpriteTransformCache,
+    )
+
+    first = _prepared_sprite_for_test()
+    second = replace(first, cache_key=("other", 256))
+    rendezvous = threading.Barrier(2, timeout=2.0)
+
+    def fake_rotate(sprite, angle):
+        rendezvous.wait()
+        return Image.new("RGBA", (12, 12), (int(abs(angle)) % 255, 0, 0, 255))
+
+    monkeypatch.setattr(
+        SpriteTransformCache,
+        "_rotate_uncached",
+        staticmethod(fake_rotate),
+    )
+    cache = SpriteTransformCache(max_bytes=1024 * 1024, max_workers=2)
+    result = cache.rotated_many([(first, 10.0), (second, 20.0)])
+
+    assert len(result) == 2
 
 
 def test_prepared_rotation_matches_standalone_renderer():

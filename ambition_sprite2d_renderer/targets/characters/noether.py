@@ -23,7 +23,7 @@ from .noether_gameplay import (
     body_metrics as authored_body_metrics,
     hurtbox_parts_for_rows,
 )
-from .noether_effects import draw_noether_behind, draw_noether_front
+from .noether_effects import apply_ethereal_hum, draw_noether_behind, draw_noether_front
 from .noether_motion import EFFECT_ALIASES, FIGHTER_MOTION_COVERAGE, NOETHER_ROWS
 
 TARGET_NAME = "noether"
@@ -135,9 +135,18 @@ def _doc() -> RigDocument:
 
 
 def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
+    doc = _doc()
+    t = doc.frame_time(animation, frame_idx, frame_count)
+    solved = doc.solve(animation, t)
+    rig_image = doc.render_at(
+        animation,
+        t,
+        solved=solved,
+        padding=RIG_RENDER_PADDING,
+    )
     effect_animation = EFFECT_ALIASES.get(animation, animation)
-    return compose_rig_frame(
-        _doc(),
+    frame = compose_rig_frame(
+        doc,
         animation,
         frame_idx,
         frame_count,
@@ -148,7 +157,10 @@ def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Imag
             effect_animation, canvas, t, world, params
         ),
         padding=RIG_RENDER_PADDING,
+        solved=solved,
+        rig_image=rig_image,
     )
+    return apply_ethereal_hum(frame, rig_image, t)
 
 
 def _silhouette_profile() -> dict:
@@ -158,7 +170,10 @@ def _silhouette_profile() -> dict:
     ask where the character actually IS costs about a second and replaces a
     guessed fraction of her stature — see `noether_gameplay.body_from_silhouette`.
     """
-    frame = render_frame("idle", 0, 8)
+    # Measure the solved body art, not presentation effects. Emmy's persistent
+    # ethereal hum intentionally extends beyond her silhouette and must never
+    # enlarge gameplay/body metadata.
+    frame = _doc().render_frame("idle", 0, 8, padding=RIG_RENDER_PADDING)
     alpha = frame.getchannel("A")
     bounds = alpha.getbbox() or (0, 0, frame.width, frame.height)
     pixels = alpha.load()

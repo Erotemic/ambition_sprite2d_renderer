@@ -80,9 +80,11 @@ are painted on a scratch layer and alpha-composited (the gnu_ton rule).
 from __future__ import annotations
 
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 import json
 import math
+import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -159,7 +161,36 @@ def translate_bone_worlds(
 
 PART_KINDS = ("polygon", "capsule", "circle", "sprite")
 EASE_NAMES = ("linear", "smooth", "out", "in", "sine")
-SPRITE_TRANSFORM_CACHE_BYTES = 64 * 1024 * 1024
+DEFAULT_SPRITE_TRANSFORM_CACHE_MB = 128
+DEFAULT_SPRITE_TRANSFORM_WORKERS = min(4, max(1, os.cpu_count() or 1))
+
+
+def _sprite_transform_cache_bytes() -> int:
+    value = os.environ.get(
+        "AMBITION_SPRITE_TRANSFORM_CACHE_MB",
+        str(DEFAULT_SPRITE_TRANSFORM_CACHE_MB),
+    )
+    try:
+        megabytes = int(value)
+    except ValueError as ex:
+        raise ValueError(
+            "AMBITION_SPRITE_TRANSFORM_CACHE_MB must be an integer number of MiB"
+        ) from ex
+    return max(0, megabytes) * 1024 * 1024
+
+
+def _sprite_transform_workers() -> int:
+    value = os.environ.get(
+        "AMBITION_SPRITE_ROTATE_WORKERS",
+        str(DEFAULT_SPRITE_TRANSFORM_WORKERS),
+    )
+    try:
+        workers = int(value)
+    except ValueError as ex:
+        raise ValueError(
+            "AMBITION_SPRITE_ROTATE_WORKERS must be an integer"
+        ) from ex
+    return max(1, workers)
 
 # Restricted namespace for expression channels. Documents are local,
 # Jon-authored content; this keeps expressions to math, not a sandbox.
@@ -195,8 +226,11 @@ def normalize_degrees(value: float) -> float:
 class SpriteRaster:
     """One SVG part raster prepared for cheap repeated pose composition.
 
-    ``image`` remains cropped for the zero-rotation fast path. ``padded`` is
-    centered on the authored pivot and is reused by every non-zero rotation.
+    ``image`` remains cropped for the zero-rotation fast path. ``padded`` keeps
+    the historical all-angle representation for standalone compatibility.
+    ``premultiplied`` is the immutable cropped source in Pillow's ``RGBa`` mode;
+    the shared transform cache can place it directly into each tight rotation
+    canvas instead of repeating RGBA -> RGBa conversion on every cache miss.
     ``cache_key`` identifies the source subset, pivot, and raster scale.
     """
 
@@ -210,15 +244,23 @@ class SpriteRaster:
     # >=3x can use Pillow's substantially cheaper bilinear kernel and still be
     # filtered again at the publication boundary.
     working_scale: float = 1.0
+    premultiplied: Optional[Image.Image] = None
 
 
 class SpriteTransformCache:
     """Byte-bounded LRU of full-opacity rotated part rasters.
 
-    The editor changes only a few bones per drag event, so most part angles are
-    identical between consecutive poses even when the complete-frame cache must
-    miss. Reusing those transformed parts avoids repeating PIL's relatively
-    expensive bicubic rotation for the unchanged body.
+    Rig frames ask for many independent SVG-part transforms before any of those
+    parts need to be composited. ``rotated_many`` resolves resident cache hits
+    first, computes the remaining Pillow rotations concurrently, then admits
+    results and composites later in authoritative SVG z-order. Rendering stays
+    deterministic because only the independent transforms are parallel; paint
+    order is unchanged.
+
+    The cache budget defaults to 128 MiB and is configurable with
+    ``AMBITION_SPRITE_TRANSFORM_CACHE_MB``. Rotation parallelism defaults to at
+    most four workers and is configurable with ``AMBITION_SPRITE_ROTATE_WORKERS``.
+    Set the latter to 1 for a strictly sequential diagnostic run.
 
     Once the byte budget is full, a one-off transform is not allowed to evict a
     useful resident immediately. It enters a small probation set instead; only
@@ -229,15 +271,24 @@ class SpriteTransformCache:
 
     def __init__(
         self,
-        max_bytes: int = SPRITE_TRANSFORM_CACHE_BYTES,
+        max_bytes: Optional[int] = None,
         *,
         max_probation_keys: int = 8192,
+        max_workers: Optional[int] = None,
     ) -> None:
-        self.max_bytes = max(0, int(max_bytes))
+        self.max_bytes = max(
+            0,
+            int(_sprite_transform_cache_bytes() if max_bytes is None else max_bytes),
+        )
         self.max_probation_keys = max(0, int(max_probation_keys))
+        self.max_workers = max(
+            1,
+            int(_sprite_transform_workers() if max_workers is None else max_workers),
+        )
         self._items: OrderedDict[tuple, Image.Image] = OrderedDict()
         self._probation: OrderedDict[tuple, None] = OrderedDict()
         self._bytes = 0
+        self._executor: Optional[ThreadPoolExecutor] = None
 
     def clear(self) -> None:
         self._items.clear()
@@ -252,17 +303,13 @@ class SpriteTransformCache:
         while len(self._probation) > self.max_probation_keys:
             self._probation.popitem(last=False)
 
-    @profile
-    def rotated(self, sprite: SpriteRaster, delta_deg: float) -> Image.Image:
-        # Preserve exact render semantics. The normalized angle only aliases
-        # equivalent full turns; it does not quantize animation values.
-        angle = normalize_degrees(delta_deg)
-        key = (id(sprite.image), sprite.cache_key, angle)
-        cached = self._items.get(key)
-        if cached is not None:
-            self._items.move_to_end(key)
-            return cached
+    @staticmethod
+    def _key(sprite: SpriteRaster, angle: float) -> tuple:
+        return (id(sprite.image), sprite.cache_key, angle)
 
+    @staticmethod
+    @profile
+    def _rotate_uncached(sprite: SpriteRaster, angle: float) -> Image.Image:
         # Bicubic is useful when a rig is rendered near its final pixel size.
         # At >=3 source pixels per logical pixel, however, the part is already
         # supersampled. Bilinear rotation is ~2-3x cheaper in Pillow and the
@@ -273,13 +320,12 @@ class SpriteTransformCache:
             if sprite.working_scale >= 3.0
             else RESAMPLING.BICUBIC
         )
-        # Rotate the smallest pivot-centered canvas that can contain this
-        # angle instead of the all-angles circumscribed square prepared on the
-        # SpriteRaster. SVG limbs are often long and narrow; the old square can
-        # contain many times more transparent pixels than actual part artwork,
-        # and Pillow pays for every one of them during resampling. Keep the
-        # pivot on an integer canvas center so this is translation-equivalent
-        # to the historical square path and therefore preserves exact pixels.
+
+        # Rotate the smallest pivot-centered canvas that can contain this angle
+        # instead of the all-angles circumscribed square. Work directly in
+        # premultiplied-alpha space: SVG source rasters are immutable, so the
+        # RGBA -> RGBa conversion can be paid once in ``sprite_raster`` rather
+        # than once per animation angle.
         pivot_x = int(round(sprite.pivot[0]))
         pivot_y = int(round(sprite.pivot[1]))
         base_half_w = max(pivot_x, sprite.image.width - pivot_x) + 2
@@ -289,9 +335,12 @@ class SpriteTransformCache:
         sin_a = abs(math.sin(radians))
         half_w = int(math.ceil(cos_a * base_half_w + sin_a * base_half_h)) + 1
         half_h = int(math.ceil(sin_a * base_half_w + cos_a * base_half_h)) + 1
-        pad = Image.new("RGBA", (2 * half_w, 2 * half_h), (0, 0, 0, 0))
-        pad.alpha_composite(
-            sprite.image,
+        pad = Image.new("RGBa", (2 * half_w, 2 * half_h), (0, 0, 0, 0))
+        premultiplied = sprite.premultiplied
+        if premultiplied is None:
+            premultiplied = sprite.image.convert("RGBa")
+        pad.paste(
+            premultiplied,
             (half_w - pivot_x, half_h - pivot_y),
         )
         rot = rotate_transparent_sprite(
@@ -300,14 +349,19 @@ class SpriteTransformCache:
             center=(half_w, half_h),
             resample=resample,
         )
+        return rot.convert("RGBA") if rot.mode != "RGBA" else rot
+
+    def _admit(self, key: tuple, rot: Image.Image) -> Image.Image:
+        """Apply the existing probation/LRU policy to one computed transform."""
+        cached = self._items.get(key)
+        if cached is not None:
+            self._items.move_to_end(key)
+            return cached
+
         size_bytes = rot.width * rot.height * 4
         if self.max_bytes <= 0 or size_bytes > self.max_bytes:
             return rot
 
-        # Admit immediately while there is genuinely free space. Once an
-        # admission would evict residents, require the transform to have been
-        # observed before. The first miss is still returned normally; it simply
-        # does not poison the resident set.
         would_evict = self._bytes + size_bytes > self.max_bytes
         repeated = key in self._probation
         if would_evict and not repeated:
@@ -321,6 +375,83 @@ class SpriteTransformCache:
         self._items[key] = rot
         self._bytes += size_bytes
         return rot
+
+    def _pool(self) -> ThreadPoolExecutor:
+        if self._executor is None:
+            self._executor = ThreadPoolExecutor(
+                max_workers=self.max_workers,
+                thread_name_prefix="ambition-sprite-rotate",
+            )
+        return self._executor
+
+    @profile
+    def rotated(self, sprite: SpriteRaster, delta_deg: float) -> Image.Image:
+        # Preserve exact render semantics. The normalized angle only aliases
+        # equivalent full turns; it does not quantize animation values.
+        angle = normalize_degrees(delta_deg)
+        key = self._key(sprite, angle)
+        cached = self._items.get(key)
+        if cached is not None:
+            self._items.move_to_end(key)
+            return cached
+        return self._admit(key, self._rotate_uncached(sprite, angle))
+
+    @profile
+    def rotated_many(
+        self,
+        requests: List[Tuple[SpriteRaster, float]],
+    ) -> List[Image.Image]:
+        """Resolve independent non-zero transforms while preserving cache semantics.
+
+        Cache inspection/admission remains on the calling thread. Only expensive
+        Pillow rotations run concurrently, and results are consumed in request
+        order. The caller still composites those images sequentially in SVG z-order.
+        """
+        if not requests:
+            return []
+
+        normalized = [
+            (sprite, normalize_degrees(angle)) for sprite, angle in requests
+        ]
+        missing: OrderedDict[tuple, Tuple[SpriteRaster, float]] = OrderedDict()
+        for sprite, angle in normalized:
+            key = self._key(sprite, angle)
+            if key not in self._items and key not in missing:
+                missing[key] = (sprite, angle)
+
+        computed: Dict[tuple, Image.Image] = {}
+        if missing:
+            items = list(missing.items())
+            if self.max_workers > 1 and len(items) > 1:
+                rotations = self._pool().map(
+                    lambda item: self._rotate_uncached(item[1][0], item[1][1]),
+                    items,
+                )
+                computed = {
+                    key: rotation for (key, _request), rotation in zip(items, rotations)
+                }
+            else:
+                computed = {
+                    key: self._rotate_uncached(sprite, angle)
+                    for key, (sprite, angle) in items
+                }
+
+        results: List[Image.Image] = []
+        for sprite, angle in normalized:
+            key = self._key(sprite, angle)
+            cached = self._items.get(key)
+            if cached is not None:
+                self._items.move_to_end(key)
+                results.append(cached)
+                continue
+            rot = computed.get(key)
+            # An initially resident transform can be evicted by an earlier
+            # request in the same batch. Match sequential semantics by rebuilding
+            # that rare case rather than changing the cache's admission policy.
+            if rot is None:
+                rot = self._rotate_uncached(sprite, angle)
+            results.append(self._admit(key, rot))
+        return results
 
 
 def eval_expr(expr: str, t: float) -> float:
@@ -905,6 +1036,7 @@ class RigDocument:
             radius=radius,
             cache_key=key,
             working_scale=float(S),
+            premultiplied=img.convert("RGBa"),
         )
         self._sprite_cache[key] = prepared
         return prepared
@@ -945,8 +1077,39 @@ class RigDocument:
         draw = blending_draw(img)
         world, params = solved if solved is not None else self.solve(clip_name, t)
         world = translate_bone_worlds(world, float(pad_left), float(pad_top))
+
+        # Raster preparation and z-order remain deterministic on the caller
+        # thread. Independent non-zero SVG transforms can then run concurrently;
+        # composition below still happens strictly in authoritative part order.
+        paint_items: List[Tuple[dict, Optional[SpriteRaster]]] = []
+        rotation_slots: List[int] = []
+        rotation_requests: List[Tuple[SpriteRaster, float]] = []
         for part in visible_parts(self.parts, self.features):
             sprite = self.sprite_raster(part, S) if part.get("kind") == "sprite" else None
+            slot = len(paint_items)
+            paint_items.append((part, sprite))
+            if sprite is None:
+                continue
+            bone_name = part.get("bone")
+            if bone_name not in world:
+                continue
+            delta = normalize_degrees(
+                world[bone_name].angle - float(part.get("rest_angle", 0.0))
+            )
+            if delta != 0.0:
+                rotation_slots.append(slot)
+                rotation_requests.append((sprite, delta))
+
+        prepared_rotations: Dict[int, Image.Image] = {}
+        if rotation_requests:
+            prepared_rotations = dict(
+                zip(
+                    rotation_slots,
+                    self._sprite_transform_cache.rotated_many(rotation_requests),
+                )
+            )
+
+        for slot, (part, sprite) in enumerate(paint_items):
             paint_part(
                 img,
                 draw,
@@ -957,6 +1120,7 @@ class RigDocument:
                 self.palette,
                 sprite=sprite,
                 transform_cache=self._sprite_transform_cache,
+                rotated_sprite=prepared_rotations.get(slot),
             )
         if ss == 1:
             return img
@@ -1009,6 +1173,7 @@ def blit_rotated(
     *,
     prepared: Optional[SpriteRaster] = None,
     transform_cache: Optional[SpriteTransformCache] = None,
+    rotated_sprite: Optional[Image.Image] = None,
 ) -> None:
     """Rotate ``sprite`` about its ``pivot`` by ``delta_deg`` and composite it so
     the pivot lands at ``world_px``.
@@ -1040,7 +1205,11 @@ def blit_rotated(
         return
 
     if prepared is not None:
-        if transform_cache is not None:
+        if rotated_sprite is not None:
+            rot = rotated_sprite
+            anchor_x = rot.width // 2
+            anchor_y = rot.height // 2
+        elif transform_cache is not None:
             rot = transform_cache.rotated(prepared, angle)
             anchor_x = rot.width // 2
             anchor_y = rot.height // 2
@@ -1094,6 +1263,7 @@ def paint_part(
     palette: Dict[str, str],
     sprite: Optional[Union[SpriteRaster, Tuple[Image.Image, Point]]] = None,
     transform_cache: Optional[SpriteTransformCache] = None,
+    rotated_sprite: Optional[Image.Image] = None,
 ) -> None:
     bone_name = part.get("bone")
     if bone_name not in world:
@@ -1131,6 +1301,7 @@ def paint_part(
             opacity,
             prepared=prepared,
             transform_cache=transform_cache,
+            rotated_sprite=rotated_sprite,
         )
         return
     fill = parse_color(part.get("fill", "#FFFFFF"), palette, opacity)

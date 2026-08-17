@@ -203,6 +203,7 @@ def compose_rig_frame(
     padding: RenderPadding | None = None,
     solved=None,
     rig_supersample: int | None = None,
+    rig_image: Image.Image | None = None,
 ) -> Image.Image:
     t = doc.frame_time(animation, frame_idx, frame_count)
     if solved is None:
@@ -237,13 +238,14 @@ def compose_rig_frame(
     # ``render_at`` already returns a fresh RGBA image. Use it as the result
     # directly when there is no behind effect instead of allocating a blank
     # full-frame canvas and compositing the rig onto transparency first.
-    rig_image = doc.render_at(
-        animation,
-        t,
-        solved=solved,
-        padding=padding,
-        supersample=rig_supersample,
-    )
+    if rig_image is None:
+        rig_image = doc.render_at(
+            animation,
+            t,
+            solved=solved,
+            padding=padding,
+            supersample=rig_supersample,
+        )
     if behind_image is None:
         result = rig_image
     else:
