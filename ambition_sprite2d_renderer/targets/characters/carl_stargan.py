@@ -323,6 +323,13 @@ def render(out_dir: str | Path, **opts):
         crop_margin=4,
         actor_metadata=ACTOR_METADATA,
         sheet_tuning=doc.sprite_tuning or {"collision_scale": 1.58},
+        # His paperdoll view is `Carl Stargan - Side Left` and both his rig
+        # (`features.facing: "west"`) and his SVG (`data-rig-facing="west"`)
+        # declare it. Publishing it is what makes the declaration real: without
+        # this line the fact is authored at every layer and read by none, and he
+        # renders facing away from his own movement exactly as the Patent Clerk
+        # did.
+        authored_faces_left=doc.authored_faces_left,
         animation_key_map={name: name for name, _frames, _duration in ROWS},
         trim=False,
     )
