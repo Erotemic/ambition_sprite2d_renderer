@@ -57,9 +57,9 @@ ACTOR_METADATA = {
         # ⭐ the CANONICAL GAME id, not the target name. `TARGET_NAME` stays
         # "noether" (it names the render target and its output directory); the
         # actor metadata is what the game resolves a body's identity through, and
-        # Ambition's catalog row is `npc_noether`. A mismatch here is what the
+        # Ambition's catalog row is `npc_emmy_noether`. A mismatch here is what the
         # game-side identity waiver existed for.
-        "character_id": "npc_noether",
+        "character_id": "npc_emmy_noether",
         "display_name": "Emmy Ethereal",
     },
     "body": {

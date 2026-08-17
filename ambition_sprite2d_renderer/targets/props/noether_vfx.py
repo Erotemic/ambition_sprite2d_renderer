@@ -295,7 +295,7 @@ def render(out_dir: str | Path, **opts):
     return publish_catalog(
         target_name=TARGET_NAME,
         display_name="Emmy Ethereal Detached VFX",
-        character_context_id="npc_noether",
+        character_context_id="npc_emmy_noether",
         character_context_display="Emmy Ethereal",
         rows=ROWS,
         drawers=DRAWERS,
