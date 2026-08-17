@@ -12,6 +12,10 @@ from __future__ import annotations
 import math
 from typing import Mapping
 
+from PIL import Image, ImageFilter
+
+from ...profiling import profile
+
 from ._svg_fighter_effects import FxCanvas, bone_origin, clamp01, fade, pulse, smooth
 
 Color = tuple[int, int, int, int]
@@ -41,6 +45,55 @@ EFFECTFUL_ANIMATIONS = frozenset(
         "noether_theorem",
     }
 )
+
+
+
+
+def _alpha_scaled(alpha: Image.Image, factor: float) -> Image.Image:
+    q = max(0.0, min(1.0, float(factor)))
+    return alpha.point(lambda value: int(round(value * q)))
+
+
+@profile
+def apply_ethereal_hum(frame: Image.Image, rig_image: Image.Image, t: float) -> Image.Image:
+    """Add Emmy's low, breathing silhouette aura behind the composed frame.
+
+    The hum is derived from the solved rig alpha rather than from screen-space
+    decorations, so it follows every authored animation and pose.  It never
+    changes collision/rig geometry and deliberately stays much quieter than her
+    move-specific mathematical effects.
+    """
+    if frame.mode != "RGBA":
+        frame = frame.convert("RGBA")
+    if rig_image.mode != "RGBA":
+        rig_image = rig_image.convert("RGBA")
+
+    alpha = rig_image.getchannel("A")
+    # Two soft shells: a close cyan edge and a broader violet atmosphere. The
+    # amplitudes drift out of phase so the result reads as a steady hum rather
+    # than a flashing combat effect.
+    cyan_pulse = 0.74 + 0.26 * (0.5 + 0.5 * math.sin(t * math.tau * 2.0))
+    violet_pulse = 0.72 + 0.28 * (0.5 + 0.5 * math.sin(t * math.tau * 2.0 + 1.7))
+
+    # Blur the body alpha directly. Because these layers are composited behind
+    # the character, the interior is naturally covered by opaque body pixels;
+    # translucent skirt fabric picks up a little inner light, which reinforces
+    # the intended spectral material. Gaussian blur is also dramatically
+    # cheaper than morphological dilation across the full 2x publication frame.
+    close = alpha.filter(ImageFilter.GaussianBlur(3.0))
+    broad = alpha.filter(ImageFilter.GaussianBlur(7.0))
+
+    aura = Image.new("RGBA", frame.size, (0, 0, 0, 0))
+    violet = Image.new("RGBA", frame.size, VIOLET[:3] + (0,))
+    violet.putalpha(_alpha_scaled(broad, 0.12 * violet_pulse))
+    aura.alpha_composite(violet)
+
+    cyan = Image.new("RGBA", frame.size, ETHER[:3] + (0,))
+    cyan.putalpha(_alpha_scaled(close, 0.34 * cyan_pulse))
+    aura.alpha_composite(cyan)
+
+    aura.alpha_composite(frame)
+    return aura
 
 
 def _center(world: World) -> Point:
@@ -407,6 +460,7 @@ def draw_noether_front(
 
 __all__ = [
     "EFFECTFUL_ANIMATIONS",
+    "apply_ethereal_hum",
     "draw_noether_behind",
     "draw_noether_front",
 ]

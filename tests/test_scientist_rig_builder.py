@@ -1,5 +1,10 @@
 from pathlib import Path
+import sys
+from types import SimpleNamespace
 
+import pytest
+
+from scripts import build_scientist_fighter_rigs as scientist_builder
 from scripts.build_scientist_fighter_rigs import (
     SPECS,
     _canonical_svg_part_order,
@@ -8,7 +13,63 @@ from scripts.build_scientist_fighter_rigs import (
     _rebase_hand_trajectory,
     _retarget_clip_arms_to_torso,
 )
+from ambition_sprite2d_renderer.authoring import canonical_scientist_rig
 from ambition_sprite2d_renderer.authoring.humanoid_svg_rig import LimbPoseHint
+
+
+def test_load_scientist_rig_reuses_doc_until_generated_rig_changes(
+    tmp_path: Path, monkeypatch
+):
+    rig = tmp_path / "noether_side.rig.json"
+    rig.write_text('{"name":"cached-rig"}', encoding="utf8")
+
+    calls: list[str] = []
+
+    def fake_ensure(_character: str) -> Path:
+        return rig
+
+    def fake_load(path_text: str):
+        calls.append(path_text)
+        return {"path": path_text, "call": len(calls)}
+
+    canonical_scientist_rig._load_doc_cached.cache_clear()
+    monkeypatch.setattr(canonical_scientist_rig, "ensure_scientist_rig", fake_ensure)
+    monkeypatch.setattr(canonical_scientist_rig.RigDocument, "load", staticmethod(fake_load))
+
+    first = canonical_scientist_rig.load_scientist_rig("noether")
+    second = canonical_scientist_rig.load_scientist_rig("noether")
+
+    assert first is second
+    assert calls == [str(rig)]
+
+    rig.write_text('{"name":"cached-rig", "rev":2}', encoding="utf8")
+
+    third = canonical_scientist_rig.load_scientist_rig("noether")
+
+    assert third is not first
+    assert calls == [str(rig), str(rig)]
+
+
+def test_scientist_renderer_falls_back_to_cairosvg_for_review(monkeypatch):
+    def unavailable():
+        raise RuntimeError("native resvg unavailable")
+
+    fake_cairo = SimpleNamespace(
+        __version__="1.2.3-test",
+        __file__="/tmp/cairosvg/__init__.py",
+    )
+    monkeypatch.setattr(scientist_builder, "_native_resvg_info", unavailable)
+    monkeypatch.setitem(sys.modules, "cairosvg", fake_cairo)
+
+    with pytest.warns(RuntimeWarning, match="SVG RASTERIZER FALLBACK"):
+        renderer = scientist_builder._resolve_svg_renderer()
+
+    assert renderer == (
+        "cairosvg",
+        "/tmp/cairosvg/__init__.py",
+        "1.2.3-test",
+        "fallback-review",
+    )
 
 
 def test_canonical_scientist_part_order_uses_svg_document_order(tmp_path: Path):

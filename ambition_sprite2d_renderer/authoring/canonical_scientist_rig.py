@@ -1,15 +1,17 @@
 """Canonical rig lifecycle for manually traced scientist paperdolls.
 
-The checked-in SVG is the source of truth. Generated rig JSON is accepted only
-when it records native ``resvg_py`` provenance and the hash of the current SVG.
-Older CairoSVG-derived rigs are therefore rebuilt automatically rather than
-silently reused.
+The checked-in SVG is the source of truth. Native ``resvg_py`` remains the
+canonical rasterizer. A CairoSVG-authored rig may be used as a loud, review-only
+fallback on machines where resvg is unavailable; once native resvg is present,
+the fallback rig is deliberately considered stale and rebuilt.
 """
 
 from __future__ import annotations
 
 import hashlib
 import importlib.util
+import inspect
+from functools import lru_cache
 import json
 import sys
 from pathlib import Path
@@ -63,6 +65,16 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _native_resvg_importable() -> bool:
+    """Whether native publication output can be preferred on this machine."""
+    try:
+        import resvg_py
+    except (ImportError, ModuleNotFoundError):
+        return False
+    svg_to_bytes = getattr(resvg_py, "svg_to_bytes", None)
+    return callable(svg_to_bytes) and inspect.isbuiltin(svg_to_bytes)
+
+
 def _read_json(path: Path) -> Mapping[str, Any] | None:
     try:
         value = json.loads(path.read_text(encoding="utf8"))
@@ -88,10 +100,13 @@ def rig_status(character: str) -> tuple[bool, str]:
         return False, f"unexpected rig provenance schema: {provenance.get('schema')!r}"
     if provenance.get("builder_version") != EXPECTED_BUILDER_VERSION:
         return False, f"stale rig builder version: {provenance.get('builder_version')!r}"
-    if provenance.get("renderer") != "resvg_py":
-        return False, f"rig was built by unsupported renderer: {provenance.get('renderer')!r}"
+    renderer = provenance.get("renderer")
+    if renderer not in {"resvg_py", "cairosvg"}:
+        return False, f"rig was built by unsupported renderer: {renderer!r}"
+    if renderer == "cairosvg" and _native_resvg_importable():
+        return False, "review-only CairoSVG rig can be rebuilt by available native resvg_py"
     if not provenance.get("renderer_version"):
-        return False, "rig does not record the native renderer version"
+        return False, "rig does not record the SVG renderer version"
     if provenance.get("svg_sha256") != _sha256(source):
         return False, "canonical SVG changed after the rig was generated"
     if provenance.get("part_order") != "svg-document":
@@ -115,7 +130,7 @@ def _load_builder() -> ModuleType:
 
 
 def ensure_scientist_rig(character: str) -> Path:
-    """Return a current rig, rebuilding stale output with native resvg."""
+    """Return a current rig, preferring native resvg and allowing warned fallback."""
 
     current, _reason = rig_status(character)
     if current:
@@ -130,10 +145,19 @@ def ensure_scientist_rig(character: str) -> Path:
     current, reason = rig_status(character)
     if not current:
         raise RuntimeError(
-            f"native rig build for {character} did not produce current output: {reason}"
+            f"scientist rig build for {character} did not produce current output: {reason}"
         )
     return built
 
 
+@lru_cache(maxsize=8)
+def _load_doc_cached(path_text: str, mtime_ns: int, size: int) -> RigDocument:
+    """Keep a rig's expensive sprite/transform caches alive across frames."""
+    del mtime_ns, size
+    return RigDocument.load(path_text)
+
+
 def load_scientist_rig(character: str) -> RigDocument:
-    return RigDocument.load(ensure_scientist_rig(character))
+    path = ensure_scientist_rig(character)
+    stat = path.stat()
+    return _load_doc_cached(str(path), stat.st_mtime_ns, stat.st_size)

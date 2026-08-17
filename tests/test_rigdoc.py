@@ -367,19 +367,45 @@ def test_prepared_rotation_matches_standalone_renderer():
     )
 
     sprite = _prepared_sprite_for_test()
-    expected = Image.new("RGBA", (80, 80), (0, 0, 0, 0))
-    actual = Image.new("RGBA", (80, 80), (0, 0, 0, 0))
-    blit_rotated(expected, sprite.image, sprite.pivot, (40, 40), 33.0)
-    blit_rotated(
-        actual,
-        sprite.image,
-        sprite.pivot,
-        (40, 40),
-        33.0,
-        prepared=sprite,
-        transform_cache=SpriteTransformCache(),
+    for angle in (1.0, 17.0, 33.0, 89.0, 123.0, -37.2, 179.0):
+        expected = Image.new("RGBA", (80, 80), (0, 0, 0, 0))
+        actual = Image.new("RGBA", (80, 80), (0, 0, 0, 0))
+        blit_rotated(expected, sprite.image, sprite.pivot, (40, 40), angle)
+        blit_rotated(
+            actual,
+            sprite.image,
+            sprite.pivot,
+            (40, 40),
+            angle,
+            prepared=sprite,
+            transform_cache=SpriteTransformCache(),
+        )
+        assert actual.tobytes() == expected.tobytes(), angle
+
+
+def test_transform_cache_rotates_a_tight_canvas_for_long_svg_parts():
+    from PIL import Image, ImageDraw
+    from ambition_sprite2d_renderer.authoring.rigdoc import (
+        SpriteRaster,
+        SpriteTransformCache,
     )
-    assert actual.tobytes() == expected.tobytes()
+
+    image = Image.new("RGBA", (96, 14), (0, 0, 0, 0))
+    ImageDraw.Draw(image).rectangle((3, 2, 92, 11), fill=(40, 180, 240, 255))
+    pivot = (9.0, 7.0)
+    radius = 90
+    padded = Image.new("RGBA", (2 * radius, 2 * radius), (0, 0, 0, 0))
+    padded.alpha_composite(
+        image,
+        (radius - int(round(pivot[0])), radius - int(round(pivot[1]))),
+    )
+    sprite = SpriteRaster(image, pivot, padded, radius, ("long-part", 256))
+
+    rotated = SpriteTransformCache(max_bytes=64 * 1024 * 1024).rotated(sprite, 12.0)
+
+    # This is the performance contract: a narrow limb should not be rotated as
+    # the giant all-angle square required to contain every possible angle.
+    assert rotated.width * rotated.height < padded.width * padded.height // 3
 
 
 def test_transform_cache_reuses_unchanged_part_rotation():

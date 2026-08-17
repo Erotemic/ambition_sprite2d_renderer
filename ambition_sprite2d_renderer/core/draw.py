@@ -17,6 +17,8 @@ from typing import Iterable, List, Tuple
 
 from PIL import Image, ImageColor, ImageDraw, ImageFont
 
+from ..profiling import profile
+
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 Box = Tuple[float, float, float, float]
@@ -58,6 +60,7 @@ def downsample(img: Image.Image, size: Tuple[int, int]) -> Image.Image:
     return img.resize(size, RESAMPLING.LANCZOS)
 
 
+@profile
 def resize_transparent_sprite(
     img: Image.Image,
     size: Tuple[int, int],
@@ -82,14 +85,13 @@ def resize_transparent_sprite(
     if reducing_gap is not None:
         kwargs["reducing_gap"] = reducing_gap
     if img.mode == "RGBA":
-        return (
-            img.convert("RGBa")
-            .resize(size, resample=resample, **kwargs)
-            .convert("RGBA")
-        )
+        premultiplied = img.convert("RGBa")
+        resized = premultiplied.resize(size, resample=resample, **kwargs)
+        return resized.convert("RGBA")
     return img.resize(size, resample=resample, **kwargs)
 
 
+@profile
 def rotate_transparent_sprite(
     img: Image.Image,
     angle: float,
@@ -108,7 +110,9 @@ def rotate_transparent_sprite(
     if center is not None:
         kwargs["center"] = center
     if img.mode == "RGBA":
-        return img.convert("RGBa").rotate(angle, **kwargs).convert("RGBA")
+        premultiplied = img.convert("RGBa")
+        rotated = premultiplied.rotate(angle, **kwargs)
+        return rotated.convert("RGBA")
     return img.rotate(angle, **kwargs)
 
 

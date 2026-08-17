@@ -21,12 +21,16 @@ position in SVG user units.
 from __future__ import annotations
 
 import io
+import inspect
+import warnings
 import xml.etree.ElementTree as ET
 from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from PIL import Image
+
+from ..profiling import profile
 
 SVG_NS = "http://www.w3.org/2000/svg"
 INK_NS = "http://www.inkscape.org/namespaces/inkscape"
@@ -43,6 +47,64 @@ for _prefix, _uri in (("", SVG_NS), ("inkscape", INK_NS),
                       ("sodipodi", SODIPODI_NS), ("xlink", XLINK_NS)):
     ET.register_namespace(_prefix, _uri)
 
+
+_FALLBACK_WARNING_EMITTED = False
+
+
+def _native_resvg_callable(module: object):
+    """Return the compiled resvg entry point, never a Python compatibility shim."""
+    svg_to_bytes = getattr(module, "svg_to_bytes", None)
+    if callable(svg_to_bytes) and inspect.isbuiltin(svg_to_bytes):
+        return svg_to_bytes
+    return None
+
+
+@profile
+def _svg_to_png_bytes(svg_string: str, dpi: float) -> bytes:
+    """Rasterize SVG, preferring native resvg and falling back to CairoSVG.
+
+    CairoSVG is intentionally a compatibility path for authoring/review
+    environments that do not have the ``resvg-py`` wheel installed.  Its
+    antialiasing and SVG edge-case behavior can differ from resvg, so callers
+    must not mistake fallback pixels for canonical publication output.
+    """
+    try:
+        import resvg_py
+    except (ImportError, ModuleNotFoundError):
+        resvg_py = None
+
+    svg_to_bytes = (
+        _native_resvg_callable(resvg_py) if resvg_py is not None else None
+    )
+    if svg_to_bytes is not None:
+        return bytes(svg_to_bytes(svg_string=svg_string, dpi=float(dpi)))
+
+    try:
+        import cairosvg
+    except ModuleNotFoundError as ex:
+        raise RuntimeError(
+            "SVG sprite rendering requires native resvg-py; CairoSVG can be used "
+            "as a review-only fallback when it is installed"
+        ) from ex
+
+    global _FALLBACK_WARNING_EMITTED
+    if not _FALLBACK_WARNING_EMITTED:
+        warnings.warn(
+            "SVG RASTERIZER FALLBACK: native resvg_py is unavailable or is only "
+            "a Python shim; using CairoSVG for authoring/review. Pixel bounds, "
+            "antialiasing, and some SVG semantics may differ. Install resvg-py "
+            "before treating generated pixels or rebuilt rig geometry as "
+            "canonical.",
+            RuntimeWarning,
+            stacklevel=3,
+        )
+        _FALLBACK_WARNING_EMITTED = True
+    return bytes(
+        cairosvg.svg2png(
+            bytestring=svg_string.encode("utf8"),
+            dpi=float(dpi),
+        )
+    )
 
 def _local(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
@@ -77,6 +139,7 @@ def _descendant_drawables(elem: ET.Element) -> List[ET.Element]:
     return out
 
 
+@profile
 def rasterize_subset(
     svg_path: Path,
     view: str,
@@ -111,6 +174,7 @@ def rasterize_subset(
 
 
 @lru_cache(maxsize=256)
+@profile
 def _rasterize_subset_cached(
     svg_path: str,
     mtime_ns: int,
@@ -119,8 +183,6 @@ def _rasterize_subset_cached(
     include_ids: Tuple[str, ...],
     dpi: float,
 ) -> Tuple[Optional[Image.Image], Tuple[int, int], float]:
-    import resvg_py  # heavy + optional; only needed for sprite parts
-
     raw = _parse(svg_path, mtime_ns, size)
     root = ET.fromstring(raw)
 
@@ -148,8 +210,8 @@ def _rasterize_subset_cached(
             _hide(elem)
 
     svg_str = ET.tostring(root, encoding="unicode")
-    png = resvg_py.svg_to_bytes(svg_string=svg_str, dpi=float(dpi))
-    img = Image.open(io.BytesIO(bytes(png))).convert("RGBA")
+    png = _svg_to_png_bytes(svg_str, float(dpi))
+    img = Image.open(io.BytesIO(png)).convert("RGBA")
     bbox = img.getbbox()
     px_per_unit = dpi / MM_PER_INCH
     if bbox is None:

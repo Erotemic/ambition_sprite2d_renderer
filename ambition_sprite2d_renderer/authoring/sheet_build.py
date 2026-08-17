@@ -182,6 +182,7 @@ _CLIP_NO_TAPER = 0.5
 _CLIP_OPAQUE = 200
 
 
+@profile
 def clipped_frame_edges(frame: Image.Image) -> List[str]:
     """Edges of `frame` where the drawing appears to have been CUT OFF.
 
@@ -231,21 +232,30 @@ def clipped_frame_edges(frame: Image.Image) -> List[str]:
     if depth < 1:
         return []
 
-    def opaque_on(points) -> int:
-        return sum(1 for point in points if alpha.getpixel(point) > _CLIP_OPAQUE)
+    def opaque_in_box(box: tuple[int, int, int, int]) -> int:
+        # Pillow computes the strip histogram in C. The former getpixel loop
+        # crossed the Python/Pillow boundary once per pixel and built point
+        # lists for every depth on every frame; on a full SVG fighter sheet the
+        # clipping guard alone consumed tens of seconds.
+        histogram = alpha.crop(box).histogram()
+        return sum(histogram[_CLIP_OPAQUE + 1 :])
 
     edges: List[str] = []
-    for name, line_at in (
-        ("top", lambda d: [(x, d) for x in range(width)]),
-        ("bottom", lambda d: [(x, height - 1 - d) for x in range(width)]),
-        ("left", lambda d: [(d, y) for y in range(height)]),
-        ("right", lambda d: [(width - 1 - d, y) for y in range(height)]),
+    for name, line_box in (
+        ("top", lambda d: (0, d, width, d + 1)),
+        ("bottom", lambda d: (0, height - 1 - d, width, height - d)),
+        ("left", lambda d: (d, 0, d + 1, height)),
+        ("right", lambda d: (width - 1 - d, 0, width - d, height)),
     ):
-        counts = [opaque_on(line_at(d)) for d in range(depth + 1)]
-        at_edge = counts[0]
+        # Most frames have no substantial ink on a boundary. Reject those from
+        # the edge strip alone before measuring the six inward strips.
+        at_edge = opaque_in_box(line_box(0))
         if at_edge < _CLIP_MIN_RUN:
             continue
-        inward = max(counts[1:], default=0)
+        inward = max(
+            (opaque_in_box(line_box(d)) for d in range(1, depth + 1)),
+            default=0,
+        )
         if at_edge >= max(_CLIP_MIN_RUN, _CLIP_NO_TAPER * inward):
             edges.append(name)
     return edges

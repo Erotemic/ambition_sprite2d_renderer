@@ -95,3 +95,45 @@ def test_a_part_nested_inside_another_belongs_to_the_deeper_one():
     assert not (by_name["head"] & (by_name["hair_front"] | by_name["hair_back"])), (
         "the head must not also claim the hair it contains"
     )
+
+
+def test_standard_humanoid_leftovers_split_at_intervening_svg_layers():
+    """A semantic body part may occupy several foreground/background slices."""
+
+    import xml.etree.ElementTree as ET
+
+    from ambition_sprite2d_renderer.authoring.humanoid_svg_rig import _collect_parts
+
+    root = ET.fromstring(
+        """
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+  <g inkscape:label="Side">
+    <g inkscape:label="Head">
+      <g inkscape:label="Glasses - Level 3">
+        <path id="far-glasses" d="M 0 0 L 1 0 L 1 1 Z" />
+      </g>
+      <g inkscape:label="Head Base">
+        <path id="head-base" d="M 0 0 L 2 0 L 2 2 Z" />
+      </g>
+      <g inkscape:label="Nose">
+        <path id="nose" d="M 0 0 L 3 0 L 3 3 Z" />
+      </g>
+      <g inkscape:label="Facial Features">
+        <path id="features" d="M 0 0 L 4 0 L 4 4 Z" />
+      </g>
+    </g>
+  </g>
+</svg>
+"""
+    )
+
+    parts = _collect_parts(root, "Side", binding_mode="standard-humanoid")
+
+    assert [(part.name, part.include) for part in parts] == [
+        ("head_misc", ("far-glasses",)),
+        ("head_base", ("head-base",)),
+        ("head_misc__zslice_2", ("nose",)),
+        ("head_features", ("features",)),
+    ]
+    assert parts[0].bone == parts[2].bone == "head"

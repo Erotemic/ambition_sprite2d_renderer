@@ -569,16 +569,7 @@
       "z": 22.0,
       "kind": "sprite",
       "include": [
-        "path1411",
-        "path1385",
-        "path2139",
-        "path2141",
-        "path1381",
-        "path1444",
-        "path1170",
-        "path1172",
-        "path1174",
-        "path1405"
+        "path1411"
       ],
       "pivot": [
         369.0,
@@ -604,9 +595,27 @@
       "svg_source_order": 23
     },
     {
-      "name": "hair_mid",
+      "name": "head_misc__zslice_2",
       "bone": "head",
       "z": 24.0,
+      "kind": "sprite",
+      "include": [
+        "path1385",
+        "path2139",
+        "path2141",
+        "path1381"
+      ],
+      "pivot": [
+        369.0,
+        251.0
+      ],
+      "rest_angle": 0.0,
+      "svg_source_order": 24
+    },
+    {
+      "name": "hair_mid",
+      "bone": "head",
+      "z": 25.0,
       "kind": "sprite",
       "include": [
         "path1190",
@@ -632,12 +641,31 @@
         251.0
       ],
       "rest_angle": 0.0,
-      "svg_source_order": 24
+      "svg_source_order": 25
+    },
+    {
+      "name": "head_misc__zslice_3",
+      "bone": "head",
+      "z": 26.0,
+      "kind": "sprite",
+      "include": [
+        "path1444",
+        "path1170",
+        "path1172",
+        "path1174",
+        "path1405"
+      ],
+      "pivot": [
+        369.0,
+        251.0
+      ],
+      "rest_angle": 0.0,
+      "svg_source_order": 26
     },
     {
       "name": "head_features",
       "bone": "head",
-      "z": 25.0,
+      "z": 27.0,
       "kind": "sprite",
       "include": [
         "path1347",
@@ -673,12 +701,12 @@
         251.0
       ],
       "rest_angle": 0.0,
-      "svg_source_order": 25
+      "svg_source_order": 27
     },
     {
       "name": "hair_front",
       "bone": "head",
-      "z": 26.0,
+      "z": 28.0,
       "kind": "sprite",
       "include": [
         "path1186",
@@ -705,12 +733,12 @@
         251.0
       ],
       "rest_angle": 0.0,
-      "svg_source_order": 26
+      "svg_source_order": 28
     },
     {
       "name": "near_hand",
       "bone": "near_arm_hand",
-      "z": 27.0,
+      "z": 29.0,
       "kind": "sprite",
       "include": [
         "path2241",
@@ -723,12 +751,12 @@
         520.0
       ],
       "rest_angle": 121.4416,
-      "svg_source_order": 27
+      "svg_source_order": 29
     },
     {
       "name": "near_arm_l",
       "bone": "near_arm_l",
-      "z": 28.0,
+      "z": 30.0,
       "kind": "sprite",
       "include": [
         "path2209",
@@ -739,12 +767,12 @@
         423.0
       ],
       "rest_angle": 118.6518,
-      "svg_source_order": 28
+      "svg_source_order": 30
     },
     {
       "name": "near_arm_u",
       "bone": "near_arm_u",
-      "z": 29.0,
+      "z": 31.0,
       "kind": "sprite",
       "include": [
         "path2205",
@@ -755,7 +783,7 @@
         339.0
       ],
       "rest_angle": 127.5191,
-      "svg_source_order": 29
+      "svg_source_order": 31
     }
   ],
   "ik_legs": [
@@ -39166,7 +39194,7 @@
     "renderer": "resvg_py",
     "renderer_version": "0.3.3",
     "renderer_backend": "native-extension",
-    "svg_sha256": "c65e7adb153d432241e983a2ed250c676b156d85489d6f92e0a53983878089b5",
+    "svg_sha256": "4ac1c3799a168308e9772c6e2f66df761b504240d2c03dec16ebc4a404e47b0f",
     "part_order_policy": "svg-document-order",
     "part_order": "svg-document"
   }

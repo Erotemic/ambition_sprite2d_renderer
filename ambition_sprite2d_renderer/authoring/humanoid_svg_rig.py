@@ -596,6 +596,66 @@ def _resolve_nested_ownership(
     return resolved
 
 
+def _split_discontiguous_document_slices(
+    parts: List[_PartBinding],
+    drawable_order: Mapping[str, int],
+) -> List[_PartBinding]:
+    """Preserve SVG paint order when one semantic part spans separated layers.
+
+    Standard-humanoid containers deliberately absorb unrecognised nested groups
+    as leftovers.  A single semantic owner can therefore collect drawables from
+    several separated points in the SVG document, with recognised child parts
+    painted between them.  Publishing those leftovers as one sprite gives them
+    one z value and silently drags the later artwork to the first layer.
+
+    Split only at ownership transitions in document order.  Every slice keeps
+    the same bone and opacity semantics; the first slice keeps the authored part
+    name so downstream semantic references remain stable, while later slices
+    receive an internal suffix solely to satisfy the rig's unique-name contract.
+    """
+
+    owner: Dict[str, int] = {}
+    for part_index, part in enumerate(parts):
+        for drawable_id in part.include:
+            previous = owner.setdefault(drawable_id, part_index)
+            if previous != part_index:
+                raise ValueError(
+                    f"drawable {drawable_id!r} still has multiple owners after "
+                    "nested ownership resolution"
+                )
+
+    ordered_ids = sorted(owner, key=lambda drawable_id: drawable_order[drawable_id])
+    if not ordered_ids:
+        return parts
+
+    runs: List[Tuple[int, List[str]]] = []
+    for drawable_id in ordered_ids:
+        part_index = owner[drawable_id]
+        if not runs or runs[-1][0] != part_index:
+            runs.append((part_index, [drawable_id]))
+        else:
+            runs[-1][1].append(drawable_id)
+
+    run_counts: Dict[int, int] = {}
+    out: List[_PartBinding] = []
+    for part_index, drawable_ids in runs:
+        part = parts[part_index]
+        run_number = run_counts.get(part_index, 0) + 1
+        run_counts[part_index] = run_number
+        source_order = drawable_order[drawable_ids[0]]
+        name = part.name if run_number == 1 else f"{part.name}__zslice_{run_number}"
+        out.append(
+            replace(
+                part,
+                name=name,
+                z=float(source_order),
+                include=tuple(drawable_ids),
+                source_order=source_order,
+            )
+        )
+    return out
+
+
 def _collect_parts(
     root: ET.Element, view: str, *, binding_mode: str = "explicit"
 ) -> List[_PartBinding]:
@@ -666,6 +726,7 @@ def _collect_parts(
     if not parts:
         raise ValueError(f"SVG view {view!r} contains no rig-part groups")
     if binding_mode == "standard-humanoid":
+        parts = _split_discontiguous_document_slices(parts, drawable_order)
         parts.sort(key=lambda part: part.source_order)
     names = [p.name for p in parts]
     if len(names) != len(set(names)):

@@ -3,6 +3,8 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from PIL import Image
+
 from ambition_sprite2d_renderer.authoring.fighter_motion_catalog import (
     applicable_categories,
     validate_motion_coverage,
@@ -12,6 +14,7 @@ from ambition_sprite2d_renderer.authoring.humanoid_svg_rig import (
     _collect_parts,
     _drawable_ids_in_view,
 )
+from ambition_sprite2d_renderer.targets.characters import noether as noether_target
 from ambition_sprite2d_renderer.targets.characters.noether_motion import (
     APPLICABLE_MOTION_SCOPES,
     FIGHTER_MOTION_COVERAGE,
@@ -27,6 +30,30 @@ VIEW = "Noether - Side Left"
 def _root() -> ET.Element:
     return ET.fromstring(SVG.read_bytes())
 
+
+
+def test_noether_silhouette_measurement_ignores_ethereal_hum(monkeypatch):
+    raw = Image.new("RGBA", (8, 8), (0, 0, 0, 0))
+    for x in range(2, 5):
+        for y in range(1, 7):
+            raw.putpixel((x, y), (255, 255, 255, 255))
+
+    class FakeDoc:
+        def render_frame(self, animation, frame_idx, frame_count, *, padding=None):
+            assert (animation, frame_idx, frame_count) == ("idle", 0, 8)
+            assert padding == noether_target.RIG_RENDER_PADDING
+            return raw
+
+    monkeypatch.setattr(noether_target, "_doc", lambda: FakeDoc())
+
+    def presentation_render_must_not_be_used(*args, **kwargs):
+        raise AssertionError("body measurement must not include the ethereal hum")
+
+    monkeypatch.setattr(noether_target, "render_frame", presentation_render_must_not_be_used)
+    profile = noether_target._silhouette_profile()
+
+    assert profile["bounds"] == (2, 1, 5, 7)
+    assert profile["columns"] == [0, 0, 6, 6, 6, 0, 0, 0]
 
 def test_noether_view_metadata_is_the_only_required_per_view_metadata():
     root = _root()
@@ -93,6 +120,23 @@ def test_noether_standard_labels_cover_every_drawable_without_generated_id_seman
         "center_skirt",
         "far_skirt",
     }
+
+
+def test_noether_nose_keeps_its_svg_document_z_between_hair_and_features():
+    root = _root()
+    parts = _collect_parts(root, VIEW, binding_mode="standard-humanoid")
+    part_index = {part.name: index for index, part in enumerate(parts)}
+
+    ink = "{http://www.inkscape.org/namespaces/inkscape}label"
+    nose_id = next(
+        elem.get("id")
+        for elem in root.iter()
+        if elem.get(ink) == "Nose-profile"
+    )
+    nose_owner = next(part for part in parts if nose_id in part.include)
+
+    assert part_index["hair_mid"] < part_index[nose_owner.name] < part_index["head_features"]
+    assert nose_owner.bone == "head"
 
 
 def test_noether_standard_joint_labels_include_tips_and_skirt_pivots():

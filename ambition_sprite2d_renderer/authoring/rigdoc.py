@@ -273,10 +273,31 @@ class SpriteTransformCache:
             if sprite.working_scale >= 3.0
             else RESAMPLING.BICUBIC
         )
+        # Rotate the smallest pivot-centered canvas that can contain this
+        # angle instead of the all-angles circumscribed square prepared on the
+        # SpriteRaster. SVG limbs are often long and narrow; the old square can
+        # contain many times more transparent pixels than actual part artwork,
+        # and Pillow pays for every one of them during resampling. Keep the
+        # pivot on an integer canvas center so this is translation-equivalent
+        # to the historical square path and therefore preserves exact pixels.
+        pivot_x = int(round(sprite.pivot[0]))
+        pivot_y = int(round(sprite.pivot[1]))
+        base_half_w = max(pivot_x, sprite.image.width - pivot_x) + 2
+        base_half_h = max(pivot_y, sprite.image.height - pivot_y) + 2
+        radians = math.radians(angle)
+        cos_a = abs(math.cos(radians))
+        sin_a = abs(math.sin(radians))
+        half_w = int(math.ceil(cos_a * base_half_w + sin_a * base_half_h)) + 1
+        half_h = int(math.ceil(sin_a * base_half_w + cos_a * base_half_h)) + 1
+        pad = Image.new("RGBA", (2 * half_w, 2 * half_h), (0, 0, 0, 0))
+        pad.alpha_composite(
+            sprite.image,
+            (half_w - pivot_x, half_h - pivot_y),
+        )
         rot = rotate_transparent_sprite(
-            sprite.padded,
+            pad,
             -angle,
-            center=(sprite.radius, sprite.radius),
+            center=(half_w, half_h),
             resample=resample,
         )
         size_bytes = rot.width * rot.height * 4
@@ -1019,15 +1040,19 @@ def blit_rotated(
         return
 
     if prepared is not None:
-        R = prepared.radius
         if transform_cache is not None:
             rot = transform_cache.rotated(prepared, angle)
+            anchor_x = rot.width // 2
+            anchor_y = rot.height // 2
         else:
+            R = prepared.radius
             rot = rotate_transparent_sprite(
                 prepared.padded,
                 -angle,
                 center=(R, R),
             )
+            anchor_x = R
+            anchor_y = R
     else:
         w, h = sprite.size
         radius = max(
@@ -1043,12 +1068,18 @@ def blit_rotated(
             -angle,
             center=(R, R),
         )
+        anchor_x = R
+        anchor_y = R
     if opacity < 1.0:
         # Cached rotations stay full-opacity and immutable; fade a throwaway copy.
         rot = rot.copy()
         rot.putalpha(rot.getchannel("A").point(lambda v: int(v * opacity)))
     canvas.alpha_composite(
-        rot, (int(round(world_px[0])) - R, int(round(world_px[1])) - R)
+        rot,
+        (
+            int(round(world_px[0])) - anchor_x,
+            int(round(world_px[1])) - anchor_y,
+        ),
     )
 
 
