@@ -39547,7 +39547,7 @@
     "renderer": "resvg_py",
     "renderer_version": "0.3.3",
     "renderer_backend": "native-extension",
-    "svg_sha256": "eba865bdaa97a2b7ab88797fa4f6483cb71f6e52c9009c26dc57931675765d97",
+    "svg_sha256": "ea3fb9e4df20b6ee81f91ff4f2116b7f1d5056b4dd28643137dfd79396816908",
     "part_order_policy": "svg-document-order",
     "part_order": "svg-document"
   }

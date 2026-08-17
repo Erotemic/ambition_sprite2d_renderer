@@ -17,7 +17,7 @@ from ambition_sprite2d_renderer.targets.characters.noether_motion import (
     FIGHTER_MOTION_COVERAGE,
     NOETHER_ROWS,
 )
-from scripts.build_scientist_fighter_rigs import SPECS, _noether_clips
+from scripts.build_scientist_fighter_rigs import SPECS, _noether_clips, _validate_view_facing
 
 ROOT = Path(__file__).resolve().parent.parent
 SVG = ROOT / "assets" / "noether.svg"
@@ -37,6 +37,27 @@ def test_noether_view_metadata_is_the_only_required_per_view_metadata():
     assert view.get("data-rig-side-map") == "right=near,left=far"
     assert view.get("data-rig-pose-authority") == "geometry-only"
     assert view.get("data-rig-part-order") == "document"
+
+
+def test_every_scientist_view_declares_the_facing_its_art_is_drawn_in():
+    """Each character's SVG says which way the body in its view points.
+
+    Every one of these views is named "… - Side Left", which names the VIEW and
+    not the body: Noether's is drawn facing east while the Patent Clerk's and
+    Carl Stargan's face west. The declaration is what the sheet manifest
+    publishes and the renderer's sprite flip consults — the Patent Clerk faced
+    backwards in game for exactly as long as nothing read it — so a regen that
+    dropped the attribute has to fail here rather than in a screenshot.
+    """
+    facings = {name: spec.facing for name, spec in SPECS.items()}
+    assert facings == {
+        "patent_clerk": "west",
+        "carl_stargan": "west",
+        "noether": "east",
+    }
+    for spec in SPECS.values():
+        # Raises when the SVG and the spec disagree, or the attribute is gone.
+        _validate_view_facing(spec)
 
 
 def test_noether_standard_labels_cover_every_drawable_without_generated_id_semantics():

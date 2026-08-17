@@ -756,6 +756,7 @@ def build_sheet(
     trim: Optional[bool] = None,
     body_inset=None,
     pose_bodies: str = "art",
+    authored_faces_left: bool = False,
 ):
     """Build one module target's sheet from a frame callable + rows.
 
@@ -777,6 +778,7 @@ def build_sheet(
         body_inset=body_inset,
         body_metrics_fn=body_metrics_fn,
         sheet_tuning=sheet_tuning,
+        authored_faces_left=authored_faces_left,
         animation_key_map=animation_key_map,
         attack_hitboxes=attack_hitboxes,
         hurtbox_parts=hurtbox_parts,
@@ -862,6 +864,9 @@ def render_sheet(source: FrameSource, out_dir: Path):
     actor_metadata = source.actor_metadata()
     body_metrics_fn = source.body_metrics_fn
     sheet_tuning = source.sheet_tuning
+    # A source that predates this field simply means "drawn facing +x", which is
+    # what the game already assumes — so getattr, not a required attribute.
+    authored_faces_left = bool(getattr(source, "authored_faces_left", False))
     animation_key_map = source.animation_key_map
     attack_hitboxes = source.attack_hitboxes(source.frame_size)
     hurtbox_parts = source.hurtbox_parts(source.frame_size)
@@ -1258,6 +1263,11 @@ def render_sheet(source: FrameSource, out_dir: Path):
     if num_pages > 1:
         manifest["images"] = page_image_names
     publish_character_notes(manifest, actor_metadata)
+    if authored_faces_left:
+        # WHICH WAY THE ART WAS DRAWN — see `SheetRecord::authored_faces_left`.
+        # Written only when true so every +x-drawn sheet's YAML and RON stay
+        # byte-identical to what they emitted before this key existed.
+        manifest["authored_faces_left"] = True
     if sheet_tuning:
         # Emitted to the RON `tuning` field (ron_tuning reads `sheet_tuning`);
         # the runtime SheetRegistry uses it for in-game display size /

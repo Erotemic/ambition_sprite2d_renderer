@@ -228,6 +228,17 @@ def record_to_ron(record: Dict) -> str:
         rows_field = "    rows: [],\n"
     y_offset = int(record.get("y_offset", 0))
     y_offset_field = f"    y_offset: {y_offset},\n" if y_offset else ""
+    # WHICH WAY THE ART WAS DRAWN. The game assumes a sheet's neutral pose faces
+    # +x (right) and mirrors it for a leftward facing; a sheet drawn facing left
+    # says so here and the renderer's mirror inverts to match
+    # (`flip_x = (facing < 0) XOR authored_faces_left`).
+    #
+    # ⭐ emitted ONLY when true, so the ~195 sheets drawn facing right stay
+    # byte-identical — the Rust field is `#[serde(default)]`, so an absent key
+    # reads as "drawn facing +x", which is what every one of them means today.
+    faces_left_field = (
+        "    authored_faces_left: true,\n" if record.get("authored_faces_left") else ""
+    )
     tuning_field = ron_tuning(record)
     # `images: [...]` only for split (multi-page) sheets; single-page sheets
     # emit just `image:` so their RON is byte-identical to the pre-paging shape.
@@ -246,6 +257,7 @@ def record_to_ron(record: Dict) -> str:
         f"    frame_height: {int(record['frame_height'])},\n"
         f"{y_offset_field}"
         f"{tuning_field}"
+        f"{faces_left_field}"
         f"    body_metrics: {_ron_body_metrics(record.get('body_metrics'))},\n"
         f"{rows_field}"
         f")"

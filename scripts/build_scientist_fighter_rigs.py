@@ -1705,15 +1705,57 @@ def _validate_carl_layer_model(doc: RigDocument) -> None:
         )
 
 
-def _validate_noether_view_contract(spec: CharacterSpec) -> None:
-    """Require only the small view-level contract agreed with SVG authoring."""
+def _view_layer(spec: CharacterSpec):
+    """The SVG group that IS this character's authored view."""
 
     root = ET.fromstring(spec.svg_path.read_bytes())
     layer = next((elem for elem in root.iter() if elem.get(INK_LABEL) == spec.view), None)
     if layer is None:
         raise ValueError(f"{spec.svg_path} has no SVG view {spec.view!r}")
+    return layer
+
+
+def _validate_view_facing(spec: CharacterSpec) -> None:
+    """**Which way the artwork in this view is DRAWN, declared by the drawing.**
+
+    Every view here is named ``… - Side Left``, which names the VIEW and says
+    nothing about which way the body in it points: Noether's side-left view is
+    drawn facing east, the Patent Clerk's and Carl Stargan's face west. So the
+    body's drawn facing has to be stated, and the place it belongs is the SVG —
+    the artist's file — with ``spec.facing`` as the pipeline's copy of the same
+    claim.
+
+    This used to be one hardcoded ``"east"`` inside Noether's own view contract,
+    which is why the clerk had no way to say the opposite. It is checked for
+    every character now, against whatever that character's spec declares.
+
+    ⚠ the check is what makes the declaration load-bearing: the sheet manifest
+    publishes this facing and the renderer XORs it into the sprite flip, so an
+    SVG edit that silently drops the attribute would put a character back to
+    facing away from their own movement.
+    """
+
+    layer = _view_layer(spec)
+    declared = layer.get("data-rig-facing")
+    if declared != spec.facing:
+        raise ValueError(
+            f"{spec.svg_path} view {spec.view!r} declares data-rig-facing="
+            f"{declared!r}, but {spec.name}'s spec says {spec.facing!r}. "
+            "The SVG states which way the art is drawn; keep the two in step."
+        )
+
+
+def _validate_noether_view_contract(spec: CharacterSpec) -> None:
+    """Require only the small view-level contract agreed with SVG authoring.
+
+    ``data-rig-facing`` used to live in this dict. It is a per-character fact,
+    so it moved to :func:`_validate_view_facing` (driven by ``spec.facing``) and
+    is now checked for everyone; what remains here is genuinely Noether's own
+    three-quarter view agreement.
+    """
+
+    layer = _view_layer(spec)
     expected = {
-        "data-rig-facing": "east",
         "data-rig-projection": "three-quarter",
         "data-rig-side-map": "right=near,left=far",
         "data-rig-pose-authority": "geometry-only",
@@ -1771,6 +1813,10 @@ def build_one(spec: CharacterSpec) -> Path:
             character="noether",
         )
         _validate_noether_view_contract(spec)
+
+    # Every character declares its own drawn facing, so this is not in the
+    # per-character branch above.
+    _validate_view_facing(spec)
 
     renderer_path, renderer_version = _require_native_resvg()
     if not spec.svg_path.exists():

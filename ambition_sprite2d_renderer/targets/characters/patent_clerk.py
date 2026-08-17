@@ -372,6 +372,12 @@ def render(out_dir: str | Path, **opts):
         auto_crop=False,
         actor_metadata=ACTOR_METADATA,
         sheet_tuning=doc.sprite_tuning or {"collision_scale": 1.66},
+        # His paperdoll view is `Patent Clerk - Side Left` and his rig has said
+        # `features.facing: "west"` all along; nothing downstream read it, so the
+        # game mirrored him as if he had been drawn facing right and he faced
+        # away from wherever he was going. Publishing it puts the art's own
+        # facing in the manifest the renderer's flip consults.
+        authored_faces_left=doc.authored_faces_left,
         animation_key_map={name: name for name, _frames, _duration in ROWS},
         # The 224px logical frame protects large rotations; packed trim keeps
         # that safety margin from becoming permanent atlas residency.

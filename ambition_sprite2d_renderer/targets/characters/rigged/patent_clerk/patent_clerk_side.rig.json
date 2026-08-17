@@ -37362,7 +37362,7 @@
     "renderer": "resvg_py",
     "renderer_version": "0.3.3",
     "renderer_backend": "native-extension",
-    "svg_sha256": "473e67efe31356cf6a1e39d5af03d3ad11537ea541c4602c46e3da6e8fd5e4c4",
+    "svg_sha256": "a0dc243ce63ff0b8ee16e9a4121c8e2030833226bc3309dc51804888b95ceb6f",
     "part_order_policy": "svg-document-order",
     "part_order": "svg-document"
   }

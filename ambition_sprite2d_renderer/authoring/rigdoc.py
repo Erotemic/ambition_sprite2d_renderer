@@ -476,6 +476,25 @@ class RigDocument:
         return self.data.setdefault("features", {})
 
     @property
+    def authored_faces_left(self) -> bool:
+        """**Which way this rig's art is DRAWN**, as the rig already declares it.
+
+        ``features["facing"]`` is written by
+        ``scripts/build_scientist_fighter_rigs.py`` from ``CharacterSpec.facing``
+        (default ``"west"``; Noether overrides to ``"east"`` because her SVG view
+        is drawn east-facing and her poses are mirrored to match). The value is
+        accurate for every rig that carries it — it was simply never read by
+        anything downstream, so the game kept assuming every sheet faces +x.
+
+        This is the accessor that ends that: the sheet build publishes the answer
+        into the manifest and the renderer XORs it into the facing flip.
+
+        ``"east"`` and an absent key both mean "drawn facing +x", which is the
+        engine's standing assumption, so a rig that says nothing is unaffected.
+        """
+        return str(self.features.get("facing", "east")).strip().lower() == "west"
+
+    @property
     def svg_source(self) -> Dict[str, object]:
         """Optional source-SVG binding for ``sprite`` parts::
 
@@ -1159,6 +1178,7 @@ def render_sheet_for_doc(doc: RigDocument, out_dir: Path) -> List[Path]:
         out_dir=Path(out_dir),
         frame_size=(int(fr["width"]) * rs, int(fr["height"]) * rs),
         sheet_tuning=doc.sprite_tuning or None,
+        authored_faces_left=doc.authored_faces_left,
         actor_metadata=doc.data.get("actor_metadata"),
         trim=fr.get("trim"),
     )

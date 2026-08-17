@@ -213,6 +213,7 @@ class CallableFrameSource:
         attack_hitboxes: Optional[Dict[str, Any]] = None,
         hurtbox_parts: Optional[Dict[str, Any]] = None,
         sheet_tuning: Optional[Dict[str, Any]] = None,
+        authored_faces_left: bool = False,
         trim: Optional[bool] = None,
         max_sheet_dimension: int = 16384,
         pose_bodies: str = "art",
@@ -234,6 +235,11 @@ class CallableFrameSource:
         self._attack_hitboxes = attack_hitboxes
         self._hurtbox_parts = hurtbox_parts
         self.sheet_tuning = sheet_tuning
+        # WHICH WAY THIS TARGET'S ART IS DRAWN. False (drawn facing +x/right) is
+        # the assumption the game makes and what almost every sheet means, so it
+        # is only ever set by a target that knows otherwise — today, a rigged
+        # character whose rig declares `features.facing: "west"`.
+        self.authored_faces_left = bool(authored_faces_left)
         self.trim = trim
         self.max_sheet_dimension = max_sheet_dimension
         self.pose_bodies = pose_bodies
