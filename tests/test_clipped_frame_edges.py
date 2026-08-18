@@ -85,3 +85,35 @@ def test_a_short_run_is_not_a_cut():
 def test_a_degenerate_frame_answers_rather_than_raising():
     """A 1px frame has no interior; the guard must not be the thing that fails."""
     assert clipped_frame_edges(Image.new("RGBA", (1, 1), (255, 0, 0, 255))) == []
+
+
+def test_super_sanics_raised_spikes_fit_inside_their_frame():
+    """**The report this whole guard came from, asserted on the actual art.**
+
+    Jon: *"Super sanics spikes are clipped by the sprite renderer."* They were —
+    61 of 181 frames, every one on the TOP edge — because the raised fan and the
+    back blade are drawn past `y = 0` and the drawing canvas IS the logical
+    frame, so they ended in a flat horizontal line.
+
+    ⭐ **base Sanic is asserted too, and it is the CONTROL, not padding.** It is
+    the same body on the same canvas with the spikes swept BACK, and it was
+    clean before the fix. Without it a future change that shrank every spike, or
+    that grew the frame for everybody, would pass this test while destroying the
+    thing it was protecting.
+
+    ⚠ **three animations, not all 181 frames**, per this repo's rule against slow
+    full-sheet renders: `idle`, `walk` and `run` frame 0 were each in the cut set,
+    so restoring `SUPER_SPIKE_FIT` to 1.0 turns this red — which is how it was
+    checked.
+    """
+    from ambition_sprite2d_renderer.targets.characters import sanic
+
+    rows = {name: count for name, count, *_ in sanic.ROWS}
+    for skin_name, skin in (("sanic", sanic.NORMAL), ("super_sanic", sanic.SUPER_SKIN)):
+        for anim in ("idle", "walk", "run"):
+            frame = sanic._draw_sanic(skin, anim, 0, rows[anim])
+            assert clipped_frame_edges(frame) == [], (
+                f"{skin_name} {anim}#0 is CUT at {clipped_frame_edges(frame)}. "
+                "Art drawn past the logical frame is lost at draw time, not "
+                "shrunk — see `SUPER_SPIKE_FIT` for the measured reach that fits."
+            )

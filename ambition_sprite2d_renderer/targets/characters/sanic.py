@@ -64,6 +64,30 @@ GROUND_Y = 112.0
 
 INK = "#0b0b0b"     # heavy wobbly outline — shared by both forms
 
+#: **How much of the raised spikes' authored reach actually fits the frame.**
+#:
+#: Jon: *"Super sanics spikes are clipped by the sprite renderer."* They were.
+#: The drawing canvas IS the logical frame, so a spike drawn past `y = 0` is not
+#: shortened, it is CUT — it ends in a flat horizontal line, which is what he saw.
+#: Measured with the pipeline's own `clipped_frame_edges`, sweeping this factor:
+#:
+#:     x1.00   61 of 181 frames cut        x0.80    2 cut
+#:     x0.85    4 of 181 cut               x0.76    0 cut
+#:
+#: ⭐ **base Sanic is the control and is clean at 0 of 181** — same body, same
+#: canvas, spikes swept BACK instead of up. So this is the raised fan's reach and
+#: nothing else, which is why one factor on one branch is the whole fix.
+#:
+#: ⛔ **not a round number and not a taste call**: 0.76 is the largest value
+#: measured that leaves every frame whole, and anything above it cuts something.
+#:
+#: ⛔⛔ **and it is NOT fixable by moving the body down or growing the frame.**
+#: `auto_crop` is off for this sheet precisely so `ATTACK_HITBOXES` coordinates
+#: match draw space, so shifting the art or resizing the frame silently moves
+#: every authored hitbox with respect to the drawing. The spikes are the only
+#: thing here that can give.
+SUPER_SPIKE_FIT = 0.76
+
 
 # --- Skins --------------------------------------------------------------------
 
@@ -322,28 +346,35 @@ def _arm_to(draw: ImageDraw.ImageDraw, skin: Skin, shoulder: Point, hand: Point,
 
 def _draw_head_spikes(draw: ImageDraw.ImageDraw, skin: Skin, hx: float, hy: float, tr: float, salt: float) -> None:
     """Three thick head spikes. Sanic sweeps them back; Super Sanic raises them
-    UP (the transformation's signature)."""
+    UP (the transformation's signature).
+
+    ⚠ the raised fan is scaled by [`SUPER_SPIKE_FIT`]; read it before retuning
+    these lengths, because the authored numbers do not fit the frame.
+    """
     if skin.spikes_up:
         # rooted on top of the head, standing up (fanned).
         specs = [((hx - 6, hy - 8), (-0.5, -1.0), 24.0, 5.0),
                  ((hx - 1, hy - 11), (0.0, -1.1), 28.0, 5.4),
                  ((hx + 4, hy - 9), (0.5, -1.0), 24.0, 5.0)]
         ext = tr * 0.4
+        fit = SUPER_SPIKE_FIT
     else:
         # rooted on the back of the head, swept back-left.
         specs = [((hx - 4, hy - 8), (-0.92, -0.45), 24.0, 5.0),
                  ((hx - 6, hy - 1), (-1.0, 0.05), 26.0, 5.4),
                  ((hx - 4, hy + 7), (-0.75, 0.5), 22.0, 5.0)]
         ext = tr
+        fit = 1.0
     for i, ((rx, ry), (dx, dy), length, wdt) in enumerate(specs):
-        _poly(draw, _spike(rx, ry, dx, dy, length + ext, wdt, salt + i * 3), _rgba(skin.body_dk), _rgba(INK), 2.6)
+        _poly(draw, _spike(rx, ry, dx, dy, (length + ext) * fit, wdt, salt + i * 3), _rgba(skin.body_dk), _rgba(INK), 2.6)
 
 
 def _draw_back_spike(draw: ImageDraw.ImageDraw, skin: Skin, torso_cx: float, torso_cy: float, tr: float, salt: float) -> None:
     """The one big weird spike off the MIDDLE OF THE BACK. Sanic sweeps it
     back-and-up; Super Sanic stands it straight UP off the upper back."""
     if skin.spikes_up:
-        _poly(draw, _spike(torso_cx - 4.0, torso_cy - 14.0, 0.05, -1.0, 48.0 + tr * 0.5, 10.0, salt, wob=3.0), _rgba(skin.body_dk), _rgba(INK), 2.8)
+        reach = (48.0 + tr * 0.5) * SUPER_SPIKE_FIT
+        _poly(draw, _spike(torso_cx - 4.0, torso_cy - 14.0, 0.05, -1.0, reach, 10.0, salt, wob=3.0), _rgba(skin.body_dk), _rgba(INK), 2.8)
     else:
         _poly(draw, _spike(torso_cx - 8.0, torso_cy - 4.0, -0.95, -0.28, 44.0 + tr, 9.5, salt, wob=3.0), _rgba(skin.body_dk), _rgba(INK), 2.8)
 
