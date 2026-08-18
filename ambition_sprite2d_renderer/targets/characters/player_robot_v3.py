@@ -16,6 +16,8 @@ from typing import Dict, List, Tuple
 
 from PIL import Image, ImageDraw, ImageFilter
 
+from ambition_sprite2d_renderer.core.draw import blending_draw
+
 from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ...core import slash_envelope
@@ -233,7 +235,7 @@ def _draw_thruster_plume(
     # A blurred cyan bloom provides volume without turning the flame into a
     # solid opaque wedge.  It is intentionally much softer during slow fall.
     glow = Image.new("RGBA", layer.size, (0, 0, 0, 0))
-    glow_draw = ImageDraw.Draw(glow, "RGBA")
+    glow_draw = blending_draw(glow)
     glow_draw.polygon(
         outer,
         fill=(20, 231, 255, int((42 + 42 * intensity) * intensity)),
@@ -246,7 +248,7 @@ def _draw_thruster_plume(
     glow = glow.filter(ImageFilter.GaussianBlur(radius=2.0 + 2.5 * size))
     layer.alpha_composite(glow)
 
-    draw = ImageDraw.Draw(layer, "RGBA")
+    draw = blending_draw(layer)
     draw.polygon(
         outer,
         fill=(18, 208, 255, int(115 + 90 * intensity)),
@@ -299,9 +301,9 @@ def _apply_fx(img: Image.Image, animation: str, frame_idx: int, nframes: int) ->
     effect_animation = EFFECT_ALIASES.get(animation, animation)
 
     background = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    bd = ImageDraw.Draw(background, "RGBA")
+    bd = blending_draw(background)
     foreground = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    fd = ImageDraw.Draw(foreground, "RGBA")
+    fd = blending_draw(foreground)
 
     if effect_animation in {"dash", "dash_startup", "slide"}:
         strength = 1.0 if effect_animation == "dash" else 0.7

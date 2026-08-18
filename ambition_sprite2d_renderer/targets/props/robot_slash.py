@@ -284,7 +284,10 @@ def _draw_sweep_frame(t: float) -> Image.Image:
     trail = _lerp(REACH * 0.92, REACH * 0.30, _smoothstep(0.0, 0.9, t))
 
     mask = Image.new("L", size, 0)
-    ImageDraw.Draw(mask).polygon(_scaled(_envelope_outline(width_scale)), fill=255)
+    # raw-draw-ok: `mask` is mode "L". The gnu_ton rule is about ImageDraw
+    # REPLACING a destination's alpha; a single-channel mask has no alpha
+    # channel, and replacing its coverage value is exactly what a mask wants.
+    ImageDraw.Draw(mask).polygon(_scaled(_envelope_outline(width_scale)), fill=255)  # raw-draw-ok
     grad = _blade_gradient(size, width_scale, trail)
     grad = grad.filter(ImageFilter.GaussianBlur(radius=int(1.2 * SUPER)))
     grad = ImageChops.multiply(grad, mask)

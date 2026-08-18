@@ -173,7 +173,9 @@ def render_preview(
         (int(centre[0] - ox - art.width / 2), int(centre[1] - oy - art.height / 2)),
     )
 
-    d = ImageDraw.Draw(canvas)
+    # raw-draw-ok: a swing-preview image is a REVIEW artifact, never shipped art —
+    # nothing composites it onto a sprite, so there is no alpha to clobber.
+    d = ImageDraw.Draw(canvas)  # raw-draw-ok
     d.polygon([(p[0] - ox, p[1] - oy) for p in poly], outline=POLY_COLOUR)
     for p in poly:
         d.ellipse(

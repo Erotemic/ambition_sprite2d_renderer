@@ -689,7 +689,9 @@ def _trimmed_labeled_preview(rendered_rows, fw: int, fh: int, label_width: int) 
     max_frames = max(nframes for _anim, nframes, _duration_ms, _frames_data in rendered_rows)
     preview_w = label_width + fw * max_frames
     preview = Image.new("RGBA", (preview_w, fh * len(rendered_rows)), (43, 33, 40, 255))
-    draw_prev = ImageDraw.Draw(preview)
+    # raw-draw-ok: the build's own preview image is a REVIEW artifact, never shipped art —
+    # nothing composites it onto a sprite, so there is no alpha to clobber.
+    draw_prev = ImageDraw.Draw(preview)  # raw-draw-ok
     # (18, 22, 30, 235) composited over (43, 33, 40, 255).
     label_fill = (20, 23, 31, 255)
     title_font = font(14)

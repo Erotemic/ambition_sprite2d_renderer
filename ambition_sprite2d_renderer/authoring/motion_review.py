@@ -607,7 +607,9 @@ def write_motion_review_image(doc: RigDocument, review: MotionReview, path: str 
     width = max(760, cols * cell_w)
     height = top + rows * cell_h + graph_h + 28
     image = Image.new("RGBA", (width, height), (30, 29, 36, 255))
-    draw = ImageDraw.Draw(image, "RGBA")
+    # raw-draw-ok: a motion-review contact sheet is a REVIEW artifact, never shipped art —
+    # nothing composites it onto a sprite, so there is no alpha to clobber.
+    draw = ImageDraw.Draw(image, "RGBA")  # raw-draw-ok
     title_font = _font(20, True)
     label_font = _font(12, True)
     small_font = _font(10)
@@ -673,7 +675,9 @@ def write_motion_paths_image(doc: RigDocument, review: MotionReview, path: str |
     scale = min(4.0, max(2.0, 420 / max(width, height)))
     margin = 44
     image = Image.new("RGBA", (round(width * scale) + margin * 2, round(height * scale) + margin * 2 + 40), (30, 29, 36, 255))
-    draw = ImageDraw.Draw(image, "RGBA")
+    # raw-draw-ok: a motion-review contact sheet is a REVIEW artifact, never shipped art —
+    # nothing composites it onto a sprite, so there is no alpha to clobber.
+    draw = ImageDraw.Draw(image, "RGBA")  # raw-draw-ok
     title_font = _font(18, True)
     small_font = _font(10)
     draw.text((12, 10), f"{review.target} / {review.clip} — endpoint paths", fill=(245, 243, 238, 255), font=title_font)
@@ -768,7 +772,9 @@ def write_motion_silhouette_image(doc: RigDocument, review: MotionReview, path: 
     cols = min(8, max(1, frame_count))
     rows = math.ceil(frame_count / cols)
     image = Image.new("RGBA", (cols * cell_w, rows * cell_h), (238, 236, 229, 255))
-    draw = ImageDraw.Draw(image, "RGBA")
+    # raw-draw-ok: a motion-review contact sheet is a REVIEW artifact, never shipped art —
+    # nothing composites it onto a sprite, so there is no alpha to clobber.
+    draw = ImageDraw.Draw(image, "RGBA")  # raw-draw-ok
     small = _font(10)
     for idx, silhouette in enumerate(rendered):
         x0 = (idx % cols) * cell_w

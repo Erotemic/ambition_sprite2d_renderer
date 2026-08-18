@@ -13,6 +13,8 @@ from typing import Callable, Iterable, Mapping, Sequence
 
 from PIL import Image, ImageDraw
 
+from ambition_sprite2d_renderer.core.draw import blending_draw
+
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ...yaml_io import safe_dump
 
@@ -105,7 +107,7 @@ class Canvas:
             (frame_size[0] * supersample, frame_size[1] * supersample),
             (0, 0, 0, 0),
         )
-        self.draw = ImageDraw.Draw(self.image)
+        self.draw = blending_draw(self.image)
 
     def _s(self, value: float) -> int:
         return round(value * self.super)

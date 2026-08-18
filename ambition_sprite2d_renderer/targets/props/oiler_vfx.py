@@ -23,6 +23,8 @@ from typing import Dict, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from ambition_sprite2d_renderer.core.draw import blending_draw
+
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ...yaml_io import safe_dump
 
@@ -368,8 +370,8 @@ def _s(v: float) -> int:
     return round(v * SUPER)
 
 
-def _draw(img: Image.Image) -> ImageDraw.ImageDraw:
-    return ImageDraw.Draw(img, "RGBA")
+def _draw(img: Image.Image):
+    return blending_draw(img)
 
 
 def _line(img: Image.Image, pts: Sequence[Point], color: RGBA, width: float = 1.0) -> None:

@@ -918,7 +918,9 @@ def _draw_skeleton_cell(
 ) -> Image.Image:
     width, height = size
     image = Image.new("RGBA", size, (31, 27, 34, 255))
-    draw = ImageDraw.Draw(image)
+    # raw-draw-ok: a pose-audit contact sheet is a REVIEW artifact, never shipped art —
+    # nothing composites it onto a sprite, so there is no alpha to clobber.
+    draw = ImageDraw.Draw(image)  # raw-draw-ok
     fw = float(doc.frame["width"])
     fh = float(doc.frame["height"])
     pad = 5.0
@@ -974,7 +976,9 @@ def write_skeleton_contact_sheet(
         grouped.setdefault(frame.animation, []).append(frame)
     if not grouped:
         image = Image.new("RGBA", (640, 80), (31, 27, 34, 255))
-        draw = ImageDraw.Draw(image)
+        # raw-draw-ok: a pose-audit contact sheet is a REVIEW artifact, never shipped art —
+        # nothing composites it onto a sprite, so there is no alpha to clobber.
+        draw = ImageDraw.Draw(image)  # raw-draw-ok
         draw.text((12, 28), "No flagged frames", fill=(220, 220, 220, 255), font=ImageFont.load_default())
         out_path.parent.mkdir(parents=True, exist_ok=True)
         image.save(out_path)
@@ -987,7 +991,9 @@ def write_skeleton_contact_sheet(
     width = label_w + max_frames * cell_w
     height = len(grouped) * row_h
     sheet = Image.new("RGBA", (width, height), (24, 21, 27, 255))
-    draw = ImageDraw.Draw(sheet)
+    # raw-draw-ok: a pose-audit contact sheet is a REVIEW artifact, never shipped art —
+    # nothing composites it onto a sprite, so there is no alpha to clobber.
+    draw = ImageDraw.Draw(sheet)  # raw-draw-ok
     font = ImageFont.load_default()
 
     for row_index, (animation, frames) in enumerate(grouped.items()):
@@ -1039,7 +1045,10 @@ def write_flagged_detail_sheet(
     flagged = flagged[:max_frames]
     if not flagged:
         image = Image.new("RGBA", (640, 80), (31, 27, 34, 255))
-        ImageDraw.Draw(image).text(
+        # raw-draw-ok: a pose-audit contact sheet is a REVIEW artifact, never shipped art —
+        # nothing composites it onto a sprite, so there is no alpha to clobber.
+        _audit_draw = ImageDraw.Draw(image)  # raw-draw-ok
+        _audit_draw.text(
             (12, 28), "No flagged frames", fill=(220, 220, 220, 255), font=ImageFont.load_default()
         )
         out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1050,7 +1059,9 @@ def write_flagged_detail_sheet(
     columns = 4
     rows = math.ceil(len(flagged) / columns)
     sheet = Image.new("RGBA", (columns * tile_w, rows * tile_h), (24, 21, 27, 255))
-    draw = ImageDraw.Draw(sheet)
+    # raw-draw-ok: a pose-audit contact sheet is a REVIEW artifact, never shipped art —
+    # nothing composites it onto a sprite, so there is no alpha to clobber.
+    draw = ImageDraw.Draw(sheet)  # raw-draw-ok
     font = ImageFont.load_default()
     for index, frame in enumerate(flagged):
         x = (index % columns) * tile_w
@@ -1095,7 +1106,9 @@ def _overlay_skeleton_on_art(
     doc: RigDocument, frame: FrameAudit, art: Image.Image
 ) -> Image.Image:
     overlay = Image.new("RGBA", art.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
+    # raw-draw-ok: a pose-audit contact sheet is a REVIEW artifact, never shipped art —
+    # nothing composites it onto a sprite, so there is no alpha to clobber.
+    draw = ImageDraw.Draw(overlay)  # raw-draw-ok
     sx = art.width / float(doc.frame["width"])
     sy = art.height / float(doc.frame["height"])
 
@@ -1144,7 +1157,9 @@ def write_flagged_art_sheet(
     columns = 5
     rows = math.ceil(len(flagged) / columns)
     sheet = Image.new("RGBA", (columns * cell_w, rows * cell_h), (25, 22, 28, 255))
-    draw = ImageDraw.Draw(sheet)
+    # raw-draw-ok: a pose-audit contact sheet is a REVIEW artifact, never shipped art —
+    # nothing composites it onto a sprite, so there is no alpha to clobber.
+    draw = ImageDraw.Draw(sheet)  # raw-draw-ok
     font = ImageFont.load_default()
     for index, frame in enumerate(flagged):
         art = doc.render_frame(

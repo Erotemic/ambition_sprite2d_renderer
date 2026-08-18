@@ -28,6 +28,8 @@ from typing import Dict, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from ambition_sprite2d_renderer.core.draw import blending_draw
+
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ...yaml_io import safe_dump
 
@@ -454,23 +456,23 @@ def _pt(p: Point) -> Tuple[int, int]:
 
 
 def _ellipse(img: Image.Image, box: Sequence[float], *, fill: RGBA | None = None, outline: RGBA | None = None, width: float = 1.0) -> None:
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     b = tuple(_sc(x) for x in box)
     d.ellipse(b, fill=fill, outline=outline, width=max(1, _sc(width)))
 
 
 def _arc(img: Image.Image, box: Sequence[float], start: float, end: float, *, fill: RGBA, width: float = 1.0) -> None:
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     d.arc(tuple(_sc(x) for x in box), start=start, end=end, fill=fill, width=max(1, _sc(width)))
 
 
 def _line(img: Image.Image, points: Sequence[Point], *, fill: RGBA, width: float = 1.0, joint: str = "curve") -> None:
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     d.line([_pt(p) for p in points], fill=fill, width=max(1, _sc(width)), joint=joint)
 
 
 def _polygon(img: Image.Image, points: Sequence[Point], *, fill: RGBA | None = None, outline: RGBA | None = None, width: float = 1.0) -> None:
-    d = ImageDraw.Draw(img, "RGBA")
+    d = blending_draw(img)
     pts = [_pt(p) for p in points]
     d.polygon(pts, fill=fill)
     if outline is not None:
