@@ -605,10 +605,17 @@ SHORT_POSES: Dict[str, List[Pose]] = {
             arm_back_dy=1.0,
             leg_front_dx=1.3,
             leg_back_dx=-0.9,
-            leg_back_dy=1.0,
+            # ⛔⛔ **A LIFT, and this was `+1.0` — a SINK.** `+dy` is down, so the
+            # trailing leg was extended THROUGH the floor at toe-off: measured
+            # 1.00u past her own standing line on the small form and 1.33u on the
+            # grown one, which is the whole of why her walk frames were the ones
+            # the frame-clipping guard named. A foot pushing off rises.
+            leg_back_dy=-1.0,
         ),
         Pose(
-            bob=0.4,
+            # The passing pose is the HIGHEST beat of a walk, not the lowest;
+            # `+0.4` sank it 0.33u below the standing line for nothing.
+            bob=0.0,
             arm_front_dy=0.6,
             arm_back_dy=0.2,
             leg_front_dx=0.2,
@@ -621,7 +628,7 @@ SHORT_POSES: Dict[str, List[Pose]] = {
             arm_back_dx=1.1,
             arm_back_dy=-1.1,
             leg_front_dx=-0.8,
-            leg_front_dy=1.0,
+            leg_front_dy=-1.0,
             leg_back_dx=1.4,
         ),
     ],
@@ -677,10 +684,10 @@ TALL_LIKE_POSES: Dict[str, List[Pose]] = {
             arm_back_dy=1.1,
             leg_front_dx=1.4,
             leg_back_dx=-1.0,
-            leg_back_dy=1.2,
+            leg_back_dy=-1.2,
         ),
         Pose(
-            bob=0.4,
+            bob=0.0,
             arm_front_dy=0.7,
             arm_back_dy=0.2,
             leg_front_dx=0.3,
@@ -693,7 +700,7 @@ TALL_LIKE_POSES: Dict[str, List[Pose]] = {
             arm_back_dx=1.2,
             arm_back_dy=-1.2,
             leg_front_dx=-0.8,
-            leg_front_dy=1.1,
+            leg_front_dy=-1.1,
             leg_back_dx=1.5,
         ),
     ],

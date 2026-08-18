@@ -35,11 +35,19 @@ def test_mary_o_v2_matches_reviewed_visual_baseline(tmp_path: Path) -> None:
     unintended change loud. Re-record it only alongside a render you have
     actually looked at.
 
-    Last re-recorded for the rig refactor: parts now hang off `FormRig` anchors
+    Last re-recorded 2026-08-18, for the WALK CYCLE'S standing line: the
+    trailing leg carried `leg_back_dy=+1.0` at toe-off and `+dy` is DOWN, so
+    every walk frame on both forms put a foot below the line she stands on — up
+    to 1.33u — and the frame-clipping guard named those frames for it. A foot
+    pushing off rises. Seven clipped frames left the guard's list with the sign.
+
+    ⚠ **only the walk beats moved.** Idle, jump, skid, climb, swim and the
+    transform sequence are untouched, and the grown form's non-walk frames are
+    byte-identical — the change is four numbers in two pose tables.
+
+    Before that, for the rig refactor: parts now hang off `FormRig` anchors
     expressed as fractions of the form's authored size instead of the grown
-    form's absolute offsets. The GROWN form is byte-identical through that change
-    (verified frame by frame against a control render) — every moved pixel is on
-    the short form, which is what the refactor set out to fix.
+    form's absolute offsets.
     """
     renderers = [
         mary_o_v2.render_mary_o_v2,
@@ -51,11 +59,11 @@ def test_mary_o_v2_matches_reviewed_visual_baseline(tmp_path: Path) -> None:
 
     expected = {
         "mary_o_v2_canonical.png": "9387751b78613cccb59d081832128e0142040d95e6594f59cd18a63bd05f489f",
-        "mary_o_v2_spritesheet.png": "e36b05d162dc7bb7b4aede9d1d3f54bf8d95d955d0269859edef870c29c7d1fe",
+        "mary_o_v2_spritesheet.png": "814c395f0a9d511678945f46558144d23d2830c8a94bd0bb1b9bb5d23e50f3e3",
         "mary_o_v2_tall_canonical.png": "c1c1d0a5bdfbe36479992e860ed2dcc630651b8f05fe66927b938075d77a5055",
-        "mary_o_v2_tall_spritesheet.png": "9c8854062b6f04481e0a375c2fd81ab7afbb0764d0519bcb8c19b9573cddbb8a",
+        "mary_o_v2_tall_spritesheet.png": "544d58faa468caa7e16ef9ad76c1b9bce3fbb679c3017660065e46ed535f166a",
         "mary_o_v2_fire_canonical.png": "39a0edcc7db661e7a751ff373e8a9a956f1542c8fea4e74befcc8542404124dc",
-        "mary_o_v2_fire_spritesheet.png": "b9fd4196e0bc0aedba28e94d9fdefcaa123125ceca71e06d4f70d93cb22eb426",
+        "mary_o_v2_fire_spritesheet.png": "f21ee36cbdc79b78cc49ab8ef16b816d401f2a0ae1bcb559638de1ea569357e3",
     }
     actual = {name: _pixel_digest(tmp_path / name) for name in expected}
     assert actual == expected
@@ -231,3 +239,63 @@ def test_mary_o_v2_collision_box_is_authored_not_measured(tmp_path: Path) -> Non
     ratio = boxes["mary_o_v2_tall"]["h"] / boxes["mary_o_v2"]["h"]
     assert abs(ratio - 2.0) < 0.01, ratio
     assert boxes["mary_o_v2_fire"]["h"] == boxes["mary_o_v2_tall"]["h"]
+
+def test_no_walk_frame_puts_her_foot_below_her_own_standing_line() -> None:
+    """⛔⛔ **She walked THROUGH the floor, on both forms, in every walk frame.**
+
+    Measured on a canvas TALLER than the logical frame, which is the only way to
+    see it: the published sheet cannot show you the pixels it already threw
+    away, and `bottom_center_canvas` is a plain paste rather than an ink
+    re-anchor, so nothing downstream puts them back.
+
+    ```text
+                    idle foot   walk#0   walk#1   walk#2
+    small            32.33u      +1.00    +0.33    +1.00
+    grown            31.67u      +1.33    +0.67    +1.33
+    ```
+
+    The cause was a sign: `+dy` is DOWN, and the trailing leg carried
+    `leg_back_dy=+1.0` at toe-off — a leg pushing off rises. The frame-clipping
+    guard named her walk frames for this and nothing else.
+
+    ⭐ **the assertion is relative to her OWN idle**, not to the frame height.
+    Her standing line is a property of the form and moves with per-form scale;
+    what may never happen is a walking foot going below the line she stands on.
+    """
+    from ambition_sprite2d_renderer.targets.super_mary_o_common import rasterize_logical
+    from ambition_sprite2d_renderer.targets.characters._mary_o_v2_art import _draw_side_pose
+    from ambition_sprite2d_renderer.targets.characters._mary_o_v2_model import (
+        LOGICAL_SIZE,
+        SCALE,
+        SHORT_FORM,
+        SHORT_POSES,
+        TALL_FORM,
+        TALL_LIKE_POSES,
+    )
+
+    # ⚠ TALLER than the logical frame on purpose: at the authored height the
+    # overflow is already cut, so every frame would answer "exactly the bottom"
+    # and this could not fail.
+    probe_size = (LOGICAL_SIZE[0], LOGICAL_SIZE[1] + 12)
+
+    def lowest_ink_u(form, pose, animation: str) -> float:
+        def painter(px) -> None:
+            _draw_side_pose(px, form, pose, animation=animation)
+
+        box = rasterize_logical(probe_size, SCALE, painter).getchannel("A").getbbox()
+        assert box is not None, "the pose drew nothing at all"
+        return box[3] / SCALE
+
+    for label, form, poses in (
+        ("small", SHORT_FORM, SHORT_POSES),
+        ("grown", TALL_FORM, TALL_LIKE_POSES),
+    ):
+        standing = lowest_ink_u(form, poses["idle"][0], "idle")
+        for index, pose in enumerate(poses["walk"]):
+            foot = lowest_ink_u(form, pose, "walk")
+            assert foot <= standing + 1e-6, (
+                f"{label} walk#{index} reaches {foot:.2f}u, which is "
+                f"{foot - standing:.2f}u below the {standing:.2f}u she stands on "
+                "— she is walking through the floor, and the frame-clipping "
+                "guard sees it as a cut"
+            )
