@@ -280,17 +280,53 @@ def test_every_registered_character_target_advertises_actor_sidecar():
     assert missing == []
 
 
-def test_every_registered_character_target_has_local_actor_metadata():
-    # Rig-doc targets (GUI-authored `*.rig.json` under targets/characters/rigged/,
-    # e.g. `noether`) are a distinct authoring path that does not yet carry actor
-    # metadata. Exempt them so this guard keeps covering Python/YAML targets.
-    from ambition_sprite2d_renderer.targets.characters import rigged
+def _module_published_metadata(target) -> dict:
+    """Actor metadata a module target resolves at RENDER time rather than import.
 
-    rigdoc_targets = set(rigged.TARGETS)
+    Returns `{}` when the target has no such accessor, so an unauthored
+    character still fails the guard above — the point is to ask the question a
+    second way, not to stop asking it.
+    """
+    import importlib
+
+    # `module_path` is the attribute the discovery record actually carries; the
+    # first draft of this helper guessed `module_name`/`module`, found neither,
+    # and silently returned {} — which reads exactly like "no metadata".
+    module_name = getattr(target, "module_path", None)
+    if not isinstance(module_name, str):
+        return {}
+    try:
+        module = importlib.import_module(module_name)
+    except Exception:
+        return {}
+    accessor = getattr(module, "actor_metadata", None)
+    if not callable(accessor):
+        return {}
+    try:
+        return accessor() or {}
+    except Exception:
+        return {}
+
+
+def test_every_registered_character_target_has_local_actor_metadata():
+    """**Every character target publishes actor metadata — by SOME road.**
+
+    ⛔⛔ **the exemption this used to carry was dead, and its comment was false.**
+    It skipped `rigged.TARGETS` on the grounds that rig-doc targets *"do not yet
+    carry actor metadata"* — but that set is EMPTY, so it exempted nobody, and
+    every rig-doc character except one carries metadata perfectly well.
+
+    ⛔ **and the one failure was the CHECK, not the content.** The Perfect
+    Cellular Automaton authors its metadata in its `.rig.json` and hands it to
+    `build_sheet` at render time; it simply does not spell a module-level
+    `ACTOR_METADATA` constant, which is all this asked about. ⇒ the question is
+    *"does this character publish actor metadata"*, and a constant is one way to
+    answer it, not the definition.
+    """
     targets = discover_all_targets().targets
     missing = []
     for name, target in targets.items():
-        if target.category != "characters" or name in rigdoc_targets:
+        if target.category != "characters":
             continue
         if getattr(target, "kind", None) == "config":
             job = getattr(target, "_job")
@@ -305,7 +341,9 @@ def test_every_registered_character_target_has_local_actor_metadata():
                 or job.sockets
             )
         else:
-            local_metadata = bool(getattr(target, "_actor_metadata", None))
+            local_metadata = bool(getattr(target, "_actor_metadata", None)) or bool(
+                _module_published_metadata(target)
+            )
         if not local_metadata:
             missing.append(name)
     assert missing == []

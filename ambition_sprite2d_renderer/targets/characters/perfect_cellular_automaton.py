@@ -103,6 +103,23 @@ def _frame_solution(animation: str, frame_idx: int, frame_count: int):
     )
 
 
+def actor_metadata() -> dict:
+    """**This character's actor metadata**, resolved from its rig document.
+
+    ⭐ **the public name exists because the metadata is REAL but was invisible.**
+    Most character targets publish a module-level `ACTOR_METADATA` constant, and
+    the contract test looked for exactly that — so this target, whose metadata is
+    authored in `perfect_cellular_automaton.rig.json` and handed to `build_sheet`
+    at render time, read as *"a registered character with no local actor
+    metadata"* and had the suite red on it.
+
+    ⚠ **a function, not a constant, on purpose**: the constant form would parse
+    the rig document at IMPORT time, for every discovery, and the whole reason
+    `_load_doc_cached` exists is that this document is expensive.
+    """
+    return _actor_metadata(_doc())
+
+
 @profile
 def _actor_metadata(doc: RigDocument) -> dict:
     metadata = deepcopy(doc.data.get("actor_metadata") or {})
