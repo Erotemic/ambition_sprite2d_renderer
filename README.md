@@ -1,5 +1,53 @@
 # Ambition 2D Sprite Renderer
 
+> ## ⭐ What this repository IS — read this before deciding where code goes
+>
+> **This is Ambition's character-authoring submodule.** The name is stale: it
+> says "sprite renderer" because sprite sheets were the first thing it
+> published, and renaming the repository is deliberately *not* being done yet.
+> Read the name as a historical accident and the boundary below as the truth.
+>
+> **This repository owns character-SPECIFIC AUTHORED MATERIAL:**
+>
+> - bespoke per-character Python renderers, and the shared family helpers they
+>   choose to use
+> - paper dolls, SVG parts, bone rigs, scene graphs — every representation an
+>   author reaches for
+> - pose and motion authoring: clips, timing, anchors, sockets, face guides
+> - character metadata and presentation material (sheets, portraits, review
+>   images)
+> - and, increasingly, **game/ruleset-specific character FACET VALUES** — the
+>   numbers and choices that make *this* character *this* fighter
+>
+> **The main Rust repository owns the MEANING of all of that:** the schema a
+> facet conforms to, the preparation that turns authored values into runtime
+> data, and the runtime interpretation of the result. It decides what a facet
+> *is*; this repository decides what a given character's value *for* it is.
+>
+> ```text
+> here                              ambition (Rust)
+> ─────────────────────────────     ─────────────────────────────
+> character-authored package    →   schema · preparation · runtime meaning
+> "George's forward-smash is X"     "what a forward-smash IS, and how it runs"
+> ```
+>
+> ⛔ **so the test for "does this belong here?" is not "is it about a
+> character?" — it is "is it a VALUE an author chose, or a RULE the engine
+> enforces?"** A rule that happens to be written in Python still belongs in the
+> Rust repo's vocabulary; a value that happens to be a Rust constant today still
+> belongs, eventually, here.
+>
+> ⚠ **the seam is emerging, not finished.** Character-owned facts still live as
+> game-side Rust constants and registration-time mutations in places. That is
+> transitional and known — the direction is that they migrate here as authored
+> package data, and the Rust side consumes *prepared* character data rather than
+> reaching into a definition and editing it after registration. Do not treat the
+> current scattering as the intended design, and do not flag-day migrate it.
+>
+> ⛔ **do NOT create a second character submodule, and do NOT rename this one**
+> until that seam is real. Two half-built homes for the same thing is worse than
+> one badly-named one.
+
 Procedural 2D sprite renderer for Ambition. Discovery unifies registered
 outputs into one `Target` registry while preserving plural authoring methods.
 Two registration surfaces share the package:

@@ -1,5 +1,12 @@
 # Agent Notes: Sprite Renderer Tests
 
+⭐ **Read [`README.md`](README.md)'s opening boundary block first.** In short:
+this is Ambition's **character-authoring** submodule under a stale name. It owns
+character-specific authored MATERIAL and VALUES; the main Rust repository owns
+the schema, preparation, and runtime meaning those values conform to. When you
+are deciding where something goes, the question is *"is this a value an author
+chose, or a rule the engine enforces?"* — not *"is this about a character?"*
+
 This submodule contains renderer framework code and authored sprite content. Keep
 those two concerns separate when adding tests.
 
