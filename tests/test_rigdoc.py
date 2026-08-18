@@ -630,3 +630,24 @@ def test_high_resolution_transform_cache_uses_bilinear_rotation(monkeypatch):
     SpriteTransformCache(max_bytes=1024 * 1024).rotated(sprite, 17.0)
 
     assert seen == [rigdoc_mod.RESAMPLING.BILINEAR]
+
+
+def test_bone_translation_channels_are_additive_local_offsets() -> None:
+    """Rigid paper-doll parts may translate without inventing articulation bones."""
+    doc = RigDocument.new_empty("translated_bone")
+    doc.data["clips"]["translated"] = {
+        "loop": False,
+        "frames": 1,
+        "duration_ms": 1,
+        "channels": {
+            "bone.pelvis.x": {"const": 7.0},
+            "bone.pelvis.y": {"const": -3.0},
+        },
+    }
+    idle_world, _ = doc.solve("idle", 0.0)
+    moved_world, _ = doc.solve("translated", 0.0)
+    assert moved_world["pelvis"].origin[0] == pytest.approx(idle_world["pelvis"].origin[0] + 7.0)
+    assert moved_world["pelvis"].origin[1] == pytest.approx(idle_world["pelvis"].origin[1] - 3.0)
+    # Children inherit the translated parent exactly as normal forward kinematics.
+    assert moved_world["torso"].origin[0] == pytest.approx(idle_world["torso"].origin[0] + 7.0)
+    assert moved_world["torso"].origin[1] == pytest.approx(idle_world["torso"].origin[1] - 3.0)

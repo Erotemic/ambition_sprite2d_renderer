@@ -65,8 +65,9 @@ Document shape (all geometry in base-frame pixels, y down, facing +x)::
     }
 
 Channel conventions match the Python targets: names that are bones become
-pose angles (degrees); ``root_x``/``root_y`` offset the root from
-``(center_x, ground_y)``; ``<prefix>_x`` / ``_lift`` / ``_pitch`` drive IK
+pose angles (degrees); ``bone.<name>.x`` / ``bone.<name>.y`` add a translation
+to that bone's authored local attachment; ``root_x``/``root_y`` offset the root
+from ``(center_x, ground_y)``; ``<prefix>_x`` / ``_lift`` / ``_pitch`` drive IK
 feet (x is offset from ``center_x`` in WORLD space so planted feet stay
 put); generic two-bone chains use ``<prefix>_x`` / ``_y`` / ``_pitch``.
 Both IK forms may animate ``<prefix>_bend`` to choose the joint side per
@@ -774,7 +775,19 @@ class RigDocument:
         root = (cx + s.get("root_x", 0.0), gy + s.get("root_y", 0.0))
         sk = self.build_skeleton()
         angles = {n: v for n, v in s.items() if n in sk.bones}
-        w0 = sk.world(angles, root=root)
+        bone_offsets = {
+            name: (
+                float(s.get(f"bone.{name}.x", 0.0)),
+                float(s.get(f"bone.{name}.y", 0.0)),
+            )
+            for name in sk.bones
+            if f"bone.{name}.x" in s or f"bone.{name}.y" in s
+        }
+
+        def world_for(sampled_angles):
+            return sk.world(sampled_angles, root=root, offsets=bone_offsets)
+
+        w0 = world_for(angles)
         def solve_chain(
             chain: dict,
             target: Point,
@@ -875,7 +888,7 @@ class RigDocument:
             ):
                 continue
 
-            current_world = sk.world(angles, root=root)
+            current_world = world_for(angles)
             sampled = current_world.get(bone_name)
             if sampled is None:
                 continue
@@ -945,7 +958,7 @@ class RigDocument:
             angles[upper] = a1 - parent_angle - sk.bones[upper].rest_angle
             angles[lower] = a2 - a1 - sk.bones[lower].rest_angle
             angles[bone_name] = desired_angle - a2 - sk.bones[bone_name].rest_angle
-        return sk.world(angles, root=root), s
+        return world_for(angles), s
 
     # ---- Sprite parts (rasterized SVG subsets) ------------------------------
 

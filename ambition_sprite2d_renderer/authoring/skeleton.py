@@ -105,8 +105,18 @@ class Skeleton:
         pose: Optional[Mapping[str, float]] = None,
         root: Point = (0.0, 0.0),
         root_angle: float = 0.0,
+        offsets: Optional[Mapping[str, Point]] = None,
     ) -> Dict[str, BoneWorld]:
+        """Evaluate forward kinematics with optional additive local offsets.
+
+        ``offsets`` is deliberately separate from angular ``pose`` channels. It
+        is useful for rigid paper-doll rigs whose authored animation translates
+        a complete arm/leg attachment without introducing an artificial extra
+        articulation bone. Offsets are in the parent bone's local frame, so
+        children inherit the translated attachment exactly as ordinary FK does.
+        """
         pose = pose or {}
+        offsets = offsets or {}
         out: Dict[str, BoneWorld] = {}
         for name, b in self.bones.items():
             if b.parent is None:
@@ -115,7 +125,9 @@ class Skeleton:
                 pw = out[b.parent]
                 p_origin, p_angle = pw.origin, pw.angle
             angle = p_angle + b.rest_angle + float(pose.get(name, 0.0))
-            origin = add(p_origin, rotate_point(b.offset, p_angle))
+            dx, dy = offsets.get(name, (0.0, 0.0))
+            local_offset = (b.offset[0] + float(dx), b.offset[1] + float(dy))
+            origin = add(p_origin, rotate_point(local_offset, p_angle))
             out[name] = BoneWorld(origin, angle, b.length)
         return out
 
