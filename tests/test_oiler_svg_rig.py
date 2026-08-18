@@ -6,6 +6,15 @@ import math
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import pytest
+
+# ⚠ **the same guard its three sibling SVG suites carry** — test_svg_sprite,
+# test_pirate_svg_fidelity and test_draw_recorder all open with it. Rendering an
+# SVG rig needs native resvg-py; without it these three RAISED rather than
+# skipped, so an environment missing an optional dependency reported a red suite
+# that no change could turn green.
+pytest.importorskip("resvg_py")
+
 from ambition_sprite2d_renderer.authoring.humanoid_svg_rig import (
     HumanoidViewSpec,
     build_humanoid_view_document,
