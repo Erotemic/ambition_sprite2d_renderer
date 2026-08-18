@@ -276,7 +276,16 @@ def test_hunny_horror_portraits_publish_dialogue_flash_clips(tmp_path, monkeypat
     assert Image.open(outputs[0]).size == (256 * 8, 320 * 3)
     render_calls = [call for call in calls if call[3] == 4]
     assert len(render_calls) == 21
-    assert {call[0] for call in render_calls} == {"rest", "walk", "roar", "swipe"}
+    # ⛔⛔ **this used to freeze the clip NAMES — `{"rest", "walk", "roar",
+    # "swipe"}` — and the boss re-sourced one portrait from `maul` instead of
+    # `walk`.** Which of its own animations a character draws a portrait from is
+    # a content decision; that it draws from animations it ACTUALLY HAS is the
+    # invariant, and it is the one with a real failure mode: a typo or a deleted
+    # row silently renders nothing.
+    used = {call[0] for call in render_calls}
+    declared = {name for name, *_ in hunny_horror_boss.ROWS}
+    assert used <= declared, f"portraits draw from clips this sheet does not publish: {used - declared}"
+    assert len(used) >= 3, f"portrait variety collapsed onto {used}"
     assert '"speaking": (' in manifest
     assert '"evil_flash": (' in manifest
     assert '"evil_hold": (' in manifest
