@@ -577,8 +577,10 @@ def _draw_short_body_side(px, form: FormSpec, x: float, y: float, crouch: float,
         outline=OUTLINE,
         width=0.75,
     )
-    px.line([(x + 2.3, y + 0.4), (x + 4.5, waist)], fill=pal.overalls, width=1.2)
-    px.line([(x + 1.0 + body_w - 1.3, y + 0.4), (x + 6.3, waist)], fill=pal.overalls, width=1.2)
+    # These are intended to be the short form's suspender straps, not two
+    # torso slashes, so keep them essentially vertical in side view.
+    px.line([(x + 2.8, y + 0.4), (x + 2.8, waist)], fill=pal.overalls, width=1.2)
+    px.line([(x + body_w - 0.6, y + 0.4), (x + body_w - 0.6, waist)], fill=pal.overalls, width=1.2)
     px.line([(x + 2.0, waist), (x + 1.0 + body_w - 0.9, waist)], fill=OUTLINE, width=0.45)
     # ⭐ TIED TO THE GARMENT. These were `x + 3.5` and `x + 6.5` — absolute, while
     # the skirt polygon above them is drawn from `body_w`. So narrowing a form
@@ -1529,8 +1531,11 @@ def _draw_body_side(px, form: FormSpec, x: float, y: float, crouch: float, *, co
         width=0.7,
     )
     strap = _lerp_rgba(V2_TEAL_DARK, V2_GOLD_DARK, fire_t)
-    px.line([(x + 2.5, y + 0.25), (x + 4.05, y + 3.0)], fill=strap, width=1.1)
-    px.line([(x + body_w - 0.65, y + 0.25), (x + 7.05, y + 3.0)], fill=strap, width=1.1)
+    # Keep the powered side-view straps reading as suspenders rather than
+    # diagonal decorative slashes: they should fall nearly straight down the
+    # bodice from the shoulders.
+    px.line([(x + 2.75, y + 0.25), (x + 2.75, waist + 0.45)], fill=strap, width=1.1)
+    px.line([(x + body_w - 1.0, y + 0.25), (x + body_w - 1.0, waist + 0.45)], fill=strap, width=1.1)
 
     flare = 1.45 + 0.55 * fire_t
     skirt_fill = _lerp_rgba(pal.overalls, V2_IVORY, fire_t)

@@ -35,7 +35,15 @@ def test_mary_o_v2_matches_reviewed_visual_baseline(tmp_path: Path) -> None:
     unintended change loud. Re-record it only alongside a render you have
     actually looked at.
 
-    Last re-recorded 2026-08-18, for the WALK CYCLE'S standing line: the
+    Last re-recorded 2026-08-18, for the SUSPENDER STRAPS: the short and the
+    powered side views drew them as diagonals from the shoulder to a fixed `x`,
+    and a diagonal ending at an absolute coordinate poked a teal stub OUTSIDE
+    her silhouette on the narrow form — visible at 4x, four pixels, in most
+    frames of the sheet. They are suspenders, so they fall straight down the
+    bodice, and their ends are stated as fractions of `body_w` rather than as
+    the two constants that only agreed at one width.
+
+    Before that, 2026-08-18, for the WALK CYCLE'S standing line: the
     trailing leg carried `leg_back_dy=+1.0` at toe-off and `+dy` is DOWN, so
     every walk frame on both forms put a foot below the line she stands on — up
     to 1.33u — and the frame-clipping guard named those frames for it. A foot
@@ -58,12 +66,12 @@ def test_mary_o_v2_matches_reviewed_visual_baseline(tmp_path: Path) -> None:
         render(tmp_path)
 
     expected = {
-        "mary_o_v2_canonical.png": "9387751b78613cccb59d081832128e0142040d95e6594f59cd18a63bd05f489f",
-        "mary_o_v2_spritesheet.png": "814c395f0a9d511678945f46558144d23d2830c8a94bd0bb1b9bb5d23e50f3e3",
-        "mary_o_v2_tall_canonical.png": "c1c1d0a5bdfbe36479992e860ed2dcc630651b8f05fe66927b938075d77a5055",
-        "mary_o_v2_tall_spritesheet.png": "544d58faa468caa7e16ef9ad76c1b9bce3fbb679c3017660065e46ed535f166a",
-        "mary_o_v2_fire_canonical.png": "39a0edcc7db661e7a751ff373e8a9a956f1542c8fea4e74befcc8542404124dc",
-        "mary_o_v2_fire_spritesheet.png": "f21ee36cbdc79b78cc49ab8ef16b816d401f2a0ae1bcb559638de1ea569357e3",
+        "mary_o_v2_canonical.png": "87c642f42594167ec039bea1f8b23b2fe72302efedd5de6195b5f019795a1b8c",
+        "mary_o_v2_spritesheet.png": "1c0ded01710e26eeecfca3345dd02191afaa61ae7824b2913bc918c78bd4dbc1",
+        "mary_o_v2_tall_canonical.png": "f62256fd98caeb61cb57199fff90fe1e9d0576114a808e3378a6738b4bf21818",
+        "mary_o_v2_tall_spritesheet.png": "6fff1e830e0fe745ead57a9775fae12710dd6837031113560f86c3a63fb232c6",
+        "mary_o_v2_fire_canonical.png": "31e8f3475d3750368da2fe7d290d79ac3681cc80c0afb416dcf3ca5a3de90f6a",
+        "mary_o_v2_fire_spritesheet.png": "ac1c21cce5b86e82aab6c80d41663743f71810df6a84b097b877f78c35456931",
     }
     actual = {name: _pixel_digest(tmp_path / name) for name in expected}
     assert actual == expected
