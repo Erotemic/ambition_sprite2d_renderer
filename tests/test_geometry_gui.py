@@ -59,27 +59,48 @@ def test_canvas_drag_moves_shape_and_polygon_vertex():
     panel.add_kind.setCurrentText("polygon")
     panel._add_shape()
     canvas = CanvasWidget(state)
-    shape = entry_shapes(hurtbox_entry(state.doc, state.clip_name))[0]
-    original = [list(point) for point in shape["points"]]
+
+    def current_shape() -> dict:
+        """Re-read the shape from the DOCUMENT, never keep a handle to it.
+
+        ⛔⛔ **this is why the test was red, and the drag was fine.**
+        `_drag_geometry_to` ends `shapes[index] = original` — it edits a deep
+        copy and REPLACES the entry, which is what lets a drag be abandoned
+        without having half-mutated the document. The test held a reference to
+        the dict that was replaced, so it read the pre-drag values forever and
+        reported that dragging a polygon does nothing.
+
+        ⚠ **the failure looked like a product bug, not a stale test** — "a body
+        drag moves the shape by (0,0)" is exactly what a broken editor would
+        say — which is the expensive kind of red: it accuses the code.
+        """
+        return entry_shapes(hurtbox_entry(state.doc, state.clip_name))[0]
+
+    original = [list(point) for point in current_shape()["points"]]
     canvas._geometry_drag = {
         "layer": "hurtbox",
         "index": 0,
         "handle": "body",
         "start": (0.0, 0.0),
-        "shape": __import__("copy").deepcopy(shape),
+        "shape": __import__("copy").deepcopy(current_shape()),
     }
     canvas._drag_geometry_to((5.0, 7.0))
-    assert shape["points"][0] == [original[0][0] + 5.0, original[0][1] + 7.0]
+    assert current_shape()["points"][0] == [original[0][0] + 5.0, original[0][1] + 7.0]
+    # Every vertex moves, not just the first — a body drag is a translation.
+    assert current_shape()["points"][2] == [original[2][0] + 5.0, original[2][1] + 7.0]
 
     canvas._geometry_drag = {
         "layer": "hurtbox",
         "index": 0,
         "handle": "vertex:0",
         "start": (0.0, 0.0),
-        "shape": __import__("copy").deepcopy(shape),
+        "shape": __import__("copy").deepcopy(current_shape()),
     }
+    moved = [list(point) for point in current_shape()["points"]]
     canvas._drag_geometry_to((11.0, 13.0))
-    assert shape["points"][0] == [11.0, 13.0]
+    assert current_shape()["points"][0] == [11.0, 13.0]
+    # ...and ONLY that vertex: a vertex drag is not a translation.
+    assert current_shape()["points"][2] == moved[2]
 
 
 def test_panel_local_override_detaches_current_clip_from_profile():
