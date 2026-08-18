@@ -13,6 +13,12 @@ from typing import List, Tuple
 from PIL import Image
 
 from ...authoring.canonical_scientist_rig import load_scientist_rig
+from ...authoring.portrait import (
+    FaceGuide,
+    PortraitClip,
+    render_framed_portrait,
+    write_portrait_sheet,
+)
 from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ._svg_fighter_effects import compose_rig_frame
@@ -184,6 +190,79 @@ def _silhouette_profile() -> dict:
     return {"columns": columns, "bounds": bounds}
 
 
+# **Emmy's portrait viewport, in her own 192x208 rig canvas.**
+#
+# ⭐ she had NO `render_portraits` until 2026-08-17, so she fell through to the
+# generator default — which re-runs the gameplay frame at portrait size. That is
+# a full-body shot letterboxed into a portrait frame: correct, and useless as a
+# portrait, because the face lands about a sixth of the frame high.
+#
+# The guide is authored in CANVAS coordinates, never raster ones, so it survives
+# a change of `render_scale`/`supersample` (see `FaceGuide`). Her head bone
+# resolves to roughly (95, 58) from the rig's own chain
+# (pelvis -> torso -> head off `ground_y`); the face sits above that bone, and
+# the viewport then drops below it to keep her collar and shoulders in shot.
+#
+# ⚠ the viewport centre is to the RIGHT of the face on purpose. Her art is drawn
+# facing east with an extended arm, so centring the crop on the face put 48px of
+# dead space behind her head and clipped the hand flush against the frame edge.
+# Offsetting gives looking-room in the direction she faces, which is ordinary
+# portrait composition and not a fudge for this one rig.
+_PORTRAIT_FACE = FaceGuide(
+    center_x=101.0,
+    center_y=50.0,
+    width=40.0,
+    height=44.0,
+    source_width=192.0,
+    source_height=208.0,
+)
+# Head-and-shoulders. Patent Clerk frames 78 of a 176-wide canvas (0.44); this is
+# the same fraction of Emmy's wider canvas, so the two read at one scale when the
+# Hall shows them side by side.
+_PORTRAIT_VIEW_WIDTH = 86.0
+_PORTRAIT_CENTER_Y = 68.0
+
+
+def render_portraits(out_dir: str | Path, **opts):
+    """Publish Emmy's close-ups from her own rig, framed and MOVING.
+
+    ⭐ the default clip loops rather than holding a still. A portrait that never
+    moves reads as a broken asset next to a Hall full of animated bodies, and her
+    idle already carries the restrained secondary motion the dress was rigged for
+    — there was nothing to author, only something to publish.
+    """
+    del opts
+    doc = _doc()
+
+    def frame(animation: str, index: int, count: int) -> Image.Image:
+        source = doc.render_at(
+            animation,
+            doc.frame_time(animation, index, count),
+            supersample=4,
+            scale=3,
+        )
+        return render_framed_portrait(
+            source,
+            _PORTRAIT_FACE,
+            view_width=_PORTRAIT_VIEW_WIDTH,
+            center_y=_PORTRAIT_CENTER_Y,
+        )
+
+    def loop(animation: str, count: int, duration_ms: int) -> PortraitClip:
+        return PortraitClip(
+            tuple(frame(animation, index, count) for index in range(count)),
+            duration_ms=duration_ms,
+            looping=True,
+        )
+
+    clips = {
+        "default": loop("idle", 8, 148),
+        "talking": loop("talk", 8, 104),
+        "inspecting": PortraitClip.still(frame("interact", 4, 8)),
+    }
+    return write_portrait_sheet(TARGET_NAME, clips, Path(out_dir))
+
+
 def render(out_dir: str | Path, **opts):
     del opts
     doc = _doc()
@@ -234,6 +313,7 @@ __all__ = [
     "frame_size",
     "TARGET_NAME",
     "render",
+    "render_portraits",
     "render_canonical",
     "render_frame",
 ]
