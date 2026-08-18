@@ -339,6 +339,22 @@ def _render_form(form: FormSpec, out_dir: str | Path) -> List[Path]:
     ]
 
 
+def export_svg_poc_source(path: str | Path | None = None) -> Path:
+    """Emit the current idle anatomy as the editable Mary-O SVG-rig seed.
+
+    This exporter is deliberately lazy so importing the authoritative target
+    does not import the proof-of-concept rig path. Once exported, the checked-in
+    SVG is intended for manual placement edits; normal sheet rendering never
+    rewrites it.
+    """
+    from ._mary_o_v2_svg_poc import export_svg_source
+
+    if path is None:
+        path = Path(__file__).resolve().parents[3] / "assets" / "mary_o_v2.svg"
+    return export_svg_source(path)
+
+
+
 def render_mary_o_v2(out_dir: str | Path, **opts) -> List[Path]:
     return _render_form(SHORT_FORM, out_dir)
 

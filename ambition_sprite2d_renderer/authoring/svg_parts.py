@@ -20,6 +20,7 @@ position in SVG user units.
 
 from __future__ import annotations
 
+import copy
 import io
 import inspect
 import warnings
@@ -41,7 +42,7 @@ XLINK_NS = "http://www.w3.org/1999/xlink"
 # so user-units -> pixels is dpi / MM_PER_INCH.
 MM_PER_INCH = 25.4
 
-_DRAWABLE = {"path", "polygon", "rect", "ellipse", "circle", "line", "image"}
+_DRAWABLE = {"path", "polygon", "rect", "ellipse", "circle", "line", "image", "use"}
 
 for _prefix, _uri in (("", SVG_NS), ("inkscape", INK_NS),
                       ("sodipodi", SODIPODI_NS), ("xlink", XLINK_NS)):
@@ -187,23 +188,79 @@ def _rasterize_subset_cached(
     root = ET.fromstring(raw)
 
     by_id: Dict[str, ET.Element] = {}
-    for elem in root.iter():
-        eid = elem.get("id")
+    parent: Dict[ET.Element, ET.Element] = {}
+    for node in root.iter():
+        for child in node:
+            parent[child] = node
+        eid = node.get("id")
         if eid is not None:
-            by_id[eid] = elem
+            by_id[eid] = node
 
-    keep: set = set()
+    keep: set[int] = set()
+    kept_uses: list[ET.Element] = []
+
+    def mark_kept(elem: ET.Element) -> None:
+        if id(elem) in keep:
+            return
+        keep.add(id(elem))
+        cur = elem
+        while cur in parent:
+            cur = parent[cur]
+            keep.add(id(cur))
+        for child in elem.iter():
+            keep.add(id(child))
+            if _local(child.tag) == "use":
+                kept_uses.append(child)
+
     for iid in include_ids:
         elem = by_id.get(iid)
-        if elem is None:
-            continue
-        keep.add(id(elem))
-        for drawable in _descendant_drawables(elem):
-            keep.add(id(drawable))
+        if elem is not None:
+            mark_kept(elem)
 
-    # Hide sibling view layers wholesale, then every drawable leaf we don't keep.
+    defs = next((node for node in root if _local(node.tag) == "defs"), None)
+    if defs is None:
+        defs = ET.Element(f"{{{SVG_NS}}}defs")
+        root.insert(0, defs)
+
+    copied_targets: Dict[str, str] = {}
+
+    def clone_ref_target(target_id: str) -> str:
+        existing = copied_targets.get(target_id)
+        if existing is not None:
+            return existing
+        target = by_id.get(target_id)
+        if target is None:
+            return target_id
+        new_id = f"subset_ref_{len(copied_targets)}_{target_id}"
+        copied_targets[target_id] = new_id
+        dup = copy.deepcopy(target)
+        dup.set("id", new_id)
+        for node in dup.iter():
+            if node is not dup and node.get("id") is not None:
+                node.attrib.pop("id", None)
+            if _local(node.tag) == "use":
+                href = node.get("href") or node.get(f"{{{XLINK_NS}}}href") or ""
+                if href.startswith("#"):
+                    ref_id = clone_ref_target(href[1:])
+                    node.set("href", f"#{ref_id}")
+                    node.set(f"{{{XLINK_NS}}}href", f"#{ref_id}")
+        defs.append(dup)
+        for node in dup.iter():
+            keep.add(id(node))
+        keep.add(id(defs))
+        return new_id
+
+    for use in kept_uses:
+        href = use.get("href") or use.get(f"{{{XLINK_NS}}}href") or ""
+        if href.startswith("#"):
+            ref_id = clone_ref_target(href[1:])
+            use.set("href", f"#{ref_id}")
+            use.set(f"{{{XLINK_NS}}}href", f"#{ref_id}")
+
+    # Hide sibling view layers wholesale when they do not host any kept art, then
+    # every drawable leaf we don't keep.
     for layer in root:
-        if _label(layer) is not None and _label(layer) != view:
+        if _label(layer) is not None and _label(layer) != view and not any(id(node) in keep for node in layer.iter()):
             _hide(layer)
     for elem in root.iter():
         if _local(elem.tag) in _DRAWABLE and id(elem) not in keep:
