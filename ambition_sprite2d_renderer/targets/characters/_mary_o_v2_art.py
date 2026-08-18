@@ -13,6 +13,13 @@ from typing import Dict, List, Tuple
 
 from ..super_mary_o_common import OUTLINE, WHITE, rasterize_logical
 from ._mary_o_v2_model import (
+    rig_for,
+    DEAD_ARM_X,
+    DEAD_HIP_X,
+    DEAD_HIP_Y,
+    DEAD_SHOULDER_Y,
+    DEAD_WING_X,
+    DEAD_WING_Y,
     AURA_GOLD,
     AURA_PINK,
     BLUSH,
@@ -232,6 +239,27 @@ _SIDE_PROFILE_SKIN = (
 # old silhouette came from two overlapping masses: a large four-point rear
 # ponytail and a head-hair polygon whose back edge remained visible beside the
 # skin.  Keep that same construction rather than inventing a new poof.
+def _hair_drop(points, drop: float):
+    """Shorten the part of a hair shape that hangs BELOW the head.
+
+    The head itself must not change size — only the fall. `_HAIR_PIVOT` is the
+    head's lower edge in head-local units; everything above it is untouched and
+    everything below is scaled toward it.
+    """
+    if drop >= 0.999:
+        return points
+    return tuple(
+        (hx, _HAIR_PIVOT + (hy - _HAIR_PIVOT) * drop) if hy > _HAIR_PIVOT else (hx, hy)
+        for hx, hy in points
+    )
+
+
+_HAIR_PIVOT = 3.30
+
+# The head's lower edge in head-local units — the pivot a scaled head keeps
+# fixed, so the chin meets the shoulders at the same place whatever its size.
+_HEAD_BOTTOM_LOCAL = 9.60
+
 _SIDE_REAR_HAIR = (
     (1.00, 3.20),
     (-3.30, 8.30),
@@ -294,13 +322,13 @@ def _draw_head_foundation_side(px, form: FormSpec, x: float, y: float, *, lookba
     """Draw one canonical side head and reflect it rigidly for lookback."""
     pal = form.palette
     px.polygon(
-        _orient_side_points(_SIDE_REAR_HAIR, x=x, y=y, lookback=lookback),
+        _orient_side_points(_hair_drop(_SIDE_REAR_HAIR, form.hair_drop), x=x, y=y, lookback=lookback),
         fill=pal.hair,
         outline=OUTLINE,
         width=0.75,
     )
     px.polygon(
-        _orient_side_points(_SIDE_HEAD_HAIR, x=x, y=y, lookback=lookback),
+        _orient_side_points(_hair_drop(_SIDE_HEAD_HAIR, form.hair_drop), x=x, y=y, lookback=lookback),
         fill=pal.hair,
         outline=OUTLINE,
         width=0.75,
@@ -530,8 +558,12 @@ def _draw_short_body_side(px, form: FormSpec, x: float, y: float, crouch: float,
             outline=OUTLINE,
             width=0.35,
         )
-        _outlined_rect(px, x + 4.1, y + body_h + 0.2, x + 5.0, y + body_h + 1.1, fill=pal.buttons, inset=0.18)
-        _outlined_rect(px, x + 7.0, y + body_h + 0.2, x + 7.9, y + body_h + 1.1, fill=pal.buttons, inset=0.18)
+        # same story as the side view: these were absolute while the garment
+        # around them followed `body_w`.
+        _fw = body_w * 0.106
+        for _frac in (0.365, 0.706):
+            _bx = x + body_w * _frac
+            _outlined_rect(px, _bx, y + body_h + 0.2, _bx + _fw, y + body_h + 1.1, fill=pal.buttons, inset=0.18)
     _outlined_rect(px, x + 1.0, y + 0.0, x + 1.0 + body_w, y + body_h, fill=pal.shirt)
     # Side view of the same pinafore skirt panel, straps, and skirt buttons.
     px.polygon(
@@ -548,8 +580,16 @@ def _draw_short_body_side(px, form: FormSpec, x: float, y: float, crouch: float,
     px.line([(x + 2.3, y + 0.4), (x + 4.5, waist)], fill=pal.overalls, width=1.2)
     px.line([(x + 1.0 + body_w - 1.3, y + 0.4), (x + 6.3, waist)], fill=pal.overalls, width=1.2)
     px.line([(x + 2.0, waist), (x + 1.0 + body_w - 0.9, waist)], fill=OUTLINE, width=0.45)
-    _outlined_rect(px, x + 3.5, y + 3.0, x + 4.5, y + 4.1, fill=pal.buttons, inset=0.2)
-    _outlined_rect(px, x + 6.5, y + 3.0, x + 7.5, y + 4.1, fill=pal.buttons, inset=0.2)
+    # ⭐ TIED TO THE GARMENT. These were `x + 3.5` and `x + 6.5` — absolute, while
+    # the skirt polygon above them is drawn from `body_w`. So narrowing a form
+    # moved the clothes and left the buttons behind, hanging in the background.
+    # Stated as fractions of the body they sit on, they cannot come adrift again.
+    _btn_w = body_w * 0.118
+    _btn_top = y + body_h * 0.625
+    _btn_bot = y + body_h * 0.854
+    for _frac in (0.294, 0.647):
+        _bx = x + 1.0 + body_w * _frac
+        _outlined_rect(px, _bx, _btn_top, _bx + _btn_w, _btn_bot, fill=pal.buttons, inset=0.2)
     if form.magic_stage >= 1:
         _draw_star(px, x + 5.7, y + 2.3, outer=1.0 if form.magic_stage == 1 else 1.3, inner=0.45, fill=BROOCH_GOLD, width=0.35)
         px.polygon(
@@ -672,8 +712,11 @@ def _draw_short_body_front(px, form: FormSpec, x: float, y: float, *, crouch: fl
             )
 
 def _draw_suspender_fasteners_front(px, x: float, y: float, form: FormSpec) -> None:
+    # ⭐ fractions of the body, like the side fasteners and the buttons.
+    _bw = form.body_width / 8.5
+
     # Keep the classic overall-button read from the base Mary-O sprite.
-    for cx in (x + 4.5, x + 7.5):
+    for cx in (x + 4.50 * _bw, x + 7.5):
         px.ellipse(cx - 0.9, y + 2.65, cx + 0.9, y + 4.15, fill=form.palette.buttons, outline=OUTLINE, width=0.34)
         px.ellipse(cx - 0.28, y + 2.95, cx + 0.28, y + 3.50, fill=BROOCH_LIGHT, outline=None)
 
@@ -681,9 +724,15 @@ def _draw_suspender_fasteners_front(px, x: float, y: float, form: FormSpec) -> N
 def _draw_suspender_fasteners_side(px, x: float, y: float, form: FormSpec) -> None:
     # Side views still keep two readable gold fasteners so the silhouette maps
     # back to the corresponding detail in the short/base form.
-    for cx in (x + 4.15, x + 7.05):
-        px.ellipse(cx - 0.84, y + 2.75, cx + 0.84, y + 4.18, fill=form.palette.buttons, outline=OUTLINE, width=0.34)
-        px.ellipse(cx - 0.24, y + 3.02, cx + 0.24, y + 3.56, fill=BROOCH_LIGHT, outline=None)
+    # ⭐ fractions of the body, not absolute offsets — the same fix the skirt
+    # buttons needed, found by auditing for the shape rather than by seeing it.
+    bw = form.body_width
+    r_out = 0.84 * (bw / 8.5)
+    r_in = 0.24 * (bw / 8.5)
+    for frac in (0.371, 0.712):
+        cx = x + bw * frac
+        px.ellipse(cx - r_out, y + 2.75, cx + r_out, y + 4.18, fill=form.palette.buttons, outline=OUTLINE, width=0.34)
+        px.ellipse(cx - r_in, y + 3.02, cx + r_in, y + 3.56, fill=BROOCH_LIGHT, outline=None)
 
 
 def _draw_transform_outfit_stars(px, body_x: float, body_top: float, *, phase: int, form: FormSpec) -> None:
@@ -746,22 +795,37 @@ def _draw_power_loss_sparkles(px, frame_idx: int, *, fire: bool = False) -> None
 
 
 def _draw_dead_front(px, form: FormSpec, pose: Pose, *, wing_boost: float = 0.0) -> None:
-    body_x = 6.0
-    foot_y = 29.2 + pose.bob
-    torso_bottom = foot_y - form.leg_height
+    body_x = 6.0 + form.body_dx
+    foot_y = 29.2 + pose.bob + form.foot_dy
+    torso_bottom = foot_y - form.leg_height + form.body_dy
     body_top = torso_bottom - form.body_height
-    head_top = body_top - (9.8 if form.tall else 10.1)
+    head_top = body_top - (form.head_offset - 0.2)
 
-    left_hip_x = body_x + 4.9
-    right_hip_x = body_x + 7.3
-    hip_y = torso_bottom + 0.3
+    # ⭐⭐ THE FRONT/DEATH POSE HANGS OFF THE RIG TOO. It was the last drawing
+    # still using the grown form's absolute offsets, so re-proportioning fixed
+    # every side pose and left her death frame with its limbs in the old places
+    # — arms and legs meeting empty air beside a body half the width they were
+    # measured against.
+    rig = rig_for(
+        form,
+        foot_y=foot_y,
+        hip_y=torso_bottom,
+        body_top=body_top,
+        # the front torso starts 1.2 in from `body_x`, so THAT is the span whose
+        # midline the symmetric anchors are measured from.
+        body_left=body_x + 1.2,
+        body_right=body_x + 1.2 + form.body_width,
+    )
+    left_hip_x = rig.mid(DEAD_HIP_X[0])
+    right_hip_x = rig.mid(DEAD_HIP_X[1])
+    hip_y = rig.hip_y + form.body_height * DEAD_HIP_Y
     _draw_rotated_leg(
         px,
         left_hip_x,
         hip_y,
         form=form,
         angle_deg=-12.0,
-        length=form.leg_height - 0.35,
+        length=form.leg_height - form.body_dy - 0.35,
         front=True,
     )
     _draw_rotated_leg(
@@ -770,13 +834,18 @@ def _draw_dead_front(px, form: FormSpec, pose: Pose, *, wing_boost: float = 0.0)
         hip_y,
         form=form,
         angle_deg=16.0,
-        length=form.leg_height - 0.35,
+        length=form.leg_height - form.body_dy - 0.35,
         front=True,
     )
 
-    _draw_wings_front(px, body_x + 6.0, body_top + 2.3, form=form, spread=wing_boost)
+    _draw_wings_front(px, rig.mid(DEAD_WING_X), body_top + form.body_height * DEAD_WING_Y, form=form, spread=wing_boost)
     _draw_body_front(px, form, body_x, body_top)
-    head_x = body_x + 0.58
+    # ⛔⛔ the head does NOT follow `body_dx`. It derives its x from `body_x`,
+    # so a torso shift used to move the head with it and the figure simply
+    # translated — measurably 6px across the frame, and visually nothing,
+    # because nothing moved RELATIVE to anything. Subtracting it back is what
+    # makes `body_dx` mean "shift the torso against the head".
+    head_x = body_x + 0.58 - form.body_dx
     _draw_head_front(px, form, head_x, head_top)
     _draw_dead_eyes_front(px, head_x, head_top)
     if pose.mode == "dead":
@@ -797,10 +866,10 @@ def _draw_dead_front(px, form: FormSpec, pose: Pose, *, wing_boost: float = 0.0)
             )
         _draw_dead_mouth_front(px, head_x, head_top)
 
-    shoulder_y = body_top + 1.0
+    shoulder_y = body_top + form.body_height * DEAD_SHOULDER_Y
     _draw_rotated_arm(
         px,
-        body_x + 3.0,
+        rig.mid(DEAD_ARM_X[0]),
         shoulder_y,
         front=True,
         form=form,
@@ -809,7 +878,7 @@ def _draw_dead_front(px, form: FormSpec, pose: Pose, *, wing_boost: float = 0.0)
     )
     _draw_rotated_arm(
         px,
-        body_x + 9.0,
+        rig.mid(DEAD_ARM_X[1]),
         shoulder_y,
         front=True,
         form=form,
@@ -820,19 +889,24 @@ def _draw_dead_front(px, form: FormSpec, pose: Pose, *, wing_boost: float = 0.0)
 
 def _side_pose_head_origin(form: FormSpec, pose: Pose) -> tuple[float, float, bool]:
     """Return the native-pixel-snapped head origin used by a side pose."""
-    foot_y = 30.2 + pose.bob
-    torso_bottom = foot_y - form.leg_height + 0.4 * pose.crouch
+    foot_y = 30.2 + pose.bob + form.foot_dy
+    torso_bottom = foot_y - form.leg_height + form.body_dy + 0.4 * pose.crouch
     body_top = torso_bottom - form.body_height + 0.6 * pose.crouch
-    head_top = body_top - 10.0 + 0.8 * pose.crouch + pose.head_dy
-    body_x = 7.0 + pose.body_lean
+    head_top = body_top - form.head_offset + 0.8 * pose.crouch + pose.head_dy
+    body_x = 7.0 + pose.body_lean + form.body_dx
     if pose.mode == "swim":
-        body_x = 6.3 + pose.body_lean
+        body_x = 6.3 + pose.body_lean + form.body_dx
         head_top -= 0.6
     elif pose.mode == "crouch":
-        body_x = 6.8 + pose.body_lean
+        body_x = 6.8 + pose.body_lean + form.body_dx
     elif pose.mode == "climb":
-        body_x = 6.4 + pose.body_lean
-    head_x = body_x + 0.02 + pose.head_dx
+        body_x = 6.4 + pose.body_lean + form.body_dx
+    # ⛔⛔ the head does NOT follow `body_dx`. It derives its x from `body_x`,
+    # so a torso shift used to move the head with it and the figure simply
+    # translated — measurably 6px across the frame, and visually nothing,
+    # because nothing moved RELATIVE to anything. Subtracting it back is what
+    # makes `body_dx` mean "shift the torso against the head".
+    head_x = body_x + 0.02 - form.body_dx + pose.head_dx
     head_x, head_top = _snap_side_head_origin(head_x, head_top)
     return head_x, head_top, pose.mode == "lookback"
 
@@ -849,26 +923,32 @@ def _draw_side_pose(px, form: FormSpec, pose: Pose, *, animation: str = "idle", 
     """
     stage = _magic_stage_value(form)
     fire_accessory_t = _fire_accessory_t(form)
-    foot_y = 30.2 + pose.bob
-    torso_bottom = foot_y - form.leg_height + 0.4 * pose.crouch
+    foot_y = 30.2 + pose.bob + form.foot_dy
+    torso_bottom = foot_y - form.leg_height + form.body_dy + 0.4 * pose.crouch
     body_top = torso_bottom - form.body_height + 0.6 * pose.crouch
-    head_top = body_top - 10.0 + 0.8 * pose.crouch + pose.head_dy
-    body_x = 7.0 + pose.body_lean
+    head_top = body_top - form.head_offset + 0.8 * pose.crouch + pose.head_dy
+    body_x = 7.0 + pose.body_lean + form.body_dx
 
     if pose.mode == "swim":
-        body_x = 6.3 + pose.body_lean
+        body_x = 6.3 + pose.body_lean + form.body_dx
         head_top -= 0.6
     elif pose.mode == "crouch":
-        body_x = 6.8 + pose.body_lean
+        body_x = 6.8 + pose.body_lean + form.body_dx
     elif pose.mode == "climb":
-        body_x = 6.4 + pose.body_lean
+        body_x = 6.4 + pose.body_lean + form.body_dx
 
     compact_crouch = pose.mode == "crouch"
     body_w = (form.body_width - 0.10 * min(pose.crouch, 1.6)) if compact_crouch else (form.body_width + 0.4 * min(pose.crouch, 1.4))
-    back_shoulder = (body_x + 1.8 + pose.arm_back_dx, body_top + 1.4 + pose.arm_back_dy)
-    front_shoulder = (body_x + body_w - 0.2 + pose.arm_front_dx, body_top + 1.2 + pose.arm_front_dy)
-    back_hip = (body_x + 3.0 + pose.leg_back_dx, torso_bottom + pose.leg_back_dy)
-    front_hip = (body_x + 6.3 + pose.leg_front_dx, torso_bottom + pose.leg_front_dy)
+    # ⭐⭐ ANCHORS COME FROM THE RIG. These four were `body_x + 1.8`, `+ body_w
+    # − 0.2`, `+ 3.0`, `+ 6.3` — absolute offsets that agreed with the body only
+    # at the proportions they were drawn for, which is how a re-proportioned form
+    # ended up with shoulders and hips that had wandered off it. The rig states
+    # them as fractions solved from this very form, so they cannot drift again.
+    rig = rig_for(form, foot_y=foot_y, hip_y=torso_bottom, body_top=body_top, body_left=body_x, body_right=body_x + body_w)
+    back_shoulder = (rig.shoulder(-1)[0] + pose.arm_back_dx, rig.shoulder(-1)[1] + pose.arm_back_dy)
+    front_shoulder = (rig.shoulder(1)[0] + pose.arm_front_dx, rig.shoulder(1)[1] + pose.arm_front_dy)
+    back_hip = (rig.hip(-1)[0] + form.leg_dx + pose.leg_back_dx, rig.hip(-1)[1] + form.leg_dy + pose.leg_back_dy)
+    front_hip = (rig.hip(1)[0] + form.leg_dx + pose.leg_front_dx, rig.hip(1)[1] + form.leg_dy + pose.leg_front_dy)
 
     if pose.arm_back_angle is not None:
         _draw_rotated_arm(
@@ -883,11 +963,11 @@ def _draw_side_pose(px, form: FormSpec, pose: Pose, *, animation: str = "idle", 
     else:
         _draw_arm(
             px,
-            body_x - 1.4 + pose.arm_back_dx,
-            body_top + 1.1 + pose.arm_back_dy,
+            rig.arm_hang()[0] + form.back_arm_dx + pose.arm_back_dx,
+            rig.arm_hang()[1] + form.back_arm_dy + pose.arm_back_dy,
             front=False,
             form=form,
-            length=4.0,
+            length=4.0 * _arm_k(form),
         )
 
     if pose.leg_back_angle is not None:
@@ -897,16 +977,16 @@ def _draw_side_pose(px, form: FormSpec, pose: Pose, *, animation: str = "idle", 
             back_hip[1],
             form=form,
             angle_deg=pose.leg_back_angle,
-            length=form.leg_height - 0.5 * pose.crouch,
+            length=form.leg_height - form.body_dy - 0.5 * pose.crouch,
             front=False,
         )
     else:
         _draw_leg(
             px,
-            body_x + 2.1 + pose.leg_back_dx,
-            torso_bottom + pose.leg_back_dy,
+            rig.leg_x(-1) + form.leg_dx + pose.leg_back_dx,
+            rig.hip_y + form.leg_dy + pose.leg_back_dy,
             form=form,
-            length=form.leg_height - 0.6 * pose.crouch,
+            length=form.leg_height - form.body_dy - 0.6 * pose.crouch,
         )
 
     side_wing_boost = wing_boost + 0.45 * fire_accessory_t + (0.25 if animation == "fireball" else 0.0)
@@ -925,16 +1005,16 @@ def _draw_side_pose(px, form: FormSpec, pose: Pose, *, animation: str = "idle", 
             front_hip[1],
             form=form,
             angle_deg=pose.leg_front_angle,
-            length=form.leg_height - 0.5 * pose.crouch,
+            length=form.leg_height - form.body_dy - 0.5 * pose.crouch,
             front=True,
         )
     else:
         _draw_leg(
             px,
-            body_x + 5.1 + pose.leg_front_dx,
-            torso_bottom + pose.leg_front_dy,
+            rig.leg_x(1) + form.leg_dx + pose.leg_front_dx,
+            torso_bottom + form.leg_dy + pose.leg_front_dy,
             form=form,
-            length=form.leg_height - 0.6 * pose.crouch,
+            length=form.leg_height - form.body_dy - 0.6 * pose.crouch,
             front=True,
         )
 
@@ -965,11 +1045,11 @@ def _draw_side_pose(px, form: FormSpec, pose: Pose, *, animation: str = "idle", 
     else:
         _draw_arm(
             px,
-            body_x + 8.3 + pose.arm_front_dx,
-            body_top + 0.8 + pose.arm_front_dy,
+            body_x + (8.3 - _ARM_REFERENCE_WIDTH + form.body_width) + form.front_arm_dx + pose.arm_front_dx,
+            body_top + 0.8 + form.front_arm_dy + pose.arm_front_dy,
             front=True,
             form=form,
-            length=4.0,
+            length=4.0 * _arm_k(form),
         )
 
     if form.power == "fire" and animation == "fireball":
@@ -1289,6 +1369,61 @@ def _draw_skid_dust(px, x: float, y: float) -> None:
     px.line([(x - 2.0, y + 1.35), (x - 0.95, y + 1.08)], fill=OUTLINE, width=0.20)
 
 
+class _ScaledAbout:
+    """A drawing context that scales every coordinate about one origin.
+
+    ⭐⭐ **why a proxy rather than 34 edited call sites.** The head is drawn from
+    fixed head-local coordinates — polygons, boxes and bare `x + 3.95` arithmetic
+    scattered through a hundred lines — so there is no single number that makes it
+    smaller. Halving the BODY without halving the head is what produced a
+    character whose head was 60% of her (the grown form's is 30%), and editing
+    every coordinate by hand would be a migration with no way to check it.
+
+    Wrapping the canvas instead means the head drawing is untouched and says the
+    same thing it always did; only the frame it lands in changes. `scale = 1.0`
+    is the identity, so every form that does not ask for one is byte-identical.
+    """
+
+    __slots__ = ("_px", "_ox", "_oy", "_k")
+
+    def __init__(self, px, origin_x: float, origin_y: float, scale: float):
+        self._px = px
+        self._ox = origin_x
+        self._oy = origin_y
+        self._k = scale
+
+    def _pt(self, p):
+        return (self._ox + (p[0] - self._ox) * self._k, self._oy + (p[1] - self._oy) * self._k)
+
+    def _pts(self, pts):
+        return [self._pt(p) for p in pts]
+
+    def polygon(self, pts, **kw):
+        if "width" in kw and kw["width"]:
+            kw = {**kw, "width": kw["width"] * self._k}
+        return self._px.polygon(self._pts(pts), **kw)
+
+    def line(self, pts, **kw):
+        if "width" in kw and kw["width"]:
+            kw = {**kw, "width": kw["width"] * self._k}
+        return self._px.line(self._pts(pts), **kw)
+
+    def ellipse(self, x0, y0, x1, y1, **kw):
+        (sx0, sy0), (sx1, sy1) = self._pt((x0, y0)), self._pt((x1, y1))
+        if "width" in kw and kw["width"]:
+            kw = {**kw, "width": kw["width"] * self._k}
+        return self._px.ellipse(sx0, sy0, sx1, sy1, **kw)
+
+    def rect(self, x0, y0, x1, y1, **kw):
+        (sx0, sy0), (sx1, sy1) = self._pt((x0, y0)), self._pt((x1, y1))
+        if "width" in kw and kw["width"]:
+            kw = {**kw, "width": kw["width"] * self._k}
+        return self._px.rect(sx0, sy0, sx1, sy1, **kw)
+
+    def __getattr__(self, name):
+        return getattr(self._px, name)
+
+
 def _draw_head_side(px, form: FormSpec, x: float, y: float, *, lookback: bool = False, variant_name: str | None = None) -> None:
     """Draw a complete side-facing head from foundation and features.
 
@@ -1303,6 +1438,11 @@ def _draw_head_side(px, form: FormSpec, x: float, y: float, *, lookback: bool = 
     # the eye and other small features on the same native-pixel phase in every
     # pose instead of allowing fractional head translations to alter borders.
     x, y = _snap_side_head_origin(x, y)
+    # ⭐ the head is scaled ABOUT ITS OWN BOTTOM, so the neck stays where the body
+    # expects it and only the skull grows or shrinks. `head_scale = 1.0` is the
+    # identity and every unscaled form draws exactly as before.
+    if getattr(form, "head_scale", 1.0) != 1.0:
+        px = _ScaledAbout(px, x + 5.05, y + _HEAD_BOTTOM_LOCAL, form.head_scale)
     _draw_head_foundation_side(px, form, x, y, lookback=lookback)
     _draw_side_face_features(px, form, x, y, lookback=lookback, variant_name=variant_name)
     if _magic_stage_value(form) <= 0:
@@ -1312,6 +1452,14 @@ def _draw_head_side(px, form: FormSpec, x: float, y: float, *, lookback: bool = 
 
 
 def _draw_head_front(px, form: FormSpec, x: float, y: float, *, variant_name: str | None = None) -> None:
+    """⭐ the FRONT head scales like the side one.
+
+    Only `_draw_head_side` got the scaling proxy, so a re-proportioned form had a
+    correctly-sized head in every pose that faces sideways and a full grown-form
+    head in the one that faces front — the death pose. Same wrapper, same pivot.
+    """
+    if getattr(form, "head_scale", 1.0) != 1.0:
+        px = _ScaledAbout(px, x + 5.5, y + _HEAD_BOTTOM_LOCAL, form.head_scale)
     _draw_head_foundation_front(px, form, x, y)
     _draw_front_face_features(px, form, x, y, variant_name=variant_name)
     accessory_t = _fire_accessory_t(form)
@@ -1469,62 +1617,127 @@ def _draw_body_front(px, form: FormSpec, x: float, y: float, *, crouch: float = 
     _draw_powered_front_garment(px, form, x, y, crouch=crouch)
 
 
-def _draw_arm(px, x: float, y: float, *, front: bool, form: FormSpec, length: float = 4.2, glove_down: bool = True) -> None:
+#: The body width the arm constants below were drawn against. A form narrower
+#: than this gets its arms scaled and tucked in by the same ratio — otherwise
+#: they hang in mid-air beside a body that has moved out from under them, which
+#: is exactly what a re-proportioned small form looked like.
+_ARM_REFERENCE_WIDTH = 8.5
+
+
+def _arm_k(form: FormSpec) -> float:
+    """How much narrower this form is than the arms were drawn for."""
+    return max(0.35, min(1.0, form.body_width / _ARM_REFERENCE_WIDTH))
+
+
+def _draw_arm(px, x: float, y: float, *, front: bool, form: FormSpec, length: float | None = None, glove_down: bool = True) -> None:
+    """⭐ `length=None` means "as long as this form's torso wants".
+
+    It was a constant 4.2, which is right for one set of proportions and wrong
+    the moment a form re-proportions: a torso re-fitted to 40% of a half-height
+    body left the arms ending halfway down it, reading as detached sleeves
+    floating beside her."""
+    if length is None:
+        length = max(2.6, form.body_height * 0.72)
     pal = form.palette
     glove_fill = pal.skin if form.magic_stage == 0 else pal.gloves
     sleeve_fill = pal.shirt
     if form.magic_stage >= 1:
         puff = RIBBON_PINK if form.magic_stage == 1 else V2_IVORY
-        px.ellipse(x - 0.65, y - 0.4, x + 2.35, y + 2.5, fill=puff, outline=OUTLINE, width=0.42)
+        _k = _arm_k(form)
+        px.ellipse(x - 0.65 * _k, y - 0.4 * _k, x + 2.35 * _k, y + 2.5 * _k, fill=puff, outline=OUTLINE, width=0.42)
         if form.magic_stage >= 2:
-            px.polygon([(x + 0.1, y - 0.2), (x + 0.8, y - 1.5), (x + 1.5, y - 0.1)], fill=V2_GOLD, outline=OUTLINE, width=0.28)
-    _outlined_rect(px, x, y + (1.0 if form.magic_stage >= 1 else 0.0), x + 1.6, y + length, fill=sleeve_fill, inset=0.35)
-    glove_y = y + (length - 0.5 if glove_down else -1.2)
+            px.polygon([(x + 0.1 * _k, y - 0.2 * _k), (x + 0.8 * _k, y - 1.5 * _k), (x + 1.5 * _k, y - 0.1 * _k)], fill=V2_GOLD, outline=OUTLINE, width=0.28)
+    # ⭐⭐ THE WHOLE LIMB SCALES, HAND INCLUDED. Scaling only the sleeve left a
+    # full-size glove on a shrunken arm — a mitten on a doll — which is the same
+    # class of bug as the buttons: one part of an assembly follows the body and
+    # the rest stays at the size it was drawn.
+    k = _arm_k(form)
+    _outlined_rect(px, x, y + (1.0 if form.magic_stage >= 1 else 0.0), x + 1.6 * k, y + length, fill=sleeve_fill, inset=0.35 * k)
+    glove_y = y + (length - 0.5 * k if glove_down else -1.2 * k)
     if form.magic_stage >= 1:
         cuff_fill = V2_GOLD if form.magic_stage >= 2 else form.palette.cap
-        _outlined_rect(px, x - 0.2, glove_y - 0.9, x + 1.8, glove_y + 0.1, fill=cuff_fill, inset=0.14)
-    _outlined_rect(px, x - 0.25, glove_y, x + 1.85, glove_y + 1.75, fill=glove_fill, inset=0.15)
-    _draw_hand_outline(px, x - 0.3, glove_y - 0.02, x + 1.9, glove_y + 1.8)
+        _outlined_rect(px, x - 0.2 * k, glove_y - 0.9 * k, x + 1.8 * k, glove_y + 0.1 * k, fill=cuff_fill, inset=0.14 * k)
+    _outlined_rect(px, x - 0.25 * k, glove_y, x + 1.85 * k, glove_y + 1.75 * k, fill=glove_fill, inset=0.15 * k)
+    _draw_hand_outline(px, x - 0.3 * k, glove_y - 0.02, x + 1.9 * k, glove_y + 1.8 * k)
 
 
 def _draw_rotated_arm(px, shoulder_x: float, shoulder_y: float, *, front: bool, form: FormSpec, angle_deg: float, length: float = 4.4) -> None:
+    """⭐⭐ **THE ROTATED ARM SCALES TOO — it did not, and the shrink sequence is
+    where that showed.**
+
+    `_draw_arm` (the hanging arm) was taught to follow `body_width`; this one,
+    the ROTATED arm used by reaching and transform poses, was not. So a
+    re-proportioned small form hung its idle arms correctly and then threw one
+    straight out at full grown-form length the moment a pose rotated it — a red
+    bar with a detached glove on the end, in the middle of the big-to-small
+    shrink. Same class of bug as the buttons and the hands: one member of an
+    assembly follows the body and the rest keep the size they were drawn at.
+    """
     pal = form.palette
+    k = _arm_k(form)
+    length = length * k
     hand_fill = pal.skin if form.magic_stage == 0 else pal.gloves
     end_x, end_y = _rotated_endpoint(shoulder_x, shoulder_y, angle_deg, length)
     if form.magic_stage >= 1:
         puff = RIBBON_PINK if form.magic_stage == 1 else V2_IVORY
-        px.ellipse(shoulder_x - 1.35, shoulder_y - 1.25, shoulder_x + 1.35, shoulder_y + 1.35, fill=puff, outline=OUTLINE, width=0.42)
+        px.ellipse(shoulder_x - 1.35 * k, shoulder_y - 1.25 * k, shoulder_x + 1.35 * k, shoulder_y + 1.35 * k, fill=puff, outline=OUTLINE, width=0.42)
         if form.magic_stage >= 2:
-            px.polygon([(shoulder_x - 0.7, shoulder_y - 0.8), (shoulder_x, shoulder_y - 2.0), (shoulder_x + 0.7, shoulder_y - 0.8)], fill=V2_GOLD, outline=OUTLINE, width=0.28)
-    _draw_segment(px, shoulder_x, shoulder_y, end_x, end_y, half_w=0.74, fill=pal.shirt)
+            px.polygon([(shoulder_x - 0.7 * k, shoulder_y - 0.8 * k), (shoulder_x, shoulder_y - 2.0 * k), (shoulder_x + 0.7 * k, shoulder_y - 0.8 * k)], fill=V2_GOLD, outline=OUTLINE, width=0.28)
+    _draw_segment(px, shoulder_x, shoulder_y, end_x, end_y, half_w=0.74 * k, fill=pal.shirt)
     if form.magic_stage >= 1:
-        cuff_x, cuff_y = _rotated_endpoint(shoulder_x, shoulder_y, angle_deg, max(0.0, length - 0.95))
-        _draw_segment(px, cuff_x, cuff_y, end_x, end_y, half_w=0.92, fill=V2_GOLD if form.magic_stage >= 2 else form.palette.cap)
-    _outlined_rect(px, end_x - 1.0, end_y - 0.9, end_x + 1.0, end_y + 0.9, fill=hand_fill, inset=0.15)
-    _draw_hand_outline(px, end_x - 1.05, end_y - 0.95, end_x + 1.05, end_y + 0.95)
+        cuff_x, cuff_y = _rotated_endpoint(shoulder_x, shoulder_y, angle_deg, max(0.0, length - 0.95 * k))
+        _draw_segment(px, cuff_x, cuff_y, end_x, end_y, half_w=0.92 * k, fill=V2_GOLD if form.magic_stage >= 2 else form.palette.cap)
+    _outlined_rect(px, end_x - 1.0 * k, end_y - 0.9 * k, end_x + 1.0 * k, end_y + 0.9 * k, fill=hand_fill, inset=0.15)
+    _draw_hand_outline(px, end_x - 1.05 * k, end_y - 0.95 * k, end_x + 1.05 * k, end_y + 0.95 * k)
 
 
 def _draw_leg(px, x: float, y: float, *, form: FormSpec, length: float = 5.2, front: bool = False) -> None:
     pal = form.palette
     leg_fill = V2_TEAL_DARK if form.magic_stage == 1 else pal.overalls
-    _outlined_rect(px, x + 0.2, y, x + 2.0, y + length, fill=leg_fill, inset=0.34)
+    # ⭐ the SHOE squishes with the leg. A shoe drawn at full height under a
+    # shortened limb is most of what makes a small form read as standing on
+    # blocks, so the two share one factor rather than only the limb taking it.
+    q = form.leg_squish
+    kx = form.leg_squish_x
+    # ⭐ squish about the limb's own centre so a narrowed leg stays under its hip
+    # instead of sliding toward the origin.
+    cx = x + 1.1
+
+    def _sx(v: float) -> float:
+        return cx + (v - cx) * kx
+
+    _outlined_rect(px, _sx(x + 0.2), y, _sx(x + 2.0), y + length, fill=leg_fill, inset=0.34 * kx)
     if form.magic_stage >= 1:
-        _outlined_rect(px, x - 0.05, y + length - 1.25, x + 2.25, y + length - 0.15, fill=V2_GOLD if form.magic_stage >= 2 else V2_PINK_LIGHT, inset=0.14)
-    _outlined_rect(px, x - 0.55, y + length - 0.45, x + 3.05, y + length + 1.3, fill=pal.shoes, inset=0.2)
-    px.line([(x + 1.55, y + length + 0.15), (x + 2.75, y + length + 0.15)], fill=BROOCH_LIGHT if form.magic_stage >= 1 else (139, 91, 55, 255), width=0.34)
+        _outlined_rect(px, _sx(x - 0.05), y + length - 1.25 * q, _sx(x + 2.25), y + length - 0.15 * q, fill=V2_GOLD if form.magic_stage >= 2 else V2_PINK_LIGHT, inset=0.14)
+    _outlined_rect(px, _sx(x - 0.55), y + length - 0.45 * q, _sx(x + 3.05), y + length + 1.3 * q, fill=pal.shoes, inset=0.2)
+    # ⭐ the SOLE HIGHLIGHT is squished with the shoe it lies on. It was drawn at
+    # absolute x, so a narrowed shoe kept a full-width line across it and the
+    # line poked out past the toe — the fourth instance of this exact shape
+    # (buttons, hands, rotated arm, rotated leg were the others).
+    px.line([(_sx(x + 1.55), y + length + 0.15 * q), (_sx(x + 2.75), y + length + 0.15 * q)], fill=BROOCH_LIGHT if form.magic_stage >= 1 else (139, 91, 55, 255), width=0.34)
 
 
 def _draw_rotated_leg(px, hip_x: float, hip_y: float, *, form: FormSpec, angle_deg: float, length: float = 5.4, front: bool = False) -> None:
+    """⭐ the rotated LEG scales like the straight one — found by audit, not by
+    a screenshot.
+
+    Exactly the shape of the rotated-ARM defect: `_draw_leg` was taught to squish
+    with the form and this sibling, used by the walk and by transform poses, kept
+    the limb width and shoe size it was drawn at. It had not been reported yet
+    because the canonical pose does not rotate a leg.
+    """
     pal = form.palette
+    kx = form.leg_squish_x
+    q = form.leg_squish
     leg_fill = V2_TEAL_DARK if form.magic_stage == 1 else pal.overalls
     end_x, end_y = _rotated_endpoint(hip_x, hip_y, angle_deg, length)
-    _draw_segment(px, hip_x, hip_y, end_x, end_y, half_w=0.88, fill=leg_fill)
+    _draw_segment(px, hip_x, hip_y, end_x, end_y, half_w=0.88 * kx, fill=leg_fill)
     shoe_dir = 1.0 if math.sin(math.radians(angle_deg)) >= 0 else -1.0
-    x1 = end_x - 0.5 if shoe_dir > 0 else end_x - 2.9
-    x2 = end_x + 2.5 if shoe_dir > 0 else end_x + 0.5
+    x1 = end_x - 0.5 * kx if shoe_dir > 0 else end_x - 2.9 * kx
+    x2 = end_x + 2.5 * kx if shoe_dir > 0 else end_x + 0.5 * kx
     if form.magic_stage >= 1:
-        _outlined_rect(px, x1 + 0.1, end_y - 1.35, x2 - 0.1, end_y - 0.1, fill=V2_GOLD if form.magic_stage >= 2 else V2_PINK_LIGHT, inset=0.14)
-    _outlined_rect(px, x1, end_y - 0.4, x2, end_y + 1.05, fill=pal.shoes, inset=0.16)
+        _outlined_rect(px, x1 + 0.1, end_y - 1.35 * q, x2 - 0.1, end_y - 0.1 * q, fill=V2_GOLD if form.magic_stage >= 2 else V2_PINK_LIGHT, inset=0.14)
+    _outlined_rect(px, x1, end_y - 0.4 * q, x2, end_y + 1.05 * q, fill=pal.shoes, inset=0.16)
 
 
 def _draw_wing_side(px, anchor_x: float, anchor_y: float, *, form: FormSpec, spread: float = 0.0) -> None:

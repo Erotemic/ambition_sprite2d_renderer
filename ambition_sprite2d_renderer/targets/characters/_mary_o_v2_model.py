@@ -164,10 +164,22 @@ class Pose:
 #
 # ONE width for every form, centred on the leg column all three share
 # (x 64..93, centre 78.5), so growing or catching fire never changes how wide
-# she is. 64 px is the widest form's authored torso (fire, body_width 9.6
-# logical -> 64.0 px) and lands at 0.80 tiles, inside the 0.75-0.88 band the
-# classic 16 px hitbox this demo emulates occupies.
-BODY_BOX_WIDTH = 64
+# she is — Jon, 2026-08-18: "we keep the width of collision the same for big and
+# small", even though the grown sprite may be visually wider.
+#
+# ⭐⭐ **56, not the widest form's torso, because ONE width for every form and
+# "narrower than the drawing" together are decided by the NARROWEST form.**
+# This was 64 px — the fire form's authored torso — chosen when every form was
+# grown-sized. Re-proportioning the short form to one brick made her whole
+# drawing 60 px wide including ponytail and sleeves, so a 64 px box collided on
+# empty air beside a character it was supposed to be forgiving to. 56 px clears
+# her drawing, still covers the grown torso (~62 px) closely, and keeps both
+# forms identical as ruled.
+#
+# ⚠ **this narrows the GROWN form's gameplay box too**, which is the price of
+# the identical-width rule; flagged for Jon rather than resolved by widening the
+# short form's art, because the art width is the thing he tuned by eye.
+BODY_BOX_WIDTH = 56
 BODY_BOX_CENTER_X = 78.5
 
 # Per-form top/bottom in frame pixels. The bottom is her shoe line, because the
@@ -193,6 +205,264 @@ class FormSpec:
     rows: List[Tuple[str, int, int]]
     collision_top_px: int
     collision_bottom_px: int
+    # How far the ponytail hangs, as a fraction of the grown form's drop.
+    # ⭐ hair is drawn from FIXED head-local polygons, so it does NOT shrink when
+    # a form's body and legs do — halve the body without this and the ponytail
+    # reaches past her feet, which is exactly what the first attempt looked like.
+    hair_drop: float = 1.0
+    # The head's drawn size relative to the grown form's. Jon's proportions
+    # (2026-08-18) are head/body/legs = 40/40/20 small and 30/40/30 grown, and a
+    # head drawn at one fixed size cannot satisfy both.
+    head_scale: float = 1.0
+    # How far the head sits ABOVE the torso, in model units. ⭐ this is the knob
+    # that puts the TOP OF HER HEAD on an exact world height: scaling the body to
+    # reach a target moves every proportion, translating the head moves only
+    # where the silhouette ends.
+    head_offset: float = 10.0
+    # Shift the TORSO (and the head riding on it) down, in model units.
+    # ⭐ this is how a form reaches a target height without cramping: pulling the
+    # HEAD down to shorten the silhouette buries the neck in the shoulders,
+    # whereas dropping the whole body keeps the head's own spacing and lowers the
+    # top of the sprite by the same amount.
+    body_dy: float = 0.0
+    # Vertical squish on the legs and feet — 1.0 leaves them as drawn. Separate
+    # from `leg_height` because that moves where the hip sits; this shortens the
+    # limb and its shoe together so a small form's feet stay in proportion.
+    leg_squish: float = 1.0
+    # Shift the TORSO sideways, in model units. ⭐ the head and the feet are
+    # placed from their own anchors, so a re-proportioned torso can end up
+    # offset from both — this is how it is brought back onto the line they
+    # share, without moving anything that was already right.
+    body_dx: float = 0.0
+    # Nudge the WEST (back) arm alone, in model units — 6 frame px per unit.
+    # Separate from `body_dx` because the two arms sit at different depths: the
+    # back one reads against the hair and the front one against the torso, so a
+    # re-proportioned form can need them apart.
+    #: ⭐ **how high the whole figure sits in its frame**, in units (negative is
+    #: up). The one lever that moves head, torso, arms, legs and shoes TOGETHER,
+    #: so it corrects where a form stands without disturbing any of the relative
+    #: nudges tuned against each other. Reach for this — not a second offset on
+    #: one part — when the drawing sits off its shoe line.
+    foot_dy: float = 0.0
+    back_arm_dx: float = 0.0
+    # ⚠ where the hanging back arm meets the shoulder. Authored per form because
+    # the two forms' arms were tuned by eye at different sizes; the rig supplies
+    # the shoulder, this says how far below it the arm hangs.
+    back_arm_dy: float = 0.0
+    # Nudge the EAST (front) arm alone — the sibling of `back_arm_dx`.
+    front_arm_dx: float = 0.0
+    # Vertical nudge for the EAST (front) arm alone.
+    front_arm_dy: float = 0.0
+    # Translate the LEG + FOOT assembly down, in model units, without moving the
+    # torso, head or arms. ⭐ this is how a form recovers height after its legs
+    # were shortened: the hip stays where it was placed and the stance reaches
+    # further down, rather than the whole figure sliding.
+    leg_dy: float = 0.0
+    # Translate the LEG + FOOT assembly sideways (negative = west), in model
+    # units — 6 frame px per unit.
+    leg_dx: float = 0.0
+    # Horizontal squish on the leg and its shoe, about the limb's own centre.
+    # The vertical sibling of `leg_squish`; a stance can need narrowing without
+    # being shortened.
+    leg_squish_x: float = 1.0
+
+
+#: **Anchor fractions, read off the SHIPPED GROWN FORM.**
+#:
+#: ⭐⭐ this is Jon's *"use the original as a rough placement guide"* made literal.
+#: Every number below was solved from what the approved grown form already draws,
+#: so a rig built at its size reproduces it exactly — and the same fractions at a
+#: one-brick size put the same parts in the same RELATIONSHIP rather than at the
+#: same absolute offsets, which is the whole defect this replaces.
+#:
+#: ⚠ the shoulders are ASYMMETRIC on purpose — this is a side view, so the near
+#: shoulder sits at the body's edge and the far one is tucked behind the torso.
+#: A symmetric rig would have quietly straightened her.
+#
+# ⭐⭐ **anchors are fractions of the AUTHORED body, measured from a torso EDGE.**
+#
+# Every number here was solved from the shipped grown form, so the rig places
+# its parts exactly where they already are and re-proportioning any other form
+# carries them along.
+#
+# ⚠ **which edge is load-bearing, and it is not symmetric.** The torso's west
+# side stays at `body_x` and the drawing WIDENS EASTWARD when a pose crouches.
+# So the back shoulder is a fixed distance in from the west edge while the front
+# shoulder tracks the east edge as it moves. A centre-and-half-width rig cannot
+# say that — it moves both shoulders outward together, which quietly re-drew
+# every crouching and skidding frame of a form Jon had already approved.
+#
+# ⇒ hips and legs measure from the west edge too: the drawing has always held
+# them still under crouch.
+# ⚠ written as the RATIOS they were solved from, against the grown form's
+# authored 9.4-wide, 9.5-tall torso. A rounded decimal is off by a millionth of
+# a unit, which is invisible until it lands on a pixel boundary and flips one
+# scanline of a form that was supposed to be untouched.
+_REF_W, _REF_H = 9.4, 9.5
+SHOULDER_BACK_X = 1.8 / _REF_W  #: in from the WEST edge
+SHOULDER_FRONT_X = 0.2 / _REF_W  #: in from the EAST edge, which crouch moves
+SHOULDER_BACK_Y = 1.4 / _REF_H
+SHOULDER_FRONT_Y = 1.2 / _REF_H
+HIP_BACK_X = 3.0 / _REF_W
+HIP_FRONT_X = 6.3 / _REF_W
+#: where a hanging arm and a straight leg sit, same convention
+# ⚠ solved from the grown form's ACTUAL hang, which was `-1.4` — not `-1.4 ×
+# arm_k`, because `arm_k` clamps at 1.0 and the grown form is wider than the
+# reference the arms were drawn for, so the clamp was silently active.
+ARM_HANG_X = -1.4 / _REF_W
+ARM_HANG_Y = 1.1 / _REF_H
+LEG_BACK_X = 2.1 / _REF_W
+LEG_FRONT_X = 5.1 / _REF_W
+
+# ⭐ **the FRONT view is symmetric, so its anchors hang off the MIDLINE** rather
+# than an edge. The front torso is drawn from `body_x + 1.2` and is
+# `body_width` wide, so its midline is where the brooch star already sits.
+DEAD_HIP_X = (-1.0 / _REF_W, 1.4 / _REF_W)  #: splayed, so not symmetric
+DEAD_ARM_X = (-2.9 / _REF_W, 3.1 / _REF_W)
+DEAD_WING_X = 0.1 / _REF_W
+DEAD_SHOULDER_Y = 1.0 / _REF_H
+DEAD_WING_Y = 2.3 / _REF_H
+DEAD_HIP_Y = 0.3 / _REF_H
+
+
+@dataclass(frozen=True)
+class FormRig:
+    """**Where every part of one form belongs, derived rather than authored.**
+
+    ⭐⭐ **why this exists.** The art was written as one drawing at one size:
+    heads, hands, buttons, sleeves, shoe highlights and fasteners all carried
+    absolute offsets that happened to agree at the proportions they were drawn
+    for. Re-proportioning broke that agreement one part at a time — SEVEN
+    separate "X doesn't follow the body" defects in a single session, each found
+    only by looking at a render — because nothing stated where anything belonged.
+
+    A rig is that statement. Parts hang off ANCHORS and the anchors are computed
+    from the form's own authored sizes, so changing a size moves everything
+    together by construction rather than by remembering.
+
+    ⚠ **it reproduces the GROWN form exactly, and deliberately moves the short
+    one.** The fractions are solved from the grown form, which Jon approved, so
+    migrating a pose onto the rig leaves it byte-identical — verified frame by
+    frame against a control render: every one of its own animations matches, and
+    the only grown frames that differ are the two transform rows that host SHORT
+    frames on the tall sheet.
+
+    The short form moves because the hand nudges it accumulated were CORRECTIONS
+    for the grown form's absolute offsets landing on a torso half the width.
+    Under the rig those nudges double-count — `leg_dx = -0.833` dragged her feet
+    out from under her — so they are zeroed where the rig now does the work.
+    """
+
+    height: float
+    foot_y: float
+    crown_y: float
+    head_bottom_y: float
+    shoulder_y: float
+    waist_y: float
+    hip_y: float
+    west_x: float
+    east_x: float
+    width: float
+    body_height: float
+    scale: float
+
+    @property
+    def centre_x(self) -> float:
+        return (self.west_x + self.east_x) * 0.5
+
+    @property
+    def head_height(self) -> float:
+        return self.head_bottom_y - self.crown_y
+
+    @property
+    def torso_height(self) -> float:
+        return self.hip_y - self.head_bottom_y
+
+    @property
+    def leg_height(self) -> float:
+        return self.foot_y - self.hip_y
+
+    def _west(self, frac: float) -> float:
+        return self.west_x + frac * self.width
+
+    def shoulder(self, side: int) -> tuple[float, float]:
+        """`side` −1 = west / back, +1 = east / front."""
+        if side < 0:
+            return (self._west(SHOULDER_BACK_X),
+                    self.head_bottom_y + SHOULDER_BACK_Y * self.body_height)
+        return (self.east_x - SHOULDER_FRONT_X * self.width,
+                self.head_bottom_y + SHOULDER_FRONT_Y * self.body_height)
+
+    def hip(self, side: int) -> tuple[float, float]:
+        """⚠ the hip's height is TAKEN from the pose, not derived from the torso.
+
+        A derived hip sits at the waistline of an UNCROUCHED torso, so legs drawn
+        from it float off a crouching body.
+        """
+        return (self._west(HIP_BACK_X if side < 0 else HIP_FRONT_X), self.hip_y)
+
+    def arm_hang(self) -> tuple[float, float]:
+        """Where a straight, hanging back arm meets the body."""
+        return (self._west(ARM_HANG_X),
+                self.head_bottom_y + ARM_HANG_Y * self.body_height)
+
+    def mid(self, frac: float) -> float:
+        """A point on the FRONT view's midline, `frac` of a body-width aside."""
+        return self.centre_x + frac * self.width
+
+    def leg_x(self, side: int) -> float:
+        return self._west(LEG_BACK_X if side < 0 else LEG_FRONT_X)
+
+
+def rig_for(
+    form: FormSpec,
+    *,
+    foot_y: float,
+    hip_y: float,
+    body_top: float,
+    body_left: float,
+    body_right: float,
+    guide_height: float = 28.0,
+) -> FormRig:
+    """Build a rig from the POSE's resolved torso placement and the form's AUTHORED size.
+
+    ⛔⛔ **the split between those two inputs is the whole correctness argument,
+    and getting it wrong is not visible without a render.**
+
+    - `body_top` / `body_left` / `hip_y` come from the POSE. They already carry
+      crouch, lean and bob, so anchors ride along with a leaning or crouching
+      body for free.
+    - the FRACTIONS multiply the form's **authored** `body_height` / `body_width`
+      — never the pose's momentarily-narrowed crouch width. The drawing has
+      always placed shoulders at a fixed offset from the torso corner, so
+      scaling them by a squashed width moves an arm that used to hold still.
+
+    ⇒ two earlier attempts got this backwards. Deriving the hip from the form
+    alone dropped crouch entirely (14,780 pixels moved on the approved grown
+    form); scaling x by the crouched width moved every skid and crouch frame.
+    Both rendered fine at a glance and were caught only by differencing against
+    a control render.
+
+    ⭐ so migrating a pose onto this rig is **pixel-identical by construction**:
+    every anchor is still `body_left + k` and `body_top + k`, with `k` now
+    expressed as a fraction of the size it was always secretly proportional to.
+    That is what makes re-proportioning a form move its parts together.
+    """
+    total = form.body_height + form.leg_height + form.head_offset
+    return FormRig(
+        height=total,
+        foot_y=foot_y,
+        crown_y=body_top - form.head_offset,
+        head_bottom_y=body_top,
+        shoulder_y=body_top + form.body_height * SHOULDER_BACK_Y,
+        waist_y=body_top + form.body_height * 0.62,
+        hip_y=hip_y,
+        west_x=body_left,
+        east_x=body_right,
+        width=form.body_width,
+        body_height=form.body_height,
+        scale=total / guide_height,
+    )
 
 
 def form_collision_box(form: FormSpec) -> Dict[str, int]:
@@ -208,17 +478,39 @@ def form_collision_box(form: FormSpec) -> Dict[str, int]:
 SHORT_FORM = FormSpec(
     target_name=TARGET_BASE,
     display_name="Mary-O v2",
-    body_height=4.8,
-    leg_height=4.8,
-    body_width=8.5,
+    # ⭐⭐ HALF THE GROWN FORM'S HEIGHT (D165, Jon 2026-08-18: small Mary-O is one
+    # brick, grown is two). The head is deliberately NOT halved — it is the
+    # chibi silhouette a one-tile protagonist needs, and the classic small-Mario
+    # read is a big head on a small body.
+    body_height=3.0,
+    leg_height=2.177,
+    body_width=5.4,
     palette=MARY_NORMAL,
     power="short",
     tall=False,
     magic_stage=0,
     rows=SHORT_ROWS,
-    # Cap tip starts at y=60; the box starts at the brim.
-    collision_top_px=70,
+    # Her shoe line is unchanged at 190; the top follows the shorter art.
+    collision_top_px=106,
     collision_bottom_px=190,
+    # A one-brick character cannot wear a two-brick ponytail.
+    hair_drop=0.52,
+    head_scale=0.72,
+    head_offset=9.666,
+    body_dy=0.976,
+    leg_squish=0.42,
+    body_dx=1.5,
+    back_arm_dx=1.0,
+    front_arm_dx=0.333,
+    leg_dy=1.14,
+    leg_squish_x=0.6,
+    # ⚠ ZERO on purpose. This was `-0.833`, a hand nudge that dragged the legs
+    # west because the old code placed them at the GROWN form's absolute offsets
+    # on a torso barely half as wide. The rig now places them at a fraction of
+    # THIS form's width, so the nudge would double-count and put her feet out
+    # from under her.
+    leg_dx=0.0,
+    front_arm_dy=0.333,
 )
 
 TALL_FORM = FormSpec(
@@ -235,6 +527,9 @@ TALL_FORM = FormSpec(
     # Cap tip starts at y=8.
     collision_top_px=24,
     collision_bottom_px=192,
+    head_scale=1.0,
+    head_offset=10.0,
+    body_dy=2.4,
 )
 
 FIRE_FORM = FormSpec(

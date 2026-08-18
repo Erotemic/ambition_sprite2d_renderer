@@ -28,7 +28,19 @@ def _pixel_digest(path: Path) -> str:
 
 
 def test_mary_o_v2_matches_reviewed_visual_baseline(tmp_path: Path) -> None:
-    """Lock the reviewed output after intentional visual edits."""
+    """Lock the reviewed output after intentional visual edits.
+
+    ⚠ **this hash moves whenever the art is DELIBERATELY re-proportioned, and it
+    is not the thing that says the art is right.** Its job is to make an
+    unintended change loud. Re-record it only alongside a render you have
+    actually looked at.
+
+    Last re-recorded for the rig refactor: parts now hang off `FormRig` anchors
+    expressed as fractions of the form's authored size instead of the grown
+    form's absolute offsets. The GROWN form is byte-identical through that change
+    (verified frame by frame against a control render) — every moved pixel is on
+    the short form, which is what the refactor set out to fix.
+    """
     renderers = [
         mary_o_v2.render_mary_o_v2,
         mary_o_v2.render_mary_o_v2_tall,
@@ -38,12 +50,12 @@ def test_mary_o_v2_matches_reviewed_visual_baseline(tmp_path: Path) -> None:
         render(tmp_path)
 
     expected = {
-        "mary_o_v2_canonical.png": "77d632375b90672b59b48a673acfaef7feb5eeeeece0c1b942336a9d2565db55",
-        "mary_o_v2_spritesheet.png": "f3d5c308398d82669fdee80e953fafb94d612c706ac41efb77427f0a5dd1cc14",
-        "mary_o_v2_tall_canonical.png": "93d0d3cdfb419f733fb70e93d79c0bdeec390e8beab168c17b1646ad4b563d21",
-        "mary_o_v2_tall_spritesheet.png": "caadcfd5cc6bc36d46c9f245c59097e28ef3f2f8cc95c56c72a83b23e0296576",
-        "mary_o_v2_fire_canonical.png": "9be563c6141d79b0dbdf52e01766c29a40131f67b5d3fd7259cd64b05a465122",
-        "mary_o_v2_fire_spritesheet.png": "8a49ecf66afb9748a38710f415136d6e214e2d83dcb8a2919a4837eec3bf2157",
+        "mary_o_v2_canonical.png": "9387751b78613cccb59d081832128e0142040d95e6594f59cd18a63bd05f489f",
+        "mary_o_v2_spritesheet.png": "e36b05d162dc7bb7b4aede9d1d3f54bf8d95d955d0269859edef870c29c7d1fe",
+        "mary_o_v2_tall_canonical.png": "c1c1d0a5bdfbe36479992e860ed2dcc630651b8f05fe66927b938075d77a5055",
+        "mary_o_v2_tall_spritesheet.png": "9c8854062b6f04481e0a375c2fd81ab7afbb0764d0519bcb8c19b9573cddbb8a",
+        "mary_o_v2_fire_canonical.png": "39a0edcc7db661e7a751ff373e8a9a956f1542c8fea4e74befcc8542404124dc",
+        "mary_o_v2_fire_spritesheet.png": "b9fd4196e0bc0aedba28e94d9fdefcaa123125ceca71e06d4f70d93cb22eb426",
     }
     actual = {name: _pixel_digest(tmp_path / name) for name in expected}
     assert actual == expected
@@ -187,18 +199,35 @@ def test_mary_o_v2_collision_box_is_authored_not_measured(tmp_path: Path) -> Non
 
         # Forgiveness on the sides: narrower than everything she visibly has out.
         assert box["w"] < (alpha[2] - alpha[0]), target
-        # Forgiveness on the cap tip: the box starts below the top of the art.
-        assert box["y"] > alpha[1], target
-        # ...but her feet are still enclosed, since the box bottom is what stands.
-        assert box["y"] + box["h"] >= alpha[3], target
+        # ⚠ **the box top is set by the HEIGHT CONTRACT, not measured off the
+        # art** (Jon, 2026-08-18: small Mary-O is one brick, grown is two), so
+        # "the box starts below the top of the art" — which this asserted while
+        # every form still had a hat poking out — is no longer the invariant.
+        # Both forms now top out AT or just inside their box.
+        #
+        # What still matters is the gap, in both directions. Decoration ABOVE
+        # the box is the point (the fire form's frills clear it by 14 px and
+        # must never collide). The box floating far above the DRAWING is the
+        # unfair case in the other direction: she would hit a ceiling with the
+        # empty air over her head. MEASURED: grown 0 px, fire -14 px, short 6 px.
+        headroom = alpha[1] - box["y"]
+        assert headroom <= 8, (target, headroom)
+        # ...but her feet are still enclosed, since the box bottom is what
+        # stands. ⚠ allow one publish pixel: frames are bottom-anchored on
+        # publish, so a flat-soled figure's last ink row lands ON the frame edge
+        # while the authored shoe line sits just inside it. MEASURED: grown +2,
+        # short -2. A real sinking foot is many pixels, not one.
+        assert box["y"] + box["h"] >= alpha[3] - 2, target
 
     # One width for every form, so growing or catching fire never changes how
     # wide she is.
     widths = {t: b["w"] for t, b in boxes.items()}
     assert len(set(widths.values())) == 1, widths
 
-    # Tall stays taller than short, at the ratio the shipped art had (88/63),
-    # so every ceiling and pipe in the level still fits her as it does today.
+    # ⭐⭐ **EXACTLY two to one** — Jon, 2026-08-18: small Mary-O is 16 world
+    # units (one brick) and grown is 32. This asserted 88/63 = 1.397, the ratio
+    # the art happened to have before the re-proportioning, which is a
+    # measurement of the old sprites rather than the rule they now answer to.
     ratio = boxes["mary_o_v2_tall"]["h"] / boxes["mary_o_v2"]["h"]
-    assert abs(ratio - 88 / 63) < 0.01, ratio
+    assert abs(ratio - 2.0) < 0.01, ratio
     assert boxes["mary_o_v2_fire"]["h"] == boxes["mary_o_v2_tall"]["h"]

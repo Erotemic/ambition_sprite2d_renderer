@@ -21,6 +21,7 @@ from ambition_sprite2d_renderer.targets.characters._mary_o_v2_art import (
     _SIDE_PONYTAIL_TIE_RECT,
     _SIDE_REAR_HAIR,
     _SIDE_UNDER_HAT_HAIR_RECT,
+    _HEAD_BOTTOM_LOCAL,
     _debug_part_image,
     _draw_head_front,
     _draw_head_side,
@@ -36,6 +37,40 @@ from ambition_sprite2d_renderer.targets.characters._mary_o_v2_model import (
 _SCALE = 12
 _HEAD_X = 8.0
 _HEAD_Y = 4.0
+
+#: ⭐⭐ **the pivots a re-proportioned head is scaled about**, matching
+#: `_draw_head_side` and `_draw_head_front`. Every probe below is written in the
+#: head's ORIGINAL local coordinates and mapped through this, because a form
+#: with `head_scale != 1.0` draws the same head in a smaller frame — a probe
+#: that skips the mapping is measuring where the head USED to be and reports a
+#: transparent pixel as a missing feature.
+_SIDE_HEAD_PIVOT = (5.05, _HEAD_BOTTOM_LOCAL)
+_FRONT_HEAD_PIVOT = (5.5, _HEAD_BOTTOM_LOCAL)
+
+
+def _head_scale(form) -> float:
+    return getattr(form, "head_scale", 1.0)
+
+
+def _sx(form, local_x: float) -> float:
+    """A side-head local x, in pixels, following the form's head scale."""
+    pivot = _SIDE_HEAD_PIVOT[0]
+    return (_HEAD_X + pivot + (local_x - pivot) * _head_scale(form)) * _SCALE
+
+
+def _sy(form, local_y: float) -> float:
+    pivot = _SIDE_HEAD_PIVOT[1]
+    return (_HEAD_Y + pivot + (local_y - pivot) * _head_scale(form)) * _SCALE
+
+
+def _fx(form, head_x: float, local_x: float) -> float:
+    pivot = _FRONT_HEAD_PIVOT[0]
+    return (head_x + pivot + (local_x - pivot) * _head_scale(form)) * _SCALE
+
+
+def _fy(form, head_y: float, local_y: float) -> float:
+    pivot = _FRONT_HEAD_PIVOT[1]
+    return (head_y + pivot + (local_y - pivot) * _head_scale(form)) * _SCALE
 
 
 def _color_centroid(
@@ -126,11 +161,17 @@ def test_rendered_side_features_are_rigidly_reflected() -> None:
         name: _color_centroid(images[True], color)
         for name, color in colors.items()
     }
-    mirror_px = (_HEAD_X + _SIDE_HEAD_MIRROR_X) * _SCALE
+    mirror_px = _sx(form, _SIDE_HEAD_MIRROR_X)
 
     for name in colors:
         assert east[name][0] + west[name][0] == pytest.approx(2.0 * mirror_px, abs=1.0)
-        assert west[name][1] == pytest.approx(east[name][1], abs=0.5)
+        # ⚠ a form with a non-integer `head_scale` puts the mirrored features
+        # on a different sub-pixel phase, so the two orientations can land one
+        # probe row apart. MEASURED: |Δy| is exactly 0.00px at `head_scale=1.0`
+        # and 1.00px at 0.72, which is quantization, not a broken reflection —
+        # the x-mirror and gram-matrix assertions above stay tight either way.
+        rows = 0.5 if _head_scale(form) == 1.0 else 1.0
+        assert west[name][1] == pytest.approx(east[name][1], abs=rows)
 
     east_gram = _pairwise_squared_distances(list(east.values()))
     west_gram = _pairwise_squared_distances(list(west.values()))
@@ -141,7 +182,7 @@ def test_rendered_side_features_are_rigidly_reflected() -> None:
         pixels = image.load()
         xs = [
             x
-            for y in range(round((_HEAD_Y + 5.05) * _SCALE), round((_HEAD_Y + 7.00) * _SCALE) + 1)
+            for y in range(round(_sy(form, 5.05)), round(_sy(form, 7.00)) + 1)
             for x in range(image.width)
             if pixels[x, y] == form.palette.skin
         ]
@@ -212,7 +253,7 @@ def test_back_hair_volume_is_orientation_consistent(form) -> None:
             scale=_SCALE,
         )
         pixels = image.load()
-        mirror_px = round((_HEAD_X + _SIDE_HEAD_MIRROR_X) * _SCALE)
+        mirror_px = round(_sx(form, _SIDE_HEAD_MIRROR_X))
         area = sum(
             pixels[x, y] == form.palette.hair
             and (x < mirror_px if not lookback else x > mirror_px)
@@ -221,8 +262,12 @@ def test_back_hair_volume_is_orientation_consistent(form) -> None:
         )
         areas.append(area)
 
+    # ⚠ the short form's figure is NOT the others scaled by `head_scale`: it also
+    # carries `hair_drop = 0.52`, which deliberately cuts the ponytail short
+    # ("a one-brick character cannot wear a two-brick ponytail"), so its area is
+    # below what the scale alone would predict. Re-recorded, not derived.
     minimum_area = {
-        "mary_o_v2": 3400,
+        "mary_o_v2": 1250,
         "mary_o_v2_tall": 3050,
         "mary_o_v2_fire": 2950,
     }[form.target_name]
@@ -232,8 +277,17 @@ def test_back_hair_volume_is_orientation_consistent(form) -> None:
 
 @pytest.mark.parametrize("lookback", [False, True])
 def test_v1_back_hair_strip_is_continuous_and_poof_is_wider(lookback: bool) -> None:
-    """The old silhouette has a visible rear strip feeding a wider ponytail."""
-    form = mary_o_v2.SHORT_FORM
+    """The old silhouette has a visible rear strip feeding a wider ponytail.
+
+    ⚠ **this runs on the GROWN form, which is the one that still makes the
+    claim.** The short form was given `hair_drop = 0.52` on purpose, so its
+    ponytail stops above where the poof used to be — MEASURED, its rear span
+    runs 26→41 between local y 5.0 and 6.0 and then falls to 6 below 8.5, where
+    the grown form widens all the way to 57. Asserting a stem-to-poof read there
+    would be asserting the shape the re-proportioning deliberately removed.
+    `test_short_form_ponytail_is_shortened_not_missing` covers it instead.
+    """
+    form = mary_o_v2.TALL_FORM
     image = _debug_part_image(
         lambda px: _draw_head_side(
             px,
@@ -248,15 +302,17 @@ def test_v1_back_hair_strip_is_continuous_and_poof_is_wider(lookback: bool) -> N
     pixels = image.load()
 
     def oriented_x(local_x: float) -> int:
+        # ⚠ mirror in LOCAL space, then scale. The two commute (the scale pivot
+        # reflects onto the scaled mirror), so this is the same point either way.
         if lookback:
             local_x = 2.0 * _SIDE_HEAD_MIRROR_X - local_x
-        return round((_HEAD_X + local_x) * _SCALE)
+        return round(_sx(form, local_x))
 
     # Every row from beneath the cap to the lower head must contain hair in the
     # one-unit strip immediately behind the skin boundary.
     strip_x1, strip_x2 = sorted((oriented_x(0.72), oriented_x(1.82)))
     for local_y in (5.0, 6.0, 7.0, 8.0, 9.0, 10.0):
-        y = round((_HEAD_Y + local_y) * _SCALE)
+        y = round(_sy(form, local_y))
         assert any(
             pixels[x, y] == form.palette.hair
             for x in range(strip_x1, strip_x2 + 1)
@@ -268,7 +324,7 @@ def test_v1_back_hair_strip_is_continuous_and_poof_is_wider(lookback: bool) -> N
     face_back = oriented_x(1.82)
 
     def rear_span(local_y: float) -> int:
-        y = round((_HEAD_Y + local_y) * _SCALE)
+        y = round(_sy(form, local_y))
         if lookback:
             xs = [
                 x for x in range(face_back, image.width)
@@ -285,6 +341,36 @@ def test_v1_back_hair_strip_is_continuous_and_poof_is_wider(lookback: bool) -> N
     upper_span = rear_span(5.5)
     poof_span = rear_span(9.5)
     assert poof_span >= upper_span * 1.9
+
+
+@pytest.mark.parametrize("lookback", [False, True])
+def test_short_form_ponytail_is_shortened_not_missing(lookback: bool) -> None:
+    """The short form keeps a full-width rear strip and loses only the tail.
+
+    Guards both halves of the decision at once: shortening it must not thin the
+    hair the face sits against, and must not leave the tail hanging at grown-form
+    length on a one-brick character.
+    """
+    form = mary_o_v2.SHORT_FORM
+    image = _debug_part_image(
+        lambda px: _draw_head_side(px, form, _HEAD_X, _HEAD_Y, lookback=lookback),
+        logical_size=(24, 20),
+        scale=_SCALE,
+    )
+    pixels = image.load()
+
+    def rear_span(local_y: float) -> int:
+        local_back = 1.82
+        if lookback:
+            local_back = 2.0 * _SIDE_HEAD_MIRROR_X - local_back
+        back = round(_sx(form, local_back))
+        y = round(_sy(form, local_y))
+        span = range(back, image.width) if lookback else range(0, back + 1)
+        xs = [x for x in span if pixels[x, y] == form.palette.hair]
+        return (max(xs) - min(xs) + 1) if xs else 0
+
+    assert rear_span(6.0) >= 30, "the rear hair the face sits against went thin"
+    assert rear_span(9.5) <= 12, "the tail is still hanging at grown-form length"
 
 
 @pytest.mark.parametrize("lookback", [False, True])
@@ -307,10 +393,7 @@ def test_back_hair_is_in_front_of_face_but_under_the_hat(lookback: bool) -> None
     def point(local_x: float, local_y: float) -> tuple[int, int]:
         if lookback:
             local_x = 2.0 * _SIDE_HEAD_MIRROR_X - local_x
-        return (
-            round((_HEAD_X + local_x) * _SCALE),
-            round((_HEAD_Y + local_y) * _SCALE),
-        )
+        return (round(_sx(form, local_x)), round(_sy(form, local_y)))
 
     # This point lies inside the v2 skin polygon, so it can only be hair if the
     # rear rectangle is drawn after the face.
@@ -344,16 +427,17 @@ def test_ponytail_has_simple_pink_tie(lookback: bool) -> None:
     local_x = 1.02
     if lookback:
         local_x = 2.0 * _SIDE_HEAD_MIRROR_X - local_x
-    cx = round((_HEAD_X + local_x) * _SCALE)
-    cy = round((_HEAD_Y + 5.15) * _SCALE)
+    cx = round(_sx(form, local_x))
+    cy = round(_sy(form, 5.15))
     assert pixels[cx, cy] == RIBBON_PINK
 
     pink_pixels = sum(
         pixels[x, y] == RIBBON_PINK
-        for y in range(round((_HEAD_Y + 4.70) * _SCALE), round((_HEAD_Y + 5.65) * _SCALE) + 1)
+        for y in range(round(_sy(form, 4.70)), round(_sy(form, 5.65)) + 1)
         for x in range(image.width)
     )
-    assert pink_pixels >= 60
+    # area scales with the SQUARE of the head scale
+    assert pink_pixels >= round(60 * _head_scale(form) ** 2)
 
 
 @pytest.mark.parametrize("lookback", [False, True])
@@ -378,9 +462,9 @@ def test_back_neck_hairline_outline_is_visible_in_front(lookback: bool) -> None:
         2.0 * _SIDE_HEAD_MIRROR_X - local_x if lookback else local_x
         for local_x in canonical_xs
     ]
-    x1, x2 = sorted(round((_HEAD_X + x) * _SCALE) for x in oriented_xs)
-    y1 = round((_HEAD_Y + 5.40) * _SCALE)
-    y2 = round((_HEAD_Y + 10.70) * _SCALE)
+    x1, x2 = sorted(round(_sx(form, x)) for x in oriented_xs)
+    y1 = round(_sy(form, 5.40))
+    y2 = round(_sy(form, 10.70))
     outline_pixels = sum(
         pixels[x, y] == OUTLINE
         for y in range(y1, y2 + 1)
@@ -410,16 +494,16 @@ def test_side_forehead_hairline_remains_visible(lookback: bool) -> None:
         2.0 * _SIDE_HEAD_MIRROR_X - local_x if lookback else local_x
         for local_x in canonical_xs
     ]
-    x1, x2 = sorted(round((_HEAD_X + x) * _SCALE) for x in oriented_xs)
-    y1 = round((_HEAD_Y + 4.85) * _SCALE)
-    y2 = round((_HEAD_Y + 6.95) * _SCALE)
+    x1, x2 = sorted(round(_sx(form, x)) for x in oriented_xs)
+    y1 = round(_sy(form, 4.85))
+    y2 = round(_sy(form, 6.95))
 
     hair_pixels = sum(
         pixels[x, y] == form.palette.hair
         for y in range(y1, y2 + 1)
         for x in range(x1, x2 + 1)
     )
-    assert hair_pixels >= 180
+    assert hair_pixels >= round(180 * _head_scale(form) ** 2)
 
 
 @pytest.mark.parametrize(
@@ -473,10 +557,10 @@ def test_front_bangs_are_visible_above_the_eyes() -> None:
         scale=_SCALE,
     )
     pixels = image.load()
-    x1 = round((head_x + 2.2) * _SCALE)
-    x2 = round((head_x + 8.8) * _SCALE)
-    y1 = round((head_y + 4.6) * _SCALE)
-    y2 = round((head_y + 6.1) * _SCALE)
+    x1 = round(_fx(form, head_x, 2.2))
+    x2 = round(_fx(form, head_x, 8.8))
+    y1 = round(_fy(form, head_y, 4.6))
+    y2 = round(_fy(form, head_y, 6.1))
     bang_area = sum(
         pixels[x, y] == form.palette.hair
         for y in range(y1, y2 + 1)
@@ -485,11 +569,11 @@ def test_front_bangs_are_visible_above_the_eyes() -> None:
     assert bang_area >= 300
 
     # The center lock should descend visibly while staying above the eyes.
-    center_x = round((head_x + 5.5) * _SCALE)
+    center_x = round(_fx(form, head_x, 5.5))
     center_ys = [
         y
         for y in range(y1, y2 + 1)
         if pixels[center_x, y] == form.palette.hair
     ]
     assert center_ys
-    assert max(center_ys) >= round((head_y + 5.75) * _SCALE)
+    assert max(center_ys) >= round(_fy(form, head_y, 5.75))
