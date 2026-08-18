@@ -14,6 +14,50 @@ def _png_bytes(color=(20, 40, 80, 255)) -> bytes:
     return buf.getvalue()
 
 
+def _install_fake_resvg(monkeypatch, svg_parts, fake) -> None:
+    """Make the rasterizer call `fake` instead of the real compiled resvg.
+
+    ⛔⛔ **patching `sys.modules["resvg_py"]` alone stopped working and is why
+    these two tests were red.** `_native_resvg_callable` deliberately requires
+    `inspect.isbuiltin` — *"never a Python compatibility shim"* — so a fake
+    written in Python is REFUSED by design, the rasterizer falls through to
+    CairoSVG, and in an environment without it the test dies with *"SVG sprite
+    rendering requires native resvg-py"*. That message named the wrong cause:
+    `resvg_py` was installed the whole time.
+
+    ⭐ so the seam to patch is the DETECTOR, not the module table. These tests
+    are about the raster CACHE; which callable counts as native is a different
+    rule with its own test below, and weakening it to let a fake through would
+    have deleted a real guarantee to make a green light.
+    """
+    monkeypatch.setitem(sys.modules, "resvg_py", SimpleNamespace(svg_to_bytes=fake))
+    monkeypatch.setattr(
+        svg_parts, "_native_resvg_callable", lambda module: getattr(module, "svg_to_bytes", None)
+    )
+
+
+def test_only_the_compiled_resvg_counts_as_native() -> None:
+    """**The rule the two cache tests were accidentally leaning on.**
+
+    A Python callable named `svg_to_bytes` must NOT be mistaken for the native
+    rasterizer: the fallback's own doc says its antialiasing differs and that
+    *"callers must not mistake fallback pixels for canonical publication
+    output"*. Nothing asserted that until now, which is how the cache tests
+    could depend on it, break when it tightened, and read as an environment
+    problem.
+    """
+    from ambition_sprite2d_renderer.authoring import svg_parts
+
+    def python_shim(*, svg_string, dpi):  # pragma: no cover - never called
+        return b""
+
+    assert svg_parts._native_resvg_callable(SimpleNamespace(svg_to_bytes=python_shim)) is None
+    assert svg_parts._native_resvg_callable(SimpleNamespace()) is None
+    # `len` stands in for any compiled builtin; the check is on HOW it is
+    # implemented, not on what it does.
+    assert svg_parts._native_resvg_callable(SimpleNamespace(svg_to_bytes=len)) is len
+
+
 def test_rasterize_subset_cache_reuses_resvg_across_calls(tmp_path, monkeypatch):
     from ambition_sprite2d_renderer.authoring import svg_parts
 
@@ -31,7 +75,7 @@ def test_rasterize_subset_cache_reuses_resvg_across_calls(tmp_path, monkeypatch)
         calls.append((svg_string, dpi))
         return _png_bytes()
 
-    monkeypatch.setitem(sys.modules, "resvg_py", SimpleNamespace(svg_to_bytes=fake_svg_to_bytes))
+    _install_fake_resvg(monkeypatch, svg_parts, fake_svg_to_bytes)
     svg_parts._rasterize_subset_cached.cache_clear()
     svg_parts._parse.cache_clear()
 
@@ -64,7 +108,7 @@ def test_rasterize_subset_cache_invalidates_when_svg_changes(tmp_path, monkeypat
         calls.append((svg_string, dpi))
         return _png_bytes()
 
-    monkeypatch.setitem(sys.modules, "resvg_py", SimpleNamespace(svg_to_bytes=fake_svg_to_bytes))
+    _install_fake_resvg(monkeypatch, svg_parts, fake_svg_to_bytes)
     svg_parts._rasterize_subset_cached.cache_clear()
     svg_parts._parse.cache_clear()
 
