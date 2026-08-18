@@ -15,8 +15,37 @@ from ambition_sprite2d_renderer.registry import CharacterJob
 from ambition_sprite2d_renderer.yaml_io import safe_load
 
 
-def test_character_job_roundtrips_freeform_character_notes():
-    job = CharacterJob.from_dict(
+def test_character_job_lifts_prose_era_notes_into_the_keyed_schema():
+    """**A config written before the schema still loads, and loses nothing.**
+
+    ⚠ **this test used to assert the prose came back as a bare string, and it
+    was stale, not wrong-headed.** `authoring_description` and
+    `gameplay_description` grew from freeform prose into keyed blocks
+    (`parody_of` / `core_joke` / …, `role` / `combat_identity` / …), so
+    `_notes_mapping` lifts a bare string under the block's freeform key instead
+    of keeping two shapes alive downstream. Its own comment records the stakes:
+    `dict("some prose")` raises, and that *"took down every sprite regen for
+    configs/review/*.yaml"*.
+
+    ⭐ **so the guarantee worth pinning is the one that survived the schema
+    change** — prose is not dropped, it is addressable, and it round-trips —
+    rather than the old spelling of it. Both shapes are asserted: a bare string
+    lifts, and an already-keyed block passes through untouched, because a
+    normalizer that mangles the NEW shape would pass a test that only fed it the
+    old one.
+
+    ⚠⚠ **AND THE TWO FREEFORM KEYS LOOK SWAPPED, WHICH IS WHY THEY ARE SPELLED
+    OUT HERE RATHER THAN SHARED:**
+
+        authoring_description  ->  {"design_notes":    ...}
+        gameplay_description   ->  {"authoring_notes": ...}
+
+    ⛔ **asserted as-is, deliberately, and NOT "corrected".** Renaming a
+    published key changes what every prose-era config resolves to and what the
+    sheet manifests carry — a content decision, not a test repair. Recorded so
+    the next reader meets it on purpose rather than assuming the test is wrong.
+    """
+    lifted = CharacterJob.from_dict(
         {
             "target": "toon",
             "authoring_description": "A prose authoring prompt.",
@@ -25,15 +54,36 @@ def test_character_job_roundtrips_freeform_character_notes():
         }
     )
 
-    assert job.authoring_description == "A prose authoring prompt."
-    assert job.gameplay_description == "An optional gameplay pitch."
-    assert job.dialogue_hints["barks"] == ["First bark.", "Second bark."]
-    assert job.to_dict()["authoring_description"] == "A prose authoring prompt."
-    assert job.to_dict()["gameplay_description"] == "An optional gameplay pitch."
-    assert job.to_dict()["dialogue_hints"]["barks"] == [
+    assert lifted.authoring_description == {"design_notes": "A prose authoring prompt."}
+    # ⚠ NOT a typo here — see the docstring: the gameplay block's freeform key
+    # really is `authoring_notes`, and the authoring block's is `design_notes`.
+    assert lifted.gameplay_description == {"authoring_notes": "An optional gameplay pitch."}
+    assert lifted.dialogue_hints["barks"] == ["First bark.", "Second bark."]
+    assert lifted.to_dict()["authoring_description"] == {
+        "design_notes": "A prose authoring prompt."
+    }
+    assert lifted.to_dict()["gameplay_description"] == {
+        "authoring_notes": "An optional gameplay pitch."
+    }
+    assert lifted.to_dict()["dialogue_hints"]["barks"] == [
         "First bark.",
         "Second bark.",
     ]
+
+    keyed = CharacterJob.from_dict(
+        {
+            "target": "toon",
+            "authoring_description": {"parody_of": "a detective", "core_joke": "he is wrong"},
+        }
+    )
+    assert keyed.authoring_description == {
+        "parody_of": "a detective",
+        "core_joke": "he is wrong",
+    }
+    assert keyed.to_dict()["authoring_description"] == keyed.authoring_description
+
+    # An empty or whitespace-only prose block becomes nothing, not `{"": ""}`.
+    assert CharacterJob.from_dict({"target": "toon", "authoring_description": "   "}).authoring_description == {}
 
 
 def test_publish_character_notes_copies_and_normalizes_barks():
@@ -177,8 +227,14 @@ def test_adapter_manifest_publishes_character_notes(monkeypatch):
 
     _pages, manifest = sheet_module.build_spritesheet(job)
 
-    assert manifest["authoring_description"] == "Adapter authoring prose."
-    assert manifest["gameplay_description"] == "Adapter gameplay prose."
+    # Through a `CharacterJob` the prose is LIFTED into the keyed schema before
+    # it reaches the manifest — the same normalization
+    # `test_character_job_lifts_prose_era_notes_into_the_keyed_schema` pins.
+    # ⚠ `publish_character_notes` copies a bare string through unchanged when it
+    # is handed one directly, which is why the neighbouring test above sees
+    # strings and this one sees blocks: they enter by different doors.
+    assert manifest["authoring_description"] == {"design_notes": "Adapter authoring prose."}
+    assert manifest["gameplay_description"] == {"authoring_notes": "Adapter gameplay prose."}
     assert manifest["dialogue_hints"]["barks"] == ["Adapter bark."]
 
 
