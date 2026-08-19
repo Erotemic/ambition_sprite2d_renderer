@@ -1,3 +1,26 @@
+"""What the Mary-O SVG rig POC PRODUCES — never how its source is authored.
+
+⛔ **eight structural tests were removed from this file on 2026-08-18, on Jon's
+ruling**: *"they are too bespoke. I don't want tests asserting how things should
+be authored that a human will edit."* They pinned the set of top-level layers,
+the id scheme, stroke-linejoin conventions, which groups were `sodipodi:insensitive`,
+the exact 13 component masters, and that every drawable carried a semantic label —
+all read off ``assets/mary_o_v2.svg``, which is an ARTIST's file. Opening it in
+Inkscape and adding a size-guides layer turned five of them red while nothing
+about the sprite was wrong. A test that fails on WORK is not a guard.
+
+⭐ what stays is the other half, and it is the half worth having: the exporter's
+own output (written to ``tmp_path``, so it is a GENERATED file and may be pinned),
+and what the rig actually RENDERS — idle parity, a rotated pose reusing one arm
+sprite, death coming from the front rig rather than the procedural fallback, and
+the transform running rig-then-postprocess.
+
+⚠ the one real check that went with them and has no replacement yet: a ``<use>``
+whose href names no id renders NOTHING, silently. The recorded direction is for
+``build_rig_document`` to REFUSE it with a sentence naming the element — a
+diagnostic the author reads at load, not a suite that goes red behind them.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -20,19 +43,12 @@ from ambition_sprite2d_renderer.targets.characters._mary_o_v2_model import (
     TALL_LIKE_POSES,
 )
 from ambition_sprite2d_renderer.targets.characters._mary_o_v2_svg_poc import (
-    INK_LABEL,
     build_rig_document,
     render_pose_with_doc,
 )
 
 
 ASSET = Path(mary_o_v2_svg_poc.ASSET_PATH)
-
-
-def _local(tag: str) -> str:
-    return tag.rsplit("}", 1)[-1]
-
-
 def _docs() -> dict[str, object]:
     docs = {}
     for form in (SHORT_FORM, TALL_FORM, FIRE_FORM):
@@ -61,240 +77,6 @@ def test_exporter_can_emit_a_fresh_procedural_seed(tmp_path: Path) -> None:
     assert "maryo_component_shared_front_death_expression" in ids
     assert "maryo_primitive_fire_side_hat_wing" in ids
     assert not any("torso" in item or "_arm" in item or "_leg" in item or "wings" in item for item in ids)
-
-
-def test_svg_has_side_and_front_component_libraries_for_every_form() -> None:
-    root = ET.fromstring(ASSET.read_bytes())
-    labels = {group.get(INK_LABEL): group for group in root if group.get(INK_LABEL)}
-    assert set(labels) == {
-        "Mary-O - Authoring Components",
-        "Mary-O - Component Assemblies",
-        "Mary-O - Short Side",
-        "Mary-O - Short Front",
-        "Mary-O - Tall Side",
-        "Mary-O - Tall Front",
-        "Mary-O - Fire Side",
-        "Mary-O - Fire Front",
-    }
-
-    primitives = labels["Mary-O - Authoring Components"]
-    assemblies = labels["Mary-O - Component Assemblies"]
-    primitive_ids = {node.get("id") or "" for node in primitives.iter()}
-    assembly_ids = {node.get("id") or "" for node in assemblies.iter()}
-    assert {
-        "maryo_component_normal_side_head",
-        "maryo_component_normal_side_head_hat_dome",
-        "maryo_component_normal_side_head_eye",
-        "maryo_component_normal_front_head",
-        "maryo_component_normal_front_head_pupils",
-        "maryo_primitive_big_side_hat_star",
-        "maryo_primitive_fire_side_hat_wing",
-    } <= primitive_ids
-    assert {
-        "maryo_assembly_fire_side_head_base",
-        "maryo_assembly_short_side_head",
-        "maryo_assembly_tall_side_head",
-        "maryo_assembly_fire_side_head",
-        "maryo_assembly_fire_front_head_base",
-        "maryo_assembly_short_front_head",
-        "maryo_assembly_tall_front_head",
-        "maryo_assembly_fire_front_head",
-    } <= assembly_ids
-
-    # The editable normal head is authored as one coherent component so facial
-    # edits happen in context, while derived heads still clone from its child
-    # groups or the whole group.
-    normal_side_head = next(node for node in primitives if node.get("id") == "maryo_component_normal_side_head")
-    normal_side_child_ids = {child.get("id") or "" for child in normal_side_head}
-    assert {
-        "maryo_component_normal_side_head_rear_hair",
-        "maryo_component_normal_side_head_skin",
-        "maryo_component_normal_side_head_hat_dome",
-        "maryo_component_normal_side_head_eye",
-        "maryo_component_normal_side_head_face_details",
-    } <= normal_side_child_ids
-
-    fire_base = next(node for node in assemblies if node.get("id") == "maryo_assembly_fire_side_head_base")
-    fire_xml = ET.tostring(fire_base, encoding="unicode")
-    assert "Rear Hair" in fire_xml
-    assert "Skin" in fire_xml
-    assert "Eye" in fire_xml
-    assert "Hat Dome" in fire_xml
-    assert "#ec583a" in fire_xml
-
-    tall_head = next(node for node in assemblies if node.get("id") == "maryo_assembly_tall_side_head")
-    tall_xml = ET.tostring(tall_head, encoding="unicode")
-    assert "#maryo_component_normal_side_head" in tall_xml
-    assert "#maryo_primitive_big_side_hat_star" in tall_xml
-    fire_head = next(node for node in assemblies if node.get("id") == "maryo_assembly_fire_side_head")
-    fire_head_xml = ET.tostring(fire_head, encoding="unicode")
-    assert "#maryo_assembly_fire_side_head_base" in fire_head_xml
-    assert "#maryo_primitive_fire_side_hat_wing" in fire_head_xml
-
-    for form_name in ("Short", "Tall", "Fire"):
-        side = labels[f"Mary-O - {form_name} Side"]
-        front = labels[f"Mary-O - {form_name} Front"]
-        side_bones = {child.get("data-rig-bone") for child in side if child.get("data-rig-bone")}
-        front_bones = {child.get("data-rig-bone") for child in front if child.get("data-rig-bone")}
-        assert {"far_arm", "near_arm", "far_leg", "near_leg", "torso", "head"} <= side_bones
-        assert {
-            "character_right_arm",
-            "character_left_arm",
-            "character_right_leg",
-            "character_left_leg",
-            "torso",
-            "head",
-        } <= front_bones
-        front_parts = {child.get("data-rig-part") for child in front if child.get("data-rig-part")}
-        assert {"foreground_garment", "death_expression"} <= front_parts
-
-    ids = " ".join((node.get("id") or "") for node in root.iter()).lower()
-    assert "rotated_arm" not in ids
-    assert "rotated_leg" not in ids
-    assert "elbow" not in ids
-    assert "knee" not in ids
-
-
-def test_authoring_helpers_are_hidden_and_geometry_has_semantic_names() -> None:
-    root = ET.fromstring(ASSET.read_bytes())
-    parent = {child: node for node in root.iter() for child in node}
-    guide_groups = [node for node in root.iter() if node.get(INK_LABEL) == "Rig Guides"]
-    assert guide_groups
-    assert all("display:none" in (node.get("style") or "") for node in guide_groups)
-
-    for node in root.iter():
-        if _local(node.tag) not in {"path", "polygon", "rect", "ellipse", "circle", "line"}:
-            continue
-        chain = []
-        cur = node
-        while cur in parent:
-            chain.append(cur)
-            cur = parent[cur]
-        if any(ancestor.get(INK_LABEL) == "Rig Guides" for ancestor in chain):
-            continue
-        assert node.get("id"), ET.tostring(node, encoding="unicode")
-        assert node.get(INK_LABEL), node.get("id")
-
-
-def test_svg_strokes_default_to_angular_mitered_geometry() -> None:
-    root = ET.fromstring(ASSET.read_bytes())
-    for node in root.iter():
-        local = _local(node.tag)
-        if not node.get("stroke") or node.get("stroke") == "none":
-            continue
-        if local == "path" and not (node.get("id") or "").endswith("pivot_cross"):
-            assert node.get("stroke-linecap") == "square", node.get("id")
-            assert node.get("stroke-linejoin") == "miter", node.get("id")
-        if local == "polygon":
-            assert node.get("stroke-linejoin") == "miter", node.get("id")
-
-
-def test_editable_primitive_geometry_is_path_normalized() -> None:
-    root = ET.fromstring(ASSET.read_bytes())
-    primitives = next(node for node in root if node.get("id") == "maryo_primitive_components")
-    drawable = [
-        node
-        for node in primitives.iter()
-        if _local(node.tag) in {"path", "polygon", "rect", "ellipse", "circle", "line", "polyline"}
-    ]
-    assert drawable
-    assert {_local(node.tag) for node in drawable} == {"path"}
-    assert all(node.get("d") for node in drawable)
-
-    # The procedural side pupil begins life as a one-pixel Pillow rectangle.
-    # The authoring SVG should preserve that visible area while normalizing it
-    # to a node-editable path rather than leaving a zero-width or special rect.
-    normal_side_head = next(node for node in primitives if node.get("id") == "maryo_component_normal_side_head")
-    side_eye = next(node for node in normal_side_head if node.get("id") == "maryo_component_normal_side_head_eye")
-    dark_eye_paths = [
-        node for node in side_eye if _local(node.tag) == "path" and node.get("fill") == "#1c1613"
-    ]
-    assert len(dark_eye_paths) == 1
-    assert dark_eye_paths[0].get("d")
-
-
-def test_authoring_dependency_layers_make_edit_authority_explicit() -> None:
-    root = ET.fromstring(ASSET.read_bytes())
-    insensitive = "{http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd}insensitive"
-    primitives = next(node for node in root if node.get("id") == "maryo_primitive_components")
-    assemblies = next(node for node in root if node.get("id") == "maryo_component_assemblies")
-
-    assert primitives.get("data-authoring-role") == "editable-source"
-    assert primitives.get(insensitive) is None
-    assert assemblies.get("data-authoring-role") == "derived"
-    assert assemblies.get("data-authoring-editable") == "false"
-    assert assemblies.get(insensitive) == "true"
-
-    for layer in root:
-        if not (layer.get("data-rig-form") and layer.get("data-rig-projection")):
-            continue
-        assert layer.get("data-authoring-role") == "final-view"
-        assert layer.get("data-authoring-editable") == "false"
-        assert layer.get(insensitive) == "true"
-
-    assert all(
-        node.get("data-authoring-editable") == "true"
-        for node in primitives.iter()
-        if node.get("data-authoring-master") == "true"
-    )
-
-
-def test_authoring_components_have_one_geometry_authority_per_concept() -> None:
-    root = ET.fromstring(ASSET.read_bytes())
-    components = next(node for node in root if node.get("id") == "maryo_primitive_components")
-    top_ids = {node.get("id") or "" for node in components}
-    assert len(top_ids) == 13
-    assert top_ids == {
-        "maryo_component_normal_side_head",
-        "maryo_component_normal_front_head",
-        "maryo_primitive_big_side_ribbon",
-        "maryo_primitive_big_side_hat_star",
-        "maryo_primitive_side_ear_star",
-        "maryo_primitive_fire_side_ribbon",
-        "maryo_primitive_fire_side_extras",
-        "maryo_primitive_fire_side_hat_wing",
-        "maryo_primitive_big_front_ribbons",
-        "maryo_primitive_big_front_hat_star",
-        "maryo_primitive_fire_front_ribbons",
-        "maryo_primitive_fire_front_extras",
-        "maryo_component_shared_front_death_expression",
-    }
-
-    assert not any("torso" in item or "_arm" in item or "_leg" in item or "wings" in item for item in top_ids)
-    assert "maryo_component_shared_front_death_expression" in top_ids
-    assert not any("front_death_expression" in item and item != "maryo_component_shared_front_death_expression" for item in top_ids)
-
-    # Foreground death repaint now stays local to the final views rather than
-    # introducing additional authoring masters outside the head-only library.
-    for key in ("short", "tall", "fire"):
-        view = next(node for node in root if node.get("data-rig-form") == key and node.get("data-rig-projection") == "front")
-        fg = next(node for node in view if node.get("data-rig-part") == "foreground_garment")
-        assert any(_local(node.tag) == "path" for node in fg.iter())
-
-
-def test_authoring_components_have_no_duplicate_leaf_paths_or_broken_uses() -> None:
-    root = ET.fromstring(ASSET.read_bytes())
-    components = next(node for node in root if node.get("id") == "maryo_primitive_components")
-    ignored = {"id", INK_LABEL}
-    for component in components:
-        signatures: set[tuple] = set()
-        for node in component.iter():
-            if _local(node.tag) != "path":
-                continue
-            signature = tuple(sorted((key, value) for key, value in node.attrib.items() if key not in ignored))
-            assert signature not in signatures, (component.get("id"), node.get("id"))
-            signatures.add(signature)
-
-    ids = {node.get("id") for node in root.iter() if node.get("id")}
-    xlink_href = "{http://www.w3.org/1999/xlink}href"
-    for node in root.iter():
-        if _local(node.tag) != "use":
-            continue
-        href = node.get("href") or node.get(xlink_href) or ""
-        assert href.startswith("#"), node.get("id")
-        assert href[1:] in ids, (node.get("id"), href)
-
-
 def test_hidden_pivot_follows_manual_wrapper_transform(tmp_path: Path) -> None:
     path = mary_o_v2.export_svg_poc_source(tmp_path / "mary_o_seed.svg")
     before = build_rig_document(path, TALL_FORM, "side")
@@ -309,23 +91,6 @@ def test_hidden_pivot_follows_manual_wrapper_transform(tmp_path: Path) -> None:
     after_bone = next(b for b in after.bones if b["name"] == "near_arm")
     assert after_bone["offset"][0] == before_bone["offset"][0] + 7
     assert after_bone["offset"][1] == before_bone["offset"][1] - 3
-
-
-def test_rig_topology_is_rigid_limbs_only() -> None:
-    for form in (SHORT_FORM, TALL_FORM, FIRE_FORM):
-        side = build_rig_document(ASSET, form, "side")
-        front = build_rig_document(ASSET, form, "front")
-        for doc in (side, front):
-            bones = {bone["name"] for bone in doc.bones}
-            assert not any("elbow" in name or "knee" in name for name in bones)
-            assert doc.ik_legs == []
-            assert doc.ik_chains == []
-            for part in doc.parts:
-                if "arm" in part["bone"]:
-                    assert len(part["include"]) == 1
-                    assert part["include"][0].endswith("_art")
-
-
 def test_idle_seed_renders_close_to_current_idle_without_postprocess() -> None:
     for form in (SHORT_FORM, TALL_FORM, FIRE_FORM):
         doc = build_rig_document(ASSET, form, "side")
