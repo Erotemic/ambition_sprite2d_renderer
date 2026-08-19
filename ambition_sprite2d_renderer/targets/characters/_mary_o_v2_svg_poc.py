@@ -24,6 +24,7 @@ from dataclasses import dataclass, replace
 import math
 from pathlib import Path
 import re
+import warnings
 import xml.etree.ElementTree as ET
 from typing import Dict, Iterable, Iterator, List, Sequence, Tuple
 
@@ -2191,8 +2192,55 @@ def _source_view_origin(form: FormSpec, projection: str = "side") -> tuple[float
     return tuple(float(v) for v in _VIEW_ORIGINS[(_FORM_KEYS[form.target_name], projection)])
 
 
+_XLINK_HREF = "{http://www.w3.org/1999/xlink}href"
+_DANGLING_USE_WARNED: set[str] = set()
+
+
+def _warn_about_dangling_uses(root: ET.Element, svg_path: Path) -> None:
+    """**A `<use>` whose href names no id renders NOTHING, and says nothing.**
+
+    ⭐ this replaces the one check worth keeping out of the eight structural
+    tests removed on 2026-08-18. Jon's ruling was *"I don't want tests asserting
+    how things should be authored that a human will edit"* — and he is right that
+    pinning layer sets and id schemes fails on WORK rather than on a defect. A
+    dangling reference is different in kind: it is not a style, it is a part that
+    silently does not draw.
+
+    ⛔ **a WARNING, never a refusal.** Refusing would stop an artist's
+    in-progress file from loading at all, which is a worse failure than the one
+    being reported — and the whole reason those tests went was that they turned
+    ordinary authoring into a red suite.
+
+    ⚠ warned ONCE per file per process: a rig document is built six times (three
+    forms x two projections) and the same dangling id would otherwise be
+    reported six times per render.
+    """
+    ids = {node.get("id") for node in root.iter() if node.get("id")}
+    dangling = []
+    for node in root.iter():
+        if node.tag.rsplit("}", 1)[-1] != "use":
+            continue
+        href = node.get("href") or node.get(_XLINK_HREF) or ""
+        if href.startswith("#") and href[1:] not in ids:
+            dangling.append((node.get("id") or "<unnamed use>", href))
+    if not dangling:
+        return
+    key = str(svg_path)
+    if key in _DANGLING_USE_WARNED:
+        return
+    _DANGLING_USE_WARNED.add(key)
+    listed = ", ".join(f"{who} -> {href}" for who, href in sorted(dangling))
+    warnings.warn(
+        f"{svg_path.name}: {len(dangling)} <use> element(s) reference an id this "
+        f"document does not contain, so they draw NOTHING: {listed}",
+        RuntimeWarning,
+        stacklevel=3,
+    )
+
+
 def _find_part_records(svg_path: Path, form: FormSpec, projection: str = "side") -> List[dict]:
     root = ET.fromstring(svg_path.read_bytes())
+    _warn_about_dangling_uses(root, svg_path)
     parent = {child: node for node in root.iter() for child in node}
     view_label = _view_for_form(form, projection)
     view = next((g for g in root if g.get(INK_LABEL) == view_label), None)
