@@ -1,8 +1,8 @@
 """SVG-rigged Fighting Polygon brawler humanoid.
 
 This target is deliberately both a playable fighter and an animation reference.
-The SVG owns simple faceted body parts; the rig owns a broad, conservative
-humanoid pose vocabulary.  Future humanoid characters can copy or inspect these
+The SVG owns simple faceted body parts and static rig geometry; a shared,
+editor-neutral motion library owns the broad conservative humanoid pose vocabulary.  Future humanoid characters can copy or inspect these
 poses before adding anatomy-specific exaggeration.
 
 This archetype is intentionally unarmed. Do not add held props or shadows to the base character.
@@ -13,11 +13,18 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
+from ambition_sprite2d_renderer.authoring.motion_ir import CharacterMotionBinding
 from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
 from ambition_sprite2d_renderer.authoring.sheet_build import build_sheet
 
 TARGET_NAME = "fighting_polygon_brawler"
-RIG_PATH = Path(__file__).resolve().parent / "rigged" / f"{TARGET_NAME}.rig.json"
+MOTION_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "data"
+    / "characters"
+    / TARGET_NAME
+    / f"{TARGET_NAME}.motion.json"
+)
 
 # A compact vocabulary to show first when using this target as a humanoid pose
 # reference.  The rig itself publishes the full fighter vocabulary (136 clips).
@@ -90,8 +97,8 @@ ACTOR_METADATA = {
             "no drop shadow and no unrelated held props",
         ],
         "rigging_notes": [
-            "The SVG is the editable vector-art authority; the rig JSON owns pivots and clips.",
-            "The clip vocabulary is intentionally broad and conservative so individual poses can be copied into future humanoid rigs.",
+            "The SVG owns artwork and static rig geometry; editor-neutral motion JSON owns reusable poses and clips.",
+            "Sword and brawler share the same backend-neutral humanoid motion library; character artwork binds to it independently.",
             "Near/far names in the SVG are character-relative layers, not camera-centric gameplay semantics.",
             "This brawler variant is the reference for unarmed humanoids and intentionally shares the sword rig's skeleton vocabulary.",
         ],
@@ -185,7 +192,10 @@ ACTOR_METADATA = {
 
 @lru_cache(maxsize=1)
 def _doc() -> RigDocument:
-    return RigDocument.load(RIG_PATH)
+    # RigDocument is a temporary renderer projection.  The editable sources are
+    # the SVG static rig plus the shared Ambition pose/clip library selected by
+    # this character binding.
+    return CharacterMotionBinding.load(MOTION_PATH).load_prepared().to_rig_document()
 
 
 def _render_frame(animation: str, frame_idx: int, frame_count: int):

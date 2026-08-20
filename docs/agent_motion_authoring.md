@@ -1,5 +1,14 @@
 # Agent motion authoring toolkit
 
+
+> **Fighting Polygon motion-IR pilot.** The sword and brawler no longer treat
+> `*.rig.json` as their editable motion authority. Their SVGs own static rig
+> geometry and `data/motion/humanoid/fighting_polygon_v1/` owns poses/clips.
+> Use `python -m ambition_sprite2d_renderer.devtools.motion_ir_tool describe|validate`
+> for that pilot. The RigDocument-oriented commands below remain the transition
+> workflow for characters that have not migrated yet. See
+> `docs/authoring/motion_ir_v1.md` for the schema boundary.
+
 The sprite renderer has a text-first semantic motion toolkit for bone-rigged
 characters. It complements the GUI rather than replacing it: the GUI remains
 best for interactive posing, while automation agents can now reason in terms of

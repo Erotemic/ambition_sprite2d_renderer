@@ -1,0 +1,35 @@
+{
+  "schema": "ambition-character-motion-v1",
+  "character": "fighting_polygon_sword",
+  "rig": {
+    "svg": "fighting_polygon_sword.svg",
+    "view": "side"
+  },
+  "motion_library": "../../motion/humanoid/fighting_polygon_v1/library.json",
+  "render": {
+    "frame_px": [
+      128,
+      192
+    ],
+    "root_anchor_px": [
+      64.0,
+      176.0
+    ],
+    "frame_px_per_rig_unit": 0.184275,
+    "supersample": 4,
+    "render_scale": 3,
+    "ankle_h_px": 15.295,
+    "svg_ref_dpi": 96.0
+  },
+  "sprite_tuning": {
+    "collision_scale": 1.8,
+    "facing": "right"
+  },
+  "features": {
+    "archetype": "sword_humanoid",
+    "safe_pose_reference": true,
+    "faceted_svg_parts": true,
+    "weapon": "sword"
+  },
+  "natural_pose": "idle"
+}

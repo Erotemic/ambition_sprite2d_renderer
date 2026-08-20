@@ -1,4 +1,4 @@
-from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
+from ambition_sprite2d_renderer.authoring.motion_ir import CharacterMotionBinding
 from ambition_sprite2d_renderer.targets.characters import fighting_polygon_brawler as target
 
 
@@ -14,25 +14,32 @@ REQUIRED_SAFE_POSES = {
 }
 
 
-def test_polygon_brawler_rig_publishes_the_safe_humanoid_pose_vocabulary():
-    doc = RigDocument.load(target.RIG_PATH)
-    assert REQUIRED_SAFE_POSES <= set(doc.clips)
-    assert len(doc.clips) >= 130
+def _binding():
+    return CharacterMotionBinding.load(target.MOTION_PATH)
+
+
+def test_polygon_brawler_motion_library_publishes_the_safe_humanoid_pose_vocabulary():
+    prepared = _binding().load_prepared()
+    assert REQUIRED_SAFE_POSES <= set(prepared.library.clips)
+    assert len(prepared.library.clips) >= 130
 
 
 def test_polygon_brawler_is_intentionally_unarmed():
-    doc = RigDocument.load(target.RIG_PATH)
-    assert not [part for part in doc.parts if part.get("name") == "sword"]
-    assert doc.features["archetype"] == "brawler_humanoid"
-    assert doc.features["weapon"] is None
+    prepared = _binding().load_prepared()
+    assert not [part for part in prepared.rig.parts if part.id == "sword"]
+    assert prepared.binding.features["archetype"] == "brawler_humanoid"
+    assert prepared.binding.features["weapon"] is None
 
 
-def test_polygon_brawler_svg_is_the_editable_art_authority():
-    doc = RigDocument.load(target.RIG_PATH)
-    svg = (target.RIG_PATH.parent / doc.svg_source["path"]).resolve()
+def test_polygon_brawler_svg_is_the_editable_static_rig_authority():
+    binding = _binding()
+    prepared = binding.load_prepared()
+    svg = binding.rig_svg
     assert svg.exists()
+    assert prepared.rig.source_svg == svg
     text = svg.read_text(encoding="utf8")
     assert "Fighting Polygon Brawler - Side" in text
+    assert 'data-ambition-schema="ambition-svg-rig-v1"' in text
     for part_id in (
         "polygon-head", "polygon-torso", "polygon-pelvis",
         "polygon-near-arm-u", "polygon-near-hand", "polygon-far-hand",
@@ -42,15 +49,15 @@ def test_polygon_brawler_svg_is_the_editable_art_authority():
     assert "filter=" not in text
 
 
-def test_polygon_brawler_foot_channels_are_bound_to_real_ik_legs():
-    doc = RigDocument.load(target.RIG_PATH)
-    bindings = {leg["channel_prefix"]: leg for leg in doc.ik_legs}
-    assert set(bindings) == {"near_foot", "far_foot"}
-    assert bindings["near_foot"]["foot"] == "near_leg_foot"
-    assert bindings["far_foot"]["foot"] == "far_leg_foot"
+def test_polygon_brawler_renderer_projection_contains_direct_fk_not_ik_authority():
+    doc = target._doc()
+    assert doc.data["generated_projection"]["schema"] == "ambition-rigdoc-projection-v1"
+    assert doc.ik_legs == []
+    assert doc.ik_chains == []
 
     clip = doc.clips["walk"]
-    assert "near_foot_pitch" in clip["channels"]
+    assert "near_foot_pitch" not in clip["channels"]
+    assert "near_leg_foot" in clip["channels"]
     pitches = []
     origins = []
     for frame in range(int(clip["frames"])):
@@ -58,5 +65,5 @@ def test_polygon_brawler_foot_channels_are_bound_to_real_ik_legs():
         foot = world["near_leg_foot"]
         pitches.append(round(foot.angle, 3))
         origins.append((round(foot.origin[0], 3), round(foot.origin[1], 3)))
-    assert len(set(pitches)) > 1, "near_foot_pitch was dead authoring data"
-    assert len(set(origins)) > 1, "near_foot_x/lift were dead authoring data"
+    assert len(set(pitches)) > 1
+    assert len(set(origins)) > 1
