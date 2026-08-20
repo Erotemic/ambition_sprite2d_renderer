@@ -2,82 +2,118 @@
 <svg xmlns="http://www.w3.org/2000/svg"
      xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
      width="238.125mm" height="238.125mm" viewBox="0 0 900 900">
-  <g id="view-fighting-polygon-sword" inkscape:groupmode="layer" inkscape:label="Fighting Polygon Sword - Side">
+  <g id="view-fighting-polygon-sword" inkscape:groupmode="layer" inkscape:label="Pointed Polygon - Side">
     <g id="polygon-far-leg-u" inkscape:label="Far Upper Leg">
-      <polygon points="650,455 672,452 692,604 673,614 654,545" fill="#342A78" stroke="#171438" stroke-width="4"/>
-      <polygon points="650,455 672,452 666,531 654,545" fill="#5547A8"/>
+      <!-- Broad at the hip, tapered into the knee. -->
+      <polygon points="638,448 684,447 683,534 691,602 672,614 658,540" fill="#261F63" stroke="#100D2D" stroke-width="4"/>
+      <polygon points="638,448 684,447 678,527 658,540" fill="#5F46A8"/>
+      <polygon points="638,448 658,540 648,500" fill="#7A59BD" opacity="0.55"/>
     </g>
     <g id="polygon-far-leg-l" inkscape:label="Far Lower Leg">
-      <polygon points="668,603 689,607 676,752 653,754 657,680" fill="#30276E" stroke="#171438" stroke-width="4"/>
-      <polygon points="668,603 689,607 677,685 657,680" fill="#493B92"/>
+      <!-- Calf narrows into a distinctly slimmer ankle. -->
+      <polygon points="666,602 692,606 675,751 658,754 660,681" fill="#221B57" stroke="#100D2D" stroke-width="4"/>
+      <polygon points="666,602 692,606 678,684 660,681" fill="#49347F"/>
     </g>
     <g id="polygon-far-foot" inkscape:label="Far Foot">
-      <polygon points="653,744 675,748 704,771 693,791 644,780 636,760" fill="#2B245F" stroke="#171438" stroke-width="4"/>
-      <polygon points="675,748 704,771 680,771 644,780" fill="#493B92"/>
-    </g>
-    <g id="polygon-far-arm-u" inkscape:label="Far Upper Arm">
-      <polygon points="701,279 725,281 747,392 727,402 704,347" fill="#372C80" stroke="#171438" stroke-width="4"/>
-      <polygon points="701,279 725,281 717,338 704,347" fill="#5A4AB0"/>
-    </g>
-    <g id="polygon-far-arm-l" inkscape:label="Far Lower Arm">
-      <polygon points="725,389 746,394 744,496 721,499 716,440" fill="#30266F" stroke="#171438" stroke-width="4"/>
-      <polygon points="725,389 746,394 741,446 716,440" fill="#4A3B94"/>
-    </g>
-    <g id="polygon-far-hand" inkscape:label="Far Hand">
-      <polygon points="718,489 744,489 754,516 737,532 713,518 708,500" fill="#40358D" stroke="#171438" stroke-width="4"/>
-      <polygon points="744,489 754,516 731,508 713,518" fill="#6554BE"/>
+      <polygon points="654,745 674,748 705,772 693,790 645,781 637,762" fill="#1C174A" stroke="#100D2D" stroke-width="4"/>
+      <polygon points="674,748 705,772 680,772 645,781" fill="#51388E"/>
     </g>
 
+    <g id="polygon-far-arm-u" inkscape:label="Far Upper Arm">
+      <polygon points="704,280 722,282 743,391 728,399 708,347" fill="#281F68" stroke="#100D2D" stroke-width="4"/>
+      <polygon points="704,280 722,282 716,338 708,347" fill="#654BB0"/>
+    </g>
+    <g id="polygon-far-arm-l" inkscape:label="Far Lower Arm">
+      <polygon points="728,390 744,394 742,495 723,498 719,440" fill="#211A59" stroke="#100D2D" stroke-width="4"/>
+      <polygon points="728,390 744,394 739,446 719,440" fill="#4B3487"/>
+    </g>
+    <g id="polygon-far-hand" inkscape:label="Far Hand">
+      <polygon points="721,490 742,490 750,514 736,528 716,517 712,501" fill="#392A80" stroke="#100D2D" stroke-width="4"/>
+      <polygon points="742,490 750,514 731,507 716,517" fill="#7659BF"/>
+    </g>
+
+    <!-- The pelvis starts exactly at the torso waist and fans outward into the
+         hips.  The upward-running hip edges continue the torso hourglass instead
+         of forming a boxy shelf beneath it. -->
     <g id="polygon-pelvis" inkscape:label="Pelvis">
-      <polygon points="567,438 679,438 690,487 655,518 587,518 554,486" fill="#4C3FA1" stroke="#171438" stroke-width="5"/>
-      <polygon points="567,438 622,450 587,518 554,486" fill="#6755BE"/>
-      <polygon points="622,450 679,438 690,487 655,518" fill="#3A317D"/>
+      <polygon points="588,438 654,438 697,488 662,522 582,522 542,488" fill="#5C3DB0" stroke="#100D2D" stroke-width="5"/>
+      <polygon points="588,438 621,458 582,522 542,488" fill="#8D5DDA"/>
+      <polygon points="621,458 654,438 697,488 662,522" fill="#3B287C"/>
+      <polygon points="572,482 621,458 671,482 644,507 598,507" fill="#B480F1" opacity="0.58"/>
     </g>
+
+    <!-- Shoulder points remain at the old attachment envelope, but the middle
+         collapses sharply into the waist so the silhouette reads athletic/feminine. -->
     <g id="polygon-torso" inkscape:label="Torso">
-      <polygon points="532,278 704,278 678,447 622,474 566,448" fill="#5445AB" stroke="#171438" stroke-width="6"/>
-      <polygon points="532,278 620,300 622,474 566,448" fill="#7563D4"/>
-      <polygon points="620,300 704,278 678,447 622,474" fill="#3D3389"/>
-      <polygon points="555,333 620,300 674,335 621,365" fill="#8A77E2" opacity="0.72"/>
+      <polygon points="532,282 704,282 677,355 654,440 622,465 588,440 560,355" fill="#5235A6" stroke="#100D2D" stroke-width="6"/>
+      <polygon points="532,282 619,300 610,356 588,440 560,355" fill="#8E63DD"/>
+      <polygon points="619,300 704,282 677,355 654,440 629,356" fill="#34236F"/>
+      <polygon points="566,320 619,300 670,320 629,356 610,356" fill="#C08AF5" opacity="0.68"/>
+      <polygon points="588,440 622,465 654,440 642,407 603,407" fill="#6C45BE"/>
     </g>
+
+    <!-- Head keeps the original rig pivot and faceted face. The ponytail is the
+         ONLY hair shape: a compact quadrilateral band plus one irregular
+         quadrilateral tail, split into a few triangular facets for shading. -->
     <g id="polygon-head" inkscape:label="Head">
-      <polygon points="576,176 632,156 682,188 700,238 669,285 612,300 565,270 548,218" fill="#5B4AB6" stroke="#171438" stroke-width="6"/>
-      <polygon points="576,176 632,156 620,224 548,218" fill="#8B77E1"/>
-      <polygon points="632,156 682,188 676,244 620,224" fill="#715FD1"/>
-      <polygon points="620,224 676,244 669,285 612,300 590,252" fill="#40358B"/>
-      <polygon points="548,218 620,224 590,252 565,270" fill="#6452BE"/>
-      <polygon points="601,219 624,208 647,220 637,237 611,238" fill="#C7BBFF" opacity="0.55"/>
+      <!-- Simple hair band: deliberately blocky and readable at sprite scale. -->
+      <polygon points="662,185 687,181 696,195 687,210 664,211 657,198" fill="#5D2B9F" stroke="#100D2D" stroke-width="5"/>
+      <polygon points="665,187 684,184 688,201 663,207" fill="#B45CF0" opacity="0.72"/>
+
+      <!-- One simple ponytail mass. The outer silhouette is effectively an
+           irregular quad; four triangular facets give it low-poly shading. -->
+      <polygon points="689,187 767,159 800,192 706,224" fill="#7132B4" stroke="#100D2D" stroke-width="5"/>
+      <polygon points="689,187 767,159 735,194" fill="#C061F3"/>
+      <polygon points="767,159 800,192 735,194" fill="#8F42D0"/>
+      <polygon points="689,187 735,194 706,224" fill="#502480"/>
+      <polygon points="735,194 800,192 706,224" fill="#6B2DA6"/>
+
+      <!-- Faceted head; no fringe, cap, or secondary back-hair layer. -->
+      <polygon points="579,174 630,157 675,186 690,224 673,263 643,291 607,293 574,266 557,224" fill="#5C3CAE" stroke="#100D2D" stroke-width="6"/>
+      <polygon points="579,174 630,157 620,219 557,224" fill="#A870E7"/>
+      <polygon points="630,157 675,186 675,221 648,207 620,219" fill="#7E53CE"/>
+      <polygon points="620,219 675,221 673,263 643,291 615,266" fill="#35246F"/>
+      <polygon points="557,224 620,219 615,266 607,293 574,266" fill="#6744B9"/>
+      <!-- small bright visor/eye plane -->
+      <polygon points="598,220 621,209 645,219 636,235 609,237" fill="#E4CEFF" opacity="0.72"/>
+      <polygon points="609,237 636,235 624,247" fill="#C55BFF" opacity="0.8"/>
     </g>
 
     <g id="polygon-near-leg-u" inkscape:label="Near Upper Leg">
-      <polygon points="568,454 592,456 588,613 560,618 554,540" fill="#6654C7" stroke="#171438" stroke-width="4"/>
-      <polygon points="568,454 592,456 579,540 554,540" fill="#917EE7"/>
+      <!-- Strong thigh taper: the proximal leg fills the hip, then narrows toward
+           the knee instead of reading as a uniform-width stick. -->
+      <polygon points="550,450 603,454 592,536 585,612 560,617 550,538" fill="#7950CC" stroke="#100D2D" stroke-width="4"/>
+      <polygon points="550,450 603,454 579,539 550,538" fill="#B578F0"/>
+      <polygon points="603,454 592,536 579,539 588,484" fill="#D09AFF" opacity="0.48"/>
     </g>
     <g id="polygon-near-leg-l" inkscape:label="Near Lower Leg">
-      <polygon points="560,605 585,612 562,748 535,750 538,674" fill="#5947B5" stroke="#171438" stroke-width="4"/>
-      <polygon points="560,605 585,612 565,683 538,674" fill="#806DD8"/>
+      <polygon points="556,606 588,611 565,747 543,750 544,676" fill="#6841B9" stroke="#100D2D" stroke-width="4"/>
+      <polygon points="556,606 588,611 568,682 544,676" fill="#9866DE"/>
     </g>
     <g id="polygon-near-foot" inkscape:label="Near Foot">
-      <polygon points="535,741 562,744 584,766 568,791 516,783 505,762" fill="#5141A8" stroke="#171438" stroke-width="4"/>
-      <polygon points="562,744 584,766 550,769 516,783" fill="#7966D1"/>
+      <polygon points="536,742 560,744 585,766 568,790 517,783 506,763" fill="#5B38A8" stroke="#100D2D" stroke-width="4"/>
+      <polygon points="560,744 585,766 550,770 517,783" fill="#9A66DF"/>
     </g>
+
     <g id="polygon-near-arm-u" inkscape:label="Near Upper Arm">
-      <polygon points="510,277 535,282 512,399 485,401 486,338" fill="#6F5BD2" stroke="#171438" stroke-width="4"/>
-      <polygon points="510,277 535,282 508,345 486,338" fill="#A08CF0"/>
+      <polygon points="512,279 532,283 511,398 489,400 490,339" fill="#8256D5" stroke="#100D2D" stroke-width="4"/>
+      <polygon points="512,279 532,283 508,345 490,339" fill="#C187F5"/>
     </g>
     <g id="polygon-near-arm-l" inkscape:label="Near Lower Arm">
-      <polygon points="484,390 509,397 504,504 478,506 472,444" fill="#604CC0" stroke="#171438" stroke-width="4"/>
-      <polygon points="484,390 509,397 498,451 472,444" fill="#8A76E0"/>
+      <polygon points="488,391 508,397 502,503 481,505 476,444" fill="#7145C6" stroke="#100D2D" stroke-width="4"/>
+      <polygon points="488,391 508,397 497,451 476,444" fill="#A86FEA"/>
     </g>
     <g id="polygon-near-hand" inkscape:label="Near Hand">
-      <polygon points="476,494 504,494 514,517 499,537 472,526 466,507" fill="#735FD5" stroke="#171438" stroke-width="4"/>
-      <polygon points="504,494 514,517 491,512 472,526" fill="#A391F2"/>
+      <polygon points="479,495 502,495 511,516 498,533 475,525 469,507" fill="#8658D8" stroke="#100D2D" stroke-width="4"/>
+      <polygon points="502,495 511,516 491,511 475,525" fill="#C18AF4"/>
     </g>
+
     <g id="polygon-sword" inkscape:label="Polygon Sword">
-      <polygon points="481,507 498,495 423,386 408,397" fill="#D6D4FF" stroke="#171438" stroke-width="4"/>
-      <polygon points="498,495 423,386 431,416 489,510" fill="#8F8AD1"/>
-      <polygon points="408,397 423,386 410,365 396,383" fill="#F2F0FF" stroke="#171438" stroke-width="3"/>
-      <polygon points="464,506 510,492 515,505 470,521" fill="#2A235D" stroke="#171438" stroke-width="4"/>
-      <polygon points="480,513 492,525 478,548 463,534" fill="#413785" stroke="#171438" stroke-width="4"/>
+      <polygon points="481,507 498,495 423,386 408,397" fill="#E8E0FF" stroke="#100D2D" stroke-width="4"/>
+      <polygon points="498,495 423,386 431,416 489,510" fill="#A66BE5"/>
+      <polygon points="408,397 423,386 410,365 396,383" fill="#FFF8FF" stroke="#100D2D" stroke-width="3"/>
+      <polygon points="464,506 510,492 515,505 470,521" fill="#21154D" stroke="#100D2D" stroke-width="4"/>
+      <polygon points="480,513 492,525 478,548 463,534" fill="#5F369D" stroke="#100D2D" stroke-width="4"/>
     </g>
   </g>
 </svg>
