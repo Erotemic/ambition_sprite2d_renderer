@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSlider,
+    QSizePolicy,
     QSpinBox,
     QStackedWidget,
     QTableWidget,
@@ -61,6 +62,7 @@ class TimelinePanel(QWidget):
     def __init__(self, state: EditorState, parent=None) -> None:
         super().__init__(parent)
         self.state = state
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self._refreshing = False
         self.timer = QTimer(self)
         self.timer.timeout.connect(self._tick)
@@ -116,12 +118,12 @@ class TimelinePanel(QWidget):
         # ---- pose-key overview ------------------------------------------------
         pose_row = QHBoxLayout()
         self.pose_status = QLabel()
-        self.pose_status.setMinimumWidth(360)
+        self.pose_status.setWordWrap(True)
         pose_row.addWidget(self.pose_status, stretch=1)
         self.prev_pose_btn = QPushButton("◀ previous pose")
         self.prev_pose_btn.clicked.connect(self._jump_previous_pose)
         pose_row.addWidget(self.prev_pose_btn)
-        self.pose_key_btn = QPushButton("Mark key pose")
+        self.pose_key_btn = QPushButton("Mark pose bookmark")
         self.pose_key_btn.clicked.connect(self._toggle_pose_key)
         pose_row.addWidget(self.pose_key_btn)
         self.next_pose_btn = QPushButton("next pose ▶")
@@ -134,7 +136,6 @@ class TimelinePanel(QWidget):
 
         plant_row = QHBoxLayout()
         self.plant_status = QLabel()
-        self.plant_status.setMinimumWidth(320)
         self.plant_status.setWordWrap(True)
         plant_row.addWidget(self.plant_status, stretch=1)
         self.plant_selected_btn = QPushButton("Pin selected part")
@@ -158,9 +159,9 @@ class TimelinePanel(QWidget):
         root.addLayout(plant_row)
 
         self.pose_help = QLabel(
-            "Diamonds are important poses; dots and gray bars are raw channel keys. "
-            "When every frame is keyed, simplify the clip so the frames between poses "
-            "become editable interpolations."
+            "Diamonds are POSE BOOKMARKS, not animation keyframes. Gold dots and gray "
+            "bars are real per-channel keys. A first edit now preserves every other "
+            "frame; sparse keys still affect the interpolated frames between them."
         )
         self.pose_help.setWordWrap(True)
         self.pose_help.setStyleSheet("color: #aaa4b2; padding: 0 4px 4px 4px;")
@@ -455,7 +456,7 @@ class TimelinePanel(QWidget):
             f"{len(keyed)} channel key{'' if len(keyed) == 1 else 's'} here"
             f"{dense_note}"
         )
-        self.pose_key_btn.setText("Unmark key pose" if is_pose else "Mark key pose")
+        self.pose_key_btn.setText("Unmark pose bookmark" if is_pose else "Mark pose bookmark")
         self.prev_pose_btn.setEnabled(previous is not None)
         self.next_pose_btn.setEnabled(following is not None)
         self.prev_pose_btn.setText(

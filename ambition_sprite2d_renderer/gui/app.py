@@ -18,11 +18,14 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
+    QAbstractScrollArea,
     QDockWidget,
     QFileDialog,
     QInputDialog,
     QMainWindow,
     QMessageBox,
+    QScrollArea,
+    QSizePolicy,
     QTabWidget,
     QToolBar,
 )
@@ -32,6 +35,7 @@ from .animation_preview import AnimationPreviewPanel
 from .canvas import CanvasWidget
 from .geometry_panel import GeometryPanel
 from .panels import BonesPanel, PalettePanel, PartsPanel
+from .pose_sheet import PoseSheetPanel
 from .state import EditorState
 from .timeline import TimelinePanel
 
@@ -48,11 +52,30 @@ class MainWindow(QMainWindow):
         # native title-bar button enabled.  The View menu also exposes an
         # application-side maximize/restore command for environments where the
         # compositor ignores the title-bar request.
-        self.setWindowFlag(Qt.WindowType.WindowMaximizeButtonHint, True)
+        flags = self.windowFlags()
+        flags |= (
+            Qt.WindowType.WindowSystemMenuHint
+            | Qt.WindowType.WindowMinimizeButtonHint
+            | Qt.WindowType.WindowMaximizeButtonHint
+            | Qt.WindowType.WindowCloseButtonHint
+        )
+        self.setWindowFlags(flags)
+        # Never let child size hints turn this back into a de-facto fixed-size
+        # window. Docks may scroll; the desktop owns the outer window size.
+        self.setMinimumSize(360, 300)
+        self.setMaximumSize(16_777_215, 16_777_215)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.state = state
         self.canvas = CanvasWidget(state)
-        self.setCentralWidget(self.canvas)
+        self.pose_sheet = PoseSheetPanel(state)
+        self.main_views = QTabWidget()
+        self.main_views.addTab(self.canvas, "Single pose")
+        self.main_views.addTab(self.pose_sheet, "Pose sheet")
+        self.setCentralWidget(self.main_views)
         self.canvas.statusMessage.connect(lambda m: self.statusBar().showMessage(m, 4000))
+        self.pose_sheet.canvas.statusMessage.connect(
+            lambda m: self.statusBar().showMessage(m, 4000)
+        )
 
         left = QDockWidget("Bones", self)
         left.setWidget(BonesPanel(state))
@@ -69,16 +92,31 @@ class MainWindow(QMainWindow):
         self.preview_dock = QDockWidget("Live Loop Preview", self)
         self.preview = AnimationPreviewPanel(state)
         self.preview_dock.setWidget(self.preview)
-        self.preview_dock.setMinimumWidth(250)
-        self.preview_dock.setMinimumHeight(230)
+        self.preview_dock.setMinimumSize(120, 120)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.preview_dock)
         self.splitDockWidget(right, self.preview_dock, Qt.Orientation.Vertical)
 
-        bottom = QDockWidget("Timeline", self)
+        self.animation_dock = QDockWidget("Timeline", self)
         self.timeline = TimelinePanel(state)
-        bottom.setWidget(self.timeline)
-        bottom.setMinimumHeight(300)
-        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, bottom)
+        self.timeline.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.timeline_scroll = QScrollArea()
+        # IMPORTANT: the scroll area must resize the TimelinePanel to the dock's
+        # viewport.  The previous ``False`` setting froze the child at its
+        # content size: dragging the bottom-dock splitter made the dock taller
+        # but left the actual timeline/editor short, which looked and behaved
+        # like the Timeline could no longer grow vertically.
+        self.timeline_scroll.setWidgetResizable(True)
+        self.timeline_scroll.setSizeAdjustPolicy(QAbstractScrollArea.SizeAdjustPolicy.AdjustIgnored)
+        self.timeline_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.timeline_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.timeline_scroll.setMinimumSize(1, 1)
+        self.timeline_scroll.setWidget(self.timeline)
+        self.animation_dock.setWidget(self.timeline_scroll)
+        self.animation_dock.setMinimumHeight(80)
+        self.animation_dock.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.animation_dock)
 
         self._build_menus()
         state.geometryVisibilityChanged.connect(self._sync_view_actions)
@@ -88,7 +126,15 @@ class MainWindow(QMainWindow):
         state.docChanged.connect(self._refresh_title)
         state.dirtyChanged.connect(self._refresh_title)
         self._refresh_title()
-        self.resize(1480, 920)
+        screen = QApplication.primaryScreen()
+        if screen is not None:
+            available = screen.availableGeometry()
+            self.resize(
+                min(1480, max(360, int(available.width() * 0.92))),
+                min(920, max(300, int(available.height() * 0.90))),
+            )
+        else:
+            self.resize(1200, 800)
 
     # ---- menus ------------------------------------------------------------------
 
@@ -124,11 +170,11 @@ class MainWindow(QMainWindow):
             self._paste_context,
         )
         editm.addSeparator()
-        self._action(editm, "Mark / unmark key pose", "P", self.timeline._toggle_pose_key)
+        self._action(editm, "Mark / unmark pose bookmark", "P", self.timeline._toggle_pose_key)
         self._action(editm, "Key selected", "I", self.timeline._key_selected_here)
         self._action(editm, "Key full pose", "Shift+I", self.timeline._key_full_pose_here)
-        self._action(editm, "Previous key pose", "[", self.timeline._jump_previous_pose)
-        self._action(editm, "Next key pose", "]", self.timeline._jump_next_pose)
+        self._action(editm, "Previous pose bookmark", "[", self.timeline._jump_previous_pose)
+        self._action(editm, "Next pose bookmark", "]", self.timeline._jump_next_pose)
         editm.addSeparator()
         self._action(editm, "Rename character…", None, self.rename_character)
         self._action(editm, "Frame settings…", None, self.frame_settings)
@@ -194,6 +240,21 @@ class MainWindow(QMainWindow):
         preview_action = self.preview_dock.toggleViewAction()
         preview_action.setText("Live loop preview")
         viewm.addAction(preview_action)
+        animation_action = self.animation_dock.toggleViewAction()
+        animation_action.setText("Timeline")
+        viewm.addAction(animation_action)
+        self._action(
+            viewm,
+            "Show pose sheet",
+            "Ctrl+Shift+P",
+            lambda: self.main_views.setCurrentWidget(self.pose_sheet),
+        )
+        self._action(
+            viewm,
+            "Show single pose",
+            "Ctrl+Shift+1",
+            lambda: self.main_views.setCurrentWidget(self.canvas),
+        )
         viewm.addSeparator()
         maximize_action = self._action(
             viewm,

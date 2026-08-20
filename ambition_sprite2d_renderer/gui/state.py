@@ -255,21 +255,28 @@ class EditorState(QObject):
         return channel_key_frames(self.clip(), channel)
 
     def selected_animation_channels(self) -> list[str]:
-        """Channels most directly controlled by the selected bone/endpoint."""
-        channels = self.clip().get("channels", {})
+        """Channels most directly controlled by the selected bone/endpoint.
+
+        Return the *authoring vocabulary* even when a channel has not been
+        materialized yet. ``insert_keys_here`` can now seed an absent channel
+        from the rig's pre-edit value, so a static bone and an IK endpoint are
+        both legitimate targets for **Key selected**.
+        """
         bone = self.selected_bone
         if not bone:
             return []
         leg = self.doc.foot_leg_for_bone(bone)
         if leg is not None and bone == leg.get("foot"):
-            prefix = leg.get("channel_prefix", "foot")
-            result = [
-                name for name in (f"{prefix}_x", f"{prefix}_lift", f"{prefix}_pitch")
-                if name in channels
-            ]
-            if result:
+            prefix = str(leg.get("channel_prefix", "foot"))
+            return [f"{prefix}_x", f"{prefix}_lift", f"{prefix}_pitch"]
+        for chain in self.doc.ik_chains:
+            if bone == chain.get("end"):
+                prefix = str(chain.get("channel_prefix", "target"))
+                result = [f"{prefix}_x", f"{prefix}_y"]
+                if chain.get("end"):
+                    result.append(f"{prefix}_pitch")
                 return result
-        return [bone] if bone in channels else []
+        return [bone] if self.doc.bone(bone) is not None else []
 
     def _fk_endpoint_chain_for_bone(self, bone_name: str) -> Optional[tuple[str, str]]:
         """Two animated segments ending at ``bone_name``'s origin."""
@@ -898,8 +905,11 @@ class EditorState(QObject):
         if not resolved:
             return 0
         sampled = self.doc.sample(self.clip_name, self.t())
-        values = {name: sampled.get(name, 0.0) for name in resolved}
-        return self.write_keys(values)
+        values = {
+            name: sampled.get(name, self._unkeyed_channel_value(name, self.frame_idx))
+            for name in resolved
+        }
+        return self.write_keys(values, force_new_channels=True)
 
     def dense_keyed_channels(self) -> list[str]:
         """Channels carrying explicit keys on effectively every clip frame."""
@@ -988,6 +998,17 @@ class EditorState(QObject):
         if self._undo:
             self._undo.pop()
 
+    def discard_last_undo_if_unchanged(self) -> bool:
+        """Drop the latest speculative snapshot when the document is identical.
+
+        Mouse presses create an undo boundary before a drag begins. A simple
+        click/release used only for selection must not consume an Undo step.
+        """
+        if self._undo and self._undo[-1] == self._snapshot():
+            self._undo.pop()
+            return True
+        return False
+
     def undo(self) -> bool:
         if not self._undo:
             return False
@@ -1047,8 +1068,119 @@ class EditorState(QObject):
 
     # ---- Key authoring (canvas drags + timeline edits) ---------------------
 
+    def _unkeyed_channel_value(self, channel: str, frame_idx: int) -> float:
+        """Value an absent channel contributes before it is first authored.
+
+        An absent animation channel is not always numerically zero. IK targets
+        inherit their rig ``rest_*`` values, body opacity defaults to one, and a
+        follow-lower hand pitch is derived from the solved skeleton.  First-key
+        insertion uses this helper to bake the *pre-edit* discrete frame values
+        before changing the touched frame.  Without that preservation a newly
+        created one-key channel is constant over the entire clip, so the first
+        drag of a previously static bone unexpectedly changes every pose.
+        """
+        frame_idx = max(0, min(self.frames() - 1, int(frame_idx)))
+        if channel in {"root_x", "root_y"} or channel.startswith("bone."):
+            return 0.0
+        if channel == "body_opacity":
+            return 1.0
+        try:
+            if channel in self.doc.build_skeleton().bones:
+                return 0.0
+        except Exception:  # noqa: BLE001 - incomplete rigs stay editable
+            pass
+
+        for leg in self.doc.ik_legs:
+            prefix = str(leg.get("channel_prefix", "foot"))
+            defaults = {
+                f"{prefix}_x": float(leg.get("rest_x", 0.0)),
+                f"{prefix}_lift": float(leg.get("rest_lift", 0.0)),
+                f"{prefix}_pitch": float(leg.get("rest_pitch", 0.0)),
+                f"{prefix}_bend": float(leg.get("bend", 1.0)),
+            }
+            if channel in defaults:
+                return defaults[channel]
+
+        for chain in self.doc.ik_chains:
+            prefix = str(chain.get("channel_prefix", "target"))
+            if channel == f"{prefix}_x":
+                return float(chain.get("rest_x", 0.0))
+            if channel == f"{prefix}_y":
+                return float(chain.get("rest_y", 0.0))
+            if channel == f"{prefix}_bend":
+                return float(chain.get("bend", 1.0))
+            if channel == f"{prefix}_pitch":
+                if str(chain.get("pitch_mode", "world")) == "world":
+                    return float(chain.get("rest_pitch", 0.0))
+                end = chain.get("end")
+                if end:
+                    try:
+                        t = self.doc.frame_time(self.clip_name, frame_idx)
+                        world, _params = self.doc.solve(self.clip_name, t)
+                        if end in world:
+                            return float(world[end].angle)
+                    except Exception:  # noqa: BLE001
+                        pass
+                return 0.0
+
+        # Per-part visibility channels are hidden unless explicitly driven.
+        if any(part.get("opacity_channel") == channel for part in self.doc.parts):
+            return 0.0
+        return 0.0
+
+    def _unkeyed_channel_varies_by_frame(self, channel: str) -> bool:
+        """Whether the implicit value cannot be represented by one constant.
+
+        Most absent channels mean a fixed rest value. The exception currently
+        present in the rig format is a generic IK end using ``follow_lower``
+        pitch: its implicit world pitch follows a moving parent and must be
+        sampled across the clip before materializing that channel.
+        """
+        for chain in self.doc.ik_chains:
+            prefix = str(chain.get("channel_prefix", "target"))
+            if channel == f"{prefix}_pitch":
+                return str(chain.get("pitch_mode", "world")) == "follow_lower"
+        return False
+
+    def _seed_unkeyed_channel(self, channel: str) -> dict:
+        """Materialize baseline guards without changing other authored frames.
+
+        A single first key would make the whole channel constant. For ordinary
+        fixed rest values, the touched frame plus its immediate neighbors are
+        enough to guard every other discrete pose while keeping the channel
+        sparse. Frame-varying implicit values (currently follow-lower IK pitch)
+        are sampled densely because there is no single baseline scalar to guard.
+        """
+        frames = self.frames()
+        current = self.frame_idx
+        if self._unkeyed_channel_varies_by_frame(channel):
+            seed_frames = list(range(frames))
+        elif frames <= 1:
+            seed_frames = [0]
+        elif bool(self.clip().get("loop", True)):
+            seed_frames = sorted({(current - 1) % frames, current, (current + 1) % frames})
+        else:
+            seed_frames = sorted({max(0, current - 1), current, min(frames - 1, current + 1)})
+        return {
+            "keys": [
+                [
+                    round(self.doc.frame_time(self.clip_name, i), 4),
+                    round(self._unkeyed_channel_value(channel, i), 3),
+                    "linear",
+                ]
+                for i in seed_frames
+            ]
+        }
+
     @profile
-    def _write_key_value(self, channel: str, value: float, ease: str) -> bool:
+    def _write_key_value(
+        self,
+        channel: str,
+        value: float,
+        ease: str,
+        *,
+        force_new_channel: bool = False,
+    ) -> bool:
         """Write one key without emitting signals. Return whether data changed."""
         clip = self.clip()
         channels = clip.setdefault("channels", {})
@@ -1075,7 +1207,11 @@ class EditorState(QObject):
             channels[channel] = spec
             changed = True
         elif spec is None:
-            spec = {"keys": []}
+            rounded = round(float(value), 3)
+            baseline = round(self._unkeyed_channel_value(channel, self.frame_idx), 3)
+            if rounded == baseline and not force_new_channel:
+                return False
+            spec = self._seed_unkeyed_channel(channel)
             channels[channel] = spec
             changed = True
 
@@ -1099,6 +1235,8 @@ class EditorState(QObject):
         self,
         values: Mapping[str, float],
         ease: str = "smooth",
+        *,
+        force_new_channels: bool = False,
     ) -> int:
         """Write multiple current-frame keys and notify the editor once.
 
@@ -1109,7 +1247,12 @@ class EditorState(QObject):
         changed = tuple(
             channel
             for channel, value in values.items()
-            if self._write_key_value(channel, value, ease)
+            if self._write_key_value(
+                channel,
+                value,
+                ease,
+                force_new_channel=force_new_channels,
+            )
         )
         if changed:
             pose_keys, explicit = self.pose_key_frames()

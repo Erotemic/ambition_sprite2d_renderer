@@ -86,7 +86,10 @@ class CanvasWidget(QWidget):
         self._geometry_drag: Optional[dict] = None
         self._frame_cache: OrderedDict[tuple, QImage] = OrderedDict()
         self._solve_cache: OrderedDict[tuple, tuple] = OrderedDict()
-        self.setMinimumSize(360, 360)
+        # Keep the viewport usable on small displays.  The previous 360x360
+        # hard minimum combined with dock minimums to make the entire editor
+        # effectively non-resizable on laptop-class screens.
+        self.setMinimumSize(120, 120)
         self.setMouseTracking(True)
         state.poseChanged.connect(self._on_render_changed)
         state.timeChanged.connect(self._on_time_changed)
@@ -1421,6 +1424,8 @@ class CanvasWidget(QWidget):
             # Refresh the bone property form once after the interactive drag,
             # rather than rebuilding every side panel per mouse event.
             self.state.docChanged.emit()
+        if drag_mode in {"rotate", "foot", "pin", "offset", "limb_ik", "geometry"}:
+            self.state.discard_last_undo_if_unchanged()
 
     def wheelEvent(self, event) -> None:
         factor = 1.25 if event.angleDelta().y() > 0 else 0.8

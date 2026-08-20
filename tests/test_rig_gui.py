@@ -83,6 +83,54 @@ class TestEditorState:
         assert "keys" in spec and "expr" not in spec
         assert len(spec["keys"]) == int(doc.clips["idle"]["frames"])
 
+    def test_first_key_on_absent_bone_channel_preserves_every_other_frame(self):
+        from ambition_sprite2d_renderer.gui.state import EditorState
+
+        doc = RigDocument.new_empty("first_key_is_local")
+        doc.clips["idle"]["frames"] = 5
+        state = EditorState(doc, None)
+        state.set_frame(2)
+
+        assert "pelvis" not in state.clip()["channels"]
+        assert state.write_key("pelvis", 35.0)
+        spec = state.clip()["channels"]["pelvis"]
+        assert len(spec["keys"]) == 3
+        values = [
+            doc.sample("idle", doc.frame_time("idle", frame))["pelvis"]
+            for frame in range(5)
+        ]
+        assert values == pytest.approx([0.0, 0.0, 35.0, 0.0, 0.0])
+
+    def test_key_selected_can_materialize_a_previously_static_bone(self):
+        from ambition_sprite2d_renderer.gui.state import EditorState
+
+        doc = RigDocument.new_empty("key_static_bone")
+        doc.clips["idle"]["frames"] = 4
+        state = EditorState(doc, None)
+        state.selected_bone = "pelvis"
+        state.set_frame(1)
+        # An explicit Key selected command is allowed to materialize the rest
+        # value so it becomes a real interpolation anchor without changing any
+        # pose. Baseline guard keys keep a later edit local.
+        assert state.selected_animation_channels() == ["pelvis"]
+        assert state.insert_keys_here() == 1
+        assert "pelvis" in state.clip()["channels"]
+        before = [
+            doc.sample("idle", doc.frame_time("idle", frame))["pelvis"]
+            for frame in range(4)
+        ]
+        assert before == pytest.approx([0.0, 0.0, 0.0, 0.0])
+        assert state.write_key("pelvis", 12.0)
+        assert state.keyed_channels_at_frame(1) == ["pelvis"]
+
+    def test_noop_speculative_undo_boundary_is_removed(self):
+        from ambition_sprite2d_renderer.gui.state import EditorState
+
+        state = EditorState(RigDocument.new_empty("noop_undo"), None)
+        state.push_undo()
+        assert state.discard_last_undo_if_unchanged()
+        assert not state.undo()
+
     def test_write_keys_batches_notifications(self, doc):
         from ambition_sprite2d_renderer.gui.state import EditorState
 
@@ -265,7 +313,7 @@ class TestCanvas:
         assert len(calls) == 2
 
     def test_rotate_drag_writes_key(self, window, qapp):
-        from PySide6.QtCore import QPointF, Qt
+        from PySide6.QtCore import QEvent, QPointF, Qt
         from PySide6.QtGui import QMouseEvent
 
         canvas = window.canvas
@@ -280,8 +328,6 @@ class TestCanvas:
                 etype, QPointF(pos), Qt.MouseButton.LeftButton,
                 Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier,
             )
-
-        from PySide6.QtCore import QEvent
 
         canvas.mousePressEvent(mouse(QEvent.Type.MouseButtonPress, origin))
         assert state.selected_bone == "near_arm_u"
@@ -617,3 +663,167 @@ def test_terminal_signal_handler_requests_clean_qt_shutdown(qapp):
         signal.signal(signal.SIGINT, old_int)
         if hasattr(signal, "SIGTERM") and old_term is not None:
             signal.signal(signal.SIGTERM, old_term)
+
+class TestResponsiveWindowAndPoseSheet:
+    def test_main_window_can_shrink_to_laptop_scale(self, window, qapp):
+        # The old combined child minimums made the main window effectively fixed
+        # at a desktop-sized layout. This is intentionally below the old canvas
+        # + timeline floor and should now be a legal outer-window size.
+        window.resize(800, 520)
+        qapp.processEvents()
+        assert window.minimumWidth() <= 800
+        assert window.minimumHeight() <= 520
+        assert window.width() <= 900
+        assert window.height() <= 620
+
+    def test_window_keeps_native_maximize_capability(self, window):
+        from PySide6.QtCore import Qt
+
+        assert window.windowFlags() & Qt.WindowType.WindowMaximizeButtonHint
+        assert window.maximumWidth() > 10_000
+        assert window.maximumHeight() > 10_000
+
+    def test_timeline_dock_can_grow_and_its_panel_fills_the_extra_height(self, window, qapp):
+        from PySide6.QtCore import Qt
+
+        window.resize(1100, 900)
+        window.resizeDocks([window.animation_dock], [420], Qt.Orientation.Vertical)
+        qapp.processEvents()
+        assert window.timeline_scroll.widgetResizable()
+        assert window.animation_dock.height() >= 300
+        assert window.timeline.height() >= window.timeline_scroll.viewport().height() - 4
+
+    def test_pose_sheet_has_one_column_per_frame(self, window, qapp):
+        window.state.set_clip("walk")
+        qapp.processEvents()
+        canvas = window.pose_sheet.canvas
+        assert canvas.visible_frames() == list(range(window.state.frames()))
+        assert canvas.sizeHint().width() == window.state.frames() * canvas.column_width
+
+    def test_pose_sheet_click_selects_a_frame(self, window, qapp):
+        from PySide6.QtCore import QEvent, QPointF, Qt
+        from PySide6.QtGui import QMouseEvent
+
+        window.state.set_clip("walk")
+        canvas = window.pose_sheet.canvas
+        target = min(2, window.state.frames() - 1)
+        x = target * canvas.column_width + canvas.column_width / 2
+        event = QMouseEvent(
+            QEvent.Type.MouseButtonPress,
+            QPointF(x, 80),
+            Qt.MouseButton.LeftButton,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+        )
+        canvas.mousePressEvent(event)
+        qapp.processEvents()
+        assert window.state.frame_idx == target
+
+    def test_pose_sheet_can_show_only_key_poses(self, window, qapp):
+        window.state.set_clip("walk")
+        window.state.set_pose_key(0, True)
+        window.state.set_pose_key(min(2, window.state.frames() - 1), True)
+        canvas = window.pose_sheet.canvas
+        canvas.set_key_poses_only(True)
+        qapp.processEvents()
+        visible = canvas.visible_frames()
+        assert visible
+        assert set(visible) == set(window.state.pose_key_frames()[0])
+
+    def test_pose_sheet_keeps_pose_bookmarks_distinct_from_real_channel_keys(self):
+        from ambition_sprite2d_renderer.gui.state import EditorState
+
+        doc = RigDocument.new_empty("bookmark_is_not_a_keyframe")
+        doc.clips["idle"]["frames"] = 4
+        state = EditorState(doc, None)
+        state.set_pose_key(2, True)
+        pose_frames, explicit = state.pose_key_frames()
+        assert explicit
+        assert 2 in pose_frames
+        assert state.keyed_channels_at_frame(2) == []
+        assert state.channel_key_frames() == {}
+
+class TestEditablePrimaryPoseSheet:
+    def test_pose_sheet_is_a_primary_center_view_and_timeline_is_independent(self, window):
+        assert window.centralWidget() is window.main_views
+        assert window.main_views.indexOf(window.canvas) >= 0
+        assert window.main_views.indexOf(window.pose_sheet) >= 0
+        assert window.animation_dock.widget() is not window.pose_sheet
+        assert window.animation_dock.windowTitle() == "Timeline"
+
+    def test_pose_sheet_fk_drag_writes_the_clicked_columns_frame(self, window, qapp):
+        from PySide6.QtCore import QEvent, QPointF, Qt
+        from PySide6.QtGui import QMouseEvent
+
+        state = window.state
+        state.set_clip("idle")
+        canvas = window.pose_sheet.canvas
+        canvas.set_key_poses_only(False)
+        canvas.set_column_width(180)
+        canvas.set_viewport_height(480)
+        target_frame = min(2, state.frames() - 1)
+        column = target_frame
+        rect = canvas._column_rect(column)
+        world = canvas._solve_frame(target_frame)
+        origin = canvas._map_point(world["near_arm_u"].origin, rect)
+
+        def mouse(kind, pos, mods=Qt.KeyboardModifier.NoModifier):
+            return QMouseEvent(
+                kind,
+                QPointF(pos),
+                Qt.MouseButton.LeftButton,
+                Qt.MouseButton.LeftButton,
+                mods,
+            )
+
+        canvas.mousePressEvent(mouse(QEvent.Type.MouseButtonPress, origin))
+        assert state.frame_idx == target_frame
+        assert state.selected_bone == "near_arm_u"
+        target = QPointF(origin.x() + 32.0, origin.y() + 32.0)
+        canvas.mouseMoveEvent(mouse(QEvent.Type.MouseMove, target))
+        canvas.mouseReleaseEvent(mouse(QEvent.Type.MouseButtonRelease, target))
+
+        keys = state.clip()["channels"]["near_arm_u"]["keys"]
+        target_time = state.doc.frame_time(state.clip_name, target_frame)
+        assert any(abs(float(key[0]) - target_time) < 1e-4 for key in keys)
+        assert target_frame in state.pose_key_frames()[0]
+
+    def test_pose_sheet_alt_drag_keys_a_two_bone_chain_in_that_column(self, window):
+        from PySide6.QtCore import QEvent, QPointF, Qt
+        from PySide6.QtGui import QMouseEvent
+
+        state = window.state
+        state.set_clip("idle")
+        canvas = window.pose_sheet.canvas
+        canvas.set_key_poses_only(False)
+        canvas.set_column_width(180)
+        canvas.set_viewport_height(480)
+        target_frame = min(1, state.frames() - 1)
+        rect = canvas._column_rect(target_frame)
+        world = canvas._solve_frame(target_frame)
+        # player_robot_fable's near hand artwork ends at the near lower arm tip;
+        # selecting that segment's endpoint exposes the ordinary two-bone arm chain.
+        endpoint = canvas._map_point(world["near_arm_l"].tip, rect)
+
+        def mouse(kind, pos, mods):
+            return QMouseEvent(
+                kind,
+                QPointF(pos),
+                Qt.MouseButton.LeftButton,
+                Qt.MouseButton.LeftButton,
+                mods,
+            )
+
+        alt = Qt.KeyboardModifier.AltModifier
+        canvas.mousePressEvent(mouse(QEvent.Type.MouseButtonPress, endpoint, alt))
+        if canvas._drag_mode != "limb_ik":
+            pytest.skip("template endpoint is document-IK or has no free two-bone chain")
+        target = QPointF(endpoint.x() + 18.0, endpoint.y() - 12.0)
+        canvas.mouseMoveEvent(mouse(QEvent.Type.MouseMove, target, alt))
+        canvas.mouseReleaseEvent(
+            mouse(QEvent.Type.MouseButtonRelease, target, Qt.KeyboardModifier.NoModifier)
+        )
+        target_time = state.doc.frame_time(state.clip_name, target_frame)
+        keyed = state.keyed_channels_at_frame(target_frame)
+        assert any(name in keyed for name in ("near_arm_u", "near_arm_l"))
+        assert target_time == pytest.approx(state.doc.frame_time(state.clip_name, state.frame_idx))
