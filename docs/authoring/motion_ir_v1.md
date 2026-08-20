@@ -258,6 +258,14 @@ canonical named pose is a complete `Skeleton2D` in the ordinary 2D viewport, so
 idle, anticipation, contact, recovery, and other poses can be compared and
 manipulated side-by-side rather than reduced to timeline thumbnails.
 
+Generated preview PNGs are Godot-imported editor resources. `open` and
+`headless-check` therefore run Godot's noninteractive `--import` pass after
+generation and before loading a pose sheet. This keeps `.godot/imported` a
+disposable cache while making a clean checkout behave the same as a project that
+has already been opened interactively. The pilot's generated `*.gd.uid` script
+sidecars are also ignored because committed plugin references remain path-based
+and generated scenes/resources do not belong to the source contract.
+
 The mapping is intentionally direct:
 
 ```text

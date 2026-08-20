@@ -159,12 +159,17 @@ system Godot dependency. The pinned version is recorded in
 `godot/pose_editor/GODOT_VERSION` and should only be bumped together with a
 headless editor round-trip check.
 
-For the Fighting Polygon motion-IR pilot, prepare the disposable Godot workspace
-with:
+For the Fighting Polygon motion-IR pilot, the normal entry point is:
 
 ```bash
-uv run python -m ambition_sprite2d_renderer.devtools.godot_motion_tool prepare
+uv run python -m ambition_sprite2d_renderer.devtools.godot_motion_tool open
 ```
+
+This regenerates the disposable workspace, runs Godot's headless resource-import
+pass so the preview textures are valid on a fresh checkout, and then opens the
+first pose sheet. Use `prepare` only when you want generation without launching
+the editor. `headless-check` performs the same import pass before exercising the
+Godot export round trip.
 
 Open `godot/pose_editor/generated/*_pose_sheet.tscn` in the pinned Godot editor. Edit
 `Bone2D` transforms, not the locked preview `Sprite2D` nodes or layout anchors.
@@ -175,4 +180,6 @@ Use **Project > Tools > Export Ambition Pose Sheet**, then apply the generated
 bundle through `godot_motion_tool apply-export`. Do not hand-edit generated
 `.tscn`, generated preview PNGs, or the Godot export bundle as authoritative
 content. Regenerating `godot/pose_editor/generated/` is expected to destroy
-those files.
+those files. Godot's `.godot/` cache and `*.gd.uid` sidecars in this replaceable
+frontend are intentionally local/ignored; committed editor sources reference
+each other by path.

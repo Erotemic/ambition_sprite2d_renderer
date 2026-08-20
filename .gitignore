@@ -61,3 +61,7 @@ profile_output*.txt
 # Godot pose-authoring frontend cache. Generated pose scenes/textures/exports are disposable.
 godot/pose_editor/.godot/
 godot/pose_editor/generated/
+# This replaceable frontend commits path-based plugin sources, while generated
+# scenes/resources are disposable. Godot 4.4+ creates script UID sidecars on
+# first scan; no committed resource in this project depends on those UIDs.
+godot/pose_editor/**/*.gd.uid
