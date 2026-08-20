@@ -224,10 +224,6 @@ def _draw_poc_form(
         # Death is a front projection, so it deliberately uses the front SVG
         # component library rather than falling back to procedural rotated limbs.
         return render_pose_with_doc(docs[f"{host_form.target_name}:front"], host_form, pose)
-    if animation in {"skid", "crouch"}:
-        # These still exercise head mirroring / torso deformation rather than
-        # missing skeletal articulation, so they remain explicit POC fallbacks.
-        return procedural._draw_form(host_form, animation, frame_idx, nframes)
     frame = _rig_pose(docs, host_form, pose)
     if animation == "fireball":
         frame = composite_effects(frame, form=host_form, pose=pose, animation=animation, frame_idx=frame_idx, show_orb=True)
@@ -287,23 +283,12 @@ def _render_form(form: FormSpec, out_dir: str | Path) -> List[Path]:
     return [outputs[k] for k in ("canonical", "canonical_transparent", "spritesheet", "yaml", "ron", "actor", "preview")]
 
 
-def render_mary_o_v2_svg_poc(out_dir: str | Path, **opts) -> List[Path]:
-    return _render_form(SHORT_FORM, out_dir)
-
-
-def render_mary_o_v2_tall_svg_poc(out_dir: str | Path, **opts) -> List[Path]:
-    return _render_form(TALL_FORM, out_dir)
-
-
-def render_mary_o_v2_fire_svg_poc(out_dir: str | Path, **opts) -> List[Path]:
-    return _render_form(FIRE_FORM, out_dir)
-
-
-TARGETS = {
-    _target_name(SHORT_FORM): {"render": render_mary_o_v2_svg_poc, "actor_metadata": _actor_metadata(SHORT_FORM)},
-    _target_name(TALL_FORM): {"render": render_mary_o_v2_tall_svg_poc, "actor_metadata": _actor_metadata(TALL_FORM)},
-    _target_name(FIRE_FORM): {"render": render_mary_o_v2_fire_svg_poc, "actor_metadata": _actor_metadata(FIRE_FORM)},
-}
+# ⭐⭐ **NO TARGETS HERE ANY MORE: THIS IS MARY-O'S ONLY RENDERER, AND IT SHIPS
+# UNDER HER OWN NAMES.** `mary_o_v2`, `mary_o_v2_tall` and `mary_o_v2_fire` call
+# `_draw_poc_form` directly now, so registering `*_svg_poc` twins would publish
+# the same frames under a second set of names and invite the two to drift. The
+# module keeps the drawing code; only the duplicate registration is gone.
+TARGETS: dict = {}
 
 
 def render(out_dir: str | Path, **opts) -> List[Path]:

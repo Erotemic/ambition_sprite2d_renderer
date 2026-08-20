@@ -151,6 +151,11 @@ class Pose:
     leg_front_angle: float | None = None
     leg_back_angle: float | None = None
     crouch: float = 0.0
+    #: Extra drop of the TORSO alone, in the same authored units as `head_dx`.
+    #: A crouch folds the body down into the legs; nothing else moves with it.
+    body_dy: float = 0.0
+    #: Vertical squash of the torso about its pivot. 1.0 is unsquashed.
+    torso_scale: float = 1.0
     mode: str = "side"
 
 
@@ -641,8 +646,8 @@ SHORT_POSES: Dict[str, List[Pose]] = {
             arm_back_dy=0.3,
             arm_front_angle=145,
             arm_back_angle=-18,
-            leg_front_angle=42,
-            leg_back_angle=-30,
+            leg_front_angle=45,
+            leg_back_angle=-45,
         ),
     ],
     "skid": [
@@ -736,6 +741,9 @@ TALL_LIKE_POSES: Dict[str, List[Pose]] = {
         Pose(
             mode="crouch",
             crouch=2.4,
+            # placed by hand on the pose sheet, then read back
+            body_dy=4.28,
+            torso_scale=0.5,
             head_dx=0.6,
             arm_front_dx=0.8,
             arm_back_dx=-0.4,

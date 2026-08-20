@@ -77,16 +77,51 @@ def test_exporter_can_emit_a_fresh_procedural_seed(tmp_path: Path) -> None:
     assert "maryo_component_shared_front_death_expression" in ids
     assert "maryo_primitive_fire_side_hat_wing" in ids
     assert not any("torso" in item or "_arm" in item or "_leg" in item or "wings" in item for item in ids)
-def test_hidden_pivot_follows_manual_wrapper_transform(tmp_path: Path) -> None:
+def test_the_bone_follows_the_pivot_in_the_flat_rig_joints_layer(tmp_path: Path) -> None:
+    """**Moving a dot in `Rig Joints` moves its bone; moving the ART does not.**
+
+    ⭐ **this replaces `test_hidden_pivot_follows_manual_wrapper_transform`, whose
+    premise the pivot rework deleted.** That test moved a part WRAPPER and
+    asserted the pivot moved with it, which was true only because each pivot then
+    lived inside the part it belonged to. Two things were wrong with that: the
+    pivot was a drawable within the part (so it could leak into the part's
+    raster, which is the only reason the marker had to be a separate hidden
+    cross at all), and its `cx`/`cy` were in the part's local space -- Mary-O's
+    were displaced by up to 880 units from where Inkscape drew them, which makes
+    a pivot impossible to place by eye.
+
+    ⛔ **so the independence asserted below is the FEATURE, not a regression.**
+    Pivots are authored in one flat per-model layer, in the model's own
+    coordinates, exactly as every other rig SVG here does it; art and pivot are
+    edited separately on purpose.
+
+    ⚠ both halves are asserted because either alone passes on a rig that reads
+    nothing: a reader that ignored the flat layer entirely would still satisfy
+    "the wrapper transform did not move the bone".
+    """
     path = mary_o_v2.export_svg_poc_source(tmp_path / "mary_o_seed.svg")
     before = build_rig_document(path, TALL_FORM, "side")
     before_bone = next(b for b in before.bones if b["name"] == "near_arm")
 
+    # 1. the ART moves, the bone does not.
     root = ET.fromstring(path.read_bytes())
     wrapper = next(node for node in root.iter() if node.get("data-rig-part") == "near_arm" and "_tall_side_" in (node.get("id") or ""))
     wrapper.set("transform", "translate(7 -3)")
     path.write_bytes(ET.tostring(root, encoding="utf8", xml_declaration=True))
+    art_moved = build_rig_document(path, TALL_FORM, "side")
+    art_moved_bone = next(b for b in art_moved.bones if b["name"] == "near_arm")
+    assert art_moved_bone["offset"] == before_bone["offset"], (
+        "transforming a part's artwork moved its BONE; pivots are authored "
+        "independently of the art they belong to"
+    )
 
+    # 2. the PIVOT moves, and the bone follows it exactly.
+    root = ET.fromstring(path.read_bytes())
+    dot = next(node for node in root.iter()
+               if node.get("data-rig-joint") == "near_arm" and "_tall_side_" in (node.get("id") or ""))
+    dot.set("cx", str(float(dot.get("cx")) + 7))
+    dot.set("cy", str(float(dot.get("cy")) - 3))
+    path.write_bytes(ET.tostring(root, encoding="utf8", xml_declaration=True))
     after = build_rig_document(path, TALL_FORM, "side")
     after_bone = next(b for b in after.bones if b["name"] == "near_arm")
     assert after_bone["offset"][0] == before_bone["offset"][0] + 7

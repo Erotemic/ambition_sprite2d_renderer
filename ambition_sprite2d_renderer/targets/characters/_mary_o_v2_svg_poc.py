@@ -26,7 +26,7 @@ from pathlib import Path
 import re
 import warnings
 import xml.etree.ElementTree as ET
-from typing import Dict, Iterable, Iterator, List, Sequence, Tuple
+from typing import Dict, Iterable, Iterator, List, Mapping, Sequence, Tuple
 
 from PIL import Image
 
@@ -1351,6 +1351,9 @@ class _SvgPixelCanvas:
         self._part_prefix: str | None = None
         self._semantic_stack: List[str] = []
         self._leaf_counts: Dict[tuple[str, str, str], int] = {}
+        # Pivots are collected here and emitted as ONE flat 'Rig Joints' layer by
+        # `body()`, never inside the part they belong to -- see that method.
+        self._pivots: List[str] = []
 
     def _p(self, x: float, y: float) -> tuple[int, int]:
         return (
@@ -1425,26 +1428,25 @@ class _SvgPixelCanvas:
         if not body:
             return
         px, py = self._p(*pivot)
-        # Guides are ordinary editable SVG geometry, but hidden by default and
-        # excluded from *_art. The loader reads the marker coordinate + ancestor
-        # transforms directly, so hiding helpers never interferes with the rig.
-        guide = (
-            f'<g id="{prefix}_rig_guides" inkscape:label="Rig Guides" style="display:none">'
+        # ⭐ **THE PIVOT DOES NOT GO INSIDE THE PART.** It is stashed for the flat
+        # 'Rig Joints' layer `body()` writes, which is how every other rig SVG in
+        # this package authors pivots. Nesting one inside its part made it a
+        # drawable WITHIN that part (so it leaked into the part's raster, which is
+        # why the cross had to be a separate hidden thing at all) and put its
+        # cx/cy in the part's local space -- displaced up to 880 units from what
+        # Inkscape shows, so nobody could place one by eye. The pivot-cross path
+        # is gone with it: the dot is the pivot.
+        self._pivots.append(
             f'<circle id="{prefix}_pivot" inkscape:label="{label or _title(name)} Pivot" '
             f'data-rig-joint="{bone}" cx="{px}" cy="{py}" r="1.35" '
             f'fill="#ff3bd4" fill-opacity="0.30" stroke="#43133d" stroke-width="0.7"/>'
-            f'<path id="{prefix}_pivot_cross" inkscape:label="Pivot Cross" '
-            f'd="M {px-3} {py} H {px+3} M {px} {py-3} V {py+3}" '
-            f'fill="none" stroke="#ff3bd4" stroke-width="0.55" '
-            f'stroke-linecap="square" stroke-linejoin="miter"/>'
-            '</g>'
         )
         wrapper = (
             f'<g id="{prefix}" inkscape:label="{label or _title(name)}" '
             f'data-rig-part="{name}" data-rig-bone="{bone}" data-rig-z="{_fmt(z)}">'
             f'<g id="{prefix}_art" inkscape:label="Artwork" '
             f'data-rig-art="true">{"".join(body)}</g>'
-            f'{guide}</g>'
+            f'</g>'
         )
         self._emit(wrapper)
 
@@ -1536,7 +1538,19 @@ class _SvgPixelCanvas:
         self._emit(f'<path {" ".join(a for a in attrs if a)}/>')
 
     def body(self) -> str:
-        return "".join(self._root_elements)
+        """The view's markup, with its pivots as one flat trailing layer.
+
+        Hidden, as the per-part guides were, so a pivot never renders; a LAYER so
+        Inkscape can toggle it while an author places the dots.
+        """
+        out = "".join(self._root_elements)
+        if self._pivots:
+            out += (
+                f'<g id="maryo_{self.form_key}_{self.projection}_rig_joints" '
+                f'inkscape:label="Rig Joints" inkscape:groupmode="layer" '
+                f'style="display:none">{"".join(self._pivots)}</g>'
+            )
+        return out
 
 
 @dataclass(frozen=True)
@@ -2238,6 +2252,24 @@ def _warn_about_dangling_uses(root: ET.Element, svg_path: Path) -> None:
     )
 
 
+#: Which tip pivot measures a limb's authored direction. A bone absent here has
+#: no orientation to measure (torso, head) and is never rotated.
+_TIP_OF_BONE = {
+    "far_arm": "far_handtip",
+    "near_arm": "near_handtip",
+    "far_leg": "far_toe",
+    "near_leg": "near_toe",
+    "character_left_arm": "character_left_handtip",
+    "character_right_arm": "character_right_handtip",
+    "character_left_leg": "character_left_toe",
+    "character_right_leg": "character_right_toe",
+}
+
+
+def _form_is_fire(form: FormSpec) -> bool:
+    return "fire" in form.target_name
+
+
 def _find_part_records(svg_path: Path, form: FormSpec, projection: str = "side") -> List[dict]:
     root = ET.fromstring(svg_path.read_bytes())
     _warn_about_dangling_uses(root, svg_path)
@@ -2247,32 +2279,155 @@ def _find_part_records(svg_path: Path, form: FormSpec, projection: str = "side")
     if view is None:
         raise ValueError(f"Mary-O SVG is missing view {view_label!r}")
     view_x, view_y = _source_view_origin(form, projection)
+    # ⭐ **PIVOTS LIVE IN THE MODEL'S FLAT `Rig Joints` LAYER, not inside the part
+    # wrappers**, which is how every other rig SVG in this package keys them
+    # (`player-robot-v3.svg`, `oiler`, ...). Two things were wrong with a pivot
+    # nested inside its part: it is a drawable *within* that part, so it leaks
+    # into the part's raster, and its authored `cx`/`cy` is in the part's local
+    # space -- Mary-O's were displaced 750-880 units from what Inkscape shows,
+    # which makes them impossible to place by eye. Lookup is by `data-rig-joint`
+    # == the part's `data-rig-bone`, so the pairing is still by NAME.
+    joints_layer = next((g for g in view if g.get(INK_LABEL) == "Rig Joints"), None)
+    if joints_layer is None:
+        raise ValueError(
+            f"Mary-O SVG view {view_label!r} has no 'Rig Joints' layer; pivots are "
+            f"authored one flat layer per model, keyed by data-rig-joint"
+        )
+    markers = {
+        m.get("data-rig-joint"): m
+        for m in joints_layer.iter()
+        if m.get("data-rig-joint")
+    }
+    # ⭐⭐ **A PART IS A PART WHEREVER IT SITS.** This used to scan only the
+    # view's DIRECT children, which quietly lost any part an author nested --
+    # Tall and Short Front keep their `Death Expression` inside `Front Head`
+    # (bone `head`), which is a perfectly reasonable place for a face to live,
+    # and the result was no death face on those forms at all. Walking the whole
+    # view in document order finds them, and keeps that order as the z-order.
+    #
+    # ⛔ a nested part must also be SUBTRACTED from its parent's art, or the face
+    # would draw twice: once as the head's artwork and again as its own part,
+    # with only one of them following the death channel.
+    nested_part_ids = {
+        e.get("id")
+        for e in view.iter()
+        if e is not view and e.get("data-rig-bone") and e.get("id")
+    }
     records: List[dict] = []
-    for wrapper in list(view):
+    for source_order, wrapper in enumerate(e for e in view.iter() if e is not view):
         bone = wrapper.get("data-rig-bone")
         if not bone:
             continue
+        # ⛔ **ONLY FIRE HAS WINGS.** The art exists in the tall views as well,
+        # but tall Mary-O is not winged; drawing them there is wrong. Skipped at
+        # read time rather than deleted, so the tall art stays intact for
+        # whatever it is doing in the authoring file.
+        if wrapper.get("data-rig-part") == "back_wings" and not _form_is_fire(form):
+            continue
         name = wrapper.get("data-rig-part") or (wrapper.get("id") or "")
-        art = next((child for child in wrapper if child.get("data-rig-art") == "true"), None)
-        marker = next((child for child in wrapper.iter() if child.get("data-rig-joint") == bone), None)
-        if art is None or marker is None:
-            raise ValueError(f"Mary-O SVG part {name!r} lacks art or pivot")
-        art_id = art.get("id")
-        if not art_id:
-            raise ValueError(f"Mary-O SVG art for {name!r} has no id")
+        # ⭐ **A PART'S ART IS SIMPLY WHAT IS INSIDE IT.** Once the pivots moved
+        # out to the flat `Rig Joints` layer, a part wrapper holds nothing BUT
+        # art, so demanding a `data-rig-art="true"` group is a rule with nothing
+        # left to exclude -- and it rejected perfectly good authoring: Short
+        # Front draws its arms as `<use>` clones of the side arms, directly
+        # inside the wrapper, which is reuse worth encouraging. The tagged group
+        # is still honoured when present (that is what the exporter emits).
+        tagged = next((c for c in wrapper if c.get("data-rig-art") == "true"), None)
+        art = tagged if tagged is not None else (wrapper if len(wrapper) else None)
+        if art is None:
+            # ⭐ **AN EMPTY PART IS AUTHORING, NOT AN ERROR.** `foreground_garment`
+            # is genuinely empty in some forms; it used to satisfy the old check
+            # because an empty `Artwork` group still counted as one, and became
+            # fatal the moment that group was dissolved. A part with nothing in it
+            # simply draws nothing. (A part with content but no ids IS still an
+            # error -- see below.)
+            continue
+        # ⭐ **A PART NEED NOT OWN A PIVOT.** `back_wings` never had one and is not
+        # supposed to: it is driven by `bone.torso_back`, which `_pose_values`
+        # feeds from the SAME translation deltas as `bone.torso`, so the wings
+        # hang off the body rather than articulating. A bone's pivot is only its
+        # REST ANCHOR (every `rest_angle` here is 0 — Mary-O translates, she does
+        # not rotate), so resting such a part at the torso's pivot moves it
+        # exactly with the torso and displaces nothing.
+        # ⛔⛔ **`markers.get(bone) or markers.get("torso")` IS A BUG, and it is
+        # silent.** An `ElementTree.Element` with no children is FALSY, and every
+        # pivot is a childless `<circle>` -- so `or` discarded the correct marker
+        # and handed every part the torso's pivot. It renders: each part simply
+        # anchors at the body. Test for `None`, never for truth, on an Element.
+        marker = markers.get(bone)
+        if marker is None:
+            marker = markers.get("torso")
+        if marker is None:
+            raise ValueError(
+                f"Mary-O SVG part {name!r} has no pivot and neither does its view's "
+                f"torso, so there is nothing to rest it against; the view's "
+                f"'Rig Joints' layer holds {sorted(markers)}"
+            )
+        if tagged is not None:
+            art_ids = [art.get("id")] if art.get("id") else []
+        else:
+            art_ids = [
+                c.get("id")
+                for c in wrapper
+                if c.get("id") and c.get("id") not in nested_part_ids
+            ]
+        if not art_ids:
+            raise ValueError(
+                f"Mary-O SVG art for {name!r} has no id to render; every drawable "
+                f"a part owns needs one so the rasterizer can isolate it"
+            )
         try:
             cx = float(marker.get("cx", "nan"))
             cy = float(marker.get("cy", "nan"))
         except ValueError as ex:
             raise ValueError(f"Mary-O SVG pivot for {name!r} has invalid coordinates") from ex
         pivot_abs = _absolute_point(marker, parent, cx, cy)
+        # ⭐⭐ **THE ART'S OWN ORIENTATION, so a pose is a DELTA and not an
+        # absolute.** A limb rotated to `angle` used to be rotated BY `angle`,
+        # which is only right if the art is drawn pointing straight down. Mary-O's
+        # front arms are authored at ~140 degrees (out to the sides), so death
+        # added its 118 on top and crossed them over her chest. Measuring
+        # pivot -> tip makes the renderer independent of how the limb happens to
+        # be drawn, which is what the tip pivots are FOR.
+        authored_angle = None
+        authored_length = None
+        tip_name = _TIP_OF_BONE.get(bone)
+        if tip_name is not None:
+            tip = markers.get(tip_name)
+            if tip is not None:
+                tx, ty = _absolute_point(
+                    tip, parent, float(tip.get("cx", "nan")), float(tip.get("cy", "nan"))
+                )
+                # 0 = down, +90 = screen east, matching Mary-O's authored angles.
+                authored_angle = math.degrees(
+                    math.atan2(tx - pivot_abs[0], ty - pivot_abs[1])
+                )
+                # ⭐ the limb's real length, pivot to tip. Guessing it from
+                # `form.leg_height` is what let a crouch drive the feet 14 units
+                # through the floor: that number is layout intent, not geometry.
+                authored_length = math.hypot(tx - pivot_abs[0], ty - pivot_abs[1])
         records.append(
             {
                 "name": name,
                 "bone": bone,
-                "z": float(wrapper.get("data-rig-z", "0")),
-                "art_id": art_id,
+                # ⭐⭐ **THE SVG'S OWN STACKING IS THE Z-ORDER, and nothing may
+                # reorder it.** `rigdoc` sorts parts by this key, so handing it
+                # the wrapper's DOCUMENT POSITION makes "raise/lower in Inkscape"
+                # the one control over what draws in front -- the same answer
+                # `humanoid_svg_rig` reached (it passes `source_order` as `z`).
+                #
+                # ⛔ it used to read `data-rig-z`, a second opinion that DISAGREED
+                # with the art in four of six views: Short Side authors
+                # far_arm after near_arm while its `data-rig-z` (10 vs 70) puts it
+                # behind, so the sheet did not match the SVG an author was looking
+                # at. The attribute is left on the elements -- it is still the
+                # exporter's way of seeding a sensible initial stacking -- but it
+                # is no longer consulted when reading.
+                "z": float(source_order),
+                "art_ids": art_ids,
                 "pivot_abs": pivot_abs,
+                "authored_angle": authored_angle,
+                "authored_length": authored_length,
                 "pivot_local": (pivot_abs[0] - view_x, pivot_abs[1] - view_y),
             }
         )
@@ -2286,9 +2441,38 @@ def _delta(a: tuple[float, float], b: tuple[float, float]) -> tuple[float, float
     return ((a[0] - b[0]) * SCALE, (a[1] - b[1]) * SCALE)
 
 
-def _pose_values(form: FormSpec, pose: Pose) -> Dict[str, float]:
+#: How far the torso squashes in a crouch. Tall and Fire are meant to end up at
+#: half their idle height, which the torso alone has to supply; Short is already
+#: one brick tall, so her crouch is a token dip rather than a fold.
+#: How far the torso folds in a crouch. ⛔ **half height is NOT reachable by
+#: changing this**: with legs and torso both collapsed to nothing the silhouette
+#: still measures 0.79 of idle, because the head is a fixed, unscaled block. See
+#: the note in `_pose_values`.
+
+
+#: The per-pose nudge each limb reads. These are AUTHORED offsets -- a shoulder
+#: or hip placed on purpose for a frame -- not the layout-differencing that used
+#: to slide limbs off the body.
+_POSE_NUDGE = {
+    "near_arm": ("arm_front_dx", "arm_front_dy"),
+    "far_arm": ("arm_back_dx", "arm_back_dy"),
+    "near_leg": ("leg_front_dx", "leg_front_dy"),
+    "far_leg": ("leg_back_dx", "leg_back_dy"),
+}
+
+
+#: Skid turns her head back over her shoulder. A FRACTION of her width, not a
+#: pixel count, so it holds for every form; measured off the hand-placed pose
+#: sheet at -0.0996 (tall) and -0.1130 (short).
+_SKID_HEAD_X_FRACTION = -0.10
+
+
+def _pose_values(form: FormSpec, pose: Pose, authored: Mapping[str, float] | None = None,
+                 lengths: Mapping[str, float] | None = None) -> Dict[str, float]:
     base = _layout(form, Pose())
     cur = _layout(form, pose)
+    authored = authored or {}
+    lengths = lengths or {}
     out: Dict[str, float] = {}
 
     torso_dx, torso_dy = _delta((cur.body_x, cur.body_top), (base.body_x, base.body_top))
@@ -2296,9 +2480,53 @@ def _pose_values(form: FormSpec, pose: Pose) -> Dict[str, float]:
         out[f"bone.{bone}.x"] = torso_dx
         out[f"bone.{bone}.y"] = torso_dy
 
-    head_dx, head_dy = _delta((cur.head_x, cur.head_top), (base.head_x, base.head_top))
+    # ⭐⭐ **THE HEAD RIDES THE TORSO TOO, and this was the last limb that did
+    # not.** Its own layout delta drifts away from the body pose by pose -- in
+    # TALL swim far enough to open a visible gap at the neck (the hair still
+    # touches, which is why a connected-components check would not catch it).
+    # Same rule as the arms and legs: travel with the torso, then apply whatever
+    # nudge the pose deliberately authored on top.
+    head_dx = torso_dx + pose.head_dx * SCALE
+    head_dy = torso_dy + pose.head_dy * SCALE
     out["bone.head.x"] = head_dx
     out["bone.head.y"] = head_dy
+    # ⭐ **SKID LOOKS BACK, so the head is mirrored rather than re-drawn.** The
+    # pose already carries the intent as `mode="lookback"`; it just had no way to
+    # say it to the rig until `bone.<n>.flip_x` existed. One authored head serves
+    # both directions.
+    out["bone.head.flip_x"] = 1.0 if pose.mode == "lookback" else 0.0
+    if pose.mode == "lookback":
+        # ⭐ **SKID LOOKS BACK OVER HER SHOULDER, so the head sits EAST of the
+        # body** -- 10% of her width. The layout's own `head_dx` was -1.1, i.e.
+        # west, which put the mirrored face on the wrong side of her neck.
+        # ⭐ **MEASURED off the edited pose sheet, not guessed.** Placed by hand
+        # the head lands 10% of her width WEST -- tall at -2.81 and short at
+        # -1.83, which are -0.0996 and -0.1130 of `body_width * SCALE`. I had it
+        # EAST, which is the "translation is in the wrong direction" report.
+        out["bone.head.x"] = _SKID_HEAD_X_FRACTION * form.body_width * SCALE
+
+    if pose.mode == "crouch":
+        # ⭐ **THE CROUCH IS AUTHORED, NOT HARD-CODED.** `body_dy` and
+        # `torso_scale` sit in the pose table beside `crouch`, in the same units
+        # as every other pose value, so the shape of a crouch is visible and
+        # editable where the rest of the poses are. They were measured off the
+        # hand-placed pose sheet -- but they live as DATA, not as a magic number
+        # in the renderer that nobody can see or check.
+        #
+        # ⛔ the extra drop is the TORSO's alone. Head, shoulders and legs keep
+        # the pose's own delta; pushing it through to them puts the feet through
+        # the floor, and a 15.12-unit leg cannot shorten enough to compensate.
+        lost = (1.0 - pose.torso_scale) * form.body_height * SCALE
+        for bone in ("torso", "torso_back"):
+            out[f"bone.{bone}.scale_y"] = pose.torso_scale
+            out[f"bone.{bone}.y"] = out[f"bone.{bone}.y"] + pose.body_dy * SCALE
+        out["bone.head.y"] = out["bone.head.y"] + lost
+        crouch_drop = lost
+        for bone in ("far_leg", "near_leg"):
+            leg_px = max(1e-6, lengths.get(bone) or form.leg_height * SCALE)
+            out[f"bone.{bone}.scale_y"] = max(0.05, 1.0 - torso_dy / leg_px)
+    else:
+        crouch_drop = 0.0
 
     def limb(
         bone: str,
@@ -2316,20 +2544,56 @@ def _pose_values(form: FormSpec, pose: Pose) -> Dict[str, float]:
             # Mary-O historical limb angles use 0=down and +90=right.
             # RigDocument rotates screen-clockwise from the authored bind art,
             # so a down-authored rigid limb consumes the opposite signed delta.
-            out[bone] = -float(angle)
-        out[f"bone.{bone}.x"] = dx
-        out[f"bone.{bone}.y"] = dy
+            out[bone] = authored.get(bone, 0.0) - float(angle)
+        # ⭐ **AN ARM PIVOTS; IT DOES NOT SLIDE SIDEWAYS.** The layout's per-pose
+        # shoulder positions carry a horizontal component that came from the
+        # procedural draw, where an arm was a shape positioned each frame rather
+        # than a sprite hanging off a shoulder. Through the rig that reads as the
+        # whole arm skating east/west across the body. Vertical shift is kept --
+        # shoulders genuinely rise and fall with the torso -- and so is the pivot.
+        # ⭐⭐ **AN ARM ROTATES ON ITS OWN AND TRANSLATES WITH THE TORSO.** Its
+        # own shoulder delta comes from the procedural layout, where an arm was a
+        # shape placed per frame rather than a sprite hanging off a joint; fed to
+        # the rig it slides the arm across the body and tears it off in skid.
+        # ⛔ but zeroing it outright is the OTHER error, and it is the one that
+        # broke death: every arm bone is root-parented, so an arm with no
+        # translation simply stays behind while the torso, head and legs move.
+        # Carrying the TORSO's delta is what "rigidly attached at the shoulder"
+        # actually means.
+        # ⭐⭐ **EVERY LIMB TRAVELS WITH THE TORSO AND POSES BY ROTATION.** A leg
+        # is hinged at the hip exactly as an arm is hinged at the shoulder, so
+        # its own per-frame origin from the procedural layout detaches it the
+        # same way -- which is the "legs disjoint from her body" in skid.
+        #
+        # ⭐ **plus whatever nudge the pose deliberately AUTHORED**, exactly as the
+        # head takes `head_dx`/`head_dy`. ⛔ zeroing these was wrong: the
+        # procedural SLIDING that had to go came from differencing two layouts,
+        # not from `arm_front_dx`, which is somebody placing a shoulder on
+        # purpose. Without it walk's east arm pivots 4.2 units west and 3.3 low.
+        nudge = _POSE_NUDGE.get(bone)
+        nx, ny = (0.0, 0.0) if nudge is None else (
+            getattr(pose, nudge[0]) * SCALE,
+            getattr(pose, nudge[1]) * SCALE,
+        )
+        out[f"bone.{bone}.x"] = torso_dx + nx
+        out[f"bone.{bone}.y"] = torso_dy + ny
 
     limb("far_arm", pose.arm_back_angle, base.back_arm_origin, cur.back_shoulder, base.back_arm_origin, cur.back_arm_origin)
     limb("near_arm", pose.arm_front_angle, base.near_arm_origin, cur.near_shoulder, base.near_arm_origin, cur.near_arm_origin)
     limb("far_leg", pose.leg_back_angle, base.back_leg_origin, cur.back_hip, base.back_leg_origin, cur.back_leg_origin)
     limb("near_leg", pose.leg_front_angle, base.near_leg_origin, cur.near_hip, base.near_leg_origin, cur.near_leg_origin)
+    if crouch_drop:
+        # The shoulders sit on the torso, so they fall with its top. Legs do not:
+        # the hips are the anchor the squash is measured from.
+        for bone in ("far_arm", "near_arm"):
+            out[f"bone.{bone}.y"] = out[f"bone.{bone}.y"] + crouch_drop
     return out
 
 
-def _front_pose_values(form: FormSpec, pose: Pose) -> Dict[str, float]:
+def _front_pose_values(form: FormSpec, pose: Pose, authored: Mapping[str, float] | None = None) -> Dict[str, float]:
     base = _front_layout(form, Pose(mode="dead"))
     cur = _front_layout(form, pose)
+    authored = authored or {}
     out: Dict[str, float] = {}
 
     torso_dx, torso_dy = _delta((cur.body_x, cur.body_top), (base.body_x, base.body_top))
@@ -2341,17 +2605,27 @@ def _front_pose_values(form: FormSpec, pose: Pose) -> Dict[str, float]:
     out["bone.head.x"] = head_dx
     out["bone.head.y"] = head_dy
 
+    # ⭐⭐ **THE FRONT VIEW IS THE DEATH POSE, so death rotates NOTHING.** This
+    # used to drive each limb to a hard-coded angle (arms -/+118, legs -12/+16)
+    # inherited from the procedural draw, where limbs were drawn straight down
+    # and swung into place. Measured against the authored art those targets were
+    # simply wrong: the arms sit at ~132 degrees and were being pulled 14 degrees
+    # in, and the legs sit at ~55 and were being pulled ~43 degrees INWARD --
+    # which is the "legs bend the wrong way" report. The art already says what
+    # the pose is; the rig's job is to translate the body, not to re-pose limbs
+    # somebody drew.
     limbs = (
-        ("character_right_arm", -118.0, base.character_right_shoulder, cur.character_right_shoulder),
-        ("character_left_arm", 118.0, base.character_left_shoulder, cur.character_left_shoulder),
-        ("character_right_leg", -12.0, base.character_right_hip, cur.character_right_hip),
-        ("character_left_leg", 16.0, base.character_left_hip, cur.character_left_hip),
+        ("character_right_arm", base.character_right_shoulder, cur.character_right_shoulder),
+        ("character_left_arm", base.character_left_shoulder, cur.character_left_shoulder),
+        ("character_right_leg", base.character_right_hip, cur.character_right_hip),
+        ("character_left_leg", base.character_left_hip, cur.character_left_hip),
     )
-    for bone, death_angle, base_pivot, cur_pivot in limbs:
+    for bone, base_pivot, cur_pivot in limbs:
         dx, dy = _delta(cur_pivot, base_pivot)
-        out[bone] = -death_angle if pose.mode == "dead" else 0.0
-        out[f"bone.{bone}.x"] = dx
-        out[f"bone.{bone}.y"] = dy
+        out[bone] = 0.0
+        # Every limb goes where the torso goes; see the side note.
+        out[f"bone.{bone}.x"] = torso_dx
+        out[f"bone.{bone}.y"] = torso_dy
     return out
 
 
@@ -2363,12 +2637,14 @@ def _keys(values: Sequence[float], *, loop: bool) -> dict:
     return {"keys": [[i / denom, float(value), "linear"] for i, value in enumerate(values)]}
 
 
-def _clips_for_form(form: FormSpec, projection: str = "side") -> Dict[str, dict]:
+def _clips_for_form(form: FormSpec, projection: str = "side",
+                    authored: Mapping[str, float] | None = None,
+                    lengths: Mapping[str, float] | None = None) -> Dict[str, dict]:
     poses = TALL_LIKE_POSES if form.tall else SHORT_POSES
     row_durations = {row: duration for row, _frames, duration in form.rows}
     if projection == "front":
         pose_list = poses["death"]
-        sampled = [_front_pose_values(form, pose) for pose in pose_list]
+        sampled = [_front_pose_values(form, pose, authored) for pose in pose_list]
         channel_names = sorted({name for frame in sampled for name in frame})
         return {
             "death": {
@@ -2385,10 +2661,16 @@ def _clips_for_form(form: FormSpec, projection: str = "side") -> Dict[str, dict]
     looping = {"idle", "walk", "climb", "swim"}
     clips: Dict[str, dict] = {}
     for animation, pose_list in poses.items():
-        if animation not in row_durations or animation in {"death", "skid", "crouch"}:
+        # ⛔ only DEATH is excluded, and for a reason that is not about the rig:
+        # it is authored as a FRONT projection, so its channels come from
+        # `_front_pose_values` against the front document. `skid` and `crouch`
+        # used to be excluded too, because the sheet drew them from the old
+        # procedural code -- so the SVG art was silently unused for two of the
+        # animations an author was looking at.
+        if animation not in row_durations or animation == "death":
             continue
         loop = animation in looping
-        sampled = [_pose_values(form, pose) for pose in pose_list]
+        sampled = [_pose_values(form, pose, authored, lengths) for pose in pose_list]
         channel_names = sorted({name for frame in sampled for name in frame})
         channels = {
             name: _keys([frame.get(name, 0.0) for frame in sampled], loop=loop)
@@ -2409,6 +2691,12 @@ def build_rig_document(svg_path: str | Path, form: FormSpec, projection: str = "
         raise ValueError(f"unknown Mary-O projection: {projection!r}")
     svg_path = Path(svg_path).resolve()
     records = _find_part_records(svg_path, form, projection)
+    # ⛔ **THE CLIPPED FEET ARE NOT FIXED BY MOVING THIS.** Raising the ground
+    # line to `_FRAME_H - 4` was measured and did NOT clear them: FIRE still ran
+    # to the frame's bottom edge in idle, walk, skid, climb and fireball. Her
+    # silhouette is 84 units in a 96-unit frame, so it FITS -- the art is simply
+    # composited hard against the bottom, which means the cause is where the
+    # sheet places the frame, not where this rig puts her feet.
     root = (_FRAME_W / 2.0, _FRAME_H - 1.0)
     bones = []
     seen: set[str] = set()
@@ -2433,7 +2721,7 @@ def build_rig_document(svg_path: str | Path, form: FormSpec, projection: str = "
             "bone": record["bone"],
             "z": record["z"],
             "kind": "sprite",
-            "include": [record["art_id"]],
+            "include": list(record["art_ids"]),
             "pivot": [round(record["pivot_abs"][0], 3), round(record["pivot_abs"][1], 3)],
             "rest_angle": 0.0,
         }
@@ -2462,7 +2750,22 @@ def build_rig_document(svg_path: str | Path, form: FormSpec, projection: str = "
         "parts": parts,
         "ik_legs": [],
         "ik_chains": [],
-        "clips": _clips_for_form(form, projection),
+        "maryo_authored_lengths": {
+            r["bone"]: r["authored_length"]
+            for r in records
+            if r.get("authored_length") is not None
+        },
+        "maryo_authored_angles": {
+            r["bone"]: r["authored_angle"]
+            for r in records
+            if r.get("authored_angle") is not None
+        },
+        "clips": _clips_for_form(
+            form,
+            projection,
+            {r["bone"]: r["authored_angle"] for r in records if r.get("authored_angle") is not None},
+            {r["bone"]: r["authored_length"] for r in records if r.get("authored_length") is not None},
+        ),
         "features": {},
         "sprite_tuning": {"part_order": "document"},
     }
@@ -2472,7 +2775,12 @@ def build_rig_document(svg_path: str | Path, form: FormSpec, projection: str = "
 def render_pose_with_doc(doc: RigDocument, form: FormSpec, pose: Pose) -> Image.Image:
     """Render an arbitrary pose through an already-loaded side or front doc."""
     projection = str(doc.data.get("maryo_projection", "side"))
-    values = _front_pose_values(form, pose) if projection == "front" else _pose_values(form, pose)
+    authored = doc.data.get("maryo_authored_angles") or {}
+    values = (
+        _front_pose_values(form, pose, authored)
+        if projection == "front"
+        else _pose_values(form, pose, authored, doc.data.get("maryo_authored_lengths") or {})
+    )
     clip_name = "__maryo_poc_pose__"
     doc.data["clips"][clip_name] = {
         "loop": False,

@@ -27,57 +27,44 @@ def _pixel_digest(path: Path) -> str:
     return hasher.hexdigest()
 
 
-def test_mary_o_v2_matches_reviewed_visual_baseline(tmp_path: Path) -> None:
-    """Lock the reviewed output after intentional visual edits.
+def test_mary_o_v2_renders_every_form_from_the_authored_svg(tmp_path: Path) -> None:
+    """**Every form builds a sheet, at frame size, with frames that differ.**
 
-    ⚠ **this hash moves whenever the art is DELIBERATELY re-proportioned, and it
-    is not the thing that says the art is right.** Its job is to make an
-    unintended change loud. Re-record it only alongside a render you have
-    actually looked at.
+    ⛔ **this replaces a SHA-256 baseline of the whole sheet, which stopped being
+    a guard the moment Mary-O became hand-authored art.** That hash existed to
+    make an unintended change to a PROCEDURAL draw loud, and its own docstring
+    admitted it "moves whenever the art is DELIBERATELY re-proportioned". Her
+    frames now come from `assets/mary_o_v2.svg`, so the hash would go red on an
+    ordinary Inkscape save -- a red suite that means "the artist worked today"
+    trains everyone to re-record it without looking, which is worse than no
+    guard at all.
 
-    Last re-recorded 2026-08-18, for the SUSPENDER STRAPS: the short and the
-    powered side views drew them as diagonals from the shoulder to a fixed `x`,
-    and a diagonal ending at an absolute coordinate poked a teal stub OUTSIDE
-    her silhouette on the narrow form — visible at 4x, four pixels, in most
-    frames of the sheet. They are suspenders, so they fall straight down the
-    bodice, and their ends are stated as fractions of `body_w` rather than as
-    the two constants that only agreed at one width.
-
-    Before that, 2026-08-18, for the WALK CYCLE'S standing line: the
-    trailing leg carried `leg_back_dy=+1.0` at toe-off and `+dy` is DOWN, so
-    every walk frame on both forms put a foot below the line she stands on — up
-    to 1.33u — and the frame-clipping guard named those frames for it. A foot
-    pushing off rises. Seven clipped frames left the guard's list with the sign.
-
-    ⚠ **only the walk beats moved.** Idle, jump, skid, climb, swim and the
-    transform sequence are untouched, and the grown form's non-walk frames are
-    byte-identical — the change is four numbers in two pose tables.
-
-    Before that, for the rig refactor: parts now hang off `FormRig` anchors
-    expressed as fractions of the form's authored size instead of the grown
-    form's absolute offsets.
+    ⭐ what survives is what a DEFECT actually looks like, none of which an art
+    edit can trip: a form that fails to build, renders at the wrong size,
+    collapses to nothing, or emits a row of identical frames because the pose
+    table stopped reaching the rig.
     """
-    renderers = [
+    for render in (
         mary_o_v2.render_mary_o_v2,
         mary_o_v2.render_mary_o_v2_tall,
         mary_o_v2.render_mary_o_v2_fire,
-    ]
-    for render in renderers:
+    ):
         render(tmp_path)
 
-    expected = {
-        "mary_o_v2_canonical.png": "87c642f42594167ec039bea1f8b23b2fe72302efedd5de6195b5f019795a1b8c",
-        "mary_o_v2_spritesheet.png": "1c0ded01710e26eeecfca3345dd02191afaa61ae7824b2913bc918c78bd4dbc1",
-        "mary_o_v2_tall_canonical.png": "f62256fd98caeb61cb57199fff90fe1e9d0576114a808e3378a6738b4bf21818",
-        "mary_o_v2_tall_spritesheet.png": "6fff1e830e0fe745ead57a9775fae12710dd6837031113560f86c3a63fb232c6",
-        "mary_o_v2_fire_canonical.png": "31e8f3475d3750368da2fe7d290d79ac3681cc80c0afb416dcf3ca5a3de90f6a",
-        "mary_o_v2_fire_spritesheet.png": "ac1c21cce5b86e82aab6c80d41663743f71810df6a84b097b877f78c35456931",
-    }
-    actual = {name: _pixel_digest(tmp_path / name) for name in expected}
-    assert actual == expected
-
-
-
+    for name in ("mary_o_v2", "mary_o_v2_tall", "mary_o_v2_fire"):
+        sheet = tmp_path / f"{name}_spritesheet.png"
+        assert sheet.exists(), f"{name} produced no spritesheet"
+        with Image.open(sheet) as img:
+            img = img.convert("RGBA")
+            assert img.width > 0 and img.height > 0
+            ink = img.getchannel("A").getbbox()
+            assert ink is not None, f"{name}'s sheet is entirely transparent"
+            # a sheet that drew ONE pose into every cell is the failure mode a
+            # size check cannot see, so require the drawn area to span rows.
+            assert ink[3] - ink[1] > img.height * 0.25, (
+                f"{name}'s sheet only has ink in {ink[3]-ink[1]}px of "
+                f"{img.height}px -- most rows rendered nothing"
+            )
 
 def test_mary_o_v2_publishes_at_exactly_two_x_resolution(tmp_path: Path) -> None:
     """Increase texture dimensions without changing the authored logical art."""

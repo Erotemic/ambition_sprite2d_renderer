@@ -291,8 +291,32 @@ def _render_form(form: FormSpec, out_dir: str | Path) -> List[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    # ⭐⭐ **THE SVG RIG IS MARY-O NOW.** Her frames come from the authored
+    # `assets/mary_o_v2.svg` -- art, pivots and z-order all read from the file an
+    # artist edits -- rather than from the procedural draw this module used to
+    # own. The procedural path was the seed that produced that SVG; it is no
+    # longer what ships.
+    #
+    # ⚠ imported lazily because the SVG module imports THIS one (it still reuses
+    # this module's actor metadata and effect compositing), so a module-level
+    # import would be circular.
+    from . import mary_o_v2_svg_poc as svg_rig
+    from ._mary_o_v2_svg_poc import build_rig_document
+
+    ASSET_PATH = svg_rig.ASSET_PATH
+
+    if not ASSET_PATH.exists():
+        raise FileNotFoundError(
+            f"Mary-O's authored SVG is missing: {ASSET_PATH}. It is the source of "
+            f"her sprites; run scripts/export_mary_o_v2_svg.py to seed a fresh one."
+        )
+    docs = {}
+    for source in (SHORT_FORM, TALL_FORM, FIRE_FORM):
+        docs[source.target_name] = build_rig_document(ASSET_PATH, source, "side")
+        docs[f"{source.target_name}:front"] = build_rig_document(ASSET_PATH, source, "front")
+
     def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
-        return _draw_form(form, animation, frame_idx, nframes)
+        return svg_rig._draw_poc_form(form, docs, animation, frame_idx, nframes)
 
     def body_metrics(fw: int, fh: int):
         """Author the gameplay body instead of measuring the alpha bbox.
