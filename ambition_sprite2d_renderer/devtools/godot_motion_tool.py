@@ -26,6 +26,9 @@ from PIL import Image
 
 from ambition_sprite2d_renderer.authoring.motion_ir import (
     CharacterMotionBinding,
+    ClipDefinition,
+    ClipPoseKey,
+    MotionLibrary,
     PoseDefinition,
     PoseState,
     PreparedCharacterMotion,
@@ -650,12 +653,26 @@ def apply_export(
             raise ValueError(f"{binding.path}: existing motion library is invalid: {'; '.join(errors)}")
         error = _state_max_error(existing.state, candidate.state)
         worst = max(worst, error)
-        if error > tolerance:
-            changed += 1
-        if not check_only:
-            if candidate.path is None:
-                raise ValueError(f"pose {pose_id!r} has no source path")
+        if error <= tolerance:
+            # Godot serializes transforms through 32-bit-ish editor values and can
+            # introduce a few millionths of harmless round-trip noise. Preserve the
+            # authored JSON byte-for-byte unless the edit exceeds the same tolerance
+            # used by the comparison command. This keeps a one-pose edit a one-file
+            # source change instead of normalizing the entire pose library.
+            continue
+
+        changed += 1
+        if candidate.path is None:
+            raise ValueError(f"pose {pose_id!r} has no source path")
+        try:
+            display_path = candidate.path.resolve().relative_to(repo.resolve())
+        except ValueError:
+            display_path = candidate.path
+        if check_only:
+            print(f"would update pose: {display_path}")
+        else:
             candidate.path.write_text(json.dumps(candidate.to_dict(), indent=2) + "\n", encoding="utf8")
+            print(f"updated pose: {display_path}")
 
     missing = sorted(set(prepared.library.poses) - seen)
     if missing:
@@ -774,6 +791,72 @@ def _cmd_apply(args: argparse.Namespace) -> int:
     return 0
 
 
+def render_pose_preview(
+    binding_path: Path,
+    pose_id: str,
+    *,
+    output: Path,
+) -> Path:
+    """Render one named pose through the retained production renderer seam.
+
+    The temporary clip exists only in memory. This deliberately exercises the
+    same SVG + motion IR -> RigDocument compatibility projection used by normal
+    sheet generation without paying the cost of rendering all 136 clips.
+    """
+
+    binding = CharacterMotionBinding.load(binding_path)
+    prepared = binding.load_prepared()
+    if pose_id not in prepared.library.poses:
+        choices = ", ".join(sorted(prepared.library.poses))
+        raise ValueError(f"unknown pose {pose_id!r}; available poses: {choices}")
+
+    preview_clip_id = "__ambition_pose_preview__"
+    preview_clip = ClipDefinition(
+        id=preview_clip_id,
+        loop=False,
+        duration_s=1.0,
+        frame_count=1,
+        frame_duration_ms=1000,
+        pose_keys=(ClipPoseKey(at_s=0.0, pose=pose_id),),
+    )
+    preview_library = MotionLibrary(
+        id=prepared.library.id,
+        rig_profile=prepared.library.rig_profile,
+        space=prepared.library.space,
+        poses=prepared.library.poses,
+        clips={preview_clip_id: preview_clip},
+        path=prepared.library.path,
+    )
+    preview = PreparedCharacterMotion(
+        binding=prepared.binding,
+        rig=prepared.rig,
+        library=preview_library,
+    )
+    image = preview.to_rig_document().render_frame(preview_clip_id, 0, 1)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    image.save(output)
+    return output
+
+
+def _cmd_render_pose(args: argparse.Namespace) -> int:
+    repo = repo_root()
+    binding_arg = Path(args.binding).expanduser()
+    binding_path = (binding_arg if binding_arg.is_absolute() else repo / binding_arg).resolve()
+    binding = CharacterMotionBinding.load(binding_path)
+    if args.output:
+        output_arg = Path(args.output).expanduser()
+        output = (output_arg if output_arg.is_absolute() else Path.cwd() / output_arg).resolve()
+    else:
+        pose_slug = _node_name(args.pose).lower()
+        output = repo / "generated" / "godot_pose_previews" / binding.character / f"{pose_slug}.png"
+    rendered = render_pose_preview(binding_path, args.pose, output=output)
+    try:
+        print(rendered.relative_to(repo))
+    except ValueError:
+        print(rendered)
+    return 0
+
+
 def _cmd_open(args: argparse.Namespace) -> int:
     repo = repo_root()
     project_dir = (repo / args.project).resolve()
@@ -847,6 +930,19 @@ def build_parser() -> argparse.ArgumentParser:
     apply.add_argument("--check", action="store_true", help="compare only; do not modify source pose files")
     apply.add_argument("--tolerance", type=float, default=1e-4)
     apply.set_defaults(func=_cmd_apply)
+
+    render_pose = sub.add_parser(
+        "render-pose",
+        help="render one named pose through the normal Python sprite renderer",
+    )
+    render_pose.add_argument("pose", help="canonical pose id, for example humanoid/fighting_polygon/jab/contact")
+    render_pose.add_argument(
+        "--binding",
+        default=str(DEFAULT_BINDINGS[0]),
+        help="character motion binding; defaults to Fighting Polygon Sword",
+    )
+    render_pose.add_argument("--output", help="PNG output path; defaults under generated/godot_pose_previews/")
+    render_pose.set_defaults(func=_cmd_render_pose)
 
     open_cmd = sub.add_parser("open", help="prepare the pilot and open the first pose sheet in Godot")
     open_cmd.add_argument("bindings", nargs="*")

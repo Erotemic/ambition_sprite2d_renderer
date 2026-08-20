@@ -16,6 +16,7 @@ from ambition_sprite2d_renderer.devtools.godot_motion_tool import (
     _rotate,
     apply_export,
     prepare_binding,
+    render_pose_preview,
     repo_root,
 )
 
@@ -191,3 +192,114 @@ def test_godot_headless_can_parse_and_export_generated_scene_when_available(tmp_
     changed, worst = apply_export(export, repo=repo, check_only=True)
     assert changed == 0
     assert worst <= 1e-4
+
+
+def _copy_fighting_polygon_sword_sources(tmp_path: Path) -> tuple[Path, Path]:
+    source_repo = repo_root()
+    temp_repo = tmp_path / "repo"
+    character_rel = Path(
+        "ambition_sprite2d_renderer/data/characters/fighting_polygon_sword"
+    )
+    library_rel = Path(
+        "ambition_sprite2d_renderer/data/motion/humanoid/fighting_polygon_v1"
+    )
+    shutil.copytree(source_repo / character_rel, temp_repo / character_rel)
+    shutil.copytree(source_repo / library_rel, temp_repo / library_rel)
+    return temp_repo, temp_repo / character_rel / "fighting_polygon_sword.motion.json"
+
+
+def test_apply_export_preserves_sub_tolerance_godot_noise(tmp_path):
+    temp_repo, binding_path = _copy_fighting_polygon_sword_sources(tmp_path)
+    project = tmp_path / "godot_project"
+    output = prepare_binding(binding_path, project_dir=project, repo=temp_repo)
+    raw = json.loads(output["expected_export"].read_text(encoding="utf8"))
+    contact = next(item for item in raw["poses"] if item["id"].endswith("jab/contact"))
+    contact["state"]["bones"]["near_arm_u"]["rotation_deg"] += 0.000006
+    edited = tmp_path / "godot_noise.json"
+    edited.write_text(json.dumps(raw, indent=2) + "\n", encoding="utf8")
+
+    pose_paths = sorted(
+        (temp_repo / "ambition_sprite2d_renderer/data/motion/humanoid/fighting_polygon_v1/poses")
+        .glob("*.pose.json")
+    )
+    before = {path: path.read_bytes() for path in pose_paths}
+    changed, worst = apply_export(
+        edited,
+        repo=temp_repo,
+        check_only=False,
+        tolerance=1e-4,
+    )
+
+    assert changed == 0
+    assert worst == pytest.approx(0.000006)
+    assert {path: path.read_bytes() for path in pose_paths} == before
+
+
+def test_apply_export_writes_only_meaningfully_edited_pose(tmp_path, capsys):
+    temp_repo, binding_path = _copy_fighting_polygon_sword_sources(tmp_path)
+    project = tmp_path / "godot_project"
+    output = prepare_binding(binding_path, project_dir=project, repo=temp_repo)
+    raw = json.loads(output["expected_export"].read_text(encoding="utf8"))
+    contact = next(item for item in raw["poses"] if item["id"].endswith("jab/contact"))
+    contact["state"]["bones"]["near_arm_u"]["rotation_deg"] += 12.0
+    edited = tmp_path / "one_pose_edit.json"
+    edited.write_text(json.dumps(raw, indent=2) + "\n", encoding="utf8")
+
+    pose_paths = sorted(
+        (temp_repo / "ambition_sprite2d_renderer/data/motion/humanoid/fighting_polygon_v1/poses")
+        .glob("*.pose.json")
+    )
+    before = {path: path.read_bytes() for path in pose_paths}
+    changed, worst = apply_export(edited, repo=temp_repo, check_only=False)
+    changed_paths = [path for path in pose_paths if path.read_bytes() != before[path]]
+
+    assert changed == 1
+    assert worst == pytest.approx(12.0)
+    assert len(changed_paths) == 1
+    assert changed_paths[0].name == "humanoid__fighting_polygon__jab__contact.pose.json"
+    output_text = capsys.readouterr().out
+    assert "updated pose:" in output_text
+    assert changed_paths[0].relative_to(temp_repo).as_posix() in output_text
+
+
+def test_render_pose_preview_uses_production_renderer_seam(tmp_path):
+    output = tmp_path / "jab_contact.png"
+    rendered = render_pose_preview(
+        _binding().path,
+        "humanoid/fighting_polygon/jab/contact",
+        output=output,
+    )
+
+    assert rendered == output
+    assert output.exists()
+    from PIL import Image
+
+    with Image.open(output) as image:
+        assert image.width > 0
+        assert image.height > 0
+        assert image.getbbox() is not None
+
+
+def test_check_only_reports_pose_path_without_writing(tmp_path, capsys):
+    temp_repo, binding_path = _copy_fighting_polygon_sword_sources(tmp_path)
+    project = tmp_path / "godot_project"
+    output = prepare_binding(binding_path, project_dir=project, repo=temp_repo)
+    raw = json.loads(output["expected_export"].read_text(encoding="utf8"))
+    contact = next(item for item in raw["poses"] if item["id"].endswith("jab/contact"))
+    contact["state"]["bones"]["near_arm_u"]["rotation_deg"] += 8.0
+    edited = tmp_path / "check_only.json"
+    edited.write_text(json.dumps(raw, indent=2) + "\n", encoding="utf8")
+
+    target = (
+        temp_repo
+        / "ambition_sprite2d_renderer/data/motion/humanoid/fighting_polygon_v1/poses"
+        / "humanoid__fighting_polygon__jab__contact.pose.json"
+    )
+    before = target.read_bytes()
+    changed, _worst = apply_export(edited, repo=temp_repo, check_only=True)
+
+    assert changed == 1
+    assert target.read_bytes() == before
+    output_text = capsys.readouterr().out
+    assert "would update pose:" in output_text
+    assert target.relative_to(temp_repo).as_posix() in output_text
