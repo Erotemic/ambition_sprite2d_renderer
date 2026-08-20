@@ -36,6 +36,15 @@ from ambition_sprite2d_renderer.authoring.motion_ir import (
     svg_reference_space,
 )
 from ambition_sprite2d_renderer.authoring.svg_parts import rasterize_subset
+from ambition_sprite2d_renderer.authoring.sprite_sampling import SpriteBakeProfile
+from ambition_sprite2d_renderer.devtools.godot_clip_authoring import (
+    DEFAULT_CLIP_PILOT,
+    apply_clip_export,
+    clip_sample_plan,
+    render_clip_preview,
+    write_clip_sheet,
+    write_expected_clip_export,
+)
 
 GODOT_EXPORT_SCHEMA = "ambition-godot-pose-export-v1"
 GODOT_SHEET_SCHEMA = "ambition-godot-pose-sheet-v1"
@@ -508,8 +517,23 @@ def prepare_binding(
     prepared = binding.load_prepared()
     textures, bounds = _render_part_textures(prepared, project_dir=project_dir, dpi=dpi)
     scene = _write_pose_sheet(prepared, textures, bounds, project_dir=project_dir, repo=repo)
+    clip_scene = write_clip_sheet(
+        prepared,
+        textures,
+        bounds,
+        project_dir=project_dir,
+        repo=repo,
+        clip_ids=DEFAULT_CLIP_PILOT,
+    )
     expected = _write_expected_export(
         prepared, project_dir=project_dir, repo=repo, scene_path=scene
+    )
+    expected_clip = write_expected_clip_export(
+        prepared,
+        project_dir=project_dir,
+        repo=repo,
+        scene_path=clip_scene,
+        clip_ids=DEFAULT_CLIP_PILOT,
     )
     manifest = _write_workspace_manifest(
         prepared,
@@ -519,7 +543,13 @@ def prepare_binding(
         repo=repo,
         scene_path=scene,
     )
-    return {"scene": scene, "expected_export": expected, "manifest": manifest}
+    return {
+        "scene": scene,
+        "clip_scene": clip_scene,
+        "expected_export": expected,
+        "expected_clip_export": expected_clip,
+        "manifest": manifest,
+    }
 
 
 def prepare_workspace(
@@ -768,6 +798,7 @@ def _cmd_prepare(args: argparse.Namespace) -> int:
     )
     for item in outputs:
         print(item["scene"].relative_to(repo))
+        print(item["clip_scene"].relative_to(repo))
     return 0
 
 
@@ -788,6 +819,26 @@ def _cmd_apply(args: argparse.Namespace) -> int:
     )
     verb = "would change" if args.check else "updated"
     print(f"{verb} {changed} pose(s); worst source delta={worst:.6g}")
+    return 0
+
+
+def _cmd_apply_clip(args: argparse.Namespace) -> int:
+    repo = repo_root()
+    binding = None
+    if args.binding:
+        candidate = Path(args.binding).expanduser()
+        binding = (candidate if candidate.is_absolute() else repo / candidate).resolve()
+    export = Path(args.export).expanduser()
+    export = (export if export.is_absolute() else Path.cwd() / export).resolve()
+    changed, worst = apply_clip_export(
+        export,
+        repo=repo,
+        binding_path=binding,
+        check_only=args.check,
+        tolerance=args.tolerance,
+    )
+    verb = "would change" if args.check else "updated"
+    print(f"{verb} {changed} clip(s); worst source delta={worst:.6g}")
     return 0
 
 
@@ -857,6 +908,69 @@ def _cmd_render_pose(args: argparse.Namespace) -> int:
     return 0
 
 
+def _sprite_bake_profile(args: argparse.Namespace) -> SpriteBakeProfile:
+    return SpriteBakeProfile(
+        max_joint_error_px=float(args.max_joint_error_px),
+        max_rotation_error_deg=float(args.max_rotation_error_deg),
+        max_hold_ms=float(args.max_hold_ms),
+        max_frames=int(args.max_frames),
+    )
+
+
+def _add_sprite_bake_args(parser: argparse.ArgumentParser) -> None:
+    defaults = SpriteBakeProfile()
+    parser.add_argument("--max-joint-error-px", type=float, default=defaults.max_joint_error_px)
+    parser.add_argument("--max-rotation-error-deg", type=float, default=defaults.max_rotation_error_deg)
+    parser.add_argument("--max-hold-ms", type=float, default=defaults.max_hold_ms)
+    parser.add_argument("--max-frames", type=int, default=defaults.max_frames)
+
+
+def _cmd_sample_plan(args: argparse.Namespace) -> int:
+    repo = repo_root()
+    binding_arg = Path(args.binding).expanduser()
+    binding_path = (binding_arg if binding_arg.is_absolute() else repo / binding_arg).resolve()
+    plan = clip_sample_plan(
+        binding_path,
+        args.clip,
+        profile=_sprite_bake_profile(args),
+        uniform_compatibility=bool(args.uniform_compatibility),
+    )
+    print(json.dumps(plan.to_dict(), indent=2))
+    return 2 if plan.budget_exhausted else 0
+
+
+def _cmd_render_clip(args: argparse.Namespace) -> int:
+    repo = repo_root()
+    binding_arg = Path(args.binding).expanduser()
+    binding_path = (binding_arg if binding_arg.is_absolute() else repo / binding_arg).resolve()
+    binding = CharacterMotionBinding.load(binding_path)
+    if args.output:
+        output_arg = Path(args.output).expanduser()
+        output = (output_arg if output_arg.is_absolute() else Path.cwd() / output_arg).resolve()
+    else:
+        output = repo / "generated" / "godot_clip_previews" / binding.character / f"{_node_name(args.clip).lower()}.gif"
+    strip = None
+    if args.strip:
+        strip_arg = Path(args.strip).expanduser()
+        strip = (strip_arg if strip_arg.is_absolute() else Path.cwd() / strip_arg).resolve()
+    rendered, rendered_strip = render_clip_preview(
+        binding_path,
+        args.clip,
+        output=output,
+        strip_output=strip,
+        profile=_sprite_bake_profile(args),
+        legacy_sampling=bool(args.legacy_sampling),
+    )
+    for path in (rendered, rendered_strip):
+        if path is None:
+            continue
+        try:
+            print(path.relative_to(repo))
+        except ValueError:
+            print(path)
+    return 0
+
+
 def _cmd_open(args: argparse.Namespace) -> int:
     repo = repo_root()
     project_dir = (repo / args.project).resolve()
@@ -871,6 +985,24 @@ def _cmd_open(args: argparse.Namespace) -> int:
         raise SystemExit(_missing_godot_message(repo))
     _import_godot_resources(godot, project_dir, cwd=repo)
     scene = outputs[0]["scene"]
+    command = [str(godot), "--editor", "--path", str(project_dir), str(scene)]
+    return subprocess.call(command, cwd=repo)
+
+
+def _cmd_open_clips(args: argparse.Namespace) -> int:
+    repo = repo_root()
+    project_dir = (repo / args.project).resolve()
+    outputs = prepare_workspace(
+        _binding_paths(args.bindings, repo),
+        project_dir=project_dir,
+        repo=repo,
+        clean=True,
+    )
+    godot = _find_godot(args.godot, repo)
+    if godot is None:
+        raise SystemExit(_missing_godot_message(repo))
+    _import_godot_resources(godot, project_dir, cwd=repo)
+    scene = outputs[0]["clip_scene"]
     command = [str(godot), "--editor", "--path", str(project_dir), str(scene)]
     return subprocess.call(command, cwd=repo)
 
@@ -914,6 +1046,45 @@ def _cmd_headless_check(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_headless_clip_check(args: argparse.Namespace) -> int:
+    repo = repo_root()
+    project_dir = (repo / args.project).resolve()
+    outputs = prepare_workspace(
+        _binding_paths(args.bindings, repo),
+        project_dir=project_dir,
+        repo=repo,
+        clean=True,
+    )
+    godot = _find_godot(args.godot, repo)
+    if godot is None:
+        raise SystemExit(_missing_godot_message(repo))
+    _import_godot_resources(godot, project_dir, cwd=repo)
+    for item in outputs:
+        scene = item["clip_scene"]
+        out = project_dir / "generated" / "exports" / (scene.stem.replace("_clip_sheet", "") + ".clips.json")
+        command = [
+            str(godot),
+            "--headless",
+            "--path",
+            str(project_dir),
+            "--script",
+            "res://scripts/headless_clip_export.gd",
+            "--",
+            "--scene",
+            "res://" + scene.relative_to(project_dir).as_posix(),
+            "--output",
+            "res://" + out.relative_to(project_dir).as_posix(),
+        ]
+        subprocess.run(command, cwd=repo, check=True)
+        changed, worst = apply_clip_export(out, repo=repo, check_only=True)
+        if changed:
+            raise SystemExit(
+                f"Godot clip round-trip drifted {changed} clip(s) for {scene.name}; worst delta={worst}"
+            )
+        print(f"{scene.name}: clip round-trip OK; worst delta={worst:.6g}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -931,6 +1102,16 @@ def build_parser() -> argparse.ArgumentParser:
     apply.add_argument("--tolerance", type=float, default=1e-4)
     apply.set_defaults(func=_cmd_apply)
 
+    apply_clip = sub.add_parser(
+        "apply-clip-export",
+        help="validate and normalize a Godot AnimationPlayer export into clip JSON",
+    )
+    apply_clip.add_argument("export")
+    apply_clip.add_argument("--binding", help="override the binding embedded in the export bundle")
+    apply_clip.add_argument("--check", action="store_true", help="compare only; do not modify source clip files")
+    apply_clip.add_argument("--tolerance", type=float, default=1e-4)
+    apply_clip.set_defaults(func=_cmd_apply_clip)
+
     render_pose = sub.add_parser(
         "render-pose",
         help="render one named pose through the normal Python sprite renderer",
@@ -944,17 +1125,73 @@ def build_parser() -> argparse.ArgumentParser:
     render_pose.add_argument("--output", help="PNG output path; defaults under generated/godot_pose_previews/")
     render_pose.set_defaults(func=_cmd_render_pose)
 
+    render_clip = sub.add_parser(
+        "render-clip",
+        help="render one clip through the normal Python sprite renderer as an animated GIF",
+    )
+    render_clip.add_argument("clip", help="clip id, for example jab or walk")
+    render_clip.add_argument(
+        "--binding",
+        default=str(DEFAULT_BINDINGS[0]),
+        help="character motion binding; defaults to Fighting Polygon Sword",
+    )
+    render_clip.add_argument("--output", help="GIF output path; defaults under generated/godot_clip_previews/")
+    render_clip.add_argument("--strip", help="optional PNG contact-strip output path")
+    render_clip.add_argument(
+        "--legacy-sampling",
+        action="store_true",
+        help="use the clip's historical uniform publication samples instead of the adaptive plan",
+    )
+    _add_sprite_bake_args(render_clip)
+    render_clip.set_defaults(func=_cmd_render_clip)
+
+    sample_plan = sub.add_parser(
+        "sample-plan",
+        help="report economical sprite sample times for one continuous motion clip",
+    )
+    sample_plan.add_argument("clip", help="clip id, for example jab or walk")
+    sample_plan.add_argument(
+        "--binding",
+        default=str(DEFAULT_BINDINGS[0]),
+        help="character motion binding; defaults to Fighting Polygon Sword",
+    )
+    sample_plan.add_argument(
+        "--uniform-compatibility",
+        action="store_true",
+        help="choose the smallest uniform cadence satisfying the same error budget",
+    )
+    _add_sprite_bake_args(sample_plan)
+    sample_plan.set_defaults(func=_cmd_sample_plan)
+
     open_cmd = sub.add_parser("open", help="prepare the pilot and open the first pose sheet in Godot")
     open_cmd.add_argument("bindings", nargs="*")
     open_cmd.add_argument("--project", default=str(DEFAULT_PROJECT_REL))
     open_cmd.add_argument("--godot", help="Godot executable; defaults to PATH or the repo-local pinned install")
     open_cmd.set_defaults(func=_cmd_open)
 
+    open_clips = sub.add_parser(
+        "open-clips",
+        help="prepare the pilot and open the first AnimationPlayer clip sheet in Godot",
+    )
+    open_clips.add_argument("bindings", nargs="*")
+    open_clips.add_argument("--project", default=str(DEFAULT_PROJECT_REL))
+    open_clips.add_argument("--godot", help="Godot executable; defaults to PATH or the repo-local pinned install")
+    open_clips.set_defaults(func=_cmd_open_clips)
+
     check = sub.add_parser("headless-check", help="prepare and verify a Godot scene -> export -> IR round trip")
     check.add_argument("bindings", nargs="*")
     check.add_argument("--project", default=str(DEFAULT_PROJECT_REL))
     check.add_argument("--godot", help="Godot executable; defaults to PATH or the repo-local pinned install")
     check.set_defaults(func=_cmd_headless_check)
+
+    clip_check = sub.add_parser(
+        "headless-clip-check",
+        help="prepare and verify Godot AnimationPlayer clips -> export -> clip IR round trip",
+    )
+    clip_check.add_argument("bindings", nargs="*")
+    clip_check.add_argument("--project", default=str(DEFAULT_PROJECT_REL))
+    clip_check.add_argument("--godot", help="Godot executable; defaults to PATH or the repo-local pinned install")
+    clip_check.set_defaults(func=_cmd_headless_clip_check)
     return parser
 
 

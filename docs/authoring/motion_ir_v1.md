@@ -130,8 +130,9 @@ universal humanoid inheritance language.
 
 ## Clip
 
-A clip is pose-centric. It records timeline duration independently from sprite
-sampling and can refer to whole-body named poses:
+A clip records animation in continuous timeline time and can refer to whole-body
+named poses. The `sampling` block shown below is retained transitional publication
+metadata for the current sheet runtime; it is not part of the motion semantics:
 
 ```json
 {
@@ -167,7 +168,9 @@ parameter.body_opacity
 ```
 
 The core model is therefore not restricted to stop-motion pose sequences, but
-it also does not reduce every animation to unrelated property channels.
+it also does not reduce every animation to unrelated property channels. A pose
+backbone and independent scalar tracks are evaluated together at arbitrary
+`at_s`; sprite frames are selected later by a publication backend.
 
 `markers` are optional named animation synchronization hints. They are not
 fighter gameplay timing authority.
@@ -325,3 +328,124 @@ modification stack, `.tscn`, or `.tres` resources authoritative. The next
 question after pose editing proves stable is how much of ordinary
 `AnimationPlayer` can be generated from `ClipLibrary` while preserving the same
 one-way generated-resource boundary.
+
+## Godot AnimationPlayer clip authoring
+
+The second Godot layer deliberately lets `AnimationPlayer` behave like Godot
+rather than projecting sprite-frame columns into the timeline.
+`godot_motion_tool open-clips` generates one clip cell per representative
+Fighting Polygon motion, each with a normal `Skeleton2D` and `AnimationPlayer`.
+The generated Animation resources remain disposable projections of `.clip.json`
+plus referenced `.pose.json` resources.
+
+Each supported visual property becomes an ordinary Godot value track. Track key
+times are independent: an author may insert, delete, or retime a rotation key on
+one bone without manufacturing keys for the rest of the skeleton. Native
+Node2D `rotation` values are stored in Godot radians and converted to/from
+Ambition degrees at the boundary without angle normalization, so authored
+winding remains literal. Root/bone position tracks use ordinary `Vector2` keys.
+
+Named Ambition pose keys remain the semantic whole-body backbone. They are not
+reconstructed from Godot key columns. A clip-local property edit is stored as an
+absolute sparse `ScalarTrack` for that property while the original pose anchors
+remain intact. Properties without a clip-local track continue to inherit the
+pose backbone. This means editing one arm in one clip does not mutate the shared
+named pose, and ordinary Godot property keys can live at arbitrary times between
+pose anchors.
+
+The current lossless editor subset is intentionally explicit:
+
+- root translation and bone translation/rotation are ordinary editable tracks;
+- per-track linear and hold/discrete interpolation round-trip;
+- arbitrary key insertion, deletion, and retiming round-trip;
+- custom Godot transition/easing values, cubic interpolation, scale, and root
+  rotation are rejected until the Ambition IR/renderer seam can preserve them;
+- nonvisual parameter tracks remain authoritative source data but are not yet
+  projected onto Godot nodes.
+
+`Animation.length` is exactly `duration_s`. The generated Animation's `step` is
+a 1/60-second editor-grid preference only; it has no relationship to sprite
+publication cadence. The old `sampling.frame_count` and
+`sampling.frame_duration_ms` remain in clip JSON only to keep the current
+game-facing sheet format stable during this migration. Godot clip export does
+not carry or edit that publication metadata.
+
+The complete editor boundary check is:
+
+```bash
+uv run python -m ambition_sprite2d_renderer.devtools.godot_motion_tool \
+    headless-clip-check
+```
+
+That generates the AnimationPlayer scenes, lets Godot load and export them, and
+compares the neutral export against Ambition source without writing.
+
+## Continuous evaluation and adaptive sprite baking
+
+`motion_evaluation.py` evaluates the motion IR directly at arbitrary seconds.
+Pose keys provide the whole-body backbone; a scalar track, when present, owns
+its target property and replaces the corresponding backbone curve. This
+evaluator is backend-neutral: the current sprite renderer samples it through the
+temporary `RigDocument` projection, while a future live skeletal runtime can
+evaluate the same authored animation without baking sprites.
+
+Sprite publication is a separate policy in `sprite_sampling.py`. The primary
+`adaptive_sample_plan` chooses non-uniform sample times from continuous motion.
+It begins with semantic anchors such as named poses/markers, measures how well
+linear interpolation between candidate endpoint poses approximates the actual
+rig motion, and subdivides where joint displacement or angular error exceeds
+the bake profile. A separate maximum hold duration prevents perfectly linear
+motion from becoming one visually held bitmap for an arbitrarily long time.
+
+The default profile is deliberately economical rather than video-rate:
+
+```text
+max_joint_error_px       3.0
+max_rotation_error_deg   7.5
+max_hold_ms            250.0
+max_frames              16
+```
+
+The adaptive result may have different frame durations. That is the preferred
+representation for previews and for a future sheet/runtime contract that stores
+per-frame holds. The current game-facing sheet metadata has one duration for an
+entire animation row, so `uniform_compatibility_plan` chooses the smallest
+uniform cadence satisfying the same error budget. This compatibility adapter
+lets the authored motion and quality policy be correct now without forcing a
+runtime format migration into the Godot-editor change.
+
+Inspect either plan directly:
+
+```bash
+uv run python -m ambition_sprite2d_renderer.devtools.godot_motion_tool \
+    sample-plan jab
+
+uv run python -m ambition_sprite2d_renderer.devtools.godot_motion_tool \
+    sample-plan jab --uniform-compatibility
+```
+
+`render-clip` uses the adaptive plan by default and writes a GIF with the
+per-sample hold durations. `--legacy-sampling` is available only for A/B review
+of the historical fixed publication samples:
+
+```bash
+uv run python -m ambition_sprite2d_renderer.devtools.godot_motion_tool \
+    render-clip jab --output /tmp/jab.gif --strip /tmp/jab.png
+```
+
+The architecture is therefore:
+
+```text
+SVG static rig + Ambition continuous motion
+                 |
+                 +--> generated Godot AnimationPlayer authoring frontend
+                 |
+                 +--> adaptive sprite bake -> current/future sprite runtime
+                 |
+                 +--> future live skeletal runtime
+```
+
+Changing sprite quality or publication density does not require reauthoring the
+animation, and changing the eventual rendering backend does not require making
+Godot resources authoritative.
+

@@ -161,7 +161,7 @@ def translate_bone_worlds(
 
 
 PART_KINDS = ("polygon", "capsule", "circle", "sprite")
-EASE_NAMES = ("linear", "smooth", "out", "in", "sine")
+EASE_NAMES = ("linear", "smooth", "out", "in", "sine", "hold")
 DEFAULT_SPRITE_TRANSFORM_CACHE_MB = 128
 DEFAULT_SPRITE_TRANSFORM_WORKERS = min(4, max(1, os.cpu_count() or 1))
 

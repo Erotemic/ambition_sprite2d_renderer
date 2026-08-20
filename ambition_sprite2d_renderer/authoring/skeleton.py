@@ -183,6 +183,10 @@ def _linear(t: float) -> float:
     return t
 
 
+def _hold(t: float) -> float:
+    return 1.0 if t >= 1.0 - 1e-12 else 0.0
+
+
 def _ease_in_cubic(t: float) -> float:
     t = clamp(t, 0.0, 1.0)
     return t * t * t
@@ -194,6 +198,7 @@ _EASES: Dict[str, EaseFn] = {
     "out": ease_out_cubic,
     "in": _ease_in_cubic,
     "sine": ease_in_out_sine,
+    "hold": _hold,
 }
 
 

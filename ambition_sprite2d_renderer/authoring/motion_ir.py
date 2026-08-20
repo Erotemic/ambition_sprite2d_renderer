@@ -972,11 +972,7 @@ def _target_to_legacy_channel(target: str) -> str:
 
 
 def _legacy_ease(name: str) -> str:
-    if name == "hold":
-        # RigDocument has no step interpolation.  The pilot's migrated clips do
-        # not use it; reject instead of pretending a linear segment is a hold.
-        raise ValueError("legacy RigDocument projection cannot represent hold interpolation")
-    if name not in {"linear", "smooth", "in", "out", "sine"}:
+    if name not in {"linear", "smooth", "in", "out", "sine", "hold"}:
         raise ValueError(f"legacy RigDocument projection cannot represent interpolation {name!r}")
     return name
 
@@ -1096,10 +1092,11 @@ class PreparedCharacterMotion:
             parameter_channels: set[str] = set()
             for pose_key in clip.pose_keys:
                 state = self.library.resolve_pose_key(pose_key)
-                if clip.loop:
-                    t = pose_key.at_s / max(clip.duration_s, 1e-9)
-                else:
-                    t = pose_key.at_s / clip.animation_span_s
+                # Motion keys live in authored clip time.  Sprite sampling is a
+                # separate publication concern, so the compatibility projection
+                # normalizes every key against duration_s rather than against the
+                # old frame-count/frame-duration sampling table.
+                t = pose_key.at_s / max(clip.duration_s, 1e-9)
                 t = max(0.0, min(1.0, t))
                 ease = _legacy_ease(pose_key.interpolation)
                 resolved_keys.append((t, ease, state))
@@ -1141,10 +1138,7 @@ class PreparedCharacterMotion:
                 channel = _target_to_legacy_channel(track.target)
                 keys: list[list[Any]] = []
                 for key in track.keys:
-                    if clip.loop:
-                        t = key.at_s / max(clip.duration_s, 1e-9)
-                    else:
-                        t = key.at_s / clip.animation_span_s
+                    t = key.at_s / max(clip.duration_s, 1e-9)
                     value = key.value
                     if track.target.endswith("position.x") or track.target.endswith("position.y"):
                         value *= scale

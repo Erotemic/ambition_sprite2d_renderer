@@ -192,15 +192,31 @@ ACTOR_METADATA = {
 
 
 @lru_cache(maxsize=1)
+def _prepared():
+    return CharacterMotionBinding.load(MOTION_PATH).load_prepared()
+
+
+@lru_cache(maxsize=1)
 def _doc() -> RigDocument:
     # RigDocument is a temporary renderer projection.  The editable sources are
     # the SVG static rig plus the shared Ambition pose/clip library selected by
     # this character binding.
-    return CharacterMotionBinding.load(MOTION_PATH).load_prepared().to_rig_document()
+    return _prepared().to_rig_document()
 
 
 def _render_frame(animation: str, frame_idx: int, frame_count: int):
-    return _doc().render_frame(animation, frame_idx, frame_count)
+    # The shipped sheet still honors each clip's legacy publication cadence.
+    # Authored motion itself is normalized against duration_s, so publication
+    # samples are converted from absolute seconds explicitly rather than using
+    # RigDocument's generic i/(n-1) one-shot convention.
+    clip = _prepared().library.clips[animation]
+    if frame_count != clip.frame_count:
+        raise ValueError(
+            f"{animation}: requested {frame_count} publication frames, source declares {clip.frame_count}"
+        )
+    at_s = frame_idx * clip.frame_duration_ms / 1000.0
+    normalized = round(at_s / max(clip.duration_s, 1e-9), 9)
+    return _doc().render_at(animation, normalized)
 
 
 def render(out_dir: str | Path, **opts):

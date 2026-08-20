@@ -10,28 +10,35 @@
   "state": {
     "bones": {
       "far_arm_l": {
-        "rotation_deg": -1.94164
+        "rotation_deg": -1.941638
       },
       "far_arm_u": {
-        "rotation_deg": -0.494427
+        "rotation_deg": -0.494424
       },
       "far_leg_foot": {
-        "rotation_deg": 0.003793
+        "rotation_deg": 0.003791
       },
       "far_leg_l": {
         "rotation_deg": -0.008347
       },
       "far_leg_u": {
-        "rotation_deg": 0.004553
+        "rotation_deg": 0.004549
       },
       "head": {
         "rotation_deg": 0.753002
       },
       "near_arm_l": {
-        "rotation_deg": -1.763356
+        "rotation_deg": -1.763355
+      },
+      "near_arm_u": {
+        "position": [
+          12.000557,
+          -4.000702
+        ],
+        "rotation_deg": 30.662003
       },
       "near_leg_foot": {
-        "rotation_deg": 0.00073
+        "rotation_deg": 0.000731
       },
       "near_leg_l": {
         "rotation_deg": -0.001385
