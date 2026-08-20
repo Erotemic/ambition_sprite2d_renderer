@@ -145,3 +145,23 @@ The new clip records `authoring_retarget` metadata identifying its source and
 scale. This is a starting pose/motion transfer, not finished art: review the
 result, then exaggerate posture, spacing, anticipation, and follow-through to
 fit the destination character.
+
+## Godot pose-sheet frontend
+
+For the Fighting Polygon motion-IR pilot, prepare the disposable Godot workspace
+with:
+
+```bash
+uv run python -m ambition_sprite2d_renderer.devtools.godot_motion_tool prepare
+```
+
+Open `godot/pose_editor/generated/*_pose_sheet.tscn` in Godot 4.6.x. Edit
+`Bone2D` transforms, not the locked preview `Sprite2D` nodes or layout anchors.
+Each pose instance is independent even though both Polygon characters share the
+same canonical pose library.
+
+Use **Project > Tools > Export Ambition Pose Sheet**, then apply the generated
+bundle through `godot_motion_tool apply-export`. Do not hand-edit generated
+`.tscn`, generated preview PNGs, or the Godot export bundle as authoritative
+content. Regenerating `godot/pose_editor/generated/` is expected to destroy
+those files.

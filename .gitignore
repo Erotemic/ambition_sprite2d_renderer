@@ -57,3 +57,7 @@ profile_output*.txt
 # >>> llm_resource_tally local state (managed) >>>
 /.llm_resource_tally/local/
 # <<< llm_resource_tally local state (managed) <<<
+
+# Godot pose-authoring frontend cache. Generated pose scenes/textures/exports are disposable.
+godot/pose_editor/.godot/
+godot/pose_editor/generated/

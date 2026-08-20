@@ -228,3 +228,80 @@ The intended Godot mapping is deliberately mechanical:
 Godot scenes/resources are generated/editor-facing products. The JSON + SVG
 schema remains sufficient to reconstruct the authoring workspace in another
 frontend.
+
+## Godot pose-sheet pilot
+
+The first concrete editor frontend lives under `godot/pose_editor/`. It is a
+small Godot 4.6 project plus an `EditorPlugin`; generated scenes, preview PNGs,
+and export bundles are disposable and ignored by Git.
+
+Prepare both Fighting Polygon sheets from the authoritative SVG + motion sources:
+
+```bash
+uv run python -m ambition_sprite2d_renderer.devtools.godot_motion_tool prepare
+```
+
+The generator creates one literal multi-skeleton scene per character. Every
+canonical named pose is a complete `Skeleton2D` in the ordinary 2D viewport, so
+idle, anticipation, contact, recovery, and other poses can be compared and
+manipulated side-by-side rather than reduced to timeline thumbnails.
+
+The mapping is intentionally direct:
+
+```text
+Ambition RigDefinition          Godot generated scene
+-----------------------         ---------------------
+rig root                         RigRoot Node2D
+bone parent/local rest           Bone2D hierarchy + Bone2D.rest
+pose root delta                  RigRoot transform
+pose bone delta                  Bone2D transform relative to rest
+rigid SVG part                   preview-only cropped Sprite2D under its bone
+part z                           Sprite2D.z_index
+```
+
+The preview texture's source-space bind pivot is attached to the Bone2D origin.
+At rest, the child texture transform cancels the part's authored bind angle; as
+the bone is manipulated, ordinary Godot parent transforms produce the same
+rigid cutout behavior as the Python renderer. Godot rasterization is not part of
+the shipped asset contract: these PNGs exist only to make the editor useful.
+
+The generated scene is not source of truth. A small plugin exposes **Project >
+Tools > Export Ambition Pose Sheet** and writes an
+`ambition-godot-pose-export-v1` bundle under `generated/exports/`. Python then
+validates and normalizes it back into the existing independent `.pose.json`
+files:
+
+```bash
+uv run python -m ambition_sprite2d_renderer.devtools.godot_motion_tool \
+    apply-export godot/pose_editor/generated/exports/fighting_polygon_sword.poses.json
+```
+
+This two-step export is deliberate. GDScript does not own Ambition's canonical
+JSON serialization, validation, sparse-state rules, or source metadata. The
+Godot plugin reports edited transforms; the Python schema layer decides whether
+and how those become authoritative pose files.
+
+The pilot currently accepts bone translation/rotation and root translation from
+Godot. Bone/root scale and root rotation are rejected at the Python boundary
+because the retained `RigDocument` renderer projection cannot consume them
+losslessly. Keeping that restriction at the compatibility seam prevents an
+editor feature from silently creating source that ordinary sprite regeneration
+cannot publish. The neutral IR can support those transforms once the renderer
+no longer depends on the legacy projection.
+
+A headless round-trip check is also available when Godot is installed:
+
+```bash
+uv run python -m ambition_sprite2d_renderer.devtools.godot_motion_tool \
+    headless-check
+```
+
+It prepares the scenes, asks Godot itself to load and export them, and compares
+the result against the source poses without writing. This is the guard against
+coordinate/sign/winding drift at the editor boundary.
+
+The pilot intentionally does not yet make Godot's `AnimationPlayer`, IK
+modification stack, `.tscn`, or `.tres` resources authoritative. The next
+question after pose editing proves stable is how much of ordinary
+`AnimationPlayer` can be generated from `ClipLibrary` while preserving the same
+one-way generated-resource boundary.
