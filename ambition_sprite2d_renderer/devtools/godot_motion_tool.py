@@ -388,13 +388,17 @@ def _write_pose_sheet(
                 lines.extend(
                     [
                         f'[node name={_godot_string(bone.id)} type="Bone2D" parent={_godot_string(parent_path)}]',
+                        # Godot applies text-scene properties as the resource is loaded.
+                        # Disable automatic child-derived gizmo geometry before setting
+                        # rest/pose transforms so terminal bones never enter the fallback
+                        # calculation path while the scene is being constructed.
+                        "auto_calculate_length_and_angle = false",
+                        f'length = {_godot_float(gizmo_length)}',
+                        f'bone_angle = {_godot_float(gizmo_angle_deg)}',
                         f'position = {_vec2(actual.position)}',
                         f'rotation = {_godot_float(math.radians(actual.rotation_deg))}',
                         f'scale = {_vec2(actual.scale)}',
                         f'rest = {_transform2d(bone.rest)}',
-                        "autocalculate_length_and_angle = false",
-                        f'length = {_godot_float(gizmo_length)}',
-                        f'bone_angle = {_godot_float(math.radians(gizmo_angle_deg))}',
                         f'metadata/ambition_bone_id = {_godot_string(bone.id)}',
                         f'metadata/ambition_source_rotation_delta_deg = {_godot_float(delta.rotation_deg)}',
                         "",
@@ -714,6 +718,28 @@ def _binding_paths(raw: Sequence[str], repo: Path) -> list[Path]:
     return [(path if path.is_absolute() else repo / path).resolve() for path in paths]
 
 
+def _import_godot_resources(godot: Path, project_dir: Path, *, cwd: Path) -> None:
+    """Import freshly generated editor resources before loading pose scenes.
+
+    Preview PNGs are generated immediately before Godot is invoked. ResourceLoader
+    intentionally cannot load non-imported source images, so headless scene loading
+    must first let the editor build its disposable `.godot/imported` cache. Godot's
+    `--import` command is specifically intended for this noninteractive workflow.
+    """
+
+    subprocess.run(
+        [
+            str(godot),
+            "--headless",
+            "--path",
+            str(project_dir),
+            "--import",
+        ],
+        cwd=cwd,
+        check=True,
+    )
+
+
 def _cmd_prepare(args: argparse.Namespace) -> int:
     repo = repo_root()
     project_dir = (repo / args.project).resolve()
@@ -760,6 +786,7 @@ def _cmd_open(args: argparse.Namespace) -> int:
     godot = _find_godot(args.godot, repo)
     if godot is None:
         raise SystemExit(_missing_godot_message(repo))
+    _import_godot_resources(godot, project_dir, cwd=repo)
     scene = outputs[0]["scene"]
     command = [str(godot), "--editor", "--path", str(project_dir), str(scene)]
     return subprocess.call(command, cwd=repo)
@@ -777,6 +804,7 @@ def _cmd_headless_check(args: argparse.Namespace) -> int:
     godot = _find_godot(args.godot, repo)
     if godot is None:
         raise SystemExit(_missing_godot_message(repo))
+    _import_godot_resources(godot, project_dir, cwd=repo)
     for item in outputs:
         scene = item["scene"]
         out = project_dir / "generated" / "exports" / (scene.stem.replace("_pose_sheet", "") + ".poses.json")

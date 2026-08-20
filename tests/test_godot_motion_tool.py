@@ -9,7 +9,9 @@ from ambition_sprite2d_renderer.authoring.motion_ir import CharacterMotionBindin
 from ambition_sprite2d_renderer.devtools.godot_motion_tool import (
     DEFAULT_BINDINGS,
     GODOT_SHEET_SCHEMA,
+    _bone_gizmo,
     _find_godot,
+    _import_godot_resources,
     _render_part_textures,
     _rotate,
     apply_export,
@@ -34,7 +36,17 @@ def test_prepare_generates_literal_pose_sheet_from_neutral_ir(tmp_path):
     assert scene.count('type="Bone2D"') == len(prepared.library.poses) * len(prepared.rig.bones)
     assert scene.count('type="Sprite2D"') == len(prepared.library.poses) * len(prepared.rig.parts)
     assert "rest = Transform2D(" in scene
-    assert "autocalculate_length_and_angle = false" in scene
+    assert "auto_calculate_length_and_angle = false" in scene
+    first_bone = scene.index('type="Bone2D"')
+    next_node = scene.find("\n[node ", first_bone + 1)
+    first_bone_block = scene[first_bone:next_node]
+    assert first_bone_block.index("auto_calculate_length_and_angle = false") < first_bone_block.index("rest = Transform2D(")
+    # Bone2D's text-scene property is degrees; set_bone_angle() itself uses radians.
+    first_bone_id = prepared.rig.bones[0].id
+    _gizmo_length, gizmo_angle_deg = _bone_gizmo(prepared, first_bone_id)
+    angle_line = next(line for line in first_bone_block.splitlines() if line.startswith("bone_angle = "))
+    assert float(angle_line.split("=", 1)[1]) == pytest.approx(gizmo_angle_deg, abs=1e-9)
+    assert "autocalculate_length_and_angle" not in scene
     assert "AnimationPlayer" not in scene
     assert "RigDocument" not in scene
 
@@ -121,6 +133,31 @@ def test_committed_godot_project_is_a_small_replaceable_frontend():
     assert "FileAccess" in exporter
 
 
+def test_generated_godot_resources_are_imported_before_headless_scene_load(monkeypatch, tmp_path):
+    calls = []
+
+    def fake_run(command, **kwargs):
+        calls.append((command, kwargs))
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    godot = Path("/opt/godot")
+    project = tmp_path / "pose_editor"
+    _import_godot_resources(godot, project, cwd=tmp_path)
+
+    assert calls == [
+        (
+            [str(godot), "--headless", "--path", str(project), "--import"],
+            {"cwd": tmp_path, "check": True},
+        )
+    ]
+
+
+def test_pilot_ignores_editor_generated_script_uid_sidecars():
+    ignored = (repo_root() / ".gitignore").read_text(encoding="utf8")
+    assert "godot/pose_editor/**/*.gd.uid" in ignored
+
+
 def test_godot_headless_can_parse_and_export_generated_scene_when_available(tmp_path):
     repo = repo_root()
     godot = _find_godot(None, repo)
@@ -130,6 +167,7 @@ def test_godot_headless_can_parse_and_export_generated_scene_when_available(tmp_
     project = tmp_path / "pose_editor"
     shutil.copytree(repo / "godot" / "pose_editor", project, ignore=shutil.ignore_patterns("generated", ".godot"))
     output = prepare_binding(_binding().path, project_dir=project, repo=repo)
+    _import_godot_resources(godot, project, cwd=repo)
     export = project / "generated" / "exports" / "headless.json"
     scene_res = "res://" + output["scene"].relative_to(project).as_posix()
     export_res = "res://" + export.relative_to(project).as_posix()
