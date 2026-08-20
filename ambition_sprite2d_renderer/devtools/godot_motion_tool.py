@@ -37,6 +37,7 @@ from ambition_sprite2d_renderer.authoring.svg_parts import rasterize_subset
 GODOT_EXPORT_SCHEMA = "ambition-godot-pose-export-v1"
 GODOT_SHEET_SCHEMA = "ambition-godot-pose-sheet-v1"
 DEFAULT_PROJECT_REL = Path("godot/pose_editor")
+GODOT_VERSION_REL = DEFAULT_PROJECT_REL / "GODOT_VERSION"
 DEFAULT_BINDINGS = (
     Path("ambition_sprite2d_renderer/data/characters/fighting_polygon_sword/fighting_polygon_sword.motion.json"),
     Path("ambition_sprite2d_renderer/data/characters/fighting_polygon_brawler/fighting_polygon_brawler.motion.json"),
@@ -658,16 +659,54 @@ def apply_export(
     return changed, worst
 
 
+def _pinned_godot_version(repo: Path) -> str:
+    version_path = repo / GODOT_VERSION_REL
+    version = version_path.read_text(encoding="utf8").strip()
+    if not version:
+        raise ValueError(f"empty Godot version pin: {version_path}")
+    return version
+
+
+def _reports_godot_version(path: Path, version: str) -> bool:
+    try:
+        result = subprocess.run(
+            [str(path), "--version"],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return result.stdout.strip().startswith(version + ".")
+
+
 def _find_godot(explicit: str | None, repo: Path) -> Path | None:
     if explicit:
         path = Path(explicit).expanduser()
         return path if path.exists() else None
+
+    version = _pinned_godot_version(repo)
+    local = sorted((repo / "tpl").glob(f"Godot_v{version}-stable_linux.*"))
+    if local:
+        return local[0]
+
     for name in ("godot4", "godot"):
         found = shutil.which(name)
         if found:
-            return Path(found)
-    local = sorted((repo / "tpl").glob("Godot_v*-stable_linux.x86_64"))
-    return local[-1] if local else None
+            path = Path(found)
+            if _reports_godot_version(path, version):
+                return path
+    return None
+
+
+def _missing_godot_message(repo: Path) -> str:
+    version = _pinned_godot_version(repo)
+    return (
+        f"Godot executable not found; run ./scripts/install_godot.py to install the pinned "
+        f"Godot {version} editor under tpl/, put godot/godot4 on PATH, or pass --godot"
+    )
 
 
 def _binding_paths(raw: Sequence[str], repo: Path) -> list[Path]:
@@ -720,10 +759,7 @@ def _cmd_open(args: argparse.Namespace) -> int:
     )
     godot = _find_godot(args.godot, repo)
     if godot is None:
-        raise SystemExit(
-            "Godot executable not found; install Godot 4.6.x, put it on PATH as godot/godot4, "
-            "or pass --godot /path/to/Godot"
-        )
+        raise SystemExit(_missing_godot_message(repo))
     scene = outputs[0]["scene"]
     command = [str(godot), "--editor", "--path", str(project_dir), str(scene)]
     return subprocess.call(command, cwd=repo)
@@ -740,7 +776,7 @@ def _cmd_headless_check(args: argparse.Namespace) -> int:
     )
     godot = _find_godot(args.godot, repo)
     if godot is None:
-        raise SystemExit("Godot executable not found; pass --godot or install Godot 4.6.x")
+        raise SystemExit(_missing_godot_message(repo))
     for item in outputs:
         scene = item["scene"]
         out = project_dir / "generated" / "exports" / (scene.stem.replace("_pose_sheet", "") + ".poses.json")
@@ -787,13 +823,13 @@ def build_parser() -> argparse.ArgumentParser:
     open_cmd = sub.add_parser("open", help="prepare the pilot and open the first pose sheet in Godot")
     open_cmd.add_argument("bindings", nargs="*")
     open_cmd.add_argument("--project", default=str(DEFAULT_PROJECT_REL))
-    open_cmd.add_argument("--godot", help="Godot 4.6.x executable")
+    open_cmd.add_argument("--godot", help="Godot executable; defaults to PATH or the repo-local pinned install")
     open_cmd.set_defaults(func=_cmd_open)
 
     check = sub.add_parser("headless-check", help="prepare and verify a Godot scene -> export -> IR round trip")
     check.add_argument("bindings", nargs="*")
     check.add_argument("--project", default=str(DEFAULT_PROJECT_REL))
-    check.add_argument("--godot", help="Godot 4.6.x executable")
+    check.add_argument("--godot", help="Godot executable; defaults to PATH or the repo-local pinned install")
     check.set_defaults(func=_cmd_headless_check)
     return parser
 

@@ -9,6 +9,7 @@ from ambition_sprite2d_renderer.authoring.motion_ir import CharacterMotionBindin
 from ambition_sprite2d_renderer.devtools.godot_motion_tool import (
     DEFAULT_BINDINGS,
     GODOT_SHEET_SCHEMA,
+    _find_godot,
     _render_part_textures,
     _rotate,
     apply_export,
@@ -122,11 +123,9 @@ def test_committed_godot_project_is_a_small_replaceable_frontend():
 
 def test_godot_headless_can_parse_and_export_generated_scene_when_available(tmp_path):
     repo = repo_root()
-    candidates = [shutil.which("godot4"), shutil.which("godot")]
-    candidates += [str(path) for path in sorted((repo / "tpl").glob("Godot_v*-stable_linux.x86_64"))]
-    godot = next((Path(value) for value in candidates if value and Path(value).exists()), None)
+    godot = _find_godot(None, repo)
     if godot is None:
-        pytest.skip("Godot 4.x executable not available in test environment")
+        pytest.skip("pinned Godot executable not available in test environment")
 
     project = tmp_path / "pose_editor"
     shutil.copytree(repo / "godot" / "pose_editor", project, ignore=shutil.ignore_patterns("generated", ".godot"))

@@ -4,17 +4,27 @@ This Godot project is an editor frontend over Ambition's SVG rig metadata and
 motion JSON. It is not an authoritative character format and is not part of the
 normal sprite-rendering or game-runtime dependency chain.
 
-Generate the pilot workspace from the repository root:
+Install the exact editor version pinned by this project from the repository root:
+
+```bash
+./scripts/install_godot.py
+```
+
+This installs a checksum-verified official Linux editor under the ignored `tpl/`
+directory. It supports x86_64 and arm64 and does not install export templates,
+because this authoring frontend does not export Godot games.
+
+Generate the pilot workspace:
 
 ```bash
 uv run python -m ambition_sprite2d_renderer.devtools.godot_motion_tool prepare
 ```
 
-Then open either generated pose sheet in Godot 4.6.x:
+Then open the generated pose sheet with the normal helper; it discovers the
+repo-local pinned binary automatically:
 
 ```bash
-godot --editor --path godot/pose_editor \
-    godot/pose_editor/generated/fighting_polygon_sword_pose_sheet.tscn
+uv run python -m ambition_sprite2d_renderer.devtools.godot_motion_tool open
 ```
 
 Every canonical pose is a complete independently editable `Skeleton2D` in the

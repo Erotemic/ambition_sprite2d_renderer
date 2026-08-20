@@ -233,7 +233,19 @@ frontend.
 
 The first concrete editor frontend lives under `godot/pose_editor/`. It is a
 small Godot 4.6 project plus an `EditorPlugin`; generated scenes, preview PNGs,
-and export bundles are disposable and ignored by Git.
+and export bundles are disposable and ignored by Git. The exact supported editor
+patch is pinned in `godot/pose_editor/GODOT_VERSION`. Install that version
+repo-locally with:
+
+```bash
+./scripts/install_godot.py
+```
+
+The installer downloads the official Linux editor release, verifies its pinned
+SHA-512 checksum, and installs only the executable under ignored `tpl/`. Normal
+sprite regeneration therefore remains independent of Godot. A version bump is
+an explicit repository change rather than an implicit update to whatever release
+is newest on the network.
 
 Prepare both Fighting Polygon sheets from the authoritative SVG + motion sources:
 

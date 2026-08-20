@@ -148,6 +148,17 @@ fit the destination character.
 
 ## Godot pose-sheet frontend
 
+Install the repo-pinned Godot editor once per checkout/machine:
+
+```bash
+./scripts/install_godot.py
+```
+
+The installer places the verified editor binary under `tpl/`; it does not add a
+system Godot dependency. The pinned version is recorded in
+`godot/pose_editor/GODOT_VERSION` and should only be bumped together with a
+headless editor round-trip check.
+
 For the Fighting Polygon motion-IR pilot, prepare the disposable Godot workspace
 with:
 
@@ -155,7 +166,7 @@ with:
 uv run python -m ambition_sprite2d_renderer.devtools.godot_motion_tool prepare
 ```
 
-Open `godot/pose_editor/generated/*_pose_sheet.tscn` in Godot 4.6.x. Edit
+Open `godot/pose_editor/generated/*_pose_sheet.tscn` in the pinned Godot editor. Edit
 `Bone2D` transforms, not the locked preview `Sprite2D` nodes or layout anchors.
 Each pose instance is independent even though both Polygon characters share the
 same canonical pose library.

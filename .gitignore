@@ -13,7 +13,7 @@ agent-scratch/
 .cache/
 
 # Local Godot editor/runtime binaries.
-tpl/Godot_v*-stable_linux.x86_64
+tpl/Godot_v*-stable_linux.*
 
 # Python
 __pycache__/
