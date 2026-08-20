@@ -385,4 +385,85 @@
          id="path137" />
     </g>
   </g>
+  <!-- BEGIN AMBITION SVG RIG v1 -->
+  <metadata id="ambition-rig-metadata" data-ambition-schema="ambition-svg-rig-v1" data-ambition-role="character-rig" data-rig-coordinate-space="root-svg-user-space" data-rig-rest-authority="markers">
+    <g id="ambition-rig-view-front" data-rig-view-def="front" data-rig-source-layer="view-front" data-rig-source-label="Hunny Horror Boss - Front" data-rig-root="ambition-rig-front-joint-rig_root" data-rig-projection="front" data-rig-profile="articulated-biped-v1" data-rig-pose-authority="geometry-only" data-rig-part-order="attribute" data-rig-source-map-quality="exact-frame-space">
+      <g id="ambition-rig-front-bone-pelvis" data-rig-bone-def="pelvis" data-rig-origin="ambition-rig-front-joint-hip_center" />
+      <g id="ambition-rig-front-bone-torso" data-rig-bone-def="torso" data-rig-parent="pelvis" data-rig-origin="ambition-rig-front-joint-waist" />
+      <g id="ambition-rig-front-bone-head" data-rig-bone-def="head" data-rig-parent="torso" data-rig-origin="ambition-rig-front-joint-neck" />
+      <g id="ambition-rig-front-bone-jaw" data-rig-bone-def="jaw" data-rig-parent="head" data-rig-origin="ambition-rig-front-joint-jaw_hinge" />
+      <g id="ambition-rig-front-bone-l_arm_u" data-rig-bone-def="l_arm_u" data-rig-parent="torso" data-rig-origin="ambition-rig-front-joint-left_shoulder" data-rig-tip="ambition-rig-front-joint-left_elbow" />
+      <g id="ambition-rig-front-bone-l_arm_l" data-rig-bone-def="l_arm_l" data-rig-parent="l_arm_u" data-rig-origin="ambition-rig-front-joint-left_elbow" data-rig-tip="ambition-rig-front-joint-left_handtip" />
+      <g id="ambition-rig-front-bone-r_arm_u" data-rig-bone-def="r_arm_u" data-rig-parent="torso" data-rig-origin="ambition-rig-front-joint-right_shoulder" data-rig-tip="ambition-rig-front-joint-right_elbow" />
+      <g id="ambition-rig-front-bone-r_arm_l" data-rig-bone-def="r_arm_l" data-rig-parent="r_arm_u" data-rig-origin="ambition-rig-front-joint-right_elbow" data-rig-tip="ambition-rig-front-joint-right_handtip" />
+      <g id="ambition-rig-front-bone-l_leg_u" data-rig-bone-def="l_leg_u" data-rig-parent="pelvis" data-rig-origin="ambition-rig-front-joint-left_hip" data-rig-tip="ambition-rig-front-joint-left_knee" />
+      <g id="ambition-rig-front-bone-l_leg_l" data-rig-bone-def="l_leg_l" data-rig-parent="l_leg_u" data-rig-origin="ambition-rig-front-joint-left_knee" data-rig-tip="ambition-rig-front-joint-left_toe" />
+      <g id="ambition-rig-front-bone-r_leg_u" data-rig-bone-def="r_leg_u" data-rig-parent="pelvis" data-rig-origin="ambition-rig-front-joint-right_hip" data-rig-tip="ambition-rig-front-joint-right_knee" />
+      <g id="ambition-rig-front-bone-r_leg_l" data-rig-bone-def="r_leg_l" data-rig-parent="r_leg_u" data-rig-origin="ambition-rig-front-joint-right_knee" data-rig-tip="ambition-rig-front-joint-right_toe" />
+      <g id="ambition-rig-front-part-leg_l_u" data-rig-part-def="leg_l_u" data-rig-bone="l_leg_u" data-rig-z="5" data-rig-pivot="ambition-rig-front-bind-leg_l_u" data-rig-bind-angle="86" data-rig-elements="part-leg-l-u" />
+      <g id="ambition-rig-front-part-leg_l_l" data-rig-part-def="leg_l_l" data-rig-bone="l_leg_l" data-rig-z="6" data-rig-pivot="ambition-rig-front-bind-leg_l_l" data-rig-bind-angle="92" data-rig-elements="part-leg-l-l" />
+      <g id="ambition-rig-front-part-leg_r_u" data-rig-part-def="leg_r_u" data-rig-bone="r_leg_u" data-rig-z="7" data-rig-pivot="ambition-rig-front-bind-leg_r_u" data-rig-bind-angle="94" data-rig-elements="part-leg-r-u" />
+      <g id="ambition-rig-front-part-leg_r_l" data-rig-part-def="leg_r_l" data-rig-bone="r_leg_l" data-rig-z="8" data-rig-pivot="ambition-rig-front-bind-leg_r_l" data-rig-bind-angle="88" data-rig-elements="part-leg-r-l" />
+      <g id="ambition-rig-front-part-arm_l_u" data-rig-part-def="arm_l_u" data-rig-bone="l_arm_u" data-rig-z="20" data-rig-pivot="ambition-rig-front-bind-arm_l_u" data-rig-bind-angle="132" data-rig-elements="part-arm-l-u" />
+      <g id="ambition-rig-front-part-arm_l_l" data-rig-part-def="arm_l_l" data-rig-bone="l_arm_l" data-rig-z="21" data-rig-pivot="ambition-rig-front-bind-arm_l_l" data-rig-bind-angle="144" data-rig-elements="part-arm-l-l" />
+      <g id="ambition-rig-front-part-claws_l" data-rig-part-def="claws_l" data-rig-bone="l_arm_l" data-rig-z="21.5" data-rig-pivot="ambition-rig-front-bind-claws_l" data-rig-bind-angle="144" data-rig-opacity="claw_vis" data-rig-elements="part-claws-l" />
+      <g id="ambition-rig-front-part-body" data-rig-part-def="body" data-rig-bone="torso" data-rig-z="30" data-rig-pivot="ambition-rig-front-bind-body" data-rig-bind-angle="0" data-rig-elements="part-body" />
+      <g id="ambition-rig-front-part-arm_r_u" data-rig-part-def="arm_r_u" data-rig-bone="r_arm_u" data-rig-z="32" data-rig-pivot="ambition-rig-front-bind-arm_r_u" data-rig-bind-angle="48" data-rig-elements="part-arm-r-u" />
+      <g id="ambition-rig-front-part-arm_r_l" data-rig-part-def="arm_r_l" data-rig-bone="r_arm_l" data-rig-z="33" data-rig-pivot="ambition-rig-front-bind-arm_r_l" data-rig-bind-angle="36" data-rig-elements="part-arm-r-l" />
+      <g id="ambition-rig-front-part-claws_r" data-rig-part-def="claws_r" data-rig-bone="r_arm_l" data-rig-z="33.5" data-rig-pivot="ambition-rig-front-bind-claws_r" data-rig-bind-angle="36" data-rig-opacity="claw_vis" data-rig-elements="part-claws-r" />
+      <g id="ambition-rig-front-part-head" data-rig-part-def="head" data-rig-bone="head" data-rig-z="40" data-rig-pivot="ambition-rig-front-bind-head" data-rig-bind-angle="0" data-rig-elements="part-head" />
+      <g id="ambition-rig-front-part-teeth_upper" data-rig-part-def="teeth_upper" data-rig-bone="head" data-rig-z="40.6" data-rig-pivot="ambition-rig-front-bind-teeth_upper" data-rig-bind-angle="0" data-rig-opacity="teeth_vis" data-rig-elements="part-mouth-teeth-upper" />
+      <g id="ambition-rig-front-part-eyes_glow" data-rig-part-def="eyes_glow" data-rig-bone="head" data-rig-z="41" data-rig-pivot="ambition-rig-front-bind-eyes_glow" data-rig-bind-angle="0" data-rig-opacity="eye_glow" data-rig-elements="part-eyes-glow" />
+      <g id="ambition-rig-front-part-jaw" data-rig-part-def="jaw" data-rig-bone="jaw" data-rig-z="42" data-rig-pivot="ambition-rig-front-bind-jaw" data-rig-bind-angle="0" data-rig-elements="part-jaw" />
+      <g id="ambition-rig-front-part-teeth_lower" data-rig-part-def="teeth_lower" data-rig-bone="jaw" data-rig-z="42.4" data-rig-pivot="ambition-rig-front-bind-teeth_lower" data-rig-bind-angle="0" data-rig-opacity="teeth_vis" data-rig-elements="part-mouth-teeth-lower" />
+      <g id="ambition-rig-front-part-roar_sound" data-rig-part-def="roar_sound" data-rig-bone="head" data-rig-z="43" data-rig-pivot="ambition-rig-front-bind-roar_sound" data-rig-bind-angle="0" data-rig-opacity="sound_vis" data-rig-elements="part-roar-sound" />
+    </g>
+  </metadata>
+  <g id="ambition-rig-markers" data-rig-editor-layer="true" inkscape:groupmode="layer" inkscape:label="Ambition Rig Markers">
+    <g id="ambition-rig-markers-front" data-rig-view="front" inkscape:label="Rig Markers - Hunny Horror Boss - Front">
+      <line id="ambition-rig-front-guide-l_arm_u" data-rig-bone-guide="l_arm_u" x1="49" y1="81" x2="35" y2="102" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-front-guide-l_arm_l" data-rig-bone-guide="l_arm_l" x1="35" y1="102" x2="15.333475" y2="113.354537" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-front-guide-r_arm_u" data-rig-bone-guide="r_arm_u" x1="111" y1="80" x2="126" y2="102" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-front-guide-r_arm_l" data-rig-bone-guide="r_arm_l" x1="126" y1="102" x2="144.666525" y2="113.354537" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-front-guide-l_leg_u" data-rig-bone-guide="l_leg_u" x1="67" y1="117" x2="63" y2="139" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-front-guide-l_leg_l" data-rig-bone-guide="l_leg_l" x1="63" y1="139" x2="66.836652" y2="160.934226" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-front-guide-r_leg_u" data-rig-bone-guide="r_leg_u" x1="93" y1="117" x2="95" y2="139" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-front-guide-r_leg_l" data-rig-bone-guide="r_leg_l" x1="95" y1="139" x2="93.163348" y2="160.934226" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <circle id="ambition-rig-front-joint-hip_center" data-rig-joint="hip_center" cx="80" cy="118" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-jaw_hinge" data-rig-joint="jaw_hinge" cx="80" cy="73" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-left_elbow" data-rig-joint="left_elbow" cx="35" cy="102" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-left_handtip" data-rig-joint="left_handtip" cx="15.333475" cy="113.354537" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-left_hip" data-rig-joint="left_hip" cx="67" cy="117" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-left_knee" data-rig-joint="left_knee" cx="63" cy="139" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-left_shoulder" data-rig-joint="left_shoulder" cx="49" cy="81" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-left_toe" data-rig-joint="left_toe" cx="66.836652" cy="160.934226" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-neck" data-rig-joint="neck" cx="80" cy="58" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-rig_root" data-rig-joint="rig_root" cx="80" cy="149" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-right_elbow" data-rig-joint="right_elbow" cx="126" cy="102" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-right_handtip" data-rig-joint="right_handtip" cx="144.666525" cy="113.354537" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-right_hip" data-rig-joint="right_hip" cx="93" cy="117" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-right_knee" data-rig-joint="right_knee" cx="95" cy="139" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-right_shoulder" data-rig-joint="right_shoulder" cx="111" cy="80" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-right_toe" data-rig-joint="right_toe" cx="93.163348" cy="160.934226" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-waist" data-rig-joint="waist" cx="80" cy="90" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-bind-leg_l_u" data-rig-bind-pivot="leg_l_u" cx="67" cy="117" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-leg_l_l" data-rig-bind-pivot="leg_l_l" cx="63" cy="139" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-leg_r_u" data-rig-bind-pivot="leg_r_u" cx="93" cy="117" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-leg_r_l" data-rig-bind-pivot="leg_r_l" cx="95" cy="139" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-arm_l_u" data-rig-bind-pivot="arm_l_u" cx="49" cy="81" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-arm_l_l" data-rig-bind-pivot="arm_l_l" cx="35" cy="102" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-claws_l" data-rig-bind-pivot="claws_l" cx="35" cy="102" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-body" data-rig-bind-pivot="body" cx="80" cy="90" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-arm_r_u" data-rig-bind-pivot="arm_r_u" cx="111" cy="80" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-arm_r_l" data-rig-bind-pivot="arm_r_l" cx="126" cy="102" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-claws_r" data-rig-bind-pivot="claws_r" cx="126" cy="102" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-head" data-rig-bind-pivot="head" cx="80" cy="58" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-teeth_upper" data-rig-bind-pivot="teeth_upper" cx="80" cy="58" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-eyes_glow" data-rig-bind-pivot="eyes_glow" cx="80" cy="58" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-jaw" data-rig-bind-pivot="jaw" cx="80" cy="73" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-teeth_lower" data-rig-bind-pivot="teeth_lower" cx="80" cy="73" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-roar_sound" data-rig-bind-pivot="roar_sound" cx="80" cy="58" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+    </g>
+  </g>
+  <!-- END AMBITION SVG RIG v1 -->
 </svg>

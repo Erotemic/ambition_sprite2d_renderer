@@ -793,4 +793,7 @@
   </g>
   <metadata
    id="metadata-author">Canonical Author vector artwork and humanoid rig-authoring source.</metadata>
+  <!-- BEGIN AMBITION SVG RIG v1 -->
+  <metadata id="ambition-rig-metadata" data-ambition-schema="ambition-svg-rig-v1" data-ambition-role="rig-template" />
+  <!-- END AMBITION SVG RIG v1 -->
 </svg>

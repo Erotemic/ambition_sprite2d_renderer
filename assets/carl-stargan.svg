@@ -688,4 +688,83 @@
    style="fill:#ff3eb5;fill-opacity:0.42;stroke:#5a183f;stroke-width:0.48;stroke-linecap:round;stroke-linejoin:round" />
     </g>
   </g>
+  <!-- BEGIN AMBITION SVG RIG v1 -->
+  <metadata id="ambition-rig-metadata" data-ambition-schema="ambition-svg-rig-v1" data-ambition-role="character-rig" data-rig-coordinate-space="root-svg-user-space" data-rig-rest-authority="markers">
+    <g id="ambition-rig-view-side" data-rig-view-def="side" data-rig-source-layer="view-carl-stargan-side-left" data-rig-source-label="Carl Stargan - Side Left" data-rig-root="ambition-rig-side-joint-rig_root" data-rig-projection="side" data-rig-facing="west" data-rig-profile="humanoid-articulated-v1" data-rig-pose-authority="geometry-only" data-rig-part-order="attribute" data-rig-source-map-quality="authored-svg-joints">
+      <g id="ambition-rig-side-bone-pelvis" data-rig-bone-def="pelvis" data-rig-origin="ambition-rig-side-joint-hip_center" />
+      <g id="ambition-rig-side-bone-torso" data-rig-bone-def="torso" data-rig-parent="pelvis" data-rig-origin="joint-waist" />
+      <g id="ambition-rig-side-bone-head" data-rig-bone-def="head" data-rig-parent="torso" data-rig-origin="joint-neck" />
+      <g id="ambition-rig-side-bone-far_arm_u" data-rig-bone-def="far_arm_u" data-rig-parent="torso" data-rig-origin="joint-far-shoulder" data-rig-tip="joint-far-elbow" />
+      <g id="ambition-rig-side-bone-far_arm_l" data-rig-bone-def="far_arm_l" data-rig-parent="far_arm_u" data-rig-origin="joint-far-elbow" data-rig-tip="joint-far-wrist" />
+      <g id="ambition-rig-side-bone-far_arm_hand" data-rig-bone-def="far_arm_hand" data-rig-parent="far_arm_l" data-rig-origin="joint-far-wrist" data-rig-tip="joint-far-handtip" />
+      <g id="ambition-rig-side-bone-far_leg_u" data-rig-bone-def="far_leg_u" data-rig-parent="pelvis" data-rig-origin="joint-far-hip" data-rig-tip="joint-far-knee" />
+      <g id="ambition-rig-side-bone-far_leg_l" data-rig-bone-def="far_leg_l" data-rig-parent="far_leg_u" data-rig-origin="joint-far-knee" data-rig-tip="joint-far-ankle" />
+      <g id="ambition-rig-side-bone-far_leg_foot" data-rig-bone-def="far_leg_foot" data-rig-parent="far_leg_l" data-rig-origin="joint-far-ankle" data-rig-tip="joint-far-toe" />
+      <g id="ambition-rig-side-bone-near_arm_u" data-rig-bone-def="near_arm_u" data-rig-parent="torso" data-rig-origin="joint-near-shoulder" data-rig-tip="joint-near-elbow" />
+      <g id="ambition-rig-side-bone-near_arm_l" data-rig-bone-def="near_arm_l" data-rig-parent="near_arm_u" data-rig-origin="joint-near-elbow" data-rig-tip="joint-near-wrist" />
+      <g id="ambition-rig-side-bone-near_arm_hand" data-rig-bone-def="near_arm_hand" data-rig-parent="near_arm_l" data-rig-origin="joint-near-wrist" data-rig-tip="joint-near-handtip" />
+      <g id="ambition-rig-side-bone-near_leg_u" data-rig-bone-def="near_leg_u" data-rig-parent="pelvis" data-rig-origin="joint-near-hip" data-rig-tip="joint-near-knee" />
+      <g id="ambition-rig-side-bone-near_leg_l" data-rig-bone-def="near_leg_l" data-rig-parent="near_leg_u" data-rig-origin="joint-near-knee" data-rig-tip="joint-near-ankle" />
+      <g id="ambition-rig-side-bone-near_leg_foot" data-rig-bone-def="near_leg_foot" data-rig-parent="near_leg_l" data-rig-origin="joint-near-ankle" data-rig-tip="joint-near-toe" />
+      <g id="ambition-rig-side-part-torso_backing" data-rig-part-def="torso_backing" data-rig-bone="torso" data-rig-z="0" data-rig-pivot="ambition-rig-side-bind-torso_backing" data-rig-bind-angle="0" data-rig-elements="path2046" />
+      <g id="ambition-rig-side-part-far_leg_u" data-rig-part-def="far_leg_u" data-rig-bone="far_leg_u" data-rig-z="1" data-rig-pivot="ambition-rig-side-bind-far_leg_u" data-rig-bind-angle="131.3007" data-rig-elements="path2054" />
+      <g id="ambition-rig-side-part-far_foot" data-rig-part-def="far_foot" data-rig-bone="far_leg_foot" data-rig-z="2" data-rig-pivot="ambition-rig-side-bind-far_foot" data-rig-bind-angle="158.4287" data-rig-elements="path2064" />
+      <g id="ambition-rig-side-part-far_leg_l" data-rig-part-def="far_leg_l" data-rig-bone="far_leg_l" data-rig-z="3" data-rig-pivot="ambition-rig-side-bind-far_leg_l" data-rig-bind-angle="108.203" data-rig-elements="path2058" />
+      <g id="ambition-rig-side-part-far_arm_u" data-rig-part-def="far_arm_u" data-rig-bone="far_arm_u" data-rig-z="4" data-rig-pivot="ambition-rig-side-bind-far_arm_u" data-rig-bind-angle="117.5685" data-rig-elements="path2066" />
+      <g id="ambition-rig-side-part-far_hand" data-rig-part-def="far_hand" data-rig-bone="far_arm_hand" data-rig-z="5" data-rig-pivot="ambition-rig-side-bind-far_hand" data-rig-bind-angle="153.7832" data-rig-elements="path2129 path2127" />
+      <g id="ambition-rig-side-part-far_arm_l" data-rig-part-def="far_arm_l" data-rig-bone="far_arm_l" data-rig-z="6" data-rig-pivot="ambition-rig-side-bind-far_arm_l" data-rig-bind-angle="152.8787" data-rig-elements="path2068" />
+      <g id="ambition-rig-side-part-pelvis" data-rig-part-def="pelvis" data-rig-bone="pelvis" data-rig-z="7" data-rig-pivot="ambition-rig-side-bind-pelvis" data-rig-bind-angle="0" data-rig-elements="path2052" />
+      <g id="ambition-rig-side-part-near_foot" data-rig-part-def="near_foot" data-rig-bone="near_leg_foot" data-rig-z="8" data-rig-pivot="ambition-rig-side-bind-near_foot" data-rig-bind-angle="153.189" data-rig-elements="path2064-3" />
+      <g id="ambition-rig-side-part-near_leg_u" data-rig-part-def="near_leg_u" data-rig-bone="near_leg_u" data-rig-z="9" data-rig-pivot="ambition-rig-side-bind-near_leg_u" data-rig-bind-angle="66.1089" data-rig-elements="path2056" />
+      <g id="ambition-rig-side-part-near_leg_l" data-rig-part-def="near_leg_l" data-rig-bone="near_leg_l" data-rig-z="10" data-rig-pivot="ambition-rig-side-bind-near_leg_l" data-rig-bind-angle="45.0923" data-rig-elements="path2060" />
+      <g id="ambition-rig-side-part-torso" data-rig-part-def="torso" data-rig-bone="torso" data-rig-z="11" data-rig-pivot="ambition-rig-side-bind-torso" data-rig-bind-angle="0" data-rig-elements="path2050 path2042 path2048 path2161" />
+      <g id="ambition-rig-side-part-neck" data-rig-part-def="neck" data-rig-bone="torso" data-rig-z="12" data-rig-pivot="ambition-rig-side-bind-neck" data-rig-bind-angle="0" data-rig-elements="path2032" />
+      <g id="ambition-rig-side-part-head" data-rig-part-def="head" data-rig-bone="head" data-rig-z="13" data-rig-pivot="ambition-rig-side-bind-head" data-rig-bind-angle="0" data-rig-elements="path2034 path1547 path1917 path1945 path1947 path1949 path1961 path1921 path1919 path2038 path2040 path1923 path1925 path1927 path1929 path1931 path1939 path1941 path1943 path1959 path1963 path1965" />
+      <g id="ambition-rig-side-part-hair_back" data-rig-part-def="hair_back" data-rig-bone="head" data-rig-z="14" data-rig-pivot="ambition-rig-side-bind-hair_back" data-rig-bind-angle="0" data-rig-elements="path1935 path1953 path1955 path1957" />
+      <g id="ambition-rig-side-part-hair_front" data-rig-part-def="hair_front" data-rig-bone="head" data-rig-z="15" data-rig-pivot="ambition-rig-side-bind-hair_front" data-rig-bind-angle="0" data-rig-elements="path1937 path1951 path1933" />
+      <g id="ambition-rig-side-part-torso_front_overlay" data-rig-part-def="torso_front_overlay" data-rig-bone="torso" data-rig-z="16" data-rig-pivot="ambition-rig-side-bind-torso_front_overlay" data-rig-bind-angle="0" data-rig-elements="path2036 path2044" />
+      <g id="ambition-rig-side-part-near_arm_u" data-rig-part-def="near_arm_u" data-rig-bone="near_arm_u" data-rig-z="17" data-rig-pivot="ambition-rig-side-bind-near_arm_u" data-rig-bind-angle="36.2538" data-rig-elements="path2070" />
+      <g id="ambition-rig-side-part-near_hand" data-rig-part-def="near_hand" data-rig-bone="near_arm_hand" data-rig-z="18" data-rig-pivot="ambition-rig-side-bind-near_hand" data-rig-bind-angle="75.7526" data-rig-elements="path2133 path2131" />
+      <g id="ambition-rig-side-part-near_arm_l" data-rig-part-def="near_arm_l" data-rig-bone="near_arm_l" data-rig-z="19" data-rig-pivot="ambition-rig-side-bind-near_arm_l" data-rig-bind-angle="72.2553" data-rig-elements="path2072" />
+    </g>
+  </metadata>
+  <g id="ambition-rig-markers" data-rig-editor-layer="true" inkscape:groupmode="layer" inkscape:label="Ambition Rig Markers">
+    <g id="ambition-rig-markers-side" data-rig-view="side" inkscape:label="Rig Markers - Carl Stargan - Side Left">
+      <line id="ambition-rig-side-guide-far_arm_u" data-rig-bone-guide="far_arm_u" x1="81.710631" y1="102.514194" x2="64.520161" y2="135.56453" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-far_arm_l" data-rig-bone-guide="far_arm_l" x1="64.520161" y1="135.56453" x2="37.411801" y2="149.482501" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-far_arm_hand" data-rig-bone-guide="far_arm_hand" x1="37.411801" y1="149.482501" x2="2.502865" y2="166.630187" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-far_leg_u" data-rig-bone-guide="far_leg_u" x1="94.641922" y1="179.99742" x2="65.934204" y2="212.69398" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-far_leg_l" data-rig-bone-guide="far_leg_l" x1="65.934204" y1="212.69398" x2="49.849777" y2="261.72122" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-far_leg_foot" data-rig-bone-guide="far_leg_foot" x1="49.849777" y1="261.72122" x2="9.967399" y2="277.46649" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_arm_u" data-rig-bone-guide="near_arm_u" x1="131.534287" y1="104.999187" x2="157.315266" y2="123.854214" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_arm_l" data-rig-bone-guide="near_arm_l" x1="157.315266" y1="123.854214" x2="169.011265" y2="160.256975" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_arm_hand" data-rig-bone-guide="near_arm_hand" x1="169.011265" y1="160.256975" x2="179.65256" y2="202.47339" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_leg_u" data-rig-bone-guide="near_leg_u" x1="123.61839" y1="180.57358" x2="141" y2="220" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_leg_l" data-rig-bone-guide="near_leg_l" x1="141" y1="220" x2="182.05484" y2="261.22876" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_leg_foot" data-rig-bone-guide="near_leg_foot" x1="182.05484" y1="261.22876" x2="145.18674" y2="279.8808" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <circle id="ambition-rig-side-joint-hip_center" data-rig-joint="hip_center" cx="109.130156" cy="180.2855" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-rig_root" data-rig-joint="rig_root" cx="109.12035" cy="286.731195" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-bind-torso_backing" data-rig-bind-pivot="torso_backing" cx="104.027083" cy="165.022917" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_leg_u" data-rig-bind-pivot="far_leg_u" cx="94.634375" cy="179.971875" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_foot" data-rig-bind-pivot="far_foot" cx="49.7875" cy="261.728125" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_leg_l" data-rig-bind-pivot="far_leg_l" cx="65.927083" cy="212.647917" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_arm_u" data-rig-bind-pivot="far_arm_u" cx="81.669792" cy="102.58125" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_hand" data-rig-bind-pivot="far_hand" cx="37.352083" cy="149.4125" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_arm_l" data-rig-bind-pivot="far_arm_l" cx="64.471875" cy="135.521875" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-pelvis" data-rig-bind-pivot="pelvis" cx="109.120313" cy="180.302604" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_foot" data-rig-bind-pivot="near_foot" cx="182.079167" cy="261.198958" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_leg_u" data-rig-bind-pivot="near_leg_u" cx="123.60625" cy="180.633333" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_leg_l" data-rig-bind-pivot="near_leg_l" cx="141.06875" cy="220.05625" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-torso" data-rig-bind-pivot="torso" cx="104.027083" cy="165.022917" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-neck" data-rig-bind-pivot="neck" cx="104.027083" cy="165.022917" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-head" data-rig-bind-pivot="head" cx="100.5875" cy="77.710417" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-hair_back" data-rig-bind-pivot="hair_back" cx="100.5875" cy="77.710417" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-hair_front" data-rig-bind-pivot="hair_front" cx="100.5875" cy="77.710417" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-torso_front_overlay" data-rig-bind-pivot="torso_front_overlay" cx="104.027083" cy="165.022917" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_arm_u" data-rig-bind-pivot="near_arm_u" cx="131.54375" cy="104.9625" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_hand" data-rig-bind-pivot="near_hand" cx="168.982292" cy="160.260417" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_arm_l" data-rig-bind-pivot="near_arm_l" cx="157.340625" cy="123.880208" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+    </g>
+  </g>
+  <!-- END AMBITION SVG RIG v1 -->
 </svg>
