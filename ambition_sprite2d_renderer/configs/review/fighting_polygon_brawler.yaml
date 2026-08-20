@@ -1,0 +1,71 @@
+target: fighting_polygon_brawler
+name: fighting_polygon_brawler_safe_poses
+animations:
+- idle
+- walk
+- run
+- crouch
+- jump
+- fall
+- roll
+- air_dodge
+- shield_raise
+- jab
+- attack_side
+- attack_up
+- attack_down
+- smash_forward
+- smash_up
+- smash_down
+- air_neutral
+- air_forward
+- air_back
+- air_up
+- air_down
+- grab
+- grab_hold
+- pummel
+- throw_forward
+- throw_back
+- throw_up
+- throw_down
+- grabbed
+- launch
+- knockdown
+- getup
+- tech
+- ledge_grab
+- ledge_getup
+- ledge_attack
+- ledge_roll
+- ledge_jump
+- taunt
+- victory_hold
+- loss
+render:
+  background: transparent
+  sheet_background: transparent
+  crop: true
+actor:
+  character_id: fighting_polygon_brawler
+  display_name: Fighting Polygon
+body:
+  body_plan: HumanoidBiped
+  body_kind: Standard
+  mass_class: Medium
+  traits:
+  - humanoid
+  - polygonal
+  - brawler
+  - animation_reference
+  - svg_rigged
+visual:
+  default_pose: idle
+  canonical_source: data/characters/fighting_polygon_brawler/fighting_polygon_brawler.svg
+tags:
+- humanoid
+- polygonal
+- brawler
+- animation_reference
+- smash
+- svg_rigged

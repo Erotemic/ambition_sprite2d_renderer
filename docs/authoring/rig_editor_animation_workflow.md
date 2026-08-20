@@ -20,9 +20,10 @@ full clip** to retain the sampled values at important pose frames and remove the
 redundant per-frame keys. The remaining frames become interpolated in-betweens.
 The operation is undoable and does not change the retained pose bookmarks.
 
-Dragging a bone at an in-between automatically inserts only the channels that
-the drag controls and marks the current frame as a pose bookmark. **Return selected
-to interpolation** removes that current-frame key again.
+Dragging a bone at an in-between inserts only the channels that control owns.
+It does **not** create a pose bookmark: numerical/property keys and editorial
+bookmarks are intentionally independent. **Remove selected key → interpolate**
+removes that current-frame control key again.
 
 A channel that has **never been authored before** is special: with only one key,
 ordinary interpolation would make that value constant over the whole clip. The
@@ -49,13 +50,33 @@ Gameplay geometry remains visible while animation bones are edited. Enable
 **Edit geometry** only when shapes should intercept canvas dragging; otherwise
 bone manipulation remains the active canvas interaction.
 
-## Pose strip legend
+## Keying model and legends
+
+The rig follows the same core model used by professional animation tools: **a
+control/property is keyed at a time**, not an entire frame. One elbow can have a
+key while the shoulder and opposite leg interpolate. A persistent pin is a
+constraint, not a stronger kind of key.
+
+Timeline / pose-strip header:
 
 - filled diamond: saved pose bookmark;
 - hollow diamond: automatically suggested pose bookmark;
-- yellow dot: selected channel has an explicit key;
+- yellow dot: selected channel has an explicit property key;
 - gray bar: fraction of animation channels keyed at that frame;
 - bright vertical line: current frame.
+
+Pose-sheet joint/control handles:
+
+- **gold filled**: every property of that handle is explicitly keyed here;
+- **half gold / half cyan**: a multi-axis control is partially keyed;
+- **cyan ring**: the control has animation channels but this frame is interpolated;
+- **gray ring**: untouched/static rest value;
+- **violet ring**: constant or procedural channel;
+- **magenta ring**: the joint is solver output from an IK endpoint;
+- **green outer box**: a persistent transform pin/constraint is active.
+
+For IK feet/hands, the endpoint **origin** and **tip** are separate controls:
+origin keys position, while the tip keys orientation/pitch.
 
 Click a frame to select it. Double-click to mark or unmark it as an important
 pose.
@@ -106,20 +127,38 @@ The editor has two **primary center views** and one independent Timeline dock:
 - **Pose sheet** lays the complete clip out horizontally and is itself a direct pose editor.
 - **Timeline** remains visible independently for timing, interpolation, and channel details; the pose sheet does not replace it.
 
-In the Pose sheet, every frame is a skeleton column. The column header shows both animation and editorial state: **diamonds are pose bookmarks**, a **gray bar is actual channel-key density**, and a **gold dot means the selected control has a real key on that frame**. Hollow diamonds are automatic pose suggestions; filled diamonds are saved bookmarks. Pose bookmarks do not drive interpolation.
+In the Pose sheet, every frame is a skeleton column. The column header shows
+both animation and editorial state: **diamonds are pose bookmarks** and a **gray
+bar is actual property-key density**. The joints themselves show the detailed
+control state using the colors above. Hollow diamonds are automatic pose
+suggestions; filled diamonds are saved bookmarks. Pose bookmarks do not drive
+interpolation.
 
 Interactions are intentionally the same pose vocabulary as the single-pose canvas:
 
-- click/drag a bone in any column to select that frame and write the FK rotation there;
-- `Alt+drag` a free hand/foot endpoint to solve its two-bone limb and write the two pose keys into that column;
-- drag a document-IK foot to write that frame's IK target;
+- click/drag an FK control in any column to select that frame and write its rotation there;
+- `Alt+drag` a free endpoint to solve its two-bone limb and write the two FK control keys into that column;
+- drag an IK foot/hand **origin** to write its position target;
+- drag the endpoint **tip/arc handle** to pivot its orientation independently;
 - `Ctrl+drag` a joint to change the structural attachment offset (a rig-wide edit, not a per-frame value);
 - double-click a **column header** to mark/unmark that frame as an important key pose;
 - enable **pose bookmarks only** to reduce a long clip to its authored extremes;
-- widen columns for reliable joint manipulation or narrow them for silhouette/motion review.
+- widen columns for reliable joint manipulation or narrow them for silhouette/motion review;
+- mouse-wheel/trackpad-scroll over the sheet to zoom every pose around the same anatomical point; **the entire frame column grows with the anatomy**, including its header, hit region, separator, and scroll extent, so zoomed rigs never drift away from their frame labels or overlap adjacent poses;
+- middle-drag or hold `Space` and left-drag to pan the shared body-space camera;
+- use **Fit poses** to return to the common fitted view.
 
 `Ctrl+Shift+P` switches the center to Pose sheet; `Ctrl+Shift+1` returns to Single pose. Selection and the current frame are shared, so the Bones/Parts panels and Timeline follow whichever column you are editing.
 
 The sheet deliberately does **not** pretend gameplay geometry or persistent whole-clip pins are local to one frame. Those remain in Single pose, where their scope is explicit.
 
 The Timeline remains a vertically resizable bottom dock. Drag its top splitter upward to give the advanced channel editor more room; the Timeline widget expands with the dock, while scroll bars still appear when the window becomes smaller than its contents. On a small screen it therefore scrolls instead of forcing the outer window larger than the desktop. `Ctrl+M` toggles maximize/restore and `F11` toggles full screen.
+
+## Endpoint position versus orientation
+
+The pose sheet exposes endpoint position and orientation as separate handles. In
+Single pose, where there is only one compact joint hit target, **Shift+drag** an
+IK foot/hand to pivot its pitch without moving the target. Ordinary drag moves
+the IK target; `Alt+drag` remains temporary two-bone IK for free FK endpoints.
+This mirrors the storage model: translation and rotation can be keyed
+independently.

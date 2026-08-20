@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+     width="238.125mm" height="238.125mm" viewBox="0 0 900 900">
+  <g id="view-fighting-polygon-brawler" inkscape:groupmode="layer" inkscape:label="Fighting Polygon Brawler - Side">
+    <g id="polygon-far-leg-u" inkscape:label="Far Upper Leg">
+      <polygon points="646,450 675,449 697,604 671,618 651,545" fill="#6E2C34" stroke="#2B1117" stroke-width="5"/>
+      <polygon points="646,450 675,449 670,530 651,545" fill="#A4484D"/>
+    </g>
+    <g id="polygon-far-leg-l" inkscape:label="Far Lower Leg">
+      <polygon points="664,601 692,606 679,756 649,758 653,678" fill="#63282F" stroke="#2B1117" stroke-width="5"/>
+      <polygon points="664,601 692,606 681,684 653,678" fill="#913C43"/>
+    </g>
+    <g id="polygon-far-foot" inkscape:label="Far Foot">
+      <polygon points="648,746 678,749 711,772 699,795 641,785 631,760" fill="#582229" stroke="#2B1117" stroke-width="5"/>
+      <polygon points="678,749 711,772 678,774 641,785" fill="#8A3940"/>
+    </g>
+    <g id="polygon-far-arm-u" inkscape:label="Far Upper Arm">
+      <polygon points="697,274 730,279 751,393 722,405 697,346" fill="#79313A" stroke="#2B1117" stroke-width="5"/>
+      <polygon points="697,274 730,279 721,338 697,346" fill="#B44E52"/>
+    </g>
+    <g id="polygon-far-arm-l" inkscape:label="Far Lower Arm">
+      <polygon points="718,386 750,393 748,498 716,503 708,439" fill="#6A2932" stroke="#2B1117" stroke-width="5"/>
+      <polygon points="718,386 750,393 744,447 708,439" fill="#9C4048"/>
+    </g>
+    <g id="polygon-far-hand" inkscape:label="Far Fist">
+      <polygon points="708,484 750,485 765,512 753,539 716,540 698,515" fill="#833942" stroke="#2B1117" stroke-width="5"/>
+      <polygon points="750,485 765,512 735,508 716,540" fill="#BD5558"/>
+      <polygon points="704,502 728,496 738,516 715,527" fill="#D36866" opacity="0.55"/>
+    </g>
+
+    <g id="polygon-pelvis" inkscape:label="Pelvis">
+      <polygon points="558,433 685,433 696,486 659,520 581,520 546,485" fill="#A74449" stroke="#2B1117" stroke-width="6"/>
+      <polygon points="558,433 621,451 581,520 546,485" fill="#D05B59"/>
+      <polygon points="621,451 685,433 696,486 659,520" fill="#7B3039"/>
+    </g>
+    <g id="polygon-torso" inkscape:label="Torso">
+      <polygon points="512,274 724,274 687,448 621,480 551,449" fill="#B0494E" stroke="#2B1117" stroke-width="7"/>
+      <polygon points="512,274 619,300 621,480 551,449" fill="#DB6560"/>
+      <polygon points="619,300 724,274 687,448 621,480" fill="#82333B"/>
+      <polygon points="530,321 619,300 704,322 669,352 620,365 568,351" fill="#F17A6B" opacity="0.68"/>
+      <polygon points="548,385 621,365 682,386 653,423 585,423" fill="#6F2A34" opacity="0.62"/>
+    </g>
+    <g id="polygon-head" inkscape:label="Head">
+      <polygon points="565,172 635,153 691,184 708,236 674,289 610,304 554,273 538,218" fill="#AF474D" stroke="#2B1117" stroke-width="7"/>
+      <polygon points="565,172 635,153 620,224 538,218" fill="#E86B62"/>
+      <polygon points="635,153 691,184 682,245 620,224" fill="#CB5958"/>
+      <polygon points="620,224 682,245 674,289 610,304 584,252" fill="#782F38"/>
+      <polygon points="538,218 620,224 584,252 554,273" fill="#B64C50"/>
+      <polygon points="596,216 624,204 652,219 640,239 608,240" fill="#FFD9B2" opacity="0.62"/>
+    </g>
+
+    <g id="polygon-near-leg-u" inkscape:label="Near Upper Leg">
+      <polygon points="563,450 596,453 592,614 556,622 548,538" fill="#D15A58" stroke="#2B1117" stroke-width="5"/>
+      <polygon points="563,450 596,453 580,541 548,538" fill="#F07A68"/>
+    </g>
+    <g id="polygon-near-leg-l" inkscape:label="Near Lower Leg">
+      <polygon points="554,603 589,611 565,751 530,754 532,672" fill="#BA4A4F" stroke="#2B1117" stroke-width="5"/>
+      <polygon points="554,603 589,611 568,684 532,672" fill="#E26960"/>
+    </g>
+    <g id="polygon-near-foot" inkscape:label="Near Foot">
+      <polygon points="529,742 565,744 591,766 572,795 510,787 498,761" fill="#A84248" stroke="#2B1117" stroke-width="5"/>
+      <polygon points="565,744 591,766 550,771 510,787" fill="#D85D58"/>
+    </g>
+    <g id="polygon-near-arm-u" inkscape:label="Near Upper Arm">
+      <polygon points="500,272 538,279 517,402 478,405 475,337" fill="#E0645F" stroke="#2B1117" stroke-width="5"/>
+      <polygon points="500,272 538,279 512,347 475,337" fill="#FF8B72"/>
+    </g>
+    <g id="polygon-near-arm-l" inkscape:label="Near Lower Arm">
+      <polygon points="474,386 512,396 509,506 470,511 461,442" fill="#C75254" stroke="#2B1117" stroke-width="5"/>
+      <polygon points="474,386 512,396 502,452 461,442" fill="#ED7165"/>
+    </g>
+    <g id="polygon-near-hand" inkscape:label="Near Fist">
+      <polygon points="459,486 508,486 524,514 511,545 472,548 450,523" fill="#E0645F" stroke="#2B1117" stroke-width="5"/>
+      <polygon points="508,486 524,514 491,510 472,548" fill="#FF9075"/>
+      <polygon points="456,505 483,496 495,519 469,533" fill="#FFD19C" opacity="0.52"/>
+    </g>
+  </g>
+</svg>

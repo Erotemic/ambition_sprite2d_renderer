@@ -20,6 +20,7 @@ from typing import List, Optional
 from PySide6.QtCore import QObject, Signal
 
 from ..authoring.animation_constraints import (
+    active_pin_for_bone,
     pin_for_bone,
     pinned_bones,
     remove_pin,
@@ -254,29 +255,159 @@ class EditorState(QObject):
     def channel_key_frames(self, channel: Optional[str] = None) -> dict[str, set[int]]:
         return channel_key_frames(self.clip(), channel)
 
-    def selected_animation_channels(self) -> list[str]:
-        """Channels most directly controlled by the selected bone/endpoint.
+    def generic_ik_chain_for_bone(self, bone_name: str) -> Optional[dict]:
+        """Return the generic IK chain whose endpoint is ``bone_name``."""
+        for chain in self.doc.ik_chains:
+            if bone_name == chain.get("end"):
+                return chain
+        return None
 
-        Return the *authoring vocabulary* even when a channel has not been
-        materialized yet. ``insert_keys_here`` can now seed an absent channel
-        from the rig's pre-edit value, so a static bone and an IK endpoint are
-        both legitimate targets for **Key selected**.
+    def animation_channels_for_bone(self, bone_name: str) -> list[str]:
+        """Authored channels controlled by one visible rig control.
+
+        The storage model is PROPERTY-KEYED, like ordinary DCC animation: a
+        frame does not become globally "locked".  A foot control, for example,
+        owns translation and rotation channels that can be keyed independently.
+        This method exposes that vocabulary without requiring the channels to
+        have been materialized yet.
         """
-        bone = self.selected_bone
-        if not bone:
+        if not bone_name:
             return []
-        leg = self.doc.foot_leg_for_bone(bone)
-        if leg is not None and bone == leg.get("foot"):
+        leg = self.doc.foot_leg_for_bone(bone_name)
+        if leg is not None and bone_name == leg.get("foot"):
             prefix = str(leg.get("channel_prefix", "foot"))
             return [f"{prefix}_x", f"{prefix}_lift", f"{prefix}_pitch"]
-        for chain in self.doc.ik_chains:
-            if bone == chain.get("end"):
-                prefix = str(chain.get("channel_prefix", "target"))
-                result = [f"{prefix}_x", f"{prefix}_y"]
-                if chain.get("end"):
-                    result.append(f"{prefix}_pitch")
-                return result
-        return [bone] if self.doc.bone(bone) is not None else []
+        chain = self.generic_ik_chain_for_bone(bone_name)
+        if chain is not None:
+            prefix = str(chain.get("channel_prefix", "target"))
+            return [f"{prefix}_x", f"{prefix}_y", f"{prefix}_pitch"]
+        return [bone_name] if self.doc.bone(bone_name) is not None else []
+
+    def handle_animation_channels(self, bone_name: str, handle: str) -> list[str]:
+        """Channels driven by a particular on-canvas control handle.
+
+        ``origin`` is the position/primary handle; ``tip`` is the orientation
+        handle for endpoint controls.  Ordinary FK bones use the same rotation
+        channel from either handle.  This lets the pose sheet visualize and key
+        TRANSLATION separately from FOOT/HAND PITCH instead of calling a whole
+        frame a keyframe.
+        """
+        leg = self.doc.foot_leg_for_bone(bone_name)
+        if leg is not None and bone_name == leg.get("foot"):
+            prefix = str(leg.get("channel_prefix", "foot"))
+            if handle == "tip":
+                return [f"{prefix}_pitch"]
+            return [f"{prefix}_x", f"{prefix}_lift"]
+
+        chain = self.generic_ik_chain_for_bone(bone_name)
+        if chain is not None:
+            prefix = str(chain.get("channel_prefix", "target"))
+            if handle == "tip":
+                return [f"{prefix}_pitch"]
+            return [f"{prefix}_x", f"{prefix}_y"]
+
+        # A plain FK terminal foot can be positioned through a temporary
+        # two-bone solve while its own bone angle remains independently keyable.
+        plantable = self._plantable_foot_for_bone(bone_name)
+        if plantable is not None and not plantable.get("document_ik", False):
+            if handle == "tip":
+                return [bone_name]
+            return [str(plantable["upper"]), str(plantable["lower"])]
+
+        return [bone_name] if self.doc.bone(bone_name) is not None else []
+
+    def control_key_state(
+        self, bone_name: str, frame_idx: int, handle: str = "origin"
+    ) -> dict:
+        """Describe whether a visible control is keyed or being evaluated.
+
+        States are intentionally distinct from CONSTRAINTS:
+
+        - ``keyed``: all channels for this handle have an explicit key here;
+        - ``partial``: only some multi-axis channels are keyed here;
+        - ``interpolated``: the channels exist, but neighboring keys drive here;
+        - ``procedural`` / ``constant``: a non-key channel drives the value;
+        - ``static``: no channel exists, so the rig/rest value is used.
+
+        ``constrained`` is a separate boolean because a persistent pin can solve
+        a control regardless of any animation keys underneath it.
+        """
+        frame_idx = max(0, min(self.frames() - 1, int(frame_idx)))
+        # Upper/lower segments of a document IK chain are solver outputs rather
+        # than independently authored controls.  Call that out explicitly so a
+        # knee/elbow does not look merely "unkeyed" in the sheet.
+        solver_driven = False
+        leg = self.doc.foot_leg_for_bone(bone_name)
+        if leg is not None and bone_name != leg.get("foot"):
+            solver_driven = True
+        if any(
+            bone_name in (chain.get("upper"), chain.get("lower"))
+            for chain in self.doc.ik_chains
+        ):
+            solver_driven = True
+
+        channels = self.handle_animation_channels(bone_name, handle)
+        clip_channels = self.clip().get("channels") or {}
+        key_map = self.channel_key_frames()
+        keyed = [name for name in channels if frame_idx in key_map.get(name, set())]
+        materialized = [name for name in channels if name in clip_channels]
+
+        if solver_driven:
+            status = "solver"
+        elif channels and len(keyed) == len(channels):
+            status = "keyed"
+        elif keyed:
+            status = "partial"
+        elif any("expr" in (clip_channels.get(name) or {}) for name in materialized):
+            status = "procedural"
+        elif any("const" in (clip_channels.get(name) or {}) for name in materialized):
+            status = "constant"
+        elif materialized:
+            status = "interpolated"
+        else:
+            status = "static"
+
+        t = self.doc.frame_time(self.clip_name, frame_idx)
+        constrained = active_pin_for_bone(self.doc, self.clip_name, bone_name, t) is not None
+        return {
+            "status": status,
+            "channels": tuple(channels),
+            "keyed_channels": tuple(keyed),
+            "constrained": constrained,
+        }
+
+    def selected_animation_channels(self) -> list[str]:
+        """Channels most directly controlled by the selected bone/endpoint."""
+        return self.animation_channels_for_bone(self.selected_bone or "")
+
+    def all_pose_control_channels(self) -> list[str]:
+        """Canonical keyable rig controls for a complete body pose.
+
+        IK upper/lower segments are solver outputs and therefore omitted; their
+        endpoint controls are included instead. Root translation is explicit.
+        Free effect/opacity parameters are intentionally not part of a body pose.
+        """
+        solver_segments = {
+            name
+            for leg in self.doc.ik_legs
+            for name in (leg.get("upper"), leg.get("lower"))
+            if name
+        }
+        solver_segments.update(
+            name
+            for chain in self.doc.ik_chains
+            for name in (chain.get("upper"), chain.get("lower"))
+            if name
+        )
+        channels: list[str] = ["root_x", "root_y"]
+        for bone in self.doc.bones:
+            name = str(bone.get("name") or "")
+            if not name or name in solver_segments:
+                continue
+            for channel in self.animation_channels_for_bone(name):
+                if channel not in channels:
+                    channels.append(channel)
+        return channels
 
     def _fk_endpoint_chain_for_bone(self, bone_name: str) -> Optional[tuple[str, str]]:
         """Two animated segments ending at ``bone_name``'s origin."""
@@ -901,7 +1032,7 @@ class EditorState(QObject):
         elif channels:
             resolved = list(channels)
         else:
-            resolved = list((self.clip().get("channels") or {}).keys())
+            resolved = self.all_pose_control_channels()
         if not resolved:
             return 0
         sampled = self.doc.sample(self.clip_name, self.t())
@@ -1255,15 +1386,11 @@ class EditorState(QObject):
             )
         )
         if changed:
-            pose_keys, explicit = self.pose_key_frames()
-            pose_key_changed = (not explicit) or self.frame_idx not in pose_keys
-            keys = set(pose_keys)
-            keys.add(self.frame_idx)
-            self.clip()["pose_keys"] = sorted(keys)
+            # Numeric/property keys and editorial pose bookmarks are separate
+            # concepts.  Writing a joint/control key must not silently promote
+            # the frame into a pose bookmark.  The sheet renders both layers.
             self._mark_render_changed()
             self.animationChanged.emit(changed)
-            if pose_key_changed:
-                self.poseKeysChanged.emit()
         return len(changed)
 
     def write_key(self, channel: str, value: float, ease: str = "smooth") -> bool:

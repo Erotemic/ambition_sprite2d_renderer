@@ -1,13 +1,13 @@
 {
-  "name": "fighting_polygon_sword",
+  "name": "fighting_polygon_brawler",
   "actor_metadata": {
-    "authoring_description": "Parody of DBZ Perfect Cell, with a bit of DBZA personality. GPT 5.6 seemed to miss this. The Perfect Cellular Automaton personifies the ideal of a flawless cellular automaton: one local rule applied uniformly to every cell and every tick, with unbounded computation emerging from absolute consistency. Its vanity is the joke; it treats determinism as both mathematical virtue and personal superiority.",
-    "gameplay_description": "Use as a deterministic boss, oracle, simulation engine, or rigid ally. Its attacks and state changes should be rule-driven and predictable once understood, allowing players to exploit the same perfection that makes the character powerful.",
+    "authoring_description": "A 2D faceted humanoid brawler built as the unarmed companion to the Fighting Polygon sword reference rig. Its deliberately plain anatomy, large polygon fists, and conservative clip library make it a safe pose source for future humanoid characters before bespoke anatomy or personality is introduced.",
+    "gameplay_description": "Use as a fundamentals brawler and humanoid animation reference: close-range strikes, uppercuts, shoulder rushes, defensive movement, grabs, pummels, and all four throws.",
     "dialogue_hints": {
       "barks": [
-        "One rule. The same flawless law on every cell, every tick.",
-        "I am simple, applied with absolute conviction.",
-        "I have already run every future in this room to its end."
+        "STANCE SET.",
+        "FACETS FORWARD.",
+        "CONTACT POSE."
       ]
     },
     "animation_bindings": {
@@ -32,39 +32,39 @@
         "events": []
       },
       "action.melee.primary": {
+        "animation": "jab",
+        "events": []
+      },
+      "action.melee.forward": {
         "animation": "attack_side",
         "events": []
       },
-      "action.ranged.primary": {
-        "animation": "shoot",
+      "action.smash.forward": {
+        "animation": "smash_forward",
         "events": []
       },
-      "action.special.primary": {
-        "animation": "special",
+      "action.capture.grab": {
+        "animation": "grab",
         "events": []
       },
-      "action.special.up": {
-        "animation": "fly",
+      "action.capture.pummel": {
+        "animation": "pummel",
         "events": []
       },
-      "action.special.down": {
-        "animation": "charge",
+      "action.capture.throw_forward": {
+        "animation": "throw_forward",
         "events": []
       },
-      "action.super": {
-        "animation": "final_smash",
+      "action.capture.throw_back": {
+        "animation": "throw_back",
         "events": []
       },
-      "action.defense.block": {
-        "animation": "block",
+      "action.capture.throw_up": {
+        "animation": "throw_up",
         "events": []
       },
-      "action.defense.roll": {
-        "animation": "roll",
-        "events": []
-      },
-      "interaction.use": {
-        "animation": "interact",
+      "action.capture.throw_down": {
+        "animation": "throw_down",
         "events": []
       },
       "emote.taunt": {
@@ -83,8 +83,8 @@
     "render_scale": 3
   },
   "svg_source": {
-    "path": "../../../data/characters/fighting_polygon_sword/fighting_polygon_sword.svg",
-    "view": "Fighting Polygon Sword - Side",
+    "path": "../../../data/characters/fighting_polygon_brawler/fighting_polygon_brawler.svg",
+    "view": "Fighting Polygon Brawler - Side",
     "ref_dpi": 96.0,
     "scale": 0.184275
   },
@@ -466,21 +466,6 @@
       ],
       "rest_angle": 78.917,
       "svg_source_order": 62
-    },
-    {
-      "name": "sword",
-      "bone": "near_arm_hand",
-      "z": 63,
-      "kind": "sprite",
-      "include": [
-        "polygon-sword"
-      ],
-      "pivot": [
-        490.0,
-        503.0
-      ],
-      "rest_angle": 78.917,
-      "svg_source_order": 63
     }
   ],
   "ik_legs": [
@@ -32076,22 +32061,22 @@
     "facing": "right"
   },
   "features": {
-    "archetype": "sword_humanoid",
+    "archetype": "brawler_humanoid",
     "safe_pose_reference": true,
     "faceted_svg_parts": true,
-    "weapon": "sword"
+    "weapon": null
   },
   "natural_pose": {
     "clip": "idle"
   },
   "asset_metadata": {
     "source": "code-authored SVG polygon rig",
-    "purpose": "safe humanoid sword pose reference + playable Smash fighter",
-    "pose_source": "PCA humanoid clip vocabulary copied as a neutral animation scaffold; art and gameplay are independent"
+    "purpose": "safe humanoid brawler pose reference + playable Smash fighter",
+    "pose_source": "shared Fighting Polygon humanoid clip vocabulary; brawler art and gameplay are independent"
   },
   "build_provenance": {
     "authored_by": "OpenAI GPT-5.6 Sol",
-    "base_pose_vocabulary": "perfect_cellular_automaton.rig.json",
-    "note": "Only skeleton/clip transforms are reused. Polygon SVG art and character gameplay are new."
+    "base_pose_vocabulary": "fighting_polygon_sword.rig.json",
+    "note": "Skeleton/clip transforms are intentionally shared between the two reference archetypes. The brawler owns distinct SVG art and gameplay and has no integral weapon part."
   }
 }

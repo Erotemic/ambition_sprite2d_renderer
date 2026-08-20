@@ -20,10 +20,10 @@ from .state import EditorState
 
 
 class KeyframeStrip(QWidget):
-    """Show pose keys, per-frame channel density, and selected-channel keys.
+    """Show pose bookmarks, per-frame property density, and selected-control keys.
 
-    Single-click changes frame. Double-click marks/unmarks an authoring pose key.
-    Pose keys are intentionally separate from raw channel keys: generated rigs
+    Single-click changes frame. Double-click marks/unmarks an editorial pose bookmark.
+    Pose bookmarks are intentionally separate from raw property keys: generated rigs
     often key every channel on every frame, while artists still need a handful
     of important poses to orient their work.
     """
@@ -38,7 +38,7 @@ class KeyframeStrip(QWidget):
         self.setMouseTracking(True)
         self.setToolTip(
             "Click a frame to select it. Double-click a diamond row to mark or "
-            "unmark an important pose. Filled diamonds are saved pose keys; "
+            "unmark an important pose. Filled diamonds are saved pose bookmarks; "
             "hollow diamonds are automatic suggestions. Blue is the pose before "
             "the current frame; purple is the pose after it. Green bars are "
             "continuous rigid-part pins."

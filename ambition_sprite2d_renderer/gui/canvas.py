@@ -485,7 +485,7 @@ class CanvasWidget(QWidget):
         pose_keys, explicit = self.state.pose_key_frames()
         current = self.state.frame_idx
         key_count = len(self.state.keyed_channels_at_frame(current))
-        status = "KEY POSE" if current in pose_keys else "IN-BETWEEN"
+        status = "BOOKMARKED POSE" if current in pose_keys else "UNBOOKMARKED"
         source = "" if explicit else " · suggested pose map"
         previous, following = self.state.neighboring_pose_keys()
         neighbors = ""
@@ -497,7 +497,7 @@ class CanvasWidget(QWidget):
             )
         text = (
             f"{self.state.clip_name} · frame {current + 1}/{self.state.frames()} · "
-            f"{status} · {key_count} channel keys{source}{neighbors}"
+            f"{status} · {key_count} property keys{source}{neighbors}"
         )
         rect = QRectF(12.0, 12.0, min(float(self.width()) - 24.0, 560.0), 28.0)
         painter.setPen(QPen(QColor(118, 111, 130, 210), 1))
@@ -1252,6 +1252,20 @@ class CanvasWidget(QWidget):
             self.state.push_undo()
             self.statusMessage.emit(f"moving {hit} attachment (Ctrl+drag)")
             return
+        if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+            leg_for_rotation = self.state.doc.foot_leg_for_bone(hit)
+            chain_for_rotation = self.state.generic_ik_chain_for_bone(hit)
+            if (
+                (leg_for_rotation is not None and hit == leg_for_rotation.get("foot"))
+                or chain_for_rotation is not None
+            ):
+                self._drag_mode = "endpoint_rotate"
+                self._drag_bone = hit
+                self.state.push_undo()
+                self.statusMessage.emit(
+                    f"pivoting {hit} orientation (Shift+drag); position stays independent"
+                )
+                return
         if event.modifiers() & Qt.KeyboardModifier.AltModifier:
             chain = self._fk_chain(hit)
             if chain is None:
@@ -1306,7 +1320,7 @@ class CanvasWidget(QWidget):
         if self._drag_mode == "geometry":
             self._drag_geometry_to(self.widget_to_frame(event.position()))
             return
-        if self._drag_mode not in ("rotate", "foot", "pin", "offset", "limb_ik") or self._drag_bone is None:
+        if self._drag_mode not in ("rotate", "endpoint_rotate", "foot", "pin", "offset", "limb_ik") or self._drag_bone is None:
             return
         fp = self.widget_to_frame(event.position())
         if self._drag_mode == "pin":
@@ -1344,6 +1358,25 @@ class CanvasWidget(QWidget):
                 }
             )
             return
+        if self._drag_mode == "endpoint_rotate":
+            try:
+                world, _ = self._solve_at(self.state.clip_name, self.state.t())
+            except Exception:  # noqa: BLE001
+                return
+            bw = world.get(self._drag_bone)
+            if bw is None:
+                return
+            desired = math.degrees(math.atan2(fp[1] - bw.origin[1], fp[0] - bw.origin[0]))
+            leg = self.state.doc.foot_leg_for_bone(self._drag_bone)
+            if leg is not None and self._drag_bone == leg.get("foot"):
+                pre = str(leg.get("channel_prefix", "foot"))
+                self.state.write_key(f"{pre}_pitch", round(desired, 1))
+                return
+            chain = self.state.generic_ik_chain_for_bone(self._drag_bone)
+            if chain is not None:
+                pre = str(chain.get("channel_prefix", "target"))
+                self.state.write_key(f"{pre}_pitch", round(desired, 1))
+                return
         # rotate
         try:
             sk = self.state.doc.build_skeleton()
@@ -1424,7 +1457,7 @@ class CanvasWidget(QWidget):
             # Refresh the bone property form once after the interactive drag,
             # rather than rebuilding every side panel per mouse event.
             self.state.docChanged.emit()
-        if drag_mode in {"rotate", "foot", "pin", "offset", "limb_ik", "geometry"}:
+        if drag_mode in {"rotate", "endpoint_rotate", "foot", "pin", "offset", "limb_ik", "geometry"}:
             self.state.discard_last_undo_if_unchanged()
 
     def wheelEvent(self, event) -> None:

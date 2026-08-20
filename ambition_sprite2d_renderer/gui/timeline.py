@@ -159,25 +159,31 @@ class TimelinePanel(QWidget):
         root.addLayout(plant_row)
 
         self.pose_help = QLabel(
-            "Diamonds are POSE BOOKMARKS, not animation keyframes. Gold dots and gray "
-            "bars are real per-channel keys. A first edit now preserves every other "
-            "frame; sparse keys still affect the interpolated frames between them."
+            "Animation is PROPERTY-KEYED, not frame-locked. A control may be explicitly "
+            "keyed while neighboring joints interpolate. Pose bookmarks are editorial "
+            "landmarks only; persistent pins/constraints are a separate solver layer."
         )
         self.pose_help.setWordWrap(True)
         self.pose_help.setStyleSheet("color: #aaa4b2; padding: 0 4px 4px 4px;")
         root.addWidget(self.pose_help)
 
         key_actions = QHBoxLayout()
-        self.key_selected_btn = QPushButton("Key selected")
-        self.key_selected_btn.setToolTip("Insert keys only for the selected channel or selected bone")
+        self.key_selected_btn = QPushButton("Key selected control")
+        self.key_selected_btn.setToolTip(
+            "Key the selected control's authored properties at this frame; other controls keep interpolating"
+        )
         self.key_selected_btn.clicked.connect(self._key_selected_here)
         key_actions.addWidget(self.key_selected_btn)
-        self.key_pose_btn = QPushButton("Key full pose")
-        self.key_pose_btn.setToolTip("Insert sampled keys for every driven channel at this frame")
+        self.key_pose_btn = QPushButton("Key all rig controls")
+        self.key_pose_btn.setToolTip(
+            "Key the complete body-control set at this frame (root, FK controls, and IK endpoints)"
+        )
         self.key_pose_btn.clicked.connect(self._key_full_pose_here)
         key_actions.addWidget(self.key_pose_btn)
-        self.reset_selected_btn = QPushButton("Return selected to interpolation")
-        self.reset_selected_btn.setToolTip("Remove this frame's selected key so neighboring keys control it")
+        self.reset_selected_btn = QPushButton("Remove selected key → interpolate")
+        self.reset_selected_btn.setToolTip(
+            "Remove this frame's selected control key so neighboring keys/procedural values evaluate it"
+        )
         self.reset_selected_btn.clicked.connect(self._reset_selected_to_interpolation)
         key_actions.addWidget(self.reset_selected_btn)
         self.simplify_selected_btn = QPushButton("Simplify selected")
@@ -444,17 +450,26 @@ class TimelinePanel(QWidget):
         previous, following = self.state.neighboring_pose_keys()
         source = "saved" if explicit else "suggested"
         if is_pose:
-            description = f"KEY POSE ({source})"
+            description = f"BOOKMARKED POSE ({source})"
         else:
-            description = "IN-BETWEEN"
+            description = "UNBOOKMARKED FRAME"
         dense = self.state.dense_keyed_channels()
         dense_note = (
             f" · {len(dense)} channel(s) keyed every frame" if dense else ""
         )
+        control_note = ""
+        if self.state.selected_bone:
+            control = self.state.control_key_state(
+                self.state.selected_bone, current, "origin"
+            )
+            status = str(control.get("status", "static")).replace("_", " ")
+            control_note = f" · selected {self.state.selected_bone}: {status}"
+            if control.get("constrained"):
+                control_note += " + CONSTRAINED"
         self.pose_status.setText(
             f"Frame {current + 1}/{self.state.frames()} · {description} · "
-            f"{len(keyed)} channel key{'' if len(keyed) == 1 else 's'} here"
-            f"{dense_note}"
+            f"{len(keyed)} property key{'' if len(keyed) == 1 else 's'} here"
+            f"{control_note}{dense_note}"
         )
         self.pose_key_btn.setText("Unmark pose bookmark" if is_pose else "Mark pose bookmark")
         self.prev_pose_btn.setEnabled(previous is not None)

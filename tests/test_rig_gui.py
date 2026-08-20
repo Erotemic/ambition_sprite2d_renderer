@@ -123,6 +123,34 @@ class TestEditorState:
         assert state.write_key("pelvis", 12.0)
         assert state.keyed_channels_at_frame(1) == ["pelvis"]
 
+    def test_control_key_state_distinguishes_static_interpolated_and_keyed(self):
+        from ambition_sprite2d_renderer.gui.state import EditorState
+
+        doc = RigDocument.new_empty("control_state")
+        doc.clips["idle"]["frames"] = 5
+        state = EditorState(doc, None)
+        assert state.control_key_state("pelvis", 2)["status"] == "static"
+
+        state.set_frame(2)
+        state.write_key("pelvis", 30.0)
+        assert state.control_key_state("pelvis", 2)["status"] == "keyed"
+        assert state.control_key_state("pelvis", 0)["status"] in {
+            "interpolated",
+            "keyed",
+        }
+
+    def test_pose_control_keys_and_pose_bookmarks_are_independent(self):
+        from ambition_sprite2d_renderer.gui.state import EditorState
+
+        doc = RigDocument.new_empty("independent_bookmarks")
+        state = EditorState(doc, None)
+        state.set_frame(2)
+        state.write_key("pelvis", 15.0)
+        assert "pose_keys" not in state.clip()
+        state.set_pose_key(3, True)
+        assert state.is_pose_key(3)
+        assert 3 not in state.channel_key_frames("pelvis")["pelvis"]
+
     def test_noop_speculative_undo_boundary_is_removed(self):
         from ambition_sprite2d_renderer.gui.state import EditorState
 
@@ -513,9 +541,10 @@ def test_pose_key_bookmarks_separate_important_poses_from_dense_channel_keys():
 
     state.set_frame(1)
     state.write_key("torso", 12.0)
-    saved, explicit = state.pose_key_frames()
-    assert explicit is True
-    assert 1 in saved
+    # Property keys do not silently become editorial pose bookmarks.
+    assert "pose_keys" not in state.clip()
+    _saved, explicit = state.pose_key_frames()
+    assert explicit is False
 
 
 def test_simplify_dense_channel_preserves_key_poses_and_creates_inbetweens():
@@ -698,7 +727,7 @@ class TestResponsiveWindowAndPoseSheet:
         qapp.processEvents()
         canvas = window.pose_sheet.canvas
         assert canvas.visible_frames() == list(range(window.state.frames()))
-        assert canvas.sizeHint().width() == window.state.frames() * canvas.column_width
+        assert canvas.sizeHint().width() == window.state.frames() * canvas.effective_column_width()
 
     def test_pose_sheet_click_selects_a_frame(self, window, qapp):
         from PySide6.QtCore import QEvent, QPointF, Qt
@@ -786,7 +815,9 @@ class TestEditablePrimaryPoseSheet:
         keys = state.clip()["channels"]["near_arm_u"]["keys"]
         target_time = state.doc.frame_time(state.clip_name, target_frame)
         assert any(abs(float(key[0]) - target_time) < 1e-4 for key in keys)
-        assert target_frame in state.pose_key_frames()[0]
+        assert "pose_keys" not in state.clip(), (
+            "dragging a control key must not silently create a pose bookmark"
+        )
 
     def test_pose_sheet_alt_drag_keys_a_two_bone_chain_in_that_column(self, window):
         from PySide6.QtCore import QEvent, QPointF, Qt
@@ -827,3 +858,128 @@ class TestEditablePrimaryPoseSheet:
         keyed = state.keyed_channels_at_frame(target_frame)
         assert any(name in keyed for name in ("near_arm_u", "near_arm_l"))
         assert target_time == pytest.approx(state.doc.frame_time(state.clip_name, state.frame_idx))
+
+
+def test_writing_property_keys_does_not_materialize_pose_bookmarks():
+    from ambition_sprite2d_renderer.gui.state import EditorState
+
+    doc = RigDocument.new_empty("property_keys_are_not_bookmarks")
+    doc.clips["idle"]["frames"] = 6
+    state = EditorState(doc, None)
+    state.set_frame(3)
+    assert state.write_key("pelvis", 22.0)
+    assert "pose_keys" not in state.clip()
+
+
+def test_pose_sheet_zoom_scales_frame_columns_with_the_rig(window, qapp):
+    canvas = window.pose_sheet.canvas
+    canvas.set_key_poses_only(False)
+    canvas.set_column_width(180)
+    canvas.set_viewport_height(520)
+    canvas.reset_view()
+    qapp.processEvents()
+
+    frames = len(canvas.visible_frames())
+    base_width = canvas.effective_column_width()
+    base_sheet_width = canvas.sizeHint().width()
+    rect = canvas._column_rect(0)
+    world = canvas._solve_frame(canvas.visible_frames()[0])
+    p0 = canvas._map_point(world["pelvis"].origin, rect)
+    p1 = canvas._map_point(world["pelvis"].tip, rect)
+    base_span = ((p1.x() - p0.x()) ** 2 + (p1.y() - p0.y()) ** 2) ** 0.5
+
+    canvas.set_view_zoom(2.0)
+    qapp.processEvents()
+    zoom_width = canvas.effective_column_width()
+    assert zoom_width == base_width * 2
+    assert canvas.sizeHint().width() == frames * zoom_width
+    assert canvas.sizeHint().width() == base_sheet_width * 2
+    assert canvas._column_rect(1).left() == pytest.approx(float(zoom_width))
+
+    rect = canvas._column_rect(0)
+    p0 = canvas._map_point(world["pelvis"].origin, rect)
+    p1 = canvas._map_point(world["pelvis"].tip, rect)
+    zoom_span = ((p1.x() - p0.x()) ** 2 + (p1.y() - p0.y()) ** 2) ** 0.5
+    assert zoom_span == pytest.approx(base_span * 2.0)
+
+
+def test_pose_sheet_zoom_keeps_frame_hit_columns_aligned(window, qapp):
+    canvas = window.pose_sheet.canvas
+    canvas.set_key_poses_only(False)
+    canvas.set_column_width(160)
+    canvas.reset_view()
+    canvas.set_view_zoom(2.5)
+    qapp.processEvents()
+
+    width = canvas.effective_column_width()
+    if len(canvas.visible_frames()) < 2:
+        pytest.skip("clip has fewer than two frames")
+    assert canvas._column_at(width * 1.5) == 1
+    assert canvas._column_rect(1).center().x() == pytest.approx(width * 1.5)
+
+
+def test_pose_sheet_shared_zoom_preserves_cursor_anatomical_anchor(window, qapp):
+    from PySide6.QtCore import QPointF
+
+    canvas = window.pose_sheet.canvas
+    scroll = window.pose_sheet.scroll
+    canvas.set_key_poses_only(False)
+    canvas.set_column_width(180)
+    canvas.set_viewport_height(520)
+    canvas.reset_view()
+    qapp.processEvents()
+
+    column = min(1, len(canvas.visible_frames()) - 1)
+    rect = canvas._column_rect(column)
+    world = canvas._solve_frame(canvas.visible_frames()[column])
+    anchor = canvas._map_point(world["pelvis"].origin, rect)
+    before_body = canvas._unmap_point(QPointF(anchor), rect)
+    before_viewport = QPointF(
+        anchor.x() - scroll.horizontalScrollBar().value(),
+        anchor.y() - scroll.verticalScrollBar().value(),
+    )
+
+    canvas.set_view_zoom(2.0, QPointF(anchor))
+    qapp.processEvents()
+
+    new_rect = canvas._column_rect(column)
+    mapped = canvas._map_point(before_body, new_rect)
+    after_viewport = QPointF(
+        mapped.x() - scroll.horizontalScrollBar().value(),
+        mapped.y() - scroll.verticalScrollBar().value(),
+    )
+    assert after_viewport.x() == pytest.approx(before_viewport.x(), abs=2.0)
+    assert after_viewport.y() == pytest.approx(before_viewport.y(), abs=2.0)
+
+
+
+def test_pose_sheet_control_state_is_property_level_not_frame_level(window):
+    state = window.state
+    state.set_clip("idle")
+    state.set_frame(0)
+    state.selected_bone = "pelvis"
+    state.selectionChanged.emit()
+
+    before = state.control_key_state("pelvis", 0)
+    state.write_key("pelvis", 12.0)
+    here = state.control_key_state("pelvis", 0)
+    assert here["status"] == "keyed"
+    if state.frames() > 2:
+        elsewhere = state.control_key_state("pelvis", 2)
+        assert elsewhere["status"] in {"static", "interpolated", "keyed"}
+    assert before["constrained"] is False
+
+
+def test_ik_foot_tip_and_origin_expose_independent_channels(window):
+    state = window.state
+    state.set_clip("idle")
+    foot = next((leg.get("foot") for leg in state.doc.ik_legs if leg.get("foot")), None)
+    if foot is None:
+        pytest.skip("template has no document IK foot")
+    leg = state.doc.foot_leg_for_bone(str(foot))
+    prefix = str(leg.get("channel_prefix", "foot"))
+    assert state.handle_animation_channels(str(foot), "origin") == [
+        f"{prefix}_x",
+        f"{prefix}_lift",
+    ]
+    assert state.handle_animation_channels(str(foot), "tip") == [f"{prefix}_pitch"]
