@@ -93,12 +93,85 @@
                 launch_dir: (1.0, -0.35),
             ),
         ),
-        // ⭐ **the first fighter to author a capture kit, and he authors ONE
-        // throw.** Back, up and down stay `None`: a press for a throw he does not
-        // have finds nothing rather than a pummel, which tells a player he has no
-        // up-throw instead of telling them his up-throw is bad.
-        back_throw: None,
-        up_throw: None,
-        down_throw: None,
+        // ⭐⭐ **HIS OTHER THREE THROWS ARE THREE DIFFERENT LOGICAL OPERATIONS,
+        // authored 2026-08-20 at Jon's ask.** He was the last fighter on the
+        // roster still holding one throw, and the three that arrived are NOT his
+        // forward throw scaled — that is what the rest of the roster has, where
+        // every fighter's back/up/down is its own f-throw times 1.08 / 1.04 /
+        // 0.74 and the three answer the same question at three volumes.
+        //
+        // ⛔ **the excluded middle governs the RELEASE too.** His own law says a
+        // move is a poke or a commitment and the band 0.08..0.15 is empty; a
+        // throw has no Active window, so `no_move_lives_between_the_pokes_and_
+        // the_commitments` cannot see one — which is exactly why these obey it by
+        // hand. 0.05, 0.17, 0.28, and his existing 0.20. Nothing in the band.
+
+        // **MODUS TOLLENS — deny the consequent and the antecedent goes with
+        // it.** His ONLY fast capture option, and the cheapest thing in his kit:
+        // he does not turn around to throw backward, he simply stops holding and
+        // the body is behind him. ⚠ the flat 1.3 growth and the near-horizontal
+        // launch are the point — this NEVER kills at any percent. What it buys is
+        // the side of the stage he wants, which for the heaviest body on the grid
+        // is worth more than the damage he gave up to get it.
+        back_throw: Some((
+            id: "george_bthrow",
+            clip: "attack",
+            duration_s: 0.15,
+            release_at_s: 0.05,
+            launch: (
+                damage: 5,
+                knockback: 104.0,
+                knockback_growth: 1.3,
+                launch_dir: (-1.0, -0.12),
+            ),
+        )),
+        // **THE TAUTOLOGY — P ∨ ¬P, which is true no matter what you put in it.**
+        //
+        // ⭐⭐ **`knockback_growth: 0.0`, and it is the whole move.** `scaled_
+        // knockback` short-circuits a zero growth and returns the base untouched,
+        // so this throw ignores the victim's percent AND their weight: it sends a
+        // fresh featherweight and a 200% heavyweight to the SAME height, every
+        // time. Nothing else in the game does that. It is never a kill and never
+        // gets worse — a juggle he can rely on the way he relies on a theorem.
+        //
+        // ⚠ 145 base is deliberately ABOVE his f-throw's 138, and that is the
+        // trade rather than a mistake: it out-launches everything he has at 0%
+        // and is the weakest thing he has at 120%, where the f-throw's 1.9 growth
+        // has more than doubled it.
+        up_throw: Some((
+            id: "george_uthrow",
+            clip: "attack",
+            duration_s: 0.28,
+            release_at_s: 0.17,
+            launch: (
+                damage: 6,
+                knockback: 145.0,
+                knockback_growth: 0.0,
+                launch_dir: (0.0, -1.0),
+            ),
+        )),
+        // **REDUCTIO AD ABSURDUM — hold the assumption until it breaks.**
+        //
+        // The slowest move in his capture kit and the hardest-hitting throw in
+        // the game: 0.42 of timeline with the release at 0.28, which is longer
+        // than his grab's entire startup-to-recovery. He does not put the body
+        // down, he drives it into the stage until the position is untenable.
+        //
+        // ⚠ **the one throw of his that KILLS**, by growth rather than by base:
+        // 68 is feeble at 0% and the 2.6 growth is the steepest number in his
+        // file. A throw that reads as slow and harmless early and takes a stock
+        // at 130% is the same bargain every one of his commitments makes.
+        down_throw: Some((
+            id: "george_dthrow",
+            clip: "attack",
+            duration_s: 0.42,
+            release_at_s: 0.28,
+            launch: (
+                damage: 14,
+                knockback: 68.0,
+                knockback_growth: 2.6,
+                launch_dir: (0.22, -0.95),
+            ),
+        )),
     ),
 )
