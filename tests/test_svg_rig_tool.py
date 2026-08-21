@@ -46,7 +46,7 @@ def test_every_character_rig_catalog_is_self_consistent() -> None:
 def test_articulated_polygon_catalog_exposes_jointed_humanoid_structure() -> None:
     path = (
         REPO_ROOT
-        / "ambition_sprite2d_renderer/data/characters/fighting_polygon_sword/fighting_polygon_sword.svg"
+        / "ambition_sprite2d_renderer/data/characters/pointed_polygon/pointed_polygon.svg"
     )
     view = _view(path, "side")
     assert view.get("data-rig-profile") == "humanoid-articulated-v1"
@@ -81,7 +81,7 @@ def test_mary_o_is_encoded_as_rigid_biped_not_fake_humanoid() -> None:
 def test_nudge_part_moves_art_without_moving_bind_or_skeleton_joint(tmp_path: Path) -> None:
     source = (
         REPO_ROOT
-        / "ambition_sprite2d_renderer/data/characters/fighting_polygon_sword/fighting_polygon_sword.svg"
+        / "ambition_sprite2d_renderer/data/characters/pointed_polygon/pointed_polygon.svg"
     )
     work = tmp_path / source.name
     shutil.copy2(source, work)
@@ -112,7 +112,7 @@ def test_nudge_part_moves_art_without_moving_bind_or_skeleton_joint(tmp_path: Pa
 def test_move_joint_keeps_editor_bone_guide_attached(tmp_path: Path) -> None:
     source = (
         REPO_ROOT
-        / "ambition_sprite2d_renderer/data/characters/fighting_polygon_sword/fighting_polygon_sword.svg"
+        / "ambition_sprite2d_renderer/data/characters/pointed_polygon/pointed_polygon.svg"
     )
     work = tmp_path / source.name
     shutil.copy2(source, work)
@@ -192,7 +192,7 @@ def test_nudge_part_uses_root_svg_delta_through_parent_scale(tmp_path: Path) -> 
 def test_translate_part_source_moves_dedicated_bind_pivot(tmp_path: Path) -> None:
     source = (
         REPO_ROOT
-        / "ambition_sprite2d_renderer/data/characters/fighting_polygon_sword/fighting_polygon_sword.svg"
+        / "ambition_sprite2d_renderer/data/characters/pointed_polygon/pointed_polygon.svg"
     )
     work = tmp_path / source.name
     shutil.copy2(source, work)

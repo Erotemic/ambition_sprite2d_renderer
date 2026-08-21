@@ -2,7 +2,7 @@
 <svg xmlns="http://www.w3.org/2000/svg"
      xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
      width="238.125mm" height="238.125mm" viewBox="0 0 900 900">
-  <g id="view-fighting-polygon-brawler" inkscape:groupmode="layer" inkscape:label="Fighting Polygon Brawler - Side">
+  <g id="view-pugnacious-polygon" inkscape:groupmode="layer" inkscape:label="Pugnacious Polygon - Side">
     <g id="polygon-far-leg-u" inkscape:label="Far Upper Leg">
       <polygon points="646,450 675,449 697,604 671,618 651,545" fill="#6E2C34" stroke="#2B1117" stroke-width="5"/>
       <polygon points="646,450 675,449 670,530 651,545" fill="#A4484D"/>
@@ -78,7 +78,7 @@
   </g>
   <!-- BEGIN AMBITION SVG RIG v1 -->
   <metadata id="ambition-rig-metadata" data-ambition-schema="ambition-svg-rig-v1" data-ambition-role="character-rig" data-rig-coordinate-space="root-svg-user-space" data-rig-rest-authority="markers">
-    <g id="ambition-rig-view-side" data-rig-view-def="side" data-rig-source-layer="view-fighting-polygon-brawler" data-rig-source-label="Fighting Polygon Brawler - Side" data-rig-root="ambition-rig-side-joint-rig_root" data-rig-projection="side" data-rig-profile="humanoid-articulated-v1" data-rig-pose-authority="geometry-only" data-rig-part-order="attribute" data-rig-source-map-quality="exact-pivot-fit">
+    <g id="ambition-rig-view-side" data-rig-view-def="side" data-rig-source-layer="view-pugnacious-polygon" data-rig-source-label="Pugnacious Polygon - Side" data-rig-root="ambition-rig-side-joint-rig_root" data-rig-projection="side" data-rig-profile="humanoid-articulated-v1" data-rig-pose-authority="geometry-only" data-rig-part-order="attribute" data-rig-source-map-quality="exact-pivot-fit">
       <g id="ambition-rig-side-bone-pelvis" data-rig-bone-def="pelvis" data-rig-origin="ambition-rig-side-joint-hip_center" />
       <g id="ambition-rig-side-bone-torso" data-rig-bone-def="torso" data-rig-parent="pelvis" data-rig-origin="ambition-rig-side-joint-waist" />
       <g id="ambition-rig-side-bone-head" data-rig-bone-def="head" data-rig-parent="torso" data-rig-origin="ambition-rig-side-joint-neck" />
@@ -112,7 +112,7 @@
     </g>
   </metadata>
   <g id="ambition-rig-markers" data-rig-editor-layer="true" inkscape:groupmode="layer" inkscape:label="Ambition Rig Markers">
-    <g id="ambition-rig-markers-side" data-rig-view="side" inkscape:label="Rig Markers - Fighting Polygon Brawler - Side">
+    <g id="ambition-rig-markers-side" data-rig-view="side" inkscape:label="Rig Markers - Pugnacious Polygon - Side">
       <line id="ambition-rig-side-guide-far_arm_u" data-rig-bone-guide="far_arm_u" x1="712.999586" y1="288.999186" x2="734.999537" y2="396.498417" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-far_arm_l" data-rig-bone-guide="far_arm_l" x1="734.999537" y1="396.498417" x2="732.499159" y2="493.999939" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-far_arm_hand" data-rig-bone-guide="far_arm_hand" x1="732.499159" y1="493.999939" x2="713.999103" y2="596.001551" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />

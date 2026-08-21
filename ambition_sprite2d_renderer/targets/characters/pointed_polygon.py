@@ -1,4 +1,4 @@
-"""SVG-rigged Fighting Polygon sword humanoid.
+"""SVG-rigged Pointed Polygon humanoid.
 
 This target is deliberately both a playable fighter and an animation reference.
 The SVG owns simple faceted body parts and static rig geometry; a shared,
@@ -18,7 +18,7 @@ from ambition_sprite2d_renderer.authoring.motion_ir import CharacterMotionBindin
 from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
 from ambition_sprite2d_renderer.authoring.sheet_build import build_sheet
 
-TARGET_NAME = "fighting_polygon_sword"
+TARGET_NAME = "pointed_polygon"
 MOTION_PATH = (
     Path(__file__).resolve().parents[2]
     / "data"
@@ -81,7 +81,7 @@ SAFE_POSE_REFERENCE = (
 ACTOR_METADATA = {
     "actor": {
         "character_id": TARGET_NAME,
-        "display_name": "Fighting Polygon",
+        "display_name": "Pointed Polygon",
     },
     "authoring_description": {
         "concept": (
@@ -156,7 +156,7 @@ ACTOR_METADATA = {
     },
     "visual": {
         "default_pose": "idle",
-        "canonical_source": "data/characters/fighting_polygon_sword/fighting_polygon_sword.svg",
+        "canonical_source": "data/characters/pointed_polygon/pointed_polygon.svg",
         "pose_reference": list(SAFE_POSE_REFERENCE),
     },
     "actions": {

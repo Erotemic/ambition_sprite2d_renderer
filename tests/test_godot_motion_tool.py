@@ -194,22 +194,22 @@ def test_godot_headless_can_parse_and_export_generated_scene_when_available(tmp_
     assert worst <= 1e-4
 
 
-def _copy_fighting_polygon_sword_sources(tmp_path: Path) -> tuple[Path, Path]:
+def _copy_pointed_polygon_sources(tmp_path: Path) -> tuple[Path, Path]:
     source_repo = repo_root()
     temp_repo = tmp_path / "repo"
     character_rel = Path(
-        "ambition_sprite2d_renderer/data/characters/fighting_polygon_sword"
+        "ambition_sprite2d_renderer/data/characters/pointed_polygon"
     )
     library_rel = Path(
         "ambition_sprite2d_renderer/data/motion/humanoid/fighting_polygon_v1"
     )
     shutil.copytree(source_repo / character_rel, temp_repo / character_rel)
     shutil.copytree(source_repo / library_rel, temp_repo / library_rel)
-    return temp_repo, temp_repo / character_rel / "fighting_polygon_sword.motion.json"
+    return temp_repo, temp_repo / character_rel / "pointed_polygon.motion.json"
 
 
 def test_apply_export_preserves_sub_tolerance_godot_noise(tmp_path):
-    temp_repo, binding_path = _copy_fighting_polygon_sword_sources(tmp_path)
+    temp_repo, binding_path = _copy_pointed_polygon_sources(tmp_path)
     project = tmp_path / "godot_project"
     output = prepare_binding(binding_path, project_dir=project, repo=temp_repo)
     raw = json.loads(output["expected_export"].read_text(encoding="utf8"))
@@ -236,7 +236,7 @@ def test_apply_export_preserves_sub_tolerance_godot_noise(tmp_path):
 
 
 def test_apply_export_writes_only_meaningfully_edited_pose(tmp_path, capsys):
-    temp_repo, binding_path = _copy_fighting_polygon_sword_sources(tmp_path)
+    temp_repo, binding_path = _copy_pointed_polygon_sources(tmp_path)
     project = tmp_path / "godot_project"
     output = prepare_binding(binding_path, project_dir=project, repo=temp_repo)
     raw = json.loads(output["expected_export"].read_text(encoding="utf8"))
@@ -291,7 +291,7 @@ def test_render_pose_preview_uses_production_renderer_seam(tmp_path):
 
 
 def test_check_only_reports_pose_path_without_writing(tmp_path, capsys):
-    temp_repo, binding_path = _copy_fighting_polygon_sword_sources(tmp_path)
+    temp_repo, binding_path = _copy_pointed_polygon_sources(tmp_path)
     project = tmp_path / "godot_project"
     output = prepare_binding(binding_path, project_dir=project, repo=temp_repo)
     raw = json.loads(output["expected_export"].read_text(encoding="utf8"))

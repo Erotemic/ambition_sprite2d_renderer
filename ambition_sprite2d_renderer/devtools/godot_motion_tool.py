@@ -51,8 +51,8 @@ GODOT_SHEET_SCHEMA = "ambition-godot-pose-sheet-v1"
 DEFAULT_PROJECT_REL = Path("godot/pose_editor")
 GODOT_VERSION_REL = DEFAULT_PROJECT_REL / "GODOT_VERSION"
 DEFAULT_BINDINGS = (
-    Path("ambition_sprite2d_renderer/data/characters/fighting_polygon_sword/fighting_polygon_sword.motion.json"),
-    Path("ambition_sprite2d_renderer/data/characters/fighting_polygon_brawler/fighting_polygon_brawler.motion.json"),
+    Path("ambition_sprite2d_renderer/data/characters/pointed_polygon/pointed_polygon.motion.json"),
+    Path("ambition_sprite2d_renderer/data/characters/pugnacious_polygon/pugnacious_polygon.motion.json"),
 )
 
 _EPS = 1e-7
@@ -1124,7 +1124,7 @@ def build_parser() -> argparse.ArgumentParser:
     render_pose.add_argument(
         "--binding",
         default=str(DEFAULT_BINDINGS[0]),
-        help="character motion binding; defaults to Fighting Polygon Sword",
+        help="character motion binding; defaults to Pointed Polygon",
     )
     render_pose.add_argument("--output", help="PNG output path; defaults under generated/godot_pose_previews/")
     render_pose.set_defaults(func=_cmd_render_pose)
@@ -1137,7 +1137,7 @@ def build_parser() -> argparse.ArgumentParser:
     render_clip.add_argument(
         "--binding",
         default=str(DEFAULT_BINDINGS[0]),
-        help="character motion binding; defaults to Fighting Polygon Sword",
+        help="character motion binding; defaults to Pointed Polygon",
     )
     render_clip.add_argument("--output", help="GIF output path; defaults under generated/godot_clip_previews/")
     render_clip.add_argument("--strip", help="optional PNG contact-strip output path")
@@ -1157,7 +1157,7 @@ def build_parser() -> argparse.ArgumentParser:
     sample_plan.add_argument(
         "--binding",
         default=str(DEFAULT_BINDINGS[0]),
-        help="character motion binding; defaults to Fighting Polygon Sword",
+        help="character motion binding; defaults to Pointed Polygon",
     )
     sample_plan.add_argument(
         "--uniform-compatibility",

@@ -1,5 +1,5 @@
-target: fighting_polygon_brawler
-name: fighting_polygon_brawler_safe_poses
+target: pugnacious_polygon
+name: pugnacious_polygon_safe_poses
 animations:
 - idle
 - walk
@@ -47,8 +47,8 @@ render:
   sheet_background: transparent
   crop: true
 actor:
-  character_id: fighting_polygon_brawler
-  display_name: Fighting Polygon
+  character_id: pugnacious_polygon
+  display_name: Pugnacious Polygon
 body:
   body_plan: HumanoidBiped
   body_kind: Standard
@@ -61,7 +61,7 @@ body:
   - svg_rigged
 visual:
   default_pose: idle
-  canonical_source: data/characters/fighting_polygon_brawler/fighting_polygon_brawler.svg
+  canonical_source: data/characters/pugnacious_polygon/pugnacious_polygon.svg
 tags:
 - humanoid
 - polygonal

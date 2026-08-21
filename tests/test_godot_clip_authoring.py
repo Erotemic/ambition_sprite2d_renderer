@@ -28,19 +28,19 @@ def _binding() -> CharacterMotionBinding:
     return CharacterMotionBinding.load(repo_root() / DEFAULT_BINDINGS[0])
 
 
-def _copy_fighting_polygon_sword_sources(tmp_path: Path) -> tuple[Path, Path]:
+def _copy_pointed_polygon_sources(tmp_path: Path) -> tuple[Path, Path]:
     source_repo = repo_root()
     temp_repo = tmp_path / "repo"
-    character_rel = Path("ambition_sprite2d_renderer/data/characters/fighting_polygon_sword")
+    character_rel = Path("ambition_sprite2d_renderer/data/characters/pointed_polygon")
     library_rel = Path("ambition_sprite2d_renderer/data/motion/humanoid/fighting_polygon_v1")
     shutil.copytree(source_repo / character_rel, temp_repo / character_rel)
     shutil.copytree(source_repo / library_rel, temp_repo / library_rel)
-    return temp_repo, temp_repo / character_rel / "fighting_polygon_sword.motion.json"
+    return temp_repo, temp_repo / character_rel / "pointed_polygon.motion.json"
 
 
 def _expected_export(tmp_path: Path, *, isolated: bool = False):
     if isolated:
-        repo, binding_path = _copy_fighting_polygon_sword_sources(tmp_path)
+        repo, binding_path = _copy_pointed_polygon_sources(tmp_path)
         binding = CharacterMotionBinding.load(binding_path)
     else:
         repo = repo_root()

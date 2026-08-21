@@ -645,7 +645,7 @@ class PoseSheetCanvas(QWidget):
         plantable = self.state.selected_plantable_foot()
 
         # Endpoint tip = orientation/pivot.  This is the missing foot control
-        # that made the Fighting Polygon brawler's feet feel non-rotatable.
+        # that made the Pugnacious Polygon's feet feel non-rotatable.
         if hit_handle == "tip" and (
             (leg is not None and hit_bone == leg.get("foot"))
             or endpoint_chain is not None

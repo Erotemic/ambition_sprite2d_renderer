@@ -50,7 +50,7 @@ should normally modify exactly one `.pose.json` file:
 
 ```bash
 uv run python -m ambition_sprite2d_renderer.devtools.godot_motion_tool \
-    apply-export godot/pose_editor/generated/exports/fighting_polygon_sword.poses.json
+    apply-export godot/pose_editor/generated/exports/pointed_polygon.poses.json
 ```
 
 For a quick visual acceptance check, render a single named pose through the
@@ -111,7 +111,7 @@ neutral export before writing source:
 ```bash
 uv run python -m ambition_sprite2d_renderer.devtools.godot_motion_tool \
     apply-clip-export --check \
-    godot/pose_editor/generated/exports/fighting_polygon_sword.clips.json
+    godot/pose_editor/generated/exports/pointed_polygon.clips.json
 ```
 
 Then apply it:
@@ -119,7 +119,7 @@ Then apply it:
 ```bash
 uv run python -m ambition_sprite2d_renderer.devtools.godot_motion_tool \
     apply-clip-export \
-    godot/pose_editor/generated/exports/fighting_polygon_sword.clips.json
+    godot/pose_editor/generated/exports/pointed_polygon.clips.json
 ```
 
 ### Sprite sampling is a backend policy

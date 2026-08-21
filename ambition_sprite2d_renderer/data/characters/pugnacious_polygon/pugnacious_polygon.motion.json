@@ -1,12 +1,11 @@
 {
   "schema": "ambition-character-motion-v1",
-  "character": "fighting_polygon_sword",
+  "character": "pugnacious_polygon",
   "rig": {
-    "svg": "fighting_polygon_sword.svg",
+    "svg": "pugnacious_polygon.svg",
     "view": "side"
   },
   "motion_library": "../../motion/humanoid/fighting_polygon_v1/library.json",
-  "motion_source_facing": "east",
   "render": {
     "frame_px": [
       128,
@@ -23,13 +22,14 @@
     "svg_ref_dpi": 96.0
   },
   "sprite_tuning": {
-    "collision_scale": 1.8
+    "collision_scale": 1.8,
+    "facing": "right"
   },
   "features": {
-    "archetype": "sword_humanoid",
+    "archetype": "brawler_humanoid",
     "safe_pose_reference": true,
     "faceted_svg_parts": true,
-    "weapon": "sword"
+    "weapon": null
   },
   "natural_pose": "idle"
 }

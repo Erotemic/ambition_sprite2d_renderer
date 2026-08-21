@@ -7,8 +7,8 @@ from ambition_sprite2d_renderer.authoring.motion_ir import (
     MotionLibrary,
 )
 from ambition_sprite2d_renderer.targets.characters import (
-    fighting_polygon_brawler,
-    fighting_polygon_sword,
+    pugnacious_polygon,
+    pointed_polygon,
 )
 
 
@@ -34,8 +34,8 @@ CANONICAL_POSES = {
 
 def _bindings():
     return (
-        CharacterMotionBinding.load(fighting_polygon_sword.MOTION_PATH),
-        CharacterMotionBinding.load(fighting_polygon_brawler.MOTION_PATH),
+        CharacterMotionBinding.load(pointed_polygon.MOTION_PATH),
+        CharacterMotionBinding.load(pugnacious_polygon.MOTION_PATH),
     )
 
 
@@ -130,7 +130,7 @@ def test_clip_sampling_is_separate_from_animation_time():
 
 
 def test_renderer_projection_is_generated_from_motion_ir_and_contains_no_legacy_solver_language():
-    for target in (fighting_polygon_sword, fighting_polygon_brawler):
+    for target in (pointed_polygon, pugnacious_polygon):
         doc = target._doc()
         assert doc.data["generated_projection"]["schema"] == "ambition-rigdoc-projection-v1"
         assert doc.ik_legs == []

@@ -1,5 +1,5 @@
 from ambition_sprite2d_renderer.authoring.motion_ir import CharacterMotionBinding
-from ambition_sprite2d_renderer.targets.characters import fighting_polygon_sword as target
+from ambition_sprite2d_renderer.targets.characters import pointed_polygon as target
 
 
 REQUIRED_SAFE_POSES = {
@@ -74,7 +74,7 @@ def test_polygon_sword_svg_is_the_editable_static_rig_authority():
     assert svg.exists()
     assert prepared.rig.source_svg == svg
     text = svg.read_text(encoding="utf8")
-    assert "Fighting Polygon Sword - Side" in text
+    assert "Pointed Polygon - Side" in text
     assert 'data-ambition-schema="ambition-svg-rig-v1"' in text
     assert 'data-rig-facing="west"' in text
     assert prepared.rig.facing == "west"

@@ -1,5 +1,5 @@
-target: fighting_polygon_sword
-name: fighting_polygon_sword_safe_poses
+target: pointed_polygon
+name: pointed_polygon_safe_poses
 animations:
 - idle
 - walk
@@ -47,8 +47,8 @@ render:
   sheet_background: transparent
   crop: true
 actor:
-  character_id: fighting_polygon_sword
-  display_name: Fighting Polygon
+  character_id: pointed_polygon
+  display_name: Pointed Polygon
 body:
   body_plan: HumanoidBiped
   body_kind: Standard
@@ -61,7 +61,7 @@ body:
   - svg_rigged
 visual:
   default_pose: idle
-  canonical_source: data/characters/fighting_polygon_sword/fighting_polygon_sword.svg
+  canonical_source: data/characters/pointed_polygon/pointed_polygon.svg
 tags:
 - humanoid
 - polygonal

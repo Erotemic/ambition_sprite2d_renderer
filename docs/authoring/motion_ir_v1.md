@@ -5,7 +5,7 @@ frontends. Godot, PySide, procedural generators, and agent tools may all read or
 write these semantics. None of their native scene/widget/solver models are part
 of the contract.
 
-The first pilot is the Fighting Polygon sword/brawler pair. It intentionally
+The first pilot is the Pointed Polygon / Pugnacious Polygon pair. It intentionally
 keeps the existing sprite publication API and generated sheet/manifest contract
 unchanged while replacing the editable motion authority beneath it.
 
@@ -217,10 +217,10 @@ change during the schema migration.
 
 ```bash
 python -m ambition_sprite2d_renderer.devtools.motion_ir_tool \
-    describe ambition_sprite2d_renderer/data/characters/fighting_polygon_sword/fighting_polygon_sword.motion.json
+    describe ambition_sprite2d_renderer/data/characters/pointed_polygon/pointed_polygon.motion.json
 
 python -m ambition_sprite2d_renderer.devtools.motion_ir_tool \
-    validate ambition_sprite2d_renderer/data/characters/fighting_polygon_sword/fighting_polygon_sword.motion.json
+    validate ambition_sprite2d_renderer/data/characters/pointed_polygon/pointed_polygon.motion.json
 ```
 
 `migrate-legacy` and `compare-legacy` are transition tools. They are useful for
@@ -307,7 +307,7 @@ files:
 
 ```bash
 uv run python -m ambition_sprite2d_renderer.devtools.godot_motion_tool \
-    apply-export godot/pose_editor/generated/exports/fighting_polygon_sword.poses.json
+    apply-export godot/pose_editor/generated/exports/pointed_polygon.poses.json
 ```
 
 This two-step export is deliberate. GDScript does not own Ambition's canonical
