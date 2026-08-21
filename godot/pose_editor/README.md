@@ -78,6 +78,13 @@ Transform property, insert keys at arbitrary times, delete keys, or retime an
 individual property track. There is no requirement that the rest of the body
 have a key at the same time.
 
+The scene is generated in the SVG rig's native horizontal facing. A character
+binding may adapt a shared motion library whose source deltas were authored in
+the opposite facing; that reflection happens during preparation, and Python
+reverses it when an edit is written back to the shared library. Pose what you
+see in Godot. Do not manually mirror a west-facing character to compensate for
+the source library's orientation.
+
 The generated timeline represents animation, not sprite frames.
 `Animation.length` is the authored clip `duration_s`, and its 1/60-second `step`
 is only an editor-grid preference. Existing `sampling.frame_count` /

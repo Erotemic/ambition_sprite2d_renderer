@@ -249,6 +249,9 @@ def test_apply_export_writes_only_meaningfully_edited_pose(tmp_path, capsys):
         (temp_repo / "ambition_sprite2d_renderer/data/motion/humanoid/fighting_polygon_v1/poses")
         .glob("*.pose.json")
     )
+    contact_path = next(path for path in pose_paths if path.name.endswith("jab__contact.pose.json"))
+    source_before = json.loads(contact_path.read_text(encoding="utf8"))
+    source_angle_before = source_before["state"]["bones"]["near_arm_u"]["rotation_deg"]
     before = {path: path.read_bytes() for path in pose_paths}
     changed, worst = apply_export(edited, repo=temp_repo, check_only=False)
     changed_paths = [path for path in pose_paths if path.read_bytes() != before[path]]
@@ -257,6 +260,13 @@ def test_apply_export_writes_only_meaningfully_edited_pose(tmp_path, capsys):
     assert worst == pytest.approx(12.0)
     assert len(changed_paths) == 1
     assert changed_paths[0].name == "humanoid__fighting_polygon__jab__contact.pose.json"
+    source_after = json.loads(changed_paths[0].read_text(encoding="utf8"))
+    # Godot edits the sword in its west-facing character-local frame.  The
+    # shared source library remains east-facing, so write-back applies the
+    # inverse reflection rather than contaminating the brawler's source data.
+    assert source_after["state"]["bones"]["near_arm_u"]["rotation_deg"] == pytest.approx(
+        source_angle_before - 12.0
+    )
     output_text = capsys.readouterr().out
     assert "updated pose:" in output_text
     assert changed_paths[0].relative_to(temp_repo).as_posix() in output_text

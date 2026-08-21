@@ -76,6 +76,8 @@ def test_polygon_sword_svg_is_the_editable_static_rig_authority():
     text = svg.read_text(encoding="utf8")
     assert "Fighting Polygon Sword - Side" in text
     assert 'data-ambition-schema="ambition-svg-rig-v1"' in text
+    assert 'data-rig-facing="west"' in text
+    assert prepared.rig.facing == "west"
     for part_id in (
         "polygon-head",
         "polygon-torso",
@@ -86,6 +88,22 @@ def test_polygon_sword_svg_is_the_editable_static_rig_authority():
     ):
         assert f'id="{part_id}"' in text
     assert "filter=" not in text
+
+
+def test_polygon_sword_publishes_its_svg_declared_west_facing(monkeypatch, tmp_path):
+    doc = target._doc()
+    assert doc.authored_faces_left is True
+
+    captured = {}
+
+    def fake_build_sheet(**kwargs):
+        captured.update(kwargs)
+        return {}
+
+    monkeypatch.setattr(target, "build_sheet", fake_build_sheet)
+    monkeypatch.setattr(target, "_publication_frame_size", lambda: (128, 192))
+    assert target.render(tmp_path) == []
+    assert captured["authored_faces_left"] is True
 
 
 def test_polygon_sword_renderer_projection_contains_direct_fk_not_ik_authority():
@@ -108,3 +126,13 @@ def test_polygon_sword_renderer_projection_contains_direct_fk_not_ik_authority()
         origins.append((round(foot.origin[0], 3), round(foot.origin[1], 3)))
     assert len(set(pitches)) > 1
     assert len(set(origins)) > 1
+
+
+def test_polygon_sword_publication_uses_actual_scaled_raster_size_and_overscan():
+    from ambition_sprite2d_renderer.authoring.sheet_build import clipped_frame_edges
+
+    clip = target._prepared().library.clips["grab"]
+    frame = target._render_frame("grab", 3, clip.frame_count)
+
+    assert frame.size == target._publication_frame_size()
+    assert clipped_frame_edges(frame) == []

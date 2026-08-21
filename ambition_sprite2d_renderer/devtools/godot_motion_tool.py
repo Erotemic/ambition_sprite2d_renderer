@@ -701,7 +701,11 @@ def apply_export(
         if check_only:
             print(f"would update pose: {display_path}")
         else:
-            candidate.path.write_text(json.dumps(candidate.to_dict(), indent=2) + "\n", encoding="utf8")
+            source_candidate = prepared.to_source_pose(candidate)
+            candidate.path.write_text(
+                json.dumps(source_candidate.to_dict(), indent=2) + "\n",
+                encoding="utf8",
+            )
             print(f"updated pose: {display_path}")
 
     missing = sorted(set(prepared.library.poses) - seen)

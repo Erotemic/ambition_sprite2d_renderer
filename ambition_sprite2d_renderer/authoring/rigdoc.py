@@ -334,8 +334,22 @@ class SpriteTransformCache:
         radians = math.radians(angle)
         cos_a = abs(math.cos(radians))
         sin_a = abs(math.sin(radians))
-        half_w = int(math.ceil(cos_a * base_half_w + sin_a * base_half_h)) + 1
-        half_h = int(math.ceil(sin_a * base_half_w + cos_a * base_half_h)) + 1
+        rotated_half_w = int(
+            math.ceil(cos_a * base_half_w + sin_a * base_half_h)
+        ) + 1
+        rotated_half_h = int(
+            math.ceil(sin_a * base_half_w + cos_a * base_half_h)
+        ) + 1
+        # The source is pasted *before* it is rotated.  A canvas sized only for
+        # the post-rotation bounds can therefore be smaller than the unrotated
+        # source in one axis (the classic case is a tall sword rotated ~90deg).
+        # Pillow clips the paste silently; a separately bound child such as a
+        # hand then survives while the forearm/weapon appears mysteriously cut.
+        # The working canvas must contain BOTH the source-centered rectangle and
+        # its rotated rectangle.  Keeping the pivot at the canvas center preserves
+        # the existing blit contract and still avoids the old all-angle square.
+        half_w = max(base_half_w, rotated_half_w)
+        half_h = max(base_half_h, rotated_half_h)
         pad = Image.new("RGBa", (2 * half_w, 2 * half_h), (0, 0, 0, 0))
         premultiplied = sprite.premultiplied
         if premultiplied is None:
@@ -1145,6 +1159,77 @@ class RigDocument:
             (out_w * rs, out_h * rs),
             reducing_gap=3.0,
         )
+
+    def measure_render_padding(
+        self,
+        samples,
+        *,
+        margin: int = 2,
+        probe_padding: Optional[RenderPadding] = None,
+    ) -> Tuple[int, int, int, int]:
+        """Measure the overscan needed to preserve the supplied rendered poses.
+
+        ``render_at`` intentionally paints into a fixed logical canvas unless a
+        caller supplies ``padding``.  That is appropriate for an editor viewport,
+        but sprite publication must not silently sever a hand, weapon, or rotated
+        limb just because an authored pose leaves the nominal frame.
+
+        This helper performs a cheap 1x/1-supersample probe for the exact clip
+        times that a caller plans to publish, measures their alpha bounds in a
+        generously padded canvas, and returns the smallest logical-pixel
+        ``(left, top, right, bottom)`` overscan that contains them plus ``margin``.
+        The final render can then use that padding at its normal resolution.
+
+        The probe is deliberately separate from sprite sampling: callers pass the
+        times they actually intend to render, whether those are legacy publication
+        samples, an adaptive bake plan, or a hand-picked review sequence.
+        """
+        fr = self.frame
+        width = int(fr["width"])
+        height = int(fr["height"])
+        margin = max(0, int(margin))
+        if probe_padding is None:
+            # A full nominal-frame radius on every side is generous enough for a
+            # limb/weapon orbit without making the sequential 1x probe expensive.
+            probe_padding = max(width, height)
+        probe_left, probe_top, probe_right, probe_bottom = normalize_render_padding(
+            probe_padding
+        )
+        required = [0, 0, 0, 0]
+        saw_sample = False
+        for clip_name, t in samples:
+            saw_sample = True
+            image = self.render_at(
+                str(clip_name),
+                float(t),
+                supersample=1,
+                scale=1,
+                padding=(probe_left, probe_top, probe_right, probe_bottom),
+            )
+            bbox = image.getchannel("A").getbbox()
+            if bbox is None:
+                continue
+            if (
+                bbox[0] <= 0
+                or bbox[1] <= 0
+                or bbox[2] >= image.width
+                or bbox[3] >= image.height
+            ):
+                raise ValueError(
+                    f"render-padding probe for {clip_name!r} reached the probe canvas edge; "
+                    "increase probe_padding instead of accepting clipped bounds"
+                )
+            logical_left = probe_left
+            logical_top = probe_top
+            logical_right = probe_left + width
+            logical_bottom = probe_top + height
+            required[0] = max(required[0], logical_left - bbox[0])
+            required[1] = max(required[1], logical_top - bbox[1])
+            required[2] = max(required[2], bbox[2] - logical_right)
+            required[3] = max(required[3], bbox[3] - logical_bottom)
+        if not saw_sample:
+            return (0, 0, 0, 0)
+        return tuple(max(0, int(math.ceil(value)) + margin) for value in required)
 
     def frame_time(self, clip_name: str, frame_idx: int, nframes: Optional[int] = None) -> float:
         """Normalized time for a frame index under the loop conventions:

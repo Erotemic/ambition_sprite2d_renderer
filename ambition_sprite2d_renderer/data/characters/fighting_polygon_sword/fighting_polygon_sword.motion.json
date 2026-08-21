@@ -6,6 +6,7 @@
     "view": "side"
   },
   "motion_library": "../../motion/humanoid/fighting_polygon_v1/library.json",
+  "motion_source_facing": "east",
   "render": {
     "frame_px": [
       128,
@@ -22,8 +23,7 @@
     "svg_ref_dpi": 96.0
   },
   "sprite_tuning": {
-    "collision_scale": 1.8,
-    "facing": "right"
+    "collision_scale": 1.8
   },
   "features": {
     "archetype": "sword_humanoid",

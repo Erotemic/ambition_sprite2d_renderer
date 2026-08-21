@@ -472,6 +472,59 @@ def test_transform_cache_rotates_a_tight_canvas_for_long_svg_parts():
     assert rotated.width * rotated.height < padded.width * padded.height // 3
 
 
+def test_transform_cache_does_not_clip_tall_part_before_quarter_turn():
+    """Prepared rotations must contain the source *before* PIL rotates it.
+
+    A canvas sized only for the post-rotation bounds can be short at ~90deg.
+    Pillow then silently clips a tall source during the initial paste.  Polygon
+    sword/forearm parts exposed this because their separately bound hands kept
+    rendering after the intermediate part had already been truncated.
+    """
+
+    from PIL import Image, ImageDraw
+    from ambition_sprite2d_renderer.authoring.rigdoc import (
+        SpriteRaster,
+        SpriteTransformCache,
+        blit_rotated,
+    )
+
+    image = Image.new("RGBA", (20, 100), (0, 0, 0, 0))
+    ImageDraw.Draw(image).rectangle((4, 2, 15, 97), fill=(40, 180, 240, 255))
+    # A pivot outside the crop is valid for SVG parts whose bind joint lies just
+    # beyond their painted geometry, and makes the pre-rotation containment
+    # requirement especially easy to violate.
+    pivot = (10.0, -4.0)
+    radius = 110
+    padded = Image.new("RGBA", (2 * radius, 2 * radius), (0, 0, 0, 0))
+    padded.alpha_composite(
+        image,
+        (radius - int(round(pivot[0])), radius - int(round(pivot[1]))),
+    )
+    sprite = SpriteRaster(
+        image,
+        pivot,
+        padded,
+        radius,
+        ("tall-quarter-turn", 256),
+        premultiplied=image.convert("RGBa"),
+    )
+
+    expected = Image.new("RGBA", (260, 260), (0, 0, 0, 0))
+    actual = Image.new("RGBA", (260, 260), (0, 0, 0, 0))
+    blit_rotated(expected, image, pivot, (130, 130), 86.0)
+    blit_rotated(
+        actual,
+        image,
+        pivot,
+        (130, 130),
+        86.0,
+        prepared=sprite,
+        transform_cache=SpriteTransformCache(max_bytes=16 * 1024 * 1024),
+    )
+
+    assert actual.tobytes() == expected.tobytes()
+
+
 def test_transform_cache_reuses_unchanged_part_rotation():
     from ambition_sprite2d_renderer.authoring.rigdoc import SpriteTransformCache
 
@@ -651,3 +704,48 @@ def test_bone_translation_channels_are_additive_local_offsets() -> None:
     # Children inherit the translated parent exactly as normal forward kinematics.
     assert moved_world["torso"].origin[0] == pytest.approx(idle_world["torso"].origin[0] + 7.0)
     assert moved_world["torso"].origin[1] == pytest.approx(idle_world["torso"].origin[1] - 3.0)
+
+
+def test_measure_render_padding_finds_overflow_before_final_render():
+    doc = RigDocument.new_empty("measured_overscan")
+    doc.data["frame"] = {
+        "width": 40,
+        "height": 40,
+        "supersample": 1,
+        "ground_y": 20.0,
+        "center_x": 4.0,
+        "ankle_h": 0.0,
+    }
+    doc.data["bones"] = [
+        {
+            "name": "root",
+            "parent": None,
+            "offset": [0.0, 0.0],
+            "length": 0.0,
+            "rest_angle": 0.0,
+        }
+    ]
+    doc.data["parts"] = [
+        {
+            "name": "wide",
+            "bone": "root",
+            "z": 0,
+            "kind": "polygon",
+            "points": [[-10, -5], [10, -5], [10, 5], [-10, 5]],
+            "fill": "#FFFFFF",
+            "outline_w": 0.0,
+        }
+    ]
+    doc.data["clips"] = {
+        "idle": {"loop": True, "frames": 1, "duration_ms": 100, "channels": {}}
+    }
+
+    padding = doc.measure_render_padding(
+        [("idle", 0.0)],
+        margin=2,
+        probe_padding=20,
+    )
+
+    assert padding == (8, 2, 2, 2)
+    preserved = doc.render_at("idle", 0.0, supersample=1, padding=padding)
+    assert preserved.getchannel("A").getbbox()[0] >= 2

@@ -67,3 +67,13 @@ def test_polygon_brawler_renderer_projection_contains_direct_fk_not_ik_authority
         origins.append((round(foot.origin[0], 3), round(foot.origin[1], 3)))
     assert len(set(pitches)) > 1
     assert len(set(origins)) > 1
+
+
+def test_polygon_brawler_publication_uses_actual_scaled_raster_size_and_overscan():
+    from ambition_sprite2d_renderer.authoring.sheet_build import clipped_frame_edges
+
+    clip = target._prepared().library.clips["grab"]
+    frame = target._render_frame("grab", 3, clip.frame_count)
+
+    assert frame.size == target._publication_frame_size()
+    assert clipped_frame_edges(frame) == []

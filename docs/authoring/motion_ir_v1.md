@@ -52,6 +52,17 @@ motion library, and the presentation mapping needed by the existing sheet
 renderer. Sword and brawler have distinct SVG bindings but deliberately point at
 the same motion library in the pilot.
 
+The selected SVG view is also authoritative for the artwork's native horizontal
+facing through `data-rig-facing="east|west"`. A shared motion library may declare
+the character-local facing in which its directional deltas were authored via the
+binding's optional `motion_source_facing`. When those differ, preparation reflects
+the motion deltas into the SVG's native frame (`position.x` and rotation change
+sign) without copying or forking the shared pose/clip files. Godot therefore edits
+the character in the direction its art is actually drawn. Export applies the same
+self-inverse transform before writing, so the shared source library retains one
+stable orientation. Runtime sheet metadata publishes the SVG-declared art facing;
+`sprite_tuning` is not a second facing authority.
+
 The render mapping is presentation data rather than pose data:
 
 ```text

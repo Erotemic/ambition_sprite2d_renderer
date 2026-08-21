@@ -111,41 +111,5 @@
         }
       }
     }
-  ],
-  "tracks": [
-    {
-      "target": "bone.near_arm_u.rotation_deg",
-      "keys": [
-        {
-          "at_s": 0.0,
-          "value": -15.535129
-        },
-        {
-          "at_s": 0.088704,
-          "value": 45.662
-        },
-        {
-          "at_s": 0.179572,
-          "value": -14.337995
-        }
-      ]
-    },
-    {
-      "target": "bone.near_arm_l.rotation_deg",
-      "keys": [
-        {
-          "at_s": 0.0,
-          "value": -228.704006
-        },
-        {
-          "at_s": 0.088704,
-          "value": -303.704018
-        },
-        {
-          "at_s": 0.179572,
-          "value": -228.704006
-        }
-      ]
-    }
   ]
 }

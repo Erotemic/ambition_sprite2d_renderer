@@ -4,6 +4,7 @@ from pathlib import Path
 from ambition_sprite2d_renderer.authoring.motion_ir import (
     CharacterMotionBinding,
     MOTION_SPACE_V1,
+    MotionLibrary,
 )
 from ambition_sprite2d_renderer.targets.characters import (
     fighting_polygon_brawler,
@@ -50,6 +51,34 @@ def test_fighting_polygons_share_one_motion_library_but_own_distinct_static_rigs
     assert sword_prepared.rig.profile == brawler_prepared.rig.profile == "humanoid-articulated-v1"
     assert len(sword_prepared.library.clips) == 136
     assert set(sword_prepared.library.poses) == CANONICAL_POSES
+
+
+def test_sword_prepares_shared_east_motion_in_its_west_facing_art_frame():
+    sword, brawler = _bindings()
+    source = MotionLibrary.load(sword.library_path)
+    prepared = sword.load_prepared()
+    brawler_prepared = brawler.load_prepared()
+
+    assert sword.motion_source_facing == "east"
+    assert prepared.rig.facing == "west"
+    assert prepared.reflects_motion_x is True
+    assert brawler_prepared.reflects_motion_x is False
+
+    source_contact = source.poses["humanoid/fighting_polygon/jab/contact"]
+    prepared_contact = prepared.library.poses[source_contact.id]
+    assert prepared_contact.state.root.position[0] == -source_contact.state.root.position[0]
+    assert (
+        prepared_contact.state.bones["near_arm_u"].rotation_deg
+        == -source_contact.state.bones["near_arm_u"].rotation_deg
+    )
+
+    # Reflection is a prepared character-local view, not a forked source
+    # library.  Every pose and clip must convert losslessly back to the one
+    # shared source representation so Godot edits can be written safely.
+    for pose_id, source_pose in source.poses.items():
+        assert prepared.to_source_pose(prepared.library.poses[pose_id]).to_dict() == source_pose.to_dict()
+    for clip_id, source_clip in source.clips.items():
+        assert prepared.to_source_clip(prepared.library.clips[clip_id]).to_dict() == source_clip.to_dict()
 
 
 def test_motion_library_serializes_the_coordinate_contract_instead_of_implying_godot_semantics():

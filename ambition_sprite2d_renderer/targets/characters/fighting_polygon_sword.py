@@ -204,6 +204,36 @@ def _doc() -> RigDocument:
     return _prepared().to_rig_document()
 
 
+@lru_cache(maxsize=1)
+def _publication_padding() -> tuple[int, int, int, int]:
+    """Minimal overscan for the exact poses published by this sheet.
+
+    The rig's logical frame is an authoring coordinate system, not a clipping
+    promise.  Measure the publication samples cheaply at 1x, then render the
+    real sheet with enough transparent room to preserve every transformed part.
+    """
+    prepared = _prepared()
+    samples = []
+    for animation, frame_count, _duration_ms in _doc().rows():
+        clip = prepared.library.clips[animation]
+        for frame_idx in range(frame_count):
+            at_s = frame_idx * clip.frame_duration_ms / 1000.0
+            samples.append(
+                (animation, round(at_s / max(clip.duration_s, 1e-9), 9))
+            )
+    return _doc().measure_render_padding(samples, margin=4)
+
+
+def _publication_frame_size() -> tuple[int, int]:
+    doc = _doc()
+    left, top, right, bottom = _publication_padding()
+    render_scale = max(1, int(doc.frame.get("render_scale", 1)))
+    return (
+        (int(doc.frame["width"]) + left + right) * render_scale,
+        (int(doc.frame["height"]) + top + bottom) * render_scale,
+    )
+
+
 def _render_frame(animation: str, frame_idx: int, frame_count: int):
     # The shipped sheet still honors each clip's legacy publication cadence.
     # Authored motion itself is normalized against duration_s, so publication
@@ -216,7 +246,11 @@ def _render_frame(animation: str, frame_idx: int, frame_count: int):
         )
     at_s = frame_idx * clip.frame_duration_ms / 1000.0
     normalized = round(at_s / max(clip.duration_s, 1e-9), 9)
-    return _doc().render_at(animation, normalized)
+    return _doc().render_at(
+        animation,
+        normalized,
+        padding=_publication_padding(),
+    )
 
 
 def render(out_dir: str | Path, **opts):
@@ -227,11 +261,12 @@ def render(out_dir: str | Path, **opts):
         rows=doc.rows(),
         render_fn=_render_frame,
         out_dir=Path(out_dir),
-        frame_size=(int(doc.frame["width"]), int(doc.frame["height"])),
+        frame_size=_publication_frame_size(),
         auto_crop=True,
         crop_margin=4,
         actor_metadata=ACTOR_METADATA,
         sheet_tuning=doc.sprite_tuning or {"collision_scale": 1.8},
+        authored_faces_left=doc.authored_faces_left,
         trim=False,
     )
     keys = (

@@ -14,8 +14,9 @@ The first pilot deliberately targets rigid cutout 2D rigs:
   pose keys, optionally referring to reusable named poses.  Explicit scalar
   property tracks are supported for motion that genuinely needs independent
   continuous curves.
-* :class:`CharacterMotionBinding` supplies only presentation-frame mapping and
-  selects a motion library for one character.
+* :class:`CharacterMotionBinding` selects a motion library, maps it into a
+  character's native SVG facing when needed, and supplies presentation-frame
+  mapping for the sprite backend.
 
 ``RigDocument`` remains a renderer compatibility projection for now.  The
 adapter here intentionally bakes IK/procedural legacy channels into direct FK
@@ -24,7 +25,7 @@ transforms; Godot-specific scene/resource structure is never part of this model.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import json
 import math
 from pathlib import Path
@@ -874,6 +875,125 @@ class MotionLibrary:
         return state.patched(key.overrides)
 
 
+def _normalize_facing(value: str | None) -> str | None:
+    """Normalize authored horizontal facing names at editor boundaries.
+
+    ``east``/``west`` are the durable vocabulary.  Accept the old
+    ``right``/``left`` spellings only so a stale character binding can be
+    migrated without making those aliases part of the neutral motion schema.
+    """
+
+    if value is None:
+        return None
+    normalized = str(value).strip().lower()
+    normalized = {"right": "east", "left": "west"}.get(normalized, normalized)
+    if normalized not in {"east", "west"}:
+        raise ValueError(f"unsupported facing {value!r}; expected 'east' or 'west'")
+    return normalized
+
+
+def _mirror_transform_x(transform: Transform2D) -> Transform2D:
+    """Reflect a parent-local motion delta through the character's y axis."""
+
+    return Transform2D(
+        position=(-transform.position[0], transform.position[1]),
+        rotation_deg=-transform.rotation_deg,
+        scale=transform.scale,
+    )
+
+
+def _mirror_pose_state_x(state: PoseState) -> PoseState:
+    return PoseState(
+        root=_mirror_transform_x(state.root),
+        bones={name: _mirror_transform_x(transform) for name, transform in state.bones.items()},
+        parameters=dict(state.parameters),
+    )
+
+
+def _mirror_transform_patch_x(raw: Mapping[str, Any]) -> dict[str, Any]:
+    """Reflect only fields present in a sparse Transform2D patch."""
+
+    out = dict(raw)
+    if "position" in raw:
+        position = raw["position"]
+        if not isinstance(position, Sequence) or len(position) != 2:
+            raise ValueError(f"malformed transform position patch {position!r}")
+        out["position"] = [-float(position[0]), float(position[1])]
+    if "rotation_deg" in raw:
+        out["rotation_deg"] = -float(raw["rotation_deg"])
+    return out
+
+
+def _mirror_pose_patch_x(raw: Mapping[str, Any]) -> dict[str, Any]:
+    """Reflect a sparse clip pose override without expanding its authored shape."""
+
+    out = dict(raw)
+    root = raw.get("root")
+    if isinstance(root, Mapping):
+        out["root"] = _mirror_transform_patch_x(root)
+    bones = raw.get("bones")
+    if isinstance(bones, Mapping):
+        out["bones"] = {
+            str(name): _mirror_transform_patch_x(transform)
+            if isinstance(transform, Mapping)
+            else transform
+            for name, transform in bones.items()
+        }
+    if isinstance(raw.get("parameters"), Mapping):
+        out["parameters"] = dict(raw["parameters"])
+    return out
+
+
+def _mirror_scalar_target_x(target: str) -> bool:
+    if target in {"root.position.x", "root.rotation_deg"}:
+        return True
+    return bool(
+        re.fullmatch(r"bone\.[^.]+\.(?:position\.x|rotation_deg)", target)
+    )
+
+
+def _mirror_scalar_track_x(track: ScalarTrack) -> ScalarTrack:
+    if not _mirror_scalar_target_x(track.target):
+        return track
+    return replace(
+        track,
+        keys=tuple(replace(key, value=-key.value) for key in track.keys),
+    )
+
+
+def _mirror_pose_definition_x(pose: PoseDefinition) -> PoseDefinition:
+    return replace(pose, state=_mirror_pose_state_x(pose.state))
+
+
+def _mirror_clip_definition_x(clip: ClipDefinition) -> ClipDefinition:
+    return replace(
+        clip,
+        pose_keys=tuple(
+            replace(
+                key,
+                state=_mirror_pose_state_x(key.state) if key.state is not None else None,
+                overrides=_mirror_pose_patch_x(key.overrides),
+            )
+            for key in clip.pose_keys
+        ),
+        tracks=tuple(_mirror_scalar_track_x(track) for track in clip.tracks),
+    )
+
+
+def _mirror_motion_library_x(library: MotionLibrary) -> MotionLibrary:
+    """Return a character-local horizontal reflection of a source library.
+
+    Source paths and IDs remain identical.  The reflected library is a prepared
+    view for an editor/renderer, not a second source library on disk.
+    """
+
+    return replace(
+        library,
+        poses={name: _mirror_pose_definition_x(pose) for name, pose in library.poses.items()},
+        clips={name: _mirror_clip_definition_x(clip) for name, clip in library.clips.items()},
+    )
+
+
 @dataclass(frozen=True)
 class RenderBinding:
     frame_width_px: int
@@ -916,6 +1036,7 @@ class CharacterMotionBinding:
     rig_svg: Path
     rig_view: str
     library_path: Path
+    motion_source_facing: str | None
     render: RenderBinding
     sprite_tuning: Mapping[str, Any]
     features: Mapping[str, Any]
@@ -934,6 +1055,7 @@ class CharacterMotionBinding:
             rig_svg=(path.parent / rig["svg"]).resolve(),
             rig_view=str(rig["view"]),
             library_path=(path.parent / raw["motion_library"]).resolve(),
+            motion_source_facing=_normalize_facing(raw.get("motion_source_facing")),
             render=RenderBinding.from_dict(raw["render"]),
             sprite_tuning=dict(raw.get("sprite_tuning") or {}),
             features=dict(raw.get("features") or {}),
@@ -951,6 +1073,10 @@ class CharacterMotionBinding:
             )
         if errors:
             raise ValueError(f"{self.path}: {'; '.join(errors)}")
+        source_facing = _normalize_facing(self.motion_source_facing)
+        rig_facing = _normalize_facing(rig.facing)
+        if source_facing is not None and rig_facing is not None and source_facing != rig_facing:
+            library = _mirror_motion_library_x(library)
         return PreparedCharacterMotion(binding=self, rig=rig, library=library)
 
 
@@ -982,6 +1108,26 @@ class PreparedCharacterMotion:
     binding: CharacterMotionBinding
     rig: RigDefinition
     library: MotionLibrary
+
+    @property
+    def reflects_motion_x(self) -> bool:
+        source_facing = _normalize_facing(self.binding.motion_source_facing)
+        rig_facing = _normalize_facing(self.rig.facing)
+        return (
+            source_facing is not None
+            and rig_facing is not None
+            and source_facing != rig_facing
+        )
+
+    def to_source_pose(self, pose: PoseDefinition) -> PoseDefinition:
+        """Convert a character-local edited pose back to source-library orientation."""
+
+        return _mirror_pose_definition_x(pose) if self.reflects_motion_x else pose
+
+    def to_source_clip(self, clip: ClipDefinition) -> ClipDefinition:
+        """Convert a character-local edited clip back to source-library orientation."""
+
+        return _mirror_clip_definition_x(clip) if self.reflects_motion_x else clip
 
     def _rig_to_frame_delta(self, point: Point) -> Point:
         return _mul(point, self.binding.render.frame_px_per_rig_unit)
@@ -1023,6 +1169,13 @@ class PreparedCharacterMotion:
         scale = render.frame_px_per_rig_unit
         reference = svg_reference_space(self.rig.source_svg, dpi=render.svg_ref_dpi)
         frame_per_reference_px = scale / reference.reference_px_per_user_x
+        features = dict(self.binding.features)
+        if self.rig.facing is not None:
+            # The SVG is the authority for how the static artwork itself faces.
+            # Carry that fact into the disposable renderer projection so sheet
+            # publication can describe the raster correctly to the runtime.
+            features["facing"] = _normalize_facing(self.rig.facing)
+
         data: dict[str, Any] = {
             "name": self.binding.character,
             "frame": {
@@ -1047,7 +1200,7 @@ class PreparedCharacterMotion:
             "ik_chains": [],
             "clips": {},
             "sprite_tuning": dict(self.binding.sprite_tuning),
-            "features": dict(self.binding.features),
+            "features": features,
             "natural_pose": {"clip": self.binding.natural_pose},
             "generated_projection": {
                 "schema": LEGACY_PROJECTION_SCHEMA,

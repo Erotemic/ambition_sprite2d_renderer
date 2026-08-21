@@ -152,7 +152,7 @@ def test_clip_local_edit_becomes_sparse_track_without_mutating_named_pose(tmp_pa
     assert pose_key["pose"] == "humanoid/fighting_polygon/jab/contact"
     assert "overrides" not in pose_key
     saved = next(track for track in source["tracks"] if track["target"] == "bone.near_arm_u.rotation_deg")
-    assert _key_at(saved, 0.09)["value"] == pytest.approx(_key_at(rotation, 0.09)["value"] )
+    assert _key_at(saved, 0.09)["value"] == pytest.approx(-_key_at(rotation, 0.09)["value"])
 
 
 def test_individual_property_key_can_be_inserted_at_arbitrary_time(tmp_path):
@@ -170,7 +170,7 @@ def test_individual_property_key_can_be_inserted_at_arbitrary_time(tmp_path):
         .read_text(encoding="utf8")
     )
     saved = next(track for track in source["tracks"] if track["target"] == "bone.near_arm_u.rotation_deg")
-    assert _key_at(saved, 0.073)["value"] == pytest.approx(-77.0)
+    assert _key_at(saved, 0.073)["value"] == pytest.approx(77.0)
     assert source["pose_keys"][2]["pose"] == "humanoid/fighting_polygon/jab/contact"
 
 
@@ -208,7 +208,7 @@ def test_rotation_winding_is_not_normalized_on_import(tmp_path):
         .read_text(encoding="utf8")
     )
     saved = next(track for track in source["tracks"] if track["target"] == "bone.near_arm_u.rotation_deg")
-    assert _key_at(saved, 0.09)["value"] == pytest.approx(original + 360.0)
+    assert _key_at(saved, 0.09)["value"] == pytest.approx(-(original + 360.0))
 
 
 def test_clip_export_omits_sprite_publication_sampling(tmp_path):

@@ -889,8 +889,9 @@ def apply_clip_export(
         if check_only:
             print(f"would update clip: {display_path}")
         else:
+            source_candidate = prepared.to_source_clip(candidate)
             candidate.path.write_text(
-                json.dumps(candidate.to_dict(), indent=2) + "\n", encoding="utf8"
+                json.dumps(source_candidate.to_dict(), indent=2) + "\n", encoding="utf8"
             )
             print(f"updated clip: {display_path}")
 
@@ -954,12 +955,44 @@ def render_clip_preview(
         sample_times = plan.sample_times
         durations = tuple(sample.duration_s for sample in plan.samples)
 
+    normalized_times = tuple(
+        round(at_s / max(clip.duration_s, 1e-9), 9) for at_s in sample_times
+    )
+    padding = doc.measure_render_padding(
+        ((clip_id, normalized) for normalized in normalized_times),
+        margin=4,
+    )
     frames = [
-        doc.render_at(clip_id, round(at_s / max(clip.duration_s, 1e-9), 9))
-        for at_s in sample_times
+        doc.render_at(clip_id, normalized, padding=padding)
+        for normalized in normalized_times
     ]
     if not frames:
         raise ValueError(f"clip {clip_id!r} rendered no frames")
+
+    # Review artifacts should stay aligned across time, but they do not need to
+    # carry the transparent overscan used to protect the render. Crop every
+    # frame to the same union alpha box after all pixels are safely present.
+    union_bbox = None
+    for frame in frames:
+        bbox = frame.getchannel("A").getbbox()
+        if bbox is None:
+            continue
+        if union_bbox is None:
+            union_bbox = list(bbox)
+        else:
+            union_bbox[0] = min(union_bbox[0], bbox[0])
+            union_bbox[1] = min(union_bbox[1], bbox[1])
+            union_bbox[2] = max(union_bbox[2], bbox[2])
+            union_bbox[3] = max(union_bbox[3], bbox[3])
+    if union_bbox is not None:
+        preview_margin = max(1, 2 * max(1, int(doc.frame.get("render_scale", 1))))
+        crop_box = (
+            max(0, union_bbox[0] - preview_margin),
+            max(0, union_bbox[1] - preview_margin),
+            min(frames[0].width, union_bbox[2] + preview_margin),
+            min(frames[0].height, union_bbox[3] + preview_margin),
+        )
+        frames = [frame.crop(crop_box) for frame in frames]
     output.parent.mkdir(parents=True, exist_ok=True)
     gif_durations = [max(1, int(round(duration * 1000.0))) for duration in durations]
     frames[0].save(
