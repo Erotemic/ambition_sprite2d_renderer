@@ -4,6 +4,8 @@ import argparse
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from ambition_sprite2d_renderer.cli import commands
 from ambition_sprite2d_renderer.cli.parser import build_parser
 
@@ -72,8 +74,15 @@ def test_parser_accepts_explicit_publish_batch():
     assert args.quiet is True
 
 
-def test_draw_review_reuses_loaded_jobs_and_emits_progress(monkeypatch, capsys, tmp_path):
-    jobs = [(Path("alice.yaml"), SimpleNamespace(output_stem=lambda path: "alice"))]
+def test_draw_review_reuses_loaded_jobs_and_emits_progress(
+    monkeypatch, capsys, tmp_path
+):
+    jobs = [
+        (
+            Path("alice.yaml"),
+            SimpleNamespace(target="robot", output_stem=lambda path: "alice"),
+        )
+    ]
     calls = []
 
     monkeypatch.setenv("AMBITION_RENDER_PROGRESS", "1")
@@ -103,3 +112,37 @@ def test_draw_review_reuses_loaded_jobs_and_emits_progress(monkeypatch, capsys, 
     captured = capsys.readouterr().out
     assert "[draw-review] 1 configured character(s)" in captured
     assert "[draw-review] canonical gallery pass" in captured
+
+
+def test_default_adapter_configs_reference_registered_generators():
+    jobs = []
+    jobs.extend(commands.load_jobs(commands.DEFAULT_CONFIG_DIR))
+    jobs.extend(commands.load_jobs(commands.DEFAULT_REVIEW_CONFIG_DIR))
+
+    commands._validate_adapter_jobs(jobs)
+
+
+def test_draw_review_rejects_module_target_before_render(monkeypatch, tmp_path):
+    config_dir = tmp_path / "review"
+    config_dir.mkdir()
+    config = config_dir / "pointed_polygon.yaml"
+    config.write_text("target: pointed_polygon\n", encoding="utf8")
+
+    def should_not_render(*args, **kwargs):
+        raise AssertionError("rendering started before config validation")
+
+    monkeypatch.setattr(commands, "write_spritesheet", should_not_render)
+
+    with pytest.raises(ValueError, match="module-authored") as exc_info:
+        commands.draw_review(config_dir, tmp_path / "out")
+
+    message = str(exc_info.value)
+    assert "pointed_polygon.yaml" in message
+    assert "publish pointed_polygon" in message
+
+
+def test_validate_configs_parser_defaults_to_both_character_job_surfaces():
+    args = build_parser().parse_args(["validate-configs"])
+
+    assert args.config_dir == commands.DEFAULT_CONFIG_DIR
+    assert args.review_dir == commands.DEFAULT_REVIEW_CONFIG_DIR

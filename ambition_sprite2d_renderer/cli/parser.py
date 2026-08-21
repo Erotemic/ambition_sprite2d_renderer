@@ -28,6 +28,7 @@ Two command families:
 
       draw-all                    Render every config in ``configs/``.
       draw-review                 Render every config in ``configs/review/``.
+      validate-configs            Check adapter configs without rendering.
       draw-character <config>     One config: canonical + spritesheet + YAML.
       draw-factions               Music-faction lineup review render.
       draw-runtime-npcs           Render + install the curated review-NPC subset.
@@ -66,6 +67,7 @@ from .commands import (
     _cmd_draw_character,
     _cmd_draw_factions,
     _cmd_draw_review,
+    _cmd_validate_configs,
     _cmd_draw_runtime_npcs,
     _cmd_gifs,
     _cmd_install,
@@ -299,6 +301,27 @@ def build_parser() -> argparse.ArgumentParser:
         out_default=DEFAULT_ASSET_DIR / "review",
     )
     p.set_defaults(func=_cmd_draw_review)
+
+    p = sub.add_parser(
+        "validate-configs",
+        help=(
+            "Validate config-authored character jobs without rendering. "
+            "Used as a fail-fast preflight by the full sprite regen."
+        ),
+    )
+    p.add_argument(
+        "--config-dir",
+        type=Path,
+        default=DEFAULT_CONFIG_DIR,
+        help="main CharacterJob config directory",
+    )
+    p.add_argument(
+        "--review-dir",
+        type=Path,
+        default=DEFAULT_REVIEW_CONFIG_DIR,
+        help="review CharacterJob config directory",
+    )
+    p.set_defaults(func=_cmd_validate_configs)
 
     p = sub.add_parser(
         "draw-character", help="Render one config's canonical + spritesheet + YAML."

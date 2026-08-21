@@ -71,3 +71,13 @@ def test_noether_dedicated_module_outranks_legacy_loose_rig():
     target = report.targets["noether"]
     assert target.module_path == "ambition_sprite2d_renderer.targets.characters.noether"
 
+
+def test_polygon_reference_fighters_are_module_authored_targets():
+    report = discover_all_targets()
+
+    for name in ("pointed_polygon", "pugnacious_polygon"):
+        target = report.targets[name]
+        assert target.kind == "module"
+        assert target.module_path == (
+            f"ambition_sprite2d_renderer.targets.characters.{name}"
+        )

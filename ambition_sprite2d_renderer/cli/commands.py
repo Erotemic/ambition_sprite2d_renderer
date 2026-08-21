@@ -93,6 +93,57 @@ _REPORT: DiscoveryReport = discover_all_targets()
 _ALL_TARGETS: dict[str, Target] = _REPORT.targets
 
 
+def _validate_adapter_jobs(jobs: list[tuple[Path, CharacterJob]]) -> None:
+    """Reject invalid CharacterJob targets before any expensive rendering.
+
+    ``configs/*.yaml`` and ``configs/review/*.yaml`` are the adapter/config
+    authoring surface. Their ``target:`` field therefore names a registered
+    :class:`CharacterGenerator`, not an arbitrary unified target. Module-authored
+    characters are rendered through the unified target commands instead.
+
+    Keeping this check at the adapter boundary prevents a typo or a stale config
+    for a migrated module target from failing minutes into a batch render.
+    """
+
+    problems: list[str] = []
+    module_targets = {
+        name for name, target in _ALL_TARGETS.items() if target.kind == "module"
+    }
+    available = ", ".join(sorted(GENERATORS))
+    for path, job in jobs:
+        if job.target in GENERATORS:
+            continue
+        if job.target in module_targets:
+            problems.append(
+                f"{path}: target {job.target!r} is module-authored, not a "
+                "CharacterGenerator target; remove the stale YAML config and "
+                f"render it by target name (for example `publish {job.target}`)"
+            )
+        else:
+            problems.append(
+                f"{path}: unknown CharacterGenerator target {job.target!r}; "
+                f"available=[{available}]"
+            )
+
+    if problems:
+        details = "\n".join(f"  - {problem}" for problem in problems)
+        raise ValueError(f"invalid adapter character config(s):\n{details}")
+
+
+def validate_adapter_config_dirs(*config_dirs: str | Path) -> int:
+    """Preflight one or more CharacterJob config directories.
+
+    Returns the number of configs checked. This is intentionally render-free so
+    the root asset regeneration script can fail before doing expensive work.
+    """
+
+    jobs: list[tuple[Path, CharacterJob]] = []
+    for config_dir in config_dirs:
+        jobs.extend(load_jobs(Path(config_dir)))
+    _validate_adapter_jobs(jobs)
+    return len(jobs)
+
+
 # Review configs whose generated spritesheets are loaded at runtime via
 # the sandbox NPC sprite registry. `draw-all` skips `configs/review/`
 # by design (those are art-iteration review jobs), but these specific
@@ -218,6 +269,7 @@ def draw_all(
         config_dir_path.resolve() == Path(DEFAULT_CONFIG_DIR).resolve()
     )
     job_items = list(load_jobs(config_dir_path) if jobs is None else jobs)
+    _validate_adapter_jobs(job_items)
     selected_jobs: list[tuple[Path, CharacterJob, str]] = []
     for path, job in job_items:
         # The default configs/ directory has accumulated a few older review
@@ -344,6 +396,7 @@ def draw_character(
     config_path = Path(config)
     out_dir = Path(out_dir)
     job = CharacterJob.load(config_path)
+    _validate_adapter_jobs([(config_path, job)])
     stem = job.output_stem(config_path)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -380,6 +433,18 @@ def _cmd_draw_all(args: argparse.Namespace) -> int:
 
 def _cmd_draw_review(args: argparse.Namespace) -> int:
     print_paths(draw_review(args.config_dir, args.out_dir))
+    return 0
+
+
+def _cmd_validate_configs(args: argparse.Namespace) -> int:
+    """Validate config-authored character jobs without rendering anything."""
+
+    try:
+        count = validate_adapter_config_dirs(args.config_dir, args.review_dir)
+    except Exception as ex:  # noqa: BLE001 - CLI boundary reports config failures
+        print(f"error: sprite config preflight failed:\n{ex}", file=sys.stderr)
+        return 1
+    print(f"validated {count} adapter character config(s)")
     return 0
 
 

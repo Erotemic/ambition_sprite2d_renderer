@@ -39192,10 +39192,10 @@
     "schema": "canonical-svg-rig-v3",
     "builder_version": 19,
     "renderer": "resvg_py",
-    "renderer_version": "0.3.3",
+    "renderer_version": "0.3.4",
     "renderer_backend": "native-extension",
-    "renderer_origin": "/home/joncrall/code/ambition/tools/ambition_sprite2d_renderer/.venv/lib/python3.12/site-packages/resvg_py/resvg_py.cpython-312-x86_64-linux-gnu.so",
-    "svg_sha256": "4ac1c3799a168308e9772c6e2f66df761b504240d2c03dec16ebc4a404e47b0f",
+    "renderer_origin": "/home/local/KHQ/jon.crall/code/ambition/tools/ambition_sprite2d_renderer/.venv/lib/python3.12/site-packages/resvg_py/resvg_py.cpython-312-x86_64-linux-gnu.so",
+    "svg_sha256": "521cadaf179d23c7323cb213c51e273aa3e8fd737596c021634010c9739eb1f6",
     "part_order_policy": "svg-document-order",
     "part_order": "svg-document"
   }
