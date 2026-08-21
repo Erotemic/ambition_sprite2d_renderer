@@ -17,7 +17,7 @@
     ],
     "frame_px_per_rig_unit": 0.184275,
     "supersample": 4,
-    "render_scale": 3,
+    "render_scale": 1,
     "ankle_h_px": 15.295,
     "svg_ref_dpi": 96.0
   },
