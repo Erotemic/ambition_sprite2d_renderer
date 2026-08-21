@@ -17,7 +17,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List, Tuple
 
-from PIL import Image, ImageDraw
+from PIL import Image
+
+from ambition_sprite2d_renderer.core.draw import blending_draw
 
 TARGET_NAME = "hud_icons"
 SHEET_FILES = ("hud_stock_icon.png",)
@@ -36,7 +38,11 @@ def render_stock_icon(size: Tuple[int, int] = ICON_SIZE) -> Image.Image:
     """
     w, h = size
     image = Image.new("RGBA", size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
+    # ⛔ `blending_draw`, never a raw `ImageDraw.Draw`: a raw draw ASSIGNS alpha
+    # rather than compositing it, so the translucent rim below would punch a hole
+    # in whatever it overlapped instead of darkening it. `test_no_raw_imagedraw`
+    # guards this on every content path, and it caught this file.
+    draw = blending_draw(image)
 
     cx, cy = w / 2.0, h / 2.0
     # Slightly taller than wide, so a row of them reads as a row of tokens
