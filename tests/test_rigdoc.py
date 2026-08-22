@@ -36,9 +36,9 @@ NOETHER = (
     / "targets"
     / "characters"
     / "rigged"
-    # ⛔⛔ **`rigged/noether.rig.json` — the top-level file this used to name —
+    #  `rigged/noether.rig.json` — the top-level file this used to name —
     # was ABANDONED when Emmy became a multiview target, and both tests below
-    # went on passing against it.** `test_noether_is_tall_and_hi_res` asserted
+    # went on passing against it. `test_noether_is_tall_and_hi_res` asserted
     # `render_scale >= 2` and was green for weeks while the rig the renderer
     # actually loads said 1, which is exactly the blurriness Jon reported on
     # 2026-08-16. A true assertion about the wrong artifact is worse than no
@@ -107,7 +107,7 @@ class TestFeatureToggles:
         assert emmy.sprite_tuning.get("collision_scale", 1.5) > 1.5
         assert emmy.frame.get("render_scale", 1) >= 2
 
-    # ⛔ **`test_noether_hairpin_is_present_and_rigid` was DELETED 2026-08-16.**
+    #  `test_noether_hairpin_is_present_and_rigid` was DELETED 2026-08-16.
     # It asserted that `pin_shaft` / `pin_bead` exist, are head-bound and toggle
     # off with a `hairpin` feature — all true of the abandoned top-level rig it
     # was reading, and none of it true of the rig the renderer loads: her live

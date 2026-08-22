@@ -45,7 +45,7 @@ def frame_size() -> Tuple[int, int]:
     read at render time rather than rebuilt at import time.
     """
     frame = _doc().frame
-    # ⚠ `render_scale` is the third term and it is easy to forget: the composer
+    #  `render_scale` is the third term and it is easy to forget: the composer
     # pads in RIG units and scales the padded canvas, so a rig published at 2x
     # emits a frame twice this wide. Dropping it here would hand `build_sheet` a
     # frame size the renderer never produces.
@@ -60,7 +60,7 @@ ROWS: List[Tuple[str, int, int]] = list(NOETHER_ROWS)
 
 ACTOR_METADATA = {
     "actor": {
-        # ⭐ the CANONICAL GAME id, not the target name. `TARGET_NAME` stays
+        #  the CANONICAL GAME id, not the target name. `TARGET_NAME` stays
         # "noether" (it names the render target and its output directory); the
         # actor metadata is what the game resolves a body's identity through, and
         # Ambition's catalog row is `npc_emmy_noether`. A mismatch here is what the
@@ -190,9 +190,9 @@ def _silhouette_profile() -> dict:
     return {"columns": columns, "bounds": bounds}
 
 
-# **Emmy's portrait viewport, in her own 192x208 rig canvas.**
+# Emmy's portrait viewport, in her own 192x208 rig canvas.
 #
-# ⭐ she had NO `render_portraits` until 2026-08-17, so she fell through to the
+#  she had NO `render_portraits` until 2026-08-17, so she fell through to the
 # generator default — which re-runs the gameplay frame at portrait size. That is
 # a full-body shot letterboxed into a portrait frame: correct, and useless as a
 # portrait, because the face lands about a sixth of the frame high.
@@ -203,7 +203,7 @@ def _silhouette_profile() -> dict:
 # (pelvis -> torso -> head off `ground_y`); the face sits above that bone, and
 # the viewport then drops below it to keep her collar and shoulders in shot.
 #
-# ⚠ the viewport centre is to the RIGHT of the face on purpose. Her art is drawn
+#  the viewport centre is to the RIGHT of the face on purpose. Her art is drawn
 # facing east with an extended arm, so centring the crop on the face put 48px of
 # dead space behind her head and clipped the hand flush against the frame edge.
 # Offsetting gives looking-room in the direction she faces, which is ordinary

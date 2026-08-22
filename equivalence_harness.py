@@ -286,11 +286,11 @@ def _frame_defects(pub, ras, meaningful: int = _MEANINGFUL, rgb_tol: int = 16,
     Alpha-aware and symmetric. For each ±``shift`` alignment (``ras`` translated
     with zero fill — never wrapped) let ``ap``/``ar`` be the [0,1] alphas:
 
-    * **occupancy** ``= Σ|ap-ar| / Σ max(ap,ar)`` over the union of meaningful
+    * occupancy ``= Σ|ap-ar| / Σ max(ap,ar)`` over the union of meaningful
       alpha. Missing, invented, AND wrong-alpha geometry all land here, at any
       opacity — a translucent beam the SVG drops contributes its full alpha mass,
       while a soft edge both frames render the same (``ap≈ar``) contributes ~0.
-    * **rgb** ``= Σ min(ap,ar)·|rgb_p-rgb_r| / Σ min(ap,ar)`` over the mutually
+    * rgb ``= Σ min(ap,ar)·|rgb_p-rgb_r| / Σ min(ap,ar)`` over the mutually
       occupied region — straight colour disagreement weighted toward pixels both
       frames confidently fill, so a colour drift is caught but a missing part
       (``min=0`` there) does not leak into the colour term.

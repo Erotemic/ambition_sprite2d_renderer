@@ -10,7 +10,7 @@ the proof case: a live registered target whose four installed files are absent
 from ``generated/`` on the machine that measured. A tool that cannot delete
 cannot make that mistake, and deciding an asset is dead is a maintainer's call.
 
-**The oracle is the target REGISTRY, and it has three producer classes:**
+The oracle is the target REGISTRY, and it has three producer classes:
 
 1. *module targets* — Python modules under ``targets/<category>/``.
 2. *procedural generators* — ``configs/*.yaml`` driving a ``CharacterGenerator``.
@@ -24,7 +24,7 @@ cannot make that mistake, and deciding an asset is dead is a maintainer's call.
    audit that knows only class 1 reads both as stale — the same defect one level
    up from the ``generated/`` mistake.
 
-**The registry must be trustworthy or the audit refuses.** A discovery warning
+The registry must be trustworthy or the audit refuses. A discovery warning
 means some module did not register; an unregistered producer's files then read
 as unclaimed, which is exactly how a partial regen makes every unrendered target
 look stale. On any warning — or any discovery failure — the audit reports the

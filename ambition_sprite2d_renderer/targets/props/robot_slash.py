@@ -108,13 +108,13 @@ def _amplitude(t: float) -> float:
 # exactly those axes, so art authored here lands ON the hit polygon rather than
 # near it.
 #
-# **The art sits INSIDE the polygon, never outside it.** Jon's rule: it is fine
+# The art sits INSIDE the polygon, never outside it. Jon's rule: it is fine
 # if the hitbox slightly overreaches the effect, but 100% of what is drawn must
 # hit — "the player should never feel like they should have hit when they
 # didn't". The polygon is the envelope scaled OUT by its own margin, so drawing
 # at the same peak divided by a little more than that margin lands inside it,
 # with room left for the wash's blur to feather across.
-# ⚠ THE FRAME IS THE SWING, and its size is DERIVED, not restated.
+#  THE FRAME IS THE SWING, and its size is DERIVED, not restated.
 #
 # The runtime stretches this frame into the quad it computes from the hit
 # POLYGON, so the frame's width is the polygon's extent and its half-height is
@@ -293,7 +293,7 @@ def _draw_sweep_frame(t: float) -> Image.Image:
     grad = ImageChops.multiply(grad, mask)
 
     # Colour by the same ramp: the deep stop far from the edge, white at it.
-    # ⚠ COLOUR AND ALPHA ARE DECOUPLED. Alpha carries the fade; the colour stays
+    #  COLOUR AND ALPHA ARE DECOUPLED. Alpha carries the fade; the colour stays
     # PALE the whole way down. Running the ramp to a deep blue meant the faint
     # trail was both dark and transparent, which over a dark stage composites to
     # something closer to soot than to a blue flash — Jon: "make the color more
@@ -326,7 +326,7 @@ def _draw_sweep_frame(t: float) -> Image.Image:
     return canvas.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
-# ⚠ `up` and `down` are NOT pre-rotated any more, and that is a contract change
+#  `up` and `down` are NOT pre-rotated any more, and that is a contract change
 # shared with `slash_visuals.rs`.
 #
 # The rows used to be drawn turned a quarter turn because the renderer added a

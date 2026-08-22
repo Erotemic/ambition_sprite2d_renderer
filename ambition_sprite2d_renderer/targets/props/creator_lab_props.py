@@ -741,8 +741,8 @@ def build_sheet(
     for row_idx, spec in enumerate(props):
         y = row_idx * FRAME_H
         draw.rectangle((0, y, LABEL_W, y + FRAME_H), fill=(22, 24, 34, 204))
-        # ⚠ **EVERY line is clipped to the column WIDTH, not to a character
-        # count.** This truncated the description at 44 CHARACTERS, and 44
+        #  EVERY line is clipped to the column WIDTH, not to a character
+        # count. This truncated the description at 44 CHARACTERS, and 44
         # characters of this font is far wider than the 150px the column
         # actually has — so the tail ran past `LABEL_W` and into frame 0.
         #

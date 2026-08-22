@@ -336,7 +336,7 @@ def _apply_fx(img: Image.Image, animation: str, frame_idx: int, nframes: int) ->
             fd.ellipse((x - r, y - r, x + r, y + r), outline=(60, 226, 255, 150), width=1)
 
     if effect_animation == "block":
-        # ⛔ the centre was the literal `(64, 63)`, and the body is not there:
+        #  the centre was the literal `(64, 63)`, and the body is not there:
         # the torso origin for this frame is (112.3, 129.0), so the shield was
         # drawn (-48, -66) from the robot it belongs to. Jon, 2026-08-09: "the
         # bubble in the wrong place, just kinda to the upper left."
@@ -439,7 +439,7 @@ def frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
 
 # ── The protagonist's slash geometry ─────────────────────────────────────────
 #
-# ⚠ THIS BELONGS TO v3 (Jon, 2026-08-02: "not every character should inherit
+#  THIS BELONGS TO v3 (Jon, 2026-08-02: "not every character should inherit
 # this particular slash vfx, sfx, hurtbox. This belongs to the player v3").
 # `SideRobotGenerator` is shared by every robot in the family, so authoring the
 # protagonist's swing there gave a goblin-tier robot the hero's reach.
@@ -451,11 +451,11 @@ def frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
 # around it — we only need a small number of vertices, and no curvature on the
 # hit poly." It is a container, not a drawing.
 #
-# ⚠ SCALE ASSUMPTION. Jon's sketch draws its player box at aspect 0.31 where the
+#  SCALE ASSUMPTION. Jon's sketch draws its player box at aspect 0.31 where the
 # real collision body is 0.63, so scaling by its width and by its height
 # disagree by 2x (reach 197 vs 99 world units). These take the HEIGHT reading,
 # which keeps reach where it already was. `SwingDescriptor.reach` is the single knob.
-# ⚠ THE NUMBERS LIVE IN `core/slash_envelope.py` NOW, as one `SwingDescriptor`
+#  THE NUMBERS LIVE IN `core/slash_envelope.py` NOW, as one `SwingDescriptor`
 # the effect reads too. They used to be here AND restated in the art's own frame
 # units, and the two had already drifted: this file passed a tip of 0.96 into a
 # sampler whose shared default was 1.0, so the two ends of the same swing
@@ -467,7 +467,7 @@ def frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
 # disagree by 2x (reach 197 vs 99 world units). The descriptor takes the HEIGHT
 # reading, which keeps reach where it already was.
 SWING = slash_envelope.PLAYER_ROBOT_SWING
-# ⚠ The swing's axis must pass through the ATTACKER, and the attacker is the
+#  The swing's axis must pass through the ATTACKER, and the attacker is the
 # body's CENTRE — not the anchor the rest of this file measures from. `118` is
 # this authoring frame's ground line (see `_translated_legacy_hitboxes`), and
 # the collision body is 48 world units tall at 0.50625 world units per frame
@@ -539,12 +539,8 @@ def _player_attack_hitboxes(size: Tuple[int, int]) -> Dict[str, dict]:
             "poly": poly,
         }
 
-    # ⚠ The swing starts ON the body's centre line and runs along a cardinal.
-    # That symmetry is load-bearing, not tidiness: the runtime derives the quad
-    # from the ATTACKER to the volume's centroid, so an origin offset across the
-    # axis tilts the quad and the art no longer lands on the polygon. A `rise`
-    # of h*0.28 put 16% of the drawn slash outside the volume, and Jon read the
-    # same number as "it tilts too much upward in the side jab".
+    # Start cardinal swings on the body centerline: runtime derives the effect
+    # quad from attacker-to-volume centroid, so cross-axis offsets tilt the art.
     return {
         "attack_side": shaped(
             _slash_poly(cx - w * 0.06, body_cy, 1.0, 0.0, SWING)
@@ -555,11 +551,8 @@ def _player_attack_hitboxes(size: Tuple[int, int]) -> Dict[str, dict]:
         "air_up": shaped(
             _slash_poly(cx, body_cy, 0.0, -1.0, SWING.scaled(reach=0.84, half=0.88))
         ),
-        # The one attack that is not a slash — a Marth-like poke by Jon's call:
-        # a thrust reads by reach, not by area. It is v3's own rather than the
-        # family's, because the family anchors it below the body and the runtime
-        # measures the quad from the attacker: that offset tilts the quad and
-        # cost 33.7% of the drawn thrust landing outside the volume.
+        # This thrust is narrow and centered on the attacker-to-volume axis so
+        # runtime quad fitting preserves its reach without tilting the art.
         "attack_down": shaped(_poke_poly(cx, body_cy, 1.0, 0.0,
                                          POKE_REACH, POKE_HALF)),
         "air_down": shaped(
@@ -616,7 +609,7 @@ def _translated_legacy_hitboxes() -> Dict[str, dict]:
 #     outstretched arms.
 #
 # Stated here instead of measured, the same way Mary-O's forms author theirs.
-# ⚠ the BASE and the feet anchor are deliberately unchanged (bottom edge 158,
+#  the BASE and the feet anchor are deliberately unchanged (bottom edge 158,
 # `feet_pixel` 114.0/157.0): this is a collider change, not a change to where they
 # stand, and moving both at once would make the standing shift look like a
 # physics regression.

@@ -124,7 +124,7 @@ def _block_tile(coin: bool = False, spent: bool = False) -> Image.Image:
     """A bonus block. `spent` draws the used state: dim, flat, and glyphless."""
     img, draw = _new_tile()
     if spent:
-        # ⭐ **A SPENT BLOCK READS AS SPENT WITHOUT ANIMATION.** Jon: "in mary-o
+        #  A SPENT BLOCK READS AS SPENT WITHOUT ANIMATION. Jon: "in mary-o
         # blocks that are used need a new texture so they are visually
         # distinguishable." Darker, and the inner highlight is dropped so it reads
         # as flat rather than lit — a block that has nothing left to give.
@@ -143,7 +143,7 @@ def _block_tile(coin: bool = False, spent: bool = False) -> Image.Image:
         # bright block washes out at this size, which the first pass proved.
         for y, x0, x1 in _INTERROBANG_RUNS:
             draw.rectangle((x0, y, x1, y), fill=(74, 48, 18, 255))
-        # ⚠ **no drop shadow.** A one-pixel offset copy was tried and it muddied
+        #  no drop shadow. A one-pixel offset copy was tried and it muddied
         # the stem at 16px — the straight stroke is what carries the `!` half of
         # the joke, and softening it left only the `?`. (The repo's standing
         # no-drop-shadow rule says the same thing for characters.)

@@ -233,7 +233,7 @@ def record_to_ron(record: Dict) -> str:
     # says so here and the renderer's mirror inverts to match
     # (`flip_x = (facing < 0) XOR authored_faces_left`).
     #
-    # ⭐ emitted ONLY when true, so the ~195 sheets drawn facing right stay
+    #  emitted ONLY when true, so the ~195 sheets drawn facing right stay
     # byte-identical — the Rust field is `#[serde(default)]`, so an absent key
     # reads as "drawn facing +x", which is what every one of them means today.
     faces_left_field = (

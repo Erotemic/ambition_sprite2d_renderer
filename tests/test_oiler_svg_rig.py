@@ -25,7 +25,7 @@ from pathlib import Path
 
 import pytest
 
-# ⚠ **the same guard its three sibling SVG suites carry** — test_svg_sprite,
+#  the same guard its three sibling SVG suites carry — test_svg_sprite,
 # test_pirate_svg_fidelity and test_draw_recorder all open with it. Rendering an
 # SVG rig needs native resvg-py; without it these three RAISED rather than
 # skipped, so an environment missing an optional dependency reported a red suite

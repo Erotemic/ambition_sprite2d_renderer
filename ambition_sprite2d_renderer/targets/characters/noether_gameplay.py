@@ -50,7 +50,7 @@ PADDING = 28
 #: one measurement both rigs can be compared by: the head bone's height above the
 #: floor. The original was ``pelvis(20.5) + torso(4) + head(26)``.
 #:
-#: ⚠ it is a RATIO's denominator, not a coordinate. Nothing below is in this
+#:  it is a RATIO's denominator, not a coordinate. Nothing below is in this
 #: space by the time it reaches the sheet.
 AUTHORED_STATURE = 50.5
 
@@ -140,11 +140,11 @@ def _attack(
 
 # ── hurtboxes, SOLVED from the rig ───────────────────────────────────────────
 #
-# ⭐ **seven parts, and they are the rig's own limbs.** A single body rectangle
+#  seven parts, and they are the rig's own limbs. A single body rectangle
 # cannot say that a fighter's outstretched arm is hittable while her head is not,
 # which is the whole reason the sheet publishes parts rather than one box.
 #
-# ⛔ **and they are no longer SEVEN HAND-LISTED POSE FAMILIES.** This file used to
+#  and they are no longer SEVEN HAND-LISTED POSE FAMILIES. This file used to
 # carry standing/crouch/air/prone/ledge/shielded/buried rectangle sets plus six
 # name tables deciding which row got which — 120 lines whose only job was to
 # approximate what the rig already knows exactly, and which silently kept
@@ -310,7 +310,7 @@ def body_metrics(fw: int, fh: int, profile: dict | None = None) -> dict:
     centre = float(frame["center_x"])
 
     if profile is not None:
-        # ⚠ already in PUBLISHED pixels — the profile is measured on the composed
+        #  already in PUBLISHED pixels — the profile is measured on the composed
         # frame — so this does not go through `_px`, which converts from rig
         # space. Mixing the two spaces is the exact mistake this file exists to
         # correct.
@@ -341,13 +341,13 @@ def body_metrics(fw: int, fh: int, profile: dict | None = None) -> dict:
 
 # ── strike volumes ───────────────────────────────────────────────────────────
 #
-# ⛔ **these are the SHEET's geometry, not the game's balance.** Damage, launch
+#  these are the SHEET's geometry, not the game's balance. Damage, launch
 # angle, knockback growth and frame timings live on Noether's `MovesetContract`
 # in Ambition content; what a sheet can honestly say is WHERE a drawn strike
 # reaches and WHICH of its frames are the strike. A second combat database here
 # would be the `character_archetypes.ron` mistake in Python.
 #
-# ⚠ her blade reaches roughly 30 authored units ahead of centre on a committed
+#  her blade reaches roughly 30 authored units ahead of centre on a committed
 # swing — that is the number the reaches below are scaled against rather than a
 # taste call. `dx` runs from her centre line, and the second argument is the
 # rectangle's TOP as a height above the floor.
@@ -375,7 +375,7 @@ def _attack_table() -> dict:
         "getup_attack": _attack(-22, 16, 46, 16, active=[2, 3]),
         # ── the signature clips `noether_motion` renames ────────────────────
         #
-        # ⚠ each is the pose the renamed row DRAWS, which is why they are not all
+        #  each is the pose the renamed row DRAWS, which is why they are not all
         # the same shape: a conservation law is a held field, a generator strike
         # is a committed swing, and a symmetry break is the biggest thing she
         # does.
@@ -401,14 +401,14 @@ def attack_hitboxes() -> dict:
 
 
 NOETHER_MOVE_BLUEPRINT = {
-    # ⛔⛔ **DESIGN INPUT AND NAMING VOCABULARY — NOT A RUNTIME COMBAT DATABASE.**
+    #  DESIGN INPUT AND NAMING VOCABULARY — NOT A RUNTIME COMBAT DATABASE.
     # The engine reads Noether's timings, damage and launch from her
     # `CharacterDefinition` in Ambition content. This block travels with the
     # SHEET so an artist and a designer can see the same intent beside the art
     # that draws it, and so a future authoring step has something to import from
     # rather than a blank page.
     #
-    # ⚠ the `clip` of each entry is the authored ROW NAME, which is the one thing
+    #  the `clip` of each entry is the authored ROW NAME, which is the one thing
     # here the game genuinely consumes — through `MoveSpec.clip` and the sheet's
     # own row table.
     "melee": {

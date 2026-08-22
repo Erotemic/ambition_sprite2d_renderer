@@ -2,9 +2,9 @@
 
 A slash has exactly one shape, and two consumers with opposite needs:
 
-* the **effect** wants it dense and smooth, because a blade's edge is a curve
+* the effect wants it dense and smooth, because a blade's edge is a curve
   and any faceting reads as a wobble;
-* the **hit polygon** wants it coarse and convex, because it is a container, not
+* the hit polygon wants it coarse and convex, because it is a container, not
   a drawing — a handful of vertices around the art, with no curvature of its
   own.
 
@@ -43,52 +43,23 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import List, Tuple
 
-# The three authored stations, measured off Jon's sketch (see
-# `player_robot_v3.py`): half-width at the body, at the bulge, and at the blunt
-# far end, as fractions of the peak.
+# Authored half-width stations at the body, bulge, and blunt far end, expressed
+# as fractions of the peak.
 NEAR = 0.86
 FAR = 0.38
 BELLY_T = 0.42
-# Both consumers must agree where the swing STOPS, because the polygon's extent
-# is what the runtime turns into the quad the art is stretched into. The profile
-# ends blunt now, so the swing runs its full length — the old 0.96 existed only
-# to blunt a spike the profile no longer has.
+# Art and hit geometry must agree on the swing endpoint because runtime stretches
+# the effect into the polygon-derived quad.
 TIP = 1.0
 
 
 @dataclass(frozen=True)
 class SwingDescriptor:
-    """**Everything a swing IS, written once.**
+    """Complete shared description of one swing envelope.
 
-    The profile above says what SHAPE a swing has; this says how big it is,
-    where it sits, and how much room the container leaves around the art. Both
-    the hit polygon and the effect read it, so a swing has one spelling instead
-    of two.
-
-    ⚠ It had two, and they had already drifted. The polygon carried
-    `SLASH_REACH / SLASH_HALF / SLASH_HULL_MARGIN / SLASH_TIP / SLASH_RISE` in
-    character-frame pixels while the art carried `REACH / PEAK_HALF / AXIS_Y /
-    T_INSET_*` in its own 160-pixel frame — and the polygon was passing
-    `SLASH_TIP = 0.96` into a sampler whose shared default was `TIP = 1.0`, so
-    the two ends of the same swing disagreed by 4% of its reach. Four percent is
-    harmless; two files holding two spellings of one swing is how the original
-    `box`-versus-`cone` split started, and that one reached 80%.
-
-    ## The art does not restate any of this
-
-    The runtime stretches the effect's frame into the quad it derives from the
-    POLYGON, so the frame IS the swing: its width is the polygon's extent and
-    its half-height is the polygon's widest station. The art therefore derives
-    its own frame constants from the descriptor (`art_peak_half`), rather than
-    naming numbers that have to be kept in step by hand.
-
-    ## Sharing an effect means sharing the RECIPE
-
-    Point a second character's sheet at the same generator with its own
-    descriptor and the art is drawn for ITS volume. Sharing the pixels instead
-    would hand it a silhouette cut for somebody else's polygon, which is the
-    defect that made the slash sheet per-character in the first place.
-    """
+The hit polygon and effect art derive from the same reach, width, axis offset,
+container margin, and endpoint so their geometry cannot drift. Per-attack
+variants scale this descriptor rather than restating the recipe."""
 
     #: Body to tip, in the character's authoring frame.
     reach: float
@@ -99,13 +70,10 @@ class SwingDescriptor:
     #: `swing_shape` began taking its axis from the volume rather than from the
     #: attacker's centroid.
     rise: float = 0.0
-    #: How far the coarse container sits outside the envelope. A hull of points
-    #: on a curve cuts the chord between them; this covers that sag and buys the
-    #: slight overreach Jon allows ("its ok if it slightly gives a hit outside
-    #: the vfx, just slightly though").
+    #: Margin outside the sampled envelope to cover hull chord sag and a small
+    #: amount of hit-volume overreach.
     hull_margin: float = 1.11
-    #: Where the swing stops, as a fraction of `reach`. Both consumers must
-    #: agree, which is exactly what they previously did not.
+    #: Where the swing stops, as a fraction of `reach`; shared by both consumers.
     tip: float = 0.96
     #: How far the art pulls inside the container, so a blurred edge still lands
     #: within the volume.
@@ -216,7 +184,7 @@ def _convex_hull(points):
     return lower[:-1] + upper[:-1]
 
 
-#: **The protagonist's swing.** Lives here rather than beside either consumer
+#: The protagonist's swing. Lives here rather than beside either consumer
 #: because both of them read it and neither owns it — the polygon builder is a
 #: character target and the effect is a prop target, and whichever one held it
 #: would make the other import across that boundary to ask what it was drawing.

@@ -2,11 +2,11 @@
 
 This is the file a human opens in Inkscape. Structure:
 
-  * a visible **parts** layer — every registered part's local geometry, laid out
+  * a visible parts layer — every registered part's local geometry, laid out
     on a labelled grid below the frame area. This is the *editable source*:
     each part is a named group; editing its nodes/colours updates every frame
     that uses it, because...
-  * one visible layer per **animation**, one sub-layer per frame, laid out on
+  * one visible layer per animation, one sub-layer per frame, laid out on
     a spritesheet-style grid (row per animation, column per frame) so the whole
     scene is evaluable at a glance — nothing hidden, nothing overlapping. Frame
     content is ``<use href="#part_...">`` placements plus any frame-local

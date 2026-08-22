@@ -30,8 +30,7 @@ def _env_truthy(value: str | None) -> bool:
 
 PROFILE_REQUESTED = _env_truthy(os.environ.get("LINE_PROFILE"))
 PROFILE_ACTIVE = False
-# Kept as a compatibility export for callers/tests from the earlier profiling
-# shim. We no longer impose an output prefix; line_profiler owns that policy.
+# TODO(compat-remove): migrate callers off this obsolete export, then delete it.
 PROFILE_OUTPUT_PREFIX = None
 
 try:

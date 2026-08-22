@@ -221,7 +221,7 @@ class AISlopZetaGenerator(CharacterGenerator):
         are source canvas pixels (128×128). ``hit`` reuses the rest pair so the
         player can keep attacking the stunned boss; ``death`` skips parts."""
         del size
-        # ⚠ SHAPED, and wider than the rects that preceded them. The old pair
+        #  SHAPED, and wider than the rects that preceded them. The old pair
         # covered x 42..86 of a body whose own pixel bbox spans 8..114 — barely
         # the middle 40% — so a strike that plainly connected with the cloak
         # passed through it. The narrowness was deliberate (keep the sweeping

@@ -28,7 +28,7 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-# ⚠ the guard every other SVG-rendering suite here opens with: this one needs
+#  the guard every other SVG-rendering suite here opens with: this one needs
 # native resvg-py, and without it the whole file RAISED instead of skipping.
 pytest.importorskip("resvg_py")
 

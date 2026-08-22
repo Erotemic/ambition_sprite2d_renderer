@@ -626,7 +626,7 @@ def _seamless_brick_pattern(
 #: them interrobang blocks as a parody". The glyph is the joke: a `?` hook and a
 #: `!` stem are the SAME stroke once you draw them small.
 #:
-#: ⚠ these runs are the 16px ones from
+#:  these runs are the 16px ones from
 #: `targets/tiles/super_mary_o_tileset.py` doubled, deliberately COPIED rather
 #: than imported: that module authors a packed LDtk TILESET for a tile-layer
 #: workflow, and this one authors standalone 32px entity textures. Importing
@@ -634,13 +634,13 @@ def _seamless_brick_pattern(
 #: tileset's cell size is free to change without breaking this.
 #: The EROTEME's hook — the `?` curve alone, WITHOUT a descending stem.
 #:
-#: ⛔ **twice wrong before this.** The first pass was a thin hook that tapered
+#:  twice wrong before this. The first pass was a thin hook that tapered
 #: into a stem and read as a plain `?`. The second made the stem bolder and
 #: longer, which Jon called exactly right: *"it looks like an eroteme with a
 #: long stem."* Sharing one stroke between the two marks is what makes them
 #: illegible as two marks.
 #:
-#: ⭐ **an interrobang is a `!` stroke CROSSING the hook**, per Jon: *"an
+#:  an interrobang is a `!` stroke CROSSING the hook, per Jon: *"an
 #: interrobang has the ! stroke cross the hook of the eroteme, often at a very
 #: slight slant so you can see the two are composed."* So the hook owns no stem
 #: at all; the exclamation bar is drawn separately, over it, slanted, and

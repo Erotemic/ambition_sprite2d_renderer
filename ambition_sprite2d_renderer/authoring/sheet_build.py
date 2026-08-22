@@ -585,7 +585,7 @@ def _grid_sheet_rows(target, rendered_rows, fw, fh, label_width, max_dim):
         # Nothing shipping overflows today (verified: `player_robot_v3` renders
         # byte-identical with and without this). It is the guard, not a repair.
         #
-        # ⚠ and a guard must not become the bug it guards against. A sheet that
+        #  and a guard must not become the bug it guards against. A sheet that
         # declares NO column (`label_width == 0`) has always drawn its labels
         # straight over frame 0, and clipping to a zero-width column would
         # silently DELETE that text rather than clip it. Deleting a label nobody
@@ -898,7 +898,7 @@ def render_sheet(source: FrameSource, out_dir: Path):
 
     # Packing / trim policy is data-driven (registry/pack_groups.py), keyed by
     # the target. A caller may still force `trim` explicitly (e.g. a rigged doc
-    # honouring a per-frame opt-out); `None` ⇒ take the target's policy.
+    # honouring a per-frame opt-out); `None`  take the target's policy.
     policy = policy_for(target)
     if trim is None:
         trim = policy.trim
@@ -996,13 +996,8 @@ def render_sheet(source: FrameSource, out_dir: Path):
         f"render calls={render_seconds:.2f}s | metadata calls={metadata_seconds:.2f}s"
     )
     if clipped_frames:
-        # ⚠ printed unconditionally, NOT through `progress()`: this is a defect
-        # in the art, not progress chatter, and it must be visible in a quiet
-        # regen. It WARNS rather than raising because 23 of 133 shipped sheets
-        # already trip it (2026-08-16) and failing the build would stop everyone
-        # from regenerating anything until all of them are redrawn. Whoever fixes
-        # the roster can decide to make it fatal; the useful thing today is that
-        # a NEW one is visible the moment it is drawn.
+        # Always print clipping defects, even in quiet regeneration. Keep them as
+        # warnings until the shipped roster is clean enough to make clipping fatal.
         by_edge: Dict[str, List[str]] = {}
         for anim, frame_idx, edges in clipped_frames:
             by_edge.setdefault(edges, []).append(f"{anim}#{frame_idx}")
@@ -1201,7 +1196,7 @@ def render_sheet(source: FrameSource, out_dir: Path):
         # can keep gameplay hurtboxes tight to the true character body while the
         # rendered frame still includes decorations.
         body_metrics = body_metrics_fn(fw, fh)
-        # **Say which of the two rectangles this is.** `body_pixel_bbox` means
+        # Say which of the two rectangles this is. `body_pixel_bbox` means
         # "the alpha extent of the drawn art" by default and "the gameplay body"
         # when a target authors one, and a consumer could not tell them apart —
         # so a runtime that wanted the body had no way to ask for it, and one

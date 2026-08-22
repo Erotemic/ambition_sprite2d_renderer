@@ -85,7 +85,7 @@ def _swing_quad(poly: Sequence[Tuple[float, float]], attacker: Tuple[float, floa
     alen = math.hypot(ax, ay) or 1.0
     ux, uy = ax / alen, ay / alen
     px, py = -uy, ux
-    # ⚠ Measured from the ROOT, not the wielder — the quad is centred on the
+    #  Measured from the ROOT, not the wielder — the quad is centred on the
     # SWING. Measuring from a line through the attacker centres it on the
     # attacker, so a swing authored across the chest yields a quad reaching as
     # far below the body as the swing reaches above it, and the art lands half

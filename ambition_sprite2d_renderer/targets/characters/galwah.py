@@ -1498,7 +1498,7 @@ def build_pose_rows() -> list[tuple[str, list[Pose]]]:
 
 # --- tack-on registry hooks ---------------------------------------------------
 #
-# Hooks `render(out_dir, **opts)` into the standard
+# Hooks `render(out_dir, opts)` into the standard
 # `sheet_build.build_sheet` pipeline so the sheet gets the same
 # treatment as every other procedural character: auto-cropped to the
 # union alpha bbox across all frames (the same crop is applied to

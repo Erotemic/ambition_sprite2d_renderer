@@ -54,7 +54,7 @@ FIRE_MARY = MaryPalette(
 
 #: Warp-pipe body, shadow side, and lit side.
 #:
-#: ⚠ **copper since 2026-08-04, at Jon's request** — *"we should tweak the pipe
+#:  copper since 2026-08-04, at Jon's request — *"we should tweak the pipe
 #: sprites so they are copper colored instead of green"*. The names moved with
 #: the colour: `PIPE_COPPER` holding a copper value is the kind of lie that
 #: survives for years and makes the next reader distrust every constant near it.
@@ -67,21 +67,21 @@ PIPE_COPPER_LIGHT = (224, 158, 96, 255)
 #: The pipe's inner SHEEN stripe — the bright vertical highlight down its lit
 #: side.
 #:
-#: ⛔ **this was an inline `(55, 188, 101, 255)` literal in three places, so the
+#:  this was an inline `(55, 188, 101, 255)` literal in three places, so the
 #: palette rename could not see it and the pipes came out copper with a GREEN
-#: stripe.** Caught by reading the generated sprite's colour histogram rather
+#: stripe. Caught by reading the generated sprite's colour histogram rather
 #: than looking at it: 224 pixels of the old hue survived, which is invisible at
 #: 16px and obvious in a count (2026-08-04).
 #:
-#: ⭐ a constant exists precisely so a recolour reaches every use. Three inline
+#:  a constant exists precisely so a recolour reaches every use. Three inline
 #: copies of a colour are three places a rename will miss.
 PIPE_COPPER_SHEEN = (243, 190, 140, 255)
 #: The shadow line under a pipe's lip, where the cap overhangs the body.
 #:
-#: ⛔ **a SECOND inline green, found only after fixing the first.** The sheen
+#:  a SECOND inline green, found only after fixing the first. The sheen
 #: literal appeared three times and this one once, so the histogram came back
 #: clean for the pipe BODY and still showed 159 green pixels on the pipe TOP.
-#: ⚠ **checking one sprite of a family is not checking the family** — the cap and
+#:  checking one sprite of a family is not checking the family — the cap and
 #: the body are separate targets drawn by separate functions, and the one I
 #: sampled first happened to be the clean one.
 PIPE_COPPER_SHADOW = (46, 24, 10, 255)

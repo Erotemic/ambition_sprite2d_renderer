@@ -111,8 +111,6 @@ ACTOR_METADATA = {
 
 ACTOR_METADATA.update(
     {
-        # Note the second half is GPT 5.6 and it is partially right, but I
-        # think it misses the DBZ joke.
         "authoring_description": (
             """
             Parody of Imperfect Cell from DBZ. Combined with CS fun.

@@ -20,7 +20,7 @@ Frames enter the pool two ways:
   main regen renders every sheet once, then the pool is packed straight from
   those sheets.
 
-**Quality tiers.** A pack is produced at a ``scale`` (1.0 = authored, 0.5, 0.25,
+Quality tiers. A pack is produced at a ``scale`` (1.0 = authored, 0.5, 0.25,
 1/16 potato). Each *isolated* logical frame is downsampled to the tier budget
 *before* it enters the packer, then packed into fresh tier-local pages. This is
 the sanctioned quality path (see

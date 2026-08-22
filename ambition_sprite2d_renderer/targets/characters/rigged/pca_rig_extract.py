@@ -27,7 +27,7 @@ Two things in the SVG are the durable contract (survive id churn and reshaping):
    from the wrist/ankle, which is orientation-agnostic.
 
 In this view the character faces +x; its **right** side is drawn last and so is
-*near* (in front), its **left** side is *far*.
+*near* (in front), its left side is *far*.
 
 Ownership split: this extractor owns the rig document's GEOMETRY (bones, sprite
 parts, IK legs, frame, svg_source — everything derivable from the SVG); the

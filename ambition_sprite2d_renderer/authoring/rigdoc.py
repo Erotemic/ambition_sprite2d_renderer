@@ -1390,11 +1390,11 @@ def paint_part(
             spr_img, pivot = sprite
             prepared = None
         delta = bw.angle - float(part.get("rest_angle", 0.0))
-        # ⭐ **`bone.<name>.flip_x` mirrors a part about its own pivot.** A clip
+        #  `bone.<name>.flip_x` mirrors a part about its own pivot. A clip
         # that never sets it renders exactly as before, so this is additive. The
         # mirror is applied in the part's LOCAL frame and the bone transform then
         # applies as usual, which is what an author means by "face the other way":
-        # the head turns, it does not orbit. ⚠ a mirrored raster cannot come from
+        # the head turns, it does not orbit.  a mirrored raster cannot come from
         # the rotation cache (that cache is keyed by angle alone), so the prepared
         # and pre-rotated fast paths are declined for this part only.
         if params.get(f"bone.{bone_name}.flip_x", 0.0) >= 0.5:
@@ -1402,7 +1402,7 @@ def paint_part(
             pivot = (spr_img.width - pivot[0], pivot[1])
             prepared = None
             rotated_sprite = None
-        # ⭐ **`bone.<name>.scale_y` squashes a part about its own pivot.** Absent
+        #  `bone.<name>.scale_y` squashes a part about its own pivot. Absent
         # or 1.0 renders exactly as before. Anchoring at the PIVOT is the whole
         # point: a squashed torso keeps its hip where the hips are, and shortens
         # upward, so whatever hangs off it moves by a knowable amount.
