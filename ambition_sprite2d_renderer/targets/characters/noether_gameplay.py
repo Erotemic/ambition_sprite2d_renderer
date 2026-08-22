@@ -1,36 +1,10 @@
 """Sprite-side gameplay geometry for the Noether fighter.
 
-⛔⛔ **THIS FILE USED TO RESTATE THE RIG'S FRAME CONSTANTS, AND THE RIG MOVED
-UNDER IT.** Jon, 2026-08-16: *"We have an issue with Emmy's sprite metadata. It
-has her 'hovering' over the ground."* The header said, in as many words, that it
-restated ``ground_y = 101``, ``center_x = 64`` and ``render_scale = 2`` "so a
-reader of this file does not have to open the JSON". The JSON now says
-``ground_y = 190``, ``center_x = 96``, ``render_scale = 1`` — the rig was rebuilt
-at a different size AND different proportions — and nothing connected the two
-numbers, so every rectangle this module published was measured from a floor that
-had moved. Her published feet sat at 258 in a frame whose drawn art ends at 219:
-forty pixels of phantom body below her shoes, which the runtime dutifully planted
-on the ground while the picture floated above it.
-
-⇒ **the frame constants are now READ from the rig document, never restated**, and
-the per-pose hurtboxes are SOLVED from the rig's own bone chain rather than
-hand-listed. A rig rebuild moves the boxes with it, which is the property whose
-absence caused this.
-
-⭐ **what is still authored here, and why.** Strike volumes are reach and taste —
-how far a committed swing carries, whether a low sweep denies the ground — and no
-skeleton can answer that. They stay authored, in a NORMALIZED body space (x from
-her centre line, y above the floor, in units where her head bone stands
-:data:`AUTHORED_STATURE` above it) and are mapped to published pixels once, at
-the boundary. Because the space is normalized against a fact the rig publishes,
-those numbers survive the next rebuild too.
-
-⚠ **the source SVG and the rig remain presentation authority.** Nothing here
-feeds back into them, and the timings/damage of Noether's moves are the GAME's
-(``CharacterDefinition`` + ``MovesetContract``), never this file's. What lives
-here is what the SHEET knows: where her body is in each pose, and which frames of
-an authored clip carry a strike.
-"""
+Frame dimensions and pose hurtboxes are derived from the rig document rather
+than restated here. Authored strike volumes remain in normalized body space
+because reach is gameplay intent, not a property the skeleton can infer. This
+module publishes sheet geometry only; move timing/damage belong to the game, and
+the SVG/rig remain presentation authority."""
 
 from __future__ import annotations
 
@@ -50,7 +24,7 @@ PADDING = 28
 #: one measurement both rigs can be compared by: the head bone's height above the
 #: floor. The original was ``pelvis(20.5) + torso(4) + head(26)``.
 #:
-#: ⚠ it is a RATIO's denominator, not a coordinate. Nothing below is in this
+#:  it is a RATIO's denominator, not a coordinate. Nothing below is in this
 #: space by the time it reaches the sheet.
 AUTHORED_STATURE = 50.5
 
@@ -140,11 +114,11 @@ def _attack(
 
 # ── hurtboxes, SOLVED from the rig ───────────────────────────────────────────
 #
-# ⭐ **seven parts, and they are the rig's own limbs.** A single body rectangle
+#  seven parts, and they are the rig's own limbs. A single body rectangle
 # cannot say that a fighter's outstretched arm is hittable while her head is not,
 # which is the whole reason the sheet publishes parts rather than one box.
 #
-# ⛔ **and they are no longer SEVEN HAND-LISTED POSE FAMILIES.** This file used to
+#  and they are no longer SEVEN HAND-LISTED POSE FAMILIES. This file used to
 # carry standing/crouch/air/prone/ledge/shielded/buried rectangle sets plus six
 # name tables deciding which row got which — 120 lines whose only job was to
 # approximate what the rig already knows exactly, and which silently kept
@@ -271,17 +245,11 @@ BODY_COLUMN_COVERAGE = 0.15
 
 
 def body_from_silhouette(profile: dict) -> tuple[float, float, float, float]:
-    """The drawn body, trimmed of what is reaching.
+    """Return the drawn body bounds after excluding thin reaching columns.
 
-    ⭐ **the picture IS the body, minus the arm that is pointing.** Jon,
-    2026-08-16: *"very tiny hitboxes"*. The box published before this was a
-    fraction of her stature guessed at authoring time — 100px wide against a
-    200px drawing — so half her silhouette could not be hit. Measuring it and
-    dropping the thin columns gives a box that covers her, and gives it for free
-    to any future pose.
-
-    `profile` is `{"columns": [rows_of_alpha_per_column], "bounds": (x0, y0, x1,
-    y1)}` over the published frame.
+    `profile` contains per-column alpha coverage and the published-frame bounds.
+    Keeping columns above `BODY_COLUMN_COVERAGE` covers the body while excluding
+    narrow outstretched limbs.
     """
     x0, y0, x1, y1 = profile["bounds"]
     columns = profile["columns"]
@@ -310,7 +278,7 @@ def body_metrics(fw: int, fh: int, profile: dict | None = None) -> dict:
     centre = float(frame["center_x"])
 
     if profile is not None:
-        # ⚠ already in PUBLISHED pixels — the profile is measured on the composed
+        #  already in PUBLISHED pixels — the profile is measured on the composed
         # frame — so this does not go through `_px`, which converts from rig
         # space. Mixing the two spaces is the exact mistake this file exists to
         # correct.
@@ -341,13 +309,13 @@ def body_metrics(fw: int, fh: int, profile: dict | None = None) -> dict:
 
 # ── strike volumes ───────────────────────────────────────────────────────────
 #
-# ⛔ **these are the SHEET's geometry, not the game's balance.** Damage, launch
+#  these are the SHEET's geometry, not the game's balance. Damage, launch
 # angle, knockback growth and frame timings live on Noether's `MovesetContract`
 # in Ambition content; what a sheet can honestly say is WHERE a drawn strike
 # reaches and WHICH of its frames are the strike. A second combat database here
 # would be the `character_archetypes.ron` mistake in Python.
 #
-# ⚠ her blade reaches roughly 30 authored units ahead of centre on a committed
+#  her blade reaches roughly 30 authored units ahead of centre on a committed
 # swing — that is the number the reaches below are scaled against rather than a
 # taste call. `dx` runs from her centre line, and the second argument is the
 # rectangle's TOP as a height above the floor.
@@ -375,7 +343,7 @@ def _attack_table() -> dict:
         "getup_attack": _attack(-22, 16, 46, 16, active=[2, 3]),
         # ── the signature clips `noether_motion` renames ────────────────────
         #
-        # ⚠ each is the pose the renamed row DRAWS, which is why they are not all
+        #  each is the pose the renamed row DRAWS, which is why they are not all
         # the same shape: a conservation law is a held field, a generator strike
         # is a committed swing, and a symmetry break is the biggest thing she
         # does.
@@ -401,14 +369,14 @@ def attack_hitboxes() -> dict:
 
 
 NOETHER_MOVE_BLUEPRINT = {
-    # ⛔⛔ **DESIGN INPUT AND NAMING VOCABULARY — NOT A RUNTIME COMBAT DATABASE.**
+    #  DESIGN INPUT AND NAMING VOCABULARY — NOT A RUNTIME COMBAT DATABASE.
     # The engine reads Noether's timings, damage and launch from her
     # `CharacterDefinition` in Ambition content. This block travels with the
     # SHEET so an artist and a designer can see the same intent beside the art
     # that draws it, and so a future authoring step has something to import from
     # rather than a blank page.
     #
-    # ⚠ the `clip` of each entry is the authored ROW NAME, which is the one thing
+    #  the `clip` of each entry is the authored ROW NAME, which is the one thing
     # here the game genuinely consumes — through `MoveSpec.clip` and the sheet's
     # own row table.
     "melee": {

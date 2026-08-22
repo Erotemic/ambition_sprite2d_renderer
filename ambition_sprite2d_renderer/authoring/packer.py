@@ -116,17 +116,9 @@ def pack_frames(
             )
         trimmed.append((fr, timg, ox, oy))
 
-    # Choose and execute the pack in one bounded search. The old implementation
-    # binary-searched every pixel between the largest frame and ``page_cap``.
-    # Each probe ran a complete MaxRects pack, then the successful result was
-    # discarded and packed once more. A review roster could therefore perform
-    # hundreds of full NP-hard heuristic packs merely to shave a few pixels off
-    # atlas dimensions.
-    #
-    # Start from an area-derived near-square side with conservative slack, grow
-    # geometrically only when that estimate fails, and REUSE the first
-    # successful placement. Page images are cropped to their occupied extents
-    # below, so this retains compact output without exact pixel-level search.
+    # Start from an area-derived near-square estimate, grow geometrically until
+    # MaxRects succeeds, and reuse that placement. Final pages are cropped to
+    # occupied extents, so exact pixel-level size search is unnecessary.
     sizes = [
         (t.size[0] + 2 * padding, t.size[1] + 2 * padding)
         for (_f, t, _x, _y) in trimmed

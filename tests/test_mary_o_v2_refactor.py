@@ -200,23 +200,14 @@ def test_mary_o_v2_collision_box_is_authored_not_measured(tmp_path: Path) -> Non
         box = meta["body_metrics"]["body_pixel_bbox"]
         boxes[target] = box
 
-        # Forgiveness on the sides: narrower than everything she visibly has out.
+        # Side decoration may extend beyond the collision width.
         assert box["w"] < (alpha[2] - alpha[0]), target
-        # ⚠ **the box top is set by the HEIGHT CONTRACT, not measured off the
-        # art** (Jon, 2026-08-18: small Mary-O is one brick, grown is two), so
-        # "the box starts below the top of the art" — which this asserted while
-        # every form still had a hat poking out — is no longer the invariant.
-        # Both forms now top out AT or just inside their box.
-        #
-        # What still matters is the gap, in both directions. Decoration ABOVE
-        # the box is the point (the fire form's frills clear it by 14 px and
-        # must never collide). The box floating far above the DRAWING is the
-        # unfair case in the other direction: she would hit a ceiling with the
-        # empty air over her head. MEASURED: grown 0 px, fire -14 px, short 6 px.
+        # The collision top follows the form height contract, while decorative headroom may sit
+        # above it; reject only a box that floats materially above the drawing.
         headroom = alpha[1] - box["y"]
         assert headroom <= 8, (target, headroom)
         # ...but her feet are still enclosed, since the box bottom is what
-        # stands. ⚠ allow one publish pixel: frames are bottom-anchored on
+        # stands.  allow one publish pixel: frames are bottom-anchored on
         # publish, so a flat-soled figure's last ink row lands ON the frame edge
         # while the authored shoe line sits just inside it. MEASURED: grown +2,
         # short -2. A real sinking foot is many pixels, not one.
@@ -227,10 +218,8 @@ def test_mary_o_v2_collision_box_is_authored_not_measured(tmp_path: Path) -> Non
     widths = {t: b["w"] for t, b in boxes.items()}
     assert len(set(widths.values())) == 1, widths
 
-    # ⭐⭐ **EXACTLY two to one** — Jon, 2026-08-18: small Mary-O is 16 world
-    # units (one brick) and grown is 32. This asserted 88/63 = 1.397, the ratio
-    # the art happened to have before the re-proportioning, which is a
-    # measurement of the old sprites rather than the rule they now answer to.
+    # Gameplay height is exactly 2:1 between short and grown forms; fire shares
+    # the grown collision height.
     ratio = boxes["mary_o_v2_tall"]["h"] / boxes["mary_o_v2"]["h"]
     assert abs(ratio - 2.0) < 0.01, ratio
     assert boxes["mary_o_v2_fire"]["h"] == boxes["mary_o_v2_tall"]["h"]
@@ -268,7 +257,7 @@ def test_no_walk_frame_puts_her_foot_below_her_own_standing_line() -> None:
         TALL_LIKE_POSES,
     )
 
-    # ⚠ TALLER than the logical frame on purpose: at the authored height the
+    #  TALLER than the logical frame on purpose: at the authored height the
     # overflow is already cut, so every frame would answer "exactly the bottom"
     # and this could not fail.
     probe_size = (LOGICAL_SIZE[0], LOGICAL_SIZE[1] + 12)

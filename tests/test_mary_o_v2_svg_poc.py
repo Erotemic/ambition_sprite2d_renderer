@@ -1,25 +1,9 @@
-"""What the Mary-O SVG rig POC PRODUCES — never how its source is authored.
+"""Tests for the generated and rendered output of the Mary-O SVG rig POC.
 
-⛔ **eight structural tests were removed from this file on 2026-08-18, on Jon's
-ruling**: *"they are too bespoke. I don't want tests asserting how things should
-be authored that a human will edit."* They pinned the set of top-level layers,
-the id scheme, stroke-linejoin conventions, which groups were `sodipodi:insensitive`,
-the exact 13 component masters, and that every drawable carried a semantic label —
-all read off ``assets/mary_o_v2.svg``, which is an ARTIST's file. Opening it in
-Inkscape and adding a size-guides layer turned five of them red while nothing
-about the sprite was wrong. A test that fails on WORK is not a guard.
-
-⭐ what stays is the other half, and it is the half worth having: the exporter's
-own output (written to ``tmp_path``, so it is a GENERATED file and may be pinned),
-and what the rig actually RENDERS — idle parity, a rotated pose reusing one arm
-sprite, death coming from the front rig rather than the procedural fallback, and
-the transform running rig-then-postprocess.
-
-⚠ the one real check that went with them and has no replacement yet: a ``<use>``
-whose href names no id renders NOTHING, silently. The recorded direction is for
-``build_rig_document`` to REFUSE it with a sentence naming the element — a
-diagnostic the author reads at load, not a suite that goes red behind them.
-"""
+The suite intentionally avoids pinning artist-facing SVG structure such as layer
+names, exact group counts, or editor metadata. It verifies generated rig output
+and rendering behavior: idle parity, pose reuse, death/front-rig selection, and
+rig-then-postprocess ordering."""
 
 from __future__ import annotations
 
@@ -28,7 +12,7 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-# ⚠ the guard every other SVG-rendering suite here opens with: this one needs
+#  the guard every other SVG-rendering suite here opens with: this one needs
 # native resvg-py, and without it the whole file RAISED instead of skipping.
 pytest.importorskip("resvg_py")
 
@@ -127,39 +111,10 @@ def test_the_bone_follows_the_pivot_in_the_flat_rig_joints_layer(tmp_path: Path)
     assert after_bone["offset"][0] == before_bone["offset"][0] + 7
     assert after_bone["offset"][1] == before_bone["offset"][1] - 3
 def test_every_form_renders_a_whole_body_from_its_rig() -> None:
-    """**Every form builds a rig and draws a body at frame size.**
+    """Every Mary-O form must build a nonempty rig at the published frame size.
 
-    ⛔ **this compared each form's render against the LEGACY PROCEDURAL draw
-    within 3px, and that comparison is gone as of 2026-08-18.** It retired one
-    form at a time, each for the same reason and each only after it had already
-    gone red on ordinary authoring:
-
-    ```text
-    TALL   reuses the short head via a shared transformed clone
-    FIRE   the authored side silhouette moved — rig 122px wide vs procedural 110
-    SHORT  the last holdout; the rig drew 7px taller at the top
-    ```
-
-    ⇒ with all three authored, parity with the procedural draw is a property NO
-    form owes: that draw is the thing the rig replaces. Holding the rig to it
-    pixel-for-pixel made every deliberate art change a red suite — the same
-    failure that took eight structural tests out of this file the same day, on
-    the maintainer's ruling that a test must not assert how a human-edited asset
-    is authored.
-
-    ⭐ **what remains is what a defect actually looks like**: a form that fails to
-    build a rig, renders at the wrong size, or collapses to nothing.
-
-    ⚠ **the floor is PER FORM, and the first draft of it was wrong.** It reused
-    tall's `80 x 110` for every form and failed SHORT immediately — because SHORT
-    is legitimately a smaller character (one brick against tall's two), not a
-    collapsed one. Measured at 2026-08-18, with the floors set well under:
-
-    ```text
-    mary_o_v2        64 x  86    floor 40 x 55
-    mary_o_v2_tall   95 x 163    floor 60 x 100
-    mary_o_v2_fire  122 x 182    floor 60 x 100
-    ```
+    Authored rigs replace the procedural renderer and do not owe pixel parity to
+    it. Each form therefore has its own conservative non-collapse size floor.
     """
     for form in (SHORT_FORM, TALL_FORM, FIRE_FORM):
         doc = build_rig_document(ASSET, form, "side")

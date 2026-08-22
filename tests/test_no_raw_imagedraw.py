@@ -1,15 +1,8 @@
-"""Guardrail: content-drawing code must not call raw ``ImageDraw.Draw``.
+"""Content drawing code must use the renderer's compositing helpers, not raw `ImageDraw.Draw`.
 
-Pillow's ImageDraw REPLACES destination pixels — including alpha — instead of
-compositing (the "gnu_ton rule"), and ``mode="RGBA"`` does NOT fix it for RGBA
-destinations. Agents keep re-introducing this bug, so after the 2026-07-23
-campaign moved every targets/ + authoring/ site onto
-``core.draw.blending_draw``, this test pins the fix: any new raw
-``ImageDraw.Draw(`` call in those trees fails here with instructions.
-
-The scan is poison-tested against a planted sample so a silently-broken
-predicate cannot rot into a green non-guarantee.
-"""
+Raw Pillow drawing replaces destination RGBA pixels instead of applying the
+project's alpha-compositing semantics. The guard covers content-authoring paths
+where translucent drawing would otherwise cut holes in existing art."""
 from __future__ import annotations
 
 import re

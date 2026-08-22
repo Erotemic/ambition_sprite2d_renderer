@@ -23,20 +23,9 @@ def test_robot_slash_first_frame_is_immediately_large_and_centered():
     assert bbox is not None
     x0, y0, x1, y1 = bbox
 
-    # The attack should feel responsive on the first visible frame, so the
-    # broad white sweep must already span nearly the full runtime quad.
-    #
-    # ⛔⛔ **this used to assert `x1 >= 156` and it had been red for weeks.** The
-    # sweep reaches 154 of 160, and that is the art following its descriptor
-    # rather than the art shrinking: `SwingDescriptor` landed 2026-08-02 to stop
-    # the polygon and the drawing carrying two spellings of one swing, and its
-    # own commit names the discrepancy it closed — *"the polygon stopped its
-    # swing at 0.96 of reach while the art drew to 1.0"*. 154/160 IS 0.96.
-    #
-    # ⇒ the claim is *"nearly the full quad"*, so it is written as a FRACTION of
-    # the quad. A frozen pixel column re-states one build of the art as if it
-    # were the requirement, and rots the next time the swing is re-derived —
-    # which has happened five times since this file was written.
+    # The first visible frame should already span nearly the full runtime quad.
+    # Express the requirement as a fraction so it follows descriptor-derived
+    # geometry instead of pinning one pixel coordinate.
     width = active.width
     assert x0 <= 4
     assert x1 >= 0.95 * width, f"the sweep stops at {x1} of {width} — under 95% of the quad"
@@ -73,14 +62,14 @@ def test_robot_slash_preserves_lifetime_and_clean_release(tmp_path: Path):
 
     rows = {row["animation"]: row for row in manifest["rows"]}
 
-    # ⛔⛔ **this used to freeze the whole row list, and a FOURTH row broke it.**
+    #  this used to freeze the whole row list, and a FOURTH row broke it.
     # `poke` was added and the durations retimed 24 -> 20; both are content
     # decisions, and neither has anything to do with what this test is named
     # for. A hand-kept list of every row is a list that rots on the next
     # authored animation, and it rotted silently — nobody looks at a suite that
     # is already red.
     #
-    # ⇒ assert the LIFETIME and the RELEASE, which is the subject: every row
+    #  assert the LIFETIME and the RELEASE, which is the subject: every row
     # lives the same five frames at one shared duration, and the last frame of
     # every row is empty. A new animation joins for free; one that lingers,
     # runs short, or is retimed alone still fails.

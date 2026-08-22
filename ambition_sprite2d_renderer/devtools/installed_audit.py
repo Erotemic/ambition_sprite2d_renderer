@@ -1,35 +1,9 @@
-"""Report which installed sprite files no producer claims.
+"""Report installed sprite files that no registered producer claims.
 
-⛔ **REPORT ONLY, and deliberately so.** This module never deletes, moves, or
-rewrites a file, and it exposes no flag that does. The obvious garbage collector
-— diff the install tree against the renderer's own ``generated/`` tree — was
-measured on 2026-08-04 and would have removed LIVE assets: ``generated/`` records
-what one machine happened to render, not what targets exist, and 29 of the 41
-files that comparison flagged were claimed by a registered target. ``glider`` is
-the proof case: a live registered target whose four installed files are absent
-from ``generated/`` on the machine that measured. A tool that cannot delete
-cannot make that mistake, and deciding an asset is dead is a maintainer's call.
-
-**The oracle is the target REGISTRY, and it has three producer classes:**
-
-1. *module targets* — Python modules under ``targets/<category>/``.
-2. *procedural generators* — ``configs/*.yaml`` driving a ``CharacterGenerator``.
-   Both classes are what ``list-targets`` prints, and both arrive here as
-   ``Target`` objects from :func:`registry.discover_all_targets`, which is the
-   same call ``list-targets`` makes. Each declares its installed surface through
-   :meth:`Target.claimed_install_names`.
-3. *standalone commands* — CLI entry points that emit files no target claims.
-   ``ldtk-manifest`` writes ``ldtk_sprite_manifest.json``; ``ambition_ldtk_tools
-   visual-manifest`` writes ``editor_icons.png``. Neither is a target, and an
-   audit that knows only class 1 reads both as stale — the same defect one level
-   up from the ``generated/`` mistake.
-
-**The registry must be trustworthy or the audit refuses.** A discovery warning
-means some module did not register; an unregistered producer's files then read
-as unclaimed, which is exactly how a partial regen makes every unrendered target
-look stale. On any warning — or any discovery failure — the audit reports the
-warnings and REFUSES to name orphans.
-"""
+This audit is intentionally read-only. Claims come from the same target registry
+used by normal discovery plus known standalone producer commands. Any discovery
+warning makes orphan reporting unreliable, so the audit reports the warning and
+refuses to classify files instead of deleting or guessing."""
 
 from __future__ import annotations
 

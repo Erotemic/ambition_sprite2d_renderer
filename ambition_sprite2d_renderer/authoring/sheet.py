@@ -190,7 +190,7 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
         },
     )
     body_metric_frame: Image.Image | None = None
-    # Per-animation union alpha bboxes in **source canvas** coords (before the
+    # Per-animation union alpha bboxes in source canvas coords (before the
     # sheet-wide crop) → per-animation hurtboxes. Layout-independent.
     anim_union_bbox_src: Dict[str, Tuple[int, int, int, int] | None] = {}
     cropped_rows: List[List[Image.Image]] = []

@@ -5,7 +5,7 @@ best layer grouping, but only converted paint code has it. This module is the
 universal fallback: while a target's *existing* render runs, every
 ``ImageDraw.Draw`` gets teed into a :class:`DrawRecorder`, so the published
 raster is untouched and a vector capture falls out for free. Afterwards,
-**part discovery** matches congruent shapes across frames (recovering each
+part discovery matches congruent shapes across frames (recovering each
 occurrence's translate/rotate) and registers them once, turning N flattened
 frames into a parts library + placements — the same
 :class:`~.svg_scene.ComponentScene` the cooperative path produces.

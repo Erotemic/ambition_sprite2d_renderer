@@ -4,17 +4,17 @@ The pirate is assembled from a minimal component scene: rigid paper-doll parts
 placed by the explicit skeleton, plus the posed limb strokes. Two independent
 guards here:
 
-* **Structural** — every expected named part is present in the scene. This is
+* Structural — every expected named part is present in the scene. This is
   the robust "no dropped part" check: a missing part fails immediately,
   independent of any raster tolerance.
-* **Reproduction** — the rasterized SVG frames match the authoritative PIL raster
+* Reproduction — the rasterized SVG frames match the authoritative PIL raster
   within a measured occupancy envelope (the alpha-aware symmetric metric,
   ``equivalence_harness._frame_defects``), which catches *mislocation* (a part
   placed at the wrong joint shifts occupancy well past the floor).
 
 Honest scope: the SOLID geometry reproduces at a uniform ~0.045-0.05 occupancy
 floor (resvg-vs-Pillow stroke-edge AA, sub-2px, visually identical). The six
-**slash** frames sit higher (~0.075-0.09) solely because of the translucent
+slash frames sit higher (~0.075-0.09) solely because of the translucent
 swoosh effect — suppressing just that arc drops them back to the floor — which is
 the accepted translucent-compositing divergence class (as with glows), NOT lost
 geometry. So the slash frames do not pass the strict ``_frame_verified`` (0.07)

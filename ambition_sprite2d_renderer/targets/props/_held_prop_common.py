@@ -13,7 +13,7 @@ These targets all share the same authoring contract:
   size) and LANCZOS-downsampled, which folds the anti-aliasing away
   without changing the output pixel count.
 - Per-frame ``anchors`` (``grip`` / ``tip`` / …) are reported in
-  **final-frame design pixels**. ``build_sheet``'s auto-crop pass
+  final-frame design pixels. ``build_sheet``'s auto-crop pass
   translates those anchors by the crop offset for us, so we just
   report them in the pre-crop canvas frame and let the builder keep
   them correct.

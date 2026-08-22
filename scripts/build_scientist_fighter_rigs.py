@@ -222,13 +222,8 @@ class CharacterSpec:
     label_binding_mode: str = "explicit"
     auxiliary_bones: tuple[AuxiliaryBoneSpec, ...] = ()
     facing: str = "west"
-    #: Published pixels per rig unit. Jon, 2026-08-16: *"She also needs to be
-    #: rendered at a higher resolution. She's blury compared to the other
-    #: portraits and sprites."* A rig's canvas is chosen for the ANATOMY it has
-    #: to hold; how many pixels that canvas is worth is a separate decision, and
-    #: it used to be hardcoded to 1 for every character here while the rigged
-    #: characters this fighter stands beside publish at 2x (Oiler) and 3x (the
-    #: Perfect Cellular Automaton).
+    #: Published pixels per rig unit. Canvas size follows anatomy; render scale
+    #: independently controls publication resolution.
     render_scale: int = 1
 
     @property

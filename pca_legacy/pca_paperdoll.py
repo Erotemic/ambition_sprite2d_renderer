@@ -682,15 +682,11 @@ GREEN_LIMB = {"shin", "knee", "tail", "upper_arm", "shoulder", "chest_plate"}
 
 
 def _brighten_limb_greens(polys, palette):
-    """A whole limb/plate segment whose dominant colour is a dark-green SHADOW
-    shade renders as a dark olive blob (the legs in air/land, the chest plate).
-    Shadow is shading, not the part's identity -- flatten every green-family limb
-    fill to the BRIGHTEST green so the part reads green and matches the reference
-    (which is mostly the bright green; the dark shade is only deep shadow). Keeps
-    cohesion (Jon: 'look better than the reference -- consistent, noise-free').
+    """Flatten green-family limb fills to the brightest green palette entry.
 
-    Note the green test allows the dark-green shade (g>100 would drop it): a green
-    is g>r and clearly greener than blue (g-b margin), regardless of brightness."""
+    Dark green is shading rather than part identity. Detect green by channel
+    dominance rather than brightness so shadow shades are included.
+    """
     greens = [i for i, c in enumerate(palette) if c[1] > c[0] and c[1] - c[2] > 15]
     if len(greens) < 2:
         return polys

@@ -38,7 +38,7 @@ _SCALE = 12
 _HEAD_X = 8.0
 _HEAD_Y = 4.0
 
-#: ⭐⭐ **the pivots a re-proportioned head is scaled about**, matching
+#:  the pivots a re-proportioned head is scaled about, matching
 #: `_draw_head_side` and `_draw_head_front`. Every probe below is written in the
 #: head's ORIGINAL local coordinates and mapped through this, because a form
 #: with `head_scale != 1.0` draws the same head in a smaller frame — a probe
@@ -165,7 +165,7 @@ def test_rendered_side_features_are_rigidly_reflected() -> None:
 
     for name in colors:
         assert east[name][0] + west[name][0] == pytest.approx(2.0 * mirror_px, abs=1.0)
-        # ⚠ a form with a non-integer `head_scale` puts the mirrored features
+        #  a form with a non-integer `head_scale` puts the mirrored features
         # on a different sub-pixel phase, so the two orientations can land one
         # probe row apart. MEASURED: |Δy| is exactly 0.00px at `head_scale=1.0`
         # and 1.00px at 0.72, which is quantization, not a broken reflection —
@@ -262,7 +262,7 @@ def test_back_hair_volume_is_orientation_consistent(form) -> None:
         )
         areas.append(area)
 
-    # ⚠ the short form's figure is NOT the others scaled by `head_scale`: it also
+    #  the short form's figure is NOT the others scaled by `head_scale`: it also
     # carries `hair_drop = 0.52`, which deliberately cuts the ponytail short
     # ("a one-brick character cannot wear a two-brick ponytail"), so its area is
     # below what the scale alone would predict. Re-recorded, not derived.
@@ -302,7 +302,7 @@ def test_v1_back_hair_strip_is_continuous_and_poof_is_wider(lookback: bool) -> N
     pixels = image.load()
 
     def oriented_x(local_x: float) -> int:
-        # ⚠ mirror in LOCAL space, then scale. The two commute (the scale pivot
+        #  mirror in LOCAL space, then scale. The two commute (the scale pivot
         # reflects onto the scaled mirror), so this is the same point either way.
         if lookback:
             local_x = 2.0 * _SIDE_HEAD_MIRROR_X - local_x

@@ -1,21 +1,9 @@
 """Contract tests for Oiler's direct-SVG multiview humanoid rig.
 
-⭐ **KEPT DELIBERATELY, 2026-08-19.** Jon had eight tests of this kind deleted
-from the Mary-O SVG suite the day before — *"they are too bespoke. I don't want
-tests asserting how things should be authored that a human will edit"* — and
-then, asked whether Oiler's should follow, kept these.
-
-⇒ **the discriminator is whether the asset is under ACTIVE HUMAN REVISION, not
-whether a test asserts structure.** He is overhauling `mary_o_v2.svg` and every
-save moved a silhouette, reddening those tests and paging an agent into an
-artist's work in progress. `oiler-multiview.svg` is settled, so a structure test
-here costs nothing and catches a bad save.
-
-⛔ so do NOT generalize the Mary-O deletion into a sweep across the SVG rig
-suites. ⚠ and if Oiler's SVG later goes under revision, these become the same
-problem — the fix then is to narrow the GOAL CHECK that gates on them, not to
-chase the saves and not to delete the suite.
-"""
+These tests pin the settled asset/runtime contract rather than generalizing to
+artist files under active structural editing. If the asset becomes actively
+reworked, narrow the gating surface rather than rewriting art to satisfy stale
+structural assumptions."""
 
 from __future__ import annotations
 
@@ -25,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-# ⚠ **the same guard its three sibling SVG suites carry** — test_svg_sprite,
+#  the same guard its three sibling SVG suites carry — test_svg_sprite,
 # test_pirate_svg_fidelity and test_draw_recorder all open with it. Rendering an
 # SVG rig needs native resvg-py; without it these three RAISED rather than
 # skipped, so an environment missing an optional dependency reported a red suite

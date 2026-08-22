@@ -471,7 +471,7 @@ def timeline_state(frame_index: int) -> TimelineState:
     # ahead and the robot reads as retreating rather than strolling away. 1.5
     # cycles over the beat is three steps.
     #
-    # ⚠ the lean is RAMPED OUT here, not dropped. The take ends leaning 0.75 and
+    #  the lean is RAMPED OUT here, not dropped. The take ends leaning 0.75 and
     # the beat that used to follow opened at 0.04, which snapped the author's
     # torso thirteen degrees between two adjacent frames.
     if frame_index <= 57:
@@ -491,12 +491,12 @@ def timeline_state(frame_index: int) -> TimelineState:
     # beat the second claim lands on, so it is the longest silent one: the joke
     # is that he has to think about it first.
     #
-    # ⚠ a NEGATIVE head tilt is the one that looks down. Positive is chin-up, and
+    #  a NEGATIVE head tilt is the one that looks down. Positive is chin-up, and
     # the earlier beats use positive on purpose — leaning the torso over the robot
     # while holding the face up is what keeps it readable. Chosen off a rendered
     # sweep of six candidates, not off the sign convention.
     #
-    # ⚠ and the number is PIVOT-DEPENDENT, so re-sweep it whenever the author's
+    #  and the number is PIVOT-DEPENDENT, so re-sweep it whenever the author's
     # neck joint moves in the SVG. -30 read as a clear downward gaze against the
     # old head origin and as barely a glance once that origin moved up ~11 units;
     # the angle is the same, the pivot is not.

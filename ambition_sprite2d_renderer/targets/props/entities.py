@@ -622,11 +622,10 @@ def _seamless_brick_pattern(
 
 #: The interrobang, at 2x the tileset's 16px authoring, as explicit runs.
 #:
-#: Jon asked for "actual question mark blocks... although we should probably make
-#: them interrobang blocks as a parody". The glyph is the joke: a `?` hook and a
-#: `!` stem are the SAME stroke once you draw them small.
+#: Pixel interrobang: a question-mark hook and exclamation stroke overlap into
+#: one compact glyph.
 #:
-#: ⚠ these runs are the 16px ones from
+#:  these runs are the 16px ones from
 #: `targets/tiles/super_mary_o_tileset.py` doubled, deliberately COPIED rather
 #: than imported: that module authors a packed LDtk TILESET for a tile-layer
 #: workflow, and this one authors standalone 32px entity textures. Importing
@@ -634,17 +633,8 @@ def _seamless_brick_pattern(
 #: tileset's cell size is free to change without breaking this.
 #: The EROTEME's hook — the `?` curve alone, WITHOUT a descending stem.
 #:
-#: ⛔ **twice wrong before this.** The first pass was a thin hook that tapered
-#: into a stem and read as a plain `?`. The second made the stem bolder and
-#: longer, which Jon called exactly right: *"it looks like an eroteme with a
-#: long stem."* Sharing one stroke between the two marks is what makes them
-#: illegible as two marks.
-#:
-#: ⭐ **an interrobang is a `!` stroke CROSSING the hook**, per Jon: *"an
-#: interrobang has the ! stroke cross the hook of the eroteme, often at a very
-#: slight slant so you can see the two are composed."* So the hook owns no stem
-#: at all; the exclamation bar is drawn separately, over it, slanted, and
-#: extends ABOVE the curve — that overlap is the whole glyph.
+#: The eroteme owns only the hook. A separate, slightly slanted exclamation
+#: stroke crosses it and extends above the curve so the two marks remain legible.
 _EROTEME_HOOK_RUNS_32 = (
     # the crown
     (5, 11, 21),
@@ -700,19 +690,10 @@ def bonus_block_tile(d: ImageDraw.ImageDraw, s: float) -> None:
 
 
 def spent_block_tile(d: ImageDraw.ImageDraw, s: float) -> None:
-    """A USED bonus block: the same plate, drained of colour and glyphless.
+    """Draw a spent bonus block: same silhouette, desaturated and glyphless.
 
-    Jon, 2026-08-04: *"A used questionmark block should get an inert texture."*
-
-    ⛔ **the first design let a spent block fall back to the KIND's plain stone
-    tile, and that was wrong twice over.** It read as a wall rather than as a
-    thing that had given up its prize, and it made the block's history invisible
-    to a player deciding whether to bother hitting it. An inert block should
-    still look like a BLOCK — same bevel, same rivets, same silhouette — and
-    simply be spent.
-
-    Desaturated toward the mortar grey of the surrounding stone, so a row of
-    used blocks reads as furniture instead of as targets.
+    It remains recognizable as a bonus block while reading as inert rather than
+    falling back to ordinary wall art.
     """
     plate = rgba("#8A7A62")
     edge = rgba("#5C503F")
@@ -1769,20 +1750,10 @@ INSTALL_SUBDIR = "entities"
 
 
 def install(render_dir: str | Path, dest_root: str | Path) -> List[Path]:
-    """Install under ``assets/sprites/entities`` from the normal sprite root.
+    """Install entity textures under ``assets/sprites/entities``.
 
-    ⛔ **this target had NO install hook until 2026-08-04, and
-    ``regen_sprites.sh`` carried the rule as a special case instead** — it
-    rewrote ``dest_root`` to ``$sprites_dir/entities`` for ``target = entities``
-    and nothing else did. So the shell path installed correctly and
-    ``python3 -m ambition_sprite2d_renderer publish entities`` — the documented
-    CLI, and the obvious thing to run — wrote the files a directory too high,
-    where the loader never looks.
-
-    Nothing reported it. `publish` succeeded (it wrote what it meant to), and
-    `load_entity_sprites` skips an id the catalog cannot resolve without a word,
-    so a newly added entity sprite was declared, drawn, published, listed in the
-    manifest, and invisible. It cost a photograph of a running game to find
+    The runtime's `EntitySprite::asset_path` resolves the `entities/` subdirectory,
+    so every publication path must use the same layout.
     (queue D21).
 
     ⭐ the sibling target `sanic_support_entities` had already solved this the

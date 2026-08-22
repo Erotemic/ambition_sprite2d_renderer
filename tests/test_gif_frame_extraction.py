@@ -1,17 +1,8 @@
-"""GIF frame extraction from packed AND unpacked sprite sheets.
+"""GIF extraction must reconstruct frames from packed and unpacked sprite sheets.
 
-Regression for the paged-sheet bug: ``write_animation_gifs_for_target``
-used to crop every frame from the base image, so frames living on a
-packed sheet's ``.1.png`` / ``.2.png`` pages (addressed by ``fpage``)
-came out as garbage. The reconstruction must:
-
-- read each frame from ITS OWN page (``fpage`` packed / ``page`` grid),
-- re-inflate an alpha-trimmed rect (``off`` + sub-frame ``w``/``h``) back
-  onto the logical ``frame_width × frame_height`` canvas so the character
-  stays anchored,
-- and behave identically for the untrimmed grid layout (``w == fw``,
-  ``page`` index, no ``off``).
-"""
+Each packed frame is read from its own page and reinflated from trimmed bounds
+onto the logical frame canvas. Untrimmed grid layouts must produce equivalent
+anchored frames without trim metadata."""
 
 from __future__ import annotations
 

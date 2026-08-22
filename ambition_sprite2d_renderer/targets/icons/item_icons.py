@@ -1143,8 +1143,8 @@ def write_gauntlet_props(
 # ---- World props (taller than icons) ------------------------------------------
 #
 # Not 64x64 symbols: free-standing world prop sprites with their own aspect.
-# The shrine moved to `targets/props/shrine.py`; keep a tiny compatibility
-# wrapper here so the runtime's existing import path continues to work.
+# TODO(compat-remove): migrate the old shrine import path to `targets.props.shrine`, then
+# remove this compatibility export.
 
 from ..props.shrine import write_shrine_prop
 from ambition_sprite2d_renderer.core.draw import blending_draw

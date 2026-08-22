@@ -13,9 +13,9 @@ oversized red shoes. Every silhouette is a hand-jittered polygon (`_blob` /
 The sheet is deliberately over-authored so the Ambition engine can express
 *two* classic games from one body's data:
 
-  * a **Sonic-style platformer** — run / spin-dash / rolling ball / ledge grab
+  * a Sonic-style platformer — run / spin-dash / rolling ball / ledge grab
     / wall cling, with the jump and every curled pose in BALL form; and
-  * a **Smash-style fighter** — jab/punch, side/up/down tilts, the five aerials
+  * a Smash-style fighter — jab/punch, side/up/down tilts, the five aerials
     (nair/fair/bair/uair/dair), a spin special, shield, dodge-roll, and the
     ledge/getup-attack options.
 
@@ -30,7 +30,7 @@ Two render paths compose everything:
     seamlessly, and an asymmetric highlight quill + red streak make the full
     rotation actually read.
 
-**Super Sanic** is the same body, same moveset, same geometry — re-skinned. All
+Super Sanic is the same body, same moveset, same geometry — re-skinned. All
 drawing is parameterized by a `Skin` (palette + `spikes_up` + `aura`), so the
 transformation is literally a different skin: gold palette, spikes standing UP,
 red eyes, and a golden aura. Both forms register as targets from this one module
@@ -64,24 +64,22 @@ GROUND_Y = 112.0
 
 INK = "#0b0b0b"     # heavy wobbly outline — shared by both forms
 
-#: **How much of the raised spikes' authored reach actually fits the frame.**
+#: How much of the raised spikes' authored reach actually fits the frame.
 #:
-#: Jon: *"Super sanics spikes are clipped by the sprite renderer."* They were.
-#: The drawing canvas IS the logical frame, so a spike drawn past `y = 0` is not
-#: shortened, it is CUT — it ends in a flat horizontal line, which is what he saw.
-#: Measured with the pipeline's own `clipped_frame_edges`, sweeping this factor:
+#: The drawing canvas is the logical frame, so raised spikes drawn past `y = 0`
+#: are clipped. This factor was selected with `clipped_frame_edges`:
 #:
 #:     x1.00   61 of 181 frames cut        x0.80    2 cut
 #:     x0.85    4 of 181 cut               x0.76    0 cut
 #:
-#: ⭐ **base Sanic is the control and is clean at 0 of 181** — same body, same
+#:  base Sanic is the control and is clean at 0 of 181 — same body, same
 #: canvas, spikes swept BACK instead of up. So this is the raised fan's reach and
 #: nothing else, which is why one factor on one branch is the whole fix.
 #:
-#: ⛔ **not a round number and not a taste call**: 0.76 is the largest value
+#:  not a round number and not a taste call: 0.76 is the largest value
 #: measured that leaves every frame whole, and anything above it cuts something.
 #:
-#: ⛔⛔ **and it is NOT fixable by moving the body down or growing the frame.**
+#:  and it is NOT fixable by moving the body down or growing the frame.
 #: `auto_crop` is off for this sheet precisely so `ATTACK_HITBOXES` coordinates
 #: match draw space, so shifting the art or resizing the frame silently moves
 #: every authored hitbox with respect to the drawing. The spikes are the only

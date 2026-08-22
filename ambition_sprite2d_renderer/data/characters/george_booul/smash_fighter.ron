@@ -1,7 +1,7 @@
-// **GEORGE BOO'L'S PLATFORM-FIGHTER FACET — his values, in the repository that
-// owns character-authored material.**
+// GEORGE BOO'L'S PLATFORM-FIGHTER FACET — his values, in the repository that
+// owns character-authored material.
 //
-// ⭐ this file MOVED here from `game/ambition_demo_smash/assets/fighters/` on
+//  this file MOVED here from `game/ambition_demo_smash/assets/fighters/` on
 // 2026-08-19, on the 2026-08-19 GPT review's finding: *"Smash should select
 // George; it should not own George's values."* The demo's own module called it
 // "THIS DEMO'S CHARACTER PACKAGE", which was the wrong physical owner for
@@ -9,9 +9,9 @@
 // "game/ruleset-specific character FACET VALUES", and the Rust repo owns the
 // schema, preparation and runtime meaning those values conform to.
 //
-// ⚠ the review's scope fence, kept: ONE honest George package is the acceptance
-// criterion. ⛔ do NOT migrate the rest of the roster's facets here yet, and
-// ⛔ do NOT flatten George's sixteen composed moves into RON — representation
+//  the review's scope fence, kept: ONE honest George package is the acceptance
+// criterion.  do NOT migrate the rest of the roster's facets here yet, and
+//  do NOT flatten George's sixteen composed moves into RON — representation
 // and ownership are separate questions, and "don't flatten this" is settled
 // while "game-side Rust is the permanent home" is not.
 //
@@ -20,13 +20,13 @@
 
 // George Boo'l's platform-fighter facet — the excluded middle, as VALUES.
 //
-// ⭐ **these numbers were Rust literals in `src/george_booul_moveset.rs` until
-// D166's first facet landed.** They moved verbatim, with the reasoning that
+//  these numbers were Rust literals in `src/george_booul_moveset.rs` until
+// D166's first facet landed. They moved verbatim, with the reasoning that
 // justified them, because the reasoning is the character: a value with no reason
 // beside it is the thing that gets "balanced" by somebody who does not know what
 // it was for.
 //
-// ⛔ the rest of George's sixteen slots stay in Rust on purpose. They are
+//  the rest of George's sixteen slots stay in Rust on purpose. They are
 // authored by COMPOSING helpers (`strike`, `impulse`, `on_hit`,
 // `committed_tail`, `feel`) and his file carries a `debug_assert` stating a law
 // about the shape of his whole table; flattening that into RON would turn
@@ -34,7 +34,7 @@
 (
     character: "smash_george_booul",
     capture: (
-        // ⭐ **the excluded middle, applied to a grab.** George's table has three
+        //  the excluded middle, applied to a grab. George's table has three
         // fast options and eight slow ones and nothing in between; his grab
         // belongs with the eight. 0.16 of startup is slower than every grab in
         // the genre and slower than his own jab by more than three times, and the
@@ -42,13 +42,13 @@
         // which is the point. A body with no medium answer should not have a safe
         // grab either.
         //
-        // ⭐ **it was authored at 0.14 and HIS OWN LAW refused it**: the
+        //  it was authored at 0.14 and HIS OWN LAW refused it: the
         // `debug_assert` at the bottom of `george_booul_moveset()` fired with "a
         // George move landed between the pokes and the commitments", because 0.14
         // sits inside the (0.08, 0.15) gap that IS this character. The number
         // moved to the commitment side rather than the gap moving.
         //
-        // ⚠ the reach is LONG and SHALLOW (26 forward, 13 tall against his own
+        //  the reach is LONG and SHALLOW (26 forward, 13 tall against his own
         // 24-tall body): he is the heaviest fighter on the grid and he reaches,
         // he does not lunge. The hold sits at 20 forward — out at arm's length,
         // where a logician holds something he is examining.
@@ -64,7 +64,7 @@
                 hold_offset: (20.0, -2.0),
             ),
         ),
-        // ⚠ **a SLOW pummel that hurts.** 0.24 is a long beat — most of the genre
+        //  a SLOW pummel that hurts. 0.24 is a long beat — most of the genre
         // pummels twice in that time — and 4 is nearly a jab. George trades rate
         // for weight here exactly as he does everywhere else, and the tempo is
         // what makes the trade legible rather than the number.
@@ -75,7 +75,7 @@
             impact_at_s: 0.11,
             impact: (damage: 4),
         ),
-        // ⚠ **the release is LATE in the move** (0.20 of a 0.34 timeline), which
+        //  the release is LATE in the move (0.20 of a 0.34 timeline), which
         // is what makes the wind-up readable and the throw punishable if it is
         // predicted. The launch is nearly flat (-0.35 of vertical against 1.0
         // forward): George throws ACROSS the stage rather than up, so his throw
@@ -93,23 +93,23 @@
                 launch_dir: (1.0, -0.35),
             ),
         ),
-        // ⭐⭐ **HIS OTHER THREE THROWS ARE THREE DIFFERENT LOGICAL OPERATIONS,
-        // authored 2026-08-20 at Jon's ask.** He was the last fighter on the
+        //  HIS OTHER THREE THROWS ARE THREE DIFFERENT LOGICAL OPERATIONS,
+        // authored 2026-08-20 at Jon's ask. He was the last fighter on the
         // roster still holding one throw, and the three that arrived are NOT his
         // forward throw scaled — that is what the rest of the roster has, where
         // every fighter's back/up/down is its own f-throw times 1.08 / 1.04 /
         // 0.74 and the three answer the same question at three volumes.
         //
-        // ⛔ **the excluded middle governs the RELEASE too.** His own law says a
+        //  the excluded middle governs the RELEASE too. His own law says a
         // move is a poke or a commitment and the band 0.08..0.15 is empty; a
         // throw has no Active window, so `no_move_lives_between_the_pokes_and_
         // the_commitments` cannot see one — which is exactly why these obey it by
         // hand. 0.05, 0.17, 0.28, and his existing 0.20. Nothing in the band.
 
-        // **MODUS TOLLENS — deny the consequent and the antecedent goes with
-        // it.** His ONLY fast capture option, and the cheapest thing in his kit:
+        // MODUS TOLLENS — deny the consequent and the antecedent goes with
+        // it. His ONLY fast capture option, and the cheapest thing in his kit:
         // he does not turn around to throw backward, he simply stops holding and
-        // the body is behind him. ⚠ the flat 1.3 growth and the near-horizontal
+        // the body is behind him.  the flat 1.3 growth and the near-horizontal
         // launch are the point — this NEVER kills at any percent. What it buys is
         // the side of the stage he wants, which for the heaviest body on the grid
         // is worth more than the damage he gave up to get it.
@@ -125,16 +125,16 @@
                 launch_dir: (-1.0, -0.12),
             ),
         )),
-        // **THE TAUTOLOGY — P ∨ ¬P, which is true no matter what you put in it.**
+        // THE TAUTOLOGY — P ∨ ¬P, which is true no matter what you put in it.
         //
-        // ⭐⭐ **`knockback_growth: 0.0`, and it is the whole move.** `scaled_
+        //  `knockback_growth: 0.0`, and it is the whole move. `scaled_
         // knockback` short-circuits a zero growth and returns the base untouched,
         // so this throw ignores the victim's percent AND their weight: it sends a
         // fresh featherweight and a 200% heavyweight to the SAME height, every
         // time. Nothing else in the game does that. It is never a kill and never
         // gets worse — a juggle he can rely on the way he relies on a theorem.
         //
-        // ⚠ 145 base is deliberately ABOVE his f-throw's 138, and that is the
+        //  145 base is deliberately ABOVE his f-throw's 138, and that is the
         // trade rather than a mistake: it out-launches everything he has at 0%
         // and is the weakest thing he has at 120%, where the f-throw's 1.9 growth
         // has more than doubled it.
@@ -150,14 +150,14 @@
                 launch_dir: (0.0, -1.0),
             ),
         )),
-        // **REDUCTIO AD ABSURDUM — hold the assumption until it breaks.**
+        // REDUCTIO AD ABSURDUM — hold the assumption until it breaks.
         //
         // The slowest move in his capture kit and the hardest-hitting throw in
         // the game: 0.42 of timeline with the release at 0.28, which is longer
         // than his grab's entire startup-to-recovery. He does not put the body
         // down, he drives it into the stage until the position is untenable.
         //
-        // ⚠ **the one throw of his that KILLS**, by growth rather than by base:
+        //  the one throw of his that KILLS, by growth rather than by base:
         // 68 is feeble at 0% and the 2.6 growth is the steepest number in his
         // file. A throw that reads as slow and harmless early and takes a stock
         // at 130% is the same bargain every one of his commitments makes.

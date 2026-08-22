@@ -1,39 +1,9 @@
-"""See the swing: the character, the polygon that hurts, and the effect drawn for it.
+"""Preview a character swing, its damaging polygon, and its visual effect together.
 
-This is the picture the authoring loop was missing. Jon, opening this campaign:
-
-    I want it to be easy for an artist to know what hitpoly they are writing a
-    sprite for. Conversely I want a really good effect to have an artist be able
-    to draw a hitpoly to match it.
-
-Both directions need the same thing on screen at once, at the size the game will
-use, and until now neither was available without launching the game:
-`frame_debug` draws the polygon on the character and knows nothing about the
-effect, and the effect's own sheet is a square frame with no character in it.
-
-## It reads the GENERATOR, not the published assets
-
-Deliberately. Previewing what has already been rendered turns a five-second
-question into a regenerate-and-look cycle, and an authoring loop you have to
-publish into is one nobody iterates in. Editing a number in
-`slash_envelope.py` and running this shows the new swing immediately, before
-anything is written.
-
-## What it reproduces, and why that matters
-
-The runtime does not draw the effect where the polygon is. It projects the
-volume into an oriented quad (`CombatVolume::swing_shape`) — origin at the
-attacker, axis toward the volume, extent from its own points — and stretches the
-sprite into THAT. Art can therefore be a perfect fit in its own frame and land
-wrong in the game, which is exactly what happened repeatedly here: 16% of the
-drawn slash outside its polygon from an authoring-space mismatch, 9% more from a
-quarter-turn, 15% more from a margin applied after the projection.
-
-So this performs the same projection rather than drawing the two shapes side by
-side, and reports what fraction of the drawn effect lands outside the volume.
-That number is the contract: the hitbox may overreach the effect, but nothing
-drawn may fail to hit.
-"""
+The authoring view uses the same scale and coordinate relationships as the game
+so an artist can adjust hit geometry to match art, or art to match intended hit
+geometry, without launching the runtime. It is a visualization tool; the source
+of truth remains the authored swing/effect data."""
 
 from __future__ import annotations
 
@@ -85,7 +55,7 @@ def _swing_quad(poly: Sequence[Tuple[float, float]], attacker: Tuple[float, floa
     alen = math.hypot(ax, ay) or 1.0
     ux, uy = ax / alen, ay / alen
     px, py = -uy, ux
-    # ⚠ Measured from the ROOT, not the wielder — the quad is centred on the
+    #  Measured from the ROOT, not the wielder — the quad is centred on the
     # SWING. Measuring from a line through the attacker centres it on the
     # attacker, so a swing authored across the chest yields a quad reaching as
     # far below the body as the swing reaches above it, and the art lands half

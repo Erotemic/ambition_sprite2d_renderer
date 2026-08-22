@@ -38,7 +38,7 @@ def render_stock_icon(size: Tuple[int, int] = ICON_SIZE) -> Image.Image:
     """
     w, h = size
     image = Image.new("RGBA", size, (0, 0, 0, 0))
-    # ⛔ `blending_draw`, never a raw `ImageDraw.Draw`: a raw draw ASSIGNS alpha
+    #  `blending_draw`, never a raw `ImageDraw.Draw`: a raw draw ASSIGNS alpha
     # rather than compositing it, so the translucent rim below would punch a hole
     # in whatever it overlapped instead of darkening it. `test_no_raw_imagedraw`
     # guards this on every content path, and it caught this file.

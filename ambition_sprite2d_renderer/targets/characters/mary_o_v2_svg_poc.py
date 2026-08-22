@@ -283,8 +283,8 @@ def _render_form(form: FormSpec, out_dir: str | Path) -> List[Path]:
     return [outputs[k] for k in ("canonical", "canonical_transparent", "spritesheet", "yaml", "ron", "actor", "preview")]
 
 
-# ⭐⭐ **NO TARGETS HERE ANY MORE: THIS IS MARY-O'S ONLY RENDERER, AND IT SHIPS
-# UNDER HER OWN NAMES.** `mary_o_v2`, `mary_o_v2_tall` and `mary_o_v2_fire` call
+#  NO TARGETS HERE ANY MORE: THIS IS MARY-O'S ONLY RENDERER, AND IT SHIPS
+# UNDER HER OWN NAMES. `mary_o_v2`, `mary_o_v2_tall` and `mary_o_v2_fire` call
 # `_draw_poc_form` directly now, so registering `*_svg_poc` twins would publish
 # the same frames under a second set of names and invite the two to drift. The
 # module keeps the drawing code; only the duplicate registration is gone.

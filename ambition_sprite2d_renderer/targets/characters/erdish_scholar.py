@@ -1,26 +1,10 @@
 """Bespoke procedural sprite generator for Erdish, the wandering mathematician.
 
-Erdish used to be a ``toon_side`` preset.  That shared rig made him read as a
-generic mannequin with an elderly palette: round featureless head, capsule
-limbs, a floating satchel, and the same reach pose in every animation.  This
-renderer gives him a character-specific construction inspired by the visual
-language of an eccentric twentieth-century mathematician:
-
-* a long, narrow, elderly face with a prominent nose and enormous round glasses;
-* a connected swept-white hair mass with unruly side wisps;
-* a very slim body inside an oversized blue-gray jacket and cream shirt;
-* a slight forward stoop that stays energetic rather than infirm;
-* expressive empty-hand gestures for talk and interact animations;
-* a complete prop-free traversal set for player control: run, jump, fall,
-  crouch/crawl, dash, slide, dodge roll, wall movement, ledge movement,
-  climbing, swimming, blocking, hit reaction, and defeat.
-
-The sprite is a *base character* sheet.  It deliberately renders no held item,
-satchel, paper, notebook, chalk, particles, floor ellipse, or drop shadow.  All
-geometry is authored in Python/Pillow.  Limbs are built as overlapping tapered
-segments under a shoulder cap / cuff / hand, so every pose remains a single
-logically connected character rather than a collection of floating pieces.
-"""
+The renderer gives Erdish a narrow elderly face, round glasses, swept white hair,
+a slim stooped body, and expressive empty-hand gestures. It provides the full
+prop-free traversal/action set required for player control. Held items, papers,
+particles, floor ellipses, and shadows are intentionally separate presentation
+layers."""
 
 from __future__ import annotations
 

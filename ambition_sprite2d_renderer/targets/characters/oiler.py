@@ -93,9 +93,8 @@ ACTOR_METADATA = {
         },
     },
     "brain": {"default_preset": "patrol_peaceful"},
-    # What he does in the Hall is a POLICY (``patrol_peaceful``); whether he may
-    # swing is a capability, and since 2026-08-16 he authors a sixteen-move smash
-    # repertoire, so his catalog row names ``striker_swipe``.
+    # Hall behavior is policy (`patrol_peaceful`); attack availability is a
+    # capability, so the catalog separately names `striker_swipe`.
     "actions": {"default_preset": "striker_swipe"},
     "animation_bindings": {
         "default": {"animation": "idle", "events": []},

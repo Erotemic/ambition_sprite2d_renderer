@@ -286,11 +286,11 @@ def _frame_defects(pub, ras, meaningful: int = _MEANINGFUL, rgb_tol: int = 16,
     Alpha-aware and symmetric. For each ±``shift`` alignment (``ras`` translated
     with zero fill — never wrapped) let ``ap``/``ar`` be the [0,1] alphas:
 
-    * **occupancy** ``= Σ|ap-ar| / Σ max(ap,ar)`` over the union of meaningful
+    * occupancy ``= Σ|ap-ar| / Σ max(ap,ar)`` over the union of meaningful
       alpha. Missing, invented, AND wrong-alpha geometry all land here, at any
       opacity — a translucent beam the SVG drops contributes its full alpha mass,
       while a soft edge both frames render the same (``ap≈ar``) contributes ~0.
-    * **rgb** ``= Σ min(ap,ar)·|rgb_p-rgb_r| / Σ min(ap,ar)`` over the mutually
+    * rgb ``= Σ min(ap,ar)·|rgb_p-rgb_r| / Σ min(ap,ar)`` over the mutually
       occupied region — straight colour disagreement weighted toward pixels both
       frames confidently fill, so a colour drift is caught but a missing part
       (``min=0`` there) does not leak into the colour term.
@@ -343,14 +343,11 @@ def _frame_verified(pub, ras) -> bool:
 
 def _autoconvert_one(name: str, target, out_dir: Path, verify_frames: int = 6,
                      full: bool = False):
-    """Auto-capture one target -> saved scene + fidelity stats.
+    """Auto-capture one target into a saved scene plus fidelity statistics.
 
-    Status semantics (per the 2026-07-23 conversion review): see
-    :func:`_classify_status`. ``needs-seam`` (returned earlier) means the
-    renderer never crossed the ``build_sheet`` publication seam, so no
-    trustworthy frame association exists. With ``full=True`` every captured
-    frame is verified — the bar for calling a single character ``captured``;
-    otherwise a strided sample is checked and a clean result is ``sampled``.
+    See :func:`_classify_status` for status semantics. `needs-seam` means no
+    trustworthy published-frame association exists. `full=True` verifies every
+    captured frame; otherwise a clean strided sample is reported as `sampled`.
     """
     import io
 
@@ -440,9 +437,8 @@ def _autoconvert_one(name: str, target, out_dir: Path, verify_frames: int = 6,
             else:
                 failed += 1
 
-    # Review artifact: PIL (published) | SVG (scene render) | diff for the
-    # first frame of each animation, so pre-existing-vs-conversion questions
-    # answer themselves at a glance (Jon's triage request).
+    # Review artifact: published frame | scene render | diff for the first
+    # frame of each animation.
     try:
         if resvg_py is not None:
             strips = []
