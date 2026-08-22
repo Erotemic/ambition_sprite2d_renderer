@@ -1395,6 +1395,24 @@ def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, 
             root_y=[-8,-10,-12,-11,-8,-6,-5,-6], torso=[-5,-7,-8,-6,-3,0,-1,-3], head=[3,5,6,4,2,0,1,2],
             near_hand=([26,31,34,31,26,21,19,22],[-61,-66,-70,-68,-62,-57,-55,-58],[55,45,35,45,55,65,70,62]),
             far_hand=([-22,-27,-30,-27,-22,-17,-15,-18],[-60,-65,-69,-67,-61,-56,-54,-57],[125,135,145,135,125,115,110,118]))
+    if "dizzy" in rows:
+        # Dizzy is a BALANCE failure, not a gesture. Both arms hang and trail
+        # the sway like pendulums; the torso leans through one slow cycle and
+        # the head lags it, so he reads as dragged around rather than driving.
+        #
+        # It was previously unauthored and fell through POSE_ALIASES to
+        # "think", which raises one hand to the face and holds the other still
+        # -- a deliberate pose, and the opposite of losing your balance.
+        #
+        # Amplitude is what separates it from idle (torso 7 vs idle's 1.1, head
+        # 15 vs 0.8) while the arms stay at rest in both. The face is meant to
+        # carry the rest of the read and has no dizzy expression authored yet.
+        f, d = rows["dizzy"]
+        clips["dizzy"] = _pose(r, f, d, loop=True,
+            root_y=[2,1,0,-1,-2,-2,-1,0,1,2], torso=[0,4,7,7,4,0,-4,-7,-7,-4],
+            head=[-12,-4,5,12,15,12,4,-5,-12,-15],
+            near_hand=([14,16,18,19,20,20,18,16,15,14],[-49,-48,-48,-47,-47,-47,-48,-48,-49,-49],[80]*10),
+            far_hand=([-16,-15,-13,-11,-10,-10,-11,-13,-15,-16],[-48,-48,-47,-46,-46,-46,-46,-47,-48,-48],[100]*10))
     action_specs = {
         "think": dict(loop=True, torso=[0,2,4,3,1,-1,-1,0], head=[-2,-5,-8,-6,-2,1,0,-1],
             near_hand=([17,9,0,-7,-10,-6,3,12],[-48,-58,-69,-80,-87,-81,-68,-56],[80,65,50,35,25,35,55,70])),
