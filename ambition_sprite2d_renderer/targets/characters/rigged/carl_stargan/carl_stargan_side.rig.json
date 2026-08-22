@@ -39940,7 +39940,7 @@
     "renderer_version": "0.4.0",
     "renderer_backend": "native-extension",
     "renderer_origin": "/home/agent/.local/uv/envs/uvpy3.13.2/lib/python3.13/site-packages/resvg_py/resvg_py.abi3.so",
-    "svg_sha256": "c09272ee9da694bcd254d781767cca575affbdc7877afb6e7fda0d38eda9c148",
+    "svg_sha256": "3ab947a4a31aeae17a3483b3108816177040dd63da7bd646154227b59cd3714c",
     "part_order_policy": "svg-document-order",
     "part_order": "svg-document"
   }
