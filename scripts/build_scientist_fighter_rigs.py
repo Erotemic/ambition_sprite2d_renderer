@@ -285,11 +285,14 @@ SPECS = {
         # instead start from a relaxed west-facing stance with both forearms
         # folding back toward the body.
         natural_arm_pose={
-            # Targets are deliberately comfortably inside each chain's reach:
-            # Carl should retain a visible elbow bend instead of snapping into
-            # the straight-armed SVG paper-doll stance.
-            "near": LimbPoseHint(target=(-12.0, -58.0), joint=(-4.3, -72.7)),
-            "far": LimbPoseHint(target=(-22.0, -52.0), joint=(-12.8, -61.5)),
+            # Wrist targets must sit INSIDE the chain, and the old ones did not:
+            # measured from each shoulder they were 100.5% and 103.2% of upper +
+            # lower, against a 0.98 cap. IK clamped both arms ruler-straight and
+            # aimed them at the target, which is what put Carl's hands out in
+            # front of his hips. These sit at 86% and 88%, so the elbow keeps a
+            # real bend and the arms hang at his sides.
+            "near": LimbPoseHint(target=(6.0, -51.0), joint=(13.0, -66.3)),
+            "far": LimbPoseHint(target=(-8.0, -53.0), joint=(-5.4, -66.2)),
         },
         arm_max_reach_ratio=0.98,
     ),
