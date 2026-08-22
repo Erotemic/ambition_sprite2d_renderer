@@ -384,7 +384,10 @@ POSE_ALIASES: Final[dict[str, str]] = {
 
 
 EFFECT_ALIASES: Final[dict[str, str]] = {
-    "idle_look_up": "think",
+    # ⚠ no "idle_look_up" here. It used to borrow "think", which draws three
+    # thought bubbles beside his head -- a leftover from when the POSE table
+    # also aliased the row to "think". The pose is now idle with a raised
+    # head, so the row is looking UP, not thinking, and it carries no effect.
     "shield_raise": "block",
     "shield_release": "block",
     "parry": "block",
