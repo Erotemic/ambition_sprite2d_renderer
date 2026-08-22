@@ -212,26 +212,46 @@ _PORTRAIT_FACE = FaceGuide(
 # Hall shows them side by side.
 _PORTRAIT_VIEW_WIDTH = 86.0
 _PORTRAIT_CENTER_Y = 68.0
+# How far above canvas scale her portrait source is rendered. Named because the
+# ethereal hum's radii are authored in canvas pixels and have to be told.
+PORTRAIT_RENDER_SCALE = 3
 
 
 def render_portraits(out_dir: str | Path, **opts):
-    """Publish Emmy's close-ups from her own rig, framed and MOVING.
+    """Publish Emmy's close-ups from her own rig, framed, MOVING, and HUMMING.
 
     ⭐ the default clip loops rather than holding a still. A portrait that never
     moves reads as a broken asset next to a Hall full of animated bodies, and her
     idle already carries the restrained secondary motion the dress was rigged for
     — there was nothing to author, only something to publish.
+
+    ⭐ and it carries the ethereal hum, for the same reason. The hum is not
+    decoration on top of Emmy, it is what she LOOKS like: every gameplay frame
+    goes through `apply_ethereal_hum`, and this hook went straight to the bare
+    rig, so her close-up was the one place in the game she stopped glowing. Idle,
+    talk and interact draw no other effects, which makes the hum the entire
+    difference between her portrait and her body.
+
+    The hum breathes once per animation cycle, so it belongs on each frame
+    individually — a still lifted out of this loop catches the breath wherever
+    the loop was, which is why the published still is its own named clip.
     """
     del opts
     doc = _doc()
 
     def frame(animation: str, index: int, count: int) -> Image.Image:
+        t = doc.frame_time(animation, index, count)
         source = doc.render_at(
             animation,
-            doc.frame_time(animation, index, count),
+            t,
             supersample=4,
-            scale=3,
+            scale=PORTRAIT_RENDER_SCALE,
         )
+        # The hum reads from the rig's own alpha, and here the rig IS the source
+        # — there is nothing composed over it to exclude. Passing the render
+        # scale is what keeps the field the size it is in play; the radii are
+        # authored in canvas pixels and a blur does not scale itself.
+        source = apply_ethereal_hum(source, source, t, scale=PORTRAIT_RENDER_SCALE)
         return render_framed_portrait(
             source,
             _PORTRAIT_FACE,

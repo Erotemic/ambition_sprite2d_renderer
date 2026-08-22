@@ -55,7 +55,13 @@ def _alpha_scaled(alpha: Image.Image, factor: float) -> Image.Image:
 
 
 @profile
-def apply_ethereal_hum(frame: Image.Image, rig_image: Image.Image, t: float) -> Image.Image:
+def apply_ethereal_hum(
+    frame: Image.Image,
+    rig_image: Image.Image,
+    t: float,
+    *,
+    scale: float = 1.0,
+) -> Image.Image:
     """Add Emmy's prominent breathing silhouette field behind the composed frame.
 
     The hum is derived from the solved rig alpha rather than from screen-space
@@ -63,6 +69,12 @@ def apply_ethereal_hum(frame: Image.Image, rig_image: Image.Image, t: float) -> 
     changes collision/rig geometry.  The field deliberately breathes in both
     radius and intensity: a cyan body-adjacent shell anchors the silhouette
     while a much larger violet atmosphere visibly swells and recedes.
+
+    ``scale`` is the render scale of the raster being passed in, relative to the
+    rig's own canvas.  The radii below are authored in canvas pixels, and a blur
+    radius does not scale itself: rendering Emmy at portrait resolution and
+    applying the same numbers would give her a hairline outline instead of an
+    atmosphere.  Every caller rendering above canvas scale owes this argument.
     """
     if frame.mode != "RGBA":
         frame = frame.convert("RGBA")
@@ -82,8 +94,8 @@ def apply_ethereal_hum(frame: Image.Image, rig_image: Image.Image, t: float) -> 
     # large without surrendering the SVG-rig performance gains.  Both radii move
     # with the breath, making the aura expand roughly a dozen publication pixels
     # over the cycle rather than only changing alpha in place.
-    close_radius = 5.5 + 3.5 * breath
-    broad_radius = 18.0 + 16.0 * bloom
+    close_radius = (5.5 + 3.5 * breath) * scale
+    broad_radius = (18.0 + 16.0 * bloom) * scale
     close = alpha.filter(ImageFilter.GaussianBlur(close_radius))
     broad = alpha.filter(ImageFilter.GaussianBlur(broad_radius))
 
