@@ -1,42 +1,9 @@
-"""The swing envelope — ONE smooth curve, shared by the art and the hit polygon.
+"""Shared analytic swing envelope for slash art and hit geometry.
 
-A slash has exactly one shape, and two consumers with opposite needs:
-
-* the effect wants it dense and smooth, because a blade's edge is a curve
-  and any faceting reads as a wobble;
-* the hit polygon wants it coarse and convex, because it is a container, not
-  a drawing — a handful of vertices around the art, with no curvature of its
-  own.
-
-So the envelope is defined once, analytically, and each consumer samples it at
-the density it needs. `half_at` is the whole definition; everything else here is
-sampling.
-
-⚠ THIS REPLACES A MEASURED TABLE. The first attempt sampled the polygon's
-profile off a rasterised scan and interpolated the results — which imported the
-scan's 1-pixel quantisation as ripple, and a Catmull-Rom through noisy samples
-is a wobble with extra steps. Jon, 2026-08-02: "The vfx should be curved and
-smooth, not a perfect arc, but no wobblyness like it has now." An analytic
-profile cannot ripple: there is nothing between the samples to disagree with.
-
-## Coordinates
-
-`t` runs 0 at the body to 1 at the tip along the swing axis; `half_at(t)` is the
-half-width across it, normalised so the peak is exactly 1. Both consumers place
-that into world or frame units themselves, which is what lets the same curve
-describe a 99-unit forehand and a shorter aerial.
-
-## Why this profile
-
-A quadratic through three authored points: the near edge, the belly, and a
-BLUNT far end. Jon's sketch measures 86% of full height at the body, 100% at the
-bulge and 38% at the far end — it is a half disc squashed forward, not a spike,
-and a profile that runs to zero is "too pokey at the end".
-
-Quadratic on purpose. It is the lowest-order curve that can hit three points,
-it has no inflection to ripple through, and a hull sampled evenly across it
-stays close — which is what lets the containing polygon be coarse.
-"""
+`half_at(t)` defines normalized half-width from body (`t=0`) to tip (`t=1`).
+Visual effects sample it densely for a smooth edge; hit polygons sample it
+coarsely as a convex container. A single analytic profile keeps both consumers
+on the same authored shape without raster-derived ripple."""
 
 from __future__ import annotations
 
@@ -189,9 +156,9 @@ def _convex_hull(points):
 #: character target and the effect is a prop target, and whichever one held it
 #: would make the other import across that boundary to ask what it was drawing.
 #:
-#: Sized off Jon's sketch: 6.6 player-widths across, 1.9 player-heights tall,
+#: Swing proportions: 6.6 player-widths across, 1.9 player-heights tall,
 #: near edge 86% of full height, far end 38%. See `player_robot_v3.py` for the
-#: scale reading that turned those ratios into these pixels.
+#: corresponding pixel scale.
 PLAYER_ROBOT_SWING = SwingDescriptor(
     reach=128 * 1.53,
     half=83.0,

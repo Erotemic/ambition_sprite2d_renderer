@@ -78,10 +78,8 @@ RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
 TARGET_BASENAME = "weird_hermit"
-# Files the tack-on installer copies into the sandbox sprites dir.
-# Aligned with the rest of the project's `<target>_spritesheet.{ext}`
-# convention as of 2026-05-24 — the previous bare-name output was a
-# divergence from the runtime's manifest scanner expectations.
+# Files the tack-on installer copies using the runtime's standard
+# `<target>_spritesheet.{ext}` naming convention.
 SHEET_FILES = [
     f"{TARGET_BASENAME}_spritesheet.png",
     f"{TARGET_BASENAME}_spritesheet.yaml",

@@ -58,18 +58,10 @@ def test_svg_joint_layout_remains_fallback_without_pose_authority():
 
 
 def test_a_part_nested_inside_another_belongs_to_the_deeper_one():
-    """**An artist may nest one recognised part inside another.**
+    """Nested recognized parts belong to the deepest matching owner.
 
-    ⛔ this was a hard build failure until 2026-08-16. Jon reorganised Carl
-    Stargan's SVG so his hair sublayers sit inside `Head`, and the Patent Clerk's
-    hands inside the forearms — ordinary Inkscape structure — and the rig refused
-    to build: *"does not have one-to-one drawable ownership: multiply_assigned=
-    {'path1933': ['head', 'hair_front'], ...}"*. The container takes descendants
-    so its leftovers can still be drawn, which meant it also took the sublayers
-    that are parts in their own right. Both characters then shipped their OLD art
-    for four days, because a failed rig build leaves the previous sheet in place.
-
-    ⭐ the deepest owner wins, and the container keeps only what no child claimed.
+    Containers retain only descendants not claimed by a recognized child part,
+    allowing ordinary nested Inkscape structure without duplicate ownership.
     """
 
     import xml.etree.ElementTree as ET

@@ -94,11 +94,8 @@ def _brick_lines(draw: ImageDraw.ImageDraw, *, fill, mortar, variant: str = "pla
 
 #: The interrobang, pixel by pixel, on the 16x16 cell.
 #:
-#: Jon asked for "actual question mark blocks... although we should probably make
-#: them interrobang blocks as a parody", and the glyph is the joke: a `?` hook and
-#: a `!` stem are the SAME stroke once you draw them small. The hook curls in from
-#: the top and lands on a straight stem, and the stem gets the exclamation's
-#: detached dot. Read it either way — that is the point.
+#: Pixel interrobang: a question-mark hook shares the exclamation stem and
+#: detached dot, so the 16px glyph reads as either mark.
 #:
 #: Authored as explicit runs rather than a font glyph because at 16px a font is
 #: unreadable mush, and because `ImageFont` would make the tileset depend on which
@@ -124,10 +121,8 @@ def _block_tile(coin: bool = False, spent: bool = False) -> Image.Image:
     """A bonus block. `spent` draws the used state: dim, flat, and glyphless."""
     img, draw = _new_tile()
     if spent:
-        #  A SPENT BLOCK READS AS SPENT WITHOUT ANIMATION. Jon: "in mary-o
-        # blocks that are used need a new texture so they are visually
-        # distinguishable." Darker, and the inner highlight is dropped so it reads
-        # as flat rather than lit — a block that has nothing left to give.
+        # A spent block is darker and loses its inner highlight so it reads as
+        # inert without animation.
         draw.rectangle((0, 0, 15, 15), fill=(138, 106, 52, 255), outline=OUTLINE, width=1)
         draw.rectangle((2, 2, 13, 13), outline=(112, 86, 42, 255), width=1)
         return img

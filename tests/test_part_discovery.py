@@ -1,25 +1,9 @@
-"""Poison tests for transform-aware, semantically-honest part discovery.
+"""Tests for transform-aware, semantic SVG part discovery.
 
-These pin the three structural correctness bugs a GPT 5.6 review demonstrated
-in the auto-capture converter (2026-07-23):
-
-1. **Nested/sibling transforms were discarded** when matching part
-   occurrences, so two occurrences differing only by an ancestor transform
-   (a composite-fold ``translate``, a resize ``scale``, a layer ``rotate``,
-   or two separately-transformed siblings) collapsed onto ONE placement — the
-   second occurrence rendered at the first's location. Fixed by flattening
-   every transform into geometry before discovery.
-
-2. **Semantic component names were ignored during dedup**, so two explicitly
-   named components with identical geometry (``left_thruster`` /
-   ``right_thruster``) merged into one part — editing one would edit both.
-   Fixed by keying candidate identity on the full Inkscape label path.
-
-3. (status honesty lives in ``test_status_levels.py``.)
-
-Each test asserts on the emitted placements/parts, so a silently-broken
-matcher fails here instead of shipping a mislocated sprite.
-"""
+Discovery must flatten ancestor transforms before comparing geometry and must
+keep explicitly named components distinct even when their geometry matches.
+Assertions cover emitted parts and placements so transform or semantic
+collapsing fails at conversion time."""
 from __future__ import annotations
 
 import re
@@ -57,8 +41,7 @@ def _sib(x: int, inner: str = None) -> str:
 
 
 def test_separate_sibling_translates_place_distinctly() -> None:
-    """GPT's core repro: two identical shapes under DIFFERENT sibling
-    translates in one frame must land 20px apart, not both at the first's."""
+    """Identical parts under distinct sibling transforms keep distinct placement."""
     frame = _sib(10) + _sib(30)
     frames = {("walk", 0): frame, ("walk", 1): frame}
     parts, bodies = discover_parts(frames)

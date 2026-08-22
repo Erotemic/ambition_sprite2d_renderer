@@ -95,10 +95,8 @@ ACTOR_METADATA.update(
             https://en.wikipedia.org/wiki/You_Have_to_Burn_the_Rope
             https://www.newgrounds.com/portal/view/432872
             """
-            # This is the GPT 5.6 description and interestingly, it is wrong.
-            # "The Smirking Behemoth is a parody of the enormous grinning slab-boss archetype from "
-            # "rope-cut mobile puzzle games. Its health bar and smug face deliberately pull attention "
-            # "away from the suspended piano, anvil, rope, and environmental solution above it."
+            # Keep the authored description above; do not substitute inferred
+            # references that are not part of this character's source material.
         ),
         "gameplay_description": (
             "Use as a tutorial boss for indirect combat and environmental awareness. Direct attacks "

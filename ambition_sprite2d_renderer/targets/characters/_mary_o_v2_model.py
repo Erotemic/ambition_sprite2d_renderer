@@ -167,10 +167,8 @@ class Pose:
 # form drift 22% wider than the tall form purely on decoration. So the gameplay
 # body is stated here instead of measured.
 #
-# ONE width for every form, centred on the leg column all three share
-# (x 64..93, centre 78.5), so growing or catching fire never changes how wide
-# she is — Jon, 2026-08-18: "we keep the width of collision the same for big and
-# small", even though the grown sprite may be visually wider.
+# Use one collision width for every form, centered on the shared leg column.
+# Visual growth may widen decoration without changing gameplay width.
 #
 # Use one 56 px gameplay width for every form. It clears the narrow short-form
 # drawing while still closely covering the grown torso.
@@ -274,15 +272,9 @@ class FormSpec:
 # its parts exactly where they already are and re-proportioning any other form
 # carries them along.
 #
-#  which edge is load-bearing, and it is not symmetric. The torso's west
-# side stays at `body_x` and the drawing WIDENS EASTWARD when a pose crouches.
-# So the back shoulder is a fixed distance in from the west edge while the front
-# shoulder tracks the east edge as it moves. A centre-and-half-width rig cannot
-# say that — it moves both shoulders outward together, which quietly re-drew
-# every crouching and skidding frame of a form Jon had already approved.
-#
-#  hips and legs measure from the west edge too: the drawing has always held
-# them still under crouch.
+# The torso's west edge is fixed while crouching widens eastward. Anchor the
+# back shoulder, hips, and legs from that fixed edge; only the front shoulder
+# follows the moving east edge.
 #  written as the RATIOS they were solved from, against the grown form's
 # authored 9.4-wide, 9.5-tall torso. A rounded decimal is off by a millionth of
 # a unit, which is invisible until it lands on a pixel boundary and flips one
@@ -329,15 +321,9 @@ class FormRig:
     from the form's own authored sizes, so changing a size moves everything
     together by construction rather than by remembering.
 
-    ⚠ **it reproduces the GROWN form exactly, and deliberately moves the short
-    one.** The fractions are solved from the grown form, which Jon approved, so
-    migrating a pose onto the rig leaves it byte-identical — verified frame by
-    frame against a control render: every one of its own animations matches, and
-    the only grown frames that differ are the two transform rows that host SHORT
-    frames on the tall sheet.
-
-    The short form moves because the hand nudges it accumulated were CORRECTIONS
-    for the grown form's absolute offsets landing on a torso half the width.
+    The fractions are solved from the grown form, so migrating it onto the rig
+    preserves its authored geometry. The short form is re-proportioned from its
+    own dimensions instead of inheriting grown-form absolute offsets.
     Under the rig those nudges double-count — `leg_dx = -0.833` dragged her feet
     out from under her — so they are zeroed where the rig now does the work.
     """
@@ -467,10 +453,8 @@ def form_collision_box(form: FormSpec) -> Dict[str, int]:
 SHORT_FORM = FormSpec(
     target_name=TARGET_BASE,
     display_name="Mary-O v2",
-    #  HALF THE GROWN FORM'S HEIGHT (D165, Jon 2026-08-18: small Mary-O is one
-    # brick, grown is two). The head is deliberately NOT halved — it is the
-    # chibi silhouette a one-tile protagonist needs, and the classic small-Mario
-    # read is a big head on a small body.
+    # Short form uses half the grown gameplay height. The head is intentionally
+    # not halved so the one-tile form retains its large-head silhouette.
     body_height=3.0,
     leg_height=2.177,
     body_width=5.4,

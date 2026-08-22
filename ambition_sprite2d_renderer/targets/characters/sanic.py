@@ -66,10 +66,8 @@ INK = "#0b0b0b"     # heavy wobbly outline — shared by both forms
 
 #: How much of the raised spikes' authored reach actually fits the frame.
 #:
-#: Jon: *"Super sanics spikes are clipped by the sprite renderer."* They were.
-#: The drawing canvas IS the logical frame, so a spike drawn past `y = 0` is not
-#: shortened, it is CUT — it ends in a flat horizontal line, which is what he saw.
-#: Measured with the pipeline's own `clipped_frame_edges`, sweeping this factor:
+#: The drawing canvas is the logical frame, so raised spikes drawn past `y = 0`
+#: are clipped. This factor was selected with `clipped_frame_edges`:
 #:
 #:     x1.00   61 of 181 frames cut        x0.80    2 cut
 #:     x0.85    4 of 181 cut               x0.76    0 cut

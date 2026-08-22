@@ -1,17 +1,8 @@
-"""The one place sprite-sheet packing / trim policy is decided.
+"""Central sprite-sheet packing and trim policy.
 
-Every build path — the adapter spine (``authoring/sheet.py``), the tack-on spine
-(``authoring/sheet_build.py``), and the rigged-doc spine
-(``authoring/rigdoc.py``) — used to carry its own ``trim`` default (adapter
-True, tack-on False, rigged True) plus a per-config opt-out (``boss.yaml``'s
-``trim: false``). That scattered policy is replaced by ``policy_for(target)``:
-a declarative, per-target table that says how a target's frames are laid out
-into page images.
-
-The policy is expected to CHANGE as we learn each sheet's memory access pattern
-(which sprites are resident together, which want their own pages), so it lives
-here as data, not as defaults sprinkled through the builders.
-"""
+All adapter, tack-on, and rig-document build paths ask `policy_for(target)` for
+layout policy instead of carrying independent defaults. Per-target policy remains
+data here so packing can evolve without diverging builders."""
 from __future__ import annotations
 
 from dataclasses import dataclass

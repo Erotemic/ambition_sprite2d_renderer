@@ -1,13 +1,8 @@
-"""Poison test for honest conversion status levels (GPT 5.6 review item 3).
+"""Tests that conversion status names reflect the amount of verified output.
 
-The bug: a conversion was called ``captured`` when only a small SAMPLE of
-frames (six by default) had been raster-verified — establishing nothing about
-the other frames. ``captured`` must mean *every* published frame was verified;
-a clean-but-sampled result is ``sampled``; anything with a gap is ``partial``.
-
-``_classify_status`` is a pure function precisely so this boundary is pinned
-directly, not inferred from a full render.
-"""
+A sampled subset of frames may establish partial verification but must not be
+reported as a fully captured target. Status levels are tied to the evidence the
+converter actually checked."""
 from __future__ import annotations
 
 import sys

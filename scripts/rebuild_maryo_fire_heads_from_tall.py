@@ -1,16 +1,9 @@
 #!/usr/bin/env python3
-"""Normalize Fire Mary-O front head/body/arms against Tall Mary-O.
+"""Normalize Fire Mary-O front geometry from Tall Mary-O.
 
-Policy:
-* Fire front head uses the tall front head geometry with fire hat recolor/wings.
-* The assembled fire front head is algebraically aligned to the tall front head.
-* Fire front arms use the exact tall front arm geometry and placement, recolored
-  to the fire palette, plus one centered shoulder spike per arm.
-* Fire front arm/head rig pivots match the corresponding tall front pivots.
-* Fire front torso clones the working fire side torso.
-
-No raster or image-generation operations are used to modify the SVG.
-"""
+The fire form reuses the tall front head/body/arm geometry while retaining
+fire-specific recolor and hat details. This script rebuilds those derived pieces
+without redefining an independent body shape."""
 from __future__ import annotations
 
 import argparse

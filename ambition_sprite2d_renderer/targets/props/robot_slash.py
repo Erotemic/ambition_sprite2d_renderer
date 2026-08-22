@@ -41,11 +41,8 @@ SHEET_FILES = (
 
 FRAME_SIZE = (160, 160)
 SUPER = 4
-# 5 frames x 20 ms = 100 ms, which is exactly the melee ACTIVE window
-# (`SwipeSpec.active_s = 0.10`). At 24 ms the effect outlived the hitbox by a
-# fifth of its own life, so the last thing a player saw of a swing was a blade
-# that no longer hurt anything (Jon, 2026-08-02: "the vfx should be trimmed to
-# the damage window").
+# 5 frames x 20 ms = 100 ms, matching `SwipeSpec.active_s = 0.10` so the
+# visible effect and damaging window end together.
 ROWS: List[Tuple[str, int, int]] = [
     ("side", 5, 20),
     ("up", 5, 20),
@@ -53,10 +50,8 @@ ROWS: List[Tuple[str, int, int]] = [
     ("poke", 5, 20),
 ]
 
-# Paler, still blue (Jon, 2026-08-02). The old ramp bottomed out at a heavy
-# navy, which read as a solid object rather than a flash of motion; every stop
-# moves toward white and loses saturation, and the deepest is now a mid blue
-# instead of a near-black one.
+# Pale blue ramp: keep even the deepest stop in mid blue so the effect reads as
+# motion rather than a solid dark object.
 CORE = (255, 255, 255, 255)
 HOT = (240, 251, 255, 255)
 BODY = (206, 238, 255, 255)
@@ -108,12 +103,9 @@ def _amplitude(t: float) -> float:
 # exactly those axes, so art authored here lands ON the hit polygon rather than
 # near it.
 #
-# The art sits INSIDE the polygon, never outside it. Jon's rule: it is fine
-# if the hitbox slightly overreaches the effect, but 100% of what is drawn must
-# hit — "the player should never feel like they should have hit when they
-# didn't". The polygon is the envelope scaled OUT by its own margin, so drawing
-# at the same peak divided by a little more than that margin lands inside it,
-# with room left for the wash's blur to feather across.
+# Keep all visible art inside the hit polygon. The polygon expands the shared
+# envelope by its margin, leaving room for the visual blur without drawing a
+# non-damaging edge.
 #  THE FRAME IS THE SWING, and its size is DERIVED, not restated.
 #
 # The runtime stretches this frame into the quad it computes from the hit
@@ -293,15 +285,8 @@ def _draw_sweep_frame(t: float) -> Image.Image:
     grad = ImageChops.multiply(grad, mask)
 
     # Colour by the same ramp: the deep stop far from the edge, white at it.
-    #  COLOUR AND ALPHA ARE DECOUPLED. Alpha carries the fade; the colour stays
-    # PALE the whole way down. Running the ramp to a deep blue meant the faint
-    # trail was both dark and transparent, which over a dark stage composites to
-    # something closer to soot than to a blue flash — Jon: "make the color more
-    # pale, still blue, but paler blue". The deepest stop a pixel can take now
-    # is the mid blue that used to be the SECOND stop.
-    # More blue and more present than the first pale pass, which Jon read as
-    # washed out. The wake keeps a real mid blue instead of drifting to
-    # near-white, and only the last stop before the edge goes white.
+    # Alpha carries the fade independently of hue. Keep the wake in visible
+    # mid blues and reserve near-white for the final edge.
     stops = ((0.00, DEEP), (0.35, EDGE), (0.72, BODY), (0.90, HOT), (1.00, CORE))
     ramp = []
     for i in range(256):
@@ -352,17 +337,10 @@ def _draw_down_frame_raw(t: float) -> Image.Image:
 
 
 def _poke_polygon(progress: float, width_scale: float = 1.0):
-    """A straight THRUST, in swing space — the down-tilt, and only it.
+    """Draw the down-tilt as a straight thrust in swing space.
 
-    Jon keeps this one a "Marth-like" poke while every other attack becomes a
-    half disc: a thrust reads by reach, not by area. So the shape is a long
-    lens, full height through the middle and tapered at both ends, with the
-    taper at the BODY end short — a spear does not start at a point, the hand
-    is already holding something.
-
-    Full height is right, not generous: the poke's hit volume is thin, so the
-    quad the renderer stretches this into is thin, and art that left margin here
-    would draw a thrust narrower than the one that hurts.
+    The long lens emphasizes reach rather than area. It fills the thin hit-volume
+    quad vertically so the visible thrust is not narrower than the damaging one.
     """
     # Inside the volume, like every other row: the thrust's polygon is
     # parallel-sided at the quad's own half-height, so art drawn at the frame

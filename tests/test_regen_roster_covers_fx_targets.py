@@ -1,16 +1,8 @@
-"""The root regen roster must name every effect target this renderer defines.
+"""The root sprite regeneration roster must cover every discovered effect target.
 
-Three sheets each carry their own `test_full_sprite_regen_roster_publishes_X`,
-written by whoever added that sheet. That is a hand-kept list guarded by a
-hand-kept list, and on 2026-08-16 it failed exactly the way that shape fails:
-`george_booul_vfx` and `oiler_vfx` were authored here, and NEITHER was ever
-added to `regen_sprites.sh`. George's sheet is published in the game assets only
-because someone ran it with a focused `--target`, so a fresh clone's regen would
-have quietly dropped it; Oiler's had no published sheet and no cues in the bank.
-
-So the invariant is stated once, over what discovery actually finds, rather than
-once per target by whoever remembers.
-"""
+Expected targets come from renderer discovery rather than per-target hand-kept
+lists, so adding an effect without adding it to `regen_sprites.sh` fails once at
+the root roster boundary."""
 
 from pathlib import Path
 

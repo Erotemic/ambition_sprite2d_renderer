@@ -193,8 +193,8 @@ def _sprite_transform_workers() -> int:
         ) from ex
     return max(1, workers)
 
-# Restricted namespace for expression channels. Documents are local,
-# Jon-authored content; this keeps expressions to math, not a sandbox.
+# Restricted namespace for local expression channels: math only, with no
+# builtins.
 _EXPR_GLOBALS = {
     "__builtins__": {},
     "sin": math.sin,

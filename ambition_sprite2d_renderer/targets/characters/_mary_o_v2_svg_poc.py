@@ -2211,23 +2211,11 @@ _DANGLING_USE_WARNED: set[str] = set()
 
 
 def _warn_about_dangling_uses(root: ET.Element, svg_path: Path) -> None:
-    """**A `<use>` whose href names no id renders NOTHING, and says nothing.**
+    """Warn when an SVG `<use>` references a missing id.
 
-    ⭐ this replaces the one check worth keeping out of the eight structural
-    tests removed on 2026-08-18. Jon's ruling was *"I don't want tests asserting
-    how things should be authored that a human will edit"* — and he is right that
-    pinning layer sets and id schemes fails on WORK rather than on a defect. A
-    dangling reference is different in kind: it is not a style, it is a part that
-    silently does not draw.
-
-    ⛔ **a WARNING, never a refusal.** Refusing would stop an artist's
-    in-progress file from loading at all, which is a worse failure than the one
-    being reported — and the whole reason those tests went was that they turned
-    ordinary authoring into a red suite.
-
-    ⚠ warned ONCE per file per process: a rig document is built six times (three
-    forms x two projections) and the same dangling id would otherwise be
-    reported six times per render.
+    A dangling reference renders nothing and is a real defect, but it should not
+    block loading an in-progress asset. Warn once per file per process because a
+    rig may be built repeatedly across forms and projections.
     """
     ids = {node.get("id") for node in root.iter() if node.get("id")}
     dangling = []

@@ -190,18 +190,9 @@ def _silhouette_profile() -> dict:
     return {"columns": columns, "bounds": bounds}
 
 
-# Emmy's portrait viewport, in her own 192x208 rig canvas.
-#
-#  she had NO `render_portraits` until 2026-08-17, so she fell through to the
-# generator default — which re-runs the gameplay frame at portrait size. That is
-# a full-body shot letterboxed into a portrait frame: correct, and useless as a
-# portrait, because the face lands about a sixth of the frame high.
-#
-# The guide is authored in CANVAS coordinates, never raster ones, so it survives
-# a change of `render_scale`/`supersample` (see `FaceGuide`). Her head bone
-# resolves to roughly (95, 58) from the rig's own chain
-# (pelvis -> torso -> head off `ground_y`); the face sits above that bone, and
-# the viewport then drops below it to keep her collar and shoulders in shot.
+# Emmy's portrait viewport in her 192x208 rig canvas. Author it in canvas
+# coordinates so render scale and supersampling do not move the crop. The view
+# centers the face while retaining collar and shoulders.
 #
 #  the viewport centre is to the RIGHT of the face on purpose. Her art is drawn
 # facing east with an extended arm, so centring the crop on the face put 48px of

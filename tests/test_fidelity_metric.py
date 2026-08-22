@@ -1,28 +1,9 @@
-"""Poison tests for the symmetric, alpha-aware frame-fidelity metric.
+"""Tests for the symmetric, alpha-aware frame-fidelity metric.
 
-Two GPT 5.6 review rounds shaped this:
-
-1. The verifier first compared colour only inside the *intersection* of opaque
-   pixels, so DROPPED or INVENTED geometry was never scored — a half-empty
-   frame passed as ``captured``.
-2. The first fix still thresholded alpha at ``>200`` to build a binary "solid"
-   mask, which discarded EVERY translucent pixel. A missing/invented/wrong-alpha
-   translucent component (glow, beam, cloth, effect) then scored ``(0.0, 0.0)``
-   and passed anyway.
-
-The metric is now continuous and alpha-aware (``_frame_defects`` ->
-``occupancy`` over the union of meaningful alpha *mass*, and ``rgb`` weighted by
-mutual occupancy). A frame is ``_frame_verified`` only when both pass a tight
-occupancy bar (completeness, any opacity) and a looser rgb bar (rasterizer/AA
-colour slack). These tests pin:
-
-* omitted / invented OPAQUE geometry fails,
-* omitted / invented / wrong-alpha TRANSLUCENT geometry fails (the round-2 hole),
-* a translucent component is never silently discarded (nonzero occupancy),
-* correct RGB but wrong alpha fails,
-* in-tolerance 1px shift verifies (no edge wrap), beyond-tolerance fails,
-* colour noise over complete geometry still verifies.
-"""
+The metric scores occupancy over meaningful alpha mass and RGB error weighted by
+mutual occupancy. These tests require omitted or invented opaque/translucent
+geometry, wrong alpha, and excessive displacement to fail while allowing small
+rasterization shifts and bounded color noise."""
 from __future__ import annotations
 
 import sys
@@ -93,9 +74,7 @@ def test_invented_opaque_fails() -> None:
 
 # --- round 2: translucent geometry (the reported hole) -------------------------
 def test_omitted_translucent_component_fails() -> None:
-    """GPT's core round-2 repro: matching opaque body, but the render DROPS a
-    translucent appendage. Under the old >200 mask this scored (0,0) and passed;
-    it must now register real occupancy and fail."""
+    """Dropping a translucent appendage must still fail occupancy fidelity."""
     src = _translucent_appendage(_body(_canvas()), 120)
     dropped = _body(_canvas())  # body only, no appendage
     d = _frame_defects(src, dropped)

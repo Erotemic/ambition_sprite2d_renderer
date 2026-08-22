@@ -558,24 +558,12 @@ def _view_root(root: ET.Element, view: str) -> ET.Element:
 def _resolve_nested_ownership(
     entries: List[Tuple[int, "_PartBinding"]],
 ) -> List["_PartBinding"]:
-    """**The most specific layer owns the art.**
+    """Assign nested art to the most specific recognized part.
 
-    ⛔ **an artist nesting one recognised part inside another used to break the
-    build.** Jon reorganised Carl Stargan's SVG so his hair sublayers sit inside
-    `Head`, and the Patent Clerk's hands inside the forearms — both perfectly
-    ordinary Inkscape structure — and the rig refused to build at all:
-    *"does not have one-to-one drawable ownership: multiply_assigned={'path1933':
-    ['head', 'hair_front'], ...}"*. The container absorbs nested groups so its
-    leftovers (`head_misc`) can be drawn, which means it also absorbed the
-    sublayers that are parts in their own right.
-
-    So a drawable claimed by several bindings goes to the DEEPEST one, and a
-    container keeps only what no child part claimed. That is what "leftovers"
-    meant all along; it was just never subtracted. A container left with nothing
-    is dropped rather than published empty.
-
-    ⚠ the one-to-one check downstream is NOT relaxed — it still fails on art a
-    binding genuinely cannot place, which is the error worth keeping.
+    A drawable claimed by several bindings belongs to the deepest one. Parent
+    containers retain only unclaimed descendants and empty containers are
+    dropped. The downstream one-to-one check still rejects genuinely unplaced
+    art.
     """
 
     owner: Dict[str, Tuple[int, int]] = {}

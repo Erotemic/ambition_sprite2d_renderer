@@ -460,14 +460,9 @@ class SideRobotGenerator(CharacterGenerator):
             p.near_leg_lower = 80.0 + 10.0 * recoil
             p.eye_squint = 0.28 + 0.20 * recoil
         elif animation in {"walk", "run"}:
-            # Stride amplitude bumped 2026-05-29 so the legs read
-            # clearly across the 8-frame cycle. The previous amp=18/27
-            # gave a ~36° hip swing; against the supersample-3 → 128px
-            # downsample the alternating-foot read came across as a
-            # shuffle. The new amp=34/52 lifts each foot well past the
-            # standing pose. `lift_phase` adds a clear knee-bend on the
-            # forward foot (lower-leg tucks up under the body) so the
-            # silhouette has a visible "step" shape, not just a hip
+            # Use a broad stride and a forward-foot knee bend so the
+            # downsampled silhouette reads as distinct steps rather than a
+            # shuffle.
             # sway. Body_bob + arm swing scale together.
             stride = math.sin(t * math.tau)
             bounce = (1.0 - math.cos(t * math.tau * 2.0)) * 0.5
@@ -998,16 +993,9 @@ class SideRobotGenerator(CharacterGenerator):
             p.near_leg_lower = 26.0 + 58.0 * rise
             p.eye_squint = 0.20 * (1.0 - rise)
         elif animation == "wall_grab":
-            # Pinned-against-wall hold. Both arms locked straight out
-            # forward against the wall surface, body leans hard into
-            # the wall, knees drawn up so the silhouette reads "hanging
-            # on by the hands" rather than just "standing leaning."
-            # 2026-05-29: rewrote the pose for a much clearer read.
-            # Old pose had arms at near-shoulder angles + extended
-            # legs, which looked almost identical to idle. New pose:
-            # arms aim FORWARD (clamped horizontally toward the wall),
-            # body tilts ~22° into the wall, near leg pulled up high
-            # so a bent knee crosses the body silhouette.
+            # Wall-grab silhouette: arms locked toward the wall, torso leaned
+            # into it, and knees drawn up so the pose reads as hanging rather
+            # than standing.
             breathe = math.sin(t * math.tau)
             p.root_x = 10.2 + breathe * 0.5
             p.root_y = -11.0 + breathe * 0.8
@@ -1878,12 +1866,8 @@ class SideRobotGenerator(CharacterGenerator):
                 y = (42 - zt * 24) * S
                 d.text((x, y), "Z", fill=_with_alpha(pal["visor_glow"], int(150 * (1.0 - zt * 0.45))))
         if animation == "hover":
-            # 2026-05-29: doubled the jet plume length and added a
-            # bright white-hot inner core so the fly pose reads as
-            # genuine thrust rather than "small flicker under feet."
-            # Two flicker phases (offset 90°) so the two jets pulse
-            # slightly out of sync — visually busier and obviously
-            # "alive" instead of mirrored.
+            # Long jets with a white-hot core make hover read as thrust. Offset
+            # flicker phases keep the two plumes from pulsing in lockstep.
             flame_l = 0.65 + 0.35 * math.sin(frame_index * 1.7)
             flame_r = 0.65 + 0.35 * math.sin(frame_index * 1.7 + math.pi / 2)
             # Anchor each jet at the actual foot position, mirroring

@@ -194,10 +194,6 @@ def clipped_frame_edges(frame: Image.Image) -> List[str]:
     frame and therefore cannot see ink that was never there. That is why this
     check has to run on `render_fn`'s output, before padding, before trim.
 
-    Found because Jon reported super Sanic's spikes looking cut. They were: the
-    super skin is the base body with `spikes_up=True`, and only the super sheet
-    was affected. A roster scan then found the same signature on 23 of 133 sheets
-    (2026-08-16).
 
     ⚠ **"touches the edge" is NOT the test, and using it would cry wolf on 74
     sheets** — with `auto_crop` the frame is fitted to the art, so touching the
@@ -574,23 +570,9 @@ def _grid_sheet_rows(target, rendered_rows, fw, fh, label_width, max_dim):
         draw_sheet.rectangle(
             (0, y, label_width - 1, y + fh - 1), fill=(18, 22, 30, 235)
         )
-        # Clipped to the column, for the reason `creator_lab_props` learned the
-        # expensive way: text drawn into a label column is composited UNDER the
-        # frames, and prop/character art is mostly transparent, so anything that
-        # overflows `label_width` shows THROUGH the sprite in game. There it was a
-        # 44-character truncation on a proportional font; here there was no limit
-        # at all, so a long animation name is one rename away from the same
-        # artifact (2026-07-29).
-        #
-        # Nothing shipping overflows today (verified: `player_robot_v3` renders
-        # byte-identical with and without this). It is the guard, not a repair.
-        #
-        #  and a guard must not become the bug it guards against. A sheet that
-        # declares NO column (`label_width == 0`) has always drawn its labels
-        # straight over frame 0, and clipping to a zero-width column would
-        # silently DELETE that text rather than clip it. Deleting a label nobody
-        # asked me to delete is a worse change than the overflow — so no column
-        # means no clipping, and the caller keeps exactly what it had.
+        # Clip labels to their declared column so text cannot show through
+        # transparent frame art. A zero-width column means no clipping because
+        # those sheets intentionally draw labels over frame 0.
         draw_sheet.text(
             (8, y + 10),
             _fit_text(draw_sheet, anim, title_font, label_width - 16),

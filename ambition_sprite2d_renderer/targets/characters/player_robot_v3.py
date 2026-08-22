@@ -336,15 +336,9 @@ def _apply_fx(img: Image.Image, animation: str, frame_idx: int, nframes: int) ->
             fd.ellipse((x - r, y - r, x + r, y + r), outline=(60, 226, 255, 150), width=1)
 
     if effect_animation == "block":
-        #  the centre was the literal `(64, 63)`, and the body is not there:
-        # the torso origin for this frame is (112.3, 129.0), so the shield was
-        # drawn (-48, -66) from the robot it belongs to. Jon, 2026-08-09: "the
-        # bubble in the wrong place, just kinda to the upper left."
-        #
-        # Every BODY-ATTACHED effect in this function already positions from a
-        # `world[..]` anchor — the blade from `hand.tip`, the aim glow from
-        # `base`. The AMBIENT ones (swim bubbles, hit sparks) hardcode, and are
-        # right to, because they are attached to nothing. A shield is attached.
+        # The shield is body-attached, so center it on the torso world anchor.
+        # Ambient effects may use frame-local positions because they belong to no
+        # body part.
         pulse = 1.0 + 0.05 * math.sin(t * math.tau)
         cx, cy = world["torso"].origin
         box = (cx - 40 * pulse, cy - 48 * pulse, cx + 40 * pulse, cy + 48 * pulse)
@@ -438,34 +432,10 @@ def frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
 
 
 # ── The protagonist's slash geometry ─────────────────────────────────────────
-#
-#  THIS BELONGS TO v3 (Jon, 2026-08-02: "not every character should inherit
-# this particular slash vfx, sfx, hurtbox. This belongs to the player v3").
-# `SideRobotGenerator` is shared by every robot in the family, so authoring the
-# protagonist's swing there gave a goblin-tier robot the hero's reach.
-#
-# The SHAPE lives in `core/slash_envelope.py`, because the effect and the
-# polygon are the same swing and must not be two authorings of it. What differs
-# is density: the art samples the envelope finely and smoothly, this samples it
-# COARSELY and hulls the result. "The hit poly should be a low res convex poly
-# around it — we only need a small number of vertices, and no curvature on the
-# hit poly." It is a container, not a drawing.
-#
-#  SCALE ASSUMPTION. Jon's sketch draws its player box at aspect 0.31 where the
-# real collision body is 0.63, so scaling by its width and by its height
-# disagree by 2x (reach 197 vs 99 world units). These take the HEIGHT reading,
-# which keeps reach where it already was. `SwingDescriptor.reach` is the single knob.
-#  THE NUMBERS LIVE IN `core/slash_envelope.py` NOW, as one `SwingDescriptor`
-# the effect reads too. They used to be here AND restated in the art's own frame
-# units, and the two had already drifted: this file passed a tip of 0.96 into a
-# sampler whose shared default was 1.0, so the two ends of the same swing
-# disagreed by 4% of its reach.
-#
-# The scale reading behind the sizes, kept here because it is a decision about
-# this character: Jon's sketch draws its player box at aspect 0.31 where the
-# real collision body is 0.63, so scaling by its width and by its height
-# disagree by 2x (reach 197 vs 99 world units). The descriptor takes the HEIGHT
-# reading, which keeps reach where it already was.
+# This swing belongs to player robot v3, not the shared robot family. The visual
+# effect and hit polygon share `core/slash_envelope.py`; art samples the envelope
+# densely while collision uses a coarse convex hull. `SwingDescriptor.reach` is
+# the single size control, scaled from the character's collision height.
 SWING = slash_envelope.PLAYER_ROBOT_SWING
 #  The swing's axis must pass through the ATTACKER, and the attacker is the
 # body's CENTRE — not the anchor the rest of this file measures from. `118` is
@@ -511,11 +481,10 @@ def _poke_poly(ox, oy, dx, dy, reach, half):
 
 
 def _player_attack_hitboxes(size: Tuple[int, int]) -> Dict[str, dict]:
-    """v3's OWN attack geometry. Slashes everywhere but the down-tilt.
+    """Return player-v3 attack geometry.
 
-    The down-tilt stays a Marth-like poke by Jon's call: a thrust reads by
-    reach, not by area. `air_neutral` stays the family's ring — a swing envelope
-    has a direction and a spin has none — and no move binds that row anyway.
+    Slashes use the shared swing envelope except down-tilt, which remains a
+    directional thrust. `air_neutral` keeps the family's directionless ring.
     """
     w, h = size
     cx = w // 2

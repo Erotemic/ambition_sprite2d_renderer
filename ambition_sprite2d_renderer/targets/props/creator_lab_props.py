@@ -741,20 +741,8 @@ def build_sheet(
     for row_idx, spec in enumerate(props):
         y = row_idx * FRAME_H
         draw.rectangle((0, y, LABEL_W, y + FRAME_H), fill=(22, 24, 34, 204))
-        #  EVERY line is clipped to the column WIDTH, not to a character
-        # count. This truncated the description at 44 CHARACTERS, and 44
-        # characters of this font is far wider than the 150px the column
-        # actually has — so the tail ran past `LABEL_W` and into frame 0.
-        #
-        # Frames are `alpha_composite`d over that text and prop art is mostly
-        # transparent, so the overflow showed THROUGH the sprite: the opening
-        # room of the game rendered its Neural Console with "…holographic … la…"
-        # written across it, and the Genesis Vat and Power Core the same. It read
-        # as a UI layer drawing behind the props; it was pixels baked into the
-        # sheet (found by capturing `intro_wake_room`, 2026-07-29).
-        #
-        # A character count cannot express "fits in the column" for a
-        # proportional font. Measuring can.
+        # Fit labels by measured width rather than character count so
+        # proportional text cannot spill into transparent frame art.
         draw.text(
             (10, y + 10),
             _fit(draw, spec.display_name, font, LABEL_W - 20),

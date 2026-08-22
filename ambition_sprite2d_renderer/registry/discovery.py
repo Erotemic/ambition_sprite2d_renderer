@@ -50,14 +50,8 @@ CATEGORIES: Tuple[str, ...] = (
     "icons",
     "projectiles",
 )
-# Note: there used to be a separate `review_npcs` category for YAML-
-# config-driven characters that lived in `configs/review/*.yaml`. As
-# of the Phase 6 character-catalog cleanup (2026-05-24) those targets
-# merge into `characters` — the split was an internal authoring
-# detail that didn't map to runtime behavior (many "review NPCs"
-# ship to the runtime via the same sprite registry as everyone else).
-# The `configs/review/` directory still exists for backwards-
-# compat authoring, but its contents now register under `characters`.
+# YAML-driven review configs register under `characters`; authoring format does
+# not create a separate runtime category.
 
 # Modules under `targets/characters/` that define a `CharacterGenerator` (or a
 # helper for one) and are driven by YAML configs through `registry/character_generators.py`

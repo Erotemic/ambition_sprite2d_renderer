@@ -54,10 +54,7 @@ FIRE_MARY = MaryPalette(
 
 #: Warp-pipe body, shadow side, and lit side.
 #:
-#:  copper since 2026-08-04, at Jon's request — *"we should tweak the pipe
-#: sprites so they are copper colored instead of green"*. The names moved with
-#: the colour: `PIPE_COPPER` holding a copper value is the kind of lie that
-#: survives for years and makes the next reader distrust every constant near it.
+#: Copper pipe palette. Constant names follow the rendered hue.
 #:
 #: The three keep their original value RELATIONSHIPS (mid / ~0.65x / ~1.4x) so the
 #: bevel reads exactly as it did; only the hue moved.
@@ -67,14 +64,7 @@ PIPE_COPPER_LIGHT = (224, 158, 96, 255)
 #: The pipe's inner SHEEN stripe — the bright vertical highlight down its lit
 #: side.
 #:
-#:  this was an inline `(55, 188, 101, 255)` literal in three places, so the
-#: palette rename could not see it and the pipes came out copper with a GREEN
-#: stripe. Caught by reading the generated sprite's colour histogram rather
-#: than looking at it: 224 pixels of the old hue survived, which is invisible at
-#: 16px and obvious in a count (2026-08-04).
-#:
-#:  a constant exists precisely so a recolour reaches every use. Three inline
-#: copies of a colour are three places a rename will miss.
+#: Keep the sheen in the shared pipe palette so recolors update every use.
 PIPE_COPPER_SHEEN = (243, 190, 140, 255)
 #: The shadow line under a pipe's lip, where the cap overhangs the body.
 #:
