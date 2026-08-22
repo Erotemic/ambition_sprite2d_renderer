@@ -53,6 +53,22 @@ class PortraitClip:
     def still(cls, image: Image.Image) -> "PortraitClip":
         return cls((image,), duration_ms=0, looping=False)
 
+    @classmethod
+    def loop(
+        cls, frames: Sequence[Image.Image], duration_ms: int
+    ) -> "PortraitClip":
+        """A clip that cycles forever — an idle breath, a talk cycle.
+
+        The counterpart to :meth:`still`, and named because a looping default is
+        what a portrait usually wants: a face that never moves reads as a broken
+        asset beside a Hall full of animated bodies.
+        """
+
+        frames = tuple(frames)
+        if not frames:
+            raise ValueError("a looping portrait clip needs at least one frame")
+        return cls(frames, duration_ms=int(duration_ms), looping=True)
+
 
 @dataclass(frozen=True)
 class PortraitPose:
@@ -151,6 +167,22 @@ def face_guide_from_metadata(
         source_width=sw,
         source_height=sh,
     )
+
+
+def configured_still_clip(job: Any) -> str | None:
+    """The clip a config-backed job names for STILL consumers, if any.
+
+    Authored as ``visual.portrait.still``, beside the face guide that already
+    lives there. A job that names nothing lets a still fall through to
+    ``default``'s first frame, which is the right answer while its default is
+    itself a still.
+    """
+
+    portrait = dict(job.visual or {}).get("portrait") if getattr(job, "visual", None) else None
+    if not isinstance(portrait, Mapping):
+        return None
+    still = portrait.get("still")
+    return str(still) if still else None
 
 
 def default_portrait_poses(generator: Any, job: Any) -> dict[str, PortraitPose]:
@@ -297,7 +329,9 @@ def render_generator_portraits(
             duration_ms=pose.duration_ms,
             looping=pose.looping,
         )
-    return write_portrait_sheet(target, clips, out_dir)
+    return write_portrait_sheet(
+        target, clips, out_dir, still_clip=configured_still_clip(job)
+    )
 
 
 @profile
@@ -406,8 +440,11 @@ class PortraitProduct:
     manifest_path: Path
     frame_width: int
     frame_height: int
-    default_clip: str
-    default_rect: tuple[int, int, int, int]
+    # The STILL this product shows in a review sheet — its own `still_clip`
+    # where it names one, its `default_clip` otherwise. A gallery cell is a
+    # still consumer, and a looping default's first frame is not a chosen pose.
+    still_clip: str
+    still_rect: tuple[int, int, int, int]
 
 
 def _ron_field(text: str, name: str) -> str:
@@ -415,6 +452,13 @@ def _ron_field(text: str, name: str) -> str:
     if match is None:
         raise ValueError(f"portrait manifest missing string field {name!r}")
     return match.group(1)
+
+
+def _optional_ron_field(text: str, name: str) -> str | None:
+    """The same read as :func:`_ron_field`, for a field a manifest may omit."""
+
+    match = re.search(rf"\b{name}:\s*\"([^\"]+)\"", text)
+    return match.group(1) if match else None
 
 
 def _ron_int_field(text: str, name: str) -> int:
@@ -438,12 +482,16 @@ def read_portrait_product(manifest_path: str | Path) -> PortraitProduct:
     image_name = _ron_field(text, "image")
     frame_width = _ron_int_field(text, "frame_width")
     frame_height = _ron_int_field(text, "frame_height")
+    # The STILL, where the target names one. A gallery cell is a still consumer
+    # like any other, and once `default` loops its first frame is wherever the
+    # loop starts — which is not the pose the author chose to be seen in.
     default_clip = _ron_field(text, "default_clip")
-    marker = f'{_ron_string(default_clip)}: ('
+    still_clip = _optional_ron_field(text, "still_clip") or default_clip
+    marker = f'{_ron_string(still_clip)}: ('
     clip_start = text.find(marker)
     if clip_start < 0:
         raise ValueError(
-            f"portrait manifest {manifest_path} has no default clip {default_clip!r}"
+            f"portrait manifest {manifest_path} has no clip {still_clip!r}"
         )
     rect_match = re.search(
         r"\(x:\s*(\d+),\s*y:\s*(\d+),\s*w:\s*(\d+),\s*h:\s*(\d+)\)",
@@ -460,8 +508,8 @@ def read_portrait_product(manifest_path: str | Path) -> PortraitProduct:
         manifest_path=manifest_path,
         frame_width=frame_width,
         frame_height=frame_height,
-        default_clip=default_clip,
-        default_rect=rect,
+        still_clip=still_clip,
+        still_rect=rect,
     )
 
 
@@ -485,10 +533,10 @@ def discover_portrait_products(source_dir: str | Path) -> tuple[list[PortraitPro
 
 
 @profile
-def load_default_portrait_frame(product: PortraitProduct) -> Image.Image:
-    """Load one product's named default frame as an independent RGBA image."""
+def load_portrait_still(product: PortraitProduct) -> Image.Image:
+    """Load one product's STILL frame as an independent RGBA image."""
 
-    x, y, w, h = product.default_rect
+    x, y, w, h = product.still_rect
     with Image.open(product.image_path) as sheet:
         return sheet.convert("RGBA").crop((x, y, x + w, y + h))
 
@@ -500,7 +548,7 @@ def write_portrait_gallery(
     *,
     columns: int = 8,
 ) -> tuple[Path, list[str]]:
-    """Write a labeled contact sheet of every installed default portrait."""
+    """Write a labeled contact sheet of every installed portrait's still."""
 
     from ..core.draw import font as load_font
     from PIL import ImageDraw
@@ -528,7 +576,7 @@ def write_portrait_gallery(
             outline=(76, 80, 100, 255),
             width=1,
         )
-        frame = load_default_portrait_frame(product)
+        frame = load_portrait_still(product)
         scale = min(image_w / frame.width, image_h / frame.height)
         shown = frame.resize(
             (max(1, round(frame.width * scale)), max(1, round(frame.height * scale))),
@@ -566,6 +614,7 @@ def _manifest_to_ron(
     target: str,
     image_name: str,
     frame_size: tuple[int, int],
+    still_clip: str | None,
     clips: Mapping[str, tuple[PortraitClip, list[tuple[int, int, int, int]]]],
 ) -> str:
     lines = [
@@ -576,8 +625,10 @@ def _manifest_to_ron(
         f"    frame_width: {int(frame_size[0])},",
         f"    frame_height: {int(frame_size[1])},",
         '    default_clip: "default",',
-        "    clips: {",
     ]
+    if still_clip:
+        lines.append(f"    still_clip: {_ron_string(still_clip)},")
+    lines.append("    clips: {")
     for name, (clip, rects) in clips.items():
         lines.extend(
             [
@@ -600,12 +651,25 @@ def write_portrait_sheet(
     clips: Mapping[str, PortraitClip],
     out_dir: str | Path,
     *,
+    still_clip: str | None = None,
     max_columns: int = 8,
 ) -> list[Path]:
-    """Pack named portrait clips and emit canonical PNG + RON products."""
+    """Pack named portrait clips and emit canonical PNG + RON products.
+
+    ``still_clip`` names the clip a STILL consumer draws — a select-screen cell
+    or a HUD panel. It exists because the clip that PLAYS and the pose a UI box
+    shows are different choices: once ``default`` is a looping idle, its first
+    frame is wherever the loop happens to start. Omitting it is fine, and means
+    a still request falls through to ``default``'s first frame.
+    """
 
     if "default" not in clips:
         raise ValueError(f"portrait target {target!r} must define a 'default' clip")
+    if still_clip is not None and still_clip not in clips:
+        raise ValueError(
+            f"portrait target {target!r} names still clip {still_clip!r}, "
+            "which it does not publish"
+        )
     if not clips:
         raise ValueError(f"portrait target {target!r} has no clips")
 
@@ -667,6 +731,7 @@ def write_portrait_sheet(
             target=target,
             image_name=image_name,
             frame_size=frame_size,
+            still_clip=still_clip,
             clips=clip_rects,
         ),
         encoding="utf8",
@@ -679,6 +744,7 @@ __all__ = [
     "FaceGuide",
     "PortraitClip",
     "PortraitPose",
+    "configured_still_clip",
     "default_portrait_poses",
     "face_guide_from_metadata",
     "portrait_files",
@@ -688,7 +754,7 @@ __all__ = [
     "write_default_portrait_from_canonical",
     "PortraitProduct",
     "discover_portrait_products",
-    "load_default_portrait_frame",
+    "load_portrait_still",
     "read_portrait_product",
     "write_portrait_gallery",
     "write_portrait_sheet",

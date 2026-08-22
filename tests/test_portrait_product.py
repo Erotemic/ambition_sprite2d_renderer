@@ -11,6 +11,7 @@ import pytest
 from ambition_sprite2d_renderer.authoring.generator import CharacterGenerator
 from ambition_sprite2d_renderer.authoring.portrait import (
     PortraitClip,
+    read_portrait_product,
     write_portrait_sheet,
 )
 from ambition_sprite2d_renderer.registry import CharacterJob, Target, discover_all_targets
@@ -63,6 +64,58 @@ def test_portrait_sheet_requires_default_and_emits_runtime_shape(tmp_path):
     assert "duration_ms: 90" in text
     assert "looping: true" in text
     assert text.count("(x:") == 3
+
+
+def test_a_target_may_name_which_clip_is_its_still(tmp_path):
+    """A moving default and a chosen still are two different answers.
+
+    Once `default` loops, its first frame is wherever the loop starts — which is
+    not a pose anyone picked. `still_clip` is how a target says what a UI box
+    should draw instead, and the review reader has to follow it or the gallery
+    goes on showing frame zero.
+    """
+
+    outputs = write_portrait_sheet(
+        "sample",
+        {
+            "default": PortraitClip.loop(
+                (_sample_frame(), _sample_frame()), duration_ms=140
+            ),
+            "portrait": PortraitClip.still(_sample_frame()),
+        },
+        tmp_path,
+        still_clip="portrait",
+    )
+    text = outputs[1].read_text(encoding="utf8")
+    assert 'default_clip: "default"' in text, "the clip that PLAYS is still named"
+    assert 'still_clip: "portrait"' in text
+
+    product = read_portrait_product(outputs[1])
+    assert product.still_clip == "portrait"
+    # Frame 2 of the page: the two looping default frames come first.
+    assert product.still_rect == (64 * 2, 0, 64, 80)
+
+
+def test_a_target_that_names_no_still_falls_through_to_its_default(tmp_path):
+    outputs = write_portrait_sheet(
+        "sample",
+        {"default": PortraitClip.still(_sample_frame())},
+        tmp_path,
+    )
+    text = outputs[1].read_text(encoding="utf8")
+    assert "still_clip:" not in text, "an unnamed still must not be invented"
+    product = read_portrait_product(outputs[1])
+    assert product.still_clip == "default"
+
+
+def test_a_still_clip_naming_nothing_is_rejected(tmp_path):
+    with pytest.raises(ValueError, match="which it does not publish"):
+        write_portrait_sheet(
+            "sample",
+            {"default": PortraitClip.still(_sample_frame())},
+            tmp_path,
+            still_clip="portrait",
+        )
 
 
 @dataclass(frozen=True)
@@ -273,9 +326,22 @@ def test_hunny_horror_portraits_publish_dialogue_flash_clips(tmp_path, monkeypat
         "hunny_horror_boss_portraits.png",
         "hunny_horror_boss_portraits.ron",
     ]
-    assert Image.open(outputs[0]).size == (256 * 8, 320 * 3)
+    # DERIVED from what the boss declares, not frozen. A hardcoded page size and
+    # render count pin the PACKING ARITHMETIC, and they go red the day a clip
+    # gains a frame — which is a content decision, exactly like the clip names
+    # this test already stopped freezing. The invariant worth holding is that the
+    # page is big enough for every declared frame and no bigger, and that each
+    # one cost a fresh render.
+    declared_frames = manifest.count("(x:")
+    columns = min(8, declared_frames)
+    rows = -(-declared_frames // columns)
+    assert Image.open(outputs[0]).size == (256 * columns, 320 * rows)
     render_calls = [call for call in calls if call[3] == 4]
-    assert len(render_calls) == 21
+    assert len(render_calls) == declared_frames, (
+        f"the manifest declares {declared_frames} frames but the rig was rendered "
+        f"{len(render_calls)} times — a portrait frame was reused, not rerendered"
+    )
+    assert declared_frames > 6, "portrait coverage collapsed to a handful of frames"
     #  this used to freeze the clip NAMES — `{"rest", "walk", "roar",
     # "swipe"}` — and the boss re-sourced one portrait from `maul` instead of
     # `walk`. Which of its own animations a character draws a portrait from is
@@ -319,12 +385,19 @@ def test_oiler_portrait_hook_requests_native_svg_scale(monkeypatch, tmp_path):
         "oiler_portraits.png",
         "oiler_portraits.ron",
     ]
-    assert Image.open(outputs[0]).size == (256 * 8, 320)
     assert Image.open(outputs[0]).getchannel("A").getbbox() is not None
-    render_calls = [call for call in calls if call[3] == 4]
-    assert len(render_calls) == 8
-    assert {call[0] for call in render_calls} == {"idle", "talk", "interact"}
     manifest = outputs[1].read_text(encoding="utf8")
+    # DERIVED, for the same reason the boss's numbers are: how many frames Oiler
+    # draws his close-ups from is a content decision, and this test is about the
+    # SCALE the hook asks the rig for. What it must still hold is that every
+    # declared frame cost a fresh native render — the whole point of the product.
+    declared_frames = manifest.count("(x:")
+    columns = min(8, declared_frames)
+    rows = -(-declared_frames // columns)
+    assert Image.open(outputs[0]).size == (256 * columns, 320 * rows)
+    render_calls = [call for call in calls if call[3] == 4]
+    assert len(render_calls) == declared_frames
+    assert {call[0] for call in render_calls} == {"idle", "talk", "interact"}
     assert '"talking": (' in manifest
     assert '"inspecting": (' in manifest
 
