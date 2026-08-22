@@ -1748,17 +1748,13 @@ def write_entity_sprites(
 # ---- Tack-on target API -------------------------------------------------------
 #
 # One module, one target ("entities") that batches every entity sprite
-# in `ENTITY_SPECS` into a single output dir. Discovery picks it up via
-# the `render()` hook; the explicit `SHEET_FILES` enumerates every
-# emitted filename so the default installer copies them all (not the
-# `{stem}_spritesheet.{png,yaml,ron}` convention).
+# in `ENTITY_SPECS` into a single output dir. `write_entity_sprites` also
+# emits a contact sheet and authoring manifest, but the custom installer below
+# deliberately publishes ONLY the individual runtime textures. `SHEET_FILES`
+# is therefore the install claim, not a census of every render diagnostic.
 
 TARGET_NAME = "entities"
-SHEET_FILES = (
-    *[spec.filename for spec in ENTITY_SPECS],
-    "entity_contact_sheet.png",
-    "entity_manifest.yaml",
-)
+SHEET_FILES = tuple(spec.filename for spec in ENTITY_SPECS)
 
 
 def render(out_dir: str | Path, **opts) -> List[Path]:

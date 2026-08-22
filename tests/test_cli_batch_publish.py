@@ -8,6 +8,7 @@ import pytest
 
 from ambition_sprite2d_renderer.cli import commands
 from ambition_sprite2d_renderer.cli.parser import build_parser
+from ambition_sprite2d_renderer.registry import RUNTIME_ADAPTER_CONFIG_STEMS
 
 def test_portrait_files_can_report_multiple_targets_in_one_process(monkeypatch, capsys):
     targets = {
@@ -146,3 +147,19 @@ def test_validate_configs_parser_defaults_to_both_character_job_surfaces():
 
     assert args.config_dir == commands.DEFAULT_CONFIG_DIR
     assert args.review_dir == commands.DEFAULT_REVIEW_CONFIG_DIR
+
+
+def test_default_draw_all_runtime_adapter_population_is_explicit():
+    assert {
+        "boss",
+        "goblin",
+        "player_robot_v3",
+        "robot",
+        "ranged_skirmisher",
+    } <= RUNTIME_ADAPTER_CONFIG_STEMS
+    assert {
+        "goblin_forest_spear",
+        "player_extended",
+        "robot_guardian",
+        "robot_runner",
+    }.isdisjoint(RUNTIME_ADAPTER_CONFIG_STEMS)

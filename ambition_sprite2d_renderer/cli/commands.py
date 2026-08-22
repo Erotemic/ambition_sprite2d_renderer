@@ -33,6 +33,7 @@ from ..authoring.portrait import write_portrait_gallery
 from ..registry import (
     CATEGORIES,
     DiscoveryReport,
+    RUNTIME_ADAPTER_CONFIG_STEMS,
     Target,
     discover_all_targets,
 )
@@ -249,22 +250,6 @@ def draw_all(
 ) -> List[Path]:
     out_dir = Path(out_dir)
     config_dir_path = Path(config_dir)
-    runtime_stems = {
-        "boss",
-        "raid_enforcer",
-        "goblin",
-        "ninja",
-        "ninja_leader",
-        "player_robot_v3",
-        "robot",
-        "sandbag",
-        # Sandbox combat-variety enemies: the kiter plus the two volatile mites.
-        # The game's regen postcondition requires these sheets, so omitting them
-        # here fails every fresh-clone asset regen.
-        "ranged_skirmisher",
-        "exploding_mite",
-        "dividing_mite",
-    }
     default_runtime_dir = (
         config_dir_path.resolve() == Path(DEFAULT_CONFIG_DIR).resolve()
     )
@@ -277,7 +262,7 @@ def draw_all(
         # so it stays quick and does not unexpectedly publish review variants.
         # Custom config dirs still render every .yaml they contain.
         config_stem = path.stem
-        if default_runtime_dir and config_stem not in runtime_stems:
+        if default_runtime_dir and config_stem not in RUNTIME_ADAPTER_CONFIG_STEMS:
             continue
         selected_jobs.append((path, job, job.output_stem(path)))
 
@@ -1176,7 +1161,7 @@ def _cmd_regenerate_all(args: argparse.Namespace) -> int:
     only needs one invocation to be art-current:
 
     1. `draw-all --out-dir <sandbox assets>` — the runtime adapter-driven
-       sheets (the `runtime_stems` set in `draw_all`).
+       sheets (the `RUNTIME_ADAPTER_CONFIG_STEMS` publication contract).
     2. `publish` (no target) — every module target under `targets/`.
     3. `draw-runtime-npcs` — the RUNTIME_REVIEW_NPCS roster of
        review-config toon NPCs the runtime sprite registry expects.
