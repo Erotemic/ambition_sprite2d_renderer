@@ -1560,6 +1560,19 @@ def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, 
         )
         clips["celebrate"] = _clip(f, d, loop=True, channels=channels)
 
+    if "idle_look_up" in rows and "idle" in clips:
+        # Idle with the head raised, and NOTHING else. It was unauthored and
+        # fell through POSE_ALIASES to "think", which raises a hand to the
+        # face -- so the row read as a gesture rather than as looking up, and
+        # the pose auditor flagged its arms as leaving the natural cone.
+        # Copying idle keeps the breath, the resting arms and the blink; only
+        # the head channel changes. Positive head is up (see "stargaze").
+        f, d = rows["idle_look_up"]
+        look_up = deepcopy(clips["idle"])
+        look_up["frames"], look_up["duration_ms"], look_up["loop"] = f, d, True
+        look_up["channels"]["head"] = expr("14-0.8*sin(tau*t)")
+        clips["idle_look_up"] = look_up
+
     # ---- Eye variants --------------------------------------------------
     # Carl's SVG carries four eye layers. "Eye - Open" stays inside the head
     # part and is always drawn; the other three are opacity-channel parts that
@@ -1570,12 +1583,15 @@ def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, 
         clips["dizzy"]["channels"]["eye_dizzy_vis"] = const(1.0)
     if "death" in clips:
         clips["death"]["channels"]["eye_dead_vis"] = const(1.0)
-    if "idle" in clips:
-        # One closed frame in eight. The sheet samples at key times, so a lone
-        # 1.0 is exactly one blinked frame however the channel interpolates.
-        clips["idle"]["channels"]["eye_blink_vis"] = keys(
-            [0, 0, 0, 0, 0, 1, 0, 0], loop=True
-        )
+    for resting in ("idle", "idle_look_up"):
+        if resting in clips:
+            # One closed frame in eight. The sheet samples at key times, so a
+            # lone 1.0 is exactly one blinked frame however the channel
+            # interpolates. idle_look_up is idle with a raised head, so it
+            # blinks on the same beat.
+            clips[resting]["channels"]["eye_blink_vis"] = keys(
+                [0, 0, 0, 0, 0, 1, 0, 0], loop=True
+            )
 
     had_back_roll = "roll_back" in clips
     clips = materialize_motion_rows(
