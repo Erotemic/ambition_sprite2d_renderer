@@ -36,7 +36,12 @@ def test_registered_targets_have_installable_sheet_contracts():
         if not any(
             fname.endswith((".yaml", ".json", ".ron")) for fname in target.sheet_files
         ):
-            problems.append(f"{name}: no manifest output declared")
+            # A custom installer may intentionally publish a texture-only
+            # runtime product even when its renderer emits authoring manifests
+            # and diagnostics beside it. In that case the install function, not
+            # a generic sheet convention, owns the publication shape.
+            if getattr(target, "_install_fn", None) is None:
+                problems.append(f"{name}: no manifest output declared")
         if target.portrait_files:
             if not target.supports_portraits:
                 problems.append(f"{name}: portrait files declared without renderer")
@@ -81,3 +86,12 @@ def test_polygon_reference_fighters_are_module_authored_targets():
         assert target.module_path == (
             f"ambition_sprite2d_renderer.targets.characters.{name}"
         )
+
+
+def test_entity_target_does_not_claim_authoring_diagnostics():
+    target = discover_all_targets().targets["entities"]
+    claims = set(target.claimed_install_names())
+
+    assert "entities/entity_contact_sheet.png" not in claims
+    assert "entities/entity_manifest.yaml" not in claims
+    assert any(name.startswith("entities/") and name.endswith(".png") for name in claims)

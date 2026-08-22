@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from .config import (
     DEFAULT_ANIMATIONS,
+    RUNTIME_ADAPTER_CONFIG_STEMS,
     CharacterJob,
     RenderConfig,
     load_jobs,
@@ -40,6 +41,7 @@ __all__ = [
     "DEFAULT_ANIMATIONS",
     "DiscoveryReport",
     "RenderConfig",
+    "RUNTIME_ADAPTER_CONFIG_STEMS",
     "Target",
     "default_sheet_files",
     "discover_all_targets",

@@ -21,6 +21,29 @@ DEFAULT_ANIMATIONS = [
 ]
 
 
+# Main ``configs/*.yaml`` contains both runtime-published adapters and older
+# authoring/review jobs. This is the publication contract for the default
+# ``draw-all`` batch. Keep the distinction here, beside config discovery, so
+# callers that validate a fresh-clone publication derive the SAME population
+# instead of treating every YAML in the directory as a runtime product.
+RUNTIME_ADAPTER_CONFIG_STEMS: frozenset[str] = frozenset(
+    {
+        "boss",
+        "raid_enforcer",
+        "goblin",
+        "ninja",
+        "ninja_leader",
+        "player_robot_v3",
+        "robot",
+        "sandbag",
+        # Combat-variety enemies intentionally published by the default batch.
+        "ranged_skirmisher",
+        "exploding_mite",
+        "dividing_mite",
+    }
+)
+
+
 @dataclass
 class RenderConfig:
     frame_width: int = 128

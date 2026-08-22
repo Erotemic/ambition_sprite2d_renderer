@@ -6,7 +6,7 @@
     "center_x": 80.0,
     "ground_y": 136.0,
     "ankle_h": 11.1301,
-    "supersample": 4,
+    "supersample": 2,
     "render_scale": 1
   },
   "svg_source": {
@@ -39545,9 +39545,10 @@
     "schema": "canonical-svg-rig-v3",
     "builder_version": 19,
     "renderer": "resvg_py",
-    "renderer_version": "0.3.3",
+    "renderer_version": "0.3.4",
     "renderer_backend": "native-extension",
-    "svg_sha256": "ea3fb9e4df20b6ee81f91ff4f2116b7f1d5056b4dd28643137dfd79396816908",
+    "renderer_origin": "/home/local/KHQ/jon.crall/code/ambition/tools/ambition_sprite2d_renderer/.venv/lib/python3.12/site-packages/resvg_py/resvg_py.cpython-312-x86_64-linux-gnu.so",
+    "svg_sha256": "5c8a3975756ef26d24a2650619aee0b7ecd44ceb95ffef65ff8f7a889917b009",
     "part_order_policy": "svg-document-order",
     "part_order": "svg-document"
   }
