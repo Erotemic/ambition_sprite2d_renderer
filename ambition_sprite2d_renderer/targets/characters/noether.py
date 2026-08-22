@@ -250,8 +250,13 @@ def render_portraits(out_dir: str | Path, **opts):
         "default": loop("idle", 8, 148),
         "talking": loop("talk", 8, 104),
         "inspecting": PortraitClip.still(frame("interact", 4, 8)),
+        # Emmy's default moved before anyone could ask for a still, so a UI box
+        # got frame zero of a breath. This is the pose she is SEEN in.
+        "portrait": PortraitClip.still(frame("idle", 2, 8)),
     }
-    return write_portrait_sheet(TARGET_NAME, clips, Path(out_dir))
+    return write_portrait_sheet(
+        TARGET_NAME, clips, Path(out_dir), still_clip="portrait"
+    )
 
 
 def render(out_dir: str | Path, **opts):

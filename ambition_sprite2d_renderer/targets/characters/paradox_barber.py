@@ -121,11 +121,19 @@ def render_portraits(out_dir: str | Path, **opts):
         return render_framed_portrait(source, face, view_width=58.0, center_y=68.0)
 
     clips = {
-        "default": PortraitClip.still(portrait_frame("idle", 1, 8)),
+        "default": PortraitClip.loop(
+            tuple(portrait_frame("idle", frame, 8) for frame in range(8)),
+            duration_ms=148,
+        ),
+        # The pose a UI BOX draws. Frame 1 of the same idle — the still
+        # this target published before its default began to move.
+        "portrait": PortraitClip.still(portrait_frame("idle", 1, 8)),
         "talk": PortraitClip(tuple(portrait_frame("talk", i, 8) for i in range(8)), duration_ms=110, looping=True),
         "paradox": PortraitClip(tuple(portrait_frame("paradox_loop", i, 8) for i in range(8)), duration_ms=96, looping=True),
     }
-    return write_portrait_sheet(TARGET_NAME, clips, Path(out_dir))
+    return write_portrait_sheet(
+        TARGET_NAME, clips, Path(out_dir), still_clip="portrait"
+    )
 
 
 def render(out_dir: str | Path, **opts):

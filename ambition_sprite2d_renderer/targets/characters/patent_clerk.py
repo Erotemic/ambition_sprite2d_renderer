@@ -352,12 +352,20 @@ def render_portraits(out_dir: str | Path, **opts):
         return render_framed_portrait(source, face, view_width=78.0, center_y=68.0)
 
     clips = {
-        "default": PortraitClip.still(frame("idle", 2, 8)),
+        "default": PortraitClip.loop(
+            tuple(frame("idle", index, 8) for index in range(8)),
+            duration_ms=148,
+        ),
+        # The pose a UI BOX draws. Frame 2 of the same idle — the still
+        # this target published before its default began to move.
+        "portrait": PortraitClip.still(frame("idle", 2, 8)),
         "reviewing": PortraitClip.still(frame("application_review", 3, 6)),
         "argument": PortraitClip.still(frame("light_argument", 4, 8)),
         "breakthrough": PortraitClip.still(frame("annus_mirabilis", 7, 12)),
     }
-    return write_portrait_sheet(TARGET_NAME, clips, Path(out_dir))
+    return write_portrait_sheet(
+        TARGET_NAME, clips, Path(out_dir), still_clip="portrait"
+    )
 
 
 def render(out_dir: str | Path, **opts):
