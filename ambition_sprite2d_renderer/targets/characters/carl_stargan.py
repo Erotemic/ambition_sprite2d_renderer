@@ -339,7 +339,13 @@ def render(out_dir: str | Path, **opts):
         # did.
         authored_faces_left=doc.authored_faces_left,
         animation_key_map={name: name for name, _frames, _duration in ROWS},
-        trim=False,
+        # trim: NOT passed, deliberately. `registry/pack_groups.py` is the single
+        # authority — "all build paths ask `policy_for(target)` instead of
+        # carrying independent defaults" — and its default packs, because Carl
+        # draws through the trim-aware CharacterAnimator like every character.
+        # He carried `trim=False` with no reason beside it, which is what left a
+        # 155x156 frame around a 58x114 body: 3.7x the area, all of it
+        # transparent margin that the height contract would scale.
     )
     keys = ("spritesheet", "yaml", "ron", "actor", "canonical", "canonical_transparent", "preview")
     return [Path(outputs[key]) for key in keys if outputs.get(key)]
