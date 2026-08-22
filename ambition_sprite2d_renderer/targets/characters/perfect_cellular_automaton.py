@@ -18,6 +18,12 @@ from PIL import Image
 from ...authoring.rigdoc import RigDocument
 from ...profiling import profile
 from ...authoring.sheet_build import build_sheet, write_canonical
+from ...authoring.portrait import (
+    FaceGuide,
+    PortraitClip,
+    render_framed_portrait,
+    write_portrait_sheet,
+)
 from ._svg_fighter_effects import compose_rig_frame
 from .pca_combat_authoring import author_pca_combat_clips
 from .pca_effects import EFFECTFUL_ANIMATIONS, draw_pca_behind, draw_pca_front
@@ -283,6 +289,65 @@ __all__ = [
     "TARGET_NAME",
     "frame_meta",
     "render",
+    "render_portraits",
     "render_canonical",
     "render_frame",
 ]
+
+
+# PCA's portrait viewport in her 128x192 rig canvas. Measured off the idle pose,
+# not from the `head` bone at (64, 66) -- that is the neck joint.
+#
+# The view is deliberately TALL enough to keep her ears. They reach y=22, well
+# above the face, and they are the most recognisable thing about her silhouette;
+# a tight head-and-shoulders crop decapitated them.
+_PORTRAIT_FACE = FaceGuide(
+    center_x=64.0,
+    center_y=52.0,
+    width=30.0,
+    height=34.0,
+    source_width=128.0,
+    source_height=192.0,
+)
+_PORTRAIT_VIEW_WIDTH = 62.0
+_PORTRAIT_CENTER_Y = 56.0
+_PORTRAIT_RENDER_SCALE = 3
+
+
+def render_portraits(out_dir: str | Path, **opts):
+    """Publish PCA's close-ups natively from her extracted rig.
+
+    Idle draws no effects -- `EFFECTFUL_ANIMATIONS` covers her attacks and
+    blinks, not her standing pose -- so the bare rig render IS what she looks
+    like here, and there is nothing to compose over it.
+    """
+    del opts
+    doc = _doc()
+
+    def frame(animation: str, index: int, count: int) -> Image.Image:
+        source = doc.render_at(
+            animation,
+            doc.frame_time(animation, index, count),
+            supersample=4,
+            scale=_PORTRAIT_RENDER_SCALE,
+        )
+        return render_framed_portrait(
+            source,
+            _PORTRAIT_FACE,
+            view_width=_PORTRAIT_VIEW_WIDTH,
+            center_y=_PORTRAIT_CENTER_Y,
+        )
+
+    def loop(animation: str, count: int, duration_ms: int) -> PortraitClip:
+        return PortraitClip.loop(
+            tuple(frame(animation, index, count) for index in range(count)),
+            duration_ms,
+        )
+
+    clips = {
+        "default": loop("idle", 8, 148),
+        "portrait": PortraitClip.still(frame("idle", 2, 8)),
+    }
+    return write_portrait_sheet(
+        TARGET_NAME, clips, Path(out_dir), still_clip="portrait"
+    )

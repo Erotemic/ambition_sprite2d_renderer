@@ -20,6 +20,12 @@ from ambition_sprite2d_renderer.core.draw import blending_draw
 
 from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet, write_canonical
+from ...authoring.portrait import (
+    FaceGuide,
+    PortraitClip,
+    render_framed_portrait,
+    write_portrait_sheet,
+)
 from ...core import slash_envelope
 from .robot_side import SideRobotGenerator
 from .player_robot_v3_motion import EFFECT_ALIASES, ROBOT_ROWS
@@ -661,4 +667,63 @@ def render_canonical(out_dir: str | Path, **opts):
 __all__ = [
     "ACTOR_METADATA", "ANIMATION_ORDER", "FRAME_SIZE", "ROWS", "TARGET_NAME",
     "frame_meta", "load_doc", "render", "render_canonical", "render_frame",
+    "render_portraits",
 ]
+
+
+# The robot's portrait viewport in his 224x224 rig canvas. Measured off the idle
+# pose; his `head` bone sits at (113, 110), which is the neck, and `frame_meta`
+# already carries the same knowledge as its own `head[1] - 14.0` offset.
+#
+# The view is wider than his face on purpose: the headphone and antenna sit off
+# to one side and are half of how he reads. Cropping to the visor alone gave a
+# symmetrical white oval that could have been any robot.
+_PORTRAIT_FACE = FaceGuide(
+    center_x=114.0,
+    center_y=84.0,
+    width=56.0,
+    height=48.0,
+    source_width=224.0,
+    source_height=224.0,
+)
+_PORTRAIT_VIEW_WIDTH = 82.0
+_PORTRAIT_CENTER_Y = 86.0
+_PORTRAIT_RENDER_SCALE = 3
+
+
+def render_portraits(out_dir: str | Path, **opts):
+    """Publish the protagonist's close-ups natively from his paper-doll rig.
+
+    He is the character this whole engine is about and he had no portrait hook,
+    so the grid drew him from the canonical fallback -- one frozen frame.
+    """
+    del opts
+    doc = load_doc()
+
+    def frame(animation: str, index: int, count: int) -> Image.Image:
+        source = doc.render_at(
+            animation,
+            doc.frame_time(animation, index, count),
+            supersample=4,
+            scale=_PORTRAIT_RENDER_SCALE,
+        )
+        return render_framed_portrait(
+            source,
+            _PORTRAIT_FACE,
+            view_width=_PORTRAIT_VIEW_WIDTH,
+            center_y=_PORTRAIT_CENTER_Y,
+        )
+
+    def loop(animation: str, count: int, duration_ms: int) -> PortraitClip:
+        return PortraitClip.loop(
+            tuple(frame(animation, index, count) for index in range(count)),
+            duration_ms,
+        )
+
+    clips = {
+        "default": loop("idle", 8, 148),
+        "portrait": PortraitClip.still(frame("idle", 2, 8)),
+    }
+    return write_portrait_sheet(
+        TARGET_NAME, clips, Path(out_dir), still_clip="portrait"
+    )

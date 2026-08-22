@@ -13,6 +13,12 @@ from PIL import Image
 
 from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet, write_canonical
+from ...authoring.portrait import (
+    FaceGuide,
+    PortraitClip,
+    render_framed_portrait,
+    write_portrait_sheet,
+)
 
 TARGET_DIR = Path(__file__).resolve().parent
 RIGGED_DIR = TARGET_DIR / "rigged" / "m_leblanc"
@@ -206,6 +212,69 @@ __all__ = [
     "doc_for_clip",
     "load_doc",
     "render",
+    "render_portraits",
     "render_canonical",
     "render_frame",
 ]
+
+
+# Sophie's portrait viewport in her 128x128 rig canvas, authored in canvas
+# coordinates so render scale and supersampling never move the crop. Read off
+# her idle pose: the `head` bone sits at the NECK joint (63, 45), a dozen pixels
+# below the face it carries, which is why this is measured art rather than the
+# bone origin.
+_PORTRAIT_FACE = FaceGuide(
+    center_x=64.0,
+    center_y=34.0,
+    width=26.0,
+    height=28.0,
+    source_width=128.0,
+    source_height=128.0,
+)
+# Head-and-shoulders, taking in the collar her rig is built around.
+_PORTRAIT_VIEW_WIDTH = 46.0
+_PORTRAIT_CENTER_Y = 43.0
+_PORTRAIT_RENDER_SCALE = 3
+
+
+def render_portraits(out_dir: str | Path, **opts):
+    """Publish Sophie's close-ups natively from her three-quarter rig.
+
+    She had no hook, so she fell through to the canonical fallback: one frame,
+    cropped from a re-render of her standing pose. Her rig authors `idle`,
+    `talk` and `interact`, which is a whole portrait vocabulary sitting unused.
+    """
+    del opts
+    doc = load_doc()
+
+    def frame(animation: str, index: int, count: int) -> Image.Image:
+        source = doc.render_at(
+            animation,
+            doc.frame_time(animation, index, count),
+            supersample=4,
+            scale=_PORTRAIT_RENDER_SCALE,
+        )
+        return render_framed_portrait(
+            source,
+            _PORTRAIT_FACE,
+            view_width=_PORTRAIT_VIEW_WIDTH,
+            center_y=_PORTRAIT_CENTER_Y,
+        )
+
+    def loop(animation: str, count: int, duration_ms: int) -> PortraitClip:
+        return PortraitClip.loop(
+            tuple(frame(animation, index, count) for index in range(count)),
+            duration_ms,
+        )
+
+    clips = {
+        "default": loop("idle", 8, 148),
+        "talking": loop("talk", 8, 108),
+        "inspecting": PortraitClip.still(frame("interact", 4, 8)),
+        # The pose a UI box draws, so a still is a chosen frame rather than
+        # wherever the idle loop happens to start.
+        "portrait": PortraitClip.still(frame("idle", 2, 8)),
+    }
+    return write_portrait_sheet(
+        TARGET_NAME, clips, Path(out_dir), still_clip="portrait"
+    )
