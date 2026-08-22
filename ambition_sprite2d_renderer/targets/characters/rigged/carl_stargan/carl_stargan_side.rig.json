@@ -380,22 +380,22 @@
         "path1945",
         "path1947",
         "path1949",
-        "path1961",
         "path1921",
         "path1919",
         "path2038",
         "path2040",
+        "path1927",
         "path1923",
         "path1925",
-        "path1927",
         "path1929",
-        "path1931",
         "path1939",
         "path1941",
         "path1943",
+        "path1931",
         "path1959",
         "path1963",
-        "path1965"
+        "path1965",
+        "path1961"
       ],
       "pivot": [
         486.0,
@@ -405,9 +405,59 @@
       "svg_source_order": 13
     },
     {
-      "name": "hair_back",
+      "name": "eye_closed",
       "bone": "head",
       "z": 14.0,
+      "kind": "sprite",
+      "include": [
+        "path2361",
+        "path2367"
+      ],
+      "pivot": [
+        486.0,
+        203.0
+      ],
+      "rest_angle": 0.0,
+      "svg_source_order": 14,
+      "opacity_channel": "eye_blink_vis"
+    },
+    {
+      "name": "eye_dizzy",
+      "bone": "head",
+      "z": 15.0,
+      "kind": "sprite",
+      "include": [
+        "path478"
+      ],
+      "pivot": [
+        486.0,
+        203.0
+      ],
+      "rest_angle": 0.0,
+      "svg_source_order": 15,
+      "opacity_channel": "eye_dizzy_vis"
+    },
+    {
+      "name": "eye_dead",
+      "bone": "head",
+      "z": 16.0,
+      "kind": "sprite",
+      "include": [
+        "path1157",
+        "path1159"
+      ],
+      "pivot": [
+        486.0,
+        203.0
+      ],
+      "rest_angle": 0.0,
+      "svg_source_order": 16,
+      "opacity_channel": "eye_dead_vis"
+    },
+    {
+      "name": "hair_back",
+      "bone": "head",
+      "z": 17.0,
       "kind": "sprite",
       "include": [
         "path1935",
@@ -420,12 +470,12 @@
         203.0
       ],
       "rest_angle": 0.0,
-      "svg_source_order": 14
+      "svg_source_order": 17
     },
     {
       "name": "hair_front",
       "bone": "head",
-      "z": 15.0,
+      "z": 18.0,
       "kind": "sprite",
       "include": [
         "path1937",
@@ -437,12 +487,12 @@
         203.0
       ],
       "rest_angle": 0.0,
-      "svg_source_order": 15
+      "svg_source_order": 18
     },
     {
       "name": "torso_front_overlay",
       "bone": "torso",
-      "z": 16.0,
+      "z": 19.0,
       "kind": "sprite",
       "include": [
         "path2036",
@@ -453,12 +503,12 @@
         533.0
       ],
       "rest_angle": 0.0,
-      "svg_source_order": 16
+      "svg_source_order": 19
     },
     {
       "name": "near_arm_u",
       "bone": "near_arm_u",
-      "z": 17.0,
+      "z": 20.0,
       "kind": "sprite",
       "include": [
         "path2070"
@@ -468,12 +518,12 @@
         306.0
       ],
       "rest_angle": 36.2538,
-      "svg_source_order": 17
+      "svg_source_order": 20
     },
     {
       "name": "near_hand",
       "bone": "near_arm_hand",
-      "z": 18.0,
+      "z": 21.0,
       "kind": "sprite",
       "include": [
         "path2133",
@@ -484,12 +534,12 @@
         515.0
       ],
       "rest_angle": 75.7526,
-      "svg_source_order": 18
+      "svg_source_order": 21
     },
     {
       "name": "near_arm_l",
       "bone": "near_arm_l",
-      "z": 19.0,
+      "z": 22.0,
       "kind": "sprite",
       "include": [
         "path2072"
@@ -499,7 +549,7 @@
         377.5
       ],
       "rest_angle": 72.2553,
-      "svg_source_order": 19
+      "svg_source_order": 22
     }
   ],
   "ik_legs": [
@@ -596,6 +646,55 @@
         },
         "head": {
           "expr": "-0.8*sin(tau*t)"
+        },
+        "eye_blink_vis": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.125,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.25,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.375,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.625,
+              1.0,
+              "smooth"
+            ],
+            [
+              0.75,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.875,
+              0.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
         }
       }
     },
@@ -1057,6 +1156,55 @@
         },
         "head": {
           "expr": "-0.8*sin(tau*t)"
+        },
+        "eye_blink_vis": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.125,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.25,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.375,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.625,
+              1.0,
+              "smooth"
+            ],
+            [
+              0.75,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.875,
+              0.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
         }
       }
     },
@@ -9916,6 +10064,55 @@
         },
         "head": {
           "expr": "-0.8*sin(tau*t)"
+        },
+        "eye_blink_vis": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.125,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.25,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.375,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.625,
+              1.0,
+              "smooth"
+            ],
+            [
+              0.75,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.875,
+              0.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
         }
       }
     },
@@ -9962,6 +10159,55 @@
         },
         "head": {
           "expr": "-0.8*sin(tau*t)"
+        },
+        "eye_blink_vis": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.125,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.25,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.375,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.625,
+              1.0,
+              "smooth"
+            ],
+            [
+              0.75,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.875,
+              0.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
         }
       }
     },
@@ -13372,6 +13618,9 @@
               "smooth"
             ]
           ]
+        },
+        "eye_dead_vis": {
+          "const": 1.0
         }
       }
     },
@@ -17524,6 +17773,9 @@
               "smooth"
             ]
           ]
+        },
+        "eye_dead_vis": {
+          "const": 1.0
         }
       }
     },
@@ -18101,6 +18353,9 @@
               "smooth"
             ]
           ]
+        },
+        "eye_dizzy_vis": {
+          "const": 1.0
         }
       }
     },
@@ -18478,6 +18733,9 @@
               "smooth"
             ]
           ]
+        },
+        "eye_dead_vis": {
+          "const": 1.0
         }
       }
     },
@@ -33317,6 +33575,9 @@
               "smooth"
             ]
           ]
+        },
+        "eye_dead_vis": {
+          "const": 1.0
         }
       }
     },
@@ -39329,6 +39590,55 @@
         },
         "head": {
           "expr": "-0.8*sin(tau*t)"
+        },
+        "eye_blink_vis": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.125,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.25,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.375,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.5,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.625,
+              1.0,
+              "smooth"
+            ],
+            [
+              0.75,
+              0.0,
+              "smooth"
+            ],
+            [
+              0.875,
+              0.0,
+              "smooth"
+            ],
+            [
+              1.0,
+              0.0,
+              "smooth"
+            ]
+          ]
         }
       }
     },
@@ -39706,6 +40016,9 @@
               "smooth"
             ]
           ]
+        },
+        "eye_dead_vis": {
+          "const": 1.0
         }
       }
     }
@@ -39759,7 +40072,7 @@
     "renderer_version": "0.4.0",
     "renderer_backend": "native-extension",
     "renderer_origin": "/home/agent/.local/uv/envs/uvpy3.13.2/lib/python3.13/site-packages/resvg_py/resvg_py.abi3.so",
-    "svg_sha256": "d9346a727b8d20d288f8c9551d9406183465f2c4e7b17661d1a740691752e59f",
+    "svg_sha256": "c09272ee9da694bcd254d781767cca575affbdc7877afb6e7fda0d38eda9c148",
     "part_order_policy": "svg-document-order",
     "part_order": "svg-document"
   }

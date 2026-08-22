@@ -1560,6 +1560,23 @@ def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, 
         )
         clips["celebrate"] = _clip(f, d, loop=True, channels=channels)
 
+    # ---- Eye variants --------------------------------------------------
+    # Carl's SVG carries four eye layers. "Eye - Open" stays inside the head
+    # part and is always drawn; the other three are opacity-channel parts that
+    # paint OVER it. rigdoc defaults such a part to opacity 0, so each is
+    # hidden in every clip that does not name its channel -- which is why the
+    # open eye must NOT be one of them, or it would vanish from all 133 rows.
+    if "dizzy" in clips:
+        clips["dizzy"]["channels"]["eye_dizzy_vis"] = const(1.0)
+    if "death" in clips:
+        clips["death"]["channels"]["eye_dead_vis"] = const(1.0)
+    if "idle" in clips:
+        # One closed frame in eight. The sheet samples at key times, so a lone
+        # 1.0 is exactly one blinked frame however the channel interpolates.
+        clips["idle"]["channels"]["eye_blink_vis"] = keys(
+            [0, 0, 0, 0, 0, 1, 0, 0], loop=True
+        )
+
     had_back_roll = "roll_back" in clips
     clips = materialize_motion_rows(
         rows=spec.rows,
