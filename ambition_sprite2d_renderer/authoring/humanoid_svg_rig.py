@@ -9,8 +9,13 @@ Top-level view layers are normal Inkscape layers.  Inside a view, artist-facing
 labels are free to stay human-readable.  Rig metadata lives on explicit SVG
 data attributes:
 
-* ``data-rig-part``, ``data-rig-bone``, ``data-rig-z`` and optional
+* ``data-rig-part``, ``data-rig-bone`` and optional ``data-rig-z`` /
   ``data-rig-opacity`` bind a drawable group as one rigid sprite part.
+  ``data-rig-z`` is required only where a view's ``part_order`` is
+  ``attribute``, because that is the only policy that reads it.  Under
+  ``document`` the SVG's own stacking is the paint order, and a second
+  numbering nothing consults cannot be kept honest -- it silently goes stale
+  the first time a group is legitimately restacked.
 * ``data-rig-joint`` names a circle at an articulation.
 * ``data-rig-side-map`` optionally maps artist-facing anatomical side names
   onto the renderer's depth-oriented ``near``/``far`` channels.  A frontal
@@ -132,7 +137,7 @@ class LimbPoseHint:
 class _PartBinding:
     name: str
     bone: str
-    z: float
+    z: Optional[float]
     include: Tuple[str, ...]
     opacity_channel: Optional[str] = None
     source_order: int = 0
@@ -386,7 +391,7 @@ def _parse_part_label(label: str) -> Optional[Tuple[str, str, float, Optional[st
 
 def _parse_part_element(
     elem: ET.Element,
-) -> Optional[Tuple[str, str, float, Optional[str]]]:
+) -> Optional[Tuple[str, str, Optional[float], Optional[str]]]:
     """Read explicit rig attributes, falling back to the legacy label syntax."""
 
     name = elem.get(_PART_NAME_ATTR)
@@ -394,22 +399,26 @@ def _parse_part_element(
         return _parse_part_label(_label(elem) or "")
 
     bone = elem.get(_PART_BONE_ATTR)
-    z_text = elem.get(_PART_Z_ATTR)
-    missing = [
-        attr
-        for attr, value in ((_PART_BONE_ATTR, bone), (_PART_Z_ATTR, z_text))
-        if not value
-    ]
-    if missing:
+    if not bone:
         raise ValueError(
-            f"SVG rig part {name!r} is missing required attributes: {missing}"
+            f"SVG rig part {name!r} is missing required attribute: "
+            f"[{_PART_BONE_ATTR!r}]"
         )
-    try:
-        z = float(z_text)
-    except ValueError as ex:
-        raise ValueError(
-            f"invalid {_PART_Z_ATTR}={z_text!r} on SVG rig part {name!r}"
-        ) from ex
+    # `data-rig-z` is required only by views that ORDER by it -- enforced at the
+    # emit site, where the view's part_order policy is known. A document-ordered
+    # view that carries the attribute anyway would otherwise hold a second
+    # opinion about paint order that nothing consults and nothing can falsify,
+    # so it drifts: Carl Stargan's went 12 of 20 slots stale the first time a
+    # group was legitimately restacked in Inkscape.
+    z_text = elem.get(_PART_Z_ATTR)
+    z: Optional[float] = None
+    if z_text:
+        try:
+            z = float(z_text)
+        except ValueError as ex:
+            raise ValueError(
+                f"invalid {_PART_Z_ATTR}={z_text!r} on SVG rig part {name!r}"
+            ) from ex
     return name, bone, z, elem.get(_PART_OPACITY_ATTR) or None
 
 
@@ -1051,6 +1060,13 @@ def build_humanoid_view_document(
             f"unsupported SVG part order policy {spec.part_order!r}; "
             "expected 'attribute' or 'document'"
         )
+    if spec.part_order == "attribute":
+        unnumbered = [p.name for p in parts if p.z is None]
+        if unnumbered:
+            raise ValueError(
+                f"view {spec.view!r} orders parts by {_PART_Z_ATTR}, so every "
+                f"part needs one; missing on: {sorted(unnumbered)}"
+            )
 
     rig_parts: List[dict] = []
     for document_index, binding in enumerate(parts):

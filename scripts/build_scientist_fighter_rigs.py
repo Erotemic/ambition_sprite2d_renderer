@@ -1689,22 +1689,16 @@ def _sprite_overlap_pixels(
 def _validate_carl_layer_model(doc: RigDocument) -> None:
     """Validate Carl's multiple same-bone paint slices and head overlays."""
 
-    part_names = [str(part["name"]) for part in doc.parts]
-    ordered_slices = (
-        "torso_backing",
-        "torso",
-        "head",
-        "torso_front_overlay",
-        "hair_back",
-        "hair_front",
-    )
-    indices = [part_names.index(name) for name in ordered_slices]
-    if indices != sorted(indices):
-        raise ValueError(
-            "Carl Stargan canonical paint slices are out of order: "
-            f"{list(zip(ordered_slices, indices))!r}"
-        )
-
+    # No paint-order assertion here. The SVG's document order IS the paint
+    # order, so a hand-written expected sequence is a second authority that
+    # reddens on a legitimate restack rather than on a defect -- which is what
+    # it did: it demanded torso_front_overlay ahead of the hair, and moving the
+    # overlay there changed ZERO pixels, because the lapel and the hair do not
+    # overlap. It was asserting an order the art never exercises.
+    #
+    # What stays below is what document order CANNOT state: which bone each
+    # same-bone slice binds to, and that the head overlays actually cover the
+    # head. Those fail on a real defect and cannot be satisfied by reordering.
     expected_bones = {
         "torso_backing": "torso",
         "torso": "torso",

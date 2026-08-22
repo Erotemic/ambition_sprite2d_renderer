@@ -170,24 +170,9 @@
   ],
   "parts": [
     {
-      "name": "torso_backing",
-      "bone": "torso",
-      "z": 0.0,
-      "kind": "sprite",
-      "include": [
-        "path2046"
-      ],
-      "pivot": [
-        499.0,
-        533.0
-      ],
-      "rest_angle": 0.0,
-      "svg_source_order": 0
-    },
-    {
       "name": "far_leg_u",
       "bone": "far_leg_u",
-      "z": 1.0,
+      "z": 0.0,
       "kind": "sprite",
       "include": [
         "path2054"
@@ -197,12 +182,12 @@
         589.5
       ],
       "rest_angle": 131.3007,
-      "svg_source_order": 1
+      "svg_source_order": 0
     },
     {
       "name": "far_foot",
       "bone": "far_leg_foot",
-      "z": 2.0,
+      "z": 1.0,
       "kind": "sprite",
       "include": [
         "path2064"
@@ -212,12 +197,12 @@
         898.5
       ],
       "rest_angle": 158.4287,
-      "svg_source_order": 2
+      "svg_source_order": 1
     },
     {
       "name": "far_leg_l",
       "bone": "far_leg_l",
-      "z": 3.0,
+      "z": 2.0,
       "kind": "sprite",
       "include": [
         "path2058"
@@ -227,12 +212,12 @@
         713.0
       ],
       "rest_angle": 108.203,
-      "svg_source_order": 3
+      "svg_source_order": 2
     },
     {
       "name": "far_arm_u",
       "bone": "far_arm_u",
-      "z": 4.0,
+      "z": 3.0,
       "kind": "sprite",
       "include": [
         "path2066"
@@ -242,12 +227,12 @@
         297.0
       ],
       "rest_angle": 117.5685,
-      "svg_source_order": 4
+      "svg_source_order": 3
     },
     {
       "name": "far_hand",
       "bone": "far_arm_hand",
-      "z": 5.0,
+      "z": 4.0,
       "kind": "sprite",
       "include": [
         "path2129",
@@ -258,12 +243,12 @@
         474.0
       ],
       "rest_angle": 153.7832,
-      "svg_source_order": 5
+      "svg_source_order": 4
     },
     {
       "name": "far_arm_l",
       "bone": "far_arm_l",
-      "z": 6.0,
+      "z": 5.0,
       "kind": "sprite",
       "include": [
         "path2068"
@@ -273,6 +258,21 @@
         421.5
       ],
       "rest_angle": 152.8787,
+      "svg_source_order": 5
+    },
+    {
+      "name": "torso_backing",
+      "bone": "torso",
+      "z": 6.0,
+      "kind": "sprite",
+      "include": [
+        "path2046"
+      ],
+      "pivot": [
+        499.0,
+        533.0
+      ],
+      "rest_angle": 0.0,
       "svg_source_order": 6
     },
     {
@@ -39548,7 +39548,7 @@
     "renderer_version": "0.4.0",
     "renderer_backend": "native-extension",
     "renderer_origin": "/home/agent/.local/uv/envs/uvpy3.13.2/lib/python3.13/site-packages/resvg_py/resvg_py.abi3.so",
-    "svg_sha256": "5c8a3975756ef26d24a2650619aee0b7ecd44ceb95ffef65ff8f7a889917b009",
+    "svg_sha256": "ad7c814c4b14fb55bb9cc2e29cd913eb95e5d363516e2acd346ef86bb63a7911",
     "part_order_policy": "svg-document-order",
     "part_order": "svg-document"
   }
