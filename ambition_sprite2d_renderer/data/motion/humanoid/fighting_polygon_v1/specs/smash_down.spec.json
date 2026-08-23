@@ -83,5 +83,9 @@
     "symmetric_about:90@2,6",
     "starts_near:100"
   ],
-  "todo": "TORSO PIVOT NEEDED (new art). A LEAN is standing in for a PIVOT: the body should turn under the rear strike, which the side-view sprite cannot do."
+  "todo": "TORSO PIVOT NEEDED (new art). A LEAN is standing in for a PIVOT: the body should turn under the rear strike, which the side-view sprite cannot do.",
+  "facing": "west",
+  "pixel_invariants": [
+    "feet_on_ground"
+  ]
 }

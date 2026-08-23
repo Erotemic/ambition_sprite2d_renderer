@@ -1,21 +1,172 @@
 {
   "clip": "smash_forward",
-  "note": "forward smash. Frames 0-3 are wind-up/charge: pull back to a two-handed grip and hold cocked behind. Then swing over the head and drop to one knee to drive the sword all the way to the ground in front.",
-  "sword_deg": [100, 40, 350, 345, 280, 220, 165, 125],
-  "elbow":     [-35, -58, -64, -62, -30, -8, 0, -6],
-  "torso":     [0, -10, -18, -18, -6, 8, 20, 28],
-  "grip_frames": [1, 2, 3],
-  "off_hand": {"0": [-25, -95], "4": [-52, -80], "5": [-60, -70], "6": [-58, -72], "7": [-46, -80]},
-  "body": {
-    "root_y":       [0, 2, 3, 3, 0, 6, 20, 34],
-    "near_leg_u":   [0, 6, 9, 9, 2, 14, 44, 74],
-    "near_leg_l":   [0, -6, -9, -9, -2, -16, -52, -86],
-    "far_leg_u":    [0, -4, -6, -6, 0, -8, -22, -34],
-    "far_leg_l":    [0, 4, 6, 6, 0, 10, 30, 48],
-    "near_leg_foot":[0, 0, 0, 0, 0, 4, 12, 20]
+  "note": "forward smash. Frames 0-3 are wind-up/charge: pull back to a two-handed grip and hold cocked behind. Then swing over the head and drop onto the REAR knee -- she faces west, so the east leg kneels and the west leg plants ahead -- driving the sword all the way to the ground in front.",
+  "facing": "west",
+  "sword_deg": [
+    100,
+    40,
+    350,
+    345,
+    280,
+    220,
+    165,
+    136
+  ],
+  "elbow": [
+    -35,
+    -58,
+    -64,
+    -62,
+    -30,
+    -8,
+    0,
+    -6
+  ],
+  "torso": [
+    0,
+    -10,
+    -18,
+    -18,
+    -6,
+    8,
+    20,
+    28
+  ],
+  "grip_frames": [
+    1,
+    2,
+    3
+  ],
+  "off_hand": {
+    "0": [
+      -25,
+      -95
+    ],
+    "4": [
+      -52,
+      -80
+    ],
+    "5": [
+      -60,
+      -70
+    ],
+    "6": [
+      -58,
+      -72
+    ],
+    "7": [
+      -46,
+      -80
+    ]
   },
-  "trail": {"window": 4, "inner": 0.44, "alpha": 165, "blur": 1.2, "core_alpha": 185},
-  "hitbox": {"active": [5, 6, 7], "linger": 2, "reach": 0.62},
-  "invariants": ["monotonic_decreasing", "starts_near:100"],
-  "todo": "The off hand releases on frame 4: frames past the overhead hit the 30px shoulder-drag cap, so a two-handed grip through the arc is out of reach for this rig. Marth's releases too, so the shape is right, but the rig forced the timing."
+  "body": {
+    "root_y": [
+      0,
+      2,
+      3,
+      3,
+      0,
+      10,
+      70,
+      140
+    ],
+    "near_leg_u": [
+      0,
+      6,
+      9,
+      9,
+      2,
+      18,
+      44,
+      58
+    ],
+    "near_leg_l": [
+      0,
+      -6,
+      -9,
+      -9,
+      -2,
+      -20,
+      -70,
+      -52
+    ],
+    "far_leg_u": [
+      0,
+      -4,
+      -6,
+      -6,
+      0,
+      -10,
+      -4,
+      0
+    ],
+    "far_leg_l": [
+      0,
+      4,
+      6,
+      6,
+      0,
+      16,
+      52,
+      90
+    ],
+    "near_leg_foot": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      4,
+      10,
+      14
+    ],
+    "root_x": [
+      0,
+      -8,
+      -12,
+      -12,
+      10,
+      40,
+      55,
+      60
+    ]
+  },
+  "ground_contacts": {
+    "5": [
+      "near_leg_foot"
+    ],
+    "6": [
+      "near_leg_foot"
+    ],
+    "7": [
+      "far_leg_l",
+      "near_leg_foot"
+    ]
+  },
+  "trail": {
+    "window": 4,
+    "inner": 0.44,
+    "alpha": 165,
+    "blur": 1.2,
+    "core_alpha": 185
+  },
+  "hitbox": {
+    "active": [
+      5,
+      6,
+      7
+    ],
+    "linger": 2,
+    "reach": 0.62
+  },
+  "invariants": [
+    "monotonic_decreasing",
+    "starts_near:100"
+  ],
+  "pixel_invariants": [
+    "hitbox_in_front",
+    "tip_reaches_ground:7@10",
+    "feet_on_ground"
+  ],
+  "todo": "The off hand releases on frame 4: past the overhead the hilt leaves the far arm's circle and the shoulder hits its 30px drag cap, so a two-handed grip through the arc is out of reach for this rig. Marth's releases too, so the shape is right, but the rig forced the timing. The kneel is carried by leg rotation and a dropped root; a real one wants contact art for the shin and knee, which does not exist yet."
 }

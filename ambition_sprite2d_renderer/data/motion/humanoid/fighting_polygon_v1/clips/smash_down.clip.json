@@ -48,7 +48,7 @@
             "rotation_deg": -35.0
           },
           "near_arm_u": {
-            "rotation_deg": 33.0
+            "rotation_deg": 33.0625
           },
           "near_leg_foot": {
             "rotation_deg": -32.455478
@@ -102,7 +102,7 @@
             "rotation_deg": -12.0
           },
           "near_arm_u": {
-            "rotation_deg": 64.0
+            "rotation_deg": 64.0625
           },
           "near_leg_foot": {
             "rotation_deg": -45.960124
@@ -156,7 +156,7 @@
             "rotation_deg": 0.0
           },
           "near_arm_u": {
-            "rotation_deg": 92.0
+            "rotation_deg": 92.0625
           },
           "near_leg_foot": {
             "rotation_deg": -51.404624
@@ -210,7 +210,7 @@
             "rotation_deg": -20.0
           },
           "near_arm_u": {
-            "rotation_deg": 73.0
+            "rotation_deg": 73.0625
           },
           "near_leg_foot": {
             "rotation_deg": -54.445747
@@ -264,7 +264,7 @@
             "rotation_deg": -35.0
           },
           "near_arm_u": {
-            "rotation_deg": 43.0
+            "rotation_deg": 43.0625
           },
           "near_leg_foot": {
             "rotation_deg": -57.913621
@@ -318,7 +318,7 @@
             "rotation_deg": -18.0
           },
           "near_arm_u": {
-            "rotation_deg": -15.0
+            "rotation_deg": -14.9375
           },
           "near_leg_foot": {
             "rotation_deg": -62.849895
@@ -372,7 +372,7 @@
             "rotation_deg": 0.0
           },
           "near_arm_u": {
-            "rotation_deg": -71.0
+            "rotation_deg": -70.9375
           },
           "near_leg_foot": {
             "rotation_deg": -50.966192
@@ -426,7 +426,7 @@
             "rotation_deg": -28.0
           },
           "near_arm_u": {
-            "rotation_deg": -7.0
+            "rotation_deg": -6.9375
           },
           "near_leg_foot": {
             "rotation_deg": -39.8525

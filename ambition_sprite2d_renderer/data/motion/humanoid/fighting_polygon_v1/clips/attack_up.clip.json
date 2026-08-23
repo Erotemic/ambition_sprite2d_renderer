@@ -39,7 +39,7 @@
             "rotation_deg": -55.0
           },
           "near_arm_u": {
-            "rotation_deg": -200.0
+            "rotation_deg": -196.9375
           },
           "near_leg_foot": {
             "rotation_deg": -0.037145
@@ -51,7 +51,7 @@
             "rotation_deg": -0.105361
           },
           "torso": {
-            "rotation_deg": 3.0
+            "rotation_deg": 0.0
           }
         }
       }
@@ -86,7 +86,7 @@
             "rotation_deg": -30.0
           },
           "near_arm_u": {
-            "rotation_deg": -198.5
+            "rotation_deg": -187.9375
           },
           "near_leg_foot": {
             "rotation_deg": -34.941444
@@ -98,7 +98,7 @@
             "rotation_deg": -23.879831
           },
           "torso": {
-            "rotation_deg": 10.703704
+            "rotation_deg": 0.0
           }
         }
       }
@@ -139,7 +139,7 @@
             "rotation_deg": -10.0
           },
           "near_arm_u": {
-            "rotation_deg": -144.5
+            "rotation_deg": -152.5
           },
           "near_leg_foot": {
             "rotation_deg": 22.156111
@@ -151,7 +151,7 @@
             "rotation_deg": 4.385536
           },
           "torso": {
-            "rotation_deg": -7.816
+            "rotation_deg": 0.0
           }
         }
       }
@@ -192,7 +192,7 @@
             "rotation_deg": 0.0
           },
           "near_arm_u": {
-            "rotation_deg": -116.5
+            "rotation_deg": -129.2812
           },
           "near_leg_foot": {
             "rotation_deg": 27.291061
@@ -204,7 +204,7 @@
             "rotation_deg": 3.793247
           },
           "torso": {
-            "rotation_deg": -12.691358
+            "rotation_deg": 0.0
           }
         }
       }
@@ -245,7 +245,7 @@
             "rotation_deg": -18.0
           },
           "near_arm_u": {
-            "rotation_deg": -73.5
+            "rotation_deg": -80.7812
           },
           "near_leg_foot": {
             "rotation_deg": 13.880466
@@ -257,7 +257,7 @@
             "rotation_deg": 3.486421
           },
           "torso": {
-            "rotation_deg": -7.753086
+            "rotation_deg": 0.0
           }
         }
       }
@@ -289,7 +289,7 @@
             "rotation_deg": -45.0
           },
           "near_arm_u": {
-            "rotation_deg": -18.0
+            "rotation_deg": -21.9375
           },
           "near_leg_foot": {
             "rotation_deg": -0.037145
@@ -301,7 +301,7 @@
             "rotation_deg": -0.105361
           },
           "torso": {
-            "rotation_deg": -4.0
+            "rotation_deg": 0.0
           }
         }
       }

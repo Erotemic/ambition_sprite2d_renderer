@@ -18,6 +18,10 @@ A spec states them once, in one file per clip:
     invariants    checkable properties of the arc, listed below
     body          non-arm channels per frame: root_x / root_y / any bone name,
                   which is how a smash ends on one knee
+    ground_contacts
+                  per frame, the joints that must touch the floor. The first is
+                  solved with the root and the rest with the bone above them,
+                  so "she ends on one knee" is solved rather than dialled in
     trail         ribbon styling; a smash wants window/inner/alpha turned up so
                   it reads grander than a tilt
     todo          what is deliberately unfinished and why
@@ -126,8 +130,128 @@ def check_invariants(angles, invariants):
     return failures
 
 
+def check_pixel_invariants(images, spec: dict):
+    """Rules about WHERE the swing lands, checked against the rendered frames.
+
+    The angle invariants govern the shape of the arc; these govern its place in
+    the world, which is the half that kept being stated in review and then lost.
+    "The blade goes all the way to the ground" and "the entire hitbox is in
+    front of her" are both measurable, and neither survives as a comment.
+
+    Measured on RAW frames -- before the trail, whose core out-shines the blade.
+
+        tip_reaches_ground:<frame>[@tol]
+            the blade tip sits within `tol` px of the neutral-stance foot line
+        hitbox_in_front[:tol]
+            every vertex of every live hit polygon is on the facing side of the
+            fighter's centre line
+        feet_on_ground[:tol]
+            no frame leaves the fighter hovering above the floor line
+    """
+    rules = spec.get("pixel_invariants") or []
+    if not rules:
+        return []
+    ground = st.ground_y(images)
+    axes = [st.blade_axis(im) for im in images]
+    front = -1.0 if spec.get("facing", "west") == "west" else 1.0
+    failures = []
+    for rule in rules:
+        name, _, arg = rule.partition(":")
+        if name == "tip_reaches_ground":
+            frame_text, _, tol_text = arg.partition("@")
+            i = int(frame_text)
+            tol = float(tol_text) if tol_text else 8.0
+            if axes[i] is None:
+                failures.append(f"{rule}: no blade found on frame {i}")
+                continue
+            gap = ground - axes[i][1][1]
+            if abs(gap) > tol:
+                failures.append(f"{rule}: tip is {gap:.1f}px "
+                                f"{'above' if gap > 0 else 'below'} the ground line")
+        elif name == "hitbox_in_front":
+            tol = float(arg) if arg else 4.0
+            hb = spec.get("hitbox") or {}
+            active = sorted(hb.get("active") or [])
+            for i in active:
+                poly = st.hit_polygon(axes, i, hb.get("reach", 1.0),
+                                      hb.get("linger", 3), active[0])
+                extent = st.body_extent(images[i])
+                if poly is None or extent is None:
+                    continue
+                behind = [p for p in poly if (p[0] - extent[0]) * front < -tol]
+                if behind:
+                    worst = max(abs(p[0] - extent[0]) for p in behind)
+                    failures.append(f"{rule}: frame {i} puts {len(behind)} vertex/vertices "
+                                    f"up to {worst:.0f}px BEHIND her centre")
+        elif name == "feet_on_ground":
+            tol = float(arg) if arg else 3.0
+            for i, im in enumerate(images):
+                extent = st.body_extent(im)
+                if extent is None:
+                    continue
+                gap = ground - extent[1]
+                if gap > tol:
+                    failures.append(f"{rule}: frame {i} floats {gap:.0f}px above the floor")
+        else:
+            failures.append(f"unknown pixel invariant {rule!r}")
+    return failures
+
+
 def measured(clip: str):
     return [st.sword_angle(clip, i) for i in range(len(load(clip)["sword_deg"]))]
+
+
+def channel_plan(clip: str, spec: dict) -> dict:
+    """Every channel the spec drives, for every frame: ``{frame: {name: stored}}``.
+
+    Building the WHOLE plan before touching disk is what makes the solve fast
+    and total. Fast, because seeding is then one pass over the files instead of
+    one rewrite per channel per frame. Total, because a channel absent from the
+    clip is absent from the projection too, so an unseeded channel would be a
+    control the in-memory solver cannot move -- and a silent no-op write reads
+    exactly like "the solver could not reach that angle".
+
+    Channels the spec does not pin keep their current stored value, so a solve
+    is not also an unannounced reset of everything it did not mention.
+    """
+    n = len(spec["sword_deg"])
+    torsos = spec.get("torso") or [None] * n
+    shifts = spec.get("torso_shift") or [None] * n
+    body = spec.get("body") or {}
+    off_hand = spec.get("off_hand") or {}
+    grips = [int(f) for f in spec.get("grip_frames") or []]
+
+    lengths = {"elbow": len(spec["elbow"]), "torso": len(torsos), "torso_shift": len(shifts)}
+    lengths.update({f"body.{k}": len(v) for k, v in body.items()})
+    bad = {k: v for k, v in lengths.items() if v != n}
+    if bad:
+        raise SystemExit(f"{clip}: channels disagree with {n} frames: {bad}")
+
+    plan: dict = {i: {"near_arm_l": spec["elbow"][i]} for i in range(n)}
+    for i in range(n):
+        if torsos[i] is not None:
+            plan[i]["torso"] = torsos[i]
+        if shifts[i]:
+            plan[i]["torso.x"], plan[i]["torso.y"] = shifts[i]
+        for channel, values in body.items():
+            if values[i] is not None:
+                plan[i][channel] = values[i]
+    for frame, pose in off_hand.items():
+        plan[int(frame)]["far_arm_u"], plan[int(frame)]["far_arm_l"] = pose
+        plan[int(frame)]["far_arm_u.x"] = 0.0
+        plan[int(frame)]["far_arm_u.y"] = 0.0
+    if grips:
+        for i in grips:
+            plan[i].setdefault("far_arm_u.x", 0.0)
+            plan[i].setdefault("far_arm_u.y", 0.0)
+
+    # Seed the union across frames: a channel authored on only some frames is
+    # still one channel, and the projection wants a key on every frame of it.
+    names = {"near_arm_u"} | {n_ for row in plan.values() for n_ in row}
+    for i in range(n):
+        for name in names:
+            plan[i].setdefault(name, st.read_channel(clip, i, name))
+    return plan
 
 
 def apply_spec(clip: str, verbose: bool = True):
@@ -136,70 +260,40 @@ def apply_spec(clip: str, verbose: bool = True):
     elbows = spec["elbow"]
     torsos = spec.get("torso") or [None] * len(angles)
     shifts = spec.get("torso_shift") or [None] * len(angles)
-    if not (len(elbows) == len(torsos) == len(shifts) == len(angles)):
-        raise SystemExit(f"{clip}: spec channel lengths disagree")
+
+    rig = st.FastRig.seed(clip, channel_plan(clip, spec))
     if verbose:
         print(f"{clip}: solving {len(angles)} frames")
         print("  f   target   elbow   torso   shoulder      got     err")
     for i, target in enumerate(angles):
         shift = tuple(shifts[i]) if shifts[i] else None
-        upper, got, err = st.solve_frame(clip, i, elbows[i], target,
-                                         torso=torsos[i], shift=shift)
+        upper, got, err = st.solve_frame_fast(rig, i, elbows[i], target,
+                                              torso=torsos[i], shift=shift)
         if verbose:
             tor = "  -  " if torsos[i] is None else f"{torsos[i]:5.1f}"
             mark = "" if err < 2.0 else "   <== unreachable"
             print(f"  {i} {target:8.1f} {elbows[i]:7.1f} {tor} {upper:10.2f} {got:8.1f} {err:6.1f}{mark}")
-    body = spec.get("body") or {}
-    if body:
-        _apply_body(clip, body, len(angles))
-        if verbose:
-            print(f"  body: {', '.join(sorted(body))}")
-    for frame, pose in (spec.get("off_hand") or {}).items():
-        st.write_far(clip, int(frame), pose[0], pose[1], (0.0, 0.0))
+    contacts = spec.get("ground_contacts") or {}
+    if contacts:
+        floor = st.ground_world(rig)
+        for frame, joints in sorted(contacts.items(), key=lambda kv: int(kv[0])):
+            for joint, channel, value, err in st.solve_ground_contacts(rig, int(frame), joints, floor):
+                if verbose:
+                    mark = "" if err < 1.5 else "   <== cannot reach the floor"
+                    print(f"  contact f{frame}: {joint} via {channel}={value:.1f} "
+                          f"({err:.2f}px off){mark}")
     for frame in spec.get("grip_frames") or []:
-        u, l, gap = st.solve_grip(clip, int(frame))
+        idx = int(frame)
+        _, _, gap = st.solve_grip_fast(rig, idx)
         if gap >= 1.0:
-            _, gap = st.close_grip_by_shift(clip, int(frame), u, l)
+            _, gap = st.close_grip_fast(rig, idx)
         if verbose:
             mark = "" if gap < 3.0 else "   <== off hand cannot reach"
-            print(f"  grip f{frame}: gap {gap:.2f}px{mark}")
+            print(f"  grip f{idx}: gap {gap:.2f}px{mark}")
+    rig.flush()
+    if verbose and spec.get("body"):
+        print(f"  body: {', '.join(sorted(spec['body']))}")
     return spec
-
-
-def _apply_body(clip: str, body: dict, frames: int) -> None:
-    """Write non-arm channels: root offset and any bone rotation, per frame.
-
-    A forward smash that ends on one knee is not an arm pose -- it drops the
-    root and folds the legs. Keeping these in the same spec means the whole
-    attack is one declaration rather than an arm file plus a body afterthought.
-    """
-    path = st._clip_path(clip)
-    doc = json.loads(path.read_text())
-    for i in range(frames):
-        key = doc["pose_keys"][i]
-        if "pose" in key:
-            pose_path = st.LIB / "poses" / f"{key['pose'].replace('/', '__')}.pose.json"
-            state = json.loads(pose_path.read_text())
-            target = state["state"]
-            sink = lambda st_=state, p=pose_path: p.write_text(json.dumps(st_, indent=2) + "\n")
-        else:
-            target = key["state"]
-            sink = None
-        for channel, values in body.items():
-            if values[i] is None:
-                continue
-            if channel == "root_y":
-                pos = target.setdefault("root", {}).setdefault("position", [0.0, 0.0])
-                pos[1] = round(float(values[i]), 4)
-            elif channel == "root_x":
-                pos = target.setdefault("root", {}).setdefault("position", [0.0, 0.0])
-                pos[0] = round(float(values[i]), 4)
-            else:
-                bones = target.setdefault("bones", {})
-                bones.setdefault(channel, {})["rotation_deg"] = round(float(values[i]), 4)
-        if sink is not None:
-            sink()
-    path.write_text(json.dumps(doc, indent=2) + "\n")
 
 
 def report(clip: str, spec: dict) -> int:
@@ -217,18 +311,38 @@ def report(clip: str, spec: dict) -> int:
     return 0
 
 
+def preview(clip_name: str, spec: dict, out: Path):
+    """Render the clip with its trail, hit volumes and floor rule.
+
+    Returns the pixel-invariant failures, because the same raw frames answer
+    both questions and rendering them twice is the sort of waste that turned a
+    solve into a coffee break.
+    """
+    hb = spec.get("hitbox") or {}
+    raw, clip = st.render_clip(clip_name)
+    failures = check_pixel_invariants(raw, spec)
+    images = st.draw_trail(raw, **(spec.get("trail") or {}))
+    if hb.get("active") is not None:
+        images = st.draw_hitboxes(images, reach=hb.get("reach", 1.0),
+                                  linger=hb.get("linger", 3), active=set(hb["active"]))
+    images = st.draw_ground(images, st.ground_y(raw))
+    st.save_preview(images, clip, clip_name, out, scale=2)
+    return failures
+
+
 def cmd_solve(args):
     spec = apply_spec(args.clip)
     code = report(args.clip, spec)
     if args.preview:
-        hb = spec.get("hitbox") or {}
-        images, clip = st.render_clip(args.clip)
-        images = st.draw_trail(images, **(spec.get("trail") or {}))
-        if hb.get("active") is not None:
-            images = st.draw_hitboxes(images, reach=hb.get("reach", 1.0),
-                                      linger=hb.get("linger", 3), active=set(hb["active"]))
         out = Path(args.preview)
-        st.save_preview(images, clip, args.clip, out, scale=2)
+        failures = preview(args.clip, spec, out)
+        if failures:
+            code = 1
+            print(f"  {len(failures)} PLACEMENT FAILURE(S):")
+            for f in failures:
+                print(f"    - {f}")
+        elif spec.get("pixel_invariants"):
+            print(f"  all {len(spec['pixel_invariants'])} placement rules hold")
         print(f"  wrote {out.with_suffix('.gif')}")
     raise SystemExit(code)
 
