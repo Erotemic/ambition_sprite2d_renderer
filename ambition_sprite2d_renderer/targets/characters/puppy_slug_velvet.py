@@ -1042,7 +1042,6 @@ def render(out_dir: str | Path, **opts) -> list[Path]:
             "hurt": "hit",
             "death": "death",
         },
-        trim=False,
         attack_hitboxes={
             "side_sweep": {
                 "bbox": {"x": 73, "y": 44, "w": 47, "h": 39},

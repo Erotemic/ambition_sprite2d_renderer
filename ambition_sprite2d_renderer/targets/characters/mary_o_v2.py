@@ -347,7 +347,6 @@ def _render_form(form: FormSpec, out_dir: str | Path) -> List[Path]:
         auto_crop=False,
         actor_metadata=_actor_metadata(form),
         body_metrics_fn=body_metrics,
-        trim=False,
     )
     return [
         outputs[k]

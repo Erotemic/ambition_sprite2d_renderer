@@ -757,7 +757,6 @@ def render_target(style: DuoStyle, out_dir: Path) -> List[Path]:
         actor_metadata=_make_actor_metadata(style),
         sheet_tuning={"collision_scale": 1.0, "frame_sample_inset": 1},
         animation_key_map={name: name for name, _frames, _duration in ROWS},
-        trim=False,
         attack_hitboxes={
             "stage_smash": {"bbox": {"x": 84, "y": 60, "w": 54, "h": 36}},
             "slope_lock": {"bbox": {"x": 85, "y": 46, "w": 48, "h": 34}},

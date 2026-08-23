@@ -389,7 +389,6 @@ def render(out_dir: str | Path, **opts):
         animation_key_map={name: name for name, _frames, _duration in ROWS},
         # The 224px logical frame protects large rotations; packed trim keeps
         # that safety margin from becoming permanent atlas residency.
-        trim=True,
     )
     keys = ("spritesheet", "yaml", "ron", "actor", "canonical", "canonical_transparent", "preview")
     return [Path(outputs[key]) for key in keys if outputs.get(key)]

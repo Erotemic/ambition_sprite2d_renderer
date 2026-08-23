@@ -626,7 +626,6 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         label_width=112,
         actor_metadata=ACTOR_METADATA,
         auto_crop=False,
-        trim=False,
     )
     return [
         outputs["canonical"],

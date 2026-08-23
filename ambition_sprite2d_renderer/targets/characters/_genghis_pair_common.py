@@ -588,7 +588,6 @@ def render_target(variant_name: str, out_dir: str | Path, **opts) -> List[Path]:
         crop_margin=4,
         actor_metadata=ACTOR_METADATA[variant_name],
         sheet_tuning={"collision_scale": 1.68},
-        trim=True,
     )
     keys = (
         "spritesheet",

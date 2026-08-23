@@ -643,7 +643,6 @@ def render(out_dir: str | Path, **opts):
         # wide and `dash` 143 against a 57 px torso, so a body that followed the
         # art would inflate every time they flourish.
         pose_bodies="authored",
-        trim=True,
     )
     keys = (
         "spritesheet", "yaml", "ron", "actor", "canonical",

@@ -1107,7 +1107,6 @@ def render(out_dir: Path, **opts) -> List[Path]:
         actor_metadata=ACTOR_METADATA,
         sheet_tuning={"collision_scale": 1.0, "frame_sample_inset": 1},
         animation_key_map={name: name for name, _frames, _duration in ROWS},
-        trim=False,
         attack_hitboxes={
             "straightedge_slam": {"bbox": {"x": 86, "y": 50, "w": 52, "h": 32}},
             "parallel_banish": {"bbox": {"x": 84, "y": 42, "w": 48, "h": 38}},

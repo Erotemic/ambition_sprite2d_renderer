@@ -556,7 +556,6 @@ def render(out_dir: str | Path, **opts):
         out_dir=Path(out_dir),
         frame_size=FRAME_SIZE,
         auto_crop=True,
-        trim=False,
         actor_metadata=ACTOR_METADATA,
     )
     return [

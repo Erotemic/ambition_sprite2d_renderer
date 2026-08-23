@@ -267,7 +267,6 @@ def render(out_dir: str | Path, **opts):
         actor_metadata=ACTOR_METADATA,
         sheet_tuning=doc.sprite_tuning or {"collision_scale": 1.8},
         authored_faces_left=doc.authored_faces_left,
-        trim=False,
     )
     keys = (
         "spritesheet",

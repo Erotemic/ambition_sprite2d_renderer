@@ -732,7 +732,6 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         frame_size=FRAME_SIZE,
         label_width=118,
         auto_crop=False,
-        trim=False,
         body_metrics_fn=_body_metrics_override,
         actor_metadata=ACTOR_METADATA,
         sheet_tuning={"collision_scale": 1.12, "frame_sample_inset": 2},

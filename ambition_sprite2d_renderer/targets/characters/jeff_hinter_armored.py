@@ -1500,7 +1500,6 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         auto_crop=False,
         actor_metadata=ACTOR_METADATA,
         sheet_tuning={"collision_scale": 1.05},
-        trim=False,
     )
     keys = (
         "spritesheet",

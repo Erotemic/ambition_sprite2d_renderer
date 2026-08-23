@@ -297,7 +297,6 @@ def render(out_dir: str | Path, **opts):
         attack_hitboxes=attack_hitboxes(),
         hurtbox_parts=hurtbox_parts_for_rows(ROWS),
         pose_bodies="authored",
-        trim=True,
     )
     keys = (
         "spritesheet",

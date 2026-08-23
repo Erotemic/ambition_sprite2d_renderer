@@ -859,7 +859,6 @@ def render(out_dir: Path, **opts) -> List[Path]:
         actor_metadata=ACTOR_METADATA,
         sheet_tuning={"collision_scale": 1.0, "frame_sample_inset": 1},
         animation_key_map={name: name for name, _frames, _duration in ROWS},
-        trim=False,
         attack_hitboxes={
             "honk_rebuttal": {"bbox": {"x": 77, "y": 22, "w": 51, "h": 47}},
             "selfish_meme": {"bbox": {"x": 74, "y": 21, "w": 54, "h": 68}},

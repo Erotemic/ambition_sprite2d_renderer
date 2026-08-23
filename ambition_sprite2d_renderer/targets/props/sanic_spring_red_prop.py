@@ -198,7 +198,6 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         crop_margin=6,
         body_metrics_fn=_body_metrics,
         actor_metadata=ACTOR_METADATA,
-        trim=False,
     )
     return [
         outputs["spritesheet"],

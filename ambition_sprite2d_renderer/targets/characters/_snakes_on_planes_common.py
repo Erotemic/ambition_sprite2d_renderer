@@ -457,7 +457,6 @@ def render_target(spec: PlaneSpec, out_dir: str | Path) -> List[Path]:
         out_dir=out_dir,
         frame_size=FRAME_SIZE,
         auto_crop=False,
-        trim=False,
         actor_metadata=actor_metadata(spec),
     )
     return [

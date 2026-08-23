@@ -345,7 +345,6 @@ def _render_spec(spec: ConstructionSpec, out_dir: str | Path) -> List[Path]:
         label_width=160,
         auto_crop=False,
         actor_metadata=_actor_metadata(spec),
-        trim=False,
     )
     return [
         outputs[key]

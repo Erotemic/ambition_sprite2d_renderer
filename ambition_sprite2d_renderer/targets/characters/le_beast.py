@@ -540,7 +540,7 @@ def render(out_dir: Path, **opts) -> List[Path]:
         frame_size=(FRAME_W,FRAME_H), label_width=112, auto_crop=False,
         body_metrics_fn=_body_metrics_override, actor_metadata=ACTOR_METADATA,
         sheet_tuning={"collision_scale":1.12,"frame_sample_inset":1},
-        animation_key_map={name:name for name,_frames,_duration in ROWS}, trim=False,
+        animation_key_map={name:name for name,_frames,_duration in ROWS},
         attack_hitboxes={
             "measurable_maw":{"bbox":{"x":58,"y":22,"w":70,"h":65}},
             "sigma_swallow":{"bbox":{"x":20,"y":12,"w":108,"h":87}},

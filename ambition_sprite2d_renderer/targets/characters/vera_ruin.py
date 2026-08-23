@@ -1393,7 +1393,6 @@ def render(out_dir: Path, **opts) -> List[Path]:
         actor_metadata=ACTOR_METADATA,
         sheet_tuning={"collision_scale": 1.0, "frame_sample_inset": 1},
         animation_key_map={name: name for name, _frames, _duration in ROWS},
-        trim=False,
         attack_hitboxes={
             "jab": {"bbox": {"x": 111, "y": 65, "w": 55, "h": 50}},
             "curve_cut": {"bbox": {"x": 108, "y": 58, "w": 76, "h": 61}},

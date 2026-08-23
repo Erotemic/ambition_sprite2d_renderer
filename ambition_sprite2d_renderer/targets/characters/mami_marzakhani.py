@@ -1331,7 +1331,6 @@ def render(out_dir: Path, **opts) -> List[Path]:
         actor_metadata=ACTOR_METADATA,
         sheet_tuning={"collision_scale": 1.0, "frame_sample_inset": 1},
         animation_key_map={name: name for name, _frames, _duration in ROWS},
-        trim=False,
         attack_hitboxes={
             "geodesic_sweep": {"bbox": {"x": 76, "y": 35, "w": 50, "h": 60}},
             "boundary_fold": {"bbox": {"x": 79, "y": 38, "w": 47, "h": 50}},

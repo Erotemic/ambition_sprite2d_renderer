@@ -484,7 +484,6 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         out_dir=out_dir,
         frame_size=opts.get("frame_size", FRAME_SIZE),
         auto_crop=False,
-        trim=False,
         actor_metadata=ACTOR_METADATA,
         # The snake's silhouette CHANGES SHAPE between poses more than almost
         # any other body in the tree: sprawled it is a long low serpent, boxed

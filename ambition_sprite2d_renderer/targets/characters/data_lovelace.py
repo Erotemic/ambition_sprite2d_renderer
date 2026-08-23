@@ -141,7 +141,6 @@ def render(out_dir: str | Path, **opts):
         actor_metadata=ACTOR_METADATA,
         sheet_tuning={"collision_scale": 1.85},
         animation_key_map={row[0]: row[0] for row in ROWS},
-        trim=True,
     )
     keys = ("spritesheet", "yaml", "ron", "actor", "canonical", "canonical_transparent", "preview")
     return [Path(outputs[key]) for key in keys if outputs.get(key)]

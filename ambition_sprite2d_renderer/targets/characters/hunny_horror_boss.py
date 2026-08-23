@@ -219,7 +219,6 @@ def render(out_dir: str | Path, **opts):
         actor_metadata=ACTOR_METADATA,
         sheet_tuning={"collision_scale": 2.15},
         animation_key_map={row[0]: row[0] for row in ROWS},
-        trim=True,
     )
     keys = (
         "spritesheet",

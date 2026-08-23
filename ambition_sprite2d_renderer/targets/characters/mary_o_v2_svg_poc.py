@@ -278,7 +278,7 @@ def _render_form(form: FormSpec, out_dir: str | Path) -> List[Path]:
         target=_target_name(form), rows=form.rows, render_fn=render_frame,
         out_dir=out_dir, frame_size=FRAME_SIZE, label_width=LABEL_WIDTH,
         auto_crop=False, actor_metadata=_actor_metadata(form),
-        body_metrics_fn=body_metrics, trim=False,
+        body_metrics_fn=body_metrics,
     )
     return [outputs[k] for k in ("canonical", "canonical_transparent", "spritesheet", "yaml", "ron", "actor", "preview")]
 

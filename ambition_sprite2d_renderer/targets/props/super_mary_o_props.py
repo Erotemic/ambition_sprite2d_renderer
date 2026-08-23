@@ -520,7 +520,6 @@ def _render_spec(spec: PropSpec, out_dir: str | Path) -> List[Path]:
         label_width=LABEL_WIDTH,
         auto_crop=False,
         actor_metadata=_actor_metadata(spec),
-        trim=False,
     )
     return [
         outputs[k]

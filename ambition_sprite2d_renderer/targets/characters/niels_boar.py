@@ -1047,7 +1047,6 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         label_width=130,
         actor_metadata=ACTOR_METADATA,
         auto_crop=False,
-        trim=False,
     )
     portrait_outputs = render_portraits(out_dir, **opts)
     return [

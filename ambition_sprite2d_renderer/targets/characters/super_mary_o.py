@@ -1489,7 +1489,6 @@ def _render_form(form: FormSpec, out_dir: str | Path) -> List[Path]:
         label_width=LABEL_WIDTH,
         auto_crop=False,
         actor_metadata=_actor_metadata(form),
-        trim=False,
     )
     return [
         outputs[k]
