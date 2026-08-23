@@ -4,92 +4,92 @@
      width="238.125mm" height="238.125mm" viewBox="0 0 900 900">
   <g id="view-projectile-polygon" inkscape:groupmode="layer" inkscape:label="Projectile Polygon - Side">
     <g id="polygon-far-leg-u" inkscape:label="Far Upper Leg">
-      <polygon points="632,448 684,451 695,560 668,584 634,540" fill="#174A52" stroke="#0B252A" stroke-width="5"/>
-      <polygon points="632,448 684,451 666,525 634,540" fill="#246C72"/>
+      <polygon points="615.1,538.2 689.7,533.4 699.8,614.9 659.8,636.8 613.2,608.0" fill="#174A52" stroke="#0B252A" stroke-width="5"/>
+      <polygon points="615.1,538.2 689.7,533.4 660.0,592.2 613.2,608.0" fill="#246C72"/>
     </g>
     <g id="polygon-far-leg-l" inkscape:label="Far Lower Leg">
-      <polygon points="646,568 687,575 676,690 636,696 633,625" fill="#143F47" stroke="#0B252A" stroke-width="5"/>
-      <polygon points="646,568 687,575 670,634 633,625" fill="#205D65"/>
+      <polygon points="623.4,623.5 683.0,631.8 677.0,710.1 619.9,710.9 609.5,661.7" fill="#143F47" stroke="#0B252A" stroke-width="5"/>
+      <polygon points="623.4,623.5 683.0,631.8 663.6,671.0 609.5,661.7" fill="#205D65"/>
     </g>
     <g id="polygon-far-foot" inkscape:label="Far Foot">
-      <polygon points="628,681 672,686 729,703 727,723 673,729 618,724 610,702" fill="#123940" stroke="#0B252A" stroke-width="5"/>
-      <polygon points="672,686 729,703 687,713 618,724" fill="#276A6D"/>
+      <polygon points="632.3,672.7 677.7,674.9 735.7,690.0 732.0,713.3 675.3,724.6 618.3,723.3 611.8,698.5" fill="#123940" stroke="#0B252A" stroke-width="5"/>
+      <polygon points="677.7,674.9 735.7,690.0 691.2,705.0 618.3,723.3" fill="#276A6D"/>
     </g>
     <g id="polygon-far-arm-u" inkscape:label="Far Upper Arm">
-      <polygon points="704,286 729,291 740,350 718,357 699,327" fill="#1A5058" stroke="#0B252A" stroke-width="5"/>
-      <polygon points="704,286 729,291 721,324 699,327" fill="#2A7477"/>
+      <polygon points="699.0,368.6 724.0,373.6 735.0,432.6 713.0,439.6 694.0,409.6" fill="#1A5058" stroke="#0B252A" stroke-width="5"/>
+      <polygon points="699.0,368.6 724.0,373.6 716.0,406.6 694.0,409.6" fill="#2A7477"/>
     </g>
     <g id="polygon-far-arm-l" inkscape:label="Far Lower Arm">
-      <polygon points="717,349 742,354 748,417 726,424 711,389" fill="#16454D" stroke="#0B252A" stroke-width="5"/>
-      <polygon points="717,349 742,354 740,385 711,389" fill="#23646A"/>
+      <polygon points="712.0,431.6 737.0,436.6 743.0,499.6 721.0,506.6 706.0,471.6" fill="#16454D" stroke="#0B252A" stroke-width="5"/>
+      <polygon points="712.0,431.6 737.0,436.6 735.0,467.6 706.0,471.6" fill="#23646A"/>
     </g>
     <g id="polygon-far-hand" inkscape:label="Far Hand">
-      <polygon points="724,414 754,421 748,448 728,451 716,437" fill="#1D5A61" stroke="#0B252A" stroke-width="5"/>
-      <polygon points="748,421 754,433 740,437 728,451" fill="#2D7B7B"/>
+      <polygon points="719.0,496.6 749.0,503.6 743.0,530.6 723.0,533.6 711.0,519.6" fill="#1D5A61" stroke="#0B252A" stroke-width="5"/>
+      <polygon points="743.0,503.6 749.0,515.6 735.0,519.6 723.0,533.6" fill="#2D7B7B"/>
     </g>
 
     <g id="polygon-pelvis" inkscape:label="Pelvis">
-      <polygon id="polygon-tail-blade" points="400,433 469,395 538,406 563,436 520,452 442,449" fill="#2A6F74" stroke="#0B252A" stroke-width="6"/>
-      <polygon points="434,417 487,404 520,452 442,449" fill="#50B1A1" opacity="0.88"/>
-      <polygon points="548,430 691,430 702,482 663,513 583,514 540,484" fill="#26757A" stroke="#0B252A" stroke-width="6"/>
-      <polygon points="548,430 620,448 583,514 540,484" fill="#3EA39A"/>
-      <polygon points="620,448 691,430 702,482 663,513" fill="#1B515A"/>
+      <polygon id="polygon-tail-blade" points="395.0,515.6 464.0,477.6 533.0,488.6 558.0,518.6 515.0,534.6 437.0,531.6" fill="#2A6F74" stroke="#0B252A" stroke-width="6"/>
+      <polygon points="429.0,499.6 482.0,486.6 515.0,534.6 437.0,531.6" fill="#50B1A1" opacity="0.88"/>
+      <polygon points="543.0,512.6 686.0,512.6 697.0,564.6 658.0,595.6 578.0,596.6 535.0,566.6" fill="#26757A" stroke="#0B252A" stroke-width="6"/>
+      <polygon points="543.0,512.6 615.0,530.6 578.0,596.6 535.0,566.6" fill="#3EA39A"/>
+      <polygon points="615.0,530.6 686.0,512.6 697.0,564.6 658.0,595.6" fill="#1B515A"/>
     </g>
     <g id="polygon-torso" inkscape:label="Torso">
-      <polygon points="501,289 674,268 749,300 735,389 646,438 551,431 497,372" fill="#2B7F82" stroke="#0B252A" stroke-width="7"/>
-      <polygon points="501,289 600,299 602,433 551,431 497,372" fill="#49B5A7"/>
-      <polygon points="602,299 674,268 749,300 735,389 646,438 602,433" fill="#1C5860"/>
-      <polygon points="565,321 638,306 714,323 673,351 621,368 573,352" fill="#76D8C4" opacity="0.62"/>
-      <polygon points="590,387 628,370 676,387 656,414 603,416" fill="#163F49" opacity="0.72"/>
-      <polygon id="polygon-chest-emitter" points="610,382 625,372 642,383 627,400" fill="#A4FFEB" opacity="0.92"/>
+      <polygon points="496.0,371.6 669.0,350.6 744.0,382.6 730.0,471.6 641.0,520.6 546.0,513.6 492.0,454.6" fill="#2B7F82" stroke="#0B252A" stroke-width="7"/>
+      <polygon points="496.0,371.6 595.0,381.6 597.0,515.6 546.0,513.6 492.0,454.6" fill="#49B5A7"/>
+      <polygon points="597.0,381.6 669.0,350.6 744.0,382.6 730.0,471.6 641.0,520.6 597.0,515.6" fill="#1C5860"/>
+      <polygon points="560.0,403.6 633.0,388.6 709.0,405.6 668.0,433.6 616.0,450.6 568.0,434.6" fill="#76D8C4" opacity="0.62"/>
+      <polygon points="585.0,469.6 623.0,452.6 671.0,469.6 651.0,496.6 598.0,498.6" fill="#163F49" opacity="0.72"/>
+      <polygon id="polygon-chest-emitter" points="605.0,464.6 620.0,454.6 637.0,465.6 622.0,482.6" fill="#A4FFEB" opacity="0.92"/>
     </g>
     <g id="polygon-head" inkscape:label="Head">
       <!-- Oversized source geometry keeps the cannon legible after downsampling. -->
-      <polygon id="polygon-head-cannon-mount" points="690,165 710,130 749,111 788,119 806,148 791,180 723,185" fill="#205E67" stroke="#0B252A" stroke-width="6"/>
-      <polygon id="polygon-head-cannon" points="749,126 859,126 884,140 884,168 859,181 751,177 738,153" fill="#2D8D8D" stroke="#0B252A" stroke-width="7"/>
-      <polygon id="polygon-head-cannon-highlight" points="769,136 851,136 867,145 851,154 774,154" fill="#74D7C8" opacity="0.88"/>
-      <polygon id="polygon-head-cannon-muzzle" points="857,125 893,131 908,153 894,179 857,182 844,153" fill="#17464F" stroke="#0B252A" stroke-width="7"/>
-      <polygon id="polygon-head-cannon-bore" points="871,143 894,144 899,154 893,167 870,167 863,154" fill="#061C21"/>
+      <polygon id="polygon-head-cannon-mount" points="685.0,247.6 705.0,212.6 744.0,193.6 783.0,201.6 801.0,230.6 786.0,262.6 718.0,267.6" fill="#205E67" stroke="#0B252A" stroke-width="6"/>
+      <polygon id="polygon-head-cannon" points="744.0,208.6 854.0,208.6 879.0,222.6 879.0,250.6 854.0,263.6 746.0,259.6 733.0,235.6" fill="#2D8D8D" stroke="#0B252A" stroke-width="7"/>
+      <polygon id="polygon-head-cannon-highlight" points="764.0,218.6 846.0,218.6 862.0,227.6 846.0,236.6 769.0,236.6" fill="#74D7C8" opacity="0.88"/>
+      <polygon id="polygon-head-cannon-muzzle" points="852.0,207.6 888.0,213.6 903.0,235.6 889.0,261.6 852.0,264.6 839.0,235.6" fill="#17464F" stroke="#0B252A" stroke-width="7"/>
+      <polygon id="polygon-head-cannon-bore" points="866.0,225.6 889.0,226.6 894.0,236.6 888.0,249.6 865.0,249.6 858.0,236.6" fill="#061C21"/>
 
       <!-- Skull and neck mass. -->
-      <polygon points="659,190 722,165 787,174 818,201 807,246 756,279 696,277 655,242" fill="#28777B" stroke="#0B252A" stroke-width="7"/>
-      <polygon points="659,190 722,165 719,224 655,242" fill="#55BBAA"/>
-      <polygon points="722,165 787,174 818,201 719,224" fill="#37958E"/>
-      <polygon points="719,224 808,214 807,246 756,279 707,258" fill="#184B55"/>
-      <polygon points="655,242 719,224 707,258 696,277" fill="#2D8583"/>
+      <polygon points="654.0,272.6 717.0,247.6 782.0,256.6 813.0,283.6 802.0,328.6 751.0,361.6 691.0,359.6 650.0,324.6" fill="#28777B" stroke="#0B252A" stroke-width="7"/>
+      <polygon points="654.0,272.6 717.0,247.6 714.0,306.6 650.0,324.6" fill="#55BBAA"/>
+      <polygon points="717.0,247.6 782.0,256.6 813.0,283.6 714.0,306.6" fill="#37958E"/>
+      <polygon points="714.0,306.6 803.0,296.6 802.0,328.6 751.0,361.6 702.0,340.6" fill="#184B55"/>
+      <polygon points="650.0,324.6 714.0,306.6 702.0,340.6 691.0,359.6" fill="#2D8583"/>
 
       <!-- The snout is a distinct upper/lower jaw silhouette, not one head wedge. -->
-      <polygon id="polygon-snout-upper" points="774,202 842,193 887,214 887,241 817,249 766,231" fill="#3B9E95" stroke="#0B252A" stroke-width="7"/>
-      <polygon id="polygon-snout-highlight" points="797,207 840,202 873,215 828,225 778,220" fill="#68C9B7" opacity="0.92"/>
-      <polygon id="polygon-snout-lower" points="817,249 887,241 876,272 835,291 782,273 767,254" fill="#174A53" stroke="#0B252A" stroke-width="7"/>
-      <polyline id="polygon-mouth-line" points="777,247 826,251 879,242" fill="none" stroke="#071F24" stroke-width="8" stroke-linecap="round"/>
-      <polygon id="polygon-nostril" points="855,214 868,217 864,227 853,225" fill="#0B252A"/>
-      <polygon id="polygon-visor" points="703,206 744,194 785,201 768,224 715,228" fill="#B8FFF0" opacity="0.86"/>
+      <polygon id="polygon-snout-upper" points="769.0,284.6 837.0,275.6 882.0,296.6 882.0,323.6 812.0,331.6 761.0,313.6" fill="#3B9E95" stroke="#0B252A" stroke-width="7"/>
+      <polygon id="polygon-snout-highlight" points="792.0,289.6 835.0,284.6 868.0,297.6 823.0,307.6 773.0,302.6" fill="#68C9B7" opacity="0.92"/>
+      <polygon id="polygon-snout-lower" points="812.0,331.6 882.0,323.6 871.0,354.6 830.0,373.6 777.0,355.6 762.0,336.6" fill="#174A53" stroke="#0B252A" stroke-width="7"/>
+      <polyline id="polygon-mouth-line" points="772.0,329.6 821.0,333.6 874.0,324.6" fill="none" stroke="#071F24" stroke-width="8" stroke-linecap="round"/>
+      <polygon id="polygon-nostril" points="850.0,296.6 863.0,299.6 859.0,309.6 848.0,307.6" fill="#0B252A"/>
+      <polygon id="polygon-visor" points="698.0,288.6 739.0,276.6 780.0,283.6 763.0,306.6 710.0,310.6" fill="#B8FFF0" opacity="0.86"/>
     </g>
 
     <g id="polygon-near-leg-u" inkscape:label="Near Upper Leg">
-      <polygon points="552,449 607,454 594,566 548,582 540,532" fill="#3A9C95" stroke="#0B252A" stroke-width="5"/>
-      <polygon points="552,449 607,454 582,523 540,532" fill="#63CDBA"/>
+      <polygon points="534.2,532.7 613.7,541.4 595.7,623.0 529.3,630.6 517.4,592.9" fill="#3A9C95" stroke="#0B252A" stroke-width="5"/>
+      <polygon points="534.2,532.7 613.7,541.4 578.1,590.1 517.4,592.9" fill="#63CDBA"/>
     </g>
     <g id="polygon-near-leg-l" inkscape:label="Near Lower Leg">
-      <polygon points="540,567 592,574 570,688 522,695 519,624" fill="#31877F" stroke="#0B252A" stroke-width="5"/>
-      <polygon points="540,567 592,574 571,633 519,624" fill="#51B7A7"/>
+      <polygon points="512.5,619.3 587.6,630.9 570.9,708.1 503.3,706.9 489.8,656.6" fill="#31877F" stroke="#0B252A" stroke-width="5"/>
+      <polygon points="512.5,619.3 587.6,630.9 565.2,669.6 489.8,656.6" fill="#51B7A7"/>
     </g>
     <g id="polygon-near-foot" inkscape:label="Near Foot">
-      <polygon points="515,680 567,686 633,705 623,726 548,730 500,724 492,702" fill="#2C7975" stroke="#0B252A" stroke-width="5"/>
-      <polygon points="567,686 633,705 580,715 500,724" fill="#49A89C"/>
+      <polygon points="517.3,678.1 575.0,679.5 647.1,693.5 633.9,717.2 549.4,728.8 496.2,727.1 489.4,704.1" fill="#2C7975" stroke="#0B252A" stroke-width="5"/>
+      <polygon points="575.0,679.5 647.1,693.5 586.8,709.5 496.2,727.1" fill="#49A89C"/>
     </g>
     <g id="polygon-near-arm-u" inkscape:label="Near Upper Arm">
-      <polygon points="515,286 540,291 528,350 503,354 500,322" fill="#48ADA1" stroke="#0B252A" stroke-width="5"/>
-      <polygon points="515,286 540,291 526,322 500,322" fill="#72D8C3"/>
+      <polygon points="510.0,368.6 535.0,373.6 523.0,432.6 498.0,436.6 495.0,404.6" fill="#48ADA1" stroke="#0B252A" stroke-width="5"/>
+      <polygon points="510.0,368.6 535.0,373.6 521.0,404.6 495.0,404.6" fill="#72D8C3"/>
     </g>
     <g id="polygon-near-arm-l" inkscape:label="Near Lower Arm">
-      <polygon points="500,349 526,355 513,418 489,423 483,388" fill="#3A958F" stroke="#0B252A" stroke-width="5"/>
-      <polygon points="500,349 526,355 515,387 483,388" fill="#5DC2B2"/>
+      <polygon points="495.0,431.6 521.0,437.6 508.0,500.6 484.0,505.6 478.0,470.6" fill="#3A958F" stroke="#0B252A" stroke-width="5"/>
+      <polygon points="495.0,431.6 521.0,437.6 510.0,469.6 478.0,470.6" fill="#5DC2B2"/>
     </g>
     <g id="polygon-near-hand" inkscape:label="Near Hand">
-      <polygon points="485,414 515,420 510,447 486,451 472,436" fill="#47A99F" stroke="#0B252A" stroke-width="5"/>
-      <polygon points="515,420 510,432 497,435 486,451" fill="#72D7C2"/>
+      <polygon points="480.0,496.6 510.0,502.6 505.0,529.6 481.0,533.6 467.0,518.6" fill="#47A99F" stroke="#0B252A" stroke-width="5"/>
+      <polygon points="510.0,502.6 505.0,514.6 492.0,517.6 481.0,533.6" fill="#72D7C2"/>
     </g>
   </g>
   <!-- BEGIN AMBITION SVG RIG v1 -->
@@ -110,7 +110,7 @@
       <g id="ambition-rig-side-bone-near_leg_u" data-rig-bone-def="near_leg_u" data-rig-parent="pelvis" data-rig-origin="ambition-rig-side-joint-near_hip" data-rig-tip="ambition-rig-side-joint-near_knee" />
       <g id="ambition-rig-side-bone-near_leg_l" data-rig-bone-def="near_leg_l" data-rig-parent="near_leg_u" data-rig-origin="ambition-rig-side-joint-near_knee" data-rig-tip="ambition-rig-side-joint-near_ankle" />
       <g id="ambition-rig-side-bone-near_leg_foot" data-rig-bone-def="near_leg_foot" data-rig-parent="near_leg_l" data-rig-origin="ambition-rig-side-joint-near_ankle" data-rig-tip="ambition-rig-side-joint-near_toe" />
-      <g id="ambition-rig-side-part-far_leg_u" data-rig-part-def="far_leg_u" data-rig-bone="far_leg_u" data-rig-z="5" data-rig-pivot="ambition-rig-side-bind-far_leg_u" data-rig-bind-angle="83.313" data-rig-elements="polygon-far-leg-u" />
+      <g id="ambition-rig-side-part-far_leg_u" data-rig-part-def="far_leg_u" data-rig-bone="far_leg_u" data-rig-z="5" data-rig-pivot="ambition-rig-side-bind-far_leg_u" data-rig-bind-angle="81.124" data-rig-elements="polygon-far-leg-u" />
       <g id="ambition-rig-side-part-far_leg_l" data-rig-part-def="far_leg_l" data-rig-bone="far_leg_l" data-rig-z="6" data-rig-pivot="ambition-rig-side-bind-far_leg_l" data-rig-bind-angle="96.384" data-rig-elements="polygon-far-leg-l" />
       <g id="ambition-rig-side-part-far_leg_foot" data-rig-part-def="far_leg_foot" data-rig-bone="far_leg_foot" data-rig-z="7" data-rig-pivot="ambition-rig-side-bind-far_leg_foot" data-rig-bind-angle="27.337" data-rig-elements="polygon-far-foot" />
       <g id="ambition-rig-side-part-far_arm_u" data-rig-part-def="far_arm_u" data-rig-bone="far_arm_u" data-rig-z="8" data-rig-pivot="ambition-rig-side-bind-far_arm_u" data-rig-bind-angle="78.434" data-rig-elements="polygon-far-arm-u" />
@@ -119,7 +119,7 @@
       <g id="ambition-rig-side-part-pelvis" data-rig-part-def="pelvis" data-rig-bone="pelvis" data-rig-z="20" data-rig-pivot="ambition-rig-side-bind-pelvis" data-rig-bind-angle="0" data-rig-elements="polygon-pelvis" />
       <g id="ambition-rig-side-part-torso" data-rig-part-def="torso" data-rig-bone="torso" data-rig-z="22" data-rig-pivot="ambition-rig-side-bind-torso" data-rig-bind-angle="0" data-rig-elements="polygon-torso" />
       <g id="ambition-rig-side-part-head" data-rig-part-def="head" data-rig-bone="head" data-rig-z="30" data-rig-pivot="ambition-rig-side-bind-head" data-rig-bind-angle="0" data-rig-elements="polygon-head" />
-      <g id="ambition-rig-side-part-near_leg_u" data-rig-part-def="near_leg_u" data-rig-bone="near_leg_u" data-rig-z="40" data-rig-pivot="ambition-rig-side-bind-near_leg_u" data-rig-bind-angle="92.843" data-rig-elements="polygon-near-leg-u" />
+      <g id="ambition-rig-side-part-near_leg_u" data-rig-part-def="near_leg_u" data-rig-bone="near_leg_u" data-rig-z="40" data-rig-pivot="ambition-rig-side-bind-near_leg_u" data-rig-bind-angle="95.077" data-rig-elements="polygon-near-leg-u" />
       <g id="ambition-rig-side-part-near_leg_l" data-rig-part-def="near_leg_l" data-rig-bone="near_leg_l" data-rig-z="41" data-rig-pivot="ambition-rig-side-bind-near_leg_l" data-rig-bind-angle="99.811" data-rig-elements="polygon-near-leg-l" />
       <g id="ambition-rig-side-part-near_leg_foot" data-rig-part-def="near_leg_foot" data-rig-bone="near_leg_foot" data-rig-z="42" data-rig-pivot="ambition-rig-side-bind-near_leg_foot" data-rig-bind-angle="50.964" data-rig-elements="polygon-near-foot" />
       <g id="ambition-rig-side-part-near_arm_u" data-rig-part-def="near_arm_u" data-rig-bone="near_arm_u" data-rig-z="60" data-rig-pivot="ambition-rig-side-bind-near_arm_u" data-rig-bind-angle="104.338" data-rig-elements="polygon-near-arm-u" />
@@ -129,53 +129,53 @@
   </metadata>
   <g id="ambition-rig-markers" data-rig-editor-layer="true" inkscape:groupmode="layer" inkscape:label="Ambition Rig Markers">
     <g id="ambition-rig-markers-side" data-rig-view="side" inkscape:label="Rig Markers - Projectile Polygon - Side">
-      <line id="ambition-rig-side-guide-far_arm_u" data-rig-bone-guide="far_arm_u" x1="712.999586" y1="288.999186" x2="734.999537" y2="396.498417" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
-      <line id="ambition-rig-side-guide-far_arm_l" data-rig-bone-guide="far_arm_l" x1="734.999537" y1="396.498417" x2="732.499159" y2="493.999939" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
-      <line id="ambition-rig-side-guide-far_arm_hand" data-rig-bone-guide="far_arm_hand" x1="732.499159" y1="493.999939" x2="713.999103" y2="596.001551" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
-      <line id="ambition-rig-side-guide-far_leg_u" data-rig-bone-guide="far_leg_u" x1="661.001214" y1="463" x2="678.001514" y2="608.000578" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
-      <line id="ambition-rig-side-guide-far_leg_l" data-rig-bone-guide="far_leg_l" x1="678.001514" y1="608.000578" x2="662.001777" y2="751.001932" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-far_arm_u" data-rig-bone-guide="far_arm_u" x1="707.994972" y1="371.639328" x2="729.994923" y2="479.138559" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-far_arm_l" data-rig-bone-guide="far_arm_l" x1="729.994923" y1="479.138559" x2="727.494545" y2="576.640081" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-far_arm_hand" data-rig-bone-guide="far_arm_hand" x1="727.494545" y1="576.640081" x2="708.994489" y2="678.641693" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-far_leg_u" data-rig-bone-guide="far_leg_u" x1="655.996600" y1="545.640142" x2="672.881598" y2="653.761011" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-far_leg_l" data-rig-bone-guide="far_leg_l" x1="672.881598" y1="653.761011" x2="662.001777" y2="751.001932" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-far_leg_foot" data-rig-bone-guide="far_leg_foot" x1="662.001777" y1="751.001932" x2="780.001061" y2="812.002436" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
-      <line id="ambition-rig-side-guide-near_arm_u" data-rig-bone-guide="near_arm_u" x1="523.99945" y1="288.000678" x2="495.5" y2="399.49946" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
-      <line id="ambition-rig-side-guide-near_arm_l" data-rig-bone-guide="near_arm_l" x1="495.5" y1="399.49946" x2="489.999822" y2="502.997426" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
-      <line id="ambition-rig-side-guide-near_arm_hand" data-rig-bone-guide="near_arm_hand" x1="489.999822" y1="502.997426" x2="508.998492" y2="599.995746" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
-      <line id="ambition-rig-side-guide-near_leg_u" data-rig-bone-guide="near_leg_u" x1="580.50196" y1="463" x2="573.003178" y2="614.001003" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
-      <line id="ambition-rig-side-guide-near_leg_l" data-rig-bone-guide="near_leg_l" x1="573.003178" y1="614.001003" x2="550.004096" y2="746.99925" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
-      <line id="ambition-rig-side-guide-near_leg_foot" data-rig-bone-guide="near_leg_foot" x1="550.004096" y1="746.99925" x2="610.00637" y2="821.000769" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_arm_u" data-rig-bone-guide="near_arm_u" x1="518.994836" y1="370.640820" x2="490.495386" y2="482.139602" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_arm_l" data-rig-bone-guide="near_arm_l" x1="490.495386" y1="482.139602" x2="484.995208" y2="585.637568" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_arm_hand" data-rig-bone-guide="near_arm_hand" x1="484.995208" y1="585.637568" x2="503.993878" y2="682.635888" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_leg_u" data-rig-bone-guide="near_leg_u" x1="575.497346" y1="545.640142" x2="565.643472" y2="656.560442" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_leg_l" data-rig-bone-guide="near_leg_l" x1="565.643472" y1="656.560442" x2="550.004096" y2="746.999250" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_leg_foot" data-rig-bone-guide="near_leg_foot" x1="550.004096" y1="746.999250" x2="610.006370" y2="821.000769" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <circle id="ambition-rig-side-joint-far_ankle" data-rig-joint="far_ankle" cx="662.001777" cy="751.001932" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-far_elbow" data-rig-joint="far_elbow" cx="734.999537" cy="396.498417" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-far_handtip" data-rig-joint="far_handtip" cx="713.999103" cy="596.001551" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-far_hip" data-rig-joint="far_hip" cx="661.001214" cy="463" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-far_knee" data-rig-joint="far_knee" cx="678.001514" cy="608.000578" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-far_shoulder" data-rig-joint="far_shoulder" cx="712.999586" cy="288.999186" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_elbow" data-rig-joint="far_elbow" cx="729.994923" cy="479.138559" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_handtip" data-rig-joint="far_handtip" cx="708.994489" cy="678.641693" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_hip" data-rig-joint="far_hip" cx="655.996600" cy="545.640142" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_knee" data-rig-joint="far_knee" cx="672.881598" cy="653.761011" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_shoulder" data-rig-joint="far_shoulder" cx="707.994972" cy="371.639328" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-far_toe" data-rig-joint="far_toe" cx="780.001061" cy="812.002436" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-far_wrist" data-rig-joint="far_wrist" cx="732.499159" cy="493.999939" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-hip_center" data-rig-joint="hip_center" cx="620.751587" cy="463" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-near_ankle" data-rig-joint="near_ankle" cx="550.004096" cy="746.99925" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-near_elbow" data-rig-joint="near_elbow" cx="495.5" cy="399.49946" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-near_handtip" data-rig-joint="near_handtip" cx="508.998492" cy="599.995746" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-near_hip" data-rig-joint="near_hip" cx="580.50196" cy="463" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-near_knee" data-rig-joint="near_knee" cx="573.003178" cy="614.001003" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-near_shoulder" data-rig-joint="near_shoulder" cx="523.99945" cy="288.000678" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-near_toe" data-rig-joint="near_toe" cx="610.00637" cy="821.000769" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-near_wrist" data-rig-joint="near_wrist" cx="489.999822" cy="502.997426" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-neck" data-rig-joint="neck" cx="618.499518" cy="240.501018" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_wrist" data-rig-joint="far_wrist" cx="727.494545" cy="576.640081" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-hip_center" data-rig-joint="hip_center" cx="615.746973" cy="545.640142" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_ankle" data-rig-joint="near_ankle" cx="550.004096" cy="746.999250" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_elbow" data-rig-joint="near_elbow" cx="490.495386" cy="482.139602" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_handtip" data-rig-joint="near_handtip" cx="503.993878" cy="682.635888" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_hip" data-rig-joint="near_hip" cx="575.497346" cy="545.640142" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_knee" data-rig-joint="near_knee" cx="565.643472" cy="656.560442" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_shoulder" data-rig-joint="near_shoulder" cx="518.994836" cy="370.640820" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_toe" data-rig-joint="near_toe" cx="610.006370" cy="821.000769" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_wrist" data-rig-joint="near_wrist" cx="484.995208" cy="585.637568" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-neck" data-rig-joint="neck" cx="613.494904" cy="323.141160" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-rig_root" data-rig-joint="rig_root" cx="620.751587" cy="832.002849" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-waist" data-rig-joint="waist" cx="628.001621" cy="419.499796" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-bind-far_leg_u" data-rig-bind-pivot="far_leg_u" cx="661" cy="463" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-far_leg_l" data-rig-bind-pivot="far_leg_l" cx="678" cy="608" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-far_leg_foot" data-rig-bind-pivot="far_leg_foot" cx="662" cy="751" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-far_arm_u" data-rig-bind-pivot="far_arm_u" cx="713" cy="289" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-far_arm_l" data-rig-bind-pivot="far_arm_l" cx="735" cy="396.5" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-far_arm_hand" data-rig-bind-pivot="far_arm_hand" cx="732.5" cy="494" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-pelvis" data-rig-bind-pivot="pelvis" cx="621" cy="463" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-torso" data-rig-bind-pivot="torso" cx="628" cy="419.5" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-head" data-rig-bind-pivot="head" cx="618.5" cy="240.5" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-near_leg_u" data-rig-bind-pivot="near_leg_u" cx="580.5" cy="463" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-near_leg_l" data-rig-bind-pivot="near_leg_l" cx="573" cy="614" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-near_leg_foot" data-rig-bind-pivot="near_leg_foot" cx="550" cy="747" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-near_arm_u" data-rig-bind-pivot="near_arm_u" cx="524" cy="288" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-near_arm_l" data-rig-bind-pivot="near_arm_l" cx="495.5" cy="399.5" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-near_arm_hand" data-rig-bind-pivot="near_arm_hand" cx="490" cy="503" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-joint-waist" data-rig-joint="waist" cx="622.997007" cy="502.139938" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-bind-far_leg_u" data-rig-bind-pivot="far_leg_u" cx="655.996600" cy="545.640142" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_leg_l" data-rig-bind-pivot="far_leg_l" cx="672.881598" cy="653.761011" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_leg_foot" data-rig-bind-pivot="far_leg_foot" cx="662.001777" cy="751.001932" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_arm_u" data-rig-bind-pivot="far_arm_u" cx="707.995386" cy="371.640142" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_arm_l" data-rig-bind-pivot="far_arm_l" cx="729.995386" cy="479.140142" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_arm_hand" data-rig-bind-pivot="far_arm_hand" cx="727.495386" cy="576.640142" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-pelvis" data-rig-bind-pivot="pelvis" cx="615.995386" cy="545.640142" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-torso" data-rig-bind-pivot="torso" cx="622.995386" cy="502.140142" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-head" data-rig-bind-pivot="head" cx="613.495386" cy="323.140142" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_leg_u" data-rig-bind-pivot="near_leg_u" cx="575.497346" cy="545.640142" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_leg_l" data-rig-bind-pivot="near_leg_l" cx="565.643472" cy="656.560442" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_leg_foot" data-rig-bind-pivot="near_leg_foot" cx="550.004096" cy="746.999250" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_arm_u" data-rig-bind-pivot="near_arm_u" cx="518.995386" cy="370.640142" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_arm_l" data-rig-bind-pivot="near_arm_l" cx="490.495386" cy="482.140142" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_arm_hand" data-rig-bind-pivot="near_arm_hand" cx="484.995386" cy="585.640142" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
     </g>
   </g>
   <!-- END AMBITION SVG RIG v1 -->
