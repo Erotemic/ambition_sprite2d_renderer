@@ -14,6 +14,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from ambition_sprite2d_renderer.authoring.motion_ir import CharacterMotionBinding
+from ambition_sprite2d_renderer.authoring.rig_gameplay_body import gameplay_body_metrics
 from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
 from ambition_sprite2d_renderer.authoring.sheet_build import build_sheet
 
@@ -252,6 +253,24 @@ def _render_frame(animation: str, frame_idx: int, frame_count: int):
     )
 
 
+def _body_metrics(fw: int, fh: int):
+    """Her gameplay body: the TRUNK, from the crown of her head to her feet.
+
+    ⛔ without this the box is the alpha bbox of the sheet's FIRST FRAME, and a
+    rig publishes its rows alphabetically — so it was `aim`, sword up and arm
+    extended. She collided with the world using her aiming pose.
+    """
+    del fw, fh  # the published frame is `_publication_frame_size()`, asked below
+    metrics = gameplay_body_metrics(
+        _doc(),
+        padding=_publication_padding(),
+        frame_size=_publication_frame_size(),
+    )
+    if metrics is None:
+        raise ValueError(f"{TARGET_NAME}: no trunk parts to measure a body from")
+    return metrics
+
+
 def render(out_dir: str | Path, **opts):
     del opts
     doc = _doc()
@@ -264,6 +283,7 @@ def render(out_dir: str | Path, **opts):
         auto_crop=True,
         crop_margin=4,
         actor_metadata=ACTOR_METADATA,
+        body_metrics_fn=_body_metrics,
         sheet_tuning=doc.sprite_tuning or {"collision_scale": 1.8},
     )
     keys = (
