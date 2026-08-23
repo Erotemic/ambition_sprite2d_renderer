@@ -11,10 +11,12 @@ unrelated held props or shadows to the base character.
 
 from __future__ import annotations
 
+import json
 from functools import lru_cache
 from pathlib import Path
 
 from ambition_sprite2d_renderer.authoring.motion_ir import CharacterMotionBinding
+from ambition_sprite2d_renderer.authoring import swing_effects
 from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
 from ambition_sprite2d_renderer.authoring.sheet_build import build_sheet
 
@@ -221,7 +223,52 @@ def _publication_padding() -> tuple[int, int, int, int]:
             samples.append(
                 (animation, round(at_s / max(clip.duration_s, 1e-9), 9))
             )
-    return _doc().measure_render_padding(samples, margin=4)
+    pose = _doc().measure_render_padding(samples, margin=4)
+    # ⛔ AND THE EFFECT REACHES FURTHER THAN THE POSE. The ribbon is drawn from
+    # where the blade WAS, so it extends past the sword's own envelope — measure
+    # the poses alone and the publish clips 91 frames of trail at the frame edge,
+    # which is what the sheet warns about and what nothing downstream can undo.
+    return tuple(max(a, b) for a, b in zip(pose, _effect_padding(pose)))
+
+
+def _effect_padding(pose_padding) -> tuple[int, int, int, int]:
+    """Overscan the authored EFFECT needs, on top of the poses'.
+
+    A cheap 1x probe on a generous canvas, the same shape as
+    `measure_render_padding`'s: composite each specced clip, measure where the
+    light actually lands, and report the smallest overscan that keeps it.
+    """
+    doc = _doc()
+    prepared = _prepared()
+    width, height = int(doc.frame["width"]), int(doc.frame["height"])
+    probe = max(width, height)
+    required = [0, 0, 0, 0]
+    for animation, frame_count, _duration_ms in doc.rows():
+        spec = _spec_for(animation)
+        if not spec:
+            continue
+        clip = prepared.library.clips[animation]
+        frames = []
+        for frame_idx in range(frame_count):
+            at_s = frame_idx * clip.frame_duration_ms / 1000.0
+            frames.append(
+                doc.render_at(
+                    animation,
+                    round(at_s / max(clip.duration_s, 1e-9), 9),
+                    supersample=1,
+                    scale=1,
+                    padding=probe,
+                )
+            )
+        for image in swing_effects.composite_authored_effect(frames, spec):
+            bbox = image.getchannel("A").getbbox()
+            if bbox is None:
+                continue
+            required[0] = max(required[0], probe - bbox[0])
+            required[1] = max(required[1], probe - bbox[1])
+            required[2] = max(required[2], bbox[2] - (probe + width))
+            required[3] = max(required[3], bbox[3] - (probe + height))
+    return tuple(max(0, value) + 4 for value in required)
 
 
 def _publication_frame_size() -> tuple[int, int]:
@@ -234,7 +281,49 @@ def _publication_frame_size() -> tuple[int, int]:
     )
 
 
+@lru_cache(maxsize=1)
+def _spec_dir() -> Path:
+    """Where the swing specs live — asked of the LIBRARY this character binds.
+
+    Not restated from a path constant: the specs sit beside the clips they
+    describe, and the binding already knows which library that is.
+    """
+    return Path(_prepared().library.path).parent / "specs"
+
+
+def _spec_for(animation: str) -> dict | None:
+    """The authored swing spec for one clip, or `None` for a clip with no swing.
+
+    The SAME file the review tool reads, so what ships is what was reviewed.
+    """
+    path = _spec_dir() / f"{animation}.spec.json"
+    if not path.exists():
+        return None
+    return json.loads(path.read_text())
+
+
+@lru_cache(maxsize=None)
+def _clip_frames(animation: str, frame_count: int) -> tuple:
+    """Every frame of one clip, with its authored effect composited on.
+
+    ⛔ **cached per CLIP, not per frame, because a ribbon is not a frame-local
+    fact.** The trail a blade leaves on frame 6 is drawn from where the blade
+    was on frames 3-5, so the effect cannot be composited by a `render_fn` that
+    only ever sees one frame — which is exactly why the published sheet carried
+    no ribbons at all while every review artifact showed them.
+    """
+    raw = [_raw_frame(animation, i, frame_count) for i in range(frame_count)]
+    spec = _spec_for(animation)
+    if not spec:
+        return tuple(raw)
+    return tuple(swing_effects.composite_authored_effect(raw, spec))
+
+
 def _render_frame(animation: str, frame_idx: int, frame_count: int):
+    return _clip_frames(animation, frame_count)[frame_idx]
+
+
+def _raw_frame(animation: str, frame_idx: int, frame_count: int):
     # The shipped sheet still honors each clip's legacy publication cadence.
     # Authored motion itself is normalized against duration_s, so publication
     # samples are converted from absolute seconds explicitly rather than using
