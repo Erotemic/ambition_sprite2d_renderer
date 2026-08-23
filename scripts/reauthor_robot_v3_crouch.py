@@ -85,6 +85,17 @@ CROUCH_HEAD_SQUASH = 0.8
 #: cannot ride the same "everything else rests at zero" rule as the angles.
 HEAD_CHANNEL_RESTS = {"bone.head.y": 0.0, "bone.head.scale_y": 1.0}
 
+#: What the arms do instead when the crouch is holding something. Read off the
+#: shipped `item_hold_crouch` clip, which had the crouch's own defect —  the
+#: same sinking root and the same loop back to standing — but whose ARMS are a
+#: separate authored fact and stay exactly as they were.
+ITEM_HOLD_ARMS = {
+    "far_arm_u": 20.0,
+    "far_arm_l": 11.0,
+    "near_arm_u": -18.0,
+    "near_arm_l": 3.0,
+}
+
 # Breathing on the hold, and the crouch-walk's stride, both in frame pixels.
 BREATH = 1.6
 STRIDE_X = 5.5
@@ -319,6 +330,25 @@ def build(doc: RigDocument) -> dict:
         frame.update(head_channels(1.0, breath=0.025 * phase))
         loop.append(frame)
     poses["crouch"] = loop
+
+    # item_hold_crouch: the same hold, with the arms carrying something. It had
+    # the identical defect — ankles 7-12 px through the floor and a loop that
+    # keyed back to standing — because it was authored from the same broken
+    # crouch, so it is fixed from the same solve rather than by hand.
+    holding = []
+    for i in range(8):
+        phase = math.sin(2.0 * math.pi * i / 8.0)
+        frame = pose_at(
+            p, rest, CROUCH_DROP + BREATH * 0.6 * phase,
+            seed=holding[-1] if holding else hold,
+        )
+        frame.update(CROUCH_SHAPE)
+        frame.update(ITEM_HOLD_ARMS)
+        frame["torso"] = CROUCH_SHAPE["torso"] + 0.9 * phase
+        frame["head"] = CROUCH_SHAPE["head"] - 0.6 * phase
+        frame.update(head_channels(1.0, breath=0.02 * phase))
+        holding.append(frame)
+    poses["item_hold_crouch"] = holding
 
     # crouch_walk: the hold, with the feet trading places along the ground line.
     walk = []
