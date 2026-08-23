@@ -87,5 +87,23 @@
   "facing": "west",
   "pixel_invariants": [
     "feet_on_ground"
-  ]
+  ],
+  "trail": {
+    "window": 6,
+    "inner": 0.38,
+    "blur": 1.2,
+    "body_rgb": [
+      212,
+      104,
+      252
+    ],
+    "core_rgb": [
+      255,
+      242,
+      255
+    ],
+    "alpha": 215,
+    "core_alpha": 225,
+    "falloff": 0.95
+  }
 }

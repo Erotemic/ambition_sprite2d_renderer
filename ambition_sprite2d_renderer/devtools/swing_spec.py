@@ -14,7 +14,9 @@ A spec states them once, in one file per clip:
     torso_shift   optional per-frame torso translation (leans the body out)
     grip_frames   frames where the off hand holds the hilt
     off_hand      explicit far-arm poses for frames that do NOT grip
-    hitbox        which frames connect, and how the volume accumulates
+    hitbox        which frames connect. The volume's SHAPE is not declared here
+                  -- it is derived from the trail, so the hit and the art it
+                  promises cannot drift apart
     invariants    checkable properties of the arc, listed below
     body          non-arm channels per frame: root_x / root_y / any bone name,
                   which is how a smash ends on one knee
@@ -22,8 +24,11 @@ A spec states them once, in one file per clip:
                   per frame, the joints that must touch the floor. The first is
                   solved with the root and the rest with the bone above them,
                   so "she ends on one knee" is solved rather than dialled in
-    trail         ribbon styling; a smash wants window/inner/alpha turned up so
-                  it reads grander than a tilt
+    trail         ribbon styling. A smash reads grander than a tilt by SIZE and
+                  by HEAT -- body_rgb/core_rgb carry the hotter smash palette,
+                  because once both are in motion size alone does not separate
+                  them. The ribbon inherits the hitbox's live frames unless it
+                  names its own
     todo          what is deliberately unfinished and why
 
 `solve` writes the pose data and then checks the invariants. `check` verifies
@@ -83,17 +88,30 @@ def check_invariants(angles, invariants):
     """Return a list of failures; empty means the arc holds."""
     failures = []
     seq = unwrap(angles)
+
+    def span(arg_text):
+        """The frame range a rule governs; the whole clip unless it says otherwise.
+
+        A swing that ends in a HOLD is not monotone over the whole clip -- the
+        recovery frames sit still by design -- so the sweep rule has to be able
+        to name where the sweep stops.
+        """
+        if "@" not in arg_text:
+            return 1, len(seq)
+        lo, hi = (int(v) for v in arg_text.split("@")[-1].split(","))
+        return max(1, lo + 1), min(len(seq), hi + 1)
+
     for rule in invariants:
         name, _, arg = rule.partition(":")
-        if name == "monotonic_increasing":
-            bad = [i for i in range(1, len(seq)) if seq[i] <= seq[i - 1]]
+        if name.startswith("monotonic_"):
+            name, _, arg = rule.partition("@")
+            lo, hi = span(rule)
+            rising = name == "monotonic_increasing"
+            bad = [i for i in range(lo, hi)
+                   if (seq[i] <= seq[i - 1] if rising else seq[i] >= seq[i - 1])]
             if bad:
-                failures.append(f"{rule}: frames {bad} do not increase "
-                                f"({[round(v,1) for v in seq]})")
-        elif name == "monotonic_decreasing":
-            bad = [i for i in range(1, len(seq)) if seq[i] >= seq[i - 1]]
-            if bad:
-                failures.append(f"{rule}: frames {bad} do not decrease "
+                verb = "increase" if rising else "decrease"
+                failures.append(f"{rule}: frames {bad} do not {verb} "
                                 f"({[round(v,1) for v in seq]})")
         elif name == "below_horizontal":
             bad = [i for i, a in enumerate(angles) if not (0.0 < a % 360.0 < 180.0)]
@@ -128,6 +146,25 @@ def check_invariants(angles, invariants):
         else:
             failures.append(f"unknown invariant {rule!r}")
     return failures
+
+
+def hit_shape(spec: dict) -> dict:
+    """Hit-volume geometry, DERIVED from the ribbon rather than declared beside it.
+
+    The hitbox is the trail. Its inner edge is where the ribbon's inner edge is,
+    its window is how long the ribbon lingers, and it never reaches past the
+    blade. Growing a hitbox therefore means making the swing sweep longer, which
+    the player can see -- not quietly inflating a box beyond the art, which they
+    cannot. One source, so the two cannot drift apart.
+    """
+    trail = spec.get("trail") or {}
+    hb = spec.get("hitbox") or {}
+    return {
+        "reach": round(1.0 - trail.get("inner", 0.58), 4),
+        "linger": trail.get("window", 3) + 1,
+        "extend": hb.get("extend", 1.0),
+        "inflate": hb.get("inflate", 0.0),
+    }
 
 
 def check_pixel_invariants(images, spec: dict):
@@ -173,8 +210,9 @@ def check_pixel_invariants(images, spec: dict):
             hb = spec.get("hitbox") or {}
             active = sorted(hb.get("active") or [])
             for i in active:
-                poly = st.hit_polygon(axes, i, hb.get("reach", 1.0),
-                                      hb.get("linger", 3), active[0])
+                shape = hit_shape(spec)
+                poly = st.hit_polygon(axes, i, shape["reach"], shape["linger"],
+                                      active[0], shape["extend"], shape["inflate"])
                 extent = st.body_extent(images[i])
                 if poly is None or extent is None:
                     continue
@@ -261,6 +299,9 @@ def apply_spec(clip: str, verbose: bool = True):
     torsos = spec.get("torso") or [None] * len(angles)
     shifts = spec.get("torso_shift") or [None] * len(angles)
 
+    was = st.ensure_frames(clip, len(angles))
+    if verbose and was != len(angles):
+        print(f"{clip}: {was} frames -> {len(angles)}")
     rig = st.FastRig.seed(clip, channel_plan(clip, spec))
     if verbose:
         print(f"{clip}: solving {len(angles)} frames")
@@ -276,8 +317,15 @@ def apply_spec(clip: str, verbose: bool = True):
     contacts = spec.get("ground_contacts") or {}
     if contacts:
         floor = st.ground_world(rig)
+        carried: dict = {}
         for frame, joints in sorted(contacts.items(), key=lambda kv: int(kv[0])):
+            # Seed each frame from the previous one's answer, so a hold stays on
+            # ONE branch of the contact goal instead of flipping between the two
+            # leg poses that both put the foot on the floor.
+            for channel, value in carried.items():
+                rig.write(channel, int(frame), value)
             for joint, channel, value, err in st.solve_ground_contacts(rig, int(frame), joints, floor):
+                carried[channel] = value
                 if verbose:
                     mark = "" if err < 1.5 else "   <== cannot reach the floor"
                     print(f"  contact f{frame}: {joint} via {channel}={value:.1f} "
@@ -321,10 +369,13 @@ def preview(clip_name: str, spec: dict, out: Path):
     hb = spec.get("hitbox") or {}
     raw, clip = st.render_clip(clip_name)
     failures = check_pixel_invariants(raw, spec)
-    images = st.draw_trail(raw, **(spec.get("trail") or {}))
+    trail = dict(spec.get("trail") or {})
     if hb.get("active") is not None:
-        images = st.draw_hitboxes(images, reach=hb.get("reach", 1.0),
-                                  linger=hb.get("linger", 3), active=set(hb["active"]))
+        # One window for both: a frame that cannot hurt anyone does not sweep light.
+        trail.setdefault("active", hb["active"])
+    images = st.draw_trail(raw, **trail)
+    if hb.get("active") is not None:
+        images = st.draw_hitboxes(images, active=set(hb["active"]), **hit_shape(spec))
     images = st.draw_ground(images, st.ground_y(raw))
     st.save_preview(images, clip, clip_name, out, scale=2)
     return failures

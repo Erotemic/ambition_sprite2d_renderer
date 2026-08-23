@@ -30,8 +30,13 @@ from PIL import Image, ImageDraw, ImageFilter
 
 LIB = Path("ambition_sprite2d_renderer/data/motion/humanoid/fighting_polygon_v1")
 BLADE_LUM = 560          # summed RGB; nothing on the body reaches this
-TRAIL_BODY = (158, 96, 228)
-TRAIL_CORE = (226, 196, 255)
+# A tilt and a smash must be told apart at a glance, and size alone does not do
+# it once both are moving -- so the two read as different HEAT as well. Both stay
+# in the fighter's purple; the smash burns hotter and whiter at the core.
+TRAIL_BODY = (140, 86, 220)          # tilt: deeper, cooler violet
+TRAIL_CORE = (212, 182, 250)
+SMASH_TRAIL_BODY = (202, 92, 248)    # smash: hotter magenta-violet
+SMASH_TRAIL_CORE = (255, 238, 255)
 HITBOX = (255, 96, 96)
 BG = (30, 26, 32, 255)
 
@@ -181,6 +186,39 @@ def batch_write(clip_name: str, updates: dict) -> None:
         path.write_text(json.dumps(doc, indent=2) + "\n")
     for pose_path, pose_doc in pose_docs.items():
         pose_path.write_text(json.dumps(pose_doc, indent=2) + "\n")
+
+
+def ensure_frames(clip_name: str, count: int) -> int:
+    """Grow or trim a clip to `count` frames, returning how many it had.
+
+    The spec declares one value per frame, so it -- not the baked clip -- is the
+    authority on how long an attack is. New frames copy the last pose, which is
+    the right default for a hold: they read as a freeze until the spec gives
+    them their own numbers.
+    """
+    path = _clip_path(clip_name)
+    doc = json.loads(path.read_text())
+    keys = doc["pose_keys"]
+    before = len(keys)
+    if before == count:
+        return before
+    step_ms = doc["sampling"]["frame_duration_ms"]
+    while len(keys) < count:
+        grown = json.loads(json.dumps(keys[-1]))
+        if "pose" in grown:
+            # A hold must be editable per frame, so it cannot keep sharing the
+            # pose file the frame before it points at.
+            source = LIB / "poses" / f"{grown['pose'].replace('/', '__')}.pose.json"
+            grown = {"state": json.loads(source.read_text())["state"]}
+        keys.append(grown)
+    del keys[count:]
+    for i, key in enumerate(keys):
+        key["frame"] = i
+        key["at_s"] = round(i * step_ms / 1000.0, 6)
+    doc["sampling"]["frame_count"] = count
+    doc["duration_s"] = round(count * step_ms / 1000.0, 6)
+    path.write_text(json.dumps(doc, indent=2) + "\n")
+    return before
 
 
 class FastRig:
@@ -602,29 +640,45 @@ def solve_ground_contacts(rig: "FastRig", idx: int, joints, ground: float,
     RAISES it, which is what a hand-tuned attempt produced. Only dropping the
     pelvis brings a knee to the floor, so the first joint is solved with the
     root and every later one with the bone above it.
+
+    A contact goal has more than one answer -- a foot reaches the floor with the
+    leg folded under OR straight out -- so ties break toward the value the frame
+    already had. Without that, one frame of a three-frame hold picked the other
+    branch and the leg snapped straight for a sixtieth of a second.
     """
     results = []
     for n, joint in enumerate(joints):
         channel = "root_y" if n == 0 else GROUND_DRIVER.get(joint)
         if channel is None:
             raise SystemExit(f"no ground driver known for joint {joint!r}")
-        best = None
-        steps = int((hi - lo) / coarse) + 1
-        for k in range(steps):
-            value = lo + k * coarse
+        start = rig.to_stored(channel, idx, rig.get(channel, idx))
+
+        def error(value):
             rig.write(channel, idx, value)
-            err = abs(rig._world(idx)[joint].origin[1] - ground)
-            if best is None or err < best[0]:
-                best = (err, value)
-        err, value = best
-        step = coarse / 2.0
-        while step > 0.05:
-            for delta in (-step, step):
-                rig.write(channel, idx, value + delta)
-                err2 = abs(rig._world(idx)[joint].origin[1] - ground)
-                if err2 < err:
-                    err, value = err2, value + delta
-            step /= 2.0
+            return abs(rig._world(idx)[joint].origin[1] - ground)
+
+        # Refine EVERY local minimum, not just the best coarse sample. The scan
+        # grid straddles a branch's zero crossing as often as it lands on it, so
+        # comparing raw coarse errors picks the branch by luck: one frame of a
+        # hold flipped to the other leg pose because its grid point happened to
+        # sit 0.7px nearer the floor.
+        steps = int((hi - lo) / coarse) + 1
+        samples = [(lo + k * coarse, error(lo + k * coarse)) for k in range(steps)]
+        minima = [i for i in range(len(samples))
+                  if (i == 0 or samples[i][1] <= samples[i - 1][1])
+                  and (i == len(samples) - 1 or samples[i][1] <= samples[i + 1][1])]
+        candidates = []
+        for i in minima:
+            value, err = samples[i]
+            step = coarse / 2.0
+            while step > 0.05:
+                for delta in (-step, step):
+                    err2 = error(value + delta)
+                    if err2 < err:
+                        err, value = err2, value + delta
+                step /= 2.0
+            candidates.append((err, value))
+        err, value = min(candidates, key=lambda c: (round(c[0] / 1.0), abs(c[1] - start)))
         rig.write(channel, idx, value)
         results.append((joint, channel, value, err))
     return results
@@ -712,9 +766,24 @@ def _lerp(a, b, t):
 
 
 def draw_trail(images, window: int = 3, subdiv: int = 5, inner: float = 0.58,
-               alpha: int = 120, blur: float = 0.8, core_alpha: int = 150):
+               alpha: int = 120, blur: float = 0.8, core_alpha: int = 150, active=None,
+               body_rgb=None, core_rgb=None, falloff: float = 1.7):
     """`window`/`inner`/`alpha` are what separate a tilt from a smash: a smash
-    wants a longer, wider, brighter ribbon so the commitment reads."""
+    wants a longer, wider, brighter ribbon so the commitment reads.
+
+    `falloff` is how fast a segment dims with age, and it has to move with
+    `window`: stretching the window so the hit volume can grow also stretches
+    the fade, and a smash ribbon lengthened without flattening the falloff just
+    goes dim -- longer AND fainter, which is the opposite of grander.
+
+    `active` is the SAME frame set the hit volume uses, and that is the point:
+    the ribbon and the hitbox describe one swing, so a charge frame that cannot
+    hurt anyone must not sweep light either. Segments keep fading for `window`
+    frames afterwards, so a recovery still trails off instead of snapping dark.
+    """
+    live = None if active is None else set(active)
+    body_rgb = tuple(body_rgb) if body_rgb else TRAIL_BODY
+    core_rgb = tuple(core_rgb) if core_rgb else TRAIL_CORE
     axes = [blade_axis(im) for im in images]
     out = []
     for i, base in enumerate(images):
@@ -723,10 +792,12 @@ def draw_trail(images, window: int = 3, subdiv: int = 5, inner: float = 0.58,
             j0, j1 = i - k, i - k + 1
             if j0 < 0 or j1 >= len(images) or axes[j0] is None or axes[j1] is None:
                 continue
+            if live is not None and (j0 not in live or j1 not in live):
+                continue
             for s in range(subdiv):
                 t0, t1 = s / subdiv, (s + 1) / subdiv
                 age = ((k - 1) + (1 - t1)) / window
-                a = int(alpha * (1.0 - age) ** 1.7)
+                a = int(alpha * (1.0 - age) ** falloff)
                 if a <= 2:
                     continue
                 b0 = _lerp(axes[j0][0], axes[j1][0], t0)
@@ -736,16 +807,17 @@ def draw_trail(images, window: int = 3, subdiv: int = 5, inner: float = 0.58,
                 f = inner + (1.0 - inner) * 0.55 * age
                 seg = Image.new("RGBA", base.size, (0, 0, 0, 0))
                 ImageDraw.Draw(seg).polygon(
-                    [_lerp(b0, p0, f), p0, p1, _lerp(b1, p1, f)], fill=TRAIL_BODY + (a,)
+                    [_lerp(b0, p0, f), p0, p1, _lerp(b1, p1, f)], fill=body_rgb + (a,)
                 )
                 trail.alpha_composite(seg)
         trail = trail.filter(ImageFilter.GaussianBlur(blur))
-        if i > 0 and axes[i] and axes[i - 1]:
+        core_live = live is None or (i in live and i - 1 in live)
+        if i > 0 and core_live and axes[i] and axes[i - 1]:
             core = Image.new("RGBA", base.size, (0, 0, 0, 0))
             ImageDraw.Draw(core).polygon(
                 [_lerp(axes[i - 1][0], axes[i - 1][1], 0.80), axes[i - 1][1],
                  axes[i][1], _lerp(axes[i][0], axes[i][1], 0.80)],
-                fill=TRAIL_CORE + (core_alpha,),
+                fill=core_rgb + (core_alpha,),
             )
             trail.alpha_composite(core.filter(ImageFilter.GaussianBlur(0.5)))
         comp = Image.new("RGBA", base.size, BG)
@@ -775,15 +847,24 @@ def _hull(points):
     return half(pts) + half(reversed(pts))
 
 
-def hit_polygon(axes, i, reach: float = 1.0, linger: int = 3, first: int = 0):
+def hit_polygon(axes, i, reach: float = 1.0, linger: int | None = None, first: int = 0,
+                extend: float = 1.0, inflate: float = 0.0):
     """Proposed hit volume for frame `i`: the hull of the blade over the last
-    `linger` frames, so the volume GROWS as the swing travels and stays wide
-    enough to connect, instead of collapsing to one thin swept step.
+    live frames, so the volume GROWS as the swing travels and by the end covers
+    the whole ribbon rather than collapsing to one thin swept step. `linger`
+    caps that window; without one the volume is everything the blade has swept
+    since the move went live, which is what makes the hitbox match the trail.
 
     The window never reaches back before `first`, the frame the attack goes
     live. Without that clamp a smash's opening hitbox swallowed the overhead
     wind-up and so extended BEHIND the fighter -- a volume covering a position
     the blade held while the move was still inactive.
+
+    `reach` trims the inner end so the volume covers blade rather than fist;
+    `extend` pushes the outer end PAST the tip and `inflate` grows the hull
+    sideways. A hitbox is not a tracing of the art -- a move that connects only
+    where the sprite overlaps feels stingy -- so the generous part is declared
+    rather than faked by drawing a longer sword.
 
     NOTE: derived from the swing, not authored data. No hitboxes exist for this
     character yet (`RigDocument`'s "hitboxes" slot is empty), so this shows the
@@ -792,19 +873,34 @@ def hit_polygon(axes, i, reach: float = 1.0, linger: int = 3, first: int = 0):
     effect art off one profile so they cannot drift.
     """
     pts = []
-    for j in range(max(first, i - linger + 1), i + 1):
+    start = first if linger is None else max(first, i - linger + 1)
+    for j in range(start, i + 1):
         if axes[j] is None:
             continue
         base, tip = axes[j]
+        if extend != 1.0:
+            tip = (base[0] + (tip[0] - base[0]) * extend,
+                   base[1] + (tip[1] - base[1]) * extend)
         if reach != 1.0:
             base = _lerp(base, tip, 1.0 - reach)
         pts.extend([base, tip])
     if len(pts) < 3:
         return None
-    return _hull(pts)
+    hull = _hull(pts)
+    if inflate > 0.0 and len(hull) >= 3:
+        cx = sum(p[0] for p in hull) / len(hull)
+        cy = sum(p[1] for p in hull) / len(hull)
+        grown = []
+        for x, y in hull:
+            dx, dy = x - cx, y - cy
+            length = math.hypot(dx, dy) or 1.0
+            grown.append((x + dx / length * inflate, y + dy / length * inflate))
+        hull = grown
+    return hull
 
 
-def draw_hitboxes(images, reach: float = 1.0, linger: int = 3, active=None):
+def draw_hitboxes(images, reach: float = 1.0, linger: int | None = None, active=None,
+                  extend: float = 1.0, inflate: float = 0.0):
     """`active` limits the overlay to the frames that actually connect.
 
     A swing is only dangerous for part of its travel; drawing a volume on the
@@ -816,10 +912,14 @@ def draw_hitboxes(images, reach: float = 1.0, linger: int = 3, active=None):
     out = []
     for i, base in enumerate(images):
         layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
-        poly = None if (active is not None and i not in active) else hit_polygon(axes, i, reach, linger, first)
+        poly = (None if (active is not None and i not in active)
+                else hit_polygon(axes, i, reach, linger, first, extend, inflate))
         if poly is not None and len(poly) >= 3:
             draw = ImageDraw.Draw(layer)
-            draw.polygon(poly, fill=HITBOX + (46,))
+            # Light enough that the ribbon's own colour still reads through it --
+            # the overlay is a measurement, and it should not repaint the thing
+            # being measured. The outline carries the shape.
+            draw.polygon(poly, fill=HITBOX + (26,))
             draw.line(list(poly) + [poly[0]], fill=HITBOX + (210,), width=1)
         comp = base.copy()
         comp.alpha_composite(layer)
