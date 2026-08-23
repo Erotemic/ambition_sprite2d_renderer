@@ -364,19 +364,36 @@ def apply_spec(clip: str, verbose: bool = True):
     return spec
 
 
-def report(clip: str, spec: dict) -> int:
+def announce(label: str, failures, count: int) -> int:
+    if failures:
+        print(f"  {len(failures)} {label} FAILURE(S):")
+        for failure in failures:
+            print(f"    - {failure}")
+        return 1
+    if count:
+        print(f"  all {count} {label.lower()} rules hold")
+    return 0
+
+
+def report(clip: str, spec: dict, placement: bool = False) -> int:
+    """Verify a clip against its spec. `placement` also renders, which the
+    angle rules do not need and the pixel rules cannot do without.
+
+    `check` renders too, and must: reporting "all invariants hold" while the
+    placement half went unexamined is the failure mode this whole file exists
+    to prevent -- half a spec verified reads exactly like all of it.
+    """
     angles = measured(clip)
     print(f"  measured: {[round(a,1) for a in angles]}")
-    failures = check_invariants(angles, spec.get("invariants") or [])
-    if failures:
-        print(f"  {len(failures)} INVARIANT FAILURE(S):")
-        for f in failures:
-            print(f"    - {f}")
-        return 1
-    print(f"  all {len(spec.get('invariants') or [])} invariants hold")
+    code = announce("INVARIANT", check_invariants(angles, spec.get("invariants") or []),
+                    len(spec.get("invariants") or []))
+    if placement and spec.get("pixel_invariants"):
+        raw, _ = st.render_clip(clip)
+        code |= announce("PLACEMENT", check_pixel_invariants(raw, spec),
+                         len(spec["pixel_invariants"]))
     if spec.get("todo"):
         print(f"  TODO: {spec['todo'][:100]}...")
-    return 0
+    return code
 
 
 def preview(clip_name: str, spec: dict, out: Path):
@@ -409,14 +426,8 @@ def cmd_solve(args):
     code = report(args.clip, spec)
     if args.preview:
         out = Path(args.preview)
-        failures = preview(args.clip, spec, out)
-        if failures:
-            code = 1
-            print(f"  {len(failures)} PLACEMENT FAILURE(S):")
-            for f in failures:
-                print(f"    - {f}")
-        elif spec.get("pixel_invariants"):
-            print(f"  all {len(spec['pixel_invariants'])} placement rules hold")
+        code |= announce("PLACEMENT", preview(args.clip, spec, out),
+                         len(spec.get("pixel_invariants") or []))
         print(f"  wrote {out.with_suffix('.gif')}")
     raise SystemExit(code)
 
@@ -427,7 +438,7 @@ def cmd_check(args):
     for clip in clips:
         spec = load(clip)
         print(f"{clip}:")
-        worst |= report(clip, spec)
+        worst |= report(clip, spec, placement=True)
     raise SystemExit(worst)
 
 
