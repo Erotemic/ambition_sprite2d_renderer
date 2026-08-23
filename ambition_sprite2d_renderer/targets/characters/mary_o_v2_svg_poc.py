@@ -34,6 +34,7 @@ from ._mary_o_v2_model import (
     SHORT_POSES,
     TALL_FORM,
     TALL_LIKE_POSES,
+    poses_for_form,
     FormSpec,
     Pose,
     _form_with_palette,
@@ -56,7 +57,7 @@ def _target_name(form: FormSpec) -> str:
 
 
 def _poses_for(form: FormSpec):
-    return TALL_LIKE_POSES if form.tall else SHORT_POSES
+    return poses_for_form(form)
 
 
 def _palette_pairs(source: FormSpec, active: FormSpec):

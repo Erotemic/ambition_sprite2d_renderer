@@ -6,6 +6,8 @@ records, animation row declarations, and palette-transition helpers.
 
 from __future__ import annotations
 
+import dataclasses
+
 from dataclasses import dataclass, replace
 from typing import Dict, List, Tuple
 
@@ -203,6 +205,19 @@ class FormSpec:
     # a form's body and legs do — halve the body without this and the ponytail
     # reaches past her feet, which is exactly what the first attempt looked like.
     hair_drop: float = 1.0
+    #: How far the crouch sinks her head onto her shoulders, in authored units.
+    #:
+    #: A crouch is HALF HEIGHT — that is what `BodyMode::Crouching` does to her
+    #: collision box, and the drawing has to agree or she ducks under a ceiling
+    #: her art still occupies. Folding the body into the legs (`crouch`) and
+    #: squashing the torso (`torso_scale`) get her to 75%; the last quarter has
+    #: to come out of her NECK, because her head alone is most of what remains.
+    #:
+    #: ⛔ per-FORM, and not because the drawing differs — it does not. The two
+    #: grown forms author collision tops 2 px apart (24 vs 22), so the halved
+    #: box they have to reach differs by 1 px. Measured: ~6 px of art per unit.
+    #: 0.0 for a form with no crouch row.
+    crouch_head_dy: float = 0.0
     # Head scale relative to the grown form; short and grown forms use different
     # head/body/leg proportions.
     head_scale: float = 1.0
@@ -503,6 +518,8 @@ TALL_FORM = FormSpec(
     head_scale=1.0,
     head_offset=10.0,
     body_dy=2.4,
+    # Puts her crouched crown on y=108, which is `collision_bottom - 168/2`.
+    crouch_head_dy=7.0,
 )
 
 FIRE_FORM = FormSpec(
@@ -519,7 +536,38 @@ FIRE_FORM = FormSpec(
     # Same height as tall: the fire form is the same body wearing flames.
     collision_top_px=22,
     collision_bottom_px=190,
+    # Her drawn crown lands on y=108, the same as tall's — her authored box
+    # sits 2 px ABOVE her drawing and keeps that margin in every pose, so the
+    # PUBLISHED crouch rectangle lands on y=106 and is exactly half her
+    # standing 168. Solved against the published rect, not the drawing.
+    crouch_head_dy=6.8,
 )
+
+
+def poses_for_form(form: FormSpec) -> Dict[str, List[Pose]]:
+    """The pose table one form animates from.
+
+    ⛔ **the ONE place that answers this.** The rig-document builder and the
+    drawing each used to reach for `TALL_LIKE_POSES` / `SHORT_POSES` directly,
+    which is two answers to one question — a crouch depth taught to the rig
+    builder alone changed nothing at all, because the pixels come from the other
+    one.
+
+    The crouch's head drop is the one pose value that is a FORM fact rather than
+    a shape fact: it is solved so her drawn crown lands on the halved collision
+    box, and the two grown forms author that box 2 px apart. The shared pose
+    keeps the shared shape; the form states its own depth.
+    """
+    poses = TALL_LIKE_POSES if form.tall else SHORT_POSES
+    if form.crouch_head_dy and "crouch" in poses:
+        poses = {
+            **poses,
+            "crouch": [
+                dataclasses.replace(pose, head_dy=form.crouch_head_dy)
+                for pose in poses["crouch"]
+            ],
+        }
+    return poses
 
 
 def _lerp_rgba(a: tuple[int, int, int, int], b: tuple[int, int, int, int], t: float) -> tuple[int, int, int, int]:

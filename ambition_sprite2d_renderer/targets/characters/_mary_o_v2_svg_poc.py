@@ -18,6 +18,8 @@ SVG transforms directly when rebuilding the rig.
 
 from __future__ import annotations
 
+import dataclasses
+
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, replace
@@ -75,6 +77,7 @@ from ._mary_o_v2_model import (
     SHORT_POSES,
     TALL_FORM,
     TALL_LIKE_POSES,
+    poses_for_form,
     FormSpec,
     Pose,
     _fire_accessory_t,
@@ -2628,7 +2631,7 @@ def _keys(values: Sequence[float], *, loop: bool) -> dict:
 def _clips_for_form(form: FormSpec, projection: str = "side",
                     authored: Mapping[str, float] | None = None,
                     lengths: Mapping[str, float] | None = None) -> Dict[str, dict]:
-    poses = TALL_LIKE_POSES if form.tall else SHORT_POSES
+    poses = poses_for_form(form)
     row_durations = {row: duration for row, _frames, duration in form.rows}
     if projection == "front":
         pose_list = poses["death"]
