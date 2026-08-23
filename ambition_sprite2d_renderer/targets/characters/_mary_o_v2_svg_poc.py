@@ -2481,6 +2481,9 @@ def _pose_values(form: FormSpec, pose: Pose, authored: Mapping[str, float] | Non
     head_dy = torso_dy + pose.head_dy * SCALE
     out["bone.head.x"] = head_dx
     out["bone.head.y"] = head_dy
+    # Squashes about the head's OWN pivot, which sits at the neck: the crown
+    # comes down and the chin holds. 1.0 renders exactly as before.
+    out["bone.head.scale_y"] = pose.head_scale
     #  SKID LOOKS BACK, so the head is mirrored rather than re-drawn. The
     # pose already carries the intent as `mode="lookback"`; it just had no way to
     # say it to the rig until `bone.<n>.flip_x` existed. One authored head serves

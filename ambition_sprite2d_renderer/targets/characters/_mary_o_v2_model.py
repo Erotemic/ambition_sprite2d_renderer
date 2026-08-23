@@ -114,6 +114,8 @@ TALL_ROWS: List[Tuple[str, int, int]] = [
     ("jump", 1, 120),
     ("skid", 1, 110),
     ("crouch", 1, 120),
+    ("crouch_walk", 3, 110),
+    ("crouch_jump", 1, 120),
     ("climb", 2, 120),
     ("swim", 6, 100),
     ("grow", 4, 70),
@@ -127,6 +129,8 @@ FIRE_ROWS: List[Tuple[str, int, int]] = [
     ("jump", 1, 120),
     ("skid", 1, 110),
     ("crouch", 1, 120),
+    ("crouch_walk", 3, 110),
+    ("crouch_jump", 1, 120),
     ("climb", 2, 120),
     ("swim", 6, 100),
     ("fireball", 1, 120),
@@ -158,6 +162,15 @@ class Pose:
     body_dy: float = 0.0
     #: Vertical squash of the torso about its pivot. 1.0 is unsquashed.
     torso_scale: float = 1.0
+    #: Vertical squash of the HEAD about its own pivot. 1.0 is unsquashed.
+    #:
+    #: Her head is most of what is left once the body folds, so squashing it is
+    #: how a deep crouch stays a CHARACTER rather than a head with shoes: the
+    #: crown comes down and the face goes wide, and the body underneath is still
+    #: visible. Sinking the head instead buys the same height by hiding the
+    #: torso behind it, which is what "her whole head became her body" looked
+    #: like.
+    head_scale: float = 1.0
     mode: str = "side"
 
 
@@ -519,7 +532,8 @@ TALL_FORM = FormSpec(
     head_offset=10.0,
     body_dy=2.4,
     # Puts her crouched crown on y=108, which is `collision_bottom - 168/2`.
-    crouch_head_dy=7.0,
+    # Smaller than it was because `head_scale` now carries most of the depth.
+    crouch_head_dy=4.6,
 )
 
 FIRE_FORM = FormSpec(
@@ -540,8 +554,43 @@ FIRE_FORM = FormSpec(
     # sits 2 px ABOVE her drawing and keeps that margin in every pose, so the
     # PUBLISHED crouch rectangle lands on y=106 and is exactly half her
     # standing 168. Solved against the published rect, not the drawing.
-    crouch_head_dy=6.8,
+    crouch_head_dy=4.4,
 )
+
+
+def _crouch_variants(crouch: Pose) -> Dict[str, List[Pose]]:
+    """`crouch_walk` and `crouch_jump`, derived from the crouch she holds.
+
+    Both are the crouch pose with the LIMBS moved — deriving them rather than
+    re-authoring the stance is what keeps all three at the same height when the
+    crouch's depth is retuned. A crouch walk that stood 8 px taller than the
+    crouch it comes out of would pop on every step.
+
+    The shuffle is deliberately smaller than her walk's stride: her knees are
+    already folded, so the same swing would put a foot through the floor.
+    """
+    return {
+        "crouch_walk": [
+            dataclasses.replace(
+                crouch, leg_front_dx=0.9, leg_back_dx=-0.7, arm_front_dx=1.1, arm_back_dx=-0.7
+            ),
+            dataclasses.replace(crouch, leg_front_dx=0.2, leg_back_dx=-0.2),
+            dataclasses.replace(
+                crouch, leg_front_dx=-0.6, leg_back_dx=1.0, arm_front_dx=-0.5, arm_back_dx=1.0
+            ),
+        ],
+        # Legs tucked under a ducked body — the crouch is what she LEFT the
+        # ground in, so it is what she keeps while she is off it.
+        "crouch_jump": [
+            dataclasses.replace(
+                crouch,
+                leg_front_angle=38,
+                leg_back_angle=-34,
+                arm_front_angle=132,
+                arm_back_angle=-12,
+            )
+        ],
+    }
 
 
 def poses_for_form(form: FormSpec) -> Dict[str, List[Pose]]:
@@ -559,13 +608,19 @@ def poses_for_form(form: FormSpec) -> Dict[str, List[Pose]]:
     keeps the shared shape; the form states its own depth.
     """
     poses = TALL_LIKE_POSES if form.tall else SHORT_POSES
+    if "crouch" in poses:
+        poses = {**poses, **_crouch_variants(poses["crouch"][0])}
     if form.crouch_head_dy and "crouch" in poses:
         poses = {
             **poses,
-            "crouch": [
-                dataclasses.replace(pose, head_dy=form.crouch_head_dy)
-                for pose in poses["crouch"]
-            ],
+            **{
+                row: [
+                    dataclasses.replace(pose, head_dy=form.crouch_head_dy)
+                    for pose in poses[row]
+                ]
+                for row in ("crouch", "crouch_walk", "crouch_jump")
+                if row in poses
+            },
         }
     return poses
 
@@ -760,6 +815,13 @@ TALL_LIKE_POSES: Dict[str, List[Pose]] = {
             # placed by hand on the pose sheet, then read back
             body_dy=4.28,
             torso_scale=0.5,
+            # Her head is most of what is left once the body folds, so the last
+            # of the depth comes out of the HEAD rather than out of her neck: at
+            # 1.0 the crown only reaches the halved box by sinking far enough to
+            # hide the torso behind it, and she reads as a head with shoes.
+            # Swept 1.0/0.85/0.75/0.65 against the drawing — 0.7 is where the
+            # dress and both legs are back and the face is still hers.
+            head_scale=0.7,
             head_dx=0.6,
             arm_front_dx=0.8,
             arm_back_dx=-0.4,
