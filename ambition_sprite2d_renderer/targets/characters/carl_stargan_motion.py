@@ -175,6 +175,10 @@ FIGHTER_MOTION_COVERAGE: Final[dict[str, str]] = {
     "crouch_start": "crouch_start",
     "crouch": "crouch",
     "crouch_walk": "crouch_walk",
+    # Covered by the plain jump until this fighter draws one of their own —
+    # several categories resolving to one row is how the catalog keeps a slot
+    # open without demanding the art up front.
+    "crouch_jump": "jump",
     "crouch_end": "crouch_end",
     "land_light": "land_light",
     "land_hard": "land_hard",

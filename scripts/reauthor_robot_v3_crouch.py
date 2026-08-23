@@ -350,6 +350,25 @@ def build(doc: RigDocument) -> dict:
         holding.append(frame)
     poses["item_hold_crouch"] = holding
 
+    # crouch_jump: the crouch he LEFT THE GROUND IN, so it is the crouch he
+    # keeps while he is off it — legs tucked under, arms out for balance. Solved
+    # without the ground constraint, because there is no ground under it.
+    leap = []
+    for i in range(3):
+        rise = (0.0, 0.5, 1.0)[i]
+        frame = dict(hold)
+        frame.update(CROUCH_SHAPE)
+        frame.update(head_channels(1.0))
+        frame["root_y"] = CROUCH_DROP - 2.0 * rise
+        for side, tuck in (("far", 18.0), ("near", 14.0)):
+            frame[f"{side}_leg_u"] = hold[f"{side}_leg_u"] + tuck * rise
+            frame[f"{side}_leg_l"] = hold[f"{side}_leg_l"] - tuck * 0.8 * rise
+        frame["far_arm_u"] = CROUCH_SHAPE["far_arm_u"] + 16.0 * rise
+        frame["near_arm_u"] = CROUCH_SHAPE["near_arm_u"] - 16.0 * rise
+        frame["_ankle_error"] = 0.0
+        leap.append(frame)
+    poses["crouch_jump"] = leap
+
     # crouch_walk: the hold, with the feet trading places along the ground line.
     walk = []
     for i in range(8):

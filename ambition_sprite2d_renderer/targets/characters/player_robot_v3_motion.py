@@ -35,6 +35,10 @@ ROBOT_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     ("crouch_start", 5, 68),
     ("crouch", 6, 95),
     ("crouch_walk", 8, 88),
+    # A crouch that leaves the ground. Nothing in the vocabulary could name one
+    # until `CharacterAnim::CrouchJump` existed, so a ducked jump drew a plain
+    # one; the row falls back to `jump` for a sheet that skips it.
+    ("crouch_jump", 3, 90),
     ("crouch_end", 5, 68),
     ("land", 6, 72),
     ("land_hard", 8, 95),
@@ -179,6 +183,7 @@ FIGHTER_MOTION_COVERAGE: Final[dict[str, str]] = {
     "crouch_start": "crouch_start",
     "crouch": "crouch",
     "crouch_walk": "crouch_walk",
+    "crouch_jump": "crouch_jump",
     "crouch_end": "crouch_end",
     "land_light": "land",
     "land_hard": "land_hard",

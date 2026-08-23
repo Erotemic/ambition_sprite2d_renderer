@@ -1378,3 +1378,13 @@ ambition_extensions:
   note: Existing Ambition locomotion category; retained as a baseline slot.
   future_slot: crouch_walk
   category: crouch_walk
+- id: crouch_jump
+  label: Crouch jump
+  scope: fighter_core
+  note: >-
+    A crouch that leaves the ground. A real move in the platformers Ambition
+    borrows from, and until `CharacterAnim::CrouchJump` existed nothing in the
+    runtime could name one, so a ducked jump drew a plain jump. A fighter that
+    has not drawn one covers this category with its own jump row.
+  future_slot: crouch_jump
+  category: crouch_jump

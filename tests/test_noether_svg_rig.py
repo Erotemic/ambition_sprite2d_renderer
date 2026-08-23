@@ -174,8 +174,11 @@ def test_noether_full_fighter_coverage_is_complete():
         scopes=APPLICABLE_MOTION_SCOPES,
         character="noether",
     )
-    assert len(applicable_categories(APPLICABLE_MOTION_SCOPES)) == 124
-    assert len(FIGHTER_MOTION_COVERAGE) == 124
+    # 125 since `crouch_jump` joined `ambition_extensions`: a crouch that
+    # leaves the ground is its own category, and a fighter that has not drawn
+    # one covers it with their jump row.
+    assert len(applicable_categories(APPLICABLE_MOTION_SCOPES)) == 125
+    assert len(FIGHTER_MOTION_COVERAGE) == 125
 
 
 def test_noether_spec_keeps_pose_authority_out_of_svg_and_has_skirt_bones():
