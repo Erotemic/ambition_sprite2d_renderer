@@ -767,7 +767,7 @@ def _lerp(a, b, t):
 
 def draw_trail(images, window: int = 3, subdiv: int = 5, inner: float = 0.58,
                alpha: int = 120, blur: float = 0.8, core_alpha: int = 150, active=None,
-               body_rgb=None, core_rgb=None, falloff: float = 1.7):
+               body_rgb=None, core_rgb=None, falloff: float = 1.7, axes=None):
     """`window`/`inner`/`alpha` are what separate a tilt from a smash: a smash
     wants a longer, wider, brighter ribbon so the commitment reads.
 
@@ -784,7 +784,7 @@ def draw_trail(images, window: int = 3, subdiv: int = 5, inner: float = 0.58,
     live = None if active is None else set(active)
     body_rgb = tuple(body_rgb) if body_rgb else TRAIL_BODY
     core_rgb = tuple(core_rgb) if core_rgb else TRAIL_CORE
-    axes = [blade_axis(im) for im in images]
+    axes = axes if axes is not None else [blade_axis(im) for im in images]
     out = []
     for i, base in enumerate(images):
         trail = Image.new("RGBA", base.size, (0, 0, 0, 0))
@@ -823,6 +823,78 @@ def draw_trail(images, window: int = 3, subdiv: int = 5, inner: float = 0.58,
         comp = Image.new("RGBA", base.size, BG)
         comp.alpha_composite(trail)
         comp.alpha_composite(base)
+        out.append(comp)
+    return out
+
+
+# A poke is not a slow sweep -- it is a line. Its light runs ALONG the blade
+# instead of trailing behind it, so a thrust reads as reach rather than as arc.
+POKE_BODY = (150, 208, 255)
+POKE_CORE = (240, 252, 255)
+
+
+def poke_polygon(axes, i, extend: float = 1.30, width: float = 13.0,
+                 waist: float = 0.66, inner: float = 0.10):
+    """Lens along the blade axis: the volume a THRUST occupies.
+
+    A swept ribbon says "this arc is dangerous"; a poke has no arc, and drawing
+    one for it would promise a sweep the move does not have. So the shape is
+    axial -- it starts near the hilt, bulges at `waist` and comes to a point
+    past the tip, which is where a thrust's reach actually is.
+    """
+    if axes[i] is None:
+        return None
+    base, tip = axes[i]
+    dx, dy = tip[0] - base[0], tip[1] - base[1]
+    length = math.hypot(dx, dy)
+    if length < 1e-6:
+        return None
+    ux, uy = dx / length, dy / length
+    nx, ny = -uy, ux
+    start = _lerp(base, tip, inner)
+    end = (base[0] + dx * extend, base[1] + dy * extend)
+    mid = _lerp(start, end, waist)
+    half = width / 2.0
+    return [start, (mid[0] + nx * half, mid[1] + ny * half), end,
+            (mid[0] - nx * half, mid[1] - ny * half)]
+
+
+def draw_poke(images, active=None, extend: float = 1.30, width: float = 13.0,
+              waist: float = 0.66, inner: float = 0.10, alpha: int = 190,
+              blur: float = 1.0, core_alpha: int = 225, falloff: float = 2.2,
+              window: int = 2, body_rgb=None, core_rgb=None, axes=None):
+    """Draw the thrust flash, fading for `window` frames after each live one."""
+    live = None if active is None else set(active)
+    body_rgb = tuple(body_rgb) if body_rgb else POKE_BODY
+    core_rgb = tuple(core_rgb) if core_rgb else POKE_CORE
+    axes = axes if axes is not None else [blade_axis(im) for im in images]
+    out = []
+    for i, base_im in enumerate(images):
+        layer = Image.new("RGBA", base_im.size, (0, 0, 0, 0))
+        for k in range(window, -1, -1):
+            j = i - k
+            if j < 0 or (live is not None and j not in live):
+                continue
+            poly = poke_polygon(axes, j, extend, width, waist, inner)
+            if poly is None:
+                continue
+            age = k / (window + 1)
+            a = int(alpha * (1.0 - age) ** falloff)
+            if a <= 2:
+                continue
+            spike = Image.new("RGBA", base_im.size, (0, 0, 0, 0))
+            ImageDraw.Draw(spike).polygon(poly, fill=body_rgb + (a,))
+            layer.alpha_composite(spike)
+        layer = layer.filter(ImageFilter.GaussianBlur(blur))
+        if live is None or i in live:
+            poly = poke_polygon(axes, i, extend, width * 0.34, waist, inner)
+            if poly is not None:
+                core = Image.new("RGBA", base_im.size, (0, 0, 0, 0))
+                ImageDraw.Draw(core).polygon(poly, fill=core_rgb + (core_alpha,))
+                layer.alpha_composite(core.filter(ImageFilter.GaussianBlur(0.5)))
+        comp = Image.new("RGBA", base_im.size, BG)
+        comp.alpha_composite(layer)
+        comp.alpha_composite(base_im)
         out.append(comp)
     return out
 
@@ -899,21 +971,41 @@ def hit_polygon(axes, i, reach: float = 1.0, linger: int | None = None, first: i
     return hull
 
 
+def volume_polygon(axes, i, effect: str, first: int, swept: dict, poke: dict):
+    """The hit volume for frame `i`, in the shape of whatever effect it draws.
+
+    One function so the promise and the hit stay the same object: a swept effect
+    hits along its ribbon, a thrust hits along its lance. Nothing gets to hit in
+    a shape the player was never shown.
+    """
+    if effect == "poke":
+        return poke_polygon(axes, i, poke.get("extend", 1.30), poke.get("width", 13.0),
+                            poke.get("waist", 0.66), poke.get("inner", 0.10))
+    return hit_polygon(axes, i, swept.get("reach", 1.0), swept.get("linger"),
+                       first, swept.get("extend", 1.0), swept.get("inflate", 0.0))
+
+
 def draw_hitboxes(images, reach: float = 1.0, linger: int | None = None, active=None,
-                  extend: float = 1.0, inflate: float = 0.0):
+                  extend: float = 1.0, inflate: float = 0.0, effect: str = "trail",
+                  poke=None, axes=None):
     """`active` limits the overlay to the frames that actually connect.
 
     A swing is only dangerous for part of its travel; drawing a volume on the
     wind-up and the recovery makes an attack look far more threatening than it
     is, which is the opposite of what a review image is for.
     """
-    axes = [blade_axis(im) for im in images]
+    # Measured on the RAW frames when the caller supplies them, and it must be:
+    # every effect draws light brighter than BLADE_LUM, so re-measuring here
+    # reads the flash as part of the sword and drags a hitbox vertex with it.
+    axes = axes if axes is not None else [blade_axis(im) for im in images]
     first = min(active) if active else 0
     out = []
     for i, base in enumerate(images):
         layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
         poly = (None if (active is not None and i not in active)
-                else hit_polygon(axes, i, reach, linger, first, extend, inflate))
+                else volume_polygon(axes, i, effect, first,
+                                    dict(reach=reach, linger=linger, extend=extend,
+                                         inflate=inflate), poke or {}))
         if poly is not None and len(poly) >= 3:
             draw = ImageDraw.Draw(layer)
             # Light enough that the ribbon's own colour still reads through it --

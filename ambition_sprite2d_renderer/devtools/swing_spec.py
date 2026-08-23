@@ -24,6 +24,11 @@ A spec states them once, in one file per clip:
                   per frame, the joints that must touch the floor. The first is
                   solved with the root and the rest with the bone above them,
                   so "she ends on one knee" is solved rather than dialled in
+    effect        "trail" (a swept ribbon) or "poke" (an axial thrust flash).
+                  The hit volume takes the same shape, so nothing hits in a
+                  shape the player was never shown. A spec may carry ONLY an
+                  effect -- no sword_deg -- when the pose is already right
+    poke          thrust styling: extend/width/waist/inner
     trail         ribbon styling. A smash reads grander than a tilt by SIZE and
                   by HEAT -- body_rgb/core_rgb carry the hotter smash palette,
                   because once both are in motion size alone does not separate
@@ -167,7 +172,7 @@ def hit_shape(spec: dict) -> dict:
     }
 
 
-def check_pixel_invariants(images, spec: dict):
+def check_pixel_invariants(images, spec: dict, axes=None):
     """Rules about WHERE the swing lands, checked against the rendered frames.
 
     The angle invariants govern the shape of the arc; these govern its place in
@@ -189,7 +194,7 @@ def check_pixel_invariants(images, spec: dict):
     if not rules:
         return []
     ground = st.ground_y(images)
-    axes = [st.blade_axis(im) for im in images]
+    axes = axes if axes is not None else [st.blade_axis(im) for im in images]
     front = -1.0 if spec.get("facing", "west") == "west" else 1.0
     failures = []
     for rule in rules:
@@ -210,9 +215,8 @@ def check_pixel_invariants(images, spec: dict):
             hb = spec.get("hitbox") or {}
             active = sorted(hb.get("active") or [])
             for i in active:
-                shape = hit_shape(spec)
-                poly = st.hit_polygon(axes, i, shape["reach"], shape["linger"],
-                                      active[0], shape["extend"], shape["inflate"])
+                poly = st.volume_polygon(axes, i, spec.get("effect", "trail"), active[0],
+                                         hit_shape(spec), spec.get("poke") or {})
                 extent = st.body_extent(images[i])
                 if poly is None or extent is None:
                     continue
@@ -235,8 +239,17 @@ def check_pixel_invariants(images, spec: dict):
     return failures
 
 
+def frame_count(clip: str, spec: dict) -> int:
+    angles = spec.get("sword_deg")
+    if angles:
+        return len(angles)
+    pp = st._fresh()
+    return pp._prepared().library.clips[clip].frame_count
+
+
 def measured(clip: str):
-    return [st.sword_angle(clip, i) for i in range(len(load(clip)["sword_deg"]))]
+    spec = load(clip)
+    return [st.sword_angle(clip, i) for i in range(frame_count(clip, spec))]
 
 
 def channel_plan(clip: str, spec: dict) -> dict:
@@ -294,6 +307,13 @@ def channel_plan(clip: str, spec: dict) -> dict:
 
 def apply_spec(clip: str, verbose: bool = True):
     spec = load(clip)
+    if "sword_deg" not in spec:
+        # An effect-only spec. Some poses are already right, and re-solving one
+        # from angles I transcribed off it would only be a chance to get them
+        # slightly wrong.
+        if verbose:
+            print(f"{clip}: effect only, poses untouched")
+        return spec
     angles = spec["sword_deg"]
     elbows = spec["elbow"]
     torsos = spec.get("torso") or [None] * len(angles)
@@ -368,14 +388,17 @@ def preview(clip_name: str, spec: dict, out: Path):
     """
     hb = spec.get("hitbox") or {}
     raw, clip = st.render_clip(clip_name)
-    failures = check_pixel_invariants(raw, spec)
-    trail = dict(spec.get("trail") or {})
+    axes = [st.blade_axis(im) for im in raw]
+    failures = check_pixel_invariants(raw, spec, axes)
+    effect = spec.get("effect", "trail")
+    style = dict(spec.get(effect) or {})
     if hb.get("active") is not None:
         # One window for both: a frame that cannot hurt anyone does not sweep light.
-        trail.setdefault("active", hb["active"])
-    images = st.draw_trail(raw, **trail)
+        style.setdefault("active", hb["active"])
+    images = (st.draw_poke if effect == "poke" else st.draw_trail)(raw, axes=axes, **style)
     if hb.get("active") is not None:
-        images = st.draw_hitboxes(images, active=set(hb["active"]), **hit_shape(spec))
+        images = st.draw_hitboxes(images, active=set(hb["active"]), effect=effect,
+                                  poke=spec.get("poke") or {}, axes=axes, **hit_shape(spec))
     images = st.draw_ground(images, st.ground_y(raw))
     st.save_preview(images, clip, clip_name, out, scale=2)
     return failures
