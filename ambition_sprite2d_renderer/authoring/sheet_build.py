@@ -1098,6 +1098,13 @@ def render_sheet(source: FrameSource, out_dir: Path):
                 cropped_rows.append((anim, nframes, duration_ms, new_data))
             rendered_rows = cropped_rows
             canonical_raw = canonical_raw.crop((crop_x, crop_y, crop_x1, crop_y1))
+            # ⛔ the authored attack volumes move with the crop, exactly as the
+            # anchors just did. They are translated for the frame PADDING above
+            # and were never translated for this — which is only invisible while
+            # a sheet's art happens to fill its frame and the crop takes nothing.
+            attack_hitboxes = _translate_attack_hitboxes(
+                attack_hitboxes, -crop_x, -crop_y
+            )
             fw, fh = new_fw, new_fh
     progress(f"phase crop: done in {time.perf_counter() - crop_started:.2f}s | frame={fw}x{fh}")
 

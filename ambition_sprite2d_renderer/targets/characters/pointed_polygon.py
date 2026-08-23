@@ -343,6 +343,32 @@ def _raw_frame(animation: str, frame_idx: int, frame_count: int):
     )
 
 
+@lru_cache(maxsize=1)
+def _attack_hitboxes() -> dict:
+    """The authored hit volume for every swing that has a spec.
+
+    ⛔ **her swings had never published one.** `manifest_attack_hitbox_world`
+    prefers an authored convex `poly` over a coarse bbox precisely so a blade
+    arc can hit in the shape it was drawn in — the sheet simply carried no
+    `animations` block at all, so every attack fell back to a rectangle nobody
+    had ever reviewed. Same disconnection as the ribbons, one field over.
+
+    Measured on the RAW frames: `blade_axis` separates blade from anatomy by
+    luminance, and the ribbon's core is brighter than the blade, so measuring a
+    composited frame reads the effect as the sword.
+    """
+    out = {}
+    for animation, frame_count, _duration_ms in _doc().rows():
+        spec = _spec_for(animation)
+        if not spec:
+            continue
+        raw = [_raw_frame(animation, i, frame_count) for i in range(frame_count)]
+        poly = swing_effects.authored_hit_volume(raw, spec)
+        if poly:
+            out[animation] = {"poly": poly}
+    return out
+
+
 def _body_metrics(fw: int, fh: int):
     """Her gameplay body: the TRUNK, from the crown of her head to her feet.
 
@@ -374,6 +400,12 @@ def render(out_dir: str | Path, **opts):
         crop_margin=4,
         actor_metadata=ACTOR_METADATA,
         body_metrics_fn=_body_metrics,
+        # Her rows are mapped so the swings can carry their volumes. `authored`,
+        # not `art`: the measured per-pose road would hand every attack a body
+        # the size of its own ribbon.
+        animation_key_map={name: name for name, _f, _d in _doc().rows()},
+        attack_hitboxes=_attack_hitboxes(),
+        pose_bodies="authored",
         sheet_tuning=doc.sprite_tuning or {"collision_scale": 1.8},
         authored_faces_left=doc.authored_faces_left,
     )

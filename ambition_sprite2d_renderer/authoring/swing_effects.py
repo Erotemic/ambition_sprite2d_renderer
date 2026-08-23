@@ -424,3 +424,56 @@ def composite_authored_effect(images, spec: dict):
         style.setdefault("active", [f for window in windows for f in window])
     draw = draw_poke if effect == "poke" else draw_trail
     return draw(images, axes=axes, **style)
+
+
+def hit_shape(spec: dict) -> dict:
+    """Hit-volume geometry, DERIVED from the ribbon rather than declared beside it.
+
+    The hitbox is the trail: its inner edge is the ribbon's inner edge, its
+    window is how long the ribbon lingers, and it never reaches past the blade.
+    Growing a hitbox therefore means making the swing sweep LONGER, which a
+    player can see — not quietly inflating a box beyond the art, which they
+    cannot. One source, so the two cannot drift.
+    """
+    trail = spec.get("trail") or {}
+    hitbox = spec.get("hitbox") or {}
+    return {
+        "reach": round(1.0 - trail.get("inner", 0.58), 4),
+        "linger": trail.get("window", 3) + 1,
+        "extend": hitbox.get("extend", 1.0),
+        "inflate": hitbox.get("inflate", 0.0),
+    }
+
+
+def authored_hit_volume(images, spec: dict):
+    """The whole swing's hit volume, as one convex polygon in frame pixels.
+
+    THE PUBLISH PATH for the volume, next to the one for the ribbon. The runtime
+    seam (`manifest_attack_hitbox_world`) prefers an authored `poly` over a
+    coarse bbox precisely so a blade arc can hit in the shape it was drawn in —
+    it had simply never been given one, so every swing fell back to a rectangle
+    the reviewer had never seen.
+
+    One polygon per animation, not per frame: that is what the seam reads, so
+    this is the hull of every ACTIVE frame's volume — the ground the swing
+    covers while it can hurt, which is the same claim the lingering ribbon
+    makes.
+    """
+    windows = hit_windows(spec.get("hitbox") or {})
+    if not windows:
+        return None
+    effect = spec.get("effect", "trail")
+    swept = hit_shape(spec)
+    poke = spec.get("poke") or {}
+    axes = [blade_axis(image) for image in images]
+    points: list[tuple[float, float]] = []
+    for window in windows:
+        for i in window:
+            if i >= len(axes):
+                continue
+            polygon = volume_polygon(axes, i, effect, window[0], swept, poke)
+            if polygon:
+                points.extend(polygon)
+    if len(points) < 3:
+        return None
+    return [(float(x), float(y)) for x, y in _hull(points)]
