@@ -11,7 +11,8 @@
     "kind": "legacy-rigdoc-bake",
     "clip": "smash_down",
     "baked_at": "published-frame-samples",
-    "note": "IK, expressions, and solver controls were baked to direct FK pose transforms."
+    "note": "IK, expressions, and solver controls were baked to direct FK pose transforms.",
+    "todo": "TORSO PIVOT NEEDED (new art). Classic two-sided down smash: a low strike BEHIND (east, frame 2) then one IN FRONT (west, frame 6). The rear strike is not reachable from the shoulder and elbow alone -- frame 2 lands ~8 degrees short of its 35 deg target even with the torso leaned back 18 deg. A LEAN is standing in for a PIVOT: the body should turn under the swing, which the side-view sprite cannot do. Re-author once a torso-pivot sprite exists. The current angles are placeholders for the SHAPE and the hit reach only."
   },
   "pose_keys": [
     {
@@ -44,10 +45,10 @@
             "rotation_deg": -2.0
           },
           "near_arm_l": {
-            "rotation_deg": -68.7
+            "rotation_deg": -35.0
           },
           "near_arm_u": {
-            "rotation_deg": -52.34
+            "rotation_deg": 33.0
           },
           "near_leg_foot": {
             "rotation_deg": -32.455478
@@ -59,7 +60,11 @@
             "rotation_deg": -17.70402
           },
           "torso": {
-            "rotation_deg": 8.0
+            "rotation_deg": 0.0,
+            "position": [
+              0.0,
+              0.0
+            ]
           }
         }
       }
@@ -94,10 +99,10 @@
             "rotation_deg": 1.586816
           },
           "near_arm_l": {
-            "rotation_deg": -49.546401
+            "rotation_deg": -12.0
           },
           "near_arm_u": {
-            "rotation_deg": 11.03187
+            "rotation_deg": 64.0
           },
           "near_leg_foot": {
             "rotation_deg": -45.960124
@@ -109,7 +114,11 @@
             "rotation_deg": -26.056153
           },
           "torso": {
-            "rotation_deg": -1.325722
+            "rotation_deg": -16.0,
+            "position": [
+              2.0,
+              1.0
+            ]
           }
         }
       }
@@ -144,10 +153,10 @@
             "rotation_deg": 3.0
           },
           "near_arm_l": {
-            "rotation_deg": -41.521944
+            "rotation_deg": 0.0
           },
           "near_arm_u": {
-            "rotation_deg": 37.593519
+            "rotation_deg": 92.0
           },
           "near_leg_foot": {
             "rotation_deg": -51.404624
@@ -159,7 +168,11 @@
             "rotation_deg": -28.849284
           },
           "torso": {
-            "rotation_deg": -5.478056
+            "rotation_deg": -22.0,
+            "position": [
+              4.0,
+              2.0
+            ]
           }
         }
       }
@@ -194,10 +207,10 @@
             "rotation_deg": 3.0
           },
           "near_arm_l": {
-            "rotation_deg": -39.305696
+            "rotation_deg": -20.0
           },
           "near_arm_u": {
-            "rotation_deg": 44.981012
+            "rotation_deg": 73.0
           },
           "near_leg_foot": {
             "rotation_deg": -54.445747
@@ -209,7 +222,11 @@
             "rotation_deg": -30.241316
           },
           "torso": {
-            "rotation_deg": -7.694304
+            "rotation_deg": -10.0,
+            "position": [
+              2.0,
+              1.0
+            ]
           }
         }
       }
@@ -244,10 +261,10 @@
             "rotation_deg": -0.745797
           },
           "near_arm_l": {
-            "rotation_deg": -20.271014
+            "rotation_deg": -35.0
           },
           "near_arm_u": {
-            "rotation_deg": -2.695363
+            "rotation_deg": 43.0
           },
           "near_leg_foot": {
             "rotation_deg": -57.913621
@@ -259,7 +276,11 @@
             "rotation_deg": -31.669317
           },
           "torso": {
-            "rotation_deg": 3.611971
+            "rotation_deg": 0.0,
+            "position": [
+              0.0,
+              0.0
+            ]
           }
         }
       }
@@ -294,10 +315,10 @@
             "rotation_deg": -6.967066
           },
           "near_arm_l": {
-            "rotation_deg": 10.525753
+            "rotation_deg": -18.0
           },
           "near_arm_u": {
-            "rotation_deg": -83.808984
+            "rotation_deg": -15.0
           },
           "near_leg_foot": {
             "rotation_deg": -62.849895
@@ -309,7 +330,11 @@
             "rotation_deg": -33.387735
           },
           "torso": {
-            "rotation_deg": 22.914372
+            "rotation_deg": 9.0,
+            "position": [
+              -2.0,
+              1.0
+            ]
           }
         }
       }
@@ -344,10 +369,10 @@
             "rotation_deg": -4.321564
           },
           "near_arm_l": {
-            "rotation_deg": -27.569485
+            "rotation_deg": 0.0
           },
           "near_arm_u": {
-            "rotation_deg": -68.465069
+            "rotation_deg": -71.0
           },
           "near_leg_foot": {
             "rotation_deg": -50.966192
@@ -359,7 +384,11 @@
             "rotation_deg": -28.638312
           },
           "torso": {
-            "rotation_deg": 16.036065
+            "rotation_deg": 17.0,
+            "position": [
+              -4.0,
+              2.0
+            ]
           }
         }
       }
@@ -394,10 +423,10 @@
             "rotation_deg": -2.0
           },
           "near_arm_l": {
-            "rotation_deg": -61.0
+            "rotation_deg": -28.0
           },
           "near_arm_u": {
-            "rotation_deg": -55.0
+            "rotation_deg": -7.0
           },
           "near_leg_foot": {
             "rotation_deg": -39.8525
@@ -409,7 +438,11 @@
             "rotation_deg": -22.508841
           },
           "torso": {
-            "rotation_deg": 10.0
+            "rotation_deg": 9.0,
+            "position": [
+              -2.0,
+              1.0
+            ]
           }
         }
       }

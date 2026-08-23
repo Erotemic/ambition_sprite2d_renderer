@@ -100,10 +100,10 @@
             "rotation_deg": -18.425656
           },
           "near_arm_l": {
-            "rotation_deg": -18.306414
+            "rotation_deg": -10.9838
           },
           "near_arm_u": {
-            "rotation_deg": -76.917259
+            "rotation_deg": -23.0752
           },
           "near_leg_foot": {
             "rotation_deg": 22.468896
@@ -153,10 +153,10 @@
             "rotation_deg": -19.723032
           },
           "near_arm_l": {
-            "rotation_deg": -20.08484
+            "rotation_deg": -12.0509
           },
           "near_arm_u": {
-            "rotation_deg": -84.121341
+            "rotation_deg": -25.2364
           },
           "near_leg_foot": {
             "rotation_deg": 24.923648
@@ -206,10 +206,10 @@
             "rotation_deg": -15.991254
           },
           "near_arm_l": {
-            "rotation_deg": -38.743732
+            "rotation_deg": -23.2462
           },
           "near_arm_u": {
-            "rotation_deg": -67.701516
+            "rotation_deg": -20.3105
           },
           "near_leg_foot": {
             "rotation_deg": 8.670679
@@ -259,10 +259,10 @@
             "rotation_deg": -13.703704
           },
           "near_arm_l": {
-            "rotation_deg": -44.996296
+            "rotation_deg": -26.9978
           },
           "near_arm_u": {
-            "rotation_deg": -59.96963
+            "rotation_deg": -17.9909
           },
           "near_leg_foot": {
             "rotation_deg": 4.71917
@@ -312,10 +312,10 @@
             "rotation_deg": -10.0
           },
           "near_arm_l": {
-            "rotation_deg": -48.7
+            "rotation_deg": -29.22
           },
           "near_arm_u": {
-            "rotation_deg": -50.34
+            "rotation_deg": -15.102
           },
           "near_leg_foot": {
             "rotation_deg": 3.237688

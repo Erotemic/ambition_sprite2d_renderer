@@ -11,7 +11,8 @@
     "kind": "legacy-rigdoc-bake",
     "clip": "attack_up",
     "baked_at": "published-frame-samples",
-    "note": "IK, expressions, and solver controls were baked to direct FK pose transforms."
+    "note": "IK, expressions, and solver controls were baked to direct FK pose transforms.",
+    "todo": "TORSO PIVOT MISSING. This up-tilt is a symmetric overhead arc east->west, but the humanoid rig has no torso-twist bone, so the whole sweep is carried by the near shoulder and elbow alone. That forces the arm across the head instead of the body turning under it. Re-author the arc once a torso-pivot sprite/bone exists; the current angles are placeholders chosen to get the SHAPE and the hit reach right, not the final body mechanics."
   },
   "pose_keys": [
     {
@@ -35,10 +36,10 @@
             "rotation_deg": -0.399133
           },
           "near_arm_l": {
-            "rotation_deg": -88.7
+            "rotation_deg": -55.0
           },
           "near_arm_u": {
-            "rotation_deg": -52.34
+            "rotation_deg": -200.0
           },
           "near_leg_foot": {
             "rotation_deg": -0.037145
@@ -82,10 +83,10 @@
             "rotation_deg": -29.90588
           },
           "near_arm_l": {
-            "rotation_deg": -109.885185
+            "rotation_deg": -30.0
           },
           "near_arm_u": {
-            "rotation_deg": -21.525185
+            "rotation_deg": -198.5
           },
           "near_leg_foot": {
             "rotation_deg": -34.941444
@@ -135,10 +136,10 @@
             "rotation_deg": -27.44
           },
           "near_arm_l": {
-            "rotation_deg": -29.164
+            "rotation_deg": -10.0
           },
           "near_arm_u": {
-            "rotation_deg": -140.292
+            "rotation_deg": -144.5
           },
           "near_leg_foot": {
             "rotation_deg": 22.156111
@@ -188,10 +189,10 @@
             "rotation_deg": -34.657064
           },
           "near_arm_l": {
-            "rotation_deg": -7.28299
+            "rotation_deg": 0.0
           },
           "near_arm_u": {
-            "rotation_deg": -172.825597
+            "rotation_deg": -116.5
           },
           "near_leg_foot": {
             "rotation_deg": 27.291061
@@ -241,10 +242,10 @@
             "rotation_deg": -29.170096
           },
           "near_arm_l": {
-            "rotation_deg": -16.610837
+            "rotation_deg": -18.0
           },
           "near_arm_u": {
-            "rotation_deg": -164.595144
+            "rotation_deg": -73.5
           },
           "near_leg_foot": {
             "rotation_deg": 13.880466
@@ -285,10 +286,10 @@
             "rotation_deg": -25.0
           },
           "near_arm_l": {
-            "rotation_deg": -23.7
+            "rotation_deg": -45.0
           },
           "near_arm_u": {
-            "rotation_deg": -158.34
+            "rotation_deg": -18.0
           },
           "near_leg_foot": {
             "rotation_deg": -0.037145

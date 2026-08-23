@@ -1,0 +1,11 @@
+{
+  "clip": "attack_up",
+  "note": "up tilt: symmetric arc over the head, east to west, finishing near neutral.",
+  "sword_deg":  [350, 316, 288, 262, 226, 190],
+  "elbow":      [-55, -30, -10, 0, -18, -45],
+  "torso":      [0, 0, 0, 0, 0, 0],
+  "grip_frames": [],
+  "hitbox": {"active": [1, 2, 3, 4], "linger": 2, "reach": 1.0},
+  "invariants": ["monotonic_decreasing", "symmetric_about:270"],
+  "todo": "TORSO PIVOT MISSING. The rig has no torso-twist bone, so the whole sweep is carried by the near shoulder and elbow, forcing the arm across the head instead of the body turning under it. Re-author once a torso-pivot sprite exists; these angles fix the SHAPE and reach only."
+}

@@ -31,10 +31,10 @@
         "rotation_deg": -4.051081
       },
       "near_arm_l": {
-        "rotation_deg": -25.347462
+        "rotation_deg": -22
       },
       "near_arm_u": {
-        "rotation_deg": -82.688422
+        "rotation_deg": -96.0
       },
       "near_leg_foot": {
         "rotation_deg": 10.639169
@@ -46,7 +46,7 @@
         "rotation_deg": 6.727718
       },
       "torso": {
-        "rotation_deg": 8.336077
+        "rotation_deg": 0
       }
     }
   }

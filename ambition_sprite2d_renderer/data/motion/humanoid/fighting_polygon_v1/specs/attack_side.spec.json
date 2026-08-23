@@ -1,0 +1,10 @@
+{
+  "clip": "attack_side",
+  "note": "side tilt (f-tilt): a rising forward slash, low to high, no wind-up dip.",
+  "sword_deg":  [116, 140, 164, 194, 216, 234],
+  "elbow":      [-62, -50, -32, 0, -22, -48],
+  "torso":      [0, 0, 0, 0, 0, 0],
+  "grip_frames": [],
+  "hitbox": {"active": [2, 3, 4], "linger": 2, "reach": 1.0},
+  "invariants": ["monotonic_increasing", "never_above:150"]
+}
