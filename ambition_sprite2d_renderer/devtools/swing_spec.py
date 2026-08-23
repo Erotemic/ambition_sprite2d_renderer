@@ -432,6 +432,39 @@ def cmd_solve(args):
     raise SystemExit(code)
 
 
+def cmd_sheet(args):
+    """Render every spec and stack them into the one image worth reviewing.
+
+    The moveset is judged as a SET -- whether a tilt reads apart from a smash,
+    whether the pokes share a language -- and that judgement needs them side by
+    side. This existed as a retyped shell one-liner, which is how the stale
+    `_strip.png` files got left behind to mislead a later read.
+    """
+    from PIL import Image
+
+    out = Path(args.out)
+    order = args.clips.split(",") if args.clips else sorted(
+        q.name.split(".")[0] for q in SPECS.glob("*.spec.json"))
+    rows, worst = [], 0
+    for clip in order:
+        spec = load(clip)
+        if args.solve:
+            apply_spec(clip, verbose=False)
+        failures = preview(clip, spec, out.parent / clip)
+        worst |= announce("PLACEMENT", failures, len(spec.get("pixel_invariants") or [])) if failures else 0
+        print(f"  {clip}: {'FAILED' if failures else 'ok'}")
+        rows.append(Image.open((out.parent / clip).with_suffix(".png")).convert("RGBA"))
+    width = max(r.width for r in rows)
+    sheet = Image.new("RGBA", (width, sum(r.height for r in rows)), st.BG)
+    y = 0
+    for row in rows:
+        sheet.paste(row, (0, y), row)
+        y += row.height
+    sheet.save(out.with_suffix(".png"))
+    print(f"wrote {out.with_suffix('.png')} ({len(rows)} clips)")
+    raise SystemExit(worst)
+
+
 def cmd_check(args):
     clips = [args.clip] if args.clip else sorted(p.name.split(".")[0] for p in SPECS.glob("*.spec.json"))
     worst = 0
@@ -449,6 +482,11 @@ def main(argv=None) -> int:
     s.add_argument("clip")
     s.add_argument("--preview", help="also render a preview to this path")
     s.set_defaults(func=cmd_solve)
+    h = sub.add_parser("sheet", help="render every spec into one stacked review image")
+    h.add_argument("--out", required=True, help="path for the combined sheet")
+    h.add_argument("--clips", help="comma-separated order; default is every spec, sorted")
+    h.add_argument("--solve", action="store_true", help="re-solve each spec before rendering")
+    h.set_defaults(func=cmd_sheet)
     c = sub.add_parser("check", help="verify without writing; omit CLIP for every spec")
     c.add_argument("clip", nargs="?")
     c.set_defaults(func=cmd_check)
