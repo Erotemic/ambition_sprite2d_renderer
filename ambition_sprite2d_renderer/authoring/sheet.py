@@ -9,7 +9,7 @@ from PIL import Image, ImageColor, ImageDraw
 from ..registry.character_generators import get_generator
 from ..profiling import profile
 from .actor_contract import write_actor_contract_for_adapter
-from .sheet_build import publish_character_notes
+from .sheet_build import hurtbox_with_union, publish_character_notes
 from ..registry import CharacterJob
 from ..registry.pack_groups import policy_for
 from ..core.measure import measure_body_metrics
@@ -343,10 +343,11 @@ def build_spritesheet(job: CharacterJob) -> Tuple[List[Image.Image], Dict[str, A
             if anim_name not in anim_metrics:
                 anim_metrics[anim_name] = {}
             # Replace the auto-derived single-bbox hurtbox with the
-            # generator-declared multi-rect parts. Drop the bbox so
-            # consumers (which prefer `parts` over `bbox`) get only
-            # the authored shapes.
-            anim_metrics[anim_name]["hurtbox"] = {"parts": cropped_parts}
+            # generator-declared multi-rect parts, and publish their union
+            # beside them so the per-pose BODY consumer can read it too.
+            anim_metrics[anim_name]["hurtbox"] = hurtbox_with_union(
+                {"parts": cropped_parts}
+            )
 
         # Generator-declared per-animation hitboxes (attack damage
         # geometry). Translated source canvas → cropped frame.

@@ -28,6 +28,7 @@ from ...authoring.portrait import (
 )
 from ...core import slash_envelope
 from .robot_side import SideRobotGenerator
+from .player_robot_v3_gameplay import hurtbox_parts_for_rows
 from .player_robot_v3_motion import EFFECT_ALIASES, ROBOT_ROWS
 
 TARGET_NAME = "player_robot_v3"
@@ -637,11 +638,20 @@ def render(out_dir: str | Path, **opts):
         body_metrics_fn=body_metrics,
         animation_key_map={name: name for name in ANIMATION_ORDER},
         attack_hitboxes=hitboxes,
-        # Their limbs move; their BODY does not. The rows are mapped for their
-        # authored attack hitboxes, and publishing a measured hurtbox beside
-        # each one would outrank the body box above — `block` measures 128 px
-        # wide and `dash` 143 against a 57 px torso, so a body that followed the
-        # art would inflate every time they flourish.
+        # ⛔ still not the MEASURED road. `block`'s alpha union is 128 px wide
+        # and `dash`'s 143 against a 57 px torso, so a body that followed the
+        # art inflates every time they flourish — which is what `pose_bodies`
+        # stays `"authored"` to refuse.
+        #
+        # What changed is that refusing the measurement used to mean refusing
+        # per-pose geometry altogether: every row fell through to the one static
+        # rectangle, so a crouched robot's body was its standing body and the
+        # only pose the sheet could describe was standing. These rects are
+        # solved from the rig's own skeleton with margins calibrated so `idle`
+        # reproduces `body_metrics` to the pixel — the same authored box,
+        # extended to the poses it was never asked about. Arms and antenna are
+        # excluded, which is what keeps `block` at 58 rather than 128.
+        hurtbox_parts=hurtbox_parts_for_rows(ROWS),
         pose_bodies="authored",
     )
     keys = (

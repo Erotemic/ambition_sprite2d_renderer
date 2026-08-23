@@ -56,6 +56,32 @@ from ambition_sprite2d_renderer.core.draw import blending_draw
 RGBA = Tuple[int, int, int, int]
 
 
+def hurtbox_with_union(hurtbox: dict) -> dict:
+    """An authored hurtbox, plus the ``bbox`` union of its parts.
+
+    ⛔ **publishing parts without this DISABLES what authoring them was for.**
+    Two consumers read one field. The damage consumer prefers ``parts`` and is
+    happy; the BODY consumer (``BodyMetrics::pose_body_bbox``) reads ``bbox``
+    and nothing else, so a parts-only row falls through to the sheet's single
+    static rectangle — authoring a crouch's hurtbox made the crouch's BODY less
+    specific rather than more, which is the opposite of the intent, and silently.
+
+    The union is not a second authority. It is the authored parts, summarised
+    for the consumer that can only read one rectangle.
+    """
+    parts = hurtbox.get("parts")
+    if not isinstance(parts, list) or not parts or hurtbox.get("bbox"):
+        return hurtbox
+    x0 = min(int(part["x"]) for part in parts)
+    y0 = min(int(part["y"]) for part in parts)
+    x1 = max(int(part["x"]) + int(part["w"]) for part in parts)
+    y1 = max(int(part["y"]) + int(part["h"]) for part in parts)
+    return {
+        **hurtbox,
+        "bbox": {"x": x0, "y": y0, "w": x1 - x0, "h": y1 - y0},
+    }
+
+
 def publish_character_notes(
     manifest: MutableMapping[str, Any],
     metadata: Mapping[str, Any] | None,
@@ -1219,7 +1245,7 @@ def render_sheet(source: FrameSource, out_dir: Path):
             # character maps its rows at all. It is only the measured hurtbox
             # that would outrank the authored body.
             if hurtbox_parts and key in hurtbox_parts:
-                entry["hurtbox"] = hurtbox_parts[key]
+                entry["hurtbox"] = hurtbox_with_union(hurtbox_parts[key])
             elif union is not None and pose_bodies == "art":
                 entry["hurtbox"] = {
                     "bbox": {
