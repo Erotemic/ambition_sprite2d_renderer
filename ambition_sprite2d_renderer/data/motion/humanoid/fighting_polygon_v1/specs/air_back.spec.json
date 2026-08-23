@@ -1,0 +1,63 @@
+{
+  "clip": "air_back",
+  "note": "back air: the forward tilt's rising sweep, turned around. She faces west, so it climbs on the EAST side and every part of it must land behind her -- an aerial that hits in front is not a back air.",
+  "facing": "west",
+  "airborne": true,
+  "sword_deg": [
+    105,
+    62,
+    25,
+    350,
+    320,
+    300
+  ],
+  "elbow": [
+    -60,
+    -34,
+    -10,
+    -4,
+    -18,
+    -40
+  ],
+  "torso": [
+    4,
+    0,
+    -6,
+    -12,
+    -10,
+    -4
+  ],
+  "effect": "trail",
+  "trail": {
+    "window": 4,
+    "inner": 0.46,
+    "blur": 0.9,
+    "alpha": 150,
+    "core_alpha": 170,
+    "falloff": 1.5,
+    "body_rgb": [
+      150,
+      96,
+      232
+    ],
+    "core_rgb": [
+      216,
+      190,
+      252
+    ]
+  },
+  "hitbox": {
+    "active": [
+      2,
+      3,
+      4
+    ]
+  },
+  "invariants": [
+    "monotonic_decreasing",
+    "starts_near:105"
+  ],
+  "pixel_invariants": [
+    "hitbox_behind"
+  ]
+}

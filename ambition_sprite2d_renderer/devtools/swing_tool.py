@@ -719,23 +719,24 @@ def blade_axis(image: Image.Image):
 
 
 def body_extent(image: Image.Image):
-    """(centre x, lowest y) of the FIGURE, blade excluded.
+    """(centre x, centre y, lowest y) of the FIGURE, blade excluded.
 
     Measured on a RAW frame only: the trail's core is brighter than BLADE_LUM,
     so running this after `draw_trail` would count the ribbon as anatomy.
     """
     px = image.load()
-    xs, lowest = [], 0
+    xs, ys, lowest = [], [], 0
     for y in range(image.height):
         for x in range(image.width):
             pixel = px[x, y]
             if pixel[3] < 40 or sum(pixel[:3]) > BLADE_LUM:
                 continue
             xs.append(x)
+            ys.append(y)
             lowest = max(lowest, y)
     if not xs:
         return None
-    return sum(xs) / len(xs), lowest
+    return sum(xs) / len(xs), sum(ys) / len(ys), lowest
 
 
 def ground_y(images) -> float:
@@ -746,7 +747,7 @@ def ground_y(images) -> float:
     claim holds -- which is why this ships alongside the rule that checks it.
     """
     extent = body_extent(images[0])
-    return float(extent[1]) if extent else float(images[0].height - 1)
+    return float(extent[2]) if extent else float(images[0].height - 1)
 
 
 def draw_ground(images, y: float, colour=(122, 112, 134)):
@@ -971,6 +972,30 @@ def hit_polygon(axes, i, reach: float = 1.0, linger: int | None = None, first: i
     return hull
 
 
+def hit_windows(hitbox: dict):
+    """`active` as a list of WINDOWS, however the spec wrote it.
+
+    A neutral air hits twice, and the second hit must not inherit the first's
+    swept volume -- one accumulating hull across both would claim everything
+    between them, which is precisely the space the move passes through without
+    threatening. So each window starts its own volume.
+    """
+    active = hitbox.get("active")
+    if not active:
+        return []
+    if isinstance(active[0], (list, tuple)):
+        return [sorted(int(f) for f in window) for window in active]
+    return [sorted(int(f) for f in active)]
+
+
+def window_start(windows, i):
+    """The frame the volume containing `i` began, or None if `i` is not live."""
+    for window in windows:
+        if i in window:
+            return window[0]
+    return None
+
+
 def volume_polygon(axes, i, effect: str, first: int, swept: dict, poke: dict):
     """The hit volume for frame `i`, in the shape of whatever effect it draws.
 
@@ -985,7 +1010,7 @@ def volume_polygon(axes, i, effect: str, first: int, swept: dict, poke: dict):
                        first, swept.get("extend", 1.0), swept.get("inflate", 0.0))
 
 
-def draw_hitboxes(images, reach: float = 1.0, linger: int | None = None, active=None,
+def draw_hitboxes(images, reach: float = 1.0, linger: int | None = None, windows=None,
                   extend: float = 1.0, inflate: float = 0.0, effect: str = "trail",
                   poke=None, axes=None):
     """`active` limits the overlay to the frames that actually connect.
@@ -998,11 +1023,12 @@ def draw_hitboxes(images, reach: float = 1.0, linger: int | None = None, active=
     # every effect draws light brighter than BLADE_LUM, so re-measuring here
     # reads the flash as part of the sword and drags a hitbox vertex with it.
     axes = axes if axes is not None else [blade_axis(im) for im in images]
-    first = min(active) if active else 0
+    windows = windows or []
     out = []
     for i, base in enumerate(images):
         layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
-        poly = (None if (active is not None and i not in active)
+        first = window_start(windows, i)
+        poly = (None if first is None
                 else volume_polygon(axes, i, effect, first,
                                     dict(reach=reach, linger=linger, extend=extend,
                                          inflate=inflate), poke or {}))

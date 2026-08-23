@@ -184,11 +184,13 @@ def check_pixel_invariants(images, spec: dict, axes=None):
 
         tip_reaches_ground:<frame>[@tol]
             the blade tip sits within `tol` px of the neutral-stance foot line
-        hitbox_in_front[:tol]
-            every vertex of every live hit polygon is on the facing side of the
-            fighter's centre line
+        hitbox_in_front / hitbox_behind / hitbox_below / hitbox_above [:tol]
+            every vertex of every live hit polygon is on the named side of the
+            fighter's centre. A back air that lands in front is not a back air,
+            and a down air that reaches above her is not a down air
         feet_on_ground[:tol]
-            no frame leaves the fighter hovering above the floor line
+            no frame leaves the fighter hovering above the floor line. Grounded
+            moves only -- an aerial declares `airborne` and has no floor
     """
     rules = spec.get("pixel_invariants") or []
     if not rules:
@@ -210,28 +212,35 @@ def check_pixel_invariants(images, spec: dict, axes=None):
             if abs(gap) > tol:
                 failures.append(f"{rule}: tip is {gap:.1f}px "
                                 f"{'above' if gap > 0 else 'below'} the ground line")
-        elif name == "hitbox_in_front":
+        elif name in ("hitbox_in_front", "hitbox_behind", "hitbox_below", "hitbox_above"):
             tol = float(arg) if arg else 4.0
             hb = spec.get("hitbox") or {}
-            active = sorted(hb.get("active") or [])
-            for i in active:
-                poly = st.volume_polygon(axes, i, spec.get("effect", "trail"), active[0],
-                                         hit_shape(spec), spec.get("poke") or {})
-                extent = st.body_extent(images[i])
-                if poly is None or extent is None:
-                    continue
-                behind = [p for p in poly if (p[0] - extent[0]) * front < -tol]
-                if behind:
-                    worst = max(abs(p[0] - extent[0]) for p in behind)
-                    failures.append(f"{rule}: frame {i} puts {len(behind)} vertex/vertices "
-                                    f"up to {worst:.0f}px BEHIND her centre")
+            windows = st.hit_windows(hb)
+            axis, sign, word = {
+                "hitbox_in_front": (0, front, "BEHIND her centre"),
+                "hitbox_behind": (0, -front, "IN FRONT of her centre"),
+                "hitbox_below": (1, 1.0, "ABOVE her centre"),
+                "hitbox_above": (1, -1.0, "BELOW her centre"),
+            }[name]
+            for window in windows:
+                for i in window:
+                    poly = st.volume_polygon(axes, i, spec.get("effect", "trail"), window[0],
+                                             hit_shape(spec), spec.get("poke") or {})
+                    extent = st.body_extent(images[i])
+                    if poly is None or extent is None:
+                        continue
+                    stray = [p for p in poly if (p[axis] - extent[axis]) * sign < -tol]
+                    if stray:
+                        worst = max(abs(p[axis] - extent[axis]) for p in stray)
+                        failures.append(f"{rule}: frame {i} puts {len(stray)} vertex/vertices "
+                                        f"up to {worst:.0f}px {word}")
         elif name == "feet_on_ground":
             tol = float(arg) if arg else 3.0
             for i, im in enumerate(images):
                 extent = st.body_extent(im)
                 if extent is None:
                     continue
-                gap = ground - extent[1]
+                gap = ground - extent[2]
                 if gap > tol:
                     failures.append(f"{rule}: frame {i} floats {gap:.0f}px above the floor")
         else:
@@ -409,14 +418,16 @@ def preview(clip_name: str, spec: dict, out: Path):
     failures = check_pixel_invariants(raw, spec, axes)
     effect = spec.get("effect", "trail")
     style = dict(spec.get(effect) or {})
-    if hb.get("active") is not None:
+    windows = st.hit_windows(hb)
+    if windows:
         # One window for both: a frame that cannot hurt anyone does not sweep light.
-        style.setdefault("active", hb["active"])
+        style.setdefault("active", [f for w in windows for f in w])
     images = (st.draw_poke if effect == "poke" else st.draw_trail)(raw, axes=axes, **style)
-    if hb.get("active") is not None:
-        images = st.draw_hitboxes(images, active=set(hb["active"]), effect=effect,
+    if windows:
+        images = st.draw_hitboxes(images, windows=windows, effect=effect,
                                   poke=spec.get("poke") or {}, axes=axes, **hit_shape(spec))
-    images = st.draw_ground(images, st.ground_y(raw))
+    if not spec.get("airborne"):
+        images = st.draw_ground(images, st.ground_y(raw))
     st.save_preview(images, clip, clip_name, out, scale=2)
     return failures
 
