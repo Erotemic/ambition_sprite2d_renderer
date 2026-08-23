@@ -68,6 +68,23 @@ CROUCH_SHAPE = {
     "near_arm_l": 10.0,
     "eye_squint": 0.18,
 }
+#: The head sinks onto the shoulders and SQUASHES while it does.
+#:
+#: The squash is the character read — a robot whose head goes wide and flat is
+#: cute, and it is also the only way this one gets meaningfully lower: his head
+#: is 52 px tall above its own joint, so headroom is the only room he has left.
+#: Swept 1.0/0.85/0.8/0.75/0.7 against the drawing; below ~0.75 the eyes spread
+#: far enough that he stops reading as himself.
+#:
+#: ⛔ this character's crouch is NOT half his standing height and cannot be:
+#: `BodyMode::Crouching` halves his 91 px box to 45.5, and his head alone is
+#: 52 px. Art and box do not agree here, by arithmetic rather than by choice.
+CROUCH_HEAD_SINK = 4.0
+CROUCH_HEAD_SQUASH = 0.8
+#: Head channels default to 1.0 (a scale) rather than 0.0 (an offset), so they
+#: cannot ride the same "everything else rests at zero" rule as the angles.
+HEAD_CHANNEL_RESTS = {"bone.head.y": 0.0, "bone.head.scale_y": 1.0}
+
 # Breathing on the hold, and the crouch-walk's stride, both in frame pixels.
 BREATH = 1.6
 STRIDE_X = 5.5
@@ -84,6 +101,8 @@ class Poser:
         self.ground = doc.frame["ground_y"] - doc.frame["ankle_h"]
         names = list(doc.clips["crouch"]["channels"])
         self.ch = {n: {"keys": [[0.0, 0.0], [1.0, 0.0]]} for n in names}
+        for name, rest in HEAD_CHANNEL_RESTS.items():
+            self.ch.setdefault(name, {"keys": [[0.0, rest], [1.0, rest]]})
         doc.data["clips"]["__solve__"] = {
             "loop": False,
             "frames": 1,
@@ -98,7 +117,8 @@ class Poser:
 
     def clear(self):
         for n in self.ch:
-            self.ch[n]["keys"] = [[0.0, 0.0], [1.0, 0.0]]
+            rest = HEAD_CHANNEL_RESTS.get(n, 0.0)
+            self.ch[n]["keys"] = [[0.0, rest], [1.0, rest]]
         self.set(face_open_vis=1.0, head_look=1.0)
 
     def solve(self):
@@ -217,6 +237,18 @@ def pose_at(p: Poser, rest, drop: float, foot_targets=None, seed=None):
     return out
 
 
+def head_channels(amount: float, breath: float = 0.0) -> dict:
+    """The head's sink and squash at `amount` of the way into the crouch.
+
+    The squash lerps from 1.0, not from 0.0 — it is a SCALE, and easing it the
+    way the angles ease would start the transition with a head of no height.
+    """
+    return {
+        "bone.head.y": CROUCH_HEAD_SINK * amount,
+        "bone.head.scale_y": 1.0 + (CROUCH_HEAD_SQUASH - 1.0) * amount + breath,
+    }
+
+
 def ease(t: float) -> float:
     """Smoothstep, so the fold accelerates out of the stand and settles."""
     return t * t * (3.0 - 2.0 * t)
@@ -242,6 +274,7 @@ def build(doc: RigDocument) -> dict:
 
     hold = pose_at(p, rest, CROUCH_DROP)
     p.set(**{k: v for k, v in CROUCH_SHAPE.items()})
+    hold.update(head_channels(1.0))
     hold_head = p.solve()["head"].origin[1]
 
     report = {
@@ -262,11 +295,13 @@ def build(doc: RigDocument) -> dict:
     for side in ("far", "near"):
         for part in ("u", "l", "foot"):
             rest_frame[f"{side}_leg_{part}"] = 0.0
+    rest_frame.update(head_channels(0.0))
     start = [rest_frame]
     for i in range(1, 5):
         f = ease(i / 4.0)
         frame = pose_at(p, rest, CROUCH_DROP * f, seed=start[-1])
         frame.update({k: v * f for k, v in CROUCH_SHAPE.items()})
+        frame.update(head_channels(f))
         start.append(frame)
     poses["crouch_start"] = start
     poses["crouch_end"] = list(reversed(start))
@@ -281,6 +316,7 @@ def build(doc: RigDocument) -> dict:
         frame.update(CROUCH_SHAPE)
         frame["torso"] = CROUCH_SHAPE["torso"] + 1.2 * phase
         frame["head"] = CROUCH_SHAPE["head"] - 0.8 * phase
+        frame.update(head_channels(1.0, breath=0.025 * phase))
         loop.append(frame)
     poses["crouch"] = loop
 
@@ -303,6 +339,7 @@ def build(doc: RigDocument) -> dict:
         frame.update(CROUCH_SHAPE)
         frame["far_arm_u"] = CROUCH_SHAPE["far_arm_u"] + 6.0 * math.sin(phase)
         frame["near_arm_u"] = CROUCH_SHAPE["near_arm_u"] - 6.0 * math.sin(phase)
+        frame.update(head_channels(1.0, breath=0.015 * math.sin(2.0 * phase)))
         walk.append(frame)
     poses["crouch_walk"] = walk
 
@@ -326,7 +363,9 @@ def build(doc: RigDocument) -> dict:
                 continue
             if key in LEG_CHANNELS:
                 continue
-            channels[key] = keyed([0.0] * len(frames))
+            # ⛔ a SCALE rests at 1.0. Sweeping it to 0.0 with the angles is a
+            # head of no height, and the sweep cannot tell them apart by name.
+            channels[key] = keyed([HEAD_CHANNEL_RESTS.get(key, 0.0)] * len(frames))
         doc.data["clips"][clip_name]["frames"] = len(frames)
 
     report["worst_ankle_error"] = max(

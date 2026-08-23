@@ -58,23 +58,32 @@ def _joint_envelope(world) -> Tuple[float, float, float, float]:
     return min(xs), min(ys), max(xs), max(ys)
 
 
-def _row_envelope(animation: str, frames: int) -> Tuple[float, float, float, float]:
-    """The joint envelope over every frame of one row.
+def _row_envelope(animation: str, frames: int) -> Tuple[Tuple[float, float, float, float], float]:
+    """One row's joint envelope, and how far its head is squashed.
 
     The union, not frame 0: a row's body is what it occupies across the whole
     animation, which is the same rule the measured road uses and the reason a
     two-frame flinch does not get a body that only fits its first frame.
+
+    ⛔ **the head scale has to come back with it.** The crown-above-joint margin
+    below is a RIGID offset, which is true right up until a pose squashes the
+    head — the crouch does, about the head's own pivot, so its crown comes down
+    by 20% of that margin while the JOINT does not move at all. Reading the
+    skeleton alone would publish a body 11 px taller than the drawing.
     """
     doc = _doc()
     box = None
+    head_scale = 1.0
     for index in range(max(1, frames)):
-        world, _params = doc.solve(animation, doc.frame_time(animation, index, frames))
+        time = doc.frame_time(animation, index, frames)
+        world, params = doc.solve(animation, time)
+        head_scale = min(head_scale, float(params.get("bone.head.scale_y", 1.0)))
         env = _joint_envelope(world)
         box = env if box is None else (
             min(box[0], env[0]), min(box[1], env[1]),
             max(box[2], env[2]), max(box[3], env[3]),
         )
-    return box
+    return box, head_scale
 
 
 @lru_cache(maxsize=1)
@@ -95,7 +104,7 @@ def _calibration() -> Tuple[float, float, float, float]:
     )
 
     idle_frames = _row_frames("idle")
-    x0, y0, x1, y1 = _row_envelope("idle", idle_frames)
+    (x0, y0, x1, y1), _head_scale = _row_envelope("idle", idle_frames)
     left = BODY_BOX_CENTER_X - BODY_BOX_WIDTH_PX / 2.0
     right = left + BODY_BOX_WIDTH_PX
     return (left - x0, BODY_BOX_TOP_PX - y0, right - x1, BODY_BOX_BOTTOM_PX - y1)
@@ -116,8 +125,10 @@ def body_rect(animation: str, frames: int) -> Dict[str, int]:
 
     pad_left, pad_top, _pad_right, _pad_bottom = PUBLISH_PADDING
     dx0, dy0, dx1, dy1 = _calibration()
-    x0, y0, x1, y1 = _row_envelope(animation, frames)
-    left, top = x0 + dx0, y0 + dy0
+    (x0, y0, x1, y1), head_scale = _row_envelope(animation, frames)
+    # `dy0` is NEGATIVE — the crown is above the joint — and it scales with the
+    # head, which is why it is the one margin that is not rigid.
+    left, top = x0 + dx0, y0 + dy0 * head_scale
     right, bottom = x1 + dx1, y1 + dy1
     return {
         "name": "body",
