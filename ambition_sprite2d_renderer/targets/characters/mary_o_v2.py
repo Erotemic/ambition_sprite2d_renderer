@@ -15,6 +15,7 @@ from typing import Dict, List
 from PIL import Image
 
 from ...authoring.sheet_build import build_sheet
+from ._mary_o_v2_gameplay import hurtbox_parts_for_form
 from ..super_mary_o_common import bottom_center_canvas, rasterize_logical
 from ._mary_o_v2_art import (
     _draw_dead_front,
@@ -347,6 +348,17 @@ def _render_form(form: FormSpec, out_dir: str | Path) -> List[Path]:
         auto_crop=False,
         actor_metadata=_actor_metadata(form),
         body_metrics_fn=body_metrics,
+        # Her rows carry her body per pose, which they could not do while the
+        # sheet mapped none of them: `pose_body_bbox` had nothing to prefer and
+        # every pose fell through to the standing rectangle above. Grown Mary-O
+        # has real crouch art and was still colliding as if she were upright.
+        animation_key_map={name: name for name, _frames, _duration in form.rows},
+        hurtbox_parts=hurtbox_parts_for_form(form, render_frame),
+        # ⛔ NOT the measured road. Her alpha union is her cap tip, her ponytail
+        # and her flame frills — the exact things `body_metrics` exists to
+        # exclude. The authored width stands in every pose; only the ceiling
+        # follows the drawing, and only downward.
+        pose_bodies="authored",
     )
     return [
         outputs[k]
