@@ -423,7 +423,9 @@ def _write_pose_sheet(
                 sprite_name = "Art_" + _node_name(part.id)
                 visible = True
                 if part.opacity_parameter:
-                    visible = state.parameters.get(part.opacity_parameter, 0.0) > 0.01
+                    visible = state.parameters.get(
+                        part.opacity_parameter, part.opacity_default
+                    ) > 0.01
                 lines.extend(
                     [
                         f'[node name={_godot_string(sprite_name)} type="Sprite2D" parent={_godot_string(parent_path)}]',

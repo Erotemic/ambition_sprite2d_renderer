@@ -1372,7 +1372,13 @@ def paint_part(
         # Default 0: a part bound to an opacity channel is HIDDEN in clips
         # that don't drive that channel (a blade only shows in clips that
         # animate slash_vis).
-        opacity = clamp(params.get(oc, 0.0), 0.0, 1.0)
+        #
+        # `opacity_default` inverts that for the member of a SWAP SET that is
+        # the normal one. A torso needs alternates it can cut to, and the
+        # default-hidden rule cannot express "this one unless told otherwise":
+        # binding the base torso to a channel would erase it from every clip
+        # that never mentions the swap, which is most of them.
+        opacity = clamp(params.get(oc, float(part.get("opacity_default", 0.0))), 0.0, 1.0)
         if opacity <= 0.01:
             return
     # Global body fade (default 1.0) — a clip can phase the WHOLE character in/out

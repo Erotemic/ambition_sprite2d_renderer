@@ -293,6 +293,7 @@ class PartDefinition:
     pivot_marker: str
     bind_world_rotation_deg: float
     opacity_parameter: str | None = None
+    opacity_default: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -463,6 +464,7 @@ def load_svg_rig_definition(svg_path: str | Path, *, view_id: str | None = None)
                 pivot_marker=pivot_id,
                 bind_world_rotation_deg=float(elem.get("data-rig-bind-angle", "0")),
                 opacity_parameter=elem.get("data-rig-opacity") or None,
+                opacity_default=float(elem.get("data-rig-opacity-default") or 0.0),
             )
         )
 
@@ -1231,6 +1233,8 @@ class PreparedCharacterMotion:
             }
             if part.opacity_parameter:
                 item["opacity_channel"] = part.opacity_parameter
+                if part.opacity_default:
+                    item["opacity_default"] = part.opacity_default
             data["parts"].append(item)
 
         for clip_name, clip in self.library.clips.items():

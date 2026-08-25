@@ -48,7 +48,7 @@ def _fmt_channel(spec: dict) -> str:
 def _fmt_part(part: dict) -> str:
     keys = (
         "name", "bone", "z", "kind", "points", "radius", "ry", "a", "b",
-        "center", "fill", "outline", "outline_w", "opacity_channel",
+        "center", "fill", "outline", "outline_w", "opacity_channel", "opacity_default",
     )
     items = [f"{k!r}: {part[k]!r}" for k in keys if k in part]
     return "    {" + ", ".join(items) + "},"
