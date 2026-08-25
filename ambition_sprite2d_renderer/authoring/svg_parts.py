@@ -42,7 +42,31 @@ XLINK_NS = "http://www.w3.org/1999/xlink"
 # so user-units -> pixels is dpi / MM_PER_INCH.
 MM_PER_INCH = 25.4
 
-_DRAWABLE = {"path", "polygon", "rect", "ellipse", "circle", "line", "image", "use"}
+#: Every SVG tag that PUTS INK ON THE CANVAS.
+#:
+#: ⛔⛔ A TAG MISSING HERE IS DRAWN INTO EVERY PART. The subset renderer keeps
+#: what a part includes and HIDES every other drawable; a shape whose tag it
+#: does not recognise is never hidden, so it survives into all fifteen parts and
+#: is composited fifteen times, once per bone, each at that bone's transform.
+#: `polyline` was missing, and the Projectile Polygon's mouth line is the only
+#: polyline in the shipped art — which is why he grew a fan of dark strokes
+#: across his face that got worse the more his bones rotated.
+#:
+#: ⇒ ADD A TAG HERE WHEN THE ART STARTS USING IT. The failure is silent, it
+#: looks like an animation artifact rather than a missing entry, and it costs
+#: nothing to be generous: hiding a tag that draws nothing is free.
+_DRAWABLE = {
+    "path",
+    "polygon",
+    "polyline",
+    "rect",
+    "ellipse",
+    "circle",
+    "line",
+    "image",
+    "use",
+    "text",
+}
 
 for _prefix, _uri in (("", SVG_NS), ("inkscape", INK_NS),
                       ("sodipodi", SODIPODI_NS), ("xlink", XLINK_NS)):
