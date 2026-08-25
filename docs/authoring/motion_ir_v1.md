@@ -109,6 +109,22 @@ The v1 coordinate contract is serialized explicitly:
 `rig_user_unit` means the root SVG's user-space unit for the selected rig view.
 This is deliberately not a Godot unit or a sprite pixel.
 
+### A shared library fixes its readers' unit scale
+
+Root and bone translations in a library are *absolute*, in the unit above. A
+dash authored as "276 units forward" therefore means 276 units of whichever rig
+reads it. Characters that share one library must consequently be authored at
+one scale, and the observable form of that rule is a single
+`render.frame_px_per_rig_unit` across every binding that names the library.
+
+New art rarely arrives at that scale — a drawing in millimetres is a different
+size in user units than one drawn on a 900-unit canvas, and binding it unchanged
+makes only the translations wrong, so the character walks correctly and then
+throws itself out of frame on its first dash. The fix belongs in the rig, not in
+the binding: put the ratio on the art view's `transform` and author the markers
+in the library's space, so the whole skeleton, not just the sheet, is at the
+library's scale. `test_motion_ir.py` pins the resulting invariant.
+
 ## Pose
 
 A pose is a sparse whole-body state. Bone transforms are parent-local deltas
