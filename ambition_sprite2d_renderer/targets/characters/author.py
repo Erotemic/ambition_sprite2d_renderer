@@ -1,31 +1,36 @@
 """SVG-rigged Author: the game's author, drawn into his own roster.
 
 An easter-egg fighter, not a reference rig. He is an *armed* humanoid and
-therefore follows the Pointed Polygon sword template: one rigid sword part
+therefore follows the Pointed Polygon sword template: one rigid held part
 carried by ``near_arm_hand``, drawn along that bone's axis so every authored
-swing in the shared humanoid motion library points the blade where the hand
-points. The sword is integral to the archetype — do not add unrelated held
-props or shadows.
+swing in the shared humanoid motion library points it where the hand points.
+
+What he carries is a **pen** — the joke is the point, and it is load-bearing:
+he is the person writing the game, so the thing he fights with is the thing he
+writes with. Mechanically it is the sword archetype's prop, occupying the same
+axis at the same length, which is why the shared swing library retargets onto
+it without a single pose being re-authored. The prop is integral to the
+archetype — do not add unrelated held props or shadows.
 
 His swings publish authored ribbons and hit volumes from the same shared specs
-the polygon swings use — but they do NOT let `swing_effects` find the blade.
-That helper separates blade from anatomy by luminance (``BLADE_LUM``), which
-holds for a monochrome polygon and fails here: his skin (#fdcda0) and pale
-sneakers are over the threshold, and measured, the inferred "blade" axis ran
-from his glasses to his shoes. The rig already knows the answer — the sword is
-its own part — so the axis is measured on a sword-only render and handed to the
-effect instead of guessed at.
+the polygon swings use, and the axis those are drawn from is MEASURED off a
+render of the prop alone rather than inferred. `swing_effects` can separate a
+weapon from anatomy by luminance (``BLADE_LUM``), which holds for a bright
+blade on a monochrome polygon and fails twice here: his skin (#fdcda0) and pale
+sneakers are over the threshold, and the pen's ink-blue barrel is under it. A
+dark prop on a light fighter is exactly the case that inference gets backwards,
+so `strike_axis.from_part` takes the silhouette of the part the rig already
+names instead of guessing at brightness.
 """
 
 from __future__ import annotations
 
-import copy
 import json
 from functools import lru_cache
 from pathlib import Path
 
 from ambition_sprite2d_renderer.authoring.motion_ir import CharacterMotionBinding
-from ambition_sprite2d_renderer.authoring import swing_effects
+from ambition_sprite2d_renderer.authoring import strike_axis, swing_effects
 from ambition_sprite2d_renderer.authoring.rig_gameplay_body import gameplay_body_metrics
 from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
 from ambition_sprite2d_renderer.authoring.sheet_build import build_sheet
@@ -98,30 +103,30 @@ ACTOR_METADATA = {
     "authoring_description": {
         "concept": (
             "The person writing the game, standing in it: red hair, beard, "
-            "glasses, work shirt and jeans, holding a plain steel arming sword "
-            "he has no business carrying. An easter egg — he is meant to be "
+            "glasses, work shirt and jeans, levelling an oversized fountain pen "
+            "at everything. An easter egg — he is meant to be "
             "found, not advertised."
         ),
         "visual_language": [
             "ordinary contemporary clothing rather than a fighting costume",
             "flat cel shading with a single dark outline, no rendered volume",
             "warm red hair and beard against a cool navy shirt and denim",
-            "one plain steel sword: bright fuller, brass guard and pommel, wrapped grip",
+            "one ink-blue fountain pen: brass clip, cap band, collar and nib, held like a blade",
             "no drop shadow and no unrelated held props",
         ],
         "rigging_notes": [
             "The SVG owns artwork and static rig geometry; editor-neutral motion JSON owns reusable poses and clips.",
             "He binds to the same humanoid motion library as the polygon reference fighters, so his moveset is theirs until he earns bespoke posing.",
             "Near/far names in the SVG are character-relative layers, not camera-centric gameplay semantics.",
-            "The sword is bound to near_arm_hand and drawn along that bone's axis; a swing authored for the polygon sword reads correctly here without retargeting.",
+            "The pen is bound to near_arm_hand and occupies the arming sword's axis and length, so a swing authored for the polygon sword reads correctly here without retargeting.",
         ],
     },
     "gameplay_description": {
-        "role": "easter-egg sword humanoid",
+        "role": "easter-egg pen fighter",
         "combat_identity": [
-            "medium-weight fundamentals fighter with straightforward sword spacing",
+            "medium-weight fundamentals fighter with sword spacing, delivered by a pen",
             "complete grounded, aerial, special, defensive, capture, pummel and throw vocabulary",
-            "shares the sword archetype's timings; his identity is who he is, not how he swings",
+            "shares the sword archetype's timings; his identity is who he is and what he holds, not how he swings",
         ],
         "authoring_notes": [
             "Unlockable/hidden roster material — nothing should depend on him being selectable.",
@@ -147,7 +152,7 @@ ACTOR_METADATA = {
         "mass_class": "Medium",
         "traits": [
             "humanoid",
-            "sword_fighter",
+            "pen_fighter",
             "easter_egg",
             "playable_candidate",
             "svg_rigged",
@@ -193,7 +198,7 @@ ACTOR_METADATA = {
     },
     "tags": [
         "humanoid",
-        "sword_fighter",
+        "pen_fighter",
         "easter_egg",
         "smash",
         "svg_rigged",
@@ -214,23 +219,6 @@ def _doc() -> RigDocument:
     return _prepared().to_rig_document()
 
 
-@lru_cache(maxsize=1)
-def _sword_doc() -> RigDocument:
-    """The same rig with only the sword painted.
-
-    This is how the blade gets identified without a brightness guess: on a frame
-    that holds nothing but the sword, the steel is the only thing over
-    ``BLADE_LUM`` — the brass guard, the wrapped grip and the pommel all fall
-    under it — so `blade_axis` returns exactly the blade, base-toward-grip, for
-    whatever pose the clip is in.
-    """
-    data = copy.deepcopy(_doc().data)
-    data["parts"] = [part for part in data["parts"] if part["name"] == "sword"]
-    if not data["parts"]:
-        raise ValueError(f"{TARGET_NAME}: rig publishes no sword part to swing")
-    return RigDocument(data, source_path=_doc().source_path)
-
-
 def _sample_times(animation: str, frame_count: int) -> list[float]:
     clip = _prepared().library.clips[animation]
     return [
@@ -239,17 +227,18 @@ def _sample_times(animation: str, frame_count: int) -> list[float]:
     ]
 
 
-def _blade_axes(animation: str, frame_count: int, padding):
-    """(base, tip) of the blade per frame, in the pixels of `padding`'s frame.
+def _swing_axes(animation: str, frame_count: int, padding):
+    """(butt, nib) of the pen per frame, in the pixels of `padding`'s frame.
 
-    Measured at the SAME padding as the frames the effect will be drawn on: an
-    axis is a coordinate, and a coordinate in another frame is a wrong answer.
+    Measured on a render of the pen ALONE, so the answer is the silhouette of
+    the part the rig names rather than whatever in the picture happens to be
+    bright. Measured at the SAME padding as the frames the effect will be drawn
+    on: an axis is a coordinate, and a coordinate in another frame is a wrong
+    answer.
     """
-    doc = _sword_doc()
-    return [
-        swing_effects.blade_axis(doc.render_at(animation, t, supersample=1, padding=padding))
-        for t in _sample_times(animation, frame_count)
-    ]
+    return strike_axis.from_part(
+        _doc(), animation, _sample_times(animation, frame_count), "pen", padding=padding
+    )
 
 
 @lru_cache(maxsize=1)
@@ -259,7 +248,7 @@ def _publication_padding() -> tuple[int, int, int, int]:
     The rig's logical frame is an authoring coordinate system, not a clipping
     promise.  Measure the publication samples cheaply at 1x, then render the
     real sheet with enough transparent room to preserve every transformed part —
-    a swung sword reaches well past the frame the body needs.
+    a swung pen reaches well past the frame the body needs.
     """
     prepared = _prepared()
     samples = []
@@ -270,7 +259,7 @@ def _publication_padding() -> tuple[int, int, int, int]:
             samples.append((animation, round(at_s / max(clip.duration_s, 1e-9), 9)))
     pose = _doc().measure_render_padding(samples, margin=4)
     # ⛔ AND THE EFFECT REACHES FURTHER THAN THE POSE. The ribbon is drawn from
-    # where the blade WAS, so it extends past the sword's own envelope; measure
+    # where the pen WAS, so it extends past the prop's own envelope; measure
     # the poses alone and the publish clips the trail at the frame edge.
     return tuple(max(a, b) for a, b in zip(pose, _effect_padding()))
 
@@ -294,7 +283,7 @@ def _effect_padding() -> tuple[int, int, int, int]:
             doc.render_at(animation, t, supersample=1, scale=1, padding=probe)
             for t in _sample_times(animation, frame_count)
         ]
-        axes = _blade_axes(animation, frame_count, probe)
+        axes = _swing_axes(animation, frame_count, probe)
         for image in swing_effects.composite_authored_effect(frames, spec, axes=axes):
             bbox = image.getchannel("A").getbbox()
             if bbox is None:
@@ -316,11 +305,12 @@ def _spec_dir() -> Path:
     return Path(_prepared().library.path).parent / "specs"
 
 
-#: His blade is steel, not the polygons' amethyst. Timing, window and reach stay
-#: the library's — the swing is shared, the light it throws is his.
+#: What the pen leaves behind is INK — not the polygons' amethyst and not the
+#: steel-white of the sword this swing library was authored for. Timing, window
+#: and reach stay the library's: the swing is shared, the light it throws is his.
 TRAIL_TINT = {
-    "body_rgb": [104, 184, 255],
-    "core_rgb": [238, 250, 255],
+    "body_rgb": [86, 92, 236],
+    "core_rgb": [232, 234, 255],
 }
 
 
@@ -353,7 +343,7 @@ def _clip_frames(animation: str, frame_count: int) -> tuple:
     spec = _spec_for(animation)
     if not spec:
         return tuple(raw)
-    axes = _blade_axes(animation, frame_count, _publication_padding())
+    axes = _swing_axes(animation, frame_count, _publication_padding())
     return tuple(swing_effects.composite_authored_effect(raw, spec, axes=axes))
 
 
@@ -373,7 +363,7 @@ def _attack_hitboxes() -> dict:
         if not spec:
             continue
         raw = [_raw_frame(animation, i, frame_count) for i in range(frame_count)]
-        axes = _blade_axes(animation, frame_count, padding)
+        axes = _swing_axes(animation, frame_count, padding)
         poly = swing_effects.authored_hit_volume(raw, spec, axes=axes)
         if poly:
             out[animation] = {"poly": poly}
@@ -413,7 +403,7 @@ def _body_metrics(fw: int, fh: int):
     """His gameplay body: the TRUNK, crown of the head to the feet.
 
     Without this the box is the alpha bbox of the sheet's FIRST FRAME, and a rig
-    publishes its rows alphabetically — so it would be `aim`, sword up and arm
+    publishes its rows alphabetically — so it would be `aim`, pen up and arm
     extended, and he would collide with the world using his aiming pose.
     """
     del fw, fh  # the published frame is `_publication_frame_size()`, asked below

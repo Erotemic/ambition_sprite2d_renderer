@@ -100,14 +100,18 @@
         <path d="m 105.42,173.93 c 0,0 1.1191,-2.0152 1.3857,-2.5839 0.26658,-0.56877 0.43067,-0.88386 0.43067,-0.88386" id="near-hand-art-04"/>
       </g><path style="display:inline;fill:#fdca9f;fill-opacity:1;stroke:none;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="m 105.04686,160.04532 c 0.48675,1.60664 3.94985,2.73767 5.5342,1.3339 -1.218,-1.55673 -4.05136,-1.967 -5.5342,-1.3339 z" id="path581" sodipodi:nodetypes="ccc" inkscape:label="near-hand-curve"/>
     </g>
-    <g id="part-near-sword" data-rig-bone="near_arm_hand" data-rig-part="sword" data-rig-z="61" inkscape:label="Sword" inkscape:groupmode="layer">
-        <path id="author-sword-blade" style="fill:#c8ced8;stroke:#141a24;stroke-width:0.45;stroke-linejoin:round" d="M 104.0168,175.8702 L 86.8996,206.4628 L 81.6662,212.4219 L 83.5268,204.7123 L 98.6913,173.1062 Z"/>
-        <path id="author-sword-fuller" style="fill:#eef2f8;stroke:none" d="M 101.9944,176.5105 L 86.4283,205.0915 L 83.8313,208.2503 L 85.0082,204.3545 L 99.4205,175.1746 Z"/>
-        <path id="author-sword-guard" style="fill:#b8813a;stroke:#141a24;stroke-width:0.45;stroke-linejoin:round" d="M 107.9626,175.2141 L 106.4099,177.3375 L 96.1140,171.9939 L 96.9567,169.5019 Z"/>
-        <path id="author-sword-grip" style="fill:#4a3020;stroke:#141a24;stroke-width:0.45;stroke-linejoin:round" d="M 108.3976,164.1732 L 103.8764,173.3186 L 100.8586,171.7524 L 105.7349,162.7912 Z"/>
-        <path id="author-sword-wrap-1" style="fill:#6a4630;stroke:none" d="M 107.4729,166.1720 L 107.0123,167.0595 L 104.1720,165.5854 L 104.6327,164.6979 Z"/>
-        <path id="author-sword-wrap-2" style="fill:#6a4630;stroke:none" d="M 106.0432,169.0352 L 105.5825,169.9228 L 102.6535,168.4026 L 103.1142,167.5151 Z"/>
-        <path id="author-sword-pommel" style="fill:#b8813a;stroke:#141a24;stroke-width:0.45;stroke-linejoin:round" d="M 110.4009,161.8330 L 109.1043,164.7653 L 104.8439,162.5542 L 106.4956,159.8061 Z"/>
+    <g id="part-near-pen" data-rig-bone="near_arm_hand" data-rig-part="pen" data-rig-z="61" inkscape:label="Pen" inkscape:groupmode="layer">
+        <path id="author-pen-barrel" style="fill:#a3202f;stroke:#141a24;stroke-width:0.5;stroke-linejoin:round" d="M 108.9923,161.0329 L 107.5412,162.0488 L 95.5772,183.3145 L 88.4123,196.4957 L 91.8904,198.4712 L 99.5422,185.5667 L 111.6801,164.3997 L 111.8095,162.6331 Z"/>
+        <path id="author-pen-sheen" style="fill:#d9556a;stroke:none" d="M 110.6409,165.4195 L 92.1992,197.0366 L 91.4166,196.5921 L 109.7192,164.8959 Z"/>
+        <path id="author-pen-shade" style="fill:#5e0f1a;stroke:none" d="M 107.1628,163.4439 L 89.3820,195.4364 L 89.9211,195.7426 L 107.8236,163.8193 Z"/>
+        <path id="author-pen-band" style="fill:#d9a441;stroke:#141a24;stroke-width:0.5;stroke-linejoin:round" d="M 95.7754,182.2771 L 93.3581,186.6543 L 97.8101,189.1831 L 100.3317,184.8651 Z"/>
+        <path id="author-pen-band-lit" style="fill:#ffe6a6;stroke:none" d="M 99.4845,185.3039 L 97.7211,188.3274 L 96.7646,187.7842 L 98.5454,184.7705 Z"/>
+        <path id="author-pen-clip" style="fill:#d9a441;stroke:#141a24;stroke-width:0.5;stroke-linejoin:round" d="M 107.7728,162.4104 L 105.2081,163.4837 L 96.3639,179.6212 L 96.5879,181.8185 L 97.6341,179.6526 L 97.6293,178.7298 L 105.1601,165.0665 L 106.2682,164.7759 Z"/>
+        <path id="author-pen-collar" style="fill:#8f6420;stroke:#141a24;stroke-width:0.5;stroke-linejoin:round" d="M 88.6856,195.7309 L 87.1574,198.5430 L 90.7746,200.5976 L 92.4072,197.8448 Z"/>
+        <path id="author-pen-nib" style="fill:#d9a441;stroke:#141a24;stroke-width:0.5;stroke-linejoin:round" d="M 87.4885,198.0410 L 86.0645,200.9124 L 84.0472,205.5169 L 82.4654,209.6786 L 81.6140,212.3923 L 81.7184,212.4515 L 83.6131,210.3305 L 86.3775,206.8405 L 89.2992,202.7497 L 91.0361,200.0561 Z"/>
+        <path id="author-pen-nib-lit" style="fill:#ffe6a6;stroke:none" d="M 90.1596,200.7083 L 86.4130,206.1706 L 83.5846,209.8543 L 82.6671,210.9432 L 82.9057,210.1587 L 86.0019,205.4771 L 89.4119,200.2836 Z"/>
+        <path id="author-pen-breather" style="fill:#4a3210;stroke:none" d="M 87.3173,200.9340 L 86.4283,202.4991 L 87.7500,203.2498 L 88.6390,201.6847 Z"/>
+        <path id="author-pen-slit" style="fill:#4a3210;stroke:none" d="M 86.8923,202.5327 L 81.9732,211.6992 L 82.1471,211.7979 L 87.4836,202.8685 Z"/>
       </g>
     <g id="part-head" transform="translate(0.25513,0.18451)" data-rig-bone="head" data-rig-part="head" data-rig-z="60" inkscape:label="Head" inkscape:groupmode="layer" style="display:inline">
       <g stroke="#000000" stroke-width="0.26458px" id="g4498">
@@ -202,7 +206,7 @@
     <g id="ambition-rig-side-part-near_sleeve" data-rig-part-def="near_sleeve" data-rig-bone="near_arm_u" data-rig-z="52" data-rig-pivot="ambition-rig-side-bind-near_sleeve" data-rig-bind-angle="70.996591" data-rig-elements="part-near-sleeve"/>
     <g id="ambition-rig-side-part-near_hand" data-rig-part-def="near_hand" data-rig-bone="near_arm_hand" data-rig-z="53" data-rig-pivot="ambition-rig-side-bind-near_hand" data-rig-bind-angle="117.429686" data-rig-elements="part-near-hand"/>
     <g id="ambition-rig-side-part-head" data-rig-part-def="head" data-rig-bone="head" data-rig-z="60" data-rig-pivot="ambition-rig-side-bind-head" data-rig-bind-angle="0" data-rig-elements="part-head"/>
-    <g id="ambition-rig-side-part-sword" data-rig-part-def="sword" data-rig-bone="near_arm_hand" data-rig-z="61" data-rig-pivot="ambition-rig-side-bind-sword" data-rig-bind-angle="117.429686" data-rig-elements="part-near-sword"/>
+    <g id="ambition-rig-side-part-pen" data-rig-part-def="pen" data-rig-bone="near_arm_hand" data-rig-z="61" data-rig-pivot="ambition-rig-side-bind-pen" data-rig-bind-angle="117.429686" data-rig-elements="part-near-pen"/>
   <g id="side-part-torso_side" data-rig-part-def="torso_side" data-rig-bone="torso" data-rig-z="40.1" data-rig-pivot="ambition-rig-side-bind-torso" data-rig-bind-angle="0" data-rig-elements="part-torso-side" data-rig-opacity="torso_side_vis"/><g id="side-part-torso_back" data-rig-part-def="torso_back" data-rig-bone="torso" data-rig-z="40.1" data-rig-pivot="ambition-rig-side-bind-torso" data-rig-bind-angle="0" data-rig-elements="part-torso-back" data-rig-opacity="torso_back_vis"/></g>
 </metadata>
 <g id="ambition-rig-markers" data-rig-editor-layer="true" inkscape:groupmode="layer" inkscape:label="Ambition Rig Markers" style="display:inline">
@@ -259,7 +263,7 @@
     <circle id="ambition-rig-side-bind-near_sleeve" data-rig-bind-pivot="near_sleeve" inkscape:label="Bind - near_sleeve" cx="473.893965" cy="565.828235" r="1.897224" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.691076"/>
     <circle id="ambition-rig-side-bind-near_hand" data-rig-bind-pivot="near_hand" inkscape:label="Bind - near_hand" cx="481.78551" cy="721.92032" r="1.897224" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.691076"/>
     <circle id="ambition-rig-side-bind-head" data-rig-bind-pivot="head" inkscape:label="Bind - head" cx="422.703127" cy="510.01535" r="1.897224" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.691076"/>
-    <circle id="ambition-rig-side-bind-sword" data-rig-bind-pivot="sword" inkscape:label="Bind - sword" cx="481.78551" cy="721.92032" r="1.897224" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.691076"/>
+    <circle id="ambition-rig-side-bind-pen" data-rig-bind-pivot="pen" inkscape:label="Bind - pen" cx="481.78551" cy="721.92032" r="1.897224" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.691076"/>
   </g>
 </g>
 <!-- END AMBITION SVG RIG v1 -->

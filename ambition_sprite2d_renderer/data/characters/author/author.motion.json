@@ -5,7 +5,7 @@
     "svg": "author.svg",
     "view": "side"
   },
-  "motion_library": "../../motion/humanoid/author_sword_v1/library.json",
+  "motion_library": "../../motion/humanoid/author_pen_v1/library.json",
   "motion_source_facing": "east",
   "render": {
     "frame_px": [
@@ -29,7 +29,7 @@
     "archetype": "sword_humanoid",
     "safe_pose_reference": false,
     "faceted_svg_parts": false,
-    "weapon": "sword"
+    "weapon": "pen"
   },
   "natural_pose": "idle"
 }
