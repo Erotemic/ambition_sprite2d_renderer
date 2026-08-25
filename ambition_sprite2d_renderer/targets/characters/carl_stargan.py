@@ -13,6 +13,9 @@ from pathlib import Path
 
 from PIL import Image
 
+import json
+
+from ...authoring import strike_axis, swing_effects
 from ...authoring.portrait import FaceGuide, PortraitClip, render_framed_portrait, write_portrait_sheet
 from ...authoring.canonical_scientist_rig import ensure_scientist_rig
 from ...authoring.rigdoc import RigDocument
@@ -268,7 +271,31 @@ def _front(animation: str, canvas: FxCanvas, t: float, world, params) -> None:
         canvas.text((30, 31), "EVIDENCE?", STAR_GOLD, size=4.1, stroke=fade(OUTLINE,0.6))
 
 
-def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
+SPEC_DIR = Path(__file__).resolve().parent / "rigged" / TARGET_NAME / "specs"
+
+
+def _spec_for(animation: str) -> dict | None:
+    """The authored swing spec for one clip, or `None` for a clip with no swing."""
+    path = SPEC_DIR / f"{animation}.spec.json"
+    if not path.exists():
+        return None
+    return json.loads(path.read_text())
+
+
+def _swing_axes(animation: str, frame_count: int):
+    """Where the telescope is on each frame, measured on the sword part alone.
+
+    ⛔ NOT the luminance inference `swing_effects` falls back to. That one holds
+    for a dark fighter carrying bright steel; Carl is the other way round — a
+    pale jacket and a dark brass barrel — so it would find his coat and miss the
+    weapon. The rig knows which part is the sword, so it says so.
+    """
+    doc = _doc()
+    samples = [doc.frame_time(animation, i, frame_count) for i in range(frame_count)]
+    return strike_axis.from_part(doc, animation, samples, "sword")
+
+
+def _raw_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
     effect_animation = EFFECT_ALIASES.get(animation, animation)
     return compose_rig_frame(
         _doc(),
@@ -278,6 +305,47 @@ def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Imag
         behind=lambda canvas, t, world, params: _behind(effect_animation, canvas, t, world, params),
         front=lambda canvas, t, world, params: _front(effect_animation, canvas, t, world, params),
     )
+
+
+@lru_cache(maxsize=None)
+def _clip_frames(animation: str, frame_count: int) -> tuple:
+    """Every frame of one clip, with its authored swing composited on.
+
+    Cached per CLIP, not per frame: the trail on frame 4 is drawn from where the
+    barrel was on frames 1-3, so a `render_fn` that only ever sees one frame
+    cannot draw it — which is how a sheet ships with none of it.
+    """
+    raw = [_raw_frame(animation, i, frame_count) for i in range(frame_count)]
+    spec = _spec_for(animation)
+    if not spec:
+        return tuple(raw)
+    axes = _swing_axes(animation, frame_count)
+    return tuple(swing_effects.composite_authored_effect(raw, spec, axes=axes))
+
+
+@lru_cache(maxsize=1)
+def _attack_hitboxes() -> dict:
+    """The authored hit volume for every telescope swing that has a spec.
+
+    Derived from the same axes and spec as the trail, so the arc a player is
+    shown is the arc that hits them.
+    """
+    out = {}
+    for animation, frame_count, _duration in ROWS:
+        spec = _spec_for(animation)
+        if not spec:
+            continue
+        raw = [_raw_frame(animation, i, frame_count) for i in range(frame_count)]
+        poly = swing_effects.authored_hit_volume(
+            raw, spec, axes=_swing_axes(animation, frame_count)
+        )
+        if poly:
+            out[animation] = {"poly": poly}
+    return out
+
+
+def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
+    return _clip_frames(animation, frame_count)[frame_idx]
 
 
 def render_portraits(out_dir: str | Path, **opts):
@@ -331,6 +399,8 @@ def render(out_dir: str | Path, **opts):
         crop_margin=4,
         actor_metadata=ACTOR_METADATA,
         sheet_tuning=doc.sprite_tuning or {"collision_scale": 1.58},
+        attack_hitboxes=_attack_hitboxes(),
+        pose_bodies="authored",
         # His paperdoll view is `Carl Stargan - Side Left` and both his rig
         # (`features.facing: "west"`) and his SVG (`data-rig-facing="west"`)
         # declare it. Publishing it is what makes the declaration real: without

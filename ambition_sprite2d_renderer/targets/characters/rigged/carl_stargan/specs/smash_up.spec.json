@@ -1,0 +1,33 @@
+{
+  "clip": "smash_up",
+  "note": "up smash: brass through the ceiling.",
+  "strike_part": "sword",
+  "effect": "trail",
+  "facing": "west",
+  "hitbox": {
+    "active": [
+      4,
+      5,
+      6
+    ],
+    "extend": 1.05
+  },
+  "trail": {
+    "window": 4,
+    "inner": 0.46,
+    "blur": 0.9,
+    "alpha": 164,
+    "core_alpha": 196,
+    "falloff": 1.5,
+    "body_rgb": [
+      236,
+      176,
+      66
+    ],
+    "core_rgb": [
+      255,
+      252,
+      232
+    ]
+  }
+}

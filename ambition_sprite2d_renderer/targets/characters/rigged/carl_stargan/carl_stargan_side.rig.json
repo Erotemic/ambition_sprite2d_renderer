@@ -550,6 +550,49 @@
       ],
       "rest_angle": 72.2553,
       "svg_source_order": 22
+    },
+    {
+      "name": "sword",
+      "bone": "near_arm_hand",
+      "z": 23.0,
+      "kind": "sprite",
+      "include": [
+        "path2783",
+        "path32960",
+        "path32952",
+        "path32954",
+        "path32956",
+        "path32958",
+        "path2800",
+        "path2798",
+        "path2796",
+        "path2785",
+        "path20698",
+        "path20700",
+        "path33262",
+        "path33264",
+        "path2802",
+        "path27670",
+        "path28848",
+        "path32923",
+        "path32933",
+        "path32937",
+        "path32925",
+        "path32927",
+        "path32929",
+        "path32944",
+        "path32946",
+        "path32948",
+        "path2804",
+        "path2808",
+        "path2811"
+      ],
+      "pivot": [
+        744.5,
+        515.0
+      ],
+      "rest_angle": 75.7526,
+      "svg_source_order": 23
     }
   ],
   "ik_legs": [
@@ -39937,10 +39980,10 @@
     "schema": "canonical-svg-rig-v3",
     "builder_version": 19,
     "renderer": "resvg_py",
-    "renderer_version": "0.4.0",
+    "renderer_version": "0.3.3",
     "renderer_backend": "native-extension",
-    "renderer_origin": "/home/agent/.local/uv/envs/uvpy3.13.2/lib/python3.13/site-packages/resvg_py/resvg_py.abi3.so",
-    "svg_sha256": "3ab947a4a31aeae17a3483b3108816177040dd63da7bd646154227b59cd3714c",
+    "renderer_origin": "/home/joncrall/code/ambition/tools/ambition_sprite2d_renderer/.venv/lib/python3.12/site-packages/resvg_py/resvg_py.cpython-312-x86_64-linux-gnu.so",
+    "svg_sha256": "a228d34fedcc0dfa845cc7eb5a1912b5cd8c841c5d1fcc2b8f6cf6b69daf6f5c",
     "part_order_policy": "svg-document-order",
     "part_order": "svg-document"
   }
