@@ -451,17 +451,46 @@ def load_svg_rig_definition(svg_path: str | Path, *, view_id: str | None = None)
     for elem in raw_parts:
         name = str(elem.get("data-rig-part-def"))
         bone = str(elem.get("data-rig-bone"))
+        # ⭐ THE BIND PIVOT IS OPTIONAL, AND ITS ABSENCE MEANS "THE JOINT".
+        #
+        # ⛔⛔ IT USED TO BE REQUIRED, AND THAT MADE AUTHORING COST TWO MARKERS
+        # PER JOINT. Every part got its own pivot marker seeded at the bone
+        # origin, so moving a wrist meant dragging the `near_wrist` JOINT and
+        # the `near_arm_hand` BIND on top of each other and keeping them there.
+        # Miss one and the art hinges around a point it is no longer attached
+        # to — which is exactly how a rig ends up with a head that swings 163
+        # units wide of its own skull.
+        #
+        # A separate pivot is still authorable, because it answers a real
+        # question: a sleeve may hinge slightly outboard of the shoulder without
+        # dragging the arm chain with it. It is now what it should always have
+        # been — an OPT-IN offset, stated only where somebody wants one, rather
+        # than a second copy of the skeleton that has to be kept in step by
+        # hand.
         pivot_id = elem.get("data-rig-pivot")
-        if not pivot_id or pivot_id not in ids:
-            raise ValueError(f"{svg_path}: part {name!r} lacks valid bind pivot")
+        if pivot_id and pivot_id in ids:
+            pivot = _vec_round(_element_point_in_root(root, ids[pivot_id]))
+        elif pivot_id:
+            raise ValueError(
+                f"{svg_path}: part {name!r} names bind pivot {pivot_id!r}, which no "
+                f"element in this document defines"
+            )
+        elif bone in origins:
+            pivot = _vec_round(origins[bone])
+            pivot_id = None
+        else:
+            raise ValueError(
+                f"{svg_path}: part {name!r} authors no bind pivot and its bone "
+                f"{bone!r} has no origin to fall back to"
+            )
         parts.append(
             PartDefinition(
                 id=name,
                 bone=bone,
                 z=float(elem.get("data-rig-z", "0")),
                 elements=tuple((elem.get("data-rig-elements") or "").split()),
-                pivot=_vec_round(_element_point_in_root(root, ids[pivot_id])),
-                pivot_marker=pivot_id,
+                pivot=pivot,
+                pivot_marker=pivot_id or "",
                 bind_world_rotation_deg=float(elem.get("data-rig-bind-angle", "0")),
                 opacity_parameter=elem.get("data-rig-opacity") or None,
                 opacity_default=float(elem.get("data-rig-opacity-default") or 0.0),

@@ -968,11 +968,47 @@ def _find_start_tag(text: str, element_id: str) -> tuple[int, int, str]:
     return m.start(), m.end(), m.group(0)
 
 
+def _remove_element_source_preserving(path: Path, element_id: str) -> None:
+    """Delete one self-closing element by id, leaving the rest of the file byte-identical.
+
+    Source-preserving for the reason every edit in this module is: these files
+    are HAND-EDITED in Inkscape, and a full parse-and-serialize round trip
+    rewrites attribute order and whitespace across the whole document, which
+    turns a one-marker change into an unreviewable diff.
+    """
+    text = Path(path).read_text(encoding="utf8")
+    start, stop, tag = _find_start_tag(text, element_id)
+    if not tag.rstrip().endswith("/>"):
+        raise ValueError(
+            f"{path}: element {element_id!r} is not self-closing; refusing to guess where it ends"
+        )
+    # Take the whitespace in front of it too, so removing a marker does not
+    # leave a blank line where it stood.
+    lead = start
+    while lead > 0 and text[lead - 1] in " \t":
+        lead -= 1
+    if lead > 0 and text[lead - 1] == "\n":
+        lead -= 1
+    Path(path).write_text(text[:lead] + text[stop:], encoding="utf8")
+
+
 def _set_attrs_source_preserving(path: Path, element_id: str, attrs: Mapping[str, str]) -> None:
     text = Path(path).read_text(encoding="utf8")
     start, stop, tag = _find_start_tag(text, element_id)
     updated = tag
     for name, value in attrs.items():
+        if value is None:
+            # ⭐ `None` DELETES. An attribute whose right answer is "say nothing"
+            # cannot be expressed by writing a value — a part that names an empty
+            # bind pivot is a part naming a marker that does not exist.
+            updated = re.sub(
+                r"\s" + re.escape(name) + r"\s*=\s*(['\"]).*?\1",
+                "",
+                updated,
+                count=1,
+                flags=re.DOTALL,
+            )
+            continue
         escaped = _xml_escape(value)
         pat = re.compile(r"(\s" + re.escape(name) + r"\s*=\s*)(['\"])(.*?)\2", re.DOTALL)
         if pat.search(updated):
@@ -1075,6 +1111,64 @@ def refresh_guides(path: Path, *, view_id: str | None = None) -> int:
     for element_id, attrs in updates:
         _set_attrs_source_preserving(path, element_id, attrs)
     return len(updates)
+
+
+def retire_redundant_bind_pivots(
+    path: Path, *, view_id: str | None = None, tolerance: float = 2.0
+) -> list[str]:
+    """Delete every bind pivot that has nothing to say, and unwire its part.
+
+    ⭐ A BIND PIVOT IS AN OFFSET, AND MOST PARTS DO NOT WANT ONE. The rig reader
+    falls back to the bone's own origin for a part that names no pivot, so a
+    marker sitting on that origin is a second copy of a coordinate the skeleton
+    already carries — and a second copy is a thing that has to be dragged in
+    step by hand forever. Jon, on authoring this rig: *"I have to move 2 markers
+    for every position. I don't want authoring to be that hard."*
+
+    ⛔ AND IT IS NOT COSMETIC. The two drift apart the moment somebody moves one
+    and not the other, and the art then hinges about a point it is no longer
+    attached to. That is how this rig ended up with a head swinging 163 units
+    wide of its own skull.
+
+    A pivot further than `tolerance` from its bone origin is KEPT: somebody
+    meant that one (a sleeve hinging outboard of the shoulder without dragging
+    the arm chain). Returns the part names that were unwired.
+    """
+
+    root = _managed_root(path)
+    retired: list[str] = []
+    drop_ids: list[str] = []
+    for view in _view_defs(root):
+        current_view = view.get("data-rig-view-def") or ""
+        if view_id is not None and current_view != view_id:
+            continue
+        origins: dict[str, tuple[float, float]] = {}
+        for bone in (e for e in view if e.get("data-rig-bone-def")):
+            origin_id = bone.get("data-rig-origin")
+            if not origin_id:
+                continue
+            origins[bone.get("data-rig-bone-def") or ""] = _element_point_in_root(
+                root, _find_by_id(root, origin_id)
+            )
+        for part in (e for e in view if e.get("data-rig-part-def")):
+            pivot_id = part.get("data-rig-pivot")
+            origin = origins.get(part.get("data-rig-bone") or "")
+            if not pivot_id or origin is None:
+                continue
+            try:
+                marker = _find_by_id(root, pivot_id)
+            except ValueError:
+                continue
+            if math.dist(_element_point_in_root(root, marker), origin) > tolerance:
+                continue
+            retired.append(part.get("data-rig-part-def") or "")
+            drop_ids.append(pivot_id)
+            element_id = part.get("id")
+            if element_id:
+                _set_attrs_source_preserving(path, element_id, {"data-rig-pivot": None})
+    for marker_id in drop_ids:
+        _remove_element_source_preserving(path, marker_id)
+    return retired
 
 
 def sync_bind_angles(path: Path, *, view_id: str | None = None) -> list[str]:
@@ -1664,6 +1758,26 @@ def _cmd_sync_bind_angles(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_retire_bind_pivots(args: argparse.Namespace) -> int:
+    retired = retire_redundant_bind_pivots(
+        Path(args.svg), view_id=args.view, tolerance=args.tolerance
+    )
+    if not retired:
+        print(f"{args.svg}: every bind pivot is a deliberate offset; nothing retired")
+    else:
+        print(
+            f"{args.svg}: retired {len(retired)} redundant bind pivot(s) "
+            f"(they now follow their bone origin): {', '.join(retired)}"
+        )
+    return 0
+
+
+def _cmd_refresh_guides(args: argparse.Namespace) -> int:
+    count = refresh_guides(Path(args.svg), view_id=args.view)
+    print(f"{args.svg}: re-anchored {count} bone guide(s)")
+    return 0
+
+
 def _cmd_validate(args: argparse.Namespace) -> int:
     errors = validate(Path(args.svg))
     if errors:
@@ -1698,6 +1812,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     p.add_argument("svg")
     p.add_argument("--view", default=None)
+
+    p = sub.add_parser(
+        "retire-bind-pivots",
+        help="delete bind pivots that sit on their bone origin, so a joint is ONE marker",
+    )
+    p.add_argument("svg")
+    p.add_argument("--view", default=None)
+    p.add_argument(
+        "--tolerance",
+        type=float,
+        default=2.0,
+        help="a pivot further than this from its bone origin was MEANT; keep it",
+    )
 
     p = sub.add_parser("refresh-guides", help="refresh editor bone guides after direct marker edits")
     p.add_argument("svg")
@@ -1741,6 +1868,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "move-marker":
         move_marker(Path(args.svg), view_id=args.view, kind=args.kind, name=args.name, x=args.x, y=args.y)
         return 0
+    if args.command == "retire-bind-pivots":
+        return _cmd_retire_bind_pivots(args)
     if args.command == "sync-bind-angles":
         return _cmd_sync_bind_angles(args)
     if args.command == "refresh-guides":
