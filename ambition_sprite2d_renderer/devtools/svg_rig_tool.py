@@ -46,6 +46,16 @@ SCHEMA = "ambition-svg-rig-v1"
 RIG_METADATA_ID = "ambition-rig-metadata"
 MARKER_LAYER_ID = "ambition-rig-markers"
 
+# Hand-drawn art under `assets/` that a rig in `data/characters/` was derived
+# from. It is a source, not a renderable rig and not an inert reference: an
+# author edits the drawing here and the rig carries the rig vocabulary.
+RIG_TEMPLATE_NAMES = frozenset(
+    {
+        "author-rig-labels-joints.svg",
+        "officer.svg",
+    }
+)
+
 _NUMBER = re.compile(r"^-?(?:\d+(?:\.\d*)?|\.\d+)$")
 _ID_ATTR = re.compile(r"\bid\s*=\s*(['\"])(?P<value>.*?)\1", re.DOTALL)
 
@@ -1067,6 +1077,59 @@ def refresh_guides(path: Path, *, view_id: str | None = None) -> int:
     return len(updates)
 
 
+def sync_bind_angles(path: Path, *, view_id: str | None = None) -> list[str]:
+    """Re-derive each part's bind angle from the joints its bone now sits on.
+
+    ⛔ **moving a joint silently tilts the art that rides it.** A part renders at
+    ``bone_world_angle - data-rig-bind-angle``, so the two agree only while the
+    bind angle is the angle the art was drawn at. Drag an elbow to where it
+    belongs and the forearm's bone turns while its bind angle does not — the
+    limb comes out of rest already rotated by the correction, in every frame.
+
+    This restates the assumption these humanoid rigs are authored under: the art
+    IS drawn in its rest pose. Bones with no tip have no direction of their own,
+    so their parts are left exactly as authored.
+
+    Returns the part names whose angle changed.
+    """
+
+    root = _managed_root(path)
+    changed: list[str] = []
+    updates: list[tuple[str, dict[str, str]]] = []
+    for view in _view_defs(root):
+        current_view = view.get("data-rig-view-def") or ""
+        if view_id is not None and current_view != view_id:
+            continue
+        angles: dict[str, float] = {}
+        for bone in (e for e in view if e.get("data-rig-bone-def")):
+            origin_id, tip_id = bone.get("data-rig-origin"), bone.get("data-rig-tip")
+            if not origin_id or not tip_id:
+                continue
+            origin = _element_point_in_root(root, _find_by_id(root, origin_id))
+            tip = _element_point_in_root(root, _find_by_id(root, tip_id))
+            if math.dist(origin, tip) <= 1e-9:
+                continue
+            angles[bone.get("data-rig-bone-def") or ""] = math.degrees(
+                math.atan2(tip[1] - origin[1], tip[0] - origin[0])
+            )
+        for part in (e for e in view if e.get("data-rig-part-def")):
+            angle = angles.get(part.get("data-rig-bone") or "")
+            if angle is None:
+                continue
+            current = part.get("data-rig-bind-angle")
+            wanted = _fmt(angle)
+            if current == wanted:
+                continue
+            element_id = part.get("id")
+            if not element_id:
+                continue
+            updates.append((element_id, {"data-rig-bind-angle": wanted}))
+            changed.append(part.get("data-rig-part-def") or element_id)
+    for element_id, attrs in updates:
+        _set_attrs_source_preserving(path, element_id, attrs)
+    return changed
+
+
 def move_marker(path: Path, *, view_id: str, kind: str, name: str, x: float, y: float) -> None:
     root = _managed_root(path)
     marker = _marker_for(root, view_id=view_id, kind=kind, name=name)
@@ -1324,7 +1387,7 @@ def install_repo_metadata(repo_root: Path, *, force: bool = False) -> list[Path]
             continue
         if not force and BEGIN in svg_path.read_text(encoding="utf8"):
             continue
-        role = "rig-template" if svg_path.name == "author-rig-labels-joints.svg" else "reference"
+        role = "rig-template" if svg_path.name in RIG_TEMPLATE_NAMES else "reference"
         install_block(svg_path, _serialize_reference_block(role))
         changed.append(svg_path)
     return sorted(set(changed))
@@ -1592,6 +1655,15 @@ def write_repo_preview(
     return output
 
 
+def _cmd_sync_bind_angles(args: argparse.Namespace) -> int:
+    changed = sync_bind_angles(Path(args.svg), view_id=args.view)
+    if not changed:
+        print(f"{args.svg}: bind angles already match the joints")
+    else:
+        print(f"{args.svg}: re-derived {len(changed)} bind angles: {', '.join(changed)}")
+    return 0
+
+
 def _cmd_validate(args: argparse.Namespace) -> int:
     errors = validate(Path(args.svg))
     if errors:
@@ -1619,6 +1691,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     p.add_argument("name")
     p.add_argument("x", type=float)
     p.add_argument("y", type=float)
+
+    p = sub.add_parser(
+        "sync-bind-angles",
+        help="re-derive part bind angles after moving joint markers",
+    )
+    p.add_argument("svg")
+    p.add_argument("--view", default=None)
 
     p = sub.add_parser("refresh-guides", help="refresh editor bone guides after direct marker edits")
     p.add_argument("svg")
@@ -1662,6 +1741,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "move-marker":
         move_marker(Path(args.svg), view_id=args.view, kind=args.kind, name=args.name, x=args.x, y=args.y)
         return 0
+    if args.command == "sync-bind-angles":
+        return _cmd_sync_bind_angles(args)
     if args.command == "refresh-guides":
         print(f"updated {refresh_guides(Path(args.svg), view_id=args.view)} guide(s)")
         return 0

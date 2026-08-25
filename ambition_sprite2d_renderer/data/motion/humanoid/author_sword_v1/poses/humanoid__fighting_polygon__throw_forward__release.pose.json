@@ -1,0 +1,56 @@
+{
+  "schema": "ambition-pose-v1",
+  "id": "humanoid/author/throw_forward/release",
+  "rig_profile": "humanoid-articulated-v1",
+  "source": {
+    "clip": "throw_forward",
+    "frame": 4,
+    "kind": "promoted-legacy-pose"
+  },
+  "state": {
+    "root": {
+      "position": [
+        23.721164,
+        0.0
+      ]
+    },
+    "bones": {
+      "far_arm_l": {
+        "rotation_deg": -84.053796
+      },
+      "far_arm_u": {
+        "rotation_deg": -31.203768
+      },
+      "far_leg_foot": {
+        "rotation_deg": -2.470091
+      },
+      "far_leg_l": {
+        "rotation_deg": -1.46511
+      },
+      "far_leg_u": {
+        "rotation_deg": 3.935202
+      },
+      "head": {
+        "rotation_deg": -3.989551
+      },
+      "near_arm_l": {
+        "rotation_deg": -79.55884
+      },
+      "near_arm_u": {
+        "rotation_deg": -30.695363
+      },
+      "near_leg_foot": {
+        "rotation_deg": 23.986962
+      },
+      "near_leg_l": {
+        "rotation_deg": -6.945646
+      },
+      "near_leg_u": {
+        "rotation_deg": 7.917368
+      },
+      "torso": {
+        "rotation_deg": -1.016811
+      }
+    }
+  }
+}

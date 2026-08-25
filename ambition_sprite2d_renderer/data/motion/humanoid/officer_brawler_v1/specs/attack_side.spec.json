@@ -1,0 +1,38 @@
+{
+  "clip": "attack_side",
+  "note": "side tilt: a rising hook, low to high.",
+  "strike": {
+    "base": "near_arm_l",
+    "tip": "near_arm_hand"
+  },
+  "effect": "wind",
+  "facing": "east",
+  "hitbox": {
+    "active": [
+      2,
+      3,
+      4
+    ],
+    "extend": 1.06
+  },
+  "wind": {
+    "window": 3,
+    "inner": 0.24,
+    "blur": 0.7,
+    "alpha": 150,
+    "core_alpha": 185,
+    "falloff": 2.0,
+    "streaks": 4,
+    "spread": 0.46,
+    "body_rgb": [
+      188,
+      224,
+      246
+    ],
+    "core_rgb": [
+      255,
+      255,
+      255
+    ]
+  }
+}

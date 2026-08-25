@@ -1,0 +1,19 @@
+{
+  "schema": "ambition-motion-library-v1",
+  "id": "humanoid/author_sword_v1",
+  "rig_profile": "humanoid-articulated-v1",
+  "space": {
+    "linear_unit": "rig_user_unit",
+    "x_axis": "right",
+    "y_axis": "down",
+    "rotation_unit": "degrees",
+    "positive_rotation": "clockwise",
+    "bone_transform": "parent_local_delta_from_svg_rest"
+  },
+  "pose_roots": [
+    "poses"
+  ],
+  "clip_roots": [
+    "clips"
+  ]
+}

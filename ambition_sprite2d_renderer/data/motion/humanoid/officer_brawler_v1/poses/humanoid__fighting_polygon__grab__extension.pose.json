@@ -1,0 +1,56 @@
+{
+  "schema": "ambition-pose-v1",
+  "id": "humanoid/officer/grab/extension",
+  "rig_profile": "humanoid-articulated-v1",
+  "source": {
+    "clip": "grab",
+    "frame": 3,
+    "kind": "promoted-legacy-pose"
+  },
+  "state": {
+    "root": {
+      "position": [
+        27.006969,
+        0.0
+      ]
+    },
+    "bones": {
+      "far_arm_l": {
+        "rotation_deg": 4.953419
+      },
+      "far_arm_u": {
+        "rotation_deg": -92.906837
+      },
+      "far_leg_foot": {
+        "rotation_deg": -2.891904
+      },
+      "far_leg_l": {
+        "rotation_deg": -4.04987
+      },
+      "far_leg_u": {
+        "rotation_deg": 6.941774
+      },
+      "head": {
+        "rotation_deg": 3.0
+      },
+      "near_arm_l": {
+        "rotation_deg": 7.930128
+      },
+      "near_arm_u": {
+        "rotation_deg": -104.906837
+      },
+      "near_leg_foot": {
+        "rotation_deg": -1.608514
+      },
+      "near_leg_l": {
+        "rotation_deg": -6.945646
+      },
+      "near_leg_u": {
+        "rotation_deg": 8.554162
+      },
+      "torso": {
+        "rotation_deg": 8.953418
+      }
+    }
+  }
+}

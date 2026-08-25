@@ -1,0 +1,47 @@
+{
+  "schema": "ambition-pose-v1",
+  "id": "humanoid/officer/ftilt/anticipation",
+  "rig_profile": "humanoid-articulated-v1",
+  "source": {
+    "clip": "attack_side",
+    "frame": 1,
+    "kind": "promoted-legacy-pose"
+  },
+  "state": {
+    "bones": {
+      "far_arm_l": {
+        "rotation_deg": -102.844814
+      },
+      "far_arm_u": {
+        "rotation_deg": -22.948519
+      },
+      "far_leg_foot": {
+        "rotation_deg": -13.300101
+      },
+      "far_leg_l": {
+        "rotation_deg": 22.996967
+      },
+      "far_leg_u": {
+        "rotation_deg": -9.696866
+      },
+      "near_arm_l": {
+        "rotation_deg": -50.0
+      },
+      "near_arm_u": {
+        "rotation_deg": 8.0625
+      },
+      "near_leg_foot": {
+        "rotation_deg": 2.665633
+      },
+      "near_leg_l": {
+        "rotation_deg": -6.945646
+      },
+      "near_leg_u": {
+        "rotation_deg": 4.276015
+      },
+      "torso": {
+        "rotation_deg": 0.0
+      }
+    }
+  }
+}

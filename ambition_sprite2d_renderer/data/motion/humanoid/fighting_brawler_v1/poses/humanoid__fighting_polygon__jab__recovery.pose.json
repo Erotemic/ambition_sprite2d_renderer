@@ -1,0 +1,53 @@
+{
+  "schema": "ambition-pose-v1",
+  "id": "humanoid/fighting_brawler/jab/recovery",
+  "rig_profile": "humanoid-articulated-v1",
+  "source": {
+    "clip": "jab",
+    "frame": 3,
+    "kind": "promoted-legacy-pose"
+  },
+  "state": {
+    "root": {
+      "position": [
+        13.052491,
+        0.0
+      ]
+    },
+    "bones": {
+      "far_arm_l": {
+        "rotation_deg": -132.633498
+      },
+      "far_arm_u": {
+        "rotation_deg": -11.835248
+      },
+      "far_leg_foot": {
+        "rotation_deg": -1.860444
+      },
+      "far_leg_l": {
+        "rotation_deg": -0.605776
+      },
+      "far_leg_u": {
+        "rotation_deg": 2.46622
+      },
+      "near_arm_l": {
+        "rotation_deg": -13.335569
+      },
+      "near_arm_u": {
+        "rotation_deg": -91.625714
+      },
+      "near_leg_foot": {
+        "rotation_deg": 1.120565
+      },
+      "near_leg_l": {
+        "rotation_deg": -6.945646
+      },
+      "near_leg_u": {
+        "rotation_deg": 5.825082
+      },
+      "torso": {
+        "rotation_deg": 7.008746
+      }
+    }
+  }
+}

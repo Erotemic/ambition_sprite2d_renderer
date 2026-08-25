@@ -1,0 +1,28 @@
+{
+  "clip": "smash_up",
+  "note": "up smash: a rising uppercut through the ceiling.",
+  "strike": {
+    "base": "near_arm_l",
+    "tip": "near_arm_hand"
+  },
+  "effect": "reentry",
+  "facing": "east",
+  "hitbox": {
+    "active": [
+      3,
+      4,
+      5
+    ],
+    "extend": 1.06
+  },
+  "reentry": {
+    "window": 3,
+    "spread": 0.72,
+    "extend": 1.1,
+    "alpha": 124,
+    "core_alpha": 228,
+    "blur": 1.6,
+    "falloff": 1.9,
+    "trail": 0.95
+  }
+}

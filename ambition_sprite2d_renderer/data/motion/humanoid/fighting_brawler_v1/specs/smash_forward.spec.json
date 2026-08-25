@@ -1,0 +1,28 @@
+{
+  "clip": "smash_forward",
+  "note": "forward smash: the full-commitment straight right.",
+  "strike": {
+    "base": "near_arm_l",
+    "tip": "near_arm_hand"
+  },
+  "effect": "reentry",
+  "facing": "east",
+  "hitbox": {
+    "active": [
+      6,
+      7,
+      8
+    ],
+    "extend": 1.06
+  },
+  "reentry": {
+    "window": 3,
+    "spread": 0.82,
+    "extend": 1.1,
+    "alpha": 124,
+    "core_alpha": 228,
+    "blur": 1.6,
+    "falloff": 1.9,
+    "trail": 0.95
+  }
+}

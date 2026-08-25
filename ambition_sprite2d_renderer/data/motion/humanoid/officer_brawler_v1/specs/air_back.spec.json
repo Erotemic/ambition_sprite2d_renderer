@@ -1,0 +1,38 @@
+{
+  "clip": "air_back",
+  "note": "back air: a short rear elbow driven backwards.",
+  "strike": {
+    "base": "far_arm_u",
+    "tip": "far_arm_u"
+  },
+  "effect": "poke",
+  "facing": "east",
+  "hitbox": {
+    "active": [
+      2,
+      3
+    ],
+    "extend": 1.1
+  },
+  "poke": {
+    "extend": 3.2,
+    "width": 20.0,
+    "waist": 0.5,
+    "inner": 0.95,
+    "alpha": 190,
+    "core_alpha": 224,
+    "blur": 1.2,
+    "falloff": 2.1,
+    "window": 2,
+    "body_rgb": [
+      226,
+      238,
+      250
+    ],
+    "core_rgb": [
+      255,
+      255,
+      255
+    ]
+  }
+}

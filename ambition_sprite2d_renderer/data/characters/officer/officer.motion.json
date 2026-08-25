@@ -1,0 +1,35 @@
+{
+  "schema": "ambition-character-motion-v1",
+  "character": "officer",
+  "rig": {
+    "svg": "officer.svg",
+    "view": "side"
+  },
+  "motion_library": "../../motion/humanoid/officer_brawler_v1/library.json",
+  "motion_source_facing": "east",
+  "render": {
+    "frame_px": [
+      128,
+      192
+    ],
+    "root_anchor_px": [
+      64.0,
+      176.0
+    ],
+    "frame_px_per_rig_unit": 0.184275,
+    "supersample": 4,
+    "render_scale": 1,
+    "ankle_h_px": 11.923,
+    "svg_ref_dpi": 96.0
+  },
+  "sprite_tuning": {
+    "collision_scale": 1.8
+  },
+  "features": {
+    "archetype": "brawler_humanoid",
+    "safe_pose_reference": false,
+    "faceted_svg_parts": false,
+    "weapon": null
+  },
+  "natural_pose": "idle"
+}
