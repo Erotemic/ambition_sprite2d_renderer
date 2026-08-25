@@ -1,0 +1,56 @@
+{
+  "schema": "ambition-pose-v1",
+  "id": "beast/projectile/crouch",
+  "rig_profile": "humanoid-articulated-v1",
+  "source": {
+    "clip": "crouch",
+    "frame": 0,
+    "kind": "promoted-legacy-pose"
+  },
+  "state": {
+    "root": {
+      "position": [
+        0.0,
+        86.826753
+      ]
+    },
+    "bones": {
+      "far_arm_l": {
+        "rotation_deg": -105.029999
+      },
+      "far_arm_u": {
+        "rotation_deg": -35.43
+      },
+      "far_leg_foot": {
+        "rotation_deg": -32.626173
+      },
+      "far_leg_l": {
+        "rotation_deg": 78.195423
+      },
+      "far_leg_u": {
+        "rotation_deg": -45.56925
+      },
+      "head": {
+        "rotation_deg": -5.0
+      },
+      "near_arm_l": {
+        "rotation_deg": -93.7
+      },
+      "near_arm_u": {
+        "rotation_deg": -48.34
+      },
+      "near_leg_foot": {
+        "rotation_deg": -52.811864
+      },
+      "near_leg_l": {
+        "rotation_deg": 82.32099
+      },
+      "near_leg_u": {
+        "rotation_deg": -29.509125
+      },
+      "torso": {
+        "rotation_deg": 12.0
+      }
+    }
+  }
+}

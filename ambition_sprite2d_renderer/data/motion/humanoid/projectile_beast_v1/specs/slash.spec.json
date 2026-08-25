@@ -1,0 +1,37 @@
+{
+  "clip": "slash",
+  "note": "bite: his only answer at zero range.",
+  "strike": {
+    "base": "cannon",
+    "tip": "cannon"
+  },
+  "effect": "wind",
+  "facing": "east",
+  "hitbox": {
+    "active": [
+      3,
+      4
+    ],
+    "extend": 1.0
+  },
+  "wind": {
+    "window": 2,
+    "inner": 0.3,
+    "blur": 0.7,
+    "alpha": 150,
+    "core_alpha": 175,
+    "falloff": 2.0,
+    "streaks": 3,
+    "spread": 0.4,
+    "body_rgb": [
+      188,
+      232,
+      246
+    ],
+    "core_rgb": [
+      255,
+      255,
+      255
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "clip": "special",
+  "note": "charge shot release: the biggest shove he has, and the longest recovery. Reach is capped to what the sheet frame can hold \u2014 a beam that reads as endless is the runtime's job, not one sprite's.",
+  "strike": {
+    "base": "cannon",
+    "tip": "cannon"
+  },
+  "effect": "beam",
+  "facing": "east",
+  "hitbox": {
+    "active": [
+      3,
+      4
+    ],
+    "extend": 1.0
+  },
+  "beam": {
+    "reach": 8.4,
+    "width": 0.46,
+    "alpha": 190,
+    "core_alpha": 248,
+    "blur": 2.4,
+    "window": 3,
+    "falloff": 1.4,
+    "bloom": 2.3
+  }
+}

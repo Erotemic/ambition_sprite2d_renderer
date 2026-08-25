@@ -1,0 +1,27 @@
+{
+  "clip": "smash_up",
+  "note": "mortar: one heavy bloom straight up.",
+  "strike": {
+    "base": "cannon",
+    "tip": "cannon"
+  },
+  "effect": "muzzle",
+  "facing": "east",
+  "hitbox": {
+    "active": [
+      4,
+      5
+    ],
+    "extend": 1.0
+  },
+  "muzzle": {
+    "reach": 3.2,
+    "flare": 0.46,
+    "alpha": 215,
+    "core_alpha": 238,
+    "blur": 1.3,
+    "window": 3,
+    "falloff": 2.6,
+    "bloom": 1.7
+  }
+}
