@@ -52,13 +52,39 @@
           "torso": {
             "rotation_deg": 0.0
           }
+        },
+        "parameters": {
+          "torso_front_vis": 1.0,
+          "torso_side_vis": 0.0,
+          "torso_back_vis": 0.0
         }
       }
     },
     {
       "at_s": 0.048,
       "frame": 1,
-      "pose": "humanoid/fighting_polygon/ftilt/anticipation"
+      "pose": "humanoid/fighting_polygon/ftilt/anticipation",
+      "overrides": {
+        "parameters": {
+          "torso_front_vis": 0.0,
+          "torso_side_vis": 1.0,
+          "torso_back_vis": 0.0
+        },
+        "bones": {
+          "far_arm_u": {
+            "position": [
+              72.0,
+              3.0
+            ]
+          },
+          "near_arm_u": {
+            "position": [
+              -63.0,
+              -3.0
+            ]
+          }
+        }
+      }
     },
     {
       "at_s": 0.096,
@@ -75,7 +101,11 @@
             "rotation_deg": -110.869999
           },
           "far_arm_u": {
-            "rotation_deg": -29.486
+            "rotation_deg": -29.486,
+            "position": [
+              72.0,
+              3.0
+            ]
           },
           "far_leg_foot": {
             "rotation_deg": -3.571059
@@ -90,7 +120,11 @@
             "rotation_deg": -32.0
           },
           "near_arm_u": {
-            "rotation_deg": -33.9375
+            "rotation_deg": -33.9375,
+            "position": [
+              -63.0,
+              -3.0
+            ]
           },
           "near_leg_foot": {
             "rotation_deg": 18.874587
@@ -104,18 +138,65 @@
           "torso": {
             "rotation_deg": 0.0
           }
+        },
+        "parameters": {
+          "torso_front_vis": 0.0,
+          "torso_side_vis": 1.0,
+          "torso_back_vis": 0.0
         }
       }
     },
     {
       "at_s": 0.144,
       "frame": 3,
-      "pose": "humanoid/fighting_polygon/ftilt/contact"
+      "pose": "humanoid/fighting_polygon/ftilt/contact",
+      "overrides": {
+        "parameters": {
+          "torso_front_vis": 0.0,
+          "torso_side_vis": 1.0,
+          "torso_back_vis": 0.0
+        },
+        "bones": {
+          "far_arm_u": {
+            "position": [
+              72.0,
+              3.0
+            ]
+          },
+          "near_arm_u": {
+            "position": [
+              -63.0,
+              -3.0
+            ]
+          }
+        }
+      }
     },
     {
       "at_s": 0.192,
       "frame": 4,
-      "pose": "humanoid/fighting_polygon/ftilt/recovery"
+      "pose": "humanoid/fighting_polygon/ftilt/recovery",
+      "overrides": {
+        "parameters": {
+          "torso_front_vis": 0.0,
+          "torso_side_vis": 0.0,
+          "torso_back_vis": 1.0
+        },
+        "bones": {
+          "far_arm_u": {
+            "position": [
+              206.0,
+              2.0
+            ]
+          },
+          "near_arm_u": {
+            "position": [
+              -151.0,
+              2.0
+            ]
+          }
+        }
+      }
     },
     {
       "at_s": 0.24,
@@ -132,7 +213,11 @@
             "rotation_deg": -103.029999
           },
           "far_arm_u": {
-            "rotation_deg": -31.43
+            "rotation_deg": -31.43,
+            "position": [
+              206.0,
+              2.0
+            ]
           },
           "far_leg_foot": {
             "rotation_deg": -2.421196
@@ -147,7 +232,11 @@
             "rotation_deg": -48.0
           },
           "near_arm_u": {
-            "rotation_deg": -87.9375
+            "rotation_deg": -87.9375,
+            "position": [
+              -151.0,
+              2.0
+            ]
           },
           "near_leg_foot": {
             "rotation_deg": 1.550626
@@ -161,6 +250,11 @@
           "torso": {
             "rotation_deg": 0.0
           }
+        },
+        "parameters": {
+          "torso_front_vis": 0.0,
+          "torso_side_vis": 0.0,
+          "torso_back_vis": 1.0
         }
       }
     }

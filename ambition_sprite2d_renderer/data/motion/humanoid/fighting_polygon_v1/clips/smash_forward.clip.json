@@ -23,11 +23,7 @@
             "rotation_deg": -95.0
           },
           "far_arm_u": {
-            "rotation_deg": -25.0,
-            "position": [
-              0.0,
-              0.0
-            ]
+            "rotation_deg": -25.0
           },
           "far_leg_foot": {
             "rotation_deg": 0.461968
@@ -62,6 +58,11 @@
             0.0,
             0.0
           ]
+        },
+        "parameters": {
+          "torso_front_vis": 1.0,
+          "torso_side_vis": 0.0,
+          "torso_back_vis": 0.0
         }
       }
     },
@@ -83,11 +84,7 @@
             "rotation_deg": -156.375
           },
           "far_arm_u": {
-            "rotation_deg": -168.125,
-            "position": [
-              0.0,
-              0.0
-            ]
+            "rotation_deg": -168.125
           },
           "far_leg_foot": {
             "rotation_deg": -8.004038
@@ -122,6 +119,11 @@
           "torso": {
             "rotation_deg": -10.0
           }
+        },
+        "parameters": {
+          "torso_front_vis": 1.0,
+          "torso_side_vis": 0.0,
+          "torso_back_vis": 0.0
         }
       }
     },
@@ -145,8 +147,8 @@
           "far_arm_u": {
             "rotation_deg": -162.125,
             "position": [
-              7.0963,
-              -11.5908
+              72.0,
+              3.0
             ]
           },
           "far_leg_foot": {
@@ -168,7 +170,11 @@
             "rotation_deg": -64.0
           },
           "near_arm_u": {
-            "rotation_deg": -161.3125
+            "rotation_deg": -161.3125,
+            "position": [
+              -63.0,
+              -3.0
+            ]
           },
           "near_leg_foot": {
             "rotation_deg": 0.0
@@ -182,6 +188,11 @@
           "torso": {
             "rotation_deg": -18.0
           }
+        },
+        "parameters": {
+          "torso_front_vis": 0.0,
+          "torso_side_vis": 1.0,
+          "torso_back_vis": 0.0
         }
       }
     },
@@ -205,8 +216,8 @@
           "far_arm_u": {
             "rotation_deg": -153.125,
             "position": [
-              17.4495,
-              -24.4032
+              72.0,
+              3.0
             ]
           },
           "far_leg_foot": {
@@ -228,7 +239,11 @@
             "rotation_deg": -62.0
           },
           "near_arm_u": {
-            "rotation_deg": -155.3438
+            "rotation_deg": -155.3438,
+            "position": [
+              -63.0,
+              -3.0
+            ]
           },
           "near_leg_foot": {
             "rotation_deg": 0.0
@@ -242,6 +257,11 @@
           "torso": {
             "rotation_deg": -18.0
           }
+        },
+        "parameters": {
+          "torso_front_vis": 0.0,
+          "torso_side_vis": 1.0,
+          "torso_back_vis": 0.0
         }
       }
     },
@@ -265,8 +285,8 @@
           "far_arm_u": {
             "rotation_deg": -52.0,
             "position": [
-              0.0,
-              0.0
+              72.0,
+              3.0
             ]
           },
           "far_leg_foot": {
@@ -288,7 +308,11 @@
             "rotation_deg": -30.0
           },
           "near_arm_u": {
-            "rotation_deg": -140.3125
+            "rotation_deg": -140.3125,
+            "position": [
+              -63.0,
+              -3.0
+            ]
           },
           "near_leg_foot": {
             "rotation_deg": 0.0
@@ -302,6 +326,11 @@
           "torso": {
             "rotation_deg": -6.0
           }
+        },
+        "parameters": {
+          "torso_front_vis": 0.0,
+          "torso_side_vis": 1.0,
+          "torso_back_vis": 0.0
         }
       }
     },
@@ -325,8 +354,8 @@
           "far_arm_u": {
             "rotation_deg": -60.0,
             "position": [
-              0.0,
-              0.0
+              206.0,
+              2.0
             ]
           },
           "far_leg_foot": {
@@ -348,7 +377,11 @@
             "rotation_deg": -8.0
           },
           "near_arm_u": {
-            "rotation_deg": -126.9062
+            "rotation_deg": -126.9062,
+            "position": [
+              -151.0,
+              2.0
+            ]
           },
           "near_leg_foot": {
             "rotation_deg": 4.0
@@ -362,6 +395,11 @@
           "torso": {
             "rotation_deg": 8.0
           }
+        },
+        "parameters": {
+          "torso_front_vis": 0.0,
+          "torso_side_vis": 0.0,
+          "torso_back_vis": 1.0
         }
       }
     },
@@ -385,8 +423,8 @@
           "far_arm_u": {
             "rotation_deg": -58.0,
             "position": [
-              0.0,
-              0.0
+              206.0,
+              2.0
             ]
           },
           "far_leg_foot": {
@@ -408,7 +446,11 @@
             "rotation_deg": 0.0
           },
           "near_arm_u": {
-            "rotation_deg": -89.2812
+            "rotation_deg": -89.2812,
+            "position": [
+              -151.0,
+              2.0
+            ]
           },
           "near_leg_foot": {
             "rotation_deg": 10.0
@@ -422,6 +464,11 @@
           "torso": {
             "rotation_deg": 20.0
           }
+        },
+        "parameters": {
+          "torso_front_vis": 0.0,
+          "torso_side_vis": 0.0,
+          "torso_back_vis": 1.0
         }
       }
     },
@@ -442,8 +489,8 @@
           "far_arm_u": {
             "rotation_deg": -46.0,
             "position": [
-              0.0,
-              0.0
+              206.0,
+              2.0
             ]
           },
           "far_leg_foot": {
@@ -459,7 +506,11 @@
             "rotation_deg": -6.0
           },
           "near_arm_u": {
-            "rotation_deg": -59.9375
+            "rotation_deg": -59.9375,
+            "position": [
+              -151.0,
+              2.0
+            ]
           },
           "near_leg_foot": {
             "rotation_deg": 14.0
@@ -473,6 +524,11 @@
           "torso": {
             "rotation_deg": 28.0
           }
+        },
+        "parameters": {
+          "torso_front_vis": 0.0,
+          "torso_side_vis": 0.0,
+          "torso_back_vis": 1.0
         }
       }
     },
@@ -491,11 +547,7 @@
             "rotation_deg": -82.0
           },
           "far_arm_u": {
-            "rotation_deg": -44.0,
-            "position": [
-              0.0,
-              0.0
-            ]
+            "rotation_deg": -44.0
           },
           "far_leg_foot": {
             "rotation_deg": -2.260686
@@ -524,6 +576,11 @@
           "torso": {
             "rotation_deg": 29.0
           }
+        },
+        "parameters": {
+          "torso_front_vis": 1.0,
+          "torso_side_vis": 0.0,
+          "torso_back_vis": 0.0
         }
       }
     },
@@ -542,11 +599,7 @@
             "rotation_deg": -84.0
           },
           "far_arm_u": {
-            "rotation_deg": -42.0,
-            "position": [
-              0.0,
-              0.0
-            ]
+            "rotation_deg": -42.0
           },
           "far_leg_foot": {
             "rotation_deg": -2.260686
@@ -575,6 +628,11 @@
           "torso": {
             "rotation_deg": 29.0
           }
+        },
+        "parameters": {
+          "torso_front_vis": 1.0,
+          "torso_side_vis": 0.0,
+          "torso_back_vis": 0.0
         }
       }
     },
@@ -593,11 +651,7 @@
             "rotation_deg": -84.0
           },
           "far_arm_u": {
-            "rotation_deg": -42.0,
-            "position": [
-              0.0,
-              0.0
-            ]
+            "rotation_deg": -42.0
           },
           "far_leg_foot": {
             "rotation_deg": -2.260686
@@ -626,6 +680,11 @@
           "torso": {
             "rotation_deg": 28.0
           }
+        },
+        "parameters": {
+          "torso_front_vis": 1.0,
+          "torso_side_vis": 0.0,
+          "torso_back_vis": 0.0
         }
       }
     }

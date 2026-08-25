@@ -5,7 +5,7 @@
     "svg": "pugnacious_polygon.svg",
     "view": "side"
   },
-  "motion_library": "../../motion/humanoid/fighting_polygon_v1/library.json",
+  "motion_library": "../../motion/humanoid/fighting_brawler_v1/library.json",
   "render": {
     "frame_px": [
       128,

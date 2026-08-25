@@ -6,14 +6,27 @@ editor-neutral motion library owns the broad conservative humanoid pose vocabula
 poses before adding anatomy-specific exaggeration.
 
 This archetype is intentionally unarmed. Do not add held props or shadows to the base character.
+
+He and the sword archetype are different humanoids, not one humanoid holding
+different things, so they own separate motion libraries rather than sharing
+clips: a brawler does not stand, walk or guard like a swordsman.
+
+His swings are read by what they do to the AIR, since he has no blade to catch
+the light. Tilts throw a pale whoosh; smashes open a re-entry cone, hot and
+wide, so a committed attack is legible as one before it lands. The danger axis
+comes from the SKELETON (`strike_axis`) rather than from brightness: nothing on
+an unarmed fighter is brighter than his own body, so there is no blade to infer
+and no guess to get wrong -- the spec names the striking limb instead.
 """
 
 from __future__ import annotations
 
+import json
 from functools import lru_cache
 from pathlib import Path
 
 from ambition_sprite2d_renderer.authoring.motion_ir import CharacterMotionBinding
+from ambition_sprite2d_renderer.authoring import strike_axis, swing_effects
 from ambition_sprite2d_renderer.authoring.rig_gameplay_body import gameplay_body_metrics
 from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
 from ambition_sprite2d_renderer.authoring.sheet_build import build_sheet
@@ -205,6 +218,88 @@ def _doc() -> RigDocument:
 
 
 @lru_cache(maxsize=1)
+def _spec_dir() -> Path:
+    """Where the swing specs live -- asked of the LIBRARY this character binds.
+
+    The specs sit beside the clips they describe, so a brawler's whoosh cannot
+    be read for a swordsman's clip of the same name.
+    """
+    return Path(_prepared().library.path).parent / "specs"
+
+
+def _spec_for(animation: str) -> dict | None:
+    """The authored swing spec for one clip, or `None` for a clip with no swing."""
+    path = _spec_dir() / f"{animation}.spec.json"
+    if not path.exists():
+        return None
+    return json.loads(path.read_text())
+
+
+def _sample_times(animation: str, frame_count: int) -> list[float]:
+    clip = _prepared().library.clips[animation]
+    return [
+        round(idx * clip.frame_duration_ms / 1000.0 / max(clip.duration_s, 1e-9), 9)
+        for idx in range(frame_count)
+    ]
+
+
+def _strike_axes(animation: str, frame_count: int, padding):
+    """Where the danger is on each frame, read off the solved skeleton.
+
+    Measured at the SAME padding as the frames it describes: an axis is a
+    coordinate, and a coordinate in another frame is a wrong answer.
+    """
+    spec = _spec_for(animation)
+    if not spec:
+        return None
+    return strike_axis.for_spec(
+        _doc(), animation, _sample_times(animation, frame_count), spec, padding=padding
+    )
+
+
+@lru_cache(maxsize=None)
+def _clip_frames(animation: str, frame_count: int) -> tuple:
+    """Every frame of one clip, with its authored effect composited on.
+
+    ⛔ **cached per CLIP, not per frame, because a whoosh is not a frame-local
+    fact.** The streaks on frame 4 are drawn from where the fist was on frames
+    1-3, so the effect cannot be composited by a `render_fn` that only ever sees
+    one frame -- which is how a published sheet ends up carrying none of it.
+    """
+    raw = [_raw_frame(animation, i, frame_count) for i in range(frame_count)]
+    spec = _spec_for(animation)
+    if not spec:
+        return tuple(raw)
+    axes = _strike_axes(animation, frame_count, _publication_padding())
+    return tuple(swing_effects.composite_authored_effect(raw, spec, axes=axes))
+
+
+@lru_cache(maxsize=1)
+def _attack_hitboxes() -> dict:
+    """The authored hit volume for every swing that has a spec.
+
+    ⛔ **his swings had never published one.** `manifest_attack_hitbox_world`
+    prefers an authored convex `poly` over a coarse bbox precisely so a strike
+    can hit in the shape it was shown in -- the sheet simply carried no
+    `animations` block, so every attack fell back to a rectangle nobody had
+    reviewed. Built from the same axes and the same spec as the effect, so the
+    cone a player sees IS the cone that hits them.
+    """
+    out = {}
+    padding = _publication_padding()
+    for animation, frame_count, _duration_ms in _doc().rows():
+        spec = _spec_for(animation)
+        if not spec:
+            continue
+        raw = [_raw_frame(animation, i, frame_count) for i in range(frame_count)]
+        axes = _strike_axes(animation, frame_count, padding)
+        poly = swing_effects.authored_hit_volume(raw, spec, axes=axes)
+        if poly:
+            out[animation] = {"poly": poly}
+    return out
+
+
+@lru_cache(maxsize=1)
 def _publication_padding() -> tuple[int, int, int, int]:
     """Minimal overscan for the exact poses published by this sheet.
 
@@ -221,7 +316,37 @@ def _publication_padding() -> tuple[int, int, int, int]:
             samples.append(
                 (animation, round(at_s / max(clip.duration_s, 1e-9), 9))
             )
-    return _doc().measure_render_padding(samples, margin=4)
+    pose = _doc().measure_render_padding(samples, margin=4)
+    # ⛔ AND THE EFFECT REACHES FURTHER THAN THE POSE. A smash cone opens well
+    # past the fist that throws it; measure the poses alone and the publish
+    # clips the plume flat at the frame edge.
+    return tuple(max(a, b) for a, b in zip(pose, _effect_padding()))
+
+
+def _effect_padding() -> tuple[int, int, int, int]:
+    """Overscan the authored EFFECT needs, on top of the poses'."""
+    doc = _doc()
+    width, height = int(doc.frame["width"]), int(doc.frame["height"])
+    probe = max(width, height)
+    required = [0, 0, 0, 0]
+    for animation, frame_count, _duration_ms in doc.rows():
+        spec = _spec_for(animation)
+        if not spec:
+            continue
+        frames = [
+            doc.render_at(animation, t, supersample=1, scale=1, padding=probe)
+            for t in _sample_times(animation, frame_count)
+        ]
+        axes = _strike_axes(animation, frame_count, probe)
+        for image in swing_effects.composite_authored_effect(frames, spec, axes=axes):
+            bbox = image.getchannel("A").getbbox()
+            if bbox is None:
+                continue
+            required[0] = max(required[0], probe - bbox[0])
+            required[1] = max(required[1], probe - bbox[1])
+            required[2] = max(required[2], bbox[2] - (probe + width))
+            required[3] = max(required[3], bbox[3] - (probe + height))
+    return tuple(max(0, value) + 4 for value in required)
 
 
 def _publication_frame_size() -> tuple[int, int]:
@@ -235,6 +360,10 @@ def _publication_frame_size() -> tuple[int, int]:
 
 
 def _render_frame(animation: str, frame_idx: int, frame_count: int):
+    return _clip_frames(animation, frame_count)[frame_idx]
+
+
+def _raw_frame(animation: str, frame_idx: int, frame_count: int):
     # The shipped sheet still honors each clip's legacy publication cadence.
     # Authored motion itself is normalized against duration_s, so publication
     # samples are converted from absolute seconds explicitly rather than using
@@ -284,6 +413,12 @@ def render(out_dir: str | Path, **opts):
         crop_margin=4,
         actor_metadata=ACTOR_METADATA,
         body_metrics_fn=_body_metrics,
+        # His rows are mapped so the strikes can carry their volumes.
+        # `authored`, not `art`: the measured per-pose road would hand every
+        # attack a body the size of its own cone.
+        animation_key_map={name: name for name, _f, _d in doc.rows()},
+        attack_hitboxes=_attack_hitboxes(),
+        pose_bodies="authored",
         sheet_tuning=doc.sprite_tuning or {"collision_scale": 1.8},
     )
     keys = (
