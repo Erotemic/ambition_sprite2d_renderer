@@ -869,3 +869,112 @@ def render_target_svg(
         out_dir=out_dir,
         frame_size=frame_size,
     )
+
+
+# ── portraits ─────────────────────────────────────────────────────────────────
+#
+# ⛔⛔ WITHOUT THIS THE PIRATE PORTRAIT IS AN UPSCALE. A target with no native
+# hook gets `Target.render_portraits`' fallback, which crops the CANONICAL
+# raster -- one BASE_FRAME-sized render -- and blows it up to 256x320. Every
+# pirate published a soft face for that reason and no other; the painter itself
+# has always been resolution-independent.
+#
+# ⭐ AND THE HEAD IS ASKED FOR, NOT GUESSED. `_pirate_rig` evaluates a real
+# skeleton, so `joints["head"]` is where the face is at any frame size. Seven
+# pirates share one parametric rig, so one number serves all of them and none of
+# them needs a hand-placed guide.
+
+#: Render the portrait source at this multiple of the gameplay frame. The head
+#: is about a quarter of the frame's width, so anything less than this crops a
+#: sub-256px face and `render_framed_portrait` UPSCALES it -- which is the exact
+#: defect this whole hook exists to remove. Measured: at 3x the crop was 96px
+#: wide and published blockier than the fallback it replaced.
+PIRATE_PORTRAIT_SCALE = 10
+#: Fraction of the silhouette's height that is head-and-hat, used to isolate the
+#: head band for measurement.
+PIRATE_HEAD_BAND = 0.22
+
+
+def pirate_face_guide(kind: str, anim: str = "idle", frame_idx: int = 0,
+                      nframes: int = 1, frame_size=BASE_FRAME):
+    """Where this pirate's head is, MEASURED on a render of him.
+
+    ⛔ NOT `joints["head"]`. The rig has a head joint and it is not the drawn
+    head's centre -- on the Admiral it reports y=56 of 128 while the painted head
+    sits at y=13, because the joint is a socket the parts hang from rather than
+    the middle of a face. Aiming a portrait at it framed his CHEST.
+
+    So the head is taken off the silhouette: the top band of the alpha, whose
+    bounding box is the hat and the face together. That is what a viewer calls
+    the head, and it needs no per-pirate number.
+    """
+    import numpy as np
+
+    from ...authoring.portrait import FaceGuide
+
+    image = draw_character(kind, anim, frame_idx, nframes, frame_size=frame_size)
+    alpha = np.array(image.getchannel("A")) > 8
+    ys, xs = alpha.nonzero()
+    if not len(ys):
+        raise ValueError(f"{kind}: rendered empty, nothing to aim a portrait at")
+    top, bottom = int(ys.min()), int(ys.max())
+    band = ys < top + (bottom - top) * PIRATE_HEAD_BAND
+    bx0, bx1 = int(xs[band].min()), int(xs[band].max())
+    by0, by1 = int(ys[band].min()), int(ys[band].max())
+    return FaceGuide(
+        center_x=(bx0 + bx1) / 2.0,
+        center_y=(by0 + by1) / 2.0,
+        width=float(bx1 - bx0),
+        height=float(by1 - by0),
+        source_width=float(frame_size[0]),
+        source_height=float(frame_size[1]),
+    )
+
+
+def render_pirate_portraits(target: str, out_dir, *, kind: str | None = None,
+                            stills=None, quality_scale=None):
+    """Portrait frames painted at portrait resolution, not cropped off a sheet."""
+    from pathlib import Path
+
+    from ...authoring.portrait import (
+        DEFAULT_PORTRAIT_SIZE,
+        PortraitClip,
+        render_framed_portrait,
+        write_portrait_sheet,
+    )
+
+    # ⛔ A QUALITY TIER SCALES THE PORTRAIT TOO -- see the rigged fighters' hook.
+    q = float(quality_scale) if quality_scale else 1.0
+    output_size = (max(8, round(DEFAULT_PORTRAIT_SIZE[0] * q)),
+                   max(8, round(DEFAULT_PORTRAIT_SIZE[1] * q)))
+
+    kind = kind or target
+    big = (BASE_FRAME[0] * PIRATE_PORTRAIT_SCALE, BASE_FRAME[1] * PIRATE_PORTRAIT_SCALE)
+
+    # Measured ONCE, on the pose the portrait sits in: a guide that moved per
+    # frame would make the idle breathe by sliding the camera.
+    guide = pirate_face_guide(kind, ANIMATIONS[0][0], 0, ANIMATIONS[0][1])
+    # Head and shoulders. The measured band is the hat and face together, so the
+    # view is only a little wider than it and drops far enough for a collar.
+    view_width = guide.width * 1.95
+    center_y = guide.center_y + guide.height * 0.88
+
+    def frame(anim: str, index: int, count: int):
+        source = draw_character(kind, anim, index, count, frame_size=big)
+        return render_framed_portrait(
+            source, guide, output_size=output_size,
+            view_width=view_width, center_y=center_y
+        )
+
+    idle = next((name for name, *_rest in ANIMATIONS if name == "idle"), ANIMATIONS[0][0])
+    count = next(n for name, n, *_r in ANIMATIONS if name == idle)
+    clips = {
+        "default": PortraitClip.loop(
+            tuple(frame(idle, i, count) for i in range(count)), duration_ms=count * 120
+        ),
+        "portrait": PortraitClip.still(frame(idle, count // 3, count)),
+    }
+    for name, (anim, index) in (stills or {}).items():
+        rows = next(n for a, n, *_r in ANIMATIONS if a == anim)
+        clips[name] = PortraitClip.still(frame(anim, index, rows))
+    return write_portrait_sheet(target, clips, Path(out_dir), still_clip="portrait")

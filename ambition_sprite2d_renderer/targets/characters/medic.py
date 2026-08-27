@@ -171,3 +171,22 @@ ACTOR_METADATA = {
 def render(out_dir: str | Path, **opts):
     del opts
     return _FIGHTER.render(out_dir, ACTOR_METADATA)
+
+#: Extra stills a UI can address by name: `(clip, frame)`.
+PORTRAIT_STILLS = {
+    # The look she gives a casualty, and the one she gives an opponent.
+    "working": ("charge", 4),
+    "spent": ("special", 8),
+}
+
+
+def render_portraits(out_dir: str | Path, **opts):
+    """Her portrait, rendered from the rig -- see `AuthoredSwingFighter`.
+
+    Without this hook the registry derives a default by cropping the CANONICAL
+    raster, which is about 190px tall, and blows it up to 256x320: soft
+    everywhere and unreadable around the eyes.
+    """
+    return _FIGHTER.render_portraits(
+        out_dir, clips=PORTRAIT_STILLS, quality_scale=opts.get("quality_scale")
+    )

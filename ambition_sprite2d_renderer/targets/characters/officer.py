@@ -42,6 +42,7 @@ from ambition_sprite2d_renderer.authoring import strike_axis, swing_effects
 from ambition_sprite2d_renderer.authoring.rig_gameplay_body import gameplay_body_metrics
 from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
 from ambition_sprite2d_renderer.authoring.sheet_build import build_sheet
+from ._authored_swing_fighter import AuthoredSwingFighter
 
 TARGET_NAME = "officer"
 MOTION_PATH = (
@@ -452,3 +453,31 @@ def render(out_dir: str | Path, **opts):
         "preview",
     )
     return [Path(outputs[key]) for key in keys if outputs.get(key)]
+
+#: Extra stills a UI can address by name: `(clip, frame)`.
+PORTRAIT_STILLS = {
+    # Sighted, and the moment after.
+    "aiming": ("shoot", 5),
+    "warning": ("taunt", 3),
+}
+
+
+#: ⛔⛔ WITHOUT A NATIVE HOOK THE PORTRAIT IS AN UPSCALE. `Target.render_portraits`
+#: derives a default by cropping the CANONICAL raster -- about 190px tall for
+#: this rig -- and blowing it up to 256x320, which is soft everywhere and
+#: unreadable around the eyes. This borrows `AuthoredSwingFighter` for the
+#: portrait ALONE: it takes the same motion binding and rig document this module
+#: already loads, renders at 3x with 4x supersampling, and downsamples once.
+#:
+#: ⚠ The sheet pipeline above is deliberately NOT routed through it. That is the
+#: same code three times over and it should be collapsed, but collapsing it owes
+#: a byte-identical published sheet, which is a separate pass from fixing a
+#: blurry face.
+_PORTRAITS = AuthoredSwingFighter(TARGET_NAME)
+
+
+def render_portraits(out_dir: str | Path, **opts):
+    """His portrait, rendered from the rig instead of cropped off a sheet."""
+    return _PORTRAITS.render_portraits(
+        out_dir, clips=PORTRAIT_STILLS, quality_scale=opts.get("quality_scale")
+    )

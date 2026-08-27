@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ._pirate_common import render_target
+from ._pirate_common import render_pirate_portraits, render_target
 
 ACTOR_METADATA = {
     "actor": {
@@ -117,3 +117,12 @@ def render(out_dir: str | Path, **opts):
     frame_size = opts.get("frame_size")
     outputs = render_target(TARGET_NAME, out_dir, frame_size=frame_size or (128, 128))
     return [outputs["spritesheet"], outputs["yaml"]]
+
+
+def render_portraits(out_dir: str | Path, **opts):
+    """Painted at portrait resolution -- see `_pirate_common`.
+
+    Without this the registry crops the CANONICAL raster and upscales it, which
+    is why every pirate published a soft face.
+    """
+    return render_pirate_portraits("pirate_quartermaster", out_dir, quality_scale=opts.get("quality_scale"), kind="pirate_quartermaster")
