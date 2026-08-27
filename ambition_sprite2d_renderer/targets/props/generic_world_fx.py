@@ -71,6 +71,10 @@ ROWS: List[Tuple[str, int, int]] = [
     ("electric_arc", 7, 36),
     ("electric_burst", 7, 40),
     ("ice_shatter", 8, 46),
+    # A hinged wooden hatch banging open and shut. World furniture, not a
+    # motion cue: it is the only row here that draws a THING rather than an
+    # energy, which is why it carries its own timber palette below.
+    ("trapdoor_boards", 8, 52),
 ]
 
 # Strong shared outline plus family-specific hues keeps the catalog coherent
@@ -96,6 +100,13 @@ WATER = (87, 170, 225, 255)
 WATER_HI = (194, 239, 255, 255)
 ICE = (149, 216, 242, 255)
 ICE_HI = (227, 251, 255, 255)
+# Stage carpentry. Warm, low-saturation timber against this sheet's cool
+# energies, so a trapdoor never reads as one more magical effect.
+TIMBER = (139, 94, 60, 255)
+TIMBER_HI = (186, 133, 88, 255)
+TIMBER_LO = (86, 56, 37, 255)
+IRON = (78, 76, 84, 255)
+VOID = (24, 20, 32, 255)
 
 ACTOR_METADATA = {
     "actor": {
@@ -361,6 +372,20 @@ EFFECT_SPECS: Dict[str, dict] = {
         "attachment_hint": "world_locked_after_spawn",
         "tint_policy_hint": "safe_to_tint",
         "nominal_diameter_px": 98,
+    },
+    "trapdoor_boards": {
+        "family": "structure",
+        "intent": "A hinged wooden hatch in a floor bangs open onto darkness and falls shut. Stage machinery for a body entering or leaving the world through the ground.",
+        "loop": False,
+        "placement": "surface_contact",
+        "orientation": "surface_normal_or_world_up",
+        "mirror_x": True,
+        "rotate_safe": True,
+        "blend_mode_hint": "alpha",
+        "layer_hint": "behind_source",
+        "attachment_hint": "world_locked_after_spawn",
+        "tint_policy_hint": "avoid_tint",
+        "nominal_span_px": 96,
     },
     "ice_shatter": {
         "family": "elemental_ice",
@@ -823,6 +848,83 @@ def _intensity(anim: str, p: float) -> float:
     return round(1.0 - 0.70 * _smooth(p), 4)
 
 
+def _draw_trapdoor_boards(img: Image.Image, p: float) -> None:
+    """A hatch bangs open onto darkness, holds, and falls shut.
+
+    Drawn on the FLOOR PLANE and anchored at surface contact, so the effect is
+    laid where a body stands rather than centred on it. The opening is a hole,
+    not a glow: the darkness under the boards is what sells "she went somewhere",
+    and it is the one part of this sheet that must not read as energy.
+    """
+    cx, cy = 64.0, 74.0
+    half_w, lip = 30.0, 4.0
+    # Open fast, hold, slam. A symmetric ease would read as a door drifting.
+    if p < 0.34:
+        swing = _ease_out(p / 0.34)
+    elif p < 0.72:
+        swing = 1.0
+    else:
+        swing = 1.0 - _smooth((p - 0.72) / 0.28)
+
+    # The hole. Its mouth widens with the swing, and the dark is flat so it
+    # reads as absence rather than as a shadow with a light source.
+    mouth = half_w * swing
+    if mouth > 1.0:
+        _polygon(
+            img,
+            [
+                (cx - mouth, cy - lip),
+                (cx + mouth, cy - lip),
+                (cx + mouth * 0.82, cy + lip * 2.6),
+                (cx - mouth * 0.82, cy + lip * 2.6),
+            ],
+            fill=VOID,
+        )
+
+    # The leaf, hinged at the left edge and tipping up out of the floor. Its
+    # far edge lifts and shortens as it rotates toward the viewer's plane.
+    hinge_x = cx - half_w
+    tip = _lerp(0.0, 46.0, swing)
+    fore = _lerp(half_w * 2.0, half_w * 0.72, swing)
+    board = [
+        (hinge_x, cy - lip),
+        (hinge_x + fore, cy - lip - tip),
+        (hinge_x + fore, cy + lip - tip),
+        (hinge_x, cy + lip),
+    ]
+    _polygon(img, board, fill=TIMBER, outline=OUTLINE, width=1.6)
+    # Two planks' worth of grain, so the leaf reads as boards and not a slab.
+    for k in (0.36, 0.68):
+        _line(
+            img,
+            [
+                (hinge_x + fore * k, cy - lip - tip * k + 1.0),
+                (hinge_x + fore * k, cy + lip - tip * k - 1.0),
+            ],
+            fill=_mul_alpha(TIMBER_LO, 0.85),
+            width=1.2,
+        )
+    _line(img, [board[0], board[1]], fill=_mul_alpha(TIMBER_HI, 0.9), width=1.3)
+    # The hinge, which is what makes the far edge read as attached rather than
+    # as a plank that happens to be leaning there.
+    _ellipse(img, (hinge_x - 2.6, cy - 3.0, hinge_x + 2.6, cy + 3.0), fill=IRON)
+
+    # Dust off the boards, heaviest at the slam.
+    slam = _smooth(max(0.0, (p - 0.78) / 0.22))
+    puff = max(_smooth(min(1.0, p / 0.22)) * 0.5, slam)
+    if puff > 0.02:
+        for i in range(5):
+            a = math.pi + math.pi * (i + 0.5) / 5.0
+            rr = _lerp(6.0, 30.0, puff)
+            x, y = cx + math.cos(a) * rr * 1.35, cy + math.sin(a) * rr * 0.42
+            rad = _lerp(4.5, 1.6, puff)
+            _ellipse(
+                img,
+                (x - rad, y - rad, x + rad, y + rad),
+                fill=_mul_alpha(TIMBER_HI, 0.36 * (1.0 - puff)),
+            )
+
+
 def _draw_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     p = _frame_progress(anim, frame_idx, nframes)
     if anim not in LOOPS and frame_idx == nframes - 1:
@@ -848,6 +950,7 @@ def _draw_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         "electric_arc": _draw_electric_arc,
         "electric_burst": _draw_electric_burst,
         "ice_shatter": _draw_ice_shatter,
+        "trapdoor_boards": _draw_trapdoor_boards,
     }
     try:
         drawers[anim](img, p)
