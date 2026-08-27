@@ -1,8 +1,20 @@
 """SVG-rigged Officer: a state trooper who wandered into a fighting game.
 
-An easter-egg fighter, not a reference rig. He is unarmed and therefore follows
-the Pugnacious Polygon brawler template: the same humanoid skeleton vocabulary
-as the sword archetype, with no weapon part and no held props.
+An easter-egg fighter, not a reference rig. His hands are the Pugnacious
+Polygon's brawler template -- the same humanoid skeleton vocabulary as the sword
+archetype -- and then there is the belt.
+
+⭐ THE HOLSTER IS PERMANENT AND THE PISTOL IS NOT. A drawn gun that appears from
+nowhere is worse than no gun, so the duty holster rides his `pelvis` in every
+frame he has and the sidearm is an ALTERNATE at zero opacity until `shoot` asks
+for it. The draw is most of that move: reach, clear, present, fire, recover,
+holster. What reads at 128px is a man deciding, not a muzzle.
+
+⛔ THE DISCHARGE LEAVES THE MUZZLE, WHICH IS NOT HIS FIST. Its axis extends the
+hand bone rather than measuring the drawn pistol: a slide with a grip at ninety
+degrees is nearly as wide as it is long, and `from_part`'s principal axis of that
+comes out on the diagonal -- measured that way the shot published forty degrees
+off the barrel and into the sky.
 
 His campaign hat is part of him, bound to ``head`` rather than kept as an
 alternate layer — an officer without the hat is a man in a black t-shirt.
@@ -108,23 +120,28 @@ ACTOR_METADATA = {
             "flat cel shading with a single dark outline, no rendered volume",
             "near-black navy shirt and boots against warm skin and a grey hat",
             "heavy forearms and a wide stance: he reads as strong before he moves",
-            "no drop shadow and no held props",
+            "the only thing on his belt is the holster, and it is on his belt in every frame",
+            "no drop shadow; nothing in his hands unless the move put it there",
         ],
         "rigging_notes": [
             "The SVG owns artwork and static rig geometry; editor-neutral motion JSON owns reusable poses and clips.",
             "He binds to the same humanoid motion library as the polygon reference fighters, so his moveset is theirs until he earns bespoke posing.",
             "Near/far names in the SVG are character-relative layers, not camera-centric gameplay semantics.",
             "The hat rides the head bone; the shirt sleeves ride the torso so a raised arm does not tear its own shoulder open.",
+            "The holster rides the pelvis and is always drawn; the pistol rides the near hand and is an alternate on `sidearm_vis`, raised only by `shoot`.",
+            "Exactly one hand is up in any frame: `shoot` swaps the open hand out for the fist to grip with, the way `punch` does.",
         ],
     },
     "gameplay_description": {
         "role": "easter-egg brawler humanoid",
         "combat_identity": [
             "medium-weight close-range fundamentals fighter with clear punch, kick, uppercut, and throw silhouettes",
+            "one ranged answer and only one: the side special draws, fires a single round, and holsters, and the draw is long enough to be read and punished",
             "complete grounded, aerial, special, defensive, capture, pummel and throw vocabulary",
             "shares the brawler archetype's timings; his identity is who he is, not how he swings",
         ],
         "authoring_notes": [
+            "Special mapping: side THE DRAW (`shoot`). He has no other special art yet.",
             "Unlockable/hidden roster material — nothing should depend on him being selectable.",
             "The gameplay repertoire lives in ambition_content; this target publishes art and rig only.",
         ],
@@ -182,6 +199,7 @@ ACTOR_METADATA = {
         "traversal.jump": {"animation": "jump", "events": []},
         "traversal.fall": {"animation": "fall", "events": []},
         "action.melee.primary": {"animation": "jab", "events": []},
+        "action.special.side": {"animation": "shoot", "events": []},
         "action.melee.forward": {"animation": "attack_side", "events": []},
         "action.smash.forward": {"animation": "smash_forward", "events": []},
         "action.capture.grab": {"animation": "grab", "events": []},

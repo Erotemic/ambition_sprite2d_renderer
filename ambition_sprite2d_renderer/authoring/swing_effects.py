@@ -561,16 +561,22 @@ def muzzle_polygon(axes, i, reach: float = 1.5, flare: float = 0.55,
 def draw_muzzle(images, active=None, reach: float = 1.5, flare: float = 0.55,
                 alpha: int = 150, core_alpha: int = 225, blur: float = 1.5,
                 window: int = 2, falloff: float = 2.4, spread=None, bloom: float = 1.0,
-                body_rgb=None, core_rgb=None, axes=None):
+                body_rgb=None, core_rgb=None, hot_rgb=None, axes=None):
     """Draw the discharge: a bloom on the barrel and a cone of light leaving it.
 
     `spread` is a list of angle offsets — one cone each — so a flak burst is the
     same function as a single shot rather than a second effect that has to be
     kept in step with it.
+
+    ⛔ ALL THREE SHELLS ARE AUTHORABLE, INCLUDING THE MIDDLE ONE. The defaults are
+    a beast's cold plasma; a gunpowder flash is orange and white, and with only
+    the outer and core colours exposed the inner shell stayed icy and the
+    Officer's service pistol published a discharge the colour of a raygun.
     """
     live = None if active is None else set(active)
     body_rgb = tuple(body_rgb) if body_rgb else MUZZLE_BODY
     core_rgb = tuple(core_rgb) if core_rgb else MUZZLE_CORE
+    hot_rgb = tuple(hot_rgb) if hot_rgb else MUZZLE_HOT
     offsets = list(spread) if spread else [0.0]
     axes = axes if axes is not None else [blade_axis(im) for im in images]
     out = []
@@ -583,7 +589,7 @@ def draw_muzzle(images, active=None, reach: float = 1.5, flare: float = 0.55,
             age = k / (window + 1)
             fade_a = (1.0 - age) ** falloff
             for offset in offsets:
-                for shell, rgb, weight in ((1.0, body_rgb, 1.0), (0.5, MUZZLE_HOT, 0.9)):
+                for shell, rgb, weight in ((1.0, body_rgb, 1.0), (0.5, hot_rgb, 0.9)):
                     a = int(alpha * weight * fade_a)
                     if a <= 2:
                         continue
@@ -781,6 +787,178 @@ def window_start(windows, i):
     return None
 
 
+# ── stage machinery ───────────────────────────────────────────────────────────
+#
+# Not every authored effect is a swing. A trap door and a flyline are things the
+# STAGE does to a character, and they are drawn here for the same reason the
+# ribbons are: the reviewer and the PUBLISHER have to call the same code, or the
+# sheet ships without them.
+
+TRAP_MOUTH = (14, 11, 16)
+TRAP_LIP = (58, 48, 40)
+TRAP_LIP_LIT = (104, 88, 70)
+TRAP_DUST = (176, 162, 146)
+WIRE_BODY = (206, 210, 220)
+WIRE_GLINT = (255, 255, 250)
+
+
+def draw_trapdoor(images, active=None, width: float = 46.0, depth: float = 9.0,
+                  lip: float = 4.0, dust: float = 1.0, open_frames: int = 2,
+                  mouth_rgb=None, lip_rgb=None, dust_rgb=None, axes=None):
+    """A hole in the boards under the character, opening and closing.
+
+    The axis' TIP is the ground point -- the toe of the foot standing on the
+    mark -- so the door opens where she is, not where the frame's centre happens
+    to be.
+
+    ⛔ THE HOLE IS DRAWN BEHIND HER AND THE LIP IN FRONT. A door composited
+    wholly on top puts a black bar across her shins on the way down; wholly
+    behind, the near edge vanishes and she reads as standing in a shadow. The
+    mouth goes under, the near lip goes over, and the two together read as a
+    board she is passing through.
+    """
+    live = None if active is None else set(active)
+    mouth = tuple(mouth_rgb) if mouth_rgb else TRAP_MOUTH
+    lip_c = tuple(lip_rgb) if lip_rgb else TRAP_LIP
+    dust_c = tuple(dust_rgb) if dust_rgb else TRAP_DUST
+    axes = axes if axes is not None else [blade_axis(im) for im in images]
+    anchor = next((a[1] for i, a in enumerate(axes)
+                   if a is not None and (live is None or i in live)), None)
+    out = []
+    for i, base in enumerate(images):
+        if anchor is None or (live is not None and i not in live):
+            out.append(base.copy())
+            continue
+        first = min(live) if live else 0
+        age = i - first
+        # The door swings open over `open_frames` and stays open.
+        span = min(1.0, (age + 1) / max(1, open_frames))
+        half = width * 0.5 * span
+        cx, cy = anchor
+        under = Image.new("RGBA", base.size, (0, 0, 0, 0))
+        over = Image.new("RGBA", base.size, (0, 0, 0, 0))
+        blending_draw(under).polygon(
+            [(cx - half, cy - depth * 0.35), (cx + half, cy - depth * 0.35),
+             (cx + half * 0.86, cy + depth), (cx - half * 0.86, cy + depth)],
+            fill=mouth + (246,))
+        # Far lip, behind her; near lip, in front.
+        blending_draw(under).polygon(
+            [(cx - half, cy - depth * 0.35 - lip), (cx + half, cy - depth * 0.35 - lip),
+             (cx + half, cy - depth * 0.35), (cx - half, cy - depth * 0.35)],
+            fill=TRAP_LIP_LIT + (232,))
+        blending_draw(over).polygon(
+            [(cx - half * 0.86, cy + depth), (cx + half * 0.86, cy + depth),
+             (cx + half * 0.86, cy + depth + lip), (cx - half * 0.86, cy + depth + lip)],
+            fill=lip_c + (250,))
+        if dust > 0.0 and age <= open_frames + 1:
+            fade = int(150 * dust * (1.0 - age / (open_frames + 2)))
+            if fade > 3:
+                puff = Image.new("RGBA", base.size, (0, 0, 0, 0))
+                for k in range(5):
+                    t = (k - 2) / 2.0
+                    r = (5.0 + 3.5 * abs(t)) * dust
+                    px = cx + t * half * 0.8
+                    py = cy - depth * 0.4 - 3.0 * (1.0 - abs(t))
+                    blending_draw(puff).ellipse(
+                        [px - r, py - r * 0.6, px + r, py + r * 0.6],
+                        fill=dust_c + (fade,))
+                over.alpha_composite(puff.filter(ImageFilter.GaussianBlur(2.2)))
+        comp = Image.new("RGBA", base.size, (0, 0, 0, 0))
+        comp.alpha_composite(under)
+        comp.alpha_composite(base)
+        comp.alpha_composite(over)
+        out.append(comp)
+    return out
+
+
+def draw_wire(images, active=None, width: float = 1.6, sway: float = 2.4,
+              glint: float = 0.55, body_rgb=None, glint_rgb=None, axes=None):
+    """A flyline from the character's harness point, straight up out of frame.
+
+    The axis' BASE is the harness -- the waist -- and the line goes to the top
+    edge, not along the body: a wire is vertical whatever the person on it is
+    doing, and that is exactly what tells the audience she is not jumping.
+    """
+    live = None if active is None else set(active)
+    body = tuple(body_rgb) if body_rgb else WIRE_BODY
+    hot = tuple(glint_rgb) if glint_rgb else WIRE_GLINT
+    axes = axes if axes is not None else [blade_axis(im) for im in images]
+    out = []
+    for i, base in enumerate(images):
+        if axes[i] is None or (live is not None and i not in live):
+            out.append(base.copy())
+            continue
+        ax, ay = axes[i][0]
+        layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
+        draw = blending_draw(layer)
+        # A taut wire still moves; the sway is what stops it reading as a scratch
+        # on the film.
+        steps = 10
+        points = []
+        for k in range(steps + 1):
+            f = k / steps
+            y = ay * (1.0 - f)
+            points.append((ax + math.sin(f * math.pi * 1.5 + i * 0.9) * sway * f, y))
+        draw.line(points, fill=body + (214,), width=max(1, int(round(width))))
+        if glint > 0.0:
+            draw.line(points[: steps // 2], fill=hot + (int(210 * glint),), width=1)
+        comp = Image.new("RGBA", base.size, (0, 0, 0, 0))
+        comp.alpha_composite(base)
+        comp.alpha_composite(layer)
+        out.append(comp)
+    return out
+
+
+MEND_RING = (168, 236, 250)
+MEND_CORE = (250, 255, 255)
+
+
+def draw_mend(images, active=None, rings: int = 3, rise: float = 26.0,
+              radius: float = 15.0, period: int = 4, alpha: int = 150,
+              core_alpha: int = 120, blur: float = 1.8, body_rgb=None,
+              core_rgb=None, axes=None):
+    """Soft rings rising off a body point: something being PUT BACK.
+
+    ⭐ IT RISES AND IT DOES NOT REACH. Every other effect here travels outward
+    from the character because it is going to hurt somebody; this one has to read
+    as the opposite, so the rings go UP, stay inside her own silhouette's width,
+    and fade at the top rather than opening into a cone.
+
+    The axis' BASE is where the hand is working -- the wound, not the weapon.
+    """
+    live = None if active is None else set(active)
+    body = tuple(body_rgb) if body_rgb else MEND_RING
+    core = tuple(core_rgb) if core_rgb else MEND_CORE
+    axes = axes if axes is not None else [blade_axis(im) for im in images]
+    out = []
+    for i, base in enumerate(images):
+        if axes[i] is None or (live is not None and i not in live):
+            out.append(base.copy())
+            continue
+        cx, cy = axes[i][0]
+        layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
+        draw = blending_draw(layer)
+        for k in range(rings):
+            phase = ((i + k * period / rings) % period) / period
+            y = cy - rise * phase
+            r = radius * (0.45 + 0.55 * phase)
+            a = int(alpha * (1.0 - phase) ** 1.4)
+            if a <= 3:
+                continue
+            draw.ellipse([cx - r, y - r * 0.34, cx + r, y + r * 0.34],
+                         outline=body + (a,), width=2)
+        glow = Image.new("RGBA", base.size, (0, 0, 0, 0))
+        blending_draw(glow).ellipse(
+            [cx - radius * 0.7, cy - radius * 0.5, cx + radius * 0.7, cy + radius * 0.5],
+            fill=core + (core_alpha,))
+        layer.alpha_composite(glow.filter(ImageFilter.GaussianBlur(radius * 0.4)))
+        comp = Image.new("RGBA", base.size, (0, 0, 0, 0))
+        comp.alpha_composite(base)
+        comp.alpha_composite(layer.filter(ImageFilter.GaussianBlur(blur)))
+        out.append(comp)
+    return out
+
+
 #: Which drawing function each authored effect uses. A spec names one of these,
 #: and the hit volume below is built from the SAME name, so an effect cannot be
 #: added that draws light in a shape nothing hits in.
@@ -791,6 +969,12 @@ EFFECT_DRAW = {
     "reentry": lambda: draw_reentry,
     "muzzle": lambda: draw_muzzle,
     "beam": lambda: draw_beam,
+    # Stage machinery. Neither publishes a hit volume: a trap door does not hurt
+    # anyone and neither does a wire, so their specs carry no `hitbox.active` and
+    # name their live frames on their own style block instead.
+    "trapdoor": lambda: draw_trapdoor,
+    "wire": lambda: draw_wire,
+    "mend": lambda: draw_mend,
 }
 
 

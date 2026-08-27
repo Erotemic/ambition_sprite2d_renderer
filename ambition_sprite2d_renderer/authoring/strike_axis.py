@@ -33,6 +33,17 @@ from .rigdoc import RigDocument, normalize_render_padding, translate_bone_worlds
 #: ORIGIN the danger starts at, ``tip`` the bone whose far end it reaches to.
 #: ``{"base": "near_arm_l", "tip": "near_arm_hand"}`` is a punch — elbow to
 #: knuckles. ``{"base": "near_leg_l", "tip": "near_leg_foot"}`` is a kick.
+#:
+#: ``extend`` pushes the far end PAST that bone, along the same line, for danger
+#: that leaves the body: a pistol's muzzle sits a hand's length beyond the
+#: knuckles, and a blade of conjured light is longer still.
+#:
+#: ⛔ IT IS NOT A SUBSTITUTE FOR ``strike_part`` ON DRAWN ART — but it is the
+#: right answer when the art is nearly as WIDE as it is long. :func:`from_part`
+#: takes the principal axis of a silhouette, and a service pistol is a slide with
+#: a grip hanging off it at ninety degrees: the principal axis of that comes out
+#: on the diagonal, and the discharge published forty degrees off the barrel.
+#: A held prop whose bore is drawn along its bone should say so here instead.
 Strike = dict
 
 
@@ -62,6 +73,7 @@ def from_bones(
     """
     left, top, _right, _bottom = normalize_render_padding(padding)
     base_name, tip_name = str(strike["base"]), str(strike["tip"])
+    extend = float(strike.get("extend", 1.0))
     axes = []
     for t in samples:
         world, _params = doc.solve(animation, float(t))
@@ -74,6 +86,9 @@ def from_bones(
         if math.dist(base, tip) < 1e-6:
             axes.append(None)
             continue
+        if extend != 1.0:
+            tip = (base[0] + (tip[0] - base[0]) * extend,
+                   base[1] + (tip[1] - base[1]) * extend)
         axes.append(((base[0], base[1]), (tip[0], tip[1])))
     return axes
 

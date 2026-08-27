@@ -1,0 +1,14 @@
+{
+  "clip": "fly",
+  "note": "Up special. The axis' BASE is her harness point at the waist; the wire runs from there to the top of the frame whatever her body is doing, which is the thing that says she is not jumping.",
+  "strike": { "base": "torso", "tip": "head" },
+  "effect": "wire",
+  "facing": "east",
+  "hitbox": { "extend": 1.0 },
+  "wire": {
+    "active": [0, 1, 2, 3, 4, 5, 6, 7],
+    "width": 2.0,
+    "sway": 2.6,
+    "glint": 0.6
+  }
+}

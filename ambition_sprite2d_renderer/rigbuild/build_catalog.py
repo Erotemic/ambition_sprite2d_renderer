@@ -64,6 +64,13 @@ def collect_parts(root, view_id: str) -> list[dict]:
                 "bone": elem.get("data-rig-bone"),
                 "z": elem.get("data-rig-z") or "0",
                 "element": elem.get("id"),
+                # ⛔⛔ AN ALTERNATE'S CHANNEL IS PART OF THE PART. Dropped here,
+                # it never reached the catalog, `motion_ir` read no channel, and
+                # a part meant to be INVISIBLE until a clip asks for it drew in
+                # every frame -- which is why the Officer published with a spare
+                # fist beside his hip and a second torso beside his head.
+                "opacity": elem.get("data-rig-opacity"),
+                "opacity_default": elem.get("data-rig-opacity-default"),
             }
         )
     out.sort(key=lambda part: float(part["z"]))
@@ -152,6 +159,11 @@ def build(
             f'data-rig-bind-angle="{_fmt(angles[bone])}"',
             f'data-rig-elements="{part["element"]}"',
         ]
+        if part.get("opacity"):
+            attrs.append(f'data-rig-opacity="{part["opacity"]}"')
+            if part.get("opacity_default") is not None:
+                attrs.append(
+                    f'data-rig-opacity-default="{part["opacity_default"]}"')
         meta.append("    <g " + "\n       ".join(attrs) + " />")
     meta += ["  </g>", "</metadata>"]
 

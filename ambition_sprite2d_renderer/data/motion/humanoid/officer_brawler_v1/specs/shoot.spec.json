@@ -1,0 +1,42 @@
+{
+  "clip": "shoot",
+  "note": "Side special: the draw and one round. The danger leaves the MUZZLE, which sits a hand's length past his knuckles, so the strike extends the hand bone rather than measuring the drawn pistol -- a slide with a grip at ninety degrees has its principal axis on the diagonal, and measured that way the discharge published forty degrees off the barrel.",
+  "effect": "muzzle",
+  "facing": "west",
+  "hitbox": {
+    "active": [
+      6
+    ],
+    "extend": 1.0
+  },
+  "muzzle": {
+    "reach": 4.2,
+    "flare": 0.26,
+    "alpha": 168,
+    "core_alpha": 240,
+    "blur": 1.3,
+    "window": 2,
+    "falloff": 3.0,
+    "bloom": 1.35,
+    "body_rgb": [
+      255,
+      176,
+      78
+    ],
+    "hot_rgb": [
+      255,
+      226,
+      150
+    ],
+    "core_rgb": [
+      255,
+      250,
+      236
+    ]
+  },
+  "strike": {
+    "base": "near_arm_l",
+    "tip": "near_arm_hand",
+    "extend": 1.62
+  }
+}

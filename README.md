@@ -774,6 +774,56 @@ orphaned limb from an honest one is whether the MIDDLE segment is on screen: the
 Actor's rear leg starts 15px from its hip in a lunge and reads perfectly, because
 a whole shin and boot come out from under the coat hem.
 
+#### Stage machinery, and a gun
+
+Three authored effects are not swings. `swing_effects` grew them because the
+reviewer and the PUBLISHER have to call the same code or the sheet ships without
+them, and because none of them can be expressed as a ribbon:
+
+| effect | who | what it draws |
+|---|---|---|
+| `trapdoor` | Actor, down special | a hole in the boards under her, opening, with dust |
+| `wire` | Actor, up special | a flyline from her harness point straight up out of frame |
+| `mend` | Medic, down special | soft rings rising off the hand that is working |
+
+⭐ **`mend` is the only one that goes UP and does not reach.** Everything else
+here travels outward because it is going to hurt somebody; a heal has to read as
+the opposite, so its rings stay inside her own silhouette and fade at the top
+rather than opening into a cone.
+
+⛔ **None of the three publishes a hit volume.** A hole in the floor, a wire and
+a dressing hurt nobody, so their specs carry no `hitbox.active` at all and name
+their live frames on the effect's own style block instead — which is also how the
+Medic's ADRENALINE avoids shipping an attack box for a move that only costs her.
+
+⛔ **`base == tip` is a null axis and draws nothing.** `near_arm_l` ENDS at the
+wrist, which is exactly where `near_arm_hand` starts, so a strike authored
+wrist-to-wrist measured zero length, `from_bones` returned `None` for every frame,
+and the effect was silent with no error anywhere.
+
+The Officer's side special is the fourth: he draws. The holster rides his
+`pelvis` and is drawn in every frame he has; the pistol rides his near hand as an
+alternate at zero opacity, and `shoot` is the only row that raises it.
+
+⛔⛔ **`build_catalog` used to DROP `data-rig-opacity`.** The channel never reached
+the catalog, `motion_ir` read none, and every alternate drew unconditionally — so
+the shipped Officer published with a spare fist beside his hip and a second torso
+beside his head, in all 136 rows, at nearly twice his real width. His alternates
+were also drawn BESIDE him in an exploded authoring layout and had to be placed
+onto the body; a trunk in a swap set is fitted to the trunk's box (his hand-drawn
+back is 87% as wide, and centred alone it left the shoulders a hairline short of
+the sleeves) and lengthened to tuck behind the pelvis, while a hand in one is only
+centred — fitted, a drawn fist becomes a mitt.
+
+⛔ **A discharge leaves the MUZZLE, and `from_part` cannot find it.** A service
+pistol is a slide with a grip at ninety degrees: nearly as wide as it is long, so
+the principal axis of its silhouette comes out on the diagonal and the shot
+published forty degrees off the barrel. A strike spec now takes `extend`, which
+pushes the far end past the bone along the same line — the right answer for a
+held prop whose bore is drawn along its own bone. And the round leaves BEFORE the
+recoil: authored with the muzzle already rising, the cone follows the barrel into
+the sky.
+
 #### Their movesets
 
 Both fork the polygon reference libraries rather than sharing them, and both
@@ -790,8 +840,9 @@ that drew it.
 | identity | field paramedic; push, lift, carry | performer; every gesture held |
 | hands | open palms, never a fist | one long line at a time |
 | light | cold white-cyan: a trace, then a discharge | warm amber stage light, lagging the gesture |
-| signature | ADRENALINE / TOURNIQUET / TRIAGE / RESCUE LIFT | MONOLOGUE / THE LINE / UNDERSTUDY / CURTAIN CALL |
+| signature | ADRENALINE / TOURNIQUET / FIELD DRESSING / RESCUE LIFT | MONOLOGUE / THE LINE / THE TRAP / CURTAIN CALL |
 | forward smash | the defibrillator, both palms on one line | THE DUEL SCENE: a lunge with a blade of light |
+| the pair | one special SPENDS her margin, the other kneels and repays it | down is a trap door, up is a flyline: the stage moves her |
 
 ⭐ **The Actor has no sword part and is not getting one.** Her reach is the
 swing's own axis extended past her hand, and the hit volume is built from that

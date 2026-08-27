@@ -1,0 +1,16 @@
+{
+  "clip": "blink_in",
+  "note": "Down special, arriving. The second trap, already open when the hand comes through it, closing behind her.",
+  "strike": { "base": "pelvis", "tip": "near_leg_foot" },
+  "effect": "trapdoor",
+  "facing": "east",
+  "hitbox": { "extend": 1.0 },
+  "trapdoor": {
+    "active": [0, 1, 2, 3, 4],
+    "width": 52.0,
+    "depth": 8.0,
+    "lip": 4.0,
+    "dust": 1.4,
+    "open_frames": 1
+  }
+}

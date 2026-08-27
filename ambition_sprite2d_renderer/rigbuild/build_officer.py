@@ -11,6 +11,7 @@ from pathlib import Path
 from lxml import etree
 
 from . import build_catalog as bc
+from . import sidearm_author
 from .annotated_side_rig import install_managed_block
 
 REPO = Path(__file__).resolve().parents[2]
@@ -84,6 +85,23 @@ PARTS: tuple[tuple[str, str, str, int, str, tuple[str, ...]], ...] = (
     ("part-fist", "fist", "near_arm_hand", 42.5, "layer13", ()),
 )
 
+#: Art this builder AUTHORS rather than carries across, because no layer in the
+#: drawing holds it yet. ⚠ Same stopgap status as `humanoid_torsos`' shell: the
+#: moment a person draws either of these, it moves to the art file and this
+#: table carries it instead.
+#: `(group id, part, bone, z, label, paths)`
+GENERATED: tuple[tuple[str, str, str, float, str, list], ...] = (
+    # The holster is PERMANENT: a drawn gun that appears from nowhere is worse
+    # than no gun, so the belt carries the reason he is armed in every frame.
+    # In front of the near thigh, behind the near arm, the way it hangs.
+    ("part-holster", "holster", "pelvis", 32.5, "Holster",
+     sidearm_author.HOLSTER_PATHS),
+    # The pistol is an ALTERNATE, behind the fist so the grip sits INSIDE the
+    # hand rather than on top of it.
+    ("part-sidearm", "sidearm", "near_arm_hand", 42.4, "Sidearm",
+     sidearm_author.PATHS),
+)
+
 LABELS = {
     "part-far-leg-u": "Upper Leg - Far", "part-far-leg-l": "Lower Leg - Far",
     "part-far-foot": "Foot - Far", "part-far-arm-u": "Upper Arm - Far",
@@ -97,12 +115,58 @@ LABELS = {
     "part-torso-back": "Torso (back)", "part-fist": "Fist",
 }
 
+#: ⛔⛔ THE ALTERNATES ARE DRAWN BESIDE HIM, NOT ON HIM. `Torso-Back-Pivoted` sits
+#: off his right shoulder and `Fist` off his left hip -- an exploded authoring
+#: layout, which is fine for drawing and fatal for a swap: the moment the swap
+#: actually worked, his smash published a shirt hanging in the air a head's width
+#: away and a bare chest under his sleeves.
+#:
+#: Measured alpha bounds, in his own art millimetres: `(alternate, base, fit)`.
+#: The alternate is moved so its box lands on the box of the part it REPLACES.
+#:
+#: ⛔ A TRUNK IN A SWAP SET MUST KEEP THE TRUNK'S WIDTH, so `torso_back` is fitted
+#: to the front torso's box rather than merely centred on it -- his hand-drawn
+#: back is 87% as wide, and centred alone it left the shoulders a hairline short
+#: of the sleeves, which publishes as an arm that has come off.
+#:
+#: ⛔ AND ITS HEM MUST REACH THE PELVIS. Fitted to the front torso's box exactly,
+#: his back separated at the WAIST rather than the shoulder: the trunk rotates in
+#: a smash and a hem that only just met the belt at rest swings clear of it. The
+#: target box is the front torso's, lengthened to tuck behind.
+#:
+#: ⛔ AND A HAND IN ONE MUST NOT. A drawn fist is legitimately smaller than an
+#: open hand with the fingers spread; fitted to that box it publishes a mitt. It
+#: is centred and left at its own size.
+PLACEMENT: dict[str, tuple[tuple[float, float, float, float],
+                            tuple[float, float, float, float], bool]] = {
+    "torso_back": ((148.88, 22.0, 200.75, 85.0), (78.0, 78.75, 123.12, 149.0), True),
+    "fist": ((34.5, 111.5, 49.0, 131.5), (120.38, 141.88, 137.62, 164.0), False),
+}
+
+
+def placement_transform(source, target, fit: bool) -> str:
+    """SVG transform putting `source`'s box onto `target`'s."""
+    sx0, sy0, sx1, sy1 = source
+    tx0, ty0, tx1, ty1 = target
+    scx, scy = (sx0 + sx1) / 2.0, (sy0 + sy1) / 2.0
+    tcx, tcy = (tx0 + tx1) / 2.0, (ty0 + ty1) / 2.0
+    if not fit:
+        return f"translate({tcx - scx:.4f},{tcy - scy:.4f})"
+    kx = (tx1 - tx0) / (sx1 - sx0)
+    ky = (ty1 - ty0) / (sy1 - sy0)
+    return (f"translate({tcx:.4f},{tcy:.4f}) scale({kx:.6f},{ky:.6f}) "
+            f"translate({-scx:.4f},{-scy:.4f})")
+
 #: Parts that are ALTERNATES: drawn, but invisible until a clip asks for them.
 #: `(part name, opacity channel, default)`. A channel a clip never mentions
 #: reads as its default, so the front torso and the open hand are what a pose
 #: gets for free and the swap is the thing that must be stated.
 ALTERNATES = {
     "torso_back": ("torso_back_vis", 0.0),
+    # ⛔ HE IS NOT DRAWN HOLDING IT. The pistol is in the holster until a clip
+    # says otherwise, so its channel defaults to 0 exactly as the fist's does --
+    # and `shoot` is the only row that raises it.
+    "sidearm": ("sidearm_vis", 0.0),
     # THE FIST IS A HAND SWAP, not an extra hand. It shares
     # `near_arm_hand` with `near_hand`, so exactly one of the two is up in any
     # frame — see `hand_vis` on the open hand below.
@@ -161,6 +225,28 @@ def main() -> None:
             group.append(element)
         by_id[group_id] = group
 
+    # The authored parts join the character layer so they share the view's
+    # scale; a pistol drawn at millimetre scale lands somewhere else entirely
+    # once the view is scaled into library units.
+    for group_id, name, bone, z, label, paths in GENERATED:
+        group = etree.SubElement(view, f"{{{SVG}}}g")
+        group.set("id", group_id)
+        group.set("data-rig-bone", bone)
+        group.set("data-rig-part", name)
+        group.set("data-rig-z", str(z))
+        group.set(f"{{{INK}}}label", label)
+        group.set(f"{{{INK}}}groupmode", "layer")
+        if name in ALTERNATES:
+            channel, default = ALTERNATES[name]
+            group.set("data-rig-opacity", channel)
+            group.set("data-rig-opacity-default", str(default))
+        for eid, d, style in paths:
+            path = etree.SubElement(group, f"{{{SVG}}}path")
+            path.set("id", eid)
+            path.set("style", style)
+            path.set("d", d)
+        by_id[group_id] = group
+
     joints = dict(JOINTS)
     # ⛔ THE SHARED LIBRARY'S TRANSLATIONS ARE ABSOLUTE. `space.linear_unit` is
     # "rig_user_unit", so a dash authored as "-276 units left" means units of
@@ -172,20 +258,23 @@ def main() -> None:
     view.set("transform", f"scale({scale})")
     root.set("viewBox", f"0 0 {210 * scale:.4f} {297 * scale:.4f}")
 
+    # ⛔⛔ AN ALTERNATE ARRIVES WHERE THE PART IT REPLACES LEFT. Both alternates
+    # share their base's BIND PIVOT already -- `build_catalog` seeds every pivot
+    # at the bone origin and both ride `torso` / `near_arm_hand` -- so what was
+    # missing was never the pivot, it was the ART's position. (The code that used
+    # to sit here copied `pivot` and `bind_angle` between `collect_parts` dicts,
+    # which carry neither key: it read as the fix and did nothing for as long as
+    # the alternates drew unconditionally and nobody could see the swap.)
+    for name, (source, target, fit) in PLACEMENT.items():
+        group = next((g for g in view.iter()
+                      if g.get("data-rig-part") == name), None)
+        if group is None:
+            continue
+        move = placement_transform(source, target, fit)
+        existing = group.get("transform")
+        group.set("transform", f"{move} {existing}" if existing else move)
+
     parts = bc.collect_parts(root, "layer2")
-    # ⛔⛔ AN ALTERNATE BINDS WHERE THE PART IT REPLACES BINDS. `collect_parts`
-    # gives every part its OWN pivot, derived from that art's own geometry —
-    # right for a limb, and wrong for a swap: the back torso then hangs off its
-    # own centroid instead of the trunk's, which measured as a shirt floating a
-    # head's width to the side of the man wearing it. Same for the fist, which
-    # has to arrive exactly where the open hand left.
-    base_of = {"torso_back": "torso", "fist": "near_hand"}
-    by_part = {part["name"]: part for part in parts}
-    for alternate, base in base_of.items():
-        if alternate in by_part and base in by_part:
-            for key in ("pivot", "bind_angle"):
-                if key in by_part[base]:
-                    by_part[alternate][key] = by_part[base][key]
     meta_text, markers_text = bc.build(
         view_id="layer2",
         source_layer="layer2",

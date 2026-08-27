@@ -1,0 +1,31 @@
+{
+  "clip": "charge",
+  "note": "Down special. The axis' BASE is her own wrist -- the mend rises off the WOUND, not off a weapon. \u26d4 its TIP is the torso and not `near_arm_l`: that bone ENDS at the wrist, so wrist-to-wrist measured zero length and the effect drew nothing at all. No hitbox: this move hits nobody.",
+  "strike": {
+    "base": "near_arm_hand",
+    "tip": "torso"
+  },
+  "effect": "mend",
+  "facing": "east",
+  "hitbox": {
+    "extend": 1.0
+  },
+  "mend": {
+    "active": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "rings": 3,
+    "rise": 34.0,
+    "radius": 18.0,
+    "period": 4,
+    "alpha": 225,
+    "core_alpha": 170,
+    "blur": 1.3
+  }
+}

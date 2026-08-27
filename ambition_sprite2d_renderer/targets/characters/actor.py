@@ -16,6 +16,13 @@ Her light is STAGE light: warm amber and gel-pink, thrown from above and in
 front. Her sweeps leave a ribbon because the light lags the gesture, which is
 the whole reason a stage gesture is held.
 
+⭐ **and the other two specials are stage machinery, not technique.** Down is a
+TRAP: she hits her mark, the boards give, and she comes up out of a second door
+somewhere else -- `blink_out` going and `blink_in` arriving, which is what that
+pair of rows is for. Up is a FLYLINE that catches her at the waist and takes her
+straight up with her feet trailing. Neither is something she does; both are
+things done to her, and she goes with them because that is the job.
+
 ⛔ **her far shoulder lives behind her cardigan panel: 12px of it at rest,
 against the Medic's 54.** That is the costume, not a defect, and it decides how
 she is posed -- the NEAR arm carries every line and the far one counterweights.
@@ -83,7 +90,8 @@ ACTOR_METADATA = {
             "complete grounded, aerial, special, defensive, capture, pummel and throw vocabulary",
         ],
         "authoring_notes": [
-            "Special mapping: neutral MONOLOGUE (`special`), side THE LINE (`shoot`), down UNDERSTUDY (`charge`), up CURTAIN CALL (`fly`), Final Smash STANDING OVATION (`final_smash`).",
+            "Special mapping: neutral MONOLOGUE (`special`), side THE LINE (`shoot`), down THE TRAP (`blink_out` going, `blink_in` arriving), up CURTAIN CALL (`fly`), Final Smash STANDING OVATION (`final_smash`).",
+            "The trap and the flyline are things the STAGE does to her. Both publish NO hit volume -- a hole in the boards and a wire hurt nobody -- so their specs carry no `hitbox.active` and name their live frames on the effect's own block.",
             "The conjured blade is an authored EFFECT with an authored volume, not a rig part. Do not add a sword to this rig.",
             "The gameplay repertoire lives in ambition_content; this target publishes art, rig and authored hit volumes only.",
         ],
@@ -140,7 +148,8 @@ ACTOR_METADATA = {
         "action.aerial.down": {"animation": "air_down", "events": []},
         "action.special.neutral": {"animation": "special", "events": []},
         "action.special.side": {"animation": "shoot", "events": []},
-        "action.special.down": {"animation": "charge", "events": []},
+        "action.special.down": {"animation": "blink_out", "events": []},
+        "action.special.down_arrive": {"animation": "blink_in", "events": []},
         "action.special.up": {"animation": "fly", "events": []},
         "action.special.final": {"animation": "final_smash", "events": []},
         "action.capture.grab": {"animation": "grab", "events": []},

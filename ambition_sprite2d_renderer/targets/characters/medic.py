@@ -6,6 +6,11 @@ lifts, compressions -- because a medic's trained motion is push, lift, carry,
 and never close the fist. Anything heavy she does with both hands, the way a
 person actually moves another person's weight.
 
+⭐ **she is the only fighter here who can put something back.** Her neutral
+special SPENDS a slice of her own margin to buy tempo; her down special kneels
+and repays it. A fighter who can only spend is a gimmick; one who can spend and
+repay has a decision to make every time she does either.
+
 Her swings read CLINICAL: a cold white-cyan that belongs to monitors and sterile
 light. Tilts throw a thin lance, like a trace crossing a screen; smashes
 discharge, a hard white compression edge with the cyan boiling off behind it.
@@ -83,11 +88,13 @@ ACTOR_METADATA = {
         "combat_identity": [
             "light-medium weight, high mobility, low raw KO power, long combo strings",
             "every heavy commitment is a TWO-HANDED one, which is what makes her smashes slow and her tilts fast",
-            "her specials trade her own margin for tempo rather than adding reach",
+            "her specials trade her own margin for tempo rather than adding reach, and one of them buys it back",
+            "the heal is a commitment, not a freebie: she goes to a knee and for its whole length she is not looking at you",
             "complete grounded, aerial, special, defensive, capture, pummel and throw vocabulary",
         ],
         "authoring_notes": [
-            "Special mapping: neutral ADRENALINE (`special`), side TOURNIQUET (`shoot`), down TRIAGE (`charge`), up RESCUE LIFT (`fly`), Final Smash CODE (`final_smash`).",
+            "Special mapping: neutral ADRENALINE (`special`), side TOURNIQUET (`shoot`), down FIELD DRESSING (`charge`), up RESCUE LIFT (`fly`), Final Smash CODE (`final_smash`).",
+            "ADRENALINE and FIELD DRESSING are a PAIR: one spends her margin for tempo, the other puts it back on one knee with both hands busy. Neither publishes a hit volume — the specs carry no `hitbox.active` and name their live frames on the effect's own block.",
             "The gameplay repertoire lives in ambition_content; this target publishes art, rig and authored hit volumes only.",
         ],
     },
