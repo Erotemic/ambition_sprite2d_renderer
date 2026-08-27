@@ -1,0 +1,247 @@
+{
+  "schema": "ambition-clip-v1",
+  "id": "attack_side",
+  "loop": false,
+  "duration_s": 0.288,
+  "sampling": {
+    "frame_count": 6,
+    "frame_duration_ms": 48
+  },
+  "source": {
+    "kind": "legacy-rigdoc-bake",
+    "clip": "attack_side",
+    "baked_at": "published-frame-samples",
+    "note": "IK, expressions, and solver controls were baked to direct FK pose transforms.",
+    "socket_note": "Shoulder sockets removed: the shared library translates `near_arm_u` / `far_arm_u` onto a TURNED torso's shoulder, and this character has no `torso_side` / `torso_back` art for the turn to land on -- so the offset detached the arm from the trunk instead of foreshortening it. The torso visibility parameters are left in place: they are inert on a rig with one torso, and restoring the turn is then an ART step, not a motion edit."
+  },
+  "pose_keys": [
+    {
+      "at_s": 0.0,
+      "frame": 0,
+      "state": {
+        "bones": {
+          "far_arm_l": {
+            "rotation_deg": -98.029999
+          },
+          "far_arm_u": {
+            "rotation_deg": -36.43
+          },
+          "far_leg_foot": {
+            "rotation_deg": -2.421196
+          },
+          "far_leg_l": {
+            "rotation_deg": 5.669955
+          },
+          "far_leg_u": {
+            "rotation_deg": -3.24876
+          },
+          "near_arm_l": {
+            "rotation_deg": -62.0
+          },
+          "near_arm_u": {
+            "rotation_deg": 44.0625
+          },
+          "near_leg_foot": {
+            "rotation_deg": -0.037145
+          },
+          "near_leg_l": {
+            "rotation_deg": 0.138507
+          },
+          "near_leg_u": {
+            "rotation_deg": -0.105361
+          },
+          "torso": {
+            "rotation_deg": 0.0
+          }
+        },
+        "parameters": {
+          "torso_front_vis": 1.0,
+          "torso_side_vis": 0.0,
+          "torso_back_vis": 0.0
+        }
+      }
+    },
+    {
+      "at_s": 0.048,
+      "frame": 1,
+      "pose": "humanoid/fighting_polygon/ftilt/anticipation",
+      "overrides": {
+        "parameters": {
+          "torso_front_vis": 0.0,
+          "torso_side_vis": 1.0,
+          "torso_back_vis": 0.0
+        },
+        "bones": {
+          "far_arm_u": {
+            "position": [
+              72.0,
+              3.0
+            ]
+          },
+          "near_arm_u": {
+            "position": [
+              -63.0,
+              -3.0
+            ]
+          }
+        }
+      }
+    },
+    {
+      "at_s": 0.096,
+      "frame": 2,
+      "state": {
+        "root": {
+          "position": [
+            25.527066,
+            0.0
+          ]
+        },
+        "bones": {
+          "far_arm_l": {
+            "rotation_deg": -110.869999
+          },
+          "far_arm_u": {
+            "rotation_deg": -29.486
+          },
+          "far_leg_foot": {
+            "rotation_deg": -3.571059
+          },
+          "far_leg_l": {
+            "rotation_deg": 10.433543
+          },
+          "far_leg_u": {
+            "rotation_deg": -6.862484
+          },
+          "near_arm_l": {
+            "rotation_deg": -32.0
+          },
+          "near_arm_u": {
+            "rotation_deg": -33.9375
+          },
+          "near_leg_foot": {
+            "rotation_deg": 18.874587
+          },
+          "near_leg_l": {
+            "rotation_deg": -6.945646
+          },
+          "near_leg_u": {
+            "rotation_deg": 7.66706
+          },
+          "torso": {
+            "rotation_deg": 0.0
+          }
+        },
+        "parameters": {
+          "torso_front_vis": 0.0,
+          "torso_side_vis": 1.0,
+          "torso_back_vis": 0.0
+        }
+      }
+    },
+    {
+      "at_s": 0.144,
+      "frame": 3,
+      "pose": "humanoid/fighting_polygon/ftilt/contact",
+      "overrides": {
+        "parameters": {
+          "torso_front_vis": 0.0,
+          "torso_side_vis": 1.0,
+          "torso_back_vis": 0.0
+        },
+        "bones": {
+          "far_arm_u": {
+            "position": [
+              72.0,
+              3.0
+            ]
+          },
+          "near_arm_u": {
+            "position": [
+              -63.0,
+              -3.0
+            ]
+          }
+        }
+      }
+    },
+    {
+      "at_s": 0.192,
+      "frame": 4,
+      "pose": "humanoid/fighting_polygon/ftilt/recovery",
+      "overrides": {
+        "parameters": {
+          "torso_front_vis": 0.0,
+          "torso_side_vis": 0.0,
+          "torso_back_vis": 1.0
+        },
+        "bones": {
+          "far_arm_u": {
+            "position": [
+              206.0,
+              2.0
+            ]
+          },
+          "near_arm_u": {
+            "position": [
+              -151.0,
+              2.0
+            ]
+          }
+        }
+      }
+    },
+    {
+      "at_s": 0.24,
+      "frame": 5,
+      "state": {
+        "root": {
+          "position": [
+            10.853344,
+            0.0
+          ]
+        },
+        "bones": {
+          "far_arm_l": {
+            "rotation_deg": -103.029999
+          },
+          "far_arm_u": {
+            "rotation_deg": -31.43
+          },
+          "far_leg_foot": {
+            "rotation_deg": -2.421196
+          },
+          "far_leg_l": {
+            "rotation_deg": 5.669955
+          },
+          "far_leg_u": {
+            "rotation_deg": -3.24876
+          },
+          "near_arm_l": {
+            "rotation_deg": -48.0
+          },
+          "near_arm_u": {
+            "rotation_deg": -87.9375
+          },
+          "near_leg_foot": {
+            "rotation_deg": 1.550626
+          },
+          "near_leg_l": {
+            "rotation_deg": -6.945646
+          },
+          "near_leg_u": {
+            "rotation_deg": 5.391022
+          },
+          "torso": {
+            "rotation_deg": 0.0
+          }
+        },
+        "parameters": {
+          "torso_front_vis": 0.0,
+          "torso_side_vis": 0.0,
+          "torso_back_vis": 1.0
+        }
+      }
+    }
+  ]
+}

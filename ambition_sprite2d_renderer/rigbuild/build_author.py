@@ -6,7 +6,8 @@ from pathlib import Path
 from lxml import etree
 
 from . import build_catalog as bc
-from . import sword_author
+from .annotated_side_rig import install_managed_block
+from . import pen_author
 
 REPO = Path(__file__).resolve().parents[2]
 SRC = REPO / "assets/author-rig-labels-joints.svg"
@@ -21,10 +22,6 @@ SVG = "http://www.w3.org/2000/svg"
 INK = "http://www.inkscape.org/namespaces/inkscape"
 NS = {"svg": SVG, "inkscape": INK}
 
-
-def frag(text: str):
-    wrapper = f'<svg xmlns="{SVG}" xmlns:inkscape="{INK}">{text}</svg>'
-    return etree.fromstring(wrapper.encode())[0]
 
 
 def main() -> None:
@@ -56,29 +53,29 @@ def main() -> None:
     joints = {name: (x * scale, y * scale) for name, (x, y) in joints.items()}
     view_scale = scale
 
-    # The sword: a rigid part carried by the near hand, drawn along that bone's
-    # axis so an authored swing points the blade where the hand points.
+    # The pen: a rigid part carried by the near hand, drawn along that bone's
+    # axis so an authored swing points the nib where the hand points.
     view = by_id["view-author-side-west"]
-    sword = etree.SubElement(view, f"{{{SVG}}}g")
-    sword.set("id", "part-near-sword")
-    sword.set("data-rig-bone", "near_arm_hand")
-    sword.set("data-rig-part", "sword")
-    sword.set("data-rig-z", "61")
-    sword.set(f"{{{INK}}}label", "Sword")
-    sword.set(f"{{{INK}}}groupmode", "layer")
-    sword.text = "\n        "
-    for eid, d, style in sword_author.PATHS:
-        path = etree.SubElement(sword, f"{{{SVG}}}path")
+    pen = etree.SubElement(view, f"{{{SVG}}}g")
+    pen.set("id", "part-near-pen")
+    pen.set("data-rig-bone", "near_arm_hand")
+    pen.set("data-rig-part", "pen")
+    pen.set("data-rig-z", "61")
+    pen.set(f"{{{INK}}}label", "Pen")
+    pen.set(f"{{{INK}}}groupmode", "layer")
+    pen.text = "\n        "
+    for eid, d, style in pen_author.PATHS:
+        path = etree.SubElement(pen, f"{{{SVG}}}path")
         path.set("id", eid)
         path.set("style", style)
         path.set("d", d)
         path.tail = "\n        "
-    sword[-1].tail = "\n      "
-    sword.tail = "\n    "
+    pen[-1].tail = "\n      "
+    pen.tail = "\n    "
     # Paint order in the source follows the catalog's z, so the file reads the
     # way it renders.
-    view.remove(sword)
-    view.insert(list(view).index(by_id["part-near-hand"]) + 1, sword)
+    view.remove(pen)
+    view.insert(list(view).index(by_id["part-near-hand"]) + 1, pen)
 
     view.set("transform", f"scale({view_scale})")
     root.set("viewBox", f"0 0 {210 * view_scale:.4f} {297 * view_scale:.4f}")
@@ -99,26 +96,7 @@ def main() -> None:
     # marker layer: one rest authority, still editable in Inkscape.
     by_id["rig-joints"].getparent().remove(by_id["rig-joints"])
 
-    # One managed block, laid out the way `svg_rig_tool` expects to find it:
-    # BEGIN, the catalog, the editor marker layer, END.
-    for node in list(root):
-        if isinstance(node.tag, type(etree.Comment)) and "AMBITION SVG RIG v1" in (node.text or ""):
-            root.remove(node)
-    old_meta = next((e for e in root if e.get("id") == "ambition-rig-metadata"), None)
-    if old_meta is not None:
-        root.remove(old_meta)
-    begin = etree.Comment(" BEGIN AMBITION SVG RIG v1 ")
-    begin.tail = "\n"
-    root.append(begin)
-    meta = frag(meta_text)
-    meta.tail = "\n"
-    root.append(meta)
-    markers = frag(markers_text)
-    markers.tail = "\n"
-    root.append(markers)
-    end = etree.Comment(" END AMBITION SVG RIG v1 ")
-    end.tail = "\n"
-    root.append(end)
+    install_managed_block(root, meta_text, markers_text)
 
     root.set("sodipodi:docname".replace("sodipodi:", f"{{http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd}}"), "author.svg")
     DST.parent.mkdir(parents=True, exist_ok=True)

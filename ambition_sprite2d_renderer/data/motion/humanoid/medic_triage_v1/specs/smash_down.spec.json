@@ -1,0 +1,28 @@
+{
+  "clip": "smash_down",
+  "note": "down smash: an axe kick driven into the floor.",
+  "strike": {
+    "base": "near_leg_l",
+    "tip": "near_leg_foot"
+  },
+  "effect": "reentry",
+  "facing": "east",
+  "hitbox": {
+    "active": [
+      3,
+      4,
+      5
+    ],
+    "extend": 1.06
+  },
+  "reentry": {
+    "window": 3,
+    "spread": 0.88,
+    "extend": 1.1,
+    "alpha": 124,
+    "core_alpha": 228,
+    "blur": 1.6,
+    "falloff": 1.9,
+    "trail": 0.95
+  }
+}

@@ -1,0 +1,250 @@
+{
+  "clip": "dash_attack",
+  "note": "dash attack: a lunge carrying the forward tilt's rising sweep. Frames 0-1 coil, 2-4 are the lunge and the arc, and 5-10 are END LAG -- six of eleven frames spent recovering. The lag is the cost of the move, so it is written as frames rather than implied: she keeps sliding forward after the blade has stopped mattering, stays low, and only stands up at the very end.",
+  "facing": "west",
+  "sword_deg": [
+    100,
+    118,
+    152,
+    192,
+    226,
+    246,
+    242,
+    236,
+    226,
+    208,
+    184
+  ],
+  "elbow": [
+    -40,
+    -62,
+    -40,
+    -14,
+    -4,
+    -10,
+    -26,
+    -38,
+    -48,
+    -52,
+    -46
+  ],
+  "torso": [
+    0,
+    12,
+    24,
+    30,
+    22,
+    12,
+    18,
+    22,
+    18,
+    10,
+    2
+  ],
+  "off_hand": {
+    "0": [
+      -26,
+      -92
+    ],
+    "1": [
+      -18,
+      -102
+    ],
+    "2": [
+      -30,
+      -86
+    ],
+    "3": [
+      -48,
+      -70
+    ],
+    "4": [
+      -56,
+      -62
+    ],
+    "5": [
+      -52,
+      -66
+    ],
+    "6": [
+      -44,
+      -74
+    ],
+    "7": [
+      -38,
+      -82
+    ],
+    "8": [
+      -32,
+      -88
+    ],
+    "9": [
+      -28,
+      -92
+    ],
+    "10": [
+      -26,
+      -94
+    ]
+  },
+  "body": {
+    "root_x": [
+      0,
+      -14,
+      60,
+      150,
+      220,
+      258,
+      272,
+      276,
+      276,
+      274,
+      272
+    ],
+    "root_y": [
+      0,
+      14,
+      26,
+      20,
+      10,
+      16,
+      34,
+      40,
+      36,
+      26,
+      12
+    ],
+    "near_leg_u": [
+      0,
+      30,
+      66,
+      90,
+      84,
+      72,
+      66,
+      56,
+      40,
+      22,
+      8
+    ],
+    "near_leg_l": [
+      0,
+      -18,
+      -38,
+      -50,
+      -48,
+      -42,
+      -40,
+      -34,
+      -24,
+      -13,
+      -4
+    ],
+    "far_leg_u": [
+      0,
+      14,
+      32,
+      46,
+      44,
+      38,
+      34,
+      28,
+      20,
+      11,
+      3
+    ],
+    "far_leg_l": [
+      0,
+      -2,
+      -4,
+      -5,
+      -5,
+      -5,
+      -4,
+      -4,
+      -3,
+      -2,
+      0
+    ],
+    "near_leg_foot": [
+      0,
+      4,
+      9,
+      12,
+      11,
+      9,
+      8,
+      7,
+      5,
+      3,
+      0
+    ]
+  },
+  "ground_contacts": {
+    "1": [
+      "near_leg_foot"
+    ],
+    "2": [
+      "near_leg_foot"
+    ],
+    "3": [
+      "near_leg_foot"
+    ],
+    "4": [
+      "near_leg_foot"
+    ],
+    "5": [
+      "near_leg_foot"
+    ],
+    "6": [
+      "near_leg_foot"
+    ],
+    "7": [
+      "near_leg_foot"
+    ],
+    "8": [
+      "near_leg_foot"
+    ],
+    "9": [
+      "near_leg_foot"
+    ],
+    "10": [
+      "near_leg_foot"
+    ]
+  },
+  "effect": "trail",
+  "trail": {
+    "window": 5,
+    "inner": 0.42,
+    "blur": 1.0,
+    "alpha": 160,
+    "core_alpha": 180,
+    "falloff": 1.35,
+    "body_rgb": [
+      150,
+      96,
+      232
+    ],
+    "core_rgb": [
+      216,
+      190,
+      252
+    ]
+  },
+  "hitbox": {
+    "active": [
+      2,
+      3,
+      4
+    ]
+  },
+  "invariants": [
+    "monotonic_increasing@0,5",
+    "starts_near:100"
+  ],
+  "pixel_invariants": [
+    "hitbox_in_front",
+    "feet_on_ground"
+  ],
+  "todo": "She slides forward on planted feet because the rig has no root rotation and no slide pose; a real dash attack skids, with the trailing leg dragging."
+}

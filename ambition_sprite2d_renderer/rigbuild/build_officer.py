@@ -11,6 +11,7 @@ from pathlib import Path
 from lxml import etree
 
 from . import build_catalog as bc
+from .annotated_side_rig import install_managed_block
 
 REPO = Path(__file__).resolve().parents[2]
 SRC = REPO / "assets/officer.svg"
@@ -110,10 +111,6 @@ ALTERNATES = {
 }
 
 
-def frag(text: str):
-    wrapper = f'<svg xmlns="{SVG}" xmlns:inkscape="{INK}">{text}</svg>'
-    return etree.fromstring(wrapper.encode())[0]
-
 
 def main() -> None:
     tree = etree.parse(str(SRC))
@@ -199,26 +196,7 @@ def main() -> None:
         parts=parts,
     )
 
-    # One managed block, laid out the way `svg_rig_tool` expects to find it:
-    # BEGIN, the catalog, the editor marker layer, END.
-    for node in list(root):
-        if isinstance(node.tag, type(etree.Comment)) and "AMBITION SVG RIG v1" in (node.text or ""):
-            root.remove(node)
-    old_meta = next((e for e in root if e.get("id") == "ambition-rig-metadata"), None)
-    if old_meta is not None:
-        root.remove(old_meta)
-    begin = etree.Comment(" BEGIN AMBITION SVG RIG v1 ")
-    begin.tail = "\n"
-    root.append(begin)
-    meta = frag(meta_text)
-    meta.tail = "\n"
-    root.append(meta)
-    markers = frag(markers_text)
-    markers.tail = "\n"
-    root.append(markers)
-    end = etree.Comment(" END AMBITION SVG RIG v1 ")
-    end.tail = "\n"
-    root.append(end)
+    install_managed_block(root, meta_text, markers_text)
     root.set(f"{{{SODIPODI}}}docname", "officer.svg")
 
     DST.parent.mkdir(parents=True, exist_ok=True)
