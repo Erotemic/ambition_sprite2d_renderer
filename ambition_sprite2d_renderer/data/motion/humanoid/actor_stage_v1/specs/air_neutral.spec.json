@@ -1,66 +1,36 @@
 {
   "clip": "air_neutral",
-  "note": "neutral air: two hits on a diagonal, like a down smash turned onto its side. First in front and BELOW her, then behind and ABOVE, the blade sweeping an ellipse round through the east between them. The two hits are separate windows -- one accumulating volume across both would claim the space the move only passes through.",
-  "facing": "west",
-  "airborne": true,
-  "sword_deg": [
-    170,
-    135,
-    90,
-    45,
-    0,
-    315
-  ],
-  "elbow": [
-    -46,
-    -20,
-    -6,
-    -6,
-    -18,
-    -36
-  ],
-  "torso": [
-    6,
-    10,
-    6,
-    0,
-    -8,
-    -14
-  ],
-  "effect": "trail",
-  "trail": {
-    "window": 4,
-    "inner": 0.46,
-    "blur": 0.9,
-    "alpha": 150,
-    "core_alpha": 170,
-    "falloff": 1.5,
-    "body_rgb": [
-      150,
-      96,
-      232
-    ],
-    "core_rgb": [
-      216,
-      190,
-      252
-    ]
+  "note": "Neutral air: a full circle, because half a gesture is no gesture.",
+  "strike": {
+    "base": "near_arm_l",
+    "tip": "near_arm_hand"
   },
+  "effect": "trail",
+  "facing": "east",
   "hitbox": {
     "active": [
-      [
-        1,
-        2
-      ],
-      [
-        4,
-        5
-      ]
-    ]
+      2,
+      3,
+      4
+    ],
+    "extend": 1.06
   },
-  "invariants": [
-    "monotonic_decreasing",
-    "starts_near:170"
-  ],
-  "todo": "No directional placement rule fits: the first hit is front-low and the second is behind-high, and the rules judge one direction per clip. Per-window rules are the fix when a second two-sided move needs them."
+  "trail": {
+    "window": 6,
+    "inner": 0.42,
+    "blur": 1.1,
+    "alpha": 196,
+    "core_alpha": 224,
+    "falloff": 1.2,
+    "body_rgb": [
+      246,
+      176,
+      92
+    ],
+    "core_rgb": [
+      255,
+      246,
+      222
+    ]
+  }
 }

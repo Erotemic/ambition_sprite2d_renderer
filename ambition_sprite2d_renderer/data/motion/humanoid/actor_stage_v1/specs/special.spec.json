@@ -1,6 +1,6 @@
 {
-  "clip": "dash_attack",
-  "note": "Dash attack: she gets under the ribs and keeps running.",
+  "clip": "special",
+  "note": "Monologue. It holds her still for as long as it holds everyone else.",
   "strike": {
     "base": "torso",
     "tip": "near_arm_hand"
@@ -10,8 +10,9 @@
   "hitbox": {
     "active": [
       3,
-      4
+      4,
+      5
     ],
-    "extend": 1.08
+    "extend": 1.14
   }
 }

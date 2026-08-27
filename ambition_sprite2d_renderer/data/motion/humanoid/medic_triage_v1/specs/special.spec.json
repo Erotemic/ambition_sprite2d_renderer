@@ -1,6 +1,6 @@
 {
-  "clip": "air_up",
-  "note": "Up air: both palms through the ceiling.",
+  "clip": "special",
+  "note": "Adrenaline. The only thing it hits is her.",
   "strike": {
     "base": "near_arm_l",
     "tip": "near_arm_hand"
@@ -9,21 +9,21 @@
   "facing": "east",
   "hitbox": {
     "active": [
-      3,
-      4
+      5,
+      6
     ],
-    "extend": 1.06
+    "extend": 1.02
   },
   "poke": {
-    "extend": 1.32,
-    "width": 7.0,
+    "extend": 0.9,
+    "width": 4.5,
     "waist": 0.58,
     "inner": 0.16,
-    "alpha": 150,
+    "alpha": 190,
     "core_alpha": 232,
     "blur": 1.5,
     "falloff": 2.2,
-    "window": 2,
+    "window": 1,
     "body_rgb": [
       176,
       236,

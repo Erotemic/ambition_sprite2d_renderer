@@ -1,109 +1,39 @@
 {
   "clip": "smash_down",
-  "note": "down smash: two low strikes, behind then in front. The blade never rises above horizontal.",
-  "sword_deg": [
-    100,
-    62,
-    28,
-    55,
-    90,
-    122,
-    152,
-    124
-  ],
-  "elbow": [
-    -35,
-    -12,
-    0,
-    -20,
-    -35,
-    -18,
-    0,
-    -28
-  ],
-  "torso": [
-    0,
-    -16,
-    -22,
-    -10,
-    0,
-    9,
-    17,
-    9
-  ],
-  "torso_shift": [
-    [
-      0,
-      0
-    ],
-    [
-      2,
-      1
-    ],
-    [
-      4,
-      2
-    ],
-    [
-      2,
-      1
-    ],
-    [
-      0,
-      0
-    ],
-    [
-      -2,
-      1
-    ],
-    [
-      -4,
-      2
-    ],
-    [
-      -2,
-      1
-    ]
-  ],
-  "grip_frames": [],
+  "note": "Down smash: straight down into the boards.",
+  "strike": {
+    "base": "near_arm_l",
+    "tip": "near_arm_hand"
+  },
+  "effect": "poke",
+  "facing": "east",
   "hitbox": {
     "active": [
-      2,
-      3,
-      4,
       5,
       6,
       7
     ],
-    "linger": 2,
-    "reach": 1.0
+    "extend": 1.06
   },
-  "invariants": [
-    "below_horizontal",
-    "symmetric_about:90@2,6",
-    "starts_near:100"
-  ],
-  "todo": "TORSO PIVOT NEEDED (new art). A LEAN is standing in for a PIVOT: the body should turn under the rear strike, which the side-view sprite cannot do.",
-  "facing": "west",
-  "pixel_invariants": [
-    "feet_on_ground"
-  ],
-  "trail": {
-    "window": 6,
-    "inner": 0.38,
-    "blur": 1.2,
+  "poke": {
+    "extend": 1.7,
+    "width": 7.5,
+    "waist": 0.52,
+    "inner": 0.1,
+    "alpha": 206,
+    "core_alpha": 240,
+    "blur": 0.9,
+    "falloff": 1.6,
+    "window": 3,
     "body_rgb": [
-      212,
-      104,
-      252
+      255,
+      214,
+      150
     ],
     "core_rgb": [
       255,
-      242,
-      255
-    ],
-    "alpha": 215,
-    "core_alpha": 225,
-    "falloff": 0.95
+      255,
+      250
+    ]
   }
 }

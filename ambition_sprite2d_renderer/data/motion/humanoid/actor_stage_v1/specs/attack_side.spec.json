@@ -1,65 +1,35 @@
 {
   "clip": "attack_side",
-  "note": "side tilt (f-tilt): a rising forward slash, low to high, no wind-up dip.",
-  "sword_deg": [
-    116,
-    140,
-    164,
-    194,
-    216,
-    234
-  ],
-  "elbow": [
-    -62,
-    -50,
-    -32,
-    0,
-    -22,
-    -48
-  ],
-  "torso": [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
-  ],
-  "grip_frames": [],
+  "note": "Side tilt: one long arm through the space in front of her, and the light a beat behind it.",
+  "strike": {
+    "base": "near_arm_l",
+    "tip": "near_arm_hand"
+  },
+  "effect": "trail",
+  "facing": "east",
   "hitbox": {
     "active": [
-      2,
       3,
       4
     ],
-    "linger": 2,
-    "reach": 0.85
+    "extend": 1.1
   },
-  "invariants": [
-    "monotonic_increasing",
-    "never_above:150"
-  ],
-  "facing": "west",
-  "pixel_invariants": [
-    "feet_on_ground",
-    "hitbox_in_front"
-  ],
   "trail": {
-    "window": 3,
-    "inner": 0.55,
-    "blur": 0.8,
+    "window": 5,
+    "inner": 0.42,
+    "blur": 1.1,
+    "alpha": 196,
+    "core_alpha": 224,
+    "falloff": 1.2,
     "body_rgb": [
-      150,
-      96,
-      232
+      246,
+      176,
+      92
     ],
     "core_rgb": [
-      216,
-      190,
-      252
-    ],
-    "alpha": 145,
-    "core_alpha": 165,
-    "falloff": 1.7
+      255,
+      246,
+      222
+    ]
   }
 }

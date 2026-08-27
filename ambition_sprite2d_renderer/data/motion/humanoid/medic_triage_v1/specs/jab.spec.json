@@ -1,6 +1,6 @@
 {
   "clip": "jab",
-  "note": "jab: a straight lead punch, in and back.",
+  "note": "Lead palm-heel. One clean trace and gone.",
   "strike": {
     "base": "near_arm_l",
     "tip": "near_arm_hand"
@@ -15,18 +15,18 @@
     "extend": 1.06
   },
   "poke": {
-    "extend": 1.34,
-    "width": 15.0,
-    "waist": 0.62,
+    "extend": 1.26,
+    "width": 5.5,
+    "waist": 0.58,
     "inner": 0.16,
-    "alpha": 175,
-    "core_alpha": 215,
-    "blur": 1.1,
-    "falloff": 2.1,
+    "alpha": 150,
+    "core_alpha": 232,
+    "blur": 1.5,
+    "falloff": 2.2,
     "window": 2,
     "body_rgb": [
-      226,
-      238,
+      176,
+      236,
       250
     ],
     "core_rgb": [

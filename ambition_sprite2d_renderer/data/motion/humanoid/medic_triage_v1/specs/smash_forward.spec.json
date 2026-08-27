@@ -1,6 +1,6 @@
 {
   "clip": "smash_forward",
-  "note": "forward smash: the full-commitment straight right.",
+  "note": "Forward smash: the defibrillator, discharged through a chest.",
   "strike": {
     "base": "near_arm_l",
     "tip": "near_arm_hand"
@@ -13,16 +13,68 @@
       7,
       8
     ],
-    "extend": 1.06
+    "extend": 1.08
   },
   "reentry": {
     "window": 3,
-    "spread": 0.82,
-    "extend": 1.1,
-    "alpha": 124,
-    "core_alpha": 228,
+    "spread": 0.9,
+    "extend": 1.16,
+    "alpha": 132,
+    "core_alpha": 240,
     "blur": 1.6,
-    "falloff": 1.9,
-    "trail": 0.95
+    "falloff": 1.8,
+    "trail": 0.95,
+    "core_rgb": [
+      255,
+      255,
+      255
+    ],
+    "shells": [
+      [
+        1.0,
+        [
+          14,
+          34,
+          46
+        ],
+        0.85
+      ],
+      [
+        0.86,
+        [
+          24,
+          96,
+          132
+        ],
+        1.0
+      ],
+      [
+        0.62,
+        [
+          64,
+          186,
+          224
+        ],
+        1.05
+      ],
+      [
+        0.4,
+        [
+          172,
+          238,
+          252
+        ],
+        1.05
+      ],
+      [
+        0.22,
+        [
+          255,
+          255,
+          255
+        ],
+        0.95
+      ]
+    ]
   }
 }

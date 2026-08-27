@@ -1,66 +1,35 @@
 {
   "clip": "attack_up",
-  "note": "up tilt: symmetric arc over the head, east to west, finishing near neutral.",
-  "sword_deg": [
-    350,
-    316,
-    288,
-    262,
-    226,
-    190
-  ],
-  "elbow": [
-    -55,
-    -30,
-    -10,
-    0,
-    -18,
-    -45
-  ],
-  "torso": [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0
-  ],
-  "grip_frames": [],
+  "note": "Up tilt: the arm thrown overhead on a held note.",
+  "strike": {
+    "base": "near_arm_l",
+    "tip": "near_arm_hand"
+  },
+  "effect": "trail",
+  "facing": "east",
   "hitbox": {
     "active": [
-      1,
-      2,
       3,
       4
     ],
-    "linger": 2,
-    "reach": 1.0
+    "extend": 1.08
   },
-  "invariants": [
-    "monotonic_decreasing",
-    "symmetric_about:270"
-  ],
-  "todo": "TORSO PIVOT MISSING. The rig has no torso-twist bone, so the whole sweep is carried by the near shoulder and elbow, forcing the arm across the head instead of the body turning under it. Re-author once a torso-pivot sprite exists; these angles fix the SHAPE and reach only.",
-  "facing": "west",
-  "pixel_invariants": [
-    "feet_on_ground"
-  ],
   "trail": {
-    "window": 3,
-    "inner": 0.55,
-    "blur": 0.8,
+    "window": 5,
+    "inner": 0.38,
+    "blur": 1.1,
+    "alpha": 196,
+    "core_alpha": 224,
+    "falloff": 1.2,
     "body_rgb": [
-      150,
-      96,
-      232
+      246,
+      176,
+      92
     ],
     "core_rgb": [
-      216,
-      190,
-      252
-    ],
-    "alpha": 145,
-    "core_alpha": 165,
-    "falloff": 1.7
+      255,
+      246,
+      222
+    ]
   }
 }

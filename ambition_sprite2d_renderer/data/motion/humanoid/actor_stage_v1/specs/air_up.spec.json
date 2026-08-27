@@ -1,63 +1,35 @@
 {
   "clip": "air_up",
-  "note": "up air: the up tilt's symmetric arc over the head, east to west, landing entirely above her.",
-  "facing": "west",
-  "airborne": true,
-  "sword_deg": [
-    345,
-    315,
-    285,
-    255,
-    225,
-    195
-  ],
-  "elbow": [
-    -40,
-    -20,
-    -6,
-    -6,
-    -18,
-    -34
-  ],
-  "torso": [
-    6,
-    2,
-    0,
-    0,
-    -2,
-    -6
-  ],
-  "effect": "trail",
-  "trail": {
-    "window": 4,
-    "inner": 0.46,
-    "blur": 0.9,
-    "alpha": 150,
-    "core_alpha": 170,
-    "falloff": 1.5,
-    "body_rgb": [
-      150,
-      96,
-      232
-    ],
-    "core_rgb": [
-      216,
-      190,
-      252
-    ]
+  "note": "Up air: a rising cut.",
+  "strike": {
+    "base": "near_arm_l",
+    "tip": "near_arm_hand"
   },
+  "effect": "trail",
+  "facing": "east",
   "hitbox": {
     "active": [
-      2,
       3,
       4
-    ]
+    ],
+    "extend": 1.08
   },
-  "invariants": [
-    "monotonic_decreasing",
-    "symmetric_about:270"
-  ],
-  "pixel_invariants": [
-    "hitbox_above"
-  ]
+  "trail": {
+    "window": 5,
+    "inner": 0.34,
+    "blur": 1.3,
+    "alpha": 214,
+    "core_alpha": 232,
+    "falloff": 0.95,
+    "body_rgb": [
+      252,
+      148,
+      122
+    ],
+    "core_rgb": [
+      255,
+      250,
+      238
+    ]
+  }
 }

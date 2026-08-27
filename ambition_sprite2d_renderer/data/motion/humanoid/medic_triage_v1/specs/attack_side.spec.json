@@ -1,33 +1,33 @@
 {
   "clip": "attack_side",
-  "note": "side tilt: a rising hook, low to high.",
+  "note": "Forward tilt: a shove that moves a body rather than hurting one.",
   "strike": {
     "base": "near_arm_l",
     "tip": "near_arm_hand"
   },
-  "effect": "wind",
+  "effect": "poke",
   "facing": "east",
   "hitbox": {
     "active": [
-      2,
       3,
       4
     ],
-    "extend": 1.06
+    "extend": 1.08
   },
-  "wind": {
-    "window": 3,
-    "inner": 0.24,
-    "blur": 0.7,
+  "poke": {
+    "extend": 1.44,
+    "width": 8.0,
+    "waist": 0.58,
+    "inner": 0.16,
     "alpha": 150,
-    "core_alpha": 185,
-    "falloff": 2.0,
-    "streaks": 4,
-    "spread": 0.46,
+    "core_alpha": 232,
+    "blur": 1.5,
+    "falloff": 2.2,
+    "window": 3,
     "body_rgb": [
-      188,
-      224,
-      246
+      176,
+      236,
+      250
     ],
     "core_rgb": [
       255,

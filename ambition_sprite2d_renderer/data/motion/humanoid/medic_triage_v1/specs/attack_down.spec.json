@@ -1,6 +1,6 @@
 {
   "clip": "attack_down",
-  "note": "down tilt: a low sweeping kick at the shins.",
+  "note": "Down tilt: a leg check at the ankle.",
   "strike": {
     "base": "near_leg_l",
     "tip": "near_leg_foot"
@@ -10,28 +10,9 @@
   "hitbox": {
     "active": [
       2,
-      3
+      3,
+      4
     ],
-    "extend": 1.06
-  },
-  "wind": {
-    "window": 3,
-    "inner": 0.24,
-    "blur": 0.7,
-    "alpha": 150,
-    "core_alpha": 185,
-    "falloff": 2.0,
-    "streaks": 4,
-    "spread": 0.46,
-    "body_rgb": [
-      188,
-      224,
-      246
-    ],
-    "core_rgb": [
-      255,
-      255,
-      255
-    ]
+    "extend": 1.05
   }
 }

@@ -1,74 +1,38 @@
 {
   "clip": "air_down",
-  "note": "down air: the up air inverted -- the same symmetric arc, swept UNDER her instead of over, east through straight-down to west. The torso and pelvis roll into it so the reach underneath is body motion and not just a long arm.",
-  "facing": "west",
-  "airborne": true,
-  "sword_deg": [
-    15,
-    45,
-    75,
-    105,
-    135,
-    165
-  ],
-  "elbow": [
-    -38,
-    -18,
-    -4,
-    -4,
-    -16,
-    -34
-  ],
-  "torso": [
-    -8,
-    -4,
-    0,
-    4,
-    8,
-    10
-  ],
-  "body": {
-    "pelvis": [
-      -6,
-      -3,
-      0,
-      3,
-      6,
-      8
-    ]
+  "note": "Down air: through the floor of the stage. It spikes.",
+  "strike": {
+    "base": "near_arm_l",
+    "tip": "near_arm_hand"
   },
-  "effect": "trail",
-  "trail": {
-    "window": 4,
-    "inner": 0.46,
-    "blur": 0.9,
-    "alpha": 150,
-    "core_alpha": 170,
-    "falloff": 1.5,
-    "body_rgb": [
-      150,
-      96,
-      232
-    ],
-    "core_rgb": [
-      216,
-      190,
-      252
-    ]
-  },
+  "effect": "poke",
+  "facing": "east",
   "hitbox": {
     "active": [
-      2,
-      3,
-      4
-    ]
+      4,
+      5
+    ],
+    "extend": 1.06
   },
-  "invariants": [
-    "monotonic_increasing",
-    "symmetric_about:90"
-  ],
-  "pixel_invariants": [
-    "hitbox_below"
-  ],
-  "todo": "The roll is torso and pelvis only: the rig has no root ROTATION channel, just root_x/root_y, so she cannot actually tumble. A real down air rolls the whole body through the swing."
+  "poke": {
+    "extend": 1.75,
+    "width": 6.5,
+    "waist": 0.52,
+    "inner": 0.1,
+    "alpha": 206,
+    "core_alpha": 240,
+    "blur": 0.9,
+    "falloff": 1.6,
+    "window": 3,
+    "body_rgb": [
+      255,
+      214,
+      150
+    ],
+    "core_rgb": [
+      255,
+      255,
+      250
+    ]
+  }
 }

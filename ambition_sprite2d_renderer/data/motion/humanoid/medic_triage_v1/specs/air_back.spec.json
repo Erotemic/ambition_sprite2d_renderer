@@ -1,38 +1,17 @@
 {
   "clip": "air_back",
-  "note": "back air: a short rear elbow driven backwards.",
+  "note": "Back air: a blind elbow.",
   "strike": {
-    "base": "far_arm_u",
-    "tip": "far_arm_u"
+    "base": "near_arm_l",
+    "tip": "near_arm_hand"
   },
-  "effect": "poke",
+  "effect": "wind",
   "facing": "east",
   "hitbox": {
     "active": [
-      2,
-      3
+      3,
+      4
     ],
-    "extend": 1.1
-  },
-  "poke": {
-    "extend": 3.2,
-    "width": 20.0,
-    "waist": 0.5,
-    "inner": 0.95,
-    "alpha": 190,
-    "core_alpha": 224,
-    "blur": 1.2,
-    "falloff": 2.1,
-    "window": 2,
-    "body_rgb": [
-      226,
-      238,
-      250
-    ],
-    "core_rgb": [
-      255,
-      255,
-      255
-    ]
+    "extend": 1.06
   }
 }

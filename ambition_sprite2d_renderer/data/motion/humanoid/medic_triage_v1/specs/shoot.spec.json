@@ -1,6 +1,6 @@
 {
-  "clip": "air_up",
-  "note": "Up air: both palms through the ceiling.",
+  "clip": "shoot",
+  "note": "Tourniquet: a strap out flat, and what it catches comes back.",
   "strike": {
     "base": "near_arm_l",
     "tip": "near_arm_hand"
@@ -12,21 +12,21 @@
       3,
       4
     ],
-    "extend": 1.06
+    "extend": 1.4
   },
   "poke": {
-    "extend": 1.32,
-    "width": 7.0,
-    "waist": 0.58,
+    "extend": 2.3,
+    "width": 5.0,
+    "waist": 0.5,
     "inner": 0.16,
     "alpha": 150,
     "core_alpha": 232,
     "blur": 1.5,
     "falloff": 2.2,
-    "window": 2,
+    "window": 3,
     "body_rgb": [
-      176,
-      236,
+      210,
+      240,
       250
     ],
     "core_rgb": [

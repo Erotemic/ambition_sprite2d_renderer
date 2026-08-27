@@ -1,6 +1,6 @@
 {
-  "clip": "smash_forward",
-  "note": "Forward smash -- THE DUEL SCENE. The blade arrives with the lunge and leaves with it. There is no sword: there is a woman, a lunge, and the light agreeing with her.",
+  "clip": "shoot",
+  "note": "The line, thrown overhand. Nothing leaves her hand that you can see leaving it.",
   "strike": {
     "base": "near_arm_l",
     "tip": "near_arm_hand"
@@ -9,16 +9,15 @@
   "facing": "east",
   "hitbox": {
     "active": [
-      6,
-      7,
-      8
+      3,
+      4
     ],
-    "extend": 1.0
+    "extend": 1.5
   },
   "poke": {
-    "extend": 2.15,
-    "width": 7.0,
-    "waist": 0.52,
+    "extend": 2.9,
+    "width": 4.5,
+    "waist": 0.46,
     "inner": 0.1,
     "alpha": 206,
     "core_alpha": 240,
