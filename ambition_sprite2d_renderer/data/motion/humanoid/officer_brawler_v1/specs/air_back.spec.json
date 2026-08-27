@@ -6,7 +6,7 @@
     "tip": "far_arm_u"
   },
   "effect": "poke",
-  "facing": "east",
+  "facing": "west",
   "hitbox": {
     "active": [
       2,

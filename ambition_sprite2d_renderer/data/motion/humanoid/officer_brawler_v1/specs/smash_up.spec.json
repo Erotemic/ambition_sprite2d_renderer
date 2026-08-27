@@ -6,7 +6,7 @@
     "tip": "near_arm_hand"
   },
   "effect": "reentry",
-  "facing": "east",
+  "facing": "west",
   "hitbox": {
     "active": [
       3,

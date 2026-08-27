@@ -6,7 +6,7 @@
     "tip": "near_leg_foot"
   },
   "effect": "reentry",
-  "facing": "east",
+  "facing": "west",
   "hitbox": {
     "active": [
       3,

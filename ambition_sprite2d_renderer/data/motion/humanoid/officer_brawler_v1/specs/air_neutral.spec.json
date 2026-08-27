@@ -6,7 +6,7 @@
     "tip": "near_leg_foot"
   },
   "effect": "poke",
-  "facing": "east",
+  "facing": "west",
   "hitbox": {
     "active": [
       2,
