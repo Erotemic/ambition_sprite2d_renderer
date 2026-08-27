@@ -17,7 +17,9 @@ SPEC = SideRigSpec(
     # roster she stands next to.
     head_top_y=83.88,
     rig_root=(100.8, 283.5),
-    drop_layers=("reference-image",),
+    # `layer5` is an empty authoring layer left over from the drawing, with
+    # nothing in it to rig.
+    drop_layers=("reference-image", "layer5"),
 )
 
 

@@ -1,6 +1,6 @@
 {
   "clip": "special",
-  "note": "Adrenaline. The only thing it hits is her.",
+  "note": "Adrenaline. The only thing it hits is her, so it publishes no volume.",
   "strike": {
     "base": "near_arm_l",
     "tip": "near_arm_hand"
@@ -8,10 +8,6 @@
   "effect": "poke",
   "facing": "east",
   "hitbox": {
-    "active": [
-      5,
-      6
-    ],
     "extend": 1.02
   },
   "poke": {
@@ -33,6 +29,10 @@
       255,
       255,
       255
+    ],
+    "active": [
+      5,
+      6
     ]
   }
 }

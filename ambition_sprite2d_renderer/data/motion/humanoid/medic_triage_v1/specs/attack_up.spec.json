@@ -2,16 +2,18 @@
   "clip": "attack_up",
   "note": "Up tilt: both palms driving under a jaw.",
   "strike": {
-    "base": "torso",
+    "base": "near_arm_u",
     "tip": "near_arm_hand"
   },
   "effect": "wind",
   "facing": "east",
   "hitbox": {
+    "extend": 1.14,
     "active": [
+      2,
       3,
       4
     ],
-    "extend": 1.06
+    "inflate": 6.0
   }
 }

@@ -2,17 +2,18 @@
   "clip": "special",
   "note": "Monologue. It holds her still for as long as it holds everyone else.",
   "strike": {
-    "base": "torso",
+    "base": "near_arm_u",
     "tip": "near_arm_hand"
   },
   "effect": "wind",
   "facing": "east",
   "hitbox": {
+    "extend": 1.2,
     "active": [
       3,
       4,
       5
     ],
-    "extend": 1.14
+    "inflate": 7.0
   }
 }

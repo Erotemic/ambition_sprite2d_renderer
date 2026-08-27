@@ -53,6 +53,11 @@ RIG_TEMPLATE_NAMES = frozenset(
     {
         "author-rig-labels-joints.svg",
         "officer.svg",
+        # Annotated source art: these two already carry the rig VOCABULARY (part
+        # groups and a `rig-joints` layer) but not the managed catalog block,
+        # which `rigbuild.annotated_side_rig` derives into `data/characters/`.
+        "medic.svg",
+        "actor.svg",
     }
 )
 

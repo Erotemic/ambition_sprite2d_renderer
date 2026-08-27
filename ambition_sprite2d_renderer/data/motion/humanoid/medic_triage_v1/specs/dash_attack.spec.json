@@ -2,16 +2,19 @@
   "clip": "dash_attack",
   "note": "Dash attack: she gets under the ribs and keeps running.",
   "strike": {
-    "base": "torso",
+    "base": "near_arm_u",
     "tip": "near_arm_hand"
   },
   "effect": "wind",
   "facing": "east",
   "hitbox": {
+    "extend": 1.14,
     "active": [
+      2,
       3,
-      4
+      4,
+      5
     ],
-    "extend": 1.08
+    "inflate": 6.0
   }
 }

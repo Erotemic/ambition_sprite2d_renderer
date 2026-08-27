@@ -8,11 +8,13 @@
   "effect": "trail",
   "facing": "east",
   "hitbox": {
+    "extend": 1.16,
     "active": [
+      2,
       3,
       4
     ],
-    "extend": 1.08
+    "inflate": 6.0
   },
   "trail": {
     "window": 5,

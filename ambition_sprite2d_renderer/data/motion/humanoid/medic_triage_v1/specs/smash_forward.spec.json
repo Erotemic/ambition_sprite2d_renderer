@@ -8,12 +8,12 @@
   "effect": "reentry",
   "facing": "east",
   "hitbox": {
+    "extend": 1.08,
     "active": [
       6,
       7,
       8
-    ],
-    "extend": 1.08
+    ]
   },
   "reentry": {
     "window": 3,

@@ -716,6 +716,102 @@ See [`docs/design.md`](docs/design.md) for the architecture rationale
 and [`docs/ENTITY_TODOS.md`](docs/ENTITY_TODOS.md) for outstanding
 entity-sprite work.
 
+### Hand-drawn women, rigged by program: the Medic and the Actor
+
+Two characters are drawn by a person in Inkscape and rigged by a program. The
+file under `assets/` is the ART; the file under `data/characters/<name>/` is that
+art with a bone catalog and a marker layer built onto it, and `rigbuild` is the
+second half. Their art already carries the whole static rig -- one part group per
+rigid piece declaring its `data-rig-part` / `data-rig-bone` / `data-rig-z`, plus
+a `rig-joints` layer of measured joints -- so
+[`annotated_side_rig`](ambition_sprite2d_renderer/rigbuild/annotated_side_rig.py)
+derives only what a drawing cannot state: the pelvis' own pivot, the ground
+point, and the scale that puts a millimetre drawing into the shared library's
+671-unit standing height.
+
+```bash
+uv run python -m ambition_sprite2d_renderer.rigbuild.build_medic
+uv run python -m ambition_sprite2d_renderer.rigbuild.build_actor
+uv run python -m ambition_sprite2d_renderer.devtools.svg_rig_tool validate \
+    ambition_sprite2d_renderer/data/characters/medic/medic.svg
+uv run python scripts/check_character_reads.py medic actor
+uv run ambition-sprite2d-renderer sheet medic
+```
+
+⛔ **NEAR AND FAR COME FROM PAINT ORDER, NOT FROM THE LAYER NAME.** Both women
+face east, so what paints BEHIND the torso is her left and reads far. The art
+arrived with four limbs labelled the other way round, and the ids are now made to
+agree with the stack rather than with the labels.
+
+⛔⛔ **A DEPTH TINT MUST NOT BE ALPHA.** Group `opacity` reads as "one shade back"
+only because art is reviewed on white; in the published rig every part is
+rasterized to its OWN transparent raster, so a 0.88 far arm is not paler, it is
+SEE-THROUGH and the stage shows through it. The Actor's far-side tint is baked
+into opaque fills and strokes.
+
+#### What a pose file cannot tell you
+
+[`scripts/check_character_reads.py`](scripts/check_character_reads.py) measures
+three things on the published pixels, because none of them are facts about the
+angles that produced them:
+
+- **a limb may not show only its TIP**, far from its own joint. The Medic's shirt
+  is black and her arms are not, so with the far shoulder tucked behind the trunk
+  her forearm emerges past the shirt's edge and publishes as a fist growing out
+  of her hip -- while the silhouette stays one connected component, the limb stays
+  adjacent to the trunk, and the upper arm's pixels stay present. The measured
+  bound on her rig is `far_arm_u <= 95`: 54px of shoulder at the drawn rest
+  angle, 28 at 90, 13 from 100 up;
+- **a grounded row's lowest foot belongs on the floor.** Above it is an authored
+  lift and is reported, not failed; below it is always wrong;
+- **the silhouette is one piece.**
+
+⭐ **The bar is each drawing's own.** The Medic shows 54px of shoulder at rest and
+the Actor 12, because a cardigan panel hangs in front of hers -- one threshold
+would either pass every broken frame of the Medic's or condemn the Actor as she
+was drawn. The rest pose sets the bar per character, and what separates an
+orphaned limb from an honest one is whether the MIDDLE segment is on screen: the
+Actor's rear leg starts 15px from its hip in a lunge and reads perfectly, because
+a whole shin and boot come out from under the coat hem.
+
+#### Their movesets
+
+Both fork the polygon reference libraries rather than sharing them, and both
+publish through
+[`_authored_swing_fighter`](ambition_sprite2d_renderer/targets/characters/_authored_swing_fighter.py),
+which is the Officer's pipeline written down once: overscan for the poses, the
+further overscan the EFFECTS need, the effect composited per CLIP because a
+whoosh is not a frame-local fact, and the hit volume built from the same spec
+that drew it.
+
+| | Medic (`medic_triage_v1`) | Actor (`actor_stage_v1`) |
+|---|---|---|
+| forked from | `fighting_brawler_v1` | `fighting_polygon_v1` |
+| identity | field paramedic; push, lift, carry | performer; every gesture held |
+| hands | open palms, never a fist | one long line at a time |
+| light | cold white-cyan: a trace, then a discharge | warm amber stage light, lagging the gesture |
+| signature | ADRENALINE / TOURNIQUET / TRIAGE / RESCUE LIFT | MONOLOGUE / THE LINE / UNDERSTUDY / CURTAIN CALL |
+| forward smash | the defibrillator, both palms on one line | THE DUEL SCENE: a lunge with a blade of light |
+
+⭐ **The Actor has no sword part and is not getting one.** Her reach is the
+swing's own axis extended past her hand, and the hit volume is built from that
+same number -- so the blade a player sees IS the blade that hits them. It is a
+thin volume over a long reach on purpose: she trades area for distance.
+
+⛔⛔ **`reentry` IS FIRE UNLESS YOU SAY OTHERWISE.** Its default shells are a
+capsule's plasma sheath, so the Medic's defibrillator first published as a
+burning wedge. A character whose language is not heat must author its `shells`.
+
+⛔ **A two-frame active window is a two-frame hull**, so a fast limb live for two
+frames publishes a sliver whatever else the spec says; and a `poke` lens as wide
+as the limb is a card, not a lance.
+
+Neither woman has `torso_side` / `torso_back` art, so their libraries carry no
+shoulder-socket offsets -- the shared clips translate `near_arm_u` onto a TURNED
+torso's shoulder, which on a one-torso rig detaches the arm instead of
+foreshortening it. The torso visibility parameters are left in place and are
+inert, so restoring the turn is an ART step, not a motion edit.
+
 ### Label-driven traced humanoids and Noether's panelled dress
 
 Canonical traced humanoids normally use explicit `data-rig-part` /

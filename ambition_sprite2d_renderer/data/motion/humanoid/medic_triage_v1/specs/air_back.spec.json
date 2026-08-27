@@ -8,10 +8,12 @@
   "effect": "wind",
   "facing": "east",
   "hitbox": {
+    "extend": 1.2,
     "active": [
+      2,
       3,
       4
     ],
-    "extend": 1.06
+    "inflate": 8.0
   }
 }

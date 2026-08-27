@@ -8,11 +8,11 @@
   "effect": "poke",
   "facing": "east",
   "hitbox": {
+    "extend": 1.5,
     "active": [
       3,
       4
-    ],
-    "extend": 1.5
+    ]
   },
   "poke": {
     "extend": 2.9,
