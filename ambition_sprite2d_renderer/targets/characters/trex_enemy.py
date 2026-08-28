@@ -25,8 +25,8 @@ RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
 TARGET_NAME = "trex_enemy"
-FRAME_SIZE = (416, 320)
-WORK_FRAME_SIZE = (832, 640)
+FRAME_SIZE = (500, 380)
+WORK_FRAME_SIZE = (1000, 760)
 SUPER = 4
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 6, 120),
@@ -510,8 +510,8 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     pose = Pose(anim, frame_idx, nframes)
 
     root = (
-        WORK_FRAME_SIZE[0] * 0.33 + pose.root_x,
-        WORK_FRAME_SIZE[1] * 0.72 + pose.root_y + pose.bob,
+        WORK_FRAME_SIZE[0] * 0.4426 + pose.root_x,
+        WORK_FRAME_SIZE[1] * 0.6063 + pose.root_y + pose.bob,
     )
     body_angle = pose.body_tilt
 
