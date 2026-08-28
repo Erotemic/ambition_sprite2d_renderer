@@ -13,7 +13,7 @@ from typing import Iterable, Sequence
 
 RIG_SIZE = (128, 192)
 RENDER_SCALE = 3
-PADDING = 18
+PADDING = 45
 
 
 def _px(value: float) -> int:
