@@ -20,7 +20,11 @@ def test_generic_world_fx_is_discovered_as_a_sprite_target():
 def test_generic_world_fx_catalog_is_complete_and_varied():
     row_names = {name for name, _frames, _duration in fx.ROWS}
     assert row_names == set(fx.EFFECT_SPECS)
-    assert len(row_names) == 18
+    # ⛔ A FLOOR, NOT A COUNT. `== 18` broke the moment a nineteenth effect was
+    # authored, which is content growing rather than anything going wrong — and
+    # it guarded nothing the set-equality above does not already guard. What is
+    # worth pinning is that the catalog cannot SHRINK back to a token few.
+    assert len(row_names) >= 18
     assert len({spec["family"] for spec in fx.EFFECT_SPECS.values()}) >= 9
     assert fx.EFFECT_SPECS["dash_streak"]["orientation"] == "positive_x_is_forward"
     assert fx.EFFECT_SPECS["water_splash"]["placement"] == "surface_contact"

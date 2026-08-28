@@ -59,17 +59,47 @@ REACHES_BACKWARD = {
 BEHIND_SLACK_PX = 10.0
 
 
-def check_sheet(sheet_dir: pathlib.Path, target: str, verbose: bool) -> list[str]:
-    """Every published hit polygon must sit ahead of the body that throws it."""
+def check_sheet(
+    sheet_dir: pathlib.Path, target: str, verbose: bool, required: bool = False
+) -> list[str]:
+    """Every published hit polygon must sit ahead of the body that throws it.
+
+    ⛔⛔ ABSENCE IS NOT SUCCESS FOR A TARGET SOMEBODY NAMED. A missing manifest
+    returned no findings, so `check_clip_handedness.py officer` on a tree with no
+    generated sheets — which is every clean checkout, since they are gitignored —
+    counted the request and skipped the check, then printed
+    `OK: 1 sheet(s), every clip reaches forward`.
+
+    ⚠ `required` is the distinction, and it is not pedantry: the DEFAULT
+    population is a glob over every published sheet, and most of them are not
+    rigged fighters — they publish no per-animation hit polygons and never
+    will. Failing those would make the checker permanently red and therefore
+    ignored. So a sheet nobody asked about may be silently unrigged; a sheet
+    somebody NAMED may not.
+    """
     manifest = sheet_dir / f"{target}_spritesheet.yaml"
     if not manifest.exists():
-        return []
+        if not required:
+            return []
+        return [
+            f"{target}: no `{manifest.name}` under {sheet_dir} — the sheet is "
+            f"not generated, so nothing was checked. Run "
+            f"`./regen_sprites.sh --target {target}` first."
+        ]
     doc = yaml.safe_load(manifest.read_text())
     metrics = doc.get("body_metrics") or {}
     animations = metrics.get("animations") or {}
     bbox = metrics.get("body_pixel_bbox")
     if not animations or not bbox:
-        return []
+        if not required:
+            return []
+        missing = "animations" if bbox else "body_pixel_bbox"
+        return [
+            f"{target}: its manifest publishes no `body_metrics.{missing}`, so "
+            f"no clip could be judged against the body. A rigged sheet publishes "
+            f"both — if this target is not rigged, it does not belong on a "
+            f"handedness run."
+        ]
 
     ron_path = sheet_dir / f"{target}_spritesheet.ron"
     ron = ron_path.read_text() if ron_path.exists() else ""
@@ -201,11 +231,24 @@ def main() -> int:
         for p in root.glob("*_spritesheet.yaml")
     )
 
+    # ⛔⛔ AND AN EMPTY DEFAULT RUN IS NOT A PASS EITHER. The default population is
+    # a glob over generated files; on a clean tree it finds none, and reporting
+    # that as success is the same defect one level up.
+    if not targets:
+        print(
+            f"FAIL no `*_spritesheet.yaml` under {root} — the sheets are "
+            "generated and gitignored, so this checker had nothing to read. "
+            "Run `./regen_sprites.sh` first, or name targets explicitly."
+        )
+        return 1
+
     findings = []
     for target in targets:
         if args.verbose:
             print(f"{target}:")
-        findings.extend(check_sheet(root, target, args.verbose))
+        findings.extend(
+            check_sheet(root, target, args.verbose, required=bool(args.targets))
+        )
 
     if not findings:
         print(f"OK: {len(targets)} sheet(s), every clip reaches forward.")
