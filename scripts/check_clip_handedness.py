@@ -162,7 +162,7 @@ def check_sheet(
 LIBRARY_FOR_TARGET = {
     "officer": "officer_brawler_v1",
     "medic": "medic_triage_v1",
-    "actor": "actor_stage_v1",
+    "performer": "performer_stage_v1",
     "author": "author_pen_v1",
     "pointed_polygon": "fighting_polygon_v1",
     "pugnacious_polygon": "fighting_brawler_v1",

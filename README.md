@@ -731,10 +731,10 @@ point, and the scale that puts a millimetre drawing into the shared library's
 
 ```bash
 uv run python -m ambition_sprite2d_renderer.rigbuild.build_medic
-uv run python -m ambition_sprite2d_renderer.rigbuild.build_actor
+uv run python -m ambition_sprite2d_renderer.rigbuild.build_performer
 uv run python -m ambition_sprite2d_renderer.devtools.svg_rig_tool validate \
     ambition_sprite2d_renderer/data/characters/medic/medic.svg
-uv run python scripts/check_character_reads.py medic actor
+uv run python scripts/check_character_reads.py medic performer
 uv run ambition-sprite2d-renderer sheet medic
 ```
 
@@ -746,7 +746,7 @@ agree with the stack rather than with the labels.
 ⛔⛔ **A DEPTH TINT MUST NOT BE ALPHA.** Group `opacity` reads as "one shade back"
 only because art is reviewed on white; in the published rig every part is
 rasterized to its OWN transparent raster, so a 0.88 far arm is not paler, it is
-SEE-THROUGH and the stage shows through it. The Actor's far-side tint is baked
+SEE-THROUGH and the stage shows through it. The Performer's far-side tint is baked
 into opaque fills and strokes.
 
 #### What a pose file cannot tell you
@@ -834,7 +834,7 @@ further overscan the EFFECTS need, the effect composited per CLIP because a
 whoosh is not a frame-local fact, and the hit volume built from the same spec
 that drew it.
 
-| | Medic (`medic_triage_v1`) | Actor (`actor_stage_v1`) |
+| | Medic (`medic_triage_v1`) | Performer (`performer_stage_v1`) |
 |---|---|---|
 | forked from | `fighting_brawler_v1` | `fighting_polygon_v1` |
 | identity | field paramedic; push, lift, carry | performer; every gesture held |
@@ -844,7 +844,7 @@ that drew it.
 | forward smash | the defibrillator, both palms on one line | THE DUEL SCENE: a lunge with a blade of light |
 | the pair | one special SPENDS her margin, the other kneels and repays it | down is a trap door, up is a flyline: the stage moves her |
 
-⭐ **The Actor has no sword part and is not getting one.** Her reach is the
+⭐ **The Performer has no sword part and is not getting one.** Her reach is the
 swing's own axis extended past her hand, and the hit volume is built from that
 same number -- so the blade a player sees IS the blade that hits them. It is a
 thin volume over a long reach on purpose: she trades area for distance.

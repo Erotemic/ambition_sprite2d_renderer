@@ -1,11 +1,11 @@
 {
   "schema": "ambition-character-motion-v1",
-  "character": "actor",
+  "character": "performer",
   "rig": {
-    "svg": "actor.svg",
+    "svg": "performer.svg",
     "view": "side"
   },
-  "motion_library": "../../motion/humanoid/actor_stage_v1/library.json",
+  "motion_library": "../../motion/humanoid/performer_stage_v1/library.json",
   "motion_source_facing": "east",
   "render": {
     "frame_px": [

@@ -16,7 +16,7 @@ reading the angles and believing them.
           near one. What separates the two is DISTANCE: a thigh hidden behind a
           shin still has art within a pixel or two of the hip, and a forearm
           orphaned at the hip does not -- and what tells those apart is whether
-          the MIDDLE segment is on screen. The Actor's rear leg starts 15px from
+          the MIDDLE segment is on screen. The Performer's rear leg starts 15px from
           the hip and reads perfectly, because a whole shin and boot come out
           from under the coat hem. The Medic's far arm chambered behind her shirt
           shows a hand and nothing else: a fist growing out of her own hip. The
@@ -33,7 +33,7 @@ reading the angles and believing them.
           pivot is simply wrong.
 
 Usage:
-    uv run python scripts/check_character_reads.py medic actor
+    uv run python scripts/check_character_reads.py medic performer
     uv run python scripts/check_character_reads.py medic --clips idle,jab --strict
 """
 from __future__ import annotations

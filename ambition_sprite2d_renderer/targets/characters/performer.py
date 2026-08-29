@@ -1,4 +1,4 @@
-"""SVG-rigged Actor: a performer who commits to the role completely.
+"""SVG-rigged Performer: a performer who commits to the role completely.
 
 Hand-drawn, rigged by program, and bound to the Pointed Polygon's BODY without
 his sword: long lines, weight on the back foot, every gesture held a beat too
@@ -28,7 +28,7 @@ against the Medic's 54.** That is the costume, not a defect, and it decides how
 she is posed -- the NEAR arm carries every line and the far one counterweights.
 `scripts/check_character_reads.py` measures each character against her OWN
 drawing for exactly this reason; one threshold would either pass every broken
-frame of the Medic's or condemn the Actor as she was drawn.
+frame of the Medic's or condemn the Performer as she was drawn.
 """
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ from pathlib import Path
 
 from ._authored_swing_fighter import AuthoredSwingFighter
 
-TARGET_NAME = "actor"
+TARGET_NAME = "performer"
 _FIGHTER = AuthoredSwingFighter(TARGET_NAME)
 
 POSE_HIGHLIGHTS = (
@@ -56,7 +56,7 @@ POSE_HIGHLIGHTS = (
 ACTOR_METADATA = {
     "actor": {
         "character_id": TARGET_NAME,
-        "display_name": "The Actor",
+        "display_name": "The Performer",
     },
     "authoring_description": {
         "concept": (
@@ -123,7 +123,7 @@ ACTOR_METADATA = {
     },
     "visual": {
         "default_pose": "idle",
-        "canonical_source": "data/characters/actor/actor.svg",
+        "canonical_source": "data/characters/performer/performer.svg",
         "pose_reference": list(POSE_HIGHLIGHTS),
     },
     "actions": {"default_preset": TARGET_NAME, "archetype": "sword_humanoid"},

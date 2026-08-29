@@ -1,4 +1,4 @@
-"""Assemble the Actor's character rig SVG from the authored art source."""
+"""Assemble the Performer's character rig SVG from the authored art source."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -8,9 +8,9 @@ from .annotated_side_rig import SideRigSpec, build
 REPO = Path(__file__).resolve().parents[2]
 
 SPEC = SideRigSpec(
-    name="actor",
-    view_id="view-actor-side-east",
-    source_label="Character - Actor",
+    name="performer",
+    view_id="view-performer-side-east",
+    source_label="Character - Performer",
     facing="east",
     # Crown of the skull, NOT of the updo. The piled bun is a hairstyle she can
     # take down; measuring from it would publish her a head shorter than the

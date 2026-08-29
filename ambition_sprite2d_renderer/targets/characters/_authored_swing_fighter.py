@@ -1,6 +1,6 @@
 """The publication pipeline shared by SVG-rigged fighters with AUTHORED swings.
 
-The Officer, the Medic and the Actor differ in exactly three things: which rig
+The Officer, the Medic and the Performer differ in exactly three things: which rig
 they bind, which motion library they bind it to, and what their swings do to the
 air. Everything between -- measuring the overscan a pose needs, measuring the
 FURTHER overscan its effect needs, compositing that effect per CLIP rather than

@@ -57,7 +57,7 @@ RIG_TEMPLATE_NAMES = frozenset(
         # groups and a `rig-joints` layer) but not the managed catalog block,
         # which `rigbuild.annotated_side_rig` derives into `data/characters/`.
         "medic.svg",
-        "actor.svg",
+        "performer.svg",
     }
 )
 

@@ -1,6 +1,6 @@
 {
   "schema": "ambition-motion-library-v1",
-  "id": "humanoid/actor_stage_v1",
+  "id": "humanoid/performer_stage_v1",
   "rig_profile": "humanoid-articulated-v1",
   "space": {
     "linear_unit": "rig_user_unit",
