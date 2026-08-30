@@ -1316,7 +1316,7 @@ def render_sheet(source: FrameSource, out_dir: Path):
     # Surface the most common silent-publish-failure mode (character
     # sheets that lack any Idle alias and would render as a
     # colored-rectangle placeholder in-game) as a stderr warning so
-    # the renderer author sees it during `regen_sprites.sh`.
+    # the renderer author sees it during `scripts/regen/sprites.sh`.
     warning = diagnose_idle_coverage(target, [name for name, _, _ in rows])
     if warning:
         import sys as _sys

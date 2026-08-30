@@ -284,7 +284,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
 def install(render_dir: str | Path, dest_root: str | Path) -> Iterable[Path]:
     """Install under ``assets/sprites/entities`` from the normal sprite root.
 
-    ``regen_sprites.sh --target sanic_support_entities`` passes the normal
+    ``scripts/regen/sprites.sh --target sanic_support_entities`` passes the normal
     ``assets/sprites`` root for non-``entities`` targets. Keep this target
     additive by giving it its own install hook instead of editing the shell
     script's special cases.

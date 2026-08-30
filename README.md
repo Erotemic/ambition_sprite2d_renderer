@@ -211,7 +211,7 @@ cd ../..
 Then profile a complete uncached regeneration with the ordinary script:
 
 ```bash
-LINE_PROFILE=1 ./regen_sprites.sh --force
+LINE_PROFILE=1 ./scripts/regen/sprites.sh --force
 ```
 
 The shell orchestrator profiles only expensive sprite-renderer subprocesses;
@@ -244,8 +244,8 @@ tools/ambition_sprite2d_renderer/.venv/bin/python \
 For a faster first pass, isolate one target or skip atlas repacking:
 
 ```bash
-LINE_PROFILE=1 ./regen_sprites.sh --target pipi_tau
-AMBITION_ULTRAPACK=0 LINE_PROFILE=1 ./regen_sprites.sh --force
+LINE_PROFILE=1 ./scripts/regen/sprites.sh --target pipi_tau
+AMBITION_ULTRAPACK=0 LINE_PROFILE=1 ./scripts/regen/sprites.sh --force
 ```
 
 For SVG-rigged characters, independent part rotations are prepared concurrently

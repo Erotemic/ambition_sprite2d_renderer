@@ -12,7 +12,7 @@ Consumers:
   documents are its file format.
 - ``targets/characters/rigged.py`` — auto-registers every document under
   ``targets/characters/rigged/`` as a sheet target, so GUI-authored
-  characters publish through ``./regen_sprites.sh --target <name>`` like
+  characters publish through ``./scripts/regen/sprites.sh --target <name>`` like
   everything else.
 
 Document shape (all geometry in base-frame pixels, y down, facing +x)::

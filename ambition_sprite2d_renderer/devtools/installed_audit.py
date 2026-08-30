@@ -37,7 +37,7 @@ def faction_claims() -> Dict[str, str]:
     """Producer class 3, resolved from data rather than from a copied list.
 
     ``draw-factions`` renders every character declared in
-    ``configs/factions/music_factions.yaml``; ``regen_sprites.sh`` then copies a
+    ``configs/factions/music_factions.yaml``; ``scripts/regen/sprites.sh`` then copies a
     subset into the install root. The config is the declaration, so read it
     instead of restating three filenames here — a hand-copied list is a fresh
     drift source, and the drift it causes is "the audit calls a live sheet
@@ -79,9 +79,9 @@ def faction_claims() -> Dict[str, str]:
 #: unclaimed because this tool cannot see its producer is precisely the mistake
 #: the module docstring exists to prevent.
 UNAUDITED_SUBDIRS: Mapping[str, str] = {
-    "backgrounds": "written by regen_backgrounds.sh, not by a sprite target",
+    "backgrounds": "written by scripts/regen/backgrounds.sh, not by a sprite target",
     "props": (
-        "written by regen_sprites.sh, which copies selected targets' "
+        "written by scripts/regen/sprites.sh, which copies selected targets' "
         "`*_canonical_transparent.png` in under runtime basenames"
     ),
 }

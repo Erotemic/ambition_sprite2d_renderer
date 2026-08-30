@@ -5,7 +5,7 @@ editor's publish directory) becomes a multi-target entry named after the
 document's ``name`` field, so GUI-authored characters render and install
 through the standard pipeline::
 
-    ./regen_sprites.sh --target <doc name>
+    ./scripts/regen/sprites.sh --target <doc name>
 
 Loose rig documents are a fallback publication surface. A dedicated Python
 character module with the same target name always wins; the loose document can

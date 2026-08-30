@@ -84,7 +84,7 @@ def check_sheet(
         return [
             f"{target}: no `{manifest.name}` under {sheet_dir} — the sheet is "
             f"not generated, so nothing was checked. Run "
-            f"`./regen_sprites.sh --target {target}` first."
+            f"`./scripts/regen/sprites.sh --target {target}` first."
         ]
     doc = yaml.safe_load(manifest.read_text())
     metrics = doc.get("body_metrics") or {}
@@ -238,7 +238,7 @@ def main() -> int:
         print(
             f"FAIL no `*_spritesheet.yaml` under {root} — the sheets are "
             "generated and gitignored, so this checker had nothing to read. "
-            "Run `./regen_sprites.sh` first, or name targets explicitly."
+            "Run `./scripts/regen/sprites.sh` first, or name targets explicitly."
         )
         return 1
 

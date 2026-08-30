@@ -9,7 +9,7 @@ output/
 .equivalence-baseline/
 agent-scratch/
 
-# Per-sheet regen cache (regen_sprites.sh).
+# Per-sheet regen cache (scripts/regen/sprites.sh).
 .cache/
 
 # Local Godot editor/runtime binaries.
@@ -48,7 +48,7 @@ temp/
 *.orig
 *.rej
 
-# Optional line_profiler reports (LINE_PROFILE=1 ./regen_sprites.sh).
+# Optional line_profiler reports (LINE_PROFILE=1 ./scripts/regen/sprites.sh).
 .profiles/
 *.lprof
 profile_output*.txt

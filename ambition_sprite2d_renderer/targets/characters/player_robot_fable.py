@@ -12,7 +12,7 @@ visor glow, purple accents). Render rows are idle / walk / slash only —
 the runtime maps missing rows to idle.
 
     python -m ambition_sprite2d_renderer publish player_robot_fable
-    ./regen_sprites.sh --target player_robot_fable
+    ./scripts/regen/sprites.sh --target player_robot_fable
 """
 
 from __future__ import annotations

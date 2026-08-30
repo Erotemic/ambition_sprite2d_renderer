@@ -64,7 +64,7 @@ def doc_to_python(doc: RigDocument) -> str:
     a("Structure mirrors targets/characters/player_robot_fable.py (the")
     a("hand-written reference for the bone toolkit). Everything here is")
     a("plain code: edit bones, parts, and clips directly, then publish via")
-    a(f"`./regen_sprites.sh --target {doc.name}` after dropping this file")
+    a(f"`./scripts/regen/sprites.sh --target {doc.name}` after dropping this file")
     a("under targets/characters/. If the source .rig.json is also saved in")
     a("targets/characters/rigged/ under the same name, that registration")
     a('shadows this module — keep one or rename.\n"""')
