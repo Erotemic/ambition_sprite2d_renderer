@@ -126,6 +126,36 @@ def _validate_adapter_jobs(jobs: list[tuple[Path, CharacterJob]]) -> None:
                 f"available=[{available}]"
             )
 
+    # ⛔⛔ AND THE FIELD THAT DECIDES WHICH FILE GETS WRITTEN IS THE OUTPUT STEM,
+    # NOT THE TARGET. The check above rejects a config whose `target:` is
+    # module-authored; it cannot see a config that names a PERFECTLY LEGAL rig
+    # and then publishes it under a name a module target owns.
+    #
+    # ⚠ That is not hypothetical. `configs/player_robot_v3.yaml` declared
+    # `target: robot` — a real generator — with `output_name: player_robot_v3`,
+    # which is a module target (the SVG rig). Both rendered. A single-target
+    # publish wrote the SVG rig's 3072x2468 sheet; a full `draw_all` then wrote
+    # the robot rig over the top of it at 2815x2312, byte-identical to
+    # `player_robot_v2`. The game drew the wrong body for a day, and every
+    # targeted fix was undone by the next full run.
+    #
+    # The old assumption — "module targets win discovery conflicts" — was never
+    # enforced anywhere. This is where it is enforced.
+    # ⭐ THE INVARIANT IS "ONE SHEET, ONE RENDERER" — not "no name may appear
+    # twice". A config that publishes as `sandbag` while using the `sandbag`
+    # generator is fine: the module supplies the generator the config drives, so
+    # both routes draw the SAME art. What must never happen is two DIFFERENT
+    # renderers writing one file.
+    for path, job in jobs:
+        stem = job.output_stem(path)
+        if stem in module_targets and job.target != stem:
+            problems.append(
+                f"{path}: publishes as {stem!r} — a module target — but renders "
+                f"with the {job.target!r} generator. Two different renderers "
+                "would write the same sheet and the last one to run wins. "
+                f"Delete this config and render by target name (`publish {stem}`)."
+            )
+
     if problems:
         details = "\n".join(f"  - {problem}" for problem in problems)
         raise ValueError(f"invalid adapter character config(s):\n{details}")

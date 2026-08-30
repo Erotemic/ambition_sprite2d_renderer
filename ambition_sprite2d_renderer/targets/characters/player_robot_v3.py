@@ -1,9 +1,17 @@
 """Shipping player robot, rendered from the user-authored SVG paper-doll rig.
 
-This module intentionally has the same target name as ``configs/player_robot_v3.yaml``.
-Module targets win discovery conflicts, so publishing ``player_robot_v3`` now uses
-this SVG/bone rig while preserving the existing runtime filenames, animation
-row vocabulary, timings, actor id, and attack hitbox metadata.
+This is the ONLY definition of ``player_robot_v3``. It preserves the runtime
+filenames, animation row vocabulary, timings, actor id and attack hitbox
+metadata of the procedural config it replaced.
+
+⛔ There used to be a ``configs/player_robot_v3.yaml`` beside it, kept on the
+assumption that "module targets win discovery conflicts". They do not win
+reliably: that YAML declared ``target: robot`` while claiming
+``output_name: player_robot_v3``, so a SINGLE-target publish rendered this SVG
+rig (3072x2468) and a FULL publish rendered the robot rig over the top of it
+(2815x2312, byte-identical to ``player_robot_v2``). The game drew the wrong body
+and each targeted fix was undone by the next full run. The YAML is deleted; do
+not reintroduce a config under a name a module target already claims.
 """
 
 from __future__ import annotations
