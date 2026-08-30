@@ -32,10 +32,10 @@ Verification state at the end of this pass:
   `load_jobs()` globs for CharacterJob YAMLs and crashed every bulk job load
   with a bare `KeyError: 'target'`. Moved to `data/`;
   `CharacterJob.load` now names the offending file when a non-job YAML sneaks
-  into `configs/`. Parent's `regen_sprites.sh` and the planning doc updated to
+  into `configs/`. Parent's `scripts/regen/sprites.sh` and the planning doc updated to
   the new path.
 - **Per-sheet regen cache went stale silently** (parent repo,
-  `regen_sprites.sh::compute_core_shared`) — it hashed package `*.py` at
+  `scripts/regen/sprites.sh::compute_core_shared`) — it hashed package `*.py` at
   `-maxdepth 1`, but the shared infra had moved into `core/ authoring/
   registry/ cli/` subpackages, so those three remaining top-level files were
   the *only* "shared infra" in per-sheet cache keys. Editing e.g.
@@ -67,7 +67,7 @@ Verification state at the end of this pass:
 - **`svg_canonicalize` sodipodi namespace typo** (`sodipodi-0.dtd` →
   `sodipodi-0.0.dtd`) put `sodipodi:role` in the wrong attribute sort band.
 - **Fresh-clone gap** (parent repo): seven runtime-referenced targets were
-  registered in the tool but absent from `regen_sprites.sh`'s
+  registered in the tool but absent from `scripts/regen/sprites.sh`'s
   `tackon_targets` + `expected_files` — `cut_rope_anvil/piano/rope`,
   `generic_explosions`, `smirking_behemoth_boss`, `stochastic_parrot`,
   `imperfect_cellular_automaton`. On a fresh clone these silently fell back
@@ -298,7 +298,7 @@ overtaken by events, fold `frameset/pipeline` into `entities.py` and delete
 
 ### 2.9 Registry-driven regen (kill the hand lists) — P2, parent repo
 
-`regen_sprites.sh` hand-maintains `tackon_targets` + `expected_files`; §1.1
+`scripts/regen/sprites.sh` hand-maintains `tackon_targets` + `expected_files`; §1.1
 patched seven omissions, but the class of bug survives. Recipe:
 
 1. Replace the `tackon_targets` loop with `publish` (no target = bulk over
@@ -319,7 +319,7 @@ tolerate their absence), and (b) the wired ultrapack tiers
 (`assets/sprite_packs/{full,half,quarter,potato}`). Either retire the variant
 dirs in favor of packs (delete the script, the `try_load_spec_for_target_scaled`
 fallback, and the `sprites_0_5x` bake) or wire the script into
-`regen_sprites.sh`. Also fix the stale Rust header in
+`scripts/regen/sprites.sh`. Also fix the stale Rust header in
 `crates/ambition_sprite_sheet/src/pack.rs` (tier named `base` → `full`;
 "nothing bakes it yet" — build.rs does).
 
@@ -396,8 +396,8 @@ fallback, and the `sprites_0_5x` bake) or wire the script into
   pillars 1–3 (reorg / minimal-dep core / plural authoring) are genuinely
   done; pillar 4 (melee) is open and blocked on a spec (see §2.11).
 - **CLI wiring**: every subcommand has a handler, exit codes propagate,
-  `_get_target`'s near-miss diagnostics are genuinely good. `regen_assets.sh`
-  and every `regen_sprites.sh` invocation match the current CLI.
+  `_get_target`'s near-miss diagnostics are genuinely good. `scripts/regen/assets.sh`
+  and every `scripts/regen/sprites.sh` invocation match the current CLI.
 - **gui/** imports cleanly without PySide6 (Qt imports deferred);
   `pca_legacy/` is quarantined (nothing live imports it);
   `targets/characters/rigged/pca_rig_extract.py` is independent of it.
