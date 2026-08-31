@@ -247,7 +247,12 @@ def test_review_character_configs_load_portable_notes():
         "eve.yaml",
         "judy.yaml",
         "mallory.yaml",
-        "oiler.yaml",
+        # ⛔ `oiler.yaml` LEFT, 2026-08-31. It published as `oiler` — a MODULE
+        # target — while rendering with the `toon` generator, so two different
+        # renderers wrote one sheet and the last to run won. Its authoring prose
+        # and all three barks are already in `targets/characters/oiler.py`,
+        # verbatim, so nothing was lost by deleting it: the module superseded the
+        # concept sheet and the config outlived that.
         "olivia.yaml",
         "peggy.yaml",
         "sybil.yaml",
