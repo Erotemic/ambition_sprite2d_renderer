@@ -32,8 +32,42 @@ from ._svg_fighter_effects import (
 from .carl_stargan_motion import CARL_ROWS, EFFECT_ALIASES
 
 TARGET_NAME = "carl_stargan"
-FRAME_SIZE = (160, 160)
+
+#: Room around the rig's own canvas, in RIG units.
+#:
+#: ⭐⭐ THE SHARED SCIENTIST ROLL TUCKS BELOW THE GROUND LINE. `_common_clips`
+#: authors ONE `roll` for all three canonical scientist rigs, and it puts the
+#: body 38-42px below each rig's `ground_y` at the tuck — the pelvis sweeps a
+#: full turn while the root drops, which is what a forward roll IS. Carl's rig
+#: frame leaves 24px below the ground line, so on HIS sheet alone the tuck was
+#: drawn off the canvas and lost: eight frames across `roll`, `roll_back`,
+#: `tumble`, `spot_dodge` and the four clips that clone the roll.
+#:
+#: ⛔ HIS TWO RIG-SIBLINGS ALREADY HAD THIS and he never adopted it —
+#: `patent_clerk.RIG_RENDER_PADDING` is 24 and `noether_gameplay.PADDING` is its
+#: own; both derive their published frame from the rig canvas PLUS the padding
+#: rather than restating the rig canvas as the frame. This is that pattern, not
+#: a new one.
+RIG_RENDER_PADDING = 24
 ROWS = list(CARL_ROWS)
+
+
+def frame_size() -> tuple[int, int]:
+    """The published frame: the RIG's own canvas plus this target's padding.
+
+    ⛔ **not a restated constant.** This was the rig canvas, copied, until
+    2026-08-31 — the shape `noether.frame_size` warns about: when the rig is
+    rebuilt only one of the two copies moves. Read at call time, so the rig
+    document is the single authority.
+    """
+    frame = _doc().frame
+    # `render_scale` is the third term: the composer pads in RIG units and scales
+    # the padded canvas, so a rig published at 2x emits a frame twice this wide.
+    scale = max(1, int(frame.get("render_scale", 1)))
+    return (
+        (int(frame["width"]) + RIG_RENDER_PADDING * 2) * scale,
+        (int(frame["height"]) + RIG_RENDER_PADDING * 2) * scale,
+    )
 
 ACTOR_METADATA = {'actor': {'character_id': 'npc_carl_stargan', 'display_name': 'Carl Stargan'},
  'body': {'body_plan': 'HumanoidBiped',
@@ -304,6 +338,10 @@ def _raw_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
         frame_count,
         behind=lambda canvas, t, world, params: _behind(effect_animation, canvas, t, world, params),
         front=lambda canvas, t, world, params: _front(effect_animation, canvas, t, world, params),
+        # The composited swing trail and the authored hit volume are both derived
+        # from these frames, so they land in the same padded space and
+        # `build_sheet`'s auto-crop translates all three together.
+        padding=RIG_RENDER_PADDING,
     )
 
 
@@ -394,7 +432,7 @@ def render(out_dir: str | Path, **opts):
         rows=ROWS,
         render_fn=render_frame,
         out_dir=Path(out_dir),
-        frame_size=FRAME_SIZE,
+        frame_size=frame_size(),
         auto_crop=True,
         crop_margin=4,
         actor_metadata=ACTOR_METADATA,
@@ -423,7 +461,7 @@ def render(out_dir: str | Path, **opts):
 
 def render_canonical(out_dir: str | Path, **opts):
     del opts
-    return write_canonical(TARGET_NAME, ROWS, render_frame, Path(out_dir), frame_size=FRAME_SIZE)
+    return write_canonical(TARGET_NAME, ROWS, render_frame, Path(out_dir), frame_size=frame_size())
 
 
 __all__ = [
