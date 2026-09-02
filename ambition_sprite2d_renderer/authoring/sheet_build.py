@@ -248,6 +248,22 @@ def clipped_frame_edges(frame: Image.Image) -> List[str]:
     """
     if frame.width < 2 or frame.height < 2:
         return []
+    # ⭐ A COMPOSITED FRAME ANSWERS THE QUESTION INSTEAD OF BEING GUESSED AT.
+    # The taper rule below infers truncation from the silhouette, which is all it
+    # can do for art DRAWN INTO the canvas. But a frame built by compositing a
+    # finished sprite knows exactly whether anything was lost — the sprite existed
+    # whole first — and says so with this marker, which its compositor sets ONLY
+    # when the sprite landed entirely inside (see `bottom_center_canvas`).
+    #
+    # ⛔ This is what the taper rule cannot see: FLAT-BOTTOMED PIXEL ART SEATED
+    # FLUSH DOES NOT TAPER EITHER. `bottom_center_canvas` seats a 24x32 logical
+    # sprite on the frame's last row, so its foot is a full-width run at the
+    # boundary — identical, to this function, to a cut. That is 41 frames of the
+    # playable protagonist across six forms reported for standing on the floor,
+    # and inflating those canvases to silence it would move every Mary-O sprite's
+    # ground contact (D129).
+    if frame.info.get("ambition.composited_whole"):
+        return []
     alpha = frame.getchannel("A")
     width, height = frame.size
     depth = min(_CLIP_DEPTH, width // 2, height // 2)

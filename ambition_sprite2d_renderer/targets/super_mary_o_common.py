@@ -217,6 +217,21 @@ def rasterize_logical(
 
 
 
+#: Marks a frame whose drawing was COMPOSITED WHOLE rather than drawn into.
+#:
+#: ⭐ The clipping guard asks "was art cut off by the frame edge?", and for a
+#: composited frame the answer is knowable exactly rather than by silhouette:
+#: the sprite existed complete before the frame did, so either it fit or it did
+#: not, and the compositor is the one place that knows which.
+#:
+#: ⛔ Without this the guard has to GUESS from pixels, and its rule — "a
+#: truncated shape does not taper" — cannot tell flat-bottomed pixel art seated
+#: flush from a cut, because neither tapers. That is the whole Mary-O family
+#: (41 frames of the playable protagonist across six forms) reported as clipped
+#: for standing on the floor.
+COMPOSITED_WHOLE = "ambition.composited_whole"
+
+
 def bottom_center_canvas(
     sprite: Image.Image,
     frame_size: tuple[int, int],
@@ -228,6 +243,13 @@ def bottom_center_canvas(
     x = (frame.width - sprite.width) // 2 + offset_x
     y = frame.height - sprite.height + offset_y
     frame.alpha_composite(sprite, (x, y))
+    # ⚠ NOT AN UNCONDITIONAL EXEMPTION, and the difference matters:
+    # `alpha_composite` CLIPS a sprite that does not fit, so this helper can
+    # truncate art like any other road. The frame is marked only when the whole
+    # sprite landed inside it — a sprite wider or taller than its frame, or
+    # pushed out by an offset, is left for the guard to report exactly as before.
+    if x >= 0 and y >= 0 and x + sprite.width <= frame.width and y + sprite.height <= frame.height:
+        frame.info[COMPOSITED_WHOLE] = True
     return frame
 
 
