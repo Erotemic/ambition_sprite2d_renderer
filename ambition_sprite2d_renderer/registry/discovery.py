@@ -142,6 +142,16 @@ def _copy_sheet_files(
             return
         dst = dest_root / fname
         dst.parent.mkdir(parents=True, exist_ok=True)
+        # ⛔⛔ NEVER PUBLISH THROUGH A SYMLINK. An asset-mirrored git worktree
+        # (`scripts/mirror_assets_for_worktree.py` in the game repo) points every
+        # generated asset at the MAIN checkout's copy, file by file, so that a
+        # regenerated sheet lands as a real file in the worktree and main never
+        # sees it. `shutil.copy2` opens the destination for writing, and an
+        # open-for-write FOLLOWS the link — measured 2026-09-02, the target's
+        # bytes changed and the link stayed — so publishing from a worktree
+        # silently rewrote the assets every other session builds and gates from.
+        if dst.is_symlink():
+            dst.unlink()
         shutil.copy2(src, dst)
         copied.append(dst)
         copied_names.add(fname)
