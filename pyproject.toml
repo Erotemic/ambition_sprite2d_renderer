@@ -18,6 +18,12 @@ dependencies = [
   # atlas packer (authoring/packer.py). We delegate the NP-hard packing
   # heuristic here and keep alpha-trim + extrude + RON metadata in-pipeline.
   "rectpack>=0.2",
+  # Pixel math for `targets/characters/_pirate_common.py` (every pirate target
+  # shares it) and the PCA rig extractor. Undeclared until 2026-09-02, which is
+  # not a dependency that "usually happens to be there": the tool venvs this
+  # repo provisions are isolated, so a fresh clone rendered 132 targets and
+  # then failed all five pirates with `No module named 'numpy'`.
+  "numpy>=1.24",
 ]
 
 [project.optional-dependencies]
