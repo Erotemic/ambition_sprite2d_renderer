@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="ivory" x2="1" y2="0"><stop stop-color="#a69f99"/><stop offset=".38" stop-color="#eee4cc"/><stop offset=".7" stop-color="#fff4d9"/><stop offset="1" stop-color="#c2b8a4"/></linearGradient>
+    <linearGradient id="indigo" x2="1" y2=".3"><stop stop-color="#202637"/><stop offset=".48" stop-color="#465373"/><stop offset="1" stop-color="#262d46"/></linearGradient>
+    <linearGradient id="copper" x2=".8" y2="1"><stop stop-color="#efba75"/><stop offset=".3" stop-color="#b9633e"/><stop offset=".65" stop-color="#783a32"/><stop offset="1" stop-color="#432b32"/></linearGradient>
+    <linearGradient id="skin" x2=".8" y2=".6"><stop stop-color="#ffe6c5"/><stop offset=".6" stop-color="#e9b78f"/><stop offset="1" stop-color="#ba7969"/></linearGradient>
+    <linearGradient id="boot" x2="1" y2="0"><stop stop-color="#302635"/><stop offset=".4" stop-color="#76404a"/><stop offset=".62" stop-color="#92545a"/><stop offset="1" stop-color="#452c3c"/></linearGradient>
+    <g id="thigh" stroke="#252737" stroke-width=".65" stroke-linejoin="round">
+      <path fill="url(#indigo)" d="M-4 -2 Q-6 3 -4 10 L-2.6 21 Q0 23 3 21 L4 5 Q5 -2 -4 -2Z"/>
+      <path fill="none" stroke="#8990a4" stroke-width=".4" d="M-2 2 L-1 18 M2 4 L1 10"/>
+    </g>
+    <g id="shin" stroke="#302738" stroke-width=".65" stroke-linejoin="round">
+      <path fill="url(#boot)" d="M-3.3 -2 Q0 -3 3.3 -2 L2.1 17 L-2.6 18 Q-4 7 -3.3 -2Z"/>
+      <path fill="#ae826c" d="M-3.5 0 L3.3 0 L3.2 2 L-3.5 2Z"/>
+      <path fill="none" stroke="#c28a78" stroke-width=".4" d="M-1.8 4 L-1 15 M-2 6 L1.8 7 M-2 9 L1.6 10"/>
+      <path fill="#d9b579" d="M.5 .1 H2.5 V1.8 H.5Z"/>
+    </g>
+    <g id="foot" stroke="#282432" stroke-width=".65" stroke-linejoin="round">
+      <path fill="url(#boot)" d="M-2.7 -2 L2.3 -2 Q3 1 5.3 2 L8 3 Q9 4 8 5 H-3Z"/>
+      <path fill="#292734" d="M-3 4 H8 V5.6 H1 L0 5 H-1 V6 H-3Z"/>
+      <path fill="none" stroke="#c68d7a" stroke-width=".45" d="M2 1 L5 3.4 L7 3.6"/>
+    </g>
+    <g id="upper-arm" stroke="#35303a" stroke-width=".65">
+      <path fill="url(#ivory)" d="M-3.5 -2 Q0 -5 3.5 -1 Q4 3 2.7 7 L2.2 14 Q0 15 -2.5 14 L-3.8 5Z"/>
+      <path fill="none" stroke="#a09690" stroke-width=".45" d="M-2 2 L-1.5 10 M-2 11 L1.5 12"/>
+    </g>
+    <g id="forearm" stroke="#35303a" stroke-width=".65">
+      <path fill="url(#ivory)" d="M-2.6 -1 Q0 -2 2.5 -1 L2 11 H-2Z"/>
+      <path fill="url(#boot)" d="M-2.5 9 L2.5 9 L2.4 13 H-2.2Z"/>
+      <path fill="none" stroke="#d8b475" d="M-2 10.5 H2"/>
+    </g>
+    <g id="hand" stroke="#674747" stroke-width=".45">
+      <path fill="url(#skin)" d="M-1.9 -1 L1.7 -1 L2.2 1 L3 2 L2.4 3 L1.5 2.3 L1.7 4 Q.3 6 -1.4 4 L-2 2Z"/>
+      <path fill="none" d="M-.5 2 L0 4 M.6 2 L1 3.6"/>
+    </g>
+    <g id="tails" stroke="#34313c" stroke-width=".65" stroke-linejoin="round">
+      <path fill="url(#indigo)" d="M-8 -3 L9 -3 L15 25 L5 29 L-2 11 L-7 29 L-17 23Z"/>
+      <path fill="url(#ivory)" d="M-8 -3 L-1 0 Q-3 13 -8 28 L-17 23 Q-12 12 -8 -3Z M2 0 L9 -3 Q10 12 15 25 L7 28Z"/>
+      <path fill="none" stroke="#ac8254" d="M-14 22 L-9 25 L-3 7 M6 5 L9 24 L12 23"/>
+      <path fill="none" stroke="#9c9591" stroke-width=".45" d="M-9 2 L-12 19 M8 3 L10 20"/>
+    </g>
+    <g id="torso" stroke="#32313c" stroke-width=".65" stroke-linejoin="round">
+      <path fill="url(#skin)" d="M-3 -6 H3 L4 3 H-4Z"/>
+      <path fill="url(#indigo)" d="M-8 0 L-3 -2 L0 2 L4 -2 L9 1 L7 13 L6 25 L0 29 L-7 25 L-8 14Z"/>
+      <path fill="url(#ivory)" d="M-3 -2 L-9 0 Q-12 2 -11 7 L-8 14 L-8 24 L-3 26 L-5 10Z M4 -2 L10 1 Q12 3 10 8 L8 15 L8 24 L4 26 L6 10Z"/>
+      <path fill="#fff1d6" d="M-3 -2 L-7 1 L-5 5 L-7 7 L-1 15 L-2 5Z M4 -2 L8 2 L6 5 L8 7 L2 15 L3 4Z"/>
+      <path fill="#8d4350" d="M-3 -2 L0 0 L3 -2 L3 1 L1 3 L3 9 L0 11 L-2 8 L-1 3 L-3 1Z"/>
+      <path fill="#d9b778" d="M-.8 1 L.3 .3 L1.1 1.6 L0 2.4Z"/>
+      <path fill="none" stroke="#7f8da5" stroke-width=".45" d="M0 12 L0 24 M-3 18 L-2 23 M3 18 L2 23"/>
+      <g fill="#e8c58b" stroke-width=".3"><circle cy="14" r=".65"/><circle cy="18" r=".65"/><circle cy="22" r=".65"/></g>
+      <path fill="#643d45" d="M-8 23 Q0 25 8 23 L8 26 Q0 28 -8 26Z"/>
+      <path fill="#dfbc7a" d="M-1 24 H3 V27 H-1Z"/><path fill="#483345" stroke="none" d="M0 24.7 H2 V26.2 H0Z"/>
+      <path fill="none" stroke="#ddbc81" stroke-width=".5" d="M2 18 Q9 23 7 12"/>
+      <path fill="#353b52" d="M5 10 L9 9 L9 11 L5 12Z"/>
+    </g>
+    <g id="satchel" stroke="#342c39" stroke-width=".6">
+      <path fill="url(#boot)" d="M-6 -5 L5 -6 L7 6 L-5 7Z"/><path fill="#965c59" d="M-6 -5 L5 -6 L5 -1 L0 2 L-5 0Z"/>
+      <path fill="none" stroke="#cc9e79" stroke-width=".4" d="M-4 2 L-3 5 L5 4"/><path fill="#e6c182" d="M-1 -1 H1 V2 H-1Z"/>
+    </g>
+    <g id="hair-back" stroke="#452c34" stroke-width=".7">
+      <path fill="url(#copper)" d="M-7 -9 Q-15 -8 -12 3 Q-12 10 -17 15 Q-9 16 -7 9 Q-7 16 -3 19 Q0 10 -1 1Z"/>
+      <path fill="none" stroke="#dc9660" stroke-width=".5" d="M-10 -6 Q-13 1 -10 6 Q-10 11 -14 13 M-8 -3 Q-6 7 -5 13"/>
+    </g>
+    <g id="head" stroke="#67484a" stroke-width=".55" stroke-linejoin="round">
+      <path fill="url(#skin)" d="M-7 -8 Q0 -13 7 -7 L8 1 Q8 8 2 11 Q-2 12 -6 7 L-8 1Z"/>
+      <path fill="#d0937a" stroke="none" d="M-7 0 Q-5 7 2 10 Q-2 12 -6 7Z"/>
+      <path fill="url(#skin)" d="M-7 0 Q-11 -3 -9 3 Q-8 5 -6 4"/>
+      <path fill="none" stroke="#b3796b" d="M-8.3 .3 L-7.5 2.5"/>
+      <path fill="#fff4dc" stroke="#523c43" d="M-4.6 .5 Q-2.5 -1.3 -.5 .5 Q-2.4 2 -4.6 .5 M2 .5 Q4 -1 6 .3 Q4.5 2 2 .5"/>
+      <g fill="#3c6763" stroke="none"><ellipse cx="-2.1" cy=".6" rx=".85" ry="1.05"/><ellipse cx="4.4" cy=".5" rx=".85" ry="1.05"/></g>
+      <g fill="#242936" stroke="none"><ellipse cx="-1.9" cy=".7" rx=".4" ry=".8"/><ellipse cx="4.6" cy=".6" rx=".4" ry=".8"/></g>
+      <path fill="none" stroke="#814a3c" stroke-width=".65" d="M-5 -1.8 Q-2.5 -3 -.4 -1.7 M2 -1.7 Q4 -2.8 6 -1.7"/>
+      <path fill="none" stroke="#b27b6a" stroke-width=".45" d="M1.2 1 L.6 4 L2 4.4"/>
+      <path fill="none" stroke="#9e535a" stroke-width=".65" d="M-.6 6.6 Q1.3 7.4 3.3 6.4"/>
+      <path fill="none" stroke="#ffe2bc" stroke-width=".55" d="M.1 8 L2.4 8"/>
+      <g fill="#b17662" stroke="none"><circle cx="-4" cy="3" r=".3"/><circle cx="-2.8" cy="3.4" r=".3"/><circle cx="4.5" cy="3" r=".3"/><circle cx="5.7" cy="2.7" r=".3"/></g>
+      <path fill="url(#copper)" stroke="#54303a" d="M-8 2 Q-12 -5 -7 -10 Q-2 -15 6 -10 Q10 -8 9 -3 L7 0 L6 -6 Q2 -3 -4 -4 L-6 -1 L-6 5 L-8 7Z"/>
+      <path fill="none" stroke="#efb47a" stroke-width=".6" d="M-8 -5 Q-4 -11 3 -9 M-5 -6 Q0 -6 5 -8 M-8 -1 L-7.5 3"/>
+      <path fill="#292d42" stroke="#d1ae75" d="M-7 -8 Q-1 -13 6 -9 L7 -7 Q0 -11 -6 -6Z"/>
+      <path fill="#eac583" stroke="#69484b" d="M-7 -7 L-5.6 -5.5 L-7 -4 L-8.5 -5.5Z"/>
+      <circle cx="-8" cy="4" r="1" fill="#dfb66e" stroke="#805e50"/>
+    </g>
+    <g id="head-side" stroke="#67484a" stroke-width=".55" stroke-linejoin="round">
+      <path fill="url(#skin)" d="M-6 -8 Q2 -12 6 -7 L6 -2 L9 2 L6.5 3 L6.7 6 Q5 10 1 10 L-5 6Z"/>
+      <path fill="#fff2dc" d="M2 -.1 Q4 -1.4 5.7 0 L4 1.3Z"/><ellipse cx="4.5" cy=".1" rx=".65" ry=".95" fill="#345956"/>
+      <path fill="none" stroke="#794438" stroke-width=".7" d="M1.5 -2 Q4 -3 5.5 -2"/>
+      <path fill="none" stroke="#9e535a" d="M4.5 5.6 L6.7 5.3"/>
+      <path fill="url(#copper)" stroke="#54303a" d="M-6 7 Q-12 2 -10 -6 Q-8 -13 1 -12 Q8 -12 7 -6 Q5 -3 0 -3 L-3 2 L-4 7Z"/>
+      <path fill="url(#skin)" d="M-3 0 Q-7 -3 -6 2 Q-5 5 -3 3Z"/>
+      <path fill="none" stroke="#efb47a" d="M-8 -6 Q-4 -11 3 -9 M-8 -3 Q-5 -6 0 -6"/>
+      <path fill="none" stroke="#292d42" stroke-width="2" d="M-9 -6 Q-5 -13 2 -11"/>
+      <circle cx="-5" cy="3.7" r="1" fill="#e8c078"/>
+    </g>
+  </defs>
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <use href="#tails" transform="translate(64 73)"/>
+    <use href="#thigh" transform="translate(59 74)"/><use href="#shin" transform="translate(59 95)"/><use href="#foot" transform="translate(59 112)"/>
+    <use href="#thigh" transform="translate(69 74)"/><use href="#shin" transform="translate(69 95)"/><use href="#foot" transform="translate(69 112)"/>
+    <use href="#hair-back" transform="translate(64 32)"/>
+    <use href="#torso" transform="translate(64 47)"/>
+    <use href="#upper-arm" transform="translate(54 50) rotate(12)"/><use href="#forearm" transform="translate(51 64)"/><use href="#hand" transform="translate(51 77)"/>
+    <use href="#upper-arm" transform="translate(74 50) rotate(-12)"/><use href="#forearm" transform="translate(77 64)"/><use href="#hand" transform="translate(77 77)"/>
+    <use href="#head" transform="translate(64 32)"/>
+  </g>
+</svg>
