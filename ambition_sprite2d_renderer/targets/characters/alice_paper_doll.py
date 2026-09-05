@@ -22,7 +22,7 @@ def draw_doll(image, cx, feet_y, pose, scale, solve):
     side = pose.view.value == 'side'
     front = pose.view.value == 'front'
     spread = 0.48 if side else (1 if front else .86)
-    hip = ground - 43 + pose.walk_body_y + 7 * pose.crouch
+    hip = ground - (42 if pose.walk_index >= 0 else 44) + pose.walk_body_y + 10 * pose.crouch
     shoulder = hip - 27 + 4 * pose.crouch
     lean = -pose.lean * .55
     body_x = cx + lean
@@ -46,7 +46,7 @@ def draw_doll(image, cx, feet_y, pose, scale, solve):
         authored = pose.near_foot if near else pose.far_foot
         if authored is not None:
             target = (cx + authored[0], ground - 6 + authored[1])
-        knee, ankle = solve(root, target, 21, 17, bend_sign=1)
+        knee, ankle = solve(root, target, 21, 17, bend_sign=1 if side else sign)
         bone('thigh', root, knee, 21)
         bone('shin', knee, ankle, 17)
         part('foot', *ankle, sx=1 if side or near else -.8)
@@ -58,11 +58,11 @@ def draw_doll(image, cx, feet_y, pose, scale, solve):
         authored = pose.near_hand if near else pose.far_hand
         target = (body_x + sign*14*spread, shoulder+28)
         if pose.walk_index >= 0:
-            target = (root[0] - sign*pose.step*10*pose.arm_swing, shoulder+27)
+            target = (root[0] - sign*math.cos(pose.walk_index*math.tau/8)*8*pose.arm_swing, shoulder+27)
         if near and pose.prop == 'folio' and pose.walk_index < 0:
-            target = (body_x+14, shoulder+21-pose.map_open*8)
+            target = (body_x+14, shoulder+23-pose.map_open*5)
         if not near and pose.gesture:
-            target = (body_x-15, shoulder+23-pose.gesture*13)
+            target = (body_x-15, shoulder+25-pose.gesture*6)
         if authored is not None:
             target = (body_x+authored[0], shoulder+authored[1])
         elbow, grip = solve(root, target, 14, 13, bend_sign=pose.near_bend if near else pose.far_bend)
@@ -72,23 +72,25 @@ def draw_doll(image, cx, feet_y, pose, scale, solve):
         part('hand', *grip, angle=-15 if near else 15)
 
     head_x, head_y = body_x + (1.8 if side else 0), shoulder - 15
-    part('hair-back', head_x, head_y, -pose.step*10-pose.scan*4)
+    part('hair-back', head_x, head_y, pose.head_tilt)
     arm(False)
     leg(False)
     leg(True)
-    part('tails', cx, hip-1, pose.step*7, sx=.7 if side else 1)
+    part('tails', cx, hip-1, pose.step*4, sx=.7 if side else 1, sy=.42)
     part('torso', body_x, shoulder, sx=.65 if side else 1)
     # The strap passes under the near arm and terminates at the bag's top edge.
     pieces.append(f'<path d="M{body_x+7} {shoulder+3} L{cx-9} {hip+4}" stroke="#342b38" stroke-width="2.5"/><path d="M{body_x+7} {shoulder+3} L{cx-9} {hip+4}" stroke="#ae8265" stroke-width="1"/>')
     part('satchel', cx-10, hip+8, pose.step*5, sx=.8)
     arm(True)
     part('head-side' if side else 'head', head_x, head_y, pose.head_tilt, sx=.94 if not front and not side else 1)
+    pieces.append(f'<g transform="translate({head_x} {head_y}) rotate({pose.head_tilt}) scale({.94 if not front and not side else 1} 1)">')
     if pose.blink:
         # Cover the eye apertures only; brows and nose retain their construction.
         for x in ([4] if side else [-2.5,4]):
-            pieces.append(f'<path d="M{head_x+x-1.7} {head_y+.4} h3.4" stroke="#e8b58e" stroke-width="2.1"/><path d="M{head_x+x-1.7} {head_y+.6} q1.7 1 3.4 0" fill="none" stroke="#67484a" stroke-width=".55"/>')
+            pieces.append(f'<path d="M{x-1.7} {.4} h3.4" stroke="#e8b58e" stroke-width="2.1"/><path d="M{x-1.7} {.6} q1.7 1 3.4 0" fill="none" stroke="#67484a" stroke-width=".55"/>')
     if pose.talk_open > .1:
-        pieces.append(f'<ellipse cx="{head_x+1.3}" cy="{head_y+7}" rx="1.25" ry="{.3+pose.talk_open}" fill="#77404a"/>')
+        pieces.append(f'<ellipse cx="{1.3}" cy="{7}" rx="1.25" ry="{.3+pose.talk_open}" fill="#77404a"/>')
+    pieces.append('</g>')
     # An engraved cipher wheel hangs from the belt, distinct from the held map.
     wx, wy = cx+7, hip+5
     pieces.append(f'<g transform="translate({wx} {wy})" stroke="#604849" stroke-width=".45"><circle r="3.8" fill="#d1a568"/><circle r="2.8" fill="#f1d59b"/><circle r="1.7" fill="#3b4f62"/>')

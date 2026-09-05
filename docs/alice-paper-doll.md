@@ -1,7 +1,7 @@
 # Alice — cipher courier
 
-Alice wears an ivory split traveling coat over an indigo waistcoat, oxblood riding
-boots and cuffs, and copper hair held by an inlaid headband. Her asymmetric bag,
+Alice wears a teal field jacket over dark tailored trousers, oxblood ankle
+boots and cuffs, and short blue-black hair held by an inlaid headband. Her asymmetric bag,
 sealed correspondence, and engraved brass cipher wheel identify a working courier.
 Thin warm contours, restrained material gradients, and inset seams give the parts
 a cut-paper illustration finish; the sprite has a transparent background.

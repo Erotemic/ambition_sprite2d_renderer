@@ -1,4 +1,4 @@
-"""Alice, a cipher courier in an ivory split coat and indigo tailoring.
+"""Alice, a cipher courier in a teal field jacket and dark trousers.
 
 Editable SVG paper-doll parts share one articulated pose path across views.
 Authored action poses and procedural cartography effects feed the normal sheet
@@ -256,7 +256,7 @@ class AliceCryptographerGenerator(CharacterGenerator):
             archetype=job.archetype,
             name="Alice",
             role="npc",
-            palette_name="alice_ivory_cipher_courier",
+            palette_name="alice_teal_cipher_courier",
         )
 
     def canonical_pose(self) -> Tuple[str, int]:
@@ -350,8 +350,8 @@ class AliceCryptographerGenerator(CharacterGenerator):
             pose.root_y = 4.0 * preload - 12.0 * launch
             pose.lean = -5.0 - 4.0 * launch
             pose.crouch = 0.52 * preload
-            pose.near_hand = (2.0, 5.0)
-            pose.far_hand = (-8.0, 10.0)
+            pose.near_hand = (9.0, 15.0)
+            pose.far_hand = (-9.0, 18.0)
             pose.near_foot = (5.0, -5.0 - 5.0 * launch)
             pose.far_foot = (-5.0, -2.0 - 7.0 * launch)
             pose.prop = "none"
@@ -631,8 +631,8 @@ class AliceCryptographerGenerator(CharacterGenerator):
             pose.effect_strength = action
         elif animation == "celebrate":
             pose.root_y = -5.5 * abs(math.sin(math.pi * t))
-            pose.near_hand = (8.0, -5.0)
-            pose.far_hand = (-8.0, -4.0)
+            pose.near_hand = (17.0, 10.0)
+            pose.far_hand = (-10.0, -7.0)
             pose.prop = "open_map"
             pose.effect = "triangulate"
             pose.effect_strength = 0.45 + 0.30 * abs(wave)
@@ -698,6 +698,11 @@ class AliceCryptographerGenerator(CharacterGenerator):
         if pose.prop in {"folio", "map_ribbon", "map_bundle", "open_map"}:
             self._draw_map_folio(d, hand[0] + 3 * scale, hand[1], scale * .8,
                                  open_amount=max(pose.map_open, float(pose.prop == "open_map")))
+            # The thumb overlaps the paper; the palm stays behind the held prop.
+            _ellipse(d, _bbox(hand[0] - .5 * scale, hand[1] + scale,
+                             1.7 * scale, 3.0 * scale),
+                     fill=ALICE_PALETTE["skin"], outline=ALICE_PALETTE["skin_shadow"],
+                     width=max(1, round(.35 * scale)))
         elif pose.prop in {"survey_staff", "route_pin"}:
             self._draw_survey_staff(d, hand, pose.tool_angle, scale, pin_tip=pose.prop == "route_pin")
         elif pose.prop == "route_projector":
