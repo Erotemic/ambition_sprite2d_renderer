@@ -1,0 +1,37 @@
+{
+  "clip": "jab",
+  "note": "jab. Pose left exactly as authored -- it already reads. This spec exists to give it the same thrust flash as the down tilt, so the two pokes are one visual language rather than two.",
+  "facing": "west",
+  "effect": "poke",
+  "poke": {
+    "extend": 1.34,
+    "width": 14.0,
+    "waist": 0.68,
+    "inner": 0.08,
+    "alpha": 195,
+    "blur": 1.0,
+    "core_alpha": 230,
+    "falloff": 2.2,
+    "window": 2,
+    "body_rgb": [
+      150,
+      208,
+      255
+    ],
+    "core_rgb": [
+      240,
+      252,
+      255
+    ]
+  },
+  "hitbox": {
+    "active": [
+      1,
+      2
+    ]
+  },
+  "pixel_invariants": [
+    "hitbox_in_front",
+    "feet_on_ground"
+  ]
+}

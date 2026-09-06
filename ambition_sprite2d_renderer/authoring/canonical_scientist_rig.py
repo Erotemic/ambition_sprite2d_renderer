@@ -1,0 +1,163 @@
+"""Canonical rig lifecycle for manually traced scientist paperdolls.
+
+The checked-in SVG is the source of truth. Native ``resvg_py`` remains the
+canonical rasterizer. A CairoSVG-authored rig may be used as a loud, review-only
+fallback on machines where resvg is unavailable; once native resvg is present,
+the fallback rig is deliberately considered stale and rebuilt.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import importlib.util
+import inspect
+from functools import lru_cache
+import json
+import sys
+from pathlib import Path
+from types import ModuleType
+from typing import Any, Mapping
+
+from .rigdoc import RigDocument
+
+ROOT = Path(__file__).resolve().parents[2]
+BUILDER_PATH = ROOT / "scripts" / "build_scientist_fighter_rigs.py"
+EXPECTED_SCHEMA = "canonical-svg-rig-v3"
+EXPECTED_BUILDER_VERSION = 19
+
+_SVG_NAMES = {
+    "patent_clerk": "patent-clerk.svg",
+    "carl_stargan": "carl-stargan.svg",
+    "noether": "noether.svg",
+}
+_RIG_NAMES = {
+    "patent_clerk": "patent_clerk_side.rig.json",
+    "carl_stargan": "carl_stargan_side.rig.json",
+    "noether": "noether_side.rig.json",
+}
+
+
+def svg_path(character: str) -> Path:
+    try:
+        filename = _SVG_NAMES[character]
+    except KeyError as ex:
+        raise KeyError(f"unknown canonical scientist fighter {character!r}") from ex
+    return ROOT / "assets" / filename
+
+
+def rig_path(character: str) -> Path:
+    try:
+        filename = _RIG_NAMES[character]
+    except KeyError as ex:
+        raise KeyError(f"unknown canonical scientist fighter {character!r}") from ex
+    return (
+        ROOT
+        / "ambition_sprite2d_renderer"
+        / "targets"
+        / "characters"
+        / "rigged"
+        / character
+        / filename
+    )
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _native_resvg_importable() -> bool:
+    """Whether native publication output can be preferred on this machine."""
+    try:
+        import resvg_py
+    except (ImportError, ModuleNotFoundError):
+        return False
+    svg_to_bytes = getattr(resvg_py, "svg_to_bytes", None)
+    return callable(svg_to_bytes) and inspect.isbuiltin(svg_to_bytes)
+
+
+def _read_json(path: Path) -> Mapping[str, Any] | None:
+    try:
+        value = json.loads(path.read_text(encoding="utf8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def rig_status(character: str) -> tuple[bool, str]:
+    """Return whether the generated rig is current and why."""
+
+    source = svg_path(character)
+    generated = rig_path(character)
+    if not source.exists():
+        return False, f"missing canonical SVG: {source}"
+    document = _read_json(generated)
+    if document is None:
+        return False, f"missing or invalid generated rig: {generated}"
+    provenance = document.get("build_provenance")
+    if not isinstance(provenance, dict):
+        return False, "generated rig has no native-renderer provenance"
+    if provenance.get("schema") != EXPECTED_SCHEMA:
+        return False, f"unexpected rig provenance schema: {provenance.get('schema')!r}"
+    if provenance.get("builder_version") != EXPECTED_BUILDER_VERSION:
+        return False, f"stale rig builder version: {provenance.get('builder_version')!r}"
+    renderer = provenance.get("renderer")
+    if renderer not in {"resvg_py", "cairosvg"}:
+        return False, f"rig was built by unsupported renderer: {renderer!r}"
+    if renderer == "cairosvg" and _native_resvg_importable():
+        return False, "review-only CairoSVG rig can be rebuilt by available native resvg_py"
+    if not provenance.get("renderer_version"):
+        return False, "rig does not record the SVG renderer version"
+    if provenance.get("svg_sha256") != _sha256(source):
+        return False, "canonical SVG changed after the rig was generated"
+    if provenance.get("part_order") != "svg-document":
+        return False, "generated rig does not preserve canonical SVG document order"
+    return True, "current"
+
+
+def _load_builder() -> ModuleType:
+    if not BUILDER_PATH.exists():
+        raise FileNotFoundError(BUILDER_PATH)
+    spec = importlib.util.spec_from_file_location(
+        "_ambition_scientist_fighter_rig_builder",
+        BUILDER_PATH,
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot import rig builder from {BUILDER_PATH}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def ensure_scientist_rig(character: str) -> Path:
+    """Return a current rig, preferring native resvg and allowing warned fallback."""
+
+    current, _reason = rig_status(character)
+    if current:
+        return rig_path(character)
+
+    builder = _load_builder()
+    try:
+        character_spec = builder.SPECS[character]
+    except (AttributeError, KeyError) as ex:
+        raise RuntimeError(f"builder has no specification for {character!r}") from ex
+    built = Path(builder.build_one(character_spec))
+    current, reason = rig_status(character)
+    if not current:
+        raise RuntimeError(
+            f"scientist rig build for {character} did not produce current output: {reason}"
+        )
+    return built
+
+
+@lru_cache(maxsize=8)
+def _load_doc_cached(path_text: str, mtime_ns: int, size: int) -> RigDocument:
+    """Keep a rig's expensive sprite/transform caches alive across frames."""
+    del mtime_ns, size
+    return RigDocument.load(path_text)
+
+
+def load_scientist_rig(character: str) -> RigDocument:
+    path = ensure_scientist_rig(character)
+    stat = path.stat()
+    return _load_doc_cached(str(path), stat.st_mtime_ns, stat.st_size)

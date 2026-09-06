@@ -1,0 +1,19 @@
+{
+  "clip": "air_neutral",
+  "note": "Neutral air: a clearing sweep all the way round.",
+  "strike": {
+    "base": "near_arm_u",
+    "tip": "near_arm_hand"
+  },
+  "effect": "wind",
+  "facing": "east",
+  "hitbox": {
+    "extend": 1.12,
+    "active": [
+      2,
+      3,
+      4
+    ],
+    "inflate": 5.0
+  }
+}

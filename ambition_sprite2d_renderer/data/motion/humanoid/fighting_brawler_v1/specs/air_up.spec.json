@@ -1,0 +1,39 @@
+{
+  "clip": "air_up",
+  "note": "up air: a full backward somersault, the extended leg sweeping a circle over the top.",
+  "strike": {
+    "base": "near_leg_l",
+    "tip": "near_leg_foot"
+  },
+  "effect": "wind",
+  "facing": "east",
+  "hitbox": {
+    "active": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "extend": 1.06
+  },
+  "wind": {
+    "window": 4,
+    "inner": 0.18,
+    "blur": 0.8,
+    "alpha": 155,
+    "core_alpha": 190,
+    "falloff": 1.8,
+    "streaks": 5,
+    "spread": 0.66,
+    "body_rgb": [
+      188,
+      224,
+      246
+    ],
+    "core_rgb": [
+      255,
+      255,
+      255
+    ]
+  }
+}

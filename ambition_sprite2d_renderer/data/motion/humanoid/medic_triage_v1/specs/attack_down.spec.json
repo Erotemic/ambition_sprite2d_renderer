@@ -1,0 +1,19 @@
+{
+  "clip": "attack_down",
+  "note": "Down tilt: a leg check at the ankle.",
+  "strike": {
+    "base": "near_leg_l",
+    "tip": "near_leg_foot"
+  },
+  "effect": "wind",
+  "facing": "east",
+  "hitbox": {
+    "extend": 1.08,
+    "active": [
+      2,
+      3,
+      4
+    ],
+    "inflate": 3.0
+  }
+}

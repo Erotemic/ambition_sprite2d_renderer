@@ -1,0 +1,53 @@
+{
+  "schema": "ambition-pose-v1",
+  "id": "humanoid/fighting_polygon/jab/anticipation",
+  "rig_profile": "humanoid-articulated-v1",
+  "source": {
+    "clip": "jab",
+    "frame": 1,
+    "kind": "promoted-legacy-pose"
+  },
+  "state": {
+    "root": {
+      "position": [
+        15.4215,
+        0.0
+      ]
+    },
+    "bones": {
+      "far_arm_l": {
+        "rotation_deg": -132.92453
+      },
+      "far_arm_u": {
+        "rotation_deg": -13.219063
+      },
+      "far_leg_foot": {
+        "rotation_deg": -2.161845
+      },
+      "far_leg_l": {
+        "rotation_deg": -0.941701
+      },
+      "far_leg_u": {
+        "rotation_deg": 3.103546
+      },
+      "near_arm_l": {
+        "rotation_deg": 1.290234
+      },
+      "near_arm_u": {
+        "rotation_deg": -101.597813
+      },
+      "near_leg_foot": {
+        "rotation_deg": 0.654099
+      },
+      "near_leg_l": {
+        "rotation_deg": -6.945646
+      },
+      "near_leg_u": {
+        "rotation_deg": 6.291548
+      },
+      "torso": {
+        "rotation_deg": 8.683594
+      }
+    }
+  }
+}

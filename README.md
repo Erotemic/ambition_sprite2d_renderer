@@ -1,0 +1,909 @@
+# Ambition 2D Sprite Renderer
+
+> ## ⭐ What this repository IS — read this before deciding where code goes
+>
+> **This is Ambition's character-authoring submodule.** The name is stale: it
+> says "sprite renderer" because sprite sheets were the first thing it
+> published, and renaming the repository is deliberately *not* being done yet.
+> Read the name as a historical accident and the boundary below as the truth.
+>
+> **This repository owns character-SPECIFIC AUTHORED MATERIAL:**
+>
+> - bespoke per-character Python renderers, and the shared family helpers they
+>   choose to use
+> - paper dolls, SVG parts, bone rigs, scene graphs — every representation an
+>   author reaches for
+> - pose and motion authoring: clips, timing, anchors, sockets, face guides
+> - character metadata and presentation material (sheets, portraits, review
+>   images)
+> - and, increasingly, **game/ruleset-specific character FACET VALUES** — the
+>   numbers and choices that make *this* character *this* fighter
+>
+> **The main Rust repository owns the MEANING of all of that:** the schema a
+> facet conforms to, the preparation that turns authored values into runtime
+> data, and the runtime interpretation of the result. It decides what a facet
+> *is*; this repository decides what a given character's value *for* it is.
+>
+> ```text
+> here                              ambition (Rust)
+> ─────────────────────────────     ─────────────────────────────
+> character-authored package    →   schema · preparation · runtime meaning
+> "George's forward-smash is X"     "what a forward-smash IS, and how it runs"
+> ```
+>
+> ⛔ **so the test for "does this belong here?" is not "is it about a
+> character?" — it is "is it a VALUE an author chose, or a RULE the engine
+> enforces?"** A rule that happens to be written in Python still belongs in the
+> Rust repo's vocabulary; a value that happens to be a Rust constant today still
+> belongs, eventually, here.
+>
+> ⚠ **the seam is emerging, not finished.** Character-owned facts still live as
+> game-side Rust constants and registration-time mutations in places. That is
+> transitional and known — the direction is that they migrate here as authored
+> package data, and the Rust side consumes *prepared* character data rather than
+> reaching into a definition and editing it after registration. Do not treat the
+> current scattering as the intended design, and do not flag-day migrate it.
+>
+> ⛔ **do NOT create a second character submodule, and do NOT rename this one**
+> until that seam is real. Two half-built homes for the same thing is worse than
+> one badly-named one.
+
+Procedural 2D sprite renderer for Ambition. Discovery unifies registered
+outputs into one `Target` registry while preserving plural authoring methods.
+Two registration surfaces share the package:
+
+1. **Config-authored (generator) targets** — YAML-driven characters built
+   on the `CharacterGenerator` base class (robot / goblin / ninja / boss /
+   toon / sandbag / …). Jobs in `configs/*.yaml` describe the spec;
+   `registry/character_generators.py`'s `GENERATORS` dict wires each
+   target id to its generator. This is the "character lab" surface
+   formerly published as `proc2d_character_lab`.
+2. **Module-authored (tack-on) targets** — per-target modules under
+   `targets/<category>/`. Each module exposes a `render()` function;
+   discovery walks the tree and registers them automatically. No
+   central registration list — dropping a file in the right category
+   subdir is the entire integration step.
+
+These registration surfaces do not prescribe how a sprite is constructed. A
+module or generator may use direct procedural Python, shared family helpers, a
+bone rig, SVG parts, a scene graph, or a specialized hybrid. **A character rig
+is always optional.** The common boundary is the published sprite sheet and its
+runtime-facing metadata.
+
+Tack-on targets are split across five category subdirs:
+
+| Category | What goes here | Examples |
+|---|---|---|
+| [`targets/characters/`](ambition_sprite2d_renderer/targets/characters/) | Anything controllable by a brain — characters, bosses, tiny enemies | `ghoul_skulker`, `weird_hermit`, `mockingbird_boss/` (multi-file) |
+| [`targets/props/`](ambition_sprite2d_renderer/targets/props/) | Items, weapons, gates, scene dressing, batched entity sheets | `lasersword`, `interdimensional_gate`, `entities` |
+| [`targets/projectiles/`](ambition_sprite2d_renderer/targets/projectiles/) | Thrown / launched sprites | `glider` |
+| [`targets/tiles/`](ambition_sprite2d_renderer/targets/tiles/) | LDtk tileset atlases | `intro_lab_tileset`, `town_tileset` |
+| [`targets/icons/`](ambition_sprite2d_renderer/targets/icons/) | UI ability/item icons | `item_icons` |
+
+## Package layout
+
+The package is organized by role; the import boundary `core` ← `authoring`
+← `targets` keeps the render heart dependency-light.
+
+| Dir | Role | Deps |
+|---|---|---|
+| [`core/`](ambition_sprite2d_renderer/core/) | Rendering primitives — draw, pipeline, measure, frameset, the single RON emitter | **Pillow + stdlib only** |
+| [`authoring/`](ambition_sprite2d_renderer/authoring/) | Render spines + per-paradigm helpers (`sheet`, `sheet_build`, `skeleton`, `rigdoc`, `ultrapack`, …) | +PIL |
+| [`targets/`](ambition_sprite2d_renderer/targets/) | The actual sprite content (characters/props/tiles/icons) | +authoring |
+| [`registry/`](ambition_sprite2d_renderer/registry/) | Target discovery (`discovery`), job config (`config`), generator roster (`character_generators`), pack policy (`pack_groups`) | — |
+| [`cli/`](ambition_sprite2d_renderer/cli/) | Command-line surface — `commands` (logic), `parser` (argparse + `main`), `console` | — |
+| [`gui/`](ambition_sprite2d_renderer/gui/) | PySide6 rig editor | +PySide6 |
+| [`devtools/`](ambition_sprite2d_renderer/devtools/) | Author-facing inspection (`debug_hitboxes`) + editor bridges (`ldtk_manifest`) | — |
+| `configs/` · `data/` | YAML generator jobs · optional rig templates + `pack_plan.yaml` | data |
+
+## Published target contract
+
+The registry and runtime care about reproducible published products, not the
+source character representation. A normal character publish produces:
+
+- sprite-sheet image page(s),
+- animation/frame layout manifests,
+- an actor sidecar with body geometry, anchors, sockets, animation bindings, and
+  other available metadata, and
+- canonical review images.
+
+Character targets may also publish an independent dialog-portrait product:
+
+- ``<target>_portraits.png`` — one or more close-up frames, and
+- ``<target>_portraits.ron`` — named clips, frame rectangles, timing, and the
+  required ``default`` clip.
+
+Portraits are rerendered from the character's native authoring source; they are
+never enlarged from the gameplay sheet. Config generators receive a default
+face-guide compositor. Module characters receive a conservative default from a
+fresh canonical authoring render, and may override it with ``render_portraits``
+for family-specific or fully custom detailed art. This extends the target
+contract without requiring a shared pose model or rig implementation.
+
+Metadata such as a face guide, head anchor, or default pose is cross-family
+output metadata. Direct Python and specialized renderers can emit it just as a
+rig can. Keep rig-internal bones private unless a published consumer actually
+needs them.
+
+Every newly authored character must also carry an ``authoring_description`` in
+its local source metadata. This is a behind-the-scenes note, not in-world lore:
+it identifies the person, work, or genre being parodied; records the
+biographical, visual, and mechanical inspirations; and distinguishes deliberate
+gameplay inventions from claims about the source subject. Python targets put the
+same string in local ``ACTOR_METADATA``; YAML jobs use a top-level
+``authoring_description:`` field. The actor sidecar publishes it so review tools
+and future catalogs do not have to recover design intent from filenames.
+
+## Choosing an authoring family
+
+Choose the method that best expresses the sprite:
+
+- use a **single-file procedural target** for focused bespoke geometry;
+- use a **multi-file target** for a large character with its own scene, parts,
+  editor, or helper modules;
+- use a **config-driven generator family** when many variants genuinely share a
+  renderer and parameter schema;
+- use a **rig/rig-document or SVG-part family** when articulated parts, reusable
+  poses, IK, or editor-backed authoring are useful;
+- extract a **shared family helper** when several related characters already
+  repeat the same anatomy, pose, or composition concepts.
+
+Do not move a character into a rig or another family merely to make the source
+tree uniform. Family consolidation should preserve or improve the artistic
+result and make the implementation easier to understand.
+
+## Modal CLI
+
+Run commands from the renderer checkout root. In an Ambition checkout that is
+usually `tools/ambition_sprite2d_renderer/`. The preferred command surface is
+the project entry point installed by `uv`; it makes the active project explicit
+and avoids accidentally invoking a stale globally installed package.
+
+If output unexpectedly lands in another checkout, verify the imported source:
+
+```bash
+uv run python -c 'import ambition_sprite2d_renderer as a; print(a.__file__)'
+```
+
+**Unified Target commands** (take an optional `<TARGET>` from `list`; no arg = bulk):
+
+```bash
+uv run ambition-sprite2d-renderer list                    # every registered target, grouped by category
+uv run ambition-sprite2d-renderer canonical [<target>]    # one canonical, or the full gallery
+uv run ambition-sprite2d-renderer sheet     [<target>]    # gameplay sheet only
+uv run ambition-sprite2d-renderer portraits [<target>]    # native portrait product for supported characters
+uv run ambition-sprite2d-renderer install   [<target>]    # install rendered products
+uv run ambition-sprite2d-renderer publish   [<target>]    # gameplay sheet + portraits + install
+uv run ambition-sprite2d-renderer gifs      [<target>]    # per-animation GIF previews
+uv run ambition-sprite2d-renderer debug-hitboxes <target> # hitbox/hurtbox overlay strips
+uv run ambition-sprite2d-renderer audit-poses <target>     # geometry-only rig pose diagnostics
+```
+
+`python -m ambition_sprite2d_renderer ...` is also supported by a complete
+checkout, but the console entry point above is the recommended authoring loop.
+
+**Generator-pipeline commands** (take config paths or have unique semantics):
+
+```bash
+uv run ambition-sprite2d-renderer draw-all                 # render every config in configs/
+uv run ambition-sprite2d-renderer draw-review              # render every config in configs/review/
+uv run ambition-sprite2d-renderer draw-character <cfg>     # one config: canonical + spritesheet + YAML
+uv run ambition-sprite2d-renderer draw-factions            # music-faction lineup review render
+uv run ambition-sprite2d-renderer draw-runtime-npcs        # render+install the curated runtime-NPC subset
+uv run ambition-sprite2d-renderer spritesheet <cfg> <out>  # one config's sheet to a specific path
+uv run ambition-sprite2d-renderer single <cfg> <out>       # one frame from a config
+uv run ambition-sprite2d-renderer regenerate-all           # draw-all + publish + draw-runtime-npcs
+```
+
+## Profiling regeneration
+
+The renderer keeps optional `line_profiler` decorators in the expensive command,
+sheet-building, packing, portrait, and representative generator-family paths.
+They are inert when `line_profiler` is absent and when profiling is not enabled.
+Install the profiler once into the existing sprite-renderer environment:
+
+```bash
+cd tools/ambition_sprite2d_renderer
+uv pip install --python .venv/bin/python line_profiler
+cd ../..
+```
+
+Then profile a complete uncached regeneration with the ordinary script:
+
+```bash
+LINE_PROFILE=1 ./scripts/regen/sprites.sh --force
+```
+
+The shell orchestrator profiles only expensive sprite-renderer subprocesses;
+helper probes and machine-readable commands run with profiling disabled. Normal
+full regeneration batches explicit target rosters through `publish-many`, so
+registry imports and YAML discovery are amortized across dozens of targets
+instead of repeated for every character. Each expensive subprocess receives a
+unique output prefix under:
+
+```text
+tools/ambition_sprite2d_renderer/.profiles/regen-<timestamp>-<pid>/
+```
+
+This avoids the modern decorator interface's default `profile_output.lprof`
+being overwritten by the many Python processes involved in a full regeneration.
+The regeneration wrapper also disables the profiler's very large stdout report
+and duplicate timestamped text copy. By default each subprocess writes only its
+compact `.lprof` file and prints explicit start/finish markers. Long roster
+commands emit flushed per-character progress, so a profile file appearing only
+at process exit is not mistaken for a hung renderer. Set
+`AMBITION_LINE_PROFILE_TEXT=1` to additionally write one detailed `.txt` sidecar.
+
+Inspect an individual report using the command printed at the end of the run:
+
+```bash
+tools/ambition_sprite2d_renderer/.venv/bin/python \
+    -m line_profiler -rtmz path/to/report.lprof
+```
+
+For a faster first pass, isolate one target or skip atlas repacking:
+
+```bash
+LINE_PROFILE=1 ./scripts/regen/sprites.sh --target pipi_tau
+AMBITION_ULTRAPACK=0 LINE_PROFILE=1 ./scripts/regen/sprites.sh --force
+```
+
+For SVG-rigged characters, independent part rotations are prepared concurrently
+before the frame is composited in authoritative SVG z-order. The shared transform
+cache defaults to 128 MiB and at most four rotation workers. Tune those authoring
+resources without changing render semantics via:
+
+```bash
+AMBITION_SPRITE_TRANSFORM_CACHE_MB=256 ambition-sprite2d-renderer sheet noether
+AMBITION_SPRITE_ROTATE_WORKERS=1 LINE_PROFILE=1 ambition-sprite2d-renderer sheet noether
+```
+
+`AMBITION_SPRITE_ROTATE_WORKERS=1` is useful for a strictly sequential diagnostic
+profile; ordinary publication uses the bounded parallel transform path.
+
+`run_developer_setup.sh` is not part of this loop. Use it for initial bootstrap
+or when project dependencies, the selected Python version, submodules, or host
+packages change; normal profiling and regeneration reuse the existing `.venv`.
+
+Atlas packing uses an area-derived near-square MaxRects pass and reuses the
+first successful placement. It does not binary-search every possible pixel
+width for an exactly minimal square: that former search repeated the NP-hard
+heuristic many times per sheet and dominated profiled roster regeneration.
+Published pages are still cropped to occupied extents and validated by a
+lossless packed-pixel check.
+
+**Pipeline commands** (their own semantics; see `--help` for flags):
+
+```
+python -m ambition_sprite2d_renderer ultrapack ...           # pool ALL targets into shared uniform
+                                                             # atlas pages at one quality tier
+                                                             # (locality via data/pack_plan.yaml)
+python -m ambition_sprite2d_renderer ldtk-manifest --out <f> # LDtk visual manifest for
+                                                             # ambition_ldtk_tools apply-manifest
+```
+
+`sheet` and `portraits` write their products to
+`tools/ambition_sprite2d_renderer/generated/<target>/`. `install` copies every
+declared product into `crates/ambition_actors/assets/sprites/`. `publish`
+renders the gameplay sheet, renders portraits when supported, and installs the
+complete bundle. `publish-many` performs the same operation for an explicit
+list while loading the target registry once; regeneration uses it after its
+per-target cache has selected the stale subset.
+
+The bulk forms of `sheet` / `install` / `publish` are scoped to the tack-on
+surface (characters/props/tiles/icons); main YAML configs and review NPCs
+have their own bulk paths (`draw-all` / `draw-runtime-npcs`).
+
+## Adding a new sprite
+
+Run `python -m ambition_sprite2d_renderer list` to see what's
+already registered before adding a new one.
+
+The **canonical spec for the tack-on API** lives in the module
+docstring of
+[`ambition_sprite2d_renderer/registry/discovery.py`](ambition_sprite2d_renderer/registry/discovery.py).
+That's the source of truth — this section is the practical walkthrough.
+
+### 1. Pick a category
+
+- **characters/** — anything controllable by a brain (state machine,
+  RL agent, player input). Normal characters, bosses, tiny enemies.
+- **props/** — items, weapons, gates, scene dressing, batched entity
+  sheets.
+- **tiles/** — LDtk tileset atlases (cells designed to repeat).
+- **icons/** — UI ability/item icons.
+
+A target can move between categories with a plain `git mv` — discovery
+is path-agnostic beyond the category dir, and the relative-import
+depth (`...authoring.sheet_build` etc.) is the same in every category. No
+registration diff is involved.
+
+### 2. Single-file target (most common)
+
+Drop `targets/<category>/<name>.py`:
+
+```python
+"""Standalone generator for the my_new_enemy character."""
+from __future__ import annotations
+from pathlib import Path
+from typing import List
+
+from ...authoring.sheet_build import build_sheet
+
+TARGET_NAME = "my_new_enemy"
+# Optional — defaults to `{TARGET_NAME}_spritesheet.{png,yaml,ron}` plus
+# `{TARGET_NAME}_actor.ron` (the actor-contract sidecar is auto-appended
+# even to explicit lists), matching what `build_sheet` writes.
+SHEET_FILES = [
+    f"{TARGET_NAME}_spritesheet.png",
+    f"{TARGET_NAME}_spritesheet.yaml",
+    f"{TARGET_NAME}_spritesheet.ron",
+]
+ROWS = [("idle", 6, 120), ("walk", 8, 90), ("hurt", 4, 90), ("death", 8, 110)]
+
+
+def _render_frame(anim, frame_idx, nframes):
+    ...  # PIL rendering
+
+
+def render(out_dir: str | Path, **opts) -> List[Path]:
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    outputs = build_sheet(
+        target=TARGET_NAME,
+        rows=ROWS,
+        render_fn=_render_frame,
+        out_dir=out_dir,
+    )
+    return [outputs["spritesheet"], outputs["yaml"], outputs["ron"],
+            outputs["preview"], outputs["canonical"], outputs["canonical_transparent"]]
+```
+
+Every character module automatically receives a default portrait by freshly
+invoking its canonical authoring path. A family or bespoke target may override
+that fallback:
+
+```python
+def render_portraits(out_dir: str | Path, **opts) -> List[Path]:
+    # Rerender from this target's native source, then write
+    # my_new_enemy_portraits.png + my_new_enemy_portraits.ron.
+    ...
+```
+
+The common helpers in `authoring/portrait.py` provide canonical and face-guide
+framing plus manifest packing, but the hook may be entirely bespoke. It must not
+read or enlarge the published gameplay sheet. Discovery declares canonical
+portrait filenames for all character targets; multipart publishers may declare
+additional files and an install subdirectory.
+
+That's it. `list` will show it; `publish my_new_enemy` will write +
+install it.
+
+[`targets/characters/ghoul_skulker.py`](ambition_sprite2d_renderer/targets/characters/ghoul_skulker.py)
+is a good copy-paste starting point for single-file characters.
+
+### 3. Multi-file target (for big characters with helpers/configs)
+
+If a target needs its own helper modules, part-config YAML files, or
+part-editor scripts, ship it as a package directory:
+
+```
+targets/characters/my_boss/
+  __init__.py            # exposes TARGET_NAME, SHEET_FILES, render(), install()
+  sprite_generator.py
+  part_editor.py
+  my_boss_parts.yaml
+  my_boss_scene.yaml
+```
+
+The `__init__.py` exposes the same tack-on API as a single-file
+target. See
+[`targets/characters/mockingbird_boss/__init__.py`](ambition_sprite2d_renderer/targets/characters/mockingbird_boss/__init__.py)
+for the canonical example.
+
+### 4. Multiple targets in one module
+
+If one file naturally produces several related sheets (e.g. an entity
+batch), expose a `TARGETS` dict instead of a single `render`:
+
+```python
+TARGETS = {
+    "alpha": {"render": render_alpha, "sheet_files": [...]},
+    "beta": {"render": render_beta},  # sheet_files defaults from the name
+}
+```
+
+Each entry becomes its own registry key.
+
+### Custom install (optional)
+
+The default installer copies every declared gameplay and portrait product
+from `generated/<name>/` into `crates/ambition_actors/assets/sprites/`. If your
+target ships a subdirectory of part files (or otherwise needs non-flat gameplay
+installation), expose `install(render_dir, dest_root) -> Iterable[Path]`. The
+common target installer still adds declared portrait files afterward.
+
+### Working with procedural and rigged characters
+
+The registry command is the same for every character; what changes is the
+authoring source that must be updated before `sheet` is run.
+
+**Direct/procedural module target.** Edit the Python target (and any private
+family helpers it owns), then render the target directly:
+
+```bash
+uv run ambition-sprite2d-renderer sheet weird_hermit
+uv run ambition-sprite2d-renderer gifs weird_hermit
+```
+
+There is no rig rebuild step unless that particular target explicitly owns one.
+
+**Canonical SVG + generated rig.** The SVG supplies part art and attachment
+geometry, while the rig/builder supplies anatomy, natural pose, IK, and clips.
+When the SVG changes, rebuild the generated rig *before* opening that rig in the
+GUI; opening a `.rig.json` directly does not refresh it from its SVG. Patent
+Clerk's normal edit/review loop is:
+
+```bash
+uv run python scripts/build_scientist_fighter_rigs.py build patent_clerk
+uv run --extra gui python -m ambition_sprite2d_renderer.gui \
+  ambition_sprite2d_renderer/targets/characters/rigged/patent_clerk/patent_clerk_side.rig.json
+uv run ambition-sprite2d-renderer sheet patent_clerk
+uv run ambition-sprite2d-renderer gifs patent_clerk
+```
+
+The source SVG may intentionally use a splayed/exploded pose so every part is
+easy to see. That layout is art/geometry authoring, not the character's neutral
+stance. Natural limb targets and bend direction belong to rig authoring.
+
+Player Robot v3 is also SVG-rigged but has its own builder:
+
+```bash
+uv run python scripts/build_player_robot_v3_svg.py build
+uv run --extra gui python -m ambition_sprite2d_renderer.gui \
+  ambition_sprite2d_renderer/targets/characters/rigged/player_robot_v3/player_robot_v3.rig.json
+uv run ambition-sprite2d-renderer sheet player_robot_v3
+```
+
+A rig's logical authoring frame and its published raster need not be identical.
+Large rotations such as rolls should use rig-render overscan so parts are painted
+outside the logical frame before publication crops or packs them. Padding a
+finished frame is too late: pixels clipped during rig composition are already
+lost. Keep the logical coordinates stable and add overscan at the rig render
+seam when a motion envelope needs more room.
+
+Generated products remain under `generated/<target>/`; they are review/build
+artifacts and are not committed.
+
+#### Fighter motion vocabulary and coverage
+
+The long-term fighter animation vocabulary is recorded in
+[`data/fighter_motion_vocabulary.yaml`](ambition_sprite2d_renderer/data/fighter_motion_vocabulary.yaml).
+It preserves the full motion list even when current art does not justify every
+left/right, grounded/aerial, hit-reaction, item, or results variation.
+
+Each catalog entry has two useful levels:
+
+- `future_slot` is the fine-grained eventual animation slot. This is where later
+  art can split variants without renaming or losing the original requirement.
+- `category` is the current-art coverage unit. A mature fighter should cover
+  every category whose `scope` applies to that fighter, but several future
+  variants may intentionally share that one row today.
+
+`fighter_core` applies to a full fighter. `generic_item` applies when the
+character participates in the dynamic held-item system. Specialized item and
+status scopes are capability-gated rather than mandatory for every character.
+Ambition-specific additions such as `idle_look_up` and `crouch_walk` live in the
+catalog's `ambition_extensions` section rather than silently changing the
+supplied source list.
+
+The current full-fighter profiles live beside their character authoring:
+
+- [`patent_clerk_motion.py`](ambition_sprite2d_renderer/targets/characters/patent_clerk_motion.py)
+- [`player_robot_v3_motion.py`](ambition_sprite2d_renderer/targets/characters/player_robot_v3_motion.py)
+- [`carl_stargan_motion.py`](ambition_sprite2d_renderer/targets/characters/carl_stargan_motion.py)
+- [`pca_motion.py`](ambition_sprite2d_renderer/targets/characters/pca_motion.py)
+
+The generated scientist fighters import their row declaration directly in
+`scripts/build_scientist_fighter_rigs.py`, so Carl Stargan and Patent Clerk use
+the same row authority for rig generation and sheet publication. For Carl:
+
+```bash
+uv run python scripts/build_scientist_fighter_rigs.py build carl_stargan
+uv run ambition-sprite2d-renderer sheet carl_stargan
+```
+
+Player Robot v3 follows the same pattern through its dedicated builder. PCA is
+slightly different: its extractor preserves hand-authored clips, then materializes only
+missing semantic rows from established PCA choreography, so later GUI-polished
+clips survive SVG geometry rebuilds. Its refresh command is:
+
+```bash
+uv run python ambition_sprite2d_renderer/targets/characters/rigged/pca_rig_extract.py build
+uv run ambition-sprite2d-renderer sheet perfect_cellular_automaton
+```
+
+Character-specific special mappings stay visual. Robot v3 resolves neutral to
+shoot, side to blink, up to boot-thruster hover, and down to charge. Carl uses
+pale-blue-dot, cosmic-calendar, cosmic-drift recovery, and
+billions-and-billions, with starstuff as his Final Smash. PCA keeps its existing
+shoot / special / fly / charge vocabulary, with a dedicated Final Smash row.
+Gameplay damage, knockback, cancels, and move semantics remain game-side.
+Coverage is checked with:
+
+```bash
+uv run python -m pytest tests/test_fighter_motion_vocabulary.py -q
+```
+
+This coverage file is deliberately an authoring contract, not gameplay move
+data. Damage, knockback, cancels, charge rules, and move-to-clip binding belong
+to the game-side character/moveset definition; the sprite repository owns the
+visual motion rows those moves can request.
+
+#### Rig pose auditing
+
+Full fighters now have enough animation rows that visual review alone is a poor
+first line of defense. Run the geometry-only pose auditor before reviewing the
+full spritesheet:
+
+```bash
+uv run ambition-sprite2d-renderer audit-poses carl_stargan
+uv run ambition-sprite2d-renderer sheet carl_stargan
+```
+
+`audit-poses` loads the `.rig.json` directly and evaluates the same FK/IK solve
+used by publication. The core audit does **not** rasterize SVG art, so it works
+on machines without `resvg_py` and is suitable for agent/CI inspection. It
+checks, among other things:
+
+- elbow and knee IK branch consistency;
+- natural/recovery forearms that point away from the explicitly authored
+  natural arm pose;
+- nearly straight elbows and overreaching hand trajectories;
+- hand orientation drifting far away from its normal forearm relationship;
+- large wrist/forearm discontinuities between adjacent animation frames;
+- planted-foot movement in poses expected to hold still; and
+- bones leaving the logical rig frame, which is a cue to verify render
+  overscan rather than post-render padding.
+
+For canonical SVG paper dolls, `features.source_pose_role =
+"geometry-layout-only"` means `natural_pose.arms` is required anatomy authority.
+The exploded SVG itself must not silently decide how a neutral elbow bends or
+which way a resting forearm points.
+
+When native `resvg_py` is unavailable, SVG-backed character rendering also has a
+**CairoSVG review fallback**. It emits a loud `RuntimeWarning` and records
+`cairosvg` provenance when it has to rebuild a scientist rig. Use that path for
+authoring/visual inspection only: CairoSVG can shift antialiasing and derived
+part bounds slightly, so native resvg remains the publication/canonical backend
+and will replace a fallback-built rig when it is available again.
+
+The default output directory is:
+
+```text
+generated/<target>/diagnostics/pose_audit/
+```
+
+It contains:
+
+- `pose_audit.json` — machine-readable per-frame metrics and findings;
+- `pose_skeletons.png` — every sampled animation frame as a compact skeleton
+  contact sheet;
+- `pose_flagged_skeletons.png` — only animations/frames with findings;
+- `pose_flagged_detail.png` — larger annotated tiles for the highest-priority
+  suspicious frames; and
+- `pose_flagged_art.png` when `resvg_py` is available, with the solved skeleton
+  overlaid on the rasterized rig art.
+
+The command reports findings but exits successfully by default. CI or strict
+authoring checks can opt into a gate:
+
+```bash
+uv run ambition-sprite2d-renderer audit-poses carl_stargan --fail-on error
+uv run ambition-sprite2d-renderer audit-poses carl_stargan --fail-on warning
+```
+
+Use `--no-art` when only deterministic geometry products are desired.
+
+### Helpers and authoring families
+
+- **Generic drawing + spritesheet building** — lives under
+  [`authoring/`](ambition_sprite2d_renderer/authoring/):
+  [`sheet_build.py`](ambition_sprite2d_renderer/authoring/sheet_build.py)
+  (`build_sheet` + math + draw primitives) and
+  [`common_draw.py`](ambition_sprite2d_renderer/authoring/common_draw.py)
+  (generator-helper drawing primitives). The RON emitter and core
+  draw/measure primitives live in
+  [`core/`](ambition_sprite2d_renderer/core/). Use these from any target.
+- **Character-family helpers** shared by several related characters live
+  under `targets/characters/` with a leading underscore so discovery skips
+  them. A family helper may be procedural, rigged, part-based, or hybrid. See
+  [`targets/characters/_pirate_common.py`](ambition_sprite2d_renderer/targets/characters/_pirate_common.py)
+  for a pirate-specific parametric rig; it is an example of a useful family,
+  not a base class all characters should adopt.
+- **Rig and rig-document helpers** are available for sprites that benefit from
+  articulated parts or editor-backed posing. Their use is optional.
+
+### Config-driven generator target instead of a module target
+
+Use the YAML-driven generator surface when a character naturally belongs to a
+family with a reusable renderer and parameter schema:
+
+1. Drop a generator class under `targets/characters/<name>_side.py`
+   (subclass `CharacterGenerator` from `authoring/generator.py`;
+   implement `build_spec` + `render_frame`).
+2. Register an instance in the `GENERATORS` dict in
+   [`registry/character_generators.py`](ambition_sprite2d_renderer/registry/character_generators.py).
+3. Add `configs/<name>.yaml` (or a review config under
+   `configs/review/`) describing the render parameters.
+4. Add the file's stem to
+   [`GENERATOR_MODULE_STEMS`](ambition_sprite2d_renderer/registry/discovery.py)
+   in `registry/discovery.py` so discovery skips it.
+
+[`targets/characters/robot_side.py`](ambition_sprite2d_renderer/targets/characters/robot_side.py)
++ [`configs/robot.yaml`](ambition_sprite2d_renderer/configs/robot.yaml) is a
+canonical config-driven generator example. It is not a mandate to convert
+bespoke module targets into parameterized humanoid variants.
+
+Config-driven characters automatically receive a native default portrait. A
+job may refine the cross-family face guide and declare named still or animated
+clips without changing its generator:
+
+```yaml
+visual:
+  default_pose: idle
+  portrait:
+    face_guide:
+      center: [64, 27]
+      size: [24, 29]
+      source_size: [128, 128]
+  portraits:
+    default:
+      animation: idle
+      frame: 1
+    speaking:
+      animation: talk
+      frames: [0, 1, 2, 3, 4, 5]
+      duration_ms: 105
+      looping: true
+    focused:
+      animation: interact
+      frame: 4
+```
+
+The guide uses logical source-canvas coordinates. It is equally valid for a
+procedural, part-based, or rigged generator and does not prescribe how the
+character is posed.
+
+## Character specs and review casts
+
+`CharacterJob` accepts optional `name`, `output_name`, and `spec` fields.
+The `toon` target uses those `spec` overrides to author silhouette-first
+characters without inventing a brand new renderer per NPC. Review presets can
+be intentionally trope-heavy: `absurd_general` is the shouting-general pass with
+a giant star cap, epaulets, medals, awards, baton, and irate yell face. Example:
+
+```yaml
+target: toon
+name: Merchant Prototype
+output_name: merchant_prototype
+archetype: merchant_prototype
+spec:
+  torso_w: 31.5
+  leg_upper: 10.5
+```
+
+The curated review pass lives in `ambition_sprite2d_renderer/configs/review/`
+and is meant to answer the question, “do these feel like different characters?”
+Use `draw-review` to regenerate the current cast along with a canonical contact
+sheet. The `raid_enforcer` preset is a fictional raid-enforcer enemy pass: severe
+cap, charcoal tunic, red armband with an invented black sigil, collar skull
+tabs, and a long rifle so it reads as a distinct villain rather than a variant
+of `absurd_general`.
+
+## Conventions
+
+- Generated outputs live under `generated/` and are gitignored.
+- Targets must be deterministic for a given input (same code → same bytes).
+- The publishing contract is shared; the internal authoring representation is
+  not. Do not require rigs, bones, or a universal pose model from every target.
+- Runtime assets are written only by explicit `install` / `publish` /
+  `regenerate-all` / `draw-runtime-npcs` (or `draw-all` with an explicit
+  `--out-dir` for generator targets).
+- Do not commit `.png`, `.yaml`, etc., from `generated/`.
+
+See [`docs/design.md`](docs/design.md) for the architecture rationale
+and [`docs/ENTITY_TODOS.md`](docs/ENTITY_TODOS.md) for outstanding
+entity-sprite work.
+
+### Hand-drawn women, rigged by program: the Medic and the Actor
+
+Two characters are drawn by a person in Inkscape and rigged by a program. The
+file under `assets/` is the ART; the file under `data/characters/<name>/` is that
+art with a bone catalog and a marker layer built onto it, and `rigbuild` is the
+second half. Their art already carries the whole static rig -- one part group per
+rigid piece declaring its `data-rig-part` / `data-rig-bone` / `data-rig-z`, plus
+a `rig-joints` layer of measured joints -- so
+[`annotated_side_rig`](ambition_sprite2d_renderer/rigbuild/annotated_side_rig.py)
+derives only what a drawing cannot state: the pelvis' own pivot, the ground
+point, and the scale that puts a millimetre drawing into the shared library's
+671-unit standing height.
+
+```bash
+uv run python -m ambition_sprite2d_renderer.rigbuild.build_medic
+uv run python -m ambition_sprite2d_renderer.rigbuild.build_performer
+uv run python -m ambition_sprite2d_renderer.devtools.svg_rig_tool validate \
+    ambition_sprite2d_renderer/data/characters/medic/medic.svg
+uv run python scripts/check_character_reads.py medic performer
+uv run ambition-sprite2d-renderer sheet medic
+```
+
+⛔ **NEAR AND FAR COME FROM PAINT ORDER, NOT FROM THE LAYER NAME.** Both women
+face east, so what paints BEHIND the torso is her left and reads far. The art
+arrived with four limbs labelled the other way round, and the ids are now made to
+agree with the stack rather than with the labels.
+
+⛔⛔ **A DEPTH TINT MUST NOT BE ALPHA.** Group `opacity` reads as "one shade back"
+only because art is reviewed on white; in the published rig every part is
+rasterized to its OWN transparent raster, so a 0.88 far arm is not paler, it is
+SEE-THROUGH and the stage shows through it. The Performer's far-side tint is baked
+into opaque fills and strokes.
+
+#### What a pose file cannot tell you
+
+[`scripts/check_character_reads.py`](scripts/check_character_reads.py) measures
+three things on the published pixels, because none of them are facts about the
+angles that produced them:
+
+- **a limb may not show only its TIP**, far from its own joint. The Medic's shirt
+  is black and her arms are not, so with the far shoulder tucked behind the trunk
+  her forearm emerges past the shirt's edge and publishes as a fist growing out
+  of her hip -- while the silhouette stays one connected component, the limb stays
+  adjacent to the trunk, and the upper arm's pixels stay present. The measured
+  bound on her rig is `far_arm_u <= 95`: 54px of shoulder at the drawn rest
+  angle, 28 at 90, 13 from 100 up;
+- **a grounded row's lowest foot belongs on the floor.** Above it is an authored
+  lift and is reported, not failed; below it is always wrong;
+- **the silhouette is one piece.**
+
+⭐ **The bar is each drawing's own.** The Medic shows 54px of shoulder at rest and
+the Actor 12, because a cardigan panel hangs in front of hers -- one threshold
+would either pass every broken frame of the Medic's or condemn the Actor as she
+was drawn. The rest pose sets the bar per character, and what separates an
+orphaned limb from an honest one is whether the MIDDLE segment is on screen: the
+Actor's rear leg starts 15px from its hip in a lunge and reads perfectly, because
+a whole shin and boot come out from under the coat hem.
+
+#### Stage machinery, and a gun
+
+Three authored effects are not swings. `swing_effects` grew them because the
+reviewer and the PUBLISHER have to call the same code or the sheet ships without
+them, and because none of them can be expressed as a ribbon:
+
+| effect | who | what it draws |
+|---|---|---|
+| `trapdoor` | Actor, down special | a hole in the boards under her, opening, with dust |
+| `wire` | Actor, up special | a flyline from her harness point straight up out of frame |
+| `mend` | Medic, down special | soft rings rising off the hand that is working |
+
+⭐ **`mend` is the only one that goes UP and does not reach.** Everything else
+here travels outward because it is going to hurt somebody; a heal has to read as
+the opposite, so its rings stay inside her own silhouette and fade at the top
+rather than opening into a cone.
+
+⛔ **None of the three publishes a hit volume.** A hole in the floor, a wire and
+a dressing hurt nobody, so their specs carry no `hitbox.active` at all and name
+their live frames on the effect's own style block instead — which is also how the
+Medic's ADRENALINE avoids shipping an attack box for a move that only costs her.
+
+⛔ **`base == tip` is a null axis and draws nothing.** `near_arm_l` ENDS at the
+wrist, which is exactly where `near_arm_hand` starts, so a strike authored
+wrist-to-wrist measured zero length, `from_bones` returned `None` for every frame,
+and the effect was silent with no error anywhere.
+
+The Officer's side special is the fourth: he draws. The holster rides his
+`pelvis` and is drawn in every frame he has; the pistol rides his near hand as an
+alternate at zero opacity, and `shoot` is the only row that raises it.
+
+⛔⛔ **`build_catalog` used to DROP `data-rig-opacity`.** The channel never reached
+the catalog, `motion_ir` read none, and every alternate drew unconditionally — so
+the shipped Officer published with a spare fist beside his hip and a second torso
+beside his head, in all 136 rows, at nearly twice his real width. His alternates
+were also drawn BESIDE him in an exploded authoring layout and had to be placed
+onto the body; a trunk in a swap set is fitted to the trunk's box (his hand-drawn
+back is 87% as wide, and centred alone it left the shoulders a hairline short of
+the sleeves) and lengthened to tuck behind the pelvis, while a hand in one is only
+centred — fitted, a drawn fist becomes a mitt.
+
+⛔ **A discharge leaves the MUZZLE, and `from_part` cannot find it.** A service
+pistol is a slide with a grip at ninety degrees: nearly as wide as it is long, so
+the principal axis of its silhouette comes out on the diagonal and the shot
+published forty degrees off the barrel. A strike spec now takes `extend`, which
+pushes the far end past the bone along the same line — the right answer for a
+held prop whose bore is drawn along its own bone. And the round leaves BEFORE the
+recoil: authored with the muzzle already rising, the cone follows the barrel into
+the sky.
+
+#### Their movesets
+
+Both fork the polygon reference libraries rather than sharing them, and both
+publish through
+[`_authored_swing_fighter`](ambition_sprite2d_renderer/targets/characters/_authored_swing_fighter.py),
+which is the Officer's pipeline written down once: overscan for the poses, the
+further overscan the EFFECTS need, the effect composited per CLIP because a
+whoosh is not a frame-local fact, and the hit volume built from the same spec
+that drew it.
+
+| | Medic (`medic_triage_v1`) | Performer (`performer_stage_v1`) |
+|---|---|---|
+| forked from | `fighting_brawler_v1` | `fighting_polygon_v1` |
+| identity | field paramedic; push, lift, carry | performer; every gesture held |
+| hands | open palms, never a fist | one long line at a time |
+| light | cold white-cyan: a trace, then a discharge | warm amber stage light, lagging the gesture |
+| signature | ADRENALINE / TOURNIQUET / FIELD DRESSING / RESCUE LIFT | MONOLOGUE / THE LINE / THE TRAP / CURTAIN CALL |
+| forward smash | the defibrillator, both palms on one line | THE DUEL SCENE: a lunge with a blade of light |
+| the pair | one special SPENDS her margin, the other kneels and repays it | down is a trap door, up is a flyline: the stage moves her |
+
+⭐ **The Performer has no sword part and is not getting one.** Her reach is the
+swing's own axis extended past her hand, and the hit volume is built from that
+same number -- so the blade a player sees IS the blade that hits them. It is a
+thin volume over a long reach on purpose: she trades area for distance.
+
+⛔⛔ **`reentry` IS FIRE UNLESS YOU SAY OTHERWISE.** Its default shells are a
+capsule's plasma sheath, so the Medic's defibrillator first published as a
+burning wedge. A character whose language is not heat must author its `shells`.
+
+⛔ **A two-frame active window is a two-frame hull**, so a fast limb live for two
+frames publishes a sliver whatever else the spec says; and a `poke` lens as wide
+as the limb is a card, not a lance.
+
+Neither woman has `torso_side` / `torso_back` art, so their libraries carry no
+shoulder-socket offsets -- the shared clips translate `near_arm_u` onto a TURNED
+torso's shoulder, which on a one-torso rig detaches the arm instead of
+foreshortening it. The torso visibility parameters are left in place and are
+inert, so restoring the turn is an ART step, not a motion edit.
+
+### Label-driven traced humanoids and Noether's panelled dress
+
+Canonical traced humanoids normally use explicit `data-rig-part` /
+`data-rig-joint` attributes.  A traced paper doll may instead opt into the
+`standard-humanoid` label contract when its Inkscape labels follow the existing
+Ambition vocabulary (`Upper Arm - Near Right`, `Lower Leg - Far Left`,
+`Hand Tip - Near`, and so on).  Generated XML ids are never semantic authority.
+An anatomical `left`/`right` token is checked against the view's
+`data-rig-side-map`; if the same label also says `near`/`far`, the two must
+agree.
+
+Noether uses that label-driven path.  Her `Noether - Side Left` view carries the
+small amount of metadata that cannot be inferred safely from labels:
+
+```text
+facing:          east
+projection:      three-quarter
+side map:        right=near,left=far
+pose authority:  geometry-only
+part order:      document
+```
+
+Her long dress is not cloth-simulated.  The traced `dress-base` plus left,
+center, and right dress panels are bound to three pelvis-child skirt bones using
+the `Skirt-Pivot-Left`, `Skirt-Pivot-Center`, and `Skirt-Pivot-Right` markers.
+The side panels receive restrained secondary rotation while the real upper/lower
+legs remain underneath for collision, IK, crouches, jumps, and kicks.  Natural
+arm pose and elbow anatomy live in the generated rig specification rather than
+being inferred from the source drawing.
+
+Build, audit, and render Noether with:
+
+```bash
+uv run python scripts/build_scientist_fighter_rigs.py build noether
+uv run ambition-sprite2d-renderer audit-poses noether --fail-on warning
+uv run ambition-sprite2d-renderer sheet noether
+```
+
+The build reads `assets/noether.svg` but never rewrites it.  The generated rig
+lives under `ambition_sprite2d_renderer/targets/characters/rigged/noether/`.
+Noether currently participates in the same complete `fighter_core` +
+`generic_item` motion contract as the other full fighters; her signature rows
+are symmetry/conservation themed and the SVG's east-facing view receives
+mirrored fighter choreography automatically.

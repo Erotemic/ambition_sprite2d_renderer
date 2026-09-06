@@ -1,0 +1,47 @@
+{
+  "schema": "ambition-pose-v1",
+  "id": "humanoid/fighting_polygon/idle",
+  "rig_profile": "humanoid-articulated-v1",
+  "source": {
+    "clip": "idle",
+    "frame": 0,
+    "kind": "promoted-legacy-pose"
+  },
+  "state": {
+    "bones": {
+      "far_arm_l": {
+        "rotation_deg": -1.941638
+      },
+      "far_arm_u": {
+        "rotation_deg": -0.494424
+      },
+      "far_leg_foot": {
+        "rotation_deg": 0.003791
+      },
+      "far_leg_l": {
+        "rotation_deg": -0.008347
+      },
+      "far_leg_u": {
+        "rotation_deg": 0.004549
+      },
+      "head": {
+        "rotation_deg": 0.753002
+      },
+      "near_arm_l": {
+        "rotation_deg": -1.763355
+      },
+      "near_arm_u": {
+        "rotation_deg": 0.0
+      },
+      "near_leg_foot": {
+        "rotation_deg": 0.000731
+      },
+      "near_leg_l": {
+        "rotation_deg": -0.001385
+      },
+      "near_leg_u": {
+        "rotation_deg": 0.000656
+      }
+    }
+  }
+}

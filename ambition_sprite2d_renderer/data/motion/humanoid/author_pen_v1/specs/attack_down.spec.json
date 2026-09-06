@@ -1,0 +1,92 @@
+{
+  "clip": "attack_down",
+  "note": "down tilt. A downward POKE, not a sweep: the blade holds one low forward-down line while the arm retracts and drives out. The angle barely moves by design -- what travels is the tip, and that is extension, which the elbow owns.",
+  "facing": "west",
+  "sword_deg": [
+    156,
+    150,
+    146,
+    146,
+    150,
+    158
+  ],
+  "elbow": [
+    -72,
+    -88,
+    -6,
+    -2,
+    -40,
+    -68
+  ],
+  "torso": [
+    0,
+    4,
+    10,
+    10,
+    5,
+    0
+  ],
+  "off_hand": {
+    "0": [
+      -28,
+      -92
+    ],
+    "1": [
+      -24,
+      -96
+    ],
+    "2": [
+      -40,
+      -70
+    ],
+    "3": [
+      -42,
+      -68
+    ],
+    "4": [
+      -32,
+      -84
+    ],
+    "5": [
+      -28,
+      -92
+    ]
+  },
+  "effect": "poke",
+  "poke": {
+    "extend": 1.34,
+    "width": 14.0,
+    "waist": 0.68,
+    "inner": 0.08,
+    "alpha": 195,
+    "blur": 1.0,
+    "core_alpha": 230,
+    "falloff": 2.2,
+    "window": 2,
+    "body_rgb": [
+      150,
+      208,
+      255
+    ],
+    "core_rgb": [
+      240,
+      252,
+      255
+    ]
+  },
+  "hitbox": {
+    "active": [
+      2,
+      3
+    ]
+  },
+  "invariants": [
+    "never_above:16",
+    "starts_near:156"
+  ],
+  "pixel_invariants": [
+    "hitbox_in_front",
+    "feet_on_ground"
+  ],
+  "todo": "The thrust reaches by straightening the elbow only. A real dtilt also drops the shoulder and crouches; that wants a low-stance sprite the rig does not have yet."
+}

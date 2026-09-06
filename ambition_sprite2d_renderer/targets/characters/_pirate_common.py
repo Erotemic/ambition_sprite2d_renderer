@@ -1,0 +1,980 @@
+"""Drawing helpers shared by the pirate-family characters.
+
+Pirate-specific paint code: palettes, body part draws (hat / face /
+boot / sword / neck), the parametric `animation_pose` rig, and the
+`draw_character(kind, anim, ...)` entry point that composes them.
+
+Leading underscore is intentional — the target registry walks
+``targets/characters/`` and treats files starting with ``_`` as
+helpers, so this module won't try to register as a target.
+
+The 5 core pirate character modules (admiral, raider, quartermaster,
+lookout, navigator) re-use the same parametric rig keyed on their
+palette + cohort tags (`SCARFED_KINDS`, `BEARDED_KINDS`,
+`SKULL_MOTIF_KINDS`). Each `targets/characters/pirate_<role>.py`
+module's `render()` calls `render_target(<role>, ...)` here, which
+plumbs through to `sheet_build.build_sheet` with the right
+`draw_character` partial.
+
+A handful of non-pirate characters that happened to look pirate-ish
+(colonial_statesman, viking variants, etc.) also re-use the
+`draw_character` palette branches — see the per-kind switches inside
+the body-draw helpers.
+"""
+
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, List, Tuple
+
+from PIL import Image, ImageDraw
+
+from ...authoring.sheet_build import (
+    ANIMATIONS,
+    BASE_FRAME,
+    RGBA,
+    SCALE,
+    build_sheet,
+    circle,
+    downsample,
+    ease_in_out,
+    ellipse,
+    lerp,
+    line,
+    oscillate,
+    poly,
+    rotated_rect_points,
+    transform,
+)
+from ambition_sprite2d_renderer.core.draw import blending_draw
+from . import _pirate_rig as pirate_rig
+
+
+@dataclass
+class Palette:
+    outline: RGBA
+    skin: RGBA
+    skin_shadow: RGBA
+    hat: RGBA
+    coat: RGBA
+    coat2: RGBA
+    sash: RGBA
+    shirt: RGBA
+    pants: RGBA
+    boots: RGBA
+    metal: RGBA
+    gold: RGBA
+    beard: RGBA | None = None
+    accent: RGBA | None = None
+
+
+# Cohort tags so the parametric draw branches can ask "is this a
+# scarf-wearing pirate" / "is this a bearded pirate" rather than
+# spelling out every kind name in every branch. Lady pirates wear
+# scarves and share the taunt-tilt + blade-tip-offset behavior with
+# the male raiders, but they don't grow beards or wear the chest
+# skull motif.
+SCARFED_KINDS = (
+    "pirate_raider",
+    "pirate_quartermaster",
+    "pirate_lookout",
+    "pirate_navigator",
+)
+BEARDED_KINDS = ("pirate_raider", "pirate_quartermaster")
+SKULL_MOTIF_KINDS = ("pirate_raider", "pirate_quartermaster")
+
+
+PALETTES = {
+    "pirate_admiral": Palette(
+        outline=(26, 28, 35, 255),
+        # Warm mid-brown skin. Reads as Caribbean-coast / mestizo
+        # rather than European-pale; sits between the lighter raider
+        # tone (#EBC4A0) and the deep brown quartermaster (#704C32) so
+        # the cove lineup hits three distinct values at a glance.
+        skin=(168, 124, 88, 255),
+        skin_shadow=(112, 76, 48, 255),
+        hat=(28, 31, 41, 255),
+        coat=(88, 108, 138, 255),
+        coat2=(146, 165, 191, 255),
+        sash=(113, 40, 40, 255),
+        shirt=(214, 205, 182, 255),
+        pants=(212, 196, 160, 255),
+        boots=(69, 50, 35, 255),
+        metal=(210, 216, 228, 255),
+        gold=(206, 171, 74, 255),
+        beard=None,
+        accent=(222, 72, 55, 255),
+    ),
+    "pirate_raider": Palette(
+        outline=(28, 24, 26, 255),
+        skin=(235, 196, 160, 255),
+        skin_shadow=(175, 128, 95, 255),
+        hat=(31, 23, 32, 255),
+        coat=(196, 60, 52, 255),
+        coat2=(229, 191, 105, 255),
+        sash=(24, 24, 24, 255),
+        shirt=(31, 31, 35, 255),
+        pants=(66, 67, 73, 255),
+        boots=(84, 53, 31, 255),
+        metal=(201, 207, 214, 255),
+        gold=(227, 184, 70, 255),
+        beard=(77, 42, 23, 255),
+        accent=(239, 239, 239, 255),
+    ),
+    # Third pirate variant — same silhouette family as `pirate_raider`
+    # (broad cutlass-and-coat raider archetype) but a distinctly
+    # darker skin tone so the lineup represents more of the actual
+    # human phenotype range that historical Caribbean / Indian Ocean
+    # / Mediterranean pirate crews drew from. The coat shifts from
+    # raider's bright red to a deep teal so the silhouettes are
+    # easy to tell apart at a glance even when palette-only
+    # variants ship side-by-side.
+    "pirate_quartermaster": Palette(
+        outline=(18, 14, 16, 255),
+        # Deep brown skin — noticeably darker than the existing
+        # `pirate_admiral` (#A87C58) and `pirate_raider` (#EBC4A0).
+        skin=(112, 76, 50, 255),
+        skin_shadow=(72, 46, 28, 255),
+        hat=(20, 24, 30, 255),
+        coat=(28, 92, 92, 255),  # deep teal
+        coat2=(206, 178, 92, 255),  # warm gold trim
+        sash=(160, 38, 38, 255),  # bright crimson sash for contrast
+        shirt=(238, 226, 198, 255),
+        pants=(46, 42, 38, 255),
+        boots=(54, 36, 22, 255),
+        metal=(212, 218, 224, 255),
+        gold=(228, 188, 76, 255),
+        # Short cropped beard matching the warm-dark skin tone.
+        beard=(38, 24, 16, 255),
+        accent=(232, 220, 196, 255),
+    ),
+    # ─────────────────────────────────────────────────────────────────
+    # Lady pirate variants. Same skeleton + hat / sash / sword
+    # geometry as the male roles (the parametric character draws the
+    # same silhouette), but no beard and a warmer scarf / coat
+    # palette so they read as a distinct crew at a glance.
+    #
+    # Two skin tones — Lookout deep-brown (matches Quartermaster
+    # range), Navigator pale-warm — so the lineup hits five distinct
+    # phenotypes between the three men + two women.
+    # ─────────────────────────────────────────────────────────────────
+    "pirate_lookout": Palette(
+        outline=(22, 18, 22, 255),
+        # Deep brown skin in the Quartermaster range, slightly warmer.
+        skin=(118, 80, 56, 255),
+        skin_shadow=(76, 48, 32, 255),
+        hat=(24, 28, 38, 255),  # dark navy cap
+        coat=(176, 60, 88, 255),  # raspberry coat
+        coat2=(232, 200, 132, 255),  # buttery trim
+        sash=(48, 36, 28, 255),  # dark leather sash
+        shirt=(244, 232, 208, 255),
+        pants=(52, 38, 32, 255),
+        boots=(60, 38, 22, 255),
+        metal=(214, 220, 226, 255),
+        gold=(228, 188, 76, 255),
+        beard=None,  # no beard — lady pirate
+        accent=(255, 230, 196, 255),
+    ),
+    "pirate_navigator": Palette(
+        outline=(24, 20, 24, 255),
+        # Pale-warm skin, between the existing Raider and a paler
+        # northern-European reference. Distinct from Admiral's mid-
+        # brown so the cove lineup reads as five different people.
+        skin=(238, 206, 178, 255),
+        skin_shadow=(196, 152, 116, 255),
+        hat=(72, 24, 48, 255),  # plum hat
+        coat=(46, 64, 96, 255),  # midnight navy coat
+        coat2=(214, 198, 174, 255),  # bone trim
+        sash=(212, 168, 64, 255),  # gold sash
+        shirt=(244, 240, 232, 255),
+        pants=(58, 50, 48, 255),
+        boots=(64, 44, 28, 255),
+        metal=(216, 222, 230, 255),
+        gold=(232, 192, 80, 255),
+        beard=None,  # no beard — lady pirate
+        accent=(178, 116, 156, 255),
+    ),
+}
+
+
+def animation_pose(anim, frame_idx, nframes):
+    s = oscillate(frame_idx, nframes)
+    c = math.cos((frame_idx / max(1, nframes)) * math.tau)
+    t = frame_idx / max(1, nframes - 1)
+    pose = {
+        "root_x": 0.0,
+        "bob": 0.0,
+        "body_tilt": 0.0,
+        "left_leg": -6.0,
+        "right_leg": 6.0,
+        "left_arm": 10.0,
+        "right_arm": -20.0,
+        "weapon": -18.0,
+        "head_tilt": -4.0,
+        "head_y": 0.0,
+        "hat_tilt": 0.0,
+        "left_foot_lift": 0.0,
+        "right_foot_lift": 0.0,
+        "coat_sway": 0.0,
+        "shoulder_bounce": 0.0,
+        "blink": False,
+        "mouth_open": 0.0,
+        "death_t": 0.0,
+        "x_eyes": False,
+    }
+    if anim == "idle":
+        pose["root_x"] = s * 1.8
+        pose["bob"] = s * 4.0
+        pose["body_tilt"] = s * 3.0
+        pose["left_leg"] = -8.0 + c * 2.0
+        pose["right_leg"] = 8.0 - c * 2.0
+        pose["left_arm"] = 12.0 + s * 7.0
+        pose["right_arm"] = -16.0 - s * 10.0
+        pose["weapon"] = -16.0 - s * 8.0
+        pose["head_tilt"] = -5.0 + s * 4.0
+        pose["head_y"] = -abs(s) * 1.2
+        pose["hat_tilt"] = s * 3.5
+        pose["coat_sway"] = s * 10.0
+        pose["shoulder_bounce"] = -abs(s) * 2.0
+        pose["mouth_open"] = max(0.0, s) * 0.15
+        pose["blink"] = frame_idx == max(0, nframes - 2)
+    elif anim == "walk":
+        pose["root_x"] = s * 2.5
+        pose["bob"] = abs(s) * 6.0 - 1.5
+        pose["body_tilt"] = s * 5.0
+        # Dampened from ±28° to ±11.2°. With the anatomical knee
+        # offsets above, the full ±28° amplitude swept the upper leg
+        # past the body centerline at f2/8 and f6/8 — the pants would
+        # visibly cross. ±11° keeps the leg swing visible while
+        # leaving the feet on their own sides.
+        pose["left_leg"] = -11.2 * s
+        pose["right_leg"] = 11.2 * s
+        pose["left_arm"] = 22.0 * s + 4.0
+        pose["right_arm"] = -40.0 * s - 4.0
+        pose["weapon"] = -24.0 - 24.0 * s
+        pose["head_tilt"] = -4.0 + s * 3.0
+        pose["head_y"] = -abs(c) * 1.0
+        pose["hat_tilt"] = s * 4.0
+        pose["left_foot_lift"] = max(0.0, -s) * 12.0
+        pose["right_foot_lift"] = max(0.0, s) * 12.0
+        pose["coat_sway"] = -s * 16.0
+        pose["shoulder_bounce"] = abs(s) * 2.5
+    elif anim == "slash":
+        tt = ease_in_out(t)
+        attack = math.sin(tt * math.pi)
+        pose["root_x"] = -8.0 + 18.0 * tt
+        pose["bob"] = -attack * 5.5
+        pose["body_tilt"] = -18.0 + 38.0 * tt
+        pose["left_leg"] = -10.0 - 6.0 * attack
+        pose["right_leg"] = 14.0 + 10.0 * attack
+        pose["left_arm"] = -6.0 - 34.0 * attack
+        pose["right_arm"] = 72.0 - 155.0 * tt
+        pose["weapon"] = 115.0 - 230.0 * tt
+        pose["head_tilt"] = -14.0 + 16.0 * tt
+        pose["hat_tilt"] = -4.0 + 10.0 * tt
+        pose["coat_sway"] = 18.0 - 36.0 * tt
+        pose["shoulder_bounce"] = attack * 3.5
+        pose["mouth_open"] = attack * 0.35
+    elif anim == "taunt":
+        pose["root_x"] = s * 2.0
+        pose["bob"] = s * 3.0
+        pose["body_tilt"] = -8.0 + s * 4.0
+        pose["left_leg"] = -10.0
+        pose["right_leg"] = 12.0
+        pose["left_arm"] = -62.0 + 14.0 * s
+        pose["right_arm"] = 8.0 + 26.0 * s
+        pose["weapon"] = -108.0 + 20.0 * s
+        pose["head_tilt"] = -10.0 + s * 5.0
+        pose["hat_tilt"] = -2.0 + s * 4.0
+        pose["coat_sway"] = s * 8.0
+        pose["shoulder_bounce"] = -s * 2.0
+        pose["mouth_open"] = 0.30 + max(0.0, s) * 0.2
+    elif anim == "hurt":
+        phase = math.sin(t * math.pi)
+        shake = math.sin(t * math.pi * 5.0) * (1.0 - t)
+        pose["root_x"] = shake * 6.0
+        pose["bob"] = -phase * 4.0
+        pose["body_tilt"] = -18.0 * phase
+        pose["left_leg"] = -6.0 + 10.0 * phase
+        pose["right_leg"] = 6.0 - 8.0 * phase
+        pose["left_arm"] = 28.0 * phase
+        pose["right_arm"] = -6.0 + 28.0 * phase
+        pose["weapon"] = -48.0 + 24.0 * phase
+        pose["head_tilt"] = 14.0 * phase
+        pose["hat_tilt"] = -10.0 * phase
+        pose["coat_sway"] = -12.0 * phase
+        pose["mouth_open"] = 0.4 * phase
+    elif anim == "death":
+        tt = ease_in_out(t)
+        pose["death_t"] = tt
+        pose["root_x"] = tt * 10.0
+        pose["bob"] = -tt * 10.0
+        pose["body_tilt"] = -65.0 * tt
+        pose["left_leg"] = lerp(-6.0, 30.0, tt)
+        pose["right_leg"] = lerp(6.0, -25.0, tt)
+        pose["left_arm"] = lerp(10.0, 70.0, tt)
+        pose["right_arm"] = lerp(-20.0, -80.0, tt)
+        pose["weapon"] = lerp(-18.0, -120.0, tt)
+        pose["head_tilt"] = lerp(-4.0, 25.0, tt)
+        pose["hat_tilt"] = -12.0 * tt
+        pose["coat_sway"] = 16.0 * tt
+        pose["mouth_open"] = 0.45 * tt
+        pose["x_eyes"] = tt > 0.55
+    return pose
+
+
+def draw_boot(draw, center, w, h, angle, pal):
+    # Local geometry in the boot's own frame; placement via the part scope.
+    hw, hh = w / 2.0, (h * 0.58) / 2.0
+    with draw.part("boot", center, angle):
+        poly(draw, [(-hw, -hh), (hw, -hh), (hw, hh), (-hw, hh)],
+             pal.boots, pal.outline, width=3)
+        toe = [
+            (w * 0.28, -h * 0.10),
+            (w * 0.50, -h * 0.05),
+            (w * 0.50, h * 0.16),
+            (w * 0.15, h * 0.22),
+        ]
+        poly(draw, toe, pal.boots, pal.outline, width=3)
+
+
+def draw_sword(draw, hand, angle, length, pal, curve=0.0):
+    def rect_at(cx, cy, w, h):
+        return [(cx - w / 2, cy - h / 2), (cx + w / 2, cy - h / 2),
+                (cx + w / 2, cy + h / 2), (cx - w / 2, cy + h / 2)]
+
+    with draw.part("sword", hand, angle):
+        poly(draw, rect_at(0, 2, 18, 6), pal.gold, pal.outline, width=3)
+        poly(draw, rect_at(-6, 1, 10, 5), (68, 43, 27, 255), pal.outline, width=3)
+        blade = [(6, 0), (length * 0.35, curve * 0.12), (length, curve)]
+        line(draw, blade, pal.metal, width=5)
+        line(draw, blade, pal.outline, width=1)
+
+
+def draw_human_neck(draw, chest, head_center, global_tilt, pal, kind="pirate_admiral"):
+    """Draw a simple human neck with a collar, instead of the mockingbird-style spine."""
+    # Base of neck emerges from the shirt / coat opening.
+    base = transform((0, -22), chest, deg=global_tilt)
+    top = (head_center[0] - 2, head_center[1] + 24)
+    neck_fill = pal.skin if kind in SCARFED_KINDS else pal.skin_shadow
+
+    # Slightly tapered neck polygon.
+    pts = [
+        transform((-9, 0), base, deg=global_tilt),
+        transform((8, 0), base, deg=global_tilt),
+        (top[0] + 7, top[1]),
+        (top[0] - 7, top[1]),
+    ]
+    poly(draw, pts, neck_fill, pal.outline, width=3)
+
+    # Throat / shading line.
+    line(
+        draw,
+        [
+            ((pts[0][0] + pts[1][0]) / 2 + 1, (pts[0][1] + pts[1][1]) / 2),
+            (top[0] + 1, top[1] - 2),
+        ],
+        pal.skin_shadow,
+        width=2,
+    )
+
+    # Shirt collar / cravat for a more human look.
+    collar_left = [
+        transform((-16, -18), chest, deg=global_tilt),
+        transform((-2, -12), chest, deg=global_tilt),
+        transform((-9, 2), chest, deg=global_tilt),
+        transform((-18, -4), chest, deg=global_tilt),
+    ]
+    collar_right = [
+        transform((2, -12), chest, deg=global_tilt),
+        transform((16, -18), chest, deg=global_tilt),
+        transform((18, -4), chest, deg=global_tilt),
+        transform((9, 2), chest, deg=global_tilt),
+    ]
+    poly(draw, collar_left, pal.shirt, pal.outline, width=2)
+    poly(draw, collar_right, pal.shirt, pal.outline, width=2)
+
+    if kind == "pirate_admiral":
+        knot = rotated_rect_points(
+            transform((0, -2), chest, deg=global_tilt), 10, 8, global_tilt
+        )
+        tail_l = [
+            transform(p, chest, deg=global_tilt)
+            for p in [(-2, 2), (-10, 16), (-3, 18), (1, 8)]
+        ]
+        tail_r = [
+            transform(p, chest, deg=global_tilt)
+            for p in [(2, 2), (10, 16), (4, 18), (-1, 8)]
+        ]
+        poly(draw, knot, pal.sash, pal.outline, width=2)
+        poly(draw, tail_l, pal.sash, pal.outline, width=2)
+        poly(draw, tail_r, pal.sash, pal.outline, width=2)
+    else:
+        scarf = [
+            transform(p, chest, deg=global_tilt)
+            for p in [(-7, -4), (8, -4), (5, 10), (-9, 8)]
+        ]
+        poly(draw, scarf, pal.accent or pal.coat2, pal.outline, width=2)
+
+
+def draw_hat(draw, head_center, hat_scale, pal, skull=False, tilt=0.0):
+    s = hat_scale
+    brim = [(x * s, y * s) for x, y in
+            [(-44, -38), (-16, -48), (18, -46), (44, -36), (16, -30), (-20, -31)]]
+    crown = [(x * s, y * s) for x, y in
+             [(-18, -34), (-8, -62), (8, -63), (18, -34)]]
+    with draw.part("hat", head_center, tilt):
+        poly(draw, brim, pal.hat, pal.outline, width=4)
+        poly(draw, crown, pal.hat, pal.outline, width=4)
+        if skull:
+            circle(draw, (6 * s, -46 * s), 6 * s, (232, 230, 226, 255),
+                   pal.outline, width=2)
+            line(draw, [(2 * s, -42 * s), (10 * s, -42 * s)], pal.outline, width=2)
+            line(draw, [(6 * s, -40 * s), (6 * s, -37 * s)], pal.outline, width=2)
+
+
+def draw_face(
+    draw,
+    head_center,
+    pal,
+    eyepatch=False,
+    beard=False,
+    mean=False,
+    x_eyes=False,
+    blink=False,
+    mouth_open=0.0,
+):
+    # Local face frame: the head ellipse's half-extents, placed by part scope.
+    x1, y1, x2, y2 = -28.0, -34.0, 28.0, 34.0
+    with draw.part("face", head_center, 0.0):
+        _paint_face(draw, (x1, y1, x2, y2), pal, eyepatch, beard, mean,
+                    x_eyes, blink, mouth_open)
+
+
+def _paint_face(draw, bbox, pal, eyepatch, beard, mean, x_eyes, blink, mouth_open):
+    x1, y1, x2, y2 = bbox
+    ellipse(draw, (x1, y1, x2, y2), pal.skin, pal.outline, width=4)
+    nose = [
+        (lerp(x1, x2, 0.53), lerp(y1, y2, 0.42)),
+        (lerp(x1, x2, 0.60), lerp(y1, y2, 0.56)),
+        (lerp(x1, x2, 0.52), lerp(y1, y2, 0.60)),
+    ]
+    line(draw, nose, pal.skin_shadow, width=3)
+    brow_y = lerp(y1, y2, 0.34)
+    eye_y = lerp(y1, y2, 0.43)
+    if x_eyes:
+        for ex in [lerp(x1, x2, 0.38), lerp(x1, x2, 0.61)]:
+            line(
+                draw,
+                [(ex - 6, eye_y - 6), (ex + 6, eye_y + 6)],
+                pal.accent or (255, 255, 255, 255),
+                width=3,
+            )
+            line(
+                draw,
+                [(ex - 6, eye_y + 6), (ex + 6, eye_y - 6)],
+                pal.accent or (255, 255, 255, 255),
+                width=3,
+            )
+    else:
+        left_brow = [
+            (lerp(x1, x2, 0.28), brow_y + (3 if mean else 0)),
+            (lerp(x1, x2, 0.43), brow_y - (4 if mean else 1)),
+        ]
+        right_brow = [
+            (lerp(x1, x2, 0.56), brow_y - (4 if mean else 1)),
+            (lerp(x1, x2, 0.72), brow_y + (3 if mean else 0)),
+        ]
+        line(draw, left_brow, pal.outline, width=4)
+        line(draw, right_brow, pal.outline, width=4)
+        if eyepatch:
+            patch_box = (lerp(x1, x2, 0.27), eye_y - 7, lerp(x1, x2, 0.47), eye_y + 7)
+            ellipse(draw, patch_box, pal.hat, pal.outline, width=2)
+            line(draw, [(x1 + 8, eye_y - 10), (x2 - 4, eye_y - 4)], pal.hat, width=3)
+        else:
+            if blink:
+                line(
+                    draw,
+                    [(lerp(x1, x2, 0.31), eye_y), (lerp(x1, x2, 0.40), eye_y + 1)],
+                    pal.outline,
+                    width=3,
+                )
+            else:
+                ellipse(
+                    draw,
+                    (lerp(x1, x2, 0.31), eye_y - 4, lerp(x1, x2, 0.40), eye_y + 4),
+                    (255, 255, 255, 255),
+                    pal.outline,
+                    width=2,
+                )
+                circle(draw, (lerp(x1, x2, 0.36), eye_y), 2, pal.outline)
+        if blink:
+            line(
+                draw,
+                [(lerp(x1, x2, 0.58), eye_y), (lerp(x1, x2, 0.67), eye_y + 1)],
+                pal.outline,
+                width=3,
+            )
+        else:
+            ellipse(
+                draw,
+                (lerp(x1, x2, 0.58), eye_y - 4, lerp(x1, x2, 0.67), eye_y + 4),
+                (255, 255, 255, 255),
+                pal.outline,
+                width=2,
+            )
+            circle(draw, (lerp(x1, x2, 0.62), eye_y), 2, pal.outline)
+    mouth_mid = lerp(y1, y2, 0.80) + mouth_open * 10.0
+    mouth = [
+        (lerp(x1, x2, 0.38), lerp(y1, y2, 0.76)),
+        (lerp(x1, x2, 0.51), mouth_mid),
+        (lerp(x1, x2, 0.67), lerp(y1, y2, 0.73)),
+    ]
+    line(draw, mouth, pal.outline, width=3)
+    if beard and pal.beard:
+        beard_pts = [
+            (lerp(x1, x2, 0.23), lerp(y1, y2, 0.63)),
+            (lerp(x1, x2, 0.50), lerp(y1, y2, 0.94)),
+            (lerp(x1, x2, 0.80), lerp(y1, y2, 0.62)),
+            (lerp(x1, x2, 0.69), lerp(y1, y2, 0.86)),
+            (lerp(x1, x2, 0.38), lerp(y1, y2, 0.86)),
+        ]
+        poly(draw, beard_pts, pal.beard, pal.outline, width=3)
+
+
+def _begin(draw, name: str) -> None:
+    """Open a named component scope if ``draw`` records SVG; no-op for Pillow."""
+    fn = getattr(draw, "begin_component", None)
+    if fn is not None:
+        fn(name)
+
+
+def _end(draw) -> None:
+    fn = getattr(draw, "end_component", None)
+    if fn is not None:
+        fn()
+
+
+def paint_character(
+    draw, kind: str, anim: str, frame_idx: int, nframes: int, frame_size=BASE_FRAME
+) -> None:
+    """Paint one supersampled character frame into ``draw``.
+
+    ``draw`` is anything exposing the ImageDraw ``polygon`` / ``line`` /
+    ``ellipse`` / ``arc`` subset — a real Pillow draw for raster output, or a
+    :class:`~ambition_sprite2d_renderer.authoring.draw_recorder.DrawRecorder`
+    to capture the same geometry as an editable SVG scene. The pirate family's
+    whole vocabulary bottoms out in those calls, so one paint pass serves both.
+    """
+    pal = PALETTES[kind]
+    w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
+    pose = animation_pose(anim, frame_idx, nframes)
+
+    global_tilt = pose["body_tilt"] + (
+        5 if kind in SCARFED_KINDS and anim == "taunt" else 0
+    )
+
+    # No baked drop shadow. A shadow ellipse below the feet extends the
+    # auto-crop bbox downward, which moves the cropped frame's "bottom"
+    # off the feet — every pirate ends up floating above their collision
+    # AABB by the shadow's height. Cast shadows that need to track
+    # gameplay state belong on the ECS visual layer, not the source PNG.
+    # See agent memory: [[feedback-no-drop-shadows-on-sprites]].
+
+    # Joints come from the pirate's explicit skeleton (see _pirate_rig): the
+    # animation lives on declared bones instead of inline transforms, and this
+    # paint pass just places its parts at the evaluated joints. The upper-leg
+    # offsets put the knee mostly DOWN from the hip with a small outward bias so
+    # the pants read as columns, not an inverted-V splay — see _pirate_rig for
+    # the socket layout and the world-swing leg convention.
+    joints = pirate_rig.evaluate(pose, kind, w, h, global_tilt)
+    char_origin = joints["root"].point
+    hip = joints["hip"].point
+    chest = joints["chest"].point
+    head_center = joints["head"].point
+    back_shoulder = joints["back_shoulder"].point
+    front_shoulder = joints["front_shoulder"].point
+    left_hip = joints["left_hip"].point
+    right_hip = joints["right_hip"].point
+    left_knee = joints["left_knee"].point
+    right_knee = joints["right_knee"].point
+    left_foot = joints["left_foot"].point
+    right_foot = joints["right_foot"].point
+
+    _begin(draw, "legs")
+    for hip_pt, knee_pt, foot_pt, ang in [
+        (left_hip, left_knee, left_foot, pose["left_leg"]),
+        (right_hip, right_knee, right_foot, pose["right_leg"]),
+    ]:
+        line(draw, [hip_pt, knee_pt, foot_pt], pal.pants, width=13)
+        line(draw, [hip_pt, knee_pt, foot_pt], pal.outline, width=4)
+        draw_boot(draw, foot_pt, 24, 18, ang * 0.2, pal)
+    _end(draw)
+
+    # Body / shirt / coat — the whole torso is ONE rigid part in the chest
+    # frame, so it registers once and every frame just re-places it.
+    _begin(draw, "body")
+    with draw.part("torso", chest, global_tilt):
+        poly(draw, [(-34, -8), (30, -8), (42, 58), (0, 76), (-44, 58)],
+             pal.coat, pal.outline, width=5)
+        poly(draw, [(-10, -4), (18, -4), (14, 52), (-16, 52)],
+             pal.shirt, pal.outline, width=4)
+        poly(draw, [(-16, -6), (-2, 16), (-10, 44), (-20, 18)],
+             pal.coat2, pal.outline, width=3)
+        poly(draw, [(8, -6), (20, 16), (16, 42), (4, 18)],
+             pal.coat2, pal.outline, width=3)
+        poly(draw, [(-22, 18), (22, 18), (22, 30), (-22, 30)],
+             pal.sash, pal.outline, width=3)
+        for bx in [-10, 0, 10]:
+            circle(draw, (bx, 4), 3, pal.gold, pal.outline, width=1)
+
+    coat_sway = pose["coat_sway"]
+    with draw.part("coat_tail_left", hip, global_tilt + coat_sway):
+        poly(draw, [(-36, 0), (-8, -2), (-8, 48), (-30, 58)],
+             pal.coat, pal.outline, width=4)
+    with draw.part("coat_tail_right", hip, global_tilt - coat_sway):
+        poly(draw, [(8, -2), (34, 0), (28, 58), (6, 48)],
+             pal.coat, pal.outline, width=4)
+    _end(draw)
+
+    # Back arm
+    _begin(draw, "arms")
+    back_elbow = joints["back_elbow"].point
+    back_hand = joints["back_hand"].point
+    line(draw, [back_shoulder, back_elbow, back_hand], pal.coat, width=12)
+    line(draw, [back_shoulder, back_elbow, back_hand], pal.outline, width=4)
+    circle(draw, back_hand, 7, pal.skin, pal.outline, width=2)
+    if anim == "taunt":
+        line(
+            draw,
+            [transform((0, -10), back_hand), transform((10, -22), back_hand)],
+            pal.outline,
+            width=3,
+        )
+
+    # Front arm / weapon
+    front_elbow = joints["front_elbow"].point
+    front_hand = joints["front_hand"].point
+    line(draw, [front_shoulder, front_elbow, front_hand], pal.coat, width=13)
+    line(draw, [front_shoulder, front_elbow, front_hand], pal.outline, width=4)
+    circle(draw, front_hand, 8, pal.skin, pal.outline, width=2)
+    draw_sword(
+        draw,
+        front_hand,
+        pose["weapon"],
+        92 if kind == "pirate_admiral" else 86,
+        pal,
+        curve=(16 if kind in SCARFED_KINDS else 5),
+    )
+    if anim == "slash":
+        arc_box = (
+            front_hand[0] - 70,
+            front_hand[1] - 96,
+            front_hand[0] + 110,
+            front_hand[1] + 76,
+        )
+        draw.arc(arc_box, start=205, end=336, fill=(255, 245, 200, 180), width=8)
+        draw.arc(arc_box, start=214, end=328, fill=(255, 255, 255, 120), width=4)
+    elif anim in {"idle", "walk", "taunt"} and frame_idx % 2 == 0:
+        blade_tip = transform(
+            (92 if kind == "pirate_admiral" else 86, 4 if kind in SCARFED_KINDS else 0),
+            front_hand,
+            pose["weapon"],
+        )
+        line(
+            draw,
+            [blade_tip, (blade_tip[0] + 10, blade_tip[1] - 8)],
+            (255, 255, 255, 100),
+            width=2,
+        )
+
+    _end(draw)
+
+    # Neck / head / hat
+    _begin(draw, "head")
+    draw_human_neck(draw, chest, head_center, global_tilt, pal, kind=kind)
+
+    draw_face(
+        draw,
+        head_center,
+        pal,
+        eyepatch=(kind == "pirate_admiral"),
+        beard=(kind in BEARDED_KINDS),
+        mean=True,
+        x_eyes=pose["x_eyes"],
+        blink=pose["blink"],
+        mouth_open=pose["mouth_open"],
+    )
+    draw_hat(
+        draw,
+        head_center,
+        1.0,
+        pal,
+        skull=True,
+        tilt=pose["hat_tilt"] + global_tilt * 0.15,
+    )
+    _end(draw)
+
+    _begin(draw, "chest_motif")
+    if kind in SKULL_MOTIF_KINDS:
+        chest_c = transform((0, 14), chest, deg=global_tilt)
+        with draw.part("chest_skull", chest_c, 0.0):
+            circle(draw, (0, -4), 8, (242, 236, 230, 255), pal.outline, width=2)
+            line(draw, [(-7, 5), (7, 5)], (242, 236, 230, 255), width=3)
+            line(draw, [(0, 1), (0, 9)], pal.outline, width=2)
+    _end(draw)
+
+    # NOT dead code: an alpha-0 stroke is an ERASER through blending_draw (its
+    # zero-alpha ops carve rather than no-op), so this clears a 1px seam just
+    # below the feet on the death settle. Removing it changes the death frames
+    # (verified: the parity hash shifts). Kept to reproduce the current sprite.
+    if anim == "death":
+        ground = h * 0.83
+        draw.line((0, ground + 24, w, ground + 24), fill=(0, 0, 0, 0), width=1)
+
+
+def draw_character(
+    kind: str, anim: str, frame_idx: int, nframes: int, frame_size=BASE_FRAME
+) -> Image.Image:
+    """Render one supersampled-then-downsampled pirate frame (PIL raster)."""
+    from ...authoring.draw_recorder import PillowPartDraw
+
+    w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    draw = PillowPartDraw(blending_draw(img))
+    paint_character(draw, kind, anim, frame_idx, nframes, frame_size)
+    return downsample(img, frame_size)
+
+
+def capture_character_svg(
+    kind: str, anim: str, frame_idx: int, nframes: int, frame_size=BASE_FRAME
+) -> str:
+    """Capture one pirate frame as an SVG document — the PIL->SVG conversion.
+
+    Paints the identical parts into a :class:`DrawRecorder` at the supersampled
+    resolution instead of a raster. Rasterizing the result and downsampling it
+    the same way ``draw_character`` does lands within antialiasing tolerance of
+    the shipped frame (``raster-equivalent`` in the equivalence harness). See
+    ``docs/planning/engine/svg-component-character-migration.md``.
+    """
+    from ...authoring.draw_recorder import DrawRecorder
+
+    w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
+    rec = DrawRecorder((w, h))
+    paint_character(rec, kind, anim, frame_idx, nframes, frame_size)
+    return rec.to_svg()
+
+
+def render_target(
+    target: str, out_dir: Path, frame_size: Tuple[int, int] = BASE_FRAME
+) -> Dict[str, Path]:
+    """Build a pirate-family character sheet via the parametric rig.
+
+    Thin shim used by the 5 pirate character modules so their per-target
+    ``render()`` is one line. Delegates to `sheet_build.build_sheet`
+    with `draw_character(target, ...)` as the per-frame renderer.
+
+    Returns the dict that ``build_sheet`` produced — callers flatten it
+    into the ``list[Path]`` shape that the tack-on discovery API
+    expects.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    return build_sheet(
+        target=target,
+        rows=ANIMATIONS,
+        render_fn=lambda anim, frame_idx, nframes: draw_character(
+            target,
+            anim,
+            frame_idx,
+            nframes,
+            frame_size=frame_size,
+        ),
+        out_dir=out_dir,
+        frame_size=frame_size,
+    )
+
+
+def is_pirate_family(target: str) -> bool:
+    """True when ``target`` is drawn by this family's parametric rig."""
+    return target in PALETTES
+
+
+def build_scene(target: str, frame_size: Tuple[int, int] = BASE_FRAME):
+    """Capture every frame and fold them into ONE component scene.
+
+    Parts (hat, face variants, torso, boots, sword, coat tails, chest motif)
+    register once each; frames become ``<use>`` placements plus the dynamic
+    limb/neck geometry. The scene is the editable Inkscape artifact.
+    """
+    from ...authoring.draw_recorder import DrawRecorder
+    from ...authoring.svg_scene import ComponentScene
+
+    w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
+    recorders = {}
+    for anim, nframes, _ms in ANIMATIONS:
+        for i in range(nframes):
+            rec = DrawRecorder((w, h))
+            paint_character(rec, target, anim, i, nframes, frame_size)
+            recorders[(anim, i)] = rec
+    return ComponentScene.from_recorders((w, h), recorders)
+
+
+def export_scene(
+    target: str, path: Path, frame_size: Tuple[int, int] = BASE_FRAME
+) -> Path:
+    """Write the target's editable component scene SVG to ``path``."""
+    return build_scene(target, frame_size).save(Path(path))
+
+
+def render_target_svg(
+    target: str,
+    out_dir: Path,
+    frame_size: Tuple[int, int] = BASE_FRAME,
+    scene_path: Path | None = None,
+) -> Dict[str, Path]:
+    """Build the same pirate sheet from the **SVG authority**.
+
+    Every frame is assembled from the component scene's registered parts and
+    rasterized, then routed through the same ``build_sheet`` measurement /
+    packing / metadata pipeline. With ``scene_path`` the scene is loaded from
+    disk instead of captured fresh — that is the human-in-the-loop path: edit
+    the parts in Inkscape, rebuild the sheet from the edited file, and let the
+    equivalence harness report what changed.
+    """
+    from ...authoring.draw_recorder import rasterize_svg
+    from ...authoring.svg_scene import ComponentScene
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
+    if scene_path is not None:
+        scene = ComponentScene.load(Path(scene_path))
+        missing = scene.missing_part_refs()
+        if missing:
+            raise ValueError(
+                f"scene {scene_path} has dangling part references: {missing}")
+    else:
+        scene = build_scene(target, frame_size)
+
+    def render_fn(anim, frame_idx, nframes):
+        del nframes
+        svg = scene.frame_doc(anim, frame_idx)
+        return downsample(rasterize_svg(svg, (w, h)), frame_size)
+
+    return build_sheet(
+        target=target,
+        rows=ANIMATIONS,
+        render_fn=render_fn,
+        out_dir=out_dir,
+        frame_size=frame_size,
+    )
+
+
+# ── portraits ─────────────────────────────────────────────────────────────────
+#
+# ⛔⛔ WITHOUT THIS THE PIRATE PORTRAIT IS AN UPSCALE. A target with no native
+# hook gets `Target.render_portraits`' fallback, which crops the CANONICAL
+# raster -- one BASE_FRAME-sized render -- and blows it up to 256x320. Every
+# pirate published a soft face for that reason and no other; the painter itself
+# has always been resolution-independent.
+#
+# ⭐ AND THE HEAD IS ASKED FOR, NOT GUESSED. `_pirate_rig` evaluates a real
+# skeleton, so `joints["head"]` is where the face is at any frame size. Seven
+# pirates share one parametric rig, so one number serves all of them and none of
+# them needs a hand-placed guide.
+
+#: Render the portrait source at this multiple of the gameplay frame. The head
+#: is about a quarter of the frame's width, so anything less than this crops a
+#: sub-256px face and `render_framed_portrait` UPSCALES it -- which is the exact
+#: defect this whole hook exists to remove. Measured: at 3x the crop was 96px
+#: wide and published blockier than the fallback it replaced.
+PIRATE_PORTRAIT_SCALE = 10
+#: Fraction of the silhouette's height that is head-and-hat, used to isolate the
+#: head band for measurement.
+PIRATE_HEAD_BAND = 0.22
+
+
+def pirate_face_guide(kind: str, anim: str = "idle", frame_idx: int = 0,
+                      nframes: int = 1, frame_size=BASE_FRAME):
+    """Where this pirate's head is, MEASURED on a render of him.
+
+    ⛔ NOT `joints["head"]`. The rig has a head joint and it is not the drawn
+    head's centre -- on the Admiral it reports y=56 of 128 while the painted head
+    sits at y=13, because the joint is a socket the parts hang from rather than
+    the middle of a face. Aiming a portrait at it framed his CHEST.
+
+    So the head is taken off the silhouette: the top band of the alpha, whose
+    bounding box is the hat and the face together. That is what a viewer calls
+    the head, and it needs no per-pirate number.
+    """
+    import numpy as np
+
+    from ...authoring.portrait import FaceGuide
+
+    image = draw_character(kind, anim, frame_idx, nframes, frame_size=frame_size)
+    alpha = np.array(image.getchannel("A")) > 8
+    ys, xs = alpha.nonzero()
+    if not len(ys):
+        raise ValueError(f"{kind}: rendered empty, nothing to aim a portrait at")
+    top, bottom = int(ys.min()), int(ys.max())
+    band = ys < top + (bottom - top) * PIRATE_HEAD_BAND
+    bx0, bx1 = int(xs[band].min()), int(xs[band].max())
+    by0, by1 = int(ys[band].min()), int(ys[band].max())
+    return FaceGuide(
+        center_x=(bx0 + bx1) / 2.0,
+        center_y=(by0 + by1) / 2.0,
+        width=float(bx1 - bx0),
+        height=float(by1 - by0),
+        source_width=float(frame_size[0]),
+        source_height=float(frame_size[1]),
+    )
+
+
+def render_pirate_portraits(target: str, out_dir, *, kind: str | None = None,
+                            stills=None, quality_scale=None):
+    """Portrait frames painted at portrait resolution, not cropped off a sheet."""
+    from pathlib import Path
+
+    from ...authoring.portrait import (
+        DEFAULT_PORTRAIT_SIZE,
+        PortraitClip,
+        render_framed_portrait,
+        write_portrait_sheet,
+    )
+
+    # ⛔ A QUALITY TIER SCALES THE PORTRAIT TOO -- see the rigged fighters' hook.
+    q = float(quality_scale) if quality_scale else 1.0
+    output_size = (max(8, round(DEFAULT_PORTRAIT_SIZE[0] * q)),
+                   max(8, round(DEFAULT_PORTRAIT_SIZE[1] * q)))
+
+    kind = kind or target
+    big = (BASE_FRAME[0] * PIRATE_PORTRAIT_SCALE, BASE_FRAME[1] * PIRATE_PORTRAIT_SCALE)
+
+    # Measured ONCE, on the pose the portrait sits in: a guide that moved per
+    # frame would make the idle breathe by sliding the camera.
+    guide = pirate_face_guide(kind, ANIMATIONS[0][0], 0, ANIMATIONS[0][1])
+    # Head and shoulders. The measured band is the hat and face together, so the
+    # view is only a little wider than it and drops far enough for a collar.
+    view_width = guide.width * 1.95
+    center_y = guide.center_y + guide.height * 0.88
+
+    def frame(anim: str, index: int, count: int):
+        source = draw_character(kind, anim, index, count, frame_size=big)
+        return render_framed_portrait(
+            source, guide, output_size=output_size,
+            view_width=view_width, center_y=center_y
+        )
+
+    idle = next((name for name, *_rest in ANIMATIONS if name == "idle"), ANIMATIONS[0][0])
+    count = next(n for name, n, *_r in ANIMATIONS if name == idle)
+    clips = {
+        "default": PortraitClip.loop(
+            tuple(frame(idle, i, count) for i in range(count)), duration_ms=count * 120
+        ),
+        "portrait": PortraitClip.still(frame(idle, count // 3, count)),
+    }
+    for name, (anim, index) in (stills or {}).items():
+        rows = next(n for a, n, *_r in ANIMATIONS if a == anim)
+        clips[name] = PortraitClip.still(frame(anim, index, rows))
+    return write_portrait_sheet(target, clips, Path(out_dir), still_clip="portrait")

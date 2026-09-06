@@ -1,0 +1,32 @@
+{
+  "clip": "trip_attack",
+  "note": "trip attack: a swing from the floor.",
+  "strike_part": "sword",
+  "effect": "trail",
+  "facing": "west",
+  "hitbox": {
+    "active": [
+      2,
+      3
+    ],
+    "extend": 1.05
+  },
+  "trail": {
+    "window": 3,
+    "inner": 0.56,
+    "blur": 0.8,
+    "alpha": 138,
+    "core_alpha": 158,
+    "falloff": 1.8,
+    "body_rgb": [
+      214,
+      158,
+      62
+    ],
+    "core_rgb": [
+      246,
+      240,
+      214
+    ]
+  }
+}

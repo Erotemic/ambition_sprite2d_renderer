@@ -1,0 +1,1085 @@
+{
+  "name": "paradox_barber",
+  "frame": {
+    "width": 160,
+    "height": 160,
+    "center_x": 80.0,
+    "ground_y": 150.0,
+    "ankle_h": 0.0,
+    "supersample": 2,
+    "render_scale": 1,
+    "trim": true
+  },
+  "svg_source": {
+    "path": "../../data/characters/paradox_barber/paradox_barber-front.svg",
+    "view": "Paradox Barber - Front",
+    "ref_dpi": 25.4,
+    "scale": 1.0
+  },
+  "bones": [
+    {
+      "name": "pelvis",
+      "parent": null,
+      "offset": [
+        0.0,
+        -38.0
+      ],
+      "length": 0.0,
+      "rest_angle": 0.0
+    },
+    {
+      "name": "torso",
+      "parent": "pelvis",
+      "offset": [
+        0.0,
+        -30.0
+      ],
+      "length": 0.0,
+      "rest_angle": 0.0
+    },
+    {
+      "name": "head",
+      "parent": "torso",
+      "offset": [
+        0.0,
+        -30.0
+      ],
+      "length": 0.0,
+      "rest_angle": 0.0
+    },
+    {
+      "name": "l_arm_u",
+      "parent": "torso",
+      "offset": [
+        -26.0,
+        -12.0
+      ],
+      "length": 24.0,
+      "rest_angle": 128.0
+    },
+    {
+      "name": "l_arm_l",
+      "parent": "l_arm_u",
+      "offset": [
+        24.0,
+        0.0
+      ],
+      "length": 22.0,
+      "rest_angle": 18.0
+    },
+    {
+      "name": "r_arm_u",
+      "parent": "torso",
+      "offset": [
+        26.0,
+        -12.0
+      ],
+      "length": 24.0,
+      "rest_angle": 52.0
+    },
+    {
+      "name": "r_arm_l",
+      "parent": "r_arm_u",
+      "offset": [
+        24.0,
+        0.0
+      ],
+      "length": 22.0,
+      "rest_angle": -18.0
+    },
+    {
+      "name": "l_leg_u",
+      "parent": "pelvis",
+      "offset": [
+        -10.0,
+        0.0
+      ],
+      "length": 24.0,
+      "rest_angle": 88.0
+    },
+    {
+      "name": "l_leg_l",
+      "parent": "l_leg_u",
+      "offset": [
+        24.0,
+        0.0
+      ],
+      "length": 20.0,
+      "rest_angle": 4.0
+    },
+    {
+      "name": "r_leg_u",
+      "parent": "pelvis",
+      "offset": [
+        10.0,
+        0.0
+      ],
+      "length": 24.0,
+      "rest_angle": 92.0
+    },
+    {
+      "name": "r_leg_l",
+      "parent": "r_leg_u",
+      "offset": [
+        24.0,
+        0.0
+      ],
+      "length": 20.0,
+      "rest_angle": -4.0
+    }
+  ],
+  "parts": [
+    {
+      "name": "leg_l_u",
+      "bone": "l_leg_u",
+      "z": 5,
+      "kind": "sprite",
+      "include": [
+        "part-leg-l-u"
+      ],
+      "pivot": [
+        67.0,
+        112.0
+      ],
+      "rest_angle": 88.0
+    },
+    {
+      "name": "leg_l_l",
+      "bone": "l_leg_l",
+      "z": 6,
+      "kind": "sprite",
+      "include": [
+        "part-leg-l-l"
+      ],
+      "pivot": [
+        69.0,
+        139.0
+      ],
+      "rest_angle": 94.0
+    },
+    {
+      "name": "leg_r_u",
+      "bone": "r_leg_u",
+      "z": 7,
+      "kind": "sprite",
+      "include": [
+        "part-leg-r-u"
+      ],
+      "pivot": [
+        92.0,
+        112.0
+      ],
+      "rest_angle": 92.0
+    },
+    {
+      "name": "leg_r_l",
+      "bone": "r_leg_l",
+      "z": 8,
+      "kind": "sprite",
+      "include": [
+        "part-leg-r-l"
+      ],
+      "pivot": [
+        91.0,
+        139.0
+      ],
+      "rest_angle": 86.0
+    },
+    {
+      "name": "arm_l_u",
+      "bone": "l_arm_u",
+      "z": 20,
+      "kind": "sprite",
+      "include": [
+        "part-arm-l-u"
+      ],
+      "pivot": [
+        51.0,
+        74.0
+      ],
+      "rest_angle": 128.0
+    },
+    {
+      "name": "arm_l_l",
+      "bone": "l_arm_l",
+      "z": 21,
+      "kind": "sprite",
+      "include": [
+        "part-arm-l-l"
+      ],
+      "pivot": [
+        38.0,
+        97.0
+      ],
+      "rest_angle": 146.0
+    },
+    {
+      "name": "body",
+      "bone": "torso",
+      "z": 30,
+      "kind": "sprite",
+      "include": [
+        "part-body"
+      ],
+      "pivot": [
+        80.0,
+        88.0
+      ],
+      "rest_angle": 0.0
+    },
+    {
+      "name": "loop",
+      "bone": "torso",
+      "z": 31,
+      "kind": "sprite",
+      "include": [
+        "part-loop"
+      ],
+      "pivot": [
+        80.0,
+        96.0
+      ],
+      "rest_angle": 0.0,
+      "opacity_channel": "loop_opacity"
+    },
+    {
+      "name": "arm_r_u",
+      "bone": "r_arm_u",
+      "z": 32,
+      "kind": "sprite",
+      "include": [
+        "part-arm-r-u"
+      ],
+      "pivot": [
+        109.0,
+        74.0
+      ],
+      "rest_angle": 52.0
+    },
+    {
+      "name": "arm_r_l",
+      "bone": "r_arm_l",
+      "z": 33,
+      "kind": "sprite",
+      "include": [
+        "part-arm-r-l"
+      ],
+      "pivot": [
+        123.0,
+        97.0
+      ],
+      "rest_angle": 34.0
+    },
+    {
+      "name": "head",
+      "bone": "head",
+      "z": 40,
+      "kind": "sprite",
+      "include": [
+        "part-head"
+      ],
+      "pivot": [
+        80.0,
+        52.0
+      ],
+      "rest_angle": 0.0
+    }
+  ],
+  "clips": {
+    "idle": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 130,
+      "channels": {
+        "root_y": {
+          "expr": "1.4*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "1.0*sin(tau*t + 0.1)"
+        },
+        "head": {
+          "expr": "-0.8*sin(tau*t + 0.2)"
+        },
+        "l_arm_u": {
+          "expr": "2.2*sin(tau*t + 0.4)"
+        },
+        "l_arm_l": {
+          "expr": "1.0*sin(tau*t)"
+        },
+        "r_arm_u": {
+          "expr": "-2.2*sin(tau*t + 0.4)"
+        },
+        "r_arm_l": {
+          "expr": "-1.0*sin(tau*t)"
+        },
+        "l_leg_u": {
+          "expr": "0.6*sin(tau*t)"
+        },
+        "r_leg_u": {
+          "expr": "-0.6*sin(tau*t)"
+        },
+        "loop_opacity": {
+          "const": 0.12
+        }
+      }
+    },
+    "walk": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 102,
+      "channels": {
+        "root_y": {
+          "expr": "2.0*sin(tau*t*2)"
+        },
+        "torso": {
+          "expr": "1.6*sin(tau*t)"
+        },
+        "head": {
+          "expr": "-1.2*sin(tau*t)"
+        },
+        "l_arm_u": {
+          "expr": "10*sin(tau*t + pi)"
+        },
+        "l_arm_l": {
+          "expr": "4*sin(tau*t + pi)"
+        },
+        "r_arm_u": {
+          "expr": "10*sin(tau*t)"
+        },
+        "r_arm_l": {
+          "expr": "4*sin(tau*t)"
+        },
+        "l_leg_u": {
+          "expr": "13*sin(tau*t)"
+        },
+        "l_leg_l": {
+          "expr": "8*max(0,sin(tau*t))"
+        },
+        "r_leg_u": {
+          "expr": "13*sin(tau*t + pi)"
+        },
+        "r_leg_l": {
+          "expr": "8*max(0,sin(tau*t + pi))"
+        },
+        "loop_opacity": {
+          "const": 0.08
+        }
+      }
+    },
+    "talk": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 110,
+      "channels": {
+        "head": {
+          "expr": "-0.8*sin(tau*t*2)"
+        },
+        "torso": {
+          "expr": "0.8*sin(tau*t)"
+        },
+        "l_arm_u": {
+          "expr": "5*sin(tau*t*2 + 0.4)"
+        },
+        "l_arm_l": {
+          "expr": "6*sin(tau*t*2)"
+        },
+        "r_arm_u": {
+          "expr": "-3*sin(tau*t*2)"
+        },
+        "r_arm_l": {
+          "expr": "-2*sin(tau*t*2)"
+        },
+        "loop_opacity": {
+          "const": 0.15
+        }
+      }
+    },
+    "clean_cut": {
+      "loop": false,
+      "frames": 8,
+      "duration_ms": 84,
+      "channels": {
+        "root_x": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.35,
+              -4.0
+            ],
+            [
+              0.55,
+              8.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "torso": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.4,
+              -6.0
+            ],
+            [
+              0.6,
+              8.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "head": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.4,
+              -4.0
+            ],
+            [
+              0.7,
+              2.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "l_arm_u": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.2,
+              -14.0
+            ],
+            [
+              0.45,
+              -18.0
+            ],
+            [
+              0.65,
+              -6.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "l_arm_l": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.2,
+              -10.0
+            ],
+            [
+              0.45,
+              -12.0
+            ],
+            [
+              0.65,
+              -4.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "r_arm_u": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.2,
+              -18.0
+            ],
+            [
+              0.42,
+              -42.0
+            ],
+            [
+              0.58,
+              34.0
+            ],
+            [
+              0.82,
+              10.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "r_arm_l": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.2,
+              -12.0
+            ],
+            [
+              0.42,
+              -26.0
+            ],
+            [
+              0.58,
+              40.0
+            ],
+            [
+              0.82,
+              12.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "loop_opacity": {
+          "keys": [
+            [
+              0.0,
+              0.05
+            ],
+            [
+              0.4,
+              0.25
+            ],
+            [
+              0.6,
+              0.35
+            ],
+            [
+              1.0,
+              0.08
+            ]
+          ]
+        }
+      }
+    },
+    "paradox_loop": {
+      "loop": false,
+      "frames": 8,
+      "duration_ms": 96,
+      "channels": {
+        "root_y": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.4,
+              -3.0
+            ],
+            [
+              0.8,
+              -1.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "torso": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.4,
+              -3.0
+            ],
+            [
+              0.6,
+              4.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "head": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.35,
+              -6.0
+            ],
+            [
+              0.65,
+              -2.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "l_arm_u": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.25,
+              -24.0
+            ],
+            [
+              0.5,
+              -48.0
+            ],
+            [
+              0.8,
+              -12.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "l_arm_l": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.25,
+              -14.0
+            ],
+            [
+              0.5,
+              -20.0
+            ],
+            [
+              0.8,
+              -6.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "r_arm_u": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.25,
+              24.0
+            ],
+            [
+              0.5,
+              48.0
+            ],
+            [
+              0.8,
+              12.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "r_arm_l": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.25,
+              14.0
+            ],
+            [
+              0.5,
+              20.0
+            ],
+            [
+              0.8,
+              6.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "loop": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.5,
+              180.0
+            ],
+            [
+              1.0,
+              360.0
+            ]
+          ]
+        },
+        "loop_opacity": {
+          "keys": [
+            [
+              0.0,
+              0.18
+            ],
+            [
+              0.35,
+              0.6
+            ],
+            [
+              0.55,
+              0.9
+            ],
+            [
+              0.85,
+              0.55
+            ],
+            [
+              1.0,
+              0.18
+            ]
+          ]
+        }
+      }
+    },
+    "self_shave": {
+      "loop": false,
+      "frames": 8,
+      "duration_ms": 100,
+      "channels": {
+        "head": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.35,
+              -2.0
+            ],
+            [
+              0.55,
+              3.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "l_arm_u": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.3,
+              14.0
+            ],
+            [
+              0.52,
+              22.0
+            ],
+            [
+              0.8,
+              8.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "l_arm_l": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.3,
+              18.0
+            ],
+            [
+              0.52,
+              28.0
+            ],
+            [
+              0.8,
+              10.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "r_arm_u": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.3,
+              -24.0
+            ],
+            [
+              0.52,
+              -38.0
+            ],
+            [
+              0.8,
+              -12.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "r_arm_l": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.3,
+              -14.0
+            ],
+            [
+              0.52,
+              -30.0
+            ],
+            [
+              0.8,
+              -8.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "loop_opacity": {
+          "keys": [
+            [
+              0.0,
+              0.08
+            ],
+            [
+              0.35,
+              0.25
+            ],
+            [
+              0.7,
+              0.15
+            ],
+            [
+              1.0,
+              0.08
+            ]
+          ]
+        }
+      }
+    },
+    "death": {
+      "loop": false,
+      "frames": 8,
+      "duration_ms": 116,
+      "channels": {
+        "root_y": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.4,
+              4.0
+            ],
+            [
+              0.75,
+              16.0
+            ],
+            [
+              1.0,
+              24.0
+            ]
+          ]
+        },
+        "torso": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.4,
+              6.0
+            ],
+            [
+              0.75,
+              16.0
+            ],
+            [
+              1.0,
+              26.0
+            ]
+          ]
+        },
+        "head": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.4,
+              7.0
+            ],
+            [
+              0.75,
+              18.0
+            ],
+            [
+              1.0,
+              30.0
+            ]
+          ]
+        },
+        "l_arm_u": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.5,
+              16.0
+            ],
+            [
+              1.0,
+              34.0
+            ]
+          ]
+        },
+        "l_arm_l": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.5,
+              10.0
+            ],
+            [
+              1.0,
+              26.0
+            ]
+          ]
+        },
+        "r_arm_u": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.5,
+              -16.0
+            ],
+            [
+              1.0,
+              -34.0
+            ]
+          ]
+        },
+        "r_arm_l": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.5,
+              -10.0
+            ],
+            [
+              1.0,
+              -26.0
+            ]
+          ]
+        },
+        "loop_opacity": {
+          "keys": [
+            [
+              0.0,
+              0.12
+            ],
+            [
+              0.5,
+              0.06
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        }
+      }
+    }
+  },
+  "sprite_tuning": {
+    "collision_scale": 1.8
+  }
+}

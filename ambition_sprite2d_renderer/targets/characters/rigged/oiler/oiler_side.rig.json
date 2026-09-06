@@ -1,0 +1,4705 @@
+{
+ "name": "oiler_side",
+ "frame": {
+  "width": 128,
+  "height": 128,
+  "center_x": 64.0,
+  "ground_y": 118.0,
+  "ankle_h": 7.2188,
+  "supersample": 4,
+  "render_scale": 2
+ },
+ "svg_source": {
+  "path": "../../../../data/characters/oiler/oiler-multiview.svg",
+  "view": "Oiler - Side Right",
+  "ref_dpi": 25.4,
+  "scale": 0.328125
+ },
+ "palette": {},
+ "bones": [
+  {
+   "name": "pelvis",
+   "parent": null,
+   "offset": [
+    0.0,
+    -48.0703
+   ],
+   "length": 0.0,
+   "rest_angle": 0.0
+  },
+  {
+   "name": "torso",
+   "parent": "pelvis",
+   "offset": [
+    -0.1641,
+    -5.0859
+   ],
+   "length": 0.0,
+   "rest_angle": 0.0
+  },
+  {
+   "name": "head",
+   "parent": "torso",
+   "offset": [
+    -1.9688,
+    -24.6094
+   ],
+   "length": 0.0,
+   "rest_angle": 0.0
+  },
+  {
+   "name": "far_arm_u",
+   "parent": "torso",
+   "offset": [
+    -3.6094,
+    -16.7344
+   ],
+   "length": 13.7068,
+   "rest_angle": 101.0409
+  },
+  {
+   "name": "far_arm_l",
+   "parent": "far_arm_u",
+   "offset": [
+    13.7068,
+    -0.0
+   ],
+   "length": 12.6658,
+   "rest_angle": -27.598
+  },
+  {
+   "name": "far_arm_hand",
+   "parent": "far_arm_l",
+   "offset": [
+    12.6658,
+    -0.0
+   ],
+   "length": 4.5703,
+   "rest_angle": -4.4804
+  },
+  {
+   "name": "far_leg_u",
+   "parent": "pelvis",
+   "offset": [
+    -1.1484,
+    -0.1641
+   ],
+   "length": 19.9078,
+   "rest_angle": 98.5308
+  },
+  {
+   "name": "far_leg_l",
+   "parent": "far_leg_u",
+   "offset": [
+    19.9078,
+    -0.0
+   ],
+   "length": 21.4188,
+   "rest_angle": -13.8047
+  },
+  {
+   "name": "far_leg_foot",
+   "parent": "far_leg_l",
+   "offset": [
+    21.4188,
+    0.0
+   ],
+   "length": 7.9295,
+   "rest_angle": -60.2821
+  },
+  {
+   "name": "near_arm_u",
+   "parent": "torso",
+   "offset": [
+    -0.9844,
+    -16.7344
+   ],
+   "length": 13.4531,
+   "rest_angle": 102.6804
+  },
+  {
+   "name": "near_arm_l",
+   "parent": "near_arm_u",
+   "offset": [
+    13.4531,
+    -0.0
+   ],
+   "length": 13.0757,
+   "rest_angle": -30.206
+  },
+  {
+   "name": "near_arm_hand",
+   "parent": "near_arm_l",
+   "offset": [
+    13.0757,
+    0.0
+   ],
+   "length": 4.5703,
+   "rest_angle": -3.5119
+  },
+  {
+   "name": "near_leg_u",
+   "parent": "pelvis",
+   "offset": [
+    1.1484,
+    0.1641
+   ],
+   "length": 19.312,
+   "rest_angle": 80.2176
+  },
+  {
+   "name": "near_leg_l",
+   "parent": "near_leg_u",
+   "offset": [
+    19.312,
+    -0.0
+   ],
+   "length": 21.7777,
+   "rest_angle": 15.8366
+  },
+  {
+   "name": "near_leg_foot",
+   "parent": "near_leg_l",
+   "offset": [
+    21.7777,
+    0.0
+   ],
+   "length": 7.9295,
+   "rest_angle": -71.6102
+  }
+ ],
+ "parts": [
+  {
+   "name": "far_leg_u",
+   "bone": "far_leg_u",
+   "z": 5.0,
+   "kind": "sprite",
+   "include": [
+    "side-far-thigh-outline",
+    "side-far-thigh"
+   ],
+   "pivot": [
+    797.0,
+    220.0
+   ],
+   "rest_angle": 98.5308,
+   "svg_source_order": 3
+  },
+  {
+   "name": "far_leg_l",
+   "bone": "far_leg_l",
+   "z": 6.0,
+   "kind": "sprite",
+   "include": [
+    "side-far-shin-outline",
+    "side-far-shin"
+   ],
+   "pivot": [
+    788.0,
+    280.0
+   ],
+   "rest_angle": 84.7261,
+   "svg_source_order": 4
+  },
+  {
+   "name": "far_leg_foot",
+   "bone": "far_leg_foot",
+   "z": 7.0,
+   "kind": "sprite",
+   "include": [
+    "side-far-boot-outline",
+    "side-far-boot"
+   ],
+   "pivot": [
+    794.0,
+    345.0
+   ],
+   "rest_angle": 24.444,
+   "svg_source_order": 5
+  },
+  {
+   "name": "far_arm_u",
+   "bone": "far_arm_u",
+   "z": 8.0,
+   "kind": "sprite",
+   "include": [
+    "side-far-upperarm-outline",
+    "side-far-upperarm",
+    "side-far-sleeve-band"
+   ],
+   "pivot": [
+    789.0,
+    154.0
+   ],
+   "rest_angle": 101.0409,
+   "svg_source_order": 0
+  },
+  {
+   "name": "far_arm_l",
+   "bone": "far_arm_l",
+   "z": 9.0,
+   "kind": "sprite",
+   "include": [
+    "side-far-forearm-outline",
+    "side-far-forearm"
+   ],
+   "pivot": [
+    781.0,
+    195.0
+   ],
+   "rest_angle": 73.4429,
+   "svg_source_order": 1
+  },
+  {
+   "name": "far_hand",
+   "bone": "far_arm_hand",
+   "z": 10.0,
+   "kind": "sprite",
+   "include": [
+    "side-far-hand-shape"
+   ],
+   "pivot": [
+    792.0,
+    232.0
+   ],
+   "rest_angle": 68.9625,
+   "svg_source_order": 2
+  },
+  {
+   "name": "near_leg_u",
+   "bone": "near_leg_u",
+   "z": 20.0,
+   "kind": "sprite",
+   "include": [
+    "side-near-thigh-outline",
+    "side-near-thigh"
+   ],
+   "pivot": [
+    804.0,
+    221.0
+   ],
+   "rest_angle": 80.2176,
+   "svg_source_order": 6
+  },
+  {
+   "name": "pelvis_yoke",
+   "bone": "pelvis",
+   "z": 21.0,
+   "kind": "sprite",
+   "include": [
+    "side-pelvis-yoke",
+    "side-pelvis-fly",
+    "side-pelvis-seam"
+   ],
+   "pivot": [
+    800.5,
+    220.5
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 9
+  },
+  {
+   "name": "torso",
+   "bone": "torso",
+   "z": 22.0,
+   "kind": "sprite",
+   "include": [
+    "side-coat-body",
+    "side-neckcloth",
+    "side-cravat-knot",
+    "side-cravat-tail",
+    "side-dark-lapel",
+    "side-dark-lapel-far",
+    "side-lapel-edge",
+    "side-coat-band",
+    "side-coat-panel",
+    "side-belt",
+    "side-belt-brass"
+   ],
+   "pivot": [
+    800.0,
+    205.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 10
+  },
+  {
+   "name": "apron",
+   "bone": "torso",
+   "z": 24.0,
+   "kind": "sprite",
+   "include": [
+    "side-waist-apron",
+    "side-apron-pocket",
+    "side-apron-pocket-flap",
+    "side-apron-pocket-gusset",
+    "side-apron-belt-loop"
+   ],
+   "pivot": [
+    800.0,
+    205.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 11
+  },
+  {
+   "name": "head",
+   "bone": "head",
+   "z": 30.0,
+   "kind": "sprite",
+   "include": [
+    "side-cap-tail-back",
+    "side-cap-hanging-tail",
+    "side-nape-hair-outline",
+    "side-nape-hair",
+    "side-head",
+    "side-ear",
+    "side-ear-inner",
+    "side-cap-crown",
+    "side-cap-dark-fold",
+    "side-cap-front-fold",
+    "side-cap-fold-line",
+    "side-brow",
+    "side-eye",
+    "side-under-eye",
+    "side-nostril",
+    "side-philtrum",
+    "side-mouth-closed",
+    "side-lower-lip",
+    "side-chin",
+    "side-cheek"
+   ],
+   "pivot": [
+    794.0,
+    130.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 12
+  },
+  {
+   "name": "blink",
+   "bone": "head",
+   "z": 34.0,
+   "kind": "sprite",
+   "include": [
+    "side-blink"
+   ],
+   "pivot": [
+    794.0,
+    130.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 13,
+   "opacity_channel": "blink_vis"
+  },
+  {
+   "name": "near_leg_l",
+   "bone": "near_leg_l",
+   "z": 41.0,
+   "kind": "sprite",
+   "include": [
+    "side-near-shin-outline",
+    "side-near-shin"
+   ],
+   "pivot": [
+    814.0,
+    279.0
+   ],
+   "rest_angle": 96.0542,
+   "svg_source_order": 7
+  },
+  {
+   "name": "near_leg_foot",
+   "bone": "near_leg_foot",
+   "z": 42.0,
+   "kind": "sprite",
+   "include": [
+    "side-near-boot-outline",
+    "side-near-boot",
+    "side-near-sole"
+   ],
+   "pivot": [
+    807.0,
+    345.0
+   ],
+   "rest_angle": 24.444,
+   "svg_source_order": 8
+  },
+  {
+   "name": "near_arm_u",
+   "bone": "near_arm_u",
+   "z": 60.0,
+   "kind": "sprite",
+   "include": [
+    "side-near-upperarm-outline",
+    "side-near-upperarm",
+    "side-near-sleeve-band"
+   ],
+   "pivot": [
+    797.0,
+    154.0
+   ],
+   "rest_angle": 102.6804,
+   "svg_source_order": 14
+  },
+  {
+   "name": "near_arm_l",
+   "bone": "near_arm_l",
+   "z": 61.0,
+   "kind": "sprite",
+   "include": [
+    "side-near-forearm-outline",
+    "side-near-forearm"
+   ],
+   "pivot": [
+    788.0,
+    194.0
+   ],
+   "rest_angle": 72.4744,
+   "svg_source_order": 15
+  },
+  {
+   "name": "near_hand",
+   "bone": "near_arm_hand",
+   "z": 62.0,
+   "kind": "sprite",
+   "include": [
+    "side-near-hand-shape"
+   ],
+   "pivot": [
+    800.0,
+    232.0
+   ],
+   "rest_angle": 68.9625,
+   "svg_source_order": 16
+  }
+ ],
+ "ik_legs": [
+  {
+   "upper": "near_leg_u",
+   "lower": "near_leg_l",
+   "foot": "near_leg_foot",
+   "channel_prefix": "near_foot",
+   "rest_x": 2.1328,
+   "rest_lift": 0.0,
+   "rest_pitch": 24.444,
+   "bend": 1.0
+  },
+  {
+   "upper": "far_leg_u",
+   "lower": "far_leg_l",
+   "foot": "far_leg_foot",
+   "channel_prefix": "far_foot",
+   "rest_x": -2.1328,
+   "rest_lift": 0.0,
+   "rest_pitch": 24.444,
+   "bend": -1.0
+  }
+ ],
+ "ik_chains": [
+  {
+   "upper": "near_arm_u",
+   "lower": "near_arm_l",
+   "end": "near_arm_hand",
+   "channel_prefix": "near_hand",
+   "rest_x": -0.1641,
+   "rest_y": -44.2969,
+   "rest_pitch": 68.9625,
+   "pitch_mode": "world",
+   "bend": -1.0,
+   "pose_authority": "svg-layout"
+  },
+  {
+   "upper": "far_arm_u",
+   "lower": "far_arm_l",
+   "end": "far_arm_hand",
+   "channel_prefix": "far_hand",
+   "rest_x": -2.7891,
+   "rest_y": -44.2969,
+   "rest_pitch": 68.9625,
+   "pitch_mode": "world",
+   "bend": -1.0,
+   "pose_authority": "svg-layout"
+  }
+ ],
+ "clips": {
+  "walk": {
+   "loop": true,
+   "frames": 8,
+   "duration_ms": 100,
+   "channels": {
+    "root_y": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.125,
+       1.15,
+       "smooth"
+      ],
+      [
+       0.25,
+       0.35,
+       "smooth"
+      ],
+      [
+       0.375,
+       -0.55,
+       "smooth"
+      ],
+      [
+       0.5,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.625,
+       1.15,
+       "smooth"
+      ],
+      [
+       0.75,
+       0.35,
+       "smooth"
+      ],
+      [
+       0.875,
+       -0.55,
+       "smooth"
+      ]
+     ]
+    },
+    "torso": {
+     "keys": [
+      [
+       0.0,
+       0.5,
+       "smooth"
+      ],
+      [
+       0.125,
+       1.2,
+       "smooth"
+      ],
+      [
+       0.25,
+       0.4,
+       "smooth"
+      ],
+      [
+       0.375,
+       -0.2,
+       "smooth"
+      ],
+      [
+       0.5,
+       -0.5,
+       "smooth"
+      ],
+      [
+       0.625,
+       -1.2,
+       "smooth"
+      ],
+      [
+       0.75,
+       -0.4,
+       "smooth"
+      ],
+      [
+       0.875,
+       0.2,
+       "smooth"
+      ]
+     ]
+    },
+    "head": {
+     "keys": [
+      [
+       0.0,
+       -0.3,
+       "smooth"
+      ],
+      [
+       0.125,
+       -0.7,
+       "smooth"
+      ],
+      [
+       0.25,
+       -0.2,
+       "smooth"
+      ],
+      [
+       0.375,
+       0.2,
+       "smooth"
+      ],
+      [
+       0.5,
+       0.3,
+       "smooth"
+      ],
+      [
+       0.625,
+       0.7,
+       "smooth"
+      ],
+      [
+       0.75,
+       0.2,
+       "smooth"
+      ],
+      [
+       0.875,
+       -0.2,
+       "smooth"
+      ]
+     ]
+    },
+    "near_foot_x": {
+     "keys": [
+      [
+       0.0,
+       12.1328,
+       "linear"
+      ],
+      [
+       0.125,
+       9.1328,
+       "linear"
+      ],
+      [
+       0.25,
+       5.1328,
+       "linear"
+      ],
+      [
+       0.375,
+       0.1328,
+       "linear"
+      ],
+      [
+       0.5,
+       -7.8672,
+       "linear"
+      ],
+      [
+       0.625,
+       -5.8672,
+       "linear"
+      ],
+      [
+       0.75,
+       -0.8672,
+       "linear"
+      ],
+      [
+       0.875,
+       6.1328,
+       "linear"
+      ]
+     ]
+    },
+    "near_foot_lift": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.125,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.25,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.375,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.5,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.625,
+       3.0,
+       "smooth"
+      ],
+      [
+       0.75,
+       6.0,
+       "smooth"
+      ],
+      [
+       0.875,
+       3.0,
+       "smooth"
+      ]
+     ]
+    },
+    "near_foot_pitch": {
+     "keys": [
+      [
+       0.0,
+       30.444,
+       "smooth"
+      ],
+      [
+       0.125,
+       26.444,
+       "smooth"
+      ],
+      [
+       0.25,
+       22.444,
+       "smooth"
+      ],
+      [
+       0.375,
+       19.444,
+       "smooth"
+      ],
+      [
+       0.5,
+       24.444,
+       "smooth"
+      ],
+      [
+       0.625,
+       27.444,
+       "smooth"
+      ],
+      [
+       0.75,
+       33.444,
+       "smooth"
+      ],
+      [
+       0.875,
+       35.444,
+       "smooth"
+      ]
+     ]
+    },
+    "far_foot_x": {
+     "keys": [
+      [
+       0.0,
+       -12.1328,
+       "linear"
+      ],
+      [
+       0.125,
+       -10.1328,
+       "linear"
+      ],
+      [
+       0.25,
+       -5.1328,
+       "linear"
+      ],
+      [
+       0.375,
+       1.8672,
+       "linear"
+      ],
+      [
+       0.5,
+       7.8672,
+       "linear"
+      ],
+      [
+       0.625,
+       4.8672,
+       "linear"
+      ],
+      [
+       0.75,
+       0.8672,
+       "linear"
+      ],
+      [
+       0.875,
+       -4.1328,
+       "linear"
+      ]
+     ]
+    },
+    "far_foot_lift": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.125,
+       3.0,
+       "smooth"
+      ],
+      [
+       0.25,
+       6.0,
+       "smooth"
+      ],
+      [
+       0.375,
+       3.0,
+       "smooth"
+      ],
+      [
+       0.5,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.625,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.75,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.875,
+       0.0,
+       "smooth"
+      ]
+     ]
+    },
+    "far_foot_pitch": {
+     "keys": [
+      [
+       0.0,
+       24.444,
+       "smooth"
+      ],
+      [
+       0.125,
+       27.444,
+       "smooth"
+      ],
+      [
+       0.25,
+       33.444,
+       "smooth"
+      ],
+      [
+       0.375,
+       35.444,
+       "smooth"
+      ],
+      [
+       0.5,
+       30.444,
+       "smooth"
+      ],
+      [
+       0.625,
+       26.444,
+       "smooth"
+      ],
+      [
+       0.75,
+       22.444,
+       "smooth"
+      ],
+      [
+       0.875,
+       19.444,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_x": {
+     "keys": [
+      [
+       0.0,
+       -5.6641,
+       "smooth"
+      ],
+      [
+       0.125,
+       -4.1641,
+       "smooth"
+      ],
+      [
+       0.25,
+       -1.6641,
+       "smooth"
+      ],
+      [
+       0.375,
+       2.3359,
+       "smooth"
+      ],
+      [
+       0.5,
+       5.3359,
+       "smooth"
+      ],
+      [
+       0.625,
+       3.8359,
+       "smooth"
+      ],
+      [
+       0.75,
+       1.3359,
+       "smooth"
+      ],
+      [
+       0.875,
+       -2.6641,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -44.2969,
+       "smooth"
+      ],
+      [
+       0.125,
+       -43.7969,
+       "smooth"
+      ],
+      [
+       0.25,
+       -43.2969,
+       "smooth"
+      ],
+      [
+       0.375,
+       -43.7969,
+       "smooth"
+      ],
+      [
+       0.5,
+       -44.2969,
+       "smooth"
+      ],
+      [
+       0.625,
+       -44.7969,
+       "smooth"
+      ],
+      [
+       0.75,
+       -45.2969,
+       "smooth"
+      ],
+      [
+       0.875,
+       -44.7969,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_pitch": {
+     "keys": [
+      [
+       0.0,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.125,
+       69.9625,
+       "smooth"
+      ],
+      [
+       0.25,
+       70.9625,
+       "smooth"
+      ],
+      [
+       0.375,
+       69.9625,
+       "smooth"
+      ],
+      [
+       0.5,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.625,
+       67.9625,
+       "smooth"
+      ],
+      [
+       0.75,
+       66.9625,
+       "smooth"
+      ],
+      [
+       0.875,
+       67.9625,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_x": {
+     "keys": [
+      [
+       0.0,
+       2.7109,
+       "smooth"
+      ],
+      [
+       0.125,
+       1.2109,
+       "smooth"
+      ],
+      [
+       0.25,
+       -1.2891,
+       "smooth"
+      ],
+      [
+       0.375,
+       -5.2891,
+       "smooth"
+      ],
+      [
+       0.5,
+       -8.2891,
+       "smooth"
+      ],
+      [
+       0.625,
+       -6.7891,
+       "smooth"
+      ],
+      [
+       0.75,
+       -4.2891,
+       "smooth"
+      ],
+      [
+       0.875,
+       -0.2891,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -44.2969,
+       "smooth"
+      ],
+      [
+       0.125,
+       -44.7969,
+       "smooth"
+      ],
+      [
+       0.25,
+       -45.2969,
+       "smooth"
+      ],
+      [
+       0.375,
+       -44.7969,
+       "smooth"
+      ],
+      [
+       0.5,
+       -44.2969,
+       "smooth"
+      ],
+      [
+       0.625,
+       -43.7969,
+       "smooth"
+      ],
+      [
+       0.75,
+       -43.2969,
+       "smooth"
+      ],
+      [
+       0.875,
+       -43.7969,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_pitch": {
+     "keys": [
+      [
+       0.0,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.125,
+       67.9625,
+       "smooth"
+      ],
+      [
+       0.25,
+       66.9625,
+       "smooth"
+      ],
+      [
+       0.375,
+       67.9625,
+       "smooth"
+      ],
+      [
+       0.5,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.625,
+       69.9625,
+       "smooth"
+      ],
+      [
+       0.75,
+       70.9625,
+       "smooth"
+      ],
+      [
+       0.875,
+       69.9625,
+       "smooth"
+      ]
+     ]
+    },
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "attack_side": {
+   "loop": false,
+   "frames": 6,
+   "duration_ms": 70,
+   "channels": {
+    "root_x": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.2,
+       -2.0,
+       "smooth"
+      ],
+      [
+       0.4,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.6,
+       2.5,
+       "smooth"
+      ],
+      [
+       0.8,
+       3.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       0.5,
+       "smooth"
+      ]
+     ]
+    },
+    "torso": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.2,
+       -7.0,
+       "smooth"
+      ],
+      [
+       0.4,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.6,
+       9.0,
+       "smooth"
+      ],
+      [
+       0.8,
+       8.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       2.0,
+       "smooth"
+      ]
+     ]
+    },
+    "head": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.2,
+       4.0,
+       "smooth"
+      ],
+      [
+       0.4,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.6,
+       -5.0,
+       "smooth"
+      ],
+      [
+       0.8,
+       -4.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       -1.0,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_x": {
+     "keys": [
+      [
+       0.0,
+       -1.1485,
+       "smooth"
+      ],
+      [
+       0.2,
+       -18.0134,
+       "smooth"
+      ],
+      [
+       0.4,
+       -11.1121,
+       "smooth"
+      ],
+      [
+       0.6,
+       23.5773,
+       "smooth"
+      ],
+      [
+       0.8,
+       25.099,
+       "smooth"
+      ],
+      [
+       1.0,
+       13.8776,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -46.0147,
+       "smooth"
+      ],
+      [
+       0.2,
+       -60.9233,
+       "smooth"
+      ],
+      [
+       0.4,
+       -51.1518,
+       "smooth"
+      ],
+      [
+       0.6,
+       -61.8567,
+       "smooth"
+      ],
+      [
+       0.8,
+       -68.974,
+       "smooth"
+      ],
+      [
+       1.0,
+       -50.658,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_pitch": {
+     "keys": [
+      [
+       0.0,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.2,
+       130.9625,
+       "smooth"
+      ],
+      [
+       0.4,
+       96.9625,
+       "smooth"
+      ],
+      [
+       0.6,
+       -3.0375,
+       "smooth"
+      ],
+      [
+       0.8,
+       -19.0375,
+       "smooth"
+      ],
+      [
+       1.0,
+       30.9625,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_x": {
+     "keys": [
+      [
+       0.0,
+       -3.7735,
+       "smooth"
+      ],
+      [
+       0.2,
+       -16.438,
+       "smooth"
+      ],
+      [
+       0.4,
+       -11.1699,
+       "smooth"
+      ],
+      [
+       0.6,
+       9.7941,
+       "smooth"
+      ],
+      [
+       0.8,
+       14.0591,
+       "smooth"
+      ],
+      [
+       1.0,
+       1.271,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -45.6278,
+       "smooth"
+      ],
+      [
+       0.2,
+       -53.6807,
+       "smooth"
+      ],
+      [
+       0.4,
+       -49.5692,
+       "smooth"
+      ],
+      [
+       0.6,
+       -49.7758,
+       "smooth"
+      ],
+      [
+       0.8,
+       -52.6698,
+       "smooth"
+      ],
+      [
+       1.0,
+       -46.158,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_pitch": {
+     "keys": [
+      [
+       0.0,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.2,
+       106.9625,
+       "smooth"
+      ],
+      [
+       0.4,
+       88.9625,
+       "smooth"
+      ],
+      [
+       0.6,
+       34.9625,
+       "smooth"
+      ],
+      [
+       0.8,
+       22.9625,
+       "smooth"
+      ],
+      [
+       1.0,
+       56.9625,
+       "smooth"
+      ]
+     ]
+    },
+    "near_foot_x": {
+     "keys": [
+      [
+       0.0,
+       4.1328,
+       "smooth"
+      ],
+      [
+       0.2,
+       2.1328,
+       "smooth"
+      ],
+      [
+       0.4,
+       5.1328,
+       "smooth"
+      ],
+      [
+       0.6,
+       10.1328,
+       "smooth"
+      ],
+      [
+       0.8,
+       11.1328,
+       "smooth"
+      ],
+      [
+       1.0,
+       5.1328,
+       "smooth"
+      ]
+     ]
+    },
+    "far_foot_x": {
+     "keys": [
+      [
+       0.0,
+       -3.1328,
+       "smooth"
+      ],
+      [
+       0.2,
+       -5.1328,
+       "smooth"
+      ],
+      [
+       0.4,
+       -6.1328,
+       "smooth"
+      ],
+      [
+       0.6,
+       -8.1328,
+       "smooth"
+      ],
+      [
+       0.8,
+       -8.1328,
+       "smooth"
+      ],
+      [
+       1.0,
+       -4.1328,
+       "smooth"
+      ]
+     ]
+    },
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "attack_up": {
+   "loop": false,
+   "frames": 6,
+   "duration_ms": 66,
+   "channels": {
+    "root_y": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.2,
+       1.5,
+       "smooth"
+      ],
+      [
+       0.4,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.6,
+       -1.5,
+       "smooth"
+      ],
+      [
+       0.8,
+       -2.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       -0.5,
+       "smooth"
+      ]
+     ]
+    },
+    "torso": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.2,
+       6.0,
+       "smooth"
+      ],
+      [
+       0.4,
+       -2.0,
+       "smooth"
+      ],
+      [
+       0.6,
+       -10.0,
+       "smooth"
+      ],
+      [
+       0.8,
+       -11.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       -3.0,
+       "smooth"
+      ]
+     ]
+    },
+    "head": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.2,
+       -4.0,
+       "smooth"
+      ],
+      [
+       0.4,
+       2.0,
+       "smooth"
+      ],
+      [
+       0.6,
+       8.0,
+       "smooth"
+      ],
+      [
+       0.8,
+       9.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       3.0,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_x": {
+     "keys": [
+      [
+       0.0,
+       -1.1485,
+       "smooth"
+      ],
+      [
+       0.2,
+       -12.5814,
+       "smooth"
+      ],
+      [
+       0.4,
+       17.1219,
+       "smooth"
+      ],
+      [
+       0.6,
+       14.5309,
+       "smooth"
+      ],
+      [
+       0.8,
+       5.2052,
+       "smooth"
+      ],
+      [
+       1.0,
+       20.6632,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -46.0147,
+       "smooth"
+      ],
+      [
+       0.2,
+       -55.2571,
+       "smooth"
+      ],
+      [
+       0.4,
+       -60.1761,
+       "smooth"
+      ],
+      [
+       0.6,
+       -89.9594,
+       "smooth"
+      ],
+      [
+       0.8,
+       -95.374,
+       "smooth"
+      ],
+      [
+       1.0,
+       -79.6018,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_pitch": {
+     "keys": [
+      [
+       0.0,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.2,
+       106.9625,
+       "smooth"
+      ],
+      [
+       0.4,
+       6.9625,
+       "smooth"
+      ],
+      [
+       0.6,
+       -73.0375,
+       "smooth"
+      ],
+      [
+       0.8,
+       -97.0375,
+       "smooth"
+      ],
+      [
+       1.0,
+       -45.0375,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_x": {
+     "keys": [
+      [
+       0.0,
+       -3.7735,
+       "smooth"
+      ],
+      [
+       0.2,
+       -8.8776,
+       "smooth"
+      ],
+      [
+       0.4,
+       0.8324,
+       "smooth"
+      ],
+      [
+       0.6,
+       15.0021,
+       "smooth"
+      ],
+      [
+       0.8,
+       17.9098,
+       "smooth"
+      ],
+      [
+       1.0,
+       6.6314,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -45.6278,
+       "smooth"
+      ],
+      [
+       0.2,
+       -49.4192,
+       "smooth"
+      ],
+      [
+       0.4,
+       -48.2217,
+       "smooth"
+      ],
+      [
+       0.6,
+       -56.2493,
+       "smooth"
+      ],
+      [
+       0.8,
+       -60.2366,
+       "smooth"
+      ],
+      [
+       1.0,
+       -48.5574,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_pitch": {
+     "keys": [
+      [
+       0.0,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.2,
+       82.9625,
+       "smooth"
+      ],
+      [
+       0.4,
+       56.9625,
+       "smooth"
+      ],
+      [
+       0.6,
+       14.9625,
+       "smooth"
+      ],
+      [
+       0.8,
+       2.9625,
+       "smooth"
+      ],
+      [
+       1.0,
+       42.9625,
+       "smooth"
+      ]
+     ]
+    },
+    "near_foot_x": {
+     "keys": [
+      [
+       0.0,
+       2.1328,
+       "smooth"
+      ],
+      [
+       0.2,
+       1.1328,
+       "smooth"
+      ],
+      [
+       0.4,
+       3.1328,
+       "smooth"
+      ],
+      [
+       0.6,
+       5.1328,
+       "smooth"
+      ],
+      [
+       0.8,
+       5.1328,
+       "smooth"
+      ],
+      [
+       1.0,
+       2.1328,
+       "smooth"
+      ]
+     ]
+    },
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "attack_down": {
+   "loop": false,
+   "frames": 6,
+   "duration_ms": 70,
+   "channels": {
+    "root_y": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.2,
+       1.0,
+       "smooth"
+      ],
+      [
+       0.4,
+       5.0,
+       "smooth"
+      ],
+      [
+       0.6,
+       8.5,
+       "smooth"
+      ],
+      [
+       0.8,
+       9.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       2.5,
+       "smooth"
+      ]
+     ]
+    },
+    "torso": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.2,
+       -4.0,
+       "smooth"
+      ],
+      [
+       0.4,
+       5.0,
+       "smooth"
+      ],
+      [
+       0.6,
+       13.0,
+       "smooth"
+      ],
+      [
+       0.8,
+       14.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       4.0,
+       "smooth"
+      ]
+     ]
+    },
+    "head": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.2,
+       3.0,
+       "smooth"
+      ],
+      [
+       0.4,
+       -4.0,
+       "smooth"
+      ],
+      [
+       0.6,
+       -9.0,
+       "smooth"
+      ],
+      [
+       0.8,
+       -10.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       -3.0,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_x": {
+     "keys": [
+      [
+       0.0,
+       -1.1485,
+       "smooth"
+      ],
+      [
+       0.2,
+       -16.9837,
+       "smooth"
+      ],
+      [
+       0.4,
+       -8.7701,
+       "smooth"
+      ],
+      [
+       0.6,
+       16.9114,
+       "smooth"
+      ],
+      [
+       0.8,
+       20.6249,
+       "smooth"
+      ],
+      [
+       1.0,
+       5.5788,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -46.0147,
+       "smooth"
+      ],
+      [
+       0.2,
+       -59.2096,
+       "smooth"
+      ],
+      [
+       0.4,
+       -48.9503,
+       "smooth"
+      ],
+      [
+       0.6,
+       -51.189,
+       "smooth"
+      ],
+      [
+       0.8,
+       -55.2042,
+       "smooth"
+      ],
+      [
+       1.0,
+       -46.4296,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_pitch": {
+     "keys": [
+      [
+       0.0,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.2,
+       124.9625,
+       "smooth"
+      ],
+      [
+       0.4,
+       88.9625,
+       "smooth"
+      ],
+      [
+       0.6,
+       24.9625,
+       "smooth"
+      ],
+      [
+       0.8,
+       12.9625,
+       "smooth"
+      ],
+      [
+       1.0,
+       52.9625,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_x": {
+     "keys": [
+      [
+       0.0,
+       -3.7735,
+       "smooth"
+      ],
+      [
+       0.2,
+       -15.2764,
+       "smooth"
+      ],
+      [
+       0.4,
+       -12.0722,
+       "smooth"
+      ],
+      [
+       0.6,
+       -2.1178,
+       "smooth"
+      ],
+      [
+       0.8,
+       0.4397,
+       "smooth"
+      ],
+      [
+       1.0,
+       -2.081,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -45.6278,
+       "smooth"
+      ],
+      [
+       0.2,
+       -52.8368,
+       "smooth"
+      ],
+      [
+       0.4,
+       -49.3507,
+       "smooth"
+      ],
+      [
+       0.6,
+       -46.2131,
+       "smooth"
+      ],
+      [
+       0.8,
+       -45.9964,
+       "smooth"
+      ],
+      [
+       1.0,
+       -45.6869,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_pitch": {
+     "keys": [
+      [
+       0.0,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.2,
+       102.9625,
+       "smooth"
+      ],
+      [
+       0.4,
+       90.9625,
+       "smooth"
+      ],
+      [
+       0.6,
+       64.9625,
+       "smooth"
+      ],
+      [
+       0.8,
+       58.9625,
+       "smooth"
+      ],
+      [
+       1.0,
+       64.9625,
+       "smooth"
+      ]
+     ]
+    },
+    "near_foot_x": {
+     "keys": [
+      [
+       0.0,
+       3.1328,
+       "smooth"
+      ],
+      [
+       0.2,
+       2.1328,
+       "smooth"
+      ],
+      [
+       0.4,
+       7.1328,
+       "smooth"
+      ],
+      [
+       0.6,
+       12.1328,
+       "smooth"
+      ],
+      [
+       0.8,
+       13.1328,
+       "smooth"
+      ],
+      [
+       1.0,
+       5.1328,
+       "smooth"
+      ]
+     ]
+    },
+    "far_foot_x": {
+     "keys": [
+      [
+       0.0,
+       -3.1328,
+       "smooth"
+      ],
+      [
+       0.2,
+       -5.1328,
+       "smooth"
+      ],
+      [
+       0.4,
+       -8.1328,
+       "smooth"
+      ],
+      [
+       0.6,
+       -11.1328,
+       "smooth"
+      ],
+      [
+       0.8,
+       -11.1328,
+       "smooth"
+      ],
+      [
+       1.0,
+       -5.1328,
+       "smooth"
+      ]
+     ]
+    },
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "smash_forward": {
+   "loop": false,
+   "frames": 8,
+   "duration_ms": 64,
+   "channels": {
+    "root_x": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.142857,
+       -2.5,
+       "smooth"
+      ],
+      [
+       0.285714,
+       -4.5,
+       "smooth"
+      ],
+      [
+       0.428571,
+       -4.5,
+       "smooth"
+      ],
+      [
+       0.571429,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.714286,
+       4.0,
+       "smooth"
+      ],
+      [
+       0.857143,
+       5.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       1.5,
+       "smooth"
+      ]
+     ]
+    },
+    "root_y": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.142857,
+       1.0,
+       "smooth"
+      ],
+      [
+       0.285714,
+       2.5,
+       "smooth"
+      ],
+      [
+       0.428571,
+       3.0,
+       "smooth"
+      ],
+      [
+       0.571429,
+       1.0,
+       "smooth"
+      ],
+      [
+       0.714286,
+       -1.0,
+       "smooth"
+      ],
+      [
+       0.857143,
+       -1.5,
+       "smooth"
+      ],
+      [
+       1.0,
+       0.0,
+       "smooth"
+      ]
+     ]
+    },
+    "torso": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.142857,
+       -8.0,
+       "smooth"
+      ],
+      [
+       0.285714,
+       -13.0,
+       "smooth"
+      ],
+      [
+       0.428571,
+       -14.0,
+       "smooth"
+      ],
+      [
+       0.571429,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.714286,
+       12.0,
+       "smooth"
+      ],
+      [
+       0.857143,
+       15.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       4.0,
+       "smooth"
+      ]
+     ]
+    },
+    "head": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.142857,
+       5.0,
+       "smooth"
+      ],
+      [
+       0.285714,
+       8.0,
+       "smooth"
+      ],
+      [
+       0.428571,
+       9.0,
+       "smooth"
+      ],
+      [
+       0.571429,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.714286,
+       -8.0,
+       "smooth"
+      ],
+      [
+       0.857143,
+       -10.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       -3.0,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_x": {
+     "keys": [
+      [
+       0.0,
+       -1.1485,
+       "smooth"
+      ],
+      [
+       0.142857,
+       -18.1497,
+       "smooth"
+      ],
+      [
+       0.285714,
+       -23.9077,
+       "smooth"
+      ],
+      [
+       0.428571,
+       -25.0099,
+       "smooth"
+      ],
+      [
+       0.571429,
+       -7.7068,
+       "smooth"
+      ],
+      [
+       0.714286,
+       24.0976,
+       "smooth"
+      ],
+      [
+       0.857143,
+       25.3157,
+       "smooth"
+      ],
+      [
+       1.0,
+       12.4994,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -46.0147,
+       "smooth"
+      ],
+      [
+       0.142857,
+       -60.0749,
+       "smooth"
+      ],
+      [
+       0.285714,
+       -68.2991,
+       "smooth"
+      ],
+      [
+       0.428571,
+       -70.7239,
+       "smooth"
+      ],
+      [
+       0.571429,
+       -49.7063,
+       "smooth"
+      ],
+      [
+       0.714286,
+       -62.6514,
+       "smooth"
+      ],
+      [
+       0.857143,
+       -68.04,
+       "smooth"
+      ],
+      [
+       1.0,
+       -49.6567,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_pitch": {
+     "keys": [
+      [
+       0.0,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.142857,
+       128.9625,
+       "smooth"
+      ],
+      [
+       0.285714,
+       154.9625,
+       "smooth"
+      ],
+      [
+       0.428571,
+       160.9625,
+       "smooth"
+      ],
+      [
+       0.571429,
+       86.9625,
+       "smooth"
+      ],
+      [
+       0.714286,
+       -5.0375,
+       "smooth"
+      ],
+      [
+       0.857143,
+       -17.0375,
+       "smooth"
+      ],
+      [
+       1.0,
+       34.9625,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_x": {
+     "keys": [
+      [
+       0.0,
+       -3.7735,
+       "smooth"
+      ],
+      [
+       0.142857,
+       -18.9502,
+       "smooth"
+      ],
+      [
+       0.285714,
+       -24.8024,
+       "smooth"
+      ],
+      [
+       0.428571,
+       -25.8455,
+       "smooth"
+      ],
+      [
+       0.571429,
+       -12.5694,
+       "smooth"
+      ],
+      [
+       0.714286,
+       11.4889,
+       "smooth"
+      ],
+      [
+       0.857143,
+       15.0412,
+       "smooth"
+      ],
+      [
+       1.0,
+       0.4397,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -45.6278,
+       "smooth"
+      ],
+      [
+       0.142857,
+       -55.2346,
+       "smooth"
+      ],
+      [
+       0.285714,
+       -61.3944,
+       "smooth"
+      ],
+      [
+       0.428571,
+       -62.719,
+       "smooth"
+      ],
+      [
+       0.571429,
+       -50.1347,
+       "smooth"
+      ],
+      [
+       0.714286,
+       -50.3556,
+       "smooth"
+      ],
+      [
+       0.857143,
+       -52.9498,
+       "smooth"
+      ],
+      [
+       1.0,
+       -45.9964,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_pitch": {
+     "keys": [
+      [
+       0.0,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.142857,
+       114.9625,
+       "smooth"
+      ],
+      [
+       0.285714,
+       136.9625,
+       "smooth"
+      ],
+      [
+       0.428571,
+       140.9625,
+       "smooth"
+      ],
+      [
+       0.571429,
+       92.9625,
+       "smooth"
+      ],
+      [
+       0.714286,
+       30.9625,
+       "smooth"
+      ],
+      [
+       0.857143,
+       20.9625,
+       "smooth"
+      ],
+      [
+       1.0,
+       58.9625,
+       "smooth"
+      ]
+     ]
+    },
+    "near_foot_x": {
+     "keys": [
+      [
+       0.0,
+       2.1328,
+       "smooth"
+      ],
+      [
+       0.142857,
+       -0.8672,
+       "smooth"
+      ],
+      [
+       0.285714,
+       -1.8672,
+       "smooth"
+      ],
+      [
+       0.428571,
+       -1.8672,
+       "smooth"
+      ],
+      [
+       0.571429,
+       4.1328,
+       "smooth"
+      ],
+      [
+       0.714286,
+       11.1328,
+       "smooth"
+      ],
+      [
+       0.857143,
+       12.1328,
+       "smooth"
+      ],
+      [
+       1.0,
+       5.1328,
+       "smooth"
+      ]
+     ]
+    },
+    "far_foot_x": {
+     "keys": [
+      [
+       0.0,
+       -2.1328,
+       "smooth"
+      ],
+      [
+       0.142857,
+       -3.1328,
+       "smooth"
+      ],
+      [
+       0.285714,
+       -4.1328,
+       "smooth"
+      ],
+      [
+       0.428571,
+       -4.1328,
+       "smooth"
+      ],
+      [
+       0.571429,
+       -6.1328,
+       "smooth"
+      ],
+      [
+       0.714286,
+       -9.1328,
+       "smooth"
+      ],
+      [
+       0.857143,
+       -9.1328,
+       "smooth"
+      ],
+      [
+       1.0,
+       -4.1328,
+       "smooth"
+      ]
+     ]
+    },
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "special": {
+   "loop": false,
+   "frames": 8,
+   "duration_ms": 72,
+   "channels": {
+    "root_y": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.142857,
+       2.5,
+       "smooth"
+      ],
+      [
+       0.285714,
+       6.0,
+       "smooth"
+      ],
+      [
+       0.428571,
+       7.0,
+       "smooth"
+      ],
+      [
+       0.571429,
+       3.0,
+       "smooth"
+      ],
+      [
+       0.714286,
+       -2.0,
+       "smooth"
+      ],
+      [
+       0.857143,
+       -4.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       -2.5,
+       "smooth"
+      ]
+     ]
+    },
+    "root_x": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.142857,
+       0.5,
+       "smooth"
+      ],
+      [
+       0.285714,
+       1.5,
+       "smooth"
+      ],
+      [
+       0.428571,
+       1.5,
+       "smooth"
+      ],
+      [
+       0.571429,
+       0.5,
+       "smooth"
+      ],
+      [
+       0.714286,
+       -1.0,
+       "smooth"
+      ],
+      [
+       0.857143,
+       -1.5,
+       "smooth"
+      ],
+      [
+       1.0,
+       -1.0,
+       "smooth"
+      ]
+     ]
+    },
+    "torso": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.142857,
+       6.0,
+       "smooth"
+      ],
+      [
+       0.285714,
+       13.0,
+       "smooth"
+      ],
+      [
+       0.428571,
+       15.0,
+       "smooth"
+      ],
+      [
+       0.571429,
+       5.0,
+       "smooth"
+      ],
+      [
+       0.714286,
+       -9.0,
+       "smooth"
+      ],
+      [
+       0.857143,
+       -16.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       -11.0,
+       "smooth"
+      ]
+     ]
+    },
+    "head": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.142857,
+       -4.0,
+       "smooth"
+      ],
+      [
+       0.285714,
+       -9.0,
+       "smooth"
+      ],
+      [
+       0.428571,
+       -11.0,
+       "smooth"
+      ],
+      [
+       0.571429,
+       -3.0,
+       "smooth"
+      ],
+      [
+       0.714286,
+       7.0,
+       "smooth"
+      ],
+      [
+       0.857143,
+       13.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       9.0,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_x": {
+     "keys": [
+      [
+       0.0,
+       -1.1485,
+       "smooth"
+      ],
+      [
+       0.142857,
+       4.8843,
+       "smooth"
+      ],
+      [
+       0.285714,
+       12.769,
+       "smooth"
+      ],
+      [
+       0.428571,
+       15.1843,
+       "smooth"
+      ],
+      [
+       0.571429,
+       5.5788,
+       "smooth"
+      ],
+      [
+       0.714286,
+       21.8025,
+       "smooth"
+      ],
+      [
+       0.857143,
+       10.3647,
+       "smooth"
+      ],
+      [
+       1.0,
+       15.5377,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -46.0147,
+       "smooth"
+      ],
+      [
+       0.142857,
+       -45.6943,
+       "smooth"
+      ],
+      [
+       0.285714,
+       -47.6179,
+       "smooth"
+      ],
+      [
+       0.428571,
+       -48.9856,
+       "smooth"
+      ],
+      [
+       0.571429,
+       -46.4296,
+       "smooth"
+      ],
+      [
+       0.714286,
+       -76.4717,
+       "smooth"
+      ],
+      [
+       0.857143,
+       -93.4961,
+       "smooth"
+      ],
+      [
+       1.0,
+       -88.4225,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_pitch": {
+     "keys": [
+      [
+       0.0,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.142857,
+       54.9625,
+       "smooth"
+      ],
+      [
+       0.285714,
+       36.9625,
+       "smooth"
+      ],
+      [
+       0.428571,
+       30.9625,
+       "smooth"
+      ],
+      [
+       0.571429,
+       52.9625,
+       "smooth"
+      ],
+      [
+       0.714286,
+       -37.0375,
+       "smooth"
+      ],
+      [
+       0.857143,
+       -85.0375,
+       "smooth"
+      ],
+      [
+       1.0,
+       -69.0375,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_x": {
+     "keys": [
+      [
+       0.0,
+       -3.7735,
+       "smooth"
+      ],
+      [
+       0.142857,
+       0.5313,
+       "smooth"
+      ],
+      [
+       0.285714,
+       7.5563,
+       "smooth"
+      ],
+      [
+       0.428571,
+       10.0621,
+       "smooth"
+      ],
+      [
+       0.571429,
+       1.271,
+       "smooth"
+      ],
+      [
+       0.714286,
+       19.7308,
+       "smooth"
+      ],
+      [
+       0.857143,
+       10.6789,
+       "smooth"
+      ],
+      [
+       1.0,
+       15.2169,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -45.6278,
+       "smooth"
+      ],
+      [
+       0.142857,
+       -45.477,
+       "smooth"
+      ],
+      [
+       0.285714,
+       -46.6611,
+       "smooth"
+      ],
+      [
+       0.428571,
+       -47.749,
+       "smooth"
+      ],
+      [
+       0.571429,
+       -46.158,
+       "smooth"
+      ],
+      [
+       0.714286,
+       -73.1939,
+       "smooth"
+      ],
+      [
+       0.857143,
+       -91.3172,
+       "smooth"
+      ],
+      [
+       1.0,
+       -85.8255,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_pitch": {
+     "keys": [
+      [
+       0.0,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.142857,
+       58.9625,
+       "smooth"
+      ],
+      [
+       0.285714,
+       42.9625,
+       "smooth"
+      ],
+      [
+       0.428571,
+       36.9625,
+       "smooth"
+      ],
+      [
+       0.571429,
+       56.9625,
+       "smooth"
+      ],
+      [
+       0.714286,
+       -29.0375,
+       "smooth"
+      ],
+      [
+       0.857143,
+       -77.0375,
+       "smooth"
+      ],
+      [
+       1.0,
+       -61.0375,
+       "smooth"
+      ]
+     ]
+    },
+    "near_foot_x": {
+     "keys": [
+      [
+       0.0,
+       2.1328,
+       "smooth"
+      ],
+      [
+       0.142857,
+       4.1328,
+       "smooth"
+      ],
+      [
+       0.285714,
+       6.1328,
+       "smooth"
+      ],
+      [
+       0.428571,
+       6.1328,
+       "smooth"
+      ],
+      [
+       0.571429,
+       4.1328,
+       "smooth"
+      ],
+      [
+       0.714286,
+       2.1328,
+       "smooth"
+      ],
+      [
+       0.857143,
+       1.1328,
+       "smooth"
+      ],
+      [
+       1.0,
+       2.1328,
+       "smooth"
+      ]
+     ]
+    },
+    "far_foot_x": {
+     "keys": [
+      [
+       0.0,
+       -2.1328,
+       "smooth"
+      ],
+      [
+       0.142857,
+       -4.1328,
+       "smooth"
+      ],
+      [
+       0.285714,
+       -6.1328,
+       "smooth"
+      ],
+      [
+       0.428571,
+       -6.1328,
+       "smooth"
+      ],
+      [
+       0.571429,
+       -4.1328,
+       "smooth"
+      ],
+      [
+       0.714286,
+       -2.1328,
+       "smooth"
+      ],
+      [
+       0.857143,
+       -1.1328,
+       "smooth"
+      ],
+      [
+       1.0,
+       -2.1328,
+       "smooth"
+      ]
+     ]
+    },
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "hit": {
+   "loop": false,
+   "frames": 5,
+   "duration_ms": 80,
+   "channels": {
+    "root_x": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.25,
+       -4.5,
+       "smooth"
+      ],
+      [
+       0.5,
+       -3.0,
+       "smooth"
+      ],
+      [
+       0.75,
+       -1.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       0.0,
+       "smooth"
+      ]
+     ]
+    },
+    "root_y": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.25,
+       -1.5,
+       "smooth"
+      ],
+      [
+       0.5,
+       -0.5,
+       "smooth"
+      ],
+      [
+       0.75,
+       0.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       0.0,
+       "smooth"
+      ]
+     ]
+    },
+    "torso": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.25,
+       13.0,
+       "smooth"
+      ],
+      [
+       0.5,
+       8.0,
+       "smooth"
+      ],
+      [
+       0.75,
+       3.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       0.0,
+       "smooth"
+      ]
+     ]
+    },
+    "head": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.25,
+       -15.0,
+       "smooth"
+      ],
+      [
+       0.5,
+       -10.0,
+       "smooth"
+      ],
+      [
+       0.75,
+       -4.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       0.0,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_x": {
+     "keys": [
+      [
+       0.0,
+       -1.1485,
+       "smooth"
+      ],
+      [
+       0.25,
+       -12.3756,
+       "smooth"
+      ],
+      [
+       0.5,
+       -8.9,
+       "smooth"
+      ],
+      [
+       0.75,
+       -4.3237,
+       "smooth"
+      ],
+      [
+       1.0,
+       -1.1485,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -46.0147,
+       "smooth"
+      ],
+      [
+       0.25,
+       -54.4378,
+       "smooth"
+      ],
+      [
+       0.5,
+       -50.7049,
+       "smooth"
+      ],
+      [
+       0.75,
+       -47.2979,
+       "smooth"
+      ],
+      [
+       1.0,
+       -46.0147,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_pitch": {
+     "keys": [
+      [
+       0.0,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.25,
+       104.9625,
+       "smooth"
+      ],
+      [
+       0.5,
+       90.9625,
+       "smooth"
+      ],
+      [
+       0.75,
+       76.9625,
+       "smooth"
+      ],
+      [
+       1.0,
+       68.9625,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_x": {
+     "keys": [
+      [
+       0.0,
+       -3.7735,
+       "smooth"
+      ],
+      [
+       0.25,
+       -17.3303,
+       "smooth"
+      ],
+      [
+       0.5,
+       -13.6784,
+       "smooth"
+      ],
+      [
+       0.75,
+       -7.8035,
+       "smooth"
+      ],
+      [
+       1.0,
+       -3.7735,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -45.6278,
+       "smooth"
+      ],
+      [
+       0.25,
+       -55.8522,
+       "smooth"
+      ],
+      [
+       0.5,
+       -51.2621,
+       "smooth"
+      ],
+      [
+       0.75,
+       -47.0353,
+       "smooth"
+      ],
+      [
+       1.0,
+       -45.6278,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_pitch": {
+     "keys": [
+      [
+       0.0,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.25,
+       112.9625,
+       "smooth"
+      ],
+      [
+       0.5,
+       96.9625,
+       "smooth"
+      ],
+      [
+       0.75,
+       78.9625,
+       "smooth"
+      ],
+      [
+       1.0,
+       68.9625,
+       "smooth"
+      ]
+     ]
+    },
+    "near_foot_x": {
+     "keys": [
+      [
+       0.0,
+       2.1328,
+       "smooth"
+      ],
+      [
+       0.25,
+       -2.8672,
+       "smooth"
+      ],
+      [
+       0.5,
+       -0.8672,
+       "smooth"
+      ],
+      [
+       0.75,
+       1.1328,
+       "smooth"
+      ],
+      [
+       1.0,
+       2.1328,
+       "smooth"
+      ]
+     ]
+    },
+    "far_foot_x": {
+     "keys": [
+      [
+       0.0,
+       -2.1328,
+       "smooth"
+      ],
+      [
+       0.25,
+       -5.1328,
+       "smooth"
+      ],
+      [
+       0.5,
+       -4.1328,
+       "smooth"
+      ],
+      [
+       0.75,
+       -3.1328,
+       "smooth"
+      ],
+      [
+       1.0,
+       -2.1328,
+       "smooth"
+      ]
+     ]
+    },
+    "blink_vis": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "linear"
+      ],
+      [
+       0.25,
+       1.0,
+       "linear"
+      ],
+      [
+       0.5,
+       1.0,
+       "linear"
+      ],
+      [
+       0.75,
+       0.0,
+       "linear"
+      ],
+      [
+       1.0,
+       0.0,
+       "linear"
+      ]
+     ]
+    },
+    "talk_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "death": {
+   "loop": false,
+   "frames": 6,
+   "duration_ms": 90,
+   "channels": {
+    "root_x": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.2,
+       -1.5,
+       "smooth"
+      ],
+      [
+       0.4,
+       -4.0,
+       "smooth"
+      ],
+      [
+       0.6,
+       -6.0,
+       "smooth"
+      ],
+      [
+       0.8,
+       -7.5,
+       "smooth"
+      ],
+      [
+       1.0,
+       -8.0,
+       "smooth"
+      ]
+     ]
+    },
+    "root_y": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.2,
+       -1.0,
+       "smooth"
+      ],
+      [
+       0.4,
+       3.0,
+       "smooth"
+      ],
+      [
+       0.6,
+       8.0,
+       "smooth"
+      ],
+      [
+       0.8,
+       12.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       14.0,
+       "smooth"
+      ]
+     ]
+    },
+    "torso": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.2,
+       7.0,
+       "smooth"
+      ],
+      [
+       0.4,
+       15.0,
+       "smooth"
+      ],
+      [
+       0.6,
+       23.0,
+       "smooth"
+      ],
+      [
+       0.8,
+       28.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       30.0,
+       "smooth"
+      ]
+     ]
+    },
+    "head": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.2,
+       -7.0,
+       "smooth"
+      ],
+      [
+       0.4,
+       -12.0,
+       "smooth"
+      ],
+      [
+       0.6,
+       -16.0,
+       "smooth"
+      ],
+      [
+       0.8,
+       -18.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       -19.0,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_x": {
+     "keys": [
+      [
+       0.0,
+       -1.1485,
+       "smooth"
+      ],
+      [
+       0.2,
+       -8.0347,
+       "smooth"
+      ],
+      [
+       0.4,
+       -12.9994,
+       "smooth"
+      ],
+      [
+       0.6,
+       -15.782,
+       "smooth"
+      ],
+      [
+       0.8,
+       -16.608,
+       "smooth"
+      ],
+      [
+       1.0,
+       -16.6591,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -46.0147,
+       "smooth"
+      ],
+      [
+       0.2,
+       -48.6971,
+       "smooth"
+      ],
+      [
+       0.4,
+       -53.5793,
+       "smooth"
+      ],
+      [
+       0.6,
+       -58.4577,
+       "smooth"
+      ],
+      [
+       0.8,
+       -61.6706,
+       "smooth"
+      ],
+      [
+       1.0,
+       -62.9848,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_pitch": {
+     "keys": [
+      [
+       0.0,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.2,
+       86.9625,
+       "smooth"
+      ],
+      [
+       0.4,
+       104.9625,
+       "smooth"
+      ],
+      [
+       0.6,
+       120.9625,
+       "smooth"
+      ],
+      [
+       0.8,
+       130.9625,
+       "smooth"
+      ],
+      [
+       1.0,
+       134.9625,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_x": {
+     "keys": [
+      [
+       0.0,
+       -3.7735,
+       "smooth"
+      ],
+      [
+       0.2,
+       -9.2604,
+       "smooth"
+      ],
+      [
+       0.4,
+       -14.0588,
+       "smooth"
+      ],
+      [
+       0.6,
+       -17.4325,
+       "smooth"
+      ],
+      [
+       0.8,
+       -18.6409,
+       "smooth"
+      ],
+      [
+       1.0,
+       -18.8475,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -45.6278,
+       "smooth"
+      ],
+      [
+       0.2,
+       -47.8839,
+       "smooth"
+      ],
+      [
+       0.4,
+       -52.0759,
+       "smooth"
+      ],
+      [
+       0.6,
+       -56.7002,
+       "smooth"
+      ],
+      [
+       0.8,
+       -59.8624,
+       "smooth"
+      ],
+      [
+       1.0,
+       -61.1876,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_pitch": {
+     "keys": [
+      [
+       0.0,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.2,
+       82.9625,
+       "smooth"
+      ],
+      [
+       0.4,
+       98.9625,
+       "smooth"
+      ],
+      [
+       0.6,
+       114.9625,
+       "smooth"
+      ],
+      [
+       0.8,
+       124.9625,
+       "smooth"
+      ],
+      [
+       1.0,
+       128.9625,
+       "smooth"
+      ]
+     ]
+    },
+    "near_foot_x": {
+     "keys": [
+      [
+       0.0,
+       2.1328,
+       "smooth"
+      ],
+      [
+       0.2,
+       4.1328,
+       "smooth"
+      ],
+      [
+       0.4,
+       7.1328,
+       "smooth"
+      ],
+      [
+       0.6,
+       10.1328,
+       "smooth"
+      ],
+      [
+       0.8,
+       12.1328,
+       "smooth"
+      ],
+      [
+       1.0,
+       13.1328,
+       "smooth"
+      ]
+     ]
+    },
+    "near_foot_lift": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.2,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.4,
+       0.5,
+       "smooth"
+      ],
+      [
+       0.6,
+       1.5,
+       "smooth"
+      ],
+      [
+       0.8,
+       2.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       2.0,
+       "smooth"
+      ]
+     ]
+    },
+    "far_foot_x": {
+     "keys": [
+      [
+       0.0,
+       -2.1328,
+       "smooth"
+      ],
+      [
+       0.2,
+       -1.1328,
+       "smooth"
+      ],
+      [
+       0.4,
+       0.8672,
+       "smooth"
+      ],
+      [
+       0.6,
+       2.8672,
+       "smooth"
+      ],
+      [
+       0.8,
+       3.8672,
+       "smooth"
+      ],
+      [
+       1.0,
+       3.8672,
+       "smooth"
+      ]
+     ]
+    },
+    "blink_vis": {
+     "const": 1.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "taunt": {
+   "loop": false,
+   "frames": 8,
+   "duration_ms": 100,
+   "channels": {
+    "root_y": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.142857,
+       0.5,
+       "smooth"
+      ],
+      [
+       0.285714,
+       1.0,
+       "smooth"
+      ],
+      [
+       0.428571,
+       0.5,
+       "smooth"
+      ],
+      [
+       0.571429,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.714286,
+       -0.5,
+       "smooth"
+      ],
+      [
+       0.857143,
+       -1.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       -0.5,
+       "smooth"
+      ]
+     ]
+    },
+    "torso": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.142857,
+       3.0,
+       "smooth"
+      ],
+      [
+       0.285714,
+       6.0,
+       "smooth"
+      ],
+      [
+       0.428571,
+       3.0,
+       "smooth"
+      ],
+      [
+       0.571429,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.714286,
+       -3.0,
+       "smooth"
+      ],
+      [
+       0.857143,
+       -6.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       -3.0,
+       "smooth"
+      ]
+     ]
+    },
+    "head": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.142857,
+       -2.0,
+       "smooth"
+      ],
+      [
+       0.285714,
+       -3.0,
+       "smooth"
+      ],
+      [
+       0.428571,
+       -2.0,
+       "smooth"
+      ],
+      [
+       0.571429,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.714286,
+       3.0,
+       "smooth"
+      ],
+      [
+       0.857143,
+       6.0,
+       "smooth"
+      ],
+      [
+       1.0,
+       3.0,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_x": {
+     "keys": [
+      [
+       0.0,
+       -1.1485,
+       "smooth"
+      ],
+      [
+       0.142857,
+       -3.5853,
+       "smooth"
+      ],
+      [
+       0.285714,
+       -4.8709,
+       "smooth"
+      ],
+      [
+       0.428571,
+       -3.5853,
+       "smooth"
+      ],
+      [
+       0.571429,
+       -1.1485,
+       "smooth"
+      ],
+      [
+       0.714286,
+       14.7,
+       "smooth"
+      ],
+      [
+       0.857143,
+       24.9711,
+       "smooth"
+      ],
+      [
+       1.0,
+       15.1826,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -46.0147,
+       "smooth"
+      ],
+      [
+       0.142857,
+       -52.552,
+       "smooth"
+      ],
+      [
+       0.285714,
+       -54.9609,
+       "smooth"
+      ],
+      [
+       0.428571,
+       -52.552,
+       "smooth"
+      ],
+      [
+       0.571429,
+       -46.0147,
+       "smooth"
+      ],
+      [
+       0.714286,
+       -53.479,
+       "smooth"
+      ],
+      [
+       0.857143,
+       -67.1453,
+       "smooth"
+      ],
+      [
+       1.0,
+       -51.753,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_pitch": {
+     "keys": [
+      [
+       0.0,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.142857,
+       76.9625,
+       "smooth"
+      ],
+      [
+       0.285714,
+       82.9625,
+       "smooth"
+      ],
+      [
+       0.428571,
+       76.9625,
+       "smooth"
+      ],
+      [
+       0.571429,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.714286,
+       24.9625,
+       "smooth"
+      ],
+      [
+       0.857143,
+       -15.0375,
+       "smooth"
+      ],
+      [
+       1.0,
+       26.9625,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_x": {
+     "keys": [
+      [
+       0.0,
+       -3.7735,
+       "smooth"
+      ],
+      [
+       0.142857,
+       -5.0245,
+       "smooth"
+      ],
+      [
+       0.285714,
+       -6.5212,
+       "smooth"
+      ],
+      [
+       0.428571,
+       -5.0245,
+       "smooth"
+      ],
+      [
+       0.571429,
+       -3.7735,
+       "smooth"
+      ],
+      [
+       0.714286,
+       -6.2545,
+       "smooth"
+      ],
+      [
+       0.857143,
+       -7.1502,
+       "smooth"
+      ],
+      [
+       1.0,
+       -5.466,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -45.6278,
+       "smooth"
+      ],
+      [
+       0.142857,
+       -52.0009,
+       "smooth"
+      ],
+      [
+       0.285714,
+       -54.3074,
+       "smooth"
+      ],
+      [
+       0.428571,
+       -52.0009,
+       "smooth"
+      ],
+      [
+       0.571429,
+       -45.6278,
+       "smooth"
+      ],
+      [
+       0.714286,
+       -46.2853,
+       "smooth"
+      ],
+      [
+       0.857143,
+       -45.8639,
+       "smooth"
+      ],
+      [
+       1.0,
+       -45.6869,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_pitch": {
+     "keys": [
+      [
+       0.0,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.142857,
+       72.9625,
+       "smooth"
+      ],
+      [
+       0.285714,
+       78.9625,
+       "smooth"
+      ],
+      [
+       0.428571,
+       72.9625,
+       "smooth"
+      ],
+      [
+       0.571429,
+       68.9625,
+       "smooth"
+      ],
+      [
+       0.714286,
+       74.9625,
+       "smooth"
+      ],
+      [
+       0.857143,
+       76.9625,
+       "smooth"
+      ],
+      [
+       1.0,
+       72.9625,
+       "smooth"
+      ]
+     ]
+    },
+    "blink_vis": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "linear"
+      ],
+      [
+       0.142857,
+       0.0,
+       "linear"
+      ],
+      [
+       0.285714,
+       1.0,
+       "linear"
+      ],
+      [
+       0.428571,
+       0.0,
+       "linear"
+      ],
+      [
+       0.571429,
+       0.0,
+       "linear"
+      ],
+      [
+       0.714286,
+       0.0,
+       "linear"
+      ],
+      [
+       0.857143,
+       0.0,
+       "linear"
+      ],
+      [
+       1.0,
+       0.0,
+       "linear"
+      ]
+     ]
+    },
+    "talk_vis": {
+     "const": 0.0
+    }
+   }
+  }
+ },
+ "sprite_tuning": {
+  "collision_scale": 1.72,
+  "part_order": "attribute"
+ }
+}

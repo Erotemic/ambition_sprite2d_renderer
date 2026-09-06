@@ -1,0 +1,416 @@
+{
+  "schema": "ambition-clip-v1",
+  "id": "air_up",
+  "loop": false,
+  "duration_s": 0.392,
+  "sampling": {
+    "frame_count": 7,
+    "frame_duration_ms": 56
+  },
+  "source": {
+    "kind": "authored-character-fk",
+    "clip": "air_up",
+    "note": "Up air: a rising cut, and her chin goes up with it."
+  },
+  "pose_keys": [
+    {
+      "at_s": 0.0,
+      "frame": 0,
+      "interpolation": "smooth",
+      "state": {
+        "bones": {
+          "far_arm_hand": {
+            "rotation_deg": -28.514
+          },
+          "far_arm_l": {
+            "rotation_deg": 6.207
+          },
+          "far_arm_u": {
+            "rotation_deg": -4.665
+          },
+          "far_leg_foot": {
+            "rotation_deg": -14.504
+          },
+          "far_leg_l": {
+            "rotation_deg": 21.093
+          },
+          "far_leg_u": {
+            "rotation_deg": -8.89
+          },
+          "head": {
+            "rotation_deg": -4.0
+          },
+          "near_arm_hand": {
+            "rotation_deg": -12.368
+          },
+          "near_arm_l": {
+            "rotation_deg": -37.986
+          },
+          "near_arm_u": {
+            "rotation_deg": 1.642
+          },
+          "near_leg_foot": {
+            "rotation_deg": -26.229
+          },
+          "near_leg_l": {
+            "rotation_deg": 40.846
+          },
+          "near_leg_u": {
+            "rotation_deg": -25.535
+          },
+          "torso": {
+            "rotation_deg": -2.0
+          }
+        },
+        "root": {
+          "position": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "at_s": 0.056,
+      "frame": 1,
+      "interpolation": "smooth",
+      "state": {
+        "bones": {
+          "far_arm_hand": {
+            "rotation_deg": 13.486
+          },
+          "far_arm_l": {
+            "rotation_deg": -23.793
+          },
+          "far_arm_u": {
+            "rotation_deg": -10.665
+          },
+          "far_leg_foot": {
+            "rotation_deg": -14.504
+          },
+          "far_leg_l": {
+            "rotation_deg": 21.093
+          },
+          "far_leg_u": {
+            "rotation_deg": -8.89
+          },
+          "head": {
+            "rotation_deg": 2.0
+          },
+          "near_arm_hand": {
+            "rotation_deg": 43.632
+          },
+          "near_arm_l": {
+            "rotation_deg": -31.986
+          },
+          "near_arm_u": {
+            "rotation_deg": -54.358
+          },
+          "near_leg_foot": {
+            "rotation_deg": -14.229
+          },
+          "near_leg_l": {
+            "rotation_deg": 16.846
+          },
+          "near_leg_u": {
+            "rotation_deg": -13.535
+          },
+          "torso": {
+            "rotation_deg": -8.0
+          }
+        },
+        "root": {
+          "position": [
+            0.0,
+            -3.364
+          ]
+        }
+      }
+    },
+    {
+      "at_s": 0.112,
+      "frame": 2,
+      "interpolation": "smooth",
+      "state": {
+        "bones": {
+          "far_arm_hand": {
+            "rotation_deg": 57.486
+          },
+          "far_arm_l": {
+            "rotation_deg": -43.793
+          },
+          "far_arm_u": {
+            "rotation_deg": -24.665
+          },
+          "far_leg_foot": {
+            "rotation_deg": -14.504
+          },
+          "far_leg_l": {
+            "rotation_deg": 21.093
+          },
+          "far_leg_u": {
+            "rotation_deg": -8.89
+          },
+          "head": {
+            "rotation_deg": 12.0
+          },
+          "near_arm_hand": {
+            "rotation_deg": -2.368
+          },
+          "near_arm_l": {
+            "rotation_deg": -9.986
+          },
+          "near_arm_u": {
+            "rotation_deg": -148.358
+          },
+          "near_leg_foot": {
+            "rotation_deg": -0.229
+          },
+          "near_leg_l": {
+            "rotation_deg": -15.154
+          },
+          "near_leg_u": {
+            "rotation_deg": 4.465
+          },
+          "torso": {
+            "rotation_deg": -18.0
+          }
+        },
+        "root": {
+          "position": [
+            0.0,
+            -10.091
+          ]
+        }
+      }
+    },
+    {
+      "at_s": 0.168,
+      "frame": 3,
+      "interpolation": "smooth",
+      "state": {
+        "bones": {
+          "far_arm_hand": {
+            "rotation_deg": -22.514
+          },
+          "far_arm_l": {
+            "rotation_deg": -49.793
+          },
+          "far_arm_u": {
+            "rotation_deg": -28.665
+          },
+          "far_leg_foot": {
+            "rotation_deg": -0.504
+          },
+          "far_leg_l": {
+            "rotation_deg": -16.907
+          },
+          "far_leg_u": {
+            "rotation_deg": 15.11
+          },
+          "head": {
+            "rotation_deg": 10.0
+          },
+          "near_arm_hand": {
+            "rotation_deg": 1.632
+          },
+          "near_arm_l": {
+            "rotation_deg": 4.014
+          },
+          "near_arm_u": {
+            "rotation_deg": -178.358
+          },
+          "near_leg_foot": {
+            "rotation_deg": 7.771
+          },
+          "near_leg_l": {
+            "rotation_deg": -31.154
+          },
+          "near_leg_u": {
+            "rotation_deg": 12.465
+          },
+          "torso": {
+            "rotation_deg": -26.0
+          }
+        },
+        "root": {
+          "position": [
+            0.0,
+            -13.454
+          ]
+        }
+      }
+    },
+    {
+      "at_s": 0.224,
+      "frame": 4,
+      "interpolation": "smooth",
+      "state": {
+        "bones": {
+          "far_arm_hand": {
+            "rotation_deg": -22.514
+          },
+          "far_arm_l": {
+            "rotation_deg": -49.793
+          },
+          "far_arm_u": {
+            "rotation_deg": -30.665
+          },
+          "far_leg_foot": {
+            "rotation_deg": -0.504
+          },
+          "far_leg_l": {
+            "rotation_deg": -16.907
+          },
+          "far_leg_u": {
+            "rotation_deg": 15.11
+          },
+          "head": {
+            "rotation_deg": 10.0
+          },
+          "near_arm_hand": {
+            "rotation_deg": 1.632
+          },
+          "near_arm_l": {
+            "rotation_deg": 4.014
+          },
+          "near_arm_u": {
+            "rotation_deg": -180.358
+          },
+          "near_leg_foot": {
+            "rotation_deg": 7.771
+          },
+          "near_leg_l": {
+            "rotation_deg": -31.154
+          },
+          "near_leg_u": {
+            "rotation_deg": 12.465
+          },
+          "torso": {
+            "rotation_deg": -26.0
+          }
+        },
+        "root": {
+          "position": [
+            0.0,
+            -10.091
+          ]
+        }
+      }
+    },
+    {
+      "at_s": 0.28,
+      "frame": 5,
+      "interpolation": "smooth",
+      "state": {
+        "bones": {
+          "far_arm_hand": {
+            "rotation_deg": 31.486
+          },
+          "far_arm_l": {
+            "rotation_deg": -27.793
+          },
+          "far_arm_u": {
+            "rotation_deg": -20.665
+          },
+          "far_leg_foot": {
+            "rotation_deg": -14.504
+          },
+          "far_leg_l": {
+            "rotation_deg": 21.093
+          },
+          "far_leg_u": {
+            "rotation_deg": -8.89
+          },
+          "head": {
+            "rotation_deg": 6.0
+          },
+          "near_arm_hand": {
+            "rotation_deg": 109.632
+          },
+          "near_arm_l": {
+            "rotation_deg": -15.986
+          },
+          "near_arm_u": {
+            "rotation_deg": -132.358
+          },
+          "near_leg_foot": {
+            "rotation_deg": -34.229
+          },
+          "near_leg_l": {
+            "rotation_deg": 56.846
+          },
+          "near_leg_u": {
+            "rotation_deg": -33.535
+          },
+          "torso": {
+            "rotation_deg": -12.0
+          }
+        },
+        "root": {
+          "position": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    {
+      "at_s": 0.336,
+      "frame": 6,
+      "interpolation": "smooth",
+      "state": {
+        "bones": {
+          "far_arm_hand": {
+            "rotation_deg": -20.514
+          },
+          "far_arm_l": {
+            "rotation_deg": -5.793
+          },
+          "far_arm_u": {
+            "rotation_deg": 1.335
+          },
+          "far_leg_foot": {
+            "rotation_deg": -14.504
+          },
+          "far_leg_l": {
+            "rotation_deg": 21.093
+          },
+          "far_leg_u": {
+            "rotation_deg": -8.89
+          },
+          "head": {
+            "rotation_deg": -2.0
+          },
+          "near_arm_hand": {
+            "rotation_deg": -6.368
+          },
+          "near_arm_l": {
+            "rotation_deg": -45.986
+          },
+          "near_arm_u": {
+            "rotation_deg": 5.642
+          },
+          "near_leg_foot": {
+            "rotation_deg": -34.229
+          },
+          "near_leg_l": {
+            "rotation_deg": 56.846
+          },
+          "near_leg_u": {
+            "rotation_deg": -33.535
+          },
+          "torso": {
+            "rotation_deg": -4.0
+          }
+        },
+        "root": {
+          "position": [
+            0.0,
+            6.727
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "clip": "air_forward",
+  "note": "forward air: a falling thrust.",
+  "strike_part": "sword",
+  "effect": "poke",
+  "facing": "west",
+  "hitbox": {
+    "active": [
+      2,
+      3
+    ],
+    "extend": 1.05
+  },
+  "poke": {
+    "extend": 1.34,
+    "width": 14.0,
+    "waist": 0.62,
+    "inner": 0.14,
+    "alpha": 178,
+    "core_alpha": 214,
+    "blur": 1.0,
+    "falloff": 2.1,
+    "window": 2,
+    "body_rgb": [
+      150,
+      200,
+      255
+    ],
+    "core_rgb": [
+      248,
+      252,
+      255
+    ]
+  }
+}

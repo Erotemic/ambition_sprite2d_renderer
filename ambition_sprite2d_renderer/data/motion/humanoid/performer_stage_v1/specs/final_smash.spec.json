@@ -1,0 +1,38 @@
+{
+  "clip": "final_smash",
+  "note": "Standing ovation. The light comes with her whether it was aimed there or not.",
+  "strike": {
+    "base": "near_arm_l",
+    "tip": "near_arm_hand"
+  },
+  "effect": "trail",
+  "facing": "east",
+  "hitbox": {
+    "extend": 1.22,
+    "active": [
+      6,
+      7,
+      8,
+      9
+    ],
+    "inflate": 8.0
+  },
+  "trail": {
+    "window": 8,
+    "inner": 0.22,
+    "blur": 1.3,
+    "alpha": 228,
+    "core_alpha": 232,
+    "falloff": 0.95,
+    "body_rgb": [
+      252,
+      148,
+      122
+    ],
+    "core_rgb": [
+      255,
+      250,
+      238
+    ]
+  }
+}

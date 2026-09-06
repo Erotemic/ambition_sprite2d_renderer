@@ -1,0 +1,38 @@
+{
+  "clip": "air_neutral",
+  "note": "neutral air: a chambered front kick, straight out.",
+  "strike": {
+    "base": "near_leg_l",
+    "tip": "near_leg_foot"
+  },
+  "effect": "poke",
+  "facing": "east",
+  "hitbox": {
+    "active": [
+      2,
+      3
+    ],
+    "extend": 1.06
+  },
+  "poke": {
+    "extend": 1.3,
+    "width": 17.0,
+    "waist": 0.6,
+    "inner": 0.14,
+    "alpha": 178,
+    "core_alpha": 218,
+    "blur": 1.2,
+    "falloff": 2.1,
+    "window": 2,
+    "body_rgb": [
+      226,
+      238,
+      250
+    ],
+    "core_rgb": [
+      255,
+      255,
+      255
+    ]
+  }
+}

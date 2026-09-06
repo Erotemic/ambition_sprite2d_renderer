@@ -1,0 +1,141 @@
+target: mallory_interceptor
+name: Mallory
+output_name: mallory
+seed: 527
+archetype: mallory
+authoring_description: >-
+  Mallory is the conventional malicious active attacker in security examples. Unlike Eve, she
+  intercepts, edits, impersonates, and relays; the name is a mnemonic for malicious behavior rather
+  than a parody of a real person.
+gameplay_description: >-
+  Use as a man-in-the-middle villain, saboteur, shapeshifter, or active network hazard. Her mechanics
+  should replace messages, impersonate both endpoints, and exploit trust between characters who
+  believe they are speaking directly.
+dialogue_hints:
+  barks:
+  - 'Eve just listens. I edit.'
+  - 'I sit between two people who trust each other and quietly become both of them.'
+  - 'People built whole cathedrals of math just to ruin my afternoon.'
+animations:
+- idle
+- walk
+- talk
+- interact
+render:
+  frame_width: 128
+  frame_height: 128
+  single_width: 160
+  single_height: 160
+  supersample: 4
+  downsample: lanczos
+  background: transparent
+  sheet_background: transparent
+  border: 4
+  label_width: 112
+actor:
+  character_id: npc_mallory
+  display_name: Mallory
+visual:
+  default_pose: idle
+body:
+  body_plan: HumanoidBiped
+  body_kind: Standard
+  mass_class: Medium
+  traits:
+  - story
+  - humanoid
+  - active_interceptor
+  - propless_signal_interceptor
+  locomotion_hint: Walk
+capabilities:
+  traversal:
+    walk: true
+    jump: null
+    climb: null
+    fly: null
+    swim: null
+    crawl: null
+    use_lifts: true
+    door_access:
+    - public
+  interactions:
+    talk: true
+    trade: null
+    carry: null
+    open_doors:
+    - public
+brain:
+  default_preset: patrol_peaceful
+actions:
+  default_preset: peaceful
+animation_bindings:
+  default:
+    animation: idle
+    events: []
+  locomotion.walk:
+    animation: walk
+    events: []
+  interaction.talk:
+    animation: talk
+    events: []
+  interaction.use:
+    animation: interact
+    events: []
+sockets:
+  head:
+    source: explicit.profile.humanoid
+    point:
+      x: 64.0
+      y: 24.0
+  chest:
+    source: explicit.profile.humanoid
+    point:
+      x: 64.0
+      y: 54.0
+  hand_l:
+    source: explicit.profile.humanoid
+    point:
+      x: 48.0
+      y: 64.0
+  hand_r:
+    source: explicit.profile.humanoid
+    point:
+      x: 80.0
+      y: 64.0
+  speech_bubble:
+    source: explicit.profile.humanoid
+    point:
+      x: 64.0
+      y: 8.0
+provenance:
+  variant_family: mallory
+  variant_id: gpt_5_6_bespoke_revert_polish_2026_07_16
+  lineage:
+  - revision_id: legacy_unattributed
+    creator_kind: unknown
+    creator: unattributed
+    contribution: predecessor_toon_design
+    certainty: unknown
+  - revision_id: gpt_5_6_interceptor_redesign_2026_07_15
+    creator_kind: model
+    creator: gpt-5.6-thinking
+    contribution: bespoke_visual_redesign_and_animation_polish
+    parent_revision_id: legacy_unattributed
+    date: "2026-07-15"
+  - revision_id: gpt_5_6_svg_rig_redesign_2026_07_16
+    creator_kind: model
+    creator: gpt-5.6-thinking
+    contribution: propless_multiview_svg_rig_redesign
+    parent_revision_id: gpt_5_6_interceptor_redesign_2026_07_15
+    date: "2026-07-16"
+  - revision_id: gpt_5_6_bespoke_revert_polish_2026_07_16
+    creator_kind: model
+    creator: gpt-5.6-thinking
+    contribution: revert_to_bespoke_renderer_propless_motion_and_frame_fit_polish
+    parent_revision_id: gpt_5_6_svg_rig_redesign_2026_07_16
+    date: "2026-07-16"
+tags:
+- story
+- humanoid
+- active_interceptor
+- propless_signal_interceptor

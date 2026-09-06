@@ -1,0 +1,53 @@
+{
+  "schema": "ambition-pose-v1",
+  "id": "humanoid/fighting_polygon/ftilt/recovery",
+  "rig_profile": "humanoid-articulated-v1",
+  "source": {
+    "clip": "attack_side",
+    "frame": 4,
+    "kind": "promoted-legacy-pose"
+  },
+  "state": {
+    "root": {
+      "position": [
+        19.905242,
+        0.0
+      ]
+    },
+    "bones": {
+      "far_arm_l": {
+        "rotation_deg": -107.200095
+      },
+      "far_arm_u": {
+        "rotation_deg": -31.43
+      },
+      "far_leg_foot": {
+        "rotation_deg": -1.409248
+      },
+      "far_leg_l": {
+        "rotation_deg": 5.460329
+      },
+      "far_leg_u": {
+        "rotation_deg": -4.051081
+      },
+      "near_arm_l": {
+        "rotation_deg": -22.0
+      },
+      "near_arm_u": {
+        "rotation_deg": -95.9375
+      },
+      "near_leg_foot": {
+        "rotation_deg": 10.639169
+      },
+      "near_leg_l": {
+        "rotation_deg": -6.945646
+      },
+      "near_leg_u": {
+        "rotation_deg": 6.727718
+      },
+      "torso": {
+        "rotation_deg": 0.0
+      }
+    }
+  }
+}

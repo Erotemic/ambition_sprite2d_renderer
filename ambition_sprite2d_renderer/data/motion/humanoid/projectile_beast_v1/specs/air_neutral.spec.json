@@ -1,0 +1,34 @@
+{
+  "clip": "air_neutral",
+  "note": "spin-fire: shots thrown all around him.",
+  "strike": {
+    "base": "cannon",
+    "tip": "cannon"
+  },
+  "effect": "muzzle",
+  "facing": "east",
+  "hitbox": {
+    "active": [
+      2,
+      3
+    ],
+    "extend": 1.0
+  },
+  "muzzle": {
+    "reach": 2.2,
+    "flare": 0.3,
+    "alpha": 192,
+    "core_alpha": 238,
+    "blur": 1.3,
+    "window": 2,
+    "falloff": 2.6,
+    "bloom": 1.0,
+    "spread": [
+      -110.0,
+      -55.0,
+      0.0,
+      55.0,
+      110.0
+    ]
+  }
+}

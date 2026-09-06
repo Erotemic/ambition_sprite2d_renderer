@@ -1,0 +1,38 @@
+{
+  "clip": "shoot",
+  "note": "The line, thrown overhand. Nothing leaves her hand that you can see leaving it.",
+  "strike": {
+    "base": "near_arm_l",
+    "tip": "near_arm_hand"
+  },
+  "effect": "poke",
+  "facing": "east",
+  "hitbox": {
+    "extend": 1.5,
+    "active": [
+      3,
+      4
+    ]
+  },
+  "poke": {
+    "extend": 2.9,
+    "width": 4.5,
+    "waist": 0.46,
+    "inner": 0.1,
+    "alpha": 206,
+    "core_alpha": 240,
+    "blur": 0.9,
+    "falloff": 1.6,
+    "window": 4,
+    "body_rgb": [
+      255,
+      214,
+      150
+    ],
+    "core_rgb": [
+      255,
+      255,
+      250
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "clip": "air_back",
+  "note": "Back air: a blind elbow.",
+  "strike": {
+    "base": "near_arm_l",
+    "tip": "near_arm_hand"
+  },
+  "effect": "wind",
+  "facing": "east",
+  "hitbox": {
+    "extend": 1.2,
+    "active": [
+      2,
+      3,
+      4
+    ],
+    "inflate": 8.0
+  }
+}

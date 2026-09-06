@@ -1,0 +1,75 @@
+"""Rich console helpers for copy/pasteable scripts.
+
+Every path emitted by the sprite tooling should be printed through these
+helpers so terminals that support Rich links expose it as an easy-to-open
+``file://`` link.  The displayed text intentionally remains the original path
+shape supplied by the caller, while the link target is absolute.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Iterable, List
+
+from rich import print as rich_print
+from rich.markup import escape
+import os
+
+
+def _path_uri(path: Path) -> str:
+    return path.resolve().as_uri()
+
+
+def path_link(path: str | Path) -> str:
+    """Return Rich markup for a clickable local file-system path."""
+    p = Path(path)
+    return f"[link={_path_uri(p)}]{escape(str(path))}[/link]"
+
+
+def print_path(path: str | Path, *, prefix: str = "", suffix: str = "") -> None:
+    """Print one path as a Rich file link."""
+    rich_print(f"{prefix}{path_link(path)}{suffix}")
+
+
+def print_paths(paths: Iterable[str | Path], *, prefix: str = "") -> None:
+    """Print generated paths according to ``AMBITION_SPRITE_PATH_OUTPUT``.
+
+    ``full`` retains one path per line. ``summary`` reports the count and common
+    directory. ``both`` does each path AND the summary — the useful default for
+    a focused regen, where the count tells you the shape of the run and the
+    paths tell you which files to go and look at. ``quiet`` suppresses
+    path-only output while preserving warnings and progress emitted by the
+    owning operation.
+    """
+    outputs: List[str | Path] = list(paths)
+    mode = os.environ.get("AMBITION_SPRITE_PATH_OUTPUT", "full").strip().lower()
+    if mode in {"0", "off", "none", "quiet"} or not outputs:
+        return
+    if mode in {"both", "full+summary", "all"}:
+        for path in outputs:
+            print_path(path, prefix=prefix)
+    if mode in {"summary", "compact", "both", "full+summary", "all"}:
+        resolved = [Path(path).resolve() for path in outputs]
+        try:
+            common = Path(os.path.commonpath([str(path.parent) for path in resolved]))
+        except ValueError:
+            common = Path.cwd()
+        rich_print(
+            f"{prefix}[dim]wrote {len(outputs)} file(s) under "
+            f"{path_link(common)}[/dim]"
+        )
+        return
+    for path in outputs:
+        print_path(path, prefix=prefix)
+
+
+
+def print_canonical_outputs(paths: Iterable[str | Path]) -> None:
+    outputs: List[Path] = [Path(path) for path in paths]
+    print_paths(outputs)
+
+    contact = next(
+        (p for p in outputs if p.name == "canonicals_contact_sheet.png"), None
+    )
+    if contact is not None:
+        print_path(contact, prefix="[bold green]Canonical contact sheet:[/bold green] ")

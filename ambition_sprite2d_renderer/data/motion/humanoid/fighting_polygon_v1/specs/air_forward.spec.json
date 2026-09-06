@@ -1,0 +1,63 @@
+{
+  "clip": "air_forward",
+  "note": "forward air, built on the forward smash's shape: one arc from cocked behind-high, over the head, down in front. No charge and no kneel -- she is in the air -- so it is the swing alone.",
+  "facing": "west",
+  "airborne": true,
+  "sword_deg": [
+    325,
+    288,
+    240,
+    195,
+    158,
+    132
+  ],
+  "elbow": [
+    -52,
+    -28,
+    -8,
+    0,
+    -8,
+    -22
+  ],
+  "torso": [
+    -10,
+    -4,
+    4,
+    12,
+    18,
+    14
+  ],
+  "effect": "trail",
+  "trail": {
+    "window": 4,
+    "inner": 0.46,
+    "blur": 0.9,
+    "alpha": 150,
+    "core_alpha": 170,
+    "falloff": 1.5,
+    "body_rgb": [
+      150,
+      96,
+      232
+    ],
+    "core_rgb": [
+      216,
+      190,
+      252
+    ]
+  },
+  "hitbox": {
+    "active": [
+      2,
+      3,
+      4
+    ]
+  },
+  "invariants": [
+    "monotonic_decreasing",
+    "starts_near:325"
+  ],
+  "pixel_invariants": [
+    "hitbox_in_front"
+  ]
+}

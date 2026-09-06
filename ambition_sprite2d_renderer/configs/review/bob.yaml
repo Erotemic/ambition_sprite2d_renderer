@@ -1,0 +1,197 @@
+target: bob_engineer
+name: Bob
+output_name: bob
+seed: 510
+archetype: bob
+authoring_description: >-
+  Bob is the conventional receiver in cryptography examples, personified as the engineer waiting at
+  the other end of Alice's channel. His apparent passivity is the joke: receiving an authentic message
+  that only he can open is a technically and emotionally demanding role.
+gameplay_description: >-
+  Use as a receiver, engineer, cooperative player, or endpoint tutorial NPC. His gameplay may focus on
+  opening, authenticating, acknowledging, and correctly interpreting what Alice or another sender
+  transmits.
+dialogue_hints:
+  barks:
+  - 'I receive. Alice sends, I get it.'
+  - "Try receiving a message you can't open and tell me it's passive."
+  - "The roles are just where you're standing in the sentence."
+animations:
+- idle
+- walk
+- run
+- jump
+- fall
+- slash
+- hit
+- death
+- blink_out
+- blink_in
+- dash
+- crouch
+- wall_slide
+- wall_jump
+- ledge_grab
+- climb
+- swim
+- interact
+- talk
+- block
+- land
+- roll
+- slide
+- crouch_walk
+- pickup
+- throw
+- aim
+- shoot
+- charge
+- cast
+- celebrate
+- sit
+- sleep
+- hover
+- stomp
+- dash_startup
+- land_hard
+- land_recovery
+- wall_grab
+- ledge_climb
+- ledge_getup
+- ledge_roll
+- ledge_getup_attack
+- float_glide
+- attack_side
+- attack_up
+- attack_down
+- air_neutral
+- air_forward
+- air_back
+- air_down
+- air_up
+- idle_front
+- idle_side
+render:
+  frame_width: 128
+  frame_height: 128
+  single_width: 160
+  single_height: 160
+  supersample: 4
+  downsample: lanczos
+  background: transparent
+  sheet_background: transparent
+  border: 4
+  label_width: 112
+actor:
+  character_id: npc_bob
+  display_name: Bob
+visual:
+  default_pose: idle
+body:
+  body_plan: HumanoidBiped
+  body_kind: Standard
+  mass_class: Medium
+  traits:
+  - story
+  - humanoid
+  - engineer
+  locomotion_hint: Walk
+capabilities:
+  traversal:
+    walk: true
+    jump: null
+    climb: null
+    fly: null
+    swim: null
+    crawl: null
+    use_lifts: true
+    door_access:
+    - public
+  interactions:
+    talk: true
+    trade: null
+    carry: null
+    open_doors:
+    - public
+brain:
+  default_preset: patrol_peaceful
+actions:
+  default_preset: peaceful
+animation_bindings:
+  default:
+    animation: idle
+    events: []
+  locomotion.walk:
+    animation: walk
+    events: []
+  interaction.talk:
+    animation: talk
+    events: []
+  interaction.use:
+    animation: interact
+    events: []
+  locomotion.run:
+    animation: run
+    events: []
+  locomotion.jump:
+    animation: jump
+    events: []
+  locomotion.fall:
+    animation: fall
+    events: []
+  action.melee.primary:
+    animation: slash
+    events:
+    - t: 0.3
+      event: hitbox_active_start
+      source: explicit.profile.bob
+    - t: 0.68
+      event: hitbox_active_end
+      source: explicit.profile.bob
+  action.ranged.primary:
+    animation: shoot
+    events:
+    - t: 0.5
+      event: projectile_release
+      source: explicit.profile.bob
+sockets:
+  head:
+    source: explicit.profile.humanoid
+    point:
+      x: 64.0
+      y: 24.0
+  chest:
+    source: explicit.profile.humanoid
+    point:
+      x: 64.0
+      y: 54.0
+  hand_l:
+    source: explicit.profile.humanoid
+    point:
+      x: 48.0
+      y: 64.0
+  hand_r:
+    source: explicit.profile.humanoid
+    point:
+      x: 80.0
+      y: 64.0
+  speech_bubble:
+    source: explicit.profile.humanoid
+    point:
+      x: 64.0
+      y: 8.0
+  muzzle:
+    source: explicit.profile.bob
+    point:
+      x: 94.0
+      y: 58.0
+  projectile_origin:
+    source: explicit.profile.bob
+    point:
+      x: 94.0
+      y: 58.0
+tags:
+- story
+- humanoid
+- engineer
+- player_candidate

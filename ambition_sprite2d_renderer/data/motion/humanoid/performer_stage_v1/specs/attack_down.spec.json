@@ -1,0 +1,36 @@
+{
+  "clip": "attack_down",
+  "note": "Down tilt: a low sweep at the boards, hem and all.",
+  "strike": {
+    "base": "near_leg_l",
+    "tip": "near_leg_foot"
+  },
+  "effect": "trail",
+  "facing": "east",
+  "hitbox": {
+    "extend": 1.06,
+    "active": [
+      2,
+      3,
+      4
+    ]
+  },
+  "trail": {
+    "window": 4,
+    "inner": 0.5,
+    "blur": 1.1,
+    "alpha": 196,
+    "core_alpha": 224,
+    "falloff": 1.2,
+    "body_rgb": [
+      246,
+      176,
+      92
+    ],
+    "core_rgb": [
+      255,
+      246,
+      222
+    ]
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "clip": "jab",
+  "note": "A flicked backhand, delivered like a line.",
+  "strike": {
+    "base": "near_arm_l",
+    "tip": "near_arm_hand"
+  },
+  "effect": "trail",
+  "facing": "east",
+  "hitbox": {
+    "extend": 1.1,
+    "active": [
+      1,
+      2,
+      3
+    ],
+    "inflate": 3.0
+  },
+  "trail": {
+    "window": 3,
+    "inner": 0.5,
+    "blur": 1.1,
+    "alpha": 196,
+    "core_alpha": 224,
+    "falloff": 1.2,
+    "body_rgb": [
+      246,
+      176,
+      92
+    ],
+    "core_rgb": [
+      255,
+      246,
+      222
+    ]
+  }
+}

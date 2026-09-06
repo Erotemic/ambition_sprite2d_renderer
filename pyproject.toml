@@ -1,0 +1,62 @@
+[project]
+name = "ambition-sprite2d-renderer"
+version = "0.3.0"
+description = "Procedural 2D sprite/spritesheet renderer for Ambition assets (character lab + tack-on targets)"
+requires-python = ">=3.10"
+dependencies = [
+  "Pillow>=9",
+  "PyYAML>=6",
+  "rich>=13",
+  # SVG rasterizer for `sprite` rig parts (binds hand-authored Inkscape art to
+  # bones). Self-contained wheel — no system cairo/inkscape needed.
+  "resvg-py>=0.3",
+  # Whitespace/attribute-preserving XML tree for the SVG canonicalizer
+  # (authoring/svg_canonicalize.py) — strips Inkscape bloat into a stable,
+  # diff-friendly form that survives round-tripping through Inkscape saves.
+  "lxml>=5",
+  # 2D rectangle bin-packing (MaxRects / Skyline / Guillotine) for the sprite
+  # atlas packer (authoring/packer.py). We delegate the NP-hard packing
+  # heuristic here and keep alpha-trim + extrude + RON metadata in-pipeline.
+  "rectpack>=0.2",
+  # Pixel math for `targets/characters/_pirate_common.py` (every pirate target
+  # shares it) and the PCA rig extractor. Undeclared until 2026-09-02, which is
+  # not a dependency that "usually happens to be there": the tool venvs this
+  # repo provisions are isolated, so a fresh clone rendered 132 targets and
+  # then failed all five pirates with `No module named 'numpy'`.
+  "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+# The rig editor (`python -m ambition_sprite2d_renderer.gui`) and the
+# mockingbird part editor are the only Qt consumers; the render pipeline
+# never needs this.
+gui = ["PySide6>=6.6"]
+
+[project.scripts]
+ambition-sprite2d-renderer = "ambition_sprite2d_renderer.cli:main"
+ambition-mockingbird-boss = "ambition_sprite2d_renderer.targets.characters.mockingbird_boss.sprite_generator:cli"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.setuptools.packages.find]
+include = ["ambition_sprite2d_renderer*"]
+
+[tool.setuptools.package-data]
+# NOTE: targets/characters/rigged/ is a DATA dir (auto-discovered *.rig.json),
+# not a package — it must never grow an __init__.py or it would shadow the
+# sibling rigged.py module. Ship its rig docs (and the data/ dir: rig
+# templates + pack_plan.yaml) via these globs.
+ambition_sprite2d_renderer = [
+  "configs/**/*.yaml",
+  "data/**/*",
+  "targets/characters/mockingbird_boss/*.yaml",
+  "targets/characters/rigged/*.rig.json",
+  "targets/characters/rigged/oiler/*.rig.json",
+]

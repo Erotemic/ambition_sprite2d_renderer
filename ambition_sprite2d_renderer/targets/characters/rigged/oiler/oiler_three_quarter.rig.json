@@ -1,0 +1,881 @@
+{
+ "name": "oiler_three_quarter",
+ "frame": {
+  "width": 128,
+  "height": 128,
+  "center_x": 64.0,
+  "ground_y": 118.0,
+  "ankle_h": 7.875,
+  "supersample": 4,
+  "render_scale": 2
+ },
+ "svg_source": {
+  "path": "../../../../data/characters/oiler/oiler-multiview.svg",
+  "view": "Oiler - Three Quarter",
+  "ref_dpi": 25.4,
+  "scale": 0.328125
+ },
+ "palette": {},
+ "bones": [
+  {
+   "name": "pelvis",
+   "parent": null,
+   "offset": [
+    0.0,
+    -44.2148
+   ],
+   "length": 0.0,
+   "rest_angle": 0.0
+  },
+  {
+   "name": "torso",
+   "parent": "pelvis",
+   "offset": [
+    -0.9023,
+    -8.9414
+   ],
+   "length": 0.0,
+   "rest_angle": 0.0
+  },
+  {
+   "name": "head",
+   "parent": "torso",
+   "offset": [
+    0.6562,
+    -24.6094
+   ],
+   "length": 0.0,
+   "rest_angle": 0.0
+  },
+  {
+   "name": "far_arm_u",
+   "parent": "torso",
+   "offset": [
+    7.5469,
+    -18.2109
+   ],
+   "length": 17.6396,
+   "rest_angle": 71.5651
+  },
+  {
+   "name": "far_arm_l",
+   "parent": "far_arm_u",
+   "offset": [
+    17.6396,
+    0.0
+   ],
+   "length": 13.9694,
+   "rest_angle": 31.3287
+  },
+  {
+   "name": "far_arm_hand",
+   "parent": "far_arm_l",
+   "offset": [
+    13.9694,
+    -0.0
+   ],
+   "length": 4.5967,
+   "rest_angle": -10.8483
+  },
+  {
+   "name": "far_leg_u",
+   "parent": "pelvis",
+   "offset": [
+    5.6602,
+    -0.2461
+   ],
+   "length": 15.2895,
+   "rest_angle": 93.6914
+  },
+  {
+   "name": "far_leg_l",
+   "parent": "far_leg_u",
+   "offset": [
+    15.2895,
+    0.0
+   ],
+   "length": 21.0231,
+   "rest_angle": -6.3752
+  },
+  {
+   "name": "far_leg_foot",
+   "parent": "far_leg_l",
+   "offset": [
+    21.0231,
+    -0.0
+   ],
+   "length": 7.3737,
+   "rest_angle": -55.0406
+  },
+  {
+   "name": "near_arm_u",
+   "parent": "torso",
+   "offset": [
+    -8.2031,
+    -17.8828
+   ],
+   "length": 17.3821,
+   "rest_angle": 109.29
+  },
+  {
+   "name": "near_arm_l",
+   "parent": "near_arm_u",
+   "offset": [
+    17.3821,
+    0.0
+   ],
+   "length": 14.1303,
+   "rest_angle": -34.7785
+  },
+  {
+   "name": "near_arm_hand",
+   "parent": "near_arm_l",
+   "offset": [
+    14.1303,
+    -0.0
+   ],
+   "length": 4.9328,
+   "rest_angle": 11.6744
+  },
+  {
+   "name": "near_leg_u",
+   "parent": "pelvis",
+   "offset": [
+    -5.6602,
+    0.2461
+   ],
+   "length": 16.1458,
+   "rest_angle": 95.2471
+  },
+  {
+   "name": "near_leg_l",
+   "parent": "near_leg_u",
+   "offset": [
+    16.1458,
+    0.0
+   ],
+   "length": 20.3543,
+   "rest_angle": -3.3995
+  },
+  {
+   "name": "near_leg_foot",
+   "parent": "near_leg_l",
+   "offset": [
+    20.3543,
+    -0.0
+   ],
+   "length": 7.2038,
+   "rest_angle": 58.0838
+  }
+ ],
+ "parts": [
+  {
+   "name": "far_leg_u",
+   "bone": "far_leg_u",
+   "z": 5.0,
+   "kind": "sprite",
+   "include": [
+    "tq-far-thigh-outline",
+    "tq-far-thigh",
+    "tq-far-thigh-hi"
+   ],
+   "pivot": [
+    180.0,
+    231.5
+   ],
+   "rest_angle": 93.6914,
+   "svg_source_order": 3
+  },
+  {
+   "name": "far_leg_l",
+   "bone": "far_leg_l",
+   "z": 6.0,
+   "kind": "sprite",
+   "include": [
+    "tq-far-shin-outline",
+    "tq-far-shin"
+   ],
+   "pivot": [
+    177.0,
+    278.0
+   ],
+   "rest_angle": 87.3162,
+   "svg_source_order": 4
+  },
+  {
+   "name": "far_leg_foot",
+   "bone": "far_leg_foot",
+   "z": 7.0,
+   "kind": "sprite",
+   "include": [
+    "tq-far-boot-outline",
+    "tq-far-boot",
+    "tq-far-sole"
+   ],
+   "pivot": [
+    180.0,
+    342.0
+   ],
+   "rest_angle": 32.2756,
+   "svg_source_order": 5
+  },
+  {
+   "name": "far_arm_u",
+   "bone": "far_arm_u",
+   "z": 8.0,
+   "kind": "sprite",
+   "include": [
+    "tq-far-upperarm-outline",
+    "tq-far-upperarm",
+    "tq-far-sleeve-cuff",
+    "tq-far-sleeve-band"
+   ],
+   "pivot": [
+    183.0,
+    149.5
+   ],
+   "rest_angle": 71.5651,
+   "svg_source_order": 0
+  },
+  {
+   "name": "far_arm_l",
+   "bone": "far_arm_l",
+   "z": 9.0,
+   "kind": "sprite",
+   "include": [
+    "tq-far-forearm-outline",
+    "tq-far-forearm"
+   ],
+   "pivot": [
+    200.0,
+    200.5
+   ],
+   "rest_angle": 102.8937,
+   "svg_source_order": 1
+  },
+  {
+   "name": "far_hand",
+   "bone": "far_arm_hand",
+   "z": 10.0,
+   "kind": "sprite",
+   "include": [
+    "tq-far-hand-shape"
+   ],
+   "pivot": [
+    190.5,
+    242.0
+   ],
+   "rest_angle": 92.0454,
+   "svg_source_order": 2
+  },
+  {
+   "name": "near_leg_u",
+   "bone": "near_leg_u",
+   "z": 20.0,
+   "kind": "sprite",
+   "include": [
+    "tq-near-thigh-outline",
+    "tq-near-thigh",
+    "tq-near-thigh-hi"
+   ],
+   "pivot": [
+    145.5,
+    233.0
+   ],
+   "rest_angle": 95.2471,
+   "svg_source_order": 6
+  },
+  {
+   "name": "pelvis_yoke",
+   "bone": "pelvis",
+   "z": 21.0,
+   "kind": "sprite",
+   "include": [
+    "tq-pelvis-yoke",
+    "tq-pelvis-fly",
+    "tq-pelvis-seam"
+   ],
+   "pivot": [
+    162.75,
+    232.25
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 9
+  },
+  {
+   "name": "torso",
+   "bone": "torso",
+   "z": 22.0,
+   "kind": "sprite",
+   "include": [
+    "tq-coat-body",
+    "path2341",
+    "path2343",
+    "path2345",
+    "path2347",
+    "tq-dark-lapel-far",
+    "tq-dark-lapel-near",
+    "tq-coat-band-far",
+    "tq-coat-band-near",
+    "tq-coat-panel",
+    "tq-belt",
+    "tq-belt-brass"
+   ],
+   "pivot": [
+    160.0,
+    205.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 10
+  },
+  {
+   "name": "apron",
+   "bone": "torso",
+   "z": 24.0,
+   "kind": "sprite",
+   "include": [
+    "tq-waist-apron",
+    "tq-apron-pocket",
+    "tq-apron-spiral"
+   ],
+   "pivot": [
+    160.0,
+    205.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 11
+  },
+  {
+   "name": "head",
+   "bone": "head",
+   "z": 30.0,
+   "kind": "sprite",
+   "include": [
+    "tq-cap-tail-back",
+    "path2393",
+    "tq-cap-hanging-tail",
+    "tq-ear",
+    "tq-head",
+    "tq-cap-crown",
+    "tq-cap-dark-fold",
+    "tq-cap-front-fold",
+    "tq-cap-fold-line",
+    "tq-brow-near",
+    "tq-brow-far",
+    "tq-eye-far-squint",
+    "tq-eye-near",
+    "tq-nose-bridge",
+    "tq-nostril",
+    "tq-cheek",
+    "tq-mouth-closed",
+    "tq-chin",
+    "tq-age-line",
+    "path2388"
+   ],
+   "pivot": [
+    162.0,
+    130.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 12
+  },
+  {
+   "name": "blink",
+   "bone": "head",
+   "z": 34.0,
+   "kind": "sprite",
+   "include": [
+    "tq-blink-near",
+    "tq-blink-far"
+   ],
+   "pivot": [
+    162.0,
+    130.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 13,
+   "opacity_channel": "blink_vis"
+  },
+  {
+   "name": "talk_mouth",
+   "bone": "head",
+   "z": 35.0,
+   "kind": "sprite",
+   "include": [
+    "tq-open-mouth",
+    "tq-open-mouth-teeth"
+   ],
+   "pivot": [
+    162.0,
+    130.0
+   ],
+   "rest_angle": 0.0,
+   "svg_source_order": 14,
+   "opacity_channel": "talk_vis"
+  },
+  {
+   "name": "near_leg_l",
+   "bone": "near_leg_l",
+   "z": 41.0,
+   "kind": "sprite",
+   "include": [
+    "tq-near-shin-outline",
+    "tq-near-shin"
+   ],
+   "pivot": [
+    141.0,
+    282.0
+   ],
+   "rest_angle": 91.8476,
+   "svg_source_order": 7
+  },
+  {
+   "name": "near_leg_foot",
+   "bone": "near_leg_foot",
+   "z": 42.0,
+   "kind": "sprite",
+   "include": [
+    "tq-near-boot-outline",
+    "tq-near-boot",
+    "tq-near-sole"
+   ],
+   "pivot": [
+    139.0,
+    344.0
+   ],
+   "rest_angle": 149.9314,
+   "svg_source_order": 8
+  },
+  {
+   "name": "near_arm_u",
+   "bone": "near_arm_u",
+   "z": 60.0,
+   "kind": "sprite",
+   "include": [
+    "tq-near-upperarm-outline",
+    "tq-near-upperarm",
+    "tq-near-sleeve-cuff",
+    "tq-near-sleeve-band"
+   ],
+   "pivot": [
+    135.0,
+    150.5
+   ],
+   "rest_angle": 109.29,
+   "svg_source_order": 15
+  },
+  {
+   "name": "near_arm_l",
+   "bone": "near_arm_l",
+   "z": 61.0,
+   "kind": "sprite",
+   "include": [
+    "tq-near-forearm-outline",
+    "tq-near-forearm"
+   ],
+   "pivot": [
+    117.5,
+    200.5
+   ],
+   "rest_angle": 74.5115,
+   "svg_source_order": 16
+  },
+  {
+   "name": "near_hand",
+   "bone": "near_arm_hand",
+   "z": 62.0,
+   "kind": "sprite",
+   "include": [
+    "tq-near-hand-shape"
+   ],
+   "pivot": [
+    129.0,
+    242.0
+   ],
+   "rest_angle": 86.1859,
+   "svg_source_order": 17
+  }
+ ],
+ "ik_legs": [
+  {
+   "upper": "near_leg_u",
+   "lower": "near_leg_l",
+   "foot": "near_leg_foot",
+   "channel_prefix": "near_foot",
+   "rest_x": -7.793,
+   "rest_lift": -0.3281,
+   "rest_pitch": 149.9314,
+   "bend": -1.0
+  },
+  {
+   "upper": "far_leg_u",
+   "lower": "far_leg_l",
+   "foot": "far_leg_foot",
+   "channel_prefix": "far_foot",
+   "rest_x": 5.6602,
+   "rest_lift": 0.3281,
+   "rest_pitch": 32.2756,
+   "bend": -1.0
+  }
+ ],
+ "ik_chains": [
+  {
+   "upper": "near_arm_u",
+   "lower": "near_arm_l",
+   "end": "near_arm_hand",
+   "channel_prefix": "near_hand",
+   "rest_x": -11.0742,
+   "rest_y": -41.0156,
+   "rest_pitch": 86.1859,
+   "pitch_mode": "world",
+   "bend": -1.0,
+   "pose_authority": "svg-layout"
+  },
+  {
+   "upper": "far_arm_u",
+   "lower": "far_arm_l",
+   "end": "far_arm_hand",
+   "channel_prefix": "far_hand",
+   "rest_x": 9.1055,
+   "rest_y": -41.0156,
+   "rest_pitch": 92.0454,
+   "pitch_mode": "world",
+   "bend": 1.0,
+   "pose_authority": "svg-layout"
+  }
+ ],
+ "clips": {
+  "idle": {
+   "loop": true,
+   "frames": 8,
+   "duration_ms": 120,
+   "channels": {
+    "root_y": {
+     "expr": "-0.55*sin(tau*t)"
+    },
+    "torso": {
+     "expr": "0.7*sin(tau*t)"
+    },
+    "head": {
+     "expr": "-0.5*sin(tau*t)"
+    },
+    "near_hand_x": {
+     "expr": "-11.0742 - 0.7*sin(tau*t)"
+    },
+    "near_hand_y": {
+     "expr": "-41.0156 + 0.5*sin(tau*t)"
+    },
+    "near_hand_pitch": {
+     "const": 86.1859
+    },
+    "far_hand_x": {
+     "expr": "9.1055 + 0.5*sin(tau*t)"
+    },
+    "far_hand_y": {
+     "expr": "-41.0156 - 0.35*sin(tau*t)"
+    },
+    "far_hand_pitch": {
+     "const": 92.0454
+    },
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    }
+   }
+  },
+  "interact": {
+   "loop": false,
+   "frames": 6,
+   "duration_ms": 105,
+   "channels": {
+    "root_y": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.166667,
+       0.5,
+       "smooth"
+      ],
+      [
+       0.333333,
+       0.9,
+       "smooth"
+      ],
+      [
+       0.5,
+       0.7,
+       "smooth"
+      ],
+      [
+       0.666667,
+       0.3,
+       "smooth"
+      ],
+      [
+       0.833333,
+       0.0,
+       "smooth"
+      ]
+     ]
+    },
+    "torso": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.166667,
+       1.0,
+       "smooth"
+      ],
+      [
+       0.333333,
+       2.2,
+       "smooth"
+      ],
+      [
+       0.5,
+       1.3,
+       "smooth"
+      ],
+      [
+       0.666667,
+       2.0,
+       "smooth"
+      ],
+      [
+       0.833333,
+       0.0,
+       "smooth"
+      ]
+     ]
+    },
+    "head": {
+     "keys": [
+      [
+       0.0,
+       0.0,
+       "smooth"
+      ],
+      [
+       0.166667,
+       -1.0,
+       "smooth"
+      ],
+      [
+       0.333333,
+       -2.1,
+       "smooth"
+      ],
+      [
+       0.5,
+       -1.5,
+       "smooth"
+      ],
+      [
+       0.666667,
+       -2.0,
+       "smooth"
+      ],
+      [
+       0.833333,
+       0.0,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_x": {
+     "keys": [
+      [
+       0.0,
+       -11.0742,
+       "smooth"
+      ],
+      [
+       0.166667,
+       -8.8594,
+       "smooth"
+      ],
+      [
+       0.333333,
+       -6.1523,
+       "smooth"
+      ],
+      [
+       0.5,
+       -7.1367,
+       "smooth"
+      ],
+      [
+       0.666667,
+       -6.1523,
+       "smooth"
+      ],
+      [
+       0.833333,
+       -11.0742,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -41.0156,
+       "smooth"
+      ],
+      [
+       0.166667,
+       -39.0468,
+       "smooth"
+      ],
+      [
+       0.333333,
+       -36.0937,
+       "smooth"
+      ],
+      [
+       0.5,
+       -37.0781,
+       "smooth"
+      ],
+      [
+       0.666667,
+       -36.0937,
+       "smooth"
+      ],
+      [
+       0.833333,
+       -41.0156,
+       "smooth"
+      ]
+     ]
+    },
+    "near_hand_pitch": {
+     "keys": [
+      [
+       0.0,
+       86.1859,
+       "smooth"
+      ],
+      [
+       0.166667,
+       90.1859,
+       "smooth"
+      ],
+      [
+       0.333333,
+       99.1859,
+       "smooth"
+      ],
+      [
+       0.5,
+       79.1859,
+       "smooth"
+      ],
+      [
+       0.666667,
+       98.1859,
+       "smooth"
+      ],
+      [
+       0.833333,
+       86.1859,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_x": {
+     "keys": [
+      [
+       0.0,
+       9.1055,
+       "smooth"
+      ],
+      [
+       0.166667,
+       11.4024,
+       "smooth"
+      ],
+      [
+       0.333333,
+       11.4024,
+       "smooth"
+      ],
+      [
+       0.5,
+       11.4024,
+       "smooth"
+      ],
+      [
+       0.666667,
+       9.1055,
+       "smooth"
+      ],
+      [
+       0.833333,
+       9.1055,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_y": {
+     "keys": [
+      [
+       0.0,
+       -41.0156,
+       "smooth"
+      ],
+      [
+       0.166667,
+       -40.6875,
+       "smooth"
+      ],
+      [
+       0.333333,
+       -40.6875,
+       "smooth"
+      ],
+      [
+       0.5,
+       -41.0156,
+       "smooth"
+      ],
+      [
+       0.666667,
+       -41.0156,
+       "smooth"
+      ],
+      [
+       0.833333,
+       -41.0156,
+       "smooth"
+      ]
+     ]
+    },
+    "far_hand_pitch": {
+     "const": 92.0454
+    },
+    "blink_vis": {
+     "const": 0.0
+    },
+    "talk_vis": {
+     "const": 0.0
+    }
+   }
+  }
+ },
+ "sprite_tuning": {
+  "collision_scale": 1.72,
+  "part_order": "attribute"
+ }
+}

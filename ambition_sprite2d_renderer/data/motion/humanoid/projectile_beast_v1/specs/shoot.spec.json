@@ -1,0 +1,26 @@
+{
+  "clip": "shoot",
+  "note": "the plain aimed shot.",
+  "strike": {
+    "base": "cannon",
+    "tip": "cannon"
+  },
+  "effect": "muzzle",
+  "facing": "east",
+  "hitbox": {
+    "active": [
+      3
+    ],
+    "extend": 1.0
+  },
+  "muzzle": {
+    "reach": 3.4,
+    "flare": 0.3,
+    "alpha": 213,
+    "core_alpha": 238,
+    "blur": 1.3,
+    "window": 2,
+    "falloff": 2.6,
+    "bloom": 1.05
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "schema": "ambition-pose-v1",
+  "id": "beast/projectile/throw_forward/recovery",
+  "rig_profile": "humanoid-articulated-v1",
+  "source": {
+    "clip": "throw_forward",
+    "frame": 6,
+    "kind": "promoted-legacy-pose"
+  },
+  "state": {
+    "root": {
+      "position": [
+        33.917726,
+        0.0
+      ]
+    },
+    "bones": {
+      "far_arm_l": {
+        "rotation_deg": -50.069106
+      },
+      "far_arm_u": {
+        "rotation_deg": -70.001512
+      },
+      "far_leg_foot": {
+        "rotation_deg": -2.467415
+      },
+      "far_leg_l": {
+        "rotation_deg": -6.979826
+      },
+      "far_leg_u": {
+        "rotation_deg": 9.447241
+      },
+      "head": {
+        "rotation_deg": -1.166181
+      },
+      "near_arm_l": {
+        "rotation_deg": -36.462045
+      },
+      "near_arm_u": {
+        "rotation_deg": -82.001512
+      },
+      "near_leg_foot": {
+        "rotation_deg": 4.342971
+      },
+      "near_leg_l": {
+        "rotation_deg": -6.945646
+      },
+      "near_leg_u": {
+        "rotation_deg": 9.887306
+      },
+      "torso": {
+        "rotation_deg": 14.357629
+      }
+    }
+  }
+}

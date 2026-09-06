@@ -1,0 +1,56 @@
+{
+  "schema": "ambition-pose-v1",
+  "id": "humanoid/author/grab/recovery",
+  "rig_profile": "humanoid-articulated-v1",
+  "source": {
+    "clip": "grab",
+    "frame": 5,
+    "kind": "promoted-legacy-pose"
+  },
+  "state": {
+    "root": {
+      "position": [
+        12.654791,
+        0.0
+      ]
+    },
+    "bones": {
+      "far_arm_l": {
+        "rotation_deg": 1.748972
+      },
+      "far_arm_u": {
+        "rotation_deg": -51.886145
+      },
+      "far_leg_foot": {
+        "rotation_deg": -1.805894
+      },
+      "far_leg_l": {
+        "rotation_deg": -0.557175
+      },
+      "far_leg_u": {
+        "rotation_deg": 2.363068
+      },
+      "head": {
+        "rotation_deg": 1.128472
+      },
+      "near_arm_l": {
+        "rotation_deg": 2.914952
+      },
+      "near_arm_u": {
+        "rotation_deg": -58.88203
+      },
+      "near_leg_foot": {
+        "rotation_deg": 1.198989
+      },
+      "near_leg_l": {
+        "rotation_deg": -6.945646
+      },
+      "near_leg_u": {
+        "rotation_deg": 5.746658
+      },
+      "torso": {
+        "rotation_deg": 4.080933
+      }
+    }
+  }
+}

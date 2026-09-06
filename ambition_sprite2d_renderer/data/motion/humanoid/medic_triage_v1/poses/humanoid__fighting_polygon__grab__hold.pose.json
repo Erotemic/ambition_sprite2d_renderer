@@ -1,0 +1,47 @@
+{
+  "schema": "ambition-pose-v1",
+  "id": "humanoid/fighting_brawler/grab/hold",
+  "rig_profile": "humanoid-articulated-v1",
+  "source": {
+    "clip": "grab_hold",
+    "frame": 0,
+    "kind": "promoted-legacy-pose"
+  },
+  "state": {
+    "bones": {
+      "far_arm_l": {
+        "rotation_deg": -108.029999
+      },
+      "far_arm_u": {
+        "rotation_deg": -24.43
+      },
+      "far_leg_foot": {
+        "rotation_deg": 0.461968
+      },
+      "far_leg_l": {
+        "rotation_deg": -0.062835
+      },
+      "far_leg_u": {
+        "rotation_deg": -0.399133
+      },
+      "near_arm_l": {
+        "rotation_deg": 8.3
+      },
+      "near_arm_u": {
+        "rotation_deg": -102.3
+      },
+      "near_leg_foot": {
+        "rotation_deg": -0.033145
+      },
+      "near_leg_l": {
+        "rotation_deg": 0.138507
+      },
+      "near_leg_u": {
+        "rotation_deg": -0.105361
+      },
+      "torso": {
+        "rotation_deg": -2.0
+      }
+    }
+  }
+}

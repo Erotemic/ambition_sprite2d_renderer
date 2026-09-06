@@ -1,0 +1,1149 @@
+{
+  "name": "data_lovelace",
+  "frame": {
+    "width": 160,
+    "height": 160,
+    "center_x": 80.0,
+    "ground_y": 151.0,
+    "ankle_h": 0.0,
+    "supersample": 2,
+    "render_scale": 1,
+    "trim": true
+  },
+  "svg_source": {
+    "path": "../../data/characters/data_lovelace/data_lovelace-front.svg",
+    "view": "Data Lovelace - Front",
+    "ref_dpi": 25.4,
+    "scale": 1.0
+  },
+  "bones": [
+    {
+      "name": "pelvis",
+      "parent": null,
+      "offset": [
+        0.0,
+        -38.0
+      ],
+      "length": 0.0,
+      "rest_angle": 0.0
+    },
+    {
+      "name": "torso",
+      "parent": "pelvis",
+      "offset": [
+        0.0,
+        -31.0
+      ],
+      "length": 0.0,
+      "rest_angle": 0.0
+    },
+    {
+      "name": "head",
+      "parent": "torso",
+      "offset": [
+        0.0,
+        -31.0
+      ],
+      "length": 0.0,
+      "rest_angle": 0.0
+    },
+    {
+      "name": "l_arm_u",
+      "parent": "torso",
+      "offset": [
+        -27.0,
+        -13.0
+      ],
+      "length": 23.0,
+      "rest_angle": 128.0
+    },
+    {
+      "name": "l_arm_l",
+      "parent": "l_arm_u",
+      "offset": [
+        23.0,
+        0.0
+      ],
+      "length": 23.0,
+      "rest_angle": 18.0
+    },
+    {
+      "name": "r_arm_u",
+      "parent": "torso",
+      "offset": [
+        27.0,
+        -13.0
+      ],
+      "length": 23.0,
+      "rest_angle": 52.0
+    },
+    {
+      "name": "r_arm_l",
+      "parent": "r_arm_u",
+      "offset": [
+        23.0,
+        0.0
+      ],
+      "length": 23.0,
+      "rest_angle": -18.0
+    },
+    {
+      "name": "l_leg_u",
+      "parent": "pelvis",
+      "offset": [
+        -10.0,
+        0.0
+      ],
+      "length": 24.0,
+      "rest_angle": 88.0
+    },
+    {
+      "name": "l_leg_l",
+      "parent": "l_leg_u",
+      "offset": [
+        24.0,
+        0.0
+      ],
+      "length": 20.0,
+      "rest_angle": 4.0
+    },
+    {
+      "name": "r_leg_u",
+      "parent": "pelvis",
+      "offset": [
+        10.0,
+        0.0
+      ],
+      "length": 24.0,
+      "rest_angle": 92.0
+    },
+    {
+      "name": "r_leg_l",
+      "parent": "r_leg_u",
+      "offset": [
+        24.0,
+        0.0
+      ],
+      "length": 20.0,
+      "rest_angle": -4.0
+    }
+  ],
+  "parts": [
+    {
+      "name": "leg_l_u",
+      "bone": "l_leg_u",
+      "z": 5,
+      "kind": "sprite",
+      "include": [
+        "part-leg-l-u"
+      ],
+      "pivot": [
+        67.0,
+        110.0
+      ],
+      "rest_angle": 88.0
+    },
+    {
+      "name": "leg_l_l",
+      "bone": "l_leg_l",
+      "z": 6,
+      "kind": "sprite",
+      "include": [
+        "part-leg-l-l"
+      ],
+      "pivot": [
+        69.0,
+        138.0
+      ],
+      "rest_angle": 94.0
+    },
+    {
+      "name": "leg_r_u",
+      "bone": "r_leg_u",
+      "z": 7,
+      "kind": "sprite",
+      "include": [
+        "part-leg-r-u"
+      ],
+      "pivot": [
+        93.0,
+        110.0
+      ],
+      "rest_angle": 92.0
+    },
+    {
+      "name": "leg_r_l",
+      "bone": "r_leg_l",
+      "z": 8,
+      "kind": "sprite",
+      "include": [
+        "part-leg-r-l"
+      ],
+      "pivot": [
+        91.0,
+        138.0
+      ],
+      "rest_angle": 86.0
+    },
+    {
+      "name": "arm_l_u",
+      "bone": "l_arm_u",
+      "z": 20,
+      "kind": "sprite",
+      "include": [
+        "part-arm-l-u"
+      ],
+      "pivot": [
+        52.0,
+        72.0
+      ],
+      "rest_angle": 128.0
+    },
+    {
+      "name": "arm_l_l",
+      "bone": "l_arm_l",
+      "z": 21,
+      "kind": "sprite",
+      "include": [
+        "part-arm-l-l"
+      ],
+      "pivot": [
+        39.0,
+        95.0
+      ],
+      "rest_angle": 146.0
+    },
+    {
+      "name": "body_back",
+      "bone": "torso",
+      "z": 24,
+      "kind": "sprite",
+      "include": [
+        "part-body-back"
+      ],
+      "pivot": [
+        80.0,
+        88.0
+      ],
+      "rest_angle": 0.0
+    },
+    {
+      "name": "skirt_l",
+      "bone": "torso",
+      "z": 25,
+      "kind": "sprite",
+      "include": [
+        "part-skirt-l"
+      ],
+      "pivot": [
+        72.0,
+        95.0
+      ],
+      "rest_angle": 0.0
+    },
+    {
+      "name": "skirt_r",
+      "bone": "torso",
+      "z": 26,
+      "kind": "sprite",
+      "include": [
+        "part-skirt-r"
+      ],
+      "pivot": [
+        88.0,
+        95.0
+      ],
+      "rest_angle": 0.0
+    },
+    {
+      "name": "body_front",
+      "bone": "torso",
+      "z": 30,
+      "kind": "sprite",
+      "include": [
+        "part-body-front"
+      ],
+      "pivot": [
+        80.0,
+        90.0
+      ],
+      "rest_angle": 0.0
+    },
+    {
+      "name": "card_halo",
+      "bone": "torso",
+      "z": 31,
+      "kind": "sprite",
+      "include": [
+        "part-card-halo"
+      ],
+      "pivot": [
+        80.0,
+        88.0
+      ],
+      "rest_angle": 0.0,
+      "opacity_channel": "halo_opacity"
+    },
+    {
+      "name": "arm_r_u",
+      "bone": "r_arm_u",
+      "z": 32,
+      "kind": "sprite",
+      "include": [
+        "part-arm-r-u"
+      ],
+      "pivot": [
+        108.0,
+        72.0
+      ],
+      "rest_angle": 52.0
+    },
+    {
+      "name": "arm_r_l",
+      "bone": "r_arm_l",
+      "z": 33,
+      "kind": "sprite",
+      "include": [
+        "part-arm-r-l"
+      ],
+      "pivot": [
+        121.0,
+        95.0
+      ],
+      "rest_angle": 34.0
+    },
+    {
+      "name": "head_back",
+      "bone": "head",
+      "z": 38,
+      "kind": "sprite",
+      "include": [
+        "part-head-back"
+      ],
+      "pivot": [
+        80.0,
+        45.0
+      ],
+      "rest_angle": 0.0
+    },
+    {
+      "name": "head_front",
+      "bone": "head",
+      "z": 40,
+      "kind": "sprite",
+      "include": [
+        "part-head-front"
+      ],
+      "pivot": [
+        80.0,
+        53.0
+      ],
+      "rest_angle": 0.0
+    }
+  ],
+  "clips": {
+    "idle": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 130,
+      "channels": {
+        "root_y": {
+          "expr": "1.4*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "1.0*sin(tau*t + 0.12)"
+        },
+        "head": {
+          "expr": "-1.0*sin(tau*t + 0.18)"
+        },
+        "l_arm_u": {
+          "expr": "2.2*sin(tau*t + 0.5)"
+        },
+        "l_arm_l": {
+          "expr": "1.1*sin(tau*t + 0.1)"
+        },
+        "r_arm_u": {
+          "expr": "-2.2*sin(tau*t + 0.5)"
+        },
+        "r_arm_l": {
+          "expr": "-1.1*sin(tau*t + 0.1)"
+        },
+        "l_leg_u": {
+          "expr": "0.7*sin(tau*t)"
+        },
+        "r_leg_u": {
+          "expr": "-0.7*sin(tau*t)"
+        },
+        "halo_opacity": {
+          "const": 0.08
+        }
+      }
+    },
+    "walk": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 102,
+      "channels": {
+        "root_y": {
+          "expr": "2.1*sin(tau*t*2)"
+        },
+        "torso": {
+          "expr": "1.6*sin(tau*t)"
+        },
+        "head": {
+          "expr": "-1.2*sin(tau*t)"
+        },
+        "l_arm_u": {
+          "expr": "10*sin(tau*t + pi)"
+        },
+        "l_arm_l": {
+          "expr": "4*sin(tau*t + pi)"
+        },
+        "r_arm_u": {
+          "expr": "10*sin(tau*t)"
+        },
+        "r_arm_l": {
+          "expr": "4*sin(tau*t)"
+        },
+        "l_leg_u": {
+          "expr": "13*sin(tau*t)"
+        },
+        "l_leg_l": {
+          "expr": "8*max(0,sin(tau*t))"
+        },
+        "r_leg_u": {
+          "expr": "13*sin(tau*t + pi)"
+        },
+        "r_leg_l": {
+          "expr": "8*max(0,sin(tau*t + pi))"
+        },
+        "halo_opacity": {
+          "const": 0.05
+        }
+      }
+    },
+    "talk": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 110,
+      "channels": {
+        "head": {
+          "expr": "-1.0*sin(tau*t*2)"
+        },
+        "torso": {
+          "expr": "0.8*sin(tau*t)"
+        },
+        "l_arm_u": {
+          "expr": "5*sin(tau*t*2 + 0.2)"
+        },
+        "l_arm_l": {
+          "expr": "6*sin(tau*t*2)"
+        },
+        "r_arm_u": {
+          "expr": "-4*sin(tau*t*2)"
+        },
+        "r_arm_l": {
+          "expr": "-2*sin(tau*t*2)"
+        },
+        "halo_opacity": {
+          "const": 0.12
+        }
+      }
+    },
+    "compute": {
+      "loop": false,
+      "frames": 8,
+      "duration_ms": 92,
+      "channels": {
+        "root_y": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.3,
+              -2.0
+            ],
+            [
+              0.6,
+              -3.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "torso": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.4,
+              -3.0
+            ],
+            [
+              0.7,
+              2.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "head": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.35,
+              -4.0
+            ],
+            [
+              0.65,
+              -2.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "l_arm_u": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.25,
+              -16.0
+            ],
+            [
+              0.5,
+              -26.0
+            ],
+            [
+              0.8,
+              -6.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "l_arm_l": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.25,
+              -10.0
+            ],
+            [
+              0.5,
+              -18.0
+            ],
+            [
+              0.8,
+              -4.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "r_arm_u": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.25,
+              16.0
+            ],
+            [
+              0.5,
+              26.0
+            ],
+            [
+              0.8,
+              6.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "r_arm_l": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.25,
+              10.0
+            ],
+            [
+              0.5,
+              18.0
+            ],
+            [
+              0.8,
+              4.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "halo_opacity": {
+          "keys": [
+            [
+              0.0,
+              0.12
+            ],
+            [
+              0.35,
+              0.5
+            ],
+            [
+              0.6,
+              0.7
+            ],
+            [
+              1.0,
+              0.18
+            ]
+          ]
+        },
+        "card_halo": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.5,
+              180.0
+            ],
+            [
+              1.0,
+              360.0
+            ]
+          ]
+        }
+      }
+    },
+    "analytical_burst": {
+      "loop": false,
+      "frames": 8,
+      "duration_ms": 88,
+      "channels": {
+        "root_x": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.35,
+              -4.0
+            ],
+            [
+              0.55,
+              6.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "torso": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.35,
+              -5.0
+            ],
+            [
+              0.55,
+              7.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "head": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.35,
+              -6.0
+            ],
+            [
+              0.7,
+              2.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "l_arm_u": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.2,
+              -18.0
+            ],
+            [
+              0.42,
+              -34.0
+            ],
+            [
+              0.6,
+              -10.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "l_arm_l": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.2,
+              -12.0
+            ],
+            [
+              0.42,
+              -18.0
+            ],
+            [
+              0.6,
+              -5.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "r_arm_u": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.2,
+              18.0
+            ],
+            [
+              0.42,
+              34.0
+            ],
+            [
+              0.6,
+              10.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "r_arm_l": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.2,
+              12.0
+            ],
+            [
+              0.42,
+              18.0
+            ],
+            [
+              0.6,
+              5.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "halo_opacity": {
+          "keys": [
+            [
+              0.0,
+              0.1
+            ],
+            [
+              0.35,
+              0.7
+            ],
+            [
+              0.5,
+              0.95
+            ],
+            [
+              0.85,
+              0.4
+            ],
+            [
+              1.0,
+              0.1
+            ]
+          ]
+        },
+        "card_halo": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.5,
+              220.0
+            ],
+            [
+              1.0,
+              360.0
+            ]
+          ]
+        }
+      }
+    },
+    "self_repair": {
+      "loop": false,
+      "frames": 8,
+      "duration_ms": 96,
+      "channels": {
+        "head": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.35,
+              -2.0
+            ],
+            [
+              0.52,
+              4.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "l_arm_u": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.3,
+              14.0
+            ],
+            [
+              0.52,
+              22.0
+            ],
+            [
+              0.8,
+              8.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "l_arm_l": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.3,
+              18.0
+            ],
+            [
+              0.52,
+              26.0
+            ],
+            [
+              0.8,
+              10.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "r_arm_u": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.3,
+              -24.0
+            ],
+            [
+              0.52,
+              -34.0
+            ],
+            [
+              0.8,
+              -12.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "r_arm_l": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.3,
+              -14.0
+            ],
+            [
+              0.52,
+              -24.0
+            ],
+            [
+              0.8,
+              -8.0
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        },
+        "halo_opacity": {
+          "keys": [
+            [
+              0.0,
+              0.08
+            ],
+            [
+              0.35,
+              0.3
+            ],
+            [
+              0.6,
+              0.25
+            ],
+            [
+              1.0,
+              0.08
+            ]
+          ]
+        }
+      }
+    },
+    "death": {
+      "loop": false,
+      "frames": 8,
+      "duration_ms": 116,
+      "channels": {
+        "root_y": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.4,
+              4.0
+            ],
+            [
+              0.75,
+              16.0
+            ],
+            [
+              1.0,
+              24.0
+            ]
+          ]
+        },
+        "torso": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.4,
+              6.0
+            ],
+            [
+              0.75,
+              16.0
+            ],
+            [
+              1.0,
+              26.0
+            ]
+          ]
+        },
+        "head": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.4,
+              7.0
+            ],
+            [
+              0.75,
+              18.0
+            ],
+            [
+              1.0,
+              30.0
+            ]
+          ]
+        },
+        "l_arm_u": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.5,
+              16.0
+            ],
+            [
+              1.0,
+              34.0
+            ]
+          ]
+        },
+        "l_arm_l": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.5,
+              10.0
+            ],
+            [
+              1.0,
+              26.0
+            ]
+          ]
+        },
+        "r_arm_u": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.5,
+              -16.0
+            ],
+            [
+              1.0,
+              -34.0
+            ]
+          ]
+        },
+        "r_arm_l": {
+          "keys": [
+            [
+              0.0,
+              0.0
+            ],
+            [
+              0.5,
+              -10.0
+            ],
+            [
+              1.0,
+              -26.0
+            ]
+          ]
+        },
+        "halo_opacity": {
+          "keys": [
+            [
+              0.0,
+              0.1
+            ],
+            [
+              0.5,
+              0.05
+            ],
+            [
+              1.0,
+              0.0
+            ]
+          ]
+        }
+      }
+    }
+  },
+  "sprite_tuning": {
+    "collision_scale": 1.85
+  }
+}

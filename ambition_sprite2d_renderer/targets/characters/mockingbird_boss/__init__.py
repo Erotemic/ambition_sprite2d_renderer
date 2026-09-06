@@ -1,0 +1,101 @@
+"""Mockingbird boss character — multi-file tack-on target.
+
+A multi-file character package: the boss ships a manifest + per-part
+frames assembled by :mod:`.sprite_generator`, with part-config YAML
+files alongside the renderer (`mockingbird_boss_parts.yaml`,
+`mockingbird_boss_scene.yaml`, `mockingbird_boss_legacy_parts.yaml`)
+and a PySide6 part editor (:mod:`.part_editor`) for tuning the rig.
+Run the generator CLI with ``python -m
+ambition_sprite2d_renderer.targets.characters.mockingbird_boss``.
+
+The package layout exists so adding the next multi-file character is a
+copy-this-directory operation: drop ``targets/characters/<name>/`` with
+the same ``__init__.py`` shape, and discovery picks it up.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import List
+
+from . import sprite_generator
+
+TARGET_NAME = sprite_generator.TARGET_NAME
+SHEET_FILES = list(sprite_generator.OUTPUT_FILES) + [f"{TARGET_NAME}_actor.ron"]
+# See the sibling note in `gnu_ton_boss`: the destination subdir is part of what
+# this target claims, so declare it instead of hiding it in `install`.
+INSTALL_SUBDIR = TARGET_NAME
+PORTRAIT_INSTALL_SUBDIR = TARGET_NAME
+
+ACTOR_METADATA = {
+    "authoring_description": (
+        "The Mockingbird Boss adapts the old How to Kill a Mockingbird Flash-animation "
+        "creature into a giant mimic that steals songs, voices, and fighting styles while "
+        "remaining one surprise behind the original."
+    ),
+    "gameplay_description": (
+        "Use as a multipart aerial mimic boss. Its copied attacks should be recognizable "
+        "but imperfectly timed, leaving a novelty gap where the player can escape or counter."
+    ),
+    "dialogue_hints": {
+        "barks": [
+            "I've learned every fighter in this hall by heart.",
+            "My version of you is always one surprise behind.",
+            "You can copy the form forever and never reach the why.",
+        ]
+    },
+    "actor": {"character_id": f"npc_{TARGET_NAME}"},
+    "body": {
+        "body_plan": "BossMultipart",
+        "body_kind": "Wide",
+        "traits": ["boss", "multipart"],
+    },
+    "brain": {"default_preset": "stand_still"},
+    "actions": {"default_preset": "peaceful"},
+    "tags": ["boss", "multipart"],
+    "missing_information": [
+        "multipart sockets: boss-specific part anchors are still in the JSON manifest/parts files, not normalized into actor sockets",
+        "boss schedule/action specials: not authored in the sprite actor contract yet",
+    ],
+}
+
+
+def render(out_dir: str | Path, **opts) -> List[Path]:
+    return list(
+        sprite_generator.render_outputs(
+            outdir=out_dir,
+            quick=bool(opts.get("quick", False)),
+        )
+    )
+
+
+def render_canonical(out_dir: str | Path, **opts) -> Path:
+    """Render one fresh canonical without assembling or packing the boss sheet."""
+
+    del opts
+    out_dir = Path(out_dir)
+    sprite_generator.render_outputs(outdir=out_dir, quick=True)
+    return out_dir / f"{TARGET_NAME}_canonical_transparent.png"
+
+
+def install(render_dir: str | Path, dest_root: str | Path) -> List[Path]:
+    render_dir = Path(render_dir)
+    install_dir = Path(dest_root) / INSTALL_SUBDIR
+    copied = list(
+        sprite_generator.install_outputs(
+            render_dir=render_dir,
+            install_dir=install_dir,
+        )
+    )
+    # Optional actor-contract sidecar emitted by registry/discovery's
+    # post-render hook. Custom boss installers bypass the default copy helper,
+    # so carry it explicitly when present.
+    actor_src = render_dir / f"{TARGET_NAME}_actor.ron"
+    if actor_src.exists():
+        install_dir.mkdir(parents=True, exist_ok=True)
+        actor_dst = install_dir / actor_src.name
+        import shutil
+
+        shutil.copy2(actor_src, actor_dst)
+        copied.append(actor_dst)
+    return copied

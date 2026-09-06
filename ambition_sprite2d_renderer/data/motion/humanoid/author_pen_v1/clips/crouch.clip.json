@@ -1,0 +1,23 @@
+{
+  "schema": "ambition-clip-v1",
+  "id": "crouch",
+  "loop": false,
+  "duration_s": 0.1,
+  "sampling": {
+    "frame_count": 1,
+    "frame_duration_ms": 100
+  },
+  "source": {
+    "kind": "legacy-rigdoc-bake",
+    "clip": "crouch",
+    "baked_at": "published-frame-samples",
+    "note": "IK, expressions, and solver controls were baked to direct FK pose transforms."
+  },
+  "pose_keys": [
+    {
+      "at_s": 0.0,
+      "frame": 0,
+      "pose": "humanoid/author/crouch"
+    }
+  ]
+}

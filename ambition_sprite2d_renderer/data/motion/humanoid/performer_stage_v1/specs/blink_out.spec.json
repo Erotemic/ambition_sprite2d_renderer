@@ -1,0 +1,16 @@
+{
+  "clip": "blink_out",
+  "note": "Down special, going. The axis' TIP is the toe on the mark, so the trap opens where she is standing rather than at the middle of the frame. No hitbox: a hole in the boards does not hurt anyone, and its live frames are on the effect's own block.",
+  "strike": { "base": "pelvis", "tip": "near_leg_foot" },
+  "effect": "trapdoor",
+  "facing": "east",
+  "hitbox": { "extend": 1.0 },
+  "trapdoor": {
+    "active": [1, 2, 3, 4, 5],
+    "width": 52.0,
+    "depth": 8.0,
+    "lip": 4.0,
+    "dust": 1.1,
+    "open_frames": 2
+  }
+}

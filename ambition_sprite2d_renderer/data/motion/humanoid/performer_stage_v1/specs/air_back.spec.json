@@ -1,0 +1,37 @@
+{
+  "clip": "air_back",
+  "note": "Back air: over her own shoulder, without looking.",
+  "strike": {
+    "base": "near_arm_l",
+    "tip": "near_arm_hand"
+  },
+  "effect": "trail",
+  "facing": "east",
+  "hitbox": {
+    "extend": 1.2,
+    "active": [
+      2,
+      3,
+      4
+    ],
+    "inflate": 8.0
+  },
+  "trail": {
+    "window": 5,
+    "inner": 0.42,
+    "blur": 1.1,
+    "alpha": 196,
+    "core_alpha": 224,
+    "falloff": 1.2,
+    "body_rgb": [
+      246,
+      176,
+      92
+    ],
+    "core_rgb": [
+      255,
+      246,
+      222
+    ]
+  }
+}

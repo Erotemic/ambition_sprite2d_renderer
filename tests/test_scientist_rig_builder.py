@@ -1,0 +1,275 @@
+from pathlib import Path
+import sys
+from types import SimpleNamespace
+
+import pytest
+
+from scripts import build_scientist_fighter_rigs as scientist_builder
+from scripts.build_scientist_fighter_rigs import (
+    SPECS,
+    _canonical_svg_part_order,
+    _neutral,
+    _pose,
+    _rebase_hand_trajectory,
+    _retarget_clip_arms_to_torso,
+)
+from ambition_sprite2d_renderer.authoring import canonical_scientist_rig
+from ambition_sprite2d_renderer.authoring.humanoid_svg_rig import LimbPoseHint
+
+
+def test_load_scientist_rig_reuses_doc_until_generated_rig_changes(
+    tmp_path: Path, monkeypatch
+):
+    rig = tmp_path / "noether_side.rig.json"
+    rig.write_text('{"name":"cached-rig"}', encoding="utf8")
+
+    calls: list[str] = []
+
+    def fake_ensure(_character: str) -> Path:
+        return rig
+
+    def fake_load(path_text: str):
+        calls.append(path_text)
+        return {"path": path_text, "call": len(calls)}
+
+    canonical_scientist_rig._load_doc_cached.cache_clear()
+    monkeypatch.setattr(canonical_scientist_rig, "ensure_scientist_rig", fake_ensure)
+    monkeypatch.setattr(canonical_scientist_rig.RigDocument, "load", staticmethod(fake_load))
+
+    first = canonical_scientist_rig.load_scientist_rig("noether")
+    second = canonical_scientist_rig.load_scientist_rig("noether")
+
+    assert first is second
+    assert calls == [str(rig)]
+
+    rig.write_text('{"name":"cached-rig", "rev":2}', encoding="utf8")
+
+    third = canonical_scientist_rig.load_scientist_rig("noether")
+
+    assert third is not first
+    assert calls == [str(rig), str(rig)]
+
+
+def test_scientist_renderer_falls_back_to_cairosvg_for_review(monkeypatch):
+    def unavailable():
+        raise RuntimeError("native resvg unavailable")
+
+    fake_cairo = SimpleNamespace(
+        __version__="1.2.3-test",
+        __file__="/tmp/cairosvg/__init__.py",
+    )
+    monkeypatch.setattr(scientist_builder, "_native_resvg_info", unavailable)
+    monkeypatch.setitem(sys.modules, "cairosvg", fake_cairo)
+
+    with pytest.warns(RuntimeWarning, match="SVG RASTERIZER FALLBACK"):
+        renderer = scientist_builder._resolve_svg_renderer()
+
+    assert renderer == (
+        "cairosvg",
+        "/tmp/cairosvg/__init__.py",
+        "1.2.3-test",
+        "fallback-review",
+    )
+
+
+def test_canonical_scientist_part_order_uses_svg_document_order(tmp_path: Path):
+    svg = tmp_path / "paperdoll.svg"
+    svg.write_text(
+        """\
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+  <g inkscape:label="Side Left">
+    <g data-rig-part="neck" data-rig-bone="torso" data-rig-z="8">
+      <path id="neck-art" d="M 0 0 L 1 0 L 1 1 Z" />
+    </g>
+    <g data-rig-part="torso" data-rig-bone="torso" data-rig-z="7">
+      <path id="torso-art" d="M 0 0 L 2 0 L 2 2 Z" />
+    </g>
+  </g>
+</svg>
+""",
+        encoding="utf8",
+    )
+
+    # data-rig-z is intentionally stale after the two Inkscape groups were
+    # reordered.  Canonical scientist rigs use paint/document order, so that
+    # normal authoring operation must not require a redundant metadata edit.
+    assert _canonical_svg_part_order(svg, "Side Left") == ["neck", "torso"]
+
+
+def _patent_rest():
+    return {
+        "near_hand_x": 48.0,
+        "near_hand_y": -72.0,
+        "near_hand_pitch": 0.0,
+        "far_hand_x": -35.0,
+        "far_hand_y": -72.0,
+        "far_hand_pitch": 180.0,
+        "near_foot_pitch": 0.0,
+        "far_foot_pitch": 0.0,
+        "_natural_near_hand_x": -12.0,
+        "_natural_near_hand_y": -57.0,
+        "_natural_far_hand_x": -20.0,
+        "_natural_far_hand_y": -49.0,
+        "_hands_follow_forearms": 1.0,
+    }
+
+
+def test_patent_neutral_uses_natural_rig_pose_not_svg_splay():
+    rest = _patent_rest()
+    neutral = _neutral(rest, compact=True)
+    assert neutral["near_hand_x"] == {"const": -12.0}
+    assert neutral["near_hand_y"] == {"const": -57.0}
+    assert neutral["far_hand_x"] == {"const": -20.0}
+    assert neutral["far_hand_y"] == {"const": -49.0}
+    assert "near_hand_pitch" not in neutral
+    assert "far_hand_pitch" not in neutral
+
+
+def test_patent_pose_trajectories_rebase_around_natural_arm_pose():
+    rest = _patent_rest()
+    near_x, near_y = _rebase_hand_trajectory(
+        rest, "near_hand", [17.0, 9.0, -5.0], [-50.0, -55.0, -75.0], compact=True
+    )
+    far_x, far_y = _rebase_hand_trajectory(
+        rest, "far_hand", [-13.0, -5.0, 6.0], [-49.0, -54.0, -74.0], compact=True
+    )
+    assert near_x == [-12.0, -20.0, -34.0]
+    assert near_y == [-57.0, -62.0, -82.0]
+    assert far_x == [-20.0, -12.0, -1.0]
+    assert far_y == [-49.0, -54.0, -74.0]
+
+    pose = _pose(
+        rest,
+        2,
+        60,
+        compact=True,
+        near_hand=([17.0, 7.0], [-50.0, -45.0], [80.0, 40.0]),
+        far_hand=([-13.0, -3.0], [-49.0, -44.0], [100.0, 140.0]),
+    )
+    assert pose["channels"]["near_hand_x"]["keys"][0][1] == -12.0
+    assert pose["channels"]["near_hand_x"]["keys"][1][1] == -22.0
+    assert pose["channels"]["near_hand_y"]["keys"][0][1] == -57.0
+    assert pose["channels"]["near_hand_y"]["keys"][1][1] == -52.0
+    assert pose["channels"]["far_hand_x"]["keys"][0][1] == -20.0
+    assert pose["channels"]["far_hand_x"]["keys"][1][1] == -10.0
+    assert "near_hand_pitch" not in pose["channels"]
+    assert "far_hand_pitch" not in pose["channels"]
+
+
+def test_patent_natural_arm_pose_is_separate_from_svg_splay():
+    spec = SPECS["patent_clerk"]
+    assert spec.natural_arm_pose is not None
+    assert set(spec.natural_arm_pose) == {"near", "far"}
+    # The neutral lower arms point toward west: each hand is left of its elbow.
+    assert all(
+        hint.target[0] < hint.joint[0]
+        for hint in spec.natural_arm_pose.values()
+    )
+    assert spec.arm_max_reach_ratio == 0.98
+
+
+def _carl_rest():
+    return {
+        "near_hand_x": 40.2822,
+        "near_hand_y": -72.0327,
+        "near_hand_pitch": 7.7977,
+        "far_hand_x": -39.0798,
+        "far_hand_y": -72.2045,
+        "far_hand_pitch": 179.6102,
+        "near_foot_pitch": 0.0,
+        "far_foot_pitch": 0.0,
+        "_natural_near_hand_x": -12.0,
+        "_natural_near_hand_y": -58.0,
+        "_natural_far_hand_x": -22.0,
+        "_natural_far_hand_y": -52.0,
+        "_hands_follow_forearms": 1.0,
+    }
+
+
+def test_carl_neutral_uses_natural_rig_pose_not_svg_splay():
+    rest = _carl_rest()
+    neutral = _neutral(rest, compact=False)
+    assert neutral["near_hand_x"] == {"const": -12.0}
+    assert neutral["near_hand_y"] == {"const": -58.0}
+    assert neutral["far_hand_x"] == {"const": -22.0}
+    assert neutral["far_hand_y"] == {"const": -52.0}
+    assert "near_hand_pitch" not in neutral
+    assert "far_hand_pitch" not in neutral
+
+
+def test_carl_natural_arm_pose_is_separate_from_svg_splay():
+    spec = SPECS["carl_stargan"]
+    assert spec.natural_arm_pose is not None
+    assert set(spec.natural_arm_pose) == {"near", "far"}
+    assert all(
+        hint.target[0] < hint.joint[0]
+        for hint in spec.natural_arm_pose.values()
+    )
+    assert spec.arm_max_reach_ratio == 0.98
+
+
+def _two_arm_geometry_doc():
+    return {
+        "name": "two_arm_test",
+        "frame": {
+            "width": 128,
+            "height": 128,
+            "center_x": 64.0,
+            "ground_y": 100.0,
+            "ankle_h": 2.0,
+            "supersample": 1,
+        },
+        "palette": {},
+        "parts": [],
+        "bones": [
+            {"name": "pelvis", "parent": None, "offset": [0.0, -20.0], "length": 0.0, "rest_angle": 0.0},
+            {"name": "torso", "parent": "pelvis", "offset": [0.0, -10.0], "length": 0.0, "rest_angle": 0.0},
+            {"name": "near_arm_u", "parent": "torso", "offset": [0.0, -8.0], "length": 18.0, "rest_angle": 0.0},
+            {"name": "near_arm_l", "parent": "near_arm_u", "offset": [18.0, 0.0], "length": 16.0, "rest_angle": 0.0},
+            {"name": "near_arm_hand", "parent": "near_arm_l", "offset": [16.0, 0.0], "length": 0.0, "rest_angle": 0.0},
+            {"name": "far_arm_u", "parent": "torso", "offset": [0.0, -4.0], "length": 18.0, "rest_angle": 0.0},
+            {"name": "far_arm_l", "parent": "far_arm_u", "offset": [18.0, 0.0], "length": 16.0, "rest_angle": 0.0},
+            {"name": "far_arm_hand", "parent": "far_arm_l", "offset": [16.0, 0.0], "length": 0.0, "rest_angle": 0.0},
+        ],
+        "ik_legs": [],
+        "ik_chains": [
+            {"upper": "near_arm_u", "lower": "near_arm_l", "end": "near_arm_hand", "channel_prefix": "near_hand", "rest_x": 26.0, "rest_y": -38.0, "bend": -1.0},
+            {"upper": "far_arm_u", "lower": "far_arm_l", "end": "far_arm_hand", "channel_prefix": "far_hand", "rest_x": 26.0, "rest_y": -34.0, "bend": -1.0},
+        ],
+    }
+
+
+def test_torso_arm_retarget_can_repair_only_one_side():
+    doc = _two_arm_geometry_doc()
+    clips = {
+        "idle": {
+            "loop": True,
+            "frames": 1,
+            "duration_ms": 100,
+            "channels": {
+                "near_hand_x": {"const": 26.0},
+                "near_hand_y": {"const": -38.0},
+                "far_hand_x": {"const": 26.0},
+                "far_hand_y": {"const": -34.0},
+            },
+        },
+        "reaction": {
+            "loop": False,
+            "frames": 2,
+            "duration_ms": 100,
+            "channels": {
+                "near_hand_x": {"keys": [[0.0, 20.0], [1.0, -18.0]]},
+                "near_hand_y": {"keys": [[0.0, -30.0], [1.0, -55.0]]},
+                "far_hand_x": {"keys": [[0.0, 10.0], [1.0, -22.0]]},
+                "far_hand_y": {"keys": [[0.0, -18.0], [1.0, -50.0]]},
+            },
+        },
+    }
+    repaired = _retarget_clip_arms_to_torso(
+        doc, clips, "reaction", reach_scale=0.8, sides=("far",)
+    )
+    assert repaired["channels"]["near_hand_x"] == clips["reaction"]["channels"]["near_hand_x"]
+    assert repaired["channels"]["near_hand_y"] == clips["reaction"]["channels"]["near_hand_y"]
+    assert repaired["channels"]["far_hand_x"] != clips["reaction"]["channels"]["far_hand_x"]
+    assert repaired["channels"]["far_hand_y"] != clips["reaction"]["channels"]["far_hand_y"]
