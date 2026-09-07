@@ -1017,6 +1017,160 @@ GAUNTLET_ICON_SPECS: List[IconSpec] = [
 ]
 
 
+def icon_polygon_bomb(d: ImageDraw.ImageDraw, s: float, accent: Color) -> None:
+    """The Projectile Polygon's thrown charge: the same fused bomb as `bomb`,
+    but hex-faceted, so her three ground items read as one silhouette family."""
+    body = scaled([(32, 20), (46, 28), (46, 45), (32, 53), (18, 45), (18, 28)], s)
+    d.polygon(body, fill=rgba("#23262E"))
+    d.line(body + [body[0]], fill=rgba("#05070D"), width=max(1, int(2 * s)))
+    d.polygon(
+        scaled([(32, 20), (46, 28), (32, 36), (18, 28)], s), fill=rgba("#5A6072", 150)
+    )
+    d.rounded_rectangle(
+        (27 * s, 15 * s, 36 * s, 23 * s),
+        radius=2 * s,
+        fill=rgba("#6B5536"),
+        outline=rgba("#05070D"),
+        width=max(1, int(1.5 * s)),
+    )
+    d.arc(
+        (31 * s, 4 * s, 50 * s, 22 * s),
+        start=120,
+        end=300,
+        fill=rgba("#9A7B4F"),
+        width=max(1, int(2.4 * s)),
+    )
+    d.ellipse(bbox(46 * s, 8 * s, 8 * s, 8 * s), fill=with_alpha(accent, 235))
+    d.ellipse(bbox(46 * s, 8 * s, 3 * s, 3 * s), fill=rgba("#FFFFFF", 240))
+
+
+def icon_polygon_mine(d: ImageDraw.ImageDraw, s: float, accent: Color) -> None:
+    """Her remote mine as it sits on the stage: a squat faceted puck on three
+    anchor prongs with one live eye. Wide and low, read from the side, so it can
+    never be mistaken at a glance for the round thrown bomb."""
+    for px, py in ((17, 47), (32, 50), (47, 47)):
+        d.line(
+            [(32 * s, 40 * s), (px * s, py * s)],
+            fill=rgba("#3A3F4D"),
+            width=max(1, int(3 * s)),
+        )
+    body = scaled([(14, 38), (21, 25), (43, 25), (50, 38), (43, 44), (21, 44)], s)
+    d.polygon(body, fill=rgba("#23262E"))
+    d.line(body + [body[0]], fill=rgba("#05070D"), width=max(1, int(2 * s)))
+    d.polygon(
+        scaled([(21, 25), (43, 25), (46, 31), (18, 31)], s), fill=rgba("#5A6072", 170)
+    )
+    d.ellipse(bbox(32 * s, 34 * s, 13 * s, 13 * s), fill=with_alpha(accent, 235))
+    d.ellipse(bbox(32 * s, 34 * s, 5 * s, 5 * s), fill=rgba("#FFFFFF", 240))
+
+
+def _cubic(p0: Point, p1: Point, p2: Point, p3: Point, n: int = 26) -> List[Point]:
+    """Sample a cubic Bezier. Used to give a drawn strand a real curve instead of
+    a polyline's corners."""
+    out: List[Point] = []
+    for i in range(n + 1):
+        t = i / n
+        u = 1.0 - t
+        out.append(
+            (
+                u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0],
+                u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1],
+            )
+        )
+    return out
+
+
+def _tress_radius(t: float) -> float:
+    """Half-width of a gathered tress at fraction ``t`` along its length.
+
+    Not a plain taper: a ponytail is NARROW where the band grips it, FLARES just
+    below, then runs to a point. A monotonic taper draws a balloon instead."""
+    if t < 0.12:  # the gathered root above the band
+        return 3.4 - 1.2 * (t / 0.12)
+    if t < 0.40:  # the flare the band lets out
+        return 2.2 + 5.6 * (((t - 0.12) / 0.28) ** 0.7)
+    return 7.8 * (1.0 - (t - 0.40) / 0.60) ** 1.25 + 0.7
+
+
+def icon_polygon_ponytail(d: ImageDraw.ImageDraw, s: float, accent: Color) -> None:
+    """The tress she throws as a tether: gathered root, band, flare, and a long
+    S tapering to a point. Built as a run of discs along a Bezier with the width
+    profile above, because the two obvious constructions both read as something
+    else -- a constant-width stroke with a ball on one end is a WAND, and a
+    monotonic taper is a BALLOON. The ponytail is a grab, not a weapon."""
+    curve = _cubic((24, 9), (41, 23), (17, 41), (43, 56))
+    n = len(curve) - 1
+    for pass_colour, pad in ((rgba("#05070D"), 1.6), (with_alpha(accent, 245), 0.0)):
+        for i, (x, y) in enumerate(curve):
+            r = _tress_radius(i / n) + pad
+            d.ellipse(bbox(x * s, y * s, r * 2 * s, r * 2 * s), fill=pass_colour)
+    # a lighter inner strand along the upper edge, so the mass reads as hair
+    for i, (x, y) in enumerate(curve):
+        t = i / n
+        if not 0.18 < t < 0.86:
+            continue
+        r = _tress_radius(t) * 0.34
+        d.ellipse(
+            bbox((x - 1.7) * s, (y - 2.0) * s, r * 2 * s, r * 2 * s),
+            fill=with_alpha(accent, 130),
+        )
+    # the cut root above the band: three short hairs, fanned
+    for tip in ((19, 5), (25, 4), (30, 7)):
+        d.line(
+            [(24 * s, 11 * s), (tip[0] * s, tip[1] * s)],
+            fill=with_alpha(accent, 225),
+            width=max(1, int(2.4 * s)),
+        )
+    # the band, gripping at the pinch the profile leaves for it
+    bx, by = curve[int(n * 0.12)]
+    d.rounded_rectangle(
+        ((bx - 5.5) * s, (by - 3.0) * s, (bx + 5.5) * s, (by + 3.0) * s),
+        radius=1.5 * s,
+        fill=rgba("#6B5536"),
+        outline=rgba("#05070D"),
+        width=max(1, int(1.5 * s)),
+    )
+
+
+# ---- Held-item ground props ---------------------------------------------------
+#
+# Rendered into the same `sprites/props/` directory as the gauntlet props, by the
+# same `write_gauntlet_props`, and consumed at runtime through `HeldItemArt` in
+# `game/ambition_content/src/items/held_visuals.rs` -- each `key` here is the
+# held-item id the Rust side registers, and each `filename` is the path that
+# entry points at.
+#
+# They are deliberately NOT in `GAUNTLET_ICON_SPECS`: that list is the population
+# `scripts/check_gauntlet_props_are_rendered.py` compares against the game's
+# `GAUNTLET_PROP_IDS`, so an entry here would be reported there as a drawing the
+# game declares no gauntlet prop for.
+HELD_ITEM_ICON_SPECS: List[IconSpec] = [
+    IconSpec(
+        "polygon_bomb",
+        "polygon_bomb.png",
+        "held_item",
+        "Projectile Polygon's thrown charge",
+        "#FFB03A",
+        "polygon_bomb",
+    ),
+    IconSpec(
+        "polygon_mine",
+        "polygon_mine.png",
+        "held_item",
+        "the remote mine her down-smash leaves",
+        "#FF5E5E",
+        "polygon_mine",
+    ),
+    IconSpec(
+        "polygon_ponytail",
+        "polygon_ponytail.png",
+        "held_item",
+        "the tress she throws as a tether",
+        "#E86AC8",
+        "polygon_ponytail",
+    ),
+]
+
 DRAWERS: Dict[str, Callable[[ImageDraw.ImageDraw, float, Color], None]] = {
     "blink": icon_blink,
     "dash": icon_dash,
@@ -1046,6 +1200,9 @@ DRAWERS: Dict[str, Callable[[ImageDraw.ImageDraw, float, Color], None]] = {
     "dive": icon_dive,
     "meteor": icon_meteor,
     "bomb": icon_bomb,
+    "polygon_bomb": icon_polygon_bomb,
+    "polygon_mine": icon_polygon_mine,
+    "polygon_ponytail": icon_polygon_ponytail,
     "grapple": icon_grapple,
     "gravity_grenade": icon_gravity_grenade,
     "mark_recall": icon_mark_recall,
@@ -1127,11 +1284,13 @@ def write_gauntlet_props(
     """Render the wielded-gauntlet ground-item icons into ``out_dir`` (the sandbox
     ``sprites/props/`` dir). Unlike ``write_item_icons`` (the review-only ability
     set), these icons ARE consumed by the runtime via ``item_pickup::item_sprite``
-    / ``ItemArt`` — one ``gauntlet_<id>.png`` per wielded gauntlet."""
+    / ``ItemArt`` — one ``gauntlet_<id>.png`` per wielded gauntlet, plus the
+    ``HELD_ITEM_ICON_SPECS`` ground props (``polygon_*.png``), which land in the
+    same directory and are resolved by ``HeldItemArt`` rather than ``ItemArt``."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     outputs: List[Path] = []
-    for spec in GAUNTLET_ICON_SPECS:
+    for spec in (*GAUNTLET_ICON_SPECS, *HELD_ITEM_ICON_SPECS):
         path = out_dir / spec.filename
         # Panel-free render: the gauntlets/held-items read as items lying on the
         # ground, not symbols on a square tile (the `_base` panel).
