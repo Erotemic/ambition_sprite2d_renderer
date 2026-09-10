@@ -150,7 +150,8 @@ def draw_ground(images, y: float, colour=(122, 112, 134)):
 
 def draw_trail(images, window: int = 3, subdiv: int = 5, inner: float = 0.58,
                alpha: int = 120, blur: float = 0.8, core_alpha: int = 150, active=None,
-               body_rgb=None, core_rgb=None, falloff: float = 1.7, axes=None):
+               body_rgb=None, core_rgb=None, falloff: float = 1.7, axes=None,
+               blade_width: float = 0.0):
     """`window`/`inner`/`alpha` are what separate a tilt from a smash: a smash
     wants a longer, wider, brighter ribbon so the commitment reads.
 
@@ -203,6 +204,12 @@ def draw_trail(images, window: int = 3, subdiv: int = 5, inner: float = 0.58,
                 fill=core_rgb + (core_alpha,),
             )
             trail.alpha_composite(core.filter(ImageFilter.GaussianBlur(0.5)))
+        # Conjured blades need a visible edge even before the first trail segment.
+        if blade_width > 0 and axes[i] and (live is None or i in live):
+            blending_draw(trail).line(
+                axes[i], fill=core_rgb + (core_alpha,),
+                width=max(1, round(blade_width)),
+            )
         # ⛔ TRANSPARENT, not the review backdrop. Filling with `BG` here made
         # every composited frame an opaque rectangle — which is invisible in a
         # preview strip that draws its own dark field behind, and fatal to a
@@ -1097,6 +1104,30 @@ def hit_shape(spec: dict) -> dict:
         "extend": hitbox.get("extend", 1.0),
         "inflate": hitbox.get("inflate", 0.0),
     }
+
+
+def authored_hit_frames(images, spec: dict, axes=None):
+    """Sample the visible blade and its lingering sweep in frame coordinates."""
+    axes = axes if axes is not None else [blade_axis(image) for image in images]
+    windows = hit_windows(spec.get("hitbox") or {})
+    effect = spec.get("effect", "trail")
+    swept = hit_shape(spec)
+    style = spec.get(effect) or {}
+    frames = []
+    for i in range(len(images)):
+        first = window_start(windows, i)
+        points = []
+        if first is not None:
+            points = volume_polygon(axes, i, effect, first, swept,
+                                    spec.get("poke") or {}, {}) or []
+            if effect == "trail" and style.get("blade_width", 0) > 0:
+                # The first active sample has an edge but no swept area yet.
+                edge = poke_polygon(axes, i, extend=swept["extend"], inner=0.0,
+                                    width=style["blade_width"] + 2 * swept["inflate"])
+                points = [*points, *(edge or [])]
+        frames.append({"poly": [(float(x), float(y)) for x, y in _hull(points)]
+                       if len(points) >= 3 else []})
+    return frames
 
 
 def authored_hit_volume(images, spec: dict, axes=None):

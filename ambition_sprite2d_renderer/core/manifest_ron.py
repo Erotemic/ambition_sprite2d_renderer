@@ -75,6 +75,9 @@ def _ron_animation_box(box) -> str:
     if isinstance(poly, list) and poly:
         pts = ", ".join(f"({float(x)}, {float(y)})" for x, y in poly)
         inner.append(f"poly: [{pts}]")
+    frames = box.get("frames")
+    if isinstance(frames, list) and frames:
+        inner.append("frames: [" + ", ".join(_ron_animation_box(frame) for frame in frames) + "]")
     return "(" + ", ".join(inner) + ")"
 
 
@@ -87,6 +90,8 @@ def _ron_anim_metrics_map(metrics) -> str:
         if not isinstance(entry, dict):
             continue
         inner = []
+        if entry.get("frame_duration_secs") is not None:
+            inner.append(f"frame_duration_secs: Some({float(entry['frame_duration_secs'])})")
         for kind in ("hurtbox", "hitbox"):
             box = entry.get(kind)
             if not isinstance(box, dict):
