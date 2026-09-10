@@ -1264,6 +1264,8 @@ def render_sheet(source: FrameSource, out_dir: Path):
                 }
             if attack_hitboxes and key in attack_hitboxes:
                 entry["hitbox"] = attack_hitboxes[key]
+                if entry["hitbox"].get("frames"):
+                    entry["frame_duration_secs"] = float(_duration_ms) / 1000.0
         # Drop rows that produced no boxes (fully transparent + no hitbox).
         anim_metrics = {k: v for k, v in anim_metrics.items() if v}
         if anim_metrics:

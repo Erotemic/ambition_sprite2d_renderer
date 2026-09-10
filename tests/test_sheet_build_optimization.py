@@ -59,3 +59,26 @@ def test_trimmed_preview_uses_local_opaque_label_drawing():
     assert preview.size == (80, 16)
     assert preview.getpixel((1, 1)) == (20, 23, 31, 255)
     assert preview.getpixel((64 + 1, 1)) == (255, 255, 255, 255)
+
+
+def test_sheet_publishes_sampled_hit_shapes_with_their_clock(tmp_path):
+    import yaml
+
+    triangle = [(1.0, 1.0), (5.0, 1.0), (3.0, 5.0)]
+    outputs = build_sheet(
+        target='sampled', rows=[('swing', 2, 40)],
+        render_fn=lambda *_: Image.new('RGBA', (8, 8), 'white'),
+        out_dir=tmp_path, frame_size=(8, 8), auto_crop=False, trim=False,
+        animation_key_map={'swing': 'swing'},
+        attack_hitboxes={'swing': {'poly': triangle,
+                                  'frames': [{'poly': []}, {'poly': triangle}]}},
+    )
+    manifest = yaml.safe_load(outputs['yaml'].read_text())
+    animation = manifest['body_metrics']['animations']['swing']
+    assert animation['frame_duration_secs'] == 0.04
+    assert not animation['hitbox']['frames'][0]['poly']
+    assert len(animation['hitbox']['frames'][1]['poly']) == 3
+    # RON is the runtime format; a YAML-only sample would never reach the engine.
+    ron = outputs['ron'].read_text()
+    assert 'frame_duration_secs: Some(0.04)' in ron
+    assert 'frames: [(), (poly:' in ron

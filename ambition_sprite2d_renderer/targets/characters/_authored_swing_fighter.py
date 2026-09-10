@@ -182,6 +182,8 @@ class AuthoredSwingFighter:
             poly = swing_effects.authored_hit_volume(raw, spec, axes=axes)
             if poly:
                 out[animation] = {"poly": poly}
+                if spec.get("hitbox", {}).get("per_frame"):
+                    out[animation]["frames"] = swing_effects.authored_hit_frames(raw, spec, axes)
         return out
 
     def body_metrics(self, _fw: int, _fh: int):

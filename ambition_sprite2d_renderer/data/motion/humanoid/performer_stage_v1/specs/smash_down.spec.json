@@ -1,39 +1,43 @@
 {
   "clip": "smash_down",
-  "note": "Down smash: straight down into the boards.",
+  "note": "A crouched low sweep from the front, under the body, and out behind it.",
   "strike": {
     "base": "near_arm_l",
-    "tip": "near_arm_hand"
+    "tip": "near_arm_hand",
+    "extend": 3.0
   },
-  "effect": "poke",
+  "effect": "trail",
   "facing": "east",
   "hitbox": {
-    "extend": 1.06,
     "active": [
       5,
       6,
-      7
-    ]
+      7,
+      8,
+      9,
+      10
+    ],
+    "extend": 1.0,
+    "inflate": 3.0,
+    "per_frame": true
   },
-  "poke": {
-    "extend": 1.7,
-    "width": 7.5,
-    "waist": 0.52,
-    "inner": 0.1,
-    "alpha": 206,
-    "core_alpha": 240,
-    "blur": 0.9,
-    "falloff": 1.6,
+  "trail": {
     "window": 3,
+    "inner": 0.0,
+    "blur": 1.1,
+    "alpha": 210,
+    "core_alpha": 236,
+    "falloff": 1.1,
     "body_rgb": [
-      255,
-      214,
-      150
+      246,
+      176,
+      92
     ],
     "core_rgb": [
       255,
-      255,
-      250
-    ]
+      246,
+      222
+    ],
+    "blade_width": 4.0
   }
 }
