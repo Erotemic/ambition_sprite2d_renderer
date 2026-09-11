@@ -1,44 +1,44 @@
 {
-  "clip": "air_down",
-  "note": "Gather the knees, then drive a broad light blade below the feet and recover the arm.",
-  "strike": {
-    "base": "near_arm_l",
-    "tip": "near_arm_hand",
-    "extend": 3.3
-  },
-  "effect": "poke",
-  "facing": "east",
-  "hitbox": {
-    "active": [
-      4,
-      5,
-      6,
-      7,
-      8
-    ],
-    "extend": 1.0,
-    "inflate": 3.0,
-    "per_frame": true
-  },
-  "poke": {
-    "extend": 1.0,
-    "width": 15.0,
-    "waist": 0.52,
-    "inner": 0.0,
-    "alpha": 206,
-    "core_alpha": 240,
-    "blur": 0.9,
-    "falloff": 1.6,
-    "window": 2,
-    "body_rgb": [
-      255,
-      214,
-      150
-    ],
-    "core_rgb": [
-      255,
-      255,
-      250
-    ]
-  }
+ "clip": "air_down",
+ "note": "Gather the knees, then drive a broad light blade below the feet and recover the arm.",
+ "strike": {
+  "base": "near_arm_l",
+  "tip": "near_arm_hand",
+  "extend": 3.3
+ },
+ "effect": "poke",
+ "facing": "east",
+ "hitbox": {
+  "active": [
+   4,
+   5,
+   6,
+   7,
+   8
+  ],
+  "extend": 1.0,
+  "inflate": 14.0,
+  "per_frame": true
+ },
+ "poke": {
+  "extend": 1.35,
+  "width": 15.0,
+  "waist": 0.52,
+  "inner": 0.0,
+  "alpha": 206,
+  "core_alpha": 240,
+  "blur": 0.9,
+  "falloff": 1.6,
+  "window": 2,
+  "body_rgb": [
+   255,
+   214,
+   150
+  ],
+  "core_rgb": [
+   255,
+   255,
+   250
+  ]
+ }
 }

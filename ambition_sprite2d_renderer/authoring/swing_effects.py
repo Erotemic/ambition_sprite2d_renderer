@@ -757,17 +757,33 @@ def hit_polygon(axes, i, reach: float = 1.0, linger: int | None = None, first: i
         pts.extend([base, tip])
     if len(pts) < 3:
         return None
-    hull = _hull(pts)
-    if inflate > 0.0 and len(hull) >= 3:
-        cx = sum(p[0] for p in hull) / len(hull)
-        cy = sum(p[1] for p in hull) / len(hull)
-        grown = []
-        for x, y in hull:
-            dx, dy = x - cx, y - cy
-            length = math.hypot(dx, dy) or 1.0
-            grown.append((x + dx / length * inflate, y + dy / length * inflate))
-        hull = grown
-    return hull
+    return _grow_hull(_hull(pts), inflate)
+
+
+def _grow_hull(hull, inflate: float):
+    """Push every vertex `inflate` px away from the hull's centre.
+
+    Factored out of `hit_polygon` because it was reachable from ONE effect.
+    `hitbox.inflate` is documented as a hitbox knob, but `volume_polygon` routes
+    a `poke` straight to `poke_polygon`, which never received the value -- so the
+    knob was a silent no-op for every thrust in the game.
+
+    MEASURED 2026-09-11: the performer's forward smash drew a 15 px beam and
+    carried a hitbox 5.6 px TALL, and her down air's hitbox reached 10 px from
+    her centre while her own body half-width is 8.9. Both set `inflate: 3.0` and
+    neither received it. They are the ONLY two pokes in the tree that set it, so
+    honouring it changes nothing anywhere else.
+    """
+    if inflate <= 0.0 or not hull or len(hull) < 3:
+        return hull
+    cx = sum(p[0] for p in hull) / len(hull)
+    cy = sum(p[1] for p in hull) / len(hull)
+    grown = []
+    for x, y in hull:
+        dx, dy = x - cx, y - cy
+        length = math.hypot(dx, dy) or 1.0
+        grown.append((x + dx / length * inflate, y + dy / length * inflate))
+    return grown
 
 
 def hit_windows(hitbox: dict):
@@ -999,8 +1015,14 @@ def volume_polygon(axes, i, effect: str, first: int, swept: dict, poke: dict,
     streaks are a way of DRAWING that travel, not a different claim about it.
     """
     if effect == "poke":
-        return poke_polygon(axes, i, poke.get("extend", 1.30), poke.get("width", 13.0),
-                            poke.get("waist", 0.66), poke.get("inner", 0.10))
+        # ⛔ THE HITBOX KNOB REACHES THE THRUST TOO. `swept["inflate"]` used to
+        # stop at the swept hull, so a poke's volume was a tracing of its lance
+        # however generous the spec asked it to be -- see `_grow_hull`.
+        return _grow_hull(
+            poke_polygon(axes, i, poke.get("extend", 1.30), poke.get("width", 13.0),
+                         poke.get("waist", 0.66), poke.get("inner", 0.10)),
+            swept.get("inflate", 0.0),
+        )
     if effect == "muzzle":
         shot = reentry or {}
         polys = [
