@@ -50,3 +50,49 @@ def test_a_poke_hitbox_honours_inflate():
         f"inflate did not reach the thrust: {bare_h} -> {grown_h}"
     )
     assert grown_w > bare_w, f"inflate grew height but not width: {bare_w} -> {grown_w}"
+
+
+def test_every_effect_shape_honours_inflate():
+    """`inflate` is documented on the hitbox field, and reached two of six shapes.
+
+    It began inside `hit_polygon`, so only the SWEPT hull grew. The `poke` arm
+    was repaired first and left `reentry`, `muzzle` and `beam` still dropping
+    it -- 32 specs in the tree, including every one of the officer's smash
+    attacks. A knob an author reads about and does not receive is worse than one
+    that does not exist.
+
+    ⚠ This walks the EFFECT NAMES, so a shape added tomorrow cannot be the fifth
+    to miss it without failing here.
+    """
+    from ambition_sprite2d_renderer.authoring import swing_effects as se
+
+    # ⚠ TWO FRAMES, because a SWEPT hull is built from where the blade has BEEN.
+    # One axis gives two points and `hit_polygon` needs three, so `trail` and
+    # `wind` returned `None` and the assertion below read that as a failure to
+    # grow rather than a fixture that never reached them.
+    axes = [((0.0, 0.0), (20.0, 0.0)), ((0.0, 0.0), (18.0, 8.0))]
+    poke = {"extend": 1.0, "width": 10.0, "waist": 0.5, "inner": 0.0}
+    # ⚠ `spread` IS A LIST FOR A MUZZLE AND A FLOAT FOR A RE-ENTRY CONE. One
+    # shared fixture crashed the cone rather than measuring it.
+    shots = {
+        "muzzle": {"reach": 2.0, "flare": 0.55, "spread": [0.0]},
+        "beam": {"reach": 4.0, "width": 0.4},
+        "reentry": {"spread": 1.15, "extend": 1.12, "trail": 1.05},
+    }
+
+    def area(effect, inflate):
+        poly = se.volume_polygon(
+            axes, 1, effect, 0, {"inflate": inflate, "extend": 1.0}, poke,
+            shots.get(effect, {}),
+        )
+        assert poly, f"the premise: {effect} produced a polygon at all"
+        xs = [p[0] for p in poly]
+        ys = [p[1] for p in poly]
+        return (max(xs) - min(xs)) * (max(ys) - min(ys))
+
+    for effect in ("poke", "muzzle", "beam", "reentry", "trail", "wind"):
+        bare = area(effect, 0.0)
+        grown = area(effect, 6.0)
+        assert grown > bare * 1.2, (
+            f"{effect} ignored inflate: {bare:.1f} -> {grown:.1f}"
+        )

@@ -1014,14 +1014,22 @@ def volume_polygon(axes, i, effect: str, first: int, swept: dict, poke: dict,
     A `wind` whoosh sweeps like a ribbon does, so it shares the swept hull: the
     streaks are a way of DRAWING that travel, not a different claim about it.
     """
+    # ⛔⛤ THE HITBOX KNOB REACHES EVERY SHAPE, and routing it to one branch was
+    # the same defect twice. `inflate` began life inside `hit_polygon`, so only
+    # the SWEPT hull grew; the poke arm was repaired first and left `reentry`,
+    # `muzzle` and `beam` still dropping it -- 32 of the tree's specs, including
+    # every one of the officer's smash attacks.
+    #
+    # ⭐ ONE `_grow_hull` AT THE EXIT, so a shape added tomorrow cannot be the
+    # fifth to miss it. A knob documented on the field and honoured by a subset
+    # of the branches is worse than one that does not exist: the author writes
+    # it, reads the doc, and gets nothing.
+    grow = swept.get("inflate", 0.0)
     if effect == "poke":
-        # ⛔ THE HITBOX KNOB REACHES THE THRUST TOO. `swept["inflate"]` used to
-        # stop at the swept hull, so a poke's volume was a tracing of its lance
-        # however generous the spec asked it to be -- see `_grow_hull`.
         return _grow_hull(
             poke_polygon(axes, i, poke.get("extend", 1.30), poke.get("width", 13.0),
                          poke.get("waist", 0.66), poke.get("inner", 0.10)),
-            swept.get("inflate", 0.0),
+            grow,
         )
     if effect == "muzzle":
         shot = reentry or {}
@@ -1030,14 +1038,19 @@ def volume_polygon(axes, i, effect: str, first: int, swept: dict, poke: dict,
             for offset in (shot.get("spread") or [0.0])
         ]
         points = [p for poly in polys if poly for p in poly]
-        return _hull(points) if len(points) >= 3 else None
+        return _grow_hull(_hull(points), grow) if len(points) >= 3 else None
     if effect == "beam":
         shot = reentry or {}
-        return beam_polygon(axes, i, shot.get("reach", 8.0), shot.get("width", 0.30))
+        return _grow_hull(
+            beam_polygon(axes, i, shot.get("reach", 8.0), shot.get("width", 0.30)), grow
+        )
     if effect == "reentry":
         cone = reentry or {}
-        return reentry_polygon(axes, i, cone.get("spread", 1.15),
-                               cone.get("extend", 1.12), cone.get("trail", 1.05))
+        return _grow_hull(
+            reentry_polygon(axes, i, cone.get("spread", 1.15),
+                            cone.get("extend", 1.12), cone.get("trail", 1.05)),
+            grow,
+        )
     return hit_polygon(axes, i, swept.get("reach", 1.0), swept.get("linger"),
                        first, swept.get("extend", 1.0), swept.get("inflate", 0.0))
 
