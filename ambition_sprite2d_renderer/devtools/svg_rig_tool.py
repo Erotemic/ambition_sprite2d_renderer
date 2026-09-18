@@ -51,7 +51,7 @@ MARKER_LAYER_ID = "ambition-rig-markers"
 # author edits the drawing here and the rig carries the rig vocabulary.
 RIG_TEMPLATE_NAMES = frozenset(
     {
-        "author-rig-labels-joints.svg",
+        "director-rig-labels-joints.svg",
         "officer.svg",
         # Annotated source art: these two already carry the rig VOCABULARY (part
         # groups and a `rig-joints` layer) but not the managed catalog block,

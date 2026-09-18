@@ -11,7 +11,7 @@ from pathlib import Path
 from lxml import etree
 
 from . import build_catalog as bc
-from . import sidearm_author
+from . import sidearm_director
 from .annotated_side_rig import install_managed_block
 
 REPO = Path(__file__).resolve().parents[2]
@@ -95,11 +95,11 @@ GENERATED: tuple[tuple[str, str, str, float, str, list], ...] = (
     # than no gun, so the belt carries the reason he is armed in every frame.
     # In front of the near thigh, behind the near arm, the way it hangs.
     ("part-holster", "holster", "pelvis", 32.5, "Holster",
-     sidearm_author.HOLSTER_PATHS),
+     sidearm_director.HOLSTER_PATHS),
     # The pistol is an ALTERNATE, behind the fist so the grip sits INSIDE the
     # hand rather than on top of it.
     ("part-sidearm", "sidearm", "near_arm_hand", 42.4, "Sidearm",
-     sidearm_author.PATHS),
+     sidearm_director.PATHS),
 )
 
 LABELS = {

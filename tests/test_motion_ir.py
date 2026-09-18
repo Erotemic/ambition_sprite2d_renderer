@@ -170,7 +170,7 @@ def test_every_binding_on_one_library_shares_that_library_unit_scale():
     forward" means units of whichever rig reads it. Bind art drawn at another
     scale and only the translations are wrong — the character walks correctly
     and then throws itself a frame-and-a-half sideways on its first dash, which
-    is exactly how the Author arrived. Grouping by library instead of naming the
+    is exactly how the Director arrived. Grouping by library instead of naming the
     fighters keeps this true for the next character to bind one.
     """
     root = Path(__file__).resolve().parents[1] / "ambition_sprite2d_renderer/data/characters"
@@ -204,14 +204,14 @@ def test_a_clip_that_swaps_torsos_shows_exactly_one_on_every_frame():
     authoring mistake wearing the opposite sign.
     """
     from ambition_sprite2d_renderer.targets.characters import (
-        author,
+        director,
         officer,
         pointed_polygon,
         pugnacious_polygon,
     )
 
     swap = ("torso_front_vis", "torso_side_vis", "torso_back_vis")
-    for target in (author, officer, pointed_polygon, pugnacious_polygon):
+    for target in (director, officer, pointed_polygon, pugnacious_polygon):
         doc = target._doc()
         for name, clip in doc.clips.items():
             channels = {key: clip["channels"][key] for key in swap if key in clip["channels"]}

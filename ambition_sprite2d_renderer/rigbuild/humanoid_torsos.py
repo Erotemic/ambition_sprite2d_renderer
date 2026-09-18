@@ -1,4 +1,4 @@
-"""Author side and back torsos for the hand-drawn humanoids (Author, Officer).
+"""Author side and back torsos for the hand-drawn humanoids (Director, Officer).
 
 Same mechanism as the polygons: three torsos, one visible at a time, sockets
 travelling with the trunk. The art is the part that cannot be shared — these are
@@ -46,7 +46,7 @@ SOCKET_TRAVEL = {
 # the notch between them, MEASURED off the base's own top profile. The `neck`
 # part is drawn behind the shirt and does not move with the swap, so the hole it
 # comes through must not move either.
-AUTHOR_NECK = (
+DIRECTOR_NECK = (
     "M 100.2,118.7 "
     "C 99.6,120.4 99.1,121.5 98.4,122.3 "
     "C 96.8,124.0 95.4,124.7 94,124.7 "
@@ -62,13 +62,13 @@ OFFICER_NECK = (
 )
 
 CHARACTERS = {
-    "author": {
-        "view": "view-author-side-west",
+    "director": {
+        "view": "view-director-side-west",
         "torso_part": "torso",
         "scale": 4.4585,
         "shapes": {
             # Edge-on: a slim trunk, still with a shoulder cap and a waist.
-            "side": AUTHOR_NECK + (
+            "side": DIRECTOR_NECK + (
                 "C 87.4,123.4 86.3,125.7 85.9,128.4 "
                 "C 85.4,133.2 85.6,140.2 86.3,147.6 "
                 "C 86.7,152.6 87.2,157.2 87.6,161.0 "
@@ -80,7 +80,7 @@ CHARACTERS = {
             # Turned through: the driving shoulder swung to the front (-x, he
             # faces west), the lead one behind it, and the hem still centred on
             # the hips rather than travelling with the turn.
-            "back": AUTHOR_NECK + (
+            "back": DIRECTOR_NECK + (
                 "C 86.6,122.6 83.6,124.8 81.4,127.6 "
                 "C 80.0,129.6 79.4,132.2 79.8,135.2 "
                 "C 80.7,141.2 83.1,151.8 85.2,161.0 "
