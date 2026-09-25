@@ -47,6 +47,10 @@ TARGET_NAME = "gnu_ton_boss"
 # gnu_ton_boss outputs are UNCHANGED; these are added alongside.
 GIANT_TARGET_NAME = "giant_gnu"
 RIDER_TARGET_NAME = "gnu_ton_rider"
+# One of the giant's two fists, alone, for the fist BODIES the scholar conducts.
+# Drawn by the same `draw_hand` as the giant's own sheet (the right fist; the
+# left is its mirror), so the fist the player fights IS the giant's fist.
+FIST_TARGET_NAME = "giant_gnu_fist"
 DATA_DIR = Path(__file__).resolve().parent
 # targets/characters/gnu_ton_boss -> the tool checkout root (display paths).
 TOOL_ROOT = DATA_DIR.parents[3]
@@ -91,7 +95,7 @@ OUTPUT_FILES = [
     # ADR 0020 split: the giant MOUNT (scholar-less body + shared hands) and the
     # scholar RIDER (drawn alone, its own tight-trim standalone sheet). Emitted
     # into the same `gnu_ton_boss/` install dir alongside the fused sheet.
-    f"{GIANT_TARGET_NAME}_spritesheet.png",  # alias: giant body + hands composite
+    f"{GIANT_TARGET_NAME}_spritesheet.png",  # the giant body alone (fists are their own bodies)
     f"{GIANT_TARGET_NAME}_body_spritesheet.png",
     f"{GIANT_TARGET_NAME}_hands_spritesheet.png",
     f"{GIANT_TARGET_NAME}_hands_spritesheet.ron",
@@ -100,6 +104,9 @@ OUTPUT_FILES = [
     f"{RIDER_TARGET_NAME}_spritesheet.png",
     f"{RIDER_TARGET_NAME}_spritesheet.ron",
     f"{RIDER_TARGET_NAME}_actor.ron",
+    f"{FIST_TARGET_NAME}_spritesheet.png",
+    f"{FIST_TARGET_NAME}_spritesheet.ron",
+    f"{FIST_TARGET_NAME}_actor.ron",
     # This generator does not produce `{TARGET_NAME}_spritesheet_manifest.json`.
     # Any installed copy is an orphaned input, not a declared output.
     # `ambition_ldtk_tools/synth_boss_manifest.py` reads it by name and this
@@ -214,6 +221,30 @@ RIDER_ACTOR_METADATA = {
         "CanPilot classes + rider HP pool: authored in G2, not in the sprite "
         "contract",
     ],
+}
+
+FIST_ACTOR_METADATA = {
+    "authoring_description": (
+        "One fist of the Giant GNU, alone: the hoof-knuckled hand GNU-ton conducts "
+        "like a lecturer's pointer. It is the giant's own hand art, so the fist the "
+        "player dodges is the fist drawn on the giant."
+    ),
+    "gameplay_description": (
+        "A floating limb body the GNU-ton rider drives: it slams, swings on a "
+        "pendulum, traces curves and orbits the giant. Striking it hurts the "
+        "scholar who conducts it."
+    ),
+    "dialogue_hints": {"barks": ["*knuckles crack*", "Talk to the hoof."]},
+    "actor": {"character_id": f"npc_{FIST_TARGET_NAME}"},
+    "body": {
+        "body_plan": "BossMultipart",
+        "body_kind": "Wide",
+        "traits": ["boss", "limb"],
+    },
+    "brain": {"default_preset": "stand_still"},
+    "actions": {"default_preset": "peaceful"},
+    "tags": ["limb", "giant"],
+    "missing_information": [],
 }
 
 # ── Palette ──────────────────────────────────────────────────────────────────
@@ -1069,6 +1100,18 @@ _MAN_CENTER_X = 44.0  # nudged further onto the right shoulder
 # rider sheet is packed on its OWN tight trim, so this only sets the (cosmetic)
 # frame-relative centering — the runtime addresses the trimmed rect + off.
 _RIDER_CENTER_Y = 2.5
+# The rider's published frame: a tight window around the frame centre, where
+# `draw_frame(layer="scholar")` draws him. Published at 768x576 the scholar was
+# 39x52 pixels of a frame the runtime scaled to his collision box, so he drew
+# at a sixth of his size. The window keeps every row's pose (the widest, his
+# death fall, spans x 361..410 / y 261..316).
+RIDER_FRAME = (96, 96)
+RIDER_WINDOW = (
+    OX - RIDER_FRAME[0] // 2,
+    OY - RIDER_FRAME[1] // 2,
+    OX + RIDER_FRAME[0] // 2,
+    OY + RIDER_FRAME[1] // 2,
+)
 
 # Hand x-anchors. Slightly wider than the older 185 px so the wider 768
 # frame still places hands near the edges.
@@ -1851,6 +1894,33 @@ def _gnu_ton_body_metrics_ron(parts_doc: dict) -> str:
     return "\n".join(lines)
 
 
+def _authored_body_metrics_ron(bbox: Tuple[int, int, int, int]) -> str:
+    """A `body_metrics` block that states one authored gameplay body.
+
+    `bbox` is `(x, y, w, h)` in frame pixels. `authored_body: true` is what lets
+    a character say "my body is my art" (`with_sprite_authored_body`): the
+    runtime sizes the collision box from this rectangle and puts the art on it.
+    """
+    x, y, w, h = bbox
+    return (
+        "        body_metrics: Some((\n"
+        f"            body_pixel_bbox: Some((x: {x}, y: {y}, w: {w}, h: {h})),\n"
+        "            authored_body: true,\n"
+        "        )),"
+    )
+
+
+def _union_bbox(images) -> Tuple[int, int, int, int]:
+    """The union alpha-bbox of `images`, as `(x, y, w, h)`."""
+    boxes = [im.getbbox() for im in images]
+    boxes = [b for b in boxes if b]
+    x0 = min(b[0] for b in boxes)
+    y0 = min(b[1] for b in boxes)
+    x1 = max(b[2] for b in boxes)
+    y1 = max(b[3] for b in boxes)
+    return (x0, y0, x1 - x0, y1 - y0)
+
+
 def _runtime_spritesheet_ron(
     rows_meta: list[dict],
     parts_doc: dict,
@@ -1858,6 +1928,8 @@ def _runtime_spritesheet_ron(
     *,
     target: str = TARGET_NAME,
     include_metrics: bool = True,
+    frame_size: Tuple[int, int] = FRAME_SIZE,
+    metrics_ron: Optional[str] = None,
 ) -> str:
     """Compose the `Vec<SheetRecord>` RON.
 
@@ -1871,7 +1943,12 @@ def _runtime_spritesheet_ron(
     image (the giant MOUNT and scholar RIDER reuse this writer). `include_metrics`
     gates the giant's per-frame hurt/hit schema: the giant MOUNT keeps it (same
     body), the scholar RIDER omits it (it carries none of the giant's parts)."""
-    metrics = f"{_gnu_ton_body_metrics_ron(parts_doc)}\n" if include_metrics else ""
+    if metrics_ron is not None:
+        metrics = f"{metrics_ron}\n"
+    elif include_metrics:
+        metrics = f"{_gnu_ton_body_metrics_ron(parts_doc)}\n"
+    else:
+        metrics = ""
     rows_inner = "\n    ".join(ron_row(r) + "," for r in rows_meta)
     images_field = ""
     if len(images) > 1:
@@ -1884,8 +1961,8 @@ def _runtime_spritesheet_ron(
         f'    image: "{target}_spritesheet.png",\n'
         f"{images_field}"
         "    label_width: 0,\n"
-        f"    frame_width: {FRAME_W},\n"
-        f"    frame_height: {FRAME_H},\n"
+        f"    frame_width: {frame_size[0]},\n"
+        f"    frame_height: {frame_size[1]},\n"
         f"{metrics}"
         f"    rows: [\n    {rows_inner}\n    ],\n"
         "    tuning: None,\n"
@@ -1998,8 +2075,8 @@ def _pack_scholar(rendered_scholar: dict, manifest_rows: list[dict], policy):
     frames = [
         FrameInput(
             key=(r["row"], f),
-            image=rendered_scholar[(r["row"], f)],
-            logical_size=(FRAME_W, FRAME_H),
+            image=rendered_scholar[(r["row"], f)].crop(RIDER_WINDOW),
+            logical_size=RIDER_FRAME,
         )
         for r in manifest_rows
         for f in range(r["frames"])
@@ -2146,18 +2223,31 @@ def build_spritesheet(outdir: Path) -> List[Path]:
     giant_hands_path = outdir / f"{GIANT_TARGET_NAME}_hands_spritesheet.png"
     giant_hands_page.save(str(giant_hands_path), "PNG")
     outputs.append(giant_hands_path)
-    giant_alias = Image.alpha_composite(giant_body_page, giant_hands_page)
+    # The giant's own sheet is its BODY: its two fists are separate bodies the
+    # scholar conducts (`giant_gnu_fist`), so drawing them here as well put four
+    # fists on screen, two of which never moved.
     giant_alias_path = outdir / f"{GIANT_TARGET_NAME}_spritesheet.png"
-    giant_alias.save(str(giant_alias_path), "PNG")
+    giant_body_page.save(str(giant_alias_path), "PNG")
     outputs.append(giant_alias_path)
 
     giant_page_names = [f"{GIANT_TARGET_NAME}_spritesheet.png"] + [
         f"{GIANT_TARGET_NAME}_spritesheet.{k}.png" for k in range(1, num_pages)
     ]
     giant_ron_path = outdir / f"{GIANT_TARGET_NAME}_spritesheet.ron"
+    # The giant's body IS its art: an authored box over the scholar-less body at
+    # rest (horns to hooves), so the runtime sizes it from the drawing and it
+    # stands where it is drawn. The fused sheet's per-row head hurtboxes are not
+    # carried: the giant is the scholar's mount, not the thing you hit.
+    giant_rest = [
+        rendered[_GIANT_BODY_LAYER][(0, f)] for f in range(ANIMATIONS[0][1])
+    ]
     giant_ron_path.write_text(
         _runtime_spritesheet_ron(
-            rows_meta, parts_doc, giant_page_names, target=GIANT_TARGET_NAME
+            rows_meta,
+            parts_doc,
+            giant_page_names,
+            target=GIANT_TARGET_NAME,
+            metrics_ron=_authored_body_metrics_ron(_union_bbox(giant_rest)),
         ),
         encoding="utf8",
     )
@@ -2209,20 +2299,24 @@ def build_spritesheet(outdir: Path) -> List[Path]:
         f"{RIDER_TARGET_NAME}_spritesheet.{k}.png" for k in range(1, rider_num_pages)
     ]
     rider_ron_path = outdir / f"{RIDER_TARGET_NAME}_spritesheet.ron"
+    rider_rest = [
+        rendered_scholar[(0, f)].crop(RIDER_WINDOW) for f in range(ANIMATIONS[0][1])
+    ]
     rider_ron_path.write_text(
         _runtime_spritesheet_ron(
             rider_rows_meta,
             parts_doc,
             rider_page_names,
             target=RIDER_TARGET_NAME,
-            include_metrics=False,
+            frame_size=RIDER_FRAME,
+            metrics_ron=_authored_body_metrics_ron(_union_bbox(rider_rest)),
         ),
         encoding="utf8",
     )
     outputs.append(rider_ron_path)
     rider_manifest = {
         "target": RIDER_TARGET_NAME,
-        "frame_size": [FRAME_W, FRAME_H],
+        "frame_size": list(RIDER_FRAME),
         "rows": manifest["rows"],
         "layers": [_SCHOLAR_LAYER],
     }
@@ -2235,6 +2329,8 @@ def build_spritesheet(outdir: Path) -> List[Path]:
             actor_metadata=RIDER_ACTOR_METADATA,
         )
     )
+
+    outputs.extend(build_fist_sheet(outdir, policy))
 
     # G3 NOTE: the per-frame hand hit-geometry (`_hand_hit_frames` /
     # `gnu_hand_*` in `_gnu_ton_body_metrics`) is intentionally LEFT in place —
@@ -2250,6 +2346,115 @@ def build_spritesheet(outdir: Path) -> List[Path]:
     outputs.append(debug_path)
 
     return outputs
+
+
+# ── The fist, alone ──────────────────────────────────────────────────────────
+# A frame that holds one `draw_hand` with room for its impact glow below.
+FIST_FRAME = (144, 128)
+# `draw_hand` puts the knuckles at +38 and the hoof tip at -60 around its
+# centre, so the silhouette's own centre is 11 px left of it: draw it there.
+_FIST_DRAW_X = 11.0
+_FIST_DRAW_Y = -10.0
+# Rows: `rest` idles, `fall` is a fist coming down (the slam glow under it), and
+# `hit` is the flinch when the player strikes it.
+FIST_ANIMATIONS: List[Tuple[str, int, int]] = [
+    ("rest", 10, 110),
+    ("fall", 6, 70),
+    ("hit", 6, 80),
+]
+
+
+def draw_fist_frame(anim: str, frame_idx: int, frame_count: int) -> Image.Image:
+    """One frame of the right fist, alone (the left fist is its mirror)."""
+    phase = frame_idx / max(1, frame_count)
+    c = Canvas(FIST_FRAME[0], FIST_FRAME[1], C_BG, scale=SUPERSAMPLE)
+    if anim == "fall":
+        # No impact glow: the fist plays this row whenever it moves downward
+        # (a slam, but also its idle bob), and the old slam art's glow read as
+        # an orange puddle hanging under a floating fist. The impact is the
+        # runtime's dust burst, where the fist actually lands.
+        draw_hand(c, _FIST_DRAW_X, _FIST_DRAW_Y + 2.0 * math.sin(phase * math.pi), side=+1, phase=phase)
+    elif anim == "hit":
+        jolt = math.sin(phase * math.pi * 4) * 3.0
+        draw_hand(c, _FIST_DRAW_X + jolt, _FIST_DRAW_Y, side=+1, phase=phase * 3)
+    else:
+        draw_hand(c, _FIST_DRAW_X, _FIST_DRAW_Y + wave(phase, 1.0) * 2.0, side=+1, phase=phase)
+    return c.finish()
+
+
+def build_fist_sheet(outdir: Path, policy) -> List[Path]:
+    """Render, pack and describe the lone-fist sheet (`giant_gnu_fist`)."""
+    from ambition_sprite2d_renderer.authoring.packer import FrameInput, pack_frames
+
+    rendered = {
+        (row, f): draw_fist_frame(name, f, count)
+        for row, (name, count, _) in enumerate(FIST_ANIMATIONS)
+        for f in range(count)
+    }
+    result = pack_frames(
+        [
+            FrameInput(key=key, image=image, logical_size=FIST_FRAME)
+            for key, image in rendered.items()
+        ],
+        max_dim=policy.max_dim,
+        page_size=policy.page_size,
+        padding=1,
+        trim=policy.trim,
+    )
+    if len(result.pages) != 1:
+        raise ValueError(f"{FIST_TARGET_NAME}: must pack onto ONE page")
+    rows_meta = []
+    for row, (name, count, dur) in enumerate(FIST_ANIMATIONS):
+        rects = []
+        for f in range(count):
+            pl = result.placements[(row, f)]
+            rect = {"x": pl.x, "y": pl.y, "w": pl.w, "h": pl.h, "fpage": pl.page}
+            if pl.off_x or pl.off_y:
+                rect["off"] = (pl.off_x, pl.off_y)
+            rects.append(rect)
+        rows_meta.append(
+            {
+                "animation": name,
+                "row_index": row,
+                "frame_count": count,
+                "duration_ms": dur,
+                "duration_secs": round(dur / 1000.0, 6),
+                "page": 0,
+                "rects": rects,
+            }
+        )
+    page_path = outdir / f"{FIST_TARGET_NAME}_spritesheet.png"
+    result.pages[0].save(str(page_path), "PNG")
+    rest = [rendered[(0, f)] for f in range(FIST_ANIMATIONS[0][1])]
+    ron_path = outdir / f"{FIST_TARGET_NAME}_spritesheet.ron"
+    ron_path.write_text(
+        _runtime_spritesheet_ron(
+            rows_meta,
+            {},
+            [f"{FIST_TARGET_NAME}_spritesheet.png"],
+            target=FIST_TARGET_NAME,
+            frame_size=FIST_FRAME,
+            metrics_ron=_authored_body_metrics_ron(_union_bbox(rest)),
+        ),
+        encoding="utf8",
+    )
+    manifest = {
+        "target": FIST_TARGET_NAME,
+        "frame_size": list(FIST_FRAME),
+        "rows": [
+            {"name": n, "row": i, "frames": c, "duration_ms": d}
+            for i, (n, c, d) in enumerate(FIST_ANIMATIONS)
+        ],
+        "layers": ["fist"],
+    }
+    actor_path = _write_actor_contract(
+        outdir,
+        manifest,
+        ron_path,
+        target=FIST_TARGET_NAME,
+        actor_metadata=FIST_ACTOR_METADATA,
+    )
+    return [page_path, ron_path, actor_path]
 
 
 HURTBOX_OUTLINE = (0, 230, 255, 235)
