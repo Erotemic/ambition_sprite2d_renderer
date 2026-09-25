@@ -35,6 +35,37 @@ from ...authoring.generator import CharacterGenerator
 from ...authoring.rig import add, clamp, ease_in_out_sine, ease_out_cubic, lerp, smoothstep, vec
 from ...registry import CharacterJob
 
+# The canvas the Sentinel is drawn on. Every frame renders the same body scaled
+# to the requested width (`S` in `_render_highres`), so combat shapes authored
+# here are scaled the same way.
+DESIGN_CANVAS = 128
+
+
+def _to_frame(size: Tuple[int, int], shapes: Dict[str, Any]) -> Dict[str, Any]:
+    """Scale design-canvas shapes to a ``size`` frame.
+
+    ⛔ The hooks used to return the design numbers whatever ``size`` was. The
+    sheet bakes at ``render_scale`` 2 (256 px), so the hurtbox landed in the
+    upper-rear quarter of the drawn body, about 13% of it. And because it was
+    off-centre, every turn threw it to the side the player was not on.
+    """
+    k = size[0] / DESIGN_CANVAS
+
+    def scale(value: Any, key: str = "") -> Any:
+        if isinstance(value, dict):
+            return {name: scale(v, name) for name, v in value.items()}
+        if isinstance(value, list):
+            return [scale(v, key) for v in value]
+        if key == "poly" and isinstance(value, tuple):
+            return tuple(float(v) * k for v in value)
+        if key == "bbox" and isinstance(value, tuple):
+            return tuple(int(round(v * k)) for v in value)
+        if key in ("x", "y", "w", "h") and isinstance(value, (int, float)):
+            return int(round(value * k))
+        return value
+
+    return scale(shapes)
+
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
@@ -164,13 +195,15 @@ class AISlopZetaGenerator(CharacterGenerator):
         )
 
     def attack_hitboxes(self, size: Tuple[int, int]) -> Dict[str, Dict[str, Any]]:
-        """Per-attack hitbox shapes for the Gradient Sentinel boss, in source
-        canvas pixels (128×128 by default). Animation → attack: ``floor_slam`` →
-        FloorSlam, ``side_sweep`` → SideSweep, ``spike_halo`` → ring volley,
-        ``dash_echo`` → hazard lane. The renderer translates these to
-        cropped-frame coordinates."""
-        canvas_w, canvas_h = size
-        return {
+        """Per-attack hitbox shapes for the Gradient Sentinel boss, in the
+        pixels of the frame ``size`` the sheet renders at. Authored on the
+        128×128 design canvas the body is drawn on, then scaled once — see
+        ``_to_frame``. Animation → attack: ``floor_slam`` → FloorSlam,
+        ``side_sweep`` → SideSweep, ``spike_halo`` → ring volley, ``dash_echo``
+        → hazard lane. The renderer translates these to cropped-frame
+        coordinates."""
+        canvas_w = canvas_h = DESIGN_CANVAS
+        return _to_frame(size, {
             # FloorSlam: ground-level slap centered below the body. Width 96 so
             # the slam only damages players standing directly under / near the
             # boss.
@@ -212,15 +245,15 @@ class AISlopZetaGenerator(CharacterGenerator):
             "dash_echo": {
                 "bbox": (0, 56, canvas_w, 28),
             },
-        }
+        })
 
     def hurtbox_parts(self, size: Tuple[int, int]) -> Dict[str, Dict[str, Any]]:
         """Split the auto-derived alpha-bbox hurtbox into head + body so the
         player's attacks register on the central head/torso but NOT on the arms
-        (which extend far during ``side_sweep`` / ``floor_slam``). Coordinates
-        are source canvas pixels (128×128). ``hit`` reuses the rest pair so the
-        player can keep attacking the stunned boss; ``death`` skips parts."""
-        del size
+        (which extend far during ``side_sweep`` / ``floor_slam``). Authored on
+        the 128×128 design canvas and scaled to the frame ``size`` by
+        ``_to_frame``. ``hit`` reuses the rest pair so the player can keep
+        attacking the stunned boss; ``death`` skips parts."""
         #  SHAPED, and wider than the rects that preceded them. The old pair
         # covered x 42..86 of a body whose own pixel bbox spans 8..114 — barely
         # the middle 40% — so a strike that plainly connected with the cloak
@@ -262,7 +295,7 @@ class AISlopZetaGenerator(CharacterGenerator):
             ],
         }
         per_anim_parts = [head, body]
-        return {
+        return _to_frame(size, {
             anim: {"parts": [dict(p) for p in per_anim_parts]}
             for anim in (
                 "rest",
@@ -272,7 +305,7 @@ class AISlopZetaGenerator(CharacterGenerator):
                 "dash_echo",
                 "hit",
             )
-        }
+        })
 
     def build_spec(self, job: CharacterJob) -> ZetaSpec:
         seed, archetype = job.seed, job.archetype
