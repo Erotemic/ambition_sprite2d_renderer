@@ -1,15 +1,15 @@
 {
   "schema": "llm-resource-tally/v3",
-  "through": "2026-09-25T05:52:00.380972+00:00",
-  "ledger_rows": 221,
-  "commits_accounted": 123,
-  "turns": 92550,
+  "through": "2026-09-25T19:31:47.006411+00:00",
+  "ledger_rows": 226,
+  "commits_accounted": 126,
+  "turns": 93399,
   "tokens": {
-    "input": 1751738,
-    "cache_write": 252991002,
-    "cache_read": 38093427670,
-    "output": 56997911,
-    "billable_input": 38348170410
+    "input": 2586577,
+    "cache_write": 254203319,
+    "cache_read": 38297980085,
+    "output": 57438566,
+    "billable_input": 38554769981
   },
   "by_model": {
     "claude-opus-5": {
@@ -43,38 +43,44 @@
       "output": 60511
     },
     "claude-opus-5-5": {
-      "input": 2850,
-      "cache_write": 3868045,
-      "cache_read": 526766377,
-      "output": 941811
+      "input": 3680,
+      "cache_write": 5080362,
+      "cache_read": 681371016,
+      "output": 1276215
     },
     "gpt-6-sol": {
-      "input": 408182,
+      "input": 1074719,
       "cache_write": 0,
-      "cache_read": 43180928,
-      "output": 77152
+      "cache_read": 85873408,
+      "output": 165182
+    },
+    "gpt-6-luna": {
+      "input": 167472,
+      "cache_write": 0,
+      "cache_read": 7255296,
+      "output": 18221
     }
   },
   "by_activity": {
     "unlabeled": {
-      "input": 1751738,
-      "cache_write": 252991002,
-      "cache_read": 38093427670,
-      "output": 56997911
+      "input": 2586577,
+      "cache_write": 254203319,
+      "cache_read": 38297980085,
+      "output": 57438566
     }
   },
   "by_agent": {
     "claude-code": {
-      "input": 183912,
-      "cache_write": 252991002,
-      "cache_read": 38015528150,
-      "output": 56816978
+      "input": 184742,
+      "cache_write": 254203319,
+      "cache_read": 38170132789,
+      "output": 57151382
     },
     "codex": {
-      "input": 1567826,
+      "input": 2401835,
       "cache_write": 0,
-      "cache_read": 77899520,
-      "output": 180933
+      "cache_read": 127847296,
+      "output": 287184
     }
   },
   "server_tool_calls": {
@@ -82,12 +88,12 @@
     "web_fetch": 0
   },
   "time": {
-    "wall_clock_s": 2616419.8
+    "wall_clock_s": 2665792.5
   },
   "compaction_signals": {
-    "events": 92,
-    "peak_context_tokens": 75314128,
-    "summary_chars": 1592801
+    "events": 93,
+    "peak_context_tokens": 76097349,
+    "summary_chars": 1617657
   },
   "modeled_post_hoc": "inference_seconds, energy_kwh, carbon_gco2e, usd — derived from the measurements above by `estimate`; not stored here."
 }
