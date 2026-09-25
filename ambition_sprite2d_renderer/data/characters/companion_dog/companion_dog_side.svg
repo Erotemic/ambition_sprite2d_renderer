@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+     width="640mm" height="512mm" viewBox="0 0 640 512"
+     data-character-design="companion-dog-side-v1">
+  <g id="companion-dog-side" inkscape:groupmode="layer" inkscape:label="Companion Dog - Side Right">
+    <g id="tail-base" inkscape:groupmode="layer" inkscape:label="Tail - Base" data-rig-part="tail_base" data-rig-bone="tail_base" data-rig-z="1">
+      <path d="M207 273 C170 268 142 251 128 222 C123 211 126 203 136 200 C147 197 152 206 157 217 C169 237 185 244 213 245 Z" fill="#a65d32" stroke="#3b2926" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M189 249 C169 244 151 229 143 211" fill="none" stroke="#d99050" stroke-width="8" stroke-linecap="round"/>
+    </g>
+    <g id="tail-tip" inkscape:groupmode="layer" inkscape:label="Tail - Tip" data-rig-part="tail_tip" data-rig-bone="tail_tip" data-rig-z="2">
+      <path d="M138 210 C122 189 116 166 125 151 C130 142 142 143 149 152 C155 164 156 184 153 213 C149 222 142 221 138 210 Z" fill="#b86c3a" stroke="#3b2926" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M127 155 C132 146 143 147 149 157 C151 167 150 174 148 181 C140 177 132 167 127 155 Z" fill="#f7e7c2"/>
+    </g>
+
+    <g id="far-hind-upper" inkscape:groupmode="layer" inkscape:label="Far Hind Leg - Upper" data-rig-part="far_hind_upper" data-rig-bone="far_hind_upper" data-rig-z="5">
+      <path d="M264 294 C276 306 282 327 280 348 C279 364 267 377 252 376 C238 373 232 360 235 345 L237 312 Z" fill="#87543a" stroke="#3b2926" stroke-width="8"/>
+    </g>
+    <g id="far-hind-lower" inkscape:groupmode="layer" inkscape:label="Far Hind Leg - Lower" data-rig-part="far_hind_lower" data-rig-bone="far_hind_lower" data-rig-z="6">
+      <path d="M257 354 C267 351 278 359 280 371 L269 448 C267 460 255 467 246 461 C238 457 236 447 240 435 L240 371 C240 362 247 355 257 354 Z" fill="#a16a43" stroke="#3b2926" stroke-width="8"/>
+    </g>
+    <g id="far-hind-paw" inkscape:groupmode="layer" inkscape:label="Far Hind Paw" data-rig-part="far_hind_paw" data-rig-bone="far_hind_paw" data-rig-z="7">
+      <path d="M244 444 C257 437 268 443 275 453 L291 458 C301 461 305 472 299 480 C291 486 267 484 247 482 C231 480 228 467 235 454 Z" fill="#e9bd7f" stroke="#3b2926" stroke-width="8"/>
+      <path d="M271 460 L273 479 M286 464 L289 479" fill="none" stroke="#a66a44" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <g id="far-fore-upper" inkscape:groupmode="layer" inkscape:label="Far Foreleg - Upper" data-rig-part="far_fore_upper" data-rig-bone="far_fore_upper" data-rig-z="8">
+      <path d="M389 282 C401 284 408 295 407 311 L396 374 C393 391 377 399 365 391 C353 385 352 373 356 361 L363 296 Z" fill="#865139" stroke="#3b2926" stroke-width="8"/>
+    </g>
+    <g id="far-fore-lower" inkscape:groupmode="layer" inkscape:label="Far Foreleg - Lower" data-rig-part="far_fore_lower" data-rig-bone="far_fore_lower" data-rig-z="9">
+      <path d="M375 371 C388 368 398 378 397 391 L395 459 C394 471 385 477 374 475 C363 473 360 464 363 452 L358 393 C357 381 364 373 375 371 Z" fill="#ae754b" stroke="#3b2926" stroke-width="8"/>
+      <path d="M368 403 L370 455" stroke="#c88d59" stroke-width="7" stroke-linecap="round"/>
+    </g>
+    <g id="far-fore-paw" inkscape:groupmode="layer" inkscape:label="Far Forepaw" data-rig-part="far_fore_paw" data-rig-bone="far_fore_paw" data-rig-z="10">
+      <path d="M368 447 C380 441 391 448 399 457 L411 459 C421 461 427 472 420 481 C413 487 382 485 364 482 C351 480 349 468 356 456 Z" fill="#e5b579" stroke="#3b2926" stroke-width="8"/>
+      <path d="M390 460 L391 480 M404 463 L406 480" fill="none" stroke="#a46b47" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <g id="body" inkscape:groupmode="layer" inkscape:label="Body" data-rig-part="body" data-rig-bone="body" data-rig-z="20">
+      <path d="M196 245 C216 216 250 201 291 206 C326 208 349 218 382 215 C420 208 457 220 474 250 C486 273 475 312 453 328 C425 346 392 335 366 333 C326 330 285 349 244 341 C208 333 183 300 196 245 Z" fill="#bc7543" stroke="#3b2926" stroke-width="9" stroke-linejoin="round"/>
+      <path d="M205 257 C217 230 248 216 280 216 C260 229 252 247 247 267 C238 295 228 309 211 305 C197 294 198 274 205 257 Z" fill="#d89453"/>
+      <path d="M325 222 C345 231 367 236 393 226 C426 214 451 227 464 252 C465 277 452 293 431 305 C401 311 376 294 350 286 C333 270 325 246 325 222 Z" fill="#d18b4c"/>
+      <path d="M271 315 C315 327 344 307 377 312 C400 319 425 324 449 309 C431 340 406 339 373 331 C325 325 293 351 253 337 Z" fill="#f0d8a7"/>
+      <path d="M199 270 C202 239 225 219 251 211" fill="none" stroke="#e2a969" stroke-width="7" stroke-linecap="round"/>
+      <path d="M424 223 C450 227 470 245 476 268" fill="none" stroke="#e8b170" stroke-width="7" stroke-linecap="round"/>
+    </g>
+
+    <g id="near-hind-upper" inkscape:groupmode="layer" inkscape:label="Near Hind Leg - Upper" data-rig-part="near_hind_upper" data-rig-bone="near_hind_upper" data-rig-z="30">
+      <path d="M252 291 C279 286 299 307 303 337 C306 362 289 382 270 384 C247 386 232 370 233 349 C234 327 239 304 252 291 Z" fill="#c9854c" stroke="#3b2926" stroke-width="8"/>
+      <path d="M255 307 C272 302 290 317 290 340" fill="none" stroke="#e5a862" stroke-width="7" stroke-linecap="round"/>
+    </g>
+    <g id="near-hind-lower" inkscape:groupmode="layer" inkscape:label="Near Hind Leg - Lower" data-rig-part="near_hind_lower" data-rig-bone="near_hind_lower" data-rig-z="31">
+      <path d="M271 364 C286 358 299 368 299 384 C296 407 279 421 276 453 C275 466 266 474 254 470 C242 466 240 455 245 443 L257 386 C257 376 262 368 271 364 Z" fill="#d99556" stroke="#3b2926" stroke-width="8"/>
+      <path d="M280 392 L261 444" fill="none" stroke="#efb66e" stroke-width="7" stroke-linecap="round"/>
+    </g>
+    <g id="near-hind-paw" inkscape:groupmode="layer" inkscape:label="Near Hind Paw" data-rig-part="near_hind_paw" data-rig-bone="near_hind_paw" data-rig-z="32">
+      <path d="M250 446 C267 438 282 447 291 457 L309 459 C322 462 327 474 319 482 C312 488 276 486 254 483 C236 481 231 469 238 456 Z" fill="#f4d29b" stroke="#3b2926" stroke-width="8"/>
+      <path d="M281 460 L283 481 M300 463 L302 481" fill="none" stroke="#b58358" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <g id="near-fore-upper" inkscape:groupmode="layer" inkscape:label="Near Foreleg - Upper" data-rig-part="near_fore_upper" data-rig-bone="near_fore_upper" data-rig-z="33">
+      <path d="M422 283 C441 282 452 297 448 318 L434 384 C431 400 413 408 399 398 C388 389 390 375 395 360 L402 302 C405 290 411 284 422 283 Z" fill="#c98249" stroke="#3b2926" stroke-width="8"/>
+      <path d="M420 302 L410 363" fill="none" stroke="#e8a965" stroke-width="8" stroke-linecap="round"/>
+    </g>
+    <g id="near-fore-lower" inkscape:groupmode="layer" inkscape:label="Near Foreleg - Lower" data-rig-part="near_fore_lower" data-rig-bone="near_fore_lower" data-rig-z="34">
+      <path d="M413 378 C429 373 439 382 439 397 L436 456 C436 470 428 478 414 476 C402 475 397 466 401 453 L398 398 C397 389 403 381 413 378 Z" fill="#dc9958" stroke="#3b2926" stroke-width="8"/>
+      <path d="M411 404 L414 449" fill="none" stroke="#f1b775" stroke-width="7" stroke-linecap="round"/>
+    </g>
+    <g id="near-fore-paw" inkscape:groupmode="layer" inkscape:label="Near Forepaw" data-rig-part="near_fore_paw" data-rig-bone="near_fore_paw" data-rig-z="35">
+      <path d="M407 447 C423 440 437 447 446 458 L462 461 C475 465 478 476 469 483 C461 488 425 486 405 483 C391 481 387 468 395 456 Z" fill="#f6d6a1" stroke="#3b2926" stroke-width="8"/>
+      <path d="M436 461 L438 482 M454 464 L456 482" fill="none" stroke="#b58358" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <g id="neck" inkscape:groupmode="layer" inkscape:label="Neck and Collar" data-rig-part="neck" data-rig-bone="body" data-rig-z="38">
+      <path d="M429 226 C454 204 483 207 503 227 L497 289 C479 314 457 331 439 329 C453 296 449 255 429 226 Z" fill="#d99554" stroke="#3b2926" stroke-width="8"/>
+      <path d="M459 230 C473 229 488 237 497 253 L491 290 C480 311 461 326 448 322 C466 294 469 256 459 230 Z" fill="#f7e7c7"/>
+      <path d="M445 218 C463 211 481 215 494 224 L496 240 C481 229 465 227 453 235 Z" fill="#447f81" stroke="#26494d" stroke-width="5"/>
+      <circle cx="475" cy="240" r="9" fill="#edc74e" stroke="#73592f" stroke-width="4"/>
+    </g>
+    <g id="head" inkscape:groupmode="layer" inkscape:label="Head and Muzzle" data-rig-part="head" data-rig-bone="head" data-rig-z="40">
+      <path d="M453 193 C468 166 505 154 538 162 C564 168 581 190 579 220 C577 246 562 266 536 274 C504 283 473 269 458 247 C448 231 445 207 453 193 Z" fill="#d79050" stroke="#3b2926" stroke-width="9" stroke-linejoin="round"/>
+      <path d="M500 172 C517 161 543 164 556 180 C546 179 537 188 533 201 C519 198 508 188 500 172 Z" fill="#efb66d"/>
+      <path d="M542 218 C561 208 583 211 603 220 C616 228 622 244 617 257 C610 269 582 270 557 267 L533 251 C529 237 533 224 542 218 Z" fill="#f7e4bd" stroke="#3b2926" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M548 223 C563 218 584 222 596 232" fill="none" stroke="#fff2d5" stroke-width="7" stroke-linecap="round"/>
+      <path d="M562 262 C579 269 602 266 611 256" fill="none" stroke="#9a6545" stroke-width="5" stroke-linecap="round"/>
+      <path d="M536 269 C546 285 567 291 582 278 C578 296 562 309 544 306 C530 301 522 287 522 272 Z" fill="#f6e1b7" stroke="#3b2926" stroke-width="7"/>
+      <path d="M486 212 C500 202 517 205 526 216" fill="none" stroke="#674329" stroke-width="6" stroke-linecap="round"/>
+      <ellipse cx="514" cy="224" rx="8" ry="10" fill="#fff7e9"/>
+      <ellipse cx="517" cy="226" rx="4.5" ry="6" fill="#2c2726"/>
+      <circle cx="519" cy="223" r="2" fill="#ffffff"/>
+      <path d="M588 216 C599 211 611 216 617 225 C621 233 615 244 603 244 C594 244 588 236 586 228 Z" fill="#303033" stroke="#231f21" stroke-width="4"/>
+      <path d="M601 220 C606 219 610 222 611 225" fill="none" stroke="#777073" stroke-width="3" stroke-linecap="round"/>
+      <path d="M588 255 C591 261 597 263 603 261" fill="none" stroke="#71503f" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <g id="ear" inkscape:groupmode="layer" inkscape:label="Floppy Ear" data-rig-part="ear" data-rig-bone="ear" data-rig-z="42">
+      <path d="M483 174 C470 164 454 168 448 183 C437 205 444 237 458 253 C470 267 489 261 492 243 C497 220 491 193 483 174 Z" fill="#74442f" stroke="#3b2926" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M468 187 C457 201 458 230 467 244" fill="none" stroke="#a26541" stroke-width="7" stroke-linecap="round"/>
+    </g>
+  </g>
+</svg>
