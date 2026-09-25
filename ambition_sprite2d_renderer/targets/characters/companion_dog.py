@@ -68,6 +68,9 @@ ACTOR_METADATA = {
         "locomotion.run": {"animation": "run", "events": []},
         "locomotion.jump": {"animation": "jump", "events": []},
         "interaction.use": {"animation": "happy", "events": []},
+        "interaction.talk": {"animation": "sit_idle", "events": []},
+        "vocalization.bark": {"animation": "bark", "events": []},
+        "life.death": {"animation": "death", "events": []},
     },
     "tags": ["animal", "dog", "quadruped", "companion", "svg_rigged"],
 }
@@ -90,7 +93,7 @@ def render(out_dir: str | Path, **opts):
         rows=doc.rows(),
         render_fn=_render_frame,
         out_dir=Path(out_dir),
-        frame_size=(168, 128),
+        frame_size=(168, 168),
         auto_crop=True,
         crop_margin=4,
         actor_metadata=ACTOR_METADATA,

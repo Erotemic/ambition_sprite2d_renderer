@@ -83,12 +83,22 @@
       <path d="M562 262 C579 269 602 266 611 256" fill="none" stroke="#9a6545" stroke-width="5" stroke-linecap="round"/>
       <path d="M536 269 C546 285 567 291 582 278 C578 296 562 309 544 306 C530 301 522 287 522 272 Z" fill="#f6e1b7" stroke="#3b2926" stroke-width="7"/>
       <path d="M486 212 C500 202 517 205 526 216" fill="none" stroke="#674329" stroke-width="6" stroke-linecap="round"/>
-      <ellipse cx="514" cy="224" rx="8" ry="10" fill="#fff7e9"/>
-      <ellipse cx="517" cy="226" rx="4.5" ry="6" fill="#2c2726"/>
-      <circle cx="519" cy="223" r="2" fill="#ffffff"/>
       <path d="M588 216 C599 211 611 216 617 225 C621 233 615 244 603 244 C594 244 588 236 586 228 Z" fill="#303033" stroke="#231f21" stroke-width="4"/>
       <path d="M601 220 C606 219 610 222 611 225" fill="none" stroke="#777073" stroke-width="3" stroke-linecap="round"/>
       <path d="M588 255 C591 261 597 263 603 261" fill="none" stroke="#71503f" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <g id="eye-open" inkscape:groupmode="layer" inkscape:label="Eye - Open" data-rig-part="eye_open" data-rig-bone="head" data-rig-z="41">
+      <ellipse cx="514" cy="224" rx="8" ry="10" fill="#fff7e9"/>
+      <ellipse cx="517" cy="226" rx="4.5" ry="6" fill="#2c2726"/>
+      <circle cx="519" cy="223" r="2" fill="#ffffff"/>
+    </g>
+    <g id="eye-x" inkscape:groupmode="layer" inkscape:label="Eye - Death X" data-rig-part="eye_x" data-rig-bone="head" data-rig-z="41">
+      <ellipse cx="524" cy="224" rx="13" ry="15" fill="#fff0d8"/>
+      <path d="M515 214 L533 234 M533 214 L515 234" fill="none" stroke="#242126" stroke-width="6" stroke-linecap="round"/>
+    </g>
+    <g id="bark-mouth" inkscape:groupmode="layer" inkscape:label="Mouth - Bark" data-rig-part="bark_mouth" data-rig-bone="head" data-rig-z="41">
+      <path d="M558 265 C575 275 593 274 606 264 C601 285 581 291 566 281 Z" fill="#67333a" stroke="#3b2926" stroke-width="5"/>
+      <path d="M576 282 C586 274 595 278 599 282" fill="none" stroke="#e99195" stroke-width="4" stroke-linecap="round"/>
     </g>
     <g id="ear" inkscape:groupmode="layer" inkscape:label="Floppy Ear" data-rig-part="ear" data-rig-bone="ear" data-rig-z="42">
       <path d="M483 174 C470 164 454 168 448 183 C437 205 444 237 458 253 C470 267 489 261 492 243 C497 220 491 193 483 174 Z" fill="#74442f" stroke="#3b2926" stroke-width="8" stroke-linejoin="round"/>

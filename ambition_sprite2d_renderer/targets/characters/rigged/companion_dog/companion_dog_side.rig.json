@@ -2,7 +2,7 @@
   "name": "companion_dog",
   "frame": {
     "width": 168,
-    "height": 128,
+    "height": 168,
     "center_x": 80,
     "ground_y": 120,
     "ankle_h": 0,
@@ -444,6 +444,52 @@
         300
       ],
       "rest_angle": 0
+    },
+    {
+      "name": "eye_open",
+      "bone": "head",
+      "z": 41,
+      "kind": "sprite",
+      "include": [
+        "eye-open"
+      ],
+      "pivot": [
+        473,
+        219
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "eye_open",
+      "opacity_default": 1
+    },
+    {
+      "name": "eye_x",
+      "bone": "head",
+      "z": 44,
+      "kind": "sprite",
+      "include": [
+        "eye-x"
+      ],
+      "pivot": [
+        473,
+        219
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "eye_x"
+    },
+    {
+      "name": "bark_mouth",
+      "bone": "head",
+      "z": 41,
+      "kind": "sprite",
+      "include": [
+        "bark-mouth"
+      ],
+      "pivot": [
+        473,
+        219
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "bark_mouth"
     }
   ],
   "ik_legs": [],
@@ -580,17 +626,39 @@
       "frames": 6,
       "duration_ms": 90,
       "channels": {
-        "head": {"expr": "-4*sin(tau*t/2)"},
-        "ear": {"expr": "8*sin(tau*t/2)"},
-        "tail_base": {"expr": "12*sin(tau*t/2)"},
-        "near_fore_upper": {"expr": "-18*sin(tau*t/2)"},
-        "near_fore_lower": {"expr": "25*sin(tau*t/2)"},
-        "far_fore_upper": {"expr": "-18*sin(tau*t/2)"},
-        "far_fore_lower": {"expr": "25*sin(tau*t/2)"},
-        "near_hind_upper": {"expr": "20*sin(tau*t/2)"},
-        "near_hind_lower": {"expr": "-25*sin(tau*t/2)"},
-        "far_hind_upper": {"expr": "20*sin(tau*t/2)"},
-        "far_hind_lower": {"expr": "-25*sin(tau*t/2)"}
+        "head": {
+          "expr": "-4*sin(tau*t/2)"
+        },
+        "ear": {
+          "expr": "8*sin(tau*t/2)"
+        },
+        "tail_base": {
+          "expr": "12*sin(tau*t/2)"
+        },
+        "near_fore_upper": {
+          "expr": "-18*sin(tau*t/2)"
+        },
+        "near_fore_lower": {
+          "expr": "25*sin(tau*t/2)"
+        },
+        "far_fore_upper": {
+          "expr": "-18*sin(tau*t/2)"
+        },
+        "far_fore_lower": {
+          "expr": "25*sin(tau*t/2)"
+        },
+        "near_hind_upper": {
+          "expr": "20*sin(tau*t/2)"
+        },
+        "near_hind_lower": {
+          "expr": "-25*sin(tau*t/2)"
+        },
+        "far_hind_upper": {
+          "expr": "20*sin(tau*t/2)"
+        },
+        "far_hind_lower": {
+          "expr": "-25*sin(tau*t/2)"
+        }
       }
     },
     "sniff": {
@@ -631,6 +699,209 @@
         },
         "tail_tip": {
           "expr": "25*sin(tau*t+0.8)"
+        }
+      }
+    },
+    "sit_down": {
+      "loop": false,
+      "frames": 7,
+      "duration_ms": 85,
+      "channels": {
+        "root_y": {
+          "expr": "18*t"
+        },
+        "head": {
+          "expr": "12*t"
+        },
+        "ear": {
+          "expr": "-8*t"
+        },
+        "tail_base": {
+          "expr": "-12*t"
+        },
+        "near_hind_upper": {
+          "expr": "70*t"
+        },
+        "near_hind_lower": {
+          "expr": "-120*t"
+        },
+        "far_hind_upper": {
+          "expr": "70*t"
+        },
+        "far_hind_lower": {
+          "expr": "-120*t"
+        },
+        "near_fore_upper": {
+          "expr": "25*t"
+        },
+        "far_fore_upper": {
+          "expr": "25*t"
+        },
+        "body": {
+          "expr": "-25*t"
+        }
+      }
+    },
+    "sit_idle": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 150,
+      "channels": {
+        "root_y": {
+          "expr": "18+0.6*sin(tau*t)"
+        },
+        "head": {
+          "const": 12
+        },
+        "ear": {
+          "const": -8
+        },
+        "tail_base": {
+          "const": -12
+        },
+        "tail_tip": {
+          "expr": "10*sin(tau*t+0.5)"
+        },
+        "near_hind_upper": {
+          "const": 70
+        },
+        "near_hind_lower": {
+          "const": -120
+        },
+        "far_hind_upper": {
+          "const": 70
+        },
+        "far_hind_lower": {
+          "const": -120
+        },
+        "near_fore_upper": {
+          "const": 25
+        },
+        "far_fore_upper": {
+          "const": 25
+        },
+        "body": {
+          "const": -25
+        }
+      }
+    },
+    "stand_up": {
+      "loop": false,
+      "frames": 7,
+      "duration_ms": 85,
+      "channels": {
+        "root_y": {
+          "expr": "18*(1-t)"
+        },
+        "head": {
+          "expr": "12*(1-t)"
+        },
+        "ear": {
+          "expr": "-8*(1-t)"
+        },
+        "tail_base": {
+          "expr": "-12*(1-t)"
+        },
+        "near_hind_upper": {
+          "expr": "70*(1-t)"
+        },
+        "near_hind_lower": {
+          "expr": "-120*(1-t)"
+        },
+        "far_hind_upper": {
+          "expr": "70*(1-t)"
+        },
+        "far_hind_lower": {
+          "expr": "-120*(1-t)"
+        },
+        "near_fore_upper": {
+          "expr": "25*(1-t)"
+        },
+        "far_fore_upper": {
+          "expr": "25*(1-t)"
+        },
+        "body": {
+          "expr": "-25*(1-t)"
+        }
+      }
+    },
+    "bark": {
+      "loop": false,
+      "frames": 6,
+      "duration_ms": 80,
+      "channels": {
+        "root_y": {
+          "expr": "-2*sin(3.14159*t)"
+        },
+        "head": {
+          "expr": "-13*sin(3.14159*t)"
+        },
+        "ear": {
+          "expr": "13*sin(3.14159*t)"
+        },
+        "tail_base": {
+          "expr": "10*sin(6.28318*t)"
+        },
+        "tail_tip": {
+          "expr": "18*sin(6.28318*t)"
+        },
+        "bark_mouth": {
+          "expr": "1 if 0.17 <= t <= 0.83 else 0"
+        }
+      }
+    },
+    "death": {
+      "loop": false,
+      "frames": 9,
+      "duration_ms": 110,
+      "channels": {
+        "root_y": {
+          "expr": "42*t"
+        },
+        "head": {
+          "expr": "50*t"
+        },
+        "ear": {
+          "expr": "-18*t"
+        },
+        "tail_base": {
+          "expr": "-30*t"
+        },
+        "tail_tip": {
+          "expr": "-25*t"
+        },
+        "near_fore_upper": {
+          "expr": "65*t"
+        },
+        "near_fore_lower": {
+          "expr": "-125*t"
+        },
+        "far_fore_upper": {
+          "expr": "65*t"
+        },
+        "far_fore_lower": {
+          "expr": "-125*t"
+        },
+        "near_hind_upper": {
+          "expr": "80*t"
+        },
+        "near_hind_lower": {
+          "expr": "-130*t"
+        },
+        "far_hind_upper": {
+          "expr": "80*t"
+        },
+        "far_hind_lower": {
+          "expr": "-130*t"
+        },
+        "eye_open": {
+          "expr": "1 if t < 0.5 else 0"
+        },
+        "eye_x": {
+          "expr": "0 if t < 0.5 else 1"
+        },
+        "body": {
+          "expr": "18*t"
         }
       }
     }
