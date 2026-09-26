@@ -117,11 +117,9 @@
 // (`up_b.landing_lag_s = Some(0.28);`)
 // Landing out of the ascent costs, so onstage it is a bad panic button.
 //
-// The jab string (`jab2`, `jab3`) is the stand-in duelists' string too. A
-// chain is a cancel table over ordinary moves, not a verb, so the
-// continuations join the table directly. They are two copies until a move
-// file can take moves from another table (queue AP54);
-// `the_jab_string_is_one_string_in_both_tables` keeps them equal. Retune both.
+// The jab string (`jab2`, `jab3`) is the stand-in duelists' string, taken
+// from their table (`takes`). A chain is a cancel table over ordinary moves,
+// not a verb, so the continuations join the table directly.
 //
 // (`repertoire.moves.push(bivalence_unmetered);`)
 // The unmetered fallback: carried, but no input reaches it. With an empty
@@ -168,6 +166,11 @@
                 body: None,
                 hurtboxes: None,
                 presentation: None,
+                // George plays the stand-ins' jab string: the same two moves, taken
+                // from their table rather than copied, so a retune reaches both.
+                takes: [
+                    (from: "smash_duelist_a", moves: ["jab2", "jab3"]),
+                ],
                 moveset: Some((
                     verbs: {
                         "attack": "jab",
@@ -201,6 +204,17 @@
                         // (`let jab = strike(Strike {`)
                         // Everything George throws quickly is nearly harmless. The pokes exist so
                         // that not committing is a legal option.
+                        //
+                        // (`let jab = cancelable(jab, 0.05, 0.25, &["jab2"], CancelCondition::Always`)
+                        // The one route across the gap, open only on contact. `OnHit`: a
+                        // whiffed jab cancels into nothing, so the smash route is a reward for
+                        // connecting, not a smash with a jab's startup. The window covers the
+                        // active frames and the recovery.
+                        //
+                        // The string comes first: `jab2` answers the undirected follow-up (a
+                        // neutral re-press or a held button); the smash route needs a directed
+                        // press. The string is `Always` and the route is `OnHit`; one window
+                        // cannot hold both conditions, so each has its own window.
                         (
                             id: "jab",
                             display_name: None,
@@ -2632,229 +2646,6 @@
                             smash_charge: None,
                             charge_gesture: Smash,
                             repeat: None,
-                            landing_lag_s: None,
-                            autocancel_after_s: None,
-                            sprite_spin_hz: None,
-                            equips: None,
-                            flow: None,
-                        ),
-                        // (`let jab = cancelable(jab, 0.05, 0.25, &["jab2"], CancelCondition::Always`)
-                        // The one route across the gap, open only on contact. `OnHit`: a
-                        // whiffed jab cancels into nothing, so the smash route is a reward for
-                        // connecting, not a smash with a jab's startup. The window covers the
-                        // active frames and the recovery.
-                        //
-                        // The string comes first: `jab2` answers the undirected follow-up (a
-                        // neutral re-press or a held button); the smash route needs a directed
-                        // press. The string is `Always` and the route is `OnHit`; one window
-                        // cannot hold both conditions, so each has its own window.
-                        (
-                            id: "jab2",
-                            display_name: None,
-                            clip: (
-                                clip: "attack",
-                                fallbacks: [
-                                    "attack_side",
-                                    "attack",
-                                    "slash",
-                                    "idle",
-                                ],
-                            ),
-                            duration_s: 0.26,
-                            windows: [
-                                (
-                                    start_s: 0.0,
-                                    end_s: 0.04,
-                                    tag: Startup,
-                                    volumes: [],
-                                    motion_scale: 1.0,
-                                    sustain_effect: None,
-                                ),
-                                (
-                                    start_s: 0.04,
-                                    end_s: 0.099999994,
-                                    tag: Active,
-                                    volumes: [
-                                        (
-                                            shape: Rect(
-                                                offset: (27.0, 0.0),
-                                                half_extents: (18.0, 14.0),
-                                            ),
-                                            damage: 3,
-                                            knockback: 60.0,
-                                            knockback_growth: Some(1.1999999),
-                                            launch_dir: None,
-                                            reaction: None,
-                                            on_hit: None,
-                                            vfx: Some("slash_arc"),
-                                            hit_sfx: None,
-                                        ),
-                                    ],
-                                    motion_scale: 1.0,
-                                    sustain_effect: None,
-                                ),
-                                (
-                                    start_s: 0.099999994,
-                                    end_s: 0.26,
-                                    tag: Recovery,
-                                    volumes: [],
-                                    motion_scale: 1.0,
-                                    sustain_effect: None,
-                                ),
-                                (
-                                    start_s: 0.1,
-                                    end_s: 0.26,
-                                    tag: Cancelable(
-                                        into: [
-                                            "jab3",
-                                        ],
-                                        condition: Always,
-                                    ),
-                                    volumes: [],
-                                    motion_scale: 1.0,
-                                    sustain_effect: None,
-                                ),
-                            ],
-                            events: [],
-                            gates: (
-                                grounded: Some(true),
-                                recovery: r#None,
-                                forbidden_while_held: false,
-                                roots_steering: true,
-                                recovery_route: None,
-                                costs: [],
-                                when_refused: None,
-                            ),
-                            start_impulse: None,
-                            smash_charge_mult: 1.0,
-                            smash_charge: None,
-                            charge_gesture: Smash,
-                            repeat: None,
-                            landing_lag_s: None,
-                            autocancel_after_s: None,
-                            sprite_spin_hz: None,
-                            equips: None,
-                            flow: None,
-                        ),
-                        (
-                            id: "jab3",
-                            display_name: None,
-                            clip: (
-                                clip: "attack",
-                                fallbacks: [
-                                    "attack_side",
-                                    "attack",
-                                    "slash",
-                                    "idle",
-                                ],
-                            ),
-                            duration_s: 0.53,
-                            windows: [
-                                (
-                                    start_s: 0.0,
-                                    end_s: 0.06,
-                                    tag: Startup,
-                                    volumes: [],
-                                    motion_scale: 1.0,
-                                    sustain_effect: None,
-                                ),
-                                (
-                                    start_s: 0.06,
-                                    end_s: 0.1,
-                                    tag: Active,
-                                    volumes: [
-                                        (
-                                            shape: Rect(
-                                                offset: (28.0, 0.0),
-                                                half_extents: (19.0, 14.0),
-                                            ),
-                                            damage: 1,
-                                            knockback: 46.0,
-                                            knockback_growth: Some(0.0),
-                                            launch_dir: None,
-                                            reaction: None,
-                                            on_hit: None,
-                                            vfx: Some("slash_arc"),
-                                            hit_sfx: None,
-                                        ),
-                                    ],
-                                    motion_scale: 1.0,
-                                    sustain_effect: None,
-                                ),
-                                (
-                                    start_s: 0.13,
-                                    end_s: 0.17,
-                                    tag: Active,
-                                    volumes: [
-                                        (
-                                            shape: Rect(
-                                                offset: (28.0, 0.0),
-                                                half_extents: (19.0, 14.0),
-                                            ),
-                                            damage: 1,
-                                            knockback: 46.0,
-                                            knockback_growth: Some(0.0),
-                                            launch_dir: None,
-                                            reaction: None,
-                                            on_hit: None,
-                                            vfx: Some("slash_arc"),
-                                            hit_sfx: None,
-                                        ),
-                                    ],
-                                    motion_scale: 1.0,
-                                    sustain_effect: None,
-                                ),
-                                (
-                                    start_s: 0.2,
-                                    end_s: 0.27,
-                                    tag: Active,
-                                    volumes: [
-                                        (
-                                            shape: Rect(
-                                                offset: (30.0, -2.0),
-                                                half_extents: (22.0, 16.0),
-                                            ),
-                                            damage: 5,
-                                            knockback: 105.0,
-                                            knockback_growth: Some(2.1),
-                                            launch_dir: Some((1.0, -0.35)),
-                                            reaction: None,
-                                            on_hit: None,
-                                            vfx: Some("slash_arc"),
-                                            hit_sfx: None,
-                                        ),
-                                    ],
-                                    motion_scale: 1.0,
-                                    sustain_effect: None,
-                                ),
-                                (
-                                    start_s: 0.27,
-                                    end_s: 0.53,
-                                    tag: Recovery,
-                                    volumes: [],
-                                    motion_scale: 1.0,
-                                    sustain_effect: None,
-                                ),
-                            ],
-                            events: [],
-                            gates: (
-                                grounded: Some(true),
-                                recovery: r#None,
-                                forbidden_while_held: false,
-                                roots_steering: true,
-                                recovery_route: None,
-                                costs: [],
-                                when_refused: None,
-                            ),
-                            start_impulse: None,
-                            smash_charge_mult: 1.0,
-                            smash_charge: None,
-                            charge_gesture: Smash,
-                            repeat: Some((
-                                from_s: 0.06,
-                                to_s: 0.2,
-                                max_s: 1.2,
-                            )),
                             landing_lag_s: None,
                             autocancel_after_s: None,
                             sprite_spin_hz: None,
