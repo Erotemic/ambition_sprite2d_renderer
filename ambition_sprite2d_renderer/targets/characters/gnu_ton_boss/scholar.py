@@ -382,14 +382,24 @@ def pose_for(row: str, frame: int, frames: int) -> Pose:
             book="open",
         )
     if row == "brace":
+        # Riding it out while the gnu bucks: a surfer on a bad wave, not a
+        # squat. Feet wide (front knee bent, back leg long), arms out at
+        # shoulder height see-sawing for balance, eyes wide. (A deep knee bend
+        # with his hands at his knees and a strained, eyes-shut face read as
+        # something else entirely.) The arms stay LOW: in three-quarter view his
+        # near shoulder is under his face, so a raised near arm (or its quill)
+        # covers it, and the far arm cannot clear the wig. The wide stance
+        # shortens his legs' reach by ~1.1, so he sits that much lower to keep
+        # his soles on the gnu's back.
         return Pose(
-            near_arm=(60, 110 + 6 * s),
-            far_arm=(115, 115),
-            near_leg=(40, 110),
-            far_leg=(70, 120),
-            lean=18,
-            bob=3.0 + 0.6 * s,
-            expression="grit",
+            near_arm=(-4 + 14 * s, -18 + 16 * s),
+            far_arm=(184 + 14 * s, 196 + 18 * s),
+            near_leg=(50 + 4 * s, 100),
+            far_leg=(118, 112),
+            lean=6 + 4 * s,
+            head_tilt=-4,
+            bob=1.1,
+            expression="surprise",
             book="none",
         )
     if row == "hit":
