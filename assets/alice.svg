@@ -102,4 +102,7 @@
     <use href="#upper-arm" transform="translate(74 50) rotate(-12)"/><use href="#forearm" transform="translate(77 64)"/><use href="#hand" transform="translate(77 77)"/>
     <use href="#head" transform="translate(64 32)"/>
   </g>
+  <!-- BEGIN AMBITION SVG RIG v1 -->
+  <metadata id="ambition-rig-metadata" data-ambition-schema="ambition-svg-rig-v1" data-ambition-role="reference" />
+  <!-- END AMBITION SVG RIG v1 -->
 </svg>
