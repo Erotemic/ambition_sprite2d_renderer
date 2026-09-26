@@ -37,6 +37,7 @@ from PIL import Image, ImageDraw, ImageFilter
 from ambition_sprite2d_renderer.core.manifest_ron import ron_row
 from ambition_sprite2d_renderer.registry.pack_groups import policy_for
 from ambition_sprite2d_renderer.core.draw import blending_draw
+from ambition_sprite2d_renderer.targets.characters.gnu_ton_boss import scholar as _scholar
 
 RGBA = Tuple[int, int, int, int]
 
@@ -77,6 +78,10 @@ ANIMATIONS: List[Tuple[str, int, int]] = [
     ("head_down", 9, 90),
     ("hit", 6, 80),
     ("death", 10, 105),
+    # The gnu's own moves (appended so every row above keeps its index). The
+    # conductor pins these by name while the gnu bucks and stomps.
+    ("buck", 8, 70),
+    ("stomp", 8, 70),
 ]
 
 # Output files: the runtime consumes the split body/hands pair plus the
@@ -791,6 +796,18 @@ def draw_hand(
         ky = cy + (i - 1) * hh * 0.26
         c.ellipse(knuckle_x, ky, 8, 5, C_KNUCKLE, C_OUTLINE, 0.8)
 
+    # The thumb, curled over the top of the fist: what makes it a HAND, and a
+    # right one (the left fist is its mirror, which is a left hand).
+    thumb = [
+        (knuckle_x - side * 22, cy - hh * 0.62),
+        (knuckle_x - side * 6, cy - hh * 0.86),
+        (knuckle_x + side * 8, cy - hh * 0.72),
+        (knuckle_x + side * 6, cy - hh * 0.5),
+        (knuckle_x - side * 16, cy - hh * 0.44),
+    ]
+    c.polygon(thumb, C_HAND_MID, C_OUTLINE, 1.2)
+    c.ellipse(knuckle_x + side * 3, cy - hh * 0.66, 4, 3, C_KNUCKLE, C_OUTLINE, 0.6)
+
     # Hoof tip (darker, hard)
     tip_pts = [
         (tip_x, cy - hh * 0.4),
@@ -820,6 +837,22 @@ def draw_hand(
         )
 
 
+# The fused sheet's rows, drawn with the scholar's own rows.
+_FUSED_SCHOLAR_ROW = {
+    "rest": "rest",
+    "hand_slam": "point",
+    "hand_sweep": "conduct",
+    "head_down": "invoke",
+    "hit": "hit",
+    "death": "death",
+}
+# On the giant he is drawn at this multiple of his design size, so he stands as
+# tall as the figure he replaced (~45 design px, sole to wig).
+_FUSED_SCHOLAR_SCALE = 1.35
+# The old figure's soles sat this far below the `hy` it was handed.
+_OLD_SOLE_BELOW_HY = 17.0
+
+
 def draw_gnu_ton_man(
     c: Canvas,
     hx: float = 0.0,
@@ -830,174 +863,22 @@ def draw_gnu_ton_man(
 ) -> None:
     """The GNU-ton scholar standing atop the GNU's neck/back.
 
-    Isaac-Newton-coded: white powdered wig with side curls and a tied
-    queue at the back, no glasses, triangular beard kept for silhouette,
-    a robe with cinched belt, and one arm raised holding a scroll while
-    gesticulating. Higher source resolution (768×576) means the wig
-    curls still resolve cleanly at the in-game render scale.
+    Drawn by `scholar.draw_scholar` (v2: three-quarter view, long coat, powdered
+    wig with queue, quill and Principia), the same figure his own rider sheet
+    uses, so the Hall portrait and the fight show one man. `hy` keeps its old
+    meaning — his soles are `_OLD_SOLE_BELOW_HY` below it.
     """
-    # Body proportions referenced from `hy` (scholar's torso center). Head
-    # at hy - 12, feet at hy + 16 → ~28 px tall.
-
-    # ── Powdered wig (drawn FIRST so the face can sit on top) ──
-    # Tied queue at the back — implied by a small ribbon-and-tail bump
-    # just behind the right side curl. Drawn first so the side curls
-    # overlap and visually anchor it.
-    c.ellipse(hx + 7, hy - 4, 1.6, 2.4, C_MAN_WIG, C_OUTLINE, 0.6)
-    c.line([(hx + 7, hy - 5.5), (hx + 7, hy - 2.5)], C_MAN_ROBE_D, 0.7)
-    # Crown: shorter cap that sits ABOVE the face area. Center moved
-    # up + half-height shrunk so the bottom of the crown (y = hy-18+5
-    # = hy-13) clears the top of the face (y = hy-18). Earlier version
-    # had crown bottom at hy-9.5, which buried the eyeline.
-    c.ellipse(hx, hy - 21, 8.5, 5.5, C_MAN_WIG, C_OUTLINE, 1.0)
-    # Side curls: a stack of three small ellipses cascading down each side
-    # of the face. Pulled outward (x = ±9 instead of ±8) so they frame
-    # the cheek instead of overlapping it.
-    for dy in (-13, -10, -7):
-        c.ellipse(hx - 9, hy + dy, 3.0, 2.6, C_MAN_WIG, C_OUTLINE, 0.7)
-        c.ellipse(hx + 9, hy + dy, 3.0, 2.6, C_MAN_WIG, C_OUTLINE, 0.7)
-    # Inner curl shading so the stack reads as 3D, not three flat dots.
-    for dy in (-13, -10, -7):
-        c.ellipse(hx - 9.3, hy + dy + 0.5, 1.3, 1.0, C_MAN_WIG_S)
-        c.ellipse(hx + 9.3, hy + dy + 0.5, 1.3, 1.0, C_MAN_WIG_S)
-    # Crown highlight that catches the (imagined) overhead light. Sits
-    # on the wig, not on the forehead, so the face still reads clean.
-    c.line([(hx - 4, hy - 23), (hx + 4, hy - 23)], C_MAN_WIG_S, 0.8)
-
-    # ── Head (drawn AFTER the wig so the face wins the z-fight) ──
-    # The face is intentionally last among the head-area primitives:
-    # earlier the wig crown overlapped the upper half of the face and
-    # the scholar read as "Harry Potter under a mop". Drawing skin on
-    # top guarantees the face is always visible regardless of how the
-    # wig silhouette grows later.
-    c.ellipse(hx, hy - 12, 6, 6, C_MAN_SKIN, C_OUTLINE, 1.0)
-    # Tiny face features so the face has something to be — without
-    # them the skin disk reads as a featureless ball. Two small dark
-    # dots for eyes; a faint mouth line. Kept dim so they don't fight
-    # the wig at small scales.
-    c.ellipse(hx - 1.8, hy - 12.5, 0.6, 0.7, C_OUTLINE)
-    c.ellipse(hx + 1.8, hy - 12.5, 0.6, 0.7, C_OUTLINE)
-    c.line([(hx - 1.2, hy - 9.5), (hx + 1.2, hy - 9.5)], C_OUTLINE, 0.6)
-
-    # ── Triangular beard with shading ──
-    beard_bob = wave(phase, 1.2) * 0.8
-    c.polygon(
-        [
-            (hx - 4, hy - 8),
-            (hx + 4, hy - 8),
-            (hx + 2, hy - 1 + beard_bob),
-            (hx, hy + 1 + beard_bob),
-            (hx - 2, hy - 1 + beard_bob),
-        ],
-        C_MAN_BEARD,
-        C_OUTLINE,
-        0.8,
-    )
-    # Beard highlight stripe
-    c.line([(hx - 1, hy - 6), (hx, hy - 2 + beard_bob)], C_MAN_SPEC, 0.8)
-
-    # ── Robe ──
-    robe = [
-        (hx - 8, hy - 7),
-        (hx + 8, hy - 7),
-        (hx + 11, hy + 13),
-        (hx + 6, hy + 17),
-        (hx, hy + 18),
-        (hx - 6, hy + 17),
-        (hx - 11, hy + 13),
-    ]
-    c.polygon(robe, C_MAN_ROBE, C_OUTLINE, 1.0)
-    # Robe lining (lighter)
-    c.polygon(
-        [
-            (hx - 2, hy - 6),
-            (hx + 3, hy - 6),
-            (hx + 3, hy + 9),
-            (hx - 2, hy + 9),
-        ],
-        C_MAN_ROBE_L,
-    )
-    # Cinched belt
-    c.line([(hx - 8, hy + 2), (hx + 8, hy + 2)], C_MAN_ROBE_D, 1.2)
-    c.ellipse(hx, hy + 2, 1.4, 1.0, C_HORN_TIP)
-    # Robe fold shadows
-    c.line([(hx - 5, hy + 4), (hx - 6, hy + 14)], C_MAN_ROBE_D, 0.9)
-    c.line([(hx + 5, hy + 4), (hx + 6, hy + 14)], C_MAN_ROBE_D, 0.9)
-
-    # ── Arms ──
-    # Resting arm hangs at left side; right arm gestures or holds scroll.
-    if anim == "rest":
-        arm_phase = wave(phase, 1.8) * 4.0
-        # Raised right arm with tiny scroll
-        elbow = (hx + 10, hy - 4 + arm_phase * 0.4)
-        hand = (hx + 16, hy - 9 + arm_phase)
-        c.line([(hx + 7, hy - 4), elbow, hand], C_MAN_SKIN, 2.0)
-        # Tiny scroll (parchment) in raised hand
-        c.polygon(
-            [
-                (hand[0] - 1.6, hand[1] - 3.6),
-                (hand[0] + 4.2, hand[1] - 3.6),
-                (hand[0] + 4.2, hand[1] + 1.0),
-                (hand[0] - 1.6, hand[1] + 1.0),
-            ],
-            C_SPEECH_BG,
-            C_SPEECH_EDGE,
-            0.8,
-        )
-        # Scroll text bar
-        c.line(
-            [(hand[0] - 0.5, hand[1] - 2), (hand[0] + 3.0, hand[1] - 2)],
-            C_SPEECH_TXT,
-            0.6,
-        )
-        # Left arm hangs along robe
-        c.line([(hx - 7, hy - 4), (hx - 9, hy + 4)], C_MAN_ROBE_D, 1.8)
-    elif anim == "death":
-        settle = min(1.0, phase * 1.5)
-        c.line(
-            [
-                (hx + 7, hy - 4),
-                (hx + 14 + settle * 8, hy + 6 + settle * 16),
-            ],
-            C_MAN_SKIN,
-            1.8,
-        )
-        c.line(
-            [
-                (hx - 7, hy - 4),
-                (hx - 14 - settle * 6, hy + 4 + settle * 12),
-            ],
-            C_MAN_SKIN,
-            1.8,
-        )
-    elif anim in ("hand_slam", "hand_sweep", "head_down"):
-        # Pointing dramatically with right arm during attacks
-        c.line(
-            [
-                (hx + 7, hy - 4),
-                (hx + 13, hy - 8),
-                (hx + 18, hy - 11),
-            ],
-            C_MAN_SKIN,
-            2.0,
-        )
-        # Bracing left hand on robe
-        c.line([(hx - 7, hy - 4), (hx - 11, hy + 2)], C_MAN_SKIN, 1.8)
-    else:
-        # Hit etc: both arms flailing
-        flail = wave(phase, 4.0) * 4
-        c.line([(hx + 7, hy - 4), (hx + 12 + flail, hy + 4)], C_MAN_SKIN, 1.8)
-        c.line([(hx - 7, hy - 4), (hx - 12 - flail, hy + 4)], C_MAN_SKIN, 1.8)
-
-    # Tiny sandaled feet
-    c.ellipse(hx - 4, hy + 17, 3, 1.8, C_MAN_HAIR, C_OUTLINE, 0.6)
-    c.ellipse(hx + 4, hy + 17, 3, 1.8, C_MAN_HAIR, C_OUTLINE, 0.6)
+    row = _FUSED_SCHOLAR_ROW.get(anim, "rest")
+    frames = _scholar.row_frames(row)
+    frame = min(frames - 1, int(phase * frames))
+    pelvis_y = hy + _OLD_SOLE_BELOW_HY - _scholar.PELVIS_TO_SOLE * _FUSED_SCHOLAR_SCALE
+    _scholar.draw_scholar(c, hx, pelvis_y, _scholar.pose_for(row, frame, frames), scale=_FUSED_SCHOLAR_SCALE)
 
     # Speech bubble (kept for canonical / debug renders; in-game uses the
-    # bark system instead). Smaller to match the smaller scholar.
+    # bark system instead).
     if show_speech:
         bx = hx + 14
-        by = hy - 30
+        by = hy - 34
         bw, bh = 60, 24
         c.polygon(
             [
@@ -1013,12 +894,11 @@ def draw_gnu_ton_man(
             C_SPEECH_EDGE,
             1.0,
         )
-        lines = [
+        for x0, y0, x1, y1 in [
             (bx + 5, by + 6, bx + 44, by + 6),
             (bx + 5, by + 12, bx + 50, by + 12),
             (bx + 5, by + 18, bx + 34, by + 18),
-        ]
-        for x0, y0, x1, y1 in lines:
+        ]:
             c.line([(x0, y0), (x1, y1)], C_SPEECH_TXT, 1.2)
 
 
@@ -1066,6 +946,10 @@ def draw_frame(
         _draw_hit(c, phase, frame_idx, layer=layer, parts=parts)
     elif anim == "death":
         _draw_death(c, phase, frame_idx, layer=layer, parts=parts)
+    elif anim == "buck":
+        _draw_buck(c, phase, frame_idx, layer=layer, parts=parts)
+    elif anim == "stomp":
+        _draw_stomp(c, phase, frame_idx, layer=layer, parts=parts)
     else:
         _draw_rest(c, phase, frame_idx, layer=layer, parts=parts)
 
@@ -1105,13 +989,15 @@ _RIDER_CENTER_Y = 2.5
 # 39x52 pixels of a frame the runtime scaled to his collision box, so he drew
 # at a sixth of his size. The window keeps every row's pose (the widest, his
 # death fall, spans x 361..410 / y 261..316).
-RIDER_FRAME = (96, 96)
-RIDER_WINDOW = (
-    OX - RIDER_FRAME[0] // 2,
-    OY - RIDER_FRAME[1] // 2,
-    OX + RIDER_FRAME[0] // 2,
-    OY + RIDER_FRAME[1] // 2,
-)
+# v2: his own frame, drawn directly (not cropped from the giant's canvas) at
+# `RIDER_PX_PER_UNIT` pixels per design unit. The runtime draws the frame at
+# `basis x collision_scale` world units tall whatever its pixel size, so twice
+# the pixels is twice the detail at the same world size (0.875 wu/px).
+RIDER_FRAME = (192, 192)
+RIDER_PX_PER_UNIT = 3
+# His rows, in the order the boss sheet's fixed slots read them (see
+# `scholar.SLOT_ROWS`), then the named rows a move or the conductor asks for.
+RIDER_ROWS = [(name, frames, int(round(secs * 1000))) for name, frames, secs in _scholar.ROWS]
 
 # Hand x-anchors. Slightly wider than the older 185 px so the wider 768
 # frame still places hands near the edges.
@@ -1281,6 +1167,69 @@ def _draw_rest(
         hand_right=(rhx, rhy),
         scholar=(man_x, man_y),
     )
+
+
+# Where the gnu's hooves meet the floor, design space: the pivots a buck and a
+# stomp rock the body about (the front pair for a buck, the hind for a stomp).
+_FRONT_HOOVES = (66.0, 176.0)
+_HIND_HOOVES = (-154.0, 176.0)
+
+
+def _rocked_body(c: Canvas, phase: float, angle: float, pivot, lift: float, layer: str) -> None:
+    """The resting body (and its rider) rocked `angle` degrees about `pivot`
+    and lifted `lift` design px: drawn on its own layer, then turned."""
+    if layer not in ("full", "body", _GIANT_BODY_LAYER):
+        return
+    tmp = Canvas(FRAME_W, FRAME_H, C_BG, scale=SUPERSAMPLE)
+    _draw_body_layer(
+        tmp,
+        REST_BODY_Y - lift,
+        REST_HEAD_Y - lift,
+        0.0,
+        REST_HEAD_Y - lift + 70,
+        0.0,
+        _MAN_CENTER_X,
+        _MAN_CENTER_Y - lift,
+        anim="rest",
+        phase=phase,
+        enraged=False,
+        draw_man=layer != _GIANT_BODY_LAYER,
+    )
+    center = tmp.P(pivot[0], pivot[1] - lift)
+    turned = tmp.img.rotate(angle, resample=Image.BICUBIC, center=center)
+    c.img = Image.alpha_composite(c.img, turned)
+    c.draw = blending_draw(c.img)
+
+
+def _dust(c: Canvas, x: float, y: float, k: float) -> None:
+    """A puff of dust at `(x, y)`, `k` in 0..1 of its life."""
+    for i, dx in enumerate((-26.0, -8.0, 10.0, 28.0)):
+        r = 8.0 + 18.0 * k + i * 2.0
+        c.alpha_ellipse(x + dx * (0.6 + k), y - 4.0 - 10.0 * k, r, r * 0.6, (150, 128, 96, int(170 * (1.0 - k))), blur=2.0)
+
+
+def _draw_buck(c: Canvas, phase: float, frame_idx: int, layer: str = "full", parts: Optional[dict] = None) -> None:
+    """The buck: the gnu throws its hindquarters up about its front hooves, and
+    whatever stands on its back goes with them."""
+    k = math.sin(math.pi * min(1.0, phase * 1.25))
+    _rocked_body(c, phase, -16.0 * k, _FRONT_HOOVES, 10.0 * k, layer)
+    if layer in ("full", "hands"):
+        _draw_hands_layer(c, -REST_HAND_X, REST_HAND_Y, REST_HAND_X, REST_HAND_Y, anim="rest", phase=phase)
+    _record_parts(parts, "buck", frame_idx, head=(0.0, REST_HEAD_Y), hand_left=(-REST_HAND_X, REST_HAND_Y), hand_right=(REST_HAND_X, REST_HAND_Y), scholar=(_MAN_CENTER_X, _MAN_CENTER_Y))
+
+
+def _draw_stomp(c: Canvas, phase: float, frame_idx: int, layer: str = "full", parts: Optional[dict] = None) -> None:
+    """The stomp: the gnu rears on its hind hooves and brings its front down,
+    the floor puffing where they land."""
+    rise = smoothstep(min(1.0, phase / 0.55))
+    slam = smoothstep(clamp((phase - 0.55) / 0.2, 0.0, 1.0))
+    angle = 13.0 * rise * (1.0 - slam)
+    _rocked_body(c, phase, angle, _HIND_HOOVES, 0.0, layer)
+    if layer in ("full", "hands"):
+        _draw_hands_layer(c, -REST_HAND_X, REST_HAND_Y, REST_HAND_X, REST_HAND_Y, anim="rest", phase=phase)
+        if phase >= 0.7:
+            _dust(c, _FRONT_HOOVES[0] - 30.0, _FRONT_HOOVES[1], (phase - 0.7) / 0.3)
+    _record_parts(parts, "stomp", frame_idx, head=(0.0, REST_HEAD_Y), hand_left=(-REST_HAND_X, REST_HAND_Y), hand_right=(REST_HAND_X, REST_HAND_Y), scholar=(_MAN_CENTER_X, _MAN_CENTER_Y))
 
 
 def _draw_hand_slam(
@@ -2075,7 +2024,7 @@ def _pack_scholar(rendered_scholar: dict, manifest_rows: list[dict], policy):
     frames = [
         FrameInput(
             key=(r["row"], f),
-            image=rendered_scholar[(r["row"], f)].crop(RIDER_WINDOW),
+            image=rendered_scholar[(r["row"], f)],
             logical_size=RIDER_FRAME,
         )
         for r in manifest_rows
@@ -2152,9 +2101,6 @@ def build_spritesheet(outdir: Path) -> List[Path]:
                 rendered[layer][(row_idx, f)] = draw_frame(
                     anim_name, f, frame_count, layer=layer, parts=pass_parts
                 )
-            rendered_scholar[(row_idx, f)] = draw_frame(
-                anim_name, f, frame_count, layer=_SCHOLAR_LAYER
-            )
         manifest["rows"].append(
             {
                 "name": anim_name,
@@ -2164,6 +2110,13 @@ def build_spritesheet(outdir: Path) -> List[Path]:
             }
         )
         print(f"  [{row_idx + 1}/{rows}] {anim_name} ({frame_count} frames)")
+    rider_rows: list[dict] = []
+    for row_idx, (name, frame_count, duration_ms) in enumerate(RIDER_ROWS):
+        for f in range(frame_count):
+            rendered_scholar[(row_idx, f)] = _scholar.render_frame(
+                Canvas, name, f, frame_count, RIDER_FRAME, RIDER_PX_PER_UNIT, SUPERSAMPLE
+            )
+        rider_rows.append({"name": name, "row": row_idx, "frames": frame_count, "duration_ms": duration_ms})
 
     # Pass 2: lockstep alpha-trim + MaxRects-pack the fused + giant_body layers
     # onto one tight page each (shared placement → the runtime addresses body +
@@ -2290,7 +2243,7 @@ def build_spritesheet(outdir: Path) -> List[Path]:
     # Packed SEPARATELY from the giant (its own atlas/off), so it is NOT lockstep
     # and carries none of the giant's body_metrics.
     rider_page, rider_rows_meta, rider_num_pages = _pack_scholar(
-        rendered_scholar, manifest["rows"], policy
+        rendered_scholar, rider_rows, policy
     )
     rider_path = outdir / f"{RIDER_TARGET_NAME}_spritesheet.png"
     rider_page.save(str(rider_path), "PNG")
@@ -2300,7 +2253,7 @@ def build_spritesheet(outdir: Path) -> List[Path]:
     ]
     rider_ron_path = outdir / f"{RIDER_TARGET_NAME}_spritesheet.ron"
     rider_rest = [
-        rendered_scholar[(0, f)].crop(RIDER_WINDOW) for f in range(ANIMATIONS[0][1])
+        rendered_scholar[(0, f)] for f in range(RIDER_ROWS[0][1])
     ]
     rider_ron_path.write_text(
         _runtime_spritesheet_ron(
@@ -2317,7 +2270,7 @@ def build_spritesheet(outdir: Path) -> List[Path]:
     rider_manifest = {
         "target": RIDER_TARGET_NAME,
         "frame_size": list(RIDER_FRAME),
-        "rows": manifest["rows"],
+        "rows": rider_rows,
         "layers": [_SCHOLAR_LAYER],
     }
     outputs.append(
@@ -2361,6 +2314,9 @@ FIST_ANIMATIONS: List[Tuple[str, int, int]] = [
     ("rest", 10, 110),
     ("fall", 6, 70),
     ("hit", 6, 80),
+    # Driven into the floor and straining to come free: the conductor pins it
+    # while the fist is `stuck` (and hittable).
+    ("stuck", 8, 70),
 ]
 
 
@@ -2374,9 +2330,23 @@ def draw_fist_frame(anim: str, frame_idx: int, frame_count: int) -> Image.Image:
         # an orange puddle hanging under a floating fist. The impact is the
         # runtime's dust burst, where the fist actually lands.
         draw_hand(c, _FIST_DRAW_X, _FIST_DRAW_Y + 2.0 * math.sin(phase * math.pi), side=+1, phase=phase)
+        # Speed lines above a fist coming down.
+        for i, dx in enumerate((-30.0, 0.0, 26.0)):
+            y0 = _FIST_DRAW_Y - 30.0 - (i % 2) * 4.0
+            c.line([(_FIST_DRAW_X + dx, y0), (_FIST_DRAW_X + dx, y0 - 10.0 - 4.0 * math.sin(phase * math.pi))], (240, 226, 190, 150), 1.4)
     elif anim == "hit":
         jolt = math.sin(phase * math.pi * 4) * 3.0
         draw_hand(c, _FIST_DRAW_X + jolt, _FIST_DRAW_Y, side=+1, phase=phase * 3)
+    elif anim == "stuck":
+        # Shuddering in place, straining upward, grit spitting from the floor.
+        shake = math.sin(phase * math.pi * 6) * 2.5
+        draw_hand(c, _FIST_DRAW_X + shake, _FIST_DRAW_Y + 6.0, side=+1, phase=0.2)
+        for i, dx in enumerate((-40.0, -12.0, 18.0, 44.0)):
+            up = (phase * 1.7 + i * 0.27) % 1.0
+            c.ellipse(_FIST_DRAW_X + dx + shake, _FIST_DRAW_Y + 50.0 - 30.0 * up, 3.0 - 1.6 * up, 2.4 - 1.2 * up, C_HAND_DARK, C_OUTLINE, 0.6)
+        for i in range(3):
+            y = _FIST_DRAW_Y - 30.0 - i * 4.0
+            c.line([(_FIST_DRAW_X - 30 + i * 22, y), (_FIST_DRAW_X - 24 + i * 22, y - 8)], C_OUTLINE, 1.2)
     else:
         draw_hand(c, _FIST_DRAW_X, _FIST_DRAW_Y + wave(phase, 1.0) * 2.0, side=+1, phase=phase)
     return c.finish()
