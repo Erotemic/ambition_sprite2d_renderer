@@ -18,7 +18,8 @@ import argparse
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Sequence, Tuple
+from contextlib import contextmanager
+from typing import List, Optional, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
@@ -38,8 +39,10 @@ TARGET_NAME = "flying_spaghetti_monster_boss"
 # authored in WORK_FRAME_SIZE units and supersampled by SUPER, so raising the
 # downsample target just preserves more of that detail (no redraw, no gameplay
 # change — display size is collision-driven).
-FRAME_SIZE = (800, 640)
-WORK_FRAME_SIZE = (920, 840)
+WORK_FRAME_SIZE = (860, 800)
+# The same aspect as the work frame, so the downsample never squashes: the
+# frame is a uniform 0.87 of the work units.
+FRAME_SIZE = (748, 696)
 SUPER = 4
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 6, 132),
@@ -49,6 +52,13 @@ ROWS: List[Tuple[str, int, int]] = [
     ("eye_beam", 7, 90),
     ("hurt", 4, 96),
     ("death", 8, 112),
+    # Rows past the engine's seven `BossAnim` kinds. The fight's conductor
+    # pins them by name; they come AFTER the seven because the engine's sheet
+    # spec indexes those by position in the PNG.
+    ("pulse", 8, 84),
+    ("dive", 8, 84),
+    ("grasp", 8, 90),
+    ("summon", 8, 96),
 ]
 
 # Publish authoritative per-animation hurtboxes keyed by the GENERIC gameplay
@@ -58,6 +68,9 @@ ROWS: List[Tuple[str, int, int]] = [
 # eye_beam→SpikeHalo, hurt→Hit, death→Death). Without this the boss falls back to
 # the coarse idle alpha bbox (the whole noodle spread) for every pose; with it,
 # the player's attacks register on the per-pose body.
+# Rows that loop sample a whole cycle; the rest play once, first to last.
+LOOPING_ROWS = {"idle", "drift"}
+
 ANIMATION_KEY_MAP = {
     "idle": "rest",
     "drift": "dash_echo",
@@ -66,6 +79,10 @@ ANIMATION_KEY_MAP = {
     "eye_beam": "spike_halo",
     "hurt": "hit",
     "death": "death",
+    "pulse": "pulse",
+    "dive": "dive",
+    "grasp": "grasp",
+    "summon": "summon",
 }
 
 ACTOR_METADATA = {
@@ -212,24 +229,36 @@ ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
     ],
 )
 
-OUTLINE = (52, 42, 34, 255)
-NOODLE = (234, 220, 182, 255)
-NOODLE_SHADE = (202, 184, 146, 255)
-NOODLE_HI = (248, 238, 212, 255)
-MEATBALL = (122, 84, 60, 255)
-MEATBALL_SHADE = (86, 56, 40, 255)
-MEATBALL_HI = (160, 118, 90, 255)
-SAUCE = (166, 86, 58, 225)
-SAUCE_DARK = (112, 52, 36, 220)
-STALK = (154, 112, 86, 255)
-STALK_SHADE = (120, 82, 62, 255)
-EYE = (244, 236, 240, 255)
-PUPIL = (50, 40, 42, 255)
-BEAM = (255, 248, 214, 188)
-BEAM2 = (255, 232, 164, 120)
-IMPACT = (255, 240, 188, 150)
-DUST = (180, 164, 142, 90)
-HURT_RED = (198, 94, 110, 170)
+OUTLINE = (58, 40, 30, 255)
+NOODLE = (240, 222, 172, 255)
+NOODLE_BACK = (206, 184, 134, 255)
+NOODLE_DEEP = (170, 146, 102, 255)
+NOODLE_SHADE = (212, 190, 140, 255)
+NOODLE_HI = (253, 244, 214, 255)
+MEATBALL = (140, 78, 50, 255)
+MEATBALL_SHADE = (96, 50, 32, 255)
+MEATBALL_HI = (184, 116, 78, 255)
+MEATBALL_CRUMB = (78, 40, 26, 255)
+SAUCE = (196, 52, 34, 245)
+SAUCE_DARK = (138, 30, 22, 245)
+SAUCE_HI = (240, 118, 88, 230)
+EYE = (250, 246, 238, 255)
+EYE_GLOW = (255, 236, 150, 255)
+IRIS = (84, 58, 40, 255)
+PUPIL = (26, 18, 16, 255)
+BEAM = (255, 250, 222, 205)
+BEAM2 = (255, 226, 140, 120)
+IMPACT = (255, 244, 200, 170)
+
+# The geometry frame is the socket frame (`ACTOR_METADATA["sockets"]`): the
+# body's root sits at (160, 152), and the bell's centre at (160, 131). The
+# canvas puts the BELL'S CENTRE AT THE FRAME'S CENTRE, so the drawn body, the
+# boss's position and its collision box coincide with no offset for the
+# engine to derive; the noodles hang into the lower half and the lash reaches
+# into the right, and the packer trims the empty space either way.
+ROOT = (160.0, 152.0)
+BELL_CENTRE = (160.0, 131.0)
+CANVAS_MARGIN = (WORK_FRAME_SIZE[0] / 2 - BELL_CENTRE[0], WORK_FRAME_SIZE[1] / 2 - BELL_CENTRE[1])
 
 
 def _s(v: float) -> int:
@@ -237,11 +266,7 @@ def _s(v: float) -> int:
 
 
 def _pt(p: Point) -> Tuple[int, int]:
-    return (_s(p[0]), _s(p[1]))
-
-
-def _box(cx: float, cy: float, rx: float, ry: float) -> Tuple[int, int, int, int]:
-    return (_s(cx - rx), _s(cy - ry), _s(cx + rx), _s(cy + ry))
+    return (_s(p[0] + CANVAS_MARGIN[0]), _s(p[1] + CANVAS_MARGIN[1]))
 
 
 def _lerp(a: float, b: float, t: float) -> float:
@@ -253,6 +278,11 @@ def _rot(x: float, y: float, deg: float) -> Point:
     c = math.cos(r)
     s = math.sin(r)
     return (x * c - y * s, x * s + y * c)
+
+
+def _mix(a: RGBA, b: RGBA, t: float) -> RGBA:
+    t = max(0.0, min(1.0, t))
+    return tuple(int(round(_lerp(a[i], b[i], t))) for i in range(4))  # type: ignore[return-value]
 
 
 def _poly(
@@ -279,6 +309,10 @@ def _line(
         draw.line(
             [_pt(p) for p in pts], fill=fill, width=max(1, _s(width)), joint="curve"
         )
+        # Round caps: PIL's wide lines end square, which reads as a cut stick.
+        r = width * 0.5
+        for end in (pts[0], pts[-1]):
+            _ellipse(draw, end[0], end[1], r, r, fill, None, 0)
 
 
 def _ellipse(
@@ -287,12 +321,14 @@ def _ellipse(
     cy: float,
     rx: float,
     ry: float,
-    fill: RGBA,
+    fill: RGBA | None,
     outline: RGBA | None = OUTLINE,
     width: float = 0.8,
 ) -> None:
+    x0, y0 = _pt((cx - rx, cy - ry))
+    x1, y1 = _pt((cx + rx, cy + ry))
     draw.ellipse(
-        _box(cx, cy, rx, ry),
+        (x0, y0, x1, y1),
         fill=fill,
         outline=outline,
         width=max(1, _s(width)) if outline is not None else 0,
@@ -303,7 +339,7 @@ def _circle(
     draw: ImageDraw.ImageDraw,
     center: Point,
     r: float,
-    fill: RGBA,
+    fill: RGBA | None,
     outline: RGBA | None = OUTLINE,
     width: float = 0.8,
 ) -> None:
@@ -314,46 +350,94 @@ def _downsample(img: Image.Image) -> Image.Image:
     return img.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
-def _quad(a: Point, b: Point, c: Point, steps: int = 18) -> List[Point]:
-    pts: List[Point] = []
-    for i in range(steps + 1):
-        t = i / steps
-        u = 1.0 - t
-        pts.append(
-            (
-                u * u * a[0] + 2 * u * t * b[0] + t * t * c[0],
-                u * u * a[1] + 2 * u * t * b[1] + t * t * c[1],
-            )
-        )
-    return pts
+def _hash(i: int, salt: int = 0) -> float:
+    """A fixed pseudo-random value in [0, 1): the same noodle every frame."""
+    v = math.sin(i * 12.9898 + salt * 78.233) * 43758.5453
+    return v - math.floor(v)
 
 
-def _cubic(a: Point, b: Point, c: Point, d: Point, steps: int = 22) -> List[Point]:
-    pts: List[Point] = []
-    for i in range(steps + 1):
-        t = i / steps
-        u = 1.0 - t
-        pts.append(
-            (
-                u * u * u * a[0]
-                + 3 * u * u * t * b[0]
-                + 3 * u * t * t * c[0]
-                + t * t * t * d[0],
-                u * u * u * a[1]
-                + 3 * u * u * t * b[1]
-                + 3 * u * t * t * c[1]
-                + t * t * t * d[1],
-            )
-        )
-    return pts
+# The damage fractions the reveal map is painted at, heaviest first: a pixel
+# keeps the LOWEST level that covers it, because each lighter pass overwrites.
+SAUCE_LEVELS = [k / 8.0 for k in range(8, 0, -1)]
 
 
-def _cubic_from_triplet(
-    a: Point, b: Point, c: Point, curve: float = 0.72, steps: int = 22
-) -> List[Point]:
-    c1 = (_lerp(a[0], b[0], curve), _lerp(a[1], b[1], curve))
-    c2 = (_lerp(c[0], b[0], curve), _lerp(c[1], b[1], curve))
-    return _cubic(a, c1, c2, c, steps)
+class _Paint:
+    """Draws the clean art and the sauce reveal map in one pass.
+
+    Ordinary drawing goes to the art and ERASES the reveal map beneath it, so
+    sauce is only ever where it would be seen: a noodle drawn over a splat
+    hides it. Inside `with paint.sauce(level)` drawing goes to the reveal map
+    only, stamped with that level's threshold as its alpha."""
+
+    def __init__(self, art, reveal) -> None:
+        self._art = art
+        self._reveal = reveal
+        self._level: Optional[float] = None
+
+    @contextmanager
+    def sauce(self, level: float):
+        prev, self._level = self._level, level
+        try:
+            yield self
+        finally:
+            self._level = prev
+
+    def __getattr__(self, name: str):
+        def call(*args, **kwargs):
+            if self._level is None:
+                getattr(self._art, name)(*args, **kwargs)
+                erase = dict(kwargs)
+                for key in ("fill", "outline"):
+                    if erase.get(key) is not None:
+                        erase[key] = (0, 0, 0, 0)
+                getattr(self._reveal, name)(*args, **erase)
+            else:
+                alpha = max(1, int(round(255 * (1.0 - self._level))))
+                stamp = dict(kwargs)
+                for key in ("fill", "outline"):
+                    c = stamp.get(key)
+                    if c is not None:
+                        stamp[key] = (c[0], c[1], c[2], alpha)
+                getattr(self._reveal, name)(*args, **stamp)
+
+        return call
+
+
+@dataclass
+class Tentacle:
+    """One articulated noodle: a chain of `segments` equal links hanging from
+    `rim` (degrees round the bell's underside, y down: 90 is straight below).
+
+    Its shape is forward kinematics: every joint turns the chain by the sum
+    of the pose's articulation terms (below), so a pose moves a noodle by
+    bending its joints, never by redrawing its curve."""
+
+    rim: float
+    length: float
+    phase: float
+    curl: float  # signed tip curl, degrees per joint over the last third
+    front: bool
+    segments: int = 14
+
+
+# Jellyfish-style: every noodle hangs from the underside of the bell. The
+# rim runs 18°..162° (y down), so nothing points up out of the top.
+TENTACLES: List[Tentacle] = [
+    Tentacle(162, 100, 0.0, -11, False),
+    Tentacle(146, 120, 1.3, 10, False),
+    Tentacle(128, 138, 2.1, -9, True),
+    Tentacle(112, 150, 0.6, 10, False),
+    Tentacle(98, 158, 2.8, -10, True),
+    Tentacle(84, 154, 1.9, 9, False),
+    Tentacle(70, 144, 0.9, -10, True),
+    Tentacle(54, 132, 2.4, 10, False),
+    Tentacle(36, 118, 1.6, -9, True),
+    Tentacle(18, 98, 0.4, 11, False),
+]
+# The noodle the whip and the grasp use: the front-right one.
+LASH = 7
+# The bell: its top is a dome, its underside a shallow skirt.
+BELL_RX, BELL_TOP, BELL_SKIRT = 116.0, 76.0, 34.0
 
 
 @dataclass
@@ -362,17 +446,26 @@ class Pose:
     root_y: float = 0.0
     bob: float = 0.0
     tilt: float = 0.0
-    noodle_wave: float = 0.0
-    spread: float = 0.0
-    whip: float = 0.0
-    volley: float = 0.0
+    squash: float = 0.0  # >0 flattens and widens the bell (a jellyfish beat)
+    time: float = 0.0  # drives the wave travelling down every noodle
+    # Articulation, applied to every noodle's joints.
+    trail: float = 0.0  # degrees the whole skirt swings back (-x) as it moves
+    flare: float = 0.0  # 0..1: the skirt opens outward (the pulse's recoil)
+    gather: float = 0.0  # 0..1: the noodles draw in under the bell (a dive)
+    limp: float = 0.0  # 0..1: every noodle falls straight and stops waving
+    wave: float = 1.0  # scale on the travelling wave
+    reach: float = 1.0  # scale on noodle length (contract/extend)
+    # One noodle articulated on its own: the lash.
+    whip: float = 0.0  # 0..1: the lash snaps out ahead, taut
+    whip_wind: float = 0.0  # 0..1: coiled back under the bell first
+    grasp: float = 0.0  # 0..1: the lash reaches down and forward to grab
+    volley_charge: float = 0.0
+    volley_fire: float = 0.0
     beam: float = 0.0
     hurt: float = 0.0
     collapse: float = 0.0
-    eye_aim: float = 0.0
-    left_meatball_shift: float = 0.0
-    right_meatball_shift: float = 0.0
-    slither: float = 0.0
+    eye_aim: float = 20.0
+    eyes: str = "open"  # open | angry | squeeze | dead | glow
 
 
 def _ease(t: float) -> float:
@@ -381,444 +474,701 @@ def _ease(t: float) -> float:
 
 
 def _pose(anim: str, frame_idx: int, nframes: int) -> Pose:
-    t = 0.0 if nframes <= 1 else frame_idx / float(max(1, nframes - 1))
+    # Looping rows sample a whole cycle without repeating the first frame.
+    loop = anim in LOOPING_ROWS
+    t = frame_idx / float(nframes) if loop else frame_idx / float(max(1, nframes - 1))
     cyc = math.tau * t
-    wave = math.sin(cyc)
-    pulse = math.sin(math.pi * t)
-    p = Pose()
+    p = Pose(time=cyc)
+    # A jellyfish beat: the bell squeezes, the skirt flares and pushes, then
+    # the noodles trail as it glides. `beat` peaks once per cycle.
+    beat = max(0.0, math.sin(cyc)) ** 2
     if anim == "idle":
-        p.bob = wave * 4.0
-        p.tilt = wave * 2.6
-        p.noodle_wave = wave * 1.4
-        p.spread = 0.12 + abs(wave) * 0.42
-        p.eye_aim = wave * 3.0
-        p.slither = math.sin(cyc * 1.8) * 1.35
+        p.squash = 0.06 * beat - 0.02
+        p.flare = 0.35 * beat
+        p.bob = -7.0 * beat + 3.0
+        p.trail = 4.0 * math.sin(cyc + 1.0)
+        p.eye_aim = 20.0 + 30.0 * math.sin(cyc)
     elif anim == "drift":
-        p.root_x = wave * 12.0
-        p.bob = math.sin(cyc * 1.2) * 5.0
-        p.tilt = wave * 5.0
-        p.noodle_wave = math.sin(cyc * 1.6) * 1.6
-        p.spread = 0.25 + abs(wave) * 0.45
-        p.eye_aim = 6.0 * math.sin(cyc * 0.7)
-        p.slither = math.sin(cyc * 2.1) * 1.1
+        p.squash = 0.05 * beat
+        p.flare = 0.25 * beat
+        p.root_x = 8.0 * math.sin(cyc)
+        p.bob = -5.0 * beat
+        p.tilt = 7.0
+        p.trail = 30.0 + 8.0 * math.cos(cyc)
+        p.eye_aim = 5.0
     elif anim == "noodle_whip":
-        wind = 1.0 - _ease(min(1.0, t / 0.3))
-        lash = _ease(max(0.0, min(1.0, (t - 0.18) / 0.42)))
-        p.root_x = -12.0 * wind + 8.0 * lash
-        p.tilt = -10.0 * wind + 14.0 * lash
-        p.bob = -3.0 * wind + 2.0 * lash
-        p.whip = lash
-        p.noodle_wave = -0.8 + lash * 2.2
-        p.spread = 0.35 + lash * 0.4
-        p.eye_aim = 10.0 * lash
-        p.slither = -0.5 + lash * 1.2
-    elif anim == "meatball_volley":
-        charge = _ease(min(1.0, t / 0.45))
-        fire = _ease(max(0.0, min(1.0, (t - 0.38) / 0.5)))
-        p.bob = math.sin(cyc) * 2.5
-        p.tilt = -8.0 * charge + 4.0 * fire
-        p.noodle_wave = 0.5 + charge
-        p.volley = fire
-        p.left_meatball_shift = -5.0 * charge
-        p.right_meatball_shift = 10.0 * charge
-        p.eye_aim = 12.0 * fire
-        p.slither = 0.3 + fire * 0.8
-    elif anim == "eye_beam":
-        charge = _ease(min(1.0, t / 0.40))
-        fire = _ease(max(0.0, min(1.0, (t - 0.35) / 0.45)))
-        p.bob = 1.5 + pulse * 2.0
-        p.tilt = -6.0 * charge
-        p.noodle_wave = 0.4 + charge * 1.2
-        p.beam = fire
-        p.spread = 0.35 + charge * 0.3
-        p.eye_aim = 18.0 * fire
-        p.slither = 0.4 + fire * 0.8
-    elif anim == "hurt":
-        bump = math.sin(t * math.pi)
-        p.root_x = 5.0 * (1 if frame_idx % 2 == 0 else -1)
-        p.bob = bump * -4.0
-        p.tilt = (1 if frame_idx % 2 == 0 else -1) * 7.0
-        p.noodle_wave = -1.4 * bump
-        p.hurt = bump
+        wind = _ease(t / 0.35) * (1.0 - _ease((t - 0.35) / 0.2))
+        lash = _ease((t - 0.35) / 0.3)
+        p.whip_wind, p.whip = wind, lash
+        p.root_x = -10.0 * wind + 10.0 * lash
+        p.tilt = -7.0 * wind + 9.0 * lash
+        p.trail = 18.0 * wind - 10.0 * lash
         p.eye_aim = 0.0
-        p.slither = -1.0 * bump
+        p.eyes = "angry"
+    elif anim == "meatball_volley":
+        charge = _ease(t / 0.45)
+        fire = _ease((t - 0.45) / 0.2)
+        recover = _ease((t - 0.7) / 0.3)
+        p.volley_charge = charge * (1.0 - fire)
+        p.volley_fire = fire * (1.0 - 0.6 * recover)
+        p.squash = 0.08 * p.volley_charge - 0.05 * p.volley_fire
+        p.root_x = -6.0 * p.volley_charge - 10.0 * p.volley_fire
+        p.tilt = -6.0 * p.volley_charge + 4.0 * p.volley_fire
+        p.flare = 0.4 * p.volley_fire
+        p.trail = 10.0 * p.volley_fire
+        p.eye_aim = 5.0
+        p.eyes = "angry"
+    elif anim == "eye_beam":
+        charge = _ease(t / 0.4)
+        p.beam = _ease((t - 0.35) / 0.3)
+        p.bob = -3.0 * charge
+        p.tilt = -5.0 * charge
+        p.gather = 0.25 * charge
+        p.eye_aim = 0.0
+        p.eyes = "glow" if charge > 0.35 else "angry"
+    elif anim == "pulse":
+        # The full-body pulse: a deep squeeze, then the whole skirt thrown
+        # open in a ring.
+        squeeze = _ease(t / 0.4) * (1.0 - _ease((t - 0.4) / 0.15))
+        burst = _ease((t - 0.4) / 0.2) * (1.0 - 0.7 * _ease((t - 0.7) / 0.3))
+        p.squash = 0.14 * burst - 0.1 * squeeze
+        p.gather = 0.8 * squeeze
+        p.flare = 1.0 * burst
+        p.reach = 1.0 - 0.25 * squeeze + 0.1 * burst
+        p.bob = 6.0 * squeeze - 8.0 * burst
+        p.eyes = "angry"
+        p.eye_aim = 90.0 * squeeze
+    elif anim == "dive":
+        # Noodles gather tight above a plunge, then splay on arrival.
+        plunge = _ease(t / 0.5)
+        land = _ease((t - 0.55) / 0.25)
+        p.gather = 0.9 * plunge * (1.0 - land)
+        p.flare = 0.9 * land
+        p.squash = -0.08 * plunge * (1.0 - land) + 0.12 * land
+        p.reach = 1.0 - 0.3 * land
+        p.trail = -20.0 * plunge * (1.0 - land)
+        p.tilt = 6.0 * plunge * (1.0 - land)
+        p.eye_aim = 90.0
+        p.eyes = "angry"
+    elif anim == "grasp":
+        reach = _ease(t / 0.45)
+        pull = _ease((t - 0.6) / 0.4)
+        p.grasp = reach * (1.0 - 0.6 * pull)
+        p.tilt = 6.0 * reach - 4.0 * pull
+        p.root_x = 8.0 * reach
+        p.trail = 12.0 * reach
+        p.eye_aim = 50.0
+        p.eyes = "angry"
+    elif anim == "summon":
+        # Calling the lesser appendages: the god rises, its noodles beckon in
+        # a slow wave and its eyes burn — then it lets go.
+        # A tall, swaying silhouette, unlike the pulse's squeeze-and-burst.
+        call = _ease(t / 0.5)
+        release = _ease((t - 0.65) / 0.3)
+        p.bob = -16.0 * call + 12.0 * release
+        p.squash = -0.07 * call + 0.06 * release
+        p.wave = 1.0 + 1.8 * call * (1.0 - release)
+        p.gather = 0.35 * call * (1.0 - release)
+        p.eye_aim = 90.0
+        p.eyes = "glow" if 0.3 < call and release < 0.6 else "angry"
+    elif anim == "hurt":
+        hit = math.sin(math.pi * min(1.0, (frame_idx + 1) / float(nframes)))
+        p.hurt = hit
+        p.squash = 0.12 * hit
+        p.root_x = -10.0 * hit
+        p.tilt = -9.0 * hit
+        p.flare = 0.7 * hit
+        p.wave = 1.0 + 0.8 * hit
+        p.eyes = "squeeze"
     elif anim == "death":
         c = _ease(t)
-        p.root_y = 70.0 * c
-        p.bob = 20.0 * c
-        p.tilt = 78.0 * c
-        p.noodle_wave = -0.6 - 1.8 * c
-        p.spread = 0.2 + 1.2 * c
         p.collapse = c
-        p.eye_aim = -10.0 * c
-        p.slither = -1.2 * c
+        p.root_y = 40.0 * c
+        p.tilt = 22.0 * c
+        p.squash = 0.12 * c
+        p.limp = c
+        p.eye_aim = 90.0
+        p.eyes = "dead" if c > 0.3 else "squeeze"
     return p
 
 
 def _draw_noodle(
-    draw: ImageDraw.ImageDraw, pts: Sequence[Point], width: float, front: bool
+    draw: ImageDraw.ImageDraw,
+    pts: Sequence[Point],
+    width: float,
+    fill: RGBA = NOODLE,
+    highlight: bool = True,
 ) -> None:
-    _line(draw, pts, OUTLINE, width + 1.9)
-    _line(draw, pts, NOODLE, width)
-    _line(draw, pts, NOODLE_SHADE, max(1.2, width * 0.34))
-    if front:
-        hi_pts = [(x - width * 0.10, y - width * 0.08) for x, y in pts]
-        _line(draw, hi_pts, NOODLE_HI, max(0.8, width * 0.18))
+    _line(draw, pts, OUTLINE, width + 2.2)
+    _line(draw, pts, fill, width)
+    if highlight:
+        hi = [(x - width * 0.14, y - width * 0.16) for x, y in pts]
+        _line(draw, hi, _mix(fill, NOODLE_HI, 0.8), max(0.9, width * 0.26))
+
+
+def _smooth(pts: Sequence[Point], sub: int = 4) -> List[Point]:
+    """Catmull-Rom through the chain's joints, so links draw as one noodle."""
+    if len(pts) < 3:
+        return list(pts)
+    out: List[Point] = []
+    ext = [pts[0]] + list(pts) + [pts[-1]]
+    for i in range(1, len(ext) - 2):
+        p0, p1, p2, p3 = ext[i - 1], ext[i], ext[i + 1], ext[i + 2]
+        for k in range(sub):
+            t = k / sub
+            t2, t3 = t * t, t * t * t
+            out.append(
+                tuple(
+                    0.5
+                    * (
+                        2 * p1[j]
+                        + (-p0[j] + p2[j]) * t
+                        + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * t2
+                        + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * t3
+                    )
+                    for j in range(2)
+                )  # type: ignore[arg-type]
+            )
+    out.append(pts[-1])
+    return out
+
+
+def _chain(base: Point, heading: float, seg: float, turns: Sequence[float]) -> List[Point]:
+    """Forward kinematics: from `base`, each link turns by `turns[j]` degrees."""
+    pts = [base]
+    a = heading
+    x, y = base
+    for d in turns:
+        a += d
+        x += math.cos(math.radians(a)) * seg
+        y += math.sin(math.radians(a)) * seg
+        pts.append((x, y))
+    return pts
+
+
+def _tentacle_joints(tn: Tentacle, i: int, p: Pose, lash: bool) -> Tuple[float, float, List[float]]:
+    """The noodle's rest heading, link length, and per-joint turns under `p`."""
+    n = tn.segments
+    # Rest: hang down, splayed a little by where it leaves the rim.
+    splay = (90.0 - tn.rim) * (0.8 + 0.8 * p.flare - 0.6 * p.gather)
+    heading = 90.0 - splay + p.trail + p.tilt
+    reach = p.reach * (1.0 + 0.12 * p.limp)
+    seg = tn.length * reach / n
+    turns: List[float] = []
+    wave_amp = 8.5 * p.wave * (1.0 - p.limp)
+    if p.limp > 0:
+        # Dead, a noodle first slumps OUT from where it leaves the rim ...
+        heading = _lerp(heading, max(-10.0, min(190.0, 90.0 - (90.0 - tn.rim) * 1.7)), p.limp)
+    angle = heading
+    for j in range(n):
+        s = j / (n - 1)
+        # A wave that travels down the noodle, stronger toward the tip.
+        w = wave_amp * (0.45 + 0.55 * s) * math.sin(0.62 * j - p.time - tn.phase)
+        # Flare curls the tips back up and out, like a bell's recoil.
+        flare_curl = -math.copysign(1.0, 90.0 - tn.rim or 1.0) * 6.0 * p.flare * s
+        tip_curl = tn.curl * max(0.0, (s - 0.66) / 0.34) * (1.0 - p.limp)
+        # A drifting skirt: the trailing noodles bend back further along
+        # their length.
+        drag = p.trail * 0.05 * s
+        turn = w + flare_curl + tip_curl + drag
+        # ... then gravity bends each link a little further toward straight
+        # down than the one before it, so the strand sags over its own
+        # weight, with the small kinks cooked pasta keeps.
+        droop = (90.0 - angle) * (0.05 + 0.14 * s) + 9.0 * math.sin(j * 1.3 + tn.phase * 3.0) * (1.0 - 0.5 * s)
+        turn = _lerp(turn, droop, p.limp)
+        turns.append(turn)
+        angle += turn
+    if lash:
+        if p.whip > 0 or p.whip_wind > 0:
+            # The lash: coiled back under the bell, then snapped out ahead.
+            coil = p.whip_wind * (1.0 - p.whip)
+            heading = _lerp(_lerp(heading, 150.0, coil), -6.0 + p.tilt, p.whip)
+            seg *= 1.0 + 1.3 * p.whip - 0.2 * coil
+            turns = [_lerp(_lerp(t, 14.0, coil), 0.25 * t, p.whip) for t in turns]
+        if p.grasp > 0:
+            # The grasp: reach down and forward, fingers curling at the end.
+            heading = _lerp(heading, 42.0, p.grasp)
+            seg *= 1.0 + 1.0 * p.grasp
+            turns = [
+                _lerp(t, (20.0 if j > n - 4 else -1.5), p.grasp) for j, t in enumerate(turns)
+            ]
+    return heading, seg, turns
+
+
+def _swirl(center: Point, i: int, phase: float) -> List[Point]:
+    """One strand of the bell: a loose loop inside the dome, fixed per strand."""
+    a0 = _hash(i, 1) * math.tau
+    sweep = 2.2 + 1.8 * _hash(i, 2)
+    r0 = 0.35 + 0.5 * _hash(i, 3)
+    wob = 0.18 + 0.2 * _hash(i, 4)
+    freq = 1.5 + 2.0 * _hash(i, 5)
+    jx = (_hash(i, 6) - 0.5) * BELL_RX * 0.5
+    jy = (_hash(i, 8) - 0.5) * 22.0
+    pts: List[Point] = []
+    for k in range(29):
+        s = k / 28
+        a = a0 + sweep * s
+        r = min(1.0, max(0.12, r0 + wob * math.sin(freq * a + phase + i)))
+        ry = BELL_TOP if math.sin(a) < 0 else BELL_SKIRT
+        pts.append((center[0] + jx + math.cos(a) * BELL_RX * r, center[1] + jy * r + math.sin(a) * ry * r))
+    return pts
+
+
+def _splat(draw: ImageDraw.ImageDraw, c: Point, r: float, seed: int, drip: float) -> None:
+    """A marinara splatter: a lumpy blob, satellite drops, and a run."""
+    pts = []
+    for k in range(14):
+        a = math.tau * k / 14
+        rr = r * (0.7 + 0.5 * _hash(k, seed))
+        pts.append((c[0] + math.cos(a) * rr, c[1] + math.sin(a) * rr * 0.8))
+    _poly(draw, pts, SAUCE, None, 0)
+    _circle(draw, (c[0] - r * 0.25, c[1] - r * 0.25), r * 0.25, SAUCE_HI, None, 0)
+    for k in range(3):
+        a = _hash(k, seed + 5) * math.tau
+        d = r * (1.3 + 0.6 * _hash(k, seed + 6))
+        _circle(draw, (c[0] + math.cos(a) * d, c[1] + math.sin(a) * d), r * 0.18, SAUCE, None, 0)
+    if drip > 0:
+        _line(draw, [c, (c[0] + r * 0.1, c[1] + r * (0.8 + 1.6 * drip))], SAUCE, r * 0.34)
+        _circle(draw, (c[0] + r * 0.1, c[1] + r * (0.8 + 1.6 * drip)), r * 0.24, SAUCE, None, 0)
 
 
 def _draw_meatball(
     draw: ImageDraw.ImageDraw,
     center: Point,
-    rx: float,
-    ry: float,
-    sauce_tilt: float,
-    sauce_drip: float = 0.0,
+    r: float,
+    squash: float,
+    seed: int,
 ) -> None:
     cx, cy = center
-    _ellipse(draw, cx, cy, rx, ry, MEATBALL, OUTLINE, 1.0)
-    _ellipse(
-        draw, cx - rx * 0.18, cy - ry * 0.15, rx * 0.62, ry * 0.58, MEATBALL_HI, None, 0
-    )
-    _ellipse(
-        draw,
-        cx + rx * 0.20,
-        cy + ry * 0.18,
-        rx * 0.46,
-        ry * 0.44,
-        MEATBALL_SHADE,
-        None,
-        0,
-    )
-    # Chunky texture.
-    for ox, oy, rr in [
-        (-12, -6, 4),
-        (10, -2, 3.5),
-        (-6, 12, 3),
-        (14, 11, 2.8),
-        (4, -13, 2.8),
-    ]:
-        _circle(
-            draw,
-            (cx + ox * rx / 26.0, cy + oy * ry / 24.0),
-            rr * (rx / 24.0),
-            MEATBALL_SHADE,
-            None,
-            0,
-        )
-    # Sauce cap.
-    sauce = []
-    for i in range(11):
-        ang = math.radians(-160 + i * 32 + sauce_tilt)
-        rad = rx * (0.72 + 0.14 * math.sin(i * 0.8 + sauce_tilt))
-        sauce.append(
-            (cx + math.cos(ang) * rad, cy - ry * 0.42 + math.sin(ang) * ry * 0.22)
-        )
-    sauce += [
-        (cx + rx * 0.52, cy - ry * 0.04),
-        (cx + rx * 0.18, cy + ry * 0.12),
-        (cx - rx * 0.28, cy + ry * 0.06),
-        (cx - rx * 0.52, cy - ry * 0.02),
-    ]
-    _poly(draw, sauce, SAUCE, None, 0)
-    if sauce_drip > 0.02:
-        drip = [
-            (cx + rx * 0.18, cy + ry * 0.08),
-            (cx + rx * 0.36, cy + ry * (0.26 + sauce_drip * 0.35)),
-            (cx + rx * 0.12, cy + ry * 0.18),
-        ]
-        _poly(draw, drip, SAUCE_DARK, None, 0)
+    rx, ry = r * (1.0 + squash), r * (1.0 - squash)
+    _ellipse(draw, cx, cy, rx, ry, MEATBALL, OUTLINE, 1.6)
+    _ellipse(draw, cx + rx * 0.16, cy + ry * 0.2, rx * 0.8, ry * 0.74, MEATBALL_SHADE, None, 0)
+    _ellipse(draw, cx - rx * 0.08, cy - ry * 0.06, rx * 0.8, ry * 0.76, MEATBALL, None, 0)
+    _ellipse(draw, cx - rx * 0.3, cy - ry * 0.32, rx * 0.34, ry * 0.26, MEATBALL_HI, None, 0)
+    for k in range(16):
+        a = _hash(k, seed) * math.tau
+        d = math.sqrt(_hash(k, seed + 7)) * 0.8
+        px, py = cx + math.cos(a) * rx * d, cy + math.sin(a) * ry * d
+        rr = r * (0.05 + 0.05 * _hash(k, seed + 3))
+        col = MEATBALL_CRUMB if _hash(k, seed + 11) < 0.6 else MEATBALL_HI
+        _circle(draw, (px, py), rr, col, None, 0)
 
 
-def _draw_eye_stalk(
+def _meatball_sauce(
     draw: ImageDraw.ImageDraw,
-    root: Point,
-    bend: Point,
-    tip: Point,
-    eye_angle: float,
-    angry: float,
-    blink: bool = False,
-    dead: bool = False,
+    center: Point,
+    r: float,
+    squash: float,
+    seed: int,
+    sauce: float,
 ) -> None:
-    pts = _cubic_from_triplet(root, bend, tip, curve=0.76, steps=20)
-    _line(draw, pts, OUTLINE, 6.0)
-    _line(draw, pts, STALK, 4.8)
-    _line(draw, pts, STALK_SHADE, 1.6)
-    ex, ey = tip
-    _ellipse(draw, ex, ey, 15.4, 14.8, EYE, OUTLINE, 1.0)
-    if dead:
-        _line(draw, [(ex - 5, ey - 5), (ex + 5, ey + 5)], OUTLINE, 1.2)
-        _line(draw, [(ex - 5, ey + 5), (ex + 5, ey - 5)], OUTLINE, 1.2)
+    cx, cy = center
+    rx, ry = r * (1.0 + squash), r * (1.0 - squash)
+    # Marinara grows with the damage taken: a cap that spreads down the ball,
+    # and runs that lengthen.
+    depth = 0.15 + 0.75 * sauce  # how far down the ball the cap reaches
+    cap: List[Point] = []
+    for k in range(19):
+        a = math.pi + math.pi * k / 18
+        cap.append((cx + math.cos(a) * rx * 0.97, cy + math.sin(a) * ry * 0.97))
+    for k in range(18, -1, -1):
+        a = math.pi + math.pi * k / 18
+        lip = 1.0 - depth * (0.75 + 0.25 * math.sin(k * 1.9 + seed * 3))
+        cap.append((cx + math.cos(a) * rx * 0.9, cy - ry * lip + math.sin(a) * ry * 0.12))
+    _poly(draw, cap, SAUCE, None, 0)
+    runs = [(-0.45, 0.2), (0.05, 0.4), (0.42, 0.15), (-0.15, 0.3)]
+    for k, (ox, length) in enumerate(runs[: 1 + int(sauce * 3.99)]):
+        x = cx + ox * rx
+        y0 = cy - ry * (1.0 - depth) + ry * 0.05
+        y1 = y0 + ry * length * (0.5 + sauce)
+        _line(draw, [(x, y0), (x, y1)], SAUCE, r * 0.15)
+        _circle(draw, (x, y1), r * 0.1, SAUCE, None, 0)
+    _ellipse(draw, cx - rx * 0.34, cy - ry * 0.7, rx * 0.2, ry * 0.08, SAUCE_HI, None, 0)
+    if sauce > 0.5:
+        _ellipse(draw, cx + rx * 0.3, cy - ry * 0.74, rx * 0.1, ry * 0.05, (70, 120, 52, 255), None, 0)
+
+
+def _draw_eye(
+    draw: ImageDraw.ImageDraw,
+    center: Point,
+    r: float,
+    aim: float,
+    style: str,
+    lean: float,
+) -> None:
+    ex, ey = center
+    if style == "glow":
+        _circle(draw, center, r * 1.6, (255, 236, 150, 70), None, 0)
+        _circle(draw, center, r * 1.25, (255, 236, 150, 110), None, 0)
+    _circle(draw, center, r, EYE_GLOW if style == "glow" else EYE, OUTLINE, 1.5)
+    if style == "dead":
+        k = r * 0.5
+        _line(draw, [(ex - k, ey - k), (ex + k, ey + k)], OUTLINE, 2.4)
+        _line(draw, [(ex - k, ey + k), (ex + k, ey - k)], OUTLINE, 2.4)
         return
-    lid_y = ey - 3.0 - angry * 1.2
-    _line(draw, [(ex - 6, lid_y + 1), (ex + 6, lid_y - 1)], OUTLINE, 1.0)
-    if blink:
-        _line(draw, [(ex - 5, ey + 1), (ex + 5, ey + 1)], OUTLINE, 1.1)
+    if style == "squeeze":
+        # Screwed shut: `> <`, each chevron pointing in toward the other eye.
+        k = r * 0.55
+        s = -lean
+        _line(draw, [(ex - k * s, ey - k * 0.6), (ex + k * 0.6 * s, ey), (ex - k * s, ey + k * 0.6)], OUTLINE, 2.4)
+        return
+    px = ex + math.cos(math.radians(aim)) * r * 0.36
+    py = ey + math.sin(math.radians(aim)) * r * 0.36
+    if style != "glow":
+        _circle(draw, (px, py), r * 0.5, IRIS, None, 0)
+    _circle(draw, (px, py), r * 0.28, PUPIL, None, 0)
+    _circle(draw, (px - r * 0.12, py - r * 0.14), r * 0.1, (255, 255, 255, 230), None, 0)
+    if style in ("angry", "glow"):
+        # A heavy lid slanting down toward the middle: the god is displeased.
+        # PIL angles run clockwise from 3 o'clock.
+        inner, outer = 10.0, 42.0
+        start, end = (180 + outer, 360 - inner) if lean < 0 else (180 + inner, 360 - outer)
+        x0, y0 = _pt((ex - r, ey - r))
+        x1, y1 = _pt((ex + r, ey + r))
+        draw.chord((x0, y0, x1, y1), start, end, fill=MEATBALL_SHADE)
+        a0, a1 = math.radians(start), math.radians(end)
+        _line(draw, [(ex + math.cos(a0) * r, ey + math.sin(a0) * r), (ex + math.cos(a1) * r, ey + math.sin(a1) * r)], OUTLINE, 2.6)
     else:
-        px = ex + math.cos(math.radians(eye_angle)) * 3.8
-        py = ey + math.sin(math.radians(eye_angle)) * 3.8
-        _circle(draw, (px, py), 4.0, PUPIL, PUPIL, 0.4)
-        _circle(draw, (px - 1.6, py - 1.4), 1.1, (255, 255, 255, 200), None, 0)
+        _line(
+            draw,
+            [(ex - r * 0.8, ey - r * 0.72), (ex, ey - r * 0.95), (ex + r * 0.8, ey - r * 0.72)],
+            OUTLINE,
+            1.4,
+        )
 
 
-def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
-    p = _pose(anim, frame_idx, nframes)
-    img = Image.new(
-        "RGBA", (_s(WORK_FRAME_SIZE[0]), _s(WORK_FRAME_SIZE[1])), (0, 0, 0, 0)
-    )
-    draw = blending_draw(img)
-
-    root = (160.0 + p.root_x, 152.0 + p.root_y + p.bob)
+def _body_transform(p: Pose):
+    """The body's frame for pose `p`: its root, squash, and `P`, which takes a
+    point in the body's own coordinates to the geometry frame."""
+    root = (ROOT[0] + p.root_x, ROOT[1] + p.root_y + p.bob)
+    sx, sy = 1.0 + p.squash, 1.0 - p.squash
 
     def P(x: float, y: float) -> Point:
-        rx, ry = _rot(x, y, p.tilt)
+        rx, ry = _rot(x * sx, y * sy, p.tilt)
         return (root[0] + rx, root[1] + ry)
 
-    # Back noodles: big silhouette sweep.
-    back_specs = [
-        (-74, -18, -126, 12, -158, 40, 10.5, False),
-        (-48, -30, -92, -58, -110, -96, 9.8, False),
-        (-12, -36, -18, -88, -6, -132, 8.8, False),
-        (26, -34, 48, -86, 74, -126, 8.6, False),
-        (62, -16, 112, -48, 150, -58, 9.8, False),
-        (76, 18, 132, 30, 164, 58, 10.4, False),
-        (48, 40, 74, 92, 88, 146, 9.8, False),
-        (-8, 44, -6, 100, -18, 154, 9.6, False),
-        (-58, 28, -104, 66, -146, 92, 10.4, False),
+    return root, sx, sy, P
+
+
+def _hull(pts: Sequence[Point]) -> List[Point]:
+    """Convex hull, counter-clockwise (monotone chain)."""
+    pts = sorted(set(pts))
+    if len(pts) < 3:
+        return list(pts)
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower: List[Point] = []
+    for q in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], q) <= 0:
+            lower.pop()
+        lower.append(q)
+    upper: List[Point] = []
+    for q in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], q) <= 0:
+            upper.pop()
+        upper.append(q)
+    return lower[:-1] + upper[:-1]
+
+
+def _to_frame_px(g: Point) -> Point:
+    k = FRAME_SIZE[0] / WORK_FRAME_SIZE[0]
+    return ((g[0] + CANVAS_MARGIN[0]) * k, (g[1] + CANVAS_MARGIN[1]) * k)
+
+
+def _bell_outline(anim: str, frame_idx: int, nframes: int) -> List[Point]:
+    """The god's BODY in one frame, in frame pixels: the bell of noodles and
+    the two meatballs on it. The noodles hanging below are not body — they
+    sting, and a blow has to find the bell."""
+    p = _pose(anim, frame_idx, nframes)
+    _root, _sx, _sy, P = _body_transform(p)
+    pts: List[Point] = []
+    for k in range(24):
+        a = math.tau * k / 24
+        ry = BELL_TOP if math.sin(a) < 0 else BELL_SKIRT
+        pts.append(P(math.cos(a) * BELL_RX * 0.92, math.sin(a) * ry * 0.85 - 6))
+    for cx, cy, r in ((-42, -30, 40.0), (42, -28, 42.0)):
+        for k in range(12):
+            a = math.tau * k / 12
+            pts.append(P(cx + math.cos(a) * r, cy + math.sin(a) * r))
+    return [_to_frame_px(q) for q in pts]
+
+
+def _part(name: str, pts: Sequence[Point]) -> dict:
+    hull = _hull([(round(x, 1), round(y, 1)) for x, y in pts])
+    xs, ys = [q[0] for q in hull], [q[1] for q in hull]
+    x0, y0 = int(math.floor(min(xs))), int(math.floor(min(ys)))
+    return {
+        "name": name,
+        "x": x0,
+        "y": y0,
+        "w": int(math.ceil(max(xs))) - x0,
+        "h": int(math.ceil(max(ys))) - y0,
+        "poly": hull,
+    }
+
+
+def _hurtbox_parts() -> dict:
+    """Per gameplay key, the bell's hull over every frame of that row. Death
+    publishes none: the dying god is not a target."""
+    out = {}
+    for anim, n, _ms in ROWS:
+        key = ANIMATION_KEY_MAP.get(anim)
+        if key is None or anim == "death":
+            continue
+        pts: List[Point] = []
+        for i in range(n):
+            pts.extend(_bell_outline(anim, i, n))
+        out[key] = {"parts": [_part("bell", pts)]}
+    return out
+
+
+def _body_metrics(fw: int, fh: int) -> dict:
+    """The gameplay body is the bell at rest, not the noodles' reach."""
+    part = _part("bell", _bell_outline("idle", 0, ROWS[0][1]))
+    return {
+        "body_pixel_bbox": {"x": part["x"], "y": part["y"], "w": part["w"], "h": part["h"]},
+        "feet_pixel": {"x": part["x"] + part["w"] / 2.0, "y": float(part["y"] + part["h"])},
+        "feet_anchor_norm": {"x": 0.0, "y": round(0.5 - (part["y"] + part["h"]) / fh, 6)},
+    }
+
+
+def _render_frame(anim: str, frame_idx: int, nframes: int, sauce: float = 0.0) -> Image.Image:
+    """One frame as the fight shows it at `sauce` in [0, 1]: the clean art
+    with the reveal map applied at that level (previews and review sheets)."""
+    base, reveal = _render_layers(anim, frame_idx, nframes)
+    return _apply_sauce(base, reveal, sauce)
+
+
+def _apply_sauce(base: Image.Image, reveal: Image.Image, level: float) -> Image.Image:
+    """What the game's overlay does: a reveal pixel shows once the damage
+    fraction reaches its threshold (alpha = 1 - threshold)."""
+    if level <= 0.0:
+        return base
+    cut = int(round(255 * (1.0 - level)))
+    mask = reveal.getchannel("A").point(lambda v: 255 if v > 0 and v >= cut else 0)
+    shown = reveal.copy()
+    shown.putalpha(mask)
+    return Image.alpha_composite(base, shown)
+
+
+def _render_layers(anim: str, frame_idx: int, nframes: int) -> Tuple[Image.Image, Image.Image]:
+    """The clean frame, and its SAUCE REVEAL MAP: where marinara sits on this
+    frame and at what damage it appears. A pixel's alpha is `1 - threshold`,
+    so the game shows it once `damage_fraction >= threshold`; 0 is never."""
+    p = _pose(anim, frame_idx, nframes)
+    size = (_s(WORK_FRAME_SIZE[0]), _s(WORK_FRAME_SIZE[1]))
+    img = Image.new("RGBA", size, (0, 0, 0, 0))
+    sauce_img = Image.new("RGBA", size, (0, 0, 0, 0))
+    draw = _Paint(blending_draw(img), ImageDraw.Draw(sauce_img))  # raw-draw-ok: the reveal map is data, not art; a later threshold must REPLACE the one beneath it, never blend
+
+    root, sx, sy, P = _body_transform(p)
+    ph = p.time
+
+    def tentacle_pts(i: int, tn: Tentacle) -> List[Point]:
+        base = P(
+            math.cos(math.radians(tn.rim)) * BELL_RX * 0.84,
+            math.sin(math.radians(tn.rim)) * BELL_SKIRT * 0.9,
+        )
+        heading, seg, turns = _tentacle_joints(tn, i, p, i == LASH)
+        return _smooth(_chain(base, heading, seg, turns))
+
+    chains = {i: tentacle_pts(i, tn) for i, tn in enumerate(TENTACLES)}
+    back = [i for i, tn in enumerate(TENTACLES) if not tn.front and i != LASH]
+    front = [i for i, tn in enumerate(TENTACLES) if tn.front and i != LASH]
+
+    for i in back:
+        _draw_noodle(draw, chains[i], 9.6, NOODLE_BACK, highlight=False)
+
+    # --- The bell: a heap of looping strands, back ones darker.
+    for i in range(22):
+        pts = [P((x - root[0]) / sx, (y - root[1]) / sy) for x, y in _swirl((root[0], root[1] - 6), i, ph * 0.5)]
+        _draw_noodle(draw, pts, 9.0, NOODLE_DEEP if i < 8 else NOODLE_BACK, highlight=False)
+
+    # --- Eye stalks, rooted in the bell behind the meatballs.
+    beam_rise = 14.0 * p.beam
+    stalk_specs = [
+        ((-24, -48), (-62, -96), (-50, -138 - beam_rise), -1.0),
+        ((22, -48), (62, -92), (54, -136 - beam_rise), 1.0),
     ]
-    for idx, (ax, ay, bx, by, cx, cy, width, front) in enumerate(back_specs):
-        wave = (
-            math.sin(frame_idx * 0.9 + idx * 0.8 + p.slither * 0.7)
-            * 10.0
-            * (0.35 + p.spread)
-        )
-        pts = _cubic_from_triplet(
-            P(ax, ay),
-            P(bx + wave * 0.35, by + p.noodle_wave * 7.0 + wave * 0.12),
-            P(cx + wave, cy + p.noodle_wave * 10.0),
-            curve=0.78,
-            steps=24,
-        )
-        _draw_noodle(draw, pts, width, front)
-
-    # Extra tangled center mass behind the meatballs.
-    tangle_specs = [
-        (-54, -12, -12, -34, 28, -10, 9.6, False),
-        (-42, 8, 4, -16, 58, -2, 9.4, False),
-        (-28, 26, 8, 0, 46, 22, 8.8, False),
-        (-10, -24, 18, -2, 42, 28, 8.6, False),
-        (8, -28, -8, 6, -36, 30, 8.6, False),
-        (22, 12, -12, 30, -46, 18, 8.8, False),
-    ]
-    for idx, (ax, ay, bx, by, cx, cy, width, front) in enumerate(tangle_specs):
-        wave = math.sin(frame_idx * 1.05 + idx * 1.15 + p.slither) * 8.0
-        pts = _cubic_from_triplet(
-            P(ax, ay),
-            P(bx + wave * 0.55, by + p.noodle_wave * 6.5 - wave * 0.14),
-            P(cx - wave * 0.35, cy + p.noodle_wave * 5.2),
-            curve=0.82,
-            steps=24,
-        )
-        _draw_noodle(draw, pts, width, front)
-
-    # Meatballs.
-    left_ball = P(-44 + p.left_meatball_shift, -4)
-    right_ball = P(34 + p.right_meatball_shift, 2)
-    _draw_meatball(
-        draw,
-        left_ball,
-        28.0,
-        30.0,
-        sauce_tilt=-12 + frame_idx * 3.0,
-        sauce_drip=p.volley,
-    )
-    _draw_meatball(
-        draw,
-        right_ball,
-        31.0,
-        33.0,
-        sauce_tilt=14 - frame_idx * 2.0,
-        sauce_drip=max(0.0, p.volley - 0.1),
-    )
-
-    # Mid noodles wrapping across meatballs.
-    mid_specs = [
-        (-72, -8, -26, -42, 12, -14, 10.8, True),
-        (-88, 18, -18, 2, 62, -18, 10.0, True),
-        (-68, 44, -10, 34, 52, 20, 9.8, True),
-        (-26, -54, 12, -18, 54, 18, 9.2, True),
-        (20, -50, 64, -20, 98, 24, 9.2, True),
-        (60, 2, 18, 36, -20, 64, 9.8, True),
-        (94, -6, 56, 18, 22, 52, 9.4, True),
-        (82, 42, 26, 58, -26, 76, 9.6, True),
-    ]
-    for idx, (ax, ay, bx, by, cx, cy, width, front) in enumerate(mid_specs):
-        wave = math.sin(frame_idx * 0.75 + idx * 0.9 + 0.8 + p.slither) * 9.0
-        pts = _cubic_from_triplet(
-            P(ax, ay),
-            P(bx + wave * 0.40, by + p.noodle_wave * 7.5),
-            P(cx + wave * (0.7 + p.spread * 0.25), cy + p.noodle_wave * 8.5),
-            curve=0.80,
-            steps=24,
-        )
-        _draw_noodle(draw, pts, width, front)
-
-    # Distinct front lash noodle for the whip.
-    if anim == "noodle_whip":
-        whip_end_x = 116.0 + 116.0 * p.whip
-        whip_end_y = -20.0 - 10.0 * p.whip
-        whip_mid_y = -68.0 - 40.0 * p.whip
-        pts = _cubic_from_triplet(
-            P(42, -6),
-            P(82 + 46 * p.whip, whip_mid_y),
-            P(whip_end_x, whip_end_y),
-            curve=0.84,
-            steps=28,
-        )
-        _draw_noodle(draw, pts, 10.2, True)
-        if p.whip > 0.2:
-            cx, cy = pts[-1]
-            for expand in [0, 12]:
-                box = (
-                    _s(cx - 16 - expand),
-                    _s(cy - 12 - expand * 0.5),
-                    _s(cx + 18 + expand),
-                    _s(cy + 12 + expand * 0.5),
+    eye_centres: List[Point] = []
+    stalks: List[List[Point]] = []
+    for (ax, ay), (bx, by), (cx, cy), side in stalk_specs:
+        sway = math.sin(ph + side) * 5.0
+        if p.collapse > 0:
+            cx, cy = cx + side * 50 * p.collapse, cy + 80 * p.collapse
+            bx, by = bx + side * 30 * p.collapse, by + 36 * p.collapse
+        a = P(ax, ay)
+        c = P(cx + sway, cy)
+        b1 = P(bx + sway * 0.5, _lerp(ay, by, 0.5))
+        b2 = P(_lerp(bx, cx, 0.3) - side * 18, by - 8)
+        pts = []
+        for k in range(25):
+            s = k / 24
+            u = 1 - s
+            pts.append(
+                (
+                    u**3 * a[0] + 3 * u * u * s * b1[0] + 3 * u * s * s * b2[0] + s**3 * c[0],
+                    u**3 * a[1] + 3 * u * u * s * b1[1] + 3 * u * s * s * b2[1] + s**3 * c[1],
                 )
-                draw.arc(box, 200, 340, fill=IMPACT, width=_s(2.0))
+            )
+        stalks.append(pts)
+        eye_centres.append(c)
+    for pts in stalks:
+        _draw_noodle(draw, pts, 10.0, NOODLE)
 
-    # Lower dangling noodles in front.
-    front_specs = [
-        (-34, 30, -58, 76, -48, 146, 10.2, True),
-        (4, 28, 8, 78, 18, 154, 10.0, True),
-        (40, 22, 58, 72, 78, 142, 10.2, True),
-        (82, 18, 122, 54, 150, 106, 9.6, True),
-        (-82, 6, -120, 42, -162, 74, 9.8, True),
+    for i in range(22, 40):
+        pts = [P((x - root[0]) / sx, (y - root[1]) / sy) for x, y in _swirl((root[0], root[1] - 4), i, ph * 0.5)]
+        _draw_noodle(draw, pts, 9.2, NOODLE)
+
+    # --- The two meatballs, sitting up on the dome. The right one pulls back
+    # into the noodles to load a shot, then punches forward.
+    charge, fire = p.volley_charge, p.volley_fire
+    left = P(-42, -30 + 6 * p.collapse)
+    right = P(42 - 8 * charge + 14 * fire, -28 + 3 * charge + 6 * p.collapse)
+    balls = [
+        (left, 40.0, 0.04 + p.squash * 0.5, 3),
+        (right, 42.0 * (1.0 - 0.08 * charge), 0.04 + 0.16 * charge - 0.1 * fire, 9),
     ]
-    for idx, (ax, ay, bx, by, cx, cy, width, front) in enumerate(front_specs):
-        drip = math.sin(frame_idx * 0.7 + idx * 0.9 + p.slither * 0.9) * 8.0
-        collapse_y = p.collapse * (20.0 + idx * 6)
-        pts = _cubic_from_triplet(
-            P(ax, ay),
-            P(bx + drip * 0.35, by + p.noodle_wave * 8.0 + collapse_y * 0.2),
-            P(cx + drip * 0.8, cy + collapse_y),
-            curve=0.78,
-            steps=24,
-        )
-        _draw_noodle(draw, pts, width, front)
+    for c, r, sq, seed in balls:
+        _draw_meatball(draw, c, r, sq, seed)
+    for level in SAUCE_LEVELS:
+        with draw.sauce(level):
+            for c, r, sq, seed in balls:
+                _meatball_sauce(draw, c, r, sq, seed, level)
 
-    # Eye stalks: two larger matching eyes.
-    eye_ang = p.eye_aim
-    eye_dead = anim == "death" and p.collapse > 0.55
-    blink = anim == "hurt"
-    stalks = [
-        (
-            P(-28, -28),
-            P(-44, -72 - p.beam * 8),
-            P(-36, -106 - p.beam * 14),
-            eye_ang - 2,
-        ),
-        (P(34, -26), P(52, -70 - p.beam * 8), P(60, -104 - p.beam * 14), eye_ang + 2),
-    ]
-    for root_pt, bend_pt, tip_pt, ang in stalks:
-        if anim == "death":
-            bend_pt = (bend_pt[0] - p.collapse * 22, bend_pt[1] + p.collapse * 22)
-            tip_pt = (tip_pt[0] - p.collapse * 40, tip_pt[1] + p.collapse * 58)
-        _draw_eye_stalk(
-            draw,
-            root_pt,
-            bend_pt,
-            tip_pt,
-            ang,
-            angry=0.8
-            if anim in {"noodle_whip", "eye_beam", "meatball_volley"}
-            else 0.35,
-            blink=blink,
-            dead=eye_dead,
-        )
+    # Two strands draped over the meatballs' feet tie them into the bell.
+    for i, (a, b, c) in enumerate([((-96, 2), (-40, 22), (14, 4)), ((-16, 10), (40, 26), (96, 0))]):
+        wob = math.sin(ph + i * 2.0) * 3.0
+        pa, pb, pc = P(*a), P(b[0], b[1] + wob), P(*c)
+        pts = []
+        for k in range(21):
+            s = k / 20
+            u = 1 - s
+            pts.append((u * u * pa[0] + 2 * u * s * pb[0] + s * s * pc[0], u * u * pa[1] + 2 * u * s * pb[1] + s * s * pc[1]))
+        _draw_noodle(draw, pts, 9.4, NOODLE)
 
-    # Attack extras.
-    if anim == "meatball_volley" and p.volley > 0.02:
-        # Telegraph only: no projectile sprite baked into the boss animation.
-        arc = [
-            P(54, -2),
-            P(88 + 54 * p.volley, -20 - 12 * p.volley),
-            P(126 + 74 * p.volley, -10 - 8 * p.volley),
+    for i in front:
+        _draw_noodle(draw, chains[i], 9.8, NOODLE)
+    _draw_noodle(draw, chains[LASH], 10.4 if (p.whip or p.grasp) else 9.8, NOODLE)
+    if p.whip > 0.35:
+        tx, ty = chains[LASH][-1]
+        for k, grow in enumerate([0.0, 12.0]):
+            a = (1.0 - k * 0.45) * min(1.0, (p.whip - 0.35) * 2.0)
+            col = (IMPACT[0], IMPACT[1], IMPACT[2], int(IMPACT[3] * a))
+            x0, y0 = _pt((tx - 14 - grow, ty - 24 - grow))
+            x1, y1 = _pt((tx + 18 + grow, ty + 24 + grow))
+            draw.arc((x0, y0, x1, y1), 300, 60, fill=col, width=_s(3.0))
+
+    # --- Marinara on the noodles: fixed splat sites, each appearing past its
+    # own threshold, so more damage only ever adds sauce.
+    def noodle_sauce(sauce: float) -> None:
+        sites = [
+            (P(-70, -8), 0.08, 13.0), (P(12, 18), 0.18, 12.0), (P(84, -18), 0.28, 14.0),
+            (P(-8, -60), 0.38, 11.0), (P(-100, 14), 0.48, 13.0), (P(58, 22), 0.58, 15.0),
+            (P(-60, -52), 0.68, 11.0), (P(-40, 26), 0.78, 12.0), (P(70, -56), 0.86, 11.0),
+            (P(100, 6), 0.94, 12.0),
         ]
-        _line(draw, arc, SAUCE, 3.0)
-        _line(draw, arc, SAUCE_DARK, 1.0)
-        for cx, cy in arc[1:]:
-            _ellipse(draw, cx, cy, 4.0 + p.volley * 2.0, 2.4 + p.volley, SAUCE, None, 0)
-    if anim == "eye_beam" and p.beam > 0.05:
-        for origin in [P(-36, -106 - p.beam * 14), P(60, -104 - p.beam * 14)]:
-            tip = (origin[0] + 110 + 72 * p.beam, origin[1] - 8 + 2 * p.beam)
-            beam_poly = [
-                (origin[0] + 2, origin[1] - 5),
-                (origin[0] + 6, origin[1] + 5),
-                (tip[0], tip[1] + 16),
-                (tip[0] + 12, tip[1]),
-                (tip[0], tip[1] - 16),
-            ]
-            _poly(draw, beam_poly, BEAM2, None, 0)
-            core = [
-                (origin[0] + 1, origin[1] - 2),
-                (origin[0] + 3, origin[1] + 2),
-                (tip[0] - 8, tip[1] + 6),
-                (tip[0], tip[1]),
-                (tip[0] - 8, tip[1] - 6),
-            ]
-            _poly(draw, core, BEAM, None, 0)
-    if anim == "hurt" and p.hurt > 0.1:
-        overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        overlay_draw = blending_draw(overlay)
+        for k, (c, thresh, r) in enumerate(sites):
+            if sauce >= thresh:
+                _splat(draw, c, r * (0.8 + 0.5 * sauce), 40 + k, min(1.0, (sauce - thresh) * 3.0))
+        # Sauce runs down the noodles too, from the heaviest-hit side.
+        for k, i in enumerate(front):
+            thresh = 0.3 + 0.2 * k
+            if sauce >= thresh:
+                pts = chains[i]
+                n = int(len(pts) * (0.2 + 0.4 * (sauce - thresh)))
+                _line(draw, pts[2:2 + n], SAUCE, 6.5)
 
-        _ellipse(
-            overlay_draw,
-            root[0] - 4,
-            root[1] - 10,
-            82,
-            58,
-            HURT_RED,
-            None,
-            0,
-        )
+    for level in SAUCE_LEVELS:
+        with draw.sauce(level):
+            noodle_sauce(level)
 
-        img = Image.alpha_composite(img, overlay)
-        draw = blending_draw(img)
+    # The volley's muzzle: a burst of marinara off the loaded meatball. The
+    # shot itself is the sim's projectile; the boss only shows the throw.
+    if fire > 0.05:
+        mx, my = right[0] + 44, right[1] - 4
+        _circle(draw, (mx + 10 * fire, my), 22 * fire, SAUCE, OUTLINE, 1.4)
+        _circle(draw, (mx + 6 * fire, my - 5 * fire), 10 * fire, SAUCE_HI, None, 0)
+        for k in range(10):
+            a = math.radians(-80 + k * 18)
+            reach = (34 + 34 * _hash(k, 21)) * fire
+            r = (6.0 + 5.0 * _hash(k, 22)) * (1.0 - 0.35 * fire)
+            _circle(draw, (mx + math.cos(a) * reach, my + math.sin(a) * reach), r, SAUCE, OUTLINE, 1.2)
+    if charge > 0.2:
+        for k in range(3):
+            a = math.radians(-40 + k * 40)
+            _circle(draw, (right[0] + math.cos(a) * 50, right[1] + math.sin(a) * 50), 5.0 * charge, SAUCE, OUTLINE, 1.0)
 
-    # Death smear / floor pile.
-    if anim == "death" and p.collapse > 0.15:
-        smear_center = P(-8, 118)
-        _ellipse(
-            draw,
-            smear_center[0],
-            smear_center[1],
-            76 + 28 * p.collapse,
-            14 + 12 * p.collapse,
-            DUST,
-            None,
-            0,
-        )
+    for k, c in enumerate(eye_centres):
+        _draw_eye(draw, c, 20.0, p.eye_aim, p.eyes, -1.0 if k == 0 else 1.0)
 
-    return _downsample(img)
+    if p.beam > 0.05:
+        for origin in eye_centres:
+            length = 120 + 70 * p.beam
+            tip = (origin[0] + length, origin[1] + 10)
+            half = 14 * p.beam
+            _poly(
+                draw,
+                [(origin[0], origin[1] - 8), (tip[0], tip[1] - half), (tip[0] + 14, tip[1]), (tip[0], tip[1] + half), (origin[0], origin[1] + 8)],
+                BEAM2,
+                None,
+                0,
+            )
+            _poly(
+                draw,
+                [(origin[0], origin[1] - 4), (tip[0] - 6, tip[1] - half * 0.4), (tip[0] + 4, tip[1]), (tip[0] - 6, tip[1] + half * 0.4), (origin[0], origin[1] + 4)],
+                BEAM,
+                None,
+                0,
+            )
+
+    if anim == "hurt" and frame_idx == 0:
+        flash = Image.new("RGBA", img.size, (255, 255, 255, 0))
+        flash.putalpha(img.getchannel("A").point(lambda v: v * 150 // 255))
+        img = Image.alpha_composite(img, flash)
+
+    # The reveal map downsamples by averaging, and an edge pixel then carries
+    # a higher threshold than the splat's middle: its edge arrives a little
+    # after its body, which reads as the splat spreading.
+    return _downsample(img), sauce_img.resize(FRAME_SIZE, Image.Resampling.BOX)
 
 
 def render(out_dir: str | Path, **opts) -> List[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    reveals: dict = {}
+
+    def frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
+        base, reveal = _render_layers(anim, frame_idx, nframes)
+        reveals[(anim, frame_idx)] = reveal
+        return base
+
+    # A fixed canvas (no auto-crop): the authored hulls are in its pixels.
     outputs = build_sheet(
         target=TARGET_NAME,
         rows=ROWS,
-        render_fn=lambda anim, frame_idx, nframes: _render_frame(
-            anim, frame_idx, nframes
-        ),
+        render_fn=frame,
         out_dir=out_dir,
-        frame_size=opts.get("frame_size", FRAME_SIZE),
-        crop_margin=18,
-        auto_crop=True,
+        frame_size=FRAME_SIZE,
+        auto_crop=False,
         actor_metadata=ACTOR_METADATA,
         animation_key_map=ANIMATION_KEY_MAP,
+        hurtbox_parts=_hurtbox_parts(),
+        body_metrics_fn=_body_metrics,
+        pose_bodies="authored",
     )
-    return [
+    sauce = build_sheet(
+        target=SAUCE_TARGET,
+        rows=ROWS,
+        render_fn=lambda anim, frame_idx, _n: reveals[(anim, frame_idx)],
+        out_dir=out_dir,
+        frame_size=FRAME_SIZE,
+        auto_crop=False,
+        pose_bodies="authored",
+    )
+    return [sauce["spritesheet"], sauce["yaml"], sauce["ron"]] + [
         outputs[k]
         for k in [
             "spritesheet",
@@ -830,6 +1180,22 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
             "canonical_transparent",
         ]
     ]
+
+
+# The sauce reveal maps publish as a sheet of their own: the same rows and
+# frames as the art, packed independently, so every quality tier repacks it
+# like any sheet and the overlay finds a cell by (row, frame), never by a
+# pixel rect shared with the art.
+SAUCE_TARGET = f"{TARGET_NAME}_sauce"
+SHEET_FILES = (
+    f"{TARGET_NAME}_spritesheet.png",
+    f"{TARGET_NAME}_spritesheet.yaml",
+    f"{TARGET_NAME}_spritesheet.ron",
+    f"{TARGET_NAME}_actor.ron",
+    f"{SAUCE_TARGET}_spritesheet.png",
+    f"{SAUCE_TARGET}_spritesheet.yaml",
+    f"{SAUCE_TARGET}_spritesheet.ron",
+)
 
 
 def main(argv: list[str] | None = None) -> int:
