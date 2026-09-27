@@ -11,6 +11,7 @@ from ambition_sprite2d_renderer.authoring.humanoid_svg_rig import (
     HumanoidViewSpec,
     build_humanoid_view_document,
 )
+from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
 from ambition_sprite2d_renderer.targets.characters.robot25d import Pose
 from ambition_sprite2d_renderer.targets.characters.robot_side import SideRobotGenerator
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_motion import (
@@ -19,6 +20,12 @@ from ambition_sprite2d_renderer.targets.characters.player_robot_v3_motion import
     LOOPING_ROWS,
     POSE_ALIASES,
     ROBOT_ROWS,
+)
+from ambition_sprite2d_renderer.targets.characters.player_robot_v3_crouch import reauthor_crouch
+from ambition_sprite2d_renderer.targets.characters.player_robot_v3_gait import author_gaits
+from ambition_sprite2d_renderer.targets.characters.player_robot_v3_strikes import (
+    STRIKES,
+    author_strikes,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -569,6 +576,13 @@ def build_doc() -> dict:
     # must not silently replace those artist-editable values with a second copy.
 
     doc["clips"] = make_clips(doc)
+    # Rows whose motion is SOLVED against the rig rather than borrowed from the
+    # robot family: they overwrite the borrowed clips in the same document, so
+    # a build is the whole rig and no second pass can be forgotten.
+    solved = RigDocument(doc)
+    reauthor_crouch(solved)
+    author_gaits(solved)
+    author_strikes(solved)
     doc["features"] = {
         "paper_doll": True,
         "split_leg_artwork": True,
@@ -583,6 +597,10 @@ def build_doc() -> dict:
         "near_arm_above_torso": True,
         "authored_face_states": ["face_open", "face_blink"],
         "idle_eye_blink": True,
+        "solved_rows": [
+            "crouch_start", "crouch", "crouch_walk", "crouch_jump", "crouch_end",
+            "item_hold_crouch", "walk", "run", *STRIKES,
+        ],
     }
     return doc
 

@@ -38,6 +38,7 @@ from ...core import slash_envelope
 from .robot_side import SideRobotGenerator
 from .player_robot_v3_gameplay import hurtbox_parts_for_rows
 from .player_robot_v3_motion import EFFECT_ALIASES, ROBOT_ROWS
+from .player_robot_v3_strikes import STRIKES
 
 TARGET_NAME = "player_robot_v3"
 FRAME_SIZE = (224, 224)
@@ -363,7 +364,9 @@ def _apply_fx(img: Image.Image, animation: str, frame_idx: int, nframes: int) ->
     base = hand.tip
     slash = float(params.get("slash", 0.0))
     arc = float(params.get("slash_arc", t))
-    if effect_animation in {
+    # A keyed strike carries the blade as a rig part on the hand; drawing this
+    # line as well would be a second blade.
+    if animation not in STRIKES and effect_animation in {
         "slash", "attack_side", "attack_up", "attack_down", "air_neutral",
         "air_forward", "air_back", "air_down", "air_up", "ledge_getup_attack",
     }:
@@ -528,6 +531,13 @@ def _player_attack_hitboxes(size: Tuple[int, int]) -> Dict[str, dict]:
     return {
         "attack_side": shaped(
             _slash_poly(cx - w * 0.06, body_cy, 1.0, 0.0, SWING)
+        ),
+        # The neutral attack — the one every player presses first. It had NO
+        # sheet volume, so the runtime fell back to the moveset's 36x28 wu box:
+        # a tenth of the forward tilt's area, and the crescent fitted to it
+        # shrank with it. The same swing, a shade shorter than the tilt.
+        "jab": shaped(
+            _slash_poly(cx - w * 0.06, body_cy, 1.0, 0.0, SWING.scaled(reach=0.92))
         ),
         "attack_up": shaped(
             _slash_poly(cx, body_cy, 0.0, -1.0, SWING.scaled(reach=0.88, half=0.92))

@@ -1,4 +1,4 @@
-"""Re-author player_robot_v3's crouch family so he CROUCHES instead of sinking.
+"""Re-author player_robot_v3's crouch family so they CROUCH instead of sinking.
 
 The shipped crouch pushed `root_y` down by 8 px with the legs already pre-bent
 at frame 0 and never folding further. That is not a crouch: the head dropped
@@ -16,28 +16,19 @@ feet cannot fold at all.
 Idempotent: it solves from the rig's own bind pose, not from the current keys,
 so running it twice produces the same document.
 
-    python3 scripts/reauthor_robot_v3_crouch.py [--dry-run]
+This used to be a script run by hand AFTER `build_player_robot_v3_svg.py`,
+rewriting the rig file the builder had just written. Anything that rebuilt the
+rig without remembering the second step (`render_director_vanity_dialog.py`
+does, in a subprocess) shipped the sinking crouch again. The builder now calls
+``reauthor_crouch`` itself, so one build is the whole rig.
 """
 
 from __future__ import annotations
 
-import argparse
 import itertools
-import json
 import math
-import sys
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
-from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument  # noqa: E402
-
-RIG = (
-    ROOT
-    / "ambition_sprite2d_renderer/targets/characters/rigged/player_robot_v3"
-    / "player_robot_v3.rig.json"
-)
+from ...authoring.rigdoc import RigDocument
 
 # How far the pelvis travels, in frame pixels.
 #
@@ -71,13 +62,13 @@ CROUCH_SHAPE = {
 #: The head sinks onto the shoulders and SQUASHES while it does.
 #:
 #: The squash is the character read — a robot whose head goes wide and flat is
-#: cute, and it is also the only way this one gets meaningfully lower: his head
-#: is 52 px tall above its own joint, so headroom is the only room he has left.
+#: cute, and it is also the only way this one gets meaningfully lower: their head
+#: is 52 px tall above its own joint, so headroom is the only room they have left.
 #: Swept 1.0/0.85/0.8/0.75/0.7 against the drawing; below ~0.75 the eyes spread
-#: far enough that he stops reading as himself.
+#: far enough that they stop reading as themselves.
 #:
-#: ⛔ this character's crouch is NOT half his standing height and cannot be:
-#: `BodyMode::Crouching` halves his 91 px box to 45.5, and his head alone is
+#: ⛔ this character's crouch is NOT half their standing height and cannot be:
+#: `BodyMode::Crouching` halves their 91 px box to 45.5, and their head alone is
 #: 52 px. Art and box do not agree here, by arithmetic rather than by choice.
 CROUCH_HEAD_SINK = 4.0
 CROUCH_HEAD_SQUASH = 0.8
@@ -156,15 +147,15 @@ def leg_cost(p: Poser, side: str, target):
 
 
 def descend(p: Poser, side: str, target, u0: float, l0: float):
-    u, l = u0, l0
-    p.set(**{f"{side}_leg_u": u, f"{side}_leg_l": l})
+    u, lo = u0, l0
+    p.set(**{f"{side}_leg_u": u, f"{side}_leg_l": lo})
     best = leg_cost(p, side, target)
     step = 20.0
     while step > 1e-4:
         moved = False
         for name, tag in ((f"{side}_leg_u", "u"), (f"{side}_leg_l", "l")):
             for sign in (1, -1):
-                val = (u if tag == "u" else l) + sign * step
+                val = (u if tag == "u" else lo) + sign * step
                 p.set(**{name: val})
                 cost = leg_cost(p, side, target)
                 if cost < best - 1e-9:
@@ -172,13 +163,13 @@ def descend(p: Poser, side: str, target, u0: float, l0: float):
                     if tag == "u":
                         u = val
                     else:
-                        l = val
+                        lo = val
                     moved = True
                 else:
-                    p.set(**{name: (u if tag == "u" else l)})
+                    p.set(**{name: (u if tag == "u" else lo)})
         if not moved:
             step *= 0.5
-    return u, l, best
+    return u, lo, best
 
 
 def solve_leg(p: Poser, side: str, target, seed=None):
@@ -192,14 +183,14 @@ def solve_leg(p: Poser, side: str, target, seed=None):
     six-frame breathing loop that pops is worse than one that does not breathe.
     """
     if seed is not None:
-        u, l, _cost = descend(p, side, target, seed[0], seed[1])
-        p.set(**{f"{side}_leg_u": u, f"{side}_leg_l": l})
-        return u, l
+        u, lo, _cost = descend(p, side, target, seed[0], seed[1])
+        p.set(**{f"{side}_leg_u": u, f"{side}_leg_l": lo})
+        return u, lo
     best = None
     for u0, l0 in itertools.product((10, 25, 40, 55, 70), (-20, -45, -70, -95)):
-        u, l, cost = descend(p, side, target, u0, l0)
+        u, lo, cost = descend(p, side, target, u0, l0)
         if best is None or cost < best[2]:
-            best = (u, l, cost)
+            best = (u, lo, cost)
     p.set(**{f"{side}_leg_u": best[0], f"{side}_leg_l": best[1]})
     return best[0], best[1]
 
@@ -239,8 +230,8 @@ def pose_at(p: Poser, rest, drop: float, foot_targets=None, seed=None):
         leg_seed = None
         if seed is not None:
             leg_seed = (seed[f"{side}_leg_u"], seed[f"{side}_leg_l"])
-        u, l = solve_leg(p, side, target, leg_seed)
-        out[f"{side}_leg_u"], out[f"{side}_leg_l"] = u, l
+        u, lo = solve_leg(p, side, target, leg_seed)
+        out[f"{side}_leg_u"], out[f"{side}_leg_l"] = u, lo
         out[f"{side}_leg_foot"] = solve_foot(p, side, rest[side]["foot_angle"])
         landed = p.solve()[f"{side}_leg_foot"].origin
         worst = max(worst, abs(landed[1] - target[1]))
@@ -270,7 +261,7 @@ def keyed(values):
     return {"keys": [[i / (n - 1), float(v)] for i, v in enumerate(values)]}
 
 
-def build(doc: RigDocument) -> dict:
+def reauthor_crouch(doc: RigDocument) -> dict:
     p = Poser(doc)
     p.clear()
     rest_world = p.solve()
@@ -350,8 +341,8 @@ def build(doc: RigDocument) -> dict:
         holding.append(frame)
     poses["item_hold_crouch"] = holding
 
-    # crouch_jump: the crouch he LEFT THE GROUND IN, so it is the crouch he
-    # keeps while he is off it — legs tucked under, arms out for balance. Solved
+    # crouch_jump: the crouch they LEFT THE GROUND IN, so it is the crouch they
+    # keep while they are off it — legs tucked under, arms out for balance. Solved
     # without the ground constraint, because there is no ground under it.
     leap = []
     for i in range(3):
@@ -423,27 +414,4 @@ def build(doc: RigDocument) -> dict:
     return report
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dry-run", action="store_true")
-    args = parser.parse_args()
-
-    doc = RigDocument.load(RIG)
-    report = build(doc)
-    print(f"stand head y      {report['stand_head_y']:.2f}")
-    print(f"crouch head y     {report['hold_head_y']:.2f}  (drop {report['head_drop']:+.2f} px)")
-    print(f"ground line       {report['ground']:.2f}")
-    print(f"worst ankle error {report['worst_ankle_error']:.3f} px")
-    if args.dry_run:
-        print("dry run — nothing written")
-        return 0
-    # indent=2 to match `build_player_robot_v3_svg.py`, which is what writes
-    # this document from scratch. `RigDocument.save` uses indent=1, and reaching
-    # for it here reformatted all 110k lines and buried the crouch in the diff.
-    RIG.write_text(json.dumps(doc.data, indent=2) + "\n")
-    print(f"wrote {RIG}")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+__all__ = ["reauthor_crouch"]

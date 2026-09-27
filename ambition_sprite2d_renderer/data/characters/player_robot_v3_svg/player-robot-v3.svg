@@ -202,7 +202,10 @@
        inkscape:groupmode="layer"
        data-rig-part="torso_front"
        data-rig-bone="torso"
-       data-rig-z="40">
+       data-rig-z="40"
+       data-rig-opacity="torso_front_vis"
+       data-rig-opacity-default="1"
+       data-note="the drawn three-quarter chest; a strike swaps it for torso_open / torso_profile">
       <path
          id="path3280-3"
          style="stroke:#000000;stroke-opacity:1;fill:#ffffff;fill-opacity:1;display:inline;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none"
@@ -214,6 +217,79 @@
          id="path4733"
          sodipodi:nodetypes="ccccc"
          inkscape:label="torso-icon" />
+    </g>
+    <g
+       id="part-torso-open"
+       inkscape:label="Torso Front - Open (coil)"
+       inkscape:groupmode="layer"
+       data-rig-part="torso_open"
+       data-rig-bone="torso"
+       data-rig-z="40"
+       data-rig-opacity="torso_open_vis"
+       data-note="the chest turned TO the camera for a wind-up: the whole shell faces us, the light sits mid-chest">
+      <path
+         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;vector-effect:non-scaling-stroke"
+         d="m 251.93139,164.60442 c -2.10556,-0.009 -3.73798,0.0856 -4.47983,0.37414 -0.90057,0.38345 -1.32082,0.86976 -1.54926,1.52601 -0.33638,1.35142 -0.38402,2.38509 -0.25063,3.63026 0.78676,4.24641 2.37013,7.75505 5.16403,11.01122 1.14426,0.83104 21.86497,0.73374 22.6074,0 2.71035,-3.18143 2.64842,-11.23299 2.47944,-13.0483 -0.0888,-0.69091 -0.92312,-1.24741 -1.62678,-1.51929 -0.84657,-0.37463 -2.2346,-1.12491 -4.77283,-1.28829 l -1.25005,-0.0992 c -4.76693,-0.0486 -11.68926,-0.56732 -16.32149,-0.58653 z m 2.84582,0.55242 c 4.65829,0.15916 10.9627,0.42206 13.48266,0.67496 1.5354,0.15086 2.56312,0.31683 3.83896,1.16407 0.49821,0.55561 -0.4776,0.59783 -1.86535,0.838 -4.14199,0.009 -9.64487,0.32592 -12.52401,-0.15943 -1.82233,-0.36158 -6.02732,-1.32987 -6.05707,-1.83361 -0.0267,-0.40041 0.10891,-0.5827 0.43465,-0.64736 1.03012,-0.11961 1.35659,-0.0974 2.69016,-0.0366 z"
+         id="torso-open-shell"
+         inkscape:label="torso-open-shell" />
+      <path
+         style="fill:#00f5fc;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;vector-effect:non-scaling-stroke"
+         d="m 266.64729,172.13182 c -0.23436,2.02495 -0.22405,3.55072 -0.0925,5.09425 1.59515,0.20499 3.19963,0.32597 4.84889,0.0442 0.34868,-0.14733 0.24298,-5.1891 -0.0499,-5.2484 -0.19126,-0.0556 -4.66349,-0.27104 -4.70648,0.10995 z"
+         transform="translate(-8.2,0.4)"
+         id="torso-open-light"
+         inkscape:label="torso-open-light" />
+    </g>
+    <g
+       id="part-torso-profile"
+       inkscape:label="Torso Front - Profile (strike)"
+       inkscape:groupmode="layer"
+       data-rig-part="torso_profile"
+       data-rig-bone="torso"
+       data-rig-z="40"
+       data-rig-opacity="torso_profile_vis"
+       data-note="the chest turned toward the TARGET as a strike lands: the front plate narrows onto its leading edge and the light turns with it">
+      <path
+         style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;vector-effect:non-scaling-stroke"
+         d="M 251.69885 164.60391 C 249.59329 164.59491 247.96087 164.6895 247.21902 164.97804 C 246.31845 165.36149 246.20102 165.93359 245.97258 166.58983 C 245.89265 166.91096 245.82912 167.21371 245.78035 167.50605 C 246.3669 166.95894 247.20506 166.53691 248.56106 166.37176 C 252.37643 167.76164 251.8816 171.08197 251.9071 174.43018 C 251.91202 175.07068 249.54887 176.09203 247.88203 176.77681 C 248.67521 178.33691 249.66488 179.80818 250.88598 181.23132 C 252.03024 182.06235 272.75095 181.96505 273.49338 181.23132 C 276.20373 178.04989 276.1418 169.99832 275.97282 168.18302 C 275.88402 167.49211 275.0497 166.93561 274.34604 166.66373 C 273.5894 166.32889 272.39752 165.69553 270.34112 165.44778 L 270.2202 166.20588 C 270.87566 166.37119 271.48709 166.62849 272.16892 167.08127 C 272.66713 167.63688 271.69166 167.6793 270.30391 167.91947 C 266.16194 167.92847 260.65875 168.24514 257.77961 167.75979 C 255.9573 167.39821 251.75237 166.43005 251.72262 165.92631 C 251.69592 165.5259 252.19136 165.1578 252.33137 165.16615 L 252.33705 164.60391 L 251.69885 164.60391 z "
+         transform="matrix(0.74,0,0,1,71.76,0)"
+         id="torso-profile-shell"
+         inkscape:label="torso-profile-shell" />
+      <path
+         style="fill:#00f5fc;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;vector-effect:non-scaling-stroke"
+         d="m 266.64729,172.13182 c -0.23436,2.02495 -0.22405,3.55072 -0.0925,5.09425 1.59515,0.20499 3.19963,0.32597 4.84889,0.0442 0.34868,-0.14733 0.24298,-5.1891 -0.0499,-5.2484 -0.19126,-0.0556 -4.66349,-0.27104 -4.70648,0.10995 z"
+         transform="matrix(0.55,0,0,1,125.2,0)"
+         id="torso-profile-light"
+         inkscape:label="torso-profile-light" />
+    </g>
+    <g
+       id="part-blade"
+       inkscape:label="Energy Blade"
+       inkscape:groupmode="layer"
+       data-rig-part="blade"
+       data-rig-bone="near_arm_hand"
+       data-rig-z="47.5"
+       data-rig-opacity="blade_vis"
+       data-note="hidden unless an attack keys blade_vis; the hilt sits under the fist (near_hand z48). Drawn pointing +x (0 deg) so it fits the canvas; strikes key the blade's world direction and the solver turns the wrist to match">
+      <path
+         style="fill:#00f5fc;fill-opacity:1;stroke:#000000;stroke-width:1.2;stroke-linejoin:round;stroke-opacity:1"
+         d="M 246.2000,185.3000 L 267.6000,185.0000 L 277.6000,186.0000 L 282.1000,188.8000 L 265.6000,190.1000 L 246.2000,189.9000 Z"
+         id="blade-edge"
+         inkscape:label="blade-edge" />
+      <path
+         style="fill:#ffffff;fill-opacity:1;stroke:none"
+         d="M 247.6000,186.8000 L 267.6000,186.6000 L 276.1000,187.3000 L 265.6000,188.6000 L 247.6000,188.4000 Z"
+         id="blade-core"
+         inkscape:label="blade-core" />
+      <path
+         style="fill:#131313;fill-opacity:1;stroke:#000000;stroke-width:0.8;stroke-linejoin:miter;stroke-opacity:1"
+         d="M 241.2000,186.3500 L 245.2000,186.3500 L 245.2000,188.8500 L 241.2000,188.8500 Z"
+         id="blade-hilt"
+         inkscape:label="blade-hilt" />
+      <path
+         style="fill:#cb1fff;fill-opacity:1;stroke:#000000;stroke-width:0.8;stroke-linejoin:miter;stroke-opacity:1"
+         d="M 244.6000,184.0000 L 246.2000,184.0000 L 246.2000,191.2000 L 244.6000,191.2000 Z"
+         id="blade-guard"
+         inkscape:label="blade-guard" />
     </g>
     <g
        id="part-near-hand"
@@ -620,12 +696,15 @@
       <g id="ambition-rig-side-part-neck_ring" data-rig-part-def="neck_ring" data-rig-bone="torso" data-rig-z="21" data-rig-pivot="ambition-rig-side-bind-neck_ring" data-rig-bind-angle="0" data-rig-elements="path3288" />
       <g id="ambition-rig-side-part-pelvis_back" data-rig-part-def="pelvis_back" data-rig-bone="pelvis" data-rig-z="30" data-rig-pivot="ambition-rig-side-bind-pelvis_back" data-rig-bind-angle="0" data-rig-elements="path4613" />
       <g id="ambition-rig-side-part-pelvis_front" data-rig-part-def="pelvis_front" data-rig-bone="pelvis" data-rig-z="35" data-rig-pivot="ambition-rig-side-bind-pelvis_front" data-rig-bind-angle="0" data-rig-elements="path4701" />
-      <g id="ambition-rig-side-part-torso_front" data-rig-part-def="torso_front" data-rig-bone="torso" data-rig-z="40" data-rig-pivot="ambition-rig-side-bind-torso_front" data-rig-bind-angle="0" data-rig-elements="path3280-3 path4733" />
+      <g id="ambition-rig-side-part-torso_front" data-rig-part-def="torso_front" data-rig-bone="torso" data-rig-z="40" data-rig-pivot="ambition-rig-side-bind-torso_front" data-rig-bind-angle="0" data-rig-opacity="torso_front_vis" data-rig-opacity-default="1" data-rig-elements="path3280-3 path4733" />
+      <g id="ambition-rig-side-part-torso_open" data-rig-part-def="torso_open" data-rig-bone="torso" data-rig-z="40" data-rig-pivot="ambition-rig-side-bind-torso_open" data-rig-bind-angle="0" data-rig-opacity="torso_open_vis" data-rig-elements="torso-open-shell torso-open-light" />
+      <g id="ambition-rig-side-part-torso_profile" data-rig-part-def="torso_profile" data-rig-bone="torso" data-rig-z="40" data-rig-pivot="ambition-rig-side-bind-torso_profile" data-rig-bind-angle="0" data-rig-opacity="torso_profile_vis" data-rig-elements="torso-profile-shell torso-profile-light" />
       <g id="ambition-rig-side-part-near_leg_u" data-rig-part-def="near_leg_u" data-rig-bone="near_leg_u" data-rig-z="42" data-rig-pivot="ambition-rig-side-bind-near_leg_u" data-rig-bind-angle="86.9872" data-rig-elements="path4619" />
       <g id="ambition-rig-side-part-near_leg_l" data-rig-part-def="near_leg_l" data-rig-bone="near_leg_l" data-rig-z="43" data-rig-pivot="ambition-rig-side-bind-near_leg_l" data-rig-bind-angle="138.8141" data-rig-elements="path-near-shin-link" />
       <g id="ambition-rig-side-part-near_foot" data-rig-part-def="near_foot" data-rig-bone="near_leg_foot" data-rig-z="44" data-rig-pivot="ambition-rig-side-bind-near_foot" data-rig-bind-angle="16.5044" data-rig-elements="path4615 path4627" />
       <g id="ambition-rig-side-part-near_arm_u" data-rig-part-def="near_arm_u" data-rig-bone="near_arm_u" data-rig-z="46" data-rig-pivot="ambition-rig-side-bind-near_arm_u" data-rig-bind-angle="124.992" data-rig-elements="path4623" />
       <g id="ambition-rig-side-part-near_arm_l" data-rig-part-def="near_arm_l" data-rig-bone="near_arm_l" data-rig-z="47" data-rig-pivot="ambition-rig-side-bind-near_arm_l" data-rig-bind-angle="105.5241" data-rig-elements="path4109" />
+      <g id="ambition-rig-side-part-blade" data-rig-part-def="blade" data-rig-bone="near_arm_hand" data-rig-z="47.5" data-rig-pivot="ambition-rig-side-bind-blade" data-rig-bind-angle="75.9638" data-rig-opacity="blade_vis" data-rig-elements="blade-edge blade-core blade-hilt blade-guard" />
       <g id="ambition-rig-side-part-near_hand" data-rig-part-def="near_hand" data-rig-bone="near_arm_hand" data-rig-z="48" data-rig-pivot="ambition-rig-side-bind-near_hand" data-rig-bind-angle="75.9638" data-rig-elements="path4717 path4830 path4828 path4826" />
       <g id="ambition-rig-side-part-head" data-rig-part-def="head" data-rig-bone="head" data-rig-z="60" data-rig-pivot="ambition-rig-side-bind-head" data-rig-bind-angle="0" data-rig-elements="path3119 path4712 path4710 path4714 path4735 path4737" />
       <g id="ambition-rig-side-part-face_open" data-rig-part-def="face_open" data-rig-bone="head" data-rig-z="61" data-rig-pivot="ambition-rig-side-bind-face_open" data-rig-bind-angle="0" data-rig-opacity="face_open_vis" data-rig-elements="face-open-visor face-open-eye-right face-open-eye-left" />
@@ -677,11 +756,14 @@
       <circle id="ambition-rig-side-bind-pelvis_back" data-rig-bind-pivot="pelvis_back" cx="261.75" cy="184" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-pelvis_front" data-rig-bind-pivot="pelvis_front" cx="261.75" cy="184" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-torso_front" data-rig-bind-pivot="torso_front" cx="262" cy="181" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-torso_open" data-rig-bind-pivot="torso_open" cx="262" cy="181" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-torso_profile" data-rig-bind-pivot="torso_profile" cx="262" cy="181" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_leg_u" data-rig-bind-pivot="near_leg_u" cx="255" cy="184" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_leg_l" data-rig-bind-pivot="near_leg_l" cx="255.5" cy="193.5" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_foot" data-rig-bind-pivot="near_foot" cx="247.5" cy="200.5" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_arm_u" data-rig-bind-pivot="near_arm_u" cx="248" cy="170" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_arm_l" data-rig-bind-pivot="near_arm_l" cx="244.5" cy="175" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-blade" data-rig-bind-pivot="blade" cx="242" cy="184" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_hand" data-rig-bind-pivot="near_hand" cx="242" cy="184" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-head" data-rig-bind-pivot="head" cx="262" cy="164" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-face_open" data-rig-bind-pivot="face_open" cx="262" cy="164" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />

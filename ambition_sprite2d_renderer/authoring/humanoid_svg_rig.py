@@ -70,6 +70,7 @@ _PART_NAME_ATTR = "data-rig-part"
 _PART_BONE_ATTR = "data-rig-bone"
 _PART_Z_ATTR = "data-rig-z"
 _PART_OPACITY_ATTR = "data-rig-opacity"
+_PART_OPACITY_DEFAULT_ATTR = "data-rig-opacity-default"
 _JOINT_ATTR = "data-rig-joint"
 _SIDE_MAP_ATTR = "data-rig-side-map"
 _LABEL_BINDING_MODES = {"explicit", "standard-humanoid"}
@@ -141,6 +142,11 @@ class _PartBinding:
     include: Tuple[str, ...]
     opacity_channel: Optional[str] = None
     source_order: int = 0
+    # The opacity a clip that never keys `opacity_channel` renders this part
+    # at. Absent means hidden (a blade shows only where an attack keys it);
+    # 1.0 is the NORMAL member of a swap set — the torso a pivot cuts away
+    # from, visible in every clip that never mentions the swap.
+    opacity_default: Optional[float] = None
 
 
 def _parse_side_map(layer: ET.Element) -> Dict[str, str]:
@@ -702,6 +708,13 @@ def _collect_parts(
         if parsed is None:
             continue
         name, bone, z, opacity = parsed
+        default_text = elem.get(_PART_OPACITY_DEFAULT_ATTR)
+        if default_text is not None and not opacity:
+            raise ValueError(
+                f"SVG rig part {name!r} sets {_PART_OPACITY_DEFAULT_ATTR} "
+                f"without {_PART_OPACITY_ATTR}: a default for no channel"
+            )
+        opacity_default = float(default_text) if default_text is not None else None
         name = _map_side_prefix(name, side_map)
         bone = _map_side_prefix(bone, side_map)
         include = _descendant_ids(elem)
@@ -712,7 +725,9 @@ def _collect_parts(
         nested.append(
             (
                 depths.get(id(elem), 0),
-                _PartBinding(name, bone, z, include, opacity, source_order),
+                _PartBinding(
+                    name, bone, z, include, opacity, source_order, opacity_default
+                ),
             )
         )
         source_order += 1
@@ -884,6 +899,23 @@ def _all_part_ids(parts: Iterable[_PartBinding]) -> List[str]:
     return out
 
 
+def _rest_silhouette_ids(parts: Iterable[_PartBinding]) -> List[str]:
+    """The art a clip that keys no opacity channel draws: the rest silhouette.
+
+    It is what the character's HEIGHT is measured on. A part hidden by default
+    (a blade that ignites only in an attack, an alternate face) is drawn where
+    the SVG author could see it, which is often outside the body — a blade on
+    the player robot's hand hung below their boots at rest, and measuring it
+    shrank the whole character 1.4% and moved their ground line.
+    """
+    out: List[str] = []
+    for part in parts:
+        if part.opacity_channel and not part.opacity_default:
+            continue
+        out.extend(part.include)
+    return out
+
+
 def build_humanoid_view_document(
     svg_path: Path,
     rig_dir: Path,
@@ -937,7 +969,7 @@ def build_humanoid_view_document(
         raise ValueError(f"SVG view {spec.view!r} is missing joints: {missing}")
 
     art, (art_x, art_y), _ = rasterize_subset(
-        svg_path, spec.view, _all_part_ids(parts), spec.ref_dpi
+        svg_path, spec.view, _rest_silhouette_ids(parts), spec.ref_dpi
     )
     if art is None:
         raise ValueError(f"SVG view {spec.view!r} rendered no art")
@@ -1092,6 +1124,8 @@ def build_humanoid_view_document(
         }
         if binding.opacity_channel:
             part["opacity_channel"] = binding.opacity_channel
+        if binding.opacity_default is not None:
+            part["opacity_default"] = binding.opacity_default
         rig_parts.append(part)
     rig_parts.sort(
         key=lambda p: (

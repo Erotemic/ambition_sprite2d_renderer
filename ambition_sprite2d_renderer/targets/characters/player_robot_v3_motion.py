@@ -30,7 +30,7 @@ ROBOT_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     ("turnaround", 6, 72),
     ("dash_startup", 4, 50),
     ("dash", 6, 65),
-    ("run", 8, 75),
+    ("run", 8, 64),
     ("stumble", 6, 74),
     ("crouch_start", 5, 68),
     ("crouch", 6, 95),
@@ -94,7 +94,7 @@ ROBOT_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     ("bury_escape", 8, 70),
     # Normals / smashes / aerials.
     ("slash", 8, 75),
-    ("jab", 6, 52),
+    ("jab", 6, 42),
     ("dash_attack", 7, 58),
     ("attack_side", 3, 60),
     ("attack_up", 3, 60),
