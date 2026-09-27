@@ -314,7 +314,10 @@ def _apply_fx(img: Image.Image, animation: str, frame_idx: int, nframes: int) ->
     doc = load_doc()
     t = doc.frame_time(animation, frame_idx, nframes)
     world, params = doc.solve(animation, t)
-    effect_animation = EFFECT_ALIASES.get(animation, animation)
+    # A keyed strike is drawn entirely by the rig (its blade is a part), so it
+    # borrows no other row's effects: `smash_charge` used to inherit the
+    # `charge` orb and every attack the line-blade.
+    effect_animation = animation if animation in STRIKES else EFFECT_ALIASES.get(animation, animation)
 
     background = Image.new("RGBA", img.size, (0, 0, 0, 0))
     bd = blending_draw(background)
