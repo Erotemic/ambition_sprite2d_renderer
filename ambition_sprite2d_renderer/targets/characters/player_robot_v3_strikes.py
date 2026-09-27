@@ -67,6 +67,12 @@ class Key:
     turn: Optional[str] = None
     squint: float = 0.0
     ease: str = "smooth"
+    # The face: "open", "fierce", "strain" or "blink" (the closed ^^ arcs);
+    # `None` means fierce while the blade is out and open otherwise.
+    face: Optional[str] = None
+    # The head turned to look behind (the back air): the ear cup and antenna
+    # come round to the middle of the shell and the visor is seen edge-on.
+    look_back: bool = False
 
 
 # The direction the blade is DRAWN in the SVG (straight ahead, so it fits the
@@ -74,6 +80,13 @@ class Key:
 # tracks; the wrist is turned by the difference.
 BLADE_DRAWN_DEG = 0.0
 TORSO_SWAP = {"open": "torso_open_vis", "profile": "torso_profile_vis"}
+# One opacity channel per authored face; exactly one shows.
+FACES = {
+    "open": "face_open_vis",
+    "blink": "blink_vis",
+    "fierce": "face_fierce_vis",
+    "strain": "face_strain_vis",
+}
 # Airborne rows lift the body this far and tuck the boots under it: the jump and
 # fall rows ride above the feet anchor by about as much.
 AIR_RISE = -5.0
@@ -150,6 +163,8 @@ def _blend(a: Key, b: Key, u: float) -> Key:
         blade=blade,
         turn=nearest.turn,
         squint=num("squint"),
+        face=nearest.face,
+        look_back=nearest.look_back,
     )
 
 
@@ -200,6 +215,12 @@ def _pose(body: RigBody, key: Key) -> Dict[str, float]:
     for turn, channel in TORSO_SWAP.items():
         ch[channel] = 1.0 if key.turn == turn else 0.0
     ch["eye_squint"] = key.squint
+    face = key.face or ("fierce" if key.blade > 0.0 else "open")
+    for name, channel in FACES.items():
+        ch[channel] = 1.0 if (face == name and not key.look_back) else 0.0
+    ch["face_turned_vis"] = 1.0 if key.look_back else 0.0
+    ch["head_side_vis"] = 0.0 if key.look_back else 1.0
+    ch["head_turned_vis"] = 1.0 if key.look_back else 0.0
     return ch
 
 
@@ -348,7 +369,7 @@ def smash_forward(body: RigBody) -> List[Key]:
         # Full coil, held: the blade overhead and past vertical behind.
         Key(at=a0 * 0.92, near=(-120.0, -140.0, -150.0), far=(30.0, -10.0), torso=-12.0,
             head=-6.0, lunge=-4.0, drop=4.5, squash=0.94, shoulder=-5.0,
-            feet={"far": (1.0, 1.0, 10.0)}, turn="open", squint=0.45, ease="in"),
+            feet={"far": (1.0, 1.0, 10.0)}, turn="open", squint=0.45, ease="in", face="strain"),
         # CLEAVE: blade over the top and down in front, a big step and lean.
         Key(at=a0 + 0.35 * (a1 - a0), near=(25.0, 15.0, 20.0), far=(160.0, 140.0), torso=22.0,
             head=8.0, lunge=10.0, drop=6.0, squash=1.05, shoulder=9.0,
@@ -373,7 +394,8 @@ def smash_up(body: RigBody) -> List[Key]:
         rest(body, 0.0),
         # Deep squat, blade low and back, ready to spring.
         Key(at=a0 * 0.9, near=(120.0, 150.0, 170.0), far=(60.0, 40.0), torso=14.0, head=6.0,
-            lunge=-1.0, drop=9.0, squash=0.9, shoulder=-3.0, turn="open", squint=0.45, ease="in"),
+            lunge=-1.0, drop=9.0, squash=0.9, shoulder=-3.0, turn="open", squint=0.45, ease="in",
+            face="strain"),
         # Spring: up off the toes, the blade sweeping up the front.
         Key(at=a0 + 0.4 * (a1 - a0), near=(-80.0, -95.0, -85.0), far=(140.0, 150.0), torso=-6.0,
             head=-14.0, lunge=1.0, drop=-7.0, squash=1.08, shoulder=3.0,
@@ -398,7 +420,7 @@ def smash_down(body: RigBody) -> List[Key]:
         rest(body, 0.0),
         # Sink wide, blade gathered high.
         Key(at=a0 * 0.9, near=(-60.0, -80.0, -70.0), far=(60.0, 50.0), torso=4.0, head=2.0,
-            drop=9.0, squash=0.92, feet=wide, turn="open", squint=0.45, ease="in"),
+            drop=9.0, squash=0.92, feet=wide, turn="open", squint=0.45, ease="in", face="strain"),
         # Low sweep along the floor in front...
         Key(at=a0 + 0.4 * (a1 - a0), near=(60.0, 30.0, 8.0), far=(150.0, 150.0), torso=22.0,
             head=-6.0, lunge=3.0, drop=11.0, squash=0.93, shoulder=6.0, feet=wide, turn="profile",
@@ -424,7 +446,7 @@ def smash_charge(body: RigBody) -> List[Key]:
             at=u, near=(-125.0 + 3.0 * wobble, -145.0, -150.0 + 4.0 * wobble), far=(30.0, -10.0),
             torso=-11.0 + 1.5 * wobble, head=-6.0, lunge=-4.0 + 0.8 * wobble, drop=5.0 + wobble,
             squash=0.94 + 0.01 * wobble, shoulder=-5.0, feet={"far": (1.0, 1.0, 10.0)},
-            turn="open", squint=0.5, blade=0.85 + 0.15 * wobble, ease="linear"))
+            turn="open", squint=0.5, blade=0.85 + 0.15 * wobble, ease="linear", face="strain"))
     return keys
 
 
@@ -503,12 +525,13 @@ def air_back(body: RigBody) -> List[Key]:
         Key(at=a0 + 0.4 * (a1 - a0), near=(175.0, 182.0, 180.0), far=(30.0, 10.0), torso=-18.0,
             head=-12.0, lunge=-3.0, squash=1.04, shoulder=-6.0,
             feet={"near": (-6.0, 4.0, 30.0), "far": (6.0, 12.0, 0.0)}, turn="open", squint=0.4,
-            ease="out"),
+            ease="out", look_back=True),
         Key(at=a1, near=(200.0, 215.0, 215.0), far=(20.0, 0.0), torso=-16.0, head=-10.0,
             lunge=-3.0, squash=0.98, shoulder=-6.0,
-            feet={"near": (-6.0, 4.0, 30.0), "far": (6.0, 12.0, 0.0)}, turn="open", squint=0.25),
+            feet={"near": (-6.0, 4.0, 30.0), "far": (6.0, 12.0, 0.0)}, turn="open", squint=0.25,
+            look_back=True),
         Key(at=a1 + 0.2, near=(150.0, 140.0, 120.0), far=(70.0, 60.0), torso=-6.0, head=-3.0,
-            blade=0.0),
+            blade=0.0, look_back=True),
         replace(rest(body, 1.0), feet={}),
     ])
 
@@ -574,7 +597,7 @@ def grab(body: RigBody) -> List[Key]:
             drop=2.5, squash=0.97, blade=0.0, turn="open", squint=0.2, ease="in"),
         Key(at=a0 + 0.5 * (a1 - a0), near=(28.0, 12.0, 0.0), far=(22.0, 6.0), torso=16.0,
             head=6.0, lunge=7.0, drop=3.5, squash=1.03, shoulder=6.0, feet=reach, blade=0.0,
-            turn="profile", squint=0.35, ease="out"),
+            turn="profile", squint=0.35, ease="out", face="fierce"),
         Key(at=a1 + 0.1, near=(30.0, 15.0, 0.0), far=(24.0, 8.0), torso=14.0, head=5.0, lunge=7.0,
             drop=3.5, shoulder=6.0, feet=reach, blade=0.0, turn="profile", squint=0.2),
         Key(at=0.8, near=(80.0, 60.0, 0.0), far=(60.0, 50.0), torso=5.0, lunge=2.0, drop=1.0,
@@ -602,8 +625,8 @@ def pummel(body: RigBody) -> List[Key]:
                 feet={"far": (4.0, 0.0, 0.0)}, blade=0.0, turn="profile")
     return [
         Key(at=0.0, torso=10.0, head=3.0, **hold),
-        Key(at=0.3, torso=-4.0, head=-10.0, squint=0.3, ease="in", **hold),
-        Key(at=0.55, torso=22.0, head=16.0, squint=0.6, ease="out",
+        Key(at=0.3, torso=-4.0, head=-10.0, squint=0.3, ease="in", face="strain", **hold),
+        Key(at=0.55, torso=22.0, head=16.0, squint=0.6, ease="out", face="fierce",
             **{**hold, "lunge": 6.0}),
         Key(at=1.0, torso=10.0, head=3.0, **hold),
     ]
@@ -616,9 +639,9 @@ def _throw(body: RigBody, cast_near: tuple, cast_far: tuple, torso: float, head:
         Key(at=0.0, near=(30.0, 14.0, 0.0), far=(24.0, 8.0), torso=10.0, head=3.0,
             turn="profile", **hold),
         Key(at=0.3, near=wind[0], far=wind[1], torso=wind_torso, head=-4.0, squash=0.95,
-            turn="open", squint=0.4, ease="in", **{**hold, "drop": 5.0}),
+            turn="open", squint=0.4, ease="in", face="strain", **{**hold, "drop": 5.0}),
         Key(at=0.55, near=cast_near, far=cast_far, torso=torso, head=head, squash=1.05,
-            turn=turn, squint=0.5, ease="out",
+            turn=turn, squint=0.5, ease="out", face="fierce",
             **{**hold, "lunge": lunge, "drop": drop}),
         Key(at=0.8, near=(80.0, 60.0, 0.0), far=(70.0, 60.0), torso=torso * 0.4,
             head=head * 0.3, lunge=lunge * 0.5, drop=1.5, blade=0.0),
@@ -658,9 +681,9 @@ def taunt(body: RigBody) -> List[Key]:
             turn="open", squint=0.2, ease="linear"),
         # Planted point-down at the side, chest out to the camera, a wink.
         Key(at=0.62, near=(60.0, 90.0, 90.0), far=(-10.0, -60.0), torso=-8.0, head=-8.0,
-            drop=-1.0, squash=1.04, turn="open", squint=0.8, ease="out"),
+            drop=-1.0, squash=1.04, turn="open", squint=0.8, ease="out", face="blink"),
         Key(at=0.85, near=(60.0, 90.0, 90.0), far=(-15.0, -65.0), torso=-8.0, head=-7.0,
-            drop=-1.0, squash=1.03, turn="open", squint=0.7),
+            drop=-1.0, squash=1.03, turn="open", squint=0.7, face="blink"),
         replace(rest(body, 1.0), blade=0.0),
     ]
 
