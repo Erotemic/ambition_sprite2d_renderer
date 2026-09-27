@@ -292,6 +292,40 @@
          inkscape:label="blade-guard" />
     </g>
     <g
+       id="part-blade-far"
+       inkscape:label="Energy Blade - Far Hand"
+       inkscape:groupmode="layer"
+       data-rig-part="blade_far"
+       data-rig-bone="far_arm_hand"
+       data-rig-z="7.5"
+       data-rig-opacity="blade_far_vis"
+       data-note="the same blade in the FAR hand: the robot holds it in one hand, and from its other side (the left-facing rows) that hand is the far one. Drawn pointing -x (180 deg) so it fits the canvas; under the fist (far_hand z8) like the near blade under its fist">
+      <path
+         style="fill:#00f5fc;fill-opacity:1;stroke:#000000;stroke-width:1.2;stroke-linejoin:round;stroke-opacity:1"
+         transform="matrix(-1,0,0,1,521.8,-0.5)"
+         d="M 246.2000,185.3000 L 267.6000,185.0000 L 277.6000,186.0000 L 282.1000,188.8000 L 265.6000,190.1000 L 246.2000,189.9000 Z"
+         id="blade-edge-far"
+         inkscape:label="blade-edge" />
+      <path
+         style="fill:#ffffff;fill-opacity:1;stroke:none"
+         transform="matrix(-1,0,0,1,521.8,-0.5)"
+         d="M 247.6000,186.8000 L 267.6000,186.6000 L 276.1000,187.3000 L 265.6000,188.6000 L 247.6000,188.4000 Z"
+         id="blade-core-far"
+         inkscape:label="blade-core" />
+      <path
+         style="fill:#131313;fill-opacity:1;stroke:#000000;stroke-width:0.8;stroke-linejoin:miter;stroke-opacity:1"
+         transform="matrix(-1,0,0,1,521.8,-0.5)"
+         d="M 241.2000,186.3500 L 245.2000,186.3500 L 245.2000,188.8500 L 241.2000,188.8500 Z"
+         id="blade-hilt-far"
+         inkscape:label="blade-hilt" />
+      <path
+         style="fill:#cb1fff;fill-opacity:1;stroke:#000000;stroke-width:0.8;stroke-linejoin:miter;stroke-opacity:1"
+         transform="matrix(-1,0,0,1,521.8,-0.5)"
+         d="M 244.6000,184.0000 L 246.2000,184.0000 L 246.2000,191.2000 L 244.6000,191.2000 Z"
+         id="blade-guard-far"
+         inkscape:label="blade-guard" />
+    </g>
+    <g
        id="part-near-hand"
        inkscape:label="Hand - Near"
        inkscape:groupmode="layer"
@@ -494,7 +528,9 @@
        data-rig-part="head_side"
        data-rig-bone="head"
        data-rig-z="60.5"
-       data-note="the ear cup and antenna, their own part so they layer over the shell; a head looking back mirrors with it (bone.head.flip_x)">
+       data-rig-opacity="near_ear_vis"
+       data-rig-opacity-default="1"
+       data-note="the robot's ONE ear cup, on the camera-side ear when facing right. It and antenna_near are one assembly (near_ear_vis): from the robot's other side there is no ear piece at all">
       <path
          style="fill:#cb1fff;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1"
          d="m 235.6884,154.3238 c 0.70359,1.4383 2.0923,2.63163 3.59413,3.18684 1.90887,0.70568 4.23666,0.70306 6.1045,-0.10499 7.02936,-2.97083 5.29389,-16.56091 -0.17154,-17.17382 -1.71638,-0.0233 -4.12521,-0.32309 -5.78832,0.46381 -4.82756,2.89751 -5.6859,8.38521 -3.73877,13.62816 z"
@@ -521,7 +557,7 @@
        data-rig-part="antenna_near"
        data-rig-bone="head"
        data-rig-z="60.4"
-       data-rig-opacity="antenna_near_vis"
+       data-rig-opacity="near_ear_vis"
        data-rig-opacity-default="1"
        data-note="the antenna on the ear facing the camera; its root sits inside the ear cup (head_side, drawn over it)">
       <path
@@ -543,7 +579,7 @@
        data-rig-part="antenna_far"
        data-rig-bone="head"
        data-rig-z="59.5"
-       data-rig-opacity="antenna_far_vis"
+       data-rig-opacity="far_ear_vis"
        data-note="the SAME antenna seen from the robot's other side: on the far ear, which in this three-quarter view projects toward the face, so it rises from BEHIND the shell there and only its top shows. Drawn when the camera sees the other side of the head: the left-facing view, or a head looking back">
       <path
          style="stroke:#000000;stroke-opacity:1;fill:#cb1fff;fill-opacity:1;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none"
@@ -798,11 +834,12 @@
       <g id="ambition-rig-side-part-near_arm_u" data-rig-part-def="near_arm_u" data-rig-bone="near_arm_u" data-rig-z="63" data-rig-pivot="ambition-rig-side-bind-near_arm_u" data-rig-bind-angle="124.992" data-rig-elements="path4623" />
       <g id="ambition-rig-side-part-near_arm_l" data-rig-part-def="near_arm_l" data-rig-bone="near_arm_l" data-rig-z="64" data-rig-pivot="ambition-rig-side-bind-near_arm_l" data-rig-bind-angle="105.5241" data-rig-elements="path4109" />
       <g id="ambition-rig-side-part-blade" data-rig-part-def="blade" data-rig-bone="near_arm_hand" data-rig-z="64.5" data-rig-pivot="ambition-rig-side-bind-blade" data-rig-bind-angle="75.9638" data-rig-opacity="blade_vis" data-rig-elements="blade-edge blade-core blade-hilt blade-guard" />
+      <g id="ambition-rig-side-part-blade_far" data-rig-part-def="blade_far" data-rig-bone="far_arm_hand" data-rig-z="7.5" data-rig-pivot="ambition-rig-side-bind-blade_far" data-rig-bind-angle="74.7449" data-rig-opacity="blade_far_vis" data-rig-elements="blade-edge-far blade-core-far blade-hilt-far blade-guard-far" />
       <g id="ambition-rig-side-part-near_hand" data-rig-part-def="near_hand" data-rig-bone="near_arm_hand" data-rig-z="65" data-rig-pivot="ambition-rig-side-bind-near_hand" data-rig-bind-angle="75.9638" data-rig-elements="path4717 path4830 path4828 path4826" />
       <g id="ambition-rig-side-part-head" data-rig-part-def="head" data-rig-bone="head" data-rig-z="60" data-rig-pivot="ambition-rig-side-bind-head" data-rig-bind-angle="0" data-rig-elements="path3119" />
-      <g id="ambition-rig-side-part-head_side" data-rig-part-def="head_side" data-rig-bone="head" data-rig-z="60.5" data-rig-pivot="ambition-rig-side-bind-head_side" data-rig-bind-angle="0" data-rig-elements="path4710 path4735 path4737" />
-      <g id="ambition-rig-side-part-antenna_near" data-rig-part-def="antenna_near" data-rig-bone="head" data-rig-z="60.4" data-rig-pivot="ambition-rig-side-bind-antenna_near" data-rig-bind-angle="0" data-rig-opacity="antenna_near_vis" data-rig-opacity-default="1" data-rig-elements="path4712 path4714" />
-      <g id="ambition-rig-side-part-antenna_far" data-rig-part-def="antenna_far" data-rig-bone="head" data-rig-z="59.5" data-rig-pivot="ambition-rig-side-bind-antenna_far" data-rig-bind-angle="0" data-rig-opacity="antenna_far_vis" data-rig-elements="path4712-far path4714-far" />
+      <g id="ambition-rig-side-part-head_side" data-rig-part-def="head_side" data-rig-bone="head" data-rig-z="60.5" data-rig-opacity="near_ear_vis" data-rig-opacity-default="1" data-rig-pivot="ambition-rig-side-bind-head_side" data-rig-bind-angle="0" data-rig-elements="path4710 path4735 path4737" />
+      <g id="ambition-rig-side-part-antenna_near" data-rig-part-def="antenna_near" data-rig-bone="head" data-rig-z="60.4" data-rig-pivot="ambition-rig-side-bind-antenna_near" data-rig-bind-angle="0" data-rig-opacity="near_ear_vis" data-rig-opacity-default="1" data-rig-elements="path4712 path4714" />
+      <g id="ambition-rig-side-part-antenna_far" data-rig-part-def="antenna_far" data-rig-bone="head" data-rig-z="59.5" data-rig-pivot="ambition-rig-side-bind-antenna_far" data-rig-bind-angle="0" data-rig-opacity="far_ear_vis" data-rig-elements="path4712-far path4714-far" />
       <g id="ambition-rig-side-part-face_fierce" data-rig-part-def="face_fierce" data-rig-bone="head" data-rig-z="61" data-rig-pivot="ambition-rig-side-bind-face_fierce" data-rig-bind-angle="0" data-rig-opacity="face_fierce_vis" data-rig-elements="face-fierce-visor face-fierce-eye-right face-fierce-eye-left" />
       <g id="ambition-rig-side-part-face_strain" data-rig-part-def="face_strain" data-rig-bone="head" data-rig-z="61" data-rig-pivot="ambition-rig-side-bind-face_strain" data-rig-bind-angle="0" data-rig-opacity="face_strain_vis" data-rig-elements="face-strain-visor face-strain-eye-right face-strain-eye-left" />
       <g id="ambition-rig-side-part-face_open" data-rig-part-def="face_open" data-rig-bone="head" data-rig-z="61" data-rig-pivot="ambition-rig-side-bind-face_open" data-rig-bind-angle="0" data-rig-opacity="face_open_vis" data-rig-elements="face-open-visor face-open-eye-right face-open-eye-left" />
@@ -862,6 +899,7 @@
       <circle id="ambition-rig-side-bind-near_arm_u" data-rig-bind-pivot="near_arm_u" cx="248" cy="170" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_arm_l" data-rig-bind-pivot="near_arm_l" cx="244.5" cy="175" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-blade" data-rig-bind-pivot="blade" cx="242" cy="184" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-blade_far" data-rig-bind-pivot="blade_far" cx="277.5" cy="183.5" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_hand" data-rig-bind-pivot="near_hand" cx="242" cy="184" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-head" data-rig-bind-pivot="head" cx="262" cy="164" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-head_side" data-rig-bind-pivot="head_side" cx="262" cy="164" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />

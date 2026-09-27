@@ -505,6 +505,24 @@ def part_visible(part: dict, features: Dict[str, bool]) -> bool:
     return bool(features.get(feature, True))
 
 
+def ordered_parts(parts: List[dict], params: Dict[str, float]) -> List[dict]:
+    """`parts` in paint order for this frame.
+
+    ``bone.<name>.z`` raises (or lowers) every part on that bone for the frame,
+    on top of its authored ``z``. A limb on the far side of a body draws behind
+    it until it swings round in front — a sword arm cutting across the chest —
+    and a static z cannot say both. A clip that never keys it paints in
+    authored order; the sort is stable, so equal z keeps authored order.
+    """
+    if not any(key.startswith("bone.") and key.endswith(".z") for key in params):
+        return parts
+    return sorted(
+        parts,
+        key=lambda part: float(part.get("z", 0.0))
+        + float(params.get(f"bone.{part.get('bone')}.z", 0.0)),
+    )
+
+
 def visible_parts(parts: List[dict], features: Dict[str, bool]) -> List[dict]:
     """Parts to paint, back-to-front by ``z``, with disabled features dropped."""
     ordered = sorted(parts, key=lambda p: float(p.get("z", 0.0)))
@@ -1111,7 +1129,7 @@ class RigDocument:
         paint_items: List[Tuple[dict, Optional[SpriteRaster]]] = []
         rotation_slots: List[int] = []
         rotation_requests: List[Tuple[SpriteRaster, float]] = []
-        for part in visible_parts(self.parts, self.features):
+        for part in ordered_parts(visible_parts(self.parts, self.features), params):
             sprite = self.sprite_raster(part, S) if part.get("kind") == "sprite" else None
             slot = len(paint_items)
             paint_items.append((part, sprite))

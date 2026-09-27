@@ -37,7 +37,7 @@ from ...authoring.portrait import (
 from ...core import slash_envelope
 from .robot_side import SideRobotGenerator
 from .player_robot_v3_gameplay import hurtbox_parts_for_rows
-from .player_robot_v3_motion import EFFECT_ALIASES, ROBOT_ROWS
+from .player_robot_v3_motion import EFFECT_ALIASES, MIRRORED, ROBOT_ROWS
 from .player_robot_v3_strikes import STRIKES
 
 TARGET_NAME = "player_robot_v3"
@@ -50,12 +50,12 @@ RIG_PATH = (
 
 ANIMATION_ORDER = [name for name, _frames, _duration in ROBOT_ROWS]
 
-# The robot is NOT left-right symmetric: the antenna rises from ONE ear. A
-# facing flip therefore moved it to the other ear, which anyone watching a turn
-# could see. Every row is published a second time drawn from the robot's OTHER
-# side — the far-ear antenna shown, the near-ear one hidden, then mirrored — and
+# The robot is NOT left-right symmetric: it has ONE ear piece, the cup the
+# antenna rises from. A facing flip therefore moved it to the other side of the
+# head, which anyone watching a turn could see. Every row is published a second
+# time drawn from the robot's OTHER side — no ear cup, only the antenna's top
+# showing from behind the shell — then mirrored, and
 # the game draws that row instead of flipping (`SheetRow::mirror_of`).
-MIRRORED = "{}~mirrored"
 MIRROR_OF: Dict[str, str] = {MIRRORED.format(name): name for name in ANIMATION_ORDER}
 ROWS: List[Tuple[str, int, int]] = list(ROBOT_ROWS) + [
     (MIRRORED.format(name), frames, duration) for name, frames, duration in ROBOT_ROWS
@@ -69,12 +69,13 @@ def _row(animation: str) -> Tuple[str, bool]:
 
 
 def _other_side(params: dict) -> dict:
-    """Parameters for the head seen from its other side: swap which ear's
-    antenna shows. A look-back head (the back air) already shows the far one,
-    so the mirror of it shows the near one again."""
-    near = float(params.get("antenna_near_vis", 1.0))
-    far = float(params.get("antenna_far_vis", 0.0))
-    return {**params, "antenna_near_vis": far, "antenna_far_vis": near}
+    """Parameters for the head seen from its other side: the robot's one ear
+    piece (cup + antenna) is on the far ear, so the cup vanishes and only the
+    antenna's top shows behind the shell. A look-back head (the back air)
+    already shows the far side, so its mirror shows the near side again."""
+    near = float(params.get("near_ear_vis", 1.0))
+    far = float(params.get("far_ear_vis", 0.0))
+    return {**params, "near_ear_vis": far, "far_ear_vis": near}
 _OLD_ROBOT_FX = SideRobotGenerator()
 
 ACTOR_METADATA = {
@@ -459,9 +460,13 @@ def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Imag
     if not mirrored:
         image = doc.render_frame(row, frame_idx, frame_count)
         return _apply_fx(image, row, frame_idx, frame_count)
-    t = doc.frame_time(row, frame_idx, frame_count)
-    world, params = doc.solve(row, t)
-    image = doc.render_at(row, t, solved=(world, _other_side(params)))
+    # A strike authors its own other-side clip (the blade stays in the hand that
+    # holds it, which from this side is the far one); every other row is the
+    # same pose seen from the other side.
+    clip = MIRRORED.format(row) if MIRRORED.format(row) in doc.clips else row
+    t = doc.frame_time(clip, frame_idx, frame_count)
+    world, params = doc.solve(clip, t)
+    image = doc.render_at(clip, t, solved=(world, _other_side(params)))
     # Mirrored about the logical frame's centre, so the published frame is
     # exactly what a flip of the whole frame would place — the runtime keeps
     # the same feet anchor, negated.
@@ -470,7 +475,10 @@ def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Imag
 
 def frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
     row, mirrored = _row(animation)
-    meta = _frame_meta(row, frame_idx, frame_count)
+    clip = row
+    if mirrored and MIRRORED.format(row) in load_doc().clips:
+        clip = MIRRORED.format(row)
+    meta = _frame_meta(clip, frame_idx, frame_count)
     if mirrored:
         width = float(load_doc().frame["width"])
         meta["anchors"] = {k: [round(width - x, 3), y] for k, (x, y) in meta["anchors"].items()}

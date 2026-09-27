@@ -31,6 +31,7 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from ...authoring.rigdoc import RigDocument
 from .player_robot_v3_body import SIDES, Arm, RigBody, WorldPose
+from .player_robot_v3_motion import MIRRORED
 
 # A foot's placement: (dx, lift, pitch) — along the floor from its standing
 # ankle, up from the floor, and toe-down degrees on top of its standing angle.
@@ -78,6 +79,9 @@ class Key:
 # canvas). A key gives the blade's world direction, which is what the eye
 # tracks; the wrist is turned by the difference.
 BLADE_DRAWN_DEG = 0.0
+# The far hand's copy is drawn pointing BACK (the canvas ends a fist's width
+# in front of the far hand): each hand's blade has its own drawn direction.
+BLADE_DRAWN = {"near": BLADE_DRAWN_DEG, "far": 180.0}
 TORSO_SWAP = {"open": "torso_open_vis", "profile": "torso_profile_vis"}
 # One opacity channel per authored face; exactly one shows.
 FACES = {
@@ -178,7 +182,19 @@ def sample(keys: Sequence[Key], phase: float) -> Key:
     return keys[-1]
 
 
-def _pose(body: RigBody, key: Key) -> Dict[str, float]:
+# From the robot's other side the chest turns the other way: the wind-up that
+# opened it to the camera now turns it away, and the cut opens it.
+OTHER_SIDE_TURN = {"open": "profile", "profile": "open"}
+# Lifts the far arm (z 7.5-10) over the torso, head and faces (40-62) to just
+# under the near arm (63-65).
+FAR_ARM_IN_FRONT = 52.5
+
+
+def _pose(body: RigBody, key: Key, other_side: bool = False) -> Dict[str, float]:
+    """Channels for `key`. ``other_side`` poses the robot as seen from its
+    other side, where the hand that holds the blade is the FAR one."""
+    blade_arm, off_arm = ("far", "near") if other_side else ("near", "far")
+    turn = OTHER_SIDE_TURN.get(key.turn, key.turn) if other_side else key.turn
     ankles = {}
     for side in SIDES:
         dx, lift, pitch = key.feet.get(side, (0.0, 0.0, 0.0))
@@ -197,22 +213,32 @@ def _pose(body: RigBody, key: Key) -> Dict[str, float]:
         squash=key.squash,
         # The torso TURNS by sliding its shoulders: the near one comes forward
         # as the chest swings toward the target, the far one goes back.
-        shoulder_dx={"near": key.shoulder, "far": -0.6 * key.shoulder},
+        shoulder_dx={blade_arm: key.shoulder, off_arm: -0.6 * key.shoulder},
         arms={
-            "near": Arm(
+            blade_arm: Arm(
                 key.near[0],
                 key.near[1],
-                key.near[2] - BLADE_DRAWN_DEG + body.arm_rest["near"].hand,
+                key.near[2] - BLADE_DRAWN[blade_arm] + body.arm_rest[blade_arm].hand,
             ),
-            "far": Arm(*key.far),
+            off_arm: Arm(*key.far),
         },
         ankles=ankles,
     )
     ch = body.channels(pose)
-    ch["blade_vis"] = key.blade
-    ch["torso_front_vis"] = 0.0 if key.turn else 1.0
-    for turn, channel in TORSO_SWAP.items():
-        ch[channel] = 1.0 if key.turn == turn else 0.0
+    # From the other side the blade arm is the FAR arm, drawn behind the body.
+    # A cut carries it round IN FRONT: while it reaches forward (the cut and the
+    # follow-through) the whole arm draws over the body and head, like the near
+    # arm; while it is back or overhead (the wind-up) it stays behind them.
+    if other_side:
+        in_front = -80.0 < key.near[0] < 80.0 and key.blade > 0.0
+        for bone in ("far_arm_u", "far_arm_l", "far_arm_hand"):
+            ch[f"bone.{bone}.z"] = FAR_ARM_IN_FRONT if in_front else 0.0
+    # The robot holds its blade in ONE hand: from its other side, the far one.
+    ch["blade_vis"] = 0.0 if other_side else key.blade
+    ch["blade_far_vis"] = key.blade if other_side else 0.0
+    ch["torso_front_vis"] = 0.0 if turn else 1.0
+    for name, channel in TORSO_SWAP.items():
+        ch[channel] = 1.0 if turn == name else 0.0
     ch["eye_squint"] = key.squint
     face = key.face or ("fierce" if key.blade > 0.0 else "open")
     for name, channel in FACES.items():
@@ -222,9 +248,10 @@ def _pose(body: RigBody, key: Key) -> Dict[str, float]:
     # onto the back of the shell instead kept its forward-facing slant and read
     # as a flattened face, not a turned head.
     ch["bone.head.flip_x"] = 1.0 if key.look_back else 0.0
-    # ...and a head seen from its other side wears the antenna on the far ear.
-    ch["antenna_near_vis"] = 0.0 if key.look_back else 1.0
-    ch["antenna_far_vis"] = 1.0 if key.look_back else 0.0
+    # ...and a head seen from its other side has no ear cup: the robot's one
+    # ear piece is on the far ear, its antenna showing behind the shell.
+    ch["near_ear_vis"] = 0.0 if key.look_back else 1.0
+    ch["far_ear_vis"] = 1.0 if key.look_back else 0.0
     return ch
 
 
@@ -760,6 +787,21 @@ def author_strikes(doc: RigDocument) -> Dict[str, dict]:
         # The borrowed clip's presentation channels no longer describe this row.
         for stale in ("slash", "slash_arc"):
             channels.pop(stale, None)
+        # The same strike seen from the robot's other side: the blade stays in
+        # the hand that holds it, which from there is the far one. The sheet's
+        # mirrored row draws this clip (then mirrors it) instead of the one above.
+        other = [_pose(body, sample(keys, ph), other_side=True) for ph in phases]
+        doc.data["clips"][MIRRORED.format(name)] = {
+            **{k: v for k, v in clip.items() if k != "channels"},
+            "channels": {
+                **{k: dict(v) for k, v in channels.items()},
+                **{
+                    key: _keyed([f[key] for f in other], loop)
+                    for key in other[0]
+                    if not key.startswith("_")
+                },
+            },
+        }
         reports[name] = {
             "max_reach": {s: round(max(f[f"_reach_{s}"] for f in frames), 3) for s in SIDES}
         }

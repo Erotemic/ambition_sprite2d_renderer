@@ -452,7 +452,13 @@ LOOPING_ROWS: Final[frozenset[str]] = frozenset(
 )
 
 
+# The name of a row drawn from the robot's OTHER side (see `player_robot_v3`):
+# one spelling, shared by the rig builder's strike clips and the sheet's rows.
+MIRRORED = "{}~mirrored"
+
+
 __all__ = [
+    "MIRRORED",
     "APPLICABLE_MOTION_SCOPES",
     "EFFECT_ALIASES",
     "FIGHTER_MOTION_COVERAGE",
