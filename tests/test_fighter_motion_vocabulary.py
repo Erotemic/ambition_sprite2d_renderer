@@ -194,7 +194,16 @@ def test_player_robot_v3_has_requested_high_value_motion_rows():
 
 def test_player_robot_v3_builder_and_target_share_one_row_declaration():
     expected = list(ROBOT_ROWS)
-    assert robot_target.ROWS == expected
+    # The sheet publishes the authored rows, then each one again drawn from the
+    # robot's other side (see `player_robot_v3.MIRROR_OF`): a DERIVED half that
+    # must track the authored one row for row, never a second declaration.
+    authored = [row for row in robot_target.ROWS if row[0] not in robot_target.MIRROR_OF]
+    mirrored = [row for row in robot_target.ROWS if row[0] in robot_target.MIRROR_OF]
+    assert authored == expected
+    assert mirrored == [
+        (robot_target.MIRRORED.format(name), frames, duration)
+        for name, frames, duration in expected
+    ]
     assert robot_builder.ANIMATION_ORDER == [name for name, _frames, _duration in expected]
 
 

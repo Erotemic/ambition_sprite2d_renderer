@@ -222,6 +222,9 @@ def _pose(body: RigBody, key: Key) -> Dict[str, float]:
     # onto the back of the shell instead kept its forward-facing slant and read
     # as a flattened face, not a turned head.
     ch["bone.head.flip_x"] = 1.0 if key.look_back else 0.0
+    # ...and a head seen from its other side wears the antenna on the far ear.
+    ch["antenna_near_vis"] = 0.0 if key.look_back else 1.0
+    ch["antenna_far_vis"] = 1.0 if key.look_back else 0.0
     return ch
 
 

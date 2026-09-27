@@ -49,7 +49,32 @@ RIG_PATH = (
 )
 
 ANIMATION_ORDER = [name for name, _frames, _duration in ROBOT_ROWS]
-ROWS: List[Tuple[str, int, int]] = list(ROBOT_ROWS)
+
+# The robot is NOT left-right symmetric: the antenna rises from ONE ear. A
+# facing flip therefore moved it to the other ear, which anyone watching a turn
+# could see. Every row is published a second time drawn from the robot's OTHER
+# side — the far-ear antenna shown, the near-ear one hidden, then mirrored — and
+# the game draws that row instead of flipping (`SheetRow::mirror_of`).
+MIRRORED = "{}~mirrored"
+MIRROR_OF: Dict[str, str] = {MIRRORED.format(name): name for name in ANIMATION_ORDER}
+ROWS: List[Tuple[str, int, int]] = list(ROBOT_ROWS) + [
+    (MIRRORED.format(name), frames, duration) for name, frames, duration in ROBOT_ROWS
+]
+
+
+def _row(animation: str) -> Tuple[str, bool]:
+    """The authored row a sheet row draws, and whether it is the mirror image."""
+    original = MIRROR_OF.get(animation)
+    return (original, True) if original is not None else (animation, False)
+
+
+def _other_side(params: dict) -> dict:
+    """Parameters for the head seen from its other side: swap which ear's
+    antenna shows. A look-back head (the back air) already shows the far one,
+    so the mirror of it shows the near one again."""
+    near = float(params.get("antenna_near_vis", 1.0))
+    far = float(params.get("antenna_far_vis", 0.0))
+    return {**params, "antenna_near_vis": far, "antenna_far_vis": near}
 _OLD_ROBOT_FX = SideRobotGenerator()
 
 ACTOR_METADATA = {
@@ -429,11 +454,30 @@ def _apply_fx(img: Image.Image, animation: str, frame_idx: int, nframes: int) ->
 
 
 def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
-    image = load_doc().render_frame(animation, frame_idx, frame_count)
-    return _apply_fx(image, animation, frame_idx, frame_count)
+    row, mirrored = _row(animation)
+    doc = load_doc()
+    if not mirrored:
+        image = doc.render_frame(row, frame_idx, frame_count)
+        return _apply_fx(image, row, frame_idx, frame_count)
+    t = doc.frame_time(row, frame_idx, frame_count)
+    world, params = doc.solve(row, t)
+    image = doc.render_at(row, t, solved=(world, _other_side(params)))
+    # Mirrored about the logical frame's centre, so the published frame is
+    # exactly what a flip of the whole frame would place — the runtime keeps
+    # the same feet anchor, negated.
+    return _apply_fx(image, row, frame_idx, frame_count).transpose(Image.FLIP_LEFT_RIGHT)
 
 
 def frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
+    row, mirrored = _row(animation)
+    meta = _frame_meta(row, frame_idx, frame_count)
+    if mirrored:
+        width = float(load_doc().frame["width"])
+        meta["anchors"] = {k: [round(width - x, 3), y] for k, (x, y) in meta["anchors"].items()}
+    return meta
+
+
+def _frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
     doc = load_doc()
     world, _params = doc.solve(animation, doc.frame_time(animation, frame_idx, frame_count))
     head = world["head"].origin
@@ -658,6 +702,7 @@ def render(out_dir: str | Path, **opts):
         sheet_tuning={"collision_scale": 1.65},
         body_metrics_fn=body_metrics,
         animation_key_map={name: name for name in ANIMATION_ORDER},
+        mirror_of=MIRROR_OF,
         attack_hitboxes=hitboxes,
         # ⛔ still not the MEASURED road. `block`'s alpha union is 128 px wide
         # and `dash`'s 143 against a 57 px torso, so a body that followed the
@@ -672,7 +717,7 @@ def render(out_dir: str | Path, **opts):
         # reproduces `body_metrics` to the pixel — the same authored box,
         # extended to the poses it was never asked about. Arms and antenna are
         # excluded, which is what keeps `block` at 58 rather than 128.
-        hurtbox_parts=hurtbox_parts_for_rows(ROWS),
+        hurtbox_parts=hurtbox_parts_for_rows(ROBOT_ROWS),
         pose_bodies="authored",
     )
     keys = (

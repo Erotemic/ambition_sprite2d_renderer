@@ -777,8 +777,15 @@ def build_sheet(
     body_inset=None,
     pose_bodies: str = "art",
     authored_faces_left: bool = False,
+    mirror_of=None,
 ):
     """Build one module target's sheet from a frame callable + rows.
+
+    ``mirror_of`` (``{row: source_row}``) declares rows drawn as the MIRROR
+    IMAGE of another — the character seen from its other side, for a character
+    whose two sides differ. Each is emitted with ``mirror_of`` so the runtime
+    draws it instead of flipping ``source_row``. Both rows must have the same
+    frame count; the rows themselves are ordinary entries of ``rows``.
 
     Thin constructor: wraps the recipe in a :class:`CallableFrameSource` and
     hands it to the one :func:`render_sheet` core. Kept as the module-target
@@ -805,6 +812,7 @@ def build_sheet(
         max_sheet_dimension=max_sheet_dimension,
         trim=trim,
         pose_bodies=pose_bodies,
+        mirror_of=mirror_of,
     )
     return render_sheet(source, out_dir)
 
@@ -1147,6 +1155,20 @@ def render_sheet(source: FrameSource, out_dir: Path):
         max_dim=max_sheet_dimension,
         page_size=policy.page_size,
     )
+    mirror_of = dict(getattr(source, "mirror_of", None) or {})
+    if mirror_of:
+        frames_of = {row["animation"]: row["frame_count"] for row in rows_meta}
+        for row in rows_meta:
+            original = mirror_of.get(row["animation"])
+            if original is None:
+                continue
+            if frames_of.get(original) != row["frame_count"]:
+                raise ValueError(
+                    f"{target}: mirror row {row['animation']!r} has "
+                    f"{row['frame_count']} frames but {original!r} has "
+                    f"{frames_of.get(original)}; a mirror replaces its row frame for frame"
+                )
+            row["mirror_of"] = original
     progress(
         f"phase layout/pack: done in {time.perf_counter() - layout_started:.2f}s | "
         f"pages={num_pages}"

@@ -217,6 +217,7 @@ class CallableFrameSource:
         trim: Optional[bool] = None,
         max_sheet_dimension: int = 16384,
         pose_bodies: str = "art",
+        mirror_of: Optional[Dict[str, str]] = None,
     ) -> None:
         self.target = target
         self.rows = list(rows)
@@ -243,6 +244,10 @@ class CallableFrameSource:
         self.trim = trim
         self.max_sheet_dimension = max_sheet_dimension
         self.pose_bodies = pose_bodies
+        # ``{row: row it is the mirror image of}`` for a character that is NOT
+        # left-right symmetric: those rows are drawn from the character's other
+        # side and the game shows them instead of flipping the named row.
+        self.mirror_of = dict(mirror_of or {})
 
     def animations(self) -> Dict[str, Dict[str, int]]:
         return {

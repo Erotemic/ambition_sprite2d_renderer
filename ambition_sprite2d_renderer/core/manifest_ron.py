@@ -200,6 +200,10 @@ def _ron_row(row) -> str:
     # stays byte-identical to the pre-paging emitter.
     page = int(row.get("page", 0))
     page_field = f"        page: {page},\n" if page else ""
+    # A row drawn as the MIRROR IMAGE of another (the character's other side).
+    # Emitted only when set, so every other sheet's RON is byte-identical.
+    mirror = row.get("mirror_of")
+    mirror_field = f'        mirror_of: Some("{_ron_escape(mirror)}"),\n' if mirror else ""
     return (
         f"(\n"
         f'        animation: "{_ron_escape(row["animation"])}",\n'
@@ -208,6 +212,7 @@ def _ron_row(row) -> str:
         f"        duration_ms: {int(row['duration_ms'])},\n"
         f"        duration_secs: {float(row['duration_secs'])},\n"
         f"{page_field}"
+        f"{mirror_field}"
         f"        rects: [\n            {rects},\n        ],\n"
         f"    )"
     )
