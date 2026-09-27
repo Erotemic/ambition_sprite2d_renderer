@@ -494,9 +494,7 @@
        data-rig-part="head_side"
        data-rig-bone="head"
        data-rig-z="60.5"
-       data-rig-opacity="head_side_vis"
-       data-rig-opacity-default="1"
-       data-note="the ear cup and antenna where a head facing the target wears them; swapped for head_side_turned when the head looks back">
+       data-note="the ear cup and antenna, their own part so they layer over the shell; a head looking back mirrors with it (bone.head.flip_x)">
       <path
          style="stroke:#000000;stroke-opacity:1;fill:#cb1fff;fill-opacity:1;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none"
          d="m 239.84118,141.05594 -1.75305,-13.76783 3.75854,-0.3736 1.77176,15.71217 -3.47279,0.38463 z"
@@ -526,50 +524,6 @@
          id="path4737"
          sodipodi:nodetypes="zzaaz"
          inkscape:label="antena-divit" />
-    </g>
-    <g
-       id="part-head-side-turned"
-       inkscape:label="Head Side - Looking Back"
-       inkscape:groupmode="layer"
-       data-rig-part="head_side_turned"
-       data-rig-bone="head"
-       data-rig-z="60.5"
-       data-rig-opacity="head_turned_vis"
-       data-note="the head turned to look behind: the ear cup and antenna come round to the middle of the shell">
-      <path
-         style="stroke:#000000;stroke-opacity:1;fill:#cb1fff;fill-opacity:1;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none"
-         transform="translate(24,1.5)"
-         d="m 239.84118,141.05594 -1.75305,-13.76783 3.75854,-0.3736 1.77176,15.71217 -3.47279,0.38463 z"
-         id="path4712-turned"
-         inkscape:label="turned-antenna-tube" />
-      <path
-         style="fill:#cb1fff;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1"
-         transform="translate(24,1.5)"
-         d="m 235.6884,154.3238 c 0.70359,1.4383 2.0923,2.63163 3.59413,3.18684 1.90887,0.70568 4.23666,0.70306 6.1045,-0.10499 7.02936,-2.97083 5.29389,-16.56091 -0.17154,-17.17382 -1.71638,-0.0233 -4.12521,-0.32309 -5.78832,0.46381 -4.82756,2.89751 -5.6859,8.38521 -3.73877,13.62816 z"
-         id="path4710-turned"
-         inkscape:label="turned-antenna-base"
-         sodipodi:nodetypes="cscccc" />
-      <path
-         style="fill:#cb1fff;stroke:#000000;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;fill-opacity:1;stroke-dasharray:none"
-         transform="translate(24,1.5)"
-         d="m 236.06527,121.53122 c -0.63065,0.73169 -1.01118,1.71975 -1.09808,2.6818 -0.11344,1.2558 0.0235,2.69422 0.78286,3.70085 0.69611,0.9228 1.92569,1.42701 3.06504,1.62195 1.17428,0.20092 2.49666,0.0576 3.53508,-0.52632 0.97837,-0.55019 1.79989,-1.52323 2.15396,-2.58838 0.38316,-1.15267 0.29717,-2.50417 -0.19015,-3.63909 -0.57376,-0.82968 -1.20333,-1.67777 -2.08775,-2.13388 -1.10933,-0.5721 -2.47343,-0.81781 -3.69905,-0.58163 -0.93764,0.18068 -1.83849,0.7414 -2.46191,1.4647 z"
-         id="path4714-turned"
-         inkscape:label="turned-antenna-balltip"
-         sodipodi:nodetypes="aaaaaacaaa" />
-      <path
-         style="fill:none;stroke:#fefefe;stroke-width:0.565;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:0.457964"
-         transform="translate(24,1.5)"
-         d="m 242.83634,142.08116 c 5.23417,3.13723 4.28032,12.61767 -0.39905,13.99448"
-         id="path4735-turned"
-         inkscape:label="turned-antena-curve"
-         sodipodi:nodetypes="cc" />
-      <path
-         style="fill:none;stroke:#000000;stroke-width:0.865;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:0.58969712;stroke-dasharray:none"
-         transform="translate(24,1.5)"
-         d="m 239.8041,143.39111 c -2.17127,0.11825 -3.14882,3.75825 -3.06383,5.78087 0.085,2.02262 1.16307,4.66407 3.03036,4.71382 2.10003,0.056 3.65563,-3.01181 3.68551,-5.11238 0.0308,-2.1679 -1.48077,-5.50056 -3.65204,-5.38231 z"
-         id="path4737-turned"
-         sodipodi:nodetypes="zzaaz"
-         inkscape:label="turned-antena-divit" />
     </g>
     <g
        id="part-face-fierce"
@@ -620,34 +574,6 @@
          d="M 285.9,148.1 L 281.4,151.8 L 285.9,155.5"
          id="face-strain-eye-left"
          inkscape:label="left-eye-strain" />
-    </g>
-    <g
-       id="part-face-turned"
-       inkscape:label="Face - Looking Back"
-       inkscape:groupmode="layer"
-       data-rig-part="face_turned"
-       data-rig-bone="head"
-       data-rig-z="61"
-       data-rig-opacity="face_turned_vis"
-       data-note="the visor seen edge-on at the back of the shell, for a head looking over its shoulder">
-      <path
-         style="stroke:#000000;stroke-opacity:1;fill:#000000;fill-opacity:1;display:inline;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none"
-         transform="matrix(0.42,0,0,1,132.8,0)"
-         d="m 266.92815,140.16245 c -1.72885,0.58768 -5.90634,13.63679 -1.99284,19.94878 2.02892,1.29292 10.20675,3.71987 21.11187,1.13487 2.52863,-2.01121 4.77298,-10.43771 3.04606,-18.27175 -0.92483,-2.20298 -14.0111,-6.17417 -22.16509,-2.8119 z"
-         id="face-turned-visor"
-         inkscape:label="visor-turned" />
-      <path
-         style="fill:#0defff;fill-opacity:1;stroke:none"
-         transform="matrix(0.42,0,0,1,132.8,0)"
-         d="m 276.74461,150.79666 c 0,3.7612 -1.29409,6.32262 -3.43825,6.32262 -2.14416,-1e-5 -2.50224,-1.91735 -2.50224,-5.67854 0,-3.76119 1.31695,-6.27855 3.46111,-6.27856 2.14416,-1e-5 2.47938,1.87328 2.47938,5.63448 z"
-         id="face-turned-eye-right"
-         inkscape:label="right-eye-turned" />
-      <path
-         style="fill:#0defff;fill-opacity:1;stroke:none"
-         transform="matrix(0.42,0,0,1,132.8,0)"
-         d="m 286.13002,151.58727 c 0,3.7612 -0.87026,6.05755 -3.01442,6.05755 -2.14416,-1e-5 -2.0653,-2.11882 -2.0653,-5.88001 0,-3.76119 0.86268,-5.70096 2.96535,-5.57947 1.93044,0.11154 2.11437,1.64073 2.11437,5.40193 z"
-         id="face-turned-eye-left"
-         inkscape:label="left-eye-turned" />
     </g>
     <g
        id="rig-joints"
@@ -840,11 +766,9 @@
       <g id="ambition-rig-side-part-blade" data-rig-part-def="blade" data-rig-bone="near_arm_hand" data-rig-z="64.5" data-rig-pivot="ambition-rig-side-bind-blade" data-rig-bind-angle="75.9638" data-rig-opacity="blade_vis" data-rig-elements="blade-edge blade-core blade-hilt blade-guard" />
       <g id="ambition-rig-side-part-near_hand" data-rig-part-def="near_hand" data-rig-bone="near_arm_hand" data-rig-z="65" data-rig-pivot="ambition-rig-side-bind-near_hand" data-rig-bind-angle="75.9638" data-rig-elements="path4717 path4830 path4828 path4826" />
       <g id="ambition-rig-side-part-head" data-rig-part-def="head" data-rig-bone="head" data-rig-z="60" data-rig-pivot="ambition-rig-side-bind-head" data-rig-bind-angle="0" data-rig-elements="path3119" />
-      <g id="ambition-rig-side-part-head_side" data-rig-part-def="head_side" data-rig-bone="head" data-rig-z="60.5" data-rig-pivot="ambition-rig-side-bind-head_side" data-rig-bind-angle="0" data-rig-opacity="head_side_vis" data-rig-opacity-default="1" data-rig-elements="path4712 path4710 path4714 path4735 path4737" />
-      <g id="ambition-rig-side-part-head_side_turned" data-rig-part-def="head_side_turned" data-rig-bone="head" data-rig-z="60.5" data-rig-pivot="ambition-rig-side-bind-head_side_turned" data-rig-bind-angle="0" data-rig-opacity="head_turned_vis" data-rig-elements="path4712-turned path4710-turned path4714-turned path4735-turned path4737-turned" />
+      <g id="ambition-rig-side-part-head_side" data-rig-part-def="head_side" data-rig-bone="head" data-rig-z="60.5" data-rig-pivot="ambition-rig-side-bind-head_side" data-rig-bind-angle="0" data-rig-elements="path4712 path4710 path4714 path4735 path4737" />
       <g id="ambition-rig-side-part-face_fierce" data-rig-part-def="face_fierce" data-rig-bone="head" data-rig-z="61" data-rig-pivot="ambition-rig-side-bind-face_fierce" data-rig-bind-angle="0" data-rig-opacity="face_fierce_vis" data-rig-elements="face-fierce-visor face-fierce-eye-right face-fierce-eye-left" />
       <g id="ambition-rig-side-part-face_strain" data-rig-part-def="face_strain" data-rig-bone="head" data-rig-z="61" data-rig-pivot="ambition-rig-side-bind-face_strain" data-rig-bind-angle="0" data-rig-opacity="face_strain_vis" data-rig-elements="face-strain-visor face-strain-eye-right face-strain-eye-left" />
-      <g id="ambition-rig-side-part-face_turned" data-rig-part-def="face_turned" data-rig-bone="head" data-rig-z="61" data-rig-pivot="ambition-rig-side-bind-face_turned" data-rig-bind-angle="0" data-rig-opacity="face_turned_vis" data-rig-elements="face-turned-visor face-turned-eye-right face-turned-eye-left" />
       <g id="ambition-rig-side-part-face_open" data-rig-part-def="face_open" data-rig-bone="head" data-rig-z="61" data-rig-pivot="ambition-rig-side-bind-face_open" data-rig-bind-angle="0" data-rig-opacity="face_open_vis" data-rig-elements="face-open-visor face-open-eye-right face-open-eye-left" />
       <g id="ambition-rig-side-part-face_blink" data-rig-part-def="face_blink" data-rig-bone="head" data-rig-z="62" data-rig-pivot="ambition-rig-side-bind-face_blink" data-rig-bind-angle="0" data-rig-opacity="blink_vis" data-rig-elements="face-blink-visor face-blink-eye-right face-blink-eye-left" />
     </g>
@@ -905,10 +829,8 @@
       <circle id="ambition-rig-side-bind-near_hand" data-rig-bind-pivot="near_hand" cx="242" cy="184" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-head" data-rig-bind-pivot="head" cx="262" cy="164" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-head_side" data-rig-bind-pivot="head_side" cx="262" cy="164" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-head_side_turned" data-rig-bind-pivot="head_side_turned" cx="262" cy="164" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-face_fierce" data-rig-bind-pivot="face_fierce" cx="262" cy="164" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-face_strain" data-rig-bind-pivot="face_strain" cx="262" cy="164" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-face_turned" data-rig-bind-pivot="face_turned" cx="262" cy="164" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-face_open" data-rig-bind-pivot="face_open" cx="262" cy="164" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-face_blink" data-rig-bind-pivot="face_blink" cx="262" cy="164" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
     </g>

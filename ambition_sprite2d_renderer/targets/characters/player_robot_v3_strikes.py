@@ -70,8 +70,7 @@ class Key:
     # The face: "open", "fierce", "strain" or "blink" (the closed ^^ arcs);
     # `None` means fierce while the blade is out and open otherwise.
     face: Optional[str] = None
-    # The head turned to look behind (the back air): the ear cup and antenna
-    # come round to the middle of the shell and the visor is seen edge-on.
+    # The head turned to look behind (the back air), mirrored about the neck.
     look_back: bool = False
 
 
@@ -217,10 +216,12 @@ def _pose(body: RigBody, key: Key) -> Dict[str, float]:
     ch["eye_squint"] = key.squint
     face = key.face or ("fierce" if key.blade > 0.0 else "open")
     for name, channel in FACES.items():
-        ch[channel] = 1.0 if (face == name and not key.look_back) else 0.0
-    ch["face_turned_vis"] = 1.0 if key.look_back else 0.0
-    ch["head_side_vis"] = 0.0 if key.look_back else 1.0
-    ch["head_turned_vis"] = 1.0 if key.look_back else 0.0
+        ch[channel] = 1.0 if face == name else 0.0
+    # Looking back is the head seen from its OTHER side: shell, ear cup,
+    # antenna and face mirrored together about the neck. Squashing the visor
+    # onto the back of the shell instead kept its forward-facing slant and read
+    # as a flattened face, not a turned head.
+    ch["bone.head.flip_x"] = 1.0 if key.look_back else 0.0
     return ch
 
 
