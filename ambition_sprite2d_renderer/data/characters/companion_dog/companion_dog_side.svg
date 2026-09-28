@@ -96,6 +96,9 @@
       <ellipse cx="524" cy="224" rx="13" ry="15" fill="#fff0d8"/>
       <path d="M515 214 L533 234 M533 214 L515 234" fill="none" stroke="#242126" stroke-width="6" stroke-linecap="round"/>
     </g>
+    <g id="eye-happy" inkscape:groupmode="layer" inkscape:label="Eye - Happy (closed)" data-rig-part="eye_happy" data-rig-bone="head" data-rig-z="41">
+      <path d="M505 228 C509 217 521 216 526 227" fill="none" stroke="#2c2726" stroke-width="5" stroke-linecap="round"/>
+    </g>
     <g id="bark-mouth" inkscape:groupmode="layer" inkscape:label="Mouth - Bark" data-rig-part="bark_mouth" data-rig-bone="head" data-rig-z="41">
       <path d="M558 265 C575 275 593 274 606 264 C601 285 581 291 566 281 Z" fill="#67333a" stroke="#3b2926" stroke-width="5"/>
       <path d="M576 282 C586 274 595 278 599 282" fill="none" stroke="#e99195" stroke-width="4" stroke-linecap="round"/>
@@ -145,6 +148,7 @@
       <g id="ambition-rig-side-part-neck" data-rig-part-def="neck" data-rig-bone="body" data-rig-z="38" data-rig-pivot="ambition-rig-side-bind-neck" data-rig-bind-angle="0" data-rig-elements="neck" />
       <g id="ambition-rig-side-part-eye_open" data-rig-part-def="eye_open" data-rig-bone="head" data-rig-z="41" data-rig-pivot="ambition-rig-side-bind-eye_open" data-rig-bind-angle="0" data-rig-opacity="eye_open" data-rig-elements="eye-open" />
       <g id="ambition-rig-side-part-eye_x" data-rig-part-def="eye_x" data-rig-bone="head" data-rig-z="44" data-rig-pivot="ambition-rig-side-bind-eye_x" data-rig-bind-angle="0" data-rig-opacity="eye_x" data-rig-elements="eye-x" />
+      <g id="ambition-rig-side-part-eye_happy" data-rig-part-def="eye_happy" data-rig-bone="head" data-rig-z="41" data-rig-pivot="ambition-rig-side-bind-eye_happy" data-rig-bind-angle="0" data-rig-opacity="eye_happy" data-rig-elements="eye-happy" />
       <g id="ambition-rig-side-part-bark_mouth" data-rig-part-def="bark_mouth" data-rig-bone="head" data-rig-z="41" data-rig-pivot="ambition-rig-side-bind-bark_mouth" data-rig-bind-angle="0" data-rig-opacity="bark_mouth" data-rig-elements="bark-mouth" />
     </g>
   </metadata>
@@ -206,6 +210,7 @@
       <circle id="ambition-rig-side-bind-neck" data-rig-bind-pivot="neck" cx="320" cy="300" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-eye_open" data-rig-bind-pivot="eye_open" cx="473" cy="219" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-eye_x" data-rig-bind-pivot="eye_x" cx="473" cy="219" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-eye_happy" data-rig-bind-pivot="eye_happy" cx="473" cy="219" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-bark_mouth" data-rig-bind-pivot="bark_mouth" cx="473" cy="219" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
     </g>
   </g>

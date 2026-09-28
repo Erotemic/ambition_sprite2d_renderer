@@ -73,6 +73,10 @@ class Key:
     face: Optional[str] = None
     # The head turned to look behind (the back air), mirrored about the neck.
     look_back: bool = False
+    # Seen from the robot's other side, the working arm is the far one. `None`
+    # draws it over the body while the blade is out and reaching forward; a
+    # bladeless reach (a pet) says `True`.
+    arm_in_front: Optional[bool] = None
 
 
 # The direction the blade is DRAWN in the SVG (straight ahead, so it fits the
@@ -168,6 +172,7 @@ def _blend(a: Key, b: Key, u: float) -> Key:
         squint=num("squint"),
         face=nearest.face,
         look_back=nearest.look_back,
+        arm_in_front=nearest.arm_in_front,
     )
 
 
@@ -230,7 +235,11 @@ def _pose(body: RigBody, key: Key, other_side: bool = False) -> Dict[str, float]
     # follow-through) the whole arm draws over the body and head, like the near
     # arm; while it is back or overhead (the wind-up) it stays behind them.
     if other_side:
-        in_front = -80.0 < key.near[0] < 80.0 and key.blade > 0.0
+        in_front = (
+            key.arm_in_front
+            if key.arm_in_front is not None
+            else -80.0 < key.near[0] < 80.0 and key.blade > 0.0
+        )
         for bone in ("far_arm_u", "far_arm_l", "far_arm_hand"):
             ch[f"bone.{bone}.z"] = FAR_ARM_IN_FRONT if in_front else 0.0
     # The robot holds its blade in ONE hand: from its other side, the far one.
@@ -719,6 +728,45 @@ def taunt(body: RigBody) -> List[Key]:
     ]
 
 
+def pet(body: RigBody) -> List[Key]:
+    """Petting the dog: a crouch, a lean, and a hand stroking its head. 2.0 s.
+
+    The companion dog is about this robot's height standing, and the robot's
+    arms are short under a big head: a hand raised to a standing dog's head is
+    hidden behind the robot's own. So the dog lies down with its chin low (its
+    ``petted`` row), and the robot crouches, leans in and strokes at chest
+    height, where the hand shows. It strokes three times with the eyes closed
+    happy (the ``blink`` face), then straightens. No blade: a hand, not a cut.
+    """
+    lean = dict(blade=0.0, face="blink", far=(84.0, 64.0), arm_in_front=True)
+
+    def stroke(at: float, forward: bool, bob: float) -> Key:
+        # Forward runs the hand along the head to the ears; back draws it home.
+        # The head nods with the stroke and the body leans into the forward pass.
+        near = (2.0, -8.0, 0.0) if forward else (26.0, 8.0, 0.0)
+        return Key(at=at, near=near, torso=20.0 if forward else 15.0, head=9.0 + bob,
+                   drop=5.5 if forward else 5.0, squash=0.97, lunge=4.0 if forward else 2.0,
+                   shoulder=5.0 if forward else 2.5, **lean)
+
+    keys = [
+        rest(body, 0.0),
+        # Down into the crouch, the hand coming out, looking down at the dog.
+        Key(at=0.12, near=(40.0, 30.0, 0.0), far=(80.0, 60.0), torso=10.0, head=10.0,
+            drop=4.5, squash=0.96, blade=0.0, squint=0.1, ease="out", arm_in_front=True),
+        # The hand lands.
+        replace(stroke(0.22, True, 0.0), ease="out"),
+    ]
+    for i, at in enumerate((0.32, 0.42, 0.52, 0.62, 0.72, 0.8)):
+        keys.append(stroke(at, i % 2 == 1, 2.0 if i % 2 == 0 else -1.0))
+    keys += [
+        # The hand lifts, a last happy look, and up out of the crouch.
+        Key(at=0.9, near=(55.0, 40.0, 0.0), far=(78.0, 58.0), torso=4.0, head=2.0,
+            drop=2.0, squash=0.99, blade=0.0, face="blink", ease="smooth", arm_in_front=True),
+        rest(body, 1.0),
+    ]
+    return keys
+
+
 STRIKES: Dict[str, Callable[[RigBody], List[Key]]] = {
     "jab": jab,
     "attack_side": tilt_forward,
@@ -742,6 +790,7 @@ STRIKES: Dict[str, Callable[[RigBody], List[Key]]] = {
     "throw_up": throw_up,
     "throw_down": throw_down,
     "taunt": taunt,
+    "pet": pet,
 }
 
 

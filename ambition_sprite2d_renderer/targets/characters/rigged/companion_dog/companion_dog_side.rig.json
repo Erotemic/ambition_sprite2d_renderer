@@ -477,6 +477,21 @@
       "opacity_channel": "eye_x"
     },
     {
+      "name": "eye_happy",
+      "bone": "head",
+      "z": 41,
+      "kind": "sprite",
+      "include": [
+        "eye-happy"
+      ],
+      "pivot": [
+        473,
+        219
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "eye_happy"
+    },
+    {
       "name": "bark_mouth",
       "bone": "head",
       "z": 41,
@@ -902,6 +917,61 @@
         },
         "body": {
           "expr": "18*t"
+        }
+      }
+    },
+    "petted": {
+      "loop": false,
+      "frames": 16,
+      "duration_ms": 125,
+      "channels": {
+        "root_y": {
+          "expr": "31*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, t/0.15, (1-t)/0.12)))"
+        },
+        "body": {
+          "expr": "-3*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, t/0.15, (1-t)/0.12)))"
+        },
+        "head": {
+          "expr": "(18+4*sin(6.28318*3*t))*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, t/0.15, (1-t)/0.12)))"
+        },
+        "ear": {
+          "expr": "(10+4*sin(6.28318*3*t+1.0))*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, t/0.15, (1-t)/0.12)))"
+        },
+        "near_hind_upper": {
+          "expr": "38*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, t/0.15, (1-t)/0.12)))"
+        },
+        "near_hind_lower": {
+          "expr": "-143*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, t/0.15, (1-t)/0.12)))"
+        },
+        "far_hind_upper": {
+          "expr": "38*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, t/0.15, (1-t)/0.12)))"
+        },
+        "far_hind_lower": {
+          "expr": "-143*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, t/0.15, (1-t)/0.12)))"
+        },
+        "near_fore_upper": {
+          "expr": "-55*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, t/0.15, (1-t)/0.12)))"
+        },
+        "near_fore_lower": {
+          "expr": "-35*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, t/0.15, (1-t)/0.12)))"
+        },
+        "far_fore_upper": {
+          "expr": "-55*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, t/0.15, (1-t)/0.12)))"
+        },
+        "far_fore_lower": {
+          "expr": "-35*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, t/0.15, (1-t)/0.12)))"
+        },
+        "tail_base": {
+          "expr": "22*sin(6.28318*6*t)"
+        },
+        "tail_tip": {
+          "expr": "30*sin(6.28318*6*t+0.8)"
+        },
+        "eye_open": {
+          "expr": "0 if 0.1 < t < 0.93 else 1"
+        },
+        "eye_happy": {
+          "expr": "1 if 0.1 < t < 0.93 else 0"
         }
       }
     }

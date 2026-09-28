@@ -164,6 +164,8 @@ ROBOT_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     ("loss", 8, 110),
     ("aim", 6, 100),
     ("interact", 6, 90),
+    # Petting a pettable character: 2.0 s, the sim's `PET_SECONDS`.
+    ("pet", 16, 125),
     ("talk", 8, 110),
     ("death", 8, 110),
 )
@@ -362,6 +364,7 @@ POSE_ALIASES: Final[dict[str, str]] = {
     "air_land": "land",
     "final_smash": "charge",
     "grab": "interact",
+    "pet": "interact",
     "grab_hold": "aim",
     "pummel": "attack_down",
     "grab_release": "interact",
