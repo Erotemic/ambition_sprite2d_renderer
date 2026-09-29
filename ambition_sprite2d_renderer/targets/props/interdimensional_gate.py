@@ -13,6 +13,7 @@ import math
 from pathlib import Path
 from typing import List, Sequence, Tuple
 
+import numpy as np
 from PIL import Image, ImageColor, ImageDraw, ImageFilter, ImageFont
 
 from ...authoring.sheet_build import build_sheet
@@ -277,6 +278,8 @@ def _draw_gate_ring_base(
         _ring_bbox(INNER_R), fill=(0, 0, 0, 0), outline=_rgba("#151922"), width=8
     )
 
+    _shade_metal(ring)
+
     for i in range(30):
         ang = rotation_deg + i * (360.0 / 30.0)
         p1 = _polar(CENTER, INNER_R + 4.5 * SUPER, ang)
@@ -301,7 +304,7 @@ def _draw_gate_ring_base(
         )
         _paste_center(ring, rotated_icon, housing_center)
 
-    for ang in (-90, 30, 150):
+    for lamp_index, ang in enumerate((-90, 30, 150)):
         cap_center = _polar(CENTER, OUTER_R + 4.0 * SUPER, ang)
         _draw_rotated_polygon(
             rd,
@@ -316,6 +319,11 @@ def _draw_gate_ring_base(
             fill=_rgba("#6d7581"),
             outline=_rgba("#1a1e28"),
             width=4,
+        )
+        _draw_clamp_lamp(
+            ring,
+            _polar(CENTER, OUTER_R + 4.6 * SUPER, ang),
+            _lamp_level(lamp_index, frame_index, nframes, idle_mode),
         )
 
     ring = ring.filter(ImageFilter.GaussianBlur(radius=0.25))
@@ -335,6 +343,74 @@ def _draw_gate_ring_base(
     rim = rim.filter(ImageFilter.GaussianBlur(radius=2.5))
     img.alpha_composite(rim)
     return img
+
+
+def _shade_metal(layer: Image.Image) -> None:
+    """Light the ring's metal from the upper left, in place.
+
+    The band is a torus seen face-on: its outer half faces away from the
+    centre and its inner half faces toward it. Each pixel is lit by the dot
+    product of that normal with a light from the upper left, so the band reads
+    as a solid object instead of flat paint. Alpha is not changed.
+    """
+    px = np.asarray(layer, dtype=np.float32)
+    h, w = px.shape[:2]
+    ys, xs = np.mgrid[0:h, 0:w].astype(np.float32)
+    dx = xs - CENTER[0]
+    dy = ys - CENTER[1]
+    dist = np.sqrt(dx * dx + dy * dy) + 1e-6
+    # -1 at the inner edge, +1 at the outer edge of the band.
+    across = np.clip((dist - RING_MID_R) / ((OUTER_R - INNER_R) / 2.0), -1.0, 1.0)
+    nx = dx / dist * across
+    ny = dy / dist * across
+    nz = np.sqrt(np.clip(1.0 - across * across, 0.0, 1.0))
+    light = np.array([-0.55, -0.62, 0.56], dtype=np.float32)
+    light /= np.linalg.norm(light)
+    lit = nx * light[0] + ny * light[1] + nz * light[2]
+    gain = 0.62 + 0.62 * np.clip(lit, 0.0, 1.0)
+    spec = np.clip(lit, 0.0, 1.0) ** 18 * 70.0
+    rgb = px[..., :3] * gain[..., None] + spec[..., None]
+    px[..., :3] = np.clip(rgb, 0.0, 255.0)
+    layer.paste(Image.fromarray(px.astype(np.uint8), "RGBA"))
+
+
+def _lamp_level(lamp_index: int, frame_index: int, nframes: int, idle: bool) -> float:
+    """How bright one clamp lamp is.
+
+    Idle: every lamp glows low, so a powered gate reads as powered. Spin: the
+    lamps lock one at a time, clockwise from the top, as the inscription turns;
+    the last one lights on the last frame of the turn.
+    """
+    if idle:
+        return 0.45 + 0.08 * math.sin(
+            (frame_index / max(1, nframes)) * math.tau + lamp_index * 2.1
+        )
+    locked = (frame_index + 1) / max(1, nframes) >= (lamp_index + 1) / 3.0 - 1e-6
+    return 1.0 if locked else 0.22
+
+
+def _draw_clamp_lamp(layer: Image.Image, center: Point, level: float) -> None:
+    glow = Image.new("RGBA", layer.size, (0, 0, 0, 0))
+    gd = blending_draw(glow)
+    gr = (4.5 + 5.5 * level) * SUPER
+    gd.ellipse(
+        (center[0] - gr, center[1] - gr, center[0] + gr, center[1] + gr),
+        fill=_rgba("#ffae45", int(150 * level)),
+    )
+    glow = glow.filter(ImageFilter.GaussianBlur(radius=3.0 * SUPER))
+    layer.alpha_composite(glow)
+    draw = blending_draw(layer)
+    r = 2.8 * SUPER
+    dim = ImageColor.getrgb("#8a4f1f")
+    lit = ImageColor.getrgb("#fff0c8")
+    mix = max(0.0, min(1.0, level))
+    core = tuple(int(_lerp(a, b, mix)) for a, b in zip(dim, lit)) + (255,)
+    draw.ellipse(
+        (center[0] - r, center[1] - r, center[0] + r, center[1] + r),
+        fill=core,
+        outline=_rgba("#1a1e28"),
+        width=3,
+    )
 
 
 def render_ring_frame(animation: str, frame_index: int, nframes: int) -> Image.Image:
@@ -357,35 +433,6 @@ def _portal_mask(radius: float) -> Image.Image:
     return mask
 
 
-def _draw_energy_ribbons(
-    draw: ImageDraw.ImageDraw, t: float, radius: float, count: int
-) -> None:
-    for ridx in range(count):
-        phase = t * math.tau + ridx * 0.9
-        points: List[Point] = []
-        turns = 24
-        for step in range(turns + 1):
-            u = step / turns
-            ang = phase + u * math.tau * (1.4 + ridx * 0.06)
-            rr = (
-                radius * (0.20 + 0.75 * u)
-                + math.sin(u * math.tau * 3.0 + phase) * (2.0 + ridx * 0.25) * SUPER
-            )
-            points.append(
-                (
-                    CENTER[0] + math.cos(ang) * rr,
-                    CENTER[1] + math.sin(ang * 1.08) * rr * 0.72,
-                )
-            )
-        color = [
-            _rgba("#7ff7ff", 90),
-            _rgba("#8a86ff", 70),
-            _rgba("#d09cff", 60),
-            _rgba("#9df8db", 72),
-        ][ridx % 4]
-        draw.line(points, fill=color, width=max(1, SUPER + (ridx % 2)), joint="curve")
-
-
 def _draw_star_specks(
     draw: ImageDraw.ImageDraw, t: float, radius: float, opening: float
 ) -> None:
@@ -406,64 +453,95 @@ def _draw_star_specks(
         )
 
 
+def _ease_out_back(t: float, overshoot: float = 1.35) -> float:
+    t = max(0.0, min(1.0, t)) - 1.0
+    return 1.0 + t * t * ((overshoot + 1.0) * t + overshoot)
+
+
+def _portal_surface(radius: float, loop_t: float, alpha_scale: float, flash: float) -> Image.Image:
+    """The membrane: a deep, water-like surface with ripples moving outward.
+
+    ``loop_t`` in [0, 1) is the loop phase; every motion term is periodic in it,
+    so the stable row loops without a seam.
+    """
+    size = (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER)
+    ys, xs = np.mgrid[0 : size[1], 0 : size[0]].astype(np.float32)
+    dx = xs - CENTER[0]
+    dy = ys - CENTER[1]
+    dist = np.sqrt(dx * dx + dy * dy)
+    d = dist / max(radius, 1.0)
+    theta = np.arctan2(dy, dx)
+    tau = math.tau
+
+    deep = np.array([18, 34, 122], dtype=np.float32)
+    mid = np.array([44, 118, 232], dtype=np.float32)
+    edge = np.array([118, 226, 255], dtype=np.float32)
+    k = np.clip(d, 0.0, 1.0)[..., None]
+    base = deep * (1 - k) ** 2 + mid * 2 * k * (1 - k) + edge * k**2
+
+    # Ripples travelling outward, one wavelength per loop.
+    ripple = 0.5 + 0.5 * np.sin((d * 6.0 - loop_t) * tau)
+    ripple = ripple**4 * (0.25 + 0.75 * np.clip(d, 0.0, 1.0))
+    # A slow swirl, so the surface is not a static target.
+    swirl = 0.5 + 0.5 * np.sin(theta * 3.0 + d * 7.0 - loop_t * tau * 2.0)
+    swirl = swirl**6 * 0.35
+    # A specular highlight from the upper left, like a lit liquid surface.
+    hx = dx / max(radius, 1.0) + 0.38
+    hy = dy / max(radius, 1.0) + 0.42
+    spec = np.exp(-(hx * hx * 9.0 + hy * hy * 22.0)) * 0.55
+
+    light = (ripple * 95.0 + swirl * 70.0 + spec * 255.0 + flash * 180.0)[..., None]
+    rgb = base + light * np.array([0.78, 0.94, 1.0], dtype=np.float32)
+
+    # Bright lip at the edge of the membrane, with a soft glow past it.
+    lip = np.exp(-(((d - 0.965) / 0.035) ** 2))
+    rgb = rgb * (1 - lip[..., None] * 0.6) + np.array([220, 250, 255]) * lip[..., None] * 0.6
+    inside = np.clip((1.0 - d) * radius / (1.2 * SUPER), 0.0, 1.0)
+    halo = np.exp(-(((d - 1.0) / 0.07) ** 2)) * (d > 1.0)
+    alpha = np.clip(inside * 238.0 + halo * 150.0, 0.0, 255.0) * alpha_scale
+    halo_rgb = np.array([150, 236, 255], dtype=np.float32)
+    rgb = np.where((d > 1.0)[..., None], halo_rgb, rgb)
+
+    px = np.zeros((size[1], size[0], 4), dtype=np.float32)
+    px[..., :3] = np.clip(rgb, 0.0, 255.0)
+    px[..., 3] = alpha
+    return Image.fromarray(px.astype(np.uint8), "RGBA")
+
+
 def render_portal_frame(animation: str, frame_index: int, nframes: int) -> Image.Image:
     img = Image.new(
         "RGBA", (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER), (0, 0, 0, 0)
     )
     t = frame_index / max(1, nframes - 1)
     if animation == "opening":
-        strength = _ease(t)
+        # Bursts out slightly past the ring's aperture and settles back.
+        size = _ease_out_back(t)
+        alpha_scale = _ease(min(1.0, t * 2.2))
+        flash = max(0.0, 1.0 - abs(t - 0.55) / 0.3) * 0.4
+        loop_t = t
     elif animation == "closing":
-        strength = 1.0 - _ease(t)
+        # Swells once, then collapses to a point.
+        size = (1.0 + 0.06 * math.sin(min(1.0, t * 2.5) * math.pi)) * (1.0 - _ease(t) ** 1.6)
+        alpha_scale = 1.0 - _ease(max(0.0, t - 0.55) / 0.45)
+        flash = max(0.0, 1.0 - abs(t - 0.8) / 0.2) * 0.6
+        loop_t = t
     else:
-        strength = 0.96
-    if strength <= 0.001:
+        size = 1.0
+        alpha_scale = 1.0
+        flash = 0.0
+        loop_t = frame_index / max(1, nframes)
+    if size <= 0.01 or alpha_scale <= 0.01:
         return _downsample(img)
 
-    portal = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    draw = blending_draw(portal)
-    radius = PORTAL_R * max(0.14, strength)
+    radius = PORTAL_R * size
+    surface = _portal_surface(radius, loop_t, alpha_scale, flash)
+    draw = blending_draw(surface)
+    _draw_star_specks(draw, loop_t, radius, alpha_scale)
 
-    inner_col = _rgba("#75e9ff", int(110 * strength))
-    mid_col = _rgba("#5f75ff", int(85 * strength))
-    outer_col = _rgba("#c084ff", int(56 * strength))
-    draw.ellipse(_ring_bbox(radius), fill=inner_col)
-    draw.ellipse(_ring_bbox(radius * 0.82), fill=mid_col)
-    draw.ellipse(_ring_bbox(radius * 0.56), fill=outer_col)
-
-    motion_t = t if animation != "stable" else frame_index / max(1, nframes)
-    _draw_energy_ribbons(draw, motion_t, radius, 8)
-    _draw_star_specks(draw, motion_t, radius, strength)
-
-    rim = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    rd = blending_draw(rim)
-    for i in range(6):
-        rr = radius * (0.92 + i * 0.06)
-        alpha = int((130 - i * 16) * strength)
-        rd.ellipse(
-            _ring_bbox(rr),
-            outline=_rgba("#8bf1ff", alpha),
-            width=max(1, SUPER - i // 2),
-        )
-    for i in range(18):
-        ang = i * (360.0 / 18.0) + t * 70.0
-        p1 = _polar(CENTER, radius * 0.86, ang)
-        p2 = _polar(
-            CENTER,
-            radius * (1.02 + 0.10 * math.sin(t * math.tau * 2.0 + i)),
-            ang + 6.0 * math.sin(i + t * math.tau),
-        )
-        rd.line(
-            [p1, p2],
-            fill=_rgba("#c3f8ff", int(155 * strength)),
-            width=max(1, SUPER - 1),
-        )
-    rim = rim.filter(ImageFilter.GaussianBlur(radius=3.2))
-    portal.alpha_composite(rim)
-
-    mask = _portal_mask(PORTAL_R * 1.04)
-    clipped = Image.new("RGBA", portal.size, (0, 0, 0, 0))
-    clipped.paste(portal, (0, 0), mask)
+    # The overshoot may pass the ring's aperture; the ring covers the rest.
+    mask = _portal_mask(PORTAL_R * 1.12)
+    clipped = Image.new("RGBA", surface.size, (0, 0, 0, 0))
+    clipped.paste(surface, (0, 0), mask)
     img.alpha_composite(clipped)
     return _downsample(img)
 
