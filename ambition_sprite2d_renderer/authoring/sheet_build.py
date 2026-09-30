@@ -499,10 +499,22 @@ def line(draw, points, fill, width=1):
     draw.line(points, fill=fill, width=width, joint="curve")
 
 
-def downsample(img: Image.Image, final_size=BASE_FRAME):
+def downsample(img: Image.Image, final_size=BASE_FRAME, fit_out: Optional[dict] = None):
+    """Fit the drawn extent of ``img`` into a ``final_size`` frame.
+
+    Each frame is cropped to its own alpha box and scaled to fit, so the scale
+    and the offset change from frame to frame. ``fit_out``, when given, is
+    filled with that map: a point ``p`` of ``img`` lands at
+    ``((p.x - x0) * sx + ox, (p.y - y0) * sy + oy)`` in the returned frame.
+    """
     alpha = img.getchannel("A")
     bbox = alpha.getbbox()
     if bbox is None:
+        if fit_out is not None:
+            fit_out.update(
+                {"x0": 0, "y0": 0, "sx": final_size[0] / img.width,
+                 "sy": final_size[1] / img.height, "ox": 0, "oy": 0}
+            )
         return img.resize(final_size, Image.Resampling.LANCZOS)
     x1, y1, x2, y2 = bbox
     crop = img.crop((x1, y1, x2, y2))
@@ -516,6 +528,11 @@ def downsample(img: Image.Image, final_size=BASE_FRAME):
     ox = int((fw - new_size[0]) / 2)
     oy = int(fh - new_size[1] - fh * 0.12)
     canvas.alpha_composite(crop, (ox, oy))
+    if fit_out is not None:
+        fit_out.update(
+            {"x0": x1, "y0": y1, "sx": new_size[0] / (x2 - x1),
+             "sy": new_size[1] / (y2 - y1), "ox": ox, "oy": oy}
+        )
     return canvas
 
 
@@ -778,8 +795,15 @@ def build_sheet(
     pose_bodies: str = "art",
     authored_faces_left: bool = False,
     mirror_of=None,
+    frame_transform_out: Optional[dict] = None,
 ):
     """Build one module target's sheet from a frame callable + rows.
+
+    ``frame_transform_out``, when given, is filled with ``{"dx": .., "dy": ..}``:
+    the translation from a frame as ``render_fn`` drew it to the frame as the
+    sheet publishes it (padding added, auto-crop removed). A product placed in
+    published frame pixels (a body rig, a part atlas) adds it to a point it
+    measured in the drawn frame.
 
     ``mirror_of`` (``{row: source_row}``) declares rows drawn as the MIRROR
     IMAGE of another — the character seen from its other side, for a character
@@ -814,11 +838,11 @@ def build_sheet(
         pose_bodies=pose_bodies,
         mirror_of=mirror_of,
     )
-    return render_sheet(source, out_dir)
+    return render_sheet(source, out_dir, frame_transform_out=frame_transform_out)
 
 
 @profile
-def render_sheet(source: FrameSource, out_dir: Path):
+def render_sheet(source: FrameSource, out_dir: Path, frame_transform_out: Optional[dict] = None):
     """Build a sheet from any frame source with a callable-style recipe.
 
     The one sheet-assembly core for module-authored targets: render every frame,
@@ -880,6 +904,7 @@ def render_sheet(source: FrameSource, out_dir: Path):
     """
     if _CANONICAL_ONLY.get():
         return _render_canonical_only(source, Path(out_dir))
+    crop_x = crop_y = 0
 
     target = source.target
     rows = source.rows
@@ -1115,6 +1140,8 @@ def render_sheet(source: FrameSource, out_dir: Path):
             )
             fw, fh = new_fw, new_fh
     progress(f"phase crop: done in {time.perf_counter() - crop_started:.2f}s | frame={fw}x{fh}")
+    if frame_transform_out is not None:
+        frame_transform_out.update({"dx": pad_left - crop_x, "dy": pad_top - crop_y})
 
     # Semantic frame-publication seam: capture tooling (see
     # authoring/auto_capture.py) registers a hook here, AFTER the uniform

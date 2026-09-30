@@ -27,7 +27,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from PIL import Image, ImageDraw
 
@@ -736,16 +736,24 @@ def paint_character(
 
 
 def draw_character(
-    kind: str, anim: str, frame_idx: int, nframes: int, frame_size=BASE_FRAME
+    kind: str,
+    anim: str,
+    frame_idx: int,
+    nframes: int,
+    frame_size=BASE_FRAME,
+    fit_out: Optional[dict] = None,
 ) -> Image.Image:
-    """Render one supersampled-then-downsampled pirate frame (PIL raster)."""
+    """Render one supersampled-then-downsampled pirate frame (PIL raster).
+
+    ``fit_out`` receives the frame's paint-to-frame map (see ``downsample``).
+    """
     from ...authoring.draw_recorder import PillowPartDraw
 
     w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = PillowPartDraw(blending_draw(img))
     paint_character(draw, kind, anim, frame_idx, nframes, frame_size)
-    return downsample(img, frame_size)
+    return downsample(img, frame_size, fit_out=fit_out)
 
 
 def capture_character_svg(
@@ -780,20 +788,50 @@ def render_target(
     into the ``list[Path]`` shape that the tack-on discovery API
     expects.
     """
+    return render_target_with_body_rig(target, out_dir, frame_size)[0]
+
+
+def render_target_with_body_rig(
+    target: str, out_dir: Path, frame_size: Tuple[int, int] = BASE_FRAME
+):
+    """``render_target``, and also the body rig product it published (or
+    ``None`` when the build published no rig, as in a canonical-only build)."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    return build_sheet(
+    frame_transform: dict = {}
+    frame_fits: Dict[Tuple[str, int], dict] = {}
+
+    def render_fn(anim: str, frame_idx: int, nframes: int) -> Image.Image:
+        fit: dict = {}
+        frame = draw_character(target, anim, frame_idx, nframes, frame_size=frame_size, fit_out=fit)
+        frame_fits[(anim, frame_idx)] = fit
+        return frame
+
+    outputs = build_sheet(
         target=target,
         rows=ANIMATIONS,
-        render_fn=lambda anim, frame_idx, nframes: draw_character(
-            target,
-            anim,
-            frame_idx,
-            nframes,
-            frame_size=frame_size,
-        ),
+        render_fn=render_fn,
         out_dir=out_dir,
         frame_size=frame_size,
+        frame_transform_out=frame_transform,
     )
+    # The semantic body rig, from the skeleton the frames above were painted
+    # on, placed through each frame's own fit into the published frame the
+    # sheet measured its feet in.
+    if not frame_transform:
+        return outputs, None
+    import yaml
+
+    from ._pirate_body_rig import body_rig_for_pirate
+
+    metrics = yaml.safe_load(Path(outputs["yaml"]).read_text()).get("body_metrics") or {}
+    feet = metrics.get("feet_pixel")
+    if not feet:
+        return outputs, None
+    product = body_rig_for_pirate(
+        target, frame_fits, frame_transform, (float(feet["x"]), float(feet["y"])), frame_size
+    )
+    outputs["body_rig"] = product.write(out_dir)
+    return outputs, product
 
 
 def is_pirate_family(target: str) -> bool:

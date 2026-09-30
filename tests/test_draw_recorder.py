@@ -77,7 +77,7 @@ def test_pirate_capture_is_faithful_at_supersample() -> None:
     import ambition_sprite2d_renderer.targets.characters._pirate_common as pc
     from ambition_sprite2d_renderer.authoring.draw_recorder import rasterize_svg
 
-    with mock.patch.object(pc, "downsample", lambda img, final_size=None: img):
+    with mock.patch.object(pc, "downsample", lambda img, final_size=None, fit_out=None: img):
         pil = pc.draw_character("pirate_raider", "idle", 0, 6)  # 512, no downsample
     svg = pc.capture_character_svg("pirate_raider", "idle", 0, 6)
     ras = rasterize_svg(svg, pil.size)
