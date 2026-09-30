@@ -118,6 +118,10 @@ def install_companions(fname: str) -> List[str]:
         # The optional semantic body rig (`authoring.body_rig`), for a target
         # that publishes one.
         out.append(f"{stem}_body_rig.ron")
+        # The optional transform flipbook (`authoring.part_flipbook`): its draw
+        # table and its atlas page.
+        out.append(f"{stem}_parts.ron")
+        out.append(f"{stem}_parts.png")
     return out
 
 

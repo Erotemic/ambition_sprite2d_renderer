@@ -16,7 +16,7 @@ from PIL import Image
 
 from ambition_sprite2d_renderer.authoring.body_rig import place
 from ambition_sprite2d_renderer.targets.characters._pirate_common import (
-    render_target_with_body_rig,
+    render_target_with_products,
 )
 
 _TOLERANCE_PX = 3
@@ -53,8 +53,8 @@ def _near_drawn_pixel(alpha, rect, point) -> bool:
 
 @pytest.mark.parametrize("kind", ["pirate_admiral", "pirate_raider"])
 def test_the_rig_hands_land_on_the_published_frame(kind, tmp_path: Path):
-    outputs, product = render_target_with_body_rig(kind, tmp_path)
-    assert product is not None
+    outputs, products = render_target_with_products(kind, tmp_path)
+    product = products["body_rig"]
     assert Path(outputs["body_rig"]).read_text() == product.to_ron()
     sheet = yaml.safe_load(Path(outputs["yaml"]).read_text())
     feet = sheet["body_metrics"]["feet_pixel"]

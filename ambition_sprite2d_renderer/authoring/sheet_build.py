@@ -506,14 +506,17 @@ def downsample(img: Image.Image, final_size=BASE_FRAME, fit_out: Optional[dict] 
     and the offset change from frame to frame. ``fit_out``, when given, is
     filled with that map: a point ``p`` of ``img`` lands at
     ``((p.x - x0) * sx + ox, (p.y - y0) * sy + oy)`` in the returned frame.
+    The box ``(x0, y0, x1, y1)`` is resized to ``(nw, nh)`` and pasted at
+    ``(ox, oy)``, so a layer of ``img`` can be fitted exactly as the frame was.
     """
     alpha = img.getchannel("A")
     bbox = alpha.getbbox()
     if bbox is None:
         if fit_out is not None:
             fit_out.update(
-                {"x0": 0, "y0": 0, "sx": final_size[0] / img.width,
-                 "sy": final_size[1] / img.height, "ox": 0, "oy": 0}
+                {"x0": 0, "y0": 0, "x1": img.width, "y1": img.height,
+                 "sx": final_size[0] / img.width, "sy": final_size[1] / img.height,
+                 "nw": final_size[0], "nh": final_size[1], "ox": 0, "oy": 0}
             )
         return img.resize(final_size, Image.Resampling.LANCZOS)
     x1, y1, x2, y2 = bbox
@@ -530,8 +533,9 @@ def downsample(img: Image.Image, final_size=BASE_FRAME, fit_out: Optional[dict] 
     canvas.alpha_composite(crop, (ox, oy))
     if fit_out is not None:
         fit_out.update(
-            {"x0": x1, "y0": y1, "sx": new_size[0] / (x2 - x1),
-             "sy": new_size[1] / (y2 - y1), "ox": ox, "oy": oy}
+            {"x0": x1, "y0": y1, "x1": x2, "y1": y2,
+             "sx": new_size[0] / (x2 - x1), "sy": new_size[1] / (y2 - y1),
+             "nw": new_size[0], "nh": new_size[1], "ox": ox, "oy": oy}
         )
     return canvas
 

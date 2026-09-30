@@ -788,14 +788,17 @@ def render_target(
     into the ``list[Path]`` shape that the tack-on discovery API
     expects.
     """
-    return render_target_with_body_rig(target, out_dir, frame_size)[0]
+    return render_target_with_products(target, out_dir, frame_size)[0]
 
 
-def render_target_with_body_rig(
+def render_target_with_products(
     target: str, out_dir: Path, frame_size: Tuple[int, int] = BASE_FRAME
 ):
-    """``render_target``, and also the body rig product it published (or
-    ``None`` when the build published no rig, as in a canonical-only build)."""
+    """``render_target``, and also the products it published beside the sheet:
+    ``{"body_rig": BodyRigProduct, "parts": PartFlipbook}``, empty when the
+    build published none (a canonical-only build).
+
+    Both are placed through the same frame maps as the sheet's pixels."""
     out_dir.mkdir(parents=True, exist_ok=True)
     frame_transform: dict = {}
     frame_fits: Dict[Tuple[str, int], dict] = {}
@@ -818,7 +821,7 @@ def render_target_with_body_rig(
     # on, placed through each frame's own fit into the published frame the
     # sheet measured its feet in.
     if not frame_transform:
-        return outputs, None
+        return outputs, {}
     import yaml
 
     from ._pirate_body_rig import body_rig_for_pirate
@@ -826,12 +829,36 @@ def render_target_with_body_rig(
     metrics = yaml.safe_load(Path(outputs["yaml"]).read_text()).get("body_metrics") or {}
     feet = metrics.get("feet_pixel")
     if not feet:
-        return outputs, None
-    product = body_rig_for_pirate(
-        target, frame_fits, frame_transform, (float(feet["x"]), float(feet["y"])), frame_size
-    )
+        return outputs, {}
+    feet_xy = (float(feet["x"]), float(feet["y"]))
+    product = body_rig_for_pirate(target, frame_fits, frame_transform, feet_xy, frame_size)
     outputs["body_rig"] = product.write(out_dir)
-    return outputs, product
+    flipbook = build_part_flipbook(target, frame_fits, frame_transform, feet_xy, outputs, frame_size)
+    for name, path in flipbook.write(out_dir).items():
+        outputs["parts" if name == "ron" else name] = path
+    return outputs, {"body_rig": product, "parts": flipbook}
+
+
+def build_part_flipbook(target, frame_fits, frame_transform, feet, outputs, frame_size=BASE_FRAME):
+    """The pirate's transform flipbook, placed like its published sheet."""
+    import yaml
+
+    from ...authoring.part_flipbook import build_flipbook
+
+    sheet = yaml.safe_load(Path(outputs["yaml"]).read_text())
+    return build_flipbook(
+        target,
+        ANIMATIONS,
+        lambda draw, anim, index, count: paint_character(
+            draw, target, anim, index, count, frame_size
+        ),
+        (frame_size[0] * SCALE, frame_size[1] * SCALE),
+        frame_fits,
+        frame_transform,
+        feet,
+        frame_size,
+        (int(sheet["frame_width"]), int(sheet["frame_height"])),
+    )
 
 
 def is_pirate_family(target: str) -> bool:
