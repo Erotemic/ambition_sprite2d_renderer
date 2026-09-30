@@ -360,6 +360,11 @@ def _render_form(form: FormSpec, out_dir: str | Path) -> List[Path]:
         # follows the drawing, and only downward.
         pose_bodies="authored",
     )
+    # Her semantic body rig, solved from the same SVG rig and pose table as
+    # the frames above. A gameplay product: it does not change the sheet.
+    from ._mary_o_v2_body_rig import write_body_rig
+
+    body_rig = write_body_rig(ASSET_PATH, form, out_dir)
     return [
         outputs[k]
         for k in (
@@ -371,7 +376,7 @@ def _render_form(form: FormSpec, out_dir: str | Path) -> List[Path]:
             "actor",
             "preview",
         )
-    ]
+    ] + [body_rig]
 
 
 def export_svg_poc_source(path: str | Path | None = None) -> Path:

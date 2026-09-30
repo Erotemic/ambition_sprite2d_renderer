@@ -115,6 +115,9 @@ def install_companions(fname: str) -> List[str]:
             break
     if stem:
         out.append(f"{stem}_actor.ron")
+        # The optional semantic body rig (`authoring.body_rig`), for a target
+        # that publishes one.
+        out.append(f"{stem}_body_rig.ron")
     return out
 
 
