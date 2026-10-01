@@ -1368,6 +1368,28 @@ def blit_rotated(
     )
 
 
+def part_channel_opacity(part: dict, params: Dict[str, float]) -> float:
+    """The opacity a part's ``opacity_channel`` gives it in a pose, in [0, 1].
+
+    Default 0: a part bound to an opacity channel is HIDDEN in clips that do
+    not drive that channel (a blade only shows in clips that animate
+    slash_vis).
+
+    `opacity_default` inverts that for the member of a SWAP SET that is the
+    normal one. A torso needs alternates it can cut to, and the default-hidden
+    rule cannot express "this one unless told otherwise": binding the base
+    torso to a channel would erase it from every clip that never mentions the
+    swap, which is most of them.
+
+    Every consumer that decides whether a part shows must read it here, or a
+    default-visible part (the robot's antenna) vanishes from that consumer.
+    """
+    oc = part.get("opacity_channel")
+    if not oc:
+        return 1.0
+    return clamp(params.get(oc, float(part.get("opacity_default", 0.0))), 0.0, 1.0)
+
+
 @profile
 def paint_part(
     img: Image.Image,
@@ -1384,21 +1406,9 @@ def paint_part(
     bone_name = part.get("bone")
     if bone_name not in world:
         return
-    opacity = 1.0
-    oc = part.get("opacity_channel")
-    if oc:
-        # Default 0: a part bound to an opacity channel is HIDDEN in clips
-        # that don't drive that channel (a blade only shows in clips that
-        # animate slash_vis).
-        #
-        # `opacity_default` inverts that for the member of a SWAP SET that is
-        # the normal one. A torso needs alternates it can cut to, and the
-        # default-hidden rule cannot express "this one unless told otherwise":
-        # binding the base torso to a channel would erase it from every clip
-        # that never mentions the swap, which is most of them.
-        opacity = clamp(params.get(oc, float(part.get("opacity_default", 0.0))), 0.0, 1.0)
-        if opacity <= 0.01:
-            return
+    opacity = part_channel_opacity(part, params)
+    if opacity <= 0.01:
+        return
     # Global body fade (default 1.0) — a clip can phase the WHOLE character in/out
     # (e.g. a blink dematerialize) by driving ``body_opacity`` without tagging every
     # part with its own channel. No clip setting it leaves rendering unchanged.
