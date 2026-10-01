@@ -25,6 +25,10 @@ frame's fit.
 
 ``recompose`` draws a frame back from the published atlas and draws; the
 parity check diffs it against the baked sheet frame.
+
+A flipbook can leave rows to the baked sheet (a hybrid): ``baked_clips`` names
+them, and the runtime draws them from the sheet. Each row of the sheet must be
+a clip or a baked clip; the runtime refuses a flipbook that leaves a row out.
 """
 
 from __future__ import annotations
@@ -155,6 +159,8 @@ class PartFlipbook:
     parts: List[PartRaster]
     #: row -> (frame duration in seconds, frames of ordered draws)
     clips: Dict[str, Tuple[float, List[List[PartDraw]]]]
+    #: Rows left to the baked sheet: they have no draws here.
+    baked_clips: List[str] = field(default_factory=list)
     #: Filled by ``pack``: per part (page, x, y, w, h).
     rects: List[Tuple[int, int, int, int, int]] = field(default_factory=list)
     pages: List[Image.Image] = field(default_factory=list)
@@ -231,7 +237,12 @@ class PartFlipbook:
                     )
                 lines.append("            ],")
             lines.append("        ]),")
-        lines += ["    },", ")", ""]
+        lines.append("    },")
+        # Only when there are some, so a flipbook of parts alone publishes the
+        # same file as before hybrids existed.
+        if self.baked_clips:
+            lines.append("    baked_clips: [" + ", ".join(f'"{row}"' for row in self.baked_clips) + "],")
+        lines += [")", ""]
         return "\n".join(lines)
 
     def write(self, out_dir: Path) -> Dict[str, Path]:
@@ -336,9 +347,11 @@ def build_flipbook(
     feet: Tuple[float, float],
     drawn_size: Tuple[int, int],
     frame_size: Tuple[int, int],
+    baked_rows: Sequence[str] = (),
 ) -> PartFlipbook:
     """Capture every frame of ``rows`` (``(row, frame count, duration ms)``)
-    and build its flipbook.
+    and build its flipbook. A row in ``baked_rows`` is not captured; the
+    flipbook names it as a baked clip.
 
     ``paint(draw, row, index, count)`` is the canonical paint pass on the
     ``canvas`` (supersampled) frame. ``frame_fits`` are ``downsample``'s
@@ -347,13 +360,17 @@ def build_flipbook(
     ``frame_size`` the published frame.
     """
     dx, dy = float(frame_transform["dx"]), float(frame_transform["dy"])
+    unknown = sorted(set(baked_rows) - {row for row, _count, _ms in rows})
+    assert not unknown, f"baked rows {unknown} are not rows of {target}"
+    baked = [row for row, _count, _ms in rows if row in set(baked_rows)]
+    rows = [entry for entry in rows if entry[0] not in set(baked_rows)]
     captured: Dict[Tuple[str, int], List[Layer]] = {}
     for row, count, _ms in rows:
         for index in range(int(count)):
             capture = LayerCapture()
             paint(capture, row, index, int(count))
             captured[(row, index)] = capture.layers
-    part_scale = max(max(fit["sx"], fit["sy"]) for fit in frame_fits.values())
+    part_scale = max(max(frame_fits[key]["sx"], frame_fits[key]["sy"]) for key in captured)
 
     def published(fit, point) -> Tuple[float, float]:
         return (
@@ -393,7 +410,7 @@ def build_flipbook(
                 draws.append(PartDraw(len(parts) - 1, (left + dx - feet[0], top + dy - feet[1])))
             frames.append(draws)
         clips[row] = (float(duration_ms) / 1000.0, frames)
-    return PartFlipbook(target, tuple(frame_size), tuple(feet), parts, clips)
+    return PartFlipbook(target, tuple(frame_size), tuple(feet), parts, clips, baked)
 
 
 def _part_raster(layer: Layer, margin: int, scale: float) -> PartRaster:
