@@ -451,3 +451,87 @@ def _overlay_raster(layer: Layer, canvas, fit, drawn_size):
     if bbox is None:
         return None
     return frame.crop(bbox), (bbox[0], bbox[1])
+
+
+# -- rig documents ---------------------------------------------------------------
+#
+# A character drawn by a ``RigDocument`` (``rigdoc``) already paints its frames
+# as rigid parts: every sprite part is ONE raster, placed by ``blit_rotated`` at
+# its bone's origin, turned by the bone's angle. So its flipbook is that call,
+# recorded during the real render: the same raster, the same pivot, the same
+# place, the same angle. Nothing is reconstructed.
+
+
+@contextmanager
+def recorded_blits():
+    """Record every ``rigdoc.blit_rotated`` call made inside the block, in
+    paint order, as ``(sprite, pivot, world_px, delta_deg, opacity)``. The
+    calls still paint."""
+    from . import rigdoc
+
+    calls: List[Tuple[Image.Image, Tuple[float, float], Tuple[float, float], float, float]] = []
+    original = rigdoc.blit_rotated
+
+    def recording(canvas, sprite, pivot, world_px, delta_deg, opacity=1.0, **kwargs):
+        calls.append((sprite, (float(pivot[0]), float(pivot[1])), (float(world_px[0]), float(world_px[1])), float(delta_deg), float(opacity)))
+        return original(canvas, sprite, pivot, world_px, delta_deg, opacity, **kwargs)
+
+    rigdoc.blit_rotated = recording
+    try:
+        yield calls
+    finally:
+        rigdoc.blit_rotated = original
+
+
+def build_rig_flipbook(
+    target: str,
+    rows: Sequence[Tuple[str, int, int]],
+    render: Callable[[str, int, int], Image.Image],
+    part_rows: Sequence[str],
+    feet: Tuple[float, float],
+    frame_size: Tuple[int, int],
+) -> PartFlipbook:
+    """The flipbook of a rig-document character: ``part_rows`` from parts, and
+    every other row of ``rows`` left to the baked sheet.
+
+    ``render(row, index, count)`` renders one sheet frame through the
+    character's ``RigDocument``. The canvas it paints must BE the published
+    frame (no supersample, no crop), so a blit's place is a frame pixel; a
+    rendered frame of another size is refused. ``feet`` is the sheet's feet
+    pixel.
+    """
+    unknown = sorted(set(part_rows) - {row for row, _count, _ms in rows})
+    assert not unknown, f"part rows {unknown} are not rows of {target}"
+    parts: List[PartRaster] = []
+    part_index: Dict[tuple, int] = {}
+    clips: Dict[str, Tuple[float, List[List[PartDraw]]]] = {}
+    for row, count, duration_ms in rows:
+        if row not in part_rows:
+            continue
+        frames: List[List[PartDraw]] = []
+        for index in range(int(count)):
+            with recorded_blits() as calls:
+                frame = render(row, index, int(count))
+            assert frame.size == tuple(frame_size), (
+                f"{target} {row}:{index} renders {frame.size}, not the {tuple(frame_size)} frame"
+            )
+            draws: List[PartDraw] = []
+            for sprite, pivot, world, delta_deg, opacity in calls:
+                # A part draw has no opacity of its own: a faded part is not a
+                # rigid part of this clip.
+                assert opacity >= 0.999, f"{target} {row}:{index} draws a part at opacity {opacity:.3f}"
+                key = (sprite.size, pivot, sprite.tobytes())
+                if key not in part_index:
+                    part_index[key] = len(parts)
+                    parts.append(PartRaster(f"part{len(parts)}", sprite.copy(), pivot))
+                draws.append(
+                    PartDraw(
+                        part_index[key],
+                        (world[0] - feet[0], world[1] - feet[1]),
+                        math.radians(delta_deg),
+                    )
+                )
+            frames.append(draws)
+        clips[row] = (float(duration_ms) / 1000.0, frames)
+    baked = [row for row, _count, _ms in rows if row not in part_rows]
+    return PartFlipbook(target, tuple(frame_size), tuple(feet), parts, clips, baked)

@@ -288,7 +288,19 @@ def _actor_metadata(form: FormSpec) -> dict:
     return metadata
 
 
+#: The rows her transform flipbook draws from parts (rig packet 9, a hybrid).
+#: One ordinary locomotion clip; every other row stays baked, with the
+#: transition clips and their effects first among them.
+PART_ROWS = ("walk",)
+
+
 def _render_form(form: FormSpec, out_dir: str | Path) -> List[Path]:
+    return _render_form_with_products(form, out_dir)[0]
+
+
+def _render_form_with_products(form: FormSpec, out_dir: str | Path):
+    """``(outputs, {"parts": flipbook})``: the published files, and the part
+    flipbook they include, for a test to recompose."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -365,7 +377,15 @@ def _render_form(form: FormSpec, out_dir: str | Path) -> List[Path]:
     from ._mary_o_v2_body_rig import write_body_rig
 
     body_rig = write_body_rig(ASSET_PATH, form, out_dir)
-    return [
+    # Her transform flipbook, recorded from the same render: the walk from
+    # parts, every other row baked. Only the rigged-sprite trial draws it.
+    from ...authoring.part_flipbook import build_rig_flipbook
+
+    box = form_collision_box(form)
+    feet = (box["x"] + box["w"] / 2.0, float(box["y"] + box["h"]))
+    flipbook = build_rig_flipbook(form.target_name, form.rows, render_frame, PART_ROWS, feet, FRAME_SIZE)
+    parts = flipbook.write(out_dir)
+    paths = [
         outputs[k]
         for k in (
             "canonical",
@@ -376,7 +396,8 @@ def _render_form(form: FormSpec, out_dir: str | Path) -> List[Path]:
             "actor",
             "preview",
         )
-    ] + [body_rig]
+    ] + [body_rig] + list(parts.values())
+    return paths, {"parts": flipbook, "outputs": outputs}
 
 
 def export_svg_poc_source(path: str | Path | None = None) -> Path:
