@@ -50,7 +50,11 @@ if str(SCRIPTS) not in sys.path:
 
 from PIL import Image
 
-from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument, visible_parts
+from ambition_sprite2d_renderer.authoring.rigdoc import (
+    RigDocument,
+    part_channel_opacity,
+    visible_parts,
+)
 from ambition_sprite2d_renderer.targets.characters import player_robot_v3 as player_robot_v3_target
 
 import render_director_vanity_dialog as dialog
@@ -153,11 +157,10 @@ def part_draws(
         bone_name = part.get("bone")
         if bone_name not in placement.world:
             continue
-        # A part bound to an opacity channel is hidden when its channel is off;
-        # for these two rigs that is the robot's blink, driven 0/1 with no tween
-        # (see the dialog manifest), so a hidden part is simply not drawn.
-        channel = part.get("opacity_channel")
-        if channel and placement.params.get(channel, 0.0) <= 0.01:
+        # A part bound to an opacity channel is hidden when its channel is off.
+        # The channels these two rigs drive are 0/1 with no tween (the robot's
+        # blink, see the dialog manifest), so a hidden part is simply not drawn.
+        if part_channel_opacity(part, placement.params) <= 0.01:
             continue
 
         slot = atlas.intern(actor, doc, part, raster_scale)
