@@ -9,6 +9,7 @@ transparent overlay sheet so gameplay can layer it over the ring when active.
 
 from __future__ import annotations
 
+import functools
 import math
 from pathlib import Path
 from typing import List, Sequence, Tuple
@@ -16,7 +17,7 @@ from typing import List, Sequence, Tuple
 import numpy as np
 from PIL import Image, ImageColor, ImageDraw, ImageFilter, ImageFont
 
-from ...authoring.sheet_build import build_sheet
+from ...authoring.sheet_build import alpha_bbox_metrics, build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
@@ -546,25 +547,45 @@ def render_portal_frame(animation: str, frame_index: int, nframes: int) -> Image
     return _downsample(img)
 
 
+@functools.lru_cache(maxsize=1)
+def _assembly_body_metrics() -> dict:
+    """The gate's one body: the ring's idle frame, on the shared canvas.
+
+    The ring and the membrane are two sheets of ONE assembly, placed on the
+    same prop box. The runtime scales and anchors each sheet by its own body,
+    so both sheets publish this same body on the same uncropped canvas. Then
+    the membrane lands inside the aperture exactly as drawn here. If each
+    sheet measured its own art, the membrane would scale by its own (smaller,
+    and at opening frame 0 empty) extent and cover the chevrons.
+    """
+    return alpha_bbox_metrics(render_ring_frame("idle", 0, RING_ROWS[0][1]))
+
+
 def render(out_dir: str | Path, **opts) -> List[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    # No auto-crop: the two sheets share one logical frame (the drawing canvas),
+    # which `_assembly_body_metrics` is measured in. The packer still trims
+    # each frame's texture to its own ink.
+    shared = dict(
+        out_dir=out_dir,
+        frame_size=FRAME_SIZE,
+        label_width=128,
+        auto_crop=False,
+        body_metrics_fn=lambda _fw, _fh: _assembly_body_metrics(),
+    )
     ring_outputs = build_sheet(
         target=RING_TARGET,
         rows=RING_ROWS,
         render_fn=render_ring_frame,
-        out_dir=out_dir,
-        frame_size=FRAME_SIZE,
-        label_width=128,
+        **shared,
     )
     portal_outputs = build_sheet(
         target=PORTAL_TARGET,
         rows=PORTAL_ROWS,
         render_fn=render_portal_frame,
-        out_dir=out_dir,
-        frame_size=FRAME_SIZE,
-        label_width=128,
+        **shared,
     )
     ordered = [
         ring_outputs["canonical"],
