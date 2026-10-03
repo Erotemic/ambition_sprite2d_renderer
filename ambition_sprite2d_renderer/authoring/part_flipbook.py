@@ -372,14 +372,21 @@ class PartFlipbook:
         feet_at: Tuple[float, float],
         flip: bool = False,
         draws: Optional[Sequence[PartDraw]] = None,
+        mirror_x: Optional[float] = None,
     ) -> None:
         """Draw frame ``index`` of ``row`` onto ``canvas`` with the feet at
         ``feet_at`` (canvas pixels), unclipped by the frame. Snapped placement
-        only; ``flip`` mirrors the body about the feet, as the runtime does."""
+        only. ``flip`` mirrors the body about the column ``mirror_x`` (a pixel
+        edge; the feet when ``None``), as the runtime mirrors about the root's
+        origin — the feet for an NPC, the quad's centre for a centre-anchored
+        player."""
         assert self.placement == "snapped", "draw_frame draws a rig flipbook"
         layer = canvas if not flip else Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-        # Mirroring about the feet (a pixel EDGE) sends pixel `i` to `2 feet - 1 - i`.
-        fx = feet_at[0] if not flip else canvas.width - feet_at[0]
+        # Mirroring about the column `m` (a pixel EDGE) sends pixel `i` to
+        # `2 m - 1 - i`; drawn unflipped at `fx` then transposed, the feet land
+        # at `width - fx`, so `fx = width - (2 m - feet)`.
+        axis = feet_at[0] if mirror_x is None else mirror_x
+        fx = feet_at[0] if not flip else canvas.width - (2.0 * axis - feet_at[0])
         for d in self.clips[row][1][index] if draws is None else draws:
             _snapped_blit(
                 layer,
