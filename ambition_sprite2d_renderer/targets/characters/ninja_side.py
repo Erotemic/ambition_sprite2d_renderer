@@ -19,17 +19,16 @@ import random
 from dataclasses import asdict, dataclass
 from typing import Dict, Optional, Tuple
 
-from PIL import Image, ImageColor, ImageDraw
+from PIL import Image, ImageColor
 from ambition_sprite2d_renderer.core.draw import rgba, with_alpha
 
 from ...profiling import profile
 from ...authoring.animation_vocab import CORE_CHARACTER_ANIMATION_ORDER, DEFAULT_CORE_TIMINGS, ordered_subset
 from ...authoring.rig import add, clamp, vec
-from ...authoring import rigdoc
-from ...authoring.common_draw import RESAMPLING, draw_capsule, draw_rotated_ellipse, draw_rotated_rounded_rect
+from ...authoring import rigdoc, shape_rig
+from ...authoring.common_draw import RESAMPLING, draw_capsule
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
-from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -51,6 +50,44 @@ def _mix(a: Color, b: Color, t: float) -> Color:
         int(a[2] + (b[2] - a[2]) * t),
         int(a[3] + (b[3] - a[3]) * t),
     )
+
+
+def _place(canvas: Image.Image, part: Tuple[Image.Image, Point], at: Point, degrees: float, name: str, opacity: float = 1.0) -> None:
+    """``shape_rig.place`` at an ``opacity`` (a fading frame's pieces)."""
+    if opacity <= 0.0:
+        return
+    image, pivot = part
+    rigdoc.blit_rotated(canvas, image, pivot, at, degrees, min(1.0, opacity), part_name=name)
+
+
+def _capsule(canvas: Image.Image, a: Point, b: Point, radius: float, fill: Color, outline: Color, outline_w: float, name: str, length: float, opacity: float = 1.0) -> None:
+    """``shape_rig.capsule`` (a bone of fixed ``length`` from ``a`` toward
+    ``b``) at an ``opacity``."""
+    span = round(length * 4) / 4
+    pad = radius + outline_w + 2
+    key = ("capsule", span, round(radius, 3), fill, outline, round(outline_w, 3))
+    part = shape_rig.piece(key, (span + 2 * pad, 2 * pad), (pad, pad), lambda draw: draw_capsule(draw, (pad, pad), (pad + span, pad), radius, fill, outline, outline_w))
+    _place(canvas, part, a, math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])), name, opacity)
+
+
+def _two_bone(root: Point, target: Point, upper: float, lower: float, hint: Point) -> Tuple[Point, Point]:
+    """Elbow and end of a two-bone chain of fixed lengths reaching toward
+    ``target`` from ``root``, bending to the side of ``hint``."""
+    dx, dy = target[0] - root[0], target[1] - root[1]
+    dist = max(1e-6, math.hypot(dx, dy))
+    reach = clamp(dist, abs(upper - lower) + 1e-3, upper + lower - 1e-3)
+    base = math.atan2(dy, dx)
+    bend = math.acos(clamp((upper * upper + reach * reach - lower * lower) / (2 * upper * reach), -1.0, 1.0))
+    best = None
+    for side in (1.0, -1.0):
+        elbow = (root[0] + upper * math.cos(base + side * bend), root[1] + upper * math.sin(base + side * bend))
+        miss = math.hypot(elbow[0] - hint[0], elbow[1] - hint[1])
+        if best is None or miss < best[0]:
+            best = (miss, elbow)
+    elbow = best[1]
+    ex, ey = target[0] - elbow[0], target[1] - elbow[1]
+    norm = max(1e-6, math.hypot(ex, ey))
+    return elbow, (elbow[0] + ex / norm * lower, elbow[1] + ey / norm * lower)
 
 
 @dataclass(frozen=True)
@@ -389,57 +426,74 @@ class NinjaSideGenerator(CharacterGenerator):
             p.eye_squint = 0.65
         return p
 
-    def _draw_smoke_crescent(self, draw: ImageDraw.ImageDraw, center: Point, w: float, h: float, color: Color) -> None:
-        x, y = center
-        draw.ellipse((x - w / 2.0, y - h / 2.0, x + w / 2.0, y + h / 2.0), fill=color)
+    # -- the ninja as a rig ------------------------------------------------
+    #
+    # Every rigid piece is painted ONCE in its own frame (``shape_rig.piece``,
+    # in the 128-unit design space scaled by ``S``) and turned into place, so a
+    # part flipbook stores it once (``authoring/shape_rig.py``). A fading frame
+    # places its pieces at the fade's opacity instead of repainting them in
+    # faded colours. Cloth tails are painted at rest and turned about their
+    # anchor by the swing; limbs are capsule bones of fixed length.
 
-    def _draw_scarf_tail(self, draw: ImageDraw.ImageDraw, points: Tuple[Point, Point, Point, Point], fill: Color, outline: Color) -> None:
-        draw.line([points[0], points[1], points[2], points[3]], fill=outline, width=5, joint="curve")
-        draw.line([points[0], points[1], points[2], points[3]], fill=fill, width=3, joint="curve")
-        tip = points[-1]
-        draw.polygon(
-            [
-                tip,
-                (tip[0] - 5.0, tip[1] - 2.0),
-                (tip[0] - 2.5, tip[1] + 4.0),
-            ],
-            fill=fill,
-            outline=outline,
-        )
+    def _piece(self, key: tuple, S: float, half: Tuple[float, float], paint) -> Tuple[Image.Image, Point]:
+        """A piece ``2 * half`` design units across, its pivot at the centre;
+        ``paint(d, lp)`` paints with ``lp`` mapping a design offset from the
+        pivot to local pixels."""
+        hx, hy = half
 
-    def _draw_blade(self, img: Image.Image, hilt: Point, angle: float, length: float, width: float, pal: Dict[str, Color], alpha: int = 255) -> None:
-        d = blending_draw(img)
-        ux, uy = math.cos(math.radians(angle)), math.sin(math.radians(angle))
-        nx, ny = -uy, ux
-        tip = (hilt[0] + ux * length, hilt[1] + uy * length)
-        base_l = (hilt[0] + nx * width * 0.55, hilt[1] + ny * width * 0.55)
-        base_r = (hilt[0] - nx * width * 0.55, hilt[1] - ny * width * 0.55)
-        mid_l = (hilt[0] + ux * length * 0.78 + nx * width * 0.33, hilt[1] + uy * length * 0.78 + ny * width * 0.33)
-        mid_r = (hilt[0] + ux * length * 0.78 - nx * width * 0.33, hilt[1] + uy * length * 0.78 - ny * width * 0.33)
-        outline = with_alpha(pal["outline"], alpha)
-        blade = with_alpha(pal["blade"], alpha)
-        shade = with_alpha(pal["blade_shadow"], alpha)
-        edge = with_alpha(pal["blade_edge"], min(255, alpha + 25))
-        d.polygon([base_l, mid_l, tip, mid_r, base_r], fill=outline)
-        inset = max(1.2, width * 0.23)
-        d.polygon(
-            [
-                (base_l[0] - nx * inset, base_l[1] - ny * inset),
-                (mid_l[0] - nx * inset * 0.6, mid_l[1] - ny * inset * 0.6),
-                tip,
-                (mid_r[0] + nx * inset * 0.15, mid_r[1] + ny * inset * 0.15),
-                (base_r[0] + nx * inset * 0.15, base_r[1] + ny * inset * 0.15),
-            ],
-            fill=blade,
-        )
-        d.polygon([base_r, mid_r, tip, (mid_r[0] + nx * 0.7, mid_r[1] + ny * 0.7)], fill=shade)
-        d.line([base_l, tip], fill=edge, width=1)
+        def lp(off: Point) -> Point:
+            return ((off[0] + hx) * S, (off[1] + hy) * S)
+
+        return shape_rig.piece(("ninja",) + key + (round(S, 4),), (2 * hx * S, 2 * hy * S), (hx * S, hy * S), lambda d: paint(d, lp))
+
+    def _tail_piece(self, rest: Tuple[Point, ...], fill: Color, outline: Color, S: float) -> Tuple[Image.Image, Point]:
+        """A scarf / sash tail at rest, its pivot at its anchor ``rest[0]``
+        (design offsets from that anchor)."""
+        reach = max(max(abs(x), abs(y)) for x, y in rest) + 8.0
+
+        def paint(d, lp) -> None:
+            pts = [lp(pt) for pt in rest]
+            d.line(pts, fill=outline, width=5, joint="curve")
+            d.line(pts, fill=fill, width=3, joint="curve")
+            tip = pts[-1]
+            d.polygon([tip, (tip[0] - 5.0, tip[1] - 2.0), (tip[0] - 2.5, tip[1] + 4.0)], fill=fill, outline=outline)
+
+        key = ("tail", tuple((round(x, 3), round(y, 3)) for x, y in rest), fill, outline)
+        return self._piece(key, S, (reach, reach), paint)
+
+    def _place_tail(self, img: Image.Image, anchor: Point, rest: Tuple[Point, ...], swung: Tuple[Point, ...], fill: Color, outline: Color, S: float, name: str, opacity: float) -> None:
+        """The tail painted at ``rest`` turned about ``anchor`` so its tip
+        points where the swung tail's tip did."""
+        turn = math.degrees(math.atan2(swung[-1][1], swung[-1][0]) - math.atan2(rest[-1][1], rest[-1][0]))
+        _place(img, self._tail_piece(rest, fill, outline, S), (anchor[0] * S, anchor[1] * S), turn, name, opacity)
+
+    def _blade_piece(self, length: float, width: float, pal: Dict[str, Color], S: float) -> Tuple[Image.Image, Point]:
+        """The blade along +x, its pivot at the hilt (design units)."""
+        pad = width + 2.0
+
+        def paint(d, _lp) -> None:
+            hx, hy = pad * S, pad * S
+            L, W = length * S, width * S
+            tip = (hx + L, hy)
+            base_l, base_r = (hx, hy + W * 0.55), (hx, hy - W * 0.55)
+            mid_l, mid_r = (hx + L * 0.78, hy + W * 0.33), (hx + L * 0.78, hy - W * 0.33)
+            d.polygon([base_l, mid_l, tip, mid_r, base_r], fill=pal["outline"])
+            inset = max(1.2, W * 0.23)
+            d.polygon(
+                [(base_l[0], base_l[1] - inset), (mid_l[0], mid_l[1] - inset * 0.6), tip, (mid_r[0], mid_r[1] + inset * 0.15), (base_r[0], base_r[1] + inset * 0.15)],
+                fill=pal["blade"],
+            )
+            d.polygon([base_r, mid_r, tip, (mid_r[0], mid_r[1] + 0.7)], fill=pal["blade_shadow"])
+            d.line([base_l, tip], fill=pal["blade_edge"], width=1)
+
+        image, _pivot = shape_rig.piece(("ninja_blade", round(length, 3), round(width, 3), pal["blade"], round(S, 4)), ((length + 2 * pad) * S, 2 * pad * S), (pad * S, pad * S), lambda d: paint(d, None))
+        return image, (pad * S, pad * S)
 
     def _draw_ninja(self, img: Image.Image, spec: NinjaSpec, p: NinjaPose, scale: float) -> None:
-        d = blending_draw(img)
         pal = self._palette(spec)
         S = scale
         leader = spec.rank == "leader"
+        fade = 1.0 - max(0.0, p.fade)
 
         def sp(pt: Point) -> Point:
             return (pt[0] * S, pt[1] * S)
@@ -447,78 +501,84 @@ class NinjaSideGenerator(CharacterGenerator):
         def sc(v: float) -> float:
             return v * S
 
-        def col(name: str, alpha: Optional[int] = None) -> Color:
-            c = pal[name]
-            if alpha is not None:
-                return with_alpha(c, alpha)
-            if p.fade <= 0:
-                return c
-            return with_alpha(c, int(c[3] * (1.0 - p.fade)))
+        def w(v: float, least: int = 1) -> int:
+            return max(least, int(sc(v)))
 
         root = (64.0 + p.root_x, 0.0 + p.root_y)
-        ground_y = 115.0
         hip = (root[0] + p.lean * 0.38, 80.0 + p.root_y - p.bob + p.crouch)
         torso = (root[0] + p.lean, 55.0 + p.root_y - p.bob + p.crouch * 0.45)
         neck = (torso[0] + 0.5, torso[1] - 21.0)
         head = (torso[0] + 1.5, torso[1] - 34.0)
+        # The body is one rigid piece on the spine (torso over hip), turned by
+        # the lean; the shoulders ride it.
+        spine = ((torso[0] + hip[0]) / 2.0, (torso[1] + hip[1]) / 2.0)
+        body_turn = math.degrees(math.atan2(torso[0] - hip[0], hip[1] - torso[1]))
+        half_spine = 12.5
 
-        # Ground shadow removed; dash smoke crescents (below) are
-        # intentional VFX and stay.
+        def on_body(off: Point) -> Point:
+            """A point at ``off`` from the torso, riding the turned body."""
+            x, y = off[0], off[1] - half_spine
+            c, s = math.cos(math.radians(body_turn)), math.sin(math.radians(body_turn))
+            return (spine[0] + x * c - y * s, spine[1] + x * s + y * c)
+
+        # Ground shadow removed; dash smoke crescents are intentional VFX.
         if p.dash > 0.0:
             for i, alpha in enumerate((72, 44, 25)):
-                self._draw_smoke_crescent(
-                    d,
-                    sp((50.0 - i * 12.0, 75.0 + i * 5.0 + p.root_y * 0.3)),
-                    sc(30.0 + i * 8.0),
-                    sc(7.0),
-                    with_alpha(pal["smoke"], int(alpha * (1.0 - p.fade * 0.5))),
+                ew, eh = 30.0 + i * 8.0, 7.0
+                part = self._piece(
+                    ("smoke", i, pal["smoke"]),
+                    S,
+                    (ew / 2 + 1, eh / 2 + 1),
+                    lambda d, lp, ew=ew, eh=eh, alpha=alpha: d.ellipse((*lp((-ew / 2, -eh / 2)), *lp((ew / 2, eh / 2))), fill=with_alpha(pal["smoke"], alpha)),
                 )
+                _place(img, part, sp((50.0 - i * 12.0, 75.0 + i * 5.0 + p.root_y * 0.3)), 0.0, f"smoke{i}", 1.0 - p.fade * 0.5)
 
         # Back cloth tails first so the body cuts in front of them.
         scarf_anchor = (head[0] + 11.0, head[1] - 4.0)
         if leader:
-            # The leader gets a ragged command banner before the smaller scarf tails.
-            # At sprite scale this reads as a distinct right-side silhouette instead
-            # of just another slim sword-user.
+            # The leader's ragged command banner, painted at rest and turned
+            # about its top by the swing.
+            L = spec.banner_len
             top = (scarf_anchor[0] + 7.0, scarf_anchor[1] - 11.0 + p.scarf_swing * 0.10)
-            banner_pts = [
-                sp(top),
-                sp((top[0] + spec.banner_len * 0.62, top[1] - 7.0 + p.scarf_swing * 0.08)),
-                sp((top[0] + spec.banner_len, top[1] + 0.5 + p.scarf_swing * 0.22)),
-                sp((top[0] + spec.banner_len * 0.78, top[1] + 8.5 + p.scarf_swing * 0.30)),
-                sp((top[0] + spec.banner_len * 0.95, top[1] + 19.0 + p.scarf_swing * 0.35)),
-                sp((top[0] + spec.banner_len * 0.58, top[1] + 15.5 + p.scarf_swing * 0.27)),
-                sp((top[0] + spec.banner_len * 0.48, top[1] + 27.0 + p.scarf_swing * 0.32)),
-                sp((top[0] + 3.0, top[1] + 17.0)),
-            ]
-            d.polygon(banner_pts, fill=col("cloth_dark"), outline=col("outline"))
-            crest_center = sp((top[0] + spec.banner_len * 0.55, top[1] + 6.5 + p.scarf_swing * 0.20))
-            crest_r = sc(6.5 * spec.crest_scale)
-            crest_col = with_alpha(pal["eye"], int(86 * (1.0 - p.fade)))
-            d.ellipse((crest_center[0] - crest_r, crest_center[1] - crest_r, crest_center[0] + crest_r, crest_center[1] + crest_r), outline=crest_col, width=max(1, int(sc(1.5))))
-            d.line((crest_center[0], crest_center[1] - crest_r * 0.88, crest_center[0], crest_center[1] + crest_r * 0.88), fill=crest_col, width=max(1, int(sc(1.3))))
-            d.line((crest_center[0] - crest_r * 0.58, crest_center[1] + crest_r * 0.15, crest_center[0] + crest_r * 0.58, crest_center[1] - crest_r * 0.18), fill=crest_col, width=max(1, int(sc(1.0))))
-        self._draw_scarf_tail(
-            d,
-            (
-                sp(scarf_anchor),
-                sp((scarf_anchor[0] + 10.0, scarf_anchor[1] - 10.0 + p.scarf_swing * 0.15)),
-                sp((scarf_anchor[0] + spec.scarf_len * 0.55, scarf_anchor[1] - 3.0 + p.scarf_swing)),
-                sp((scarf_anchor[0] + spec.scarf_len, scarf_anchor[1] - 7.0 + p.scarf_swing * 1.1)),
-            ),
-            col("cloth_dark"),
-            col("outline"),
+            rest = [(0.0, 0.0), (L * 0.62, -7.0), (L, 0.5), (L * 0.78, 8.5), (L * 0.95, 19.0), (L * 0.58, 15.5), (L * 0.48, 27.0), (3.0, 17.0)]
+            crest_r = 6.5 * spec.crest_scale
+
+            def paint_banner(d, lp) -> None:
+                d.polygon([lp(pt) for pt in rest], fill=pal["cloth_dark"], outline=pal["outline"])
+                cx, cy = lp((L * 0.55, 6.5))
+                r = sc(crest_r)
+                crest = with_alpha(pal["eye"], 86)
+                d.ellipse((cx - r, cy - r, cx + r, cy + r), outline=crest, width=w(1.5))
+                d.line((cx, cy - r * 0.88, cx, cy + r * 0.88), fill=crest, width=w(1.3))
+                d.line((cx - r * 0.58, cy + r * 0.15, cx + r * 0.58, cy - r * 0.18), fill=crest, width=w(1.0))
+
+            reach = L + 4.0
+            banner = self._piece(("banner", spec), S, (reach, reach), paint_banner)
+            turn = math.degrees(math.atan2(0.22 * p.scarf_swing, 0.8 * L))
+            _place(img, banner, sp(top), turn, "banner", fade)
+        swing = p.scarf_swing
+        self._place_tail(
+            img,
+            scarf_anchor,
+            ((0.0, 0.0), (10.0, -10.0), (spec.scarf_len * 0.55, -3.0), (spec.scarf_len, -7.0)),
+            ((0.0, 0.0), (10.0, -10.0 + swing * 0.15), (spec.scarf_len * 0.55, -3.0 + swing), (spec.scarf_len, -7.0 + swing * 1.1)),
+            pal["cloth_dark"],
+            pal["outline"],
+            S,
+            "scarf",
+            fade,
         )
-        self._draw_scarf_tail(
-            d,
-            (
-                sp((scarf_anchor[0] + 1.0, scarf_anchor[1] + 4.0)),
-                sp((scarf_anchor[0] + 12.0, scarf_anchor[1] + 8.0 + p.scarf_swing * 0.10)),
-                sp((scarf_anchor[0] + spec.scarf_len * 0.50, scarf_anchor[1] + 13.0 + p.scarf_swing * 0.7)),
-                sp((scarf_anchor[0] + spec.scarf_len * 0.92, scarf_anchor[1] + 12.0 + p.scarf_swing * 0.9)),
-            ),
-            col("sash_dark"),
-            col("outline"),
+        anchor2 = (scarf_anchor[0] + 1.0, scarf_anchor[1] + 4.0)
+        self._place_tail(
+            img,
+            anchor2,
+            ((0.0, 0.0), (11.0, 4.0), (spec.scarf_len * 0.50 - 1.0, 9.0), (spec.scarf_len * 0.92 - 1.0, 8.0)),
+            ((0.0, 0.0), (11.0, 4.0 + swing * 0.10), (spec.scarf_len * 0.50 - 1.0, 9.0 + swing * 0.7), (spec.scarf_len * 0.92 - 1.0, 8.0 + swing * 0.9)),
+            pal["sash_dark"],
+            pal["outline"],
+            S,
+            "scarf2",
+            fade,
         )
 
         # Sword / scabbard.  Duelists keep the long read-at-a-distance blade;
@@ -527,30 +587,28 @@ class NinjaSideGenerator(CharacterGenerator):
         hilt = (torso[0] - (25.5 if leader else 21.5) + p.sword_shift_x, torso[1] + (30.5 if leader else 28.5) + p.sword_shift_y)
         leader_blade_active = (not leader) or p.slash > 0.08 or p.dash > 0.25
         if leader and not leader_blade_active:
-            sheath_top = (hip[0] + 16.0, hip[1] - 6.5)
-            sheath_bot = (hip[0] + 28.0, hip[1] + 30.0)
-            d.line([sp(sheath_top), sp(sheath_bot)], fill=col("outline"), width=max(1, int(sc(6.5))))
-            d.line([sp(sheath_top), sp(sheath_bot)], fill=col("armor_dark"), width=max(1, int(sc(4.0))))
-            d.line([sp((sheath_top[0] - 1.8, sheath_top[1] + 2.0)), sp((sheath_top[0] + 3.0, sheath_top[1] - 1.5))], fill=col("brass"), width=max(1, int(sc(2.0))))
-        else:
-            self._draw_blade(img, sp(hilt), p.sword_angle, sc(spec.sword_len), sc(8.4 * spec.armor_bulk), pal, alpha=int(255 * (1.0 - p.fade)))
-        if p.slash > 0.08:
-            slash_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-            sd = blending_draw(slash_layer)
-            for off, alpha in ((0, 52), (7, 32), (14, 18)):
-                arc_box = (
-                    sc(29 + off + p.root_x),
-                    sc(18 + p.root_y),
-                    sc(111 + off + p.root_x),
-                    sc(96 + p.root_y),
-                )
-                sd.arc(arc_box, 208, 332, fill=with_alpha(pal["blade_edge"], int(alpha * p.slash)), width=max(1, int(sc(3.2))))
-            rigdoc.composite_canvas(img, slash_layer)
 
-        # Legs.
-        def limb(a: Point, b: Point, c: Point, radius: float, fill: Color, outline: Color) -> None:
-            draw_capsule(d, sp(a), sp(b), sc(radius), fill, outline, outline_w=sc(1.25))
-            draw_capsule(d, sp(b), sp(c), sc(radius * 0.95), fill, outline, outline_w=sc(1.25))
+            def paint_sheath(d, lp) -> None:
+                a, b = lp((16.0, -6.5)), lp((28.0, 30.0))
+                d.line([a, b], fill=pal["outline"], width=w(6.5))
+                d.line([a, b], fill=pal["armor_dark"], width=w(4.0))
+                d.line([lp((14.2, -4.5)), lp((19.0, -8.0))], fill=pal["brass"], width=w(2.0))
+
+            _place(img, self._piece(("sheath",), S, (34.0, 34.0), paint_sheath), sp(hip), 0.0, "sheath", fade)
+        else:
+            _place(img, self._blade_piece(spec.sword_len, 8.4 * spec.armor_bulk, pal, S), sp(hilt), p.sword_angle, "blade", fade)
+        if p.slash > 0.08:
+
+            def paint_slash(d, lp) -> None:
+                for off, alpha in ((0, 52), (7, 32), (14, 18)):
+                    d.arc((*lp((29.0 + off - 70.0, 18.0 - 57.0)), *lp((111.0 + off - 70.0, 96.0 - 57.0))), 208, 332, fill=with_alpha(pal["blade_edge"], alpha), width=w(3.2))
+
+            _place(img, self._piece(("slash", pal["blade_edge"]), S, (60.0, 44.0), paint_slash), sp((70.0 + p.root_x, 57.0 + p.root_y)), 0.0, "slash_arc", p.slash)
+
+        # Legs: capsule bones of fixed length.
+        def limb(a: Point, b: Point, c: Point, upper: float, lower: float, radius: float, fill: Color, name: str) -> None:
+            _capsule(img, sp(a), sp(b), sc(radius), fill, pal["outline"], sc(1.25), f"{name}_upper", sc(upper), fade)
+            _capsule(img, sp(b), sp(c), sc(radius * 0.95), fill, pal["outline"], sc(1.25), f"{name}_lower", sc(lower), fade)
 
         def leg_points(is_near: bool) -> Tuple[Point, Point, Point]:
             sign = 1.0 if is_near else -1.0
@@ -563,115 +621,101 @@ class NinjaSideGenerator(CharacterGenerator):
 
         far_hip, far_knee, far_ankle = leg_points(False)
         near_hip, near_knee, near_ankle = leg_points(True)
-        limb(far_hip, far_knee, far_ankle, spec.leg_radius, col("cloth_dark"), col("outline"))
-        limb(near_hip, near_knee, near_ankle, spec.leg_radius, col("cloth"), col("outline"))
-        for ankle, sign, fill in ((far_ankle, -1.0, col("wrap")), (near_ankle, 1.0, col("armor_dark"))):
-            draw_rotated_ellipse(
-                img,
-                sp((ankle[0] + sign * 4.3, ankle[1] + 2.5)),
-                (sc(spec.foot_w), sc(spec.foot_h)),
-                7.0 * sign,
-                fill,
-                col("outline"),
-                sc(1.1),
-            )
+        limb(far_hip, far_knee, far_ankle, spec.leg_upper, spec.leg_lower, spec.leg_radius, pal["cloth_dark"], "far_leg")
+        limb(near_hip, near_knee, near_ankle, spec.leg_upper, spec.leg_lower, spec.leg_radius, pal["cloth"], "near_leg")
+        for ankle, sign, fill, name in ((far_ankle, -1.0, pal["wrap"], "far_foot"), (near_ankle, 1.0, pal["armor_dark"], "near_foot")):
+            fw, fh = spec.foot_w, spec.foot_h
 
-        # Torso / hip sash.
-        body_outline = col("outline")
-        shoulder_l = sp((torso[0] - spec.shoulder_w / 2.0, torso[1] - 13.0))
-        shoulder_r = sp((torso[0] + spec.shoulder_w / 2.0, torso[1] - 11.0))
-        waist_l = sp((hip[0] - spec.hip_w / 2.0, hip[1] - 4.0))
-        waist_r = sp((hip[0] + spec.hip_w / 2.0, hip[1] - 5.0))
-        d.polygon([shoulder_l, shoulder_r, waist_r, waist_l], fill=body_outline)
-        d.polygon(
-            [
-                sp((torso[0] - spec.shoulder_w / 2.0 + 3.0, torso[1] - 10.5)),
-                sp((torso[0] + spec.shoulder_w / 2.0 - 3.0, torso[1] - 9.0)),
-                sp((hip[0] + spec.hip_w / 2.0 - 3.0, hip[1] - 7.0)),
-                sp((hip[0] - spec.hip_w / 2.0 + 3.0, hip[1] - 6.0)),
-            ],
-            fill=col("cloth"),
-        )
-        # Chest armor: angular panels instead of generic shirt shapes.
-        d.polygon(
-            [sp((torso[0] - 15.0, torso[1] - 9.0)), sp((torso[0] - 1.0, torso[1] - 12.0)), sp((torso[0] - 3.0, torso[1] + 5.0)), sp((torso[0] - 14.0, torso[1] + 8.0))],
-            fill=col("armor"),
-        )
-        d.polygon(
-            [sp((torso[0] + 1.0, torso[1] - 11.0)), sp((torso[0] + 15.0, torso[1] - 8.0)), sp((torso[0] + 13.0, torso[1] + 7.0)), sp((torso[0] + 2.0, torso[1] + 4.0))],
-            fill=col("armor_dark"),
-        )
-        d.line([sp((torso[0] - 11.0, torso[1] - 11.0)), sp((torso[0] - 2.0, torso[1] - 13.0))], fill=col("cloth_light"), width=max(1, int(sc(1.2))))
-        d.line([sp((torso[0] + 4.0, torso[1] - 11.0)), sp((torso[0] + 15.0, torso[1] - 8.0))], fill=with_alpha(pal["cloth_light"], 150), width=max(1, int(sc(1.0))))
-        # Little cyan-gray moon glyph for recognizability at review scale.
-        d.arc((sp((torso[0] - 4.5, torso[1] - 2.0))[0], sp((torso[0] - 4.5, torso[1] - 2.0))[1], sp((torso[0] + 5.5, torso[1] + 8.0))[0], sp((torso[0] + 5.5, torso[1] + 8.0))[1]), 70, 275, fill=with_alpha(pal["blade_shadow"], 180), width=max(1, int(sc(1.2))))
-        if leader:
-            # Lamellar commander plates: broad, square, and red-riveted so the
-            # leader does not collapse into the normal duelist chest shape.
-            for yoff in (-4.0, 2.5, 8.5):
-                d.line([sp((torso[0] - 15.5, torso[1] + yoff)), sp((torso[0] + 15.0, torso[1] + yoff + 1.0))], fill=with_alpha(pal["outline"], 190), width=max(1, int(sc(0.9))))
-            for xoff in (-9.0, 0.0, 9.0):
-                d.line([sp((torso[0] + xoff, torso[1] - 9.0)), sp((torso[0] + xoff * 0.75, torso[1] + 12.0))], fill=with_alpha(pal["outline"], 155), width=max(1, int(sc(0.8))))
-            for xoff in (-12.5, -4.0, 5.0, 13.0):
-                d.ellipse((sc(torso[0] + xoff - 1.0), sc(torso[1] + 2.0), sc(torso[0] + xoff + 1.0), sc(torso[1] + 4.0)), fill=with_alpha(pal["eye"], 120))
+            def paint_foot(d, lp, fill=fill, fw=fw, fh=fh) -> None:
+                d.ellipse((*lp((-fw / 2, -fh / 2)), *lp((fw / 2, fh / 2))), fill=pal["outline"])
+                o = 1.1
+                d.ellipse((*lp((-fw / 2 + o, -fh / 2 + o)), *lp((fw / 2 - o, fh / 2 - o))), fill=fill)
 
-        # Belt / sash and trailing knot.
-        if leader:
-            skirt_y = hip[1] + spec.skirt_len
-            # Three tattered armor-cloth panels form a skirted commander profile.
-            panels = [
-                [(hip[0] - 20.0, hip[1] - 2.0), (hip[0] - 7.0, hip[1] + 0.5), (hip[0] - 10.5, skirt_y - 4.0), (hip[0] - 25.0, skirt_y + 1.5)],
-                [(hip[0] - 8.5, hip[1] - 1.0), (hip[0] + 8.5, hip[1] - 1.0), (hip[0] + 5.5, skirt_y + 4.0), (hip[0] - 2.0, skirt_y + 8.0), (hip[0] - 10.0, skirt_y + 2.0)],
-                [(hip[0] + 7.0, hip[1] + 0.0), (hip[0] + 22.0, hip[1] - 2.0), (hip[0] + 27.0, skirt_y + 1.0), (hip[0] + 11.0, skirt_y - 3.0)],
-            ]
-            for idx, pts in enumerate(panels):
-                d.polygon([sp(pt) for pt in pts], fill=col("outline"))
-                inset_pts = [(x * 0.92 + hip[0] * 0.08, y * 0.96 + hip[1] * 0.04) for x, y in pts]
-                d.polygon([sp(pt) for pt in inset_pts], fill=col("cloth_dark" if idx != 1 else "wrap"))
-            crest_center = sp((hip[0] - 1.5, hip[1] + 19.0))
-            crest_r = sc(4.6 * spec.crest_scale)
-            crest_col = with_alpha(pal["eye"], int(132 * (1.0 - p.fade)))
-            d.ellipse((crest_center[0] - crest_r, crest_center[1] - crest_r, crest_center[0] + crest_r, crest_center[1] + crest_r), outline=crest_col, width=max(1, int(sc(1.2))))
-            d.line((crest_center[0], crest_center[1] - crest_r * 0.85, crest_center[0], crest_center[1] + crest_r * 0.85), fill=crest_col, width=max(1, int(sc(1.0))))
-        draw_rotated_rounded_rect(img, sp((hip[0] + 0.5, hip[1] - 3.0)), (sc(33.0 * spec.armor_bulk), sc(8.0)), -2.0, sc(3.0), col("sash"), col("outline"), sc(1.2))
-        d.rectangle((sc(hip[0] - 4.0), sc(hip[1] - 7.0), sc(hip[0] + 5.0), sc(hip[1] - 1.0)), fill=col("brass"))
-        self._draw_scarf_tail(
-            d,
-            (
-                sp((hip[0] + 14.0, hip[1] - 5.0)),
-                sp((hip[0] + 24.0, hip[1] - 8.0 + p.sash_swing * 0.3)),
-                sp((hip[0] + spec.sash_len * 0.72, hip[1] - 1.0 + p.sash_swing * 0.7)),
-                sp((hip[0] + spec.sash_len, hip[1] - 3.0 + p.sash_swing)),
-            ),
-            col("sash"),
-            col("outline"),
-        )
+            part = self._piece(("foot", round(fw, 3), round(fh, 3), fill), S, (fw / 2 + 1, fh / 2 + 1), paint_foot)
+            _place(img, part, sp((ankle[0] + sign * 4.3, ankle[1] + 2.5)), -7.0 * sign, name, fade)
 
-        if leader:
-            # Oversized sode/pauldrons give the leader a readable broad-shouldered
-            # command silhouette even after the final sheet crop.
-            for sign in (-1.0, 1.0):
-                sx = torso[0] + sign * spec.shoulder_w * 0.45
-                sy = torso[1] - 11.5
-                outer = sx + sign * 13.5 * spec.pauldron_scale
-                pts = [
-                    (sx - sign * 3.0, sy - 5.5),
-                    (outer, sy - 2.0),
-                    (outer - sign * 3.5, sy + 13.5),
-                    (sx - sign * 8.0, sy + 11.0),
+        # Torso: one piece on the spine (offsets from the torso, ``ty``; from
+        # the hip, ``hy``), turned by the lean.
+        ty, hy = -half_spine, half_spine
+        hw, shw = spec.hip_w / 2.0, spec.shoulder_w / 2.0
+
+        def paint_body(d, lp) -> None:
+            def T(x: float, y: float) -> Point:
+                return lp((x, y + ty))
+
+            def H(x: float, y: float) -> Point:
+                return lp((x, y + hy))
+
+            d.polygon([T(-shw, -13.0), T(shw, -11.0), H(hw, -5.0), H(-hw, -4.0)], fill=pal["outline"])
+            d.polygon([T(-shw + 3.0, -10.5), T(shw - 3.0, -9.0), H(hw - 3.0, -7.0), H(-hw + 3.0, -6.0)], fill=pal["cloth"])
+            # Chest armor: angular panels instead of generic shirt shapes.
+            d.polygon([T(-15.0, -9.0), T(-1.0, -12.0), T(-3.0, 5.0), T(-14.0, 8.0)], fill=pal["armor"])
+            d.polygon([T(1.0, -11.0), T(15.0, -8.0), T(13.0, 7.0), T(2.0, 4.0)], fill=pal["armor_dark"])
+            d.line([T(-11.0, -11.0), T(-2.0, -13.0)], fill=pal["cloth_light"], width=w(1.2))
+            d.line([T(4.0, -11.0), T(15.0, -8.0)], fill=with_alpha(pal["cloth_light"], 150), width=w(1.0))
+            # Little cyan-gray moon glyph for recognizability at review scale.
+            d.arc((*T(-4.5, -2.0), *T(5.5, 8.0)), 70, 275, fill=with_alpha(pal["blade_shadow"], 180), width=w(1.2))
+            if leader:
+                # Lamellar commander plates: broad, square, and red-riveted.
+                for yoff in (-4.0, 2.5, 8.5):
+                    d.line([T(-15.5, yoff), T(15.0, yoff + 1.0)], fill=with_alpha(pal["outline"], 190), width=w(0.9))
+                for xoff in (-9.0, 0.0, 9.0):
+                    d.line([T(xoff, -9.0), T(xoff * 0.75, 12.0)], fill=with_alpha(pal["outline"], 155), width=w(0.8))
+                for xoff in (-12.5, -4.0, 5.0, 13.0):
+                    d.ellipse((*T(xoff - 1.0, 2.0), *T(xoff + 1.0, 4.0)), fill=with_alpha(pal["eye"], 120))
+
+        body = self._piece(("body", spec), S, (shw + 6.0, half_spine + 26.0), paint_body)
+        _place(img, body, sp(spine), body_turn, "body", fade)
+
+        # Belt / sash (and the leader's skirt panels): one piece riding the hip.
+        def paint_hip(d, lp) -> None:
+            if leader:
+                skirt = spec.skirt_len
+                panels = [
+                    [(-20.0, -2.0), (-7.0, 0.5), (-10.5, skirt - 4.0), (-25.0, skirt + 1.5)],
+                    [(-8.5, -1.0), (8.5, -1.0), (5.5, skirt + 4.0), (-2.0, skirt + 8.0), (-10.0, skirt + 2.0)],
+                    [(7.0, 0.0), (22.0, -2.0), (27.0, skirt + 1.0), (11.0, skirt - 3.0)],
                 ]
-                d.polygon([sp(pt) for pt in pts], fill=col("outline"))
-                inner = [(x * 0.88 + sx * 0.12, y * 0.90 + sy * 0.10) for x, y in pts]
-                d.polygon([sp(pt) for pt in inner], fill=col("armor_dark"))
-                # Blade-like top spike, dark enough to keep silhouette clean.
-                spike = [(sx + sign * 1.0, sy - 5.0), (outer + sign * 2.0, sy - 8.5), (sx + sign * 5.0, sy + 0.5)]
-                d.polygon([sp(pt) for pt in spike], fill=col("outline"))
-                d.line([sp((sx - sign * 1.0, sy + 2.0)), sp((outer - sign * 4.0, sy + 3.0))], fill=with_alpha(pal["cloth_light"], 120), width=max(1, int(sc(0.9))))
+                for idx, pts in enumerate(panels):
+                    d.polygon([lp(pt) for pt in pts], fill=pal["outline"])
+                    d.polygon([lp((x * 0.92, y * 0.96)) for x, y in pts], fill=pal["cloth_dark" if idx != 1 else "wrap"])
+                cx, cy = lp((-1.5, 19.0))
+                r = sc(4.6 * spec.crest_scale)
+                crest = with_alpha(pal["eye"], 132)
+                d.ellipse((cx - r, cy - r, cx + r, cy + r), outline=crest, width=w(1.2))
+                d.line((cx, cy - r * 0.85, cx, cy + r * 0.85), fill=crest, width=w(1.0))
+            # The sash band, turned -2 degrees (counter-clockwise) about its centre.
+            bw, bh = 33.0 * spec.armor_bulk, 8.0
+            cx, cy = 0.5, -3.0
+            t = math.radians(2.0)
 
-        # Arms and hands; far arm first.
-        def arm_points(is_near: bool) -> Tuple[Point, Point, Point]:
+            def rot(x: float, y: float) -> Point:
+                return lp((cx + x * math.cos(t) - y * math.sin(t), cy + x * math.sin(t) + y * math.cos(t)))
+
+            d.polygon([rot(-bw / 2 - 0.6, -bh / 2 - 0.6), rot(bw / 2 + 0.6, -bh / 2 - 0.6), rot(bw / 2 + 0.6, bh / 2 + 0.6), rot(-bw / 2 - 0.6, bh / 2 + 0.6)], fill=pal["outline"])
+            d.polygon([rot(-bw / 2 + 0.6, -bh / 2 + 0.6), rot(bw / 2 - 0.6, -bh / 2 + 0.6), rot(bw / 2 - 0.6, bh / 2 - 0.6), rot(-bw / 2 + 0.6, bh / 2 - 0.6)], fill=pal["sash"])
+            d.rectangle((*lp((-4.0, -7.0)), *lp((5.0, -1.0))), fill=pal["brass"])
+
+        hip_part = self._piece(("hip", spec), S, (32.0, spec.skirt_len + 14.0), paint_hip)
+        _place(img, hip_part, sp(hip), 0.0, "sash_belt", fade)
+        sash_len = spec.sash_len
+        self._place_tail(
+            img,
+            (hip[0] + 14.0, hip[1] - 5.0),
+            ((0.0, 0.0), (10.0, -3.0), (sash_len * 0.72 - 14.0, 4.0), (sash_len - 14.0, 2.0)),
+            ((0.0, 0.0), (10.0, -3.0 + p.sash_swing * 0.3), (sash_len * 0.72 - 14.0, 4.0 + p.sash_swing * 0.7), (sash_len - 14.0, 2.0 + p.sash_swing)),
+            pal["sash"],
+            pal["outline"],
+            S,
+            "sash_tail",
+            fade,
+        )
+
+        # Arms and hands; far arm first. The hands are pulled toward the hilt
+        # and the arm reaches them by two-bone IK of fixed lengths.
+        def arm_points(is_near: bool) -> Tuple[Point, Point, Point, float]:
             if is_near:
-                shoulder = (torso[0] + spec.shoulder_w * (0.39 if leader else 0.34), torso[1] - 10.0)
+                shoulder = on_body((spec.shoulder_w * (0.39 if leader else 0.34), -10.0))
                 if leader and p.slash <= 0.08:
                     upper = 74.0 + p.torso_tilt * 0.06
                     lower = 92.0 + p.torso_tilt * 0.05
@@ -679,7 +723,7 @@ class NinjaSideGenerator(CharacterGenerator):
                     upper = p.near_arm_upper + p.torso_tilt * 0.10
                     lower = p.near_arm_lower + p.torso_tilt * 0.08
             else:
-                shoulder = (torso[0] - spec.shoulder_w * (0.39 if leader else 0.34), torso[1] - 10.5)
+                shoulder = on_body((-spec.shoulder_w * (0.39 if leader else 0.34), -10.5))
                 if leader and p.slash <= 0.08:
                     upper = 106.0 + p.torso_tilt * 0.06
                     lower = 84.0 + p.torso_tilt * 0.05
@@ -690,97 +734,116 @@ class NinjaSideGenerator(CharacterGenerator):
             hand = add(elbow, vec(spec.arm_lower, lower))
             if leader and p.slash <= 0.08:
                 # A commanding idle: one hand rests near the sword, the other
-                # drops naturally.  This avoids the double-grip arms that were
-                # acceptable for the duelist but odd for a leader pose.
+                # drops naturally.
                 if not is_near:
                     hand = _mix((hand[0], hand[1], 0, 255), (hilt[0] - 0.5, hilt[1] + 0.5, 0, 255), 0.24)
             else:
-                # Pull both hands toward the sword hilt in the duelist / slash
-                # poses; this avoids the disconnected accessory look common in
-                # procedural rigs.
+                # Pull both hands toward the sword hilt in the duelist / slash poses.
                 hand = _mix((hand[0], hand[1], 0, 255), (hilt[0] + (2.5 if is_near else -2.0), hilt[1] + (2.5 if is_near else -2.5), 0, 255), 0.52)
-            return shoulder, elbow, (hand[0], hand[1])
+            # The old painter stretched the forearm to the pulled hand; a held
+            # pose keeps that reach as the bone's (fixed) length.
+            forearm = spec.arm_lower if leader and p.slash <= 0.08 else spec.arm_lower * (1.4 if is_near else 1.55)
+            elbow, hand = _two_bone(shoulder, (hand[0], hand[1]), spec.arm_upper, forearm, elbow)
+            return shoulder, elbow, hand, forearm
 
-        far_sh, far_el, far_hand = arm_points(False)
-        near_sh, near_el, near_hand = arm_points(True)
-        limb(far_sh, far_el, far_hand, spec.arm_radius, col("cloth_dark"), col("outline"))
-        limb(near_sh, near_el, near_hand, spec.arm_radius, col("cloth_mid"), col("outline"))
+        far_sh, far_el, far_hand, far_fore = arm_points(False)
+        near_sh, near_el, near_hand, near_fore = arm_points(True)
+        limb(far_sh, far_el, far_hand, spec.arm_upper, far_fore, spec.arm_radius, pal["cloth_dark"], "far_arm")
+        limb(near_sh, near_el, near_hand, spec.arm_upper, near_fore, spec.arm_radius, pal["cloth_mid"], "near_arm")
         if leader:
-            # Repaint the hard pauldrons over the arm capsules so the leader
-            # keeps angular shoulders instead of round robot-like joints.
-            for sign in (-1.0, 1.0):
-                sx = torso[0] + sign * spec.shoulder_w * 0.45
-                sy = torso[1] - 11.5
-                outer = sx + sign * 13.5 * spec.pauldron_scale
-                pts = [
-                    (sx - sign * 3.0, sy - 5.5),
-                    (outer, sy - 2.0),
-                    (outer - sign * 3.5, sy + 13.5),
-                    (sx - sign * 8.0, sy + 11.0),
-                ]
-                d.polygon([sp(pt) for pt in pts], fill=col("outline"))
-                inner = [(x * 0.88 + sx * 0.12, y * 0.90 + sy * 0.10) for x, y in pts]
-                d.polygon([sp(pt) for pt in inner], fill=col("armor_dark"))
-                spike = [(sx + sign * 1.0, sy - 5.0), (outer + sign * 2.0, sy - 8.5), (sx + sign * 5.0, sy + 0.5)]
-                d.polygon([sp(pt) for pt in spike], fill=col("outline"))
-                d.line([sp((sx - sign * 1.0, sy + 2.0)), sp((outer - sign * 4.0, sy + 3.0))], fill=with_alpha(pal["cloth_light"], 120), width=max(1, int(sc(0.9))))
+            # Hard pauldrons over the arm capsules, riding the turned body.
+            def paint_pauldrons(d, lp) -> None:
+                for sign in (-1.0, 1.0):
+                    sx = sign * spec.shoulder_w * 0.45
+                    sy = -11.5 + ty
+                    outer = sx + sign * 13.5 * spec.pauldron_scale
+                    pts = [(sx - sign * 3.0, sy - 5.5), (outer, sy - 2.0), (outer - sign * 3.5, sy + 13.5), (sx - sign * 8.0, sy + 11.0)]
+                    d.polygon([lp(pt) for pt in pts], fill=pal["outline"])
+                    d.polygon([lp((x * 0.88 + sx * 0.12, y * 0.90 + sy * 0.10)) for x, y in pts], fill=pal["armor_dark"])
+                    spike = [(sx + sign * 1.0, sy - 5.0), (outer + sign * 2.0, sy - 8.5), (sx + sign * 5.0, sy + 0.5)]
+                    d.polygon([lp(pt) for pt in spike], fill=pal["outline"])
+                    d.line([lp((sx - sign * 1.0, sy + 2.0)), lp((outer - sign * 4.0, sy + 3.0))], fill=with_alpha(pal["cloth_light"], 120), width=w(0.9))
+
+            reach = spec.shoulder_w * 0.45 + 13.5 * spec.pauldron_scale + 6.0
+            pauldrons = self._piece(("pauldrons", spec), S, (reach, reach), paint_pauldrons)
+            _place(img, pauldrons, sp(spine), body_turn, "pauldrons", fade)
         # Hand wraps / guards.
-        for hand in (far_hand, near_hand):
-            d.ellipse((sc(hand[0] - spec.hand_r), sc(hand[1] - spec.hand_r), sc(hand[0] + spec.hand_r), sc(hand[1] + spec.hand_r)), fill=col("wrap"), outline=col("outline"), width=max(1, int(sc(1.0))))
-        # Hilt drawn after hands so the grip reads as held.
-        ux, uy = math.cos(math.radians(p.sword_angle + 90.0)), math.sin(math.radians(p.sword_angle + 90.0))
-        h0 = sp((hilt[0] - ux * 9.0, hilt[1] - uy * 9.0))
-        h1 = sp((hilt[0] + ux * 9.0, hilt[1] + uy * 9.0))
-        d.line([h0, h1], fill=col("outline"), width=max(1, int(sc(5.0))))
-        d.line([h0, h1], fill=col("brass"), width=max(1, int(sc(2.7))))
-        draw_rotated_rounded_rect(img, sp(hilt), (sc(14.0), sc(4.0)), p.sword_angle + 90.0, sc(2.0), col("armor_dark"), col("outline"), sc(1.0))
+        hr = spec.hand_r
 
-        # Neck, horns, and head.
-        if spec.horn_len > 0.0:
-            for sign in (-1.0, 1.0):
-                # Wide, curved oni horns.  They intentionally sit outside the
-                # helmet ellipse so the leader silhouette survives sprite scale.
-                horn_base = (head[0] + sign * 7.0, head[1] - 12.0)
-                horn_mid = (head[0] + sign * (12.5 + spec.horn_len * 0.20), head[1] - 19.0)
-                horn_tip = (head[0] + sign * (16.0 + spec.horn_len * 0.20), max(1.5, head[1] - 20.0 - spec.horn_len * 0.45))
-                horn_path = [sp(horn_base), sp(horn_mid), sp(horn_tip)]
-                d.line(horn_path, fill=col("outline"), width=max(3, int(sc(5.4))), joint="curve")
-                d.line(horn_path, fill=col("sash_dark"), width=max(2, int(sc(3.1))), joint="curve")
-                tip = sp(horn_tip)
-                d.polygon(
-                    [tip, sp((horn_tip[0] - sign * 2.8, horn_tip[1] + 5.0)), sp((horn_tip[0] - sign * 0.2, horn_tip[1] + 1.0))],
-                    fill=col("outline"),
-                )
-                d.line([sp(horn_base), sp(horn_tip)], fill=with_alpha(pal["eye_hot"], 92), width=max(1, int(sc(0.9))))
-        draw_rotated_rounded_rect(img, sp(neck), (sc(9.0), sc(13.0)), p.head_tilt, sc(3.0), col("cloth_dark"), col("outline"), sc(1.0))
-        draw_rotated_ellipse(img, sp(head), (sc(spec.head_w + 2.5), sc(spec.head_h + 1.5)), p.head_tilt, col("outline"), None, 0)
-        draw_rotated_ellipse(img, sp((head[0] - 0.7, head[1] - 0.5)), (sc(spec.head_w), sc(spec.head_h)), p.head_tilt, col("cloth"), None, 0)
-        # Hood top cap / brow wrap.
-        draw_rotated_rounded_rect(img, sp((head[0] - 0.8, head[1] - 9.0)), (sc(spec.head_w * 0.90), sc(8.0)), p.head_tilt - 2.0, sc(4.0), col("cloth_mid"), None, 0)
-        draw_rotated_rounded_rect(img, sp((head[0] - 0.3, head[1] - 1.5)), (sc(spec.head_w * 0.92), sc(7.3)), p.head_tilt, sc(3.0), col("wrap"), col("outline"), sc(0.9))
-        # Face-mask lower half with a cheek highlight and nose plane.
-        d.arc((sc(head[0] - 11.0), sc(head[1] + 1.0), sc(head[0] + 12.0), sc(head[1] + 15.0)), 10, 165, fill=col("outline"), width=max(1, int(sc(1.0))))
-        d.line([sp((head[0] + 5.5, head[1] - 10.5)), sp((head[0] + 11.0, head[1] - 6.0))], fill=with_alpha(pal["cloth_light"], 145), width=max(1, int(sc(1.0))))
-        d.line([sp((head[0] - 5.0, head[1] + 9.0)), sp((head[0] + 2.0, head[1] + 11.0))], fill=col("armor_dark"), width=max(1, int(sc(1.2))))
-        if leader:
-            tusk = with_alpha(pal["blade_shadow"], int(210 * (1.0 - p.fade)))
-            d.polygon([sp((head[0] - 8.5, head[1] + 5.0)), sp((head[0] - 5.0, head[1] + 7.8)), sp((head[0] - 7.2, head[1] + 12.0))], fill=tusk, outline=col("outline"))
-            d.polygon([sp((head[0] + 8.5, head[1] + 4.6)), sp((head[0] + 5.0, head[1] + 7.5)), sp((head[0] + 7.4, head[1] + 11.6))], fill=tusk, outline=col("outline"))
+        def paint_hand(d, lp) -> None:
+            d.ellipse((*lp((-hr, -hr)), *lp((hr, hr))), fill=pal["wrap"], outline=pal["outline"], width=w(1.0))
 
-        # Red eye slits: the strongest reference-inspired feature, but drawn as
-        # sharp triangular slashes rather than the source's exact eye shapes.
-        eye_alpha = int(230 * spec.eye_glow * (1.0 - p.fade))
-        eye_h = max(1.5, 3.3 - p.eye_squint * 1.4)
-        left_eye = [sp((head[0] - 8.3, head[1] - 3.5)), sp((head[0] - 1.7, head[1] - 2.6)), sp((head[0] - 3.4, head[1] - 2.6 + eye_h))]
-        right_eye = [sp((head[0] + 2.0, head[1] - 2.9)), sp((head[0] + 9.2, head[1] - 4.4)), sp((head[0] + 6.2, head[1] - 1.1 + eye_h))]
-        d.polygon(left_eye, fill=with_alpha(pal["eye"], eye_alpha))
-        d.polygon(right_eye, fill=with_alpha(pal["eye"], eye_alpha))
-        d.line([left_eye[0], left_eye[1]], fill=with_alpha(pal["eye_hot"], min(255, eye_alpha + 35)), width=max(1, int(sc(0.8))))
-        d.line([right_eye[0], right_eye[1]], fill=with_alpha(pal["eye_hot"], min(255, eye_alpha + 35)), width=max(1, int(sc(0.8))))
+        hand_part = self._piece(("hand", round(hr, 3)), S, (hr + 1.0, hr + 1.0), paint_hand)
+        _place(img, hand_part, sp(far_hand), 0.0, "far_hand", fade)
+        _place(img, hand_part, sp(near_hand), 0.0, "near_hand", fade)
+
+        # Hilt drawn after hands so the grip reads as held: the guard across
+        # the blade, painted with the blade along +x and turned with it.
+        def paint_hilt(d, lp) -> None:
+            h0, h1 = lp((0.0, -9.0)), lp((0.0, 9.0))
+            d.line([h0, h1], fill=pal["outline"], width=w(5.0))
+            d.line([h0, h1], fill=pal["brass"], width=w(2.7))
+            d.rounded_rectangle((*lp((-2.0, -7.0)), *lp((2.0, 7.0))), radius=sc(2.0), fill=pal["armor_dark"], outline=pal["outline"], width=w(1.0))
+
+        _place(img, self._piece(("hilt",), S, (12.0, 12.0), paint_hilt), sp(hilt), p.sword_angle, "hilt", fade)
+
+        # Neck.
+        def paint_neck(d, lp) -> None:
+            d.rounded_rectangle((*lp((-4.5, -6.5)), *lp((4.5, 6.5))), radius=sc(3.0), fill=pal["cloth_dark"], outline=pal["outline"], width=w(1.0))
+
+        _place(img, self._piece(("neck",), S, (7.0, 9.0), paint_neck), sp(neck), -p.head_tilt, "neck", fade)
+
+        # Horns and head: one piece per eye height, turned by the head tilt.
+        eye_h = round(max(1.5, 3.3 - p.eye_squint * 1.4) * 4.0) / 4.0
+
+        def paint_head(d, lp) -> None:
+            if spec.horn_len > 0.0:
+                for sign in (-1.0, 1.0):
+                    # Wide, curved oni horns outside the helmet ellipse.
+                    base = (sign * 7.0, -12.0)
+                    mid = (sign * (12.5 + spec.horn_len * 0.20), -19.0)
+                    tip_pt = (sign * (16.0 + spec.horn_len * 0.20), -20.0 - spec.horn_len * 0.45)
+                    path = [lp(base), lp(mid), lp(tip_pt)]
+                    d.line(path, fill=pal["outline"], width=w(5.4, 3), joint="curve")
+                    d.line(path, fill=pal["sash_dark"], width=w(3.1, 2), joint="curve")
+                    d.polygon([lp(tip_pt), lp((tip_pt[0] - sign * 2.8, tip_pt[1] + 5.0)), lp((tip_pt[0] - sign * 0.2, tip_pt[1] + 1.0))], fill=pal["outline"])
+                    d.line([lp(base), lp(tip_pt)], fill=with_alpha(pal["eye_hot"], 92), width=w(0.9))
+            hw2, hh2 = (spec.head_w + 2.5) / 2.0, (spec.head_h + 1.5) / 2.0
+            d.ellipse((*lp((-hw2, -hh2)), *lp((hw2, hh2))), fill=pal["outline"])
+            d.ellipse((*lp((-0.7 - spec.head_w / 2, -0.5 - spec.head_h / 2)), *lp((-0.7 + spec.head_w / 2, -0.5 + spec.head_h / 2))), fill=pal["cloth"])
+            # Hood top cap / brow wrap.
+            cw = spec.head_w * 0.90 / 2.0
+            d.rounded_rectangle((*lp((-0.8 - cw, -13.0)), *lp((-0.8 + cw, -5.0))), radius=sc(4.0), fill=pal["cloth_mid"])
+            bw = spec.head_w * 0.92 / 2.0
+            d.rounded_rectangle((*lp((-0.3 - bw, -1.5 - 3.65)), *lp((-0.3 + bw, -1.5 + 3.65))), radius=sc(3.0), fill=pal["wrap"], outline=pal["outline"], width=w(0.9))
+            # Face-mask lower half with a cheek highlight and nose plane.
+            d.arc((*lp((-11.0, 1.0)), *lp((12.0, 15.0))), 10, 165, fill=pal["outline"], width=w(1.0))
+            d.line([lp((5.5, -10.5)), lp((11.0, -6.0))], fill=with_alpha(pal["cloth_light"], 145), width=w(1.0))
+            d.line([lp((-5.0, 9.0)), lp((2.0, 11.0))], fill=pal["armor_dark"], width=w(1.2))
+            if leader:
+                tusk = with_alpha(pal["blade_shadow"], 210)
+                d.polygon([lp((-8.5, 5.0)), lp((-5.0, 7.8)), lp((-7.2, 12.0))], fill=tusk, outline=pal["outline"])
+                d.polygon([lp((8.5, 4.6)), lp((5.0, 7.5)), lp((7.4, 11.6))], fill=tusk, outline=pal["outline"])
+            # Red eye slits: sharp triangular slashes.
+            eye_alpha = min(255, int(230 * spec.eye_glow))
+            left_eye = [lp((-8.3, -3.5)), lp((-1.7, -2.6)), lp((-3.4, -2.6 + eye_h))]
+            right_eye = [lp((2.0, -2.9)), lp((9.2, -4.4)), lp((6.2, -1.1 + eye_h))]
+            d.polygon(left_eye, fill=with_alpha(pal["eye"], eye_alpha))
+            d.polygon(right_eye, fill=with_alpha(pal["eye"], eye_alpha))
+            hot = with_alpha(pal["eye_hot"], min(255, eye_alpha + 35))
+            d.line([left_eye[0], left_eye[1]], fill=hot, width=w(0.8))
+            d.line([right_eye[0], right_eye[1]], fill=hot, width=w(0.8))
+
+        reach = 22.0 + spec.horn_len * 0.7
+        head_part = self._piece(("head", spec, eye_h), S, (reach, reach), paint_head)
+        _place(img, head_part, sp(head), -p.head_tilt, "head", fade)
 
         if p.hit > 0:
             # Brief red rim on hit frames.
-            d.arc((sc(28.0), sc(22.0), sc(101.0), sc(118.0)), 205, 305, fill=with_alpha(pal["eye"], int(110 * p.hit)), width=max(1, int(sc(2.0))))
+            def paint_rim(d, lp) -> None:
+                d.arc((*lp((-36.5, -48.0)), *lp((36.5, 48.0))), 205, 305, fill=with_alpha(pal["eye"], 110), width=w(2.0))
+
+            _place(img, self._piece(("rim", pal["eye"]), S, (38.0, 50.0), paint_rim), sp((64.5, 70.0)), 0.0, "hit_rim", p.hit)
 
     @profile
     def render_animation_frame(

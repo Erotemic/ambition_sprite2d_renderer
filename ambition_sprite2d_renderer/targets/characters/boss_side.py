@@ -20,17 +20,16 @@ import random
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, Optional, Tuple
 
-from PIL import Image, ImageColor, ImageDraw
+from PIL import Image, ImageColor
 from ambition_sprite2d_renderer.core.draw import rgba, with_alpha, bbox_from_center as _bbox
 
 from ...profiling import profile
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.common_draw import (
     RESAMPLING,
-    draw_capsule,
     draw_rotated_ellipse,
-    draw_rotated_rounded_rect,
 )
+from .robot_side import RigCanvas
 from ambition_sprite2d_renderer.core.draw import blending_draw
 from ...authoring.generator import CharacterGenerator
 from ...authoring.rig import add, clamp, ease_in_out_sine, ease_out_cubic, lerp, smoothstep, vec
@@ -79,18 +78,6 @@ def parse_background(value: str) -> Optional[Color]:
     return None if str(value).lower() == "transparent" else rgba(str(value))
 
 
-
-
-def _paste_rotated_local(
-    base: Image.Image, layer: Image.Image, center: Point, angle: float
-) -> None:
-    rotated = layer.rotate(angle, resample=RESAMPLING.BICUBIC, expand=True)
-    rigdoc.composite_layer(
-        base,
-        rotated,
-        (int(center[0] - rotated.width / 2), int(center[1] - rotated.height / 2)),
-        name="rotated",
-    )
 
 
 @dataclass(frozen=True)
@@ -655,7 +642,7 @@ class AISlopZetaGenerator(CharacterGenerator):
 
     def _draw_head(
         self,
-        img: Image.Image,
+        img: "RigCanvas",
         center: Point,
         spec: ZetaSpec,
         pal: Dict[str, Color],
@@ -665,65 +652,99 @@ class AISlopZetaGenerator(CharacterGenerator):
         eye_glow: float,
         dead: bool,
     ) -> None:
+        """The rigid head as three pieces sharing its centre, turned by
+        ``angle`` (``Image.rotate``'s counter-clockwise): the skull, the eyes
+        (one per glow level, or dead) and the jaw (one per opening)."""
         pad = int(math.ceil(42 * S))
-        layer = Image.new("RGBA", (pad * 2, pad * 2), (0, 0, 0, 0))
-        d = blending_draw(layer)
+        eye_glow = round(eye_glow * 10.0) / 10.0
+        jaw_open = round(jaw_open * 20.0) / 20.0
+        base = ("boss_head", spec, round(S, 4))
+        for which, key in (
+            ("skull", ()),
+            ("eyes", (eye_glow, bool(dead))),
+            ("jaw", (jaw_open,)),
+        ):
+            part = shape_rig.piece(
+                base + (which,) + key,
+                (pad * 2, pad * 2),
+                (pad, pad),
+                lambda d, which=which: self._paint_head(d, which, pad, spec, pal, S, jaw_open, eye_glow, dead),
+            )
+            img.put(part, center, -angle, f"head_{which}")
+
+    def _paint_head(
+        self,
+        d,
+        which: str,
+        pad: int,
+        spec: ZetaSpec,
+        pal: Dict[str, Color],
+        S: float,
+        jaw_open: float,
+        eye_glow: float,
+        dead: bool,
+    ) -> None:
+        """One of the head's pieces in its own frame, centred on ``(pad, pad)``."""
         cx, cy = float(pad), float(pad)
         outline = max(1, int(round(1.7 * S)))
 
-        # horns / crown spikes
-        for sign in (-1, 1):
-            tip = (
-                cx - sign * spec.head_w * 0.18,
-                cy - spec.head_h * 0.78 - spec.horn_len * 0.55,
+        if which == "skull":
+            # horns / crown spikes
+            for sign in (-1, 1):
+                tip = (
+                    cx - sign * spec.head_w * 0.18,
+                    cy - spec.head_h * 0.78 - spec.horn_len * 0.55,
+                )
+                mid = (cx - sign * spec.head_w * 0.34, cy - spec.head_h * 0.50)
+                base = (cx - sign * spec.head_w * 0.10, cy - spec.head_h * 0.34)
+                d.polygon([tip, mid, base], fill=pal["cloak_hi"], outline=pal["outline"])
+
+            hood_outer = _bbox((cx + 2 * S, cy + 2 * S), spec.hood_w * S, spec.hood_h * S)
+            d.ellipse(hood_outer, fill=pal["outline"])
+            hood_inner = _bbox(
+                (cx + 2 * S, cy + 1 * S), (spec.hood_w - 4) * S, (spec.hood_h - 4) * S
             )
-            mid = (cx - sign * spec.head_w * 0.34, cy - spec.head_h * 0.50)
-            base = (cx - sign * spec.head_w * 0.10, cy - spec.head_h * 0.34)
-            d.polygon([tip, mid, base], fill=pal["cloak_hi"], outline=pal["outline"])
+            d.ellipse(hood_inner, fill=pal["cloak_mid"])
 
-        hood_outer = _bbox((cx + 2 * S, cy + 2 * S), spec.hood_w * S, spec.hood_h * S)
-        d.ellipse(hood_outer, fill=pal["outline"])
-        hood_inner = _bbox(
-            (cx + 2 * S, cy + 1 * S), (spec.hood_w - 4) * S, (spec.hood_h - 4) * S
-        )
-        d.ellipse(hood_inner, fill=pal["cloak_mid"])
-
-        skull = _bbox((cx, cy - 1 * S), spec.head_w * S, spec.head_h * S)
-        d.ellipse(skull, fill=pal["skin"], outline=pal["outline"], width=outline)
-        d.ellipse(
-            (skull[0] + 4 * S, skull[1] + 3 * S, skull[2] - 5 * S, cy - 2 * S),
-            fill=with_alpha((255, 255, 255, 255), 48),
-        )
-
-        # multiple glowing eyes
-        eye_y = cy - 4.5 * S
-        centers = [
-            (cx - 6.0 * S, eye_y),
-            (cx + 1.0 * S, eye_y - 1.0 * S),
-            (cx + 8.0 * S, eye_y + 1.0 * S),
-        ]
-        for ex, ey in centers:
-            glow_r = spec.eye_r * S * (1.0 + eye_glow * 0.6)
+            skull = _bbox((cx, cy - 1 * S), spec.head_w * S, spec.head_h * S)
+            d.ellipse(skull, fill=pal["skin"], outline=pal["outline"], width=outline)
             d.ellipse(
-                _bbox((ex, ey), glow_r * 2.8, glow_r * 2.0),
-                fill=with_alpha(pal["eye_soft"], int(42 + 90 * eye_glow)),
+                (skull[0] + 4 * S, skull[1] + 3 * S, skull[2] - 5 * S, cy - 2 * S),
+                fill=with_alpha((255, 255, 255, 255), 48),
             )
-            d.ellipse(
-                _bbox((ex, ey), glow_r * 1.3, glow_r * 1.6),
-                fill=pal["eye"],
-                outline=pal["outline"],
-            )
-        if dead:
-            d.line(
-                [(cx - 9 * S, eye_y - 5 * S), (cx + 11 * S, eye_y + 5 * S)],
-                fill=pal["energy3"],
-                width=max(1, int(1.4 * S)),
-            )
-            d.line(
-                [(cx - 9 * S, eye_y + 5 * S), (cx + 11 * S, eye_y - 5 * S)],
-                fill=pal["energy3"],
-                width=max(1, int(1.4 * S)),
-            )
+            return
+
+        if which == "eyes":
+            # multiple glowing eyes
+            eye_y = cy - 4.5 * S
+            centers = [
+                (cx - 6.0 * S, eye_y),
+                (cx + 1.0 * S, eye_y - 1.0 * S),
+                (cx + 8.0 * S, eye_y + 1.0 * S),
+            ]
+            for ex, ey in centers:
+                glow_r = spec.eye_r * S * (1.0 + eye_glow * 0.6)
+                d.ellipse(
+                    _bbox((ex, ey), glow_r * 2.8, glow_r * 2.0),
+                    fill=with_alpha(pal["eye_soft"], int(42 + 90 * eye_glow)),
+                )
+                d.ellipse(
+                    _bbox((ex, ey), glow_r * 1.3, glow_r * 1.6),
+                    fill=pal["eye"],
+                    outline=pal["outline"],
+                )
+            if dead:
+                d.line(
+                    [(cx - 9 * S, eye_y - 5 * S), (cx + 11 * S, eye_y + 5 * S)],
+                    fill=pal["energy3"],
+                    width=max(1, int(1.4 * S)),
+                )
+                d.line(
+                    [(cx - 9 * S, eye_y + 5 * S), (cx + 11 * S, eye_y - 5 * S)],
+                    fill=pal["energy3"],
+                    width=max(1, int(1.4 * S)),
+                )
+            return
 
         # mouth / jaw
         mouth_c = (cx + 2 * S, cy + 8.5 * S)
@@ -751,12 +772,9 @@ class AISlopZetaGenerator(CharacterGenerator):
                 outline=pal["outline"],
             )
 
-        _paste_rotated_local(img, layer, center, angle)
-
     def _draw_tendril(
         self,
-        img: Image.Image,
-        d: ImageDraw.ImageDraw,
+        img: "RigCanvas",
         shoulder: Point,
         a1: float,
         a2: float,
@@ -765,27 +783,18 @@ class AISlopZetaGenerator(CharacterGenerator):
         pal: Dict[str, Color],
         S: float,
         outline: float,
+        side: str = "near",
     ) -> Point:
         elbow = add(shoulder, vec(spec.tendril_upper * S, a1))
         hand = add(elbow, vec(spec.tendril_lower * S, a2))
-        draw_capsule(d, shoulder, elbow, 3.6 * S, tint, pal["outline"], outline * 0.70)
-        draw_capsule(d, elbow, hand, 2.8 * S, tint, pal["outline"], outline * 0.70)
-        d.ellipse(
-            (
-                hand[0] - spec.claw_r * S,
-                hand[1] - spec.claw_r * S,
-                hand[0] + spec.claw_r * S,
-                hand[1] + spec.claw_r * S,
-            ),
-            fill=pal["energy2"],
-            outline=pal["outline"],
-            width=max(1, int(outline * 0.65)),
-        )
+        img.capsule(shoulder, elbow, 3.6 * S, tint, pal["outline"], outline * 0.70, f"{side}_tendril_upper", length=spec.tendril_upper * S)
+        img.capsule(elbow, hand, 2.8 * S, tint, pal["outline"], outline * 0.70, f"{side}_tendril_lower", length=spec.tendril_lower * S)
+        img.disc(hand, spec.claw_r * S, pal["energy2"], pal["outline"], max(1, int(outline * 0.65)), f"{side}_claw")
         return hand
 
     def _draw_cloak(
         self,
-        img: Image.Image,
+        img: "RigCanvas",
         center: Point,
         spec: ZetaSpec,
         pal: Dict[str, Color],
@@ -794,12 +803,20 @@ class AISlopZetaGenerator(CharacterGenerator):
         flare: float,
         collapse: float,
     ) -> None:
+        # One piece per cloak size (to a design pixel), turned by ``angle``.
         pad = int(math.ceil(58 * S))
-        layer = Image.new("RGBA", (pad * 2, pad * 2), (0, 0, 0, 0))
-        d = blending_draw(layer)
+        w_units = round(spec.cloak_w * (1.0 + flare * 0.22 - collapse * 0.10))
+        h_units = round(spec.cloak_h * (1.0 - collapse * 0.08))
+        part = shape_rig.piece(
+            ("boss_cloak", w_units, h_units, tuple(sorted(pal.items())), round(S, 4)),
+            (pad * 2, pad * 2),
+            (pad, pad),
+            lambda d: self._paint_cloak(d, pad, w_units * S, h_units * S, pal),
+        )
+        img.put(part, center, -angle, "cloak")
+
+    def _paint_cloak(self, d, pad: int, w: float, h: float, pal: Dict[str, Color]) -> None:
         cx, cy = float(pad), float(pad)
-        w = spec.cloak_w * S * (1.0 + flare * 0.22 - collapse * 0.10)
-        h = spec.cloak_h * S * (1.0 - collapse * 0.08)
         pts = [
             (cx - w * 0.18, cy - h * 0.48),
             (cx + w * 0.18, cy - h * 0.50),
@@ -831,7 +848,6 @@ class AISlopZetaGenerator(CharacterGenerator):
             (cx - w * 0.06, cy + h * 0.48),
         ]
         d.polygon(tail, fill=pal["cloak_mid"], outline=pal["outline"])
-        _paste_rotated_local(img, layer, center, angle)
 
     def _draw_spit_fx(
         self,
@@ -1042,6 +1058,19 @@ class AISlopZetaGenerator(CharacterGenerator):
                 width=max(1, int(1.2 * S)),
             )
 
+    def _fx(self, img: Image.Image, name: str, paint, *args) -> None:
+        """An attack effect as ONE piece (painted once per its arguments) on a
+        frame-sized canvas, instead of one draw per stroke."""
+
+        def flat(v):
+            if isinstance(v, (tuple, list)):
+                return tuple(flat(x) for x in v)
+            return round(v, 3) if isinstance(v, float) else v
+
+        part = shape_rig.piece(("boss_fx", name, img.size) + flat(args), img.size, (0.0, 0.0), lambda d: paint(d._img, *args))
+        if part[0].getbbox() is not None:
+            rigdoc.blit_rotated(img, part[0], part[1], (0.0, 0.0), 0.0, part_name=f"fx_{name}")
+
     def _render_highres(
         self,
         spec: ZetaSpec,
@@ -1069,10 +1098,10 @@ class AISlopZetaGenerator(CharacterGenerator):
         # Ground shadow removed; the in-game renderer composites bosses
         # over floor geometry that already provides ground contact.
         if animation == "dash_echo":
-            self._draw_dash_echo_fx(img, root_x, ground_y, p.dash_echo, S)
+            self._fx(img, "dash_echo", self._draw_dash_echo_fx, root_x, ground_y, p.dash_echo, S)
 
         character_img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        character_draw = blending_draw(character_img)
+        rig = RigCanvas(character_img)
 
         collapse = p.collapse
         body_center = (
@@ -1090,8 +1119,7 @@ class AISlopZetaGenerator(CharacterGenerator):
 
         # far tendril first
         self._draw_tendril(
-            character_img,
-            character_draw,
+            rig,
             shoulder_far,
             p.far_arm_upper,
             p.far_arm_lower,
@@ -1100,11 +1128,12 @@ class AISlopZetaGenerator(CharacterGenerator):
             pal,
             S,
             outline,
+            side="far",
         )
 
         # cloak body then rigid head
         self._draw_cloak(
-            character_img,
+            rig,
             body_center,
             spec,
             pal,
@@ -1115,26 +1144,11 @@ class AISlopZetaGenerator(CharacterGenerator):
         )
         # core / chest eye
         core_center = (body_center[0] + 2 * S, body_center[1] - 1 * S)
-        draw_rotated_ellipse(
-            character_img,
-            core_center,
-            (15 * S, 11 * S),
-            body_angle,
-            with_alpha(pal["eye_soft"], int(60 + p.eye_glow * 90)),
-            None,
-            0,
-        )
-        draw_rotated_ellipse(
-            character_img,
-            core_center,
-            (8 * S, 9 * S),
-            body_angle,
-            pal["eye"],
-            pal["outline"],
-            max(1, int(1.0 * S)),
-        )
+        # The glow at its brightest, placed at the glow's opacity.
+        rig.ellipse(core_center, (15 * S, 11 * S), body_angle, with_alpha(pal["eye_soft"], 150), None, 0, "core_glow", (60 + p.eye_glow * 90) / 150.0)
+        rig.ellipse(core_center, (8 * S, 9 * S), body_angle, pal["eye"], pal["outline"], max(1, int(1.0 * S)), "core_eye")
         self._draw_head(
-            character_img,
+            rig,
             head_center,
             spec,
             pal,
@@ -1147,8 +1161,7 @@ class AISlopZetaGenerator(CharacterGenerator):
 
         # near tendril on top
         near_hand = self._draw_tendril(
-            character_img,
-            character_draw,
+            rig,
             shoulder_near,
             p.near_arm_upper,
             p.near_arm_lower,
@@ -1160,10 +1173,10 @@ class AISlopZetaGenerator(CharacterGenerator):
         )
 
         mouth = (head_center[0] + 11 * S, head_center[1] + 6 * S)
-        self._draw_side_sweep_fx(character_img, near_hand, root_x, p.side_sweep, S)
-        self._draw_beam_fx(character_img, mouth, p.beam_charge, p.beam_fire, S)
-        self._draw_slam_fx(character_img, root_x, ground_y, p.slam, S)
-        self._draw_spike_halo_fx(character_img, root_x, body_center[1], p.spike_halo, S)
+        self._fx(character_img, "side_sweep", self._draw_side_sweep_fx, near_hand, root_x, p.side_sweep, S)
+        self._fx(character_img, "beam", self._draw_beam_fx, mouth, p.beam_charge, p.beam_fire, S)
+        self._fx(character_img, "slam", self._draw_slam_fx, root_x, ground_y, p.slam, S)
+        self._fx(character_img, "spike_halo", self._draw_spike_halo_fx, root_x, body_center[1], p.spike_halo, S)
 
         # eerie hand trails during hover / summon
         if p.summon > 0 or animation == "hover":

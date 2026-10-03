@@ -15,12 +15,13 @@ the 128x128 gameplay frame.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Callable, Dict, Iterable, Mapping, Optional, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
 from ...authoring import rigdoc
+from . import _toon_rig
 from ...profiling import profile
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
@@ -459,21 +460,47 @@ def _paint_ponytail_back(v: VDraw, pose: MalloryPose) -> None:
 
     # A chrome tie clearly separates the hair mass from the neck and preserves
     # the old version's sharper, segmented visual rhythm.
+    # The tie and each hair segment are pieces riding the centerline.
     tie = points[1]
-    v.rounded(tie, 5.5, 3.3, 0.9, pal["chrome_dark"], pal["outline"], 0.7)
+    _toon_rig.vpiece(
+        v, "mallory_tie", 5.0, tie,
+        lambda l, o: l.rounded(o, 5.5, 3.3, 0.9, pal["chrome_dark"], pal["outline"], 0.7), "ponytail_tie",
+    )
     for idx, point in enumerate(points[2:], start=2):
         taper = max(3.0, 6.1 - idx * 0.45)
-        v.ellipse(point, taper, taper * 0.82, pal["oxblood"], pal["outline"], 0.7)
-        if idx % 2 == 0:
-            v.line(
-                [(point[0] - taper * 0.25, point[1] - 0.8),
-                 (point[0] + taper * 0.25, point[1] + 0.5)],
-                pal["oxblood_light"],
-                0.65,
-            )
+
+        def segment(l, o, idx=idx, taper=taper) -> None:
+            l.ellipse(o, taper, taper * 0.82, pal["oxblood"], pal["outline"], 0.7)
+            if idx % 2 == 0:
+                l.line(
+                    [(o[0] - taper * 0.25, o[1] - 0.8),
+                     (o[0] + taper * 0.25, o[1] + 0.5)],
+                    pal["oxblood_light"],
+                    0.65,
+                )
+
+        _toon_rig.vpiece(v, ("mallory_hair_segment", idx), 5.0, point, segment, f"ponytail_{idx}")
+
+
+#: The design point the jacket tails turn about: the lean shear of ``_xf``
+#: is close to a turn about the ground below the body.
+_HEM = (64.0, 118.0)
 
 
 def _paint_jacket_tails(v: VDraw, pose: MalloryPose) -> None:
+    """The tails as one piece per rounded sway (one design unit apart),
+    painted at the root unleaned, turned by the lean about ``_HEM`` and
+    moved by the root."""
+    rest = replace(pose, root_x=0.0, root_y=0.0, bob=0.0, lean=0.0, coat_sway=float(round(pose.coat_sway)))
+    root = _root(pose)
+    _toon_rig.vpiece(
+        v, ("mallory_tails", rest.coat_sway), 64.0, (_HEM[0] + root[0], _HEM[1] + root[1]),
+        lambda l, _o: _paint_jacket_tails_rest(l, rest), "jacket_tails",
+        math.degrees(math.atan2(0.20 * pose.lean, 90.0)), origin=_HEM,
+    )
+
+
+def _paint_jacket_tails_rest(v: VDraw, pose: MalloryPose) -> None:
     pal = MALLORY_PALETTE
     sway = pose.coat_sway
     left = [
@@ -506,70 +533,99 @@ def _paint_legs(v: VDraw, pose: MalloryPose) -> None:
     far_knee = ((far_hip[0] + far_foot[0]) * 0.5 - 2.2, 97.0 + _root(pose)[1])
     near_knee = ((near_hip[0] + near_foot[0]) * 0.5 + 2.4, 97.0 + _root(pose)[1])
 
-    for hip, knee, foot, fill in (
-        (far_hip, far_knee, far_foot, pal["black"]),
-        (near_hip, near_knee, near_foot, pal["black_mid"]),
+    side = pose.side_view > 0.5
+    for name, hip, knee, foot, fill in (
+        ("far", far_hip, far_knee, far_foot, pal["black"]),
+        ("near", near_hip, near_knee, near_foot, pal["black_mid"]),
     ):
-        v.capsule(hip, knee, 3.4, fill, pal["outline"], 0.8)
-        v.capsule(knee, foot, 3.1, fill, pal["outline"], 0.8)
-        toe = (foot[0] + (5.8 if pose.side_view > 0.5 else 3.8), foot[1] + 0.2)
-        v.capsule(foot, toe, 3.0, pal["boot"], pal["outline"], 0.8)
-        v.line([(foot[0] - 2.0, foot[1] - 1.2), (foot[0] + 2.5, foot[1] - 1.2)], pal["chrome_dark"], 0.7)
+        _toon_rig.vtube(v, hip, knee, 3.4, 0.8, fill, pal["outline"], f"{name}_thigh")
+        _toon_rig.vtube(v, knee, foot, 3.1, 0.8, fill, pal["outline"], f"{name}_shin")
+
+        def boot(l, o) -> None:
+            toe = (o[0] + (5.8 if side else 3.8), o[1] + 0.2)
+            l.capsule(o, toe, 3.0, pal["boot"], pal["outline"], 0.8)
+            l.line([(o[0] - 2.0, o[1] - 1.2), (o[0] + 2.5, o[1] - 1.2)], pal["chrome_dark"], 0.7)
+
+        _toon_rig.vpiece(v, ("mallory_boot", side), 12.0, foot, boot, f"{name}_boot")
+
+
+#: The design height the body's lean shear is taken at for its rigid
+#: pieces (torso, hardware): the jacket is drawn upright and moved by it.
+_TORSO_Y = 66.0
+_TORSO_ORIGIN = (64.0, 66.0)
+
+
+def _torso_at(pose: MalloryPose) -> Point:
+    """Where the torso piece's origin lands: the rest point moved by the
+    lean shear at ``_TORSO_Y`` and the root."""
+    return _xf(pose, _TORSO_ORIGIN)
 
 
 def _paint_torso(v: VDraw, pose: MalloryPose) -> None:
+    """The jacket, armor, harness and collar as one piece."""
+    _toon_rig.vpiece(v, "mallory_torso", 32.0, _torso_at(pose), _paint_torso_rest, "torso")
+
+
+def _paint_torso_rest(v: VDraw, origin: Point) -> None:
+    """The torso upright, around ``origin`` (the design point
+    ``_TORSO_ORIGIN``)."""
     pal = MALLORY_PALETTE
+    shift = (origin[0] - _TORSO_ORIGIN[0], origin[1] - _TORSO_ORIGIN[1])
+
+    def at(point: Point) -> Point:
+        return (point[0] + shift[0], point[1] + shift[1])
+
     torso = [
-        _xf(pose, (53.0, 53.0)),
-        _xf(pose, (68.0, 51.0)),
-        _xf(pose, (78.0, 57.0)),
-        _xf(pose, (76.0, 81.0)),
-        _xf(pose, (68.0, 87.0)),
-        _xf(pose, (53.0, 84.0)),
-        _xf(pose, (48.0, 62.0)),
+        at((53.0, 53.0)),
+        at((68.0, 51.0)),
+        at((78.0, 57.0)),
+        at((76.0, 81.0)),
+        at((68.0, 87.0)),
+        at((53.0, 84.0)),
+        at((48.0, 62.0)),
     ]
     v.polygon(torso, pal["black"], pal["outline"], 1.4)
 
     # Rigid asymmetric shoulder armor and diagonal route harness.
     shoulder = [
-        _xf(pose, (49.0, 57.0)),
-        _xf(pose, (56.0, 50.0)),
-        _xf(pose, (66.0, 52.0)),
-        _xf(pose, (62.0, 60.0)),
-        _xf(pose, (52.0, 63.0)),
+        at((49.0, 57.0)),
+        at((56.0, 50.0)),
+        at((66.0, 52.0)),
+        at((62.0, 60.0)),
+        at((52.0, 63.0)),
     ]
     v.polygon(shoulder, pal["oxblood_dark"], pal["outline"], 1.0)
-    v.line([_xf(pose, (55.0, 53.0)), _xf(pose, (72.0, 82.0))], pal["outline"], 5.4)
-    v.line([_xf(pose, (55.0, 53.0)), _xf(pose, (72.0, 82.0))], pal["chrome_dark"], 3.5)
-    v.line([_xf(pose, (55.5, 53.5)), _xf(pose, (71.5, 81.3))], pal["chrome"], 0.9)
+    v.line([at((55.0, 53.0)), at((72.0, 82.0))], pal["outline"], 5.4)
+    v.line([at((55.0, 53.0)), at((72.0, 82.0))], pal["chrome_dark"], 3.5)
+    v.line([at((55.5, 53.5)), at((71.5, 81.3))], pal["chrome"], 0.9)
 
     # Crossed routing seams are sewn into the jacket.  The cyan and gold paths
     # carry the interception motif without turning a handheld object into the
     # character's identity.
-    v.line([_xf(pose, (58.0, 57.0)), _xf(pose, (68.0, 73.0))], pal["outline"], 2.5)
-    v.line([_xf(pose, (58.0, 57.0)), _xf(pose, (68.0, 73.0))], pal["route_a"], 1.05)
-    v.line([_xf(pose, (71.0, 57.0)), _xf(pose, (62.0, 73.0))], pal["outline"], 2.5)
-    v.line([_xf(pose, (71.0, 57.0)), _xf(pose, (62.0, 73.0))], pal["route_b"], 1.05)
-    splice = _xf(pose, (65.0, 68.0))
+    v.line([at((58.0, 57.0)), at((68.0, 73.0))], pal["outline"], 2.5)
+    v.line([at((58.0, 57.0)), at((68.0, 73.0))], pal["route_a"], 1.05)
+    v.line([at((71.0, 57.0)), at((62.0, 73.0))], pal["outline"], 2.5)
+    v.line([at((71.0, 57.0)), at((62.0, 73.0))], pal["route_b"], 1.05)
+    splice = at((65.0, 68.0))
     v.rounded(splice, 4.3, 3.3, 0.7, pal["rewrite"], pal["outline"], 0.6)
 
     # Oxblood off-center closure and waist cinch.
-    v.line([_xf(pose, (68.0, 55.0)), _xf(pose, (65.0, 82.0))], pal["oxblood"], 2.2)
-    v.line([_xf(pose, (51.5, 79.0)), _xf(pose, (75.0, 79.0))], pal["outline"], 3.6)
-    v.line([_xf(pose, (52.0, 79.0)), _xf(pose, (74.5, 79.0))], pal["black_light"], 2.1)
-    buckle = _xf(pose, (66.0, 79.0))
+    v.line([at((68.0, 55.0)), at((65.0, 82.0))], pal["oxblood"], 2.2)
+    v.line([at((51.5, 79.0)), at((75.0, 79.0))], pal["outline"], 3.6)
+    v.line([at((52.0, 79.0)), at((74.5, 79.0))], pal["black_light"], 2.1)
+    buckle = at((66.0, 79.0))
     v.rounded(buckle, 5.4, 4.2, 1.0, pal["chrome"], pal["outline"], 0.8)
     v.rounded(buckle, 2.5, 1.8, 0.6, pal["black"], None)
 
     # High collar reinforces the precise, armored silhouette.
     v.polygon(
-        [_xf(pose, (56.0, 54.0)), _xf(pose, (59.0, 43.0)), _xf(pose, (65.0, 54.0))],
+        [at((56.0, 54.0)), at((59.0, 43.0)), at((65.0, 54.0))],
         pal["black_light"],
         pal["outline"],
         1.0,
     )
     v.polygon(
-        [_xf(pose, (65.0, 54.0)), _xf(pose, (70.0, 44.0)), _xf(pose, (73.0, 57.0))],
+        [at((65.0, 54.0)), at((70.0, 44.0)), at((73.0, 57.0))],
         pal["oxblood_dark"],
         pal["outline"],
         1.0,
@@ -615,8 +671,31 @@ def _face_geometry(pose: MalloryPose) -> FaceGeometry:
 
 
 def _paint_head(v: VDraw, pose: MalloryPose) -> None:
+    """The head as one piece per view and expression."""
+    center = _face_geometry(pose).center
+    rest = MalloryPose(
+        animation=pose.animation if pose.side_view > 0.5 else "idle",
+        phase=0.0,
+        side_view=pose.side_view,
+        blink=pose.blink,
+        mouth_open=round(pose.mouth_open, 1),
+    )
+    key = ("mallory_head", rest.side_view > 0.5, rest.blink, rest.mouth_open)
+    _toon_rig.vpiece(v, key, 18.0, center, lambda l, o: _paint_head_rest(l, rest, o), "head")
+
+
+def _paint_head_rest(v: VDraw, pose: MalloryPose, origin: Point) -> None:
     pal = MALLORY_PALETTE
     face = _face_geometry(pose)
+    shift = (origin[0] - face.center[0], origin[1] - face.center[1])
+    face = FaceGeometry(
+        profile=face.profile,
+        center=origin,
+        eyes=tuple((x + shift[0], y + shift[1]) for x, y in face.eyes),
+        brows=tuple(tuple((x + shift[0], y + shift[1]) for x, y in brow) for brow in face.brows),
+        nose=tuple((x + shift[0], y + shift[1]) for x, y in face.nose),
+        mouth=(face.mouth[0] + shift[0], face.mouth[1] + shift[1]),
+    )
     center = face.center
     side = face.profile
     v.ellipse(center, 23.0 if not side else 20.0, 27.0, pal["skin"], pal["outline"], 1.4)
@@ -694,34 +773,50 @@ def _paint_arm(v: VDraw, pose: MalloryPose, which: str) -> None:
     hand = limbs[f"{which}_hand"]
     fill = pal["black_mid"] if which == "near" else pal["black"]
     cuff = pal["oxblood"] if which == "near" else pal["chrome_dark"]
-    v.capsule(shoulder, elbow, 4.0, fill, pal["outline"], 0.8)
-    v.capsule(elbow, hand, 3.4, fill, pal["outline"], 0.8)
-    axis = _norm(_sub(hand, elbow))
-    cuff_center = _add(hand, _mul(axis, -3.0))
-    normal = _perp(axis)
-    v.line([_add(cuff_center, _mul(normal, -3.1)), _add(cuff_center, _mul(normal, 3.1))], pal["outline"], 3.4)
-    v.line([_add(cuff_center, _mul(normal, -2.6)), _add(cuff_center, _mul(normal, 2.6))], cuff, 1.9)
+    _toon_rig.vtube(v, shoulder, elbow, 4.0, 0.8, fill, pal["outline"], f"{which}_upper_arm")
+    s = v.d(1.0)
+
+    def cuff_band(draw, start: Point, length: float) -> None:
+        # The cuff band sits 3 design pixels before the hand.
+        x = start[0] + length - 3.0 * s
+        draw.line([(x, start[1] - 3.1 * s), (x, start[1] + 3.1 * s)], fill=pal["outline"], width=max(1, round(3.4 * s)))
+        draw.line([(x, start[1] - 2.6 * s), (x, start[1] + 2.6 * s)], fill=cuff, width=max(1, round(1.9 * s)))
+
+    _toon_rig.vtube(
+        v, elbow, hand, 3.4, 0.8, fill, pal["outline"], f"{which}_forearm",
+        detail=cuff_band, detail_key=("mallory_cuff", cuff, s),
+    )
 
 
 def _paint_hands(v: VDraw, pose: MalloryPose) -> None:
-    pal = MALLORY_PALETTE
+    """Each hand as one piece; the near hand's gesture keys its piece."""
     limbs = _limb_points(pose)
-    far_hand = limbs["far_hand"]
-    near_hand = limbs["near_hand"]
-    v.ellipse(far_hand, 6.3, 6.0, pal["skin"], pal["outline"], 0.9)
+    gesture = "talk" if pose.animation == "talk" else "interact" if pose.animation == "interact" else ""
+    spread = round(2.5 + 2.5 * pose.intercept, 1)
+    _toon_rig.vpiece(
+        v, "mallory_far_hand", 6.0, limbs["far_hand"],
+        lambda l, o: l.ellipse(o, 6.3, 6.0, MALLORY_PALETTE["skin"], MALLORY_PALETTE["outline"], 0.9), "far_hand",
+    )
+    _toon_rig.vpiece(
+        v, ("mallory_near_hand", gesture, spread if gesture == "interact" else 0.0), 12.0, limbs["near_hand"],
+        lambda l, o: _paint_near_hand(l, o, gesture, spread), "near_hand",
+    )
+
+
+def _paint_near_hand(v: VDraw, near_hand: Point, gesture: str, spread: float) -> None:
+    pal = MALLORY_PALETTE
     v.ellipse(near_hand, 6.6, 6.1, pal["skin_light"], pal["outline"], 0.9)
 
-    if pose.animation == "talk":
+    if gesture == "talk":
         # Exact two-finger explanatory gesture, not a fist or generic wave.
         v.line([near_hand, (near_hand[0] + 6.5, near_hand[1] - 5.0)], pal["outline"], 2.0)
         v.line([near_hand, (near_hand[0] + 7.0, near_hand[1] - 1.0)], pal["outline"], 2.0)
         v.line([(near_hand[0] + 0.3, near_hand[1]), (near_hand[0] + 6.2, near_hand[1] - 4.6)], pal["skin_light"], 1.0)
         v.line([(near_hand[0] + 0.3, near_hand[1] + 0.5), (near_hand[0] + 6.5, near_hand[1] - 0.7)], pal["skin_light"], 1.0)
 
-    if pose.animation == "interact":
+    if gesture == "interact":
         # Open redirecting palm.  Fingers are short and anatomical, so the
         # silhouette cannot be mistaken for a stylus or weapon.
-        spread = 2.5 + 2.5 * pose.intercept
         for idx, dy in enumerate((-2.2, 0.0, 2.2)):
             length = spread - idx * 0.25
             v.line(
@@ -738,17 +833,26 @@ def _paint_hands(v: VDraw, pose: MalloryPose) -> None:
 
 
 def _paint_details(v: VDraw, pose: MalloryPose) -> None:
+    marked = pose.intercept > 0.55
+    _toon_rig.vpiece(v, ("mallory_hardware", marked), 32.0, _torso_at(pose), lambda l, o: _paint_hardware(l, o, marked), "hardware")
+
+
+def _paint_hardware(v: VDraw, origin: Point, marked: bool) -> None:
     pal = MALLORY_PALETTE
+    shift = (origin[0] - _TORSO_ORIGIN[0], origin[1] - _TORSO_ORIGIN[1])
+
+    def at(point: Point) -> Point:
+        return (point[0] + shift[0], point[1] + shift[1])
+
     # Small integrated jacket hardware; nothing is detached or hand-held.
     for x, y in ((55.0, 68.0), (59.0, 72.0), (72.0, 66.0)):
-        p = _xf(pose, (x, y))
-        v.rounded(p, 2.2, 2.2, 0.5, pal["chrome"], pal["outline"], 0.45)
-    v.line([_xf(pose, (51.0, 74.0)), _xf(pose, (58.0, 74.0))], pal["oxblood_light"], 0.8)
+        v.rounded(at((x, y)), 2.2, 2.2, 0.5, pal["chrome"], pal["outline"], 0.45)
+    v.line([at((51.0, 74.0)), at((58.0, 74.0))], pal["oxblood_light"], 0.8)
 
     # The rewrite clasp is intrinsic to the jacket and receives a crisp inner
     # mark at the peak of the intercept animation.  No glow or floating effect.
-    if pose.intercept > 0.55:
-        splice = _xf(pose, (65.0, 68.0))
+    if marked:
+        splice = at((65.0, 68.0))
         v.line(
             [(splice[0] - 1.1, splice[1]), (splice[0] + 1.1, splice[1])],
             pal["chrome_light"],

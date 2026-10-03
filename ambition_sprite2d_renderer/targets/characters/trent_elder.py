@@ -39,6 +39,7 @@ import math
 from dataclasses import dataclass
 
 from ...authoring import rigdoc
+from . import _toon_rig
 from ...profiling import profile
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
@@ -249,12 +250,28 @@ class TrentElderGenerator(CharacterGenerator):
         )
 
         # Order: robe back-cuffs → robe body → arms in sleeves → head + beard.
-        self._draw_robe(img, cx, shoulder_y, hem_y, spec, pal, S, p)
-        self._draw_arms(img, cx, shoulder_y, spec, pal, S, p)
-        self._draw_head(img, head_center, spec, pal, S, p)
+        # Each group is a piece (``_toon_rig``) painted once and placed.
+        frame = _toon_rig.Frame(img)
+        # The robe hangs from the yoke to a fixed hem: one piece per robe
+        # length (a quarter design pixel apart), riding the hem.
+        bob = round(p.body_bob * 4.0) / 4.0
+        robe_h = (spec.robe_h - bob) * S
+        _toon_rig.anchored(
+            frame, ("trent_robe", spec, bob, S), (spec.robe_hem_w * 0.5 * S + 4 * S, robe_h + 4 * S), (cx, hem_y),
+            lambda d, o: self._draw_robe(d._img, o[0], o[1] - robe_h, o[1], spec, pal, S, p), "robe",
+        )
+        self._draw_arms(frame, cx, shoulder_y, spec, pal, S, p)
+        face = TrentPose(blink=p.blink, talk_open=round(p.talk_open, 1))
+        _toon_rig.anchored(
+            frame, ("trent_head", spec, face.blink, face.talk_open, S), (spec.head_w * S, (spec.head_h + spec.beard_h) * S), head_center,
+            lambda d, o: self._draw_head(d._img, o, spec, pal, S, face), "head",
+        )
         # Chain of office over the robe yoke, drawn last so its links
         # sit on top of the placket.
-        self._draw_chain(img, cx, shoulder_y, spec, pal, S, p)
+        _toon_rig.anchored(
+            frame, ("trent_chain", spec, S), (spec.robe_top_w * 0.5 * S + 4 * S, 24 * S), (cx, shoulder_y),
+            lambda d, o: self._draw_chain(d._img, o[0], o[1], spec, pal, S, p), "chain",
+        )
 
         if ss > 1:
             # Through rigdoc's seam, so a part flipbook records each shape.
@@ -356,7 +373,7 @@ class TrentElderGenerator(CharacterGenerator):
 
     def _draw_arms(
         self,
-        base: Image.Image,
+        frame: _toon_rig.Frame,
         cx: float,
         shoulder_y: float,
         spec: TrentSpec,
@@ -364,17 +381,38 @@ class TrentElderGenerator(CharacterGenerator):
         S: float,
         pose: TrentPose,
     ) -> None:
-        d = blending_draw(base)
+        """The far sleeve as one piece riding its shoulder; the near sleeve
+        one piece per lift (rounded), and its cuff, hand and scales one
+        piece riding the cuff."""
+        far_shoulder = (cx - spec.shoulder_w * 0.40 * S, shoulder_y + 4.0 * S)
+        reach = (spec.arm_len + 12.0) * S
+        _toon_rig.anchored(
+            frame, ("trent_far_arm", spec, S), (reach, reach), far_shoulder,
+            lambda d, o: self._paint_far_arm(d, o, spec, pal, S), "far_arm",
+        )
+        lift = round(pose.arm_lift, 2)
+        near_shoulder = (cx + spec.shoulder_w * 0.36 * S, shoulder_y + 4.0 * S)
+        near_cuff = (
+            near_shoulder[0] - spec.shoulder_w * 0.04 * S + lift * 4.0 * S,
+            near_shoulder[1] + spec.arm_len * S - lift * 10.0 * S,
+        )
+        _toon_rig.anchored(
+            frame, ("trent_near_sleeve", spec, lift, S), (reach, reach), near_shoulder,
+            lambda d, o: self._paint_near_sleeve(d, o, lift, spec, pal, S), "near_sleeve",
+        )
+        _toon_rig.anchored(
+            frame, ("trent_near_hand", spec, pose.hold_scales, S), (14.0 * S, 24.0 * S), near_cuff,
+            lambda d, o: self._paint_near_hand(d, o, pose.hold_scales, spec, pal, S), "near_hand",
+        )
+
+    def _paint_far_arm(self, d, far_shoulder: Point, spec: TrentSpec, pal: Dict[str, Color], S: float) -> None:
         outline = pal["outline"]
         # Both arms are tapered sleeves (wide at shoulder, narrow at
-        # cuff). The near arm (camera-right, +x) optionally holds the
-        # balance scales; the far arm hangs at the side, partially
-        # tucked behind the robe.
-        # Far arm — hanging at the side.
-        far_shoulder = (cx - spec.shoulder_w * 0.40 * S, shoulder_y + 4.0 * S)
+        # cuff). The far arm hangs at the side, partially tucked behind
+        # the robe.
         far_cuff = (
-            cx - spec.shoulder_w * 0.36 * S,
-            shoulder_y + spec.arm_len * S + 2.0 * S,
+            far_shoulder[0] + spec.shoulder_w * 0.04 * S,
+            far_shoulder[1] + spec.arm_len * S - 2.0 * S,
         )
         far_sleeve = [
             (far_shoulder[0] - 5.0 * S, far_shoulder[1]),
@@ -404,13 +442,12 @@ class TrentElderGenerator(CharacterGenerator):
             width=max(1, int(0.7 * S)),
         )
 
-        # Near arm — slightly raised (arm_lift drives elbow + cuff y)
-        # and ending in the balance-scales hold by default.
-        lift = pose.arm_lift
-        near_shoulder = (cx + spec.shoulder_w * 0.36 * S, shoulder_y + 4.0 * S)
-        near_cuff_y = shoulder_y + spec.arm_len * S + 4.0 * S - lift * 10.0 * S
-        near_cuff_x = cx + spec.shoulder_w * 0.32 * S + lift * 4.0 * S
-        near_cuff = (near_cuff_x, near_cuff_y)
+    def _paint_near_sleeve(self, d, near_shoulder: Point, lift: float, spec: TrentSpec, pal: Dict[str, Color], S: float) -> None:
+        outline = pal["outline"]
+        near_cuff = (
+            near_shoulder[0] - spec.shoulder_w * 0.04 * S + lift * 4.0 * S,
+            near_shoulder[1] + spec.arm_len * S - lift * 10.0 * S,
+        )
         # The sleeve curves slightly forward — a 4-point polygon with
         # the lower edge skewed by `lift` for a raised-arm feel.
         near_sleeve = [
@@ -429,6 +466,9 @@ class TrentElderGenerator(CharacterGenerator):
             fill=pal["robe_light"],
             width=max(1, int(1.0 * S)),
         )
+
+    def _paint_near_hand(self, d, near_cuff: Point, hold_scales: bool, spec: TrentSpec, pal: Dict[str, Color], S: float) -> None:
+        outline = pal["outline"]
         # Near cuff: gold band, slightly bigger than the far cuff.
         d.rounded_rectangle(
             (
@@ -451,8 +491,8 @@ class TrentElderGenerator(CharacterGenerator):
             width=max(1, int(0.8 * S)),
         )
         # The balance scales hanging from the hand (optional via pose).
-        if pose.hold_scales:
-            self._draw_scales(base, hand_c, pal, S)
+        if hold_scales:
+            self._draw_scales(d._img, hand_c, pal, S)
 
     def _draw_scales(
         self, base: Image.Image, hand: Point, pal: Dict[str, Color], S: float

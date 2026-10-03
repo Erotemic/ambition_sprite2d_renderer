@@ -16,7 +16,7 @@ from typing import Dict, Iterable, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ...authoring.portrait import (
@@ -24,7 +24,6 @@ from ...authoring.portrait import (
     render_canonical_portrait,
     write_portrait_sheet,
 )
-from ambition_sprite2d_renderer.core.draw import blending_draw
 
 ACTOR_METADATA = {'actor': {'character_id': 'npc_robot_heavy', 'display_name': 'Robot Heavy'},
  'body': {'body_plan': 'HumanoidBiped',
@@ -456,8 +455,16 @@ class RobotHeavyRenderer:
         self.spec = spec
 
     def render_frame(self, anim: str, frame_idx: int, nframes: int) -> Image.Image:
+        """The heavy as a rig: every rigid piece painted ONCE in the body's
+        frame (``shape_rig.piece``) and placed through one rig turned by the
+        lean about the root, so a part flipbook stores it once. Limbs are
+        bones of fixed length reaching their pose's hand / ankle (two-bone
+        IK); pieces the old painter kept upright (head, joints, plates, feet)
+        are counter-turned. Vent smoke and the smash flash stay one effect
+        piece per frame."""
+        from .robot_side import RigCanvas
+
         img = Image.new("RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0))
-        draw = blending_draw(img)
         pose = Pose(anim, frame_idx, nframes)
         spec = self.spec
 
@@ -466,48 +473,177 @@ class RobotHeavyRenderer:
             WORK_FRAME_SIZE[1] * 0.76 + pose.root_y + pose.bob,
         )
         global_tilt = pose.lean
+        rig = RigCanvas(img, (root[0] * SUPER, root[1] * SUPER), global_tilt)
 
         def P(x: float, y: float) -> Point:
             rx, ry = _rot_local(x, y, global_tilt)
             return (root[0] + rx, root[1] + ry)
 
+        def at(body: Point) -> Point:
+            """A body-frame point, as the rig places it (before the turn)."""
+            return ((root[0] + body[0]) * SUPER, (root[1] + body[1]) * SUPER)
+
+        def upright(world_deg: float) -> float:
+            return world_deg - global_tilt
+
         # No baked ground drop shadow; the scene renderer owns contact shadows.
-        self._draw_backpack(draw, P, pose)
-        self._draw_back_leg(draw, P, pose)
-        self._draw_back_arm(draw, P, pose)
-        self._draw_torso(draw, P, pose)
-        self._draw_front_leg(draw, P, pose)
-        self._draw_head(draw, P, pose)
-        self._draw_front_arm_and_weapon(draw, P, pose)
+        sx = pose.backpack_sway
+        sway = (sx * 0.2, 0.0) if spec.backpack_style == "stacks" else (0.0, 0.0)
+        rig.put(self._piece(("backpack",), (64, 170, 64, 80), lambda d, Q: self._draw_backpack(d, Q, pose, "frame")), at(sway), 0.0, "backpack")
+        vent = self._effect(img, ("vent", anim, frame_idx, nframes), lambda d: self._draw_backpack(d, P, pose, "vent"))
+        if vent is not None:
+            rigdoc.blit_rotated(img, vent[0], vent[1], (0.0, 0.0), 0.0, part_name="vent")
+        self._place_leg(rig, at, upright, (-22, -40), (-26 + pose.back_leg * 0.18, -6), (-31 + pose.back_leg * 0.14, 12 - pose.back_foot_lift), -1, False)
+        self._place_arm(rig, at, upright, (-50 * spec.shoulder_scale, -118), (-62 + pose.back_arm * 0.16, -90 + pose.back_arm * 0.16), (-44 + pose.back_arm * 0.18, -56 + pose.back_arm * 0.14), False)
+        rig.put(self._piece(("torso",), (70, 160, 70, 10), lambda d, Q: self._draw_torso(d, Q, pose)), at((0.0, 0.0)), 0.0, "torso")
+        self._place_leg(rig, at, upright, (22, -38), (28 + pose.front_leg * 0.18, -4), (34 + pose.front_leg * 0.14, 14 - pose.front_foot_lift), 1, True)
+        head_at = (0.0, -172 + pose.head_tilt * 0.18)
+        head_key = ("head", pose.x_eyes, pose.blink)
+        rig.put(self._piece(head_key, (40, 52, 40, 32), lambda d, Q: self._draw_head(d, Q, pose)), at(head_at), upright(0.0), "head")
+        hand = self._place_arm(
+            rig,
+            at,
+            upright,
+            (50 * spec.shoulder_scale, -116),
+            (60 + pose.front_arm * 0.10, -90 + pose.front_arm * 0.18 + pose.weapon_shift_y * 0.12),
+            (32 + pose.front_arm * 0.23 + pose.weapon_shift_x, -104 + pose.weapon_shift_y),
+            True,
+        )
+        reach = 180 * spec.weapon_scale
+        weapon = self._piece(("weapon",), (reach, reach, reach, reach), lambda d, Q: self._draw_weapon(d, Q(0, 0), 0.0))
+        rig.put(weapon, at(hand), pose.weapon_angle, "weapon")
 
         if anim == "smash" and pose.impact > 0.18:
-            self._draw_smash_fx(draw, P, pose)
+            fx = self._effect(img, ("smash", anim, frame_idx, nframes), lambda d: self._draw_smash_fx(d, P, pose))
+            if fx is not None:
+                rigdoc.blit_rotated(img, fx[0], fx[1], (0.0, 0.0), 0.0, part_name="smash_fx")
         return _downsample(img)
+
+    def _piece(self, key: tuple, extent: Tuple[float, float, float, float], paint):
+        """A piece painted in the body's frame: ``paint(draw, Q)`` with ``Q``
+        mapping a body-frame point (from the piece's pivot) to the piece's
+        canvas; ``extent`` is (left, up, right, down) of the pivot, design units."""
+        left, up, right, down = extent
+
+        def Q(x: float, y: float) -> Point:
+            return (left + x, up + y)
+
+        return shape_rig.piece(("robot_heavy", self.spec.key) + key, ((left + right) * SUPER, (up + down) * SUPER), (left * SUPER, up * SUPER), lambda d: paint(d, Q))
+
+    def _effect(self, img: Image.Image, key: tuple, paint):
+        """An effect painted on a frame-sized piece (one draw, not one per
+        stroke); ``None`` when it paints nothing."""
+        part = shape_rig.piece(("robot_heavy_fx", self.spec.key) + key, img.size, (0.0, 0.0), paint)
+        return part if part[0].getbbox() is not None else None
+
+    def _place_bone(self, rig, at, a: Point, b: Point, length: float, fill: RGBA, width: float, name: str) -> None:
+        """A metal strut with the outline's centre line, ``length`` long from
+        ``a`` toward ``b`` (body frame)."""
+        pad = width + 2
+
+        def paint(d, Q) -> None:
+            _line(d, [Q(0, 0), Q(length, 0)], fill, width)
+            _line(d, [Q(0, 0), Q(length, 0)], OUTLINE, 2.0)
+
+        part = self._piece(("bone", round(length, 3), fill, round(width, 3)), (pad, pad, length + pad, pad), paint)
+        rig.put(part, at(a), math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])), name)
+
+    def _place_leg(self, rig, at, upright, hip: Point, knee: Point, ankle: Point, foot_dir: int, front: bool) -> None:
+        from .robot_side import two_bone
+
+        spec = self.spec
+        upper, lower = (34.5, 19.0) if front else (34.2, 18.7)
+        knee, ankle = two_bone(hip, ankle, upper, lower, knee)
+        side = "front" if front else "back"
+        line_w = (7.6 if front else 7.0) * spec.leg_scale
+        plate_fill = spec.shell_mid if front else spec.shell_dark
+        self._place_bone(rig, at, hip, knee, upper, STEEL_DARK, line_w, f"{side}_thigh")
+        self._place_bone(rig, at, knee, ankle, lower, STEEL_DARK, line_w - 0.6, f"{side}_shin")
+        k = self._piece(("knee", front), (12, 12, 12, 12), lambda d, Q: _ellipse(d, Q(0, 0)[0], Q(0, 0)[1], 8 * spec.leg_scale, 9 * spec.leg_scale, spec.plate, OUTLINE, 1.0))
+        rig.put(k, at(knee), upright(0.0), f"{side}_knee")
+
+        def paint_plate(d, Q) -> None:
+            _poly(d, _rect_poly(Q(0, 0), 16 * spec.leg_scale, 34 * spec.leg_scale, 0.0), plate_fill, OUTLINE, 1.1)
+
+        plate = self._piece(("shin_plate", front), (14, 22, 14, 22), paint_plate)
+        mid = ((knee[0] + ankle[0]) * 0.5, (knee[1] + ankle[1]) * 0.5)
+        rig.put(plate, at(mid), upright(foot_dir * 4.0), f"{side}_shin_plate")
+
+        def paint_foot(d, Q) -> None:
+            ax, ay = Q(0, 0)
+            foot = [
+                (ax - 10 * spec.foot_scale, ay - 6),
+                (ax + 16 * foot_dir * spec.foot_scale, ay - 7),
+                (ax + 19 * foot_dir * spec.foot_scale, ay + 4),
+                (ax - 9 * spec.foot_scale, ay + 6),
+            ]
+            _poly(d, foot, spec.shell_dark if front else spec.plate_dark, OUTLINE, 1.2)
+            _line(d, [(ax - 4, ay - 4), (ax + 8 * foot_dir, ay - 4)], spec.accent, 0.8)
+
+        foot = self._piece(("foot", front, foot_dir), (26, 12, 26, 12), paint_foot)
+        rig.put(foot, at(ankle), upright(0.0), f"{side}_foot")
+
+    def _place_arm(self, rig, at, upright, shoulder: Point, elbow: Point, hand: Point, front: bool) -> Point:
+        """The arm as two struts of fixed length reaching the pose's hand,
+        the elbow guard, forearm plate and fist; returns the fist."""
+        from .robot_side import two_bone
+
+        spec = self.spec
+        upper, lower = (28.0, 36.0) if front else (30.0, 39.0)
+        elbow, hand = two_bone(shoulder, hand, upper, lower, elbow)
+        side = "front" if front else "back"
+        metal = STEEL if front else STEEL_DARK
+        shell = spec.plate if front else spec.plate_dark
+        arm_w = (9.5 if front else 8.5) * spec.arm_scale
+        self._place_bone(rig, at, shoulder, elbow, upper, metal, arm_w, f"{side}_upper_arm")
+        self._place_bone(rig, at, elbow, hand, lower, metal, arm_w - 0.8, f"{side}_forearm")
+        e = self._piece(("elbow", front), (12, 12, 12, 12), lambda d, Q: _ellipse(d, Q(0, 0)[0], Q(0, 0)[1], 8.5 * spec.arm_scale, 9.0 * spec.arm_scale, shell, OUTLINE, 1.0))
+        rig.put(e, at(elbow), upright(0.0), f"{side}_elbow")
+
+        def paint_plate(d, Q) -> None:
+            _poly(d, _rect_poly(Q(0, 0), 17 * spec.arm_scale, 30 * spec.arm_scale, 0.0), spec.shell_mid if front else spec.shell_dark, OUTLINE, 1.0)
+
+        plate = self._piece(("fore_plate", front), (16, 20, 16, 20), paint_plate)
+        mid = ((elbow[0] + hand[0]) * 0.5, (elbow[1] + hand[1]) * 0.5)
+        rig.put(plate, at(mid), upright(6.0 if front else -8.0), f"{side}_fore_plate")
+        fist = self._piece(("fist",), (10, 10, 10, 10), lambda d, Q: _circle(d, Q(0, 0), 6.8 * spec.arm_scale, spec.rust, OUTLINE, 1.0))
+        rig.put(fist, at(hand), 0.0, f"{side}_fist")
+        return hand
 
     def _draw_shadow(self, draw: ImageDraw.ImageDraw, P, pose: Pose) -> None:
         c = P(0, 15)
         _ellipse(draw, c[0], c[1], 56 + abs(pose.lean) * 0.2, 12 - pose.bob * 0.08, GROUND_SHADOW, outline=(0, 0, 0, 0), width=0)
 
-    def _draw_backpack(self, draw: ImageDraw.ImageDraw, P, pose: Pose) -> None:
+    def _draw_backpack(self, draw: ImageDraw.ImageDraw, P, pose: Pose, part: str = "all") -> None:
+        """The backpack's ``part``: "frame" (rigid, unswayed), "vent" (the
+        exhaust line and smoke of this pose), or "all"."""
         spec = self.spec
-        sx = pose.backpack_sway
+        sx = pose.backpack_sway if part != "frame" else 0.0
+        frame = part in ("frame", "all")
+        vent = part in ("vent", "all")
         if spec.backpack_style == "stacks":
-            left = _rect_poly(P(-26 + sx * 0.2, -122), 12, 38, -6)
-            right = _rect_poly(P(26 + sx * 0.2, -122), 12, 38, 6)
-            _poly(draw, left, spec.plate_dark, OUTLINE, 1.1)
-            _poly(draw, right, spec.plate_dark, OUTLINE, 1.1)
-            for dx in (-26, 26):
-                _line(draw, [P(dx, -136), P(dx, -154 - pose.vent_burst * 10)], spec.glow_hot, 1.0)
-                smoke = P(dx + sx * 0.3, -158 - pose.vent_burst * 10)
-                _ellipse(draw, smoke[0], smoke[1], 6 + pose.vent_burst * 8, 8 + pose.vent_burst * 10, SMOKE, outline=(0, 0, 0, 0), width=0)
+            if frame:
+                left = _rect_poly(P(-26 + sx * 0.2, -122), 12, 38, -6)
+                right = _rect_poly(P(26 + sx * 0.2, -122), 12, 38, 6)
+                _poly(draw, left, spec.plate_dark, OUTLINE, 1.1)
+                _poly(draw, right, spec.plate_dark, OUTLINE, 1.1)
+            if vent:
+                for dx in (-26, 26):
+                    _line(draw, [P(dx, -136), P(dx, -154 - pose.vent_burst * 10)], spec.glow_hot, 1.0)
+                    smoke = P(dx + sx * 0.3, -158 - pose.vent_burst * 10)
+                    _ellipse(draw, smoke[0], smoke[1], 6 + pose.vent_burst * 8, 8 + pose.vent_burst * 10, SMOKE, outline=(0, 0, 0, 0), width=0)
         elif spec.backpack_style == "furnace":
-            box = [P(-24, -134), P(24, -134), P(28, -92), P(-28, -92)]
-            _poly(draw, box, spec.plate_dark, OUTLINE, 1.2)
-            vent = [P(-12, -124), P(12, -124), P(10, -102), P(-10, -102)]
-            _poly(draw, vent, spec.glow, OUTLINE, 1.0)
-            _line(draw, [P(-18, -112), P(18, -112)], spec.glow_hot, 1.0)
-            smoke = P(0, -148 - pose.vent_burst * 12)
-            _ellipse(draw, smoke[0], smoke[1], 10 + pose.vent_burst * 9, 11 + pose.vent_burst * 12, SMOKE, outline=(0, 0, 0, 0), width=0)
+            if frame:
+                box = [P(-24, -134), P(24, -134), P(28, -92), P(-28, -92)]
+                _poly(draw, box, spec.plate_dark, OUTLINE, 1.2)
+                vent_box = [P(-12, -124), P(12, -124), P(10, -102), P(-10, -102)]
+                _poly(draw, vent_box, spec.glow, OUTLINE, 1.0)
+                _line(draw, [P(-18, -112), P(18, -112)], spec.glow_hot, 1.0)
+            if vent:
+                smoke = P(0, -148 - pose.vent_burst * 12)
+                _ellipse(draw, smoke[0], smoke[1], 10 + pose.vent_burst * 9, 11 + pose.vent_burst * 12, SMOKE, outline=(0, 0, 0, 0), width=0)
+        elif not frame:
+            return
         else:  # coil
             frame = [P(-28, -134), P(28, -134), P(28, -108), P(-28, -108)]
             _poly(draw, frame, spec.plate_dark, OUTLINE, 1.1)
@@ -516,37 +652,6 @@ class RobotHeavyRenderer:
             arc_box = (_s(P(0, -121)[0] - 28), _s(P(0, -121)[1] - 18), _s(P(0, -121)[0] + 28), _s(P(0, -121)[1] + 18))
             draw.arc(arc_box, 200, 340, fill=(*spec.glow[:3], 150), width=_s(2.5))
             draw.arc(arc_box, 20, 160, fill=(*spec.glow[:3], 120), width=_s(2.0))
-
-    def _draw_leg(self, draw: ImageDraw.ImageDraw, hip: Point, knee: Point, ankle: Point, foot_dir: int, front: bool) -> None:
-        spec = self.spec
-        line_w = (7.6 if front else 7.0) * spec.leg_scale
-        plate_fill = spec.shell_mid if front else spec.shell_dark
-        _line(draw, [hip, knee], spec.metal if hasattr(spec, 'metal') else STEEL_DARK, line_w)
-        _line(draw, [knee, ankle], STEEL_DARK, line_w - 0.6)
-        _line(draw, [hip, knee, ankle], OUTLINE, 2.0)
-        _ellipse(draw, knee[0], knee[1], 8 * spec.leg_scale, 9 * spec.leg_scale, spec.plate, OUTLINE, 1.0)
-        shin = _rect_poly(((knee[0] + ankle[0]) * 0.5, (knee[1] + ankle[1]) * 0.5), 16 * spec.leg_scale, 34 * spec.leg_scale, foot_dir * 4.0)
-        _poly(draw, shin, plate_fill, OUTLINE, 1.1)
-        foot = [
-            (ankle[0] - 10 * spec.foot_scale, ankle[1] - 6),
-            (ankle[0] + 16 * foot_dir * spec.foot_scale, ankle[1] - 7),
-            (ankle[0] + 19 * foot_dir * spec.foot_scale, ankle[1] + 4),
-            (ankle[0] - 9 * spec.foot_scale, ankle[1] + 6),
-        ]
-        _poly(draw, foot, spec.shell_dark if front else spec.plate_dark, OUTLINE, 1.2)
-        _line(draw, [(ankle[0] - 4, ankle[1] - 4), (ankle[0] + 8 * foot_dir, ankle[1] - 4)], spec.accent, 0.8)
-
-    def _draw_back_leg(self, draw: ImageDraw.ImageDraw, P, pose: Pose) -> None:
-        hip = P(-22, -40)
-        knee = P(-26 + pose.back_leg * 0.18, -6)
-        ankle = P(-31 + pose.back_leg * 0.14, 12 - pose.back_foot_lift)
-        self._draw_leg(draw, hip, knee, ankle, -1, front=False)
-
-    def _draw_front_leg(self, draw: ImageDraw.ImageDraw, P, pose: Pose) -> None:
-        hip = P(22, -38)
-        knee = P(28 + pose.front_leg * 0.18, -4)
-        ankle = P(34 + pose.front_leg * 0.14, 14 - pose.front_foot_lift)
-        self._draw_leg(draw, hip, knee, ankle, 1, front=True)
 
     def _draw_torso(self, draw: ImageDraw.ImageDraw, P, pose: Pose) -> None:
         spec = self.spec
@@ -579,32 +684,6 @@ class RobotHeavyRenderer:
         if spec.shoulder_pods:
             _poly(draw, [P(-sw - 6, -136), P(-sw + 12, -152), P(-sw + 24, -126), P(-sw + 4, -116)], spec.plate, OUTLINE, 1.0)
             _poly(draw, [P(sw - 24, -126), P(sw - 12, -152), P(sw + 6, -136), P(sw - 4, -116)], spec.plate, OUTLINE, 1.0)
-
-    def _draw_arm(self, draw: ImageDraw.ImageDraw, shoulder: Point, elbow: Point, hand: Point, front: bool) -> None:
-        spec = self.spec
-        metal = STEEL if front else STEEL_DARK
-        shell = spec.plate if front else spec.plate_dark
-        arm_w = (9.5 if front else 8.5) * spec.arm_scale
-        _line(draw, [shoulder, elbow], metal, arm_w)
-        _line(draw, [elbow, hand], metal, arm_w - 0.8)
-        _line(draw, [shoulder, elbow, hand], OUTLINE, 2.0)
-        _ellipse(draw, elbow[0], elbow[1], 8.5 * spec.arm_scale, 9.0 * spec.arm_scale, shell, OUTLINE, 1.0)
-        fore = _rect_poly(((elbow[0] + hand[0]) * 0.5, (elbow[1] + hand[1]) * 0.5), 17 * spec.arm_scale, 30 * spec.arm_scale, 6 if front else -8)
-        _poly(draw, fore, spec.shell_mid if front else spec.shell_dark, OUTLINE, 1.0)
-        _circle(draw, hand, 6.8 * spec.arm_scale, spec.rust, OUTLINE, 1.0)
-
-    def _draw_back_arm(self, draw: ImageDraw.ImageDraw, P, pose: Pose) -> None:
-        shoulder = P(-50 * self.spec.shoulder_scale, -118)
-        elbow = P(-62 + pose.back_arm * 0.16, -90 + pose.back_arm * 0.16)
-        hand = P(-44 + pose.back_arm * 0.18, -56 + pose.back_arm * 0.14)
-        self._draw_arm(draw, shoulder, elbow, hand, front=False)
-
-    def _draw_front_arm_and_weapon(self, draw: ImageDraw.ImageDraw, P, pose: Pose) -> None:
-        shoulder = P(50 * self.spec.shoulder_scale, -116)
-        elbow = P(60 + pose.front_arm * 0.10, -90 + pose.front_arm * 0.18 + pose.weapon_shift_y * 0.12)
-        hand = P(32 + pose.front_arm * 0.23 + pose.weapon_shift_x, -104 + pose.weapon_shift_y)
-        self._draw_arm(draw, shoulder, elbow, hand, front=True)
-        self._draw_weapon(draw, hand, pose.weapon_angle + pose.lean)
 
     def _draw_weapon(self, draw: ImageDraw.ImageDraw, hand: Point, angle: float) -> None:
         spec = self.spec
@@ -647,8 +726,9 @@ class RobotHeavyRenderer:
             draw.arc(arc_box, 70, 290, fill=(*spec.glow_hot[:3], 120), width=_s(1.6))
 
     def _draw_head(self, draw: ImageDraw.ImageDraw, P, pose: Pose) -> None:
+        """The head about ``P(0, 0)`` (its piece's pivot)."""
         spec = self.spec
-        hx, hy = P(0, -172 + pose.head_tilt * 0.18)
+        hx, hy = P(0, 0)
         if spec.head_style == "mono":
             head = [(hx - 32, hy - 12), (hx - 22, hy - 34), (hx + 24, hy - 34), (hx + 34, hy - 8), (hx + 24, hy + 18), (hx - 24, hy + 18), (hx - 34, hy - 4)]
             _poly(draw, head, spec.shell_mid, OUTLINE, 1.4)

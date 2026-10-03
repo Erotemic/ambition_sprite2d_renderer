@@ -23,11 +23,12 @@ from typing import Dict, List, Tuple
 
 from PIL import Image, ImageDraw, ImageColor
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.common_draw import draw_capsule
 from ...authoring.rig import add, clamp, lerp, smoothstep, vec
 from ...authoring.skeleton import (
+    BoneWorld,
     Channel,
     Clip,
     PartCtx,
@@ -249,6 +250,79 @@ def _build_rig() -> Rig:
 _RIG = _build_rig()
 
 
+# ---- The rig placed piece by piece ---------------------------------------------
+# Each part is painted ONCE in its bone's own frame (``shape_rig.piece``) and
+# turned into place by the bone's world angle, so a part flipbook stores it
+# once (``authoring/shape_rig.py``). A limb is two pieces, one per bone (the
+# lower carries the joint cap and the hand), each a capsule of its bone's
+# length.
+
+
+def _local_ctx(image: Image.Image, reach: float, length: float, params) -> PartCtx:
+    """A paint context whose bone sits at ``(reach, reach)`` (design units)
+    of ``image`` pointing along +x."""
+    return PartCtx(image, blending_draw(image), BoneWorld((reach, reach), 0.0, length), {}, SS, params)
+
+
+def _bone_piece(key: tuple, reach: float, length: float, paint, params=None):
+    def run(d) -> None:
+        paint(_local_ctx(d._img, reach, length, params or {}))
+
+    size = 2 * reach * SS
+    return shape_rig.piece(("fable",) + key, (size, size), (reach * SS, reach * SS), run)
+
+
+def _place(canvas: Image.Image, part, bw: BoneWorld, name: str) -> None:
+    image, pivot = part
+    rigdoc.blit_rotated(canvas, image, pivot, (bw.origin[0] * SS, bw.origin[1] * SS), bw.angle, part_name=name)
+
+
+def _limb_segment(tint: Color, radius: float, length: float, joint_r: float = 0.0, hand_r: float = 0.0):
+    def fn(ctx: PartCtx) -> None:
+        ow = ctx.L(0.55)
+        draw_capsule(ctx.draw, ctx.cw(ctx.bw.origin), ctx.cw(ctx.bw.tip), ctx.L(radius), tint, PAL["outline"], ow)
+        if joint_r > 0:
+            # Joint cap at the knee/elbow so the seam reads as a hinge.
+            jx, jy = ctx.cw(ctx.bw.origin)
+            jr = ctx.L(joint_r)
+            ctx.draw.ellipse((jx - jr, jy - jr, jx + jr, jy + jr), fill=PAL["joint_dark"])
+        if hand_r > 0:
+            hx, hy = ctx.cw(ctx.bw.tip)
+            hr = ctx.L(hand_r)
+            ctx.draw.ellipse((hx - hr, hy - hr, hx + hr, hy + hr), fill=PAL["shell"], outline=PAL["outline"], width=max(1, int(ctx.L(0.5))))
+
+    return fn
+
+
+def _place_limb(canvas: Image.Image, world, side: str, kind: str, tint_u: Color, tint_l: Color, r_u: float, r_l: float, hand_r: float = 0.0) -> None:
+    upper, lower = world[f"{side}_{kind}_u"], world[f"{side}_{kind}_l"]
+    for bone, tint, r, joint, hand, name in (
+        (upper, tint_u, r_u, 0.0, 0.0, "u"),
+        (lower, tint_l, r_l, r_u * 0.62, hand_r, "l"),
+    ):
+        reach = bone.length + max(r, hand) + 3.0
+        part = _bone_piece(("limb", round(bone.length, 3), tint, r, joint, hand), reach, bone.length, _limb_segment(tint, r, bone.length, joint, hand))
+        _place(canvas, part, bone, f"{side}_{kind}_{name}")
+
+
+def _place_rig(canvas: Image.Image, world, params) -> None:
+    """``_RIG.draw`` as pieces, in the same z order."""
+    blink = params.get("blink", 0.0) > 0.5
+    squint = round(clamp(params.get("eye_squint", 0.0), 0.0, 1.0) * 20.0) / 20.0
+    head_params = {"blink": 1.0 if blink else 0.0, "eye_squint": squint}
+    _place_limb(canvas, world, "far", "arm", PAL["joint_dark"], PAL["shell_side"], 2.3, 2.1, hand_r=3.0)
+    _place_limb(canvas, world, "far", "leg", PAL["joint_dark"], PAL["shell_side"], 2.7, 2.5)
+    _place(canvas, _bone_piece(("foot",), 10.0, 6.0, _foot_painter()), world["far_foot"], "far_foot")
+    _place(canvas, _bone_piece(("pelvis",), 14.0, 0.0, _pelvis_painter), world["pelvis"], "pelvis")
+    _place(canvas, _bone_piece(("torso",), 18.0, 0.0, _torso_painter), world["torso"], "torso")
+    _place_limb(canvas, world, "near", "leg", PAL["joint"], PAL["shell"], 2.7, 2.5)
+    _place(canvas, _bone_piece(("foot",), 10.0, 6.0, _foot_painter()), world["near_foot"], "near_foot")
+    _place(canvas, _bone_piece(("head", blink, squint), 24.0, 0.0, _head_painter, head_params), world["head"], "head")
+    antenna = world["antenna"]
+    _place(canvas, _bone_piece(("antenna", round(antenna.length, 3)), antenna.length + 5.0, antenna.length, _antenna_painter), antenna, "antenna")
+    _place_limb(canvas, world, "near", "arm", PAL["joint"], PAL["shell"], 2.3, 2.1, hand_r=3.2)
+
+
 # ---- Clips -------------------------------------------------------------------
 # Channel names matching bones are pose angles (degrees). Free parameters:
 #   root_x / root_y           — root offset from (CENTER_X, GROUND_Y)
@@ -425,10 +499,34 @@ def _blade_line(world, params) -> Tuple[Point, Point, float]:
     return hand, add(hand, vec(length, ang)), vis
 
 
-def _draw_slash_fx(draw: ImageDraw.ImageDraw, t: float, world, params) -> None:
+def _place_slash_fx(canvas: Image.Image, t: float, world, params) -> None:
+    """The slash: the swish smear (one piece for the frame's moment) and the
+    blade (one piece per length, turned about the hand)."""
     hand, tip, vis = _blade_line(world, params)
     if vis <= 0.01:
         return
+    if 0.36 <= t <= 0.55:
+        key = ("fable_smear", round(t, 4))
+        smear = shape_rig.piece(key, canvas.size, (0.0, 0.0), lambda d: _draw_smear(d, t))
+        if smear[0].getbbox() is not None:
+            rigdoc.blit_rotated(canvas, smear[0], smear[1], (0.0, 0.0), 0.0, part_name="slash_smear")
+    length = math.hypot(tip[0] - hand[0], tip[1] - hand[1])
+    length = round(length * 4) / 4
+    pad = 3.0
+
+    def paint_blade(d) -> None:
+        a, b = (pad * SS, pad * SS), ((pad + length) * SS, pad * SS)
+        d.line([a, b], fill=PAL["outline"], width=max(1, int(3.4 * SS)))
+        d.line([a, b], fill=PAL["accent"], width=max(1, int(2.0 * SS)))
+        d.line([a, ((pad + length * 0.8) * SS, pad * SS)], fill=(255, 255, 255, 230), width=max(1, int(0.9 * SS)))
+
+    blade = shape_rig.piece(("fable_blade", length), ((length + 2 * pad) * SS, 2 * pad * SS), (pad * SS, pad * SS), paint_blade)
+    angle = math.degrees(math.atan2(tip[1] - hand[1], tip[0] - hand[0]))
+    rigdoc.blit_rotated(canvas, blade[0], blade[1], (hand[0] * SS, hand[1] * SS), angle, part_name="blade")
+
+
+def _draw_smear(draw: ImageDraw.ImageDraw, t: float) -> None:
+    """The swish strokes traced along the recent blade-tip path."""
 
     def c(p: Point) -> Point:
         return (p[0] * SS, p[1] * SS)
@@ -457,10 +555,6 @@ def _draw_slash_fx(draw: ImageDraw.ImageDraw, t: float, world, params) -> None:
                     width=max(1, int(SS * w_head * (0.3 + 0.7 * fade))),
                 )
 
-    draw.line([c(hand), c(tip)], fill=PAL["outline"], width=max(1, int(3.4 * SS)))
-    draw.line([c(hand), c(tip)], fill=PAL["accent"], width=max(1, int(2.0 * SS)))
-    core_tip = (lerp(hand[0], tip[0], 0.8), lerp(hand[1], tip[1], 0.8))
-    draw.line([c(hand), c(core_tip)], fill=(255, 255, 255, 230), width=max(1, int(0.9 * SS)))
 
 
 def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
@@ -475,10 +569,10 @@ def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     actor = Image.new("RGBA", img.size, (0, 0, 0, 0))
     # Opaque parts draw directly; translucent details inside the painters
     # go through composite_polygon (scratch layer + alpha_composite).
-    _RIG.draw(actor, blending_draw(actor), world, SS, params)
+    _place_rig(actor, world, params)
     if animation == "slash":
         fx = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        _draw_slash_fx(blending_draw(fx), t, world, params)
+        _place_slash_fx(fx, t, world, params)
         # During the windup the cocked blade sits behind the body so it
         # never crosses the face; from the sweep onward it leads the swing.
         layers = (fx, actor) if t < 0.40 else (actor, fx)

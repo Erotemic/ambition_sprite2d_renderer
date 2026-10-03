@@ -18,15 +18,15 @@ from __future__ import annotations
 
 import math
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Callable, Dict, Optional, Tuple
 
 from PIL import Image, ImageDraw
 from ambition_sprite2d_renderer.core.draw import rgba, with_alpha, bbox_from_center as _bbox
 
 from ...profiling import profile
-from ...authoring import rigdoc
-from ...authoring.common_draw import RESAMPLING, draw_capsule, draw_rotated_ellipse, draw_rotated_rounded_rect
+from ...authoring import rigdoc, shape_rig
+from ...authoring.common_draw import RESAMPLING, draw_rotated_ellipse, draw_rotated_rounded_rect
 from ...authoring.rig import add, clamp, ease_in_out_sine, ease_out_cubic, smoothstep, vec
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
@@ -55,10 +55,10 @@ def parse_background(value: str) -> Optional[Color]:
 
 
 
-def _paste_rotated_local(base: Image.Image, layer: Image.Image, center: Point, angle: float, name: str) -> None:
-    rotated = layer.rotate(angle, resample=RESAMPLING.BICUBIC, expand=True)
-    # Through rigdoc's seam, so a part flipbook records the turned layer as one part.
-    rigdoc.composite_layer(base, rotated, (int(center[0] - rotated.width / 2), int(center[1] - rotated.height / 2)), name=name)
+def _paste_rotated_local(base: Image.Image, part: Tuple[Image.Image, Point], center: Point, angle: float, name: str) -> None:
+    """``part`` turned ``angle`` degrees (counter-clockwise, as ``Image.rotate``)
+    about its pivot, placed at ``center``: one piece, turned (``shape_rig``)."""
+    shape_rig.place(base, part, center, -angle, name)
 
 
 
@@ -69,6 +69,14 @@ def _scale_color(color: Color, factor: float) -> Color:
         int(clamp(color[2] * factor, 0, 255)),
         color[3],
     )
+
+
+#: Props that hang upright from the hand: ``(reach, offset)``, the prop's
+#: anchor is ``reach`` design pixels from the hand along ``angle - offset``.
+_HANGING_PROPS: Dict[str, Tuple[float, float]] = {
+    "lantern": (6.0, 30.0),
+    "key_ring": (6.0, 20.0),
+}
 
 
 # --- dataclasses ---------------------------------------------------------------
@@ -470,9 +478,16 @@ class ToonSideGenerator(CharacterGenerator):
         draw.ellipse(_bbox(center, width * S, 12.0 * S), fill=(0, 0, 0, alpha))
 
     def _draw_head(self, base: Image.Image, center: Point, spec: ToonSpec, pal: Dict[str, Color], S: float, pose: ToonPose) -> None:
+        """The head painted untilted, one piece per expression (rounded),
+        turned by the head tilt."""
         pad = int(max(spec.head_w, spec.head_h) * S * 1.7)
-        layer = Image.new("RGBA", (pad * 2, pad * 2), (0, 0, 0, 0))
-        d = blending_draw(layer)
+        face = replace(pose, eye_squint=round(pose.eye_squint, 2), mouth_open=round(pose.mouth_open, 1))
+        key = ("toon_head", spec, S, face.blink, face.dead, face.eye_squint, face.mouth_open)
+        part = shape_rig.piece(key, (pad * 2, pad * 2), (pad, pad), lambda d: self._paint_head(d, pad, spec, pal, S, face))
+        _paste_rotated_local(base, part, center, pose.head_tilt, "head")
+
+    def _paint_head(self, d, pad: int, spec: ToonSpec, pal: Dict[str, Color], S: float, pose: ToonPose) -> None:
+        """The head in its own frame, centred on ``(pad, pad)``."""
         c = (pad, pad)
         outline = pal["outline"]
         # Hood / back hair mass first.
@@ -1176,9 +1191,15 @@ class ToonSideGenerator(CharacterGenerator):
             d.ellipse(_bbox((c[0] + 4.2 * S, mouth_y), 4.8 * S, (1.6 + pose.mouth_open * 1.8) * S), fill=_scale_color(outline, 0.9), outline=outline)
         else:
             d.arc((c[0] + 0.4 * S, mouth_y - 2 * S, c[0] + 8.2 * S, mouth_y + 2.5 * S), start=8, end=140, fill=outline, width=max(1, int(1.1 * S)))
-        _paste_rotated_local(base, layer, center, pose.head_tilt, "head")
 
     def _draw_torso(self, base: Image.Image, center: Point, spec: ToonSpec, pal: Dict[str, Color], S: float, pose: ToonPose) -> None:
+        """The torso and its clothing as one piece riding the torso centre:
+        it reads no pose, so it is painted once per character."""
+        half = int(math.ceil((max(spec.shoulder_w, spec.torso_h, spec.hip_w) + spec.coat_len + spec.cape_len + 24.0) * S))
+        part = shape_rig.piece(("toon_torso", spec, S), (2 * half, 2 * half), (half, half), lambda d: self._paint_torso(d._img, (half, half), spec, pal, S))
+        shape_rig.place(base, part, center, 0.0, "torso")
+
+    def _paint_torso(self, base: Image.Image, center: Point, spec: ToonSpec, pal: Dict[str, Color], S: float) -> None:
         outline = pal["outline"]
         if spec.outfit == "jacket":
             pts = [
@@ -1883,6 +1904,25 @@ class ToonSideGenerator(CharacterGenerator):
                 )
 
     def _draw_prop(self, base: Image.Image, hand: Point, spec: ToonSpec, pal: Dict[str, Color], S: float, angle: float) -> None:
+        """The held prop as one piece: painted at angle 0 about the hand and
+        turned to ``angle``."""
+        if spec.prop in ("", "none", None):
+            return
+        half = int(math.ceil(48.0 * S))
+        hang = _HANGING_PROPS.get(spec.prop)
+        if hang is None:
+            part = shape_rig.piece(("toon_prop", spec, S), (2 * half, 2 * half), (half, half), lambda d: self._paint_prop(d._img, (half, half), spec, pal, S, 0.0))
+            shape_rig.place(base, part, hand, angle, "prop")
+            return
+        # A hanging prop stays upright: it rides the point ``reach`` from the
+        # hand along ``angle - offset``, and does not turn.
+        reach, offset = hang
+        reach *= S
+        pivot = (half + reach, float(half))
+        part = shape_rig.piece(("toon_prop", spec, S), (2 * half, 2 * half), pivot, lambda d: self._paint_prop(d._img, (half, half), spec, pal, S, offset))
+        shape_rig.place(base, part, add(hand, vec(reach, angle - offset)), 0.0, "prop")
+
+    def _paint_prop(self, base: Image.Image, hand: Point, spec: ToonSpec, pal: Dict[str, Color], S: float, angle: float) -> None:
         outline = pal["outline"]
         prop = spec.prop
         if prop == "blade":
@@ -2173,12 +2213,16 @@ class ToonSideGenerator(CharacterGenerator):
         # contact, and the baked-in shadow ellipse fought camera
         # angles and transparent backgrounds.
         if p.dash > 0.0:
-            trail = Image.new("RGBA", img.size, (0, 0, 0, 0))
-            trail_d = blending_draw(trail)
-            for i, alpha in enumerate([55, 32, 18]):
-                xoff = (i + 1) * 6.0 * S
-                trail_d.rounded_rectangle((torso_center[0] - 18*S - xoff, torso_center[1] - 10*S, torso_center[0] + 12*S - xoff, torso_center[1] + 16*S), radius=6*S, fill=with_alpha(pal["accent"], alpha))
-            rigdoc.composite_canvas(img, trail)
+            # The dash trail rides the torso: one piece.
+            half = int(math.ceil(40 * S))
+
+            def paint_trail(trail_d) -> None:
+                c = (half, half)
+                for i, alpha in enumerate([55, 32, 18]):
+                    xoff = (i + 1) * 6.0 * S
+                    trail_d.rounded_rectangle((c[0] - 18*S - xoff, c[1] - 10*S, c[0] + 12*S - xoff, c[1] + 16*S), radius=6*S, fill=with_alpha(pal["accent"], alpha))
+
+            shape_rig.place(img, shape_rig.piece(("toon_trail", pal["accent"], S), (2 * half, 2 * half), (half, half), paint_trail), torso_center, 0.0, "dash_trail")
 
         def leg_points(is_near: bool):
             sign = 1.0 if is_near else -1.0
@@ -2262,7 +2306,7 @@ class ToonSideGenerator(CharacterGenerator):
                 name=f"{side}_cuff_edge",
             )
 
-        def draw_skin_hand(hand: Point, *, scale: float = 1.0, outline_width: float = 1.0) -> None:
+        def draw_skin_hand(hand: Point, *, name: str, scale: float = 1.0, outline_width: float = 1.0) -> None:
             """Draw the terminal hand circle large enough to cover the sleeve cap."""
             diameter = spec.hand_r * scale * S
             if spec.outfit == "general_uniform":
@@ -2271,12 +2315,19 @@ class ToonSideGenerator(CharacterGenerator):
                 # skin hand must be a full ball on top of that cap rather than
                 # a tiny dot at the wrist.
                 diameter *= 2.0
-            d.ellipse(
-                _bbox(hand, diameter, diameter),
-                fill=pal["skin"],
-                outline=pal["outline"],
-                width=max(1, int(outline_width * S)),
+            half = diameter * 0.5 + 2 * S
+            part = shape_rig.piece(
+                ("toon_hand", round(diameter, 3), outline_width, pal["skin"], pal["outline"], S),
+                (2 * half, 2 * half),
+                (half, half),
+                lambda hd: hd.ellipse(
+                    _bbox((half, half), diameter, diameter),
+                    fill=pal["skin"],
+                    outline=pal["outline"],
+                    width=max(1, int(outline_width * S)),
+                ),
             )
+            shape_rig.place(img, part, hand, 0.0, name)
 
         def draw_armband(shoulder: Point, elbow: Point, *, side: str, scale: float = 1.0, include_insignia: bool = True) -> None:
             if spec.outfit != "storm_uniform":
@@ -2314,23 +2365,27 @@ class ToonSideGenerator(CharacterGenerator):
             )
             layer_w = max(8, int(10.0 * scale * S))
             layer_h = max(8, int(10.0 * scale * S))
-            layer = Image.new("RGBA", (layer_w, layer_h), (0, 0, 0, 0))
-            ld = blending_draw(layer)
             cx = layer_w / 2.0
             cy = layer_h / 2.0
-            ld.polygon([
+
+            def paint_insignia(ld) -> None:
+                ld.polygon([
                 (cx - 2.0 * scale * S, cy - 2.0 * scale * S),
                 (cx + 0.3 * scale * S, cy - 0.2 * scale * S),
                 (cx - 0.8 * scale * S, cy + 2.0 * scale * S),
                 (cx - 2.8 * scale * S, cy + 0.4 * scale * S),
-            ], fill=pal["outline"])
-            ld.polygon([
-                (cx + 0.2 * scale * S, cy - 2.0 * scale * S),
-                (cx + 2.6 * scale * S, cy - 0.4 * scale * S),
-                (cx + 0.9 * scale * S, cy + 2.2 * scale * S),
-                (cx - 0.4 * scale * S, cy + 0.2 * scale * S),
-            ], fill=pal["outline"])
-            _paste_rotated_local(img, layer, disc_center, angle, f"{side}_insignia")
+                ], fill=pal["outline"])
+                ld.polygon([
+                    (cx + 0.2 * scale * S, cy - 2.0 * scale * S),
+                    (cx + 2.6 * scale * S, cy - 0.4 * scale * S),
+                    (cx + 0.9 * scale * S, cy + 2.2 * scale * S),
+                    (cx - 0.4 * scale * S, cy + 0.2 * scale * S),
+                ], fill=pal["outline"])
+
+            part = shape_rig.piece(("toon_insignia", scale, pal["outline"], S), (layer_w, layer_h), (cx, cy), paint_insignia)
+            # ``angle`` is the arm's direction (clockwise positive); the old
+            # layer was turned by it counter-clockwise.
+            _paste_rotated_local(img, part, disc_center, angle, f"{side}_insignia")
 
         # Side-view depth semantics for right-facing toon rigs:
         # screen-right limb = player-left/back limb (darker, behind),
@@ -2348,34 +2403,34 @@ class ToonSideGenerator(CharacterGenerator):
 
         back_tint = _scale_color(pal["outfit_dark"], 0.93)
         front_tint = pal["outfit"]
-        draw_capsule(d, back_hip, back_knee, spec.leg_radius * 0.92 * S, back_tint, pal["outline"], 1.1 * S)
-        draw_capsule(d, back_knee, back_ankle, spec.leg_radius * 0.88 * S, back_tint, pal["outline"], 1.1 * S)
+        shape_rig.capsule(img, back_hip, back_knee, spec.leg_radius * 0.92 * S, back_tint, pal["outline"], 1.1 * S, "back_thigh", length=spec.leg_upper * S)
+        shape_rig.capsule(img, back_knee, back_ankle, spec.leg_radius * 0.88 * S, back_tint, pal["outline"], 1.1 * S, "back_shin", length=spec.leg_lower * S)
         draw_rotated_rounded_rect(img, back_foot_center, (spec.foot_w * S, spec.foot_h * S), back_foot_angle, spec.foot_h * 0.48 * S, pal["shoe"], pal["outline"], 1.0 * S, name="back_foot")
         back_shoulder, back_elbow, back_hand = arm_points(True)
-        draw_capsule(d, back_shoulder, back_elbow, spec.arm_radius * 0.92 * S, back_tint, pal["outline"], 1.1 * S)
-        draw_capsule(d, back_elbow, back_hand, spec.arm_radius * 0.88 * S, back_tint, pal["outline"], 1.1 * S)
+        shape_rig.capsule(img, back_shoulder, back_elbow, spec.arm_radius * 0.92 * S, back_tint, pal["outline"], 1.1 * S, "back_upper_arm", length=spec.arm_upper * S)
+        shape_rig.capsule(img, back_elbow, back_hand, spec.arm_radius * 0.88 * S, back_tint, pal["outline"], 1.1 * S, "back_forearm", length=spec.arm_lower * S)
         draw_armband(back_shoulder, back_elbow, side="back", scale=0.88, include_insignia=False)
         draw_uniform_cuff(back_elbow, back_hand, side="back", scale=0.88)
-        draw_skin_hand(back_hand, scale=0.90, outline_width=0.9)
+        draw_skin_hand(back_hand, name="back_hand", scale=0.90, outline_width=0.9)
 
         # torso/head core silhouette
         self._draw_torso(img, torso_center, spec, pal, S, p)
         self._draw_head(img, head_center, spec, pal, S, p)
 
         # front limbs and props
-        draw_capsule(d, front_hip, front_knee, spec.leg_radius * S, front_tint, pal["outline"], 1.15 * S)
-        draw_capsule(d, front_knee, front_ankle, spec.leg_radius * 0.96 * S, front_tint, pal["outline"], 1.15 * S)
+        shape_rig.capsule(img, front_hip, front_knee, spec.leg_radius * S, front_tint, pal["outline"], 1.15 * S, "front_thigh", length=spec.leg_upper * S)
+        shape_rig.capsule(img, front_knee, front_ankle, spec.leg_radius * 0.96 * S, front_tint, pal["outline"], 1.15 * S, "front_shin", length=spec.leg_lower * S)
         draw_rotated_rounded_rect(img, front_foot_center, (spec.foot_w * S, spec.foot_h * S), front_foot_angle, spec.foot_h * 0.48 * S, pal["shoe"], pal["outline"], 1.0 * S, name="front_foot")
         front_shoulder, front_elbow, front_hand = arm_points(False)
         sleeve_fill = pal["outfit"] if spec.outfit in {"poncho", "keeper_robe", "long_coat", "general_uniform", "storm_uniform", "banyan", "eavesdrop_cloak", "field_jacket", "cinched_field_jacket", "formal_robe", "judicial_robe", "vest_over_shirt", "tabard", "cinched_tabard"} else pal["skin"]
-        draw_capsule(d, front_shoulder, front_elbow, spec.arm_radius * S, sleeve_fill, pal["outline"], 1.1 * S)
-        draw_capsule(d, front_elbow, front_hand, spec.arm_radius * 0.95 * S, sleeve_fill, pal["outline"], 1.1 * S)
+        shape_rig.capsule(img, front_shoulder, front_elbow, spec.arm_radius * S, sleeve_fill, pal["outline"], 1.1 * S, "front_upper_arm", length=spec.arm_upper * S)
+        shape_rig.capsule(img, front_elbow, front_hand, spec.arm_radius * 0.95 * S, sleeve_fill, pal["outline"], 1.1 * S, "front_forearm", length=spec.arm_lower * S)
         draw_armband(front_shoulder, front_elbow, side="front", scale=1.0, include_insignia=True)
         draw_uniform_cuff(front_elbow, front_hand, side="front", scale=1.0)
 
         prop_angle = p.far_arm_lower + p.torso_tilt * 0.10 + (14.0 if p.prop_swing > 0 else 0.0)
         self._draw_prop(img, front_hand, spec, pal, S, prop_angle)
-        draw_skin_hand(front_hand, scale=1.0, outline_width=1.0)
+        draw_skin_hand(front_hand, name="front_hand", scale=1.0, outline_width=1.0)
         if p.slash > 0.0:
             d.arc((front_hand[0] - 4 * S, front_hand[1] - 28 * S, front_hand[0] + 42 * S, front_hand[1] + 16 * S), start=-70, end=35, fill=with_alpha(pal["accent"], 160), width=max(1, int(2.5 * S)))
         if p.hit > 0.0:

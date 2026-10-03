@@ -15,12 +15,13 @@ two sleeves, horn, and hands stay legible above the cloak in every pose.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Callable, Dict, Iterable, Mapping, Optional, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
 from ...authoring import rigdoc
+from . import _toon_rig
 from ...profiling import profile
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
@@ -484,24 +485,74 @@ def _horn_ends(pose: EvePose, limbs: Mapping[str, Tuple[Point, Point, Point]]) -
     return tip, bell
 
 
+#: The design point the cloak turns about (the hem's middle): the lean
+#: shear of ``_xf`` is close to a turn of the whole cloak about it.
+_HEM = (64.0, 116.0)
+
+
+def _cloak_pose(pose: EvePose) -> EvePose:
+    """The cloak's shape inputs at the root, unleaned, its drape rounded:
+    its pieces are one per rounded drape (one design unit of sway apart)."""
+    return replace(
+        pose,
+        root_x=0.0,
+        root_y=0.0,
+        body_bob=0.0,
+        lean=0.0,
+        cloak_sway=float(round(pose.cloak_sway)),
+        hood_sway=float(round(pose.hood_sway)),
+    )
+
+
+def _lean_degrees(pose: EvePose) -> float:
+    """The turn about ``_HEM`` that stands for the lean shear: ``_xf`` moves
+    a point ``0.18 * lean`` at y 34, 82 units above the hem."""
+    return math.degrees(math.atan2(0.18 * pose.lean, 82.0))
+
+
+def _place_cloak(v: VDraw, pose: EvePose, which: str, paint: Callable[[VDraw, EvePose], None], *fields: str) -> None:
+    """The cloak layer ``paint`` draws, as a piece: painted at the root,
+    unleaned, for the rounded drape; turned by the lean about the hem and
+    moved by the root. ``fields`` name the pose values it reads besides the
+    drape."""
+    rest = _cloak_pose(pose)
+    key = ("eve_cloak", which, rest.animation == "walk", rest.cloak_sway) + tuple(getattr(rest, f) for f in fields)
+    root = _root(pose)
+    _toon_rig.vpiece(
+        v, key, 64.0, (_HEM[0] + root[0], _HEM[1] + root[1]), lambda l, _o: paint(l, rest), which,
+        _lean_degrees(pose), origin=_HEM,
+    )
+
+
 def _paint_cloak_back(v: VDraw, pose: EvePose) -> None:
+    _place_cloak(v, pose, "cloak_back", _paint_cloak_back_rest)
+    _paint_hood_tail(v, pose)
+
+
+def _paint_cloak_back_rest(v: VDraw, pose: EvePose) -> None:
     pal = EVE_PALETTE
     points = list(_cloak_points(pose))
     # Rear drape is a dark offset mass, giving the cloak thickness without a
     # cast shadow or ground treatment.
     back = [(x - 2.2, y + 0.8) for x, y in points]
     v.polygon(back, pal["cloak_deep"], pal["outline"], 1.4)
-    # A small trailing hood tail breaks the otherwise circular head silhouette.
-    v.polygon(
-        [
-            _xf(pose, (45.0, 33.0)),
-            _xf(pose, (37.0 - pose.hood_sway, 47.0)),
-            _xf(pose, (46.0 - pose.hood_sway * 0.3, 51.0)),
-        ],
-        pal["cloak_deep"],
-        pal["outline"],
-        1.2,
-    )
+
+
+def _paint_hood_tail(v: VDraw, pose: EvePose) -> None:
+    """A small trailing hood tail breaks the otherwise circular head
+    silhouette: one piece per rounded hood sway, riding its root."""
+    pal = EVE_PALETTE
+    sway = float(round(pose.hood_sway))
+
+    def paint(l: VDraw, o: Point) -> None:
+        l.polygon(
+            [o, (o[0] - 8.0 - sway, o[1] + 14.0), (o[0] + 1.0 - sway * 0.3, o[1] + 18.0)],
+            pal["cloak_deep"],
+            pal["outline"],
+            1.2,
+        )
+
+    _toon_rig.vpiece(v, ("eve_hood_tail", sway), 24.0, _xf(pose, (45.0, 33.0)), paint, "hood_tail")
 
 
 def _paint_legs(v: VDraw, pose: EvePose) -> None:
@@ -521,15 +572,28 @@ def _paint_legs(v: VDraw, pose: EvePose) -> None:
         near_hip = _xf(pose, (68.0, 93.0))
         near_knee = _xf(pose, (69.0, 105.0))
         near_foot = _xf(pose, (72.0, 117.0))
-    v.capsule(far_hip, far_knee, 3.0, pal["lining"], pal["outline"], 0.8)
-    v.capsule(far_knee, far_foot, 2.8, pal["lining"], pal["outline"], 0.8)
-    v.ellipse(_add(far_foot, (2.0, 0.5)), 10.0, 4.5, pal["boot"], pal["outline"], 0.9)
-    v.capsule(near_hip, near_knee, 3.2, pal["lining_light"], pal["outline"], 0.9)
-    v.capsule(near_knee, near_foot, 3.0, pal["lining_light"], pal["outline"], 0.9)
-    v.ellipse(_add(near_foot, (2.5, 0.5)), 11.0, 4.8, pal["boot"], pal["outline"], 1.0)
+    _toon_rig.vtube(v, far_hip, far_knee, 3.0, 0.8, pal["lining"], pal["outline"], "far_thigh")
+    _toon_rig.vtube(v, far_knee, far_foot, 2.8, 0.8, pal["lining"], pal["outline"], "far_shin")
+    _toon_rig.vpiece(
+        v, "eve_far_boot", 8.0, far_foot,
+        lambda l, o: l.ellipse(_add(o, (2.0, 0.5)), 10.0, 4.5, pal["boot"], pal["outline"], 0.9), "far_boot",
+    )
+    _toon_rig.vtube(v, near_hip, near_knee, 3.2, 0.9, pal["lining_light"], pal["outline"], "near_thigh")
+    _toon_rig.vtube(v, near_knee, near_foot, 3.0, 0.9, pal["lining_light"], pal["outline"], "near_shin")
+    _toon_rig.vpiece(
+        v, "eve_near_boot", 9.0, near_foot,
+        lambda l, o: l.ellipse(_add(o, (2.5, 0.5)), 11.0, 4.8, pal["boot"], pal["outline"], 1.0), "near_boot",
+    )
 
 
 def _paint_torso_cloak(v: VDraw, pose: EvePose) -> None:
+    _place_cloak(v, pose, "cloak_front", _paint_cloak_front)
+    # Shoulder mantle and clasp: one piece, upright, moved by the lean
+    # shear at the clasp.
+    _toon_rig.vpiece(v, "eve_mantle", 24.0, _xf(pose, (63.5, 57.0)), _paint_mantle, "mantle")
+
+
+def _paint_cloak_front(v: VDraw, pose: EvePose) -> None:
     pal = EVE_PALETTE
     points = list(_cloak_points(pose))
     v.polygon(points, pal["cloak"], pal["outline"], 1.5)
@@ -549,21 +613,20 @@ def _paint_torso_cloak(v: VDraw, pose: EvePose) -> None:
         _xf(pose, (58.0 + pose.cloak_sway * 0.12, 112.0)),
     ]
     v.polygon(lining, pal["lining"], pal["outline"], 0.8)
-    # Shoulder mantle.
+
+
+def _paint_mantle(v: VDraw, clasp: Point) -> None:
+    pal = EVE_PALETTE
+
+    def at(point: Point) -> Point:
+        return (clasp[0] + point[0] - 63.5, clasp[1] + point[1] - 57.0)
+
     v.polygon(
-        [
-            _xf(pose, (43.0, 56.0)),
-            _xf(pose, (49.0, 49.0)),
-            _xf(pose, (68.0, 48.0)),
-            _xf(pose, (78.0, 57.0)),
-            _xf(pose, (70.0, 64.0)),
-            _xf(pose, (50.0, 64.0)),
-        ],
+        [at((43.0, 56.0)), at((49.0, 49.0)), at((68.0, 48.0)), at((78.0, 57.0)), at((70.0, 64.0)), at((50.0, 64.0))],
         pal["cloak_dark"],
         pal["outline"],
         1.2,
     )
-    clasp = _xf(pose, (63.5, 57.0))
     v.ellipse(clasp, 5.2, 5.2, pal["brass"], pal["outline"], 0.8)
     v.ellipse(_add(clasp, (-0.7, -0.8)), 1.5, 1.5, pal["brass_light"])
 
@@ -571,8 +634,12 @@ def _paint_torso_cloak(v: VDraw, pose: EvePose) -> None:
 def _paint_satchel(v: VDraw, pose: EvePose) -> None:
     pal = EVE_PALETTE
     strap = [_xf(pose, (49.0, 55.0)), _xf(pose, (73.0, 87.0))]
-    v.line(strap, pal["leather_dark"], 2.2)
-    center = _xf(pose, (77.0 + pose.cloak_sway * 0.20, 88.0))
+    _toon_rig.vtube(v, strap[0], strap[1], 0.55, 0.55, pal["leather_dark"], pal["leather_dark"], "strap")
+    _toon_rig.vpiece(v, "eve_satchel", 10.0, _xf(pose, (77.0 + pose.cloak_sway * 0.20, 88.0)), _paint_satchel_bag, "satchel")
+
+
+def _paint_satchel_bag(v: VDraw, center: Point) -> None:
+    pal = EVE_PALETTE
     v.polygon(
         [
             _add(center, (-7.0, -6.0)),
@@ -589,8 +656,11 @@ def _paint_satchel(v: VDraw, pose: EvePose) -> None:
 
 
 def _paint_hood(v: VDraw, pose: EvePose) -> None:
+    _toon_rig.vpiece(v, "eve_hood", 22.0, _xf(pose, (61.5 + pose.hood_sway * 0.25, 36.0)), _paint_hood_shell, "hood")
+
+
+def _paint_hood_shell(v: VDraw, center: Point) -> None:
     pal = EVE_PALETTE
-    center = _xf(pose, (61.5 + pose.hood_sway * 0.25, 36.0))
     # Pointed, asymmetric hood shell.
     v.polygon(
         [
@@ -622,8 +692,15 @@ def _paint_hood(v: VDraw, pose: EvePose) -> None:
 
 
 def _paint_face(v: VDraw, pose: EvePose) -> None:
+    """The face as one piece per view and expression."""
+    side = pose.side_view > 0.5
+    face = EvePose(animation="walk" if side else "idle", phase=0.0, side_view=pose.side_view, blink=pose.blink, mouth_open=round(pose.mouth_open, 1))
+    key = ("eve_face", side, face.blink, face.mouth_open)
+    _toon_rig.vpiece(v, key, 18.0, _face_center(pose), lambda l, o: _paint_face_rest(l, face, o), "face")
+
+
+def _paint_face_rest(v: VDraw, pose: EvePose, face_center: Point) -> None:
     pal = EVE_PALETTE
-    face_center = _face_center(pose)
     if pose.side_view > 0.5:
         # Cleaner side profile for the walk row.
         v.polygon(
@@ -645,7 +722,7 @@ def _paint_face(v: VDraw, pose: EvePose) -> None:
         v.ellipse(eye, 3.0, 2.2, pal["eye"], pal["outline"], 0.4)
         v.ellipse(_add(eye, (0.7, -0.4)), 0.8, 0.8, pal["eye_light"])
         v.line([_add(face_center, (6.0, 5.0)), _add(face_center, (9.0, 5.2))], pal["outline"], 0.8)
-        ear = _ear_point(pose)
+        ear = _add(face_center, (-5.8, 0.0))
         v.ellipse(ear, 3.6, 4.8, pal["skin_shadow"], pal["outline"], 0.6)
         return
 
@@ -675,7 +752,7 @@ def _paint_face(v: VDraw, pose: EvePose) -> None:
     else:
         v.line([_add(face_center, (2.2, 5.2)), _add(face_center, (6.0, 5.0))], pal["outline"], 0.8)
     # Ear must remain visible because the horn's narrow end is placed against it.
-    ear = _ear_point(pose)
+    ear = _add(face_center, (-8.0, 0.0))
     v.ellipse(ear, 3.8, 5.0, pal["skin_shadow"], pal["outline"], 0.6)
     v.arc((ear[0] - 1.0, ear[1] - 1.6, ear[0] + 1.6, ear[1] + 1.5), 250, 100, pal["skin_light"], 0.6)
 
@@ -691,19 +768,17 @@ def _paint_arm(v: VDraw, pose: EvePose, which: str) -> None:
         upper = pal["cloak_light"]
         lower = pal["cloak"]
         radius = 3.7
-    v.capsule(shoulder, elbow, radius, upper, pal["outline"], 0.9)
-    v.capsule(elbow, hand, radius * 0.88, lower, pal["outline"], 0.9)
-    # Cuff band clarifies elbow-to-hand direction at game scale.
-    cuff_center = _add(elbow, _mul(_sub(hand, elbow), 0.72))
-    direction = _norm(_sub(hand, elbow))
-    cross = _perp(direction)
-    v.line(
-        [
-            _add(cuff_center, _mul(cross, -3.0)),
-            _add(cuff_center, _mul(cross, 3.0)),
-        ],
-        pal["cloak_deep"],
-        1.5,
+    _toon_rig.vtube(v, shoulder, elbow, radius, 0.9, upper, pal["outline"], f"{which}_upper_arm")
+    s = v.scale
+
+    def cuff_band(draw, start: Point, length: float) -> None:
+        # Cuff band clarifies elbow-to-hand direction at game scale.
+        x = start[0] + length * 0.72
+        draw.line([(x, start[1] - 3.0 * s), (x, start[1] + 3.0 * s)], fill=pal["cloak_deep"], width=max(1, round(1.5 * s)))
+
+    _toon_rig.vtube(
+        v, elbow, hand, radius * 0.88, 0.9, lower, pal["outline"], f"{which}_forearm",
+        detail=cuff_band, detail_key=("eve_cuff", s),
     )
 
 
@@ -739,12 +814,23 @@ def _paint_horn(v: VDraw, pose: EvePose) -> None:
     and oval collector dish.  In listening poses the cup is visibly seated
     on the ear and the dish opens away from the face.
     """
-    pal = EVE_PALETTE
     limbs = _limb_points(pose)
     start, end = _horn_ends(pose, limbs)
+    listening = pose.animation in {"idle", "interact"}
+    # One piece per length (a quarter design pixel apart), painted along +x
+    # from the ear cup and turned along the receiver.
+    length = round(math.hypot(end[0] - start[0], end[1] - start[1]) * 4.0) / 4.0
+    direction = math.degrees(math.atan2(end[1] - start[1], end[0] - start[0]))
+    _toon_rig.vpiece(
+        v, ("eve_horn", listening, length), length + 12.0, start,
+        lambda l, o: _paint_horn_rest(l, o, (o[0] + length, o[1]), listening), "horn", direction,
+    )
+
+
+def _paint_horn_rest(v: VDraw, start: Point, end: Point, listening: bool) -> None:
+    pal = EVE_PALETTE
     axis = _norm(_sub(end, start))
     cross = _perp(axis)
-    listening = pose.animation in {"idle", "interact"}
 
     # The acoustic path is a narrow bent tube, not a brass-instrument bore.
     # Its final segment enters the back of the collector dish.
@@ -814,23 +900,25 @@ def _paint_hands(v: VDraw, pose: EvePose) -> None:
     limbs = _limb_points(pose)
     horn_start, horn_end = _horn_ends(pose, limbs)
     # Hands remain tied to the sleeve endpoints, not guessed from horn geometry.
+    # Each is one piece, its grip mark turned along the receiver.
+    direction = math.degrees(math.atan2(horn_end[1] - horn_start[1], horn_end[0] - horn_start[0]))
     for which, size in (("far", 4.2), ("near", 4.5)):
-        hand = limbs[which][2]
-        v.ellipse(hand, size, size, pal["skin"], pal["outline"], 0.8)
-        # Two short finger marks establish a grip without turning the hand into
-        # an unreadable mitten at 128 pixels.
-        direction = _norm(_sub(horn_end, horn_start))
-        v.line(
-            [
-                _add(hand, _mul(direction, -0.8)),
-                _add(hand, _mul(direction, 1.5)),
-            ],
-            pal["skin_shadow"],
-            0.6,
-        )
+
+        def hand_piece(l, o, size=size) -> None:
+            l.ellipse(o, size, size, pal["skin"], pal["outline"], 0.8)
+            # Two short finger marks establish a grip without turning the hand
+            # into an unreadable mitten at 128 pixels.
+            l.line([_add(o, (-0.8, 0.0)), _add(o, (1.5, 0.0))], pal["skin_shadow"], 0.6)
+
+        _toon_rig.vpiece(v, ("eve_hand", size), 5.0, limbs[which][2], hand_piece, f"{which}_hand", direction)
 
 
 def _paint_details(v: VDraw, pose: EvePose) -> None:
+    _place_cloak(v, pose, "cloak_seams", _paint_cloak_seams)
+    _paint_signal(v, pose)
+
+
+def _paint_cloak_seams(v: VDraw, pose: EvePose) -> None:
     pal = EVE_PALETTE
     # Cloak seams follow the drape and make body motion readable frame-to-frame.
     v.line(
@@ -852,6 +940,9 @@ def _paint_details(v: VDraw, pose: EvePose) -> None:
         1.0,
     )
 
+
+def _paint_signal(v: VDraw, pose: EvePose) -> None:
+    pal = EVE_PALETTE
     if pose.signal > 0.10:
         limbs = _limb_points(pose)
         _start, bell = _horn_ends(pose, limbs)

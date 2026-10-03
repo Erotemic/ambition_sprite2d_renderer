@@ -9,17 +9,17 @@ layers."""
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Dict, Iterable, Optional, Tuple
 
 from PIL import Image, ImageDraw
 
 from ...authoring import rigdoc
+from . import _toon_rig
 from ...profiling import profile
 from ...authoring.generator import CharacterGenerator
 from ...core.draw import rgba
 from ...registry import CharacterJob
-from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -83,39 +83,6 @@ def _unit_segment(a: Point, b: Point) -> Tuple[Point, Point, float]:
     normal = (-along[1], along[0])
     return along, normal, length
 
-
-
-def _bent_tube(
-    draw: ImageDraw.ImageDraw,
-    start: Point,
-    bend: Point,
-    end: Point,
-    radii: Tuple[float, float, float],
-    *,
-    fill: Color,
-    outline: Color,
-    scale: float,
-    outline_width: float = 1.25,
-) -> None:
-    """Draw a single connected bent tube without a visible elbow disc."""
-    _, n1, _ = _unit_segment(start, bend)
-    _, n2, _ = _unit_segment(bend, end)
-    avg = (n1[0] + n2[0], n1[1] + n2[1])
-    avg_len = max(1.0e-6, math.hypot(*avg))
-    nm = (avg[0] / avg_len, avg[1] / avg_len)
-    r0, r1, r2 = radii
-    points = [
-        (start[0] + n1[0] * r0, start[1] + n1[1] * r0),
-        (bend[0] + nm[0] * r1, bend[1] + nm[1] * r1),
-        (end[0] + n2[0] * r2, end[1] + n2[1] * r2),
-        (end[0] - n2[0] * r2, end[1] - n2[1] * r2),
-        (bend[0] - nm[0] * r1, bend[1] - nm[1] * r1),
-        (start[0] - n1[0] * r0, start[1] - n1[1] * r0),
-    ]
-    width = max(1, round(outline_width * scale))
-    draw.polygon(_poly(points, scale), fill=fill, outline=outline, width=width)
-    draw.ellipse(_bbox(start, r0, r0, scale), fill=fill, outline=outline, width=width)
-    draw.ellipse(_bbox(end, r2, r2, scale), fill=fill, outline=outline, width=width)
 
 
 def _rotate(point: Point, origin: Point, degrees: float) -> Point:
@@ -743,18 +710,13 @@ class ErdishScholarGenerator(CharacterGenerator):
         scale = (width / 128.0) * ss
         pose = self.pose_for_animation(animation, frame_index, frame_count)
         character = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-        self._draw_character(character, spec, pose, scale)
-        if abs(pose.rotation) > 1.0e-6:
-            pivot = (
-                (pose.rotation_pivot[0] + pose.lean_x) * scale,
-                (pose.rotation_pivot[1] + pose.root_y) * scale,
-            )
-            character = character.rotate(
-                pose.rotation,
-                resample=Image.Resampling.BICUBIC,
-                center=pivot,
-                expand=False,
-            )
+        # A whole-body turn (roll, death) turns each piece's place about the
+        # pivot. ``pose.rotation`` is counter-clockwise positive.
+        pivot = (
+            (pose.rotation_pivot[0] + pose.lean_x) * scale,
+            (pose.rotation_pivot[1] + pose.root_y) * scale,
+        )
+        self._draw_character(_toon_rig.Frame(character, -pose.rotation, pivot), spec, pose, scale)
         rigdoc.composite_canvas(canvas, character)
 
         if ss > 1:
@@ -767,16 +729,16 @@ class ErdishScholarGenerator(CharacterGenerator):
 
     def _draw_character(
         self,
-        image: Image.Image,
+        frame: _toon_rig.Frame,
         spec: ErdishSpec,
         pose: ErdishPose,
         scale: float,
     ) -> None:
-        draw = blending_draw(image)
-        pal = PALETTE
+        """The body as pieces (``_toon_rig``): each rigid group is painted
+        once in its own frame and placed."""
         cx = 64.0 + pose.lean_x
         body_top = 52.5 + pose.bob + pose.root_y + pose.body_y
-        jacket_bottom = body_top + spec.jacket_height * pose.jacket_scale
+        jacket_scale = round(pose.jacket_scale, 2)
         head_center = (
             64.5 + pose.head_x + pose.lean_x * 0.35,
             34.0 + pose.head_y + pose.bob + pose.root_y,
@@ -784,81 +746,58 @@ class ErdishScholarGenerator(CharacterGenerator):
 
         # Translate authored joint anchors by the animation's whole-body motion.
         joint_offset = (pose.lean_x, pose.bob + pose.root_y)
-        near_shoulder = _add(pose.near_shoulder, joint_offset)
-        near_elbow = _add(pose.near_elbow, joint_offset)
-        near_hand = _add(pose.near_hand, joint_offset)
-        far_shoulder = _add(pose.far_shoulder, joint_offset)
-        far_elbow = _add(pose.far_elbow, joint_offset)
-        far_hand = _add(pose.far_hand, joint_offset)
-        near_hip = _add(pose.near_hip, joint_offset)
-        near_knee = _add(pose.near_knee, joint_offset)
-        near_ankle = _add(pose.near_ankle, joint_offset)
-        far_hip = _add(pose.far_hip, joint_offset)
-        far_knee = _add(pose.far_knee, joint_offset)
-        far_ankle = _add(pose.far_ankle, joint_offset)
+
+        def at(point: Point) -> Point:
+            return _scale_point(_add(point, joint_offset), scale)
 
         # No floor ellipse / drop shadow.  Contact is expressed by the shoes
         # meeting the shared baseline at y=121.
-        self._draw_leg(draw, far_hip, far_knee, far_ankle, near=False, scale=scale)
-        self._draw_leg(draw, near_hip, near_knee, near_ankle, near=True, scale=scale)
-        self._draw_pelvis(draw, cx, jacket_bottom, scale)
-        self._draw_jacket_and_shirt(draw, cx, body_top, jacket_bottom, spec, scale)
-        self._draw_neck(draw, head_center, body_top, pose.head_tilt, scale)
-        self._draw_head(draw, head_center, spec, pose, scale)
+        self._place_leg(frame, at(pose.far_hip), at(pose.far_knee), at(pose.far_ankle), near=False, scale=scale)
+        self._place_leg(frame, at(pose.near_hip), at(pose.near_knee), at(pose.near_ankle), near=True, scale=scale)
+        self._place_torso(frame, spec, cx, body_top, jacket_scale, scale)
+        self._place_neck(frame, head_center, body_top, scale)
+        self._place_head(frame, head_center, spec, pose, scale)
 
         # Arms are intentionally on top of torso and head layers.  Shoulder
         # caps visibly overlap the jacket yoke, and cuffs overlap the hands, so
         # the anatomy stays legible even at the extrema of talk/interact poses.
-        self._draw_arm(
-            draw,
-            far_shoulder,
-            far_elbow,
-            far_hand,
-            pose.far_palm,
-            near=False,
-            scale=scale,
-        )
-        self._draw_arm(
-            draw,
-            near_shoulder,
-            near_elbow,
-            near_hand,
-            pose.near_palm,
-            near=True,
-            scale=scale,
-        )
+        self._place_arm(frame, at(pose.far_shoulder), at(pose.far_elbow), at(pose.far_hand), pose.far_palm, near=False, scale=scale)
+        self._place_arm(frame, at(pose.near_shoulder), at(pose.near_elbow), at(pose.near_hand), pose.near_palm, near=True, scale=scale)
 
-    def _draw_leg(
-        self,
-        draw: ImageDraw.ImageDraw,
-        hip: Point,
-        knee: Point,
-        ankle: Point,
-        *,
-        near: bool,
-        scale: float,
-    ) -> None:
+    def _place_leg(self, frame: _toon_rig.Frame, hip: Point, knee: Point, ankle: Point, *, near: bool, scale: float) -> None:
+        """Thigh and shin as tapered tubes (canvas pixels), and the ankle
+        cuff with the shoe as one piece riding the ankle."""
         pal = PALETTE
+        side = "near" if near else "far"
         trouser = pal["trouser_light"] if near else pal["trouser"]
         dark = pal["trouser"] if near else _mix(pal["trouser"], pal["outline"], 0.22)
-        _bent_tube(
-            draw,
-            hip,
-            knee,
-            ankle,
-            (4.3, 3.7, 3.0),
-            fill=trouser,
-            outline=pal["outline"],
-            scale=scale,
+        ow = 1.25 * scale
+        _toon_rig.tube(frame, hip, knee, 4.3 * scale, 3.7 * scale, trouser, pal["outline"], ow, f"{side}_thigh", quantum=scale)
+
+        def crease(draw, start: Point, _length: float) -> None:
+            # A restrained knee crease adds cloth volume without turning the
+            # limb into a chain of mechanical joint circles.
+            draw.line(
+                [(start[0] - 0.2 * scale, start[1] + 1.7 * scale), (start[0] + 0.5 * scale, start[1] - 1.5 * scale)],
+                fill=dark,
+                width=max(1, round(0.8 * scale)),
+            )
+
+        _toon_rig.tube(
+            frame, knee, ankle, 3.7 * scale, 3.0 * scale, trouser, pal["outline"], ow, f"{side}_shin",
+            quantum=scale, start_cap=False, detail=crease, detail_key=("erdish_crease", dark, scale),
         )
-        # A restrained inner-leg shade and knee crease add cloth volume without
-        # turning the limb into a chain of mechanical joint circles.
-        draw.line(
-            _poly([(knee[0] - 1.7, knee[1] - 0.2), (knee[0] + 1.5, knee[1] + 0.5)], scale),
-            fill=dark,
-            width=max(1, round(0.8 * scale)),
-        )
-        # Connected ankle cuff and shoe.  The shoe overlaps the shin by 2 px.
+        local = 10.0
+
+        def paint(draw) -> None:
+            self._paint_foot(draw, (local, local), near=near, dark=dark, scale=scale)
+
+        part = _toon_rig.piece(("erdish_foot", near, scale), (2 * local * scale, 2 * local * scale), (local * scale, local * scale), paint)
+        frame.place(part, ankle, 0.0, f"{side}_foot")
+
+    def _paint_foot(self, draw: ImageDraw.ImageDraw, ankle: Point, *, near: bool, dark: Color, scale: float) -> None:
+        """Connected ankle cuff and shoe.  The shoe overlaps the shin by 2 px."""
+        pal = PALETTE
         draw.ellipse(
             _bbox((ankle[0], ankle[1] - 0.8), 3.25, 3.2, scale),
             fill=dark,
@@ -886,6 +825,95 @@ class ErdishScholarGenerator(CharacterGenerator):
             fill=_mix(pal["shoe_light"], pal["shirt"], 0.15),
             width=max(1, round(0.8 * scale)),
         )
+
+    def _place_torso(self, frame: _toon_rig.Frame, spec: ErdishSpec, cx: float, body_top: float, jacket_scale: float, scale: float) -> None:
+        """Pelvis, jacket and shirt as one piece riding the collar, one per
+        jacket squash."""
+        lx, ly = 22.0, 8.0
+        bottom = ly + spec.jacket_height * jacket_scale
+
+        def paint(draw) -> None:
+            self._draw_pelvis(draw, lx, bottom, scale)
+            self._draw_jacket_and_shirt(draw, lx, ly, bottom, spec, scale)
+
+        part = _toon_rig.piece(("erdish_torso", jacket_scale, spec.jacket_height, scale), (2 * lx * scale, (bottom + 10.0) * scale), (lx * scale, ly * scale), paint)
+        frame.place(part, (cx * scale, body_top * scale), 0.0, "torso")
+
+    def _place_neck(self, frame: _toon_rig.Frame, head_center: Point, body_top: float, scale: float) -> None:
+        """The neck, one piece per length (rounded to half a design pixel),
+        hanging from under the head."""
+        top = head_center[1] + 12.0
+        length = max(0.5, round((body_top - top) * 2.0) / 2.0)
+        local = (8.0, 2.0)
+
+        def paint(draw) -> None:
+            self._draw_neck(draw, (local[0] + 1.2, local[1] - 12.0), local[1] + length, 0.0, scale)
+
+        part = _toon_rig.piece(("erdish_neck", length, scale), (2 * local[0] * scale, (length + 8.0) * scale), (local[0] * scale, local[1] * scale), paint)
+        frame.place(part, ((head_center[0] - 1.2) * scale, top * scale), 0.0, "neck")
+
+    def _place_head(self, frame: _toon_rig.Frame, center: Point, spec: ErdishSpec, pose: ErdishPose, scale: float) -> None:
+        """The head painted untilted, one piece per expression (rounded), and
+        turned by the head tilt."""
+        expression = replace(
+            pose,
+            head_tilt=0.0,
+            mouth_open=round(pose.mouth_open, 1),
+            mouth_smile=round(pose.mouth_smile, 1),
+            brow_lift=round(pose.brow_lift, 1),
+        )
+        local = 26.0
+        key = ("erdish_head", spec, expression.blink, expression.mouth_open, expression.mouth_smile, expression.brow_lift, scale)
+        part = _toon_rig.piece(key, (2 * local * scale, 2 * local * scale), (local * scale, local * scale), lambda draw: self._draw_head(draw, (local, local), spec, expression, scale))
+        frame.place(part, _scale_point(center, scale), pose.head_tilt, "head")
+
+    def _place_arm(self, frame: _toon_rig.Frame, shoulder: Point, elbow: Point, hand: Point, palm: str, *, near: bool, scale: float) -> None:
+        """Upper sleeve and forearm sleeve as tapered tubes (canvas pixels);
+        the cuff and hand as one piece turned along the forearm."""
+        pal = PALETTE
+        side = "near" if near else "far"
+        sleeve = pal["jacket_light"] if near else pal["jacket_dark"]
+        inner = pal["jacket"] if near else _mix(pal["jacket_dark"], pal["outline"], 0.12)
+        # The lower sleeve stops just before the palm.  There is no exposed
+        # circular elbow joint and therefore no mannequin/robot read.
+        along, _normal, length = _unit_segment(elbow, hand)
+        reach = round(min(3.2 * scale, length * 0.3) / scale, 1) * scale
+        wrist = (hand[0] - along[0] * reach, hand[1] - along[1] * reach)
+        ow = 1.25 * scale
+        seam_w = max(1, round(0.9 * scale))
+
+        # The inner seam follows the bend and gives the sleeve volume while
+        # staying inside the same connected silhouette.
+        def upper_seam(draw, start: Point, length: float) -> None:
+            draw.line([(start[0], start[1] - 1.8 * scale), (start[0] + length, start[1])], fill=inner, width=seam_w)
+
+        def lower_seam(draw, start: Point, length: float) -> None:
+            draw.line([start, (start[0] + length, start[1] - 1.0 * scale)], fill=inner, width=seam_w)
+
+        _toon_rig.tube(
+            frame, shoulder, elbow, 5.1 * scale, 4.25 * scale, sleeve, pal["outline"], ow, f"{side}_upper_arm",
+            quantum=scale, detail=upper_seam, detail_key=("erdish_seam_upper", inner, scale),
+        )
+        _toon_rig.tube(
+            frame, elbow, wrist, 4.25 * scale, 3.2 * scale, sleeve, pal["outline"], ow, f"{side}_forearm",
+            quantum=scale, start_cap=False, detail=lower_seam, detail_key=("erdish_seam_lower", inner, scale),
+        )
+        local = 10.0
+        r = reach / scale
+
+        def paint(draw) -> None:
+            # Cream cuff bridges sleeve and skin.
+            cuff = (local - r, local)
+            draw.ellipse(
+                _bbox(cuff, 3.45, 3.0, scale),
+                fill=pal["shirt"],
+                outline=pal["outline"],
+                width=max(1, round(1.0 * scale)),
+            )
+            self._draw_hand(draw, cuff, (local, local), palm, near=near, scale=scale)
+
+        part = _toon_rig.piece(("erdish_hand", palm, near, r, scale), (2 * local * scale, 2 * local * scale), (local * scale, local * scale), paint)
+        frame.place(part, hand, _toon_rig.angle(wrist, hand), f"{side}_hand")
 
     def _draw_pelvis(
         self,
@@ -1314,57 +1342,6 @@ class ErdishScholarGenerator(CharacterGenerator):
             fill=pal["hair_light"],
             width=max(1, round(1.4 * scale)),
         )
-
-    def _draw_arm(
-        self,
-        draw: ImageDraw.ImageDraw,
-        shoulder: Point,
-        elbow: Point,
-        hand: Point,
-        palm: str,
-        *,
-        near: bool,
-        scale: float,
-    ) -> None:
-        pal = PALETTE
-        sleeve = pal["jacket_light"] if near else pal["jacket_dark"]
-        inner = pal["jacket"] if near else _mix(pal["jacket_dark"], pal["outline"], 0.12)
-        # The lower sleeve stops just before the palm.  One six-sided bent tube
-        # forms shoulder, upper arm, elbow, and forearm; there is no exposed
-        # circular elbow joint and therefore no mannequin/robot read.
-        along, normal, length = _unit_segment(elbow, hand)
-        wrist = (
-            hand[0] - along[0] * min(3.2, length * 0.3),
-            hand[1] - along[1] * min(3.2, length * 0.3),
-        )
-        _bent_tube(
-            draw,
-            shoulder,
-            elbow,
-            wrist,
-            (5.1, 4.25, 3.2),
-            fill=sleeve,
-            outline=pal["outline"],
-            scale=scale,
-        )
-        # Inner seam follows the bend and gives the sleeve volume while staying
-        # inside the same connected silhouette.
-        seam_start = (shoulder[0] - normal[0] * 1.8, shoulder[1] - normal[1] * 1.8)
-        seam_end = (wrist[0] - normal[0] * 1.0, wrist[1] - normal[1] * 1.0)
-        draw.line(
-            _poly([seam_start, elbow, seam_end], scale),
-            fill=inner,
-            width=max(1, round(0.9 * scale)),
-            joint="curve",
-        )
-        # Cream cuff bridges sleeve and skin.
-        draw.ellipse(
-            _bbox(wrist, 3.45, 3.0, scale),
-            fill=pal["shirt"],
-            outline=pal["outline"],
-            width=max(1, round(1.0 * scale)),
-        )
-        self._draw_hand(draw, wrist, hand, palm, near=near, scale=scale)
 
     def _draw_hand(
         self,

@@ -21,7 +21,7 @@ import math
 from dataclasses import asdict, dataclass
 
 from ...profiling import profile
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.actor_contract import write_actor_contract_for_tackon
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.animation_vocab import (
@@ -236,6 +236,21 @@ def _draw_sandbag_body(
     reference so this remains an original procedural asset.
     """
     draw = blending_draw(layer)
+    _paint_sack(draw, cx, cy, sx, sy, tint)
+    w, h = 44 * sx, 76 * sy
+    _paint_strap(draw, cx + w / 2 - 9 + strap_swing, cy - h / 2 + 3, tint)
+    _paint_eyes(draw, cx, cy, sx, sy, eyes)
+
+
+def _tone(tint: float):
+    def tone(rgb: Tuple[int, int, int], alpha: int = 255) -> RGBA:
+        return tuple(max(0, min(255, int(v * tint))) for v in rgb) + (alpha,)
+
+    return tone
+
+
+def _paint_sack(draw, cx: float, cy: float, sx: float, sy: float, tint: float) -> None:
+    """The sack (no strap, no face) centred on design ``(cx, cy)``."""
 
     def tone(rgb: Tuple[int, int, int], alpha: int = 255) -> RGBA:
         return tuple(max(0, min(255, int(v * tint))) for v in rgb) + (alpha,)
@@ -332,29 +347,6 @@ def _draw_sandbag_body(
             width=_s(0.9),
         )
 
-    # Hanging tab/strap: same visual vocabulary as the reference, but shorter,
-    # wider, and attached at a different angle with an inset patch.
-    strap_x = right - 9 + strap_swing
-    strap_y = top + 3
-    draw.rounded_rectangle(
-        _box(strap_x - 5, strap_y - 1, strap_x + 8, strap_y + 28),
-        radius=_s(4),
-        fill=cloth_mid,
-        outline=stitch,
-        width=_s(1.4),
-    )
-    draw.rounded_rectangle(
-        _box(strap_x - 2, strap_y + 4, strap_x + 5, strap_y + 20),
-        radius=_s(2),
-        fill=cloth,
-        width=0,
-    )
-    draw.line(
-        (_s(strap_x - 3), _s(strap_y + 23), _s(strap_x + 7), _s(strap_y + 22)),
-        fill=cloth_dark,
-        width=_s(1.1),
-    )
-
     # A few cloth wrinkles, deliberately sparse.
     draw.arc(
         _box(left + 5, cy - 17, right - 11, cy + 1),
@@ -378,6 +370,39 @@ def _draw_sandbag_body(
         dash=5,
     )
 
+
+
+def _paint_strap(draw, strap_x: float, strap_y: float, tint: float) -> None:
+    """The hanging tab, its top-left anchor at design ``(strap_x, strap_y)``."""
+    tone = _tone(tint)
+    cloth = tone((225, 227, 242))
+    cloth_mid = tone((204, 207, 226))
+    cloth_dark = tone((99, 101, 120))
+    stitch = tone((75, 77, 96))
+    # Same visual vocabulary as the reference, but shorter, wider, and
+    # attached at a different angle with an inset patch.
+    draw.rounded_rectangle(
+        _box(strap_x - 5, strap_y - 1, strap_x + 8, strap_y + 28),
+        radius=_s(4),
+        fill=cloth_mid,
+        outline=stitch,
+        width=_s(1.4),
+    )
+    draw.rounded_rectangle(
+        _box(strap_x - 2, strap_y + 4, strap_x + 5, strap_y + 20),
+        radius=_s(2),
+        fill=cloth,
+        width=0,
+    )
+    draw.line(
+        (_s(strap_x - 3), _s(strap_y + 23), _s(strap_x + 7), _s(strap_y + 22)),
+        fill=cloth_dark,
+        width=_s(1.1),
+    )
+
+
+
+def _paint_eyes(draw, cx: float, cy: float, sx: float, sy: float, eyes: str) -> None:
     # Face. The eyes are the immediately recognizable rhyme; placement,
     # spacing, and highlights differ from the reference.
     eye_y = cy - 10 * sy
@@ -393,6 +418,48 @@ def _draw_sandbag_body(
     else:
         _draw_eye(draw, cx - 10 * sx, eye_y, scale_y=sy)
         _draw_eye(draw, cx + 10 * sx, eye_y, scale_y=sy)
+
+
+
+#: Half the side of a body piece's canvas, design units.
+_PIECE_HALF = 56.0
+
+
+def _place_sandbag_body(canvas: Image.Image, cx: float, cy: float, sx: float, sy: float, eyes: str, tint: float, strap_swing: float, angle: float) -> None:
+    """The body as pieces (the sack per squash and tint, the strap per tint,
+    each eye per expression) placed through a rig turned ``angle`` degrees
+    (counter-clockwise, as ``Image.rotate``) about the sack's base: the
+    turned body is its pieces turned, not a picture rotated."""
+    from .robot_side import RigCanvas
+
+    sx, sy, tint = round(sx, 3), round(sy, 3), round(tint, 3)
+    rig = RigCanvas(canvas, (_s(cx), _s(cy + 18)), -angle if angle else 0.0)
+    half = _PIECE_HALF
+    size = (_s(2 * half), _s(2 * half))
+    pivot = (_s(half), _s(half))
+    sack = shape_rig.piece(("sandbag_sack", sx, sy, tint, SCALE), size, pivot, lambda d: _paint_sack(d, half, half, sx, sy, tint))
+    rig.put(sack, (_s(cx), _s(cy)), 0.0, "sack")
+    w, h = 44 * sx, 76 * sy
+    strap = shape_rig.piece(("sandbag_strap", tint, SCALE), (_s(24), _s(40)), (_s(8), _s(4)), lambda d: _paint_strap(d, 8.0, 4.0, tint))
+    rig.put(strap, (_s(cx + w / 2 - 9 + strap_swing), _s(cy - h / 2 + 3)), 0.0, "strap")
+    eye_y = cy - 10 * sy + (1 if eyes == "sleepy" else 0)
+    eye_sy = sy if eyes == "normal" else 1.0
+    eye = shape_rig.piece(
+        ("sandbag_eye", eyes, eye_sy, SCALE),
+        (_s(24), _s(40)),
+        (_s(12), _s(20)),
+        lambda d: _draw_eye(d, 12.0, 20.0, scale_y=eye_sy, expression=eyes),
+    )
+    rig.put(eye, (_s(cx - 10 * sx), _s(eye_y)), 0.0, "eye_back")
+    rig.put(eye, (_s(cx + 10 * sx), _s(eye_y)), 0.0, "eye_front")
+
+
+def _effect(canvas: Image.Image, name: str, key: tuple, paint, track: str = "") -> None:
+    """A frame's effect as one piece (painted once per ``key``) instead of
+    one draw per stroke."""
+    part = shape_rig.piece(("sandbag_fx", name) + tuple(round(k, 3) for k in key), canvas.size, (0.0, 0.0), lambda d: paint(d._img))
+    if part[0].getbbox() is not None:
+        rigdoc.blit_rotated(canvas, part[0], part[1], (0.0, 0.0), 0.0, part_name=track or f"fx_{name}")
 
 
 def _impact_marks(canvas: Image.Image, frame_index: int) -> None:
@@ -461,15 +528,18 @@ class SandbagGenerator(CharacterGenerator):
         job: CharacterJob,
     ) -> Image.Image:
         anim = self.animations()[animation]
+        # Reduced from the supersampled canvas straight to ``size`` when it
+        # divides the canvas (a turned piece is reduced by whole factors).
+        whole = (FRAME_W * SCALE) % size[0] == 0 and (FRAME_H * SCALE) % size[1] == 0
         frame = render_sandbag_frame(
-            animation, frame_index % anim["frames"], anim["frames"]
+            animation, frame_index % anim["frames"], anim["frames"], size=tuple(size) if whole else (FRAME_W, FRAME_H)
         )
         if frame.size != size:
             frame = rigdoc.downsampled_canvas(frame, size, Image.Resampling.LANCZOS)
         return frame
 
 
-def render_sandbag_frame(animation: str, frame_index: int, frame_count: int) -> Image.Image:
+def render_sandbag_frame(animation: str, frame_index: int, frame_count: int, size: Tuple[int, int] = (FRAME_W, FRAME_H)) -> Image.Image:
     canvas = Image.new("RGBA", (FRAME_W * SCALE, FRAME_H * SCALE), (0, 0, 0, 0))
     draw = blending_draw(canvas)
 
@@ -803,41 +873,24 @@ def render_sandbag_frame(animation: str, frame_index: int, frame_count: int) -> 
         cy += dy
         shadow_w = 53 + frame_index * 5.0
         shadow_a = 90
-        _dust(canvas, frame_index, base_x=69 + dx * 0.3)
+        _effect(canvas, "dust", (frame_index, 69 + dx * 0.3, 112.0), lambda c: _dust(c, frame_index, base_x=69 + dx * 0.3))
     else:
         raise KeyError(f"unknown sandbag animation: {animation!r}")
 
     # Ground shadow removed; in-game compositing handles ground contact.
-    body_layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    _draw_sandbag_body(
-        body_layer,
-        cx=cx,
-        cy=cy,
-        sx=sx,
-        sy=sy,
-        eyes=eyes,
-        tint=tint,
-        strap_swing=strap_swing,
-    )
-    if angle:
-        body_layer = body_layer.rotate(
-            angle,
-            center=(_s(cx), _s(cy + 18)),
-            resample=Image.Resampling.BICUBIC,
-            fillcolor=(0, 0, 0, 0),
-        )
-    rigdoc.composite_canvas(canvas, body_layer)
+    _place_sandbag_body(canvas, cx, cy, sx, sy, eyes, tint, strap_swing, angle)
 
     if animation == "hit":
-        _impact_marks(canvas, frame_index)
-        _dust(canvas, frame_index, base_x=72, base_y=113)
+        _effect(canvas, "impact", (frame_index,), lambda c: _impact_marks(c, frame_index))
+        _effect(canvas, "dust", (frame_index, 72, 113), lambda c: _dust(c, frame_index, base_x=72, base_y=113))
     if animation == "death" and frame_index >= 3:
-        _dust(canvas, frame_index, base_x=76, base_y=114)
+        _effect(canvas, "dust", (frame_index, 76, 114), lambda c: _dust(c, frame_index, base_x=76, base_y=114), track="settle_dust")
     if animation == "slash":
         d = blending_draw(canvas)
         t = frame_index / max(1, frame_count - 1)
-        if 0.20 <= t <= 0.74:
-            alpha = int(160 * math.sin((t - 0.20) / 0.54 * math.pi))
+        alpha = int(160 * math.sin((t - 0.20) / 0.54 * math.pi)) if 0.20 <= t <= 0.74 else 0
+        # An arc of alpha 0 would erase what it crosses (``blending_draw``).
+        if alpha > 0:
             d.arc(
                 _box(66, 34, 126, 95),
                 start=-70,
@@ -860,8 +913,9 @@ def render_sandbag_frame(animation: str, frame_index: int, frame_count: int) -> 
     if animation == "interact":
         d = blending_draw(canvas)
         alpha = int(140 * math.sin((frame_index / max(1, frame_count - 1)) * math.pi))
-        d.line(_box(92, 50, 105, 42), fill=_rgba("fff4a3", alpha), width=_s(1.8))
-        d.line(_box(94, 61, 110, 61), fill=_rgba("fff4a3", alpha), width=_s(1.8))
+        if alpha > 0:  # alpha 0 would erase
+            d.line(_box(92, 50, 105, 42), fill=_rgba("fff4a3", alpha), width=_s(1.8))
+            d.line(_box(94, 61, 110, 61), fill=_rgba("fff4a3", alpha), width=_s(1.8))
     if animation == "talk":
         d = blending_draw(canvas)
         if frame_index % 2 == 0:
@@ -932,14 +986,19 @@ def render_sandbag_frame(animation: str, frame_index: int, frame_count: int) -> 
                 width=_s(1.0),
             )
     if animation == "sleep":
-        d = blending_draw(canvas)
-        for i in range(3):
-            u = ((frame_index + i * 2) % max(1, frame_count)) / max(1, frame_count - 1)
-            d.text(
-                (_s(78 + i * 8), _s(42 - u * 22)),
-                "Z",
-                fill=_rgba("4b4d60", int(155 * (1.0 - u * 0.4))),
-            )
+        # The snore letters as one effect piece (text is not a shape the
+        # part recorder can cut).
+        def snore(c: Image.Image) -> None:
+            d = blending_draw(c)
+            for i in range(3):
+                u = ((frame_index + i * 2) % max(1, frame_count)) / max(1, frame_count - 1)
+                d.text(
+                    (_s(78 + i * 8), _s(42 - u * 22)),
+                    "Z",
+                    fill=_rgba("4b4d60", int(155 * (1.0 - u * 0.4))),
+                )
+
+        _effect(canvas, "snore", (frame_index, frame_count), snore)
     if animation == "celebrate":
         d = blending_draw(canvas)
         for i, (x, y) in enumerate([(38, 38), (54, 27), (78, 30), (94, 42), (48, 55)]):
@@ -960,7 +1019,7 @@ def render_sandbag_frame(animation: str, frame_index: int, frame_count: int) -> 
             fill=_rgba("c5b8ff", int(135 * flame)),
         )
 
-    return rigdoc.downsampled_canvas(canvas, (FRAME_W, FRAME_H), Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(canvas, size, Image.Resampling.LANCZOS)
 
 
 def _measure_body_extent(frame: Image.Image) -> Dict[str, object] | None:

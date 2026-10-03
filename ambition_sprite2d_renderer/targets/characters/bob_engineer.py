@@ -24,13 +24,14 @@ contact belong to the game renderer, not the sprite texture.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from typing import Any, Dict, Iterable, Optional, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
 from ...authoring import rigdoc
+from . import _toon_rig
 from ...profiling import profile
 from ...authoring.animation_vocab import (
     DEFAULT_ADVANCED_TIMINGS,
@@ -740,47 +741,32 @@ class BobEngineerGenerator(CharacterGenerator):
         pose = self.pose_for_animation(animation, frame_index, frame_count)
         cx = (64.0 + pose.root_x) * scale
         feet_y = (117.0 + pose.body_bob + pose.root_y) * scale
+        # The body is drawn as pieces (``_toon_rig``). A whole-body turn
+        # (roll, death) turns each piece's place about the pivot, and a hit
+        # flash tints each piece.
+        turn = pose.rotation if abs(pose.rotation) > 0.01 else 0.0
+        pivot = (round(cx), round(feet_y - 41.0 * scale))
+        flash = ((255, 226, 196), 0.62 * _clamp01(pose.hit_flash)) if pose.hit_flash > 0.0 else None
+        frame = _toon_rig.Frame(actor, turn, pivot, flash)
         if pose.view is BobView.FRONT:
-            self._draw_front(actor, cx, feet_y, spec, pose, scale)
+            self._draw_front(frame, cx, feet_y, spec, pose, scale)
         elif pose.view is BobView.SIDE:
-            self._draw_side(actor, cx, feet_y, spec, pose, scale)
-            self._draw_action_effects(actor, cx, feet_y, pose, scale)
+            self._draw_side(frame, cx, feet_y, spec, pose, scale)
+            if turn == 0.0:
+                self._draw_action_effects(actor, cx, feet_y, pose, scale)
+            else:
+                # Effects are shapes in the frame: turned with the body, they
+                # are one layer placed turned about the pivot.
+                layer = Image.new("RGBA", actor.size, (0, 0, 0, 0))
+                self._draw_action_effects(layer, cx, feet_y, pose, scale)
+                if layer.getbbox() is not None:
+                    frame.place((layer, pivot), pivot, 0.0, "effects")
         else:
-            self._draw_three_quarter(actor, cx, feet_y, spec, pose, scale)
-
-        if abs(pose.rotation) > 0.01:
-            pivot = (round(cx), round(feet_y - 41.0 * scale))
-            actor = actor.rotate(
-                -pose.rotation,
-                resample=Image.Resampling.BICUBIC,
-                center=pivot,
-                expand=False,
-            )
-
-        if pose.hit_flash > 0.0:
-            alpha = actor.getchannel("A")
-            strength = _clamp01(pose.hit_flash)
-            tint = Image.new(
-                "RGBA",
-                actor.size,
-                (255, 226, 196, round(160 * strength)),
-            )
-            tint.putalpha(alpha.point(lambda value: round(value * 0.62 * strength)))
-            # Through rigdoc's seams (the same pixels as Image.alpha_composite),
-            # so a part flipbook keeps the actor's shapes under the tint.
-            flashed = Image.new("RGBA", actor.size, (0, 0, 0, 0))
-            rigdoc.composite_canvas(flashed, actor)
-            rigdoc.composite_canvas(flashed, tint)
-            actor = flashed
+            self._draw_three_quarter(frame, cx, feet_y, spec, pose, scale)
 
         if pose.opacity < 0.999:
-            # A faded copy: its shapes are no longer the recorded ones, so a
-            # part flipbook draws it as one picture.
-            actor = actor.copy()
-            alpha = actor.getchannel("A")
-            actor.putalpha(
-                alpha.point(lambda value: round(value * _clamp01(pose.opacity)))
-            )
+            # Faded as one picture: overlapping pieces do not show through.
+            actor = rigdoc.faded_canvas(actor, _clamp01(pose.opacity))
 
         rigdoc.composite_canvas(canvas, actor)
         if ss > 1:
@@ -1107,24 +1093,69 @@ class BobEngineerGenerator(CharacterGenerator):
 
     def _draw_three_quarter(
         self,
-        image: Image.Image,
+        frame: _toon_rig.Frame,
         cx: float,
         feet_y: float,
         spec: BobSpec,
         pose: BobPose,
         s: float,
     ) -> None:
-        d = blending_draw(image)
+        """The three-quarter body as pieces: everything behind the near arm
+        is one piece (it does not move in this view), then the near arm, its
+        sleeve cuff, the hand with its keys, and the head."""
+        pal = BOB_PALETTE
+        hip_y = feet_y - (spec.boot_h + spec.shin_h + spec.thigh_h) * s
+        shoulder_y = hip_y - spec.torso_h * s
+        head_c = (
+            cx + 1.5 * s,
+            shoulder_y - 11.0 * s + pose.head_tilt * 0.12 * s,
+        )
+        _toon_rig.anchored(
+            frame, ("bob_body_three_quarter", spec, s), (26.0 * s, 80.0 * s), (cx, feet_y),
+            lambda d, o: self._paint_three_quarter_body(d, o[0], o[1], spec, s), "body",
+        )
+        # Near arm and iconic key ring.
+        near_shoulder = (cx + 11.8 * s, shoulder_y + 5.0 * s)
+        near_elbow = (
+            cx + 14.5 * s + pose.scan * 0.25 * s,
+            shoulder_y + 17.0 * s,
+        )
+        near_hand = (
+            cx + 13.2 * s + pose.scan * 0.65 * s,
+            hip_y - 4.0 * s,
+        )
+        self._place_limb(frame, near_shoulder, near_elbow, near_hand, s, fill=pal["shirt"], width=6.0, name="near_arm", quantum=0.5)
+        _toon_rig.anchored(
+            frame, ("bob_cuff_three_quarter", s), (6.0 * s, 12.0 * s), near_shoulder,
+            lambda d, o: _rounded(
+                d,
+                _bbox(o[0] + 0.4 * s, o[1] + 5.5 * s, 6.5 * s, 7.0 * s),
+                radius=1.4 * s,
+                fill=pal["shirt_dark"],
+                outline=pal["outline"],
+                width=round(0.75 * s),
+            ),
+            "near_cuff",
+        )
+        _toon_rig.anchored(
+            frame, ("bob_hand_keys_three_quarter", s), (12.0 * s, 12.0 * s), near_hand,
+            lambda d, o: (self._draw_hand(d, o, s), self._draw_keyring(d, (o[0] + 4.8 * s, o[1] + 1.0 * s), s, scale=0.62)),
+            "near_hand",
+        )
+        _toon_rig.anchored(
+            frame, ("bob_head_three_quarter", pose.blink, s), (16.0 * s, 20.0 * s), head_c,
+            lambda d, o: self._draw_head_three_quarter(d, o, pose, s), "head",
+        )
+
+    def _paint_three_quarter_body(self, d: ImageDraw.ImageDraw, cx: float, feet_y: float, spec: BobSpec, s: float) -> None:
+        """Legs, boots, satchel, far arm, torso, vest and belt in the
+        three-quarter view, around the feet point."""
         pal = BOB_PALETTE
         outline = pal["outline"]
         boot_top = feet_y - spec.boot_h * s
         shin_top = boot_top - spec.shin_h * s
         hip_y = shin_top - spec.thigh_h * s
         shoulder_y = hip_y - spec.torso_h * s
-        head_c = (
-            cx + 1.5 * s,
-            shoulder_y - 11.0 * s + pose.head_tilt * 0.12 * s,
-        )
 
         # Rear leg first, then the near leg.  A slight stance gives him weight
         # without the old pinched, nearly merged trouser silhouette.
@@ -1351,47 +1382,6 @@ class BobEngineerGenerator(CharacterGenerator):
         )
         self._draw_keyring(d, (cx + 8.3 * s, hip_y + 4.5 * s), s, scale=0.60)
 
-        # Near arm and iconic key ring.
-        near_shoulder = (cx + 11.8 * s, shoulder_y + 5.0 * s)
-        near_elbow = (
-            cx + 14.5 * s + pose.scan * 0.25 * s,
-            shoulder_y + 17.0 * s,
-        )
-        near_hand = (
-            cx + 13.2 * s + pose.scan * 0.65 * s,
-            hip_y - 4.0 * s,
-        )
-        self._draw_two_bone_limb(
-            d,
-            near_shoulder,
-            near_elbow,
-            near_hand,
-            s,
-            fill=pal["shirt"],
-            width=6.0,
-        )
-        _rounded(
-            d,
-            _bbox(
-                near_shoulder[0] + 0.4 * s,
-                near_shoulder[1] + 5.5 * s,
-                6.5 * s,
-                7.0 * s,
-            ),
-            radius=1.4 * s,
-            fill=pal["shirt_dark"],
-            outline=outline,
-            width=round(0.75 * s),
-        )
-        self._draw_hand(d, near_hand, s)
-        self._draw_keyring(
-            d,
-            (near_hand[0] + 4.8 * s, near_hand[1] + 1.0 * s),
-            s,
-            scale=0.62,
-        )
-
-        self._draw_head_three_quarter(d, head_c, pose, s)
 
     def _draw_head_three_quarter(
         self,
@@ -1570,22 +1560,119 @@ class BobEngineerGenerator(CharacterGenerator):
 
     def _draw_front(
         self,
-        image: Image.Image,
+        frame: _toon_rig.Frame,
         cx: float,
         feet_y: float,
         spec: BobSpec,
         pose: BobPose,
         s: float,
     ) -> None:
-        d = blending_draw(image)
+        """The front body as pieces: legs with the satchel, the far arm, the
+        torso, the near arm, the analyzer and the head."""
         pal = BOB_PALETTE
-        outline = pal["outline"]
         boot_top = feet_y - spec.boot_h * s
         shin_top = boot_top - spec.shin_h * s
         hip_y = shin_top - spec.thigh_h * s
         shoulder_y = hip_y - spec.torso_h * s
         head_c = (cx, shoulder_y - 11.0 * s + pose.head_tilt * 0.1 * s)
+        _toon_rig.anchored(
+            frame, ("bob_legs_front", spec, s), (24.0 * s, 80.0 * s), (cx, feet_y),
+            lambda d, o: self._paint_front_legs(d, o[0], o[1], spec, s), "legs",
+        )
 
+        # Back arm.  Front-view elbows must remain lateral to their shoulders:
+        # upper arms drop slightly outward, then forearms return inward.  The
+        # previous generic IK solution sometimes selected the opposite branch
+        # and produced an anatomically backwards zig-zag across Bob's torso.
+        left_shoulder = (cx - 12.5 * s, shoulder_y + 5.0 * s)
+        relaxed_left_elbow = (cx - 15.2 * s, shoulder_y + 17.2 * s)
+        relaxed_left_hand = (cx - 14.0 * s, hip_y - 3.0 * s)
+        device_left_elbow = (cx - 13.8 * s, shoulder_y + 18.0 * s)
+        device_left_hand = (cx - 6.2 * s, shoulder_y + 19.0 * s)
+        mix = max(0.0, min(1.0, pose.interact))
+        left_elbow = (
+            relaxed_left_elbow[0]
+            + (device_left_elbow[0] - relaxed_left_elbow[0]) * mix,
+            relaxed_left_elbow[1]
+            + (device_left_elbow[1] - relaxed_left_elbow[1]) * mix,
+        )
+        left_hand = (
+            relaxed_left_hand[0] + (device_left_hand[0] - relaxed_left_hand[0]) * mix,
+            relaxed_left_hand[1] + (device_left_hand[1] - relaxed_left_hand[1]) * mix,
+        )
+        self._place_limb(frame, left_shoulder, left_elbow, left_hand, s, fill=pal["shirt_dark"], width=5.9, name="far_arm", quantum=0.5)
+        self._place_hand(frame, left_hand, s, "far_hand")
+
+        _toon_rig.anchored(
+            frame, ("bob_torso_front", spec, s), (24.0 * s, 80.0 * s), (cx, feet_y),
+            lambda d, o: self._paint_front_torso(d, o[0], o[1], spec, s), "torso",
+        )
+
+        # Near/right arm.  As above, keep the elbow outside the shoulder in
+        # every front-view pose.  Interaction rotates the forearm inward around
+        # a low, stable elbow; talking rotates it outward and upward rather than
+        # reversing the elbow hinge.
+        right_shoulder = (cx + 12.5 * s, shoulder_y + 5.0 * s)
+        relaxed_right_elbow = (cx + 15.2 * s, shoulder_y + 17.2 * s)
+        relaxed_right_hand = (cx + 14.0 * s, hip_y - 3.0 * s)
+        device_right_elbow = (cx + 13.8 * s, shoulder_y + 18.0 * s)
+        device_right_hand = (cx + 6.2 * s, shoulder_y + 19.0 * s)
+        gesture_right_elbow = (cx + 15.5 * s, shoulder_y + 16.0 * s)
+        gesture_right_hand = (cx + 20.0 * s, shoulder_y + 11.5 * s)
+        interact_mix = max(0.0, min(1.0, pose.interact))
+        gesture_mix = 0.0 if interact_mix > 0.0 else max(0.0, min(1.0, pose.gesture))
+        right_elbow = (
+            relaxed_right_elbow[0]
+            + (device_right_elbow[0] - relaxed_right_elbow[0]) * interact_mix
+            + (gesture_right_elbow[0] - relaxed_right_elbow[0]) * gesture_mix,
+            relaxed_right_elbow[1]
+            + (device_right_elbow[1] - relaxed_right_elbow[1]) * interact_mix
+            + (gesture_right_elbow[1] - relaxed_right_elbow[1]) * gesture_mix,
+        )
+        right_hand = (
+            relaxed_right_hand[0]
+            + (device_right_hand[0] - relaxed_right_hand[0]) * interact_mix
+            + (gesture_right_hand[0] - relaxed_right_hand[0]) * gesture_mix,
+            relaxed_right_hand[1]
+            + (device_right_hand[1] - relaxed_right_hand[1]) * interact_mix
+            + (gesture_right_hand[1] - relaxed_right_hand[1]) * gesture_mix,
+        )
+        self._place_limb(frame, right_shoulder, right_elbow, right_hand, s, fill=pal["shirt"], width=6.0, name="near_arm", quantum=0.5)
+        self._place_hand(frame, right_hand, s, "near_hand")
+        if pose.interact <= 0.0 and pose.gesture <= 0.05:
+            _toon_rig.anchored(
+                frame, ("bob_hand_keys_front", s), (12.0 * s, 12.0 * s), right_hand,
+                lambda d, o: self._draw_keyring(d, (o[0] + 4.5 * s, o[1] + 0.8 * s), s, scale=0.68), "near_keys",
+            )
+
+        if pose.interact > 0.02:
+            # One analyzer piece per opening and scan (rounded).
+            open_amount = round(pose.interact, 2)
+            scan = round(pose.scan, 2)
+            _toon_rig.anchored(
+                frame, ("bob_analyzer", open_amount, scan, s), (22.0 * s, 9.0 * s), (cx, shoulder_y + 19.0 * s),
+                lambda d, o: self._draw_analyzer(d, o, s, open_amount=open_amount, scan=scan), "analyzer",
+            )
+
+        talk_open = round(pose.talk_open, 1)
+        expression = (pose.blink, talk_open)
+        _toon_rig.anchored(
+            frame, ("bob_head_front", expression, s), (16.0 * s, 20.0 * s), head_c,
+            lambda d, o: self._draw_head_front(d, o, replace(pose, talk_open=talk_open), s), "head",
+        )
+
+
+    def _front_lines(self, feet_y: float, spec: BobSpec, s: float) -> Tuple[float, float, float, float]:
+        boot_top = feet_y - spec.boot_h * s
+        shin_top = boot_top - spec.shin_h * s
+        hip_y = shin_top - spec.thigh_h * s
+        return boot_top, shin_top, hip_y, hip_y - spec.torso_h * s
+
+    def _paint_front_legs(self, d: ImageDraw.ImageDraw, cx: float, feet_y: float, spec: BobSpec, s: float) -> None:
+        """Front legs, boots and the far satchel, around the feet point."""
+        pal = BOB_PALETTE
+        outline = pal["outline"]
+        boot_top, shin_top, hip_y, shoulder_y = self._front_lines(feet_y, spec, s)
         # Legs and boots.
         for sign, fill in ((-1, pal["pants_dark"]), (1, pal["pants"])):
             leg_x = cx + sign * 5.1 * s
@@ -1636,37 +1723,12 @@ class BobEngineerGenerator(CharacterGenerator):
         # Far-side satchel is partially visible behind the body.
         self._draw_satchel(d, (cx - 15.0 * s, hip_y - 10.0 * s), s * 0.88)
 
-        # Back arm.  Front-view elbows must remain lateral to their shoulders:
-        # upper arms drop slightly outward, then forearms return inward.  The
-        # previous generic IK solution sometimes selected the opposite branch
-        # and produced an anatomically backwards zig-zag across Bob's torso.
-        left_shoulder = (cx - 12.5 * s, shoulder_y + 5.0 * s)
-        relaxed_left_elbow = (cx - 15.2 * s, shoulder_y + 17.2 * s)
-        relaxed_left_hand = (cx - 14.0 * s, hip_y - 3.0 * s)
-        device_left_elbow = (cx - 13.8 * s, shoulder_y + 18.0 * s)
-        device_left_hand = (cx - 6.2 * s, shoulder_y + 19.0 * s)
-        mix = max(0.0, min(1.0, pose.interact))
-        left_elbow = (
-            relaxed_left_elbow[0]
-            + (device_left_elbow[0] - relaxed_left_elbow[0]) * mix,
-            relaxed_left_elbow[1]
-            + (device_left_elbow[1] - relaxed_left_elbow[1]) * mix,
-        )
-        left_hand = (
-            relaxed_left_hand[0] + (device_left_hand[0] - relaxed_left_hand[0]) * mix,
-            relaxed_left_hand[1] + (device_left_hand[1] - relaxed_left_hand[1]) * mix,
-        )
-        self._draw_two_bone_limb(
-            d,
-            left_shoulder,
-            left_elbow,
-            left_hand,
-            s,
-            fill=pal["shirt_dark"],
-            width=5.9,
-        )
-        self._draw_hand(d, left_hand, s)
 
+    def _paint_front_torso(self, d: ImageDraw.ImageDraw, cx: float, feet_y: float, spec: BobSpec, s: float) -> None:
+        """Front shirt, vest, belt and belt keys, around the feet point."""
+        pal = BOB_PALETTE
+        outline = pal["outline"]
+        boot_top, shin_top, hip_y, shoulder_y = self._front_lines(feet_y, spec, s)
         # Torso underlayer.
         _poly(
             d,
@@ -1806,63 +1868,6 @@ class BobEngineerGenerator(CharacterGenerator):
         )
         self._draw_keyring(d, (cx + 8.5 * s, hip_y + 4.5 * s), s, scale=0.58)
 
-        # Near/right arm.  As above, keep the elbow outside the shoulder in
-        # every front-view pose.  Interaction rotates the forearm inward around
-        # a low, stable elbow; talking rotates it outward and upward rather than
-        # reversing the elbow hinge.
-        right_shoulder = (cx + 12.5 * s, shoulder_y + 5.0 * s)
-        relaxed_right_elbow = (cx + 15.2 * s, shoulder_y + 17.2 * s)
-        relaxed_right_hand = (cx + 14.0 * s, hip_y - 3.0 * s)
-        device_right_elbow = (cx + 13.8 * s, shoulder_y + 18.0 * s)
-        device_right_hand = (cx + 6.2 * s, shoulder_y + 19.0 * s)
-        gesture_right_elbow = (cx + 15.5 * s, shoulder_y + 16.0 * s)
-        gesture_right_hand = (cx + 20.0 * s, shoulder_y + 11.5 * s)
-        interact_mix = max(0.0, min(1.0, pose.interact))
-        gesture_mix = 0.0 if interact_mix > 0.0 else max(0.0, min(1.0, pose.gesture))
-        right_elbow = (
-            relaxed_right_elbow[0]
-            + (device_right_elbow[0] - relaxed_right_elbow[0]) * interact_mix
-            + (gesture_right_elbow[0] - relaxed_right_elbow[0]) * gesture_mix,
-            relaxed_right_elbow[1]
-            + (device_right_elbow[1] - relaxed_right_elbow[1]) * interact_mix
-            + (gesture_right_elbow[1] - relaxed_right_elbow[1]) * gesture_mix,
-        )
-        right_hand = (
-            relaxed_right_hand[0]
-            + (device_right_hand[0] - relaxed_right_hand[0]) * interact_mix
-            + (gesture_right_hand[0] - relaxed_right_hand[0]) * gesture_mix,
-            relaxed_right_hand[1]
-            + (device_right_hand[1] - relaxed_right_hand[1]) * interact_mix
-            + (gesture_right_hand[1] - relaxed_right_hand[1]) * gesture_mix,
-        )
-        self._draw_two_bone_limb(
-            d,
-            right_shoulder,
-            right_elbow,
-            right_hand,
-            s,
-            fill=pal["shirt"],
-            width=6.0,
-        )
-        self._draw_hand(d, right_hand, s)
-        if pose.interact <= 0.0 and pose.gesture <= 0.05:
-            self._draw_keyring(
-                d,
-                (right_hand[0] + 4.5 * s, right_hand[1] + 0.8 * s),
-                s,
-                scale=0.68,
-            )
-
-        if pose.interact > 0.02:
-            self._draw_analyzer(
-                d,
-                (cx, shoulder_y + 19.0 * s),
-                s,
-                open_amount=pose.interact,
-                scan=pose.scan,
-            )
-
-        self._draw_head_front(d, head_c, pose, s)
 
     def _draw_head_front(
         self,
@@ -2342,23 +2347,26 @@ class BobEngineerGenerator(CharacterGenerator):
 
     def _draw_side(
         self,
-        image: Image.Image,
+        frame: _toon_rig.Frame,
         cx: float,
         feet_y: float,
         spec: BobSpec,
         pose: BobPose,
         s: float,
     ) -> None:
-        d = blending_draw(image)
+        """The profile body as pieces: limbs are bones of fixed length (the
+        two-bone solve), boots ride the ankles, the head and the torso are
+        one piece each."""
         pal = BOB_PALETTE
-        outline = pal["outline"]
         base_boot_top = feet_y - spec.boot_h * s
         base_shin_top = base_boot_top - spec.shin_h * s
         base_hip_y = base_shin_top - spec.thigh_h * s
         body_shift = pose.walk_body_y * s if pose.walk_index >= 0 else 0.0
         crouch = _clamp01(pose.crouch)
         hip_y = base_hip_y + body_shift + 4.5 * crouch * s
-        shoulder_y = hip_y - (spec.torso_h - 6.0 * crouch) * s
+        # The torso is one piece per height (half a design pixel apart).
+        torso_h = round((spec.torso_h - 6.0 * crouch) * 2.0) / 2.0
+        shoulder_y = hip_y - torso_h * s
         lean = (
             (
                 0.8 * pose.step * pose.arm_swing
@@ -2370,8 +2378,9 @@ class BobEngineerGenerator(CharacterGenerator):
         head_c = (cx + 1.8 * s + lean, shoulder_y - 11.0 * s)
 
         # Satchel and far arm are behind the torso.
-        self._draw_satchel(
-            d, (cx - 8.5 * s + lean, hip_y - 10.0 * s), s * 0.92, side=True
+        _toon_rig.anchored(
+            frame, ("bob_satchel_side", s), (10.0 * s, 14.0 * s), (cx - 8.5 * s + lean, hip_y - 10.0 * s),
+            lambda d, o: self._draw_satchel(d, o, s * 0.92, side=True), "satchel",
         )
         far_shoulder = (cx - 3.6 * s + lean, shoulder_y + 5.0 * s)
         if pose.far_hand is not None:
@@ -2393,16 +2402,8 @@ class BobEngineerGenerator(CharacterGenerator):
             spec.arm_lower * s,
             bend_sign=pose.far_bend,
         )
-        self._draw_two_bone_limb(
-            d,
-            far_shoulder,
-            far_elbow,
-            far_hand,
-            s,
-            fill=pal["shirt_dark"],
-            width=5.8,
-        )
-        self._draw_hand(d, far_hand, s, width=4.9, height=5.0)
+        self._place_limb(frame, far_shoulder, far_elbow, far_hand, s, fill=pal["shirt_dark"], width=5.8, name="far_arm")
+        self._place_hand(frame, far_hand, s, "far_hand", width=4.9, height=5.0)
 
         # Authored foot targets: near leg begins at rear contact while far leg
         # begins at front contact.  The phases include down, passing, and up,
@@ -2440,8 +2441,6 @@ class BobEngineerGenerator(CharacterGenerator):
 
         far_hip = (cx - 1.4 * s + lean, hip_y)
         near_hip = (cx + 2.8 * s + lean, hip_y)
-        far_ground = feet_y
-        near_ground = feet_y
         if pose.far_foot is not None:
             far_ankle_target = (
                 cx + pose.far_foot[0] * s + lean,
@@ -2476,127 +2475,21 @@ class BobEngineerGenerator(CharacterGenerator):
             spec.shin_h * s,
             bend_sign=1.0,
         )
-        self._draw_two_bone_limb(
-            d,
-            far_hip,
-            far_knee,
-            far_ankle,
-            s,
-            fill=pal["pants_dark"],
-            width=6.2,
-        )
-        self._draw_profile_boot(
-            d,
-            far_ankle,
-            far_ground,
-            s,
-            near=False,
-            foot_roll=far_roll,
-        )
-        self._draw_two_bone_limb(
-            d,
-            near_hip,
-            near_knee,
-            near_ankle,
-            s,
-            fill=pal["pants"],
-            width=6.4,
-        )
-        self._draw_profile_boot(
-            d,
-            near_ankle,
-            near_ground,
-            s,
-            near=True,
-            foot_roll=near_roll,
-        )
+        self._place_limb(frame, far_hip, far_knee, far_ankle, s, fill=pal["pants_dark"], width=6.2, name="far_leg")
+        self._place_profile_boot(frame, far_ankle, feet_y, s, near=False, foot_roll=far_roll)
+        self._place_limb(frame, near_hip, near_knee, near_ankle, s, fill=pal["pants"], width=6.4, name="near_leg")
+        self._place_profile_boot(frame, near_ankle, feet_y, s, near=True, foot_roll=near_roll)
 
         # Head and neck are behind the torso shoulder seam, so the jacket owns
         # the lower-neck overlap and Bob never looks decapitated or pasted on.
-        self._draw_head_side(d, head_c, pose, s)
-
-        torso = [
-            (cx - 7.0 * s + lean, shoulder_y),
-            (cx + 5.0 * s + lean, shoulder_y + 1.0 * s),
-            (cx + 8.0 * s + lean, shoulder_y + 9.0 * s),
-            (cx + 7.0 * s + lean, shoulder_y + 20.0 * s),
-            (cx + 7.8 * s + lean, hip_y),
-            (cx - 6.3 * s + lean, hip_y),
-        ]
-        _poly(d, torso, fill=pal["shirt"], outline=outline, width=round(1.1 * s))
-        vest = [
-            (cx - 5.5 * s + lean, shoulder_y + 1.5 * s),
-            (cx + 2.0 * s + lean, shoulder_y + 2.8 * s),
-            (cx + 6.5 * s + lean, shoulder_y + 10.0 * s),
-            (cx + 5.8 * s + lean, hip_y),
-            (cx - 5.5 * s + lean, hip_y),
-        ]
-        _poly(d, vest, fill=pal["vest"], outline=outline, width=round(1.0 * s))
-        _poly(
-            d,
-            [
-                (cx - 4.8 * s + lean, shoulder_y + 2.0 * s),
-                (cx + 1.5 * s + lean, shoulder_y + 3.2 * s),
-                (cx - 1.0 * s + lean, shoulder_y + 11.5 * s),
-            ],
-            fill=pal["vest_light"],
-            outline=outline,
-            width=round(0.7 * s),
+        _toon_rig.anchored(
+            frame, ("bob_head_side", pose.blink, s), (16.0 * s, 20.0 * s), head_c,
+            lambda d, o: self._draw_head_side(d, o, pose, s), "head",
         )
-        _line(
-            d,
-            [
-                (cx - 3.8 * s + lean, shoulder_y + 16.0 * s),
-                (cx + 5.8 * s + lean, shoulder_y + 18.5 * s),
-            ],
-            fill=pal["hi_vis_dark"],
-            width=round(3.6 * s),
-        )
-        _line(
-            d,
-            [
-                (cx - 3.8 * s + lean, shoulder_y + 16.0 * s),
-                (cx + 5.8 * s + lean, shoulder_y + 18.5 * s),
-            ],
-            fill=pal["hi_vis"],
-            width=round(1.9 * s),
-        )
-        _line(
-            d,
-            [
-                (cx + 1.0 * s + lean, shoulder_y + 1.5 * s),
-                (cx - 4.8 * s + lean, hip_y),
-            ],
-            fill=pal["leather_dark"],
-            width=round(4.0 * s),
-        )
-        _line(
-            d,
-            [
-                (cx + 1.0 * s + lean, shoulder_y + 1.5 * s),
-                (cx - 4.8 * s + lean, hip_y),
-            ],
-            fill=pal["leather"],
-            width=round(2.2 * s),
-        )
-        _rounded(
-            d,
-            (
-                cx - 6.5 * s + lean,
-                hip_y - 2.5 * s,
-                cx + 8.2 * s + lean,
-                hip_y + 2.6 * s,
-            ),
-            radius=1.2 * s,
-            fill=pal["leather_dark"],
-            outline=outline,
-            width=round(0.8 * s),
-        )
-        self._draw_keyring(
-            d,
-            (cx + 6.5 * s + lean, hip_y + 4.5 * s),
-            s,
-            scale=0.55,
+        body_x = cx + lean
+        _toon_rig.anchored(
+            frame, ("bob_torso_side", torso_h, s), (14.0 * s, (torso_h + 12.0) * s), (body_x, hip_y),
+            lambda d, o: self._paint_side_torso(d, o[0], o[1] - torso_h * s, o[1], s), "torso",
         )
 
         # Near arm in front, with shoulder positioned beneath the neck rather
@@ -2621,52 +2514,190 @@ class BobEngineerGenerator(CharacterGenerator):
             spec.arm_lower * s,
             bend_sign=pose.near_bend,
         )
-        self._draw_two_bone_limb(
-            d,
-            near_shoulder,
-            near_elbow,
-            near_hand,
-            s,
-            fill=pal["shirt"],
-            width=6.0,
+        self._place_limb(frame, near_shoulder, near_elbow, near_hand, s, fill=pal["shirt"], width=6.0, name="near_arm")
+        self._place_hand(frame, near_hand, s, "near_hand", width=5.0, height=5.1)
+        self._place_prop(frame, near_hand, pose, s)
+
+    def _place_limb(
+        self,
+        frame: _toon_rig.Frame,
+        root: Point,
+        joint: Point,
+        end: Point,
+        s: float,
+        *,
+        fill: Color,
+        width: float,
+        name: str,
+        quantum: float = 0.25,
+    ) -> None:
+        """A two-bone limb (``_draw_two_bone_limb``) as two turned tubes. The
+        bones keep their length; a limb authored by its joints is rounded to
+        ``quantum`` design pixels."""
+        outline = BOB_PALETTE["outline"]
+        radius = (width + 2.1) * 0.5 * s
+        ow = 1.05 * s
+        _toon_rig.tube(frame, root, joint, radius, radius, fill, outline, ow, f"{name}_upper", quantum=quantum * s)
+        _toon_rig.tube(frame, joint, end, radius, radius, fill, outline, ow, f"{name}_lower", quantum=quantum * s, start_cap=False)
+
+    def _place_hand(self, frame: _toon_rig.Frame, center: Point, s: float, name: str, *, width: float = 5.4, height: float = 5.2) -> None:
+        _toon_rig.anchored(
+            frame, ("bob_hand", width, height, s), (4.0 * s, 4.0 * s), center,
+            lambda d, o: self._draw_hand(d, o, s, width=width, height=height), name,
         )
-        self._draw_hand(d, near_hand, s, width=5.0, height=5.1)
+
+    def _place_profile_boot(self, frame: _toon_rig.Frame, ankle: Point, ground_y: float, s: float, *, near: bool, foot_roll: float) -> None:
+        """The boot riding the ankle: one piece per sole depth below the
+        ankle (half a design pixel apart) and roll."""
+        depth = max(6.6, round((ground_y - ankle[1]) / s * 2.0) / 2.0)
+        roll = round(foot_roll * 4.0) / 4.0
+        side = "near" if near else "far"
+        _toon_rig.anchored(
+            frame, ("bob_boot_side", near, depth, roll, s), (14.0 * s, (depth + 4.0) * s), ankle,
+            lambda d, o: self._draw_profile_boot(d, o, o[1] + depth * s, s, near=near, foot_roll=roll), f"{side}_boot",
+        )
+
+    def _place_prop(self, frame: _toon_rig.Frame, hand: Point, pose: BobPose, s: float) -> None:
+        """The held prop riding the near hand; the wrench and the projector
+        are painted pointing along +x and turned by the tool angle."""
         if pose.prop == "keys":
-            self._draw_keyring(
-                d,
-                (near_hand[0] + 4.2 * s, near_hand[1] + 0.8 * s),
-                s,
-                scale=0.62,
+            _toon_rig.anchored(
+                frame, ("bob_hand_keys", s), (10.0 * s, 10.0 * s), hand,
+                lambda d, o: self._draw_keyring(d, (o[0] + 4.2 * s, o[1] + 0.8 * s), s, scale=0.62), "prop",
             )
         elif pose.prop == "wrench":
-            self._draw_wrench(d, near_hand, pose.tool_angle, s)
+            _toon_rig.anchored(
+                frame, ("bob_wrench", s), (28.0 * s, 28.0 * s), hand,
+                lambda d, o: self._draw_wrench(d, o, 0.0, s), "prop", pose.tool_angle,
+            )
         elif pose.prop == "projector":
-            self._draw_projector(d, near_hand, pose.tool_angle, s)
+            _toon_rig.anchored(
+                frame, ("bob_projector", s), (18.0 * s, 18.0 * s), hand,
+                lambda d, o: self._draw_projector(d, o, 0.0, s), "prop", pose.tool_angle,
+            )
         elif pose.prop == "guard":
-            self._draw_guard_plate(d, near_hand, s)
+            _toon_rig.anchored(
+                frame, ("bob_guard", s), (14.0 * s, 14.0 * s), hand,
+                lambda d, o: self._draw_guard_plate(d, o, s), "prop",
+            )
         elif pose.prop == "parcel":
-            _rounded(
-                d,
-                (
-                    near_hand[0] - 4.5 * s,
-                    near_hand[1] - 4.0 * s,
-                    near_hand[0] + 7.5 * s,
-                    near_hand[1] + 5.5 * s,
-                ),
-                radius=1.2 * s,
-                fill=pal["device"],
-                outline=outline,
-                width=round(0.8 * s),
-            )
-            _line(
-                d,
-                [
-                    (near_hand[0] + 1.5 * s, near_hand[1] - 4.0 * s),
-                    (near_hand[0] + 1.5 * s, near_hand[1] + 5.5 * s),
-                ],
-                fill=pal["indicator"],
-                width=round(1.0 * s),
-            )
+            _toon_rig.anchored(frame, ("bob_parcel", s), (10.0 * s, 10.0 * s), hand, lambda d, o: self._paint_parcel(d, o, s), "prop")
+
+    def _paint_parcel(self, d: ImageDraw.ImageDraw, near_hand: Point, s: float) -> None:
+        pal = BOB_PALETTE
+        outline = pal["outline"]
+        _rounded(
+            d,
+            (
+                near_hand[0] - 4.5 * s,
+                near_hand[1] - 4.0 * s,
+                near_hand[0] + 7.5 * s,
+                near_hand[1] + 5.5 * s,
+            ),
+            radius=1.2 * s,
+            fill=pal["device"],
+            outline=outline,
+            width=round(0.8 * s),
+        )
+        _line(
+            d,
+            [
+                (near_hand[0] + 1.5 * s, near_hand[1] - 4.0 * s),
+                (near_hand[0] + 1.5 * s, near_hand[1] + 5.5 * s),
+            ],
+            fill=pal["indicator"],
+            width=round(1.0 * s),
+        )
+
+    def _paint_side_torso(self, d: ImageDraw.ImageDraw, cx: float, shoulder_y: float, hip_y: float, s: float) -> None:
+        """The profile shirt, vest, harness, belt and belt keys around the
+        body line ``cx``."""
+        pal = BOB_PALETTE
+        outline = pal["outline"]
+        torso = [
+            (cx - 7.0 * s, shoulder_y),
+            (cx + 5.0 * s, shoulder_y + 1.0 * s),
+            (cx + 8.0 * s, shoulder_y + 9.0 * s),
+            (cx + 7.0 * s, shoulder_y + 20.0 * s),
+            (cx + 7.8 * s, hip_y),
+            (cx - 6.3 * s, hip_y),
+        ]
+        _poly(d, torso, fill=pal["shirt"], outline=outline, width=round(1.1 * s))
+        vest = [
+            (cx - 5.5 * s, shoulder_y + 1.5 * s),
+            (cx + 2.0 * s, shoulder_y + 2.8 * s),
+            (cx + 6.5 * s, shoulder_y + 10.0 * s),
+            (cx + 5.8 * s, hip_y),
+            (cx - 5.5 * s, hip_y),
+        ]
+        _poly(d, vest, fill=pal["vest"], outline=outline, width=round(1.0 * s))
+        _poly(
+            d,
+            [
+                (cx - 4.8 * s, shoulder_y + 2.0 * s),
+                (cx + 1.5 * s, shoulder_y + 3.2 * s),
+                (cx - 1.0 * s, shoulder_y + 11.5 * s),
+            ],
+            fill=pal["vest_light"],
+            outline=outline,
+            width=round(0.7 * s),
+        )
+        _line(
+            d,
+            [
+                (cx - 3.8 * s, shoulder_y + 16.0 * s),
+                (cx + 5.8 * s, shoulder_y + 18.5 * s),
+            ],
+            fill=pal["hi_vis_dark"],
+            width=round(3.6 * s),
+        )
+        _line(
+            d,
+            [
+                (cx - 3.8 * s, shoulder_y + 16.0 * s),
+                (cx + 5.8 * s, shoulder_y + 18.5 * s),
+            ],
+            fill=pal["hi_vis"],
+            width=round(1.9 * s),
+        )
+        _line(
+            d,
+            [
+                (cx + 1.0 * s, shoulder_y + 1.5 * s),
+                (cx - 4.8 * s, hip_y),
+            ],
+            fill=pal["leather_dark"],
+            width=round(4.0 * s),
+        )
+        _line(
+            d,
+            [
+                (cx + 1.0 * s, shoulder_y + 1.5 * s),
+                (cx - 4.8 * s, hip_y),
+            ],
+            fill=pal["leather"],
+            width=round(2.2 * s),
+        )
+        _rounded(
+            d,
+            (
+                cx - 6.5 * s,
+                hip_y - 2.5 * s,
+                cx + 8.2 * s,
+                hip_y + 2.6 * s,
+            ),
+            radius=1.2 * s,
+            fill=pal["leather_dark"],
+            outline=outline,
+            width=round(0.8 * s),
+        )
+        self._draw_keyring(
+            d,
+            (cx + 6.5 * s, hip_y + 4.5 * s),
+            s,
+            scale=0.55,
+        )
+
 
     def _draw_head_side(
         self,

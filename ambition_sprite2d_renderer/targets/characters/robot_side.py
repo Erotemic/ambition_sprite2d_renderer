@@ -21,8 +21,8 @@ from PIL import Image, ImageDraw
 from ambition_sprite2d_renderer.core.draw import bbox_from_center as _bbox
 
 from ...profiling import profile
-from ...authoring import rigdoc
-from ...authoring.common_draw import RESAMPLING, draw_capsule, draw_rotated_rounded_rect
+from ...authoring import rigdoc, shape_rig
+from ...authoring.common_draw import RESAMPLING, draw_capsule
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
 from .robot25d import BotSpec, Pose, parse_background
@@ -52,9 +52,100 @@ def _with_alpha(color: Color, alpha: int) -> Color:
 
 
 
-def _paste_rotated_local(base: Image.Image, layer: Image.Image, center: Point, angle: float) -> None:
-    rotated = layer.rotate(angle, resample=RESAMPLING.BICUBIC, expand=True)
-    rigdoc.composite_layer(base, rotated, (int(center[0] - rotated.width / 2), int(center[1] - rotated.height / 2)), name="rotated")
+class RigCanvas:
+    """Pieces placed on ``canvas`` (``shape_rig``), all turned ``turn`` degrees
+    (clockwise) about ``pivot``: a whole-body roll is each piece's place and
+    angle turned, not the finished picture rotated (which would be a new
+    raster every frame).
+
+    Shared by the robot-family painters (robot_side, boss_side, sandbag,
+    robot_heavy, player_robot_fable)."""
+
+    def __init__(self, canvas: Image.Image, pivot: Point = (0.0, 0.0), turn: float = 0.0) -> None:
+        self.canvas = canvas
+        self.pivot = pivot
+        self.turn = float(turn)
+
+    def at(self, pt: Point) -> Point:
+        if self.turn == 0.0:
+            return pt
+        c, s = math.cos(math.radians(self.turn)), math.sin(math.radians(self.turn))
+        x, y = pt[0] - self.pivot[0], pt[1] - self.pivot[1]
+        return (self.pivot[0] + x * c - y * s, self.pivot[1] + x * s + y * c)
+
+    def put(self, part: Tuple[Image.Image, Point], at: Point, degrees: float, name: str, opacity: float = 1.0) -> None:
+        """``part`` with its pivot at ``at``, turned ``degrees`` (clockwise)."""
+        image, pivot = part
+        if opacity <= 0.0 or image.getbbox() is None:
+            return
+        rigdoc.blit_rotated(self.canvas, image, pivot, self.at(at), degrees + self.turn, min(1.0, opacity), part_name=name)
+
+    def capsule(self, a: Point, b: Point, radius: float, fill: Color, outline: Color, outline_w: float, name: str, length: Optional[float] = None, opacity: float = 1.0) -> None:
+        """``draw_capsule`` from ``a`` toward ``b`` as a bone (``length`` fixed,
+        else the distance to a quarter pixel)."""
+        span = math.hypot(b[0] - a[0], b[1] - a[1]) if length is None else length
+        span = round(span * 4) / 4
+        pad = radius + outline_w + 2
+        key = ("capsule", span, round(radius, 3), fill, outline, round(outline_w, 3))
+        part = shape_rig.piece(key, (span + 2 * pad, 2 * pad), (pad, pad), lambda d: draw_capsule(d, (pad, pad), (pad + span, pad), radius, fill, outline, outline_w))
+        self.put(part, a, math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])), name, opacity)
+
+    def _shape(self, kind: str, center: Point, size: Point, angle: float, radius: float, fill: Color, outline: Optional[Color], outline_w: float, name: str, opacity: float) -> None:
+        w, h = max(2, int(math.ceil(size[0] + outline_w * 4))), max(2, int(math.ceil(size[1] + outline_w * 4)))
+        pad = int(abs(outline_w) + 3)
+        cx, cy = w / 2 + pad, h / 2 + pad
+        box = (cx - size[0] / 2, cy - size[1] / 2, cx + size[0] / 2, cy + size[1] / 2)
+
+        def paint(d) -> None:
+            if outline is not None and outline_w > 0:
+                obox = (box[0] - outline_w, box[1] - outline_w, box[2] + outline_w, box[3] + outline_w)
+                if kind == "ellipse":
+                    d.ellipse(obox, fill=outline)
+                else:
+                    d.rounded_rectangle(obox, radius=radius + outline_w, fill=outline)
+            if kind == "ellipse":
+                d.ellipse(box, fill=fill)
+            else:
+                d.rounded_rectangle(box, radius=radius, fill=fill)
+
+        key = ("rig_" + kind, round(size[0], 3), round(size[1], 3), round(radius, 3), fill, outline, round(outline_w, 3))
+        part = shape_rig.piece(key, (w + 2 * pad, h + 2 * pad), (cx, cy), paint)
+        self.put(part, center, -angle, name, opacity)
+
+    def rounded_rect(self, center: Point, size: Point, angle: float, radius: float, fill: Color, outline: Optional[Color], outline_w: float, name: str, opacity: float = 1.0) -> None:
+        """``draw_rotated_rounded_rect`` (``angle`` counter-clockwise, as
+        ``Image.rotate``) as a piece."""
+        self._shape("rect", center, size, angle, radius, fill, outline, outline_w, name, opacity)
+
+    def ellipse(self, center: Point, size: Point, angle: float, fill: Color, outline: Optional[Color], outline_w: float, name: str, opacity: float = 1.0) -> None:
+        """``draw_rotated_ellipse`` (``angle`` counter-clockwise) as a piece."""
+        self._shape("ellipse", center, size, angle, 0.0, fill, outline, outline_w, name, opacity)
+
+    def disc(self, center: Point, radius: float, fill: Color, outline: Optional[Color], outline_px: int, name: str, opacity: float = 1.0) -> None:
+        """``ImageDraw.ellipse`` of ``radius`` about ``center`` (an outline
+        ``outline_px`` wide, as PIL draws it) as a piece."""
+        pad = radius + 2
+
+        def paint(d) -> None:
+            d.ellipse((2, 2, 2 + 2 * radius, 2 + 2 * radius), fill=fill, outline=outline, width=outline_px)
+
+        part = shape_rig.piece(("rig_disc", round(radius, 3), fill, outline, outline_px), (2 * pad, 2 * pad), (pad, pad), paint)
+        self.put(part, center, 0.0, name, opacity)
+
+
+def two_bone(root: Point, target: Point, upper: float, lower: float, hint: Point) -> Tuple[Point, Point]:
+    """Elbow and end of a two-bone chain of fixed lengths reaching toward
+    ``target`` from ``root``, bending to the side nearer ``hint``: a limb
+    whose painter moved both joints keeps its bones' lengths."""
+    dx, dy = target[0] - root[0], target[1] - root[1]
+    reach = clamp(max(1e-6, math.hypot(dx, dy)), abs(upper - lower) + 1e-3, upper + lower - 1e-3)
+    base = math.atan2(dy, dx)
+    bend = math.acos(clamp((upper * upper + reach * reach - lower * lower) / (2 * upper * reach), -1.0, 1.0))
+    elbows = [(root[0] + upper * math.cos(base + k * bend), root[1] + upper * math.sin(base + k * bend)) for k in (1.0, -1.0)]
+    elbow = min(elbows, key=lambda e: math.hypot(e[0] - hint[0], e[1] - hint[1]))
+    ex, ey = target[0] - elbow[0], target[1] - elbow[1]
+    norm = max(1e-6, math.hypot(ex, ey))
+    return elbow, (elbow[0] + ex / norm * lower, elbow[1] + ey / norm * lower)
 
 
 class SideRobotGenerator(CharacterGenerator):
@@ -1459,6 +1550,25 @@ class SideRobotGenerator(CharacterGenerator):
             d.rounded_rectangle((body_center[0] - 30*S, body_center[1] - 4*S, body_center[0] - 17*S, body_center[1] + 17*S), radius=3*S, fill=_with_alpha(accent, 160), outline=outline, width=max(1, int(1.0*S)))
             d.rectangle((body_center[0] - 28*S, body_center[1] - 2*S, body_center[0] - 18*S, body_center[1] + 4*S), fill=_rgba("#F3E8C8"), outline=outline, width=max(1, int(0.7*S)))
 
+    def _place_archetype_accessories(self, rig: "RigCanvas", spec: BotSpec, pal: Dict[str, Color], S: float, root_x: float, ground_y: float, body_center: Point, head_center: Point) -> None:
+        """The archetype's accessories as three pieces riding the head, the
+        body and the ground point (``root_x``, ``ground_y``): each is the
+        accessory painter with the other anchors far off its canvas, so only
+        its own items land."""
+        span = 64 * S
+        away = (-100 * span, -100 * span)
+        local = (span, span)
+        for which, at in (("ground", (root_x, ground_y)), ("body", body_center), ("head", head_center)):
+
+            def paint(d, which=which) -> None:
+                ground = local if which == "ground" else away
+                self._draw_archetype_accessories(
+                    None, d, spec, pal, S, ground[0], ground[1], local if which == "body" else away, local if which == "head" else away
+                )
+
+            key = ("robot_accessories", which, spec.archetype, spec.palette_name, tuple(sorted(pal.items())), round(S, 4))
+            rig.put(shape_rig.piece(key, (2 * span, 2 * span), local, paint), at, 0.0, f"{which}_accessories")
+
     def _leg_chain(self, hip: Point, upper_len: float, lower_len: float, a1: float, a2: float) -> Tuple[Point, Point]:
         knee = add(hip, vec(upper_len, a1))
         ankle = add(knee, vec(lower_len, a2))
@@ -1536,7 +1646,7 @@ class SideRobotGenerator(CharacterGenerator):
             "pelvis": (pelvis_center, (pelvis_w * S, pelvis_h * S)),
         }
 
-    def _draw_leg_from_ik(self, img: Image.Image, d: ImageDraw.ImageDraw, hip: Point, ankle: Point, foot_center: Point, foot_size: Tuple[float, float], foot_angle: float, tint: Color, outline_color: Color, outline: float, upper_len: float, lower_len: float, pixel_scale: float, bend_sign: float = 1.0) -> None:
+    def _draw_leg_from_ik(self, img: "RigCanvas", d: Optional[ImageDraw.ImageDraw], hip: Point, ankle: Point, foot_center: Point, foot_size: Tuple[float, float], foot_angle: float, tint: Color, outline_color: Color, outline: float, upper_len: float, lower_len: float, pixel_scale: float, bend_sign: float = 1.0) -> None:
         # Keep a small persistent bend so the compact robot never reads as if
         # the shin telescopes longer in the crossover frames.
         dx = ankle[0] - hip[0]
@@ -1550,9 +1660,9 @@ class SideRobotGenerator(CharacterGenerator):
             ankle = clamped_ankle
             foot_center = (foot_center[0] + shift[0], foot_center[1] + shift[1])
         knee, _a1, _a2 = self._solve_leg_ik(hip, ankle, upper_len, lower_len, bend_sign)
-        draw_capsule(d, hip, knee, 2.9 * pixel_scale, tint, outline_color, outline * 0.65)
-        draw_capsule(d, knee, ankle, 2.7 * pixel_scale, tint, outline_color, outline * 0.65)
-        draw_rotated_rounded_rect(img, foot_center, foot_size, foot_angle, 3.0 * pixel_scale, tint, outline_color, outline * 0.7)
+        img.capsule(hip, knee, 2.9 * pixel_scale, tint, outline_color, outline * 0.65, "thigh", length=upper_len)
+        img.capsule(knee, ankle, 2.7 * pixel_scale, tint, outline_color, outline * 0.65, "shin", length=lower_len)
+        img.rounded_rect(foot_center, foot_size, foot_angle, 3.0 * pixel_scale, tint, outline_color, outline * 0.7, "foot")
 
     def _draw_shadow(self, img: Image.Image, ground_y: float, x: float, width: float, alpha: int) -> None:
         d = blending_draw(img)
@@ -1668,19 +1778,27 @@ class SideRobotGenerator(CharacterGenerator):
                 # Faded as one picture (one overlay), not part by part.
                 rigdoc.composite_layer(base, rigdoc.faded_canvas(actor, full_alpha), name="resolved")
 
-    def _draw_rigid_head(self, img: Image.Image, center: Point, spec: BotSpec, pal: Dict[str, Color], S: float, angle: float, blink_closed: bool, squint: float, dead: bool, look: float = 1.0) -> None:
+    def _draw_rigid_head(self, img: "RigCanvas", center: Point, spec: BotSpec, pal: Dict[str, Color], S: float, angle: float, blink_closed: bool, squint: float, dead: bool, look: float = 1.0) -> None:
         # Draw in head-local coordinates, then rotate/paste the full layer.  This
         # preserves the older in-repo rigid 2.5D-head idea while remaining pure 2D.
+        # One piece per face (blink, squint, look, dead), turned by the head
+        # angle (``Image.rotate``'s counter-clockwise ``angle``).
         pad = int(math.ceil(48 * S))
-        layer = Image.new("RGBA", (pad * 2, pad * 2), (0, 0, 0, 0))
-        d = blending_draw(layer)
+        look = round(clamp(float(look), -1.0, 1.0), 2)
+        squint = round(squint * 20.0) / 20.0
+        key = ("robot_head", spec, tuple(sorted(pal.items())), round(S, 4), bool(blink_closed), squint, bool(dead), look)
+        part = shape_rig.piece(key, (pad * 2, pad * 2), (pad, pad), lambda d: self._paint_head(d, pad, spec, pal, S, blink_closed, squint, dead, look))
+        img.put(part, center, -angle, "head")
+
+    def _paint_head(self, d, pad: int, spec: BotSpec, pal: Dict[str, Color], S: float, blink_closed: bool, squint: float, dead: bool, look: float) -> None:
+        """The head in its own frame, centred on ``(pad, pad)``."""
+        layer = d._img
         cx, cy = float(pad), float(pad)
         outline = max(1, int(round(1.8 * S)))
         head_w = spec.head_w * S
         head_h = spec.head_h * S
 
-        # Antenna is part of the rigid head layer.
-        look = clamp(float(look), -1.0, 1.0)
+        # Antenna is part of the rigid head.
         ant_base = (cx - 8 * S * look, cy - head_h * 0.50)
         ant_tip = (cx - 12 * S * look, cy - head_h * 0.50 - spec.antenna_h * S)
         d.line([ant_base, ant_tip], fill=pal["outline"], width=max(1, int(1.7 * S)))
@@ -1699,7 +1817,7 @@ class SideRobotGenerator(CharacterGenerator):
         hd = blending_draw(detail)
         hd.rounded_rectangle((inner[0] + 4 * S, inner[1] + 3 * S, inner[2] - 5 * S, cy - 1 * S), radius=7 * S, fill=_with_alpha((255, 255, 255, 255), 205))
         hd.rounded_rectangle((inner[0] + 8 * S, cy + 1 * S, inner[2] - 2 * S, inner[3] - 3 * S), radius=7 * S, fill=_with_alpha(pal["shell_side"], 190))
-        rigdoc.composite_canvas(layer, detail)
+        layer.alpha_composite(detail)
 
         visor_center = (cx + 7.0 * S * look, cy - 1.0 * S)
         visor_h = spec.visor_h * S
@@ -1719,8 +1837,6 @@ class SideRobotGenerator(CharacterGenerator):
         elif not blink_closed:
             for ex in (-4.0, 4.0):
                 d.ellipse(_bbox((visor_center[0] + ex * S, visor_center[1]), 3.0 * S, 6.0 * S), fill=pal["visor_glow"])
-
-        _paste_rotated_local(img, layer, center, angle)
 
     # Per-direction blade and arc-visual tuning for directional slashes.
     # Each entry: (blade_base_deg, blade_sweep_deg, (arc_box_dx0, dy0, dx1, dy1)*S, arc_start, arc_end).
@@ -1742,26 +1858,35 @@ class SideRobotGenerator(CharacterGenerator):
         "low_poke":     ( -4.0, -16.0, ( -2.0,  -8.0,  36.0,   8.0),  -28.0,   18.0),
     }
 
-    def _draw_robot_arm(self, img: Image.Image, d: ImageDraw.ImageDraw, shoulder: Point, a1: float, a2: float, tint: Color, spec: BotSpec, pal: Dict[str, Color], S: float, outline: float, slash: float = 0.0, slash_arc: float = 0.0, slash_dir: str = "side") -> Point:
+    def _draw_robot_arm(self, img: "RigCanvas", shoulder: Point, a1: float, a2: float, tint: Color, spec: BotSpec, pal: Dict[str, Color], S: float, outline: float, slash: float = 0.0, slash_arc: float = 0.0, slash_dir: str = "side", side: str = "near") -> Point:
+        """The arm as two bones, the hand, and (slashing) the blade turned about
+        the hand and the arc riding it: each a piece."""
         elbow = add(shoulder, vec(spec.arm_upper * S, a1))
         hand = add(elbow, vec(spec.arm_lower * S, a2))
-        draw_capsule(d, shoulder, elbow, 2.7 * S, tint, pal["outline"], outline * 0.65)
-        draw_capsule(d, elbow, hand, 2.5 * S, tint, pal["outline"], outline * 0.65)
-        d.ellipse((hand[0] - 4 * S, hand[1] - 4 * S, hand[0] + 4 * S, hand[1] + 4 * S), fill=tint, outline=pal["outline"], width=max(1, int(outline * 0.65)))
+        img.capsule(shoulder, elbow, 2.7 * S, tint, pal["outline"], outline * 0.65, f"{side}_upper_arm", length=spec.arm_upper * S)
+        img.capsule(elbow, hand, 2.5 * S, tint, pal["outline"], outline * 0.65, f"{side}_forearm", length=spec.arm_lower * S)
+        img.disc(hand, 4 * S, tint, pal["outline"], max(1, int(outline * 0.65)), f"{side}_hand")
         if slash:
             blade_base, blade_sweep, arc_rel, arc_start, arc_end = self._SLASH_DIR_TABLE.get(slash_dir, self._SLASH_DIR_TABLE["side"])
             blade_angle = blade_base + slash_arc * blade_sweep
-            tip = add(hand, vec(spec.blade_len * S, blade_angle))
-            d.line([hand, tip], fill=pal["outline"], width=max(1, int(4.0 * S)))
-            d.line([hand, tip], fill=pal["accent"], width=max(1, int(2.1 * S)))
+            length = spec.blade_len * S
+            bpad = 3 * S
+
+            def paint_blade(d) -> None:
+                d.line([(bpad, bpad), (bpad + length, bpad)], fill=pal["outline"], width=max(1, int(4.0 * S)))
+                d.line([(bpad, bpad), (bpad + length, bpad)], fill=pal["accent"], width=max(1, int(2.1 * S)))
+
+            blade = shape_rig.piece(("robot_blade", round(length, 3), pal["outline"], pal["accent"], round(S, 4)), (length + 2 * bpad, 2 * bpad), (bpad, bpad), paint_blade)
+            img.put(blade, hand, blade_angle, f"{side}_blade")
             if slash_arc > 0.18:
-                arc_box = (
-                    hand[0] + arc_rel[0] * S,
-                    hand[1] + arc_rel[1] * S,
-                    hand[0] + arc_rel[2] * S,
-                    hand[1] + arc_rel[3] * S,
-                )
-                d.arc(arc_box, start=arc_start, end=arc_end, fill=(12, 235, 255, 170), width=max(1, int(2.4 * S)))
+                apad = 56 * S
+
+                def paint_arc(d) -> None:
+                    box = (apad + arc_rel[0] * S, apad + arc_rel[1] * S, apad + arc_rel[2] * S, apad + arc_rel[3] * S)
+                    d.arc(box, start=arc_start, end=arc_end, fill=(12, 235, 255, 170), width=max(1, int(2.4 * S)))
+
+                arc = shape_rig.piece(("robot_slash_arc", slash_dir, round(S, 4)), (2 * apad, 2 * apad), (apad, apad), paint_arc)
+                img.put(arc, hand, 0.0, f"{side}_slash_arc")
         return hand
 
     def _render_highres(self, spec: BotSpec, animation: str, frame_index: int, frame_count: int, size: Tuple[int, int], background: Optional[Color], scale: int) -> Image.Image:
@@ -1789,9 +1914,17 @@ class SideRobotGenerator(CharacterGenerator):
             self._draw_blink_in_fx(img, root_x, ground_y, S, frame_index, frame_count)
 
         if p.dash:
+            # Speed lines: each one piece (its length) slid to its height.
             for i in range(4):
                 y = (49 + i * 12 + math.sin(frame_index + i) * 2) * S
-                d.line([(14 * S, y), ((43 - i * 3) * S, y - 2 * S)], fill=(12, 235, 255, 90), width=max(1, int(1.6 * S)))
+                span = (29 - i * 3) * S
+                lpad = 3 * S
+
+                def paint_line(dd, span=span, lpad=lpad) -> None:
+                    dd.line([(lpad, lpad + 2 * S), (lpad + span, lpad)], fill=(12, 235, 255, 90), width=max(1, int(1.6 * S)))
+
+                line = shape_rig.piece(("robot_speed_line", i, round(S, 4)), (span + 2 * lpad, 2 * lpad + 2 * S), (lpad, lpad + 2 * S), paint_line)
+                RigCanvas(img).put(line, (14 * S, y), 0.0, f"speed_line{i}")
         if animation == "swim":
             for i in range(4):
                 x = (24 + i * 18 + math.sin(frame_index + i) * 2) * S
@@ -1943,7 +2076,6 @@ class SideRobotGenerator(CharacterGenerator):
         # duplicate torso.  Keeping the actor isolated also avoids
         # alpha-compositing the canvas onto itself for non-teleport rows.
         character_img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        character_draw = blending_draw(character_img)
 
         # Stable body reference. Death moves to a lying pose without scaling.
         collapse = p.collapse
@@ -2126,6 +2258,13 @@ class SideRobotGenerator(CharacterGenerator):
             foot_center = (ankle[0] + (foot_w * 0.34) + 3.0 * S, min(ground_y - 2 * S, ankle[1] + 2 * S))
             player_left_leg = (hip_near, knee, ankle, pal["shell"], foot_center, foot_w, foot_h, -4 + body_angle * 0.10)
 
+        # Every piece of the actor is placed through one rig canvas; a
+        # tuck-and-roll turns each piece about the roll centre (clockwise is
+        # ``-whole_body_rotation``, which ``Image.rotate`` turned
+        # counter-clockwise).
+        roll_center = (body_center[0] + 2.0 * S, body_center[1] + 4.0 * S)
+        rig = RigCanvas(character_img, roll_center, -p.whole_body_rotation if abs(p.whole_body_rotation) > 1e-4 else 0.0)
+
         # Explicit semantic limb mapping for the right-facing player view.
         player_left_arm = (shoulder_near, p.near_arm_upper, p.near_arm_lower, pal["shell_side"])
         player_right_arm = (shoulder_far, p.far_arm_upper, p.far_arm_lower, pal["shell"])
@@ -2133,36 +2272,34 @@ class SideRobotGenerator(CharacterGenerator):
         # Desired z-order, from back to front:
         #   player-left-arm, player-left-leg, pelvis, player-right-leg,
         #   torso, head, player-right-arm.
-        self._draw_robot_arm(character_img, character_draw, player_left_arm[0], player_left_arm[1], player_left_arm[2], player_left_arm[3], spec, pal, S, outline, p.slash, p.slash_arc, p.slash_dir)
+        self._draw_robot_arm(rig, player_left_arm[0], player_left_arm[1], player_left_arm[2], player_left_arm[3], spec, pal, S, outline, p.slash, p.slash_arc, p.slash_dir, side="back")
+
+        def leg(drawn, side: str) -> None:
+            hip, knee, ankle, tint, foot_center, foot_w, foot_h, foot_angle = drawn
+            # Bones of the leg's own lengths: IK puts the knee at the thigh's
+            # length; the shin points at the ankle.
+            rig.capsule(hip, knee, 2.9 * S, tint, pal["outline"], outline * 0.65, f"{side}_thigh", length=spec.leg_upper * S)
+            rig.capsule(knee, ankle, 2.7 * S, tint, pal["outline"], outline * 0.65, f"{side}_shin", length=spec.leg_lower * S)
+            rig.rounded_rect(foot_center, (foot_w, foot_h), foot_angle, 3.0 * S, tint, pal["outline"], outline * 0.7, f"{side}_foot")
 
         if player_left_leg is not None:
-            hip, knee, ankle, tint, foot_center, foot_w, foot_h, foot_angle = player_left_leg
-            draw_capsule(character_draw, hip, knee, 2.9 * S, tint, pal["outline"], outline * 0.65)
-            draw_capsule(character_draw, knee, ankle, 2.7 * S, tint, pal["outline"], outline * 0.65)
-            draw_rotated_rounded_rect(character_img, foot_center, (foot_w, foot_h), foot_angle, 3.0 * S, tint, pal["outline"], outline * 0.7)
+            leg(player_left_leg, "back")
 
         if pelvis_draw is not None:
             pelvis_center, pelvis_w, pelvis_h = pelvis_draw
-            draw_rotated_rounded_rect(character_img, pelvis_center, (pelvis_w, pelvis_h), body_angle * 0.25, 3.0 * S, pal["shell_side"], pal["outline"], outline * 0.7)
+            rig.rounded_rect(pelvis_center, (pelvis_w, pelvis_h), body_angle * 0.25, 3.0 * S, pal["shell_side"], pal["outline"], outline * 0.7, "pelvis")
 
         if player_right_leg is not None:
-            hip, knee, ankle, tint, foot_center, foot_w, foot_h, foot_angle = player_right_leg
-            draw_capsule(character_draw, hip, knee, 2.9 * S, tint, pal["outline"], outline * 0.65)
-            draw_capsule(character_draw, knee, ankle, 2.7 * S, tint, pal["outline"], outline * 0.65)
-            draw_rotated_rounded_rect(character_img, foot_center, (foot_w, foot_h), foot_angle, 3.0 * S, tint, pal["outline"], outline * 0.7)
+            leg(player_right_leg, "front")
 
-        draw_rotated_rounded_rect(character_img, body_center, (spec.body_w * S, spec.body_h * S), body_angle, 7 * S, pal["shell"], pal["outline"], outline)
-        draw_rotated_rounded_rect(character_img, (body_center[0] + 3 * S, body_center[1] - 1 * S), (10 * S, 9 * S), body_angle, 2.5 * S, pal["accent"], pal["outline"], outline * 0.45)
+        rig.rounded_rect(body_center, (spec.body_w * S, spec.body_h * S), body_angle, 7 * S, pal["shell"], pal["outline"], outline, "body")
+        rig.rounded_rect((body_center[0] + 3 * S, body_center[1] - 1 * S), (10 * S, 9 * S), body_angle, 2.5 * S, pal["accent"], pal["outline"], outline * 0.45, "chest_panel")
 
         # Archetype accessories sit over the base body but under the front arm/head.
-        self._draw_archetype_accessories(character_img, character_draw, spec, pal, S, root_x, ground_y, body_center, head_center)
+        self._place_archetype_accessories(rig, spec, pal, S, root_x, ground_y, body_center, head_center)
 
-        self._draw_rigid_head(character_img, head_center, spec, pal, S, head_angle, p.blink, p.eye_squint, p.dead, p.head_look)
-        self._draw_robot_arm(character_img, character_draw, player_right_arm[0], player_right_arm[1], player_right_arm[2], player_right_arm[3], spec, pal, S, outline)
-
-        if abs(p.whole_body_rotation) > 1e-4:
-            roll_center = (body_center[0] + 2.0 * S, body_center[1] + 4.0 * S)
-            character_img = character_img.rotate(p.whole_body_rotation, resample=RESAMPLING.BICUBIC, center=roll_center)
+        self._draw_rigid_head(rig, head_center, spec, pal, S, head_angle, p.blink, p.eye_squint, p.dead, p.head_look)
+        self._draw_robot_arm(rig, player_right_arm[0], player_right_arm[1], player_right_arm[2], player_right_arm[3], spec, pal, S, outline, side="front")
 
         if animation in {"blink_out", "blink_in"}:
             self._composite_teleport_actor(img, character_img, animation, frame_index, frame_count, S)

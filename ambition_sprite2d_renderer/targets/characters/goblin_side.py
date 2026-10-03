@@ -789,21 +789,33 @@ class SideGoblinGenerator(CharacterGenerator):
         p = self.pose_for_animation(animation, frame_index, frame_count)
         ground_y = (101.0 + p.root_y) * S
         root_x = (60.0 + p.root_x) * S
-        d = blending_draw(img)
         # No baked ground drop shadow; the scene renderer owns contact shadows.
 
-        if animation == "blink_out":
-            self._draw_blink_out_fx(img, root_x, ground_y, S, frame_index, frame_count, pal)
-        elif animation == "blink_in":
-            self._draw_blink_in_fx(img, root_x, ground_y, S, frame_index, frame_count, pal)
+        # The teleport glyphs as one effect piece a frame (not one draw a stroke).
+        if animation in {"blink_out", "blink_in"}:
+            fx = self._draw_blink_out_fx if animation == "blink_out" else self._draw_blink_in_fx
+            part = shape_rig.piece(
+                ("goblin_blink_fx", animation, frame_index, frame_count, round(root_x, 3), round(ground_y, 3), spec.palette_name, img.size),
+                img.size,
+                (0.0, 0.0),
+                lambda dd: fx(dd._img, root_x, ground_y, S, frame_index, frame_count, pal),
+            )
+            shape_rig.place(img, part, (0.0, 0.0), 0.0, "blink_fx")
 
         if p.dash:
+            # Speed lines: each one piece (its length) slid to its height.
             for i in range(4):
                 y = (50 + i * 10 + math.sin(frame_index + i) * 2) * S
-                d.line([(14 * S, y), ((40 - i * 3) * S, y - 2 * S)], fill=(150, 212, 105, 90), width=max(1, int(1.5 * S)))
+                span, lpad = (26 - i * 3) * S, 3 * S
+                line = shape_rig.piece(
+                    ("goblin_speed_line", i, round(S, 4)),
+                    (span + 2 * lpad, 2 * lpad + 2 * S),
+                    (lpad, lpad + 2 * S),
+                    lambda dd, span=span, lpad=lpad: dd.line([(lpad, lpad + 2 * S), (lpad + span, lpad)], fill=(150, 212, 105, 90), width=max(1, int(1.5 * S))),
+                )
+                shape_rig.place(img, line, (14 * S, y), 0.0, f"speed_line{i}")
 
         character_img = img if animation not in {"blink_out", "blink_in"} else Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        character_draw = blending_draw(character_img)
 
         collapse = p.collapse
         body_center = (root_x + lerp(0, 12 * S, collapse), ground_y - lerp(37 * S, 11 * S, collapse) + p.body_bob * S)
@@ -881,7 +893,15 @@ class SideGoblinGenerator(CharacterGenerator):
         if animation in {"slash", "idle", "walk", "run", "dash", "blink_out", "blink_in"}:
             self._place_weapon(character_img, hand, spec, pal, S, p.slash_arc)
         if p.slash_arc > 0.18:
-            character_draw.arc((hand[0] - 6 * S, hand[1] - 30 * S, hand[0] + 38 * S, hand[1] + 19 * S), start=-70, end=45, fill=(242, 77, 255, 155), width=max(1, int(2.2 * S)))
+            # The slash arc rides the hand: one piece.
+            apad = 42 * S
+            arc = shape_rig.piece(
+                ("goblin_slash_arc", round(S, 4)),
+                (2 * apad, 2 * apad),
+                (apad, apad),
+                lambda dd: dd.arc((apad - 6 * S, apad - 30 * S, apad + 38 * S, apad + 19 * S), start=-70, end=45, fill=(242, 77, 255, 155), width=max(1, int(2.2 * S))),
+            )
+            shape_rig.place(character_img, arc, hand, 0.0, "slash_arc")
 
         if animation in {"blink_out", "blink_in"}:
             self._composite_teleport_actor(img, character_img, animation, frame_index, frame_count, S)

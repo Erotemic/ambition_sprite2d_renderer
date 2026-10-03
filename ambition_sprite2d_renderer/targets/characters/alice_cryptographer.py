@@ -16,6 +16,7 @@ from PIL import Image, ImageDraw
 
 from ...authoring import rigdoc
 from ...profiling import profile
+from . import _toon_rig
 from .alice_paper_doll import draw_doll
 from ...authoring.animation_vocab import (
     DEFAULT_ADVANCED_TIMINGS,
@@ -695,10 +696,41 @@ class AliceCryptographerGenerator(CharacterGenerator):
         pose = self.pose_for_animation(animation, frame_index, frame_count)
         cx = (64.0 + pose.root_x) * scale
         feet_y = (117.0 + pose.body_bob + pose.root_y) * scale
-        d = blending_draw(actor)
+        # The doll is drawn as pieces (``_toon_rig``). A whole-body turn
+        # turns each piece's place about the pivot, and a hit flash tints
+        # each piece. Props and effects are shapes in the frame: turned with
+        # the body, they are a layer placed turned about the pivot.
+        turn = pose.rotation if abs(pose.rotation) > 0.01 else 0.0
+        pivot = (round(cx), round(feet_y - 41.0 * scale))
+        flash = ((255, 228, 200), 0.60 * _clamp01(pose.hit_flash)) if pose.hit_flash > 0.0 else None
+        frame = _toon_rig.Frame(actor, turn, pivot, flash)
+
+        def shapes(paint, name: str) -> None:
+            if turn == 0.0:
+                paint(actor)
+                return
+            layer = Image.new("RGBA", actor.size, (0, 0, 0, 0))
+            paint(layer)
+            if layer.getbbox() is not None:
+                frame.place((layer, pivot), pivot, 0.0, name)
+
         if pose.prop == "map_glider":
-            self._draw_map_glider(d, cx, feet_y - 70 * scale, scale)
-        hand = draw_doll(actor, cx, feet_y, pose, scale, self._solve_two_bone_joint)
+            shapes(lambda image: self._draw_map_glider(blending_draw(image), cx, feet_y - 70 * scale, scale), "glider")
+        hand = draw_doll(frame, cx, feet_y, pose, scale, self._solve_two_bone_joint)
+        shapes(lambda image: self._draw_prop_and_effects(image, hand, cx, feet_y, pose, scale), "props")
+
+        if pose.opacity < 0.999:
+            # Faded as one picture: overlapping pieces do not show through.
+            actor = rigdoc.faded_canvas(actor, _clamp01(pose.opacity))
+
+        rigdoc.composite_canvas(canvas, actor)
+        if ss > 1:
+            # Through rigdoc's seam, so a part flipbook records each shape.
+            canvas = rigdoc.downsampled_canvas(canvas, (width, height), Image.Resampling.LANCZOS)
+        return canvas
+
+    def _draw_prop_and_effects(self, actor: Image.Image, hand: Point, cx: float, feet_y: float, pose: "AlicePose", scale: float) -> None:
+        """The held prop at the near hand, then the action effects."""
         d = blending_draw(actor)
         if pose.prop in {"folio", "map_ribbon", "map_bundle", "open_map"}:
             self._draw_map_folio(d, hand[0] + 3 * scale, hand[1], scale * .8,
@@ -717,40 +749,6 @@ class AliceCryptographerGenerator(CharacterGenerator):
         elif pose.prop == "compass_disc":
             self._draw_compass_disc(d, hand, pose.tool_angle, scale)
         self._draw_action_effects(actor, cx, feet_y, pose, scale)
-
-        if abs(pose.rotation) > 0.01:
-            pivot = (round(cx), round(feet_y - 41.0 * scale))
-            actor = actor.rotate(
-                -pose.rotation,
-                resample=Image.Resampling.BICUBIC,
-                center=pivot,
-                expand=False,
-            )
-
-        if pose.hit_flash > 0.0:
-            alpha = actor.getchannel("A")
-            strength = _clamp01(pose.hit_flash)
-            tint = Image.new("RGBA", actor.size, (255, 228, 200, round(155 * strength)))
-            tint.putalpha(alpha.point(lambda value: round(value * 0.60 * strength)))
-            # Through rigdoc's seams (the same pixels as Image.alpha_composite),
-            # so a part flipbook keeps the actor's shapes under the tint.
-            flashed = Image.new("RGBA", actor.size, (0, 0, 0, 0))
-            rigdoc.composite_canvas(flashed, actor)
-            rigdoc.composite_canvas(flashed, tint)
-            actor = flashed
-
-        if pose.opacity < 0.999:
-            # A faded copy: its shapes are no longer the recorded ones, so a
-            # part flipbook draws it as one picture.
-            actor = actor.copy()
-            alpha = actor.getchannel("A")
-            actor.putalpha(alpha.point(lambda value: round(value * _clamp01(pose.opacity))))
-
-        rigdoc.composite_canvas(canvas, actor)
-        if ss > 1:
-            # Through rigdoc's seam, so a part flipbook records each shape.
-            canvas = rigdoc.downsampled_canvas(canvas, (width, height), Image.Resampling.LANCZOS)
-        return canvas
 
     # ------------------------------------------------------------------
     # Shared accessories and face details
