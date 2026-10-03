@@ -18,7 +18,7 @@ from typing import List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 from ambition_sprite2d_renderer.authoring import rigdoc
-from ambition_sprite2d_renderer.authoring.part_flipbook import LOCOMOTION_LOOPS, build_rig_flipbook
+from ambition_sprite2d_renderer.authoring.part_flipbook import LOCOMOTION_LOOPS, build_rig_flipbook, write_with_realization
 from ambition_sprite2d_renderer.authoring.sheet_build import rendering_quality_tier
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -778,7 +778,7 @@ def _render_sheet(renderer: WeirdHermitRenderer, out_dir: Path) -> List[Path]:
         return paths
     tweened = [name for name, _frames, _ms in ROWS if name in LOCOMOTION_LOOPS]
     flipbook = build_rig_flipbook(TARGET_BASENAME, ROWS, renderer.render_frame, None, (fw / 2, float(fh)), FRAME_SIZE, tweened)
-    return paths + list(flipbook.write(out_dir).values())
+    return paths + list(write_with_realization(flipbook, paths[1], out_dir).values())
 
 
 def render(out_dir: str | Path, **opts) -> List[Path]:

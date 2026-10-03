@@ -45,6 +45,10 @@ PART_FLIPBOOK_SCHEMA_VERSION = 3
 PLACEMENT_SNAPPED = "snapped"
 PLACEMENT_CONTINUOUS = "continuous"
 
+#: The roads a published character is drawn by (``PartFlipbook.realize``).
+REALIZE_PARTS = "parts"
+REALIZE_BAKED = "baked"
+
 #: A clip's in-between policy. ``step`` shows each frame whole until the next;
 #: ``linear`` moves each track from its place in one frame to its place in the
 #: next (see ``tween_draws``). Published per clip, never chosen at runtime.
@@ -104,6 +108,10 @@ class PartFlipbook:
     #: (``rigdoc.faded_canvas``): the frame's draws are composited, then the
     #: result's alpha is scaled. A clip absent here is opaque.
     frame_opacity: Dict[str, List[float]] = field(default_factory=dict)
+    #: The road the game draws this character by: ``"parts"``, or ``"baked"``
+    #: when the parts measured costlier than the sheet
+    #: (``realization_by_cost``). The flipbook is published either way.
+    realize: str = REALIZE_PARTS
 
     # -- measurement -----------------------------------------------------------
     def tight_texels(self) -> int:
@@ -167,6 +175,7 @@ class PartFlipbook:
             f"    feet_pixel: {pair(self.feet)},",
             f"    placement: {self.placement.capitalize()},",
             *(["    rotation_filter: Bilinear,"] if self.bilinear else []),
+            *([f"    realize: {self.realize},"] if self.realize != REALIZE_PARTS else []),
             "    parts: [",
         ]
         for part, (page, x, y, w, h) in zip(self.parts, self.rects):
@@ -313,6 +322,7 @@ class PartFlipbook:
             placement,
             bilinear,
             frame_opacity,
+            (re.search(r"realize: (\w+)", text) or [None, REALIZE_PARTS])[1],
         )
 
     def draw_frame(
@@ -1321,7 +1331,43 @@ def publish_rig_flipbook(
     names = {row for row, _count, _ms in rows}
     tweened = [row for row in (LOCOMOTION_LOOPS if tween_rows is None else tween_rows) if row in names]
     flipbook = build_rig_flipbook(target, rows, published, None, feet, size, tweened, render_clip=published_clip)
-    return flipbook.write(Path(out_dir))
+    return write_with_realization(flipbook, Path(outputs["yaml"]), Path(out_dir))
+
+
+def write_with_realization(flipbook: "PartFlipbook", sheet_yaml: Path, out_dir: Path) -> Dict[str, Path]:
+    """Write ``flipbook`` with its road decided by ``realization_by_cost``."""
+    flipbook.pack()
+    flipbook.realize, reason = realization_by_cost(flipbook, sheet_yaml)
+    print(f"[part flipbook] {flipbook.target}: realize {flipbook.realize} ({reason})", flush=True)
+    return flipbook.write(out_dir)
+
+
+#: The most draws a frame drawn from parts may take: a body's draws are
+#: composited every frame it is visible, and the hall shows dozens at once. The
+#: rigs measured 16 to 35 (2026-10-03); a procedural painter recorded shape by
+#: shape reached 140.
+REALIZE_MAX_DRAWS = 64
+
+
+def realization_by_cost(flipbook: "PartFlipbook", sheet_yaml: Path) -> Tuple[str, str]:
+    """``(road, reason)``: parts unless they measure costlier than the baked
+    sheet: more texels on their pages than the sheet's pages, or a frame over
+    ``REALIZE_MAX_DRAWS`` draws. ``pack`` first."""
+    import yaml
+
+    sheet = yaml.safe_load(Path(sheet_yaml).read_text())
+    names = sheet.get("images") or [sheet.get("image", Path(sheet_yaml).name.replace(".yaml", ".png"))]
+    sheet_texels = 0
+    for name in names:
+        with Image.open(Path(sheet_yaml).parent / name) as image:
+            sheet_texels += image.width * image.height
+    part_texels = flipbook.packed_texels()
+    most = max((len(draws) for _d, frames in flipbook.clips.values() for draws in frames), default=0)
+    if part_texels > sheet_texels:
+        return REALIZE_BAKED, f"part pages {part_texels} texels > sheet {sheet_texels}"
+    if most > REALIZE_MAX_DRAWS:
+        return REALIZE_BAKED, f"{most} draws in a frame > {REALIZE_MAX_DRAWS}"
+    return REALIZE_PARTS, f"part pages {part_texels} <= sheet {sheet_texels}, at most {most} draws"
 
 
 def sheet_feet(sheet_yaml: Path) -> Tuple[float, float]:
