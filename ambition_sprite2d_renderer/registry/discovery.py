@@ -594,13 +594,8 @@ class Target:
         paths = list(
             write_spritesheet(job, image_out, manifest_out, source_config=self._config_path)
         )
-        from .character_generators import get_generator
-
-        if get_generator(job.target).publishes_part_flipbook:
-            from ..authoring.sheet import publish_generator_flipbook
-
-            parts = publish_generator_flipbook(job, self.name, manifest_out, out_dir)
-            paths.extend(parts.values())
+        # The part flipbook `write_spritesheet` published beside the sheet.
+        paths.extend(sorted(out_dir.glob(f"{self.name}_parts*")))
         actor_out = out_dir / f"{self.name}_actor.ron"
         if actor_out.exists():
             paths.append(actor_out)
