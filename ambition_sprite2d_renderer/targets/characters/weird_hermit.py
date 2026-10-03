@@ -19,6 +19,7 @@ from typing import List, Sequence, Tuple
 from PIL import Image, ImageDraw
 from ambition_sprite2d_renderer.authoring import rigdoc
 from ambition_sprite2d_renderer.authoring.part_flipbook import LOCOMOTION_LOOPS, build_rig_flipbook
+from ambition_sprite2d_renderer.authoring.sheet_build import rendering_quality_tier
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
 ACTOR_METADATA = {
@@ -773,6 +774,8 @@ def _render_sheet(renderer: WeirdHermitRenderer, out_dir: Path) -> List[Path]:
     # The part flipbook. This sheet places every frame whole at its cell and
     # states no feet: the flipbook's origin is the frame's bottom centre (its
     # draws are relative to it, so any origin draws the same pixels).
+    if rendering_quality_tier():
+        return paths
     tweened = [name for name, _frames, _ms in ROWS if name in LOCOMOTION_LOOPS]
     flipbook = build_rig_flipbook(TARGET_BASENAME, ROWS, renderer.render_frame, None, (fw / 2, float(fh)), FRAME_SIZE, tweened)
     return paths + list(flipbook.write(out_dir).values())

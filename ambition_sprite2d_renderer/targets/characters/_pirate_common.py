@@ -840,6 +840,9 @@ def render_target_with_products(
 
     for name, path in publish_rig_flipbook(target, ANIMATIONS, render_fn, outputs, frame_transform, out_dir).items():
         outputs["parts" if name == "ron" else name] = path
+    if "parts" not in outputs:
+        # A quality tier's render: its flipbook is derived, not recorded.
+        return outputs, {"body_rig": product}
     return outputs, {"body_rig": product, "parts": PartFlipbook.from_published(Path(outputs["parts"]))}
 
 

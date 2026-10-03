@@ -498,7 +498,9 @@ def write_spritesheet(
     )
     # The part flipbook, beside the sheet, for every caller (draw-all,
     # draw-review, factions, a registered config target).
-    if get_generator(job.target).publishes_part_flipbook:
+    from .sheet_build import rendering_quality_tier
+
+    if get_generator(job.target).publishes_part_flipbook and not rendering_quality_tier():
         stem = image_out.name.removesuffix("_spritesheet.png") if image_out.name.endswith("_spritesheet.png") else image_out.stem
         publish_generator_flipbook(job, stem, manifest_out, image_out.parent)
     return image_out, manifest_out

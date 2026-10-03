@@ -125,6 +125,27 @@ def rendering_canonical_only() -> bool:
     return _CANONICAL_ONLY.get()
 
 
+_QUALITY_TIER = ContextVar("ambition_sheet_build_quality_tier", default=False)
+
+
+def rendering_quality_tier() -> bool:
+    """Whether this render is inside :func:`quality_tier_render`: a sheet for a
+    quality tier, whose part flipbook is NOT recorded again but derived from the
+    full-resolution one (a tier table must name the full flipbook's parts, and
+    a shape recording at another scale merges differently)."""
+    return _QUALITY_TIER.get()
+
+
+@contextmanager
+def quality_tier_render():
+    """Render a quality tier's sheet without publishing a part flipbook."""
+    token = _QUALITY_TIER.set(True)
+    try:
+        yield
+    finally:
+        _QUALITY_TIER.reset(token)
+
+
 @contextmanager
 def canonical_render_only():
     """Limit this procedural-sheet family to a freshly drawn canonical.

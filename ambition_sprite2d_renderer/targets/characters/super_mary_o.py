@@ -22,12 +22,13 @@ from typing import Dict, List, Tuple
 
 from PIL import Image
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ..super_mary_o_common import (
     OUTLINE,
     WHITE,
     MaryPalette,
-    bottom_center_canvas,
     rasterize_logical,
 )
 
@@ -1274,6 +1275,16 @@ def _poses_for(form: FormSpec) -> Dict[str, List[Pose]]:
     return SHORT_POSES
 
 
+def _placed(sprite: Image.Image) -> Image.Image:
+    """``sprite`` at the frame's bottom centre (``bottom_center_canvas``),
+    through rigdoc's seam as ONE part: the painter sets pixels one rectangle at
+    a time, and as shapes a frame was 132 to 142 draws and 1.1 to 1.5x the
+    sheet's texels (measured 2026-10-03). Whole, identical frames share a part."""
+    frame = Image.new("RGBA", FRAME_SIZE, (0, 0, 0, 0))
+    rigdoc.composite_layer(frame, sprite, ((FRAME_SIZE[0] - sprite.width) // 2, FRAME_SIZE[1] - sprite.height), name="sprite")
+    return frame
+
+
 def _draw_form(form: FormSpec, animation: str, frame_idx: int, nframes: int) -> Image.Image:
     if animation == "grow":
         # Hosted by the TALL sheet (the form arrived at). Named explicitly
@@ -1314,7 +1325,7 @@ def _draw_form(form: FormSpec, animation: str, frame_idx: int, nframes: int) -> 
                 _draw_fire_orb(px, 19.4, 13.2 + 0.3 * math.sin(frame_idx))
 
         sprite = rasterize_logical(LOGICAL_SIZE, SCALE, painter)
-        return bottom_center_canvas(sprite, FRAME_SIZE)
+        return _placed(sprite)
 
     if animation == "shrink":
         # Two hosts, two clips: the TALL sheet's shrink is "fire became tall"
@@ -1347,7 +1358,7 @@ def _draw_form(form: FormSpec, animation: str, frame_idx: int, nframes: int) -> 
                 )
 
             sprite = rasterize_logical(LOGICAL_SIZE, SCALE, painter)
-            return bottom_center_canvas(sprite, FRAME_SIZE)
+            return _placed(sprite)
         else:
             tall_dull = _mix_outfit_palette(MARY_NORMAL, MARY_FIRE_FLASH, 0.06)
             hurt_seq = [
@@ -1363,7 +1374,7 @@ def _draw_form(form: FormSpec, animation: str, frame_idx: int, nframes: int) -> 
                 _draw_side_pose(px, active_form, pose, animation="shrink", extra_star_phase=extra_star_phase)
 
             sprite = rasterize_logical(LOGICAL_SIZE, SCALE, painter)
-            return bottom_center_canvas(sprite, FRAME_SIZE)
+            return _placed(sprite)
 
     if animation == "big_shrink":
         # Hosted by the SHORT sheet: fire loses two tiers at once and arrives
@@ -1397,7 +1408,7 @@ def _draw_form(form: FormSpec, animation: str, frame_idx: int, nframes: int) -> 
             )
 
         sprite = rasterize_logical(LOGICAL_SIZE, SCALE, painter)
-        return bottom_center_canvas(sprite, FRAME_SIZE)
+        return _placed(sprite)
 
     pose_seq = _poses_for(form).get(animation) or SHORT_POSES["idle"]
     pose = pose_seq[frame_idx % len(pose_seq)]
@@ -1409,7 +1420,7 @@ def _draw_form(form: FormSpec, animation: str, frame_idx: int, nframes: int) -> 
             _draw_side_pose(px, form, pose, animation=animation)
 
     sprite = rasterize_logical(LOGICAL_SIZE, SCALE, painter)
-    return bottom_center_canvas(sprite, FRAME_SIZE)
+    return _placed(sprite)
 
 
 def _actor_metadata(form: FormSpec) -> dict:
@@ -1480,7 +1491,9 @@ def _render_form(form: FormSpec, out_dir: str | Path) -> List[Path]:
     def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
         return _draw_form(form, animation, frame_idx, nframes)
 
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=form.target_name,
         rows=form.rows,
         render_fn=render_frame,
@@ -1490,7 +1503,8 @@ def _render_form(form: FormSpec, out_dir: str | Path) -> List[Path]:
         auto_crop=False,
         actor_metadata=_actor_metadata(form),
     )
-    return [
+    parts = publish_rig_flipbook(form.target_name, form.rows, render_frame, outputs, frame_transform, out_dir)
+    return list(parts.values()) + [
         outputs[k]
         for k in (
             "canonical",

@@ -1297,11 +1297,12 @@ def publish_rig_flipbook(
     import yaml
 
     from . import rigdoc
-    from .sheet_build import rendering_canonical_only
+    from .sheet_build import rendering_canonical_only, rendering_quality_tier
 
     # A canonical-only render (a portrait) publishes no sheet to draw, nor
-    # does a build that published no sheet.
-    if rendering_canonical_only() or "yaml" not in outputs:
+    # does a build that published no sheet. A quality tier's flipbook is
+    # derived from this one (`generate_visual_quality_variants.py`).
+    if rendering_canonical_only() or rendering_quality_tier() or "yaml" not in outputs:
         return {}
     sheet = yaml.safe_load(Path(outputs["yaml"]).read_text())
     size = (int(sheet["frame_width"]), int(sheet["frame_height"]))
