@@ -11,6 +11,7 @@ from typing import List, Tuple
 
 from PIL import Image
 
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ...authoring.portrait import (
@@ -171,7 +172,9 @@ def canonical_preview() -> Image.Image:
 def render(out_dir: Path, **opts) -> List[Path]:
     """Module-target entry point: build Madam LeBlanc's full sheet."""
     del opts
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=render_frame,
@@ -189,7 +192,10 @@ def render(out_dir: Path, **opts) -> List[Path]:
         "canonical_transparent",
         "preview",
     )
-    return [Path(outputs[key]) for key in keys if outputs.get(key)]
+    parts = publish_rig_flipbook(
+        TARGET_NAME, ROWS, render_frame, outputs, frame_transform, Path(out_dir),
+    )
+    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
 
 
 def render_canonical(out_dir: Path, **opts) -> Path:

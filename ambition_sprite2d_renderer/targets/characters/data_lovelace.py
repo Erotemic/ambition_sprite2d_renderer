@@ -12,6 +12,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import List, Tuple
 
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.portrait import FaceGuide, PortraitClip, render_framed_portrait, write_portrait_sheet
 from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet, write_canonical
@@ -132,7 +133,9 @@ def render_portraits(out_dir: str | Path, **opts):
 
 def render(out_dir: str | Path, **opts):
     del opts
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=render_frame,
@@ -143,7 +146,10 @@ def render(out_dir: str | Path, **opts):
         animation_key_map={row[0]: row[0] for row in ROWS},
     )
     keys = ("spritesheet", "yaml", "ron", "actor", "canonical", "canonical_transparent", "preview")
-    return [Path(outputs[key]) for key in keys if outputs.get(key)]
+    parts = publish_rig_flipbook(
+        TARGET_NAME, ROWS, render_frame, outputs, frame_transform, Path(out_dir),
+    )
+    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
 
 
 def render_canonical(out_dir: str | Path, **opts):

@@ -5,6 +5,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
+from ambition_sprite2d_renderer.authoring.part_flipbook import publish_rig_flipbook
 from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
 from ambition_sprite2d_renderer.authoring.sheet_build import build_sheet
 
@@ -88,7 +89,9 @@ def _render_frame(animation: str, frame_idx: int, frame_count: int):
 def render(out_dir: str | Path, **opts):
     del opts
     doc = _doc()
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=doc.rows(),
         render_fn=_render_frame,
@@ -108,7 +111,10 @@ def render(out_dir: str | Path, **opts):
         "canonical_transparent",
         "preview",
     )
-    return [Path(outputs[key]) for key in keys if outputs.get(key)]
+    parts = publish_rig_flipbook(
+        TARGET_NAME, doc.rows(), _render_frame, outputs, frame_transform, Path(out_dir),
+    )
+    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
 
 
 __all__ = ["ACTOR_METADATA", "render"]

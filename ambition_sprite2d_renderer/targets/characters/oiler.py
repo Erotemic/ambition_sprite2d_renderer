@@ -12,6 +12,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Tuple
 
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.portrait import (
     FaceGuide,
     PortraitClip,
@@ -225,7 +226,9 @@ def render_portraits(out_dir: str | Path, **opts):
 
 def render(out_dir: str | Path, **opts):
     del opts
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=_render_frame,
@@ -245,7 +248,10 @@ def render(out_dir: str | Path, **opts):
         "canonical_transparent",
         "preview",
     )
-    return [Path(outputs[key]) for key in keys if outputs.get(key)]
+    parts = publish_rig_flipbook(
+        TARGET_NAME, ROWS, _render_frame, outputs, frame_transform, Path(out_dir),
+    )
+    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
 
 
 __all__ = ["ACTOR_METADATA", "render", "render_portraits"]

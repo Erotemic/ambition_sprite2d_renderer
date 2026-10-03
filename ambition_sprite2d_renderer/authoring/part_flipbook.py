@@ -532,7 +532,7 @@ def _faded(image: Image.Image, opacity: float) -> Image.Image:
 
 
 def wrong_pixels(
-    reference: Image.Image, candidate: Image.Image, threshold: int = 64, radius: int = 1
+    reference: Image.Image, candidate: Image.Image, threshold: int = 64, radius: int = 1, edge: int = 0
 ):
     """Boolean mask of the frame's drawn pixels (drawn in either image) that the
     other image does not reproduce: no pixel within ``radius`` of it differs by
@@ -563,19 +563,24 @@ def wrong_pixels(
 
     ref, cand = premultiplied(reference), premultiplied(candidate)
     drawn = (ref[..., 3] > 0) | (cand[..., 3] > 0)
+    if edge:
+        # A band at the frame's border is not measured (`EDGE_BAND`).
+        inner = np.zeros(drawn.shape, dtype=bool)
+        inner[edge:-edge, edge:-edge] = True
+        drawn &= inner
     return (unmatched(ref, cand) | unmatched(cand, ref)) & drawn, drawn
 
 
 def parity(
-    reference: Image.Image, candidate: Image.Image, threshold: int = 64, radius: int = 1
+    reference: Image.Image, candidate: Image.Image, threshold: int = 64, radius: int = 1, edge: int = 0
 ) -> float:
     """Fraction of the frame's drawn pixels that are ``wrong_pixels``."""
-    wrong, drawn = wrong_pixels(reference, candidate, threshold, radius)
+    wrong, drawn = wrong_pixels(reference, candidate, threshold, radius, edge)
     return float(wrong.sum()) / max(1, int(drawn.sum()))
 
 
 def largest_wrong_blob(
-    reference: Image.Image, candidate: Image.Image, threshold: int = 64, radius: int = 1
+    reference: Image.Image, candidate: Image.Image, threshold: int = 64, radius: int = 1, edge: int = 0
 ) -> int:
     """Pixels in the largest 8-connected run of ``wrong_pixels``.
 
@@ -585,7 +590,7 @@ def largest_wrong_blob(
     noise it is meant to forgive. Noise is scattered single pixels along edges;
     a missing star, orb or limb is one connected blob. This sees the blob.
     """
-    wrong, _drawn = wrong_pixels(reference, candidate, threshold, radius)
+    wrong, _drawn = wrong_pixels(reference, candidate, threshold, radius, edge)
     h, w = wrong.shape
     seen = set()
     largest = 0
@@ -1342,7 +1347,17 @@ REPLAY_ROUNDING = 2
 #: part drawn one pixel off (robot v3's head moved a pixel passed it).
 #: Measured on robot v3, 2026-10-03: honest frames make blobs of at most 2; a
 #: visible part one pixel off makes 15 to 174.
-CONTINUOUS_REPLAY_TOLERANCE = {"threshold": 64, "radius": 0}
+#: ⚠ The band at a frame's border a continuous replay is not measured over (the
+#: ``edge`` of ``CONTINUOUS_REPLAY_TOLERANCE``): the reach of the reduction
+#: filter. Art that runs past the frame is cut by the supersampled canvas
+#: BEFORE the reduction, while a part is reduced whole and drawn unclipped (as
+#: the game draws it, past the baked frame, like Mary-O's feet), so in this
+#: band the two legitimately differ: paradox_barber's death on the ground
+#: made blobs to 121 along the frame's bottom (2026-10-03). Anything missing
+#: away from the border is still measured.
+EDGE_BAND = 3
+CONTINUOUS_REPLAY_TOLERANCE = {"threshold": 64, "radius": 0, "edge": EDGE_BAND}
+
 CONTINUOUS_REPLAY_PARITY = 0.01
 CONTINUOUS_REPLAY_BLOB = 6
 
