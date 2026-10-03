@@ -4,7 +4,6 @@ import math
 from typing import Iterable, Tuple
 
 from PIL import Image, ImageDraw
-from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Point = Tuple[float, float]
 Color = Tuple[int, int, int, int]
@@ -13,19 +12,6 @@ try:
     RESAMPLING = Image.Resampling
 except AttributeError:  # pragma: no cover
     RESAMPLING = Image
-
-
-def _composite_turned(base: Image.Image, layer: Image.Image, center: Point, name: str) -> None:
-    """Composite a turned layer onto ``base`` with its centre at ``center``.
-
-    It goes through rigdoc's seam, so a part flipbook records the layer as one
-    part, on the track ``name``. One frame must not use one name two times.
-    The pixels are the same as ``base.alpha_composite``."""
-    from . import rigdoc  # rigdoc imports this module
-
-    rigdoc.composite_layer(
-        base, layer, (int(center[0] - layer.size[0] / 2), int(center[1] - layer.size[1] / 2)), name=name
-    )
 
 
 def draw_capsule(
@@ -67,30 +53,34 @@ def draw_rotated_rounded_rect(
     *,
     name: str = "rotated_rect",
 ) -> None:
+    """A rounded rectangle turned ``angle`` degrees (counter-clockwise, as
+    ``Image.rotate``) about ``center``: painted once unturned (cached by what it
+    looks like) and placed by ``rigdoc.blit_rotated``, so a part flipbook stores
+    it once and turns it (``shape_rig``)."""
+    from . import shape_rig
+
     w, h = (
         max(2, int(math.ceil(size[0] + outline_w * 4))),
         max(2, int(math.ceil(size[1] + outline_w * 4))),
     )
     pad = int(max(w, h) * 0.35 + abs(outline_w) + 4)
-    layer = Image.new("RGBA", (w + pad * 2, h + pad * 2), (0, 0, 0, 0))
-    d = blending_draw(layer)
     box = (
         pad + outline_w,
         pad + outline_w,
         pad + outline_w + size[0],
         pad + outline_w + size[1],
     )
-    if outline is not None and outline_w > 0:
-        obox = (
-            box[0] - outline_w,
-            box[1] - outline_w,
-            box[2] + outline_w,
-            box[3] + outline_w,
-        )
-        d.rounded_rectangle(obox, radius=radius + outline_w, fill=outline)
-    d.rounded_rectangle(box, radius=radius, fill=fill)
-    layer = layer.rotate(angle, resample=RESAMPLING.BICUBIC, expand=True)
-    _composite_turned(base, layer, center, name)
+
+    def paint(d) -> None:
+        if outline is not None and outline_w > 0:
+            obox = (box[0] - outline_w, box[1] - outline_w, box[2] + outline_w, box[3] + outline_w)
+            d.rounded_rectangle(obox, radius=radius + outline_w, fill=outline)
+        d.rounded_rectangle(box, radius=radius, fill=fill)
+
+    key = ("rounded_rect", round(size[0], 3), round(size[1], 3), round(radius, 3), fill, outline, round(outline_w, 3))
+    size_px = (w + pad * 2, h + pad * 2)
+    part = shape_rig.piece(key, size_px, (size_px[0] / 2, size_px[1] / 2), paint)
+    shape_rig.place(base, part, center, -angle, name)
 
 
 def draw_rotated_ellipse(
@@ -104,28 +94,32 @@ def draw_rotated_ellipse(
     *,
     name: str = "rotated_ellipse",
 ) -> None:
+    """A ellipse turned ``angle`` degrees (counter-clockwise, as
+    ``Image.rotate``) about ``center``: painted once unturned (cached by what it
+    looks like) and placed by ``rigdoc.blit_rotated``, so a part flipbook stores
+    it once and turns it (``shape_rig``)."""
+    from . import shape_rig
+
     w, h = (
         max(2, int(math.ceil(size[0] + outline_w * 4))),
         max(2, int(math.ceil(size[1] + outline_w * 4))),
     )
     pad = int(max(w, h) * 0.35 + abs(outline_w) + 4)
-    layer = Image.new("RGBA", (w + pad * 2, h + pad * 2), (0, 0, 0, 0))
-    d = blending_draw(layer)
     box = (
         pad + outline_w,
         pad + outline_w,
         pad + outline_w + size[0],
         pad + outline_w + size[1],
     )
-    if outline is not None and outline_w > 0:
-        obox = (
-            box[0] - outline_w,
-            box[1] - outline_w,
-            box[2] + outline_w,
-            box[3] + outline_w,
-        )
-        d.ellipse(obox, fill=outline)
-    d.ellipse(box, fill=fill)
-    layer = layer.rotate(angle, resample=RESAMPLING.BICUBIC, expand=True)
-    _composite_turned(base, layer, center, name)
+
+    def paint(d) -> None:
+        if outline is not None and outline_w > 0:
+            obox = (box[0] - outline_w, box[1] - outline_w, box[2] + outline_w, box[3] + outline_w)
+            d.ellipse(obox, fill=outline)
+        d.ellipse(box, fill=fill)
+
+    key = ("ellipse", round(size[0], 3), round(size[1], 3), fill, outline, round(outline_w, 3))
+    size_px = (w + pad * 2, h + pad * 2)
+    part = shape_rig.piece(key, size_px, (size_px[0] / 2, size_px[1] / 2), paint)
+    shape_rig.place(base, part, center, -angle, name)
 

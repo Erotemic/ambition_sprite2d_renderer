@@ -21,8 +21,8 @@ from PIL import Image, ImageColor, ImageDraw
 from ambition_sprite2d_renderer.core.draw import rgba, with_alpha, bbox_from_center as _bbox
 
 from ...profiling import profile
-from ...authoring import rigdoc
-from ...authoring.common_draw import RESAMPLING, draw_capsule, draw_rotated_ellipse, draw_rotated_rounded_rect
+from ...authoring import rigdoc, shape_rig
+from ...authoring.common_draw import RESAMPLING, draw_rotated_ellipse, draw_rotated_rounded_rect
 from ...authoring.generator import CharacterGenerator
 from ...authoring.rig import add, clamp, ease_in_out_sine, ease_out_cubic, lerp, smoothstep, vec
 from ...registry import CharacterJob
@@ -43,8 +43,9 @@ def parse_background(value: str) -> Optional[Color]:
 
 
 def _paste_rotated_local(base: Image.Image, layer: Image.Image, center: Point, angle: float) -> None:
-    rotated = layer.rotate(angle, resample=RESAMPLING.BICUBIC, expand=True)
-    rigdoc.composite_layer(base, rotated, (int(center[0] - rotated.width / 2), int(center[1] - rotated.height / 2)), name="rotated")
+    """``layer`` turned ``angle`` degrees (counter-clockwise, as ``Image.rotate``)
+    about its centre, placed at ``center``: one part, turned (``shape_rig``)."""
+    shape_rig.place(base, (layer, (layer.width / 2, layer.height / 2)), center, -angle, "head")
 
 
 @dataclass(frozen=True)
@@ -468,19 +469,29 @@ class SideGoblinGenerator(CharacterGenerator):
         outline = pal["outline"]
         draw_rotated_ellipse(img, center, (spec.body_w * S, spec.body_h * S), angle, pal["skin"], outline, 1.7 * S)
         draw_rotated_ellipse(img, (center[0] + 2 * S, center[1] + 2 * S), (spec.body_w * 0.58 * S, spec.body_h * 0.60 * S), angle, pal["belly"], None, 0)
-        # Opaque cloth silhouette over body.
-        layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        d = blending_draw(layer)
-        x, y = center
-        cloth = [(x - 8 * S, y + 7 * S), (x + 8 * S, y + 7 * S), (x + 11 * S, y + 15 * S), (x - 6 * S, y + 13 * S)]
-        d.polygon(cloth, fill=pal["cloth"], outline=outline)
-        d.line([cloth[0], cloth[2]], fill=pal["cloth_dark"], width=max(1, int(1.2 * S)))
-        rigdoc.composite_canvas(img, layer)
+        # Opaque cloth silhouette over body: one piece riding the body centre.
+        local = 20 * S
+
+        def paint(d) -> None:
+            x, y = local, local
+            cloth = [(x - 8 * S, y + 7 * S), (x + 8 * S, y + 7 * S), (x + 11 * S, y + 15 * S), (x - 6 * S, y + 13 * S)]
+            d.polygon(cloth, fill=pal["cloth"], outline=outline)
+            d.line([cloth[0], cloth[2]], fill=pal["cloth_dark"], width=max(1, int(1.2 * S)))
+
+        part = shape_rig.piece(("goblin_cloth", pal["cloth"], pal["cloth_dark"], outline, S), (2 * local, 2 * local), (local, local), paint)
+        shape_rig.place(img, part, center, 0.0, "cloth")
 
     def _draw_rigid_head(self, img: Image.Image, center: Point, spec: GoblinSpec, pal: Dict[str, Color], S: float, angle: float, blink: bool, squint: float, dead: bool) -> Point:
         pad = int(math.ceil(54 * S))
-        layer = Image.new("RGBA", (pad * 2, pad * 2), (0, 0, 0, 0))
-        d = blending_draw(layer)
+        squint = round(squint, 2)
+        key = ("goblin_head", spec, spec.palette_name, S, blink, squint, dead)
+        layer, _pivot = shape_rig.piece(key, (pad * 2, pad * 2), (pad, pad), lambda d: self._paint_head(d, pad, spec, pal, S, blink, squint, dead))
+        _paste_rotated_local(img, layer, center, angle)
+        return (center[0] + spec.head_w * 0.42 * S + 6 * S, center[1] + 0.5 * S)
+
+    def _paint_head(self, d, pad: int, spec: GoblinSpec, pal: Dict[str, Color], S: float, blink: bool, squint: float, dead: bool) -> None:
+        """The head in its own frame, centred on ``(pad, pad)``."""
+        layer = d._img
         cx, cy = float(pad), float(pad)
         outline = pal["outline"]
         ow = 1.8 * S
@@ -524,8 +535,6 @@ class SideGoblinGenerator(CharacterGenerator):
         d.line([mouth_a, mouth_b], fill=pal["mouth"], width=max(1, int(1.1 * S)))
         d.polygon([(mouth_a[0] + 1 * S, mouth_a[1]), (mouth_a[0] + 2.7 * S, mouth_a[1]), (mouth_a[0] + 1.9 * S, mouth_a[1] + spec.tooth_size * S)], fill=pal["tooth"], outline=outline)
 
-        _paste_rotated_local(img, layer, center, angle)
-        return (center[0] + spec.head_w * 0.42 * S + 6 * S, center[1] + 0.5 * S)
 
     def _limb_chain(self, root: Point, upper: float, lower: float, a1: float, a2: float) -> Tuple[Point, Point]:
         mid = add(root, vec(upper, a1))
@@ -588,6 +597,37 @@ class SideGoblinGenerator(CharacterGenerator):
             tip = add(handle, vec(12 * S, angle - 10))
             d.line([handle, tip], fill=pal["outline"], width=max(1, int(3.4 * S)))
             d.line([handle, tip], fill=pal["metal"], width=max(1, int(1.7 * S)))
+
+    def _place_weapon(self, img: Image.Image, hand: Point, spec: GoblinSpec, pal: Dict[str, Color], S: float, slash_arc: float) -> None:
+        """The held item as one piece: painted once at the neutral swing
+        (``slash_arc`` 0.5, angle 0) and turned about the hand to the swing's
+        angle."""
+        reach = 48 * S
+        part = shape_rig.piece(
+            ("goblin_weapon", spec.held_item.lower(), spec.palette_name, S),
+            (2 * reach, 2 * reach),
+            (reach, reach),
+            lambda d: self._draw_weapon(d, (reach, reach), spec, pal, S, 0.5),
+        )
+        shape_rig.place(img, part, hand, -18 + slash_arc * 36, "weapon")
+
+    def _place_variant_accessories(self, img: Image.Image, spec: GoblinSpec, pal: Dict[str, Color], S: float, body_center: Point, head_center: Point) -> None:
+        """The archetype's accessories as two pieces, one riding the head and
+        one the body: each is the accessory painter with the other anchor far
+        off its canvas, so only its own items land."""
+        span = 60 * S
+        away = (-100 * span, -100 * span)
+        for which, at in (("head", head_center), ("body", body_center)):
+            local = (span, span)
+            part = shape_rig.piece(
+                ("goblin_accessories", which, spec.archetype, spec.palette_name, S),
+                (2 * span, 2 * span),
+                local,
+                lambda d, which=which, local=local: self._draw_variant_accessories(
+                    d, spec, pal, S, 0.0, 0.0, local if which == "body" else away, local if which == "head" else away
+                ),
+            )
+            shape_rig.place(img, part, at, 0.0, f"{which}_accessories")
 
     def _draw_blink_out_fx(self, img: Image.Image, root_x: float, ground_y: float, S: float, frame_index: int, frame_count: int, pal: Dict[str, Color]) -> None:
         d = blending_draw(img)
@@ -801,47 +841,50 @@ class SideGoblinGenerator(CharacterGenerator):
                 foot_center = (ankle[0] + spec.foot_w * 0.32 * S + foot_shift * S, ankle[1] + 2.0 * S)
                 leg_draws.append((0 if name == "back_light" else 1, hip, knee, ankle, tint, foot_center, foot_angle))
             for _z, hip, knee, ankle, tint, foot_center, foot_angle in sorted(leg_draws):
-                draw_capsule(character_draw, hip, knee, 2.5 * S, tint, pal["outline"], 1.2 * S)
-                draw_capsule(character_draw, knee, ankle, 2.3 * S, tint, pal["outline"], 1.2 * S)
-                draw_rotated_rounded_rect(character_img, foot_center, (spec.foot_w * S, spec.foot_h * S), foot_angle + p.body_tilt * 0.08, spec.foot_h * 0.5 * S, tint, pal["outline"], 1.1 * S)
+                side = "near" if _z == 0 else "far"
+                shape_rig.capsule(character_img, hip, knee, 2.5 * S, tint, pal["outline"], 1.2 * S, f"{side}_thigh", length=spec.leg_upper * S)
+                shape_rig.capsule(character_img, knee, ankle, 2.3 * S, tint, pal["outline"], 1.2 * S, f"{side}_shin", length=spec.leg_lower * S)
+                draw_rotated_rounded_rect(character_img, foot_center, (spec.foot_w * S, spec.foot_h * S), foot_angle + p.body_tilt * 0.08, spec.foot_h * 0.5 * S, tint, pal["outline"], 1.1 * S, name=f"{side}_foot")
         else:
-            for hip, a1, a2, tint, foot_shift in [
-                (hip_far, p.far_leg_upper, p.far_leg_lower, pal["skin_shadow"], -1.5),
-                (hip_near, p.near_leg_upper, p.near_leg_lower, pal["skin"], 3.0),
+            for side, hip, a1, a2, tint, foot_shift in [
+                ("far", hip_far, p.far_leg_upper, p.far_leg_lower, pal["skin_shadow"], -1.5),
+                ("near", hip_near, p.near_leg_upper, p.near_leg_lower, pal["skin"], 3.0),
             ]:
                 knee, ankle = self._limb_chain(hip, spec.leg_upper * S, spec.leg_lower * S, a1, a2)
-                draw_capsule(character_draw, hip, knee, 2.5 * S, tint, pal["outline"], 1.2 * S)
-                draw_capsule(character_draw, knee, ankle, 2.3 * S, tint, pal["outline"], 1.2 * S)
+                shape_rig.capsule(character_img, hip, knee, 2.5 * S, tint, pal["outline"], 1.2 * S, f"{side}_thigh", length=spec.leg_upper * S)
+                shape_rig.capsule(character_img, knee, ankle, 2.3 * S, tint, pal["outline"], 1.2 * S, f"{side}_shin", length=spec.leg_lower * S)
                 foot_center = (ankle[0] + spec.foot_w * 0.32 * S + foot_shift * S, min(ground_y - 2 * S, ankle[1] + 2 * S))
-                draw_rotated_rounded_rect(character_img, foot_center, (spec.foot_w * S, spec.foot_h * S), -5 + p.body_tilt * 0.08, spec.foot_h * 0.5 * S, tint, pal["outline"], 1.1 * S)
+                draw_rotated_rounded_rect(character_img, foot_center, (spec.foot_w * S, spec.foot_h * S), -5 + p.body_tilt * 0.08, spec.foot_h * 0.5 * S, tint, pal["outline"], 1.1 * S, name=f"{side}_foot")
 
         # Far arm behind body.
         elbow, hand = self._limb_chain(shoulder_far, spec.arm_upper * S, spec.arm_lower * S, p.far_arm_upper, p.far_arm_lower)
-        draw_capsule(character_draw, shoulder_far, elbow, 2.2 * S, pal["skin_shadow"], pal["outline"], 1.1 * S)
-        draw_capsule(character_draw, elbow, hand, 2.1 * S, pal["skin_shadow"], pal["outline"], 1.1 * S)
+        shape_rig.capsule(character_img, shoulder_far, elbow, 2.2 * S, pal["skin_shadow"], pal["outline"], 1.1 * S, "far_upper_arm", length=spec.arm_upper * S)
+        shape_rig.capsule(character_img, elbow, hand, 2.1 * S, pal["skin_shadow"], pal["outline"], 1.1 * S, "far_forearm", length=spec.arm_lower * S)
 
         self._draw_body(character_img, body_center, spec, pal, S, p.body_tilt)
         self._draw_rigid_head(character_img, head_center, spec, pal, S, p.head_tilt, p.blink, p.eye_squint, p.dead)
-        self._draw_variant_accessories(character_draw, spec, pal, S, root_x, ground_y, body_center, head_center)
+        self._place_variant_accessories(character_img, spec, pal, S, body_center, head_center)
 
         # Near arm and weapon on top.
         elbow, hand = self._limb_chain(shoulder_near, spec.arm_upper * S, spec.arm_lower * S, p.near_arm_upper, p.near_arm_lower)
-        draw_capsule(character_draw, shoulder_near, elbow, 2.3 * S, pal["skin"], pal["outline"], 1.1 * S)
-        draw_capsule(character_draw, elbow, hand, 2.2 * S, pal["skin"], pal["outline"], 1.1 * S)
-        character_draw.ellipse((hand[0] - spec.hand_r * S, hand[1] - spec.hand_r * S, hand[0] + spec.hand_r * S, hand[1] + spec.hand_r * S), fill=pal["skin"], outline=pal["outline"], width=max(1, int(1.0 * S)))
+        shape_rig.capsule(character_img, shoulder_near, elbow, 2.3 * S, pal["skin"], pal["outline"], 1.1 * S, "near_upper_arm", length=spec.arm_upper * S)
+        shape_rig.capsule(character_img, elbow, hand, 2.2 * S, pal["skin"], pal["outline"], 1.1 * S, "near_forearm", length=spec.arm_lower * S)
+        hand_r = spec.hand_r * S
+        hand_pad = hand_r + 2 * S
+        hand_part = shape_rig.piece(
+            ("goblin_hand", round(hand_r, 3), pal["skin"], pal["outline"], S),
+            (2 * hand_pad, 2 * hand_pad),
+            (hand_pad, hand_pad),
+            lambda d: d.ellipse((hand_pad - hand_r, hand_pad - hand_r, hand_pad + hand_r, hand_pad + hand_r), fill=pal["skin"], outline=pal["outline"], width=max(1, int(1.0 * S))),
+        )
+        shape_rig.place(character_img, hand_part, hand, 0.0, "near_hand")
         if animation in {"slash", "idle", "walk", "run", "dash", "blink_out", "blink_in"}:
-            self._draw_weapon(character_draw, hand, spec, pal, S, p.slash_arc)
+            self._place_weapon(character_img, hand, spec, pal, S, p.slash_arc)
         if p.slash_arc > 0.18:
             character_draw.arc((hand[0] - 6 * S, hand[1] - 30 * S, hand[0] + 38 * S, hand[1] + 19 * S), start=-70, end=45, fill=(242, 77, 255, 155), width=max(1, int(2.2 * S)))
 
         if animation in {"blink_out", "blink_in"}:
             self._composite_teleport_actor(img, character_img, animation, frame_index, frame_count, S)
-        else:
-            # `character_img` IS `img` here: the frame is composited over
-            # itself. A copy made through the seams keeps every shape.
-            copy = Image.new("RGBA", img.size, (0, 0, 0, 0))
-            rigdoc.composite_canvas(copy, img)
-            rigdoc.composite_canvas(img, copy)
         return img
 
     @profile
