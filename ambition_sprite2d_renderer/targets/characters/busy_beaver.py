@@ -23,7 +23,7 @@ from typing import List, Tuple
 
 from PIL import Image, ImageColor, ImageDraw
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -211,22 +211,6 @@ def _downsample(img: Image.Image) -> Image.Image:
     return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
-def _rotated_layer(
-    size: Tuple[int, int],
-    draw_fn,
-    angle: float,
-    center: Tuple[float, float],
-) -> Image.Image:
-    layer = Image.new("RGBA", size, (0, 0, 0, 0))
-    draw_fn(blending_draw(layer))
-    return layer.rotate(
-        angle,
-        resample=Image.Resampling.BICUBIC,
-        center=_pt(*center),
-        fillcolor=(0, 0, 0, 0),
-    )
-
-
 @dataclass
 class Pose:
     body_x: float = 0.0
@@ -375,150 +359,182 @@ def _pose(animation: str, frame_idx: int, nframes: int) -> Pose:
     return p
 
 
+#: Pieces painted on a frame-sized canvas, kept cropped to what they cover
+#: (the frame-sized raster would sit in ``shape_rig``'s cache for the process).
+_CROPPED: dict = {}
+
+
+def _cropped_piece(key: tuple, size, pivot, paint) -> tuple:
+    """``shape_rig.piece`` for a piece painted on a large canvas: painted once,
+    cropped to its alpha box with its pivot moved to match, and cached here."""
+    hit = _CROPPED.get(key)
+    if hit is None:
+        import math as _math
+
+        image = Image.new("RGBA", (int(_math.ceil(size[0])), int(_math.ceil(size[1]))), (0, 0, 0, 0))
+        paint(blending_draw(image))
+        box = image.getbbox() or (0, 0, 1, 1)
+        hit = (image.crop(box), (pivot[0] - box[0], pivot[1] - box[1]))
+        _CROPPED[key] = hit
+    return hit
+
+
+def _rot_cw(point: Point, center: Point, degrees: float) -> Point:
+    """``point`` turned ``degrees`` clockwise (+y down) about ``center``."""
+    r = math.radians(degrees)
+    c, s = math.cos(r), math.sin(r)
+    dx, dy = point[0] - center[0], point[1] - center[1]
+    return (center[0] + dx * c - dy * s, center[1] + dx * s + dy * c)
+
+
+def _piece(key: tuple, pivot: Point, paint) -> tuple:
+    """A piece of the beaver painted once (``shape_rig``) on a frame-sized
+    canvas in frame coordinates, its anchor at the frame point ``pivot``.
+    ``key`` names everything ``paint(draw)`` reads."""
+    return _cropped_piece(("busy_beaver",) + key, (W, H), (pivot[0] * SUPER, pivot[1] * SUPER), paint)
+
+
+class _Body:
+    """Places pieces in the unturned body frame, carried by the body's turn
+    (``Image.rotate`` turned the composed body counter-clockwise by
+    ``body_angle`` about ``pivot``)."""
+
+    def __init__(self, canvas: Image.Image, pivot: Point, body_angle: float) -> None:
+        self.canvas, self.pivot, self.cw = canvas, pivot, -body_angle
+
+    def put(self, part: tuple, at: Point, name: str, degrees: float = 0.0) -> None:
+        world = _rot_cw(at, self.pivot, self.cw)
+        shape_rig.place(self.canvas, part, (world[0] * SUPER, world[1] * SUPER), degrees + self.cw, name)
+
+    def stroke(self, a: Point, b: Point, width: float, fill: RGBA, name: str) -> None:
+        """One flat-ended segment of a limb's stroke, keyed by its length (half pixels)."""
+        length = round(math.dist(a, b) * 2) / 2
+        pad = width / 2 + 2
+        part = shape_rig.piece(
+            ("busy_beaver", "stroke", length, width, fill),
+            ((length + 2 * pad) * SUPER, 2 * pad * SUPER),
+            (pad * SUPER, pad * SUPER),
+            lambda d: d.line([_pt(pad, pad), _pt(pad + length, pad)], fill=fill, width=_s(width)),
+        )
+        self.put(part, a, name, math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])))
+
+    def limb(self, points, outer: float, inner: float, color: RGBA, name: str) -> None:
+        """A two-segment outlined limb: both outline strokes, then both fills
+        (the polyline's own paint order)."""
+        segments = list(zip(points, points[1:]))
+        for k, (a, b) in enumerate(segments):
+            self.stroke(a, b, outer, _rgba(OUTLINE), f"{name}_outline{k}")
+        for k, (a, b) in enumerate(segments):
+            self.stroke(a, b, inner, color, f"{name}_fill{k}")
+
+
 def _draw_tail(img: Image.Image, p: Pose) -> None:
     cx = 53.0 + p.body_x + p.tail_x
     cy = 107.0 + p.body_y + p.tail_y
-
-    def draw_tail(d: ImageDraw.ImageDraw) -> None:
-        pts = [
-            (cx - 30.0 * p.tail_flatten, cy - 10.0),
-            (cx - 17.0 * p.tail_flatten, cy - 18.0),
-            (cx + 6.0, cy - 12.0),
-            (cx + 13.0, cy),
-            (cx + 4.0, cy + 12.0),
-            (cx - 18.0 * p.tail_flatten, cy + 17.0),
-            (cx - 31.0 * p.tail_flatten, cy + 8.0),
-        ]
-        d.polygon([_pt(*q) for q in pts], fill=_rgba(TAIL_DARK), outline=_rgba(OUTLINE))
-        inner = [
-            (cx - 25.0 * p.tail_flatten, cy - 7.0),
-            (cx - 15.0 * p.tail_flatten, cy - 13.0),
-            (cx + 5.0, cy - 8.0),
-            (cx + 8.0, cy),
-            (cx + 2.0, cy + 8.0),
-            (cx - 16.0 * p.tail_flatten, cy + 12.0),
-            (cx - 26.0 * p.tail_flatten, cy + 6.0),
-        ]
-        d.polygon([_pt(*q) for q in inner], fill=_rgba(TAIL_MID))
-        # Cross-hatched paddle texture.
-        for off in (-16, -7, 2):
-            d.line(
-                [_pt(cx - 25.0 * p.tail_flatten, cy + off), _pt(cx + 6.0, cy + off + 8.0)],
-                fill=_rgba(TAIL_LIGHT),
-                width=_s(0.8),
-            )
-        for off in (-18, -7, 4):
-            d.line(
-                [_pt(cx + off, cy - 12.0), _pt(cx + off - 8.0, cy + 11.0)],
-                fill=_rgba(OUTLINE_SOFT),
-                width=_s(0.65),
-            )
-
-    layer = _rotated_layer(img.size, draw_tail, p.tail_angle, (cx + 8.0, cy))
-    rigdoc.composite_canvas(img, layer)
+    flatten = round(p.tail_flatten, 2)
+    part = _piece(("tail", flatten), (53.0 + 8.0, 107.0), lambda d: _paint_tail(d, 53.0, 107.0, flatten))
+    shape_rig.place(img, part, ((cx + 8.0) * SUPER, cy * SUPER), -p.tail_angle, "tail")
 
 
-def _draw_leg(draw: ImageDraw.ImageDraw, hip: Point, foot: Point, far: bool) -> None:
+def _paint_tail(d: ImageDraw.ImageDraw, cx: float, cy: float, flatten: float) -> None:
+    pts = [
+        (cx - 30.0 * flatten, cy - 10.0),
+        (cx - 17.0 * flatten, cy - 18.0),
+        (cx + 6.0, cy - 12.0),
+        (cx + 13.0, cy),
+        (cx + 4.0, cy + 12.0),
+        (cx - 18.0 * flatten, cy + 17.0),
+        (cx - 31.0 * flatten, cy + 8.0),
+    ]
+    d.polygon([_pt(*q) for q in pts], fill=_rgba(TAIL_DARK), outline=_rgba(OUTLINE))
+    inner = [
+        (cx - 25.0 * flatten, cy - 7.0),
+        (cx - 15.0 * flatten, cy - 13.0),
+        (cx + 5.0, cy - 8.0),
+        (cx + 8.0, cy),
+        (cx + 2.0, cy + 8.0),
+        (cx - 16.0 * flatten, cy + 12.0),
+        (cx - 26.0 * flatten, cy + 6.0),
+    ]
+    d.polygon([_pt(*q) for q in inner], fill=_rgba(TAIL_MID))
+    # Cross-hatched paddle texture.
+    for off in (-16, -7, 2):
+        d.line(
+            [_pt(cx - 25.0 * flatten, cy + off), _pt(cx + 6.0, cy + off + 8.0)],
+            fill=_rgba(TAIL_LIGHT),
+            width=_s(0.8),
+        )
+    for off in (-18, -7, 4):
+        d.line(
+            [_pt(cx + off, cy - 12.0), _pt(cx + off - 8.0, cy + 11.0)],
+            fill=_rgba(OUTLINE_SOFT),
+            width=_s(0.65),
+        )
+
+
+def _draw_leg(body: _Body, hip: Point, foot: Point, far: bool) -> None:
     hx, hy = hip
     fx, fy = foot
     color = _rgba(FUR_DARK if far else FUR_MID)
-    outline = _rgba(OUTLINE)
+    side = "far" if far else "near"
     knee = ((hx + fx) * 0.5 + (2.0 if far else -2.0), (hy + fy) * 0.5)
-    draw.line([_pt(hx, hy), _pt(*knee), _pt(fx, fy - 4.0)], fill=outline, width=_s(13.0))
-    draw.line([_pt(hx, hy), _pt(*knee), _pt(fx, fy - 4.0)], fill=color, width=_s(9.0))
-    draw.ellipse(_box(fx - 8.5, fy - 6.0, fx + 9.0, fy + 2.0), fill=color, outline=outline, width=_s(1.3))
+    body.limb([hip, knee, (fx, fy - 4.0)], 13.0, 9.0, color, f"{side}_leg")
+    part = _piece(("foot", far), (80.0, 80.0), lambda d: _paint_foot(d, 80.0, 80.0, far))
+    body.put(part, foot, f"{side}_foot")
+
+
+def _paint_foot(d: ImageDraw.ImageDraw, fx: float, fy: float, far: bool) -> None:
+    color = _rgba(FUR_DARK if far else FUR_MID)
+    d.ellipse(_box(fx - 8.5, fy - 6.0, fx + 9.0, fy + 2.0), fill=color, outline=_rgba(OUTLINE), width=_s(1.3))
     # Broad webbed toes.
     for dx in (-4.5, 0.0, 4.5):
-        draw.line([_pt(fx + dx - 1.8, fy - 2.0), _pt(fx + dx + 2.5, fy)], fill=_rgba(FUR_LIGHT), width=_s(0.8))
+        d.line([_pt(fx + dx - 1.8, fy - 2.0), _pt(fx + dx + 2.5, fy)], fill=_rgba(FUR_LIGHT), width=_s(0.8))
 
 
-def _draw_arm(draw: ImageDraw.ImageDraw, shoulder: Point, hand: Point, far: bool) -> None:
+def _draw_arm(body: _Body, shoulder: Point, hand: Point, far: bool) -> None:
     sx, sy = shoulder
     hx, hy = hand
     color = _rgba(FUR_DARK if far else FUR_MID)
-    outline = _rgba(OUTLINE)
+    side = "far" if far else "near"
     elbow = ((sx + hx) * 0.5 + (-3.0 if far else 3.0), (sy + hy) * 0.5)
-    draw.line([_pt(sx, sy), _pt(*elbow), _pt(hx, hy)], fill=outline, width=_s(11.0))
-    draw.line([_pt(sx, sy), _pt(*elbow), _pt(hx, hy)], fill=color, width=_s(7.0))
-    draw.ellipse(_box(hx - 5.0, hy - 4.0, hx + 5.5, hy + 5.0), fill=color, outline=outline, width=_s(1.0))
-    draw.line([_pt(hx - 2.5, hy + 1.0), _pt(hx + 4.0, hy + 2.0)], fill=_rgba(FUR_LIGHT), width=_s(0.8))
+    body.limb([shoulder, elbow, hand], 11.0, 7.0, color, f"{side}_arm")
+    part = _piece(("hand", far), (80.0, 80.0), lambda d: _paint_hand(d, 80.0, 80.0, far))
+    body.put(part, hand, f"{side}_hand")
 
 
-def _draw_body(img: Image.Image, p: Pose) -> None:
-    # Draw the body as one transformable layer so attack/death poses remain connected.
-    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    draw = blending_draw(layer)
-    bx = 79.0 + p.body_x
-    by = 96.0 + p.body_y
+def _paint_hand(d: ImageDraw.ImageDraw, hx: float, hy: float, far: bool) -> None:
+    color = _rgba(FUR_DARK if far else FUR_MID)
+    d.ellipse(_box(hx - 5.0, hy - 4.0, hx + 5.5, hy + 5.0), fill=color, outline=_rgba(OUTLINE), width=_s(1.0))
+    d.line([_pt(hx - 2.5, hy + 1.0), _pt(hx + 4.0, hy + 2.0)], fill=_rgba(FUR_LIGHT), width=_s(0.8))
 
-    # Far limbs behind torso.
-    _draw_leg(draw, (68.0 + p.body_x, 113.0 + p.body_y), p.far_foot, True)
-    _draw_arm(draw, (61.0 + p.body_x, 81.0 + p.body_y), p.far_hand, True)
 
+def _paint_torso(draw: ImageDraw.ImageDraw) -> None:
+    """Torso, belly, work vest and tool belt with the body at rest."""
     # Stocky pear-shaped torso.
-    torso = [
-        (56.0 + p.body_x, 74.0 + p.body_y),
-        (70.0 + p.body_x, 66.0 + p.body_y),
-        (91.0 + p.body_x, 68.0 + p.body_y),
-        (104.0 + p.body_x, 80.0 + p.body_y),
-        (108.0 + p.body_x, 104.0 + p.body_y),
-        (101.0 + p.body_x, 120.0 + p.body_y),
-        (84.0 + p.body_x, 126.0 + p.body_y),
-        (65.0 + p.body_x, 124.0 + p.body_y),
-        (53.0 + p.body_x, 109.0 + p.body_y),
-        (50.0 + p.body_x, 90.0 + p.body_y),
-    ]
+    torso = [(56.0, 74.0), (70.0, 66.0), (91.0, 68.0), (104.0, 80.0), (108.0, 104.0), (101.0, 120.0), (84.0, 126.0), (65.0, 124.0), (53.0, 109.0), (50.0, 90.0)]
     draw.polygon([_pt(*q) for q in torso], fill=_rgba(FUR_DARK), outline=_rgba(OUTLINE))
-
-    belly = [
-        (62.0 + p.body_x, 82.0 + p.body_y),
-        (74.0 + p.body_x, 73.0 + p.body_y),
-        (91.0 + p.body_x, 76.0 + p.body_y),
-        (99.0 + p.body_x, 91.0 + p.body_y),
-        (96.0 + p.body_x, 111.0 + p.body_y),
-        (84.0 + p.body_x, 120.0 + p.body_y),
-        (68.0 + p.body_x, 116.0 + p.body_y),
-        (59.0 + p.body_x, 103.0 + p.body_y),
-    ]
+    belly = [(62.0, 82.0), (74.0, 73.0), (91.0, 76.0), (99.0, 91.0), (96.0, 111.0), (84.0, 120.0), (68.0, 116.0), (59.0, 103.0)]
     draw.polygon([_pt(*q) for q in belly], fill=_rgba(FUR_MID))
 
     # Work vest follows the torso rather than floating as a rectangle.
-    vest = [
-        (55.5 + p.body_x, 79.0 + p.body_y),
-        (68.0 + p.body_x, 70.5 + p.body_y),
-        (79.0 + p.body_x, 76.0 + p.body_y),
-        (90.5 + p.body_x, 70.5 + p.body_y),
-        (103.0 + p.body_x, 81.0 + p.body_y),
-        (104.0 + p.body_x, 106.0 + p.body_y),
-        (92.0 + p.body_x, 114.0 + p.body_y),
-        (81.0 + p.body_x, 109.0 + p.body_y),
-        (69.0 + p.body_x, 115.0 + p.body_y),
-        (55.0 + p.body_x, 105.0 + p.body_y),
-    ]
+    vest = [(55.5, 79.0), (68.0, 70.5), (79.0, 76.0), (90.5, 70.5), (103.0, 81.0), (104.0, 106.0), (92.0, 114.0), (81.0, 109.0), (69.0, 115.0), (55.0, 105.0)]
     draw.polygon([_pt(*q) for q in vest], fill=_rgba(VEST_DARK), outline=_rgba(OUTLINE))
-    draw.polygon(
-        [_pt(61.0 + p.body_x, 80.0 + p.body_y), _pt(72.0 + p.body_x, 74.0 + p.body_y), _pt(77.0 + p.body_x, 108.0 + p.body_y), _pt(64.0 + p.body_x, 112.0 + p.body_y)],
-        fill=_rgba(VEST_MID),
-    )
-    draw.polygon(
-        [_pt(87.0 + p.body_x, 74.0 + p.body_y), _pt(99.0 + p.body_x, 81.0 + p.body_y), _pt(98.0 + p.body_x, 108.0 + p.body_y), _pt(83.0 + p.body_x, 108.0 + p.body_y)],
-        fill=_rgba(VEST_MID),
-    )
-    draw.line([_pt(80.0 + p.body_x, 76.0 + p.body_y), _pt(80.0 + p.body_x, 112.0 + p.body_y)], fill=_rgba(VEST_LIGHT), width=_s(1.1))
+    draw.polygon([_pt(61.0, 80.0), _pt(72.0, 74.0), _pt(77.0, 108.0), _pt(64.0, 112.0)], fill=_rgba(VEST_MID))
+    draw.polygon([_pt(87.0, 74.0), _pt(99.0, 81.0), _pt(98.0, 108.0), _pt(83.0, 108.0)], fill=_rgba(VEST_MID))
+    draw.line([_pt(80.0, 76.0), _pt(80.0, 112.0)], fill=_rgba(VEST_LIGHT), width=_s(1.1))
     # Tool belt and small integrated tools; no held prop.
-    draw.rounded_rectangle(_box(57.0 + p.body_x, 105.0 + p.body_y, 103.0 + p.body_x, 114.0 + p.body_y), radius=_s(3.0), fill=_rgba(BELT), outline=_rgba(OUTLINE), width=_s(1.0))
-    draw.rectangle(_box(67.0 + p.body_x, 106.5 + p.body_y, 77.0 + p.body_x, 115.0 + p.body_y), fill=_rgba(FUR_LIGHT), outline=_rgba(OUTLINE), width=_s(0.8))
-    draw.line([_pt(93.0 + p.body_x, 105.0 + p.body_y), _pt(93.0 + p.body_x, 114.0 + p.body_y)], fill=_rgba(METAL), width=_s(2.2))
+    draw.rounded_rectangle(_box(57.0, 105.0, 103.0, 114.0), radius=_s(3.0), fill=_rgba(BELT), outline=_rgba(OUTLINE), width=_s(1.0))
+    draw.rectangle(_box(67.0, 106.5, 77.0, 115.0), fill=_rgba(FUR_LIGHT), outline=_rgba(OUTLINE), width=_s(0.8))
+    draw.line([_pt(93.0, 105.0), _pt(93.0, 114.0)], fill=_rgba(METAL), width=_s(2.2))
 
-    # Near limbs in front.
-    _draw_leg(draw, (89.0 + p.body_x, 113.0 + p.body_y), p.near_foot, False)
-    _draw_arm(draw, (99.0 + p.body_x, 80.0 + p.body_y), p.near_hand, False)
 
-    # Head: side-facing but turned enough toward camera to read both eyes.
-    hx = 85.0 + p.body_x + p.head_x
-    hy = 52.0 + p.body_y + p.head_y
-    head = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    hd = blending_draw(head)
+#: The head and hat pieces are painted with the head centre here.
+HEAD_AT = (85.0, 52.0)
+
+
+def _paint_head(hd: ImageDraw.ImageDraw, blink: bool, brow: float, mouth_open: float) -> None:
+    """Head, ears, eyes, muzzle and incisors around ``HEAD_AT``."""
+    hx, hy = HEAD_AT
     hd.ellipse(_box(hx - 28.0, hy - 23.0, hx + 24.0, hy + 24.0), fill=_rgba(FUR_DARK), outline=_rgba(OUTLINE), width=_s(1.5))
     hd.ellipse(_box(hx - 23.0, hy - 18.0, hx + 19.0, hy + 18.0), fill=_rgba(FUR_MID))
     # Ears remain attached to head silhouette.
@@ -530,54 +546,79 @@ def _draw_body(img: Image.Image, p: Pose) -> None:
     # Eyes and brows.
     eye_y = hy - 4.0
     for ex, far in ((hx - 7.0, True), (hx + 7.0, False)):
-        if p.blink:
+        if blink:
             hd.line([_pt(ex - 3.0, eye_y), _pt(ex + 3.0, eye_y + 0.5)], fill=_rgba(OUTLINE), width=_s(1.2))
         else:
             hd.ellipse(_box(ex - 4.0, eye_y - 4.0, ex + 4.0, eye_y + 4.2), fill=_rgba(EYE_WHITE), outline=_rgba(OUTLINE), width=_s(0.8))
             hd.ellipse(_box(ex + (0.4 if far else 0.9) - 1.7, eye_y - 1.8, ex + (0.4 if far else 0.9) + 1.7, eye_y + 1.8), fill=_rgba(EYE))
-        hd.line([_pt(ex - 4.0, eye_y - 7.0 - p.brow), _pt(ex + 4.0, eye_y - 6.0 + p.brow)], fill=_rgba(OUTLINE), width=_s(1.2))
+        hd.line([_pt(ex - 4.0, eye_y - 7.0 - brow), _pt(ex + 4.0, eye_y - 6.0 + brow)], fill=_rgba(OUTLINE), width=_s(1.2))
 
     # Broad muzzle, nose, and iconic incisors.
     hd.ellipse(_box(hx - 18.0, hy + 5.0, hx + 17.0, hy + 24.0), fill=_rgba(MUZZLE), outline=_rgba(OUTLINE), width=_s(1.0))
     hd.ellipse(_box(hx - 13.0, hy + 8.0, hx + 12.0, hy + 20.0), fill=_rgba(MUZZLE_LIGHT))
     hd.ellipse(_box(hx - 5.0, hy + 2.0, hx + 7.0, hy + 11.0), fill=_rgba(NOSE), outline=_rgba(OUTLINE), width=_s(0.7))
     mouth_y = hy + 17.0
-    if p.mouth_open > 0.05:
-        hd.ellipse(_box(hx - 7.0, mouth_y - 1.0, hx + 8.0, mouth_y + 3.0 + 7.0 * p.mouth_open), fill=_rgba(OUTLINE))
+    if mouth_open > 0.05:
+        hd.ellipse(_box(hx - 7.0, mouth_y - 1.0, hx + 8.0, mouth_y + 3.0 + 7.0 * mouth_open), fill=_rgba(OUTLINE))
     else:
         hd.line([_pt(hx, mouth_y - 1.0), _pt(hx, mouth_y + 4.0)], fill=_rgba(OUTLINE), width=_s(0.9))
     hd.rounded_rectangle(_box(hx - 7.0, mouth_y + 2.0, hx - 0.5, mouth_y + 13.0), radius=_s(1.0), fill=_rgba(TOOTH), outline=_rgba(OUTLINE), width=_s(0.8))
     hd.rounded_rectangle(_box(hx + 0.5, mouth_y + 2.0, hx + 7.0, mouth_y + 13.0), radius=_s(1.0), fill=_rgba(TOOTH), outline=_rgba(OUTLINE), width=_s(0.8))
     hd.line([_pt(hx, mouth_y + 3.0), _pt(hx, mouth_y + 12.0)], fill=_rgba(MUZZLE), width=_s(0.7))
 
-    # Dented hard hat; its brim overlaps the forehead so it feels worn, not floating.
-    hat = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    hdraw = blending_draw(hat)
+
+def _paint_hat(hdraw: ImageDraw.ImageDraw) -> None:
+    """Dented hard hat; its brim overlaps the forehead so it feels worn, not floating."""
+    hx, hy = HEAD_AT
     hdraw.rounded_rectangle(_box(hx - 25.0, hy - 31.0, hx + 22.0, hy - 20.0), radius=_s(4.0), fill=_rgba(HAT_DARK), outline=_rgba(OUTLINE), width=_s(1.2))
     hdraw.pieslice(_box(hx - 21.0, hy - 46.0, hx + 18.0, hy - 16.0), 180, 360, fill=_rgba(HAT), outline=_rgba(OUTLINE), width=_s(1.2))
     hdraw.polygon([_pt(hx - 2.0, hy - 44.0), _pt(hx + 4.0, hy - 42.0), _pt(hx + 1.0, hy - 25.0), _pt(hx - 5.0, hy - 25.0)], fill=_rgba(HAT_LIGHT))
     hdraw.line([_pt(hx - 18.0, hy - 27.0), _pt(hx + 18.0, hy - 27.0)], fill=_rgba(HAT_LIGHT), width=_s(1.2))
-    if abs(p.hat_angle) > 0.01:
-        hat = hat.rotate(p.hat_angle, resample=Image.Resampling.BICUBIC, center=_pt(hx, hy - 22.0), fillcolor=(0, 0, 0, 0))
-    rigdoc.composite_canvas(head, hat)
-    if abs(p.head_angle) > 0.01:
-        head = head.rotate(p.head_angle, resample=Image.Resampling.BICUBIC, center=_pt(hx, hy + 8.0), fillcolor=(0, 0, 0, 0))
-    rigdoc.composite_canvas(layer, head)
 
-    if abs(p.body_angle) > 0.01 or p.squash_x != 1.0 or p.squash_y != 1.0:
+
+def _draw_body(img: Image.Image, p: Pose) -> None:
+    """The body as a rig: limbs, torso, head and hat are pieces painted once and
+    placed through the body's turn (the head and hat add their own). A squashed
+    pose (the hurt row) is composed in a layer and squashed and turned whole,
+    as before: a squash is no turn of a piece."""
+    bx = 79.0 + p.body_x
+    squashed = p.squash_x != 1.0 or p.squash_y != 1.0
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0)) if squashed else img
+    body = _Body(layer, (bx, 128.0 + p.body_y), 0.0 if squashed else p.body_angle)
+
+    # Far limbs behind torso.
+    _draw_leg(body, (68.0 + p.body_x, 113.0 + p.body_y), p.far_foot, True)
+    _draw_arm(body, (61.0 + p.body_x, 81.0 + p.body_y), p.far_hand, True)
+
+    # Stocky pear-shaped torso, vest and belt.
+    body.put(_piece(("torso",), (0.0, 0.0), _paint_torso), (p.body_x, p.body_y), "torso")
+
+    # Near limbs in front.
+    _draw_leg(body, (89.0 + p.body_x, 113.0 + p.body_y), p.near_foot, False)
+    _draw_arm(body, (99.0 + p.body_x, 80.0 + p.body_y), p.near_hand, False)
+
+    # Head: side-facing but turned enough toward camera to read both eyes.
+    hx = 85.0 + p.body_x + p.head_x
+    hy = 52.0 + p.body_y + p.head_y
+    head_pivot = (hx, hy + 8.0)
+    brow = round(p.brow, 1)
+    mouth = round(p.mouth_open * 20) / 20
+    head = _piece(("head", p.blink, brow, mouth), (HEAD_AT[0], HEAD_AT[1] + 8.0), lambda d: _paint_head(d, p.blink, brow, mouth))
+    body.put(head, head_pivot, "head", -p.head_angle)
+    hat = _piece(("hat",), (HEAD_AT[0], HEAD_AT[1] - 22.0), _paint_hat)
+    body.put(hat, _rot_cw((hx, hy - 22.0), head_pivot, -p.head_angle), "hat", -p.head_angle - p.hat_angle)
+
+    if squashed:
         # Apply scale about the grounded body center before rotation.
-        if p.squash_x != 1.0 or p.squash_y != 1.0:
-            crop = layer.crop(_box(38.0, 25.0, 122.0, 145.0))
-            target = (_s(84.0 * p.squash_x), _s(120.0 * p.squash_y))
-            crop = crop.resize(target, Image.Resampling.BICUBIC)
-            scaled = Image.new("RGBA", layer.size, (0, 0, 0, 0))
-            x = _s(80.0) - target[0] // 2
-            y = _s(140.0) - target[1]
-            rigdoc.composite_canvas(scaled, crop, (x, y))
-            layer = scaled
-        layer = layer.rotate(p.body_angle, resample=Image.Resampling.BICUBIC, center=_pt(bx, 128.0 + p.body_y), fillcolor=(0, 0, 0, 0))
-
-    rigdoc.composite_canvas(img, layer)
+        crop = layer.crop(_box(38.0, 25.0, 122.0, 145.0))
+        target = (_s(84.0 * p.squash_x), _s(120.0 * p.squash_y))
+        crop = crop.resize(target, Image.Resampling.BICUBIC)
+        scaled = Image.new("RGBA", layer.size, (0, 0, 0, 0))
+        x = _s(80.0) - target[0] // 2
+        y = _s(140.0) - target[1]
+        rigdoc.composite_canvas(scaled, crop, (x, y))
+        layer = scaled.rotate(p.body_angle, resample=Image.Resampling.BICUBIC, center=_pt(bx, 128.0 + p.body_y), fillcolor=(0, 0, 0, 0))
+        rigdoc.composite_canvas(img, layer)
 
 
 def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:

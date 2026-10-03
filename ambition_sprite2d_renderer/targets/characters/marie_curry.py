@@ -7,7 +7,7 @@ from typing import List, Tuple
 
 from PIL import Image, ImageDraw
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ambition_sprite2d_renderer.authoring.portrait import (
     FaceGuide,
@@ -403,27 +403,79 @@ def _circle(draw: ImageDraw.ImageDraw, center, radius, fill, outline=OUTLINE, wi
     _ellipse(draw, (x - radius, y - radius, x + radius, y + radius), fill=fill, outline=outline, width=width)
 
 
-def _draw_leg(draw: ImageDraw.ImageDraw, hip, knee, ankle, foot, *, fill, lift=0.0):
-    ax, ay = ankle
-    kx, ky = knee
+def _piece(key: tuple, size: tuple, pivot: tuple, paint) -> tuple:
+    """A piece of Marie painted once (``shape_rig``) in work pixels on a
+    ``size`` canvas, its anchor at ``pivot``. ``key`` names everything
+    ``paint(draw)`` reads."""
+    return shape_rig.piece(("marie_curry",) + key, size, pivot, paint)
+
+
+def _angle(a, b) -> float:
+    return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+
+
+def _ahead(a, length: float, degrees: float):
+    r = math.radians(degrees)
+    return (a[0] + math.cos(r) * length, a[1] + math.sin(r) * length)
+
+
+def _segment(img: Image.Image, a, b, length: float, width: int, fill, name: str, *, cap: bool = False, joints=()) -> None:
+    """A thick limb segment of ``length`` from ``a`` toward ``b``, painted once
+    along +x: ``cap`` rounds its first end (the polyline's curved joint), and
+    ``joints`` are ``(offset, radius)`` outlined dots on it (offset 0 or the
+    far end; they are round, so turning them changes nothing)."""
+    pad = width // 2 + 10
+
+    def paint(d) -> None:
+        if cap:
+            d.ellipse((pad - width / 2, pad - width / 2, pad + width / 2, pad + width / 2), fill=fill)
+        _line(d, [(pad, pad), (pad + length, pad)], fill=fill, width=width)
+        for offset, r in joints:
+            _circle(d, (pad + offset, pad), r, fill, width=2)
+
+    part = _piece(("segment", length, width, fill, cap, tuple(joints)), (length + 2 * pad, 2 * pad), (pad, pad), paint)
+    shape_rig.place(img, part, a, _angle(a, b), name)
+
+
+#: Leg bones (work pixels): hip to knee, knee to ankle.
+THIGH = 56.0
+SHIN = 48.0
+#: Arm bones (work pixels): (upper, forearm) for the back and front arm.
+BACK_ARM = (math.hypot(18.0, 28.0), math.hypot(8.0, 28.0))
+FRONT_ARM = (math.hypot(16.0, 18.0), math.hypot(20.0, 18.0))
+
+
+def _draw_leg(img: Image.Image, hip, knee, ankle, foot, *, fill, lift=0.0, side: str):
+    """Thigh and shin bones of fixed length aimed at the posed knee and ankle,
+    then the foot reaching the ground; joint dots ride the bones."""
+    knee = _ahead(hip, THIGH, _angle(hip, (knee[0], knee[1] - lift * 0.25)))
+    ankle_aim = (ankle[0], ankle[1] - lift * 0.55)
+    ankle = _ahead(knee, SHIN, _angle(knee, ankle_aim))
     foot2 = (foot[0], foot[1] - lift)
-    _line(draw, [hip, (kx, ky - lift * 0.25), (ax, ay - lift * 0.55), foot2], fill=fill, width=18)
-    for point, r in ((hip, 7), (knee, 6), ((ax, ay - lift * 0.55), 5)):
-        _circle(draw, point, r, fill, width=2)
+    reach = float(round(math.dist(ankle, foot2) / 2.0) * 2)
+    _segment(img, ankle, foot2, reach, 18, fill, f"{side}_foot", cap=True)
+    _segment(img, hip, knee, THIGH, 18, fill, f"{side}_thigh", joints=((0.0, 7),))
+    _segment(img, knee, ankle, SHIN, 18, fill, f"{side}_shin", cap=True, joints=((0.0, 6), (SHIN, 5)))
 
 
-def _draw_arm(draw: ImageDraw.ImageDraw, shoulder, elbow, hand, *, fill, spoon=False, spoon_angle=-20.0):
-    _line(draw, [shoulder, elbow, hand], fill=fill, width=14)
-    _circle(draw, shoulder, 6, fill, width=2)
-    _circle(draw, elbow, 5, fill, width=2)
-    _circle(draw, hand, 5, fill, width=2)
-    if spoon:
-        hx, hy = hand
-        end = _rot((hx + 38.0, hy), hand, spoon_angle)
-        bowl = _rot((end[0] + 10.0, end[1]), end, spoon_angle * 0.18)
-        _line(draw, [hand, end], fill=SPOON, width=6)
-        _line(draw, [hand, end], fill=OUTLINE, width=2)
-        _ellipse(draw, (bowl[0] - 8, bowl[1] - 5, bowl[0] + 8, bowl[1] + 5), SPOON_METAL, outline=OUTLINE, width=2)
+def _draw_arm(img: Image.Image, shoulder, elbow, hand, bones, *, fill, side: str):
+    """Upper arm and forearm bones; returns where the hand landed."""
+    upper, fore = bones
+    elbow = _ahead(shoulder, upper, _angle(shoulder, elbow))
+    hand = _ahead(elbow, fore, _angle(elbow, hand))
+    _segment(img, shoulder, elbow, upper, 14, fill, f"{side}_upper_arm", joints=((0.0, 6),))
+    _segment(img, elbow, hand, fore, 14, fill, f"{side}_forearm", cap=True, joints=((0.0, 5), (fore, 5)))
+    return hand
+
+
+def _paint_spoon(d, hand) -> None:
+    """The spoon held level from ``hand``; the whole spoon turns with its angle."""
+    hx, hy = hand
+    end = (hx + 38.0, hy)
+    bowl = (end[0] + 10.0, end[1])
+    _line(d, [hand, end], fill=SPOON, width=6)
+    _line(d, [hand, end], fill=OUTLINE, width=2)
+    _ellipse(d, (bowl[0] - 8, bowl[1] - 5, bowl[0] + 8, bowl[1] + 5), SPOON_METAL, outline=OUTLINE, width=2)
 
 
 def _draw_curry_glow(draw: ImageDraw.ImageDraw, center, radius, intensity=0.5):
@@ -434,15 +486,74 @@ def _draw_curry_glow(draw: ImageDraw.ImageDraw, center, radius, intensity=0.5):
     _ellipse(draw, (x - radius - 6, y - radius - 4, x + radius + 10, y + radius + 10), (210, 255, 190, alpha2), outline=None, width=0)
 
 
+def _paint_torso(d, torso) -> None:
+    """Skirt, bodice, apron and the radium badge around ``torso``."""
+    skirt = [
+        (torso[0] - 38, torso[1] + 36),
+        (torso[0] + 24, torso[1] + 32),
+        (torso[0] + 42, torso[1] + 108),
+        (torso[0] - 52, torso[1] + 108),
+    ]
+    _poly(d, skirt, DRESS_DARK, width=5)
+    _ellipse(d, (torso[0] - 42, torso[1] - 52, torso[0] + 34, torso[1] + 44), DRESS, outline=OUTLINE, width=6)
+    apron = [
+        (torso[0] - 16, torso[1] - 8),
+        (torso[0] + 18, torso[1] - 4),
+        (torso[0] + 12, torso[1] + 78),
+        (torso[0] - 22, torso[1] + 80),
+    ]
+    _poly(d, apron, APRON, width=4)
+    _line(d, [(torso[0] - 10, torso[1] - 18), (torso[0] - 32, torso[1] + 8)], fill=APRON_SHADE, width=4)
+    _line(d, [(torso[0] + 4, torso[1] - 18), (torso[0] + 28, torso[1] + 4)], fill=APRON_SHADE, width=4)
+    _circle(d, (torso[0] + 18, torso[1] - 26), 6, RADIUM, width=2)
+    _line(d, [(torso[0] + 18, torso[1] - 34), (torso[0] + 18, torso[1] - 18)], fill=OUTLINE, width=2)
+    _line(d, [(torso[0] + 10, torso[1] - 26), (torso[0] + 26, torso[1] - 26)], fill=OUTLINE, width=2)
+
+
+def _paint_head(d, head_center, bun_bounce: float, eyes: str, mouth_open: float) -> None:
+    """Hair, face, bun, fringe, eye and mouth, untilted, around ``head_center``."""
+    hair_back = (head_center[0] - 34, head_center[1] - 26, head_center[0] + 20, head_center[1] + 34)
+    _ellipse(d, hair_back, HAIR_DARK, outline=OUTLINE, width=5)
+    _ellipse(d, (head_center[0] - 28, head_center[1] - 24, head_center[0] + 20, head_center[1] + 26), SKIN, outline=OUTLINE, width=5)
+    _circle(d, (head_center[0] - 18, head_center[1] - 30 - bun_bounce * 4), 12, HAIR, width=4)
+    fringe = [(head_center[0] - 24, head_center[1] - 14), (head_center[0] + 8, head_center[1] - 22), (head_center[0] + 12, head_center[1] - 6), (head_center[0] - 18, head_center[1] + 2)]
+    _poly(d, fringe, HAIR, width=3)
+    _line(d, [(head_center[0] - 8, head_center[1] - 24), (head_center[0] + 10, head_center[1] - 18)], fill=HAIR_LIGHT, width=3)
+    eye_center = (head_center[0] + 8, head_center[1] - 2)
+    if eyes == "x":
+        for sign in (-1, 1):
+            _line(d, [(eye_center[0] - 6, eye_center[1] - 6 * sign), (eye_center[0] + 6, eye_center[1] + 6 * sign)], fill=EYE, width=4)
+    elif eyes == "blink":
+        _line(d, [(eye_center[0] - 8, eye_center[1]), (eye_center[0] + 6, eye_center[1] + 1)], fill=EYE, width=4)
+    else:
+        _ellipse(d, (eye_center[0] - 8, eye_center[1] - 6, eye_center[0] + 7, eye_center[1] + 6), WHITE, outline=OUTLINE, width=2)
+        _circle(d, (eye_center[0] + 1, eye_center[1]), 3, EYE, width=1)
+    mouth_y = head_center[1] + 14
+    _line(d, [(head_center[0] - 2, mouth_y), (head_center[0] + 12, mouth_y + mouth_open * 6)], fill=OUTLINE, width=3)
+
+
+def _paint_pot(d, pot_center, glow: float) -> None:
+    """The glowing curry pot around ``pot_center``."""
+    _draw_curry_glow(d, (pot_center[0], pot_center[1] - 14), 20, glow)
+    _ellipse(d, (pot_center[0] - 26, pot_center[1] - 18, pot_center[0] + 22, pot_center[1] + 18), POT, outline=OUTLINE, width=5)
+    _ellipse(d, (pot_center[0] - 22, pot_center[1] - 22, pot_center[0] + 18, pot_center[1] - 6), CURRY, outline=OUTLINE, width=3)
+    _ellipse(d, (pot_center[0] - 18, pot_center[1] - 18, pot_center[0] + 14, pot_center[1] - 10), CURRY_HOT, outline=None, width=0)
+    _line(d, [(pot_center[0] - 28, pot_center[1] - 6), (pot_center[0] - 38, pot_center[1] + 6)], fill=POT_DARK, width=5)
+    _line(d, [(pot_center[0] + 24, pot_center[1] - 6), (pot_center[0] + 34, pot_center[1] + 4)], fill=POT_DARK, width=5)
+
+
 def _draw_character(pose: Pose, anim: str, frame_idx: int, frame_count: int):
+    """Marie as a rig: shadow, torso, head (turned by its tilt), pot and spoon
+    are pieces painted once; legs and arms are bones of fixed length; the stir
+    and toss effects change every frame and are one draw."""
     img = Image.new("RGBA", WORK_SIZE, (0, 0, 0, 0))
-    draw = blending_draw(img)
 
     ox = 216 + pose.root_x * 4
     ground_y = 388 + pose.root_y * 4
     bob = pose.bob * 4
 
-    _ellipse(draw, (ox - 60, ground_y - 5, ox + 62, ground_y + 18), SHADOW, outline=None, width=0)
+    shadow = _piece(("shadow",), (128, 30), (64, 7), lambda d: _ellipse(d, (4, 2, 126, 25), SHADOW, outline=None, width=0))
+    shape_rig.place(img, shadow, (ox, ground_y), 0.0, "shadow")
 
     hip_back = (ox - 18, ground_y - 120 - bob)
     hip_front = (ox + 14, ground_y - 120 - bob)
@@ -453,100 +564,63 @@ def _draw_character(pose: Pose, anim: str, frame_idx: int, frame_count: int):
     foot_back = (ankle_back[0] + 18, ground_y - 2)
     foot_front = (ankle_front[0] + 20, ground_y - 2)
 
-    _draw_leg(draw, hip_back, knee_back, ankle_back, foot_back, fill=DRESS_DARK, lift=pose.back_foot_lift * 4)
-    _draw_leg(draw, hip_front, knee_front, ankle_front, foot_front, fill=DRESS, lift=pose.front_foot_lift * 4)
+    _draw_leg(img, hip_back, knee_back, ankle_back, foot_back, fill=DRESS_DARK, lift=pose.back_foot_lift * 4, side="back")
+    _draw_leg(img, hip_front, knee_front, ankle_front, foot_front, fill=DRESS, lift=pose.front_foot_lift * 4, side="front")
 
     torso = (ox, ground_y - 210 - bob)
-    skirt = [
-        (torso[0] - 38, torso[1] + 36),
-        (torso[0] + 24, torso[1] + 32),
-        (torso[0] + 42, torso[1] + 108),
-        (torso[0] - 52, torso[1] + 108),
-    ]
-    _poly(draw, skirt, DRESS_DARK, width=5)
-    _ellipse(draw, (torso[0] - 42, torso[1] - 52, torso[0] + 34, torso[1] + 44), DRESS, outline=OUTLINE, width=6)
-
-    apron = [
-        (torso[0] - 16, torso[1] - 8),
-        (torso[0] + 18, torso[1] - 4),
-        (torso[0] + 12, torso[1] + 78),
-        (torso[0] - 22, torso[1] + 80),
-    ]
-    _poly(draw, apron, APRON, width=4)
-    _line(draw, [(torso[0] - 10, torso[1] - 18), (torso[0] - 32, torso[1] + 8)], fill=APRON_SHADE, width=4)
-    _line(draw, [(torso[0] + 4, torso[1] - 18), (torso[0] + 28, torso[1] + 4)], fill=APRON_SHADE, width=4)
+    shape_rig.place(img, _piece(("torso",), (110, 176), (60, 60), lambda d: _paint_torso(d, (60, 60))), torso, 0.0, "torso")
 
     neck = (torso[0] + pose.lean * 0.6, torso[1] - 50)
     head_center = _rot((neck[0] + 8, neck[1] - 20), neck, pose.head_tilt)
-
-    hair_back = (head_center[0] - 34, head_center[1] - 26, head_center[0] + 20, head_center[1] + 34)
-    _ellipse(draw, hair_back, HAIR_DARK, outline=OUTLINE, width=5)
-    _ellipse(draw, (head_center[0] - 28, head_center[1] - 24, head_center[0] + 20, head_center[1] + 26), SKIN, outline=OUTLINE, width=5)
-
-    bun_center = _rot((head_center[0] - 18, head_center[1] - 30 - pose.bun_bounce * 4), head_center, pose.head_tilt)
-    _circle(draw, bun_center, 12, HAIR, width=4)
-    fringe = [(head_center[0] - 24, head_center[1] - 14), (head_center[0] + 8, head_center[1] - 22), (head_center[0] + 12, head_center[1] - 6), (head_center[0] - 18, head_center[1] + 2)]
-    _poly(draw, fringe, HAIR, width=3)
-    _line(draw, [
-        (head_center[0] - 8, head_center[1] - 24),
-        (head_center[0] + 10, head_center[1] - 18),
-    ], fill=HAIR_LIGHT, width=3)
-
-    eye_center = _rot((head_center[0] + 8, head_center[1] - 2), head_center, pose.head_tilt)
-    if pose.x_eye:
-        for sign in (-1, 1):
-            _line(draw, [(eye_center[0] - 6, eye_center[1] - 6 * sign), (eye_center[0] + 6, eye_center[1] + 6 * sign)], fill=EYE, width=4)
-    elif pose.blink:
-        _line(draw, [(eye_center[0] - 8, eye_center[1]), (eye_center[0] + 6, eye_center[1] + 1)], fill=EYE, width=4)
-    else:
-        _ellipse(draw, (eye_center[0] - 8, eye_center[1] - 6, eye_center[0] + 7, eye_center[1] + 6), WHITE, outline=OUTLINE, width=2)
-        _circle(draw, (eye_center[0] + 1, eye_center[1]), 3, EYE, width=1)
-
-    mouth_y = head_center[1] + 14
-    _line(draw, [
-        _rot((head_center[0] - 2, mouth_y), head_center, pose.head_tilt),
-        _rot((head_center[0] + 12, mouth_y + pose.mouth_open * 6), head_center, pose.head_tilt),
-    ], fill=OUTLINE, width=3)
-
-    _circle(draw, (torso[0] + 18, torso[1] - 26), 6, RADIUM, width=2)
-    _line(draw, [(torso[0] + 18, torso[1] - 34), (torso[0] + 18, torso[1] - 18)], fill=OUTLINE, width=2)
-    _line(draw, [(torso[0] + 10, torso[1] - 26), (torso[0] + 26, torso[1] - 26)], fill=OUTLINE, width=2)
+    eyes = "x" if pose.x_eye else ("blink" if pose.blink else "open")
+    bun = round(pose.bun_bounce * 4) / 4
+    mouth = round(pose.mouth_open * 25) / 25
+    head = _piece(("head", bun, eyes, mouth), (76, 96), (40, 52), lambda d: _paint_head(d, (40, 52), bun, eyes, mouth))
+    shape_rig.place(img, head, head_center, pose.head_tilt, "head")
 
     pot_center = (torso[0] - 40, torso[1] + 34 + pose.pot_swing * 0.5)
-    _draw_curry_glow(draw, (pot_center[0], pot_center[1] - 14), 20, pose.glow_pulse)
-    _ellipse(draw, (pot_center[0] - 26, pot_center[1] - 18, pot_center[0] + 22, pot_center[1] + 18), POT, outline=OUTLINE, width=5)
-    _ellipse(draw, (pot_center[0] - 22, pot_center[1] - 22, pot_center[0] + 18, pot_center[1] - 6), CURRY, outline=OUTLINE, width=3)
-    _ellipse(draw, (pot_center[0] - 18, pot_center[1] - 18, pot_center[0] + 14, pot_center[1] - 10), CURRY_HOT, outline=None, width=0)
-    _line(draw, [(pot_center[0] - 28, pot_center[1] - 6), (pot_center[0] - 38, pot_center[1] + 6)], fill=POT_DARK, width=5)
-    _line(draw, [(pot_center[0] + 24, pot_center[1] - 6), (pot_center[0] + 34, pot_center[1] + 4)], fill=POT_DARK, width=5)
+    glow = round(pose.glow_pulse * 10) / 10
+    pot = _piece(("pot", glow), (96, 96), (50, 52), lambda d: _paint_pot(d, (50, 52), glow))
+    shape_rig.place(img, pot, pot_center, 0.0, "pot")
 
     shoulder_back = (torso[0] - 18, torso[1] - 8)
     elbow_back = _rot((shoulder_back[0] - 18, shoulder_back[1] + 28), shoulder_back, pose.back_arm)
     hand_back = _rot((elbow_back[0] - 8, elbow_back[1] + 28), elbow_back, pose.back_arm * 0.3)
-    _draw_arm(draw, shoulder_back, elbow_back, hand_back, fill=DRESS_DARK, spoon=False)
-    _line(draw, [hand_back, (pot_center[0] - 18, pot_center[1] + 4)], fill=OUTLINE, width=3)
+    hand_back = _draw_arm(img, shoulder_back, elbow_back, hand_back, BACK_ARM, fill=DRESS_DARK, side="back")
+    handle = (pot_center[0] - 18, pot_center[1] + 4)
+    cord = float(round(math.dist(hand_back, handle) / 2.0) * 2)
+    cord_part = _piece(("cord", cord), (cord + 8, 8), (4, 4), lambda d: _line(d, [(4, 4), (4 + cord, 4)], fill=OUTLINE, width=3))
+    shape_rig.place(img, cord_part, hand_back, _angle(hand_back, handle), "cord")
 
     shoulder_front = (torso[0] + 18, torso[1] - 10)
     elbow_front = _rot((shoulder_front[0] + 16, shoulder_front[1] + 18), shoulder_front, pose.front_arm)
     hand_front = _rot((elbow_front[0] + 20, elbow_front[1] + 18), elbow_front, pose.front_arm * 0.35)
-    _draw_arm(draw, shoulder_front, elbow_front, hand_front, fill=APRON_SHADE, spoon=True, spoon_angle=pose.spoon_angle)
+    hand_front = _draw_arm(img, shoulder_front, elbow_front, hand_front, FRONT_ARM, fill=APRON_SHADE, side="front")
+    spoon = _piece(("spoon",), (72, 20), (6, 10), lambda d: _paint_spoon(d, (6, 10)))
+    shape_rig.place(img, spoon, hand_front, pose.spoon_angle, "spoon")
 
-    if anim == "stir":
-        ang = math.tau * pose.stir_phase
-        cx = pot_center[0] + math.cos(ang) * 10
-        cy = pot_center[1] - 14 + math.sin(ang) * 6
-        _line(draw, [(pot_center[0] - 6, pot_center[1] - 10), (cx, cy)], fill=GLOW_BRIGHT, width=3)
-        for k in range(3):
-            px = pot_center[0] - 4 + k * 10
-            py = pot_center[1] - 34 - abs(math.sin(ang + k)) * 10
-            _circle(draw, (px, py), 4 + k, GLOW_BRIGHT, outline=None, width=0)
-    elif anim == "toss":
-        px = torso[0] + 58 + pose.toss_arc * 30
-        py = torso[1] - 12 - pose.toss_arc * 26
-        _draw_curry_glow(draw, (px, py), 10, 1.0)
-        _ellipse(draw, (px - 12, py - 8, px + 12, py + 8), CURRY_HOT, outline=OUTLINE, width=2)
-        splash = [(px + 10, py), (px + 28, py - 6), (px + 16, py + 14)]
-        _poly(draw, splash, CURRY, width=2)
+    if anim in ("stir", "toss"):
+        layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        draw = blending_draw(layer)
+        if anim == "stir":
+            ang = math.tau * pose.stir_phase
+            cx = pot_center[0] + math.cos(ang) * 10
+            cy = pot_center[1] - 14 + math.sin(ang) * 6
+            _line(draw, [(pot_center[0] - 6, pot_center[1] - 10), (cx, cy)], fill=GLOW_BRIGHT, width=3)
+            for k in range(3):
+                px = pot_center[0] - 4 + k * 10
+                py = pot_center[1] - 34 - abs(math.sin(ang + k)) * 10
+                _circle(draw, (px, py), 4 + k, GLOW_BRIGHT, outline=None, width=0)
+        else:
+            px = torso[0] + 58 + pose.toss_arc * 30
+            py = torso[1] - 12 - pose.toss_arc * 26
+            _draw_curry_glow(draw, (px, py), 10, 1.0)
+            _ellipse(draw, (px - 12, py - 8, px + 12, py + 8), CURRY_HOT, outline=OUTLINE, width=2)
+            splash = [(px + 10, py), (px + 28, py - 6), (px + 16, py + 14)]
+            _poly(draw, splash, CURRY, width=2)
+        box = layer.getbbox()
+        if box is not None:
+            shape_rig.place(img, (layer.crop(box), (0.0, 0.0)), (float(box[0]), float(box[1])), 0.0, "effects")
 
     return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 

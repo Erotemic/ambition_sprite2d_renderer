@@ -14,7 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Sequence, Tuple
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
+from . import _solo_shape_rig as _rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from PIL import Image, ImageDraw
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -291,71 +292,196 @@ def _downsample(img: Image.Image) -> Image.Image:
     return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
+# --- Drawn as a rig (``shape_rig``): each rigid piece is painted once at its
+# rest place and turned into the frame; limbs are bones of a fixed length. ---
+
+#: Where a bone piece's root sits on its rest canvas (work pixels).
+_BONE_O: Point = (30.0, 30.0)
+
+
+def _sp(p: Point) -> Point:
+    return (p[0] * SUPER, p[1] * SUPER)
+
+
+def _rest(key, paint, pivot: Point):
+    """A piece painted at its rest place on a frame-sized canvas, cut to what
+    it covers (``_solo_shape_rig.rest_piece``); ``pivot`` in work pixels."""
+    return _rig.rest_piece((TARGET_NAME,) + tuple(key), _CANVAS, _sp(pivot), paint)
+
+
+def _put(img: Image.Image, part, at: Point, deg: float, name: str) -> None:
+    shape_rig.place(img, part, _sp(at), deg, name)
+
+
+def _fx_layer(img: Image.Image, paint, name: str) -> None:
+    """A per-frame effect (it changes every frame) as ONE raster: painted on
+    its own canvas, cut to what it covers and placed at its corner."""
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    paint(blending_draw(layer))
+    box = layer.getchannel("A").getbbox()
+    if box is not None:
+        shape_rig.place(img, (layer.crop(box), (0.0, 0.0)), (float(box[0]), float(box[1])), 0.0, name)
+
+
+def _deg(a: Point, b: Point) -> float:
+    return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+
+
+def _ik(root: Point, target: Point, l1: float, l2: float, ref: Point) -> Point:
+    """The middle joint of a two-bone limb (lengths ``l1``, ``l2``) from
+    ``root`` to ``target``, on the side of ``ref`` (the painter's own joint)."""
+    dx, dy = target[0] - root[0], target[1] - root[1]
+    d = max(1e-6, min(math.hypot(dx, dy), l1 + l2 - 1e-6))
+    ux, uy = dx / d, dy / d
+    a = (l1 * l1 - l2 * l2 + d * d) / (2 * d)
+    h = math.sqrt(max(0.0, l1 * l1 - a * a))
+    bx, by = root[0] + ux * a, root[1] + uy * a
+    c1 = (bx - uy * h, by + ux * h)
+    c2 = (bx + uy * h, by - ux * h)
+    d1 = (c1[0] - ref[0]) ** 2 + (c1[1] - ref[1]) ** 2
+    d2 = (c2[0] - ref[0]) ** 2 + (c2[1] - ref[1]) ** 2
+    return c1 if d1 <= d2 else c2
+
+
+def _bone_piece(key, length: float, width: float, fill: RGBA, centre: RGBA, centre_w: float, cap: bool = False):
+    """A straight limb segment along +x from its root: the painter's thick
+    stroke with its dark centre line (``cap`` rounds the root end)."""
+    O = _BONE_O
+
+    def paint(d) -> None:
+        end = (O[0] + length, O[1])
+        if cap:
+            _circle(d, O, width / 2.0, fill, fill, 0.1)
+        _line(d, [O, end], fill, width)
+        if centre is not None:
+            _line(d, [O, end], centre, centre_w)
+
+    return _rest(("bone",) + tuple(key) + (length, width, fill, centre, centre_w, cap), paint, O)
+
+
+_LIMB_LENGTHS: dict = {}
+
+
+def _limb_lengths(chains) -> dict:
+    """Each limb's bone lengths: the painter's own in the rest pose (the
+    first frame). ``chains(J)`` names each limb's ``(root, joint, end)``."""
+    if not _LIMB_LENGTHS:
+        for limb, (a, b, c) in chains(_joints(ROWS[0][0], 0, ROWS[0][1])).items():
+            _LIMB_LENGTHS[limb] = (round(math.dist(a, b), 1), round(math.dist(b, c), 1))
+    return _LIMB_LENGTHS
+
+
+def _limb(chains, limb: str, root: Point, ref: Point, end: Point) -> Tuple[Point, float, float]:
+    """A two-bone limb from ``root`` to ``end`` of its rest bone lengths,
+    bent toward the painter's joint ``ref``. Out of reach (the painter's
+    position-shift limb grows), both bones lengthen to the next 3-pixel
+    step: a stretched limb takes a few lengths. Returns (joint, l1, l2)."""
+    l1, l2 = _limb_lengths(chains)[limb]
+    d = math.dist(root, end)
+    if d > l1 + l2 - 0.5:
+        k = math.ceil((d + 0.5) / 3.0) * 3.0 / (l1 + l2)
+        l1, l2 = round(l1 * k, 1), round(l2 * k, 1)
+    return _ik(root, end, l1, l2, ref), l1, l2
+
+
+_CANVAS = (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER)
+TARGET_NAME = TARGET_BASENAME
+_REST_ROOT: Point = (WORK_FRAME_SIZE[0] * 0.42, WORK_FRAME_SIZE[1] * 0.78)
+_LIMBS = ("far_hind", "far_fore", "near_hind", "near_fore")
+
+
+def _frame_of(pose: Pose):
+    root = (WORK_FRAME_SIZE[0] * 0.42 + pose.root_x, WORK_FRAME_SIZE[1] * 0.78 + pose.root_y + pose.bob)
+    tilt = pose.lean
+
+    def P(x: float, y: float) -> Point:
+        rx, ry = _rot_local(x, y, tilt)
+        return (root[0] + rx, root[1] + ry)
+
+    return root, tilt, P
+
+
+def _joints(anim: str, frame_idx: int, nframes: int) -> dict:
+    pose = Pose(anim, frame_idx, nframes)
+    P = _frame_of(pose)[2]
+    return {kind: BearMaulerRenderer._limb_points(None, P, kind, getattr(pose, kind), getattr(pose, f"{kind}_lift")) for kind in _LIMBS}
+
+
+def _P0(x: float, y: float) -> Point:
+    return (_REST_ROOT[0] + x, _REST_ROOT[1] + y)
+
+
 class BearMaulerRenderer:
     def render_frame(self, anim: str, frame_idx: int, nframes: int) -> Image.Image:
-        img = Image.new("RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0))
-        draw = blending_draw(img)
+        img = Image.new("RGBA", _CANVAS, (0, 0, 0, 0))
         pose = Pose(anim, frame_idx, nframes)
-
-        root = (WORK_FRAME_SIZE[0] * 0.42 + pose.root_x, WORK_FRAME_SIZE[1] * 0.78 + pose.root_y + pose.bob)
-        tilt = pose.lean
-
-        def P(x: float, y: float) -> Point:
-            rx, ry = _rot_local(x, y, tilt)
-            return (root[0] + rx, root[1] + ry)
+        root, tilt, P = _frame_of(pose)
 
         # No baked ground drop shadow; the scene renderer owns contact shadows.
-        self._draw_far_limbs(draw, P, pose)
-        self._draw_body(draw, P, pose)
-        self._draw_head(draw, P, pose)
-        self._draw_near_limbs(draw, P, pose)
+        self._draw_limbs(img, P, pose, ("far_hind", "far_fore"))
+        self._draw_body(img, pose, root, tilt)
+        self._draw_head(img, P, pose, root, tilt)
+        self._draw_limbs(img, P, pose, ("near_hind", "near_fore"))
+        # Effects change every frame: one raster each.
         if anim == "swipe" and pose.swipe_arc > 0.18:
-            self._draw_swipe_fx(draw, P, pose)
+            _fx_layer(img, lambda d: self._draw_swipe_fx(d, P, pose), "fx_swipe")
         if anim == "slam" and pose.slam_arc > 0.2:
-            self._draw_slam_fx(draw, P, pose)
+            _fx_layer(img, lambda d: self._draw_slam_fx(d, P, pose), "fx_slam")
         if pose.dust > 0.1:
-            self._draw_dust(draw, P, pose)
+            _fx_layer(img, lambda d: self._draw_dust(d, P, pose), "fx_dust")
         return _downsample(img)
 
-    def _draw_shadow(self, draw, P):
-        c = P(-8, 16)
-        _ellipse(draw, c[0], c[1], 62, 12, SHADOW, outline=(0, 0, 0, 0), width=0)
+    def _draw_body(self, img, pose, root, tilt):
+        hump = _rig.q(pose.hump, 0.5)
 
-    def _draw_body(self, draw, P, pose):
-        back = [P(-76, -70), P(-42, -111 - pose.hump), P(22, -119 - pose.hump), P(72, -92), P(90, -58), P(66, -28), P(8, -20), P(-58, -28), P(-92, -48)]
-        _poly(draw, back, FUR_DARK, OUTLINE, 1.8)
-        barrel = [P(-64, -68), P(-28, -99 - pose.hump * 0.7), P(38, -97), P(78, -68), P(68, -36), P(16, -26), P(-48, -34), P(-78, -52)]
-        _poly(draw, barrel, FUR, OUTLINE, 1.4)
-        flank = [P(-36, -66), P(-6, -82), P(40, -74), P(54, -52), P(26, -38), P(-26, -44)]
-        _poly(draw, flank, FUR_LIGHT, OUTLINE, 0.9)
-        _line(draw, [P(-34, -82), P(-20, -44)], FUR_DARK, 0.9)
-        _line(draw, [P(22, -78), P(34, -42)], FUR_DARK, 0.9)
-        _poly(draw, [P(-88, -58), P(-102, -62), P(-96, -47)], FUR_DARK, OUTLINE, 0.8)
+        def paint(draw) -> None:
+            P = _P0
+            back = [P(-76, -70), P(-42, -111 - hump), P(22, -119 - hump), P(72, -92), P(90, -58), P(66, -28), P(8, -20), P(-58, -28), P(-92, -48)]
+            _poly(draw, back, FUR_DARK, OUTLINE, 1.8)
+            barrel = [P(-64, -68), P(-28, -99 - hump * 0.7), P(38, -97), P(78, -68), P(68, -36), P(16, -26), P(-48, -34), P(-78, -52)]
+            _poly(draw, barrel, FUR, OUTLINE, 1.4)
+            _poly(draw, [P(-36, -66), P(-6, -82), P(40, -74), P(54, -52), P(26, -38), P(-26, -44)], FUR_LIGHT, OUTLINE, 0.9)
+            _line(draw, [P(-34, -82), P(-20, -44)], FUR_DARK, 0.9)
+            _line(draw, [P(22, -78), P(34, -42)], FUR_DARK, 0.9)
+            _poly(draw, [P(-88, -58), P(-102, -62), P(-96, -47)], FUR_DARK, OUTLINE, 0.8)
 
-    def _draw_head(self, draw, P, pose):
+        _put(img, _rest(("body", hump), paint, _REST_ROOT), root, tilt, "body")
+
+    def _draw_head(self, img, P, pose, root, tilt):
+        """The neck rides the body; the upright head is one piece per face."""
         hx, hy = P(82 + pose.neck_extend, -92 + pose.head_tilt * 0.12)
-        neck = [P(44, -90), P(72 + pose.neck_extend * 0.3, -104), P(84 + pose.neck_extend * 0.2, -72), P(46, -62)]
-        _poly(draw, neck, FUR_DARK, OUTLINE, 1.0)
-        head = [(hx - 28, hy - 20), (hx + 12, hy - 26), (hx + 42, hy - 12), (hx + 48, hy + 8), (hx + 20, hy + 22), (hx - 22, hy + 18), (hx - 34, hy - 2)]
-        _poly(draw, head, FUR, OUTLINE, 1.3)
-        _circle(draw, (hx - 18, hy - 20), 9, FUR_DARK, OUTLINE, 1.0)
-        _circle(draw, (hx + 8, hy - 24), 8, FUR_DARK, OUTLINE, 1.0)
-        snout = [(hx + 14, hy - 4), (hx + 54, hy - 1), (hx + 68, hy + 8), (hx + 52, hy + 18), (hx + 16, hy + 16)]
-        _poly(draw, snout, MUZZLE, OUTLINE, 1.0)
-        lower_drop = pose.jaw_open * 20.0
-        lower = [(hx + 18, hy + 14), (hx + 48, hy + 18 + lower_drop), (hx + 62, hy + 14 + lower_drop), (hx + 48, hy + 25 + lower_drop), (hx + 18, hy + 23)]
-        _poly(draw, lower, MUZZLE_DARK, OUTLINE, 0.8)
-        _circle(draw, (hx + 58, hy + 6), 5, NOSE, OUTLINE, 0.6)
-        if pose.x_eyes:
-            _line(draw, [(hx + 2, hy - 7), (hx + 12, hy + 3)], OUTLINE, 1.0)
-            _line(draw, [(hx + 2, hy + 3), (hx + 12, hy - 7)], OUTLINE, 1.0)
-        elif pose.blink:
-            _line(draw, [(hx + 1, hy - 4), (hx + 13, hy - 4)], EYE_HOT, 1.0)
-        else:
-            _ellipse(draw, hx + 7, hy - 4, 5, 3.5, EYE, EYE_HOT, 0.7)
-            _circle(draw, (hx + 8, hy - 4), 1.3, OUTLINE, OUTLINE, 0.4)
-        for x in (34, 44, 54):
-            _line(draw, [(hx + x, hy + 13), (hx + x - 3, hy + 19 + lower_drop * 0.2)], CLAW, 0.7)
+        neck_extend = _rig.q(pose.neck_extend, 2.0)
+
+        def neck(draw) -> None:
+            P0 = _P0
+            _poly(draw, [P0(44, -90), P0(72 + neck_extend * 0.3, -104), P0(84 + neck_extend * 0.2, -72), P0(46, -62)], FUR_DARK, OUTLINE, 1.0)
+
+        _put(img, _rest(("neck", neck_extend), neck, _REST_ROOT), root, tilt, "neck")
+        jaw = _rig.q(pose.jaw_open, 0.02)
+        blink, x_eyes = pose.blink, pose.x_eyes
+        O = (60.0, 60.0)
+
+        def head(draw) -> None:
+            hx, hy = O
+            _poly(draw, [(hx - 28, hy - 20), (hx + 12, hy - 26), (hx + 42, hy - 12), (hx + 48, hy + 8), (hx + 20, hy + 22), (hx - 22, hy + 18), (hx - 34, hy - 2)], FUR, OUTLINE, 1.3)
+            _circle(draw, (hx - 18, hy - 20), 9, FUR_DARK, OUTLINE, 1.0)
+            _circle(draw, (hx + 8, hy - 24), 8, FUR_DARK, OUTLINE, 1.0)
+            _poly(draw, [(hx + 14, hy - 4), (hx + 54, hy - 1), (hx + 68, hy + 8), (hx + 52, hy + 18), (hx + 16, hy + 16)], MUZZLE, OUTLINE, 1.0)
+            lower_drop = jaw * 20.0
+            _poly(draw, [(hx + 18, hy + 14), (hx + 48, hy + 18 + lower_drop), (hx + 62, hy + 14 + lower_drop), (hx + 48, hy + 25 + lower_drop), (hx + 18, hy + 23)], MUZZLE_DARK, OUTLINE, 0.8)
+            _circle(draw, (hx + 58, hy + 6), 5, NOSE, OUTLINE, 0.6)
+            if x_eyes:
+                _line(draw, [(hx + 2, hy - 7), (hx + 12, hy + 3)], OUTLINE, 1.0)
+                _line(draw, [(hx + 2, hy + 3), (hx + 12, hy - 7)], OUTLINE, 1.0)
+            elif blink:
+                _line(draw, [(hx + 1, hy - 4), (hx + 13, hy - 4)], EYE_HOT, 1.0)
+            else:
+                _ellipse(draw, hx + 7, hy - 4, 5, 3.5, EYE, EYE_HOT, 0.7)
+                _circle(draw, (hx + 8, hy - 4), 1.3, OUTLINE, OUTLINE, 0.4)
+            for x in (34, 44, 54):
+                _line(draw, [(hx + x, hy + 13), (hx + x - 3, hy + 19 + lower_drop * 0.2)], CLAW, 0.7)
+
+        _put(img, _rest(("head", jaw, blink, x_eyes), head, O), (hx, hy), 0.0, "head")
 
     def _limb_points(self, P, kind, phase, lift):
         if kind == "near_fore":
@@ -376,27 +502,34 @@ class BearMaulerRenderer:
             paw = P(-56 + phase * 0.14, 13 - lift)
         return upper, joint, paw
 
-    def _draw_limb(self, draw, upper, joint, paw, front: bool, is_fore: bool):
+    def _draw_limbs(self, img, P, pose, kinds):
+        for kind in kinds:
+            upper, joint_ref, paw = self._limb_points(P, kind, getattr(pose, kind), getattr(pose, f"{kind}_lift"))
+            self._draw_limb(img, kind, upper, joint_ref, paw, front=kind.startswith("near"), is_fore=kind.endswith("fore"))
+
+    def _draw_limb(self, img, kind, upper, joint_ref, paw, front: bool, is_fore: bool):
+        """Two bones of fixed length bent at the painter's joint; the joint
+        and the paw ride their points."""
+        joint, l1, l2 = _limb(lambda J: J, kind, upper, joint_ref, paw)
         base = FUR if front else FUR_DARK
         hi = FUR_LIGHT if front else FUR
         width = 9.0 if front else 7.0
-        _line(draw, [upper, joint], base, width)
-        _line(draw, [joint, paw], base, width - 1.0)
-        _line(draw, [upper, joint, paw], OUTLINE, 2.0 if front else 1.4)
-        _ellipse(draw, joint[0], joint[1], 7.0 if front else 5.8, 8.0 if front else 6.4, hi, OUTLINE, 0.9)
-        _ellipse(draw, paw[0], paw[1], 13.0 if front else 10.0, 6.0 if front else 5.0, base, OUTLINE, 1.0)
-        for dy in (-3, 0, 3):
-            _line(draw, [(paw[0] + 8, paw[1] + dy), (paw[0] + 18, paw[1] + dy - 1)], CLAW, 1.2 if front else 0.9)
-        if is_fore and front:
-            _line(draw, [(paw[0] - 6, paw[1] - 5), (paw[0] + 6, paw[1] - 5)], FUR_LIGHT, 0.9)
+        line_w = 2.0 if front else 1.4
+        _put(img, _bone_piece((kind, 1), l1, width, base, OUTLINE, line_w), upper, _deg(upper, joint), f"{kind}_upper")
+        _put(img, _bone_piece((kind, 2), l2, width - 1.0, base, OUTLINE, line_w), joint, _deg(joint, paw), f"{kind}_lower")
+        O = _BONE_O
+        joint_part = _rest(("joint", front), lambda d: _ellipse(d, O[0], O[1], 7.0 if front else 5.8, 8.0 if front else 6.4, hi, OUTLINE, 0.9), O)
+        _put(img, joint_part, joint, 0.0, f"{kind}_joint")
 
-    def _draw_far_limbs(self, draw, P, pose):
-        self._draw_limb(draw, *self._limb_points(P, "far_hind", pose.far_hind, pose.far_hind_lift), front=False, is_fore=False)
-        self._draw_limb(draw, *self._limb_points(P, "far_fore", pose.far_fore, pose.far_fore_lift), front=False, is_fore=True)
+        def paw_paint(draw) -> None:
+            x, y = O
+            _ellipse(draw, x, y, 13.0 if front else 10.0, 6.0 if front else 5.0, base, OUTLINE, 1.0)
+            for dy in (-3, 0, 3):
+                _line(draw, [(x + 8, y + dy), (x + 18, y + dy - 1)], CLAW, 1.2 if front else 0.9)
+            if is_fore and front:
+                _line(draw, [(x - 6, y - 5), (x + 6, y - 5)], FUR_LIGHT, 0.9)
 
-    def _draw_near_limbs(self, draw, P, pose):
-        self._draw_limb(draw, *self._limb_points(P, "near_hind", pose.near_hind, pose.near_hind_lift), front=True, is_fore=False)
-        self._draw_limb(draw, *self._limb_points(P, "near_fore", pose.near_fore, pose.near_fore_lift), front=True, is_fore=True)
+        _put(img, _rest(("paw", front, is_fore), paw_paint, O), paw, 0.0, f"{kind}_paw")
 
     def _draw_swipe_fx(self, draw, P, pose):
         cx, cy = P(88, -34)

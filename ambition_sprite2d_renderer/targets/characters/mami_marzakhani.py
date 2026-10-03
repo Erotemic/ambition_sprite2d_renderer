@@ -18,11 +18,11 @@ import argparse
 import math
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import List, Sequence, Tuple
+from typing import Callable, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw, ImageFont
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.portrait import PortraitClip, write_portrait_sheet
 from ...authoring.sheet_build import build_sheet, write_canonical
@@ -836,23 +836,79 @@ def _transform(point: Point, pose: Pose) -> Point:
     return (point[0] + pose.root[0] - 64.0, point[1] + pose.root[1])
 
 
-def _draw_hair_back(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
-    t = lambda q: _transform(q, pose)
-    center = t((63.0, 34.0 - pose.hair_lift))
+# --- Rig construction -------------------------------------------------------
+#
+# Mami is drawn as a rig (``shape_rig``): every rigid piece is painted once in
+# its own frame, at the supersampled scale, and turned into place. The hair,
+# coat and neck ride the body's root turn (keyed by the hair lift and coat
+# flare they read, rounded), each limb is two bones turned from joint to joint
+# (one piece per whole-pixel length), the hands and shoes stay level at their
+# joints, and the head (one piece per expression) turns by its own angle. The
+# boundary, moduli and geodesic effects change every frame: each layer is one
+# raster a frame.
+
+Transform = Callable[[Point], Point]
+
+
+def _bone_length(a: Point, b: Point) -> float:
+    """A limb bone's length, to the whole frame pixel: the poses foreshorten
+    and fold the limbs (a roll, a swim stroke), so a bone keeps its pose's
+    length, and a piece is one per length."""
+    return float(max(1, round(math.hypot(b[0] - a[0], b[1] - a[1]))))
+
+
+def _angle(a: Point, b: Point) -> float:
+    return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+
+
+def _piece(key, half: float, paint) -> Tuple[Image.Image, Point]:
+    """A piece ``2 * half`` frame pixels square, its pivot at the centre:
+    ``paint(draw, o)`` paints it with the local origin at ``(o, o)`` frame px."""
+    size = 2 * int(round(half * SUPER))
+    return shape_rig.piece((TARGET_NAME,) + tuple(key), (size, size), (size / 2, size / 2), lambda d: paint(d, half))
+
+
+def _put(canvas: Image.Image, part, at: Point, degrees: float, name: str) -> None:
+    shape_rig.place(canvas, part, (at[0] * SUPER, at[1] * SUPER), degrees, name)
+
+
+def _effect(canvas: Image.Image, paint, name: str) -> None:
+    """A per-frame effect layer as one raster: painted on its own canvas,
+    cropped to what it covers, placed at its corner."""
+    layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    paint(blending_draw(layer))
+    box = layer.getbbox()
+    if box is not None:
+        shape_rig.place(canvas, (layer.crop(box), (0.0, 0.0)), (box[0], box[1]), 0.0, name)
+
+
+def _place_body_piece(canvas: Image.Image, pose: Pose, key, anchor: Point, half: float, paint, name: str) -> None:
+    """A piece riding the body: ``paint(draw, t)`` paints it through ``t``,
+    the body's frame with ``anchor`` at the piece's pivot; it is placed where
+    the pose takes ``anchor``, turned by the root angle."""
+
+    def local(draw, o: float) -> None:
+        paint(draw, lambda q: (q[0] - anchor[0] + o, q[1] - anchor[1] + o))
+
+    _put(canvas, _piece(key, half, local), _transform(anchor, pose), pose.root_angle, name)
+
+
+def _paint_hair_back(draw: ImageDraw.ImageDraw, t: Transform, hair_lift: float) -> None:
+    center = t((63.0, 34.0 - hair_lift))
     # One connected mass gives the silhouette authority; layered curls add
     # texture without turning the hair into a collection of floating beads.
     mass = [
-        t((45.0, 24.0 - pose.hair_lift)),
-        t((51.0, 15.0 - pose.hair_lift)),
-        t((63.0, 11.0 - pose.hair_lift)),
-        t((76.0, 15.0 - pose.hair_lift)),
-        t((84.0, 24.0 - pose.hair_lift)),
-        t((85.0, 38.0 - pose.hair_lift)),
-        t((80.0, 50.0 - pose.hair_lift * 0.6)),
-        t((73.0, 57.0 - pose.hair_lift * 0.3)),
-        t((56.0, 57.0 - pose.hair_lift * 0.3)),
-        t((46.0, 49.0 - pose.hair_lift * 0.6)),
-        t((42.0, 37.0 - pose.hair_lift)),
+        t((45.0, 24.0 - hair_lift)),
+        t((51.0, 15.0 - hair_lift)),
+        t((63.0, 11.0 - hair_lift)),
+        t((76.0, 15.0 - hair_lift)),
+        t((84.0, 24.0 - hair_lift)),
+        t((85.0, 38.0 - hair_lift)),
+        t((80.0, 50.0 - hair_lift * 0.6)),
+        t((73.0, 57.0 - hair_lift * 0.3)),
+        t((56.0, 57.0 - hair_lift * 0.3)),
+        t((46.0, 49.0 - hair_lift * 0.6)),
+        t((42.0, 37.0 - hair_lift)),
     ]
     _polygon(draw, mass, HAIR_DEEP, OUTLINE, 1.4)
     curl_specs = [
@@ -871,45 +927,40 @@ def _draw_hair_back(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
         _arc(draw, (center[0] + dx, center[1] + dy), 4.5, 4.0, start, end, HAIR_GLEAM, 0.8)
 
 
-def _draw_leg(
-    draw: ImageDraw.ImageDraw,
-    pose: Pose,
-    hip: Point,
-    knee: Point,
-    ankle: Point,
-    *,
-    far: bool,
-) -> None:
+def _place_leg(canvas: Image.Image, pose: Pose, hip: Point, knee: Point, ankle: Point, *, far: bool) -> None:
     t = lambda q: _transform(q, pose)
     hip_t, knee_t, ankle_t = t(hip), t(knee), t(ankle)
+    side = "far" if far else "near"
     trouser = TROUSER_DARK if far else TROUSER
     trouser_hi = TROUSER if far else TROUSER_LIGHT
-    _polygon(draw, _segment_quad(hip_t, knee_t, 5.0, 4.5), trouser, OUTLINE, 1.0)
-    _polygon(draw, _segment_quad(knee_t, ankle_t, 4.5, 3.9), trouser, OUTLINE, 1.0)
-    along, normal, _length = _unit(knee_t, ankle_t)
-    _line(
-        draw,
-        [
-            (knee_t[0] + normal[0] * 1.7, knee_t[1] + normal[1] * 1.7),
-            (ankle_t[0] + normal[0] * 1.3, ankle_t[1] + normal[1] * 1.3),
-        ],
-        trouser_hi,
-        0.8,
+    thigh_len, shin_len = _bone_length(hip_t, knee_t), _bone_length(knee_t, ankle_t)
+    thigh = _piece(
+        ("thigh", far, thigh_len), 34.0,
+        lambda d, o: _polygon(d, _segment_quad((o, o), (o + thigh_len, o), 5.0, 4.5), trouser, OUTLINE, 1.0),
     )
+    _put(canvas, thigh, hip_t, _angle(hip_t, knee_t), f"{side}_thigh")
+
+    def paint_shin(d, o: float) -> None:
+        _polygon(d, _segment_quad((o, o), (o + shin_len, o), 4.5, 3.9), trouser, OUTLINE, 1.0)
+        _line(d, [(o, o + 1.7), (o + shin_len, o + 1.3)], trouser_hi, 0.8)
+
+    _put(canvas, _piece(("shin", far, shin_len), 34.0, paint_shin), knee_t, _angle(knee_t, ankle_t), f"{side}_shin")
     foot_dir = -1.0 if far else 1.0
-    foot = [
-        (ankle_t[0] - 4.2, ankle_t[1] - 2.2),
-        (ankle_t[0] + foot_dir * 8.5, ankle_t[1] - 1.6),
-        (ankle_t[0] + foot_dir * 10.0, ankle_t[1] + 3.6),
-        (ankle_t[0] - 4.5, ankle_t[1] + 3.8),
-    ]
-    _polygon(draw, foot, SHOE if not far else OUTLINE_SOFT, OUTLINE, 1.0)
-    _line(draw, [foot[2], foot[3]], SHOE_LIGHT, 0.8)
+
+    def paint_foot(d, o: float) -> None:
+        foot = [
+            (o - 4.2, o - 2.2),
+            (o + foot_dir * 8.5, o - 1.6),
+            (o + foot_dir * 10.0, o + 3.6),
+            (o - 4.5, o + 3.8),
+        ]
+        _polygon(d, foot, SHOE if not far else OUTLINE_SOFT, OUTLINE, 1.0)
+        _line(d, [foot[2], foot[3]], SHOE_LIGHT, 0.8)
+
+    _put(canvas, _piece(("foot", far), 14.0, paint_foot), ankle_t, 0.0, f"{side}_foot")
 
 
-def _draw_coat(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
-    t = lambda q: _transform(q, pose)
-    flare = pose.coat_flare
+def _paint_coat(draw: ImageDraw.ImageDraw, t: Transform, flare: float) -> None:
     shoulder_l = t((50.0, 57.0))
     shoulder_r = t((79.0, 56.0))
     waist_l = t((54.0, 83.0))
@@ -921,21 +972,9 @@ def _draw_coat(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
     _polygon(draw, body, GARNET, OUTLINE, 1.3)
     # Asymmetric overlapping lapels and long diagonal opening make the modern
     # jacket distinct from the game's existing white-dress silhouette.
-    left_panel = [
-        shoulder_l,
-        t((63.0, 58.0)),
-        t((65.0, 96.0)),
-        hem_l,
-        waist_l,
-    ]
+    left_panel = [shoulder_l, t((63.0, 58.0)), t((65.0, 96.0)), hem_l, waist_l]
     _polygon(draw, left_panel, GARNET_DARK, OUTLINE_SOFT, 0.85)
-    right_panel = [
-        t((65.0, 58.0)),
-        shoulder_r,
-        waist_r,
-        hem_r,
-        t((68.0, 96.0)),
-    ]
+    right_panel = [t((65.0, 58.0)), shoulder_r, waist_r, hem_r, t((68.0, 96.0))]
     _polygon(draw, right_panel, GARNET_LIGHT, OUTLINE_SOFT, 0.85)
     _line(draw, [t((64.0, 59.0)), t((68.0, 96.0))], IVORY_SHADE, 1.0)
     _line(draw, [t((57.0, 84.0)), t((51.0 - flare * 0.15, 98.0))], GARNET_LIGHT, 0.75)
@@ -946,69 +985,38 @@ def _draw_coat(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
     _line(draw, [t((57.0, 60.0)), t((64.0, 66.0)), t((72.0, 58.5))], TEAL_LIGHT, 0.9)
 
 
-def _draw_arm(
-    draw: ImageDraw.ImageDraw,
-    pose: Pose,
-    shoulder: Point,
-    elbow: Point,
-    hand: Point,
-    mode: str,
-    *,
-    far: bool,
-) -> None:
+def _place_arm(canvas: Image.Image, pose: Pose, shoulder: Point, elbow: Point, hand: Point, mode: str, *, far: bool) -> None:
     t = lambda q: _transform(q, pose)
     s, e, h = t(shoulder), t(elbow), t(hand)
+    side = "far" if far else "near"
     sleeve = GARNET_DARK if far else GARNET
     sleeve_hi = GARNET if far else GARNET_LIGHT
-    _polygon(draw, _segment_quad(s, e, 5.2, 4.4), sleeve, OUTLINE, 1.0)
-    fore_end = _lerp_point(e, h, 0.75)
-    _polygon(draw, _segment_quad(e, fore_end, 4.4, 3.7), sleeve, OUTLINE, 1.0)
-    along, normal, _length = _unit(e, fore_end)
-    _line(
-        draw,
-        [
-            (e[0] + normal[0] * 1.6, e[1] + normal[1] * 1.6),
-            (fore_end[0] + normal[0] * 1.2, fore_end[1] + normal[1] * 1.2),
-        ],
-        sleeve_hi,
-        0.75,
+    upper_len, fore_len = _bone_length(s, e), _bone_length(e, h)
+    upper = _piece(
+        ("upper_arm", far, upper_len), 34.0,
+        lambda d, o: _polygon(d, _segment_quad((o, o), (o + upper_len, o), 5.2, 4.4), sleeve, OUTLINE, 1.0),
     )
-    _line(draw, [
-        (fore_end[0] - normal[0] * 3.1, fore_end[1] - normal[1] * 3.1),
-        (fore_end[0] + normal[0] * 3.1, fore_end[1] + normal[1] * 3.1),
-    ], IVORY, 1.25)
-    _draw_hand(draw, h, mode, far=far)
+    _put(canvas, upper, s, _angle(s, e), f"{side}_upper_arm")
+
+    def paint_forearm(d, o: float) -> None:
+        end = o + fore_len * 0.75
+        _polygon(d, _segment_quad((o, o), (end, o), 4.4, 3.7), sleeve, OUTLINE, 1.0)
+        _line(d, [(o, o + 1.6), (end, o + 1.2)], sleeve_hi, 0.75)
+        _line(d, [(end, o - 3.1), (end, o + 3.1)], IVORY, 1.25)
+
+    _put(canvas, _piece(("forearm", far, fore_len), 34.0, paint_forearm), e, _angle(e, h), f"{side}_forearm")
+    _put(canvas, _piece(("hand", far, mode), 12.0, lambda d, o: _draw_hand(d, (o, o), mode, far=far)), h, 0.0, f"{side}_hand")
 
 
-def _draw_hand(draw: ImageDraw.ImageDraw, hand: Point, mode: str, *, far: bool) -> None:
-    skin = SKIN_SHADE if far else SKIN
-    if mode == "fist":
-        _ellipse(draw, hand, 4.1, 4.0, skin, OUTLINE, 0.9)
-        _line(draw, [(hand[0] - 2.2, hand[1]), (hand[0] + 2.0, hand[1] + 0.3)], SKIN_LIGHT, 0.65)
-        return
-    if mode == "grip":
-        _ellipse(draw, hand, 3.8, 4.5, skin, OUTLINE, 0.9)
-        _arc(draw, hand, 2.2, 2.5, 210, 30, SKIN_LIGHT, 0.65)
-        return
-    palm = hand
-    _ellipse(draw, palm, 3.6, 4.0, skin, OUTLINE, 0.85)
-    if mode == "open":
-        for angle, length in [(-48, 4.5), (-24, 5.0), (0, 5.2), (22, 4.7)]:
-            radians = math.radians(angle)
-            tip = (palm[0] + math.cos(radians) * length, palm[1] - 2.0 + math.sin(radians) * length)
-            _line(draw, [(palm[0] + 0.4, palm[1] - 1.5), tip], skin, 1.25)
-            _line(draw, [tip, tip], OUTLINE, 0.45)
-    else:
-        _arc(draw, palm, 2.2, 2.4, 20, 155, SKIN_LIGHT, 0.6)
-
-
-def _draw_neck_and_face(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
-    t = lambda q: _transform(q, pose)
+def _paint_neck(draw: ImageDraw.ImageDraw, t: Transform) -> None:
     neck = [t((59.0, 46.0)), t((69.0, 46.0)), t((70.0, 58.0)), t((58.0, 58.0))]
     _polygon(draw, neck, SKIN_SHADE, OUTLINE, 0.9)
     _line(draw, [t((61.0, 49.0)), t((61.0, 56.0))], SKIN_LIGHT, 0.7)
 
-    center = t(pose.head)
+
+def _paint_head(draw: ImageDraw.ImageDraw, o: float, expression: str) -> None:
+    """The head in its own frame, centred on ``(o, o)``, upright."""
+    center = (o, o)
     # A softly angular three-quarter face with a recognizable long nose.
     face = [
         (center[0] - 12.5, center[1] - 13.0),
@@ -1020,15 +1028,13 @@ def _draw_neck_and_face(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
         (center[0] - 12.0, center[1] + 9.0),
         (center[0] - 14.0, center[1] - 2.0),
     ]
-    if pose.head_angle:
-        face = [_rotate(p, center, pose.head_angle) for p in face]
     _polygon(draw, face, SKIN, OUTLINE, 1.15)
-    ear = _rotate((center[0] - 13.0, center[1] + 1.0), center, pose.head_angle)
+    ear = (center[0] - 13.0, center[1] + 1.0)
     _ellipse(draw, ear, 3.2, 4.7, SKIN_SHADE, OUTLINE, 0.8)
     _arc(draw, ear, 1.5, 2.5, 245, 100, SKIN_LIGHT, 0.55)
 
     def hp(local: Point) -> Point:
-        return _rotate((center[0] + local[0], center[1] + local[1]), center, pose.head_angle)
+        return (center[0] + local[0], center[1] + local[1])
 
     # Brows are not mirrored: the far brow is shorter, preserving the 3/4 view.
     _line(draw, [hp((-8.5, -4.4)), hp((-2.2, -5.0))], BROW, 1.25)
@@ -1044,7 +1050,6 @@ def _draw_neck_and_face(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
     _line(draw, [hp((1.7, 0.0)), hp((2.2, 4.2))], SKIN_LIGHT, 0.65)
     _arc(draw, hp((4.2, 6.0)), 2.5, 1.2, 155, 310, SKIN_WARM, 0.65)
 
-    expression = pose.expression
     if expression in {"talk_a", "talk_b", "talk_c"}:
         heights = {"talk_a": 1.2, "talk_b": 2.1, "talk_c": 2.8}
         ry = heights[expression]
@@ -1069,6 +1074,28 @@ def _draw_neck_and_face(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
         c = hp((dx, dy))
         _ellipse(draw, c, radius, radius * 0.92, HAIR, OUTLINE, 0.75)
         _arc(draw, c, radius * 0.52, radius * 0.46, 205, 315, HAIR_GLEAM, 0.65)
+
+
+def _draw_hand(draw: ImageDraw.ImageDraw, hand: Point, mode: str, *, far: bool) -> None:
+    skin = SKIN_SHADE if far else SKIN
+    if mode == "fist":
+        _ellipse(draw, hand, 4.1, 4.0, skin, OUTLINE, 0.9)
+        _line(draw, [(hand[0] - 2.2, hand[1]), (hand[0] + 2.0, hand[1] + 0.3)], SKIN_LIGHT, 0.65)
+        return
+    if mode == "grip":
+        _ellipse(draw, hand, 3.8, 4.5, skin, OUTLINE, 0.9)
+        _arc(draw, hand, 2.2, 2.5, 210, 30, SKIN_LIGHT, 0.65)
+        return
+    palm = hand
+    _ellipse(draw, palm, 3.6, 4.0, skin, OUTLINE, 0.85)
+    if mode == "open":
+        for angle, length in [(-48, 4.5), (-24, 5.0), (0, 5.2), (22, 4.7)]:
+            radians = math.radians(angle)
+            tip = (palm[0] + math.cos(radians) * length, palm[1] - 2.0 + math.sin(radians) * length)
+            _line(draw, [(palm[0] + 0.4, palm[1] - 1.5), tip], skin, 1.25)
+            _line(draw, [tip, tip], OUTLINE, 0.45)
+    else:
+        _arc(draw, palm, 2.2, 2.4, 20, 155, SKIN_LIGHT, 0.6)
 
 
 def _draw_effects_behind(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
@@ -1114,17 +1141,25 @@ def _draw_effects_front(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
 def _render_native_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     pose = _pose(animation, frame_idx, nframes)
     image = Image.new("RGBA", (FRAME_W * SUPER, FRAME_H * SUPER), (0, 0, 0, 0))
-    draw = blending_draw(image)
 
-    _draw_effects_behind(draw, pose)
-    _draw_hair_back(draw, pose)
-    _draw_leg(draw, pose, pose.far_hip, pose.far_knee, pose.far_ankle, far=True)
-    _draw_leg(draw, pose, pose.near_hip, pose.near_knee, pose.near_ankle, far=False)
-    _draw_coat(draw, pose)
-    _draw_arm(draw, pose, pose.far_shoulder, pose.far_elbow, pose.far_hand, pose.far_hand_mode, far=True)
-    _draw_arm(draw, pose, pose.near_shoulder, pose.near_elbow, pose.near_hand, pose.near_hand_mode, far=False)
-    _draw_effects_front(draw, pose)
-    _draw_neck_and_face(draw, pose)
+    if pose.boundary > 0.02 or pose.moduli > 0.02:
+        _effect(image, lambda draw: _draw_effects_behind(draw, pose), "effects_behind")
+    hair_lift = round(pose.hair_lift * 4.0) / 4.0
+    _place_body_piece(
+        image, pose, ("hair_back", hair_lift), (63.0, 34.0), 32.0,
+        lambda draw, t: _paint_hair_back(draw, t, hair_lift), "hair_back",
+    )
+    _place_leg(image, pose, pose.far_hip, pose.far_knee, pose.far_ankle, far=True)
+    _place_leg(image, pose, pose.near_hip, pose.near_knee, pose.near_ankle, far=False)
+    flare = round(pose.coat_flare / 2.0) * 2.0
+    _place_body_piece(image, pose, ("coat", flare), (65.0, 80.0), 32.0, lambda draw, t: _paint_coat(draw, t, flare), "coat")
+    _place_arm(image, pose, pose.far_shoulder, pose.far_elbow, pose.far_hand, pose.far_hand_mode, far=True)
+    _place_arm(image, pose, pose.near_shoulder, pose.near_elbow, pose.near_hand, pose.near_hand_mode, far=False)
+    if pose.geodesic > 0.02 or pose.boundary > 0.18 or pose.moduli > 0.30:
+        _effect(image, lambda draw: _draw_effects_front(draw, pose), "effects_front")
+    _place_body_piece(image, pose, ("neck",), (64.0, 52.0), 12.0, _paint_neck, "neck")
+    head = _piece(("head", pose.expression), 24.0, lambda draw, o: _paint_head(draw, o, pose.expression))
+    _put(image, head, _transform(pose.head, pose), pose.head_angle, "head")
     return image
 
 

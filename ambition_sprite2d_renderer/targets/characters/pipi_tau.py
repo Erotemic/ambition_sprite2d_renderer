@@ -40,6 +40,7 @@ from ...authoring.portrait import (
     write_portrait_sheet,
 )
 from ambition_sprite2d_renderer.core.draw import blending_draw
+from . import _solo_shape_rig as SR
 from ...authoring.sheet_build import build_sheet, write_canonical
 
 RGBA = Tuple[int, int, int, int]
@@ -768,7 +769,7 @@ def _draw_tau_shirt_mark(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
     )
 
 
-def _draw_neck(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
+def _draw_neck(draw: ImageDraw.ImageDraw, pose: Pose, collar: bool = True) -> None:
     T = lambda q: _transform(q, pose)
     center = T((65.0 + pose.head_x, 31.0 + pose.head_y))
     neck = [
@@ -781,6 +782,12 @@ def _draw_neck(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
     _polygon(draw, neck, SKIN, OUTLINE_SOFT, 0.85)
     _line(draw, [_rotate(T((61.7 + pose.head_x, 47.3 + pose.head_y)), center, pose.head_tilt), _rotate(T((61.6 + pose.head_x, 54.0 + pose.head_y)), center, pose.head_tilt)], SKIN_SHADE, 0.65)
     _line(draw, [_rotate(T((67.7 + pose.head_x, 46.8 + pose.head_y)), center, pose.head_tilt), _rotate(T((67.7 + pose.head_x, 54.0 + pose.head_y)), center, pose.head_tilt)], SKIN_SHADE, 0.65)
+    if collar:
+        _draw_collar(draw, pose)
+
+
+def _draw_collar(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
+    T = lambda q: _transform(q, pose)
     # Collar lines under the neck help connect the head to the shirt.
     _arc(draw, T((65.3, 54.8)), 5.7, 3.4, 194, 346, OUTLINE_SOFT, 0.95)
     _arc(draw, T((65.3, 55.2)), 4.9, 2.8, 196, 344, SHIRT_SHADE, 0.75)
@@ -866,11 +873,11 @@ def _draw_hand(draw: ImageDraw.ImageDraw, wrist: Point, hand: Point, mode: str, 
         _line(draw, [(hand[0] - normal[0] * 1.8, hand[1] - normal[1] * 1.8), (hand[0] + normal[0] * 1.8, hand[1] + normal[1] * 1.8)], SKIN_SHADE, 0.8)
 
 
-def _draw_head(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
+def _draw_head(draw: ImageDraw.ImageDraw, pose: Pose, collar: bool = True) -> None:
     base = (65.0 + pose.head_x, 31.0 + pose.head_y)
     T = lambda q: _transform(q, pose)
     center = T(base)
-    _draw_neck(draw, pose)
+    _draw_neck(draw, pose, collar)
     # Ear behind head, then a tapered three-quarter face.
     _ellipse(draw, T((51.8 + pose.head_x, 32.0 + pose.head_y)), 3.8, 5.7, SKIN, OUTLINE, 0.8)
     face = [
@@ -999,20 +1006,133 @@ def _draw_ability_effects_front(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
         _line(draw, [hand, (hand[0] + 28.0 * release, hand[1] + 2.0)], _fade(FIELD, release * 0.75), 1.0)
 
 
+# --- The rig ---------------------------------------------------------------
+#
+# The painters above draw every shape through ``_transform`` (the lean's shear,
+# the root, the roll). Drawn as a rig, the torso and the head are pieces painted
+# once at rest (sheared by the lean, to a step) and placed where ``_transform``
+# puts their anchor, turned by the roll; limb segments are pieces of a few
+# lengths turned along their bones; knees, elbows, shoes and hands are pieces.
+
+CANVAS = (FRAME_W * SUPER, FRAME_H * SUPER)
+LEAN_STEP = 2.0
+REST = (20.0, 64.0)
+
+
+def _sp(point: Point) -> Point:
+    return (point[0] * SUPER, point[1] * SUPER)
+
+
+def _xform(pose: Pose) -> SR.Xform:
+    """``_transform`` as a map: the shear about the waist, the root, the roll."""
+    k = pose.body_lean / 75.0
+    return SR.Xform((1.0, -k, 86.0 * k, 0.0, 1.0, 0.0)).translate(pose.root_x, pose.root_y).rotate_cw(pose.rotation_pivot, pose.rotation)
+
+
+def _rest_pose(pose: Pose, **face) -> Pose:
+    """The pose at rest (no root, no roll), its lean to a step."""
+    return Pose(body_lean=SR.q(pose.body_lean, LEAN_STEP), **face)
+
+
+def _place_rest(canvas: Image.Image, key: tuple, paint, rest: Pose, rest_anchor: Point, anchor: Point, T: SR.Xform, name: str) -> None:
+    """The piece ``paint`` paints at ``rest``, its ``rest_anchor`` landing
+    where the frame's transform puts ``anchor``."""
+    pivot = _sp(_transform(rest_anchor, rest))
+    part = SR.rest_piece(("pipi",) + key, CANVAS, pivot, paint)
+    SR.place(canvas, part, _sp(T.pt(anchor)), T.deg, name)
+
+
+def _segment(canvas: Image.Image, a: Point, b: Point, ra: float, rb: float, fill: RGBA, outline: RGBA, width: float, name: str, split: float = 1.0, fill2: RGBA | None = None, rb2: float = 0.0) -> None:
+    """A tapered limb segment ``a``->``b`` (``_segment_quad``) as a piece of a
+    whole-pixel length turned along the bone. ``split`` < 1 paints it in two
+    colours (a sleeve to ``split`` of the way, then ``fill2``)."""
+    length = max(1.0, SR.q(math.dist(a, b), 1.0))
+    x0, y0 = REST
+
+    def paint(draw) -> None:
+        if split < 1.0:
+            mid = (x0 + length * split, y0)
+            _polygon(draw, _segment_quad((x0, y0), mid, ra, rb), fill, outline, width)
+            _polygon(draw, _segment_quad(mid, (x0 + length, y0), rb, rb2), fill2, outline, width)
+        else:
+            _polygon(draw, _segment_quad((x0, y0), (x0 + length, y0), ra, rb), fill, outline, width)
+
+    part = SR.rest_piece(("pipi_seg", length, ra, rb, fill, outline, width, split, fill2, rb2), CANVAS, _sp(REST), paint)
+    SR.place(canvas, part, _sp(a), math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])), name)
+
+
+def _dot(canvas: Image.Image, at: Point, rx: float, ry: float, fill: RGBA, width: float, name: str) -> None:
+    part = SR.rest_piece(("pipi_dot", rx, ry, fill, width), CANVAS, _sp(REST), lambda d: _ellipse(d, REST, rx, ry, fill, OUTLINE, width))
+    SR.place(canvas, part, _sp(at), 0.0, name)
+
+
+def _rig_leg(canvas: Image.Image, pose: Pose, T: SR.Xform, hip: Point, knee: Point, ankle: Point, *, far: bool) -> None:
+    hip_t, knee_t, ankle_t = T.pt(hip), T.pt(knee), T.pt(ankle)
+    side = "far" if far else "near"
+    trouser = TROUSER_DARK if far else TROUSER
+    trouser_hi = TROUSER if far else TROUSER_LIGHT
+    _segment(canvas, hip_t, knee_t, 5.0, 4.3, trouser, OUTLINE, 1.0, f"{side}_thigh")
+    _segment(canvas, knee_t, ankle_t, 4.2, 3.4, trouser_hi, OUTLINE, 1.0, f"{side}_shin")
+    _dot(canvas, knee_t, 4.4, 3.8, trouser_hi, 0.8, f"{side}_knee")
+
+    def shoe(draw) -> None:
+        # ``_draw_leg``'s shoe with the shin along +x.
+        a, along, normal = REST, (1.0, 0.0), (0.0, 1.0)
+        toe = (a[0] + along[0] * 2.5 + normal[0] * 4.8, a[1] + along[1] * 2.5 + normal[1] * 4.8)
+        poly = [
+            (a[0] - normal[0] * 3.6, a[1] - normal[1] * 3.6),
+            (a[0] + normal[0] * 3.7, a[1] + normal[1] * 3.7),
+            (toe[0] + normal[0] * 3.2, toe[1] + normal[1] * 3.2),
+            (toe[0] - normal[0] * 2.6, toe[1] - normal[1] * 2.6),
+        ]
+        _polygon(draw, poly, SHOE if not far else SHOE_DARK, OUTLINE, 1.0)
+        _line(draw, [poly[2], poly[3]], SOLE, 1.8)
+        if not far:
+            _line(draw, [_lerp_point(a, toe, 0.35), _lerp_point(a, toe, 0.72)], TAU_GOLD, 0.8)
+
+    part = SR.rest_piece(("pipi_shoe", far), CANVAS, _sp(REST), shoe)
+    SR.place(canvas, part, _sp(ankle_t), math.degrees(math.atan2(ankle_t[1] - knee_t[1], ankle_t[0] - knee_t[0])), f"{side}_shoe")
+
+
+def _rig_arm(canvas: Image.Image, pose: Pose, T: SR.Xform, shoulder: Point, elbow: Point, hand: Point, mode: str, *, far: bool) -> None:
+    shoulder_t, elbow_t, hand_t = T.pt(shoulder), T.pt(elbow), T.pt(hand)
+    side = "far" if far else "near"
+    skin = SKIN_LIGHT
+    along, _, length = _unit(elbow_t, hand_t)
+    wrist = (hand_t[0] - along[0] * min(3.0, length * 0.28), hand_t[1] - along[1] * min(3.0, length * 0.28))
+    # The sleeve to 0.58 of the upper arm, then bare skin to the elbow: one piece.
+    _segment(canvas, shoulder_t, elbow_t, 5.0, 4.0, JACKET, OUTLINE, 0.95, f"{side}_upper_arm", split=0.58, fill2=skin, rb2=3.6)
+    _segment(canvas, elbow_t, wrist, 3.6, 2.8, skin, OUTLINE, 0.9, f"{side}_forearm")
+    _dot(canvas, elbow_t, 3.7, 3.3, skin, 0.75, f"{side}_elbow")
+    # The hand along the forearm (``_draw_hand`` with the forearm along +x).
+    part = SR.rest_piece(("pipi_hand", mode), CANVAS, _sp(REST), lambda d: _draw_hand(d, (REST[0] - 3.0, REST[1]), REST, mode, skin))
+    SR.place(canvas, part, _sp(hand_t), math.degrees(math.atan2(along[1], along[0])), f"{side}_hand")
+
+
 def _render_native_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     """Render into the authored supersampled canvas without raster scaling."""
     pose = _pose(animation, frame_idx, nframes)
-    image = Image.new("RGBA", (FRAME_W * SUPER, FRAME_H * SUPER), (0, 0, 0, 0))
+    image = Image.new("RGBA", CANVAS, (0, 0, 0, 0))
     draw = blending_draw(image)
+    T = _xform(pose)
 
     _draw_ability_effects_behind(draw, pose)
-    _draw_leg(draw, pose, pose.far_hip, pose.far_knee, pose.far_ankle, far=True)
-    _draw_leg(draw, pose, pose.near_hip, pose.near_knee, pose.near_ankle, far=False)
-    _draw_torso(draw, pose)
-    _draw_arm(draw, pose, pose.far_shoulder, pose.far_elbow, pose.far_hand, pose.far_hand_mode, far=True)
-    _draw_arm(draw, pose, pose.near_shoulder, pose.near_elbow, pose.near_hand, pose.near_hand_mode, far=False)
+    _rig_leg(image, pose, T, pose.far_hip, pose.far_knee, pose.far_ankle, far=True)
+    _rig_leg(image, pose, T, pose.near_hip, pose.near_knee, pose.near_ankle, far=False)
+    rest = _rest_pose(pose)
+
+    def torso(d) -> None:
+        _draw_torso(d, rest)
+        _draw_collar(d, rest)
+
+    _place_rest(image, ("torso", rest.body_lean), torso, rest, (65.0, 70.0), (65.0, 70.0), T, "torso")
+    _rig_arm(image, pose, T, pose.far_shoulder, pose.far_elbow, pose.far_hand, pose.far_hand_mode, far=True)
+    _rig_arm(image, pose, T, pose.near_shoulder, pose.near_elbow, pose.near_hand, pose.near_hand_mode, far=False)
     _draw_ability_effects_front(draw, pose)
-    _draw_head(draw, pose)
+    face = dict(blink=pose.blink, mouth_open=SR.q(pose.mouth_open, 0.1), smile=SR.q(pose.smile, 0.25), brow=SR.q(pose.brow, 0.25))
+    head_rest = _rest_pose(pose, **face)
+    key = ("head", head_rest.body_lean) + tuple(face.values())
+    _place_rest(image, key, lambda d: _draw_head(d, head_rest, collar=False), head_rest, (65.0, 31.0), (65.0 + pose.head_x, 31.0 + pose.head_y), T, "head")
     return image
 
 

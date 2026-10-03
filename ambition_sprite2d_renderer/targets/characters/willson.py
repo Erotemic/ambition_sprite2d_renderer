@@ -24,6 +24,8 @@ from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
+from . import _solo_shape_rig as SR
+
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
@@ -998,14 +1000,9 @@ def _paint_face_details(v: VDraw, pose: Mapping[str, float]) -> None:
     v.line(brow, PAL["feather_dark"], 1.4)
 
 
-def _paint_accents(v: VDraw, pose: Mapping[str, float]) -> None:
-    seams = [
-        [(111, 89), (116, 103)],
-        [(103, 93), (106, 109)],
-        [(119, 96), (126, 112)],
-    ]
-    for seam in seams:
-        v.line(_rider_shape(pose, seam), PAL["feather_dark"], 0.8)
+def _paint_accents(v: VDraw, pose: Mapping[str, float], seams: bool = True) -> None:
+    if seams:
+        _paint_seams(v, pose)
 
     attack = pose["attack_force"]
     if attack > 0.05:
@@ -1037,23 +1034,314 @@ def _paint_accents(v: VDraw, pose: Mapping[str, float]) -> None:
             v.ellipse(_add(center, (-8.0 * fall, -5.0 * fall)), 4.5, 1.8, PAL["wing_hi"], PAL["outline"], 0.6, -20.0)
 
 
+# -- the rig --------------------------------------------------------------------
+#
+# Every rigid group is painted ONCE in its own frame (the bike frame at rest,
+# the rider's body at rest, a wheel at spin 0, a wing along +x) and placed
+# turned (``_solo_shape_rig``): a part flipbook stores each once. Bike pieces
+# ride ``_bike_xf`` (turned by the bike angle about the rear hub); rider
+# pieces ride ``_rider_xf`` (lean, rider angle and the inherited bike angle).
+# Wings and legs reach between joints that move apart, so they are painted
+# along +x at a rounded reach and turned to their direction. The attack,
+# flight and fall cues stay shapes (effects).
+
+#: The rider/bike transform zeroed: rider-space and bike-space pieces are
+#: painted through the original painters with this pose.
+_REST_XF = {
+    "bike_angle": 0.0, "bike_dx": 0.0, "bike_dy": 0.0, "body_lean": 0.0, "body_dx": 0.0, "body_bob": 0.0,
+    "rider_angle": 0.0, "rider_dx": 0.0, "rider_dy": 0.0, "rider_bike_inherit": 0.0,
+}
+
+
+def _rest(pose: Mapping[str, float], **values: float) -> Dict[str, float]:
+    rest = dict(pose)
+    rest.update(_REST_XF)
+    rest.update(values)
+    return rest
+
+
+def _ss(point: Point) -> Point:
+    return (point[0] * SS, point[1] * SS)
+
+
+def _rider_degrees(pose: Mapping[str, float]) -> float:
+    """How far a rider piece turns (clockwise): lean and rider angle, plus the
+    share of the bike's angle the rider inherits."""
+    k = _clamp(pose["rider_bike_inherit"])
+    b = math.radians(pose["bike_angle"])
+    blend = math.degrees(math.atan2(k * math.sin(b), (1.0 - k) + k * math.cos(b)))
+    return pose["body_lean"] + pose["rider_angle"] + blend
+
+
+def _canvas_piece(key, pose_for_paint: Mapping[str, float], pivot: Point, paint: Callable[[VDraw, Mapping[str, float]], None]):
+    """A piece painted by an original painter on a full-frame canvas (the
+    group at its rest place), cut to what it covers."""
+    size = (FRAME_W * SS, FRAME_H * SS)
+    return SR.rest_piece(key, size, _ss(pivot), lambda d: paint(VDraw(d._img, SS), pose_for_paint))
+
+
+def _place_rider(v: VDraw, part, pivot: Point, pose: Mapping[str, float], name: str) -> None:
+    SR.place(v.image, part, _ss(_rider_xf(pose, pivot)), _rider_degrees(pose), name)
+
+
+def _place_bike(v: VDraw, part, pivot: Point, pose: Mapping[str, float], name: str) -> None:
+    SR.place(v.image, part, _ss(_bike_xf(pose, pivot)), pose["bike_angle"], name)
+
+
+def _local_piece(key, extent: Tuple[float, float, float, float], paint: Callable[[VDraw, Point], None]):
+    """A piece painted in its own frame: ``paint(v, origin)`` draws about
+    ``origin`` inside ``extent`` = (left, top, right, bottom) logical pixels."""
+    left, top, right, bottom = extent
+    origin = (left + 2.0, top + 2.0)
+    size = (int(math.ceil((left + right + 4.0) * SS)), int(math.ceil((top + bottom + 4.0) * SS)))
+    return SR.rest_piece(key, size, _ss(origin), lambda d: paint(VDraw(d._img, SS), origin))
+
+
+def _rig_wheels(v: VDraw, pose: Mapping[str, float]) -> None:
+    motion = SR.q(pose["wheel_motion"], 0.05)
+    part = _local_piece(("willson_wheel", motion), (42.0, 42.0, 42.0, 42.0), lambda w, o: _draw_wheel(w, o, 0.0, motion))
+    for name, hub, spin in (("rear_wheel", BASE["rear_hub"], pose["wheel_angle"]), ("front_wheel", BASE["front_hub"], pose["wheel_angle"] + 13.0)):
+        SR.place(v.image, part, _ss(_bike_xf(pose, hub)), spin, name)
+
+
+def _crank_arm_piece(which: str):
+    """A crank arm along +x from the crank (the far one with its pedal bar)."""
+    def paint(w: VDraw, o: Point) -> None:
+        end = (o[0] + 16.0, o[1])
+        if which == "far":
+            w.line([o, end], PAL["bike_dark"], 3.2)
+            w.line([(end[0], end[1] - 6.0), (end[0], end[1] + 6.0)], PAL["outline"], 2.6)
+        else:
+            w.line([o, end], PAL["outline"], 3.7)
+            w.line([o, end], PAL["brass"], 2.2)
+
+    return _local_piece(("willson_crank", which), (4.0, 8.0, 20.0, 8.0), paint)
+
+
+def _rig_far_crank(v: VDraw, pose: Mapping[str, float]) -> None:
+    degrees = pose["pedal_angle"] + 180.0 + pose["bike_angle"]
+    SR.place(v.image, _crank_arm_piece("far"), _ss(_bike_xf(pose, BASE["crank"])), degrees, "far_crank")
+
+
+def _rig_bike_frame(v: VDraw, pose: Mapping[str, float]) -> None:
+    part = _canvas_piece(("willson_bike_frame",), _rest(pose), BASE["rear_hub"], _paint_bike_frame)
+    _place_bike(v, part, BASE["rear_hub"], pose, "bike_frame")
+
+
+def _rig_tail(v: VDraw, pose: Mapping[str, float]) -> None:
+    lift = SR.q(pose["scarf_lift"], 0.05)
+    part = _canvas_piece(("willson_tail", lift), _rest(pose, scarf_lift=lift), BASE["rider_pivot"], _paint_tail)
+    _place_rider(v, part, BASE["rider_pivot"], pose, "tail")
+
+
+def _wing_reach(shoulder: Point, target: Point) -> Tuple[float, float]:
+    delta = _sub(target, shoulder)
+    return SR.q(math.hypot(delta[0], delta[1]), 1.0), math.degrees(math.atan2(delta[1], delta[0]))
+
+
+def _rig_wing(v: VDraw, pose: Mapping[str, float], side: str) -> None:
+    if pose["flight"] > 0.5:
+        flap = SR.q(pose["flight_flap"], 0.05)
+        painter = _paint_far_wing if side == "far" else _paint_near_wing
+        part = _canvas_piece(("willson_flight_wing", side, flap), _rest(pose, flight_flap=flap), BASE["rider_pivot"], painter)
+        _place_rider(v, part, BASE["rider_pivot"], pose, f"{side}_wing")
+        return
+    shoulder, target, lift = _wing_target(pose, side)
+    reach, degrees = _wing_reach(shoulder, target)
+    lift = SR.q(lift, 0.05)
+
+    def paint(w: VDraw, o: Point) -> None:
+        tip = (o[0] + reach, o[1])
+        poly = _wing_poly(o, tip, lift, side)
+        if side == "far":
+            w.polygon(poly, PAL["feather_dark"], PAL["outline"], 1.2)
+            w.line([o, tip], PAL["wing"], 2.2)
+        else:
+            w.polygon(poly, PAL["wing"], PAL["outline"], 1.4)
+            # The inner highlight's kink is a screen offset: turned with the
+            # wing here (painted at the wing's rest direction, +x).
+            w.line([o, (o[0] + 18.0, o[1]), (tip[0] - 5.0, tip[1] + 2.0)], PAL["wing_hi"], 2.3)
+            w.circle(tip, 4.2, PAL["wing_hi"], PAL["outline"], 1.0)
+
+    span = 30.0 + 7.0 * lift
+    part = _local_piece(("willson_wing", side, reach, lift), (10.0, span, reach + 8.0, span), paint)
+    SR.place(v.image, part, _ss(shoulder), degrees, f"{side}_wing")
+
+
+def _wing_target(pose: Mapping[str, float], side: str) -> Tuple[Point, Point, float]:
+    """The grounded wing's shoulder, the point it reaches and its lift (as
+    ``_paint_far_wing`` / ``_paint_near_wing`` compute them)."""
+    death = pose["death_fall"]
+    if side == "far":
+        shoulder = _rider_xf(pose, BASE["far_shoulder"])
+        handle = _bike_xf(pose, (162.0, 132.0 - 7.0 * pose["far_wing_raise"]))
+        rest = _rider_xf(pose, (88.0, 125.0))
+        tumble = _rider_xf(pose, (73.0, 85.0))
+        dismount = pose["dismount"]
+        target = (
+            _lerp(_lerp(handle[0], rest[0], dismount), tumble[0], death),
+            _lerp(_lerp(handle[1], rest[1], dismount), tumble[1], death),
+        )
+        return shoulder, target, pose["far_wing_raise"]
+    shoulder = _rider_xf(pose, BASE["near_shoulder"])
+    lift = pose["near_wing_raise"]
+    handle = _bike_xf(pose, (181.0 - 5.0 * lift, 130.0 - 17.0 * lift))
+    dismounted_handle = _bike_xf(pose, (178.0, 130.0))
+    tumble = _rider_xf(pose, (151.0, 74.0))
+    target = (
+        _lerp(_lerp(handle[0], dismounted_handle[0], pose["dismount"]), tumble[0], death),
+        _lerp(_lerp(handle[1], dismounted_handle[1], pose["dismount"]), tumble[1], death),
+    )
+    return shoulder, target, lift
+
+
+def _rig_leg(v: VDraw, pose: Mapping[str, float], side: str) -> None:
+    hip, knee, foot, tangent = _leg_joints(pose, side)
+    inner = PAL["leg"] if side == "far" else PAL["leg_hi"]
+    canvas = v.image
+    a, b, c = _ss(hip), _ss(knee), _ss(foot)
+    # The old polyline (outline 7.2, fill 4.4): both outlines, then both fills.
+    for name, colour, width in (("line", PAL["outline"], 7.2), ("fill", inner, 4.4)):
+        r = width * SS / 2.0
+        SR.bone(canvas, a, b, r, colour, colour, 0.0, f"{side}_thigh_{name}", float(SS))
+        SR.bone(canvas, b, c, r, colour, colour, 0.0, f"{side}_shin_{name}", float(SS))
+
+    def paint(w: VDraw, o: Point) -> None:
+        normal = (0.0, 1.0)
+        web = [
+            _add(o, (-5.0, 0.0)),
+            _add(_add(o, (7.5, 0.0)), _mul(normal, -4.0)),
+            _add(o, (8.5, 0.0)),
+            _add(_add(o, (7.0, 0.0)), _mul(normal, 4.2)),
+            _add(o, (-4.0, 0.0)),
+        ]
+        w.polygon(web, inner, PAL["outline"], 1.0)
+
+    part = _local_piece(("willson_web", side), (7.0, 6.0, 11.0, 6.0), paint)
+    SR.place(canvas, part, c, math.degrees(math.atan2(tangent[1], tangent[0])), f"{side}_foot")
+
+
+def _leg_joints(pose: Mapping[str, float], side: str) -> Tuple[Point, Point, Point, Point]:
+    """Hip, knee, foot and the webbing's direction, as ``_draw_leg`` computes them."""
+    near_pedal, far_pedal = _pedal_points(pose)
+    if side == "near":
+        hip = _rider_xf(pose, BASE["near_hip"])
+        pedal = near_pedal
+        ground = (102.0, 221.0)
+        flight_grip = _bike_xf(pose, (132.0, 158.0))
+        tumble = _rider_xf(pose, (138.0, 170.0))
+        bend = -1.0
+    else:
+        hip = _rider_xf(pose, BASE["far_hip"])
+        pedal = far_pedal
+        ground = (82.0, 221.0)
+        flight_grip = _bike_xf(pose, (109.0, 155.0))
+        tumble = _rider_xf(pose, (91.0, 174.0))
+        bend = 1.0
+    dismount = pose["dismount"]
+    flight = pose["flight"]
+    death = pose["death_fall"]
+    foot = (_lerp(pedal[0], ground[0], dismount), _lerp(pedal[1], ground[1], dismount))
+    foot = (_lerp(foot[0], flight_grip[0], flight), _lerp(foot[1], flight_grip[1], flight))
+    foot = (_lerp(foot[0], tumble[0], death), _lerp(foot[1], tumble[1], death))
+    knee = _knee(hip, foot, bend)
+    if dismount > 0.55:
+        tangent = (1.0, 0.0)
+    elif flight > 0.5:
+        tangent = _norm(_sub(_bike_xf(pose, (145.0, 150.0)), _bike_xf(pose, (98.0, 150.0))))
+    elif death > 0.45:
+        tangent = _norm(_sub(foot, knee))
+    else:
+        crank = _bike_xf(pose, BASE["crank"])
+        tangent = _norm(_perp(_sub(foot, crank)))
+    return hip, knee, foot, tangent
+
+
+def _rig_body(v: VDraw, pose: Mapping[str, float]) -> None:
+    part = _canvas_piece(("willson_body",), _rest(pose), BASE["rider_pivot"], _paint_body)
+    _place_rider(v, part, BASE["rider_pivot"], pose, "body")
+
+
+def _rig_satchel(v: VDraw, pose: Mapping[str, float]) -> None:
+    part = _canvas_piece(("willson_satchel",), _rest(pose), BASE["rider_pivot"], _paint_satchel)
+    _place_rider(v, part, BASE["rider_pivot"], pose, "satchel")
+
+
+def _head_offset(pose: Mapping[str, float]) -> Point:
+    return (pose["head_dx"], pose["head_bob"] + pose["head_dy"])
+
+
+def _rig_neck(v: VDraw, pose: Mapping[str, float]) -> None:
+    hx, hb, hy = SR.q(pose["head_dx"], 0.5), SR.q(pose["head_bob"], 0.5), SR.q(pose["head_dy"], 0.5)
+    part = _canvas_piece(("willson_neck", hx, hb, hy), _rest(pose, head_dx=hx, head_bob=hb, head_dy=hy), BASE["rider_pivot"], _paint_neck)
+    _place_rider(v, part, BASE["rider_pivot"], pose, "neck")
+
+
+def _place_on_head(v: VDraw, part, pose: Mapping[str, float], name: str) -> None:
+    hx, hy = _head_offset(pose)
+    center = BASE["head_center"]
+    _place_rider(v, part, (center[0] + hx, center[1] + hy), pose, name)
+
+
+def _rig_head(v: VDraw, pose: Mapping[str, float]) -> None:
+    part = _canvas_piece(("willson_head",), _rest(pose, head_dx=0.0, head_bob=0.0, head_dy=0.0), BASE["head_center"], _paint_head)
+    _place_on_head(v, part, pose, "head")
+
+
+def _rig_beak(v: VDraw, pose: Mapping[str, float]) -> None:
+    ext, opening = SR.q(pose["beak_extend"], 0.5), SR.q(pose["beak_open"], 0.05)
+    rest = _rest(pose, head_dx=0.0, head_bob=0.0, head_dy=0.0, beak_extend=ext, beak_open=opening)
+    part = _canvas_piece(("willson_beak", ext, opening), rest, BASE["head_center"], _paint_beak)
+    _place_on_head(v, part, pose, "beak")
+
+
+def _rig_near_leg(v: VDraw, pose: Mapping[str, float]) -> None:
+    _rig_leg(v, pose, "near")
+    degrees = pose["pedal_angle"] + pose["bike_angle"]
+    SR.place(v.image, _crank_arm_piece("near"), _ss(_bike_xf(pose, BASE["crank"])), degrees, "near_crank")
+
+
+def _rig_handle_details(v: VDraw, pose: Mapping[str, float]) -> None:
+    ring = SR.q(pose["bell_ring"], 0.2)
+    part = _canvas_piece(("willson_handle", ring), _rest(pose, bell_ring=ring), BASE["rear_hub"], _paint_handle_details)
+    _place_bike(v, part, BASE["rear_hub"], pose, "handle_details")
+
+
+def _rig_face_details(v: VDraw, pose: Mapping[str, float]) -> None:
+    blink = 1.0 if _clamp(pose["blink"]) > 0.55 else 0.0
+    part = _canvas_piece(("willson_face", blink), _rest(pose, head_dx=0.0, head_bob=0.0, head_dy=0.0, blink=blink), BASE["head_center"], _paint_face_details)
+    _place_on_head(v, part, pose, "face_details")
+
+
+def _paint_seams(v: VDraw, pose: Mapping[str, float]) -> None:
+    for seam in ([(111, 89), (116, 103)], [(103, 93), (106, 109)], [(119, 96), (126, 112)]):
+        v.line(_rider_shape(pose, seam), PAL["feather_dark"], 0.8)
+
+
+def _rig_accents(v: VDraw, pose: Mapping[str, float]) -> None:
+    part = _canvas_piece(("willson_seams",), _rest(pose), BASE["rider_pivot"], _paint_seams)
+    _place_rider(v, part, BASE["rider_pivot"], pose, "seams")
+    # The attack, flight and fall cues are effects: they stay shapes.
+    _paint_accents(v, pose, seams=False)
+
+
 PAINTERS: Dict[str, Callable[[VDraw, Mapping[str, float]], None]] = {
-    "wheels": _paint_wheels,
-    "far_crank": _paint_far_crank,
-    "bike_frame": _paint_bike_frame,
-    "tail": _paint_tail,
-    "far_wing": _paint_far_wing,
-    "far_leg": _paint_far_leg,
-    "body": _paint_body,
-    "satchel": _paint_satchel,
-    "neck": _paint_neck,
-    "head": _paint_head,
-    "beak": _paint_beak,
-    "near_leg": _paint_near_leg,
-    "near_wing": _paint_near_wing,
-    "handle_details": _paint_handle_details,
-    "face_details": _paint_face_details,
-    "accents": _paint_accents,
+    "wheels": _rig_wheels,
+    "far_crank": _rig_far_crank,
+    "bike_frame": _rig_bike_frame,
+    "tail": _rig_tail,
+    "far_wing": lambda v, pose: _rig_wing(v, pose, "far"),
+    "far_leg": lambda v, pose: _rig_leg(v, pose, "far"),
+    "body": _rig_body,
+    "satchel": _rig_satchel,
+    "neck": _rig_neck,
+    "head": _rig_head,
+    "beak": _rig_beak,
+    "near_leg": _rig_near_leg,
+    "near_wing": lambda v, pose: _rig_wing(v, pose, "near"),
+    "handle_details": _rig_handle_details,
+    "face_details": _rig_face_details,
+    "accents": _rig_accents,
 }
 
 

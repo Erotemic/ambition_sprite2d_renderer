@@ -40,6 +40,7 @@ from ...authoring.portrait import (
     write_portrait_sheet,
 )
 from ambition_sprite2d_renderer.core.draw import blending_draw
+from . import _solo_shape_rig as SR
 from ...authoring.sheet_build import build_sheet, write_canonical
 
 RGBA = Tuple[int, int, int, int]
@@ -906,14 +907,15 @@ def _draw_arm(draw: ImageDraw.ImageDraw, shoulder: Point, elbow: Point, hand: Po
     _draw_hand(draw, hand, mode, far=far)
 
 
-def _draw_head(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
+def _draw_head(draw: ImageDraw.ImageDraw, pose: Pose, neck: bool = True) -> None:
     neck_box = [
         (67.0, 40.0 + pose.vertical),
         (77.0, 40.0 + pose.vertical),
         (78.2, 49.0 + pose.vertical),
         (66.0, 49.0 + pose.vertical),
     ]
-    _poly(draw, neck_box, fill=SKIN_SHADE, outline=OUTLINE_SOFT, width=0.8)
+    if neck:
+        _poly(draw, neck_box, fill=SKIN_SHADE, outline=OUTLINE_SOFT, width=0.8)
 
     jaw_y = pose.head[1] + 13.0
     face = [
@@ -1027,19 +1029,107 @@ def _draw_effects_front(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
         _arc(draw, (72.0, 22.0), 17.0, 5.5, 0, 359, _fade(GOLD_LIGHT, pose.halo), 1.5)
 
 
+# --- The rig ---------------------------------------------------------------
+#
+# The painters above draw in place. Drawn as a rig, the robe (keyed by the
+# neck and hem heights, its spread and the cloak's sweep, to a step), the neck
+# and each head expression are pieces painted once and moved into place; limb
+# segments are pieces of a few lengths turned along their bones; feet, cuffs and
+# hands are pieces.
+
+CANVAS = (FRAME_W * SUPER, FRAME_H * SUPER)
+REST = (20.0, 64.0)
+
+
+def _sp(point: Point) -> Point:
+    return (point[0] * SUPER, point[1] * SUPER)
+
+
+def _piece(key: tuple, paint, pivot: Point = REST):
+    return SR.rest_piece(("yuclid",) + key, CANVAS, _sp(pivot), paint)
+
+
+def _segment(canvas: Image.Image, a: Point, b: Point, ra: float, rb: float, fill: RGBA, outline: RGBA, width: float, name: str) -> None:
+    """``_capsule`` ``a``->``b`` as a piece of a whole-pixel length turned
+    along the bone."""
+    length = max(1.0, SR.q(math.dist(a, b), 1.0))
+    x0, y0 = REST
+    part = _piece(("seg", length, ra, rb, fill, outline, width), lambda d: _capsule(d, (x0, y0), (x0 + length, y0), ra, rb, fill=fill, outline=outline, width=width))
+    SR.place(canvas, part, _sp(a), math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])), name)
+
+
+def _rig_leg(canvas: Image.Image, hip: Point, knee: Point, ankle: Point, *, far: bool) -> None:
+    side = "far" if far else "near"
+    thigh_fill = ROBE_SHADE if far else ROBE
+    shin_fill = ROBE_DEEP if far else ROBE_SHADE
+    _segment(canvas, hip, knee, 4.6 if far else 5.0, 4.0 if far else 4.5, thigh_fill, OUTLINE, 1.0, f"{side}_thigh")
+    _segment(canvas, knee, ankle, 3.6 if far else 4.0, 3.0 if far else 3.3, shin_fill, OUTLINE, 1.0, f"{side}_shin")
+
+    def foot(d) -> None:
+        a = REST
+        poly = [_offset(a, -3.0, 0.0), _offset(a, 4.5, 0.0), _offset(a, 8.0, 2.4), _offset(a, 3.0, 5.0), _offset(a, -4.0, 4.2)]
+        _poly(d, poly, fill=SANDAL if not far else SANDAL_LIGHT, outline=OUTLINE, width=0.9)
+
+    SR.place(canvas, _piece(("foot", far), foot), _sp(ankle), 0.0, f"{side}_foot")
+
+
+def _rig_arm(canvas: Image.Image, shoulder: Point, elbow: Point, hand: Point, mode: str, *, far: bool) -> None:
+    side = "far" if far else "near"
+    sleeve = MANTLE_DEEP if far else MANTLE_LIGHT
+    cuff = GOLD_DEEP if far else GOLD
+    outline = OUTLINE_SOFT if far else OUTLINE
+    _segment(canvas, shoulder, elbow, 5.1 if far else 5.5, 4.4 if far else 4.8, sleeve, outline, 0.9, f"{side}_upper_arm")
+    _segment(canvas, elbow, hand, 4.2 if far else 4.5, 3.4 if far else 3.6, sleeve, outline, 0.8, f"{side}_forearm")
+    cuff_part = _piece(("cuff", far), lambda d: _ellipse(d, REST, 4.2, 2.1, cuff, outline=outline, width=0.6))
+    SR.place(canvas, cuff_part, _sp(_lerp_point(elbow, hand, 0.72)), 0.0, f"{side}_cuff")
+    SR.place(canvas, _piece(("hand", mode, far), lambda d: _draw_hand(d, REST, mode, far=far)), _sp(hand), 0.0, f"{side}_hand")
+
+
+def _rig_body(canvas: Image.Image, pose: Pose) -> None:
+    """The robe and mantle as one piece per neck/hem height, spread and sweep
+    (to a step): drawn where they stand, so it lands as painted."""
+    neck_y = SR.q(pose.neck[1], 1.0)
+    hem = SR.q(max(pose.near_ankle[1], pose.far_ankle[1]), 1.0)
+    spread = SR.q(pose.robe_spread, 0.1)
+    sweep = SR.q(pose.cloak_sweep, 0.1)
+    rest = replace(pose, neck=(pose.neck[0], neck_y), near_ankle=(pose.near_ankle[0], hem), far_ankle=(pose.far_ankle[0], hem), robe_spread=spread, cloak_sweep=sweep, aura=0.0)
+    part = _piece(("robe", neck_y, hem, spread, sweep), lambda d: _draw_torso(d, rest), (72.0, 80.0))
+    SR.place(canvas, part, _sp((72.0, 80.0)), 0.0, "robe")
+    if pose.aura > 0.01:
+        _arc(blending_draw(canvas), (72.0, 69.0), 19.0, 26.0, 196, 352, _fade(GEO_CYAN, pose.aura), 1.8)
+
+
+def _rig_head(canvas: Image.Image, pose: Pose) -> None:
+    """The neck rides ``vertical``; the head, one piece per expression, rides
+    the head's height (the painter draws it at a fixed x)."""
+    vertical = SR.q(pose.vertical, 0.25)
+    neck = _piece(("neck",), lambda d: _poly(d, [(67.0, 40.0), (77.0, 40.0), (78.2, 49.0), (66.0, 49.0)], fill=SKIN_SHADE, outline=OUTLINE_SOFT, width=0.8), (72.0, 44.0))
+    SR.place(canvas, neck, _sp((72.0, 44.0 + vertical)), 0.0, "neck")
+    face = dict(
+        beard_sway=SR.q(pose.beard_sway, 0.2),
+        brow=SR.q(pose.brow, 0.2),
+        eye_narrow=SR.q(pose.eye_narrow, 0.2),
+        blink=SR.q(pose.blink, 0.1),
+        mouth=SR.q(pose.mouth, 0.1),
+    )
+    rest = replace(pose, head=(72.0, 29.0), **face)
+    part = _piece(("head",) + tuple(face.values()), lambda d: _draw_head(d, rest, neck=False), (72.0, 29.0))
+    SR.place(canvas, part, _sp((72.0, pose.head[1])), 0.0, "head")
+
+
 def _render_native_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
     pose = _pose(animation, frame_idx, frame_count)
-    image = Image.new("RGBA", (FRAME_W * SUPER, FRAME_H * SUPER), (0, 0, 0, 0))
+    image = Image.new("RGBA", CANVAS, (0, 0, 0, 0))
     draw = blending_draw(image)
 
     _draw_effects_back(draw, pose)
-    _draw_leg(draw, pose.far_hip, pose.far_knee, pose.far_ankle, far=True, pose=pose)
-    _draw_leg(draw, pose.near_hip, pose.near_knee, pose.near_ankle, far=False, pose=pose)
-    _draw_torso(draw, pose)
-    _draw_arm(draw, pose.far_shoulder, pose.far_elbow, pose.far_hand, pose.far_hand_mode, far=True, pose=pose)
-    _draw_arm(draw, pose.near_shoulder, pose.near_elbow, pose.near_hand, pose.near_hand_mode, far=False, pose=pose)
+    _rig_leg(image, pose.far_hip, pose.far_knee, pose.far_ankle, far=True)
+    _rig_leg(image, pose.near_hip, pose.near_knee, pose.near_ankle, far=False)
+    _rig_body(image, pose)
+    _rig_arm(image, pose.far_shoulder, pose.far_elbow, pose.far_hand, pose.far_hand_mode, far=True)
+    _rig_arm(image, pose.near_shoulder, pose.near_elbow, pose.near_hand, pose.near_hand_mode, far=False)
     _draw_effects_front(draw, pose)
-    _draw_head(draw, pose)
+    _rig_head(image, pose)
     return image
 
 

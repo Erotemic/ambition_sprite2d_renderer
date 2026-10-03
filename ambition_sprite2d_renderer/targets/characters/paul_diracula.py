@@ -36,6 +36,8 @@ from ...authoring.portrait import (
     write_portrait_sheet,
 )
 from ambition_sprite2d_renderer.core.draw import blending_draw
+
+from . import _solo_shape_rig as SR
 from ...authoring.sheet_build import build_sheet, write_canonical
 
 RGBA = Tuple[int, int, int, int]
@@ -739,11 +741,20 @@ def _transform(point: Point, pose: Pose) -> Point:
     return _rotate(point, pose.rotation_pivot, pose.rotation)
 
 
-def _draw_cape_behind(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
-    """Body-integrated cape with motion driven by the authored pose."""
+def _draw_cape_behind(canvas: Image.Image, pose: Pose) -> None:
+    """Body-integrated cape with motion driven by the authored pose: one piece
+    per spread, lift and lean step, painted unturned and placed by the body's
+    turn and offset."""
+    spread = SR.q(3.0 + 13.0 * pose.spinor_turn + 7.0 * pose.epsilon + 4.0 * pose.field, 1.0)
+    lift = SR.q(5.0 * pose.spinor_turn + 2.0 * pose.epsilon, 0.5)
+    lean = SR.q(pose.body_lean, 1.0)
+    rest = Pose(body_lean=lean)
+    part = SR.rest_piece(("paul_cape", spread, lift, lean), canvas.size, _sp(TORSO_REFERENCE), lambda d: _paint_cape(d, rest, spread, lift))
+    SR.place(canvas, part, _sp(_transform(TORSO_REFERENCE, pose)), pose.rotation, "cape")
+
+
+def _paint_cape(draw: ImageDraw.ImageDraw, pose: Pose, spread: float, lift: float) -> None:
     T = lambda q: _transform(q, pose)
-    spread = 3.0 + 13.0 * pose.spinor_turn + 7.0 * pose.epsilon + 4.0 * pose.field
-    lift = 5.0 * pose.spinor_turn + 2.0 * pose.epsilon
     outer = [
         T((53.0, 55.0)), T((76.5, 54.5)),
         T((84.0 + spread, 69.0 - lift)),
@@ -767,8 +778,24 @@ def _draw_cape_behind(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
     _line(draw, [T((53.5, 61.0)), T((64.8, 110.0)), T((76.0, 61.0))], COAT_LIGHT, 0.75)
 
 
+def _sp(point: Point) -> Point:
+    """A logical point in supersampled canvas pixels, unrounded."""
+    return (point[0] * SUPER, point[1] * SUPER)
+
+
+def _quad(canvas: Image.Image, a: Point, b: Point, ra: float, rb: float, fill: RGBA, outline: RGBA, width: float, name: str) -> None:
+    """``_polygon(_segment_quad(a, b, ra, rb))`` as a turned piece."""
+    SR.quad_segment(canvas, _sp(a), _sp(b), ra * SUPER, rb * SUPER, fill, outline, _s(width), name, q=float(SUPER))
+
+
+def _ellipse_piece(rx: float, ry: float, fill: RGBA, outline: RGBA, width: float):
+    """An axis-aligned outlined ellipse centred on its pivot (a knee, an elbow)."""
+    c = (rx + width + 2.0, ry + width + 2.0)
+    return SR.rest_piece(("paul_ellipse", rx, ry, fill, outline, width), (_s(2 * c[0]), _s(2 * c[1])), _pt(c), lambda d: _ellipse(d, c, rx, ry, fill, outline, width))
+
+
 def _draw_leg(
-    draw: ImageDraw.ImageDraw,
+    canvas: Image.Image,
     pose: Pose,
     hip: Point,
     knee: Point,
@@ -776,13 +803,23 @@ def _draw_leg(
     *,
     far: bool,
 ) -> None:
+    """Thigh and shin as turned quads through the authored joints, the knee
+    cap riding the knee, the shoe painted once upright and turned to the shin."""
     T = lambda q: _transform(q, pose)
     hip_t, knee_t, ankle_t = T(hip), T(knee), T(ankle)
     trouser = TROUSER_DARK if far else TROUSER
     trouser_hi = TROUSER if far else TROUSER_LIGHT
-    _polygon(draw, _segment_quad(hip_t, knee_t, 5.0, 4.3), trouser, OUTLINE, 1.0)
-    _polygon(draw, _segment_quad(knee_t, ankle_t, 4.2, 3.4), trouser_hi, OUTLINE, 1.0)
-    _ellipse(draw, knee_t, 4.4, 3.8, trouser_hi, OUTLINE, 0.8)
+    side = "far" if far else "near"
+    _quad(canvas, hip_t, knee_t, 5.0, 4.3, trouser, OUTLINE, 1.0, f"{side}_thigh")
+    _quad(canvas, knee_t, ankle_t, 4.2, 3.4, trouser_hi, OUTLINE, 1.0, f"{side}_shin")
+    SR.place(canvas, _ellipse_piece(4.4, 3.8, trouser_hi, OUTLINE, 0.8), _sp(knee_t), 0.0, f"{side}_knee")
+    along, _normal, _ = _unit(knee_t, ankle_t)
+    local_knee, local_ankle = (16.0, 6.0), (16.0, 16.0)
+    shoe = SR.rest_piece(("paul_shoe", far), (_s(32), _s(32)), _pt(local_ankle), lambda d: _paint_shoe(d, local_knee, local_ankle, far=far))
+    SR.place(canvas, shoe, _sp(ankle_t), math.degrees(math.atan2(along[1], along[0])) - 90.0, f"{side}_shoe")
+
+
+def _paint_shoe(draw: ImageDraw.ImageDraw, knee_t: Point, ankle_t: Point, *, far: bool) -> None:
     along, normal, _ = _unit(knee_t, ankle_t)
     toe = (ankle_t[0] + along[0] * 2.5 + normal[0] * 4.8, ankle_t[1] + along[1] * 2.5 + normal[1] * 4.8)
     shoe_poly = [
@@ -813,7 +850,7 @@ def _draw_dirac_mark(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
         stroke_fill=WAISTCOAT_SHADE,
     )
 
-def _draw_neck(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
+def _draw_neck(draw: ImageDraw.ImageDraw, pose: Pose, *, collar: bool = True) -> None:
     T = lambda q: _transform(q, pose)
     center = T((65.0 + pose.head_x, 34.0 + pose.head_y))
     neck = [
@@ -826,8 +863,46 @@ def _draw_neck(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
     _polygon(draw, neck, SKIN, OUTLINE_SOFT, 0.85)
     _line(draw, [_rotate(T((62.0 + pose.head_x, 49.7 + pose.head_y)), center, pose.head_tilt), _rotate(T((62.0 + pose.head_x, 56.6 + pose.head_y)), center, pose.head_tilt)], SKIN_SHADE, 0.6)
     _line(draw, [_rotate(T((68.0 + pose.head_x, 49.4 + pose.head_y)), center, pose.head_tilt), _rotate(T((68.0 + pose.head_x, 56.6 + pose.head_y)), center, pose.head_tilt)], SKIN_SHADE, 0.6)
+    if collar:
+        _draw_collar(draw, pose)
+
+
+def _draw_collar(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
+    T = lambda q: _transform(q, pose)
     _arc(draw, T((65.0, 58.0)), 6.4, 3.6, 196, 344, OUTLINE_SOFT, 0.9)
     _arc(draw, T((65.0, 58.5)), 5.4, 3.0, 198, 342, WAISTCOAT_SHADE, 0.75)
+
+
+#: The torso's turn and offset are applied to where its piece lands; its
+#: lean (a shear about the waist) is painted, one piece per lean step.
+TORSO_REFERENCE: Point = (65.0, 86.0)
+
+
+def _place_torso(canvas: Image.Image, pose: Pose) -> None:
+    lean = SR.q(pose.body_lean, 1.0)
+    rest = Pose(body_lean=lean)
+    part = SR.rest_piece(("paul_torso", lean), canvas.size, _sp(TORSO_REFERENCE), lambda d: _draw_torso(d, rest))
+    SR.place(canvas, part, _sp(_transform(TORSO_REFERENCE, pose)), pose.rotation, "torso")
+
+
+def _place_head(canvas: Image.Image, pose: Pose) -> None:
+    """Neck and head: the neck column rides its own base (the body's lean
+    shears head and neck apart), the head is one piece per expression; both
+    turn by the body's turn plus the head's tilt about the head centre."""
+    base = (65.0, 34.0)
+    center = _transform((base[0] + pose.head_x, base[1] + pose.head_y), pose)
+    degrees = pose.rotation + pose.head_tilt
+    neck_base = (65.0, 53.0)
+    column = SR.rest_piece(("paul_neck",), canvas.size, _sp(neck_base), lambda d: _draw_neck(d, Pose(), collar=False))
+    at = _rotate(_transform((neck_base[0] + pose.head_x, neck_base[1] + pose.head_y), pose), center, pose.head_tilt)
+    SR.place(canvas, column, _sp(at), degrees, "neck")
+    collar_at = (65.0, 58.0)
+    collar = SR.rest_piece(("paul_collar",), canvas.size, _sp(collar_at), lambda d: _draw_collar(d, Pose()))
+    SR.place(canvas, collar, _sp(_transform(collar_at, pose)), pose.rotation, "collar")
+    rest = Pose(blink=bool(pose.blink), mouth_open=SR.q(pose.mouth_open, 0.1), smile=SR.q(pose.smile, 0.1), brow=SR.q(pose.brow, 0.1))
+    key = ("paul_head", rest.blink, rest.mouth_open, rest.smile, rest.brow)
+    part = SR.rest_piece(key, canvas.size, _sp(base), lambda d: _draw_head(d, rest, neck=False))
+    SR.place(canvas, part, _sp(center), degrees, "head")
 
 
 def _draw_torso(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
@@ -862,7 +937,7 @@ def _draw_torso(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
     _line(draw, [T((74.5, 90.0)), T((67.0, 82.0))], COAT_DEEP, 0.65)
 
 def _draw_arm(
-    draw: ImageDraw.ImageDraw,
+    canvas: Image.Image,
     pose: Pose,
     shoulder: Point,
     elbow: Point,
@@ -871,19 +946,31 @@ def _draw_arm(
     *,
     far: bool,
 ) -> None:
+    """Sleeve quads through the authored joints, the elbow cap riding the
+    elbow, cuff and hand one piece turned to the forearm."""
     T = lambda q: _transform(q, pose)
     shoulder_t, elbow_t, hand_t = T(shoulder), T(elbow), T(hand)
     sleeve = COAT if far else COAT_LIGHT
-    cuff = COLLAR
+    side = "far" if far else "near"
     along, _, length = _unit(elbow_t, hand_t)
-    wrist = (hand_t[0] - along[0] * min(3.2, length * 0.30), hand_t[1] - along[1] * min(3.2, length * 0.30))
+    reach = min(3.2, length * 0.30)
+    wrist = (hand_t[0] - along[0] * reach, hand_t[1] - along[1] * reach)
     upper_end = _lerp_point(shoulder_t, elbow_t, 0.54)
-    _polygon(draw, _segment_quad(shoulder_t, upper_end, 5.2, 4.5), sleeve, OUTLINE, 0.95)
-    _polygon(draw, _segment_quad(upper_end, elbow_t, 4.5, 4.0), sleeve, OUTLINE, 0.95)
-    _polygon(draw, _segment_quad(elbow_t, wrist, 4.0, 3.4), sleeve, OUTLINE, 0.9)
-    _ellipse(draw, elbow_t, 3.4, 3.1, sleeve, OUTLINE, 0.75)
+    _quad(canvas, shoulder_t, upper_end, 5.2, 4.5, sleeve, OUTLINE, 0.95, f"{side}_upper_arm")
+    _quad(canvas, upper_end, elbow_t, 4.5, 4.0, sleeve, OUTLINE, 0.95, f"{side}_upper_arm2")
+    _quad(canvas, elbow_t, wrist, 4.0, 3.4, sleeve, OUTLINE, 0.9, f"{side}_forearm")
+    SR.place(canvas, _ellipse_piece(3.4, 3.1, sleeve, OUTLINE, 0.75), _sp(elbow_t), 0.0, f"{side}_elbow")
+    reach = SR.q(reach, 0.25)
+    center = (12.0, 12.0)
+    part = SR.rest_piece(("paul_hand", mode, reach), (_s(24), _s(24)), _pt(center), lambda d: _paint_cuff_hand(d, center, reach, mode))
+    SR.place(canvas, part, _sp(hand_t), math.degrees(math.atan2(along[1], along[0])), f"{side}_hand")
+
+
+def _paint_cuff_hand(draw: ImageDraw.ImageDraw, hand_t: Point, reach: float, mode: str) -> None:
+    """Cuff and hand pointing along +x, the hand centred on ``hand_t``."""
+    wrist = (hand_t[0] - reach, hand_t[1])
     cuff_center = _lerp_point(wrist, hand_t, 0.32)
-    _polygon(draw, _segment_quad(wrist, cuff_center, 3.1, 2.8), cuff, OUTLINE_SOFT, 0.6)
+    _polygon(draw, _segment_quad(wrist, cuff_center, 3.1, 2.8), COLLAR, OUTLINE_SOFT, 0.6)
     _draw_hand(draw, cuff_center, hand_t, mode, SKIN_LIGHT)
 
 
@@ -908,11 +995,12 @@ def _draw_hand(draw: ImageDraw.ImageDraw, wrist: Point, hand: Point, mode: str, 
         _line(draw, [(hand[0] - normal[0] * 1.8, hand[1] - normal[1] * 1.8), (hand[0] + normal[0] * 1.8, hand[1] + normal[1] * 1.8)], SKIN_SHADE, 0.8)
 
 
-def _draw_head(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
+def _draw_head(draw: ImageDraw.ImageDraw, pose: Pose, *, neck: bool = True) -> None:
     base = (65.0 + pose.head_x, 34.0 + pose.head_y)
     T = lambda q: _transform(q, pose)
     center = T(base)
-    _draw_neck(draw, pose)
+    if neck:
+        _draw_neck(draw, pose)
 
     ear = _rotate(T((52.4 + pose.head_x, 35.0 + pose.head_y)), center, pose.head_tilt)
     _ellipse(draw, ear, 3.2, 5.0, SKIN_SHADE, OUTLINE, 0.75)
@@ -1030,15 +1118,18 @@ def _render_native_frame(animation: str, frame_idx: int, nframes: int) -> Image.
     image = Image.new("RGBA", (FRAME_W * SUPER, FRAME_H * SUPER), (0, 0, 0, 0))
     draw = blending_draw(image)
 
+    # Drawn as a rig: cape, torso and head are pieces painted once (per pose
+    # step, lean step, expression), limbs are turned quads through the
+    # authored joints; the ability effects stay shapes.
     _draw_ability_effects_behind(draw, pose)
-    _draw_cape_behind(draw, pose)
-    _draw_leg(draw, pose, pose.far_hip, pose.far_knee, pose.far_ankle, far=True)
-    _draw_leg(draw, pose, pose.near_hip, pose.near_knee, pose.near_ankle, far=False)
-    _draw_torso(draw, pose)
-    _draw_arm(draw, pose, pose.far_shoulder, pose.far_elbow, pose.far_hand, pose.far_hand_mode, far=True)
-    _draw_arm(draw, pose, pose.near_shoulder, pose.near_elbow, pose.near_hand, pose.near_hand_mode, far=False)
+    _draw_cape_behind(image, pose)
+    _draw_leg(image, pose, pose.far_hip, pose.far_knee, pose.far_ankle, far=True)
+    _draw_leg(image, pose, pose.near_hip, pose.near_knee, pose.near_ankle, far=False)
+    _place_torso(image, pose)
+    _draw_arm(image, pose, pose.far_shoulder, pose.far_elbow, pose.far_hand, pose.far_hand_mode, far=True)
+    _draw_arm(image, pose, pose.near_shoulder, pose.near_elbow, pose.near_hand, pose.near_hand_mode, far=False)
     _draw_ability_effects_front(draw, pose)
-    _draw_head(draw, pose)
+    _place_head(image, pose)
     return image
 
 

@@ -24,12 +24,12 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Sequence, Tuple
+from typing import List, Sequence, Tuple
 
 from PIL import Image, ImageDraw, ImageFont
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 
 RGBA = Tuple[int, int, int, int]
@@ -654,15 +654,77 @@ class Pose:
             self.blink = strength > 0.5
 
 
+# --- Rig construction -------------------------------------------------------
+#
+# Jeff is drawn as a rig (``shape_rig``): every rigid piece is painted once in
+# its own frame, at the supersampled scale, and turned into place. The torso
+# rides the body's lean, the head its tilt, each limb is two bones turned
+# from joint to joint (one piece per whole-pixel length), and the hands,
+# shoes and armor plates ride their bones. The coordinate plane, hint trace,
+# manifold field and shout are effects that change every frame: each layer is
+# one raster a frame.
+
+def _bone_length(a: Point, b: Point) -> float:
+    """A limb bone's length, to the whole frame pixel: the poses foreshorten
+    Jeff's arms (a hand cupped to the mouth, a frame bracketed in front of
+    him), so a bone keeps its pose's length, and a piece is one per length."""
+    return float(max(1, round(math.hypot(b[0] - a[0], b[1] - a[1]))))
+
+
+def _angle(a: Point, b: Point) -> float:
+    return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+
+
+def _piece(key, half: float, paint) -> Tuple[Image.Image, Point]:
+    """A piece ``2 * half`` frame pixels square, its pivot at the centre:
+    ``paint(draw, o)`` paints it with the local origin at ``(o, o)`` frame px."""
+    size = 2 * _s(half)
+    return shape_rig.piece(("jeff_hinter",) + tuple(key), (size, size), (size / 2, size / 2), lambda d: paint(d, half))
+
+
+def _put(canvas: Image.Image, part, at: Point, degrees: float, name: str, opacity: float = 1.0) -> None:
+    image, pivot = part
+    rigdoc.blit_rotated(canvas, image, pivot, (at[0] * SUPER, at[1] * SUPER), degrees, opacity, part_name=name)
+
+
+def _effect(canvas: Image.Image, paint, name: str) -> None:
+    """A per-frame effect layer as one raster: painted on its own canvas,
+    cropped to what it covers, placed at its corner."""
+    layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    paint(layer, blending_draw(layer))
+    box = layer.getbbox()
+    if box is None:
+        return
+    shape_rig.place(canvas, (layer.crop(box), (0.0, 0.0)), (box[0], box[1]), 0.0, name)
+
+
+def _paint_bone(draw, o: float, length: float, ra: float, rb: float, fill: RGBA, width: float, *, root_cap: bool, joint_cap: bool) -> None:
+    """A tapered limb segment along +x from ``(o, o)``: the joint disc first
+    (under the segment, so its outline shows only past the bend), the
+    segment's fill and side outlines, and the root/end disc."""
+    a, b = (o, o), (o + length, o)
+    if joint_cap:
+        _ellipse(draw, b, rb, rb, fill, OUTLINE, width)
+    _poly(draw, [(a[0], o + ra), (b[0], o + rb), (b[0], o - rb), (a[0], o - ra)], fill, None, 0)
+    _line(draw, [(a[0], o + ra), (b[0], o + rb)], OUTLINE, width)
+    _line(draw, [(a[0], o - ra), (b[0], o - rb)], OUTLINE, width)
+    if root_cap:
+        _ellipse(draw, a, ra, ra, fill, OUTLINE, width)
+    else:
+        _ellipse(draw, b, rb, rb, fill, OUTLINE, width)
+
+
 class JeffHinterRenderer:
+    #: The pose a frame is drawn from (the armored sheet passes its own).
+    pose_cls = Pose
+
     def render_frame(self, animation: str, frame_idx: int, nframes: int) -> Image.Image:
         image = Image.new(
             "RGBA",
             (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER),
             (0, 0, 0, 0),
         )
-        draw = blending_draw(image)
-        pose = Pose(animation, frame_idx, nframes)
+        pose = self.pose_cls(animation, frame_idx, nframes)
 
         pivot = (73.0 + pose.body_x, 112.0 + pose.body_y)
 
@@ -673,106 +735,103 @@ class JeffHinterRenderer:
         # Effects are staged behind the person so the silhouette remains the
         # strongest read.  The shrinkwrap gets a second foreground pass below the
         # face so the contracting surface visibly crosses the body.
-        if pose.plane_strength > 0.01:
-            self._draw_coordinate_plane(draw, pose)
-        if pose.hint_strength > 0.01:
-            self._draw_hint_trace(draw, pose)
-        if pose.manifold_strength > 0.01:
-            self._draw_shrinkwrap_field(draw, pose, T, front=False)
+        if pose.plane_strength > 0.01 or pose.hint_strength > 0.01 or pose.manifold_strength > 0.01:
 
-        def composite_armor(paint) -> None:
-            # ImageDraw on an RGBA target replaces pixels instead of blending them.
-            # Armor therefore lives on a temporary layer so partial convergence
-            # tints the clothing rather than punching translucent holes through it.
-            overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
-            overlay_draw = blending_draw(overlay)
-            paint(overlay_draw)
-            rigdoc.composite_canvas(image, overlay)
+            def behind(_layer, draw) -> None:
+                if pose.plane_strength > 0.01:
+                    self._draw_coordinate_plane(draw, pose)
+                if pose.hint_strength > 0.01:
+                    self._draw_hint_trace(draw, pose)
+                if pose.manifold_strength > 0.01:
+                    self._draw_shrinkwrap_field(draw, pose, T, front=False)
 
-        # No baked floor ellipse or drop shadow.
-        self._draw_legs(draw, pose, T)
-        if pose.armor_strength > 0.01:
-            composite_armor(lambda layer: self._draw_leg_armor(layer, pose, T))
-            draw = blending_draw(image)
+            _effect(image, behind, "effects_behind")
 
-        self._draw_torso(draw, pose, T)
-        if pose.armor_strength > 0.01:
-            composite_armor(lambda layer: self._draw_torso_armor(layer, pose, T))
-            draw = blending_draw(image)
+        # The armor fades in as whole plates (a draw's opacity). Painted shape by
+        # shape, a plate over the shell compounded its fade; this matches that.
+        armor = 1.0 - (1.0 - pose.armor_strength) ** 2 if pose.armor_strength > 0.01 else 0.0
+
+        # No baked floor ellipse or drop shadow.  Far leg, then near.
+        for far, hip, knee, ankle in (
+            (True, pose.far_hip, pose.far_knee, pose.far_ankle),
+            (False, pose.near_hip, pose.near_knee, pose.near_ankle),
+        ):
+            self._place_leg(image, T(hip), T(knee), T(ankle), far, armor)
+
+        torso_at = (73.0 + pose.body_x, 112.0 + pose.body_y)
+        _put(image, _piece(("torso",), 52.0, self._paint_torso), torso_at, pose.lean, "torso")
+        if armor:
+            _put(image, _piece(("torso_armor",), 52.0, self._paint_torso_armor), torso_at, pose.lean, "torso_armor", armor)
 
         # Both arms are deliberately in front of the torso.
-        far_shoulder = T(pose.far_shoulder)
-        far_elbow = T(pose.far_elbow)
-        far_hand = T(pose.far_hand)
-        self._draw_arm(draw, far_shoulder, far_elbow, far_hand, pose.far_hand_mode, far=True)
-        if pose.armor_strength > 0.01:
-            composite_armor(
-                lambda layer: self._draw_arm_armor(
-                    layer, pose, far_shoulder, far_elbow, far_hand, far=True
-                )
-            )
-            draw = blending_draw(image)
-
-        near_shoulder = T(pose.near_shoulder)
-        near_elbow = T(pose.near_elbow)
-        near_hand = T(pose.near_hand)
-        self._draw_arm(draw, near_shoulder, near_elbow, near_hand, pose.near_hand_mode, far=False)
-        if pose.armor_strength > 0.01:
-            def paint_near_armor(layer) -> None:
-                self._draw_arm_armor(
-                    layer, pose, near_shoulder, near_elbow, near_hand, far=False
-                )
-                self._draw_armor_collar(layer, pose, T)
-
-            composite_armor(paint_near_armor)
-            draw = blending_draw(image)
+        self._place_arm(image, T(pose.far_shoulder), T(pose.far_elbow), T(pose.far_hand), pose.far_hand_mode, True, armor)
+        self._place_arm(image, T(pose.near_shoulder), T(pose.near_elbow), T(pose.near_hand), pose.near_hand_mode, False, armor)
+        if armor:
+            _put(image, _piece(("collar",), 52.0, self._paint_collar), torso_at, pose.lean, "collar", armor)
 
         head_center = T((72.0 + pose.head_x, 48.0 + pose.head_y))
-        self._draw_head(image, draw, head_center, pose)
+        self._place_head(image, head_center, pose)
 
-        if pose.manifold_strength > 0.01:
-            self._draw_shrinkwrap_field(draw, pose, T, front=True)
-        if pose.shout_strength > 0.01:
-            self._draw_shout(image, pose, head_center)
+        if pose.manifold_strength > 0.01 or pose.shout_strength > 0.01:
+
+            def front(layer, draw) -> None:
+                if pose.manifold_strength > 0.01:
+                    self._draw_shrinkwrap_field(draw, pose, T, front=True)
+                if pose.shout_strength > 0.01:
+                    self._draw_shout(layer, pose, head_center)
+
+            _effect(image, front, "effects_front")
 
         return rigdoc.downsampled_canvas(image, FRAME_SIZE, Image.Resampling.LANCZOS)
 
-    def _draw_legs(self, draw: ImageDraw.ImageDraw, pose: Pose, T) -> None:
-        # Far leg first.
-        far_hip = T(pose.far_hip)
-        far_knee = T(pose.far_knee)
-        far_ankle = T(pose.far_ankle)
-        _bent_tube(
-            draw,
-            far_hip,
-            far_knee,
-            far_ankle,
-            (6.3, 5.2, 4.4),
-            fill=TROUSER,
-            outline=OUTLINE,
-            width=1.15,
-        )
-        self._draw_shoe(draw, far_knee, far_ankle, far=True)
+    # -- limbs --------------------------------------------------------------
 
-        near_hip = T(pose.near_hip)
-        near_knee = T(pose.near_knee)
-        near_ankle = T(pose.near_ankle)
-        _bent_tube(
-            draw,
-            near_hip,
-            near_knee,
-            near_ankle,
-            (6.6, 5.4, 4.6),
-            fill=TROUSER_LIGHT,
-            outline=OUTLINE,
-            width=1.2,
-        )
-        # Trouser crease reinforces the long, slightly rumpled academic silhouette.
-        _line(draw, [near_knee, near_ankle], TROUSER, 0.55)
-        self._draw_shoe(draw, near_knee, near_ankle, far=False)
+    def _place_leg(self, image: Image.Image, hip: Point, knee: Point, ankle: Point, far: bool, armor: float) -> None:
+        side = "far" if far else "near"
+        thigh_len, shin_len = _bone_length(hip, knee), _bone_length(knee, ankle)
+        radii = (6.3, 5.2, 4.4) if far else (6.6, 5.4, 4.6)
+        fill = TROUSER if far else TROUSER_LIGHT
+        width = 1.15 if far else 1.2
+        thigh = _piece(("thigh", far, thigh_len), 30.0, lambda d, o: _paint_bone(d, o, thigh_len, radii[0], radii[1], fill, width, root_cap=True, joint_cap=True))
+        _put(image, thigh, hip, _angle(hip, knee), f"{side}_thigh")
 
-    def _draw_shoe(self, draw: ImageDraw.ImageDraw, knee: Point, ankle: Point, *, far: bool) -> None:
-        along, normal, _ = _unit_segment(knee, ankle)
+        def paint_shin(d, o) -> None:
+            _paint_bone(d, o, shin_len, radii[1], radii[2], fill, width, root_cap=False, joint_cap=False)
+            if not far:
+                # Trouser crease reinforces the long, slightly rumpled academic silhouette.
+                _line(d, [(o, o), (o + shin_len, o)], TROUSER, 0.55)
+
+        _put(image, _piece(("shin", far, shin_len), 30.0, paint_shin), knee, _angle(knee, ankle), f"{side}_shin")
+        # The shoe stays flat on the ground: painted with the shin upright.
+        _put(image, _piece(("shoe", far), 16.0, lambda d, o: self._paint_shoe(d, o, far)), ankle, 0.0, f"{side}_shoe")
+        if armor:
+            _put(image, _piece(("thigh_armor", far, thigh_len), 30.0, lambda d, o: self._paint_limb_plate(d, o, thigh_len, far, leg=True, upper=True)), hip, _angle(hip, knee), f"{side}_thigh_armor", armor)
+            _put(image, _piece(("shin_armor", far, shin_len), 30.0, lambda d, o: self._paint_limb_plate(d, o, shin_len, far, leg=True, upper=False)), knee, _angle(knee, ankle), f"{side}_shin_armor", armor)
+
+    def _place_arm(self, image: Image.Image, shoulder: Point, elbow: Point, hand: Point, mode: str, far: bool, armor: float) -> None:
+        side = "far" if far else "near"
+        upper_len, fore_len = _bone_length(shoulder, elbow), _bone_length(elbow, hand)
+        sleeve = JACKET if far else JACKET_MID
+        radii = (5.8 if far else 6.2, 4.8, 3.8)
+        upper = _piece(("upper_arm", far, upper_len), 30.0, lambda d, o: _paint_bone(d, o, upper_len, radii[0], radii[1], sleeve, 1.15, root_cap=True, joint_cap=True))
+        upper_angle = _angle(shoulder, elbow)
+        _put(image, upper, shoulder, upper_angle, f"{side}_upper_arm")
+
+        def paint_forearm(d, o) -> None:
+            _paint_bone(d, o, fore_len, radii[1], radii[2], sleeve, 1.15, root_cap=False, joint_cap=False)
+            # Shirt cuff prevents the hand from looking fused directly to the jacket.
+            _line(d, [(o + fore_len * 0.85, o + 4.0), (o + fore_len * 0.85, o - 4.0)], SHIRT_LIGHT, 2.0)
+
+        fore_angle = _angle(elbow, hand)
+        _put(image, _piece(("forearm", far, fore_len), 30.0, paint_forearm), elbow, fore_angle, f"{side}_forearm")
+        _put(image, _piece(("hand", far, mode), 16.0, lambda d, o: self._paint_hand(d, o, mode, far)), hand, fore_angle, f"{side}_hand")
+        if armor:
+            _put(image, _piece(("upper_arm_armor", far, upper_len), 30.0, lambda d, o: self._paint_limb_plate(d, o, upper_len, far, leg=False, upper=True)), shoulder, upper_angle, f"{side}_upper_arm_armor", armor)
+            _put(image, _piece(("forearm_armor", far, fore_len), 30.0, lambda d, o: self._paint_limb_plate(d, o, fore_len, far, leg=False, upper=False)), elbow, fore_angle, f"{side}_forearm_armor", armor)
+
+    def _paint_shoe(self, draw, o: float, far: bool) -> None:
+        ankle = (o, o)
+        along, normal = (0.0, 1.0), (-1.0, 0.0)
         toe = (ankle[0] + along[0] * 1.2 + 7.5, ankle[1] + along[1] * 1.0 + 0.8)
         heel = (ankle[0] - 3.3, ankle[1] + 2.2)
         points = [
@@ -782,126 +841,15 @@ class JeffHinterRenderer:
             (toe[0] + 0.4, toe[1] + 4.2),
             (heel[0], heel[1] + 4.0),
         ]
-        fill = SHOE if far else SHOE_LIGHT
-        _poly(draw, points, fill, OUTLINE, 1.1)
+        _poly(draw, points, SHOE if far else SHOE_LIGHT, OUTLINE, 1.1)
         _line(draw, [(heel[0], heel[1] + 3.2), (toe[0] + 0.2, toe[1] + 3.5)], OUTLINE, 0.8)
 
-    def _draw_torso(self, draw: ImageDraw.ImageDraw, pose: Pose, T) -> None:
-        left_shoulder = T((57.0, 78.0))
-        right_shoulder = T((87.5, 76.0))
-        left_waist = T((61.0, 116.0))
-        right_waist = T((84.0, 116.0))
-
-        # Shirt collar and neck are drawn before the jacket shell.
-        neck_center = T((72.0, 70.5))
-        _rounded(
-            draw,
-            (neck_center[0] - 5.1, neck_center[1] - 5.0, neck_center[0] + 5.1, neck_center[1] + 8.5),
-            3.0,
-            SKIN_SHADE,
-            OUTLINE,
-            0.8,
-        )
-
-        torso = [
-            left_shoulder,
-            T((66.0, 72.5)),
-            T((77.0, 72.0)),
-            right_shoulder,
-            T((91.0, 91.0)),
-            right_waist,
-            T((72.5, 119.5)),
-            left_waist,
-            T((53.0, 93.0)),
-        ]
-        _poly(draw, torso, JACKET, OUTLINE, 1.3)
-
-        # Open jacket exposes a soft blue shirt and makes the forward stoop read.
-        shirt = [
-            T((67.0, 74.0)),
-            T((77.0, 73.7)),
-            T((80.5, 112.5)),
-            T((68.0, 116.0)),
-            T((63.0, 85.0)),
-        ]
-        _poly(draw, shirt, SHIRT, OUTLINE_SOFT, 0.65)
-        _poly(
-            draw,
-            [T((67.0, 74.0)), T((72.0, 80.0)), T((64.5, 83.0))],
-            SHIRT_LIGHT,
-            OUTLINE_SOFT,
-            0.5,
-        )
-        _poly(
-            draw,
-            [T((77.0, 73.7)), T((72.0, 80.0)), T((80.0, 83.0))],
-            SHIRT_DARK,
-            OUTLINE_SOFT,
-            0.5,
-        )
-
-        # Jacket lapels, seams, and subtle academic rumpling.
-        _poly(
-            draw,
-            [T((62.0, 76.0)), T((68.0, 75.0)), T((66.0, 95.0)), T((57.5, 84.0))],
-            JACKET_MID,
-            OUTLINE_SOFT,
-            0.55,
-        )
-        _poly(
-            draw,
-            [T((78.0, 74.0)), T((86.5, 77.0)), T((87.5, 88.0)), T((79.0, 96.0))],
-            JACKET_LIGHT,
-            OUTLINE_SOFT,
-            0.55,
-        )
-        _line(draw, [T((72.5, 84.0)), T((73.0, 114.0))], OUTLINE_SOFT, 0.55)
-        _line(draw, [T((57.0, 103.0)), T((64.0, 106.5))], JACKET_LIGHT, 0.55)
-        _line(draw, [T((81.0, 105.0)), T((87.0, 102.0))], JACKET_DARK, 0.55)
-        _ellipse(draw, T((73.0, 98.0)), 0.85, 0.85, OUTLINE_SOFT, OUTLINE_SOFT, 0.2)
-        _ellipse(draw, T((73.0, 108.0)), 0.85, 0.85, OUTLINE_SOFT, OUTLINE_SOFT, 0.2)
-
-    def _draw_arm(
-        self,
-        draw: ImageDraw.ImageDraw,
-        shoulder: Point,
-        elbow: Point,
-        hand: Point,
-        mode: str,
-        *,
-        far: bool,
-    ) -> None:
-        sleeve = JACKET if far else JACKET_MID
-        _bent_tube(
-            draw,
-            shoulder,
-            elbow,
-            hand,
-            (5.8 if far else 6.2, 4.8, 3.8),
-            fill=sleeve,
-            outline=OUTLINE,
-            width=1.15,
-        )
-        # Shirt cuff prevents the hand from looking fused directly to the jacket.
-        _, normal, _ = _unit_segment(elbow, hand)
-        cuff_center = _lerp_point(elbow, hand, 0.85)
-        cuff_a = (cuff_center[0] + normal[0] * 4.0, cuff_center[1] + normal[1] * 4.0)
-        cuff_b = (cuff_center[0] - normal[0] * 4.0, cuff_center[1] - normal[1] * 4.0)
-        _line(draw, [cuff_a, cuff_b], SHIRT_LIGHT, 2.0)
-        self._draw_hand(draw, elbow, hand, mode, far=far)
-
-    def _draw_hand(
-        self,
-        draw: ImageDraw.ImageDraw,
-        elbow: Point,
-        center: Point,
-        mode: str,
-        *,
-        far: bool,
-    ) -> None:
-        along, normal, _ = _unit_segment(elbow, center)
+    def _paint_hand(self, draw, o: float, mode: str, far: bool) -> None:
+        """The hand in its forearm's frame (the forearm runs along +x)."""
+        center = (o, o)
+        along, normal = (1.0, 0.0), (0.0, 1.0)
         skin = SKIN_SHADE if far else SKIN
-        _ellipse(draw, center, 4.2, 4.8, skin, OUTLINE, 0.9)
+        _ellipse(draw, center, 4.8, 4.2, skin, OUTLINE, 0.9)
 
         def finger(start: Point, end: Point, width: float = 1.05) -> None:
             _line(draw, [start, end], OUTLINE, width + 1.1)
@@ -944,162 +892,214 @@ class JeffHinterRenderer:
             thumb = _offset(center, normal[0] * 1.2, normal[1] * 1.2)
             finger(thumb, _offset(thumb, along[0] * 2.2, along[1] * 2.2), 0.75)
 
-    def _draw_head(
-        self,
-        image: Image.Image,
-        draw: ImageDraw.ImageDraw,
-        center: Point,
-        pose: Pose,
-    ) -> None:
-        cx, cy = center
+    def _paint_limb_plate(self, draw, o: float, length: float, far: bool, *, leg: bool, upper: bool) -> None:
+        """One bone's armor plate in the bone's frame, at full strength (the
+        draw's opacity fades it in): the upper plate (with the shoulder cap on
+        an arm), or the lower plate with its joint cap and ridge."""
+        root, end = (o, o), (o + length, o)
+        base = ARMOR_DARK if far else ARMOR_MID
+        highlight = ARMOR_MID if far else ARMOR_LIGHT
+        if upper:
+            if not leg:
+                _ellipse(draw, root, 6.7, 6.0, base, OUTLINE, 0.85)
+            reach, ra, rb, width = (0.88, 5.8, 4.5, 0.85) if leg else (0.86, 5.7, 4.4, 0.78)
+            _poly(draw, _segment_quad(root, _lerp_point(root, end, reach), ra, rb), base, OUTLINE, width)
+            return
+        lo, hi, ra, rb, width = (0.16, 0.88, 4.7, 4.0, 0.85) if leg else (0.10, 0.72, 4.5, 3.7, 0.78)
+        start, stop = _lerp_point(root, end, lo), _lerp_point(root, end, hi)
+        if leg:
+            _poly(draw, _segment_quad(start, stop, ra, rb), highlight, OUTLINE, width)
+            _ellipse(draw, root, 5.0, 4.2, ARMOR_CORE, OUTLINE, 0.75)
+            ridge = (1.2, 0.8, 0.62)
+        else:
+            _poly(draw, _segment_quad(start, stop, ra, rb), highlight, OUTLINE, width)
+            _ellipse(draw, root, 4.5, 4.2, ARMOR_CORE, OUTLINE, 0.7)
+            ridge = (1.0, 0.7, 0.58)
+        _line(draw, [(start[0], start[1] + ridge[0]), (stop[0], stop[1] + ridge[1])], ARMOR_EDGE, ridge[2])
+
+    # -- torso ------------------------------------------------------------
+
+    def _paint_torso(self, draw, o: float) -> None:
+        """The torso in the body's frame: ``(o, o)`` is the lean pivot (73, 112)."""
+
+        def T(point: Point) -> Point:
+            return (point[0] - 73.0 + o, point[1] - 112.0 + o)
+
+        left_shoulder = T((57.0, 78.0))
+        right_shoulder = T((87.5, 76.0))
+        left_waist = T((61.0, 116.0))
+        right_waist = T((84.0, 116.0))
+
+        # Shirt collar and neck are drawn before the jacket shell.
+        neck_center = T((72.0, 70.5))
+        _rounded(
+            draw,
+            (neck_center[0] - 5.1, neck_center[1] - 5.0, neck_center[0] + 5.1, neck_center[1] + 8.5),
+            3.0,
+            SKIN_SHADE,
+            OUTLINE,
+            0.8,
+        )
+        torso = [
+            left_shoulder,
+            T((66.0, 72.5)),
+            T((77.0, 72.0)),
+            right_shoulder,
+            T((91.0, 91.0)),
+            right_waist,
+            T((72.5, 119.5)),
+            left_waist,
+            T((53.0, 93.0)),
+        ]
+        _poly(draw, torso, JACKET, OUTLINE, 1.3)
+        # Open jacket exposes a soft blue shirt and makes the forward stoop read.
+        shirt = [T((67.0, 74.0)), T((77.0, 73.7)), T((80.5, 112.5)), T((68.0, 116.0)), T((63.0, 85.0))]
+        _poly(draw, shirt, SHIRT, OUTLINE_SOFT, 0.65)
+        _poly(draw, [T((67.0, 74.0)), T((72.0, 80.0)), T((64.5, 83.0))], SHIRT_LIGHT, OUTLINE_SOFT, 0.5)
+        _poly(draw, [T((77.0, 73.7)), T((72.0, 80.0)), T((80.0, 83.0))], SHIRT_DARK, OUTLINE_SOFT, 0.5)
+        # Jacket lapels, seams, and subtle academic rumpling.
+        _poly(draw, [T((62.0, 76.0)), T((68.0, 75.0)), T((66.0, 95.0)), T((57.5, 84.0))], JACKET_MID, OUTLINE_SOFT, 0.55)
+        _poly(draw, [T((78.0, 74.0)), T((86.5, 77.0)), T((87.5, 88.0)), T((79.0, 96.0))], JACKET_LIGHT, OUTLINE_SOFT, 0.55)
+        _line(draw, [T((72.5, 84.0)), T((73.0, 114.0))], OUTLINE_SOFT, 0.55)
+        _line(draw, [T((57.0, 103.0)), T((64.0, 106.5))], JACKET_LIGHT, 0.55)
+        _line(draw, [T((81.0, 105.0)), T((87.0, 102.0))], JACKET_DARK, 0.55)
+        _ellipse(draw, T((73.0, 98.0)), 0.85, 0.85, OUTLINE_SOFT, OUTLINE_SOFT, 0.2)
+        _ellipse(draw, T((73.0, 108.0)), 0.85, 0.85, OUTLINE_SOFT, OUTLINE_SOFT, 0.2)
+
+    def _paint_torso_armor(self, draw, o: float) -> None:
+        def T(point: Point) -> Point:
+            return (point[0] - 73.0 + o, point[1] - 112.0 + o)
+
+        shell = [T((58.0, 79.0)), T((67.0, 73.0)), T((78.0, 72.5)), T((88.5, 78.0)), T((90.0, 93.0)), T((84.0, 112.0)), T((73.0, 118.0)), T((61.0, 112.0)), T((54.0, 94.0))]
+        _poly(draw, shell, ARMOR_DARK, OUTLINE, 1.05)
+        left_plate = [T((59.0, 81.0)), T((69.5, 75.5)), T((71.0, 94.0)), T((61.0, 103.0)), T((56.5, 91.5))]
+        right_plate = [T((75.0, 75.0)), T((86.5, 80.0)), T((88.0, 93.0)), T((78.0, 103.0)), T((73.5, 94.0))]
+        abdomen = [T((62.0, 105.0)), T((72.5, 96.0)), T((82.5, 104.0)), T((81.0, 114.0)), T((72.5, 118.0)), T((63.0, 113.0))]
+        _poly(draw, left_plate, ARMOR_MID, OUTLINE_SOFT, 0.62)
+        _poly(draw, right_plate, ARMOR_LIGHT, OUTLINE_SOFT, 0.62)
+        _poly(draw, abdomen, ARMOR_CORE, OUTLINE_SOFT, 0.62)
+        _line(draw, [T((72.5, 76.0)), T((72.5, 94.0)), T((72.5, 116.0))], ARMOR_EDGE, 0.88)
+        for y in (87.0, 101.0, 113.0):
+            _ellipse(draw, T((72.5, y)), 1.15, 1.15, ARMOR_EDGE, OUTLINE_SOFT, 0.25)
+
+    def _paint_collar(self, draw, o: float) -> None:
+        def T(point: Point) -> Point:
+            return (point[0] - 73.0 + o, point[1] - 112.0 + o)
+
+        _poly(draw, [T((58.0, 78.0)), T((64.0, 69.5)), T((69.5, 75.0)), T((66.0, 84.0))], ARMOR_MID, OUTLINE, 0.75)
+        _poly(draw, [T((77.0, 74.0)), T((82.0, 68.8)), T((88.0, 78.0)), T((80.0, 84.0))], ARMOR_LIGHT, OUTLINE, 0.75)
+        _line(draw, [T((64.0, 70.5)), T((72.5, 76.0)), T((82.0, 69.8))], ARMOR_EDGE, 0.72)
+
+    # -- head -------------------------------------------------------------
+
+    def _place_head(self, image: Image.Image, center: Point, pose: Pose) -> None:
+        """The head turned by its tilt: the unchanging head, then the eyes,
+        brows and mouth, each a piece keyed by its (rounded) expression."""
+        tilt = pose.head_tilt
+        _put(image, _piece(("head",), 40.0, self._paint_head), center, tilt, "head")
+        gaze = (round(pose.gaze_x, 1), round(pose.gaze_y, 1))
+        _put(image, _piece(("eyes", pose.blink) + gaze, 40.0, lambda d, o: self._paint_eyes(d, o, pose.blink, gaze)), center, tilt, "eyes")
+        brow = round(pose.brow_lift, 1)
+        _put(image, _piece(("brows", brow), 40.0, lambda d, o: self._paint_brows(d, o, brow)), center, tilt, "brows")
+        mouth = (round(pose.mouth_open, 1), round(pose.mouth_round, 1), round(pose.mouth_smile, 2))
+        _put(image, _piece(("mouth",) + mouth, 40.0, lambda d, o: self._paint_mouth(d, o, *mouth)), center, tilt, "mouth")
+
+    def _paint_head(self, draw, o: float) -> None:
+        cx, cy = o, o
 
         def R(point: Point) -> Point:
-            return _rotate(point, center, pose.head_tilt)
+            return point
 
         # Ear first, behind the long three-quarter face.
         ear = R((cx - 13.7, cy + 0.8))
         _ellipse(draw, ear, 4.5, 6.7, SKIN_SHADE, OUTLINE, 0.9)
         _line(draw, [R((cx - 15.0, cy - 1.0)), R((cx - 12.8, cy + 1.5)), R((cx - 14.5, cy + 4.8))], SKIN_DEEP, 0.5)
-
         face = [
-            R((cx - 9.0, cy - 20.0)),
-            R((cx + 1.0, cy - 22.0)),
-            R((cx + 9.5, cy - 18.0)),
-            R((cx + 13.5, cy - 10.0)),
-            R((cx + 15.0, cy - 2.0)),
-            R((cx + 20.0, cy + 2.8)),
-            R((cx + 14.4, cy + 7.0)),
-            R((cx + 11.0, cy + 15.0)),
-            R((cx + 3.5, cy + 21.0)),
-            R((cx - 3.2, cy + 18.0)),
-            R((cx - 8.0, cy + 10.5)),
-            R((cx - 10.5, cy + 1.0)),
+            R((cx - 9.0, cy - 20.0)), R((cx + 1.0, cy - 22.0)), R((cx + 9.5, cy - 18.0)), R((cx + 13.5, cy - 10.0)),
+            R((cx + 15.0, cy - 2.0)), R((cx + 20.0, cy + 2.8)), R((cx + 14.4, cy + 7.0)), R((cx + 11.0, cy + 15.0)),
+            R((cx + 3.5, cy + 21.0)), R((cx - 3.2, cy + 18.0)), R((cx - 8.0, cy + 10.5)), R((cx - 10.5, cy + 1.0)),
             R((cx - 10.0, cy - 11.5)),
         ]
         _poly(draw, face, SKIN, OUTLINE, 1.2)
-
         # High forehead and gaunt cheek planes.
-        _poly(
-            draw,
-            [R((cx - 6.0, cy - 16.5)), R((cx + 1.5, cy - 20.0)), R((cx + 5.0, cy - 9.0)), R((cx - 2.5, cy - 6.5))],
-            SKIN_LIGHT,
-            None,
-            0,
-        )
-        _poly(
-            draw,
-            [R((cx + 7.5, cy + 3.5)), R((cx + 14.0, cy + 6.0)), R((cx + 10.5, cy + 14.0)), R((cx + 3.0, cy + 17.0))],
-            SKIN_SHADE,
-            None,
-            0,
-        )
-
+        _poly(draw, [R((cx - 6.0, cy - 16.5)), R((cx + 1.5, cy - 20.0)), R((cx + 5.0, cy - 9.0)), R((cx - 2.5, cy - 6.5))], SKIN_LIGHT, None, 0)
+        _poly(draw, [R((cx + 7.5, cy + 3.5)), R((cx + 14.0, cy + 6.0)), R((cx + 10.5, cy + 14.0)), R((cx + 3.0, cy + 17.0))], SKIN_SHADE, None, 0)
         # Swept-back silver hair: high crown, separated wisps, exposed forehead.
         hair_mass = [
-            R((cx - 9.5, cy - 15.5)),
-            R((cx - 11.0, cy - 24.0)),
-            R((cx - 5.0, cy - 28.5)),
-            R((cx + 1.5, cy - 31.5)),
-            R((cx + 8.0, cy - 30.0)),
-            R((cx + 12.5, cy - 25.0)),
-            R((cx + 8.5, cy - 21.5)),
-            R((cx + 3.0, cy - 24.0)),
-            R((cx - 1.5, cy - 18.0)),
-            R((cx - 6.0, cy - 9.0)),
-            R((cx - 11.0, cy - 7.5)),
+            R((cx - 9.5, cy - 15.5)), R((cx - 11.0, cy - 24.0)), R((cx - 5.0, cy - 28.5)), R((cx + 1.5, cy - 31.5)),
+            R((cx + 8.0, cy - 30.0)), R((cx + 12.5, cy - 25.0)), R((cx + 8.5, cy - 21.5)), R((cx + 3.0, cy - 24.0)),
+            R((cx - 1.5, cy - 18.0)), R((cx - 6.0, cy - 9.0)), R((cx - 11.0, cy - 7.5)),
         ]
         _poly(draw, hair_mass, HAIR, OUTLINE, 1.0)
         # Distinct upward/backward tufts make the silhouette recognizable at 1x.
-        _poly(
-            draw,
-            [R((cx - 7.0, cy - 25.0)), R((cx - 8.0, cy - 32.0)), R((cx - 2.0, cy - 28.0))],
-            HAIR_LIGHT,
-            OUTLINE_SOFT,
-            0.45,
-        )
-        _poly(
-            draw,
-            [R((cx - 1.5, cy - 29.0)), R((cx + 1.0, cy - 35.0)), R((cx + 5.0, cy - 29.5))],
-            HAIR_LIGHT,
-            OUTLINE_SOFT,
-            0.45,
-        )
-        _poly(
-            draw,
-            [R((cx + 4.0, cy - 29.0)), R((cx + 9.0, cy - 34.0)), R((cx + 10.5, cy - 27.0))],
-            HAIR_SHADE,
-            OUTLINE_SOFT,
-            0.45,
-        )
+        _poly(draw, [R((cx - 7.0, cy - 25.0)), R((cx - 8.0, cy - 32.0)), R((cx - 2.0, cy - 28.0))], HAIR_LIGHT, OUTLINE_SOFT, 0.45)
+        _poly(draw, [R((cx - 1.5, cy - 29.0)), R((cx + 1.0, cy - 35.0)), R((cx + 5.0, cy - 29.5))], HAIR_LIGHT, OUTLINE_SOFT, 0.45)
+        _poly(draw, [R((cx + 4.0, cy - 29.0)), R((cx + 9.0, cy - 34.0)), R((cx + 10.5, cy - 27.0))], HAIR_SHADE, OUTLINE_SOFT, 0.45)
         _line(draw, [R((cx - 4.0, cy - 25.5)), R((cx + 2.5, cy - 31.0)), R((cx + 8.5, cy - 29.0))], HAIR_LIGHT, 0.8)
         _line(draw, [R((cx - 8.0, cy - 15.0)), R((cx - 6.0, cy - 25.0))], HAIR_SHADE, 0.7)
         _line(draw, [R((cx - 6.0, cy - 9.0)), R((cx - 10.0, cy - 19.0))], HAIR, 1.0)
         _line(draw, [R((cx - 2.0, cy - 17.0)), R((cx + 2.0, cy - 23.0)), R((cx + 6.0, cy - 22.0))], OUTLINE_SOFT, 0.6)
 
-        # Rectangular glasses with a slightly oversized near lens.
+        # Rectangular glasses with a slightly oversized near lens: a tinted
+        # layer composited over the face, then the frames.
         far_center = R((cx - 2.3, cy - 4.7))
         near_center = R((cx + 7.0, cy - 4.5))
-        overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
+        canvas = draw._img
+        overlay = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
         od = blending_draw(overlay)
         _rounded(od, (far_center[0] - 4.6, far_center[1] - 3.8, far_center[0] + 4.6, far_center[1] + 3.8), 1.6, GLASS_TINT, None, 0)
         _rounded(od, (near_center[0] - 5.3, near_center[1] - 4.2, near_center[0] + 5.3, near_center[1] + 4.2), 1.8, GLASS_TINT, None, 0)
-        rigdoc.composite_canvas(image, overlay)
-        draw = blending_draw(image)
+        canvas.alpha_composite(overlay)
+        draw = blending_draw(canvas)
         _rounded(draw, (far_center[0] - 4.6, far_center[1] - 3.8, far_center[0] + 4.6, far_center[1] + 3.8), 1.6, None, GLASS_FRAME, 0.95)
         _rounded(draw, (near_center[0] - 5.3, near_center[1] - 4.2, near_center[0] + 5.3, near_center[1] + 4.2), 1.8, None, GLASS_FRAME, 1.05)
         _line(draw, [R((cx + 2.3, cy - 4.6)), R((cx + 2.7, cy - 4.6))], GLASS_FRAME, 0.8)
         _line(draw, [R((cx + 12.4, cy - 5.0)), R((cx + 16.0, cy - 6.5))], GLASS_FRAME, 0.65)
         _line(draw, [R((cx - 6.8, cy - 4.8)), R((cx - 11.0, cy - 6.0))], GLASS_FRAME, 0.55)
 
-        # Eyes track the imagined plane rather than the viewer.
-        for near, lens in ((False, far_center), (True, near_center)):
-            if pose.blink:
-                _line(draw, [(lens[0] - 2.0, lens[1]), (lens[0] + 2.0, lens[1])], EYE, 0.65)
-            else:
-                rx = 1.18 if near else 1.0
-                _ellipse(draw, lens, rx, 1.15, EYE_WHITE, OUTLINE, 0.3)
-                pupil = (
-                    lens[0] + pose.gaze_x * (0.65 if near else 0.5),
-                    lens[1] + pose.gaze_y * 0.55,
-                )
-                _ellipse(draw, pupil, 0.52 if near else 0.43, 0.56, EYE, EYE, 0.1)
-            brow_y = -10.5 - pose.brow_lift * (1.0 if near else 0.7)
-            if near:
-                _line(draw, [R((cx + 2.0, cy + brow_y)), R((cx + 10.5, cy + brow_y - 0.8))], HAIR_SHADE, 0.8)
-            else:
-                _line(draw, [R((cx - 6.5, cy + brow_y + 0.5)), R((cx - 0.8, cy + brow_y))], HAIR_SHADE, 0.65)
-
         # Long nose bridge and projected tip keep the head from reading as a
         # generic round elderly face.
         _line(draw, [R((cx + 2.8, cy - 0.5)), R((cx + 5.3, cy + 5.5))], SKIN_SHADE, 0.8)
         _line(draw, [R((cx + 5.3, cy + 5.5)), R((cx + 12.0, cy + 6.0)), R((cx + 7.2, cy + 8.2))], OUTLINE_SOFT, 0.68)
         _line(draw, [R((cx + 8.0, cy + 7.5)), R((cx + 10.0, cy + 8.6))], SKIN_DEEP, 0.35)
-
-        mouth_center = R((cx + 5.5, cy + 13.0))
-        if pose.mouth_open > 0.2:
-            mouth_rx = 3.7 + pose.mouth_round * 1.8
-            mouth_ry = 0.75 + pose.mouth_open * 2.2
-            _ellipse(draw, mouth_center, mouth_rx, mouth_ry, MOUTH, OUTLINE, 0.55)
-            if pose.mouth_round < 0.55:
-                _line(draw, [(mouth_center[0] - mouth_rx * 0.55, mouth_center[1] - 0.1), (mouth_center[0] + mouth_rx * 0.45, mouth_center[1] - 0.1)], TEETH, 0.55)
-        else:
-            curve = pose.mouth_smile * 2.2
-            _line(
-                draw,
-                [
-                    R((cx + 1.2, cy + 12.7)),
-                    R((cx + 5.6, cy + 13.2 + curve)),
-                    R((cx + 10.0, cy + 12.5)),
-                ],
-                MOUTH,
-                0.75,
-            )
-
         # Sparse age lines survive the downsample without muddying the face.
         _line(draw, [R((cx - 4.0, cy - 14.0)), R((cx + 2.0, cy - 14.8))], SKIN_SHADE, 0.35)
         _line(draw, [R((cx + 7.0, cy + 7.2)), R((cx + 10.0, cy + 8.5))], SKIN_DEEP, 0.35)
         _line(draw, [R((cx - 5.5, cy + 3.5)), R((cx - 4.5, cy + 9.0))], SKIN_SHADE, 0.35)
         _line(draw, [R((cx + 0.5, cy + 17.1)), R((cx + 6.3, cy + 17.4))], SKIN_DEEP, 0.4)
+
+    def _paint_eyes(self, draw, o: float, blink: bool, gaze: Tuple[float, float]) -> None:
+        """Eyes track the imagined plane rather than the viewer."""
+        for near, lens in ((False, (o - 2.3, o - 4.7)), (True, (o + 7.0, o - 4.5))):
+            if blink:
+                _line(draw, [(lens[0] - 2.0, lens[1]), (lens[0] + 2.0, lens[1])], EYE, 0.65)
+            else:
+                rx = 1.18 if near else 1.0
+                _ellipse(draw, lens, rx, 1.15, EYE_WHITE, OUTLINE, 0.3)
+                pupil = (lens[0] + gaze[0] * (0.65 if near else 0.5), lens[1] + gaze[1] * 0.55)
+                _ellipse(draw, pupil, 0.52 if near else 0.43, 0.56, EYE, EYE, 0.1)
+
+    def _paint_brows(self, draw, o: float, brow_lift: float) -> None:
+        cx, cy = o, o
+        near_y = -10.5 - brow_lift
+        far_y = -10.5 - brow_lift * 0.7
+        _line(draw, [(cx - 6.5, cy + far_y + 0.5), (cx - 0.8, cy + far_y)], HAIR_SHADE, 0.65)
+        _line(draw, [(cx + 2.0, cy + near_y), (cx + 10.5, cy + near_y - 0.8)], HAIR_SHADE, 0.8)
+
+    def _paint_mouth(self, draw, o: float, mouth_open: float, mouth_round: float, mouth_smile: float) -> None:
+        cx, cy = o, o
+        mouth_center = (cx + 5.5, cy + 13.0)
+        if mouth_open > 0.2:
+            mouth_rx = 3.7 + mouth_round * 1.8
+            mouth_ry = 0.75 + mouth_open * 2.2
+            _ellipse(draw, mouth_center, mouth_rx, mouth_ry, MOUTH, OUTLINE, 0.55)
+            if mouth_round < 0.55:
+                _line(draw, [(mouth_center[0] - mouth_rx * 0.55, mouth_center[1] - 0.1), (mouth_center[0] + mouth_rx * 0.45, mouth_center[1] - 0.1)], TEETH, 0.55)
+        else:
+            curve = mouth_smile * 2.2
+            _line(draw, [(cx + 1.2, cy + 12.7), (cx + 5.6, cy + 13.2 + curve), (cx + 10.0, cy + 12.5)], MOUTH, 0.75)
+
+    # -- effects ----------------------------------------------------------
 
     def _draw_shrinkwrap_field(self, draw: ImageDraw.ImageDraw, pose: Pose, T, *, front: bool) -> None:
         """Draw iterative manifold contours and shrinking residual vectors."""
@@ -1173,87 +1173,6 @@ class JeffHinterRenderer:
                 _fade(OUTLINE_SOFT, strength),
                 0.35,
             )
-
-    def _draw_leg_armor(self, draw: ImageDraw.ImageDraw, pose: Pose, T) -> None:
-        strength = pose.armor_strength
-        edge_strength = min(1.0, strength + pose.armor_lock * 0.55)
-        for far, hip, knee, ankle in (
-            (True, T(pose.far_hip), T(pose.far_knee), T(pose.far_ankle)),
-            (False, T(pose.near_hip), T(pose.near_knee), T(pose.near_ankle)),
-        ):
-            base = ARMOR_DARK if far else ARMOR_MID
-            highlight = ARMOR_MID if far else ARMOR_LIGHT
-            thigh_end = _lerp_point(hip, knee, 0.88)
-            shin_start = _lerp_point(knee, ankle, 0.16)
-            shin_end = _lerp_point(knee, ankle, 0.88)
-            _poly(draw, _segment_quad(hip, thigh_end, 5.8, 4.5), _fade(base, strength), _fade(OUTLINE, strength), 0.85)
-            _poly(draw, _segment_quad(shin_start, shin_end, 4.7, 4.0), _fade(highlight, strength), _fade(OUTLINE, strength), 0.85)
-            _ellipse(draw, knee, 5.0, 4.2, _fade(ARMOR_CORE, strength), _fade(OUTLINE, strength), 0.75)
-            _, normal, _ = _unit_segment(shin_start, shin_end)
-            ridge_a = _offset(shin_start, normal[0] * 1.2, normal[1] * 1.2)
-            ridge_b = _offset(shin_end, normal[0] * 0.8, normal[1] * 0.8)
-            _line(draw, [ridge_a, ridge_b], _fade(ARMOR_EDGE, edge_strength), 0.62)
-
-    def _draw_torso_armor(self, draw: ImageDraw.ImageDraw, pose: Pose, T) -> None:
-        strength = pose.armor_strength
-        edge_strength = min(1.0, strength + pose.armor_lock * 0.65)
-        shell = [
-            T((58.0, 79.0)),
-            T((67.0, 73.0)),
-            T((78.0, 72.5)),
-            T((88.5, 78.0)),
-            T((90.0, 93.0)),
-            T((84.0, 112.0)),
-            T((73.0, 118.0)),
-            T((61.0, 112.0)),
-            T((54.0, 94.0)),
-        ]
-        _poly(draw, shell, _fade(ARMOR_DARK, strength), _fade(OUTLINE, strength), 1.05)
-        left_plate = [T((59.0, 81.0)), T((69.5, 75.5)), T((71.0, 94.0)), T((61.0, 103.0)), T((56.5, 91.5))]
-        right_plate = [T((75.0, 75.0)), T((86.5, 80.0)), T((88.0, 93.0)), T((78.0, 103.0)), T((73.5, 94.0))]
-        abdomen = [T((62.0, 105.0)), T((72.5, 96.0)), T((82.5, 104.0)), T((81.0, 114.0)), T((72.5, 118.0)), T((63.0, 113.0))]
-        _poly(draw, left_plate, _fade(ARMOR_MID, strength), _fade(OUTLINE_SOFT, strength), 0.62)
-        _poly(draw, right_plate, _fade(ARMOR_LIGHT, strength), _fade(OUTLINE_SOFT, strength), 0.62)
-        _poly(draw, abdomen, _fade(ARMOR_CORE, strength), _fade(OUTLINE_SOFT, strength), 0.62)
-        seam = [T((72.5, 76.0)), T((72.5, 94.0)), T((72.5, 116.0))]
-        _line(draw, seam, _fade(ARMOR_EDGE, edge_strength), 0.88)
-        for y in (87.0, 101.0, 113.0):
-            _ellipse(draw, T((72.5, y)), 1.15, 1.15, _fade(ARMOR_EDGE, edge_strength), _fade(OUTLINE_SOFT, strength), 0.25)
-
-    def _draw_arm_armor(
-        self,
-        draw: ImageDraw.ImageDraw,
-        pose: Pose,
-        shoulder: Point,
-        elbow: Point,
-        hand: Point,
-        *,
-        far: bool,
-    ) -> None:
-        strength = pose.armor_strength
-        edge_strength = min(1.0, strength + pose.armor_lock * 0.55)
-        upper_end = _lerp_point(shoulder, elbow, 0.86)
-        fore_start = _lerp_point(elbow, hand, 0.10)
-        fore_end = _lerp_point(elbow, hand, 0.72)
-        base = ARMOR_DARK if far else ARMOR_MID
-        highlight = ARMOR_MID if far else ARMOR_LIGHT
-        _ellipse(draw, shoulder, 6.7, 6.0, _fade(base, strength), _fade(OUTLINE, strength), 0.85)
-        _poly(draw, _segment_quad(shoulder, upper_end, 5.7, 4.4), _fade(base, strength), _fade(OUTLINE, strength), 0.78)
-        _poly(draw, _segment_quad(fore_start, fore_end, 4.5, 3.7), _fade(highlight, strength), _fade(OUTLINE, strength), 0.78)
-        _ellipse(draw, elbow, 4.5, 4.2, _fade(ARMOR_CORE, strength), _fade(OUTLINE, strength), 0.7)
-        _, normal, _ = _unit_segment(fore_start, fore_end)
-        ridge_a = _offset(fore_start, normal[0] * 1.0, normal[1] * 1.0)
-        ridge_b = _offset(fore_end, normal[0] * 0.7, normal[1] * 0.7)
-        _line(draw, [ridge_a, ridge_b], _fade(ARMOR_EDGE, edge_strength), 0.58)
-
-    def _draw_armor_collar(self, draw: ImageDraw.ImageDraw, pose: Pose, T) -> None:
-        strength = pose.armor_strength
-        edge_strength = min(1.0, strength + pose.armor_lock * 0.7)
-        left = [T((58.0, 78.0)), T((64.0, 69.5)), T((69.5, 75.0)), T((66.0, 84.0))]
-        right = [T((77.0, 74.0)), T((82.0, 68.8)), T((88.0, 78.0)), T((80.0, 84.0))]
-        _poly(draw, left, _fade(ARMOR_MID, strength), _fade(OUTLINE, strength), 0.75)
-        _poly(draw, right, _fade(ARMOR_LIGHT, strength), _fade(OUTLINE, strength), 0.75)
-        _line(draw, [T((64.0, 70.5)), T((72.5, 76.0)), T((82.0, 69.8))], _fade(ARMOR_EDGE, edge_strength), 0.72)
 
     def _draw_hint_trace(self, draw: ImageDraw.ImageDraw, pose: Pose) -> None:
         strength = pose.hint_strength
@@ -1331,8 +1250,7 @@ class JeffHinterRenderer:
         strength = pose.shout_strength
         if strength <= 0.0:
             return
-        overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
-        draw = blending_draw(overlay)
+        draw = blending_draw(image)
 
         # The word starts near the mouth and expands sharply to the right.  It is
         # intentionally diegetic sprite FX, not dialogue UI.
@@ -1383,8 +1301,6 @@ class JeffHinterRenderer:
                 fill=(SHOUT[0], SHOUT[1], SHOUT[2], int(190 * fade)),
                 anchor="mm",
             )
-
-        rigdoc.composite_canvas(image, overlay)
 
 
 def render(out_dir: str | Path, **opts) -> List[Path]:

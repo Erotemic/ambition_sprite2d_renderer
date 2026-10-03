@@ -27,7 +27,7 @@ from PIL import Image, ImageDraw
 
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.portrait import PortraitClip, write_portrait_sheet
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -613,30 +613,83 @@ def _draw_book(draw: ImageDraw.ImageDraw, center: Point, angle: float, scale: fl
     rigdoc.composite_layer(draw._image, img, (int((center[0] - img.width / SUPER / 2) * SUPER), int((center[1] - img.height / SUPER / 2) * SUPER)), name="book")
 
 
-def _draw_character(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
-    # Render the articulated duck into its own layer so the whole body can lean
-    # or roll without having to duplicate every local transform.
-    layer = Image.new("RGBA", (FRAME_W * SUPER, FRAME_H * SUPER), (0, 0, 0, 0))
-    d = blending_draw(layer)
-    x0, y0 = 64.0 + pose.x, 70.0 + pose.y
-    sy = 1.0 - pose.squash
+def _rig_piece(key: tuple, size: Tuple[float, float], origin: Point, paint) -> tuple:
+    """A piece of Richard Duckling painted once (``shape_rig``): ``paint(draw)``
+    draws in frame units with its anchor at ``origin`` (frame units) on a
+    ``size`` (frame units) canvas. ``key`` names everything ``paint`` reads."""
+    return shape_rig.piece(("richard_duckling",) + key, (size[0] * SUPER, size[1] * SUPER), (origin[0] * SUPER, origin[1] * SUPER), paint)
+
+
+def _frame_layer(img: Image.Image, paint, name: str) -> None:
+    """A per-frame effect (it changes every frame) as ONE draw: ``paint(draw)``
+    paints frame-unit coordinates into a fresh canvas, placed cropped."""
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    paint(blending_draw(layer))
+    box = layer.getbbox()
+    if box is not None:
+        shape_rig.place(img, (layer.crop(box), (0.0, 0.0)), (float(box[0]), float(box[1])), 0.0, name)
+
+
+#: The whole figure leans (or rolls) about this frame point.
+LEAN_CENTER = (64.0, 72.0)
+#: The leg bones' fixed lengths (hip to knee, knee to ankle).
+THIGH = 11.5
+SHIN = 12.0
+
+
+class _Figure:
+    """Places pieces in the figure's unleaned frame, turned with the lean about
+    ``LEAN_CENTER`` (the old renderer turned the composed figure)."""
+
+    def __init__(self, img: Image.Image, lean: float) -> None:
+        self.img, self.lean = img, lean
+
+    def put(self, part: tuple, at: Point, name: str, degrees: float = 0.0) -> None:
+        world = _add(LEAN_CENTER, _rot((at[0] - LEAN_CENTER[0], at[1] - LEAN_CENTER[1]), self.lean))
+        shape_rig.place(self.img, part, (world[0] * SUPER, world[1] * SUPER), degrees + self.lean, name)
+
+    def bone(self, a: Point, b: Point, length: float, radius: float, fill: RGBA, name: str) -> None:
+        """``_capsule`` from ``a`` toward ``b``, a bone of fixed ``length``."""
+        pad = radius + 2
+        part = _rig_piece(
+            ("bone", length, radius, fill), (length + 2 * pad, 2 * pad), (pad, pad),
+            lambda d: _capsule(d, (pad, pad), (pad + length, pad), radius, fill),
+        )
+        self.put(part, a, name, math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])))
+
+
+def _leg_chain(hip: Point, ankle: Point, bend: float) -> Tuple[Point, Point]:
+    """Knee and ankle of a two-bone leg of fixed lengths reaching from ``hip``
+    toward ``ankle``; ``bend`` (+1/-1) picks the side the knee bends to. Out of
+    reach, the leg straightens and its ankle is the chain's end."""
+    dx, dy = ankle[0] - hip[0], ankle[1] - hip[1]
+    d = max(1e-6, math.hypot(dx, dy))
+    base = math.atan2(dy, dx)
+    if d >= THIGH + SHIN:
+        knee = (hip[0] + math.cos(base) * THIGH, hip[1] + math.sin(base) * THIGH)
+        return knee, (hip[0] + math.cos(base) * (THIGH + SHIN), hip[1] + math.sin(base) * (THIGH + SHIN))
+    a = math.acos(max(-1.0, min(1.0, (THIGH * THIGH + d * d - SHIN * SHIN) / (2 * THIGH * d))))
+    knee = (hip[0] + math.cos(base + bend * a) * THIGH, hip[1] + math.sin(base + bend * a) * THIGH)
+    return knee, ankle
+
+
+def _paint_foot(d: ImageDraw.ImageDraw, ox: float, oy: float, near: bool) -> None:
+    """Webbed toes from the ankle ``(ox, oy)``."""
+    if near:
+        _line(d, [(ox, oy), (ox + 8.0, oy + 1.0)], BILL_DARK, 2.5)
+        _line(d, [(ox, oy), (ox + 4.5, oy + 3.2)], BILL_DARK, 1.3)
+    else:
+        _line(d, [(ox, oy), (ox + 7.0, oy + 1.2)], BILL_DARK, 2.3)
+        _line(d, [(ox, oy), (ox + 4.0, oy + 3.0)], BILL_DARK, 1.2)
+
+
+def _paint_torso(d: ImageDraw.ImageDraw, x0: float, y0: float, sy: float) -> None:
+    """Tail, torso feather mass and academic clothes around ``(x0, y0)``."""
 
     def q(local: Point) -> Point:
         return x0 + local[0], y0 + local[1] * sy
 
-    # Far leg and foot.
-    far_hip = q((-6.0, 20.0))
-    far_knee = q((-8.0 - pose.stride * 0.30, 31.0 - pose.knee))
-    far_ankle = q((-7.0 - pose.stride * 0.58, 42.0))
-    _capsule(d, far_hip, far_knee, 2.1, BILL_DARK)
-    _capsule(d, far_knee, far_ankle, 1.8, BILL)
-    _line(d, [far_ankle, (far_ankle[0] + 7.0, far_ankle[1] + 1.2)], BILL_DARK, 2.3)
-    _line(d, [far_ankle, (far_ankle[0] + 4.0, far_ankle[1] + 3.0)], BILL_DARK, 1.2)
-
-    # Tail behind the body.
     _poly(d, [q((-16.0, 2.0)), q((-28.0, 4.0)), q((-19.0, 11.0)), q((-12.0, 8.0))], FEATHER_SHADE, OUTLINE, 1.0)
-
-    # Torso feather mass and academic clothes.
     _ellipse(d, q((0.0, 2.0)), 18.0, 25.0 * sy, FEATHER, OUTLINE, 1.4)
     _poly(d, [q((-13.0,-9.0)),q((12.0,-10.0)),q((16.0,16.0)),q((8.0,25.0)),q((-9.0,24.0)),q((-16.0,14.0))], VEST, OUTLINE, 1.0)
     _poly(d, [q((-11.0,-7.0)),q((-2.0,0.0)),q((-4.0,23.0)),q((-10.0,23.0)),q((-15.0,13.0))], VEST_DARK, None)
@@ -651,30 +704,17 @@ def _draw_character(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
     for bx, by in [(-7.0, 6.0), (7.0, 6.0), (-7.0, 16.0), (7.0, 16.0)]:
         _ellipse(d, q((bx, by)), 0.8, 0.8, TWEED, None)
 
-    # Far wing.
-    far_root = q((-13.0, -3.0))
-    far_tip = _add(far_root, _rot((24.0, 0.0), pose.wing_l))
-    _capsule(d, far_root, far_tip, 4.5, FEATHER_SHADE)
-    _poly(d, [far_tip, _add(far_tip, _rot((8.0,-2.8), pose.wing_l)), _add(far_tip, _rot((8.0,2.8), pose.wing_l))], FEATHER_SHADE, OUTLINE, 0.7)
 
-    # Near wing.
-    near_root = q((14.0, -2.0))
-    near_tip = _add(near_root, _rot((25.0, 0.0), pose.wing_r))
-    _capsule(d, near_root, near_tip, 5.0, FEATHER)
-    _poly(d, [near_tip, _add(near_tip, _rot((8.5,-3.0), pose.wing_r)), _add(near_tip, _rot((8.5,3.0), pose.wing_r))], FEATHER_LIGHT, OUTLINE, 0.75)
+def _paint_wing(d: ImageDraw.ImageDraw, ox: float, oy: float, length: float, radius: float, fill: RGBA, tip_fill: RGBA, tip: Tuple[float, float], tip_w: float) -> None:
+    """A wing along +x from its root ``(ox, oy)``: the feather capsule and its tip."""
+    end = (ox + length, oy)
+    _capsule(d, (ox, oy), end, radius, fill)
+    _poly(d, [end, (end[0] + tip[0], end[1] - tip[1]), (end[0] + tip[0], end[1] + tip[1])], tip_fill, OUTLINE, tip_w)
 
-    # Near leg and foot.
-    near_hip = q((6.0, 20.0))
-    near_knee = q((8.0 + pose.stride * 0.30, 31.0 - pose.knee))
-    near_ankle = q((7.0 + pose.stride * 0.58, 42.0))
-    _capsule(d, near_hip, near_knee, 2.2, BILL_DARK)
-    _capsule(d, near_knee, near_ankle, 1.9, BILL)
-    _line(d, [near_ankle, (near_ankle[0] + 8.0, near_ankle[1] + 1.0)], BILL_DARK, 2.5)
-    _line(d, [near_ankle, (near_ankle[0] + 4.5, near_ankle[1] + 3.2)], BILL_DARK, 1.3)
 
-    # Neck, head and crest.
-    _ellipse(d, q((2.0, -18.0)), 9.0, 11.0, FEATHER, OUTLINE, 1.0)
-    head = q((4.0, -31.0))
+def _paint_head(d: ImageDraw.ImageDraw, hx: float, hy: float, beak_open: float, eye_closed: bool) -> None:
+    """Head, swept crest, bill, eyes, brows and spectacles around ``(hx, hy)``."""
+    head = (hx, hy)
     _ellipse(d, head, 15.5, 14.0, FEATHER, OUTLINE, 1.3)
     _ellipse(d, (head[0] + 2.0, head[1] - 2.0), 12.3, 10.0, FEATHER_LIGHT, None)
     # White swept crest.
@@ -691,15 +731,15 @@ def _draw_character(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
     # Bill with independent opening.
     bill_y = head[1] + 1.0
     _poly(d, [(head[0]+10.0,bill_y-3.0),(head[0]+27.0,bill_y-1.3),(head[0]+11.0,bill_y+2.0)], BILL_LIGHT, OUTLINE, 0.9)
-    lower_drop = 2.0 + pose.beak_open * 5.0
+    lower_drop = 2.0 + beak_open * 5.0
     _poly(d, [(head[0]+10.0,bill_y+1.0),(head[0]+25.0,bill_y+2.0),(head[0]+11.0,bill_y+lower_drop)], BILL, OUTLINE, 0.8)
-    if pose.beak_open > 0.35:
+    if beak_open > 0.35:
         _poly(d, [(head[0]+12.0,bill_y+1.7),(head[0]+22.0,bill_y+2.4),(head[0]+12.5,bill_y+lower_drop-0.8)], BILL_DARK, None)
 
     # Eyes and skeptical brows.
     eye1 = (head[0] + 1.0, head[1] - 3.0)
     eye2 = (head[0] + 8.0, head[1] - 2.5)
-    if pose.eye_closed:
+    if eye_closed:
         _line(d, [(eye1[0]-2.0,eye1[1]),(eye1[0]+2.0,eye1[1]+0.5)], EYE, 0.9)
         _line(d, [(eye2[0]-2.0,eye2[1]),(eye2[0]+2.0,eye2[1]+0.4)], EYE, 0.9)
     else:
@@ -715,32 +755,84 @@ def _draw_character(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
     _line(d, [(eye1[0]+4.0,eye1[1]),(eye2[0]-4.0,eye2[1])], OUTLINE_SOFT, 0.75)
     _line(d, [(eye1[0]-4.0,eye1[1]),(head[0]-12.0,head[1]-1.0)], OUTLINE_SOFT, 0.75)
 
+
+def _paint_book(d: ImageDraw.ImageDraw, ox: float, oy: float, scale: float) -> None:
+    """The notebook, unturned, centred on ``(ox, oy)``."""
+    w, h = 16.0 * scale, 21.0 * scale
+    _poly(d, [(ox-w/2,oy-h/2),(ox+w/2,oy-h/2),(ox+w/2,oy+h/2),(ox-w/2,oy+h/2)], BURGUNDY, OUTLINE, 1.0)
+    _poly(d, [(ox-w/2+2,oy-h/2+2),(ox+w/2-1.2,oy-h/2+2),(ox+w/2-1.2,oy+h/2-2),(ox-w/2+2,oy+h/2-2)], PAPER, None)
+    _line(d, [(ox-2.0,oy-h/2+3.0),(ox-2.0,oy+h/2-3.0)], BURGUNDY_LIGHT, 1.0)
+    _ellipse(d, (ox+3.0, oy-2.0), 2.3, 2.1, FEATHER_LIGHT, OUTLINE, 0.45)
+    _poly(d, [(ox+4.5,oy-2.2),(ox+7.1,oy-1.3),(ox+4.5,oy-0.5)], BILL, OUTLINE, 0.35)
+    _line(d, [(ox+0.5,oy+3.0),(ox+6.0,oy+3.0)], INK, 0.5)
+
+
+def _draw_character(img: Image.Image, pose: Pose) -> None:
+    """Richard Duckling as a rig: torso, wings, feet, neck, head, book and
+    pointer are pieces painted once and placed; legs are fixed-length bones.
+    The figure leans (or rolls) about ``LEAN_CENTER`` as a whole."""
+    fig = _Figure(img, pose.lean)
+    x0, y0 = 64.0 + pose.x, 70.0 + pose.y
+    sy = round(1.0 - pose.squash, 2)
+
+    def q(local: Point) -> Point:
+        return x0 + local[0], y0 + local[1] * sy
+
+    def leg(side: str, hip: Point, ankle: Point, bend: float, radii: Tuple[float, float], near: bool) -> None:
+        knee, ankle = _leg_chain(hip, ankle, bend)
+        fig.bone(hip, knee, THIGH, radii[0], BILL_DARK, f"{side}_thigh")
+        fig.bone(knee, ankle, SHIN, radii[1], BILL, f"{side}_shin")
+        foot = _rig_piece(("foot", near), (16, 10), (4, 4), lambda d: _paint_foot(d, 4, 4, near))
+        fig.put(foot, ankle, f"{side}_foot")
+
+    # Far leg and foot.
+    leg("far", q((-6.0, 20.0)), q((-7.0 - pose.stride * 0.58, 42.0)), 1.0, (2.1, 1.8), False)
+
+    # Tail, torso feather mass and academic clothes.
+    torso = _rig_piece(("torso", sy), (56, 62), (32, 30), lambda d: _paint_torso(d, 32, 30, sy))
+    fig.put(torso, (x0, y0), "torso")
+
+    # Far wing.
+    far_root = q((-13.0, -3.0))
+    far_wing = _rig_piece(("far_wing",), (46, 18), (7, 9), lambda d: _paint_wing(d, 7, 9, 24.0, 4.5, FEATHER_SHADE, FEATHER_SHADE, (8.0, 2.8), 0.7))
+    fig.put(far_wing, far_root, "far_wing", pose.wing_l)
+
+    # Near wing.
+    near_root = q((14.0, -2.0))
+    near_tip = _add(near_root, _rot((25.0, 0.0), pose.wing_r))
+    near_wing = _rig_piece(("near_wing",), (48, 18), (7, 9), lambda d: _paint_wing(d, 7, 9, 25.0, 5.0, FEATHER, FEATHER_LIGHT, (8.5, 3.0), 0.75))
+    fig.put(near_wing, near_root, "near_wing", pose.wing_r)
+
+    # Near leg and foot.
+    leg("near", q((6.0, 20.0)), q((7.0 + pose.stride * 0.58, 42.0)), -1.0, (2.2, 1.9), True)
+
+    # Neck, head and crest.
+    neck = _rig_piece(("neck",), (22, 26), (11, 13), lambda d: _ellipse(d, (11, 13), 9.0, 11.0, FEATHER, OUTLINE, 1.0))
+    fig.put(neck, q((2.0, -18.0)), "neck")
+    beak = round(pose.beak_open * 20) / 20
+    head = _rig_piece(("head", beak, pose.eye_closed), (64, 48), (20, 28), lambda d: _paint_head(d, 20, 28, beak, pose.eye_closed))
+    fig.put(head, q((4.0, -31.0)), "head")
+
     # Notebook held in front for blocking/casting interactions.
     if pose.book_front:
-        _draw_book(d, (near_tip[0] + 2.0, near_tip[1] - 1.0), pose.book_angle, 0.9)
+        book = _rig_piece(("book", 0.9), (24, 28), (12, 14), lambda d: _paint_book(d, 12, 14, 0.9))
+        fig.put(book, (near_tip[0] + 2.0, near_tip[1] - 1.0), "book", pose.book_angle)
     if pose.pointer:
-        end = _add(near_tip, _rot((23.0, 0.0), -42.0))
-        _line(d, [near_tip, end], TWEED, 1.3)
-        _ellipse(d, end, 1.0, 1.0, BURGUNDY_LIGHT, None)
+        def paint_pointer(d: ImageDraw.ImageDraw) -> None:
+            end = _add((4.0, 20.0), _rot((23.0, 0.0), -42.0))
+            _line(d, [(4.0, 20.0), end], TWEED, 1.3)
+            _ellipse(d, end, 1.0, 1.0, BURGUNDY_LIGHT, None)
 
-    # Rotate the composed figure around its center for leaning/rolling.
-    if abs(pose.lean) > 0.01:
-        layer = layer.rotate(-pose.lean, resample=Image.Resampling.BICUBIC, center=_p((64.0, 72.0)))
-    rigdoc.composite_canvas(draw._image, layer)
+        fig.put(_rig_piece(("pointer",), (26, 24), (4, 20), paint_pointer), near_tip, "pointer")
 
 
 def render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     pose = _pose(anim, frame_idx, nframes)
-    behind = Image.new("RGBA", (FRAME_W * SUPER, FRAME_H * SUPER), (0, 0, 0, 0))
-    body = Image.new("RGBA", behind.size, (0, 0, 0, 0))
-    front = Image.new("RGBA", behind.size, (0, 0, 0, 0))
-    _draw_effects_behind(blending_draw(behind), pose)
-    _draw_character(blending_draw(body), pose)
-    _draw_effects_front(blending_draw(front), pose)
-    image = Image.new("RGBA", behind.size, (0, 0, 0, 0))
-    rigdoc.composite_canvas(image, behind)
-    rigdoc.composite_canvas(image, body)
-    rigdoc.composite_canvas(image, front)
+    image = Image.new("RGBA", (FRAME_W * SUPER, FRAME_H * SUPER), (0, 0, 0, 0))
+    # The effects change every frame: each layer is one draw.
+    _frame_layer(image, lambda d: _draw_effects_behind(d, pose), "effects_behind")
+    _draw_character(image, pose)
+    _frame_layer(image, lambda d: _draw_effects_front(d, pose), "effects_front")
     if pose.alpha < 0.999:
         image = rigdoc.faded_canvas(image, max(0.0, pose.alpha))
     return rigdoc.downsampled_canvas(image, (FRAME_W, FRAME_H), Image.Resampling.LANCZOS)

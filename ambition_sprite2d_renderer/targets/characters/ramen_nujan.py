@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import math
+from types import SimpleNamespace
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Sequence, Tuple
@@ -41,6 +42,8 @@ from ...authoring import rigdoc
 from ...authoring.part_flipbook import publish_rig_flipbook
 from PIL import Image, ImageDraw
 from ambition_sprite2d_renderer.core.draw import blending_draw
+
+from . import _solo_shape_rig as SR
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -1053,6 +1056,15 @@ def _rotate(point: Point, origin: Point, degrees: float) -> Point:
     return (origin[0] + x * c - y * s, origin[1] + x * s + y * c)
 
 
+def _sp(point: Point) -> Point:
+    """A logical point in supersampled canvas pixels, unrounded."""
+    return (point[0] * SUPER, point[1] * SUPER)
+
+
+#: The torso's squash is painted about this point (the default turn pivot).
+TORSO_REFERENCE: Point = (64.5, 84.0)
+
+
 def _downsample(image: Image.Image) -> Image.Image:
     return rigdoc.downsampled_canvas(image, FRAME_SIZE, Image.Resampling.LANCZOS)
 
@@ -1178,6 +1190,11 @@ class RamenNujanRenderer:
         draw = blending_draw(image)
         pose = Pose(animation, frame_idx, nframes)
         self._reproportion_pose(pose, animation, frame_idx, nframes)
+        # Drawn as a rig: the torso (one piece per squash step) and each head
+        # expression are painted once and placed by the whole-body turn; limbs
+        # are tapered tubes of turned segments through the authored joints;
+        # hands, shoes, cuffs and caps ride their joints. The ability glyphs
+        # stay shapes (effects).
 
         def P(point: Point) -> Point:
             px, py = point
@@ -1188,32 +1205,42 @@ class RamenNujanRenderer:
                 px, py = _rotate((px, py), pose.rotation_pivot, pose.rotation)
             return (px + pose.body_x, py + pose.body_y)
 
-        self._draw_far_leg(draw, P, pose)
-        self._draw_near_leg(draw, P, pose)
-        self._draw_torso(draw, P)
-        self._draw_far_arm(draw, P, pose)
-        self._draw_near_arm(draw, P, pose)
+        self._draw_far_leg(image, P, pose)
+        self._draw_near_leg(image, P, pose)
+        self._place_torso(image, P, pose)
+        self._draw_far_arm(image, P, pose)
+        self._draw_near_arm(image, P, pose)
         self._draw_ability_effects(draw, P, pose, animation, frame_idx, nframes)
         pose.head_tilt += pose.rotation
-        self._draw_head(
-            image,
-            draw,
-            P((63.2 + pose.head_x, 36.5 + pose.head_y)),
-            pose,
-        )
+        self._place_head(image, P((63.2 + pose.head_x, 36.5 + pose.head_y)), pose)
         return _ensure_canvas_inset(_downsample(image))
 
-    def _draw_far_leg(self, draw: ImageDraw.ImageDraw, P, pose: Pose) -> None:
-        self._draw_leg(draw, P(pose.far_hip), P(pose.far_knee), P(pose.far_ankle), near=False)
+    def _draw_far_leg(self, image: Image.Image, P, pose: Pose) -> None:
+        self._draw_leg(image, P(pose.far_hip), P(pose.far_knee), P(pose.far_ankle), near=False)
 
-    def _draw_near_leg(self, draw: ImageDraw.ImageDraw, P, pose: Pose) -> None:
-        self._draw_leg(draw, P(pose.near_hip), P(pose.near_knee), P(pose.near_ankle), near=True)
+    def _draw_near_leg(self, image: Image.Image, P, pose: Pose) -> None:
+        self._draw_leg(image, P(pose.near_hip), P(pose.near_knee), P(pose.near_ankle), near=True)
 
-    def _draw_leg(self, draw: ImageDraw.ImageDraw, hip: Point, knee: Point, ankle: Point, *, near: bool) -> None:
+    def _draw_leg(self, image: Image.Image, hip: Point, knee: Point, ankle: Point, *, near: bool) -> None:
         cloth = TROUSER_LIGHT if near else TROUSER
         shade = TROUSER if near else SUIT_DARK
-        _bent_tube(draw, hip, knee, ankle, (4.65, 3.95, 2.95), fill=cloth, width=1.10)
-        _line(draw, [(knee[0] - 1.4, knee[1]), (knee[0] + 1.2, knee[1] + 0.5)], shade, 0.55)
+        side = "near" if near else "far"
+        SR.tube2(image, _sp(hip), _sp(knee), _sp(ankle), (4.65 * SUPER, 3.95 * SUPER, 2.95 * SUPER), cloth, OUTLINE, 1.10 * SUPER, f"{side}_leg", q=float(SUPER))
+        crease = SR.rest_piece(
+            ("ramen_crease", shade), (_s(8), _s(8)), _pt((4.0, 4.0)), lambda d: _line(d, [(4.0 - 1.4, 4.0), (4.0 + 1.2, 4.0 + 0.5)], shade, 0.55)
+        )
+        SR.place(image, crease, _sp(knee), 0.0, f"{side}_crease")
+        # Hem and shoe, painted once with the shin upright and turned to the
+        # shin's axis.
+        along, _normal, _ = _unit_segment(knee, ankle)
+        local_knee, local_ankle = (16.0, 6.0), (16.0, 16.0)
+        shoe = SR.rest_piece(
+            ("ramen_shoe", near), (_s(32), _s(32)), _pt(local_ankle), lambda d: self._paint_shoe(d, local_knee, local_ankle, near=near)
+        )
+        SR.place(image, shoe, _sp(ankle), math.degrees(math.atan2(along[1], along[0])) - 90.0, f"{side}_shoe")
+
+    def _paint_shoe(self, draw: ImageDraw.ImageDraw, knee: Point, ankle: Point, *, near: bool) -> None:
+        shade = TROUSER if near else SUIT_DARK
         _ellipse(draw, (ankle[0], ankle[1] - 0.5), 2.85, 2.55, shade, OUTLINE, 0.80)
         along, normal, _ = _unit_segment(knee, ankle)
         foot_dir = (-normal[0], -normal[1])
@@ -1240,6 +1267,18 @@ class RamenNujanRenderer:
             SHOE_LIGHT,
             0.45,
         )
+
+    def _place_torso(self, image: Image.Image, P, pose: Pose) -> None:
+        """The torso painted once per squash step (about a fixed reference, so
+        any pivot shares it) and placed by the body transform."""
+        sx, sy = SR.q(pose.scale_x, 0.04), SR.q(pose.scale_y, 0.04)
+        ref = TORSO_REFERENCE
+
+        def S(point: Point) -> Point:
+            return (ref[0] + (point[0] - ref[0]) * sx, ref[1] + (point[1] - ref[1]) * sy)
+
+        part = SR.rest_piece(("ramen_torso", sx, sy), image.size, _sp(ref), lambda d: self._draw_torso(d, S))
+        SR.place(image, part, _sp(P(ref)), pose.rotation, "torso")
 
     def _draw_torso(self, draw: ImageDraw.ImageDraw, P) -> None:
         # Long, asymmetrical scholar coat: narrow at the shoulders, fuller at
@@ -1346,15 +1385,15 @@ class RamenNujanRenderer:
             width=max(1, _s(0.85)),
         )
 
-    def _draw_far_arm(self, draw: ImageDraw.ImageDraw, P, pose: Pose) -> None:
-        self._draw_arm(draw, P(pose.far_shoulder), P(pose.far_elbow), P(pose.far_hand), pose.far_hand_mode, near=False)
+    def _draw_far_arm(self, image: Image.Image, P, pose: Pose) -> None:
+        self._draw_arm(image, P(pose.far_shoulder), P(pose.far_elbow), P(pose.far_hand), pose.far_hand_mode, near=False)
 
-    def _draw_near_arm(self, draw: ImageDraw.ImageDraw, P, pose: Pose) -> None:
-        self._draw_arm(draw, P(pose.near_shoulder), P(pose.near_elbow), P(pose.near_hand), pose.near_hand_mode, near=True)
+    def _draw_near_arm(self, image: Image.Image, P, pose: Pose) -> None:
+        self._draw_arm(image, P(pose.near_shoulder), P(pose.near_elbow), P(pose.near_hand), pose.near_hand_mode, near=True)
 
     def _draw_arm(
         self,
-        draw: ImageDraw.ImageDraw,
+        image: Image.Image,
         shoulder: Point,
         elbow: Point,
         hand: Point,
@@ -1364,15 +1403,26 @@ class RamenNujanRenderer:
     ) -> None:
         sleeve = SUIT_LIGHT if near else SUIT_DARK
         seam = NOODLE_GOLD if near else OUTLINE_SOFT
+        side = "near" if near else "far"
         along, normal, length = _unit_segment(elbow, hand)
         wrist = (hand[0] - along[0] * min(3.0, length * 0.30), hand[1] - along[1] * min(3.0, length * 0.30))
-        _bent_tube(draw, shoulder, elbow, wrist, (5.35, 4.2, 3.05), fill=sleeve, width=1.10)
-        seam_start = (shoulder[0] - normal[0] * 1.25, shoulder[1] - normal[1] * 1.25)
-        seam_end = (wrist[0] - normal[0] * 0.7, wrist[1] - normal[1] * 0.7)
-        _line(draw, [seam_start, elbow, seam_end], seam, 0.55)
-        _ellipse(draw, shoulder, 4.9, 4.5, sleeve, OUTLINE, 0.95)
-        _ellipse(draw, wrist, 3.1, 2.7, SHIRT if near else SHIRT_SHADE, OUTLINE, 0.78)
-        self._draw_hand(draw, wrist, hand, hand_mode, near=near)
+        seam_w = 0.55 * SUPER
+        SR.tube2(
+            image, _sp(shoulder), _sp(elbow), _sp(wrist), (5.35 * SUPER, 4.2 * SUPER, 3.05 * SUPER), sleeve, OUTLINE, 1.10 * SUPER, f"{side}_arm",
+            q=float(SUPER), seams=((seam, seam_w, 1.25 * SUPER, 0.0), (seam, seam_w, 0.0, 0.7 * SUPER)),
+        )
+        cap = SR.rest_piece(("ramen_cap", sleeve), (_s(16), _s(16)), _pt((8.0, 8.0)), lambda d: _ellipse(d, (8.0, 8.0), 4.9, 4.5, sleeve, OUTLINE, 0.95))
+        SR.place(image, cap, _sp(shoulder), 0.0, f"{side}_shoulder")
+        cuff_fill = SHIRT if near else SHIRT_SHADE
+        cuff = SR.rest_piece(("ramen_cuff", cuff_fill), (_s(10), _s(10)), _pt((5.0, 5.0)), lambda d: _ellipse(d, (5.0, 5.0), 3.1, 2.7, cuff_fill, OUTLINE, 0.78))
+        SR.place(image, cuff, _sp(wrist), 0.0, f"{side}_cuff")
+        # The hand, painted once pointing along +x and turned to the forearm.
+        h_along, _n, _l = _unit_segment(wrist, hand)
+        center = (12.0, 12.0)
+        part = SR.rest_piece(
+            ("ramen_hand", hand_mode, near), (_s(24), _s(24)), _pt(center), lambda d: self._draw_hand(d, (9.0, 12.0), center, hand_mode, near=near)
+        )
+        SR.place(image, part, _sp(hand), math.degrees(math.atan2(h_along[1], h_along[0])), f"{side}_hand")
 
     def _draw_hand(self, draw: ImageDraw.ImageDraw, wrist: Point, center: Point, mode: str, *, near: bool) -> None:
         skin = SKIN_LIGHT if near else SKIN
@@ -1541,6 +1591,20 @@ class RamenNujanRenderer:
         for pts, color, width in ((top_one, DREAM_AURA, 1.1), (slash, DREAM_ORANGE, 1.2), (lower_one, DREAM_AURA, 1.0), (lower_two, DREAM_ORANGE, 1.0)):
             _line(draw, pts, OUTLINE, width + 1.0)
             _line(draw, pts, color, width)
+
+    def _place_head(self, image: Image.Image, center: Point, pose: Pose) -> None:
+        """The head: one piece per expression, turned by its tilt."""
+        expr = SimpleNamespace(
+            head_tilt=0.0,
+            blink=bool(pose.blink),
+            brow_lift=SR.q(pose.brow_lift, 0.1),
+            mouth_open=SR.q(pose.mouth_open, 0.1),
+            mouth_smile=SR.q(pose.mouth_smile, 0.05),
+        )
+        key = ("ramen_head", expr.blink, expr.brow_lift, expr.mouth_open, expr.mouth_smile)
+        local = (36.0, 38.0)
+        part = SR.rest_piece(key, (_s(72), _s(72)), _pt(local), lambda d: self._draw_head(d._img, d, local, expr))
+        SR.place(image, part, _sp(center), pose.head_tilt, "head")
 
     def _draw_head(self, image: Image.Image, draw: ImageDraw.ImageDraw, center: Point, pose: Pose) -> None:
         cx, cy = center

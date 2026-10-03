@@ -24,11 +24,12 @@ from typing import List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.portrait import FaceGuide, PortraitClip, render_framed_portrait, write_portrait_sheet
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ...core.draw import blending_draw
+from . import _solo_shape_rig as SR
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -655,36 +656,32 @@ def _orbit_point(center: Point, rx: float, ry: float, angle: float, theta: float
     return (center[0] + rotated[0], center[1] + rotated[1])
 
 
-def _draw_orbit_layer(
-    center: Point,
-    rx: float,
-    ry: float,
-    angle: float,
-    color: RGBA,
-    phase: float,
-    alpha_scale: float,
-    electron_scale: float,
-) -> Image.Image:
-    layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ring = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    rd = blending_draw(ring)
-    c = (color[0], color[1], color[2], int(color[3] * alpha_scale))
-    rd.ellipse(_box(center[0] - rx, center[1] - ry, center[0] + rx, center[1] + ry), outline=c, width=max(1, _s(1.15)))
-    ring = ring.rotate(angle, resample=Image.Resampling.BICUBIC, center=_pt(*center), fillcolor=(0, 0, 0, 0))
-    # Through rigdoc's seams, so a part flipbook records the frame: the turned
-    # ring as one picture, the electron's shapes as themselves.
-    rigdoc.composite_canvas(layer, ring)
+def _ring_piece(rx: float, ry: float, color: RGBA):
+    """One orbital plane, unturned, centred on its pivot."""
+    pad = _s(max(rx, ry) + 3.0)
 
-    ex, ey = _orbit_point(center, rx, ry, angle, phase)
-    glow = blending_draw(layer)
-    glow.ellipse(_box(ex - 5.2 * electron_scale, ey - 5.2 * electron_scale, ex + 5.2 * electron_scale, ey + 5.2 * electron_scale), fill=(ELECTRON_GLOW[0], ELECTRON_GLOW[1], ELECTRON_GLOW[2], int(ELECTRON_GLOW[3] * alpha_scale)))
-    glow.ellipse(_box(ex - 2.2 * electron_scale, ey - 2.2 * electron_scale, ex + 2.2 * electron_scale, ey + 2.2 * electron_scale), fill=(ELECTRON[0], ELECTRON[1], ELECTRON[2], int(255 * alpha_scale)), outline=(color[0], color[1], color[2], int(255 * alpha_scale)), width=max(1, _s(0.65)))
-    return layer
+    def paint(d) -> None:
+        d.ellipse((pad - _s(rx), pad - _s(ry), pad + _s(rx), pad + _s(ry)), outline=color, width=max(1, _s(1.15)))
+
+    return shape_rig.piece(("niels_ring", rx, ry, color), (2 * pad, 2 * pad), (pad, pad), paint)
+
+
+def _electron_piece(color: RGBA, electron_scale: float):
+    pad = _s(5.2 * electron_scale + 2.0)
+
+    def paint(d) -> None:
+        g, c = 5.2 * electron_scale, 2.2 * electron_scale
+        d.ellipse((pad - _s(g), pad - _s(g), pad + _s(g), pad + _s(g)), fill=ELECTRON_GLOW)
+        d.ellipse((pad - _s(c), pad - _s(c), pad + _s(c), pad + _s(c)), fill=ELECTRON, outline=(color[0], color[1], color[2], 255), width=max(1, _s(0.65)))
+
+    return shape_rig.piece(("niels_electron", color, electron_scale), (2 * pad, 2 * pad), (pad, pad), paint)
 
 
 def _draw_orbits(img: Image.Image, p: Pose, foreground: bool = False) -> None:
+    """The orbital planes as turned pieces (one per plane and scale step) and
+    their electrons riding them, faded by the pose's ring alpha."""
     center = (72.0 + p.body_x + p.ring_center_x, 76.0 + p.body_y + p.ring_center_y)
-    scale = max(0.12, p.ring_scale)
+    scale = SR.q(max(0.12, p.ring_scale), 0.05)
     electron_scale = 1.0 + 0.35 * p.electron_boost
     alpha = _clamp01(p.ring_alpha)
     specs = [
@@ -697,95 +694,74 @@ def _draw_orbits(img: Image.Image, p: Pose, foreground: bool = False) -> None:
         # front to preserve the readable atom without flattening the character.
         if foreground != (idx == 0):
             continue
-        layer = _draw_orbit_layer(
-            center,
-            rx * scale,
-            ry * scale,
-            angle,
-            color,
-            phase + math.radians(p.ring_spin * (1.1 + idx * 0.2)),
-            alpha,
-            electron_scale,
-        )
-        rigdoc.composite_canvas(img, layer)
+        rx, ry = round(rx * scale, 2), round(ry * scale, 2)
+        at = (_s(center[0] + DESIGN_OFFSET), _s(center[1] + DESIGN_OFFSET))
+        SR.place(img, _ring_piece(rx, ry, color), at, -angle, f"ring{idx}", alpha)
+        ex, ey = _orbit_point(center, rx, ry, angle, phase + math.radians(p.ring_spin * (1.1 + idx * 0.2)))
+        SR.place(img, _electron_piece(color, round(electron_scale, 2)), (_s(ex + DESIGN_OFFSET), _s(ey + DESIGN_OFFSET)), 0.0, f"electron{idx}", alpha)
 
 
-def _draw_leg(draw: ImageDraw.ImageDraw, hip: Point, foot: Point, far: bool) -> None:
-    hx, hy = hip
+# Limb bones (frame pixels at SUPER): fixed lengths, IK-bent toward the
+# old elbow/knee offset; a reach past both bones stretches them a step.
+LEG_BONE = 9.0 * SUPER
+ARM_BONE = 6.0 * SUPER
+
+
+def _sp(x: float, y: float) -> Point:
+    """A design point in supersampled canvas pixels, unrounded."""
+    return ((x + DESIGN_OFFSET) * SUPER, (y + DESIGN_OFFSET) * SUPER)
+
+
+def _draw_leg(canvas: Image.Image, T: SR.Xform, hip: Point, foot: Point, far: bool, alpha: float = 1.0) -> None:
     fx, fy = foot
     suit = SUIT_DARK if far else SUIT
-    knee = ((hx + fx) * 0.5 + (-2.0 if far else 2.0), (hy + fy) * 0.5)
-    draw.line([_pt(hx, hy), _pt(*knee), _pt(fx, fy - 4.0)], fill=OUTLINE, width=_s(12.0))
-    draw.line([_pt(hx, hy), _pt(*knee), _pt(fx, fy - 4.0)], fill=suit, width=_s(8.0))
-    draw.ellipse(_box(fx - 8.0, fy - 5.0, fx + 8.5, fy + 2.0), fill=SHOE, outline=OUTLINE, width=_s(1.0))
+    side = "far" if far else "near"
+    root, target = T.pt(_sp(*hip)), T.pt(_sp(fx, fy - 4.0))
+    SR.limb(canvas, root, target, LEG_BONE, T.vec((-1.0 if far else 1.0, 0.0)), 4.0 * SUPER, suit, OUTLINE, 2.0 * SUPER, f"{side}_leg", opacity=alpha)
+    pivot = _pt(88.0, 132.0)
+
+    def paint(d) -> None:
+        d.ellipse(_box(88.0 - 8.0, 132.0 - 5.0, 88.0 + 8.5, 132.0 + 2.0), fill=SHOE, outline=OUTLINE, width=_s(1.0))
+
+    SR.place(canvas, SR.rest_piece(("niels_shoe",), (W, H), pivot, paint), T.pt(_sp(fx, fy)), T.deg, f"{side}_shoe", alpha)
 
 
-def _draw_arm(draw: ImageDraw.ImageDraw, shoulder: Point, hand: Point, far: bool) -> None:
-    sx, sy = shoulder
+def _draw_arm(canvas: Image.Image, T: SR.Xform, shoulder: Point, hand: Point, far: bool, alpha: float = 1.0) -> None:
     hx, hy = hand
     suit = SUIT_DARK if far else SUIT
-    elbow = ((sx + hx) * 0.5 + (-3.0 if far else 3.0), (sy + hy) * 0.5)
-    draw.line([_pt(sx, sy), _pt(*elbow), _pt(hx, hy)], fill=OUTLINE, width=_s(11.0))
-    draw.line([_pt(sx, sy), _pt(*elbow), _pt(hx, hy)], fill=suit, width=_s(7.0))
-    draw.ellipse(_box(hx - 5.0, hy - 4.5, hx + 5.5, hy + 5.0), fill=FUR_MID, outline=OUTLINE, width=_s(1.0))
-    for dy in (-1.5, 1.2):
-        draw.line([_pt(hx + 0.5, hy + dy), _pt(hx + 4.5, hy + dy + 0.5)], fill=FUR_HIGHLIGHT, width=_s(0.7))
+    side = "far" if far else "near"
+    root, target = T.pt(_sp(*shoulder)), T.pt(_sp(hx, hy))
+    SR.limb(canvas, root, target, ARM_BONE, T.vec((-1.0 if far else 1.0, 0.3)), 3.5 * SUPER, suit, OUTLINE, 2.0 * SUPER, f"{side}_arm", opacity=alpha)
+    pivot = _pt(96.0, 87.0)
+
+    def paint(d) -> None:
+        x, y = 96.0, 87.0
+        d.ellipse(_box(x - 5.0, y - 4.5, x + 5.5, y + 5.0), fill=FUR_MID, outline=OUTLINE, width=_s(1.0))
+        for dy in (-1.5, 1.2):
+            d.line([_pt(x + 0.5, y + dy), _pt(x + 4.5, y + dy + 0.5)], fill=FUR_HIGHLIGHT, width=_s(0.7))
+
+    SR.place(canvas, SR.rest_piece(("niels_hand",), (W, H), pivot, paint), T.pt(_sp(hx, hy)), T.deg, f"{side}_hand", alpha)
 
 
-def _draw_boar_body(img: Image.Image, p: Pose) -> None:
-    layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    draw = blending_draw(layer)
-    bx = 72.0 + p.body_x
-    by = 86.0 + p.body_y
-
-    _draw_leg(draw, (62.0 + p.body_x, 111.0 + p.body_y), p.far_foot, True)
-    _draw_arm(draw, (51.0 + p.body_x, 77.0 + p.body_y), p.far_hand, True)
-
-    # Stocky boar torso under a tailored three-piece suit.
-    torso = [
-        (52.0 + p.body_x, 68.0 + p.body_y),
-        (64.0 + p.body_x, 61.0 + p.body_y),
-        (83.0 + p.body_x, 61.0 + p.body_y),
-        (96.0 + p.body_x, 70.0 + p.body_y),
-        (102.0 + p.body_x, 96.0 + p.body_y),
-        (94.0 + p.body_x, 116.0 + p.body_y),
-        (76.0 + p.body_x, 123.0 + p.body_y),
-        (58.0 + p.body_x, 117.0 + p.body_y),
-        (47.0 + p.body_x, 97.0 + p.body_y),
-        (47.0 + p.body_x, 79.0 + p.body_y),
-    ]
+def _paint_torso(draw) -> None:
+    """The stocky torso under its three-piece suit, at rest (body offset 0)."""
+    torso = [(52.0, 68.0), (64.0, 61.0), (83.0, 61.0), (96.0, 70.0), (102.0, 96.0), (94.0, 116.0), (76.0, 123.0), (58.0, 117.0), (47.0, 97.0), (47.0, 79.0)]
     draw.polygon([_pt(*q) for q in torso], fill=SUIT_DARK, outline=OUTLINE)
-    jacket = [
-        (52.0 + p.body_x, 71.0 + p.body_y),
-        (64.0 + p.body_x, 63.0 + p.body_y),
-        (72.0 + p.body_x, 70.0 + p.body_y),
-        (82.0 + p.body_x, 63.0 + p.body_y),
-        (96.0 + p.body_x, 72.0 + p.body_y),
-        (98.0 + p.body_x, 99.0 + p.body_y),
-        (88.0 + p.body_x, 113.0 + p.body_y),
-        (73.0 + p.body_x, 108.0 + p.body_y),
-        (58.0 + p.body_x, 114.0 + p.body_y),
-        (49.0 + p.body_x, 99.0 + p.body_y),
-    ]
+    jacket = [(52.0, 71.0), (64.0, 63.0), (72.0, 70.0), (82.0, 63.0), (96.0, 72.0), (98.0, 99.0), (88.0, 113.0), (73.0, 108.0), (58.0, 114.0), (49.0, 99.0)]
     draw.polygon([_pt(*q) for q in jacket], fill=SUIT, outline=OUTLINE)
-    draw.polygon([_pt(60.0 + p.body_x, 68.0 + p.body_y), _pt(71.0 + p.body_x, 74.0 + p.body_y), _pt(66.0 + p.body_x, 104.0 + p.body_y), _pt(54.0 + p.body_x, 96.0 + p.body_y)], fill=SUIT_LIGHT)
-    draw.polygon([_pt(85.0 + p.body_x, 68.0 + p.body_y), _pt(74.0 + p.body_x, 74.0 + p.body_y), _pt(79.0 + p.body_x, 104.0 + p.body_y), _pt(95.0 + p.body_x, 96.0 + p.body_y)], fill=SUIT_LIGHT)
-    draw.polygon([_pt(65.0 + p.body_x, 64.0 + p.body_y), _pt(72.0 + p.body_x, 72.0 + p.body_y), _pt(81.0 + p.body_x, 64.0 + p.body_y), _pt(78.0 + p.body_x, 82.0 + p.body_y), _pt(68.0 + p.body_x, 82.0 + p.body_y)], fill=SHIRT, outline=OUTLINE)
-    draw.polygon([_pt(66.0 + p.body_x, 73.0 + p.body_y), _pt(72.0 + p.body_x, 76.0 + p.body_y), _pt(66.0 + p.body_x, 80.0 + p.body_y), _pt(62.0 + p.body_x, 76.0 + p.body_y)], fill=BOW, outline=OUTLINE)
-    draw.polygon([_pt(78.0 + p.body_x, 73.0 + p.body_y), _pt(72.0 + p.body_x, 76.0 + p.body_y), _pt(78.0 + p.body_x, 80.0 + p.body_y), _pt(82.0 + p.body_x, 76.0 + p.body_y)], fill=BOW_LIGHT, outline=OUTLINE)
-    draw.ellipse(_box(69.5 + p.body_x, 73.5 + p.body_y, 74.5 + p.body_x, 78.5 + p.body_y), fill=BOW_LIGHT, outline=OUTLINE, width=_s(0.7))
+    draw.polygon([_pt(60.0, 68.0), _pt(71.0, 74.0), _pt(66.0, 104.0), _pt(54.0, 96.0)], fill=SUIT_LIGHT)
+    draw.polygon([_pt(85.0, 68.0), _pt(74.0, 74.0), _pt(79.0, 104.0), _pt(95.0, 96.0)], fill=SUIT_LIGHT)
+    draw.polygon([_pt(65.0, 64.0), _pt(72.0, 72.0), _pt(81.0, 64.0), _pt(78.0, 82.0), _pt(68.0, 82.0)], fill=SHIRT, outline=OUTLINE)
+    draw.polygon([_pt(66.0, 73.0), _pt(72.0, 76.0), _pt(66.0, 80.0), _pt(62.0, 76.0)], fill=BOW, outline=OUTLINE)
+    draw.polygon([_pt(78.0, 73.0), _pt(72.0, 76.0), _pt(78.0, 80.0), _pt(82.0, 76.0)], fill=BOW_LIGHT, outline=OUTLINE)
+    draw.ellipse(_box(69.5, 73.5, 74.5, 78.5), fill=BOW_LIGHT, outline=OUTLINE, width=_s(0.7))
     for yy in (90.0, 101.0):
-        draw.ellipse(_box(71.0 + p.body_x, yy + p.body_y, 74.0 + p.body_x, yy + 3.0 + p.body_y), fill=(198, 174, 103, 255))
+        draw.ellipse(_box(71.0, yy, 74.0, yy + 3.0), fill=(198, 174, 103, 255))
 
-    _draw_leg(draw, (84.0 + p.body_x, 111.0 + p.body_y), p.near_foot, False)
-    _draw_arm(draw, (94.0 + p.body_x, 77.0 + p.body_y), p.near_hand, False)
 
-    # Head and crest are kept on a local layer so thought, recoil, and tusk
-    # attacks can rotate without breaking the suit silhouette.
-    hx = 73.0 + p.body_x + p.head_x
-    hy = 42.0 + p.body_y + p.head_y
-    head = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    hd = blending_draw(head)
+def _paint_head(hd, blink: bool, mouth_open: float, brow: float) -> None:
+    """Head and crest at rest (centre (73, 42)), for one expression."""
+    hx, hy = 73.0, 42.0
     # Ears behind the head.
     hd.polygon([_pt(hx - 23.0, hy - 13.0), _pt(hx - 33.0, hy - 25.0), _pt(hx - 14.0, hy - 22.0)], fill=FUR_DARK, outline=OUTLINE)
     hd.polygon([_pt(hx + 20.0, hy - 14.0), _pt(hx + 31.0, hy - 25.0), _pt(hx + 12.0, hy - 22.0)], fill=FUR_DARK, outline=OUTLINE)
@@ -812,12 +788,12 @@ def _draw_boar_body(img: Image.Image, p: Pose) -> None:
 
     eye_y = hy - 3.0
     for ex, far in ((hx - 9.0, True), (hx + 8.0, False)):
-        if p.blink:
+        if blink:
             hd.line([_pt(ex - 3.5, eye_y), _pt(ex + 3.5, eye_y + 0.5)], fill=OUTLINE, width=_s(1.2))
         else:
             hd.ellipse(_box(ex - 4.0, eye_y - 4.0, ex + 4.0, eye_y + 4.2), fill=EYE_WHITE, outline=OUTLINE, width=_s(0.8))
             hd.ellipse(_box(ex + (0.8 if far else 1.2) - 1.6, eye_y - 1.8, ex + (0.8 if far else 1.2) + 1.6, eye_y + 1.8), fill=EYE)
-        hd.line([_pt(ex - 4.5, eye_y - 7.0 - p.brow), _pt(ex + 4.5, eye_y - 6.0 + p.brow)], fill=OUTLINE, width=_s(1.25))
+        hd.line([_pt(ex - 4.5, eye_y - 7.0 - brow), _pt(ex + 4.5, eye_y - 6.0 + brow)], fill=OUTLINE, width=_s(1.25))
 
     # Broad boar snout and curved tusks.
     hd.ellipse(_box(hx - 23.0, hy + 5.0, hx + 27.0, hy + 27.0), fill=SNOUT, outline=OUTLINE, width=_s(1.1))
@@ -825,8 +801,8 @@ def _draw_boar_body(img: Image.Image, p: Pose) -> None:
     hd.ellipse(_box(hx - 12.0, hy + 10.0, hx - 5.0, hy + 16.0), fill=NOSTRIL)
     hd.ellipse(_box(hx + 8.0, hy + 10.0, hx + 15.0, hy + 16.0), fill=NOSTRIL)
     mouth_y = hy + 23.0
-    if p.mouth_open > 0.04:
-        hd.ellipse(_box(hx - 10.0, mouth_y - 1.0, hx + 13.0, mouth_y + 4.0 + 8.0 * p.mouth_open), fill=OUTLINE)
+    if mouth_open > 0.04:
+        hd.ellipse(_box(hx - 10.0, mouth_y - 1.0, hx + 13.0, mouth_y + 4.0 + 8.0 * mouth_open), fill=OUTLINE)
     else:
         hd.arc(_box(hx - 10.0, mouth_y - 5.0, hx + 12.0, mouth_y + 5.0), 10, 170, fill=OUTLINE, width=_s(1.0))
     # Tusks sweep outward and upward so they remain readable at gameplay scale.
@@ -837,43 +813,50 @@ def _draw_boar_body(img: Image.Image, p: Pose) -> None:
     hd.line([_pt(hx - 20.0, hy + 21.0), _pt(hx - 24.0, hy + 25.0)], fill=TUSK_SHADE, width=_s(0.8))
     hd.line([_pt(hx + 21.0, hy + 20.0), _pt(hx + 26.0, hy + 24.0)], fill=TUSK_SHADE, width=_s(0.8))
 
-    if abs(p.head_angle) > 0.01:
-        head = head.rotate(p.head_angle, resample=Image.Resampling.BICUBIC, center=_pt(hx, hy + 10.0), fillcolor=(0, 0, 0, 0))
-    rigdoc.composite_canvas(layer, head)
 
+def _body_xform(p: Pose) -> SR.Xform:
+    """The body layer's squash (its crop resized about the feet) and turn, as
+    a map of where each piece lands: the pieces move, they are not resized."""
+    T = SR.IDENTITY
     if p.squash_x != 1.0 or p.squash_y != 1.0:
-        crop = layer.crop(_box(28.0, 6.0, 120.0, 138.0))
-        target = (_s(92.0 * p.squash_x), _s(132.0 * p.squash_y))
-        crop = crop.resize(target, Image.Resampling.BICUBIC)
-        scaled = Image.new("RGBA", layer.size, (0, 0, 0, 0))
-        rigdoc.composite_canvas(
-            scaled,
-            crop,
-            (
-                _s(72.0 + DESIGN_OFFSET) - target[0] // 2,
-                _s(137.0 + DESIGN_OFFSET) - target[1],
-            ),
-        )
-        layer = scaled
+        x0, y0 = _s(28.0 + DESIGN_OFFSET), _s(6.0 + DESIGN_OFFSET)
+        tw, th = _s(92.0 * p.squash_x), _s(132.0 * p.squash_y)
+        ox = _s(72.0 + DESIGN_OFFSET) - tw // 2
+        oy = _s(137.0 + DESIGN_OFFSET) - th
+        T = T.affine(tw / _s(92.0), ox, x0, th / _s(132.0), oy, y0)
     if abs(p.body_angle) > 0.01:
         rotation_y = 126.0 + p.body_y
         if p.effect in {"roll", "ledge_roll"}:
             rotation_y = 89.0 + p.body_y
         elif p.effect == "death":
             rotation_y = 104.0 + p.body_y
-        layer = layer.rotate(
-            p.body_angle,
-            resample=Image.Resampling.BICUBIC,
-            center=_pt(bx, rotation_y),
-            fillcolor=(0, 0, 0, 0),
-        )
-    if p.body_alpha < 0.999:
-        # Faded, the body is one picture (a copy: the record follows the
-        # image, and these pixels are no longer its shapes).
-        layer = layer.copy()
-        alpha = layer.getchannel("A").point(lambda value: int(value * p.body_alpha))
-        layer.putalpha(alpha)
-    rigdoc.composite_canvas(img, layer)
+        T = T.rotate_ccw(_pt(72.0 + p.body_x, rotation_y), p.body_angle)
+    return T
+
+
+def _draw_boar_body(img: Image.Image, p: Pose) -> None:
+    """The boar as a rig: limbs are fixed bones, the torso and each head
+    expression are pieces painted once, all riding the body's squash and turn.
+    A faded body fades each piece (a frame has one opacity, and the orbits
+    beside it are not faded)."""
+    T = _body_xform(p)
+    alpha = _clamp01(p.body_alpha)
+
+    _draw_leg(img, T, (62.0 + p.body_x, 111.0 + p.body_y), p.far_foot, True, alpha)
+    _draw_arm(img, T, (51.0 + p.body_x, 77.0 + p.body_y), p.far_hand, True, alpha)
+
+    torso = SR.rest_piece(("niels_torso",), (W, H), _pt(72.0, 86.0), _paint_torso)
+    SR.place(img, torso, T.pt(_sp(72.0 + p.body_x, 86.0 + p.body_y)), T.deg, "torso", alpha)
+
+    _draw_leg(img, T, (84.0 + p.body_x, 111.0 + p.body_y), p.near_foot, False, alpha)
+    _draw_arm(img, T, (94.0 + p.body_x, 77.0 + p.body_y), p.near_hand, False, alpha)
+
+    # Head and crest: one piece per expression, turned by the head's tilt
+    # about the jaw, riding the body.
+    blink, mouth, brow = bool(p.blink), SR.q(p.mouth_open, 0.1), SR.q(p.brow, 0.4)
+    head = SR.rest_piece(("niels_head", blink, mouth, brow), (W, H), _pt(73.0, 52.0), lambda d: _paint_head(d, blink, mouth, brow))
+    at = T.pt(_sp(73.0 + p.body_x + p.head_x, 52.0 + p.body_y + p.head_y))
+    SR.place(img, head, at, T.deg - p.head_angle, "head", alpha)
 
 
 def _draw_photon(draw: ImageDraw.ImageDraw, start: Point, end: Point, amount: float = 1.0) -> None:

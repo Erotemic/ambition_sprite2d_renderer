@@ -7,7 +7,7 @@ from typing import List, Tuple
 
 from PIL import Image, ImageDraw
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ambition_sprite2d_renderer.authoring.portrait import (
     FaceGuide,
@@ -16,7 +16,6 @@ from ambition_sprite2d_renderer.authoring.portrait import (
     write_portrait_sheet,
 )
 from ambition_sprite2d_renderer.authoring.sheet_build import build_sheet
-from ambition_sprite2d_renderer.core.draw import blending_draw
 
 TARGET_NAME = "admiral_grass_hopper"
 FRAME_SIZE = (128, 128)
@@ -399,32 +398,6 @@ def _circle(draw: ImageDraw.ImageDraw, center, radius, fill, outline=OUTLINE, wi
     _ellipse(draw, (x - radius, y - radius, x + radius, y + radius), fill=fill, outline=outline, width=width)
 
 
-def _draw_leg(draw: ImageDraw.ImageDraw, hip, knee, ankle, foot, *, fill, lift=0.0):
-    ax, ay = ankle
-    foot = (foot[0], foot[1] - lift)
-    _line(draw, [hip, knee, (ax, ay - lift * 0.35), foot], fill=fill, width=18)
-    for point, r in ((hip, 8), (knee, 7), ((ax, ay - lift * 0.35), 6)):
-        _circle(draw, point, r, fill, width=3)
-
-
-def _draw_arm(draw: ImageDraw.ImageDraw, shoulder, elbow, hand, *, fill, baton=False, baton_angle=-20.0, baton_extend=0.0):
-    _line(draw, [shoulder, elbow, hand], fill=fill, width=14)
-    _circle(draw, shoulder, 6, fill, width=3)
-    _circle(draw, elbow, 5, fill, width=3)
-    _circle(draw, hand, 5, fill, width=3)
-    if baton:
-        hx, hy = hand
-        end = (hx + 38.0 + baton_extend, hy - 2.0)
-        end = _rot(end, hand, baton_angle)
-        tip = _rot((end[0] + 8.0, end[1]), end, baton_angle * 0.08)
-        _line(draw, [hand, end], fill=WOOD, width=8)
-        _line(draw, [hand, end], fill=OUTLINE, width=2)
-        _line(draw, [end, tip], fill=GOLD, width=5)
-        _line(draw, [end, tip], fill=OUTLINE, width=2)
-        ring = _rot((hx + 10.0, hy), hand, baton_angle)
-        _circle(draw, ring, 3, GOLD_LIGHT, width=2)
-
-
 def _draw_hat(draw: ImageDraw.ImageDraw, center, head_tilt=0.0):
     cx, cy = center
     brim = [(cx - 34, cy - 26), (cx + 20, cy - 32), (cx + 34, cy - 18), (cx - 22, cy - 12)]
@@ -441,17 +414,150 @@ def _draw_hat(draw: ImageDraw.ImageDraw, center, head_tilt=0.0):
     ], fill=GOLD, width=4)
 
 
+# --- Rig construction -------------------------------------------------------
+#
+# The admiral is drawn as a rig (``shape_rig``): every rigid piece is painted
+# once in its own raster (supersampled pixels) and placed, turned where it
+# turns. Limb segments are round-capped strokes turned from joint to joint
+# (one piece per whole-pixel length) carrying the joint disc at their root;
+# the abdomen, coat skirt and antennae are keyed by the (rounded) lift, flare
+# and sway they read; the thorax rides the chest; the head's face, eye, mouth,
+# antennae and hat turn together by the head's tilt; the baton is painted
+# level and turned about the hand.
+
+
+def _piece(key, half: float, paint):
+    """A piece ``2 * half`` supersampled pixels square, pivot at the centre:
+    ``paint(draw, o)`` paints it with the local origin at ``(o, o)``."""
+    size = 2 * int(math.ceil(half))
+    return shape_rig.piece((TARGET_NAME,) + tuple(key), (size, size), (size / 2, size / 2), lambda d: paint(d, size / 2))
+
+
+def _length(a, b) -> float:
+    """A segment's length to the whole frame pixel (in supersampled px)."""
+    return float(max(1, round(math.hypot(b[0] - a[0], b[1] - a[1]) / SUPER)) * SUPER)
+
+
+def _angle(a, b) -> float:
+    return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+
+
+def _place_segment(img, a, b, fill, width: int, root_disc, name: str, end_disc=None) -> None:
+    """A limb segment from ``a`` to ``b``: a stroke of ``width`` with round
+    ends (the polyline's curve joints), then the joint disc ``(radius,
+    outline width)`` at its root, and ``end_disc`` at its end."""
+    span = _length(a, b)
+    half = span + width + 4
+
+    def paint(draw, o: float) -> None:
+        r = width / 2
+        _line(draw, [(o, o), (o + span, o)], fill=fill, width=width)
+        draw.ellipse((o - r, o - r, o + r, o + r), fill=fill)
+        draw.ellipse((o + span - r, o - r, o + span + r, o + r), fill=fill)
+        if root_disc is not None:
+            _circle(draw, (o, o), root_disc[0], fill, width=root_disc[1])
+        if end_disc is not None:
+            _circle(draw, (o + span, o), end_disc[0], fill, width=end_disc[1])
+
+    part = _piece(("segment", span, fill, width, root_disc, end_disc), half, paint)
+    shape_rig.place(img, part, a, _angle(a, b), name)
+
+
+def _place_leg(img, side: str, hip, knee, ankle, foot, *, fill, lift=0.0) -> None:
+    ax, ay = ankle
+    ankle = (ax, ay - lift * 0.35)
+    foot = (foot[0], foot[1] - lift)
+    _place_segment(img, hip, knee, fill, 18, (8, 3), f"{side}_thigh")
+    _place_segment(img, knee, ankle, fill, 18, (7, 3), f"{side}_shin")
+    _place_segment(img, ankle, foot, fill, 18, (6, 3), f"{side}_foot")
+
+
+def _paint_baton(draw, o: float, extend: float) -> None:
+    """The baton level from the hand at ``(o, o)``."""
+    hx, hy = o, o
+    end = (hx + 38.0 + extend, hy - 2.0)
+    tip = (end[0] + 8.0, end[1])
+    _line(draw, [(hx, hy), end], fill=WOOD, width=8)
+    _line(draw, [(hx, hy), end], fill=OUTLINE, width=2)
+    _line(draw, [end, tip], fill=GOLD, width=5)
+    _line(draw, [end, tip], fill=OUTLINE, width=2)
+    _circle(draw, (hx + 10.0, hy), 3, GOLD_LIGHT, width=2)
+
+
+def _paint_thorax(draw, chest) -> None:
+    thorax_box = (chest[0] - 56, chest[1] - 62, chest[0] + 54, chest[1] + 44)
+    _ellipse(draw, thorax_box, COAT, outline=OUTLINE, width=6)
+    left_lapel = [(chest[0] - 18, chest[1] - 38), (chest[0] + 2, chest[1] - 6), (chest[0] - 8, chest[1] + 30), (chest[0] - 28, chest[1] + 8)]
+    right_lapel = [(chest[0] + 4, chest[1] - 42), (chest[0] + 24, chest[1] - 12), (chest[0] + 20, chest[1] + 20), (chest[0] - 2, chest[1] - 10)]
+    _poly(draw, left_lapel, COAT_LIGHT, width=3)
+    _poly(draw, right_lapel, COAT_LIGHT, width=3)
+    for dx, dy in ((-30, -46), (-30, -28), (-26, -10), (10, -36), (8, -18), (6, 0)):
+        _circle(draw, (chest[0] + dx, chest[1] + dy), 4, GOLD_LIGHT, width=2)
+    epaulet_back = [(chest[0] - 48, chest[1] - 54), (chest[0] - 12, chest[1] - 64), (chest[0] - 10, chest[1] - 46), (chest[0] - 44, chest[1] - 36)]
+    epaulet_front = [(chest[0] + 8, chest[1] - 58), (chest[0] + 42, chest[1] - 60), (chest[0] + 46, chest[1] - 42), (chest[0] + 12, chest[1] - 42)]
+    _poly(draw, epaulet_back, GOLD, width=3)
+    _poly(draw, epaulet_front, GOLD, width=3)
+
+
+def _paint_head(draw, head_center) -> None:
+    head_box = (head_center[0] - 42, head_center[1] - 36, head_center[0] + 36, head_center[1] + 30)
+    _ellipse(draw, head_box, GREEN_LIGHT, outline=OUTLINE, width=6)
+    _ellipse(draw, (head_box[0] + 8, head_box[1] + 10, head_box[2] - 10, head_box[3] - 10), GREEN_PALE, outline=None)
+    _ellipse(draw, (head_center[0] - 8, head_center[1] + 8, head_center[0] + 20, head_center[1] + 24), CHEEK, outline=None)
+
+
+def _paint_eye(draw, head_center, x_eye: bool, blink: bool) -> None:
+    eye_center = (head_center[0] + 14, head_center[1] - 2)
+    if x_eye:
+        for sign in (-1, 1):
+            _line(draw, [(eye_center[0] - 7, eye_center[1] - 7 * sign), (eye_center[0] + 7, eye_center[1] + 7 * sign)], fill=EYE, width=4)
+    elif blink:
+        _line(draw, [(eye_center[0] - 10, eye_center[1]), (eye_center[0] + 8, eye_center[1] + 2)], fill=EYE, width=4)
+    else:
+        _ellipse(draw, (eye_center[0] - 10, eye_center[1] - 8, eye_center[0] + 8, eye_center[1] + 8), WHITE, outline=OUTLINE, width=3)
+        pupil = (eye_center[0] + 2, eye_center[1] + 1)
+        _circle(draw, pupil, 4, EYE, width=1)
+        _circle(draw, (pupil[0] - 1, pupil[1] - 1), 1, EYE_HL, outline=None, width=0)
+
+
+def _paint_mouth(draw, head_center, mouth_open: float) -> None:
+    mouth_y = head_center[1] + 16
+    mouth_w = 16
+    mouth_h = 3 + mouth_open * 26
+    _line(draw, [(head_center[0] - 2, mouth_y), (head_center[0] + mouth_w, mouth_y + mouth_h * 0.15)], fill=OUTLINE, width=4)
+    if mouth_open > 0.04:
+        tongue = [
+            (head_center[0] + 4, mouth_y + 2),
+            (head_center[0] + 15, mouth_y + 2),
+            (head_center[0] + 12, mouth_y + mouth_h),
+            (head_center[0] + 5, mouth_y + mouth_h),
+        ]
+        _poly(draw, tongue, RED_LIGHT, outline=None, width=0)
+
+
+def _paint_antennae(draw, head_center, sway: float) -> None:
+    for side, lift in ((-1, -8), (1, 10)):
+        ant_base = (head_center[0] - 4, head_center[1] - 20)
+        ant_mid = (head_center[0] + side * 8, head_center[1] - 62 + side * 4 + sway)
+        ant_tip = (head_center[0] + side * 22, head_center[1] - 96 + sway * 1.2 + lift)
+        _line(draw, [ant_base, ant_mid, ant_tip], fill=GREEN_DARK, width=6)
+        _circle(draw, ant_tip, 4, GOLD_LIGHT, width=2)
+
+
 def _draw_admiral(pose: Pose, anim: str, frame_idx: int, frame_count: int):
     img = Image.new("RGBA", WORK_SIZE, (0, 0, 0, 0))
-    draw = blending_draw(img)
 
     ox = 210 + pose.root_x * SUPER
     ground_y = 386 + pose.root_y * SUPER
     bob = pose.bob * SUPER
 
-    shadow_w = 138 + abs(pose.lean) * 0.6
-    shadow_h = 22 + abs(pose.bob) * 0.3
-    _ellipse(draw, (ox - shadow_w / 2, ground_y - 6, ox + shadow_w / 2, ground_y - 6 + shadow_h), SHADOW, outline=None)
+    shadow_w = round((138 + abs(pose.lean) * 0.6) / 2) * 2
+    shadow_h = round(22 + abs(pose.bob) * 0.3)
+    shadow = _piece(
+        ("shadow", shadow_w, shadow_h), shadow_w / 2 + 4,
+        lambda d, o: _ellipse(d, (o - shadow_w / 2, o, o + shadow_w / 2, o + shadow_h), SHADOW, outline=None),
+    )
+    shape_rig.place(img, shadow, (ox, ground_y - 6), 0.0, "shadow")
 
     hip_back = (ox - 42, ground_y - 112 - bob)
     hip_front = (ox - 4, ground_y - 114 - bob)
@@ -462,102 +568,74 @@ def _draw_admiral(pose: Pose, anim: str, frame_idx: int, frame_count: int):
     foot_back = (ankle_back[0] + 34, ground_y - 6)
     foot_front = (ankle_front[0] + 34, ground_y - 6)
 
-    _draw_leg(draw, hip_back, knee_back, ankle_back, foot_back, fill=GREEN_DARK, lift=pose.rear_foot_lift * SUPER)
+    _place_leg(img, "back", hip_back, knee_back, ankle_back, foot_back, fill=GREEN_DARK, lift=pose.rear_foot_lift * SUPER)
 
-    abdomen_box = (ox - 122, ground_y - 190 - bob - pose.abdomen_lift * SUPER, ox - 10, ground_y - 104 - bob)
-    wing_box = (ox - 84, ground_y - 214 - bob, ox + 10, ground_y - 128 - bob)
-    _ellipse(draw, wing_box, (184, 235, 226, 160), outline=(86, 120, 120, 150), width=3)
-    _ellipse(draw, abdomen_box, GREEN, outline=OUTLINE, width=6)
-    _ellipse(draw, (abdomen_box[0] + 14, abdomen_box[1] + 10, abdomen_box[2] - 12, abdomen_box[3] - 10), GREEN_LIGHT, outline=None)
+    # Wing and abdomen about the body point, keyed by the abdomen's lift.
+    body_at = (ox, ground_y - bob)
+    lift = round(pose.abdomen_lift * SUPER)
+
+    def paint_abdomen(draw, o: float) -> None:
+        abdomen_box = (o - 122, o - 190 - lift, o - 10, o - 104)
+        wing_box = (o - 84, o - 214, o + 10, o - 128)
+        _ellipse(draw, wing_box, (184, 235, 226, 160), outline=(86, 120, 120, 150), width=3)
+        _ellipse(draw, abdomen_box, GREEN, outline=OUTLINE, width=6)
+        _ellipse(draw, (abdomen_box[0] + 14, abdomen_box[1] + 10, abdomen_box[2] - 12, abdomen_box[3] - 10), GREEN_LIGHT, outline=None)
+
+    shape_rig.place(img, _piece(("abdomen", lift), 220, paint_abdomen), body_at, 0.0, "abdomen")
 
     chest = (ox + pose.lean * 0.5, ground_y - 212 - bob)
-    thorax_box = (chest[0] - 56, chest[1] - 62, chest[0] + 54, chest[1] + 44)
-    coat_skirt = [
-        (chest[0] - 44, chest[1] + 18),
-        (chest[0] + 28, chest[1] + 10),
-        (chest[0] + 44 + pose.coat_flare * SUPER, chest[1] + 76),
-        (chest[0] - 12, chest[1] + 82),
-        (chest[0] - 48 - pose.coat_flare * SUPER * 0.3, chest[1] + 74),
-    ]
+    _place_leg(img, "front", hip_front, knee_front, ankle_front, foot_front, fill=GREEN, lift=pose.front_foot_lift * SUPER)
 
-    _draw_leg(draw, hip_front, knee_front, ankle_front, foot_front, fill=GREEN, lift=pose.front_foot_lift * SUPER)
-    _poly(draw, coat_skirt, COAT_DARK, width=5)
-    _ellipse(draw, thorax_box, COAT, outline=OUTLINE, width=6)
+    flare = round(pose.coat_flare * SUPER / 2) * 2
 
-    left_lapel = [(chest[0] - 18, chest[1] - 38), (chest[0] + 2, chest[1] - 6), (chest[0] - 8, chest[1] + 30), (chest[0] - 28, chest[1] + 8)]
-    right_lapel = [(chest[0] + 4, chest[1] - 42), (chest[0] + 24, chest[1] - 12), (chest[0] + 20, chest[1] + 20), (chest[0] - 2, chest[1] - 10)]
-    _poly(draw, left_lapel, COAT_LIGHT, width=3)
-    _poly(draw, right_lapel, COAT_LIGHT, width=3)
+    def paint_skirt(draw, o: float) -> None:
+        coat_skirt = [
+            (o - 44, o + 18),
+            (o + 28, o + 10),
+            (o + 44 + flare, o + 76),
+            (o - 12, o + 82),
+            (o - 48 - flare * 0.3, o + 74),
+        ]
+        _poly(draw, coat_skirt, COAT_DARK, width=5)
 
-    for dx, dy in ((-30, -46), (-30, -28), (-26, -10), (10, -36), (8, -18), (6, 0)):
-        _circle(draw, (chest[0] + dx, chest[1] + dy), 4, GOLD_LIGHT, width=2)
+    shape_rig.place(img, _piece(("skirt", flare), 96, paint_skirt), chest, 0.0, "coat_skirt")
+    shape_rig.place(img, _piece(("thorax",), 72, lambda d, o: _paint_thorax(d, (o, o))), chest, 0.0, "thorax")
 
-    epaulet_back = [(chest[0] - 48, chest[1] - 54), (chest[0] - 12, chest[1] - 64), (chest[0] - 10, chest[1] - 46), (chest[0] - 44, chest[1] - 36)]
-    epaulet_front = [(chest[0] + 8, chest[1] - 58), (chest[0] + 42, chest[1] - 60), (chest[0] + 46, chest[1] - 42), (chest[0] + 12, chest[1] - 42)]
-    _poly(draw, epaulet_back, GOLD, width=3)
-    _poly(draw, epaulet_front, GOLD, width=3)
-
+    # The head turns by its tilt about its centre: face, eye, mouth, antennae, hat.
     neck = (chest[0] + 18, chest[1] - 66)
     head_center = _rot((neck[0] + 20, neck[1] - 18), neck, pose.head_tilt)
-    head_box = (head_center[0] - 42, head_center[1] - 36, head_center[0] + 36, head_center[1] + 30)
-    _ellipse(draw, head_box, GREEN_LIGHT, outline=OUTLINE, width=6)
-    _ellipse(draw, (head_box[0] + 8, head_box[1] + 10, head_box[2] - 10, head_box[3] - 10), GREEN_PALE, outline=None)
-    _ellipse(draw, (head_center[0] - 8, head_center[1] + 8, head_center[0] + 20, head_center[1] + 24), CHEEK, outline=None)
-
-    eye_center = _rot((head_center[0] + 14, head_center[1] - 2), head_center, pose.head_tilt)
-    if pose.x_eye:
-        for sign in (-1, 1):
-            _line(draw, [(eye_center[0] - 7, eye_center[1] - 7 * sign), (eye_center[0] + 7, eye_center[1] + 7 * sign)], fill=EYE, width=4)
-    elif pose.blink:
-        _line(draw, [(eye_center[0] - 10, eye_center[1]), (eye_center[0] + 8, eye_center[1] + 2)], fill=EYE, width=4)
-    else:
-        _ellipse(draw, (eye_center[0] - 10, eye_center[1] - 8, eye_center[0] + 8, eye_center[1] + 8), WHITE, outline=OUTLINE, width=3)
-        pupil = (eye_center[0] + 2, eye_center[1] + 1)
-        _circle(draw, pupil, 4, EYE, width=1)
-        _circle(draw, (pupil[0] - 1, pupil[1] - 1), 1, EYE_HL, outline=None, width=0)
-
-    mouth_y = head_center[1] + 16
-    mouth_w = 16
-    mouth_h = 3 + pose.mouth_open * 26
-    _line(draw, [
-        _rot((head_center[0] - 2, mouth_y), head_center, pose.head_tilt),
-        _rot((head_center[0] + mouth_w, mouth_y + mouth_h * 0.15), head_center, pose.head_tilt),
-    ], fill=OUTLINE, width=4)
-    if pose.mouth_open > 0.04:
-        tongue = [
-            _rot((head_center[0] + 4, mouth_y + 2), head_center, pose.head_tilt),
-            _rot((head_center[0] + 15, mouth_y + 2), head_center, pose.head_tilt),
-            _rot((head_center[0] + 12, mouth_y + mouth_h), head_center, pose.head_tilt),
-            _rot((head_center[0] + 5, mouth_y + mouth_h), head_center, pose.head_tilt),
-        ]
-        _poly(draw, tongue, RED_LIGHT, outline=None, width=0)
-
-    for side, lift in ((-1, -8), (1, 10)):
-        ant_base = _rot((head_center[0] - 4, head_center[1] - 20), head_center, pose.head_tilt)
-        ant_mid = _rot((head_center[0] + side * 8, head_center[1] - 62 + side * 4 + pose.antenna_sway), head_center, pose.head_tilt)
-        ant_tip = _rot((head_center[0] + side * 22, head_center[1] - 96 + pose.antenna_sway * 1.2 + lift), head_center, pose.head_tilt)
-        _line(draw, [ant_base, ant_mid, ant_tip], fill=GREEN_DARK, width=6)
-        _circle(draw, ant_tip, 4, GOLD_LIGHT, width=2)
-
-    _draw_hat(draw, head_center, pose.head_tilt)
+    tilt = pose.head_tilt
+    shape_rig.place(img, _piece(("head",), 48, lambda d, o: _paint_head(d, (o, o))), head_center, tilt, "head")
+    eye = (pose.x_eye, pose.blink and not pose.x_eye)
+    shape_rig.place(img, _piece(("eye",) + eye, 48, lambda d, o: _paint_eye(d, (o, o), *eye)), head_center, tilt, "eye")
+    mouth_open = round(pose.mouth_open * 50) / 50
+    shape_rig.place(img, _piece(("mouth", mouth_open), 48, lambda d, o: _paint_mouth(d, (o, o), mouth_open)), head_center, tilt, "mouth")
+    sway = round(pose.antenna_sway / 2) * 2
+    shape_rig.place(img, _piece(("antennae", sway), 132, lambda d, o: _paint_antennae(d, (o, o), sway)), head_center, tilt, "antennae")
+    shape_rig.place(img, _piece(("hat",), 52, lambda d, o: _draw_hat(d, (o, o))), head_center, tilt, "hat")
 
     shoulder_back = (chest[0] - 28, chest[1] - 20)
     elbow_back = _rot((shoulder_back[0] - 18, shoulder_back[1] + 28), shoulder_back, pose.arm_back)
     hand_back = _rot((elbow_back[0] + 2, elbow_back[1] + 26), elbow_back, pose.arm_back * 0.3)
-    _draw_arm(draw, shoulder_back, elbow_back, hand_back, fill=GREEN_DARK, baton=False)
+    _place_segment(img, shoulder_back, elbow_back, GREEN_DARK, 14, (6, 3), "back_upper_arm")
+    _place_segment(img, elbow_back, hand_back, GREEN_DARK, 14, (5, 3), "back_forearm", end_disc=(5, 3))
 
     shoulder_front = (chest[0] + 22, chest[1] - 18)
     elbow_front = _rot((shoulder_front[0] + 20, shoulder_front[1] + 18), shoulder_front, pose.arm_front)
     hand_front = _rot((elbow_front[0] + 22, elbow_front[1] + 20), elbow_front, pose.arm_front * 0.35)
-    _draw_arm(draw, shoulder_front, elbow_front, hand_front, fill=GREEN, baton=True, baton_angle=pose.baton_angle, baton_extend=pose.baton_extend)
+    _place_segment(img, shoulder_front, elbow_front, GREEN, 14, (6, 3), "front_upper_arm")
+    _place_segment(img, elbow_front, hand_front, GREEN, 14, (5, 3), "front_forearm", end_disc=(5, 3))
+    extend = round(pose.baton_extend / 2) * 2
+    baton = _piece(("baton", extend), 80, lambda d, o: _paint_baton(d, o, extend))
+    shape_rig.place(img, baton, hand_front, pose.baton_angle, "baton")
 
     if pose.salute > 0.01:
         salute_hand = _rot((head_center[0] + 4, head_center[1] - 36), head_center, pose.head_tilt)
-        _line(draw, [
-            (salute_hand[0] - 10, salute_hand[1] + 10),
-            salute_hand,
-            (salute_hand[0] + 16, salute_hand[1] - 2),
-        ], fill=GOLD_LIGHT, width=5)
+
+        def paint_salute(draw, o: float) -> None:
+            _line(draw, [(o - 10, o + 10), (o, o), (o + 16, o - 2)], fill=GOLD_LIGHT, width=5)
+
+        shape_rig.place(img, _piece(("salute",), 24, paint_salute), salute_hand, 0.0, "salute")
 
     return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 

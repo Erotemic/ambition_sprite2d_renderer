@@ -23,6 +23,8 @@ from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
+from . import _solo_shape_rig as SR
+
 ACTOR_METADATA = {
     "actor": {"character_id": "npc_ninja_heavy", "display_name": "Ninja Heavy"},
     "lineage": {
@@ -609,15 +611,6 @@ def _build_rig(pose: Pose) -> Tuple[Rig, callable]:
     )
 
 
-def _draw_ground_shadow(draw: ImageDraw.ImageDraw, rig: Rig, pose: Pose) -> None:
-    width = 60.0 * FIGURE_SCALE * (1.0 - pose.death * 0.12)
-    height = 10.0 * FIGURE_SCALE
-    cx = rig.root[0] + pose.death * 14.0
-    cy = rig.root[1] + 10.0 * FIGURE_SCALE
-    _ellipse(draw, cx, cy, width, height, SHADOW, None, 0)
-    _ellipse(draw, cx - 5, cy - 1, width * 0.62, height * 0.55, (8, 10, 16, 55), None, 0)
-
-
 def _draw_smoke_ribbon(draw: ImageDraw.ImageDraw, rig: Rig, pose: Pose) -> None:
     sway = pose.cloth_sway * FIGURE_SCALE
     y = rig.pelvis[1] + 30.0 * FIGURE_SCALE
@@ -631,80 +624,6 @@ def _draw_smoke_ribbon(draw: ImageDraw.ImageDraw, rig: Rig, pose: Pose) -> None:
         (rig.pelvis[0] + 39 * FIGURE_SCALE, y - 8),
     ]
     _poly(draw, points, SMOKE, None, 0)
-
-
-def _draw_anatomical_understructure(
-    draw: ImageDraw.ImageDraw,
-    rig: Rig,
-    local,
-) -> None:
-    """Draw the continuous body beneath the visible costume.
-
-    Armor, sleeves, hakama, and boots are separate design layers, but the
-    character is not assembled from floating stickers.  A broad cloth yoke,
-    wrapped neck, trunk, pelvis, and complete limb capsules establish a real
-    connected humanoid body first; costume layers then describe its surface.
-    """
-    # Central trunk, shoulder yoke, and pelvis.  These deliberately overlap
-    # their neighboring joints by several pixels at final resolution.
-    trunk = [
-        local(-32, -121),
-        local(32, -121),
-        local(35, -58),
-        local(23, -45),
-        local(-23, -45),
-        local(-35, -58),
-    ]
-    _poly(draw, trunk, UNDERSUIT, None, 0)
-    _draw_solid_segment(
-        draw, rig.left_shoulder, rig.right_shoulder,
-        14.5 * FIGURE_SCALE, 14.5 * FIGURE_SCALE, UNDERSUIT,
-    )
-    _draw_solid_segment(
-        draw, rig.chest, rig.pelvis,
-        27.0 * FIGURE_SCALE, 25.0 * FIGURE_SCALE, UNDERSUIT,
-    )
-    _draw_solid_segment(
-        draw, rig.left_hip, rig.right_hip,
-        15.0 * FIGURE_SCALE, 15.0 * FIGURE_SCALE, UNDERSUIT,
-    )
-
-    # The head is carried by an actual wrapped neck rather than relying on a
-    # pauldron or a raised arm to accidentally touch the cowl.
-    collar_anchor = local(0.0, -119.0)
-    neck_target = _lerp_point(rig.neck, rig.head, 0.58)
-    _draw_solid_segment(
-        draw, collar_anchor, neck_target,
-        16.0 * FIGURE_SCALE, 13.5 * FIGURE_SCALE, CLOTH_DEEP,
-    )
-
-    # Complete limb underpainting.  The visible arm/leg pieces remain more
-    # angular, but any overlap or extreme pose still has a continuous body.
-    for shoulder, elbow, hand in (
-        (rig.left_shoulder, rig.left_elbow, rig.left_hand),
-        (rig.right_shoulder, rig.right_elbow, rig.right_hand),
-    ):
-        _draw_solid_segment(
-            draw, shoulder, elbow,
-            12.5 * FIGURE_SCALE, 10.5 * FIGURE_SCALE, UNDERSUIT,
-        )
-        _draw_solid_segment(
-            draw, elbow, hand,
-            10.5 * FIGURE_SCALE, 8.0 * FIGURE_SCALE, UNDERSUIT,
-        )
-
-    for hip, knee, foot in (
-        (rig.left_hip, rig.left_knee, rig.left_foot),
-        (rig.right_hip, rig.right_knee, rig.right_foot),
-    ):
-        _draw_solid_segment(
-            draw, hip, knee,
-            12.0 * FIGURE_SCALE, 10.5 * FIGURE_SCALE, UNDERSUIT,
-        )
-        _draw_solid_segment(
-            draw, knee, foot,
-            10.5 * FIGURE_SCALE, 8.5 * FIGURE_SCALE, UNDERSUIT,
-        )
 
 
 def _lerp_point(a: Point, b: Point, t: float) -> Point:
@@ -836,398 +755,6 @@ def _draw_foot(
     )
 
 
-def _draw_leg(
-    draw: ImageDraw.ImageDraw,
-    hip: Point,
-    knee: Point,
-    foot: Point,
-    *,
-    front: bool,
-) -> None:
-    base = CLOTH_MID if front else CLOTH
-    _draw_segment(
-        draw,
-        hip,
-        knee,
-        10.0 * FIGURE_SCALE,
-        9.0 * FIGURE_SCALE,
-        base,
-        highlight=CLOTH_HI if front else None,
-    )
-    _draw_segment(
-        draw,
-        knee,
-        foot,
-        9.0 * FIGURE_SCALE,
-        7.0 * FIGURE_SCALE,
-        CLOTH_DEEP,
-        highlight=CLOTH_MID if front else None,
-    )
-    # Wrapped shin bands.
-    for fraction in (0.35, 0.55, 0.75):
-        x = _lerp(knee[0], foot[0], fraction)
-        y = _lerp(knee[1], foot[1], fraction)
-        dx = foot[0] - knee[0]
-        dy = foot[1] - knee[1]
-        length = max(1.0, math.hypot(dx, dy))
-        nx, ny = -dy / length, dx / length
-        _line(
-            draw,
-            [
-                (x - nx * 7.5 * FIGURE_SCALE, y - ny * 7.5 * FIGURE_SCALE),
-                (x + nx * 7.5 * FIGURE_SCALE, y + ny * 7.5 * FIGURE_SCALE),
-            ],
-            WRAP_HI if front else WRAP,
-            1.4,
-        )
-    _draw_foot(draw, knee, foot, 1.0 if foot[0] >= hip[0] else -1.0)
-
-
-def _draw_hakama(draw: ImageDraw.ImageDraw, local, pose: Pose) -> None:
-    sway = pose.cloth_sway
-    back = [
-        local(-34, -61),
-        local(34, -61),
-        local(49 + sway * 0.25, -5),
-        local(8 + sway * 0.1, 6),
-        local(0, -2),
-        local(-9 + sway * 0.1, 6),
-        local(-49 + sway * 0.25, -5),
-    ]
-    _poly(draw, back, CLOTH_DEEP, OUTLINE, 1.8)
-
-    left_panel = [
-        local(-35, -57),
-        local(-3, -58),
-        local(-7 + sway * 0.12, 4),
-        local(-48 + sway * 0.28, -3),
-    ]
-    right_panel = [
-        local(3, -58),
-        local(35, -57),
-        local(48 + sway * 0.28, -3),
-        local(7 + sway * 0.12, 4),
-    ]
-    _poly(draw, left_panel, ARMOR_DEEP, OUTLINE, 1.5)
-    _poly(draw, right_panel, ARMOR, OUTLINE, 1.5)
-    _line(draw, [local(-24, -51), local(-30 + sway * 0.16, -4)], ARMOR_HI, 1.2)
-    _line(draw, [local(22, -51), local(29 + sway * 0.16, -5)], ARMOR_HI, 1.2)
-
-    # Red inner split appears in motion without turning the whole sprite red.
-    center = [local(-6, -58), local(7, -58), local(5, 1), local(-5, 1)]
-    _poly(draw, center, LACQUER, OUTLINE, 1.1)
-    _line(draw, [local(0, -53), local(0, -4)], LACQUER_HI, 0.9)
-
-
-def _draw_torso(draw: ImageDraw.ImageDraw, local, pose: Pose) -> None:
-    # Under-robe mass.
-    under = [
-        local(-36, -116),
-        local(35, -116),
-        local(41, -72),
-        local(29, -55),
-        local(-30, -55),
-        local(-42, -74),
-    ]
-    _poly(draw, under, CLOTH, OUTLINE, 2.0)
-
-    # Asymmetric plated shoulders: weapon side is larger and higher.
-    left_pauldron = [
-        local(-51, -113),
-        local(-39, -127),
-        local(-18, -122),
-        local(-20, -98),
-        local(-44, -91),
-        local(-56, -100),
-    ]
-    right_pauldron = [
-        local(17, -125),
-        local(43, -133),
-        local(58, -118),
-        local(58, -96),
-        local(44, -88),
-        local(20, -96),
-    ]
-    _poly(draw, left_pauldron, ARMOR_DEEP, OUTLINE, 1.7)
-    _poly(draw, right_pauldron, ARMOR, OUTLINE, 2.0)
-    _poly(
-        draw,
-        [local(24, -121), local(43, -126), local(51, -116), local(48, -107), local(27, -111)],
-        ARMOR_HI,
-        OUTLINE_SOFT,
-        0.9,
-    )
-    for y in (-113, -104, -95):
-        _line(draw, [local(-48, y), local(-23, y + 4)], ARMOR_HI, 0.9)
-
-    # Five overlapping lamellar plates create a broad, readable chest.
-    plate_specs = [
-        (-101, 48, 20, ARMOR),
-        (-92, 51, 20, ARMOR_DEEP),
-        (-83, 52, 20, ARMOR),
-        (-74, 48, 18, ARMOR_DEEP),
-    ]
-    for y, width, height, color in plate_specs:
-        left = -width * 0.5
-        right = width * 0.5
-        plate = [
-            local(left, y - height * 0.5),
-            local(right, y - height * 0.5),
-            local(right - 4, y + height * 0.5),
-            local(0, y + height * 0.5 + 5),
-            local(left + 4, y + height * 0.5),
-        ]
-        _poly(draw, plate, color, OUTLINE, 1.25)
-        _line(draw, [local(left + 8, y - 5), local(right - 8, y - 5)], ARMOR_HI, 0.9)
-        _circle(draw, local(left + 9, y + 2), 1.6 * FIGURE_SCALE, BRASS, OUTLINE, 0.6)
-        _circle(draw, local(right - 9, y + 2), 1.6 * FIGURE_SCALE, BRASS, OUTLINE, 0.6)
-
-    # Diagonal red harness and heavy rope belt.
-    harness = [local(-28, -116), local(-17, -119), local(30, -63), local(20, -59)]
-    _poly(draw, harness, LACQUER, OUTLINE, 1.1)
-    _line(draw, [local(-23, -115), local(25, -63)], LACQUER_HI, 1.0)
-
-    belt = [local(-39, -66), local(39, -66), local(36, -54), local(-37, -54)]
-    _poly(draw, belt, ROPE, OUTLINE, 1.4)
-    for x in range(-30, 34, 10):
-        _line(draw, [local(x, -67), local(x + 5, -54)], ROPE_HI, 1.0)
-    knot = local(-2, -58)
-    _circle(draw, knot, 5.5 * FIGURE_SCALE, ROPE_HI, OUTLINE, 1.0)
-    _poly(draw, [local(-2, -54), local(-12, -35), local(-2, -39)], ROPE, OUTLINE, 0.9)
-    _poly(draw, [local(2, -54), local(13, -36), local(3, -39)], ROPE, OUTLINE, 0.9)
-
-
-def _draw_arm(
-    draw: ImageDraw.ImageDraw,
-    shoulder: Point,
-    elbow: Point,
-    hand: Point,
-    *,
-    front: bool,
-    raised_talisman: bool = False,
-) -> None:
-    base = CLOTH_MID if front else CLOTH
-    _draw_segment(
-        draw,
-        shoulder,
-        elbow,
-        11.0 * FIGURE_SCALE,
-        9.5 * FIGURE_SCALE,
-        base,
-        highlight=CLOTH_HI if front else None,
-    )
-    _draw_segment(
-        draw,
-        elbow,
-        hand,
-        9.5 * FIGURE_SCALE,
-        7.5 * FIGURE_SCALE,
-        CLOTH_DEEP,
-        highlight=CLOTH_MID if front else None,
-    )
-    _circle(draw, elbow, 9.0 * FIGURE_SCALE, ARMOR if front else ARMOR_DEEP, OUTLINE, 1.2)
-    # Bracer with red binding.
-    dx = hand[0] - elbow[0]
-    dy = hand[1] - elbow[1]
-    angle = math.degrees(math.atan2(dy, dx))
-    bracer_center = (_lerp(elbow[0], hand[0], 0.72), _lerp(elbow[1], hand[1], 0.72))
-    _poly(draw, _quad(bracer_center, 20 * FIGURE_SCALE, 15 * FIGURE_SCALE, angle), ARMOR_DEEP, OUTLINE, 1.2)
-    _line(draw, [_polar(bracer_center, -8 * FIGURE_SCALE, angle), _polar(bracer_center, 8 * FIGURE_SCALE, angle)], LACQUER_HI, 1.4)
-    _circle(draw, hand, 7.8 * FIGURE_SCALE, WRAP, OUTLINE, 1.2)
-
-    if raised_talisman:
-        # A small paper seal makes the taunt read as occult ninja ritual rather
-        # than a generic fist pump.
-        paper_center = (hand[0] - 2 * FIGURE_SCALE, hand[1] - 18 * FIGURE_SCALE)
-        paper = _quad(paper_center, 14 * FIGURE_SCALE, 28 * FIGURE_SCALE, -7.0)
-        _poly(draw, paper, (224, 205, 164, 255), OUTLINE, 1.0)
-        _line(draw, [(paper_center[0] - 4, paper_center[1] - 7), (paper_center[0] + 3, paper_center[1] + 7)], LACQUER, 1.0)
-        _line(draw, [(paper_center[0] + 4, paper_center[1] - 8), (paper_center[0] - 3, paper_center[1] + 6)], LACQUER, 1.0)
-
-
-def _draw_neck_and_gorget(
-    draw: ImageDraw.ImageDraw,
-    rig: Rig,
-    local,
-    pose: Pose,
-) -> None:
-    """Resolve the head-to-torso transition as layered cloth and armor."""
-    collar_anchor = local(0.0, -118.0)
-    neck_target = _lerp_point(rig.neck, rig.head, 0.62)
-    _poly(
-        draw,
-        _segment_polygon(
-            collar_anchor, neck_target,
-            15.5 * FIGURE_SCALE, 12.5 * FIGURE_SCALE,
-        ),
-        CLOTH_DEEP,
-        OUTLINE,
-        1.4,
-    )
-
-    # Broad gorget sits over the upper chest and tucks under the cowl.
-    gorget = [
-        local(-28, -123),
-        local(-16, -134),
-        local(16, -134),
-        local(29, -122),
-        local(22, -107),
-        local(-22, -107),
-    ]
-    _poly(draw, gorget, ARMOR_DEEP, OUTLINE, 1.6)
-    _poly(
-        draw,
-        [local(-18, -124), local(18, -124), local(14, -113), local(-14, -113)],
-        ARMOR,
-        OUTLINE_SOFT,
-        0.9,
-    )
-    _line(draw, [local(-13, -119), local(13, -119)], ARMOR_HI, 1.0)
-
-    # Two wrap bands make the neck read as intentional anatomy rather than a
-    # dark bridge.  Their angle follows the torso while the head can counterpose.
-    for t in (0.35, 0.58):
-        center = _lerp_point(collar_anchor, neck_target, t)
-        dx = neck_target[0] - collar_anchor[0]
-        dy = neck_target[1] - collar_anchor[1]
-        length = max(1.0, math.hypot(dx, dy))
-        nx, ny = -dy / length, dx / length
-        half = _lerp(13.0, 10.0, t) * FIGURE_SCALE
-        _line(
-            draw,
-            [(center[0] - nx * half, center[1] - ny * half),
-             (center[0] + nx * half, center[1] + ny * half)],
-            CLOTH_MID,
-            1.0,
-        )
-
-
-def _draw_gripping_hand(
-    draw: ImageDraw.ImageDraw,
-    elbow: Point,
-    hand: Point,
-    weapon_angle: float,
-) -> None:
-    """Repaint the weapon hand over the handle as a closed, attached grip."""
-    wrist = _lerp_point(elbow, hand, 0.80)
-    _draw_solid_segment(
-        draw, wrist, hand,
-        6.5 * FIGURE_SCALE, 8.5 * FIGURE_SCALE, WRAP,
-    )
-    _circle(draw, hand, 8.6 * FIGURE_SCALE, WRAP, OUTLINE, 1.2)
-
-    # Four knuckle pads cross the handle; the dark handle seam remains visible
-    # between them, so the hand reads as wrapped around rather than pasted on.
-    across = weapon_angle + 90.0
-    for offset in (-4.5, -1.5, 1.5, 4.5):
-        p = _polar(hand, offset * FIGURE_SCALE, across)
-        _circle(draw, p, 2.1 * FIGURE_SCALE, WRAP_HI, OUTLINE_SOFT, 0.55)
-    _line(
-        draw,
-        [_polar(hand, -7.0 * FIGURE_SCALE, weapon_angle),
-         _polar(hand, 7.0 * FIGURE_SCALE, weapon_angle)],
-        OUTLINE_SOFT,
-        1.0,
-    )
-
-
-def _draw_head(draw: ImageDraw.ImageDraw, rig: Rig, pose: Pose) -> None:
-    center = rig.head
-    angle = pose.torso + pose.head
-
-    def hp(x: float, y: float) -> Point:
-        rx, ry = _rot(x * FIGURE_SCALE, y * FIGURE_SCALE, angle)
-        return (center[0] + rx, center[1] + ry)
-
-    # Cowl silhouette, with a clipped top and swept side flaps.
-    cowl = [
-        hp(-26, -25),
-        hp(-15, -36),
-        hp(13, -36),
-        hp(27, -25),
-        hp(31, -2),
-        hp(22, 22),
-        hp(8, 30),
-        hp(-10, 29),
-        hp(-24, 20),
-        hp(-31, -2),
-    ]
-    _poly(draw, cowl, CLOTH_DEEP, OUTLINE, 2.0)
-    inner = [
-        hp(-19, -22),
-        hp(-10, -29),
-        hp(10, -29),
-        hp(20, -20),
-        hp(22, 2),
-        hp(14, 18),
-        hp(-14, 18),
-        hp(-22, 2),
-    ]
-    _poly(draw, inner, CLOTH_MID, OUTLINE, 1.1)
-
-    # Iron oni mask: angular cheek guards, central nose ridge, brass tusks.
-    mask = [
-        hp(-20, -12),
-        hp(-12, -21),
-        hp(13, -21),
-        hp(21, -11),
-        hp(19, 11),
-        hp(10, 23),
-        hp(0, 27),
-        hp(-11, 22),
-        hp(-20, 10),
-    ]
-    _poly(draw, mask, IRON_DEEP, OUTLINE, 1.7)
-    faceplate = [
-        hp(-15, -9),
-        hp(-8, -16),
-        hp(9, -16),
-        hp(16, -8),
-        hp(14, 10),
-        hp(5, 18),
-        hp(-6, 18),
-        hp(-14, 9),
-    ]
-    _poly(draw, faceplate, IRON, OUTLINE_SOFT, 1.0)
-    _poly(draw, [hp(-3, -14), hp(4, -14), hp(7, 11), hp(0, 16), hp(-6, 10)], IRON_HI, OUTLINE_SOFT, 0.8)
-
-    # Horn-like cowl crests frame the head without turning it into a literal oni.
-    _poly(draw, [hp(-20, -29), hp(-34, -39), hp(-28, -18)], ARMOR, OUTLINE, 1.0)
-    _poly(draw, [hp(18, -29), hp(34, -38), hp(27, -17)], ARMOR, OUTLINE, 1.0)
-    _line(draw, [hp(-31, -35), hp(-25, -22)], ARMOR_HI, 0.8)
-    _line(draw, [hp(30, -34), hp(24, -21)], ARMOR_HI, 0.8)
-
-    if pose.x_eyes:
-        for x in (-8, 8):
-            _line(draw, [hp(x - 4, -6), hp(x + 4, 2)], OUTLINE, 1.5)
-            _line(draw, [hp(x - 4, 2), hp(x + 4, -6)], OUTLINE, 1.5)
-    else:
-        flare = pose.eye_flare
-        left_eye = [hp(-14, -8), hp(-3, -11), hp(-1, -5), hp(-12, -3)]
-        right_eye = [hp(2, -11), hp(14, -8), hp(12, -3), hp(1, -5)]
-        _poly(draw, left_eye, EYE, OUTLINE, 0.7)
-        _poly(draw, right_eye, EYE, OUTLINE, 0.7)
-        _line(draw, [hp(-11, -6), hp(-4, -8)], EYE_CORE, 0.9 + flare * 0.8)
-        _line(draw, [hp(4, -8), hp(11, -6)], EYE_CORE, 0.9 + flare * 0.8)
-        if flare > 0.7:
-            _line(draw, [hp(-17, -8), hp(-24 - flare * 3, -10)], (255, 70, 58, 120), 1.0)
-            _line(draw, [hp(17, -8), hp(24 + flare * 3, -10)], (255, 70, 58, 120), 1.0)
-
-    # Fanged lower vent and tusks.
-    _line(draw, [hp(-9, 8), hp(0, 12), hp(9, 8)], OUTLINE_SOFT, 1.2)
-    _poly(draw, [hp(-12, 10), hp(-5, 12), hp(-10, 20)], BRASS_HI, OUTLINE, 0.8)
-    _poly(draw, [hp(12, 10), hp(5, 12), hp(10, 20)], BRASS_HI, OUTLINE, 0.8)
-    for x in (-5, 0, 5):
-        _line(draw, [hp(x, 12), hp(x, 17)], OUTLINE, 0.7)
-
-    # Tied scarf tails.
-    tail_anchor = hp(20, -20)
-    tail1 = [tail_anchor, hp(44 + pose.cloth_sway * 0.4, -26), hp(35 + pose.cloth_sway * 0.6, -14)]
-    tail2 = [hp(21, -17), hp(46 + pose.cloth_sway * 0.5, -8), hp(33 + pose.cloth_sway * 0.7, -4)]
-    _poly(draw, tail1, LACQUER, OUTLINE, 0.9)
-    _poly(draw, tail2, LACQUER_HI, OUTLINE, 0.9)
-
-
 def _draw_attack_effects(draw: ImageDraw.ImageDraw, rig: Rig, pose: Pose, weapon_tip: Point) -> None:
     if pose.anim != "slash" or pose.strike <= 0.08:
         return
@@ -1273,6 +800,290 @@ def _draw_hurt_marks(draw: ImageDraw.ImageDraw, rig: Rig, pose: Pose) -> None:
         )
 
 
+# -- the rig: pieces painted once in their own frame, turned into place --------
+
+FS = FIGURE_SCALE
+LENGTH_STEP = 2.0
+
+
+def _S(p: Point) -> Point:
+    """A work-space point in supersampled canvas pixels, unrounded."""
+    return (p[0] * SUPER, p[1] * SUPER)
+
+
+def _heading(a: Point, b: Point) -> float:
+    return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+
+
+def _stepped(a: Point, b: Point) -> float:
+    return max(LENGTH_STEP, round(math.hypot(b[0] - a[0], b[1] - a[1]) / LENGTH_STEP) * LENGTH_STEP)
+
+
+def _piece(key, extent, paint):
+    return SR.local_piece(key, extent, paint, SUPER)
+
+
+def _place(image: Image.Image, part, at: Point, deg: float, name: str) -> None:
+    SR.place(image, part, _S(at), deg, name)
+
+
+def _torso_local(origin: Point):
+    """``local`` of an unturned torso whose root is at ``origin``."""
+
+    def local(x: float, y: float) -> Point:
+        return (origin[0] + x * FS, origin[1] + y * FS)
+
+    return local
+
+
+TORSO_EXTENT = (70 * FS, 145 * FS, 70 * FS, 20 * FS)
+
+
+def _bone_piece(kind: str, length: float, front: bool):
+    """One limb bone along +x, ``length`` long: its continuous underpainting,
+    the outlined segment over it, and what rides that bone (shin wraps; the
+    forearm's bracer and hand)."""
+    spec = {
+        # under (r0, r1), visible (r0, r1, fill, highlight)
+        "thigh": ((12.0, 10.5), (10.0, 9.0, CLOTH_MID if front else CLOTH, CLOTH_HI if front else None)),
+        "shin": ((10.5, 8.5), (9.0, 7.0, CLOTH_DEEP, CLOTH_MID if front else None)),
+        "upper_arm": ((12.5, 10.5), (11.0, 9.5, CLOTH_MID if front else CLOTH, CLOTH_HI if front else None)),
+        "forearm": ((10.5, 8.0), (9.5, 7.5, CLOTH_DEEP, CLOTH_MID if front else None)),
+    }[kind]
+    (u0, u1), (r0, r1, fill, highlight) = spec
+
+    def paint(d, o) -> None:
+        a, b = o, (o[0] + length, o[1])
+        _draw_solid_segment(d, a, b, u0 * FS, u1 * FS, UNDERSUIT)
+        _draw_segment(d, a, b, r0 * FS, r1 * FS, fill, highlight=highlight)
+        if kind == "shin":
+            for fraction in (0.35, 0.55, 0.75):
+                x = o[0] + length * fraction
+                _line(d, [(x, o[1] + 7.5 * FS), (x, o[1] - 7.5 * FS)], WRAP_HI if front else WRAP, 1.4)
+        elif kind == "forearm":
+            center = (o[0] + length * 0.72, o[1])
+            _poly(d, _quad(center, 20 * FS, 15 * FS, 0.0), ARMOR_DEEP, OUTLINE, 1.2)
+            _line(d, [(center[0] - 8 * FS, center[1]), (center[0] + 8 * FS, center[1])], LACQUER_HI, 1.4)
+            _circle(d, b, 7.8 * FS, WRAP, OUTLINE, 1.2)
+
+    r = max(u0, r0, 11.0) * FS + 3.0
+    return _piece(("ninja_bone", kind, length, front), (r, r, length + r, r), paint)
+
+
+def _place_bone(image: Image.Image, kind: str, a: Point, b: Point, front: bool, name: str) -> None:
+    _place(image, _bone_piece(kind, _stepped(a, b), front), a, _heading(a, b), name)
+
+
+def _boot_piece(facing: float, knee_dx: float):
+    """The boot, painted with the shin at its rest slant in the torso frame."""
+
+    def paint(d, o) -> None:
+        _draw_foot(d, (o[0] + knee_dx * FS, o[1] - 33.0 * FS), o, facing)
+
+    return _piece(("ninja_boot", facing, knee_dx), (28 * FS, 24 * FS, 28 * FS, 10 * FS), paint)
+
+
+def _draw_leg(image: Image.Image, hip: Point, knee: Point, foot: Point, torso: float, *, front: bool, knee_dx: float) -> None:
+    side = "front" if front else "rear"
+    _place_bone(image, "thigh", hip, knee, front, f"{side}_thigh")
+    _place_bone(image, "shin", knee, foot, front, f"{side}_shin")
+    facing = 1.0 if foot[0] >= hip[0] else -1.0
+    _place(image, _boot_piece(facing, knee_dx), foot, torso, f"{side}_boot")
+
+
+def _draw_arm(image: Image.Image, shoulder: Point, elbow: Point, hand: Point, *, front: bool, raised_talisman: bool = False) -> None:
+    side = "front" if front else "rear"
+    _place_bone(image, "upper_arm", shoulder, elbow, front, f"{side}_upper_arm")
+    _place_bone(image, "forearm", elbow, hand, front, f"{side}_forearm")
+    r = 9.0 * FS
+    elbow_part = _piece(("ninja_elbow", front), (r + 2, r + 2, r + 2, r + 2), lambda d, o: _circle(d, o, r, ARMOR if front else ARMOR_DEEP, OUTLINE, 1.2))
+    _place(image, elbow_part, elbow, 0.0, f"{side}_elbow")
+
+    if raised_talisman:
+        # A small paper seal makes the taunt read as occult ninja ritual rather
+        # than a generic fist pump.
+        def paint(d, o) -> None:
+            paper_center = (o[0] - 2 * FS, o[1] - 18 * FS)
+            paper = _quad(paper_center, 14 * FS, 28 * FS, -7.0)
+            _poly(d, paper, (224, 205, 164, 255), OUTLINE, 1.0)
+            _line(d, [(paper_center[0] - 4, paper_center[1] - 7), (paper_center[0] + 3, paper_center[1] + 7)], LACQUER, 1.0)
+            _line(d, [(paper_center[0] + 4, paper_center[1] - 8), (paper_center[0] - 3, paper_center[1] + 6)], LACQUER, 1.0)
+
+        _place(image, _piece(("ninja_talisman",), (14 * FS, 38 * FS, 12 * FS, 4 * FS), paint), hand, 0.0, "talisman")
+
+
+def _paint_trunk(d, o, crouch: float) -> None:
+    """The continuous body under the costume (torso frame, unturned)."""
+    local = _torso_local(o)
+    pelvis = local(0.0, -54.0 + crouch * 0.2)
+    chest = local(0.0, -104.0 + crouch * 0.25)
+    trunk = [local(-32, -121), local(32, -121), local(35, -58), local(23, -45), local(-23, -45), local(-35, -58)]
+    _poly(d, trunk, UNDERSUIT, None, 0)
+    _draw_solid_segment(d, local(-37.0, -113.0), local(39.0, -112.0), 14.5 * FS, 14.5 * FS, UNDERSUIT)
+    _draw_solid_segment(d, chest, pelvis, 27.0 * FS, 25.0 * FS, UNDERSUIT)
+    _draw_solid_segment(d, local(-19.0, -55.0), local(19.0, -55.0), 15.0 * FS, 15.0 * FS, UNDERSUIT)
+
+
+def _paint_hakama(d, o, sway: float) -> None:
+    local = _torso_local(o)
+    back = [local(-34, -61), local(34, -61), local(49 + sway * 0.25, -5), local(8 + sway * 0.1, 6), local(0, -2), local(-9 + sway * 0.1, 6), local(-49 + sway * 0.25, -5)]
+    _poly(d, back, CLOTH_DEEP, OUTLINE, 1.8)
+    left_panel = [local(-35, -57), local(-3, -58), local(-7 + sway * 0.12, 4), local(-48 + sway * 0.28, -3)]
+    right_panel = [local(3, -58), local(35, -57), local(48 + sway * 0.28, -3), local(7 + sway * 0.12, 4)]
+    _poly(d, left_panel, ARMOR_DEEP, OUTLINE, 1.5)
+    _poly(d, right_panel, ARMOR, OUTLINE, 1.5)
+    _line(d, [local(-24, -51), local(-30 + sway * 0.16, -4)], ARMOR_HI, 1.2)
+    _line(d, [local(22, -51), local(29 + sway * 0.16, -5)], ARMOR_HI, 1.2)
+    # Red inner split appears in motion without turning the whole sprite red.
+    center = [local(-6, -58), local(7, -58), local(5, 1), local(-5, 1)]
+    _poly(d, center, LACQUER, OUTLINE, 1.1)
+    _line(d, [local(0, -53), local(0, -4)], LACQUER_HI, 0.9)
+
+
+def _paint_torso(d, o) -> None:
+    local = _torso_local(o)
+    # Under-robe mass.
+    under = [local(-36, -116), local(35, -116), local(41, -72), local(29, -55), local(-30, -55), local(-42, -74)]
+    _poly(d, under, CLOTH, OUTLINE, 2.0)
+    # Asymmetric plated shoulders: weapon side is larger and higher.
+    left_pauldron = [local(-51, -113), local(-39, -127), local(-18, -122), local(-20, -98), local(-44, -91), local(-56, -100)]
+    right_pauldron = [local(17, -125), local(43, -133), local(58, -118), local(58, -96), local(44, -88), local(20, -96)]
+    _poly(d, left_pauldron, ARMOR_DEEP, OUTLINE, 1.7)
+    _poly(d, right_pauldron, ARMOR, OUTLINE, 2.0)
+    _poly(d, [local(24, -121), local(43, -126), local(51, -116), local(48, -107), local(27, -111)], ARMOR_HI, OUTLINE_SOFT, 0.9)
+    for y in (-113, -104, -95):
+        _line(d, [local(-48, y), local(-23, y + 4)], ARMOR_HI, 0.9)
+    # Five overlapping lamellar plates create a broad, readable chest.
+    for y, width, height, color in [(-101, 48, 20, ARMOR), (-92, 51, 20, ARMOR_DEEP), (-83, 52, 20, ARMOR), (-74, 48, 18, ARMOR_DEEP)]:
+        left = -width * 0.5
+        right = width * 0.5
+        plate = [local(left, y - height * 0.5), local(right, y - height * 0.5), local(right - 4, y + height * 0.5), local(0, y + height * 0.5 + 5), local(left + 4, y + height * 0.5)]
+        _poly(d, plate, color, OUTLINE, 1.25)
+        _line(d, [local(left + 8, y - 5), local(right - 8, y - 5)], ARMOR_HI, 0.9)
+        _circle(d, local(left + 9, y + 2), 1.6 * FS, BRASS, OUTLINE, 0.6)
+        _circle(d, local(right - 9, y + 2), 1.6 * FS, BRASS, OUTLINE, 0.6)
+    # Diagonal red harness and heavy rope belt.
+    harness = [local(-28, -116), local(-17, -119), local(30, -63), local(20, -59)]
+    _poly(d, harness, LACQUER, OUTLINE, 1.1)
+    _line(d, [local(-23, -115), local(25, -63)], LACQUER_HI, 1.0)
+    belt = [local(-39, -66), local(39, -66), local(36, -54), local(-37, -54)]
+    _poly(d, belt, ROPE, OUTLINE, 1.4)
+    for x in range(-30, 34, 10):
+        _line(d, [local(x, -67), local(x + 5, -54)], ROPE_HI, 1.0)
+    _circle(d, local(-2, -58), 5.5 * FS, ROPE_HI, OUTLINE, 1.0)
+    _poly(d, [local(-2, -54), local(-12, -35), local(-2, -39)], ROPE, OUTLINE, 0.9)
+    _poly(d, [local(2, -54), local(13, -36), local(3, -39)], ROPE, OUTLINE, 0.9)
+
+
+def _paint_gorget(d, o) -> None:
+    local = _torso_local(o)
+    gorget = [local(-28, -123), local(-16, -134), local(16, -134), local(29, -122), local(22, -107), local(-22, -107)]
+    _poly(d, gorget, ARMOR_DEEP, OUTLINE, 1.6)
+    _poly(d, [local(-18, -124), local(18, -124), local(14, -113), local(-14, -113)], ARMOR, OUTLINE_SOFT, 0.9)
+    _line(d, [local(-13, -119), local(13, -119)], ARMOR_HI, 1.0)
+
+
+def _neck_piece(length: float):
+    """The wrapped neck along +x from the collar, with its two wrap bands."""
+
+    def paint(d, o) -> None:
+        a, b = o, (o[0] + length, o[1])
+        _poly(d, _segment_polygon(a, b, 15.5 * FS, 12.5 * FS), CLOTH_DEEP, OUTLINE, 1.4)
+        for t in (0.35, 0.58):
+            half = _lerp(13.0, 10.0, t) * FS
+            x = o[0] + length * t
+            _line(d, [(x, o[1] + half), (x, o[1] - half)], CLOTH_MID, 1.0)
+
+    r = 17.0 * FS
+    return _piece(("ninja_neck", length), (4.0, r, length + 4.0, r), paint)
+
+
+def _paint_head(d, center: Point, x_eyes: bool, flare: float) -> None:
+    """The cowled, masked head unturned at ``center``."""
+
+    def hp(x: float, y: float) -> Point:
+        return (center[0] + x * FS, center[1] + y * FS)
+
+    cowl = [hp(-26, -25), hp(-15, -36), hp(13, -36), hp(27, -25), hp(31, -2), hp(22, 22), hp(8, 30), hp(-10, 29), hp(-24, 20), hp(-31, -2)]
+    _poly(d, cowl, CLOTH_DEEP, OUTLINE, 2.0)
+    inner = [hp(-19, -22), hp(-10, -29), hp(10, -29), hp(20, -20), hp(22, 2), hp(14, 18), hp(-14, 18), hp(-22, 2)]
+    _poly(d, inner, CLOTH_MID, OUTLINE, 1.1)
+    # Iron oni mask: angular cheek guards, central nose ridge, brass tusks.
+    mask = [hp(-20, -12), hp(-12, -21), hp(13, -21), hp(21, -11), hp(19, 11), hp(10, 23), hp(0, 27), hp(-11, 22), hp(-20, 10)]
+    _poly(d, mask, IRON_DEEP, OUTLINE, 1.7)
+    faceplate = [hp(-15, -9), hp(-8, -16), hp(9, -16), hp(16, -8), hp(14, 10), hp(5, 18), hp(-6, 18), hp(-14, 9)]
+    _poly(d, faceplate, IRON, OUTLINE_SOFT, 1.0)
+    _poly(d, [hp(-3, -14), hp(4, -14), hp(7, 11), hp(0, 16), hp(-6, 10)], IRON_HI, OUTLINE_SOFT, 0.8)
+    # Horn-like cowl crests frame the head without turning it into a literal oni.
+    _poly(d, [hp(-20, -29), hp(-34, -39), hp(-28, -18)], ARMOR, OUTLINE, 1.0)
+    _poly(d, [hp(18, -29), hp(34, -38), hp(27, -17)], ARMOR, OUTLINE, 1.0)
+    _line(d, [hp(-31, -35), hp(-25, -22)], ARMOR_HI, 0.8)
+    _line(d, [hp(30, -34), hp(24, -21)], ARMOR_HI, 0.8)
+    if x_eyes:
+        for x in (-8, 8):
+            _line(d, [hp(x - 4, -6), hp(x + 4, 2)], OUTLINE, 1.5)
+            _line(d, [hp(x - 4, 2), hp(x + 4, -6)], OUTLINE, 1.5)
+    else:
+        left_eye = [hp(-14, -8), hp(-3, -11), hp(-1, -5), hp(-12, -3)]
+        right_eye = [hp(2, -11), hp(14, -8), hp(12, -3), hp(1, -5)]
+        _poly(d, left_eye, EYE, OUTLINE, 0.7)
+        _poly(d, right_eye, EYE, OUTLINE, 0.7)
+        _line(d, [hp(-11, -6), hp(-4, -8)], EYE_CORE, 0.9 + flare * 0.8)
+        _line(d, [hp(4, -8), hp(11, -6)], EYE_CORE, 0.9 + flare * 0.8)
+        if flare > 0.7:
+            _line(d, [hp(-17, -8), hp(-24 - flare * 3, -10)], (255, 70, 58, 120), 1.0)
+            _line(d, [hp(17, -8), hp(24 + flare * 3, -10)], (255, 70, 58, 120), 1.0)
+    # Fanged lower vent and tusks.
+    _line(d, [hp(-9, 8), hp(0, 12), hp(9, 8)], OUTLINE_SOFT, 1.2)
+    _poly(d, [hp(-12, 10), hp(-5, 12), hp(-10, 20)], BRASS_HI, OUTLINE, 0.8)
+    _poly(d, [hp(12, 10), hp(5, 12), hp(10, 20)], BRASS_HI, OUTLINE, 0.8)
+    for x in (-5, 0, 5):
+        _line(d, [hp(x, 12), hp(x, 17)], OUTLINE, 0.7)
+
+
+def _paint_scarf(d, center: Point, sway: float) -> None:
+    """The tied scarf tails, in the head's frame."""
+
+    def hp(x: float, y: float) -> Point:
+        return (center[0] + x * FS, center[1] + y * FS)
+
+    tail1 = [hp(20, -20), hp(44 + sway * 0.4, -26), hp(35 + sway * 0.6, -14)]
+    tail2 = [hp(21, -17), hp(46 + sway * 0.5, -8), hp(33 + sway * 0.7, -4)]
+    _poly(d, tail1, LACQUER, OUTLINE, 0.9)
+    _poly(d, tail2, LACQUER_HI, OUTLINE, 0.9)
+
+
+def _kanabo_piece():
+    return _piece(("ninja_kanabo",), (22 * WEAPON_SCALE, 26 * WEAPON_SCALE, 172 * WEAPON_SCALE, 26 * WEAPON_SCALE), lambda d, o: _draw_kanabo(d, o, 0.0))
+
+
+def _place_kanabo(image: Image.Image, hand: Point, angle: float) -> Point:
+    _place(image, _kanabo_piece(), hand, angle, "kanabo")
+    x, y = _rot(160 * WEAPON_SCALE, 0.0, angle)
+    return (hand[0] + x, hand[1] + y)
+
+
+def _grip_piece():
+    """The closed hand over the handle, in the weapon's frame."""
+
+    def paint(d, o) -> None:
+        _circle(d, o, 8.6 * FS, WRAP, OUTLINE, 1.2)
+        for offset in (-4.5, -1.5, 1.5, 4.5):
+            _circle(d, (o[0], o[1] + offset * FS), 2.1 * FS, WRAP_HI, OUTLINE_SOFT, 0.55)
+        _line(d, [(o[0] - 7.0 * FS, o[1]), (o[0] + 7.0 * FS, o[1])], OUTLINE_SOFT, 1.0)
+
+    r = 10.0 * FS
+    return _piece(("ninja_grip",), (r, r, r, r), paint)
+
+
+def _wrist_piece(length: float):
+    def paint(d, o) -> None:
+        _draw_solid_segment(d, o, (o[0] + length, o[1]), 6.5 * FS, 8.5 * FS, WRAP)
+
+    r = 9.0 * FS
+    return _piece(("ninja_wrist", length), (r, r, length + r, r), paint)
+
+
 def _render_frame(
     anim: str,
     frame_idx: int,
@@ -1280,55 +1091,71 @@ def _render_frame(
     *,
     include_effects: bool = True,
 ) -> Image.Image:
-    image = Image.new(
-        "RGBA",
-        (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER),
-        TRANSPARENT,
-    )
+    """The heavy ninja as a rig: the torso's layers, hakama (per sway step),
+    head (per eye state) and scarf, the kanabo and every limb bone are pieces
+    painted once and turned into place. The smoke ribbon and the strike
+    effects stay shapes (they deform every frame)."""
+    image = Image.new("RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), TRANSPARENT)
     draw = blending_draw(image)
     pose = Pose(anim, frame_idx, nframes)
     rig, local = _build_rig(pose)
+    torso = pose.torso
 
-    _draw_ground_shadow(draw, rig, pose)
+    # Ground shadow (its width follows the fall: a few steps).
+    death = SR.q(pose.death, 0.125)
+
+    def paint_shadow(d, o) -> None:
+        width = 60.0 * FS * (1.0 - death * 0.12)
+        height = 10.0 * FS
+        _ellipse(d, o[0], o[1], width, height, SHADOW, None, 0)
+        _ellipse(d, o[0] - 5, o[1] - 1, width * 0.62, height * 0.55, (8, 10, 16, 55), None, 0)
+
+    shadow = _piece(("ninja_shadow", death), (64 * FS, 12 * FS, 64 * FS, 12 * FS), paint_shadow)
+    _place(image, shadow, (rig.root[0] + pose.death * 14.0, rig.root[1] + 10.0 * FS), 0.0, "shadow")
     _draw_smoke_ribbon(draw, rig, pose)
 
     # Weapon behind the body in neutral poses.  During the strike it crosses in
     # front after the release point; the death drop also remains behind.
+    weapon_angle = pose.weapon_angle + torso
     weapon_tip = rig.right_hand
     if not pose.weapon_front:
-        weapon_tip = _draw_kanabo(draw, rig.right_hand, pose.weapon_angle + pose.torso)
+        weapon_tip = _place_kanabo(image, rig.right_hand, weapon_angle)
 
-    _draw_anatomical_understructure(draw, rig, local)
+    crouch = SR.q(pose.crouch, 4.0)
+    trunk = _piece(("ninja_trunk", crouch), TORSO_EXTENT, lambda d, o: _paint_trunk(d, o, crouch))
+    _place(image, trunk, rig.root, torso, "trunk")
 
     # Rear leg and arm establish depth before the central costume mass.
-    _draw_leg(draw, rig.left_hip, rig.left_knee, rig.left_foot, front=False)
-    _draw_arm(
-        draw,
-        rig.right_shoulder,
-        rig.right_elbow,
-        rig.right_hand,
-        front=False,
-    )
+    _draw_leg(image, rig.left_hip, rig.left_knee, rig.left_foot, torso, front=False, knee_dx=7.0)
+    _draw_arm(image, rig.right_shoulder, rig.right_elbow, rig.right_hand, front=False)
 
-    _draw_hakama(draw, local, pose)
-    _draw_torso(draw, local, pose)
+    sway = SR.q(pose.cloth_sway, 2.0)
+    _place(image, _piece(("ninja_hakama", sway), TORSO_EXTENT, lambda d, o: _paint_hakama(d, o, sway)), rig.root, torso, "hakama")
+    _place(image, _piece(("ninja_torso",), TORSO_EXTENT, _paint_torso), rig.root, torso, "torso")
 
-    _draw_leg(draw, rig.right_hip, rig.right_knee, rig.right_foot, front=True)
-    _draw_arm(
-        draw,
-        rig.left_shoulder,
-        rig.left_elbow,
-        rig.left_hand,
-        front=True,
-        raised_talisman=anim == "taunt",
-    )
-    _draw_neck_and_gorget(draw, rig, local, pose)
-    _draw_head(draw, rig, pose)
+    _draw_leg(image, rig.right_hip, rig.right_knee, rig.right_foot, torso, front=True, knee_dx=-7.0)
+    _draw_arm(image, rig.left_shoulder, rig.left_elbow, rig.left_hand, front=True, raised_talisman=anim == "taunt")
 
-    weapon_angle = pose.weapon_angle + pose.torso
+    # Neck and gorget: the neck turns from the collar toward the head.
+    collar = local(0.0, -118.0)
+    neck_target = _lerp_point(rig.neck, rig.head, 0.62)
+    _place(image, _neck_piece(_stepped(collar, neck_target)), collar, _heading(collar, neck_target), "neck")
+    _place(image, _piece(("ninja_gorget",), TORSO_EXTENT, _paint_gorget), rig.root, torso, "gorget")
+
+    head_angle = torso + pose.head
+    flare = SR.q(pose.eye_flare, 0.25)
+    head = _piece(("ninja_head", pose.x_eyes, flare), (36 * FS, 42 * FS, 36 * FS, 32 * FS), lambda d, o: _paint_head(d, o, pose.x_eyes, flare))
+    _place(image, head, rig.head, head_angle, "head")
+    scarf = _piece(("ninja_scarf", sway), (-14 * FS, 32 * FS, 56 * FS, 2 * FS), lambda d, o: _paint_scarf(d, o, sway))
+    _place(image, scarf, rig.head, head_angle, "scarf")
+
     if pose.weapon_front:
-        weapon_tip = _draw_kanabo(draw, rig.right_hand, weapon_angle)
-    _draw_gripping_hand(draw, rig.right_elbow, rig.right_hand, weapon_angle)
+        weapon_tip = _place_kanabo(image, rig.right_hand, weapon_angle)
+    # The weapon hand over the handle: the wrist rides the forearm, the grip
+    # the weapon.
+    wrist = _lerp_point(rig.right_elbow, rig.right_hand, 0.80)
+    _place(image, _wrist_piece(_stepped(wrist, rig.right_hand)), wrist, _heading(wrist, rig.right_hand), "wrist")
+    _place(image, _grip_piece(), rig.right_hand, weapon_angle, "grip")
 
     if include_effects:
         _draw_attack_effects(draw, rig, pose, weapon_tip)

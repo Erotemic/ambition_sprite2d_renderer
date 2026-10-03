@@ -21,7 +21,7 @@ from PIL import Image
 from ...authoring import rigdoc
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
-from ambition_sprite2d_renderer.core.draw import blending_draw
+from . import _solo_shape_rig as SR
 from . import flying_spaghetti_monster_boss as god
 
 TARGET_NAME = "fsm_noodling"
@@ -87,12 +87,36 @@ def _pose(anim: str, i: int, n: int):
     return p
 
 
+def _bell_piece(phase: float, sx: float, sy: float, w: float):
+    """The small bell's strands at ``phase`` and squash, untilted, about
+    CENTRE: one piece per churn step and squash step, turned by the tilt."""
+
+    def paint(draw) -> None:
+        cx, cy = CENTRE
+        for k in range(14):
+            a0 = god._hash(k, 31) * math.tau
+            sweep = 2.4 + 1.6 * god._hash(k, 32)
+            r0 = 0.4 + 0.45 * god._hash(k, 33)
+            pts = []
+            for m in range(21):
+                a = a0 + sweep * m / 20
+                r = min(1.0, max(0.15, r0 + 0.2 * math.sin(2.3 * a + phase + k)))
+                ry = BELL_TOP if math.sin(a) < 0 else BELL_SKIRT
+                pts.append((cx + math.cos(a) * BELL_RX * r * sx * SCALE, cy + (math.sin(a) * ry * r - 6) * sy * SCALE))
+            god._draw_noodle(draw, pts, w, god.NOODLE_BACK if k < 5 else god.NOODLE, highlight=k >= 5)
+
+    half = (BELL_RX * SCALE * 1.3 + 10, BELL_TOP * SCALE * 1.3 + 14)
+    return god._piece(("noodling_bell", phase, sx, sy), CENTRE, half, paint)
+
+
 def _render_frame(anim: str, i: int, n: int) -> Image.Image:
+    """The noodling as a rig: its bell, meatball and eyes are pieces (the
+    god's), its noodles and stalks one raster each a frame (they bend)."""
     p = _pose(anim, i, n)
-    size = (god._s(god.WORK_FRAME_SIZE[0]), god._s(god.WORK_FRAME_SIZE[1]))
+    size = god.CANVAS_SIZE
     img = Image.new("RGBA", size, (0, 0, 0, 0))
-    draw = blending_draw(img)
-    sx, sy = 1.0 + p["squash"], 1.0 - p["squash"]
+    squash = SR.q(p["squash"], 0.02)
+    sx, sy = 1.0 + squash, 1.0 - squash
     cx, cy = CENTRE[0] + 30 * p["lunge"], CENTRE[1] + p["bob"]
 
     def P(x: float, y: float) -> god.Point:
@@ -100,7 +124,6 @@ def _render_frame(anim: str, i: int, n: int) -> Image.Image:
         return (cx + rx, cy + ry)
 
     w = 10.0 * SCALE * 2.2  # noodle width, thicker than a straight scale so it reads small
-    # Trailing noodles, forward kinematics like the god's.
     for k, (rim, length, phase, curl) in enumerate(NOODLES):
         base = P(math.cos(math.radians(rim)) * BELL_RX * 0.8, math.sin(math.radians(rim)) * BELL_SKIRT * 0.9)
         heading = 90.0 - (90.0 - rim) * (0.8 + 0.8 * p["flare"]) + p["trail"] + p["tilt"]
@@ -117,20 +140,9 @@ def _render_frame(anim: str, i: int, n: int) -> Image.Image:
             turn = god._lerp(wv + tip + p["trail"] * 0.05 * s, droop, p["limp"])
             turns.append(turn)
             angle += turn
-        god._draw_noodle(draw, god._smooth(god._chain(base, heading, seg, turns)), w, god.NOODLE if k % 2 else god.NOODLE_BACK, highlight=k % 2 == 1)
-    # The bell: a small heap of looping strands.
-    for k in range(14):
-        a0 = god._hash(k, 31) * math.tau
-        sweep = 2.4 + 1.6 * god._hash(k, 32)
-        r0 = 0.4 + 0.45 * god._hash(k, 33)
-        pts = []
-        for m in range(21):
-            a = a0 + sweep * m / 20
-            r = min(1.0, max(0.15, r0 + 0.2 * math.sin(2.3 * a + p["time"] * 0.5 + k)))
-            ry = BELL_TOP if math.sin(a) < 0 else BELL_SKIRT
-            pts.append(P(math.cos(a) * BELL_RX * r, math.sin(a) * ry * r - 6))
-        god._draw_noodle(draw, pts, w, god.NOODLE_BACK if k < 5 else god.NOODLE, highlight=k >= 5)
-    # Eye stalks, then the one meatball in front of them.
+        god._noodle(img, None, god._smooth(god._chain(base, heading, seg, turns)), w, god.NOODLE if k % 2 else god.NOODLE_BACK, k % 2 == 1, f"noodle{k}")
+    bell = _bell_piece(SR.q(p["time"] * 0.5, god.BELL_PHASE_STEP), sx, sy, w)
+    SR.place(img, bell, god._cv((cx, cy)), p["tilt"], "bell")
     eyes = []
     for side in (-1.0, 1.0):
         a = P(side * 10, -20)
@@ -138,11 +150,13 @@ def _render_frame(anim: str, i: int, n: int) -> Image.Image:
         c = P(side * 26 + 4 * math.sin(p["time"] + side), -80 + 20 * p["limp"])
         if p["limp"] > 0:
             c = (c[0] + side * 16 * p["limp"], c[1] + 20 * p["limp"])
-        god._draw_noodle(draw, god._smooth([a, b, c]), w * 0.9, god.NOODLE)
+        god._noodle(img, None, god._smooth([a, b, c]), w * 0.9, god.NOODLE, True, f"stalk{int(side)}")
         eyes.append(c)
-    god._draw_meatball(draw, P(0, -18), 30.0 * SCALE * 1.4, 0.04 + p["squash"] * 0.5, 17)
+    ball = god._meatball_piece(round(30.0 * SCALE * 1.4, 2), SR.q(0.04 + p["squash"] * 0.5, 0.01), 17)
+    SR.place(img, ball, god._cv(P(0, -18)), 0.0, "meatball")
+    aim = SR.q(p["aim"], 5.0)
     for k, c in enumerate(eyes):
-        god._draw_eye(draw, c, 16.0 * SCALE * 1.5, p["aim"], p["eyes"], -1.0 if k == 0 else 1.0)
+        SR.place(img, god._eye_piece(round(16.0 * SCALE * 1.5, 2), aim, p["eyes"], -1.0 if k == 0 else 1.0), god._cv(c), 0.0, f"eye{k}")
     if anim == "hurt" and i == 0:
         flash = Image.new("RGBA", img.size, (255, 255, 255, 0))
         flash.putalpha(img.getchannel("A").point(lambda v: v * 150 // 255))

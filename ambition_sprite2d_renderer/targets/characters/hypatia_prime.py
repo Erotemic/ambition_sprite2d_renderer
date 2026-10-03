@@ -31,6 +31,7 @@ from ...authoring import rigdoc
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ambition_sprite2d_renderer.core.draw import blending_draw
+from . import _solo_shape_rig as SR
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -378,11 +379,58 @@ def _draw_shadow(draw:ImageDraw.ImageDraw,cx:float,base:float,kind:int,color:RGB
         _poly(draw,[(cx-16,base-43),(cx-27,base-30),(cx-15,base-27)],c)
 
 
-def _draw_effects_behind(draw:ImageDraw.ImageDraw,pose:Pose)->None:
+CANVAS = (FRAME_W * SUPER, FRAME_H * SUPER)
+#: Where a piece is painted on its own canvas (design pixels): the old paint
+#: code runs with its anchor here, and the raster is cut to what it covers.
+REST = (64.0, 64.0)
+
+
+def _sp(point: Point) -> Point:
+    """A design point in supersampled canvas pixels, unrounded."""
+    return (point[0] * SUPER, point[1] * SUPER)
+
+
+def _rest(key, paint, pivot: Point = REST):
+    """A piece painted once by ``paint(draw)`` around ``pivot`` (design)."""
+    return SR.rest_piece(("hypatia",) + tuple(key), CANVAS, _p(pivot), paint)
+
+
+def _bar(canvas: Image.Image, a: Point, b: Point, radius: float, fill: RGBA, name: str, length: float | None = None, opacity: float = 1.0) -> None:
+    """``_capsule`` (a flat-ended outlined bar) from ``a`` toward ``b`` as one
+    turned piece; ``length`` fixed, or the distance to the half pixel."""
+    span = math.hypot(b[0] - a[0], b[1] - a[1]) if length is None else length
+    span = SR.q(span, 0.5)
+    x0, y0 = 16.0, 64.0
+    part = _rest(("bar", span, radius, fill), lambda d: _capsule(d, (x0, y0), (x0 + span, y0), radius, fill), (x0, y0))
+    SR.place(canvas, part, _sp(a), math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])), name, opacity)
+
+
+def _astrolabe_piece(r: float, alpha: float):
+    """``_draw_astrolabe`` at angle 0: it turns as a whole (its stars and
+    cross ride the angle), so one piece turned by the angle."""
+    return _rest(("astrolabe", r, alpha), lambda d: _draw_astrolabe(d, REST[0], REST[1], r, 0.0, alpha))
+
+
+def _place_astrolabe(canvas: Image.Image, cx: float, cy: float, r: float, angle: float, alpha: float, name: str) -> None:
+    """``_draw_astrolabe(cx, cy, r, angle, alpha)``: the piece at full
+    strength turned ``angle`` (clockwise on screen) and faded by ``alpha``."""
+    SR.place(canvas, _astrolabe_piece(r, 1.0), _sp((cx, cy)), angle, name, alpha)
+
+
+def _place_folio(canvas: Image.Image, cx: float, cy: float, angle: float, alpha: float, missing: bool, name: str) -> None:
+    """``_draw_folio`` as a piece turned ``angle`` radians, faded by ``alpha``."""
+    part = _rest(("folio", missing), lambda d: _draw_folio(d, REST[0], REST[1], 0.0, 1.0, missing))
+    SR.place(canvas, part, _sp((cx, cy)), math.degrees(angle), name, alpha)
+
+
+def _draw_effects_behind(canvas: Image.Image, pose: Pose) -> None:
+    draw = blending_draw(canvas)
     if pose.anim=="library_of_shadows":
         for i,(dx,c) in enumerate([(-28,SHADOW_A),(0,SHADOW_B),(28,SHADOW_C)]):
             alpha=.12+.42*pose.power*(.75+.25*math.sin(pose.phase*math.tau+i))
-            _draw_shadow(draw,64+dx,112,i,c,alpha)
+            # Each scholar's shadow is a rigid silhouette, faded.
+            part = _rest(("shadow", i, c), lambda d, i=i, c=c: _draw_shadow(d, REST[0], REST[1], i, c, 1.0))
+            SR.place(canvas, part, _sp((64 + dx, 112)), 0.0, f"shadow{i}", alpha)
     elif pose.anim=="prime_revelation":
         _ellipse(draw,(24,7,104,87),_fade(INDIGO_LIGHT,.08+.16*pose.power),_fade(STAR,.35*pose.power),1)
         for i in range(11):
@@ -396,47 +444,33 @@ def _draw_effects_behind(draw:ImageDraw.ImageDraw,pose:Pose)->None:
             _line(draw,[(64+math.cos(a)*34,46+math.sin(a)*34),(64+math.cos(b)*34,46+math.sin(b)*34)],_fade(CYAN,.35*pose.power),.8)
     elif pose.anim=="epicycle_orbit":
         for i,r in enumerate((25,34,43)):
-            _ellipse(draw,(64-r,49-r*.55,64+r,49+r*.55),(0,0,0,0),_fade(CYAN,.16+.22*pose.power),1)
+            ring = _rest(("orbit", r), lambda d, r=r: _ellipse(d, (REST[0]-r, REST[1]-r*.55, REST[0]+r, REST[1]+r*.55), (0,0,0,0), CYAN, 1))
+            SR.place(canvas, ring, _sp((64, 49)), 0.0, f"orbit{i}", .16+.22*pose.power)
             a=pose.phase*math.tau*(i+1)+i
             x=64+math.cos(a)*r; y=49+math.sin(a)*r*.55
-            _ellipse(draw,(x-2,y-2,x+2,y+2),_fade([BRONZE_LIGHT,CYAN,STAR][i],.5+.5*pose.power))
+            col = [BRONZE_LIGHT,CYAN,STAR][i]
+            dot = _rest(("orbit_dot", col), lambda d, col=col: _ellipse(d, (REST[0]-2, REST[1]-2, REST[0]+2, REST[1]+2), col))
+            SR.place(canvas, dot, _sp((x, y)), 0.0, f"orbit_dot{i}", .5+.5*pose.power)
     elif pose.anim=="missing_folio":
         for i in range(7):
             a=i/7*math.tau+pose.phase*2
             r=25+13*pose.power
-            _draw_folio(draw,64+math.cos(a)*r,51+math.sin(a)*r*.65,a*.3,.25+.7*pose.power,missing=(i%3==0))
+            _place_folio(canvas,64+math.cos(a)*r,51+math.sin(a)*r*.65,a*.3,.25+.7*pose.power,i%3==0,f"orbit_folio{i}")
 
 
-def _draw_character(draw:ImageDraw.ImageDraw,pose:Pose)->None:
-    cx=63+pose.x; base=113+pose.y
-    # legs and sandals
-    for side,dx,step in [(-1,-9,pose.foot_l),(1,9,pose.foot_r)]:
-        hip=(cx+dx,83+pose.y+pose.squat*.2)
-        ankle=(cx+dx+step*.3,base-8)
-        _capsule(draw,hip,ankle,4.6,SKIN_SHADE)
-        _ellipse(draw,(ankle[0]-7,base-9,ankle[0]+8,base-2),BRONZE,OUTLINE,1)
-    # mantle and armored body
-    _poly(draw,[(cx-19,48+pose.y),(cx-25,101+pose.y),(cx+23,101+pose.y),(cx+18,48+pose.y)],MIDNIGHT,OUTLINE,2)
-    _poly(draw,[(cx-22,58+pose.y),(cx-29,103+pose.y),(cx-4,94+pose.y),(cx,55+pose.y)],INDIGO,OUTLINE,1.5)
-    _poly(draw,[(cx+19,58+pose.y),(cx+27,102+pose.y),(cx+2,94+pose.y),(cx,55+pose.y)],PURPLE,OUTLINE,1.5)
-    _poly(draw,[(cx-15,52+pose.y),(cx-13,76+pose.y),(cx+14,76+pose.y),(cx+15,52+pose.y)],BRONZE,OUTLINE,1.2)
-    for y in (57,64,71): _line(draw,[(cx-12,y+pose.y),(cx+12,y+pose.y)],BRONZE_LIGHT,1)
-    # arms
-    shoulder_y=57+pose.y
-    wrists=[]
-    for side,ang in [(-1,pose.arm_l),(1,pose.arm_r)]:
-        shoulder=(cx+side*16,shoulder_y)
-        rad=math.radians(90+side*12+ang)
-        elbow=(shoulder[0]+math.cos(rad)*18,shoulder[1]+math.sin(rad)*18)
-        wrist=(elbow[0]+math.cos(rad+side*.18)*16,elbow[1]+math.sin(rad+side*.18)*16)
-        _capsule(draw,shoulder,elbow,5.2,INDIGO_LIGHT)
-        _capsule(draw,elbow,wrist,4.3,SKIN)
-        _ellipse(draw,(wrist[0]-4,wrist[1]-4,wrist[0]+4,wrist[1]+4),SKIN_LIGHT,OUTLINE,1)
-        wrists.append(wrist)
-    # head, hood, veil; the astrolabe reads as a halo behind the face rather
-    # than a mask laid over it.
-    hx=cx+pose.lean*.12; hy=31+pose.y+pose.squat*.12
-    _draw_astrolabe(draw,hx,hy-1,20,pose.phase*45+pose.staff*.2,.82)
+def _paint_body(draw) -> None:
+    """Mantle and armoured body at rest (cx 63, pose.y 0)."""
+    cx = 63
+    _poly(draw,[(cx-19,48),(cx-25,101),(cx+23,101),(cx+18,48)],MIDNIGHT,OUTLINE,2)
+    _poly(draw,[(cx-22,58),(cx-29,103),(cx-4,94),(cx,55)],INDIGO,OUTLINE,1.5)
+    _poly(draw,[(cx+19,58),(cx+27,102),(cx+2,94),(cx,55)],PURPLE,OUTLINE,1.5)
+    _poly(draw,[(cx-15,52),(cx-13,76),(cx+14,76),(cx+15,52)],BRONZE,OUTLINE,1.2)
+    for y in (57,64,71): _line(draw,[(cx-12,y),(cx+12,y)],BRONZE_LIGHT,1)
+
+
+def _paint_head(draw) -> None:
+    """Hair, face, hood, eyes and veil at rest (head centre REST)."""
+    hx, hy = REST
     _ellipse(draw,(hx-14,hy-17,hx+14,hy+17),HAIR,OUTLINE,1.5)
     _ellipse(draw,(hx-10,hy-12,hx+10,hy+12),SKIN,OUTLINE,1)
     _poly(draw,[(hx-16,hy-9),(hx-12,hy-20),(hx+12,hy-20),(hx+17,hy-8),(hx+12,hy+2),(hx-12,hy+2)],MIDNIGHT,OUTLINE,1.5)
@@ -448,22 +482,65 @@ def _draw_character(draw:ImageDraw.ImageDraw,pose:Pose)->None:
     veil_alpha=.72
     _poly(draw,[(hx-12,hy+1),(hx+12,hy),(hx+9,hy+15),(hx-9,hy+14)],_fade(INDIGO_LIGHT,veil_alpha),_fade(OUTLINE_SOFT,.8),.7)
     for i in range(3): _line(draw,[(hx-8+i*5,hy+3),(hx-6+i*5,hy+12)],_fade(CYAN,.22),.5)
-    # staff in right hand, with armillary head
-    hand=wrists[1]
-    angle=math.radians(-62+pose.staff)
-    tip=(hand[0]+math.cos(angle)*48,hand[1]+math.sin(angle)*48)
-    butt=(hand[0]-math.cos(angle)*26,hand[1]-math.sin(angle)*26)
+
+
+def _paint_staff(draw) -> None:
+    """The staff at angle 0 held at REST: butt 26 behind, tip 48 ahead, the
+    armillary ring's inside cleared at the tip (it erased the shaft there)."""
+    hx, hy = REST
+    butt, tip = (hx - 26, hy), (hx + 48, hy)
     _line(draw,[butt,tip],OUTLINE,4)
     _line(draw,[butt,tip],BRONZE_LIGHT,2)
-    _draw_astrolabe(draw,tip[0],tip[1],8,pose.phase*180+pose.staff,1)
+    _ellipse(draw,(tip[0]-8,tip[1]-8,tip[0]+8,tip[1]+8),(0,0,0,0))
+
+
+def _draw_character(canvas: Image.Image, pose: Pose) -> None:
+    cx=63+pose.x; base=113+pose.y
+    # legs and sandals
+    for side,dx,step in [(-1,-9,pose.foot_l),(1,9,pose.foot_r)]:
+        name = "left" if side < 0 else "right"
+        hip=(cx+dx,83+pose.y+pose.squat*.2)
+        ankle=(cx+dx+step*.3,base-8)
+        _bar(canvas,hip,ankle,4.6,SKIN_SHADE,f"{name}_leg")
+        sandal = _rest(("sandal",), lambda d: _ellipse(d,(REST[0]-7,REST[1]-1,REST[0]+8,REST[1]+6),BRONZE,OUTLINE,1))
+        SR.place(canvas, sandal, _sp((ankle[0], base - 8)), 0.0, f"{name}_sandal")
+    # mantle and armored body
+    SR.place(canvas, _rest(("body",), _paint_body, (63, 75)), _sp((cx, 75 + pose.y)), 0.0, "body")
+    # arms: fixed bones (18 and 16)
+    shoulder_y=57+pose.y
+    wrists=[]
+    for side,ang in [(-1,pose.arm_l),(1,pose.arm_r)]:
+        name = "left" if side < 0 else "right"
+        shoulder=(cx+side*16,shoulder_y)
+        rad=math.radians(90+side*12+ang)
+        elbow=(shoulder[0]+math.cos(rad)*18,shoulder[1]+math.sin(rad)*18)
+        wrist=(elbow[0]+math.cos(rad+side*.18)*16,elbow[1]+math.sin(rad+side*.18)*16)
+        _bar(canvas,shoulder,elbow,5.2,INDIGO_LIGHT,f"{name}_upper_arm",18)
+        _bar(canvas,elbow,wrist,4.3,SKIN,f"{name}_forearm",16)
+        hand = _rest(("hand",), lambda d: _ellipse(d,(REST[0]-4,REST[1]-4,REST[0]+4,REST[1]+4),SKIN_LIGHT,OUTLINE,1))
+        SR.place(canvas, hand, _sp(wrist), 0.0, f"{name}_hand")
+        wrists.append(wrist)
+    # head, hood, veil; the astrolabe reads as a halo behind the face rather
+    # than a mask laid over it.
+    hx=cx+pose.lean*.12; hy=31+pose.y+pose.squat*.12
+    SR.place(canvas, _astrolabe_piece(20, .82), _sp((hx, hy - 1)), pose.phase*45+pose.staff*.2, "halo")
+    SR.place(canvas, _rest(("head",), _paint_head), _sp((hx, hy)), 0.0, "head")
+    # staff in right hand, with armillary head
+    hand=wrists[1]
+    degrees=-62+pose.staff
+    angle=math.radians(degrees)
+    tip=(hand[0]+math.cos(angle)*48,hand[1]+math.sin(angle)*48)
+    SR.place(canvas, _rest(("staff",), _paint_staff), _sp(hand), degrees, "staff")
+    _place_astrolabe(canvas,tip[0],tip[1],8,pose.phase*180+pose.staff,1,"staff_head")
     # left hand holds fragment during idle/talk
     if pose.anim in {"idle","talk","taunt"}:
-        _draw_folio(draw,wrists[0][0]-2,wrists[0][1]-4,-.15,.9,missing=True)
+        _place_folio(canvas,wrists[0][0]-2,wrists[0][1]-4,-.15,.9,True,"held_folio")
 
 
-def _draw_effects_front(draw:ImageDraw.ImageDraw,pose:Pose)->None:
+def _draw_effects_front(canvas: Image.Image, pose: Pose) -> None:
+    draw = blending_draw(canvas)
     if pose.anim in {"astrolabe_guard","block"}:
-        _draw_astrolabe(draw,83,58,19,pose.phase*240,.45+.55*pose.power)
+        _place_astrolabe(canvas,83,58,19,pose.phase*240,.45+.55*pose.power,"guard_astrolabe")
         _ellipse(draw,(63,38,103,78),_fade(CYAN,.05+.1*pose.power),_fade(CYAN,.35*pose.power),1)
     elif pose.anim=="conic_lance":
         # three conic traces converge toward the staff strike
@@ -477,26 +554,25 @@ def _draw_effects_front(draw:ImageDraw.ImageDraw,pose:Pose)->None:
         _poly(draw,[(100,28),(118,35),(112,54),(94,47)],_fade(PARCHMENT,.5+.5*pose.power),_fade(OUTLINE,.8),1)
         _poly(draw,[(105,39),(118,35),(112,54)],(0,0,0,0),_fade(CYAN,.8),1)
     elif pose.anim=="prime_revelation":
-        _draw_astrolabe(draw,64,46,31,pose.phase*120,pose.power)
+        _place_astrolabe(canvas,64,46,31,pose.phase*120,pose.power,"reveal_astrolabe")
         _line(draw,[(64,15),(64,78)],_fade(STAR,.5*pose.power),1)
         _line(draw,[(34,46),(94,46)],_fade(STAR,.5*pose.power),1)
     elif pose.anim=="taunt":
         # two incompatible portrait fragments hover beside her
-        _draw_folio(draw,100,31,-.2,.65,missing=False)
-        _draw_folio(draw,105,50,.2,.65,missing=True)
+        _place_folio(canvas,100,31,-.2,.65,False,"taunt_folio")
+        _place_folio(canvas,105,50,.2,.65,True,"taunt_folio_missing")
         _line(draw,[(96,24),(112,57)],_fade(SHADOW_B,.6),1.5)
 
 
 def render_frame(anim:str,frame_idx:int,nframes:int)->Image.Image:
     pose=_pose(anim,frame_idx,nframes)
-    behind=Image.new("RGBA",(FRAME_W*SUPER,FRAME_H*SUPER),(0,0,0,0))
+    behind=Image.new("RGBA",CANVAS,(0,0,0,0))
     body=Image.new("RGBA",behind.size,(0,0,0,0))
     front=Image.new("RGBA",behind.size,(0,0,0,0))
-    _draw_effects_behind(blending_draw(behind),pose)
-    _draw_character(blending_draw(body),pose)
-    _draw_effects_front(blending_draw(front),pose)
-    # Through rigdoc's seams, so a part flipbook records each shape (the same
-    # pixels as compositing the layers and resizing directly).
+    _draw_effects_behind(behind,pose)
+    _draw_character(body,pose)
+    _draw_effects_front(front,pose)
+    # Through rigdoc's seams, so a part flipbook records each piece and shape.
     image=Image.new("RGBA",behind.size,(0,0,0,0))
     for layer in (behind,body,front):
         rigdoc.composite_canvas(image,layer)

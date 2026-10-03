@@ -14,7 +14,7 @@ from __future__ import annotations
 import argparse
 import math
 from pathlib import Path
-from typing import List, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
@@ -22,6 +22,8 @@ from ...authoring import rigdoc
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
+
+from . import _solo_shape_rig as SR
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -424,90 +426,235 @@ class Pose:
             self.x_eye = tt > 0.58
 
 
-def _draw_hind_leg(
-    draw: ImageDraw.ImageDraw,
-    hip: Point,
-    thigh_deg: float,
-    knee_bend: float,
-    foot_lift: float,
-    *,
-    scale: float,
-    front: bool,
-) -> Point:
+def _S(p: Point) -> Point:
+    """A work-space point in supersampled canvas pixels, unrounded."""
+    return (p[0] * SUPER, p[1] * SUPER)
+
+
+def _heading(a: Point, b: Point) -> float:
+    return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+
+
+def _local_piece(key, extent: Tuple[float, float, float, float], paint) -> Tuple[Image.Image, Point]:
+    """A piece painted in its own work-space frame: ``paint(draw, origin)``
+    draws with the piece's pivot at ``origin`` (work units) on a canvas that
+    covers ``extent`` = (left, top, right, bottom) around the pivot."""
+    left, top, right, bottom = extent
+    origin = (left + 2.0, top + 2.0)
+    size = (_s(left + right + 4.0), _s(top + bottom + 4.0))
+    return SR.rest_piece(key, size, _S(origin), lambda d: paint(d, origin))
+
+
+def _bar(length: float, width: float, color: RGBA, stripe: float):
+    """A limb bone along +x: a flat-ended band ``width`` wide with a thin
+    outline stripe down its middle (the old polyline, one bone of it)."""
+
+    def paint(d, o) -> None:
+        _line(d, [o, (o[0] + length, o[1])], color, width)
+        _line(d, [o, (o[0] + length, o[1])], OUTLINE, stripe)
+
+    half = width / 2.0 + 1.0
+    return _local_piece(("trex_bar", length, width, color, stripe), (half, half, length + half, half), paint)
+
+
+def _place_bar(img: Image.Image, a: Point, b: Point, width: float, color: RGBA, stripe: float, name: str, step: Optional[float] = None) -> None:
+    length = math.hypot(b[0] - a[0], b[1] - a[1])
+    if step:
+        length = max(step, round(length / step) * step)
+    SR.place(img, _bar(round(length, 3), width, color, stripe), _S(a), _heading(a, b), name)
+
+
+def _taper(length: float, w0: float, w1: float, fill: RGBA, outline_w: float, stripe: Optional[RGBA] = None, stripe_w: float = 0.0, outline: RGBA = OUTLINE):
+    """A tapered segment along +x, round at both ends: its outline only
+    (``fill`` None) grown by ``outline_w``, or its fill (with an optional
+    centre stripe)."""
+    grow = outline_w if fill is None else 0.0
+    r0, r1 = w0 / 2.0 + grow, w1 / 2.0 + grow
+    ink = outline if fill is None else fill
+
+    def paint(d, o) -> None:
+        x, y = o
+        d.polygon([_pt((x, y - r0)), _pt((x + length, y - r1)), _pt((x + length, y + r1)), _pt((x, y + r0))], fill=ink)
+        d.ellipse(_box(x, y, r0, r0), fill=ink)
+        d.ellipse(_box(x + length, y, r1, r1), fill=ink)
+        if stripe is not None:
+            _line(d, [(x, y), (x + length, y)], stripe, stripe_w)
+
+    r = max(r0, r1) + 1.0
+    return _local_piece(("trex_taper", length, w0, w1, fill, outline_w, stripe, stripe_w), (r, r, length + r, r), paint)
+
+
+# The tail's three segments: widths at each joint (the old polygon's spread).
+TAIL_WIDTHS = (28.0, 32.0, 22.0, 10.0)
+TAIL_STEP = 3.0
+
+
+def _draw_tail(img: Image.Image, joints: Sequence[Point]) -> None:
+    """The tail as three tapered segments, every outline first and then every
+    fill, so the joints read as one silhouette."""
+    segs = []
+    for i in range(3):
+        a, b = joints[i], joints[i + 1]
+        length = max(TAIL_STEP, round(math.hypot(b[0] - a[0], b[1] - a[1]) / TAIL_STEP) * TAIL_STEP)
+        segs.append((a, _heading(a, b), length, TAIL_WIDTHS[i], TAIL_WIDTHS[i + 1]))
+    for i, (a, deg, length, w0, w1) in enumerate(segs):
+        SR.place(img, _taper(length, w0, w1, None, 1.4), _S(a), deg, f"tail{i}_line")
+    for i, (a, deg, length, w0, w1) in enumerate(segs):
+        SR.place(img, _taper(length, w0, w1, GREEN_DARK, 0.0, GREEN_LIGHT, 2.0), _S(a), deg, f"tail{i}")
+
+
+def _foot_piece(scale: float, front: bool):
+    foot_len = 42 * scale
+
+    def paint(d, ankle) -> None:
+        foot = [
+            (ankle[0] - 8 * scale, ankle[1] - 5 * scale),
+            (ankle[0] + foot_len * 0.52, ankle[1] - 7 * scale),
+            (ankle[0] + foot_len, ankle[1] + 3 * scale),
+            (ankle[0] + foot_len * 0.62, ankle[1] + 10 * scale),
+            (ankle[0] - 6 * scale, ankle[1] + 8 * scale),
+        ]
+        _poly(d, foot, GREEN_LIGHT if front else GREEN, OUTLINE, 1.0)
+        for frac in [0.52, 0.76, 0.96]:
+            tip = (ankle[0] + foot_len * frac, ankle[1] + 5 * scale)
+            _poly(d, [tip, (tip[0] + 6 * scale, tip[1] - 2 * scale), (tip[0] + 3 * scale, tip[1] + 5 * scale)], CLAW, OUTLINE, 0.4)
+
+    return _local_piece(("trex_foot", scale, front), (12 * scale, 10 * scale, foot_len + 10 * scale, 14 * scale), paint)
+
+
+def _draw_hind_leg(img: Image.Image, hip: Point, thigh_deg: float, knee_bend: float, foot_lift: float, *, scale: float, front: bool, side: str) -> Point:
+    """Thigh (a fixed bone), shin (stretched by the foot lift, in steps), knee
+    and foot: pieces placed along the old leg."""
     thigh_len = 68 * scale
     shin_len = 74 * scale
-    foot_len = 42 * scale
-    knee = (
-        hip[0] + thigh_len * math.cos(math.radians(thigh_deg)),
-        hip[1] + thigh_len * math.sin(math.radians(thigh_deg)),
-    )
+    knee = (hip[0] + thigh_len * math.cos(math.radians(thigh_deg)), hip[1] + thigh_len * math.sin(math.radians(thigh_deg)))
     shin_deg = thigh_deg + knee_bend
-    ankle = (
-        knee[0] + shin_len * math.cos(math.radians(shin_deg)),
-        knee[1] + shin_len * math.sin(math.radians(shin_deg)) - foot_lift,
-    )
+    ankle = (knee[0] + shin_len * math.cos(math.radians(shin_deg)), knee[1] + shin_len * math.sin(math.radians(shin_deg)) - foot_lift)
     col = GREEN if front else GREEN_DARK
     w = 16 * scale if front else 13 * scale
-    _line(draw, [hip, knee, ankle], col, w)
-    _line(draw, [hip, knee, ankle], OUTLINE, 1.5)
-    _circle(draw, knee, 7.0 * scale, GREEN_LIGHT if front else GREEN, OUTLINE, 0.8)
-    foot = [
-        (ankle[0] - 8 * scale, ankle[1] - 5 * scale),
-        (ankle[0] + foot_len * 0.52, ankle[1] - 7 * scale),
-        (ankle[0] + foot_len, ankle[1] + 3 * scale),
-        (ankle[0] + foot_len * 0.62, ankle[1] + 10 * scale),
-        (ankle[0] - 6 * scale, ankle[1] + 8 * scale),
-    ]
-    _poly(draw, foot, GREEN_LIGHT if front else GREEN, OUTLINE, 1.0)
-    for frac in [0.52, 0.76, 0.96]:
-        tip = (ankle[0] + foot_len * frac, ankle[1] + 5 * scale)
-        _poly(
-            draw,
-            [
-                tip,
-                (tip[0] + 6 * scale, tip[1] - 2 * scale),
-                (tip[0] + 3 * scale, tip[1] + 5 * scale),
-            ],
-            CLAW,
-            OUTLINE,
-            0.4,
-        )
+    _place_bar(img, hip, knee, w, col, 1.5, f"{side}_thigh")
+    _place_bar(img, knee, ankle, w, col, 1.5, f"{side}_shin", step=2.0)
+    r = 7.0 * scale
+    knee_part = _local_piece(("trex_knee", scale, front), (r + 1, r + 1, r + 1, r + 1), lambda d, o: _circle(d, o, r, GREEN_LIGHT if front else GREEN, OUTLINE, 0.8))
+    SR.place(img, knee_part, _S(knee), 0.0, f"{side}_knee")
+    SR.place(img, _foot_piece(scale, front), _S(ankle), 0.0, f"{side}_foot")
     return ankle
 
 
-def _draw_tiny_arm(
-    draw: ImageDraw.ImageDraw, shoulder: Point, ang: float, reach: float, *, front: bool
-) -> Point:
+def _claws_piece(front: bool):
+    def paint(d, hand) -> None:
+        for i in range(2):
+            claw = (hand[0] + 4 + i * 2.8, hand[1] + 2 + i * 1.5)
+            _poly(d, [hand, (claw[0] + 5, claw[1] - 1), (claw[0] + 3, claw[1] + 4)], CLAW, OUTLINE, 0.35)
+
+    return _local_piece(("trex_claws", front), (2.0, 2.0, 16.0, 10.0), paint)
+
+
+def _draw_tiny_arm(img: Image.Image, shoulder: Point, ang: float, reach: float, *, front: bool, side: str) -> Point:
     upper = 18 if front else 16
     lower = 16 + reach
-    elbow = (
-        shoulder[0] + upper * math.cos(math.radians(ang)),
-        shoulder[1] + upper * math.sin(math.radians(ang)),
-    )
-    hand = (
-        elbow[0] + lower * math.cos(math.radians(ang + 14)),
-        elbow[1] + lower * math.sin(math.radians(ang + 14)),
-    )
+    elbow = (shoulder[0] + upper * math.cos(math.radians(ang)), shoulder[1] + upper * math.sin(math.radians(ang)))
+    hand = (elbow[0] + lower * math.cos(math.radians(ang + 14)), elbow[1] + lower * math.sin(math.radians(ang + 14)))
     col = GREEN_LIGHT if front else GREEN_DARK
     w = 6.8 if front else 5.2
-    _line(draw, [shoulder, elbow, hand], col, w)
-    _line(draw, [shoulder, elbow, hand], OUTLINE, 1.0)
-    for i in range(2):
-        claw = (hand[0] + 4 + i * 2.8, hand[1] + 2 + i * 1.5)
-        _poly(
-            draw,
-            [hand, (claw[0] + 5, claw[1] - 1), (claw[0] + 3, claw[1] + 4)],
-            CLAW,
-            OUTLINE,
-            0.35,
-        )
+    _place_bar(img, shoulder, elbow, w, col, 1.0, f"{side}_upper_arm")
+    _place_bar(img, elbow, hand, w, col, 1.0, f"{side}_forearm")
+    SR.place(img, _claws_piece(front), _S(hand), 0.0, f"{side}_claws")
     return hand
 
 
+def _paint_torso(d, root: Point) -> None:
+    """Torso, belly, back bumps and scars, unturned, the hip at ``root``."""
+
+    def P(x: float, y: float) -> Point:
+        return (root[0] + x, root[1] + y)
+
+    torso = [P(-44, -96), P(34, -132), P(138, -128), P(210, -96), P(226, -44), P(182, -6), P(96, 14), P(6, 8), P(-40, -18)]
+    _poly(d, torso, GREEN, OUTLINE, 1.8)
+    belly = [P(6, -74), P(100, -76), P(180, -48), P(172, -4), P(84, 16), P(8, -4), P(-10, -30)]
+    _poly(d, belly, BELLY, OUTLINE, 1.1)
+    _line(d, [P(-6, -82), P(64, -116), P(148, -112)], GREEN_LIGHT, 2.2)
+    _line(d, [P(12, -52), P(82, -42), P(162, -24)], BELLY_SHADE, 1.7)
+    # Subtle back bumps, not fantasy spikes
+    for bx, by, h in [(-12, -104, 12), (24, -120, 15), (70, -126, 16), (120, -122, 15), (168, -108, 11)]:
+        a = P(bx, by)
+        _poly(d, [(a[0] - 7, a[1] + 4), (a[0] + 4, a[1] - h), (a[0] + 12, a[1] + 2)], GREEN_LIGHT, OUTLINE, 0.6)
+    # Battle wear
+    _line(d, [P(62, -84), P(78, -72), P(88, -92)], SCAR, 1.3)
+    _line(d, [P(104, -58), P(116, -46)], SCAR, 1.1)
+
+
+# The neck: a tapered band from its base on the torso to the head's root,
+# its belly strip on the throat side.
+NECK_W = (46.0, 32.0)
+NECK_BELLY_W = (28.0, 20.0)
+NECK_BELLY_OFFSET = 10.0
+NECK_STEP = 3.0
+
+
+def _neck_piece(length: float):
+    w0, w1 = NECK_W
+    b0, b1 = NECK_BELLY_W
+    off = NECK_BELLY_OFFSET
+
+    def paint(d, o) -> None:
+        x, y = o
+        _poly(d, [(x, y - w0 / 2), (x + length, y - w1 / 2), (x + length, y + w1 / 2), (x, y + w0 / 2)], GREEN, OUTLINE, 1.2)
+        _poly(d, [(x, y + off - b0 / 2), (x + length, y + off - b1 / 2), (x + length + 6, y + off + b1 / 2), (x, y + off + b0 / 2)], BELLY, OUTLINE, 0.9)
+
+    r = max(w0 / 2, off + b0 / 2) + 2.0
+    return _local_piece(("trex_neck", length), (r, r, length + 10.0, r), paint)
+
+
+def _paint_head(d, pivot: Point, jaw: float, x_eye: bool, blink: bool) -> None:
+    """The head unturned, its pivot at ``pivot``, the jaw open ``jaw``."""
+
+    def H(x: float, y: float) -> Point:
+        return (pivot[0] + x, pivot[1] + y)
+
+    skull = [H(-26, -22), H(-6, -40), H(34, -44), H(54, -30), H(22, -8), H(-18, -4)]
+    upper_jaw = [H(-4, -26), H(40, -38), H(104, -34), H(154, -20), H(188, -3), H(176, 7), H(126, 4), H(58, 0), H(10, -6)]
+    lower_jaw = [
+        H(2, 10),
+        H(48, 18),
+        H(118, 24 + jaw * 0.20),
+        H(172, 18 + jaw * 0.18),
+        H(188, 9 + jaw * 0.14),
+        H(134, 4 + jaw * 0.18),
+        H(62, 2),
+        H(8, 4),
+    ]
+    _poly(d, skull, GREEN_LIGHT, OUTLINE, 1.2)
+    _poly(d, upper_jaw, GREEN, OUTLINE, 1.3)
+    _poly(d, lower_jaw, GREEN_LIGHT, OUTLINE, 1.1)
+    snout_belly = [H(24, -2), H(90, 2), H(164, 8), H(172, 14), H(114, 16), H(48, 12), H(12, 8)]
+    _poly(d, snout_belly, BELLY, OUTLINE, 0.8)
+    # Mouth interior and teeth
+    _poly(d, [H(18, 3), H(62, 8), H(132, 14 + jaw * 0.10), H(162, 10 + jaw * 0.10), H(118, 24 + jaw * 0.11), H(56, 18)], MOUTH, OUTLINE, 0.6)
+    _poly(d, [H(70, 16), H(116, 20 + jaw * 0.10), H(92, 30 + jaw * 0.11)], TONGUE, OUTLINE, 0.5)
+    for tx in [32, 54, 78, 102, 126, 148, 166]:
+        _poly(d, [H(tx, 2), H(tx + 5, 10), H(tx + 10, 2)], TOOTH, OUTLINE, 0.4)
+    for tx in [40, 72, 104, 138]:
+        _poly(d, [H(tx, 15 + jaw * 0.09), H(tx + 5, 7 + jaw * 0.06), H(tx + 10, 15 + jaw * 0.09)], TOOTH, OUTLINE, 0.4)
+    eye = H(40, -18)
+    _line(d, [H(28, -24), H(46, -30)], OUTLINE, 1.1)
+    if x_eye:
+        _line(d, [H(34, -22), H(46, -14)], OUTLINE, 1.0)
+        _line(d, [H(34, -14), H(46, -22)], OUTLINE, 1.0)
+    elif blink:
+        _line(d, [H(34, -18), H(46, -18)], OUTLINE, 1.0)
+    else:
+        _ellipse(d, eye[0], eye[1], 6.0, 5.0, EYE, OUTLINE, 0.7)
+        _circle(d, (eye[0] + 1.5, eye[1] + 0.5), 1.5, PUPIL, PUPIL, 0.1)
+    nostril = H(128, -12)
+    _line(d, [(nostril[0] - _s(2), nostril[1]), (nostril[0] + _s(4), nostril[1] + _s(1))], OUTLINE, 0.8)
+
+
 def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
-    img = Image.new(
-        "RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0)
-    )
+    """The T-rex as a rig: torso, neck, head (per jaw step and eye state), tail
+    segments and limb bones are pieces painted once and turned into place;
+    the attack effects stay shapes."""
+    img = Image.new("RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0))
     draw = blending_draw(img)
     pose = Pose(anim, frame_idx, nframes)
 
@@ -521,226 +668,48 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         rx, ry = _rot(x, y, body_angle + extra)
         return (root[0] + rx, root[1] + ry)
 
-    hip = P(0, 0)
-
     # Tail first, big and classic
     tail0 = P(-36, -40)
     tail1 = P(-112, -82, pose.tail_base)
     tail2 = P(-214, -92, pose.tail_mid)
     tail3 = P(-322, -70, pose.tail_tip)
-    tail = [
-        (tail0[0] - 8, tail0[1] - 18),
-        (tail1[0] - 18, tail1[1] - 18),
-        (tail2[0] - 12, tail2[1] - 14),
-        (tail3[0] - 4, tail3[1] - 6),
-        (tail3[0] + 7, tail3[1] + 8),
-        (tail2[0] + 16, tail2[1] + 12),
-        (tail1[0] + 24, tail1[1] + 18),
-        (tail0[0] + 18, tail0[1] + 16),
-    ]
-    _poly(draw, tail, GREEN_DARK, OUTLINE, 1.4)
-    _line(draw, [tail0, tail1, tail2, tail3], GREEN_LIGHT, 2.0)
+    _draw_tail(img, [tail0, tail1, tail2, tail3])
 
     # Far hind leg (still only one of the two biped legs)
-    far_hip = P(-10, -4)
-    _draw_hind_leg(
-        draw,
-        far_hip,
-        90 + pose.far_leg,
-        34 + pose.far_knee,
-        pose.far_lift,
-        scale=0.92,
-        front=False,
-    )
+    _draw_hind_leg(img, P(-10, -4), 90 + pose.far_leg, 34 + pose.far_knee, pose.far_lift, scale=0.92, front=False, side="far")
 
-    # Main torso
-    torso = [
-        P(-44, -96),
-        P(34, -132),
-        P(138, -128),
-        P(210, -96),
-        P(226, -44),
-        P(182, -6),
-        P(96, 14),
-        P(6, 8),
-        P(-40, -18),
-    ]
-    _poly(draw, torso, GREEN, OUTLINE, 1.8)
-    belly = [
-        P(6, -74),
-        P(100, -76),
-        P(180, -48),
-        P(172, -4),
-        P(84, 16),
-        P(8, -4),
-        P(-10, -30),
-    ]
-    _poly(draw, belly, BELLY, OUTLINE, 1.1)
-    _line(draw, [P(-6, -82), P(64, -116), P(148, -112)], GREEN_LIGHT, 2.2)
-    _line(draw, [P(12, -52), P(82, -42), P(162, -24)], BELLY_SHADE, 1.7)
-
-    # Subtle back bumps, not fantasy spikes
-    for bx, by, h in [
-        (-12, -104, 12),
-        (24, -120, 15),
-        (70, -126, 16),
-        (120, -122, 15),
-        (168, -108, 11),
-    ]:
-        a = P(bx, by)
-        _poly(
-            draw,
-            [(a[0] - 7, a[1] + 4), (a[0] + 4, a[1] - h), (a[0] + 12, a[1] + 2)],
-            GREEN_LIGHT,
-            OUTLINE,
-            0.6,
-        )
-
-    # Battle wear
-    _line(draw, [P(62, -84), P(78, -72), P(88, -92)], SCAR, 1.3)
-    _line(draw, [P(104, -58), P(116, -46)], SCAR, 1.1)
+    # Main torso: one piece turned by the body's tilt about the hip.
+    torso = _local_piece(("trex_torso",), (52.0, 150.0, 236.0, 26.0), _paint_torso)
+    SR.place(img, torso, _S(root), body_angle, "torso")
 
     # Far tiny arm
-    far_shoulder = P(126, -70)
-    _draw_tiny_arm(draw, far_shoulder, 128 + pose.far_arm, pose.far_reach, front=False)
+    _draw_tiny_arm(img, P(126, -70), 128 + pose.far_arm, pose.far_reach, front=False, side="far")
 
-    # Neck
-    neck_base = P(176, -88)
+    # Neck: from its base on the torso to the head's root.
     neck_top = P(228, -134, pose.neck)
-    neck = [
-        P(154, -96),
-        (neck_top[0] - 18, neck_top[1] - 10),
-        (neck_top[0] + 10, neck_top[1] + 12),
-        P(178, -38),
-    ]
-    _poly(draw, neck, GREEN, OUTLINE, 1.2)
-    neck_belly = [
-        P(174, -78),
-        (neck_top[0] - 2, neck_top[1] + 8),
-        (neck_top[0] + 18, neck_top[1] + 26),
-        P(192, -34),
-    ]
-    _poly(draw, neck_belly, BELLY, OUTLINE, 0.9)
+    base = P(166, -67)
+    top = (neck_top[0] - 4.0, neck_top[1] + 1.0)
+    length = max(NECK_STEP, round(math.hypot(top[0] - base[0], top[1] - base[1]) / NECK_STEP) * NECK_STEP)
+    SR.place(img, _neck_piece(length), _S(base), _heading(base, top), "neck")
 
     head_pivot = (
         neck_top[0] + 28 * math.cos(math.radians(body_angle + pose.neck - 16)),
         neck_top[1] + 28 * math.sin(math.radians(body_angle + pose.neck - 16)),
     )
     head_ang = body_angle + pose.neck + pose.head - 6
+    jaw = SR.q(pose.jaw, 4.0)
+    head = _local_piece(("trex_head", jaw, pose.x_eye, pose.blink), (36.0, 52.0, 198.0, 36.0), lambda d, o: _paint_head(d, o, jaw, pose.x_eye, pose.blink))
+    SR.place(img, head, _S(head_pivot), head_ang, "head")
 
     def H(x: float, y: float) -> Point:
         rx, ry = _rot(x, y, head_ang)
         return (head_pivot[0] + rx, head_pivot[1] + ry)
 
-    # Big classic head
-    skull = [H(-26, -22), H(-6, -40), H(34, -44), H(54, -30), H(22, -8), H(-18, -4)]
-    upper_jaw = [
-        H(-4, -26),
-        H(40, -38),
-        H(104, -34),
-        H(154, -20),
-        H(188, -3),
-        H(176, 7),
-        H(126, 4),
-        H(58, 0),
-        H(10, -6),
-    ]
-    lower_jaw = [
-        H(2, 10),
-        H(48, 18),
-        H(118, 24 + pose.jaw * 0.20),
-        H(172, 18 + pose.jaw * 0.18),
-        H(188, 9 + pose.jaw * 0.14),
-        H(134, 4 + pose.jaw * 0.18),
-        H(62, 2),
-        H(8, 4),
-    ]
-    _poly(draw, skull, GREEN_LIGHT, OUTLINE, 1.2)
-    _poly(draw, upper_jaw, GREEN, OUTLINE, 1.3)
-    _poly(draw, lower_jaw, GREEN_LIGHT, OUTLINE, 1.1)
-    snout_belly = [
-        H(24, -2),
-        H(90, 2),
-        H(164, 8),
-        H(172, 14),
-        H(114, 16),
-        H(48, 12),
-        H(12, 8),
-    ]
-    _poly(draw, snout_belly, BELLY, OUTLINE, 0.8)
-
-    # Mouth interior and teeth
-    _poly(
-        draw,
-        [
-            H(18, 3),
-            H(62, 8),
-            H(132, 14 + pose.jaw * 0.10),
-            H(162, 10 + pose.jaw * 0.10),
-            H(118, 24 + pose.jaw * 0.11),
-            H(56, 18),
-        ],
-        MOUTH,
-        OUTLINE,
-        0.6,
-    )
-    _poly(
-        draw,
-        [H(70, 16), H(116, 20 + pose.jaw * 0.10), H(92, 30 + pose.jaw * 0.11)],
-        TONGUE,
-        OUTLINE,
-        0.5,
-    )
-    for tx in [32, 54, 78, 102, 126, 148, 166]:
-        p = H(tx, 2)
-        _poly(draw, [p, H(tx + 5, 10), H(tx + 10, 2)], TOOTH, OUTLINE, 0.4)
-    for tx in [40, 72, 104, 138]:
-        p = H(tx, 15 + pose.jaw * 0.09)
-        _poly(
-            draw,
-            [p, H(tx + 5, 7 + pose.jaw * 0.06), H(tx + 10, 15 + pose.jaw * 0.09)],
-            TOOTH,
-            OUTLINE,
-            0.4,
-        )
-
-    eye = H(40, -18)
-    brow_a = H(28, -24)
-    brow_b = H(46, -30)
-    _line(draw, [brow_a, brow_b], OUTLINE, 1.1)
-    if pose.x_eye:
-        _line(draw, [H(34, -22), H(46, -14)], OUTLINE, 1.0)
-        _line(draw, [H(34, -14), H(46, -22)], OUTLINE, 1.0)
-    elif pose.blink:
-        _line(draw, [H(34, -18), H(46, -18)], OUTLINE, 1.0)
-    else:
-        _ellipse(draw, eye[0], eye[1], 6.0, 5.0, EYE, OUTLINE, 0.7)
-        _circle(draw, (eye[0] + 1.5, eye[1] + 0.5), 1.5, PUPIL, PUPIL, 0.1)
-    nostril = H(128, -12)
-    _line(
-        draw,
-        [(nostril[0] - _s(2), nostril[1]), (nostril[0] + _s(4), nostril[1] + _s(1))],
-        OUTLINE,
-        0.8,
-    )
-
     # Near tiny arm
-    near_shoulder = P(136, -62)
-    _draw_tiny_arm(
-        draw, near_shoulder, 124 + pose.near_arm, pose.near_reach, front=True
-    )
+    _draw_tiny_arm(img, P(136, -62), 124 + pose.near_arm, pose.near_reach, front=True, side="near")
 
     # Near hind leg (second and last leg)
-    near_hip = P(34, -2)
-    near_ankle = _draw_hind_leg(
-        draw,
-        near_hip,
-        92 + pose.near_leg,
-        38 + pose.near_knee,
-        pose.near_lift,
-        scale=1.0,
-        front=True,
-    )
+    near_ankle = _draw_hind_leg(img, P(34, -2), 92 + pose.near_leg, 38 + pose.near_knee, pose.near_lift, scale=1.0, front=True, side="near")
 
     # Attack FX
     if anim == "bite" and pose.bite_fx > 0.15:

@@ -7,7 +7,7 @@ from typing import Dict, Iterable, List, Tuple
 
 from PIL import Image, ImageColor, ImageDraw
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.portrait import (
     FaceGuide,
@@ -15,7 +15,6 @@ from ...authoring.portrait import (
     render_framed_portrait,
     write_portrait_sheet,
 )
-from ambition_sprite2d_renderer.core.draw import blending_draw
 from ...authoring.sheet_build import build_sheet
 
 RGBA = Tuple[int, int, int, int]
@@ -255,21 +254,6 @@ def _draw_line(draw: ImageDraw.ImageDraw, points: Iterable[Point], fill: RGBA, w
     draw.line([_pt(x, y) for x, y in points], fill=fill, width=_s(width), joint="curve")
 
 
-def _draw_arm(
-    draw: ImageDraw.ImageDraw,
-    shoulder: Point,
-    elbow: Point,
-    hand: Point,
-    sleeve: RGBA,
-    hand_fill: RGBA,
-    width: float,
-) -> None:
-    _draw_line(draw, [shoulder, elbow, hand], OUTLINE, width + 2.8)
-    _draw_line(draw, [shoulder, elbow, hand], sleeve, width)
-    draw.ellipse(_bbox(elbow[0], elbow[1], width * 0.26, width * 0.26), fill=sleeve, outline=OUTLINE)
-    draw.ellipse(_bbox(hand[0], hand[1], width * 0.33, width * 0.33), fill=hand_fill, outline=OUTLINE)
-
-
 def _arm_chain(shoulder: Point, upper: float, lower: float, a1: float, a2: float) -> Tuple[Point, Point]:
     elbow = (
         shoulder[0] + math.cos(a1) * upper,
@@ -338,104 +322,89 @@ def _frame_state(anim: str, frame_idx: int, nframes: int, spec: VariantSpec) -> 
     }
 
 
-def render_frame(variant_name: str, anim: str, frame_idx: int, nframes: int) -> Image.Image:
-    spec = VARIANTS[variant_name]
-    pal = spec.palette
-    st = _frame_state(anim, frame_idx, nframes, spec)
+# --- Rig construction -------------------------------------------------------
+#
+# The pair are drawn as a rig (``shape_rig``): every rigid piece is painted once
+# in its own frame, at the supersampled scale, and placed. The robe (with its
+# mantle, lamellar and belt), neck, head and front trim ride the torso as it
+# bobs and tilts; the cape is keyed by its (rounded) wave; each leg is one
+# piece keyed by its (rounded) knee and foot; each arm is its bones turned by
+# the arm chain's angles, outlines first and fills over them as the polyline
+# drew them.
 
-    img = Image.new("RGBA", (CANVAS_W, CANVAS_H), TRANSPARENT)
-    draw = blending_draw(img)
 
-    can = spec.confidence
-    slouch = spec.slouch
-    center_x = 64.0
-    foot_y = 118.0 + st["body_bob"]
-    hip_y = 91.0 + st["body_bob"] + slouch * 0.25
-    shoulder_y = 66.0 + st["body_bob"] + slouch * 0.55
-    head_y = 36.0 + st["body_bob"] + slouch * 0.7
-    torso_shift_x = st["torso_tilt"] * 16.0
-    torso_x = center_x + torso_shift_x
-    shoulder_l = (torso_x - 16.0, shoulder_y)
-    shoulder_r = (torso_x + 16.0, shoulder_y + 0.6)
+def _piece(key, half: Tuple[float, float], paint) -> Tuple[Image.Image, Point]:
+    """A piece ``2 * half`` frame pixels, its pivot at the centre:
+    ``paint(draw, ox, oy)`` paints it with the local origin at ``(ox, oy)``."""
+    size = (2 * _s(half[0]), 2 * _s(half[1]))
+    return shape_rig.piece(("genghis",) + tuple(key), size, (size[0] / 2, size[1] / 2), lambda d: paint(d, half[0], half[1]))
 
-    # Back cape and silhouette extenders.
-    cape_wave = math.sin(st["cyc"] + (0.0 if anim == "walk" else 1.1))
-    cape_bottom = foot_y - _lerp(2.0, 0.0, can)
+
+def _put(canvas: Image.Image, part, at: Point, degrees: float, name: str) -> None:
+    shape_rig.place(canvas, part, (at[0] * SUPER, at[1] * SUPER), degrees, name)
+
+
+def _paint_cape(draw, pal: Dict[str, RGBA], tx: float, bob: float, can: float, cape_wave: float) -> None:
+    cape_bottom = 118.0 + bob - _lerp(2.0, 0.0, can)
     draw.polygon(
-        [_pt(torso_x - 18.0, 66.0 + st["body_bob"]), _pt(torso_x + 16.0, 68.0 + st["body_bob"]), _pt(torso_x + 24.0 + cape_wave * 2.5, 104.0), _pt(torso_x + 8.0, cape_bottom), _pt(torso_x - 12.0, cape_bottom - 1.0), _pt(torso_x - 23.0 - cape_wave * 2.0, 102.0)],
+        [_pt(tx - 18.0, 66.0 + bob), _pt(tx + 16.0, 68.0 + bob), _pt(tx + 24.0 + cape_wave * 2.5, 104.0 + bob), _pt(tx + 8.0, cape_bottom), _pt(tx - 12.0, cape_bottom - 1.0), _pt(tx - 23.0 - cape_wave * 2.0, 102.0 + bob)],
         fill=pal["cape"],
         outline=OUTLINE,
     )
 
-    # Legs.
-    left_stride = -5.0 - st["stride"] * 0.60
-    right_stride = 5.0 + st["stride"] * 0.60
-    knee_drop_l = 12.0 - abs(st["stride"]) * 0.15
-    knee_drop_r = 12.0 + abs(st["stride"]) * 0.08
-    left_knee = (center_x - 7.0 + left_stride * 0.18, hip_y + knee_drop_l)
-    right_knee = (center_x + 7.0 + right_stride * 0.18, hip_y + knee_drop_r)
-    left_foot = (center_x - 7.0 + left_stride, foot_y)
-    right_foot = (center_x + 8.0 + right_stride, foot_y)
-    for hip, knee, foot in [((center_x - 6.0, hip_y), left_knee, left_foot), ((center_x + 6.0, hip_y), right_knee, right_foot)]:
-        _draw_line(draw, [hip, knee, foot], OUTLINE, 7.5)
-        _draw_line(draw, [hip, knee, foot], pal["boot"], 5.6)
-        draw.ellipse(_bbox(knee[0], knee[1], 1.8, 1.8), fill=pal["robe_shadow"], outline=OUTLINE)
-        draw.rounded_rectangle((_s(foot[0] - 6.5), _s(foot[1] - 3.2), _s(foot[0] + 6.6), _s(foot[1] + 3.5)), radius=_s(2.0), fill=pal["boot"], outline=OUTLINE)
-        draw.rectangle((_s(foot[0] - 6.2), _s(foot[1] + 0.7), _s(foot[0] + 6.0), _s(foot[1] + 3.5)), fill=pal["boot_sole"], outline=None)
 
-    # Robe body.
+def _paint_leg(draw, pal: Dict[str, RGBA], hip: Point, knee: Point, foot: Point) -> None:
+    _draw_line(draw, [hip, knee, foot], OUTLINE, 7.5)
+    _draw_line(draw, [hip, knee, foot], pal["boot"], 5.6)
+    draw.ellipse(_bbox(knee[0], knee[1], 1.8, 1.8), fill=pal["robe_shadow"], outline=OUTLINE)
+    draw.rounded_rectangle((_s(foot[0] - 6.5), _s(foot[1] - 3.2), _s(foot[0] + 6.6), _s(foot[1] + 3.5)), radius=_s(2.0), fill=pal["boot"], outline=OUTLINE)
+    draw.rectangle((_s(foot[0] - 6.2), _s(foot[1] + 0.7), _s(foot[0] + 6.0), _s(foot[1] + 3.5)), fill=pal["boot_sole"], outline=None)
+
+
+def _paint_robe(draw, pal: Dict[str, RGBA], tx: float, bob: float, can: float) -> None:
+    """The robe, mantle, lamellar and belt about ``(tx, 80 + bob)``: rigid
+    with the torso (its hem, panels and belt bob with it)."""
+    foot_y = 118.0 + bob
     hem_notch = _lerp(3.5, 1.6, can)
     draw.polygon(
         [
-            _pt(torso_x - 20.0, 60.0 + st["body_bob"]),
-            _pt(torso_x - 14.0, 52.0 + st["body_bob"]),
-            _pt(torso_x + 12.0, 52.0 + st["body_bob"]),
-            _pt(torso_x + 20.0, 60.0 + st["body_bob"]),
-            _pt(torso_x + 22.0, 82.0 + st["body_bob"]),
-            _pt(torso_x + 17.0, 106.0),
-            _pt(torso_x + 6.5, foot_y - 3.0),
-            _pt(torso_x, foot_y - hem_notch),
-            _pt(torso_x - 6.0, foot_y - 3.0),
-            _pt(torso_x - 18.0, 106.0),
-            _pt(torso_x - 23.0, 82.0 + st["body_bob"]),
+            _pt(tx - 20.0, 60.0 + bob),
+            _pt(tx - 14.0, 52.0 + bob),
+            _pt(tx + 12.0, 52.0 + bob),
+            _pt(tx + 20.0, 60.0 + bob),
+            _pt(tx + 22.0, 82.0 + bob),
+            _pt(tx + 17.0, 106.0 + bob),
+            _pt(tx + 6.5, foot_y - 3.0),
+            _pt(tx, foot_y - hem_notch),
+            _pt(tx - 6.0, foot_y - 3.0),
+            _pt(tx - 18.0, 106.0 + bob),
+            _pt(tx - 23.0, 82.0 + bob),
         ],
         fill=pal["robe"],
         outline=OUTLINE,
     )
     draw.polygon(
-        [
-            _pt(torso_x - 3.5, 56.0 + st["body_bob"]),
-            _pt(torso_x + 8.0, 56.0 + st["body_bob"]),
-            _pt(torso_x + 12.0, 90.0),
-            _pt(torso_x + 4.0, 108.0),
-            _pt(torso_x - 2.0, 98.0),
-        ],
+        [_pt(tx - 3.5, 56.0 + bob), _pt(tx + 8.0, 56.0 + bob), _pt(tx + 12.0, 90.0 + bob), _pt(tx + 4.0, 108.0 + bob), _pt(tx - 2.0, 98.0 + bob)],
         fill=pal["robe_light"],
         outline=None,
     )
     draw.polygon(
-        [
-            _pt(torso_x - 18.0, 58.0 + st["body_bob"]),
-            _pt(torso_x - 11.0, 56.0 + st["body_bob"]),
-            _pt(torso_x - 9.0, 91.0),
-            _pt(torso_x - 16.0, 105.0),
-            _pt(torso_x - 20.0, 82.0),
-        ],
+        [_pt(tx - 18.0, 58.0 + bob), _pt(tx - 11.0, 56.0 + bob), _pt(tx - 9.0, 91.0 + bob), _pt(tx - 16.0, 105.0 + bob), _pt(tx - 20.0, 82.0 + bob)],
         fill=pal["robe_shadow"],
         outline=None,
     )
-    draw.rectangle((_s(torso_x - 2.0), _s(59.0 + st["body_bob"]), _s(torso_x + 1.8), _s(foot_y - 5.0)), fill=pal["trim"], outline=None)
+    draw.rectangle((_s(tx - 2.0), _s(59.0 + bob), _s(tx + 1.8), _s(foot_y - 5.0)), fill=pal["trim"], outline=None)
 
     # Shoulder mantle.
-    draw.rounded_rectangle((_s(torso_x - 19.5), _s(57.0 + st["body_bob"]), _s(torso_x + 19.5), _s(69.0 + st["body_bob"])), radius=_s(4.0), fill=pal["hat_fur"], outline=OUTLINE)
-    draw.rounded_rectangle((_s(torso_x - 13.0), _s(58.5 + st["body_bob"]), _s(torso_x + 13.0), _s(65.5 + st["body_bob"])), radius=_s(3.0), fill=_mix(pal["hat_fur"], WHITE, 0.18), outline=None)
+    draw.rounded_rectangle((_s(tx - 19.5), _s(57.0 + bob), _s(tx + 19.5), _s(69.0 + bob)), radius=_s(4.0), fill=pal["hat_fur"], outline=OUTLINE)
+    draw.rounded_rectangle((_s(tx - 13.0), _s(58.5 + bob), _s(tx + 13.0), _s(65.5 + bob)), radius=_s(3.0), fill=_mix(pal["hat_fur"], WHITE, 0.18), outline=None)
 
     # Lamellar chest.
-    chest_top = 70.0 + st["body_bob"]
+    chest_top = 70.0 + bob
     for row in range(4):
         cols = 4 if row < 3 else 3
         y = chest_top + row * 5.0
-        xoff = torso_x - (cols * 4.3 - 1.8)
+        xoff = tx - (cols * 4.3 - 1.8)
         for col in range(cols):
             x = xoff + col * 8.6 + (2.2 if row == 3 else 0.0)
             w = 6.9
@@ -443,49 +412,13 @@ def render_frame(variant_name: str, anim: str, frame_idx: int, nframes: int) -> 
             draw.rectangle((_s(x + 1.2), _s(y + 1.1), _s(x + w - 1.0), _s(y + 2.1)), fill=pal["lamellar_light"], outline=None)
 
     # Belt.
-    draw.rounded_rectangle((_s(torso_x - 18.0), _s(88.0), _s(torso_x + 18.0), _s(94.5)), radius=_s(2.0), fill=pal["belt"], outline=OUTLINE)
-    draw.rounded_rectangle((_s(torso_x - 4.0), _s(87.8), _s(torso_x + 4.0), _s(94.8)), radius=_s(1.6), fill=pal["buckle"], outline=OUTLINE)
+    draw.rounded_rectangle((_s(tx - 18.0), _s(88.0 + bob), _s(tx + 18.0), _s(94.5 + bob)), radius=_s(2.0), fill=pal["belt"], outline=OUTLINE)
+    draw.rounded_rectangle((_s(tx - 4.0), _s(87.8 + bob), _s(tx + 4.0), _s(94.8 + bob)), radius=_s(1.6), fill=pal["buckle"], outline=OUTLINE)
 
-    # Arms.
-    if anim == "walk":
-        a = st["step"]
-        left_upper = math.radians(_lerp(122, 112, can)) + a * 0.46
-        left_lower = math.radians(_lerp(-36, -22, can))
-        right_upper = math.radians(_lerp(44, 32, can)) - a * 0.46
-        right_lower = math.radians(_lerp(26, 18, can))
-    elif anim == "talk":
-        left_upper = math.radians(_lerp(118, 90, can))
-        left_lower = math.radians(_lerp(-44, -16, can))
-        right_upper = math.radians(_lerp(25, -10, can)) - st["talk"] * 0.34
-        right_lower = math.radians(_lerp(40, 58, can))
-    elif anim == "interact":
-        left_upper = math.radians(_lerp(130, 106, can))
-        left_lower = math.radians(_lerp(-34, -18, can))
-        right_upper = math.radians(_lerp(10, -58, can)) - st["interact"] * 0.30
-        right_lower = math.radians(_lerp(54, 74, can))
-    elif anim == "taunt":
-        left_upper = math.radians(_lerp(118, 86, can))
-        left_lower = math.radians(_lerp(-32, -12, can))
-        right_upper = math.radians(_lerp(52, -22, can))
-        right_lower = math.radians(_lerp(36, 66, can))
-    else:
-        left_upper = math.radians(_lerp(126, 112, can))
-        left_lower = math.radians(_lerp(-26, -12, can))
-        right_upper = math.radians(_lerp(38, 16, can))
-        right_lower = math.radians(_lerp(20, 44, can))
 
-    upper_len = 16.0
-    lower_len = 13.2
-    l_elbow, l_hand = _arm_chain(shoulder_l, upper_len, lower_len, left_upper, left_lower)
-    r_elbow, r_hand = _arm_chain(shoulder_r, upper_len, lower_len, right_upper, right_lower)
-    _draw_arm(draw, shoulder_l, l_elbow, l_hand, pal["robe"], pal["skin"], 6.7)
-    _draw_arm(draw, shoulder_r, r_elbow, r_hand, pal["robe"], pal["skin"], 6.7)
-
-    # Neck.
-    draw.rounded_rectangle((_s(torso_x - 4.0), _s(51.0 + st["body_bob"]), _s(torso_x + 4.0), _s(58.0 + st["body_bob"])), radius=_s(1.8), fill=pal["skin_shadow"], outline=OUTLINE)
-
-    # Head and face.
-    head_cx = torso_x + _lerp(-1.4, 0.2, can)
+def _paint_head(draw, spec: VariantSpec, head_cx: float, head_y: float, talking: bool, mouth_open: float) -> None:
+    pal = spec.palette
+    can = spec.confidence
     draw.ellipse(_bbox(head_cx, head_y + 0.2, 15.5, 17.8), fill=pal["skin"], outline=OUTLINE)
     draw.pieslice(_bbox(head_cx, head_y + 4.0, 15.2, 14.2), start=0, end=180, fill=pal["skin_shadow"], outline=None)
     draw.ellipse(_bbox(head_cx, head_y - 6.0, 13.6, 8.5), fill=pal["hair"], outline=OUTLINE)
@@ -510,7 +443,7 @@ def render_frame(variant_name: str, anim: str, frame_idx: int, nframes: int) -> 
 
     # Brows and eyes.
     brow_raise = _lerp(1.8, -0.8, can)
-    if anim == "talk":
+    if talking:
         brow_raise += 0.6 * (1.0 - can)
     left_brow_y = head_y - 1.5 - brow_raise
     right_brow_y = head_y - 0.8 - brow_raise * 0.85
@@ -540,15 +473,149 @@ def render_frame(variant_name: str, anim: str, frame_idx: int, nframes: int) -> 
     # Mouth.
     mouth_y = head_y + 11.6
     if spec.target_name.endswith("cant"):
-        draw.arc((_s(head_cx - 4.4), _s(mouth_y - 1.2), _s(head_cx + 4.2), _s(mouth_y + 2.6 + st["mouth_open"])), start=12, end=164, fill=pal["mouth"], width=_s(1.1))
+        draw.arc((_s(head_cx - 4.4), _s(mouth_y - 1.2), _s(head_cx + 4.2), _s(mouth_y + 2.6 + mouth_open)), start=12, end=164, fill=pal["mouth"], width=_s(1.1))
     else:
-        draw.arc((_s(head_cx - 4.3), _s(mouth_y - 0.6), _s(head_cx + 4.3), _s(mouth_y + 2.4 + st["mouth_open"])), start=200, end=340, fill=pal["mouth"], width=_s(1.2))
-    if anim == "talk":
-        draw.ellipse(_bbox(head_cx, mouth_y + 1.9, 2.8, 1.6 + st["mouth_open"] * 1.9), fill=pal["mouth"], outline=None)
+        draw.arc((_s(head_cx - 4.3), _s(mouth_y - 0.6), _s(head_cx + 4.3), _s(mouth_y + 2.4 + mouth_open)), start=200, end=340, fill=pal["mouth"], width=_s(1.2))
+    if talking:
+        draw.ellipse(_bbox(head_cx, mouth_y + 1.9, 2.8, 1.6 + mouth_open * 1.9), fill=pal["mouth"], outline=None)
+
+
+def _place_arm(img: Image.Image, spec: VariantSpec, side: str, shoulder: Point, a1: float, a2: float) -> None:
+    """The arm's bones turned by the chain's angles: both outlines, then both
+    fills (each with its round joint at the elbow, as the polyline's curve
+    joint), then the elbow and hand discs on the forearm."""
+    pal = spec.palette
+    width, upper_len, lower_len = 6.7, 16.0, 13.2
+    elbow, _hand = _arm_chain(shoulder, upper_len, lower_len, a1, a2)
+    upper_deg, lower_deg = math.degrees(a1), math.degrees(a1 + a2)
+    half = (22.0, 22.0)
+
+    def stroke(color: RGBA, w: float, length: float, joint: bool):
+        def paint(d, ox: float, oy: float) -> None:
+            _draw_line(d, [(ox, oy), (ox + length, oy)], color, w)
+            if joint:
+                d.ellipse(_bbox(ox + length, oy, w / 2, w / 2), fill=color, outline=None)
+
+        return paint
+
+    for layer, color, w in (("outline", OUTLINE, width + 2.8), ("fill", pal["robe"], width)):
+        _put(img, _piece((spec.target_name, "upper_arm", layer), half, stroke(color, w, upper_len, True)), shoulder, upper_deg, f"{side}_upper_arm_{layer}")
+        if layer == "outline":
+            _put(img, _piece((spec.target_name, "forearm", layer), half, stroke(color, w, lower_len, False)), elbow, lower_deg, f"{side}_forearm_{layer}")
+
+    def paint_forearm(d, ox: float, oy: float) -> None:
+        _draw_line(d, [(ox, oy), (ox + lower_len, oy)], pal["robe"], width)
+        d.ellipse(_bbox(ox, oy, width * 0.26, width * 0.26), fill=pal["robe"], outline=OUTLINE)
+        d.ellipse(_bbox(ox + lower_len, oy, width * 0.33, width * 0.33), fill=pal["skin"], outline=OUTLINE)
+
+    _put(img, _piece((spec.target_name, "forearm", "fill"), half, paint_forearm), elbow, lower_deg, f"{side}_forearm_fill")
+
+
+def render_frame(variant_name: str, anim: str, frame_idx: int, nframes: int) -> Image.Image:
+    spec = VARIANTS[variant_name]
+    pal = spec.palette
+    st = _frame_state(anim, frame_idx, nframes, spec)
+
+    img = Image.new("RGBA", (CANVAS_W, CANVAS_H), TRANSPARENT)
+
+    can = spec.confidence
+    slouch = spec.slouch
+    center_x = 64.0
+    bob = st["body_bob"]
+    foot_y = 118.0 + bob
+    hip_y = 91.0 + bob + slouch * 0.25
+    shoulder_y = 66.0 + bob + slouch * 0.55
+    head_y = 36.0 + bob + slouch * 0.7
+    torso_shift_x = st["torso_tilt"] * 16.0
+    torso_x = center_x + torso_shift_x
+    shoulder_l = (torso_x - 16.0, shoulder_y)
+    shoulder_r = (torso_x + 16.0, shoulder_y + 0.6)
+    # The torso's pieces are painted about this point and ride it.
+    torso_at = (torso_x, 80.0 + bob)
+
+    # Back cape and silhouette extenders.
+    cape_wave = round(math.sin(st["cyc"] + (0.0 if anim == "walk" else 1.1)), 1)
+    cape = _piece(
+        (variant_name, "cape", cape_wave), (30.0, 42.0),
+        lambda d, ox, oy: _paint_cape(d, pal, ox, oy - 80.0, can, cape_wave),
+    )
+    _put(img, cape, torso_at, 0.0, "cape")
+
+    # Legs: each one piece about its hip, keyed by its knee and foot.
+    left_stride = -5.0 - st["stride"] * 0.60
+    right_stride = 5.0 + st["stride"] * 0.60
+    knee_drop_l = 12.0 - abs(st["stride"]) * 0.15
+    knee_drop_r = 12.0 + abs(st["stride"]) * 0.08
+    left_knee = (center_x - 7.0 + left_stride * 0.18, hip_y + knee_drop_l)
+    right_knee = (center_x + 7.0 + right_stride * 0.18, hip_y + knee_drop_r)
+    left_foot = (center_x - 7.0 + left_stride, foot_y)
+    right_foot = (center_x + 8.0 + right_stride, foot_y)
+    for side, hip, knee, foot in [("left", (center_x - 6.0, hip_y), left_knee, left_foot), ("right", (center_x + 6.0, hip_y), right_knee, right_foot)]:
+        dk = (round((knee[0] - hip[0]) * 2) / 2, round((knee[1] - hip[1]) * 2) / 2)
+        df = (round((foot[0] - hip[0]) * 2) / 2, round((foot[1] - hip[1]) * 2) / 2)
+        leg = _piece(
+            (variant_name, "leg", dk, df), (20.0, 34.0),
+            lambda d, ox, oy, dk=dk, df=df: _paint_leg(d, pal, (ox, oy), (ox + dk[0], oy + dk[1]), (ox + df[0], oy + df[1])),
+        )
+        _put(img, leg, hip, 0.0, f"{side}_leg")
+
+    # Robe body, mantle, lamellar and belt.
+    robe = _piece((variant_name, "robe"), (28.0, 42.0), lambda d, ox, oy: _paint_robe(d, pal, ox, oy - 80.0, can))
+    _put(img, robe, torso_at, 0.0, "robe")
+
+    # Arms.
+    if anim == "walk":
+        a = st["step"]
+        left_upper = math.radians(_lerp(122, 112, can)) + a * 0.46
+        left_lower = math.radians(_lerp(-36, -22, can))
+        right_upper = math.radians(_lerp(44, 32, can)) - a * 0.46
+        right_lower = math.radians(_lerp(26, 18, can))
+    elif anim == "talk":
+        left_upper = math.radians(_lerp(118, 90, can))
+        left_lower = math.radians(_lerp(-44, -16, can))
+        right_upper = math.radians(_lerp(25, -10, can)) - st["talk"] * 0.34
+        right_lower = math.radians(_lerp(40, 58, can))
+    elif anim == "interact":
+        left_upper = math.radians(_lerp(130, 106, can))
+        left_lower = math.radians(_lerp(-34, -18, can))
+        right_upper = math.radians(_lerp(10, -58, can)) - st["interact"] * 0.30
+        right_lower = math.radians(_lerp(54, 74, can))
+    elif anim == "taunt":
+        left_upper = math.radians(_lerp(118, 86, can))
+        left_lower = math.radians(_lerp(-32, -12, can))
+        right_upper = math.radians(_lerp(52, -22, can))
+        right_lower = math.radians(_lerp(36, 66, can))
+    else:
+        left_upper = math.radians(_lerp(126, 112, can))
+        left_lower = math.radians(_lerp(-26, -12, can))
+        right_upper = math.radians(_lerp(38, 16, can))
+        right_lower = math.radians(_lerp(20, 44, can))
+
+    _place_arm(img, spec, "left", shoulder_l, left_upper, left_lower)
+    _place_arm(img, spec, "right", shoulder_r, right_upper, right_lower)
+
+    # Neck.
+    def paint_neck(d, ox: float, oy: float) -> None:
+        d.rounded_rectangle((_s(ox - 4.0), _s(oy - 29.0), _s(ox + 4.0), _s(oy - 22.0)), radius=_s(1.8), fill=pal["skin_shadow"], outline=OUTLINE)
+
+    _put(img, _piece((variant_name, "neck"), (8.0, 32.0), paint_neck), torso_at, 0.0, "neck")
+
+    # Head and face: one piece per (rounded) mouth.
+    head_cx = torso_x + _lerp(-1.4, 0.2, can)
+    talking = anim == "talk"
+    mouth_open = round(st["mouth_open"] * 20.0) / 20.0
+    head = _piece(
+        (variant_name, "head", talking, mouth_open), (22.0, 34.0),
+        lambda d, ox, oy: _paint_head(d, spec, ox, oy, talking, mouth_open),
+    )
+    _put(img, head, (head_cx, head_y), 0.0, "head")
 
     # Final tunic trim and fur cuffs in front.
-    draw.rectangle((_s(torso_x - 22.0), _s(77.0 + st["body_bob"]), _s(torso_x - 17.0), _s(85.0 + st["body_bob"])), fill=pal["trim"], outline=OUTLINE)
-    draw.rectangle((_s(torso_x + 17.0), _s(77.0 + st["body_bob"]), _s(torso_x + 22.0), _s(85.0 + st["body_bob"])), fill=pal["trim"], outline=OUTLINE)
+    def paint_trim(d, ox: float, oy: float) -> None:
+        d.rectangle((_s(ox - 22.0), _s(oy - 3.0), _s(ox - 17.0), _s(oy + 5.0)), fill=pal["trim"], outline=OUTLINE)
+        d.rectangle((_s(ox + 17.0), _s(oy - 3.0), _s(ox + 22.0), _s(oy + 5.0)), fill=pal["trim"], outline=OUTLINE)
+
+    _put(img, _piece((variant_name, "trim"), (24.0, 8.0), paint_trim), torso_at, 0.0, "trim")
 
     return _downsample(img)
 

@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from PIL import Image, ImageDraw, ImageFont
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -258,6 +258,34 @@ def stroke_polyline(
         circle(draw, p, max(1.0, width * 0.48), color)
 
 
+# --- rig pieces ---------------------------------------------------------------
+#
+# Galwah is drawn as a rig (``shape_rig``): every rigid piece is painted once in
+# its own raster at the supersampled scale and placed (turned where it turns).
+# Each limb is two round-capped bones turned from joint to joint (one piece per
+# whole-pixel length), the boots stay level at the feet, the coat and the head
+# are pieces keyed by the pose values they read, and the held page, book and
+# pistol are painted level and turned to their angle. Pistol smoke is a
+# one-frame effect raster.
+
+
+def _piece(key, half: float, paint) -> tuple[Image.Image, tuple[float, float]]:
+    """A piece ``2 * half`` supersampled pixels square, pivot at the centre:
+    ``paint(draw, o)`` paints it with the local origin at ``(o, o)``."""
+    size = 2 * int(math.ceil(half))
+    return shape_rig.piece(("galwah",) + tuple(key), (size, size), (size / 2, size / 2), lambda d: paint(d, size / 2))
+
+
+def _bone_length(a: tuple[float, float], b: tuple[float, float], aa: int) -> float:
+    """A limb bone's length, to the whole frame pixel (in supersampled px):
+    a piece is one per length."""
+    return float(max(1, round(math.hypot(b[0] - a[0], b[1] - a[1]) / aa)) * aa)
+
+
+def _angle(a: tuple[float, float], b: tuple[float, float]) -> float:
+    return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+
+
 # --- pose model ---------------------------------------------------------------
 @dataclass
 class Pose:
@@ -301,7 +329,6 @@ class GalwahRenderer:
 
     def render_pose(self, pose: Pose) -> Image.Image:
         img = Image.new("RGBA", (self.W, self.H), BG)
-        draw = blending_draw(img)
 
         # No baked drop shadow (rule: shadows break crop/anchor alignment;
         # cast shadows belong to the ECS visual layer, not the source sheet).
@@ -316,7 +343,6 @@ class GalwahRenderer:
 
         pelvis = self.pt(48 + lean * 1.8, 58 + body_y + crouch * 3 + pose.collapse * 8)
         chest = self.pt(48 + lean * 4.2, 41 + body_y + crouch * 1.8 + pose.collapse * 2)
-        neck = self.pt(48 + lean * 4.8, 33 + body_y + crouch * 1.1)
         head = self.pt(
             48 + facing * yaw * 3.0 + lean * 4.5, 24 + body_y - pose.collapse * 2
         )
@@ -400,31 +426,31 @@ class GalwahRenderer:
             )
 
         # Draw order: far leg, near leg, torso, far arm, head, near arm, items.
-        self._draw_leg(
-            draw,
+        self._place_leg(
+            img,
             left_hip if far_side == "left" else right_hip,
             left_knee if far_side == "left" else right_knee,
             left_foot if far_side == "left" else right_foot,
             far=True,
         )
-        self._draw_leg(
-            draw,
+        self._place_leg(
+            img,
             right_hip if near_side == "right" else left_hip,
             right_knee if near_side == "right" else left_knee,
             right_foot if near_side == "right" else left_foot,
             far=False,
         )
-        self._draw_torso(draw, pelvis, chest, neck, pose, facing, yaw)
-        self._draw_arm(
-            draw,
+        self._place_torso(img, pelvis, chest, pose, yaw)
+        self._place_arm(
+            img,
             left_shoulder if far_side == "left" else right_shoulder,
             left_elbow if far_side == "left" else right_elbow,
             left_hand if far_side == "left" else right_hand,
             far=True,
         )
-        self._draw_head(draw, head, pose, facing, yaw)
-        self._draw_arm(
-            draw,
+        self._place_head(img, head, pose, facing, yaw)
+        self._place_arm(
+            img,
             right_shoulder if near_side == "right" else left_shoulder,
             right_elbow if near_side == "right" else left_elbow,
             right_hand if near_side == "right" else left_hand,
@@ -433,57 +459,111 @@ class GalwahRenderer:
 
         # Items.
         if pose.left_item:
-            self._draw_item(draw, left_hand, pose.left_item, facing, pose)
+            self._place_item(img, left_hand, pose.left_item, facing, pose, "left_item")
         if pose.right_item:
-            self._draw_item(draw, right_hand, pose.right_item, facing, pose)
+            self._place_item(img, right_hand, pose.right_item, facing, pose, "right_item")
 
         if pose.paper_drop > 0.0:
             p = self.pt(55 + 12 * pose.paper_drop, 56 + 22 * pose.paper_drop)
-            self._draw_dropped_page(draw, p, 0.35 + pose.paper_drop * 1.2)
+            self._place_page(img, p, 0.35 + pose.paper_drop * 1.2, "dropped_page")
 
         if pose.pistol_smoke:
+            smoke = Image.new("RGBA", img.size, BG)
+            smoke_draw = blending_draw(smoke)
             base = add(right_hand, self.pt(8 * facing, -5))
             for i in range(4):
                 off = rotate(self.pt(5 + i * 2.2, -4 - i * 1.5), -0.2 * facing)
                 circle(
-                    draw,
+                    smoke_draw,
                     add(base, off),
                     self.S(2.2 - i * 0.3),
                     (230, 230, 230, 92 - i * 14),
                 )
+            box = smoke.getbbox()
+            if box is not None:
+                shape_rig.place(img, (smoke.crop(box), (0.0, 0.0)), (box[0], box[1]), 0.0, "pistol_smoke")
 
         # Downsample from supersampled render.
         return rigdoc.downsampled_canvas(img, (self.frame_w, self.frame_h), Image.Resampling.LANCZOS)
 
-    def _draw_leg(self, draw: ImageDraw.ImageDraw, hip, knee, foot, far: bool) -> None:
-        trouser = COAT_DARK if far else TROUSER
-        stroke_polyline(draw, [hip, knee, foot], trouser, self.S(4.6 if far else 5.6))
-        # boot silhouette
-        toe = add(foot, self.pt(4.8, 0.6))
-        heel = add(foot, self.pt(-2.2, 0.8))
-        upper = add(foot, self.pt(0.0, -2.6))
-        polygon(
-            draw,
-            [
-                upper,
-                toe,
-                add(toe, self.pt(0.4, 1.4)),
-                add(heel, self.pt(0.0, 1.8)),
-                heel,
-            ],
-            BOOT,
-            OUTLINE,
-            max(1, self.aa // 2),
-        )
+    def _place_bone(self, img: Image.Image, a, b, color, width: float, name: str, *, hand: bool = False) -> None:
+        """One limb bone from ``a`` to ``b`` as a turned piece: the stroke
+        ``stroke_polyline`` draws, with its joint discs at both ends (and the
+        hand on a forearm's end)."""
+        bone = _bone_length(a, b, self.aa)
+        w = max(1, round(width))
+        r = max(1.0, width * 0.48)
+        half = bone + max(r, self.S(2.2)) + self.aa * 2
 
-    def _draw_arm(
-        self, draw: ImageDraw.ImageDraw, shoulder, elbow, hand, far: bool
-    ) -> None:
+        def paint(draw, o: float) -> None:
+            line(draw, [(o, o), (o + bone, o)], color, w)
+            circle(draw, (o, o), r, color)
+            circle(draw, (o + bone, o), r, color)
+            if hand:
+                circle(draw, (o + bone, o), self.S(2.2), SKIN, OUTLINE, max(1, self.aa // 2))
+
+        part = _piece(("bone", bone, color, round(width, 3), hand, self.aa), half, paint)
+        shape_rig.place(img, part, a, _angle(a, b), name)
+
+    def _place_leg(self, img: Image.Image, hip, knee, foot, far: bool) -> None:
+        side = "far" if far else "near"
+        trouser = COAT_DARK if far else TROUSER
+        width = self.S(4.6 if far else 5.6)
+        self._place_bone(img, hip, knee, trouser, width, f"{side}_thigh")
+        self._place_bone(img, knee, foot, trouser, width, f"{side}_shin")
+
+        def paint_boot(draw, o: float) -> None:
+            # boot silhouette
+            at = (o, o)
+            toe = add(at, self.pt(4.8, 0.6))
+            heel = add(at, self.pt(-2.2, 0.8))
+            upper = add(at, self.pt(0.0, -2.6))
+            polygon(
+                draw,
+                [upper, toe, add(toe, self.pt(0.4, 1.4)), add(heel, self.pt(0.0, 1.8)), heel],
+                BOOT,
+                OUTLINE,
+                max(1, self.aa // 2),
+            )
+
+        shape_rig.place(img, _piece(("boot", self.aa), self.S(8), paint_boot), foot, 0.0, f"{side}_boot")
+
+    def _place_arm(self, img: Image.Image, shoulder, elbow, hand, far: bool) -> None:
+        side = "far" if far else "near"
         sleeve = (58, 64, 90, 235) if far else COAT
-        stroke_polyline(
-            draw, [shoulder, elbow, hand], sleeve, self.S(4.2 if far else 5.0)
+        width = self.S(4.2 if far else 5.0)
+        self._place_bone(img, shoulder, elbow, sleeve, width, f"{side}_upper_arm")
+        self._place_bone(img, elbow, hand, sleeve, width, f"{side}_forearm", hand=True)
+
+    def _place_torso(self, img: Image.Image, pelvis, chest, pose: Pose, yaw: float) -> None:
+        """The coat as one piece riding the chest, keyed by what shapes it:
+        the chest's offset from the pelvis (lean, crouch), the turn, the
+        coat's swing and the collapse."""
+        off = (round((pelvis[0] - chest[0]) / 2) * 2, round((pelvis[1] - chest[1]) / 2) * 2)
+        yaw_k, swing, collapse = round(yaw, 2), round(pose.coat_swing, 2), round(pose.collapse, 2)
+        shape = Pose("coat", coat_swing=swing, collapse=collapse)
+        half = self.S(40)
+
+        def paint(draw, o: float) -> None:
+            self._draw_torso(draw, (o + off[0], o + off[1]), (o, o), None, shape, 1, yaw_k)
+
+        part = _piece(("coat", off, yaw_k, swing, collapse, self.aa), half, paint)
+        shape_rig.place(img, part, chest, 0.0, "torso")
+
+    def _place_head(self, img: Image.Image, head, pose: Pose, facing: int, yaw: float) -> None:
+        """The head (hair, neck, face) as one piece, keyed by the expression
+        and turn it draws."""
+        shape = Pose(
+            "head", blink=pose.blink, mouth=round(pose.mouth, 2), hair_bounce=round(pose.hair_bounce, 2),
+            collapse=round(pose.collapse, 2),
         )
-        circle(draw, hand, self.S(2.2), SKIN, OUTLINE, max(1, self.aa // 2))
+        yaw_k = round(yaw, 2)
+        key = ("head", facing, yaw_k, shape.blink, shape.mouth, shape.hair_bounce, shape.collapse, self.aa)
+        half = self.S(20)
+        # Feature strokes are placed through frame-pixel rounding of the
+        # centre (``cx / aa``): keep the centre on the frame grid.
+        part = _piece(key, half, lambda draw, o: self._draw_head(draw, (o, o), shape, facing, yaw_k))
+        shape_rig.place(img, part, head, 0.0, "head")
 
     def _draw_torso(
         self,
@@ -1019,22 +1099,20 @@ class GalwahRenderer:
             max(1, self.aa // 2),
         )
 
-    def _draw_item(
-        self,
-        draw: ImageDraw.ImageDraw,
-        hand: tuple[float, float],
-        item: str,
-        facing: int,
-        pose: Pose,
-    ) -> None:
+    def _place_item(self, img: Image.Image, hand, item: str, facing: int, pose: Pose, name: str) -> None:
         if item == "page":
-            self._draw_page(draw, hand, angle=0.12 * facing - pose.lean * 0.2)
+            self._place_page(img, hand, 0.12 * facing - pose.lean * 0.2, name)
         elif item == "pistol":
-            self._draw_pistol(
-                draw, hand, angle=-0.18 * facing + pose.lean * 0.12, facing=facing
-            )
+            part = _piece(("pistol", facing, self.aa), self.S(12), lambda draw, o: self._draw_pistol(draw, (o, o), 0.0, facing))
+            shape_rig.place(img, part, hand, math.degrees(-0.18 * facing + pose.lean * 0.12), name)
         elif item == "book":
-            self._draw_book(draw, hand, angle=0.15 * facing)
+            part = _piece(("book", self.aa), self.S(10), lambda draw, o: self._draw_book(draw, (o, o), 0.0))
+            shape_rig.place(img, part, hand, math.degrees(0.15 * facing), name)
+
+    def _place_page(self, img: Image.Image, at, angle: float, name: str) -> None:
+        """A page painted level and turned ``angle`` radians about its centre."""
+        part = _piece(("page", self.aa), self.S(10), lambda draw, o: self._draw_page(draw, (o, o), 0.0))
+        shape_rig.place(img, part, at, math.degrees(angle), name)
 
     def _draw_page(
         self, draw: ImageDraw.ImageDraw, hand: tuple[float, float], angle: float = 0.0
@@ -1088,11 +1166,6 @@ class GalwahRenderer:
         polygon(draw, t(body), METAL, OUTLINE)
         polygon(draw, t(grip), WOOD, OUTLINE)
         polygon(draw, t(hammer), METAL, OUTLINE)
-
-    def _draw_dropped_page(
-        self, draw: ImageDraw.ImageDraw, p: tuple[float, float], angle: float
-    ) -> None:
-        self._draw_page(draw, p, angle)
 
 
 # --- sheet layout -------------------------------------------------------------

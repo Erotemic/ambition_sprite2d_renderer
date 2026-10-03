@@ -27,6 +27,7 @@ from ...authoring import rigdoc
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
+from . import _solo_shape_rig as SR
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -263,12 +264,48 @@ BELL_CENTRE = (160.0, 131.0)
 CANVAS_MARGIN = (WORK_FRAME_SIZE[0] / 2 - BELL_CENTRE[0], WORK_FRAME_SIZE[1] / 2 - BELL_CENTRE[1])
 
 
+#: Canvas pixels per geometry unit. The canvas is the FRAME supersampled by
+#: SUPER (a whole factor, so a part flipbook reduces each piece on the frame's
+#: own grid and can place turned pieces): the work frame's geometry drawn at
+#: SUPER * 748 / 860.
+SCALE = SUPER * FRAME_SIZE[0] / WORK_FRAME_SIZE[0]
+CANVAS_SIZE = (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER)
+#: Canvas pixels subtracted from every point: a piece painted on its own small
+#: canvas (``_piece``) shifts the geometry onto it.
+_SHIFT = (0, 0)
+
+
 def _s(v: float) -> int:
-    return int(round(v * SUPER))
+    return int(round(v * SCALE))
 
 
 def _pt(p: Point) -> Tuple[int, int]:
-    return (_s(p[0] + CANVAS_MARGIN[0]), _s(p[1] + CANVAS_MARGIN[1]))
+    return (_s(p[0] + CANVAS_MARGIN[0]) - _SHIFT[0], _s(p[1] + CANVAS_MARGIN[1]) - _SHIFT[1])
+
+
+def _cv(p: Point) -> Point:
+    """A geometry point in canvas pixels, unrounded (where a piece lands)."""
+    return ((p[0] + CANVAS_MARGIN[0]) * SCALE, (p[1] + CANVAS_MARGIN[1]) * SCALE)
+
+
+def _piece(key: tuple, centre: Point, half: Point, paint):
+    """A piece painted once by ``paint(draw)`` in GEOMETRY coordinates on its
+    own canvas covering ``centre`` +- ``half``, its pivot at ``centre``."""
+    global _SHIFT
+    cx, cy = _s(centre[0] + CANVAS_MARGIN[0]), _s(centre[1] + CANVAS_MARGIN[1])
+    hw, hh = _s(half[0]), _s(half[1])
+    shift = (cx - hw, cy - hh)
+    exact = _cv(centre)
+
+    def local(draw) -> None:
+        global _SHIFT
+        prev, _SHIFT = _SHIFT, shift
+        try:
+            paint(draw)
+        finally:
+            _SHIFT = prev
+
+    return SR.rest_piece(("fsm",) + key, (2 * hw, 2 * hh), (exact[0] - shift[0], exact[1] - shift[1]), local)
 
 
 def _lerp(a: float, b: float, t: float) -> float:
@@ -403,6 +440,66 @@ class _Paint:
                 getattr(self._reveal, name)(*args, **stamp)
 
         return call
+
+
+class _Nothing:
+    """Swallows draws: with it as the art, a ``_Paint`` only erases the reveal
+    map under a piece placed on the art by ``shape_rig``."""
+
+    def __getattr__(self, name: str):
+        return lambda *args, **kwargs: None
+
+
+#: The bell's churn, keyed in steps of its phase (a piece per step).
+BELL_PHASE_STEP = math.tau / 16
+
+
+def _bell_piece(first: int, last: int, rise: float, phase: float):
+    """Bell strands ``first..last`` at ``phase``, untilted, about ROOT: the
+    strands are not squashed (``_swirl`` cancels the squash), only turned."""
+    width = {0: 9.0, 22: 9.2}[first]
+
+    def paint(draw) -> None:
+        for i in range(first, last):
+            col = (NOODLE_DEEP if i < 8 else NOODLE_BACK) if first == 0 else NOODLE
+            _draw_noodle(draw, _swirl((ROOT[0], ROOT[1] - rise), i, phase), width, col, highlight=first != 0)
+
+    return _piece(("bell", first, phase), ROOT, (BELL_RX + 46, BELL_TOP + 36), paint)
+
+
+def _noodle(canvas: Image.Image, erase: Optional["_Paint"], pts: Sequence[Point], width: float, fill: RGBA, highlight: bool, name: str) -> None:
+    """A noodle that bends every frame (a tentacle, a stalk, a drape): painted
+    on its own canvas and placed as ONE raster, so a part flipbook stores one
+    picture of it per frame, not its strokes. The canvas lies along the
+    noodle's chord (it is painted turned back by the chord's angle and placed
+    turned by it), so a slanted noodle is not stored in a mostly empty box.
+    It still hides the sauce beneath it (``erase``)."""
+    global _SHIFT
+    pad = width + 4.0
+    (ax, ay), (bx, by) = pts[0], pts[-1]
+    degrees = math.degrees(math.atan2(by - ay, bx - ax)) if math.hypot(bx - ax, by - ay) > 1e-3 else 0.0
+    local_pts = [(ax + q[0], ay + q[1]) for q in (_rot(x - ax, y - ay, -degrees) for x, y in pts)]
+    # The highlight is offset up-left on screen: turned back with the noodle.
+    x0, y0 = _s(min(x for x, _ in local_pts) - pad + CANVAS_MARGIN[0]), _s(min(y for _, y in local_pts) - pad + CANVAS_MARGIN[1])
+    x1, y1 = _s(max(x for x, _ in local_pts) + pad + CANVAS_MARGIN[0]), _s(max(y for _, y in local_pts) + pad + CANVAS_MARGIN[1])
+    local = Image.new("RGBA", (x1 - x0, y1 - y0), (0, 0, 0, 0))
+    prev, _SHIFT = _SHIFT, (x0, y0)
+    try:
+        _draw_noodle(blending_draw(local), local_pts, width, fill, highlight, turned=-degrees)
+    finally:
+        _SHIFT = prev
+    pivot = _cv((ax, ay))
+    SR.place(canvas, (local, (pivot[0] - x0, pivot[1] - y0)), pivot, degrees, name)
+    if erase is not None:
+        _draw_noodle(erase, pts, width, fill, highlight)
+
+
+def _meatball_piece(r: float, squash: float, seed: int):
+    return _piece(("meatball", r, squash, seed), (0.0, 0.0), (r * 1.4 + 4, r * 1.4 + 4), lambda d: _draw_meatball(d, (0.0, 0.0), r, squash, seed))
+
+
+def _eye_piece(r: float, aim: float, style: str, lean: float):
+    return _piece(("eye", r, aim, style, lean), (0.0, 0.0), (r * 1.8, r * 1.8), lambda d: _draw_eye(d, (0.0, 0.0), r, aim, style, lean))
 
 
 @dataclass
@@ -600,11 +697,15 @@ def _draw_noodle(
     width: float,
     fill: RGBA = NOODLE,
     highlight: bool = True,
+    turned: float = 0.0,
 ) -> None:
+    """``turned``: the degrees the points were turned (a noodle painted along
+    its chord, ``_noodle``), so the highlight's up-left offset turns too."""
     _line(draw, pts, OUTLINE, width + 2.2)
     _line(draw, pts, fill, width)
     if highlight:
-        hi = [(x - width * 0.14, y - width * 0.16) for x, y in pts]
+        ox, oy = _rot(-width * 0.14, -width * 0.16, turned)
+        hi = [(x + ox, y + oy) for x, y in pts]
         _line(draw, hi, _mix(fill, NOODLE_HI, 0.8), max(0.9, width * 0.26))
 
 
@@ -960,10 +1061,12 @@ def _render_layers(anim: str, frame_idx: int, nframes: int) -> Tuple[Image.Image
     frame and at what damage it appears. A pixel's alpha is `1 - threshold`,
     so the game shows it once `damage_fraction >= threshold`; 0 is never."""
     p = _pose(anim, frame_idx, nframes)
-    size = (_s(WORK_FRAME_SIZE[0]), _s(WORK_FRAME_SIZE[1]))
+    size = CANVAS_SIZE
     img = Image.new("RGBA", size, (0, 0, 0, 0))
     sauce_img = Image.new("RGBA", size, (0, 0, 0, 0))
     draw = _Paint(blending_draw(img), ImageDraw.Draw(sauce_img))  # raw-draw-ok: the reveal map is data, not art; a later threshold must REPLACE the one beneath it, never blend
+    # A piece placed on the art still hides the sauce beneath it.
+    erase = _Paint(_Nothing(), ImageDraw.Draw(sauce_img))  # raw-draw-ok: the reveal map, as above
 
     root, sx, sy, P = _body_transform(p)
     ph = p.time
@@ -981,12 +1084,12 @@ def _render_layers(anim: str, frame_idx: int, nframes: int) -> Tuple[Image.Image
     front = [i for i, tn in enumerate(TENTACLES) if tn.front and i != LASH]
 
     for i in back:
-        _draw_noodle(draw, chains[i], 9.6, NOODLE_BACK, highlight=False)
+        _noodle(img, erase, chains[i], 9.6, NOODLE_BACK, False, f"noodle{i}")
 
-    # --- The bell: a heap of looping strands, back ones darker.
-    for i in range(22):
-        pts = [P((x - root[0]) / sx, (y - root[1]) / sy) for x, y in _swirl((root[0], root[1] - 6), i, ph * 0.5)]
-        _draw_noodle(draw, pts, 9.0, NOODLE_DEEP if i < 8 else NOODLE_BACK, highlight=False)
+    # --- The bell: a heap of looping strands, back ones darker. One piece
+    # per churn step, turned by the tilt about the root.
+    bell_phase = SR.q(ph * 0.5, BELL_PHASE_STEP)
+    SR.place(img, _bell_piece(0, 22, 6.0, bell_phase), _cv(root), p.tilt, "bell_back")
 
     # --- Eye stalks, rooted in the bell behind the meatballs.
     beam_rise = 14.0 * p.beam
@@ -1017,12 +1120,10 @@ def _render_layers(anim: str, frame_idx: int, nframes: int) -> Tuple[Image.Image
             )
         stalks.append(pts)
         eye_centres.append(c)
-    for pts in stalks:
-        _draw_noodle(draw, pts, 10.0, NOODLE)
+    for k, pts in enumerate(stalks):
+        _noodle(img, erase, pts, 10.0, NOODLE, True, f"stalk{k}")
 
-    for i in range(22, 40):
-        pts = [P((x - root[0]) / sx, (y - root[1]) / sy) for x, y in _swirl((root[0], root[1] - 4), i, ph * 0.5)]
-        _draw_noodle(draw, pts, 9.2, NOODLE)
+    SR.place(img, _bell_piece(22, 40, 4.0, bell_phase), _cv(root), p.tilt, "bell_front")
 
     # --- The two meatballs, sitting up on the dome. The right one pulls back
     # into the noodles to load a shot, then punches forward.
@@ -1033,8 +1134,9 @@ def _render_layers(anim: str, frame_idx: int, nframes: int) -> Tuple[Image.Image
         (left, 40.0, 0.04 + p.squash * 0.5, 3),
         (right, 42.0 * (1.0 - 0.08 * charge), 0.04 + 0.16 * charge - 0.1 * fire, 9),
     ]
-    for c, r, sq, seed in balls:
-        _draw_meatball(draw, c, r, sq, seed)
+    balls = [(c, round(r, 1), SR.q(sq, 0.01), seed) for c, r, sq, seed in balls]
+    for k, (c, r, sq, seed) in enumerate(balls):
+        SR.place(img, _meatball_piece(r, sq, seed), _cv(c), 0.0, f"meatball{k}")
     for level in SAUCE_LEVELS:
         with draw.sauce(level):
             for c, r, sq, seed in balls:
@@ -1049,11 +1151,11 @@ def _render_layers(anim: str, frame_idx: int, nframes: int) -> Tuple[Image.Image
             s = k / 20
             u = 1 - s
             pts.append((u * u * pa[0] + 2 * u * s * pb[0] + s * s * pc[0], u * u * pa[1] + 2 * u * s * pb[1] + s * s * pc[1]))
-        _draw_noodle(draw, pts, 9.4, NOODLE)
+        _noodle(img, erase, pts, 9.4, NOODLE, True, f"drape{i}")
 
     for i in front:
-        _draw_noodle(draw, chains[i], 9.8, NOODLE)
-    _draw_noodle(draw, chains[LASH], 10.4 if (p.whip or p.grasp) else 9.8, NOODLE)
+        _noodle(img, erase, chains[i], 9.8, NOODLE, True, f"noodle{i}")
+    _noodle(img, erase, chains[LASH], 10.4 if (p.whip or p.grasp) else 9.8, NOODLE, True, "lash")
     if p.whip > 0.35:
         tx, ty = chains[LASH][-1]
         for k, grow in enumerate([0.0, 12.0]):
@@ -1103,8 +1205,11 @@ def _render_layers(anim: str, frame_idx: int, nframes: int) -> Tuple[Image.Image
             a = math.radians(-40 + k * 40)
             _circle(draw, (right[0] + math.cos(a) * 50, right[1] + math.sin(a) * 50), 5.0 * charge, SAUCE, OUTLINE, 1.0)
 
+    aim = SR.q(p.eye_aim, 5.0)
     for k, c in enumerate(eye_centres):
-        _draw_eye(draw, c, 20.0, p.eye_aim, p.eyes, -1.0 if k == 0 else 1.0)
+        lean = -1.0 if k == 0 else 1.0
+        SR.place(img, _eye_piece(20.0, aim, p.eyes, lean), _cv(c), 0.0, f"eye{k}")
+        _draw_eye(erase, c, 20.0, aim, p.eyes, lean)
 
     if p.beam > 0.05:
         for origin in eye_centres:

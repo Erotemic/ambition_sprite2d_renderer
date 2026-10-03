@@ -15,15 +15,17 @@ from __future__ import annotations
 import argparse
 import math
 from pathlib import Path
+from types import SimpleNamespace
 from typing import List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
 from . import _pirate_cutlass_viper_rig
+from . import _solo_shape_rig as _rig
 
 ACTOR_METADATA = {
     "actor": {
@@ -131,7 +133,8 @@ Point = Tuple[float, float]
 TARGET_NAME = "pirate_cutlass_viper"
 FRAME_SIZE = (320, 288)
 WORK_FRAME_SIZE = (640, 576)
-SUPER = 6
+#: Work pixels to canvas pixels: the frame is a whole-factor (8x) reduction.
+SUPER = 4
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 6, 130),
     ("walk", 8, 95),
@@ -495,7 +498,16 @@ def _draw_boot_side(
     )
 
 
-def _draw_front_head(draw: ImageDraw.ImageDraw, P, pose: FrontPose) -> None:
+def _draw_front_head(draw: ImageDraw.ImageDraw, P, pose: FrontPose, part: str = "all") -> None:
+    """The front head; ``part`` "tails" paints only the swinging hair tails,
+    "face" everything else."""
+    if part != "face":
+        _draw_front_tails(draw, P, pose)
+    if part != "tails":
+        _draw_front_face(draw, P, pose)
+
+
+def _draw_front_tails(draw: ImageDraw.ImageDraw, P, pose: FrontPose) -> None:
     tail = [
         P(18, -128),
         P(42 + pose.hair_swing * 0.35, -118),
@@ -511,6 +523,8 @@ def _draw_front_head(draw: ImageDraw.ImageDraw, P, pose: FrontPose) -> None:
     ]
     _poly(draw, tail2, HAIR_HI, OUTLINE, 0.8)
 
+
+def _draw_front_face(draw: ImageDraw.ImageDraw, P, pose: FrontPose) -> None:
     head = [
         P(-18, -137),
         P(-8, -150),
@@ -681,56 +695,160 @@ def _draw_front_torso(draw: ImageDraw.ImageDraw, P, pose: FrontPose) -> None:
     )
 
 
-def _draw_front_limbs(
-    draw: ImageDraw.ImageDraw, pose: FrontPose, J
-) -> Tuple[Point, Point]:
-    left_hip = J.left_hip
-    right_hip = J.right_hip
-    left_knee = J.left_knee
-    right_knee = J.right_knee
-    left_foot = J.left_foot
-    right_foot = J.right_foot
-    for hip, knee, foot in [
-        (left_hip, left_knee, left_foot),
-        (right_hip, right_knee, right_foot),
-    ]:
-        _line(draw, [hip, knee, foot], SKIN_SHADOW, 5.9)
-        _line(draw, [hip, knee, foot], OUTLINE, 1.4)
-        _draw_boot_front(draw, foot, 1 if foot[0] > hip[0] else -1)
+# --- Drawn as a rig (``shape_rig``): each rigid piece is painted once at its
+# rest place and turned into the frame; limbs are bones of a fixed length. ---
 
-    left_shoulder = J.left_shoulder
-    left_elbow = J.left_elbow
-    left_hand = J.left_hand
-    _line(draw, [left_shoulder, left_elbow], SKIN_SHADOW, 7.2)
-    _line(draw, [left_elbow, left_hand], SKIN, 6.4)
-    _line(draw, [left_shoulder, left_elbow, left_hand], OUTLINE, 1.7)
-    _ellipse(draw, left_elbow[0], left_elbow[1], 6.3, 7.2, SKIN, OUTLINE, 1.0)
-    _circle(draw, left_hand, 5.5, SKIN, OUTLINE, 1.0)
+#: Where a bone piece's root sits on its rest canvas (work pixels); a
+#: piece reaching every way is painted about the canvas middle.
+_BONE_O: Point = (30.0, 30.0)
+_MID_O: Point = (WORK_FRAME_SIZE[0] / 2.0, WORK_FRAME_SIZE[1] / 2.0)
 
-    right_shoulder = J.right_shoulder
-    right_elbow = J.right_elbow
-    right_hand = J.right_hand
-    _line(draw, [right_shoulder, right_elbow], SKIN_SHADOW, 7.2)
-    _line(draw, [right_elbow, right_hand], SKIN, 6.4)
-    _line(draw, [right_shoulder, right_elbow, right_hand], OUTLINE, 1.7)
-    _ellipse(draw, right_elbow[0], right_elbow[1], 6.3, 7.2, SKIN, OUTLINE, 1.0)
-    _circle(draw, right_hand, 5.5, SKIN, OUTLINE, 1.0)
-    return left_hand, right_hand
+
+def _sp(p: Point) -> Point:
+    return (p[0] * SUPER, p[1] * SUPER)
+
+
+def _rest(key, paint, pivot: Point):
+    """A piece painted at its rest place on a frame-sized canvas, cut to what
+    it covers (``_solo_shape_rig.rest_piece``); ``pivot`` in work pixels."""
+    return _rig.rest_piece((TARGET_NAME,) + tuple(key), _CANVAS, _sp(pivot), paint)
+
+
+def _put(img: Image.Image, part, at: Point, deg: float, name: str) -> None:
+    shape_rig.place(img, part, _sp(at), deg, name)
+
+
+def _fx_layer(img: Image.Image, paint, name: str) -> None:
+    """A per-frame effect (it changes every frame) as ONE raster: painted on
+    its own canvas, cut to what it covers and placed at its corner."""
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    paint(blending_draw(layer))
+    box = layer.getchannel("A").getbbox()
+    if box is not None:
+        shape_rig.place(img, (layer.crop(box), (0.0, 0.0)), (float(box[0]), float(box[1])), 0.0, name)
+
+
+def _deg(a: Point, b: Point) -> float:
+    return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+
+
+def _ik(root: Point, target: Point, l1: float, l2: float, ref: Point) -> Point:
+    """The middle joint of a two-bone limb (lengths ``l1``, ``l2``) from
+    ``root`` to ``target``, on the side of ``ref`` (the painter's own joint)."""
+    dx, dy = target[0] - root[0], target[1] - root[1]
+    d = max(1e-6, min(math.hypot(dx, dy), l1 + l2 - 1e-6))
+    ux, uy = dx / d, dy / d
+    a = (l1 * l1 - l2 * l2 + d * d) / (2 * d)
+    h = math.sqrt(max(0.0, l1 * l1 - a * a))
+    bx, by = root[0] + ux * a, root[1] + uy * a
+    c1 = (bx - uy * h, by + ux * h)
+    c2 = (bx + uy * h, by - ux * h)
+    d1 = (c1[0] - ref[0]) ** 2 + (c1[1] - ref[1]) ** 2
+    d2 = (c2[0] - ref[0]) ** 2 + (c2[1] - ref[1]) ** 2
+    return c1 if d1 <= d2 else c2
+
+
+def _bone_piece(key, length: float, width: float, fill: RGBA, centre: RGBA, centre_w: float, cap: bool = False):
+    """A straight limb segment along +x from its root: the painter's thick
+    stroke with its dark centre line (``cap`` rounds the root end)."""
+    O = _BONE_O
+
+    def paint(d) -> None:
+        end = (O[0] + length, O[1])
+        if cap:
+            _circle(d, O, width / 2.0, fill, fill, 0.1)
+        _line(d, [O, end], fill, width)
+        if centre is not None:
+            _line(d, [O, end], centre, centre_w)
+
+    return _rest(("bone",) + tuple(key) + (length, width, fill, centre, centre_w, cap), paint, O)
+
+
+_LIMB_LENGTHS: dict = {}
+
+
+def _limb_lengths(chains) -> dict:
+    """Each limb's bone lengths: the painter's own in the rest pose (the
+    first frame). ``chains(J)`` names each limb's ``(root, joint, end)``."""
+    if not _LIMB_LENGTHS:
+        for limb, (a, b, c) in chains(_joints(ROWS[0][0], 0, ROWS[0][1])).items():
+            _LIMB_LENGTHS[limb] = (round(math.dist(a, b), 1), round(math.dist(b, c), 1))
+    return _LIMB_LENGTHS
+
+
+def _limb(chains, limb: str, root: Point, ref: Point, end: Point) -> Tuple[Point, float, float]:
+    """A two-bone limb from ``root`` to ``end`` of its rest bone lengths,
+    bent toward the painter's joint ``ref``. Out of reach (the painter's
+    position-shift limb grows), both bones lengthen to the next 3-pixel
+    step: a stretched limb takes a few lengths. Returns (joint, l1, l2)."""
+    l1, l2 = _limb_lengths(chains)[limb]
+    d = math.dist(root, end)
+    if d > l1 + l2 - 0.5:
+        k = math.ceil((d + 0.5) / 3.0) * 3.0 / (l1 + l2)
+        l1, l2 = round(l1 * k, 1), round(l2 * k, 1)
+    return _ik(root, end, l1, l2, ref), l1, l2
+
+
+_CANVAS = (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER)
+_REST_ROOT: Point = (WORK_FRAME_SIZE[0] * 0.47, WORK_FRAME_SIZE[1] * 0.68)
+
+
+def _P0(x: float, y: float) -> Point:
+    return (_REST_ROOT[0] + x, _REST_ROOT[1] + y)
+
+
+def _joints(anim: str, frame_idx: int, nframes: int) -> dict:
+    """Both views' limbs at rest: the front view's from ``anim``, the side
+    view's from the right profile's first frame."""
+    F = _pirate_cutlass_viper_rig.evaluate_front(FrontPose(anim, frame_idx, nframes), WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1])
+    Sd = _pirate_cutlass_viper_rig.evaluate_side(SidePose(1, 1.0, 0, 4, walkish=True), WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1])
+    return {
+        "left_leg": (F.left_hip, F.left_knee, F.left_foot),
+        "right_leg": (F.right_hip, F.right_knee, F.right_foot),
+        "left_arm": (F.left_shoulder, F.left_elbow, F.left_hand),
+        "right_arm": (F.right_shoulder, F.right_elbow, F.right_hand),
+        "side_back_leg": (Sd.back_hip, Sd.back_knee, Sd.back_foot),
+        "side_front_leg": (Sd.front_hip, Sd.front_knee, Sd.front_foot),
+        "side_back_arm": (Sd.back_shoulder, Sd.back_elbow, Sd.back_hand),
+        "side_front_arm": (Sd.front_shoulder, Sd.front_elbow, Sd.front_hand),
+    }
+
+
+def _chains(J) -> dict:
+    return J
+
+
+def _draw_leg(img: Image.Image, limb: str, hip: Point, knee_ref: Point, foot: Point, width: float, line_w: float) -> None:
+    knee, l1, l2 = _limb(_chains, limb, hip, knee_ref, foot)
+    _put(img, _bone_piece((limb, 1), l1, width, SKIN_SHADOW, OUTLINE, line_w), hip, _deg(hip, knee), f"{limb}_thigh")
+    _put(img, _bone_piece((limb, 2), l2, width, SKIN_SHADOW, OUTLINE, line_w, cap=True), knee, _deg(knee, foot), f"{limb}_shin")
+
+
+def _draw_arm(img: Image.Image, limb: str, shoulder: Point, elbow_ref: Point, hand: Point, w1: float, w2: float, line_w: float, elbow_r: Tuple[float, float, float], hand_r: Tuple[float, float]) -> None:
+    """Upper arm (shadowed) and forearm bones bent at the painter's elbow;
+    the elbow and the hand ride their points."""
+    elbow, l1, l2 = _limb(_chains, limb, shoulder, elbow_ref, hand)
+    _put(img, _bone_piece((limb, 1), l1, w1, SKIN_SHADOW, OUTLINE, line_w), shoulder, _deg(shoulder, elbow), f"{limb}_upper")
+    _put(img, _bone_piece((limb, 2), l2, w2, SKIN, OUTLINE, line_w, cap=True), elbow, _deg(elbow, hand), f"{limb}_fore")
+    O = _BONE_O
+    rx, ry, ew = elbow_r
+    _put(img, _rest(("elbow", rx, ry, ew), lambda d: _ellipse(d, O[0], O[1], rx, ry, SKIN, OUTLINE, ew), O), elbow, 0.0, f"{limb}_elbow")
+    r, hw = hand_r
+    _put(img, _rest(("hand", r, hw), lambda d: _circle(d, O, r, SKIN, OUTLINE, hw), O), hand, 0.0, f"{limb}_hand")
+
+
+def _place_cutlass(img: Image.Image, hand: Point, angle: float, front: bool, name: str) -> None:
+    """The cutlass painted once at angle 0 and turned about the hand."""
+    part = _rest(("cutlass", front), lambda d: _draw_cutlass(d, _MID_O, 0.0, front=front), _MID_O)
+    _put(img, part, hand, angle, name)
 
 
 def _render_front(anim: str, frame_idx: int, nframes: int) -> Image.Image:
-    img = Image.new(
-        "RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0)
-    )
-    draw = blending_draw(img)
+    img = Image.new("RGBA", _CANVAS, (0, 0, 0, 0))
     pose = FrontPose(anim, frame_idx, nframes)
 
-    # Joints come from the explicit skeleton (see _pirate_cutlass_viper_rig): the
-    # animation lives on declared anchors instead of inline body-frame maths, and
-    # this paint pass places its geometry at them.
-    J = _pirate_cutlass_viper_rig.evaluate_front(
-        pose, WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1]
-    )
+    # Joints come from the explicit skeleton (see _pirate_cutlass_viper_rig).
+    J = _pirate_cutlass_viper_rig.evaluate_front(pose, WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1])
     root = J.root
     tilt = J.body_ang
 
@@ -739,325 +857,155 @@ def _render_front(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         return (root[0] + rx, root[1] + ry)
 
     if anim != "slash":
-        back_hand = J.back_hand
-        _draw_cutlass(draw, back_hand, pose.blade + tilt, front=False)
+        _place_cutlass(img, J.back_hand, pose.blade + tilt, False, "cutlass")
 
     if anim == "slash" and pose.impact > 0.1:
-        cx, cy = P(38, -62)
-        box = (_s(cx - 82), _s(cy - 76), _s(cx + 96), _s(cy + 64))
-        draw.arc(box, 192, 342, fill=SLASH, width=_s(5.8 + pose.impact * 1.8))
-        draw.arc(box, 205, 330, fill=(255, 255, 255, 120), width=_s(2.2))
+        def arc(draw) -> None:
+            cx, cy = P(38, -62)
+            box = (_s(cx - 82), _s(cy - 76), _s(cx + 96), _s(cy + 64))
+            draw.arc(box, 192, 342, fill=SLASH, width=_s(5.8 + pose.impact * 1.8))
+            draw.arc(box, 205, 330, fill=(255, 255, 255, 120), width=_s(2.2))
 
-    _draw_front_limbs(draw, pose, J)
-    _draw_front_torso(draw, P, pose)
-    _draw_front_head(draw, P, pose)
+        _fx_layer(img, arc, "fx_slash")
+
+    # legs with their boots, then the arms
+    for limb, hip, knee, foot in (("left_leg", J.left_hip, J.left_knee, J.left_foot), ("right_leg", J.right_hip, J.right_knee, J.right_foot)):
+        _draw_leg(img, limb, hip, knee, foot, 5.9, 1.4)
+        toe = 1 if foot[0] > hip[0] else -1
+        _put(img, _rest(("boot_front", toe), lambda d, toe=toe: _draw_boot_front(d, _MID_O, toe), _MID_O), foot, 0.0, f"{limb}_boot")
+    _draw_arm(img, "left_arm", J.left_shoulder, J.left_elbow, J.left_hand, 7.2, 6.4, 1.7, (6.3, 7.2, 1.0), (5.5, 1.0))
+    _draw_arm(img, "right_arm", J.right_shoulder, J.right_elbow, J.right_hand, 7.2, 6.4, 1.7, (6.3, 7.2, 1.0), (5.5, 1.0))
+
+    # torso (the skirt sways in a few steps), hair tails, face: pieces riding the body
+    sway = _rig.q(pose.skirt_sway, 1.0)
+    torso = _rest(("front_torso", sway), lambda d: _draw_front_torso(d, _P0, SimpleNamespace(skirt_sway=sway)), _REST_ROOT)
+    _put(img, torso, root, tilt, "torso")
+    hair = _rig.q(pose.hair_swing, 2.0)
+    tails = _rest(("front_tails", hair), lambda d: _draw_front_tails(d, _P0, SimpleNamespace(hair_swing=hair)), _REST_ROOT)
+    _put(img, tails, root, tilt, "hair_tails")
+    face_pose = SimpleNamespace(x_eyes=pose.x_eyes, blink=pose.blink, mouth=_rig.q(pose.mouth, 0.04))
+    face = _rest(("front_face", face_pose.x_eyes, face_pose.blink, face_pose.mouth), lambda d: _draw_front_face(d, _P0, face_pose), _REST_ROOT)
+    _put(img, face, root, tilt, "face")
 
     if anim == "slash":
-        hand = J.right_hand
-        _draw_cutlass(draw, hand, pose.blade + tilt, front=True)
+        _place_cutlass(img, J.right_hand, pose.blade + tilt, True, "cutlass")
 
     if anim == "slash" and pose.impact > 0.46:
-        for i, (dx, dy) in enumerate([(-38, 5), (-26, 11), (30, 6), (45, 10)]):
-            jitter = math.sin(frame_idx + i) * 1.4
-            c = P(dx + jitter, dy)
-            _poly(
-                draw,
-                [(c[0] - 2.2, c[1] - 1.4), (c[0] + 2.7, c[1]), (c[0], c[1] + 2.8)],
-                DUST,
-                (88, 68, 45, 110),
-                0.4,
-            )
+        def dust(draw) -> None:
+            for i, (dx, dy) in enumerate([(-38, 5), (-26, 11), (30, 6), (45, 10)]):
+                jitter = math.sin(frame_idx + i) * 1.4
+                c = P(dx + jitter, dy)
+                _poly(draw, [(c[0] - 2.2, c[1] - 1.4), (c[0] + 2.7, c[1]), (c[0], c[1] + 2.8)], DUST, (88, 68, 45, 110), 0.4)
+
+        _fx_layer(img, dust, "fx_dust")
 
     return _downsample(img)
 
 
-def _render_side(
-    turn_side: int,
-    openness: float,
-    frame_idx: int,
-    nframes: int,
-    *,
-    walkish: bool = False,
-) -> Image.Image:
-    """Draw genuine side/profile geometry.
-
-    ``openness`` ranges from 0 (nearly front) to 1 (full profile), but this is
-    not a simple width squash; body parts use dedicated side-view placements.
-    """
-    img = Image.new(
-        "RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0)
-    )
-    draw = blending_draw(img)
-    pose = SidePose(turn_side, openness, frame_idx, nframes, walkish=walkish)
-    side = pose.side
-
-    # Joints come from the explicit skeleton (see _pirate_cutlass_viper_rig): the
-    # animation lives on declared anchors instead of inline body-frame maths, and
-    # this paint pass places its geometry at them.
-    J = _pirate_cutlass_viper_rig.evaluate_side(
-        pose, WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1]
-    )
-    root = J.root
-    tilt = J.body_ang
-
-    def P(x: float, y: float) -> Point:
-        rx, ry = _rot(x, y, tilt)
-        return (root[0] + rx, root[1] + ry)
-
-    # --- legs: back leg behind, front leg leading the pose ---------------
-    back_hip = J.back_hip
-    front_hip = J.front_hip
-    back_knee = J.back_knee
-    front_knee = J.front_knee
-    back_foot = J.back_foot
-    front_foot = J.front_foot
-
-    _line(draw, [back_hip, back_knee, back_foot], SKIN_SHADOW, 4.4)
-    _line(draw, [back_hip, back_knee, back_foot], OUTLINE, 1.1)
-    _draw_boot_side(draw, back_foot[0], back_foot[1], side, scale=0.85, lifted=0.0)
-
-    _line(draw, [front_hip, front_knee, front_foot], SKIN_SHADOW, 5.8)
-    _line(draw, [front_hip, front_knee, front_foot], OUTLINE, 1.4)
-    _draw_boot_side(draw, front_foot[0], front_foot[1], side, scale=1.0, lifted=0.0)
-
-    # --- back arm / off arm ----------------------------------------------
-    back_shoulder = J.back_shoulder
-    back_elbow = J.back_elbow
-    back_hand = J.back_hand
-    _line(draw, [back_shoulder, back_elbow], SKIN_SHADOW, 4.7)
-    _line(draw, [back_elbow, back_hand], SKIN, 4.4)
-    _line(draw, [back_shoulder, back_elbow, back_hand], OUTLINE, 1.1)
-    _ellipse(draw, back_elbow[0], back_elbow[1], 4.5, 5.4, SKIN, OUTLINE, 0.8)
-    _circle(draw, back_hand, 4.1, SKIN, OUTLINE, 0.8)
-
-    # --- torso: dedicated side silhouette --------------------------------
-    back_panel = [
-        P(-12 * side, -106),
-        P(-1 * side, -116),
-        P(8 * side, -111),
-        P(5 * side, -70),
-        P(-10 * side, -65),
-    ]
-    _poly(draw, back_panel, BLOUSE, OUTLINE, 1.0)
-    bodice = [
-        P(-10 * side, -105),
-        P(7 * side, -113),
-        P(17 * side, -102),
-        P(18 * side, -83),
-        P(13 * side, -68),
-        P(2 * side, -59),
-        P(-10 * side, -65),
-        P(-12 * side, -86),
-    ]
-    _poly(draw, bodice, BODICE, OUTLINE, 1.2)
-    # profile bust contour
-    bust = [
-        P(3 * side, -108),
-        P(16 * side, -98),
-        P(20 * side, -86),
-        P(14 * side, -71),
-        P(4 * side, -66),
-        P(-1 * side, -82),
-    ]
-    _poly(draw, bust, BODICE_HI, OUTLINE, 0.9)
-    _line(
-        draw,
-        [P(-1 * side, -90), P(10 * side, -79), P(16 * side, -72)],
-        (98, 52, 66, 255),
-        1.0,
-    )
-
-    sleeve_back = [
-        P(-16 * side, -104),
-        P(-9 * side, -112),
-        P(0 * side, -108),
-        P(-1 * side, -91),
-        P(-14 * side, -90),
-    ]
-    sleeve_front = [
-        P(4 * side, -108),
-        P(16 * side, -113),
-        P(23 * side, -103),
-        P(22 * side, -88),
-        P(8 * side, -90),
-    ]
-    _poly(draw, sleeve_back, BLOUSE, OUTLINE, 0.8)
-    _poly(draw, sleeve_front, BLOUSE, OUTLINE, 0.8)
-
-    belt = [
-        P(-12 * side, -67),
-        P(15 * side, -66),
-        P(17 * side, -54),
-        P(-10 * side, -54),
-    ]
-    _poly(draw, belt, SASH, OUTLINE, 1.0)
-    _poly(
-        draw,
-        [P(0 * side, -68), P(9 * side, -68), P(9 * side, -54), P(0 * side, -54)],
-        GOLD,
-        OUTLINE,
-        0.8,
-    )
-
-    sway = pose.skirt_sway
-    rear_tail = [
-        P(-5 * side, -60),
-        P(-18 * side, -58),
-        P(-28 * side - sway * 0.20 * side, -22),
-        P(-11 * side, -8),
-        P(1 * side, -28),
-    ]
-    front_tail = [
-        P(6 * side, -61),
-        P(25 * side, -56),
-        P(34 * side + sway * 0.28 * side, -17),
-        P(16 * side, -3),
-        P(1 * side, -20),
-    ]
-    skirt_front = [
-        P(-4 * side, -54),
-        P(14 * side, -53),
-        P(24 * side + sway * 0.22 * side, -7),
-        P(1 * side, 1),
-    ]
-    skirt_back = [
-        P(-10 * side, -54),
-        P(-1 * side, -54),
-        P(2 * side, 1),
-        P(-18 * side - sway * 0.12 * side, -4),
-    ]
+def _paint_side_torso(draw: ImageDraw.ImageDraw, side: int, sway: float) -> None:
+    P = _P0
+    _poly(draw, [P(-12 * side, -106), P(-1 * side, -116), P(8 * side, -111), P(5 * side, -70), P(-10 * side, -65)], BLOUSE, OUTLINE, 1.0)
+    _poly(draw, [P(-10 * side, -105), P(7 * side, -113), P(17 * side, -102), P(18 * side, -83), P(13 * side, -68), P(2 * side, -59), P(-10 * side, -65), P(-12 * side, -86)], BODICE, OUTLINE, 1.2)
+    _poly(draw, [P(3 * side, -108), P(16 * side, -98), P(20 * side, -86), P(14 * side, -71), P(4 * side, -66), P(-1 * side, -82)], BODICE_HI, OUTLINE, 0.9)
+    _line(draw, [P(-1 * side, -90), P(10 * side, -79), P(16 * side, -72)], (98, 52, 66, 255), 1.0)
+    _poly(draw, [P(-16 * side, -104), P(-9 * side, -112), P(0 * side, -108), P(-1 * side, -91), P(-14 * side, -90)], BLOUSE, OUTLINE, 0.8)
+    _poly(draw, [P(4 * side, -108), P(16 * side, -113), P(23 * side, -103), P(22 * side, -88), P(8 * side, -90)], BLOUSE, OUTLINE, 0.8)
+    _poly(draw, [P(-12 * side, -67), P(15 * side, -66), P(17 * side, -54), P(-10 * side, -54)], SASH, OUTLINE, 1.0)
+    _poly(draw, [P(0 * side, -68), P(9 * side, -68), P(9 * side, -54), P(0 * side, -54)], GOLD, OUTLINE, 0.8)
+    rear_tail = [P(-5 * side, -60), P(-18 * side, -58), P(-28 * side - sway * 0.20 * side, -22), P(-11 * side, -8), P(1 * side, -28)]
+    front_tail = [P(6 * side, -61), P(25 * side, -56), P(34 * side + sway * 0.28 * side, -17), P(16 * side, -3), P(1 * side, -20)]
+    skirt_front = [P(-4 * side, -54), P(14 * side, -53), P(24 * side + sway * 0.22 * side, -7), P(1 * side, 1)]
+    skirt_back = [P(-10 * side, -54), P(-1 * side, -54), P(2 * side, 1), P(-18 * side - sway * 0.12 * side, -4)]
     _poly(draw, rear_tail, BODICE, OUTLINE, 1.0)
     _poly(draw, front_tail, BODICE, OUTLINE, 1.0)
     _poly(draw, skirt_back, SKIRT, OUTLINE, 1.1)
     _poly(draw, skirt_front, SKIRT, OUTLINE, 1.3)
-    _line(
-        draw, [P(2 * side, -49), P(17 * side + sway * 0.15 * side, -9)], SKIRT_HI, 0.9
-    )
-    _line(
-        draw, [P(-6 * side, -49), P(-11 * side - sway * 0.08 * side, -7)], SKIRT_HI, 0.7
-    )
+    _line(draw, [P(2 * side, -49), P(17 * side + sway * 0.15 * side, -9)], SKIRT_HI, 0.9)
+    _line(draw, [P(-6 * side, -49), P(-11 * side - sway * 0.08 * side, -7)], SKIRT_HI, 0.7)
 
-    # --- weapon arm in front ---------------------------------------------
-    front_shoulder = J.front_shoulder
-    front_elbow = J.front_elbow
-    front_hand = J.front_hand
-    _line(draw, [front_shoulder, front_elbow], SKIN_SHADOW, 6.0)
-    _line(draw, [front_elbow, front_hand], SKIN, 5.4)
-    _line(draw, [front_shoulder, front_elbow, front_hand], OUTLINE, 1.3)
-    _ellipse(draw, front_elbow[0], front_elbow[1], 5.5, 6.0, SKIN, OUTLINE, 0.8)
-    _circle(draw, front_hand, 4.9, SKIN, OUTLINE, 0.8)
 
-    # --- head: actual profile geometry -----------------------------------
-    tail = [
-        P(-7 * side, -127),
-        P(-22 * side - pose.hair_swing * 0.2 * side, -118),
-        P(-28 * side - pose.hair_swing * 0.35 * side, -96),
-        P(-12 * side, -98),
-    ]
-    tail2 = [
-        P(-4 * side, -114),
-        P(-18 * side - pose.hair_swing * 0.20 * side, -97),
-        P(-20 * side - pose.hair_swing * 0.28 * side, -76),
-        P(-8 * side, -85),
-    ]
+def _paint_side_tails(draw: ImageDraw.ImageDraw, side: int, hair: float) -> None:
+    P = _P0
+    tail = [P(-7 * side, -127), P(-22 * side - hair * 0.2 * side, -118), P(-28 * side - hair * 0.35 * side, -96), P(-12 * side, -98)]
+    tail2 = [P(-4 * side, -114), P(-18 * side - hair * 0.20 * side, -97), P(-20 * side - hair * 0.28 * side, -76), P(-8 * side, -85)]
     _poly(draw, tail, HAIR, OUTLINE, 1.0)
     _poly(draw, tail2, HAIR_HI, OUTLINE, 0.8)
 
+
+def _paint_side_head(draw: ImageDraw.ImageDraw, side: int, blink: bool, mouth: float) -> None:
+    P = _P0
     head = [
-        P(-12 * side, -139),
-        P(-2 * side, -151),
-        P(10 * side, -150),
-        P(18 * side, -141),
-        P(20 * side, -130),
-        P(15 * side, -121),
-        P(18 * side, -114),
-        P(13 * side, -106),
-        P(2 * side, -101),
-        P(-10 * side, -106),
-        P(-16 * side, -118),
-        P(-16 * side, -131),
+        P(-12 * side, -139), P(-2 * side, -151), P(10 * side, -150), P(18 * side, -141), P(20 * side, -130), P(15 * side, -121),
+        P(18 * side, -114), P(13 * side, -106), P(2 * side, -101), P(-10 * side, -106), P(-16 * side, -118), P(-16 * side, -131),
     ]
     _poly(draw, head, SKIN, OUTLINE, 1.2)
-
-    hat = [
-        P(-28 * side, -148),
-        P(-12 * side, -160),
-        P(6 * side, -165),
-        P(27 * side, -158),
-        P(36 * side, -147),
-        P(27 * side, -139),
-        P(6 * side, -136),
-        P(-21 * side, -137),
-    ]
+    hat = [P(-28 * side, -148), P(-12 * side, -160), P(6 * side, -165), P(27 * side, -158), P(36 * side, -147), P(27 * side, -139), P(6 * side, -136), P(-21 * side, -137)]
     _poly(draw, hat, HAT, OUTLINE, 1.4)
-    _poly(
-        draw,
-        [
-            P(-22 * side, -146),
-            P(-9 * side, -157),
-            P(2 * side, -149),
-            P(-2 * side, -140),
-        ],
-        HAT_HI,
-        OUTLINE,
-        0.8,
-    )
-    band = [
-        P(-14 * side, -139),
-        P(14 * side, -138),
-        P(16 * side, -131),
-        P(-15 * side, -131),
-    ]
-    _poly(draw, band, BANDANA, OUTLINE, 0.8)
-    knot = [P(16 * side, -137), P(28 * side, -141), P(24 * side, -130)]
-    tie1 = [P(18 * side, -136), P(30 * side, -126), P(20 * side, -122)]
-    tie2 = [P(18 * side, -138), P(29 * side, -145), P(25 * side, -133)]
-    _poly(draw, knot, BANDANA, OUTLINE, 0.7)
-    _poly(draw, tie1, BANDANA, OUTLINE, 0.7)
-    _poly(draw, tie2, BANDANA, OUTLINE, 0.7)
+    _poly(draw, [P(-22 * side, -146), P(-9 * side, -157), P(2 * side, -149), P(-2 * side, -140)], HAT_HI, OUTLINE, 0.8)
+    _poly(draw, [P(-14 * side, -139), P(14 * side, -138), P(16 * side, -131), P(-15 * side, -131)], BANDANA, OUTLINE, 0.8)
+    _poly(draw, [P(16 * side, -137), P(28 * side, -141), P(24 * side, -130)], BANDANA, OUTLINE, 0.7)
+    _poly(draw, [P(18 * side, -136), P(30 * side, -126), P(20 * side, -122)], BANDANA, OUTLINE, 0.7)
+    _poly(draw, [P(18 * side, -138), P(29 * side, -145), P(25 * side, -133)], BANDANA, OUTLINE, 0.7)
     _line(draw, [P(-12 * side, -137), P(8 * side, -137)], BANDANA_HI, 0.8)
-
-    if pose.blink:
+    if blink:
         _line(draw, [P(4 * side, -122), P(12 * side, -123)], OUTLINE, 0.9)
     else:
-        _ellipse(
-            draw,
-            P(8 * side, -121)[0],
-            P(8 * side, -121)[1],
-            4.6,
-            3.2,
-            (248, 244, 234, 255),
-            OUTLINE,
-            0.7,
-        )
+        _ellipse(draw, P(8 * side, -121)[0], P(8 * side, -121)[1], 4.6, 3.2, (248, 244, 234, 255), OUTLINE, 0.7)
         _circle(draw, P(9 * side, -121), 1.1, OUTLINE, OUTLINE, 0.2)
         _line(draw, [P(2 * side, -125), P(12 * side, -127)], OUTLINE, 0.9)
         _line(draw, [P(12 * side, -124), P(15 * side, -127)], OUTLINE, 0.8)
-    _line(
-        draw,
-        [P(11 * side, -121), P(18 * side, -116), P(12 * side, -110)],
-        SKIN_SHADOW,
-        0.9,
-    )
-    mouth_y = -107 + pose.mouth * 5.0
-    if pose.mouth > 0.16:
-        _ellipse(
-            draw,
-            P(8 * side, mouth_y)[0],
-            P(8 * side, mouth_y)[1],
-            4.8,
-            2.8 + pose.mouth * 1.8,
-            (82, 34, 40, 255),
-            OUTLINE,
-            0.8,
-        )
+    _line(draw, [P(11 * side, -121), P(18 * side, -116), P(12 * side, -110)], SKIN_SHADOW, 0.9)
+    mouth_y = -107 + mouth * 5.0
+    if mouth > 0.16:
+        _ellipse(draw, P(8 * side, mouth_y)[0], P(8 * side, mouth_y)[1], 4.8, 2.8 + mouth * 1.8, (82, 34, 40, 255), OUTLINE, 0.8)
     else:
         _line(draw, [P(4 * side, mouth_y), P(10 * side, mouth_y + 1)], OUTLINE, 0.8)
     _circle(draw, P(15 * side, -118), 1.9, GOLD, OUTLINE, 0.4)
     _circle(draw, P(11 * side, -109), 0.8, OUTLINE, OUTLINE, 0.1)
 
+
+def _render_side(turn_side: int, openness: float, frame_idx: int, nframes: int, *, walkish: bool = False) -> Image.Image:
+    """Draw genuine side/profile geometry.
+
+    ``openness`` ranges from 0 (nearly front) to 1 (full profile), but this is
+    not a simple width squash; body parts use dedicated side-view placements.
+    """
+    img = Image.new("RGBA", _CANVAS, (0, 0, 0, 0))
+    pose = SidePose(turn_side, openness, frame_idx, nframes, walkish=walkish)
+    side = pose.side
+
+    # Joints come from the explicit skeleton (see _pirate_cutlass_viper_rig).
+    J = _pirate_cutlass_viper_rig.evaluate_side(pose, WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1])
+    root = J.root
+    tilt = J.body_ang
+
+    # --- legs: back leg behind, front leg leading the pose ---------------
+    _draw_leg(img, "side_back_leg", J.back_hip, J.back_knee, J.back_foot, 4.4, 1.1)
+    boot = _rest(("boot_side", side, 0.85), lambda d: _draw_boot_side(d, _MID_O[0], _MID_O[1], side, scale=0.85), _MID_O)
+    _put(img, boot, J.back_foot, 0.0, "back_boot")
+    _draw_leg(img, "side_front_leg", J.front_hip, J.front_knee, J.front_foot, 5.8, 1.4)
+    boot = _rest(("boot_side", side, 1.0), lambda d: _draw_boot_side(d, _MID_O[0], _MID_O[1], side, scale=1.0), _MID_O)
+    _put(img, boot, J.front_foot, 0.0, "front_boot")
+
+    # --- back arm / off arm ----------------------------------------------
+    _draw_arm(img, "side_back_arm", J.back_shoulder, J.back_elbow, J.back_hand, 4.7, 4.4, 1.1, (4.5, 5.4, 0.8), (4.1, 0.8))
+
+    # --- torso: dedicated side silhouette (the skirt sways in a few steps) --
+    sway = _rig.q(pose.skirt_sway, 1.0)
+    _put(img, _rest(("side_torso", side, sway), lambda d: _paint_side_torso(d, side, sway), _REST_ROOT), root, tilt, "torso")
+
+    # --- weapon arm in front ---------------------------------------------
+    front_hand = J.front_hand
+    _draw_arm(img, "side_front_arm", J.front_shoulder, J.front_elbow, front_hand, 6.0, 5.4, 1.3, (5.5, 6.0, 0.8), (4.9, 0.8))
+
+    # --- head: actual profile geometry -----------------------------------
+    hair = _rig.q(pose.hair_swing, 2.0)
+    _put(img, _rest(("side_tails", side, hair), lambda d: _paint_side_tails(d, side, hair), _REST_ROOT), root, tilt, "hair_tails")
+    mouth = _rig.q(pose.mouth, 0.04)
+    _put(img, _rest(("side_head", side, pose.blink, mouth), lambda d: _paint_side_head(d, side, pose.blink, mouth), _REST_ROOT), root, tilt, "face")
+
     # cutlass always visible in turn/profile rows
-    _draw_cutlass(draw, front_hand, pose.sword_angle + tilt, front=True)
+    _place_cutlass(img, front_hand, pose.sword_angle + tilt, True, "cutlass")
 
     return _downsample(img)
 

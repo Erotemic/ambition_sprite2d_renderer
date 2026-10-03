@@ -33,6 +33,8 @@ from ...authoring.portrait import PortraitClip, write_portrait_sheet
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
+from . import _solo_shape_rig as SR
+
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
@@ -813,62 +815,118 @@ def _ring_nodes(center: Point, rx: float, ry: float, phase: float) -> List[Point
     return points
 
 
-def _draw_back_ring(draw: ImageDraw.ImageDraw, center: Point, pose: Pose) -> None:
-    rx = 48.0 * pose.ring_scale
-    ry = 20.0 * pose.ring_scale
-    _arc(draw, center, rx, ry, 188, 352, OUTLINE, 6.0)
-    _arc(draw, center, rx, ry, 190, 350, BRASS_DARK, 3.2)
-    _arc(draw, center, rx - 5.0, ry - 3.0, 198, 342, COAT_LIGHT, 1.3)
+def _ring_arcs_piece(which: str, scale: float):
+    """The ring's back (or front) arcs at one scale, centred on its pivot:
+    painted once, placed riding the ring centre."""
+    rx, ry = 48.0 * scale, 20.0 * scale
+    pad = rx + 8.0
+    c = (pad, pad)
+    size = (_s(2 * pad), _s(2 * pad))
+
+    def paint(draw) -> None:
+        if which == "back":
+            _arc(draw, c, rx, ry, 188, 352, OUTLINE, 6.0)
+            _arc(draw, c, rx, ry, 190, 350, BRASS_DARK, 3.2)
+            _arc(draw, c, rx - 5.0, ry - 3.0, 198, 342, COAT_LIGHT, 1.3)
+        elif which == "front":
+            _arc(draw, c, rx, ry, 8, 172, BRASS_DARK, 5.4)
+            _arc(draw, c, rx, ry, 10, 170, BRASS, 2.8)
+        else:
+            # Engraved velocity ticks.
+            for idx in range(9):
+                angle = math.radians(18.0 + idx * 17.0)
+                outer = (c[0] + math.cos(angle) * rx, c[1] + math.sin(angle) * ry)
+                inner = (c[0] + math.cos(angle) * (rx - 4.0), c[1] + math.sin(angle) * (ry - 2.0))
+                _line(draw, [inner, outer], BRASS_LIGHT, 0.9)
+
+    return SR.rest_piece(("vera_ring", which, scale), size, _pt(c), paint)
+
+
+def _dot_piece(radius: float, fill: RGBA, outline: RGBA | None, width: float):
+    """A small round node (a ring bead, a star) centred on its pivot."""
+    pad = radius + width + 2.0
+    c = (pad, pad)
+    return SR.rest_piece(
+        ("vera_dot", radius, fill, outline, width), (_s(2 * pad), _s(2 * pad)), _pt(c), lambda d: _ellipse(d, c, radius, radius, fill, outline, width)
+    )
+
+
+def _ring_scale(pose: Pose) -> float:
+    return SR.q(pose.ring_scale, 0.02)
+
+
+def _draw_back_ring(canvas: Image.Image, center: Point, pose: Pose) -> None:
+    scale = _ring_scale(pose)
+    rx, ry = 48.0 * scale, 20.0 * scale
+    SR.place(canvas, _ring_arcs_piece("back", scale), _sp(center), 0.0, "ring_back")
     for index, point in enumerate(_ring_nodes(center, rx, ry, pose.ring_phase)):
         if point[1] <= center[1]:
             fill = (CYAN, MAGENTA, GOLD)[index]
-            _ellipse(draw, point, 3.2, 3.2, fill, OUTLINE, 0.9)
+            SR.place(canvas, _dot_piece(3.2, fill, OUTLINE, 0.9), _sp(point), 0.0, f"ring_node{index}")
 
 
-def _draw_front_ring(draw: ImageDraw.ImageDraw, center: Point, pose: Pose) -> None:
+def _draw_front_ring(canvas: Image.Image, center: Point, pose: Pose) -> None:
     if pose.ring_front <= 0.0:
         return
-    rx = 48.0 * pose.ring_scale
-    ry = 20.0 * pose.ring_scale
-    alpha = int(255 * pose.ring_front)
-    dark = (*BRASS_DARK[:3], alpha)
-    bright = (*BRASS[:3], alpha)
-    _arc(draw, center, rx, ry, 8, 172, dark, 5.4)
-    _arc(draw, center, rx, ry, 10, 170, bright, 2.8)
-    # Engraved velocity ticks.
-    for idx in range(9):
-        angle = math.radians(18.0 + idx * 17.0)
-        outer = (center[0] + math.cos(angle) * rx, center[1] + math.sin(angle) * ry)
-        inner = (center[0] + math.cos(angle) * (rx - 4.0), center[1] + math.sin(angle) * (ry - 2.0))
-        _line(draw, [inner, outer], BRASS_LIGHT, 0.9)
+    scale = _ring_scale(pose)
+    rx, ry = 48.0 * scale, 20.0 * scale
+    SR.place(canvas, _ring_arcs_piece("front", scale), _sp(center), 0.0, "ring_front", _clamp01(pose.ring_front))
+    SR.place(canvas, _ring_arcs_piece("ticks", scale), _sp(center), 0.0, "ring_ticks")
     for index, point in enumerate(_ring_nodes(center, rx, ry, pose.ring_phase)):
         if point[1] > center[1]:
             fill = (CYAN, MAGENTA, GOLD)[index]
-            _ellipse(draw, point, 3.4, 3.4, fill, OUTLINE, 0.9)
+            SR.place(canvas, _dot_piece(3.4, fill, OUTLINE, 0.9), _sp(point), 0.0, f"ring_node{index}")
 
 
-def _draw_leg(draw: ImageDraw.ImageDraw, hip: Point, knee: Point, ankle: Point, near: bool) -> None:
-    trouser = TROUSER_LIGHT if near else TROUSER
-    _capsule(draw, hip, knee, 5.0, trouser)
-    _capsule(draw, knee, ankle, 4.5, trouser)
+def _sp(point: Point) -> Point:
+    """A logical point in supersampled canvas pixels, unrounded."""
+    return (point[0] * SUPER, point[1] * SUPER)
+
+
+# The pose authors every joint (elbows and knees fold far in a tuck and
+# reach far in a lunge), so a limb keeps its authored joints: each bone is a
+# capsule whose length is rounded to a logical pixel, a few lengths a bone.
+BONE_STEP = float(SUPER)
+
+
+def _bone(canvas: Image.Image, a: Point, b: Point, radius: float, fill: RGBA, name: str) -> None:
+    SR.clean_bone(canvas, _sp(a), _sp(b), radius * SUPER, fill, OUTLINE, 1.1 * SUPER, name, BONE_STEP)
+
+
+def _boot_piece(near: bool):
+    """The boot, in its own frame: the pivot is the ankle."""
+    ankle = (20.0, 20.0)
     direction = 1.0 if near else -1.0
-    boot_center = (ankle[0] + direction * 3.7, ankle[1] + 2.0)
-    _poly(
-        draw,
-        [
-            (boot_center[0] - 5.8, boot_center[1] - 4.2),
-            (boot_center[0] + 6.8, boot_center[1] - 3.2),
-            (boot_center[0] + 8.0, boot_center[1] + 3.2),
-            (boot_center[0] - 5.0, boot_center[1] + 3.5),
-        ],
-        BOOT,
-        OUTLINE,
-        1.1,
-    )
-    _line(draw, [(boot_center[0] - 4.0, boot_center[1] + 1.5), (boot_center[0] + 7.0, boot_center[1] + 1.2)], OUTLINE_SOFT, 1.0)
+
+    def paint(draw) -> None:
+        boot_center = (ankle[0] + direction * 3.7, ankle[1] + 2.0)
+        _poly(
+            draw,
+            [
+                (boot_center[0] - 5.8, boot_center[1] - 4.2),
+                (boot_center[0] + 6.8, boot_center[1] - 3.2),
+                (boot_center[0] + 8.0, boot_center[1] + 3.2),
+                (boot_center[0] - 5.0, boot_center[1] + 3.5),
+            ],
+            BOOT,
+            OUTLINE,
+            1.1,
+        )
+        _line(draw, [(boot_center[0] - 4.0, boot_center[1] + 1.5), (boot_center[0] + 7.0, boot_center[1] + 1.2)], OUTLINE_SOFT, 1.0)
+
+    return SR.rest_piece(("vera_boot", near), (_s(40), _s(40)), _pt(ankle), paint)
 
 
-def _draw_coat(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
+def _draw_leg(canvas: Image.Image, hip: Point, knee: Point, ankle: Point, near: bool) -> None:
+    trouser = TROUSER_LIGHT if near else TROUSER
+    side = "near" if near else "far"
+    _bone(canvas, hip, knee, 5.0, trouser, f"{side}_thigh")
+    _bone(canvas, knee, ankle, 4.5, trouser, f"{side}_shin")
+    SR.place(canvas, _boot_piece(near), _sp(ankle), 0.0, f"{side}_boot")
+
+
+def _paint_coat(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
+    """The coat as the pose shapes it, at rest (unturned, unshifted)."""
     fs = _xf(pose.far_shoulder, pose)
     ns = _xf(pose.near_shoulder, pose)
     fh = _xf(pose.far_hip, pose)
@@ -937,29 +995,73 @@ def _draw_coat(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
         _ellipse(draw, _xf((x, 99.0), pose), 0.9, 0.9, RED, None)
 
 
+def _draw_coat(canvas: Image.Image, pose: Pose) -> None:
+    """The coat: one piece per shoulder/hip layout and flare step, painted
+    unturned and turned with the body about its pivot."""
+    rest = Pose(
+        far_shoulder=_round_pt(pose.far_shoulder),
+        near_shoulder=_round_pt(pose.near_shoulder),
+        far_hip=_round_pt(pose.far_hip),
+        near_hip=_round_pt(pose.near_hip),
+        coat_flare=SR.q(pose.coat_flare, 0.1),
+    )
+    key = ("vera_coat", rest.far_shoulder, rest.near_shoulder, rest.far_hip, rest.near_hip, rest.coat_flare)
+    part = SR.rest_piece(key, (FRAME_W * SUPER, FRAME_H * SUPER), _sp(PIVOT), lambda d: _paint_coat(d, rest))
+    SR.place(canvas, part, _sp(_xf(PIVOT, pose)), pose.body_angle, "coat")
+
+
+def _round_pt(point: Point) -> Point:
+    return (round(point[0] * 2.0) / 2.0, round(point[1] * 2.0) / 2.0)
+
+
+def _hand_piece(near: bool, direction: float):
+    """Hand and index finger, in their own frame: the pivot is the hand."""
+    hand = (12.0, 12.0)
+
+    def paint(draw) -> None:
+        _ellipse(draw, hand, 4.1, 4.3, SKIN, OUTLINE, 1.0)
+        # One short index-finger extension for observational gestures.
+        _line(draw, [hand, (hand[0] + direction * 4.3, hand[1] - 0.5)], SKIN_LIGHT, 1.5)
+
+    return SR.rest_piece(("vera_hand", direction), (_s(24), _s(24)), _pt(hand), paint)
+
+
 def _draw_arm(
-    draw: ImageDraw.ImageDraw,
+    canvas: Image.Image,
     shoulder: Point,
     elbow: Point,
     hand: Point,
     near: bool,
 ) -> None:
     sleeve = COAT_LIGHT if near else COAT_DARK
-    _capsule(draw, shoulder, elbow, 5.0, sleeve)
-    _capsule(draw, elbow, hand, 4.4, sleeve)
+    side = "near" if near else "far"
+    _bone(canvas, shoulder, elbow, 5.0, sleeve, f"{side}_upper_arm")
+    _bone(canvas, elbow, hand, 4.4, sleeve, f"{side}_forearm")
     # Cream cuff and compact hand.
-    cuff = _lp(elbow, hand, 0.78)
-    _capsule(draw, cuff, hand, 3.5, BLOUSE if near else BLOUSE_SHADE)
-    _ellipse(draw, hand, 4.1, 4.3, SKIN, OUTLINE, 1.0)
-    # One short index-finger extension for observational gestures.
+    _bone(canvas, _lp(elbow, hand, 0.78), hand, 3.5, BLOUSE if near else BLOUSE_SHADE, f"{side}_cuff")
     direction = 1.0 if hand[0] >= elbow[0] else -1.0
-    _line(draw, [hand, (hand[0] + direction * 4.3, hand[1] - 0.5)], SKIN_LIGHT, 1.5)
+    SR.place(canvas, _hand_piece(near, direction), _sp(hand), 0.0, f"{side}_hand")
 
 
 def _draw_head(base: Image.Image, center: Point, pose: Pose) -> None:
+    """The head: one piece per expression (brow, blink, glint, mouth, smile
+    rounded), turned by the head tilt about its centre."""
     size = 70 * SUPER
-    layer = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = blending_draw(layer)
+    expr = Pose(
+        brow=SR.q(pose.brow, 0.1),
+        blink=1.0 if pose.blink > 0.5 else 0.0,
+        glint=SR.q(pose.glint, 0.1),
+        mouth=SR.q(pose.mouth, 0.1),
+        smile=SR.q(pose.smile, 0.1),
+    )
+    key = ("vera_head", expr.brow, expr.blink, expr.glint, expr.mouth, expr.smile)
+    part = SR.rest_piece(key, (size, size), (size / 2, size / 2), lambda d: _paint_head(d, expr))
+    SR.place(base, part, _sp(center), pose.head_tilt, "head")
+
+
+def _paint_head(draw, pose: Pose) -> None:
+    """The head in its own frame, centred on its canvas."""
+    size = 70 * SUPER
     cx = cy = size / (2 * SUPER)
 
     def p(point: Point) -> Point:
@@ -1074,16 +1176,6 @@ def _draw_head(base: Image.Image, center: Point, pose: Pose) -> None:
     # Small brass star earring.
     e((cx - 16.0, cy + 8.5), 1.8, 1.8, BRASS_LIGHT, OUTLINE, 0.6)
 
-    rotated = layer.rotate(-pose.head_tilt, resample=Image.Resampling.BICUBIC, expand=True)
-    rigdoc.composite_layer(
-        base,
-        rotated,
-        (
-            int(center[0] * SUPER - rotated.width / 2),
-            int(center[1] * SUPER - rotated.height / 2),
-        ),
-        name="head",
-    )
 
 
 def _draw_effects(draw: ImageDraw.ImageDraw, pose: Pose, ring_center: Point) -> None:
@@ -1170,42 +1262,42 @@ def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Imag
     draw = blending_draw(canvas)
 
     ring_center = _xf((96.0, 80.0), pose)
-    _draw_back_ring(draw, ring_center, pose)
+    _draw_back_ring(canvas, ring_center, pose)
 
     # Far leg, near leg, then coat and arms. This order makes the spectrograph
     # ring read as mounted around one coherent body rather than pasted on top.
     _draw_leg(
-        draw,
+        canvas,
         _xf(pose.far_hip, pose),
         _xf(pose.far_knee, pose),
         _xf(pose.far_ankle, pose),
         False,
     )
     _draw_leg(
-        draw,
+        canvas,
         _xf(pose.near_hip, pose),
         _xf(pose.near_knee, pose),
         _xf(pose.near_ankle, pose),
         True,
     )
-    _draw_coat(draw, pose)
+    _draw_coat(canvas, pose)
 
     _draw_arm(
-        draw,
+        canvas,
         _xf(pose.far_shoulder, pose),
         _xf(pose.far_elbow, pose),
         _xf(pose.far_hand, pose),
         False,
     )
     _draw_arm(
-        draw,
+        canvas,
         _xf(pose.near_shoulder, pose),
         _xf(pose.near_elbow, pose),
         _xf(pose.near_hand, pose),
         True,
     )
 
-    _draw_front_ring(draw, ring_center, pose)
+    _draw_front_ring(canvas, ring_center, pose)
     _draw_head(canvas, _xf(pose.head, pose), pose)
     draw = blending_draw(canvas)
     _draw_effects(draw, pose, ring_center)

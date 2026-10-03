@@ -25,7 +25,7 @@ from typing import List, Tuple
 
 from PIL import Image, ImageDraw
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -452,54 +452,91 @@ def _draw_fx(draw: ImageDraw.ImageDraw, p: Pose, cx: float, cy: float) -> None:
             )
 
 
-def _draw_sheet(img: Image.Image, p: Pose) -> None:
-    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    draw = blending_draw(layer)
-    cx = CENTER_X + p.x
-    top = 29.0 + p.y
-    bottom = GROUND_Y + p.y
-    cloth, light, shadow, eye_color, outline = _sheet_palette(p.state)
-    alpha = p.opacity
+#: Pieces painted on a frame-sized canvas, kept cropped to what they cover
+#: (the frame-sized raster would sit in ``shape_rig``'s cache for the process).
+_CROPPED: dict = {}
 
-    # Back glow only during logic actions; never a ground shadow.
-    if p.fx_strength > 0.01:
-        glow = LOGIC_GREEN if p.fx == "and" else LOGIC_RED
-        radius = 34.0 + 8.0 * p.fx_strength
-        draw.ellipse(
-            _box(cx - radius, top + 8.0 - radius * 0.25, cx + radius, bottom + radius * 0.25),
-            fill=_rgba(glow, 0.12 * p.fx_strength * alpha),
-        )
 
-    # Little raised sheet-corners functioning as ghost hands.
-    shoulder_y = top + 47.0
-    left_hand = (cx - 34.0 + p.arm_l * 0.45, shoulder_y + p.hand_l_y)
-    right_hand = (cx + 34.0 + p.arm_r * 0.45, shoulder_y + p.hand_r_y)
-    left_arm = [
-        (cx - 20.0, shoulder_y - 4.0),
-        (left_hand[0] + 4.0, left_hand[1] - 8.0),
-        (left_hand[0] - 4.0, left_hand[1] + 2.0),
-        (cx - 24.0, shoulder_y + 12.0),
+def _cropped_piece(key: tuple, size, pivot, paint) -> tuple:
+    """``shape_rig.piece`` for a piece painted on a large canvas: painted once,
+    cropped to its alpha box with its pivot moved to match, and cached here."""
+    hit = _CROPPED.get(key)
+    if hit is None:
+        import math as _math
+
+        image = Image.new("RGBA", (int(_math.ceil(size[0])), int(_math.ceil(size[1]))), (0, 0, 0, 0))
+        paint(blending_draw(image))
+        box = image.getbbox() or (0, 0, 1, 1)
+        hit = (image.crop(box), (pivot[0] - box[0], pivot[1] - box[1]))
+        _CROPPED[key] = hit
+    return hit
+
+
+def _rot_cw(point: Tuple[float, float], center: Tuple[float, float], degrees: float) -> Tuple[float, float]:
+    """``point`` turned ``degrees`` clockwise (+y down) about ``center``."""
+    r = math.radians(degrees)
+    c, s = math.cos(r), math.sin(r)
+    dx, dy = point[0] - center[0], point[1] - center[1]
+    return (center[0] + dx * c - dy * s, center[1] + dx * s + dy * c)
+
+
+class _Sheet:
+    """Places pieces painted at rest (``p.x = p.y = 0`` on a frame-sized
+    canvas, anchored at its top left) where the pose puts them, turned with the
+    tilt about the body's centre (the old renderer turned the composed layer
+    counter-clockwise by ``tilt``)."""
+
+    def __init__(self, canvas: Image.Image, p: Pose, turned: bool) -> None:
+        self.canvas = canvas
+        self.offset = (p.x, p.y)
+        self.pivot = (CENTER_X + p.x, 85.0 + p.y)
+        self.cw = -p.tilt if turned else 0.0
+
+    def put(self, key: tuple, paint, name: str) -> None:
+        part = _cropped_piece(("george_booul",) + key, (W, H), (0.0, 0.0), paint)
+        world = _rot_cw(self.offset, self.pivot, self.cw)
+        shape_rig.place(self.canvas, part, (world[0] * SUPER, world[1] * SUPER), self.cw, name)
+
+    def layer(self, paint, name: str) -> None:
+        """A per-frame effect, painted where it is, as ONE draw turned with the sheet."""
+        layer = Image.new("RGBA", self.canvas.size, (0, 0, 0, 0))
+        paint(blending_draw(layer))
+        box = layer.getbbox()
+        if box is None:
+            return
+        pivot = (self.pivot[0] * SUPER - box[0], self.pivot[1] * SUPER - box[1])
+        shape_rig.place(self.canvas, (layer.crop(box), pivot), (self.pivot[0] * SUPER, self.pivot[1] * SUPER), self.cw, name)
+
+
+def _paint_arm(draw, side: int, arm: float, hand_y: float, state: float, alpha: float) -> None:
+    """A raised sheet corner (``side`` -1 left, 1 right) at rest."""
+    cloth, light, shadow, eye_color, outline = _sheet_palette(state)
+    cx = CENTER_X
+    shoulder_y = 29.0 + 47.0
+    hand = (cx + side * 34.0 + arm * 0.45, shoulder_y + hand_y)
+    pts = [
+        (cx + side * 20.0, shoulder_y - 4.0),
+        (hand[0] - side * 4.0, hand[1] - 8.0),
+        (hand[0] + side * 4.0, hand[1] + 2.0),
+        (cx + side * 24.0, shoulder_y + 12.0),
     ]
-    right_arm = [
-        (cx + 20.0, shoulder_y - 4.0),
-        (right_hand[0] - 4.0, right_hand[1] - 8.0),
-        (right_hand[0] + 4.0, right_hand[1] + 2.0),
-        (cx + 24.0, shoulder_y + 12.0),
-    ]
-    draw.polygon([_pt(*q) for q in left_arm], fill=_rgba(shadow, alpha), outline=_rgba(outline, alpha))
-    draw.polygon([_pt(*q) for q in right_arm], fill=_rgba(shadow, alpha), outline=_rgba(outline, alpha))
+    draw.polygon([_pt(*q) for q in pts], fill=_rgba(shadow, alpha), outline=_rgba(outline, alpha))
 
-    # Main draped sheet silhouette.
+
+def _paint_body(draw, hem_wave: float, state: float, alpha: float) -> None:
+    """The draped sheet, its highlight and folds at rest."""
+    cloth, light, shadow, eye_color, outline = _sheet_palette(state)
+    cx, top, bottom = CENTER_X, 29.0, GROUND_Y
     hem = [
         (cx + 31.0, bottom - 22.0),
-        (cx + 29.0, bottom - 10.0 + 1.5 * p.hem_wave),
-        (cx + 22.0, bottom - 2.0 - 2.0 * p.hem_wave),
-        (cx + 13.0, bottom - 10.0 + 2.0 * p.hem_wave),
-        (cx + 4.0, bottom - 1.0 - 1.5 * p.hem_wave),
-        (cx - 5.0, bottom - 10.0 + 2.2 * p.hem_wave),
-        (cx - 14.0, bottom - 2.0 - 1.4 * p.hem_wave),
-        (cx - 23.0, bottom - 10.0 + 1.7 * p.hem_wave),
-        (cx - 31.0, bottom - 3.0 - 1.4 * p.hem_wave),
+        (cx + 29.0, bottom - 10.0 + 1.5 * hem_wave),
+        (cx + 22.0, bottom - 2.0 - 2.0 * hem_wave),
+        (cx + 13.0, bottom - 10.0 + 2.0 * hem_wave),
+        (cx + 4.0, bottom - 1.0 - 1.5 * hem_wave),
+        (cx - 5.0, bottom - 10.0 + 2.2 * hem_wave),
+        (cx - 14.0, bottom - 2.0 - 1.4 * hem_wave),
+        (cx - 23.0, bottom - 10.0 + 1.7 * hem_wave),
+        (cx - 31.0, bottom - 3.0 - 1.4 * hem_wave),
         (cx - 34.0, bottom - 22.0),
     ]
     sheet = [
@@ -533,62 +570,86 @@ def _draw_sheet(img: Image.Image, p: Pose) -> None:
         (20.0, top + 27.0, 24.0, bottom - 19.0),
     ]
     for x0, y0, x1, y1 in fold_specs:
-        draw.line(
-            [_pt(cx + x0, y0), _pt(cx + x1, y1)],
-            fill=_rgba(shadow, 0.65 * alpha),
-            width=_s(1.1),
-        )
+        draw.line([_pt(cx + x0, y0), _pt(cx + x1, y1)], fill=_rgba(shadow, 0.65 * alpha), width=_s(1.1))
 
-    # Face holes: classic, simple, and readable.
+
+def _paint_face(draw, state: float, alpha: float, blink: bool, eye_scale: float, mouth_open: float) -> None:
+    """Face holes, mouth and the throat's logic badge at rest."""
+    cloth, light, shadow, eye_color, outline = _sheet_palette(state)
+    cx, top = CENTER_X, 29.0
     eye_y = top + 27.0
     for ex in (cx - 8.0, cx + 8.0):
-        if p.blink:
-            draw.line(
-                [_pt(ex - 4.0, eye_y), _pt(ex + 4.0, eye_y)],
-                fill=_rgba(eye_color, alpha),
-                width=_s(1.8),
-            )
+        if blink:
+            draw.line([_pt(ex - 4.0, eye_y), _pt(ex + 4.0, eye_y)], fill=_rgba(eye_color, alpha), width=_s(1.8))
         else:
-            ew = 5.1 * p.eye_scale
-            eh = 7.0 * p.eye_scale
-            draw.ellipse(
-                _box(ex - ew, eye_y - eh, ex + ew, eye_y + eh),
-                fill=_rgba(eye_color, alpha),
-            )
+            ew = 5.1 * eye_scale
+            eh = 7.0 * eye_scale
+            draw.ellipse(_box(ex - ew, eye_y - eh, ex + ew, eye_y + eh), fill=_rgba(eye_color, alpha))
             # A pinprick highlight keeps FALSE-state eyes alive at small scale.
-            if p.state < 0.5:
-                draw.ellipse(
-                    _box(ex - 1.3, eye_y - 2.3, ex + 0.6, eye_y - 0.4),
-                    fill=_rgba(LOGIC_GOLD, alpha),
-                )
+            if state < 0.5:
+                draw.ellipse(_box(ex - 1.3, eye_y - 2.3, ex + 0.6, eye_y - 0.4), fill=_rgba(LOGIC_GOLD, alpha))
 
     mouth_y = top + 47.0
-    mouth_w = 5.5 + 1.5 * p.mouth_open
-    mouth_h = 3.5 + 6.0 * p.mouth_open
-    draw.ellipse(
-        _box(cx - mouth_w, mouth_y - mouth_h, cx + mouth_w, mouth_y + mouth_h),
-        fill=_rgba(eye_color, alpha),
-    )
+    mouth_w = 5.5 + 1.5 * mouth_open
+    mouth_h = 3.5 + 6.0 * mouth_open
+    draw.ellipse(_box(cx - mouth_w, mouth_y - mouth_h, cx + mouth_w, mouth_y + mouth_h), fill=_rgba(eye_color, alpha))
 
     # Small logic badge at the throat: restrained, not costume-like.
     badge_y = top + 64.0
-    badge_color = LOGIC_GREEN if p.state >= 0.5 else LOGIC_RED
-    draw.ellipse(
-        _box(cx - 4.2, badge_y - 4.2, cx + 4.2, badge_y + 4.2),
-        fill=_rgba(badge_color, alpha),
-        outline=_rgba(outline, alpha),
-        width=_s(0.7),
-    )
-    mark_x = cx - 1.0 if p.state >= 0.5 else cx
-    draw.line(
-        [_pt(mark_x, badge_y - 2.2), _pt(mark_x, badge_y + 2.2)],
-        fill=_rgba(TRUE_LIGHT if p.state >= 0.5 else LOGIC_GOLD, alpha),
-        width=_s(1.0),
-    )
+    badge_color = LOGIC_GREEN if state >= 0.5 else LOGIC_RED
+    draw.ellipse(_box(cx - 4.2, badge_y - 4.2, cx + 4.2, badge_y + 4.2), fill=_rgba(badge_color, alpha), outline=_rgba(outline, alpha), width=_s(0.7))
+    mark_x = cx - 1.0 if state >= 0.5 else cx
+    draw.line([_pt(mark_x, badge_y - 2.2), _pt(mark_x, badge_y + 2.2)], fill=_rgba(TRUE_LIGHT if state >= 0.5 else LOGIC_GOLD, alpha), width=_s(1.0))
 
-    _draw_fx(draw, p, cx, top + 50.0)
 
-    if p.squash_x != 1.0 or p.squash_y != 1.0:
+def _draw_sheet(img: Image.Image, p: Pose) -> None:
+    """The ghost as a rig: arms, sheet and face are pieces painted once per
+    look (state, opacity, hem wave, expression, rounded) and turned with the
+    tilt; the logic glow and effects change every frame and are one draw each.
+    A squashed pose is composed in a layer and squashed and turned whole, as
+    before: a squash is no turn of a piece."""
+    squashed = p.squash_x != 1.0 or p.squash_y != 1.0
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0)) if squashed else img
+    rig = _Sheet(layer, p, turned=not squashed)
+    cx = CENTER_X + p.x
+    top = 29.0 + p.y
+    bottom = GROUND_Y + p.y
+    alpha = round(p.opacity, 2)
+    state = round(p.state, 2)
+
+    # Back glow only during logic actions; never a ground shadow. One piece
+    # per strength (hundredths): a swell and its ebb share them.
+    if p.fx_strength > 0.01:
+        glow = LOGIC_GREEN if p.fx == "and" else LOGIC_RED
+        strength = round(p.fx_strength, 2)
+        radius = 34.0 + 8.0 * strength
+
+        def paint_glow(draw) -> None:
+            draw.ellipse(
+                _box(CENTER_X - radius, 29.0 + 8.0 - radius * 0.25, CENTER_X + radius, GROUND_Y + radius * 0.25),
+                fill=_rgba(glow, 0.12 * strength * alpha),
+            )
+
+        rig.put(("glow", glow, strength, alpha), paint_glow, "glow")
+
+    # Little raised sheet-corners functioning as ghost hands.
+    for side, name, arm, hand_y in ((-1, "left_arm", p.arm_l, p.hand_l_y), (1, "right_arm", p.arm_r, p.hand_r_y)):
+        arm_q, hand_q = round(arm * 2) / 2, round(hand_y * 2) / 2
+        rig.put(("arm", side, arm_q, hand_q, state, alpha), lambda d, side=side, arm_q=arm_q, hand_q=hand_q: _paint_arm(d, side, arm_q, hand_q, state, alpha), name)
+
+    # Main draped sheet silhouette, highlight and folds.
+    hem = round(p.hem_wave * 20) / 20
+    rig.put(("sheet", hem, state, alpha), lambda d: _paint_body(d, hem, state, alpha), "sheet")
+
+    # Face holes, mouth and badge.
+    eye_scale = round(p.eye_scale, 2)
+    mouth = round(p.mouth_open * 50) / 50
+    rig.put(("face", state, alpha, p.blink, eye_scale, mouth), lambda d: _paint_face(d, state, alpha, p.blink, eye_scale, mouth), "face")
+
+    if p.fx:
+        rig.layer(lambda d: _draw_fx(d, p, cx, top + 50.0), "fx")
+
+    if squashed:
         crop = layer.crop(_box(34.0, 15.0, 126.0, 144.0))
         target = (_s(92.0 * p.squash_x), _s(129.0 * p.squash_y))
         crop = crop.resize(target, Image.Resampling.BICUBIC)
@@ -597,16 +658,14 @@ def _draw_sheet(img: Image.Image, p: Pose) -> None:
         y = _s(144.0) - target[1]
         rigdoc.composite_canvas(scaled, crop, (x, y))
         layer = scaled
-
-    if abs(p.tilt) > 0.01:
-        layer = layer.rotate(
-            p.tilt,
-            resample=Image.Resampling.BICUBIC,
-            center=_pt(CENTER_X + p.x, 85.0 + p.y),
-            fillcolor=(0, 0, 0, 0),
-        )
-
-    rigdoc.composite_canvas(img, layer)
+        if abs(p.tilt) > 0.01:
+            layer = layer.rotate(
+                p.tilt,
+                resample=Image.Resampling.BICUBIC,
+                center=_pt(CENTER_X + p.x, 85.0 + p.y),
+                fillcolor=(0, 0, 0, 0),
+            )
+        rigdoc.composite_canvas(img, layer)
 
 
 def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:

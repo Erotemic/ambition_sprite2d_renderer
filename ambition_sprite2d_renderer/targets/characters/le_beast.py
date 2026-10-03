@@ -24,7 +24,7 @@ from typing import List, Sequence, Tuple
 from PIL import Image, ImageDraw
 
 from ...authoring.portrait import PortraitClip, write_portrait_sheet
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -384,7 +384,122 @@ def _draw_effects_behind(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
             _draw_region(draw, 64+dx+math.cos(a)*shift, 58+dy+math.sin(a)*shift*.5, 8, 6, c, pose.phase+i)
 
 
-def _draw_character(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
+def _rig_piece(key: tuple, size: Tuple[float, float], origin: Point, paint) -> tuple:
+    """A piece of Le Beast painted once (``shape_rig``): ``paint(draw)`` draws
+    in frame units with its anchor at ``origin`` (frame units) on a ``size``
+    (frame units) canvas. ``key`` names everything ``paint`` reads."""
+    return shape_rig.piece(("le_beast",) + key, (size[0] * SUPER, size[1] * SUPER), (origin[0] * SUPER, origin[1] * SUPER), paint)
+
+
+def _put(img: Image.Image, part: tuple, at: Point, name: str, degrees: float = 0.0) -> None:
+    """``part`` with its anchor at the frame point ``at``, turned ``degrees``."""
+    shape_rig.place(img, part, (at[0] * SUPER, at[1] * SUPER), degrees, name)
+
+
+def _bone(img: Image.Image, a: Point, b: Point, length: float, radius: float, fill: RGBA, name: str) -> None:
+    """``_capsule`` from ``a`` toward ``b`` as a bone of fixed ``length``,
+    painted once along +x and turned into place about ``a``."""
+    pad = radius + 3
+    part = _rig_piece(
+        ("bone", length, radius, fill), (length + 2 * pad, 2 * pad), (pad, pad),
+        lambda d: _capsule(d, (pad, pad), (pad + length, pad), radius, fill),
+    )
+    _put(img, part, a, name, math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])))
+
+
+def _frame_layer(img: Image.Image, paint, name: str) -> None:
+    """A per-frame effect (it changes every frame) as ONE draw: ``paint(draw)``
+    paints frame-unit coordinates into a fresh canvas, placed cropped."""
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    paint(blending_draw(layer))
+    box = layer.getbbox()
+    if box is not None:
+        shape_rig.place(img, (layer.crop(box), (0.0, 0.0)), (float(box[0]), float(box[1])), 0.0, name)
+
+
+#: The leg bone's fixed length (hip to ankle at rest); anchored at the ankle,
+#: its hip end hides under the cloak when he squats.
+LEG_LENGTH = 25.0
+
+
+def _paint_foot(draw: ImageDraw.ImageDraw, side: int, ox: float, oy: float) -> None:
+    """A clawed foot centred on ``(ox, oy)`` = (foot x, ground)."""
+    _ellipse(draw, (ox - 12, oy - 11, ox + 12, oy + 1), FUR, OUTLINE, 1.5)
+    for k in range(3):
+        tx = ox + side * (7 + k * 2)
+        _poly(draw, [(tx, oy - 4 - k * .6), (tx + side * 6, oy - 1), (tx, oy + 1)], CHALK, OUTLINE, 1)
+
+
+def _paint_hand(draw: ImageDraw.ImageDraw, side: int, ox: float, oy: float) -> None:
+    """A clawed paw centred on the wrist ``(ox, oy)``."""
+    _ellipse(draw, (ox - 8, oy - 7, ox + 8, oy + 7), FUR_LIGHT, OUTLINE, 1.5)
+    for k in (-1, 0, 1):
+        _poly(draw, [(ox + side * 5, oy + k * 3), (ox + side * 12, oy + k * 3 - 1), (ox + side * 6, oy + k * 3 + 2)], CHALK, OUTLINE, 1)
+
+
+def _paint_cloak(draw: ImageDraw.ImageDraw, ox: float, oy: float, squat: float) -> None:
+    """The cloak behind the body, anchored at ``(cx, pose.y)``."""
+    body_top = 50 + oy + squat * .25
+    body_bottom = 101 + oy - squat * .15
+    _poly(draw, [(ox - 31, body_top + 14), (ox - 24, body_bottom), (ox + 27, body_bottom), (ox + 32, body_top + 13), (ox + 20, 47 + oy), (ox - 18, 47 + oy)], VELVET_DARK, OUTLINE, 2)
+
+
+def _paint_body(draw: ImageDraw.ImageDraw, ox: float, oy: float) -> None:
+    """Fur, robe, brass sash and sigma medallion, anchored at ``(cx, pose.y)``."""
+    _ellipse(draw, (ox - 31, 45 + oy, ox + 31, 96 + oy), FUR_DARK, OUTLINE, 2)
+    _poly(draw, [(ox - 27, 55 + oy), (ox - 24, 96 + oy), (ox + 24, 96 + oy), (ox + 27, 55 + oy), (ox + 14, 48 + oy), (ox - 14, 48 + oy)], VELVET, OUTLINE, 2)
+    _line(draw, [(ox - 22, 62 + oy), (ox + 20, 91 + oy)], BRASS, 5)
+    for i in range(6):
+        x = ox - 18 + i * 7
+        y = 64 + oy + i * 4.8
+        _line(draw, [(x, y - 2), (x, y + 3)], BRASS_LIGHT, 1)
+    _ellipse(draw, (ox - 7, 73 + oy, ox + 7, 87 + oy), BRASS, OUTLINE, 1.5)
+    _arc(draw, (ox - 4, 75 + oy, ox + 4, 84 + oy), 70, 290, VELVET_DARK, 2)
+
+
+def _paint_head(draw: ImageDraw.ImageDraw, hx: float, hy: float, brow: int) -> None:
+    """Head, integral horns, ears, eyes and brow, centred on ``(hx, hy)``."""
+    _ellipse(draw, (hx - 27, hy - 23, hx + 27, hy + 24), FUR, OUTLINE, 2)
+    _ellipse(draw, (hx - 23, hy - 20, hx + 22, hy + 17), FUR_LIGHT, None)
+    # horns as integral curls
+    _line(draw, [(hx - 17, hy - 18), (hx - 26, hy - 29), (hx - 20, hy - 35), (hx - 11, hy - 31)], OUTLINE, 7)
+    _line(draw, [(hx - 17, hy - 18), (hx - 26, hy - 29), (hx - 20, hy - 35), (hx - 11, hy - 31)], CHALK, 4.5)
+    _line(draw, [(hx + 17, hy - 18), (hx + 28, hy - 28), (hx + 23, hy - 35), (hx + 13, hy - 31)], OUTLINE, 7)
+    _line(draw, [(hx + 17, hy - 18), (hx + 28, hy - 28), (hx + 23, hy - 35), (hx + 13, hy - 31)], CHALK, 4.5)
+    # ears
+    _poly(draw, [(hx - 23, hy - 9), (hx - 35, hy - 15), (hx - 29, hy + 1)], FUR_DARK, OUTLINE, 1.5)
+    _poly(draw, [(hx + 23, hy - 9), (hx + 35, hy - 15), (hx + 29, hy + 1)], FUR_DARK, OUTLINE, 1.5)
+    # eyes and brow
+    _line(draw, [(hx - 16, hy - 6 - brow), (hx - 5, hy - 8 + brow)], OUTLINE, 2.5)
+    _line(draw, [(hx + 5, hy - 8 + brow), (hx + 16, hy - 6 - brow)], OUTLINE, 2.5)
+    _ellipse(draw, (hx - 14, hy - 5, hx - 7, hy + 3), EYE, OUTLINE, 1)
+    _ellipse(draw, (hx + 7, hy - 5, hx + 14, hy + 3), EYE, OUTLINE, 1)
+    _ellipse(draw, (hx - 11, hy - 2, hx - 9, hy + 2), OUTLINE)
+    _ellipse(draw, (hx + 9, hy - 2, hx + 11, hy + 2), OUTLINE)
+
+
+def _paint_mouth(draw: ImageDraw.ImageDraw, hx: float, hy: float, mouth: float) -> None:
+    """Muzzle, the expanding grid maw and the nose, on the head centre."""
+    mw = 12 + 16 * mouth
+    mh = 5 + 18 * mouth
+    _ellipse(draw, (hx - mw, hy + 4, hx + mw, hy + 4 + mh), MAW, OUTLINE, 1.5)
+    if mouth > .25:
+        clip_top = hy + 7
+        for k in range(-2, 3):
+            x = hx + k * mw / 3
+            _line(draw, [(x, clip_top), (x, hy + 2 + mh)], _fade(GRID, .75), .8)
+        for k in range(1, 4):
+            y = clip_top + k * (mh - 4) / 4
+            _line(draw, [(hx - mw + 2, y), (hx + mw - 2, y)], _fade(GRID, .6), .8)
+        _ellipse(draw, (hx - 8, hy + 5 + mh * .62, hx + 8, hy + 5 + mh), TONGUE)
+    else:
+        _line(draw, [(hx - 9, hy + 10), (hx + 9, hy + 10)], OUTLINE, 1.5)
+    _ellipse(draw, (hx - 6, hy + 1, hx + 6, hy + 8), OUTLINE)
+
+
+def _draw_character(img: Image.Image, pose: Pose) -> None:
+    """Le Beast as a rig: each rigid piece painted once and placed (feet,
+    cloak, body, paws, head, maw), limbs as fixed-length bones."""
     cx = 63 + pose.x
     base = 112 + pose.y
     if pose.anim == "roll":
@@ -392,85 +507,51 @@ def _draw_character(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
     # legs and broad clawed feet
     leg_y = base - 25 + pose.squat*.25
     for side, dx, step in [(-1,-18,pose.foot_l),(1,18,pose.foot_r)]:
+        tag = "l" if side < 0 else "r"
         hip=(cx+dx*.65, leg_y-8)
         ankle=(cx+dx+step*.25, base-9+abs(step)*.05)
-        _capsule(draw, hip, ankle, 7.5, FUR_DARK)
+        _bone(img, ankle, hip, LEG_LENGTH, 7.5, FUR_DARK, f"leg_{tag}")
         footx=ankle[0]+side*5
-        _ellipse(draw,(footx-12,base-11,footx+12,base+1),FUR,OUTLINE,1.5)
-        for k in range(3):
-            tx=footx+side*(7+k*2)
-            _poly(draw,[(tx,base-4-k*.6),(tx+side*6,base-1),(tx,base+1)],CHALK,OUTLINE,1)
+        foot = _rig_piece(("foot", side), (40, 24), (20, 14), lambda d, side=side: _paint_foot(d, side, 20, 14))
+        _put(img, foot, (footx, base), f"foot_{tag}")
     # cloak/body
-    body_top=50+pose.y+pose.squat*.25
-    body_bottom=101+pose.y-pose.squat*.15
-    _poly(draw,[(cx-31,body_top+14),(cx-24,body_bottom),(cx+27,body_bottom),(cx+32,body_top+13),(cx+20,47+pose.y),(cx-18,47+pose.y)],VELVET_DARK,OUTLINE,2)
-    _ellipse(draw,(cx-31,45+pose.y,cx+31,96+pose.y),FUR_DARK,OUTLINE,2)
-    _poly(draw,[(cx-27,55+pose.y),(cx-24,96+pose.y),(cx+24,96+pose.y),(cx+27,55+pose.y),(cx+14,48+pose.y),(cx-14,48+pose.y)],VELVET,OUTLINE,2)
-    _line(draw,[(cx-22,62+pose.y),(cx+20,91+pose.y)],BRASS,5)
-    for i in range(6):
-        x=cx-18+i*7
-        y=64+pose.y+i*4.8
-        _line(draw,[(x,y-2),(x,y+3)],BRASS_LIGHT,1)
-    _ellipse(draw,(cx-7,73+pose.y,cx+7,87+pose.y),BRASS,OUTLINE,1.5)
-    _arc(draw,(cx-4,75+pose.y,cx+4,84+pose.y),70,290,VELVET_DARK,2)
+    squat = round(pose.squat)
+    cloak = _rig_piece(("cloak", squat), (72, 72), (36, -40), lambda d: _paint_cloak(d, 36, -40, squat))
+    _put(img, cloak, (cx, pose.y), "cloak")
+    body = _rig_piece(("body",), (72, 60), (36, -40), lambda d: _paint_body(d, 36, -40))
+    _put(img, body, (cx, pose.y), "body")
     # arms
     shoulder_y=59+pose.y
     for side, ang in [(-1,pose.arm_l),(1,pose.arm_r)]:
+        tag = "l" if side < 0 else "r"
         shoulder=(cx+side*24,shoulder_y)
         rad=math.radians(90+side*15+ang)
         elbow=(shoulder[0]+math.cos(rad)*21,shoulder[1]+math.sin(rad)*21)
         wrist=(elbow[0]+math.cos(rad+side*.15)*17,elbow[1]+math.sin(rad+side*.15)*17)
-        _capsule(draw,shoulder,elbow,8,FUR_DARK)
-        _capsule(draw,elbow,wrist,7,FUR)
-        _ellipse(draw,(wrist[0]-8,wrist[1]-7,wrist[0]+8,wrist[1]+7),FUR_LIGHT,OUTLINE,1.5)
-        for k in (-1,0,1):
-            _poly(draw,[(wrist[0]+side*5,wrist[1]+k*3),(wrist[0]+side*12,wrist[1]+k*3-1),(wrist[0]+side*6,wrist[1]+k*3+2)],CHALK,OUTLINE,1)
+        _bone(img, shoulder, elbow, 21.0, 8, FUR_DARK, f"upper_arm_{tag}")
+        _bone(img, elbow, wrist, 17.0, 7, FUR, f"forearm_{tag}")
+        paw = _rig_piece(("paw", side), (32, 20), (16, 10), lambda d, side=side: _paint_hand(d, side, 16, 10))
+        _put(img, paw, wrist, f"paw_{tag}")
     # head
     hx=cx+2+pose.lean*.14
     hy=37+pose.y+pose.squat*.14
-    _ellipse(draw,(hx-27,hy-23,hx+27,hy+24),FUR,OUTLINE,2)
-    _ellipse(draw,(hx-23,hy-20,hx+22,hy+17),FUR_LIGHT,None)
-    # horns as integral curls
-    _line(draw,[(hx-17,hy-18),(hx-26,hy-29),(hx-20,hy-35),(hx-11,hy-31)],OUTLINE,7)
-    _line(draw,[(hx-17,hy-18),(hx-26,hy-29),(hx-20,hy-35),(hx-11,hy-31)],CHALK,4.5)
-    _line(draw,[(hx+17,hy-18),(hx+28,hy-28),(hx+23,hy-35),(hx+13,hy-31)],OUTLINE,7)
-    _line(draw,[(hx+17,hy-18),(hx+28,hy-28),(hx+23,hy-35),(hx+13,hy-31)],CHALK,4.5)
-    # ears
-    _poly(draw,[(hx-23,hy-9),(hx-35,hy-15),(hx-29,hy+1)],FUR_DARK,OUTLINE,1.5)
-    _poly(draw,[(hx+23,hy-9),(hx+35,hy-15),(hx+29,hy+1)],FUR_DARK,OUTLINE,1.5)
-    # eyes and brow
     brow = 2 if pose.expression in (1,5) else 0
-    _line(draw,[(hx-16,hy-6-brow),(hx-5,hy-8+brow)],OUTLINE,2.5)
-    _line(draw,[(hx+5,hy-8+brow),(hx+16,hy-6-brow)],OUTLINE,2.5)
-    _ellipse(draw,(hx-14,hy-5,hx-7,hy+3),EYE,OUTLINE,1)
-    _ellipse(draw,(hx+7,hy-5,hx+14,hy+3),EYE,OUTLINE,1)
-    _ellipse(draw,(hx-11,hy-2,hx-9,hy+2),OUTLINE)
-    _ellipse(draw,(hx+9,hy-2,hx+11,hy+2),OUTLINE)
-    # muzzle and expanding grid maw
-    mw=12+16*pose.mouth
-    mh=5+18*pose.mouth
-    _ellipse(draw,(hx-mw,hy+4,hx+mw,hy+4+mh),MAW,OUTLINE,1.5)
-    if pose.mouth>.25:
-        clip_top=hy+7
-        for k in range(-2,3):
-            x=hx+k*mw/3
-            _line(draw,[(x,clip_top),(x,hy+2+mh)],_fade(GRID,.75),.8)
-        for k in range(1,4):
-            y=clip_top+k*(mh-4)/4
-            _line(draw,[(hx-mw+2,y),(hx+mw-2,y)],_fade(GRID,.6),.8)
-        _ellipse(draw,(hx-8,hy+5+mh*.62,hx+8,hy+5+mh),TONGUE)
-    else:
-        _line(draw,[(hx-9,hy+10),(hx+9,hy+10)],OUTLINE,1.5)
-    # nose
-    _ellipse(draw,(hx-6,hy+1,hx+6,hy+8),OUTLINE)
+    head = _rig_piece(("head", brow), (76, 70), (38, 42), lambda d: _paint_head(d, 38, 42, brow))
+    _put(img, head, (hx, hy), "head")
+    # muzzle and expanding grid maw, its opening quantized to twentieths
+    mouth = round(pose.mouth * 20) / 20
+    maw = _rig_piece(("maw", mouth), (64, 40), (32, 4), lambda d: _paint_mouth(d, 32, 4, mouth))
+    _put(img, maw, (hx, hy), "maw")
     # dissolve overlay removes coherent body by drawing holes as translucent points
     if pose.dissolve>0:
-        for i in range(34):
-            a=i*2.27+pose.phase*5
-            r=(i%9)*3.4
-            x=hx+math.cos(a)*r
-            y=hy+23+math.sin(a)*r*.9
-            _ellipse(draw,(x-2,y-2,x+2,y+2),_fade(CYAN,.3+.5*pose.dissolve))
+        def dots(draw: ImageDraw.ImageDraw) -> None:
+            for i in range(34):
+                a=i*2.27+pose.phase*5
+                r=(i%9)*3.4
+                x=hx+math.cos(a)*r
+                y=hy+23+math.sin(a)*r*.9
+                _ellipse(draw,(x-2,y-2,x+2,y+2),_fade(CYAN,.3+.5*pose.dissolve))
+        _frame_layer(img, dots, "dissolve")
 
 
 def _draw_effects_front(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
@@ -498,16 +579,11 @@ def _draw_effects_front(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
 
 def render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     pose=_pose(anim,frame_idx,nframes)
-    behind=Image.new("RGBA",(FRAME_W*SUPER,FRAME_H*SUPER),(0,0,0,0))
-    body=Image.new("RGBA",behind.size,(0,0,0,0))
-    front=Image.new("RGBA",behind.size,(0,0,0,0))
-    _draw_effects_behind(blending_draw(behind),pose)
-    _draw_character(blending_draw(body),pose)
-    _draw_effects_front(blending_draw(front),pose)
-    image=Image.new("RGBA",behind.size,(0,0,0,0))
-    rigdoc.composite_canvas(image,behind)
-    rigdoc.composite_canvas(image,body)
-    rigdoc.composite_canvas(image,front)
+    image=Image.new("RGBA",(FRAME_W*SUPER,FRAME_H*SUPER),(0,0,0,0))
+    # The effects change every frame: each layer is one draw.
+    _frame_layer(image, lambda d: _draw_effects_behind(d, pose), "effects_behind")
+    _draw_character(image,pose)
+    _frame_layer(image, lambda d: _draw_effects_front(d, pose), "effects_front")
     return rigdoc.downsampled_canvas(image,(FRAME_W,FRAME_H),Image.Resampling.LANCZOS)
 
 

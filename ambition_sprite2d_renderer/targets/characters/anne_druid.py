@@ -29,7 +29,7 @@ from typing import List, Sequence, Tuple
 from PIL import Image, ImageDraw
 
 from ...authoring.portrait import PortraitClip, write_portrait_sheet
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -571,44 +571,75 @@ def _draw_effects_front(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
         _ellipse(draw, dot, 7.0, 7.0, _fade(CYAN, 0.09), None)
 
 
-def _draw_character(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
-    # Most body coordinates are authored in local character space and then
-    # transformed by a small whole-body lean. This keeps the action vocabulary
-    # coherent without imposing a reusable generic skeleton on the artwork.
-    root = (64.0 + pose.x, 66.0 + pose.y)
-    scale_y = 1.0 - pose.squash
+def _rig_piece(key: tuple, size: Tuple[float, float], origin: Point, paint) -> tuple:
+    """A piece of Anne Druid painted once (``shape_rig``): ``paint(draw)`` draws
+    in frame units with its anchor at ``origin`` (frame units) on a ``size``
+    (frame units) canvas. ``key`` names everything ``paint`` reads."""
+    return shape_rig.piece(("anne_druid",) + key, (size[0] * SUPER, size[1] * SUPER), (origin[0] * SUPER, origin[1] * SUPER), paint)
+
+
+def _put(img: Image.Image, part: tuple, at: Point, name: str, degrees: float = 0.0) -> None:
+    """``part`` with its anchor at the frame point ``at``, turned ``degrees``."""
+    shape_rig.place(img, part, (at[0] * SUPER, at[1] * SUPER), degrees, name)
+
+
+def _bone(img: Image.Image, a: Point, b: Point, length: float, radius: float, fill: RGBA, name: str) -> None:
+    """``_capsule`` from ``a`` toward ``b`` as a bone of fixed ``length``."""
+    pad = radius + 2.5
+    part = _rig_piece(
+        ("bone", length, radius, fill), (length + 2 * pad, 2 * pad), (pad, pad),
+        lambda d: _capsule(d, (pad, pad), (pad + length, pad), radius, fill),
+    )
+    _put(img, part, a, name, math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])))
+
+
+def _frame_layer(img: Image.Image, paint, name: str) -> None:
+    """A per-frame effect (it changes every frame) as ONE draw: ``paint(draw)``
+    paints frame-unit coordinates into a fresh canvas, placed cropped."""
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    paint(blending_draw(layer))
+    box = layer.getbbox()
+    if box is not None:
+        shape_rig.place(img, (layer.crop(box), (0.0, 0.0)), (float(box[0]), float(box[1])), 0.0, name)
+
+
+#: The leg bones' fixed lengths (hip to knee, knee to boot).
+THIGH = 14.0
+SHIN = 17.0
+#: The neck bone's fixed length (neck to chest).
+NECK = 16.0
+
+
+def _leg_chain(hip: Point, foot: Point) -> Tuple[Point, Point]:
+    """Knee and foot of a two-bone leg of fixed lengths reaching from ``hip``
+    toward ``foot``, the knee bent forward (+x when upright). Out of reach, the
+    leg straightens and its foot is the chain's end."""
+    dx, dy = foot[0] - hip[0], foot[1] - hip[1]
+    d = max(1e-6, math.hypot(dx, dy))
+    base = math.atan2(dy, dx)
+    if d >= THIGH + SHIN:
+        return _limb(hip, THIGH, math.degrees(base)), _limb(hip, THIGH + SHIN, math.degrees(base))
+    a = math.acos(max(-1.0, min(1.0, (THIGH * THIGH + d * d - SHIN * SHIN) / (2 * THIGH * d))))
+    return _limb(hip, THIGH, math.degrees(base - a)), foot
+
+
+def _record_piece(scale: float, front: bool) -> tuple:
+    """The golden record, painted once per size at phase 0 and turned for its spin."""
+    half = 16.0 * scale + 3.0
+    return _rig_piece(("record", scale, front), (2 * half, 2 * half), (half, half), lambda d: _draw_record(d, (half, half), scale, 0.0, front))
+
+
+#: The body piece's anchor in its own canvas (the root at ``(64, 66)``).
+ROBE_ORIGIN = (40.0, 24.0)
+
+
+def _paint_robe(draw: ImageDraw.ImageDraw, flare: float, sy: float) -> None:
+    """Robe, mantle, leaf shoulder panels and constellation embroidery in the
+    unleaned body frame (``ROBE_ORIGIN`` is the root; ``sy`` squashes)."""
 
     def tx(local: Point) -> Point:
-        rotated = _rot((local[0], local[1] * scale_y), pose.lean)
-        return root[0] + rotated[0], root[1] + rotated[1]
+        return ROBE_ORIGIN[0] + local[0], ROBE_ORIGIN[1] + local[1] * sy
 
-    hip = tx((0.0, 19.0))
-    chest = tx((0.0, -5.0))
-    neck = tx((1.0, -21.0))
-    head = tx((2.0, -34.0))
-
-    # Legs and boots, behind robe.
-    stride = pose.stride
-    left_knee = tx((-5.0 - stride * 0.28, 31.0 - pose.knee))
-    right_knee = tx((5.0 + stride * 0.28, 31.0 + pose.knee * 0.22))
-    left_foot = tx((-7.0 - stride, 47.0))
-    right_foot = tx((7.0 + stride, 47.0))
-    _capsule(draw, hip, left_knee, 3.6, ROBE_DARK)
-    _capsule(draw, left_knee, left_foot, 3.3, ROBE)
-    _capsule(draw, hip, right_knee, 3.6, ROBE_DARK)
-    _capsule(draw, right_knee, right_foot, 3.3, ROBE_LIGHT)
-    for foot, flip in ((left_foot, -1), (right_foot, 1)):
-        toe = (foot[0] + 6.0 * flip, foot[1] + 0.5)
-        _capsule(draw, foot, toe, 3.0, BOOT)
-
-    # Record behind body unless an action brings it forward.
-    if not pose.record_front:
-        record_local = (pose.record_x - 64.0, pose.record_y - 66.0)
-        _draw_record(draw, tx(record_local), pose.record_scale, pose.effect_phase, False)
-        _line(draw, [tx((-7.0, -15.0)), tx((-13.0, 8.0))], COPPER, 1.3)
-
-    # Robe and asymmetric mantle.
-    flare = pose.robe_flare
     robe = [
         tx((-13.0, -15.0)),
         tx((11.0, -15.0)),
@@ -624,29 +655,25 @@ def _draw_character(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
     _poly(draw, [tx((0, -18)), tx((11, -15)), tx((15 + flare * 0.18, 21)), tx((18 + flare, 43)), tx((5, 39)), tx((3, 8))], TEAL, OUTLINE_SOFT, 0.8)
     _line(draw, [tx((0.0, -17.0)), tx((2.0, 37.0))], GOLD, 1.1)
     _line(draw, [tx((-10.0, 34.0)), tx((3.0, 38.0)), tx((14.0 + flare * 0.5, 35.0))], _fade(TEAL_LIGHT, 0.8), 0.8)
-
+    # Small constellation embroidery on the robe.
+    stars = [tx((-5, 4)), tx((1, 10)), tx((-2, 18)), tx((6, 24))]
+    for a, b in zip(stars, stars[1:]):
+        _line(draw, [a, b], _fade(STAR, 0.45), 0.5)
+    for p in stars:
+        _ellipse(draw, p, 0.9, 0.9, _fade(STAR, 0.78), None)
     # Leaf-shaped shoulder panels.
-    _leaf(draw, tx((-11.5, -16.0)), 12.0, 5.6, 116.0 + pose.lean, MOSS, OUTLINE)
-    _leaf(draw, tx((10.0, -16.0)), 12.0, 5.6, 62.0 + pose.lean, MOSS_LIGHT, OUTLINE)
+    _leaf(draw, tx((-11.5, -16.0)), 12.0, 5.6, 116.0, MOSS, OUTLINE)
+    _leaf(draw, tx((10.0, -16.0)), 12.0, 5.6, 62.0, MOSS_LIGHT, OUTLINE)
 
-    # Arms.
-    shoulder_l = tx((-10.0, -13.0))
-    shoulder_r = tx((10.0, -13.0))
-    elbow_l = _limb(shoulder_l, 15.0, pose.arm_l + pose.lean)
-    elbow_r = _limb(shoulder_r, 15.0, pose.arm_r + pose.lean)
-    hand_l = _limb(elbow_l, 14.0, pose.fore_l + pose.lean)
-    hand_r = _limb(elbow_r, 14.0, pose.fore_r + pose.lean)
-    _capsule(draw, shoulder_l, elbow_l, 3.8, TEAL_DEEP)
-    _capsule(draw, elbow_l, hand_l, 3.1, SKIN)
-    _capsule(draw, shoulder_r, elbow_r, 3.8, TEAL_LIGHT)
-    _capsule(draw, elbow_r, hand_r, 3.1, SKIN_LIGHT)
-    for hand in (hand_l, hand_r):
-        _ellipse(draw, hand, 3.5, 3.0, SKIN_LIGHT, OUTLINE, 0.8)
-        for fi in range(3):
-            _line(draw, [(hand[0] + 1.5, hand[1] - 1.1 + fi * 1.0), (hand[0] + 4.2, hand[1] - 1.7 + fi * 1.15)], SKIN_SHADE, 0.55)
 
-    # Neck and face.
-    _capsule(draw, chest, neck, 4.0, SKIN)
+def _paint_hand(draw: ImageDraw.ImageDraw, hand: Point) -> None:
+    _ellipse(draw, hand, 3.5, 3.0, SKIN_LIGHT, OUTLINE, 0.8)
+    for fi in range(3):
+        _line(draw, [(hand[0] + 1.5, hand[1] - 1.1 + fi * 1.0), (hand[0] + 4.2, hand[1] - 1.7 + fi * 1.15)], SKIN_SHADE, 0.55)
+
+
+def _paint_head(draw: ImageDraw.ImageDraw, head: Point, eye_closed: bool, mouth_open: float) -> None:
+    """Hair crescent, three-quarter face and silver streaks around ``head``."""
     # Hair back mass creates the crescent silhouette.
     _ellipse(draw, (head[0] - 2.5, head[1] + 1.5), 17.5, 19.0, HAIR_DEEP, OUTLINE, 1.0)
     for offx, offy, rr, col in [
@@ -661,15 +688,15 @@ def _draw_character(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
     nose = (head[0] + 12.2, head[1] + 0.2)
     _poly(draw, [(head[0] + 8.5, head[1] - 2.0), nose, (head[0] + 8.8, head[1] + 2.4)], SKIN, OUTLINE_SOFT, 0.6)
     eye_y = head[1] - 3.4
-    if pose.eye_closed:
+    if eye_closed:
         _line(draw, [(head[0] + 3.4, eye_y), (head[0] + 7.4, eye_y + 0.5)], EYE, 0.9)
     else:
         _ellipse(draw, (head[0] + 5.5, eye_y), 1.3, 1.0, STAR, EYE, 0.55)
         _ellipse(draw, (head[0] + 5.9, eye_y), 0.48, 0.6, EYE, None)
     _line(draw, [(head[0] + 2.8, eye_y - 2.5), (head[0] + 7.6, eye_y - 2.9)], HAIR_DEEP, 0.9)
     mouth_y = head[1] + 6.2
-    if pose.mouth_open > 0.05:
-        _ellipse(draw, (head[0] + 7.0, mouth_y), 2.3, 0.9 + pose.mouth_open * 1.3, MOUTH, OUTLINE_SOFT, 0.45)
+    if mouth_open > 0.05:
+        _ellipse(draw, (head[0] + 7.0, mouth_y), 2.3, 0.9 + mouth_open * 1.3, MOUTH, OUTLINE_SOFT, 0.45)
     else:
         _arc(draw, (head[0] + 7.0, mouth_y - 0.5), 3.2, 2.0, 15, 150, MOUTH, 0.85)
 
@@ -681,33 +708,90 @@ def _draw_character(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
     ]):
         _line(draw, [a, b], _fade(HAIR_SILVER, 0.72 - idx * 0.08), 1.0)
 
-    # Small constellation embroidery on the robe.
-    stars = [tx((-5, 4)), tx((1, 10)), tx((-2, 18)), tx((6, 24))]
-    for a, b in zip(stars, stars[1:]):
-        _line(draw, [a, b], _fade(STAR, 0.45), 0.5)
-    for p in stars:
-        _ellipse(draw, p, 0.9, 0.9, _fade(STAR, 0.78), None)
+
+def _draw_character(img: Image.Image, pose: Pose) -> None:
+    """Anne Druid as a rig. Body coordinates are authored in local character
+    space and transformed by a small whole-body lean (``tx``); the robe, strap
+    and record are pieces turned with it, limbs are fixed-length bones, and the
+    head, hands and boots are pieces that stay upright."""
+    root = (64.0 + pose.x, 66.0 + pose.y)
+    scale_y = round(1.0 - pose.squash, 2)
+
+    def tx(local: Point) -> Point:
+        rotated = _rot((local[0], local[1] * scale_y), pose.lean)
+        return root[0] + rotated[0], root[1] + rotated[1]
+
+    hip = tx((0.0, 19.0))
+    chest = tx((0.0, -5.0))
+    neck = tx((1.0, -21.0))
+    head = tx((2.0, -34.0))
+
+    # Legs and boots, behind robe.
+    stride = pose.stride
+    for side, foot, fills in (
+        ("left", tx((-7.0 - stride, 47.0)), (ROBE_DARK, ROBE)),
+        ("right", tx((7.0 + stride, 47.0)), (ROBE_DARK, ROBE_LIGHT)),
+    ):
+        knee, foot = _leg_chain(hip, foot)
+        _bone(img, hip, knee, THIGH, 3.6, fills[0], f"{side}_thigh")
+        _bone(img, knee, foot, SHIN, 3.3, fills[1], f"{side}_shin")
+        if side == "left":
+            left_foot = foot
+        else:
+            right_foot = foot
+    for side, foot, flip in (("left", left_foot, -1), ("right", right_foot, 1)):
+        boot = _rig_piece(("boot", flip), (22, 10), (11, 4.5), lambda d, flip=flip: _capsule(d, (11, 4.5), (11 + 6.0 * flip, 5.0), 3.0, BOOT))
+        _put(img, boot, foot, f"{side}_boot")
+
+    # Record behind body unless an action brings it forward.
+    if not pose.record_front:
+        record_scale = round(pose.record_scale * 50) / 50
+        record_local = (pose.record_x - 64.0, pose.record_y - 66.0)
+        _put(img, _record_piece(record_scale, False), tx(record_local), "record", pose.effect_phase * 20.0)
+        strap = _rig_piece(("strap", scale_y), (30, 50), (20, 24), lambda d: _line(d, [(13.0, 24.0 - 15.0 * scale_y), (7.0, 24.0 + 8.0 * scale_y)], COPPER, 1.3))
+        _put(img, strap, root, "strap", pose.lean)
+
+    # Robe, asymmetric mantle, shoulder leaves and embroidery: one piece per flare.
+    flare = round(pose.robe_flare)
+    robe = _rig_piece(("robe", flare, scale_y), (80, 72), ROBE_ORIGIN, lambda d: _paint_robe(d, flare, scale_y))
+    _put(img, robe, root, "robe", pose.lean)
+
+    # Arms.
+    shoulder_l = tx((-10.0, -13.0))
+    shoulder_r = tx((10.0, -13.0))
+    elbow_l = _limb(shoulder_l, 15.0, pose.arm_l + pose.lean)
+    elbow_r = _limb(shoulder_r, 15.0, pose.arm_r + pose.lean)
+    hand_l = _limb(elbow_l, 14.0, pose.fore_l + pose.lean)
+    hand_r = _limb(elbow_r, 14.0, pose.fore_r + pose.lean)
+    _bone(img, shoulder_l, elbow_l, 15.0, 3.8, TEAL_DEEP, "left_upper_arm")
+    _bone(img, elbow_l, hand_l, 14.0, 3.1, SKIN, "left_forearm")
+    _bone(img, shoulder_r, elbow_r, 15.0, 3.8, TEAL_LIGHT, "right_upper_arm")
+    _bone(img, elbow_r, hand_r, 14.0, 3.1, SKIN_LIGHT, "right_forearm")
+    hand_part = _rig_piece(("hand",), (12, 9), (5, 4.5), lambda d: _paint_hand(d, (5, 4.5)))
+    _put(img, hand_part, hand_l, "left_hand")
+    _put(img, hand_part, hand_r, "right_hand")
+
+    # Neck and face.
+    _bone(img, neck, chest, NECK, 4.0, SKIN, "neck")
+    mouth = round(pose.mouth_open * 10) / 10
+    head_part = _rig_piece(("head", pose.eye_closed, mouth), (48, 48), (24, 25), lambda d: _paint_head(d, (24, 25), pose.eye_closed, mouth))
+    _put(img, head_part, head, "head")
 
     if pose.record_front:
         # The thrown-record action uses absolute frame coordinates so its arc
         # can travel independently of the body transform.
         center = (pose.record_x, pose.record_y) if pose.effect == "voyager_cast" else tx((pose.record_x - 64.0, pose.record_y - 66.0))
-        _draw_record(draw, center, pose.record_scale, pose.effect_phase, True)
+        record_scale = round(pose.record_scale * 50) / 50
+        _put(img, _record_piece(record_scale, True), center, "record_front", pose.effect_phase * 20.0)
 
 
 def render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     pose = _pose(anim, frame_idx, nframes)
     image = Image.new("RGBA", (FRAME_W * SUPER, FRAME_H * SUPER), (0, 0, 0, 0))
-    behind = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    body = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    front = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    _draw_effects_behind(blending_draw(behind), pose)
-    _draw_character(blending_draw(body), pose)
-    _draw_effects_front(blending_draw(front), pose)
-    image = Image.new("RGBA", behind.size, (0, 0, 0, 0))
-    rigdoc.composite_canvas(image, behind)
-    rigdoc.composite_canvas(image, body)
-    rigdoc.composite_canvas(image, front)
+    # The effects change every frame: each layer is one draw.
+    _frame_layer(image, lambda d: _draw_effects_behind(d, pose), "effects_behind")
+    _draw_character(image, pose)
+    _frame_layer(image, lambda d: _draw_effects_front(d, pose), "effects_front")
     if pose.alpha < 0.999:
         image = rigdoc.faded_canvas(image, max(0.0, pose.alpha))
     return rigdoc.downsampled_canvas(image, (FRAME_W, FRAME_H), Image.Resampling.LANCZOS)

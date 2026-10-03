@@ -26,6 +26,8 @@ from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
+from . import _solo_shape_rig as SR
+
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
@@ -455,42 +457,6 @@ def _leg_points(hip: Point, phase: float, stride: float, collapse: float) -> Tup
     return knee, (hoof_x, hoof_y)
 
 
-def _draw_leg(draw: ImageDraw.ImageDraw, hip: Point, phase: float, stride: float, near: bool, collapse: float) -> None:
-    knee, hoof = _leg_points(hip, phase, stride, collapse)
-    coat = HORSE_MID if near else HORSE_DARK
-    _line(draw, [hip, knee, hoof], OUTLINE, 13.5 if near else 11.5)
-    _line(draw, [hip, knee, hoof], coat, 9.0 if near else 7.4)
-    _ellipse(draw, knee, 4.3, 4.0, coat, OUTLINE, 0.8)
-    hoof_center = (hoof[0] + 1.5, hoof[1] + 1.5)
-    _ellipse(draw, hoof_center, 7.2 if near else 6.2, 3.7, HOOF, OUTLINE, 0.8)
-
-
-def _draw_arm(draw: ImageDraw.ImageDraw, shoulder: Point, angle: float, near: bool) -> Point:
-    elbow = _from(shoulder, 26.0, angle)
-    hand = _from(elbow, 24.0, angle + (-18.0 if near else 18.0))
-    sleeve = COAT_MID if near else COAT
-    _line(draw, [shoulder, elbow, hand], OUTLINE, 11.5)
-    _line(draw, [shoulder, elbow, hand], sleeve, 7.2)
-    _ellipse(draw, hand, 4.8, 4.4, SKIN, OUTLINE, 0.8)
-    return hand
-
-
-def _draw_lance(draw: ImageDraw.ImageDraw, hand: Point, angle: float, length: float, glow: float) -> Point:
-    butt = _from(hand, -17.0, angle)
-    tip = _from(hand, length, angle)
-    if glow > 0.02:
-        _line(draw, [butt, tip], _fade(TRANSFINITE, glow * 0.45), 8.0)
-    _line(draw, [butt, tip], OUTLINE, 5.0)
-    _line(draw, [butt, tip], STEEL, 2.5)
-    spear_base = _from(tip, -13.0, angle)
-    left = _from(spear_base, 8.0, angle - 90.0)
-    right = _from(spear_base, 8.0, angle + 90.0)
-    _poly(draw, [tip, left, right], STEEL_LIGHT, OUTLINE, 0.8)
-    brace = _from(hand, 17.0, angle)
-    _arc(draw, brace, 10.0, 10.0, angle - 150.0, angle + 150.0, GOLD, 2.2)
-    return tip
-
-
 def _draw_recursive_sets(layer: Image.Image, center: Point, amount: float, phase: float) -> None:
     draw = blending_draw(layer)
     for idx in range(4):
@@ -503,21 +469,26 @@ def _draw_recursive_sets(layer: Image.Image, center: Point, amount: float, phase
         _text(draw, (center[0] + radius * 0.88, center[1]), "}", 17, _fade(color, alpha), anchor="mm", stroke=TRANSPARENT)
 
 
-def _draw_diagonal_field(layer: Image.Image, amount: float, phase: float) -> None:
-    draw = blending_draw(layer)
-    origin = (86.0, 58.0)
+def _paint_diagonal_field(draw, origin: Point) -> None:
+    """Cantor's diagonal grid at full strength, its first dot at ``origin``."""
     spacing = 21.0
     for row in range(6):
         for col in range(7):
             x = origin[0] + col * spacing
             y = origin[1] + row * 18.0
-            alpha = amount * (0.24 + (0.23 if row == col else 0.0))
+            alpha = 0.24 + (0.23 if row == col else 0.0)
             _ellipse(draw, (x, y), 3.0, 3.0, _fade(TRANSFINITE, alpha), TRANSPARENT, 0.1)
-    _line(draw, [(origin[0], origin[1]), (origin[0] + 5 * spacing, origin[1] + 5 * 18.0)], _fade(GOLD_LIGHT, amount * 0.78), 3.0)
+    _line(draw, [(origin[0], origin[1]), (origin[0] + 5 * spacing, origin[1] + 5 * 18.0)], _fade(GOLD_LIGHT, 0.78), 3.0)
     for idx in range(6):
         x = origin[0] + idx * spacing
         y = origin[1] + idx * 18.0
-        _text(draw, (x + 7.0, y - 7.0), "¬", 8, _fade(POWER_LIGHT, amount * 0.8), stroke=TRANSPARENT)
+        _text(draw, (x + 7.0, y - 7.0), "¬", 8, _fade(POWER_LIGHT, 0.8), stroke=TRANSPARENT)
+
+
+def _draw_diagonal_field(layer: Image.Image, amount: float, phase: float) -> None:
+    """The grid as one piece, faded by ``amount`` (every ink in it scales by it)."""
+    part = _piece(("georg_diagonal_field",), (6.0, 16.0, 135.0, 100.0), _paint_diagonal_field)
+    _place(layer, part, (86.0, 58.0), 0.0, "diagonal_field", amount)
 
 
 def _draw_aleph_rain(layer: Image.Image, amount: float, phase: float) -> None:
@@ -531,7 +502,178 @@ def _draw_aleph_rain(layer: Image.Image, amount: float, phase: float) -> None:
             _text(draw, (x + 8.0, y + 8.0), str(idx // 2), 6, _fade(GOLD_LIGHT, alpha), stroke=TRANSPARENT)
 
 
+# -- the rig: each rigid piece painted once in its own frame, placed ------------
+
+
+def _S(p: Point) -> Point:
+    """A design point in supersampled canvas pixels, unrounded."""
+    return (p[0] * SUPER, p[1] * SUPER)
+
+
+def _piece(key, extent, paint):
+    return SR.local_piece(key, extent, paint, SUPER)
+
+
+def _place(image: Image.Image, part, at: Point, deg: float, name: str, opacity: float = 1.0) -> None:
+    SR.place(image, part, _S(at), deg, name, opacity)
+
+
+def _polyline(image: Image.Image, points: Sequence[Point], width: float, inner: float, fill: RGBA, name: str, *, seamless: bool = False) -> None:
+    """The old outlined polyline as turned capsule bones, each bone's length
+    rounded to a design pixel: one outlined capsule a bone, or (``seamless``)
+    every outline first and then every fill, so no outline crosses a joint."""
+    pts = [_S(p) for p in points]
+    bones = []
+    for i in range(len(pts) - 1):
+        a, b = pts[i], pts[i + 1]
+        bones.append((i, a, b, max(3.0, round(math.hypot(b[0] - a[0], b[1] - a[1]) / 3.0) * 3.0)))
+    if not seamless:
+        for i, a, b, length in bones:
+            SR.capsule(image, a, b, inner / 2.0 * SUPER, fill, OUTLINE, (width - inner) / 2.0 * SUPER, f"{name}{i}", length=length)
+        return
+    for kind, radius, ink in (("line", width / 2.0, OUTLINE), ("fill", inner / 2.0, fill)):
+        for i, a, b, length in bones:
+            SR.capsule(image, a, b, radius * SUPER, ink, ink, 0.0, f"{name}{i}_{kind}", length=length)
+
+
+def _ellipse_piece(rx: float, ry: float, fill: RGBA, outline: RGBA, width: float):
+    r = max(rx, ry) + width + 1.0
+    return _piece(("georg_ellipse", rx, ry, fill, outline, width), (r, r, r, r), lambda d, o: _ellipse(d, o, rx, ry, fill, outline, width))
+
+
+def _draw_leg(image: Image.Image, hip: Point, phase: float, stride: float, near: bool, collapse: float, name: str) -> None:
+    knee, hoof = _leg_points(hip, phase, stride, collapse)
+    coat = HORSE_MID if near else HORSE_DARK
+    _polyline(image, [hip, knee, hoof], 13.5 if near else 11.5, 9.0 if near else 7.4, coat, name)
+    _place(image, _ellipse_piece(4.3, 4.0, coat, OUTLINE, 0.8), knee, 0.0, f"{name}_knee")
+    _place(image, _ellipse_piece(7.2 if near else 6.2, 3.7, HOOF, OUTLINE, 0.8), (hoof[0] + 1.5, hoof[1] + 1.5), 0.0, f"{name}_hoof")
+
+
+def _draw_arm(image: Image.Image, shoulder: Point, angle: float, near: bool) -> Point:
+    elbow = _from(shoulder, 26.0, angle)
+    hand = _from(elbow, 24.0, angle + (-18.0 if near else 18.0))
+    side = "near" if near else "far"
+    _polyline(image, [shoulder, elbow, hand], 11.5, 7.2, COAT_MID if near else COAT, f"{side}_arm", seamless=True)
+    _place(image, _ellipse_piece(4.8, 4.4, SKIN, OUTLINE, 0.8), hand, 0.0, f"{side}_hand")
+    return hand
+
+
+def _lance_piece(length: float):
+    """The lance along +x from the hand: shaft, spearhead and gold brace."""
+
+    def paint(d, hand) -> None:
+        butt = (hand[0] - 17.0, hand[1])
+        tip = (hand[0] + length, hand[1])
+        _line(d, [butt, tip], OUTLINE, 5.0)
+        _line(d, [butt, tip], STEEL, 2.5)
+        base = (tip[0] - 13.0, tip[1])
+        _poly(d, [tip, (base[0], base[1] - 8.0), (base[0], base[1] + 8.0)], STEEL_LIGHT, OUTLINE, 0.8)
+        _arc(d, (hand[0] + 17.0, hand[1]), 10.0, 10.0, -150.0, 150.0, GOLD, 2.2)
+
+    return _piece(("georg_lance", length), (20.0, 12.0, length + 3.0, 12.0), paint)
+
+
+def _lance_glow_piece(length: float):
+    return _piece(("georg_lance_glow", length), (22.0, 6.0, length + 6.0, 6.0), lambda d, hand: _line(d, [(hand[0] - 17.0, hand[1]), (hand[0] + length, hand[1])], TRANSFINITE, 8.0))
+
+
+def _draw_lance(image: Image.Image, hand: Point, angle: float, length: float, glow: float) -> Point:
+    if glow > 0.02:
+        _place(image, _lance_glow_piece(length), hand, angle, "lance_glow", glow * 0.45)
+    _place(image, _lance_piece(length), hand, angle, "lance")
+    return _from(hand, length, angle)
+
+
+def _paint_horse(d, o) -> None:
+    """The horse barrel, chest and nested-set tack, centred on ``o``."""
+    bx, by = o
+    _ellipse(d, (bx, by), 76.0, 38.0, HORSE, OUTLINE, 1.7)
+    _ellipse(d, (bx - 25.0, by - 10.0), 44.0, 23.0, HORSE_MID, TRANSPARENT, 0.1)
+    _ellipse(d, (bx + 58.0, by - 10.0), 28.0, 31.0, HORSE_MID, OUTLINE, 1.0)
+    _arc(d, (bx - 10.0, by - 1.0), 56.0, 27.0, 190.0, 345.0, GOLD, 3.0)
+    for idx, radius in enumerate((12.0, 18.0, 24.0)):
+        _arc(d, (bx - 5.0, by - 3.0), radius, radius * 0.7, 195.0, 525.0, GOLD_LIGHT if idx == 1 else TRANSFINITE_DARK, 1.5)
+
+
+def _paint_coat(d, waist: Point, lean: float) -> None:
+    """The coat, vest and shirt from the waist (``waist``) up, slanted by ``lean``."""
+    torso_center = (waist[0] + lean * 0.30, waist[1] - 48.0)
+    shoulder_y = torso_center[1] - 27.0
+    coat_shape = [
+        (waist[0] - 22.0, waist[1] + 4.0),
+        (torso_center[0] - 28.0, shoulder_y + 5.0),
+        (torso_center[0] - 17.0, shoulder_y - 8.0),
+        (torso_center[0] + 21.0, shoulder_y - 7.0),
+        (waist[0] + 28.0, waist[1] + 4.0),
+    ]
+    _poly(d, coat_shape, COAT, OUTLINE, 1.5)
+    _poly(
+        d,
+        [(torso_center[0] - 7.0, shoulder_y - 3.0), (torso_center[0] + 10.0, shoulder_y - 3.0), (waist[0] + 9.0, waist[1] - 3.0), (waist[0] - 8.0, waist[1] - 3.0)],
+        VEST,
+        OUTLINE_SOFT,
+        0.8,
+    )
+    _line(d, [(torso_center[0] + 2.0, shoulder_y), (waist[0] + 1.0, waist[1])], GOLD, 1.5)
+    for yoff in (8.0, 20.0, 32.0):
+        _ellipse(d, (torso_center[0] + 4.0, shoulder_y + yoff), 1.7, 1.7, GOLD_LIGHT, OUTLINE, 0.4)
+    _poly(
+        d,
+        [(torso_center[0] - 9.0, shoulder_y - 8.0), (torso_center[0] + 10.0, shoulder_y - 8.0), (torso_center[0] + 4.0, shoulder_y + 7.0), (torso_center[0] - 2.0, shoulder_y + 7.0)],
+        SHIRT,
+        OUTLINE_SOFT,
+        0.6,
+    )
+
+
+def _paint_head(d, head: Point, blink: bool, mouth: float) -> None:
+    """Face, hair and beard centred on ``head``."""
+    _ellipse(d, head, 18.0, 22.0, SKIN, OUTLINE, 1.2)
+    hair_shape = [
+        (head[0] - 18.0, head[1] - 6.0),
+        (head[0] - 13.0, head[1] - 22.0),
+        (head[0] + 3.0, head[1] - 25.0),
+        (head[0] + 18.0, head[1] - 14.0),
+        (head[0] + 15.0, head[1] - 2.0),
+        (head[0] + 9.0, head[1] - 12.0),
+        (head[0] - 8.0, head[1] - 13.0),
+    ]
+    _poly(d, hair_shape, HAIR, OUTLINE, 0.9)
+    _arc(d, (head[0] - 7.0, head[1] - 8.0), 7.0, 5.0, 205.0, 345.0, HAIR_LIGHT, 1.3)
+    _arc(d, (head[0] + 6.0, head[1] - 9.0), 7.0, 5.0, 195.0, 338.0, HAIR_LIGHT, 1.3)
+    eye_y = head[1] - 1.0
+    eye_h = 0.6 if blink else 2.1
+    _ellipse(d, (head[0] - 6.0, eye_y), 2.4, eye_h, EYE, EYE, 0.1)
+    _ellipse(d, (head[0] + 6.0, eye_y), 2.4, eye_h, EYE, EYE, 0.1)
+    _line(d, [(head[0] - 10.0, eye_y - 6.0), (head[0] - 3.0, eye_y - 7.5)], HAIR, 1.5)
+    _line(d, [(head[0] + 3.0, eye_y - 7.5), (head[0] + 11.0, eye_y - 6.0)], HAIR, 1.5)
+    _poly(d, [(head[0] + 1.0, head[1] + 1.0), (head[0] + 6.0, head[1] + 7.0), (head[0] + 1.0, head[1] + 9.0)], SKIN_DARK, OUTLINE_SOFT, 0.4)
+    beard = [
+        (head[0] - 14.0, head[1] + 7.0),
+        (head[0] - 10.0, head[1] + 23.0),
+        (head[0], head[1] + 35.0),
+        (head[0] + 13.0, head[1] + 21.0),
+        (head[0] + 15.0, head[1] + 7.0),
+        (head[0] + 7.0, head[1] + 11.0),
+        (head[0], head[1] + 9.0),
+        (head[0] - 7.0, head[1] + 11.0),
+    ]
+    _poly(d, beard, HAIR, OUTLINE, 0.8)
+    if mouth > 0.08:
+        _ellipse(d, (head[0] + 1.0, head[1] + 13.0), 3.2, 1.2 + mouth * 2.6, MOUTH, OUTLINE, 0.4)
+    else:
+        _line(d, [(head[0] - 3.0, head[1] + 13.0), (head[0] + 5.0, head[1] + 12.5)], MOUTH, 0.8)
+
+
+def _paint_brooch(d, o) -> None:
+    _ellipse(d, o, 8.0, 8.0, COAT_LIGHT, GOLD, 1.4)
+    _text(d, o, "ℵ", 8, GOLD_LIGHT, stroke=TRANSPARENT)
+
+
 def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
+    """Georg as a rig: the horse barrel, coat (per lean step), head (per
+    expression), brooch, lance and every limb bone are pieces painted once and
+    placed; the set-theory effects stay shapes."""
     pose = _pose_for(anim, frame_idx, nframes)
     phase = math.tau * frame_idx / max(1, nframes)
     image = Image.new("RGBA", WORK_SIZE, TRANSPARENT)
@@ -549,7 +691,6 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         _arc(draw_behind, (196.0, 70.0), 32.0 + pose.taunt * 6.0, 16.0, 0.0, 360.0, _fade(GOLD_LIGHT, 0.35 + pose.taunt * 0.35), 2.4)
         _text(draw_behind, (196.0, 39.0), "∞", 18, _fade(TRANSFINITE, 0.45 + pose.taunt * 0.5), stroke=TRANSPARENT)
     rigdoc.composite_canvas(image, behind)
-    draw = blending_draw(image)
 
     collapse = pose.collapse
     body_y = 190.0 + pose.bob + collapse * 13.0
@@ -565,130 +706,50 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
             _ellipse(trail_draw, (body_x - offset, body_y), 58.0, 27.0, _fade(HORSE_LIGHT, alpha), TRANSPARENT, 0.1)
             _text(trail_draw, (body_x - offset, body_y - 37.0), str(idx), 9, _fade(TRANSFINITE, alpha * 2.2), stroke=TRANSPARENT)
         rigdoc.composite_canvas(image, trail)
-        draw = blending_draw(image)
 
     # Tail behind the legs and torso.
     tail_root = (body_x - 64.0, body_y - 4.0)
     tail_tip = (body_x - 101.0 - math.sin(phase) * 10.0, body_y + 24.0 + math.cos(phase) * 7.0)
     tail_mid = ((tail_root[0] + tail_tip[0]) * 0.5, body_y + 4.0 - math.sin(phase) * 8.0)
-    _line(draw, [tail_root, tail_mid, tail_tip], OUTLINE, 12.0)
-    _line(draw, [tail_root, tail_mid, tail_tip], HORSE_DARK, 7.5)
-    _ellipse(draw, tail_tip, 8.0, 10.0, HAIR, OUTLINE, 0.8)
+    _polyline(image, [tail_root, tail_mid, tail_tip], 12.0, 7.5, HORSE_DARK, "tail")
+    _place(image, _ellipse_piece(8.0, 10.0, HAIR, OUTLINE, 0.8), tail_tip, 0.0, "tail_tip")
 
     # Far legs.
     stride = pose.stride
-    _draw_leg(draw, (body_x - 45.0, body_y + 12.0), phase + math.pi, stride * 0.76, False, collapse)
-    _draw_leg(draw, (body_x + 38.0, body_y + 11.0), phase, stride * 0.76, False, collapse)
+    _draw_leg(image, (body_x - 45.0, body_y + 12.0), phase + math.pi, stride * 0.76, False, collapse, "far_hind")
+    _draw_leg(image, (body_x + 38.0, body_y + 11.0), phase, stride * 0.76, False, collapse, "far_fore")
 
     # Horse body and nested-set tack.
-    _ellipse(draw, (body_x, body_y), 76.0, 38.0, HORSE, OUTLINE, 1.7)
-    _ellipse(draw, (body_x - 25.0, body_y - 10.0), 44.0, 23.0, HORSE_MID, TRANSPARENT, 0.1)
-    _ellipse(draw, (body_x + 58.0, body_y - 10.0), 28.0, 31.0, HORSE_MID, OUTLINE, 1.0)
-    _arc(draw, (body_x - 10.0, body_y - 1.0), 56.0, 27.0, 190.0, 345.0, GOLD, 3.0)
-    for idx, radius in enumerate((12.0, 18.0, 24.0)):
-        _arc(draw, (body_x - 5.0, body_y - 3.0), radius, radius * 0.7, 195.0, 525.0, GOLD_LIGHT if idx == 1 else TRANSFINITE_DARK, 1.5)
+    _place(image, _piece(("georg_horse",), (80.0, 44.0, 90.0, 42.0), _paint_horse), (body_x, body_y), 0.0, "horse")
 
     # Near legs.
-    _draw_leg(draw, (body_x - 28.0, body_y + 14.0), phase, stride, True, collapse)
-    _draw_leg(draw, (body_x + 57.0, body_y + 13.0), phase + math.pi, stride, True, collapse)
+    _draw_leg(image, (body_x - 28.0, body_y + 14.0), phase, stride, True, collapse, "near_hind")
+    _draw_leg(image, (body_x + 57.0, body_y + 13.0), phase + math.pi, stride, True, collapse, "near_fore")
 
     # Human torso rises from the horse withers.
     waist = (body_x + 50.0, body_y - 28.0)
+    lean = SR.q(pose.lean, 3.0)
+    coat = _piece(("georg_coat", lean), (36.0, 90.0, 54.0, 10.0), lambda d, o: _paint_coat(d, o, lean))
+    _place(image, coat, waist, 0.0, "coat")
     torso_center = (waist[0] + pose.lean * 0.30, waist[1] - 48.0)
     shoulder_y = torso_center[1] - 27.0
-    coat_shape = [
-        (waist[0] - 22.0, waist[1] + 4.0),
-        (torso_center[0] - 28.0, shoulder_y + 5.0),
-        (torso_center[0] - 17.0, shoulder_y - 8.0),
-        (torso_center[0] + 21.0, shoulder_y - 7.0),
-        (waist[0] + 28.0, waist[1] + 4.0),
-    ]
-    _poly(draw, coat_shape, COAT, OUTLINE, 1.5)
-    _poly(
-        draw,
-        [
-            (torso_center[0] - 7.0, shoulder_y - 3.0),
-            (torso_center[0] + 10.0, shoulder_y - 3.0),
-            (waist[0] + 9.0, waist[1] - 3.0),
-            (waist[0] - 8.0, waist[1] - 3.0),
-        ],
-        VEST,
-        OUTLINE_SOFT,
-        0.8,
-    )
-    _line(draw, [(torso_center[0] + 2.0, shoulder_y), (waist[0] + 1.0, waist[1])], GOLD, 1.5)
-    for yoff in (8.0, 20.0, 32.0):
-        _ellipse(draw, (torso_center[0] + 4.0, shoulder_y + yoff), 1.7, 1.7, GOLD_LIGHT, OUTLINE, 0.4)
-    _poly(
-        draw,
-        [
-            (torso_center[0] - 9.0, shoulder_y - 8.0),
-            (torso_center[0] + 10.0, shoulder_y - 8.0),
-            (torso_center[0] + 4.0, shoulder_y + 7.0),
-            (torso_center[0] - 2.0, shoulder_y + 7.0),
-        ],
-        SHIRT,
-        OUTLINE_SOFT,
-        0.6,
-    )
 
     far_shoulder = (torso_center[0] - 18.0, shoulder_y + 2.0)
     near_shoulder = (torso_center[0] + 20.0, shoulder_y + 3.0)
-    far_hand = _draw_arm(draw, far_shoulder, pose.arm_far + pose.lean * 0.35, False)
-    near_hand = _draw_arm(draw, near_shoulder, pose.arm_near + pose.lean * 0.35, True)
+    _draw_arm(image, far_shoulder, pose.arm_far + pose.lean * 0.35, False)
+    near_hand = _draw_arm(image, near_shoulder, pose.arm_near + pose.lean * 0.35, True)
 
     # Neck, face, hair, and beard.
     neck = (torso_center[0] + pose.lean * 0.20, shoulder_y - 14.0)
-    _ellipse(draw, neck, 7.0, 12.0, SKIN_DARK, OUTLINE, 0.8)
+    _place(image, _ellipse_piece(7.0, 12.0, SKIN_DARK, OUTLINE, 0.8), neck, 0.0, "neck")
     head = (neck[0] + pose.lean * 0.16, neck[1] - 28.0)
-    _ellipse(draw, head, 18.0, 22.0, SKIN, OUTLINE, 1.2)
-    hair_shape = [
-        (head[0] - 18.0, head[1] - 6.0),
-        (head[0] - 13.0, head[1] - 22.0),
-        (head[0] + 3.0, head[1] - 25.0),
-        (head[0] + 18.0, head[1] - 14.0),
-        (head[0] + 15.0, head[1] - 2.0),
-        (head[0] + 9.0, head[1] - 12.0),
-        (head[0] - 8.0, head[1] - 13.0),
-    ]
-    _poly(draw, hair_shape, HAIR, OUTLINE, 0.9)
-    _arc(draw, (head[0] - 7.0, head[1] - 8.0), 7.0, 5.0, 205.0, 345.0, HAIR_LIGHT, 1.3)
-    _arc(draw, (head[0] + 6.0, head[1] - 9.0), 7.0, 5.0, 195.0, 338.0, HAIR_LIGHT, 1.3)
-
-    eye_y = head[1] - 1.0
-    eye_h = 0.6 if pose.blink > 0.4 else 2.1
-    _ellipse(draw, (head[0] - 6.0, eye_y), 2.4, eye_h, EYE, EYE, 0.1)
-    _ellipse(draw, (head[0] + 6.0, eye_y), 2.4, eye_h, EYE, EYE, 0.1)
-    _line(draw, [(head[0] - 10.0, eye_y - 6.0), (head[0] - 3.0, eye_y - 7.5)], HAIR, 1.5)
-    _line(draw, [(head[0] + 3.0, eye_y - 7.5), (head[0] + 11.0, eye_y - 6.0)], HAIR, 1.5)
-    _poly(
-        draw,
-        [(head[0] + 1.0, head[1] + 1.0), (head[0] + 6.0, head[1] + 7.0), (head[0] + 1.0, head[1] + 9.0)],
-        SKIN_DARK,
-        OUTLINE_SOFT,
-        0.4,
-    )
-    beard = [
-        (head[0] - 14.0, head[1] + 7.0),
-        (head[0] - 10.0, head[1] + 23.0),
-        (head[0], head[1] + 35.0),
-        (head[0] + 13.0, head[1] + 21.0),
-        (head[0] + 15.0, head[1] + 7.0),
-        (head[0] + 7.0, head[1] + 11.0),
-        (head[0], head[1] + 9.0),
-        (head[0] - 7.0, head[1] + 11.0),
-    ]
-    _poly(draw, beard, HAIR, OUTLINE, 0.8)
-    if pose.mouth > 0.08:
-        _ellipse(draw, (head[0] + 1.0, head[1] + 13.0), 3.2, 1.2 + pose.mouth * 2.6, MOUTH, OUTLINE, 0.4)
-    else:
-        _line(draw, [(head[0] - 3.0, head[1] + 13.0), (head[0] + 5.0, head[1] + 12.5)], MOUTH, 0.8)
+    blink, mouth = pose.blink > 0.4, SR.q(pose.mouth, 0.1)
+    _place(image, _piece(("georg_head", blink, mouth), (21.0, 28.0, 21.0, 38.0), lambda d, o: _paint_head(d, o, blink, mouth)), head, 0.0, "head")
 
     # Aleph brooch and lance are foreground readability anchors.
-    _ellipse(draw, (torso_center[0] + 1.0, shoulder_y + 10.0), 8.0, 8.0, COAT_LIGHT, GOLD, 1.4)
-    _text(draw, (torso_center[0] + 1.0, shoulder_y + 10.0), "ℵ", 8, GOLD_LIGHT, stroke=TRANSPARENT)
+    _place(image, _piece(("georg_brooch",), (11.0, 11.0, 11.0, 11.0), _paint_brooch), (torso_center[0] + 1.0, shoulder_y + 10.0), 0.0, "brooch")
     lance_glow = max(pose.diagonal, pose.charge, pose.power_set, pose.aleph_rain)
-    tip = _draw_lance(draw, near_hand, pose.lance_angle + pose.lean * 0.15, pose.lance_length, lance_glow)
+    tip = _draw_lance(image, near_hand, pose.lance_angle + pose.lean * 0.15, pose.lance_length, lance_glow)
 
     if pose.diagonal > 0.04:
         front = Image.new("RGBA", WORK_SIZE, TRANSPARENT)

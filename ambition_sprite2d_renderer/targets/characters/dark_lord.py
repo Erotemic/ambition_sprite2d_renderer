@@ -31,6 +31,7 @@ from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
 from . import _dark_lord_rig as _dark_lord_rig
+from . import _solo_shape_rig as SR
 
 ACTOR_METADATA = {
     "actor": {"character_id": "npc_dark_lord", "display_name": "Dark Lord"},
@@ -494,189 +495,192 @@ def _draw_boot(
     )
 
 
-def _draw_helmet(draw: ImageDraw.ImageDraw, P, pose: Pose) -> None:
-    # back horns
-    _poly(draw, [P(-22, -156), P(-38, -206), P(-18, -170)], METAL_DARK, OUTLINE, 1.0)
-    _poly(draw, [P(22, -156), P(42, -208), P(22, -168)], METAL_DARK, OUTLINE, 1.0)
-    _poly(draw, [P(-10, -164), P(-8, -225), P(6, -166)], BLACK, OUTLINE, 1.0)
-    _poly(draw, [P(9, -164), P(18, -224), P(22, -166)], BLACK, OUTLINE, 1.0)
+# -- the rig: each rigid piece painted once in its own frame, turned into place --
 
-    helm = [
-        P(-28, -154),
-        P(-14, -174),
-        P(12, -176),
-        P(30, -158),
-        P(28, -132),
-        P(16, -115),
-        P(-8, -113),
-        P(-27, -128),
-    ]
-    _poly(draw, helm, METAL, OUTLINE, 1.4)
-    _poly(
-        draw,
-        [P(-22, -150), P(-2, -164), P(18, -156), P(24, -139), P(4, -144), P(-20, -136)],
-        METAL_HI,
-        OUTLINE,
-        0.8,
-    )
-    _poly(
-        draw, [P(-18, -138), P(21, -141), P(18, -127), P(-16, -125)], VOID, OUTLINE, 0.7
-    )
-
-    # red visor
-    glow = max(0.0, pose.eye)
-    _line(
-        draw, [P(-15, -135), P(-3, -132), P(11, -134), P(20, -138)], RUNE_HI, 1.5 + glow
-    )
-    _line(draw, [P(-14, -134), P(18, -137)], RUNE, 2.0)
-
-    faceplate = [P(-16, -124), P(16, -126), P(11, -106), P(-12, -105)]
-    _poly(draw, faceplate, METAL_MID, OUTLINE, 0.9)
-    for x in [-8, -3, 2, 7]:
-        _line(draw, [P(x, -121), P(x - 1, -110)], METAL_DARK, 0.7)
-    _poly(draw, [P(-20, -150), P(-34, -159), P(-26, -136)], METAL_DARK, OUTLINE, 0.8)
-    _poly(draw, [P(20, -151), P(36, -162), P(27, -136)], METAL_DARK, OUTLINE, 0.8)
+LENGTH_STEP = 2.0
 
 
-def _draw_torso(draw: ImageDraw.ImageDraw, P, pose: Pose) -> None:
-    # cape behind shoulders
+def _S(p: Point) -> Point:
+    """A work-space point in supersampled canvas pixels, unrounded."""
+    return (p[0] * SUPER, p[1] * SUPER)
+
+
+def _piece(key, extent, paint):
+    return SR.local_piece(key, extent, paint, SUPER)
+
+
+def _place(image: Image.Image, part, at: Point, deg: float, name: str) -> None:
+    SR.place(image, part, _S(at), deg, name)
+
+
+def _heading(a: Point, b: Point) -> float:
+    return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+
+
+def _body_local(origin: Point):
+    """``P`` of an unturned body whose root is at ``origin``."""
+
+    def P(x: float, y: float) -> Point:
+        return (origin[0] + x, origin[1] + y)
+
+    return P
+
+
+def _bar_piece(length: float, width: float, color: RGBA, stripe: float):
+    """One limb bone along +x: a band ``width`` wide, round at both ends, with
+    the thin outline stripe down its middle (the old polyline, a bone of it)."""
+
+    def paint(d, o) -> None:
+        a, b = o, (o[0] + length, o[1])
+        _line(d, [a, b], color, width)
+        _circle(d, a, width / 2.0, color, color, 0.1)
+        _circle(d, b, width / 2.0, color, color, 0.1)
+        _line(d, [a, b], OUTLINE, stripe)
+
+    r = width / 2.0 + 1.0
+    return _piece(("dark_lord_bar", length, width, color, stripe), (r, r, length + r, r), paint)
+
+
+def _place_limb(image: Image.Image, points: Sequence[Point], width: float, color: RGBA, stripe: float, name: str) -> None:
+    for i in range(len(points) - 1):
+        a, b = points[i], points[i + 1]
+        length = max(LENGTH_STEP, round(math.hypot(b[0] - a[0], b[1] - a[1]) / LENGTH_STEP) * LENGTH_STEP)
+        _place(image, _bar_piece(length, width, color, stripe), a, _heading(a, b), f"{name}{i}")
+
+
+def _halberd_piece(front: bool):
+    return _piece(("dark_lord_halberd", front), (30.0, 76.0, 164.0, 70.0), lambda d, o: _draw_halberd(d, o, 0.0, front=front))
+
+
+def _boot_piece(toe: float, scale: float):
+    return _piece(("dark_lord_boot", toe, scale), (16 * scale, 38 * scale, 40 * scale, 12 * scale), lambda d, o: _draw_boot(d, o, toe, scale))
+
+
+def _elbow_piece(w: float, h: float, color: RGBA):
+    r = math.hypot(w, h) / 2.0 + 2.0
+    return _piece(("dark_lord_elbow", w, h, color), (r, r, r, r), lambda d, o: _poly(d, _rect(o, w, h, 0.0), color, OUTLINE, 0.8))
+
+
+def _hand_piece(front: bool):
+    def paint(d, hand) -> None:
+        _circle(d, hand, 5.2 if front else 4.6, VOID, OUTLINE, 0.7)
+        for dx in [-4, 0, 4]:
+            _poly(d, [(hand[0] + dx, hand[1]), (hand[0] + dx + 4, hand[1] + 9), (hand[0] + dx - 2, hand[1] + 6)], METAL_HI if front else METAL, OUTLINE, 0.35)
+
+    return _piece(("dark_lord_hand", front), (8.0, 7.0, 10.0, 11.0), paint)
+
+
+def _paint_cape(d, o, sway: float) -> None:
+    P = _body_local(o)
     cape = [
         P(-46, -118),
-        P(-86 - pose.cape_sway * 0.4, -92),
-        P(-104 - pose.cape_sway * 0.6, -26),
-        P(-75 - pose.cape_sway * 0.7, 60),
-        P(-42 - pose.cape_sway * 0.3, 28),
+        P(-86 - sway * 0.4, -92),
+        P(-104 - sway * 0.6, -26),
+        P(-75 - sway * 0.7, 60),
+        P(-42 - sway * 0.3, 28),
         P(-22, -44),
         P(0, -50),
         P(32, -42),
-        P(68 + pose.cape_sway * 0.3, 72),
-        P(90 + pose.cape_sway * 0.7, 40),
-        P(84 + pose.cape_sway * 0.5, -22),
+        P(68 + sway * 0.3, 72),
+        P(90 + sway * 0.7, 40),
+        P(84 + sway * 0.5, -22),
         P(54, -108),
     ]
-    _poly(draw, cape, CAPE, OUTLINE, 1.2)
-    inner = [
-        P(-20, -58),
-        P(0, -48),
-        P(30, -45),
-        P(58 + pose.cape_sway * 0.4, 42),
-        P(22, 54),
-        P(-5, -3),
-        P(-44 - pose.cape_sway * 0.2, 42),
-    ]
-    _poly(draw, inner, CAPE_RED, None, 0)
+    _poly(d, cape, CAPE, OUTLINE, 1.2)
+    inner = [P(-20, -58), P(0, -48), P(30, -45), P(58 + sway * 0.4, 42), P(22, 54), P(-5, -3), P(-44 - sway * 0.2, 42)]
+    _poly(d, inner, CAPE_RED, None, 0)
     # tears
     for x, y, h in [(-67, 35, 28), (-20, 50, 24), (40, 54, 34), (73, 30, 24)]:
-        _poly(draw, [P(x, y), P(x + 9, y + h), P(x + 18, y)], CAPE_DARK, None, 0)
+        _poly(d, [P(x, y), P(x + 9, y + h), P(x + 18, y)], CAPE_DARK, None, 0)
 
+
+def _paint_armor(d, o) -> None:
+    P = _body_local(o)
     # pauldrons and spikes
     left = [P(-56, -112), P(-34, -132), P(-6, -125), P(-10, -98), P(-45, -88)]
     right = [P(8, -127), P(40, -135), P(62, -114), P(53, -90), P(17, -98)]
-    _poly(draw, left, METAL_DARK, OUTLINE, 1.3)
-    _poly(draw, right, METAL_DARK, OUTLINE, 1.3)
-    _poly(draw, [P(-50, -123), P(-72, -170), P(-36, -132)], METAL_HI, OUTLINE, 0.8)
-    _poly(draw, [P(-28, -130), P(-32, -181), P(-14, -128)], METAL_HI, OUTLINE, 0.8)
-    _poly(draw, [P(34, -132), P(62, -182), P(47, -126)], METAL_HI, OUTLINE, 0.8)
-    _poly(draw, [P(55, -116), P(86, -152), P(62, -101)], METAL_HI, OUTLINE, 0.8)
-    _circle(draw, P(-31, -105), 8.0, METAL, OUTLINE, 0.8)
-    _circle(draw, P(34, -107), 8.0, METAL, OUTLINE, 0.8)
-    _line(draw, [P(-36, -105), P(-26, -105)], RUNE, 0.9)
-    _line(draw, [P(29, -107), P(39, -107)], RUNE, 0.9)
-
+    _poly(d, left, METAL_DARK, OUTLINE, 1.3)
+    _poly(d, right, METAL_DARK, OUTLINE, 1.3)
+    _poly(d, [P(-50, -123), P(-72, -170), P(-36, -132)], METAL_HI, OUTLINE, 0.8)
+    _poly(d, [P(-28, -130), P(-32, -181), P(-14, -128)], METAL_HI, OUTLINE, 0.8)
+    _poly(d, [P(34, -132), P(62, -182), P(47, -126)], METAL_HI, OUTLINE, 0.8)
+    _poly(d, [P(55, -116), P(86, -152), P(62, -101)], METAL_HI, OUTLINE, 0.8)
+    _circle(d, P(-31, -105), 8.0, METAL, OUTLINE, 0.8)
+    _circle(d, P(34, -107), 8.0, METAL, OUTLINE, 0.8)
+    _line(d, [P(-36, -105), P(-26, -105)], RUNE, 0.9)
+    _line(d, [P(29, -107), P(39, -107)], RUNE, 0.9)
     # chest armor
-    chest = [
-        P(-30, -108),
-        P(-12, -126),
-        P(15, -126),
-        P(34, -105),
-        P(28, -66),
-        P(0, -48),
-        P(-28, -65),
-    ]
-    _poly(draw, chest, METAL, OUTLINE, 1.4)
-    _poly(
-        draw,
-        [P(-23, -101), P(-4, -116), P(-2, -58), P(-26, -67)],
-        METAL_HI,
-        OUTLINE,
-        0.8,
-    )
-    _poly(
-        draw, [P(6, -116), P(27, -101), P(25, -68), P(2, -58)], METAL_DARK, OUTLINE, 0.8
-    )
-    _line(draw, [P(0, -119), P(0, -51)], OUTLINE, 0.8)
-
+    chest = [P(-30, -108), P(-12, -126), P(15, -126), P(34, -105), P(28, -66), P(0, -48), P(-28, -65)]
+    _poly(d, chest, METAL, OUTLINE, 1.4)
+    _poly(d, [P(-23, -101), P(-4, -116), P(-2, -58), P(-26, -67)], METAL_HI, OUTLINE, 0.8)
+    _poly(d, [P(6, -116), P(27, -101), P(25, -68), P(2, -58)], METAL_DARK, OUTLINE, 0.8)
+    _line(d, [P(0, -119), P(0, -51)], OUTLINE, 0.8)
     # rune sigil on chest
-    _circle(draw, P(0, -86), 11.0, (50, 12, 16, 220), OUTLINE, 0.7)
-    _line(draw, [P(0, -99), P(0, -73)], RUNE_HI, 1.2)
-    _line(draw, [P(-10, -86), P(10, -86)], RUNE_HI, 1.0)
-    _line(draw, [P(-6, -94), P(0, -86), P(7, -96)], RUNE, 0.9)
-    _line(draw, [P(-7, -76), P(0, -86), P(8, -76)], RUNE, 0.9)
-
+    _circle(d, P(0, -86), 11.0, (50, 12, 16, 220), OUTLINE, 0.7)
+    _line(d, [P(0, -99), P(0, -73)], RUNE_HI, 1.2)
+    _line(d, [P(-10, -86), P(10, -86)], RUNE_HI, 1.0)
+    _line(d, [P(-6, -94), P(0, -86), P(7, -96)], RUNE, 0.9)
+    _line(d, [P(-7, -76), P(0, -86), P(8, -76)], RUNE, 0.9)
     # waist / tabard
     belt = [P(-31, -62), P(31, -62), P(26, -48), P(-28, -48)]
-    _poly(draw, belt, METAL_DARK, OUTLINE, 1.0)
-    _poly(draw, [P(-8, -66), P(8, -66), P(8, -46), P(-8, -46)], METAL_HI, OUTLINE, 0.8)
+    _poly(d, belt, METAL_DARK, OUTLINE, 1.0)
+    _poly(d, [P(-8, -66), P(8, -66), P(8, -46), P(-8, -46)], METAL_HI, OUTLINE, 0.8)
     tabard = [P(-15, -48), P(17, -48), P(20, 42), P(2, 64), P(-17, 42)]
-    _poly(draw, tabard, BLACK, OUTLINE, 1.0)
-    _line(draw, [P(0, -42), P(0, 52)], RUNE, 0.8)
-    _line(draw, [P(-8, 8), P(0, 28), P(9, 8)], SHADOW_RED, 0.8)
+    _poly(d, tabard, BLACK, OUTLINE, 1.0)
+    _line(d, [P(0, -42), P(0, 52)], RUNE, 0.8)
+    _line(d, [P(-8, 8), P(0, 28), P(9, 8)], SHADOW_RED, 0.8)
 
 
-def _draw_limbs(
-    draw: ImageDraw.ImageDraw, J: "_dark_lord_rig.DarkLordJoints", pose: Pose
-) -> Tuple[Point, Point]:
-    # legs behind tabard (anchors come from the explicit skeleton)
-    far_hip = J.far_hip
-    near_hip = J.near_hip
-    far_knee = J.far_knee
-    near_knee = J.near_knee
-    far_foot = J.far_foot
-    near_foot = J.near_foot
-    _line(draw, [far_hip, far_knee, far_foot], METAL_DARK, 10.5)
-    _line(draw, [far_hip, far_knee, far_foot], OUTLINE, 1.3)
-    _draw_boot(draw, far_foot, -1, 0.92)
-    _line(draw, [near_hip, near_knee, near_foot], METAL_MID, 12.5)
-    _line(draw, [near_hip, near_knee, near_foot], OUTLINE, 1.5)
-    _draw_boot(draw, near_foot, 1, 1.05)
+def _paint_gorget(d, o) -> None:
+    P = _body_local(o)
+    _poly(d, [P(-9, -128), P(11, -128), P(9, -112), P(-8, -112)], METAL_DARK, OUTLINE, 0.8)
 
-    # arms
-    far_shoulder = J.far_shoulder
-    far_elbow = J.far_elbow
-    far_hand = J.far_hand
-    _line(draw, [far_shoulder, far_elbow, far_hand], METAL_DARK, 10.0)
-    _line(draw, [far_shoulder, far_elbow, far_hand], OUTLINE, 1.4)
-    _poly(draw, _rect(far_elbow, 16, 20, pose.tilt * 0.2), METAL, OUTLINE, 0.8)
 
-    near_shoulder = J.near_shoulder
-    near_elbow = J.near_elbow
-    near_hand = J.near_hand
-    _line(draw, [near_shoulder, near_elbow, near_hand], METAL_MID, 11.0)
-    _line(draw, [near_shoulder, near_elbow, near_hand], OUTLINE, 1.4)
-    _poly(draw, _rect(near_elbow, 18, 22, pose.tilt * 0.2), METAL_HI, OUTLINE, 0.8)
+def _paint_helmet(d, o, glow: float) -> None:
+    P = _body_local(o)
+    # back horns
+    _poly(d, [P(-22, -156), P(-38, -206), P(-18, -170)], METAL_DARK, OUTLINE, 1.0)
+    _poly(d, [P(22, -156), P(42, -208), P(22, -168)], METAL_DARK, OUTLINE, 1.0)
+    _poly(d, [P(-10, -164), P(-8, -225), P(6, -166)], BLACK, OUTLINE, 1.0)
+    _poly(d, [P(9, -164), P(18, -224), P(22, -166)], BLACK, OUTLINE, 1.0)
+    helm = [P(-28, -154), P(-14, -174), P(12, -176), P(30, -158), P(28, -132), P(16, -115), P(-8, -113), P(-27, -128)]
+    _poly(d, helm, METAL, OUTLINE, 1.4)
+    _poly(d, [P(-22, -150), P(-2, -164), P(18, -156), P(24, -139), P(4, -144), P(-20, -136)], METAL_HI, OUTLINE, 0.8)
+    _poly(d, [P(-18, -138), P(21, -141), P(18, -127), P(-16, -125)], VOID, OUTLINE, 0.7)
+    # red visor
+    _line(d, [P(-15, -135), P(-3, -132), P(11, -134), P(20, -138)], RUNE_HI, 1.5 + glow)
+    _line(d, [P(-14, -134), P(18, -137)], RUNE, 2.0)
+    faceplate = [P(-16, -124), P(16, -126), P(11, -106), P(-12, -105)]
+    _poly(d, faceplate, METAL_MID, OUTLINE, 0.9)
+    for x in [-8, -3, 2, 7]:
+        _line(d, [P(x, -121), P(x - 1, -110)], METAL_DARK, 0.7)
+    _poly(d, [P(-20, -150), P(-34, -159), P(-26, -136)], METAL_DARK, OUTLINE, 0.8)
+    _poly(d, [P(20, -151), P(36, -162), P(27, -136)], METAL_DARK, OUTLINE, 0.8)
 
-    for hand, front in [(far_hand, False), (near_hand, True)]:
-        _circle(draw, hand, 5.2 if front else 4.6, VOID, OUTLINE, 0.7)
-        for dx in [-4, 0, 4]:
-            _poly(
-                draw,
-                [
-                    (hand[0] + dx, hand[1]),
-                    (hand[0] + dx + 4, hand[1] + 9),
-                    (hand[0] + dx - 2, hand[1] + 6),
-                ],
-                METAL_HI if front else METAL,
-                OUTLINE,
-                0.35,
-            )
 
-    return far_hand, near_hand
+def _draw_limbs(image: Image.Image, J: "_dark_lord_rig.DarkLordJoints", pose: Pose) -> Tuple[Point, Point]:
+    """Legs and arms at the skeleton's anchors: bones of the old polylines,
+    boots, elbow plates and hands as pieces."""
+    _place_limb(image, [J.far_hip, J.far_knee, J.far_foot], 10.5, METAL_DARK, 1.3, "far_leg")
+    _place(image, _boot_piece(-1, 0.92), J.far_foot, 0.0, "far_boot")
+    _place_limb(image, [J.near_hip, J.near_knee, J.near_foot], 12.5, METAL_MID, 1.5, "near_leg")
+    _place(image, _boot_piece(1, 1.05), J.near_foot, 0.0, "near_boot")
+
+    _place_limb(image, [J.far_shoulder, J.far_elbow, J.far_hand], 10.0, METAL_DARK, 1.4, "far_arm")
+    _place(image, _elbow_piece(16, 20, METAL), J.far_elbow, pose.tilt * 0.2, "far_elbow")
+    _place_limb(image, [J.near_shoulder, J.near_elbow, J.near_hand], 11.0, METAL_MID, 1.4, "near_arm")
+    _place(image, _elbow_piece(18, 22, METAL_HI), J.near_elbow, pose.tilt * 0.2, "near_elbow")
+
+    for hand, front in [(J.far_hand, False), (J.near_hand, True)]:
+        _place(image, _hand_piece(front), hand, 0.0, "near_hand" if front else "far_hand")
+    return J.far_hand, J.near_hand
 
 
 def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
-    img = Image.new(
-        "RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0)
-    )
+    """The Dark Lord as a rig: halberd, cape (per sway step), armour, helmet
+    (per visor glow) and limb bones are pieces painted once and turned into
+    place at the skeleton's anchors; the magic effects stay shapes."""
+    img = Image.new("RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0))
     draw = blending_draw(img)
     pose = Pose(anim, frame_idx, nframes)
 
@@ -694,31 +698,25 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     weapon_front = anim in {"slash", "guard"}
     if not weapon_front:
         back_hand = P(37 + pose.near_arm * 0.13, -34 + pose.weapon_lift)
-        _draw_halberd(draw, back_hand, pose.weapon + tilt, front=False)
+        _place(img, _halberd_piece(False), back_hand, pose.weapon + tilt, "halberd")
 
     # offensive FX behind body
     if anim == "slash" and pose.slash > 0.12:
         cx, cy = P(45, -68)
         box = (_s(cx - 110), _s(cy - 100), _s(cx + 130), _s(cy + 90))
-        draw.arc(
-            box, 202, 342, fill=(255, 46, 38, 145), width=_s(6.5 + pose.slash * 2.0)
-        )
+        draw.arc(box, 202, 342, fill=(255, 46, 38, 145), width=_s(6.5 + pose.slash * 2.0))
         draw.arc(box, 214, 330, fill=(255, 184, 140, 110), width=_s(2.5))
 
-    _draw_torso(draw, P, pose)
-    far_hand, near_hand = _draw_limbs(draw, J, pose)
-    _poly(
-        draw,
-        [P(-9, -128), P(11, -128), P(9, -112), P(-8, -112)],
-        METAL_DARK,
-        OUTLINE,
-        0.8,
-    )
-    _draw_helmet(draw, P, pose)
+    sway = SR.q(pose.cape_sway, 3.0)
+    _place(img, _piece(("dark_lord_cape", sway), (122.0, 122.0, 108.0, 92.0), lambda d, o: _paint_cape(d, o, sway)), root, tilt, "cape")
+    _place(img, _piece(("dark_lord_armor",), (76.0, 186.0, 90.0, 68.0), _paint_armor), root, tilt, "armor")
+    far_hand, near_hand = _draw_limbs(img, J, pose)
+    _place(img, _piece(("dark_lord_gorget",), (12.0, 131.0, 14.0, -109.0), _paint_gorget), root, tilt, "gorget")
+    glow = SR.q(max(0.0, pose.eye), 0.25)
+    _place(img, _piece(("dark_lord_helmet", glow), (42.0, 228.0, 46.0, -102.0), lambda d, o: _paint_helmet(d, o, glow)), root, tilt, "helmet")
 
     if weapon_front:
-        hand = J.near_hand
-        _draw_halberd(draw, hand, pose.weapon + tilt, front=True)
+        _place(img, _halberd_piece(True), J.near_hand, pose.weapon + tilt, "halberd")
 
     # magic / guard / summon effects in front
     if anim == "cast" and pose.cast > 0.12:

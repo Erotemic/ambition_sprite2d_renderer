@@ -33,6 +33,7 @@ from ...authoring.portrait import (
 )
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ...core.draw import blending_draw
+from . import _solo_shape_rig as SR
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -916,25 +917,116 @@ def _draw_effects_front(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
             _line(draw, [center, end], _fade(color, pose.celebrate), 1.5)
 
 
-def _render_native_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
-    pose = _pose(animation, frame_idx, nframes)
-    image = Image.new("RGBA", (FRAME_W * SUPER, FRAME_H * SUPER), (0, 0, 0, 0))
-    draw = blending_draw(image)
+# --- The rig ---------------------------------------------------------------
+#
+# Every painter above draws through ``_transform`` (the lean's shear, the
+# crouch's squeeze, the root and bob, the roll). Drawn as a rig, the shirt,
+# the blanket and each head expression are pieces painted once at rest (with
+# the lean and crouch, to a step: the blanket is also keyed by its sway,
+# flare, opening and wrap) and placed where ``_transform`` puts their anchor,
+# turned by the roll; limb segments are pieces of a few lengths turned along
+# their bones; hands and shoes are pieces.
 
-    _draw_effects_behind(draw, pose)
-    _draw_leg(draw, pose, pose.far_hip, pose.far_knee, pose.far_ankle, far=True)
-    _draw_leg(draw, pose, pose.near_hip, pose.near_knee, pose.near_ankle, far=False)
+CANVAS = (FRAME_W * SUPER, FRAME_H * SUPER)
+REST = (20.0, 64.0)
 
-    # Shirt wedge under the collar appears only when the blanket opens.
+
+def _sp(point: Point) -> Point:
+    return (point[0] * SUPER, point[1] * SUPER)
+
+
+def _rest_pose(pose: Pose, **extra) -> Pose:
+    """The pose at rest (no root, bob or roll), its lean and crouch to a step."""
+    return Pose(lean=SR.q(pose.lean, 1.0), crouch=SR.q(pose.crouch, 0.1), **extra)
+
+
+def _place_rest(canvas: Image.Image, key: tuple, paint, rest: Pose, rest_anchor: Point, pose: Pose, anchor: Point, name: str, degrees: float = 0.0) -> None:
+    """The piece ``paint`` paints at ``rest``, its ``rest_anchor`` landing
+    where the frame puts ``anchor``, turned by the roll (and ``degrees``)."""
+    part = SR.rest_piece(("joseph",) + key, CANVAS, _sp(_transform(rest_anchor, rest)), paint)
+    SR.place(canvas, part, _sp(_transform(anchor, pose)), pose.rotation + degrees, name)
+
+
+def _segment(canvas: Image.Image, a: Point, b: Point, ra: float, rb: float, fill: RGBA, width: float, name: str) -> None:
+    """A tapered limb segment ``a``->``b`` (``_segment_quad``) as a piece of a
+    whole-pixel length turned along the bone."""
+    length = max(1.0, SR.q(math.dist(a, b), 1.0))
+    x0, y0 = REST
+    part = SR.rest_piece(
+        ("joseph_seg", length, ra, rb, fill, width), CANVAS, _sp(REST),
+        lambda d: _polygon(d, _segment_quad((x0, y0), (x0 + length, y0), ra, rb), fill, OUTLINE, width),
+    )
+    SR.place(canvas, part, _sp(a), math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])), name)
+
+
+def _rig_leg(canvas: Image.Image, pose: Pose, hip: Point, knee: Point, ankle: Point, *, far: bool) -> None:
+    T = lambda q: _transform(q, pose)
+    hip_t, knee_t, ankle_t = T(hip), T(knee), T(ankle)
+    side = "far" if far else "near"
+    trouser = TROUSER if not far else BLANKET_DEEP
+    trouser_light = TROUSER_LIGHT if not far else TROUSER
+    _segment(canvas, hip_t, knee_t, 4.0, 3.6, trouser, 0.9, f"{side}_thigh")
+    _segment(canvas, knee_t, ankle_t, 3.6, 3.0, trouser_light, 0.9, f"{side}_shin")
+    direction = 1.0 if ankle_t[0] >= knee_t[0] else -1.0
+    shoe_center = (ankle_t[0] + direction * 2.1, ankle_t[1] + 1.0)
+    fill = SHOE if not far else SHOE_LIGHT
+    part = SR.rest_piece(("joseph_shoe", far), CANVAS, _sp(REST), lambda d: _ellipse(d, REST, 5.2, 2.6, fill, OUTLINE, 0.9))
+    SR.place(canvas, part, _sp(shoe_center), 0.0, f"{side}_shoe")
+
+
+def _rig_arm(canvas: Image.Image, pose: Pose, shoulder: Point, elbow: Point, hand: Point, *, far: bool) -> None:
+    T = lambda q: _transform(q, pose)
+    shoulder_t, elbow_t, hand_t = T(shoulder), T(elbow), T(hand)
+    side = "far" if far else "near"
+    sleeve = BLANKET_DARK if far else BLANKET_LIGHT
+    _segment(canvas, shoulder_t, elbow_t, 5.0, 4.2, sleeve, 0.9, f"{side}_upper_arm")
+    _segment(canvas, elbow_t, hand_t, 4.2, 3.1, sleeve, 0.9, f"{side}_forearm")
+
+    def paint(d) -> None:
+        _ellipse(d, REST, 3.4, 3.6, SKIN_SHADE if far else SKIN, OUTLINE, 0.8)
+        # A simple thumb keeps the hand readable at gameplay scale.
+        _line(d, [REST, (REST[0] + (2.5 if not far else -2.5), REST[1] + 1.1)], OUTLINE_SOFT, 0.8)
+
+    SR.place(canvas, SR.rest_piece(("joseph_hand", far), CANVAS, _sp(REST), paint), _sp(hand_t), 0.0, f"{side}_hand")
+
+
+def _paint_shirt(draw, pose: Pose) -> None:
+    """The shirt wedge under the collar (it shows when the blanket opens)."""
     T = lambda q: _transform(q, pose)
     _polygon(draw, [T((57.0, 48.0)), T((71.0, 48.0)), T((68.0, 70.0)), T((60.0, 70.0))], SHIRT, OUTLINE, 0.8)
     _line(draw, [T((64.0, 49.0)), T((64.0, 68.0))], SHIRT_SHADE, 0.8)
 
-    _draw_arm(draw, pose, pose.far_shoulder, pose.far_elbow, pose.far_hand, far=True)
-    _draw_blanket(draw, pose)
-    _draw_arm(draw, pose, pose.near_shoulder, pose.near_elbow, pose.near_hand, far=False)
+
+def _render_native_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
+    pose = _pose(animation, frame_idx, nframes)
+    image = Image.new("RGBA", CANVAS, (0, 0, 0, 0))
+    draw = blending_draw(image)
+
+    _draw_effects_behind(draw, pose)
+    _rig_leg(image, pose, pose.far_hip, pose.far_knee, pose.far_ankle, far=True)
+    _rig_leg(image, pose, pose.near_hip, pose.near_knee, pose.near_ankle, far=False)
+
+    rest = _rest_pose(pose)
+    _place_rest(image, ("shirt", rest.lean, rest.crouch), lambda d: _paint_shirt(d, rest), rest, (64.0, 60.0), pose, (64.0, 60.0), "shirt")
+    _rig_arm(image, pose, pose.far_shoulder, pose.far_elbow, pose.far_hand, far=True)
+    cloth = dict(
+        blanket_sway=SR.q(pose.blanket_sway, 1.0),
+        blanket_flare=SR.q(pose.blanket_flare, 0.1),
+        blanket_open=SR.q(pose.blanket_open, 0.1),
+        blanket_wrap=SR.q(pose.blanket_wrap, 0.1),
+    )
+    blanket_rest = _rest_pose(pose, **cloth)
+    key = ("blanket", blanket_rest.lean, blanket_rest.crouch) + tuple(cloth.values())
+    _place_rest(image, key, lambda d: _draw_blanket(d, blanket_rest), blanket_rest, (64.0, 75.0), pose, (64.0, 75.0), "blanket")
+    _rig_arm(image, pose, pose.near_shoulder, pose.near_elbow, pose.near_hand, far=False)
     _draw_effects_front(draw, pose)
-    _draw_head(draw, pose)
+    face = dict(blink=pose.blink, mouth_open=SR.q(pose.mouth_open, 0.1), brow=SR.q(pose.brow, 0.2))
+    head_rest = _rest_pose(pose, **face)
+    key = ("head", head_rest.lean, head_rest.crouch) + tuple(face.values())
+    _place_rest(
+        image, key, lambda d: _draw_head(d, head_rest), head_rest, (64.0, 29.0),
+        pose, (64.0 + pose.head_x, 29.0 + pose.head_y), "head", pose.head_tilt,
+    )
     return image
 
 

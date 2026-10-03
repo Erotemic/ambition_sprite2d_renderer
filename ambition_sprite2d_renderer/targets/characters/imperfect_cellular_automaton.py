@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Mapping, Tuple
 
 from PIL import Image, ImageColor, ImageDraw
 
@@ -27,6 +27,7 @@ from ...authoring import rigdoc
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.rig import clamp, lerp, smoothstep, vec
 from ...authoring.skeleton import (
+    BoneWorld,
     Channel,
     Clip,
     PartCtx,
@@ -39,6 +40,7 @@ from ...authoring.skeleton import (
 )
 from ambition_sprite2d_renderer.core.draw import blending_draw
 from ...authoring.sheet_build import build_sheet, write_canonical
+from . import _solo_shape_rig as SR
 
 Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
@@ -226,6 +228,25 @@ def _draw_segment_shape(ctx: PartCtx, a: Point, b: Point, r0: float, r1: float, 
 
 
 # ---- Part painters -------------------------------------------------------------
+#
+# Each rig part places PIECES (``_solo_shape_rig``): a rigid group is painted
+# once in its bone's own frame (a stand-in bone at rest on a small canvas) and
+# turned into place by the posed bone, so a part flipbook stores it once. A
+# cell (an axis-aligned square) rides its point unturned, as it was drawn.
+
+
+def _rest_ctx(d, origin: Point, length: float, params: Mapping) -> PartCtx:
+    """A paint context whose bone lies at rest at ``origin`` (design units) on
+    the piece canvas ``d`` paints."""
+    return PartCtx(d._img, d, BoneWorld(origin, 0.0, length), {}, SS, params)
+
+
+def _piece(key, extent, paint):
+    return SR.local_piece(key, extent, paint, SS)
+
+
+def _on_bone(ctx: PartCtx, part, bone: BoneWorld, name: str) -> None:
+    SR.place(ctx.img, part, ctx.cw(bone.origin), bone.angle, name)
 
 
 def _draw_cell(ctx: PartCtx, local: Point, half: float, fill: Color, *, outline: Color | None = None) -> None:
@@ -237,6 +258,13 @@ def _draw_cell(ctx: PartCtx, local: Point, half: float, fill: Color, *, outline:
         outline=outline,
         width=max(1, int(ctx.L(0.55))) if outline is not None else 1,
     )
+
+
+def _place_cell(ctx: PartCtx, at_canvas: Point, half: float, fill: Color, outline: Color | None, name: str) -> None:
+    """A state cell as a piece, its centre at canvas pixel ``at_canvas``."""
+    r = half + 1.5
+    part = _piece(("ica_cell", half, fill, outline), (r, r, r, r), lambda d, o: _draw_cell(_rest_ctx(d, o, 0.0, {}), (0.0, 0.0), half, fill, outline=outline))
+    SR.place(ctx.img, part, at_canvas, 0.0, name)
 
 
 def _draw_node(ctx: PartCtx, center: Point, radius: float, fill: Color) -> None:
@@ -274,41 +302,49 @@ def _draw_tapered_prong(
     )
 
 
+TAIL_CHAIN = (
+    ("tail_a", 9.0, 7.4, "emerald_dark", "acid"),
+    ("tail_b", 7.7, 6.0, "emerald", "acid"),
+    ("tail_c", 6.2, 3.8, "violet", "magenta"),
+)
+
+
 def _tail_chain_painter(ctx: PartCtx) -> None:
-    wa = ctx.world["tail_a"]
-    wb = ctx.world["tail_b"]
-    wc = ctx.world["tail_c"]
-    chain = [
-        (wa.origin, wa.tip, 9.0, 7.4, PAL["emerald_dark"]),
-        (wb.origin, wb.tip, 7.7, 6.0, PAL["emerald"]),
-        (wc.origin, wc.tip, 6.2, 3.8, PAL["violet"]),
-    ]
-    for idx, (a, b, r0, r1, fill) in enumerate(chain):
-        _draw_segment_shape(ctx, a, b, r0, r1, fill, radius=2.8)
-        # Mechanical cell seams make the tail read as a linked computation,
-        # rather than as an organic tentacle.
-        for u in (0.28, 0.60):
-            p = (lerp(a[0], b[0], u), lerp(a[1], b[1], u))
-            _draw_node(ctx, p, 3.1 - idx * 0.35, PAL["acid"] if idx < 2 else PAL["magenta"])
+    for idx, (bone, r0, r1, fill, node) in enumerate(TAIL_CHAIN):
+        bw = ctx.world[bone]
+
+        def paint(d, o, idx=idx, length=bw.length, r0=r0, r1=r1, fill=fill, node=node) -> None:
+            c = _rest_ctx(d, o, length, {})
+            a, b = o, (o[0] + length, o[1])
+            _draw_segment_shape(c, a, b, r0, r1, PAL[fill], radius=2.8)
+            # Mechanical cell seams make the tail read as a linked computation,
+            # rather than as an organic tentacle.
+            for u in (0.28, 0.60):
+                _draw_node(c, (lerp(a[0], b[0], u), o[1]), 3.1 - idx * 0.35, PAL[node])
+
+        r = r0 + 3.0
+        _on_bone(ctx, _piece(("ica_tail", bone, bw.length), (r, r, bw.length + r, r), paint), bw, bone)
 
     # Broken output fork: the last state has no single successor.
-    tip = wc.tip
-    _draw_tapered_prong(ctx, tip, wc.angle - 24.0, 11.0, 3.2, PAL["violet_hi"])
-    _draw_tapered_prong(ctx, tip, wc.angle + 13.0, 13.0, 3.0, PAL["acid"])
-    _draw_tapered_prong(ctx, tip, wc.angle + 42.0, 8.0, 2.4, PAL["magenta"])
+    wc = ctx.world["tail_c"]
 
+    def fork(d, o) -> None:
+        c = _rest_ctx(d, o, 0.0, {})
+        _draw_tapered_prong(c, o, -24.0, 11.0, 3.2, PAL["violet_hi"])
+        _draw_tapered_prong(c, o, 13.0, 13.0, 3.0, PAL["acid"])
+        _draw_tapered_prong(c, o, 42.0, 8.0, 2.4, PAL["magenta"])
+
+    SR.place(ctx.img, _piece(("ica_tail_fork",), (5.0, 9.0, 16.0, 16.0), fork), ctx.cw(wc.tip), wc.angle, "tail_fork")
+
+    tip = wc.tip
     frame = int(ctx.params.get("frame_idx", 0))
     for idx, (ox, oy, fill) in enumerate(((8, -14, PAL["acid"]), (20, 8, PAL["magenta"]))):
         wobble = 2.2 * math.sin((frame + idx) * 1.7)
-        _draw_cell(ctx, (tip[0] - wc.origin[0] + ox, tip[1] - wc.origin[1] + oy + wobble), 2.0, fill)
+        _place_cell(ctx, ctx.pt((tip[0] - wc.origin[0] + ox, tip[1] - wc.origin[1] + oy + wobble)), 2.0, fill, None, f"tail_cell{idx}")
 
 
-def _body_painter(ctx: PartCtx) -> None:
-    p = ctx.params
-    hover = clamp(float(p.get("hover", 0.0)), 0.0, 1.0)
-    shell_open = clamp(float(p.get("shell_open", hover)), 0.0, 1.0)
-    glitch = clamp(float(p.get("glitch_pulse", 0.0)), 0.0, 1.0)
-
+def _paint_body_shell(ctx: PartCtx, shell_open: float) -> None:
+    """Back plates, vanes, torso shell and chest (torso frame)."""
     # Back plates. The ordered half is compact; the mutating half fans outward.
     ordered_back = [(-35, -31), (-52, -13), (-49, 18), (-31, 46), (-18, 39), (-15, -20)]
     fault_back = [(27, -28), (49 + 8 * shell_open, -5), (47 + 12 * shell_open, 24), (30, 50), (13, 40), (13, -22)]
@@ -340,8 +376,8 @@ def _body_painter(ctx: PartCtx) -> None:
     chest = [(-19, -21), (9, -24), (21, -13), (20, 19), (12, 44), (-2, 55), (-16, 42), (-24, 16), (-25, -9)]
     _local_poly(ctx, chest, PAL["ceramic"], ow=1.0, radius=6.0)
 
-    life_cells = p.get("life_cells", [[0] * 5 for _ in range(5)])
-    fault_cell = tuple(p.get("fault_cell", (-1, -1)))
+
+def _paint_life_grid(ctx: PartCtx, life_cells, fault_cell, glitch: float) -> None:
     grid_x, grid_y = -16.0, -12.0
     step = 7.3
     for gy in range(5):
@@ -359,6 +395,8 @@ def _body_painter(ctx: PartCtx) -> None:
                 half = 1.75
             _draw_cell(ctx, local, half, fill)
 
+
+def _paint_body_waist(ctx: PartCtx) -> None:
     # A black register strip records cells that escaped the main grid.
     register = [(6, 19), (18, 18), (20, 47), (8, 49)]
     _local_poly(ctx, register, PAL["void"], ow=0.75, radius=1.8)
@@ -370,6 +408,30 @@ def _body_painter(ctx: PartCtx) -> None:
     fault_waist = [(0, 48), (25, 40), (34, 54), (20, 72), (2, 61)]
     _local_poly(ctx, fault_waist, PAL["violet_dark"], ow=1.0, radius=3.0)
     _draw_cell(ctx, (24, 54), 4.2, PAL["magenta"], outline=PAL["outline"])
+
+
+BODY_EXTENT = (84.0, 48.0, 86.0, 80.0)
+
+
+def _body_painter(ctx: PartCtx) -> None:
+    p = ctx.params
+    bw = ctx.bw
+    hover = clamp(float(p.get("hover", 0.0)), 0.0, 1.0)
+    shell_open = round(clamp(float(p.get("shell_open", hover)), 0.0, 1.0), 2)
+    glitch = clamp(float(p.get("glitch_pulse", 0.0)), 0.0, 1.0)
+
+    shell = _piece(("ica_body_shell", shell_open), BODY_EXTENT, lambda d, o: _paint_body_shell(_rest_ctx(d, o, bw.length, p), shell_open))
+    _on_bone(ctx, shell, bw, "body_shell")
+
+    # The live grid changes every frame (it IS the automaton): one small piece.
+    life_cells = p.get("life_cells", [[0] * 5 for _ in range(5)])
+    fault_cell = tuple(p.get("fault_cell", (-1, -1)))
+    cells = tuple(tuple(int(bool(v)) for v in row) for row in life_cells)
+    grid = _piece(("ica_life_grid", cells, fault_cell, glitch), BODY_EXTENT, lambda d, o: _paint_life_grid(_rest_ctx(d, o, bw.length, p), cells, fault_cell, glitch))
+    _on_bone(ctx, grid, bw, "life_grid")
+
+    waist = _piece(("ica_body_waist",), BODY_EXTENT, lambda d, o: _paint_body_waist(_rest_ctx(d, o, bw.length, p)))
+    _on_bone(ctx, waist, bw, "body_waist")
 
     # Detached state cells. They move with the body but refuse to join it.
     frame = int(p.get("frame_idx", 0))
@@ -383,15 +445,10 @@ def _body_painter(ctx: PartCtx) -> None:
     if animation == "slash":
         particles.append((64 + 10 * glitch, -2, PAL["cyan"]))
     for idx, (x, y, fill) in enumerate(particles):
-        _draw_cell(ctx, (x * orbit, y), 2.6 - idx * 0.25, fill, outline=PAL["outline"])
+        _place_cell(ctx, ctx.pt((x * orbit, y)), 2.6 - idx * 0.25, fill, PAL["outline"], f"particle{idx}")
 
 
-def _head_painter(ctx: PartCtx) -> None:
-    p = ctx.params
-    blink = float(p.get("blink", 0.0)) > 0.5
-    squint = clamp(float(p.get("eye_squint", 0.0)), 0.0, 1.0)
-    glitch = clamp(float(p.get("glitch_pulse", 0.0)), 0.0, 1.0)
-
+def _paint_head(ctx: PartCtx, blink: bool, squint: float, glitch: float) -> None:
     # Back antenna: regular and measured.
     mast_a = ctx.pt((-14, -18))
     mast_b = ctx.pt((-25, -53))
@@ -445,152 +502,143 @@ def _head_painter(ctx: PartCtx) -> None:
         composite_polygon(ctx.img, echo, (*PAL["cyan"][:3], 105))
 
 
-def _far_arm_painter(ctx: PartCtx) -> None:
-    """Paint the character-left arm as a complete foreground assembly.
+def _head_painter(ctx: PartCtx) -> None:
+    """The head, one piece per expression (blink, squint step, glitch)."""
+    p = ctx.params
+    blink = float(p.get("blink", 0.0)) > 0.5
+    squint = SR.q(clamp(float(p.get("eye_squint", 0.0)), 0.0, 1.0), 0.1)
+    glitch = clamp(float(p.get("glitch_pulse", 0.0)), 0.0, 1.0)
+    bw = ctx.bw
+    head = _piece(("ica_head", blink, squint, glitch), (36.0, 62.0, 46.0, 42.0), lambda d, o: _paint_head(_rest_ctx(d, o, bw.length, p), blink, squint, glitch))
+    _on_bone(ctx, head, bw, "head")
 
-    This is the anatomically left / emerald arm. It used to be split across
-    the body and arm painters, so the torso could erase almost all of it. The
-    shoulder socket, upper arm, forearm, palm, and fingertips now share one
-    foreground layer and one coherent local silhouette.
-    """
+
+def _shoulder_piece(key, poly_offsets, fill, radius: float, node_r: float, node_fill):
+    def paint(d, o) -> None:
+        c = _rest_ctx(d, o, 0.0, {})
+        poly = [(o[0] + x, o[1] + y) for x, y in poly_offsets]
+        draw_polygon(c.draw, rounded_polygon([c.cw(q) for q in poly], radius=c.L(radius), steps=6), fill, PAL["outline"], c.L(0.95))
+        _draw_node(c, o, node_r, node_fill)
+
+    return _piece(key, (16.0, 14.0, 16.0, 14.0), paint)
+
+
+def _far_arm_painter(ctx: PartCtx) -> None:
+    """The character-left arm as one foreground assembly: shoulder plate
+    (unturned, as drawn), upper arm, and forearm with elbow, cells, palm and
+    fingers riding it."""
     upper, lower = ctx.world["far_arm_u"], ctx.world["far_arm_l"]
 
     # Broad asymmetric shoulder plate. It deliberately projects left of the
     # torso, preserving a readable arm root even in foreshortened poses.
-    shoulder = upper.origin
-    shoulder_poly = [
-        (shoulder[0] - 14.0, shoulder[1] - 9.0),
-        (shoulder[0] + 5.0, shoulder[1] - 8.0),
-        (shoulder[0] + 10.0, shoulder[1] + 1.0),
-        (shoulder[0] + 4.0, shoulder[1] + 10.0),
-        (shoulder[0] - 13.0, shoulder[1] + 8.0),
-    ]
-    draw_polygon(
-        ctx.draw,
-        rounded_polygon([ctx.cw(p) for p in shoulder_poly], radius=ctx.L(3.2), steps=6),
-        PAL["emerald_hi"],
-        PAL["outline"],
-        ctx.L(0.95),
-    )
-    _draw_node(ctx, shoulder, 4.1, PAL["acid"])
+    plate = ((-14.0, -9.0), (5.0, -8.0), (10.0, 1.0), (4.0, 10.0), (-13.0, 8.0))
+    SR.place(ctx.img, _shoulder_piece(("ica_far_shoulder",), plate, PAL["emerald_hi"], 3.2, 4.1, PAL["acid"]), ctx.cw(upper.origin), 0.0, "far_shoulder")
 
-    _draw_segment_shape(ctx, upper.origin, upper.tip, 9.0, 7.0, PAL["emerald_dark"], radius=2.7)
-    _draw_segment_shape(ctx, lower.origin, lower.tip, 7.5, 5.4, PAL["emerald"], radius=2.2)
-    _draw_node(ctx, lower.origin, 5.1, PAL["acid"])
+    def upper_paint(d, o) -> None:
+        c = _rest_ctx(d, o, upper.length, {})
+        _draw_segment_shape(c, o, (o[0] + upper.length, o[1]), 9.0, 7.0, PAL["emerald_dark"], radius=2.7)
 
-    # A bright edge and two state cells keep the arm from collapsing into the
-    # dark torso palette at final sprite scale.
-    for frac, radius, fill in (
-        (0.34, 2.5, PAL["emerald_hi"]),
-        (0.70, 2.35, PAL["acid"]),
-    ):
-        p = (
-            lerp(lower.origin[0], lower.tip[0], frac),
-            lerp(lower.origin[1], lower.tip[1], frac),
-        )
-        _draw_node(ctx, p, radius, fill)
+    _on_bone(ctx, _piece(("ica_far_upper", upper.length), (11.0, 11.0, upper.length + 11.0, 11.0), upper_paint), upper, "far_upper_arm")
 
-    palm = lower.tip
-    ca, sa = math.cos(math.radians(lower.angle)), math.sin(math.radians(lower.angle))
-    nx, ny = -sa, ca
-    hand_poly = [
-        (palm[0] - ca * 4.0 - nx * 6.0, palm[1] - sa * 4.0 - ny * 6.0),
-        (palm[0] + ca * 8.0 - nx * 5.0, palm[1] + sa * 8.0 - ny * 5.0),
-        (palm[0] + ca * 9.0 + nx * 5.0, palm[1] + sa * 9.0 + ny * 5.0),
-        (palm[0] - ca * 4.0 + nx * 6.0, palm[1] - sa * 4.0 + ny * 6.0),
-    ]
-    draw_polygon(
-        ctx.draw,
-        rounded_polygon([ctx.cw(p) for p in hand_poly], radius=ctx.L(2.0), steps=6),
-        PAL["ceramic"],
-        PAL["outline"],
-        ctx.L(0.85),
-    )
-    _draw_node(ctx, (palm[0] + ca * 3.0, palm[1] + sa * 3.0), 2.2, PAL["acid"])
+    def lower_paint(d, o) -> None:
+        c = _rest_ctx(d, o, lower.length, {})
+        palm = (o[0] + lower.length, o[1])
+        _draw_segment_shape(c, o, palm, 7.5, 5.4, PAL["emerald"], radius=2.2)
+        _draw_node(c, o, 5.1, PAL["acid"])
+        # A bright edge and two state cells keep the arm from collapsing into the
+        # dark torso palette at final sprite scale.
+        for frac, radius, fill in ((0.34, 2.5, PAL["emerald_hi"]), (0.70, 2.35, PAL["acid"])):
+            _draw_node(c, (o[0] + lower.length * frac, o[1]), radius, fill)
+        hand_poly = [(palm[0] - 4.0, palm[1] - 6.0), (palm[0] + 8.0, palm[1] - 5.0), (palm[0] + 9.0, palm[1] + 5.0), (palm[0] - 4.0, palm[1] + 6.0)]
+        draw_polygon(c.draw, rounded_polygon([c.cw(q) for q in hand_poly], radius=c.L(2.0), steps=6), PAL["ceramic"], PAL["outline"], c.L(0.85))
+        _draw_node(c, (palm[0] + 3.0, palm[1]), 2.2, PAL["acid"])
+        # Two compact fingers are more legible than the previous detached square.
+        for offset, delta, fill in ((-2.6, -8.0, PAL["acid_white"]), (2.6, 7.0, PAL["emerald_hi"])):
+            _draw_tapered_prong(c, (palm[0] + 7.0, palm[1] + offset), delta, 8.0, 2.0, fill)
 
-    # Two compact fingers are more legible than the previous detached square.
-    for offset, delta, fill in ((-2.6, -8.0, PAL["acid_white"]), (2.6, 7.0, PAL["emerald_hi"])):
-        origin = (palm[0] + ca * 7.0 + nx * offset, palm[1] + sa * 7.0 + ny * offset)
-        _draw_tapered_prong(ctx, origin, lower.angle + delta, 8.0, 2.0, fill)
+    _on_bone(ctx, _piece(("ica_far_lower", lower.length), (9.0, 10.0, lower.length + 18.0, 10.0), lower_paint), lower, "far_forearm")
 
 
 def _near_arm_painter(ctx: PartCtx) -> None:
     u, low = ctx.world["near_arm_u"], ctx.world["near_arm_l"]
 
-    shoulder = u.origin
-    shoulder_poly = [
-        (shoulder[0] - 8.0, shoulder[1] - 10.0),
-        (shoulder[0] + 10.0, shoulder[1] - 8.0),
-        (shoulder[0] + 14.0, shoulder[1] + 4.0),
-        (shoulder[0] + 4.0, shoulder[1] + 12.0),
-        (shoulder[0] - 9.0, shoulder[1] + 7.0),
-    ]
-    draw_polygon(
-        ctx.draw,
-        rounded_polygon([ctx.cw(p) for p in shoulder_poly], radius=ctx.L(3.0), steps=6),
-        PAL["violet_hi"],
-        PAL["outline"],
-        ctx.L(0.95),
-    )
-    _draw_node(ctx, shoulder, 5.0, PAL["magenta"])
+    plate = ((-8.0, -10.0), (10.0, -8.0), (14.0, 4.0), (4.0, 12.0), (-9.0, 7.0))
+    SR.place(ctx.img, _shoulder_piece(("ica_near_shoulder",), plate, PAL["violet_hi"], 3.0, 5.0, PAL["magenta"]), ctx.cw(u.origin), 0.0, "near_shoulder")
 
-    _draw_segment_shape(ctx, u.origin, u.tip, 9.2, 7.0, PAL["violet"], radius=2.6)
-    _draw_segment_shape(ctx, low.origin, low.tip, 8.0, 5.8, PAL["violet_dark"], radius=2.0)
-    _draw_node(ctx, low.origin, 4.8, PAL["acid"])
+    def upper_paint(d, o) -> None:
+        c = _rest_ctx(d, o, u.length, {})
+        _draw_segment_shape(c, o, (o[0] + u.length, o[1]), 9.2, 7.0, PAL["violet"], radius=2.6)
 
-    # Mismatched armor cells crawl down the weapon arm.
-    for ufrac, fill in ((0.25, PAL["violet_hi"]), (0.56, PAL["magenta"]), (0.80, PAL["acid"])):
-        p = (lerp(low.origin[0], low.tip[0], ufrac), lerp(low.origin[1], low.tip[1], ufrac))
-        _draw_node(ctx, p, 2.4, fill)
+    _on_bone(ctx, _piece(("ica_near_upper", u.length), (11.0, 11.0, u.length + 11.0, 11.0), upper_paint), u, "near_upper_arm")
 
-    palm = low.tip
-    ca, sa = math.cos(math.radians(low.angle)), math.sin(math.radians(low.angle))
-    nx, ny = -sa, ca
-    hand_poly = [
-        (palm[0] - ca * 5 - nx * 7, palm[1] - sa * 5 - ny * 7),
-        (palm[0] + ca * 8 - nx * 7, palm[1] + sa * 8 - ny * 7),
-        (palm[0] + ca * 10 + nx * 7, palm[1] + sa * 10 + ny * 7),
-        (palm[0] - ca * 5 + nx * 7, palm[1] - sa * 5 + ny * 7),
-    ]
-    draw_polygon(ctx.draw, rounded_polygon([ctx.cw(q) for q in hand_poly], radius=ctx.L(2.0)), PAL["void"], PAL["outline"], ctx.L(0.9))
+    extension = SR.q(clamp(float(ctx.params.get("claw_extension", 0.0)), 0.0, 1.0), 0.05)
+    claw_open = SR.q(float(ctx.params.get("claw_open", 0.0)), 0.05)
 
-    extension = clamp(float(ctx.params.get("claw_extension", 0.0)), 0.0, 1.0)
-    spread = 11.0 + 8.0 * float(ctx.params.get("claw_open", 0.0))
-    base_len = 10.0 + extension * 18.0
-    for idx, (delta, fill) in enumerate(((-spread, PAL["violet_hi"]), (0.0, PAL["acid"]), (spread, PAL["magenta"]))):
-        start = (palm[0] + ca * 6 + nx * (idx - 1) * 3.2, palm[1] + sa * 6 + ny * (idx - 1) * 3.2)
-        _draw_tapered_prong(ctx, start, low.angle + delta, base_len + idx * 2.0, 3.3, fill)
+    def lower_paint(d, o) -> None:
+        c = _rest_ctx(d, o, low.length, {})
+        palm = (o[0] + low.length, o[1])
+        _draw_segment_shape(c, o, palm, 8.0, 5.8, PAL["violet_dark"], radius=2.0)
+        _draw_node(c, o, 4.8, PAL["acid"])
+        # Mismatched armor cells crawl down the weapon arm.
+        for ufrac, fill in ((0.25, PAL["violet_hi"]), (0.56, PAL["magenta"]), (0.80, PAL["acid"])):
+            _draw_node(c, (o[0] + low.length * ufrac, o[1]), 2.4, fill)
+        hand_poly = [(palm[0] - 5, palm[1] - 7), (palm[0] + 8, palm[1] - 7), (palm[0] + 10, palm[1] + 7), (palm[0] - 5, palm[1] + 7)]
+        draw_polygon(c.draw, rounded_polygon([c.cw(q) for q in hand_poly], radius=c.L(2.0)), PAL["void"], PAL["outline"], c.L(0.9))
+        spread = 11.0 + 8.0 * claw_open
+        base_len = 10.0 + extension * 18.0
+        for idx, (delta, fill) in enumerate(((-spread, PAL["violet_hi"]), (0.0, PAL["acid"]), (spread, PAL["magenta"]))):
+            _draw_tapered_prong(c, (palm[0] + 6, palm[1] + (idx - 1) * 3.2), delta, base_len + idx * 2.0, 3.3, fill)
+
+    reach = 6.0 + 10.0 + 18.0 + 4.0 + 4.0
+    _on_bone(ctx, _piece(("ica_near_lower", low.length, extension, claw_open), (9.0, reach, low.length + reach, reach), lower_paint), low, "near_forearm")
 
 
 def _leg_painter(side: str):
     upper_key = f"{side}_leg_u"
     lower_key = f"{side}_leg_l"
+    near = side == "near"
 
     def fn(ctx: PartCtx) -> None:
         u, low = ctx.world[upper_key], ctx.world[lower_key]
-        near = side == "near"
         upper_fill = PAL["violet"] if near else PAL["emerald_dark"]
         lower_fill = PAL["violet_dark"] if near else PAL["void_hi"]
-        _draw_segment_shape(ctx, u.origin, u.tip, 9.0 if near else 7.8, 7.0 if near else 6.0, upper_fill, radius=2.5)
-        _draw_segment_shape(ctx, low.origin, low.tip, 7.7 if near else 6.8, 5.5, lower_fill, radius=2.2)
-        _draw_node(ctx, low.origin, 6.8 if near else 5.8, PAL["magenta"] if near else PAL["acid"])
-        if near:
-            p = (lerp(low.origin[0], low.tip[0], 0.55), lerp(low.origin[1], low.tip[1], 0.55))
-            _draw_node(ctx, p, 2.7, PAL["violet_hi"])
+
+        def upper_paint(d, o) -> None:
+            c = _rest_ctx(d, o, u.length, {})
+            _draw_segment_shape(c, o, (o[0] + u.length, o[1]), 9.0 if near else 7.8, 7.0 if near else 6.0, upper_fill, radius=2.5)
+
+        def lower_paint(d, o) -> None:
+            c = _rest_ctx(d, o, low.length, {})
+            _draw_segment_shape(c, o, (o[0] + low.length, o[1]), 7.7 if near else 6.8, 5.5, lower_fill, radius=2.2)
+            _draw_node(c, o, 6.8 if near else 5.8, PAL["magenta"] if near else PAL["acid"])
+            if near:
+                _draw_node(c, (o[0] + low.length * 0.55, o[1]), 2.7, PAL["violet_hi"])
+
+        _on_bone(ctx, _piece(("ica_leg_upper", side, u.length), (11.0, 11.0, u.length + 11.0, 11.0), upper_paint), u, f"{side}_thigh")
+        _on_bone(ctx, _piece(("ica_leg_lower", side, low.length), (9.0, 9.0, low.length + 9.0, 9.0), lower_paint), low, f"{side}_shin")
+
     return fn
 
 
 def _foot_painter(side: str):
+    near = side == "near"
+
     def fn(ctx: PartCtx) -> None:
-        near = side == "near"
-        pts = [(-5.5, -4.0), (6.5, -5.0), (19.0, -1.0), (22.0, 5.0), (16.0, 9.0), (-5.0, 8.0)]
-        fill = PAL["violet_dark"] if near else PAL["emerald_dark"]
-        draw_polygon(ctx.draw, rounded_polygon(ctx.pts(pts), radius=ctx.L(1.8)), fill, PAL["outline"], ctx.L(0.9))
-        toe = [(7, -2), (18, 0), (19, 5), (8, 5)]
-        draw_polygon(ctx.draw, rounded_polygon(ctx.pts(toe), radius=ctx.L(1.2)), PAL["ceramic"], PAL["outline"], ctx.L(0.65))
-        _draw_cell(ctx, (1.0, 1.0), 3.1, PAL["magenta"] if near else PAL["acid"], outline=PAL["outline"])
-        if near:
-            _draw_tapered_prong(ctx, ctx.bw.tip, ctx.bw.angle - 15.0, 8.0, 2.6, PAL["violet_hi"])
+        bw = ctx.bw
+
+        def paint(d, o) -> None:
+            c = _rest_ctx(d, o, bw.length, {})
+            pts = [(-5.5, -4.0), (6.5, -5.0), (19.0, -1.0), (22.0, 5.0), (16.0, 9.0), (-5.0, 8.0)]
+            fill = PAL["violet_dark"] if near else PAL["emerald_dark"]
+            draw_polygon(c.draw, rounded_polygon(c.pts(pts), radius=c.L(1.8)), fill, PAL["outline"], c.L(0.9))
+            toe = [(7, -2), (18, 0), (19, 5), (8, 5)]
+            draw_polygon(c.draw, rounded_polygon(c.pts(toe), radius=c.L(1.2)), PAL["ceramic"], PAL["outline"], c.L(0.65))
+            _draw_cell(c, (1.0, 1.0), 3.1, PAL["magenta"] if near else PAL["acid"], outline=PAL["outline"])
+            if near:
+                _draw_tapered_prong(c, c.bw.tip, -15.0, 8.0, 2.6, PAL["violet_hi"])
+
+        _on_bone(ctx, _piece(("ica_foot", side, bw.length), (8.0, 8.0, max(24.0, bw.length + 10.0), 11.0), paint), bw, f"{side}_foot")
+
     return fn
 
 
