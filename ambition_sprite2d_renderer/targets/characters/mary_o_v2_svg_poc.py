@@ -14,6 +14,10 @@ Python postprocess effects, following the same separation already used by Noethe
 from __future__ import annotations
 
 import copy
+import hashlib
+import os
+import re
+import tempfile
 from pathlib import Path
 from typing import Dict, List
 
@@ -69,26 +73,51 @@ def _palette_pairs(source: FormSpec, active: FormSpec):
     ]
 
 
-def _recolor(image: Image.Image, source: FormSpec, active: FormSpec) -> Image.Image:
-    """Palette-remap solid SVG colors while preserving antialiased alpha.
+def _hex(color) -> str:
+    return "#{:02x}{:02x}{:02x}".format(*color[:3])
 
-    This is deliberately a transition-only postprocess.  The canonical editable
-    SVG remains ordinary colored artwork; temporary transform flashes do not
-    multiply SVG source variants.
+
+_HEX_COLOR = re.compile(r"#[0-9a-fA-F]{6}\b")
+
+
+def _recolored_svg(source: FormSpec, active: FormSpec) -> Path:
+    """The authored SVG with ``source``'s palette colours replaced by
+    ``active``'s, written once per palette to a content-addressed file.
+
+    ⭐ RECOLOR AT THE SOURCE, NOT THE FRAME. Transitions used to remap exact
+    colours on the finished frame, after the parts were composited. No part
+    carried the new colours, so a part flipbook could not draw those frames, and
+    edge pixels the overlapping parts had blended kept the old colours. Now each
+    part is rasterized from recoloured vector art, so the baked frame and the
+    part draws are the same picture, and edges blend the new colours.
+
+    The canonical editable SVG stays ordinary coloured artwork; a transition
+    palette is a derived file, never a second source.
     """
+    lookup = {_hex(a): _hex(b) for a, b in _palette_pairs(source, active)}
+    text = ASSET_PATH.read_text()
+    recolored = _HEX_COLOR.sub(lambda m: lookup.get(m.group(0).lower(), m.group(0)), text)
+    digest = hashlib.sha1(recolored.encode()).hexdigest()[:16]
+    out = Path(tempfile.gettempdir()) / "ambition_mary_o_recolor" / f"mary_o_v2_{digest}.svg"
+    if not out.exists():
+        out.parent.mkdir(parents=True, exist_ok=True)
+        tmp = out.with_suffix(f".{os.getpid()}.tmp")
+        tmp.write_text(recolored)
+        tmp.replace(out)
+    return out
+
+
+def _document_for(docs: Dict[str, RigDocument], source: FormSpec, active: FormSpec) -> RigDocument:
+    """``source``'s side document, recoloured to ``active``'s palette."""
     pairs = _palette_pairs(source, active)
     if not pairs:
-        return image
-    lookup = {(a[0], a[1], a[2]): (b[0], b[1], b[2]) for a, b in pairs}
-    out = image.copy()
-    pixels = out.load()
-    for y in range(out.height):
-        for x in range(out.width):
-            r, g, b, a = pixels[x, y]
-            repl = lookup.get((r, g, b))
-            if repl is not None:
-                pixels[x, y] = (*repl, a)
-    return out
+        return docs[source.target_name]
+    key = f"{source.target_name}@" + ",".join(f"{_hex(a)}>{_hex(b)}" for a, b in pairs)
+    doc = docs.get(key)
+    if doc is None:
+        doc = build_rig_document(_recolored_svg(source, active), source, "side")
+        docs[key] = doc
+    return doc
 
 
 def _source_form(active: FormSpec) -> FormSpec:
@@ -103,8 +132,7 @@ def _source_form(active: FormSpec) -> FormSpec:
 
 def _rig_pose(docs: Dict[str, RigDocument], active: FormSpec, pose: Pose) -> Image.Image:
     source = _source_form(active)
-    frame = render_pose_with_doc(docs[source.target_name], source, pose)
-    return _recolor(frame, source, active)
+    return render_pose_with_doc(_document_for(docs, source, active), source, pose)
 
 
 def _effect_frame(

@@ -1278,6 +1278,30 @@ class RigDocument:
 # same part vocabulary without carrying a RigDocument around.
 
 
+# -- compositing seams ------------------------------------------------------------
+#
+# A character that composes more than its rig — effect layers behind or in front
+# of the body, a body painted on one canvas and laid onto another — does it
+# through these two functions instead of ``Image.alpha_composite``. Unrecorded
+# they are exactly ``alpha_composite``. Under ``part_flipbook.recorded_paint``
+# they tell the flipbook what the frame is made of, in paint order: an effect
+# layer becomes an overlay draw, and a composited body brings its part draws
+# with it. Call them through the module (``rigdoc.composite_layer``) so the
+# recorder can see the call.
+
+
+def composite_layer(
+    canvas: Image.Image, layer: Image.Image, dest: Tuple[int, int] = (0, 0), *, name: str = "overlay"
+) -> None:
+    """Composite a frame-local raster (an effect layer) onto ``canvas``."""
+    canvas.alpha_composite(layer, dest)
+
+
+def composite_canvas(canvas: Image.Image, frame: Image.Image, dest: Tuple[int, int] = (0, 0)) -> None:
+    """Composite a frame painted by ``blit_rotated`` (and these seams) onto ``canvas``."""
+    canvas.alpha_composite(frame, dest)
+
+
 @profile
 def blit_rotated(
     canvas: Image.Image,
@@ -1290,9 +1314,13 @@ def blit_rotated(
     prepared: Optional[SpriteRaster] = None,
     transform_cache: Optional[SpriteTransformCache] = None,
     rotated_sprite: Optional[Image.Image] = None,
+    part_name: Optional[str] = None,
 ) -> None:
     """Rotate ``sprite`` about its ``pivot`` by ``delta_deg`` and composite it so
     the pivot lands at ``world_px``.
+
+    ``part_name`` paints nothing; it names the draw for a recording flipbook
+    (its track).
 
     Rig documents pass a prepared pivot-centered raster and a bounded transform
     cache. Standalone callers retain the original behavior through the public
@@ -1458,6 +1486,7 @@ def paint_part(
             prepared=prepared,
             transform_cache=transform_cache,
             rotated_sprite=rotated_sprite,
+            part_name=str(part.get("name") or bone_name),
         )
         return
     fill = parse_color(part.get("fill", "#FFFFFF"), palette, opacity)

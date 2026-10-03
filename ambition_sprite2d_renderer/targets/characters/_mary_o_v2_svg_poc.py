@@ -32,6 +32,7 @@ from typing import Dict, Iterable, Iterator, List, Mapping, Sequence, Tuple
 
 from PIL import Image
 
+from ...authoring import rigdoc
 from ...authoring.rigdoc import RigDocument
 from ._mary_o_v2_art import (
     _ARM_REFERENCE_WIDTH,
@@ -2833,14 +2834,20 @@ def composite_effects(
     power flashes, sparkles, temporary sleeve wings, outfit stars, and fireball
     orbs stay procedural presentation effects.
     """
+    # Every layer goes through `rigdoc`'s compositing seams, so a recording part
+    # flipbook publishes each effect as an overlay draw in this paint order.
     behind = Image.new("RGBA", rig_frame.size, (0, 0, 0, 0))
     if transform_aura:
-        behind.alpha_composite(_logical_effect(lambda px: _draw_transform_aura(px, frame_idx)))
-    if power_loss:
-        behind.alpha_composite(
-            _logical_effect(lambda px: _draw_power_loss_sparkles(px, frame_idx, fire=fire_loss))
+        rigdoc.composite_layer(
+            behind, _logical_effect(lambda px: _draw_transform_aura(px, frame_idx)), name="transform_aura"
         )
-    behind.alpha_composite(rig_frame)
+    if power_loss:
+        rigdoc.composite_layer(
+            behind,
+            _logical_effect(lambda px: _draw_power_loss_sparkles(px, frame_idx, fire=fire_loss)),
+            name="power_loss_sparkles",
+        )
+    rigdoc.composite_canvas(behind, rig_frame)
 
     g = _layout(form, pose)
     if sleeve_wing_boost > 0.0:
@@ -2849,7 +2856,8 @@ def composite_effects(
         # the important contract being tested is that it no longer forces a
         # second arm sprite. If accepted, this can gain the same behind/front
         # split Noether uses without changing the rig topology.
-        behind.alpha_composite(
+        rigdoc.composite_layer(
+            behind,
             _logical_effect(
                 lambda px: (
                     _draw_sleeve_wing_side(
@@ -2869,10 +2877,12 @@ def composite_effects(
                         facing=1.0,
                     ),
                 )
-            )
+            ),
+            name="sleeve_wings",
         )
     if extra_star_phase > 0:
-        behind.alpha_composite(
+        rigdoc.composite_layer(
+            behind,
             _logical_effect(
                 lambda px: _draw_transform_outfit_stars(
                     px,
@@ -2881,14 +2891,15 @@ def composite_effects(
                     phase=extra_star_phase,
                     form=form,
                 )
-            )
+            ),
+            name="outfit_stars",
         )
     if show_orb:
         if fixed_transform_orb:
             ox, oy = 19.4, 13.2 + 0.3 * math.sin(frame_idx)
         else:
             ox, oy = g.near_shoulder[0] + 5.0, g.near_shoulder[1] + 0.8
-        behind.alpha_composite(_logical_effect(lambda px: _draw_fire_orb(px, ox, oy)))
+        rigdoc.composite_layer(behind, _logical_effect(lambda px: _draw_fire_orb(px, ox, oy)), name="fire_orb")
     return behind
 
 

@@ -149,6 +149,9 @@ class PartDraw:
     #: Radians, clockwise positive (+y is down).
     rotation: float = 0.0
     scale: Tuple[float, float] = (1.0, 1.0)
+    #: The draw's identity across frames (a rig part's name, or
+    #: ``overlay:<layer>``): what an in-between pairs. ``None`` when unknown.
+    track: Optional[str] = None
 
 
 @dataclass
@@ -164,6 +167,10 @@ class PartFlipbook:
     #: Filled by ``pack``: per part (page, x, y, w, h).
     rects: List[Tuple[int, int, int, int, int]] = field(default_factory=list)
     pages: List[Image.Image] = field(default_factory=list)
+    #: ``"snapped"``: every pivot and point is a whole pixel and a part turns the
+    #: way ``rigdoc.blit_rotated`` turns it (a rig flipbook, see
+    #: ``build_rig_flipbook``). ``"continuous"``: fitted placements (pirates).
+    placement: str = "continuous"
 
     # -- measurement -----------------------------------------------------------
     def tight_texels(self) -> int:
@@ -277,6 +284,9 @@ class PartFlipbook:
             image = self.part_image(d.part)
             pivot = self.parts[d.part].pivot
             px, py = d.at[0] + self.feet[0], d.at[1] + self.feet[1]
+            if self.placement == "snapped":
+                _snapped_blit(canvas, image, pivot, (px, py), math.degrees(d.rotation))
+                continue
             if d.rotation == 0.0 and d.scale == (1.0, 1.0):
                 ox, oy = px - pivot[0], py - pivot[1]
                 if abs(ox - round(ox)) < 1e-6 and abs(oy - round(oy)) < 1e-6:
@@ -301,10 +311,10 @@ class PartFlipbook:
         return canvas
 
 
-def parity(
+def wrong_pixels(
     reference: Image.Image, candidate: Image.Image, threshold: int = 64, radius: int = 1
-) -> float:
-    """Fraction of the frame's drawn pixels (drawn in either image) that the
+):
+    """Boolean mask of the frame's drawn pixels (drawn in either image) that the
     other image does not reproduce: no pixel within ``radius`` of it differs by
     ``threshold`` or less in every premultiplied RGBA channel. Both directions
     are counted.
@@ -333,8 +343,47 @@ def parity(
 
     ref, cand = premultiplied(reference), premultiplied(candidate)
     drawn = (ref[..., 3] > 0) | (cand[..., 3] > 0)
-    wrong = (unmatched(ref, cand) | unmatched(cand, ref)) & drawn
+    return (unmatched(ref, cand) | unmatched(cand, ref)) & drawn, drawn
+
+
+def parity(
+    reference: Image.Image, candidate: Image.Image, threshold: int = 64, radius: int = 1
+) -> float:
+    """Fraction of the frame's drawn pixels that are ``wrong_pixels``."""
+    wrong, drawn = wrong_pixels(reference, candidate, threshold, radius)
     return float(wrong.sum()) / max(1, int(drawn.sum()))
+
+
+def largest_wrong_blob(
+    reference: Image.Image, candidate: Image.Image, threshold: int = 64, radius: int = 1
+) -> int:
+    """Pixels in the largest 8-connected run of ``wrong_pixels``.
+
+    ⛔ ``parity`` ALONE PASSES A MISSING EFFECT. Dropping one whole effect layer
+    from a Mary-O transition frame moved ``parity`` by 1.43% on the median frame
+    (measured 2026-10-02), under the old 2.5% bound and beside the anti-aliasing
+    noise it is meant to forgive. Noise is scattered single pixels along edges;
+    a missing star, orb or limb is one connected blob. This sees the blob.
+    """
+    wrong, _drawn = wrong_pixels(reference, candidate, threshold, radius)
+    h, w = wrong.shape
+    seen = set()
+    largest = 0
+    for y, x in zip(*wrong.nonzero()):
+        if (y, x) in seen:
+            continue
+        size, stack = 0, [(int(y), int(x))]
+        seen.add((int(y), int(x)))
+        while stack:
+            cy, cx = stack.pop()
+            size += 1
+            for ny in (cy - 1, cy, cy + 1):
+                for nx in (cx - 1, cx, cx + 1):
+                    if 0 <= ny < h and 0 <= nx < w and wrong[ny, nx] and (ny, nx) not in seen:
+                        seen.add((ny, nx))
+                        stack.append((ny, nx))
+        largest = max(largest, size)
+    return largest
 
 
 def build_flipbook(
@@ -460,13 +509,123 @@ def _overlay_raster(layer: Layer, canvas, fit, drawn_size):
 # its bone's origin, turned by the bone's angle. So its flipbook is that call,
 # recorded during the real render: the same raster, the same pivot, the same
 # place, the same angle. Nothing is reconstructed.
+#
+# What a character composes AROUND its rig (effect layers, a body laid onto
+# another canvas) goes through ``rigdoc.composite_layer`` and
+# ``rigdoc.composite_canvas``, and is recorded the same way: an effect layer is
+# an overlay draw, in paint order with the parts.
+#
+# ⭐ ONE PLACEMENT RULE. ``blit_rotated`` lands a raster on whole pixels: it
+# rounds the pivot inside the raster and the world point it lands on, and turns
+# the raster about that whole-pixel pivot. A flipbook published with the
+# fractional pivot and point drew every frame up to 2.6% off the baked one
+# (measured on Mary-O, 2026-10-02). So a rig flipbook publishes the ROUNDED
+# pivot and point (``placement == "snapped"``), and recomposition turns a part
+# the way ``blit_rotated`` does. The baked frame and the recomposed frame are
+# then the same picture, and ``build_rig_flipbook`` refuses one that is not.
+
+
+@dataclass
+class PaintedPart:
+    sprite: Image.Image
+    pivot: Tuple[float, float]
+    world: Tuple[float, float]
+    degrees: float
+    opacity: float
+    name: str
+
+
+@dataclass
+class PaintedOverlay:
+    image: Image.Image
+    dest: Tuple[int, int]
+    name: str
+
+
+class PaintRecord:
+    """Paint operations per canvas, in paint order. A canvas composited onto
+    another brings its operations with it, so the frame a render returns holds
+    the whole frame."""
+
+    def __init__(self) -> None:
+        self._ops: Dict[int, Tuple[Image.Image, list]] = {}
+
+    def _list(self, canvas: Image.Image) -> list:
+        entry = self._ops.get(id(canvas))
+        if entry is None or entry[0] is not canvas:
+            entry = (canvas, [])
+            self._ops[id(canvas)] = entry
+        return entry[1]
+
+    def ops_for(self, frame: Image.Image) -> Optional[list]:
+        entry = self._ops.get(id(frame))
+        if entry is None or entry[0] is not frame:
+            return None
+        return list(entry[1])
+
+
+@contextmanager
+def recorded_paint():
+    """Record every paint made through ``rigdoc``'s seams inside the block. The
+    calls still paint. Yields a ``PaintRecord``."""
+    from . import rigdoc
+
+    record = PaintRecord()
+    originals = (rigdoc.blit_rotated, rigdoc.composite_layer, rigdoc.composite_canvas)
+    blit, layer_fn, canvas_fn = originals
+
+    def recording_blit(canvas, sprite, pivot, world_px, delta_deg, opacity=1.0, **kwargs):
+        record._list(canvas).append(
+            PaintedPart(
+                sprite,
+                (float(pivot[0]), float(pivot[1])),
+                (float(world_px[0]), float(world_px[1])),
+                float(delta_deg),
+                float(opacity),
+                str(kwargs.get("part_name") or "part"),
+            )
+        )
+        return blit(canvas, sprite, pivot, world_px, delta_deg, opacity, **kwargs)
+
+    def recording_layer(canvas, layer, dest=(0, 0), *, name="overlay"):
+        record._list(canvas).append(PaintedOverlay(layer, (int(dest[0]), int(dest[1])), str(name)))
+        return layer_fn(canvas, layer, dest, name=name)
+
+    def recording_canvas(canvas, frame, dest=(0, 0)):
+        dx, dy = int(dest[0]), int(dest[1])
+        ops = record.ops_for(frame)
+        target = record._list(canvas)
+        if ops is None:
+            # Painted by something this record did not see: it is still a
+            # picture of the frame, so it rides as one overlay.
+            target.append(PaintedOverlay(frame, (dx, dy), "composited"))
+        else:
+            for op in ops:
+                if isinstance(op, PaintedPart):
+                    target.append(
+                        PaintedPart(op.sprite, op.pivot, (op.world[0] + dx, op.world[1] + dy), op.degrees, op.opacity, op.name)
+                    )
+                else:
+                    target.append(PaintedOverlay(op.image, (op.dest[0] + dx, op.dest[1] + dy), op.name))
+        return canvas_fn(canvas, frame, dest)
+
+    rigdoc.blit_rotated, rigdoc.composite_layer, rigdoc.composite_canvas = (
+        recording_blit,
+        recording_layer,
+        recording_canvas,
+    )
+    try:
+        yield record
+    finally:
+        rigdoc.blit_rotated, rigdoc.composite_layer, rigdoc.composite_canvas = originals
 
 
 @contextmanager
 def recorded_blits():
     """Record every ``rigdoc.blit_rotated`` call made inside the block, in
-    paint order, as ``(sprite, pivot, world_px, delta_deg, opacity)``. The
-    calls still paint."""
+    paint order, as ``(sprite, pivot, world_px, delta_deg, opacity)``, whatever
+    canvas it painted. The calls still paint. (The measurement scripts read
+    this; a flipbook reads ``recorded_paint``.)"""
     from . import rigdoc
 
     calls: List[Tuple[Image.Image, Tuple[float, float], Tuple[float, float], float, float]] = []
@@ -483,55 +642,122 @@ def recorded_blits():
         rigdoc.blit_rotated = original
 
 
+def _snapped_blit(canvas: Image.Image, image: Image.Image, pivot, at_px, degrees: float) -> None:
+    """``blit_rotated`` at a whole-pixel pivot and point: the baked road."""
+    from . import rigdoc
+
+    rigdoc.blit_rotated(canvas, image, pivot, at_px, degrees, 1.0)
+
+
 def build_rig_flipbook(
     target: str,
     rows: Sequence[Tuple[str, int, int]],
     render: Callable[[str, int, int], Image.Image],
-    part_rows: Sequence[str],
+    part_rows: Optional[Sequence[str]],
     feet: Tuple[float, float],
     frame_size: Tuple[int, int],
 ) -> PartFlipbook:
-    """The flipbook of a rig-document character: ``part_rows`` from parts, and
-    every other row of ``rows`` left to the baked sheet.
+    """The flipbook of a rig-document character: ``part_rows`` from parts (every
+    row when ``None``), and any other row of ``rows`` left to the baked sheet.
 
     ``render(row, index, count)`` renders one sheet frame through the
-    character's ``RigDocument``. The canvas it paints must BE the published
-    frame (no supersample, no crop), so a blit's place is a frame pixel; a
-    rendered frame of another size is refused. ``feet`` is the sheet's feet
-    pixel.
+    character's ``RigDocument`` and ``rigdoc``'s compositing seams. The canvas
+    it returns must BE the published frame (no supersample, no crop), so a
+    draw's place is a frame pixel; a frame of another size is refused. ``feet``
+    is the sheet's feet pixel.
+
+    ⛔ Each frame is drawn back from what was published and must equal the
+    render exactly. A frame that differs had something painted outside the
+    seams — a post-process over the whole frame, a direct ``ImageDraw`` — that
+    no draw carries, and the flipbook is refused rather than published without
+    it.
     """
-    unknown = sorted(set(part_rows) - {row for row, _count, _ms in rows})
+    known = {row for row, _count, _ms in rows}
+    selected = known if part_rows is None else set(part_rows)
+    unknown = sorted(selected - known)
     assert not unknown, f"part rows {unknown} are not rows of {target}"
     parts: List[PartRaster] = []
     part_index: Dict[tuple, int] = {}
     clips: Dict[str, Tuple[float, List[List[PartDraw]]]] = {}
+
+    def intern(name: str, image: Image.Image, pivot: Tuple[float, float]) -> int:
+        key = (image.size, pivot, image.tobytes())
+        if key not in part_index:
+            part_index[key] = len(parts)
+            parts.append(PartRaster(f"{name}{len(parts)}", image.copy(), pivot))
+        return part_index[key]
+
+    rendered: Dict[Tuple[str, int], Image.Image] = {}
     for row, count, duration_ms in rows:
-        if row not in part_rows:
+        if row not in selected:
             continue
         frames: List[List[PartDraw]] = []
         for index in range(int(count)):
-            with recorded_blits() as calls:
+            with recorded_paint() as record:
                 frame = render(row, index, int(count))
+            rendered[(row, index)] = frame
             assert frame.size == tuple(frame_size), (
                 f"{target} {row}:{index} renders {frame.size}, not the {tuple(frame_size)} frame"
             )
+            ops = record.ops_for(frame)
+            assert ops is not None, (
+                f"{target} {row}:{index}: the returned frame was not painted through rigdoc's seams"
+            )
             draws: List[PartDraw] = []
-            for sprite, pivot, world, delta_deg, opacity in calls:
-                # A part draw has no opacity of its own: a faded part is not a
-                # rigid part of this clip.
-                assert opacity >= 0.999, f"{target} {row}:{index} draws a part at opacity {opacity:.3f}"
-                key = (sprite.size, pivot, sprite.tobytes())
-                if key not in part_index:
-                    part_index[key] = len(parts)
-                    parts.append(PartRaster(f"part{len(parts)}", sprite.copy(), pivot))
-                draws.append(
-                    PartDraw(
-                        part_index[key],
-                        (world[0] - feet[0], world[1] - feet[1]),
-                        math.radians(delta_deg),
+            for op in ops:
+                if isinstance(op, PaintedPart):
+                    # A part draw has no opacity of its own: a faded part is not
+                    # a rigid part of this clip.
+                    assert op.opacity >= 0.999, (
+                        f"{target} {row}:{index} draws {op.name} at opacity {op.opacity:.3f}"
                     )
-                )
+                    pivot = (float(round(op.pivot[0])), float(round(op.pivot[1])))
+                    at = (float(round(op.world[0])), float(round(op.world[1])))
+                    draws.append(
+                        PartDraw(
+                            intern("part", op.sprite, pivot),
+                            (at[0] - feet[0], at[1] - feet[1]),
+                            math.radians(op.degrees),
+                            track=op.name,
+                        )
+                    )
+                else:
+                    bbox = op.image.getchannel("A").getbbox()
+                    if bbox is None:
+                        continue
+                    left, top = op.dest[0] + bbox[0], op.dest[1] + bbox[1]
+                    draws.append(
+                        PartDraw(
+                            intern(f"{op.name}:", op.image.crop(bbox), (0.0, 0.0)),
+                            (left - feet[0], top - feet[1]),
+                            track=f"overlay:{op.name}",
+                        )
+                    )
             frames.append(draws)
         clips[row] = (float(duration_ms) / 1000.0, frames)
-    baked = [row for row, _count, _ms in rows if row not in part_rows]
-    return PartFlipbook(target, tuple(frame_size), tuple(feet), parts, clips, baked)
+    baked = [row for row, _count, _ms in rows if row not in selected]
+    flipbook = PartFlipbook(target, tuple(frame_size), tuple(feet), parts, clips, baked, placement="snapped")
+    for (row, index), frame in rendered.items():
+        worst = _max_channel_difference(flipbook.recompose(row, index), frame)
+        if worst > REPLAY_ROUNDING:
+            raise AssertionError(
+                f"{target} {row}:{index}: the draws do not reproduce the render (a channel "
+                f"differs by {worst}) — something painted the frame outside rigdoc's seams"
+            )
+    return flipbook
+
+
+#: How far a replayed frame may differ from its render, per 8-bit channel.
+#: ``alpha_composite`` rounds each step, so it is associative only to within one
+#: level: a body composited onto its own canvas and then over an effect layer
+#: lands one level off the same parts composited straight over the layer
+#: (measured: 4 pixels by 1 on Mary-O's fire `transform`). Anything a seam did
+#: not carry differs by far more.
+REPLAY_ROUNDING = 1
+
+
+def _max_channel_difference(a: Image.Image, b: Image.Image) -> int:
+    from PIL import ImageChops
+
+    extrema = ImageChops.difference(a.convert("RGBA"), b.convert("RGBA")).getextrema()
+    return max(high for _low, high in extrema)
