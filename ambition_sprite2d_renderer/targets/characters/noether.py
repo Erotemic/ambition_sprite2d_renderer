@@ -20,7 +20,7 @@ from ...authoring.portrait import (
     write_portrait_sheet,
 )
 from ...authoring.rigdoc import RigDocument
-from ...authoring.sheet_build import build_sheet, write_canonical
+from ...authoring.sheet_build import build_sheet, rendering_canonical_only, write_canonical
 from ._svg_fighter_effects import compose_rig_frame
 from .noether_gameplay import (
     NOETHER_MOVE_BLUEPRINT,
@@ -323,8 +323,11 @@ def render(out_dir: str | Path, **opts):
         "canonical_transparent",
         "preview",
     )
-    parts = build_part_flipbook(profile).write(Path(out_dir))
-    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
+    paths = [Path(outputs[key]) for key in keys if outputs.get(key)]
+    # A canonical-only render (a portrait) publishes no sheet, so no flipbook.
+    if rendering_canonical_only():
+        return paths
+    return paths + list(build_part_flipbook(profile).write(Path(out_dir)).values())
 
 
 def render_canonical(out_dir: str | Path, **opts):

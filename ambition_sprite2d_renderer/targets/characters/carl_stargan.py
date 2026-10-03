@@ -15,6 +15,7 @@ from PIL import Image
 
 import json
 
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring import strike_axis, swing_effects
 from ...authoring.portrait import FaceGuide, PortraitClip, render_framed_portrait, write_portrait_sheet
 from ...authoring.canonical_scientist_rig import ensure_scientist_rig
@@ -427,7 +428,9 @@ def render_portraits(out_dir: str | Path, **opts):
 def render(out_dir: str | Path, **opts):
     del opts
     doc = _doc()
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=render_frame,
@@ -456,7 +459,13 @@ def render(out_dir: str | Path, **opts):
         # transparent margin that the height contract would scale.
     )
     keys = ("spritesheet", "yaml", "ron", "actor", "canonical", "canonical_transparent", "preview")
-    return [Path(outputs[key]) for key in keys if outputs.get(key)]
+    # The part flipbook: a swing trail is drawn from the frames before it,
+    # so each clip is recorded whole, uncached (`publish_rig_flipbook`).
+    parts = publish_rig_flipbook(
+        TARGET_NAME, ROWS, render_frame, outputs, frame_transform, Path(out_dir),
+        render_clip=lambda row, count: list(_clip_frames.__wrapped__(row, count)),
+    )
+    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
 
 
 def render_canonical(out_dir: str | Path, **opts):

@@ -17,7 +17,7 @@ from PIL import Image
 from ...authoring.portrait import FaceGuide, PortraitClip, render_framed_portrait, write_portrait_sheet
 from ...authoring.canonical_scientist_rig import load_scientist_rig
 from ...authoring.rigdoc import RigDocument
-from ...authoring.part_flipbook import build_rig_flipbook, sheet_feet
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet, write_canonical
 from .patent_clerk_motion import EFFECT_ALIASES, FIGHTER_MOTION_COVERAGE, PATENT_ROWS
 from ._svg_fighter_effects import (
@@ -372,7 +372,9 @@ def render_portraits(out_dir: str | Path, **opts):
 def render(out_dir: str | Path, **opts):
     del opts
     doc = _doc()
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=render_frame,
@@ -392,19 +394,8 @@ def render(out_dir: str | Path, **opts):
         # that safety margin from becoming permanent atlas residency.
     )
     keys = ("spritesheet", "yaml", "ron", "actor", "canonical", "canonical_transparent", "preview")
-    parts = build_part_flipbook(sheet_feet(outputs["yaml"])).write(Path(out_dir))
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, render_frame, outputs, frame_transform, Path(out_dir))
     return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
-
-
-#: Locomotion loops, published as tweened clips; every other clip steps
-#: (decision D3 of `docs/planning/engine/mary-o-part-realization.md`).
-TWEENED_ROWS = tuple(name for name in ("walk", "run", "crouch_walk", "climb", "swim") if name in {r[0] for r in ROWS})
-
-
-def build_part_flipbook(feet):
-    """The part flipbook of every row (``part_flipbook.build_rig_flipbook``),
-    from the sheet's feet pixel."""
-    return build_rig_flipbook(TARGET_NAME, ROWS, render_frame, None, feet, FRAME_SIZE, TWEENED_ROWS)
 
 
 def render_canonical(out_dir: str | Path, **opts):

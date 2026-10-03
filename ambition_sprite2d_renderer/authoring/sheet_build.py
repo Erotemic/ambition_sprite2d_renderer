@@ -119,6 +119,12 @@ def publish_character_notes(
 _CANONICAL_ONLY = ContextVar("ambition_sheet_build_canonical_only", default=False)
 
 
+def rendering_canonical_only() -> bool:
+    """Whether this render is inside :func:`canonical_render_only`: no sheet,
+    so no product built on one (a part flipbook) either."""
+    return _CANONICAL_ONLY.get()
+
+
 @contextmanager
 def canonical_render_only():
     """Limit this procedural-sheet family to a freshly drawn canonical.

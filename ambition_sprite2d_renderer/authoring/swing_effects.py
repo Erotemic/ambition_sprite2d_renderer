@@ -22,6 +22,7 @@ import math
 from PIL import Image, ImageFilter
 
 from ..core.draw import blending_draw
+from . import rigdoc
 
 #: Summed RGB; nothing on the body reaches this, so it separates blade from
 #: anatomy without a mask.
@@ -62,6 +63,14 @@ REENTRY_CORE = (255, 250, 232)
 #: published frame — they answer questions ABOUT the art, they are not the art.
 HITBOX = (255, 96, 96)
 BG = (30, 26, 32, 255)
+
+
+def _unchanged(base: Image.Image) -> Image.Image:
+    """A frame the effect leaves alone, as a new image laid through rigdoc's
+    seam (a part flipbook follows it; a ``copy`` it could not)."""
+    comp = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    rigdoc.composite_canvas(comp, base)
+    return comp
 
 
 def _lerp(a, b, t):
@@ -217,8 +226,8 @@ def draw_trail(images, window: int = 3, subdiv: int = 5, inner: float = 0.58,
         # frame is a frame with no silhouette at all. The reviewer lays its own
         # background; the effect is art, not a backdrop.
         comp = Image.new("RGBA", base.size, (0, 0, 0, 0))
-        comp.alpha_composite(trail)
-        comp.alpha_composite(base)
+        rigdoc.composite_layer(comp, trail, name="swing")
+        rigdoc.composite_canvas(comp, base)
         out.append(comp)
     return out
 
@@ -287,8 +296,8 @@ def draw_poke(images, active=None, extend: float = 1.30, width: float = 13.0,
                 blending_draw(core).polygon(poly, fill=core_rgb + (core_alpha,))
                 layer.alpha_composite(core.filter(ImageFilter.GaussianBlur(0.5)))
         comp = Image.new("RGBA", base_im.size, (0, 0, 0, 0))
-        comp.alpha_composite(layer)
-        comp.alpha_composite(base_im)
+        rigdoc.composite_layer(comp, layer, name="swing")
+        rigdoc.composite_canvas(comp, base_im)
         out.append(comp)
     return out
 
@@ -359,8 +368,8 @@ def draw_wind(images, window: int = 3, subdiv: int = 6, inner: float = 0.34,
             )
             layer.alpha_composite(core.filter(ImageFilter.GaussianBlur(0.6)))
         comp = Image.new("RGBA", base_im.size, (0, 0, 0, 0))
-        comp.alpha_composite(layer)
-        comp.alpha_composite(base_im)
+        rigdoc.composite_layer(comp, layer, name="swing")
+        rigdoc.composite_canvas(comp, base_im)
         out.append(comp)
     return out
 
@@ -518,8 +527,8 @@ def draw_reentry(images, active=None, spread: float = 1.15, extend: float = 1.12
                 blending_draw(edge).polygon(poly, fill=core_rgb + (core_alpha,))
                 layer.alpha_composite(edge.filter(ImageFilter.GaussianBlur(0.6)))
         comp = Image.new("RGBA", base_im.size, (0, 0, 0, 0))
-        comp.alpha_composite(layer)
-        comp.alpha_composite(base_im)
+        rigdoc.composite_layer(comp, layer, name="swing")
+        rigdoc.composite_canvas(comp, base_im)
         out.append(comp)
     return out
 
@@ -620,8 +629,8 @@ def draw_muzzle(images, active=None, reach: float = 1.5, flare: float = 0.55,
             )
             layer.alpha_composite(flash.filter(ImageFilter.GaussianBlur(radius * 0.42)))
         comp = Image.new("RGBA", base_im.size, (0, 0, 0, 0))
-        comp.alpha_composite(layer)
-        comp.alpha_composite(base_im)
+        rigdoc.composite_layer(comp, layer, name="swing")
+        rigdoc.composite_canvas(comp, base_im)
         out.append(comp)
     return out
 
@@ -692,8 +701,8 @@ def draw_beam(images, active=None, reach: float = 8.0, width: float = 0.30,
             )
             layer.alpha_composite(flash.filter(ImageFilter.GaussianBlur(radius * 0.5)))
         comp = Image.new("RGBA", base_im.size, (0, 0, 0, 0))
-        comp.alpha_composite(layer)
-        comp.alpha_composite(base_im)
+        rigdoc.composite_layer(comp, layer, name="swing")
+        rigdoc.composite_canvas(comp, base_im)
         out.append(comp)
     return out
 
@@ -850,7 +859,7 @@ def draw_trapdoor(images, active=None, width: float = 46.0, depth: float = 9.0,
     out = []
     for i, base in enumerate(images):
         if anchor is None or (live is not None and i not in live):
-            out.append(base.copy())
+            out.append(_unchanged(base))
             continue
         first = min(live) if live else 0
         age = i - first
@@ -887,9 +896,9 @@ def draw_trapdoor(images, active=None, width: float = 46.0, depth: float = 9.0,
                         fill=dust_c + (fade,))
                 over.alpha_composite(puff.filter(ImageFilter.GaussianBlur(2.2)))
         comp = Image.new("RGBA", base.size, (0, 0, 0, 0))
-        comp.alpha_composite(under)
-        comp.alpha_composite(base)
-        comp.alpha_composite(over)
+        rigdoc.composite_layer(comp, under, name="swing_under")
+        rigdoc.composite_canvas(comp, base)
+        rigdoc.composite_layer(comp, over, name="swing")
         out.append(comp)
     return out
 
@@ -909,7 +918,7 @@ def draw_wire(images, active=None, width: float = 1.6, sway: float = 2.4,
     out = []
     for i, base in enumerate(images):
         if axes[i] is None or (live is not None and i not in live):
-            out.append(base.copy())
+            out.append(_unchanged(base))
             continue
         ax, ay = axes[i][0]
         layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
@@ -926,8 +935,8 @@ def draw_wire(images, active=None, width: float = 1.6, sway: float = 2.4,
         if glint > 0.0:
             draw.line(points[: steps // 2], fill=hot + (int(210 * glint),), width=1)
         comp = Image.new("RGBA", base.size, (0, 0, 0, 0))
-        comp.alpha_composite(base)
-        comp.alpha_composite(layer)
+        rigdoc.composite_canvas(comp, base)
+        rigdoc.composite_layer(comp, layer, name="swing")
         out.append(comp)
     return out
 
@@ -956,7 +965,7 @@ def draw_mend(images, active=None, rings: int = 3, rise: float = 26.0,
     out = []
     for i, base in enumerate(images):
         if axes[i] is None or (live is not None and i not in live):
-            out.append(base.copy())
+            out.append(_unchanged(base))
             continue
         cx, cy = axes[i][0]
         layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
@@ -976,8 +985,8 @@ def draw_mend(images, active=None, rings: int = 3, rise: float = 26.0,
             fill=core + (core_alpha,))
         layer.alpha_composite(glow.filter(ImageFilter.GaussianBlur(radius * 0.4)))
         comp = Image.new("RGBA", base.size, (0, 0, 0, 0))
-        comp.alpha_composite(base)
-        comp.alpha_composite(layer.filter(ImageFilter.GaussianBlur(blur)))
+        rigdoc.composite_canvas(comp, base)
+        rigdoc.composite_layer(comp, layer.filter(ImageFilter.GaussianBlur(blur)), name="swing")
         out.append(comp)
     return out
 

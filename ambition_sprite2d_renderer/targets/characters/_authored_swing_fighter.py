@@ -24,6 +24,7 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring import strike_axis, swing_effects
 from ...authoring.motion_ir import CharacterMotionBinding
 from ...authoring.rig_gameplay_body import gameplay_body_metrics
@@ -202,7 +203,9 @@ class AuthoredSwingFighter:
     # ── publication ───────────────────────────────────────────────────────────
     def render(self, out_dir, actor_metadata: dict):
         doc = self.doc()
+        frame_transform: dict = {}
         outputs = build_sheet(
+            frame_transform_out=frame_transform,
             target=self.target,
             rows=doc.rows(),
             render_fn=self.render_frame,
@@ -220,7 +223,13 @@ class AuthoredSwingFighter:
         )
         keys = ("spritesheet", "yaml", "ron", "actor", "canonical",
                 "canonical_transparent", "preview")
-        return [Path(outputs[key]) for key in keys if outputs.get(key)]
+        # The part flipbook: a swing trail is drawn from the frames before it,
+        # so each clip is recorded whole, uncached (`publish_rig_flipbook`).
+        parts = publish_rig_flipbook(
+            self.target, doc.rows(), self.render_frame, outputs, frame_transform, Path(out_dir),
+            render_clip=lambda row, count: list(type(self)._clip_frames.__wrapped__(self, row, count)),
+        )
+        return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
 
     # ── portrait ──────────────────────────────────────────────────────────────
     #: Which parts are the FACE, for MEASURING where to crop -- not what gets

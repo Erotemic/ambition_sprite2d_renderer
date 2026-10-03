@@ -1300,8 +1300,11 @@ def composite_layer(
 
 
 def composite_canvas(canvas: Image.Image, frame: Image.Image, dest: Tuple[int, int] = (0, 0)) -> None:
-    """Composite a frame painted by ``blit_rotated`` (and these seams) onto ``canvas``."""
-    canvas.alpha_composite(frame, dest)
+    """Composite a frame painted by ``blit_rotated`` (and these seams) onto
+    ``canvas`` with its top left at ``dest``. A negative ``dest`` cuts the
+    frame (a crop)."""
+    dx, dy = int(dest[0]), int(dest[1])
+    canvas.alpha_composite(frame, (max(0, dx), max(0, dy)), (max(0, -dx), max(0, -dy)))
 
 
 def composite_scaled_layer(
@@ -1321,12 +1324,16 @@ def composite_scaled_layer(
 # frame is made of survives a supersample reduction, a mirror and a fade.
 
 
-def downsampled_canvas(frame: Image.Image, size: Tuple[int, int]) -> Image.Image:
-    """A supersampled frame reduced to ``size`` (``render_at``'s last step).
+def downsampled_canvas(frame: Image.Image, size: Tuple[int, int], resample=None) -> Image.Image:
+    """A supersampled frame reduced to ``size`` (``render_at``'s last step):
+    premultiplied bicubic, or ``frame.resize(size, resample)`` for a painter
+    that reduces with its own filter.
 
     Recorded, each part keeps its own raster, reduced by the same filter, at
     its exact (fractional) place: a supersampled rig is drawn at whole frame
     pixels by no part, so its flipbook places parts continuously."""
+    if resample is not None:
+        return frame.resize(size, resample)
     return resize_transparent_sprite(frame, size, reducing_gap=3.0)
 
 

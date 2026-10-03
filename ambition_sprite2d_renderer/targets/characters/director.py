@@ -29,6 +29,7 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
+from ambition_sprite2d_renderer.authoring.part_flipbook import publish_rig_flipbook
 from ambition_sprite2d_renderer.authoring.motion_ir import CharacterMotionBinding
 from ambition_sprite2d_renderer.authoring import strike_axis, swing_effects
 from ambition_sprite2d_renderer.authoring.rig_gameplay_body import gameplay_body_metrics
@@ -421,7 +422,9 @@ def _body_metrics(fw: int, fh: int):
 def render(out_dir: str | Path, **opts):
     del opts
     doc = _doc()
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=doc.rows(),
         render_fn=_render_frame,
@@ -449,7 +452,13 @@ def render(out_dir: str | Path, **opts):
         "canonical_transparent",
         "preview",
     )
-    return [Path(outputs[key]) for key in keys if outputs.get(key)]
+    # The part flipbook: a swing trail is drawn from the frames before it,
+    # so each clip is recorded whole, uncached (`publish_rig_flipbook`).
+    parts = publish_rig_flipbook(
+        TARGET_NAME, doc.rows(), _render_frame, outputs, frame_transform, Path(out_dir),
+        render_clip=lambda row, count: list(_clip_frames.__wrapped__(row, count)),
+    )
+    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
 
 #: Extra stills a UI can address by name: `(clip, frame)`.
 PORTRAIT_STILLS = {

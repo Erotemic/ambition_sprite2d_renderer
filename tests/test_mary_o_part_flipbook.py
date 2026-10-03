@@ -202,8 +202,11 @@ def _tween_errors(flipbook, form, docs, row, index, t, draws):
     errors = {}
     for d in draws:
         op = placed[d.track]
+        # The art's corner: a snapped part's raster carries a transparent
+        # border (`PART_BORDER`) round it.
         pivot = flipbook.parts[d.part].pivot
-        corner = (d.at[0] + flipbook.feet[0] - pivot[0], d.at[1] + flipbook.feet[1] - pivot[1])
+        border = part_flipbook.PART_BORDER
+        corner = (d.at[0] + flipbook.feet[0] - pivot[0] + border, d.at[1] + flipbook.feet[1] - pivot[1] + border)
         exact = (op.world[0] - op.pivot[0], op.world[1] - op.pivot[1])
         place = max(abs(corner[0] - exact[0]), abs(corner[1] - exact[1]))
         turn = abs((math.degrees(d.rotation) - op.degrees + 180.0) % 360.0 - 180.0)

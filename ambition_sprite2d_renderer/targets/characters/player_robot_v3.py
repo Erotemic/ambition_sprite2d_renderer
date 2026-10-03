@@ -28,7 +28,7 @@ from ambition_sprite2d_renderer.core.draw import blending_draw
 
 from ...authoring import rigdoc
 from ...authoring.rigdoc import RigDocument
-from ...authoring.sheet_build import build_sheet, write_canonical
+from ...authoring.sheet_build import build_sheet, rendering_canonical_only, write_canonical
 from ...authoring.portrait import (
     FaceGuide,
     PortraitClip,
@@ -776,10 +776,13 @@ def _render_with_products(out_dir: str | Path, **opts):
         "spritesheet", "yaml", "ron", "actor", "canonical",
         "canonical_transparent", "preview",
     )
+    paths = [Path(outputs[key]) for key in keys if outputs.get(key)]
+    # A canonical-only render (a portrait) publishes no sheet, so no flipbook.
+    if rendering_canonical_only():
+        return paths, {"outputs": outputs}
     flipbook = build_part_flipbook()
     parts = flipbook.write(out_dir)
-    paths = [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
-    return paths, {"parts": flipbook, "outputs": outputs}
+    return paths + list(parts.values()), {"parts": flipbook, "outputs": outputs}
 
 
 def render_canonical(out_dir: str | Path, **opts):

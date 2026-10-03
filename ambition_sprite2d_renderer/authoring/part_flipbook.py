@@ -490,17 +490,36 @@ class PartFlipbook:
         kx, ky = 1.0 / d.scale[0], 1.0 / d.scale[1]
         a, b = kx * c, kx * s
         e, f = -ky * s, ky * c
+        # Only the part's own box of the canvas is resampled: the same sample
+        # points as a whole-canvas transform (the box is a whole-pixel shift
+        # of the output), at a fraction of the cost. Measured against the
+        # whole-canvas transform on 56 frames of three characters: 53 the same
+        # bytes, 3 with three channel values one level apart (float rounding
+        # of the shifted offsets).
+        corners = [
+            (px + d.scale[0] * (c * (x - pivot[0])) - d.scale[1] * (s * (y - pivot[1])),
+             py + d.scale[0] * (s * (x - pivot[0])) + d.scale[1] * (c * (y - pivot[1])))
+            for x in (0, image.width) for y in (0, image.height)
+        ]
+        # The bicubic kernel reaches 2 texels past the raster: 2 x scale pixels.
+        reach = 3 + 2 * math.ceil(max(abs(d.scale[0]), abs(d.scale[1])))
+        x0 = max(0, math.floor(min(x for x, _ in corners)) - reach)
+        y0 = max(0, math.floor(min(y for _, y in corners)) - reach)
+        x1 = min(canvas.width, math.ceil(max(x for x, _ in corners)) + reach)
+        y1 = min(canvas.height, math.ceil(max(y for _, y in corners)) + reach)
+        if x1 <= x0 or y1 <= y0:
+            return
         layer = (
             image.convert("RGBa")
             .transform(
-                canvas.size,
+                (x1 - x0, y1 - y0),
                 Image.Transform.AFFINE,
-                (a, b, pivot[0] - a * px - b * py, e, f, pivot[1] - e * px - f * py),
+                (a, b, pivot[0] - a * (px - x0) - b * (py - y0), e, f, pivot[1] - e * (px - x0) - f * (py - y0)),
                 resample=Image.Resampling.BICUBIC,
             )
             .convert("RGBA")
         )
-        canvas.alpha_composite(_faded(layer, d.opacity))
+        canvas.alpha_composite(_faded(layer, d.opacity), (x0, y0))
 
 
 def _faded(image: Image.Image, opacity: float) -> Image.Image:
@@ -819,6 +838,13 @@ def _reduce_part(sprite: Image.Image, pivot: Tuple[float, float], factor: int, r
     return small.crop(trim), ((pivot[0] + reach) / factor - trim[0], (pivot[1] + reach) / factor - trim[1])
 
 
+def _bordered(sprite: Image.Image) -> Image.Image:
+    """``sprite`` inside ``PART_BORDER`` transparent texels on every side."""
+    out = Image.new("RGBA", (sprite.width + 2 * PART_BORDER, sprite.height + 2 * PART_BORDER), (0, 0, 0, 0))
+    out.paste(sprite, (PART_BORDER, PART_BORDER))
+    return out
+
+
 #: Transparent texels kept around a continuously placed part: the reach of the
 #: offline bicubic resampler (2) covers the GPU's bilinear (1).
 PART_BORDER = 2
@@ -873,8 +899,10 @@ def recorded_paint():
         target = record._list(canvas)
         if ops is None:
             # Painted by something this record did not see: it is still a
-            # picture of the frame, so it rides as one overlay.
-            target.append(PaintedOverlay(frame, (dx, dy), "composited"))
+            # picture of the frame, so it rides as one overlay (unless it is
+            # blank: a layer nothing painted this frame).
+            if frame.getchannel("A").getbbox() is not None:
+                target.append(PaintedOverlay(frame, (dx, dy), "composited"))
         else:
             for op in ops:
                 if isinstance(op, PaintedPart):
@@ -883,25 +911,33 @@ def recorded_paint():
                     target.append(replace(op, dest=(op.dest[0] + dx, op.dest[1] + dy)))
         return originals["composite_canvas"](canvas, frame, dest)
 
-    def recording_downsample(frame, size):
-        out = originals["downsampled_canvas"](frame, size)
+    def recording_downsample(frame, size, resample=None):
+        out = originals["downsampled_canvas"](frame, size, resample)
         ops = record.ops_for(frame)
         if ops is None:
             return out
+
+        def reduce(image, small):
+            return originals["downsampled_canvas"](image, small, resample)
+
         factor = frame.width // size[0]
         assert frame.width == size[0] * factor and frame.height == size[1] * factor, (
             f"a {frame.size} frame reduced to {size} is not a whole supersample"
         )
         target = record._list(out)
         for op in ops:
-            assert isinstance(op, PaintedPart), "an overlay painted on a supersampled canvas"
+            if isinstance(op, PaintedOverlay):
+                # An effect layer on the supersampled canvas is reduced as a
+                # part placed at its corner.
+                assert op.scale == 1, "a scaled layer on a supersampled canvas"
+                op = PaintedPart(op.image, (0.0, 0.0), (float(op.dest[0]), float(op.dest[1])), 0.0, 1.0, op.name, group=op.group)
             assert op.scale_x == 1.0 and op.exact, "a supersampled canvas is reduced once, unmirrored"
             # Where `blit_rotated` put it on the supersampled canvas: the
             # whole-pixel pivot on the whole-pixel point. Unrounded, an edge
             # lands up to a quarter of a frame pixel off at 4x (a blob of 7 on
             # robot v3's `dash_attack~mirrored`[1], 2026-10-03).
             snapped = (float(round(op.pivot[0])), float(round(op.pivot[1])))
-            sprite, pivot = record.reduced(op.sprite, snapped, factor, originals["downsampled_canvas"])
+            sprite, pivot = record.reduced(op.sprite, snapped, factor, reduce)
             target.append(
                 replace(
                     op,
@@ -1038,6 +1074,64 @@ def _snapped_blit(
     rigdoc.blit_rotated(canvas, image, pivot, at_px, degrees, opacity, resample=resample)
 
 
+#: The rows a character's flipbook tweens when its target does not say:
+#: locomotion loops (decision D3 of the game's
+#: `docs/planning/engine/mary-o-part-realization.md`). Every other clip steps.
+LOCOMOTION_LOOPS = ("walk", "run", "crouch_walk", "climb", "swim")
+
+
+def publish_rig_flipbook(
+    target: str,
+    rows: Sequence[Tuple[str, int, int]],
+    render: Callable[[str, int, int], Image.Image],
+    outputs: Mapping[str, Any],
+    frame_transform: Mapping[str, int],
+    out_dir: Path,
+    tween_rows: Optional[Sequence[str]] = None,
+    render_clip: Optional[Callable[[str, int], Sequence[Image.Image]]] = None,
+) -> Dict[str, Path]:
+    """Build and write the part flipbook of a rig-document target that
+    ``build_sheet`` just published, and return its files.
+
+    ``render`` is the target's ``render_fn``; ``outputs`` is what
+    ``build_sheet`` returned, and ``frame_transform`` what it filled
+    (``frame_transform_out``): the translation from a drawn frame to the
+    published one (padding added, auto-crop removed). Each frame is drawn onto
+    a canvas of the published frame through ``rigdoc.composite_canvas``, so
+    the flipbook's frame, feet and draws are the sheet's. ``tween_rows``
+    defaults to the rows of ``LOCOMOTION_LOOPS`` the target has.
+    ``render_clip`` is for a target that renders a clip at once (a swing
+    trail is drawn from the frames before it): see ``build_rig_flipbook``.
+    """
+    import yaml
+
+    from . import rigdoc
+    from .sheet_build import rendering_canonical_only
+
+    # A canonical-only render (a portrait) publishes no sheet to draw, nor
+    # does a build that published no sheet.
+    if rendering_canonical_only() or "yaml" not in outputs:
+        return {}
+    sheet = yaml.safe_load(Path(outputs["yaml"]).read_text())
+    size = (int(sheet["frame_width"]), int(sheet["frame_height"]))
+    feet = sheet_feet(Path(outputs["yaml"]))
+    dx, dy = int(frame_transform.get("dx", 0)), int(frame_transform.get("dy", 0))
+
+    def place(frame: Image.Image) -> Image.Image:
+        canvas = Image.new("RGBA", size, (0, 0, 0, 0))
+        rigdoc.composite_canvas(canvas, frame, (dx, dy))
+        return canvas
+
+    def published(row: str, index: int, count: int) -> Image.Image:
+        return place(render(row, index, count))
+
+    published_clip = None if render_clip is None else (lambda row, count: [place(f) for f in render_clip(row, count)])
+    names = {row for row, _count, _ms in rows}
+    tweened = [row for row in (LOCOMOTION_LOOPS if tween_rows is None else tween_rows) if row in names]
+    flipbook = build_rig_flipbook(target, rows, published, None, feet, size, tweened, render_clip=published_clip)
+    return flipbook.write(Path(out_dir))
+
+
 def sheet_feet(sheet_yaml: Path) -> Tuple[float, float]:
     """The feet pixel a published sheet states (``body_metrics.feet_pixel``):
     the flipbook's origin is the sheet's own, read from what was just written
@@ -1056,6 +1150,7 @@ def build_rig_flipbook(
     feet: Tuple[float, float],
     frame_size: Tuple[int, int],
     tween_rows: Sequence[str] = (),
+    render_clip: Optional[Callable[[str, int], Sequence[Image.Image]]] = None,
 ) -> PartFlipbook:
     """The flipbook of a rig-document character: ``part_rows`` from parts (every
     row when ``None``), and any other row of ``rows`` left to the baked sheet.
@@ -1066,6 +1161,12 @@ def build_rig_flipbook(
     character's ``RigDocument`` and ``rigdoc``'s seams. The canvas it returns
     must BE the published frame, so a draw's place is a frame pixel; a frame of
     another size is refused. ``feet`` is the sheet's feet pixel.
+
+    ``render_clip(row, count)``, when given, renders a whole clip in one call
+    instead, and is recorded as one pass. ⛔ For a target that composes a clip
+    at once and CACHES it (a swing trail is drawn from the frames before it):
+    a frame handed back from a cache filled outside the recording carries no
+    record, and pass the UNCACHED function (``lru_cache``'s ``__wrapped__``).
 
     A rig painted at frame resolution is SNAPPED (whole-pixel places, see
     ``PartFlipbook.placement``); a supersampled rig, reduced through
@@ -1103,9 +1204,16 @@ def build_rig_flipbook(
             continue
         frames: List[List[PartDraw]] = []
         opacities: List[float] = []
+        if render_clip is not None:
+            with recorded_paint() as clip_record:
+                clip = list(render_clip(row, int(count)))
+            assert len(clip) == int(count), f"{target} {row}: {len(clip)} frames rendered for {count}"
         for index in range(int(count)):
-            with recorded_paint() as record:
-                frame = render(row, index, int(count))
+            if render_clip is not None:
+                frame, record = clip[index], clip_record
+            else:
+                with recorded_paint() as record:
+                    frame = render(row, index, int(count))
             rendered[(row, index)] = frame
             assert frame.size == tuple(frame_size), (
                 f"{target} {row}:{index} renders {frame.size}, not the {tuple(frame_size)} frame"
@@ -1124,18 +1232,26 @@ def build_rig_flipbook(
             draws: List[PartDraw] = []
             for op in ops:
                 if isinstance(op, PaintedPart):
+                    sprite = op.sprite
                     if op.exact:
                         placements.add(PLACEMENT_SNAPPED)
                         if op.degrees % 360.0 != 0.0:
                             filters.add(op.bilinear)
-                        pivot = (float(round(op.pivot[0])), float(round(op.pivot[1])))
+                        # A turned part's edge fades a pixel outward. The GPU
+                        # draws a part only inside its rect, so the raster
+                        # carries the transparent border that fade lands on
+                        # (`PART_BORDER`): without it PCA's turned outlines lost
+                        # a one-pixel edge in game (blobs of 8). The pivot stays
+                        # whole, so the replay is the same picture.
+                        sprite = _bordered(sprite)
+                        pivot = (float(round(op.pivot[0])) + PART_BORDER, float(round(op.pivot[1])) + PART_BORDER)
                         at = (float(round(op.world[0])), float(round(op.world[1])))
                     else:
                         placements.add(PLACEMENT_CONTINUOUS)
                         pivot, at = op.pivot, op.world
                     draws.append(
                         PartDraw(
-                            intern("part", op.sprite, pivot),
+                            intern("part", sprite, pivot),
                             (at[0] - feet[0], at[1] - feet[1]),
                             math.radians(op.degrees),
                             (op.scale_x, 1.0),
