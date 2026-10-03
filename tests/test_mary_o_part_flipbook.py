@@ -23,6 +23,7 @@ written: 0 wrong pixels on all 87 frames.
 from __future__ import annotations
 
 import dataclasses
+import math
 from pathlib import Path
 
 import pytest
@@ -161,3 +162,113 @@ def test_a_frame_painted_outside_the_seams_is_refused():
 
     with pytest.raises(AssertionError, match="outside rigdoc's seams"):
         part_flipbook.build_rig_flipbook("poison", [("idle", 1, 100)], render, None, (80.0, 190.0), FRAME_SIZE)
+
+
+# -- in-betweens ------------------------------------------------------------------
+
+
+def _lerp_pose(a, b, t):
+    from ambition_sprite2d_renderer.targets.characters._mary_o_v2_model import Pose
+
+    values = {}
+    for f in dataclasses.fields(Pose):
+        va, vb = getattr(a, f.name), getattr(b, f.name)
+        if isinstance(va, (int, float)) and isinstance(vb, (int, float)) and not isinstance(va, bool):
+            values[f.name] = va + (vb - va) * t
+        else:
+            assert va == vb, f"{f.name} cannot be tweened: {va!r} -> {vb!r}"
+            values[f.name] = va
+    return Pose(**values)
+
+
+#: How far a tweened part may sit from where the renderer puts it in the
+#: lerped pose, in frame pixels. Each published keyframe is the renderer's
+#: placement ROUNDED to whole pixels (the baked road), so an in-between of two
+#: rounded places can sit up to a pixel from the unrounded in-between.
+TWEEN_PLACE_PX = 1.0
+TWEEN_TURN_DEG = 0.01
+
+
+def _tween_errors(flipbook, form, docs, row, index, t, draws):
+    """Per track: (place error px, turn error deg) of ``draws`` against the
+    renderer's own placement of the lerped pose."""
+    from ambition_sprite2d_renderer.targets.characters import mary_o_v2_svg_poc as poc
+
+    poses = poc._poses_for(form)[row]
+    a, b = poses[index % len(poses)], poses[(index + 1) % len(poses)]
+    with part_flipbook.recorded_paint() as record:
+        truth = poc._rig_pose(docs, form, _lerp_pose(a, b, t))
+    placed = {op.name: op for op in record.ops_for(truth)}
+    errors = {}
+    for d in draws:
+        op = placed[d.track]
+        pivot = flipbook.parts[d.part].pivot
+        corner = (d.at[0] + flipbook.feet[0] - pivot[0], d.at[1] + flipbook.feet[1] - pivot[1])
+        exact = (op.world[0] - op.pivot[0], op.world[1] - op.pivot[1])
+        place = max(abs(corner[0] - exact[0]), abs(corner[1] - exact[1]))
+        turn = abs((math.degrees(d.rotation) - op.degrees + 180.0) % 360.0 - 180.0)
+        errors[d.track] = (place, turn)
+    return errors
+
+
+@pytest.mark.parametrize("form", FORMS, ids=lambda form: form.target_name)
+def test_a_tweened_clip_places_each_part_where_the_in_between_pose_does(form, published):
+    """The runtime's tween (``tween_draws``: each track lerps to its place in
+    the next frame) against the renderer placing the LERPED POSE: the
+    in-between frames have an oracle even though no sheet publishes them.
+
+    Geometry, not pixels: the GPU draws a tweened part between whole pixels and
+    does not round it, so a PIL raster of the oracle (which rounds each part's
+    place and pivot on its own) would measure PIL's rounding, not the tween."""
+    from ambition_sprite2d_renderer.targets.characters import mary_o_v2_svg_poc as poc
+    from ambition_sprite2d_renderer.targets.characters._mary_o_v2_svg_poc import build_rig_document
+    from ambition_sprite2d_renderer.targets.characters.mary_o_v2 import TWEENED_ROWS
+
+    _sheet, _atlas, flipbook = published[form.target_name]
+    tweened = [row for row in flipbook.clips if flipbook.tweens.get(row) == part_flipbook.TWEEN_LINEAR]
+    assert tweened == [row for row in flipbook.clips if row in TWEENED_ROWS] and tweened
+    docs = {form.target_name: build_rig_document(poc.ASSET_PATH, form, "side")}
+    failures, checked, moved = [], 0, 0
+    for row in tweened:
+        frames = flipbook.clips[row][1]
+        for index in range(len(frames)):
+            for t in (0.25, 0.5, 0.75):
+                draws = part_flipbook.tween_draws(flipbook, row, index, t)
+                moved += sum(1 for d, f in zip(draws, frames[index]) if d.at != f.at or d.rotation != f.rotation)
+                for track, (place, turn) in _tween_errors(flipbook, form, docs, row, index, t, draws).items():
+                    checked += 1
+                    if place > TWEEN_PLACE_PX or turn > TWEEN_TURN_DEG:
+                        failures.append(f"{row}[{index}] t={t} {track}: {place:.2f} px, {turn:.3f} deg")
+    # ⛔ Premise: the tween MOVED something. A tween that holds every draw still
+    # agrees with a pose that barely moves.
+    assert checked > 0 and moved > 0
+    assert not failures, "in-betweens the tween misplaces:\n" + "\n".join(failures)
+
+
+def test_a_tween_that_does_not_move_is_caught(published):
+    """The measure can fail: the frame itself, offered as the half-way pose of
+    a swim stroke, misplaces its limbs."""
+    from ambition_sprite2d_renderer.targets.characters import mary_o_v2_svg_poc as poc
+    from ambition_sprite2d_renderer.targets.characters._mary_o_v2_svg_poc import build_rig_document
+
+    _sheet, _atlas, flipbook = published[TALL_FORM.target_name]
+    docs = {TALL_FORM.target_name: build_rig_document(poc.ASSET_PATH, TALL_FORM, "side")}
+    held = flipbook.clips["swim"][1][4]
+    errors = _tween_errors(flipbook, TALL_FORM, docs, "swim", 4, 0.5, held)
+    assert max(max(place / TWEEN_PLACE_PX, turn / TWEEN_TURN_DEG) for place, turn in errors.values()) > 1.0
+
+
+def test_a_clip_that_steps_holds_its_frame(published):
+    _sheet, _atlas, flipbook = published[FIRE_FORM.target_name]
+    assert flipbook.tweens.get("transform") is None
+    assert part_flipbook.tween_draws(flipbook, "transform", 3, 0.5) == flipbook.clips["transform"][1][3]
+
+
+def test_the_published_file_carries_tracks_and_tweens(published, tmp_path):
+    _sheet, _atlas, flipbook = published[TALL_FORM.target_name]
+    flipbook.write(tmp_path)
+    back = part_flipbook.PartFlipbook.from_published(tmp_path / f"{TALL_FORM.target_name}_parts.ron", "snapped")
+    assert back.tweens == flipbook.tweens
+    assert [[d.track for d in frame] for frame in back.clips["walk"][1]] == [
+        [d.track for d in frame] for frame in flipbook.clips["walk"][1]
+    ]

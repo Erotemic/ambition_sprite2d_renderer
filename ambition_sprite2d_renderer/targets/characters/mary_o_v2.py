@@ -288,6 +288,14 @@ def _actor_metadata(form: FormSpec) -> dict:
     return metadata
 
 
+#: The clips her flipbook tweens: the locomotion loops. Transitions and
+#: one-frame rows step, so their flashes and swaps stay discrete (decision D3 of
+#: `docs/planning/engine/mary-o-part-realization.md`). Her rig is one level --
+#: every limb a rigid shape turning about its joint on a torso that only
+#: translates -- so a linear tween of each part IS the in-between pose.
+TWEENED_ROWS = ("walk", "crouch_walk", "climb", "swim")
+
+
 def _render_form(form: FormSpec, out_dir: str | Path) -> List[Path]:
     return _render_form_with_products(form, out_dir)[0]
 
@@ -379,7 +387,8 @@ def _render_form_with_products(form: FormSpec, out_dir: str | Path):
 
     box = form_collision_box(form)
     feet = (box["x"] + box["w"] / 2.0, float(box["y"] + box["h"]))
-    flipbook = build_rig_flipbook(form.target_name, form.rows, render_frame, None, feet, FRAME_SIZE)
+    tween_rows = [row for row, _count, _ms in form.rows if row in TWEENED_ROWS]
+    flipbook = build_rig_flipbook(form.target_name, form.rows, render_frame, None, feet, FRAME_SIZE, tween_rows)
     parts = flipbook.write(out_dir)
     paths = [
         outputs[k]

@@ -41,8 +41,15 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from PIL import Image
 
-#: Version of the published ``<target>_parts.ron`` schema.
-PART_FLIPBOOK_SCHEMA_VERSION = 1
+#: Version of the published ``<target>_parts.ron`` schema. 2 added the track
+#: table (each draw's identity across frames) and the per-clip tween policy.
+PART_FLIPBOOK_SCHEMA_VERSION = 2
+
+#: A clip's in-between policy. ``step`` shows each frame whole until the next;
+#: ``linear`` moves each track from its place in one frame to its place in the
+#: next (see ``tween_draws``). Published per clip, never chosen at runtime.
+TWEEN_STEP = "step"
+TWEEN_LINEAR = "linear"
 
 Call = Tuple[str, tuple, dict]
 
@@ -167,6 +174,9 @@ class PartFlipbook:
     #: Filled by ``pack``: per part (page, x, y, w, h).
     rects: List[Tuple[int, int, int, int, int]] = field(default_factory=list)
     pages: List[Image.Image] = field(default_factory=list)
+    #: row -> ``TWEEN_LINEAR`` for a clip whose frames are tweened; every other
+    #: clip steps.
+    tweens: Dict[str, str] = field(default_factory=dict)
     #: ``"snapped"``: every pivot and point is a whole pixel and a part turns the
     #: way ``rigdoc.blit_rotated`` turns it (a rig flipbook, see
     #: ``build_rig_flipbook``). ``"continuous"``: fitted placements (pirates).
@@ -218,6 +228,13 @@ class PartFlipbook:
         def pair(values) -> str:
             return f"({num(values[0])}, {num(values[1])})"
 
+        tracks: List[str] = []
+        for _duration, frames in self.clips.values():
+            for frame in frames:
+                for d in frame:
+                    if d.track is not None and d.track not in tracks:
+                        tracks.append(d.track)
+        track_index = {name: index for index, name in enumerate(tracks)}
         lines = [
             "(",
             f"    schema_version: {PART_FLIPBOOK_SCHEMA_VERSION},",
@@ -232,15 +249,20 @@ class PartFlipbook:
                 f'        (name: "{part.name}", page: {page}, rect: ({x}, {y}, {w}, {h}), '
                 f"pivot: {pair(part.pivot)}),"
             )
-        lines += ["    ],", "    clips: {"]
+        lines.append("    ],")
+        if tracks:
+            lines.append("    tracks: [" + ", ".join(f'"{name}"' for name in tracks) + "],")
+        lines.append("    clips: {")
         for row, (duration, frames) in self.clips.items():
-            lines.append(f'        "{row}": (frame_duration_s: {num(duration)}, frames: [')
+            tween = ", tween: Linear" if self.tweens.get(row) == TWEEN_LINEAR else ""
+            lines.append(f'        "{row}": (frame_duration_s: {num(duration)}{tween}, frames: [')
             for frame in frames:
                 lines.append("            [")
                 for d in frame:
+                    track = f", track: {track_index[d.track]}" if d.track is not None else ""
                     lines.append(
                         f"                (part: {d.part}, at: {pair(d.at)}, "
-                        f"rotation: {num(d.rotation)}, scale: {pair(d.scale)}),"
+                        f"rotation: {num(d.rotation)}, scale: {pair(d.scale)}{track}),"
                     )
                 lines.append("            ],")
             lines.append("        ]),")
@@ -289,8 +311,11 @@ class PartFlipbook:
             rf'\(name: "([^"]*)", page: (\d+), rect: \((\d+), (\d+), (\d+), (\d+)\), pivot: \({number}, {number}\)\)'
         )
         draw_line = re.compile(
-            rf"\(part: (\d+), at: \({number}, {number}\), rotation: {number}, scale: \({number}, {number}\)\)"
+            rf"\(part: (\d+), at: \({number}, {number}\), rotation: {number}, scale: \({number}, {number}\)(?:, track: (\d+))?\)"
         )
+        listed = re.search(r"tracks: \[([^\]]*)\]", text)
+        tracks = re.findall(r'"([^"]+)"', listed.group(1)) if listed else []
+        tweens: Dict[str, str] = {}
         clips: Dict[str, Tuple[float, List[List[PartDraw]]]] = {}
         row = None
         for line in text.splitlines():
@@ -302,10 +327,12 @@ class PartFlipbook:
                 rects.append(rect)
                 parts.append(PartRaster(name, pages[rect[0]].crop((rect[1], rect[2], rect[1] + rect[3], rect[2] + rect[4])), (float(px), float(py))))
                 continue
-            head = re.match(rf'"([^"]+)": \(frame_duration_s: {number}, frames: \[', stripped)
+            head = re.match(rf'"([^"]+)": \(frame_duration_s: {number}(, tween: Linear)?, frames: \[', stripped)
             if head:
                 row = head.group(1)
                 clips[row] = (float(head.group(2)), [])
+                if head.group(3):
+                    tweens[row] = TWEEN_LINEAR
                 continue
             if row is None:
                 continue
@@ -313,8 +340,16 @@ class PartFlipbook:
                 clips[row][1].append([])
             match = draw_line.search(stripped)
             if match:
-                part, ax, ay, rotation, sx, sy = match.groups()
-                clips[row][1][-1].append(PartDraw(int(part), (float(ax), float(ay)), float(rotation), (float(sx), float(sy))))
+                part, ax, ay, rotation, sx, sy, track = match.groups()
+                clips[row][1][-1].append(
+                    PartDraw(
+                        int(part),
+                        (float(ax), float(ay)),
+                        float(rotation),
+                        (float(sx), float(sy)),
+                        tracks[int(track)] if track is not None else None,
+                    )
+                )
         baked = re.search(r"baked_clips: \[([^\]]*)\]", text)
         return cls(
             target,
@@ -325,10 +360,19 @@ class PartFlipbook:
             re.findall(r'"([^"]+)"', baked.group(1)) if baked else [],
             rects,
             pages,
+            tweens,
             placement,
         )
 
-    def draw_frame(self, canvas: Image.Image, row: str, index: int, feet_at: Tuple[float, float], flip: bool = False) -> None:
+    def draw_frame(
+        self,
+        canvas: Image.Image,
+        row: str,
+        index: int,
+        feet_at: Tuple[float, float],
+        flip: bool = False,
+        draws: Optional[Sequence[PartDraw]] = None,
+    ) -> None:
         """Draw frame ``index`` of ``row`` onto ``canvas`` with the feet at
         ``feet_at`` (canvas pixels), unclipped by the frame. Snapped placement
         only; ``flip`` mirrors the body about the feet, as the runtime does."""
@@ -336,7 +380,7 @@ class PartFlipbook:
         layer = canvas if not flip else Image.new("RGBA", canvas.size, (0, 0, 0, 0))
         # Mirroring about the feet (a pixel EDGE) sends pixel `i` to `2 feet - 1 - i`.
         fx = feet_at[0] if not flip else canvas.width - feet_at[0]
-        for d in self.clips[row][1][index]:
+        for d in self.clips[row][1][index] if draws is None else draws:
             _snapped_blit(
                 layer,
                 self.part_image(d.part),
@@ -721,10 +765,52 @@ def recorded_blits():
         rigdoc.blit_rotated = original
 
 
+def tween_draws(flipbook: "PartFlipbook", row: str, index: int, t: float) -> List[PartDraw]:
+    """The draws ``t`` (0..1) of the way from frame ``index`` of ``row`` to the
+    next frame (the first after the last: a tweened clip loops).
+
+    THE RULE, which the game's runtime implements the same way
+    (`ambition_sprite_sheet::character::rigged::RiggedSpriteAsset::tweened`):
+    the current frame's draws, in its order; a draw whose track is in the next
+    frame WITH THE SAME PART moves linearly to it (its turn by the shorter
+    way); any other draw holds still. A clip that steps, or ``t == 0``, is the
+    frame itself.
+    """
+    _duration, frames = flipbook.clips[row]
+    current = frames[index]
+    if flipbook.tweens.get(row) != TWEEN_LINEAR or t <= 0.0:
+        return list(current)
+    following = {d.track: d for d in frames[(index + 1) % len(frames)] if d.track is not None}
+    out: List[PartDraw] = []
+    for d in current:
+        target = following.get(d.track)
+        if d.track is None or target is None or target.part != d.part:
+            out.append(d)
+            continue
+        turn = (target.rotation - d.rotation + math.pi) % (2.0 * math.pi) - math.pi
+        out.append(
+            PartDraw(
+                d.part,
+                (d.at[0] + (target.at[0] - d.at[0]) * t, d.at[1] + (target.at[1] - d.at[1]) * t),
+                d.rotation + turn * t,
+                (d.scale[0] + (target.scale[0] - d.scale[0]) * t, d.scale[1] + (target.scale[1] - d.scale[1]) * t),
+                d.track,
+            )
+        )
+    return out
+
+
 def _snapped_blit(canvas: Image.Image, image: Image.Image, pivot, at_px, degrees: float) -> None:
-    """``blit_rotated`` at a whole-pixel pivot and point: the baked road."""
+    """``blit_rotated`` at a whole-pixel pivot and point: the baked road.
+
+    A published point is already whole. A TWEENED point is not, and is rounded
+    half UP here: ``blit_rotated``'s ``round`` rounds halves to even, so two
+    parts half-way between the same two places would round apart (12.5 -> 12,
+    13.5 -> 14) and open a one-pixel seam between a limb and the body it hangs
+    from (measured: an 11-pixel blob at t = 0.5 of Mary-O's walk)."""
     from . import rigdoc
 
+    at_px = (math.floor(at_px[0] + 0.5), math.floor(at_px[1] + 0.5))
     rigdoc.blit_rotated(canvas, image, pivot, at_px, degrees, 1.0)
 
 
@@ -735,9 +821,12 @@ def build_rig_flipbook(
     part_rows: Optional[Sequence[str]],
     feet: Tuple[float, float],
     frame_size: Tuple[int, int],
+    tween_rows: Sequence[str] = (),
 ) -> PartFlipbook:
     """The flipbook of a rig-document character: ``part_rows`` from parts (every
     row when ``None``), and any other row of ``rows`` left to the baked sheet.
+    ``tween_rows`` are published as tweened clips (``tween_draws``); the rest
+    step.
 
     ``render(row, index, count)`` renders one sheet frame through the
     character's ``RigDocument`` and ``rigdoc``'s compositing seams. The canvas
@@ -812,10 +901,23 @@ def build_rig_flipbook(
                             track=f"overlay:{op.name}",
                         )
                     )
+            tracks = [d.track for d in draws]
+            assert len(set(tracks)) == len(tracks), f"{target} {row}:{index} names a track twice: {tracks}"
             frames.append(draws)
         clips[row] = (float(duration_ms) / 1000.0, frames)
     baked = [row for row, _count, _ms in rows if row not in selected]
-    flipbook = PartFlipbook(target, tuple(frame_size), tuple(feet), parts, clips, baked, placement="snapped")
+    untweenable = sorted(set(tween_rows) - set(clips))
+    assert not untweenable, f"tween rows {untweenable} are not part clips of {target}"
+    flipbook = PartFlipbook(
+        target,
+        tuple(frame_size),
+        tuple(feet),
+        parts,
+        clips,
+        baked,
+        tweens={row: TWEEN_LINEAR for row in tween_rows},
+        placement="snapped",
+    )
     for (row, index), frame in rendered.items():
         worst = _max_channel_difference(flipbook.recompose(row, index), frame)
         if worst > REPLAY_ROUNDING:
