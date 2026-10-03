@@ -139,8 +139,13 @@ def test_a_hum_drawn_unscaled_fails(sample):
 
 @pytest.mark.parametrize("track", ["head_base", "near_arm_l"])
 def test_a_visible_part_a_pixel_off_fails(sample, track):
+    # A rigid neighbour may be merged into the track's draw (`head_base+…`,
+    # `part_flipbook._merge_rigid_neighbours`): the draw that holds the part.
+    def holds(d):
+        return d.track is not None and track in d.track.split("+")
+
     def nudge(draws):
-        assert any(d.track == track for d in draws), sorted({d.track for d in draws})
-        return [dataclasses.replace(d, at=(d.at[0] + 1.0, d.at[1])) if d.track == track else d for d in draws]
+        assert any(holds(d) for d in draws), sorted({d.track for d in draws})
+        return [dataclasses.replace(d, at=(d.at[0] + 1.0, d.at[1])) if holds(d) else d for d in draws]
 
     assert _fails(sample, "idle", 0, nudge)
