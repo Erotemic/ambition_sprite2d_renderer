@@ -12,11 +12,11 @@ from __future__ import annotations
 import argparse
 import math
 from pathlib import Path
-from typing import Iterable, List, Sequence, Tuple
+from typing import Dict, Iterable, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -245,10 +245,68 @@ def _body_width(t: float) -> float:
     return 12.5 - 5.5 * t
 
 
-def _draw_box(draw: ImageDraw.ImageDraw, cx: float, cy: float, peek: float = 0.0, wobble: float = 0.0) -> None:
-    left = cx - 20.0 + wobble
+# ---- Pieces ------------------------------------------------------------------
+#
+# The snake is drawn as a rig: each body segment is one piece per (segment,
+# quarter pixel of length), turned to the segment; the box, the head, the
+# tail, a belly scale, the tongue are pieces placed where they sit. A part
+# flipbook stores each once.
+
+#: Where a piece's anchor is painted on the scratch canvas (frame pixels);
+#: the canvas is twice it.
+HOME = (64.0, 64.0)
+_PIECES: Dict[tuple, object] = {}
+
+
+def _piece(key: tuple, paint):
+    """``(raster, anchor)``: what ``paint(draw)`` paints with its anchor at
+    ``HOME``, cut to its box; ``None`` when it paints nothing."""
+    if key not in _PIECES:
+        canvas = Image.new("RGBA", (int(2 * HOME[0] * SUPER), int(2 * HOME[1] * SUPER)), TRANSPARENT)
+        paint(blending_draw(canvas))
+        box = canvas.getchannel("A").getbbox()
+        _PIECES[key] = None if box is None else (canvas.crop(box), (HOME[0] * SUPER - box[0], HOME[1] * SUPER - box[1]))
+    return _PIECES[key]
+
+
+def _put(img: Image.Image, key: tuple, paint, at: Point, name: str, degrees: float = 0.0) -> None:
+    part = _piece(key, paint)
+    if part is not None:
+        shape_rig.place(img, part, (at[0] * SUPER, at[1] * SUPER), degrees, name)
+
+
+def _put_segment(img: Image.Image, a: Point, b: Point, width: float, outline_extra: float, dot: float, name: str) -> None:
+    """A body segment from ``a`` to ``b`` (an outline stroke under a snake
+    stroke, with a scale dot at ``a`` when ``dot``), one piece per quarter
+    pixel of its length, turned to it."""
+    length = round(math.hypot(b[0] - a[0], b[1] - a[1]) * 4) / 4
+    width = round(width, 3)
+    hx, hy = HOME
+
+    def paint(d) -> None:
+        _draw_line(d, [(hx, hy), (hx + length, hy)], OUTLINE, width + outline_extra)
+        _draw_line(d, [(hx, hy), (hx + length, hy)], SNAKE, width)
+        if dot:
+            _circle(d, (hx, hy), dot, SNAKE, None)
+
+    _put(img, ("segment", length, width, outline_extra, round(dot, 3)), paint, a, name, math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])))
+
+
+def _put_belly(img: Image.Image, at: Point, r: float, name: str) -> None:
+    r = round(r, 2)
+    _put(img, ("belly", r), lambda d: _circle(d, HOME, r, BELLY, None), at, name)
+
+
+def _draw_box(img: Image.Image, cx: float, cy: float, peek: float = 0.0, wobble: float = 0.0) -> None:
+    """The box (and the head peeking from it) as one piece per peek."""
+    peek = round(peek, 3)
+    _put(img, ("box", peek), lambda d: _paint_box(d, HOME[0], HOME[1], peek), (cx + wobble, cy), "box")
+
+
+def _paint_box(draw: ImageDraw.ImageDraw, cx: float, cy: float, peek: float = 0.0) -> None:
+    left = cx - 20.0
     top = cy - 12.0
-    right = cx + 18.0 + wobble
+    right = cx + 18.0
     bottom = cy + 15.0
     front = [
         (left, top),
@@ -276,34 +334,8 @@ def _draw_box(draw: ImageDraw.ImageDraw, cx: float, cy: float, peek: float = 0.0
             _draw_line(draw, [(head[0] + 9.0, head[1] - 0.2), (head[0] + 10.8, head[1] + 1.3)], TONGUE, 0.5)
 
 
-def _draw_body(draw: ImageDraw.ImageDraw, pts: list[Point], neck: Point, head: Point, head_angle: float) -> None:
-    chain = pts + [neck, head]
-    n = len(chain)
-    for idx in range(n - 1):
-        t = idx / max(1, n - 2)
-        seg = [chain[idx], chain[idx + 1]]
-        w = _body_width(t)
-        _draw_line(draw, seg, OUTLINE, w + 3.0)
-        _draw_line(draw, seg, SNAKE, w)
-        if idx > 1 and idx < n - 3:
-            c = chain[idx]
-            _circle(draw, c, w * 0.19, SNAKE, None)
-
-    for idx in range(1, len(pts) - 1, 2):
-        t = idx / max(1, len(pts) - 1)
-        p = pts[idx]
-        _circle(draw, (p[0], p[1] + 1.5 + 0.5 * t), max(1.4, _body_width(t) * 0.22), BELLY, None)
-
-    tail = pts[0]
-    _poly(
-        draw,
-        [(tail[0] - 8.0, tail[1] + 1.0), (tail[0] - 1.0, tail[1] - 3.0), (tail[0] + 1.8, tail[1] + 3.0)],
-        SNAKE_DARK,
-        OUTLINE,
-        0.7,
-    )
-
-    hx, hy = head
+def _paint_head(draw: ImageDraw.ImageDraw) -> None:
+    hx, hy = HOME
     head_pts = [
         (hx - 7.0, hy - 5.0),
         (hx + 2.0, hy - 8.0),
@@ -321,36 +353,93 @@ def _draw_body(draw: ImageDraw.ImageDraw, pts: list[Point], neck: Point, head: P
     _poly(draw, [(hx + 2.0, hy - 6.0), (hx + 4.0, hy - 9.0), (hx + 6.0, hy - 6.8)], SNAKE_DARK, OUTLINE, 0.5)
 
 
-def _draw_tongue(draw: ImageDraw.ImageDraw, head: Point, length: float = 7.5) -> None:
-    hx, hy = head
-    mid = (hx + 11.5, hy + 1.0)
-    tip = (hx + 11.5 + length, hy + 0.3)
-    _draw_line(draw, [mid, tip], TONGUE, 0.8)
-    _draw_line(draw, [tip, (tip[0] + 2.2, tip[1] - 1.8)], TONGUE, 0.45)
-    _draw_line(draw, [tip, (tip[0] + 2.2, tip[1] + 1.8)], TONGUE, 0.45)
+def _draw_body(img: Image.Image, pts: list[Point], neck: Point, head: Point, head_angle: float) -> None:
+    del head_angle
+    chain = pts + [neck, head]
+    n = len(chain)
+    for idx in range(n - 1):
+        t = idx / max(1, n - 2)
+        w = _body_width(t)
+        _put_segment(img, chain[idx], chain[idx + 1], w, 3.0, w * 0.19 if 1 < idx < n - 3 else 0.0, f"segment_{idx}")
+
+    for idx in range(1, len(pts) - 1, 2):
+        t = idx / max(1, len(pts) - 1)
+        p = pts[idx]
+        _put_belly(img, (p[0], p[1] + 1.5 + 0.5 * t), max(1.4, _body_width(t) * 0.22), f"belly_{idx}")
+
+    hx, hy = HOME
+    _put(
+        img,
+        ("tail",),
+        lambda d: _poly(d, [(hx - 8.0, hy + 1.0), (hx - 1.0, hy - 3.0), (hx + 1.8, hy + 3.0)], SNAKE_DARK, OUTLINE, 0.7),
+        pts[0],
+        "tail",
+    )
+    _put(img, ("head",), _paint_head, head, "head")
 
 
-def _draw_back_box_snake(draw: ImageDraw.ImageDraw, anim: str, frame_idx: int, nframes: int) -> tuple[list[Point], Point, Point, Point]:
+def _draw_tongue(img: Image.Image, head: Point, length: float = 7.5) -> None:
+    length = round(length, 2)
+    hx, hy = HOME
+
+    def paint(d) -> None:
+        mid = (hx + 11.5, hy + 1.0)
+        tip = (hx + 11.5 + length, hy + 0.3)
+        _draw_line(d, [mid, tip], TONGUE, 0.8)
+        _draw_line(d, [tip, (tip[0] + 2.2, tip[1] - 1.8)], TONGUE, 0.45)
+        _draw_line(d, [tip, (tip[0] + 2.2, tip[1] + 1.8)], TONGUE, 0.45)
+
+    _put(img, ("tongue", length), paint, head, "tongue")
+
+
+def _draw_back_box_snake(img: Image.Image, anim: str, frame_idx: int, nframes: int) -> tuple[list[Point], Point, Point, Point]:
     pts, neck, head, head_angle = _snake_curve(anim, frame_idx, nframes)
-    _draw_body(draw, pts, neck, head, head_angle)
+    _draw_body(img, pts, neck, head, head_angle)
     box_anchor = pts[7]
     wobble = math.sin(_phase(frame_idx, nframes)) * (1.2 if anim == "walk" else 0.4)
-    _draw_box(draw, box_anchor[0] + 5.0, box_anchor[1] - 13.5, peek=0.0, wobble=wobble)
-    _draw_line(draw, [(box_anchor[0] - 5.0, box_anchor[1] - 10.5), (box_anchor[0] + 19.0, box_anchor[1] - 7.5)], OUTLINE, 1.0)
-    _draw_line(draw, [(box_anchor[0] - 8.0, box_anchor[1] - 0.5), (box_anchor[0] + 15.0, box_anchor[1] + 3.5)], OUTLINE, 1.0)
-    _draw_line(draw, [(box_anchor[0] - 5.0, box_anchor[1] - 10.5), (box_anchor[0] + 19.0, box_anchor[1] - 7.5)], BOX_TAPE, 0.55)
-    _draw_line(draw, [(box_anchor[0] - 8.0, box_anchor[1] - 0.5), (box_anchor[0] + 15.0, box_anchor[1] + 3.5)], BOX_TAPE, 0.55)
+    _draw_box(img, box_anchor[0] + 5.0, box_anchor[1] - 13.5, peek=0.0, wobble=wobble)
+    hx, hy = HOME
+
+    def straps(d) -> None:
+        for colour, width in ((OUTLINE, 1.0), (BOX_TAPE, 0.55)):
+            _draw_line(d, [(hx - 5.0, hy - 10.5), (hx + 19.0, hy - 7.5)], colour, width)
+            _draw_line(d, [(hx - 8.0, hy - 0.5), (hx + 15.0, hy + 3.5)], colour, width)
+
+    _put(img, ("straps",), straps, box_anchor, "straps")
     return pts, neck, head, box_anchor
 
 
-def _draw_retreat_frame(draw: ImageDraw.ImageDraw, frame_idx: int, nframes: int) -> None:
+def _draw_short_snake(img: Image.Image, tail: Point, mid: Point, head: Point, visible: float) -> None:
+    """The snake half out of the box (retreat / emerge): two segments, two
+    belly scales and its head."""
+    chain = [tail, mid, head]
+    widths = [7.4, 6.0]
+    for idx in range(2):
+        width = round(widths[idx] * (0.85 + 0.15 * visible), 2)
+        _put_segment(img, chain[idx], chain[idx + 1], width, 2.2, 0.0, f"segment_{idx}")
+    _put_belly(img, ((tail[0] + mid[0]) * 0.5, (tail[1] + mid[1]) * 0.5 + 0.8), 1.7, "belly_0")
+    _put_belly(img, ((mid[0] + head[0]) * 0.5, (mid[1] + head[1]) * 0.5 + 0.8), 1.5, "belly_1")
+
+    def small_head(d) -> None:
+        hx, hy = HOME
+        _poly(
+            d,
+            [(hx - 5.8, hy - 3.8), (hx + 0.8, hy - 5.6), (hx + 7.2, hy - 2.8), (hx + 8.2, hy + 0.8), (hx + 4.5, hy + 4.2), (hx - 2.8, hy + 4.5), (hx - 6.2, hy + 1.0)],
+            SNAKE,
+            OUTLINE,
+            0.9,
+        )
+        _poly(d, [(hx - 1.0, hy + 1.2), (hx + 4.8, hy + 0.8), (hx + 2.8, hy + 3.6), (hx - 2.0, hy + 3.4)], BELLY, None)
+        _circle(d, (hx + 3.0, hy - 1.5), 0.9, EYE, None)
+
+    _put(img, ("small_head",), small_head, head, "head")
+
+
+def _draw_retreat_frame(img: Image.Image, frame_idx: int, nframes: int) -> None:
     ph = _phase(frame_idx, nframes)
     wobble = math.sin(ph) * 0.45
     progress = frame_idx / max(1, nframes - 1)
-    box_cx = 67.0
-    box_cy = 74.0
-    _draw_box(draw, box_cx, box_cy, peek=0.0, wobble=wobble)
-
+    _draw_box(img, 67.0, 74.0, peek=0.0, wobble=wobble)
     retreat_end = 0.82
     if progress >= retreat_end:
         return
@@ -359,119 +448,72 @@ def _draw_retreat_frame(draw: ImageDraw.ImageDraw, frame_idx: int, nframes: int)
     tail = (entry[0] + 1.5, 85.0)
     mid = (entry[0] + 8.0 + 10.0 * visible, 84.0 + math.sin(ph) * 1.2)
     head = (entry[0] + 13.0 + 19.0 * visible, 81.5 - 4.5 * visible)
-    chain = [tail, mid, head]
-    widths = [7.4, 6.0]
-    for idx in range(2):
-        seg = [chain[idx], chain[idx + 1]]
-        width = widths[idx] * (0.85 + 0.15 * visible)
-        _draw_line(draw, seg, OUTLINE, width + 2.2)
-        _draw_line(draw, seg, SNAKE, width)
-    _circle(draw, ((tail[0] + mid[0]) * 0.5, (tail[1] + mid[1]) * 0.5 + 0.8), 1.7, BELLY, None)
-    _circle(draw, ((mid[0] + head[0]) * 0.5, (mid[1] + head[1]) * 0.5 + 0.8), 1.5, BELLY, None)
-    hx, hy = head
-    _poly(
-        draw,
-        [
-            (hx - 5.8, hy - 3.8),
-            (hx + 0.8, hy - 5.6),
-            (hx + 7.2, hy - 2.8),
-            (hx + 8.2, hy + 0.8),
-            (hx + 4.5, hy + 4.2),
-            (hx - 2.8, hy + 4.5),
-            (hx - 6.2, hy + 1.0),
-        ],
-        SNAKE,
-        OUTLINE,
-        0.9,
-    )
-    _poly(draw, [(hx - 1.0, hy + 1.2), (hx + 4.8, hy + 0.8), (hx + 2.8, hy + 3.6), (hx - 2.0, hy + 3.4)], BELLY, None)
-    _circle(draw, (hx + 3.0, hy - 1.5), 0.9, EYE, None)
+    _draw_short_snake(img, tail, mid, head, visible)
 
 
-def _draw_boxed_idle(draw: ImageDraw.ImageDraw, frame_idx: int, nframes: int) -> None:
+def _draw_boxed_idle(img: Image.Image, frame_idx: int, nframes: int) -> None:
     ph = _phase(frame_idx, nframes)
-    wobble = math.sin(ph) * 0.45
-    _draw_box(draw, 67.0, 74.0, peek=0.0, wobble=wobble)
+    _draw_box(img, 67.0, 74.0, peek=0.0, wobble=math.sin(ph) * 0.45)
 
 
-def _draw_peek(draw: ImageDraw.ImageDraw, frame_idx: int, nframes: int) -> None:
+def _draw_peek(img: Image.Image, frame_idx: int, nframes: int) -> None:
     ph = _phase(frame_idx, nframes)
     t = frame_idx / max(1, nframes - 1)
     peek = 0.22 + 0.72 * (0.5 - 0.5 * math.cos(math.pi * t))
-    wobble = math.sin(ph) * 0.35
-    _draw_box(draw, 67.0, 74.0, peek=peek, wobble=wobble)
+    _draw_box(img, 67.0, 74.0, peek=peek, wobble=math.sin(ph) * 0.35)
 
 
-def _draw_emerge(draw: ImageDraw.ImageDraw, frame_idx: int, nframes: int) -> None:
+def _draw_emerge(img: Image.Image, frame_idx: int, nframes: int) -> None:
     ph = _phase(frame_idx, nframes)
-    progress = frame_idx / max(1, nframes - 1)
-    box_cx = 67.0
-    box_cy = 74.0
+    visible = frame_idx / max(1, nframes - 1)
     wobble = math.sin(ph) * 0.30
-    _draw_box(draw, box_cx, box_cy, peek=0.0, wobble=wobble)
-
-    visible = progress
+    _draw_box(img, 67.0, 74.0, peek=0.0, wobble=wobble)
     entry = (84.0 + wobble, 83.5)
     tail = (entry[0] + 1.5, 85.0)
     mid = (entry[0] + 8.0 + 10.0 * visible, 84.0 + math.sin(ph) * 1.2)
     head = (entry[0] + 13.0 + 19.0 * visible, 81.5 - 4.5 * visible)
-    chain = [tail, mid, head]
-    widths = [7.4, 6.0]
-    for idx in range(2):
-        seg = [chain[idx], chain[idx + 1]]
-        width = widths[idx] * (0.85 + 0.15 * visible)
-        _draw_line(draw, seg, OUTLINE, width + 2.2)
-        _draw_line(draw, seg, SNAKE, width)
-    _circle(draw, ((tail[0] + mid[0]) * 0.5, (tail[1] + mid[1]) * 0.5 + 0.8), 1.7, BELLY, None)
-    _circle(draw, ((mid[0] + head[0]) * 0.5, (mid[1] + head[1]) * 0.5 + 0.8), 1.5, BELLY, None)
-    hx, hy = head
-    _poly(
-        draw,
-        [
-            (hx - 5.8, hy - 3.8),
-            (hx + 0.8, hy - 5.6),
-            (hx + 7.2, hy - 2.8),
-            (hx + 8.2, hy + 0.8),
-            (hx + 4.5, hy + 4.2),
-            (hx - 2.8, hy + 4.5),
-            (hx - 6.2, hy + 1.0),
-        ],
-        SNAKE,
-        OUTLINE,
-        0.9,
-    )
-    _poly(draw, [(hx - 1.0, hy + 1.2), (hx + 4.8, hy + 0.8), (hx + 2.8, hy + 3.6), (hx - 2.0, hy + 3.4)], BELLY, None)
-    _circle(draw, (hx + 3.0, hy - 1.5), 0.9, EYE, None)
+    _draw_short_snake(img, tail, mid, head, visible)
 
 
 def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     img = Image.new("RGBA", (CANVAS_W, CANVAS_H), TRANSPARENT)
-    draw = blending_draw(img)
 
     if anim == "retreat":
-        _draw_retreat_frame(draw, frame_idx, nframes)
+        _draw_retreat_frame(img, frame_idx, nframes)
         return _downsample(img)
     if anim == "boxed_idle":
-        _draw_boxed_idle(draw, frame_idx, nframes)
+        _draw_boxed_idle(img, frame_idx, nframes)
         return _downsample(img)
     if anim == "peek":
-        _draw_peek(draw, frame_idx, nframes)
+        _draw_peek(img, frame_idx, nframes)
         return _downsample(img)
     if anim == "emerge":
-        _draw_emerge(draw, frame_idx, nframes)
+        _draw_emerge(img, frame_idx, nframes)
         return _downsample(img)
 
-    pts, neck, head, box_anchor = _draw_back_box_snake(draw, anim, frame_idx, nframes)
+    pts, neck, head, box_anchor = _draw_back_box_snake(img, anim, frame_idx, nframes)
+    hx, hy = HOME
 
     if anim == "hiss":
-        _draw_tongue(draw, head, 9.0 + 1.0 * math.sin(_phase(frame_idx, nframes)))
-        for i in range(2):
-            r = 8.0 + i * 5.5 + math.sin(_phase(frame_idx, nframes)) * 1.2
-            draw.arc(_bbox(head[0] + 12.0, head[1] - 2.0, r, r * 0.65), start=290, end=20, fill=BOX_TAPE, width=max(1, _s(0.7)))
+        _draw_tongue(img, head, 9.0 + 1.0 * math.sin(_phase(frame_idx, nframes)))
+        wave = round(math.sin(_phase(frame_idx, nframes)) * 1.2, 3)
+
+        def rings(d) -> None:
+            for i in range(2):
+                r = 8.0 + i * 5.5 + wave
+                d.arc(_bbox(hx + 12.0, hy - 2.0, r, r * 0.65), start=290, end=20, fill=BOX_TAPE, width=max(1, _s(0.7)))
+
+        _put(img, ("hiss", wave), rings, head, "hiss")
     elif anim == "idle" and frame_idx % max(1, nframes // 3) == 1:
-        _draw_tongue(draw, head, 5.0)
+        _draw_tongue(img, head, 5.0)
     elif anim == "death":
-        draw.arc(_bbox(head[0] + 6.0, head[1] - 1.0, 4.0, 3.0), start=20, end=160, fill=OUTLINE, width=max(1, _s(0.6)))
+        _put(
+            img,
+            ("dead_mouth",),
+            lambda d: d.arc(_bbox(hx + 6.0, hy - 1.0, 4.0, 3.0), start=20, end=160, fill=OUTLINE, width=max(1, _s(0.6))),
+            head,
+            "mouth",
+        )
 
     return _downsample(img)
 

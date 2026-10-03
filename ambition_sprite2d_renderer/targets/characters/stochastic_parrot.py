@@ -24,11 +24,12 @@ from typing import Dict, List, Tuple
 
 from PIL import Image, ImageColor, ImageDraw
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.common_draw import draw_capsule
 from ...authoring.rig import add, clamp, ease_in_out_sine, vec
 from ...authoring.skeleton import (
+    BoneWorld,
     Channel,
     Clip,
     PartCtx,
@@ -178,6 +179,7 @@ def _leg_painter(upper: str, lower: str, tint: Color, toe_tint: Color, r_u: floa
         for spread, length in ((-28.0, 4.5), (0.0, 5.4), (26.0, 4.2)):
             tx, ty = ctx.cw(add(low.tip, vec(length, low.angle + spread)))
             ctx.draw.line((hx, hy, tx, ty), fill=toe_tint, width=max(1, int(ctx.L(0.8))))
+    fn.spec = ("leg", upper, lower, tint, toe_tint, r_u, r_l)
     return fn
 
 
@@ -351,6 +353,7 @@ def _wing_painter(
         ]
         composite_polygon(ctx.img, rounded_polygon([ctx.cw(p) for p in root_coverts], radius=ctx.L(0.82)), (*covert_tint[:3], 188 if not is_far else 132))
 
+    fn.spec = ("wing", upper, lower)
     return fn
 
 
@@ -502,6 +505,105 @@ def _build_rig() -> Rig:
 
 
 _RIG = _build_rig()
+
+
+# ---- Pieces -------------------------------------------------------------------
+#
+# The rig's parts are drawn as pieces: each part's painter paints ONCE on a
+# scratch canvas with its bone at ``PIECE_HOME`` and angle 0, the result is cut
+# to what it covers and placed at the bone, turned by its angle
+# (``shape_rig``). A part flipbook stores each once. A leg is two pieces (the
+# thigh; the shin with its toes). A wing bends at the elbow, so it is one
+# piece per whole degree of the bend, riding the forearm. A piece that reads
+# a pose channel (a blink, the beak's opening, the tail's fan) is one per
+# value of that channel (to two decimals).
+
+#: Where a piece's bone sits on the scratch canvas (world units); the canvas
+#: is twice it.
+PIECE_HOME = (40.0, 40.0)
+_PIECES: Dict[tuple, object] = {}
+#: The pose channels each single-bone part's painter reads.
+_PART_CHANNELS = {
+    "head": ("blink", "eye_squint", "look_x", "look_y"),
+    "beak": ("beak_open",),
+    "far_tail": ("tail_fan",),
+    "body": (),
+}
+
+
+def _piece(key: tuple, paint):
+    """``(raster, anchor)``: what ``paint(img, draw)`` paints, its bone at
+    ``PIECE_HOME``, cut to its box; ``None`` when it paints nothing."""
+    if key not in _PIECES:
+        size = (int(2 * PIECE_HOME[0] * SS), int(2 * PIECE_HOME[1] * SS))
+        canvas = Image.new("RGBA", size, (0, 0, 0, 0))
+        paint(canvas, blending_draw(canvas))
+        box = canvas.getchannel("A").getbbox()
+        _PIECES[key] = None if box is None else (canvas.crop(box), (PIECE_HOME[0] * SS - box[0], PIECE_HOME[1] * SS - box[1]))
+    return _PIECES[key]
+
+
+def _place(actor: Image.Image, key: tuple, paint, bone: BoneWorld, name: str) -> None:
+    part = _piece(key, paint)
+    if part is not None:
+        shape_rig.place(actor, part, (bone.origin[0] * SS, bone.origin[1] * SS), bone.angle, name)
+
+
+def _draw_rig_pieces(actor: Image.Image, world, params: Dict[str, float]) -> None:
+    """``_RIG.draw``, each part as pieces (see above)."""
+    home = PIECE_HOME
+    for part in sorted(_RIG.parts, key=lambda p: p.z):
+        spec = getattr(part.fn, "spec", None)
+        if spec is not None and spec[0] == "leg":
+            _, upper, lower, tint, toe_tint, r_u, r_l = spec
+            u, low = world[upper], world[lower]
+            _place(
+                actor,
+                ("thigh", tint, r_u, u.length),
+                lambda img, d: draw_capsule(d, (home[0] * SS, home[1] * SS), ((home[0] + u.length) * SS, home[1] * SS), r_u * SS, tint, PAL["outline"], 0.45 * SS),
+                u,
+                f"{part.name}_thigh",
+            )
+
+            def shin(img, d, low=low) -> None:
+                hx, hy = home
+                draw_capsule(d, (hx * SS, hy * SS), ((hx + low.length) * SS, hy * SS), r_l * SS, tint, PAL["outline"], 0.45 * SS)
+                jr = r_u * 0.55 * SS
+                d.ellipse((hx * SS - jr, hy * SS - jr, hx * SS + jr, hy * SS + jr), fill=PAL["talon"])
+                tip = (hx + low.length, hy)
+                for spread, length in ((-28.0, 4.5), (0.0, 5.4), (26.0, 4.2)):
+                    tx, ty = add(tip, vec(length, spread))
+                    d.line((tip[0] * SS, tip[1] * SS, tx * SS, ty * SS), fill=toe_tint, width=max(1, int(0.8 * SS)))
+
+            _place(actor, ("shin", tint, toe_tint, r_u, r_l, low.length), shin, low, f"{part.name}_shin")
+            continue
+        if spec is not None and spec[0] == "wing":
+            _, upper, lower = spec
+            u, low = world[upper], world[lower]
+            bend = float(round(u.angle - low.angle))
+            local = {
+                upper: BoneWorld(add(home, vec(-u.length, bend)), bend, u.length),
+                lower: BoneWorld(home, 0.0, low.length),
+            }
+            _place(
+                actor,
+                ("wing", part.name, bend),
+                lambda img, d, local=local, part=part: part.fn(PartCtx(img, d, local[part.bone], local, SS, params)),
+                low,
+                part.name,
+            )
+            continue
+        channels = tuple(round(float(params.get(name, 0.0)), 2) for name in _PART_CHANNELS[part.name])
+        bone = world[part.bone]
+        local = {part.bone: BoneWorld(home, 0.0, bone.length)}
+        keyed = {name: value for name, value in zip(_PART_CHANNELS[part.name], channels)}
+        _place(
+            actor,
+            ("part", part.name, channels),
+            lambda img, d, local=local, part=part, keyed=keyed: part.fn(PartCtx(img, d, local[part.bone], local, SS, keyed)),
+            bone,
+            part.name,
+        )
 
 
 # ---- Clips --------------------------------------------------------------------
@@ -919,7 +1021,7 @@ def _render_side_actor(world, params: Dict[str, float]) -> Image.Image:
     """The side view, facing right. A caller that faces it left mirrors the
     reduced frame (see ``render_frame``)."""
     actor = Image.new("RGBA", (FRAME_W * SS, FRAME_H * SS), (0, 0, 0, 0))
-    _RIG.draw(actor, blending_draw(actor), world, SS, params)
+    _draw_rig_pieces(actor, world, params)
     return actor
 
 

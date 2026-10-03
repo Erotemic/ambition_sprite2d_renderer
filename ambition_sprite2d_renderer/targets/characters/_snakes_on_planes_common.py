@@ -5,11 +5,11 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Sequence, Tuple
+from typing import Dict, Iterable, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -394,55 +394,174 @@ def _draw_cartesian_plane(
     _circle(draw, origin, 2.0, AXIS, None)
 
 
+# ---- Pieces --------------------------------------------------------------------
+#
+# The plane and its snakes are drawn as a rig: the plane is one piece, turned
+# with its bank; each snake is ``SNAKE_BONES`` bones of its resting arch (its
+# segments and scale dots painted once) placed on its wiggling curve and
+# turned to it, and a head piece (one per tongue and eye state) turned to the
+# neck. A part flipbook stores each once.
+
+SNAKE_BONES = 4
+#: Where a piece's anchor is painted on the scratch canvas (frame pixels);
+#: the canvas is twice it.
+HOME = (90.0, 70.0)
+_PIECES: Dict[tuple, object] = {}
+
+
+def _piece(key: tuple, paint):
+    """``(raster, anchor)``: what ``paint(draw)`` paints with its anchor at
+    ``HOME``, cut to its box; ``None`` when it paints nothing."""
+    if key not in _PIECES:
+        canvas = Image.new("RGBA", (int(2 * HOME[0] * SUPER), int(2 * HOME[1] * SUPER)), TRANSPARENT)
+        paint(blending_draw(canvas))
+        box = canvas.getchannel("A").getbbox()
+        _PIECES[key] = None if box is None else (canvas.crop(box), (HOME[0] * SUPER - box[0], HOME[1] * SUPER - box[1]))
+    return _PIECES[key]
+
+
+def _put(canvas: Image.Image, key: tuple, paint, at: Point, name: str, degrees: float = 0.0) -> None:
+    part = _piece(key, paint)
+    if part is not None:
+        shape_rig.place(canvas, part, (at[0] * SUPER, at[1] * SUPER), degrees, name)
+
+
+def _angle(a: Point, b: Point) -> float:
+    return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+
+
+def _paint_snake_bone(draw, rest: Sequence[Point], k: int) -> None:
+    """Bone ``k`` of a resting snake (its segments and dots), its first point
+    at ``HOME``."""
+    per = (len(rest) - 1) // SNAKE_BONES
+    first = per * k
+    ox, oy = HOME[0] - rest[first][0], HOME[1] - rest[first][1]
+    moved = [(x + ox, y + oy) for x, y in rest]
+    # One segment past its own: turned apart, the next bone leaves a gap at
+    # their joint that this segment fills under it.
+    for idx in range(first, min(first + per + 1, len(rest) - 1)):
+        t = idx / max(1, len(rest) - 2)
+        width = 7.0 - 2.5 * t
+        segment = [moved[idx], moved[idx + 1]]
+        _line(draw, segment, OUTLINE, width + 2.0)
+        _line(draw, segment, SNAKE_GREEN, width)
+    for idx in range(2, len(rest) - 3, 3):
+        if first <= idx < first + per:
+            _circle(draw, moved[idx], 1.35, SNAKE_LIGHT, None)
+
+
+def _paint_snake_head(draw, tongue: float, eyes_closed: bool) -> None:
+    """A snake's head facing +x, its neck point at ``HOME``."""
+    hx, hy = HOME
+    ux, uy, px, py = 1.0, 0.0, 0.0, 1.0
+    head_poly = [
+        (hx - ux * 4.5 - px * 4.0, hy - uy * 4.5 - py * 4.0),
+        (hx + ux * 4.0 - px * 4.6, hy + uy * 4.0 - py * 4.6),
+        (hx + ux * 8.0, hy + uy * 8.0),
+        (hx + ux * 4.0 + px * 4.6, hy + uy * 4.0 + py * 4.6),
+        (hx - ux * 4.5 + px * 4.0, hy - uy * 4.5 + py * 4.0),
+    ]
+    _poly(draw, head_poly, SNAKE_GREEN, OUTLINE, 0.9)
+    belly_poly = [
+        (hx - ux * 1.0 + px * 0.3, hy - uy * 1.0 + py * 0.3),
+        (hx + ux * 5.0 + px * 0.5, hy + uy * 5.0 + py * 0.5),
+        (hx + ux * 4.1 + px * 2.7, hy + uy * 4.1 + py * 2.7),
+        (hx - ux * 1.8 + px * 2.3, hy - uy * 1.8 + py * 2.3),
+    ]
+    _poly(draw, belly_poly, SNAKE_BELLY, None)
+    eye = (hx + ux * 3.7 - px * 2.2, hy + uy * 3.7 - py * 2.2)
+    if eyes_closed:
+        _line(draw, [(eye[0] - px * 1.2, eye[1] - py * 1.2), (eye[0] + px * 1.2, eye[1] + py * 1.2)], SNAKE_EYE, 0.65)
+    else:
+        _circle(draw, eye, 0.9, SNAKE_EYE, None)
+    if tongue > 0.0:
+        mouth = (hx + ux * 8.0, hy + uy * 8.0)
+        tip = (mouth[0] + ux * tongue, mouth[1] + uy * tongue)
+        _line(draw, [mouth, tip], TONGUE, 0.75)
+        _line(draw, [tip, (tip[0] + ux * 2.0 + px * 1.3, tip[1] + uy * 2.0 + py * 1.3)], TONGUE, 0.45)
+        _line(draw, [tip, (tip[0] + ux * 2.0 - px * 1.3, tip[1] + uy * 2.0 - py * 1.3)], TONGUE, 0.45)
+
+
+def _place_snake(canvas: Image.Image, n: int, anchor: Point, length: float, height: float, phase: float, direction: float, center: Point, angle: float, offset: Point, tongue: float, eyes_closed: bool) -> None:
+    """Snake ``n``: its bones on its wiggling curve, then its head."""
+    # The resting arch: the curve without its wiggle.
+    rest = [(anchor[0] + direction * length * i / 12.0, anchor[1] - math.sin(i / 12.0 * math.pi) * height) for i in range(13)]
+    curve = _transform_points(_snake_curve(anchor, length, height, phase, direction), center, angle, offset)
+    per = (len(rest) - 1) // SNAKE_BONES
+    for k in range(SNAKE_BONES):
+        a, b = per * k, per * (k + 1)
+        _put(
+            canvas,
+            ("snake_bone", round(anchor[0], 3), round(anchor[1], 3), length, height, direction, k),
+            lambda d, k=k: _paint_snake_bone(d, rest, k),
+            curve[a],
+            f"snake{n}_bone{k}",
+            _angle(curve[a], curve[b]) - _angle(rest[a], rest[b]),
+        )
+    tongue = round(tongue, 2)
+    _put(
+        canvas,
+        ("snake_head", tongue, eyes_closed),
+        lambda d: _paint_snake_head(d, tongue, eyes_closed),
+        curve[-1],
+        f"snake{n}_head",
+        _angle(curve[-2], curve[-1]),
+    )
+
+
 def render_frame(spec: PlaneSpec, anim: str, frame_idx: int, nframes: int) -> Image.Image:
     canvas = Image.new(
         "RGBA",
         (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER),
         TRANSPARENT,
     )
-    draw = blending_draw(canvas)
     center = (80.0, 69.0)
     angle, offset, _squash, eyes_closed = _motion(anim, frame_idx, nframes)
     phase = math.tau * frame_idx / max(1, nframes)
 
+    # The plane: painted level about its centre (as if at ``HOME``) and
+    # turned with its bank.
+    home_shift = (HOME[0] - center[0], HOME[1] - center[1])
     if spec.kind == "paper":
-        _draw_paper_plane(draw, center, angle, offset)
+        plane = lambda d: _draw_paper_plane(d, HOME, 0.0, home_shift)
         anchors = [
             ((44.0, 66.0), 28.0, 15.0, 0.0, 1.0),
             ((75.0, 70.0), 25.0, 18.0, 1.8, 1.0),
             ((101.0, 63.0), 21.0, 14.0, 3.4, 1.0),
         ]
     else:
-        _draw_cartesian_plane(draw, center, angle, offset)
+        plane = lambda d: _draw_cartesian_plane(d, HOME, 0.0, home_shift)
         anchors = [
             ((42.0, 67.0), 25.0, 16.0, 0.3, 1.0),
             ((72.0, 70.0), 23.0, 19.0, 2.1, 1.0),
             ((103.0, 65.0), 22.0, 15.0, 4.0, 1.0),
         ]
+    _put(canvas, ("plane", spec.kind), plane, (center[0] + offset[0], center[1] + offset[1]), "plane", math.degrees(angle))
 
     tongue = 0.0
     if anim == "hiss":
         tongue = 5.0 + 2.0 * (0.5 + 0.5 * math.sin(phase))
     for idx, (anchor, length, height, local_phase, direction) in enumerate(anchors):
-        curve = _snake_curve(anchor, length, height, phase + local_phase, direction)
-        _draw_snake(
-            draw,
-            curve,
-            transform_center=center,
-            angle=angle,
-            offset=offset,
-            tongue=tongue if idx == 2 else 0.0,
-            eyes_closed=eyes_closed,
+        _place_snake(
+            canvas, idx, anchor, length, height, phase + local_phase, direction,
+            center, angle, offset, tongue if idx == 2 else 0.0, eyes_closed,
         )
 
     if anim == "death":
         # Loose paper/grid fragments make the fall read without a drop shadow.
+        fill = PAPER_SHADE if spec.kind == "paper" else GRID_BG
+        hx, hy = HOME
         for idx in range(4):
             t = frame_idx / max(1, nframes - 1)
             x = 48.0 + idx * 21.0 + math.sin(idx + t * 5.0) * 4.0
             y = 91.0 + t * (8.0 + idx * 3.0)
-            fragment = [(x - 3.0, y - 1.0), (x + 3.0, y - 2.0), (x + 1.0, y + 3.0)]
-            _poly(draw, fragment, PAPER_SHADE if spec.kind == "paper" else GRID_BG, OUTLINE, 0.6)
+            _put(
+                canvas,
+                ("fragment", fill),
+                lambda d: _poly(d, [(hx - 3.0, hy - 1.0), (hx + 3.0, hy - 2.0), (hx + 1.0, hy + 3.0)], fill, OUTLINE, 0.6),
+                (x, y),
+                f"fragment_{idx}",
+            )
 
     return rigdoc.downsampled_canvas(canvas, FRAME_SIZE, Image.Resampling.LANCZOS)
 

@@ -29,11 +29,11 @@ from __future__ import annotations
 import argparse
 import math
 from pathlib import Path
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 from PIL import Image, ImageDraw
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -275,53 +275,175 @@ def _draw_triangle_glyph(draw: ImageDraw.ImageDraw, center: Point, scale: float,
     _line(draw, [pts[1], ((pts[1][0] + pts[2][0]) / 2.0, pts[1][1] - 3.2 * scale), pts[2]], glow, 1.0 * scale)
 
 
-def _draw_python(
-    draw: ImageDraw.ImageDraw,
-    *,
-    shoulder_y: float,
-    sway: float,
-    emphasis: float,
-    head_lift: float,
-    body_dx: float,
-) -> None:
-    # Tail / body wrap.
-    body = [
-        (48 + body_dx, shoulder_y + 6),
-        (42 + body_dx + sway * 1.5, shoulder_y + 12),
-        (46 + body_dx + sway * 2.0, shoulder_y + 19),
-        (59 + body_dx + sway * 0.6, shoulder_y + 21),
-        (77 + body_dx - sway * 0.7, shoulder_y + 19),
-        (88 + body_dx - sway * 1.2, shoulder_y + 12),
-        (84 + body_dx, shoulder_y + 4),
+# ---- Pieces ------------------------------------------------------------------
+#
+# Python-goras is drawn as a rig: each rigid thing (the head, a sandal, a
+# hand, the scroll, the medallion, the python's head) is painted ONCE on a
+# scratch canvas with its anchor at ``HOME``, cut to what it covers, and placed
+# (and turned) through ``shape_rig``. Limbs are bones, one piece per
+# (quarter-pixel) length. The toga and the python's coil change shape with
+# the pose: one piece per (half-pixel) step of what shapes them. A part
+# flipbook stores each once.
+
+#: Where a piece's anchor is painted on the scratch canvas (frame pixels);
+#: the canvas is twice it.
+HOME = (64.0, 64.0)
+_PIECES: Dict[tuple, object] = {}
+
+
+def _piece(key: tuple, paint):
+    """``(raster, anchor)``: what ``paint(draw)`` paints with its anchor at
+    ``HOME``, cut to its box; ``None`` when it paints nothing."""
+    if key not in _PIECES:
+        canvas = Image.new("RGBA", (int(2 * HOME[0] * SUPER), int(2 * HOME[1] * SUPER)), TRANSPARENT)
+        paint(blending_draw(canvas))
+        box = canvas.getchannel("A").getbbox()
+        _PIECES[key] = None if box is None else (canvas.crop(box), (HOME[0] * SUPER - box[0], HOME[1] * SUPER - box[1]))
+    return _PIECES[key]
+
+
+def _put(img: Image.Image, key: tuple, paint, at: Point, name: str, degrees: float = 0.0) -> None:
+    part = _piece(key, paint)
+    if part is not None:
+        shape_rig.place(img, part, (at[0] * SUPER, at[1] * SUPER), degrees, name)
+
+
+def _half(v: float) -> float:
+    return round(v * 2.0) / 2.0
+
+
+def _put_limb(img: Image.Image, root: Point, joint: Point, end: Point, fill: RGBA, outline_w: float, fill_w: float, name: str) -> None:
+    """A two-bone limb (an ``OUTLINE`` stroke under a ``fill`` stroke) as two
+    bones turned to their segments. The upper bone ends round, so the joint
+    is filled; the lower starts square, so it does not cut across it."""
+    hx, hy = HOME
+    for bone, a, b, cap in (("upper", root, joint, True), ("lower", joint, end, False)):
+        length = round(math.hypot(b[0] - a[0], b[1] - a[1]) * 4) / 4
+
+        def paint(d, length=length, cap=cap) -> None:
+            _line(d, [(hx, hy), (hx + length, hy)], OUTLINE, outline_w)
+            if cap:
+                _circle(d, (hx + length, hy), outline_w / 2.0, OUTLINE, outline=None)
+            _line(d, [(hx, hy), (hx + length, hy)], fill, fill_w)
+            if cap:
+                _circle(d, (hx + length, hy), fill_w / 2.0, fill, outline=None)
+
+        _put(img, ("limb", length, fill, outline_w, fill_w, cap), paint, a, f"{name}_{bone}", math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])))
+
+
+def _paint_toga(d, spread: float, shoulder: float, hip: float) -> None:
+    """The toga; ``shoulder`` and ``hip`` are heights above the feet line at
+    ``HOME``."""
+    cx, base_y = HOME
+    shoulder_y, hip_y = base_y - shoulder, base_y - hip
+    _poly(d, [
+        (cx - 18 - spread * 0.7, shoulder_y + 4),
+        (cx - 24 - spread, hip_y + 16),
+        (cx - 18 - spread * 0.4, base_y - 3),
+        (cx + 22 + spread * 0.5, base_y - 3),
+        (cx + 25 + spread, hip_y + 12),
+        (cx + 15, shoulder_y + 4),
+        (cx + 2, shoulder_y - 2),
+    ], TOGA, outline=OUTLINE, width=1.0)
+    _poly(d, [
+        (cx - 16, shoulder_y + 6),
+        (cx - 8, hip_y + 16),
+        (cx - 2, base_y - 2),
+        (cx + 3, base_y - 2),
+        (cx - 1, hip_y + 7),
+        (cx - 4, shoulder_y + 7),
+    ], TOGA_SHADE, outline=None)
+    _poly(d, [
+        (cx + 2, shoulder_y + 4),
+        (cx + 13, hip_y + 10),
+        (cx + 17, base_y - 4),
+        (cx + 21, base_y - 4),
+        (cx + 19, hip_y + 8),
+        (cx + 8, shoulder_y + 4),
+    ], TOGA_SHADE, outline=None)
+
+
+def _paint_head(d, blink: bool, mouth_open: bool) -> None:
+    """Head, hair, beard and face, centred on ``HOME``."""
+    cx, head_y = HOME
+    _circle(d, (cx, head_y), 11.5, SKIN, outline=OUTLINE, width=1.0)
+    _circle(d, (cx + 2.2, head_y - 2.0), 8.8, SKIN_LIGHT, outline=None)
+    hair_pts = [
+        (cx - 10, head_y - 2),
+        (cx - 8, head_y - 10),
+        (cx, head_y - 13),
+        (cx + 10, head_y - 10),
+        (cx + 12, head_y - 2),
+        (cx + 9, head_y + 1),
+        (cx + 5, head_y - 1),
+        (cx - 2, head_y - 2),
+        (cx - 7, head_y + 1),
     ]
-    _line(draw, body, OUTLINE, 7.4)
-    _line(draw, body, PYTHON_DARK, 5.6)
-    _line(draw, body, PYTHON_GREEN, 4.4)
+    _poly(d, hair_pts, HAIR, outline=OUTLINE, width=0.8)
+    _line(d, [(cx - 7, head_y - 5), (cx - 1, head_y - 9), (cx + 5, head_y - 6)], HAIR_LIGHT, 1.0)
+    beard_pts = [
+        (cx - 8, head_y + 5),
+        (cx - 4, head_y + 12),
+        (cx + 1, head_y + 16),
+        (cx + 8, head_y + 10),
+        (cx + 6, head_y + 4),
+        (cx - 2, head_y + 7),
+    ]
+    _poly(d, beard_pts, BEARD, outline=OUTLINE, width=0.8)
+    eye_y = head_y - 0.8
+    if blink:
+        _line(d, [(cx - 4.4, eye_y), (cx - 1.3, eye_y)], EYE, 0.8)
+        _line(d, [(cx + 1.8, eye_y), (cx + 4.8, eye_y)], EYE, 0.8)
+    else:
+        _circle(d, (cx - 2.8, eye_y), 0.9, EYE, outline=None)
+        _circle(d, (cx + 3.2, eye_y - 0.2), 0.9, EYE, outline=None)
+    if mouth_open:
+        _arc(d, (cx + 0.5, head_y + 4.0), 2.4, 1.7, 15, 165, MOUTH, 0.9)
+    else:
+        _line(d, [(cx - 1.7, head_y + 4.5), (cx + 3.0, head_y + 5.2)], MOUTH, 0.8)
+
+
+def _paint_python_coil(d, sway: float) -> None:
+    """The python's coil and belly band, its shoulder line at ``HOME``."""
+    ox, shoulder_y = HOME[0] - 64.0, HOME[1]
+    body = [
+        (48 + ox, shoulder_y + 6),
+        (42 + ox + sway * 1.5, shoulder_y + 12),
+        (46 + ox + sway * 2.0, shoulder_y + 19),
+        (59 + ox + sway * 0.6, shoulder_y + 21),
+        (77 + ox - sway * 0.7, shoulder_y + 19),
+        (88 + ox - sway * 1.2, shoulder_y + 12),
+        (84 + ox, shoulder_y + 4),
+    ]
+    _line(d, body, OUTLINE, 7.4)
+    _line(d, body, PYTHON_DARK, 5.6)
+    _line(d, body, PYTHON_GREEN, 4.4)
     for x, y in body[1:-1]:
-        _circle(draw, (x, y + 0.6), 1.1, PYTHON_LIGHT, outline=None)
-    # Belly band.
-    belly = [(57 + body_dx, shoulder_y + 18), (72 + body_dx, shoulder_y + 17), (81 + body_dx, shoulder_y + 13)]
-    _line(draw, belly, PYTHON_BELLY, 1.8)
-    # Head.
-    head_center = (88 + body_dx + sway * 0.4, shoulder_y - 2 - head_lift)
-    _circle(draw, head_center, 5.5 + emphasis * 0.3, PYTHON_GREEN, outline=OUTLINE, width=1.0)
-    _circle(draw, (head_center[0] + 1.6, head_center[1] - 0.8), 2.2, PYTHON_LIGHT, outline=None)
-    _circle(draw, (head_center[0] + 1.6, head_center[1] - 0.5), 0.75, EYE, outline=None)
-    _line(draw, [(head_center[0] + 4.8, head_center[1] + 0.7), (head_center[0] + 8.0, head_center[1] + 1.5)], MOUTH, 0.9)
-    tongue_end = (head_center[0] + 10.8 + emphasis * 1.6, head_center[1] + 2.0)
-    _line(draw, [(head_center[0] + 7.7, head_center[1] + 1.7), tongue_end], (188, 58, 88, 255), 0.8)
-    _line(draw, [tongue_end, (tongue_end[0] + 2.2, tongue_end[1] - 1.3)], (188, 58, 88, 255), 0.7)
-    _line(draw, [tongue_end, (tongue_end[0] + 2.1, tongue_end[1] + 1.2)], (188, 58, 88, 255), 0.7)
+        _circle(d, (x, y + 0.6), 1.1, PYTHON_LIGHT, outline=None)
+    belly = [(57 + ox, shoulder_y + 18), (72 + ox, shoulder_y + 17), (81 + ox, shoulder_y + 13)]
+    _line(d, belly, PYTHON_BELLY, 1.8)
+
+
+def _paint_python_head(d, emphasis: float) -> None:
+    """The python's head and tongue, centred on ``HOME``."""
+    hc = HOME
+    _circle(d, hc, 5.5 + emphasis * 0.3, PYTHON_GREEN, outline=OUTLINE, width=1.0)
+    _circle(d, (hc[0] + 1.6, hc[1] - 0.8), 2.2, PYTHON_LIGHT, outline=None)
+    _circle(d, (hc[0] + 1.6, hc[1] - 0.5), 0.75, EYE, outline=None)
+    _line(d, [(hc[0] + 4.8, hc[1] + 0.7), (hc[0] + 8.0, hc[1] + 1.5)], MOUTH, 0.9)
+    tongue_end = (hc[0] + 10.8 + emphasis * 1.6, hc[1] + 2.0)
+    _line(d, [(hc[0] + 7.7, hc[1] + 1.7), tongue_end], (188, 58, 88, 255), 0.8)
+    _line(d, [tongue_end, (tongue_end[0] + 2.2, tongue_end[1] - 1.3)], (188, 58, 88, 255), 0.7)
+    _line(d, [tongue_end, (tongue_end[0] + 2.1, tongue_end[1] + 1.2)], (188, 58, 88, 255), 0.7)
 
 
 def _draw_character(anim: str, i: int, n: int) -> Image.Image:
     img = Image.new("RGBA", (W, H), TRANSPARENT)
-    draw = blending_draw(img)
+    hx, hy = HOME
 
     t = i / max(1, n - 1)
     bob = _osc(i, n) * (1.0 if anim in {"walk", "talk", "taunt"} else 0.6)
     body_shift = 0.0
-    lean = 0.0
     arm_raise_r = 0.0
     arm_raise_l = 0.0
     glyph = 0.0
@@ -348,7 +470,6 @@ def _draw_character(anim: str, i: int, n: int) -> Image.Image:
         head_lift = 1.4
         robe_spread = 1.5
     elif anim == "slash":
-        lean = -10.0 + 22.0 * t
         body_shift = -10.0 + 20.0 * t
         arm_raise_r = 35.0 - 65.0 * t
         arm_raise_l = -12.0 + 10.0 * t
@@ -356,7 +477,6 @@ def _draw_character(anim: str, i: int, n: int) -> Image.Image:
         head_lift = glyph * 2.0
         scroll_visible = t < 0.4
     elif anim == "hurt":
-        lean = -16.0
         body_shift = -4.0
         arm_raise_r = -12.0
         arm_raise_l = -8.0
@@ -364,7 +484,6 @@ def _draw_character(anim: str, i: int, n: int) -> Image.Image:
         head_lift = 1.0
     elif anim == "death":
         collapse = t
-        lean = 58.0 * t
         body_shift = 8.0 * t
         arm_raise_r = -18.0 * t
         arm_raise_l = -10.0 * t
@@ -384,59 +503,25 @@ def _draw_character(anim: str, i: int, n: int) -> Image.Image:
     right_foot = (cx + 8 + step * 5.0 + collapse * 4.0, base_y - collapse * 3.0)
     left_knee = (cx - 9 + step * 1.5, hip_y + 12 + abs(step) * 2.5 + collapse * 4.0)
     right_knee = (cx + 8 - step * 1.5, hip_y + 11 + abs(step) * 1.4 + collapse * 2.0)
-    _line(draw, [(cx - 7, hip_y), left_knee, left_foot], OUTLINE, 4.0)
-    _line(draw, [(cx - 7, hip_y), left_knee, left_foot], TOGA_DEEP, 2.4)
-    _line(draw, [(cx + 7, hip_y), right_knee, right_foot], OUTLINE, 4.0)
-    _line(draw, [(cx + 7, hip_y), right_knee, right_foot], TOGA_DEEP, 2.4)
-    _poly(draw, [
-        (left_foot[0] - 6, left_foot[1] + 2),
-        (left_foot[0] + 6, left_foot[1] + 2),
-        (left_foot[0] + 5, left_foot[1] + 6),
-        (left_foot[0] - 7, left_foot[1] + 6),
-    ], SANDAL)
-    _poly(draw, [
-        (right_foot[0] - 6, right_foot[1] + 2),
-        (right_foot[0] + 6, right_foot[1] + 2),
-        (right_foot[0] + 5, right_foot[1] + 6),
-        (right_foot[0] - 7, right_foot[1] + 6),
-    ], SANDAL)
+    _put_limb(img, (cx - 7, hip_y), left_knee, left_foot, TOGA_DEEP, 4.0, 2.4, "left_leg")
+    _put_limb(img, (cx + 7, hip_y), right_knee, right_foot, TOGA_DEEP, 4.0, 2.4, "right_leg")
 
-    # Toga body.
-    robe_pts = [
-        (cx - 18 - robe_spread * 0.7, shoulder_y + 4),
-        (cx - 24 - robe_spread, hip_y + 16),
-        (cx - 18 - robe_spread * 0.4, base_y - 3),
-        (cx + 22 + robe_spread * 0.5, base_y - 3),
-        (cx + 25 + robe_spread, hip_y + 12),
-        (cx + 15, shoulder_y + 4),
-        (cx + 2, shoulder_y - 2),
-    ]
-    _poly(draw, robe_pts, TOGA, outline=OUTLINE, width=1.0)
-    _poly(draw, [
-        (cx - 16, shoulder_y + 6),
-        (cx - 8, hip_y + 16),
-        (cx - 2, base_y - 2),
-        (cx + 3, base_y - 2),
-        (cx - 1, hip_y + 7),
-        (cx - 4, shoulder_y + 7),
-    ], TOGA_SHADE, outline=None)
-    _poly(draw, [
-        (cx + 2, shoulder_y + 4),
-        (cx + 13, hip_y + 10),
-        (cx + 17, base_y - 4),
-        (cx + 21, base_y - 4),
-        (cx + 19, hip_y + 8),
-        (cx + 8, shoulder_y + 4),
-    ], TOGA_SHADE, outline=None)
+    def sandal(d) -> None:
+        _poly(d, [(hx - 6, hy + 2), (hx + 6, hy + 2), (hx + 5, hy + 6), (hx - 7, hy + 6)], SANDAL)
+
+    _put(img, ("sandal",), sandal, left_foot, "left_sandal")
+    _put(img, ("sandal",), sandal, right_foot, "right_sandal")
+
+    # Toga body: one piece per half-pixel step of its spread and its heights.
+    spread, shoulder, hip = _half(robe_spread), _half(base_y - shoulder_y), _half(base_y - hip_y)
+    _put(img, ("toga", spread, shoulder, hip), lambda d: _paint_toga(d, spread, shoulder, hip), (cx, base_y), "toga")
 
     # Gold triangle medallion.
-    med_y = shoulder_y + 19
-    _poly(draw, [
-        (cx + 1, med_y - 4),
-        (cx - 4, med_y + 5),
-        (cx + 6, med_y + 5),
-    ], BRONZE, outline=OUTLINE, width=0.8)
-    _circle(draw, (cx + 1, med_y + 2), 0.9, BRONZE_LIGHT, outline=None)
+    def medallion(d) -> None:
+        _poly(d, [(hx, hy - 4), (hx - 5, hy + 5), (hx + 5, hy + 5)], BRONZE, outline=OUTLINE, width=0.8)
+        _circle(d, (hx, hy + 2), 0.9, BRONZE_LIGHT, outline=None)
+
+    _put(img, ("medallion",), medallion, (cx + 1, shoulder_y + 19), "medallion")
 
     # Arms.
     shoulder_l = (cx - 13, shoulder_y + 5)
@@ -448,101 +533,70 @@ def _draw_character(anim: str, i: int, n: int) -> Image.Image:
     if anim == "death":
         hand_l = (hand_l[0] + 18 * collapse, hand_l[1] + 2 * collapse)
         hand_r = (hand_r[0] + 4 * collapse, hand_r[1] + 8 * collapse)
-    _line(draw, [shoulder_l, elbow_l, hand_l], OUTLINE, 4.2)
-    _line(draw, [shoulder_l, elbow_l, hand_l], TOGA, 2.6)
-    _line(draw, [shoulder_r, elbow_r, hand_r], OUTLINE, 4.2)
-    _line(draw, [shoulder_r, elbow_r, hand_r], TOGA, 2.6)
-    _circle(draw, hand_l, 2.8, SKIN, outline=OUTLINE, width=0.8)
-    _circle(draw, hand_r, 2.8, SKIN, outline=OUTLINE, width=0.8)
+    _put_limb(img, shoulder_l, elbow_l, hand_l, TOGA, 4.2, 2.6, "left_arm")
+    _put_limb(img, shoulder_r, elbow_r, hand_r, TOGA, 4.2, 2.6, "right_arm")
+    hand = lambda d: _circle(d, HOME, 2.8, SKIN, outline=OUTLINE, width=0.8)
+    _put(img, ("hand",), hand, hand_l, "left_hand")
+    _put(img, ("hand",), hand, hand_r, "right_hand")
 
     # Scroll in left hand where appropriate.
     if scroll_visible:
-        scroll_c = (hand_l[0] - 5, hand_l[1] + 2)
-        _poly(draw, [
-            (scroll_c[0] - 6, scroll_c[1] - 4),
-            (scroll_c[0] + 6, scroll_c[1] - 3),
-            (scroll_c[0] + 5, scroll_c[1] + 4),
-            (scroll_c[0] - 7, scroll_c[1] + 3),
-        ], SCROLL, outline=OUTLINE, width=0.8)
-        _arc(draw, (scroll_c[0] - 7, scroll_c[1]), 2.0, 2.4, 70, 290, SCROLL_SHADE, 1.0)
-        _arc(draw, (scroll_c[0] + 6, scroll_c[1]), 2.0, 2.4, -110, 110, SCROLL_SHADE, 1.0)
+        def scroll(d) -> None:
+            sc = HOME
+            _poly(d, [(sc[0] - 6, sc[1] - 4), (sc[0] + 6, sc[1] - 3), (sc[0] + 5, sc[1] + 4), (sc[0] - 7, sc[1] + 3)], SCROLL, outline=OUTLINE, width=0.8)
+            _arc(d, (sc[0] - 7, sc[1]), 2.0, 2.4, 70, 290, SCROLL_SHADE, 1.0)
+            _arc(d, (sc[0] + 6, sc[1]), 2.0, 2.4, -110, 110, SCROLL_SHADE, 1.0)
 
-    # Head, hair, beard.
-    _circle(draw, (cx, head_y), 11.5, SKIN, outline=OUTLINE, width=1.0)
-    _circle(draw, (cx + 2.2, head_y - 2.0), 8.8, SKIN_LIGHT, outline=None)
-    hair_pts = [
-        (cx - 10, head_y - 2),
-        (cx - 8, head_y - 10),
-        (cx, head_y - 13),
-        (cx + 10, head_y - 10),
-        (cx + 12, head_y - 2),
-        (cx + 9, head_y + 1),
-        (cx + 5, head_y - 1),
-        (cx - 2, head_y - 2),
-        (cx - 7, head_y + 1),
-    ]
-    _poly(draw, hair_pts, HAIR, outline=OUTLINE, width=0.8)
-    _line(draw, [(cx - 7, head_y - 5), (cx - 1, head_y - 9), (cx + 5, head_y - 6)], HAIR_LIGHT, 1.0)
-    beard_pts = [
-        (cx - 8, head_y + 5),
-        (cx - 4, head_y + 12),
-        (cx + 1, head_y + 16),
-        (cx + 8, head_y + 10),
-        (cx + 6, head_y + 4),
-        (cx - 2, head_y + 7),
-    ]
-    _poly(draw, beard_pts, BEARD, outline=OUTLINE, width=0.8)
+        _put(img, ("scroll",), scroll, (hand_l[0] - 5, hand_l[1] + 2), "scroll")
 
-    eye_y = head_y - 0.8
+    # Head, hair, beard: one piece per expression.
     blink = anim == "talk" and i % 5 == 0
-    if blink:
-        _line(draw, [(cx - 4.4, eye_y), (cx - 1.3, eye_y)], EYE, 0.8)
-        _line(draw, [(cx + 1.8, eye_y), (cx + 4.8, eye_y)], EYE, 0.8)
-    else:
-        _circle(draw, (cx - 2.8, eye_y), 0.9, EYE, outline=None)
-        _circle(draw, (cx + 3.2, eye_y - 0.2), 0.9, EYE, outline=None)
     mouth_open = anim == "talk" and (i % 2 == 0)
-    if mouth_open:
-        _arc(draw, (cx + 0.5, head_y + 4.0), 2.4, 1.7, 15, 165, MOUTH, 0.9)
-    else:
-        _line(draw, [(cx - 1.7, head_y + 4.5), (cx + 3.0, head_y + 5.2)], MOUTH, 0.8)
+    _put(img, ("head", blink, mouth_open), lambda d: _paint_head(d, blink, mouth_open), (cx, head_y), "head")
 
     # Python companion draped over shoulders.
-    _draw_python(
-        draw,
-        shoulder_y=shoulder_y - 1.0,
-        sway=_osc(i, n, math.pi / 3) * (1.8 if anim != "death" else 0.8),
-        emphasis=glyph,
-        head_lift=arm_raise_r * 0.07 + collapse * -3.0,
-        body_dx=body_shift * 0.25,
+    py_shoulder = shoulder_y - 1.0
+    sway = _osc(i, n, math.pi / 3) * (1.8 if anim != "death" else 0.8)
+    body_dx = body_shift * 0.25
+    coil_sway = round(sway * 4.0) / 4.0
+    _put(img, ("python_coil", coil_sway), lambda d: _paint_python_coil(d, coil_sway), (64 + body_dx, py_shoulder), "python_coil")
+    emphasis = round(glyph, 2)
+    py_head_lift = arm_raise_r * 0.07 + collapse * -3.0
+    _put(
+        img,
+        ("python_head", emphasis),
+        lambda d: _paint_python_head(d, emphasis),
+        (88 + body_dx + sway * 0.4, py_shoulder - 2 - py_head_lift),
+        "python_head",
     )
 
-    # Gesture glyphs / theorem effects.
+    # Gesture glyphs / theorem effects: one piece per glow (they fade).
     if glyph > 0.05:
-        glow = tuple(int(a * glyph) if idx == 3 else int(v) for idx, (v, a) in enumerate(zip(GLYPH, GLYPH)))
-        del glow
         alpha = int(180 * glyph)
         g1 = (GLYPH[0], GLYPH[1], GLYPH[2], alpha)
         g2 = (GLYPH_DIM[0], GLYPH_DIM[1], GLYPH_DIM[2], int(120 * glyph))
-        _draw_triangle_glyph(draw, (hand_r[0] + 10, hand_r[1] - 10), 1.0 + 0.2 * glyph, g1)
+        scale1 = 1.0 + 0.2 * glyph
+        _put(img, ("glyph", g1, round(scale1, 3)), lambda d: _draw_triangle_glyph(d, HOME, scale1, g1), (hand_r[0] + 10, hand_r[1] - 10), "glyph")
         if anim in {"taunt", "talk", "slash"}:
-            _draw_triangle_glyph(draw, (cx + 24, shoulder_y + 5), 0.8 + 0.3 * glyph, g2)
-            _line(draw, [(hand_r[0] + 8, hand_r[1] - 2), (cx + 18, shoulder_y + 1), (cx + 24, shoulder_y + 12)], g2, 1.0)
+            scale2 = 0.8 + 0.3 * glyph
+            _put(img, ("glyph", g2, round(scale2, 3)), lambda d: _draw_triangle_glyph(d, HOME, scale2, g2), (cx + 24, shoulder_y + 5), "glyph_dim")
+            # The thread from the hand to the dim glyph bends with the arm: a
+            # shape a frame.
+            _line(blending_draw(img), [(hand_r[0] + 8, hand_r[1] - 2), (cx + 18, shoulder_y + 1), (cx + 24, shoulder_y + 12)], g2, 1.0)
         if anim == "slash":
-            _line(draw, [(cx + 12, shoulder_y + 1), (cx + 40, shoulder_y - 4), (cx + 57, shoulder_y + 6)], g1, 2.2)
-            _line(draw, [(cx + 12, shoulder_y + 8), (cx + 40, shoulder_y + 12), (cx + 57, shoulder_y + 3)], g2, 1.2)
+            def slash(d) -> None:
+                _line(d, [(hx + 12, hy + 1), (hx + 40, hy - 4), (hx + 57, hy + 6)], g1, 2.2)
+                _line(d, [(hx + 12, hy + 8), (hx + 40, hy + 12), (hx + 57, hy + 3)], g2, 1.2)
+
+            _put(img, ("slash", g1, g2), slash, (cx, shoulder_y), "slash")
 
     if hurt_flash > 0.1:
-        overlay = Image.new("RGBA", (W, H), (255, 0, 0, 0))
-        odraw = blending_draw(overlay)
         alpha = int(80 * hurt_flash)
-        _poly(odraw, [
-            (cx - 26, head_y - 14),
-            (cx - 30, base_y + 8),
-            (cx + 30, base_y + 8),
-            (cx + 24, head_y - 14),
-        ], (HIT_RED[0], HIT_RED[1], HIT_RED[2], alpha), outline=None)
-        rigdoc.composite_canvas(img, overlay)
+
+        def flash(d) -> None:
+            _poly(d, [(hx - 26, hy - 14), (hx - 30, hy + (base_y - head_y) + 8), (hx + 30, hy + (base_y - head_y) + 8), (hx + 24, hy - 14)], (HIT_RED[0], HIT_RED[1], HIT_RED[2], alpha), outline=None)
+
+        _put(img, ("flash", alpha, round(base_y - head_y, 2)), flash, (cx, head_y), "hurt_flash")
 
     return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 

@@ -22,7 +22,7 @@ from typing import Dict, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ...authoring.portrait import (
@@ -722,13 +722,18 @@ def _draw_face(
         _circle(draw, (hx - 24, hy + 11), 2.2, GOLD, OUTLINE, 0.6)
 
 
-def _draw_torso(draw: ImageDraw.ImageDraw, p, pose: Pose, spec: VariantSpec) -> None:
+def _draw_torso(draw: ImageDraw.ImageDraw, p, pose: Pose, spec: VariantSpec, which: str = "all") -> None:
+    """The torso; ``which`` is "upper" (all but the skirt), "skirt" or "all"."""
     pal = spec.palette
     P = p
     shoulder_x = 40 * spec.shoulder_scale
     chest_x = 36 * spec.bust_scale
     waist_x = 18 * spec.waist_scale
     skirt_x = 50 * spec.hip_scale
+
+    if which == "skirt":
+        _draw_skirt(draw, P, pose, spec, skirt_x)
+        return
 
     shoulders = [
         P(-shoulder_x, -98),
@@ -847,6 +852,17 @@ def _draw_torso(draw: ImageDraw.ImageDraw, p, pose: Pose, spec: VariantSpec) -> 
     _poly(draw, sash, pal.sash, OUTLINE, 1.4)
     _poly(draw, [P(-6, -68), P(10, -67), P(8, -53), P(-8, -54)], GOLD, OUTLINE, 1.0)
 
+    if which == "all":
+        _draw_skirt(draw, P, pose, spec, skirt_x)
+
+    if spec.necklace:
+        for c in [P(-10, -61), P(0, -58), P(10, -61)]:
+            _circle(draw, c, 1.8, GOLD, OUTLINE, 0.4)
+
+
+def _draw_skirt(draw: ImageDraw.ImageDraw, P, pose: Pose, spec: VariantSpec, skirt_x: float) -> None:
+    """The skirt, its pleats and its hem (they sway with ``pose.skirt_sway``)."""
+    pal = spec.palette
     sway = pose.skirt_sway
     skirt = [
         P(-34 * spec.hip_scale, -54),
@@ -887,82 +903,107 @@ def _draw_torso(draw: ImageDraw.ImageDraw, p, pose: Pose, spec: VariantSpec) -> 
         1.0,
     )
 
-    if spec.necklace:
-        for c in [P(-10, -61), P(0, -58), P(10, -61)]:
-            _circle(draw, c, 1.8, GOLD, OUTLINE, 0.4)
 
 
-def _draw_limbs(
-    draw: ImageDraw.ImageDraw, p, pose: Pose, spec: VariantSpec, J: PirateHeavyJoints
-) -> Tuple[Point, Point]:
+# ---- Pieces ------------------------------------------------------------------
+#
+# A heavy is drawn as a rig: each rigid thing (the hair, the torso, the skirt,
+# the face, a bone, a boot, an elbow, a hand, the cleaver) is painted ONCE by
+# its painter on a scratch canvas with its anchor at ``HOME``, cut to what it
+# covers, and placed (and turned) through ``shape_rig``. A part flipbook
+# stores each once. The skirt sways in steps of ``SKIRT_SWAY_STEP``.
+
+#: The scratch canvas's half size and the anchor (work pixels).
+HOME = (180.0, 180.0)
+SKIRT_SWAY_STEP = 2.0
+_PIECES: Dict[tuple, object] = {}
+
+
+def _piece(key: tuple, paint):
+    """``(raster, anchor)``: what ``paint(draw)`` paints with its anchor at
+    ``HOME``, cut to its box; ``None`` when it paints nothing. ``key`` must
+    name everything ``paint`` reads."""
+    if key not in _PIECES:
+        size = int(2 * HOME[0] * SUPER), int(2 * HOME[1] * SUPER)
+        canvas = Image.new("RGBA", size, (0, 0, 0, 0))
+        paint(blending_draw(canvas))
+        box = canvas.getchannel("A").getbbox()
+        _PIECES[key] = None if box is None else (canvas.crop(box), (HOME[0] * SUPER - box[0], HOME[1] * SUPER - box[1]))
+    return _PIECES[key]
+
+
+def _put(img: Image.Image, key: tuple, paint, at: Point, name: str, degrees: float = 0.0) -> None:
+    """Place the piece ``key`` with its anchor at ``at`` (work pixels)."""
+    part = _piece(key, paint)
+    if part is not None:
+        shape_rig.place(img, part, (at[0] * SUPER, at[1] * SUPER), degrees, name)
+
+
+def _home_body(x: float, y: float) -> Point:
+    """The body frame at ``HOME``, level: a piece's own ``P``."""
+    return (HOME[0] + x, HOME[1] + y)
+
+
+def _put_bone(img: Image.Image, a: Point, b: Point, fill: RGBA, width: float, ink_width: float, name: str) -> None:
+    """A limb bone from ``a`` to ``b``: a ``fill`` stroke with an ink line down
+    its middle, one piece per (quarter-pixel) length, turned to the bone."""
+    length = round(math.hypot(b[0] - a[0], b[1] - a[1]) * 4) / 4
+    hx, hy = HOME
+
+    def paint(d) -> None:
+        _line(d, [(hx, hy), (hx + length, hy)], fill, width)
+        _line(d, [(hx, hy), (hx + length, hy)], OUTLINE, ink_width)
+
+    _put(img, ("bone", length, fill, width, ink_width), paint, a, name, math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])))
+
+
+def _place_limbs(img: Image.Image, spec: VariantSpec, J: PirateHeavyJoints) -> None:
+    """Legs, boots, arms, elbows and hands as pieces."""
     pal = spec.palette
-    P = p
-    left_hip = J.left_hip
-    right_hip = J.right_hip
-    left_knee = J.left_knee
-    right_knee = J.right_knee
-    left_foot = J.left_foot
-    right_foot = J.right_foot
-    for hip, knee, foot in [
-        (left_hip, left_knee, left_foot),
-        (right_hip, right_knee, right_foot),
-    ]:
-        _line(draw, [hip, knee, foot], pal.skin_shadow, 6.4)
-        _line(draw, [hip, knee, foot], OUTLINE, 1.8)
-        _draw_boot(draw, foot, 1 if foot[0] > hip[0] else -1, pal)
+    hx, hy = HOME
+    for side, hip, knee, foot in (
+        ("left", J.left_hip, J.left_knee, J.left_foot),
+        ("right", J.right_hip, J.right_knee, J.right_foot),
+    ):
+        _put_bone(img, hip, knee, pal.skin_shadow, 6.4, 1.8, f"{side}_thigh")
+        _put_bone(img, knee, foot, pal.skin_shadow, 6.4, 1.8, f"{side}_shin")
+        toe = 1 if foot[0] > hip[0] else -1
+        _put(img, ("boot", spec.slug, toe), lambda d, toe=toe: _draw_boot(d, (hx, hy), toe, pal), foot, f"{side}_boot")
+    for side, shoulder, elbow, hand, upper_w, lower_w, elbow_rx, hand_r in (
+        ("left", J.left_shoulder, J.left_elbow, J.left_hand, 9.5, 8.4, 8, 7.5),
+        ("right", J.right_shoulder, J.right_elbow, J.right_hand, 10.0, 9.0, 9, 8.2),
+    ):
+        _put_bone(img, shoulder, elbow, pal.skin_shadow, upper_w * spec.arm_scale, 2.2, f"{side}_upper_arm")
+        _put_bone(img, elbow, hand, pal.skin, lower_w * spec.arm_scale, 2.2, f"{side}_forearm")
+        _put(
+            img,
+            ("elbow", spec.slug, side),
+            lambda d, rx=elbow_rx: _ellipse(d, hx, hy, rx * spec.arm_scale, 10 * spec.arm_scale, pal.skin, OUTLINE, 1.4),
+            elbow,
+            f"{side}_elbow",
+        )
 
-    left_shoulder = J.left_shoulder
-    left_elbow = J.left_elbow
-    left_hand = J.left_hand
-    _line(draw, [left_shoulder, left_elbow], pal.skin_shadow, 9.5 * spec.arm_scale)
-    _line(draw, [left_elbow, left_hand], pal.skin, 8.4 * spec.arm_scale)
-    _line(draw, [left_shoulder, left_elbow, left_hand], OUTLINE, 2.2)
-    _ellipse(
-        draw,
-        left_elbow[0],
-        left_elbow[1],
-        8 * spec.arm_scale,
-        10 * spec.arm_scale,
-        pal.skin,
-        OUTLINE,
-        1.4,
-    )
-    _circle(draw, left_hand, 7.5 * spec.arm_scale, pal.skin, OUTLINE, 1.5)
+        def paint_hand(d, side=side, r=hand_r) -> None:
+            _circle(d, (hx, hy), r * spec.arm_scale, pal.skin, OUTLINE, 1.5)
+            if side == "left":
+                _line(d, [(hx - 5, hy - 6), (hx + 6, hy - 5)], GOLD, 1.2)
+            else:
+                _line(d, [(hx - 6, hy - 6), (hx + 7, hy - 4)], GOLD, 1.2)
 
-    right_shoulder = J.right_shoulder
-    right_elbow = J.right_elbow
-    right_hand = J.right_hand
-    _line(draw, [right_shoulder, right_elbow], pal.skin_shadow, 10.0 * spec.arm_scale)
-    _line(draw, [right_elbow, right_hand], pal.skin, 9.0 * spec.arm_scale)
-    _line(draw, [right_shoulder, right_elbow, right_hand], OUTLINE, 2.2)
-    _ellipse(
-        draw,
-        right_elbow[0],
-        right_elbow[1],
-        9 * spec.arm_scale,
-        10 * spec.arm_scale,
-        pal.skin,
-        OUTLINE,
-        1.4,
-    )
-    _circle(draw, right_hand, 8.2 * spec.arm_scale, pal.skin, OUTLINE, 1.5)
+        _put(img, ("hand", spec.slug, side), paint_hand, hand, f"{side}_hand")
 
-    _line(
-        draw,
-        [(left_hand[0] - 5, left_hand[1] - 6), (left_hand[0] + 6, left_hand[1] - 5)],
-        GOLD,
-        1.2,
+
+def _put_cleaver(img: Image.Image, hand: Point, angle: float, pal: Palette, scale: float, front: bool) -> None:
+    """The cleaver as one piece: painted level and turned about the hand."""
+    hx, hy = HOME
+    _put(
+        img,
+        ("cleaver", pal, round(scale, 4), front),
+        lambda d: _draw_cleaver(d, (hx, hy), 0.0, pal, scale=scale, front=front),
+        hand,
+        "cleaver",
+        angle,
     )
-    _line(
-        draw,
-        [
-            (right_hand[0] - 6, right_hand[1] - 6),
-            (right_hand[0] + 7, right_hand[1] - 4),
-        ],
-        GOLD,
-        1.2,
-    )
-    return left_hand, right_hand
 
 
 def _draw_variant(
@@ -971,9 +1012,9 @@ def _draw_variant(
     img = Image.new(
         "RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0)
     )
-    draw = blending_draw(img)
     pose = Pose(anim, frame_idx, nframes)
     pal = spec.palette
+    hx, hy = HOME
 
     J = _rig_evaluate(pose, spec, WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1])
     root = J.root
@@ -985,68 +1026,61 @@ def _draw_variant(
 
     weapon_in_front = anim == "slash"
     if not weapon_in_front:
-        back_hand = J.back_hand
-        _draw_cleaver(
-            draw,
-            back_hand,
-            pose.weapon + tilt,
-            pal,
-            scale=spec.cleaver_scale,
-            front=False,
-        )
+        _put_cleaver(img, J.back_hand, pose.weapon + tilt, pal, spec.cleaver_scale, False)
 
     if anim == "slash" and pose.impact > 0.10:
-        cx, cy = P(38, -62)
-        box = (_s(cx - 82), _s(cy - 82), _s(cx + 90), _s(cy + 52))
-        draw.arc(box, 204, 334, fill=pal.slash, width=_s(6.0 + pose.impact * 2.0))
-        draw.arc(box, 214, 326, fill=(255, 255, 255, 115), width=_s(2.5))
+        impact = round(pose.impact, 3)
 
-    head = J.head
-    hair_shadow = [
-        P(-22, -137),
-        P(-8, -153),
-        P(18, -149),
-        P(35, -127),
-        P(26, -93),
-        P(8, -83),
-        P(-18, -87),
-        P(-34, -109),
-    ]
-    _poly(draw, hair_shadow, pal.hair, OUTLINE, 1.4)
+        def swoosh(d) -> None:
+            box = (_s(hx - 82), _s(hy - 82), _s(hx + 90), _s(hy + 52))
+            d.arc(box, 204, 334, fill=pal.slash, width=_s(6.0 + impact * 2.0))
+            d.arc(box, 214, 326, fill=(255, 255, 255, 115), width=_s(2.5))
 
-    _draw_limbs(draw, P, pose, spec, J)
-    _draw_torso(draw, P, pose, spec)
-    _poly(
-        draw,
-        [P(-11, -112), P(12, -112), P(9, -95), P(-10, -95)],
-        pal.skin_shadow,
-        OUTLINE,
-        1.4,
-    )
-    _draw_face(draw, head, pose, spec)
+        _put(img, ("swoosh", pal.slash, impact), swoosh, P(38, -62), "swoosh")
 
-    if weapon_in_front:
-        hand = J.right_hand
-        _draw_cleaver(
-            draw,
-            hand,
-            pose.weapon + tilt,
-            pal,
-            scale=1.05 * spec.cleaver_scale,
-            front=True,
+    # The hair behind the head rides the body.
+    def hair(d) -> None:
+        P0 = _home_body
+        _poly(
+            d,
+            [P0(-22, -137), P0(-8, -153), P0(18, -149), P0(35, -127), P0(26, -93), P0(8, -83), P0(-18, -87), P0(-34, -109)],
+            pal.hair,
+            OUTLINE,
+            1.4,
         )
 
+    _put(img, ("hair", spec.slug), hair, root, "hair", tilt)
+
+    _place_limbs(img, spec, J)
+
+    # The torso (with the neck) is one piece; the skirt is one per sway step.
+    def torso(d) -> None:
+        _draw_torso(d, _home_body, pose, spec, "upper")
+        P0 = _home_body
+        _poly(d, [P0(-11, -112), P0(12, -112), P0(9, -95), P0(-10, -95)], pal.skin_shadow, OUTLINE, 1.4)
+
+    _put(img, ("torso", spec.slug), torso, root, "torso", tilt)
+    sway = round(pose.skirt_sway / SKIRT_SWAY_STEP) * SKIRT_SWAY_STEP
+    swayed = Pose(anim, frame_idx, nframes)
+    swayed.skirt_sway = sway
+    _put(img, ("skirt", spec.slug, sway), lambda d: _draw_torso(d, _home_body, swayed, spec, "skirt"), root, "skirt", tilt)
+
+    # The face: one piece per expression, upright at the head.
+    mouth = round(pose.mouth, 3)
+    face_pose = Pose(anim, frame_idx, nframes)
+    face_pose.mouth = mouth
+    _put(img, ("face", spec.slug, pose.blink, pose.x_eyes, mouth), lambda d: _draw_face(d, (hx, hy), face_pose, spec), J.head, "face")
+
+    if weapon_in_front:
+        _put_cleaver(img, J.right_hand, pose.weapon + tilt, pal, 1.05 * spec.cleaver_scale, True)
+
     if anim == "slash" and pose.impact > 0.45:
+        def chip(d) -> None:
+            _poly(d, [(hx - 2.5, hy - 1.5), (hx + 3.0, hy), (hx, hy + 3.0)], (118, 92, 62, 170), (72, 52, 36, 150), 0.5)
+
         for i, (dx, dy) in enumerate([(-44, 3), (-30, 9), (44, 2), (57, 10)]):
             jitter = math.sin(frame_idx + i) * 1.5
-            c = P(dx + jitter, dy)
-            _poly(
-                draw,
-                [(c[0] - 2.5, c[1] - 1.5), (c[0] + 3.0, c[1]), (c[0], c[1] + 3.0)],
-                (118, 92, 62, 170),
-                (72, 52, 36, 150),
-                0.5,
-            )
+            _put(img, ("chip",), chip, P(dx + jitter, dy), f"chip_{i}")
 
     return _downsample(img)
 

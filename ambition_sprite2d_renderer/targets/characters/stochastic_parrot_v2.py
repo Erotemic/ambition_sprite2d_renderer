@@ -22,11 +22,12 @@ from typing import Dict, List, Tuple
 
 from PIL import Image, ImageColor, ImageDraw
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.common_draw import draw_capsule
 from ...authoring.rig import add, clamp, ease_in_out_sine, vec
 from ...authoring.skeleton import (
+    BoneWorld,
     Channel,
     Clip,
     PartCtx,
@@ -231,6 +232,7 @@ def _leg_painter(upper: str, lower: str, tint: Color, toe_tint: Color, r_u: floa
         for spread, length in ((-28.0, 4.5), (0.0, 5.4), (26.0, 4.2)):
             tx, ty = ctx.cw(add(low.tip, vec(length, low.angle + spread)))
             ctx.draw.line((hx, hy, tx, ty), fill=toe_tint, width=max(1, int(ctx.L(0.8))))
+    fn.spec = ("leg", upper, lower, tint, toe_tint, r_u, r_l)
     return fn
 
 
@@ -475,6 +477,7 @@ def _wing_painter(
         ]
         composite_polygon(ctx.img, rounded_polygon([ctx.cw(p) for p in root_coverts], radius=ctx.L(0.82)), (*covert_tint[:3], 188 if not is_far else 132))
 
+    fn.spec = ("wing", upper, lower)
     return fn
 
 
@@ -694,6 +697,125 @@ def _build_rig() -> Rig:
 
 
 _RIG = _build_rig()
+
+
+# ---- Pieces -------------------------------------------------------------------
+#
+# The rig's side view is drawn as pieces: each part's painter paints ONCE on a
+# scratch canvas with its bone at ``PIECE_HOME`` and angle 0, the result is cut
+# to what it covers and placed at the bone, turned by its angle
+# (``shape_rig``). A part flipbook stores each once. A leg is two pieces (the
+# thigh; the shin with its toes). A wing bends at the elbow, so it is one
+# piece per whole degree of the bend, riding the forearm. A piece that reads
+# a pose channel (a blink, the beak's opening, the tail's fan) is one per
+# value of that channel (to two decimals).
+
+#: Where a piece's bone sits on the scratch canvas (world units); the canvas
+#: is twice it.
+PIECE_HOME = (40.0, 40.0)
+#: The side view's one enlargement (the polished, larger bird): every side
+#: frame is painted at this scale about ``POLISH_CENTER`` and moved by
+#: ``POLISH_SHIFT`` (world units). The old fit enlarged each frame by its own
+#: extent (1.15x to 1.32x, measured 2026-10-03; 1.2 for most), so no part
+#: could be shared between frames.
+POLISH_SCALE = 1.2
+POLISH_CENTER = (CENTER_X, GROUND_Y)
+POLISH_SHIFT = (0.0, 4.0)
+#: Canvas pixels per world unit of a side-view piece.
+PIECE_SCALE = SS * POLISH_SCALE
+
+
+def _polished(pt: Point) -> Point:
+    """A world point where the polished side view paints it (canvas pixels)."""
+    cx, cy = POLISH_CENTER
+    return (
+        (cx + (pt[0] - cx) * POLISH_SCALE + POLISH_SHIFT[0]) * SS,
+        (cy + (pt[1] - cy) * POLISH_SCALE + POLISH_SHIFT[1]) * SS,
+    )
+_PIECES: Dict[tuple, object] = {}
+#: The pose channels each single-bone part's painter reads.
+_PART_CHANNELS = {
+    "head": ("blink", "eye_squint", "look_x", "look_y"),
+    "beak": ("beak_open",),
+    "far_tail": ("tail_fan",),
+    "body": (),
+}
+
+
+def _piece(key: tuple, paint):
+    """``(raster, anchor)``: what ``paint(img, draw)`` paints, its bone at
+    ``PIECE_HOME``, cut to its box; ``None`` when it paints nothing."""
+    if key not in _PIECES:
+        size = (int(2 * PIECE_HOME[0] * PIECE_SCALE), int(2 * PIECE_HOME[1] * PIECE_SCALE))
+        canvas = Image.new("RGBA", size, (0, 0, 0, 0))
+        paint(canvas, blending_draw(canvas))
+        box = canvas.getchannel("A").getbbox()
+        _PIECES[key] = None if box is None else (canvas.crop(box), (PIECE_HOME[0] * PIECE_SCALE - box[0], PIECE_HOME[1] * PIECE_SCALE - box[1]))
+    return _PIECES[key]
+
+
+def _place(actor: Image.Image, key: tuple, paint, bone: BoneWorld, name: str) -> None:
+    part = _piece(key, paint)
+    if part is not None:
+        shape_rig.place(actor, part, _polished(bone.origin), bone.angle, name)
+
+
+def _draw_rig_pieces(actor: Image.Image, world, params: Dict[str, float]) -> None:
+    """``_RIG.draw``, each part as pieces (see above)."""
+    home = PIECE_HOME
+    S = PIECE_SCALE
+    for part in sorted(_RIG.parts, key=lambda p: p.z):
+        spec = getattr(part.fn, "spec", None)
+        if spec is not None and spec[0] == "leg":
+            _, upper, lower, tint, toe_tint, r_u, r_l = spec
+            u, low = world[upper], world[lower]
+            _place(
+                actor,
+                ("thigh", tint, r_u, u.length),
+                lambda img, d: draw_capsule(d, (home[0] * S, home[1] * S), ((home[0] + u.length) * S, home[1] * S), r_u * S, tint, PAL["outline"], 0.45 * S),
+                u,
+                f"{part.name}_thigh",
+            )
+
+            def shin(img, d, low=low) -> None:
+                hx, hy = home
+                draw_capsule(d, (hx * S, hy * S), ((hx + low.length) * S, hy * S), r_l * S, tint, PAL["outline"], 0.45 * S)
+                jr = r_u * 0.55 * S
+                d.ellipse((hx * S - jr, hy * S - jr, hx * S + jr, hy * S + jr), fill=PAL["talon"])
+                tip = (hx + low.length, hy)
+                for spread, length in ((-28.0, 4.5), (0.0, 5.4), (26.0, 4.2)):
+                    tx, ty = add(tip, vec(length, spread))
+                    d.line((tip[0] * S, tip[1] * S, tx * S, ty * S), fill=toe_tint, width=max(1, int(0.8 * S)))
+
+            _place(actor, ("shin", tint, toe_tint, r_u, r_l, low.length), shin, low, f"{part.name}_shin")
+            continue
+        if spec is not None and spec[0] == "wing":
+            _, upper, lower = spec
+            u, low = world[upper], world[lower]
+            bend = float(round(u.angle - low.angle))
+            local = {
+                upper: BoneWorld(add(home, vec(-u.length, bend)), bend, u.length),
+                lower: BoneWorld(home, 0.0, low.length),
+            }
+            _place(
+                actor,
+                ("wing", part.name, bend),
+                lambda img, d, local=local, part=part: part.fn(PartCtx(img, d, local[part.bone], local, S, params)),
+                low,
+                part.name,
+            )
+            continue
+        channels = tuple(round(float(params.get(name, 0.0)), 2) for name in _PART_CHANNELS[part.name])
+        bone = world[part.bone]
+        local = {part.bone: BoneWorld(home, 0.0, bone.length)}
+        keyed = {name: value for name, value in zip(_PART_CHANNELS[part.name], channels)}
+        _place(
+            actor,
+            ("part", part.name, channels),
+            lambda img, d, local=local, part=part, keyed=keyed: part.fn(PartCtx(img, d, local[part.bone], local, S, keyed)),
+            bone,
+            part.name,
+        )
 
 
 # ---- Clips --------------------------------------------------------------------
@@ -1111,7 +1233,7 @@ def _render_side_actor(world, params: Dict[str, float]) -> Image.Image:
     """The side view, facing right. A caller that faces it left mirrors the
     reduced frame (see ``render_frame``)."""
     actor = Image.new("RGBA", (FRAME_W * SS, FRAME_H * SS), (0, 0, 0, 0))
-    _RIG.draw(actor, blending_draw(actor), world, SS, params)
+    _draw_rig_pieces(actor, world, params)
     return actor
 
 
@@ -1463,36 +1585,19 @@ def _render_turnaround_actor(frame_idx: int, nframes: int, world, params: Dict[s
 
 
 
-def _fit_polished_frame(frame: Image.Image, animation: str) -> Image.Image:
-    """Enlarge the opaque bird while retaining grounded/airborne anchoring."""
-    bbox = frame.getbbox()
-    if bbox is None:
-        return frame
-    left, top, right, bottom = bbox
-    # Cut, enlarge and place through rigdoc's seams, so a part flipbook keeps
-    # each shape (the same pixels as crop, resize and alpha_composite).
-    crop = Image.new("RGBA", (right - left, bottom - top), (0, 0, 0, 0))
-    rigdoc.composite_canvas(crop, frame, (-left, -top))
-    grounded = animation in {"idle", "walk", "turnaround", "death"}
-    target_w = 100.0
-    target_h = 96.0 if grounded else 100.0
-    scale = min(target_w / max(1, crop.width), target_h / max(1, crop.height), 1.32)
-    if scale <= 1.001:
-        return frame
-    size = (max(1, round(crop.width * scale)), max(1, round(crop.height * scale)))
-    crop = rigdoc.downsampled_canvas(crop, size, Image.Resampling.LANCZOS)
+def _polish_turn_view(frame: Image.Image) -> Image.Image:
+    """A reduced turnaround view (shapes, painted at the old scale) enlarged
+    by ``POLISH_SCALE`` about ``POLISH_CENTER`` and moved by ``POLISH_SHIFT``,
+    as the side view is painted."""
+    k = POLISH_SCALE
+    size = (round(frame.width * k), round(frame.height * k))
+    big = rigdoc.downsampled_canvas(frame, size, Image.Resampling.LANCZOS)
+    cx, cy = POLISH_CENTER
+    dest = (round(cx + POLISH_SHIFT[0] - cx * k), round(cy + POLISH_SHIFT[1] - cy * k))
     canvas = Image.new("RGBA", frame.size, (0, 0, 0, 0))
-    old_cx = (left + right) / 2.0
-    old_cy = (top + bottom) / 2.0
-    x = round(old_cx - size[0] / 2.0)
-    if grounded:
-        y = round(min(120, bottom + 5) - size[1])
-    else:
-        y = round(old_cy - size[1] / 2.0)
-    x = max(3, min(frame.width - size[0] - 3, x))
-    y = max(3, min(frame.height - size[1] - 3, y))
-    rigdoc.composite_canvas(canvas, crop, (x, y))
+    rigdoc.composite_canvas(canvas, big, dest)
     return canvas
+
 
 def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     if animation in LOOPS:
@@ -1501,8 +1606,11 @@ def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
         t = frame_idx / max(1, nframes - 1)
     img = Image.new("RGBA", (FRAME_W * SS, FRAME_H * SS), (0, 0, 0, 0))
     world, params = _solve(animation, t)
+    turn_view = False
     if animation in {"turnaround", "turnaround_flight"}:
         actor, mirrored = _render_turnaround_actor(frame_idx, nframes, world, params)
+        step = int(round(frame_idx * 8 / max(1, nframes - 1)))
+        turn_view = 0 < step < 8
     else:
         actor, mirrored = _render_side_actor(world, params), params.get("turn_flip", 0.0) > 0.5
     rigdoc.composite_canvas(img, actor)
@@ -1511,7 +1619,7 @@ def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     # after it: a part flipbook mirrors reduced parts only.
     if mirrored:
         frame = rigdoc.mirrored_canvas(frame)
-    return _fit_polished_frame(frame, animation)
+    return _polish_turn_view(frame) if turn_view else frame
 
 
 # ---- Target registration hooks ------------------------------------------------

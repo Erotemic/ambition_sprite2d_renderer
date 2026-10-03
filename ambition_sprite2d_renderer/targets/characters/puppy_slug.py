@@ -39,9 +39,9 @@ import math
 from pathlib import Path
 from typing import List, Tuple
 
-from PIL import Image, ImageColor, ImageDraw, ImageFilter
+from PIL import Image, ImageColor, ImageFilter
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -247,129 +247,131 @@ def _ring_points(
 
 
 # ---- Body drawing ------------------------------------------------------------
+#
+# The body is drawn as a rig: ``BODY_SEGMENTS`` bones along the waving
+# centreline, each a tapered capsule painted once in its own frame and turned
+# to its bone, as ``shape_rig.capsule`` draws a limb. Every bone's outline
+# (and the slime trail under it) is placed first, then every bone's fill
+# (mid tone, highlight band, belly band and fur tufts), so the bones join
+# without a seam: a bone's fill starts square at its joint and covers the end
+# of the bone before. A part flipbook stores each bone once and turns it.
+
+BODY_SEGMENTS = 12
+BODY_BASE_R = 10.0
 
 
-def _draw_slime_trail(
-    img: Image.Image,
-    centerline: List[Point],
-    pitch: float,
-    trail_strength: float,
-) -> None:
-    """Wet sheen under the belly. Strength is dialed by anim state."""
-    if trail_strength <= 0.01:
+def _tapered_capsule(d, length: float, r0: float, r1: float, fill: RGBA, start_cap: bool = True) -> None:
+    """A capsule along +x from (0, 0) to (length, 0) (super pixels), radius
+    ``r0`` at its start and ``r1`` at its end. Without ``start_cap`` the
+    start is cut square at the joint."""
+    if r0 <= 0 and r1 <= 0:
         return
-    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    d = blending_draw(layer)
-    # The "down" relative to body pitch.
-    dx = math.sin(pitch)
-    dy = math.cos(pitch)
-    points = []
-    for i, (x, y) in enumerate(centerline):
-        t = i / (len(centerline) - 1)
-        r = _segment_radius(t, base=9.0)
-        bx = x + dx * (r - 1.0)
-        by = y + dy * (r - 1.0)
-        points.append(_pt(bx, by))
-    if len(points) >= 2:
-        d.line(points, fill=_rgba(PAL_SLIME, int(150 * trail_strength)), width=_s(2.4))
-    layer = layer.filter(ImageFilter.GaussianBlur(radius=_s(0.9)))
-    rigdoc.composite_canvas(img, layer)
+    d.polygon([(0, -r0), (length, -r1), (length, r1), (0, r0)], fill=fill)
+    if start_cap:
+        d.ellipse((-r0, -r0, r0, r0), fill=fill)
+    d.ellipse((length - r1, -r1, length + r1, r1), fill=fill)
 
 
-def _draw_body(
-    img: Image.Image,
-    centerline: List[Point],
-    pitch: float,
-    sag: float,
-    fur_phase: float,
-    death_progress: float = 0.0,
-) -> None:
-    """Render the slug body as overlapping ellipses with rim shading.
+class _Shifted:
+    """A draw that adds ``(dx, dy)`` to every point it is given."""
 
-    Drawing as a chain of stacked ellipses (rather than one polygon)
-    gives natural mid-body bulges and lets a downstream shader bite
-    into the silhouette per-segment.
-    """
-    n = len(centerline)
-    base_r = 10.0
-    # Slight droop perpendicular to pitch direction (gravity).
-    grav_x = math.sin(pitch + math.pi / 2.0)
-    grav_y = math.cos(pitch + math.pi / 2.0)
+    def __init__(self, d, dx: float, dy: float) -> None:
+        self._d, self._dx, self._dy = d, dx, dy
 
-    body_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    bd = blending_draw(body_layer)
+    def polygon(self, pts, **kw):
+        self._d.polygon([(x + self._dx, y + self._dy) for x, y in pts], **kw)
 
-    # Pass 1: dark base silhouette (a chubby outline).
-    for i, (x, y) in enumerate(centerline):
-        t = i / (n - 1)
-        r = _segment_radius(t, base_r) * (1.0 - 0.35 * death_progress)
-        ox = x + grav_x * sag * 0.45 * math.sin(t * math.pi)
-        oy = y + grav_y * sag * 0.45 * math.sin(t * math.pi)
-        bd.ellipse(
-            _box(ox - r - 0.8, oy - r - 0.8, ox + r + 0.8, oy + r + 0.8),
-            fill=_rgba(PAL_OUTLINE),
-        )
+    def line(self, pts, **kw):
+        self._d.line([(x + self._dx, y + self._dy) for x, y in pts], **kw)
 
-    # Pass 2: mid-tone fill.
-    for i, (x, y) in enumerate(centerline):
-        t = i / (n - 1)
-        r = _segment_radius(t, base_r) * (1.0 - 0.35 * death_progress)
-        ox = x + grav_x * sag * 0.45 * math.sin(t * math.pi)
-        oy = y + grav_y * sag * 0.45 * math.sin(t * math.pi)
-        bd.ellipse(_box(ox - r, oy - r, ox + r, oy + r), fill=_rgba(PAL_BODY_MID))
+    def ellipse(self, box, **kw):
+        x0, y0, x1, y1 = box
+        self._d.ellipse((x0 + self._dx, y0 + self._dy, x1 + self._dx, y1 + self._dy), **kw)
 
-    # Pass 3: dorsal highlight ridge. Offset opposite gravity.
-    for i, (x, y) in enumerate(centerline):
-        t = i / (n - 1)
-        r = _segment_radius(t, base_r) * (1.0 - 0.35 * death_progress)
-        hx = x - grav_x * r * 0.45
-        hy = y - grav_y * r * 0.45
-        rr = r * 0.55
-        bd.ellipse(
-            _box(hx - rr, hy - rr * 0.7, hx + rr, hy + rr * 0.7),
-            fill=_rgba(PAL_BODY_LIGHT),
-        )
 
-    # Pass 4: belly band — lighter tone hugging the gravity-down side.
-    for i, (x, y) in enumerate(centerline):
-        t = i / (n - 1)
-        r = _segment_radius(t, base_r) * (1.0 - 0.35 * death_progress)
-        bx = x + grav_x * r * 0.55
-        by = y + grav_y * r * 0.55
-        rr = r * 0.40
-        bd.ellipse(
-            _box(bx - rr, by - rr * 0.55, bx + rr, by + rr * 0.55),
-            fill=_rgba(PAL_BELLY, 230),
-        )
-
-    # Pass 5: fur tufts along the dorsal ridge. Short angled strokes.
-    # These look intentional (not random) so a follow-up shader can
-    # find them as base structure to amplify.
+def _paint_segment(d, pad: float, k: int, length: float, layer: str, down_local: float, death_progress: float, trail_strength: float) -> None:
+    """Bone ``k`` of the body (``layer`` "outline" or "fill"), its start at
+    ``(pad, pad)`` of its raster and its axis along +x (super pixels)."""
+    S = SUPER
+    t0, t1 = k / BODY_SEGMENTS, (k + 1) / BODY_SEGMENTS
+    shrink = 1.0 - 0.35 * death_progress
+    r0 = _segment_radius(t0, BODY_BASE_R) * shrink * S
+    r1 = _segment_radius(t1, BODY_BASE_R) * shrink * S
+    L = length * S
+    sd = _Shifted(d, pad, pad)
+    if layer == "outline":
+        if trail_strength > 0.01:
+            img = d._img
+            trail = Image.new("RGBA", img.size, (0, 0, 0, 0))
+            td = _Shifted(blending_draw(trail), pad, pad)
+            ya = down_local * (_segment_radius(t0, 9.0) - 1.0) * S
+            yb = down_local * (_segment_radius(t1, 9.0) - 1.0) * S
+            td.line([(0, ya), (L, yb)], fill=_rgba(PAL_SLIME, int(150 * trail_strength)), width=_s(2.4))
+            img.alpha_composite(trail.filter(ImageFilter.GaussianBlur(radius=_s(0.9))))
+        # Square at its start too: two bones' edges laid over each other
+        # reduce apart and stack darker than the one edge they make.
+        _tapered_capsule(sd, L, r0 + 0.8 * S, r1 + 0.8 * S, _rgba(PAL_OUTLINE), start_cap=k == 0)
+        return
+    # The mid tone starts square (but for the first bone): the bone before
+    # ends its highlight band under it, and this bone's band starts round.
+    _tapered_capsule(sd, L, r0, r1, _rgba(PAL_BODY_MID), start_cap=k == 0)
+    _tapered_capsule(sd, L, r0 * 0.385, r1 * 0.385, _rgba(PAL_BODY_LIGHT))
+    _tapered_capsule(sd, L, r0 * 0.22, r1 * 0.22, _rgba(PAL_BELLY, 230))
+    # Fur tufts: short strokes along the ridge, at the old 28 samples. Each
+    # keeps one length (the old per-frame wobble made every frame a new
+    # picture).
+    n = 28
     for i in range(2, n - 2):
         t = i / (n - 1)
-        x, y = centerline[i]
-        # Tangent for tuft orientation.
-        px, py = centerline[i - 1]
-        nx2, ny2 = centerline[i + 1]
-        tx = nx2 - px
-        ty = ny2 - py
-        tl = math.hypot(tx, ty) or 1.0
-        tx /= tl
-        ty /= tl
-        # Tuft sticks up opposite gravity.
-        ux = -grav_x
-        uy = -grav_y
-        r = _segment_radius(t, base_r)
-        # Vary tuft length by phase + index so the row feels organic.
-        wobble = 0.6 + 0.4 * math.sin(fur_phase + i * 0.9)
-        L = r * 0.7 * wobble * (1.0 - death_progress * 0.8)
-        ax = x + ux * (r * 0.55) + tx * 1.2
-        ay = y + uy * (r * 0.55) + ty * 1.2
-        bx = ax + ux * L + tx * 0.6
-        by = ay + uy * L + ty * 0.6
-        bd.line([_pt(ax, ay), _pt(bx, by)], fill=_rgba(PAL_BODY_DARK), width=_s(1.1))
+        if not (t0 <= t < t1):
+            continue
+        x = (t - t0) * BODY_SEGMENTS * L
+        r = _segment_radius(t, BODY_BASE_R) * S
+        tuft = r * 0.7 * (0.6 + 0.4 * math.sin(i * 0.9)) * (1.0 - death_progress * 0.8)
+        sd.line([(x - tuft / 2, 0), (x + tuft / 2, 0)], fill=_rgba(PAL_BODY_DARK), width=_s(1.1))
 
-    rigdoc.composite_canvas(img, body_layer)
+
+def _axis_point(p: dict, t: float) -> Point:
+    """The centreline point at ``t`` (0 head, 1 tail) in frame pixels: the old
+    ``_body_centerline`` with the old sag (which moved the outline along the
+    axis) folded in."""
+    pitch = p["pitch"]
+    lx = (t - 0.5) * p["length"] + math.cos(2 * pitch) * p["sag"] * 0.45 * math.sin(t * math.pi)
+    wave = math.sin(t * p["wave_freq"] * math.tau + p["phase"]) * p["wave_amp"]
+    ly = wave * (0.35 + 0.65 * math.sin(t * math.pi))
+    c, s = math.cos(pitch), math.sin(pitch)
+    return (p["cx"] + lx * c - ly * s, p["cy"] + lx * s + ly * c)
+
+
+def _centerline(p: dict, n: int = 28) -> List[Point]:
+    return [_axis_point(p, i / (n - 1)) for i in range(n)]
+
+
+def _place_body(img: Image.Image, p: dict) -> None:
+    """The body (and its slime trail) as ``BODY_SEGMENTS`` turned bones of a
+    fixed length: a squash (hurt, death) moves the bones closer together."""
+    pitch = p["pitch"]
+    # The belly side across the axis, in the bone's own frame.
+    down_local = 1.0 if math.cos(2 * pitch) >= 0 else -1.0
+    length = round(p["base_length"] / BODY_SEGMENTS, 2)
+    # The bones change with the melt in four steps, and the trail is there or
+    # not: each step is one set of pieces.
+    dp = round(p["death_progress"] * 4) / 4
+    trail = 0.45 if p["trail_strength"] > 0.2 else 0.0
+    pad = (BODY_BASE_R * 1.6 + 4.0) * SUPER
+    joints = [_axis_point(p, k / BODY_SEGMENTS) for k in range(BODY_SEGMENTS + 1)]
+    for layer in ("outline", "fill"):
+        for k in range(BODY_SEGMENTS):
+            key = ("puppy_slug_bone", k, length, layer, down_local, dp, trail if layer == "outline" else 0)
+            part = shape_rig.piece(
+                key,
+                (length * SUPER + 2 * pad, 2 * pad),
+                (pad, pad),
+                lambda d, k=k, layer=layer: _paint_segment(d, pad, k, length, layer, down_local, dp, trail),
+            )
+            a, b = joints[k], joints[k + 1]
+            degrees = math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+            shape_rig.place(img, part, (a[0] * SUPER, a[1] * SUPER), degrees, f"body_{layer}_{k}")
 
 
 # ---- Puppy heads -------------------------------------------------------------
@@ -383,18 +385,43 @@ def _draw_pup_head(
     eye_open: float,
     pitch: float,
     melt: float = 0.0,
+    name: str = "pup_head",
 ) -> None:
-    """Draw one of the dog faces budding out of the dorsal ridge.
+    """One of the dog faces budding out of the dorsal ridge, as one piece.
 
-    `facing` is the angle (radians) the snout points; the eyes look
-    along the same direction. `melt` collapses the head back into
-    the body for the death animation.
-    """
+    The face is painted once with its snout along the body's forward
+    direction and turned to ``facing``. ``melt`` collapses the head back
+    into the body for the death animation."""
     if melt >= 0.98:
         return
+    radius = round(radius, 2)
+    eye_open = round(eye_open, 2)
+    melt = round(melt, 2)
+    grav_x = math.sin(pitch + math.pi / 2.0)
+    grav_y = math.cos(pitch + math.pi / 2.0)
+    forward = math.atan2(-grav_y, -grav_x) - math.pi / 2.0
+    half = radius * 2.4 * SUPER
+    key = ("puppy_slug_head", radius, eye_open, melt, round(pitch, 4))
+    part = shape_rig.piece(
+        key,
+        (2 * half, 2 * half),
+        (half, half),
+        lambda d: _paint_pup_head(d, (half / SUPER, half / SUPER), radius, forward, eye_open, pitch, melt),
+    )
+    shape_rig.place(img, part, (center[0] * SUPER, center[1] * SUPER), math.degrees(facing - forward), name)
+
+
+def _paint_pup_head(
+    d,
+    center: Point,
+    radius: float,
+    facing: float,
+    eye_open: float,
+    pitch: float,
+    melt: float,
+) -> None:
+    """The dog face centred on ``center`` (frame pixels of its own raster)."""
     cx, cy = center
-    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    d = blending_draw(layer)
 
     head_w = radius * 2.4 * (1.0 - 0.6 * melt)
     head_h = radius * 2.1 * (1.0 - 0.6 * melt)
@@ -529,8 +556,6 @@ def _draw_pup_head(
                     width=_s(0.8),
                 )
 
-    rigdoc.composite_canvas(img, layer)
-
 
 def _pup_heads_along(
     centerline: List[Point],
@@ -593,6 +618,7 @@ def _params_for(anim: str, frame_idx: int, nframes: int):
     cy = FRAME_SIZE[1] * 0.62
     # Shorter aspect ratio than a long slug — fat caterpillar feel.
     length = FRAME_SIZE[0] * 0.80
+    base_length = length
     pitch = 0.0
     wave_amp = 0.7
     wave_freq = 1.6
@@ -632,6 +658,7 @@ def _params_for(anim: str, frame_idx: int, nframes: int):
         cx = FRAME_SIZE[0] * 0.62
         cy = FRAME_SIZE[1] / 2.0
         length = FRAME_SIZE[1] * 0.85
+        base_length = length
         wave_amp = 1.8
         wave_freq = 2.0
         # Translate the creature up the wall over the loop.
@@ -673,6 +700,7 @@ def _params_for(anim: str, frame_idx: int, nframes: int):
         "cx": cx + body_translate * math.cos(pitch),
         "cy": cy + body_translate * math.sin(pitch),
         "length": length,
+        "base_length": base_length,
         "pitch": pitch,
         "wave_amp": wave_amp,
         "wave_freq": wave_freq,
@@ -693,36 +721,15 @@ def _params_for(anim: str, frame_idx: int, nframes: int):
 
 def _render_internal(p: dict) -> Image.Image:
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-
-    centerline = _body_centerline(
-        cx=p["cx"],
-        cy=p["cy"],
-        length=p["length"],
-        n=28,
-        phase=p["phase"],
-        wave_amp=p["wave_amp"],
-        wave_freq=p["wave_freq"],
-        pitch=p["pitch"],
-    )
-
-    _draw_slime_trail(img, centerline, p["pitch"], p["trail_strength"])
-    _draw_body(
-        img,
-        centerline,
-        pitch=p["pitch"],
-        sag=p["sag"],
-        fur_phase=p["fur_phase"],
-        death_progress=p["death_progress"],
-    )
-
+    _place_body(img, p)
     heads = _pup_heads_along(
-        centerline,
+        _centerline(p),
         pitch=p["pitch"],
         count=p["head_count"],
         phase=p["head_phase"],
         head_scale=p["head_scale"],
     )
-    for center, radius, facing in heads:
+    for j, (center, radius, facing) in enumerate(heads):
         _draw_pup_head(
             img,
             center=center,
@@ -731,6 +738,7 @@ def _render_internal(p: dict) -> Image.Image:
             eye_open=p["eye_open"],
             pitch=p["pitch"],
             melt=p["death_progress"],
+            name=f"pup_head_{j}",
         )
 
     return _downsample(img)

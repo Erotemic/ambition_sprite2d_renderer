@@ -15,11 +15,11 @@ from __future__ import annotations
 import argparse
 import math
 from pathlib import Path
-from typing import List, Sequence, Tuple
+from typing import Dict, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -378,9 +378,47 @@ class Pose:
             self.x_eye = tt > 0.55
 
 
-def _draw_leg(
-    draw: ImageDraw.ImageDraw, hip: Point, ang: float, lift: float, *, front: bool
-) -> Point:
+# ---- Pieces ------------------------------------------------------------------
+#
+# The house is drawn as a rig: each rigid thing (the walls, the face, the
+# door, the foundation, a bone, a foot, a hand, a prop) is painted ONCE on a
+# scratch canvas with its anchor at ``HOME``, cut to what it covers, and placed
+# (and turned) through ``shape_rig``. Things that ride the house are painted
+# in its own (level) frame and turned with it. The roof and the chimney bend
+# with the pose: one piece per whole degree of their bend.
+
+#: The anchor on the scratch canvas (work pixels); the canvas is twice it.
+HOME = (300.0, 300.0)
+_PIECES: Dict[tuple, object] = {}
+
+
+def _piece(key: tuple, paint):
+    """``(raster, anchor)``: what ``paint(draw)`` paints with its anchor at
+    ``HOME``, cut to its box; ``None`` when it paints nothing. ``key`` must
+    name everything ``paint`` reads."""
+    if key not in _PIECES:
+        canvas = Image.new("RGBA", (int(2 * HOME[0] * SUPER), int(2 * HOME[1] * SUPER)), (0, 0, 0, 0))
+        paint(blending_draw(canvas))
+        box = canvas.getchannel("A").getbbox()
+        _PIECES[key] = None if box is None else (canvas.crop(box), (HOME[0] * SUPER - box[0], HOME[1] * SUPER - box[1]))
+    return _PIECES[key]
+
+
+def _put(img: Image.Image, key: tuple, paint, at: Point, name: str, degrees: float = 0.0) -> None:
+    """Place the piece ``key`` with its anchor at ``at`` (work pixels)."""
+    part = _piece(key, paint)
+    if part is not None:
+        shape_rig.place(img, part, (at[0] * SUPER, at[1] * SUPER), degrees, name)
+
+
+def _home(x: float, y: float, extra: float = 0.0) -> Point:
+    """The house's own frame at ``HOME``, level: a piece's ``P``."""
+    rx, ry = _rot(x, y, extra)
+    return (HOME[0] + rx, HOME[1] + ry)
+
+
+def _draw_leg(img: Image.Image, hip: Point, ang: float, lift: float, *, front: bool) -> Point:
+    """A stone leg: thigh and shin bones and the foot piece."""
     seg1 = 22
     seg2 = 26
     knee = (
@@ -392,50 +430,126 @@ def _draw_leg(
         knee[1] + seg2 * math.sin(math.radians(ang + 8)) - lift,
     )
     col = STONE if front else STONE_SHADE
-    _line(draw, [hip, knee, foot], col, 8.0 if front else 7.0)
-    _line(draw, [hip, knee, foot], OUTLINE, 1.1)
-    _ellipse(
-        draw,
-        foot[0],
-        foot[1] + 4,
-        10.0,
-        4.5,
-        STONE_SHADE if front else (90, 94, 104, 255),
-        OUTLINE,
-        0.7,
+    side = "near" if front else "far"
+    width = 8.0 if front else 7.0
+    hx, hy = HOME
+    _put_ink_bone(img, hip, knee, col, width, 1.1, f"{side}_thigh")
+    _put_ink_bone(img, knee, foot, col, width, 1.1, f"{side}_shin")
+    _put(
+        img,
+        ("foot", front),
+        lambda d: _ellipse(d, hx, hy, 10.0, 4.5, STONE_SHADE if front else (90, 94, 104, 255), OUTLINE, 0.7),
+        (foot[0], foot[1] + 4),
+        f"{side}_foot",
     )
     return foot
 
 
-def _draw_arm(
-    draw: ImageDraw.ImageDraw,
-    shoulder: Point,
-    ang: float,
-    length: float,
-    *,
-    front: bool,
-) -> Point:
-    elbow = (
-        shoulder[0] + (length * 0.45) * math.cos(math.radians(ang)),
-        shoulder[1] + (length * 0.45) * math.sin(math.radians(ang)),
-    )
+def _put_ink_bone(img: Image.Image, a: Point, b: Point, fill: RGBA, width: float, ink: float, name: str) -> None:
+    """A bone from ``a`` to ``b``: a ``fill`` stroke with an ``ink`` line down
+    its middle, one piece per (quarter-pixel) length, turned to the bone."""
+    length = round(math.hypot(b[0] - a[0], b[1] - a[1]) * 4) / 4
+    hx, hy = HOME
+
+    def paint(d) -> None:
+        _line(d, [(hx, hy), (hx + length, hy)], fill, width)
+        _line(d, [(hx, hy), (hx + length, hy)], OUTLINE, ink)
+
+    _put(img, ("bone", length, fill, width, ink), paint, a, name, math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])))
+
+
+def _draw_arm(img: Image.Image, shoulder: Point, ang: float, length: float, *, front: bool) -> Point:
+    """A straight wooden arm (one bone) and its brass hand."""
     hand = (
         shoulder[0] + length * math.cos(math.radians(ang)),
         shoulder[1] + length * math.sin(math.radians(ang)),
     )
     col = WOOD_SHADE if front else WOOD_DARK
-    _line(draw, [shoulder, elbow, hand], col, 6.8 if front else 5.8)
-    _line(draw, [shoulder, elbow, hand], OUTLINE, 0.9)
-    _circle(draw, hand, 4.4 if front else 3.8, BRASS, OUTLINE, 0.5)
+    side = "near" if front else "far"
+    _put_ink_bone(img, shoulder, hand, col, 6.8 if front else 5.8, 0.9, f"{side}_arm")
+    hx, hy = HOME
+    _put(img, ("hand", front), lambda d: _circle(d, (hx, hy), 4.4 if front else 3.8, BRASS, OUTLINE, 0.5), hand, f"{side}_hand")
     return hand
+
+
+def _paint_walls(d) -> None:
+    P = _home
+    _poly(d, [P(-76, -168), P(84, -168), P(84, -14), P(-76, -14)], WOOD, OUTLINE, 1.4)
+    for y in [-142, -114, -86, -58, -30]:
+        _line(d, [P(-72, y), P(80, y)], WOOD_SHADE, 1.0)
+    for x in [-46, -6, 34, 66]:
+        _line(d, [P(x, -164), P(x, -18)], WOOD_SHADE, 0.7)
+
+
+def _paint_roof(d, roof_tilt: float) -> None:
+    P = _home
+    _poly(d, [P(-96, -170), P(4, -244, roof_tilt), P(112, -170)], ROOF, OUTLINE, 1.4)
+    _line(d, [P(-86, -170), P(6, -224, roof_tilt), P(100, -170)], ROOF_HI, 2.0)
+    for frac in [0.12, 0.28, 0.44, 0.60, 0.76]:
+        ax = _lerp(-86, 92, frac)
+        _line(d, [P(ax, -170), P(ax - 22, -186 - frac * 16, roof_tilt * 0.8)], ROOF_HI, 0.8)
+
+
+def _paint_face(d, x_eye: bool, blink: bool, brow: float) -> None:
+    """Windows with spectacles, the eyes and the brows."""
+    P = _home
+    win_l = [P(-54, -136), P(-8, -136), P(-8, -94), P(-54, -94)]
+    win_r = [P(8, -136), P(54, -136), P(54, -94), P(8, -94)]
+    _poly(d, win_l, WINDOW, OUTLINE, 1.0)
+    _poly(d, win_r, WINDOW, OUTLINE, 1.0)
+    for pts in [win_l, win_r]:
+        x0, y0 = pts[0]
+        x1, _ = pts[1]
+        _, y1 = pts[2]
+        _line(d, [((x0 + x1) / 2, y0), ((x0 + x1) / 2, y1)], WINDOW_SHADE, 0.8)
+        _line(d, [(x0, (y0 + y1) / 2), (x1, (y0 + y1) / 2)], WINDOW_SHADE, 0.8)
+    _line(d, [P(-48, -132), P(-18, -102)], GLASS_HI, 0.8)
+    _line(d, [P(14, -132), P(44, -102)], GLASS_HI, 0.8)
+    eye_l = P(-31, -114)
+    eye_r = P(31, -114)
+    # The lenses are rims only. The old fill of alpha 0 ERASED the window
+    # and the wall under it (a hole through the house), which a rig of
+    # pieces cannot replay and which was never the drawing's intent.
+    _ellipse(d, eye_l[0], eye_l[1], 16.0, 12.0, None, OUTLINE, 0.9)
+    _ellipse(d, eye_r[0], eye_r[1], 16.0, 12.0, None, OUTLINE, 0.9)
+    _line(d, [P(-15, -114), P(15, -114)], OUTLINE, 0.8)
+    if x_eye:
+        _line(d, [P(-38, -122), P(-24, -106)], OUTLINE, 0.8)
+        _line(d, [P(-38, -106), P(-24, -122)], OUTLINE, 0.8)
+        _line(d, [P(24, -122), P(38, -106)], OUTLINE, 0.8)
+        _line(d, [P(24, -106), P(38, -122)], OUTLINE, 0.8)
+    elif blink:
+        _line(d, [P(-38, -114), P(-24, -114)], BROW, 0.9)
+        _line(d, [P(24, -114), P(38, -114)], BROW, 0.9)
+    else:
+        _ellipse(d, eye_l[0], eye_l[1], 7.0, 5.6, EYE, OUTLINE, 0.5)
+        _ellipse(d, eye_r[0], eye_r[1], 7.0, 5.6, EYE, OUTLINE, 0.5)
+        _circle(d, (eye_l[0] + 1, eye_l[1]), 1.4, PUPIL, PUPIL, 0.1)
+        _circle(d, (eye_r[0] + 1, eye_r[1]), 1.4, PUPIL, PUPIL, 0.1)
+    _line(d, [P(-44, -134 + brow), P(-20, -138 + brow)], BROW, 1.0)
+    _line(d, [P(20, -138 + brow), P(44, -134 + brow)], BROW, 1.0)
+
+
+def _paint_door(d, mouth_open: float) -> None:
+    """The brass knocker nose and the door mouth."""
+    P = _home
+    _ellipse(d, P(0, -86)[0], P(0, -86)[1], 5.0, 5.0, BRASS, OUTLINE, 0.5)
+    _poly(d, [P(-24, -72), P(24, -72), P(24, -12), P(-24, -12)], DOOR, OUTLINE, 1.0)
+    _line(d, [P(0, -68), P(0, -14)], DOOR_SHADE, 0.8)
+    if mouth_open > 0.03:
+        _ellipse(d, P(0, -40)[0], P(0, -40)[1], 11.0, 6.0 + mouth_open * 14.0, MOUTH, OUTLINE, 0.5)
+        _poly(d, [P(-4, -34), P(0, -28), P(4, -34)], TONGUE, OUTLINE, 0.3)
+    else:
+        _line(d, [P(-12, -40), P(0, -36), P(12, -40)], MOUTH, 0.9)
+    _circle(d, P(14, -38), 2.4, BRASS, OUTLINE, 0.3)
 
 
 def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     img = Image.new(
         "RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0)
     )
-    draw = blending_draw(img)
     pose = Pose(anim, frame_idx, nframes)
+    hx, hy = HOME
 
     root = (
         WORK_FRAME_SIZE[0] * 0.48 + pose.root_x,
@@ -447,209 +561,104 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         rx, ry = _rot(x, y, body_ang + extra)
         return (root[0] + rx, root[1] + ry)
 
+    def house(key: tuple, paint, name: str) -> None:
+        """A piece painted in the house's own frame, turned with it."""
+        _put(img, key, paint, root, name, body_ang)
+
     # far leg first
-    far_hip = P(18, -12)
-    _draw_leg(draw, far_hip, 94 + pose.right_leg, pose.right_lift, front=False)
-
+    _draw_leg(img, P(18, -12), 94 + pose.right_leg, pose.right_lift, front=False)
     # far arm
-    far_shoulder = P(60, -126)
-    far_hand = _draw_arm(draw, far_shoulder, 42 + pose.right_arm, 34, front=False)
+    far_hand = _draw_arm(img, P(60, -126), 42 + pose.right_arm, 34, front=False)
 
-    # house body
-    body = [P(-76, -168), P(84, -168), P(84, -14), P(-76, -14)]
-    _poly(draw, body, WOOD, OUTLINE, 1.4)
-    # siding lines
-    for y in [-142, -114, -86, -58, -30]:
-        _line(draw, [P(-72, y), P(80, y)], WOOD_SHADE, 1.0)
-    for x in [-46, -6, 34, 66]:
-        _line(draw, [P(x, -164), P(x, -18)], WOOD_SHADE, 0.7)
-
-    # roof
-    roof = [P(-96, -170), P(4, -244, pose.roof_tilt), P(112, -170)]
-    _poly(draw, roof, ROOF, OUTLINE, 1.4)
-    roof_edge = [P(-86, -170), P(6, -224, pose.roof_tilt), P(100, -170)]
-    _line(draw, roof_edge, ROOF_HI, 2.0)
-    for frac in [0.12, 0.28, 0.44, 0.60, 0.76]:
-        ax = _lerp(-86, 92, frac)
-        _line(
-            draw,
-            [P(ax, -170), P(ax - 22, -186 - frac * 16, pose.roof_tilt * 0.8)],
-            ROOF_HI,
-            0.8,
-        )
+    house(("walls",), _paint_walls, "walls")
+    roof_tilt = float(round(pose.roof_tilt))
+    house(("roof", roof_tilt), lambda d: _paint_roof(d, roof_tilt), "roof")
 
     # chimney and smoke
-    chimney = [
-        P(44, -216, pose.chimney),
-        P(68, -216, pose.chimney),
-        P(68, -152),
-        P(44, -152),
-    ]
-    _poly(draw, chimney, CHIMNEY, OUTLINE, 0.8)
+    chimney = float(round(pose.chimney))
+    house(
+        ("chimney", chimney),
+        lambda d: _poly(d, [_home(44, -216, chimney), _home(68, -216, chimney), _home(68, -152), _home(44, -152)], CHIMNEY, OUTLINE, 0.8),
+        "chimney",
+    )
     if pose.smoke > 0.05:
-        sx, sy = P(58, -224, pose.chimney)
-        for i, (dx, dy, rr) in enumerate([(0, 0, 8), (10, -12, 9), (2, -22, 10)]):
-            _ellipse(
-                draw,
-                sx + dx,
-                sy + dy - pose.smoke * 6 * i,
-                rr,
-                rr * 0.75,
-                SMOKE,
-                None,
-                0,
-            )
+        smoke = round(pose.smoke, 2)
 
-    # windows / eyes with glasses
-    win_l = [P(-54, -136), P(-8, -136), P(-8, -94), P(-54, -94)]
-    win_r = [P(8, -136), P(54, -136), P(54, -94), P(8, -94)]
-    _poly(draw, win_l, WINDOW, OUTLINE, 1.0)
-    _poly(draw, win_r, WINDOW, OUTLINE, 1.0)
-    for pts in [win_l, win_r]:
-        x0, y0 = pts[0]
-        x1, _ = pts[1]
-        _, y1 = pts[2]
-        _line(draw, [((x0 + x1) / 2, y0), ((x0 + x1) / 2, y1)], WINDOW_SHADE, 0.8)
-        _line(draw, [(x0, (y0 + y1) / 2), (x1, (y0 + y1) / 2)], WINDOW_SHADE, 0.8)
-    _line(draw, [P(-48, -132), P(-18, -102)], GLASS_HI, 0.8)
-    _line(draw, [P(14, -132), P(44, -102)], GLASS_HI, 0.8)
+        def puffs(d) -> None:
+            for i, (dx, dy, rr) in enumerate([(0, 0, 8), (10, -12, 9), (2, -22, 10)]):
+                _ellipse(d, hx + dx, hy + dy - smoke * 6 * i, rr, rr * 0.75, SMOKE, None, 0)
 
-    eye_l = P(-31, -114)
-    eye_r = P(31, -114)
-    # spectacles
-    _ellipse(draw, eye_l[0], eye_l[1], 16.0, 12.0, (0, 0, 0, 0), OUTLINE, 0.9)
-    _ellipse(draw, eye_r[0], eye_r[1], 16.0, 12.0, (0, 0, 0, 0), OUTLINE, 0.9)
-    _line(draw, [P(-15, -114), P(15, -114)], OUTLINE, 0.8)
-    if pose.x_eye:
-        _line(draw, [P(-38, -122), P(-24, -106)], OUTLINE, 0.8)
-        _line(draw, [P(-38, -106), P(-24, -122)], OUTLINE, 0.8)
-        _line(draw, [P(24, -122), P(38, -106)], OUTLINE, 0.8)
-        _line(draw, [P(24, -106), P(38, -122)], OUTLINE, 0.8)
-    elif pose.blink:
-        _line(draw, [P(-38, -114), P(-24, -114)], BROW, 0.9)
-        _line(draw, [P(24, -114), P(38, -114)], BROW, 0.9)
-    else:
-        _ellipse(draw, eye_l[0], eye_l[1], 7.0, 5.6, EYE, OUTLINE, 0.5)
-        _ellipse(draw, eye_r[0], eye_r[1], 7.0, 5.6, EYE, OUTLINE, 0.5)
-        _circle(draw, (eye_l[0] + 1, eye_l[1]), 1.4, PUPIL, PUPIL, 0.1)
-        _circle(draw, (eye_r[0] + 1, eye_r[1]), 1.4, PUPIL, PUPIL, 0.1)
-    _line(draw, [P(-44, -134 + pose.brow), P(-20, -138 + pose.brow)], BROW, 1.0)
-    _line(draw, [P(20, -138 + pose.brow), P(44, -134 + pose.brow)], BROW, 1.0)
+        _put(img, ("smoke", smoke), puffs, P(58, -224, pose.chimney), "smoke")
 
-    # central nose / knocker
-    _ellipse(draw, P(0, -86)[0], P(0, -86)[1], 5.0, 5.0, BRASS, OUTLINE, 0.5)
-
-    # mouth / door
-    door = [P(-24, -72), P(24, -72), P(24, -12), P(-24, -12)]
-    _poly(draw, door, DOOR, OUTLINE, 1.0)
-    _line(draw, [P(0, -68), P(0, -14)], DOOR_SHADE, 0.8)
-    if pose.mouth_open > 0.03:
-        _ellipse(
-            draw,
-            P(0, -40)[0],
-            P(0, -40)[1],
-            11.0,
-            6.0 + pose.mouth_open * 14.0,
-            MOUTH,
-            OUTLINE,
-            0.5,
-        )
-        _poly(draw, [P(-4, -34), P(0, -28), P(4, -34)], TONGUE, OUTLINE, 0.3)
-    else:
-        _line(draw, [P(-12, -40), P(0, -36), P(12, -40)], MOUTH, 0.9)
-    _circle(draw, P(14, -38), 2.4, BRASS, OUTLINE, 0.3)
+    house(("face", pose.x_eye, pose.blink, round(pose.brow, 1)), lambda d: _paint_face(d, pose.x_eye, pose.blink, round(pose.brow, 1)), "face")
+    mouth = round(pose.mouth_open, 3)
+    house(("door", mouth), lambda d: _paint_door(d, mouth), "door")
 
     # front leg and front arm
-    near_hip = P(-18, -12)
-    near_foot = _draw_leg(
-        draw, near_hip, 94 + pose.left_leg, pose.left_lift, front=True
-    )
-    near_shoulder = P(-60, -126)
-    near_hand = _draw_arm(draw, near_shoulder, 154 - pose.left_arm, 38, front=True)
+    near_foot = _draw_leg(img, P(-18, -12), 94 + pose.left_leg, pose.left_lift, front=True)
+    near_hand = _draw_arm(img, P(-60, -126), 154 - pose.left_arm, 38, front=True)
 
     # foundation / trim over top of legs for clean stacking
-    foundation = [P(-86, -18), P(94, -18), P(94, 8), P(-86, 8)]
-    _poly(draw, foundation, STONE, OUTLINE, 1.1)
-    _line(draw, [P(-82, -4), P(90, -4)], STONE_SHADE, 0.8)
+    def foundation(d) -> None:
+        _poly(d, [_home(-86, -18), _home(94, -18), _home(94, 8), _home(-86, 8)], STONE, OUTLINE, 1.1)
+        _line(d, [_home(-82, -4), _home(90, -4)], STONE_SHADE, 0.8)
+
+    house(("foundation",), foundation, "foundation")
 
     # props / fx
     if anim == "ponder" and pose.book > 0.05:
-        bx, by = near_hand[0] - 10, near_hand[1] - 2
-        _poly(
-            draw,
-            [
-                (bx - 10, by - 8),
-                (bx + 6, by - 10),
-                (bx + 10, by + 8),
-                (bx - 6, by + 10),
-            ],
-            BOOK,
-            OUTLINE,
-            0.5,
-        )
-        _line(draw, [(bx - 2, by - 6), (bx + 4, by + 6)], BOOK_PAPER, 0.8)
-        _line(draw, [(bx - 7, by - 4), (bx + 0, by + 8)], BOOK_PAPER, 0.6)
+        def book(d) -> None:
+            bx, by = hx, hy
+            _poly(d, [(bx - 10, by - 8), (bx + 6, by - 10), (bx + 10, by + 8), (bx - 6, by + 10)], BOOK, OUTLINE, 0.5)
+            _line(d, [(bx - 2, by - 6), (bx + 4, by + 6)], BOOK_PAPER, 0.8)
+            _line(d, [(bx - 7, by - 4), (bx + 0, by + 8)], BOOK_PAPER, 0.6)
+
+        _put(img, ("book",), book, (near_hand[0] - 10, near_hand[1] - 2), "book")
     if anim == "lecture" and pose.paper > 0.05:
-        px, py = far_hand[0] + 12, far_hand[1] - 4
-        _poly(
-            draw,
-            [
-                (px - 9, py - 12),
-                (px + 7, py - 10),
-                (px + 10, py + 10),
-                (px - 8, py + 12),
-            ],
-            PAPER,
-            OUTLINE,
-            0.45,
-        )
-        _line(draw, [(px - 5, py - 6), (px + 3, py - 4)], WOOD_DARK, 0.5)
-        _line(draw, [(px - 4, py), (px + 4, py + 2)], WOOD_DARK, 0.5)
-        _line(draw, [(px - 3, py + 6), (px + 5, py + 8)], WOOD_DARK, 0.5)
+        def paper(d) -> None:
+            px, py = hx, hy
+            _poly(d, [(px - 9, py - 12), (px + 7, py - 10), (px + 10, py + 10), (px - 8, py + 12)], PAPER, OUTLINE, 0.45)
+            _line(d, [(px - 5, py - 6), (px + 3, py - 4)], WOOD_DARK, 0.5)
+            _line(d, [(px - 4, py), (px + 4, py + 2)], WOOD_DARK, 0.5)
+            _line(d, [(px - 3, py + 6), (px + 5, py + 8)], WOOD_DARK, 0.5)
+
+        _put(img, ("paper",), paper, (far_hand[0] + 12, far_hand[1] - 4), "paper")
     if anim == "idea" and pose.idea > 0.08:
-        bx, by = P(0, -268, pose.roof_tilt)
-        glow_r = 14 + pose.idea * 8
-        _ellipse(draw, bx, by, glow_r + 10, glow_r + 10, BULB_GLOW, None, 0)
-        _ellipse(draw, bx, by, 12.0, 16.0, BULB, OUTLINE, 0.6)
-        _ellipse(draw, bx, by + 17, 7.0, 5.0, BRASS, OUTLINE, 0.5)
-        _line(draw, [(bx, by + 12), (bx, by + 20)], OUTLINE, 0.5)
-        for ang in [-60, -30, 0, 30, 60]:
-            r0 = 20
-            r1 = 30 + pose.idea * 6
-            _line(
-                draw,
-                [
-                    (
-                        bx + math.cos(math.radians(ang)) * r0,
-                        by + math.sin(math.radians(ang)) * r0,
-                    ),
-                    (
-                        bx + math.cos(math.radians(ang)) * r1,
-                        by + math.sin(math.radians(ang)) * r1,
-                    ),
-                ],
-                FX,
-                1.0,
-            )
+        idea = round(pose.idea, 3)
+
+        def bulb(d) -> None:
+            bx, by = hx, hy
+            glow_r = 14 + idea * 8
+            _ellipse(d, bx, by, glow_r + 10, glow_r + 10, BULB_GLOW, None, 0)
+            _ellipse(d, bx, by, 12.0, 16.0, BULB, OUTLINE, 0.6)
+            _ellipse(d, bx, by + 17, 7.0, 5.0, BRASS, OUTLINE, 0.5)
+            _line(d, [(bx, by + 12), (bx, by + 20)], OUTLINE, 0.5)
+            for ang in [-60, -30, 0, 30, 60]:
+                r0 = 20
+                r1 = 30 + idea * 6
+                _line(
+                    d,
+                    [
+                        (bx + math.cos(math.radians(ang)) * r0, by + math.sin(math.radians(ang)) * r0),
+                        (bx + math.cos(math.radians(ang)) * r1, by + math.sin(math.radians(ang)) * r1),
+                    ],
+                    FX,
+                    1.0,
+                )
+
+        _put(img, ("bulb", idea), bulb, P(0, -268, pose.roof_tilt), "bulb")
     if anim == "ram" and pose.impact > 0.15:
-        cx, cy = P(96, -108)
-        box = (_s(cx - 36), _s(cy - 26), _s(cx + 42), _s(cy + 36))
-        draw.arc(box, 220, 350, fill=FX, width=_s(3.6))
+        def ram(d) -> None:
+            box = (_s(hx - 36), _s(hy - 26), _s(hx + 42), _s(hy + 36))
+            d.arc(box, 220, 350, fill=FX, width=_s(3.6))
+
+        _put(img, ("ram_arc",), ram, P(96, -108), "ram_arc")
     if anim in {"walk", "ram"} and (pose.left_lift > 0.5 or pose.right_lift > 0.5):
-        for dx in [-30, -8, 14, 34]:
-            c = (near_foot[0] + dx, near_foot[1] + 8)
-            _poly(
-                draw,
-                [
-                    (c[0] - 3, c[1]),
-                    (c[0], c[1] - 4),
-                    (c[0] + 4, c[1] - 1),
-                    (c[0] + 1, c[1] + 3),
-                ],
-                DUST,
-                None,
-                0,
-            )
+        def chip(d) -> None:
+            _poly(d, [(hx - 3, hy), (hx, hy - 4), (hx + 4, hy - 1), (hx + 1, hy + 3)], DUST, None, 0)
+
+        for i, dx in enumerate([-30, -8, 14, 34]):
+            _put(img, ("dust",), chip, (near_foot[0] + dx, near_foot[1] + 8), f"dust_{i}")
 
     return _downsample(img)
 

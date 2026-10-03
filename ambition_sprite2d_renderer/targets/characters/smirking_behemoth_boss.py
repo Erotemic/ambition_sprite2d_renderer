@@ -23,7 +23,7 @@ from typing import Dict, List, Tuple
 
 from PIL import Image, ImageColor, ImageDraw
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -344,6 +344,57 @@ def _erase_polygon(img: Image.Image, points: List[Point]) -> None:
     mask_draw = blending_draw(mask)
     mask_draw.polygon([_pt(x, y) for x, y in points], fill=255)
     img.paste((0, 0, 0, 0), (0, 0), mask)
+
+
+# ---- Pieces --------------------------------------------------------------------
+#
+# The boss is drawn as a rig: each feature (the slab, the hat, an eye, the
+# mouth, a shard, a burst, a dust grain) is painted ONCE by its old painter on
+# a blank supersampled frame, cut to what it covers, and placed through
+# ``shape_rig``. A part flipbook stores each once.
+
+#: key -> (raster, its pivot in the raster, where the pivot was painted).
+_FEATURES: Dict[tuple, Tuple[Image.Image, Point, Point]] = {}
+
+
+def _place_feature(
+    img: Image.Image,
+    key: tuple,
+    paint,
+    name: str,
+    *,
+    pivot: Point | None = None,
+    shift: Point = (0.0, 0.0),
+    degrees: float = 0.0,
+) -> None:
+    """Place what ``paint(canvas)`` paints on a blank supersampled frame, as
+    one piece cached under ``key`` (which must name everything ``paint``
+    reads). It lands where it was painted, moved by ``shift`` and turned
+    ``degrees`` about ``pivot`` (super pixels where it was painted; its top
+    left when ``None``)."""
+    cached = _FEATURES.get(key)
+    if cached is None:
+        canvas = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        paint(canvas)
+        box = canvas.getchannel("A").getbbox()
+        if box is not None:
+            # Cut on the frame's pixel grid: the frame is reduced NEAREST, and
+            # a piece reduced alone samples the same texels only when it
+            # starts on a whole frame pixel.
+            box = (box[0] // SUPER * SUPER, box[1] // SUPER * SUPER, -(-box[2] // SUPER) * SUPER, -(-box[3] // SUPER) * SUPER)
+        if box is None:
+            _FEATURES[key] = cached = (None, (0.0, 0.0), (0.0, 0.0))
+        else:
+            at = (float(box[0]), float(box[1])) if pivot is None else pivot
+            cached = (canvas.crop(box), (at[0] - box[0], at[1] - box[1]), at)
+            _FEATURES[key] = cached
+    raster, local, at = cached
+    if raster is None:
+        return
+    if degrees == 0.0:
+        # Moved by whole frame pixels, for the same reason.
+        shift = (round(shift[0] / SUPER) * SUPER, round(shift[1] / SUPER) * SUPER)
+    shape_rig.place(img, (raster, local), (at[0] + shift[0], at[1] + shift[1]), degrees, name)
 
 
 def _lerp(a: float, b: float, t: float) -> float:
@@ -737,8 +788,8 @@ def _draw_mouth(
             )
 
 
-def _erode_death_body(img: Image.Image, g: Dict[str, float]) -> None:
-    """Legacy name retained, but now only emits breakup debris.
+def _place_death_debris(img: Image.Image, g: Dict[str, float]) -> None:
+    """Breakup debris: each shard one piece.
 
     Earlier revisions punched transparent holes into the body silhouette, which
     made the death FX read like the explosion pass was erasing the sprite. We
@@ -795,14 +846,17 @@ def _erode_death_body(img: Image.Image, g: Dict[str, float]) -> None:
             0.66,
         ),
     ]
-    for points, threshold in shards:
+    for k, (points, threshold) in enumerate(shards):
         if settle >= threshold:
-            _composite_polygon(
-                img, points, fill=BODY, outline=OUTLINE, width=max(1, _s(0.8))
+            _place_feature(
+                img,
+                ("shard", k),
+                lambda c, points=points: _composite_polygon(c, points, fill=BODY, outline=OUTLINE, width=max(1, _s(0.8))),
+                f"shard_{k}",
             )
     if settle >= 0.74:
-        _composite_ellipse(
-            img,
+        _place_feature(img, ("shard", "round"), lambda c: _composite_ellipse(
+            c,
             (
                 g["body_x2"] + 3.0,
                 g["body_y2"] - 30.0,
@@ -812,10 +866,11 @@ def _erode_death_body(img: Image.Image, g: Dict[str, float]) -> None:
             fill=BODY,
             outline=OUTLINE,
             width=max(1, _s(0.8)),
-        )
+        ), "shard_round")
 
 
-def _draw_death_explosions(img: Image.Image, g: Dict[str, float]) -> None:
+def _place_death_explosions(img: Image.Image, g: Dict[str, float]) -> None:
+    """Each burst one piece a frame (a burst grows and turns as it goes)."""
     settle = g["settle"]
     if settle <= 0.12:
         return
@@ -834,25 +889,32 @@ def _draw_death_explosions(img: Image.Image, g: Dict[str, float]) -> None:
         ((g["body_x1"] - 10.0, g["body_y2"] - 10.0), 10.5, 0.68, 4.6),
         ((g["body_x2"] + 18.0, g["body_y2"] + 8.0), 11.5, 0.78, 5.4),
     ]
-    for (cx, cy), radius, threshold, seed in bursts:
+    for k, ((cx, cy), radius, threshold, seed) in enumerate(bursts):
         if settle < threshold:
             continue
-        burst_progress = min(1.0, (settle - threshold) / 0.26)
-        _draw_explosion(
+        burst_progress = round(min(1.0, (settle - threshold) / 0.26), 4)
+        burst_seed = round(seed + settle * 0.6, 4)
+        _place_feature(
             img,
-            (_s(cx), _s(cy)),
-            _s(radius),
-            burst_progress,
-            core_fill=EXPLOSION_CORE,
-            flame_fill=EXPLOSION_FLAME,
-            smoke_fill=EXPLOSION_SMOKE,
-            outline=OUTLINE,
-            seed=seed + settle * 0.6,
-            spark_count=5,
+            ("burst", k, burst_progress, burst_seed),
+            lambda c, cx=cx, cy=cy, radius=radius, p=burst_progress, sd=burst_seed: _draw_explosion(
+                c,
+                (_s(cx), _s(cy)),
+                _s(radius),
+                p,
+                core_fill=EXPLOSION_CORE,
+                flame_fill=EXPLOSION_FLAME,
+                smoke_fill=EXPLOSION_SMOKE,
+                outline=OUTLINE,
+                seed=sd,
+                spark_count=5,
+            ),
+            f"burst_{k}",
         )
 
 
-def _draw_dust(draw: ImageDraw.ImageDraw, g: Dict[str, float]) -> None:
+def _place_dust(img: Image.Image, g: Dict[str, float]) -> None:
+    """Each dust grain one piece, painted at its start and moved."""
     settle = g["settle"]
     if settle <= 0.08:
         return
@@ -869,47 +931,73 @@ def _draw_dust(draw: ImageDraw.ImageDraw, g: Dict[str, float]) -> None:
     for i, (ax, ay, vx, vy) in enumerate(particles):
         if settle < i * 0.075:
             continue
-        px = ax + vx * settle * 2.8
-        py = ay + vy * settle * 2.8
         r = 1.6 + (i % 3) * 0.5
-        draw.ellipse(_box(px - r, py - r, px + r, py + r), fill=DUST)
+        _place_feature(
+            img,
+            ("dust", i),
+            lambda c, ax=ax, ay=ay, r=r: blending_draw(c).ellipse(_box(ax - r, ay - r, ax + r, ay + r), fill=DUST),
+            f"dust_{i}",
+            shift=(vx * settle * 2.8 * SUPER, vy * settle * 2.8 * SUPER),
+        )
+
+
+#: Where the hat, an eye and a dust grain are painted once (frame pixels):
+#: each frame moves (and turns) the piece from there.
+_HAT_HOME = ((SMIRKING_BODY_X1 + SMIRKING_BODY_X2) * 0.5 - 4.0, SMIRKING_BODY_Y1 - 14.0)
+_EYE_HOME = (104.0, 120.0)
+
+
+def _place_eye(img: Image.Image, g: Dict[str, float], cx: float, cy: float, bloodshot: bool, name: str) -> None:
+    """One eye as a piece: painted once per look (its size, the beam's flash,
+    bloodshot, the highlight) at ``_EYE_HOME`` and moved to ``(cx, cy)``."""
+    beam = round(g["beam"], 3)
+    rx = round(g["eye_r"], 3)
+    shine = g["settle"] < 0.95
+    look = dict(g, beam=beam, eye_r=rx, settle=0.0 if shine else 1.0)
+    hx, hy = _EYE_HOME
+    _place_feature(
+        img,
+        ("eye", rx, beam, bloodshot, shine),
+        lambda c: _draw_eye(blending_draw(c), look, cx=hx, cy=hy, bloodshot=bloodshot, img=c),
+        name,
+        shift=((cx - hx) * SUPER, (cy - hy) * SUPER),
+    )
 
 
 def _draw_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    draw = blending_draw(img)
     g = _body_geometry(anim, frame_idx, nframes)
 
-    _draw_body(draw, g)
-    _draw_hat(img, g)
+    # The slab never moves.
+    _place_feature(img, ("body",), lambda c: _draw_body(blending_draw(c), g), "body")
+    # The hat: painted at its home once per tilt (half degrees) and moved.
+    # Turned at runtime instead, a NEAREST-reduced hat does not land on the
+    # pixels the frame's own reduction picks.
+    tilt = round(g["hat_tilt"] * 2) / 2
+    hat = dict(g, hat_cx=_HAT_HOME[0], hat_y=_HAT_HOME[1], hat_tilt=tilt)
+    _place_feature(
+        img,
+        ("hat", tilt),
+        lambda c: _draw_hat(c, hat),
+        "hat",
+        shift=((g["hat_cx"] - _HAT_HOME[0]) * SUPER, (g["hat_y"] - _HAT_HOME[1]) * SUPER),
+    )
 
     if anim == "death":
-        _erode_death_body(img, g)
-        _draw_death_explosions(img, g)
-        draw = blending_draw(img)
+        _place_death_debris(img, g)
+        _place_death_explosions(img, g)
         # Death turns front-facing: two separated cracked eyes plus central maw.
-        _draw_eye(
-            draw,
-            g,
-            cx=g["death_eye_left_x"],
-            cy=g["death_eye_y"],
-            bloodshot=True,
-            img=img,
-        )
-        _draw_eye(
-            draw,
-            g,
-            cx=g["death_eye_right_x"],
-            cy=g["death_eye_y"] + 1.5,
-            bloodshot=True,
-            img=img,
-        )
-        _draw_mouth(draw, g, centered=True)
-        _draw_cracks(draw, g["settle"])
-        _draw_dust(draw, g)
+        _place_eye(img, g, g["death_eye_left_x"], g["death_eye_y"], True, "eye_left")
+        _place_eye(img, g, g["death_eye_right_x"], g["death_eye_y"] + 1.5, True, "eye_right")
+        _place_feature(img, ("mouth", "centered"), lambda c: _draw_mouth(blending_draw(c), g, centered=True), "mouth")
+        settle = round(g["settle"], 4)
+        _place_feature(img, ("cracks", settle), lambda c: _draw_cracks(blending_draw(c), settle), "cracks")
+        _place_dust(img, g)
     else:
-        _draw_eye(draw, g, img=img)
-        _draw_mouth(draw, g)
+        _place_eye(img, g, g["eye_x"], g["eye_y"], False, "eye")
+        opening = round(g["mouth_open"], 4)
+        mouth = dict(g, mouth_open=opening)
+        _place_feature(img, ("mouth", opening, round(g["mouth_w"], 4), round(g["mouth_h"], 4)), lambda c: _draw_mouth(blending_draw(c), mouth), "mouth")
 
     return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.NEAREST)
 

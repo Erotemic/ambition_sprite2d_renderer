@@ -16,10 +16,10 @@ ellipse, or drop shadow.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import math
 from pathlib import Path
-from typing import Iterable, Mapping, Sequence
+from typing import Iterable, Sequence
 
 from PIL import Image, ImageColor, ImageDraw
 
@@ -205,7 +205,8 @@ def _rgba(value: str, alpha: int = 255) -> RGBA:
 
 
 def _s(value: float) -> int:
-    return int(round(value * SUPER))
+    """Design pixels to canvas pixels (``ART_SCALE`` of the supersample)."""
+    return int(round(value * SUPER * ART_SCALE))
 
 
 def _pts(points: Iterable[Point]) -> list[tuple[int, int]]:
@@ -577,12 +578,6 @@ def _body_outline(pose: Pose, inset: float = 0.0) -> list[Point]:
     return upper + list(reversed(lower))
 
 
-def _layer_canvas() -> dict[str, Image.Image]:
-    return {
-        name: Image.new("RGBA", WORK_SIZE, (0, 0, 0, 0)) for name in LAYER_ORDER
-    }
-
-
 def _draw_poly(
     layer: Image.Image,
     points: Sequence[Point],
@@ -717,77 +712,189 @@ def _lobe_shape(pose: Pose, x: float, lift: float, near: bool) -> list[Point]:
     )
 
 
-def _draw_motion(layers: Mapping[str, Image.Image], pose: Pose, animation: str) -> None:
-    if animation == "walk":
-        # Small body-relative wake ticks communicate propulsion without a
-        # ground shadow or detached speed cloud.
-        phase = pose.wave_phase
-        for i in range(3):
-            alpha = 120 - i * 26
-            x0 = 30.0 - i * 6.0 + math.sin(phase + i) * 1.2
-            y0 = 82.0 + i * 2.0
-            _draw_line(
-                layers["motion_back"],
-                [(x0, y0), (x0 - 4.5, y0 + 0.8)],
-                _rgba(MOTION, alpha),
-                1.2,
-            )
-    if animation == "slash" and pose.impact > 0.05:
-        head = _local_to_world((43.0 + pose.head_reach * 0.45, -1.0), pose)
-        for i, offset in enumerate((-8.0, 0.0, 8.0)):
-            start = (head[0] + 4.0, head[1] + offset * 0.45)
-            end = (head[0] + 8.0 + pose.impact * 3.0, head[1] + offset)
-            _draw_line(
-                layers["motion_front"],
-                [start, end],
-                _rgba(MOTION, int(110 + 90 * pose.impact - i * 12)),
-                1.4 + 0.45 * pose.impact,
-            )
+# ---- The rig ---------------------------------------------------------------------
+#
+# The slug is drawn as a rig of pieces, composited in ``LAYER_ORDER``: each
+# piece is painted ONCE on a scratch canvas with its anchor at ``HOME``, cut
+# to what it covers, and placed (and turned by the body's angle, or by its own
+# direction) through ``shape_rig``. A part flipbook stores each once.
+#
+# * the tail, an ear, a foot lobe: one piece per half pixel of its length,
+#   turned from its root to its tip;
+# * a frill leaf, the paw pad, the head and the face details: painted in the
+#   body's own frame (level), one piece per (rounded) pose value they read,
+#   turned with the body;
+# * the body with its belly band truly bends every frame (its travelling wave,
+#   its squash and stretch): one piece a frame.
+#
+# The art is painted at ``ART_SCALE`` and placed ``GUTTER`` pixels in, the old
+# design-scale sampling gutter, and the frame is reduced by its whole
+# supersample, so each piece reduces once.
+
+ART_SCALE = 124.0 / 128.0
+GUTTER = 2.0
+#: Where a piece's anchor is painted on the scratch canvas (frame pixels of
+#: the design); the canvas is twice it.
+HOME = (64.0, 64.0)
+_PIECES: dict[tuple, object] = {}
 
 
-def _draw_tail_and_ears(layers: Mapping[str, Image.Image], pose: Pose) -> None:
-    _draw_poly(layers["tail"], _tail_shape(pose), BODY_DARK, OUTLINE, 1.5)
-    far_outer, far_inner, _, _ = _ear_shape(pose, near=False)
-    _draw_poly(layers["far_ear"], far_outer, EAR_OUTER, OUTLINE, 1.4)
-    _draw_poly(layers["far_ear"], far_inner, _rgba(EAR_INNER, 205), None)
-    near_outer, near_inner, _, _ = _ear_shape(pose, near=True)
-    _draw_poly(layers["near_ear"], near_outer, EAR_OUTER, OUTLINE, 1.5)
-    _draw_poly(layers["near_ear"], near_inner, EAR_INNER, None)
-    if pose.death < 0.8:
-        gleam = near_inner[: max(3, len(near_inner) // 3)]
-        _draw_line(layers["near_ear"], gleam, _rgba(EAR_GLEAM, 180), 1.0)
+def _piece(key: tuple, paint):
+    """``(raster, anchor)``: what ``paint(canvas)`` paints with its anchor at
+    ``HOME``, cut to its box; ``None`` when it paints nothing."""
+    if key not in _PIECES:
+        size = int(math.ceil(2 * HOME[0] * SUPER * ART_SCALE)), int(math.ceil(2 * HOME[1] * SUPER * ART_SCALE))
+        canvas = Image.new("RGBA", size, (0, 0, 0, 0))
+        paint(canvas)
+        box = canvas.getchannel("A").getbbox()
+        _PIECES[key] = None if box is None else (
+            canvas.crop(box),
+            (HOME[0] * SUPER * ART_SCALE - box[0], HOME[1] * SUPER * ART_SCALE - box[1]),
+        )
+    return _PIECES[key]
 
 
-def _draw_lobes(layers: Mapping[str, Image.Image], pose: Pose) -> None:
-    far_specs = [(-17.0, pose.far_rear_lift), (14.0, pose.far_front_lift)]
-    near_specs = [(-11.0, pose.near_rear_lift), (21.0, pose.near_front_lift)]
-    for x, lift in far_specs:
-        shape = _lobe_shape(pose, x, lift, near=False)
-        _draw_poly(layers["far_lobes"], shape, BODY_DARK, OUTLINE, 1.2)
-    for x, lift in near_specs:
-        shape = _lobe_shape(pose, x, lift, near=True)
-        _draw_poly(layers["near_lobes"], shape, BODY_MID, OUTLINE, 1.35)
-        # Paw-pad rosette: intrinsic anatomy, not a carried decoration.
-        tip = shape[len(shape) // 2 - 1]
-        _draw_ellipse(
-            layers["details"],
-            tip,
-            2.4,
-            1.7,
-            pose.angle,
-            PAD,
-            OUTLINE,
-            0.75,
+class _Stage:
+    """The frame's pieces, composited in ``LAYER_ORDER`` (paint order within a
+    layer)."""
+
+    def __init__(self) -> None:
+        self.entries: list[tuple[int, int, tuple, object, Point, float, str]] = []
+
+    def put(self, layer: str, key: tuple, paint, anchor: Point, degrees: float, name: str) -> None:
+        self.entries.append((LAYER_ORDER[layer], len(self.entries), key, paint, anchor, degrees, name))
+
+    def compose(self) -> Image.Image:
+        from ...authoring import shape_rig
+
+        canvas = Image.new("RGBA", WORK_SIZE, (0, 0, 0, 0))
+        for _order, _seq, key, paint, anchor, degrees, name in sorted(self.entries, key=lambda e: (e[0], e[1])):
+            part = _piece(key, paint)
+            if part is None:
+                continue
+            at = ((anchor[0] * ART_SCALE + GUTTER) * SUPER, (anchor[1] * ART_SCALE + GUTTER) * SUPER)
+            shape_rig.place(canvas, part, at, degrees, name)
+        return rigdoc.downsampled_canvas(canvas, FRAME_SIZE, Image.Resampling.LANCZOS)
+
+
+def _to_local(anchor: Point, angle_deg: float):
+    """World points into a piece's frame: ``anchor`` at ``HOME``, turned back
+    by ``angle_deg``."""
+    a = math.radians(-angle_deg)
+    ca, sa = math.cos(a), math.sin(a)
+
+    def f(p: Point) -> Point:
+        dx, dy = p[0] - anchor[0], p[1] - anchor[1]
+        return (HOME[0] + dx * ca - dy * sa, HOME[1] + dx * sa + dy * ca)
+
+    return f
+
+
+def _direction(a: Point, b: Point) -> tuple[float, float]:
+    """Length and angle (degrees) from ``a`` to ``b``."""
+    return math.hypot(b[0] - a[0], b[1] - a[1]), math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+
+
+def _level(pose: Pose) -> Pose:
+    """``pose`` with its body at ``HOME``, level: a body-frame piece's pose."""
+    return replace(pose, center=HOME, angle=0.0)
+
+
+def _q(value: float, step: float = 0.01) -> float:
+    return round(value / step) * step
+
+
+def _stage_motion_back(stage: _Stage, pose: Pose, animation: str) -> None:
+    if animation != "walk":
+        return
+    # Small body-relative wake ticks communicate propulsion without a
+    # ground shadow or detached speed cloud.
+    phase = pose.wave_phase
+    for i in range(3):
+        alpha = 120 - i * 26
+        x0 = 30.0 - i * 6.0 + math.sin(phase + i) * 1.2
+        y0 = 82.0 + i * 2.0
+        stage.put(
+            "motion_back",
+            ("tick", alpha),
+            lambda c, alpha=alpha: _draw_line(c, [HOME, (HOME[0] - 4.5, HOME[1] + 0.8)], _rgba(MOTION, alpha), 1.2),
+            (x0, y0),
+            0.0,
+            f"tick_{i}",
         )
 
 
-def _draw_body(layers: Mapping[str, Image.Image], pose: Pose) -> None:
-    body = _body_outline(pose)
-    _draw_poly(layers["body"], body, BODY_MID, OUTLINE, 1.8)
+def _stage_leaf(stage: _Stage, layer: str, kind: tuple, polys, base: Point, tip: Point, name: str) -> None:
+    """A tail, ear or lobe: one piece per half pixel of its length, painted
+    from ``base`` along +x and turned to ``tip``. ``polys(local)`` paints it
+    with world points mapped by ``local``."""
+    length, angle = _direction(base, tip)
+    local = _to_local(base, angle)
+    stage.put(layer, kind + (_q(length, 0.5),), lambda c: polys(c, local), base, angle, name)
 
-    inset = _body_outline(pose, inset=3.0)
-    _draw_poly(layers["body"], inset, BODY_LIGHT, None)
 
+def _stage_tail_and_ears(stage: _Stage, pose: Pose) -> None:
+    tail = _tail_shape(pose)
+    root = ((tail[0][0] + tail[-1][0]) / 2.0, (tail[0][1] + tail[-1][1]) / 2.0)
+    _stage_leaf(
+        stage, "tail", ("tail", _q(pose.death, 0.05)),
+        lambda c, f: _draw_poly(c, [f(p) for p in tail], BODY_DARK, OUTLINE, 1.5),
+        root, tail[11], "tail",
+    )
+    far_outer, far_inner, far_base, far_tip = _ear_shape(pose, near=False)
+
+    def far_ear(c, f) -> None:
+        _draw_poly(c, [f(p) for p in far_outer], EAR_OUTER, OUTLINE, 1.4)
+        _draw_poly(c, [f(p) for p in far_inner], _rgba(EAR_INNER, 205), None)
+
+    _stage_leaf(stage, "far_ear", ("far_ear",), far_ear, far_base, far_tip, "far_ear")
+    near_outer, near_inner, near_base, near_tip = _ear_shape(pose, near=True)
+    gleam = pose.death < 0.8
+
+    def near_ear(c, f) -> None:
+        _draw_poly(c, [f(p) for p in near_outer], EAR_OUTER, OUTLINE, 1.5)
+        _draw_poly(c, [f(p) for p in near_inner], EAR_INNER, None)
+        if gleam:
+            _draw_line(c, [f(p) for p in near_inner[: max(3, len(near_inner) // 3)]], _rgba(EAR_GLEAM, 180), 1.0)
+
+    _stage_leaf(stage, "near_ear", ("near_ear", gleam), near_ear, near_base, near_tip, "near_ear")
+
+
+def _stage_lobes(stage: _Stage, pose: Pose) -> None:
+    far_specs = [(-17.0, pose.far_rear_lift), (14.0, pose.far_front_lift)]
+    near_specs = [(-11.0, pose.near_rear_lift), (21.0, pose.near_front_lift)]
+    for i, (x, lift) in enumerate(far_specs):
+        shape = _lobe_shape(pose, x, lift, near=False)
+        base = ((shape[0][0] + shape[-1][0]) / 2.0, (shape[0][1] + shape[-1][1]) / 2.0)
+        _stage_leaf(
+            stage, "far_lobes", ("far_lobe",),
+            lambda c, f, shape=shape: _draw_poly(c, [f(p) for p in shape], BODY_DARK, OUTLINE, 1.2),
+            base, shape[9], f"far_lobe_{i}",
+        )
+    for i, (x, lift) in enumerate(near_specs):
+        shape = _lobe_shape(pose, x, lift, near=True)
+        base = ((shape[0][0] + shape[-1][0]) / 2.0, (shape[0][1] + shape[-1][1]) / 2.0)
+        _stage_leaf(
+            stage, "near_lobes", ("near_lobe",),
+            lambda c, f, shape=shape: _draw_poly(c, [f(p) for p in shape], BODY_MID, OUTLINE, 1.35),
+            base, shape[9], f"near_lobe_{i}",
+        )
+        # Paw-pad rosette: intrinsic anatomy, not a carried decoration.
+        tip = shape[len(shape) // 2 - 1]
+        stage.put(
+            "details",
+            ("pad",),
+            lambda c: _draw_ellipse(c, HOME, 2.4, 1.7, 0.0, PAD, OUTLINE, 0.75),
+            tip,
+            pose.angle,
+            f"pad_{i}",
+        )
+
+
+def _paint_body(c, pose: Pose) -> None:
+    """The body and its belly band (``pose`` is level, at ``HOME``)."""
+    _draw_poly(c, _body_outline(pose), BODY_MID, OUTLINE, 1.8)
+    _draw_poly(c, _body_outline(pose, inset=3.0), BODY_LIGHT, None)
     # Dorsal gleam follows the creature's own axis and survives wall/ceiling
     # rotation without becoming a fake lighting shadow.
     gleam_local = _bezier(
@@ -797,13 +904,7 @@ def _draw_body(layers: Mapping[str, Image.Image], pose: Pose) -> None:
         (27.0 + pose.head_reach * 0.25, -10.0 + pose.head_lift * 0.7),
         24,
     )
-    _draw_line(
-        layers["body"],
-        [_local_to_world(p, pose) for p in gleam_local],
-        _rgba(BODY_GLEAM, 175),
-        2.0,
-    )
-
+    _draw_line(c, [_local_to_world(p, pose) for p in gleam_local], _rgba(BODY_GLEAM, 175), 2.0)
     # Ventral foot / belly ribbon.  It is a solid anatomical band, never a
     # detached ground ellipse.
     lower_local = _bezier(
@@ -820,111 +921,92 @@ def _draw_body(layers: Mapping[str, Image.Image], pose: Pose) -> None:
         (-30.0, 5.0),
         28,
     )
-    belly = [_local_to_world(p, pose) for p in lower_local + upper_local]
-    _draw_poly(layers["belly"], belly, BELLY, OUTLINE, 1.15)
+    _draw_poly(c, [_local_to_world(p, pose) for p in lower_local + upper_local], BELLY, OUTLINE, 1.15)
     belly_gleam = _bezier((-20.0, 9.0), (-7.0, 13.0), (9.0, 13.0), (22.0, 8.5), 18)
-    _draw_line(
-        layers["belly"],
-        [_local_to_world(p, pose) for p in belly_gleam],
-        _rgba(BELLY_LIGHT, 190),
-        1.2,
+    _draw_line(c, [_local_to_world(p, pose) for p in belly_gleam], _rgba(BELLY_LIGHT, 190), 1.2)
+
+
+def _stage_body(stage: _Stage, pose: Pose) -> None:
+    level = _level(pose)
+    # Keyed in steps a reader cannot tell apart at frame size: the wave's
+    # phase in steps that move the body by half a pixel at its amplitude.
+    phase_step = 0.5 / max(0.5, pose.wave)
+    key = ("body", round(pose.wave_phase / phase_step) if pose.wave > 0.05 else 0) + tuple(
+        _q(v, step) for v, step in (
+            (pose.stretch, 0.015), (pose.squash, 0.02), (pose.wave, 0.1),
+            (pose.head_lift, 0.25), (pose.head_reach, 0.25), (pose.death, 0.02),
+        )
     )
+    stage.put("body", key, lambda c: _paint_body(c, level), pose.center, pose.angle, "body")
 
 
-def _draw_dorsal(layers: Mapping[str, Image.Image], pose: Pose) -> None:
+def _stage_dorsal(stage: _Stage, pose: Pose) -> None:
+    level = _level(pose)
     for i, x in enumerate((-18.0, -3.0, 12.0)):
-        base = _local_to_world((x, -11.5), pose)
-        up = _vector_to_world((0.0, -7.0 * pose.frill_spread), pose)
-        side = _vector_to_world((4.2, 0.0), pose)
-        tip = (base[0] + up[0], base[1] + up[1])
-        leaf = _bezier(
-            (base[0] - side[0], base[1] - side[1]),
-            (base[0] - side[0] * 1.15 + up[0] * 0.45, base[1] - side[1] * 1.15 + up[1] * 0.45),
-            (tip[0] - side[0] * 0.35, tip[1] - side[1] * 0.35),
-            tip,
-            8,
-        ) + _bezier(
-            tip,
-            (tip[0] + side[0] * 0.35, tip[1] + side[1] * 0.35),
-            (base[0] + side[0] * 1.15 + up[0] * 0.45, base[1] + side[1] * 1.15 + up[1] * 0.45),
-            (base[0] + side[0], base[1] + side[1]),
-            8,
-        )
-        _draw_poly(layers["dorsal"], leaf, FRILL, OUTLINE, 1.1)
-        mid = (
-            (base[0] + tip[0]) * 0.5,
-            (base[1] + tip[1]) * 0.5,
-        )
-        _draw_line(
-            layers["dorsal"],
-            [base, mid, tip],
-            _rgba(FRILL_LIGHT, 210 - i * 16),
-            0.85,
-        )
+        base = _local_to_world((x, -11.5), level)
+
+        def paint(c, base=base, i=i) -> None:
+            up = _vector_to_world((0.0, -7.0 * level.frill_spread), level)
+            side = _vector_to_world((4.2, 0.0), level)
+            f = _to_local(base, 0.0)
+            tip = (base[0] + up[0], base[1] + up[1])
+            leaf = _bezier(
+                (base[0] - side[0], base[1] - side[1]),
+                (base[0] - side[0] * 1.15 + up[0] * 0.45, base[1] - side[1] * 1.15 + up[1] * 0.45),
+                (tip[0] - side[0] * 0.35, tip[1] - side[1] * 0.35),
+                tip,
+                8,
+            ) + _bezier(
+                tip,
+                (tip[0] + side[0] * 0.35, tip[1] + side[1] * 0.35),
+                (base[0] + side[0] * 1.15 + up[0] * 0.45, base[1] + side[1] * 1.15 + up[1] * 0.45),
+                (base[0] + side[0], base[1] + side[1]),
+                8,
+            )
+            _draw_poly(c, [f(p) for p in leaf], FRILL, OUTLINE, 1.1)
+            mid = ((base[0] + tip[0]) * 0.5, (base[1] + tip[1]) * 0.5)
+            _draw_line(c, [f(base), f(mid), f(tip)], _rgba(FRILL_LIGHT, 210 - i * 16), 0.85)
+
+        key = ("frill", i, _q(pose.frill_spread * pose.squash, 0.04), _q(pose.stretch, 0.04))
+        stage.put("dorsal", key, paint, _local_to_world((x, -11.5), pose), pose.angle, f"frill_{i}")
 
 
-def _draw_face(layers: Mapping[str, Image.Image], pose: Pose) -> None:
-    head_center = _local_to_world((29.0 + pose.head_reach * 0.42, -1.5 + pose.head_lift), pose)
-    head_angle = pose.angle - 2.0
+def _head_center(pose: Pose) -> Point:
+    return _local_to_world((29.0 + pose.head_reach * 0.42, -1.5 + pose.head_lift), pose)
+
+
+def _paint_head(c, pose: Pose) -> None:
+    """The head and muzzle (``pose`` level, its head centre at ``HOME``)."""
+    head_center = _head_center(pose)
     # The head overlaps the continuous mantle with the same palette, so it reads
     # as one body rather than a dog-face sticker.
-    _draw_ellipse(
-        layers["face"],
-        head_center,
-        18.5 * pose.stretch,
-        15.5 * pose.squash,
-        head_angle,
-        BODY_LIGHT,
-        OUTLINE,
-        1.55,
-    )
-
+    _draw_ellipse(c, head_center, 18.5 * pose.stretch, 15.5 * pose.squash, pose.angle - 2.0, BODY_LIGHT, OUTLINE, 1.55)
     muzzle_center = _local_to_world((41.0 + pose.head_reach * 0.72, 3.0 + pose.head_lift), pose)
     if pose.mouth_open < 0.08:
-        _draw_ellipse(
-            layers["face"],
-            muzzle_center,
-            10.8,
-            7.2,
-            pose.angle,
-            MUZZLE,
-            OUTLINE,
-            1.25,
-        )
+        _draw_ellipse(c, muzzle_center, 10.8, 7.2, pose.angle, MUZZLE, OUTLINE, 1.25)
     else:
         jaw_gap = 5.0 * pose.mouth_open
         upper = _local_to_world((41.5 + pose.head_reach * 0.72, 0.0 + pose.head_lift), pose)
         lower = _local_to_world((40.5 + pose.head_reach * 0.68, 5.0 + jaw_gap + pose.head_lift), pose)
-        _draw_ellipse(layers["face"], upper, 10.7, 5.4, pose.angle - 4.0, MUZZLE, OUTLINE, 1.2)
-        _draw_ellipse(layers["face"], lower, 9.7, 4.8, pose.angle + 9.0, MUZZLE, OUTLINE, 1.2)
+        _draw_ellipse(c, upper, 10.7, 5.4, pose.angle - 4.0, MUZZLE, OUTLINE, 1.2)
+        _draw_ellipse(c, lower, 9.7, 4.8, pose.angle + 9.0, MUZZLE, OUTLINE, 1.2)
         mouth_center = _local_to_world((44.0 + pose.head_reach * 0.75, 5.0 + jaw_gap * 0.45 + pose.head_lift), pose)
-        _draw_ellipse(
-            layers["face"],
-            mouth_center,
-            7.2,
-            3.0 + jaw_gap * 0.42,
-            pose.angle,
-            NOSE,
-            OUTLINE,
-            0.9,
-        )
+        _draw_ellipse(c, mouth_center, 7.2, 3.0 + jaw_gap * 0.42, pose.angle, NOSE, OUTLINE, 0.9)
+
+
+def _paint_face_details(c, pose: Pose) -> None:
+    """Tongue, tooth, eyes, nose, mouth and follicles (``pose`` level, its head
+    centre at ``HOME``)."""
+    if pose.mouth_open >= 0.08:
+        jaw_gap = 5.0 * pose.mouth_open
         if pose.tongue > 0.02:
             tongue_center = _local_to_world((46.0 + pose.head_reach * 0.75, 7.0 + jaw_gap * 0.48 + pose.head_lift), pose)
-            _draw_ellipse(
-                layers["details"],
-                tongue_center,
-                4.0,
-                1.5 + 2.0 * pose.tongue,
-                pose.angle + 5.0,
-                TONGUE,
-                OUTLINE,
-                0.8,
-            )
+            _draw_ellipse(c, tongue_center, 4.0, 1.5 + 2.0 * pose.tongue, pose.angle + 5.0, TONGUE, OUTLINE, 0.8)
         tooth = _local_to_world((47.0 + pose.head_reach * 0.75, 2.8 + pose.head_lift), pose)
         tooth_vec = _vector_to_world((0.0, 4.1), pose)
         tooth_side = _vector_to_world((2.1, 0.0), pose)
         _draw_poly(
-            layers["details"],
+            c,
             [
                 (tooth[0] - tooth_side[0], tooth[1] - tooth_side[1]),
                 (tooth[0] + tooth_side[0], tooth[1] + tooth_side[1]),
@@ -934,85 +1016,77 @@ def _draw_face(layers: Mapping[str, Image.Image], pose: Pose) -> None:
             OUTLINE,
             0.7,
         )
-
     # Two eyes in a clear three-quarter face.  The far eye is smaller but never
     # omitted, preventing the frontal-cyclops failure seen in other sprites.
     far_eye = _local_to_world((29.0 + pose.head_reach * 0.45, -6.0 + pose.head_lift), pose)
     near_eye = _local_to_world((35.5 + pose.head_reach * 0.55, -5.2 + pose.head_lift), pose)
-    for center, rx, ry, shift_scale in (
-        (far_eye, 3.6, 4.3, 0.65),
-        (near_eye, 4.5, 5.1, 1.0),
-    ):
+    for center, rx, ry, shift_scale in ((far_eye, 3.6, 4.3, 0.65), (near_eye, 4.5, 5.1, 1.0)):
         if pose.eye_open <= 0.12:
             axis = _vector_to_world((3.0, 0.0), pose)
-            _draw_line(
-                layers["details"],
-                [
-                    (center[0] - axis[0], center[1] - axis[1]),
-                    (center[0] + axis[0], center[1] + axis[1]),
-                ],
-                EYE_PUPIL,
-                1.2,
-            )
+            _draw_line(c, [(center[0] - axis[0], center[1] - axis[1]), (center[0] + axis[0], center[1] + axis[1])], EYE_PUPIL, 1.2)
             continue
-        _draw_ellipse(
-            layers["details"],
-            center,
-            rx,
-            max(0.8, ry * pose.eye_open),
-            pose.angle,
-            EYE_WHITE,
-            OUTLINE,
-            0.9,
-        )
+        _draw_ellipse(c, center, rx, max(0.8, ry * pose.eye_open), pose.angle, EYE_WHITE, OUTLINE, 0.9)
         shift = _vector_to_world((pose.pupil_shift * shift_scale, 0.2), pose)
         iris = (center[0] + shift[0], center[1] + shift[1])
-        _draw_ellipse(layers["details"], iris, rx * 0.56, ry * 0.58, pose.angle, EYE_IRIS, None)
-        _draw_ellipse(layers["details"], iris, rx * 0.28, ry * 0.40, pose.angle, EYE_PUPIL, None)
-        catch = (iris[0] - 1.0, iris[1] - 1.3)
-        _draw_ellipse(layers["details"], catch, 0.75, 0.75, 0.0, EYE_WHITE, None)
-
+        _draw_ellipse(c, iris, rx * 0.56, ry * 0.58, pose.angle, EYE_IRIS, None)
+        _draw_ellipse(c, iris, rx * 0.28, ry * 0.40, pose.angle, EYE_PUPIL, None)
+        _draw_ellipse(c, (iris[0] - 1.0, iris[1] - 1.3), 0.75, 0.75, 0.0, EYE_WHITE, None)
     nose = _local_to_world((50.0 + pose.head_reach * 0.78, 1.4 + pose.head_lift), pose)
-    _draw_ellipse(layers["details"], nose, 3.5, 3.0, pose.angle, NOSE, OUTLINE, 0.8)
+    _draw_ellipse(c, nose, 3.5, 3.0, pose.angle, NOSE, OUTLINE, 0.8)
     nose_glint = _local_to_world((49.0 + pose.head_reach * 0.78, 0.2 + pose.head_lift), pose)
-    _draw_ellipse(layers["details"], nose_glint, 0.8, 0.6, pose.angle, BODY_GLEAM, None)
-
+    _draw_ellipse(c, nose_glint, 0.8, 0.6, pose.angle, BODY_GLEAM, None)
     if pose.mouth_open < 0.08:
         mouth_a = _local_to_world((44.0 + pose.head_reach * 0.72, 6.0 + pose.head_lift), pose)
         mouth_b = _local_to_world((49.0 + pose.head_reach * 0.75, 5.0 + pose.head_lift), pose)
-        _draw_line(layers["details"], [mouth_a, mouth_b], OUTLINE, 1.1)
-
+        _draw_line(c, [mouth_a, mouth_b], OUTLINE, 1.1)
     # Three small cheek follicles keep the muzzle organic without reading as
     # detached particles or a decorative prop.
     for i in range(3):
         follicle = _local_to_world((43.0 + i * 2.3 + pose.head_reach * 0.7, 2.0 + (i % 2) * 1.5 + pose.head_lift), pose)
-        _draw_ellipse(layers["details"], follicle, 0.55, 0.55, 0.0, EAR_INNER, None)
+        _draw_ellipse(c, follicle, 0.55, 0.55, 0.0, EAR_INNER, None)
 
 
-def _compose(layers: Mapping[str, Image.Image]) -> Image.Image:
-    # Through rigdoc's seams, so a part flipbook records each shape (the same
-    # pixels as compositing the layers and resizing directly).
-    canvas = Image.new("RGBA", WORK_SIZE, (0, 0, 0, 0))
-    for name in sorted(LAYER_ORDER, key=LAYER_ORDER.__getitem__):
-        rigdoc.composite_canvas(canvas, layers[name])
-    # Preserve a two-pixel sampling gutter in the logical frame.  This is a
-    # uniform design-scale choice, not a per-pose shrink hack.
-    art = rigdoc.downsampled_canvas(canvas, (124, 124), Image.Resampling.LANCZOS)
-    frame = Image.new("RGBA", FRAME_SIZE, (0, 0, 0, 0))
-    rigdoc.composite_canvas(frame, art, (2, 2))
-    return frame
+def _stage_face(stage: _Stage, pose: Pose) -> None:
+    # The head piece's pose: level, with its head centre at HOME.
+    # In steps a reader cannot tell apart at frame size: each step is a piece.
+    shape = (_q(pose.stretch, 0.05), _q(pose.squash, 0.05), _q(pose.head_reach, 0.5), _q(pose.mouth_open, 0.05))
+    level = replace(_level(pose), stretch=shape[0], squash=shape[1], head_reach=shape[2], mouth_open=shape[3])
+    shift = _head_center(level)
+    head = replace(level, center=(2 * HOME[0] - shift[0], 2 * HOME[1] - shift[1]))
+    anchor = _head_center(pose)
+    stage.put("face", ("head",) + shape, lambda c: _paint_head(c, head), anchor, pose.angle, "head")
+    looks = (_q(pose.eye_open, 0.1), _q(pose.pupil_shift, 0.25), _q(pose.tongue, 0.1))
+    details = replace(head, eye_open=looks[0], pupil_shift=looks[1], tongue=looks[2])
+    stage.put("details", ("face_details",) + shape + looks, lambda c: _paint_face_details(c, details), anchor, pose.angle, "face_details")
+
+
+def _stage_motion_front(stage: _Stage, pose: Pose, animation: str) -> None:
+    if animation != "slash" or pose.impact <= 0.05:
+        return
+    impact = _q(pose.impact, 0.02)
+    head = _local_to_world((43.0 + pose.head_reach * 0.45, -1.0), pose)
+
+    def lines(c) -> None:
+        hx, hy = HOME
+        for i, offset in enumerate((-8.0, 0.0, 8.0)):
+            start = (hx + 4.0, hy + offset * 0.45)
+            end = (hx + 8.0 + impact * 3.0, hy + offset)
+            _draw_line(c, [start, end], _rgba(MOTION, int(110 + 90 * impact - i * 12)), 1.4 + 0.45 * impact)
+
+    stage.put("motion_front", ("slash_lines", impact), lines, head, 0.0, "slash_lines")
 
 
 def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     pose = _pose_for(animation, frame_idx, nframes)
-    layers = _layer_canvas()
-    _draw_motion(layers, pose, animation)
-    _draw_tail_and_ears(layers, pose)
-    _draw_lobes(layers, pose)
-    _draw_body(layers, pose)
-    _draw_dorsal(layers, pose)
-    _draw_face(layers, pose)
-    return _compose(layers)
+    stage = _Stage()
+    _stage_motion_back(stage, pose, animation)
+    _stage_tail_and_ears(stage, pose)
+    _stage_lobes(stage, pose)
+    _stage_body(stage, pose)
+    _stage_dorsal(stage, pose)
+    _stage_face(stage, pose)
+    _stage_motion_front(stage, pose, animation)
+    return stage.compose()
 
 
 def render_canonical(out_dir: str | Path, **opts) -> Path:

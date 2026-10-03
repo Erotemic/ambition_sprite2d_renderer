@@ -25,6 +25,7 @@ the body-draw helpers.
 from __future__ import annotations
 
 import math
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -380,43 +381,16 @@ def draw_human_neck(draw, chest, head_center, global_tilt, pal, kind="pirate_adm
         width=2,
     )
 
-    # Shirt collar / cravat for a more human look.
-    collar_left = [
-        transform((-16, -18), chest, deg=global_tilt),
-        transform((-2, -12), chest, deg=global_tilt),
-        transform((-9, 2), chest, deg=global_tilt),
-        transform((-18, -4), chest, deg=global_tilt),
-    ]
-    collar_right = [
-        transform((2, -12), chest, deg=global_tilt),
-        transform((16, -18), chest, deg=global_tilt),
-        transform((18, -4), chest, deg=global_tilt),
-        transform((9, 2), chest, deg=global_tilt),
-    ]
-    poly(draw, collar_left, pal.shirt, pal.outline, width=2)
-    poly(draw, collar_right, pal.shirt, pal.outline, width=2)
-
-    if kind == "pirate_admiral":
-        knot = rotated_rect_points(
-            transform((0, -2), chest, deg=global_tilt), 10, 8, global_tilt
-        )
-        tail_l = [
-            transform(p, chest, deg=global_tilt)
-            for p in [(-2, 2), (-10, 16), (-3, 18), (1, 8)]
-        ]
-        tail_r = [
-            transform(p, chest, deg=global_tilt)
-            for p in [(2, 2), (10, 16), (4, 18), (-1, 8)]
-        ]
-        poly(draw, knot, pal.sash, pal.outline, width=2)
-        poly(draw, tail_l, pal.sash, pal.outline, width=2)
-        poly(draw, tail_r, pal.sash, pal.outline, width=2)
-    else:
-        scarf = [
-            transform(p, chest, deg=global_tilt)
-            for p in [(-7, -4), (8, -4), (5, 10), (-9, 8)]
-        ]
-        poly(draw, scarf, pal.accent or pal.coat2, pal.outline, width=2)
+    # Shirt collar / cravat for a more human look: one part riding the chest.
+    with draw.part("collar", chest, global_tilt):
+        poly(draw, [(-16, -18), (-2, -12), (-9, 2), (-18, -4)], pal.shirt, pal.outline, width=2)
+        poly(draw, [(2, -12), (16, -18), (18, -4), (9, 2)], pal.shirt, pal.outline, width=2)
+        if kind == "pirate_admiral":
+            poly(draw, rotated_rect_points((0, -2), 10, 8, 0.0), pal.sash, pal.outline, width=2)
+            poly(draw, [(-2, 2), (-10, 16), (-3, 18), (1, 8)], pal.sash, pal.outline, width=2)
+            poly(draw, [(2, 2), (10, 16), (4, 18), (-1, 8)], pal.sash, pal.outline, width=2)
+        else:
+            poly(draw, [(-7, -4), (8, -4), (5, 10), (-9, 8)], pal.accent or pal.coat2, pal.outline, width=2)
 
 
 def draw_hat(draw, head_center, hat_scale, pal, skull=False, tilt=0.0):
@@ -557,6 +531,23 @@ def _end(draw) -> None:
         fn()
 
 
+def draw_limb(draw, name: str, root, joint, end, fill, width: int, ink, ink_width: int) -> None:
+    """A two-bone limb (thigh and shin, upper arm and forearm) as two turned
+    parts: a ``fill`` stroke with an ``ink`` line down its middle and round
+    ends (as the SVG capture strokes it). The lower bone starts square, so it
+    does not cover the upper bone's ink at the joint; the upper bone's round
+    end fills the joint. A part flipbook stores each bone once per length."""
+    for bone, a, b, start_cap in (("upper", root, joint, True), ("lower", joint, end, False)):
+        length = round(math.hypot(b[0] - a[0], b[1] - a[1]), 2)
+        deg = math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+        with draw.part(f"{name}_{bone}", a, deg):
+            line(draw, [(0.0, 0.0), (length, 0.0)], fill, width=width)
+            if start_cap:
+                circle(draw, (0.0, 0.0), width / 2.0, fill)
+            circle(draw, (length, 0.0), width / 2.0, fill)
+            line(draw, [(0.0, 0.0), (length, 0.0)], ink, width=ink_width)
+
+
 def paint_character(
     draw, kind: str, anim: str, frame_idx: int, nframes: int, frame_size=BASE_FRAME
 ) -> None:
@@ -608,8 +599,7 @@ def paint_character(
         (left_hip, left_knee, left_foot, pose["left_leg"]),
         (right_hip, right_knee, right_foot, pose["right_leg"]),
     ]:
-        line(draw, [hip_pt, knee_pt, foot_pt], pal.pants, width=13)
-        line(draw, [hip_pt, knee_pt, foot_pt], pal.outline, width=4)
+        draw_limb(draw, "leg", hip_pt, knee_pt, foot_pt, pal.pants, 13, pal.outline, 4)
         draw_boot(draw, foot_pt, 24, 18, ang * 0.2, pal)
     _end(draw)
 
@@ -643,23 +633,18 @@ def paint_character(
     _begin(draw, "arms")
     back_elbow = joints["back_elbow"].point
     back_hand = joints["back_hand"].point
-    line(draw, [back_shoulder, back_elbow, back_hand], pal.coat, width=12)
-    line(draw, [back_shoulder, back_elbow, back_hand], pal.outline, width=4)
-    circle(draw, back_hand, 7, pal.skin, pal.outline, width=2)
-    if anim == "taunt":
-        line(
-            draw,
-            [transform((0, -10), back_hand), transform((10, -22), back_hand)],
-            pal.outline,
-            width=3,
-        )
+    draw_limb(draw, "back_arm", back_shoulder, back_elbow, back_hand, pal.coat, 12, pal.outline, 4)
+    with draw.part("back_hand", back_hand, 0.0):
+        circle(draw, (0, 0), 7, pal.skin, pal.outline, width=2)
+        if anim == "taunt":
+            line(draw, [(0, -10), (10, -22)], pal.outline, width=3)
 
     # Front arm / weapon
     front_elbow = joints["front_elbow"].point
     front_hand = joints["front_hand"].point
-    line(draw, [front_shoulder, front_elbow, front_hand], pal.coat, width=13)
-    line(draw, [front_shoulder, front_elbow, front_hand], pal.outline, width=4)
-    circle(draw, front_hand, 8, pal.skin, pal.outline, width=2)
+    draw_limb(draw, "front_arm", front_shoulder, front_elbow, front_hand, pal.coat, 13, pal.outline, 4)
+    with draw.part("front_hand", front_hand, 0.0):
+        circle(draw, (0, 0), 8, pal.skin, pal.outline, width=2)
     draw_sword(
         draw,
         front_hand,
@@ -683,12 +668,8 @@ def paint_character(
             front_hand,
             pose["weapon"],
         )
-        line(
-            draw,
-            [blade_tip, (blade_tip[0] + 10, blade_tip[1] - 8)],
-            (255, 255, 255, 100),
-            width=2,
-        )
+        with draw.part("glint", blade_tip, 0.0):
+            line(draw, [(0, 0), (10, -8)], (255, 255, 255, 100), width=2)
 
     _end(draw)
 
@@ -733,6 +714,281 @@ def paint_character(
     if anim == "death":
         ground = h * 0.83
         draw.line((0, ground + 24, w, ground + 24), fill=(0, 0, 0, 0), width=1)
+
+
+# ── the sheet: a rig at one scale ────────────────────────────────────────────
+#
+# ``draw_character`` fits each frame by its own extent (``downsample``): the
+# pirate shrank and slid as his sword swung, and no part could be shared
+# between frames (each was resized by its frame's own scale). The SHEET is
+# drawn by ``draw_rig_frame`` instead: every frame of a pirate at ONE scale and
+# ONE place, painted on a canvas ``RIG_REDUCTION`` times the frame and reduced
+# by exactly that, each ``part()`` painted once and turned into place
+# (``_PiecePartDraw``). A part flipbook then stores each part once.
+
+#: The sheet's whole reduction.
+RIG_REDUCTION = 3
+#: The sheet frame for a ``BASE_FRAME`` request: wide enough for the slash's
+#: wind-up and follow-through at the idle pose's scale (measured 2026-10-03:
+#: from -40 to 156 px of a 128 frame, and -8 to 121 down it).
+RIG_FRAME = (216, 140)
+#: Where the idle pose's box centre (x) and feet (y) land in ``RIG_FRAME``.
+RIG_IDLE_ANCHOR = (114.0, 124.6)
+
+#: (kind, frame size) -> (scale, offset): a paint point ``p`` lands at
+#: ``p * scale + offset`` on the reduction canvas.
+_RIG_FITS: Dict[Tuple[str, Tuple[int, int]], Tuple[float, Tuple[float, float]]] = {}
+
+
+def rig_frame_size(frame_size=BASE_FRAME) -> Tuple[int, int]:
+    """The sheet frame ``draw_rig_frame`` paints for a ``frame_size`` request."""
+    return (
+        round(RIG_FRAME[0] * frame_size[0] / BASE_FRAME[0]),
+        round(RIG_FRAME[1] * frame_size[1] / BASE_FRAME[1]),
+    )
+
+
+def _rig_fit(kind: str, frame_size=BASE_FRAME) -> Tuple[float, Tuple[float, float]]:
+    """The one scale and offset of every sheet frame of ``kind``: the idle
+    pose at the size the old per-frame fit gave it (its box 78% of the frame's
+    width or 88% of its height), its box centre and feet at
+    ``RIG_IDLE_ANCHOR``."""
+    key = (kind, tuple(frame_size))
+    if key not in _RIG_FITS:
+        from ...authoring.draw_recorder import PillowPartDraw
+
+        w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
+        img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        paint_character(PillowPartDraw(blending_draw(img)), kind, "idle", 0, 6, frame_size)
+        x1, y1, x2, y2 = img.getchannel("A").getbbox()
+        fw, fh = frame_size
+        k = RIG_REDUCTION
+        scale = k * min(fw * 0.78 / (x2 - x1), fh * 0.88 / (y2 - y1))
+        ax = RIG_IDLE_ANCHOR[0] * fw / BASE_FRAME[0]
+        ay = RIG_IDLE_ANCHOR[1] * fh / BASE_FRAME[1]
+        _RIG_FITS[key] = (scale, (ax * k - (x1 + x2) / 2.0 * scale, ay * k - y2 * scale))
+    return _RIG_FITS[key]
+
+
+def _rig_fit_map(kind: str, frame_size=BASE_FRAME) -> dict:
+    """``_rig_fit`` in ``downsample``'s ``fit_out`` form: a paint point ``p``
+    lands at ``((p.x - x0) * sx + ox, (p.y - y0) * sy + oy)`` in the frame."""
+    scale, (ox, oy) = _rig_fit(kind, frame_size)
+    k = RIG_REDUCTION
+    w, h = rig_frame_size(frame_size)
+    return {"x0": 0.0, "y0": 0.0, "x1": (w * k - ox) / scale, "y1": (h * k - oy) / scale,
+            "sx": scale / k, "sy": scale / k, "nw": w, "nh": h, "ox": ox / k, "oy": oy / k}
+
+
+class _PiecePartDraw:
+    """``PillowPartDraw``'s twin for the sheet: each ``part()`` scope is painted
+    ONCE in its own frame (cached by its calls) and placed turned through
+    ``shape_rig``, so a part flipbook stores it once. Calls outside a scope are
+    drawn as shapes. Every point is scaled by ``scale`` and moved by
+    ``offset``; every stroke width is scaled.
+
+    An alpha-0 stroke (the death pose's eraser line) is not drawn: a part
+    flipbook cannot replay an eraser, and a rig needs none."""
+
+    #: (name, scale, calls) -> (raster, pivot).
+    _parts: Dict[tuple, Tuple[Image.Image, Tuple[float, float]]] = {}
+
+    def __init__(self, img: Image.Image, scale: float, offset: Tuple[float, float]) -> None:
+        self._img = img
+        self._draw = blending_draw(img)
+        self._scale = scale
+        self._off = offset
+        self._calls: Optional[list] = None
+        self._names: Dict[str, int] = {}
+
+    # -- scopes --------------------------------------------------------------
+    @contextmanager
+    def part(self, name: str, origin, deg: float = 0.0):
+        assert self._calls is None, "nested part()"
+        self._calls = []
+        try:
+            yield self
+        finally:
+            calls, self._calls = self._calls, None
+            self._place(name, calls, origin, deg)
+
+    def begin_component(self, name: str) -> None:
+        del name
+
+    def end_component(self) -> None:
+        pass
+
+    def _place(self, name: str, calls: list, origin, deg: float) -> None:
+        from ...authoring import shape_rig
+
+        key = (name, round(self._scale, 6), repr(calls))
+        part = self._parts.get(key)
+        if part is None:
+            reach = 8.0
+            for _op, args, kwargs in calls:
+                reach = max(reach, max(abs(v) for v in _flat(args[0])) * self._scale + float(kwargs.get("width") or 1) + 4.0)
+            size = int(math.ceil(2 * reach))
+            local = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+            draw = blending_draw(local)
+            for op, args, kwargs in calls:
+                getattr(draw, op)(_moved(args[0], self._scale, reach, reach), *args[1:], **kwargs)
+            box = local.getchannel("A").getbbox() or (0, 0, 1, 1)
+            part = (local.crop(box), (reach - box[0], reach - box[1]))
+            self._parts[key] = part
+        count = self._names.get(name, 0) + 1
+        self._names[name] = count
+        at = (float(origin[0]) * self._scale + self._off[0], float(origin[1]) * self._scale + self._off[1])
+        shape_rig.place(self._img, part, at, float(deg), name if count == 1 else f"{name}_{count}")
+
+    # -- primitives ----------------------------------------------------------
+    def _op(self, op: str, xy, *args, **kwargs) -> None:
+        fill = kwargs.get("fill")
+        if op == "line" and isinstance(fill, tuple) and len(fill) == 4 and fill[3] == 0:
+            return
+        if "width" in kwargs and kwargs["width"]:
+            kwargs["width"] = max(1, int(round(kwargs["width"] * self._scale)))
+        if self._calls is not None:
+            self._calls.append((op, (_points(xy),) + args, kwargs))
+        else:
+            getattr(self._draw, op)(_moved(_points(xy), self._scale, *self._off), *args, **kwargs)
+
+    def polygon(self, xy, fill=None, outline=None, width=1):
+        if outline is None:
+            self._op("polygon", xy, fill=fill)
+        else:
+            self._op("polygon", xy, fill=fill, outline=outline, width=width)
+
+    # Strokes end ROUND, as the SVG capture strokes them (``DrawRecorder``
+    # emits ``stroke-linecap="round"``): with one scale for every frame, a
+    # square end against a round one moves the sheet's box by a pixel. An
+    # opaque stroke gets a disc at each end; a translucent one is filled as
+    # its outline (a disc over it would darken the end).
+
+    def line(self, xy, fill=None, width=1, joint=None):
+        pts = _points(xy)
+        if _translucent(fill) and len(pts) == 2 and width >= 2:
+            self._op("polygon", _capsule_outline(pts[0], pts[1], width / 2.0), fill=fill)
+            return
+        self._op("line", xy, fill=fill, width=width, joint=joint)
+        # Outside a part only the neck's throat line is stroked, inside the
+        # neck: its ends need no disc (each disc would be one more shape).
+        if self._calls is not None and width >= 2 and len(pts) >= 2 and not (isinstance(fill, tuple) and len(fill) == 4 and fill[3] == 0):
+            r = width / 2.0
+            for x, y in (pts[0], pts[-1]):
+                self._op("ellipse", (x - r, y - r, x + r, y + r), fill=fill)
+
+    def ellipse(self, xy, fill=None, outline=None, width=1):
+        self._op("ellipse", xy, fill=fill, outline=outline, width=width)
+
+    def arc(self, xy, start, end, fill=None, width=1):
+        if _translucent(fill):
+            self._op("polygon", _arc_outline(_points(xy), start, end, width / 2.0), fill=fill)
+            return
+        self._op("arc", xy, start=start, end=end, fill=fill, width=width)
+
+
+def _translucent(fill) -> bool:
+    return isinstance(fill, tuple) and len(fill) == 4 and 0 < fill[3] < 255
+
+
+def _capsule_outline(a, b, r: float, steps: int = 8) -> List[Tuple[float, float]]:
+    """The outline of a stroke from ``a`` to ``b`` of half width ``r`` with
+    round ends."""
+    ang = math.atan2(b[1] - a[1], b[0] - a[0])
+    pts = []
+    for centre, base in ((b, ang - math.pi / 2), (a, ang + math.pi / 2)):
+        for i in range(steps + 1):
+            t = base + math.pi * i / steps
+            pts.append((centre[0] + r * math.cos(t), centre[1] + r * math.sin(t)))
+    return pts
+
+
+def _arc_outline(box, start: float, end: float, r: float, steps_per_degree: float = 0.25) -> List[Tuple[float, float]]:
+    """The outline of Pillow's elliptical arc stroke (``box``, degrees
+    clockwise from +x) of half width ``r`` with round ends."""
+    x0, y0, x1, y1 = box
+    cx, cy, rx, ry = (x0 + x1) / 2.0, (y0 + y1) / 2.0, abs(x1 - x0) / 2.0, abs(y1 - y0) / 2.0
+    sweep = (end - start) % 360 or 360.0
+    n = max(2, int(sweep * steps_per_degree))
+    angles = [math.radians(start + sweep * i / n) for i in range(n + 1)]
+    outer = [(cx + (rx + r) * math.cos(a), cy + (ry + r) * math.sin(a)) for a in angles]
+    inner = [(cx + (rx - r) * math.cos(a), cy + (ry - r) * math.sin(a)) for a in reversed(angles)]
+
+    def cap(a: float, forward: bool) -> List[Tuple[float, float]]:
+        px, py = cx + rx * math.cos(a), cy + ry * math.sin(a)
+        base = a if forward else a + math.pi
+        return [(px + r * math.cos(base + math.pi * i / 8), py + r * math.sin(base + math.pi * i / 8)) for i in range(1, 8)]
+
+    return outer + cap(angles[-1], True) + inner + cap(angles[0], False)
+
+
+def _points(xy) -> tuple:
+    """``xy`` as a tuple of ``(x, y)`` pairs, or a flat bbox kept flat."""
+    if xy and isinstance(xy[0], (int, float)):
+        values = tuple(float(v) for v in xy)
+        return values if len(values) == 4 else tuple(zip(values[0::2], values[1::2]))
+    return tuple((float(p[0]), float(p[1])) for p in xy)
+
+
+def _flat(points) -> List[float]:
+    if points and isinstance(points[0], (int, float)):
+        return list(points)
+    return [v for p in points for v in p]
+
+
+def _moved(points, scale: float, dx: float, dy: float):
+    if points and isinstance(points[0], (int, float)):
+        x0, y0, x1, y1 = points
+        return (x0 * scale + dx, y0 * scale + dy, x1 * scale + dx, y1 * scale + dy)
+    return [(x * scale + dx, y * scale + dy) for x, y in points]
+
+
+def draw_rig_frame(
+    kind: str,
+    anim: str,
+    frame_idx: int,
+    nframes: int,
+    frame_size=BASE_FRAME,
+    fit_out: Optional[dict] = None,
+) -> Image.Image:
+    """One SHEET frame of ``kind`` (``rig_frame_size(frame_size)``): painted as
+    a rig at the kind's one scale on a canvas ``RIG_REDUCTION`` times the
+    frame, and reduced by exactly that. ``fit_out`` receives the
+    paint-to-frame map (``_rig_fit_map``)."""
+    k = RIG_REDUCTION
+    out = rig_frame_size(frame_size)
+    scale, offset = _rig_fit(kind, frame_size)
+    img = Image.new("RGBA", (out[0] * k, out[1] * k), (0, 0, 0, 0))
+    paint_character(_PiecePartDraw(img, scale, offset), kind, anim, frame_idx, nframes, frame_size)
+    if fit_out is not None:
+        fit_out.update(_rig_fit_map(kind, frame_size))
+    return downsample_whole(img, out)
+
+
+def _rig_frame_from_svg(kind: str, svg: str, frame_size=BASE_FRAME) -> Image.Image:
+    """A paint-space SVG frame of ``kind`` rasterized and reduced exactly as
+    ``draw_rig_frame`` paints and reduces it (``_rig_fit``): the SVG
+    authority's sheet frame. Only the rasterizer differs."""
+    import re
+
+    from ...authoring.draw_recorder import rasterize_svg
+
+    scale, (ox, oy) = _rig_fit(kind, frame_size)
+    k = RIG_REDUCTION
+    out = rig_frame_size(frame_size)
+    w, h = out[0] * k, out[1] * k
+    view = f'viewBox="{-ox / scale:.6f} {-oy / scale:.6f} {w / scale:.6f} {h / scale:.6f}"'
+    svg = re.sub(r'width="[^"]*" height="[^"]*" viewBox="[^"]*"', f'width="{w}px" height="{h}px" {view}', svg, count=1)
+    return downsample_whole(rasterize_svg(svg, (w, h)), out)
+
+
+def downsample_whole(img: Image.Image, size: Tuple[int, int]) -> Image.Image:
+    """``img`` reduced to ``size`` by the rig's whole factor: each frame pixel
+    the mean of its ``RIG_REDUCTION`` square. A box has no negative lobe, so
+    no faint ring lands past the art to move the sheet's measured box."""
+    from ...authoring import rigdoc
+
+    return rigdoc.downsampled_canvas(img, tuple(size), Image.Resampling.BOX)
 
 
 def draw_character(
@@ -805,7 +1061,7 @@ def render_target_with_products(
 
     def render_fn(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         fit: dict = {}
-        frame = draw_character(target, anim, frame_idx, nframes, frame_size=frame_size, fit_out=fit)
+        frame = draw_rig_frame(target, anim, frame_idx, nframes, frame_size=frame_size, fit_out=fit)
         frame_fits[(anim, frame_idx)] = fit
         return frame
 
@@ -814,7 +1070,10 @@ def render_target_with_products(
         rows=ANIMATIONS,
         render_fn=render_fn,
         out_dir=out_dir,
-        frame_size=frame_size,
+        frame_size=rig_frame_size(frame_size),
+        # The frame is the rig's (``RIG_FRAME``), not fitted to the art: the
+        # SVG authority publishes the same frame whatever its rasterizer.
+        auto_crop=False,
         frame_transform_out=frame_transform,
     )
     # The semantic body rig, from the skeleton the frames above were painted
@@ -887,17 +1146,16 @@ def render_target_svg(
     """Build the same pirate sheet from the **SVG authority**.
 
     Every frame is assembled from the component scene's registered parts and
-    rasterized, then routed through the same ``build_sheet`` measurement /
+    rasterized and reduced as the raster sheet is (``_rig_frame_from_svg``),
+    then routed through the same ``build_sheet`` measurement /
     packing / metadata pipeline. With ``scene_path`` the scene is loaded from
     disk instead of captured fresh — that is the human-in-the-loop path: edit
     the parts in Inkscape, rebuild the sheet from the edited file, and let the
     equivalence harness report what changed.
     """
-    from ...authoring.draw_recorder import rasterize_svg
     from ...authoring.svg_scene import ComponentScene
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
     if scene_path is not None:
         scene = ComponentScene.load(Path(scene_path))
         missing = scene.missing_part_refs()
@@ -909,15 +1167,15 @@ def render_target_svg(
 
     def render_fn(anim, frame_idx, nframes):
         del nframes
-        svg = scene.frame_doc(anim, frame_idx)
-        return downsample(rasterize_svg(svg, (w, h)), frame_size)
+        return _rig_frame_from_svg(target, scene.frame_doc(anim, frame_idx), frame_size)
 
     return build_sheet(
         target=target,
         rows=ANIMATIONS,
         render_fn=render_fn,
         out_dir=out_dir,
-        frame_size=frame_size,
+        frame_size=rig_frame_size(frame_size),
+        auto_crop=False,
     )
 
 

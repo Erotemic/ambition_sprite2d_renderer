@@ -16,11 +16,11 @@ from __future__ import annotations
 import argparse
 import math
 from pathlib import Path
-from typing import List, Sequence, Tuple
+from typing import Dict, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -343,9 +343,59 @@ class Pose:
             self.x_eye = tt > 0.58
 
 
-def _draw_leg(
-    draw: ImageDraw.ImageDraw, hip: Point, thigh_ang: float, lift: float, front: bool
-) -> Point:
+# ---- Pieces ------------------------------------------------------------------
+#
+# The president is drawn as a rig: each rigid thing (the coat, the breeches,
+# the buttons, the head with its wig, a knee, a boot, a hand, a prop) is
+# painted ONCE on a scratch canvas with its anchor at ``HOME``, cut to what it
+# covers, and placed (and turned) through ``shape_rig``. Things that ride the
+# body are painted in its own (level) frame and turned with it; the head
+# turns with its own angle. Limbs are bones, one piece per (quarter-pixel)
+# length. The coat tails and the cravat sway: one piece per whole pixel of
+# sway. A part flipbook stores each once.
+
+#: The anchor on the scratch canvas (work pixels); the canvas is twice it.
+HOME = (150.0, 260.0)
+_PIECES: Dict[tuple, object] = {}
+
+
+def _piece(key: tuple, paint):
+    """``(raster, anchor)``: what ``paint(draw)`` paints with its anchor at
+    ``HOME``, cut to its box; ``None`` when it paints nothing."""
+    if key not in _PIECES:
+        canvas = Image.new("RGBA", (int(2 * HOME[0] * SUPER), int(2 * HOME[1] * SUPER)), (0, 0, 0, 0))
+        paint(blending_draw(canvas))
+        box = canvas.getchannel("A").getbbox()
+        _PIECES[key] = None if box is None else (canvas.crop(box), (HOME[0] * SUPER - box[0], HOME[1] * SUPER - box[1]))
+    return _PIECES[key]
+
+
+def _put(img: Image.Image, key: tuple, paint, at: Point, name: str, degrees: float = 0.0) -> None:
+    part = _piece(key, paint)
+    if part is not None:
+        shape_rig.place(img, part, (at[0] * SUPER, at[1] * SUPER), degrees, name)
+
+
+def _home(x: float, y: float) -> Point:
+    """The body's own frame at ``HOME``, level: a body piece's ``P``."""
+    return (HOME[0] + x, HOME[1] + y)
+
+
+def _put_bone(img: Image.Image, a: Point, b: Point, fill: RGBA, width: float, name: str) -> None:
+    """A limb bone from ``a`` to ``b``: a ``fill`` stroke with an ink line
+    down its middle, one piece per (quarter-pixel) length, turned to it."""
+    length = round(math.hypot(b[0] - a[0], b[1] - a[1]) * 4) / 4
+    hx, hy = HOME
+
+    def paint(d) -> None:
+        _line(d, [(hx, hy), (hx + length, hy)], fill, width)
+        _line(d, [(hx, hy), (hx + length, hy)], OUTLINE, 1.1 if width in (8.0, 7.0) else 1.0)
+
+    _put(img, ("bone", length, fill, width), paint, a, name, math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])))
+
+
+def _draw_leg(img: Image.Image, hip: Point, thigh_ang: float, lift: float, front: bool) -> Point:
+    """A leg: thigh and shin bones, the knee and the boot."""
     thigh_len = 46
     shin_len = 44
     knee = (
@@ -357,358 +407,204 @@ def _draw_leg(
         knee[1] + shin_len * math.sin(math.radians(thigh_ang + 10)) - lift,
     )
     col = BREECH if front else (212, 210, 205, 255)
-    _line(draw, [hip, knee, ankle], col, 8.0 if front else 7.0)
-    _line(draw, [hip, knee, ankle], OUTLINE, 1.1)
-    _ellipse(draw, knee[0], knee[1], 5.2, 5.6, col, OUTLINE, 0.5)
-    boot = [
-        (ankle[0] - 7, ankle[1] - 6),
-        (ankle[0] + 10, ankle[1] - 6),
-        (ankle[0] + 16, ankle[1] + 4),
-        (ankle[0] + 6, ankle[1] + 10),
-        (ankle[0] - 8, ankle[1] + 8),
-    ]
-    _poly(draw, boot, BOOT, OUTLINE, 0.8)
+    side = "near" if front else "far"
+    width = 8.0 if front else 7.0
+    _put_bone(img, hip, knee, col, width, f"{side}_thigh")
+    _put_bone(img, knee, ankle, col, width, f"{side}_shin")
+    hx, hy = HOME
+    _put(img, ("knee", front), lambda d: _ellipse(d, hx, hy, 5.2, 5.6, col, OUTLINE, 0.5), knee, f"{side}_knee")
+    _put(
+        img,
+        ("boot",),
+        lambda d: _poly(d, [(hx - 7, hy - 6), (hx + 10, hy - 6), (hx + 16, hy + 4), (hx + 6, hy + 10), (hx - 8, hy + 8)], BOOT, OUTLINE, 0.8),
+        ankle,
+        f"{side}_boot",
+    )
     return ankle
 
 
-def _draw_hand(draw: ImageDraw.ImageDraw, p: Point, r: float = 4.4) -> None:
-    _ellipse(draw, p[0], p[1], r, r * 0.88, SKIN, OUTLINE, 0.5)
+def _put_arm(img: Image.Image, shoulder: Point, elbow: Point, hand: Point, width: float, r: float, name: str) -> None:
+    """An arm: upper arm and forearm bones and the hand."""
+    _put_bone(img, shoulder, elbow, COAT, width, f"{name}_upper")
+    _put_bone(img, elbow, hand, COAT, width, f"{name}_lower")
+    hx, hy = HOME
+    _put(img, ("hand", r), lambda d: _ellipse(d, hx, hy, r, r * 0.88, SKIN, OUTLINE, 0.5), hand, f"{name}_hand")
 
 
-def _draw_breeches_overlay(draw: ImageDraw.ImageDraw, P) -> None:
-    """Draw a clean breeches layer over the upper legs.
+def _paint_coat_tails(d, sway: float) -> None:
+    P = _home
+    _poly(d, [P(-18, -102), P(-6, -38), P(-20 + sway * 0.4, 22), P(-2, 18), P(10, -24), P(2, -102)], COAT, OUTLINE, 1.0)
+    _poly(d, [P(8, -102), P(12, -34), P(28 + sway * 0.55, 18), P(44, 12), P(32, -40), P(26, -102)], COAT, OUTLINE, 1.0)
 
-    This sits on top of the leg strokes so the trousers read as an outer garment
-    and hide any distracting upper-leg construction lines.
-    """
-    waist = [
-        P(-24, -114),
-        P(20, -114),
-        P(28, -98),
-        P(10, -82),
-        P(-16, -84),
-        P(-30, -100),
-    ]
-    _poly(draw, waist, COAT, OUTLINE, 0.9)
-    left_breech = [
-        P(-24, -110),
-        P(-2, -112),
-        P(6, -96),
-        P(8, -60),
-        P(-4, -48),
-        P(-24, -54),
-        P(-34, -74),
-        P(-34, -96),
-    ]
-    right_breech = [
-        P(0, -112),
-        P(22, -110),
-        P(32, -94),
-        P(34, -70),
-        P(24, -50),
-        P(8, -48),
-        P(-2, -66),
-        P(-2, -94),
-    ]
-    _poly(draw, left_breech, BREECH, OUTLINE, 0.9)
-    _poly(draw, right_breech, BREECH, OUTLINE, 0.9)
+
+def _paint_torso(d, cravat: float) -> None:
+    """The coat, lapels, vest, cravat and sash."""
+    P = _home
+    _poly(d, [P(-34, -200), P(6, -214), P(36, -198), P(48, -148), P(44, -100), P(22, -76), P(-10, -72), P(-36, -94), P(-42, -148)], COAT, OUTLINE, 1.2)
+    _poly(d, [P(-12, -188), P(0, -194), P(-4, -116), P(-18, -100), P(-26, -124)], COAT_HI, OUTLINE, 0.6)
+    _poly(d, [P(10, -190), P(22, -188), P(34, -124), P(18, -98), P(6, -118)], COAT_HI, OUTLINE, 0.6)
+    _poly(d, [P(-8, -196), P(14, -194), P(18, -104), P(-2, -92), P(-18, -108), P(-18, -176)], VEST, OUTLINE, 0.8)
+    _poly(d, [P(-2, -202), P(10, -202), P(14, -174 + cravat * 0.2), P(6, -144), P(-4, -170), P(-10, -184)], CRAVAT, OUTLINE, 0.7)
+    _line(d, [P(0, -182), P(8, -166), P(2, -152), P(12, -138)], (214, 214, 210, 255), 0.8)
+    # patriotic presidential sash and medallion for clearer role read
+    _poly(d, [P(-22, -186), P(-8, -194), P(34, -112), P(24, -98), P(-18, -176)], PRES_BLUE, OUTLINE, 0.55)
+    _line(d, [P(-18, -182), P(-8, -188), P(28, -114), P(20, -104), P(-14, -172)], PRES_WHITE, 1.2)
+    _line(d, [P(-16, -180), P(4, -140), P(22, -106)], PRES_RED, 0.8)
+    _ellipse(d, P(18, -112)[0], P(18, -112)[1], 5.0, 5.0, GOLD, OUTLINE, 0.45)
+
+
+def _paint_head(d, x_eye: bool, blink: bool, open_mouth: float) -> None:
+    """The wig, the head and the face, level, its root at ``HOME``."""
+    H = _home
+    _poly(d, [H(-28, -10), H(-22, -40), H(0, -54), H(20, -46), H(32, -20), H(30, 12), H(22, 26), H(12, 24), H(8, 0), H(-20, 8)], WIG_SHADE, OUTLINE, 1.0)
+    _poly(d, [H(-34, -4), H(-48, 10), H(-50, 28), H(-38, 42), H(-18, 34), H(-20, 12)], WIG, OUTLINE, 0.8)
+    _poly(d, [H(30, -4), H(46, 6), H(50, 24), H(42, 42), H(24, 36), H(22, 8)], WIG, OUTLINE, 0.8)
+    _poly(d, [H(14, 18), H(20, 34), H(16, 54), H(8, 62), H(0, 54), H(4, 30)], WIG_SHADE, OUTLINE, 0.6)
+    _poly(d, [H(2, 42), H(22, 42), H(20, 48), H(4, 48)], PRES_BLUE, OUTLINE, 0.3)
+    _poly(d, [H(-20, -18), H(-10, -36), H(12, -40), H(28, -26), H(30, 0), H(16, 20), H(-6, 24), H(-24, 10)], SKIN, OUTLINE, 1.0)
+    _ellipse(d, H(8, -2)[0], H(8, -2)[1], 9.0, 7.2, BLUSH, None, 0)
+    _ellipse(d, H(-8, 0)[0], H(-8, 0)[1], 8.5, 6.8, BLUSH, None, 0)
+    if x_eye:
+        _line(d, [H(-6, -6), H(0, 0)], OUTLINE, 0.8)
+        _line(d, [H(-6, 0), H(0, -6)], OUTLINE, 0.8)
+        _line(d, [H(12, -6), H(18, 0)], OUTLINE, 0.8)
+        _line(d, [H(12, 0), H(18, -6)], OUTLINE, 0.8)
+    elif blink:
+        _line(d, [H(-8, -3), H(0, -3)], OUTLINE, 0.8)
+        _line(d, [H(10, -4), H(18, -4)], OUTLINE, 0.8)
+    else:
+        _ellipse(d, H(-4, -3)[0], H(-4, -3)[1], 3.5, 2.8, (239, 241, 240, 255), OUTLINE, 0.4)
+        _ellipse(d, H(14, -4)[0], H(14, -4)[1], 3.5, 2.8, (239, 241, 240, 255), OUTLINE, 0.4)
+        _circle(d, H(-3, -3), 0.9, (36, 44, 54, 255), (36, 44, 54, 255), 0.1)
+        _circle(d, H(15, -4), 0.9, (36, 44, 54, 255), (36, 44, 54, 255), 0.1)
+        _line(d, [H(-9, -8), H(-1, -10)], OUTLINE, 0.5)
+        _line(d, [H(10, -9), H(18, -10)], OUTLINE, 0.5)
+    _poly(d, [H(6, -2), H(10, 6), H(4, 10), H(2, 4)], SKIN_SHADE, OUTLINE, 0.3)
+    if open_mouth > 0.02:
+        _ellipse(d, H(7, 14)[0], H(7, 14)[1], 4.6, 2.4 + open_mouth * 10.0, (102, 62, 66, 255), OUTLINE, 0.4)
+    else:
+        _line(d, [H(2, 14), H(8, 15), H(14, 14)], (114, 76, 72, 255), 0.7)
+
+
+def _paint_breeches(d) -> None:
+    """A clean breeches layer over the upper legs, so the trousers read as an
+    outer garment and hide the upper-leg construction lines."""
+    P = _home
+    _poly(d, [P(-24, -114), P(20, -114), P(28, -98), P(10, -82), P(-16, -84), P(-30, -100)], COAT, OUTLINE, 0.9)
+    _poly(d, [P(-24, -110), P(-2, -112), P(6, -96), P(8, -60), P(-4, -48), P(-24, -54), P(-34, -74), P(-34, -96)], BREECH, OUTLINE, 0.9)
+    _poly(d, [P(0, -112), P(22, -110), P(32, -94), P(34, -70), P(24, -50), P(8, -48), P(-2, -66), P(-2, -94)], BREECH, OUTLINE, 0.9)
     # leg openings and gentle folds
-    _line(draw, [P(-28, -74), P(-6, -72)], OUTLINE, 0.55)
-    _line(draw, [P(2, -72), P(28, -72)], OUTLINE, 0.55)
-    _line(draw, [P(-12, -104), P(-10, -58)], (206, 203, 196, 255), 0.85)
-    _line(draw, [P(10, -104), P(14, -60)], (206, 203, 196, 255), 0.85)
+    _line(d, [P(-28, -74), P(-6, -72)], OUTLINE, 0.55)
+    _line(d, [P(2, -72), P(28, -72)], OUTLINE, 0.55)
+    _line(d, [P(-12, -104), P(-10, -58)], (206, 203, 196, 255), 0.85)
+    _line(d, [P(10, -104), P(14, -60)], (206, 203, 196, 255), 0.85)
+
+
+def _paint_buttons(d) -> None:
+    """Buttons, the rosette and the cuffs."""
+    P = _home
+    for y in [-180, -160, -140, -120]:
+        _ellipse(d, P(4, y)[0], P(4, y)[1], 2.0, 2.0, GOLD, OUTLINE, 0.3)
+    _ellipse(d, P(-10, -150)[0], P(-10, -150)[1], 4.0, 4.0, PRES_RED, OUTLINE, 0.35)
+    _ellipse(d, P(-10, -150)[0], P(-10, -150)[1], 2.0, 2.0, PRES_WHITE, OUTLINE, 0.2)
+    _line(d, [P(-36, -126), P(-28, -126)], CRAVAT, 0.8)
+    _line(d, [P(42, -124), P(50, -124)], CRAVAT, 0.8)
 
 
 def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     img = Image.new(
         "RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0)
     )
-    draw = blending_draw(img)
     pose = Pose(anim, frame_idx, nframes)
+    hx, hy = HOME
 
     J = _president_portrait_rig.evaluate(pose, WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1])
     root = J.root
     tilt = J.body_ang
 
-    def P(x: float, y: float) -> Point:
-        rx, ry = _rot(x, y, tilt)
-        return (root[0] + rx, root[1] + ry)
+    def body(key: tuple, paint, name: str) -> None:
+        """A piece painted in the body's own frame, turned with it."""
+        _put(img, key, paint, root, name, tilt)
 
     # far leg first
-    far_hip = J.far_hip
-    _draw_leg(draw, far_hip, 92 + pose.right_leg, pose.right_lift, False)
+    _draw_leg(img, J.far_hip, 92 + pose.right_leg, pose.right_lift, False)
 
     # coat tails behind body
-    tail_l = [
-        P(-18, -102),
-        P(-6, -38),
-        P(-20 + pose.coat_sway * 0.4, 22),
-        P(-2, 18),
-        P(10, -24),
-        P(2, -102),
-    ]
-    tail_r = [
-        P(8, -102),
-        P(12, -34),
-        P(28 + pose.coat_sway * 0.55, 18),
-        P(44, 12),
-        P(32, -40),
-        P(26, -102),
-    ]
-    _poly(draw, tail_l, COAT, OUTLINE, 1.0)
-    _poly(draw, tail_r, COAT, OUTLINE, 1.0)
-
-    # torso/coat
-    torso = [
-        P(-34, -200),
-        P(6, -214),
-        P(36, -198),
-        P(48, -148),
-        P(44, -100),
-        P(22, -76),
-        P(-10, -72),
-        P(-36, -94),
-        P(-42, -148),
-    ]
-    _poly(draw, torso, COAT, OUTLINE, 1.2)
-    lapel_l = [P(-12, -188), P(0, -194), P(-4, -116), P(-18, -100), P(-26, -124)]
-    lapel_r = [P(10, -190), P(22, -188), P(34, -124), P(18, -98), P(6, -118)]
-    _poly(draw, lapel_l, COAT_HI, OUTLINE, 0.6)
-    _poly(draw, lapel_r, COAT_HI, OUTLINE, 0.6)
-    vest = [
-        P(-8, -196),
-        P(14, -194),
-        P(18, -104),
-        P(-2, -92),
-        P(-18, -108),
-        P(-18, -176),
-    ]
-    _poly(draw, vest, VEST, OUTLINE, 0.8)
-    cravat = [
-        P(-2, -202),
-        P(10, -202),
-        P(14, -174 + pose.cravat * 0.2),
-        P(6, -144),
-        P(-4, -170),
-        P(-10, -184),
-    ]
-    _poly(draw, cravat, CRAVAT, OUTLINE, 0.7)
-    folds = [P(0, -182), P(8, -166), P(2, -152), P(12, -138)]
-    _line(draw, folds, (214, 214, 210, 255), 0.8)
-    # patriotic presidential sash and medallion for clearer role read
-    sash = [P(-22, -186), P(-8, -194), P(34, -112), P(24, -98), P(-18, -176)]
-    _poly(draw, sash, PRES_BLUE, OUTLINE, 0.55)
-    sash_trim = [P(-18, -182), P(-8, -188), P(28, -114), P(20, -104), P(-14, -172)]
-    _line(draw, sash_trim, PRES_WHITE, 1.2)
-    _line(draw, [P(-16, -180), P(4, -140), P(22, -106)], PRES_RED, 0.8)
-    _ellipse(draw, P(18, -112)[0], P(18, -112)[1], 5.0, 5.0, GOLD, OUTLINE, 0.45)
+    sway = float(round(pose.coat_sway))
+    body(("coat_tails", sway), lambda d: _paint_coat_tails(d, sway), "coat_tails")
+    cravat = float(round(pose.cravat))
+    body(("torso", cravat), lambda d: _paint_torso(d, cravat), "torso")
 
     # far arm
-    far_shoulder = J.far_shoulder
-    far_elbow = J.far_elbow
     far_hand = J.far_hand
-    _line(draw, [far_shoulder, far_elbow, far_hand], COAT, 7.2)
-    _line(draw, [far_shoulder, far_elbow, far_hand], OUTLINE, 1.0)
-    _draw_hand(draw, far_hand, 4.2)
+    _put_arm(img, J.far_shoulder, J.far_elbow, far_hand, 7.2, 4.2, "far_arm")
 
     # head + wig
-    head_root = J.head_root
-    head_ang = J.head_ang
-
-    def H(x: float, y: float) -> Point:
-        rx, ry = _rot(x, y, head_ang)
-        return (head_root[0] + rx, head_root[1] + ry)
-
-    wig_back = [
-        H(-28, -10),
-        H(-22, -40),
-        H(0, -54),
-        H(20, -46),
-        H(32, -20),
-        H(30, 12),
-        H(22, 26),
-        H(12, 24),
-        H(8, 0),
-        H(-20, 8),
-    ]
-    _poly(draw, wig_back, WIG_SHADE, OUTLINE, 1.0)
-    side_left = [H(-34, -4), H(-48, 10), H(-50, 28), H(-38, 42), H(-18, 34), H(-20, 12)]
-    side_right = [H(30, -4), H(46, 6), H(50, 24), H(42, 42), H(24, 36), H(22, 8)]
-    _poly(draw, side_left, WIG, OUTLINE, 0.8)
-    _poly(draw, side_right, WIG, OUTLINE, 0.8)
-    queue = [H(14, 18), H(20, 34), H(16, 54), H(8, 62), H(0, 54), H(4, 30)]
-    _poly(draw, queue, WIG_SHADE, OUTLINE, 0.6)
-    _poly(draw, [H(2, 42), H(22, 42), H(20, 48), H(4, 48)], PRES_BLUE, OUTLINE, 0.3)
-    head = [
-        H(-20, -18),
-        H(-10, -36),
-        H(12, -40),
-        H(28, -26),
-        H(30, 0),
-        H(16, 20),
-        H(-6, 24),
-        H(-24, 10),
-    ]
-    _poly(draw, head, SKIN, OUTLINE, 1.0)
-    _ellipse(draw, H(8, -2)[0], H(8, -2)[1], 9.0, 7.2, BLUSH, None, 0)
-    _ellipse(draw, H(-8, 0)[0], H(-8, 0)[1], 8.5, 6.8, BLUSH, None, 0)
-
-    # facial features
-    if pose.x_eye:
-        _line(draw, [H(-6, -6), H(0, 0)], OUTLINE, 0.8)
-        _line(draw, [H(-6, 0), H(0, -6)], OUTLINE, 0.8)
-        _line(draw, [H(12, -6), H(18, 0)], OUTLINE, 0.8)
-        _line(draw, [H(12, 0), H(18, -6)], OUTLINE, 0.8)
-    elif pose.blink:
-        _line(draw, [H(-8, -3), H(0, -3)], OUTLINE, 0.8)
-        _line(draw, [H(10, -4), H(18, -4)], OUTLINE, 0.8)
-    else:
-        _ellipse(
-            draw,
-            H(-4, -3)[0],
-            H(-4, -3)[1],
-            3.5,
-            2.8,
-            (239, 241, 240, 255),
-            OUTLINE,
-            0.4,
-        )
-        _ellipse(
-            draw,
-            H(14, -4)[0],
-            H(14, -4)[1],
-            3.5,
-            2.8,
-            (239, 241, 240, 255),
-            OUTLINE,
-            0.4,
-        )
-        _circle(draw, H(-3, -3), 0.9, (36, 44, 54, 255), (36, 44, 54, 255), 0.1)
-        _circle(draw, H(15, -4), 0.9, (36, 44, 54, 255), (36, 44, 54, 255), 0.1)
-        _line(draw, [H(-9, -8), H(-1, -10)], OUTLINE, 0.5)
-        _line(draw, [H(10, -9), H(18, -10)], OUTLINE, 0.5)
-    nose = [H(6, -2), H(10, 6), H(4, 10), H(2, 4)]
-    _poly(draw, nose, SKIN_SHADE, OUTLINE, 0.3)
-    if pose.open_mouth > 0.02:
-        _ellipse(
-            draw,
-            H(7, 14)[0],
-            H(7, 14)[1],
-            4.6,
-            2.4 + pose.open_mouth * 10.0,
-            (102, 62, 66, 255),
-            OUTLINE,
-            0.4,
-        )
-    else:
-        _line(draw, [H(2, 14), H(8, 15), H(14, 14)], (114, 76, 72, 255), 0.7)
+    mouth = round(pose.open_mouth, 3)
+    _put(img, ("head", pose.x_eye, pose.blink, mouth), lambda d: _paint_head(d, pose.x_eye, pose.blink, mouth), J.head_root, "head", J.head_ang)
 
     # near leg
-    near_hip = J.near_hip
-    _draw_leg(draw, near_hip, 92 + pose.left_leg, pose.left_lift, True)
+    _draw_leg(img, J.near_hip, 92 + pose.left_leg, pose.left_lift, True)
 
-    # Render breeches / coat-skirt over the tops of the legs so the pants sit
+    # Breeches / coat-skirt over the tops of the legs so the pants sit
     # visually over the limbs instead of under them.
-    _draw_breeches_overlay(draw, P)
+    body(("breeches",), _paint_breeches, "breeches")
 
     # near arm with weapon / gesturing
-    near_shoulder = J.near_shoulder
-    near_elbow = J.near_elbow
     near_hand = J.near_hand
-    _line(draw, [near_shoulder, near_elbow, near_hand], COAT, 7.6)
-    _line(draw, [near_shoulder, near_elbow, near_hand], OUTLINE, 1.0)
-    _draw_hand(draw, near_hand, 4.4)
+    _put_arm(img, J.near_shoulder, J.near_elbow, near_hand, 7.6, 4.4, "near_arm")
 
     if anim == "decree":
         # The president presents / signs an executive parchment instead of
         # fighting like a generic duelist. This makes the role read clearly.
         paper_c = (near_hand[0] + 22 + pose.rapier * 10, near_hand[1] - 8)
-        paper = [
-            (paper_c[0] - 14, paper_c[1] - 11),
-            (paper_c[0] + 18, paper_c[1] - 9),
-            (paper_c[0] + 16, paper_c[1] + 13),
-            (paper_c[0] - 16, paper_c[1] + 11),
-        ]
-        _poly(draw, paper, PARCHMENT, OUTLINE, 0.5)
-        _line(
-            draw,
-            [(paper_c[0] - 9, paper_c[1] - 4), (paper_c[0] + 8, paper_c[1] - 3)],
-            INK,
-            0.5,
-        )
-        _line(
-            draw,
-            [(paper_c[0] - 8, paper_c[1] + 2), (paper_c[0] + 10, paper_c[1] + 3)],
-            INK,
-            0.5,
-        )
-        _circle(draw, (paper_c[0] + 9, paper_c[1] + 8), 2.6, SEAL, OUTLINE, 0.25)
+
+        def paper(d) -> None:
+            _poly(d, [(hx - 14, hy - 11), (hx + 18, hy - 9), (hx + 16, hy + 13), (hx - 16, hy + 11)], PARCHMENT, OUTLINE, 0.5)
+            _line(d, [(hx - 9, hy - 4), (hx + 8, hy - 3)], INK, 0.5)
+            _line(d, [(hx - 8, hy + 2), (hx + 10, hy + 3)], INK, 0.5)
+            _circle(d, (hx + 9, hy + 8), 2.6, SEAL, OUTLINE, 0.25)
+
+        _put(img, ("paper",), paper, paper_c, "paper")
         # quill / signature flourish
         quill_base = (near_hand[0] + 2, near_hand[1] - 3)
         quill_tip = (paper_c[0] - 10 + pose.rapier * 8, paper_c[1] + 7)
-        _line(draw, [quill_base, quill_tip], INK, 0.8)
-        _poly(
-            draw,
-            [
-                (quill_base[0] - 2, quill_base[1] - 8),
-                (quill_base[0] + 9, quill_base[1] - 2),
-                (quill_base[0] + 1, quill_base[1] + 1),
-            ],
-            CRAVAT,
-            OUTLINE,
-            0.25,
+        length = round(math.hypot(quill_tip[0] - quill_base[0], quill_tip[1] - quill_base[1]) * 4) / 4
+        _put(
+            img,
+            ("quill_stroke", length),
+            lambda d: _line(d, [(hx, hy), (hx + length, hy)], INK, 0.8),
+            quill_base,
+            "quill_stroke",
+            math.degrees(math.atan2(quill_tip[1] - quill_base[1], quill_tip[0] - quill_base[0])),
         )
+        _put(img, ("quill",), lambda d: _poly(d, [(hx - 2, hy - 8), (hx + 9, hy - 2), (hx + 1, hy + 1)], CRAVAT, OUTLINE, 0.25), quill_base, "quill")
         if pose.rapier > 0.2:
-            cx, cy = paper_c
-            box = (_s(cx - 46), _s(cy - 28), _s(cx + 42), _s(cy + 32))
-            draw.arc(box, 205, 340, fill=FX, width=_s(2.6))
+            def flourish(d) -> None:
+                box = (_s(hx - 46), _s(hy - 28), _s(hx + 42), _s(hy + 32))
+                d.arc(box, 205, 340, fill=FX, width=_s(2.6))
+
+            _put(img, ("flourish",), flourish, paper_c, "flourish")
     elif anim == "oath":
         # Raised right hand + constitution-style book = unmistakably presidential oath-taking.
-        book_c = (near_hand[0] + 20 + pose.oath * 4, near_hand[1] - 6)
-        book = [
-            (book_c[0] - 14, book_c[1] - 11),
-            (book_c[0] + 10, book_c[1] - 9),
-            (book_c[0] + 14, book_c[1] + 8),
-            (book_c[0] - 10, book_c[1] + 11),
-        ]
-        _poly(draw, book, BOOK, OUTLINE, 0.5)
-        _line(
-            draw,
-            [(book_c[0] - 8, book_c[1] - 4), (book_c[0] + 8, book_c[1] - 2)],
-            BOOK_EDGE,
-            0.7,
-        )
-        _line(
-            draw,
-            [(book_c[0] - 6, book_c[1] + 2), (book_c[0] + 10, book_c[1] + 3)],
-            BOOK_EDGE,
-            0.6,
-        )
-        _line(
-            draw,
-            [(book_c[0] - 10, book_c[1] - 8), (book_c[0] - 10, book_c[1] + 8)],
-            GOLD,
-            0.5,
-        )
+        def book(d) -> None:
+            _poly(d, [(hx - 14, hy - 11), (hx + 10, hy - 9), (hx + 14, hy + 8), (hx - 10, hy + 11)], BOOK, OUTLINE, 0.5)
+            _line(d, [(hx - 8, hy - 4), (hx + 8, hy - 2)], BOOK_EDGE, 0.7)
+            _line(d, [(hx - 6, hy + 2), (hx + 10, hy + 3)], BOOK_EDGE, 0.6)
+            _line(d, [(hx - 10, hy - 8), (hx - 10, hy + 8)], GOLD, 0.5)
+
+        _put(img, ("book",), book, (near_hand[0] + 20 + pose.oath * 4, near_hand[1] - 6), "book")
+
         # oath energy lines above raised hand
-        hand_c = far_hand
-        for rr in [0, 1, 2]:
-            cx, cy = hand_c[0] + 14, hand_c[1] - 22
-            box = (
-                _s(cx - 12 - rr * 7),
-                _s(cy - 10 - rr * 6),
-                _s(cx + 12 + rr * 7),
-                _s(cy + 10 + rr * 6),
-            )
-            draw.arc(box, 210, 330, fill=FX, width=_s(1.6))
+        def energy(d) -> None:
+            for rr in [0, 1, 2]:
+                box = (_s(hx - 12 - rr * 7), _s(hy - 10 - rr * 6), _s(hx + 12 + rr * 7), _s(hy + 10 + rr * 6))
+                d.arc(box, 210, 330, fill=FX, width=_s(1.6))
+
+        _put(img, ("oath_energy",), energy, (far_hand[0] + 14, far_hand[1] - 22), "oath_energy")
 
     # buttons and cuff details
-    for y in [-180, -160, -140, -120]:
-        _ellipse(draw, P(4, y)[0], P(4, y)[1], 2.0, 2.0, GOLD, OUTLINE, 0.3)
-    _ellipse(draw, P(-10, -150)[0], P(-10, -150)[1], 4.0, 4.0, PRES_RED, OUTLINE, 0.35)
-    _ellipse(draw, P(-10, -150)[0], P(-10, -150)[1], 2.0, 2.0, PRES_WHITE, OUTLINE, 0.2)
-    _line(draw, [P(-36, -126), P(-28, -126)], CRAVAT, 0.8)
-    _line(draw, [P(42, -124), P(50, -124)], CRAVAT, 0.8)
+    body(("buttons",), _paint_buttons, "buttons")
 
     return _downsample(img)
 

@@ -1659,10 +1659,17 @@ def _merge_rigid_neighbours(flipbook: "PartFlipbook") -> "PartFlipbook":
                 for i, d in enumerate(draws):
                     nxt = draws[i + 1] if i + 1 < len(draws) else None
                     follows.setdefault(d.track, set()).add(None if nxt is None else (nxt.track, relation(d, nxt)))
+        # ⛔ The SAME turn, not a constant difference: `composite` pastes the
+        # second raster unturned, so a pair turned apart (Sanic's quills) would
+        # replay wrong and the guard would refuse every merge with it.
         rigid = {
             a: next(iter(after))
             for a, after in follows.items()
-            if a is not None and len(after) == 1 and None not in after and next(iter(after))[0] not in (None, a)
+            if a is not None
+            and len(after) == 1
+            and None not in after
+            and next(iter(after))[0] not in (None, a)
+            and next(iter(after))[1][0] == 0.0
         }
         if flipbook.placement == PLACEMENT_SNAPPED:
             turning = {d.track for _d, frames in clips.values() for draws in frames for d in draws if d.rotation != 0.0}

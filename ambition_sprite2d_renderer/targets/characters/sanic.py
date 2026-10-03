@@ -50,7 +50,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 from PIL import Image, ImageColor, ImageDraw, ImageFilter
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -222,82 +222,97 @@ def _spike(cx: float, cy: float, dx: float, dy: float, length: float, width: flo
     return _wobble(pts, wob, salt)
 
 
-# --- Effects (translucent overlays, composited so they never clobber alpha) ---
+# --- Effects (translucent overlays, each one piece) ---------------------------
 
 
-def _draw_speed_lines(img: Image.Image, skin: Skin, cx: float, cy: float, phase: float, intensity: float, direction: Point = (-1.0, 0.0)) -> None:
-    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    d = blending_draw(layer)
-    dx, dy = direction
-    nx, ny = -dy, dx
-    for i in range(6):
-        off = (i - 2.5) * 10.0
-        ox, oy = cx + nx * off, cy + ny * off
-        length = 26.0 + 18.0 * intensity + ((i * 7 + int(phase * 3)) % 12)
-        x0, y0 = ox + dx * 18.0, oy + dy * 18.0
-        x1, y1 = x0 + dx * length, y0 + dy * length
-        col = _rgba(skin.eye if i % 2 == 0 else skin.body, int(150 * intensity))
-        d.line(_box(x0, y0, x1, y1), fill=col, width=_s(2.2))
-    rigdoc.composite_canvas(img, layer)
+def _draw_speed_lines(img: Image.Image, skin: Skin, cx: float, cy: float, phase: float, intensity: float, direction: Point = (-1.0, 0.0), name: str = "speed_lines") -> None:
+    """Six speed lines trailing along ``direction``: painted along +x and
+    turned to it."""
+    pattern = int(phase * 3) % 12
+    hx, hy = HOME
+
+    def paint(canvas, d) -> None:
+        for i in range(6):
+            off = (i - 2.5) * 10.0
+            length = 26.0 + 18.0 * intensity + ((i * 7 + pattern) % 12)
+            x0, y0 = hx + 18.0, hy + off
+            col = _rgba(skin.eye if i % 2 == 0 else skin.body, int(150 * intensity))
+            d.line(_box(x0, y0, x0 + length, y0), fill=col, width=_s(2.2))
+
+    degrees = math.degrees(math.atan2(direction[1], direction[0]))
+    _put(img, ("speed_lines", skin, intensity, pattern), paint, (cx, cy), name, degrees)
 
 
 def _swoosh(img: Image.Image, skin: Skin, cx: float, cy: float, r: float, a0: float, a1: float) -> None:
-    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    d = blending_draw(layer)
-    d.arc(_box(cx - r, cy - r, cx + r, cy + r), a0, a1, fill=_rgba(skin.eye, 225), width=_s(3.2))
-    d.arc(_box(cx - r + 2.2, cy - r + 2.2, cx + r - 2.2, cy + r - 2.2), a0 + 8, a1 - 8, fill=_rgba(skin.body, 180), width=_s(1.6))
-    rigdoc.composite_canvas(img, layer)
+    hx, hy = HOME
+
+    def paint(canvas, d) -> None:
+        d.arc(_box(hx - r, hy - r, hx + r, hy + r), a0, a1, fill=_rgba(skin.eye, 225), width=_s(3.2))
+        d.arc(_box(hx - r + 2.2, hy - r + 2.2, hx + r - 2.2, hy + r - 2.2), a0 + 8, a1 - 8, fill=_rgba(skin.body, 180), width=_s(1.6))
+
+    _put(img, ("swoosh", skin, r, a0, a1), paint, (cx, cy), "swoosh")
 
 
 def _stars(img: Image.Image, skin: Skin, cx: float, cy: float, salt: float, n: int = 4) -> None:
-    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    d = blending_draw(layer)
-    for i in range(n):
-        jx, jy = _jitter(i, salt)
-        sx, sy = cx + jx * 7.0, cy + jy * 7.0
-        r = 2.4 + (i % 2) * 1.2
-        d.line(_box(sx - r, sy, sx + r, sy), fill=_rgba(skin.accent, 235), width=_s(1.4))
-        d.line(_box(sx, sy - r, sx, sy + r), fill=_rgba(skin.accent, 235), width=_s(1.4))
-    rigdoc.composite_canvas(img, layer)
+    hx, hy = HOME
+
+    def paint(canvas, d) -> None:
+        for i in range(n):
+            jx, jy = _jitter(i, salt)
+            sx, sy = hx + jx * 7.0, hy + jy * 7.0
+            r = 2.4 + (i % 2) * 1.2
+            d.line(_box(sx - r, sy, sx + r, sy), fill=_rgba(skin.accent, 235), width=_s(1.4))
+            d.line(_box(sx, sy - r, sx, sy + r), fill=_rgba(skin.accent, 235), width=_s(1.4))
+
+    _put(img, ("stars", skin, salt, n), paint, (cx, cy), "stars")
 
 
 def _shield_bubble(img: Image.Image, skin: Skin, cx: float, cy: float, r: float) -> None:
-    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    d = blending_draw(layer)
-    d.ellipse(_box(cx - r, cy - r, cx + r, cy + r), fill=_rgba(skin.shield, 70), outline=_rgba("#c8f2ff", 170), width=_s(1.6))
-    rigdoc.composite_canvas(img, layer)
+    hx, hy = HOME
+
+    def paint(canvas, d) -> None:
+        d.ellipse(_box(hx - r, hy - r, hx + r, hy + r), fill=_rgba(skin.shield, 70), outline=_rgba("#c8f2ff", 170), width=_s(1.6))
+
+    _put(img, ("shield", skin, r), paint, (cx, cy), "shield")
 
 
 def _dust(img: Image.Image, cx: float, cy: float, salt: float) -> None:
-    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    d = blending_draw(layer)
-    for i in range(4):
-        jx, _ = _jitter(i, salt)
-        px = cx + (i - 1.5) * 8.0 + jx * 2.0
-        r = 3.0 + (i % 2) * 1.5
-        d.ellipse(_box(px - r, cy - r * 0.6, px + r, cy + r * 0.6), fill=_rgba("#d8d8d8", 150))
-    rigdoc.composite_canvas(img, layer)
+    hx, hy = HOME
+
+    def paint(canvas, d) -> None:
+        for i in range(4):
+            jx, _ = _jitter(i, salt)
+            px = hx + (i - 1.5) * 8.0 + jx * 2.0
+            r = 3.0 + (i % 2) * 1.5
+            d.ellipse(_box(px - r, hy - r * 0.6, px + r, hy + r * 0.6), fill=_rgba("#d8d8d8", 150))
+
+    _put(img, ("dust", salt), paint, (cx, cy), "dust")
 
 
 def _aura(img: Image.Image, skin: Skin, cx: float, cy: float, r: float, salt: float) -> None:
     """Super Sanic's golden glow + drifting sparkles, drawn behind the body.
-    A no-op for skins without an aura."""
+    A no-op for skins without an aura. The glow is one piece; each sparkle is
+    one piece, moved each frame (seeded by ``salt``)."""
     if not skin.aura:
         return
-    glow = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    gd = blending_draw(glow)
-    gd.ellipse(_box(cx - r, cy - r * 1.15, cx + r, cy + r * 1.15), fill=_rgba(skin.aura, 95))
-    glow = glow.filter(ImageFilter.GaussianBlur(radius=SUPER * 3.2))
-    rigdoc.composite_canvas(img, glow)
-    spk = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    sd = blending_draw(spk)
+    hx, hy = HOME
+
+    def glow(canvas, d) -> None:
+        layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+        gd = blending_draw(layer)
+        gd.ellipse(_box(hx - r, hy - r * 1.15, hx + r, hy + r * 1.15), fill=_rgba(skin.aura, 95))
+        canvas.alpha_composite(layer.filter(ImageFilter.GaussianBlur(radius=SUPER * 3.2)))
+
+    _put(img, ("aura", skin.aura, r), glow, (cx, cy), "aura")
     for i in range(7):
         jx, jy = _jitter(i, salt + 3)
-        sx, sy = cx + jx * (r * 0.95), cy + jy * (r * 1.05)
         rr = 1.6 + (i % 2) * 1.3
-        sd.line(_box(sx - rr, sy, sx + rr, sy), fill=_rgba("#fffbe0", 235), width=_s(1.2))
-        sd.line(_box(sx, sy - rr, sx, sy + rr), fill=_rgba("#fffbe0", 235), width=_s(1.2))
-    rigdoc.composite_canvas(img, spk)
+
+        def sparkle(canvas, d, rr=rr) -> None:
+            d.line(_box(hx - rr, hy, hx + rr, hy), fill=_rgba("#fffbe0", 235), width=_s(1.2))
+            d.line(_box(hx, hy - rr, hx, hy + rr), fill=_rgba("#fffbe0", 235), width=_s(1.2))
+
+        _put(img, ("sparkle", rr), sparkle, (cx + jx * (r * 0.95), cy + jy * (r * 1.05)), f"sparkle_{i}")
 
 
 # --- Body parts ---------------------------------------------------------------
@@ -342,6 +357,36 @@ def _arm_to(draw: ImageDraw.ImageDraw, skin: Skin, shoulder: Point, hand: Point,
     draw.line([_pt(sx, sy), _pt(ex, ey), _pt(hx, hy)], fill=_rgba(skin.muzzle), width=_s(3.2), joint="curve")
     draw.line([_pt(sx, sy), _pt(ex, ey), _pt(hx, hy)], fill=_rgba(INK), width=_s(0.9), joint="curve")
     _poly(draw, _blob(hx, hy, 3.2, 2.9, salt, amp=0.7, n=10), _rgba(skin.eye), _rgba(INK), 1.3)
+
+
+def _put_shoe(img: Image.Image, skin: Skin, at: Point, salt: float, tilt: float, name: str) -> None:
+    """One shoe as a piece, one per (whole-pixel) toe tilt."""
+    tilt = float(round(tilt))
+    hx, hy = HOME
+    _put(img, ("shoe", skin, salt, tilt), lambda canvas, d: _draw_shoe(d, skin, hx, hy, salt, tilt=tilt), at, name)
+
+
+def _put_leg(img: Image.Image, hip: Point, ankle: Point, shade: str, salt: float, bend: float, name: str) -> None:
+    """One spindly leg: two strokes and the knobbly knee piece."""
+    kx, ky = (hip[0] + ankle[0]) / 2.0 + bend, (hip[1] + ankle[1]) / 2.0 + 1.0
+    a, k, b = _wobble([hip, (kx, ky), ankle], 1.6, salt)
+    _limb(img, a, k, b, shade, 2.6, 0.8, name)
+    hx, hy = HOME
+    _put(img, ("knee", shade, salt), lambda canvas, d: _poly(d, _blob(hx, hy, 2.2, 2.2, salt + 1, amp=0.6, n=8), _rgba(shade), _rgba(INK), 1.0), (kx, ky), f"{name}_knee")
+
+
+def _put_arm(img: Image.Image, skin: Skin, shoulder: Point, hand: Point, salt: float, bend: float, name: str) -> None:
+    """One stick arm (``_arm_to``): two strokes to an elbow kicked out by
+    ``bend``, and the glove piece."""
+    sx, sy = shoulder
+    hx, hy = hand
+    dx, dy = hx - sx, hy - sy
+    length = math.hypot(dx, dy) or 1.0
+    px, py = -dy / length, dx / length
+    elbow = ((sx + hx) / 2.0 + px * bend, (sy + hy) / 2.0 + py * bend)
+    _limb(img, shoulder, elbow, hand, skin.muzzle, 3.2, 0.9, name)
+    ox, oy = HOME
+    _put(img, ("glove", skin, salt), lambda canvas, d: _poly(d, _blob(ox, oy, 3.2, 2.9, salt, amp=0.7, n=10), _rgba(skin.eye), _rgba(INK), 1.3), hand, f"{name}_glove")
 
 
 def _draw_head_spikes(draw: ImageDraw.ImageDraw, skin: Skin, hx: float, hy: float, tr: float, salt: float) -> None:
@@ -410,6 +455,71 @@ def _draw_face(draw: ImageDraw.ImageDraw, skin: Skin, hx: float, hy: float, salt
         draw.line(_box(hx + 2.5, hy + 9.0, hx + 11.0, hy + 8.0), fill=_rgba(INK), width=_s(1.4))
 
 
+# --- Pieces -------------------------------------------------------------------
+#
+# Sanic is drawn as a rig: each rigid thing (the head with its face and
+# spikes, the torso, the back spike, a shoe, a glove, a knee, a quill, an
+# effect) is painted ONCE by its old painter on a scratch canvas with its
+# anchor at ``HOME``, cut to what it covers, and placed (and turned) through
+# ``shape_rig``. Arms and legs are strokes: one piece per (quarter-pixel)
+# length, turned to the bone. A part flipbook stores each once. Things rigid
+# to each other (the six quills, the two shoe smudges) are ONE piece.
+#
+# The old sheet boiled: every polygon's wobble was seeded by the frame index,
+# so every frame was a new picture. A piece's wobble is seeded by ``SALT``
+# instead (the hand-drawn wobble stays, the boil goes). Super Sanic's
+# sparkles still drift: each sparkle is one piece moved per frame.
+
+SALT = 1.0
+#: Where a piece's anchor is painted on the scratch canvas (frame pixels).
+HOME = (float(FRAME_SIZE[0]), float(FRAME_SIZE[1]))
+_PIECES: Dict[tuple, Optional[Tuple[Image.Image, Point]]] = {}
+
+
+def _piece(key: tuple, paint) -> Optional[Tuple[Image.Image, Point]]:
+    """The raster ``paint(canvas, draw)`` paints with its anchor at ``HOME``,
+    cut to its box, and the anchor in it (super pixels); ``None`` when it
+    paints nothing. ``key`` must name everything ``paint`` reads."""
+    if key not in _PIECES:
+        canvas = Image.new("RGBA", (2 * W, 2 * H), (0, 0, 0, 0))
+        paint(canvas, blending_draw(canvas))
+        box = canvas.getchannel("A").getbbox()
+        _PIECES[key] = None if box is None else (canvas.crop(box), (HOME[0] * SUPER - box[0], HOME[1] * SUPER - box[1]))
+    return _PIECES[key]
+
+
+def _put(img: Image.Image, key: tuple, paint, at: Point, name: str, degrees: float = 0.0) -> None:
+    """Place the piece ``key`` with its anchor at ``at`` (frame pixels)."""
+    part = _piece(key, paint)
+    if part is not None:
+        shape_rig.place(img, part, (at[0] * SUPER, at[1] * SUPER), degrees, name)
+
+
+def _stroke(img: Image.Image, a: Point, b: Point, color: str, width: float, ink_width: float, name: str, start_cap: bool = True) -> None:
+    """A limb segment from ``a`` to ``b``: a ``color`` stroke with an ink line
+    down its middle, as one piece turned to the segment. Without
+    ``start_cap`` it starts square, so it does not cover the ink of the
+    segment before it at the joint."""
+    length = round(math.hypot(b[0] - a[0], b[1] - a[1]) * 4) / 4
+    hx, hy = HOME
+
+    def paint(canvas, draw) -> None:
+        r = width / 2
+        draw.line([_pt(hx, hy), _pt(hx + length, hy)], fill=_rgba(color), width=_s(width))
+        if start_cap:
+            draw.ellipse(_box(hx - r, hy - r, hx + r, hy + r), fill=_rgba(color))
+        draw.ellipse(_box(hx + length - r, hy - r, hx + length + r, hy + r), fill=_rgba(color))
+        draw.line([_pt(hx, hy), _pt(hx + length, hy)], fill=_rgba(INK), width=_s(ink_width))
+
+    degrees = math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+    _put(img, ("stroke", length, color, width, ink_width, start_cap), paint, a, name, degrees)
+
+
+def _limb(img: Image.Image, root: Point, joint: Point, end: Point, color: str, width: float, ink_width: float, name: str) -> None:
+    _stroke(img, root, joint, color, width, ink_width, f"{name}_upper")
+    _stroke(img, joint, end, color, width, ink_width, f"{name}_lower", start_cap=False)
+
+
 # --- The spinning ball (jump + every curled pose) -----------------------------
 
 
@@ -429,63 +539,78 @@ def _draw_spin_ball(
     """Sanic curled into a spinning ball. `spin` is the absolute rotation angle;
     an asymmetric highlight quill + the red streak both ride it, so a full turn
     actually reads as a full turn (not a symmetric blur). `lines` picks the
-    motion context: trail / radial / down / up."""
+    motion context: trail / radial / down / up. Each quill, the streak, the
+    shoe smudges, the face smear and the halo are painted at angle 0 and
+    turned by the spin."""
+    del draw
+    hx, hy = HOME
     _aura(img, skin, cx, cy, r + 8.0, salt)
 
     if lines == "trail":
         _draw_speed_lines(img, skin, cx, cy, spin, 1.0, direction=(-1.0, -0.12))
     elif lines == "radial":
+        # Six turned copies of one set (a fan painted as one piece holds
+        # 20 times the texels).
         for k in range(6):
             a = k * math.tau / 6.0
-            _draw_speed_lines(img, skin, cx + math.cos(a) * 2, cy + math.sin(a) * 2, spin, 0.5, direction=(math.cos(a), math.sin(a)))
+            _draw_speed_lines(img, skin, cx + math.cos(a) * 2, cy + math.sin(a) * 2, spin, 0.5, direction=(math.cos(a), math.sin(a)), name=f"speed_lines_{k}")
     elif lines == "down":
         _draw_speed_lines(img, skin, cx, cy + r, spin, 1.0, direction=(0.0, 1.0))
     elif lines == "up":
         _draw_speed_lines(img, skin, cx, cy - r, spin, 0.9, direction=(0.0, -1.0))
 
     if dust:
-        _dust(img, cx, cy + r + 2.0, salt)
+        _dust(img, cx, cy + r + 2.0, SALT)
 
-    # Radiating quill blur (6-fold, symmetric — the motion smear).
-    for k in range(6):
-        ang = spin + k * math.tau / 6.0
-        tip = (cx + math.cos(ang) * (r + 8.0), cy + math.sin(ang) * (r + 8.0))
-        b1 = (cx + math.cos(ang - 0.30) * r, cy + math.sin(ang - 0.30) * r)
-        b2 = (cx + math.cos(ang + 0.30) * r, cy + math.sin(ang + 0.30) * r)
-        _poly(draw, _wobble([b1, tip, b2], 1.0, salt + k), _rgba(skin.body_dk), _rgba(INK), 1.4)
-    # ONE dominant highlight quill (asymmetric — marks the rotation).
-    tip = (cx + math.cos(spin) * (r + 12.0), cy + math.sin(spin) * (r + 12.0))
-    b1 = (cx + math.cos(spin - 0.42) * r, cy + math.sin(spin - 0.42) * r)
-    b2 = (cx + math.cos(spin + 0.42) * r, cy + math.sin(spin + 0.42) * r)
-    _poly(draw, _wobble([b1, tip, b2], 1.2, salt + 20), _rgba(skin.body), _rgba(INK), 1.8)
+    # Radiating quill blur (6-fold, symmetric — the motion smear) and ONE
+    # dominant highlight quill (asymmetric — marks the rotation): one piece,
+    # painted at spin 0 and turned by the spin.
+    def quills(canvas, d) -> None:
+        for k in range(6):
+            ang = k * math.tau / 6.0
+            tip = (hx + math.cos(ang) * (r + 8.0), hy + math.sin(ang) * (r + 8.0))
+            b1 = (hx + math.cos(ang - 0.30) * r, hy + math.sin(ang - 0.30) * r)
+            b2 = (hx + math.cos(ang + 0.30) * r, hy + math.sin(ang + 0.30) * r)
+            _poly(d, _wobble([b1, tip, b2], 1.0, SALT + k), _rgba(skin.body_dk), _rgba(INK), 1.4)
+        tip = (hx + (r + 12.0), hy)
+        b1 = (hx + math.cos(-0.42) * r, hy + math.sin(-0.42) * r)
+        b2 = (hx + math.cos(0.42) * r, hy + math.sin(0.42) * r)
+        _poly(d, _wobble([b1, tip, b2], 1.2, SALT + 20), _rgba(skin.body), _rgba(INK), 1.8)
+
+    _put(img, ("ball_quills", skin, r), quills, (cx, cy), "quills", math.degrees(spin))
 
     # Ball body.
-    _poly(draw, _blob(cx, cy, r, r, salt, amp=2.2, n=20), _rgba(skin.body), _rgba(INK), 2.4)
+    _put(img, ("ball_body", skin, r), lambda canvas, d: _poly(d, _blob(hx, hy, r, r, SALT, amp=2.2, n=20), _rgba(skin.body), _rgba(INK), 2.4), (cx, cy), "ball")
 
     # Red streak wrapping the ball, starting at `spin` (rotates with the spin).
-    streak = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    sd = blending_draw(streak)
-    a0 = int(math.degrees(spin)) % 360
-    sd.arc(_box(cx - r + 1, cy - r + 1, cx + r - 1, cy + r - 1), a0, a0 + (250 if emphasize else 200), fill=_rgba(skin.shoe, 215), width=_s(3.2))
-    rigdoc.composite_canvas(img, streak)
+    def streak(canvas, d) -> None:
+        d.arc(_box(hx - r + 1, hy - r + 1, hx + r - 1, hy + r - 1), 0, 250 if emphasize else 200, fill=_rgba(skin.shoe, 215), width=_s(3.2))
 
-    # Two shoe smudges caught mid-spin + a pale face smear so the whirl reads.
-    for k in range(2):
-        a = spin + k * math.pi
-        px, py = cx + math.cos(a) * (r * 0.55), cy + math.sin(a) * (r * 0.55)
-        _poly(draw, _blob(px, py, 4.5, 3.0, salt + k, amp=0.8, n=10), _rgba(skin.shoe), _rgba(INK), 1.2)
-    fa0 = int(math.degrees(spin + 0.6)) % 360
-    draw.arc(_box(cx - r * 0.7, cy - r * 0.7, cx + r * 0.7, cy + r * 0.7), fa0, fa0 + 70, fill=_rgba(skin.muzzle, 150), width=_s(1.6))
+    _put(img, ("ball_streak", skin, r, emphasize), streak, (cx, cy), "streak", int(math.degrees(spin)) % 360)
+
+    # Two shoe smudges caught mid-spin (one piece, turned by the spin) + a
+    # pale face smear so the whirl reads.
+    def smudges(canvas, d) -> None:
+        for k in range(2):
+            a = k * math.pi
+            _poly(d, _blob(hx + math.cos(a) * r * 0.55, hy + math.sin(a) * r * 0.55, 4.5, 3.0, SALT + k, amp=0.8, n=10), _rgba(skin.shoe), _rgba(INK), 1.2)
+
+    _put(img, ("ball_smudges", skin, r), smudges, (cx, cy), "smudges", math.degrees(spin))
+
+    def smear(canvas, d) -> None:
+        d.arc(_box(hx - r * 0.7, hy - r * 0.7, hx + r * 0.7, hy + r * 0.7), 0, 70, fill=_rgba(skin.muzzle, 150), width=_s(1.6))
+
+    _put(img, ("ball_smear", skin, r), smear, (cx, cy), "smear", int(math.degrees(spin + 0.6)) % 360)
 
     if emphasize:
-        halo = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        hd = blending_draw(halo)
-        for k in range(8):
-            a = spin * 1.5 + k * math.tau / 8.0
-            x0, y0 = cx + math.cos(a) * (r + 6), cy + math.sin(a) * (r + 6)
-            x1, y1 = cx + math.cos(a) * (r + 16), cy + math.sin(a) * (r + 16)
-            hd.line(_box(x0, y0, x1, y1), fill=_rgba(skin.shoe, 150), width=_s(1.6))
-        rigdoc.composite_canvas(img, halo)
+        def halo(canvas, d) -> None:
+            for k in range(8):
+                a = k * math.tau / 8.0
+                x0, y0 = hx + math.cos(a) * (r + 6), hy + math.sin(a) * (r + 6)
+                x1, y1 = hx + math.cos(a) * (r + 16), hy + math.sin(a) * (r + 16)
+                d.line(_box(x0, y0, x1, y1), fill=_rgba(skin.shoe, 150), width=_s(1.6))
+
+        _put(img, ("ball_halo", skin, r), halo, (cx, cy), "halo", math.degrees(spin * 1.5))
 
 
 def _ball_frame(skin: Skin, anim: str, frame_idx: int, nframes: int) -> Image.Image:
@@ -546,13 +671,15 @@ def _render_humanoid(
     fx: Optional[str] = None,
     fx_t: float = 0.0,
 ) -> None:
+    del draw
+    hx0, hy0 = HOME
     hips_x = BASE_X + hips_dx
     hips_y = GROUND_Y - 42.0 + bob
     head_cx = hips_x + 4.0 + lean
     head_cy = hips_y - 44.0 + crouch * 16.0 + bob * 0.4
     torso_cx = hips_x + 1.0 + lean * 0.3
     torso_cy = hips_y - 6.0 + crouch * 5.0
-    tr = lean * 0.5
+    tr = round(lean * 0.5, 2)
 
     if fell:
         head_cx = hips_x - 16.0
@@ -577,52 +704,68 @@ def _render_humanoid(
 
     # ---- Legs + shoes ----
     if leg_blur:
-        blur = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        bd = blending_draw(blur)
         bcx, bcy = hips_x + 2.0, GROUND_Y - 8.0
-        bd.ellipse(_box(bcx - 15, bcy - 14, bcx + 15, bcy + 12), fill=_rgba(skin.shoe, 150))
-        bd.ellipse(_box(bcx - 11, bcy - 18, bcx + 11, bcy + 16), fill=_rgba(skin.shoe, 110))
-        rigdoc.composite_canvas(img, blur)
+
+        def blur(canvas, d) -> None:
+            d.ellipse(_box(hx0 - 15, hy0 - 14, hx0 + 15, hy0 + 12), fill=_rgba(skin.shoe, 150))
+            d.ellipse(_box(hx0 - 11, hy0 - 18, hx0 + 11, hy0 + 16), fill=_rgba(skin.shoe, 110))
+
+        _put(img, ("leg_blur", skin), blur, (bcx, bcy), "leg_blur")
         for k in range(3):
             ang = fx_t * 3.0 + k * math.tau / 3.0
-            _draw_shoe(draw, skin, bcx + math.cos(ang) * 12.0, bcy + math.sin(ang) * 11.0, salt + k, tilt=math.sin(ang) * 2.0)
+            _put_shoe(img, skin, (bcx + math.cos(ang) * 12.0, bcy + math.sin(ang) * 11.0), SALT + k, math.sin(ang) * 2.0, f"shoe_{k}")
     elif fell:
         for i, (dx, dy) in enumerate(((14.0, -4.0), (20.0, -12.0))):
             ankle = (hips_x + dx, hips_y + dy)
-            _draw_leg(draw, (hips_x + 2.0, hips_y + 2.0), ankle, skin.muzzle if i else skin.muzzle_dk, salt + i, bend=6.0)
-            _draw_shoe(draw, skin, ankle[0] + 3.0, ankle[1], salt + i, tilt=6.0)
+            _put_leg(img, (hips_x + 2.0, hips_y + 2.0), ankle, skin.muzzle if i else skin.muzzle_dk, SALT + i, 6.0, f"leg_{i}")
+            _put_shoe(img, skin, (ankle[0] + 3.0, ankle[1]), SALT + i, 6.0, f"shoe_{i}")
     else:
         back_ankle = (hips_x + ba[0], hips_y + ba[1])
         front_ankle = (hips_x + fa[0], hips_y + fa[1])
-        _draw_leg(draw, (hips_x - 1.0, hips_y + 5.0), back_ankle, skin.muzzle_dk, salt, bend=-3.0 + ba[0] * 0.2)
-        _draw_leg(draw, (hips_x + 3.0, hips_y + 5.0), front_ankle, skin.muzzle, salt + 3, bend=2.0 + fa[0] * 0.2)
-        _draw_shoe(draw, skin, back_ankle[0] + 2.0, back_ankle[1], salt, tilt=0.0)
-        _draw_shoe(draw, skin, front_ankle[0] + 2.0, front_ankle[1], salt + 3, tilt=0.0)
+        _put_leg(img, (hips_x - 1.0, hips_y + 5.0), back_ankle, skin.muzzle_dk, SALT, -3.0 + ba[0] * 0.2, "leg_0")
+        _put_leg(img, (hips_x + 3.0, hips_y + 5.0), front_ankle, skin.muzzle, SALT + 3, 2.0 + fa[0] * 0.2, "leg_1")
+        _put_shoe(img, skin, (back_ankle[0] + 2.0, back_ankle[1]), SALT, 0.0, "shoe_0")
+        _put_shoe(img, skin, (front_ankle[0] + 2.0, front_ankle[1]), SALT + 3, 0.0, "shoe_1")
 
     # ---- Back arm (behind body) ----
-    _arm_to(draw, skin, (hips_x + 2.0, hips_y - 6.0), (hips_x + bh[0], hips_y + bh[1]), salt + 7, bend=-3.0)
+    _put_arm(img, skin, (hips_x + 2.0, hips_y - 6.0), (hips_x + bh[0], hips_y + bh[1]), SALT + 7, -3.0, "back_arm")
 
     # ---- Big back spike (off the mid-back, behind torso) ----
-    _draw_back_spike(draw, skin, torso_cx, torso_cy, tr, salt + 4)
+    _put(img, ("back_spike", skin, tr), lambda canvas, d: _draw_back_spike(d, skin, hx0, hy0, tr, SALT + 4), (torso_cx, torso_cy), "back_spike")
 
-    # ---- Neck (connects the separated head to the body) ----
+    # ---- Neck (connects the separated head to the body): one piece per
+    # (whole-pixel) length, turned from the head to the torso ----
     if not fell:
         nt = (head_cx - 1.0, head_cy + 9.0)
         nb = (torso_cx + 1.0, torso_cy - 14.0)
-        neck = [(nt[0] - 6.0, nt[1]), (nt[0] + 6.0, nt[1]), (nb[0] + 9.0, nb[1]), (nb[0] - 9.0, nb[1])]
-        _poly(draw, _wobble(neck, 1.0, salt + 12), _rgba(skin.body), _rgba(INK), 2.0)
+        length = round(math.hypot(nb[0] - nt[0], nb[1] - nt[1]))
+
+        def neck(canvas, d) -> None:
+            pts = [(hx0 - 6.0, hy0), (hx0 + 6.0, hy0), (hx0 + 9.0, hy0 + length), (hx0 - 9.0, hy0 + length)]
+            _poly(d, _wobble(pts, 1.0, SALT + 12), _rgba(skin.body), _rgba(INK), 2.0)
+
+        degrees = math.degrees(math.atan2(nb[1] - nt[1], nb[0] - nt[0])) - 90.0
+        _put(img, ("neck", skin, length), neck, nt, "neck", degrees)
 
     # ---- Torso + belly circle ----
-    _poly(draw, _blob(torso_cx, torso_cy, 17.0, 18.0, salt + 6, amp=2.0, n=20), _rgba(skin.body), _rgba(INK), 2.4)
-    _poly(draw, _blob(torso_cx + 4.0, torso_cy + 4.0, 6.0, 6.5, salt + 11, amp=1.0, n=14), _rgba(skin.muzzle), _rgba(INK), 1.4)
+    def torso(canvas, d) -> None:
+        _poly(d, _blob(hx0, hy0, 17.0, 18.0, SALT + 6, amp=2.0, n=20), _rgba(skin.body), _rgba(INK), 2.4)
+        _poly(d, _blob(hx0 + 4.0, hy0 + 4.0, 6.0, 6.5, SALT + 11, amp=1.0, n=14), _rgba(skin.muzzle), _rgba(INK), 1.4)
 
-    # ---- Head spikes + small head ----
-    _draw_head_spikes(draw, skin, head_cx, head_cy, tr, salt + 4)
-    _poly(draw, _blob(head_cx, head_cy, 14.0, 13.0, salt, amp=1.8, n=20), _rgba(skin.body), _rgba(INK), 2.4)
-    _draw_face(draw, skin, head_cx, head_cy, salt, look, mouth)
+    _put(img, ("torso", skin), torso, (torso_cx, torso_cy), "torso")
+
+    # ---- Head spikes + small head + face: one piece per look ----
+    look = round(look, 1)
+
+    def head(canvas, d) -> None:
+        _draw_head_spikes(d, skin, hx0, hy0, tr, SALT + 4)
+        _poly(d, _blob(hx0, hy0, 14.0, 13.0, SALT, amp=1.8, n=20), _rgba(skin.body), _rgba(INK), 2.4)
+        _draw_face(d, skin, hx0, hy0, SALT, look, mouth)
+
+    _put(img, ("head", skin, tr, look, mouth), head, (head_cx, head_cy), "head")
 
     # ---- Front arm (over body) ----
-    _arm_to(draw, skin, (hips_x + 6.0, hips_y - 6.0), (hips_x + fh[0], hips_y + fh[1]), salt + 8, bend=3.0)
+    _put_arm(img, skin, (hips_x + 6.0, hips_y - 6.0), (hips_x + fh[0], hips_y + fh[1]), SALT + 8, 3.0, "front_arm")
 
     # ---- Attack / state effects rendered over the body ----
     if fx == "arc_fwd":
@@ -636,11 +779,11 @@ def _render_humanoid(
     elif fx == "kick_back":
         _swoosh(img, skin, hips_x - 22.0, hips_y + 8.0, 14.0, 90, 230)
     elif fx == "stars":
-        _stars(img, skin, hips_x + fh[0] + 2.0, hips_y + fh[1], salt + 30)
+        _stars(img, skin, hips_x + fh[0] + 2.0, hips_y + fh[1], SALT + 30)
     elif fx == "shield":
         _shield_bubble(img, skin, torso_cx + 1.0, torso_cy - 2.0, 26.0)
     elif fx == "dust":
-        _dust(img, hips_x, GROUND_Y - 4.0, salt + 40)
+        _dust(img, hips_x, GROUND_Y - 4.0, SALT + 40)
 
 
 # --- Per-animation pose dispatch ----------------------------------------------
