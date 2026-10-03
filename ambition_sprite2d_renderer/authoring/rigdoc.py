@@ -248,6 +248,16 @@ class SpriteRaster:
     premultiplied: Optional[Image.Image] = None
 
 
+def rotation_resample(sprite: Optional[SpriteRaster]):
+    """The filter a prepared part is turned with: bilinear from a working scale
+    of 3 (the part is already supersampled, see ``_rotate_uncached``), bicubic
+    below it and for an unprepared raster. The one rule: the part flipbook's
+    recorder reads it too, so a replay turns a part as the render did."""
+    if sprite is not None and sprite.working_scale >= 3.0:
+        return RESAMPLING.BILINEAR
+    return RESAMPLING.BICUBIC
+
+
 class SpriteTransformCache:
     """Byte-bounded LRU of full-opacity rotated part rasters.
 
@@ -316,11 +326,7 @@ class SpriteTransformCache:
         # supersampled. Bilinear rotation is ~2-3x cheaper in Pillow and the
         # later whole-frame reduction (or native 3x publication) supplies the
         # final antialiasing pass. Keep the low-resolution/editor path bicubic.
-        resample = (
-            RESAMPLING.BILINEAR
-            if sprite.working_scale >= 3.0
-            else RESAMPLING.BICUBIC
-        )
+        resample = rotation_resample(sprite)
 
         # Rotate the smallest pivot-centered canvas that can contain this angle
         # instead of the all-angles circumscribed square. Work directly in
@@ -1172,11 +1178,7 @@ class RigDocument:
         # SVG parts are already antialiased at the supersample resolution.
         # Lanczos adds negative-lobe ringing around high-contrast white shells,
         # which survives as isolated pale pixels around the transparent sprite.
-        return resize_transparent_sprite(
-            img,
-            (out_w * rs, out_h * rs),
-            reducing_gap=3.0,
-        )
+        return downsampled_canvas(img, (out_w * rs, out_h * rs))
 
     def measure_render_padding(
         self,
@@ -1302,6 +1304,47 @@ def composite_canvas(canvas: Image.Image, frame: Image.Image, dest: Tuple[int, i
     canvas.alpha_composite(frame, dest)
 
 
+def composite_scaled_layer(
+    canvas: Image.Image, layer: Image.Image, factor: int, dest: Tuple[int, int] = (0, 0), *, name: str = "overlay"
+) -> None:
+    """Composite ``layer`` enlarged ``factor`` times (premultiplied bicubic) onto
+    ``canvas`` with its top left at ``dest``, cut to the canvas.
+
+    For an effect too soft to need its full resolution (a wide glow): painted
+    small, it is published small and drawn scaled: ``factor`` squared fewer texels."""
+    big = resize_transparent_sprite(layer, (layer.width * factor, layer.height * factor))
+    canvas.alpha_composite(big.crop((0, 0, canvas.width - dest[0], canvas.height - dest[1])), dest)
+
+
+# Three more seams return a NEW frame made from a painted one. Under the
+# recorder the new frame brings the old one's draws, transformed: what the
+# frame is made of survives a supersample reduction, a mirror and a fade.
+
+
+def downsampled_canvas(frame: Image.Image, size: Tuple[int, int]) -> Image.Image:
+    """A supersampled frame reduced to ``size`` (``render_at``'s last step).
+
+    Recorded, each part keeps its own raster, reduced by the same filter, at
+    its exact (fractional) place: a supersampled rig is drawn at whole frame
+    pixels by no part, so its flipbook places parts continuously."""
+    return resize_transparent_sprite(frame, size, reducing_gap=3.0)
+
+
+def mirrored_canvas(frame: Image.Image) -> Image.Image:
+    """``frame`` mirrored left to right about its centre."""
+    return frame.transpose(Image.FLIP_LEFT_RIGHT)
+
+
+def faded_canvas(frame: Image.Image, opacity: float) -> Image.Image:
+    """``frame`` faded AS ONE PICTURE: its alpha scaled by ``opacity``.
+
+    Not the same as fading each part: overlapping parts do not show through
+    each other. Recorded, it is the frame's opacity, not each draw's."""
+    faded = frame.copy()
+    faded.putalpha(frame.getchannel("A").point(lambda value: int(value * opacity)))
+    return faded
+
+
 @profile
 def blit_rotated(
     canvas: Image.Image,
@@ -1315,9 +1358,13 @@ def blit_rotated(
     transform_cache: Optional[SpriteTransformCache] = None,
     rotated_sprite: Optional[Image.Image] = None,
     part_name: Optional[str] = None,
+    resample=None,
 ) -> None:
     """Rotate ``sprite`` about its ``pivot`` by ``delta_deg`` and composite it so
     the pivot lands at ``world_px``.
+
+    ``resample`` turns an unprepared raster with that filter (bicubic when
+    ``None``); a prepared one is turned by ``rotation_resample``.
 
     ``part_name`` paints nothing; it names the draw for a recording flipbook
     (its track).
@@ -1380,6 +1427,7 @@ def blit_rotated(
             pad,
             -angle,
             center=(R, R),
+            **({} if resample is None else {"resample": resample}),
         )
         anchor_x = R
         anchor_y = R

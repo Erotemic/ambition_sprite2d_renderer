@@ -14,6 +14,7 @@ from typing import Mapping
 
 from PIL import Image, ImageFilter
 
+from ...authoring import rigdoc
 from ...profiling import profile
 
 from ._svg_fighter_effects import FxCanvas, bone_origin, clamp01, fade, pulse, smooth
@@ -49,6 +50,16 @@ EFFECTFUL_ANIMATIONS = frozenset(
 
 
 
+#: The hum is painted at 1/HUM_REDUCTION of the frame's resolution and drawn
+#: enlarged (``rigdoc.composite_scaled_layer``): it is a wide blur, and needs no
+#: more. Against the hum painted at full size (measured over 20 frames of idle,
+#: walk, taunt, ethereal_lift and noether_theorem, 2026-10-03): at 8 the
+#: composed frame differs in no pixel by more than 16 levels; at 16, 6% of its
+#: pixels by more than 4; at 32, 15% by more than 16. Its part flipbook
+#: carries 1/64 of the hum's texels.
+HUM_REDUCTION = 8
+
+
 def _alpha_scaled(alpha: Image.Image, factor: float) -> Image.Image:
     q = max(0.0, min(1.0, float(factor)))
     return alpha.point(lambda value: int(round(value * q)))
@@ -81,7 +92,12 @@ def apply_ethereal_hum(
     if rig_image.mode != "RGBA":
         rig_image = rig_image.convert("RGBA")
 
-    alpha = rig_image.getchannel("A")
+    # Reduced first (a box mean), then blurred by the reduced radii.
+    k = HUM_REDUCTION
+    small_size = (math.ceil(frame.width / k), math.ceil(frame.height / k))
+    padded = Image.new("L", (small_size[0] * k, small_size[1] * k), 0)
+    padded.paste(rig_image.getchannel("A"), (0, 0))
+    alpha = padded.resize(small_size, Image.Resampling.BOX)
 
     # One slow breath per normalized animation cycle.  Squaring the 0..1 wave
     # makes the field linger near its quiet state and then bloom decisively, so
@@ -94,16 +110,16 @@ def apply_ethereal_hum(
     # large without surrendering the SVG-rig performance gains.  Both radii move
     # with the breath, making the aura expand roughly a dozen publication pixels
     # over the cycle rather than only changing alpha in place.
-    close_radius = (5.5 + 3.5 * breath) * scale
-    broad_radius = (18.0 + 16.0 * bloom) * scale
+    close_radius = (5.5 + 3.5 * breath) * scale / k
+    broad_radius = (18.0 + 16.0 * bloom) * scale / k
     close = alpha.filter(ImageFilter.GaussianBlur(close_radius))
     broad = alpha.filter(ImageFilter.GaussianBlur(broad_radius))
 
-    aura = Image.new("RGBA", frame.size, (0, 0, 0, 0))
+    aura = Image.new("RGBA", small_size, (0, 0, 0, 0))
 
     # The outer violet atmosphere is intentionally conspicuous.  Its minimum is
     # still plainly visible; at full bloom it becomes a broad spectral field.
-    violet = Image.new("RGBA", frame.size, VIOLET[:3] + (0,))
+    violet = Image.new("RGBA", small_size, VIOLET[:3] + (0,))
     violet_strength = 0.28 + 0.30 * bloom
     violet.putalpha(_alpha_scaled(broad, violet_strength))
     aura.alpha_composite(violet)
@@ -111,13 +127,16 @@ def apply_ethereal_hum(
     # The close cyan shell has a smaller amplitude swing so Emmy retains a
     # luminous outline throughout the cycle while the violet field does most of
     # the breathing.
-    cyan = Image.new("RGBA", frame.size, ETHER[:3] + (0,))
+    cyan = Image.new("RGBA", small_size, ETHER[:3] + (0,))
     cyan_strength = 0.55 + 0.30 * breath
     cyan.putalpha(_alpha_scaled(close, cyan_strength))
     aura.alpha_composite(cyan)
 
-    aura.alpha_composite(frame)
-    return aura
+    # Through rigdoc's seams: the hum is one scaled overlay behind the frame.
+    result = Image.new("RGBA", frame.size, (0, 0, 0, 0))
+    rigdoc.composite_scaled_layer(result, aura, k, name="hum")
+    rigdoc.composite_canvas(result, frame)
+    return result
 
 
 def _center(world: World) -> Point:

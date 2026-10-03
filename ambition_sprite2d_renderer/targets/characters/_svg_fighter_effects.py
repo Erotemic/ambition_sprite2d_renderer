@@ -12,6 +12,7 @@ from typing import Callable, Iterable, Mapping, Sequence
 
 from PIL import Image, ImageFont
 
+from ...authoring import rigdoc
 from ...authoring.rigdoc import RigDocument, RenderPadding, normalize_render_padding
 from ...core.draw import blending_draw
 from ...profiling import profile
@@ -246,11 +247,15 @@ def compose_rig_frame(
             padding=padding,
             supersample=rig_supersample,
         )
+    # Through rigdoc's seams, so a part flipbook knows what the frame is made
+    # of (`part_flipbook.build_rig_flipbook`). The same pixels as compositing
+    # straight onto the behind layer.
     if behind_image is None:
         result = rig_image
     else:
-        result = behind_image
-        result.alpha_composite(rig_image)
+        result = Image.new("RGBA", behind_image.size, (0, 0, 0, 0))
+        rigdoc.composite_layer(result, behind_image, name="fx_behind")
+        rigdoc.composite_canvas(result, rig_image)
 
     if front is not None:
         layer = FxCanvas(
@@ -261,7 +266,7 @@ def compose_rig_frame(
         )
         front(layer, t, world, params)
         if layer.dirty:
-            result.alpha_composite(layer.finish())
+            rigdoc.composite_layer(result, layer.finish(), name="fx_front")
     return result
 
 

@@ -279,6 +279,22 @@ def render_portraits(out_dir: str | Path, **opts):
     )
 
 
+#: Locomotion loops, published as tweened clips; every other clip steps
+#: (decision D3 of `docs/planning/engine/mary-o-part-realization.md`).
+TWEENED_ROWS = tuple(name for name in ("walk", "run", "crouch_walk", "climb", "swim") if name in {r[0] for r in ROWS})
+
+
+def build_part_flipbook(profile: dict | None = None):
+    """The part flipbook of every row (``part_flipbook.build_rig_flipbook``):
+    the rig continuous (supersampled), the hum one scaled overlay a frame."""
+    from ...authoring.part_flipbook import build_rig_flipbook
+
+    size = frame_size()
+    metrics = authored_body_metrics(size[0], size[1], profile or _silhouette_profile())
+    feet = (metrics["feet_pixel"]["x"], metrics["feet_pixel"]["y"])
+    return build_rig_flipbook(TARGET_NAME, ROWS, render_frame, None, feet, size, TWEENED_ROWS)
+
+
 def render(out_dir: str | Path, **opts):
     del opts
     doc = _doc()
@@ -307,7 +323,8 @@ def render(out_dir: str | Path, **opts):
         "canonical_transparent",
         "preview",
     )
-    return [Path(outputs[key]) for key in keys if outputs.get(key)]
+    parts = build_part_flipbook(profile).write(Path(out_dir))
+    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
 
 
 def render_canonical(out_dir: str | Path, **opts):
@@ -325,6 +342,7 @@ __all__ = [
     "ACTOR_METADATA",
     "FIGHTER_MOTION_COVERAGE",
     "ROWS",
+    "build_part_flipbook",
     "frame_size",
     "TARGET_NAME",
     "render",

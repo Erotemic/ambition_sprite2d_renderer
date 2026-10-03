@@ -26,6 +26,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
+from ...authoring import rigdoc
 from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ...authoring.portrait import (
@@ -432,7 +433,9 @@ def _apply_fx(img: Image.Image, animation: str, frame_idx: int, nframes: int) ->
             nframes,
             1.0,
         )
-        img = teleported
+        # The sliced body is a picture of this frame alone, not the parts:
+        # its flipbook frame draws it as one overlay.
+        body = None
         if effect_animation == "blink_out":
             _OLD_ROBOT_FX._draw_blink_out_fx(
                 background, root_x, ground_y, 1.0, frame_idx, nframes
@@ -441,16 +444,23 @@ def _apply_fx(img: Image.Image, animation: str, frame_idx: int, nframes: int) ->
             _OLD_ROBOT_FX._draw_blink_in_fx(
                 background, root_x, ground_y, 1.0, frame_idx, nframes
             )
+    else:
+        body = img
 
     if effect_animation == "death":
-        fade = max(0.45, 1.0 - t * 0.48)
-        img = img.copy()
-        img.putalpha(img.getchannel("A").point(lambda v: int(v * fade)))
+        # The whole body fades as one picture: its parts do not show through
+        # each other.
+        body = rigdoc.faded_canvas(body, max(0.45, 1.0 - t * 0.48))
 
+    # Through rigdoc's seams, so the part flipbook knows what the frame is made
+    # of (`part_flipbook.build_rig_flipbook`).
     result = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    result.alpha_composite(background)
-    result.alpha_composite(img)
-    result.alpha_composite(foreground)
+    rigdoc.composite_layer(result, background, name="fx_back")
+    if body is not None:
+        rigdoc.composite_canvas(result, body)
+    else:
+        rigdoc.composite_layer(result, teleported, name="teleport_body")
+    rigdoc.composite_layer(result, foreground, name="fx_front")
     return result
 
 
@@ -470,7 +480,17 @@ def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Imag
     # Mirrored about the logical frame's centre, so the published frame is
     # exactly what a flip of the whole frame would place — the runtime keeps
     # the same feet anchor, negated.
-    return _apply_fx(image, row, frame_idx, frame_count).transpose(Image.FLIP_LEFT_RIGHT)
+    return rigdoc.mirrored_canvas(_apply_fx(image, row, frame_idx, frame_count))
+
+
+def published_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
+    """A sheet frame as published: ``render_frame`` inside ``PUBLISH_PADDING``
+    (``build_sheet``'s padding, through rigdoc's seam)."""
+    pad_left, pad_top, pad_right, pad_bottom = PUBLISH_PADDING
+    frame = render_frame(animation, frame_idx, frame_count)
+    padded = Image.new("RGBA", (frame.width + pad_left + pad_right, frame.height + pad_top + pad_bottom), (0, 0, 0, 0))
+    rigdoc.composite_canvas(padded, frame, (pad_left, pad_top))
+    return padded
 
 
 def frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
@@ -692,7 +712,31 @@ def body_metrics(fw: int, fh: int):
     }
 
 
+#: Locomotion loops, published as tweened clips (both sides); every other clip
+#: steps (decision D3 of `docs/planning/engine/mary-o-part-realization.md`).
+TWEENED_ROWS = tuple(
+    name
+    for row in ("walk", "run", "crouch_walk", "climb", "swim")
+    for name in (row, MIRRORED.format(row))
+)
+
+
 def render(out_dir: str | Path, **opts):
+    return _render_with_products(out_dir, **opts)[0]
+
+
+def build_part_flipbook():
+    """The part flipbook of every row (``part_flipbook.build_rig_flipbook``)."""
+    from ...authoring.part_flipbook import build_rig_flipbook
+
+    size = (FRAME_SIZE[0] + PUBLISH_PADDING[0] + PUBLISH_PADDING[2], FRAME_SIZE[1] + PUBLISH_PADDING[1] + PUBLISH_PADDING[3])
+    feet = body_metrics(*size)["feet_pixel"]
+    return build_rig_flipbook(TARGET_NAME, ROWS, published_frame, None, (feet["x"], feet["y"]), size, TWEENED_ROWS)
+
+
+def _render_with_products(out_dir: str | Path, **opts):
+    """``(outputs, {"parts": flipbook})``: the published files, and the part
+    flipbook they include, for a test to recompose."""
     del opts
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -732,7 +776,10 @@ def render(out_dir: str | Path, **opts):
         "spritesheet", "yaml", "ron", "actor", "canonical",
         "canonical_transparent", "preview",
     )
-    return [Path(outputs[key]) for key in keys if outputs.get(key)]
+    flipbook = build_part_flipbook()
+    parts = flipbook.write(out_dir)
+    paths = [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
+    return paths, {"parts": flipbook, "outputs": outputs}
 
 
 def render_canonical(out_dir: str | Path, **opts):
@@ -749,7 +796,8 @@ def render_canonical(out_dir: str | Path, **opts):
 
 __all__ = [
     "ACTOR_METADATA", "ANIMATION_ORDER", "FRAME_SIZE", "ROWS", "TARGET_NAME",
-    "frame_meta", "load_doc", "render", "render_canonical", "render_frame",
+    "build_part_flipbook", "frame_meta", "load_doc", "published_frame", "render",
+    "render_canonical", "render_frame",
     "render_portraits",
 ]
 
