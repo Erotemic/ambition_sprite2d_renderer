@@ -435,6 +435,9 @@ def composite_polygon(
     ``img`` in place. Drawing directly replaces destination alpha; the
     scratch-layer composite (like ``core.draw.overlay_draw``'s "RGBA" draw
     mode) blends correctly."""
+    from . import rigdoc
+
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw_polygon(blending_draw(layer), pts, fill, outline, outline_w)
-    img.alpha_composite(layer)
+    # Through rigdoc's seam, so a part flipbook records the layer's shapes.
+    rigdoc.composite_canvas(img, layer)

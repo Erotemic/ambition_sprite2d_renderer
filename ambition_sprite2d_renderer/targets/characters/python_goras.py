@@ -33,6 +33,8 @@ from typing import List, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -540,16 +542,18 @@ def _draw_character(anim: str, i: int, n: int) -> Image.Image:
             (cx + 30, base_y + 8),
             (cx + 24, head_y - 14),
         ], (HIT_RED[0], HIT_RED[1], HIT_RED[2], alpha), outline=None)
-        img.alpha_composite(overlay)
+        rigdoc.composite_canvas(img, overlay)
 
-    return img.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 def render(out_dir: str | Path, **opts):
     del opts
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=_draw_character,
@@ -558,6 +562,7 @@ def render(out_dir: str | Path, **opts):
         auto_crop=True,
         actor_metadata=ACTOR_METADATA,
     )
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, _draw_character, outputs, frame_transform, Path(out_dir))
     return [
         outputs["spritesheet"],
         outputs["yaml"],
@@ -566,7 +571,7 @@ def render(out_dir: str | Path, **opts):
         outputs["preview"],
         outputs["canonical"],
         outputs["canonical_transparent"],
-    ]
+    ] + list(parts.values())
 
 
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}

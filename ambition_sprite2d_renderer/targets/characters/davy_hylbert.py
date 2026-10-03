@@ -28,6 +28,8 @@ from typing import List, Sequence, Tuple
 
 from PIL import Image, ImageDraw, ImageFont
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.portrait import (
     FaceGuide,
     PortraitClip,
@@ -1065,9 +1067,7 @@ def _render_native_frame(animation: str, frame_idx: int, nframes: int) -> Image.
 
 
 def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
-    return _render_native_frame(animation, frame_idx, nframes).resize(
-        (FRAME_W, FRAME_H), Image.Resampling.LANCZOS
-    )
+    return rigdoc.downsampled_canvas(_render_native_frame(animation, frame_idx, nframes), (FRAME_W, FRAME_H), Image.Resampling.LANCZOS)
 
 
 def render_portraits(out_dir: Path, **opts) -> List[Path]:
@@ -1129,7 +1129,9 @@ def _body_metrics_override(fw: int, fh: int):
 
 def render(out_dir: Path, **opts) -> List[Path]:
     del opts
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=render_frame,
@@ -1156,7 +1158,8 @@ def render(out_dir: Path, **opts) -> List[Path]:
         "canonical_transparent",
         "preview",
     )
-    return [Path(outputs[key]) for key in keys if outputs.get(key)]
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, render_frame, outputs, frame_transform, Path(out_dir))
+    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
 
 
 def render_canonical(out_dir: Path, **opts) -> Path:

@@ -18,6 +18,8 @@ from typing import List, Tuple
 
 from PIL import Image
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
 from . import flying_spaghetti_monster_boss as god
@@ -144,7 +146,11 @@ def _render_frame(anim: str, i: int, n: int) -> Image.Image:
     if anim == "hurt" and i == 0:
         flash = Image.new("RGBA", img.size, (255, 255, 255, 0))
         flash.putalpha(img.getchannel("A").point(lambda v: v * 150 // 255))
-        img = Image.alpha_composite(img, flash)
+        # Through rigdoc's seams: the body's shapes, then the flash as one picture.
+        flashed = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        rigdoc.composite_canvas(flashed, img)
+        rigdoc.composite_canvas(flashed, flash)
+        img = flashed
     return god._downsample(img)
 
 
@@ -152,7 +158,9 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
     del opts
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=_render_frame,
@@ -162,7 +170,8 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         crop_margin=6,
         actor_metadata=ACTOR_METADATA,
     )
-    return [outputs[k] for k in ("spritesheet", "yaml", "ron", "actor", "preview", "canonical", "canonical_transparent")]
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, _render_frame, outputs, frame_transform, Path(out_dir))
+    return [outputs[k] for k in ("spritesheet", "yaml", "ron", "actor", "preview", "canonical", "canonical_transparent")] + list(parts.values())
 
 
 def main(argv: list[str] | None = None) -> int:

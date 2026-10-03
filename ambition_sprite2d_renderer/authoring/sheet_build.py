@@ -515,6 +515,10 @@ def downsample(img: Image.Image, final_size=BASE_FRAME, fit_out: Optional[dict] 
     The box ``(x0, y0, x1, y1)`` is resized to ``(nw, nh)`` and pasted at
     ``(ox, oy)``, so a layer of ``img`` can be fitted exactly as the frame was.
     """
+    # Through rigdoc's seams, so a part flipbook records the frame: each
+    # shape cut, resized by the frame's own scale and placed with it.
+    from . import rigdoc
+
     alpha = img.getchannel("A")
     bbox = alpha.getbbox()
     if bbox is None:
@@ -524,19 +528,20 @@ def downsample(img: Image.Image, final_size=BASE_FRAME, fit_out: Optional[dict] 
                  "sx": final_size[0] / img.width, "sy": final_size[1] / img.height,
                  "nw": final_size[0], "nh": final_size[1], "ox": 0, "oy": 0}
             )
-        return img.resize(final_size, Image.Resampling.LANCZOS)
+        return rigdoc.downsampled_canvas(img, final_size, Image.Resampling.LANCZOS)
     x1, y1, x2, y2 = bbox
-    crop = img.crop((x1, y1, x2, y2))
+    crop = Image.new("RGBA", (x2 - x1, y2 - y1), (0, 0, 0, 0))
+    rigdoc.composite_canvas(crop, img, (-x1, -y1))
     fw, fh = final_size
     target_w = fw * 0.78
     target_h = fh * 0.88
     scale = min(target_w / max(1, crop.width), target_h / max(1, crop.height))
     new_size = (max(1, int(crop.width * scale)), max(1, int(crop.height * scale)))
-    crop = crop.resize(new_size, Image.Resampling.LANCZOS)
+    crop = rigdoc.downsampled_canvas(crop, new_size, Image.Resampling.LANCZOS)
     canvas = Image.new("RGBA", final_size, (0, 0, 0, 0))
     ox = int((fw - new_size[0]) / 2)
     oy = int(fh - new_size[1] - fh * 0.12)
-    canvas.alpha_composite(crop, (ox, oy))
+    rigdoc.composite_canvas(canvas, crop, (ox, oy))
     if fit_out is not None:
         fit_out.update(
             {"x0": x1, "y0": y1, "x1": x2, "y1": y2,

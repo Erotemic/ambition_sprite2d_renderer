@@ -25,7 +25,9 @@ from typing import List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.portrait import PortraitClip, write_portrait_sheet
+from ...authoring import rigdoc
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -472,7 +474,7 @@ def _draw_meme_card(draw: ImageDraw.ImageDraw, center: Point, scale: float = 1.0
     _line(cd, [(ox-w/2+2, oy+4.3), (ox+w/2-3.5, oy+4.3)], INK, 0.45)
     if abs(angle) > 0.01:
         card = card.rotate(-angle, resample=Image.Resampling.BICUBIC, expand=True)
-    draw._image.alpha_composite(card, (int((center[0] - card.width / SUPER / 2) * SUPER), int((center[1] - card.height / SUPER / 2) * SUPER)))
+    rigdoc.composite_layer(draw._image, card, (int((center[0] - card.width / SUPER / 2) * SUPER), int((center[1] - card.height / SUPER / 2) * SUPER)), name="meme_card")
 
 
 def _draw_duckling(draw: ImageDraw.ImageDraw, center: Point, scale: float = 1.0, phase: float = 0.0) -> None:
@@ -608,7 +610,7 @@ def _draw_book(draw: ImageDraw.ImageDraw, center: Point, angle: float, scale: fl
     _poly(d, [(ox+4.5,oy-2.2),(ox+7.1,oy-1.3),(ox+4.5,oy-0.5)], BILL, OUTLINE, 0.35)
     _line(d, [(ox+0.5,oy+3.0),(ox+6.0,oy+3.0)], INK, 0.5)
     img = img.rotate(-angle, resample=Image.Resampling.BICUBIC, expand=True)
-    draw._image.alpha_composite(img, (int((center[0] - img.width / SUPER / 2) * SUPER), int((center[1] - img.height / SUPER / 2) * SUPER)))
+    rigdoc.composite_layer(draw._image, img, (int((center[0] - img.width / SUPER / 2) * SUPER), int((center[1] - img.height / SUPER / 2) * SUPER)), name="book")
 
 
 def _draw_character(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
@@ -724,7 +726,7 @@ def _draw_character(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
     # Rotate the composed figure around its center for leaning/rolling.
     if abs(pose.lean) > 0.01:
         layer = layer.rotate(-pose.lean, resample=Image.Resampling.BICUBIC, center=_p((64.0, 72.0)))
-    draw._image.alpha_composite(layer)
+    rigdoc.composite_canvas(draw._image, layer)
 
 
 def render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
@@ -735,11 +737,13 @@ def render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     _draw_effects_behind(blending_draw(behind), pose)
     _draw_character(blending_draw(body), pose)
     _draw_effects_front(blending_draw(front), pose)
-    image = Image.alpha_composite(Image.alpha_composite(behind, body), front)
+    image = Image.new("RGBA", behind.size, (0, 0, 0, 0))
+    rigdoc.composite_canvas(image, behind)
+    rigdoc.composite_canvas(image, body)
+    rigdoc.composite_canvas(image, front)
     if pose.alpha < 0.999:
-        alpha = image.getchannel("A").point(lambda value: int(value * max(0.0, pose.alpha)))
-        image.putalpha(alpha)
-    return image.resize((FRAME_W, FRAME_H), Image.Resampling.LANCZOS)
+        image = rigdoc.faded_canvas(image, max(0.0, pose.alpha))
+    return rigdoc.downsampled_canvas(image, (FRAME_W, FRAME_H), Image.Resampling.LANCZOS)
 
 
 def _render_native_portrait(expression: str = "default", phase: float = 0.0) -> Image.Image:
@@ -847,7 +851,9 @@ def _body_metrics_override(fw: int, fh: int):
 
 def render(out_dir: Path, **opts) -> List[Path]:
     del opts
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=render_frame,
@@ -867,7 +873,8 @@ def render(out_dir: Path, **opts) -> List[Path]:
         },
     )
     keys = ("spritesheet", "yaml", "ron", "actor", "canonical", "canonical_transparent", "preview")
-    return [Path(outputs[key]) for key in keys if outputs.get(key)]
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, render_frame, outputs, frame_transform, Path(out_dir))
+    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
 
 
 def render_canonical(out_dir: Path, **opts) -> Path:

@@ -29,6 +29,9 @@ from typing import Iterable, List, Sequence, Tuple
 from PIL import Image, ImageDraw, ImageFont
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
+
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
@@ -684,7 +687,7 @@ class JeffHinterRenderer:
             overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
             overlay_draw = blending_draw(overlay)
             paint(overlay_draw)
-            image.alpha_composite(overlay)
+            rigdoc.composite_canvas(image, overlay)
 
         # No baked floor ellipse or drop shadow.
         self._draw_legs(draw, pose, T)
@@ -732,7 +735,7 @@ class JeffHinterRenderer:
         if pose.shout_strength > 0.01:
             self._draw_shout(image, pose, head_center)
 
-        return image.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+        return rigdoc.downsampled_canvas(image, FRAME_SIZE, Image.Resampling.LANCZOS)
 
     def _draw_legs(self, draw: ImageDraw.ImageDraw, pose: Pose, T) -> None:
         # Far leg first.
@@ -1040,7 +1043,7 @@ class JeffHinterRenderer:
         od = blending_draw(overlay)
         _rounded(od, (far_center[0] - 4.6, far_center[1] - 3.8, far_center[0] + 4.6, far_center[1] + 3.8), 1.6, GLASS_TINT, None, 0)
         _rounded(od, (near_center[0] - 5.3, near_center[1] - 4.2, near_center[0] + 5.3, near_center[1] + 4.2), 1.8, GLASS_TINT, None, 0)
-        image.alpha_composite(overlay)
+        rigdoc.composite_canvas(image, overlay)
         draw = blending_draw(image)
         _rounded(draw, (far_center[0] - 4.6, far_center[1] - 3.8, far_center[0] + 4.6, far_center[1] + 3.8), 1.6, None, GLASS_FRAME, 0.95)
         _rounded(draw, (near_center[0] - 5.3, near_center[1] - 4.2, near_center[0] + 5.3, near_center[1] + 4.2), 1.8, None, GLASS_FRAME, 1.05)
@@ -1381,7 +1384,7 @@ class JeffHinterRenderer:
                 anchor="mm",
             )
 
-        image.alpha_composite(overlay)
+        rigdoc.composite_canvas(image, overlay)
 
 
 def render(out_dir: str | Path, **opts) -> List[Path]:
@@ -1391,7 +1394,9 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     renderer = JeffHinterRenderer()
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_BASENAME,
         rows=ROWS,
         render_fn=renderer.render_frame,
@@ -1410,7 +1415,8 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         "canonical_transparent",
         "preview",
     )
-    return [Path(outputs[key]) for key in keys if outputs.get(key)]
+    parts = publish_rig_flipbook(TARGET_BASENAME, ROWS, renderer.render_frame, outputs, frame_transform, Path(out_dir))
+    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
 
 
 __all__ = ["ACTOR_METADATA", "render"]

@@ -1,30 +1,25 @@
-"""The transform flipbook: a character's frames as reusable part rasters plus
-per-frame ordered draws.
+"""The part flipbook: a character's frames as reusable part rasters plus
+per-frame ordered draws, recorded while the target paints its sheet.
 
-A character that paints through part scopes (``draw.part(name, origin, deg)``,
-see ``draw_recorder``) already says which of its pixels are rigid parts. This
-module captures one paint pass per frame as ordered LAYERS:
+``recorded_paint`` watches the paint seams every target goes through:
+``rigdoc``'s (a turned part, a layer, a canvas composited, reduced, mirrored
+or faded) and ``core.draw.blending_draw``'s ink ops (a procedural painter's
+shapes). ``build_rig_flipbook`` records each frame the target returns, and
+the draws that made it become the frame's draws, in paint order; identical
+rasters are one part.
 
-* a PART layer is a rigid part in its local coordinates, placed at an origin
-  and an angle. Identical local geometry is one part, rasterized once;
-* an OVERLAY layer is a run of frame-local geometry between two parts (the
-  pirates' limbs and neck). Each run is rasterized for its own frame.
+Placement is the frame's own. A rig painted at frame resolution is SNAPPED to
+whole pixels as ``blit_rotated`` placed it; a supersampled frame is reduced
+part by part where the frame's reduction samples it (on the frame's grid, or
+by a fitted scale through PIL's ``box``) and its parts are CONTINUOUS. Where
+two rasters reduced apart would stack wrongly, they are merged into one.
 
-The paint order is kept: a frame's draws are its layers in paint order. One
-overlay per frame cannot keep that order, because the runs sit between parts
-(legs under the boots, the back arm under the torso), so every run is its own
-draw.
-
-Coordinates are the ones the published sheet uses. A frame's pixels reach the
-sheet through ``downsample``'s per-frame fit and ``build_sheet``'s translation,
-so each draw is placed through the same maps, relative to the published
-``feet_pixel`` (the body rig's origin, see ``body_rig``). An overlay goes
-through its frame's own fit and lands on the sheet's pixel grid. A part is
-rasterized at the largest fit any frame uses and is drawn scaled down to its
-frame's fit.
+Coordinates are the ones the published sheet uses (``publish_rig_flipbook``),
+relative to the published ``feet_pixel``.
 
 ``recompose`` draws a frame back from the published atlas and draws; the
-parity check diffs it against the baked sheet frame.
+replay guard diffs every frame against the frame the target painted, and the
+build fails beyond D6 (1% of pixels, a blob of 6).
 
 A flipbook can leave rows to the baked sheet (a hybrid): ``baked_clips`` names
 them, and the runtime draws them from the sheet. Each row of the sheet must be
@@ -35,7 +30,7 @@ from __future__ import annotations
 
 import math
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
@@ -55,94 +50,6 @@ PLACEMENT_CONTINUOUS = "continuous"
 #: next (see ``tween_draws``). Published per clip, never chosen at runtime.
 TWEEN_STEP = "step"
 TWEEN_LINEAR = "linear"
-
-Call = Tuple[str, tuple, dict]
-
-
-@dataclass
-class Layer:
-    """One paint-order layer of one frame."""
-
-    kind: str  # "part" or "overlay"
-    calls: List[Call]
-    name: str = "overlay"
-    origin: Tuple[float, float] = (0.0, 0.0)
-    deg: float = 0.0
-
-    def key(self) -> tuple:
-        """Content identity of a part's local geometry."""
-        return (self.name, repr(self.calls))
-
-
-class LayerCapture:
-    """Quacks like the part-scoped draw object and records paint order."""
-
-    def __init__(self) -> None:
-        self.layers: List[Layer] = []
-        self._part: Optional[Layer] = None
-
-    @contextmanager
-    def part(self, name: str, origin, deg: float = 0.0):
-        assert self._part is None, "nested part() scopes are not supported"
-        self._part = Layer("part", [], name, (float(origin[0]), float(origin[1])), float(deg))
-        try:
-            yield self
-        finally:
-            layer, self._part = self._part, None
-            if layer.calls:
-                self.layers.append(layer)
-
-    def begin_component(self, name: str) -> None:
-        del name
-
-    def end_component(self) -> None:
-        pass
-
-    @contextmanager
-    def component(self, name: str):
-        del name
-        yield self
-
-    def _record(self, method: str, args: tuple, kwargs: dict) -> None:
-        if self._part is not None:
-            self._part.calls.append((method, args, kwargs))
-            return
-        if not self.layers or self.layers[-1].kind != "overlay":
-            self.layers.append(Layer("overlay", []))
-        self.layers[-1].calls.append((method, args, kwargs))
-
-    def polygon(self, *args, **kwargs):
-        self._record("polygon", args, kwargs)
-
-    def line(self, *args, **kwargs):
-        self._record("line", args, kwargs)
-
-    def ellipse(self, *args, **kwargs):
-        self._record("ellipse", args, kwargs)
-
-    def arc(self, *args, **kwargs):
-        self._record("arc", args, kwargs)
-
-    def rectangle(self, *args, **kwargs):
-        self._record("rectangle", args, kwargs)
-
-
-def _replay(draw: Any, calls: Sequence[Call]) -> None:
-    for method, args, kwargs in calls:
-        getattr(draw, method)(*args, **kwargs)
-
-
-def _paint(size: Tuple[int, int], calls: Sequence[Call], origin=(0.0, 0.0)) -> Image.Image:
-    """``calls`` painted as the canonical renderer paints them, placed at
-    ``origin``, on a transparent ``size`` canvas."""
-    from ..core.draw import blending_draw
-    from .draw_recorder import PillowPartDraw
-
-    image = Image.new("RGBA", size, (0, 0, 0, 0))
-    draw = PillowPartDraw(blending_draw(image))
-    with draw.part("layer", origin, 0.0):
-        _replay(draw, calls)
-    return image
 
 
 @dataclass
@@ -611,122 +518,6 @@ def largest_wrong_blob(
     return largest
 
 
-def build_flipbook(
-    target: str,
-    rows: Sequence[Tuple[str, int, int]],
-    paint: Callable[[Any, str, int, int], None],
-    canvas: Tuple[int, int],
-    frame_fits: Mapping[Tuple[str, int], Mapping[str, float]],
-    frame_transform: Mapping[str, float],
-    feet: Tuple[float, float],
-    drawn_size: Tuple[int, int],
-    frame_size: Tuple[int, int],
-    baked_rows: Sequence[str] = (),
-) -> PartFlipbook:
-    """Capture every frame of ``rows`` (``(row, frame count, duration ms)``)
-    and build its flipbook. A row in ``baked_rows`` is not captured; the
-    flipbook names it as a baked clip.
-
-    ``paint(draw, row, index, count)`` is the canonical paint pass on the
-    ``canvas`` (supersampled) frame. ``frame_fits`` are ``downsample``'s
-    per-frame maps; ``frame_transform`` and ``feet`` are the sheet's (see
-    ``body_rig``). ``drawn_size`` is the frame ``downsample`` fits into and
-    ``frame_size`` the published frame.
-    """
-    dx, dy = float(frame_transform["dx"]), float(frame_transform["dy"])
-    unknown = sorted(set(baked_rows) - {row for row, _count, _ms in rows})
-    assert not unknown, f"baked rows {unknown} are not rows of {target}"
-    baked = [row for row, _count, _ms in rows if row in set(baked_rows)]
-    rows = [entry for entry in rows if entry[0] not in set(baked_rows)]
-    captured: Dict[Tuple[str, int], List[Layer]] = {}
-    for row, count, _ms in rows:
-        for index in range(int(count)):
-            capture = LayerCapture()
-            paint(capture, row, index, int(count))
-            captured[(row, index)] = capture.layers
-    part_scale = max(max(frame_fits[key]["sx"], frame_fits[key]["sy"]) for key in captured)
-
-    def published(fit, point) -> Tuple[float, float]:
-        return (
-            (point[0] - fit["x0"]) * fit["sx"] + fit["ox"] + dx - feet[0],
-            (point[1] - fit["y0"]) * fit["sy"] + fit["oy"] + dy - feet[1],
-        )
-
-    parts: List[PartRaster] = []
-    part_index: Dict[tuple, int] = {}
-    margin = 2 * max(canvas)
-    clips: Dict[str, Tuple[float, List[List[PartDraw]]]] = {}
-    for row, count, duration_ms in rows:
-        frames: List[List[PartDraw]] = []
-        for index in range(int(count)):
-            fit = frame_fits[(row, index)]
-            draws: List[PartDraw] = []
-            for layer in captured[(row, index)]:
-                if layer.kind == "part":
-                    key = layer.key()
-                    if key not in part_index:
-                        part_index[key] = len(parts)
-                        parts.append(_part_raster(layer, margin, part_scale))
-                    draws.append(
-                        PartDraw(
-                            part_index[key],
-                            published(fit, layer.origin),
-                            math.radians(layer.deg),
-                            (fit["sx"] / part_scale, fit["sy"] / part_scale),
-                        )
-                    )
-                    continue
-                raster = _overlay_raster(layer, canvas, fit, drawn_size)
-                if raster is None:
-                    continue
-                image, (left, top) = raster
-                parts.append(PartRaster(f"{layer.name}:{row}:{index}", image, (0.0, 0.0)))
-                draws.append(PartDraw(len(parts) - 1, (left + dx - feet[0], top + dy - feet[1])))
-            frames.append(draws)
-        clips[row] = (float(duration_ms) / 1000.0, frames)
-    return PartFlipbook(target, tuple(frame_size), tuple(feet), parts, clips, baked)
-
-
-def _part_raster(layer: Layer, margin: int, scale: float) -> PartRaster:
-    """A rigid part painted once in its local frame and fitted to ``scale``.
-
-    The crop keeps the resampling kernel's reach around the art before the
-    resize: LANCZOS spreads an edge up to three output pixels, and the baked
-    frame keeps that fringe, so a tight crop would thin every outline.
-    """
-    image = _paint((2 * margin, 2 * margin), layer.calls, (margin, margin))
-    bbox = image.getchannel("A").getbbox()
-    if bbox is None:
-        return PartRaster(layer.name, Image.new("RGBA", (1, 1), (0, 0, 0, 0)), (0.0, 0.0))
-    reach = math.ceil(3.0 / scale)
-    x0, y0 = max(0, bbox[0] - reach), max(0, bbox[1] - reach)
-    x1, y1 = min(image.width, bbox[2] + reach), min(image.height, bbox[3] + reach)
-    crop = image.crop((x0, y0, x1, y1))
-    size = (max(1, round(crop.width * scale)), max(1, round(crop.height * scale)))
-    fitted = crop.resize(size, Image.Resampling.LANCZOS)
-    kx, ky = size[0] / crop.width, size[1] / crop.height
-    trim = fitted.getchannel("A").getbbox() or (0, 0, 1, 1)
-    pivot = ((margin - x0) * kx - trim[0], (margin - y0) * ky - trim[1])
-    return PartRaster(layer.name, fitted.crop(trim), pivot)
-
-
-def _overlay_raster(layer: Layer, canvas, fit, drawn_size):
-    """A frame-local run through its frame's own fit, tight: ``(image, (left,
-    top))`` in the drawn frame's pixels, or ``None`` when it draws nothing."""
-    image = _paint(canvas, layer.calls)
-    x0, y0 = int(fit["x0"]), int(fit["y0"])
-    x1, y1 = int(fit["x1"]), int(fit["y1"])
-    fitted = image.crop((x0, y0, x1, y1)).resize(
-        (int(fit["nw"]), int(fit["nh"])), Image.Resampling.LANCZOS
-    )
-    frame = Image.new("RGBA", tuple(drawn_size), (0, 0, 0, 0))
-    frame.alpha_composite(fitted, (int(fit["ox"]), int(fit["oy"])))
-    bbox = frame.getchannel("A").getbbox()
-    if bbox is None:
-        return None
-    return frame.crop(bbox), (bbox[0], bbox[1])
-
-
 # -- rig documents ---------------------------------------------------------------
 #
 # A character drawn by a ``RigDocument`` (``rigdoc``) already paints its frames
@@ -776,6 +567,10 @@ class PaintedPart:
     group: float = 1.0
     #: The filter it was turned with (``rigdoc.rotation_resample``).
     bilinear: bool = False
+    #: A raster the painter put on the canvas grid as it is (a procedural
+    #: shape, an effect layer): never turned, its top left at a whole canvas
+    #: pixel. A supersampled canvas reduces it on the frame's own grid.
+    grid: bool = False
 
 
 @dataclass
@@ -795,6 +590,8 @@ class PaintRecord:
 
     def __init__(self) -> None:
         self._ops: Dict[int, Tuple[Image.Image, list]] = {}
+        #: Shapes recorded from a procedural painter, numbering their tracks.
+        self.shapes = 0
         #: Reduced part rasters, by the supersampled raster they came from.
         self._reduced: Dict[tuple, Tuple[Image.Image, Image.Image, Tuple[float, float]]] = {}
 
@@ -841,6 +638,267 @@ def _reduce_part(sprite: Image.Image, pivot: Tuple[float, float], factor: int, r
     x0, y0, x1, y1 = small.getchannel("A").getbbox() or (0, 0, 1, 1)
     trim = (max(0, x0 - PART_BORDER), max(0, y0 - PART_BORDER), min(small.width, x1 + PART_BORDER), min(small.height, y1 + PART_BORDER))
     return small.crop(trim), ((pivot[0] + reach) / factor - trim[0], (pivot[1] + reach) / factor - trim[1])
+
+
+#: The most a premultiplied channel may move where a part's reduced edge is
+#: stacked on another's (``_on_frame_grid``): half the replay tolerance.
+STACKED_EDGE_LEVELS = 32
+
+
+def _on_frame_grid(ops: list, factor: int, reduce: Callable) -> list:
+    """The ops of a supersampled canvas, each ``grid`` raster padded so its top
+    left is a whole frame pixel, and every run of grid rasters whose reduced
+    edges would stack wrongly merged into one.
+
+    Aligned, a raster reduces on the frame's own grid and lands on whole frame
+    pixels: alone, it is the frame's own reduction, not a resample of one.
+
+    ⛔ TWO EDGES REDUCED APART DO NOT STACK AS ONE. A boot and its sole share
+    a bottom edge; each reduced alone is half covered there, and one half over
+    another is three quarters: vera_ruin's sole drawn at alpha 200 where the
+    render has 65 (a blob of 10, 2026-10-03). So each raster is checked where
+    it lands: the canvas reduced with it, against the reduced rasters stacked.
+    Where they differ by more than ``STACKED_EDGE_LEVELS``, it is merged with
+    the rasters before it, nearest first, one paint-order run at a time, until
+    they agree."""
+    import numpy as np
+
+    reach = 3 * factor
+
+    def aligned(op):
+        if isinstance(op, PaintedOverlay):
+            # An effect layer on the supersampled canvas is a raster at its
+            # corner: checked and reduced as one.
+            assert op.scale == 1, "a scaled layer on a supersampled canvas"
+            op = PaintedPart(
+                op.image, (0.0, 0.0), (float(op.dest[0]), float(op.dest[1])), 0.0, 1.0, op.name, group=op.group, grid=True
+            )
+        if not (isinstance(op, PaintedPart) and op.grid):
+            return op
+        x, y = int(op.world[0]), int(op.world[1])
+        ax, ay = x % factor, y % factor
+        if not (ax or ay):
+            return op
+        sprite = Image.new("RGBA", (op.sprite.width + ax, op.sprite.height + ay), (0, 0, 0, 0))
+        sprite.paste(op.sprite, (ax, ay))
+        return replace(op, sprite=sprite, world=(float(x - ax), float(y - ay)))
+
+    def box(op):
+        x, y = int(op.world[0]), int(op.world[1])
+        return (x, y, x + op.sprite.width, y + op.sprite.height)
+
+    def meets(a, b):
+        return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+
+    def premultiplied(image):
+        array = np.asarray(image, dtype=np.int32)
+        return np.concatenate([array[..., :3] * array[..., 3:4] // 255, array[..., 3:4]], axis=-1)
+
+    reductions: Dict[int, Tuple[Any, Image.Image, Tuple[int, int]]] = {}
+
+    def reduced_alone(op):
+        """``op`` reduced on its own on the frame grid, and the frame pixel of
+        its top left. Inside the reach a reduction sees only its own texels,
+        so a cut of this is the op reduced inside any region."""
+        entry = reductions.get(id(op))
+        if entry is None or entry[0] is not op:
+            x, y = int(op.world[0]), int(op.world[1])
+            padded = Image.new(
+                "RGBA",
+                (-(-op.sprite.width // factor) * factor + 2 * reach, -(-op.sprite.height // factor) * factor + 2 * reach),
+                (0, 0, 0, 0),
+            )
+            padded.alpha_composite(op.sprite, (reach, reach))
+            small = reduce(padded, (padded.width // factor, padded.height // factor))
+            entry = (op, small, ((x - reach) // factor, (y - reach) // factor))
+            reductions[id(op)] = entry
+        return entry[1], entry[2]
+
+    def stack(canvas, image, dest):
+        """``image`` composited with its top left at ``dest``, cut to ``canvas``."""
+        dx, dy = dest
+        canvas.alpha_composite(image, (max(0, dx), max(0, dy)), (max(0, -dx), max(0, -dy)))
+
+    def disagreement(run):
+        """Most a channel moves, inside the last raster's box, between the
+        canvas reduced whole and its rasters reduced apart and stacked."""
+        last = box(run[-1])
+        x0 = last[0] // factor * factor - reach
+        y0 = last[1] // factor * factor - reach
+        x1 = -(-last[2] // factor) * factor + reach
+        y1 = -(-last[3] // factor) * factor + reach
+        region = (x0, y0, x1, y1)
+        if not any(meets(box(op), region) for op in run[:-1]):
+            # Alone where it lands: it reduces as the frame does there.
+            return 0
+        small = ((x1 - x0) // factor, (y1 - y0) // factor)
+        whole = Image.new("RGBA", (x1 - x0, y1 - y0), (0, 0, 0, 0))
+        apart = Image.new("RGBA", small, (0, 0, 0, 0))
+        for op in run:
+            if not meets(box(op), region):
+                continue
+            stack(whole, op.sprite, (int(op.world[0]) - x0, int(op.world[1]) - y0))
+            image, (sx, sy) = reduced_alone(op)
+            stack(apart, image, (sx - x0 // factor, sy - y0 // factor))
+        inner = (slice(3, small[1] - 3), slice(3, small[0] - 3))
+        return int(np.abs(premultiplied(reduce(whole, small))[inner] - premultiplied(apart)[inner]).max(initial=0))
+
+    def merged(run):
+        x0 = min(box(op)[0] for op in run)
+        y0 = min(box(op)[1] for op in run)
+        canvas = Image.new("RGBA", (max(box(op)[2] for op in run) - x0, max(box(op)[3] for op in run) - y0), (0, 0, 0, 0))
+        for op in run:
+            alone = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+            alone.paste(op.sprite, (int(op.world[0]) - x0, int(op.world[1]) - y0))
+            canvas.alpha_composite(alone)
+        return replace(run[0], sprite=canvas, world=(float(x0), float(y0)))
+
+    out: list = []
+    for op in ops:
+        op = aligned(op)
+        out.append(op)
+        if not (isinstance(op, PaintedPart) and op.grid):
+            continue
+        # The grid rasters painted just before it, back to the first that is not.
+        start = len(out) - 1
+        while start > 0 and isinstance(out[start - 1], PaintedPart) and out[start - 1].grid:
+            start -= 1
+        while len(out) - 1 > start and disagreement(out[start:]) > STACKED_EDGE_LEVELS:
+            # Within the filter's reach, not only overlapping: abutting strips
+            # (a teleport's slices) share an edge too.
+            b = box(out[-1])
+            here = (b[0] - reach, b[1] - reach, b[2] + reach, b[3] + reach)
+            under = [i for i in range(start, len(out) - 1) if meets(box(out[i]), here)]
+            if not under:
+                break
+            out[under[-1] :] = [merged(out[under[-1] :])]
+    return out
+
+
+def _sampled_as_the_frame(ops: list, frame_size: Tuple[int, int], size: Tuple[int, int], resample) -> list:
+    """The grid rasters of a canvas resized to ``size`` by a factor that is
+    not whole (flying_spaghetti_monster_boss: 3440 to 748, 4.6x; or an
+    enlargement).
+
+    No raster can be padded onto a grid the frame repeats, so each is reduced
+    over the frame pixels it reaches, sampled where the frame's own reduction
+    samples them (PIL's ``box``): alone, it is that region of the frame's
+    reduction, and it lands on whole frame pixels. Stacked edges are checked
+    and merged as on a whole factor (``_on_frame_grid``)."""
+    import numpy as np
+
+    rx, ry = frame_size[0] / size[0], frame_size[1] / size[1]
+    # The filter's reach in frame pixels: 3 when reducing; enlarging, 3
+    # canvas pixels are 3 / scale frame pixels (stochastic_parrot_v2 fits a
+    # reduced frame up to 1.32x).
+    reach_x, reach_y = math.ceil(3 / min(1.0, rx)), math.ceil(3 / min(1.0, ry))
+
+    def as_part(op):
+        if isinstance(op, PaintedOverlay):
+            assert op.scale == 1, "a scaled layer on a supersampled canvas"
+            op = PaintedPart(
+                op.image, (0.0, 0.0), (float(op.dest[0]), float(op.dest[1])), 0.0, 1.0, op.name, group=op.group, grid=True
+            )
+        assert op.grid and op.degrees == 0.0, "a turned part on a canvas resized by a factor that is not whole"
+        # As an unmirrored raster at its top left: a part reduced or mirrored
+        # before (a frame fitted after its reduction) carries a pivot, and a
+        # mirrored one is flipped about it.
+        sprite = op.sprite if op.scale_x > 0 else op.sprite.transpose(Image.FLIP_LEFT_RIGHT)
+        x = op.world[0] - (op.pivot[0] if op.scale_x > 0 else op.sprite.width - op.pivot[0])
+        y = op.world[1] - op.pivot[1]
+        assert abs(x - round(x)) < 1e-6 and abs(y - round(y)) < 1e-6, f"a grid raster off the grid at {(x, y)}"
+        return replace(op, sprite=sprite, pivot=(0.0, 0.0), world=(float(round(x)), float(round(y))), scale_x=1.0)
+
+    def box(op):
+        x, y = int(op.world[0]), int(op.world[1])
+        return (x, y, x + op.sprite.width, y + op.sprite.height)
+
+    def rect(b):
+        return (
+            max(0, math.floor(b[0] / rx) - reach_x),
+            max(0, math.floor(b[1] / ry) - reach_y),
+            min(size[0], math.ceil(b[2] / rx) + reach_x),
+            min(size[1], math.ceil(b[3] / ry) + reach_y),
+        )
+
+    def sample(image, origin, r):
+        """``image`` (its top left at canvas pixel ``origin``) reduced over the
+        frame pixels ``r``."""
+        bx0, by0 = r[0] * rx - origin[0], r[1] * ry - origin[1]
+        bx1, by1 = r[2] * rx - origin[0], r[3] * ry - origin[1]
+        left, top = max(0, math.ceil(-bx0)), max(0, math.ceil(-by0))
+        right, bottom = max(0, math.ceil(bx1 - image.width)), max(0, math.ceil(by1 - image.height))
+        if left or top or right or bottom:
+            padded = Image.new("RGBA", (image.width + left + right, image.height + top + bottom), (0, 0, 0, 0))
+            padded.paste(image, (left, top))
+            image = padded
+        return image.resize((r[2] - r[0], r[3] - r[1]), resample, box=(bx0 + left, by0 + top, bx1 + left, by1 + top))
+
+    reductions: Dict[int, Tuple[Any, Image.Image, Tuple[int, int]]] = {}
+
+    def reduced_alone(op):
+        entry = reductions.get(id(op))
+        if entry is None or entry[0] is not op:
+            r = rect(box(op))
+            entry = (op, sample(op.sprite, box(op)[:2], r), r[:2])
+            reductions[id(op)] = entry
+        return entry[1], entry[2]
+
+    def meets(a, b):
+        return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+
+    def premultiplied(image):
+        array = np.asarray(image, dtype=np.int32)
+        return np.concatenate([array[..., :3] * array[..., 3:4] // 255, array[..., 3:4]], axis=-1)
+
+    def stack(canvas, image, dest):
+        dx, dy = dest
+        canvas.alpha_composite(image, (max(0, dx), max(0, dy)), (max(0, -dx), max(0, -dy)))
+
+    def disagreement(run):
+        r = rect(box(run[-1]))
+        x0, y0 = math.floor(r[0] * rx), math.floor(r[1] * ry)
+        region = (x0, y0, math.ceil(r[2] * rx), math.ceil(r[3] * ry))
+        if not any(meets(box(op), region) for op in run[:-1]):
+            return 0
+        whole = Image.new("RGBA", (region[2] - x0, region[3] - y0), (0, 0, 0, 0))
+        apart = Image.new("RGBA", (r[2] - r[0], r[3] - r[1]), (0, 0, 0, 0))
+        for op in run:
+            if not meets(box(op), region):
+                continue
+            stack(whole, op.sprite, (int(op.world[0]) - x0, int(op.world[1]) - y0))
+            image, (sx, sy) = reduced_alone(op)
+            stack(apart, image, (sx - r[0], sy - r[1]))
+        inner = (slice(reach_y, apart.height - reach_y), slice(reach_x, apart.width - reach_x))
+        joint = premultiplied(sample(whole, (x0, y0), r))
+        return int(np.abs(joint[inner] - premultiplied(apart)[inner]).max(initial=0))
+
+    def merged(run):
+        x0, y0 = min(box(op)[0] for op in run), min(box(op)[1] for op in run)
+        canvas = Image.new("RGBA", (max(box(op)[2] for op in run) - x0, max(box(op)[3] for op in run) - y0), (0, 0, 0, 0))
+        for op in run:
+            stack(canvas, op.sprite, (int(op.world[0]) - x0, int(op.world[1]) - y0))
+        return replace(run[0], sprite=canvas, world=(float(x0), float(y0)))
+
+    out: list = []
+    for op in ops:
+        out.append(as_part(op))
+        while len(out) > 1 and disagreement(out) > STACKED_EDGE_LEVELS:
+            b = box(out[-1])
+            here = (b[0] - math.ceil(reach_x * rx), b[1] - math.ceil(reach_y * ry), b[2] + math.ceil(reach_x * rx), b[3] + math.ceil(reach_y * ry))
+            under = [i for i in range(len(out) - 1) if meets(box(out[i]), here)]
+            if not under:
+                break
+            out[under[-1] :] = [merged(out[under[-1] :])]
+    parts = []
+    for op in out:
+        small, (sx, sy) = reduced_alone(op)
+        x0, y0, x1, y1 = small.getchannel("A").getbbox() or (0, 0, 1, 1)
+        trim = (max(0, x0 - PART_BORDER), max(0, y0 - PART_BORDER), min(small.width, x1 + PART_BORDER), min(small.height, y1 + PART_BORDER))
+        parts.append(
+            replace(op, sprite=small.crop(trim), pivot=(0.0, 0.0), world=(float(sx + trim[0]), float(sy + trim[1])), exact=False)
+        )
+    return parts
 
 
 def _bordered(sprite: Image.Image) -> Image.Image:
@@ -890,12 +948,25 @@ def recorded_paint():
         )
         return originals["blit_rotated"](canvas, sprite, pivot, world_px, delta_deg, opacity, **kwargs)
 
+    def unique(target, op):
+        """``op`` named apart from every draw already on ``target``: a track
+        is named once a frame, so a second "composited" is "composited2"."""
+        names = {draw.name for draw in target}
+        if op.name not in names:
+            return op
+        count = 2
+        while f"{op.name}{count}" in names:
+            count += 1
+        return replace(op, name=f"{op.name}{count}")
+
     def recording_layer(canvas, layer, dest=(0, 0), *, name="overlay"):
-        record._list(canvas).append(PaintedOverlay(layer, (int(dest[0]), int(dest[1])), str(name)))
+        target = record._list(canvas)
+        target.append(unique(target, PaintedOverlay(layer, (int(dest[0]), int(dest[1])), str(name))))
         return originals["composite_layer"](canvas, layer, dest, name=name)
 
     def recording_scaled_layer(canvas, layer, factor, dest=(0, 0), *, name="overlay"):
-        record._list(canvas).append(PaintedOverlay(layer, (int(dest[0]), int(dest[1])), str(name), scale=int(factor)))
+        target = record._list(canvas)
+        target.append(unique(target, PaintedOverlay(layer, (int(dest[0]), int(dest[1])), str(name), scale=int(factor))))
         return originals["composite_scaled_layer"](canvas, layer, factor, dest, name=name)
 
     def recording_canvas(canvas, frame, dest=(0, 0)):
@@ -907,13 +978,13 @@ def recorded_paint():
             # picture of the frame, so it rides as one overlay (unless it is
             # blank: a layer nothing painted this frame).
             if frame.getchannel("A").getbbox() is not None:
-                target.append(PaintedOverlay(frame, (dx, dy), "composited"))
+                target.append(unique(target, PaintedOverlay(frame, (dx, dy), "composited")))
         else:
             for op in ops:
                 if isinstance(op, PaintedPart):
-                    target.append(replace(op, world=(op.world[0] + dx, op.world[1] + dy)))
+                    target.append(unique(target, replace(op, world=(op.world[0] + dx, op.world[1] + dy))))
                 else:
-                    target.append(replace(op, dest=(op.dest[0] + dx, op.dest[1] + dy)))
+                    target.append(unique(target, replace(op, dest=(op.dest[0] + dx, op.dest[1] + dy))))
         return originals["composite_canvas"](canvas, frame, dest)
 
     def recording_downsample(frame, size, resample=None):
@@ -926,16 +997,23 @@ def recorded_paint():
             return originals["downsampled_canvas"](image, small, resample)
 
         factor = frame.width // size[0]
-        assert frame.width == size[0] * factor and frame.height == size[1] * factor, (
-            f"a {frame.size} frame reduced to {size} is not a whole supersample"
-        )
         target = record._list(out)
-        for op in ops:
+        whole = frame.width == size[0] * factor and frame.height == size[1] * factor
+        # A frame resized again (a quality tier of a reduced frame) holds
+        # rasters already reduced: they are sampled where this resize samples.
+        reduced_before = any(isinstance(op, PaintedPart) and not op.exact for op in ops)
+        if not whole or reduced_before:
+            assert resample is not None, f"a {frame.size} frame reduced to {size} is not a whole supersample of its parts"
+            target.extend(_sampled_as_the_frame(ops, frame.size, size, resample))
+            return out
+        for op in _on_frame_grid(ops, factor, reduce):
             if isinstance(op, PaintedOverlay):
                 # An effect layer on the supersampled canvas is reduced as a
                 # part placed at its corner.
                 assert op.scale == 1, "a scaled layer on a supersampled canvas"
-                op = PaintedPart(op.image, (0.0, 0.0), (float(op.dest[0]), float(op.dest[1])), 0.0, 1.0, op.name, group=op.group)
+                op = PaintedPart(
+                    op.image, (0.0, 0.0), (float(op.dest[0]), float(op.dest[1])), 0.0, 1.0, op.name, group=op.group, grid=True
+                )
             assert op.scale_x == 1.0 and op.exact, "a supersampled canvas is reduced once, unmirrored"
             # Where `blit_rotated` put it on the supersampled canvas: the
             # whole-pixel pivot on the whole-pixel point. Unrounded, an edge
@@ -985,6 +1063,112 @@ def recorded_paint():
             target.append(replace(op, group=op.group * float(opacity)))
         return out
 
+    from ..core import draw as core_draw
+
+    def cut_out(ops, image, hole):
+        """``hole`` (an L mask of ``image``) cut out of every shape on it."""
+        cut_ops = []
+        for index, op in enumerate(ops):
+            if isinstance(op, PaintedOverlay):
+                # A layer composited as it is (a turned card) is cut the same way.
+                assert op.scale == 1, "an eraser over an enlarged layer"
+                raster, (x0, y0) = op.image, (int(op.dest[0]), int(op.dest[1]))
+            else:
+                raster = op.sprite
+                x0, y0 = int(op.world[0] - op.pivot[0]), int(op.world[1] - op.pivot[1])
+            cut = hole.crop((x0, y0, x0 + raster.width, y0 + raster.height))
+            if cut.getbbox() is None:
+                continue
+            assert isinstance(op, PaintedOverlay) or (op.exact and op.degrees == 0.0 and op.scale_x == 1.0), (
+                "an eraser over a turned part"
+            )
+            raster = raster.copy()
+            raster.putalpha(Image.composite(Image.new("L", raster.size, 0), raster.getchannel("A"), cut))
+            ops[index] = replace(op, image=raster) if isinstance(op, PaintedOverlay) else replace(op, sprite=raster)
+            cut_ops.append(index)
+        if len(cut_ops) > 1:
+            # ⛔ The shapes a hole cuts now share its edge. Reduced one by
+            # one and stacked, that edge's partial alpha compounds (two
+            # 50% edges make 75%): the hole fills in. Measured on
+            # hypatia_prime's phone, a 14-pixel blob. They become one
+            # shape, every op from the first cut to the last, in order.
+            first, last = cut_ops[0], cut_ops[-1]
+            run = ops[first : last + 1]
+            if any(not isinstance(op, PaintedOverlay) and not (op.exact and op.degrees == 0.0) for op in run):
+                # A turned part between them keeps its own place; the conflict
+                # check after the reduction still sees their edges.
+                return
+            merged = Image.new("RGBA", image.size, (0, 0, 0, 0))
+            for op in run:
+                if isinstance(op, PaintedOverlay):
+                    raster, place = op.image, (int(op.dest[0]), int(op.dest[1]))
+                else:
+                    raster, place = op.sprite, (int(op.world[0] - op.pivot[0]), int(op.world[1] - op.pivot[1]))
+                layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
+                layer.paste(raster, place)
+                merged.alpha_composite(layer)
+            box = merged.getbbox()
+            assert len({op.group for op in run}) == 1, "merging draws of different frame opacities"
+            ops[first : last + 1] = (
+                []
+                if box is None
+                else [
+                    PaintedPart(
+                        merged.crop(box), (0.0, 0.0), (float(box[0]), float(box[1])), 0.0, 1.0, run[0].name,
+                        group=run[0].group, grid=True,
+                    )
+                ]
+            )
+
+    def recording_shape(image, name, args, kwargs, erases, painted=None, before=None):
+        """One ink op of a procedural painter (``blending_draw``): the shape it
+        painted, as a part at its box on the supersampled canvas. An op that
+        ERASES (an alpha-0 ink drawn directly) cuts its coverage out of every
+        shape already on the canvas, which is exactly what it did to them.
+
+        An op drawn straight through (``text``) REPLACES what it covers, at
+        any alpha: its stroke may be clear, its fill translucent. Given the
+        canvas ``before`` it, the pixels it changed are cut out of every shape
+        and are the new shape, as they now are."""
+        ops = record._list(image)
+        core_draw.SHAPE_RECORDER = None
+        try:
+            if before is not None:
+                import numpy as np
+
+                changed = (np.asarray(before) != np.asarray(image)).any(axis=-1)
+                hole = Image.fromarray(changed.astype(np.uint8) * 255)
+                cut_out(ops, image, hole)
+                painted = Image.new("RGBA", image.size, (0, 0, 0, 0))
+                painted.paste(image, (0, 0), hole)
+            elif erases:
+                def clear(ink):
+                    return isinstance(ink, (tuple, list)) and len(ink) >= 4 and int(ink[3]) == 0
+
+                def as_mask(ink):
+                    return (255, 255, 255, 255) if clear(ink) else (0, 0, 0, 0)
+
+                masked_args = list(args)
+                if len(masked_args) > 1 and name in core_draw._BlendingDraw._POS_FILL:
+                    masked_args[1] = as_mask(masked_args[1])
+                masked_kwargs = {k: (as_mask(v) if k in ("fill", "outline") else v) for k, v in kwargs.items()}
+                coverage = Image.new("RGBA", image.size, (0, 0, 0, 0))
+                getattr(core_draw._BlendingDraw(coverage), name)(*masked_args, **masked_kwargs)
+                cut_out(ops, image, coverage.getchannel("A"))
+            if painted is None:
+                painted = Image.new("RGBA", image.size, (0, 0, 0, 0))
+                getattr(core_draw._BlendingDraw(painted), name)(*args, **kwargs)
+        finally:
+            core_draw.SHAPE_RECORDER = recording_shape
+        box = painted.getbbox()
+        if box is not None:
+            record.shapes += 1
+            ops.append(
+                PaintedPart(
+                    painted.crop(box), (0.0, 0.0), (float(box[0]), float(box[1])), 0.0, 1.0, f"shape{record.shapes}", grid=True
+                )
+            )
+
     recorders = {
         "blit_rotated": recording_blit,
         "composite_layer": recording_layer,
@@ -996,9 +1180,11 @@ def recorded_paint():
     }
     for name, fn in recorders.items():
         setattr(rigdoc, name, fn)
+    core_draw.SHAPE_RECORDER = recording_shape
     try:
         yield record
     finally:
+        core_draw.SHAPE_RECORDER = None
         for name, fn in originals.items():
             setattr(rigdoc, name, fn)
 

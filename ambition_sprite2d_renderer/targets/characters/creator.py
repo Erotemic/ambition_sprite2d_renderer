@@ -14,6 +14,8 @@ from typing import List, Tuple
 
 from PIL import Image, ImageColor, ImageDraw, ImageFilter
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -122,7 +124,7 @@ def _box(x1: float, y1: float, x2: float, y2: float) -> Tuple[int, int, int, int
 
 
 def _downsample(img: Image.Image) -> Image.Image:
-    return img.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 def _glow_ellipse(base: Image.Image, bbox, fill: RGBA, blur: float = 4.0) -> None:
@@ -130,7 +132,7 @@ def _glow_ellipse(base: Image.Image, bbox, fill: RGBA, blur: float = 4.0) -> Non
     draw = blending_draw(layer)
     draw.ellipse(bbox, fill=fill)
     layer = layer.filter(ImageFilter.GaussianBlur(radius=blur * SUPER / 2.0))
-    base.alpha_composite(layer)
+    rigdoc.composite_canvas(base, layer)
 
 
 def _glow_polygon(base: Image.Image, pts, fill: RGBA, blur: float = 4.0) -> None:
@@ -138,7 +140,7 @@ def _glow_polygon(base: Image.Image, pts, fill: RGBA, blur: float = 4.0) -> None
     draw = blending_draw(layer)
     draw.polygon([_pt(x, y) for x, y in pts], fill=fill)
     layer = layer.filter(ImageFilter.GaussianBlur(radius=blur * SUPER / 2.0))
-    base.alpha_composite(layer)
+    rigdoc.composite_canvas(base, layer)
 
 
 def _draw_creator(anim: str, frame_idx: int, nframes: int) -> Image.Image:
@@ -420,7 +422,7 @@ def _draw_creator(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         ]
         hd.polygon([_pt(*p) for p in shard], fill=_rgba("#d5c0ff", 135))
     halo = halo.filter(ImageFilter.GaussianBlur(radius=2.0))
-    img.alpha_composite(halo)
+    rigdoc.composite_canvas(img, halo)
 
     # Chest sigil / clasp.
     sigil_cx, sigil_cy = 80.0, 95.0 + bob
@@ -486,7 +488,7 @@ def _draw_creator(anim: str, frame_idx: int, nframes: int) -> Image.Image:
                 fill=_rgba("#9ff8ff", int(135 + 40 * particle_amp)),
             )
         p_layer = p_layer.filter(ImageFilter.GaussianBlur(radius=1.4))
-        img.alpha_composite(p_layer)
+        rigdoc.composite_canvas(img, p_layer)
 
     return _downsample(img)
 
@@ -498,7 +500,9 @@ def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
 def render(out_dir: str | Path, **opts) -> List[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=render_frame,
@@ -506,10 +510,11 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         frame_size=FRAME_SIZE,
         label_width=108,
     )
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, render_frame, outputs, frame_transform, Path(out_dir))
     return [
         outputs["canonical"],
         outputs["canonical_transparent"],
         outputs["spritesheet"],
         outputs["yaml"],
         outputs["preview"],
-    ]
+    ] + list(parts.values())

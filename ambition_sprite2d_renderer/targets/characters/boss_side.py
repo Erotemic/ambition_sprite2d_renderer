@@ -24,6 +24,7 @@ from PIL import Image, ImageColor, ImageDraw
 from ambition_sprite2d_renderer.core.draw import rgba, with_alpha, bbox_from_center as _bbox
 
 from ...profiling import profile
+from ...authoring import rigdoc
 from ...authoring.common_draw import (
     RESAMPLING,
     draw_capsule,
@@ -84,9 +85,11 @@ def _paste_rotated_local(
     base: Image.Image, layer: Image.Image, center: Point, angle: float
 ) -> None:
     rotated = layer.rotate(angle, resample=RESAMPLING.BICUBIC, expand=True)
-    base.alpha_composite(
+    rigdoc.composite_layer(
+        base,
         rotated,
         (int(center[0] - rotated.width / 2), int(center[1] - rotated.height / 2)),
+        name="rotated",
     )
 
 
@@ -138,6 +141,10 @@ class ZetaPose:
 
 
 class AISlopZetaGenerator(CharacterGenerator):
+    #: Every frame is painted through rigdoc's seams: the sheet publishes its
+    #: part flipbook (``authoring.sheet.publish_generator_flipbook``).
+    publishes_part_flipbook = True
+
     name = "boss"
     target = "boss"
 
@@ -619,7 +626,7 @@ class AISlopZetaGenerator(CharacterGenerator):
                     lambda v, s=alpha_scale: max(0, min(255, int(v * s)))
                 )
                 strip.putalpha(a)
-                base.alpha_composite(strip, (int(x + dx), int(y1 + dy)))
+                rigdoc.composite_layer(base, strip, (int(x + dx), int(y1 + dy)), name="strip")
         else:
             progress = smoothstep(t)
             for i, x in enumerate(range(x1, x2, slice_w)):
@@ -640,15 +647,11 @@ class AISlopZetaGenerator(CharacterGenerator):
                     lambda v, s=alpha_scale: max(0, min(255, int(v * s)))
                 )
                 strip.putalpha(a)
-                base.alpha_composite(strip, (int(x + dx), int(y1 + dy)))
+                rigdoc.composite_layer(base, strip, (int(x + dx), int(y1 + dy)), name="strip")
             full_alpha = smoothstep(clamp((progress - 0.34) / 0.66, 0.0, 1.0))
             if full_alpha > 0:
-                resolved = actor.copy()
-                a = resolved.getchannel("A").point(
-                    lambda v, s=full_alpha: max(0, min(255, int(v * s)))
-                )
-                resolved.putalpha(a)
-                base.alpha_composite(resolved)
+                # Faded as one picture (one overlay), not part by part.
+                rigdoc.composite_layer(base, rigdoc.faded_canvas(actor, full_alpha), name="resolved")
 
     def _draw_head(
         self,
@@ -1181,7 +1184,7 @@ class AISlopZetaGenerator(CharacterGenerator):
                     width=max(1, int(1.3 * S)),
                 )
 
-        img.alpha_composite(character_img)
+        rigdoc.composite_canvas(img, character_img)
         return img
 
     @profile
@@ -1206,4 +1209,4 @@ class AISlopZetaGenerator(CharacterGenerator):
             max(1, int(supersample)),
         )
         resample = RESAMPLING.NEAREST if downsample == "nearest" else RESAMPLING.LANCZOS
-        return high.resize(size, resample)
+        return rigdoc.downsampled_canvas(high, size, resample)

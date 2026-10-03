@@ -7,6 +7,8 @@ from typing import Dict, Iterable, List, Tuple
 
 from PIL import Image, ImageColor, ImageDraw
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.portrait import (
     FaceGuide,
     PortraitClip,
@@ -237,7 +239,7 @@ def _bbox(cx: float, cy: float, rx: float, ry: float) -> Tuple[int, int, int, in
 
 
 def _downsample(img: Image.Image) -> Image.Image:
-    return img.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 def _lerp(a: float, b: float, t: float) -> float:
@@ -578,10 +580,16 @@ def render_portraits(variant_name: str, out_dir: str | Path, **opts) -> List[Pat
 def render_target(variant_name: str, out_dir: str | Path, **opts) -> List[Path]:
     del opts
     spec = VARIANTS[variant_name]
+
+    def render_fn(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
+        return render_frame(variant_name, animation, frame_idx, frame_count)
+
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=spec.target_name,
         rows=ROWS,
-        render_fn=lambda animation, frame_idx, frame_count: render_frame(variant_name, animation, frame_idx, frame_count),
+        render_fn=render_fn,
         out_dir=Path(out_dir),
         frame_size=FRAME_SIZE,
         auto_crop=True,
@@ -598,4 +606,5 @@ def render_target(variant_name: str, out_dir: str | Path, **opts) -> List[Path]:
         "canonical_transparent",
         "preview",
     )
-    return [Path(outputs[key]) for key in keys if outputs.get(key)]
+    parts = publish_rig_flipbook(spec.target_name, ROWS, render_fn, outputs, frame_transform, Path(out_dir))
+    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())

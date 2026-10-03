@@ -18,6 +18,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from PIL import Image, ImageDraw, ImageFont
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -451,7 +453,7 @@ class GalwahRenderer:
                 )
 
         # Downsample from supersampled render.
-        return img.resize((self.frame_w, self.frame_h), Image.Resampling.LANCZOS)
+        return rigdoc.downsampled_canvas(img, (self.frame_w, self.frame_h), Image.Resampling.LANCZOS)
 
     def _draw_leg(self, draw: ImageDraw.ImageDraw, hip, knee, foot, far: bool) -> None:
         trouser = COAT_DARK if far else TROUSER
@@ -1558,7 +1560,9 @@ def render(out_dir: str | Path, **opts) -> list[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     sheet_rows, render_fn, frame_size = _build_setup(**opts)
 
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=sheet_rows,
         render_fn=render_fn,
@@ -1566,6 +1570,7 @@ def render(out_dir: str | Path, **opts) -> list[Path]:
         frame_size=frame_size,
         auto_crop=True,
     )
+    parts = publish_rig_flipbook(TARGET_NAME, sheet_rows, render_fn, outputs, frame_transform, Path(out_dir))
     return [
         outputs["spritesheet"],
         outputs["yaml"],
@@ -1573,7 +1578,7 @@ def render(out_dir: str | Path, **opts) -> list[Path]:
         outputs["preview"],
         outputs["canonical"],
         outputs["canonical_transparent"],
-    ]
+    ] + list(parts.values())
 
 
 def render_canonical(out_dir: str | Path, **opts) -> Path:

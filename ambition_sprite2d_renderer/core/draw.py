@@ -162,6 +162,14 @@ def _ink_alpha(ink):
     return 255
 
 
+#: Called after every ink op of a :func:`blending_draw` as
+#: ``(image, op, args, kwargs, erases)`` while a part flipbook records a
+#: procedural painter (``part_flipbook.recorded_paint``); ``None`` otherwise.
+#: An op painted on its own layer first (:func:`composite_polygon`) passes
+#: that layer as ``painted``.
+SHAPE_RECORDER = None
+
+
 class _BlendingDraw:
     """An ImageDraw twin that composites translucent inks instead of clobbering.
 
@@ -223,12 +231,16 @@ class _BlendingDraw:
             a = _ink_alpha(args[1])
             if a is not None:
                 alphas.append(a)
-        if self._scratch_blend and any(0 < a < 255 for a in alphas):
+        translucent = self._scratch_blend and any(0 < a < 255 for a in alphas)
+        if translucent:
             layer, d = overlay_draw(self._img)
             getattr(d, name)(*args, **kwargs)
             self._img.alpha_composite(layer)
         else:
             getattr(self._draw, name)(*args, **kwargs)
+        if SHAPE_RECORDER is not None:
+            # Drawn directly, an alpha-0 ink ERASES what is under it.
+            SHAPE_RECORDER(self._img, name, args, kwargs, not translucent and any(a == 0 for a in alphas))
 
     def __getattr__(self, name):
         if name in self._INK_OPS:
@@ -238,7 +250,18 @@ class _BlendingDraw:
                 return self._op(name, args, kwargs)
 
             return call
+        if SHAPE_RECORDER is not None and name in self._PASSED_INK_OPS:
+            def painted(*args, **kwargs):
+                before = self._img.copy()
+                result = getattr(self._draw, name)(*args, **kwargs)
+                SHAPE_RECORDER(self._img, name, args, kwargs, False, before=before)
+                return result
+
+            return painted
         return getattr(self._draw, name)
+
+    # Ops that pass through unchanged but still paint: a recording sees them.
+    _PASSED_INK_OPS = {"text", "multiline_text", "bitmap"}
 
 
 def blending_draw(img: Image.Image) -> _BlendingDraw:
@@ -253,3 +276,5 @@ def composite_polygon(img, pts, fill, outline=None, width=0):
     if outline is not None and width and len(pts) > 1:
         d.line(list(pts) + [pts[0]], fill=outline, width=int(width), joint="curve")
     img.alpha_composite(layer)
+    if SHAPE_RECORDER is not None:
+        SHAPE_RECORDER(img, "polygon", (), {}, False, painted=layer)

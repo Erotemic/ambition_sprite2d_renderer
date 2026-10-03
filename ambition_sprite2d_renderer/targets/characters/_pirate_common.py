@@ -833,32 +833,14 @@ def render_target_with_products(
     feet_xy = (float(feet["x"]), float(feet["y"]))
     product = body_rig_for_pirate(target, frame_fits, frame_transform, feet_xy, frame_size)
     outputs["body_rig"] = product.write(out_dir)
-    flipbook = build_part_flipbook(target, frame_fits, frame_transform, feet_xy, outputs, frame_size)
-    for name, path in flipbook.write(out_dir).items():
+    # The part flipbook, recorded as each frame is painted: every shape cut
+    # and resized by the frame's own fit (``downsample``), placed as the sheet
+    # placed the frame.
+    from ...authoring.part_flipbook import PartFlipbook, publish_rig_flipbook
+
+    for name, path in publish_rig_flipbook(target, ANIMATIONS, render_fn, outputs, frame_transform, out_dir).items():
         outputs["parts" if name == "ron" else name] = path
-    return outputs, {"body_rig": product, "parts": flipbook}
-
-
-def build_part_flipbook(target, frame_fits, frame_transform, feet, outputs, frame_size=BASE_FRAME):
-    """The pirate's transform flipbook, placed like its published sheet."""
-    import yaml
-
-    from ...authoring.part_flipbook import build_flipbook
-
-    sheet = yaml.safe_load(Path(outputs["yaml"]).read_text())
-    return build_flipbook(
-        target,
-        ANIMATIONS,
-        lambda draw, anim, index, count: paint_character(
-            draw, target, anim, index, count, frame_size
-        ),
-        (frame_size[0] * SCALE, frame_size[1] * SCALE),
-        frame_fits,
-        frame_transform,
-        feet,
-        frame_size,
-        (int(sheet["frame_width"]), int(sheet["frame_height"])),
-    )
+    return outputs, {"body_rig": product, "parts": PartFlipbook.from_published(Path(outputs["parts"]))}
 
 
 def is_pirate_family(target: str) -> bool:

@@ -8,6 +8,8 @@ import xml.etree.ElementTree as ET
 from PIL import Image
 import resvg_py
 
+from ...authoring import rigdoc
+
 
 @lru_cache(maxsize=1)
 def _definitions():
@@ -99,5 +101,7 @@ def draw_doll(image, cx, feet_y, pose, scale, solve):
         pieces.append(f'<path d="M{math.cos(a)*2.9} {math.sin(a)*2.9} L{math.cos(a)*3.5} {math.sin(a)*3.5}"/>')
     pieces.append('<path d="M0 -2 L.6 0 L0 1.5 L-.6 0Z" fill="#e6ba76"/></g>')
     svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="{image.width}" height="{image.height}" viewBox="0 0 {image.width/scale} {image.height/scale}">{_definitions()}<g stroke-linecap="round" stroke-linejoin="round">{"".join(pieces)}</g></svg>'
-    image.alpha_composite(Image.open(BytesIO(resvg_py.svg_to_bytes(svg_string=svg, skip_system_fonts=True))).convert('RGBA'))
+    doll = Image.open(BytesIO(resvg_py.svg_to_bytes(svg_string=svg, skip_system_fonts=True))).convert('RGBA')
+    # Through rigdoc's seam: a part flipbook draws the rendered doll as one picture.
+    rigdoc.composite_layer(image, doll, (0, 0), name='paper_doll')
     return tuple(v*scale for v in hands[True])

@@ -25,6 +25,7 @@ from ambition_sprite2d_renderer.core.draw import rgba, with_alpha
 from ...profiling import profile
 from ...authoring.animation_vocab import CORE_CHARACTER_ANIMATION_ORDER, DEFAULT_CORE_TIMINGS, ordered_subset
 from ...authoring.rig import add, clamp, vec
+from ...authoring import rigdoc
 from ...authoring.common_draw import RESAMPLING, draw_capsule, draw_rotated_ellipse, draw_rotated_rounded_rect
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
@@ -122,6 +123,10 @@ class NinjaPose:
 
 
 class NinjaSideGenerator(CharacterGenerator):
+    #: Every frame is painted through rigdoc's seams: the sheet publishes its
+    #: part flipbook (``authoring.sheet.publish_generator_flipbook``).
+    publishes_part_flipbook = True
+
     name = "ninja"
     target = "ninja"
 
@@ -540,7 +545,7 @@ class NinjaSideGenerator(CharacterGenerator):
                     sc(96 + p.root_y),
                 )
                 sd.arc(arc_box, 208, 332, fill=with_alpha(pal["blade_edge"], int(alpha * p.slash)), width=max(1, int(sc(3.2))))
-            img.alpha_composite(slash_layer)
+            rigdoc.composite_canvas(img, slash_layer)
 
         # Legs.
         def limb(a: Point, b: Point, c: Point, radius: float, fill: Color, outline: Color) -> None:
@@ -797,4 +802,4 @@ class NinjaSideGenerator(CharacterGenerator):
         pose = self.pose_for_animation(animation, frame_index, frame_count, spec)
         self._draw_ninja(high, spec, pose, scale)
         resample = RESAMPLING.NEAREST if downsample == "nearest" else RESAMPLING.LANCZOS
-        return high.resize(size, resample)
+        return rigdoc.downsampled_canvas(high, size, resample)

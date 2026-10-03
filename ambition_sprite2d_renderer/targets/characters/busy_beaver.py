@@ -23,6 +23,8 @@ from typing import List, Tuple
 
 from PIL import Image, ImageColor, ImageDraw
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -206,7 +208,7 @@ def _box(x1: float, y1: float, x2: float, y2: float) -> Tuple[int, int, int, int
 
 
 def _downsample(img: Image.Image) -> Image.Image:
-    return img.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 def _rotated_layer(
@@ -413,7 +415,7 @@ def _draw_tail(img: Image.Image, p: Pose) -> None:
             )
 
     layer = _rotated_layer(img.size, draw_tail, p.tail_angle, (cx + 8.0, cy))
-    img.alpha_composite(layer)
+    rigdoc.composite_canvas(img, layer)
 
 
 def _draw_leg(draw: ImageDraw.ImageDraw, hip: Point, foot: Point, far: bool) -> None:
@@ -557,10 +559,10 @@ def _draw_body(img: Image.Image, p: Pose) -> None:
     hdraw.line([_pt(hx - 18.0, hy - 27.0), _pt(hx + 18.0, hy - 27.0)], fill=_rgba(HAT_LIGHT), width=_s(1.2))
     if abs(p.hat_angle) > 0.01:
         hat = hat.rotate(p.hat_angle, resample=Image.Resampling.BICUBIC, center=_pt(hx, hy - 22.0), fillcolor=(0, 0, 0, 0))
-    head.alpha_composite(hat)
+    rigdoc.composite_canvas(head, hat)
     if abs(p.head_angle) > 0.01:
         head = head.rotate(p.head_angle, resample=Image.Resampling.BICUBIC, center=_pt(hx, hy + 8.0), fillcolor=(0, 0, 0, 0))
-    layer.alpha_composite(head)
+    rigdoc.composite_canvas(layer, head)
 
     if abs(p.body_angle) > 0.01 or p.squash_x != 1.0 or p.squash_y != 1.0:
         # Apply scale about the grounded body center before rotation.
@@ -571,11 +573,11 @@ def _draw_body(img: Image.Image, p: Pose) -> None:
             scaled = Image.new("RGBA", layer.size, (0, 0, 0, 0))
             x = _s(80.0) - target[0] // 2
             y = _s(140.0) - target[1]
-            scaled.alpha_composite(crop, (x, y))
+            rigdoc.composite_canvas(scaled, crop, (x, y))
             layer = scaled
         layer = layer.rotate(p.body_angle, resample=Image.Resampling.BICUBIC, center=_pt(bx, 128.0 + p.body_y), fillcolor=(0, 0, 0, 0))
 
-    img.alpha_composite(layer)
+    rigdoc.composite_canvas(img, layer)
 
 
 def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
@@ -589,7 +591,9 @@ def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
 def render(out_dir: str | Path, **opts) -> List[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=render_frame,
@@ -599,6 +603,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         actor_metadata=ACTOR_METADATA,
         auto_crop=False,
     )
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, render_frame, outputs, frame_transform, Path(out_dir))
     return [
         outputs["canonical"],
         outputs["canonical_transparent"],
@@ -607,7 +612,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         outputs["ron"],
         outputs["actor"],
         outputs["preview"],
-    ]
+    ] + list(parts.values())
 
 
 __all__ = [

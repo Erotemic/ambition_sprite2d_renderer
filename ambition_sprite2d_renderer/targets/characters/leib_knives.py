@@ -22,6 +22,8 @@ from typing import List, Sequence, Tuple
 
 from PIL import Image, ImageDraw, ImageFont
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ambition_sprite2d_renderer.core.draw import blending_draw
 from . import _colonial_statesman_rig
@@ -769,7 +771,7 @@ def _render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
         center = P(4.0, -153.0)
         _ellipse(draw, center, 43.0, 50.0, _fade(CALCULUS_BLUE, (pose.block - 0.35) * 0.18), _fade(CALCULUS_BLUE, pose.block * 0.55), 2.0)
 
-    return image.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(image, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 def _body_metrics_override(frame_width: int, frame_height: int):
@@ -787,7 +789,9 @@ def _body_metrics_override(frame_width: int, frame_height: int):
 
 def render(out_dir: str | Path, **opts) -> List[Path]:
     del opts
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=_render_frame,
@@ -814,7 +818,8 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         "canonical_transparent",
         "preview",
     )
-    return [Path(outputs[key]) for key in keys if outputs.get(key)]
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, _render_frame, outputs, frame_transform, Path(out_dir))
+    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
 
 
 def render_canonical(out_dir: str | Path, **opts) -> Path:

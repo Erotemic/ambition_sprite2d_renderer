@@ -27,6 +27,8 @@ from typing import List, Sequence, Tuple
 from PIL import Image, ImageDraw
 
 from ...authoring.portrait import PortraitClip, write_portrait_sheet
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -493,8 +495,12 @@ def render_frame(anim:str,frame_idx:int,nframes:int)->Image.Image:
     _draw_effects_behind(blending_draw(behind),pose)
     _draw_character(blending_draw(body),pose)
     _draw_effects_front(blending_draw(front),pose)
-    image=Image.alpha_composite(Image.alpha_composite(behind,body),front)
-    return image.resize((FRAME_W,FRAME_H),Image.Resampling.LANCZOS)
+    # Through rigdoc's seams, so a part flipbook records each shape (the same
+    # pixels as compositing the layers and resizing directly).
+    image=Image.new("RGBA",behind.size,(0,0,0,0))
+    for layer in (behind,body,front):
+        rigdoc.composite_canvas(image,layer)
+    return rigdoc.downsampled_canvas(image,(FRAME_W,FRAME_H),Image.Resampling.LANCZOS)
 
 
 def _render_native_portrait(expression:str="default",phase:float=0.0)->Image.Image:
@@ -526,7 +532,9 @@ def _body_metrics_override(fw:int,fh:int):
 
 def render(out_dir:Path,**opts)->List[Path]:
     del opts
+    frame_transform:dict={}
     outputs=build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,rows=ROWS,render_fn=render_frame,out_dir=Path(out_dir),
         frame_size=(FRAME_W,FRAME_H),label_width=112,auto_crop=False,
         body_metrics_fn=_body_metrics_override,actor_metadata=ACTOR_METADATA,
@@ -541,7 +549,8 @@ def render(out_dir:Path,**opts)->List[Path]:
         },
     )
     keys=("spritesheet","yaml","ron","actor","canonical","canonical_transparent","preview")
-    return [Path(outputs[key]) for key in keys if outputs.get(key)]
+    parts=publish_rig_flipbook(TARGET_NAME,ROWS,render_frame,outputs,frame_transform,Path(out_dir))
+    return [Path(outputs[key]) for key in keys if outputs.get(key)]+list(parts.values())
 
 
 def render_canonical(out_dir:Path,**opts)->Path:

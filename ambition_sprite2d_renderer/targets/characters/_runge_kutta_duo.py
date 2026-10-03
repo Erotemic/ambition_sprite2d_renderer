@@ -15,6 +15,8 @@ from typing import List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.portrait import FaceGuide, PortraitClip, render_framed_portrait, write_portrait_sheet
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -733,7 +735,9 @@ def _render_native_frame(style: DuoStyle, animation: str, frame_idx: int, frame_
 
 
 def render_frame(style: DuoStyle, animation: str, frame_idx: int, frame_count: int) -> Image.Image:
-    return _render_native_frame(style, animation, frame_idx, frame_count).resize((FRAME_W, FRAME_H), Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(
+        _render_native_frame(style, animation, frame_idx, frame_count), (FRAME_W, FRAME_H), Image.Resampling.LANCZOS
+    )
 
 
 def _body_metrics_override(fw: int, fh: int):
@@ -745,10 +749,15 @@ def _body_metrics_override(fw: int, fh: int):
 
 
 def render_target(style: DuoStyle, out_dir: Path) -> List[Path]:
+    def render_fn(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
+        return render_frame(style, animation, frame_idx, frame_count)
+
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=style.target_name,
         rows=ROWS,
-        render_fn=lambda animation, frame_idx, frame_count: render_frame(style, animation, frame_idx, frame_count),
+        render_fn=render_fn,
         out_dir=Path(out_dir),
         frame_size=(FRAME_W, FRAME_H),
         label_width=112,
@@ -765,7 +774,8 @@ def render_target(style: DuoStyle, out_dir: Path) -> List[Path]:
         },
     )
     keys = ("spritesheet", "yaml", "ron", "actor", "canonical", "canonical_transparent", "preview")
-    return [Path(outputs[key]) for key in keys if outputs.get(key)]
+    parts = publish_rig_flipbook(style.target_name, ROWS, render_fn, outputs, frame_transform, Path(out_dir))
+    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
 
 
 def render_target_canonical(style: DuoStyle, out_dir: Path) -> Path:

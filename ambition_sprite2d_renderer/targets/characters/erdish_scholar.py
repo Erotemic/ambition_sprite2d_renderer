@@ -14,6 +14,7 @@ from typing import Dict, Iterable, Optional, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...authoring import rigdoc
 from ...profiling import profile
 from ...authoring.generator import CharacterGenerator
 from ...core.draw import rgba
@@ -205,6 +206,9 @@ class ErdishPose:
 
 class ErdishScholarGenerator(CharacterGenerator):
     """Character-specific base-pose renderer for Erdish."""
+    #: Every frame is painted through rigdoc's seams: the sheet publishes its
+    #: part flipbook (``authoring.sheet.publish_generator_flipbook``).
+    publishes_part_flipbook = True
 
     target = "erdish_scholar"
     name = "erdish_scholar"
@@ -751,13 +755,14 @@ class ErdishScholarGenerator(CharacterGenerator):
                 center=pivot,
                 expand=False,
             )
-        canvas.alpha_composite(character)
+        rigdoc.composite_canvas(canvas, character)
 
         if ss > 1:
             resample = Image.Resampling.LANCZOS
             if str(downsample).lower() in {"nearest", "none"}:
                 resample = Image.Resampling.NEAREST
-            canvas = canvas.resize((width, height), resample)
+            # Through rigdoc's seam, so a part flipbook records each shape.
+            canvas = rigdoc.downsampled_canvas(canvas, (width, height), resample)
         return canvas
 
     def _draw_character(

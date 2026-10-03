@@ -20,6 +20,7 @@ from typing import Callable, Dict, Iterable, Mapping, Optional, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...authoring import rigdoc
 from ...profiling import profile
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
@@ -770,6 +771,10 @@ PAINTERS: Dict[str, Callable[[VDraw, MalloryPose], None]] = {
 
 
 class MalloryInterceptorGenerator(CharacterGenerator):
+    #: Every frame is painted through rigdoc's seams: the sheet publishes its
+    #: part flipbook (``authoring.sheet.publish_generator_flipbook``).
+    publishes_part_flipbook = True
+
     name = "mallory_interceptor"
     target = "mallory_interceptor"
     applies_job_name = True
@@ -829,7 +834,8 @@ class MalloryInterceptorGenerator(CharacterGenerator):
             if str(job.render.downsample).lower() == "lanczos"
             else Image.Resampling.BICUBIC
         )
-        return source.resize(size, resample)
+        # Through rigdoc's seam, so a part flipbook records each shape.
+        return rigdoc.downsampled_canvas(source, size, resample)
 
 
 def source_uses_forbidden_raster_effects() -> bool:

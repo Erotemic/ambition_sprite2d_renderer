@@ -14,6 +14,7 @@ from typing import Any, Dict, Iterable, Optional, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...authoring import rigdoc
 from ...profiling import profile
 from .alice_paper_doll import draw_doll
 from ...authoring.animation_vocab import (
@@ -218,6 +219,10 @@ def _rounded(
 
 
 class AliceCryptographerGenerator(CharacterGenerator):
+    #: Every frame is painted through rigdoc's seams: the sheet publishes its
+    #: part flipbook (``authoring.sheet.publish_generator_flipbook``).
+    publishes_part_flipbook = True
+
     name = "alice_cryptographer"
     target = "alice_cryptographer"
     applies_job_name = True
@@ -727,15 +732,24 @@ class AliceCryptographerGenerator(CharacterGenerator):
             strength = _clamp01(pose.hit_flash)
             tint = Image.new("RGBA", actor.size, (255, 228, 200, round(155 * strength)))
             tint.putalpha(alpha.point(lambda value: round(value * 0.60 * strength)))
-            actor = Image.alpha_composite(actor, tint)
+            # Through rigdoc's seams (the same pixels as Image.alpha_composite),
+            # so a part flipbook keeps the actor's shapes under the tint.
+            flashed = Image.new("RGBA", actor.size, (0, 0, 0, 0))
+            rigdoc.composite_canvas(flashed, actor)
+            rigdoc.composite_canvas(flashed, tint)
+            actor = flashed
 
         if pose.opacity < 0.999:
+            # A faded copy: its shapes are no longer the recorded ones, so a
+            # part flipbook draws it as one picture.
+            actor = actor.copy()
             alpha = actor.getchannel("A")
             actor.putalpha(alpha.point(lambda value: round(value * _clamp01(pose.opacity))))
 
-        canvas.alpha_composite(actor)
+        rigdoc.composite_canvas(canvas, actor)
         if ss > 1:
-            canvas = canvas.resize((width, height), Image.Resampling.LANCZOS)
+            # Through rigdoc's seam, so a part flipbook records each shape.
+            canvas = rigdoc.downsampled_canvas(canvas, (width, height), Image.Resampling.LANCZOS)
         return canvas
 
     # ------------------------------------------------------------------

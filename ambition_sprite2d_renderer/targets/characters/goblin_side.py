@@ -21,6 +21,7 @@ from PIL import Image, ImageColor, ImageDraw
 from ambition_sprite2d_renderer.core.draw import rgba, with_alpha, bbox_from_center as _bbox
 
 from ...profiling import profile
+from ...authoring import rigdoc
 from ...authoring.common_draw import RESAMPLING, draw_capsule, draw_rotated_ellipse, draw_rotated_rounded_rect
 from ...authoring.generator import CharacterGenerator
 from ...authoring.rig import add, clamp, ease_in_out_sine, ease_out_cubic, lerp, smoothstep, vec
@@ -43,7 +44,7 @@ def parse_background(value: str) -> Optional[Color]:
 
 def _paste_rotated_local(base: Image.Image, layer: Image.Image, center: Point, angle: float) -> None:
     rotated = layer.rotate(angle, resample=RESAMPLING.BICUBIC, expand=True)
-    base.alpha_composite(rotated, (int(center[0] - rotated.width / 2), int(center[1] - rotated.height / 2)))
+    rigdoc.composite_layer(base, rotated, (int(center[0] - rotated.width / 2), int(center[1] - rotated.height / 2)), name="rotated")
 
 
 @dataclass(frozen=True)
@@ -99,6 +100,10 @@ class GoblinPose:
 
 
 class SideGoblinGenerator(CharacterGenerator):
+    #: Every frame is painted through rigdoc's seams: the sheet publishes its
+    #: part flipbook (``authoring.sheet.publish_generator_flipbook``).
+    publishes_part_flipbook = True
+
     name = "goblin"
     target = "goblin"
 
@@ -470,7 +475,7 @@ class SideGoblinGenerator(CharacterGenerator):
         cloth = [(x - 8 * S, y + 7 * S), (x + 8 * S, y + 7 * S), (x + 11 * S, y + 15 * S), (x - 6 * S, y + 13 * S)]
         d.polygon(cloth, fill=pal["cloth"], outline=outline)
         d.line([cloth[0], cloth[2]], fill=pal["cloth_dark"], width=max(1, int(1.2 * S)))
-        img.alpha_composite(layer)
+        rigdoc.composite_canvas(img, layer)
 
     def _draw_rigid_head(self, img: Image.Image, center: Point, spec: GoblinSpec, pal: Dict[str, Color], S: float, angle: float, blink: bool, squint: float, dead: bool) -> Point:
         pad = int(math.ceil(54 * S))
@@ -500,7 +505,7 @@ class SideGoblinGenerator(CharacterGenerator):
         detail = Image.new("RGBA", layer.size, (0, 0, 0, 0))
         hd = blending_draw(detail)
         hd.ellipse((cx - 8 * S, cy - 10 * S, cx + 12 * S, cy + 1 * S), fill=with_alpha(pal["skin_top"], 125))
-        layer.alpha_composite(detail)
+        rigdoc.composite_canvas(layer, detail)
         # Eye.
         eye_center = (cx + 7.5 * S, cy - 2.0 * S)
         eye_h = spec.eye_h * S * (0.20 if blink else max(0.30, 1.0 - 0.5 * squint))
@@ -667,7 +672,7 @@ class SideGoblinGenerator(CharacterGenerator):
                     alpha_scale *= 0.35
                 a = strip.getchannel("A").point(lambda v, s=alpha_scale: max(0, min(255, int(v * s))))
                 strip.putalpha(a)
-                base.alpha_composite(strip, (int(x + dx), int(y1 + dy)))
+                rigdoc.composite_layer(base, strip, (int(x + dx), int(y1 + dy)), name="strip")
         else:
             progress = smoothstep(clamp(t / 1.0, 0.0, 1.0))
             for i, x in enumerate(range(x1, x2, slice_w)):
@@ -682,13 +687,11 @@ class SideGoblinGenerator(CharacterGenerator):
                     alpha_scale *= 0.55
                 a = strip.getchannel("A").point(lambda v, s=alpha_scale: max(0, min(255, int(v * s))))
                 strip.putalpha(a)
-                base.alpha_composite(strip, (int(x + dx), int(y1 + dy)))
+                rigdoc.composite_layer(base, strip, (int(x + dx), int(y1 + dy)), name="strip")
             full_alpha = smoothstep(clamp((progress - 0.34) / 0.66, 0.0, 1.0))
             if full_alpha > 0:
-                resolved = actor.copy()
-                a = resolved.getchannel("A").point(lambda v, s=full_alpha: max(0, min(255, int(v * s))))
-                resolved.putalpha(a)
-                base.alpha_composite(resolved)
+                # Faded as one picture (one overlay), not part by part.
+                rigdoc.composite_layer(base, rigdoc.faded_canvas(actor, full_alpha), name="resolved")
 
 
     def _draw_variant_accessories(self, d: ImageDraw.ImageDraw, spec: GoblinSpec, pal: Dict[str, Color], S: float, root_x: float, ground_y: float, body_center: Point, head_center: Point) -> None:
@@ -834,7 +837,11 @@ class SideGoblinGenerator(CharacterGenerator):
         if animation in {"blink_out", "blink_in"}:
             self._composite_teleport_actor(img, character_img, animation, frame_index, frame_count, S)
         else:
-            img.alpha_composite(character_img)
+            # `character_img` IS `img` here: the frame is composited over
+            # itself. A copy made through the seams keeps every shape.
+            copy = Image.new("RGBA", img.size, (0, 0, 0, 0))
+            rigdoc.composite_canvas(copy, img)
+            rigdoc.composite_canvas(img, copy)
         return img
 
     @profile
@@ -851,7 +858,7 @@ class SideGoblinGenerator(CharacterGenerator):
     ) -> Image.Image:
         high = self._render_highres(spec, animation, frame_index, frame_count, size, background, max(1, int(supersample)))
         resample = RESAMPLING.NEAREST if downsample == "nearest" else RESAMPLING.LANCZOS
-        return high.resize(size, resample)
+        return rigdoc.downsampled_canvas(high, size, resample)
 
     @profile
     def render_frame(

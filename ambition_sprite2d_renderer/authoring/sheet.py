@@ -499,6 +499,38 @@ def write_spritesheet(
     return image_out, manifest_out
 
 
+def publish_generator_flipbook(
+    job: CharacterJob, name: str, manifest_out: str | Path, out_dir: str | Path
+) -> Dict[str, Path]:
+    """Publish the part flipbook of a generator sheet that ``write_spritesheet``
+    just wrote, as ``<name>_parts.ron`` beside it.
+
+    The rows and the crop come from the written manifest: a published frame is
+    the rendered frame cut at ``crop.offset``."""
+    from .part_flipbook import publish_rig_flipbook
+
+    generator = get_generator(job.target)
+    spec = generator.sample_spec(job)
+    sheet = yaml.safe_load(Path(manifest_out).read_text())
+    crop = sheet["crop"]
+    size = (int(crop["source_frame_width"]), int(crop["source_frame_height"]))
+    animations = generator.animations()
+    rows = [
+        (a, animations[a]["frames"], animations[a]["duration_ms"])
+        for a in job.animations
+        if a in animations
+    ]
+
+    def render(animation: str, index: int, count: int) -> Image.Image:
+        del count
+        return generator.render_frame(spec, animation, index, size, job)
+
+    offset = {"dx": -int(crop["offset"]["x"]), "dy": -int(crop["offset"]["y"])}
+    return publish_rig_flipbook(
+        name, rows, render, {"yaml": str(manifest_out)}, offset, Path(out_dir)
+    )
+
+
 # RON manifest emission is unified in core.manifest_ron (one writer for both
 # spines). These aliases keep the names callers/tests import.
 _adapter_manifest_to_ron = render_adapter

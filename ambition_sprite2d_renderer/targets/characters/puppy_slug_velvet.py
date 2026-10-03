@@ -23,6 +23,8 @@ from typing import Iterable, Mapping, Sequence
 
 from PIL import Image, ImageColor, ImageDraw
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -988,14 +990,16 @@ def _draw_face(layers: Mapping[str, Image.Image], pose: Pose) -> None:
 
 
 def _compose(layers: Mapping[str, Image.Image]) -> Image.Image:
+    # Through rigdoc's seams, so a part flipbook records each shape (the same
+    # pixels as compositing the layers and resizing directly).
     canvas = Image.new("RGBA", WORK_SIZE, (0, 0, 0, 0))
     for name in sorted(LAYER_ORDER, key=LAYER_ORDER.__getitem__):
-        canvas = Image.alpha_composite(canvas, layers[name])
+        rigdoc.composite_canvas(canvas, layers[name])
     # Preserve a two-pixel sampling gutter in the logical frame.  This is a
     # uniform design-scale choice, not a per-pose shrink hack.
-    art = canvas.resize((124, 124), Image.Resampling.LANCZOS)
+    art = rigdoc.downsampled_canvas(canvas, (124, 124), Image.Resampling.LANCZOS)
     frame = Image.new("RGBA", FRAME_SIZE, (0, 0, 0, 0))
-    frame.alpha_composite(art, (2, 2))
+    rigdoc.composite_canvas(frame, art, (2, 2))
     return frame
 
 
@@ -1025,7 +1029,9 @@ def render_canonical(out_dir: str | Path, **opts) -> Path:
 
 def render(out_dir: str | Path, **opts) -> list[Path]:
     del opts
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=render_frame,
@@ -1049,6 +1055,7 @@ def render(out_dir: str | Path, **opts) -> list[Path]:
             }
         },
     )
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, render_frame, outputs, frame_transform, Path(out_dir))
     return [
         outputs["canonical"],
         outputs["canonical_transparent"],
@@ -1057,7 +1064,7 @@ def render(out_dir: str | Path, **opts) -> list[Path]:
         outputs["ron"],
         outputs["actor"],
         outputs["preview"],
-    ]
+    ] + list(parts.values())
 
 
 __all__ = [

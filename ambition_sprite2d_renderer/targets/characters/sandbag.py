@@ -21,7 +21,9 @@ import math
 from dataclasses import asdict, dataclass
 
 from ...profiling import profile
+from ...authoring import rigdoc
 from ...authoring.actor_contract import write_actor_contract_for_tackon
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.animation_vocab import (
     DEFAULT_ADVANCED_TIMINGS,
     FULL_PLAYER_ANIMATION_ORDER,
@@ -430,6 +432,9 @@ class SandbagGenerator(CharacterGenerator):
     """The training-dummy target. Unlike the procedural characters it has no
     seed-varied spec — every field is fixed — so it renders straight from the
     module-level frame painter below."""
+    #: Every frame is painted through rigdoc's seams: the sheet publishes its
+    #: part flipbook (``authoring.sheet.publish_generator_flipbook``).
+    publishes_part_flipbook = True
 
     target = "sandbag"
 
@@ -460,7 +465,7 @@ class SandbagGenerator(CharacterGenerator):
             animation, frame_index % anim["frames"], anim["frames"]
         )
         if frame.size != size:
-            frame = frame.resize(size, Image.Resampling.LANCZOS)
+            frame = rigdoc.downsampled_canvas(frame, size, Image.Resampling.LANCZOS)
         return frame
 
 
@@ -821,7 +826,7 @@ def render_sandbag_frame(animation: str, frame_index: int, frame_count: int) -> 
             resample=Image.Resampling.BICUBIC,
             fillcolor=(0, 0, 0, 0),
         )
-    canvas.alpha_composite(body_layer)
+    rigdoc.composite_canvas(canvas, body_layer)
 
     if animation == "hit":
         _impact_marks(canvas, frame_index)
@@ -955,7 +960,7 @@ def render_sandbag_frame(animation: str, frame_index: int, frame_count: int) -> 
             fill=_rgba("c5b8ff", int(135 * flame)),
         )
 
-    return canvas.resize((FRAME_W, FRAME_H), Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(canvas, (FRAME_W, FRAME_H), Image.Resampling.LANCZOS)
 
 
 def _measure_body_extent(frame: Image.Image) -> Dict[str, object] | None:
@@ -1086,7 +1091,7 @@ def build_sheet(
     return sheet, manifest
 
 
-def write_outputs(out_dir: Path) -> Tuple[Path, Path, Path]:
+def write_outputs(out_dir: Path) -> Tuple[Path, ...]:
     rows = _rows_for_sparse()
     out_dir.mkdir(parents=True, exist_ok=True)
     stem = "sandbag_spritesheet"
@@ -1125,7 +1130,10 @@ def write_outputs(out_dir: Path) -> Tuple[Path, Path, Path]:
             "tags": ["training"],
         },
     )
-    return png_path, yaml_path, ron_path, actor_path
+    # The part flipbook of the frames just published: each frame is drawn
+    # at its sheet cell unchanged, so no frame transform applies.
+    parts = publish_rig_flipbook(TARGET_NAME, SANDBAG_ROWS, render_sandbag_frame, {"yaml": yaml_path}, {}, out_dir)
+    return (png_path, yaml_path, ron_path, actor_path, *parts.values())
 
 
 TARGET_NAME = "sandbag"

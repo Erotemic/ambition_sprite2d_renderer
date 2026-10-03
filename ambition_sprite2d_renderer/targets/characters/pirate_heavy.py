@@ -22,6 +22,8 @@ from typing import Dict, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ...authoring.portrait import (
     PortraitClip,
@@ -372,7 +374,7 @@ def _rect_poly(center: Point, w: float, h: float, deg: float) -> List[Point]:
 
 
 def _downsample(img: Image.Image) -> Image.Image:
-    return img.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 class Pose:
@@ -1054,17 +1056,22 @@ def render_variant(spec: VariantSpec, out_dir: str | Path, **opts) -> List[Path]
     out_dir.mkdir(parents=True, exist_ok=True)
     frame_size = opts.get("frame_size", FRAME_SIZE)
     target_name = f"{BASE_TARGET_NAME}_{spec.slug}"
+
+    def render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
+        return _draw_variant(anim, frame_idx, nframes, spec)
+
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=target_name,
         rows=ROWS,
-        render_fn=lambda anim, frame_idx, nframes: _draw_variant(
-            anim, frame_idx, nframes, spec
-        ),
+        render_fn=render_frame,
         out_dir=out_dir,
         frame_size=frame_size,
         crop_margin=10,
         auto_crop=True,
     )
+    parts = publish_rig_flipbook(target_name, ROWS, render_frame, outputs, frame_transform, out_dir)
     return [
         outputs["spritesheet"],
         outputs["yaml"],
@@ -1072,7 +1079,7 @@ def render_variant(spec: VariantSpec, out_dir: str | Path, **opts) -> List[Path]
         outputs["preview"],
         outputs["canonical"],
         outputs["canonical_transparent"],
-    ]
+    ] + list(parts.values())
 
 
 PORTRAIT_FILES = tuple(
@@ -1149,8 +1156,10 @@ def install(out_dir: "Path | str", dest_root: "Path | str") -> List["Path"]:
     copied: List[Path] = []
     for slug in VARIANTS.keys():
         target = f"{BASE_TARGET_NAME}_{slug}"
-        for ext in ("png", "yaml", "ron"):
-            src = out_dir / slug / f"{target}_spritesheet.{ext}"
+        sources = [out_dir / slug / f"{target}_spritesheet.{ext}" for ext in ("png", "yaml", "ron")]
+        # The part flipbook `render_variant` published beside the sheet.
+        sources += sorted((out_dir / slug).glob(f"{target}_parts*"))
+        for src in sources:
             if not src.exists():
                 continue
             dst = dest_root / src.name

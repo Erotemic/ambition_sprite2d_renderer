@@ -1,15 +1,15 @@
-"""The pirate transform flipbook draws the frames the sheet publishes.
+"""The pirate part flipbook draws the frames the sheet publishes.
 
 Every frame is recomposed from the published part atlas and draw table and
-diffed against the same frame of the PUBLISHED sheet. The bound is 2.5% of the
-drawn pixels (``part_flipbook.parity``: premultiplied RGBA within 64, one pixel
-of slack for an edge that a separate resample moves over). Measured on all five
-pirates the worst frame is 1.95%. A dropped hat reads 8.5%, a torso two pixels
-off 7.9%, a sword turned the wrong way 4.0%.
+diffed against the same frame of the PUBLISHED sheet, by D6's bounds (the game
+repository's `docs/planning/engine/mary-o-part-realization.md`): at most 1% of
+the drawn pixels wrong and no wrong blob over 6 pixels, at the continuous
+replay tolerance.
 
-The texel floor is a regression line, not the plan's 75%. Limbs and neck are
-per-frame overlays, which is 92% of the flipbook's texels, and the plan's own
-method (one overlay per frame) measures near the same 38%.
+A pirate frame is fitted by its own scale (``sheet_build.downsample``, 4.6x
+to 5.4x, never whole), so each shape is resized where the frame's resize
+samples it (``part_flipbook._sampled_as_the_frame``). The flipbook of 2026-10-02
+transformed parts drawn at one scale and measured 5.5% and a blob of 69.
 """
 
 from __future__ import annotations
@@ -20,14 +20,23 @@ import pytest
 import yaml
 from PIL import Image
 
-from ambition_sprite2d_renderer.authoring.part_flipbook import parity
+from ambition_sprite2d_renderer.authoring.part_flipbook import (
+    CONTINUOUS_REPLAY_TOLERANCE,
+    largest_wrong_blob,
+    parity,
+)
 from ambition_sprite2d_renderer.authoring.sheet_build import ANIMATIONS
 from ambition_sprite2d_renderer.targets.characters._pirate_common import (
     render_target_with_products,
 )
 
-_PARITY_BOUND = 0.025
-_SAVING_FLOOR = 0.35
+_PARITY_BOUND = 0.01
+_BLOB_BOUND = 6
+#: Faithful costs texels here: a shape resized by its frame's own scale is
+#: reused by no other frame. Measured 2026-10-03: 1.004 of the sheet's texels
+#: (raider), 1.074 (admiral); the unfaithful flipbook before saved 35%. A ceiling, so a
+#: flipbook that stops sharing what it can share shows.
+_TEXEL_CEILING = 1.15
 
 
 def _published_frame(atlas, row, index, frame_size):
@@ -55,9 +64,11 @@ def test_the_flipbook_recomposes_every_published_frame(kind, tmp_path: Path):
     for row, (_duration, frames) in flipbook.clips.items():
         for index in range(len(frames)):
             reference = _published_frame(atlas, rows[row], index, flipbook.frame_size)
-            wrong = parity(reference, flipbook.recompose(row, index))
-            if wrong > _PARITY_BOUND:
-                failures.append(f"{row}[{index}]: {wrong:.4f}")
+            candidate = flipbook.recompose(row, index)
+            wrong = parity(reference, candidate, **CONTINUOUS_REPLAY_TOLERANCE)
+            blob = largest_wrong_blob(reference, candidate, **CONTINUOUS_REPLAY_TOLERANCE)
+            if wrong > _PARITY_BOUND or blob > _BLOB_BOUND:
+                failures.append(f"{row}[{index}]: {wrong:.4f}, blob {blob}")
     assert not failures, "frames the flipbook does not reproduce:\n" + "\n".join(failures)
-    saving = 1.0 - flipbook.packed_texels() / (atlas.width * atlas.height)
-    assert saving >= _SAVING_FLOOR, f"the part atlas saves only {saving:.3f} of the sheet's texels"
+    cost = flipbook.packed_texels() / (atlas.width * atlas.height)
+    assert cost <= _TEXEL_CEILING, f"the part atlas costs {cost:.3f} of the sheet's texels"

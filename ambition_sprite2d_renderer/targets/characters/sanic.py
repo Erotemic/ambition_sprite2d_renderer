@@ -50,6 +50,8 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 from PIL import Image, ImageColor, ImageDraw, ImageFilter
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -165,7 +167,7 @@ def _box(x1: float, y1: float, x2: float, y2: float) -> Tuple[int, int, int, int
 
 
 def _downsample(img: Image.Image) -> Image.Image:
-    return img.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 def _jitter(i: int, salt: float) -> Tuple[float, float]:
@@ -236,7 +238,7 @@ def _draw_speed_lines(img: Image.Image, skin: Skin, cx: float, cy: float, phase:
         x1, y1 = x0 + dx * length, y0 + dy * length
         col = _rgba(skin.eye if i % 2 == 0 else skin.body, int(150 * intensity))
         d.line(_box(x0, y0, x1, y1), fill=col, width=_s(2.2))
-    img.alpha_composite(layer)
+    rigdoc.composite_canvas(img, layer)
 
 
 def _swoosh(img: Image.Image, skin: Skin, cx: float, cy: float, r: float, a0: float, a1: float) -> None:
@@ -244,7 +246,7 @@ def _swoosh(img: Image.Image, skin: Skin, cx: float, cy: float, r: float, a0: fl
     d = blending_draw(layer)
     d.arc(_box(cx - r, cy - r, cx + r, cy + r), a0, a1, fill=_rgba(skin.eye, 225), width=_s(3.2))
     d.arc(_box(cx - r + 2.2, cy - r + 2.2, cx + r - 2.2, cy + r - 2.2), a0 + 8, a1 - 8, fill=_rgba(skin.body, 180), width=_s(1.6))
-    img.alpha_composite(layer)
+    rigdoc.composite_canvas(img, layer)
 
 
 def _stars(img: Image.Image, skin: Skin, cx: float, cy: float, salt: float, n: int = 4) -> None:
@@ -256,14 +258,14 @@ def _stars(img: Image.Image, skin: Skin, cx: float, cy: float, salt: float, n: i
         r = 2.4 + (i % 2) * 1.2
         d.line(_box(sx - r, sy, sx + r, sy), fill=_rgba(skin.accent, 235), width=_s(1.4))
         d.line(_box(sx, sy - r, sx, sy + r), fill=_rgba(skin.accent, 235), width=_s(1.4))
-    img.alpha_composite(layer)
+    rigdoc.composite_canvas(img, layer)
 
 
 def _shield_bubble(img: Image.Image, skin: Skin, cx: float, cy: float, r: float) -> None:
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     d = blending_draw(layer)
     d.ellipse(_box(cx - r, cy - r, cx + r, cy + r), fill=_rgba(skin.shield, 70), outline=_rgba("#c8f2ff", 170), width=_s(1.6))
-    img.alpha_composite(layer)
+    rigdoc.composite_canvas(img, layer)
 
 
 def _dust(img: Image.Image, cx: float, cy: float, salt: float) -> None:
@@ -274,7 +276,7 @@ def _dust(img: Image.Image, cx: float, cy: float, salt: float) -> None:
         px = cx + (i - 1.5) * 8.0 + jx * 2.0
         r = 3.0 + (i % 2) * 1.5
         d.ellipse(_box(px - r, cy - r * 0.6, px + r, cy + r * 0.6), fill=_rgba("#d8d8d8", 150))
-    img.alpha_composite(layer)
+    rigdoc.composite_canvas(img, layer)
 
 
 def _aura(img: Image.Image, skin: Skin, cx: float, cy: float, r: float, salt: float) -> None:
@@ -286,7 +288,7 @@ def _aura(img: Image.Image, skin: Skin, cx: float, cy: float, r: float, salt: fl
     gd = blending_draw(glow)
     gd.ellipse(_box(cx - r, cy - r * 1.15, cx + r, cy + r * 1.15), fill=_rgba(skin.aura, 95))
     glow = glow.filter(ImageFilter.GaussianBlur(radius=SUPER * 3.2))
-    img.alpha_composite(glow)
+    rigdoc.composite_canvas(img, glow)
     spk = Image.new("RGBA", img.size, (0, 0, 0, 0))
     sd = blending_draw(spk)
     for i in range(7):
@@ -295,7 +297,7 @@ def _aura(img: Image.Image, skin: Skin, cx: float, cy: float, r: float, salt: fl
         rr = 1.6 + (i % 2) * 1.3
         sd.line(_box(sx - rr, sy, sx + rr, sy), fill=_rgba("#fffbe0", 235), width=_s(1.2))
         sd.line(_box(sx, sy - rr, sx, sy + rr), fill=_rgba("#fffbe0", 235), width=_s(1.2))
-    img.alpha_composite(spk)
+    rigdoc.composite_canvas(img, spk)
 
 
 # --- Body parts ---------------------------------------------------------------
@@ -465,7 +467,7 @@ def _draw_spin_ball(
     sd = blending_draw(streak)
     a0 = int(math.degrees(spin)) % 360
     sd.arc(_box(cx - r + 1, cy - r + 1, cx + r - 1, cy + r - 1), a0, a0 + (250 if emphasize else 200), fill=_rgba(skin.shoe, 215), width=_s(3.2))
-    img.alpha_composite(streak)
+    rigdoc.composite_canvas(img, streak)
 
     # Two shoe smudges caught mid-spin + a pale face smear so the whirl reads.
     for k in range(2):
@@ -483,7 +485,7 @@ def _draw_spin_ball(
             x0, y0 = cx + math.cos(a) * (r + 6), cy + math.sin(a) * (r + 6)
             x1, y1 = cx + math.cos(a) * (r + 16), cy + math.sin(a) * (r + 16)
             hd.line(_box(x0, y0, x1, y1), fill=_rgba(skin.shoe, 150), width=_s(1.6))
-        img.alpha_composite(halo)
+        rigdoc.composite_canvas(img, halo)
 
 
 def _ball_frame(skin: Skin, anim: str, frame_idx: int, nframes: int) -> Image.Image:
@@ -580,7 +582,7 @@ def _render_humanoid(
         bcx, bcy = hips_x + 2.0, GROUND_Y - 8.0
         bd.ellipse(_box(bcx - 15, bcy - 14, bcx + 15, bcy + 12), fill=_rgba(skin.shoe, 150))
         bd.ellipse(_box(bcx - 11, bcy - 18, bcx + 11, bcy + 16), fill=_rgba(skin.shoe, 110))
-        img.alpha_composite(blur)
+        rigdoc.composite_canvas(img, blur)
         for k in range(3):
             ang = fx_t * 3.0 + k * math.tau / 3.0
             _draw_shoe(draw, skin, bcx + math.cos(ang) * 12.0, bcy + math.sin(ang) * 11.0, salt + k, tilt=math.sin(ang) * 2.0)
@@ -991,7 +993,9 @@ def _render_form(target_name: str, skin: Skin, actor_metadata: dict, out_dir: st
     def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
         return _draw_sanic(skin, animation, frame_idx, nframes)
 
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=target_name,
         rows=ROWS,
         render_fn=render_frame,
@@ -1004,7 +1008,10 @@ def _render_form(target_name: str, skin: Skin, actor_metadata: dict, out_dir: st
         animation_key_map=ANIMATION_KEY_MAP,
         attack_hitboxes=ATTACK_HITBOXES,
     )
-    return [outputs[k] for k in ("canonical", "canonical_transparent", "spritesheet", "yaml", "ron", "actor", "preview")]
+    parts = publish_rig_flipbook(target_name, ROWS, render_frame, outputs, frame_transform, out_dir)
+    return [outputs[k] for k in ("canonical", "canonical_transparent", "spritesheet", "yaml", "ron", "actor", "preview")] + list(
+        parts.values()
+    )
 
 
 def render_sanic(out_dir: str | Path, **opts) -> List[Path]:

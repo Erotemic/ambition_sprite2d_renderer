@@ -21,6 +21,8 @@ from typing import List, Sequence, Tuple
 
 from PIL import Image, ImageDraw, ImageFont
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -546,7 +548,7 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         draw_behind = blending_draw(behind)
         _arc(draw_behind, (196.0, 70.0), 32.0 + pose.taunt * 6.0, 16.0, 0.0, 360.0, _fade(GOLD_LIGHT, 0.35 + pose.taunt * 0.35), 2.4)
         _text(draw_behind, (196.0, 39.0), "∞", 18, _fade(TRANSFINITE, 0.45 + pose.taunt * 0.5), stroke=TRANSPARENT)
-    image.alpha_composite(behind)
+    rigdoc.composite_canvas(image, behind)
     draw = blending_draw(image)
 
     collapse = pose.collapse
@@ -562,7 +564,7 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
             alpha = pose.charge * (0.22 - idx * 0.035)
             _ellipse(trail_draw, (body_x - offset, body_y), 58.0, 27.0, _fade(HORSE_LIGHT, alpha), TRANSPARENT, 0.1)
             _text(trail_draw, (body_x - offset, body_y - 37.0), str(idx), 9, _fade(TRANSFINITE, alpha * 2.2), stroke=TRANSPARENT)
-        image.alpha_composite(trail)
+        rigdoc.composite_canvas(image, trail)
         draw = blending_draw(image)
 
     # Tail behind the legs and torso.
@@ -694,7 +696,7 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         slash_end = _from(tip, 60.0, pose.lance_angle + 50.0)
         _line(fd, [_from(tip, -72.0, pose.lance_angle + 50.0), slash_end], _fade(GOLD_LIGHT, pose.diagonal * 0.72), 5.5)
         _line(fd, [_from(tip, -65.0, pose.lance_angle + 50.0), slash_end], _fade(TRANSFINITE, pose.diagonal * 0.76), 2.3)
-        image.alpha_composite(front)
+        rigdoc.composite_canvas(image, front)
 
     if pose.hit > 0.04:
         hit_layer = Image.new("RGBA", WORK_SIZE, TRANSPARENT)
@@ -702,9 +704,9 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         center = (body_x + 8.0, body_y - 40.0)
         for deg in range(0, 360, 45):
             _line(hd, [_from(center, 18.0, deg), _from(center, 38.0 + pose.hit * 12.0, deg)], _fade(POWER_LIGHT, pose.hit * 0.82), 3.0)
-        image.alpha_composite(hit_layer)
+        rigdoc.composite_canvas(image, hit_layer)
 
-    return image.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(image, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 def _body_metrics_override(frame_width: int, frame_height: int):
@@ -724,7 +726,9 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
     del opts
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=_render_frame,
@@ -752,7 +756,8 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         "canonical_transparent",
         "preview",
     )
-    return [Path(outputs[key]) for key in keys if outputs.get(key)]
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, _render_frame, outputs, frame_transform, Path(out_dir))
+    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
 
 
 def render_canonical(out_dir: str | Path, **opts) -> Path:

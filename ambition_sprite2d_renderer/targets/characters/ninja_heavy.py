@@ -18,6 +18,8 @@ from typing import List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -345,7 +347,7 @@ def _draw_solid_segment(
 
 
 def _downsample(image: Image.Image) -> Image.Image:
-    return image.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(image, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 @dataclass
@@ -1339,7 +1341,9 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     frame_size = opts.get("frame_size", FRAME_SIZE)
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=lambda anim, frame_idx, nframes: _render_frame(anim, frame_idx, nframes),
@@ -1348,6 +1352,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         crop_margin=10,
         auto_crop=True,
     )
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, _render_frame, outputs, frame_transform, Path(out_dir))
     return [
         outputs["spritesheet"],
         outputs["yaml"],
@@ -1355,7 +1360,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         outputs["preview"],
         outputs["canonical"],
         outputs["canonical_transparent"],
-    ]
+    ] + list(parts.values())
 
 
 def main(argv: list[str] | None = None) -> int:

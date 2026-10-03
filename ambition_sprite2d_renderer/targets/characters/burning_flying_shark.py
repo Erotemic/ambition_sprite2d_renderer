@@ -14,6 +14,8 @@ from typing import List, Tuple
 
 from PIL import Image, ImageColor, ImageDraw, ImageFilter
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -144,7 +146,7 @@ def _box(x1: float, y1: float, x2: float, y2: float) -> Tuple[int, int, int, int
 
 
 def _downsample(img: Image.Image) -> Image.Image:
-    return img.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 def _draw_glow(
@@ -154,7 +156,7 @@ def _draw_glow(
     draw = blending_draw(layer)
     draw.polygon([_pt(x, y) for x, y in points], fill=color)
     layer = layer.filter(ImageFilter.GaussianBlur(radius=blur * SUPER / 2.0))
-    base.alpha_composite(layer)
+    rigdoc.composite_canvas(base, layer)
 
 
 def _draw_flame_plume(
@@ -365,7 +367,7 @@ def _draw_shark(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         fill=_rgba("#ff8b29", 220),
     )
     eye_glow = eye_glow.filter(ImageFilter.GaussianBlur(radius=2.6))
-    img.alpha_composite(eye_glow)
+    rigdoc.composite_canvas(img, eye_glow)
     draw.ellipse(
         _box(121.0, cy - 6.0 + nose_drop * 0.35, 124.1, cy - 3.2 + nose_drop * 0.35),
         fill=_rgba("#ffd76d"),
@@ -446,7 +448,7 @@ def _draw_shark(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         r = 0.85 + (i % 3) * 0.34
         ed.ellipse(_box(ex - r, ey - r, ex + r, ey + r), fill=_rgba("#ffb451", 160))
     ember = ember.filter(ImageFilter.GaussianBlur(radius=1.0))
-    img.alpha_composite(ember)
+    rigdoc.composite_canvas(img, ember)
 
     return _downsample(img)
 
@@ -458,7 +460,9 @@ def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
 def render(out_dir: str | Path, **opts) -> List[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=render_frame,
@@ -467,6 +471,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         label_width=118,
         actor_metadata=ACTOR_METADATA,
     )
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, render_frame, outputs, frame_transform, Path(out_dir))
     return [
         outputs["canonical"],
         outputs["canonical_transparent"],
@@ -475,4 +480,4 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         outputs["ron"],
         outputs["actor"],
         outputs["preview"],
-    ]
+    ] + list(parts.values())

@@ -23,6 +23,8 @@ from typing import Dict, List, Tuple
 
 from PIL import Image, ImageDraw, ImageColor
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.common_draw import draw_capsule
 from ...authoring.rig import add, clamp, lerp, smoothstep, vec
 from ...authoring.skeleton import (
@@ -481,10 +483,10 @@ def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
         # never crosses the face; from the sweep onward it leads the swing.
         layers = (fx, actor) if t < 0.40 else (actor, fx)
         for layer in layers:
-            img.alpha_composite(layer)
+            rigdoc.composite_canvas(img, layer)
     else:
-        img.alpha_composite(actor)
-    return img.resize((FRAME_W, FRAME_H), Image.Resampling.LANCZOS)
+        rigdoc.composite_canvas(img, actor)
+    return rigdoc.downsampled_canvas(img, (FRAME_W, FRAME_H), Image.Resampling.LANCZOS)
 
 
 # ---- Target registration hooks -------------------------------------------------
@@ -492,7 +494,9 @@ def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
 
 def render(out_dir: Path, **opts) -> List[Path]:
     del opts
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=render_frame,
@@ -501,7 +505,8 @@ def render(out_dir: Path, **opts) -> List[Path]:
         actor_metadata=ACTOR_METADATA,
     )
     keys = ("spritesheet", "yaml", "ron", "actor", "canonical", "canonical_transparent", "preview")
-    return [Path(outputs[k]) for k in keys if outputs.get(k)]
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, render_frame, outputs, frame_transform, Path(out_dir))
+    return [Path(outputs[k]) for k in keys if outputs.get(k)] + list(parts.values())
 
 
 def render_canonical(out_dir: Path, **opts) -> Path:

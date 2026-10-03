@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Sequence, Tuple
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from PIL import Image, ImageDraw
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -286,7 +288,7 @@ def _circle(draw: ImageDraw.ImageDraw, c: Point, r: float, fill: RGBA, outline: 
 
 
 def _downsample(img: Image.Image) -> Image.Image:
-    return img.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 class BearMaulerRenderer:
@@ -478,7 +480,9 @@ def render(out_dir: str | Path, **opts):
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     renderer = BearMaulerRenderer()
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_BASENAME,
         rows=ROWS,
         render_fn=renderer.render_frame,
@@ -486,10 +490,11 @@ def render(out_dir: str | Path, **opts):
         frame_size=FRAME_SIZE,
         auto_crop=True,
     )
+    parts = publish_rig_flipbook(TARGET_BASENAME, ROWS, renderer.render_frame, outputs, frame_transform, Path(out_dir))
     return [
         outputs["spritesheet"], outputs["yaml"], outputs["ron"],
         outputs["preview"], outputs["canonical"], outputs["canonical_transparent"],
-    ]
+    ] + list(parts.values())
 
 
 def main(argv: List[str] | None = None) -> int:

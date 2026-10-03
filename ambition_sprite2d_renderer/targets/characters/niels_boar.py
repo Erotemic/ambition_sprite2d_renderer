@@ -24,6 +24,8 @@ from typing import List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.portrait import FaceGuide, PortraitClip, render_framed_portrait, write_portrait_sheet
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ...core.draw import blending_draw
@@ -281,7 +283,7 @@ def _box(x1: float, y1: float, x2: float, y2: float) -> Tuple[int, int, int, int
 
 
 def _downsample(img: Image.Image) -> Image.Image:
-    return img.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 def _clamp01(value: float) -> float:
@@ -669,7 +671,9 @@ def _draw_orbit_layer(
     c = (color[0], color[1], color[2], int(color[3] * alpha_scale))
     rd.ellipse(_box(center[0] - rx, center[1] - ry, center[0] + rx, center[1] + ry), outline=c, width=max(1, _s(1.15)))
     ring = ring.rotate(angle, resample=Image.Resampling.BICUBIC, center=_pt(*center), fillcolor=(0, 0, 0, 0))
-    layer.alpha_composite(ring)
+    # Through rigdoc's seams, so a part flipbook records the frame: the turned
+    # ring as one picture, the electron's shapes as themselves.
+    rigdoc.composite_canvas(layer, ring)
 
     ex, ey = _orbit_point(center, rx, ry, angle, phase)
     glow = blending_draw(layer)
@@ -703,7 +707,7 @@ def _draw_orbits(img: Image.Image, p: Pose, foreground: bool = False) -> None:
             alpha,
             electron_scale,
         )
-        img.alpha_composite(layer)
+        rigdoc.composite_canvas(img, layer)
 
 
 def _draw_leg(draw: ImageDraw.ImageDraw, hip: Point, foot: Point, far: bool) -> None:
@@ -835,14 +839,15 @@ def _draw_boar_body(img: Image.Image, p: Pose) -> None:
 
     if abs(p.head_angle) > 0.01:
         head = head.rotate(p.head_angle, resample=Image.Resampling.BICUBIC, center=_pt(hx, hy + 10.0), fillcolor=(0, 0, 0, 0))
-    layer.alpha_composite(head)
+    rigdoc.composite_canvas(layer, head)
 
     if p.squash_x != 1.0 or p.squash_y != 1.0:
         crop = layer.crop(_box(28.0, 6.0, 120.0, 138.0))
         target = (_s(92.0 * p.squash_x), _s(132.0 * p.squash_y))
         crop = crop.resize(target, Image.Resampling.BICUBIC)
         scaled = Image.new("RGBA", layer.size, (0, 0, 0, 0))
-        scaled.alpha_composite(
+        rigdoc.composite_canvas(
+            scaled,
             crop,
             (
                 _s(72.0 + DESIGN_OFFSET) - target[0] // 2,
@@ -863,9 +868,12 @@ def _draw_boar_body(img: Image.Image, p: Pose) -> None:
             fillcolor=(0, 0, 0, 0),
         )
     if p.body_alpha < 0.999:
+        # Faded, the body is one picture (a copy: the record follows the
+        # image, and these pixels are no longer its shapes).
+        layer = layer.copy()
         alpha = layer.getchannel("A").point(lambda value: int(value * p.body_alpha))
         layer.putalpha(alpha)
-    img.alpha_composite(layer)
+    rigdoc.composite_canvas(img, layer)
 
 
 def _draw_photon(draw: ImageDraw.ImageDraw, start: Point, end: Point, amount: float = 1.0) -> None:
@@ -979,7 +987,7 @@ def _draw_effects(img: Image.Image, p: Pose, foreground: bool) -> None:
             draw.arc(_box(94.0, 54.0, 132.0, 88.0), 190, 345, fill=(RING_BLUE[0], RING_BLUE[1], RING_BLUE[2], 170), width=_s(1.2))
             draw.ellipse(_box(124.0, 67.0, 129.0, 72.0), fill=ELECTRON)
 
-    img.alpha_composite(layer)
+    rigdoc.composite_canvas(img, layer)
 
 
 def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
@@ -1038,7 +1046,9 @@ def render_portraits(out_dir: str | Path, **opts) -> List[Path]:
 def render(out_dir: str | Path, **opts) -> List[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=render_frame,
@@ -1049,6 +1059,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         auto_crop=False,
     )
     portrait_outputs = render_portraits(out_dir, **opts)
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, render_frame, outputs, frame_transform, Path(out_dir))
     return [
         outputs["canonical"],
         outputs["canonical_transparent"],
@@ -1058,7 +1069,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         outputs["actor"],
         outputs["preview"],
         *portrait_outputs,
-    ]
+    ] + list(parts.values())
 
 
 def render_canonical(out_dir: str | Path, **opts) -> Path:

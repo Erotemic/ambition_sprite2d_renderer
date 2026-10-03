@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
+from ambition_sprite2d_renderer.authoring import rigdoc
+from ambition_sprite2d_renderer.authoring.part_flipbook import LOCOMOTION_LOOPS, build_rig_flipbook
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
 ACTOR_METADATA = {
@@ -320,7 +322,7 @@ def _circle(draw: ImageDraw.ImageDraw, c: Point, r: float, fill: RGBA, outline: 
 
 
 def _downsample(img: Image.Image) -> Image.Image:
-    return img.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 class WeirdHermitRenderer:
@@ -768,7 +770,12 @@ def _render_sheet(renderer: WeirdHermitRenderer, out_dir: Path) -> List[Path]:
     _write_ron(paths[2])
     preview.save(paths[3])
     canonical.save(paths[4])
-    return paths
+    # The part flipbook. This sheet places every frame whole at its cell and
+    # states no feet: the flipbook's origin is the frame's bottom centre (its
+    # draws are relative to it, so any origin draws the same pixels).
+    tweened = [name for name, _frames, _ms in ROWS if name in LOCOMOTION_LOOPS]
+    flipbook = build_rig_flipbook(TARGET_BASENAME, ROWS, renderer.render_frame, None, (fw / 2, float(fh)), FRAME_SIZE, tweened)
+    return paths + list(flipbook.write(out_dir).values())
 
 
 def render(out_dir: str | Path, **opts) -> List[Path]:

@@ -16,6 +16,8 @@ from typing import Iterable, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -178,7 +180,7 @@ def _circle(
 
 
 def _downsample(img: Image.Image) -> Image.Image:
-    return img.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 def _mix(a: RGBA, b: RGBA, t: float) -> RGBA:
@@ -477,7 +479,9 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
 def render(out_dir: str | Path, **opts) -> List[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=lambda anim, frame_idx, nframes: _render_frame(anim, frame_idx, nframes),
@@ -495,6 +499,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         # the identity map is the honest mapping.
         animation_key_map={name: name for name, _frames, _duration in ROWS},
     )
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, _render_frame, outputs, frame_transform, out_dir)
     return [
         outputs["spritesheet"],
         outputs["yaml"],
@@ -503,7 +508,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         outputs["preview"],
         outputs["canonical"],
         outputs["canonical_transparent"],
-    ]
+    ] + list(parts.values())
 
 
 def main(argv: list[str] | None = None) -> int:

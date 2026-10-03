@@ -30,6 +30,7 @@ from typing import Any, Dict, Iterable, Optional, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...authoring import rigdoc
 from ...profiling import profile
 from ...authoring.animation_vocab import (
     DEFAULT_ADVANCED_TIMINGS,
@@ -262,6 +263,10 @@ def _rounded(
 
 
 class BobEngineerGenerator(CharacterGenerator):
+    #: Every frame is painted through rigdoc's seams: the sheet publishes its
+    #: part flipbook (``authoring.sheet.publish_generator_flipbook``).
+    publishes_part_flipbook = True
+
     name = "bob_engineer"
     target = "bob_engineer"
     applies_job_name = True
@@ -761,17 +766,26 @@ class BobEngineerGenerator(CharacterGenerator):
                 (255, 226, 196, round(160 * strength)),
             )
             tint.putalpha(alpha.point(lambda value: round(value * 0.62 * strength)))
-            actor = Image.alpha_composite(actor, tint)
+            # Through rigdoc's seams (the same pixels as Image.alpha_composite),
+            # so a part flipbook keeps the actor's shapes under the tint.
+            flashed = Image.new("RGBA", actor.size, (0, 0, 0, 0))
+            rigdoc.composite_canvas(flashed, actor)
+            rigdoc.composite_canvas(flashed, tint)
+            actor = flashed
 
         if pose.opacity < 0.999:
+            # A faded copy: its shapes are no longer the recorded ones, so a
+            # part flipbook draws it as one picture.
+            actor = actor.copy()
             alpha = actor.getchannel("A")
             actor.putalpha(
                 alpha.point(lambda value: round(value * _clamp01(pose.opacity)))
             )
 
-        canvas.alpha_composite(actor)
+        rigdoc.composite_canvas(canvas, actor)
         if ss > 1:
-            canvas = canvas.resize((width, height), Image.Resampling.LANCZOS)
+            # Through rigdoc's seam, so a part flipbook records each shape.
+            canvas = rigdoc.downsampled_canvas(canvas, (width, height), Image.Resampling.LANCZOS)
         return canvas
 
     # ------------------------------------------------------------------

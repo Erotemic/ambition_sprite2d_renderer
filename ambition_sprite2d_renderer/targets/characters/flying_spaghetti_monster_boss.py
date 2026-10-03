@@ -23,6 +23,8 @@ from typing import List, Optional, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -347,7 +349,7 @@ def _circle(
 
 
 def _downsample(img: Image.Image) -> Image.Image:
-    return img.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 def _hash(i: int, salt: int = 0) -> float:
@@ -1127,7 +1129,11 @@ def _render_layers(anim: str, frame_idx: int, nframes: int) -> Tuple[Image.Image
     if anim == "hurt" and frame_idx == 0:
         flash = Image.new("RGBA", img.size, (255, 255, 255, 0))
         flash.putalpha(img.getchannel("A").point(lambda v: v * 150 // 255))
-        img = Image.alpha_composite(img, flash)
+        # Through rigdoc's seams: the body's shapes, then the flash as one picture.
+        flashed = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        rigdoc.composite_canvas(flashed, img)
+        rigdoc.composite_canvas(flashed, flash)
+        img = flashed
 
     # The reveal map downsamples by averaging, and an edge pixel then carries
     # a higher threshold than the splat's middle: its edge arrives a little
@@ -1146,7 +1152,9 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         return base
 
     # A fixed canvas (no auto-crop): the authored hulls are in its pixels.
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=frame,
@@ -1159,6 +1167,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         body_metrics_fn=_body_metrics,
         pose_bodies="authored",
     )
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, frame, outputs, frame_transform, out_dir)
     sauce = build_sheet(
         target=SAUCE_TARGET,
         rows=ROWS,
@@ -1179,7 +1188,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
             "canonical",
             "canonical_transparent",
         ]
-    ]
+    ] + list(parts.values())
 
 
 # The sauce reveal maps publish as a sheet of their own: the same rows and

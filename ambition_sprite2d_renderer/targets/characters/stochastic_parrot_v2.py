@@ -20,8 +20,10 @@ import math
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from PIL import Image, ImageColor, ImageDraw, ImageOps
+from PIL import Image, ImageColor, ImageDraw
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.common_draw import draw_capsule
 from ...authoring.rig import add, clamp, ease_in_out_sine, vec
 from ...authoring.skeleton import (
@@ -1105,11 +1107,11 @@ def _solve(animation: str, t: float):
 
 
 
-def _render_side_actor(world, params: Dict[str, float], mirrored: bool = False) -> Image.Image:
+def _render_side_actor(world, params: Dict[str, float]) -> Image.Image:
+    """The side view, facing right. A caller that faces it left mirrors the
+    reduced frame (see ``render_frame``)."""
     actor = Image.new("RGBA", (FRAME_W * SS, FRAME_H * SS), (0, 0, 0, 0))
     _RIG.draw(actor, blending_draw(actor), world, SS, params)
-    if mirrored:
-        actor = ImageOps.mirror(actor)
     return actor
 
 
@@ -1445,23 +1447,18 @@ def _render_turn_front(params: Dict[str, float]) -> Image.Image:
     return img
 
 
-def _render_turnaround_actor(frame_idx: int, nframes: int, world, params: Dict[str, float]) -> Image.Image:
-    side_r = _render_side_actor(world, params, mirrored=False)
-    side_l = _render_side_actor(world, params, mirrored=True)
-    half_r = _render_turn_three_quarter(params, mirrored=False)
-    half_l = _render_turn_three_quarter(params, mirrored=True)
-    front = _render_turn_front(params)
-
+def _render_turnaround_actor(frame_idx: int, nframes: int, world, params: Dict[str, float]) -> Tuple[Image.Image, bool]:
+    """The view of this turnaround step, and whether to mirror its reduced frame."""
     step = int(round(frame_idx * 8 / max(1, nframes - 1)))
     if step <= 0:
-        return side_r
+        return _render_side_actor(world, params), False
     if step <= 2:
-        return half_r
+        return _render_turn_three_quarter(params, mirrored=False), False
     if step <= 5:
-        return front
+        return _render_turn_front(params), False
     if step <= 7:
-        return half_l
-    return side_l
+        return _render_turn_three_quarter(params, mirrored=True), False
+    return _render_side_actor(world, params), True
 
 
 
@@ -1472,7 +1469,10 @@ def _fit_polished_frame(frame: Image.Image, animation: str) -> Image.Image:
     if bbox is None:
         return frame
     left, top, right, bottom = bbox
-    crop = frame.crop(bbox)
+    # Cut, enlarge and place through rigdoc's seams, so a part flipbook keeps
+    # each shape (the same pixels as crop, resize and alpha_composite).
+    crop = Image.new("RGBA", (right - left, bottom - top), (0, 0, 0, 0))
+    rigdoc.composite_canvas(crop, frame, (-left, -top))
     grounded = animation in {"idle", "walk", "turnaround", "death"}
     target_w = 100.0
     target_h = 96.0 if grounded else 100.0
@@ -1480,7 +1480,7 @@ def _fit_polished_frame(frame: Image.Image, animation: str) -> Image.Image:
     if scale <= 1.001:
         return frame
     size = (max(1, round(crop.width * scale)), max(1, round(crop.height * scale)))
-    crop = crop.resize(size, Image.Resampling.LANCZOS)
+    crop = rigdoc.downsampled_canvas(crop, size, Image.Resampling.LANCZOS)
     canvas = Image.new("RGBA", frame.size, (0, 0, 0, 0))
     old_cx = (left + right) / 2.0
     old_cy = (top + bottom) / 2.0
@@ -1491,7 +1491,7 @@ def _fit_polished_frame(frame: Image.Image, animation: str) -> Image.Image:
         y = round(old_cy - size[1] / 2.0)
     x = max(3, min(frame.width - size[0] - 3, x))
     y = max(3, min(frame.height - size[1] - 3, y))
-    canvas.alpha_composite(crop, (x, y))
+    rigdoc.composite_canvas(canvas, crop, (x, y))
     return canvas
 
 def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
@@ -1502,11 +1502,15 @@ def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     img = Image.new("RGBA", (FRAME_W * SS, FRAME_H * SS), (0, 0, 0, 0))
     world, params = _solve(animation, t)
     if animation in {"turnaround", "turnaround_flight"}:
-        actor = _render_turnaround_actor(frame_idx, nframes, world, params)
+        actor, mirrored = _render_turnaround_actor(frame_idx, nframes, world, params)
     else:
-        actor = _render_side_actor(world, params, mirrored=params.get("turn_flip", 0.0) > 0.5)
-    img.alpha_composite(actor)
-    frame = img.resize((FRAME_W, FRAME_H), Image.Resampling.LANCZOS)
+        actor, mirrored = _render_side_actor(world, params), params.get("turn_flip", 0.0) > 0.5
+    rigdoc.composite_canvas(img, actor)
+    frame = rigdoc.downsampled_canvas(img, (FRAME_W, FRAME_H), Image.Resampling.LANCZOS)
+    # The reduction and a mirror commute, so a left-facing view is mirrored
+    # after it: a part flipbook mirrors reduced parts only.
+    if mirrored:
+        frame = rigdoc.mirrored_canvas(frame)
     return _fit_polished_frame(frame, animation)
 
 
@@ -1515,7 +1519,9 @@ def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
 
 def render(out_dir: Path, **opts) -> List[Path]:
     del opts
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=render_frame,
@@ -1524,7 +1530,8 @@ def render(out_dir: Path, **opts) -> List[Path]:
         actor_metadata=ACTOR_METADATA,
     )
     keys = ("spritesheet", "yaml", "ron", "actor", "canonical", "canonical_transparent", "preview")
-    return [Path(outputs[k]) for k in keys if outputs.get(k)]
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, render_frame, outputs, frame_transform, Path(out_dir))
+    return [Path(outputs[k]) for k in keys if outputs.get(k)] + list(parts.values())
 
 
 

@@ -38,6 +38,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from ...authoring import rigdoc
 from ...profiling import profile
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
@@ -131,6 +132,9 @@ class TrentPose:
 
 class TrentElderGenerator(CharacterGenerator):
     """Bespoke geometry for Trent."""
+    #: Every frame is painted through rigdoc's seams: the sheet publishes its
+    #: part flipbook (``authoring.sheet.publish_generator_flipbook``).
+    publishes_part_flipbook = True
 
     target = "trent_elder"
     applies_job_name = True
@@ -253,7 +257,8 @@ class TrentElderGenerator(CharacterGenerator):
         self._draw_chain(img, cx, shoulder_y, spec, pal, S, p)
 
         if ss > 1:
-            img = img.resize((W, H), Image.LANCZOS)
+            # Through rigdoc's seam, so a part flipbook records each shape.
+            img = rigdoc.downsampled_canvas(img, (W, H), Image.LANCZOS)
         return img
 
     def _draw_robe(

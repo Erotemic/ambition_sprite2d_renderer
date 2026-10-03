@@ -9,6 +9,8 @@ from typing import Iterable, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -442,23 +444,27 @@ def render_frame(spec: PlaneSpec, anim: str, frame_idx: int, nframes: int) -> Im
             fragment = [(x - 3.0, y - 1.0), (x + 3.0, y - 2.0), (x + 1.0, y + 3.0)]
             _poly(draw, fragment, PAPER_SHADE if spec.kind == "paper" else GRID_BG, OUTLINE, 0.6)
 
-    return canvas.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(canvas, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 def render_target(spec: PlaneSpec, out_dir: str | Path) -> List[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    def render_fn(anim: str, frame_idx: int, nframes: int) -> Image.Image:
+        return render_frame(spec, anim, frame_idx, nframes)
+
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=spec.target_name,
         rows=ROWS,
-        render_fn=lambda anim, frame_idx, nframes: render_frame(
-            spec, anim, frame_idx, nframes
-        ),
+        render_fn=render_fn,
         out_dir=out_dir,
         frame_size=FRAME_SIZE,
         auto_crop=False,
         actor_metadata=actor_metadata(spec),
     )
+    parts = publish_rig_flipbook(spec.target_name, ROWS, render_fn, outputs, frame_transform, out_dir)
     return [
         outputs["spritesheet"],
         outputs["yaml"],
@@ -467,4 +473,4 @@ def render_target(spec: PlaneSpec, out_dir: str | Path) -> List[Path]:
         outputs["preview"],
         outputs["canonical"],
         outputs["canonical_transparent"],
-    ]
+    ] + list(parts.values())

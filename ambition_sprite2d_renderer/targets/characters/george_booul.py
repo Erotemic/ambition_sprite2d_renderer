@@ -25,6 +25,8 @@ from typing import List, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -245,7 +247,7 @@ def _smoothstep(t: float) -> float:
 
 
 def _downsample(img: Image.Image) -> Image.Image:
-    return img.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 def _pose(animation: str, frame_idx: int, nframes: int) -> Pose:
@@ -593,7 +595,7 @@ def _draw_sheet(img: Image.Image, p: Pose) -> None:
         scaled = Image.new("RGBA", layer.size, (0, 0, 0, 0))
         x = _s(CENTER_X) - target[0] // 2
         y = _s(144.0) - target[1]
-        scaled.alpha_composite(crop, (x, y))
+        rigdoc.composite_canvas(scaled, crop, (x, y))
         layer = scaled
 
     if abs(p.tilt) > 0.01:
@@ -604,7 +606,7 @@ def _draw_sheet(img: Image.Image, p: Pose) -> None:
             fillcolor=(0, 0, 0, 0),
         )
 
-    img.alpha_composite(layer)
+    rigdoc.composite_canvas(img, layer)
 
 
 def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
@@ -617,7 +619,9 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
     del opts
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=render_frame,
@@ -627,6 +631,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         actor_metadata=ACTOR_METADATA,
         auto_crop=False,
     )
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, render_frame, outputs, frame_transform, Path(out_dir))
     return [
         outputs["canonical"],
         outputs["canonical_transparent"],
@@ -635,7 +640,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         outputs["ron"],
         outputs["actor"],
         outputs["preview"],
-    ]
+    ] + list(parts.values())
 
 
 __all__ = [

@@ -7,6 +7,8 @@ from typing import List, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ambition_sprite2d_renderer.authoring.portrait import (
     FaceGuide,
     PortraitClip,
@@ -557,7 +559,7 @@ def _draw_admiral(pose: Pose, anim: str, frame_idx: int, frame_count: int):
             (salute_hand[0] + 16, salute_hand[1] - 2),
         ], fill=GOLD_LIGHT, width=5)
 
-    return img.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 def _render_frame(animation: str, frame_idx: int, frame_count: int):
@@ -591,7 +593,9 @@ def render_portraits(out_dir: str | Path, **opts):
 
 def render(out_dir: str | Path, **opts):
     del opts
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=_render_frame,
@@ -611,7 +615,8 @@ def render(out_dir: str | Path, **opts):
         "canonical_transparent",
         "preview",
     )
-    return [Path(outputs[key]) for key in keys if outputs.get(key)]
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, _render_frame, outputs, frame_transform, Path(out_dir))
+    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
 
 
 __all__ = ["ACTOR_METADATA", "render", "render_portraits"]

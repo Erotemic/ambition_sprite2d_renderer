@@ -16,6 +16,8 @@ from typing import Dict, Iterable, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ...authoring.portrait import (
     PortraitClip,
@@ -446,7 +448,7 @@ def _rect_poly(center: Point, w: float, h: float, deg: float) -> List[Point]:
 
 
 def _downsample(img: Image.Image) -> Image.Image:
-    return img.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 class RobotHeavyRenderer:
@@ -733,7 +735,9 @@ def render(out_dir: str | Path, variant: str = "bastion", **opts) -> List[Path]:
         raise ValueError(f"unknown variant {variant!r}; choices: {', '.join(sorted(VARIANTS))}")
     spec = VARIANTS[variant]
     renderer = RobotHeavyRenderer(spec)
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=spec.target_name,
         rows=ROWS,
         render_fn=renderer.render_frame,
@@ -742,10 +746,11 @@ def render(out_dir: str | Path, variant: str = "bastion", **opts) -> List[Path]:
         crop_margin=3,
         auto_crop=True,
     )
+    parts = publish_rig_flipbook(spec.target_name, ROWS, renderer.render_frame, outputs, frame_transform, Path(out_dir))
     return [
         outputs["spritesheet"], outputs["yaml"], outputs["ron"],
         outputs["preview"], outputs["canonical"], outputs["canonical_transparent"],
-    ]
+    ] + list(parts.values())
 
 
 def render_many(out_dir: str | Path, variants: Iterable[str]) -> Dict[str, List[Path]]:

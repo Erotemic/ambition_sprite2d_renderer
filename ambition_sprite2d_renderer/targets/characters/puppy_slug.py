@@ -41,6 +41,8 @@ from typing import List, Tuple
 
 from PIL import Image, ImageColor, ImageDraw, ImageFilter
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -172,7 +174,7 @@ def _box(x1: float, y1: float, x2: float, y2: float) -> Tuple[int, int, int, int
 
 
 def _downsample(img: Image.Image) -> Image.Image:
-    return img.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 # ---- Geometry helpers --------------------------------------------------------
@@ -271,7 +273,7 @@ def _draw_slime_trail(
     if len(points) >= 2:
         d.line(points, fill=_rgba(PAL_SLIME, int(150 * trail_strength)), width=_s(2.4))
     layer = layer.filter(ImageFilter.GaussianBlur(radius=_s(0.9)))
-    img.alpha_composite(layer)
+    rigdoc.composite_canvas(img, layer)
 
 
 def _draw_body(
@@ -367,7 +369,7 @@ def _draw_body(
         by = ay + uy * L + ty * 0.6
         bd.line([_pt(ax, ay), _pt(bx, by)], fill=_rgba(PAL_BODY_DARK), width=_s(1.1))
 
-    img.alpha_composite(body_layer)
+    rigdoc.composite_canvas(img, body_layer)
 
 
 # ---- Puppy heads -------------------------------------------------------------
@@ -527,7 +529,7 @@ def _draw_pup_head(
                     width=_s(0.8),
                 )
 
-    img.alpha_composite(layer)
+    rigdoc.composite_canvas(img, layer)
 
 
 def _pup_heads_along(
@@ -742,7 +744,9 @@ def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
 def render(out_dir: str | Path, **opts) -> List[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=render_frame,
@@ -751,6 +755,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         label_width=120,
         actor_metadata=ACTOR_METADATA,
     )
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, render_frame, outputs, frame_transform, Path(out_dir))
     return [
         outputs["canonical"],
         outputs["canonical_transparent"],
@@ -759,4 +764,4 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         outputs["ron"],
         outputs["actor"],
         outputs["preview"],
-    ]
+    ] + list(parts.values())

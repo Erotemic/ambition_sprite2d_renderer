@@ -23,6 +23,8 @@ from typing import Dict, List, Tuple
 
 from PIL import Image, ImageColor, ImageDraw
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -195,7 +197,7 @@ def _composite_ellipse(
 ) -> None:
     layer, draw = _overlay_draw(img)
     draw.ellipse(_box(*bbox), fill=fill, outline=outline, width=width)
-    img.alpha_composite(layer)
+    rigdoc.composite_canvas(img, layer)
 
 
 def _composite_polygon(
@@ -215,7 +217,7 @@ def _composite_polygon(
             width=width,
             joint="curve",
         )
-    img.alpha_composite(layer)
+    rigdoc.composite_canvas(img, layer)
 
 
 def _composite_rounded_rect(
@@ -231,7 +233,7 @@ def _composite_rounded_rect(
     draw.rounded_rectangle(
         _box(*bbox), radius=_s(radius), fill=fill, outline=outline, width=width
     )
-    img.alpha_composite(layer)
+    rigdoc.composite_canvas(img, layer)
 
 
 def _draw_explosion(
@@ -318,7 +320,7 @@ def _draw_explosion(
             (x1, y1, x2, y2), fill=core_fill, width=max(1, int(round(radius * 0.08)))
         )
 
-    img.alpha_composite(layer)
+    rigdoc.composite_canvas(img, layer)
 
 
 def _erase_rect(img: Image.Image, x1: float, y1: float, x2: float, y2: float) -> None:
@@ -909,7 +911,7 @@ def _draw_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         _draw_eye(draw, g, img=img)
         _draw_mouth(draw, g)
 
-    return img.resize(FRAME_SIZE, Image.Resampling.NEAREST)
+    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.NEAREST)
 
 
 def _body_metrics_for_sheet(frame_width: int, frame_height: int) -> dict:
@@ -964,7 +966,9 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
     del opts
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=_draw_frame,
@@ -976,6 +980,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         actor_metadata=ACTOR_METADATA,
         body_metrics_fn=_body_metrics_for_sheet,
     )
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, _draw_frame, outputs, frame_transform, Path(out_dir))
     return [
         outputs["spritesheet"],
         outputs["yaml"],
@@ -984,7 +989,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         outputs["preview"],
         outputs["canonical"],
         outputs["canonical_transparent"],
-    ]
+    ] + list(parts.values())
 
 
 def render_canonical(out_dir: str | Path, **opts) -> Path:

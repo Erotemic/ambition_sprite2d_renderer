@@ -37,6 +37,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Sequence, Tuple
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from PIL import Image, ImageDraw
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -1039,7 +1041,7 @@ def _lens_tint(image: Image.Image, center: Point, rx: float, ry: float) -> None:
     overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
     draw = blending_draw(overlay)
     _ellipse(draw, center, rx, ry, GLASS_TINT, outline=None, width=0)
-    image.alpha_composite(overlay)
+    rigdoc.composite_canvas(image, overlay)
 
 
 def _rotate(point: Point, origin: Point, degrees: float) -> Point:
@@ -1052,7 +1054,7 @@ def _rotate(point: Point, origin: Point, degrees: float) -> Point:
 
 
 def _downsample(image: Image.Image) -> Image.Image:
-    return image.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(image, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 def _ensure_canvas_inset(image: Image.Image, margin: int = 2) -> Image.Image:
@@ -1073,6 +1075,14 @@ def _ensure_canvas_inset(image: Image.Image, margin: int = 2) -> Image.Image:
     width = right - left
     height = bottom - top
     scale = min(1.0, available_w / max(1, width), available_h / max(1, height))
+    if scale >= 0.999:
+        # A translation: through rigdoc's seam, so a part flipbook moves the
+        # frame's parts with it.
+        canvas = Image.new("RGBA", image.size, (0, 0, 0, 0))
+        target_x = min(max(left, margin), image.width - margin - width)
+        target_y = min(max(top, margin), image.height - margin - height)
+        rigdoc.composite_canvas(canvas, image, (int(target_x) - left, int(target_y) - top))
+        return canvas
     crop = image.crop(bbox)
     if scale < 0.999:
         crop = crop.resize(
@@ -1083,7 +1093,8 @@ def _ensure_canvas_inset(image: Image.Image, margin: int = 2) -> Image.Image:
     target_x = min(max(left, margin), image.width - margin - new_w)
     target_y = min(max(top, margin), image.height - margin - new_h)
     canvas = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    canvas.alpha_composite(crop, (int(target_x), int(target_y)))
+    # Rescaled, the frame is one picture: it rides a part flipbook as one overlay.
+    rigdoc.composite_canvas(canvas, crop, (int(target_x), int(target_y)))
     return canvas
 
 
@@ -1644,7 +1655,9 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     renderer = RamenNujanRenderer()
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_BASENAME,
         rows=ROWS,
         render_fn=renderer.render_frame,
@@ -1652,6 +1665,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         frame_size=FRAME_SIZE,
         auto_crop=True,
     )
+    parts = publish_rig_flipbook(TARGET_BASENAME, ROWS, renderer.render_frame, outputs, frame_transform, Path(out_dir))
     return [
         outputs["spritesheet"],
         outputs["yaml"],
@@ -1659,7 +1673,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         outputs["preview"],
         outputs["canonical"],
         outputs["canonical_transparent"],
-    ]
+    ] + list(parts.values())
 
 
 def main(argv: List[str] | None = None) -> int:

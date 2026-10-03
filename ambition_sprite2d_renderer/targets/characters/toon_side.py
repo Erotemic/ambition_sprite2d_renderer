@@ -25,6 +25,7 @@ from PIL import Image, ImageDraw
 from ambition_sprite2d_renderer.core.draw import rgba, with_alpha, bbox_from_center as _bbox
 
 from ...profiling import profile
+from ...authoring import rigdoc
 from ...authoring.common_draw import RESAMPLING, draw_capsule, draw_rotated_ellipse, draw_rotated_rounded_rect
 from ...authoring.rig import add, clamp, ease_in_out_sine, ease_out_cubic, smoothstep, vec
 from ...authoring.generator import CharacterGenerator
@@ -54,9 +55,10 @@ def parse_background(value: str) -> Optional[Color]:
 
 
 
-def _paste_rotated_local(base: Image.Image, layer: Image.Image, center: Point, angle: float) -> None:
+def _paste_rotated_local(base: Image.Image, layer: Image.Image, center: Point, angle: float, name: str) -> None:
     rotated = layer.rotate(angle, resample=RESAMPLING.BICUBIC, expand=True)
-    base.alpha_composite(rotated, (int(center[0] - rotated.width / 2), int(center[1] - rotated.height / 2)))
+    # Through rigdoc's seam, so a part flipbook records the turned layer as one part.
+    rigdoc.composite_layer(base, rotated, (int(center[0] - rotated.width / 2), int(center[1] - rotated.height / 2)), name=name)
 
 
 
@@ -155,6 +157,10 @@ class ToonPose:
 
 
 class ToonSideGenerator(CharacterGenerator):
+    #: Every frame is painted through rigdoc's seams: the sheet publishes its
+    #: part flipbook (``authoring.sheet.publish_generator_flipbook``).
+    publishes_part_flipbook = True
+
     target = "toon"
     _oiler = OilerMechanicGenerator()
     applies_job_name = True
@@ -1170,7 +1176,7 @@ class ToonSideGenerator(CharacterGenerator):
             d.ellipse(_bbox((c[0] + 4.2 * S, mouth_y), 4.8 * S, (1.6 + pose.mouth_open * 1.8) * S), fill=_scale_color(outline, 0.9), outline=outline)
         else:
             d.arc((c[0] + 0.4 * S, mouth_y - 2 * S, c[0] + 8.2 * S, mouth_y + 2.5 * S), start=8, end=140, fill=outline, width=max(1, int(1.1 * S)))
-        _paste_rotated_local(base, layer, center, pose.head_tilt)
+        _paste_rotated_local(base, layer, center, pose.head_tilt, "head")
 
     def _draw_torso(self, base: Image.Image, center: Point, spec: ToonSpec, pal: Dict[str, Color], S: float, pose: ToonPose) -> None:
         outline = pal["outline"]
@@ -1836,7 +1842,7 @@ class ToonSideGenerator(CharacterGenerator):
                 (center[0] + 2.0 * S, center[1] + 4.0 * S),
             ], fill=pal["accent"], outline=outline)
         elif spec.accessory == "satchel" and spec.satchel_size > 0:
-            draw_rotated_rounded_rect(base, (center[0] - 8 * S, center[1] + 6 * S), (spec.satchel_size * 1.05 * S, spec.satchel_size * 0.9 * S), 8, 2.0 * S, pal["outfit_dark"], outline, 1.0 * S)
+            draw_rotated_rounded_rect(base, (center[0] - 8 * S, center[1] + 6 * S), (spec.satchel_size * 1.05 * S, spec.satchel_size * 0.9 * S), 8, 2.0 * S, pal["outfit_dark"], outline, 1.0 * S, name="satchel")
             d.line([(center[0] - 2 * S, center[1] - 7 * S), (center[0] - 8 * S, center[1] + 2 * S)], fill=outline, width=max(1, int(1.0 * S)))
         elif spec.accessory == "keys":
             d.line([(center[0] - 3 * S, center[1] + 10 * S), (center[0] + 5 * S, center[1] + 12 * S)], fill=outline, width=max(1, int(1.0 * S)))
@@ -1918,19 +1924,19 @@ class ToonSideGenerator(CharacterGenerator):
             bayonet_low = add(muzzle, vec(1.2 * S, rifle_angle - 74.0))
             d.polygon([bayonet_base, bayonet_tip, bayonet_low], fill=pal["white"], outline=outline)
         elif prop == "tablet":
-            draw_rotated_rounded_rect(base, add(hand, vec(8.0 * S, angle - 10.0)), (10.0 * S, 14.0 * S), angle - 12.0, 2.0 * S, pal["outfit_dark"], outline, 1.0 * S)
+            draw_rotated_rounded_rect(base, add(hand, vec(8.0 * S, angle - 10.0)), (10.0 * S, 14.0 * S), angle - 12.0, 2.0 * S, pal["outfit_dark"], outline, 1.0 * S, name="prop")
             d = blending_draw(base)
             d.line([add(hand, vec(4 * S, angle - 40)), add(hand, vec(10 * S, angle - 40))], fill=pal["accent"], width=max(1, int(1.0 * S)))
         elif prop == "coin_pouch":
-            draw_rotated_ellipse(base, add(hand, vec(5.0 * S, angle - 10.0)), (9.0 * S, 11.0 * S), angle, pal["accent_dark"], outline, 1.0 * S)
+            draw_rotated_ellipse(base, add(hand, vec(5.0 * S, angle - 10.0)), (9.0 * S, 11.0 * S), angle, pal["accent_dark"], outline, 1.0 * S, name="prop")
             blending_draw(base).line([add(hand, vec(4 * S, angle + 150)), add(hand, vec(7 * S, angle - 30))], fill=pal["accent"], width=max(1, int(1.0 * S)))
         elif prop == "ledger":
-            draw_rotated_rounded_rect(base, add(hand, vec(7.0 * S, angle - 6.0)), (11.0 * S, 14.0 * S), angle - 8.0, 2.0 * S, pal["accent"], outline, 1.0 * S)
+            draw_rotated_rounded_rect(base, add(hand, vec(7.0 * S, angle - 6.0)), (11.0 * S, 14.0 * S), angle - 8.0, 2.0 * S, pal["accent"], outline, 1.0 * S, name="prop")
             d = blending_draw(base)
             for i in range(3):
                 d.line([add(hand, vec(2.0 * S, angle - 45)) , add(hand, vec(8.0 * S, angle - 45))], fill=pal["outfit_dark"], width=max(1, int(0.9 * S)))
         elif prop == "blueprint":
-            draw_rotated_rounded_rect(base, add(hand, vec(10.0 * S, angle - 4.0)), (15.0 * S, 5.0 * S), angle - 4.0, 2.0 * S, pal["white"], outline, 1.0 * S)
+            draw_rotated_rounded_rect(base, add(hand, vec(10.0 * S, angle - 4.0)), (15.0 * S, 5.0 * S), angle - 4.0, 2.0 * S, pal["white"], outline, 1.0 * S, name="prop")
             blending_draw(base).line([add(hand, vec(4 * S, angle - 20)), add(hand, vec(12 * S, angle - 20))], fill=pal["accent_dark"], width=max(1, int(1.0 * S)))
         elif prop == "key_ring":
             # Bob — a carabiner ring with three pendant keys hanging
@@ -1964,7 +1970,7 @@ class ToonSideGenerator(CharacterGenerator):
             d = blending_draw(base)
             scroll_c = add(hand, vec(6.0 * S, angle - 12.0))
             # Body of the scroll.
-            draw_rotated_rounded_rect(base, scroll_c, (12.0 * S, 4.0 * S), angle - 14.0, 1.6 * S, pal["white"], outline, 0.9 * S)
+            draw_rotated_rounded_rect(base, scroll_c, (12.0 * S, 4.0 * S), angle - 14.0, 1.6 * S, pal["white"], outline, 0.9 * S, name="prop")
             # End caps darker so the rolled-up shape reads.
             for sign in (-1, 1):
                 end_c = add(scroll_c, vec(sign * 6.0 * S, angle - 14.0))
@@ -2058,7 +2064,7 @@ class ToonSideGenerator(CharacterGenerator):
             d.line([handle_a, handle_b], fill=pal["accent_dark"], width=max(1, int(1.4 * S)))
             # Cylindrical head — rotated rectangle perpendicular to
             # the handle so the gavel reads as a perpendicular cap.
-            draw_rotated_rounded_rect(base, head_c, (6.0 * S, 11.0 * S), angle - 8.0, 2.0 * S, pal["accent_dark"], outline, 1.0 * S)
+            draw_rotated_rounded_rect(base, head_c, (6.0 * S, 11.0 * S), angle - 8.0, 2.0 * S, pal["accent_dark"], outline, 1.0 * S, name="prop")
             # Wood-grain accent stripe across the head.
             d.line(
                 [add(head_c, vec(5.0 * S, angle + 82.0)), add(head_c, vec(5.0 * S, angle - 98.0))],
@@ -2172,7 +2178,7 @@ class ToonSideGenerator(CharacterGenerator):
             for i, alpha in enumerate([55, 32, 18]):
                 xoff = (i + 1) * 6.0 * S
                 trail_d.rounded_rectangle((torso_center[0] - 18*S - xoff, torso_center[1] - 10*S, torso_center[0] + 12*S - xoff, torso_center[1] + 16*S), radius=6*S, fill=with_alpha(pal["accent"], alpha))
-            img.alpha_composite(trail)
+            rigdoc.composite_canvas(img, trail)
 
         def leg_points(is_near: bool):
             sign = 1.0 if is_near else -1.0
@@ -2222,7 +2228,7 @@ class ToonSideGenerator(CharacterGenerator):
             hand = add(elbow, vec(spec.arm_lower * S, lower + p.torso_tilt * 0.12))
             return shoulder, elbow, hand
 
-        def draw_uniform_cuff(elbow: Point, hand: Point, *, scale: float = 1.0) -> None:
+        def draw_uniform_cuff(elbow: Point, hand: Point, *, side: str, scale: float = 1.0) -> None:
             """Draw a short yellow wrist band at the sleeve/hand boundary."""
             if spec.outfit != "general_uniform":
                 return
@@ -2239,6 +2245,7 @@ class ToonSideGenerator(CharacterGenerator):
                 pal["accent"],
                 pal["outline"],
                 0.9 * scale * S,
+                name=f"{side}_cuff",
             )
             # A small darker trailing edge keeps the cuff from becoming a flat
             # yellow blob when the arm is anti-aliased down to runtime size.
@@ -2252,6 +2259,7 @@ class ToonSideGenerator(CharacterGenerator):
                 pal["accent_dark"],
                 None,
                 0.0,
+                name=f"{side}_cuff_edge",
             )
 
         def draw_skin_hand(hand: Point, *, scale: float = 1.0, outline_width: float = 1.0) -> None:
@@ -2270,7 +2278,7 @@ class ToonSideGenerator(CharacterGenerator):
                 width=max(1, int(outline_width * S)),
             )
 
-        def draw_armband(shoulder: Point, elbow: Point, *, scale: float = 1.0, include_insignia: bool = True) -> None:
+        def draw_armband(shoulder: Point, elbow: Point, *, side: str, scale: float = 1.0, include_insignia: bool = True) -> None:
             if spec.outfit != "storm_uniform":
                 return
             angle = math.degrees(math.atan2(elbow[1] - shoulder[1], elbow[0] - shoulder[0]))
@@ -2289,6 +2297,7 @@ class ToonSideGenerator(CharacterGenerator):
                 pal["accent"],
                 pal["outline"],
                 0.9 * scale * S,
+                name=f"{side}_armband",
             )
             if not include_insignia:
                 return
@@ -2301,6 +2310,7 @@ class ToonSideGenerator(CharacterGenerator):
                 pal["white"],
                 pal["outline"],
                 0.8 * scale * S,
+                name=f"{side}_insignia_disc",
             )
             layer_w = max(8, int(10.0 * scale * S))
             layer_h = max(8, int(10.0 * scale * S))
@@ -2320,7 +2330,7 @@ class ToonSideGenerator(CharacterGenerator):
                 (cx + 0.9 * scale * S, cy + 2.2 * scale * S),
                 (cx - 0.4 * scale * S, cy + 0.2 * scale * S),
             ], fill=pal["outline"])
-            _paste_rotated_local(img, layer, disc_center, angle)
+            _paste_rotated_local(img, layer, disc_center, angle, f"{side}_insignia")
 
         # Side-view depth semantics for right-facing toon rigs:
         # screen-right limb = player-left/back limb (darker, behind),
@@ -2340,12 +2350,12 @@ class ToonSideGenerator(CharacterGenerator):
         front_tint = pal["outfit"]
         draw_capsule(d, back_hip, back_knee, spec.leg_radius * 0.92 * S, back_tint, pal["outline"], 1.1 * S)
         draw_capsule(d, back_knee, back_ankle, spec.leg_radius * 0.88 * S, back_tint, pal["outline"], 1.1 * S)
-        draw_rotated_rounded_rect(img, back_foot_center, (spec.foot_w * S, spec.foot_h * S), back_foot_angle, spec.foot_h * 0.48 * S, pal["shoe"], pal["outline"], 1.0 * S)
+        draw_rotated_rounded_rect(img, back_foot_center, (spec.foot_w * S, spec.foot_h * S), back_foot_angle, spec.foot_h * 0.48 * S, pal["shoe"], pal["outline"], 1.0 * S, name="back_foot")
         back_shoulder, back_elbow, back_hand = arm_points(True)
         draw_capsule(d, back_shoulder, back_elbow, spec.arm_radius * 0.92 * S, back_tint, pal["outline"], 1.1 * S)
         draw_capsule(d, back_elbow, back_hand, spec.arm_radius * 0.88 * S, back_tint, pal["outline"], 1.1 * S)
-        draw_armband(back_shoulder, back_elbow, scale=0.88, include_insignia=False)
-        draw_uniform_cuff(back_elbow, back_hand, scale=0.88)
+        draw_armband(back_shoulder, back_elbow, side="back", scale=0.88, include_insignia=False)
+        draw_uniform_cuff(back_elbow, back_hand, side="back", scale=0.88)
         draw_skin_hand(back_hand, scale=0.90, outline_width=0.9)
 
         # torso/head core silhouette
@@ -2355,13 +2365,13 @@ class ToonSideGenerator(CharacterGenerator):
         # front limbs and props
         draw_capsule(d, front_hip, front_knee, spec.leg_radius * S, front_tint, pal["outline"], 1.15 * S)
         draw_capsule(d, front_knee, front_ankle, spec.leg_radius * 0.96 * S, front_tint, pal["outline"], 1.15 * S)
-        draw_rotated_rounded_rect(img, front_foot_center, (spec.foot_w * S, spec.foot_h * S), front_foot_angle, spec.foot_h * 0.48 * S, pal["shoe"], pal["outline"], 1.0 * S)
+        draw_rotated_rounded_rect(img, front_foot_center, (spec.foot_w * S, spec.foot_h * S), front_foot_angle, spec.foot_h * 0.48 * S, pal["shoe"], pal["outline"], 1.0 * S, name="front_foot")
         front_shoulder, front_elbow, front_hand = arm_points(False)
         sleeve_fill = pal["outfit"] if spec.outfit in {"poncho", "keeper_robe", "long_coat", "general_uniform", "storm_uniform", "banyan", "eavesdrop_cloak", "field_jacket", "cinched_field_jacket", "formal_robe", "judicial_robe", "vest_over_shirt", "tabard", "cinched_tabard"} else pal["skin"]
         draw_capsule(d, front_shoulder, front_elbow, spec.arm_radius * S, sleeve_fill, pal["outline"], 1.1 * S)
         draw_capsule(d, front_elbow, front_hand, spec.arm_radius * 0.95 * S, sleeve_fill, pal["outline"], 1.1 * S)
-        draw_armband(front_shoulder, front_elbow, scale=1.0, include_insignia=True)
-        draw_uniform_cuff(front_elbow, front_hand, scale=1.0)
+        draw_armband(front_shoulder, front_elbow, side="front", scale=1.0, include_insignia=True)
+        draw_uniform_cuff(front_elbow, front_hand, side="front", scale=1.0)
 
         prop_angle = p.far_arm_lower + p.torso_tilt * 0.10 + (14.0 if p.prop_swing > 0 else 0.0)
         self._draw_prop(img, front_hand, spec, pal, S, prop_angle)
@@ -2372,5 +2382,6 @@ class ToonSideGenerator(CharacterGenerator):
             for off in [(-5, -10), (4, -14), (10, -6)]:
                 d.line([(head_center[0] + off[0]*S, head_center[1] + off[1]*S), (head_center[0] + (off[0]+3)*S, head_center[1] + (off[1]-4)*S)], fill=with_alpha(pal["accent"], 180), width=max(1, int(1.2 * S)))
         if ss > 1:
-            img = img.resize((W, H), RESAMPLING.LANCZOS if downsample == "lanczos" else RESAMPLING.BICUBIC)
+            # Through rigdoc's seam, so a part flipbook records each shape.
+            img = rigdoc.downsampled_canvas(img, (W, H), RESAMPLING.LANCZOS if downsample == "lanczos" else RESAMPLING.BICUBIC)
         return img

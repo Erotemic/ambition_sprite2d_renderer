@@ -24,6 +24,8 @@ from typing import Callable, Dict, Iterable, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -197,7 +199,7 @@ def _alpha_ellipse(
     overlay = Image.new("RGBA", target.size, (0, 0, 0, 0))
     od = blending_draw(overlay)
     od.ellipse(_box(cx, cy, rx, ry), fill=fill)
-    target.alpha_composite(overlay)
+    rigdoc.composite_canvas(target, overlay)
 
 
 def _circle(
@@ -311,7 +313,7 @@ def _star(
 
 
 def _downsample(img: Image.Image) -> Image.Image:
-    return img.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 def _new_frame() -> Tuple[Image.Image, ImageDraw.ImageDraw]:
@@ -531,7 +533,7 @@ def _draw_puppy_head(
             0.7,
         )
     head = head.rotate(tilt, center=_pt((cx, cy)))
-    draw._image.alpha_composite(head)
+    rigdoc.composite_canvas(draw._image, head)
 
 
 def _render_puppy_slug_v2(anim: str, frame_idx: int, nframes: int) -> Image.Image:
@@ -715,7 +717,7 @@ def _render_synthetic_friend(anim: str, frame_idx: int, nframes: int) -> Image.I
             0.9,
         )
         p = p.rotate(tilt + pose["tilt"] * 0.4, center=_pt((cx + ox, cy + oy)))
-        panel.alpha_composite(p)
+        rigdoc.composite_canvas(panel, p)
     # Main face-card.
     main = Image.new("RGBA", WORK_FRAME_SIZE, (0, 0, 0, 0))
     md = blending_draw(main)
@@ -802,8 +804,8 @@ def _render_synthetic_friend(anim: str, frame_idx: int, nframes: int) -> Image.I
                 1.4,
             )
     main = main.rotate(pose["tilt"], center=_pt((cx, cy)))
-    panel.alpha_composite(main)
-    draw._image.alpha_composite(panel)
+    rigdoc.composite_canvas(panel, main)
+    rigdoc.composite_canvas(draw._image, panel)
     # Loose floating accessories.
     for i, (ox, oy) in enumerate([(-22, -18), (25, -12), (-24, 10), (20, 16)]):
         _circle(
@@ -986,7 +988,7 @@ def _render_hand_saint(anim: str, frame_idx: int, nframes: int) -> Image.Image:
             robe, cx, cy + 10, 26, 30, (255, 94, 112, int(80 * pose["hurt"]))
         )
     robe = robe.rotate(pose["tilt"], center=_pt((cx, cy + 10)))
-    draw._image.alpha_composite(robe)
+    rigdoc.composite_canvas(draw._image, robe)
     return _downsample(img)
 
 
@@ -1311,7 +1313,7 @@ def _render_helpful_liar(anim: str, frame_idx: int, nframes: int) -> Image.Image
     if pose["hurt"] > 0:
         _alpha_ellipse(body, cx, cy - 2, 30, 26, (255, 96, 110, int(70 * pose["hurt"])))
     body = body.rotate(pose["tilt"], center=_pt((cx, cy + 12)))
-    draw._image.alpha_composite(body)
+    rigdoc.composite_canvas(draw._image, body)
     return _downsample(img)
 
 
@@ -1454,7 +1456,7 @@ def _draw_card(
                         0.6,
                     )
     layer = layer.rotate(tilt, center=_pt((x + w / 2.0, y + h / 2.0)))
-    draw._image.alpha_composite(layer)
+    rigdoc.composite_canvas(draw._image, layer)
 
 
 def _render_ai_slop(anim: str, frame_idx: int, nframes: int) -> Image.Image:
@@ -1753,7 +1755,7 @@ def _render_ai_slop(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         )
 
     body_layer = body_layer.rotate(pose["tilt"], center=_pt((cx, cy + 8)))
-    draw._image.alpha_composite(body_layer)
+    rigdoc.composite_canvas(draw._image, body_layer)
     return _downsample(img)
 
 
@@ -1921,7 +1923,9 @@ def _render_target(
 ) -> List[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=target,
         rows=TARGET_ROWS[target],
         render_fn=frame_fn,
@@ -1931,6 +1935,7 @@ def _render_target(
         auto_crop=True,
         crop_margin=2,
     )
+    parts = publish_rig_flipbook(target, TARGET_ROWS[target], frame_fn, outputs, frame_transform, out_dir)
     return [
         outputs["spritesheet"],
         outputs["yaml"],
@@ -1938,7 +1943,7 @@ def _render_target(
         outputs["preview"],
         outputs["canonical"],
         outputs["canonical_transparent"],
-    ]
+    ] + list(parts.values())
 
 
 def _entry(

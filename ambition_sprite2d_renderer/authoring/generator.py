@@ -66,6 +66,11 @@ class CharacterGenerator:
     #: procedurally-named families whose spec owns its own name.
     applies_job_name: bool = False
 
+    #: When True, a config sheet of this generator also publishes its part
+    #: flipbook (``<name>_parts.ron``, ``authoring.sheet.publish_generator_flipbook``).
+    #: Set it only when every frame is painted through rigdoc's seams.
+    publishes_part_flipbook: bool = False
+
     # -- animation surface ------------------------------------------------
 
     def animations(self) -> Dict[str, Dict[str, int]]:

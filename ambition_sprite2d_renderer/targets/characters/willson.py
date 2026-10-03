@@ -19,6 +19,8 @@ from typing import Callable, Dict, Iterable, List, Mapping, Sequence, Tuple
 
 from PIL import Image, ImageColor, ImageDraw
 
+from ...authoring import rigdoc
+from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -1061,7 +1063,7 @@ def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     vector = VDraw(image, SS)
     for name in sorted(PAINTERS, key=LAYER_Z.__getitem__):
         PAINTERS[name](vector, pose)
-    return image.resize((FRAME_W, FRAME_H), Image.Resampling.LANCZOS)
+    return rigdoc.downsampled_canvas(image, (FRAME_W, FRAME_H), Image.Resampling.LANCZOS)
 
 
 def _body_metrics_override(fw: int, fh: int):
@@ -1079,7 +1081,9 @@ def _body_metrics_override(fw: int, fh: int):
 
 def render(out_dir: Path, **opts) -> List[Path]:
     del opts
+    frame_transform: dict = {}
     outputs = build_sheet(
+        frame_transform_out=frame_transform,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=render_frame,
@@ -1102,7 +1106,8 @@ def render(out_dir: Path, **opts) -> List[Path]:
         "canonical_transparent",
         "preview",
     )
-    return [Path(outputs[key]) for key in keys if outputs.get(key)]
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, render_frame, outputs, frame_transform, Path(out_dir))
+    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
 
 
 def render_canonical(out_dir: Path, **opts) -> Path:
