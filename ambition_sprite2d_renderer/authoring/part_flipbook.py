@@ -1543,6 +1543,13 @@ def build_rig_flipbook(
         bilinear=filters.pop() if filters else False,
         frame_opacity=frame_opacity,
     )
+    merged = _merge_rigid_neighbours(flipbook)
+    if merged is not flipbook:
+        failing = _replay_failures(merged, rendered)
+        if failing:
+            print(f"[part flipbook] {target}: rigid merge refused, {len(failing)} frame(s) would change ({failing[0]})", flush=True)
+        else:
+            flipbook = merged
     for (row, index), frame in rendered.items():
         replayed = flipbook.recompose(row, index)
         if flipbook.placement == PLACEMENT_SNAPPED:
@@ -1561,6 +1568,158 @@ def build_rig_flipbook(
                 f"pixels wrong, a blob of {blob}) — something painted the frame outside rigdoc's seams"
             )
     return flipbook
+
+
+def _replay_failures(flipbook: "PartFlipbook", rendered: Mapping[Tuple[str, int], Image.Image]) -> List[str]:
+    """The frames ``flipbook`` does not redraw within the replay guard's bounds."""
+    failing = []
+    for (row, index), frame in rendered.items():
+        replayed = flipbook.recompose(row, index)
+        if flipbook.placement == PLACEMENT_SNAPPED:
+            if _max_channel_difference(replayed, frame) > REPLAY_ROUNDING:
+                failing.append(f"{row}:{index}")
+            continue
+        if (
+            parity(frame, replayed, **CONTINUOUS_REPLAY_TOLERANCE) > CONTINUOUS_REPLAY_PARITY
+            or largest_wrong_blob(frame, replayed, **CONTINUOUS_REPLAY_TOLERANCE) > CONTINUOUS_REPLAY_BLOB
+        ):
+            failing.append(f"{row}:{index}")
+    return failing
+
+
+def _merge_rigid_neighbours(flipbook: "PartFlipbook") -> "PartFlipbook":
+    """``flipbook`` with every always-rigid pair of neighbouring draws made one
+    draw of one composited part, or ``flipbook`` itself when there is none.
+
+    A pair is the draw of track A and the draw right after it, of track B, when
+    in EVERY frame that draws A: B follows it, nothing else is painted between
+    them (they are consecutive), and B sits at the same place in A's frame —
+    the same turn, scale and opacity, at the same offset. Carl Stargan's hair
+    rides his head like that. Composited once offline, the pair is one draw a
+    frame instead of two (Jon, 2026-10-03: "parts that are always rigid don't
+    need to be composed").
+
+    Kept exact: the two rasters are composited at a whole texel of each other
+    (no resample), and a snapped flipbook merges only pairs that never turn
+    (a snapped part is turned on its own at frame resolution). Merging repeats,
+    so a chain of rigid pieces becomes one part. The caller replays every
+    frame and keeps the unmerged flipbook if any frame changes.
+    """
+    from dataclasses import replace as _replace
+
+    def relation(a: PartDraw, b: PartDraw):
+        c, s_ = math.cos(-a.rotation), math.sin(-a.rotation)
+        dx, dy = b.at[0] - a.at[0], b.at[1] - a.at[1]
+        return (
+            round(b.rotation - a.rotation, 6),
+            round(c * dx - s_ * dy, 3),
+            round(s_ * dx + c * dy, 3),
+            a.scale,
+            b.scale,
+            round(a.opacity, 4),
+            round(b.opacity, 4),
+        )
+
+    parts = list(flipbook.parts)
+    index = {(p.image.size, p.pivot, p.image.tobytes()): i for i, p in enumerate(parts)}
+    composites: Dict[Tuple[int, int, Tuple[float, float]], Optional[int]] = {}
+
+    def composite(a_part: int, b_part: int, offset: Tuple[float, float]) -> Optional[int]:
+        """Part ``b`` drawn at ``offset`` (pivot to pivot, in ``a``'s frame,
+        unturned) over part ``a``, as one part with ``a``'s pivot; ``None``
+        when ``b`` lands between texels."""
+        key = (a_part, b_part, offset)
+        if key in composites:
+            return composites[key]
+        a, b = parts[a_part], parts[b_part]
+        bx = a.pivot[0] + offset[0] - b.pivot[0]
+        by = a.pivot[1] + offset[1] - b.pivot[1]
+        if abs(bx - round(bx)) > 1e-3 or abs(by - round(by)) > 1e-3:
+            composites[key] = None
+            return None
+        bx, by = int(round(bx)), int(round(by))
+        x0, y0 = min(0, bx), min(0, by)
+        x1, y1 = max(a.image.width, bx + b.image.width), max(a.image.height, by + b.image.height)
+        image = Image.new("RGBA", (x1 - x0, y1 - y0), (0, 0, 0, 0))
+        image.alpha_composite(a.image, (-x0, -y0))
+        image.alpha_composite(b.image, (bx - x0, by - y0))
+        pivot = (a.pivot[0] - x0, a.pivot[1] - y0)
+        found = index.get((image.size, pivot, image.tobytes()))
+        if found is None:
+            found = len(parts)
+            parts.append(PartRaster(f"{a.name}+{b.name}", image, pivot))
+            index[(image.size, pivot, image.tobytes())] = found
+        composites[key] = found
+        return found
+
+    def candidates(clips) -> Dict[str, Tuple[str, tuple]]:
+        follows: Dict[Optional[str], set] = {}
+        for _duration, frames in clips.values():
+            for draws in frames:
+                for i, d in enumerate(draws):
+                    nxt = draws[i + 1] if i + 1 < len(draws) else None
+                    follows.setdefault(d.track, set()).add(None if nxt is None else (nxt.track, relation(d, nxt)))
+        rigid = {
+            a: next(iter(after))
+            for a, after in follows.items()
+            if a is not None and len(after) == 1 and None not in after and next(iter(after))[0] not in (None, a)
+        }
+        if flipbook.placement == PLACEMENT_SNAPPED:
+            turning = {d.track for _d, frames in clips.values() for draws in frames for d in draws if d.rotation != 0.0}
+            rigid = {a: rb for a, rb in rigid.items() if a not in turning and rb[0] not in turning}
+        return rigid
+
+    def merged_pair(clips, a: str, b: str, rel: tuple):
+        out_clips = {}
+        progress = False
+        for row, (duration, frames) in clips.items():
+            new_frames = []
+            for draws in frames:
+                out: List[PartDraw] = []
+                i = 0
+                while i < len(draws):
+                    d = draws[i]
+                    if d.track == a and i + 1 < len(draws) and draws[i + 1].track == b:
+                        joined = composite(d.part, draws[i + 1].part, (rel[1], rel[2]))
+                        if joined is not None:
+                            out.append(_replace(d, part=joined, track=f"{a}+{b}"))
+                            i += 2
+                            progress = True
+                            continue
+                    out.append(d)
+                    i += 1
+                new_frames.append(out)
+            out_clips[row] = (duration, new_frames)
+        return out_clips if progress else None
+
+    def texels(clips) -> int:
+        used = {d.part for _d, frames in clips.values() for draws in frames for d in draws}
+        return sum(parts[i].image.width * parts[i].image.height for i in used)
+
+    # ⛔ A COMPOSITE DUPLICATES PIXELS when its pieces are still drawn apart
+    # elsewhere (Mary-O's part pages grew past their ceiling, 2026-10-03). A
+    # pair is merged only when the parts it leaves drawn hold no more texels
+    # than before (none: slack compounds over many pairs): fewer draws, never
+    # more memory.
+    clips = {row: (duration, [list(draws) for draws in frames]) for row, (duration, frames) in flipbook.clips.items()}
+    changed = False
+    while True:
+        progress = False
+        for a, (b, rel) in candidates(clips).items():
+            trial = merged_pair(clips, a, b, rel)
+            if trial is not None and texels(trial) <= texels(clips):
+                clips, progress, changed = trial, True, True
+        if not progress:
+            break
+    if not changed:
+        return flipbook
+    used = sorted({d.part for _d, frames in clips.values() for draws in frames for d in draws})
+    remap = {old: new for new, old in enumerate(used)}
+    clips = {
+        row: (duration, [[_replace(d, part=remap[d.part]) for d in draws] for draws in frames])
+        for row, (duration, frames) in clips.items()
+    }
+    return _replace(flipbook, parts=[parts[i] for i in used], clips=clips, rects=[], pages=[])
 
 
 #: How far a replayed frame may differ from its render, per 8-bit channel.
