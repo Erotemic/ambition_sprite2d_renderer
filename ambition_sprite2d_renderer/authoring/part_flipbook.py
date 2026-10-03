@@ -268,6 +268,85 @@ class PartFlipbook:
         written["ron"] = ron
         return written
 
+    @classmethod
+    def from_published(cls, ron_path: Path, placement: str = "continuous") -> "PartFlipbook":
+        """Read a published ``<target>_parts.ron`` (as ``to_ron`` writes it, one
+        part or draw per line) with its atlas pages, so a frame can be
+        recomposed from what shipped. ``placement`` is not in the file: a rig
+        flipbook is ``"snapped"``."""
+        import re
+
+        ron_path = Path(ron_path)
+        text = ron_path.read_text()
+        number = r"(-?[\d.]+)"
+        target = re.search(r'target: "([^"]+)"', text).group(1)
+        pages = [Image.open(ron_path.parent / name).convert("RGBA") for name in re.findall(r'"([^"]+\.png)"', re.search(r"pages: \[([^\]]*)\]", text).group(1))]
+        frame_size = tuple(int(v) for v in re.search(r"frame_size: \((\d+), (\d+)\)", text).groups())
+        feet = tuple(float(v) for v in re.search(rf"feet_pixel: \({number}, {number}\)", text).groups())
+        parts: List[PartRaster] = []
+        rects: List[Tuple[int, int, int, int, int]] = []
+        part_line = re.compile(
+            rf'\(name: "([^"]*)", page: (\d+), rect: \((\d+), (\d+), (\d+), (\d+)\), pivot: \({number}, {number}\)\)'
+        )
+        draw_line = re.compile(
+            rf"\(part: (\d+), at: \({number}, {number}\), rotation: {number}, scale: \({number}, {number}\)\)"
+        )
+        clips: Dict[str, Tuple[float, List[List[PartDraw]]]] = {}
+        row = None
+        for line in text.splitlines():
+            stripped = line.strip()
+            match = part_line.search(stripped)
+            if match and row is None:
+                name, page, x, y, w, h, px, py = match.groups()
+                rect = (int(page), int(x), int(y), int(w), int(h))
+                rects.append(rect)
+                parts.append(PartRaster(name, pages[rect[0]].crop((rect[1], rect[2], rect[1] + rect[3], rect[2] + rect[4])), (float(px), float(py))))
+                continue
+            head = re.match(rf'"([^"]+)": \(frame_duration_s: {number}, frames: \[', stripped)
+            if head:
+                row = head.group(1)
+                clips[row] = (float(head.group(2)), [])
+                continue
+            if row is None:
+                continue
+            if stripped == "[":
+                clips[row][1].append([])
+            match = draw_line.search(stripped)
+            if match:
+                part, ax, ay, rotation, sx, sy = match.groups()
+                clips[row][1][-1].append(PartDraw(int(part), (float(ax), float(ay)), float(rotation), (float(sx), float(sy))))
+        baked = re.search(r"baked_clips: \[([^\]]*)\]", text)
+        return cls(
+            target,
+            frame_size,
+            feet,
+            parts,
+            clips,
+            re.findall(r'"([^"]+)"', baked.group(1)) if baked else [],
+            rects,
+            pages,
+            placement,
+        )
+
+    def draw_frame(self, canvas: Image.Image, row: str, index: int, feet_at: Tuple[float, float], flip: bool = False) -> None:
+        """Draw frame ``index`` of ``row`` onto ``canvas`` with the feet at
+        ``feet_at`` (canvas pixels), unclipped by the frame. Snapped placement
+        only; ``flip`` mirrors the body about the feet, as the runtime does."""
+        assert self.placement == "snapped", "draw_frame draws a rig flipbook"
+        layer = canvas if not flip else Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+        # Mirroring about the feet (a pixel EDGE) sends pixel `i` to `2 feet - 1 - i`.
+        fx = feet_at[0] if not flip else canvas.width - feet_at[0]
+        for d in self.clips[row][1][index]:
+            _snapped_blit(
+                layer,
+                self.part_image(d.part),
+                self.parts[d.part].pivot,
+                (d.at[0] + fx, d.at[1] + feet_at[1]),
+                math.degrees(d.rotation),
+            )
+        if flip:
+            canvas.alpha_composite(layer.transpose(Image.FLIP_LEFT_RIGHT))
+
     # -- recomposition -----------------------------------------------------------
     def part_image(self, index: int) -> Image.Image:
         """Part ``index`` as the published atlas holds it."""
