@@ -77,6 +77,10 @@ class PartDraw:
     track: Optional[str] = None
     #: The part's own opacity (its alpha scaled), in [0, 1].
     opacity: float = 1.0
+    #: A multiply on the part's stored colour, per channel (a back limb drawn
+    #: as its front limb, darker): the game's sprite colour, free. (1, 1, 1)
+    #: draws the part as painted.
+    tint: Tuple[float, float, float] = (1.0, 1.0, 1.0)
 
 
 @dataclass
@@ -201,9 +205,13 @@ class PartFlipbook:
                 for d in frame:
                     track = f", track: {track_index[d.track]}" if d.track is not None else ""
                     opacity = f", opacity: {num(d.opacity)}" if d.opacity < 1.0 else ""
+                    tint = (
+                        f", tint: ({num(d.tint[0])}, {num(d.tint[1])}, {num(d.tint[2])})"
+                        if tuple(d.tint) != (1.0, 1.0, 1.0) else ""
+                    )
                     lines.append(
                         f"                (part: {d.part}, at: {pair(d.at)}, "
-                        f"rotation: {num(d.rotation)}, scale: {pair(d.scale)}{track}{opacity}),"
+                        f"rotation: {num(d.rotation)}, scale: {pair(d.scale)}{track}{opacity}{tint}),"
                     )
                 lines.append("            ],")
             lines.append("        ]),")
@@ -254,7 +262,7 @@ class PartFlipbook:
         )
         draw_line = re.compile(
             rf"\(part: (\d+), at: \({number}, {number}\), rotation: {number}, scale: \({number}, {number}\)"
-            rf"(?:, track: (\d+))?(?:, opacity: {number})?\)"
+            rf"(?:, track: (\d+))?(?:, opacity: {number})?(?:, tint: \({number}, {number}, {number}\))?\)"
         )
         published = re.search(r"placement: (Snapped|Continuous),", text)
         if published:
@@ -297,7 +305,7 @@ class PartFlipbook:
                 clips[row][1].append([])
             match = draw_line.search(stripped)
             if match:
-                part, ax, ay, rotation, sx, sy, track, opacity = match.groups()
+                part, ax, ay, rotation, sx, sy, track, opacity, tr, tg, tb = match.groups()
                 clips[row][1][-1].append(
                     PartDraw(
                         int(part),
@@ -306,6 +314,7 @@ class PartFlipbook:
                         (float(sx), float(sy)),
                         tracks[int(track)] if track is not None else None,
                         float(opacity) if opacity is not None else 1.0,
+                        (float(tr), float(tg), float(tb)) if tr is not None else (1.0, 1.0, 1.0),
                     )
                 )
         baked = re.search(r"baked_clips: \[([^\]]*)\]", text)
@@ -387,7 +396,7 @@ class PartFlipbook:
             canvas.alpha_composite(layer)
 
     def _paint_draw(self, canvas: Image.Image, d: PartDraw, at: Tuple[float, float]) -> None:
-        image = self.part_image(d.part)
+        image = _tinted(self.part_image(d.part), d.tint)
         pivot = self.parts[d.part].pivot
         if self.placement == PLACEMENT_SNAPPED:
             assert d.scale == (1.0, 1.0), "a snapped draw is never scaled"
@@ -437,6 +446,16 @@ class PartFlipbook:
             .convert("RGBA")
         )
         canvas.alpha_composite(_faded(layer, d.opacity), (x0, y0))
+
+
+def _tinted(image: Image.Image, tint) -> Image.Image:
+    """``image`` with its colour multiplied by ``tint`` per channel, as the
+    game's sprite colour multiplies a raw (sRGB) part page."""
+    if tuple(tint) == (1.0, 1.0, 1.0):
+        return image
+    r, g, b, a = image.split()
+    channels = [c.point(lambda v, k=k: min(255, int(round(v * k)))) for c, k in zip((r, g, b), tint)]
+    return Image.merge("RGBA", (*channels, a))
 
 
 def _faded(image: Image.Image, opacity: float) -> Image.Image:
@@ -1253,6 +1272,7 @@ def tween_draws(flipbook: "PartFlipbook", row: str, index: int, t: float) -> Lis
                 (d.scale[0] + (target.scale[0] - d.scale[0]) * t, d.scale[1] + (target.scale[1] - d.scale[1]) * t),
                 d.track,
                 d.opacity + (target.opacity - d.opacity) * t,
+                tuple(a + (b - a) * t for a, b in zip(d.tint, target.tint)),
             )
         )
     return out
@@ -1556,6 +1576,12 @@ def build_rig_flipbook(
                 print(f"[part flipbook] {target}: {name} refused, {len(failing)} frame(s) would change ({failing[0]})", flush=True)
             else:
                 flipbook = changed
+    # Near twins (a texel over, a shade darker), each kept only where every
+    # frame still replays (`_share_near_parts`).
+    distinct = frozenset(DISTINCT_TRACKS.get(target, ()))
+    flipbook = _share_near_parts(flipbook, rendered, distinct)
+    # Then each part that is its own mirror, stored as half (`_split_symmetric_parts`).
+    flipbook = _split_symmetric_parts(flipbook, rendered, distinct)
     for (row, index), frame in rendered.items():
         replayed = flipbook.recompose(row, index)
         if flipbook.placement == PLACEMENT_SNAPPED:
@@ -1784,26 +1810,19 @@ def _share_transformed_parts(flipbook: "PartFlipbook") -> "PartFlipbook":
     interpolation through a flip (scale -1 to 1 squashes through zero). Such a
     part is not shared.
     """
-    from dataclasses import replace as _replace
-
     if flipbook.placement == PLACEMENT_SNAPPED:
         return flipbook
     parts = list(flipbook.parts)
-
-    def trimmed(image):
-        box = image.getchannel("A").getbbox() or (0, 0, 1, 1)
-        return image.crop(box), box
-
     seen: Dict[Tuple[Tuple[int, int], bytes], int] = {}
-    source_of: Dict[int, Tuple[int, object]] = {}
+    source_of: Dict[int, tuple] = {}
     for i, part in enumerate(parts):
-        crop, _box = trimmed(part.image)
+        crop, _box = _trimmed(part.image)
         key = (crop.size, crop.tobytes())
         if key in seen:
             # The same pixels at another pivot or padding: the recorder keys
             # a part by its pivot too, so these slip past it (18% of the player
             # robot's texels after its effects became pieces, 2026-10-04).
-            source_of[i] = (seen[key], None)
+            source_of[i] = (seen[key], None, (0, 0), (1.0, 1.0, 1.0))
             continue
         for op in _LOSSLESS:
             turned = crop.transpose(op)
@@ -1813,49 +1832,43 @@ def _share_transformed_parts(flipbook: "PartFlipbook") -> "PartFlipbook":
                 # applied to part match (only the quarter turns differ).
                 inverse = {Image.Transpose.ROTATE_90: Image.Transpose.ROTATE_270,
                            Image.Transpose.ROTATE_270: Image.Transpose.ROTATE_90}.get(op, op)
-                source_of[i] = (match, inverse)
+                source_of[i] = (match, inverse, (0, 0), (1.0, 1.0, 1.0))
                 break
         else:
             seen[key] = i
+    return _drawn_from_sources(flipbook, source_of)
+
+
+def _trimmed(image: Image.Image):
+    """``image`` cut to its drawn extent, and that box."""
+    box = image.getchannel("A").getbbox() or (0, 0, 1, 1)
+    return image.crop(box), box
+
+
+def _drawn_from_sources(flipbook: "PartFlipbook", source_of: Dict[int, tuple]) -> "PartFlipbook":
+    """``flipbook`` with each part ``r`` in ``source_of`` drawn from its source
+    instead: ``source_of[r] = (src, op, (dx, dy), tint)`` says r's drawn extent
+    is ``op`` applied to src's (``None``: as is), lying ``(dx, dy)`` texels into
+    it, in src's colours multiplied by ``tint``. ``flipbook`` itself when none
+    survives the tween guard.
+
+    Each draw of r draws src with ``M = R S L`` (its own turn and scale, then
+    the transform), split back into a turn and a signed scale, and its tint
+    multiplied by the source's.
+
+    ⛔ In a tweened clip, two frames of a track that drew DIFFERENT parts held
+    still between them; sharing could make them one part and start an
+    interpolation through a flip (scale -1 to 1 squashes through zero). Such a
+    part is not shared.
+    """
+    from dataclasses import replace as _replace
+
+    parts = list(flipbook.parts)
+    source_of = dict(source_of)
 
     def redraw(d: PartDraw) -> PartDraw:
-        src, op = source_of[d.part]
-        p_img, r_img = parts[src], parts[d.part]
-        p_crop, p_box = trimmed(p_img.image)
-        _r_crop, r_box = trimmed(r_img.image)
-        (la, lb, lc, ld), (tx, ty) = _lossless_map(op, p_crop.size)
-        # A point of P (its own pixels) in R's pixels:
-        #   q = L (p - p_box0) + t + r_box0.
-        # R's pivot r comes from P's point p_r = L^-1 (r - r_box0 - t) + p_box0.
-        rx, ry = r_img.pivot[0] - r_box[0] - tx, r_img.pivot[1] - r_box[1] - ty
-        det = la * ld - lb * lc
-        ix, iy = (ld * rx - lb * ry) / det + p_box[0], (-lc * rx + la * ry) / det + p_box[1]
-        c, s = math.cos(d.rotation), math.sin(d.rotation)
-        # M = R S L.
-        rs = (c * d.scale[0], -s * d.scale[1], s * d.scale[0], c * d.scale[1])
-        m = (
-            rs[0] * la + rs[1] * lc, rs[0] * lb + rs[1] * ld,
-            rs[2] * la + rs[3] * lc, rs[2] * lb + rs[3] * ld,
-        )
-        # Split M = R(theta) diag(sx, sy): the first column is sx times the
-        # turn's first column.
-        sx = math.hypot(m[0], m[2])
-        theta = math.atan2(m[2], m[0])
-        ct, st = math.cos(theta), math.sin(theta)
-        sy = -st * m[1] + ct * m[3]
-        assert abs(ct * m[1] + st * m[3]) < 1e-6, "a lossless transform keeps the axes square"
-        # P's own pivot lands where R's draw put the point ix, iy.
-        dx, dy = p_img.pivot[0] - ix, p_img.pivot[1] - iy
-        at = (d.at[0] + m[0] * dx + m[1] * dy, d.at[1] + m[2] * dx + m[3] * dy)
-        if op is None:
-            # The same pixels at another pivot: only the draw's place moves
-            # (recomposed, its turn and scale would come back a float off).
-            return _replace(d, part=src, at=at)
-        # A lossless transform of a draw scaled by +-1 is scaled by exactly +-1
-        # (the published table writes what it is given; a 0.9999999 would not
-        # read back as written).
-        sx, sy = (round(v) if abs(abs(v) - 1.0) < 1e-9 else v for v in (sx, sy))
-        return _replace(d, part=src, at=at, rotation=theta, scale=(sx, sy))
+        src, op, offset, tint = source_of[d.part]
+        return _redrawn(d, parts[d.part], parts[src], src, op, offset, tint)
 
     def shared_clips(sources):
         return {
@@ -1863,6 +1876,7 @@ def _share_transformed_parts(flipbook: "PartFlipbook") -> "PartFlipbook":
             for row, (duration, frames) in flipbook.clips.items()
         }
 
+    clips = flipbook.clips
     while source_of:
         clips = shared_clips(source_of)
         refused = set()
@@ -1890,6 +1904,349 @@ def _share_transformed_parts(flipbook: "PartFlipbook") -> "PartFlipbook":
         for row, (duration, frames) in clips.items()
     }
     return _replace(flipbook, parts=[parts[i] for i in used], clips=clips, rects=[], pages=[])
+
+
+def _redrawn(d: PartDraw, r_img: PartRaster, p_img: PartRaster, src: int, op, offset, tint) -> PartDraw:
+    """Draw ``d`` (of the part ``r_img``) as the part ``src`` (``p_img``): r's
+    drawn extent is ``op`` applied to p's, lying ``offset`` texels into r's, in
+    p's colours times ``tint`` (``_drawn_from_sources``)."""
+    from dataclasses import replace as _replace
+
+    ox, oy = offset
+    p_crop, p_box = _trimmed(p_img.image)
+    _r_crop, r_box = _trimmed(r_img.image)
+    (la, lb, lc, ld), (tx, ty) = _lossless_map(op, p_crop.size)
+    # A point of P (its own pixels) in R's pixels:
+    #   q = L (p - p_box0) + t + offset + r_box0.
+    # R's pivot r comes from P's point p_r = L^-1 (r - r_box0 - offset - t) + p_box0.
+    rx, ry = r_img.pivot[0] - r_box[0] - ox - tx, r_img.pivot[1] - r_box[1] - oy - ty
+    det = la * ld - lb * lc
+    ix, iy = (ld * rx - lb * ry) / det + p_box[0], (-lc * rx + la * ry) / det + p_box[1]
+    c, s = math.cos(d.rotation), math.sin(d.rotation)
+    # M = R S L.
+    rs = (c * d.scale[0], -s * d.scale[1], s * d.scale[0], c * d.scale[1])
+    m = (
+        rs[0] * la + rs[1] * lc, rs[0] * lb + rs[1] * ld,
+        rs[2] * la + rs[3] * lc, rs[2] * lb + rs[3] * ld,
+    )
+    # P's own pivot lands where R's draw put the point ix, iy.
+    dx, dy = p_img.pivot[0] - ix, p_img.pivot[1] - iy
+    at = (d.at[0] + m[0] * dx + m[1] * dy, d.at[1] + m[2] * dx + m[3] * dy)
+    tinted = tuple(round(a * b, 4) for a, b in zip(d.tint, tint))
+    if op is None:
+        # The same pixels at another place: only the draw's place (and
+        # colour) moves (recomposed, its turn and scale would come back a
+        # float off).
+        return _replace(d, part=src, at=at, tint=tinted)
+    # Split M = R(theta) diag(sx, sy): the first column is sx times the
+    # turn's first column.
+    sx = math.hypot(m[0], m[2])
+    theta = math.atan2(m[2], m[0])
+    ct, st = math.cos(theta), math.sin(theta)
+    sy = -st * m[1] + ct * m[3]
+    assert abs(ct * m[1] + st * m[3]) < 1e-6, "a lossless transform keeps the axes square"
+    # A lossless transform of a draw scaled by +-1 is scaled by exactly +-1
+    # (the published table writes what it is given; a 0.9999999 would not
+    # read back as written).
+    sx, sy = (round(v) if abs(abs(v) - 1.0) < 1e-9 else v for v in (sx, sy))
+    return _replace(d, part=src, at=at, rotation=theta, scale=(sx, sy), tint=tinted)
+
+
+#: A near twin's covered pixels whose alpha may differ by more than 48 levels
+#: (an anti-aliased edge one texel over), as a share. These gates only NOMINATE
+#: a twin; the replay guard decides (`_withdrawn_until_replayed`). Sybil's limbs,
+#: painted a fraction of a pixel off centre, are their own mirrors to 2.3% and
+#: an RMS of 6.7 and were never nominated at 2% and 6 (2026-10-04).
+NEAR_ALPHA_MISMATCH = 0.04
+#: A near twin's colour residual after its tint, RMS over pixels both draw
+#: opaque, in levels; and the 99th percentile, so a missing eye or seam (a
+#: local difference) is not averaged away.
+NEAR_RMS = 10.0
+NEAR_P99 = 32.0
+#: A tint brighter than this is not a tint: the source is the brighter twin.
+NEAR_MAX_TINT = 1.02
+
+#: target -> track names whose parts are never drawn from a near twin: the
+#: author's way to keep two parts apart that the tolerance would join (a left
+#: glove a shade off on purpose). Art that diverges beyond the tolerance is
+#: kept apart without asking. ``keep_distinct`` registers.
+DISTINCT_TRACKS: Dict[str, set] = {}
+
+
+def keep_distinct(target: str, *tracks: str) -> None:
+    """Keep the parts of ``tracks`` of ``target`` their own rasters: never drawn
+    from a near twin (mirror, quarter turn, shade), however close they come.
+    Call at the character module's import."""
+    DISTINCT_TRACKS.setdefault(target, set()).update(tracks)
+
+
+def _near_sources(flipbook: "PartFlipbook", distinct=frozenset()) -> Dict[int, tuple]:
+    """Each part that is, within the tolerance, a lossless transform of a
+    brighter part shifted at most a texel, in that part's colours times a tint:
+    ``{part: (src, op, (dx, dy), tint)}``. Parts drawn by a ``distinct`` track
+    are never drawn from another."""
+    import numpy as np
+
+    parts = flipbook.parts
+    tracks_of: Dict[int, set] = {}
+    for _duration, frames in flipbook.clips.values():
+        for draws in frames:
+            for d in draws:
+                tracks_of.setdefault(d.part, set()).add(d.track)
+    crops = [_trimmed(p.image)[0] for p in parts]
+    arrays = [np.asarray(c, dtype=np.float32) for c in crops]
+
+    def brightness(i):
+        a = arrays[i]
+        w = a[..., 3]
+        return float((a[..., :3].mean(-1) * w).sum() / max(1.0, w.sum()))
+
+    order = sorted(range(len(parts)), key=lambda i: (-brightness(i), i))
+    kept: List[int] = []
+    by_size: Dict[Tuple[int, int], List[int]] = {}
+    found: Dict[int, tuple] = {}
+
+    def compare(src: int, op, target: int):
+        """(dx, dy, tint, score) of the best alignment, or None."""
+        p = crops[src] if op is None else crops[src].transpose(op)
+        pa, ra = np.asarray(p, dtype=np.float32), arrays[target]
+        h, w = max(pa.shape[0], ra.shape[0]) + 2, max(pa.shape[1], ra.shape[1]) + 2
+        r_canvas = np.zeros((h, w, 4), np.float32)
+        r_canvas[1:1 + ra.shape[0], 1:1 + ra.shape[1]] = ra
+        best = None
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                p_canvas = np.zeros((h, w, 4), np.float32)
+                y0, x0 = 1 - dy, 1 - dx
+                if y0 + pa.shape[0] > h or x0 + pa.shape[1] > w:
+                    continue
+                p_canvas[y0:y0 + pa.shape[0], x0:x0 + pa.shape[1]] = pa
+                covered = (p_canvas[..., 3] > 0) | (r_canvas[..., 3] > 0)
+                count = int(covered.sum())
+                if count < 16:
+                    continue
+                mismatch = float((np.abs(p_canvas[..., 3] - r_canvas[..., 3]) > 48)[covered].mean())
+                if mismatch > NEAR_ALPHA_MISMATCH:
+                    continue
+                both = (p_canvas[..., 3] > 200) & (r_canvas[..., 3] > 200)
+                if both.sum() < 8:
+                    continue
+                s, t_ = p_canvas[..., :3][both], r_canvas[..., :3][both]
+                ident = np.abs(t_ - s)
+                if np.sqrt((ident ** 2).mean()) <= NEAR_RMS and np.percentile(ident, 99) <= NEAR_P99:
+                    tint = (1.0, 1.0, 1.0)
+                    resid = ident
+                else:
+                    k = (s * t_).sum(0) / np.maximum((s * s).sum(0), 1e-6)
+                    if (k > NEAR_MAX_TINT).any():
+                        continue
+                    tint = tuple(float(min(1.0, round(v, 3))) for v in k)
+                    resid = np.abs(t_ - s * np.array(tint, np.float32))
+                    if np.sqrt((resid ** 2).mean()) > NEAR_RMS or np.percentile(resid, 99) > NEAR_P99:
+                        continue
+                score = (mismatch, float(np.sqrt((resid ** 2).mean())))
+                if best is None or score < best[3]:
+                    # R's crop pixel (u, v) is P's transposed pixel (u + dx, v + dy)
+                    # shifted back: P sits (-dx, -dy) into R's crop.
+                    best = (-dx, -dy, tint, score)
+        return best
+
+    for j in order:
+        if tracks_of.get(j, set()) & distinct:
+            kept.append(j)
+            by_size.setdefault(tuple(sorted(crops[j].size)), []).append(j)
+            continue
+        size = tuple(sorted(crops[j].size))
+        candidates = [i for dw in (-1, 0, 1) for dh in (-1, 0, 1)
+                      for i in by_size.get((size[0] + dw, size[1] + dh), ())]
+        best = None
+        for i in candidates:
+            for op in [None, *_LOSSLESS]:
+                hit = compare(i, op, j)
+                if hit and (best is None or hit[3] < best[1][3]):
+                    best = ((i, op), hit)
+        if best:
+            (i, op), (dx, dy, tint, _score) = best
+            found[j] = (i, op, (dx, dy), tint)
+        else:
+            kept.append(j)
+            by_size.setdefault(size, []).append(j)
+    return found
+
+
+#: Draws a frame may reach when symmetric parts are split into halves (each
+#: split adds a draw wherever the part is drawn). Below `REALIZE_MAX_DRAWS`:
+#: a draw is a sprite per body in the game.
+SPLIT_DRAW_BUDGET = 40
+
+#: Texels each half of a split part reaches past its axis. A half drawn
+#: turned or between pixels is resampled, and at a bare cut the filter reads
+#: the transparent texel beyond it: the two halves met along a faint seam (a
+#: blob of 8, 10% of a turned capsule's pixels, 2026-10-04). Overlapping by
+#: the filter's reach, each half's edge falls under the other's interior.
+SPLIT_OVERLAP = 2
+
+
+def _split_symmetric_parts(flipbook: "PartFlipbook", rendered, distinct=frozenset()) -> "PartFlipbook":
+    """``flipbook`` with each part that is (within the near tolerance) its own
+    left-right or top-bottom mirror stored as ONE HALF, drawn twice: as is, and
+    mirrored onto the other half. Largest saving first, while every frame stays
+    within ``SPLIT_DRAW_BUDGET`` draws; kept only where every frame still
+    replays (a split's frames are withdrawn as ``_share_near_parts`` does).
+
+    Jon, 2026-10-04: capsule limbs, bodies, visors and rings are their own
+    mirrors (a third of a mite's and Sybil's texels). An odd width shares its
+    centre column, drawn by both halves; the replay guard judges what that
+    does to its anti-aliased ends. A part drawn by a ``distinct`` track is
+    left whole, and art that stops being symmetric stops being split.
+    """
+    import numpy as np
+    from dataclasses import replace as _replace
+
+    if flipbook.placement == PLACEMENT_SNAPPED:
+        return flipbook
+    parts = list(flipbook.parts)
+    uses: Dict[int, List[Tuple[str, int]]] = {}
+    tracks_of: Dict[int, set] = {}
+    counts: Dict[Tuple[str, int], int] = {}
+    for row, (_duration, frames) in flipbook.clips.items():
+        for index, draws in enumerate(frames):
+            counts[(row, index)] = len(draws)
+            for d in draws:
+                uses.setdefault(d.part, []).append((row, index))
+                tracks_of.setdefault(d.part, set()).add(d.track)
+    candidates = []
+    for i, part in enumerate(parts):
+        if i not in uses or tracks_of.get(i, set()) & distinct:
+            continue
+        crop, _box = _trimmed(part.image)
+        if min(crop.size) < 8:
+            continue
+        a = np.asarray(crop, dtype=np.float32)
+        for op, axis in ((Image.Transpose.FLIP_LEFT_RIGHT, 0), (Image.Transpose.FLIP_TOP_BOTTOM, 1)):
+            b = np.asarray(crop.transpose(op), dtype=np.float32)
+            covered = (a[..., 3] > 0) | (b[..., 3] > 0)
+            if float((np.abs(a[..., 3] - b[..., 3]) > 48)[covered].mean()) > NEAR_ALPHA_MISMATCH:
+                continue
+            both = (a[..., 3] > 200) & (b[..., 3] > 200)
+            diff = np.abs(a[..., :3] - b[..., :3])[both]
+            if both.sum() < 8 or np.sqrt((diff ** 2).mean()) > NEAR_RMS or np.percentile(diff, 99) > NEAR_P99:
+                continue
+            size = crop.size[axis]
+            half = min(size, (size + 1) // 2 + SPLIT_OVERLAP)
+            saving = (size - half) * crop.size[1 - axis]
+            if saving <= 0:
+                break
+            candidates.append((saving, i, op, axis))
+            break
+    candidates.sort(key=lambda c: -c[0])
+    chosen: Dict[int, tuple] = {}
+    for saving, i, op, axis in candidates:
+        frames = uses[i]
+        added: Dict[Tuple[str, int], int] = {}
+        for key in frames:
+            added[key] = added.get(key, 0) + 1
+        if all(counts[key] + n <= SPLIT_DRAW_BUDGET for key, n in added.items()):
+            for key, n in added.items():
+                counts[key] += n
+            chosen[i] = (op, axis)
+
+    def split(chosen_now):
+        new_parts = list(parts)
+        halves: Dict[int, int] = {}
+        for i, (op, axis) in chosen_now.items():
+            crop, box = _trimmed(parts[i].image)
+            size = crop.size[axis]
+            half = min(size, (size + 1) // 2 + SPLIT_OVERLAP)
+            # Cut from the padded raster, so the half keeps the part's border
+            # (the resampling filter's falloff) on every side but the axis.
+            image = parts[i].image
+            cut = image.crop((0, 0, box[0] + half, image.height) if axis == 0 else (0, 0, image.width, box[1] + half))
+            halves[i] = len(new_parts)
+            new_parts.append(PartRaster(f"{parts[i].name}/half", cut, parts[i].pivot))
+        clips = {}
+        for row, (duration, frames) in flipbook.clips.items():
+            out_frames = []
+            for draws in frames:
+                out = []
+                for d in draws:
+                    if d.part not in chosen_now:
+                        out.append(d)
+                        continue
+                    op, axis = chosen_now[d.part]
+                    h = halves[d.part]
+                    crop, _box = _trimmed(parts[d.part].image)
+                    half_raster = new_parts[h]
+                    size = crop.size[axis]
+                    half = min(size, (size + 1) // 2 + SPLIT_OVERLAP)
+                    out.append(_redrawn(d, parts[d.part], half_raster, h, None, (0, 0), (1.0, 1.0, 1.0)))
+                    mirror_offset = (size - half, 0) if axis == 0 else (0, size - half)
+                    out.append(
+                        _replace(
+                            _redrawn(d, parts[d.part], half_raster, h, op, mirror_offset, (1.0, 1.0, 1.0)),
+                            track=None if d.track is None else f"{d.track}~mirror",
+                        )
+                    )
+                out_frames.append(out)
+            clips[row] = (duration, out_frames)
+        used = sorted({d.part for _d, fr in clips.values() for draws in fr for d in draws})
+        remap = {old: new for new, old in enumerate(used)}
+        clips = {
+            row: (duration, [[_replace(d, part=remap[d.part]) for d in draws] for draws in fr])
+            for row, (duration, fr) in clips.items()
+        }
+        return _replace(flipbook, parts=[new_parts[k] for k in used], clips=clips, rects=[], pages=[])
+
+    return _withdrawn_until_replayed(flipbook, rendered, chosen, split)
+
+
+def _withdrawn_until_replayed(flipbook, rendered, chosen: dict, build) -> "PartFlipbook":
+    """``build(chosen)`` with the candidates in ``chosen`` (part -> change)
+    that keep every frame replaying, or ``flipbook`` when none do.
+
+    A failing frame names its culprits: each candidate drawn in it is tried
+    ALONE on the failing frames and withdrawn if it fails there alone; when
+    none fails alone (two changes that only fail together), every candidate
+    drawn in those frames is withdrawn. Coarse withdrawal (all of a frame's
+    candidates at once) dropped every limb split of a character with one bad
+    split, since limbs are drawn in every frame.
+    """
+    chosen = dict(chosen)
+    for _attempt in range(8):
+        if not chosen:
+            return flipbook
+        result = build(chosen)
+        failing = _replay_failures(result, rendered)
+        if not failing:
+            return result
+        sample = failing[:6]
+        subset = {}
+        for name in sample:
+            row, index = name.rsplit(":", 1)
+            subset[(row, int(index))] = rendered[(row, int(index))]
+        suspects = {d.part for name in sample for d in flipbook.clips[name.rsplit(":", 1)[0]][1][int(name.rsplit(":", 1)[1])]}
+        suspects &= set(chosen)
+        culprits = {part for part in suspects if _replay_failures(build({part: chosen[part]}), subset)}
+        for part in culprits or suspects:
+            chosen.pop(part, None)
+    return flipbook
+
+
+def _share_near_parts(flipbook: "PartFlipbook", rendered, distinct=frozenset()) -> "PartFlipbook":
+    """``flipbook`` with every part that is a NEAR twin of another (mirror,
+    quarter turn or the same, a texel over, in a tint: ``_near_sources``) drawn
+    from that twin, kept only where every frame still replays its render.
+
+    Jon, 2026-10-04: limbs painted separately are the same shape a pixel apart,
+    and a back limb is its front limb darker. Exact sharing never sees them; a
+    tolerance does, and the replay guard is the arbiter: a frame that no
+    longer replays withdraws the near shares drawn in it, and the rest are
+    tried again.
+    """
+    if flipbook.placement == PLACEMENT_SNAPPED:
+        return flipbook
+    sources = _near_sources(flipbook, distinct)
+    return _withdrawn_until_replayed(flipbook, rendered, sources, lambda chosen: _drawn_from_sources(flipbook, chosen))
 
 
 #: How far a replayed frame may differ from its render, per 8-bit channel.
