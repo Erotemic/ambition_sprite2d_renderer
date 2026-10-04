@@ -16,13 +16,13 @@ not reintroduce a config under a name a module target already claims.
 
 from __future__ import annotations
 
+import dataclasses
 import math
-import random
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageFilter
 
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -36,7 +36,7 @@ from ...authoring.portrait import (
     write_portrait_sheet,
 )
 from ...core import slash_envelope
-from .robot_side import SideRobotGenerator
+from .robot_side import RigCanvas, SideRobotGenerator, _on_grid, fx_piece, transposed
 from .player_robot_v3_gameplay import hurtbox_parts_for_rows
 from .player_robot_v3_motion import EFFECT_ALIASES, MIRRORED, ROBOT_ROWS
 from .player_robot_v3_strikes import STRIKES
@@ -77,7 +77,11 @@ def _other_side(params: dict) -> dict:
     near = float(params.get("near_ear_vis", 1.0))
     far = float(params.get("far_ear_vis", 0.0))
     return {**params, "near_ear_vis": far, "far_ear_vis": near}
-_OLD_ROBOT_FX = SideRobotGenerator()
+
+
+#: The robot family's teleport (portal pieces and the warp that takes a body
+#: apart), drawn at this rig's scale.
+_TELEPORT = SideRobotGenerator()
 
 ACTOR_METADATA = {
     "actor": {"character_id": "player", "display_name": "Player Robot"},
@@ -153,14 +157,147 @@ def load_doc() -> RigDocument:
     return RigDocument.load(RIG_PATH)
 
 
-def _rgba(hex_value: str, alpha: int = 255):
-    value = hex_value.lstrip("#")
-    return tuple(int(value[i:i + 2], 16) for i in (0, 2, 4)) + (alpha,)
+# ── Effects ──────────────────────────────────────────────────────────────────
+# Every effect is a set of PIECES: a raster painted once at the rig's supersample
+# (``fx_piece``), placed turned and faded by its draw (``RigCanvas.put``) on a
+# supersampled effect canvas that is reduced as the body is
+# (``rigdoc.downsampled_canvas``). The part flipbook then stores each raster once
+# and draws it where the frame puts it. An effect painted straight into the frame
+# is a new raster in every frame it changes.
+#
+# Coordinates below are logical frame pixels; ``_FxLayer`` scales them to the
+# supersampled canvas and ``K`` scales sizes a painter draws with.
+
+#: The effect canvases' supersample (the body's is the rig document's own).
+K = 4.0
+_RASTERS: Dict[tuple, Tuple[Image.Image, Tuple[float, float]]] = {}
 
 
 def _point_along(origin, angle_deg: float, distance: float):
     a = math.radians(angle_deg)
     return (origin[0] + math.cos(a) * distance, origin[1] + math.sin(a) * distance)
+
+
+class _FxLayer:
+    """One supersampled effect canvas (behind or in front of the body)."""
+
+    def __init__(self, size: Tuple[int, int]) -> None:
+        self.size = size
+        self._rig: Optional[RigCanvas] = None
+
+    @property
+    def rig(self) -> RigCanvas:
+        """The supersampled canvas, made when the first piece is placed."""
+        if self._rig is None:
+            self._rig = RigCanvas(Image.new("RGBA", (int(self.size[0] * K), int(self.size[1] * K)), (0, 0, 0, 0)))
+        return self._rig
+
+    def put(self, part, at, degrees: float, name: str, opacity: float = 1.0) -> None:
+        """``part`` with its pivot at ``at`` (frame pixels)."""
+        self.rig.put(part, (at[0] * K, at[1] * K), degrees, name, opacity)
+
+    def reduced(self) -> Optional[Image.Image]:
+        return None if self._rig is None else rigdoc.downsampled_canvas(self._rig.canvas, self.size)
+
+
+def _raster(key: tuple, make) -> Tuple[Image.Image, Tuple[float, float]]:
+    """A piece ``make()`` builds as ``(image, pivot)`` (a blurred glow, a cut
+    quarter), cached under ``key``."""
+    cached = _RASTERS.get(key)
+    if cached is None:
+        cached = _RASTERS[key] = make()
+    return cached
+
+
+# -- boot thrusters --------------------------------------------------------------
+
+#: The plume's flicker: a few drawn phases, chosen per frame and boot. Each is
+#: one raster; the flicker is which one a frame draws.
+_PLUME_PHASES = (0.0, 1.7, 3.4, 5.1)
+
+
+def _plume_shape(size: float, phase: float):
+    """Outer, middle and core polygons, the nozzle lip and the motes of a boot
+    plume pointing along +x from the nozzle at the origin (frame pixels)."""
+    pulse = 0.94 + 0.08 * math.sin(phase)
+    tip_wander = math.sin(phase * 1.73 + 0.6)
+    length = 34.0 * size * pulse
+    width = 13.5 * size * (0.98 + 0.07 * math.cos(phase * 1.31))
+
+    def plume(length_scale: float, width_scale: float, wander: float):
+        n, w = length * length_scale, width * width_scale
+        # Broad nozzle shoulders taper through a narrow waist to an off-centre
+        # tip: a mirrored triangle reads as a UI marker, not exhaust.
+        return [
+            (0.0, -w * 0.42), (0.0, w * 0.42), (n * 0.14, w * 0.82), (n * 0.38, w * 0.56),
+            (n * 0.68, w * 0.34), (n, w * 0.13 * wander), (n * 0.66, -w * 0.29),
+            (n * 0.36, -w * 0.50), (n * 0.13, -w * 0.74),
+        ]
+
+    motes = []
+    for index in range(2 if size >= 0.8 else 1):
+        mote_phase = phase + index * 2.1
+        distance = length * (0.78 + 0.13 * index + 0.035 * math.sin(mote_phase))
+        motes.append(((distance, width * 0.18 * math.sin(mote_phase * 1.9)), max(0.7, size * (1.15 - index * 0.25))))
+    lip = ((0.8, -width * 0.31), (0.8, width * 0.31))
+    return plume(1.0, 1.0, tip_wander), plume(0.72, 0.68, -tip_wander), plume(0.42, 0.38, tip_wander * 0.35), lip, motes, length, width
+
+
+def _plume_glow(size: float, intensity: float):
+    """The plume's soft cyan bloom: blurred, so its flicker is not worth a
+    raster; one per plume size."""
+
+    def make():
+        outer, _middle, _core, _lip, _motes, length, width = _plume_shape(size, _PLUME_PHASES[0])
+        blur = (2.0 + 2.5 * size) * K
+        margin = int(math.ceil(3 * blur + 4.0 * size * K)) + 2
+        w = int(math.ceil(length * 1.1 * K)) + 2 * margin
+        h = int(math.ceil(width * 1.7 * K)) + 2 * margin
+        ox, oy = float(margin), h / 2.0
+        image = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        d = blending_draw(image)
+        d.polygon([(ox + x * K, oy + y * K) for x, y in outer], fill=(20, 231, 255, int((42 + 42 * intensity) * intensity)))
+        r = 4.0 * size * K
+        d.ellipse((ox - r, oy - r, ox + r, oy + r), fill=(154, 250, 255, int(75 + 65 * intensity)))
+        return image.filter(ImageFilter.GaussianBlur(radius=blur)), (ox, oy)
+
+    return _raster(("v3_plume_glow", size, intensity), make)
+
+
+def _plume(size: float, intensity: float, phase: float):
+    outer, middle, core, lip, motes, length, width = _plume_shape(size, phase)
+
+    def paint(d, ox, oy) -> None:
+        def at(points):
+            return [(ox + x * K, oy + y * K) for x, y in points]
+
+        d.polygon(at(outer), fill=(18, 208, 255, int(115 + 90 * intensity)))
+        d.polygon(at(middle), fill=(76, 236, 255, int(160 + 72 * intensity)))
+        d.polygon(at(core), fill=(250, 255, 244, int(205 + 45 * intensity)))
+        d.line(at(lip), fill=(232, 255, 255, 235), width=int(max(1, round(2 * size)) * K))
+        for (mx, my), radius in motes:
+            cx, cy, r = ox + mx * K, oy + my * K, radius * K
+            d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(92, 239, 255, int(95 + 70 * intensity)))
+
+    half = width * 0.9 * K
+    return fx_piece(("v3_plume", size, intensity, phase), (-2 * K, -half, length * 1.05 * K, half), paint)
+
+
+def _place_thrusters(front: _FxLayer, world, frame_idx: int, slow_fall: bool) -> None:
+    """Both boot jets. Slow fall (``float_glide``) burns smaller, softer and
+    angled back; full flight long and bright."""
+    size, intensity, angle = (0.56, 0.68, 102.0) if slow_fall else (1.0, 1.0, 90.0)
+    for side_idx, side in enumerate(("far", "near")):
+        foot = world[f"{side}_leg_foot"]
+        # The nozzle sits under the middle of the sole, not the ankle.
+        origin = (foot.origin[0] * 0.48 + foot.tip[0] * 0.52, foot.origin[1] * 0.48 + foot.tip[1] * 0.52 + 2.0)
+        phase = _PLUME_PHASES[(frame_idx + 2 * side_idx) % len(_PLUME_PHASES)]
+        wander = math.sin(phase * 1.73 + 0.6)
+        front.put(_plume_glow(size, intensity), origin, angle, f"{side}_jet_glow")
+        front.put(_plume(size, intensity, phase), origin, angle + 1.8 * wander, f"{side}_jet")
+
+
+# -- the line blade of the un-keyed attacks ----------------------------------------
 
 
 def _slash_angle(animation: str, arc: float, hand_angle: float) -> float:
@@ -178,309 +315,233 @@ def _slash_angle(animation: str, arc: float, hand_angle: float) -> float:
     return hand_angle
 
 
-def _draw_blade(draw: ImageDraw.ImageDraw, animation: str, base, hand_angle, slash, arc):
+def _stroke(length: float, width: float, color, key: str):
+    """A straight stroke from the pivot along +x (frame pixels), one raster."""
+    w = width * K
+
+    def paint(d, ox, oy) -> None:
+        d.line([(ox, oy), (ox + length * K, oy)], fill=color, width=max(1, int(round(w))))
+
+    return fx_piece(("v3_stroke", key, round(length, 2), width, color), (-w, -w, length * K + w, w), paint)
+
+
+def _blade(length: float):
+    def paint(d, ox, oy) -> None:
+        tip = (ox + length * K, oy)
+        d.line([(ox, oy), tip], fill=(24, 27, 34, 255), width=int(5 * K))
+        d.line([(ox, oy), tip], fill=(190, 128, 255, 255), width=int(3 * K))
+        d.line([(ox, oy), (ox + length * 0.84 * K, oy)], fill=(245, 255, 255, 235), width=int(K))
+
+    return fx_piece(("v3_line_blade", length), (-3 * K, -3 * K, (length + 3) * K, 3 * K), paint)
+
+
+def _place_blade(front: _FxLayer, animation: str, base, hand_angle: float, slash: float, arc: float) -> None:
+    """The energy blade and its trailing fan: five strokes at the angles the
+    blade passed, faded by age. Two blade lengths (charging, full)."""
     if slash <= 0.02:
         return
     angle = _slash_angle(animation, arc, hand_angle)
-    length = 22.0 + 8.0 * min(1.0, slash)
-    tip = _point_along(base, angle, length)
-    # Trailing fan: short alpha-stepped line segments avoid a heavy filled blob.
+    length = 22.0 + 8.0 * (0.5 if min(1.0, slash) < 0.7 else 1.0)
     for k in range(5, 0, -1):
-        past = max(0.0, arc - k * 0.055)
-        pa = _slash_angle(animation, past, hand_angle)
-        ptip = _point_along(base, pa, length * (0.92 + 0.016 * k))
-        draw.line([base, ptip], fill=(115, 235, 255, 22 + 18 * (6 - k)), width=max(1, 6 - k))
-    draw.line([base, tip], fill=(24, 27, 34, 255), width=5)
-    draw.line([base, tip], fill=(190, 128, 255, 255), width=3)
-    core = _point_along(base, angle, length * 0.84)
-    draw.line([base, core], fill=(245, 255, 255, 235), width=1)
+        past = _slash_angle(animation, max(0.0, arc - k * 0.055), hand_angle)
+        stroke = _stroke(length * (0.92 + 0.016 * k), max(1, 6 - k), (115, 235, 255, 22 + 18 * (6 - k)), f"fan{k}")
+        front.put(stroke, base, past, f"blade_fan{k}")
+    front.put(_blade(length), base, angle, "line_blade")
 
 
-def _pixel_scatter(draw: ImageDraw.ImageDraw, seed: int, center, amount: float, arriving: bool):
-    rng = random.Random(seed)
-    count = int(10 + amount * 24)
-    for i in range(count):
-        spread = 12 + 34 * amount
-        dx = rng.uniform(-spread, spread)
-        dy = rng.uniform(-spread * 0.75, spread * 0.75)
-        if arriving:
-            dx *= (1.0 - amount * 0.65)
-            dy *= (1.0 - amount * 0.65)
-        s = rng.choice((1, 1, 2, 2, 3))
-        alpha = int(65 + 150 * amount)
-        x = center[0] + dx
-        y = center[1] + dy
-        draw.rectangle((x - s, y - s, x + s, y + s), outline=(35, 226, 255, alpha), width=1)
+# -- the rest ------------------------------------------------------------------------
 
 
+def _disc(radius: float, fill, outline, outline_w: float, key: str):
+    """A filled and/or outlined circle about the pivot (frame pixels)."""
+    r, w = radius * K, outline_w * K
 
-def _draw_thruster_plume(
-    layer: Image.Image,
-    origin,
-    *,
-    phase: float,
-    size: float,
-    intensity: float,
-    angle_deg: float,
-) -> None:
-    """Draw a layered, gently irregular boot-thruster plume.
+    def paint(d, ox, oy) -> None:
+        d.ellipse((ox - r, oy - r, ox + r, oy + r), fill=fill, outline=outline, width=int(round(w)))
 
-    ``size`` controls the silhouette independently of ``intensity`` so slow
-    fall can use a visibly smaller exhaust without looking like a dimmed copy
-    of full flight.  The shapes are deliberately asymmetric and mildly
-    animated: a perfectly mirrored triangle reads as a UI marker, whereas the
-    tapered shoulders, waist, and wandering tip read as hot moving exhaust.
-    """
-    size = max(0.1, float(size))
-    intensity = max(0.0, min(1.0, float(intensity)))
-
-    # Keep flicker subtle enough that the nozzle remains visually attached to
-    # the boot.  Most of the motion happens at the plume tip.
-    pulse = 0.94 + 0.08 * math.sin(phase)
-    tip_wander = math.sin(phase * 1.73 + 0.6)
-    angle = math.radians(angle_deg + 1.8 * tip_wander)
-    dx, dy = math.cos(angle), math.sin(angle)
-    px, py = -dy, dx
-    ox, oy = origin
-
-    # Make both hover and slow-fall exhaust read as punchier boot jets:
-    # shorter overall but with a broader silhouette.
-    length = 34.0 * size * pulse
-    width = 13.5 * size * (0.98 + 0.07 * math.cos(phase * 1.31))
-
-    def point(distance: float, lateral: float = 0.0):
-        return (
-            ox + dx * distance + px * lateral,
-            oy + dy * distance + py * lateral,
-        )
-
-    def plume_points(length_scale: float, width_scale: float, wander: float):
-        plume_len = length * length_scale
-        plume_w = width * width_scale
-        # Broad nozzle shoulders taper through a narrow waist before ending in
-        # an off-center tip.  The unequal sides avoid the old flat triangle.
-        return [
-            point(0.0, -plume_w * 0.42),
-            point(0.0, plume_w * 0.42),
-            point(plume_len * 0.14, plume_w * 0.82),
-            point(plume_len * 0.38, plume_w * 0.56),
-            point(plume_len * 0.68, plume_w * 0.34),
-            point(plume_len, plume_w * 0.13 * wander),
-            point(plume_len * 0.66, -plume_w * 0.29),
-            point(plume_len * 0.36, -plume_w * 0.50),
-            point(plume_len * 0.13, -plume_w * 0.74),
-        ]
-
-    outer = plume_points(1.0, 1.0, tip_wander)
-    middle = plume_points(0.72, 0.68, -tip_wander)
-    core = plume_points(0.42, 0.38, tip_wander * 0.35)
-
-    # A blurred cyan bloom provides volume without turning the flame into a
-    # solid opaque wedge.  It is intentionally much softer during slow fall.
-    glow = Image.new("RGBA", layer.size, (0, 0, 0, 0))
-    glow_draw = blending_draw(glow)
-    glow_draw.polygon(
-        outer,
-        fill=(20, 231, 255, int((42 + 42 * intensity) * intensity)),
-    )
-    nozzle_r = 4.0 * size
-    glow_draw.ellipse(
-        (ox - nozzle_r, oy - nozzle_r, ox + nozzle_r, oy + nozzle_r),
-        fill=(154, 250, 255, int(75 + 65 * intensity)),
-    )
-    glow = glow.filter(ImageFilter.GaussianBlur(radius=2.0 + 2.5 * size))
-    layer.alpha_composite(glow)
-
-    draw = blending_draw(layer)
-    draw.polygon(
-        outer,
-        fill=(18, 208, 255, int(115 + 90 * intensity)),
-    )
-    draw.polygon(
-        middle,
-        fill=(76, 236, 255, int(160 + 72 * intensity)),
-    )
-    draw.polygon(
-        core,
-        fill=(250, 255, 244, int(205 + 45 * intensity)),
-    )
-
-    # Short bright nozzle lip and tiny exhaust motes make the source read as a
-    # boot engine rather than a detached flame sprite.
-    lip_a = point(0.8, -width * 0.31)
-    lip_b = point(0.8, width * 0.31)
-    draw.line(
-        [lip_a, lip_b],
-        fill=(232, 255, 255, 235),
-        width=max(1, round(2 * size)),
-    )
-
-    mote_count = 2 if size >= 0.8 else 1
-    for index in range(mote_count):
-        mote_phase = phase + index * 2.1
-        distance = length * (
-            0.78 + 0.13 * index + 0.035 * math.sin(mote_phase)
-        )
-        lateral = width * 0.18 * math.sin(mote_phase * 1.9)
-        mx, my = point(distance, lateral)
-        radius = max(0.7, size * (1.15 - index * 0.25))
-        draw.ellipse(
-            (mx - radius, my - radius, mx + radius, my + radius),
-            fill=(92, 239, 255, int(95 + 70 * intensity)),
-        )
+    return fx_piece(("v3_disc", key, radius, fill, outline, outline_w), (-r - 1, -r - 1, r + 1, r + 1), paint)
 
 
-def _boot_thruster_origin(foot_world):
-    # Place the nozzle near the middle of the sole rather than at the ankle.
-    return (
-        foot_world.origin[0] * 0.48 + foot_world.tip[0] * 0.52,
-        foot_world.origin[1] * 0.48 + foot_world.tip[1] * 0.52 + 2.0,
-    )
+def _shield_quarter(scale: float):
+    """The lower right quarter of the shield bubble, its centre at the pivot
+    (the canvas corner), on the mirror grid: the other three quarters are the
+    same raster mirrored (``transposed``)."""
 
-def _apply_fx(img: Image.Image, animation: str, frame_idx: int, nframes: int) -> Image.Image:
+    def make():
+        rx, ry, w = int(round(40 * scale * K)), int(round(48 * scale * K)), int(2 * K)
+        full = Image.new("RGBA", (2 * rx + 4, 2 * ry + 4), (0, 0, 0, 0))
+        # Pixels 2 .. 2 + 2r - 1: symmetric about the pixel EDGE 2 + r, where the
+        # quarters meet.
+        blending_draw(full).ellipse((2, 2, 2 + 2 * rx - 1, 2 + 2 * ry - 1), fill=(65, 222, 255, 24), outline=(63, 229, 255, 190), width=w)
+        quarter = Image.new("RGBA", (_on_grid(rx + 2), _on_grid(ry + 2)), (0, 0, 0, 0))
+        quarter.alpha_composite(full.crop((2 + rx, 2 + ry, 2 * rx + 4, 2 * ry + 4)))
+        return quarter, (0.0, 0.0)
+
+    return _raster(("v3_shield_quarter", scale), make)
+
+
+def _place_shield(front: _FxLayer, center, t: float) -> None:
+    """The shield bubble on the torso, breathing in three sizes."""
+    quarter = _shield_quarter(1.0 + 0.05 * round(math.sin(t * math.tau)))
+    for name, part in (
+        ("shield_br", quarter),
+        ("shield_bl", transposed(quarter, Image.FLIP_LEFT_RIGHT)),
+        ("shield_tr", transposed(quarter, Image.FLIP_TOP_BOTTOM)),
+        ("shield_tl", transposed(quarter, Image.ROTATE_180)),
+    ):
+        front.put(part, center, 0.0, name)
+
+
+def _dash_lines():
+    """The speed lines behind a dash, at full strength."""
+
+    def paint(d, ox, oy) -> None:
+        for i in range(5):
+            y = oy + i * 8 * K
+            d.line([(ox + i * 3 * K, y), (ox + (35 + i * 2) * K, y - 2 * K)], fill=(35, 228, 255, 150 - i * 18), width=int(max(1, 4 - i // 2) * K))
+
+    return fx_piece(("v3_dash_lines",), (-2 * K, -5 * K, 46 * K, 35 * K), paint)
+
+
+def _hit_sparks():
+    def paint(d, ox, oy) -> None:
+        for angle in (-65, -20, 25, 70):
+            a = _point_along((ox, oy), angle, 7 * K)
+            b = _point_along((ox, oy), angle, 14 * K)
+            d.line([a, b], fill=(255, 238, 120, 230), width=int(2 * K))
+
+    return fx_piece(("v3_hit_sparks",), (-16 * K, -16 * K, 16 * K, 16 * K), paint)
+
+
+def _shot(length: float):
+    """The shot leaving the hand: a beam along +x and its bright head."""
+
+    def paint(d, ox, oy) -> None:
+        tip = (ox + length * K, oy)
+        d.line([(ox, oy), tip], fill=(245, 255, 255, 240), width=int(3 * K))
+        d.ellipse((tip[0] - 3 * K, tip[1] - 3 * K, tip[0] + 3 * K, tip[1] + 3 * K), fill=(23, 234, 255, 220))
+
+    return fx_piece(("v3_shot", length), (-3 * K, -4 * K, (length + 4) * K, 4 * K), paint)
+
+
+def _render_body(doc: RigDocument, clip: str, t: float, solved, warp=None) -> Image.Image:
+    """The rig's frame (``render_at``), or, with ``warp``, the same parts each
+    moved and faded by ``warp(place, k) -> (dx, dy, opacity)`` (supersampled
+    pixels; ``k`` numbers the BONES, so a head and its face move as one)."""
+    if warp is None:
+        return doc.render_at(clip, t, solved=solved)
+    fr = doc.frame
+    size = (int(fr["width"]), int(fr["height"]))
+    S = float(max(1, int(fr.get("supersample", 4))))
+    img = Image.new("RGBA", (int(size[0] * S), int(size[1] * S)), (0, 0, 0, 0))
+    draw = blending_draw(img)
+    world, params = solved
+    bones: Dict[str, int] = {}
+    for part in rigdoc.ordered_parts(rigdoc.visible_parts(doc.parts, doc.features), params):
+        bone = part.get("bone")
+        sprite = doc.sprite_raster(part, S)
+        if bone not in world or sprite is None or rigdoc.part_channel_opacity(part, params) <= 0.01:
+            continue
+        bw = world[bone]
+        dx, dy, fade = warp((bw.origin[0] * S, bw.origin[1] * S), bones.setdefault(bone, len(bones)))
+        moved = {**world, bone: dataclasses.replace(bw, origin=(bw.origin[0] + dx / S, bw.origin[1] + dy / S))}
+        faded = {**params, "body_opacity": max(0.0, min(1.0, float(params.get("body_opacity", 1.0)))) * fade}
+        rigdoc.paint_part(img, draw, part, moved, S, faded, doc.palette, sprite=sprite, transform_cache=doc._sprite_transform_cache)
+    return rigdoc.downsampled_canvas(img, size)
+
+
+def _compose(animation: str, clip: str, t: float, solved, frame_idx: int, nframes: int) -> Image.Image:
+    """The frame of ``animation`` (an authored row): the body of ``clip`` posed
+    by ``solved`` at ``t``, between the effects behind and in front of it."""
     doc = load_doc()
-    t = doc.frame_time(animation, frame_idx, nframes)
-    world, params = doc.solve(animation, t)
+    world, params = solved
     # A keyed strike is drawn entirely by the rig (its blade is a part), so it
     # borrows no other row's effects: `smash_charge` used to inherit the
     # `charge` orb and every attack the line-blade.
-    effect_animation = animation if animation in STRIKES else EFFECT_ALIASES.get(animation, animation)
+    effect = animation if animation in STRIKES else EFFECT_ALIASES.get(animation, animation)
+    size = (int(doc.frame["width"]), int(doc.frame["height"]))
+    back, front = _FxLayer(size), _FxLayer(size)
+    warp = None
 
-    background = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    bd = blending_draw(background)
-    foreground = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    fd = blending_draw(foreground)
+    if effect in {"dash", "dash_startup", "slide"}:
+        back.put(_dash_lines(), (8, 49), 0.0, "dash_lines", 1.0 if effect == "dash" else 0.7)
 
-    if effect_animation in {"dash", "dash_startup", "slide"}:
-        strength = 1.0 if effect_animation == "dash" else 0.7
-        for i in range(5):
-            y = 49 + i * 8
-            bd.line([(8 + i * 3, y), (43 + i * 2, y - 2)], fill=(35, 228, 255, int(150 * strength - i * 18)), width=max(1, 4 - i // 2))
+    if effect in {"hover", "float_glide"}:
+        _place_thrusters(front, world, frame_idx, slow_fall=effect == "float_glide")
 
-    if effect_animation in {"hover", "float_glide"}:
-        # Full flight uses a long, bright plume.  ``float_glide`` is the slow-
-        # fall state, so its jets are deliberately smaller, softer, and angled
-        # slightly backward instead of reusing the full-flight silhouette.
-        slow_fall = effect_animation == "float_glide"
-        for side_idx, side in enumerate(("far", "near")):
-            foot = world[f"{side}_leg_foot"]
-            origin = _boot_thruster_origin(foot)
-            _draw_thruster_plume(
-                foreground,
-                origin,
-                phase=frame_idx * 1.7 + side_idx * math.pi / 2.0,
-                size=0.56 if slow_fall else 1.0,
-                intensity=0.68 if slow_fall else 1.0,
-                angle_deg=102.0 if slow_fall else 90.0,
-            )
-
-    if effect_animation == "swim":
+    if effect == "swim":
         for i in range(5):
             x = 42 + i * 13 + math.sin((t + i) * math.tau) * 3
             y = 24 + ((i * 17 + frame_idx * 5) % 70)
-            r = 1 + (i % 2)
-            fd.ellipse((x - r, y - r, x + r, y + r), outline=(60, 226, 255, 150), width=1)
+            front.put(_disc(1 + (i % 2), None, (60, 226, 255, 150), 1, "bubble"), (x, y), 0.0, f"bubble{i}")
 
-    if effect_animation == "block":
-        # The shield is body-attached, so center it on the torso world anchor.
-        # Ambient effects may use frame-local positions because they belong to no
-        # body part.
-        pulse = 1.0 + 0.05 * math.sin(t * math.tau)
-        cx, cy = world["torso"].origin
-        box = (cx - 40 * pulse, cy - 48 * pulse, cx + 40 * pulse, cy + 48 * pulse)
-        fd.ellipse(box, fill=(65, 222, 255, 24), outline=(63, 229, 255, 190), width=2)
+    if effect == "block":
+        # Body-attached: centred on the torso.
+        _place_shield(front, world["torso"].origin, t)
 
     hand = world["near_arm_hand"]
     base = hand.tip
-    slash = float(params.get("slash", 0.0))
-    arc = float(params.get("slash_arc", t))
     # A keyed strike carries the blade as a rig part on the hand; drawing this
     # line as well would be a second blade.
-    if animation not in STRIKES and effect_animation in {
+    if animation not in STRIKES and effect in {
         "slash", "attack_side", "attack_up", "attack_down", "air_neutral",
         "air_forward", "air_back", "air_down", "air_up", "ledge_getup_attack",
     }:
-        _draw_blade(fd, effect_animation, base, hand.angle, max(0.35, slash), arc)
+        slash = max(0.35, float(params.get("slash", 0.0)))
+        _place_blade(front, effect, base, hand.angle, slash, float(params.get("slash_arc", t)))
 
-    if effect_animation in {"aim", "charge", "shoot"}:
+    if effect in {"aim", "charge", "shoot"}:
         pulse = 0.55 + 0.45 * math.sin((t + 0.1) * math.pi)
-        r = 3 + 4 * pulse
-        fd.ellipse((base[0] - r, base[1] - r, base[0] + r, base[1] + r), fill=(25, 233, 255, 75), outline=(193, 128, 255, 220), width=2)
-        if effect_animation == "shoot" and 0.35 <= t <= 0.72:
-            tip = _point_along(base, 0.0, 20 + 15 * (t - 0.35) / 0.37)
-            fd.line([base, tip], fill=(245, 255, 255, 240), width=3)
-            fd.ellipse((tip[0] - 3, tip[1] - 3, tip[0] + 3, tip[1] + 3), fill=(23, 234, 255, 220))
+        front.put(_disc(float(round(3 + 4 * pulse)), (25, 233, 255, 75), (193, 128, 255, 220), 2, "orb"), base, 0.0, "orb")
+        if effect == "shoot" and 0.35 <= t <= 0.72:
+            front.put(_shot(float(round(20 + 15 * (t - 0.35) / 0.37))), base, 0.0, "shot")
 
-    if effect_animation == "hit":
-        for angle in (-65, -20, 25, 70):
-            a = _point_along((78, 48), angle, 7)
-            b = _point_along((78, 48), angle, 14)
-            fd.line([a, b], fill=(255, 238, 120, 230), width=2)
+    if effect == "hit":
+        front.put(_hit_sparks(), (78, 48), 0.0, "hit_sparks")
 
-    if effect_animation in {"blink_out", "blink_in"}:
-        # Reuse the original player's authored teleport presentation: portal
-        # rings + slivers and horizontally sliced actor fragments. This is much
-        # more legible than fading the whole paper doll uniformly.
-        fr = doc.frame
-        root_x = float(fr.get("center_x", img.width / 2.0)) + float(params.get("root_x", 0.0))
-        ground_y = float(fr.get("ground_y", img.height - 2.0)) + float(params.get("root_y", 0.0))
-        teleported = Image.new("RGBA", img.size, (0, 0, 0, 0))
-        _OLD_ROBOT_FX._composite_teleport_actor(
-            teleported,
-            img,
-            effect_animation,
-            frame_idx,
-            nframes,
-            1.0,
-        )
-        # The sliced body is a picture of this frame alone, not the parts:
-        # its flipbook frame draws it as one overlay.
-        body = None
-        if effect_animation == "blink_out":
-            _OLD_ROBOT_FX._draw_blink_out_fx(
-                background, root_x, ground_y, 1.0, frame_idx, nframes
-            )
+    if effect in {"blink_out", "blink_in"}:
+        # The teleport takes the body apart part by part (robot_side's
+        # ``_teleport_warp``) inside its portal rings and slivers.
+        root_x = float(doc.frame.get("center_x", size[0] / 2.0)) + float(params.get("root_x", 0.0))
+        ground_y = float(doc.frame.get("ground_y", size[1] - 2.0)) + float(params.get("root_y", 0.0))
+        body_ss = float(max(1, int(doc.frame.get("supersample", 4))))
+        warp = _TELEPORT._teleport_warp(effect, root_x * body_ss, body_ss, frame_idx, nframes)
+        root_x, ground_y = root_x * K, ground_y * K
+        if effect == "blink_out":
+            _TELEPORT._place_blink_out_fx(back.rig, root_x, ground_y, K, frame_idx, nframes)
         else:
-            _OLD_ROBOT_FX._draw_blink_in_fx(
-                background, root_x, ground_y, 1.0, frame_idx, nframes
-            )
-    else:
-        body = img
+            _TELEPORT._place_blink_in_fx(back.rig, root_x, ground_y, K, frame_idx, nframes)
+        _TELEPORT._place_teleport_scanlines(front.rig, effect, root_x, ground_y, K, frame_idx, nframes)
 
-    if effect_animation == "death":
+    body = _render_body(doc, clip, t, solved, warp)
+    if effect == "death":
         # The whole body fades as one picture: its parts do not show through
         # each other.
         body = rigdoc.faded_canvas(body, max(0.45, 1.0 - t * 0.48))
 
     # Through rigdoc's seams, so the part flipbook knows what the frame is made
     # of (`part_flipbook.build_rig_flipbook`).
-    result = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    rigdoc.composite_layer(result, background, name="fx_back")
-    if body is not None:
-        rigdoc.composite_canvas(result, body)
-    else:
-        rigdoc.composite_layer(result, teleported, name="teleport_body")
-    rigdoc.composite_layer(result, foreground, name="fx_front")
+    result = Image.new("RGBA", size, (0, 0, 0, 0))
+    for layer in (back.reduced(), body, front.reduced()):
+        if layer is not None:
+            rigdoc.composite_canvas(result, layer)
     return result
 
 
 def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
     row, mirrored = _row(animation)
     doc = load_doc()
-    if not mirrored:
-        image = doc.render_frame(row, frame_idx, frame_count)
-        return _apply_fx(image, row, frame_idx, frame_count)
     # A strike authors its own other-side clip (the blade stays in the hand that
     # holds it, which from this side is the far one); every other row is the
     # same pose seen from the other side.
-    clip = MIRRORED.format(row) if MIRRORED.format(row) in doc.clips else row
+    clip = MIRRORED.format(row) if mirrored and MIRRORED.format(row) in doc.clips else row
     t = doc.frame_time(clip, frame_idx, frame_count)
     world, params = doc.solve(clip, t)
-    image = doc.render_at(clip, t, solved=(world, _other_side(params)))
+    frame = _compose(row, clip, t, (world, _other_side(params) if mirrored else params), frame_idx, frame_count)
     # Mirrored about the logical frame's centre, so the published frame is
     # exactly what a flip of the whole frame would place — the runtime keeps
     # the same feet anchor, negated.
-    return rigdoc.mirrored_canvas(_apply_fx(image, row, frame_idx, frame_count))
+    return rigdoc.mirrored_canvas(frame) if mirrored else frame
 
 
 def published_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
