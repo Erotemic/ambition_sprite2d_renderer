@@ -24,6 +24,7 @@ from typing import List, Tuple
 from PIL import Image, ImageColor, ImageDraw
 
 from ...authoring import rigdoc, shape_rig
+from ._solo_shape_rig import two_bone
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -216,8 +217,6 @@ class Pose:
     body_x: float = 0.0
     body_y: float = 0.0
     body_angle: float = 0.0
-    squash_x: float = 1.0
-    squash_y: float = 1.0
     head_x: float = 0.0
     head_y: float = 0.0
     head_angle: float = 0.0
@@ -318,8 +317,6 @@ def _pose(animation: str, frame_idx: int, nframes: int) -> Pose:
         p.body_x = -7.0 * impact
         p.body_y = -2.0 * impact
         p.body_angle = -8.0 * impact
-        p.squash_x = 1.0 + 0.08 * impact
-        p.squash_y = 1.0 - 0.10 * impact
         p.head_x = -3.0 * impact
         p.head_angle = -10.0 * impact
         p.hat_angle = -14.0 * impact
@@ -431,7 +428,8 @@ class _Body:
 def _draw_tail(img: Image.Image, p: Pose) -> None:
     cx = 53.0 + p.body_x + p.tail_x
     cy = 107.0 + p.body_y + p.tail_y
-    flatten = round(p.tail_flatten, 2)
+    # The paddle widens on the slam's impact: two looks.
+    flatten = 1.0 if p.tail_flatten < 1.14 else 1.28
     part = _piece(("tail", flatten), (53.0 + 8.0, 107.0), lambda d: _paint_tail(d, 53.0, 107.0, flatten))
     shape_rig.place(img, part, ((cx + 8.0) * SUPER, cy * SUPER), -p.tail_angle, "tail")
 
@@ -472,13 +470,20 @@ def _paint_tail(d: ImageDraw.ImageDraw, cx: float, cy: float, flatten: float) ->
         )
 
 
+#: Limb bones (frame pixels): a limb is two bones of this length bent toward
+#: its side; out of reach both lengthen in ``BONE_STEP`` steps.
+LEG_BONE = 11.0
+ARM_BONE = 10.0
+BONE_STEP = 3.0
+
+
 def _draw_leg(body: _Body, hip: Point, foot: Point, far: bool) -> None:
-    hx, hy = hip
     fx, fy = foot
     color = _rgba(FUR_DARK if far else FUR_MID)
     side = "far" if far else "near"
-    knee = ((hx + fx) * 0.5 + (2.0 if far else -2.0), (hy + fy) * 0.5)
-    body.limb([hip, knee, (fx, fy - 4.0)], 13.0, 9.0, color, f"{side}_leg")
+    ankle = (fx, fy - 4.0)
+    knee, _bone = two_bone(hip, ankle, LEG_BONE, (1.0 if far else -1.0, 0.0), BONE_STEP)
+    body.limb([hip, knee, ankle], 13.0, 9.0, color, f"{side}_leg")
     part = _piece(("foot", far), (80.0, 80.0), lambda d: _paint_foot(d, 80.0, 80.0, far))
     body.put(part, foot, f"{side}_foot")
 
@@ -492,11 +497,9 @@ def _paint_foot(d: ImageDraw.ImageDraw, fx: float, fy: float, far: bool) -> None
 
 
 def _draw_arm(body: _Body, shoulder: Point, hand: Point, far: bool) -> None:
-    sx, sy = shoulder
-    hx, hy = hand
     color = _rgba(FUR_DARK if far else FUR_MID)
     side = "far" if far else "near"
-    elbow = ((sx + hx) * 0.5 + (-3.0 if far else 3.0), (sy + hy) * 0.5)
+    elbow, _bone = two_bone(shoulder, hand, ARM_BONE, (-1.0 if far else 1.0, 0.0), BONE_STEP)
     body.limb([shoulder, elbow, hand], 11.0, 7.0, color, f"{side}_arm")
     part = _piece(("hand", far), (80.0, 80.0), lambda d: _paint_hand(d, 80.0, 80.0, far))
     body.put(part, hand, f"{side}_hand")
@@ -532,8 +535,8 @@ def _paint_torso(draw: ImageDraw.ImageDraw) -> None:
 HEAD_AT = (85.0, 52.0)
 
 
-def _paint_head(hd: ImageDraw.ImageDraw, blink: bool, brow: float, mouth_open: float) -> None:
-    """Head, ears, eyes, muzzle and incisors around ``HEAD_AT``."""
+def _paint_head(hd: ImageDraw.ImageDraw) -> None:
+    """The head without its expression: skull, ears, muzzle and nose."""
     hx, hy = HEAD_AT
     hd.ellipse(_box(hx - 28.0, hy - 23.0, hx + 24.0, hy + 24.0), fill=_rgba(FUR_DARK), outline=_rgba(OUTLINE), width=_s(1.5))
     hd.ellipse(_box(hx - 23.0, hy - 18.0, hx + 19.0, hy + 18.0), fill=_rgba(FUR_MID))
@@ -542,24 +545,48 @@ def _paint_head(hd: ImageDraw.ImageDraw, blink: bool, brow: float, mouth_open: f
     hd.ellipse(_box(hx - 19.0, hy - 20.0, hx - 12.0, hy - 12.0), fill=_rgba(FUR_LIGHT))
     hd.ellipse(_box(hx + 4.0, hy - 24.0, hx + 17.0, hy - 11.0), fill=_rgba(FUR_DARK), outline=_rgba(OUTLINE), width=_s(1.0))
     hd.ellipse(_box(hx + 7.0, hy - 21.0, hx + 14.0, hy - 14.0), fill=_rgba(FUR_LIGHT))
+    # Broad muzzle and nose.
+    hd.ellipse(_box(hx - 18.0, hy + 5.0, hx + 17.0, hy + 24.0), fill=_rgba(MUZZLE), outline=_rgba(OUTLINE), width=_s(1.0))
+    hd.ellipse(_box(hx - 13.0, hy + 8.0, hx + 12.0, hy + 20.0), fill=_rgba(MUZZLE_LIGHT))
+    hd.ellipse(_box(hx - 5.0, hy + 2.0, hx + 7.0, hy + 11.0), fill=_rgba(NOSE), outline=_rgba(OUTLINE), width=_s(0.7))
 
-    # Eyes and brows.
-    eye_y = hy - 4.0
-    for ex, far in ((hx - 7.0, True), (hx + 7.0, False)):
+
+#: Eye centres (x offsets from the head centre, and the row below it).
+EYES = ((-7.0, True), (7.0, False))
+EYE_DY = -4.0
+
+
+def _paint_eyes(hd: ImageDraw.ImageDraw, blink: bool) -> None:
+    """Both eyes, open or shut (the brows are pieces of their own)."""
+    hx, hy = HEAD_AT
+    eye_y = hy + EYE_DY
+    for dx, far in EYES:
+        ex = hx + dx
         if blink:
             hd.line([_pt(ex - 3.0, eye_y), _pt(ex + 3.0, eye_y + 0.5)], fill=_rgba(OUTLINE), width=_s(1.2))
         else:
             hd.ellipse(_box(ex - 4.0, eye_y - 4.0, ex + 4.0, eye_y + 4.2), fill=_rgba(EYE_WHITE), outline=_rgba(OUTLINE), width=_s(0.8))
             hd.ellipse(_box(ex + (0.4 if far else 0.9) - 1.7, eye_y - 1.8, ex + (0.4 if far else 0.9) + 1.7, eye_y + 1.8), fill=_rgba(EYE))
-        hd.line([_pt(ex - 4.0, eye_y - 7.0 - brow), _pt(ex + 4.0, eye_y - 6.0 + brow)], fill=_rgba(OUTLINE), width=_s(1.2))
 
-    # Broad muzzle, nose, and iconic incisors.
-    hd.ellipse(_box(hx - 18.0, hy + 5.0, hx + 17.0, hy + 24.0), fill=_rgba(MUZZLE), outline=_rgba(OUTLINE), width=_s(1.0))
-    hd.ellipse(_box(hx - 13.0, hy + 8.0, hx + 12.0, hy + 20.0), fill=_rgba(MUZZLE_LIGHT))
-    hd.ellipse(_box(hx - 5.0, hy + 2.0, hx + 7.0, hy + 11.0), fill=_rgba(NOSE), outline=_rgba(OUTLINE), width=_s(0.7))
-    mouth_y = hy + 17.0
-    if mouth_open > 0.05:
-        hd.ellipse(_box(hx - 7.0, mouth_y - 1.0, hx + 8.0, mouth_y + 3.0 + 7.0 * mouth_open), fill=_rgba(OUTLINE))
+
+#: A brow is a stroke this long (frame pixels), turned about its middle,
+#: ``BROW_DY`` above the eye.
+BROW_LEN = 8.0
+BROW_DY = -6.5
+MOUTH_DY = 17.0
+
+
+def _paint_brow(hd: ImageDraw.ImageDraw) -> None:
+    hx, hy = HEAD_AT
+    hd.line([_pt(hx - BROW_LEN / 2, hy), _pt(hx + BROW_LEN / 2, hy)], fill=_rgba(OUTLINE), width=_s(1.2))
+
+
+def _paint_mouth(hd: ImageDraw.ImageDraw, open_: bool) -> None:
+    """The mouth, open or shut, and the incisors over it."""
+    hx, hy = HEAD_AT
+    mouth_y = hy + MOUTH_DY
+    if open_:
+        hd.ellipse(_box(hx - 7.0, mouth_y - 1.0, hx + 8.0, mouth_y + 6.0), fill=_rgba(OUTLINE))
     else:
         hd.line([_pt(hx, mouth_y - 1.0), _pt(hx, mouth_y + 4.0)], fill=_rgba(OUTLINE), width=_s(0.9))
     hd.rounded_rectangle(_box(hx - 7.0, mouth_y + 2.0, hx - 0.5, mouth_y + 13.0), radius=_s(1.0), fill=_rgba(TOOTH), outline=_rgba(OUTLINE), width=_s(0.8))
@@ -577,14 +604,12 @@ def _paint_hat(hdraw: ImageDraw.ImageDraw) -> None:
 
 
 def _draw_body(img: Image.Image, p: Pose) -> None:
-    """The body as a rig: limbs, torso, head and hat are pieces painted once and
-    placed through the body's turn (the head and hat add their own). A squashed
-    pose (the hurt row) is composed in a layer and squashed and turned whole,
-    as before: a squash is no turn of a piece."""
+    """Limbs, torso, head and hat as pieces painted once in the body's frame,
+    placed through the body's turn (the head and hat add their own). The head
+    is a base and an expression laid on it: the eyes, two brows turned by the
+    brow's lift, and the mouth."""
     bx = 79.0 + p.body_x
-    squashed = p.squash_x != 1.0 or p.squash_y != 1.0
-    layer = Image.new("RGBA", img.size, (0, 0, 0, 0)) if squashed else img
-    body = _Body(layer, (bx, 128.0 + p.body_y), 0.0 if squashed else p.body_angle)
+    body = _Body(img, (bx, 128.0 + p.body_y), p.body_angle)
 
     # Far limbs behind torso.
     _draw_leg(body, (68.0 + p.body_x, 113.0 + p.body_y), p.far_foot, True)
@@ -601,24 +626,25 @@ def _draw_body(img: Image.Image, p: Pose) -> None:
     hx = 85.0 + p.body_x + p.head_x
     hy = 52.0 + p.body_y + p.head_y
     head_pivot = (hx, hy + 8.0)
-    brow = round(p.brow, 1)
-    mouth = round(p.mouth_open * 20) / 20
-    head = _piece(("head", p.blink, brow, mouth), (HEAD_AT[0], HEAD_AT[1] + 8.0), lambda d: _paint_head(d, p.blink, brow, mouth))
-    body.put(head, head_pivot, "head", -p.head_angle)
-    hat = _piece(("hat",), (HEAD_AT[0], HEAD_AT[1] - 22.0), _paint_hat)
-    body.put(hat, _rot_cw((hx, hy - 22.0), head_pivot, -p.head_angle), "hat", -p.head_angle - p.hat_angle)
+    turn = -p.head_angle
 
-    if squashed:
-        # Apply scale about the grounded body center before rotation.
-        crop = layer.crop(_box(38.0, 25.0, 122.0, 145.0))
-        target = (_s(84.0 * p.squash_x), _s(120.0 * p.squash_y))
-        crop = crop.resize(target, Image.Resampling.BICUBIC)
-        scaled = Image.new("RGBA", layer.size, (0, 0, 0, 0))
-        x = _s(80.0) - target[0] // 2
-        y = _s(140.0) - target[1]
-        rigdoc.composite_canvas(scaled, crop, (x, y))
-        layer = scaled.rotate(p.body_angle, resample=Image.Resampling.BICUBIC, center=_pt(bx, 128.0 + p.body_y), fillcolor=(0, 0, 0, 0))
-        rigdoc.composite_canvas(img, layer)
+    def on_head(dx: float, dy: float) -> Point:
+        return _rot_cw((hx + dx, hy + dy), head_pivot, turn)
+
+    def put_on_head(key: tuple, dx: float, dy: float, paint, name: str, degrees: float = 0.0) -> None:
+        part = _piece(key, (HEAD_AT[0] + dx, HEAD_AT[1] + dy), paint)
+        body.put(part, on_head(dx, dy), name, turn + degrees)
+
+    put_on_head(("head",), 0.0, 8.0, _paint_head, "head")
+    put_on_head(("eyes", p.blink), 0.0, EYE_DY, lambda d: _paint_eyes(d, p.blink), "eyes")
+    # A brow ran from (-4, -7 - brow) to (+4, -6 + brow) about its eye.
+    brow_deg = math.degrees(math.atan2(1.0 + 2.0 * p.brow, BROW_LEN))
+    for dx, far in EYES:
+        part = _piece(("brow",), HEAD_AT, _paint_brow)
+        body.put(part, on_head(dx, EYE_DY + BROW_DY), "brow_far" if far else "brow_near", turn + brow_deg)
+    put_on_head(("mouth", p.mouth_open > 0.05), 0.0, MOUTH_DY, lambda d: _paint_mouth(d, p.mouth_open > 0.05), "mouth")
+    hat = _piece(("hat",), (HEAD_AT[0], HEAD_AT[1] - 22.0), _paint_hat)
+    body.put(hat, on_head(0.0, -22.0), "hat", turn - p.hat_angle)
 
 
 def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:

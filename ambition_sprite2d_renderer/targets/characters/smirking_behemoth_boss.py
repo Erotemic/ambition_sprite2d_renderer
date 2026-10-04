@@ -366,12 +366,13 @@ def _place_feature(
     pivot: Point | None = None,
     shift: Point = (0.0, 0.0),
     degrees: float = 0.0,
+    opacity: float = 1.0,
 ) -> None:
     """Place what ``paint(canvas)`` paints on a blank supersampled frame, as
     one piece cached under ``key`` (which must name everything ``paint``
     reads). It lands where it was painted, moved by ``shift`` and turned
     ``degrees`` about ``pivot`` (super pixels where it was painted; its top
-    left when ``None``)."""
+    left when ``None``), its alpha scaled by ``opacity``."""
     cached = _FEATURES.get(key)
     if cached is None:
         canvas = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -394,7 +395,7 @@ def _place_feature(
     if degrees == 0.0:
         # Moved by whole frame pixels, for the same reason.
         shift = (round(shift[0] / SUPER) * SUPER, round(shift[1] / SUPER) * SUPER)
-    shape_rig.place(img, (raster, local), (at[0] + shift[0], at[1] + shift[1]), degrees, name)
+    rigdoc.blit_rotated(img, raster, local, (at[0] + shift[0], at[1] + shift[1]), degrees, round(opacity, 3), part_name=name)
 
 
 def _lerp(a: float, b: float, t: float) -> float:
@@ -444,20 +445,28 @@ def _rounded_monolith(
     draw.polygon([_pt(x, y) for x, y in pts], fill=fill, outline=outline)
 
 
-def _draw_cracks(draw: ImageDraw.ImageDraw, settle: float) -> None:
-    crack_sets = [
-        [(92, 76), (86, 88), (90, 98), (84, 110)],
-        [(118, 72), (124, 86), (122, 100)],
-        [(102, 44), (96, 54), (102, 60), (97, 69)],
-        [(78, 128), (86, 137), (82, 149)],
-    ]
-    for idx, seg in enumerate(crack_sets):
+_CRACK_SETS = [
+    [(92, 76), (86, 88), (90, 98), (84, 110)],
+    [(118, 72), (124, 86), (122, 100)],
+    [(102, 44), (96, 54), (102, 60), (97, 69)],
+    [(78, 128), (86, 137), (82, 149)],
+]
+
+
+def _place_cracks(img: Image.Image, settle: float) -> None:
+    """Each crack grows point by point: one piece per crack and length."""
+    for idx, seg in enumerate(_CRACK_SETS):
         visible = min(1.0, max(0.0, settle * 1.25 - idx * 0.11))
         if visible <= 0:
             continue
         count = max(2, int(round(len(seg) * visible)))
         pts = [_pt(*p) for p in seg[:count]]
-        draw.line(pts, fill=CRACK, width=max(1, _s(0.85)), joint="curve")
+        _place_feature(
+            img,
+            ("crack", idx, count),
+            lambda c, pts=pts: blending_draw(c).line(pts, fill=CRACK, width=max(1, _s(0.85)), joint="curve"),
+            f"crack_{idx}",
+        )
 
 
 def _body_geometry(anim: str, frame_idx: int, nframes: int) -> Dict[str, float]:
@@ -538,6 +547,16 @@ def _body_geometry(anim: str, frame_idx: int, nframes: int) -> Dict[str, float]:
     }
 
 
+#: Where the dark rim strips start below the slab's top (frame pixels).
+_RIM_DY = 38.0
+#: The slab's left half is cut into a top band, a strip drawn ``_BODY_STRIPS``
+#: times and a bottom band (frame rows). Every row of the strips is alike:
+#: straight panel sides, below the inner panel's upper corners (where the rim
+#: starts) and above its lower corners.
+_BODY_STRIP_Y = (SMIRKING_BODY_Y1 + 38.0, SMIRKING_BODY_Y2 - 60.0)
+_BODY_STRIPS = 3
+
+
 def _draw_body(draw: ImageDraw.ImageDraw, g: Dict[str, float]) -> None:
     _rounded_monolith(
         draw,
@@ -547,12 +566,14 @@ def _draw_body(draw: ImageDraw.ImageDraw, g: Dict[str, float]) -> None:
         outline=OUTLINE,
     )
     # Keep the slab nearly featureless. A subtle inset panel gives volume,
-    # but it deliberately avoids the earlier accidental "P" silhouette.
+    # but it deliberately avoids the earlier accidental "P" silhouette. The
+    # slab is symmetric: ``_place_body`` draws its left half and that half
+    # mirrored.
     draw.rounded_rectangle(
         _box(
             g["body_x1"] + 11.0,
             g["body_y1"] + 18.0,
-            g["body_x2"] - 12.0,
+            g["body_x2"] - 11.0,
             g["body_y2"] - 28.0,
         ),
         radius=_s(10.0),
@@ -563,7 +584,7 @@ def _draw_body(draw: ImageDraw.ImageDraw, g: Dict[str, float]) -> None:
         _box(
             g["body_x1"] + 22.0,
             g["body_y1"] + 30.0,
-            g["body_x2"] - 26.0,
+            g["body_x2"] - 22.0,
             g["body_y2"] - 52.0,
         ),
         radius=_s(8.0),
@@ -572,11 +593,11 @@ def _draw_body(draw: ImageDraw.ImageDraw, g: Dict[str, float]) -> None:
     )
     # Darken the rim so the body reads as a single monolith, not armor plates.
     draw.rectangle(
-        _box(g["body_x1"], g["body_y1"] + 55.0, g["body_x1"] + 14.0, g["body_y2"]),
+        _box(g["body_x1"], g["body_y1"] + _RIM_DY, g["body_x1"] + 13.0, g["body_y2"]),
         fill=BODY,
     )
     draw.rectangle(
-        _box(g["body_x2"] - 11.0, g["body_y1"] + 65.0, g["body_x2"], g["body_y2"]),
+        _box(g["body_x2"] - 13.0, g["body_y1"] + _RIM_DY, g["body_x2"], g["body_y2"]),
         fill=BODY,
     )
 
@@ -869,8 +890,49 @@ def _place_death_debris(img: Image.Image, g: Dict[str, float]) -> None:
         ), "shard_round")
 
 
+def _place_body(img: Image.Image, g: Dict[str, float]) -> None:
+    """The slab as its left half and that half mirrored, each cut into a top
+    band, ``_BODY_STRIPS`` copies of one strip and a bottom band."""
+    mid = (g["body_x1"] + g["body_x2"]) * 0.5
+    y0, y1 = _BODY_STRIP_Y
+    step = (y1 - y0) / _BODY_STRIPS
+    bands = [("top", SMIRKING_BODY_Y1 - 2.0, y0, SMIRKING_BODY_Y1 - 2.0)] + [("strip", y0, y0 + step, y0 + k * step) for k in range(_BODY_STRIPS)] + [("bottom", y1, SMIRKING_BODY_Y2, y1)]
+    for k, (band, top, bottom, at) in enumerate(bands):
+        cached = _FEATURES.get(("body", band))
+        if cached is None:
+            canvas = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+            _draw_body(blending_draw(canvas), g)
+            half = canvas.crop((_s(g["body_x1"]), _s(top), _s(mid), _s(bottom)))
+            cached = _FEATURES[("body", band)] = (half, half.transpose(Image.FLIP_LEFT_RIGHT))
+        left, right = cached
+        shape_rig.place(img, (left, (0.0, 0.0)), (_s(g["body_x1"]), _s(at)), 0.0, f"body_{k}_l")
+        shape_rig.place(img, (right, (0.0, 0.0)), (_s(mid), _s(at)), 0.0, f"body_{k}_r")
+
+
+#: The two burst sizes (radius, frame pixels): each burst draws the nearer.
+_BURST_RADII = (8.5, 10.5)
+#: A burst younger than this (its progress) shows faded.
+_BURST_YOUNG = 0.6
+
+
+def _burst_piece(size: int) -> Tuple[Image.Image, Point]:
+    """A burst of size step ``size`` at full bloom, painted once around its
+    centre (super pixels)."""
+    key = ("burst", size)
+    cached = _FEATURES.get(key)
+    if cached is None:
+        radius = _BURST_RADII[size]
+        half = _s(radius * 2.9)
+        canvas = Image.new("RGBA", (2 * half, 2 * half), (0, 0, 0, 0))
+        _draw_explosion(canvas, (half, half), _s(radius), 0.8, outline=OUTLINE, seed=0.0, spark_count=5)
+        box = canvas.getchannel("A").getbbox()
+        cached = _FEATURES[key] = (canvas.crop(box), (float(half - box[0]), float(half - box[1])), (0.0, 0.0))
+    return cached[0], cached[1]
+
+
 def _place_death_explosions(img: Image.Image, g: Dict[str, float]) -> None:
-    """Each burst one piece a frame (a burst grows and turns as it goes)."""
+    """Each burst one piece in two sizes, turned by its seed as it goes; a
+    young burst is the same piece faded."""
     settle = g["settle"]
     if settle <= 0.12:
         return
@@ -892,29 +954,15 @@ def _place_death_explosions(img: Image.Image, g: Dict[str, float]) -> None:
     for k, ((cx, cy), radius, threshold, seed) in enumerate(bursts):
         if settle < threshold:
             continue
-        burst_progress = round(min(1.0, (settle - threshold) / 0.26), 4)
-        burst_seed = round(seed + settle * 0.6, 4)
-        _place_feature(
-            img,
-            ("burst", k, burst_progress, burst_seed),
-            lambda c, cx=cx, cy=cy, radius=radius, p=burst_progress, sd=burst_seed: _draw_explosion(
-                c,
-                (_s(cx), _s(cy)),
-                _s(radius),
-                p,
-                core_fill=EXPLOSION_CORE,
-                flame_fill=EXPLOSION_FLAME,
-                smoke_fill=EXPLOSION_SMOKE,
-                outline=OUTLINE,
-                seed=sd,
-                spark_count=5,
-            ),
-            f"burst_{k}",
-        )
+        burst_progress = min(1.0, (settle - threshold) / 0.26)
+        burst_seed = seed + settle * 0.6
+        size = min(range(len(_BURST_RADII)), key=lambda i: abs(_BURST_RADII[i] - radius))
+        opacity = 1.0 if burst_progress >= _BURST_YOUNG else 0.6
+        rigdoc.blit_rotated(img, *_burst_piece(size), (cx * SUPER, cy * SUPER), math.degrees(burst_seed * 0.41), opacity, part_name=f"burst_{k}")
 
 
 def _place_dust(img: Image.Image, g: Dict[str, float]) -> None:
-    """Each dust grain one piece, painted at its start and moved."""
+    """Each dust grain one of three dots, moved by whole pixels."""
     settle = g["settle"]
     if settle <= 0.08:
         return
@@ -934,10 +982,10 @@ def _place_dust(img: Image.Image, g: Dict[str, float]) -> None:
         r = 1.6 + (i % 3) * 0.5
         _place_feature(
             img,
-            ("dust", i),
-            lambda c, ax=ax, ay=ay, r=r: blending_draw(c).ellipse(_box(ax - r, ay - r, ax + r, ay + r), fill=DUST),
+            ("dust", i % 3),
+            lambda c, r=r: blending_draw(c).ellipse(_box(_DUST_HOME - r, _DUST_HOME - r, _DUST_HOME + r, _DUST_HOME + r), fill=DUST),
             f"dust_{i}",
-            shift=(vx * settle * 2.8 * SUPER, vy * settle * 2.8 * SUPER),
+            shift=((ax - _DUST_HOME + vx * settle * 2.8) * SUPER, (ay - _DUST_HOME + vy * settle * 2.8) * SUPER),
         )
 
 
@@ -945,22 +993,50 @@ def _place_dust(img: Image.Image, g: Dict[str, float]) -> None:
 #: each frame moves (and turns) the piece from there.
 _HAT_HOME = ((SMIRKING_BODY_X1 + SMIRKING_BODY_X2) * 0.5 - 4.0, SMIRKING_BODY_Y1 - 14.0)
 _EYE_HOME = (104.0, 120.0)
+_DUST_HOME = 20.0
+
+
+#: The eye-beam charge at and above which the eye shows charged (its
+#: flash colours, swollen), and the charge its look is painted at.
+_EYE_CHARGED = 0.55
+_EYE_CHARGED_LOOK = 0.97
 
 
 def _place_eye(img: Image.Image, g: Dict[str, float], cx: float, cy: float, bloodshot: bool, name: str) -> None:
-    """One eye as a piece: painted once per look (its size, the beam's flash,
-    bloodshot, the highlight) at ``_EYE_HOME`` and moved to ``(cx, cy)``."""
-    beam = round(g["beam"], 3)
-    rx = round(g["eye_r"], 3)
-    shine = g["settle"] < 0.95
-    look = dict(g, beam=beam, eye_r=rx, settle=0.0 if shine else 1.0)
+    """One eye as a piece moved to ``(cx, cy)``: plain or bloodshot, or
+    charged by the eye beam. A charged eye shows its flash halo (one piece,
+    painted at full charge) behind it, faded by the charge."""
+    beam = g["beam"]
+    charged = beam >= _EYE_CHARGED
     hx, hy = _EYE_HOME
+    shift = ((cx - hx) * SUPER, (cy - hy) * SUPER)
+    glow = beam - 0.18
+    if charged:
+        full = _EYE_CHARGED_LOOK - 0.18
+        rx = 14.0 + _EYE_CHARGED_LOOK * 4.5 + 5.0 * full
+        ry = rx - 1.3
+        opacity = round((58 + glow * 90) / (58 + full * 90), 3)
+        key = ("eye_halo",)
+        cached = _FEATURES.get(key)
+        if cached is None:
+            # The halo is an ellipse about the eye's home: its lower right
+            # quarter, cut at the home (a whole frame pixel), and its mirrors.
+            canvas = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+            _composite_ellipse(canvas, (hx - rx, hy - ry, hx + rx, hy + ry), fill=(255, 246, 196, int(58 + full * 90)))
+            quarter = canvas.crop((_s(hx), _s(hy), _s(hx + rx + 1.0), _s(hy + ry + 1.0)))
+            cached = _FEATURES[key] = [quarter.transpose(op) if op is not None else quarter for op in (None, Image.FLIP_LEFT_RIGHT, Image.FLIP_TOP_BOTTOM, Image.ROTATE_180)]
+        at = (_s(hx) + shift[0], _s(hy) + shift[1])
+        for k, raster in enumerate(cached):
+            pivot = (raster.width if k in (1, 3) else 0.0, raster.height if k in (2, 3) else 0.0)
+            rigdoc.blit_rotated(img, raster, pivot, at, 0.0, opacity, part_name=f"{name}_halo{k}")
+    look_beam = _EYE_CHARGED_LOOK if charged else 0.0
+    look = dict(g, beam=look_beam, eye_r=14.0 + look_beam * 4.5, settle=0.0)
     _place_feature(
         img,
-        ("eye", rx, beam, bloodshot, shine),
-        lambda c: _draw_eye(blending_draw(c), look, cx=hx, cy=hy, bloodshot=bloodshot, img=c),
+        ("eye", charged, bloodshot),
+        lambda c: _draw_eye(blending_draw(c), look, cx=hx, cy=hy, bloodshot=bloodshot),
         name,
-        shift=((cx - hx) * SUPER, (cy - hy) * SUPER),
+        shift=shift,
     )
 
 
@@ -969,18 +1045,18 @@ def _draw_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     g = _body_geometry(anim, frame_idx, nframes)
 
     # The slab never moves.
-    _place_feature(img, ("body",), lambda c: _draw_body(blending_draw(c), g), "body")
-    # The hat: painted at its home once per tilt (half degrees) and moved.
-    # Turned at runtime instead, a NEAREST-reduced hat does not land on the
-    # pixels the frame's own reduction picks.
-    tilt = round(g["hat_tilt"] * 2) / 2
-    hat = dict(g, hat_cx=_HAT_HOME[0], hat_y=_HAT_HOME[1], hat_tilt=tilt)
+    _place_body(img, g)
+    # The hat: painted once at its home, untilted, and turned about its brim.
+    hat = dict(g, hat_cx=_HAT_HOME[0], hat_y=_HAT_HOME[1], hat_tilt=0.0)
+    hx, hy = _HAT_HOME[0], _HAT_HOME[1] + 6.0
     _place_feature(
         img,
-        ("hat", tilt),
+        ("hat",),
         lambda c: _draw_hat(c, hat),
         "hat",
+        pivot=(hx * SUPER, hy * SUPER),
         shift=((g["hat_cx"] - _HAT_HOME[0]) * SUPER, (g["hat_y"] - _HAT_HOME[1]) * SUPER),
+        degrees=g["hat_tilt"],
     )
 
     if anim == "death":
@@ -990,8 +1066,7 @@ def _draw_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         _place_eye(img, g, g["death_eye_left_x"], g["death_eye_y"], True, "eye_left")
         _place_eye(img, g, g["death_eye_right_x"], g["death_eye_y"] + 1.5, True, "eye_right")
         _place_feature(img, ("mouth", "centered"), lambda c: _draw_mouth(blending_draw(c), g, centered=True), "mouth")
-        settle = round(g["settle"], 4)
-        _place_feature(img, ("cracks", settle), lambda c: _draw_cracks(blending_draw(c), settle), "cracks")
+        _place_cracks(img, g["settle"])
         _place_dust(img, g)
     else:
         _place_eye(img, g, g["eye_x"], g["eye_y"], False, "eye")
@@ -999,7 +1074,7 @@ def _draw_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         mouth = dict(g, mouth_open=opening)
         _place_feature(img, ("mouth", opening, round(g["mouth_w"], 4), round(g["mouth_h"], 4)), lambda c: _draw_mouth(blending_draw(c), mouth), "mouth")
 
-    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.NEAREST)
+    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.BOX)
 
 
 def _body_metrics_for_sheet(frame_width: int, frame_height: int) -> dict:

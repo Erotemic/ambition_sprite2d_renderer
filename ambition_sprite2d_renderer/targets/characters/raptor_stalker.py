@@ -18,6 +18,7 @@ from typing import List, Sequence, Tuple
 
 from ...authoring import rigdoc, shape_rig
 from . import _solo_shape_rig as _rig
+from . import _fx_piece
 from ...authoring.part_flipbook import publish_rig_flipbook
 from PIL import Image, ImageDraw
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -405,14 +406,26 @@ def _put(img: Image.Image, part, at: Point, deg: float, name: str) -> None:
     shape_rig.place(img, part, _sp(at), deg, name)
 
 
-def _fx_layer(img: Image.Image, paint, name: str) -> None:
-    """A per-frame effect (it changes every frame) as ONE raster: painted on
-    its own canvas, cut to what it covers and placed at its corner."""
-    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    paint(blending_draw(layer))
-    box = layer.getchannel("A").getbbox()
-    if box is not None:
-        shape_rig.place(img, (layer.crop(box), (0.0, 0.0)), (float(box[0]), float(box[1])), 0.0, name)
+_HALVES: dict = {}
+
+
+def _mirrored_half(key, paint, O: Point):
+    """What ``paint(draw)`` paints symmetric about the vertical through ``O``
+    (work pixels) as its left half and that half mirrored (the same raster
+    transposed), each with its pivot at ``O``. The half is cut on whole
+    frame pixels so the mirror survives the reduction."""
+    cached = _HALVES.get(key)
+    if cached is None:
+        grid = SUPER * WORK_FRAME_SIZE[0] // FRAME_SIZE[0]
+        canvas = Image.new("RGBA", (int(2 * O[0] * SUPER), int(2 * O[1] * SUPER)), (0, 0, 0, 0))
+        paint(blending_draw(canvas))
+        cx = int(O[0] * SUPER)
+        assert cx % grid == 0, "the axis must fall on a frame pixel"
+        box = canvas.getchannel("A").getbbox()
+        x0 = box[0] - box[0] % grid
+        half = (canvas.crop((x0, box[1], cx, box[3])), (float(cx - x0), O[1] * SUPER - box[1]))
+        cached = _HALVES[key] = (half, _fx_piece.mirrored(half))
+    return cached
 
 
 def _deg(a: Point, b: Point) -> float:
@@ -513,6 +526,10 @@ def _P0(x: float, y: float) -> Point:
 
 
 #: The tail at rest: its joints (body-local) and each segment's stroke width.
+#: Pose values that reshape a piece, in steps: the body's crouch and the
+#: neck's reach (each step is one raster).
+_CROUCH_STEP = 12.0
+_NECK_STEP = 12.0
 _TAIL_REST = [(-34.0, -74.0), (-84.0, -82.0), (-126.0, -72.0), (-154.0, -54.0)]
 _TAIL_W = [12.0, 9.5, 7.5]
 
@@ -526,19 +543,19 @@ class RaptorStalkerRenderer:
 
         # No baked ground drop shadow; the scene renderer owns contact shadows.
         self._draw_tail(img, P, pose, root, tilt)
-        self._draw_leg(img, limbs["back_leg"], pose.back_leg, tilt, front=False, name="back_leg")
+        self._draw_leg(img, limbs["back_leg"], tilt, front=False, name="back_leg")
         self._draw_body(img, pose, root, tilt)
         self._draw_arm(img, limbs["back_arm"], front=False, name="back_arm")
         self._draw_head(img, P, pose, root, tilt)
-        self._draw_leg(img, limbs["front_leg"], pose.front_leg, tilt, front=True, name="front_leg")
+        self._draw_leg(img, limbs["front_leg"], tilt, front=True, name="front_leg")
         self._draw_arm(img, limbs["front_arm"], front=True, name="front_arm")
-        # Effects change every frame: one raster each.
+        # Effects are pieces painted once at full size, placed and faded.
         if anim == "tail_sweep" and pose.sweep_arc > 0.2:
-            _fx_layer(img, lambda d: self._draw_tail_fx(d, P, pose), "fx_tail")
+            self._draw_tail_fx(img, P, pose)
         if anim == "pounce" and pose.pounce > 0.16:
-            _fx_layer(img, lambda d: self._draw_pounce_fx(d, P, pose), "fx_pounce")
+            self._draw_pounce_fx(img, P, pose, tilt)
         if anim == "bite" and pose.bite_lunge > 10:
-            _fx_layer(img, lambda d: self._draw_bite_fx(d, P, pose), "fx_bite")
+            self._draw_bite_fx(img, P, pose)
         return _downsample(img)
 
     def _draw_tail(self, img: Image.Image, P, pose: Pose, root: Point, tilt: float) -> None:
@@ -574,7 +591,7 @@ class RaptorStalkerRenderer:
             _put(img, part, P(0, lift * k), tilt, name)
 
     def _draw_body(self, img: Image.Image, pose: Pose, root: Point, tilt: float) -> None:
-        crouch = _rig.q(pose.crouch, 1.0)
+        crouch = _rig.q(pose.crouch, _CROUCH_STEP)
 
         def paint(draw) -> None:
             P = _P0
@@ -591,52 +608,73 @@ class RaptorStalkerRenderer:
         _put(img, _rest(("body", crouch), paint, _REST_ROOT), root, tilt, "body")
 
     def _draw_head(self, img: Image.Image, P, pose: Pose, root: Point, tilt: float) -> None:
-        """The skull and crest, the neck (riding the body) and the jaws and
-        face: three pieces. The head keeps the painter's upright skull."""
+        """The upright skull with its crest (turned by its sway), the neck
+        (riding the body, in a few reaches), and the face as the snout, the
+        lower jaw turned at its hinge, the upper teeth and the eyes (open,
+        shut or crossed out)."""
         hx, hy = P(64 + pose.neck_extend + pose.bite_lunge * 0.35, -98 - pose.crouch * 0.4 + pose.head_tilt * 0.15)
         O = (60.0, 60.0)
-        crest_sway = _rig.q(pose.crest_sway, 2.0)
 
         def skull(draw) -> None:
             x, y = O
             pts = [(x - 28, y - 14), (x - 8, y - 24), (x + 30, y - 20), (x + 60, y - 8), (x + 70, y + 2), (x + 54, y + 10), (x + 18, y + 14), (x - 18, y + 10), (x - 32, y - 2)]
             _poly(draw, pts, SCALE_LIGHT, OUTLINE, 1.2)
-            _poly(draw, [(x - 4, y - 22), (x + 14, y - 36 + crest_sway * 0.15), (x + 30, y - 20), (x + 10, y - 10)], ACCENT, OUTLINE, 0.8)
 
-        _put(img, _rest(("skull", crest_sway), skull, O), (hx, hy), 0.0, "skull")
-        neck_extend = _rig.q(pose.neck_extend, 2.0)
-        crouch = _rig.q(pose.crouch, 1.0)
+        def crest(draw) -> None:
+            x, y = O
+            _poly(draw, [(x - 4, y - 22), (x + 14, y - 36), (x + 30, y - 20), (x + 10, y - 10)], ACCENT, OUTLINE, 0.8)
+
+        _put(img, _rest(("skull",), skull, O), (hx, hy), 0.0, "skull")
+        # The crest's tip (20 px above its root) sways ``0.15 * crest_sway`` down.
+        crest_root = (13.0, -16.0)
+        crest_deg = -math.degrees(math.atan2(pose.crest_sway * 0.15, 20.0))
+        _put(img, _rest(("crest",), crest, (O[0] + crest_root[0], O[1] + crest_root[1])), (hx + crest_root[0], hy + crest_root[1]), crest_deg, "crest")
+        neck_extend = _rig.q(pose.neck_extend, _NECK_STEP)
 
         def neck(draw) -> None:
             P0 = _P0
-            pts = [P0(32, -100 - crouch * 0.2), P0(54 + neck_extend * 0.35, -112 - crouch * 0.3), P0(66 + neck_extend * 0.2, -90), P0(40, -76)]
+            pts = [P0(32, -100), P0(54 + neck_extend * 0.35, -112), P0(66 + neck_extend * 0.2, -90), P0(40, -76)]
             _poly(draw, pts, SCALE, OUTLINE, 1.0)
 
-        _put(img, _rest(("neck", neck_extend, crouch), neck, _REST_ROOT), root, tilt, "neck")
-        jaw = _rig.q(pose.jaw_open, 0.02)
-        blink, x_eyes = pose.blink, pose.x_eyes
+        _put(img, _rest(("neck", neck_extend), neck, _REST_ROOT), root, tilt, "neck")
+        look = "x" if pose.x_eyes else "shut" if pose.blink else "open"
 
-        def face(draw) -> None:
+        def snout(draw) -> None:
             x, y = O
             _poly(draw, [(x + 12, y - 2), (x + 64, y + 0), (x + 76, y + 4), (x + 56, y + 10), (x + 18, y + 8)], BELLY, OUTLINE, 0.8)
-            lj = jaw * 22.0
-            _poly(draw, [(x + 12, y + 8), (x + 46, y + 14 + lj), (x + 68, y + 12 + lj), (x + 50, y + 20 + lj), (x + 18, y + 16)], BELLY_SHADOW, OUTLINE, 0.8)
-            if x_eyes:
+
+        def jaw(draw) -> None:
+            x, y = O
+            _poly(draw, [(x + 12, y + 8), (x + 46, y + 14), (x + 68, y + 12), (x + 50, y + 20), (x + 18, y + 16)], BELLY_SHADOW, OUTLINE, 0.8)
+            for xoff in (24, 34, 46, 58, 68):
+                _line(draw, [(x + xoff - 2, y + 12), (x + xoff + 2, y + 8)], CLAW, 0.7)
+
+        def upper_teeth(draw) -> None:
+            x, y = O
+            _poly(draw, [(x + 42, y - 2), (x + 48, y - 2), (x + 46, y + 2)], OUTLINE, OUTLINE, 0.3)
+            for xoff in (24, 34, 46, 58, 68):
+                _line(draw, [(x + xoff, y + 6), (x + xoff - 4, y + 12)], CLAW, 0.7)
+
+        def eyes(draw) -> None:
+            x, y = O
+            if look == "x":
                 _line(draw, [(x + 2, y - 2), (x + 12, y + 8)], OUTLINE, 1.0)
                 _line(draw, [(x + 2, y + 8), (x + 12, y - 2)], OUTLINE, 1.0)
-            elif blink:
+            elif look == "shut":
                 _line(draw, [(x + 2, y + 2), (x + 14, y + 2)], EYE_HOT, 1.0)
             else:
                 _ellipse(draw, x + 8, y + 1, 6, 4, EYE, EYE_HOT, 0.8)
                 _circle(draw, (x + 10, y + 1), 1.6, OUTLINE, OUTLINE, 0.5)
-            _poly(draw, [(x + 42, y - 2), (x + 48, y - 2), (x + 46, y + 2)], OUTLINE, OUTLINE, 0.3)
-            for xoff in (24, 34, 46, 58, 68):
-                _line(draw, [(x + xoff, y + 6), (x + xoff - 4, y + 12)], CLAW, 0.7)
-                _line(draw, [(x + xoff - 2, y + 12 + lj * 0.5), (x + xoff + 2, y + 8 + lj * 0.3)], CLAW, 0.7)
 
-        _put(img, _rest(("face", jaw, blink, x_eyes), face, O), (hx, hy), 0.0, "face")
+        _put(img, _rest(("snout",), snout, O), (hx, hy), 0.0, "snout")
+        # The jaw's front (about 45 px out from its hinge) drops ``22 * jaw_open``.
+        hinge = (15.0, 12.0)
+        jaw_deg = math.degrees(math.atan2(22.0 * pose.jaw_open, 45.0))
+        _put(img, _rest(("jaw",), jaw, (O[0] + hinge[0], O[1] + hinge[1])), (hx + hinge[0], hy + hinge[1]), jaw_deg, "jaw")
+        _put(img, _rest(("upper_teeth",), upper_teeth, O), (hx, hy), 0.0, "upper_teeth")
+        _put(img, _rest(("eyes", look), eyes, O), (hx, hy), 0.0, "eyes")
 
-    def _draw_leg(self, img: Image.Image, chain, swing: float, tilt: float, front: bool, name: str) -> None:
+    def _draw_leg(self, img: Image.Image, chain, tilt: float, front: bool, name: str) -> None:
         """Thigh and shin bones of fixed length (bent at the painter's knee),
         the knee, the shin guard riding the shin and the toes riding the ankle."""
         hip, knee_ref, ankle = chain
@@ -656,13 +694,11 @@ class RaptorStalkerRenderer:
             _poly(draw, [(x - 4, y), (x - 2, y + l2 - 8), (x + 7, y + l2 + 2), (x + 5, y + 4)], light, OUTLINE, 0.8)
 
         _put(img, _rest(("guard", front, l2), guard, _BONE_O), knee, shin_deg - 90.0, f"{name}_guard")
-        sw = _rig.q(swing, 4.0)
-
         def toes(draw) -> None:
             P0 = _P0
             a = P0(0, 0)
-            toe = P0(20 - sw * 0.06, 2) if front else P0(14 - sw * 0.06, 4)
-            back_toe = P0(-8 - sw * 0.06, 4) if front else P0(-6 - sw * 0.06, 6)
+            toe = P0(20, 2) if front else P0(14, 4)
+            back_toe = P0(-8, 4) if front else P0(-6, 6)
             _line(draw, [a, toe], CLAW, 2.5)
             _line(draw, [a, toe], OUTLINE, 0.9)
             _line(draw, [a, back_toe], CLAW, 1.8)
@@ -674,7 +710,7 @@ class RaptorStalkerRenderer:
             _line(draw, [toe, sickle], CLAW, 2.0)
             _line(draw, [toe, sickle], OUTLINE, 0.8)
 
-        _put(img, _rest(("toes", front, sw), toes, _REST_ROOT), ankle, tilt, f"{name}_toes")
+        _put(img, _rest(("toes", front), toes, _REST_ROOT), ankle, tilt, f"{name}_toes")
 
     def _draw_arm(self, img: Image.Image, chain, front: bool, name: str) -> None:
         shoulder, elbow_ref, wrist = chain
@@ -692,23 +728,42 @@ class RaptorStalkerRenderer:
 
         _put(img, _rest(("claws",), claws, _BONE_O), wrist, 0.0, f"{name}_claws")
 
-    def _draw_tail_fx(self, draw: ImageDraw.ImageDraw, P, pose: Pose) -> None:
-        cx, cy = P(-74, -70)
-        box = (_s(cx - 102), _s(cy - 70), _s(cx + 102), _s(cy + 70))
-        draw.arc(box, 18, 166, fill=(*ACCENT[:3], 132), width=_s(5.0 + pose.sweep_arc * 2.0))
-        draw.arc(box, 28, 154, fill=(255, 244, 208, 104), width=_s(2.0))
+    def _draw_tail_fx(self, img: Image.Image, P, pose: Pose) -> None:
+        """The tail sweep's arc: one piece around its centre, faded in and out."""
+        O = (110.0, 80.0)
 
-    def _draw_pounce_fx(self, draw: ImageDraw.ImageDraw, P, pose: Pose) -> None:
-        c = P(-12, 12)
-        _ellipse(draw, c[0], c[1], 18 + pose.pounce * 8, 6 + pose.pounce * 2, DUST, outline=(0, 0, 0, 0), width=0)
-        for dx in (-16, -4, 10):
-            shard = [P(-12 + dx, 10), P(-4 + dx, 0), P(4 + dx, 10)]
-            _poly(draw, shard, (*ACCENT_LIGHT[:3], 148), (*ACCENT[:3], 120), 0.5)
+        def paint(draw) -> None:
+            box = (_s(O[0] - 102), _s(O[1] - 70), _s(O[0] + 102), _s(O[1] + 70))
+            draw.arc(box, 16, 164, fill=(*ACCENT[:3], 132), width=_s(6.5))
+            draw.arc(box, 27, 153, fill=(255, 244, 208, 104), width=_s(2.0))
 
-    def _draw_bite_fx(self, draw: ImageDraw.ImageDraw, P, pose: Pose) -> None:
-        cx, cy = P(126, -84)
-        box = (_s(cx - 34), _s(cy - 20), _s(cx + 34), _s(cy + 20))
-        draw.arc(box, 180, 24, fill=(*ACCENT_LIGHT[:3], 180), width=_s(3.0))
+        opacity = min(1.0, 0.35 + pose.sweep_arc * 0.65)
+        for half, side in zip(_mirrored_half(("fx_tail",), paint, O), ("l", "r")):
+            _rig.place(img, half, _sp(P(-74, -70)), 0.0, f"fx_tail_{side}", opacity)
+
+    def _draw_pounce_fx(self, img: Image.Image, P, pose: Pose, tilt: float) -> None:
+        """The pounce's dust pool (one piece, faded in) and three shards (one
+        piece, riding the body's turn)."""
+        O = (40.0, 20.0)
+
+        def pool(draw) -> None:
+            _ellipse(draw, O[0], O[1], 26, 8, DUST, outline=(0, 0, 0, 0), width=0)
+
+        def shard(draw) -> None:
+            _poly(draw, [(O[0] - 8, O[1]), (O[0], O[1] - 10), (O[0] + 8, O[1])], (*ACCENT_LIGHT[:3], 148), (*ACCENT[:3], 120), 0.5)
+
+        _rig.place(img, _rest(("fx_pounce_pool",), pool, O), _sp(P(-12, 12)), 0.0, "fx_pounce", pose.pounce)
+        for k, dx in enumerate((-16, -4, 10)):
+            _put(img, _rest(("fx_pounce_shard",), shard, O), P(-4 + dx, 10), tilt, f"fx_pounce_shard{k}")
+
+    def _draw_bite_fx(self, img: Image.Image, P, pose: Pose) -> None:
+        O = (40.0, 30.0)
+
+        def paint(draw) -> None:
+            box = (_s(O[0] - 34), _s(O[1] - 20), _s(O[0] + 34), _s(O[1] + 20))
+            draw.arc(box, 180, 24, fill=(*ACCENT_LIGHT[:3], 180), width=_s(3.0))
+
+        _put(img, _rest(("fx_bite",), paint, O), P(126, -84), 0.0, "fx_bite")
 
 
 def _render_sheet(renderer: RaptorStalkerRenderer, out_dir: Path):

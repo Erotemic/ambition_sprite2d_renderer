@@ -16,6 +16,7 @@ from typing import List, Sequence, Tuple
 
 from ...authoring import rigdoc, shape_rig
 from . import _solo_shape_rig as _rig
+from . import _fx_piece
 from ...authoring.part_flipbook import publish_rig_flipbook
 from PIL import Image, ImageDraw
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -94,7 +95,6 @@ class Pose:
     head_tilt: float = 0.0
     neck_extend: float = 0.0
     jaw_open: float = 0.0
-    hump: float = 0.0
     near_fore: float = 0.0
     far_fore: float = 0.0
     near_hind: float = 0.0
@@ -122,7 +122,6 @@ class Pose:
         self.head_tilt = 0.0
         self.neck_extend = 0.0
         self.jaw_open = 0.0
-        self.hump = 0.0
         self.near_fore = 0.0
         self.far_fore = 0.0
         self.near_hind = 0.0
@@ -141,7 +140,6 @@ class Pose:
             self.bob = s * 1.4
             self.lean = s * 0.8
             self.head_tilt = -s * 1.0
-            self.hump = abs(s) * 2.0
             self.near_fore = 4.0 + s * 2.0
             self.far_fore = -5.0 - s * 1.4
             self.near_hind = c * 0.8
@@ -313,14 +311,26 @@ def _put(img: Image.Image, part, at: Point, deg: float, name: str) -> None:
     shape_rig.place(img, part, _sp(at), deg, name)
 
 
-def _fx_layer(img: Image.Image, paint, name: str) -> None:
-    """A per-frame effect (it changes every frame) as ONE raster: painted on
-    its own canvas, cut to what it covers and placed at its corner."""
-    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    paint(blending_draw(layer))
-    box = layer.getchannel("A").getbbox()
-    if box is not None:
-        shape_rig.place(img, (layer.crop(box), (0.0, 0.0)), (float(box[0]), float(box[1])), 0.0, name)
+_HALVES: dict = {}
+
+
+def _mirrored_half(key, paint, O: Point):
+    """What ``paint(draw)`` paints symmetric about the vertical through ``O``
+    (work pixels) as its left half and that half mirrored (the same raster
+    transposed), each with its pivot at ``O``. The half is cut on whole
+    frame pixels so the mirror survives the reduction."""
+    cached = _HALVES.get(key)
+    if cached is None:
+        grid = SUPER * WORK_FRAME_SIZE[0] // FRAME_SIZE[0]
+        canvas = Image.new("RGBA", (int(2 * O[0] * SUPER), int(2 * O[1] * SUPER)), (0, 0, 0, 0))
+        paint(blending_draw(canvas))
+        cx = int(O[0] * SUPER)
+        assert cx % grid == 0, "the axis must fall on a frame pixel"
+        box = canvas.getchannel("A").getbbox()
+        x0 = box[0] - box[0] % grid
+        half = (canvas.crop((x0, box[1], cx, box[3])), (float(cx - x0), O[1] * SUPER - box[1]))
+        cached = _HALVES[key] = (half, _fx_piece.mirrored(half))
+    return cached
 
 
 def _deg(a: Point, b: Point) -> float:
@@ -422,17 +432,18 @@ class BearMaulerRenderer:
         self._draw_body(img, pose, root, tilt)
         self._draw_head(img, P, pose, root, tilt)
         self._draw_limbs(img, P, pose, ("near_hind", "near_fore"))
-        # Effects change every frame: one raster each.
+        # Effects are pieces painted once at full size, placed and faded.
         if anim == "swipe" and pose.swipe_arc > 0.18:
-            _fx_layer(img, lambda d: self._draw_swipe_fx(d, P, pose), "fx_swipe")
+            self._draw_swipe_fx(img, P, pose)
         if anim == "slam" and pose.slam_arc > 0.2:
-            _fx_layer(img, lambda d: self._draw_slam_fx(d, P, pose), "fx_slam")
+            self._draw_slam_fx(img, P, pose, tilt)
         if pose.dust > 0.1:
-            _fx_layer(img, lambda d: self._draw_dust(d, P, pose), "fx_dust")
+            self._draw_dust(img, P, pose)
         return _downsample(img)
 
     def _draw_body(self, img, pose, root, tilt):
-        hump = _rig.q(pose.hump, 0.5)
+        # One body: the idle's breath is its bob and lean.
+        hump = 1.0
 
         def paint(draw) -> None:
             P = _P0
@@ -445,20 +456,20 @@ class BearMaulerRenderer:
             _line(draw, [P(22, -78), P(34, -42)], FUR_DARK, 0.9)
             _poly(draw, [P(-88, -58), P(-102, -62), P(-96, -47)], FUR_DARK, OUTLINE, 0.8)
 
-        _put(img, _rest(("body", hump), paint, _REST_ROOT), root, tilt, "body")
+        _put(img, _rest(("body",), paint, _REST_ROOT), root, tilt, "body")
 
     def _draw_head(self, img, P, pose, root, tilt):
-        """The neck rides the body; the upright head is one piece per face."""
+        """The neck rides the body (three reaches); the upright head is a base,
+        a lower jaw turned at its hinge, the nose and teeth, and the eyes (open,
+        shut or crossed out)."""
         hx, hy = P(82 + pose.neck_extend, -92 + pose.head_tilt * 0.12)
-        neck_extend = _rig.q(pose.neck_extend, 2.0)
+        neck_extend = _rig.q(pose.neck_extend, 10.0)
 
         def neck(draw) -> None:
             P0 = _P0
             _poly(draw, [P0(44, -90), P0(72 + neck_extend * 0.3, -104), P0(84 + neck_extend * 0.2, -72), P0(46, -62)], FUR_DARK, OUTLINE, 1.0)
 
         _put(img, _rest(("neck", neck_extend), neck, _REST_ROOT), root, tilt, "neck")
-        jaw = _rig.q(pose.jaw_open, 0.02)
-        blink, x_eyes = pose.blink, pose.x_eyes
         O = (60.0, 60.0)
 
         def head(draw) -> None:
@@ -467,21 +478,37 @@ class BearMaulerRenderer:
             _circle(draw, (hx - 18, hy - 20), 9, FUR_DARK, OUTLINE, 1.0)
             _circle(draw, (hx + 8, hy - 24), 8, FUR_DARK, OUTLINE, 1.0)
             _poly(draw, [(hx + 14, hy - 4), (hx + 54, hy - 1), (hx + 68, hy + 8), (hx + 52, hy + 18), (hx + 16, hy + 16)], MUZZLE, OUTLINE, 1.0)
-            lower_drop = jaw * 20.0
-            _poly(draw, [(hx + 18, hy + 14), (hx + 48, hy + 18 + lower_drop), (hx + 62, hy + 14 + lower_drop), (hx + 48, hy + 25 + lower_drop), (hx + 18, hy + 23)], MUZZLE_DARK, OUTLINE, 0.8)
+
+        def jaw(draw) -> None:
+            hx, hy = O
+            _poly(draw, [(hx + 18, hy + 14), (hx + 48, hy + 18), (hx + 62, hy + 14), (hx + 48, hy + 25), (hx + 18, hy + 23)], MUZZLE_DARK, OUTLINE, 0.8)
+
+        def nose_teeth(draw) -> None:
+            hx, hy = O
             _circle(draw, (hx + 58, hy + 6), 5, NOSE, OUTLINE, 0.6)
-            if x_eyes:
+            for x in (34, 44, 54):
+                _line(draw, [(hx + x, hy + 13), (hx + x - 3, hy + 19)], CLAW, 0.7)
+
+        look = "x" if pose.x_eyes else "shut" if pose.blink else "open"
+
+        def eyes(draw) -> None:
+            hx, hy = O
+            if look == "x":
                 _line(draw, [(hx + 2, hy - 7), (hx + 12, hy + 3)], OUTLINE, 1.0)
                 _line(draw, [(hx + 2, hy + 3), (hx + 12, hy - 7)], OUTLINE, 1.0)
-            elif blink:
+            elif look == "shut":
                 _line(draw, [(hx + 1, hy - 4), (hx + 13, hy - 4)], EYE_HOT, 1.0)
             else:
                 _ellipse(draw, hx + 7, hy - 4, 5, 3.5, EYE, EYE_HOT, 0.7)
                 _circle(draw, (hx + 8, hy - 4), 1.3, OUTLINE, OUTLINE, 0.4)
-            for x in (34, 44, 54):
-                _line(draw, [(hx + x, hy + 13), (hx + x - 3, hy + 19 + lower_drop * 0.2)], CLAW, 0.7)
 
-        _put(img, _rest(("head", jaw, blink, x_eyes), head, O), (hx, hy), 0.0, "head")
+        _put(img, _rest(("head",), head, O), (hx, hy), 0.0, "head")
+        # The jaw's front (48 px out from its hinge) drops ``20 * jaw_open``.
+        hinge = (18.0, 18.5)
+        jaw_deg = math.degrees(math.atan2(20.0 * pose.jaw_open, 48.0 - hinge[0]))
+        _put(img, _rest(("jaw",), jaw, (O[0] + hinge[0], O[1] + hinge[1])), (hx + hinge[0], hy + hinge[1]), jaw_deg, "jaw")
+        _put(img, _rest(("nose_teeth",), nose_teeth, O), (hx, hy), 0.0, "nose_teeth")
+        _put(img, _rest(("eyes", look), eyes, O), (hx, hy), 0.0, "eyes")
 
     def _limb_points(self, P, kind, phase, lift):
         if kind == "near_fore":
@@ -531,22 +558,48 @@ class BearMaulerRenderer:
 
         _put(img, _rest(("paw", front, is_fore), paw_paint, O), paw, 0.0, f"{kind}_paw")
 
-    def _draw_swipe_fx(self, draw, P, pose):
+    def _draw_swipe_fx(self, img, P, pose):
+        """The swipe's arc: one piece around its centre, fading in and out."""
         cx, cy = P(88, -34)
-        box = (_s(cx - 72), _s(cy - 70), _s(cx + 70), _s(cy + 70))
-        draw.arc(box, 212, 334, fill=ARC, width=_s(5.0 + pose.swipe_arc * 2.0))
-        draw.arc(box, 224, 322, fill=(255, 246, 218, 100), width=_s(2.0))
+        O = (90.0, 90.0)
 
-    def _draw_slam_fx(self, draw, P, pose):
+        def paint(draw) -> None:
+            box = (_s(O[0] - 71), _s(O[1] - 70), _s(O[0] + 71), _s(O[1] + 70))
+            draw.arc(box, 210, 330, fill=ARC, width=_s(6.5))
+            draw.arc(box, 222, 318, fill=(255, 246, 218, 100), width=_s(2.0))
+
+        opacity = min(1.0, 0.35 + pose.swipe_arc * 0.65)
+        for half, side in zip(_mirrored_half(("fx_swipe",), paint, O), ("l", "r")):
+            _rig.place(img, half, _sp((cx - 1.0, cy)), 0.0, f"fx_swipe_{side}", opacity)
+
+    def _draw_slam_fx(self, img, P, pose, tilt):
+        """The slam's dust pool (one piece, faded in) and four rock spikes
+        (one piece, riding the body's turn)."""
+        O = (60.0, 30.0)
         c = P(62, 12)
-        _ellipse(draw, c[0], c[1], 34 + pose.slam_arc * 10, 6 + pose.slam_arc * 2, DUST, outline=(0, 0, 0, 0), width=0)
-        for dx in (-22, -8, 8, 22):
-            _poly(draw, [P(62 + dx, 9), P(70 + dx, -2), P(78 + dx, 9)], (220, 180, 130, 155), (160, 110, 80, 130), 0.5)
 
-    def _draw_dust(self, draw, P, pose):
-        for dx, dy, rx in [(-48, 14, 8), (-20, 16, 10), (28, 15, 9)]:
-            c = P(dx, dy)
-            _ellipse(draw, c[0], c[1], rx + pose.dust * 7, 4 + pose.dust * 3, DUST, outline=(0, 0, 0, 0), width=0)
+        def pool(draw) -> None:
+            _ellipse(draw, O[0], O[1], 44, 8, DUST, outline=(0, 0, 0, 0), width=0)
+
+        def spike(draw) -> None:
+            _poly(draw, [(O[0] - 8, O[1]), (O[0], O[1] - 11), (O[0] + 8, O[1])], (220, 180, 130, 155), (160, 110, 80, 130), 0.5)
+
+        _rig.place(img, _rest(("fx_slam_pool",), pool, O), _sp(c), 0.0, "fx_slam", pose.slam_arc)
+        for k, dx in enumerate((-22, -8, 8, 22)):
+            _put(img, _rest(("fx_slam_spike",), spike, (O[0], O[1])), P(70 + dx, 9), tilt, f"fx_slam_spike{k}")
+
+    def _draw_dust(self, img, P, pose):
+        """Three dust puffs: one piece in two sizes (rising and settled)."""
+        big = pose.dust >= 0.45
+        O = (40.0, 30.0)
+
+        def puff(draw) -> None:
+            k = 0.8 if big else 0.3
+            _ellipse(draw, O[0], O[1], 9 + k * 7, 4 + k * 3, DUST, outline=(0, 0, 0, 0), width=0)
+
+        part = _rest(("fx_dust", big), puff, O)
+        for k, (dx, dy) in enumerate([(-48, 14), (-20, 16), (28, 15)]):
+            _put(img, part, P(dx, dy), 0.0, f"fx_dust{k}")
 
 
 def _write_yaml(path: Path) -> None:
