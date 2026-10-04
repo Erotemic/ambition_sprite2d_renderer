@@ -1543,20 +1543,19 @@ def build_rig_flipbook(
         bilinear=filters.pop() if filters else False,
         frame_opacity=frame_opacity,
     )
-    merged = _merge_rigid_neighbours(flipbook)
-    if merged is not flipbook:
-        failing = _replay_failures(merged, rendered)
-        if failing:
-            print(f"[part flipbook] {target}: rigid merge refused, {len(failing)} frame(s) would change ({failing[0]})", flush=True)
-        else:
-            flipbook = merged
-    shared = _share_transformed_parts(flipbook)
-    if shared is not flipbook:
-        failing = _replay_failures(shared, rendered)
-        if failing:
-            print(f"[part flipbook] {target}: transform sharing refused, {len(failing)} frame(s) would change ({failing[0]})", flush=True)
-        else:
-            flipbook = shared
+    # Lossless sharing FIRST, then the rigid merge, then sharing again (a
+    # composite can be another's mirror). Merged first, two mirrored quarters
+    # of a slash ring fused into a new half-ring raster and the robot's pages
+    # GREW (166k -> 176k texels, 2026-10-04).
+    for step, name in ((_share_transformed_parts, "transform sharing"), (_merge_rigid_neighbours, "rigid merge"),
+                       (_share_transformed_parts, "transform sharing")):
+        changed = step(flipbook)
+        if changed is not flipbook:
+            failing = _replay_failures(changed, rendered)
+            if failing:
+                print(f"[part flipbook] {target}: {name} refused, {len(failing)} frame(s) would change ({failing[0]})", flush=True)
+            else:
+                flipbook = changed
     for (row, index), frame in rendered.items():
         replayed = flipbook.recompose(row, index)
         if flipbook.placement == PLACEMENT_SNAPPED:
@@ -1677,6 +1676,10 @@ def _merge_rigid_neighbours(flipbook: "PartFlipbook") -> "PartFlipbook":
             and None not in after
             and next(iter(after))[0] not in (None, a)
             and next(iter(after))[1][0] == 0.0
+            # ⛔ Unscaled, both: `composite` pastes rasters as stored, so a
+            # mirrored draw (lossless sharing) would be pasted unmirrored.
+            and next(iter(after))[1][3] == (1.0, 1.0)
+            and next(iter(after))[1][4] == (1.0, 1.0)
         }
         if flipbook.placement == PLACEMENT_SNAPPED:
             turning = {d.track for _d, frames in clips.values() for draws in frames for d in draws if d.rotation != 0.0}
