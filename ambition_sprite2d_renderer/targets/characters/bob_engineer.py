@@ -31,7 +31,7 @@ from typing import Any, Dict, Iterable, Optional, Sequence, Tuple
 from PIL import Image, ImageDraw
 
 from ...authoring import rigdoc
-from . import _toon_rig
+from . import _fx_piece, _toon_rig
 from ...profiling import profile
 from ...authoring.animation_vocab import (
     DEFAULT_ADVANCED_TIMINGS,
@@ -39,7 +39,6 @@ from ...authoring.animation_vocab import (
     DEFAULT_EXTENDED_TIMINGS,
     DEFAULT_TRAVERSAL_POLISH_TIMINGS,
 )
-from ambition_sprite2d_renderer.core.draw import blending_draw
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
 from ambition_sprite2d_renderer.core.draw import rgba
@@ -192,7 +191,6 @@ class BobPose:
     effect_strength: float = 0.0
     rotation: float = 0.0
     opacity: float = 1.0
-    hit_flash: float = 0.0
 
 
 def _bbox(
@@ -530,7 +528,6 @@ class BobEngineerGenerator(CharacterGenerator):
             pose.near_foot = (5.0, 0.0)
             pose.far_foot = (-5.0, 0.0)
             pose.prop = "none"
-            pose.hit_flash = recoil
             pose.effect = "hit"
             pose.effect_strength = recoil
         elif animation == "death":
@@ -742,25 +739,20 @@ class BobEngineerGenerator(CharacterGenerator):
         cx = (64.0 + pose.root_x) * scale
         feet_y = (117.0 + pose.body_bob + pose.root_y) * scale
         # The body is drawn as pieces (``_toon_rig``). A whole-body turn
-        # (roll, death) turns each piece's place about the pivot, and a hit
-        # flash tints each piece.
+        # (roll, death) turns each piece's place about the pivot. The sheet
+        # paints no hit flash: the game draws the damage flash over the
+        # sprite (ambition_render's ``hit_flash`` overlay), and a tint per
+        # piece would double the pieces of every hit frame. The action
+        # effects are pieces painted once at full strength and placed with
+        # the strength as their opacity (``_fx_piece``).
         turn = pose.rotation if abs(pose.rotation) > 0.01 else 0.0
         pivot = (round(cx), round(feet_y - 41.0 * scale))
-        flash = ((255, 226, 196), 0.62 * _clamp01(pose.hit_flash)) if pose.hit_flash > 0.0 else None
-        frame = _toon_rig.Frame(actor, turn, pivot, flash)
+        frame = _toon_rig.Frame(actor, turn, pivot)
         if pose.view is BobView.FRONT:
             self._draw_front(frame, cx, feet_y, spec, pose, scale)
         elif pose.view is BobView.SIDE:
             self._draw_side(frame, cx, feet_y, spec, pose, scale)
-            if turn == 0.0:
-                self._draw_action_effects(actor, cx, feet_y, pose, scale)
-            else:
-                # Effects are shapes in the frame: turned with the body, they
-                # are one layer placed turned about the pivot.
-                layer = Image.new("RGBA", actor.size, (0, 0, 0, 0))
-                self._draw_action_effects(layer, cx, feet_y, pose, scale)
-                if layer.getbbox() is not None:
-                    frame.place((layer, pivot), pivot, 0.0, "effects")
+            self._place_action_effects(frame, cx, feet_y, pose, scale)
         else:
             self._draw_three_quarter(frame, cx, feet_y, spec, pose, scale)
 
@@ -994,8 +986,10 @@ class BobEngineerGenerator(CharacterGenerator):
         s: float,
         *,
         open_amount: float,
-        scan: float,
+        scan: Optional[float],
     ) -> None:
+        """The handheld analyzer; ``scan`` None leaves out its scan line
+        (placed as its own piece)."""
         pal = BOB_PALETTE
         x, y = center
         w = (15.0 + 5.0 * open_amount) * s
@@ -1021,13 +1015,14 @@ class BobEngineerGenerator(CharacterGenerator):
             outline=pal["outline"],
             width=round(0.65 * s),
         )
-        scan_x = x - w * 0.22 + (0.5 + 0.5 * scan) * w * 0.30
-        _line(
-            d,
-            [(scan_x, y - h * 0.23), (scan_x, y + h * 0.02)],
-            fill=pal["white"],
-            width=round(0.7 * s),
-        )
+        if scan is not None:
+            scan_x = x - w * 0.22 + (0.5 + 0.5 * scan) * w * 0.30
+            _line(
+                d,
+                [(scan_x, y - h * 0.23), (scan_x, y + h * 0.02)],
+                fill=pal["white"],
+                width=round(0.7 * s),
+            )
         for dx in (-0.05, 0.12, 0.29):
             _ellipse(
                 d,
@@ -1124,6 +1119,8 @@ class BobEngineerGenerator(CharacterGenerator):
             cx + 13.2 * s + pose.scan * 0.65 * s,
             hip_y - 4.0 * s,
         )
+        # Bones of fixed length: the arm is two pieces whatever the scan.
+        near_elbow, near_hand = _fixed_bones(near_shoulder, near_elbow, near_hand, 12.3 * s, 8.1 * s)
         self._place_limb(frame, near_shoulder, near_elbow, near_hand, s, fill=pal["shirt"], width=6.0, name="near_arm", quantum=0.5)
         _toon_rig.anchored(
             frame, ("bob_cuff_three_quarter", s), (6.0 * s, 12.0 * s), near_shoulder,
@@ -1142,9 +1139,14 @@ class BobEngineerGenerator(CharacterGenerator):
             lambda d, o: (self._draw_hand(d, o, s), self._draw_keyring(d, (o[0] + 4.8 * s, o[1] + 1.0 * s), s, scale=0.62)),
             "near_hand",
         )
+        # The head is one base piece; the eyes are an overlay piece per blink.
         _toon_rig.anchored(
-            frame, ("bob_head_three_quarter", pose.blink, s), (16.0 * s, 20.0 * s), head_c,
+            frame, ("bob_head_three_quarter", s), (16.0 * s, 20.0 * s), head_c,
             lambda d, o: self._draw_head_three_quarter(d, o, pose, s), "head",
+        )
+        _toon_rig.anchored(
+            frame, ("bob_eyes_three_quarter", pose.blink, s), (10.0 * s, 5.0 * s), head_c,
+            lambda d, o: self._paint_eyes_three_quarter(d, o, pose, s), "eyes",
         )
 
     def _paint_three_quarter_body(self, d: ImageDraw.ImageDraw, cx: float, feet_y: float, spec: BobSpec, s: float) -> None:
@@ -1483,34 +1485,6 @@ class BobEngineerGenerator(CharacterGenerator):
             fill=pal["hair"],
             width=round(1.0 * s),
         )
-        if pose.blink:
-            _line(
-                d,
-                [(cx - 6.4 * s, cy), (cx - 2.5 * s, cy)],
-                fill=outline,
-                width=round(1.0 * s),
-            )
-            _line(
-                d,
-                [(cx + 2.5 * s, cy), (cx + 6.2 * s, cy + 0.3 * s)],
-                fill=outline,
-                width=round(1.0 * s),
-            )
-        else:
-            for eye_x, eye_y in ((cx - 4.5 * s, cy), (cx + 4.3 * s, cy + 0.2 * s)):
-                _ellipse(
-                    d,
-                    _bbox(eye_x, eye_y, 3.0 * s, 3.5 * s),
-                    fill=pal["white"],
-                    outline=outline,
-                    width=round(0.65 * s),
-                )
-                _ellipse(
-                    d,
-                    _bbox(eye_x + 0.5 * s, eye_y + 0.2 * s, 1.4 * s, 1.8 * s),
-                    fill=pal["eye"],
-                )
-
         # Nose, beard mask, and mouth are integrated rather than a floating
         # moustache strip.  The beard follows cheek and jaw planes.
         _line(
@@ -1600,6 +1574,9 @@ class BobEngineerGenerator(CharacterGenerator):
             relaxed_left_hand[0] + (device_left_hand[0] - relaxed_left_hand[0]) * mix,
             relaxed_left_hand[1] + (device_left_hand[1] - relaxed_left_hand[1]) * mix,
         )
+        # Bones of fixed length (the relaxed arm's): each arm is two pieces
+        # whatever the gesture.
+        left_elbow, left_hand = _fixed_bones(left_shoulder, left_elbow, left_hand, 12.5 * s, 8.9 * s)
         self._place_limb(frame, left_shoulder, left_elbow, left_hand, s, fill=pal["shirt_dark"], width=5.9, name="far_arm", quantum=0.5)
         self._place_hand(frame, left_hand, s, "far_hand")
 
@@ -1637,6 +1614,7 @@ class BobEngineerGenerator(CharacterGenerator):
             + (device_right_hand[1] - relaxed_right_hand[1]) * interact_mix
             + (gesture_right_hand[1] - relaxed_right_hand[1]) * gesture_mix,
         )
+        right_elbow, right_hand = _fixed_bones(right_shoulder, right_elbow, right_hand, 12.5 * s, 8.9 * s)
         self._place_limb(frame, right_shoulder, right_elbow, right_hand, s, fill=pal["shirt"], width=6.0, name="near_arm", quantum=0.5)
         self._place_hand(frame, right_hand, s, "near_hand")
         if pose.interact <= 0.0 and pose.gesture <= 0.05:
@@ -1646,19 +1624,39 @@ class BobEngineerGenerator(CharacterGenerator):
             )
 
         if pose.interact > 0.02:
-            # One analyzer piece per opening and scan (rounded).
-            open_amount = round(pose.interact, 2)
-            scan = round(pose.scan, 2)
+            # The analyzer opens in two steps (one piece each); its scan
+            # line is one piece that slides across the screen.
+            open_amount = 0.5 if pose.interact < 0.7 else 1.0
+            center = (cx, shoulder_y + 19.0 * s)
             _toon_rig.anchored(
-                frame, ("bob_analyzer", open_amount, scan, s), (22.0 * s, 9.0 * s), (cx, shoulder_y + 19.0 * s),
-                lambda d, o: self._draw_analyzer(d, o, s, open_amount=open_amount, scan=scan), "analyzer",
+                frame, ("bob_analyzer", open_amount, s), (22.0 * s, 9.0 * s), center,
+                lambda d, o: self._draw_analyzer(d, o, s, open_amount=open_amount, scan=None), "analyzer",
+            )
+            w = (15.0 + 5.0 * open_amount) * s
+            h = 11.0 * s
+            scan_x = center[0] - w * 0.22 + (0.5 + 0.5 * pose.scan) * w * 0.30
+            _toon_rig.anchored(
+                frame, ("bob_scan_line", s), (2.0 * s, 4.0 * s), (scan_x, center[1] - h * 0.105),
+                lambda d, o: _line(
+                    d, [(o[0], o[1] - h * 0.125), (o[0], o[1] + h * 0.125)], fill=BOB_PALETTE["white"], width=round(0.7 * s)
+                ),
+                "analyzer_scan",
             )
 
-        talk_open = round(pose.talk_open, 1)
-        expression = (pose.blink, talk_open)
+        # The head is one base piece; the eyes and the mouth are overlay
+        # pieces (the mouth opens in three steps: shut, half, open).
         _toon_rig.anchored(
-            frame, ("bob_head_front", expression, s), (16.0 * s, 20.0 * s), head_c,
-            lambda d, o: self._draw_head_front(d, o, replace(pose, talk_open=talk_open), s), "head",
+            frame, ("bob_head_front", s), (16.0 * s, 20.0 * s), head_c,
+            lambda d, o: self._draw_head_front(d, o, pose, s), "head",
+        )
+        _toon_rig.anchored(
+            frame, ("bob_eyes_front", pose.blink, s), (10.0 * s, 5.0 * s), head_c,
+            lambda d, o: self._paint_eyes_front(d, o, pose, s), "eyes",
+        )
+        talk_open = 0.0 if pose.talk_open <= 0.18 else (0.5 if pose.talk_open < 0.75 else 1.0)
+        _toon_rig.anchored(
+            frame, ("bob_mouth_front", talk_open, s), (6.0 * s, 10.0 * s), head_c,
+            lambda d, o: self._paint_mouth_front(d, o, replace(pose, talk_open=talk_open), s), "mouth",
         )
 
 
@@ -1953,33 +1951,6 @@ class BobEngineerGenerator(CharacterGenerator):
             fill=pal["hair"],
             width=round(1.0 * s),
         )
-        if pose.blink:
-            for sign in (-1, 1):
-                _line(
-                    d,
-                    [
-                        (cx + sign * 6.2 * s, cy),
-                        (cx + sign * 2.6 * s, cy),
-                    ],
-                    fill=outline,
-                    width=round(1.0 * s),
-                )
-        else:
-            for sign in (-1, 1):
-                ex = cx + sign * 4.4 * s
-                _ellipse(
-                    d,
-                    _bbox(ex, cy, 3.0 * s, 3.5 * s),
-                    fill=pal["white"],
-                    outline=outline,
-                    width=round(0.65 * s),
-                )
-                _ellipse(
-                    d,
-                    _bbox(ex, cy + 0.2 * s, 1.4 * s, 1.8 * s),
-                    fill=pal["eye"],
-                )
-
         _line(
             d,
             [(cx, cy + 0.7 * s), (cx + 1.3 * s, cy + 3.0 * s)],
@@ -2010,6 +1981,77 @@ class BobEngineerGenerator(CharacterGenerator):
             fill=pal["beard_dark"],
             width=round(0.7 * s),
         )
+
+    def _paint_eyes_three_quarter(self, d: ImageDraw.ImageDraw, center: Point, pose: BobPose, s: float) -> None:
+        """The three-quarter eyes (open or blinking) over the head's base piece."""
+        pal = BOB_PALETTE
+        outline = pal["outline"]
+        cx, cy = center
+        if pose.blink:
+            _line(
+                d,
+                [(cx - 6.4 * s, cy), (cx - 2.5 * s, cy)],
+                fill=outline,
+                width=round(1.0 * s),
+            )
+            _line(
+                d,
+                [(cx + 2.5 * s, cy), (cx + 6.2 * s, cy + 0.3 * s)],
+                fill=outline,
+                width=round(1.0 * s),
+            )
+        else:
+            for eye_x, eye_y in ((cx - 4.5 * s, cy), (cx + 4.3 * s, cy + 0.2 * s)):
+                _ellipse(
+                    d,
+                    _bbox(eye_x, eye_y, 3.0 * s, 3.5 * s),
+                    fill=pal["white"],
+                    outline=outline,
+                    width=round(0.65 * s),
+                )
+                _ellipse(
+                    d,
+                    _bbox(eye_x + 0.5 * s, eye_y + 0.2 * s, 1.4 * s, 1.8 * s),
+                    fill=pal["eye"],
+                )
+
+    def _paint_eyes_front(self, d: ImageDraw.ImageDraw, center: Point, pose: BobPose, s: float) -> None:
+        """The front eyes (open or blinking) over the head's base piece."""
+        pal = BOB_PALETTE
+        outline = pal["outline"]
+        cx, cy = center
+        if pose.blink:
+            for sign in (-1, 1):
+                _line(
+                    d,
+                    [
+                        (cx + sign * 6.2 * s, cy),
+                        (cx + sign * 2.6 * s, cy),
+                    ],
+                    fill=outline,
+                    width=round(1.0 * s),
+                )
+        else:
+            for sign in (-1, 1):
+                ex = cx + sign * 4.4 * s
+                _ellipse(
+                    d,
+                    _bbox(ex, cy, 3.0 * s, 3.5 * s),
+                    fill=pal["white"],
+                    outline=outline,
+                    width=round(0.65 * s),
+                )
+                _ellipse(
+                    d,
+                    _bbox(ex, cy + 0.2 * s, 1.4 * s, 1.8 * s),
+                    fill=pal["eye"],
+                )
+
+    def _paint_mouth_front(self, d: ImageDraw.ImageDraw, center: Point, pose: BobPose, s: float) -> None:
+        """The front mouth (``pose.talk_open``) over the head's base piece."""
+        pal = BOB_PALETTE
+        outline = pal["outline"]
+        cx, cy = center
         if pose.talk_open > 0.18:
             mouth_h = (1.2 + 2.0 * pose.talk_open) * s
             _ellipse(
@@ -2034,6 +2076,35 @@ class BobEngineerGenerator(CharacterGenerator):
                 [(cx - 3.7 * s, cy + 6.5 * s), (cx + 3.7 * s, cy + 6.5 * s)],
                 fill=outline,
                 width=round(1.0 * s),
+            )
+
+    def _paint_eye_side(self, d: ImageDraw.ImageDraw, center: Point, pose: BobPose, s: float) -> None:
+        """The profile eye (open or blinking) over the head's base piece."""
+        pal = BOB_PALETTE
+        outline = pal["outline"]
+        cx, cy = center
+        hs = 1.10 * s
+        cy -= 0.35 * s
+        eye = (cx + 4.3 * hs, cy - 0.8 * hs)
+        if pose.blink:
+            _line(
+                d,
+                [(eye[0] - 1.5 * hs, eye[1]), (eye[0] + 1.7 * hs, eye[1])],
+                fill=outline,
+                width=round(1.0 * s),
+            )
+        else:
+            _ellipse(
+                d,
+                _bbox(eye[0], eye[1], 3.0 * hs, 3.4 * hs),
+                fill=pal["white"],
+                outline=outline,
+                width=round(0.65 * s),
+            )
+            _ellipse(
+                d,
+                _bbox(eye[0] + 0.5 * hs, eye[1], 1.4 * hs, 1.7 * hs),
+                fill=pal["eye"],
             )
 
     # ------------------------------------------------------------------
@@ -2163,186 +2234,178 @@ class BobEngineerGenerator(CharacterGenerator):
             width=round(0.6 * s),
         )
 
-    def _draw_action_effects(
+    def _place_action_effects(
         self,
-        image: Image.Image,
+        frame: _toon_rig.Frame,
         cx: float,
         feet_y: float,
         pose: BobPose,
         s: float,
     ) -> None:
-        """Line-based gameplay effects. Never paints a ground/drop shadow."""
+        """Line-based gameplay effects. Never paints a ground/drop shadow.
+
+        Each effect is a piece painted once at full strength around the body
+        point and placed with the effect strength as its opacity
+        (``_fx_piece``): a fade is a draw's opacity, not a new raster. An
+        effect made of copies of one stroke (streaks, ripples, the Zs of
+        sleep, arc segments) is that stroke placed once per copy."""
         if not pose.effect or pose.effect_strength <= 0.001:
             return
-        d = blending_draw(image)
-        pal = BOB_PALETTE
-        strength = _clamp01(pose.effect_strength)
-        body_y = feet_y - 45.0 * s
-        glow = (*pal["device_screen"][:3], round(215 * strength))
-        brass = (*pal["brass_light"][:3], round(220 * strength))
-
-        if pose.effect.startswith("slash"):
-            if pose.effect == "slash_up":
-                box = (cx - 23 * s, body_y - 43 * s, cx + 31 * s, body_y + 10 * s)
-                start, end = 190, 330
-            elif pose.effect == "slash_down":
-                box = (cx - 8 * s, body_y - 2 * s, cx + 44 * s, body_y + 50 * s)
-                start, end = 15, 145
-            elif pose.effect == "slash_back":
-                box = (cx - 48 * s, body_y - 24 * s, cx + 5 * s, body_y + 31 * s)
-                start, end = 215, 345
-            elif pose.effect == "slash_spin":
-                box = (cx - 38 * s, body_y - 34 * s, cx + 38 * s, body_y + 38 * s)
-                start, end = 0, 350
-            else:
-                box = (cx - 5 * s, body_y - 30 * s, cx + 50 * s, body_y + 31 * s)
-                start, end = 205, 350
-            d.arc(
-                tuple(round(v) for v in box),
-                start=start,
-                end=end,
-                fill=brass,
-                width=max(1, round(2.4 * s)),
+        strength = round(_clamp01(pose.effect_strength), 3)
+        effect = pose.effect
+        body = (cx, feet_y - 45.0 * s)
+        if effect in {"charge", "cast"}:
+            center = (cx + 28.0 * s, body[1] - (4.0 if effect == "cast" else 0.0) * s)
+            _fx_piece.place_fx(
+                frame, ("bob_fx", "charge", s), (20.0 * s, 14.0 * s), center,
+                lambda d, o: self._paint_charge_ring(d, o, s), "effect", opacity=strength,
             )
-            inner = tuple(
-                round(v)
-                for v in (
-                    box[0] + 5 * s,
-                    box[1] + 5 * s,
-                    box[2] - 5 * s,
-                    box[3] - 5 * s,
+            return
+        if effect in _SLASH_ARCS:
+            # A swing arc is one arc segment, painted once and turned twice
+            # (a circular arc turned along itself is the same arc).
+            (dx, dy), degrees = _SLASH_ARCS[effect]
+            for k, turn in enumerate((degrees - 70.0, degrees)):
+                _fx_piece.place_fx(
+                    frame, ("bob_fx", "slash_arc", s), (30.0 * s, 30.0 * s), (cx + dx * s, body[1] + dy * s),
+                    lambda d, o: self._paint_slash_arc(d, o, 27.0, 0, 70, s), f"effect{k}",
+                    degrees=turn, opacity=strength,
                 )
+            return
+        if effect == "slash_spin":
+            # The spin ring is eight turns of one eighth of it.
+            for k in range(8):
+                _fx_piece.place_fx(
+                    frame, ("bob_fx", "slash_spin", s), (40.0 * s, 40.0 * s), (cx, body[1] + 2.0 * s),
+                    lambda d, o: self._paint_slash_arc(d, o, 37.0, 0, 45, s), f"effect{k}",
+                    degrees=45.0 * k, opacity=strength,
+                )
+            return
+        if effect in {"blink_out", "blink_in"}:
+            # Five streaks of one piece, ahead of the body for ``blink_in``
+            # and behind it for ``blink_out``.
+            ahead = -1.0 if effect == "blink_out" else 1.0
+            for i in range(5):
+                at = (cx + ahead * (16.5 + 2.5 * i) * s, body[1] + (-24.0 + i * 12.0) * s)
+                _fx_piece.place_fx(
+                    frame, ("bob_fx", "streak", s), (11.0 * s, 2.0 * s), at,
+                    lambda d, o: _line(d, [(o[0] - 9.5 * s, o[1]), (o[0] + 9.5 * s, o[1])], fill=_FX_GLOW, width=round(1.4 * s)),
+                    f"effect{i}", opacity=strength,
+                )
+            return
+        if effect == "water":
+            for i in range(3):
+                at = (cx - 18.5 * s, feet_y - (5.0 + i * 5.0) * s)
+                _fx_piece.place_fx(
+                    frame, ("bob_fx", "ripple", s), (13.0 * s, 4.0 * s), at,
+                    lambda d, o: d.arc(
+                        (round(o[0] - 11.5 * s), round(o[1] - 3 * s), round(o[0] + 11.5 * s), round(o[1] + 3 * s)),
+                        180, 350, fill=_FX_GLOW, width=max(1, round(1.0 * s)),
+                    ),
+                    f"effect{i}", opacity=strength,
+                )
+            return
+        if effect == "sleep":
+            for i in range(3):
+                at = (cx + (18.0 + i * 6.0) * s, body[1] - (18.0 + i * 7.0) * s)
+                _fx_piece.place_fx(
+                    frame, ("bob_fx", "z", s), (6.0 * s, 7.0 * s), at,
+                    lambda d, o: _line(
+                        d, [o, (o[0] + 4 * s, o[1]), (o[0], o[1] - 5 * s), (o[0] + 4 * s, o[1] - 5 * s)],
+                        fill=_FX_GLOW, width=round(1.0 * s),
+                    ),
+                    f"effect{i}", opacity=strength,
+                )
+            return
+        if effect == "block":
+            # The guard arc is symmetric about its middle: one half and its
+            # mirror.
+            _fx_piece.place_mirrored_pair(
+                frame, ("bob_fx", "block", s), (20.0 * s, 30.0 * s), (cx + 22.5 * s, body[1]),
+                lambda d, o: d.arc(
+                    tuple(round(v) for v in _bbox(o[0], o[1], 33.0 * s, 56.0 * s)), 0, 105,
+                    fill=_FX_GLOW, width=max(1, round(2.0 * s)),
+                ),
+                "effect", opacity=strength,
             )
-            d.arc(inner, start=start, end=end, fill=glow, width=max(1, round(1.2 * s)))
-        elif pose.effect == "speed":
+            return
+        _fx_piece.place_fx(
+            frame, ("bob_fx", effect, s), (52.0 * s, 52.0 * s), body,
+            lambda d, o: self._paint_effect(d, effect, o, s), "effect", opacity=strength,
+        )
+
+    def _paint_slash_arc(self, d: ImageDraw.ImageDraw, center: Point, radius: float, start: float, end: float, s: float) -> None:
+        """A swing arc of ``radius`` around ``center`` from ``start`` to
+        ``end`` degrees (clockwise from +x) at full strength: brass outside,
+        the glow inside it."""
+        pal = BOB_PALETTE
+        glow = (*pal["device_screen"][:3], 215)
+        brass = (*pal["brass_light"][:3], 220)
+        box = _bbox(center[0], center[1], 2.0 * radius * s, 2.0 * radius * s)
+        d.arc(tuple(round(v) for v in box), start=start, end=end, fill=brass, width=max(1, round(2.4 * s)))
+        inner = _bbox(center[0], center[1], 2.0 * (radius - 5.0) * s, 2.0 * (radius - 5.0) * s)
+        d.arc(tuple(round(v) for v in inner), start=start, end=end, fill=glow, width=max(1, round(1.2 * s)))
+
+    def _paint_charge_ring(self, d: ImageDraw.ImageDraw, center: Point, s: float) -> None:
+        """The projector's charge ring around ``center`` at full strength."""
+        pal = BOB_PALETTE
+        glow = (*pal["device_screen"][:3], 215)
+        brass = (*pal["brass_light"][:3], 220)
+        radius = 11.0 * s
+        _ellipse(
+            d,
+            _bbox(center[0], center[1], radius * 2, radius * 2),
+            fill=(*pal["device_screen"][:3], 75),
+            outline=glow,
+            width=round(1.5 * s),
+        )
+        d.arc(
+            tuple(round(v) for v in _bbox(center[0], center[1], radius * 2.8, radius * 1.5)),
+            15,
+            320,
+            fill=brass,
+            width=max(1, round(1.0 * s)),
+        )
+
+    def _paint_effect(self, d: ImageDraw.ImageDraw, effect: str, body: Point, s: float) -> None:
+        """``effect`` at full strength around the body point ``body`` (the
+        feet are ``45 * s`` below it)."""
+        pal = BOB_PALETTE
+        cx, body_y = body
+        feet_y = body_y + 45.0 * s
+        glow = (*pal["device_screen"][:3], 215)
+        brass = (*pal["brass_light"][:3], 220)
+
+        if effect == "speed":
             for i, yoff in enumerate((-11.0, 1.0, 13.0)):
-                length = (14.0 + 5.0 * i) * strength
+                length = 14.0 + 5.0 * i
                 _line(
                     d,
-                    [
-                        (cx - (15.0 + length) * s, body_y + yoff * s),
-                        (cx - 15.0 * s, body_y + yoff * s),
-                    ],
+                    [(cx - (15.0 + length) * s, body_y + yoff * s), (cx - 15.0 * s, body_y + yoff * s)],
                     fill=glow,
                     width=round((1.2 + 0.25 * i) * s),
                 )
-        elif pose.effect in {"blink_out", "blink_in"}:
-            direction = -1.0 if pose.effect == "blink_out" else 1.0
-            for i in range(5):
-                y = body_y + (-24.0 + i * 12.0) * s
-                x0 = cx + direction * (8.0 + i * 2.0) * s
-                x1 = cx + direction * (25.0 + i * 3.0) * s
-                _line(d, [(x0, y), (x1, y)], fill=glow, width=round(1.4 * s))
-        elif pose.effect == "muzzle":
+        elif effect == "muzzle":
             origin = (cx + 30.0 * s, body_y + 3.0 * s)
-            rays = [(-6.0, -6.0), (10.0, 0.0), (-5.0, 7.0)]
-            for dx, dy in rays:
-                _line(
-                    d,
-                    [
-                        origin,
-                        (origin[0] + dx * s * strength, origin[1] + dy * s * strength),
-                    ],
-                    fill=brass,
-                    width=round(1.7 * s),
-                )
-            _ellipse(
-                d,
-                _bbox(origin[0], origin[1], 7.0 * s * strength, 7.0 * s * strength),
-                fill=glow,
-            )
-        elif pose.effect in {"charge", "cast"}:
-            center = (
-                cx + 28.0 * s,
-                body_y - (4.0 if pose.effect == "cast" else 0.0) * s,
-            )
-            radius = (4.0 + 9.0 * strength) * s
-            _ellipse(
-                d,
-                _bbox(center[0], center[1], radius * 2, radius * 2),
-                fill=(*pal["device_screen"][:3], round(75 * strength)),
-                outline=glow,
-                width=round(1.5 * s),
-            )
-            d.arc(
-                tuple(
-                    round(v)
-                    for v in _bbox(center[0], center[1], radius * 2.8, radius * 1.5)
-                ),
-                15,
-                320,
-                fill=brass,
-                width=max(1, round(1.0 * s)),
-            )
-        elif pose.effect == "block":
-            box = (cx + 6 * s, body_y - 28 * s, cx + 39 * s, body_y + 28 * s)
-            d.arc(
-                tuple(round(v) for v in box),
-                255,
-                105,
-                fill=glow,
-                width=max(1, round(2.0 * s)),
-            )
-        elif pose.effect == "impact":
+            for dx, dy in ((-6.0, -6.0), (10.0, 0.0), (-5.0, 7.0)):
+                _line(d, [origin, (origin[0] + dx * s, origin[1] + dy * s)], fill=brass, width=round(1.7 * s))
+            _ellipse(d, _bbox(origin[0], origin[1], 7.0 * s, 7.0 * s), fill=glow)
+        elif effect == "impact":
             y = feet_y - 1.0 * s
             for dx in (-13.0, -6.0, 7.0, 14.0):
-                _line(
-                    d,
-                    [(cx + dx * s, y), (cx + dx * 1.35 * s, y - 6.0 * s * strength)],
-                    fill=brass,
-                    width=round(1.2 * s),
-                )
-        elif pose.effect == "hover":
+                _line(d, [(cx + dx * s, y), (cx + dx * 1.35 * s, y - 6.0 * s)], fill=brass, width=round(1.2 * s))
+        elif effect == "hover":
             for dx in (-6.0, 5.0):
-                _line(
-                    d,
-                    [
-                        (cx + dx * s, feet_y - 3 * s),
-                        (cx + dx * s, feet_y + (4.0 + 6.0 * strength) * s),
-                    ],
-                    fill=glow,
-                    width=round(1.3 * s),
-                )
-        elif pose.effect == "water":
-            for i in range(3):
-                y = feet_y - (5.0 + i * 5.0) * s
-                d.arc(
-                    (
-                        round(cx - 30 * s),
-                        round(y - 3 * s),
-                        round(cx - 7 * s),
-                        round(y + 3 * s),
-                    ),
-                    180,
-                    350,
-                    fill=glow,
-                    width=max(1, round(1.0 * s)),
-                )
-        elif pose.effect == "hit":
+                _line(d, [(cx + dx * s, feet_y - 3 * s), (cx + dx * s, feet_y + 10.0 * s)], fill=glow, width=round(1.3 * s))
+        elif effect == "hit":
             center = (cx + 9.0 * s, body_y - 2.0 * s)
             for angle in range(0, 360, 60):
                 r = math.radians(angle)
                 _line(
                     d,
-                    [
-                        center,
-                        (
-                            center[0] + math.cos(r) * 9.0 * s * strength,
-                            center[1] + math.sin(r) * 9.0 * s * strength,
-                        ),
-                    ],
+                    [center, (center[0] + math.cos(r) * 9.0 * s, center[1] + math.sin(r) * 9.0 * s)],
                     fill=brass,
                     width=round(1.2 * s),
-                )
-        elif pose.effect == "sleep":
-            for i in range(3):
-                x = cx + (18.0 + i * 6.0) * s
-                y = body_y - (18.0 + i * 7.0) * s
-                _line(
-                    d,
-                    [(x, y), (x + 4 * s, y), (x, y - 5 * s), (x + 4 * s, y - 5 * s)],
-                    fill=glow,
-                    width=round(1.0 * s),
                 )
 
     def _draw_side(
@@ -2364,8 +2427,8 @@ class BobEngineerGenerator(CharacterGenerator):
         body_shift = pose.walk_body_y * s if pose.walk_index >= 0 else 0.0
         crouch = _clamp01(pose.crouch)
         hip_y = base_hip_y + body_shift + 4.5 * crouch * s
-        # The torso is one piece per height (half a design pixel apart).
-        torso_h = round((spec.torso_h - 6.0 * crouch) * 2.0) / 2.0
+        # The torso shortens as he crouches in three steps: one piece each.
+        torso_h = spec.torso_h - 3.0 * round(2.0 * crouch)
         shoulder_y = hip_y - torso_h * s
         lean = (
             (
@@ -2483,8 +2546,12 @@ class BobEngineerGenerator(CharacterGenerator):
         # Head and neck are behind the torso shoulder seam, so the jacket owns
         # the lower-neck overlap and Bob never looks decapitated or pasted on.
         _toon_rig.anchored(
-            frame, ("bob_head_side", pose.blink, s), (16.0 * s, 20.0 * s), head_c,
+            frame, ("bob_head_side", s), (16.0 * s, 20.0 * s), head_c,
             lambda d, o: self._draw_head_side(d, o, pose, s), "head",
+        )
+        _toon_rig.anchored(
+            frame, ("bob_eye_side", pose.blink, s), (9.0 * s, 5.0 * s), head_c,
+            lambda d, o: self._paint_eye_side(d, o, pose, s), "eyes",
         )
         body_x = cx + lean
         _toon_rig.anchored(
@@ -2547,14 +2614,16 @@ class BobEngineerGenerator(CharacterGenerator):
         )
 
     def _place_profile_boot(self, frame: _toon_rig.Frame, ankle: Point, ground_y: float, s: float, *, near: bool, foot_roll: float) -> None:
-        """The boot riding the ankle: one piece per sole depth below the
-        ankle (half a design pixel apart) and roll."""
-        depth = max(6.6, round((ground_y - ankle[1]) / s * 2.0) / 2.0)
-        roll = round(foot_roll * 4.0) / 4.0
+        """The boot riding the ankle: one rigid piece for both feet. A
+        raised foot lifts the boot with it, and the foot roll (the toe up by
+        ``foot_roll`` design pixels) turns the boot about the ankle."""
+        del ground_y
+        depth = BobSpec.boot_h
         side = "near" if near else "far"
         _toon_rig.anchored(
-            frame, ("bob_boot_side", near, depth, roll, s), (14.0 * s, (depth + 4.0) * s), ankle,
-            lambda d, o: self._draw_profile_boot(d, o, o[1] + depth * s, s, near=near, foot_roll=roll), f"{side}_boot",
+            frame, ("bob_boot_side", depth, s), (14.0 * s, (depth + 4.0) * s), ankle,
+            lambda d, o: self._draw_profile_boot(d, o, o[1] + depth * s, s, near=True, foot_roll=0.0), f"{side}_boot",
+            -math.degrees(math.atan2(foot_roll, 12.0)),
         )
 
     def _place_prop(self, frame: _toon_rig.Frame, hand: Point, pose: BobPose, s: float) -> None:
@@ -2851,27 +2920,6 @@ class BobEngineerGenerator(CharacterGenerator):
             width=round(0.7 * s),
         )
 
-        eye = (cx + 4.3 * hs, cy - 0.8 * hs)
-        if pose.blink:
-            _line(
-                d,
-                [(eye[0] - 1.5 * hs, eye[1]), (eye[0] + 1.7 * hs, eye[1])],
-                fill=outline,
-                width=round(1.0 * s),
-            )
-        else:
-            _ellipse(
-                d,
-                _bbox(eye[0], eye[1], 3.0 * hs, 3.4 * hs),
-                fill=pal["white"],
-                outline=outline,
-                width=round(0.65 * s),
-            )
-            _ellipse(
-                d,
-                _bbox(eye[0] + 0.5 * hs, eye[1], 1.4 * hs, 1.7 * hs),
-                fill=pal["eye"],
-            )
         _line(
             d,
             [(cx + 1.9 * hs, cy - 3.2 * hs), (cx + 6.2 * hs, cy - 2.8 * hs)],
@@ -2884,3 +2932,30 @@ class BobEngineerGenerator(CharacterGenerator):
             fill=outline,
             width=round(0.9 * s),
         )
+
+
+def _fixed_bones(root: Point, joint: Point, end: Point, upper: float, lower: float) -> Tuple[Point, Point]:
+    """The joint and the end of a two-bone limb kept in the directions the
+    pose gives (root to joint, joint to end) with bones of fixed length
+    ``upper`` and ``lower``: a limb a pose authors by its points is then
+    the same two pieces in every pose."""
+    ux, uy = joint[0] - root[0], joint[1] - root[1]
+    un = math.hypot(ux, uy) or 1.0
+    joint = (root[0] + ux / un * upper, root[1] + uy / un * upper)
+    lx, ly = end[0] - joint[0], end[1] - joint[1]
+    ln = math.hypot(lx, ly) or 1.0
+    return joint, (joint[0] + lx / ln * lower, joint[1] + ly / ln * lower)
+
+
+#: The effects' glow at full strength (the analyzer screen's teal).
+_FX_GLOW = (*BOB_PALETTE["device_screen"][:3], 215)
+
+#: Each wrench swing's arc: its centre from the body point (design pixels)
+#: and the turn of the one arc piece (the middle of the swing, degrees
+#: clockwise from +x).
+_SLASH_ARCS: Dict[str, Tuple[Point, float]] = {
+    "slash_side": ((22.5, 0.5), 277.5),
+    "slash_up": ((4.0, -16.5), 260.0),
+    "slash_down": ((18.0, 24.0), 80.0),
+    "slash_back": ((-21.5, 3.5), 280.0),
+}

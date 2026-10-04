@@ -113,28 +113,33 @@ def draw_doll(frame, cx, feet_y, pose, scale, solve):
     part('tails', cx, hip-1, pose.step*4, sx=.7 if side else 1, sy=.42)
     part('torso', body_x, shoulder, sx=.65 if side else 1)
     # The strap passes under the near arm and terminates at the bag's top
-    # edge: one piece per length (a quarter unit apart), turned along it.
+    # edge. Its length changes with the pose, so it is two copies of one
+    # fixed piece, one from each end, meeting along the strap (the strap
+    # runs 26 to 39 units; each copy is 20).
     strap_a, strap_b = (body_x+7, shoulder+3), (cx-9, hip+4)
-    length = round(math.dist(strap_a, strap_b) * 4) / 4
-    place(
-        ('strap', length),
-        f'<path d="M0 0 L{length} 0" stroke="#342b38" stroke-width="2.5"/><path d="M0 0 L{length} 0" stroke="#ae8265" stroke-width="1"/>',
-        *strap_a, math.degrees(math.atan2(strap_b[1]-strap_a[1], strap_b[0]-strap_a[0])), 'strap',
-    )
+    along = math.degrees(math.atan2(strap_b[1]-strap_a[1], strap_b[0]-strap_a[0]))
+    strap = '<path d="M0 0 L20 0" stroke="#342b38" stroke-width="2.5"/><path d="M0 0 L20 0" stroke="#ae8265" stroke-width="1"/>'
+    place('strap', strap, *strap_a, along, 'strap')
+    place('strap', strap, *strap_b, along + 180.0, 'strap_lower')
     part('satchel', cx-10, hip+8, pose.step*5, sx=.8)
     arm(True)
-    # The head with its expression: one piece per view, blink and mouth.
+    # The head is one base piece per view; the expression (the blink over
+    # the eye apertures, the talking mouth) is an overlay piece turned with
+    # it about the same point.
     head = 'head-side' if side else 'head'
     head_sx = .94 if not front and not side else 1
-    talk = round(pose.talk_open, 1)
-    face = [f'<use href="#{head}"/>']
+    place(('head', head, head_sx), f'<g transform="scale({head_sx} 1)"><use href="#{head}"/></g>', head_x, head_y, pose.head_tilt, 'head')
     if pose.blink:
         # Cover the eye apertures only; brows and nose retain their construction.
-        for x in ([4] if side else [-2.5,4]):
-            face.append(f'<path d="M{x-1.7} {.4} h3.4" stroke="#e8b58e" stroke-width="2.1"/><path d="M{x-1.7} {.6} q1.7 1 3.4 0" fill="none" stroke="#67484a" stroke-width=".55"/>')
-    if talk > .1:
-        face.append(f'<ellipse cx="{1.3}" cy="{7}" rx="1.25" ry="{.3+talk}" fill="#77404a"/>')
-    place(('head', head, head_sx, pose.blink, side, talk), f'<g transform="scale({head_sx} 1)">{"".join(face)}</g>', head_x, head_y, pose.head_tilt, 'head')
+        lids = ''.join(
+            f'<path d="M{x-1.7} {.4} h3.4" stroke="#e8b58e" stroke-width="2.1"/><path d="M{x-1.7} {.6} q1.7 1 3.4 0" fill="none" stroke="#67484a" stroke-width=".55"/>'
+            for x in ([4] if side else [-2.5, 4])
+        )
+        place(('blink', head_sx, side), f'<g transform="scale({head_sx} 1)">{lids}</g>', head_x, head_y, pose.head_tilt, 'face')
+    # The mouth opens in two steps.
+    talk = 0.0 if pose.talk_open <= .15 else (.5 if pose.talk_open < .7 else 1.0)
+    if talk:
+        place(('mouth', head_sx, talk), f'<g transform="scale({head_sx} 1)"><ellipse cx="{1.3}" cy="{7}" rx="1.25" ry="{.3+talk}" fill="#77404a"/></g>', head_x, head_y, pose.head_tilt, 'mouth')
     # An engraved cipher wheel hangs from the belt, distinct from the held map.
     wheel = ['<g stroke="#604849" stroke-width=".45"><circle r="3.8" fill="#d1a568"/><circle r="2.8" fill="#f1d59b"/><circle r="1.7" fill="#3b4f62"/>']
     for i in range(12):

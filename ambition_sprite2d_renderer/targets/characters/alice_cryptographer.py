@@ -16,7 +16,7 @@ from PIL import Image, ImageDraw
 
 from ...authoring import rigdoc
 from ...profiling import profile
-from . import _toon_rig
+from . import _fx_piece, _toon_rig
 from .alice_paper_doll import draw_doll
 from ...authoring.animation_vocab import (
     DEFAULT_ADVANCED_TIMINGS,
@@ -24,7 +24,6 @@ from ...authoring.animation_vocab import (
     DEFAULT_EXTENDED_TIMINGS,
     DEFAULT_TRAVERSAL_POLISH_TIMINGS,
 )
-from ambition_sprite2d_renderer.core.draw import blending_draw
 from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
 from ambition_sprite2d_renderer.core.draw import rgba
@@ -151,7 +150,6 @@ class AlicePose:
     effect_strength: float = 0.0
     rotation: float = 0.0
     opacity: float = 1.0
-    hit_flash: float = 0.0
 
 
 def _bbox(
@@ -477,7 +475,6 @@ class AliceCryptographerGenerator(CharacterGenerator):
             pose.near_foot = (5.0, -1.0)
             pose.far_foot = (-5.0, -1.0)
             pose.prop = "none"
-            pose.hit_flash = recoil
             pose.effect = "hit"
             pose.effect_strength = recoil
         elif animation == "death":
@@ -696,28 +693,26 @@ class AliceCryptographerGenerator(CharacterGenerator):
         pose = self.pose_for_animation(animation, frame_index, frame_count)
         cx = (64.0 + pose.root_x) * scale
         feet_y = (117.0 + pose.body_bob + pose.root_y) * scale
-        # The doll is drawn as pieces (``_toon_rig``). A whole-body turn
-        # turns each piece's place about the pivot, and a hit flash tints
-        # each piece. Props and effects are shapes in the frame: turned with
-        # the body, they are a layer placed turned about the pivot.
+        # Everything is drawn as pieces (``_toon_rig``): the doll, the held
+        # prop (painted at a tool angle of 0 and turned about the hand) and
+        # the action effects (painted once at full strength, placed with the
+        # strength as their opacity). A whole-body turn turns each piece's
+        # place about the pivot. The sheet paints no hit flash: the game
+        # draws the damage flash over the sprite (ambition_render's
+        # ``hit_flash`` overlay), and a tint per piece would double the
+        # pieces of every hit frame.
         turn = pose.rotation if abs(pose.rotation) > 0.01 else 0.0
         pivot = (round(cx), round(feet_y - 41.0 * scale))
-        flash = ((255, 228, 200), 0.60 * _clamp01(pose.hit_flash)) if pose.hit_flash > 0.0 else None
-        frame = _toon_rig.Frame(actor, turn, pivot, flash)
-
-        def shapes(paint, name: str) -> None:
-            if turn == 0.0:
-                paint(actor)
-                return
-            layer = Image.new("RGBA", actor.size, (0, 0, 0, 0))
-            paint(layer)
-            if layer.getbbox() is not None:
-                frame.place((layer, pivot), pivot, 0.0, name)
+        frame = _toon_rig.Frame(actor, turn, pivot)
 
         if pose.prop == "map_glider":
-            shapes(lambda image: self._draw_map_glider(blending_draw(image), cx, feet_y - 70 * scale, scale), "glider")
+            _toon_rig.anchored(
+                frame, ("alice_glider", scale), (38.0 * scale, 28.0 * scale), (cx, feet_y - 70 * scale),
+                lambda d, o: self._draw_map_glider(d, o[0], o[1], scale), "glider",
+            )
         hand = draw_doll(frame, cx, feet_y, pose, scale, self._solve_two_bone_joint)
-        shapes(lambda image: self._draw_prop_and_effects(image, hand, cx, feet_y, pose, scale), "props")
+        self._place_prop(frame, hand, pose, scale)
+        self._place_action_effects(frame, cx, feet_y, pose, scale)
 
         if pose.opacity < 0.999:
             # Faded as one picture: overlapping pieces do not show through.
@@ -729,26 +724,49 @@ class AliceCryptographerGenerator(CharacterGenerator):
             canvas = rigdoc.downsampled_canvas(canvas, (width, height), Image.Resampling.LANCZOS)
         return canvas
 
-    def _draw_prop_and_effects(self, actor: Image.Image, hand: Point, cx: float, feet_y: float, pose: "AlicePose", scale: float) -> None:
-        """The held prop at the near hand, then the action effects."""
-        d = blending_draw(actor)
+    def _place_prop(self, frame: _toon_rig.Frame, hand: Point, pose: "AlicePose", s: float) -> None:
+        """The held prop riding the near hand. The staff, the projector and
+        the compass are painted at a tool angle of 0 and turned about the
+        hand by the tool angle."""
+        pal = ALICE_PALETTE
         if pose.prop in {"folio", "map_ribbon", "map_bundle", "open_map"}:
-            self._draw_map_folio(d, hand[0] + 3 * scale, hand[1], scale * .8,
-                                 open_amount=max(pose.map_open, float(pose.prop == "open_map")))
+            # The map opens in thirds: one piece per step, not per frame.
+            amount = max(pose.map_open, float(pose.prop == "open_map"))
+            amount = 0.0 if amount <= 0.05 else max(1.0, round(amount * 3.0)) / 3.0
+            _toon_rig.anchored(
+                frame, ("alice_folio", amount, s), (20.0 * s, 12.0 * s), (hand[0] + 3 * s, hand[1]),
+                lambda d, o: self._draw_map_folio(d, o[0], o[1], s * 0.8, open_amount=amount), "prop",
+            )
             # The thumb overlaps the paper; the palm stays behind the held prop.
-            _ellipse(d, _bbox(hand[0] - .5 * scale, hand[1] + scale,
-                             1.7 * scale, 3.0 * scale),
-                     fill=ALICE_PALETTE["skin"], outline=ALICE_PALETTE["skin_shadow"],
-                     width=max(1, round(.35 * scale)))
+            _toon_rig.anchored(
+                frame, ("alice_thumb", s), (3.0 * s, 3.0 * s), (hand[0] - 0.5 * s, hand[1] + s),
+                lambda d, o: _ellipse(
+                    d, _bbox(o[0], o[1], 1.7 * s, 3.0 * s),
+                    fill=pal["skin"], outline=pal["skin_shadow"], width=max(1, round(0.35 * s)),
+                ),
+                "thumb",
+            )
         elif pose.prop in {"survey_staff", "route_pin"}:
-            self._draw_survey_staff(d, hand, pose.tool_angle, scale, pin_tip=pose.prop == "route_pin")
+            pin = pose.prop == "route_pin"
+            _toon_rig.anchored(
+                frame, ("alice_staff", pin, s), (36.0 * s, 36.0 * s), hand,
+                lambda d, o: self._draw_survey_staff(d, o, 0.0, s, pin_tip=pin), "prop", pose.tool_angle,
+            )
         elif pose.prop == "route_projector":
-            self._draw_route_projector(d, hand, pose.tool_angle, scale)
+            _toon_rig.anchored(
+                frame, ("alice_projector", s), (22.0 * s, 22.0 * s), hand,
+                lambda d, o: self._draw_route_projector(d, o, 0.0, s), "prop", pose.tool_angle,
+            )
         elif pose.prop == "map_ward":
-            self._draw_map_ward(d, hand, scale)
+            _toon_rig.anchored(
+                frame, ("alice_ward", s), (16.0 * s, 16.0 * s), hand,
+                lambda d, o: self._draw_map_ward(d, o, s), "prop",
+            )
         elif pose.prop == "compass_disc":
-            self._draw_compass_disc(d, hand, pose.tool_angle, scale)
-        self._draw_action_effects(actor, cx, feet_y, pose, scale)
+            _toon_rig.anchored(
+                frame, ("alice_compass", s), (17.0 * s, 17.0 * s), hand,
+                lambda d, o: self._draw_compass_disc(d, o, 0.0, s), "prop", pose.tool_angle,
+            )
 
     # ------------------------------------------------------------------
     # Shared accessories and face details
@@ -1075,121 +1093,223 @@ class AliceCryptographerGenerator(CharacterGenerator):
             width=round(1.2 * s),
         )
 
-    def _draw_action_effects(
+
+    def _place_action_effects(
         self,
-        image: Image.Image,
+        frame: _toon_rig.Frame,
         cx: float,
         feet_y: float,
         pose: AlicePose,
         s: float,
     ) -> None:
-        """Cartographic/cipher action effects. Never paints a drop shadow."""
+        """Cartographic/cipher action effects. Never paints a drop shadow.
+
+        Each effect is a piece painted once at full strength around the body
+        point and placed with the effect strength as its opacity: a fade is
+        a draw's opacity, not a new raster. Motion is a turn of the piece
+        (the compass ring, the triangle), a mirror (the blink streaks) or a
+        place (the thrown route dots)."""
         if not pose.effect or pose.effect_strength <= 0.001:
             return
-        d = blending_draw(image)
-        pal = ALICE_PALETTE
-        strength = _clamp01(pose.effect_strength)
-        body_y = feet_y - 45.0 * s
-        teal = (*pal["jacket_light"][:3], round(220 * strength))
-        amber = (*pal["amber_light"][:3], round(220 * strength))
-        route = (*pal["route"][:3], round(225 * strength))
+        strength = round(_clamp01(pose.effect_strength), 3)
+        effect = pose.effect
+        body = (cx, feet_y - 45.0 * s)
+        reach = (52.0 * s, 52.0 * s)
+        if effect in {"triangulate", "cipher_cast"}:
+            center = (cx + 29.0 * s, body[1] - (5.0 if effect == "cipher_cast" else 0.0) * s)
+            _fx_piece.place_fx(
+                frame, ("alice_fx", effect, s), (18.0 * s, 18.0 * s), center,
+                lambda d, o: self._paint_triangulate(d, o, s, cast=effect == "cipher_cast"),
+                "effect", degrees=70.0 * strength, opacity=strength,
+            )
+        elif effect == "compass_spin":
+            # Two rings, each four turns of one arc segment, and three
+            # orbiting dots of one piece; all turn with the strength.
+            spin = 160.0 * strength
+            for ring, (radius, color) in enumerate(((31.0, _FX_AMBER), (23.0, _FX_TEAL))):
+                for k in range(4):
+                    _fx_piece.place_fx(
+                        frame, ("alice_fx_arc", radius, color, s), ((radius + 3.0) * s, (radius + 3.0) * s), body,
+                        lambda d, o, radius=radius, color=color: d.arc(
+                            tuple(round(v) for v in _bbox(o[0], o[1], 2 * radius * s, 2 * radius * s)), 0, 75,
+                            fill=color, width=max(1, round(1.5 * s)),
+                        ),
+                        f"effect_ring{ring}_{k}", degrees=spin + 75.0 * k, opacity=strength,
+                    )
+            for k in range(3):
+                rad = math.radians(120.0 * k + spin)
+                _fx_piece.place_fx(
+                    frame, ("alice_fx_dot", s), (3.0 * s, 3.0 * s),
+                    (cx + math.cos(rad) * 28 * s, body[1] + math.sin(rad) * 28 * s),
+                    lambda d, o: _ellipse(d, _bbox(o[0], o[1], 4 * s, 4 * s), fill=_FX_ROUTE),
+                    f"effect_dot{k}", opacity=strength,
+                )
+        elif effect in {"route_speed", "route_blink"}:
+            # Route streaks: one streak (a line with a route dot at its far
+            # end) per colour, placed once per streak. Speed streaks trail
+            # behind her; blink streaks lead or trail where she is going.
+            if effect == "route_speed":
+                streaks = [(-(21.5 + 2.5 * i) * s, (-13.0, -2.0, 10.0, 20.0)[i] * s, -1.0) for i in range(4)]
+            else:
+                ahead = -1.0 if pose.opacity < 0.55 else 1.0
+                streaks = [(ahead * (16.5 + 2.25 * i) * s, (-25.0 + i * 10.0) * s, ahead) for i in range(6)]
+            for i, (dx, dy, direction) in enumerate(streaks):
+                color = _FX_TEAL if i % 2 else _FX_AMBER
+                _fx_piece.place_fx(
+                    frame, ("alice_fx_streak", color, s), (12.0 * s, 3.0 * s), (cx + dx, body[1] + dy),
+                    lambda d, o, color=color: self._paint_streak(d, o, color, s),
+                    f"effect{i}", opacity=strength, mirror=direction < 0,
+                )
+        elif effect == "water":
+            for i in range(3):
+                _fx_piece.place_fx(
+                    frame, ("alice_fx_ripple", s), (13.0 * s, 4.0 * s), (cx - 19.0 * s, feet_y - (5.0 + i * 5.0) * s),
+                    lambda d, o: d.arc(
+                        (round(o[0] - 12 * s), round(o[1] - 3 * s), round(o[0] + 12 * s), round(o[1] + 3 * s)),
+                        180, 350, fill=_FX_TEAL, width=max(1, round(1.0 * s)),
+                    ),
+                    f"effect{i}", opacity=strength,
+                )
+        elif effect == "sleep":
+            for i in range(3):
+                _fx_piece.place_fx(
+                    frame, ("alice_fx_z", s), (6.0 * s, 7.0 * s), (cx + (18.0 + i * 6.0) * s, body[1] - (18.0 + i * 7.0) * s),
+                    lambda d, o: _line(
+                        d, [o, (o[0] + 4 * s, o[1]), (o[0], o[1] - 5 * s), (o[0] + 4 * s, o[1] - 5 * s)],
+                        fill=_FX_TEAL, width=round(1.0 * s),
+                    ),
+                    f"effect{i}", opacity=strength,
+                )
+        elif effect == "map_block":
+            # The ward arc is symmetric about its middle: one half and its
+            # mirror; the three amber marks are one piece.
+            _fx_piece.place_mirrored_pair(
+                frame, ("alice_fx_ward_arc", s), (21.0 * s, 31.0 * s), (cx + 22.5 * s, body[1]),
+                lambda d, o: d.arc(
+                    tuple(round(v) for v in _bbox(o[0], o[1], 37.0 * s, 58.0 * s)), 0, 110,
+                    fill=_FX_TEAL, width=max(1, round(2.0 * s)),
+                ),
+                "effect", opacity=strength,
+            )
+            _fx_piece.place_fx(
+                frame, ("alice_fx", effect, s), (52.0 * s, 52.0 * s), body,
+                lambda d, o: self._paint_effect(d, effect, o, s), "effect_marks", opacity=strength,
+            )
+        elif effect == "staff_up":
+            # Two turns of one arc segment (amber outside, teal inside).
+            for k in range(2):
+                _fx_piece.place_fx(
+                    frame, ("alice_fx_staff_arc", s), (29.0 * s, 29.0 * s), (cx + 5.5 * s, body[1] - 18.0 * s),
+                    lambda d, o: self._paint_staff_arc(d, o, s), f"effect{k}",
+                    degrees=188.0 + 74.0 * k, opacity=strength,
+                )
+        elif effect == "throw_route":
+            pal = ALICE_PALETTE
+            for i in range(4):
+                color = (*pal["route"][:3], 225) if i % 2 else (*pal["amber_light"][:3], 220)
+                at = (cx + (18.0 + i * 6.0) * s * strength, body[1] + (-5.0 + i * 2.0) * s)
+                _fx_piece.place_fx(
+                    frame, ("alice_route_dot", color, s), (2.0 * s, 2.0 * s), at,
+                    lambda d, o, color=color: _ellipse(d, _bbox(o[0], o[1], 2.5 * s, 2.5 * s), fill=color),
+                    f"effect_dot{i}", opacity=strength,
+                )
+        else:
+            _fx_piece.place_fx(
+                frame, ("alice_fx", effect, s), reach, body,
+                lambda d, o: self._paint_effect(d, effect, o, s), "effect", opacity=strength,
+            )
 
-        if pose.effect == "staff_thrust":
+    def _paint_streak(self, d: ImageDraw.ImageDraw, center: Point, color: Color, s: float) -> None:
+        """A route streak centred on ``center``: a line 19 units long, its
+        route dot at the right end."""
+        _line(d, [(center[0] - 9.5 * s, center[1]), (center[0] + 9.5 * s, center[1])], fill=color, width=round(1.3 * s))
+        _ellipse(d, _bbox(center[0] + 9.5 * s, center[1], 2.3 * s, 2.3 * s), fill=_FX_ROUTE)
+
+    def _paint_staff_arc(self, d: ImageDraw.ImageDraw, center: Point, s: float) -> None:
+        """One segment (74 degrees, from +x clockwise) of the rising staff
+        arc around ``center``: amber outside, teal inside."""
+        for radius, color, width in ((26.0, _FX_AMBER, 2.2), (21.0, _FX_TEAL, 1.1)):
+            box = _bbox(center[0], center[1], 2 * radius * s, 2 * radius * s)
+            d.arc(tuple(round(v) for v in box), 0, 74, fill=color, width=max(1, round(width * s)))
+
+    def _paint_triangulate(self, d: ImageDraw.ImageDraw, center: Point, s: float, *, cast: bool) -> None:
+        """The survey triangle around ``center`` at full strength, its
+        first corner up; ``cast`` adds the cipher spokes."""
+        pal = ALICE_PALETTE
+        teal = (*pal["jacket_light"][:3], 220)
+        amber = (*pal["amber_light"][:3], 220)
+        route = (*pal["route"][:3], 225)
+        radius = 13.0 * s
+        pts = []
+        for i in range(3):
+            ang = math.radians(-90 + i * 120)
+            pts.append((center[0] + math.cos(ang) * radius, center[1] + math.sin(ang) * radius))
+        _line(d, [*pts, pts[0]], fill=amber, width=round(1.5 * s))
+        _ellipse(
+            d, _bbox(center[0], center[1], radius * 0.55, radius * 0.55),
+            fill=(*pal["jacket_light"][:3], 70), outline=teal, width=round(1.0 * s),
+        )
+        if cast:
+            for i, p in enumerate(pts):
+                _line(d, [center, p], fill=route if i == 1 else teal, width=round(0.8 * s))
+
+    def _paint_effect(self, d: ImageDraw.ImageDraw, effect: str, body: Point, s: float) -> None:
+        """``effect`` at full strength around the body point ``body`` (the
+        feet are ``45 * s`` below it)."""
+        pal = ALICE_PALETTE
+        cx, body_y = body
+        feet_y = body_y + 45.0 * s
+        teal = (*pal["jacket_light"][:3], 220)
+        amber = (*pal["amber_light"][:3], 220)
+        route = (*pal["route"][:3], 225)
+
+        if effect == "staff_thrust":
             origin = (cx + 13.0 * s, body_y + 4.0 * s)
-            _line(d, [origin, (cx + (36.0 + 14.0 * strength) * s, body_y + 1.0 * s)], fill=amber, width=round(2.0 * s))
+            _line(d, [origin, (cx + 50.0 * s, body_y + 1.0 * s)], fill=amber, width=round(2.0 * s))
             for offset in (-5.0, 5.0):
                 _line(d, [(cx + 20.0 * s, body_y + offset * s), (cx + 35.0 * s, body_y + offset * 0.4 * s)], fill=teal, width=round(1.0 * s))
-        elif pose.effect == "staff_up":
-            box = (cx - 20 * s, body_y - 45 * s, cx + 31 * s, body_y + 9 * s)
-            d.arc(tuple(round(v) for v in box), 188, 336, fill=amber, width=max(1, round(2.2 * s)))
-            inner = (box[0] + 5*s, box[1] + 5*s, box[2] - 5*s, box[3] - 5*s)
-            d.arc(tuple(round(v) for v in inner), 188, 336, fill=teal, width=max(1, round(1.1 * s)))
-        elif pose.effect == "pin_drop":
+        elif effect == "pin_drop":
             x = cx + 22.0 * s
             _line(d, [(x, body_y - 8.0 * s), (x, feet_y + 2.0 * s)], fill=route, width=round(1.8 * s))
-            _poly(d, [(x, feet_y - 3*s), (x - 5*s, feet_y - 10*s), (x + 5*s, feet_y - 10*s)], fill=route, outline=amber, width=round(0.8*s))
-        elif pose.effect == "ribbon_back":
+            _poly(d, [(x, feet_y - 3 * s), (x - 5 * s, feet_y - 10 * s), (x + 5 * s, feet_y - 10 * s)], fill=route, outline=amber, width=round(0.8 * s))
+        elif effect == "ribbon_back":
             points = [
-                (cx - 5.0*s, body_y - 8.0*s),
-                (cx - 22.0*s, body_y - 20.0*s),
-                (cx - 40.0*s, body_y - 4.0*s),
-                (cx - 29.0*s, body_y + 18.0*s),
+                (cx - 5.0 * s, body_y - 8.0 * s),
+                (cx - 22.0 * s, body_y - 20.0 * s),
+                (cx - 40.0 * s, body_y - 4.0 * s),
+                (cx - 29.0 * s, body_y + 18.0 * s),
             ]
-            _line(d, points, fill=route, width=round(2.0*s))
+            _line(d, points, fill=route, width=round(2.0 * s))
             for point in points[1:]:
-                _ellipse(d, _bbox(point[0], point[1], 3.0*s, 3.0*s), fill=amber)
-        elif pose.effect == "compass_spin":
-            for radius, color in ((31.0, amber), (23.0, teal)):
-                box = _bbox(cx, body_y, radius * 2*s, radius * 2*s)
-                d.arc(tuple(round(v) for v in box), 0, round(330*strength + 20), fill=color, width=max(1, round(1.5*s)))
-            for angle in (0, 120, 240):
-                rad = math.radians(angle + 160.0 * strength)
-                p = (cx + math.cos(rad)*28*s, body_y + math.sin(rad)*28*s)
-                _ellipse(d, _bbox(p[0], p[1], 4*s, 4*s), fill=route)
-        elif pose.effect == "route_speed":
-            for i, yoff in enumerate((-13.0, -2.0, 10.0, 20.0)):
-                length = (13.0 + 5.0 * i) * strength
-                x0 = cx - (15.0 + length) * s
-                x1 = cx - 15.0 * s
-                _line(d, [(x0, body_y + yoff*s), (x1, body_y + yoff*s)], fill=teal if i % 2 else amber, width=round((1.0 + 0.2*i)*s))
-                _ellipse(d, _bbox(x0, body_y + yoff*s, 2.4*s, 2.4*s), fill=route)
-        elif pose.effect == "route_blink":
-            direction = -1.0 if pose.opacity < 0.55 else 1.0
-            for i in range(6):
-                y = body_y + (-25.0 + i * 10.0) * s
-                x0 = cx + direction * (8.0 + i * 1.5) * s
-                x1 = cx + direction * (25.0 + i * 3.0) * s
-                _line(d, [(x0, y), (x1, y)], fill=teal if i % 2 else amber, width=round(1.3*s))
-                _ellipse(d, _bbox(x1, y, 2.2*s, 2.2*s), fill=route)
-        elif pose.effect == "route_dart":
+                _ellipse(d, _bbox(point[0], point[1], 3.0 * s, 3.0 * s), fill=amber)
+        elif effect == "route_dart":
             origin = (cx + 30.0 * s, body_y + 1.0 * s)
-            tip = (origin[0] + 18.0 * strength * s, origin[1])
-            _line(d, [origin, tip], fill=teal, width=round(1.8*s))
-            _poly(d, [tip, (tip[0]-6*s, tip[1]-4*s), (tip[0]-6*s, tip[1]+4*s)], fill=route, outline=amber, width=round(0.7*s))
-        elif pose.effect in {"triangulate", "cipher_cast"}:
-            center = (cx + 29.0 * s, body_y - (5.0 if pose.effect == "cipher_cast" else 0.0) * s)
-            radius = (5.0 + 10.0 * strength) * s
-            pts = []
-            for i in range(3):
-                ang = math.radians(-90 + i*120 + 70*strength)
-                pts.append((center[0] + math.cos(ang)*radius, center[1] + math.sin(ang)*radius))
-            _line(d, [*pts, pts[0]], fill=amber, width=round(1.5*s))
-            _ellipse(d, _bbox(center[0], center[1], radius*0.55, radius*0.55), fill=(*pal["jacket_light"][:3], round(70*strength)), outline=teal, width=round(1.0*s))
-            if pose.effect == "cipher_cast":
-                for i, p in enumerate(pts):
-                    _line(d, [center, p], fill=route if i == 1 else teal, width=round(0.8*s))
-        elif pose.effect == "map_block":
-            box = (cx + 4*s, body_y - 29*s, cx + 41*s, body_y + 29*s)
-            d.arc(tuple(round(v) for v in box), 250, 110, fill=teal, width=max(1, round(2.0*s)))
+            tip = (origin[0] + 18.0 * s, origin[1])
+            _line(d, [origin, tip], fill=teal, width=round(1.8 * s))
+            _poly(d, [tip, (tip[0] - 6 * s, tip[1] - 4 * s), (tip[0] - 6 * s, tip[1] + 4 * s)], fill=route, outline=amber, width=round(0.7 * s))
+        elif effect == "map_block":
+            # The ward's marks; its arc is placed as a mirrored pair.
             for yoff in (-12.0, 0.0, 12.0):
-                _line(d, [(cx + 18*s, body_y + yoff*s), (cx + 32*s, body_y + yoff*0.7*s)], fill=amber, width=round(0.9*s))
-        elif pose.effect in {"route_impact", "route_stamp"}:
+                _line(d, [(cx + 18 * s, body_y + yoff * s), (cx + 32 * s, body_y + yoff * 0.7 * s)], fill=amber, width=round(0.9 * s))
+        elif effect in {"route_impact", "route_stamp"}:
             y = feet_y - 1.0 * s
             for dx in (-15.0, -8.0, 0.0, 8.0, 15.0):
-                top = y - (5.0 + abs(dx)*0.18) * s * strength
-                _line(d, [(cx + dx*s, y), (cx + dx*1.25*s, top)], fill=amber if dx else route, width=round(1.2*s))
-            if pose.effect == "route_stamp":
-                d.arc(tuple(round(v) for v in _bbox(cx, y, 30*s*strength, 9*s)), 180, 360, fill=teal, width=max(1, round(1.0*s)))
-        elif pose.effect == "route_glide":
+                top = y - (5.0 + abs(dx) * 0.18) * s
+                _line(d, [(cx + dx * s, y), (cx + dx * 1.25 * s, top)], fill=amber if dx else route, width=round(1.2 * s))
+            if effect == "route_stamp":
+                d.arc(tuple(round(v) for v in _bbox(cx, y, 30 * s, 9 * s)), 180, 360, fill=teal, width=max(1, round(1.0 * s)))
+        elif effect == "route_glide":
             for i in range(3):
-                y = body_y + (-13.0 + i*11.0)*s
-                _line(d, [(cx - (33.0 + i*5.0)*s, y), (cx - 14.0*s, y + 2.0*s)], fill=teal if i != 1 else amber, width=round(1.0*s))
-        elif pose.effect == "water":
-            for i in range(3):
-                y = feet_y - (5.0 + i * 5.0) * s
-                d.arc((round(cx - 31*s), round(y-3*s), round(cx-7*s), round(y+3*s)), 180, 350, fill=teal, width=max(1, round(1.0*s)))
-        elif pose.effect == "hit":
-            center = (cx + 9.0*s, body_y - 2.0*s)
+                y = body_y + (-13.0 + i * 11.0) * s
+                _line(d, [(cx - (33.0 + i * 5.0) * s, y), (cx - 14.0 * s, y + 2.0 * s)], fill=teal if i != 1 else amber, width=round(1.0 * s))
+        elif effect == "hit":
+            center = (cx + 9.0 * s, body_y - 2.0 * s)
             for angle in range(0, 360, 60):
                 rad = math.radians(angle)
-                _line(d, [center, (center[0] + math.cos(rad)*9*s*strength, center[1] + math.sin(rad)*9*s*strength)], fill=route if angle % 120 else amber, width=round(1.1*s))
-        elif pose.effect == "throw_route":
-            for i in range(4):
-                x = cx + (18.0 + i*6.0)*s*strength
-                y = body_y + (-5.0 + i*2.0)*s
-                _ellipse(d, _bbox(x, y, 2.5*s, 2.5*s), fill=route if i % 2 else amber)
-        elif pose.effect == "sleep":
-            for i in range(3):
-                x = cx + (18.0 + i*6.0)*s
-                y = body_y - (18.0 + i*7.0)*s
-                _line(d, [(x, y), (x+4*s, y), (x, y-5*s), (x+4*s, y-5*s)], fill=teal, width=round(1.0*s))
+                _line(d, [center, (center[0] + math.cos(rad) * 9 * s, center[1] + math.sin(rad) * 9 * s)], fill=route if angle % 120 else amber, width=round(1.1 * s))
+
+
+#: The effects' colours at full strength.
+_FX_TEAL = (*ALICE_PALETTE["jacket_light"][:3], 220)
+_FX_AMBER = (*ALICE_PALETTE["amber_light"][:3], 220)
+_FX_ROUTE = (*ALICE_PALETTE["route"][:3], 225)
