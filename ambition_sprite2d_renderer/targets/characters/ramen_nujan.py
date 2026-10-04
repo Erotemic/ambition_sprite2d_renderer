@@ -1072,42 +1072,90 @@ def _downsample(image: Image.Image) -> Image.Image:
 def _ensure_canvas_inset(image: Image.Image, margin: int = 2) -> Image.Image:
     """Keep expressive poses fully visible without changing their authored shape.
 
-    Most frames only need a one- or two-pixel translation after Lanczos
-    downsampling.  Extremely wide rotations may receive a small uniform scale
-    reduction, capped by the available inset.  The operation is applied to the
-    complete composited character, so body connectivity and painter order are
-    preserved.
+    The complete composited character moves by a whole-pixel translation so
+    it keeps ``margin`` pixels to each edge; a pose too large for that margin
+    keeps a smaller one. The frame is never rescaled: a rescaled frame is one
+    picture, not the frame's parts. The translation goes through rigdoc's
+    seam, so a part flipbook moves the frame's parts with it.
     """
     bbox = image.getbbox()
     if bbox is None:
         return image
     left, top, right, bottom = bbox
-    available_w = image.width - 2 * margin
-    available_h = image.height - 2 * margin
     width = right - left
     height = bottom - top
-    scale = min(1.0, available_w / max(1, width), available_h / max(1, height))
-    if scale >= 0.999:
-        # A translation: through rigdoc's seam, so a part flipbook moves the
-        # frame's parts with it.
-        canvas = Image.new("RGBA", image.size, (0, 0, 0, 0))
-        target_x = min(max(left, margin), image.width - margin - width)
-        target_y = min(max(top, margin), image.height - margin - height)
-        rigdoc.composite_canvas(canvas, image, (int(target_x) - left, int(target_y) - top))
-        return canvas
-    crop = image.crop(bbox)
-    if scale < 0.999:
-        crop = crop.resize(
-            (max(1, round(crop.width * scale)), max(1, round(crop.height * scale))),
-            Image.Resampling.LANCZOS,
-        )
-    new_w, new_h = crop.size
-    target_x = min(max(left, margin), image.width - margin - new_w)
-    target_y = min(max(top, margin), image.height - margin - new_h)
+    margin_x = max(0, min(margin, (image.width - width) // 2))
+    margin_y = max(0, min(margin, (image.height - height) // 2))
+    target_x = min(max(left, margin_x), image.width - margin_x - width)
+    target_y = min(max(top, margin_y), image.height - margin_y - height)
     canvas = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    # Rescaled, the frame is one picture: it rides a part flipbook as one overlay.
-    rigdoc.composite_canvas(canvas, crop, (int(target_x), int(target_y)))
+    rigdoc.composite_canvas(canvas, image, (int(target_x) - left, int(target_y) - top))
     return canvas
+
+
+#: A limb segment's length is rounded to this many frame pixels and the
+#: segment is centred between its joints, so each end is at most a quarter
+#: step from its joint (under the joint's round cap). A limb is a few lengths,
+#: not one raster per pixel of length.
+LIMB_STEP = 5.0
+
+
+def _limb_tube(
+    image: Image.Image,
+    a: Point,
+    b: Point,
+    c: Point,
+    radii: Tuple[float, float, float],
+    fill: RGBA,
+    outline_w: float,
+    name: str,
+    seams=None,
+) -> None:
+    """``SR.tube2`` through the joints ``a``, ``b``, ``c`` (frame units) with
+    each segment's length rounded to ``LIMB_STEP`` and centred between its
+    joints: both segments outline-coloured, then both filled."""
+    q = LIMB_STEP * SUPER
+    r0, r1, r2 = (r * SUPER for r in radii)
+    h = outline_w * SUPER / 2.0
+
+    def centred(p0: Point, p1: Point) -> Tuple[Point, Point]:
+        x0, y0 = _sp(p0)
+        x1, y1 = _sp(p1)
+        span = math.hypot(x1 - x0, y1 - y0)
+        quantized = max(q, round(span / q) * q)
+        if span < 1.0e-6:
+            ux, uy = 1.0, 0.0
+        else:
+            ux, uy = (x1 - x0) / span, (y1 - y0) / span
+        mx, my = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+        return (mx - ux * quantized / 2.0, my - uy * quantized / 2.0), (mx + ux * quantized / 2.0, my + uy * quantized / 2.0)
+
+    upper = centred(a, b)
+    lower = centred(b, c)
+    s0, s1 = seams if seams is not None else (None, None)
+    SR.tapered_segment(image, upper[0], upper[1], r0 + h, r1 + h, OUTLINE, f"{name}_upper_line", q=q)
+    SR.tapered_segment(image, lower[0], lower[1], r1 + h, r2 + h, OUTLINE, f"{name}_lower_line", q=q)
+    SR.tapered_segment(image, upper[0], upper[1], r0 - h, r1 - h, fill, f"{name}_upper", q=q, seam=s0)
+    SR.tapered_segment(image, lower[0], lower[1], r1 - h, r2 - h, fill, f"{name}_lower", q=q, seam=s1)
+
+
+_ALIGNED: dict = {}
+
+
+def _aligned_piece(key, size: Tuple[int, int], pivot: Point, paint) -> Tuple[Image.Image, Point]:
+    """``SR.rest_piece`` cut on multiples of 8 canvas pixels: pieces painted
+    in one frame (a head base and its expression overlays) reduce on one
+    pixel grid."""
+    cached = _ALIGNED.get(key)
+    if cached is None:
+        image = Image.new("RGBA", (int(size[0]), int(size[1])), (0, 0, 0, 0))
+        paint(blending_draw(image))
+        box = image.getchannel("A").getbbox() or (0, 0, 8, 8)
+        x0, y0 = box[0] - box[0] % 8, box[1] - box[1] % 8
+        x1, y1 = min(image.width, box[2] + (-box[2]) % 8), min(image.height, box[3] + (-box[3]) % 8)
+        cached = (image.crop((x0, y0, x1, y1)), (float(pivot[0]) - x0, float(pivot[1]) - y0))
+        _ALIGNED[key] = cached
+    return cached
 
 
 class RamenNujanRenderer:
@@ -1187,14 +1235,13 @@ class RamenNujanRenderer:
 
     def render_frame(self, animation: str, frame_idx: int, nframes: int) -> Image.Image:
         image = Image.new("RGBA", (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER), (0, 0, 0, 0))
-        draw = blending_draw(image)
         pose = Pose(animation, frame_idx, nframes)
         self._reproportion_pose(pose, animation, frame_idx, nframes)
         # Drawn as a rig: the torso (one piece per squash step) and each head
         # expression are painted once and placed by the whole-body turn; limbs
         # are tapered tubes of turned segments through the authored joints;
-        # hands, shoes, cuffs and caps ride their joints. The ability glyphs
-        # stay shapes (effects).
+        # hands, shoes, cuffs and caps ride their joints; each ability glyph
+        # is one piece riding the body.
 
         def P(point: Point) -> Point:
             px, py = point
@@ -1210,7 +1257,7 @@ class RamenNujanRenderer:
         self._place_torso(image, P, pose)
         self._draw_far_arm(image, P, pose)
         self._draw_near_arm(image, P, pose)
-        self._draw_ability_effects(draw, P, pose, animation, frame_idx, nframes)
+        self._draw_ability_effects(image, P, pose, animation, frame_idx, nframes)
         pose.head_tilt += pose.rotation
         self._place_head(image, P((63.2 + pose.head_x, 36.5 + pose.head_y)), pose)
         return _ensure_canvas_inset(_downsample(image))
@@ -1225,7 +1272,7 @@ class RamenNujanRenderer:
         cloth = TROUSER_LIGHT if near else TROUSER
         shade = TROUSER if near else SUIT_DARK
         side = "near" if near else "far"
-        SR.tube2(image, _sp(hip), _sp(knee), _sp(ankle), (4.65 * SUPER, 3.95 * SUPER, 2.95 * SUPER), cloth, OUTLINE, 1.10 * SUPER, f"{side}_leg", q=float(SUPER))
+        _limb_tube(image, hip, knee, ankle, (4.65, 3.95, 2.95), cloth, 1.10, f"{side}_leg")
         crease = SR.rest_piece(
             ("ramen_crease", shade), (_s(8), _s(8)), _pt((4.0, 4.0)), lambda d: _line(d, [(4.0 - 1.4, 4.0), (4.0 + 1.2, 4.0 + 0.5)], shade, 0.55)
         )
@@ -1271,7 +1318,8 @@ class RamenNujanRenderer:
     def _place_torso(self, image: Image.Image, P, pose: Pose) -> None:
         """The torso painted once per squash step (about a fixed reference, so
         any pivot shares it) and placed by the body transform."""
-        sx, sy = SR.q(pose.scale_x, 0.04), SR.q(pose.scale_y, 0.04)
+        # A few squash steps: the torso is a few pieces.
+        sx, sy = SR.q(pose.scale_x, 0.2), SR.q(pose.scale_y, 0.125)
         ref = TORSO_REFERENCE
 
         def S(point: Point) -> Point:
@@ -1407,9 +1455,9 @@ class RamenNujanRenderer:
         along, normal, length = _unit_segment(elbow, hand)
         wrist = (hand[0] - along[0] * min(3.0, length * 0.30), hand[1] - along[1] * min(3.0, length * 0.30))
         seam_w = 0.55 * SUPER
-        SR.tube2(
-            image, _sp(shoulder), _sp(elbow), _sp(wrist), (5.35 * SUPER, 4.2 * SUPER, 3.05 * SUPER), sleeve, OUTLINE, 1.10 * SUPER, f"{side}_arm",
-            q=float(SUPER), seams=((seam, seam_w, 1.25 * SUPER, 0.0), (seam, seam_w, 0.0, 0.7 * SUPER)),
+        _limb_tube(
+            image, shoulder, elbow, wrist, (5.35, 4.2, 3.05), sleeve, 1.10, f"{side}_arm",
+            seams=((seam, seam_w, 1.25 * SUPER, 0.0), (seam, seam_w, 0.0, 0.7 * SUPER)),
         )
         cap = SR.rest_piece(("ramen_cap", sleeve), (_s(16), _s(16)), _pt((8.0, 8.0)), lambda d: _ellipse(d, (8.0, 8.0), 4.9, 4.5, sleeve, OUTLINE, 0.95))
         SR.place(image, cap, _sp(shoulder), 0.0, f"{side}_shoulder")
@@ -1464,136 +1512,141 @@ class RamenNujanRenderer:
             thumb_end = (thumb_start[0] + along[0] * 2.0, thumb_start[1] + along[1] * 2.0)
             finger(thumb_start, thumb_end, 0.78)
 
-    def _draw_ability_effects(self, draw: ImageDraw.ImageDraw, P, pose: Pose, animation: str, frame_idx: int, nframes: int) -> None:
+    def _glyph(self, image: Image.Image, P, pose: Pose, key, anchor: Point, size: Tuple[float, float], origin: Point, paint, name: str) -> None:
+        """An ability glyph as ONE piece: ``paint(draw, L)`` paints it with
+        ``L(x, y)`` mapping a point relative to its anchor into the piece
+        (frame units; the anchor at ``origin`` on a ``size`` canvas). Placed
+        with its anchor at the body point ``anchor``, turned with the body."""
+
+        def L(x: float, y: float) -> Point:
+            return (origin[0] + x, origin[1] + y)
+
+        part = SR.rest_piece(("ramen_glyph",) + tuple(key), (_s(size[0]), _s(size[1])), _pt(origin), lambda d: paint(d, L))
+        SR.place(image, part, _sp(P(anchor)), pose.rotation, name)
+
+    def _draw_ability_effects(self, image: Image.Image, P, pose: Pose, animation: str, frame_idx: int, nframes: int) -> None:
+        """The ability glyphs: each one piece painted once and placed with the
+        body (they are rigid; a dream glyph bobs with its drowse or pulse)."""
         if animation == "charge":
-            self._draw_dream_invocation(draw, P, pose, frame_idx, nframes)
+            self._draw_dream_invocation(image, P, pose, frame_idx, nframes)
         elif animation == "cast":
-            self._draw_dream_cast(draw, P, pose, frame_idx, nframes)
+            self._draw_dream_cast(image, P, pose, frame_idx, nframes)
         elif animation in {"jab", "slash"}:
-            self._draw_sigma_effect(draw, P, pose, wide=(animation == "slash"))
+            self._draw_sigma_effect(image, P, pose, wide=(animation == "slash"))
         elif animation in {"attack_side", "punch", "attack_up"}:
-            self._draw_factorial_effect(draw, P, pose, upward=(animation == "attack_up"))
+            self._draw_factorial_effect(image, P, pose, upward=(animation == "attack_up"))
         elif animation in {"attack_down", "air_down"}:
-            self._draw_negative_twelfth_effect(draw, P, pose, aerial=(animation == "air_down"))
+            self._draw_negative_twelfth_effect(image, P, pose, aerial=(animation == "air_down"))
 
-    def _draw_dream_invocation(self, draw: ImageDraw.ImageDraw, P, pose: Pose, frame_idx: int, nframes: int) -> None:
+    def _draw_dream_invocation(self, image: Image.Image, P, pose: Pose, frame_idx: int, nframes: int) -> None:
         phase = frame_idx / max(1, nframes)
-        sway = math.sin(phase * math.tau)
         drowse = 0.5 - 0.5 * math.cos(phase * math.tau)
-        tether = [
-            P((61.5, 61.0)),
-            P((59.0, 53.0 - 0.8 * drowse)),
-            P((58.0, 43.5 - 1.2 * drowse)),
-            P((60.8, 33.8 - 0.8 * drowse)),
-        ]
-        _line(draw, tether, OUTLINE, 2.2)
-        _line(draw, tether, DREAM_AURA, 1.15)
-        path = [
-            P((69.0, 27.5)),
-            P((72.0 + 1.0 * sway, 20.5)),
-            P((71.0 + 1.2 * sway, 12.0)),
-            P((64.0, 7.5)),
-            P((56.0 - 1.0 * sway, 10.5)),
-            P((54.0 - 0.8 * sway, 18.0)),
-            P((59.5, 22.0)),
-            P((67.0 + 0.6 * sway, 19.0)),
-        ]
-        _line(draw, path, OUTLINE, 2.8)
-        _line(draw, path, DREAM_AURA, 1.65)
-        inner = [P((63.5, 24.0)), P((62.0, 17.0)), P((66.0, 13.6)), P((70.0, 16.6))]
-        _line(draw, inner, OUTLINE_SOFT, 1.6)
-        _line(draw, inner, DREAM_GOLD, 0.9)
-        _circle(draw, P((56.0 - 1.0 * sway, 10.7)), 2.35, DREAM_GOLD, OUTLINE_SOFT, 0.30)
-        _circle(draw, P((64.0, 7.5)), 1.8, SESAME, OUTLINE_SOFT, 0.22)
-        _line(draw, [P((56.0 - 1.0 * sway, 10.7)), P((52.5 - 0.8 * sway, 8.2)), P((50.2 - 0.4 * sway, 11.2))], DREAM_ORANGE, 0.72)
-        self._draw_sigma_glyph(
-            draw,
-            [P((55.5, 26.0)), P((59.0, 22.4)), P((65.0, 22.4)), P((61.5, 26.2)), P((65.0, 29.6)), P((58.8, 29.6))],
-            DREAM_GOLD,
-        )
-        _line(draw, [P((72.5, 26.0)), P((72.5, 18.6))], OUTLINE, 1.8)
-        _line(draw, [P((72.5, 26.0)), P((72.5, 18.6))], DREAM_ORANGE, 0.95)
-        _circle(draw, P((72.5, 16.4)), 1.15, DREAM_GOLD, OUTLINE_SOFT, 0.20)
+        ax, ay = 64.0, 30.0
 
-    def _draw_dream_cast(self, draw: ImageDraw.ImageDraw, P, pose: Pose, frame_idx: int, nframes: int) -> None:
+        def paint(draw, L) -> None:
+            def B(x: float, y: float) -> Point:
+                return L(x - ax, y - ay)
+
+            tether = [B(61.5, 61.0), B(59.0, 52.6), B(58.0, 42.9), B(60.8, 33.4)]
+            _line(draw, tether, OUTLINE, 2.2)
+            _line(draw, tether, DREAM_AURA, 1.15)
+            path = [B(69.0, 27.5), B(72.0, 20.5), B(71.0, 12.0), B(64.0, 7.5), B(56.0, 10.5), B(54.0, 18.0), B(59.5, 22.0), B(67.0, 19.0)]
+            _line(draw, path, OUTLINE, 2.8)
+            _line(draw, path, DREAM_AURA, 1.65)
+            inner = [B(63.5, 24.0), B(62.0, 17.0), B(66.0, 13.6), B(70.0, 16.6)]
+            _line(draw, inner, OUTLINE_SOFT, 1.6)
+            _line(draw, inner, DREAM_GOLD, 0.9)
+            _circle(draw, B(56.0, 10.7), 2.35, DREAM_GOLD, OUTLINE_SOFT, 0.30)
+            _circle(draw, B(64.0, 7.5), 1.8, SESAME, OUTLINE_SOFT, 0.22)
+            _line(draw, [B(56.0, 10.7), B(52.5, 8.2), B(50.2, 11.2)], DREAM_ORANGE, 0.72)
+            self._draw_sigma_glyph(draw, [B(55.5, 26.0), B(59.0, 22.4), B(65.0, 22.4), B(61.5, 26.2), B(65.0, 29.6), B(58.8, 29.6)], DREAM_GOLD)
+            _line(draw, [B(72.5, 26.0), B(72.5, 18.6)], OUTLINE, 1.8)
+            _line(draw, [B(72.5, 26.0), B(72.5, 18.6)], DREAM_ORANGE, 0.95)
+            _circle(draw, B(72.5, 16.4), 1.15, DREAM_GOLD, OUTLINE_SOFT, 0.20)
+
+        # The glyph rises a little as he drowses.
+        self._glyph(image, P, pose, ("dream_invocation",), (ax, ay - 1.0 * (drowse - 0.5)), (60, 64), (30, 28), paint, "dream_invocation")
+
+    def _draw_dream_cast(self, image: Image.Image, P, pose: Pose, frame_idx: int, nframes: int) -> None:
         phase = frame_idx / max(1, nframes)
         pulse = 0.5 - 0.5 * math.cos(phase * math.tau)
-        ribbon = [P((56.0, 72.5)), P((62.0, 63.0 - 1.5 * pulse)), P((71.0, 58.8)), P((82.0, 57.2 - 1.0 * pulse)), P((94.0, 53.5))]
-        _line(draw, ribbon, OUTLINE, 2.6)
-        _line(draw, ribbon, DREAM_AURA, 1.5)
-        self._draw_sigma_glyph(draw, [P((94.0, 53.5)), P((100.0, 48.5)), P((112.0, 48.5)), P((104.0, 55.2)), P((112.0, 63.0)), P((99.0, 63.0))], DREAM_GOLD)
-        stem = [P((57.0, 72.0)), P((49.5, 65.0)), P((45.0, 55.0))]
-        _line(draw, stem, OUTLINE, 2.1)
-        _line(draw, stem, DREAM_ORANGE, 1.2)
-        _line(draw, [P((45.0, 55.0)), P((44.8, 45.2))], OUTLINE, 2.2)
-        _line(draw, [P((45.0, 55.0)), P((44.8, 45.2))], DREAM_ORANGE, 1.25)
-        _circle(draw, P((44.8, 41.8)), 1.55, DREAM_GOLD, OUTLINE_SOFT, 0.28)
-        twelfth = [P((72.2, 60.0)), P((77.2, 55.2)), P((84.5, 55.2)), P((80.0, 60.2)), P((84.6, 66.3)), P((90.4, 66.3))]
-        _line(draw, twelfth, DREAM_GOLD, 0.9)
-        self._draw_sigma_glyph(
-            draw,
-            [P((70.5, 66.8)), P((76.8, 71.2)), P((84.6, 71.2)), P((80.5, 76.5)), P((86.2, 82.2)), P((78.5, 82.2))],
-            DREAM_AURA,
-        )
+        ax, ay = 78.0, 62.0
+
+        def paint(draw, L) -> None:
+            def B(x: float, y: float) -> Point:
+                return L(x - ax, y - ay)
+
+            ribbon = [B(56.0, 72.5), B(62.0, 62.25), B(71.0, 58.8), B(82.0, 56.7), B(94.0, 53.5)]
+            _line(draw, ribbon, OUTLINE, 2.6)
+            _line(draw, ribbon, DREAM_AURA, 1.5)
+            self._draw_sigma_glyph(draw, [B(94.0, 53.5), B(100.0, 48.5), B(112.0, 48.5), B(104.0, 55.2), B(112.0, 63.0), B(99.0, 63.0)], DREAM_GOLD)
+            stem = [B(57.0, 72.0), B(49.5, 65.0), B(45.0, 55.0)]
+            _line(draw, stem, OUTLINE, 2.1)
+            _line(draw, stem, DREAM_ORANGE, 1.2)
+            _line(draw, [B(45.0, 55.0), B(44.8, 45.2)], OUTLINE, 2.2)
+            _line(draw, [B(45.0, 55.0), B(44.8, 45.2)], DREAM_ORANGE, 1.25)
+            _circle(draw, B(44.8, 41.8), 1.55, DREAM_GOLD, OUTLINE_SOFT, 0.28)
+            twelfth = [B(72.2, 60.0), B(77.2, 55.2), B(84.5, 55.2), B(80.0, 60.2), B(84.6, 66.3), B(90.4, 66.3)]
+            _line(draw, twelfth, DREAM_GOLD, 0.9)
+            self._draw_sigma_glyph(draw, [B(70.5, 66.8), B(76.8, 71.2), B(84.6, 71.2), B(80.5, 76.5), B(86.2, 82.2), B(78.5, 82.2)], DREAM_AURA)
+
+        # The ribbon lifts a little with the pulse.
+        self._glyph(image, P, pose, ("dream_cast",), (ax, ay - 0.75 * (pulse - 0.5)), (78, 52), (38, 26), paint, "dream_cast")
 
     def _draw_sigma_glyph(self, draw: ImageDraw.ImageDraw, points: Sequence[Point], color: RGBA) -> None:
         _line(draw, points, OUTLINE, 2.6)
         _line(draw, points, color, 1.55)
         _line(draw, [points[1], points[4]], SIGMA_WHITE, 0.5)
 
-    def _draw_sigma_effect(self, draw: ImageDraw.ImageDraw, P, pose: Pose, *, wide: bool) -> None:
-        ax, ay = pose.near_hand
+    def _draw_sigma_effect(self, image: Image.Image, P, pose: Pose, *, wide: bool) -> None:
         if wide:
-            pts = [
-                P((ax, ay)),
-                P((ax + 5.0, ay - 5.5)),
-                P((ax + 16.0, ay - 5.5)),
-                P((ax + 9.0, ay + 0.5)),
-                P((ax + 16.0, ay + 7.0)),
-                P((ax + 5.0, ay + 7.0)),
-            ]
+            rel = [(0.0, 0.0), (5.0, -5.5), (16.0, -5.5), (9.0, 0.5), (16.0, 7.0), (5.0, 7.0)]
         else:
-            pts = [
-                P((ax, ay)),
-                P((ax + 3.5, ay - 3.8)),
-                P((ax + 11.5, ay - 3.8)),
-                P((ax + 6.8, ay + 0.3)),
-                P((ax + 11.5, ay + 5.0)),
-                P((ax + 4.5, ay + 5.0)),
-            ]
-        self._draw_sigma_glyph(draw, pts, DREAM_GOLD if wide else DREAM_AURA)
+            rel = [(0.0, 0.0), (3.5, -3.8), (11.5, -3.8), (6.8, 0.3), (11.5, 5.0), (4.5, 5.0)]
+        color = DREAM_GOLD if wide else DREAM_AURA
+        self._glyph(
+            image, P, pose, ("sigma", wide), pose.near_hand, (26, 20), (4, 9),
+            lambda draw, L: self._draw_sigma_glyph(draw, [L(*q) for q in rel], color), "sigma",
+        )
 
-    def _draw_factorial_effect(self, draw: ImageDraw.ImageDraw, P, pose: Pose, *, upward: bool) -> None:
-        ax, ay = pose.near_hand
-        if upward:
-            path = [P((ax, ay)), P((ax + 1.5, ay - 6.0)), P((ax + 1.5, ay - 16.5))]
-            _line(draw, path, OUTLINE, 2.4)
-            _line(draw, path, DREAM_ORANGE, 1.35)
-            _circle(draw, P((ax + 1.5, ay - 19.2)), 1.75, DREAM_GOLD, OUTLINE_SOFT, 0.28)
-            _line(draw, [P((ax - 1.5, ay - 8.0)), P((ax + 4.5, ay - 10.5))], SESAME, 0.6)
-        else:
-            path = [P((ax, ay)), P((ax + 7.0, ay - 1.0)), P((ax + 12.5, ay - 5.0)), P((ax + 12.5, ay - 16.0))]
-            _line(draw, path, OUTLINE, 2.4)
-            _line(draw, path, DREAM_ORANGE, 1.35)
-            _circle(draw, P((ax + 12.5, ay - 18.8)), 1.75, DREAM_GOLD, OUTLINE_SOFT, 0.28)
+    def _draw_factorial_effect(self, image: Image.Image, P, pose: Pose, *, upward: bool) -> None:
+        def paint(draw, L) -> None:
+            if upward:
+                path = [L(0.0, 0.0), L(1.5, -6.0), L(1.5, -16.5)]
+                _line(draw, path, OUTLINE, 2.4)
+                _line(draw, path, DREAM_ORANGE, 1.35)
+                _circle(draw, L(1.5, -19.2), 1.75, DREAM_GOLD, OUTLINE_SOFT, 0.28)
+                _line(draw, [L(-1.5, -8.0), L(4.5, -10.5)], SESAME, 0.6)
+            else:
+                path = [L(0.0, 0.0), L(7.0, -1.0), L(12.5, -5.0), L(12.5, -16.0)]
+                _line(draw, path, OUTLINE, 2.4)
+                _line(draw, path, DREAM_ORANGE, 1.35)
+                _circle(draw, L(12.5, -18.8), 1.75, DREAM_GOLD, OUTLINE_SOFT, 0.28)
 
-    def _draw_negative_twelfth_effect(self, draw: ImageDraw.ImageDraw, P, pose: Pose, *, aerial: bool) -> None:
+        self._glyph(image, P, pose, ("factorial", upward), pose.near_hand, (22, 28), (5, 24), paint, "factorial")
+
+    def _draw_negative_twelfth_effect(self, image: Image.Image, P, pose: Pose, *, aerial: bool) -> None:
         ax, ay = pose.near_hand
         if aerial:
             ay += 1.0
-        minus = [P((ax, ay)), P((ax + 5.0, ay - 1.5)), P((ax + 11.0, ay - 1.5))]
-        _line(draw, minus, OUTLINE, 2.2)
-        _line(draw, minus, DREAM_GOLD, 1.25)
-        top_one = [P((ax + 9.0, ay - 8.5)), P((ax + 9.0, ay - 1.5))]
-        slash = [P((ax + 11.0, ay - 1.5)), P((ax + 6.0, ay + 8.0))]
-        lower_one = [P((ax + 8.2, ay + 2.5)), P((ax + 8.2, ay + 9.5))]
-        lower_two = [P((ax + 9.2, ay + 3.5)), P((ax + 14.2, ay + 3.5)), P((ax + 14.2, ay + 6.0)), P((ax + 9.5, ay + 9.2)), P((ax + 15.2, ay + 9.2))]
-        for pts, color, width in ((top_one, DREAM_AURA, 1.1), (slash, DREAM_ORANGE, 1.2), (lower_one, DREAM_AURA, 1.0), (lower_two, DREAM_ORANGE, 1.0)):
-            _line(draw, pts, OUTLINE, width + 1.0)
-            _line(draw, pts, color, width)
+
+        def paint(draw, L) -> None:
+            minus = [L(0.0, 0.0), L(5.0, -1.5), L(11.0, -1.5)]
+            _line(draw, minus, OUTLINE, 2.2)
+            _line(draw, minus, DREAM_GOLD, 1.25)
+            top_one = [L(9.0, -8.5), L(9.0, -1.5)]
+            slash = [L(11.0, -1.5), L(6.0, 8.0)]
+            lower_one = [L(8.2, 2.5), L(8.2, 9.5)]
+            lower_two = [L(9.2, 3.5), L(14.2, 3.5), L(14.2, 6.0), L(9.5, 9.2), L(15.2, 9.2)]
+            for pts, color, width in ((top_one, DREAM_AURA, 1.1), (slash, DREAM_ORANGE, 1.2), (lower_one, DREAM_AURA, 1.0), (lower_two, DREAM_ORANGE, 1.0)):
+                _line(draw, pts, OUTLINE, width + 1.0)
+                _line(draw, pts, color, width)
+
+        self._glyph(image, P, pose, ("negative_twelfth",), (ax, ay), (22, 25), (4, 12), paint, "negative_twelfth")
 
     def _place_head(self, image: Image.Image, center: Point, pose: Pose) -> None:
-        """The head: one piece per expression, turned by its tilt."""
+        """The head: a base (ears, face, hair, nose) and expression overlays
+        (eyes, brows, mouth) painted in its frame, all turned by its tilt."""
         expr = SimpleNamespace(
             head_tilt=0.0,
             blink=bool(pose.blink),
@@ -1601,12 +1654,20 @@ class RamenNujanRenderer:
             mouth_open=SR.q(pose.mouth_open, 0.1),
             mouth_smile=SR.q(pose.mouth_smile, 0.05),
         )
-        key = ("ramen_head", expr.blink, expr.brow_lift, expr.mouth_open, expr.mouth_smile)
         local = (36.0, 38.0)
-        part = SR.rest_piece(key, (_s(72), _s(72)), _pt(local), lambda d: self._draw_head(d._img, d, local, expr))
-        SR.place(image, part, _sp(center), pose.head_tilt, "head")
+        layers = (
+            ("base", ("ramen_head_base",)),
+            ("eyes", ("ramen_head_eyes", expr.blink)),
+            ("brows", ("ramen_head_brows", expr.brow_lift)),
+            ("mouth", ("ramen_head_mouth", expr.mouth_open if expr.mouth_open > 0.22 else 0.0, expr.mouth_smile if expr.mouth_open <= 0.22 else 0.0)),
+        )
+        for layer, key in layers:
+            part = _aligned_piece(key, (_s(72), _s(72)), _pt(local), lambda d, layer=layer: self._draw_head(d._img, d, local, expr, layer))
+            SR.place(image, part, _sp(center), pose.head_tilt, "head" if layer == "base" else f"head_{layer}")
 
-    def _draw_head(self, image: Image.Image, draw: ImageDraw.ImageDraw, center: Point, pose: Pose) -> None:
+    def _draw_head(self, image: Image.Image, draw: ImageDraw.ImageDraw, center: Point, pose: Pose, layer: str = "all") -> None:
+        """The head around ``center``; ``layer`` paints one of its pieces:
+        ``"base"``, ``"eyes"``, ``"brows"`` or ``"mouth"`` (``"all"``: every one)."""
         cx, cy = center
 
         def R(point: Point) -> Point:
@@ -1615,104 +1676,107 @@ class RamenNujanRenderer:
         # Broad temples, fuller cheeks, and a low side-swept hair wave. The
         # head is wider and slightly heavier than either the old Ramen-nujan
         # or Girdle.
-        far_ear = R((cx - 16.4, cy + 1.9))
-        near_ear = R((cx + 17.0, cy + 1.7))
-        _ellipse(draw, far_ear, 4.2, 6.2, SKIN_SHADE, OUTLINE, 0.82)
-        _ellipse(draw, near_ear, 4.6, 6.4, SKIN, OUTLINE, 0.86)
-        _line(draw, [R((cx - 15.8, cy)), R((cx - 13.8, cy + 2.5)), R((cx - 15.0, cy + 4.8))], SKIN_DEEP, 0.42)
-        _line(draw, [R((cx + 16.4, cy)), R((cx + 14.3, cy + 2.5)), R((cx + 15.7, cy + 4.8))], SKIN_DEEP, 0.42)
+        if layer in ("all", "base"):
+            far_ear = R((cx - 16.4, cy + 1.9))
+            near_ear = R((cx + 17.0, cy + 1.7))
+            _ellipse(draw, far_ear, 4.2, 6.2, SKIN_SHADE, OUTLINE, 0.82)
+            _ellipse(draw, near_ear, 4.6, 6.4, SKIN, OUTLINE, 0.86)
+            _line(draw, [R((cx - 15.8, cy)), R((cx - 13.8, cy + 2.5)), R((cx - 15.0, cy + 4.8))], SKIN_DEEP, 0.42)
+            _line(draw, [R((cx + 16.4, cy)), R((cx + 14.3, cy + 2.5)), R((cx + 15.7, cy + 4.8))], SKIN_DEEP, 0.42)
 
-        face = [
-            R((cx - 14.8, cy - 15.8)),
-            R((cx - 5.8, cy - 20.8)),
-            R((cx + 8.0, cy - 19.8)),
-            R((cx + 15.8, cy - 13.0)),
-            R((cx + 18.6, cy - 2.0)),
-            R((cx + 17.6, cy + 9.2)),
-            R((cx + 11.6, cy + 17.0)),
-            R((cx + 2.0, cy + 21.0)),
-            R((cx - 7.8, cy + 19.4)),
-            R((cx - 14.3, cy + 12.4)),
-            R((cx - 17.8, cy + 2.8)),
-            R((cx - 16.8, cy - 7.0)),
-        ]
-        _poly(draw, face, SKIN, OUTLINE, 1.12)
-        _poly(
-            draw,
-            [R((cx - 11.6, cy - 13.8)), R((cx - 3.6, cy - 18.4)), R((cx + 3.4, cy - 15.6)), R((cx + 1.2, cy - 5.5)), R((cx - 9.4, cy - 5.0))],
-            SKIN_LIGHT,
-            outline=None,
-            width=0,
-        )
-        _poly(
-            draw,
-            [R((cx + 8.8, cy + 2.0)), R((cx + 15.6, cy + 4.8)), R((cx + 10.2, cy + 14.6)), R((cx + 2.8, cy + 17.8)), R((cx + 2.0, cy + 9.2))],
-            SKIN_SHADE,
-            outline=None,
-            width=0,
-        )
-
-        hair = [
-            R((cx - 15.4, cy - 5.0)),
-            R((cx - 17.6, cy - 13.4)),
-            R((cx - 13.6, cy - 21.4)),
-            R((cx - 5.0, cy - 26.4)),
-            R((cx + 4.2, cy - 27.2)),
-            R((cx + 13.6, cy - 23.4)),
-            R((cx + 18.6, cy - 16.2)),
-            R((cx + 17.6, cy - 7.0)),
-            R((cx + 11.8, cy - 12.8)),
-            R((cx + 6.5, cy - 16.0)),
-            R((cx + 1.0, cy - 16.8)),
-            R((cx - 4.5, cy - 14.0)),
-            R((cx - 10.5, cy - 10.5)),
-        ]
-        _poly(draw, hair, HAIR, OUTLINE, 1.0)
-        # Strong off-center part and broad combed wave, not Girdle's pointed crest.
-        _line(draw, [R((cx + 4.0, cy - 25.5)), R((cx + 2.0, cy - 18.0)), R((cx - 1.5, cy - 14.5))], SKIN_DEEP, 0.62)
-        _line(draw, [R((cx + 5.0, cy - 25.0)), R((cx + 11.0, cy - 22.5)), R((cx + 15.0, cy - 17.0))], HAIR_GLEAM, 0.72)
-        _line(draw, [R((cx + 1.0, cy - 25.5)), R((cx - 6.5, cy - 23.5)), R((cx - 12.5, cy - 18.0))], HAIR_GLEAM, 0.72)
-        _poly(
-            draw,
-            [R((cx - 7.0, cy - 17.0)), R((cx + 2.0, cy - 19.0)), R((cx + 6.5, cy - 14.0)), R((cx - 1.5, cy - 11.5))],
-            HAIR_MID,
-            outline=None,
-            width=0,
-        )
-        _line(draw, [R((cx - 14.5, cy - 13.0)), R((cx - 13.5, cy - 4.0))], HAIR_MID, 0.60)
-        _line(draw, [R((cx + 16.0, cy - 14.0)), R((cx + 15.0, cy - 5.0))], HAIR_MID, 0.60)
-
-        far_eye = R((cx - 5.0, cy - 2.5))
-        near_eye = R((cx + 5.8, cy - 2.2))
-        for is_near, eye in ((False, far_eye), (True, near_eye)):
-            if pose.blink:
-                _line(draw, [(eye[0] - 2.4, eye[1]), (eye[0] + 2.4, eye[1])], EYE, 0.72)
-            else:
-                _ellipse(draw, eye, 2.55 if is_near else 2.35, 1.85, EYE_WHITE, OUTLINE, 0.42)
-                _circle(draw, (eye[0] + 0.15, eye[1] + 0.10), 1.02 if is_near else 0.92, EYE, EYE, 0.12)
-                _circle(draw, (eye[0] + 0.48, eye[1] - 0.35), 0.23, SKIN_LIGHT, None, 0)
-        brow_raise = pose.brow_lift
-        _line(draw, [R((cx - 9.2, cy - 8.2 - brow_raise * 0.7)), R((cx - 1.0, cy - 8.8 - brow_raise * 0.7))], HAIR, 1.05)
-        _line(draw, [R((cx + 1.3, cy - 8.8 - brow_raise)), R((cx + 10.2, cy - 8.0 - brow_raise))], HAIR, 1.08)
-
-        # Broad, slightly downturned nose and compressed lower face.
-        _line(draw, [R((cx + 0.8, cy - 0.5)), R((cx + 1.8, cy + 5.2))], SKIN_SHADE, 0.62)
-        _line(draw, [R((cx - 1.0, cy + 6.0)), R((cx + 2.0, cy + 7.0)), R((cx + 5.5, cy + 5.8))], SKIN_DEEP, 0.52)
-        _line(draw, [R((cx - 9.5, cy + 4.5)), R((cx - 6.5, cy + 6.0))], SKIN_SHADE, 0.34)
-        _line(draw, [R((cx + 8.0, cy + 4.0)), R((cx + 11.0, cy + 5.8))], SKIN_DEEP, 0.34)
-
-        mouth_center = R((cx + 0.8, cy + 12.0))
-        if pose.mouth_open > 0.22:
-            _ellipse(draw, mouth_center, 3.7, 0.95 + pose.mouth_open * 1.25, MOUTH, OUTLINE, 0.52)
-            _line(draw, [(mouth_center[0] - 2.0, mouth_center[1]), (mouth_center[0] + 2.0, mouth_center[1])], SHIRT, 0.32)
-        else:
-            curve = pose.mouth_smile * 1.6
-            _line(
+            face = [
+                R((cx - 14.8, cy - 15.8)),
+                R((cx - 5.8, cy - 20.8)),
+                R((cx + 8.0, cy - 19.8)),
+                R((cx + 15.8, cy - 13.0)),
+                R((cx + 18.6, cy - 2.0)),
+                R((cx + 17.6, cy + 9.2)),
+                R((cx + 11.6, cy + 17.0)),
+                R((cx + 2.0, cy + 21.0)),
+                R((cx - 7.8, cy + 19.4)),
+                R((cx - 14.3, cy + 12.4)),
+                R((cx - 17.8, cy + 2.8)),
+                R((cx - 16.8, cy - 7.0)),
+            ]
+            _poly(draw, face, SKIN, OUTLINE, 1.12)
+            _poly(
                 draw,
-                [R((cx - 3.5, cy + 11.8)), R((cx + 0.8, cy + 12.2 + curve)), R((cx + 5.5, cy + 11.5))],
-                MOUTH,
-                0.76,
+                [R((cx - 11.6, cy - 13.8)), R((cx - 3.6, cy - 18.4)), R((cx + 3.4, cy - 15.6)), R((cx + 1.2, cy - 5.5)), R((cx - 9.4, cy - 5.0))],
+                SKIN_LIGHT,
+                outline=None,
+                width=0,
             )
+            _poly(
+                draw,
+                [R((cx + 8.8, cy + 2.0)), R((cx + 15.6, cy + 4.8)), R((cx + 10.2, cy + 14.6)), R((cx + 2.8, cy + 17.8)), R((cx + 2.0, cy + 9.2))],
+                SKIN_SHADE,
+                outline=None,
+                width=0,
+            )
+
+            hair = [
+                R((cx - 15.4, cy - 5.0)),
+                R((cx - 17.6, cy - 13.4)),
+                R((cx - 13.6, cy - 21.4)),
+                R((cx - 5.0, cy - 26.4)),
+                R((cx + 4.2, cy - 27.2)),
+                R((cx + 13.6, cy - 23.4)),
+                R((cx + 18.6, cy - 16.2)),
+                R((cx + 17.6, cy - 7.0)),
+                R((cx + 11.8, cy - 12.8)),
+                R((cx + 6.5, cy - 16.0)),
+                R((cx + 1.0, cy - 16.8)),
+                R((cx - 4.5, cy - 14.0)),
+                R((cx - 10.5, cy - 10.5)),
+            ]
+            _poly(draw, hair, HAIR, OUTLINE, 1.0)
+            # Strong off-center part and broad combed wave, not Girdle's pointed crest.
+            _line(draw, [R((cx + 4.0, cy - 25.5)), R((cx + 2.0, cy - 18.0)), R((cx - 1.5, cy - 14.5))], SKIN_DEEP, 0.62)
+            _line(draw, [R((cx + 5.0, cy - 25.0)), R((cx + 11.0, cy - 22.5)), R((cx + 15.0, cy - 17.0))], HAIR_GLEAM, 0.72)
+            _line(draw, [R((cx + 1.0, cy - 25.5)), R((cx - 6.5, cy - 23.5)), R((cx - 12.5, cy - 18.0))], HAIR_GLEAM, 0.72)
+            _poly(
+                draw,
+                [R((cx - 7.0, cy - 17.0)), R((cx + 2.0, cy - 19.0)), R((cx + 6.5, cy - 14.0)), R((cx - 1.5, cy - 11.5))],
+                HAIR_MID,
+                outline=None,
+                width=0,
+            )
+            _line(draw, [R((cx - 14.5, cy - 13.0)), R((cx - 13.5, cy - 4.0))], HAIR_MID, 0.60)
+            _line(draw, [R((cx + 16.0, cy - 14.0)), R((cx + 15.0, cy - 5.0))], HAIR_MID, 0.60)
+            # Broad, slightly downturned nose and compressed lower face.
+            _line(draw, [R((cx + 0.8, cy - 0.5)), R((cx + 1.8, cy + 5.2))], SKIN_SHADE, 0.62)
+            _line(draw, [R((cx - 1.0, cy + 6.0)), R((cx + 2.0, cy + 7.0)), R((cx + 5.5, cy + 5.8))], SKIN_DEEP, 0.52)
+            _line(draw, [R((cx - 9.5, cy + 4.5)), R((cx - 6.5, cy + 6.0))], SKIN_SHADE, 0.34)
+            _line(draw, [R((cx + 8.0, cy + 4.0)), R((cx + 11.0, cy + 5.8))], SKIN_DEEP, 0.34)
+        if layer in ("all", "eyes"):
+            far_eye = R((cx - 5.0, cy - 2.5))
+            near_eye = R((cx + 5.8, cy - 2.2))
+            for is_near, eye in ((False, far_eye), (True, near_eye)):
+                if pose.blink:
+                    _line(draw, [(eye[0] - 2.4, eye[1]), (eye[0] + 2.4, eye[1])], EYE, 0.72)
+                else:
+                    _ellipse(draw, eye, 2.55 if is_near else 2.35, 1.85, EYE_WHITE, OUTLINE, 0.42)
+                    _circle(draw, (eye[0] + 0.15, eye[1] + 0.10), 1.02 if is_near else 0.92, EYE, EYE, 0.12)
+                    _circle(draw, (eye[0] + 0.48, eye[1] - 0.35), 0.23, SKIN_LIGHT, None, 0)
+        if layer in ("all", "brows"):
+            brow_raise = pose.brow_lift
+            _line(draw, [R((cx - 9.2, cy - 8.2 - brow_raise * 0.7)), R((cx - 1.0, cy - 8.8 - brow_raise * 0.7))], HAIR, 1.05)
+            _line(draw, [R((cx + 1.3, cy - 8.8 - brow_raise)), R((cx + 10.2, cy - 8.0 - brow_raise))], HAIR, 1.08)
+        if layer in ("all", "mouth"):
+            mouth_center = R((cx + 0.8, cy + 12.0))
+            if pose.mouth_open > 0.22:
+                _ellipse(draw, mouth_center, 3.7, 0.95 + pose.mouth_open * 1.25, MOUTH, OUTLINE, 0.52)
+                _line(draw, [(mouth_center[0] - 2.0, mouth_center[1]), (mouth_center[0] + 2.0, mouth_center[1])], SHIRT, 0.32)
+            else:
+                curve = pose.mouth_smile * 1.6
+                _line(
+                    draw,
+                    [R((cx - 3.5, cy + 11.8)), R((cx + 0.8, cy + 12.2 + curve)), R((cx + 5.5, cy + 11.5))],
+                    MOUTH,
+                    0.76,
+                )
+
+
 def render(out_dir: str | Path, **opts) -> List[Path]:
     from ...authoring.sheet_build import build_sheet
 

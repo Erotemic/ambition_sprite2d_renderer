@@ -477,70 +477,171 @@ def _draw_meme_card(draw: ImageDraw.ImageDraw, center: Point, scale: float = 1.0
     rigdoc.composite_layer(draw._image, card, (int((center[0] - card.width / SUPER / 2) * SUPER), int((center[1] - card.height / SUPER / 2) * SUPER)), name="meme_card")
 
 
-def _draw_duckling(draw: ImageDraw.ImageDraw, center: Point, scale: float = 1.0, phase: float = 0.0) -> None:
-    x, y = center
+# ---- Effects as pieces -------------------------------------------------------
+#
+# Each recurring effect element (a meme card, a duckling, an arc, a stroke) is
+# a piece painted ONCE at full strength and placed: moved, turned, and faded by
+# the draw's opacity. A part flipbook then stores each element once, not one
+# picture of the whole effect per frame. A growing element keeps one size and
+# moves or fades instead. Card sizes are a few fixed scales (``CARD_SCALES``).
+
+#: The meme card's scales: small (orbits, debris), medium (variants, the
+#: lecture card) and large (the thrown card).
+CARD_SCALES = {"small": 0.4, "medium": 0.56, "large": 0.85}
+
+
+def _fx(img: Image.Image, key: tuple, size: Tuple[float, float], origin: Point, paint, at: Point, name: str, degrees: float = 0.0, opacity: float = 1.0) -> None:
+    """The effect piece ``paint(draw)`` (frame units, anchor ``origin`` on a
+    ``size`` canvas) placed with its anchor at ``at`` (frame units), turned
+    ``degrees`` clockwise, with ``opacity``. ``key`` names what ``paint`` reads."""
+    opacity = round(max(0.0, min(1.0, opacity)), 2)
+    if opacity <= 0.0:
+        return
+    raster, pivot = _rig_piece(("fx",) + key, size, origin, paint)
+    rigdoc.blit_rotated(img, raster, pivot, (at[0] * SUPER, at[1] * SUPER), degrees, opacity, part_name=name)
+
+
+def _paint_card(d: ImageDraw.ImageDraw, ox: float, oy: float, scale: float, tint: RGBA, expression: int) -> None:
+    """``_draw_meme_card`` unturned, centred on ``(ox, oy)``."""
+    w, h = 13.0 * scale, 15.0 * scale
+    _poly(d, [(ox-w/2, oy-h/2), (ox+w/2, oy-h/2), (ox+w/2, oy+h/2), (ox-w/2, oy+h/2)], PAPER, OUTLINE, 0.9)
+    _poly(d, [(ox-w/2+1.2, oy-h/2+1.2), (ox+w/2-1.2, oy-h/2+1.2), (ox+w/2-1.2, oy-1.0), (ox-w/2+1.2, oy-1.0)], tint, None)
+    _ellipse(d, (ox-1.0, oy-3.7), 2.8, 2.5, FEATHER_LIGHT, OUTLINE, 0.45)
+    _poly(d, [(ox+1.2, oy-3.8), (ox+4.3, oy-2.8), (ox+1.2, oy-1.7)], BILL, OUTLINE, 0.35)
+    if expression == 0:
+        _ellipse(d, (ox-0.2, oy-4.0), 0.45, 0.45, EYE, None)
+    elif expression == 1:
+        _line(d, [(ox-1.0, oy-4.0), (ox+0.5, oy-3.6)], EYE, 0.45)
+    else:
+        _line(d, [(ox-1.1, oy-4.3), (ox+0.7, oy-3.7)], EYE, 0.5)
+        _line(d, [(ox-0.6, oy-2.5), (ox+1.0, oy-2.9)], RED, 0.45)
+    _line(d, [(ox-w/2+2, oy+2), (ox+w/2-2, oy+2)], INK, 0.45)
+    _line(d, [(ox-w/2+2, oy+4.3), (ox+w/2-3.5, oy+4.3)], INK, 0.45)
+
+
+def _card(img: Image.Image, center: Point, size: str, tint: RGBA, expression: int, angle: float, name: str) -> None:
+    """A meme card (one piece per scale, tint and face) turned ``angle``."""
+    scale = CARD_SCALES[size]
+    half = (13.0 * scale + 6) / 2.0, (15.0 * scale + 6) / 2.0
+    _fx(img, ("card", scale, tint, expression), (2 * half[0], 2 * half[1]), half, lambda d: _paint_card(d, half[0], half[1], scale, tint, expression), center, name, angle)
+
+
+def _paint_duckling(d: ImageDraw.ImageDraw, x: float, y: float, scale: float) -> None:
+    _ellipse(d, (x, y), 4.2 * scale, 3.2 * scale, YELLOW, OUTLINE, 0.55)
+    _ellipse(d, (x + 3.2 * scale, y - 2.2 * scale), 2.7 * scale, 2.5 * scale, YELLOW, OUTLINE, 0.55)
+    _poly(d, [(x+5.3*scale, y-2.4*scale), (x+8.0*scale, y-1.5*scale), (x+5.2*scale, y-0.5*scale)], BILL, OUTLINE, 0.4)
+    _ellipse(d, (x + 3.8 * scale, y - 2.7 * scale), 0.4 * scale, 0.4 * scale, EYE, None)
+    _line(d, [(x-2.0*scale, y+3.0*scale), (x-3.0*scale, y+5.0*scale)], BILL_DARK, 0.65)
+    _line(d, [(x+1.5*scale, y+3.0*scale), (x+2.0*scale, y+5.0*scale)], BILL_DARK, 0.65)
+
+
+def _duckling(img: Image.Image, center: Point, scale: float, phase: float, name: str) -> None:
+    """A duckling (one piece per scale) bobbing by ``phase``."""
     bob = math.sin(phase * math.tau) * 0.7
-    _ellipse(draw, (x, y + bob), 4.2 * scale, 3.2 * scale, YELLOW, OUTLINE, 0.55)
-    _ellipse(draw, (x + 3.2 * scale, y - 2.2 * scale + bob), 2.7 * scale, 2.5 * scale, YELLOW, OUTLINE, 0.55)
-    _poly(draw, [(x+5.3*scale, y-2.4*scale+bob), (x+8.0*scale, y-1.5*scale+bob), (x+5.2*scale, y-0.5*scale+bob)], BILL, OUTLINE, 0.4)
-    _ellipse(draw, (x + 3.8 * scale, y - 2.7 * scale + bob), 0.4 * scale, 0.4 * scale, EYE, None)
-    _line(draw, [(x-2.0*scale, y+3.0*scale+bob), (x-3.0*scale, y+5.0*scale+bob)], BILL_DARK, 0.65)
-    _line(draw, [(x+1.5*scale, y+3.0*scale+bob), (x+2.0*scale, y+5.0*scale+bob)], BILL_DARK, 0.65)
+    _fx(img, ("duckling", scale), (24, 20), (8, 9), lambda d: _paint_duckling(d, 8, 9, scale), (center[0], center[1] + bob), name)
 
 
-def _draw_effects_behind(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
+def _arc_piece(img: Image.Image, key: str, rx: float, ry: float, start: float, end: float, color: RGBA, width: float, at: Point, name: str, opacity: float = 1.0) -> None:
+    """An elliptical arc stroke at full strength, placed faded by ``opacity``."""
+    half = (rx + width + 2, ry + width + 2)
+    _fx(img, ("arc", key, rx, ry, start, end, color, width), (2 * half[0], 2 * half[1]), half, lambda d: _arc(d, half, rx, ry, start, end, color, width), at, name, opacity=opacity)
+
+
+def _stroke(img: Image.Image, key: str, a: Point, b: Point, color: RGBA, width: float, at: Point, name: str, degrees: float = 0.0, opacity: float = 1.0) -> None:
+    """A line stroke from ``a`` to ``b`` (relative to its anchor), placed at ``at``."""
+    pad = width + 2
+    x0, y0 = min(a[0], b[0]) - pad, min(a[1], b[1]) - pad
+    size = (max(a[0], b[0]) - x0 + pad, max(a[1], b[1]) - y0 + pad)
+    _fx(img, ("stroke", key, a, b, color, width), size, (-x0, -y0), lambda d: _line(d, [(a[0] - x0, a[1] - y0), (b[0] - x0, b[1] - y0)], color, width), at, name, degrees, opacity)
+
+
+def _draw_effects_behind(img: Image.Image, pose: Pose) -> None:
     t = pose.effect_phase
     if pose.effect == "speed_feathers":
         for i in range(6):
             x = max(6.0, 31.0 - i * 4.0 + 2.0 * math.sin(t * math.tau + i))
-            y = 47.0 + i * 9.0
-            _arc(draw, (x, y), 3.0, 1.5, 185, 345, _fade(FEATHER_LIGHT, 0.65), 0.8)
+            _arc_piece(img, "speed", 3.0, 1.5, 185, 345, FEATHER_LIGHT, 0.8, (x, 47.0 + i * 9.0), f"speed_{i}", 0.65)
     elif pose.effect == "roll_memes":
         for i in range(7):
             a = t * 360.0 + i * (360.0 / 7.0)
-            q = _add((64.0, 72.0), _rot((25.0, 0.0), a))
-            _draw_meme_card(draw, q, 0.38, (CYAN, BLUE, MAGENTA)[i % 3], i % 3, a)
+            _card(img, _add((64.0, 72.0), _rot((25.0, 0.0), a)), "small", (CYAN, BLUE, MAGENTA)[i % 3], i % 3, a, f"roll_card_{i}")
     elif pose.effect == "water":
         for i in range(7):
-            x = 24 + i * 13
-            y = 98 + 2 * math.sin(t * math.tau + i)
-            _arc(draw, (x, y), 8.0, 2.4, 190, 350, _fade(CYAN, 0.62), 1.0)
+            _arc_piece(img, "water", 8.0, 2.4, 190, 350, CYAN, 1.0, (24 + i * 13, 98 + 2 * math.sin(t * math.tau + i)), f"water_{i}", 0.62)
     elif pose.effect == "duckling_swarm":
         for i in range(7):
             u = (t * 1.35 + i / 7.0) % 1.0
-            _draw_duckling(draw, (18.0 + u * 101.0, 108.0 - (i % 2) * 4.0), 0.75 + 0.08 * (i % 3), t + i * 0.13)
+            _duckling(img, (18.0 + u * 101.0, 108.0 - (i % 2) * 4.0), 0.75 + 0.08 * (i % 3), t + i * 0.13, f"swarm_{i}")
     elif pose.effect == "fallen_memes":
         for i in range(5):
             q = (31.0 + i * 15.0, 101.0 + (i % 2) * 5.0)
-            _draw_meme_card(draw, q, 0.42, (CYAN, BLUE, MAGENTA, LIME, RED)[i], i % 3, -20 + i * 11)
+            _card(img, q, "small", (CYAN, BLUE, MAGENTA, LIME, RED)[i], i % 3, -20 + i * 11, f"fallen_card_{i}")
 
 
-def _draw_effects_front(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
+def _paint_lens(d: ImageDraw.ImageDraw) -> None:
+    """The search lens and handle, the lens centred on ``(22, 12)``."""
+    _ellipse(d, (22.0, 12.0), 10.0, 10.0, _fade(GLASS, 0.32), LEATHER, 1.8)
+    _line(d, [(15.0, 19.0), (3.0, 33.0)], LEATHER, 3.0)
+
+
+def _paint_question(d: ImageDraw.ImageDraw) -> None:
+    """The question mark, its arc centred on ``(9, 9)``."""
+    _arc(d, (9.0, 9.0), 6.0, 7.0, 205, 35, BURGUNDY_LIGHT, 1.5)
+    _line(d, [(12.5, 13.0), (11.0, 18.0)], BURGUNDY_LIGHT, 1.5)
+    _ellipse(d, (10.5, 22.0), 1.0, 1.0, BURGUNDY_LIGHT, None)
+
+
+def _paint_lecture(d: ImageDraw.ImageDraw) -> None:
+    """The gene -> meme -> duckling diagram strokes, frame units minus ``(80, 20)``."""
+    ox, oy = 80.0, 20.0
+    y = 28.0
+    _line(d, [(87.0 - ox, y - oy), (115.0 - ox, y - oy)], _fade(PAPER, 0.8), 1.0)
+    _line(d, [(87.0 - ox, y + 18 - oy), (115.0 - ox, y + 18 - oy)], _fade(PAPER, 0.8), 1.0)
+    for i in range(5):
+        x = 89.0 + i * 6.0
+        _line(d, [(x - ox, y + 2.0 - oy), (x + 3.0 - ox, y + 16.0 - oy)], CYAN if i % 2 else MAGENTA, 0.8)
+    _line(d, [(104.0 - ox, 49.0 - oy), (104.0 - ox, 55.0 - oy)], YELLOW, 1.1)
+    _line(d, [(104.0 - ox, 76.0 - oy), (104.0 - ox, 82.0 - oy)], YELLOW, 1.1)
+
+
+def _paint_goose(d: ImageDraw.ImageDraw) -> None:
+    """The crossed-out goose, frame units minus ``(88, 28)``."""
+    ox, oy = 88.0, 28.0
+    _ellipse(d, (103.0 - ox, 59.0 - oy), 10.0, 7.0, _fade(FEATHER_SHADE, 0.8), OUTLINE_SOFT, 0.7)
+    _capsule(d, (108.0 - ox, 55.0 - oy), (109.0 - ox, 39.0 - oy), 2.2, FEATHER_SHADE, OUTLINE_SOFT)
+    _ellipse(d, (110.0 - ox, 36.0 - oy), 4.0, 3.0, FEATHER_SHADE, OUTLINE_SOFT, 0.7)
+    _line(d, [(92.0 - ox, 32.0 - oy), (116.0 - ox, 68.0 - oy)], RED, 2.2)
+    _line(d, [(115.0 - ox, 32.0 - oy), (92.0 - ox, 68.0 - oy)], RED, 2.2)
+
+
+def _draw_effects_front(img: Image.Image, pose: Pose) -> None:
     t = pose.effect_phase
     if pose.effect == "impact_feathers":
         burst = math.sin(t * math.pi)
         for i in range(8):
             a = 205 + i * 18
             q = _add((64.0, 111.0), _rot((7.0 + 19.0 * burst, 0.0), a))
-            _ellipse(draw, q, 1.2, 0.7, _fade(FEATHER_LIGHT, 0.75), None)
+            _fx(img, ("impact_feather",), (6, 4), (3, 2), lambda d: _ellipse(d, (3, 2), 1.2, 0.7, FEATHER_LIGHT, None), q, f"impact_{i}", opacity=0.75)
     elif pose.effect == "book_block":
+        # The shield arc keeps its full size and fades in with the block.
         pulse = math.sin(t * math.pi)
-        _arc(draw, (78.0, 66.0), 24.0 + 5.0 * pulse, 33.0 + 7.0 * pulse, 235, 118, _fade(CYAN, 0.82), 1.5)
+        _arc_piece(img, "block", 29.0, 40.0, 235, 118, CYAN, 1.5, (78.0, 66.0), "block_arc", 0.82 * (0.35 + 0.65 * pulse))
     elif pose.effect == "hit":
         burst = math.sin(t * math.pi)
         for i in range(6):
             a = i * 60.0
             q = _add((49.0, 48.0), _rot((5.0 + 12.0 * burst, 0.0), a))
-            _line(draw, [q, _add(q, _rot((3.0, 0.0), a))], RED, 1.1)
+            _stroke(img, "hit", (0.0, 0.0), (3.0, 0.0), RED, 1.1, q, f"hit_{i}", a)
     elif pose.effect == "honk":
+        # Each ring keeps one size and travels outward with the honk's reach.
         reach = min(1.0, t * 1.6)
         fade = max(0.0, 1.0 - max(0.0, t - 0.55) * 2.2)
         for i in range(4):
-            r = 6.0 + i * 6.5 + reach * 8.0
-            _arc(draw, (87.0, 42.0), r, r * 0.62, -58, 58, _fade(YELLOW, fade * (0.9 - i * 0.15)), 1.6)
+            r = 6.0 + i * 6.5 + 4.0
+            _arc_piece(img, f"honk{i}", r, r * 0.62, -58, 58, YELLOW, 1.6, (87.0 + 8.0 * (reach - 0.5), 42.0), f"honk_ring_{i}", fade * (0.9 - i * 0.15))
         for i in range(5):
             x = 94.0 + i * 4.0 + reach * 4.0
-            _line(draw, [(x, 39.0 - i), (x + 3.0, 35.0 - i)], _fade(BURGUNDY_LIGHT, fade), 1.0)
+            _stroke(img, "honk_dash", (0.0, 0.0), (3.0, -4.0), BURGUNDY_LIGHT, 1.0, (x, 39.0 - i), f"honk_dash_{i}", opacity=fade)
     elif pose.effect == "selfish_meme":
         if t < 0.22:
             q = (79.0, 63.0)
@@ -550,52 +651,33 @@ def _draw_effects_front(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
         else:
             u = (t - 0.68) / 0.32
             q = (118.0 - 10.0 * u, 63.0 + 4.0 * u)
-        _draw_meme_card(draw, q, 0.85, CYAN, 0, 10.0 * math.sin(t * math.tau))
+        _card(img, q, "large", CYAN, 0, 10.0 * math.sin(t * math.tau), "thrown_card")
         if t > 0.58:
             for i in range(2):
-                _draw_meme_card(draw, (109.0 + i * 10.0, 75.0 + i * 8.0), 0.48, (BLUE, MAGENTA)[i], i + 1, -12 + i * 22)
+                _card(img, (109.0 + i * 10.0, 75.0 + i * 8.0), "small", (BLUE, MAGENTA)[i], i + 1, -12 + i * 22, f"offspring_card_{i}")
     elif pose.effect == "mutation":
         bloom = math.sin(t * math.pi)
         colors = (CYAN, BLUE, MAGENTA, LIME, RED)
         for i, color in enumerate(colors):
             a = t * 140.0 + i * 72.0
             q = _add((64.0, 58.0), _rot((12.0 + 25.0 * bloom, 0.0), a))
-            _draw_meme_card(draw, q, 0.55 + 0.12 * bloom, color, i % 3, a + 10)
-        _line(draw, [(64.0, 81.0), (64.0, 38.0)], _fade(YELLOW, 0.5 * bloom), 1.1)
+            _card(img, q, "medium", color, i % 3, a + 10, f"variant_card_{i}")
+        _stroke(img, "mutation_beam", (0.0, 0.0), (0.0, -43.0), YELLOW, 1.1, (64.0, 81.0), "mutation_beam", opacity=0.5 * bloom)
     elif pose.effect == "missing_meme":
-        # Search lens, empty result card, and rotating question mark.
         sweep = math.sin(t * math.tau) * 8.0
-        _ellipse(draw, (91.0 + sweep, 54.0), 10.0, 10.0, _fade(GLASS, 0.32), LEATHER, 1.8)
-        _line(draw, [(84.0 + sweep, 61.0), (72.0 + sweep, 75.0)], LEATHER, 3.0)
-        _draw_meme_card(draw, (106.0, 79.0), 0.58, FEATHER_SHADE, 1, -6)
-        # Tiny question-mark strokes; no font dependency.
-        _arc(draw, (109.0, 31.0), 6.0, 7.0, 205, 35, BURGUNDY_LIGHT, 1.5)
-        _line(draw, [(112.5, 35.0), (111.0, 40.0)], BURGUNDY_LIGHT, 1.5)
-        _ellipse(draw, (110.5, 44.0), 1.0, 1.0, BURGUNDY_LIGHT, None)
+        _fx(img, ("lens",), (36, 38), (22, 12), _paint_lens, (91.0 + sweep, 54.0), "lens")
+        _card(img, (106.0, 79.0), "medium", FEATHER_SHADE, 1, -6, "empty_card")
+        _fx(img, ("question",), (20, 26), (9, 9), _paint_question, (109.0, 31.0), "question")
     elif pose.effect == "lecture":
-        # A deliberately simplified gene -> meme -> duckling diagram.
-        y = 28.0
-        _line(draw, [(87.0, y), (115.0, y)], _fade(PAPER, 0.8), 1.0)
-        _line(draw, [(87.0, y+18), (115.0, y+18)], _fade(PAPER, 0.8), 1.0)
-        for i in range(5):
-            x = 89.0 + i * 6.0
-            _line(draw, [(x, y + 2.0), (x+3.0, y+16.0)], CYAN if i % 2 else MAGENTA, 0.8)
-        _draw_meme_card(draw, (104.0, 66.0), 0.55, CYAN, 0, 0)
-        _draw_duckling(draw, (104.0, 91.0), 0.72, t)
-        _line(draw, [(104.0, 49.0), (104.0, 55.0)], YELLOW, 1.1)
-        _line(draw, [(104.0, 76.0), (104.0, 82.0)], YELLOW, 1.1)
+        _fx(img, ("lecture",), (40, 66), (0, 0), _paint_lecture, (80.0, 20.0), "lecture_diagram")
+        _card(img, (104.0, 66.0), "medium", CYAN, 0, 0.0, "lecture_card")
+        _duckling(img, (104.0, 91.0), 0.75, t, "lecture_duckling")
     elif pose.effect == "viable_meme":
         for i in range(8):
             a = t * 360.0 + i * 45.0
-            q = _add((64.0, 50.0), _rot((24.0, 0.0), a))
-            _draw_meme_card(draw, q, 0.38, (CYAN, BLUE, MAGENTA, LIME)[i % 4], i % 3, a)
+            _card(img, _add((64.0, 50.0), _rot((24.0, 0.0), a)), "small", (CYAN, BLUE, MAGENTA, LIME)[i % 4], i % 3, a, f"viable_card_{i}")
     elif pose.effect == "goose_correction":
-        # A crossed-out long-necked bird icon behind him.
-        _ellipse(draw, (103.0, 59.0), 10.0, 7.0, _fade(FEATHER_SHADE, 0.8), OUTLINE_SOFT, 0.7)
-        _capsule(draw, (108.0, 55.0), (109.0, 39.0), 2.2, FEATHER_SHADE, OUTLINE_SOFT)
-        _ellipse(draw, (110.0, 36.0), 4.0, 3.0, FEATHER_SHADE, OUTLINE_SOFT, 0.7)
-        _line(draw, [(92.0, 32.0), (116.0, 68.0)], RED, 2.2)
-        _line(draw, [(115.0, 32.0), (92.0, 68.0)], RED, 2.2)
+        _fx(img, ("goose",), (32, 44), (0, 0), _paint_goose, (88.0, 28.0), "goose")
 
 
 def _draw_book(draw: ImageDraw.ImageDraw, center: Point, angle: float, scale: float = 1.0) -> None:
@@ -618,16 +700,6 @@ def _rig_piece(key: tuple, size: Tuple[float, float], origin: Point, paint) -> t
     draws in frame units with its anchor at ``origin`` (frame units) on a
     ``size`` (frame units) canvas. ``key`` names everything ``paint`` reads."""
     return shape_rig.piece(("richard_duckling",) + key, (size[0] * SUPER, size[1] * SUPER), (origin[0] * SUPER, origin[1] * SUPER), paint)
-
-
-def _frame_layer(img: Image.Image, paint, name: str) -> None:
-    """A per-frame effect (it changes every frame) as ONE draw: ``paint(draw)``
-    paints frame-unit coordinates into a fresh canvas, placed cropped."""
-    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    paint(blending_draw(layer))
-    box = layer.getbbox()
-    if box is not None:
-        shape_rig.place(img, (layer.crop(box), (0.0, 0.0)), (float(box[0]), float(box[1])), 0.0, name)
 
 
 #: The whole figure leans (or rolls) about this frame point.
@@ -712,12 +784,17 @@ def _paint_wing(d: ImageDraw.ImageDraw, ox: float, oy: float, length: float, rad
     _poly(d, [end, (end[0] + tip[0], end[1] - tip[1]), (end[0] + tip[0], end[1] + tip[1])], tip_fill, OUTLINE, tip_w)
 
 
-def _paint_head(d: ImageDraw.ImageDraw, hx: float, hy: float, beak_open: float, eye_closed: bool) -> None:
-    """Head, swept crest, bill, eyes, brows and spectacles around ``(hx, hy)``."""
+#: The jaw's hinge from the head centre: the jaw turns about it by
+#: ``JAW_DEGREES * beak_open`` (clockwise, the bill opening downward).
+JAW_HINGE = (10.0, 2.0)
+JAW_DEGREES = 20.0
+
+
+def _paint_head_base(d: ImageDraw.ImageDraw, hx: float, hy: float) -> None:
+    """Head and swept crest around ``(hx, hy)``: no expression changes it."""
     head = (hx, hy)
     _ellipse(d, head, 15.5, 14.0, FEATHER, OUTLINE, 1.3)
     _ellipse(d, (head[0] + 2.0, head[1] - 2.0), 12.3, 10.0, FEATHER_LIGHT, None)
-    # White swept crest.
     _poly(d, [
         (head[0]-12.0, head[1]-9.0),
         (head[0]-15.0, head[1]-20.0),
@@ -728,17 +805,11 @@ def _paint_head(d: ImageDraw.ImageDraw, hx: float, hy: float, beak_open: float, 
         (head[0]+7.0, head[1]-9.0),
     ], CREST, OUTLINE, 1.0)
 
-    # Bill with independent opening.
-    bill_y = head[1] + 1.0
-    _poly(d, [(head[0]+10.0,bill_y-3.0),(head[0]+27.0,bill_y-1.3),(head[0]+11.0,bill_y+2.0)], BILL_LIGHT, OUTLINE, 0.9)
-    lower_drop = 2.0 + beak_open * 5.0
-    _poly(d, [(head[0]+10.0,bill_y+1.0),(head[0]+25.0,bill_y+2.0),(head[0]+11.0,bill_y+lower_drop)], BILL, OUTLINE, 0.8)
-    if beak_open > 0.35:
-        _poly(d, [(head[0]+12.0,bill_y+1.7),(head[0]+22.0,bill_y+2.4),(head[0]+12.5,bill_y+lower_drop-0.8)], BILL_DARK, None)
 
-    # Eyes and skeptical brows.
-    eye1 = (head[0] + 1.0, head[1] - 3.0)
-    eye2 = (head[0] + 8.0, head[1] - 2.5)
+def _paint_eyes(d: ImageDraw.ImageDraw, hx: float, hy: float, eye_closed: bool) -> None:
+    """The eyes, open or shut: an overlay on the head base."""
+    eye1 = (hx + 1.0, hy - 3.0)
+    eye2 = (hx + 8.0, hy - 2.5)
     if eye_closed:
         _line(d, [(eye1[0]-2.0,eye1[1]),(eye1[0]+2.0,eye1[1]+0.5)], EYE, 0.9)
         _line(d, [(eye2[0]-2.0,eye2[1]),(eye2[0]+2.0,eye2[1]+0.4)], EYE, 0.9)
@@ -746,14 +817,39 @@ def _paint_head(d: ImageDraw.ImageDraw, hx: float, hy: float, beak_open: float, 
         for ex, ey in (eye1, eye2):
             _ellipse(d, (ex,ey), 1.3, 1.5, WHITE, EYE, 0.45)
             _ellipse(d, (ex+0.4,ey+0.1), 0.55, 0.75, EYE, None)
+
+
+def _paint_bill_and_glasses(d: ImageDraw.ImageDraw, hx: float, hy: float) -> None:
+    """The upper bill, skeptical brows and spectacles: drawn over the mouth."""
+    head = (hx, hy)
+    bill_y = head[1] + 1.0
+    _poly(d, [(head[0]+10.0,bill_y-3.0),(head[0]+27.0,bill_y-1.3),(head[0]+11.0,bill_y+2.0)], BILL_LIGHT, OUTLINE, 0.9)
+    eye1 = (head[0] + 1.0, head[1] - 3.0)
+    eye2 = (head[0] + 8.0, head[1] - 2.5)
     _line(d, [(head[0]-1.0,head[1]-7.5),(head[0]+3.0,head[1]-8.5)], OUTLINE_SOFT, 0.9)
     _line(d, [(head[0]+5.5,head[1]-8.0),(head[0]+10.0,head[1]-6.8)], OUTLINE_SOFT, 0.9)
-
-    # Spectacles and bridge.
     _ellipse(d, eye1, 4.2, 3.7, _fade(GLASS, 0.18), OUTLINE_SOFT, 0.75)
     _ellipse(d, eye2, 4.2, 3.7, _fade(GLASS, 0.18), OUTLINE_SOFT, 0.75)
     _line(d, [(eye1[0]+4.0,eye1[1]),(eye2[0]-4.0,eye2[1])], OUTLINE_SOFT, 0.75)
     _line(d, [(eye1[0]-4.0,eye1[1]),(head[0]-12.0,head[1]-1.0)], OUTLINE_SOFT, 0.75)
+
+
+def _paint_jaw(d: ImageDraw.ImageDraw, x: float, y: float) -> None:
+    """The lower bill, closed, its hinge at ``(x, y)``."""
+    _poly(d, [(x, y), (x + 15.0, y + 1.0), (x + 1.0, y + 1.0 + 1.0)], BILL, OUTLINE, 0.8)
+
+
+def _paint_mouth(d: ImageDraw.ImageDraw, x: float, y: float) -> None:
+    """The open mouth's dark inside, its hinge at ``(x, y)``: behind both bills."""
+    _poly(d, [(x + 1.0, y - 0.5), (x + 13.0, y + 0.2), (x + 13.0, y + 1.0), (x + 2.0, y + 4.5)], BILL_DARK, None)
+
+
+def _paint_head(d: ImageDraw.ImageDraw, hx: float, hy: float, beak_open: float, eye_closed: bool) -> None:
+    """The whole head, its bill closed (``_place_head`` draws it as pieces)."""
+    _paint_head_base(d, hx, hy)
+    _paint_eyes(d, hx, hy, eye_closed)
+    _paint_bill_and_glasses(d, hx, hy)
+    _paint_jaw(d, hx + JAW_HINGE[0], hy + JAW_HINGE[1])
 
 
 def _paint_book(d: ImageDraw.ImageDraw, ox: float, oy: float, scale: float) -> None:
@@ -773,7 +869,8 @@ def _draw_character(img: Image.Image, pose: Pose) -> None:
     The figure leans (or rolls) about ``LEAN_CENTER`` as a whole."""
     fig = _Figure(img, pose.lean)
     x0, y0 = 64.0 + pose.x, 70.0 + pose.y
-    sy = round(1.0 - pose.squash, 2)
+    # The squash is a few steps, so the torso is a few pieces.
+    sy = round(1.0 - round(pose.squash * 10) / 10, 2)
 
     def q(local: Point) -> Point:
         return x0 + local[0], y0 + local[1] * sy
@@ -809,9 +906,17 @@ def _draw_character(img: Image.Image, pose: Pose) -> None:
     # Neck, head and crest.
     neck = _rig_piece(("neck",), (22, 26), (11, 13), lambda d: _ellipse(d, (11, 13), 9.0, 11.0, FEATHER, OUTLINE, 1.0))
     fig.put(neck, q((2.0, -18.0)), "neck")
-    beak = round(pose.beak_open * 20) / 20
-    head = _rig_piece(("head", beak, pose.eye_closed), (64, 48), (20, 28), lambda d: _paint_head(d, 20, 28, beak, pose.eye_closed))
-    fig.put(head, q((4.0, -31.0)), "head")
+    # The head is a base, an eye overlay, the mouth (when open), the upper
+    # bill with the spectacles, and the jaw turned about its hinge.
+    at = q((4.0, -31.0))
+    fig.put(_rig_piece(("head_base",), (64, 48), (20, 28), lambda d: _paint_head_base(d, 20, 28)), at, "head")
+    fig.put(_rig_piece(("eyes", pose.eye_closed), (64, 48), (20, 28), lambda d: _paint_eyes(d, 20, 28, pose.eye_closed)), at, "head_eyes")
+    hinge = (at[0] + JAW_HINGE[0], at[1] + JAW_HINGE[1])
+    jaw_turn = JAW_DEGREES * pose.beak_open
+    if pose.beak_open > 0.35:
+        fig.put(_rig_piece(("mouth",), (20, 12), (2, 4), lambda d: _paint_mouth(d, 2, 4)), hinge, "head_mouth", 0.5 * jaw_turn)
+    fig.put(_rig_piece(("bill_glasses",), (64, 48), (20, 28), lambda d: _paint_bill_and_glasses(d, 20, 28)), at, "head_bill")
+    fig.put(_rig_piece(("jaw",), (22, 10), (2, 3), lambda d: _paint_jaw(d, 2, 3)), hinge, "head_jaw", jaw_turn)
 
     # Notebook held in front for blocking/casting interactions.
     if pose.book_front:
@@ -829,10 +934,10 @@ def _draw_character(img: Image.Image, pose: Pose) -> None:
 def render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     pose = _pose(anim, frame_idx, nframes)
     image = Image.new("RGBA", (FRAME_W * SUPER, FRAME_H * SUPER), (0, 0, 0, 0))
-    # The effects change every frame: each layer is one draw.
-    _frame_layer(image, lambda d: _draw_effects_behind(d, pose), "effects_behind")
+    # Effects are pieces placed behind and in front of the figure.
+    _draw_effects_behind(image, pose)
     _draw_character(image, pose)
-    _frame_layer(image, lambda d: _draw_effects_front(d, pose), "effects_front")
+    _draw_effects_front(image, pose)
     if pose.alpha < 0.999:
         image = rigdoc.faded_canvas(image, max(0.0, pose.alpha))
     return rigdoc.downsampled_canvas(image, (FRAME_W, FRAME_H), Image.Resampling.LANCZOS)

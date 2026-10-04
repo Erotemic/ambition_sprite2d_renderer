@@ -222,7 +222,7 @@ def _wing_painter(
     shoulder_tint: Color,
     tip_tint: Color,
 ):
-    def fn(ctx: PartCtx) -> None:
+    def fn(ctx: PartCtx, which: str = "both") -> None:
         u, low = ctx.world[upper], ctx.world[lower]
         is_far = upper.startswith("far_")
         scale = 0.9 if is_far else 1.0
@@ -263,27 +263,31 @@ def _wing_painter(
 
         shoulder = u.origin
         elbow = u.tip
+        # The upper arm (drawn in the upper bone frame) and the forearm
+        # (in the forearm frame) are separate pieces: ``which`` picks one.
+        if which != "lower":
+            draw_capsule(ctx.draw, ctx.cw(shoulder), ctx.cw(elbow), ctx.L(r_u * (0.74 if is_far else 0.8)), shoulder_tint, PAL["outline"], ow)
 
-        draw_capsule(ctx.draw, ctx.cw(shoulder), ctx.cw(elbow), ctx.L(r_u * (0.74 if is_far else 0.8)), shoulder_tint, PAL["outline"], ow)
-
-        shoulder_panel = [
-            rot_pt(shoulder, u.angle, 0.1, -r_u * 0.82),
-            rot_pt(shoulder, u.angle, 4.8 * scale, -r_u * 1.08),
-            rot_pt(elbow, low.angle, 0.7 * scale, -r_l * 0.94),
-            rot_pt(elbow, low.angle, 3.2 * scale, -r_l * 0.32),
-            rot_pt(elbow, low.angle, 2.7 * scale, r_l * 0.4),
-            rot_pt(elbow, low.angle, 0.1 * scale, r_l * 0.95),
-            rot_pt(shoulder, u.angle, 0.8, r_u * 0.76),
-        ]
-        draw_polygon(ctx.draw, rounded_polygon([ctx.cw(p) for p in shoulder_panel], radius=ctx.L(1.25)), shoulder_tint, PAL["outline"], ctx.L(0.24))
-        arm_hi = [
-            rot_pt(shoulder, u.angle, 1.0, -r_u * 0.2),
-            rot_pt(shoulder, u.angle, 3.9 * scale, -r_u * 0.52),
-            rot_pt(elbow, low.angle, 0.3 * scale, -r_l * 0.28),
-            rot_pt(elbow, low.angle, 0.8 * scale, 0.08),
-            rot_pt(shoulder, u.angle, 1.1, r_u * 0.1),
-        ]
-        composite_polygon(ctx.img, rounded_polygon([ctx.cw(p) for p in arm_hi], radius=ctx.L(0.82)), (*PAL["body_light"][:3], 138 if not is_far else 96))
+            shoulder_panel = [
+                rot_pt(shoulder, u.angle, 0.1, -r_u * 0.82),
+                rot_pt(shoulder, u.angle, 4.8 * scale, -r_u * 1.08),
+                rot_pt(elbow, low.angle, 0.7 * scale, -r_l * 0.94),
+                rot_pt(elbow, low.angle, 3.2 * scale, -r_l * 0.32),
+                rot_pt(elbow, low.angle, 2.7 * scale, r_l * 0.4),
+                rot_pt(elbow, low.angle, 0.1 * scale, r_l * 0.95),
+                rot_pt(shoulder, u.angle, 0.8, r_u * 0.76),
+            ]
+            draw_polygon(ctx.draw, rounded_polygon([ctx.cw(p) for p in shoulder_panel], radius=ctx.L(1.25)), shoulder_tint, PAL["outline"], ctx.L(0.24))
+            arm_hi = [
+                rot_pt(shoulder, u.angle, 1.0, -r_u * 0.2),
+                rot_pt(shoulder, u.angle, 3.9 * scale, -r_u * 0.52),
+                rot_pt(elbow, low.angle, 0.3 * scale, -r_l * 0.28),
+                rot_pt(elbow, low.angle, 0.8 * scale, 0.08),
+                rot_pt(shoulder, u.angle, 1.1, r_u * 0.1),
+            ]
+            composite_polygon(ctx.img, rounded_polygon([ctx.cw(p) for p in arm_hi], radius=ctx.L(0.82)), (*PAL["body_light"][:3], 138 if not is_far else 96))
+        if which == "upper":
+            return
 
         covert_panel = [
             rot_pt(elbow, low.angle, -0.25 * scale, -r_l * 1.02),
@@ -358,7 +362,14 @@ def _wing_painter(
 
 
 def _head_painter(ctx: PartCtx) -> None:
-    p = ctx.params
+    """The whole head: the base and the eye (``_head_base_painter``,
+    ``_head_eye_painter``)."""
+    _head_base_painter(ctx)
+    _head_eye_painter(ctx)
+
+
+def _head_base_painter(ctx: PartCtx) -> None:
+    """The head shape, plumage, face patch and brow: no expression changes it."""
     pts = [(-11.5, -10.5), (2.0, -11.8), (11.0, -6.0), (12.5, 3.5), (6.5, 10.5), (-4.5, 9.8), (-12.5, 2.8), (-13.0, -5.5)]
     poly = rounded_polygon(ctx.pts(pts), radius=ctx.L(4.0))
     draw_polygon(ctx.draw, poly, PAL["head"], PAL["outline"], ctx.L(OUTLINE_W))
@@ -371,26 +382,42 @@ def _head_painter(ctx: PartCtx) -> None:
         p0 = ctx.pt((x, -2.7 + 0.35 * idx))
         p1 = ctx.pt((x - 0.55, 5.1 + 0.25 * idx))
         ctx.draw.line((p0[0], p0[1], p1[0], p1[1]), fill=PAL["face_line"], width=max(1, int(ctx.L(0.28))))
+    # The brow is above the tallest eye, so it does not overlap the eye overlay.
+    brow = [(-1.5, -7.8), (7.2, -9.5), (8.2, -7.6), (0.8, -6.3)]
+    composite_polygon(ctx.img, rounded_polygon(ctx.pts(brow), radius=ctx.L(1.1)), (*PAL["body_dark"][:3], 120))
 
-    blink = p.get("blink", 0.0) > 0.5
+
+def _eye_state(p) -> Tuple[float, float, float]:
+    """The eye's look as ``(height, pupil_dx, pupil_dy)``, rounded so near
+    looks share one overlay. A blink is height 1.0 (no pupil)."""
+    if p.get("blink", 0.0) > 0.5:
+        return (1.0, 0.0, 0.0)
     squint = clamp(p.get("eye_squint", 0.0), 0.0, 1.0)
-    eye_h = 6.1 * (1.0 - 0.55 * squint)
-    if blink:
-        eye_h = 1.0
+    eye_h = round(6.1 * (1.0 - 0.55 * squint) * 2.0) / 2.0
+    dx = round((0.6 + 0.72 * clamp(p.get("look_x", 0.0), -1.0, 1.0)) * 2.0) / 2.0
+    dy = round((-0.1 + 0.45 * clamp(p.get("look_y", 0.0), -1.0, 1.0)) * 2.0) / 2.0
+    return (eye_h, dx, dy)
+
+
+def _head_eye_painter(ctx: PartCtx) -> None:
+    """The eye and pupil: the expression overlay on the head base."""
+    eye_h, pupil_dx, pupil_dy = _eye_state(ctx.params)
+    blink = eye_h <= 1.0
     ec = ctx.pt((5.4, -2.2))
     ew, eh = ctx.L(4.8), ctx.L(eye_h)
     ctx.draw.ellipse((ec[0] - ew / 2, ec[1] - eh / 2, ec[0] + ew / 2, ec[1] + eh / 2), fill=PAL["eye"], outline=PAL["outline"], width=max(1, int(ctx.L(0.35))))
     if not blink:
         pw, ph = ctx.L(1.55), ctx.L(max(1.75, eye_h * 0.48))
-        pupil_x = ec[0] + ctx.L(0.6 + 0.72 * clamp(p.get("look_x", 0.0), -1.0, 1.0))
-        pupil_y = ec[1] + ctx.L(-0.1 + 0.45 * clamp(p.get("look_y", 0.0), -1.0, 1.0))
+        pupil_x = ec[0] + ctx.L(pupil_dx)
+        pupil_y = ec[1] + ctx.L(pupil_dy)
         ctx.draw.ellipse((pupil_x - pw / 2, pupil_y - ph / 2, pupil_x + pw / 2, pupil_y + ph / 2), fill=PAL["pupil"])
-    brow = [(-1.5, -7.8), (7.2, -9.5), (8.2, -7.6), (0.8, -6.3)]
-    composite_polygon(ctx.img, rounded_polygon(ctx.pts(brow), radius=ctx.L(1.1)), (*PAL["body_dark"][:3], 120))
 
 
-
-def _beak_painter(ctx: PartCtx) -> None:
+def _beak_painter(ctx: PartCtx, which: str = "all") -> None:
+    """The beak. ``which`` paints one of its pieces: ``"back"`` (backplate and
+    cere), ``"lower"`` (the jaw), ``"upper"`` (the hook) or ``"pins"`` (the
+    hinge pins); ``"all"`` paints every one. Each jaw turns about its own pin
+    (``BEAK_PIVOTS``), so a rig places the jaws closed and turns them."""
     p = ctx.params
     open_amt = clamp(p.get("beak_open", 0.0), 0.0, 1.0)
 
@@ -470,25 +497,37 @@ def _beak_painter(ctx: PartCtx) -> None:
     ]
     lower_highlight = [rot_about(map_u(p), plow, lower_deg) for p in lower_highlight]
 
-    draw_polygon(ctx.draw, rounded_polygon(ctx.pts(backplate), radius=ctx.L(1.3)), PAL["face_line"], PAL["outline"], ctx.L(0.55))
-    composite_polygon(ctx.img, rounded_polygon(ctx.pts(cere), radius=ctx.L(1.25)), (*PAL["face_patch"][:3], 205))
+    if which in ("all", "back"):
+        draw_polygon(ctx.draw, rounded_polygon(ctx.pts(backplate), radius=ctx.L(1.3)), PAL["face_line"], PAL["outline"], ctx.L(0.55))
+        composite_polygon(ctx.img, rounded_polygon(ctx.pts(cere), radius=ctx.L(1.25)), (*PAL["face_patch"][:3], 205))
 
     # Draw lower first so the upper hook can overbite and hide it at rest.
-    draw_polygon(ctx.draw, rounded_polygon(ctx.pts(lower_pts), radius=ctx.L(1.15)), PAL["beak_lower"], PAL["outline"], ctx.L(0.72))
-    composite_polygon(ctx.img, rounded_polygon(ctx.pts(lower_highlight), radius=ctx.L(0.65)), (88, 86, 92, 180))
+    if which in ("all", "lower"):
+        draw_polygon(ctx.draw, rounded_polygon(ctx.pts(lower_pts), radius=ctx.L(1.15)), PAL["beak_lower"], PAL["outline"], ctx.L(0.72))
+        composite_polygon(ctx.img, rounded_polygon(ctx.pts(lower_highlight), radius=ctx.L(0.65)), (88, 86, 92, 180))
 
-    draw_polygon(ctx.draw, rounded_polygon(ctx.pts(upper_pts), radius=ctx.L(1.55)), PAL["beak_upper"], PAL["outline"], ctx.L(0.8))
-    composite_polygon(ctx.img, rounded_polygon(ctx.pts(upper_shadow), radius=ctx.L(1.0)), (*PAL["beak_upper_shadow"][:3], 190))
+    if which in ("all", "upper"):
+        draw_polygon(ctx.draw, rounded_polygon(ctx.pts(upper_pts), radius=ctx.L(1.55)), PAL["beak_upper"], PAL["outline"], ctx.L(0.8))
+        composite_polygon(ctx.img, rounded_polygon(ctx.pts(upper_shadow), radius=ctx.L(1.0)), (*PAL["beak_upper_shadow"][:3], 190))
+        # Nostril.
+        nostril = rot_about(map_u((1.15, 3.1)), pup, upper_deg)
+        nx, ny = ctx.pt(nostril)
+        nrx, nry = ctx.L(0.42), ctx.L(0.6)
+        ctx.draw.ellipse((nx - nrx, ny - nry, nx + nrx, ny + nry), fill=PAL["outline"])
 
-    # Nostril and hinge pins.
-    nostril = rot_about(map_u((1.15, 3.1)), pup, upper_deg)
-    nx, ny = ctx.pt(nostril)
-    nrx, nry = ctx.L(0.42), ctx.L(0.6)
-    ctx.draw.ellipse((nx - nrx, ny - nry, nx + nrx, ny + nry), fill=PAL["outline"])
-    for pin, fill in ((pup, PAL["beak_upper_shadow"]), (plow, PAL["outline"])):
-        px, py = ctx.pt(pin)
-        rr = ctx.L(0.42)
-        ctx.draw.ellipse((px - rr, py - rr, px + rr, py + rr), fill=fill, outline=PAL["outline"])
+    # Hinge pins.
+    if which in ("all", "pins"):
+        for pin, fill in ((pup, PAL["beak_upper_shadow"]), (plow, PAL["outline"])):
+            px, py = ctx.pt(pin)
+            rr = ctx.L(0.42)
+            ctx.draw.ellipse((px - rr, py - rr, px + rr, py + rr), fill=fill, outline=PAL["outline"])
+
+
+#: The beak's two pins in the beak bone's frame: the upper hook turns about
+#: the first by ``-14 * beak_open`` degrees, the jaw about the second by
+#: ``20 * beak_open`` (``_beak_painter``'s ``map_u((0.0, 3.0))``, ``map_u((0.1, 0.4))``).
+BEAK_PIVOTS = {"upper": (-1.8, 8.9 - 3.0 * 4.0), "lower": (-1.8 + 0.1 * 4.15, 8.9 - 0.4 * 4.0)}
+BEAK_TURN = {"upper": -14.0, "lower": 20.0}
 
 
 def _build_rig() -> Rig:
@@ -509,44 +548,86 @@ _RIG = _build_rig()
 
 # ---- Pieces -------------------------------------------------------------------
 #
-# The rig's parts are drawn as pieces: each part's painter paints ONCE on a
-# scratch canvas with its bone at ``PIECE_HOME`` and angle 0, the result is cut
-# to what it covers and placed at the bone, turned by its angle
-# (``shape_rig``). A part flipbook stores each once. A leg is two pieces (the
-# thigh; the shin with its toes). A wing bends at the elbow, so it is one
-# piece per whole degree of the bend, riding the forearm. A piece that reads
-# a pose channel (a blink, the beak's opening, the tail's fan) is one per
-# value of that channel (to two decimals).
+# The rig's parts are drawn as pieces: each piece paints ONCE on a scratch
+# canvas with its bone at ``PIECE_HOME`` and angle 0, the result is cut to
+# what it covers and placed at the bone, turned by its angle (``shape_rig``).
+# A part flipbook stores each once.
+#
+# * A leg is two pieces (the thigh; the shin with its toes); both legs share
+#   the same bones.
+# * A wing is two pieces: the upper arm rides the upper bone, the forearm with
+#   its feathers rides the forearm bone (the shoulder panel is painted at the
+#   rest bend; the forearm covers the elbow).
+# * The tail is three rigid feathers that fan apart along the tail's cross axis.
+# * The head is a base and an eye overlay (keyed by the rounded eye state).
+# * The beak is a backplate, two jaws turned about their pins, and the pins.
 
 #: Where a piece's bone sits on the scratch canvas (world units); the canvas
 #: is twice it.
 PIECE_HOME = (40.0, 40.0)
 _PIECES: Dict[tuple, object] = {}
-#: The pose channels each single-bone part's painter reads.
-_PART_CHANNELS = {
-    "head": ("blink", "eye_squint", "look_x", "look_y"),
-    "beak": ("beak_open",),
-    "far_tail": ("tail_fan",),
-    "body": (),
-}
+_MIRRORED: Dict[int, tuple] = {}
 
 
-def _piece(key: tuple, paint):
+def _piece(key: tuple, paint, pivot: Point = (0.0, 0.0)):
     """``(raster, anchor)``: what ``paint(img, draw)`` paints, its bone at
-    ``PIECE_HOME``, cut to its box; ``None`` when it paints nothing."""
-    if key not in _PIECES:
+    ``PIECE_HOME``, cut to its box; the anchor is ``PIECE_HOME + pivot``
+    (world units). ``None`` when it paints nothing. The cut starts on a
+    multiple of 8 canvas pixels on every side, so pieces (and their mirrors)
+    reduce on one pixel grid."""
+    full_key = (key, pivot)
+    if full_key not in _PIECES:
         size = (int(2 * PIECE_HOME[0] * SS), int(2 * PIECE_HOME[1] * SS))
         canvas = Image.new("RGBA", size, (0, 0, 0, 0))
         paint(canvas, blending_draw(canvas))
         box = canvas.getchannel("A").getbbox()
-        _PIECES[key] = None if box is None else (canvas.crop(box), (PIECE_HOME[0] * SS - box[0], PIECE_HOME[1] * SS - box[1]))
-    return _PIECES[key]
+        if box is None:
+            _PIECES[full_key] = None
+        else:
+            x0, y0 = box[0] - box[0] % 8, box[1] - box[1] % 8
+            x1, y1 = box[2] + (-box[2]) % 8, box[3] + (-box[3]) % 8
+            ax, ay = (PIECE_HOME[0] + pivot[0]) * SS - x0, (PIECE_HOME[1] + pivot[1]) * SS - y0
+            _PIECES[full_key] = (canvas.crop((x0, y0, x1, y1)), (ax, ay))
+    return _PIECES[full_key]
 
 
-def _place(actor: Image.Image, key: tuple, paint, bone: BoneWorld, name: str) -> None:
-    part = _piece(key, paint)
+def _mirrored(part):
+    """``part`` mirrored left to right about its anchor: the same raster
+    transposed (a zero-cost transform for the publisher)."""
+    image, (ax, ay) = part
+    cached = _MIRRORED.get(id(image))
+    if cached is None or cached[0] is not image:
+        cached = (image, (image.transpose(Image.FLIP_LEFT_RIGHT), (image.width - ax, ay)))
+        _MIRRORED[id(image)] = cached
+    return cached[1]
+
+
+def _place_at(actor: Image.Image, part, at: Point, degrees: float, name: str) -> None:
+    """Place ``part`` with its anchor at the world point ``at``."""
     if part is not None:
-        shape_rig.place(actor, part, (bone.origin[0] * SS, bone.origin[1] * SS), bone.angle, name)
+        shape_rig.place(actor, part, (at[0] * SS, at[1] * SS), degrees, name)
+
+
+def _part_ctx(img, d, bone: str, length: float, params, origin: Point = PIECE_HOME, angle: float = 0.0, world=None) -> PartCtx:
+    bw = BoneWorld(origin, angle, length)
+    return PartCtx(img, d, bw, dict(world or {}, **{bone: bw}), SS, params)
+
+
+def _tail_feather_painter(idx: int):
+    """Tail feather ``idx`` of ``_tail_painter`` at zero fan."""
+
+    def paint(img, d) -> None:
+        ctx = _part_ctx(img, d, "tail", 14.0, {"tail_fan": 0.0})
+        pts = [
+            [(-1.0, -3.4), (12.0, -7.4), (14.5, -2.4), (2.2, 1.4)],
+            [(-0.4, -0.8), (14.5, -1.0), (15.2, 4.0), (1.2, 2.8)],
+            [(-0.2, 2.0), (12.8, 5.3), (13.6, 9.2), (0.8, 4.9)],
+        ][idx]
+        shade = [PAL["body_dark"], PAL["body"], PAL["wing_blue"]][idx]
+        poly = rounded_polygon(ctx.pts(pts), radius=ctx.L(1.7))
+        draw_polygon(ctx.draw, poly, shade, PAL["outline"], ctx.L(0.65))
+
+    return paint
 
 
 def _draw_rig_pieces(actor: Image.Image, world, params: Dict[str, float]) -> None:
@@ -555,15 +636,15 @@ def _draw_rig_pieces(actor: Image.Image, world, params: Dict[str, float]) -> Non
     for part in sorted(_RIG.parts, key=lambda p: p.z):
         spec = getattr(part.fn, "spec", None)
         if spec is not None and spec[0] == "leg":
-            _, upper, lower, tint, toe_tint, r_u, r_l = spec
+            _, upper, lower, tint, toe_tint, _r_u, _r_l = spec
+            # Both legs share one thigh and one shin (the near leg's radii).
+            r_u, r_l = 1.2, 1.0
             u, low = world[upper], world[lower]
-            _place(
-                actor,
+            thigh = _piece(
                 ("thigh", tint, r_u, u.length),
                 lambda img, d: draw_capsule(d, (home[0] * SS, home[1] * SS), ((home[0] + u.length) * SS, home[1] * SS), r_u * SS, tint, PAL["outline"], 0.45 * SS),
-                u,
-                f"{part.name}_thigh",
             )
+            _place_at(actor, thigh, u.origin, u.angle, f"{part.name}_thigh")
 
             def shin(img, d, low=low) -> None:
                 hx, hy = home
@@ -575,35 +656,44 @@ def _draw_rig_pieces(actor: Image.Image, world, params: Dict[str, float]) -> Non
                     tx, ty = add(tip, vec(length, spread))
                     d.line((tip[0] * SS, tip[1] * SS, tx * SS, ty * SS), fill=toe_tint, width=max(1, int(0.8 * SS)))
 
-            _place(actor, ("shin", tint, toe_tint, r_u, r_l, low.length), shin, low, f"{part.name}_shin")
+            _place_at(actor, _piece(("shin", tint, toe_tint, r_u, r_l, low.length), shin), low.origin, low.angle, f"{part.name}_shin")
             continue
         if spec is not None and spec[0] == "wing":
             _, upper, lower = spec
             u, low = world[upper], world[lower]
-            bend = float(round(u.angle - low.angle))
-            local = {
-                upper: BoneWorld(add(home, vec(-u.length, bend)), bend, u.length),
-                lower: BoneWorld(home, 0.0, low.length),
-            }
-            _place(
-                actor,
-                ("wing", part.name, bend),
-                lambda img, d, local=local, part=part: part.fn(PartCtx(img, d, local[part.bone], local, SS, params)),
-                low,
-                part.name,
-            )
+            rest = _SKEL.bones[lower].rest_angle
+            upper_local = {upper: BoneWorld(home, 0.0, u.length), lower: BoneWorld(add(home, (u.length, 0.0)), rest, low.length)}
+            lower_local = {upper: BoneWorld(add(home, vec(-u.length, -rest)), -rest, u.length), lower: BoneWorld(home, 0.0, low.length)}
+            arm = _piece(("wing_upper", part.name), lambda img, d, w=upper_local, part=part: part.fn(PartCtx(img, d, w[upper], w, SS, params), "upper"))
+            _place_at(actor, arm, u.origin, u.angle, f"{part.name}_arm")
+            hand = _piece(("wing_lower", part.name), lambda img, d, w=lower_local, part=part: part.fn(PartCtx(img, d, w[lower], w, SS, params), "lower"))
+            _place_at(actor, hand, low.origin, low.angle, part.name)
             continue
-        channels = tuple(round(float(params.get(name, 0.0)), 2) for name in _PART_CHANNELS[part.name])
         bone = world[part.bone]
-        local = {part.bone: BoneWorld(home, 0.0, bone.length)}
-        keyed = {name: value for name, value in zip(_PART_CHANNELS[part.name], channels)}
-        _place(
-            actor,
-            ("part", part.name, channels),
-            lambda img, d, local=local, part=part, keyed=keyed: part.fn(PartCtx(img, d, local[part.bone], local, SS, keyed)),
-            bone,
-            part.name,
-        )
+        if part.name == "far_tail":
+            sway = clamp(params.get("tail_fan", 0.0), -1.0, 1.0)
+            for idx in range(3):
+                feather = _piece(("tail_feather", idx), _tail_feather_painter(idx))
+                _place_at(actor, feather, bone.to_world((0.0, (idx - 1) * 6.2 * sway)), bone.angle, f"tail_{idx}")
+            continue
+        if part.name == "head":
+            base = _piece(("head_base",), lambda img, d: _head_base_painter(_part_ctx(img, d, "head", bone.length, {})))
+            _place_at(actor, base, bone.origin, bone.angle, "head")
+            state = _eye_state(params)
+            eye = _piece(("head_eye", state), lambda img, d: _head_eye_painter(_part_ctx(img, d, "head", bone.length, dict(params))))
+            _place_at(actor, eye, bone.origin, bone.angle, "head_eye")
+            continue
+        if part.name == "beak":
+            open_amt = clamp(params.get("beak_open", 0.0), 0.0, 1.0)
+            closed = {"beak_open": 0.0}
+            for which in ("back", "lower", "upper", "pins"):
+                pivot = BEAK_PIVOTS.get(which, (0.0, 0.0))
+                origin = (home[0] - pivot[0], home[1] - pivot[1])
+                jaw = _piece(("beak", which), lambda img, d, which=which, origin=origin: _beak_painter(_part_ctx(img, d, "beak", bone.length, closed, origin), which))
+                _place_at(actor, jaw, bone.to_world(pivot), bone.angle + BEAK_TURN.get(which, 0.0) * open_amt, f"beak_{which}")
+            continue
+        body = _piece(("body",), lambda img, d: _body_painter(_part_ctx(img, d, "body", bone.length, {})))
+        _place_at(actor, body, bone.origin, bone.angle, part.name)
 
 
 # ---- Clips --------------------------------------------------------------------
@@ -1199,171 +1289,254 @@ def _draw_turn_front_wing(img: Image.Image, draw: ImageDraw.ImageDraw, cx: float
         _turn_draw_feather(draw, cx, cy, origin, ang, length, base_w, tip_w, fill, mirror=mirror, width=0.25, radius=0.8)
     _turn_fill(img, [(6.7, -10.7 - 0.16 * lift_y), (9.6, -11.2 - 0.18 * lift_y), (12.4, -10.2 - 0.10 * lift_y), (12.5, -7.6), (10.0, -6.6), (7.4, -7.3)], cx, cy, (*PAL["wing_yellow"][:3], 184), radius=0.78, mirror=mirror)
 
-def _render_turn_three_quarter(params: Dict[str, float], mirrored: bool = False) -> Image.Image:
-    img = Image.new("RGBA", (FRAME_W * SS, FRAME_H * SS), (0, 0, 0, 0))
-    draw = blending_draw(img)
-    cx = (CENTER_X + params.get("root_x", 0.0)) * SS
-    airborne = params.get("airborne", 0.0) > 0.5
-    default_root_y = -21.0 if airborne else -1.0
-    cy = (GROUND_Y + params.get("root_y", default_root_y) - 22.0) * SS
-    wing_src = params.get("near_wing_u", -24.0 if airborne else -10.0)
-    wing_base = -24.0 if airborne else -10.0
-    wing_span = 82.0 if airborne else 28.0
-    wing_lift = clamp((wing_src - wing_base) / wing_span, 0.0, 1.0)
-    beak_open = clamp(params.get("beak_open", 0.0), 0.0, 1.0)
-    tail_fan = clamp(params.get("tail_fan", 0.5), 0.0, 1.0)
+# The turnaround views are pieces too: each group (the shadow, the tail, a
+# wing, the body, the legs, the head with its beak) is painted ONCE about the
+# view's centre and placed there. A wing is painted at the middle of its lift
+# and turned about its shoulder by the lift; the left-facing three-quarter
+# view is the right-facing one mirrored (each raster transposed).
 
-    shadow_w = SS * ((15.0 if airborne else 20.0) - (2.0 if airborne else 3.0) * wing_lift)
-    shadow_h = SS * (3.0 if airborne else 4.0)
-    sx, sy = (CENTER_X + params.get("root_x", 0.0)) * SS, (GROUND_Y + 0.5) * SS
-    shadow = (*PAL["shadow"][:3], 46 if airborne else PAL["shadow"][3])
-    draw.ellipse((sx - shadow_w, sy - shadow_h, sx + shadow_w, sy + shadow_h), fill=shadow)
+#: A wing's lift turns it about its shoulder by this many degrees per unit of
+#: lift (from the middle of its range), airborne and grounded.
+TURN_WING_DEGREES = {True: 18.0, False: 12.0}
+#: The fixed tail fan and beak opening the turnaround views are painted with.
+TURN_TAIL_FAN = {"three_quarter": 0.6, "front": 0.8}
+TURN_BEAK_OPEN = 0.04
 
+
+def _home_canvas() -> Tuple[float, float]:
+    return (PIECE_HOME[0] * SS, PIECE_HOME[1] * SS)
+
+
+def _turn_shadow(airborne: bool):
+    def paint(img, d) -> None:
+        cx, cy = _home_canvas()
+        w, h = SS * (14.0 if airborne else 19.0), SS * (3.0 if airborne else 4.0)
+        d.ellipse((cx - w, cy - h, cx + w, cy + h), fill=(*PAL["shadow"][:3], 44 if airborne else PAL["shadow"][3]))
+
+    return _piece(("turn_shadow", airborne), paint)
+
+
+def _paint_three_quarter_tail(img, d) -> None:
+    """The tail, centred ``(-10, 5)`` from the view's centre."""
+    cx, cy = _home_canvas()
+    cx, cy = cx - 10.0 * SS, cy + 5.0 * SS
+    tail_fan = TURN_TAIL_FAN["three_quarter"]
     for dx, top, mid, bot, color in [
         (-9.0, 4.0, 17.0 + 3.0 * tail_fan, 28.0, PAL["body_dark"]),
         (-2.5, 3.0, 18.0 + 4.0 * tail_fan, 29.5, PAL["body"]),
         (4.0, 4.0, 16.0 + 3.0 * tail_fan, 27.5, PAL["wing_blue"]),
     ]:
         tail = [(dx - 1.3, 0.0), (dx + 2.2, top), (dx + 5.2, mid), (dx + 0.8, bot), (dx - 3.2, mid - 2.5)]
-        _turn_poly(draw, tail, cx - 10.0 * SS, cy + 5.0 * SS, color, width=0.45, radius=1.25, mirror=mirrored)
+        _turn_poly(d, tail, cx, cy, color, width=0.45, radius=1.25)
 
-    _draw_turn_three_quarter_wing(img, draw, cx, cy, wing_lift, near=False, airborne=airborne, mirror=mirrored)
 
+def _paint_three_quarter_body(img, d) -> None:
+    cx, cy = _home_canvas()
     body = [(-17.0, -13.0), (-2.0, -18.5), (13.0, -14.0), (19.0, -2.0), (16.0, 12.0), (4.0, 20.0), (-11.0, 15.0), (-19.0, 3.5)]
-    _turn_poly(draw, body, cx, cy, PAL["body"], width=0.8, radius=4.0, mirror=mirrored)
-    _turn_fill(img, [(-10.0, -7.0), (6.0, -8.5), (10.5, 5.0), (4.5, 15.0), (-6.5, 12.0), (-9.5, 1.0)], cx, cy, (*PAL["body_light"][:3], 88), radius=3.0, mirror=mirrored)
-    _turn_fill(img, [(-16.0, -11.0), (-6.0, -14.0), (-4.0, 11.0), (-14.0, 8.5)], cx, cy, (*PAL["body_dark"][:3], 110), radius=2.8, mirror=mirrored)
-    _turn_fill(img, [(-1.0, -13.2), (7.5, -14.8), (11.5, -9.8), (4.0, -5.0), (-1.5, -6.5)], cx, cy, (*PAL["wing_yellow"][:3], 150), radius=2.0, mirror=mirrored)
+    _turn_poly(d, body, cx, cy, PAL["body"], width=0.8, radius=4.0)
+    _turn_fill(img, [(-10.0, -7.0), (6.0, -8.5), (10.5, 5.0), (4.5, 15.0), (-6.5, 12.0), (-9.5, 1.0)], cx, cy, (*PAL["body_light"][:3], 88), radius=3.0)
+    _turn_fill(img, [(-16.0, -11.0), (-6.0, -14.0), (-4.0, 11.0), (-14.0, 8.5)], cx, cy, (*PAL["body_dark"][:3], 110), radius=2.8)
+    _turn_fill(img, [(-1.0, -13.2), (7.5, -14.8), (11.5, -9.8), (4.0, -5.0), (-1.5, -6.5)], cx, cy, (*PAL["wing_yellow"][:3], 150), radius=2.0)
 
-    _draw_turn_three_quarter_wing(img, draw, cx, cy, wing_lift, near=True, airborne=airborne, mirror=mirrored)
 
-    if airborne:
-        for dx, dy, pitch in [(-1.6, 10.0, -0.6), (3.0, 10.8, -0.2)]:
-            shin = [(dx - 0.6, dy - 0.5), (dx + 0.4, dy - 0.2), (dx + 0.8, dy + 2.4), (dx - 0.2, dy + 2.7)]
-            _turn_poly(draw, shin, cx, cy, PAL["leg"], width=0.35, radius=0.7, mirror=mirrored)
-            base = _turn_pt((dx + 0.2, dy + 2.4), cx, cy, mirror=mirrored)
-            for spread, length in ((-0.5, 2.5), (0.0, 3.0), (0.5, 2.3)):
-                sign = -1.0 if mirrored else 1.0
-                tx = base[0] + sign * SS * length
-                ty = base[1] + SS * (spread + pitch * 1.6)
-                draw.line((base[0], base[1], tx, ty), fill=PAL["talon"], width=max(1, int(SS * 0.45)))
-    else:
-        for dx, dy, pitch in [(-2.0, 13.5, -0.2), (4.5, 14.8, 0.15)]:
-            shin = [(dx - 0.8, dy - 0.8), (dx + 0.4, dy - 0.5), (dx + 0.9, dy + 3.5), (dx - 0.4, dy + 3.7)]
-            _turn_poly(draw, shin, cx, cy, PAL["leg"], width=0.4, radius=0.8, mirror=mirrored)
-            base = _turn_pt((dx + 0.2, dy + 3.3), cx, cy, mirror=mirrored)
-            for spread, length in ((-0.8, 3.3), (0.0, 3.9), (0.8, 3.1)):
-                sign = -1.0 if mirrored else 1.0
-                tx = base[0] + sign * SS * length
-                ty = base[1] + SS * (spread + pitch * 2.2)
-                draw.line((base[0], base[1], tx, ty), fill=PAL["talon"], width=max(1, int(SS * 0.5)))
+def _paint_three_quarter_legs(airborne: bool):
+    def paint(img, d) -> None:
+        cx, cy = _home_canvas()
+        if airborne:
+            for dx, dy, pitch in [(-1.6, 10.0, -0.6), (3.0, 10.8, -0.2)]:
+                shin = [(dx - 0.6, dy - 0.5), (dx + 0.4, dy - 0.2), (dx + 0.8, dy + 2.4), (dx - 0.2, dy + 2.7)]
+                _turn_poly(d, shin, cx, cy, PAL["leg"], width=0.35, radius=0.7)
+                base = _turn_pt((dx + 0.2, dy + 2.4), cx, cy)
+                for spread, length in ((-0.5, 2.5), (0.0, 3.0), (0.5, 2.3)):
+                    d.line((base[0], base[1], base[0] + SS * length, base[1] + SS * (spread + pitch * 1.6)), fill=PAL["talon"], width=max(1, int(SS * 0.45)))
+        else:
+            for dx, dy, pitch in [(-2.0, 13.5, -0.2), (4.5, 14.8, 0.15)]:
+                shin = [(dx - 0.8, dy - 0.8), (dx + 0.4, dy - 0.5), (dx + 0.9, dy + 3.5), (dx - 0.4, dy + 3.7)]
+                _turn_poly(d, shin, cx, cy, PAL["leg"], width=0.4, radius=0.8)
+                base = _turn_pt((dx + 0.2, dy + 3.3), cx, cy)
+                for spread, length in ((-0.8, 3.3), (0.0, 3.9), (0.8, 3.1)):
+                    d.line((base[0], base[1], base[0] + SS * length, base[1] + SS * (spread + pitch * 2.2)), fill=PAL["talon"], width=max(1, int(SS * 0.5)))
 
+    return paint
+
+
+def _paint_three_quarter_head(img, d) -> None:
+    """The head with its beak, about the view's centre (the head sits at
+    ``(4, -1)`` from it, the beak at ``(14, -7)``)."""
+    cx, cy = _home_canvas()
+    hx, hy = cx + 4.0 * SS, cy - 1.0 * SS
     head = [(-4.0, -23.0), (8.5, -23.8), (17.0, -16.0), (17.0, -4.0), (10.0, 6.5), (-1.5, 6.0), (-10.0, -1.5), (-10.0, -13.5)]
-    _turn_poly(draw, head, cx + 4.0 * SS, cy - 1.0 * SS, PAL["head"], width=0.8, radius=3.7, mirror=mirrored)
-    _turn_fill(img, [(-0.5, -20.0), (8.5, -20.5), (13.0, -13.0), (11.5, -6.0), (2.0, -5.8), (-1.8, -10.5)], cx + 4.0 * SS, cy - 1.0 * SS, (*PAL["head_light"][:3], 110), radius=2.5, mirror=mirrored)
-    _turn_fill(img, [(2.5, -18.0), (10.0, -17.2), (12.2, -3.0), (10.0, 4.5), (4.5, 5.5), (0.8, 1.0), (0.8, -10.0)], cx + 4.0 * SS, cy - 1.0 * SS, PAL["face_patch"], radius=2.3, mirror=mirrored)
+    _turn_poly(d, head, hx, hy, PAL["head"], width=0.8, radius=3.7)
+    _turn_fill(img, [(-0.5, -20.0), (8.5, -20.5), (13.0, -13.0), (11.5, -6.0), (2.0, -5.8), (-1.8, -10.5)], hx, hy, (*PAL["head_light"][:3], 110), radius=2.5)
+    _turn_fill(img, [(2.5, -18.0), (10.0, -17.2), (12.2, -3.0), (10.0, 4.5), (4.5, 5.5), (0.8, 1.0), (0.8, -10.0)], hx, hy, PAL["face_patch"], radius=2.3)
     for x0, y0, x1, y1 in ((4.0, -14.0, 3.4, -2.0), (6.2, -12.5, 5.8, -0.5), (8.2, -10.5, 8.0, 1.5)):
-        p0 = _turn_pt((x0, y0), cx + 4.0 * SS, cy - 1.0 * SS, mirror=mirrored)
-        p1 = _turn_pt((x1, y1), cx + 4.0 * SS, cy - 1.0 * SS, mirror=mirrored)
-        draw.line((p0[0], p0[1], p1[0], p1[1]), fill=PAL["face_line"], width=max(1, int(SS * 0.28)))
-
-    eye_c = _turn_pt((7.0, -11.0), cx + 4.0 * SS, cy - 1.0 * SS, mirror=mirrored)
+        p0 = _turn_pt((x0, y0), hx, hy)
+        p1 = _turn_pt((x1, y1), hx, hy)
+        d.line((p0[0], p0[1], p1[0], p1[1]), fill=PAL["face_line"], width=max(1, int(SS * 0.28)))
+    eye_c = _turn_pt((7.0, -11.0), hx, hy)
     ew, eh = SS * 4.7, SS * 5.3
-    draw.ellipse((eye_c[0] - ew / 2, eye_c[1] - eh / 2, eye_c[0] + ew / 2, eye_c[1] + eh / 2), fill=PAL["eye"], outline=PAL["outline"], width=max(1, int(SS * 0.35)))
+    d.ellipse((eye_c[0] - ew / 2, eye_c[1] - eh / 2, eye_c[0] + ew / 2, eye_c[1] + eh / 2), fill=PAL["eye"], outline=PAL["outline"], width=max(1, int(SS * 0.35)))
     pw, ph = SS * 1.55, SS * 2.2
-    pupil_dx = (-0.3 if mirrored else 0.3) * SS
-    draw.ellipse((eye_c[0] - pw / 2 + pupil_dx, eye_c[1] - ph / 2, eye_c[0] + pw / 2 + pupil_dx, eye_c[1] + ph / 2), fill=PAL["pupil"])
-    tiny_eye = _turn_pt((1.6, -11.5), cx + 4.0 * SS, cy - 1.0 * SS, mirror=mirrored)
-    draw.ellipse((tiny_eye[0] - SS * 1.2, tiny_eye[1] - SS * 1.5, tiny_eye[0] + SS * 1.2, tiny_eye[1] + SS * 1.5), fill=(*PAL["eye"][:3], 170), outline=(*PAL["outline"][:3], 180), width=max(1, int(SS * 0.22)))
-    draw.ellipse((tiny_eye[0] - SS * 0.35, tiny_eye[1] - SS * 0.55, tiny_eye[0] + SS * 0.35, tiny_eye[1] + SS * 0.55), fill=(*PAL["pupil"][:3], 180))
+    pupil_dx = 0.3 * SS
+    d.ellipse((eye_c[0] - pw / 2 + pupil_dx, eye_c[1] - ph / 2, eye_c[0] + pw / 2 + pupil_dx, eye_c[1] + ph / 2), fill=PAL["pupil"])
+    tiny_eye = _turn_pt((1.6, -11.5), hx, hy)
+    d.ellipse((tiny_eye[0] - SS * 1.2, tiny_eye[1] - SS * 1.5, tiny_eye[0] + SS * 1.2, tiny_eye[1] + SS * 1.5), fill=(*PAL["eye"][:3], 170), outline=(*PAL["outline"][:3], 180), width=max(1, int(SS * 0.22)))
+    d.ellipse((tiny_eye[0] - SS * 0.35, tiny_eye[1] - SS * 0.55, tiny_eye[0] + SS * 0.35, tiny_eye[1] + SS * 0.55), fill=(*PAL["pupil"][:3], 180))
 
-    beak_cx = cx + 14.0 * SS * (-1.0 if mirrored else 1.0)
-    beak_cy = cy - 7.0 * SS
+    beak_open = TURN_BEAK_OPEN
+    bx, by = cx + 14.0 * SS, cy - 7.0 * SS
     upper = [(-1.0, -4.0), (6.0, -6.2), (13.0, -4.5), (17.0, -0.2), (16.0, 4.8), (12.0, 10.0), (4.5, 8.2), (0.5, 3.0)]
     lower = [(-0.5, 3.0 + 2.0 * beak_open), (5.0, 5.0 + 5.0 * beak_open), (10.5, 5.8 + 6.5 * beak_open), (8.0, 10.8 + 7.8 * beak_open), (2.0, 9.0 + 5.2 * beak_open)]
-    _turn_poly(draw, upper, beak_cx, beak_cy, PAL["beak_upper"], width=0.7, radius=1.5, mirror=mirrored)
-    _turn_fill(img, [(1.0, -1.5), (8.0, -2.7), (13.2, 0.0), (10.2, 5.4), (5.0, 5.0)], beak_cx, beak_cy, (*PAL["beak_upper_shadow"][:3], 185), radius=1.1, mirror=mirrored)
-    _turn_poly(draw, lower, beak_cx, beak_cy, PAL["beak_lower"], width=0.65, radius=1.2, mirror=mirrored)
-    nostril = _turn_pt((5.0, -2.3), beak_cx, beak_cy, mirror=mirrored)
-    draw.ellipse((nostril[0] - SS * 0.45, nostril[1] - SS * 0.6, nostril[0] + SS * 0.45, nostril[1] + SS * 0.6), fill=PAL["outline"])
+    _turn_poly(d, upper, bx, by, PAL["beak_upper"], width=0.7, radius=1.5)
+    _turn_fill(img, [(1.0, -1.5), (8.0, -2.7), (13.2, 0.0), (10.2, 5.4), (5.0, 5.0)], bx, by, (*PAL["beak_upper_shadow"][:3], 185), radius=1.1)
+    _turn_poly(d, lower, bx, by, PAL["beak_lower"], width=0.65, radius=1.2)
+    nostril = _turn_pt((5.0, -2.3), bx, by)
+    d.ellipse((nostril[0] - SS * 0.45, nostril[1] - SS * 0.6, nostril[0] + SS * 0.45, nostril[1] + SS * 0.6), fill=PAL["outline"])
+
+
+class _View:
+    """Places turnaround pieces about the view centre ``(cx, cy)`` (canvas
+    pixels), mirrored left to right when ``mirror``."""
+
+    def __init__(self, actor: Image.Image, cx: float, cy: float, mirror: bool = False) -> None:
+        self.actor, self.cx, self.cy, self.mirror = actor, cx, cy, mirror
+
+    def put(self, part, offset: Point, name: str, degrees: float = 0.0) -> None:
+        if part is None:
+            return
+        sign = -1.0 if self.mirror else 1.0
+        if self.mirror:
+            part = _mirrored(part)
+        shape_rig.place(self.actor, part, (self.cx + sign * offset[0] * SS, self.cy + offset[1] * SS), sign * degrees, name)
+
+
+def _wing_lift(params: Dict[str, float], airborne: bool) -> float:
+    wing_src = params.get("near_wing_u", -24.0 if airborne else -10.0)
+    wing_base = -24.0 if airborne else -10.0
+    wing_span = 82.0 if airborne else 28.0
+    return clamp((wing_src - wing_base) / wing_span, 0.0, 1.0)
+
+
+def _render_turn_three_quarter(params: Dict[str, float], mirrored: bool = False) -> Image.Image:
+    img = Image.new("RGBA", (FRAME_W * SS, FRAME_H * SS), (0, 0, 0, 0))
+    cx = (CENTER_X + params.get("root_x", 0.0)) * SS
+    airborne = params.get("airborne", 0.0) > 0.5
+    default_root_y = -21.0 if airborne else -1.0
+    cy = (GROUND_Y + params.get("root_y", default_root_y) - 22.0) * SS
+    wing_lift = _wing_lift(params, airborne)
+    view = _View(img, cx, cy, mirrored)
+
+    shadow_view = _View(img, cx, (GROUND_Y + 0.5) * SS, mirrored)
+    shadow_view.put(_turn_shadow(airborne), (0.0, 0.0), "turn_shadow")
+    view.put(_piece(("three_quarter_tail",), _paint_three_quarter_tail, (-10.0, 5.0)), (-10.0, 5.0), "turn_tail")
+
+    def wing(near: bool):
+        sign = 1.0 if near else -1.0
+        shoulder = (sign * 4.0, -8.2)
+        part = _piece(
+            ("three_quarter_wing", near, airborne),
+            lambda img_, d: _draw_turn_three_quarter_wing(img_, d, *_home_canvas(), 0.5, near=near, airborne=airborne),
+            shoulder,
+        )
+        view.put(part, shoulder, "turn_near_wing" if near else "turn_far_wing", -sign * TURN_WING_DEGREES[airborne] * (wing_lift - 0.5))
+
+    wing(False)
+    view.put(_piece(("three_quarter_body",), _paint_three_quarter_body), (0.0, 0.0), "turn_body")
+    wing(True)
+    view.put(_piece(("three_quarter_legs", airborne), _paint_three_quarter_legs(airborne)), (0.0, 0.0), "turn_legs")
+    view.put(_piece(("three_quarter_head",), _paint_three_quarter_head), (0.0, 0.0), "turn_head")
     return img
+
+
+def _paint_front_tail(img, d) -> None:
+    cx, cy = _home_canvas()
+    tail_fan = TURN_TAIL_FAN["front"]
+    for dx, color in ((-5.0, PAL["body_dark"]), (0.0, PAL["body"]), (5.0, PAL["wing_blue"])):
+        tail = [(dx - 2.0, 15.5), (dx, 24.0 + 4.0 * tail_fan), (dx + 2.0, 33.0), (dx - 4.0, 30.5), (dx - 5.0, 20.5)]
+        _turn_poly(d, tail, cx, cy, color, width=0.45, radius=1.0)
+
+
+def _paint_front_body(img, d) -> None:
+    cx, cy = _home_canvas()
+    body = [(-14.0, -14.5), (-4.0, -19.0), (4.0, -19.0), (14.0, -14.5), (16.5, -2.0), (14.0, 15.5), (6.5, 22.0), (-6.5, 22.0), (-14.0, 15.5), (-16.5, -2.0)]
+    _turn_poly(d, body, cx, cy, PAL["body"], width=0.8, radius=4.2)
+    _turn_fill(img, [(-8.0, -8.0), (0.0, -10.0), (8.0, -8.0), (10.0, 8.0), (5.0, 18.0), (-5.0, 18.0), (-10.0, 8.0)], cx, cy, (*PAL["body_light"][:3], 95), radius=3.0)
+    _turn_fill(img, [(-3.0, -14.0), (0.0, -15.0), (3.0, -14.0), (7.0, -10.0), (0.0, -5.0), (-7.0, -10.0)], cx, cy, (*PAL["wing_yellow"][:3], 140), radius=1.8)
+
+
+def _paint_front_legs(airborne: bool):
+    def paint(img, d) -> None:
+        cx, cy = _home_canvas()
+        if airborne:
+            for x in (-3.2, 3.2):
+                shin = [(x - 0.6, 11.6), (x + 0.4, 11.6), (x + 0.8, 14.4), (x - 0.2, 14.5)]
+                _turn_poly(d, shin, cx, cy, PAL["leg"], width=0.32, radius=0.6)
+                base = _turn_pt((x + 0.2, 14.2), cx, cy)
+                for spread, length in ((-0.55, 2.2), (0.0, 2.8), (0.55, 2.2)):
+                    d.line((base[0], base[1], base[0] + SS * (length if x > 0 else -length), base[1] + SS * spread), fill=PAL["talon"], width=max(1, int(SS * 0.4)))
+        else:
+            for x in (-4.5, 4.5):
+                shin = [(x - 0.7, 15.0), (x + 0.4, 15.0), (x + 0.9, 19.2), (x - 0.2, 19.3)]
+                _turn_poly(d, shin, cx, cy, PAL["leg"], width=0.35, radius=0.7)
+                base = _turn_pt((x + 0.2, 19.0), cx, cy)
+                for spread, length in ((-0.7, 2.6), (0.0, 3.2), (0.7, 2.6)):
+                    d.line((base[0], base[1], base[0] + SS * (length if x > 0 else -length), base[1] + SS * spread), fill=PAL["talon"], width=max(1, int(SS * 0.45)))
+
+    return paint
+
+
+def _paint_front_head(img, d) -> None:
+    """The front head with its beak, about the view's centre."""
+    cx, cy = _home_canvas()
+    hy = cy - 2.0 * SS
+    head = [(-11.0, -26.0), (-3.0, -29.0), (3.0, -29.0), (11.0, -26.0), (14.0, -16.0), (12.0, -3.0), (6.0, 7.0), (-6.0, 7.0), (-12.0, -3.0), (-14.0, -16.0)]
+    _turn_poly(d, head, cx, hy, PAL["head"], width=0.8, radius=4.0)
+    _turn_fill(img, [(-7.5, -22.0), (-1.5, -24.0), (1.5, -24.0), (7.5, -22.0), (10.0, -9.0), (8.0, 0.5), (4.0, 4.0), (-4.0, 4.0), (-8.0, 0.5), (-10.0, -9.0)], cx, hy, PAL["face_patch"], radius=3.0)
+    _turn_fill(img, [(-5.5, -24.0), (0.0, -25.0), (5.5, -24.0), (7.5, -17.0), (0.0, -13.0), (-7.5, -17.0)], cx, hy, (*PAL["head_light"][:3], 100), radius=2.0)
+    for sign in (-1.0, 1.0):
+        for y0, y1 in ((-14.5, -2.0), (-11.0, 1.0), (-7.0, 3.5)):
+            p0 = _turn_pt((sign * 5.2, y0), cx, hy)
+            p1 = _turn_pt((sign * 4.2, y1), cx, hy)
+            d.line((p0[0], p0[1], p1[0], p1[1]), fill=PAL["face_line"], width=max(1, int(SS * 0.26)))
+    for sign in (-1.0, 1.0):
+        ec = _turn_pt((sign * 6.0, -12.5), cx, hy)
+        ew, eh = SS * 4.4, SS * 5.0
+        d.ellipse((ec[0] - ew / 2, ec[1] - eh / 2, ec[0] + ew / 2, ec[1] + eh / 2), fill=PAL["eye"], outline=PAL["outline"], width=max(1, int(SS * 0.35)))
+        pw, ph = SS * 1.4, SS * 2.0
+        d.ellipse((ec[0] - pw / 2 + sign * SS * 0.25, ec[1] - ph / 2, ec[0] + pw / 2 + sign * SS * 0.25, ec[1] + ph / 2), fill=PAL["pupil"])
+
+    beak_open = TURN_BEAK_OPEN
+    by = cy - 6.5 * SS
+    upper = [(-4.5, -3.0), (-1.5, -6.5), (1.5, -6.5), (4.5, -3.0), (3.4, 3.8), (0.0, 9.0), (-3.4, 3.8)]
+    lower = [(-2.3, 4.2 + 2.0 * beak_open), (0.0, 7.0 + 5.5 * beak_open), (2.3, 4.2 + 2.0 * beak_open), (1.3, 11.0 + 6.5 * beak_open), (-1.3, 11.0 + 6.5 * beak_open)]
+    _turn_poly(d, upper, cx, by, PAL["beak_upper"], width=0.7, radius=1.2)
+    _turn_fill(img, [(-2.4, -1.2), (0.0, -3.0), (2.4, -1.2), (1.6, 4.2), (0.0, 6.6), (-1.6, 4.2)], cx, by, (*PAL["beak_upper_shadow"][:3], 190), radius=1.0)
+    _turn_poly(d, lower, cx, by, PAL["beak_lower"], width=0.65, radius=1.0)
+    for sign in (-1.0, 1.0):
+        n = _turn_pt((sign * 1.7, -1.5), cx, by)
+        d.ellipse((n[0] - SS * 0.35, n[1] - SS * 0.45, n[0] + SS * 0.35, n[1] + SS * 0.45), fill=PAL["outline"])
 
 
 def _render_turn_front(params: Dict[str, float]) -> Image.Image:
     img = Image.new("RGBA", (FRAME_W * SS, FRAME_H * SS), (0, 0, 0, 0))
-    draw = blending_draw(img)
     cx = (CENTER_X + params.get("root_x", 0.0)) * SS
     airborne = params.get("airborne", 0.0) > 0.5
     default_root_y = -19.0 if airborne else -0.5
     cy = (GROUND_Y + params.get("root_y", default_root_y) - 21.0) * SS
-    wing_src = params.get("near_wing_u", -24.0 if airborne else -10.0)
-    wing_base = -24.0 if airborne else -10.0
-    wing_span = 82.0 if airborne else 28.0
-    wing_lift = clamp((wing_src - wing_base) / wing_span, 0.0, 1.0)
-    beak_open = clamp(params.get("beak_open", 0.0), 0.0, 1.0)
-    tail_fan = clamp(params.get("tail_fan", 0.8), 0.0, 1.0)
+    wing_lift = _wing_lift(params, airborne)
 
-    shadow_w = SS * ((14.0 if airborne else 18.0) - 2.0 * wing_lift)
-    shadow_h = SS * (3.1 if airborne else 4.2)
-    sx, sy = (CENTER_X + params.get("root_x", 0.0)) * SS, (GROUND_Y + 0.5) * SS
-    shadow = (*PAL["shadow"][:3], 42 if airborne else PAL["shadow"][3])
-    draw.ellipse((sx - shadow_w, sy - shadow_h, sx + shadow_w, sy + shadow_h), fill=shadow)
-
-    _draw_turn_front_wing(img, draw, cx, cy, wing_lift, airborne, mirror=True)
-    _draw_turn_front_wing(img, draw, cx, cy, wing_lift, airborne, mirror=False)
-
-    for dx, color in ((-5.0, PAL["body_dark"]), (0.0, PAL["body"]), (5.0, PAL["wing_blue"])):
-        tail = [(dx - 2.0, 15.5), (dx, 24.0 + 4.0 * tail_fan), (dx + 2.0, 33.0), (dx - 4.0, 30.5), (dx - 5.0, 20.5)]
-        _turn_poly(draw, tail, cx, cy, color, width=0.45, radius=1.0)
-
-    body = [(-14.0, -14.5), (-4.0, -19.0), (4.0, -19.0), (14.0, -14.5), (16.5, -2.0), (14.0, 15.5), (6.5, 22.0), (-6.5, 22.0), (-14.0, 15.5), (-16.5, -2.0)]
-    _turn_poly(draw, body, cx, cy, PAL["body"], width=0.8, radius=4.2)
-    _turn_fill(img, [(-8.0, -8.0), (0.0, -10.0), (8.0, -8.0), (10.0, 8.0), (5.0, 18.0), (-5.0, 18.0), (-10.0, 8.0)], cx, cy, (*PAL["body_light"][:3], 95), radius=3.0)
-    _turn_fill(img, [(-3.0, -14.0), (0.0, -15.0), (3.0, -14.0), (7.0, -10.0), (0.0, -5.0), (-7.0, -10.0)], cx, cy, (*PAL["wing_yellow"][:3], 140), radius=1.8)
-
-    if airborne:
-        for x in (-3.2, 3.2):
-            shin = [(x - 0.6, 11.6), (x + 0.4, 11.6), (x + 0.8, 14.4), (x - 0.2, 14.5)]
-            _turn_poly(draw, shin, cx, cy, PAL["leg"], width=0.32, radius=0.6)
-            base = _turn_pt((x + 0.2, 14.2), cx, cy)
-            for spread, length in ((-0.55, 2.2), (0.0, 2.8), (0.55, 2.2)):
-                tx = base[0] + SS * (length if x > 0 else -length)
-                ty = base[1] + SS * spread
-                draw.line((base[0], base[1], tx, ty), fill=PAL["talon"], width=max(1, int(SS * 0.4)))
-    else:
-        for x in (-4.5, 4.5):
-            shin = [(x - 0.7, 15.0), (x + 0.4, 15.0), (x + 0.9, 19.2), (x - 0.2, 19.3)]
-            _turn_poly(draw, shin, cx, cy, PAL["leg"], width=0.35, radius=0.7)
-            base = _turn_pt((x + 0.2, 19.0), cx, cy)
-            for spread, length in ((-0.7, 2.6), (0.0, 3.2), (0.7, 2.6)):
-                tx = base[0] + SS * (length if x > 0 else -length)
-                ty = base[1] + SS * spread
-                draw.line((base[0], base[1], tx, ty), fill=PAL["talon"], width=max(1, int(SS * 0.45)))
-
-    head = [(-11.0, -26.0), (-3.0, -29.0), (3.0, -29.0), (11.0, -26.0), (14.0, -16.0), (12.0, -3.0), (6.0, 7.0), (-6.0, 7.0), (-12.0, -3.0), (-14.0, -16.0)]
-    _turn_poly(draw, head, cx, cy - 2.0 * SS, PAL["head"], width=0.8, radius=4.0)
-    _turn_fill(img, [(-7.5, -22.0), (-1.5, -24.0), (1.5, -24.0), (7.5, -22.0), (10.0, -9.0), (8.0, 0.5), (4.0, 4.0), (-4.0, 4.0), (-8.0, 0.5), (-10.0, -9.0)], cx, cy - 2.0 * SS, PAL["face_patch"], radius=3.0)
-    _turn_fill(img, [(-5.5, -24.0), (0.0, -25.0), (5.5, -24.0), (7.5, -17.0), (0.0, -13.0), (-7.5, -17.0)], cx, cy - 2.0 * SS, (*PAL["head_light"][:3], 100), radius=2.0)
-    for sign in (-1.0, 1.0):
-        for y0, y1 in ((-14.5, -2.0), (-11.0, 1.0), (-7.0, 3.5)):
-            p0 = _turn_pt((sign * 5.2, y0), cx, cy - 2.0 * SS)
-            p1 = _turn_pt((sign * 4.2, y1), cx, cy - 2.0 * SS)
-            draw.line((p0[0], p0[1], p1[0], p1[1]), fill=PAL["face_line"], width=max(1, int(SS * 0.26)))
-    for sign in (-1.0, 1.0):
-        ec = _turn_pt((sign * 6.0, -12.5), cx, cy - 2.0 * SS)
-        ew, eh = SS * 4.4, SS * 5.0
-        draw.ellipse((ec[0] - ew / 2, ec[1] - eh / 2, ec[0] + ew / 2, ec[1] + eh / 2), fill=PAL["eye"], outline=PAL["outline"], width=max(1, int(SS * 0.35)))
-        pw, ph = SS * 1.4, SS * 2.0
-        draw.ellipse((ec[0] - pw / 2 + sign * SS * 0.25, ec[1] - ph / 2, ec[0] + pw / 2 + sign * SS * 0.25, ec[1] + ph / 2), fill=PAL["pupil"])
-
-    upper = [(-4.5, -3.0), (-1.5, -6.5), (1.5, -6.5), (4.5, -3.0), (3.4, 3.8), (0.0, 9.0), (-3.4, 3.8)]
-    lower = [(-2.3, 4.2 + 2.0 * beak_open), (0.0, 7.0 + 5.5 * beak_open), (2.3, 4.2 + 2.0 * beak_open), (1.3, 11.0 + 6.5 * beak_open), (-1.3, 11.0 + 6.5 * beak_open)]
-    _turn_poly(draw, upper, cx, cy - 6.5 * SS, PAL["beak_upper"], width=0.7, radius=1.2)
-    _turn_fill(img, [(-2.4, -1.2), (0.0, -3.0), (2.4, -1.2), (1.6, 4.2), (0.0, 6.6), (-1.6, 4.2)], cx, cy - 6.5 * SS, (*PAL["beak_upper_shadow"][:3], 190), radius=1.0)
-    _turn_poly(draw, lower, cx, cy - 6.5 * SS, PAL["beak_lower"], width=0.65, radius=1.0)
-    for sign in (-1.0, 1.0):
-        n = _turn_pt((sign * 1.7, -1.5), cx, cy - 6.5 * SS)
-        draw.ellipse((n[0] - SS * 0.35, n[1] - SS * 0.45, n[0] + SS * 0.35, n[1] + SS * 0.45), fill=PAL["outline"])
+    _View(img, cx, (GROUND_Y + 0.5) * SS).put(_turn_shadow(airborne), (0.0, 0.0), "turn_shadow")
+    # Both wings are one raster: the right wing, and it mirrored for the left.
+    shoulder = (3.0, -7.1)
+    wing = _piece(("front_wing", airborne), lambda img_, d: _draw_turn_front_wing(img_, d, *_home_canvas(), 0.5, airborne), shoulder)
+    turn = -TURN_WING_DEGREES[airborne] * (wing_lift - 0.5)
+    _View(img, cx, cy, mirror=True).put(wing, shoulder, "turn_far_wing", turn)
+    _View(img, cx, cy).put(wing, shoulder, "turn_near_wing", turn)
+    view = _View(img, cx, cy)
+    view.put(_piece(("front_tail",), _paint_front_tail), (0.0, 0.0), "turn_tail")
+    view.put(_piece(("front_body",), _paint_front_body), (0.0, 0.0), "turn_body")
+    view.put(_piece(("front_legs", airborne), _paint_front_legs(airborne)), (0.0, 0.0), "turn_legs")
+    view.put(_piece(("front_head",), _paint_front_head), (0.0, 0.0), "turn_head")
     return img
 
 
