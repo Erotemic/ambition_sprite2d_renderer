@@ -328,8 +328,13 @@ def _downsample(img: Image.Image) -> Image.Image:
 
 #: The torso piece's root inside its canvas, and the head pieces' centre.
 TORSO_ORIGIN = (48.0, 168.0)
+#: The hump piece keeps the torso above this line (torso units, from the root).
+HUMP_CUT = -112.0
 HEAD_ORIGIN = (34.0, 52.0)
 HEAD_SIZE = (118.0, 100.0)
+#: Where the cap's flap and the chin turn (head units, from its centre).
+FLAP_HINGE = (33.0, -20.0)
+JAW_HINGE = (-2.0, 23.0)
 #: Fixed leg bone lengths (work units): hip to knee, knee to foot.
 NEAR_THIGH, NEAR_SHIN = 40.0, 17.0
 FAR_THIGH, FAR_SHIN = 36.0, 21.0
@@ -357,6 +362,14 @@ def _bone(img: Image.Image, a: Point, b: Point, length: float, width: float, rim
 
     part = _rig_piece(("bone", length, width, rim, fill), (length + 2 * pad, 2 * pad), (pad, pad), paint)
     _put(img, part, a, name, math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])))
+
+
+#: An arm bone's lengths are whole steps of this many work units.
+ARM_STEP = 8.0
+
+
+def _arm_length(a: Point, b: Point) -> float:
+    return max(ARM_STEP, round(math.dist(a, b) / ARM_STEP) * ARM_STEP)
 
 
 def _leg_chain(hip: Point, foot: Point, thigh: float, shin: float, bend: float) -> Tuple[Point, Point]:
@@ -410,29 +423,32 @@ class WeirdHermitRenderer:
         self._draw_arm(img, P, pose, front=True)
         # The expressive profile is always the top body layer.
         self._draw_head(img, P, pose)
-        if pose.jab > 0.2 or pose.grab > 0.2 or pose.sneeze > 0.15:
-            # The effects change every frame: one draw.
-            layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-            fx = blending_draw(layer)
-            if pose.jab > 0.2:
-                self._draw_jab_fx(fx, P, pose)
-            if pose.grab > 0.2:
-                self._draw_grab_fx(fx, P, pose)
-            if pose.sneeze > 0.15:
-                self._draw_sneeze_fx(fx, P, pose)
-            box = layer.getbbox()
-            if box is not None:
-                shape_rig.place(img, (layer.crop(box), (0.0, 0.0)), (float(box[0]), float(box[1])), 0.0, "effects")
+        # Each effect is one piece that only moves (and fades).
+        if pose.jab > 0.2:
+            _put(img, _rig_piece(("jab_fx",), (46, 24), (21, 19), lambda d: self._paint_jab_fx(d, (21, 19))), P(109 + pose.near_reach * 0.35, -48), "jab_fx")
+        if pose.grab > 0.2:
+            _put(img, _rig_piece(("grab_fx",), (84, 64), (42, 32), lambda d: self._paint_grab_fx(d, (42, 32))), P(105 + pose.near_reach * 0.25, -52), "grab_fx")
+        if pose.sneeze > 0.15:
+            origin = P(76, -154)
+            _put(img, _rig_piece(("sneeze_plume",), (104, 40), (6, 22), lambda d: self._paint_sneeze_plume(d, (6, 22))), origin, "sneeze_plume")
+            puffs = _rig_piece(("sneeze_puffs",), (104, 40), (6, 22), lambda d: self._paint_sneeze_puffs(d, (6, 22)))
+            rigdoc.blit_rotated(img, puffs[0], puffs[1], (origin[0] * SUPER, origin[1] * SUPER), 0.0, round((100 + pose.sneeze * 70) / 170, 3), part_name="sneeze_puffs")
         return _downsample(img)
 
     def _draw_torso(self, img, root, tilt, pose):
-        """The torso as one piece per crouch (whole units), turned with the tilt."""
-        crouch = float(round(pose.crouch))
-        part = _rig_piece(("torso", crouch), (104, 172), TORSO_ORIGIN, lambda d: self._paint_torso(d, crouch))
-        _put(img, part, root, "torso", tilt)
+        """The torso as two pieces turned with the tilt: the body, and its
+        hunched back (above ``HUMP_CUT``) raised by the crouch."""
+        lower = _rig_piece(("torso",), (104, 172), TORSO_ORIGIN, lambda d: self._paint_torso(d, upper=False))
+        _put(img, lower, root, "torso", tilt)
+        upper = _rig_piece(("hump",), (104, 172), TORSO_ORIGIN, lambda d: self._paint_torso(d, upper=True))
+        lift = _rot_local(0.0, -pose.crouch, tilt)
+        _put(img, upper, (root[0] + lift[0], root[1] + lift[1]), "hump", tilt)
 
-    def _paint_torso(self, draw, crouch):
-        """The torso in its own unturned frame, the root at ``TORSO_ORIGIN``."""
+    def _paint_torso(self, draw, upper: bool):
+        """The torso in its own unturned frame, the root at ``TORSO_ORIGIN``:
+        the hump (``upper``, only above ``HUMP_CUT``) or the body without
+        the marks the hump carries."""
+        crouch = 0.0
 
         def P(x: float, y: float) -> Point:
             return (TORSO_ORIGIN[0] + x, TORSO_ORIGIN[1] + y)
@@ -477,12 +493,18 @@ class WeirdHermitRenderer:
         ]
         _poly(draw, back_plane, SKIN_SHADOW, outline=None, width=0)
 
-        # Sparse age marks, ribs, and navel: intrinsic anatomy, not costume.
-        _line(draw, [P(-1, -118), P(11, -121), P(19, -113)], SKIN_DEEP, 1.0)
+        if upper:
+            # The age mark rides the hump; nothing below the cut is kept.
+            _line(draw, [P(-1, -118), P(11, -121), P(19, -113)], SKIN_DEEP, 1.0)
+            image = draw._image
+            image.paste((0, 0, 0, 0), (0, _s(TORSO_ORIGIN[1] + HUMP_CUT), image.width, image.height))
+            return
+
+        # Sparse ribs, a scar and the navel: intrinsic anatomy, not costume.
         _line(draw, [P(-3, -108), P(10, -105)], SKIN_SHADOW, 0.75)
         _line(draw, [P(1, -91), P(12, -87)], SKIN_SHADOW, 0.75)
         _ellipse(draw, *P(21, -76), 2.4, 3.1, SKIN_DEEP, OUTLINE_SOFT, 0.35)
-        _poly(draw, [P(-2, -110), P(5, -117), P(12, -108), P(6, -100)], SKIN_SHADOW, OUTLINE_SOFT, 0.45)
+        _poly(draw, [P(-2, -105), P(5, -112), P(12, -103), P(6, -95)], SKIN_SHADOW, OUTLINE_SOFT, 0.45)
         _ellipse(draw, *P(22, -99), 2.8, 3.5, SKIN_SHADOW, OUTLINE_SOFT, 0.35)
 
         # Retain the original angular shorts / loincloth silhouette, but give it
@@ -506,22 +528,26 @@ class WeirdHermitRenderer:
         _line(draw, [P(-5, -32), P(-13, -24)], CLOTH_LIGHT, 0.45)
 
     def _draw_head(self, img, P, pose):
-        """Cap (one piece per swing), skull and nose, chin (one per jaw) and the
-        face (one per eye state), upright at the head's centre."""
+        """Upright at the head's centre: the cap, its flap turned by the
+        swing about its hinge, the skull and nose, the chin turned open by
+        the jaw about its hinge, the face and one eye piece per eye state."""
         at = P(11, -158 - pose.crouch * 0.35 + pose.head_tilt * 0.14)
-        swing = float(round(pose.cap_swing / 2.0) * 2)
-        jaw = round(pose.jaw * 50) / 50
         eyes = "x" if pose.x_eyes else ("blink" if pose.blink else "open")
-        for name, key, paint in (
-            ("cap", ("cap", swing), lambda d: self._paint_cap(d, swing)),
-            ("skull", ("skull",), lambda d: self._paint_skull(d)),
-            ("chin", ("chin", jaw), lambda d: self._paint_chin(d, jaw)),
-            ("face", ("face", eyes), lambda d: self._paint_face(d, eyes)),
-        ):
-            _put(img, _rig_piece(key, HEAD_SIZE, HEAD_ORIGIN, paint), at, name)
-
-    def _paint_cap(self, draw, swing):
         hx, hy = HEAD_ORIGIN
+        _put(img, _rig_piece(("cap",), HEAD_SIZE, HEAD_ORIGIN, lambda d: self._paint_cap(d)), at, "cap")
+        fx, fy = FLAP_HINGE
+        flap = _rig_piece(("flap",), HEAD_SIZE, (hx + fx, hy + fy), lambda d: self._paint_flap(d))
+        _put(img, flap, (at[0] + fx, at[1] + fy), "flap", pose.cap_swing * 0.5)
+        _put(img, _rig_piece(("skull",), HEAD_SIZE, HEAD_ORIGIN, lambda d: self._paint_skull(d)), at, "skull")
+        cx, cy = JAW_HINGE
+        chin = _rig_piece(("chin",), HEAD_SIZE, (hx + cx, hy + cy), lambda d: self._paint_chin(d))
+        _put(img, chin, (at[0] + cx, at[1] + cy), "chin", pose.jaw * 30.0)
+        _put(img, _rig_piece(("face",), HEAD_SIZE, HEAD_ORIGIN, lambda d: self._paint_face(d)), at, "face")
+        _put(img, _rig_piece(("eye", eyes), (24, 20), (4, 14), lambda d: self._paint_eye(d, (4, 14), eyes)), at, "eye")
+
+    def _paint_cap(self, draw):
+        hx, hy = HEAD_ORIGIN
+        swing = 0.0
 
         # Preserve the original floppy cloth cap / head rag.  The pointed flap
         # is the secondary silhouette after the nose.
@@ -543,6 +569,11 @@ class WeirdHermitRenderer:
             (hx - 4, hy - 30),
         ]
         _poly(draw, cap_light, CLOTH_LIGHT, outline=None, width=0)
+
+    def _paint_flap(self, draw):
+        """The cap's flap, at rest (it turns about ``FLAP_HINGE``)."""
+        hx, hy = HEAD_ORIGIN
+        swing = 0.0
         flap = [
             (hx + 31, hy - 34),
             (hx + 73 + swing * 0.34, hy - 38),
@@ -604,8 +635,10 @@ class WeirdHermitRenderer:
         _circle(draw, (hx + 64, hy + 4), 2.2, SKIN_DEEP, SKIN_DEEP, 0.2)
         _line(draw, [(hx + 18, hy - 8), (hx + 24, hy + 4)], SKIN_DEEP, 0.75)
 
-    def _paint_chin(self, draw, jaw):
+    def _paint_chin(self, draw):
+        """The chin closed (it turns open about ``JAW_HINGE``)."""
         hx, hy = HEAD_ORIGIN
+        jaw = 0.0
         chin = [
             (hx + 8, hy + 17),
             (hx + 34, hy + 19 + jaw * 18),
@@ -615,7 +648,8 @@ class WeirdHermitRenderer:
         ]
         _poly(draw, chin, SKIN_SHADOW, OUTLINE, 0.9)
 
-    def _paint_face(self, draw, eyes):
+    def _paint_face(self, draw):
+        """Moustache, ear, brow and wrinkles (the eye is its own piece)."""
         hx, hy = HEAD_ORIGIN
         # Split moustache keeps the original ratty expression but reads at game
         # scale better than one straight line.
@@ -631,6 +665,13 @@ class WeirdHermitRenderer:
         _ellipse(draw, hx - 23, hy - 1, 6.5, 10.5, SKIN_SHADOW, OUTLINE, 0.9)
         _line(draw, [(hx - 24, hy - 3), (hx - 20, hy + 2), (hx - 23, hy + 7)], SKIN_DEEP, 0.55)
         _line(draw, [(hx - 8, hy - 15), (hx + 11, hy - 18)], MOUSTACHE, 1.45)
+        _line(draw, [(hx - 3, hy + 5), (hx + 10, hy + 9)], SKIN_DEEP, 0.75)
+        _line(draw, [(hx - 4, hy + 13), (hx + 8, hy + 17)], SKIN_DEEP, 0.65)
+        _line(draw, [(hx - 7, hy + 20), (hx + 5, hy + 23)], SKIN_SHADOW, 0.55)
+
+    def _paint_eye(self, draw, origin, eyes):
+        """The eye, its piece's ``origin`` at the head's centre."""
+        hx, hy = origin
         if eyes == "x":
             _line(draw, [(hx + 1, hy - 10), (hx + 12, hy + 0)], OUTLINE, 1.15)
             _line(draw, [(hx + 1, hy + 0), (hx + 12, hy - 10)], OUTLINE, 1.15)
@@ -640,9 +681,6 @@ class WeirdHermitRenderer:
             _ellipse(draw, hx + 8, hy - 8, 4.3, 3.0, EYE_WHITE, OUTLINE, 0.65)
             _circle(draw, (hx + 9.2, hy - 8.0), 1.3, EYE, EYE, 0.2)
             _circle(draw, (hx + 9.7, hy - 8.6), 0.35, SKIN_LIGHT, None, 0)
-        _line(draw, [(hx - 3, hy + 5), (hx + 10, hy + 9)], SKIN_DEEP, 0.75)
-        _line(draw, [(hx - 4, hy + 13), (hx + 8, hy + 17)], SKIN_DEEP, 0.65)
-        _line(draw, [(hx - 7, hy + 20), (hx + 5, hy + 23)], SKIN_SHADOW, 0.55)
 
     def _draw_arm(self, img, P, pose, front: bool):
         """An arm: two bones (their lengths follow the authored stretch of the
@@ -662,10 +700,13 @@ class WeirdHermitRenderer:
         skin = SKIN if front else SKIN_SHADOW
         upper_w = 8.4 if front else 6.8
         lower_w = 7.4 if front else 5.8
-        _bone(img, shoulder, elbow, float(round(math.dist(shoulder, elbow))), upper_w, 3.0, skin, f"{side}_upper_arm")
-        _bone(img, elbow, hand, float(round(math.dist(elbow, hand))), lower_w, 2.8, skin, f"{side}_forearm")
+        # The arm stretches: each bone takes a length in steps of
+        # ``ARM_STEP``; the upper arm grows from the shoulder and the forearm
+        # from the hand, and the elbow covers where they miss each other.
+        _bone(img, shoulder, elbow, _arm_length(shoulder, elbow), upper_w, 3.0, skin, f"{side}_upper_arm")
+        _bone(img, hand, elbow, _arm_length(elbow, hand), lower_w, 2.8, skin, f"{side}_forearm")
         _put(img, _rig_piece(("elbow", front), (20, 22), (10, 11), lambda d: self._paint_elbow(d, (10, 11), front)), elbow, f"{side}_elbow")
-        reach_q = float(round(reach / 4.0) * 4) if front else 0.0
+        reach_q = float(round(reach / 14.0) * 14) if front else 0.0
         _put(img, _rig_piece(("hand", front, reach_q), (44, 22), (8, 10), lambda d: self._paint_hand(d, (8, 10), front, reach_q)), hand, f"{side}_hand")
 
     def _paint_elbow(self, draw, elbow, front: bool):
@@ -735,23 +776,20 @@ class WeirdHermitRenderer:
         for dx in (7, 14, 21):
             _line(draw, [(foot[0] + dx, foot[1] + 3), (foot[0] + dx + 4, foot[1] + 8)], OUTLINE_SOFT, 0.6)
 
-    def _draw_jab_fx(self, draw, P, pose):
-        c = P(109 + pose.near_reach * 0.35, -48)
+    def _paint_jab_fx(self, draw, c):
         # Two attached scratch-lines make the finger extension legible without
         # turning the attack into a held weapon.
         _line(draw, [(c[0] - 17, c[1]), (c[0] + 20, c[1] - 2)], OUTLINE, 3.1)
         _line(draw, [(c[0] - 17, c[1]), (c[0] + 20, c[1] - 2)], (255, 235, 180, 170), 1.5)
         _line(draw, [(c[0] - 7, c[1] - 8), (c[0] + 13, c[1] - 15)], (255, 235, 180, 125), 1.1)
 
-    def _draw_grab_fx(self, draw, P, pose):
-        c = P(105 + pose.near_reach * 0.25, -52)
+    def _paint_grab_fx(self, draw, c):
         box = (_s(c[0] - 38), _s(c[1] - 28), _s(c[0] + 38), _s(c[1] + 28))
         draw.arc(box, 200, 340, fill=OUTLINE, width=_s(4.2))
         draw.arc(box, 200, 340, fill=(255, 230, 160, 155), width=_s(2.2))
         _line(draw, [(c[0] - 23, c[1] + 13), (c[0] - 10, c[1] + 4)], (255, 230, 160, 135), 1.0)
 
-    def _draw_sneeze_fx(self, draw, P, pose):
-        origin = P(76, -154)
+    def _paint_sneeze_plume(self, draw, origin):
         plume = [
             (origin[0], origin[1]),
             (origin[0] + 18, origin[1] - 4),
@@ -761,8 +799,11 @@ class WeirdHermitRenderer:
         ]
         _line(draw, plume, OUTLINE, 4.6)
         _line(draw, plume, (*CURSE[:3], 170), 2.6)
+
+    def _paint_sneeze_puffs(self, draw, origin):
+        """The puffs at the sneeze's peak (placed fading with its strength)."""
         for i, (dx, dy, r) in enumerate([(24, -5, 9), (43, -10, 13), (63, -5, 17), (83, 4, 12)]):
-            alpha = int(100 + pose.sneeze * 70 - i * 10)
+            alpha = int(170 - i * 10)
             _ellipse(
                 draw,
                 origin[0] + dx,

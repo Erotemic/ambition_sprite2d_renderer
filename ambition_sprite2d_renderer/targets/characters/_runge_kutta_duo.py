@@ -15,11 +15,12 @@ from typing import List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
-from ...authoring import rigdoc, shape_rig
+from ...authoring import rigdoc
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.portrait import FaceGuide, PortraitClip, render_framed_portrait, write_portrait_sheet
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ambition_sprite2d_renderer.core.draw import blending_draw
+from . import _fx_piece
 from . import _solo_shape_rig as _rig
 
 RGBA = Tuple[int, int, int, int]
@@ -534,50 +535,6 @@ def _pose(style: DuoStyle, animation: str, frame_idx: int, frame_count: int) -> 
     return pose
 
 
-def _draw_torso(draw: ImageDraw.ImageDraw, style: DuoStyle, pose: Pose) -> None:
-    chest_top = pose.neck[1] + 5.0
-    coat_left = 54.0 if style.body_kind == "broad" else 56.0
-    coat_right = 91.0 if style.body_kind == "broad" else 89.0
-    hem_y = max(pose.near_ankle[1], pose.far_ankle[1]) - 1.5
-    coat = [
-        (coat_left, chest_top), (63.0, pose.neck[1] + 1.5), (81.0, pose.neck[1] + 1.2), (coat_right, chest_top + 2.0),
-        (96.0 + pose.coat_swing * 10.0, 88.0), (89.0 + pose.coat_swing * 5.0, hem_y),
-        (76.0, hem_y), (74.0, 92.0), (69.0, hem_y), (57.0, hem_y), (49.0, 88.0),
-    ]
-    _poly(draw, coat, fill=style.coat, outline=OUTLINE, width=1.1)
-    shirt = [
-        (63.5, pose.neck[1] + 3.0), (78.5, pose.neck[1] + 2.5), (82.0, 73.0), (74.0, 88.0), (68.0, 88.0), (61.0, 73.0),
-    ]
-    _poly(draw, shirt, fill=style.shirt, outline=OUTLINE_SOFT, width=0.7)
-    left_lapel = [(59.5, pose.neck[1] + 4.0), (69.5, pose.neck[1] + 4.0), (67.2, 75.0), (59.2, 82.0)]
-    right_lapel = [(81.2, pose.neck[1] + 4.0), (88.2, pose.neck[1] + 6.0), (82.6, 81.0), (74.2, 75.0)]
-    _poly(draw, left_lapel, fill=style.coat_light, outline=OUTLINE_SOFT, width=0.7)
-    _poly(draw, right_lapel, fill=style.coat_light, outline=OUTLINE_SOFT, width=0.7)
-
-    apron = [
-        (66.0, 77.0), (82.0, 77.0), (86.0, hem_y - 2.0), (62.0, hem_y - 1.0),
-    ]
-    if style.trim == "angled":
-        apron = [(67.0, 77.0), (81.0, 77.0), (84.0, hem_y - 4.0), (62.0, hem_y - 1.5), (64.0, 98.0)]
-    _poly(draw, apron, fill=style.apron, outline=OUTLINE, width=0.85)
-    center_fold = [(72.0, 78.0), (74.5, hem_y - 1.0)]
-    _line(draw, center_fold, style.apron_shade, 1.0)
-    if style.trim == "strapped":
-        _line(draw, [(66.8, 78.0), (58.5, 58.0)], style.strap, 1.4)
-        _line(draw, [(80.8, 78.0), (88.5, 58.0)], style.strap, 1.4)
-    else:
-        _line(draw, [(68.0, 78.0), (61.0, 61.0)], style.strap, 1.3)
-        _line(draw, [(79.5, 78.0), (87.0, 61.0)], style.strap, 1.3)
-    _disc(draw, (74.0, 90.0), 2.6, style.accent, outline=OUTLINE_SOFT, width=0.5)
-
-    collar = [(65.0, pose.neck[1] + 1.0), (72.0, pose.neck[1] + 6.0), (79.0, pose.neck[1] + 1.0), (74.0, pose.neck[1] - 0.8), (70.0, pose.neck[1] - 0.6)]
-    _poly(draw, collar, fill=style.accent_light, outline=OUTLINE_SOFT, width=0.6)
-
-    if pose.glyphs > 0.02:
-        _line(draw, [(97.0, 63.0), (101.0, 59.0), (106.0, 59.0)], _fade(style.accent_light, pose.glyphs), 1.0)
-        _line(draw, [(98.0, 68.0), (101.0, 66.0), (104.0, 68.0)], _fade(GLOW_AMBER, pose.glyphs), 0.9)
-
-
 def _draw_hand(draw: ImageDraw.ImageDraw, style: DuoStyle, center: Point, mode: str, far: bool) -> None:
     fill = style.glove_light if not far else style.glove
     outline = OUTLINE_SOFT if far else OUTLINE
@@ -603,150 +560,92 @@ def _draw_hand(draw: ImageDraw.ImageDraw, style: DuoStyle, center: Point, mode: 
         _ellipse(draw, center, 3.3, 3.0, fill=fill, outline=outline, width=0.7)
 
 
-def _draw_head(draw: ImageDraw.ImageDraw, style: DuoStyle, pose: Pose, neck: bool = True) -> None:
-    if neck:
-        _poly(draw, [(67.2, pose.neck[1] - 1.0), (77.0, pose.neck[1] - 1.0), (78.0, pose.neck[1] + 8.0), (66.0, pose.neck[1] + 8.0)], fill=SKIN_SHADE, outline=OUTLINE_SOFT, width=0.7)
-    if style.head_kind == "square":
-        face = [(60.5, pose.head[1] - 4.0), (66.0, pose.head[1] - 8.6), (78.0, pose.head[1] - 8.8), (84.0, pose.head[1] - 4.2), (84.2, pose.head[1] + 7.5), (79.2, pose.head[1] + 13.0), (65.2, pose.head[1] + 13.0), (59.8, pose.head[1] + 7.8)]
-    else:
-        face = [(61.0, pose.head[1] - 4.5), (66.2, pose.head[1] - 8.8), (77.6, pose.head[1] - 8.4), (82.8, pose.head[1] - 4.2), (84.2, pose.head[1] + 6.2), (81.4, pose.head[1] + 12.0), (72.0, pose.head[1] + 14.0), (63.2, pose.head[1] + 12.0), (59.8, pose.head[1] + 6.4)]
-    _poly(draw, face, fill=SKIN_BASE, outline=OUTLINE, width=1.0)
-
-    if style.head_kind == "swept":
-        hair = [(60.2, pose.head[1] + 0.0), (61.2, pose.head[1] - 7.0), (69.0, pose.head[1] - 11.4), (79.0, pose.head[1] - 10.4), (84.5, pose.head[1] - 4.2), (84.0, pose.head[1] + 2.6), (80.0, pose.head[1] + 1.0), (73.0, pose.head[1] - 0.6), (67.0, pose.head[1] - 1.2), (62.0, pose.head[1] + 1.5)]
-        _poly(draw, hair, fill=style.hair, outline=OUTLINE, width=1.0)
-        _line(draw, [(65.0, pose.head[1] - 5.2), (76.0, pose.head[1] - 8.0), (82.0, pose.head[1] - 1.5)], style.hair_light, 1.0)
-    else:
-        hair = [(60.0, pose.head[1] + 0.0), (61.5, pose.head[1] - 6.8), (68.0, pose.head[1] - 10.6), (77.5, pose.head[1] - 10.2), (83.5, pose.head[1] - 5.2), (84.0, pose.head[1] + 1.5), (79.0, pose.head[1] - 0.8), (69.0, pose.head[1] - 1.8), (62.0, pose.head[1] + 1.6)]
-        _poly(draw, hair, fill=style.hair, outline=OUTLINE, width=1.0)
-        for x in (64.5, 69.0, 73.5, 78.0):
-            _line(draw, [(x, pose.head[1] - 9.0), (x + 1.2, pose.head[1] - 2.0)], style.hair_light, 0.8)
-
-    brow = pose.brow * 1.5
-    narrow = 0.8 + pose.eye_narrow * 1.8 + pose.blink * 2.6
-    _line(draw, [(65.5, pose.head[1] - 0.5 - brow), (70.5, pose.head[1] - 1.8 - brow * 0.3)], style.hair_deep, 1.2)
-    _line(draw, [(73.7, pose.head[1] - 1.7 - brow * 0.3), (79.2, pose.head[1] - 0.6 - brow)], style.hair_deep, 1.2)
-    _ellipse(draw, (68.0, pose.head[1] + 1.8), 3.0, max(0.4, 2.0 - narrow), EYE_WHITE, outline=OUTLINE_SOFT, width=0.4)
-    _ellipse(draw, (76.2, pose.head[1] + 1.7), 3.0, max(0.4, 2.0 - narrow), EYE_WHITE, outline=OUTLINE_SOFT, width=0.4)
-    if pose.blink < 0.9:
-        _disc(draw, (68.2, pose.head[1] + 1.9), 0.82, EYE, outline=None)
-        _disc(draw, (76.0, pose.head[1] + 1.8), 0.82, EYE, outline=None)
-    else:
-        _line(draw, [(65.2, pose.head[1] + 1.8), (71.0, pose.head[1] + 1.8)], EYE, 0.7)
-        _line(draw, [(73.4, pose.head[1] + 1.7), (79.0, pose.head[1] + 1.7)], EYE, 0.7)
-
-    _line(draw, [(72.5, pose.head[1] + 0.6), (71.0, pose.head[1] + 5.0), (72.8, pose.head[1] + 6.2)], SKIN_DEEP, 0.7)
-
-    if style.moustache:
-        mustache = [(66.0, pose.head[1] + 7.8), (71.0, pose.head[1] + 6.8), (78.0, pose.head[1] + 7.8), (77.0, pose.head[1] + 9.4), (67.0, pose.head[1] + 9.4)]
-        _poly(draw, mustache, fill=style.hair, outline=OUTLINE_SOFT, width=0.5)
-        mouth_y = pose.head[1] + 10.0
-    else:
-        mouth_y = pose.head[1] + 8.5
-    _arc(draw, (72.0, mouth_y), 4.0, 2.2 + pose.mouth * 2.4, 20, 160, MOUTH, 1.0)
-    if style.beard:
-        beard = [(63.2, pose.head[1] + 8.4), (72.0, pose.head[1] + 15.2 + pose.beard_sway), (81.2, pose.head[1] + 8.8), (78.0, pose.head[1] + 11.0), (66.5, pose.head[1] + 11.0)]
-        _poly(draw, beard, fill=style.hair, outline=OUTLINE, width=0.8)
-    _ellipse(draw, (83.2, pose.head[1] + 4.0), 1.7, 2.8, SKIN_SHADE, outline=OUTLINE_SOFT, width=0.4)
-
-
-def _draw_effects_back(draw: ImageDraw.ImageDraw, style: DuoStyle, pose: Pose) -> None:
-    if pose.converge > 0.02:
-        center = (72.0, 69.0)
-        _arc(draw, center, 23.0, 28.0, 160, 355, _fade(style.accent_light, pose.converge), 1.8)
-        _arc(draw, center, 15.0, 20.0, 190, 28, _fade(GLOW_VIOLET, pose.converge * 0.8), 1.2)
-        for rad, phase, col in ((23.0, 0.0, GLOW_AMBER), (18.0, 120.0, style.accent), (14.5, 240.0, GLOW_TEAL)):
-            ang = math.radians(pose.converge * 240.0 + phase)
-            p = (center[0] + math.cos(ang) * rad, center[1] + math.sin(ang) * rad * 0.8)
-            _disc(draw, p, 1.8, _fade(col, pose.converge), outline=OUTLINE_SOFT, width=0.4)
-    if pose.kernel > 0.02:
-        c = (112.0, 52.0)
-        outer = [_offset(c, -12.0, -12.0), _offset(c, 12.0, -12.0), _offset(c, 12.0, 12.0), _offset(c, -12.0, 12.0)]
-        inner = [_offset(c, -7.0, -7.0), _offset(c, 7.0, -7.0), _offset(c, 7.0, 7.0), _offset(c, -7.0, 7.0)]
-        _poly(draw, outer, fill=None, outline=_fade(style.accent_light, pose.kernel), width=1.4)
-        _poly(draw, inner, fill=None, outline=_fade(GLOW_AMBER, pose.kernel * 0.8), width=1.0)
-        _line(draw, [(_offset(c, -16.0, 0.0)), (_offset(c, -12.0, 0.0))], _fade(GLOW_TEAL, pose.kernel), 1.0)
-        _line(draw, [(_offset(c, 12.0, 0.0)), (_offset(c, 16.0, 0.0))], _fade(GLOW_TEAL, pose.kernel), 1.0)
-    if pose.slope > 0.02:
-        x0, y0 = 40.0, 108.0
-        step = [(x0, y0), (x0 + 6.0, y0), (x0 + 6.0, y0 - 6.0), (x0 + 12.0, y0 - 6.0), (x0 + 12.0, y0 - 12.0), (x0 + 18.0, y0 - 12.0)]
-        _line(draw, step, _fade(style.accent_light, pose.slope), 1.5)
-
-
-def _draw_effects_front(draw: ImageDraw.ImageDraw, style: DuoStyle, pose: Pose) -> None:
-    if pose.stage > 0.02:
-        start = _offset(pose.near_hand, 0.0, -1.0)
-        end = _offset(start, 14.0 + 18.0 * pose.stage, 2.0 + 2.0 * pose.stage)
-        _line(draw, [start, end], _fade(GLOW_AMBER, pose.stage), 3.2)
-        _line(draw, [start, end], _fade(style.accent_deep, pose.stage * 0.8), 1.0)
-        impact = _offset(end, 4.0, 2.0)
-        _line(draw, [_offset(impact, -4.0, 0.0), _offset(impact, 4.0, 0.0)], _fade(GLOW_RED, pose.stage), 1.0)
-        _line(draw, [_offset(impact, 0.0, -4.0), _offset(impact, 0.0, 4.0)], _fade(GLOW_RED, pose.stage), 1.0)
-    if pose.slope > 0.02:
-        for idx, yoff in enumerate((-7.0, 0.0, 7.0)):
-            start = _offset(pose.near_hand, -1.0, yoff)
-            pts = [start, _offset(start, 8.0, 0.0), _offset(start, 8.0, -5.0), _offset(start, 16.0, -5.0), _offset(start, 16.0, -10.0), _offset(start, 24.0, -10.0)]
-            _line(draw, pts, _fade(style.accent_light if idx == 1 else GLOW_TEAL, pose.slope), 1.2 if idx != 1 else 1.7)
-    if pose.block > 0.02:
-        c = _offset(pose.near_hand, 8.0, -1.0)
-        _arc(draw, c, 13.0, 15.0, 250, 110, _fade(style.accent_light, pose.block), 2.0)
-        _arc(draw, c, 9.0, 11.0, 250, 110, _fade(GLOW_TEAL, pose.block * 0.75), 1.0)
-    if pose.taunt > 0.02:
-        tip = _offset(pose.head, 16.0, -1.5)
-        _line(draw, [_offset(tip, -4.0, 0.0), tip, _offset(tip, -4.0, 3.0)], _fade(GLOW_RED, pose.taunt), 1.2)
-    if pose.cheer > 0.02:
-        _arc(draw, (72.0, 22.0), 18.0, 5.0, 0, 359, _fade(GLOW_AMBER, pose.cheer), 1.4)
-
-
-# --- Drawn as a rig (``shape_rig``): each rigid piece is painted once at its
-# rest place and moved into the frame; limbs are bones of a fixed length. ---
+# --- Drawn as a rig: each rigid piece is painted ONCE at its rest place and
+# carried into the frame (moved, turned, mirrored). The coat and the eyes are
+# symmetric about ``_AXIS``: their left half is painted and the right half is
+# the same raster mirrored. Effects are pieces painted at full strength and
+# placed with their strength as the draw's opacity. ---
 
 _CANVAS = (FRAME_W * SUPER, FRAME_H * SUPER)
+#: Pieces are cut on a grid of this many canvas pixels, so a mirrored copy
+#: reduces to the exact mirror of the reduced piece.
+_GRID = 8
+#: The mirror axis of the coat and the face (frame pixels, on the grid).
+_AXIS = 72.0
+#: The coat's upper half is cut at ``_WAIST_CUT`` (it rides the neck); the
+#: skirt starts at ``_SKIRT_TOP`` (it rides the hem). They overlap between.
+_WAIST_CUT = 88.0
+_SKIRT_TOP = 80.0
 #: Where a bone piece's root sits on its rest canvas (frame pixels).
 _BONE_O: Point = (20.0, 20.0)
 _MID_O: Point = (FRAME_W / 2.0, FRAME_H / 2.0)
+#: How far the body turns (counter-clockwise, degrees) when it falls dead.
+_DEATH_TURN = 84.0
+_PIECES: dict = {}
 
 
 def _sp(p: Point) -> Point:
     return (p[0] * SUPER, p[1] * SUPER)
 
 
-def _rest(style: DuoStyle, key, paint, pivot: Point):
-    """A piece painted at its rest place on a frame-sized canvas, cut to what
-    it covers (``_solo_shape_rig.rest_piece``); ``pivot`` in frame pixels."""
-    return _rig.rest_piece((style.target_name,) + tuple(key), _CANVAS, _sp(pivot), paint)
+def _piece(style: DuoStyle, key, paint, pivot: Point, keep: Tuple[float, float, float, float] | None = None):
+    """``paint(draw)`` on a frame-sized canvas (the group at its rest place),
+    cut to what it covers on a ``_GRID`` of canvas pixels; ``pivot`` in frame
+    pixels. ``keep`` = (x0, y0, x1, y1) frame pixels keeps only that region (a
+    half or a band of a symmetric group). Cached under ``key``, which must
+    name everything ``paint`` reads."""
+    full = (style.target_name,) + tuple(key)
+    cached = _PIECES.get(full)
+    if cached is None:
+        image = Image.new("RGBA", _CANVAS, (0, 0, 0, 0))
+        paint(blending_draw(image))
+        if keep is not None:
+            mask = Image.new("L", _CANVAS, 0)
+            x0, y0, x1, y1 = (int(round(v * SUPER)) for v in keep)
+            ImageDraw.Draw(mask).rectangle((max(0, x0), max(0, y0), min(_CANVAS[0], x1) - 1, min(_CANVAS[1], y1) - 1), fill=255)
+            image = Image.composite(image, Image.new("RGBA", _CANVAS, (0, 0, 0, 0)), mask)
+        box = image.getchannel("A").getbbox() or (0, 0, _GRID, _GRID)
+        x0, y0 = box[0] - box[0] % _GRID, box[1] - box[1] % _GRID
+        x1, y1 = box[2] + (-box[2]) % _GRID, box[3] + (-box[3]) % _GRID
+        cached = (image.crop((x0, y0, x1, y1)), (pivot[0] * SUPER - x0, pivot[1] * SUPER - y0))
+        _PIECES[full] = cached
+    return cached
 
 
-def _put(img: Image.Image, part, at: Point, deg: float, name: str) -> None:
-    shape_rig.place(img, part, _sp(at), deg, name)
+def _put(img: Image.Image, part, at: Point, deg: float, name: str, opacity: float = 1.0) -> None:
+    _rig.place(img, part, _sp(at), deg, name, opacity)
 
 
-def _fx_layer(img: Image.Image, paint, name: str) -> None:
-    """Effects (they change every frame) as ONE raster: painted on their own
-    canvas, cut to what they cover and placed at their corner."""
-    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    paint(blending_draw(layer))
-    box = layer.getchannel("A").getbbox()
-    if box is not None:
-        shape_rig.place(img, (layer.crop(box), (0.0, 0.0)), (float(box[0]), float(box[1])), 0.0, name)
+def _put_pair(img: Image.Image, part, xf, rest: Point, name: str, opacity: float = 1.0) -> None:
+    """The left half ``part`` (its pivot ``rest`` on the axis) and its mirror,
+    carried by ``xf``."""
+    at, deg = xf.pt(rest), xf.deg
+    _put(img, part, at, deg, f"{name}_l", opacity)
+    _put(img, _fx_piece.mirrored(part), at, deg, f"{name}_r", opacity)
 
 
 def _deg(a: Point, b: Point) -> float:
     return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
 
 
-def _limb(style: DuoStyle, names: Tuple[str, str, str], pose: Pose) -> Tuple[Point, Point, Point, float, float]:
-    """A two-bone limb at the painter's own joints. The painter shortens a
-    limb to show it turned toward or away from the viewer, so each bone
-    takes a few lengths (whole pixels): (root, joint, end, l1, l2)."""
-    root, joint, end = (getattr(pose, n) for n in names)
-    return root, joint, end, max(1.0, float(round(math.dist(root, joint)))), max(1.0, float(round(math.dist(joint, end))))
+def _two_bone(root: Point, target: Point, l1: float, l2: float, hint: Point) -> Tuple[Point, Point]:
+    """Joint and end of a two-bone limb of lengths ``l1``, ``l2`` from ``root``
+    reaching toward ``target``, bent to the side nearer ``hint``."""
+    dx, dy = target[0] - root[0], target[1] - root[1]
+    reach = min(max(math.hypot(dx, dy), abs(l1 - l2) + 1e-3), l1 + l2 - 1e-3)
+    base = math.atan2(dy, dx)
+    bend = math.acos(max(-1.0, min(1.0, (l1 * l1 + reach * reach - l2 * l2) / (2 * l1 * reach))))
+    joints = [(root[0] + l1 * math.cos(base + k * bend), root[1] + l1 * math.sin(base + k * bend)) for k in (1.0, -1.0)]
+    joint = min(joints, key=lambda j: math.dist(j, hint))
+    ex, ey = target[0] - joint[0], target[1] - joint[1]
+    norm = max(1e-6, math.hypot(ex, ey))
+    return joint, (joint[0] + ex / norm * l2, joint[1] + ey / norm * l2)
 
 
 def _bone(style: DuoStyle, img: Image.Image, a: Point, b: Point, length: float, radius_a: float, radius_b: float, fill: RGBA, outline: RGBA, width: float, name: str) -> None:
     """The painter's tapered capsule as a bone of fixed ``length``, turned from ``a`` toward ``b``."""
     O = _BONE_O
-    part = _rest(
+    part = _piece(
         style,
         ("bone", length, radius_a, radius_b, fill, outline, width),
         lambda d: _capsule(d, O, (O[0] + length, O[1]), radius_a, radius_b, fill=fill, outline=outline, width=width),
@@ -755,14 +654,19 @@ def _bone(style: DuoStyle, img: Image.Image, a: Point, b: Point, length: float, 
     _put(img, part, a, _deg(a, b), name)
 
 
-def _draw_leg(img: Image.Image, style: DuoStyle, pose: Pose, *, far: bool) -> None:
+def _rest_length(base: Pose, a: str, b: str) -> float:
+    return float(round(math.dist(getattr(base, a), getattr(base, b))))
+
+
+def _draw_leg(img: Image.Image, style: DuoStyle, base: Pose, pose: Pose, *, far: bool) -> None:
     side = "far" if far else "near"
-    hip, knee, ankle, l1, l2 = _limb(style, (f"{side}_hip", f"{side}_knee", f"{side}_ankle"), pose)
+    l1, l2 = _rest_length(base, f"{side}_hip", f"{side}_knee"), _rest_length(base, f"{side}_knee", f"{side}_ankle")
+    hip = getattr(pose, f"{side}_hip")
+    knee, ankle = _two_bone(hip, getattr(pose, f"{side}_ankle"), l1, l2, getattr(pose, f"{side}_knee"))
     thigh_fill = style.pants_shade if far else style.pants
-    shin_fill = style.pants_shade
     outline = OUTLINE_SOFT if far else OUTLINE
     _bone(style, img, hip, knee, l1, 4.8 if far else 5.2, 4.2 if far else 4.6, thigh_fill, outline, 0.9, f"{side}_thigh")
-    _bone(style, img, knee, ankle, l2, 4.0 if far else 4.3, 3.4 if far else 3.6, shin_fill, outline, 0.8, f"{side}_shin")
+    _bone(style, img, knee, ankle, l2, 4.0 if far else 4.3, 3.4 if far else 3.6, style.pants_shade, outline, 0.8, f"{side}_shin")
 
     def boot(draw) -> None:
         a = _BONE_O
@@ -770,12 +674,15 @@ def _draw_leg(img: Image.Image, style: DuoStyle, pose: Pose, *, far: bool) -> No
         _poly(draw, pts, fill=style.boot if not far else style.boot_light, outline=OUTLINE, width=0.9)
         _line(draw, [_offset(a, -2.0, 3.0), _offset(a, 5.0, 3.0)], METAL_DEEP, 0.8)
 
-    _put(img, _rest(style, ("boot", far), boot, _BONE_O), ankle, 0.0, f"{side}_boot")
+    _put(img, _piece(style, ("boot", far), boot, _BONE_O), ankle, 0.0, f"{side}_boot")
 
 
-def _draw_arm(img: Image.Image, style: DuoStyle, pose: Pose, *, far: bool) -> None:
+def _draw_arm(img: Image.Image, style: DuoStyle, base: Pose, pose: Pose, hand_deg: float, *, far: bool) -> Point:
+    """An arm of fixed bone lengths reaching the painter's hand; returns where its hand is."""
     side = "far" if far else "near"
-    shoulder, elbow, hand, l1, l2 = _limb(style, (f"{side}_shoulder", f"{side}_elbow", f"{side}_hand"), pose)
+    l1, l2 = _rest_length(base, f"{side}_shoulder", f"{side}_elbow"), _rest_length(base, f"{side}_elbow", f"{side}_hand")
+    shoulder = getattr(pose, f"{side}_shoulder")
+    elbow, hand = _two_bone(shoulder, getattr(pose, f"{side}_hand"), l1, l2, getattr(pose, f"{side}_elbow"))
     sleeve = style.coat_deep if far else style.coat_light
     outline = OUTLINE_SOFT if far else OUTLINE
     _bone(style, img, shoulder, elbow, l1, 5.5 if far else 6.0, 4.8 if far else 5.2, sleeve, outline, 0.9, f"{side}_upper_arm")
@@ -786,71 +693,234 @@ def _draw_arm(img: Image.Image, style: DuoStyle, pose: Pose, *, far: bool) -> No
         _capsule(draw, O, end, 4.4 if far else 4.8, 3.8 if far else 4.0, fill=sleeve, outline=outline, width=0.8)
         _ellipse(draw, _lerp_point(O, end, 0.72), 4.0, 2.2, style.accent, outline=outline, width=0.6)
 
-    _put(img, _rest(style, ("forearm", far, l2), fore, O), elbow, _deg(elbow, hand), f"{side}_forearm")
+    _put(img, _piece(style, ("forearm", far, l2), fore, O), elbow, _deg(elbow, hand), f"{side}_forearm")
     mode = pose.far_hand_mode if far else pose.near_hand_mode
-    hand_part = _rest(style, ("hand", far, mode), lambda d: _draw_hand(d, style, _MID_O, mode, far), _MID_O)
-    _put(img, hand_part, hand, 0.0, f"{side}_hand")
+    hand_part = _piece(style, ("hand", far, mode), lambda d: _draw_hand(d, style, _MID_O, mode, far), _MID_O)
+    _put(img, hand_part, hand, hand_deg, f"{side}_hand")
+    return hand
 
 
-def _torso_piece(img: Image.Image, style: DuoStyle, pose: Pose) -> None:
-    """The coat is stretched between the neck and the hem: one piece per
-    (neck height, hem height, coat swing), each a few steps."""
-    neck_y = _rig.q(pose.neck[1], 0.5)
-    hem = _rig.q(max(pose.near_ankle[1], pose.far_ankle[1]), 0.5)
-    swing = _rig.q(pose.coat_swing, 0.05)
-    shaped = replace(pose, neck=(pose.neck[0], neck_y), near_ankle=(pose.near_ankle[0], hem), far_ankle=(pose.far_ankle[0], hem), coat_swing=swing, glyphs=0.0)
-    part = _rest(style, ("torso", neck_y, hem, swing), lambda d: _draw_torso(d, style, shaped), (0.0, 0.0))
-    _put(img, part, (0.0, 0.0), 0.0, "torso")
+def _hem(pose: Pose) -> float:
+    return max(pose.near_ankle[1], pose.far_ankle[1]) - 1.5
 
 
-def _paint_glyphs(draw: ImageDraw.ImageDraw, style: DuoStyle, pose: Pose) -> None:
-    _line(draw, [(97.0, 63.0), (101.0, 59.0), (106.0, 59.0)], _fade(style.accent_light, pose.glyphs), 1.0)
-    _line(draw, [(98.0, 68.0), (101.0, 66.0), (104.0, 68.0)], _fade(GLOW_AMBER, pose.glyphs), 0.9)
+def _paint_coat(draw: ImageDraw.ImageDraw, style: DuoStyle, base: Pose) -> None:
+    """The coat, shirt, lapels, straps and collar at rest, symmetric about ``_AXIS``."""
+    n = base.neck[1]
+    hem = _hem(base)
+
+    def m(points):
+        return points + [(2 * _AXIS - x, y) for x, y in reversed(points)]
+
+    left = 54.0 if style.body_kind == "broad" else 56.0
+    coat = m([(_AXIS, 92.0), (69.0, hem), (57.0, hem), (49.0, 88.0), (left, n + 5.0), (63.0, n + 1.5)])
+    _poly(draw, coat, fill=style.coat, outline=OUTLINE, width=1.1)
+    shirt = m([(_AXIS, 88.0), (68.5, 88.0), (61.5, 73.0), (64.5, n + 3.0)])
+    _poly(draw, shirt, fill=style.shirt, outline=OUTLINE_SOFT, width=0.7)
+    for lapel in ([(59.5, n + 4.0), (69.5, n + 4.0), (67.2, 75.0), (59.2, 82.0)],):
+        _poly(draw, lapel, fill=style.coat_light, outline=OUTLINE_SOFT, width=0.7)
+        _poly(draw, [(2 * _AXIS - x, y) for x, y in lapel], fill=style.coat_light, outline=OUTLINE_SOFT, width=0.7)
+    strap = [(66.8, 78.0), (58.5, 58.0)] if style.trim == "strapped" else [(68.0, 78.0), (61.0, 61.0)]
+    width = 1.4 if style.trim == "strapped" else 1.3
+    _line(draw, strap, style.strap, width)
+    _line(draw, [(2 * _AXIS - x, y) for x, y in strap], style.strap, width)
+    collar = m([(_AXIS, n + 6.0), (65.0, n + 1.0), (70.0, n - 0.6)])
+    _poly(draw, collar, fill=style.accent_light, outline=OUTLINE_SOFT, width=0.6)
 
 
-def _head_pieces(img: Image.Image, style: DuoStyle, pose: Pose) -> None:
-    """The neck and the head ride their heights (the painter moves them
-    only up and down): one head piece per face."""
-    base = _make_base_pose(style)
-    neck = _rest(
+def _paint_apron(draw: ImageDraw.ImageDraw, style: DuoStyle, base: Pose) -> None:
+    hem = _hem(base)
+    apron = [(66.0, 77.0), (82.0, 77.0), (86.0, hem - 2.0), (62.0, hem - 1.0)]
+    if style.trim == "angled":
+        apron = [(67.0, 77.0), (81.0, 77.0), (84.0, hem - 4.0), (62.0, hem - 1.5), (64.0, 98.0)]
+    _poly(draw, apron, fill=style.apron, outline=OUTLINE, width=0.85)
+    _line(draw, [(72.0, 78.0), (74.5, hem - 1.0)], style.apron_shade, 1.0)
+    _disc(draw, (74.0, 90.0), 2.6, style.accent, outline=OUTLINE_SOFT, width=0.5)
+
+
+def _paint_head_base(draw: ImageDraw.ImageDraw, style: DuoStyle, y: float) -> None:
+    """The head without its eyes, brows, mouth and beard: face, hair, nose, moustache and ear."""
+    if style.head_kind == "square":
+        face = [(60.5, y - 4.0), (66.0, y - 8.6), (78.0, y - 8.8), (84.0, y - 4.2), (84.2, y + 7.5), (79.2, y + 13.0), (65.2, y + 13.0), (59.8, y + 7.8)]
+    else:
+        face = [(61.0, y - 4.5), (66.2, y - 8.8), (77.6, y - 8.4), (82.8, y - 4.2), (84.2, y + 6.2), (81.4, y + 12.0), (72.0, y + 14.0), (63.2, y + 12.0), (59.8, y + 6.4)]
+    _poly(draw, face, fill=SKIN_BASE, outline=OUTLINE, width=1.0)
+    if style.head_kind == "swept":
+        hair = [(60.2, y + 0.0), (61.2, y - 7.0), (69.0, y - 11.4), (79.0, y - 10.4), (84.5, y - 4.2), (84.0, y + 2.6), (80.0, y + 1.0), (73.0, y - 0.6), (67.0, y - 1.2), (62.0, y + 1.5)]
+        _poly(draw, hair, fill=style.hair, outline=OUTLINE, width=1.0)
+        _line(draw, [(65.0, y - 5.2), (76.0, y - 8.0), (82.0, y - 1.5)], style.hair_light, 1.0)
+    else:
+        hair = [(60.0, y + 0.0), (61.5, y - 6.8), (68.0, y - 10.6), (77.5, y - 10.2), (83.5, y - 5.2), (84.0, y + 1.5), (79.0, y - 0.8), (69.0, y - 1.8), (62.0, y + 1.6)]
+        _poly(draw, hair, fill=style.hair, outline=OUTLINE, width=1.0)
+        for x in (64.5, 69.0, 73.5, 78.0):
+            _line(draw, [(x, y - 9.0), (x + 1.2, y - 2.0)], style.hair_light, 0.8)
+    _line(draw, [(72.5, y + 0.6), (71.0, y + 5.0), (72.8, y + 6.2)], SKIN_DEEP, 0.7)
+    if style.moustache:
+        mustache = [(66.0, y + 7.8), (71.0, y + 6.8), (78.0, y + 7.8), (77.0, y + 9.4), (67.0, y + 9.4)]
+        _poly(draw, mustache, fill=style.hair, outline=OUTLINE_SOFT, width=0.5)
+    _ellipse(draw, (83.2, y + 4.0), 1.7, 2.8, SKIN_SHADE, outline=OUTLINE_SOFT, width=0.4)
+
+
+def _paint_eye(draw: ImageDraw.ImageDraw, style: DuoStyle, y: float, brow: float, narrow: float, blink: float) -> None:
+    """The left brow and eye (the right ones are their mirror)."""
+    b = brow * 1.5
+    _line(draw, [(65.5, y - 0.5 - b), (70.5, y - 1.8 - b * 0.3)], style.hair_deep, 1.2)
+    _ellipse(draw, (68.0, y + 1.8), 3.0, max(0.4, 2.0 - narrow), EYE_WHITE, outline=OUTLINE_SOFT, width=0.4)
+    if blink < 0.9:
+        _disc(draw, (68.2, y + 1.9), 0.82, EYE, outline=None)
+    else:
+        _line(draw, [(65.2, y + 1.8), (71.0, y + 1.8)], EYE, 0.7)
+
+
+def _head_pieces(img: Image.Image, style: DuoStyle, base: Pose, pose: Pose, neck_xf, head_xf) -> None:
+    """The neck, the head base, the eyes (a left one and its mirror), the
+    mouth and the beard, carried by the neck's and the head's transforms."""
+    n, y = base.neck[1], base.head[1]
+    neck = _piece(
         style,
         ("neck",),
-        lambda d: _poly(d, [(67.2, base.neck[1] - 1.0), (77.0, base.neck[1] - 1.0), (78.0, base.neck[1] + 8.0), (66.0, base.neck[1] + 8.0)], fill=SKIN_SHADE, outline=OUTLINE_SOFT, width=0.7),
-        (0.0, base.neck[1]),
+        lambda d: _poly(d, [(67.2, n - 1.0), (77.0, n - 1.0), (78.0, n + 8.0), (66.0, n + 8.0)], fill=SKIN_SHADE, outline=OUTLINE_SOFT, width=0.7),
+        (_AXIS, n),
     )
-    _put(img, neck, (0.0, pose.neck[1]), 0.0, "neck")
-    face = replace(
-        base,
-        mouth=_rig.q(pose.mouth, 0.04),
-        brow=_rig.q(pose.brow, 0.04),
-        eye_narrow=_rig.q(pose.eye_narrow, 0.05),
-        blink=_rig.q(pose.blink, 0.1),
-        beard_sway=_rig.q(pose.beard_sway, 0.04),
-    )
-    key = ("head", face.mouth, face.brow, face.eye_narrow, face.blink, face.beard_sway)
-    _put(img, _rest(style, key, lambda d: _draw_head_face(d, style, face), (0.0, base.head[1])), (0.0, pose.head[1]), 0.0, "head")
+    _put(img, neck, neck_xf.pt((_AXIS, n)), neck_xf.deg, "neck")
+    head_at, deg = head_xf.pt((_AXIS, y)), head_xf.deg
+    _put(img, _piece(style, ("head_base",), lambda d: _paint_head_base(d, style, y), (_AXIS, y)), head_at, deg, "head")
+    brow = _rig.q(pose.brow, 0.04)
+    blink = min(_rig.q(pose.blink, 0.1), 1.0)
+    narrow = 0.8 + base.eye_narrow * 1.8 + blink * 2.6
+    if blink < 0.9:
+        narrow = min(narrow, 1.6)
+    eye = _piece(style, ("eye", brow, round(narrow, 3), blink >= 0.9), lambda d: _paint_eye(d, style, y, brow, narrow, blink), (_AXIS, y), keep=(0.0, 0.0, _AXIS, FRAME_H))
+    _put_pair(img, eye, head_xf, (_AXIS, y), "eye")
+    mouth = _rig.q(pose.mouth, 0.1)
+    mouth_y = y + (10.0 if style.moustache else 8.5)
+    part = _piece(style, ("mouth", mouth), lambda d: _arc(d, (_AXIS, mouth_y), 4.0, 2.2 + mouth * 2.4, 20, 160, MOUTH, 1.0), (_AXIS, y))
+    _put(img, part, head_at, deg, "mouth")
+    if style.beard:
+        beard = [(63.2, y + 8.4), (72.0, y + 15.2), (81.2, y + 8.8), (78.0, y + 11.0), (66.5, y + 11.0)]
+        _put(img, _piece(style, ("beard",), lambda d: _poly(d, beard, fill=style.hair, outline=OUTLINE, width=0.8), (_AXIS, y)), head_at, deg, "beard")
 
 
-def _draw_head_face(draw: ImageDraw.ImageDraw, style: DuoStyle, pose: Pose) -> None:
-    """``_draw_head`` without its neck."""
-    _draw_head(draw, style, pose, neck=False)
+def _fx(img: Image.Image, style: DuoStyle, key, paint, at: Point, opacity: float, name: str, deg: float = 0.0, pivot: Point = _MID_O) -> None:
+    """An effect piece painted at full strength around ``pivot`` (frame
+    pixels), placed at ``at`` with its strength as the opacity."""
+    _put(img, _piece(style, ("fx",) + tuple(key), paint, pivot), at, deg, name, _clamp01(opacity))
+
+
+def _effects_back(img: Image.Image, style: DuoStyle, pose: Pose) -> None:
+    if pose.converge > 0.02:
+        c = (72.0, 69.0)
+        _fx(img, style, ("converge_outer",), lambda d: _arc(d, c, 23.0, 28.0, 160, 355, style.accent_light, 1.8), c, pose.converge, "fx_converge_outer", pivot=c)
+        _fx(img, style, ("converge_inner",), lambda d: _arc(d, c, 15.0, 20.0, 190, 28, GLOW_VIOLET, 1.2), c, pose.converge * 0.8, "fx_converge_inner", pivot=c)
+        for rad, phase, col, nm in ((23.0, 0.0, GLOW_AMBER, "amber"), (18.0, 120.0, style.accent, "accent"), (14.5, 240.0, GLOW_TEAL, "teal")):
+            ang = math.radians(pose.converge * 240.0 + phase)
+            p = (c[0] + math.cos(ang) * rad, c[1] + math.sin(ang) * rad * 0.8)
+            _fx(img, style, ("dot", col), lambda d, col=col: _disc(d, _MID_O, 1.8, col, outline=OUTLINE_SOFT, width=0.4), p, pose.converge, f"fx_dot_{nm}")
+    if pose.kernel > 0.02:
+        c = (112.0, 52.0)
+
+        def kernel(draw) -> None:
+            _poly(draw, [_offset(c, -12.0, -12.0), _offset(c, 12.0, -12.0), _offset(c, 12.0, 12.0), _offset(c, -12.0, 12.0)], fill=None, outline=style.accent_light, width=1.4)
+            _poly(draw, [_offset(c, -7.0, -7.0), _offset(c, 7.0, -7.0), _offset(c, 7.0, 7.0), _offset(c, -7.0, 7.0)], fill=None, outline=_fade(GLOW_AMBER, 0.8), width=1.0)
+            _line(draw, [_offset(c, -16.0, 0.0), _offset(c, -12.0, 0.0)], GLOW_TEAL, 1.0)
+            _line(draw, [_offset(c, 12.0, 0.0), _offset(c, 16.0, 0.0)], GLOW_TEAL, 1.0)
+
+        _fx(img, style, ("kernel",), kernel, c, pose.kernel, "fx_kernel", pivot=c)
+    if pose.slope > 0.02:
+        x0, y0 = 40.0, 108.0
+        step = [(x0, y0), (x0 + 6.0, y0), (x0 + 6.0, y0 - 6.0), (x0 + 12.0, y0 - 6.0), (x0 + 12.0, y0 - 12.0), (x0 + 18.0, y0 - 12.0)]
+        _fx(img, style, ("slope_floor",), lambda d: _line(d, step, style.accent_light, 1.5), (x0, y0), pose.slope, "fx_slope_floor", pivot=(x0, y0))
+
+
+def _effects_front(img: Image.Image, style: DuoStyle, pose: Pose, hand: Point) -> None:
+    O = _MID_O
+    if pose.stage > 0.02:
+        # The streak grows in four lengths; its strength is the opacity.
+        sq = max(0.25, _rig.q(pose.stage, 0.25))
+        dx, dy = 14.0 + 18.0 * sq, 2.0 + 2.0 * sq
+        length = math.hypot(dx, dy)
+        start = _offset(hand, 0.0, -1.0)
+
+        def streak(draw) -> None:
+            _line(draw, [O, _offset(O, length, 0.0)], GLOW_AMBER, 3.2)
+            _line(draw, [O, _offset(O, length, 0.0)], _fade(style.accent_deep, 0.8), 1.0)
+
+        _fx(img, style, ("streak", sq), streak, start, pose.stage, "fx_streak", deg=math.degrees(math.atan2(dy, dx)))
+
+        def impact(draw) -> None:
+            _line(draw, [_offset(O, -4.0, 0.0), _offset(O, 4.0, 0.0)], GLOW_RED, 1.0)
+            _line(draw, [_offset(O, 0.0, -4.0), _offset(O, 0.0, 4.0)], GLOW_RED, 1.0)
+
+        _fx(img, style, ("impact",), impact, _offset(start, dx + 4.0, dy + 2.0), pose.stage, "fx_impact")
+    if pose.slope > 0.02:
+        for idx, yoff in enumerate((-7.0, 0.0, 7.0)):
+            mid = idx == 1
+            pts = [O, _offset(O, 8.0, 0.0), _offset(O, 8.0, -5.0), _offset(O, 16.0, -5.0), _offset(O, 16.0, -10.0), _offset(O, 24.0, -10.0)]
+            col, width = (style.accent_light, 1.7) if mid else (GLOW_TEAL, 1.2)
+            _fx(img, style, ("slope_step", mid), lambda d, col=col, width=width: _line(d, pts, col, width), _offset(hand, -1.0, yoff), pose.slope, f"fx_slope_{idx}")
+    if pose.block > 0.02:
+        def block(draw) -> None:
+            _arc(draw, O, 13.0, 15.0, 250, 110, style.accent_light, 2.0)
+            _arc(draw, O, 9.0, 11.0, 250, 110, _fade(GLOW_TEAL, 0.75), 1.0)
+
+        _fx(img, style, ("block",), block, _offset(hand, 8.0, -1.0), pose.block, "fx_block")
+    if pose.taunt > 0.02:
+        _fx(img, style, ("taunt",), lambda d: _line(d, [_offset(O, -4.0, 0.0), O, _offset(O, -4.0, 3.0)], GLOW_RED, 1.2), _offset(pose.head, 16.0, -1.5), pose.taunt, "fx_taunt")
+    if pose.cheer > 0.02:
+        c = (72.0, 22.0)
+        _fx(img, style, ("cheer",), lambda d: _arc(d, c, 18.0, 5.0, 0, 359, GLOW_AMBER, 1.4), c, pose.cheer, "fx_cheer", pivot=c)
+
+
+def _paint_glyphs(draw: ImageDraw.ImageDraw, style: DuoStyle) -> None:
+    _line(draw, [(97.0, 63.0), (101.0, 59.0), (106.0, 59.0)], style.accent_light, 1.0)
+    _line(draw, [(98.0, 68.0), (101.0, 66.0), (104.0, 68.0)], GLOW_AMBER, 0.9)
+
+
+def _mid(a: Point, b: Point) -> Point:
+    return ((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0)
+
+
+def _carriers(style: DuoStyle, base: Pose, pose: Pose):
+    """Where the rest pieces are carried: (pose, upper, skirt, neck, head).
+    Standing, the coat's upper half rides the neck's height, the skirt and
+    apron the hem's, the neck and head their own. Falling dead, the whole
+    body turns over about the hips as one rigid group; its limbs reach the
+    painter's ankles and the turned rest hands."""
+    if pose.defeat <= 0.0:
+        def lift(dy: float):
+            return _rig.IDENTITY.translate(0.0, dy)
+
+        return pose, lift(pose.neck[1] - base.neck[1]), lift(_hem(pose) - _hem(base)), lift(pose.neck[1] - base.neck[1]), lift(pose.head[1] - base.head[1])
+    rest = _mid(base.near_hip, base.far_hip)
+    now = _mid(pose.near_hip, pose.far_hip)
+    body = _rig.IDENTITY.rotate_ccw(rest, _DEATH_TURN * pose.defeat).translate(now[0] - rest[0], now[1] - rest[1])
+    names = ("head", "neck", "near_shoulder", "far_shoulder", "near_elbow", "far_elbow", "near_hand", "far_hand", "near_hip", "far_hip")
+    turned = replace(pose, **{name: body.pt(getattr(base, name)) for name in names})
+    return turned, body, body, body, body
 
 
 def _render_native_frame(style: DuoStyle, animation: str, frame_idx: int, frame_count: int) -> Image.Image:
-    pose = _pose(style, animation, frame_idx, frame_count)
+    base = _make_base_pose(style)
+    pose, upper, skirt, neck_xf, head_xf = _carriers(style, base, _pose(style, animation, frame_idx, frame_count))
     image = Image.new("RGBA", _CANVAS, (0, 0, 0, 0))
-    if pose.converge > 0.02 or pose.kernel > 0.02 or pose.slope > 0.02:
-        _fx_layer(image, lambda d: _draw_effects_back(d, style, pose), "fx_back")
-    _draw_leg(image, style, pose, far=True)
-    _draw_leg(image, style, pose, far=False)
-    _torso_piece(image, style, pose)
+    _effects_back(image, style, pose)
+    _draw_leg(image, style, base, pose, far=True)
+    _draw_leg(image, style, base, pose, far=False)
+    waist = (_AXIS, _WAIST_CUT)
+    skirt_half = _piece(style, ("skirt",), lambda d: _paint_coat(d, style, base), waist, keep=(0.0, _SKIRT_TOP, _AXIS, FRAME_H))
+    swing = _rig.IDENTITY.rotate_ccw(waist, 8.0 * pose.coat_swing)
+    _put_pair(image, skirt_half, swing._then(skirt.m, skirt.deg), waist, "skirt")
+    upper_half = _piece(style, ("coat",), lambda d: _paint_coat(d, style, base), waist, keep=(0.0, 0.0, _AXIS, _WAIST_CUT))
+    _put_pair(image, upper_half, upper, waist, "coat")
+    apron = _piece(style, ("apron",), lambda d: _paint_apron(d, style, base), waist)
+    _put(image, apron, skirt.pt(waist), skirt.deg, "apron")
     if pose.glyphs > 0.02:
-        _fx_layer(image, lambda d: _paint_glyphs(d, style, pose), "fx_glyphs")
-    _draw_arm(image, style, pose, far=True)
-    _draw_arm(image, style, pose, far=False)
-    if pose.stage > 0.02 or pose.slope > 0.02 or pose.block > 0.02 or pose.taunt > 0.02 or pose.cheer > 0.02:
-        _fx_layer(image, lambda d: _draw_effects_front(d, style, pose), "fx_front")
-    _head_pieces(image, style, pose)
+        _fx(image, style, ("glyphs",), lambda d: _paint_glyphs(d, style), (100.0, 64.0), pose.glyphs, "fx_glyphs", pivot=(100.0, 64.0))
+    hand_deg = upper.deg
+    _draw_arm(image, style, base, pose, hand_deg, far=True)
+    hand = _draw_arm(image, style, base, pose, hand_deg, far=False)
+    _effects_front(image, style, pose, hand)
+    _head_pieces(image, style, base, pose, neck_xf, head_xf)
     return image
 
 

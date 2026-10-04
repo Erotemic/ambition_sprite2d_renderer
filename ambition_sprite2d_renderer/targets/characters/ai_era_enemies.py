@@ -24,7 +24,7 @@ from typing import Callable, Dict, Iterable, List, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
-from ...authoring import rigdoc, shape_rig
+from ...authoring import rigdoc
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
 from ambition_sprite2d_renderer.core.draw import blending_draw
@@ -358,13 +358,17 @@ class _Frame:
         """Place the piece ``key`` with its anchor at ``at`` (logical pixels
         of this frame, before its turn), turned ``degrees`` more."""
         part = _piece(key, paint)
-        if part is None:
-            return
+        if part is not None:
+            self.place(img, part, at, name, degrees)
+
+    def place(self, img: Image.Image, part, at: Point, name: str, degrees: float = 0.0, opacity: float = 1.0) -> None:
+        """Place the raster ``part`` = (image, anchor) as ``put`` places a
+        piece, its alpha scaled by ``opacity``."""
         px, py = self.pivot
         dx, dy = at[0] - px, at[1] - py
         c, s = math.cos(math.radians(self.degrees)), math.sin(math.radians(self.degrees))
         x, y = px + dx * c - dy * s, py + dx * s + dy * c
-        shape_rig.place(img, part, (x * SUPER, y * SUPER), self.degrees + degrees, name)
+        rigdoc.blit_rotated(img, part[0], part[1], (x * SUPER, y * SUPER), self.degrees + degrees, round(opacity, 3), part_name=name)
 
 
 #: The frame itself: no turn.
@@ -1474,103 +1478,147 @@ def _slop_card_tilts(pose: Dict[str, float]) -> List[float]:
     ]
 
 
+#: Grid-cut pieces (``_grid_piece``) and their transposed copies.
+_GRID = 8
+_GRID_PIECES: Dict[tuple, object] = {}
+_TRANSPOSED: Dict[tuple, tuple] = {}
+
+
+def _grid_piece(key: tuple, paint: Callable, keep: Tuple[float, float, float, float] | None = None):
+    """``_piece`` cut on a grid of ``_GRID`` canvas pixels, so a mirrored or
+    turned copy reduces to the exact transform of the reduced piece. ``keep``
+    = (x0, y0, x1, y1), logical offsets from ``HOME``, keeps only that region
+    of what ``paint`` paints (a half or a quarter of a symmetric thing)."""
+    if key not in _GRID_PIECES:
+        size = (WORK_FRAME_SIZE[0] * 2, WORK_FRAME_SIZE[1] * 2)
+        canvas = Image.new("RGBA", size, (0, 0, 0, 0))
+        paint(blending_draw(canvas))
+        if keep is not None:
+            mask = Image.new("L", size, 0)
+            x0, y0, x1, y1 = (_s(HOME[0] + keep[0]), _s(HOME[1] + keep[1]), _s(HOME[0] + keep[2]), _s(HOME[1] + keep[3]))
+            ImageDraw.Draw(mask).rectangle((max(0, x0), max(0, y0), min(size[0], x1) - 1, min(size[1], y1) - 1), fill=255)
+            canvas = Image.composite(canvas, Image.new("RGBA", size, (0, 0, 0, 0)), mask)
+        box = canvas.getchannel("A").getbbox()
+        if box is None:
+            _GRID_PIECES[key] = None
+        else:
+            x0, y0 = box[0] - box[0] % _GRID, box[1] - box[1] % _GRID
+            x1, y1 = box[2] + (-box[2]) % _GRID, box[3] + (-box[3]) % _GRID
+            _GRID_PIECES[key] = (canvas.crop((x0, y0, x1, y1)), (HOME[0] * SUPER - x0, HOME[1] * SUPER - y0))
+    return _GRID_PIECES[key]
+
+
+def _transposed(part, op):
+    """``part`` mirrored (``Image.FLIP_LEFT_RIGHT`` / ``FLIP_TOP_BOTTOM``) or
+    turned a half (``ROTATE_180``) about its anchor: the same raster
+    transposed, a zero-cost transform for the publisher. Cached."""
+    image, (ax, ay) = part
+    cached = _TRANSPOSED.get((id(image), op))
+    if cached is None or cached[0] is not image:
+        w, h = image.size
+        anchor = {
+            Image.FLIP_LEFT_RIGHT: (w - ax, ay),
+            Image.FLIP_TOP_BOTTOM: (ax, h - ay),
+            Image.ROTATE_180: (w - ax, h - ay),
+        }[op]
+        cached = (image, (image.transpose(op), anchor))
+        _TRANSPOSED[(id(image), op)] = cached
+    return cached[1]
+
+
+def _place_pair(img: Image.Image, frame: _Frame, half, at: Point, name: str, degrees: float = 0.0, opacity: float = 1.0) -> None:
+    """A thing symmetric about its anchor's vertical: its left ``half`` and
+    the half mirrored."""
+    frame.place(img, half, at, f"{name}_l", degrees, opacity)
+    frame.place(img, _transposed(half, Image.FLIP_LEFT_RIGHT), at, f"{name}_r", degrees, opacity)
+
+
+def _place_quad(img: Image.Image, frame: _Frame, quarter, at: Point, name: str, opacity: float = 1.0) -> None:
+    """A thing symmetric about both axes through its anchor: its lower right
+    ``quarter`` and the three transposed copies."""
+    frame.place(img, quarter, at, f"{name}_br", 0.0, opacity)
+    for op, tag in ((Image.FLIP_LEFT_RIGHT, "bl"), (Image.FLIP_TOP_BOTTOM, "tr"), (Image.ROTATE_180, "tl")):
+        frame.place(img, _transposed(quarter, op), at, f"{name}_{tag}", 0.0, opacity)
+
+
+def _mirror_points(left: Sequence[Point], cx: float) -> List[Point]:
+    """A closed outline symmetric about ``x = cx`` from its left side
+    (listed from the axis around to the axis)."""
+    return list(left) + [(2 * cx - x, y) for x, y in reversed(left)]
+
+
+_SLOP_PURPLE = (118, 84, 164, 255)
+_SLOP_SHEEN = (154, 112, 198, 190)
+_SLOP_SKIN = (240, 222, 198, 255)
+_SLOP_HURT = (255, 92, 110, 62)
+
+
 def _paint_slop_body(d, cx: float, cy: float) -> None:
-    """Ragged collage body silhouette."""
-    blob = [
-        (cx - 26, cy - 24),
-        (cx - 36, cy - 6),
-        (cx - 34, cy + 18),
-        (cx - 24, cy + 34),
-        (cx - 5, cy + 42),
-        (cx + 18, cy + 38),
-        (cx + 32, cy + 18),
-        (cx + 34, cy - 8),
-        (cx + 26, cy - 28),
-        (cx + 6, cy - 38),
-        (cx - 12, cy - 36),
-    ]
-    _poly(d, blob, (118, 84, 164, 255), OUTLINE, 1.1)
-    _poly(
-        d,
-        [(cx - 18, cy - 20), (cx - 22, cy + 24), (cx - 4, cy + 30), (cx + 6, cy - 24)],
-        (154, 112, 198, 190),
-        None,
-        0,
-    )
+    """Ragged collage body silhouette, symmetric about ``x = cx``."""
+    left = [(cx, cy - 38), (cx - 12, cy - 37), (cx - 26, cy - 26), (cx - 35, cy - 7), (cx - 34, cy + 18), (cx - 23, cy + 35), (cx - 6, cy + 42), (cx, cy + 42)]
+    _poly(d, _mirror_points(left, cx), _SLOP_PURPLE, OUTLINE, 1.1)
 
 
-def _paint_slop_face(d, cx: float, cy: float, hurt: float) -> None:
-    """Main face: skin, mismatched eyes, two dots."""
+#: The sheen is a parallelogram about this centre (offset from the body's
+#: anchor): its upper half and that half turned a half turn.
+_SLOP_SHEEN_C = (-8.0, 4.0)
+
+
+def _paint_slop_sheen(d, cx: float, cy: float) -> None:
+    sx, sy = cx + _SLOP_SHEEN_C[0], cy + _SLOP_SHEEN_C[1]
+    _poly(d, [(sx - 10, sy - 25), (sx - 14, sy + 21), (sx + 10, sy + 25), (sx + 14, sy - 21)], _SLOP_SHEEN, None, 0)
+
+
+def _paint_slop_face(d, cx: float, cy: float) -> None:
+    """Main face without its eyes: skin and two dots."""
     _ellipse(d, cx - 2, cy + 4, 15, 11, (242, 210, 188, 210), (200, 146, 148, 220), 0.7)
-    _emotion_eye(d, cx - 7, cy - 1, 2.6, 3.2, CYAN, pupil_shift=hurt * 1.2)
-    _emotion_eye(d, cx + 1.8, cy - 2.0, 2.0, 4.0, MAGENTA, pupil_shift=-hurt * 1.0)
     _circle(d, (cx + 10.5, cy + 0.5), 1.6, YELLOW, OUTLINE, 0.5)
     _circle(d, (cx + 12.8, cy + 9.0), 1.0, RED, OUTLINE, 0.5)
 
 
+def _paint_slop_eyes(d, cx: float, cy: float, hurt: float) -> None:
+    """The mismatched eyes (their pupils swing with ``hurt``)."""
+    _emotion_eye(d, cx - 7, cy - 1, 2.6, 3.2, CYAN, pupil_shift=hurt * 1.2)
+    _emotion_eye(d, cx + 1.8, cy - 2.0, 2.0, 4.0, MAGENTA, pupil_shift=-hurt * 1.0)
+
+
 def _paint_slop_grin(d, cx: float, cy: float, ad: float, burst: float) -> None:
-    """The clickbait grin (it opens with ``burst``)."""
-    grin_w = 15 + ad * 4.0
-    _ellipse(d, cx - 1, cy + 11, grin_w, 5.0 + burst * 3.8, (76, 34, 58, 255), OUTLINE, 0.8)
+    """The clickbait grin (it opens with ``burst``), symmetric about ``x = cx``."""
+    _ellipse(d, cx, cy + 11, 15 + ad * 4.0, 5.0 + burst * 3.8, (76, 34, 58, 255), OUTLINE, 0.8)
     for i in range(8):
-        tx = cx - 12 + i * 3.5
-        _triangle(d, (tx, cy + 8.5), 1.2 + (i % 2) * 0.3, WHITE, 180)
-        _triangle(d, (tx + 0.4, cy + 13.5 + burst * 1.8), 1.0 + ((i + 1) % 2) * 0.2, WHITE, 0)
+        tx = cx + (i - 3.5) * 3.5
+        big = min(i, 7 - i) % 2
+        _triangle(d, (tx, cy + 8.5), 1.2 + big * 0.3, WHITE, 180)
+        _triangle(d, (tx, cy + 13.5 + burst * 1.8), 1.0 + (1 - big) * 0.2, WHITE, 0)
 
 
-def _paint_slop_drips(d, cx: float, cy: float, burst: float) -> None:
-    """Slime drips (they grow with ``burst``)."""
-    for off in (-18, -9, 3, 14):
-        length = 5 + (off % 3) * 2 + burst * 5.0
-        _ribbon(
-            d,
-            [(cx + off, cy + 18), (cx + off + math.sin(off) * 1.1, cy + 18 + length)],
-            1.5,
-            (112, 234, 122, 220),
-            (72, 146, 86, 220),
-        )
+def _paint_slop_drip(d, cx: float, cy: float, length: float) -> None:
+    """One slime drip hanging from ``(cx, cy)``."""
+    _ribbon(d, [(cx, cy), (cx, cy + length)], 1.5, (112, 234, 122, 220), (72, 146, 86, 220))
 
 
-def _paint_slop_bars_and_badges(d, cx: float, cy: float) -> None:
-    """Glitched subtitle bars and the ad badges."""
-    for i in range(5):
-        y = cy - 35 + i * 2.8
-        _rounded_rect(d, (cx + 16, y, cx + 28 + (i % 2) * 5, y + 1.8), (250, 250, 252, 110), None, 0, 0.8)
-    badges = [
-        (cx - 30, cy - 30, RED, "!"),
-        (cx + 26, cy - 24, YELLOW, "$"),
-        (cx - 34, cy + 8, MAGENTA, "+"),
-    ]
-    for bx, by, col, symbol in badges:
-        _circle(d, (bx, by), 4.2, col, OUTLINE, 0.7)
-        if symbol == "!":
-            _line(d, [(bx, by - 2.0), (bx, by + 1.5)], WHITE, 1.0)
-            _circle(d, (bx, by + 3.0), 0.7, WHITE, None, 0)
-        elif symbol == "$":
-            _line(d, [(bx, by - 2.6), (bx, by + 2.8)], WHITE, 0.9)
-            _line(d, [(bx - 1.5, by - 1.1), (bx + 1.6, by - 1.1)], WHITE, 0.8)
-            _line(d, [(bx - 1.6, by + 1.4), (bx + 1.2, by + 1.4)], WHITE, 0.8)
-        else:
-            _line(d, [(bx - 1.6, by), (bx + 1.6, by)], WHITE, 0.8)
-            _line(d, [(bx, by - 1.6), (bx, by + 1.6)], WHITE, 0.8)
+#: The arm painted at rest, from its shoulder (offsets from the body's
+#: anchor); the left arm is its mirror.
+_SLOP_ARM_ROOT = (18.0, 6.0)
+_SLOP_ARM = [(0.0, 0.0), (12.0, -10.0), (24.0, -2.0), (32.0, -14.0)]
 
 
-def _slop_arm_points(cx: float, cy: float, arm: float, side: int) -> List[Point]:
+def _slop_arm(img: Image.Image, body: _Frame, cx: float, cy: float, side: int, arm: float, name: str) -> Point:
+    """The arm turned about its shoulder so its hand reaches the pose's reach;
+    returns where the hand is."""
+    hx, hy = HOME
+    part = _grid_piece(("slop_arm",), lambda d: _ribbon(d, _bezier(*[(hx + x, hy + y) for x, y in _SLOP_ARM], 12), 4.0, _SLOP_SKIN, OUTLINE, None))
+    rest = _SLOP_ARM[-1]
     if side < 0:
-        return _bezier(
-            (cx - 20, cy + 10),
-            (cx - 34, cy + 6 + arm * 2),
-            (cx - 44, cy + 18 - arm * 4),
-            (cx - 50, cy + 8 - arm * 6),
-            12,
-        )
-    return _bezier(
-        (cx + 18, cy + 6),
-        (cx + 30, cy - 4),
-        (cx + 42, cy + 4 + arm * 5),
-        (cx + 50, cy - 8 + arm * 7),
-        12,
-    )
+        part = _transposed(part, Image.FLIP_LEFT_RIGHT)
+        root, rest, reach = (-20.0, 10.0), (-rest[0], rest[1]), (-30.0, -2.0 - arm * 6.0)
+    else:
+        root, reach = _SLOP_ARM_ROOT, (32.0, -14.0 + arm * 7.0)
+    turn = math.atan2(reach[1], reach[0]) - math.atan2(rest[1], rest[0])
+    at = (cx + root[0], cy + root[1])
+    body.place(img, part, at, name, math.degrees(turn))
+    c, s = math.cos(turn), math.sin(turn)
+    return (at[0] + rest[0] * c - rest[1] * s, at[1] + rest[0] * s + rest[1] * c)
 
 
 def _render_ai_slop(anim: str, frame_idx: int, nframes: int) -> Image.Image:
@@ -1581,10 +1629,16 @@ def _render_ai_slop(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     hx, hy = HOME
     body = _Frame((cx, cy + 8), -pose["tilt"])
     burst = round(pose["burst"], 3)
-    rep = round(pose["rep"], 3)
-    arm = round(pose["arm"], 3)
+    rep = pose["rep"]
+    at = (cx, cy)
 
-    body.put(img, ("slop_body",), lambda d: _paint_slop_body(d, hx, hy), (cx, cy), "body")
+    # The body and its sheen are symmetric: each half painted once.
+    _place_pair(img, body, _grid_piece(("slop_body",), lambda d: _paint_slop_body(d, hx, hy), keep=(-60.0, -60.0, 0.0, 60.0)), at, "body")
+    sheen = _grid_piece(("slop_sheen",), lambda d: _paint_slop_sheen(d, hx, hy), keep=(-40.0, -40.0, 40.0, _SLOP_SHEEN_C[1]))
+    sheen_at = (cx + _SLOP_SHEEN_C[0], cy + _SLOP_SHEEN_C[1])
+    sheen = (sheen[0], (sheen[1][0] + _SLOP_SHEEN_C[0] * SUPER, sheen[1][1] + _SLOP_SHEEN_C[1] * SUPER))
+    body.place(img, sheen, sheen_at, "sheen")
+    body.place(img, _transposed(sheen, Image.ROTATE_180), sheen_at, "sheen_turned")
 
     # Sticky cards / thumbnails mounted to the body: each painted level and
     # turned by its tilt.
@@ -1600,26 +1654,27 @@ def _render_ai_slop(anim: str, frame_idx: int, nframes: int) -> Image.Image:
             -tilt,
         )
 
-    hurt = round(pose["hurt"], 3)
-    body.put(img, ("slop_face", hurt), lambda d: _paint_slop_face(d, hx, hy, hurt), (cx, cy), "face")
+    hurt = round(pose["hurt"], 2)
+    body.put(img, ("slop_face",), lambda d: _paint_slop_face(d, hx, hy), at, "face")
+    body.put(img, ("slop_eyes", hurt), lambda d: _paint_slop_eyes(d, hx, hy, hurt), at, "eyes")
     ad = round(pose["ad"], 3)
-    body.put(img, ("slop_grin", ad, burst), lambda d: _paint_slop_grin(d, hx, hy, ad, burst), (cx, cy), "grin")
-    body.put(img, ("slop_drips", burst), lambda d: _paint_slop_drips(d, hx, hy, burst), (cx, cy), "drips")
-    body.put(img, ("slop_bars",), lambda d: _paint_slop_bars_and_badges(d, hx, hy), (cx, cy), "bars")
+    grin = _grid_piece(("slop_grin", ad, burst), lambda d: _paint_slop_grin(d, hx, hy, ad, burst), keep=(-40.0, -40.0, 0.0, 40.0))
+    _place_pair(img, body, grin, at, "grin")
+    for off in (-18, -9, 3, 14):
+        length = round(5 + (off % 3) * 2 + burst * 5.0, 2)
+        drip = _grid_piece(("slop_drip", length), lambda d, length=length: _paint_slop_drip(d, hx, hy, length))
+        body.place(img, drip, (cx + off, cy + 18), f"drip_{off}", -math.degrees(math.atan2(math.sin(off) * 1.1, length)))
+    body.put(img, ("slop_bars",), lambda d: _paint_slop_bars(d, hx, hy), at, "bars")
+    # Each badge is its own small piece: one piece of all three would be
+    # mostly empty.
+    for (bx, by), col, symbol in _SLOP_BADGES:
+        body.put(img, ("slop_badge", symbol), lambda d, col=col, symbol=symbol: _paint_slop_badge(d, hx, hy, col, symbol), (cx + bx, cy + by), f"badge_{symbol}")
 
-    # Deformed duplicate hands: each arm one piece per bend, each hand one
-    # piece per spread, turned to its angle at the arm's end.
-    spread = round(12 + pose["rep"] * 8, 3)
+    # Deformed duplicate hands: one arm painted once (the left is its
+    # mirror), turned about its shoulder; one hand per spread at its end.
+    spread = round(12 + round(rep * 4) / 4 * 8, 3)
     for side, name, hand_ang in ((-1, "left", 180 - pose["arm"] * 10), (1, "right", 0 + pose["arm"] * 10)):
-        body.put(
-            img,
-            ("slop_arm", side, arm),
-            lambda d, side=side: _ribbon(d, _slop_arm_points(hx, hy, arm, side), 4.0, (240, 222, 198, 255), OUTLINE, None),
-            (cx, cy),
-            f"{name}_arm",
-        )
-    for side, name, hand_ang in ((-1, "left", 180 - pose["arm"] * 10), (1, "right", 0 + pose["arm"] * 10)):
-        end = _slop_arm_points(cx, cy, pose["arm"], side)[-1]
+        end = _slop_arm(img, body, cx, cy, side, pose["arm"], f"{name}_arm")
         body.put(
             img,
             ("slop_hand", spread),
@@ -1628,78 +1683,65 @@ def _render_ai_slop(anim: str, frame_idx: int, nframes: int) -> Image.Image:
             f"{name}_hand",
             hand_ang,
         )
-    # Extra wrong thumb.
+    # Extra wrong thumb: one length, turned to its reach.
+    thumb_to = (8.0, 8.0 + rep * 6.0)
     body.put(
         img,
-        ("slop_thumb", rep),
-        lambda d: _capsule(d, (hx, hy), (hx + 8, hy + 8 + rep * 6), 3.0, (244, 226, 200, 220), OUTLINE, None),
+        ("slop_thumb",),
+        lambda d: _capsule(d, (hx, hy), (hx + 13.6, hy), 3.0, (244, 226, 200, 220), OUTLINE, None),
         (cx + 40, cy + 12),
         "thumb",
+        math.degrees(math.atan2(thumb_to[1], thumb_to[0])),
     )
     body.put(
         img,
         ("slop_small_hand",),
         lambda d: _draw_hand(d, (hx, hy), 0.0, spread=6, scale=0.45, palm=(244, 226, 200, 220)),
-        (cx + 48, cy + 20 + pose["rep"] * 6),
+        (cx + 48, cy + 20 + rep * 6),
         "small_hand",
         35,
     )
 
-    # Cursor quills.
-    def quills(d) -> None:
-        for i in range(4):
-            ang = -40 + i * 26 + burst * 4
-            px = hx - 6 + math.cos(math.radians(ang)) * 36
-            py = hy - 6 + math.sin(math.radians(ang)) * 28
-            _triangle(d, (px, py), 4.3 - i * 0.4, WHITE, ang + 140)
+    # Cursor quills: one cursor, turned into place.
+    quill = _grid_piece(("slop_quill",), lambda d: _triangle(d, (hx, hy), 3.7, WHITE, 0.0))
+    for i in range(4):
+        ang = -40 + i * 26 + burst * 4
+        p = (cx - 6 + math.cos(math.radians(ang)) * 36, cy - 6 + math.sin(math.radians(ang)) * 28)
+        body.place(img, quill, p, f"quill_{i}", ang + 140)
 
-    body.put(img, ("slop_quills", burst), quills, (cx, cy), "quills")
-
-    # Replication thumbnails.
-    if pose["rep"] > 0.0:
+    # Replication thumbnails: two cards, each placed fading.
+    if rep > 1e-3:
         for i in range(3):
-            alpha = int(170 - i * 36)
-            body.put(
-                img,
-                ("slop_rep_card", i),
-                lambda d, i=i, alpha=alpha: _draw_card(
-                    d, hx - 8, hy - 6, 16, 12, 0.0, (248, 248, 252, alpha), (120, 186, 228, alpha),
-                    bad_face=(i % 2 == 0), pseudo_text=True, play=(i == 1),
+            face, play = i % 2 == 0, i == 1
+            card = _grid_piece(
+                ("slop_rep_card", face, play),
+                lambda d, face=face, play=play: _draw_card(
+                    d, hx - 8, hy - 6, 16, 12, 0.0, (248, 248, 252, 255), (120, 186, 228, 255), bad_face=face, pseudo_text=True, play=play
                 ),
-                (cx + 22 + i * 8 + 8, cy - 22 - i * 4 + 6),
-                f"rep_card_{i}",
-                -(8 + i * 6),
             )
+            body.place(img, card, (cx + 22 + i * 8 + 8, cy - 22 - i * 4 + 6), f"rep_card_{i}", -(8 + i * 6), (170 - i * 36) / 255.0)
 
-    # Trend burst / ad blast overlays.
-    if pose["burst"] > 0.0:
-        def rays(d) -> None:
-            for i in range(5):
-                ang = i * 72 + frame_idx * 5
-                r1 = 12 + i * 2 + burst * 5
-                r2 = r1 + 8 + burst * 5
-                p1 = (hx + math.cos(math.radians(ang)) * r1, hy - 4 + math.sin(math.radians(ang)) * r1)
-                p2 = (hx + math.cos(math.radians(ang)) * r2, hy - 4 + math.sin(math.radians(ang)) * r2)
-                _capsule(d, p1, p2, 1.8, (255, 236, 146, 180), None, None)
-
-        body.put(img, ("slop_rays", burst, frame_idx * 5 % 72), rays, (cx, cy), "rays")
-    if pose["ad"] > 0.0:
+    # Trend burst: one ray per burst, placed five times.
+    if pose["burst"] > 1e-3:
+        ray_len = 8 + burst * 5
+        ray = _grid_piece(("slop_ray", burst), lambda d: _capsule(d, (hx, hy), (hx + ray_len, hy), 1.8, (255, 236, 146, 180), None, None))
+        for i in range(5):
+            ang = i * 72 + frame_idx * 5
+            r1 = 12 + i * 2 + burst * 5
+            p1 = (cx + math.cos(math.radians(ang)) * r1, cy - 4 + math.sin(math.radians(ang)) * r1)
+            body.place(img, ray, p1, f"ray_{i}", ang)
+    if pose["ad"] > 1e-3:
         def banner(d) -> None:
             _rounded_rect(d, (hx - 22, hy - 46, hx + 22, hy - 36), (255, 244, 196, 210), (226, 180, 84, 240), 0.8, 2.0)
             _line(d, [(hx - 14, hy - 41), (hx - 6, hy - 41)], RED, 0.9)
             _line(d, [(hx - 3, hy - 41), (hx + 14, hy - 41)], (166, 120, 74, 255), 0.9)
             _triangle(d, (hx + 17, hy - 41), 2.2, RED, 90)
 
-        body.put(img, ("slop_banner",), banner, (cx, cy), "banner")
+        body.put(img, ("slop_banner",), banner, at, "banner")
 
-    if pose["hurt"] > 0.0:
-        body.put(
-            img,
-            ("slop_hurt", hurt),
-            lambda d: _alpha_ellipse(d._image, hx, hy + 2, 20, 16, (255, 92, 110, int(62 * hurt))),
-            (cx, cy),
-            "hurt",
-        )
+    if pose["hurt"] > 1e-3:
+        flash = _grid_piece(("slop_hurt",), lambda d: d.ellipse(_box(hx, hy, 20, 16), fill=_SLOP_HURT), keep=(0.0, 0.0, 40.0, 40.0))
+        _place_quad(img, body, flash, (cx, cy + 2), "hurt", pose["hurt"])
     return _downsample(img)
 
 
@@ -1757,19 +1799,22 @@ _AGENT_DRONES = [
 ]
 
 
-def _paint_agent_orb(d, cx: float, cy: float, pupil_shift: float, dead: float) -> None:
-    """The central planner orb."""
+def _paint_agent_orb(d, cx: float, cy: float) -> None:
+    """The central planner orb without its eye."""
     _ellipse(d, cx, cy, 17, 20, (96, 122, 182, 255), OUTLINE, 0.9)
     _ellipse(d, cx - 3, cy - 4, 10, 12, (126, 154, 218, 255), None, 0)
     _ellipse(d, cx, cy + 1, 8, 10, (222, 236, 250, 255), OUTLINE, 0.7)
-    _emotion_eye(d, cx, cy + 1, 4.4, 5.4, CYAN, pupil_shift=pupil_shift, blink=dead * 0.9)
     _line(d, [(cx - 4, cy + 13), (cx + 4, cy + 13)], (180, 206, 240, 255), 0.8)
 
 
-def _paint_agent_drone(d, dx: float, dy: float, kind: str) -> None:
-    """One satellite drone, centred on ``(dx, dy)``."""
+def _paint_agent_drone(d, dx: float, dy: float) -> None:
+    """A satellite drone's shell, centred on ``(dx, dy)``."""
     _circle(d, (dx, dy), 6.0, (180, 196, 236, 255), OUTLINE, 0.8)
     _circle(d, (dx - 1.0, dy - 1.0), 3.2, (236, 242, 248, 255), None, 0)
+
+
+def _paint_agent_tool(d, dx: float, dy: float, kind: str) -> None:
+    """The tool a drone carries on its shell, centred on ``(dx, dy)``."""
     if kind == "lens":
         _emotion_eye(d, dx, dy, 2.2, 2.8, GREEN)
     elif kind == "grip":
@@ -1799,51 +1844,70 @@ def _render_agent_swarm(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     hx, hy = HOME
     cx = 80
     cy = 86 + pose["bob"]
-    pupil = round((pose["scan"] - pose["hurt"]) * 2.0, 3)
-    dead = round(pose["dead"], 3)
-    WORLD.put(img, ("agent_orb", pupil, dead), lambda d: _paint_agent_orb(d, hx, hy, pupil, dead), (cx, cy), "orb")
-    # Satellite drones: a tether (one piece per length, turned) and the drone.
+    drones = []
     for base_ang, rad, kind in _AGENT_DRONES:
         ang = base_ang + pose["orbit"]
         rr = rad - pose["converge"] * 8.0
-        dx = cx + math.cos(math.radians(ang)) * rr
-        dy = cy + math.sin(math.radians(ang)) * (rr * 0.58) - 8
-        _stroke_piece(
-            img,
-            WORLD,
-            (cx, cy),
-            (dx, dy),
-            lambda d, a, b: _line(d, [a, b], (160, 190, 232, 150), 0.7),
-            ("agent_tether",),
-            f"tether_{kind}",
-        )
-        WORLD.put(img, ("agent_drone", kind), lambda d, kind=kind: _paint_agent_drone(d, hx, hy, kind), (dx, dy), f"drone_{kind}")
-    if pose["scan"] > 0.0:
-        scan = round(pose["scan"], 3)
+        drones.append((kind, cx + math.cos(math.radians(ang)) * rr, cy + math.sin(math.radians(ang)) * (rr * 0.58) - 8))
+    # Tethers run from each drone toward the orb's centre, behind the orb, in
+    # whole steps of four (the step's overshoot is hidden by the orb).
+    for kind, dx, dy in drones:
+        length = max(4.0, math.ceil(math.hypot(cx - dx, cy - dy) / 4.0) * 4.0)
+        tether = _grid_piece(("agent_tether", length), lambda d, length=length: _line(d, [(hx, hy), (hx + length, hy)], (160, 190, 232, 150), 0.7))
+        WORLD.place(img, tether, (dx, dy), f"tether_{kind}", math.degrees(math.atan2(cy - dy, cx - dx)))
+    WORLD.put(img, ("agent_orb",), lambda d: _paint_agent_orb(d, hx, hy), (cx, cy), "orb")
+    pupil = round((pose["scan"] - pose["hurt"]) * 2.0, 1)
+    blink = round(pose["dead"] * 8) / 8 * 0.9
+    WORLD.put(img, ("agent_eye", pupil, blink), lambda d: _emotion_eye(d, hx, hy + 1, 4.4, 5.4, CYAN, pupil_shift=pupil, blink=blink), (cx, cy), "eye")
+    # Satellite drones: one shell, each with its tool on it.
+    for kind, dx, dy in drones:
+        WORLD.put(img, ("agent_drone",), lambda d: _paint_agent_drone(d, hx, hy), (dx, dy), f"drone_{kind}")
+        WORLD.put(img, ("agent_tool", kind), lambda d, kind=kind: _paint_agent_tool(d, hx, hy, kind), (dx, dy), f"tool_{kind}")
+    if pose["scan"] > 1e-3:
+        scan = round(pose["scan"], 2)
 
         def rings(d) -> None:
             for i in range(3):
                 _ellipse(d, hx, hy, 10 + i * 7 + scan * 6, 8 + i * 4 + scan * 4, (0, 0, 0, 0), (96, 236, 240, int(140 - i * 30)), 0.8)
 
-        WORLD.put(img, ("agent_rings", scan), rings, (cx, cy + 4), "scan_rings")
-    if pose["deploy"] > 0.0:
-        deploy = round(pose["deploy"], 3)
-
-        def legs(d) -> None:
-            for side in (-1, 1):
-                _capsule(d, (hx + side * 4, hy + 16), (hx + side * (18 + deploy * 18), hy + 32), 2.0, (160, 188, 236, 190), OUTLINE, None)
-
-        WORLD.put(img, ("agent_deploy", deploy), legs, (cx, cy), "deploy")
-    if pose["hurt"] > 0.0:
-        hurt = round(pose["hurt"], 3)
-        WORLD.put(
-            img,
-            ("agent_hurt", hurt),
-            lambda d: _alpha_ellipse(d._image, hx, hy, 34, 26, (255, 92, 110, int(70 * hurt))),
-            (cx, cy + 2),
-            "hurt",
+        _place_quad(img, WORLD, _grid_piece(("agent_rings", scan), rings, keep=(0.0, 0.0, 60.0, 60.0)), (cx, cy + 4), "scan_rings")
+    if pose["deploy"] > 1e-3:
+        deploy = round(pose["deploy"], 2)
+        leg = _grid_piece(
+            ("agent_leg", deploy),
+            lambda d: _capsule(d, (hx + 4, hy + 16), (hx + 18 + deploy * 18, hy + 32), 2.0, (160, 188, 236, 190), OUTLINE, None),
         )
+        _place_pair(img, WORLD, leg, (cx, cy), "deploy")
+    if pose["hurt"] > 1e-3:
+        flash = _grid_piece(("agent_hurt",), lambda d: d.ellipse(_box(hx, hy, 34, 26), fill=(255, 92, 110, 70)), keep=(0.0, 0.0, 60.0, 60.0))
+        _place_quad(img, WORLD, flash, (cx, cy + 2), "hurt", pose["hurt"])
     return _downsample(img)
+
+
+#: The ad badges: (offset from the body's anchor, colour, symbol).
+_SLOP_BADGES = [((-30.0, -30.0), RED, "!"), ((26.0, -24.0), YELLOW, "$"), ((-34.0, 8.0), MAGENTA, "+")]
+
+
+def _paint_slop_bars(d, cx: float, cy: float) -> None:
+    """Glitched subtitle bars."""
+    for i in range(5):
+        y = cy - 35 + i * 2.8
+        _rounded_rect(d, (cx + 16, y, cx + 28 + (i % 2) * 5, y + 1.8), (250, 250, 252, 110), None, 0, 0.8)
+
+
+def _paint_slop_badge(d, bx: float, by: float, col: RGBA, symbol: str) -> None:
+    """One ad badge centred on ``(bx, by)``."""
+    _circle(d, (bx, by), 4.2, col, OUTLINE, 0.7)
+    if symbol == "!":
+        _line(d, [(bx, by - 2.0), (bx, by + 1.5)], WHITE, 1.0)
+        _circle(d, (bx, by + 3.0), 0.7, WHITE, None, 0)
+    elif symbol == "$":
+        _line(d, [(bx, by - 2.6), (bx, by + 2.8)], WHITE, 0.9)
+        _line(d, [(bx - 1.5, by - 1.1), (bx + 1.6, by - 1.1)], WHITE, 0.8)
+        _line(d, [(bx - 1.6, by + 1.4), (bx + 1.2, by + 1.4)], WHITE, 0.8)
+    else:
+        _line(d, [(bx - 1.6, by), (bx + 1.6, by)], WHITE, 0.8)
+        _line(d, [(bx, by - 1.6), (bx, by + 1.6)], WHITE, 0.8)
 
 
 # ---------------------------------------------------------------------------
