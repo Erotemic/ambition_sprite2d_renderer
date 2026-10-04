@@ -1738,25 +1738,29 @@ def _sprite_overlap_pixels(
 
 
 def _validate_carl_layer_model(doc: RigDocument) -> None:
-    """Validate Carl's multiple same-bone paint slices and head overlays."""
+    """Validate Carl's same-bone paint slices and head overlays."""
 
     # No paint-order assertion here. The SVG's document order IS the paint
     # order, so a hand-written expected sequence is a second authority that
-    # reddens on a legitimate restack rather than on a defect -- which is what
-    # it did: it demanded torso_front_overlay ahead of the hair, and moving the
-    # overlay there changed ZERO pixels, because the lapel and the hair do not
-    # overlap. It was asserting an order the art never exercises.
+    # reddens on a legitimate restack rather than on a defect.
     #
     # What stays below is what document order CANNOT state: which bone each
-    # same-bone slice binds to, and that the head overlays actually cover the
+    # same-bone slice binds to, and that the eye overlays actually cover the
     # head. Those fail on a real defect and cannot be satisfied by reordering.
+    #
+    # The hair is part of the head, and the neck is part of the torso
+    # (2026-10-04). They were separate parts on the same bone at the same
+    # transform, so a part flipbook drew three rasters for one rigid head, and
+    # the pieces landed half a texel apart. The eye overlays do not touch the
+    # hair, so they draw on top of the whole head with the same pixels.
     expected_bones = {
         "torso_backing": "torso",
         "torso": "torso",
         "torso_front_overlay": "torso",
         "head": "head",
-        "hair_back": "head",
-        "hair_front": "head",
+        "eye_closed": "head",
+        "eye_dizzy": "head",
+        "eye_dead": "head",
     }
     actual_bones = {
         name: str(_part_by_name(doc, name).get("bone"))
@@ -1770,12 +1774,23 @@ def _validate_carl_layer_model(doc: RigDocument) -> None:
     if wrong_bones:
         raise ValueError(f"Carl Stargan canonical paint slices bind wrong bones: {wrong_bones}")
 
-    back_overlap = _sprite_overlap_pixels(doc, "head", "hair_back")
-    front_overlap = _sprite_overlap_pixels(doc, "head", "hair_front")
-    if back_overlap < 500 or front_overlap < 150:
+    separate = sorted(
+        str(part["name"]) for part in doc.parts
+        if str(part["name"]) in {"hair_back", "hair_front", "neck"}
+    )
+    if separate:
         raise ValueError(
-            "Carl Stargan hair rasters do not cover the skull as authored: "
-            f"head/hair_back={back_overlap}px, head/hair_front={front_overlap}px"
+            f"Carl Stargan parts {separate} must be drawn as part of the head and the torso, "
+            "not as parts of their own on the same bone"
+        )
+
+    uncovered = {
+        name: _sprite_overlap_pixels(doc, "head", name)
+        for name in ("eye_closed", "eye_dizzy", "eye_dead")
+    }
+    if min(uncovered.values()) < 20:
+        raise ValueError(
+            f"Carl Stargan eye overlays do not cover the head as authored: {uncovered}"
         )
 
 

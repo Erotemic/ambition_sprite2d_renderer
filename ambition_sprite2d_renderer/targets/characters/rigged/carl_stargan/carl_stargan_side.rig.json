@@ -344,7 +344,8 @@
         "path2050",
         "path2042",
         "path2048",
-        "path2161"
+        "path2161",
+        "path2032"
       ],
       "pivot": [
         499.0,
@@ -354,24 +355,9 @@
       "svg_source_order": 11
     },
     {
-      "name": "neck",
-      "bone": "torso",
-      "z": 12.0,
-      "kind": "sprite",
-      "include": [
-        "path2032"
-      ],
-      "pivot": [
-        499.0,
-        533.0
-      ],
-      "rest_angle": 0.0,
-      "svg_source_order": 12
-    },
-    {
       "name": "head",
       "bone": "head",
-      "z": 13.0,
+      "z": 12.0,
       "kind": "sprite",
       "include": [
         "path2034",
@@ -395,19 +381,26 @@
         "path1959",
         "path1963",
         "path1965",
-        "path1961"
+        "path1961",
+        "path1935",
+        "path1953",
+        "path1955",
+        "path1957",
+        "path1937",
+        "path1951",
+        "path1933"
       ],
       "pivot": [
         486.0,
         203.0
       ],
       "rest_angle": 0.0,
-      "svg_source_order": 13
+      "svg_source_order": 12
     },
     {
       "name": "eye_closed",
       "bone": "head",
-      "z": 14.0,
+      "z": 13.0,
       "kind": "sprite",
       "include": [
         "path2361",
@@ -418,13 +411,13 @@
         203.0
       ],
       "rest_angle": 0.0,
-      "svg_source_order": 14,
+      "svg_source_order": 13,
       "opacity_channel": "eye_blink_vis"
     },
     {
       "name": "eye_dizzy",
       "bone": "head",
-      "z": 15.0,
+      "z": 14.0,
       "kind": "sprite",
       "include": [
         "path478"
@@ -434,13 +427,13 @@
         203.0
       ],
       "rest_angle": 0.0,
-      "svg_source_order": 15,
+      "svg_source_order": 14,
       "opacity_channel": "eye_dizzy_vis"
     },
     {
       "name": "eye_dead",
       "bone": "head",
-      "z": 16.0,
+      "z": 15.0,
       "kind": "sprite",
       "include": [
         "path1157",
@@ -451,48 +444,13 @@
         203.0
       ],
       "rest_angle": 0.0,
-      "svg_source_order": 16,
+      "svg_source_order": 15,
       "opacity_channel": "eye_dead_vis"
-    },
-    {
-      "name": "hair_back",
-      "bone": "head",
-      "z": 17.0,
-      "kind": "sprite",
-      "include": [
-        "path1935",
-        "path1953",
-        "path1955",
-        "path1957"
-      ],
-      "pivot": [
-        486.0,
-        203.0
-      ],
-      "rest_angle": 0.0,
-      "svg_source_order": 17
-    },
-    {
-      "name": "hair_front",
-      "bone": "head",
-      "z": 18.0,
-      "kind": "sprite",
-      "include": [
-        "path1937",
-        "path1951",
-        "path1933"
-      ],
-      "pivot": [
-        486.0,
-        203.0
-      ],
-      "rest_angle": 0.0,
-      "svg_source_order": 18
     },
     {
       "name": "torso_front_overlay",
       "bone": "torso",
-      "z": 19.0,
+      "z": 16.0,
       "kind": "sprite",
       "include": [
         "path2036",
@@ -503,12 +461,12 @@
         533.0
       ],
       "rest_angle": 0.0,
-      "svg_source_order": 19
+      "svg_source_order": 16
     },
     {
       "name": "near_arm_u",
       "bone": "near_arm_u",
-      "z": 20.0,
+      "z": 17.0,
       "kind": "sprite",
       "include": [
         "path2070"
@@ -518,12 +476,12 @@
         306.0
       ],
       "rest_angle": 36.2538,
-      "svg_source_order": 20
+      "svg_source_order": 17
     },
     {
       "name": "near_hand",
       "bone": "near_arm_hand",
-      "z": 21.0,
+      "z": 18.0,
       "kind": "sprite",
       "include": [
         "path2133",
@@ -534,12 +492,12 @@
         515.0
       ],
       "rest_angle": 75.7526,
-      "svg_source_order": 21
+      "svg_source_order": 18
     },
     {
       "name": "near_arm_l",
       "bone": "near_arm_l",
-      "z": 22.0,
+      "z": 19.0,
       "kind": "sprite",
       "include": [
         "path2072"
@@ -549,12 +507,12 @@
         377.5
       ],
       "rest_angle": 72.2553,
-      "svg_source_order": 22
+      "svg_source_order": 19
     },
     {
       "name": "sword",
       "bone": "near_arm_hand",
-      "z": 23.0,
+      "z": 20.0,
       "kind": "sprite",
       "include": [
         "path2783",
@@ -592,7 +550,7 @@
         515.0
       ],
       "rest_angle": 75.7526,
-      "svg_source_order": 23
+      "svg_source_order": 20
     }
   ],
   "ik_legs": [
@@ -39983,7 +39941,7 @@
     "renderer_version": "0.3.3",
     "renderer_backend": "native-extension",
     "renderer_origin": "/home/joncrall/code/ambition/tools/ambition_sprite2d_renderer/.venv/lib/python3.12/site-packages/resvg_py/resvg_py.cpython-312-x86_64-linux-gnu.so",
-    "svg_sha256": "a228d34fedcc0dfa845cc7eb5a1912b5cd8c841c5d1fcc2b8f6cf6b69daf6f5c",
+    "svg_sha256": "3391f9261d359ee5625e412e1086da97bac30f198dc6726a7211e454021298a7",
     "part_order_policy": "svg-document-order",
     "part_order": "svg-document"
   }

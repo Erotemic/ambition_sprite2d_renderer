@@ -81,11 +81,13 @@ def test_a_part_nested_inside_another_belongs_to_the_deeper_one():
     by_name = {part.name: set(part.include) for part in parts}
     # ⛔ the non-vacuity: the nesting this is about must actually be present, or
     # the assertion above is a statement about an SVG with no nested parts.
-    assert by_name.get("hair_front"), "Carl's hair is a part in its own right"
-    assert by_name.get("hair_back"), "…both halves of it"
+    # Carl's eye overlays sit inside his head group. (His hair did too, until
+    # it became part of the head, 2026-10-04.)
+    assert by_name.get("eye_closed"), "Carl's closed eye is a part in its own right"
+    assert by_name.get("eye_dead"), "…and so is his dead eye"
     assert by_name.get("head"), "…and the head still owns its leftovers"
-    assert not (by_name["head"] & (by_name["hair_front"] | by_name["hair_back"])), (
-        "the head must not also claim the hair it contains"
+    assert not (by_name["head"] & (by_name["eye_closed"] | by_name["eye_dead"])), (
+        "the head must not also claim the eyes it contains"
     )
 
 

@@ -11,12 +11,12 @@ import math
 from functools import lru_cache
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageFont
 
 import json
 
 from ...authoring.part_flipbook import publish_rig_flipbook
-from ...authoring import strike_axis, swing_effects
+from ...authoring import shape_rig, strike_axis, swing_effects
 from ...authoring.portrait import FaceGuide, PortraitClip, render_framed_portrait, write_portrait_sheet
 from ...authoring.canonical_scientist_rig import ensure_scientist_rig
 from ...authoring.rigdoc import RigDocument
@@ -24,6 +24,7 @@ from ...authoring.sheet_build import build_sheet, write_canonical
 from ._svg_fighter_effects import (
     FxCanvas,
     bone_origin,
+    clamp01,
     compose_rig_frame,
     fade,
     orbit_point,
@@ -192,13 +193,257 @@ def _doc() -> RigDocument:
     return _load_doc_cached(str(path), stat.st_mtime_ns, stat.st_size)
 
 
-def _stars(canvas: FxCanvas, center: tuple[float, float], count: int, radius: float, phase: float, alpha: float = 1.0) -> None:
-    for index in range(count):
+# --- Cosmic effects as GLYPHS -------------------------------------------------
+#
+# ⭐ EACH EFFECT IS A GLYPH PAINTED ONCE AND PLACED (2026-10-04). A ring is a
+# raster of one fixed size, a planet moves along its orbit, a swirl turns (a
+# turn is a draw transform), the calendar is one arc dash turned along a
+# spiral, and a star field is a few star CLUSTERS placed. Growth is a few fixed
+# sizes or a fade (the glyph's opacity). These effects drew a radius and a
+# point that changed every frame, so a part flipbook stored a new raster each
+# frame: 0.74 MTexel of parts, almost all effects
+# (`scripts/measure_part_waste.py --tracks`).
+#
+# A shape that a half turn maps onto itself (an ellipse, a ring) is painted as
+# its TOP HALF and placed twice, turned 0 and 180 degrees: a half turn costs
+# nothing on a part page (`docs/planning/engine/mary-o-part-realization.md`).
+
+#: Transparent canvas pixels round a glyph's drawn extent.
+GLYPH_PAD = 4
+
+
+def _glyph(canvas: FxCanvas, key, half: tuple[float, float], paint, *, top_half: bool = False):
+    """A glyph painted once at the canvas's pixels, its pivot at its centre.
+
+    ``half`` is the drawn extent from the pivot, in logical units.
+    ``paint(draw, s, cx, cy)`` paints it about the pixel CORNER ``(cx, cy)``,
+    with ``s`` canvas pixels a logical unit. With ``top_half`` the raster ends
+    at the pivot row: placed again turned 180 degrees about the same corner, a
+    shape symmetric about its centre tiles back exactly.
+    """
+    s = canvas.draw_scale
+    cx = int(math.ceil(half[0] * s)) + GLYPH_PAD
+    cy = int(math.ceil(half[1] * s)) + GLYPH_PAD
+    size = (2 * cx, cy if top_half else 2 * cy)
+    return shape_rig.piece(
+        (TARGET_NAME, key, s, top_half),
+        size,
+        (float(cx), float(cy)),
+        lambda draw: paint(draw, s, cx, cy),
+    )
+
+
+def _box(s: float, cx: int, cy: int, rx: float, ry: float, dx: float = 0.0, dy: float = 0.0):
+    """The ellipse box centred on the pixel corner ``(cx, cy)`` (+ an offset)."""
+    x, y = cx + dx * s, cy + dy * s
+    return (x - rx * s, y - ry * s, x + rx * s - 1, y + ry * s - 1)
+
+
+def _width(s: float, width: float) -> int:
+    return max(1, int(round(width * s)))
+
+
+def _place_halves(canvas: FxCanvas, part, at: tuple[float, float], opacity: float, name: str) -> None:
+    """A ``top_half`` glyph placed whole: as painted, and turned a half turn."""
+    canvas.place(part, at, 0.0, opacity, f"{name}_top")
+    canvas.place(part, at, 180.0, opacity, f"{name}_bottom")
+
+
+def _ring(canvas: FxCanvas, rx: float, ry: float, color, width: float):
+    """The top half of an elliptical ring (see ``_place_halves``)."""
+    def paint(draw, s, cx, cy):
+        draw.ellipse(_box(s, cx, cy, rx, ry), outline=color, width=_width(s, width))
+
+    return _glyph(canvas, ("ring", rx, ry, color, width), (rx + width, ry + width), paint, top_half=True)
+
+
+def _disc(canvas: FxCanvas, rx: float, ry: float, color):
+    """The top half of a filled ellipse (see ``_place_halves``)."""
+    def paint(draw, s, cx, cy):
+        draw.ellipse(_box(s, cx, cy, rx, ry), fill=color)
+
+    return _glyph(canvas, ("disc", rx, ry, color), (rx, ry), paint, top_half=True)
+
+
+def _star_points(s: float, cx: float, cy: float, radius: float, points: int, inner: float = 0.43,
+                 rotation: float = -90.0) -> list[tuple[float, float]]:
+    vertices = []
+    for index in range(points * 2):
+        angle = math.radians(rotation + index * 180.0 / points)
+        r = (radius if index % 2 == 0 else radius * inner) * s
+        vertices.append((cx + math.cos(angle) * r, cy + math.sin(angle) * r))
+    return vertices
+
+
+def _star(canvas: FxCanvas, radius: float, color, points: int = 4, outline=None):
+    """One star, ``FxCanvas.star``'s shape, about its centre."""
+    def paint(draw, s, cx, cy):
+        vertices = _star_points(s, cx, cy, radius, points)
+        draw.polygon(vertices, fill=color)
+        if outline is not None:
+            draw.line([*vertices, vertices[0]], fill=outline, width=_width(s, 0.7), joint="curve")
+
+    return _glyph(canvas, ("star", radius, color, points, outline), (radius + 1, radius + 1), paint)
+
+
+#: Star clusters: (dx, dy, radius, gold) per star. A star field is a few of
+#: these placed (and quarter-turned): a star a draw would spend the frame's
+#: draw budget on one field.
+_CLUSTERS = (
+    ((-6.0, -2.5, 1.9, False), (-1.0, 3.5, 1.3, True), (3.5, -4.0, 1.6, True), (7.0, 2.0, 1.2, False),
+     (1.5, 0.0, 0.9, True)),
+    ((-7.0, 3.0, 1.4, True), (-3.0, -3.5, 1.2, False), (2.0, 1.5, 2.1, True), (6.5, -2.5, 1.2, True),
+     (-1.0, 5.5, 0.9, False)),
+    ((-5.0, 0.5, 1.2, True), (-0.5, -4.5, 1.7, False), (4.0, 4.0, 1.3, True), (6.0, -1.5, 0.9, False),
+     (-6.5, -5.0, 0.9, True)),
+)
+
+
+def _cluster(canvas: FxCanvas, variant: int):
+    stars = _CLUSTERS[variant % len(_CLUSTERS)]
+
+    def paint(draw, s, cx, cy):
+        for dx, dy, radius, gold in stars:
+            draw.polygon(_star_points(s, cx + dx * s, cy + dy * s, radius, 4), fill=STAR_GOLD if gold else STAR_WHITE)
+
+    return _glyph(canvas, ("cluster", variant % len(_CLUSTERS)), (9.5, 8.0), paint)
+
+
+def _field(canvas: FxCanvas, center: tuple[float, float], radius: float, clusters: int, phase: float,
+           alpha: float, name: str = "stars") -> None:
+    """A turning star field: ``clusters`` star clusters on a golden-angle
+    spiral of ``radius``, each twinkling by its opacity."""
+    for index in range(clusters):
         angle = phase * math.tau + index * 2.399963
         r = radius * (0.25 + 0.75 * ((index * 0.6180339887) % 1.0))
-        point = (center[0] + math.cos(angle) * r, center[1] + math.sin(angle) * r * 0.68)
-        color = STAR_GOLD if index % 3 else STAR_WHITE
-        canvas.star(point, 1.2 + (index % 4) * 0.45, fade(color, alpha * (0.45 + 0.45 * pulse(phase + index / max(1, count)))), points=4)
+        at = (center[0] + math.cos(angle) * r, center[1] + math.sin(angle) * r * 0.68)
+        opacity = alpha * (0.45 + 0.45 * pulse(phase + index / max(1, clusters)))
+        canvas.place(_cluster(canvas, index), at, 90.0 * ((index // len(_CLUSTERS)) % 4), opacity, name)
+
+
+def _arcs(canvas: FxCanvas, key, center_offset, arcs, half):
+    """Arcs of ellipses about the glyph's pivot: (rx, ry, start, end, color, width) each."""
+    def paint(draw, s, cx, cy):
+        for rx, ry, start, end, color, width in arcs:
+            draw.arc(_box(s, cx, cy, rx, ry, *center_offset), start=start, end=end, fill=color, width=_width(s, width))
+
+    return _glyph(canvas, ("arcs", key), half, paint)
+
+
+def _shield(canvas: FxCanvas):
+    """The block shield's three rings, top half."""
+    def paint(draw, s, cx, cy):
+        for radius in (18, 25, 32):
+            draw.ellipse(_box(s, cx, cy, radius, radius * 0.78), fill=fade(COSMIC_DARK, 0.09),
+                         outline=fade(PALE_BLUE, 0.46), width=_width(s, 0.9))
+
+    return _glyph(canvas, ("shield",), (33.0, 26.0), paint, top_half=True)
+
+
+def _halo(canvas: FxCanvas, radius: int):
+    """The orbiting planet's glow and ring, behind the body."""
+    def paint(draw, s, cx, cy):
+        draw.ellipse(_box(s, cx, cy, radius, radius), fill=fade(PLANET_OCHRE, 0.48), outline=fade(PLANET_RUST, 0.9),
+                     width=_width(s, 1.0))
+        draw.arc(_box(s, cx, cy, 10, 3.5), start=180, end=360, fill=fade(STAR_GOLD, 0.65), width=_width(s, 0.8))
+
+    return _glyph(canvas, ("halo", radius), (radius + 1.0, radius + 1.0), paint)
+
+
+def _planet(canvas: FxCanvas):
+    def paint(draw, s, cx, cy):
+        draw.ellipse(_box(s, cx, cy, 5.5, 5.5), fill=PLANET_OCHRE, outline=PLANET_RUST, width=_width(s, 1.0))
+        draw.ellipse(_box(s, cx, cy, 1.5, 1.5, -2.0, -2.0), fill=fade(STAR_WHITE, 0.65))
+
+    return _glyph(canvas, ("planet",), (6.5, 6.5), paint)
+
+
+def _dot(canvas: FxCanvas, radius: float):
+    def paint(draw, s, cx, cy):
+        draw.ellipse(_box(s, cx, cy, radius, radius), fill=PALE_BLUE, outline=STAR_WHITE, width=_width(s, 0.8))
+
+    return _glyph(canvas, ("dot", radius), (radius + 1.0, radius + 1.0), paint)
+
+
+#: The cosmic calendar's dash radius per colour band (inner, middle, outer).
+CALENDAR_BANDS = ((NEBULA_VIOLET, 35.0), (NEBULA_BLUE, 46.0), (STAR_GOLD, 55.0))
+
+
+def _dash(canvas: FxCanvas, band: int):
+    """One calendar dash: 14 degrees of a circle, running along +x about its
+    middle, curving toward +y (the calendar's centre once turned)."""
+    color, radius = CALENDAR_BANDS[band]
+    half_chord = radius * math.sin(math.radians(7.0))
+
+    def paint(draw, s, cx, cy):
+        draw.arc(_box(s, cx, cy, radius, radius, 0.0, radius), start=263, end=277, fill=color, width=_width(s, 2.2))
+
+    return _glyph(canvas, ("dash", band), (half_chord + 1.5, 2.5), paint)
+
+
+#: The collapsible telescope's lengths, from the far hand to the lens.
+TELESCOPE_LENGTHS = (6.0, 14.0, 25.0, 36.0)
+
+
+def _telescope(canvas: FxCanvas, length: float):
+    """The telescope along +x: eyepiece at the pivot, lens ``length`` away."""
+    def paint(draw, s, cx, cy):
+        a, b = (cx, cy), (cx + length * s, cy)
+        polygon = [(a[0], a[1] - 3 * s), (b[0], b[1] - 5 * s), (b[0], b[1] + 5 * s), (a[0], a[1] + 3 * s)]
+        draw.polygon(polygon, fill=TELESCOPE)
+        draw.line([*polygon, polygon[0]], fill=OUTLINE, width=_width(s, 1.0), joint="curve")
+        draw.line([a, b], fill=TELESCOPE_LIGHT, width=_width(s, 1.1))
+        draw.ellipse(_box(s, cx, cy, 5.5, 5.5, length, 0.0), fill=TELESCOPE_LIGHT, outline=OUTLINE, width=_width(s, 0.9))
+
+    # Centred on the eyepiece, so the half-extent reaches the lens both ways.
+    return _glyph(canvas, ("telescope", length), (length + 7.0, 7.0), paint)
+
+
+def _swirl(canvas: FxCanvas, scale: float):
+    """Four spiral arms at ``scale`` of full size, at no turn."""
+    def paint(draw, s, cx, cy):
+        for arm in range(4):
+            points = []
+            for index in range(22):
+                a = arm * math.pi / 2 + index * 0.27
+                r = 2.2 * index * scale * s
+                points.append((cx + math.cos(a) * r, cy + math.sin(a) * r))
+            draw.line(points, fill=NEBULA_VIOLET if arm % 2 else NEBULA_BLUE, width=_width(s, 1.0), joint="curve")
+
+    reach = 2.2 * 21 * scale + 1.0
+    return _glyph(canvas, ("swirl", scale), (reach, reach), paint)
+
+
+def _thought(canvas: FxCanvas):
+    """The three thought bubbles, about the first."""
+    def paint(draw, s, cx, cy):
+        for index, radius in enumerate((2.0, 3.0, 4.0)):
+            draw.ellipse(_box(s, cx, cy, radius, radius, 8.0 * index, -7.0 * index), fill=fade(PALE_BLUE, 0.35 + 0.12 * index),
+                         outline=fade(OUTLINE, 0.35), width=_width(s, 0.5))
+
+    return _glyph(canvas, ("thought",), (21.0, 19.0), paint)
+
+
+def _label(canvas: FxCanvas, text: str, size: float):
+    font_size = max(5, int(round(size * canvas.draw_scale)))
+    try:
+        font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
+    except OSError:
+        font = ImageFont.load_default()
+    stroke = max(1, canvas.scale // 2)
+    left, top, right, bottom = font.getbbox(text, stroke_width=stroke, anchor="mm")
+    half = (max(-left, right) / canvas.draw_scale, max(-top, bottom) / canvas.draw_scale)
+
+    def paint(draw, s, cx, cy):
+        draw.text((cx, cy), text, font=font, fill=STAR_GOLD, anchor="mm", stroke_width=stroke,
+                  stroke_fill=fade(OUTLINE, 0.6))
+
+    return _glyph(canvas, ("label", text, font_size), half, paint)
+
+
+def _quantized(value: float, low: float, high: float, steps: int = 2) -> float:
+    """``low + (high - low) * value`` on ``steps + 1`` fixed sizes."""
+    return low + (high - low) * round(clamp01(value) * steps) / steps
 
 
 def _behind(animation: str, canvas: FxCanvas, t: float, world, params) -> None:
@@ -208,72 +453,67 @@ def _behind(animation: str, canvas: FxCanvas, t: float, world, params) -> None:
         for index in range(9):
             x = 150 - ((t * 70 + index * 17) % 72)
             y = 43 + (index * 13) % 78
-            canvas.star((x, y), 1.4 + index % 3, fade(STAR_GOLD if index % 2 else PALE_BLUE, 0.32 + 0.25 * pulse(t + index / 9)), points=4)
+            star = _star(canvas, 1.4 + index % 3, STAR_GOLD if index % 2 else PALE_BLUE)
+            canvas.place(star, (x, y), 0.0, 0.32 + 0.25 * pulse(t + index / 9), "drift")
         canvas.line([(150, 85), (118, 85), (98, 89)], fade(NEBULA_BLUE, 0.22), 4.0)
     elif animation == "block":
         hand = bone_origin(world, "near_arm_hand", (55, 90))
         shield = (hand[0] - 8, hand[1] - 1)
-        for radius in (18, 25, 32):
-            canvas.ellipse(shield, radius, radius * 0.78, fade(COSMIC_DARK, 0.09), fade(PALE_BLUE, 0.28 + 0.18 * pulse(t + radius / 50)), 0.9)
-        _stars(canvas, shield, 7, 27, t, 0.45)
+        _place_halves(canvas, _shield(canvas), shield, (0.28 + 0.18 * pulse(t + 0.5)) / 0.46, "shield")
+        _field(canvas, shield, 27, 2, t, 0.45)
     elif animation == "stargaze":
         q = smooth(t)
-        canvas.arc(center, 67, 51, 205, 340, fade(NEBULA_BLUE, 0.25 + 0.45 * q), 1.4)
-        canvas.arc(center, 72, 57, 205, 340, fade(NEBULA_VIOLET, 0.18 + 0.35 * q), 2.5)
-        _stars(canvas, (80, 70), 17, 68, t * 0.18, 0.4 + 0.4 * q)
+        arcs = _arcs(canvas, "stargaze", (0.0, 0.0), (
+            (67, 51, 205, 340, fade(NEBULA_BLUE, 0.70), 1.4),
+            (72, 57, 205, 340, fade(NEBULA_VIOLET, 0.53), 2.5),
+        ), (74.0, 59.0))
+        canvas.place(arcs, center, 0.0, (0.25 + 0.45 * q) / 0.70, "sky")
+        _field(canvas, (80, 70), 68, 5, t * 0.18, 0.4 + 0.4 * q)
     elif animation == "planetary_orbit":
         q = smooth(t)
-        canvas.ellipse(center, 61, 31, None, fade(NEBULA_BLUE, 0.3 + 0.4 * pulse(t)), 1.1)
+        _place_halves(canvas, _ring(canvas, 61, 31, NEBULA_BLUE, 1.1), center, 0.3 + 0.4 * pulse(t), "orbit")
         planet = orbit_point(center, 61, 31, t + 0.15)
-        canvas.ellipse(planet, 8 + 2 * q, 8 + 2 * q, fade(PLANET_OCHRE, 0.48), fade(PLANET_RUST, 0.9), 1.0)
-        canvas.arc(planet, 10, 3.5, 180, 360, fade(STAR_GOLD, 0.65), 0.8)
+        canvas.place(_halo(canvas, 8 + int(round(2 * q))), planet, 0.0, 1.0, "halo")
     elif animation == "pale_blue_dot":
         q = smooth(t)
         hand = bone_origin(world, "near_arm_hand", (43, 80))
         dot = (max(34.0, hand[0] - 12), hand[1] - 2)
+        # The zoom out: each ring appears as the view widens past it.
+        alpha = (1 - q) * 0.42 + 0.08
         for radius in (8, 16, 24, 31):
-            canvas.ellipse(dot, radius * q, radius * q, None, fade(PALE_BLUE, (1 - q) * 0.42 + 0.08), 0.8)
-        _stars(canvas, dot, 13, 29 * q, t * 0.2, 0.22 + 0.3 * q)
+            reached = clamp01((q * 31 - radius) / 8 + 1)
+            if reached > 0:
+                _place_halves(canvas, _ring(canvas, radius, radius, PALE_BLUE, 0.8), dot, alpha * reached, "ripple")
+        _field(canvas, dot, 29 * q, 3, t * 0.2, 0.22 + 0.3 * q)
     elif animation == "cosmic_calendar":
         q = smooth(t)
         for index in range(12):
-            start = -165 + index * 20
-            end = start + 14
-            color = STAR_GOLD if index > 8 else NEBULA_BLUE if index > 4 else NEBULA_VIOLET
-            canvas.arc(center, 30 + index * 2.5 * q, 22 + index * 1.7 * q, start, end, fade(color, 0.25 + 0.45 * q), 2.2)
-        _stars(canvas, center, 10, 45 * q, -t * 0.16, 0.35)
+            middle = math.radians(-165 + index * 20 + 7)
+            rx, ry = 30 + index * 2.5 * q, 22 + index * 1.7 * q
+            at = (center[0] + math.cos(middle) * rx, center[1] + math.sin(middle) * ry)
+            heading = math.degrees(math.atan2(math.cos(middle) * ry, -math.sin(middle) * rx))
+            band = 2 if index > 8 else 1 if index > 4 else 0
+            canvas.place(_dash(canvas, band), at, heading, 0.25 + 0.45 * q, "month")
+        _field(canvas, center, 45 * q, 3, -t * 0.16, 0.35)
     elif animation == "billions_and_billions":
         q = smooth(t)
-        _stars(canvas, center, 34, 12 + 62 * q, t * 0.25, 0.28 + 0.5 * q)
-        canvas.ellipse(center, 20 + 34 * q, 12 + 23 * q, fade(NEBULA_VIOLET, 0.05 + 0.08 * q), None)
+        _field(canvas, center, 12 + 62 * q, 8, t * 0.25, 0.28 + 0.5 * q)
+        grown = round(q * 2) / 2
+        nebula = _disc(canvas, 20 + 34 * grown, 12 + 23 * grown, fade(NEBULA_VIOLET, 0.13))
+        _place_halves(canvas, nebula, center, (0.05 + 0.08 * q) / 0.13, "nebula")
     elif animation == "starstuff":
         q = smooth(t)
-        for arm in range(4):
-            points = []
-            for index in range(22):
-                a = arm * math.pi / 2 + index * 0.27 + t * math.tau
-                r = 2.2 * index * q
-                points.append((center[0] + math.cos(a) * r, center[1] + math.sin(a) * r * 0.62))
-            canvas.line(points, fade(NEBULA_VIOLET if arm % 2 else NEBULA_BLUE, 0.22 + 0.35 * q), 1.0)
-        _stars(canvas, center, 30, 64 * q, -t * 0.33, 0.35 + 0.35 * q)
+        # Round, not squashed, so a turn is a draw transform: kept smaller than
+        # the squashed spiral's width so it stays about his body.
+        swirl = _swirl(canvas, 0.35 if q < 0.3 else 0.55 if q < 0.65 else 0.75)
+        canvas.place(swirl, center, math.degrees(t * math.tau), (0.22 + 0.35 * q) * min(1.0, q / 0.2), "swirl")
+        _field(canvas, center, 64 * q, 7, -t * 0.33, 0.35 + 0.35 * q)
     elif animation in {"attack_up", "attack_down", "air_neutral", "air_forward", "air_back", "air_down", "air_up", "jab", "punch"}:
         hand = bone_origin(world, "near_arm_hand", (48, 82))
-        q = pulse(t)
-        for radius in (12, 19, 27):
-            canvas.arc(hand, radius, radius * 0.72, 130, 310, fade(STAR_GOLD, q * (0.68 - radius / 70)), 1.3)
-
-
-def _telescope(canvas: FxCanvas, a: tuple[float, float], b: tuple[float, float], alpha: float) -> None:
-    dx, dy = b[0] - a[0], b[1] - a[1]
-    length = max(1.0, math.hypot(dx, dy))
-    nx, ny = -dy / length, dx / length
-    p1 = (a[0] + nx * 3, a[1] + ny * 3)
-    p2 = (b[0] + nx * 5, b[1] + ny * 5)
-    p3 = (b[0] - nx * 5, b[1] - ny * 5)
-    p4 = (a[0] - nx * 3, a[1] - ny * 3)
-    canvas.polygon([p1, p2, p3, p4], fade(TELESCOPE, alpha), fade(OUTLINE, alpha), 1.0)
-    canvas.line([a, b], fade(TELESCOPE_LIGHT, alpha), 1.1)
-    canvas.ellipse(b, 5.5, 5.5, fade(TELESCOPE_LIGHT, alpha), fade(OUTLINE, alpha), 0.9)
+        arcs = _arcs(canvas, "strike", (0.0, 0.0), tuple(
+            (radius, radius * 0.72, 130, 310, fade(STAR_GOLD, 0.68 - radius / 70), 1.3) for radius in (12, 19, 27)
+        ), (28.5, 21.0))
+        canvas.place(arcs, hand, 0.0, pulse(t), "strike")
 
 
 def _front(animation: str, canvas: FxCanvas, t: float, world, params) -> None:
@@ -282,28 +522,29 @@ def _front(animation: str, canvas: FxCanvas, t: float, world, params) -> None:
     far = bone_origin(world, "far_arm_hand", (78, 92))
     if animation == "use_telescope":
         q = smooth(min(1.0, t * 2.0)) * smooth(min(1.0, (1.0 - t) * 3.0))
-        _telescope(canvas, far, near, 0.45 + 0.55 * q)
-        canvas.star((near[0] - 10, near[1] - 4), 2.8 + 2.5 * pulse(t), fade(PALE_BLUE, q), points=4)
+        reach = math.dist(far, near)
+        length = min(TELESCOPE_LENGTHS, key=lambda value: abs(value - reach))
+        heading = math.degrees(math.atan2(near[1] - far[1], near[0] - far[0]))
+        canvas.place(_telescope(canvas, length), far, heading, 0.45 + 0.55 * q, "telescope")
+        glint = _star(canvas, _quantized(pulse(t), 2.8, 5.3), PALE_BLUE)
+        canvas.place(glint, (near[0] - 10, near[1] - 4), 0.0, q, "glint")
     elif animation == "planetary_orbit":
-        planet = orbit_point((80, 82), 61, 31, t + 0.15)
-        canvas.ellipse(planet, 5.5, 5.5, PLANET_OCHRE, PLANET_RUST, 1.0)
-        canvas.ellipse((planet[0]-2, planet[1]-2), 1.5, 1.5, fade(STAR_WHITE, 0.65))
+        canvas.place(_planet(canvas), orbit_point((80, 82), 61, 31, t + 0.15), 0.0, 1.0, "planet")
     elif animation == "pale_blue_dot":
-        dot = (max(34.0, near[0] - 12), near[1] - 2)
-        canvas.ellipse(dot, 2.2 + 1.5 * pulse(t), 2.2 + 1.5 * pulse(t), PALE_BLUE, STAR_WHITE, 0.8)
+        canvas.place(_dot(canvas, _quantized(pulse(t), 2.2, 3.7)), (max(34.0, near[0] - 12), near[1] - 2), 0.0, 1.0, "dot")
     elif animation == "billions_and_billions":
+        star = _star(canvas, _quantized(pulse(t), 3.0, 5.0), fade(STAR_GOLD, 0.75), 6, fade(OUTLINE, 0.55))
         for hand in (near, far):
-            canvas.star((hand[0], hand[1]-2), 3.0 + 2.0 * pulse(t), fade(STAR_GOLD, 0.75), points=6, outline=fade(OUTLINE,0.55))
+            canvas.place(star, (hand[0], hand[1] - 2), 0.0, 1.0, "hand_star")
     elif animation == "starstuff":
-        _stars(canvas, (80, 82), 12, 44 * smooth(t), t * 0.6, 0.55)
+        _field(canvas, (80, 82), 44 * smooth(t), 3, t * 0.6, 0.55, "front_stars")
     elif animation in {"stargaze", "celebrate"}:
-        canvas.star((near[0]-5, near[1]-7), 3.2 + 1.4*pulse(t), fade(STAR_GOLD,0.75), points=5)
-        canvas.star((far[0]+5, far[1]-6), 2.6 + 1.2*pulse(t+0.2), fade(PALE_BLUE,0.65), points=4)
+        canvas.place(_star(canvas, _quantized(pulse(t), 3.2, 4.6), STAR_GOLD, 5), (near[0] - 5, near[1] - 7), 0.0, 0.75, "star")
+        canvas.place(_star(canvas, _quantized(pulse(t + 0.2), 2.6, 3.8), PALE_BLUE), (far[0] + 5, far[1] - 6), 0.0, 0.65, "star")
     elif animation == "think":
-        for index, radius in enumerate((2.0, 3.0, 4.0)):
-            canvas.ellipse((112 + index*8, 42-index*7), radius, radius, fade(PALE_BLUE,0.35+0.12*index), fade(OUTLINE,0.35), 0.5)
+        canvas.place(_thought(canvas), (112, 42), 0.0, 1.0, "thought")
     elif animation == "taunt":
-        canvas.text((30, 31), "EVIDENCE?", STAR_GOLD, size=4.1, stroke=fade(OUTLINE,0.6))
+        canvas.place(_label(canvas, "EVIDENCE?", 4.1), (30, 31), 0.0, 1.0, "taunt")
 
 
 SPEC_DIR = Path(__file__).resolve().parent / "rigged" / TARGET_NAME / "specs"
@@ -343,8 +584,8 @@ def _raw_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
         # from these frames, so they land in the same padded space and
         # `build_sheet`'s auto-crop translates all three together.
         padding=RIG_RENDER_PADDING,
-        # His orbit rings, shields and calendar arcs recur with a pulsing
-        # alpha: as pieces his part texels fell 28% (`FxCanvas`, 2026-10-04).
+        # His effects are glyphs placed (`_glyph`); a pieces canvas records
+        # each placement as a part.
         fx_pieces=True,
     )
 
