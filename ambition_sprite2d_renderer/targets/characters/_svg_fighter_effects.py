@@ -12,7 +12,7 @@ from typing import Callable, Iterable, Mapping, Sequence
 
 from PIL import Image, ImageFont
 
-from ...authoring import rigdoc
+from ...authoring import rigdoc, shape_rig
 from ...authoring.rigdoc import RigDocument, RenderPadding, normalize_render_padding
 from ...core.draw import blending_draw
 from ...profiling import profile
@@ -53,6 +53,23 @@ def bone_origin(world: World, name: str, fallback: Point) -> Point:
     return float(origin[0]), float(origin[1])
 
 
+#: A primitive whose box covers fewer frame pixels than this is a SPECK: a
+#: piece of its own only while the frame's draw budget lasts, else drawn with
+#: its neighbours into one dust raster per run. A star field is dozens of
+#: specks a frame; as pieces they cost almost no texels (a few star shapes)
+#: but a draw each, and a fighter past `part_flipbook.REALIZE_MAX_DRAWS` is
+#: drawn baked.
+DUST_FRAME_PIXELS = 100
+
+#: Pieces a frame keeps for sizeable primitives: a speck becomes a piece only
+#: while more than this many remain.
+SPECK_RESERVE = 8
+
+#: Draws a frame keeps free of effect pieces below the realize limit (a swing
+#: trail, a hit flash, and slack: a slot per draw is a sprite per body).
+DRAW_MARGIN = 16
+
+
 class FxCanvas:
     """Transparent supersampled canvas with base-frame coordinates.
 
@@ -60,6 +77,25 @@ class FxCanvas:
     being drawn into a larger overscan raster. This is intentionally a canvas
     concern: effect authors should not have to rewrite every hardcoded point
     merely because publication needs more room around a rotating character.
+
+    ⭐ WITH ``pieces``, EACH PRIMITIVE IS A PIECE. A ring, an ellipse, an arc, a line or
+    a polygon is painted ONCE at full alpha in its own raster (cached by what it
+    looks like) and placed through ``rigdoc.blit_rotated`` with its alpha as
+    the draw's opacity, so a part flipbook stores a ring that pulses as one
+    part. Painted as one layer raster a frame, Carl Stargan's orbit ring was a
+    new part on every frame, and effect layers were a third of every part
+    page's texels (`scripts/measure_part_waste.py`, 2026-10-04). Coordinates
+    stay the whole supersampled pixels they always were, so the frame is the
+    same picture. Past the frame's draw budget (and specks, before the
+    budget's reserve) primitives are drawn into a dust raster, flushed as one
+    layer whenever a piece is drawn after them (draw order kept).
+
+    ⚠ OPT-IN, MEASURED PER CHARACTER. A pulsing radius or a moving point is a
+    new raster every frame however it is recorded, and dust runs between
+    pieces overlap: Carl Stargan's part texels fell 28%, the Perfect Cellular
+    Automaton's 6%, and Noether's ROSE 17% (2026-10-04). An effect that recurs
+    is cheapest authored as a glyph painted once and placed (``place``).
+    Without ``pieces`` the canvas is one layer raster, as before.
     """
 
     def __init__(
@@ -69,17 +105,26 @@ class FxCanvas:
         *,
         origin: Point = (0.0, 0.0),
         unit_scale: float = 1.0,
+        name: str = "fx",
+        budget: list | None = None,
+        pieces: bool = False,
     ):
         self.size = size
         self.scale = max(1, int(scale))
         self.unit_scale = max(0.001, float(unit_scale))
         self.origin = (float(origin[0]), float(origin[1]))
+        self.name = name
+        self.pieces = pieces
+        #: Speck pieces this frame may still draw, shared by its layers.
+        self.budget = budget if budget is not None else [0]
         self.image = Image.new(
             "RGBA",
             (size[0] * self.scale, size[1] * self.scale),
             (0, 0, 0, 0),
         )
         self.draw = blending_draw(self.image)
+        self._dust: Image.Image | None = None
+        self._count = 0
         self._dirty = False
 
     @property
@@ -108,65 +153,151 @@ class FxCanvas:
             int(round((y + ry) * q)),
         )
 
-    def line(self, points: Sequence[Point], fill: Color, width: float = 1.0, joint: str = "curve") -> None:
+    def _stroke(self, width: float) -> int:
+        return max(1, int(round(width * self.draw_scale)))
+
+    def _flush_dust(self) -> None:
+        if self._dust is not None:
+            self._count += 1
+            rigdoc.composite_layer(self.image, self._dust, name=f"{self.name}:dust{self._count}")
+            self._dust = None
+
+    def _paint(self, kind: str, extent, colors: Sequence[Color | None], paint, key) -> None:
+        """Paint one primitive: ``extent`` its (x0, y0, x1, y1) in canvas
+        pixels, ``colors`` the colours it inks, ``paint(draw, dx, dy, opaque)``
+        paints it shifted by (dx, dy) with each colour made opaque (or as given
+        when ``opaque`` is False), ``key`` what it looks like apart from where."""
         self._dirty = True
-        self.draw.line(
-            [self.p(point) for point in points],
-            fill=fill,
-            width=max(1, int(round(width * self.draw_scale))),
-            joint=joint,
+        inked = [c for c in colors if c is not None]
+        if not inked:
+            return
+        if not self.pieces:
+            paint(self.draw, 0, 0, False)
+            return
+        x0, y0 = int(math.floor(extent[0])) - 2, int(math.floor(extent[1])) - 2
+        x1, y1 = int(math.ceil(extent[2])) + 3, int(math.ceil(extent[3])) + 3
+        # Over the frame's draw budget, any primitive joins the dust: a lattice
+        # of 200 cells as pieces put the Perfect Cellular Automaton at 244
+        # draws a frame, drawn baked (2026-10-04).
+        speck = (x1 - x0) * (y1 - y0) < DUST_FRAME_PIXELS * self.scale * self.scale
+        if self.budget[0] <= 0 or (speck and self.budget[0] <= SPECK_RESERVE):
+            if self._dust is None:
+                self._dust = Image.new("RGBA", self.image.size, (0, 0, 0, 0))
+            paint(blending_draw(self._dust), 0, 0, False)
+            return
+        alphas = {c[3] for c in inked}
+        if len(alphas) > 1:
+            raise _MixedAlpha
+        alpha = alphas.pop()
+        if alpha <= 0:
+            return
+        self.budget[0] -= 1
+        self._flush_dust()
+        opaque = tuple(None if c is None else (c[0], c[1], c[2], 255) for c in colors)
+        piece = shape_rig.piece(
+            ("fx", kind, key, opaque, (x1 - x0, y1 - y0)),
+            (x1 - x0, y1 - y0),
+            (0.0, 0.0),
+            lambda draw: paint(draw, -x0, -y0, True),
         )
+        self._count += 1
+        # `blit_rotated` truncates the faded alpha: half a level up lands it on
+        # the level the primitive was authored at.
+        opacity = 1.0 if alpha >= 255 else (alpha + 0.5) / 255.0
+        rigdoc.blit_rotated(self.image, piece[0], (0.0, 0.0), (float(x0), float(y0)), 0.0, opacity,
+                            part_name=f"{self.name}:{kind}{self._count}")
+
+    def line(self, points: Sequence[Point], fill: Color, width: float = 1.0, joint: str = "curve") -> None:
+        mapped = [self.p(point) for point in points]
+        w = self._stroke(width)
+        xs, ys = [x for x, _ in mapped], [y for _, y in mapped]
+        extent = (min(xs) - w, min(ys) - w, max(xs) + w, max(ys) + w)
+        local = tuple((x - min(xs), y - min(ys)) for x, y in mapped)
+
+        def paint(draw, dx, dy, opaque):
+            color = (fill[0], fill[1], fill[2], 255) if opaque else fill
+            draw.line([(x + dx, y + dy) for x, y in mapped], fill=color, width=w, joint=joint)
+
+        self._paint("line", extent, [fill], paint, (local, w, joint, min(xs) - extent[0], min(ys) - extent[1]))
 
     def polygon(self, points: Sequence[Point], fill: Color, outline: Color | None = None, width: float = 1.0) -> None:
-        self._dirty = True
         mapped = [self.p(point) for point in points]
-        self.draw.polygon(mapped, fill=fill)
-        if outline is not None:
-            self.draw.line(
-                [*mapped, mapped[0]],
-                fill=outline,
-                width=max(1, int(round(width * self.draw_scale))),
-                joint="curve",
-            )
+        w = self._stroke(width)
+        xs, ys = [x for x, _ in mapped], [y for _, y in mapped]
+        extent = (min(xs) - w, min(ys) - w, max(xs) + w, max(ys) + w)
+        local = tuple((x - min(xs), y - min(ys)) for x, y in mapped)
+
+        def paint(draw, dx, dy, opaque):
+            f = None if fill is None else ((fill[0], fill[1], fill[2], 255) if opaque else fill)
+            o = None if outline is None else ((outline[0], outline[1], outline[2], 255) if opaque else outline)
+            shifted = [(x + dx, y + dy) for x, y in mapped]
+            if f is not None:
+                draw.polygon(shifted, fill=f)
+            if o is not None:
+                draw.line([*shifted, shifted[0]], fill=o, width=w, joint="curve")
+
+        try:
+            self._paint("polygon", extent, [fill, outline], paint, (local, w))
+        except _MixedAlpha:
+            self.polygon(points, fill, None, width)
+            self.polygon(points, None, outline, width)
 
     def ellipse(self, center: Point, rx: float, ry: float, fill: Color | None, outline: Color | None = None, width: float = 1.0) -> None:
-        self._dirty = True
-        self.draw.ellipse(
-            self.box(center, rx, ry),
-            fill=fill,
-            outline=outline,
-            width=max(1, int(round(width * self.draw_scale))) if outline else 1,
-        )
+        box = self.box(center, rx, ry)
+        w = self._stroke(width) if outline else 1
+        if box[2] < box[0] or box[3] < box[1]:
+            return
+
+        def paint(draw, dx, dy, opaque):
+            f = None if fill is None else ((fill[0], fill[1], fill[2], 255) if opaque else fill)
+            o = None if outline is None else ((outline[0], outline[1], outline[2], 255) if opaque else outline)
+            draw.ellipse((box[0] + dx, box[1] + dy, box[2] + dx, box[3] + dy), fill=f, outline=o, width=w)
+
+        try:
+            self._paint("ellipse", box, [fill, outline], paint, (box[2] - box[0], box[3] - box[1], w))
+        except _MixedAlpha:
+            self.ellipse(center, rx, ry, fill, None, width)
+            self.ellipse(center, rx, ry, None, outline, width)
 
     def arc(self, center: Point, rx: float, ry: float, start: float, end: float, fill: Color, width: float = 1.0) -> None:
-        self._dirty = True
-        self.draw.arc(
-            self.box(center, rx, ry),
-            start=start,
-            end=end,
-            fill=fill,
-            width=max(1, int(round(width * self.draw_scale))),
-        )
+        box = self.box(center, rx, ry)
+        w = self._stroke(width)
+        if box[2] < box[0] or box[3] < box[1]:
+            return
+
+        def paint(draw, dx, dy, opaque):
+            color = (fill[0], fill[1], fill[2], 255) if opaque else fill
+            draw.arc((box[0] + dx, box[1] + dy, box[2] + dx, box[3] + dy), start=start, end=end, fill=color, width=w)
+
+        self._paint("arc", box, [fill], paint, (box[2] - box[0], box[3] - box[1], start, end, w))
 
     def text(self, center: Point, text: str, fill: Color, size: float = 6.0, *, bold: bool = True, stroke: Color | None = None) -> None:
-        self._dirty = True
         font_name = "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"
         try:
             font = ImageFont.truetype(font_name, max(5, int(round(size * self.draw_scale))))
         except OSError:
             font = ImageFont.load_default()
-        bbox = self.draw.textbbox((0, 0), text, font=font, stroke_width=1 if stroke else 0)
+        measure = blending_draw(Image.new("RGBA", (1, 1)))
+        stroke_width = max(1, self.scale // 2) if stroke else 0
+        bbox = measure.textbbox((0, 0), text, font=font, stroke_width=1 if stroke else 0)
         q = self.draw_scale
-        x = (center[0] + self.origin[0]) * q - (bbox[2] - bbox[0]) / 2
-        y = (center[1] + self.origin[1]) * q - (bbox[3] - bbox[1]) / 2
-        self.draw.text(
-            (int(round(x)), int(round(y))),
-            text,
-            font=font,
-            fill=fill,
-            stroke_width=max(1, self.scale // 2) if stroke else 0,
-            stroke_fill=stroke,
-        )
+        x = int(round((center[0] + self.origin[0]) * q - (bbox[2] - bbox[0]) / 2))
+        y = int(round((center[1] + self.origin[1]) * q - (bbox[3] - bbox[1]) / 2))
+        ink = measure.textbbox((x, y), text, font=font, stroke_width=stroke_width)
+
+        def paint(draw, dx, dy, opaque):
+            f = (fill[0], fill[1], fill[2], 255) if opaque else fill
+            s = None if stroke is None else ((stroke[0], stroke[1], stroke[2], 255) if opaque else stroke)
+            draw.text((x + dx, y + dy), text, font=font, fill=f, stroke_width=stroke_width, stroke_fill=s)
+
+        try:
+            self._paint("text", ink, [fill, stroke], paint, (text, font_name, font.size, stroke_width, x - ink[0], y - ink[1]))
+        except _MixedAlpha:
+            # A stroked label with its own alpha: one raster (rare, small).
+            self._dirty = True
+            if self._dust is None:
+                self._dust = Image.new("RGBA", self.image.size, (0, 0, 0, 0))
+            paint(blending_draw(self._dust), 0, 0, False)
 
     def star(self, center: Point, radius: float, fill: Color, *, points: int = 5, inner: float = 0.43, rotation: float = -90.0, outline: Color | None = None) -> None:
         vertices: list[Point] = []
@@ -186,10 +317,35 @@ class FxCanvas:
             )
             self.line([end, tip], fill, width)
 
+    def place(self, part, at: Point, degrees: float = 0.0, opacity: float = 1.0, name: str = "glyph") -> None:
+        """Place an authored glyph (``shape_rig.piece``, painted at this
+        canvas's pixels) with its pivot at the logical point ``at``, turned
+        ``degrees`` clockwise and faded by ``opacity``: one raster however
+        often it recurs. Only a ``pieces`` canvas records it as a part."""
+        self._dirty = True
+        self._flush_dust()
+        q = self.draw_scale
+        self._count += 1
+        rigdoc.blit_rotated(
+            self.image, part[0], part[1], ((at[0] + self.origin[0]) * q, (at[1] + self.origin[1]) * q),
+            degrees, opacity, part_name=f"{self.name}:{name}{self._count}",
+        )
+
     def finish(self) -> Image.Image:
+        """The layer at frame resolution. A ``pieces`` canvas is reduced
+        through ``rigdoc``'s seam, so a part flipbook reduces each piece the
+        same way; otherwise as the one raster it is."""
+        self._flush_dust()
         if self.scale == 1:
             return self.image
+        if self.pieces:
+            return rigdoc.downsampled_canvas(self.image, self.size, Image.Resampling.LANCZOS)
         return self.image.resize(self.size, Image.Resampling.LANCZOS)
+
+
+class _MixedAlpha(Exception):
+    """A primitive whose colours carry different alphas: one opacity cannot
+    fade it, so it is painted as one primitive per colour."""
 
 
 @profile
@@ -205,6 +361,7 @@ def compose_rig_frame(
     solved=None,
     rig_supersample: int | None = None,
     rig_image: Image.Image | None = None,
+    fx_pieces: bool = False,
 ) -> Image.Image:
     t = doc.frame_time(animation, frame_idx, frame_count)
     if solved is None:
@@ -224,6 +381,11 @@ def compose_rig_frame(
     # logical-pixel intermediate for every foreground/background effect).
     effect_supersample = max(1, int(math.ceil(3.0 / render_scale)))
 
+    # The speck budget both layers share: what the realize limit leaves after
+    # the rig's own parts.
+    from ...authoring.part_flipbook import REALIZE_MAX_DRAWS
+
+    budget = [max(0, REALIZE_MAX_DRAWS - DRAW_MARGIN - len(doc.parts)) if fx_pieces else 0]
     behind_image = None
     if behind is not None:
         layer = FxCanvas(
@@ -231,6 +393,9 @@ def compose_rig_frame(
             scale=effect_supersample,
             origin=origin,
             unit_scale=render_scale,
+            name="fx_behind",
+            budget=budget,
+            pieces=fx_pieces,
         )
         behind(layer, t, world, params)
         if layer.dirty:
@@ -254,7 +419,10 @@ def compose_rig_frame(
         result = rig_image
     else:
         result = Image.new("RGBA", behind_image.size, (0, 0, 0, 0))
-        rigdoc.composite_layer(result, behind_image, name="fx_behind")
+        if fx_pieces:
+            rigdoc.composite_canvas(result, behind_image)
+        else:
+            rigdoc.composite_layer(result, behind_image, name="fx_behind")
         rigdoc.composite_canvas(result, rig_image)
 
     if front is not None:
@@ -263,10 +431,16 @@ def compose_rig_frame(
             scale=effect_supersample,
             origin=origin,
             unit_scale=render_scale,
+            name="fx_front",
+            budget=budget,
+            pieces=fx_pieces,
         )
         front(layer, t, world, params)
         if layer.dirty:
-            rigdoc.composite_layer(result, layer.finish(), name="fx_front")
+            if fx_pieces:
+                rigdoc.composite_canvas(result, layer.finish())
+            else:
+                rigdoc.composite_layer(result, layer.finish(), name="fx_front")
     return result
 
 

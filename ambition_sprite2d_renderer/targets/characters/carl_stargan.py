@@ -343,6 +343,9 @@ def _raw_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
         # from these frames, so they land in the same padded space and
         # `build_sheet`'s auto-crop translates all three together.
         padding=RIG_RENDER_PADDING,
+        # His orbit rings, shields and calendar arcs recur with a pulsing
+        # alpha: as pieces his part texels fell 28% (`FxCanvas`, 2026-10-04).
+        fx_pieces=True,
     )
 
 

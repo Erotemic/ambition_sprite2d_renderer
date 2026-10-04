@@ -1550,6 +1550,13 @@ def build_rig_flipbook(
             print(f"[part flipbook] {target}: rigid merge refused, {len(failing)} frame(s) would change ({failing[0]})", flush=True)
         else:
             flipbook = merged
+    shared = _share_transformed_parts(flipbook)
+    if shared is not flipbook:
+        failing = _replay_failures(shared, rendered)
+        if failing:
+            print(f"[part flipbook] {target}: transform sharing refused, {len(failing)} frame(s) would change ({failing[0]})", flush=True)
+        else:
+            flipbook = shared
     for (row, index), frame in rendered.items():
         replayed = flipbook.recompose(row, index)
         if flipbook.placement == PLACEMENT_SNAPPED:
@@ -1719,6 +1726,144 @@ def _merge_rigid_neighbours(flipbook: "PartFlipbook") -> "PartFlipbook":
         if not progress:
             break
     if not changed:
+        return flipbook
+    used = sorted({d.part for _d, frames in clips.values() for draws in frames for d in draws})
+    remap = {old: new for new, old in enumerate(used)}
+    clips = {
+        row: (duration, [[_replace(d, part=remap[d.part]) for d in draws] for draws in frames])
+        for row, (duration, frames) in clips.items()
+    }
+    return _replace(flipbook, parts=[parts[i] for i in used], clips=clips, rects=[], pages=[])
+
+
+#: The lossless transforms of a raster (PIL transpose ops): the linear part
+#: ``L`` of the map of a continuous point of the source onto the transposed
+#: raster, ``q = L p + t`` (+y down). ``t`` is ``_lossless_map``'s.
+_LOSSLESS = {
+    Image.Transpose.FLIP_LEFT_RIGHT: (-1, 0, 0, 1),
+    Image.Transpose.FLIP_TOP_BOTTOM: (1, 0, 0, -1),
+    Image.Transpose.ROTATE_180: (-1, 0, 0, -1),
+    Image.Transpose.ROTATE_90: (0, 1, -1, 0),
+    Image.Transpose.ROTATE_270: (0, -1, 1, 0),
+    Image.Transpose.TRANSPOSE: (0, 1, 1, 0),
+    Image.Transpose.TRANSVERSE: (0, -1, -1, 0),
+}
+
+
+def _lossless_map(op, size: Tuple[int, int]):
+    """``(L, t)`` of ``op`` on a raster of ``size``: a continuous source point
+    ``p`` lands at ``L p + t`` in the transposed raster. ``t`` moves the
+    transformed box back onto the origin."""
+    a, b, c, d = _LOSSLESS[op]
+    w, h = size
+    corners = [(a * x + b * y, c * x + d * y) for x in (0, w) for y in (0, h)]
+    return (a, b, c, d), (-min(x for x, _ in corners), -min(y for _, y in corners))
+
+
+def _share_transformed_parts(flipbook: "PartFlipbook") -> "PartFlipbook":
+    """``flipbook`` with every part whose pixels are another part's mirrored or
+    turned a quarter (a lossless transform) drawn as that part with the
+    transform on its draw; ``flipbook`` itself when there is none.
+
+    Jon, 2026-10-04: anything a zero-cost flip or quarter turn reproduces with
+    no visual loss is ONE source with a transform on top. A raster equal to a
+    transpose of an earlier one is dropped; each draw of it draws the earlier
+    raster with ``M = R S L`` (its own turn and scale, then the transform),
+    split back into a turn and a signed scale. Compared trimmed to the drawn
+    extent, so padding and pivot do not hide a match. A snapped flipbook is
+    left alone (its draws are never scaled).
+
+    ⛔ In a tweened clip, two frames of a track that drew DIFFERENT parts held
+    still between them; sharing could make them one part and start an
+    interpolation through a flip (scale -1 to 1 squashes through zero). Such a
+    part is not shared.
+    """
+    from dataclasses import replace as _replace
+
+    if flipbook.placement == PLACEMENT_SNAPPED:
+        return flipbook
+    parts = list(flipbook.parts)
+
+    def trimmed(image):
+        box = image.getchannel("A").getbbox() or (0, 0, 1, 1)
+        return image.crop(box), box
+
+    seen: Dict[Tuple[Tuple[int, int], bytes], int] = {}
+    source_of: Dict[int, Tuple[int, object]] = {}
+    for i, part in enumerate(parts):
+        crop, _box = trimmed(part.image)
+        key = (crop.size, crop.tobytes())
+        if key in seen:
+            continue  # an exact twin: the recorder already shares those
+        for op in _LOSSLESS:
+            turned = crop.transpose(op)
+            match = seen.get((turned.size, turned.tobytes()))
+            if match is not None:
+                # op(part i) is part match, so part i is the INVERSE of op
+                # applied to part match (only the quarter turns differ).
+                inverse = {Image.Transpose.ROTATE_90: Image.Transpose.ROTATE_270,
+                           Image.Transpose.ROTATE_270: Image.Transpose.ROTATE_90}.get(op, op)
+                source_of[i] = (match, inverse)
+                break
+        else:
+            seen[key] = i
+
+    def redraw(d: PartDraw) -> PartDraw:
+        src, op = source_of[d.part]
+        p_img, r_img = parts[src], parts[d.part]
+        p_crop, p_box = trimmed(p_img.image)
+        _r_crop, r_box = trimmed(r_img.image)
+        (la, lb, lc, ld), (tx, ty) = _lossless_map(op, p_crop.size)
+        # A point of P (its own pixels) in R's pixels:
+        #   q = L (p - p_box0) + t + r_box0.
+        # R's pivot r comes from P's point p_r = L^-1 (r - r_box0 - t) + p_box0.
+        rx, ry = r_img.pivot[0] - r_box[0] - tx, r_img.pivot[1] - r_box[1] - ty
+        det = la * ld - lb * lc
+        ix, iy = (ld * rx - lb * ry) / det + p_box[0], (-lc * rx + la * ry) / det + p_box[1]
+        c, s = math.cos(d.rotation), math.sin(d.rotation)
+        # M = R S L.
+        rs = (c * d.scale[0], -s * d.scale[1], s * d.scale[0], c * d.scale[1])
+        m = (
+            rs[0] * la + rs[1] * lc, rs[0] * lb + rs[1] * ld,
+            rs[2] * la + rs[3] * lc, rs[2] * lb + rs[3] * ld,
+        )
+        # Split M = R(theta) diag(sx, sy): the first column is sx times the
+        # turn's first column.
+        sx = math.hypot(m[0], m[2])
+        theta = math.atan2(m[2], m[0])
+        ct, st = math.cos(theta), math.sin(theta)
+        sy = -st * m[1] + ct * m[3]
+        assert abs(ct * m[1] + st * m[3]) < 1e-6, "a lossless transform keeps the axes square"
+        # P's own pivot lands where R's draw put the point ix, iy.
+        dx, dy = p_img.pivot[0] - ix, p_img.pivot[1] - iy
+        at = (d.at[0] + m[0] * dx + m[1] * dy, d.at[1] + m[2] * dx + m[3] * dy)
+        return _replace(d, part=src, at=at, rotation=theta, scale=(sx, sy))
+
+    def shared_clips(sources):
+        return {
+            row: (duration, [[redraw(d) if d.part in sources else d for d in draws] for draws in frames])
+            for row, (duration, frames) in flipbook.clips.items()
+        }
+
+    while source_of:
+        clips = shared_clips(source_of)
+        refused = set()
+        for row, (_duration, frames) in flipbook.clips.items():
+            if flipbook.tweens.get(row) != TWEEN_LINEAR:
+                continue
+            new_frames = clips[row][1]
+            for index, draws in enumerate(frames):
+                nxt = (index + 1) % len(frames)
+                before = {d.track: d.part for d in frames[nxt] if d.track is not None}
+                after = {d.track: d.part for d in new_frames[nxt] if d.track is not None}
+                for old, new in zip(draws, new_frames[index]):
+                    if old.track in before and before[old.track] != old.part and after[old.track] == new.part:
+                        refused.update(p for p in (old.part, before[old.track]) if p in source_of)
+        if not refused:
+            break
+        for part in refused:
+            source_of.pop(part)
+    if not source_of:
         return flipbook
     used = sorted({d.part for _d, frames in clips.values() for draws in frames for d in draws})
     remap = {old: new for new, old in enumerate(used)}
