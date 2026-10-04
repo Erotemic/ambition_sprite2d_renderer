@@ -28,6 +28,7 @@ a clip or a baked clip; the runtime refuses a flipbook that leaves a row out.
 
 from __future__ import annotations
 
+import hashlib
 import math
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
@@ -588,6 +589,9 @@ class PaintedPart:
     name: str
     #: -1 when the part is drawn mirrored about its pivot (a mirrored frame).
     scale_x: float = 1.0
+    #: A squash about its pivot (``blit_rotated(scale_y=)``): the sprite is
+    #: stored unsquashed and the draw carries it.
+    scale_y: float = 1.0
     #: Placed by ``blit_rotated``'s whole-pixel rule on the frame it returns.
     #: ``False`` once reduced from a supersampled canvas: its place is exact
     #: and fractional.
@@ -652,6 +656,25 @@ def _reduce_part(sprite: Image.Image, pivot: Tuple[float, float], factor: int, r
     """A supersampled part raster reduced by ``factor`` with ``reduce``, as the
     frame it is painted on is reduced: padded by the filter's reach first, so
     its edge is not cut, then trimmed to what it covers plus ``PART_BORDER``.
+
+    ⭐ A RASTER AND ITS MIRROR REDUCE AS MIRRORS. The padding is a whole factor
+    from the LEFT edge, so a raster mirrored at full size reduced at another
+    phase and came out a different picture: robot v3's head, face and antennas
+    drawn turned round in `air_back` were stored a second time, a texel
+    smeared apart (2026-10-04). Each raster is reduced in whichever of its two
+    orientations has the lower digest, and the other is that reduction
+    mirrored, so the two are one part and a mirrored draw (lossless sharing).
+    Where a part lands is a fraction of a frame pixel anyway, so neither
+    phase is the frame's own."""
+    mirrored = sprite.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    if hashlib.sha1(mirrored.tobytes()).digest() < hashlib.sha1(sprite.tobytes()).digest():
+        small, (u, v) = _reduce_unmirrored(mirrored, (sprite.width - pivot[0], pivot[1]), factor, reduce)
+        return small.transpose(Image.Transpose.FLIP_LEFT_RIGHT), (small.width - u, v)
+    return _reduce_unmirrored(sprite, pivot, factor, reduce)
+
+
+def _reduce_unmirrored(sprite: Image.Image, pivot: Tuple[float, float], factor: int, reduce: Callable):
+    """``_reduce_part`` in the raster's own orientation.
 
     ⛔ THE BORDER IS NOT WASTE. A continuous draw lands between pixels and is
     resampled, and a resampler reads past the last texel: PIL repeats the edge,
@@ -832,6 +855,7 @@ def _sampled_as_the_frame(ops: list, frame_size: Tuple[int, int], size: Tuple[in
         # As an unmirrored raster at its top left: a part reduced or mirrored
         # before (a frame fitted after its reduction) carries a pivot, and a
         # mirrored one is flipped about it.
+        assert op.scale_y == 1.0, "a squashed part is never sampled as the frame (it is drawn scaled)"
         sprite = op.sprite if op.scale_x > 0 else op.sprite.transpose(Image.FLIP_LEFT_RIGHT)
         x = op.world[0] - (op.pivot[0] if op.scale_x > 0 else op.sprite.width - op.pivot[0])
         y = op.world[1] - op.pivot[1]
@@ -973,6 +997,9 @@ def recorded_paint():
                 float(opacity),
                 str(kwargs.get("part_name") or "part"),
                 bilinear=prepared is not None and rigdoc.rotation_resample(prepared) == Image.Resampling.BILINEAR,
+                # As the published table writes it (4 places), so the table
+                # reads back as recorded.
+                scale_y=round(float(kwargs.get("scale_y", 1.0)), 4),
             )
         )
         return originals["blit_rotated"](canvas, sprite, pivot, world_px, delta_deg, opacity, **kwargs)
@@ -1491,6 +1518,13 @@ def build_rig_flipbook(
             for op in ops:
                 if isinstance(op, PaintedPart):
                     sprite = op.sprite
+                    if op.exact and op.scale_y != 1.0:
+                        # A snapped draw is never scaled: its squash is baked
+                        # into the raster as `blit_rotated` painted it.
+                        from .rigdoc import squashed_sprite
+
+                        sprite, pivot = squashed_sprite(sprite, op.pivot, op.scale_y)
+                        op = replace(op, sprite=sprite, pivot=pivot, scale_y=1.0)
                     if op.exact:
                         placements.add(PLACEMENT_SNAPPED)
                         if op.degrees % 360.0 != 0.0:
@@ -1512,7 +1546,7 @@ def build_rig_flipbook(
                             intern("part", sprite, pivot),
                             (at[0] - feet[0], at[1] - feet[1]),
                             math.radians(op.degrees),
-                            (op.scale_x, 1.0),
+                            (op.scale_x, op.scale_y),
                             track=op.name,
                             opacity=op.opacity,
                         )

@@ -201,3 +201,32 @@ def test_an_asymmetric_part_stays_whole():
     flipbook = PartFlipbook("asym", (96, 72), (48.0, 66.0), [PartRaster("limb", _limb(1.0, 30), (5.0, 7.0))],
                             {"idle": (0.1, [draws])}, placement=PLACEMENT_CONTINUOUS)
     assert _split_symmetric_parts(flipbook, {("idle", 0): flipbook.recompose("idle", 0)}) is flipbook
+
+
+def test_a_raster_and_its_mirror_reduce_as_mirrors():
+    """A 4x part the rig draws turned round reduces to the mirror of its
+    reduction, at the mirrored pivot, whatever its width's phase (robot v3's
+    `air_back` head was stored twice, a texel apart)."""
+    from ambition_sprite2d_renderer.authoring.part_flipbook import _reduce_part
+
+    def reduce(image, size):
+        return image.resize(size, Image.Resampling.BOX)
+
+    for width in (36, 37, 38, 39):
+        art = _limb(1.0, width)
+        a, (ua, va) = _reduce_part(art, (10.0, 6.0), 4, reduce)
+        b, (ub, vb) = _reduce_part(art.transpose(Image.Transpose.FLIP_LEFT_RIGHT), (art.width - 10.0, 6.0), 4, reduce)
+        assert a.transpose(Image.Transpose.FLIP_LEFT_RIGHT).tobytes() == b.tobytes(), f"width {width}"
+        assert (ub, vb) == (a.width - ua, va)
+
+
+def test_a_squash_scales_about_the_pivot_row():
+    from ambition_sprite2d_renderer.authoring.rigdoc import squashed_sprite
+
+    art = Image.new("RGBA", (10, 40), (0, 0, 0, 0))
+    art.paste((200, 60, 60, 255), (2, 0, 8, 40))
+    squashed, pivot = squashed_sprite(art, (5.0, 30.4), 0.5)
+    alpha = [squashed.getpixel((4, y))[3] for y in range(squashed.height)]
+    covered = [y for y, a in enumerate(alpha) if a >= 128]
+    # 30 rows above the pivot become 15, 10 below become 5.
+    assert pivot[1] == round(pivot[1]) and covered[0] == pivot[1] - 15 and covered[-1] == pivot[1] + 4

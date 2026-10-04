@@ -100,7 +100,8 @@ def test_each_mechanism_is_in_the_flipbook(sample):
     faded = {d.track for frame in flipbook.clips["smash_forward"][1] for d in frame if d.opacity < 1.0}
     assert "blade" in faded, faded
     mirrored = [d for frame in flipbook.clips["walk~mirrored"][1] for d in frame if d.track and not d.track.startswith("overlay:")]
-    assert mirrored and all(d.scale == (-1.0, 1.0) for d in mirrored)
+    # Mirrored about the pivot (scale.x -1); a squashed part keeps its squash.
+    assert mirrored and all(d.scale[0] == -1.0 for d in mirrored)
     # The blink fades the body's own draws and adds the portal pieces.
     blink = [d for frame in flipbook.clips["blink_out"][1] for d in frame]
     assert any(d.track == "head" and d.opacity < 0.5 for d in blink), sorted({(d.track, d.opacity) for d in blink})

@@ -30,7 +30,7 @@ import pytest
 import yaml
 from PIL import Image
 
-from ambition_sprite2d_renderer.authoring import part_flipbook
+from ambition_sprite2d_renderer.authoring import part_flipbook, rigdoc
 from ambition_sprite2d_renderer.authoring.part_flipbook import largest_wrong_blob, parity
 from ambition_sprite2d_renderer.targets.characters._mary_o_v2_model import FIRE_FORM, SHORT_FORM, TALL_FORM
 from ambition_sprite2d_renderer.targets.characters.mary_o_v2 import _render_form_with_products
@@ -207,7 +207,11 @@ def _tween_errors(flipbook, form, docs, row, index, t, draws):
         pivot = flipbook.parts[d.part].pivot
         border = part_flipbook.PART_BORDER
         corner = (d.at[0] + flipbook.feet[0] - pivot[0] + border, d.at[1] + flipbook.feet[1] - pivot[1] + border)
-        exact = (op.world[0] - op.pivot[0], op.world[1] - op.pivot[1])
+        # A squashed part is recorded unsquashed with its squash (`scale_y`)
+        # and baked as `blit_rotated` squashes it: its raster's top sits the
+        # squashed pivot above its place.
+        pivot_at = op.pivot if op.scale_y == 1.0 else rigdoc.squashed_sprite(op.sprite, op.pivot, op.scale_y)[1]
+        exact = (op.world[0] - pivot_at[0], op.world[1] - pivot_at[1])
         place = max(abs(corner[0] - exact[0]), abs(corner[1] - exact[1]))
         turn = abs((math.degrees(d.rotation) - op.degrees + 180.0) % 360.0 - 180.0)
         errors[d.track] = (place, turn)

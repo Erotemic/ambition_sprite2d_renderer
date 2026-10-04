@@ -1353,6 +1353,32 @@ def faded_canvas(frame: Image.Image, opacity: float) -> Image.Image:
 
 
 @profile
+def squashed_sprite(sprite: Image.Image, pivot: Point, scale_y: float) -> Tuple[Image.Image, Point]:
+    """``sprite`` scaled by ``scale_y`` vertically about its whole-pixel pivot
+    row, and its pivot there (on the same whole row of the result).
+
+    The squash a part flipbook's draw carries is this transform exactly: a
+    continuous scale about the pivot (LANCZOS over a fractional box). Resized to a whole number of rows instead (LANCZOS, the
+    rule until 2026-10-04), the squash came out up to half a pixel taller or
+    shorter than its draw scale and robot v3's squashed torso failed the replay
+    (a blob of 7 on `jab`[0])."""
+    w, h = sprite.size
+    py = float(round(pivot[1]))
+    # Rows of the result, in the source's own coordinates: the content spans
+    # py - py*s .. py + (h - py)*s, plus the filter's reach.
+    top = math.floor(py - py * scale_y) - 3
+    bottom = math.ceil(py + (h - py) * scale_y) + 3
+    # The source rows those map back to, inside a transparent margin (a resize
+    # box may not leave its image).
+    margin = int(math.ceil(4.0 / scale_y)) + 2
+    padded = Image.new("RGBA", (w, h + 2 * margin), (0, 0, 0, 0))
+    padded.paste(sprite, (0, margin))
+    y0 = py + (top - py) / scale_y + margin
+    y1 = py + (bottom - py) / scale_y + margin
+    squashed = padded.resize((w, bottom - top), Image.Resampling.LANCZOS, box=(0.0, y0, float(w), y1))
+    return squashed, (pivot[0], py - top)
+
+
 def blit_rotated(
     canvas: Image.Image,
     sprite: Image.Image,
@@ -1366,9 +1392,14 @@ def blit_rotated(
     rotated_sprite: Optional[Image.Image] = None,
     part_name: Optional[str] = None,
     resample=None,
+    scale_y: float = 1.0,
 ) -> None:
     """Rotate ``sprite`` about its ``pivot`` by ``delta_deg`` and composite it so
     the pivot lands at ``world_px``.
+
+    ``scale_y`` squashes the sprite about its pivot first (``squashed_sprite``),
+    in its own frame: a part flipbook records the unsquashed raster with the
+    squash on its draw.
 
     ``resample`` turns an unprepared raster with that filter (bicubic when
     ``None``); a prepared one is turned by ``rotation_resample``.
@@ -1380,6 +1411,10 @@ def blit_rotated(
     cache. Standalone callers retain the original behavior through the public
     ``sprite`` / ``pivot`` arguments.
     """
+    if scale_y != 1.0 and scale_y > 0.0:
+        sprite, pivot = squashed_sprite(sprite, pivot, scale_y)
+        prepared = None
+        rotated_sprite = None
     angle = normalize_degrees(delta_deg)
     px, py = pivot
 
@@ -1523,14 +1558,17 @@ def paint_part(
         # or 1.0 renders exactly as before. Anchoring at the PIVOT is the whole
         # point: a squashed torso keeps its hip where the hips are, and shortens
         # upward, so whatever hangs off it moves by a knowable amount.
-        sy = float(params.get(f"bone.{bone_name}.scale_y", 1.0))
+        #  The squash is ``blit_rotated``'s to apply (``scale_y``): a part
+        # flipbook then records ONE raster drawn squashed, not a raster per
+        # squash (robot v3 stored 13 heads and 30 torsos, 2026-10-04).
+        # Quantized as a part flipbook's table stores a draw's squash (4
+        # places), so the frame and its replay squash by the same amount.
+        sy = round(float(params.get(f"bone.{bone_name}.scale_y", 1.0)), 4)
         if sy != 1.0 and sy > 0.0:
-            w, h = spr_img.size
-            nh = max(1, int(round(h * sy)))
-            spr_img = spr_img.resize((w, nh), Image.LANCZOS)
-            pivot = (pivot[0], pivot[1] * sy)
             prepared = None
             rotated_sprite = None
+        else:
+            sy = 1.0
         blit_rotated(
             img,
             spr_img,
@@ -1542,6 +1580,7 @@ def paint_part(
             transform_cache=transform_cache,
             rotated_sprite=rotated_sprite,
             part_name=str(part.get("name") or bone_name),
+            scale_y=sy,
         )
         return
     fill = parse_color(part.get("fill", "#FFFFFF"), palette, opacity)
