@@ -1496,7 +1496,7 @@ def _grid_piece(key: tuple, paint: Callable, keep: Tuple[float, float, float, fl
         if keep is not None:
             mask = Image.new("L", size, 0)
             x0, y0, x1, y1 = (_s(HOME[0] + keep[0]), _s(HOME[1] + keep[1]), _s(HOME[0] + keep[2]), _s(HOME[1] + keep[3]))
-            ImageDraw.Draw(mask).rectangle((max(0, x0), max(0, y0), min(size[0], x1) - 1, min(size[1], y1) - 1), fill=255)
+            ImageDraw.Draw(mask).rectangle((max(0, x0), max(0, y0), min(size[0], x1) - 1, min(size[1], y1) - 1), fill=255)  # raw-draw-ok: an L crop mask (which region of a piece to keep), not content
             canvas = Image.composite(canvas, Image.new("RGBA", size, (0, 0, 0, 0)), mask)
         box = canvas.getchannel("A").getbbox()
         if box is None:

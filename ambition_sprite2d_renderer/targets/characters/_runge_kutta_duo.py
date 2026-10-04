@@ -602,7 +602,7 @@ def _piece(style: DuoStyle, key, paint, pivot: Point, keep: Tuple[float, float, 
         if keep is not None:
             mask = Image.new("L", _CANVAS, 0)
             x0, y0, x1, y1 = (int(round(v * SUPER)) for v in keep)
-            ImageDraw.Draw(mask).rectangle((max(0, x0), max(0, y0), min(_CANVAS[0], x1) - 1, min(_CANVAS[1], y1) - 1), fill=255)
+            ImageDraw.Draw(mask).rectangle((max(0, x0), max(0, y0), min(_CANVAS[0], x1) - 1, min(_CANVAS[1], y1) - 1), fill=255)  # raw-draw-ok: an L crop mask (which region of a piece to keep), not content
             image = Image.composite(image, Image.new("RGBA", _CANVAS, (0, 0, 0, 0)), mask)
         box = image.getchannel("A").getbbox() or (0, 0, _GRID, _GRID)
         x0, y0 = box[0] - box[0] % _GRID, box[1] - box[1] % _GRID
