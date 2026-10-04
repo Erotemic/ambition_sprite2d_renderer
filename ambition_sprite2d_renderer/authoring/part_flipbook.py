@@ -2141,6 +2141,7 @@ def _split_symmetric_parts(flipbook: "PartFlipbook", rendered, distinct=frozense
             break
     candidates.sort(key=lambda c: -c[0])
     chosen: Dict[int, tuple] = {}
+    over_budget = []
     for saving, i, op, axis in candidates:
         frames = uses[i]
         added: Dict[Tuple[str, int], int] = {}
@@ -2150,6 +2151,10 @@ def _split_symmetric_parts(flipbook: "PartFlipbook", rendered, distinct=frozense
             for key, n in added.items():
                 counts[key] += n
             chosen[i] = (op, axis)
+        else:
+            over_budget.append(parts[i].name)
+    if over_budget:
+        print(f"[part flipbook] {flipbook.target}: symmetric halves over the {SPLIT_DRAW_BUDGET}-draw budget: {over_budget[:8]}", flush=True)
 
     def split(chosen_now):
         new_parts = list(parts)
@@ -2162,6 +2167,20 @@ def _split_symmetric_parts(flipbook: "PartFlipbook", rendered, distinct=frozense
             # (the resampling filter's falloff) on every side but the axis.
             image = parts[i].image
             cut = image.crop((0, 0, box[0] + half, image.height) if axis == 0 else (0, 0, image.width, box[1] + half))
+            # ⛔ The columns both halves draw (the overlap) are composited twice:
+            # a translucent texel (a visor's glass) came out denser and the
+            # replay guard withdrew robot's visor, scanlines and body
+            # (2026-10-04). Stored at alpha b = 1 - sqrt(1 - a), two copies
+            # over each other are exactly a (b + b(1 - b) = a); opaque texels
+            # are untouched, and the half stays its own mirror's source.
+            import numpy as np
+
+            pixels = np.asarray(cut, dtype=np.float64).copy()
+            lo, hi = (box[axis] + size - half, box[axis] + half)
+            band = pixels[:, lo:hi] if axis == 0 else pixels[lo:hi, :]
+            a = band[..., 3] / 255.0
+            band[..., 3] = np.round(255.0 * (1.0 - np.sqrt(np.clip(1.0 - a, 0.0, 1.0))))
+            cut = Image.fromarray(pixels.round().astype(np.uint8), "RGBA")
             halves[i] = len(new_parts)
             new_parts.append(PartRaster(f"{parts[i].name}/half", cut, parts[i].pivot))
         clips = {}
@@ -2197,10 +2216,10 @@ def _split_symmetric_parts(flipbook: "PartFlipbook", rendered, distinct=frozense
         }
         return _replace(flipbook, parts=[new_parts[k] for k in used], clips=clips, rects=[], pages=[])
 
-    return _withdrawn_until_replayed(flipbook, rendered, chosen, split)
+    return _withdrawn_until_replayed(flipbook, rendered, chosen, split, "symmetric halves")
 
 
-def _withdrawn_until_replayed(flipbook, rendered, chosen: dict, build) -> "PartFlipbook":
+def _withdrawn_until_replayed(flipbook, rendered, chosen: dict, build, label: str = "") -> "PartFlipbook":
     """``build(chosen)`` with the candidates in ``chosen`` (part -> change)
     that keep every frame replaying, or ``flipbook`` when none do.
 
@@ -2212,12 +2231,17 @@ def _withdrawn_until_replayed(flipbook, rendered, chosen: dict, build) -> "PartF
     split, since limbs are drawn in every frame.
     """
     chosen = dict(chosen)
+    nominated = len(chosen)
+    withdrawn = []
     for _attempt in range(8):
         if not chosen:
-            return flipbook
+            break
         result = build(chosen)
         failing = _replay_failures(result, rendered)
         if not failing:
+            if label:
+                print(f"[part flipbook] {flipbook.target}: {label}: {len(chosen)} of {nominated} kept"
+                      + (f"; replay withdrew {[flipbook.parts[p].name for p in withdrawn][:8]}" if withdrawn else ""), flush=True)
             return result
         sample = failing[:6]
         subset = {}
@@ -2229,6 +2253,9 @@ def _withdrawn_until_replayed(flipbook, rendered, chosen: dict, build) -> "PartF
         culprits = {part for part in suspects if _replay_failures(build({part: chosen[part]}), subset)}
         for part in culprits or suspects:
             chosen.pop(part, None)
+            withdrawn.append(part)
+    if label and nominated:
+        print(f"[part flipbook] {flipbook.target}: {label}: none of {nominated} kept (replay)", flush=True)
     return flipbook
 
 
@@ -2246,7 +2273,7 @@ def _share_near_parts(flipbook: "PartFlipbook", rendered, distinct=frozenset()) 
     if flipbook.placement == PLACEMENT_SNAPPED:
         return flipbook
     sources = _near_sources(flipbook, distinct)
-    return _withdrawn_until_replayed(flipbook, rendered, sources, lambda chosen: _drawn_from_sources(flipbook, chosen))
+    return _withdrawn_until_replayed(flipbook, rendered, sources, lambda chosen: _drawn_from_sources(flipbook, chosen), "near twins")
 
 
 #: How far a replayed frame may differ from its render, per 8-bit channel.
