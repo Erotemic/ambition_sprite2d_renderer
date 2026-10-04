@@ -121,6 +121,14 @@ class TrentSpec:
     fringe_w: float = 5.0  # side-fringe width (half-circle behind ears)
 
 
+#: The near sleeve's length from the shoulder to the cuff with the arm
+#: hanging, and the lengths of its two sliding pieces (design pixels). The
+#: pieces cover the sleeve at rest and fit in it at the highest lift.
+NEAR_SLEEVE_REST = 28.0
+NEAR_SLEEVE_UPPER = 16.0
+NEAR_SLEEVE_LOWER = 13.0
+
+
 @dataclass
 class TrentPose:
     body_bob: float = 0.0
@@ -252,19 +260,30 @@ class TrentElderGenerator(CharacterGenerator):
         # Order: robe back-cuffs → robe body → arms in sleeves → head + beard.
         # Each group is a piece (``_toon_rig``) painted once and placed.
         frame = _toon_rig.Frame(img)
-        # The robe hangs from the yoke to a fixed hem: one piece per robe
-        # length (a quarter design pixel apart), riding the hem.
-        bob = round(p.body_bob * 4.0) / 4.0
-        robe_h = (spec.robe_h - bob) * S
+        # The robe hangs from the yoke to a fixed hem and does not bob: one
+        # piece. The body in it bobs (the arms, the head and the chain ride
+        # the shoulders, a design pixel at most).
+        robe_h = spec.robe_h * S
         _toon_rig.anchored(
-            frame, ("trent_robe", spec, bob, S), (spec.robe_hem_w * 0.5 * S + 4 * S, robe_h + 4 * S), (cx, hem_y),
+            frame, ("trent_robe", spec, S), (spec.robe_hem_w * 0.5 * S + 4 * S, robe_h + 4 * S), (cx, hem_y),
             lambda d, o: self._draw_robe(d._img, o[0], o[1] - robe_h, o[1], spec, pal, S, p), "robe",
         )
         self._draw_arms(frame, cx, shoulder_y, spec, pal, S, p)
-        face = TrentPose(blink=p.blink, talk_open=round(p.talk_open, 1))
-        _toon_rig.anchored(
-            frame, ("trent_head", spec, face.blink, face.talk_open, S), (spec.head_w * S, (spec.head_h + spec.beard_h) * S), head_center,
-            lambda d, o: self._draw_head(d._img, o, spec, pal, S, face), "head",
+        # The head is one base piece and the eyes and the mouth are small
+        # overlays on it, each keyed by its own state (``_toon_rig.face``).
+        hx, hy = float(math.ceil(spec.head_w * S)), float(math.ceil((spec.head_h + spec.beard_h) * S))
+        origin = (hx, hy)
+        talk = round(p.talk_open, 1)
+        _toon_rig.face(
+            lambda part, name: frame.place(part, head_center, 0.0, name),
+            "head",
+            (2 * hx, 2 * hy),
+            origin,
+            (("trent_head", spec, S), lambda d: self._draw_head(d._img, origin, spec, pal, S)),
+            (
+                ("eyes", ("trent_eyes", spec, S, p.blink), lambda d: self._paint_eyes(d, origin, spec, pal, S, p.blink)),
+                ("mouth", ("trent_mouth", spec, S, talk) if talk > 0.2 else None, lambda d: self._paint_mouth(d, origin, spec, pal, S, talk)),
+            ),
         )
         # Chain of office over the robe yoke, drawn last so its links
         # sit on top of the placket.
@@ -382,8 +401,8 @@ class TrentElderGenerator(CharacterGenerator):
         pose: TrentPose,
     ) -> None:
         """The far sleeve as one piece riding its shoulder; the near sleeve
-        one piece per lift (rounded), and its cuff, hand and scales one
-        piece riding the cuff."""
+        two sliding pieces, and its cuff, hand and scales one piece riding
+        the cuff."""
         far_shoulder = (cx - spec.shoulder_w * 0.40 * S, shoulder_y + 4.0 * S)
         reach = (spec.arm_len + 12.0) * S
         _toon_rig.anchored(
@@ -396,9 +415,19 @@ class TrentElderGenerator(CharacterGenerator):
             near_shoulder[0] - spec.shoulder_w * 0.04 * S + lift * 4.0 * S,
             near_shoulder[1] + spec.arm_len * S - lift * 10.0 * S,
         )
+        # The near sleeve is two pieces of fixed length that slide on each
+        # other: the upper rides the shoulder, the lower rides the cuff, both
+        # turned along the arm. As the arm lifts, the sleeve shortens and
+        # its fabric folds where they overlap.
+        degrees = _toon_rig.angle(near_shoulder, near_cuff)
         _toon_rig.anchored(
-            frame, ("trent_near_sleeve", spec, lift, S), (reach, reach), near_shoulder,
-            lambda d, o: self._paint_near_sleeve(d, o, lift, spec, pal, S), "near_sleeve",
+            frame, ("trent_near_sleeve_upper", spec, S), (reach, reach), near_shoulder,
+            lambda d, o: self._paint_near_sleeve(d, o, 0.0, NEAR_SLEEVE_UPPER, spec, pal, S), "near_sleeve", degrees,
+        )
+        _toon_rig.anchored(
+            frame, ("trent_near_sleeve_lower", spec, S), (reach, reach), near_cuff,
+            lambda d, o: self._paint_near_sleeve(d, o, NEAR_SLEEVE_REST - NEAR_SLEEVE_LOWER, NEAR_SLEEVE_REST, spec, pal, S, origin_at=NEAR_SLEEVE_REST),
+            "near_sleeve_lower", degrees,
         )
         _toon_rig.anchored(
             frame, ("trent_near_hand", spec, pose.hold_scales, S), (14.0 * S, 24.0 * S), near_cuff,
@@ -442,30 +471,40 @@ class TrentElderGenerator(CharacterGenerator):
             width=max(1, int(0.7 * S)),
         )
 
-    def _paint_near_sleeve(self, d, near_shoulder: Point, lift: float, spec: TrentSpec, pal: Dict[str, Color], S: float) -> None:
+    def _paint_near_sleeve(
+        self,
+        d,
+        origin: Point,
+        start: float,
+        end: float,
+        spec: TrentSpec,
+        pal: Dict[str, Color],
+        S: float,
+        origin_at: float = 0.0,
+    ) -> None:
+        """The near sleeve at rest (hanging, ``NEAR_SLEEVE_REST`` design
+        pixels from the shoulder to the cuff), from ``start`` to ``end``
+        design pixels along it, painted along +x with the point
+        ``origin_at`` along it on ``origin``. It is wide at the shoulder and
+        narrow at the cuff; the shoulder end is offset to the camera side."""
         outline = pal["outline"]
-        near_cuff = (
-            near_shoulder[0] - spec.shoulder_w * 0.04 * S + lift * 4.0 * S,
-            near_shoulder[1] + spec.arm_len * S - lift * 10.0 * S,
-        )
-        # The sleeve curves slightly forward — a 4-point polygon with
-        # the lower edge skewed by `lift` for a raised-arm feel.
-        near_sleeve = [
-            (near_shoulder[0] - 4.0 * S, near_shoulder[1]),
-            (near_shoulder[0] + 6.0 * S, near_shoulder[1]),
-            (near_cuff[0] + spec.cuff_w * 0.55 * S, near_cuff[1]),
-            (near_cuff[0] - spec.cuff_w * 0.55 * S, near_cuff[1]),
-        ]
-        d.polygon(near_sleeve, fill=pal["robe"], outline=outline)
-        # Sleeve highlight along the upper edge — fabric catching light.
-        d.line(
-            [
-                (near_shoulder[0] - 3.0 * S, near_shoulder[1] + 1.0 * S),
-                (near_cuff[0] - spec.cuff_w * 0.30 * S, near_cuff[1] - 1.0 * S),
-            ],
-            fill=pal["robe_light"],
-            width=max(1, int(1.0 * S)),
-        )
+
+        def edge(t: float, side: float, inset: float = 0.0) -> Point:
+            # ``side`` +1 is the camera side (+x on screen when the sleeve
+            # hangs down, -y here); ``inset`` moves the point into the sleeve.
+            f = t / NEAR_SLEEVE_REST
+            half_top, half_cuff = 5.0, spec.cuff_w * 0.55
+            centre = -1.0 * (1.0 - f)
+            half = half_top + (half_cuff - half_top) * f - inset
+            return (origin[0] + (t - origin_at) * S, origin[1] + (centre - side * half) * S)
+
+        sleeve = [edge(start, 1.0), edge(end, 1.0), edge(end, -1.0), edge(start, -1.0)]
+        d.polygon(sleeve, fill=pal["robe"], outline=outline)
+        # Sleeve highlight along the far edge — fabric catching light.
+        def inset(t: float) -> float:
+            return 1.0 + 0.6 * t / NEAR_SLEEVE_REST
+
+        d.line([edge(start, -1.0, inset(start)), edge(end, -1.0, inset(end))], fill=pal["robe_light"], width=max(1, int(1.0 * S)))
 
     def _paint_near_hand(self, d, near_cuff: Point, hold_scales: bool, spec: TrentSpec, pal: Dict[str, Color], S: float) -> None:
         outline = pal["outline"]
@@ -545,8 +584,9 @@ class TrentElderGenerator(CharacterGenerator):
         spec: TrentSpec,
         pal: Dict[str, Color],
         S: float,
-        pose: TrentPose,
     ) -> None:
+        """The head's base about ``c``: everything but the eyes
+        (``_paint_eyes``) and the mouth (``_paint_mouth``)."""
         d = blending_draw(base)
         outline = pal["outline"]
 
@@ -618,38 +658,6 @@ class TrentElderGenerator(CharacterGenerator):
             fill=outline,
             width=max(1, int(0.9 * S)),
         )
-        # Eyes — recessed, dignified. Smaller than the toon target's
-        # cartoon eyes; two short oval pupils set under the brow.
-        eye_y = c[1] - spec.head_h * 0.06 * S
-        if pose.blink:
-            d.line(
-                [
-                    (c[0] - spec.head_w * 0.20 * S, eye_y),
-                    (c[0] - spec.head_w * 0.06 * S, eye_y),
-                ],
-                fill=outline,
-                width=max(1, int(1.1 * S)),
-            )
-            d.line(
-                [
-                    (c[0] + spec.head_w * 0.06 * S, eye_y),
-                    (c[0] + spec.head_w * 0.22 * S, eye_y),
-                ],
-                fill=outline,
-                width=max(1, int(1.1 * S)),
-            )
-        else:
-            for ex in (-spec.head_w * 0.14, spec.head_w * 0.14):
-                d.ellipse(
-                    _bbox((c[0] + ex * S, eye_y), 2.4 * S, 1.6 * S),
-                    fill=pal["white"],
-                    outline=outline,
-                    width=max(1, int(0.7 * S)),
-                )
-                d.ellipse(
-                    _bbox((c[0] + (ex + 0.2) * S, eye_y), 1.2 * S, 1.4 * S),
-                    fill=outline,
-                )
         # Nose — a small wedge below and to the camera-right.
         d.polygon(
             [
@@ -724,13 +732,52 @@ class TrentElderGenerator(CharacterGenerator):
         ]
         d.polygon(mustache, fill=pal["beard"], outline=outline)
 
+    def _paint_eyes(self, d, c: Point, spec: TrentSpec, pal: Dict[str, Color], S: float, blink: bool) -> None:
+        """The eyes overlay in the head's frame (``_draw_head``)."""
+        outline = pal["outline"]
+        # Eyes — recessed, dignified. Smaller than the toon target's
+        # cartoon eyes; two short oval pupils set under the brow.
+        eye_y = c[1] - spec.head_h * 0.06 * S
+        if blink:
+            d.line(
+                [
+                    (c[0] - spec.head_w * 0.20 * S, eye_y),
+                    (c[0] - spec.head_w * 0.06 * S, eye_y),
+                ],
+                fill=outline,
+                width=max(1, int(1.1 * S)),
+            )
+            d.line(
+                [
+                    (c[0] + spec.head_w * 0.06 * S, eye_y),
+                    (c[0] + spec.head_w * 0.22 * S, eye_y),
+                ],
+                fill=outline,
+                width=max(1, int(1.1 * S)),
+            )
+        else:
+            for ex in (-spec.head_w * 0.14, spec.head_w * 0.14):
+                d.ellipse(
+                    _bbox((c[0] + ex * S, eye_y), 2.4 * S, 1.6 * S),
+                    fill=pal["white"],
+                    outline=outline,
+                    width=max(1, int(0.7 * S)),
+                )
+                d.ellipse(
+                    _bbox((c[0] + (ex + 0.2) * S, eye_y), 1.2 * S, 1.4 * S),
+                    fill=outline,
+                )
+
+    def _paint_mouth(self, d, c: Point, spec: TrentSpec, pal: Dict[str, Color], S: float, talk_open: float) -> None:
+        """The mouth overlay in the head's frame (``_draw_head``), open by
+        ``talk_open``: the closed mouth is hidden by the mustache."""
+        outline = pal["outline"]
         # Mouth — only visible during talk. A small dark oval between
         # the mustache and the beard center crease.
-        if pose.talk_open > 0.2:
-            mouth_y = c[1] + spec.head_h * 0.22 * S
-            mw = (1.6 + pose.talk_open * 1.4) * S
-            mh = (1.0 + pose.talk_open * 1.6) * S
-            d.ellipse(_bbox((c[0], mouth_y), mw, mh), fill=outline)
+        mouth_y = c[1] + spec.head_h * 0.22 * S
+        mw = (1.6 + talk_open * 1.4) * S
+        mh = (1.0 + talk_open * 1.6) * S
+        d.ellipse(_bbox((c[0], mouth_y), mw, mh), fill=outline)
 
     def _draw_chain(
         self,

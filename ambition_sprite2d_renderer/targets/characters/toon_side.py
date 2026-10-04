@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import math
 import random
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import Callable, Dict, Optional, Tuple
 
 from PIL import Image, ImageDraw
@@ -32,6 +32,7 @@ from ...authoring.generator import CharacterGenerator
 from ...registry import CharacterJob
 from ._toon_palettes import PALETTES as _TOON_PALETTES
 from ._toon_presets import PRESETS as _TOON_PRESETS
+from . import _toon_rig
 from .oiler_mechanic import OilerMechanicGenerator, OilerSpec
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
@@ -77,6 +78,15 @@ _HANGING_PROPS: Dict[str, Tuple[float, float]] = {
     "lantern": (6.0, 30.0),
     "key_ring": (6.0, 20.0),
 }
+
+
+#: Hair styles whose eyes are part of the head's base: their eyes read no
+#: expression (``ToonSideGenerator._paint_head``).
+_FIXED_EYES = frozenset({"general_hat", "officer_cap"})
+
+#: The eye squint is rounded to this step: a step changes an eye's height by
+#: a fifth of a design pixel, and near squints share one eyes overlay.
+EYE_SQUINT_STEP = 0.05
 
 
 # --- dataclasses ---------------------------------------------------------------
@@ -478,16 +488,40 @@ class ToonSideGenerator(CharacterGenerator):
         draw.ellipse(_bbox(center, width * S, 12.0 * S), fill=(0, 0, 0, alpha))
 
     def _draw_head(self, base: Image.Image, center: Point, spec: ToonSpec, pal: Dict[str, Color], S: float, pose: ToonPose) -> None:
-        """The head painted untilted, one piece per expression (rounded),
-        turned by the head tilt."""
+        """The head as one base piece (shape, skin, hair: no expression
+        changes it) and the eyes and the mouth as small overlays on it, each
+        keyed by its own rounded state (``_toon_rig.face``). All of them
+        turn with the head tilt."""
         pad = int(max(spec.head_w, spec.head_h) * S * 1.7)
-        face = replace(pose, eye_squint=round(pose.eye_squint, 2), mouth_open=round(pose.mouth_open, 1))
-        key = ("toon_head", spec, S, face.blink, face.dead, face.eye_squint, face.mouth_open)
-        part = shape_rig.piece(key, (pad * 2, pad * 2), (pad, pad), lambda d: self._paint_head(d, pad, spec, pal, S, face))
-        _paste_rotated_local(base, part, center, pose.head_tilt, "head")
+        closed = pose.blink or pose.dead
+        squint = None if closed else _toon_rig.quantize(pose.eye_squint, EYE_SQUINT_STEP)
+        mouth = round(pose.mouth_open, 1)
+        if spec.hair_style in _FIXED_EYES:
+            eyes_key = None
+        else:
+            eyes_key = ("toon_eyes", spec, S, closed, squint)
+        if spec.hair_style == "general_hat":
+            mouth_key = None
+        elif spec.hair_style == "officer_cap":
+            mouth_key = ("toon_mouth", spec, S, mouth) if mouth > 0.18 else None
+        else:
+            mouth_key = ("toon_mouth", spec, S, mouth if mouth > 0.2 else 0.0)
+        _toon_rig.face(
+            lambda part, name: _paste_rotated_local(base, part, center, pose.head_tilt, name),
+            "head",
+            (pad * 2, pad * 2),
+            (pad, pad),
+            (("toon_head", spec, S), lambda d: self._paint_head(d, pad, spec, pal, S)),
+            (
+                ("eyes", eyes_key, lambda d: self._paint_eyes(d, pad, spec, pal, S, closed, squint or 0.0)),
+                ("mouth", mouth_key, lambda d: self._paint_mouth(d, pad, spec, pal, S, mouth)),
+            ),
+        )
 
-    def _paint_head(self, d, pad: int, spec: ToonSpec, pal: Dict[str, Color], S: float, pose: ToonPose) -> None:
-        """The head in its own frame, centred on ``(pad, pad)``."""
+    def _paint_head(self, d, pad: int, spec: ToonSpec, pal: Dict[str, Color], S: float) -> None:
+        """The head's base in its own frame, centred on ``(pad, pad)``:
+        everything but the features an expression changes (``_paint_eyes``,
+        ``_paint_mouth``)."""
         c = (pad, pad)
         outline = pal["outline"]
         # Hood / back hair mass first.
@@ -1127,46 +1161,6 @@ class ToonSideGenerator(CharacterGenerator):
             d.ellipse(_bbox((eye_x + 5.6 * S, eye_y + 0.3 * S), 1.0 * S, 1.2 * S), fill=outline)
             d.line([(eye_x - 5.5 * S, eye_y - 2.4 * S), (eye_x + 0.6 * S, eye_y - 0.8 * S)], fill=outline, width=max(1, int(1.2 * S)))
             d.line([(eye_x + 3.0 * S, eye_y - 0.9 * S), (eye_x + 7.2 * S, eye_y - 2.8 * S)], fill=outline, width=max(1, int(1.1 * S)))
-        else:
-            # 3/4 view: draw both eyes flanking the nose so the face
-            # doesn't read as a cyclops. Matches the general_hat /
-            # officer_cap layout the user already approved: a larger
-            # near eye on the camera-left of the face and a smaller
-            # far eye on the camera-right, both with pupils tracking
-            # forward. Spacing is 7.0×S center-to-center, roughly the
-            # same fraction of head width as the General sheet.
-            eye_y = c[1] - 1.8 * S
-            near_eye_x = c[0] + 1.0 * S
-            far_eye_x = c[0] + 8.0 * S
-            near_w, near_h = 3.6 * S, max(1.2 * S, (1.2 + pose.eye_squint * 4.0) * S)
-            far_w, far_h = 3.0 * S, max(1.0 * S, (1.0 + pose.eye_squint * 3.4) * S)
-            if pose.blink or pose.dead:
-                d.line([(near_eye_x - 2.2 * S, eye_y), (near_eye_x + 2.0 * S, eye_y)], fill=outline, width=max(1, int(1.3 * S)))
-                d.line([(far_eye_x - 1.6 * S, eye_y), (far_eye_x + 1.4 * S, eye_y)], fill=outline, width=max(1, int(1.1 * S)))
-            else:
-                pupil_y = eye_y + pose.eye_squint * 0.4 * S
-                # Near eye (camera-left, larger).
-                d.ellipse(_bbox((near_eye_x, eye_y), near_w, near_h), fill=pal["white"], outline=outline, width=max(1, int(1.0 * S)))
-                d.ellipse(_bbox((near_eye_x + 0.55 * S, pupil_y), 1.3 * S, 2.4 * S), fill=outline)
-                # Far eye (camera-right, smaller, slightly higher to
-                # suggest the head tilt from the 3/4 angle).
-                d.ellipse(_bbox((far_eye_x, eye_y - 0.1 * S), far_w, far_h), fill=pal["white"], outline=outline, width=max(1, int(0.9 * S)))
-                d.ellipse(_bbox((far_eye_x + 0.45 * S, pupil_y - 0.05 * S), 1.05 * S, 2.0 * S), fill=outline)
-                # Eyelash cue for `feminine_coded` archetypes. One short
-                # outer-corner tick per eye — read as a hint of lash
-                # at the runtime downsample without sliding into
-                # "make-up trope" territory. Hair length is the
-                # primary feminine cue; this is the subtle finish.
-                if spec.feminine_coded:
-                    # Single short stroke at the outer corner of the
-                    # near eye only.
-                    lash_root = (near_eye_x + 2.0 * S, eye_y - near_h)
-                    lash_tip = (lash_root[0] + 0.4 * S, lash_root[1] - 1.0 * S)
-                    d.line([lash_root, lash_tip], fill=outline, width=max(1, int(0.6 * S)))
-                    # One even shorter stroke on the far eye outer corner.
-                    lash_root = (far_eye_x + 2.0 * S, eye_y - far_h - 0.1 * S)
-                    lash_tip = (lash_root[0] + 0.3 * S, lash_root[1] - 0.8 * S)
-                    d.line([lash_root, lash_tip], fill=outline, width=max(1, int(0.5 * S)))
         nose = [
             (c[0] + 4.5 * S, c[1] + 1.8 * S),
             (c[0] + (4.5 + spec.nose_len) * S, c[1] + 3.0 * S),
@@ -1185,10 +1179,64 @@ class ToonSideGenerator(CharacterGenerator):
         elif spec.hair_style == "officer_cap":
             d.line([(c[0] + 1.0 * S, mouth_y + 1.2 * S), (c[0] + 7.0 * S, mouth_y + 0.3 * S)], fill=outline, width=max(1, int(1.2 * S)))
             d.line([(c[0] + 2.6 * S, mouth_y - 1.4 * S), (c[0] + 5.8 * S, mouth_y - 1.8 * S)], fill=pal["hair"], width=max(1, int(1.1 * S)))
-            if pose.mouth_open > 0.18:
+
+    def _paint_eyes(self, d, pad: int, spec: ToonSpec, pal: Dict[str, Color], S: float, closed: bool, squint: float) -> None:
+        """The eyes overlay in the head's frame (``_paint_head``): closed
+        (a blink, or dead) or open with a ``squint``. A hair style in
+        ``_FIXED_EYES`` paints its eyes on the base instead."""
+        c = (pad, pad)
+        outline = pal["outline"]
+        # 3/4 view: draw both eyes flanking the nose so the face
+        # doesn't read as a cyclops. Matches the general_hat /
+        # officer_cap layout the user already approved: a larger
+        # near eye on the camera-left of the face and a smaller
+        # far eye on the camera-right, both with pupils tracking
+        # forward. Spacing is 7.0×S center-to-center, roughly the
+        # same fraction of head width as the General sheet.
+        eye_y = c[1] - 1.8 * S
+        near_eye_x = c[0] + 1.0 * S
+        far_eye_x = c[0] + 8.0 * S
+        near_w, near_h = 3.6 * S, max(1.2 * S, (1.2 + squint * 4.0) * S)
+        far_w, far_h = 3.0 * S, max(1.0 * S, (1.0 + squint * 3.4) * S)
+        if closed:
+            d.line([(near_eye_x - 2.2 * S, eye_y), (near_eye_x + 2.0 * S, eye_y)], fill=outline, width=max(1, int(1.3 * S)))
+            d.line([(far_eye_x - 1.6 * S, eye_y), (far_eye_x + 1.4 * S, eye_y)], fill=outline, width=max(1, int(1.1 * S)))
+        else:
+            pupil_y = eye_y + squint * 0.4 * S
+            # Near eye (camera-left, larger).
+            d.ellipse(_bbox((near_eye_x, eye_y), near_w, near_h), fill=pal["white"], outline=outline, width=max(1, int(1.0 * S)))
+            d.ellipse(_bbox((near_eye_x + 0.55 * S, pupil_y), 1.3 * S, 2.4 * S), fill=outline)
+            # Far eye (camera-right, smaller, slightly higher to
+            # suggest the head tilt from the 3/4 angle).
+            d.ellipse(_bbox((far_eye_x, eye_y - 0.1 * S), far_w, far_h), fill=pal["white"], outline=outline, width=max(1, int(0.9 * S)))
+            d.ellipse(_bbox((far_eye_x + 0.45 * S, pupil_y - 0.05 * S), 1.05 * S, 2.0 * S), fill=outline)
+            # Eyelash cue for `feminine_coded` archetypes. One short
+            # outer-corner tick per eye — read as a hint of lash
+            # at the runtime downsample without sliding into
+            # "make-up trope" territory. Hair length is the
+            # primary feminine cue; this is the subtle finish.
+            if spec.feminine_coded:
+                # Single short stroke at the outer corner of the
+                # near eye only.
+                lash_root = (near_eye_x + 2.0 * S, eye_y - near_h)
+                lash_tip = (lash_root[0] + 0.4 * S, lash_root[1] - 1.0 * S)
+                d.line([lash_root, lash_tip], fill=outline, width=max(1, int(0.6 * S)))
+                # One even shorter stroke on the far eye outer corner.
+                lash_root = (far_eye_x + 2.0 * S, eye_y - far_h - 0.1 * S)
+                lash_tip = (lash_root[0] + 0.3 * S, lash_root[1] - 0.8 * S)
+                d.line([lash_root, lash_tip], fill=outline, width=max(1, int(0.5 * S)))
+
+    def _paint_mouth(self, d, pad: int, spec: ToonSpec, pal: Dict[str, Color], S: float, mouth_open: float) -> None:
+        """The mouth overlay in the head's frame (``_paint_head``): open by
+        ``mouth_open``, or the closed smile."""
+        c = (pad, pad)
+        outline = pal["outline"]
+        mouth_y = c[1] + 7.0 * S
+        if spec.hair_style == "officer_cap":
+            if mouth_open > 0.18:
                 d.ellipse(_bbox((c[0] + 4.6 * S, mouth_y + 1.6 * S), 5.0 * S, 4.0 * S), fill=rgba("#30100F"), outline=outline, width=max(1, int(0.95 * S)))
-        elif pose.mouth_open > 0.2:
-            d.ellipse(_bbox((c[0] + 4.2 * S, mouth_y), 4.8 * S, (1.6 + pose.mouth_open * 1.8) * S), fill=_scale_color(outline, 0.9), outline=outline)
+        elif mouth_open > 0.2:
+            d.ellipse(_bbox((c[0] + 4.2 * S, mouth_y), 4.8 * S, (1.6 + mouth_open * 1.8) * S), fill=_scale_color(outline, 0.9), outline=outline)
         else:
             d.arc((c[0] + 0.4 * S, mouth_y - 2 * S, c[0] + 8.2 * S, mouth_y + 2.5 * S), start=8, end=140, fill=outline, width=max(1, int(1.1 * S)))
 
@@ -2198,7 +2246,6 @@ class ToonSideGenerator(CharacterGenerator):
         W, H = size
         ss = max(1, int(supersample))
         img = Image.new("RGBA", (W * ss, H * ss), background or (0, 0, 0, 0))
-        d = blending_draw(img)
         S = (W / 128.0) * ss
         pal = self._palette(spec)
         p = self.pose_for_animation(animation, frame_index, frame_count, spec)
@@ -2207,6 +2254,10 @@ class ToonSideGenerator(CharacterGenerator):
         hip_center = (44.0 * S + p.root_x * S + p.lean * S, 74.0 * S + p.root_y * S - p.body_bob * S + shift["hip_y"] * S)
         torso_center = (hip_center[0] + 0.5 * S, hip_center[1] - spec.torso_h * 0.52 * S + shift["shoulder_y"] * S)
         head_center = (torso_center[0] + 4.0 * S, torso_center[1] - spec.torso_h * 0.62 * S - spec.neck_h * S + shift["head_y"] * S)
+        # Both bones of a limb have one length (the mean of the authored
+        # two), so the upper and the lower bone of a limb are one piece.
+        arm_bone = (spec.arm_upper + spec.arm_lower) * 0.5
+        leg_bone = (spec.leg_upper + spec.leg_lower) * 0.5
 
         # Drop-shadow removed — the in-game renderer composites
         # characters over scene geometry that already provides ground
@@ -2230,13 +2281,13 @@ class ToonSideGenerator(CharacterGenerator):
             lower = p.near_leg_lower if is_near else p.far_leg_lower
             hip_spread = (spec.hip_w * 0.26 if spec.outfit in {"general_uniform", "storm_uniform"} else max(3.8, spec.hip_w * 0.18)) * S
             hip = (hip_center[0] + sign * hip_spread, hip_center[1] + 3.0 * S)
-            knee = add(hip, vec(spec.leg_upper * S, upper + p.torso_tilt * 0.08))
-            ankle = add(knee, vec(spec.leg_lower * S, lower + p.torso_tilt * 0.08))
+            knee = add(hip, vec(leg_bone * S, upper + p.torso_tilt * 0.08))
+            ankle = add(knee, vec(leg_bone * S, lower + p.torso_tilt * 0.08))
             return hip, knee, ankle
 
         def walk_leg_pose(is_near: bool):
             idx = frame_index % 8
-            leg_len = (spec.leg_upper + spec.leg_lower) * S
+            leg_len = 2.0 * leg_bone * S
             stride = leg_len * (0.42 if animation == "run" else 0.36)
             base_drop = leg_len * (0.86 if animation == "run" else 0.88)
             far_x = (-1.00, -0.76, -0.36, -0.06, 0.12, -0.18, -0.58, -0.90)
@@ -2251,14 +2302,14 @@ class ToonSideGenerator(CharacterGenerator):
             hip = (hip_center[0] + (hip_spread if is_near else -hip_spread), hip_center[1] + 3.0 * S)
             if is_near:
                 ankle = (hip_center[0] + near_x[idx] * stride, hip[1] + base_drop - near_lift[idx] * leg_len)
-                ankle = self._clamp_leg_target(hip, ankle, spec.leg_upper * S, spec.leg_lower * S)
-                knee, _a1, _a2 = self._solve_leg_ik(hip, ankle, spec.leg_upper * S, spec.leg_lower * S, bend_sign=1.0)
+                ankle = self._clamp_leg_target(hip, ankle, leg_bone * S, leg_bone * S)
+                knee, _a1, _a2 = self._solve_leg_ik(hip, ankle, leg_bone * S, leg_bone * S, bend_sign=1.0)
                 foot_center = (ankle[0] + spec.foot_w * 0.28 * S + near_shift[idx] * S, ankle[1] + 2.0 * S)
                 foot_angle = -foot_tilt[(idx + 4) % 8] + p.torso_tilt * 0.10
             else:
                 ankle = (hip_center[0] + far_x[idx] * stride, hip[1] + base_drop - far_lift[idx] * leg_len)
-                ankle = self._clamp_leg_target(hip, ankle, spec.leg_upper * S, spec.leg_lower * S)
-                knee, _a1, _a2 = self._solve_leg_ik(hip, ankle, spec.leg_upper * S, spec.leg_lower * S, bend_sign=1.0)
+                ankle = self._clamp_leg_target(hip, ankle, leg_bone * S, leg_bone * S)
+                knee, _a1, _a2 = self._solve_leg_ik(hip, ankle, leg_bone * S, leg_bone * S, bend_sign=1.0)
                 foot_center = (ankle[0] + spec.foot_w * 0.25 * S + far_shift[idx] * S, ankle[1] + 2.0 * S)
                 foot_angle = foot_tilt[idx] + p.torso_tilt * 0.08
             return hip, knee, ankle, foot_center, foot_angle
@@ -2268,8 +2319,8 @@ class ToonSideGenerator(CharacterGenerator):
             shoulder = (torso_center[0] + sign * (spec.shoulder_w * 0.32 * S), torso_center[1] - spec.torso_h * 0.22 * S)
             upper = p.near_arm_upper if is_near else p.far_arm_upper
             lower = p.near_arm_lower if is_near else p.far_arm_lower
-            elbow = add(shoulder, vec(spec.arm_upper * S, upper + p.torso_tilt * 0.15))
-            hand = add(elbow, vec(spec.arm_lower * S, lower + p.torso_tilt * 0.12))
+            elbow = add(shoulder, vec(arm_bone * S, upper + p.torso_tilt * 0.15))
+            hand = add(elbow, vec(arm_bone * S, lower + p.torso_tilt * 0.12))
             return shoulder, elbow, hand
 
         def draw_uniform_cuff(elbow: Point, hand: Point, *, side: str, scale: float = 1.0) -> None:
@@ -2403,39 +2454,50 @@ class ToonSideGenerator(CharacterGenerator):
 
         back_tint = _scale_color(pal["outfit_dark"], 0.93)
         front_tint = pal["outfit"]
-        shape_rig.capsule(img, back_hip, back_knee, spec.leg_radius * 0.92 * S, back_tint, pal["outline"], 1.1 * S, "back_thigh", length=spec.leg_upper * S)
-        shape_rig.capsule(img, back_knee, back_ankle, spec.leg_radius * 0.88 * S, back_tint, pal["outline"], 1.1 * S, "back_shin", length=spec.leg_lower * S)
+        shape_rig.capsule(img, back_hip, back_knee, spec.leg_radius * 0.90 * S, back_tint, pal["outline"], 1.1 * S, "back_thigh", length=leg_bone * S)
+        shape_rig.capsule(img, back_knee, back_ankle, spec.leg_radius * 0.90 * S, back_tint, pal["outline"], 1.1 * S, "back_shin", length=leg_bone * S)
         draw_rotated_rounded_rect(img, back_foot_center, (spec.foot_w * S, spec.foot_h * S), back_foot_angle, spec.foot_h * 0.48 * S, pal["shoe"], pal["outline"], 1.0 * S, name="back_foot")
         back_shoulder, back_elbow, back_hand = arm_points(True)
-        shape_rig.capsule(img, back_shoulder, back_elbow, spec.arm_radius * 0.92 * S, back_tint, pal["outline"], 1.1 * S, "back_upper_arm", length=spec.arm_upper * S)
-        shape_rig.capsule(img, back_elbow, back_hand, spec.arm_radius * 0.88 * S, back_tint, pal["outline"], 1.1 * S, "back_forearm", length=spec.arm_lower * S)
+        shape_rig.capsule(img, back_shoulder, back_elbow, spec.arm_radius * 0.90 * S, back_tint, pal["outline"], 1.1 * S, "back_upper_arm", length=arm_bone * S)
+        shape_rig.capsule(img, back_elbow, back_hand, spec.arm_radius * 0.90 * S, back_tint, pal["outline"], 1.1 * S, "back_forearm", length=arm_bone * S)
         draw_armband(back_shoulder, back_elbow, side="back", scale=0.88, include_insignia=False)
         draw_uniform_cuff(back_elbow, back_hand, side="back", scale=0.88)
-        draw_skin_hand(back_hand, name="back_hand", scale=0.90, outline_width=0.9)
+        # One hand piece for both hands.
+        draw_skin_hand(back_hand, name="back_hand", scale=0.95, outline_width=0.95)
 
         # torso/head core silhouette
         self._draw_torso(img, torso_center, spec, pal, S, p)
         self._draw_head(img, head_center, spec, pal, S, p)
 
         # front limbs and props
-        shape_rig.capsule(img, front_hip, front_knee, spec.leg_radius * S, front_tint, pal["outline"], 1.15 * S, "front_thigh", length=spec.leg_upper * S)
-        shape_rig.capsule(img, front_knee, front_ankle, spec.leg_radius * 0.96 * S, front_tint, pal["outline"], 1.15 * S, "front_shin", length=spec.leg_lower * S)
+        shape_rig.capsule(img, front_hip, front_knee, spec.leg_radius * 0.98 * S, front_tint, pal["outline"], 1.15 * S, "front_thigh", length=leg_bone * S)
+        shape_rig.capsule(img, front_knee, front_ankle, spec.leg_radius * 0.98 * S, front_tint, pal["outline"], 1.15 * S, "front_shin", length=leg_bone * S)
         draw_rotated_rounded_rect(img, front_foot_center, (spec.foot_w * S, spec.foot_h * S), front_foot_angle, spec.foot_h * 0.48 * S, pal["shoe"], pal["outline"], 1.0 * S, name="front_foot")
         front_shoulder, front_elbow, front_hand = arm_points(False)
         sleeve_fill = pal["outfit"] if spec.outfit in {"poncho", "keeper_robe", "long_coat", "general_uniform", "storm_uniform", "banyan", "eavesdrop_cloak", "field_jacket", "cinched_field_jacket", "formal_robe", "judicial_robe", "vest_over_shirt", "tabard", "cinched_tabard"} else pal["skin"]
-        shape_rig.capsule(img, front_shoulder, front_elbow, spec.arm_radius * S, sleeve_fill, pal["outline"], 1.1 * S, "front_upper_arm", length=spec.arm_upper * S)
-        shape_rig.capsule(img, front_elbow, front_hand, spec.arm_radius * 0.95 * S, sleeve_fill, pal["outline"], 1.1 * S, "front_forearm", length=spec.arm_lower * S)
+        shape_rig.capsule(img, front_shoulder, front_elbow, spec.arm_radius * 0.975 * S, sleeve_fill, pal["outline"], 1.1 * S, "front_upper_arm", length=arm_bone * S)
+        shape_rig.capsule(img, front_elbow, front_hand, spec.arm_radius * 0.975 * S, sleeve_fill, pal["outline"], 1.1 * S, "front_forearm", length=arm_bone * S)
         draw_armband(front_shoulder, front_elbow, side="front", scale=1.0, include_insignia=True)
         draw_uniform_cuff(front_elbow, front_hand, side="front", scale=1.0)
 
         prop_angle = p.far_arm_lower + p.torso_tilt * 0.10 + (14.0 if p.prop_swing > 0 else 0.0)
         self._draw_prop(img, front_hand, spec, pal, S, prop_angle)
-        draw_skin_hand(front_hand, name="front_hand", scale=1.0, outline_width=1.0)
+        draw_skin_hand(front_hand, name="front_hand", scale=0.95, outline_width=0.95)
+        # The slash arc rides the hand and the hit sparks ride the head:
+        # each is one piece, painted once.
         if p.slash > 0.0:
-            d.arc((front_hand[0] - 4 * S, front_hand[1] - 28 * S, front_hand[0] + 42 * S, front_hand[1] + 16 * S), start=-70, end=35, fill=with_alpha(pal["accent"], 160), width=max(1, int(2.5 * S)))
+            _toon_rig.anchored(
+                _toon_rig.Frame(img), ("toon_slash_arc", pal["accent"], S), (46 * S, 31 * S), front_hand,
+                lambda ad, o: ad.arc((o[0] - 4 * S, o[1] - 28 * S, o[0] + 42 * S, o[1] + 16 * S), start=-70, end=35, fill=with_alpha(pal["accent"], 160), width=max(1, int(2.5 * S))),
+                "slash_arc",
+            )
         if p.hit > 0.0:
-            for off in [(-5, -10), (4, -14), (10, -6)]:
-                d.line([(head_center[0] + off[0]*S, head_center[1] + off[1]*S), (head_center[0] + (off[0]+3)*S, head_center[1] + (off[1]-4)*S)], fill=with_alpha(pal["accent"], 180), width=max(1, int(1.2 * S)))
+
+            def paint_sparks(sd, o) -> None:
+                for off in [(-5, -10), (4, -14), (10, -6)]:
+                    sd.line([(o[0] + off[0] * S, o[1] + off[1] * S), (o[0] + (off[0] + 3) * S, o[1] + (off[1] - 4) * S)], fill=with_alpha(pal["accent"], 180), width=max(1, int(1.2 * S)))
+
+            _toon_rig.anchored(_toon_rig.Frame(img), ("toon_hit_sparks", pal["accent"], S), (16 * S, 20 * S), head_center, paint_sparks, "hit_sparks")
         if ss > 1:
             # Through rigdoc's seam, so a part flipbook records each shape.
             img = rigdoc.downsampled_canvas(img, (W, H), RESAMPLING.LANCZOS if downsample == "lanczos" else RESAMPLING.BICUBIC)

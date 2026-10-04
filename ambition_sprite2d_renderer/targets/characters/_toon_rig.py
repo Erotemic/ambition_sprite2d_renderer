@@ -14,11 +14,12 @@ Angles are degrees, clockwise positive (+y is down), as ``shape_rig`` turns.
 from __future__ import annotations
 
 import math
-from typing import Callable, Hashable, Tuple
+from typing import Callable, Hashable, Optional, Sequence, Tuple
 
 from PIL import Image
 
 from ...authoring import shape_rig
+from ...core.draw import blending_draw
 
 Point = Tuple[float, float]
 Color = Tuple[int, int, int, int]
@@ -64,6 +65,65 @@ class Frame:
 def piece(key: Hashable, size: Tuple[float, float], pivot: Point, paint: Callable) -> Tuple[Image.Image, Point]:
     """``shape_rig.piece``."""
     return shape_rig.piece(key, size, pivot, paint)
+
+
+_OVERLAYS: dict = {}
+
+
+def overlay_piece(
+    key: Hashable,
+    size: Tuple[float, float],
+    pivot: Point,
+    paint: Callable,
+    align: int = 8,
+) -> Optional[Tuple[Image.Image, Point]]:
+    """A piece painted in the frame of another piece (the same ``size`` and
+    ``pivot``) and cut to the pixels it paints. Placed at the same point and
+    turn as that piece, it lands on it; stored, it is only its own pixels.
+    ``None`` when ``paint`` paints nothing.
+
+    The cut starts on a multiple of ``align`` pixels, so a supersampled
+    overlay reduces on the same pixel grid as the piece it lands on.
+    ``key`` must name everything ``paint`` reads."""
+    if key in _OVERLAYS:
+        return _OVERLAYS[key]
+    full = Image.new("RGBA", (max(1, int(math.ceil(size[0]))), max(1, int(math.ceil(size[1])))), (0, 0, 0, 0))
+    paint(blending_draw(full))
+    box = full.getchannel("A").getbbox()
+    part = None
+    if box is not None:
+        x0 = box[0] - box[0] % align
+        y0 = box[1] - box[1] % align
+        part = (full.crop((x0, y0, box[2], box[3])), (pivot[0] - x0, pivot[1] - y0))
+    _OVERLAYS[key] = part
+    return part
+
+
+def face(
+    place: Callable[[Tuple[Image.Image, Point], str], None],
+    name: str,
+    size: Tuple[float, float],
+    pivot: Point,
+    base: Tuple[Hashable, Callable],
+    features: Sequence[Tuple[str, Hashable, Callable]] = (),
+) -> None:
+    """A head as a BASE piece and EXPRESSION overlays that ride it.
+
+    ``base`` is ``(key, paint)``: the head shape, skin and hair, which no
+    expression changes. Each feature is ``(suffix, key, paint)``: the eyes,
+    the brows, the mouth, painted in the base's frame (``overlay_piece``)
+    and keyed by the expression state it reads. A character then stores one
+    head and a few small features, not one head per expression, and the
+    features recombine (open eyes with each mouth). ``place(part, name)``
+    puts each piece at the head's point and turn, so the features turn with
+    the head. A feature with key ``None`` is not drawn."""
+    place(piece(base[0], size, pivot, base[1]), name)
+    for suffix, key, paint in features:
+        if key is None:
+            continue
+        part = overlay_piece(key, size, pivot, paint)
+        if part is not None:
+            place(part, f"{name}_{suffix}")
 
 
 def angle(a: Point, b: Point) -> float:
