@@ -1,11 +1,14 @@
 """Standalone generator for a heavy Viking shieldmaiden sprite sheet.
 
-Redesigned from scratch with a distinct, opera-singer inspired silhouette:
-- huge horned steel helmet
-- giant gold chestplate / breastplate discs
-- big beefy arms, broad body, dress-like lower silhouette
-- round saw-like shield and long spear
-- exaggerated bellow / diva-warrior energy
+A distinct, opera-singer inspired silhouette:
+- a round steel helmet with great curved horns, long blonde twin braids
+- a gold corselet with the two great breastplate cups, a steel gorget, a
+  brown bodice and cape, a long pleated blue dress
+- big beefy arms, a toothed round shield and a long spear (couched and
+  driven forward for the jab, raised aloft for the bellow)
+- drawn as a rig (``_viking_common``): every rigid thing a piece painted
+  once (horns and braids one raster each, mirrored), the face a base and
+  expression overlays, effects pieces with opacity
 
 Generator only. No registration or GUI wiring.
 """
@@ -15,16 +18,15 @@ from __future__ import annotations
 import argparse
 import math
 from pathlib import Path
-from typing import List, Sequence, Tuple
+from typing import List, Tuple
 
-from PIL import Image, ImageDraw
+from PIL import Image
 
-from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
-from ambition_sprite2d_renderer.core.draw import blending_draw
-from . import _viking_heavy_shieldmaiden_rig as _viking_heavy_shieldmaiden_rig
-from . import _solo_shape_rig as _rig
+from . import _viking_common as V
+from . import _viking_heavy_shieldmaiden_rig
+
 
 ACTOR_METADATA = {
     "actor": {
@@ -122,12 +124,21 @@ ACTOR_METADATA = {
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
+
+def _lerp(a: float, b: float, t: float) -> float:
+    return a + (b - a) * t
+
+
+def _ease(t: float) -> float:
+    t = max(0.0, min(1.0, t))
+    return 0.5 - 0.5 * math.cos(math.pi * t)
+
+
 TARGET_NAME = "viking_heavy_shieldmaiden"
 FRAME_SIZE = (320, 320)
-WORK_FRAME_SIZE = (760, 760)
+WORK_FRAME_SIZE = V.WORK_FRAME_SIZE
 #: Work pixels to canvas pixels: the canvas is 8x the frame, so the frame is
 #: a WHOLE-factor reduction of it (a turned piece reduces only that way).
-SUPER = FRAME_SIZE[0] * 8 / WORK_FRAME_SIZE[0]
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 6, 132),
     ("march", 8, 98),
@@ -166,84 +177,6 @@ TONGUE = (212, 100, 116, 255)
 FX = (248, 238, 188, 148)
 DUST = (136, 118, 92, 132)
 
-
-def _s(v: float) -> int:
-    return int(round(v * SUPER))
-
-
-def _pt(p: Point) -> Tuple[int, int]:
-    return (_s(p[0]), _s(p[1]))
-
-
-def _box(cx: float, cy: float, rx: float, ry: float) -> Tuple[int, int, int, int]:
-    return (_s(cx - rx), _s(cy - ry), _s(cx + rx), _s(cy + ry))
-
-
-def _rot(x: float, y: float, deg: float) -> Point:
-    rad = math.radians(deg)
-    c = math.cos(rad)
-    s = math.sin(rad)
-    return (x * c - y * s, x * s + y * c)
-
-
-def _lerp(a: float, b: float, t: float) -> float:
-    return a + (b - a) * t
-
-
-def _ease(t: float) -> float:
-    t = max(0.0, min(1.0, t))
-    return 0.5 - 0.5 * math.cos(math.pi * t)
-
-
-def _poly(
-    draw: ImageDraw.ImageDraw,
-    pts: Sequence[Point],
-    fill: RGBA,
-    outline: RGBA = OUTLINE,
-    width: float = 1.0,
-) -> None:
-    ipts = [_pt(p) for p in pts]
-    draw.polygon(ipts, fill=fill)
-    if outline and width > 0:
-        draw.line(
-            ipts + [ipts[0]], fill=outline, width=max(1, _s(width)), joint="curve"
-        )
-
-
-def _line(
-    draw: ImageDraw.ImageDraw, pts: Sequence[Point], fill: RGBA, width: float = 1.0
-) -> None:
-    draw.line([_pt(p) for p in pts], fill=fill, width=max(1, _s(width)), joint="curve")
-
-
-def _ellipse(
-    draw: ImageDraw.ImageDraw,
-    cx: float,
-    cy: float,
-    rx: float,
-    ry: float,
-    fill: RGBA,
-    outline: RGBA = OUTLINE,
-    width: float = 1.0,
-) -> None:
-    draw.ellipse(
-        _box(cx, cy, rx, ry), fill=fill, outline=outline, width=max(1, _s(width))
-    )
-
-
-def _circle(
-    draw: ImageDraw.ImageDraw,
-    p: Point,
-    r: float,
-    fill: RGBA,
-    outline: RGBA = OUTLINE,
-    width: float = 1.0,
-) -> None:
-    _ellipse(draw, p[0], p[1], r, r, fill, outline, width)
-
-
-def _downsample(img: Image.Image) -> Image.Image:
-    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 class Pose:
@@ -364,361 +297,259 @@ class Pose:
             self.x_eye = tt > 0.58
 
 
-# --- Drawn as a rig (``shape_rig``): each rigid piece is painted once at its
-# rest place and turned into the frame; limbs are bones of a fixed length. ---
+# --- Drawn as a rig: every rigid thing is a piece painted once in its own
+# frame and turned into place (``_viking_common``). The skeleton is
+# ``_viking_heavy_shieldmaiden_rig``. The horns are ONE raster and the
+# braids ONE raster, each left copy placed mirrored. ---
 
-_REST_ROOT: Point = (WORK_FRAME_SIZE[0] * 0.48, WORK_FRAME_SIZE[1] * 0.80)
-_REST_HEAD: Point = (_REST_ROOT[0] - 4, _REST_ROOT[1] - 270)
-_CANVAS = (FRAME_SIZE[0] * 8, FRAME_SIZE[1] * 8)
-_THIGH, _SHIN = 36.0, 34.0
-#: Where a bone piece's root sits on its rest canvas (work pixels).
-_BONE_O: Point = (30.0, 30.0)
+STEEL_LIGHT = (234, 240, 246, 255)
+WOOD_LIGHT = (176, 124, 80, 255)
+BLUSH = (232, 142, 150, 130)
+BEAD = (190, 60, 70, 255)
 
+PAL = {
+    "outline": OUTLINE,
+    "boot": SANDAL,
+    "boot_shade": (60, 42, 24, 255),
+    "steel": STEEL,
+    "steel_shade": STEEL_SHADE,
+    "steel_light": STEEL_LIGHT,
+    "wood": BROWN,
+    "wood_light": WOOD_LIGHT,
+    "leather_dark": BROWN_DARK,
+    "gold": GOLD,
+    "gold_shade": GOLD_SHADE,
+    "shield": SHIELD,
+    "shield_shade": SHIELD_SHADE,
+}
 
-def _sp(p: Point) -> Point:
-    return (p[0] * SUPER, p[1] * SUPER)
-
-
-def _rest(key, paint, pivot: Point):
-    """A piece painted at its rest place on a frame-sized canvas, cut to what
-    it covers; ``pivot`` in work pixels."""
-    return _rig.rest_piece(("viking_heavy_shieldmaiden",) + key, _CANVAS, _sp(pivot), paint)
-
-
-def _put(img: Image.Image, part, at: Point, deg: float, name: str) -> None:
-    shape_rig.place(img, part, _sp(at), deg, name)
-
-
-def _fx_layer(img: Image.Image, paint, name: str) -> None:
-    """A per-frame effect (it changes every frame) as ONE raster: painted on
-    its own canvas, cut to what it covers and placed at its corner."""
-    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    paint(blending_draw(layer))
-    box = layer.getchannel("A").getbbox()
-    if box is not None:
-        shape_rig.place(img, (layer.crop(box), (0.0, 0.0)), (float(box[0]), float(box[1])), 0.0, name)
-
-
-def _deg(a: Point, b: Point) -> float:
-    return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
-
-
-def _ik(root: Point, target: Point, l1: float, l2: float, ref: Point) -> Point:
-    """The elbow of a two-bone limb (lengths ``l1``, ``l2``) from ``root`` to
-    ``target``, on the side of ``ref`` (the painter's own elbow)."""
-    dx, dy = target[0] - root[0], target[1] - root[1]
-    d = max(1e-6, min(math.hypot(dx, dy), l1 + l2 - 1e-6))
-    ux, uy = dx / d, dy / d
-    a = (l1 * l1 - l2 * l2 + d * d) / (2 * d)
-    h = math.sqrt(max(0.0, l1 * l1 - a * a))
-    bx, by = root[0] + ux * a, root[1] + uy * a
-    c1 = (bx - uy * h, by + ux * h)
-    c2 = (bx + uy * h, by - ux * h)
-    d1 = (c1[0] - ref[0]) ** 2 + (c1[1] - ref[1]) ** 2
-    d2 = (c2[0] - ref[0]) ** 2 + (c2[1] - ref[1]) ** 2
-    return c1 if d1 <= d2 else c2
+S = _viking_heavy_shieldmaiden_rig.S
+HEAD_K = 1.14 * S
+HEAD_EXTENT = (40, 56, 46, 40)
+THIGH, SHIN = 36.0, 34.0
+SPEAR_BUTT, SPEAR_TIP = 50.0, 140.0
+SHIELD_R = 44.0
+HEAD_MID = 3.0
+HORN_ROOT: Point = (30.0, -18.0)
+BRAID_ROOT: Point = (29.0, 4.0)
+BRAID_LEN = 70.0
+BRAID_SWAY = 0.2
 
 
-def _joints(anim: str, idx: int, n: int):
-    return _viking_heavy_shieldmaiden_rig.evaluate(Pose(anim, idx, n), WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1])
+def _k(*key):
+    return (TARGET_NAME,) + key
 
 
-def _chains(J) -> dict:
+def _paint_cape(pen: V.Pen) -> None:
+    pts = [(-50, -252), (-16, -262), (20, -258), (26, -200), (16, -120), (6, -60), (-10, -66), (-24, -54), (-40, -64), (-56, -52), (-68, -66), (-70, -130), (-68, -200), (-62, -240)]
+    pen.poly(pts, CLOTH_SHADE, OUTLINE, 1.8)
+    for a, b in [((-58, -200), (-62, -70)), ((-40, -210), (-42, -66)), ((-22, -220), (-24, -62))]:
+        pen.line([a, b], (72, 56, 54, 255), 1.4)
+
+
+def _paint_body(pen: V.Pen) -> None:
+    O = OUTLINE
+    # the long blue dress to the calf, pleated, trimmed in gold
+    dress = [(-48, -168), (44, -168), (56, -100), (64, -58), (40, -50), (0, -48), (-40, -50), (-62, -58), (-56, -110)]
+    pen.poly(dress, DRESS)
+    pen.poly([(-48, -168), (-28, -168), (-30, -48), (-40, -50), (-62, -58), (-56, -110)], DRESS_SHADE)
+    for x in (-12, 4, 20, 36):
+        pen.line([(x, -160), (x * 1.25, -52)], DRESS_SHADE, 1.4)
+    pen.line([(-61, -60), (63, -60)], GOLD, 4.2)
+    pen.poly(dress, None, O, 1.8)
+    # the bodice and shoulders in brown cloth
+    torso = [(-50, -256), (-18, -266), (22, -264), (52, -252), (64, -220), (62, -180), (48, -164), (-48, -164), (-62, -184), (-66, -224), (-60, -246)]
+    pen.poly(torso, CLOTH, smooth=True)
+    pen.poly([(-50, -256), (-34, -262), (-40, -200), (-38, -164), (-48, -164), (-62, -184), (-66, -224), (-60, -246)], CLOTH_SHADE)
+    pen.poly(torso, None, O, 1.8, smooth=True)
+    # a gold corselet with the two great breastplate cups
+    plate = [(-44, -238), (40, -238), (50, -206), (44, -172), (-44, -172), (-52, -206)]
+    pen.poly(plate, GOLD, O, 1.6, smooth=True)
+    pen.poly([(-44, -238), (-28, -238), (-36, -200), (-34, -172), (-44, -172), (-52, -206)], GOLD_SHADE)
+    for cx in (-18.0, 20.0):
+        pen.circle((cx, -210), 22.0, GOLD_SHADE, O, 1.6)
+        for r, col in ((17.0, GOLD), (12.0, GOLD_SHADE), (7.0, GOLD)):
+            pen.circle((cx, -210), r, col)
+        pen.circle((cx, -210), 2.6, (252, 232, 160, 255), O, 0.7)
+        pen.arc(cx, -210, 19, 19, 200, 260, (252, 232, 160, 255), 1.6)
+    pen.poly(plate, None, O, 1.6, smooth=True)
+    # a steel gorget at the neck
+    pen.poly([(-34, -258), (-12, -268), (16, -268), (38, -258), (28, -244), (-26, -244)], STEEL, O, 1.4)
+    pen.line([(-20, -252), (24, -252)], STEEL_LIGHT, 1.4)
+    # a belt with a gold clasp
+    pen.poly([(-52, -178), (52, -178), (53, -162), (-53, -162)], BROWN, O, 1.5)
+    pen.poly([(4, -182), (24, -182), (24, -158), (4, -158)], GOLD, O, 1.3)
+    pen.circle((14, -170), 3.6, BEAD, O, 0.8)
+
+
+def _paint_horn(pen: V.Pen) -> None:
+    """The right horn from its root on the helmet: a great curve outward and
+    up, banded."""
+    O = OUTLINE
+    a, c, b = (0, 0), (40, 4), (46, -48)
+    pen.poly(V.horn_outline(a, c, b, 8.0), HORN, O, 1.6)
+    for t, w in ((0.22, 6.6), (0.42, 5.4), (0.62, 4.0), (0.8, 2.6)):
+        (x, y), (nx, ny) = V.horn_frame(a, c, b, t)
+        pen.line([(x - nx * w, y - ny * w), (x + nx * w, y + ny * w)], HORN_SHADE, 1.6)
+    pen.poly([(-3, -9), (5, -9), (5, 9), (-3, 9)], GOLD, O, 1.1)
+
+
+def _paint_braid(pen: V.Pen) -> None:
+    """The right braid hanging from its root along +y."""
+    O = OUTLINE
+    pts = [(0, 0), (4, 22), (2, 46), (5, BRAID_LEN)]
+    pen.line(pts, O, 10.4, smooth=True)
+    pen.line(pts, BLONDE, 7.8, smooth=True)
+    for y in range(6, int(BRAID_LEN) - 4, 8):
+        pen.line([(-1.5, y - 2.5), (6.5, y + 2.5)], BLONDE_SHADE, 1.2)
+    pen.ellipse(5, BRAID_LEN + 4, 4.0, 5.0, BLONDE, O, 1.0)
+    pen.poly([(1, BRAID_LEN - 4), (9, BRAID_LEN - 4), (9, BRAID_LEN + 1), (1, BRAID_LEN + 1)], GOLD, O, 0.9)
+
+
+def _paint_head_base(pen: V.Pen) -> None:
+    O = OUTLINE
+    # blonde hair at the sides, a round face, rosy cheeks, a small nose
+    pen.poly([(-30, -10), (-32, 10), (-24, 18), (-16, 6), (22, 6), (30, 18), (38, 10), (36, -10)], BLONDE, O, 1.4, smooth=True)
+    pen.poly([(-22, -12), (2, -16), (28, -12), (30, 2), (27, 16), (16, 27), (2, 29), (-12, 25), (-22, 14), (-25, 0)], SKIN, O, 1.8, smooth=True)
+    pen.ellipse(-11, 12, 5.0, 3.2, BLUSH)
+    pen.ellipse(20, 12, 4.6, 3.2, BLUSH)
+    pen.line([(8, 1), (11.5, 9), (9, 11.5), (6, 11)], SKIN_SHADE, 1.5, smooth=True)
+    pen.poly([(-1, 19), (5, 17), (9, 18), (13, 17), (18, 19), (12, 22), (4, 22)], LIP, O, 1.0)
+    # a fringe under the helmet
+    pen.poly([(-24, -12), (32, -12), (30, -4), (20, -8), (10, -3), (0, -8), (-10, -3), (-20, -7), (-26, -2)], BLONDE, O, 1.2)
+    # a round helmet with a ridge and a riveted brow band
+    dome = V.catmull([(-30, -8), (-28, -28), (-14, -42), (4, -47), (22, -42), (34, -28), (36, -8)], closed=False)
+    pen.poly(dome + [(36, -8), (-30, -8)], STEEL)
+    pen.poly([(-30, -8), (-28, -28), (-14, -42), (-2, -46.5), (-6, -8)], STEEL_SHADE)
+    pen.line([(14, -42), (26, -34), (31, -22)], STEEL_LIGHT, 1.8, smooth=True)
+    pen.poly(dome + [(36, -8), (-30, -8)], None, O, 1.8)
+    pen.poly([(0, -47), (8, -47), (9, -14), (-1, -14)], GOLD, O, 1.2)
+    pen.poly([(-32, -15), (38, -15), (38, -6), (-32, -6)], GOLD, O, 1.4)
+    for x in (-25, -15, 18, 28):
+        pen.circle((x, -10.5), 1.3, GOLD_SHADE)
+
+
+def _paint_eyes(pen: V.Pen, state: str) -> None:
+    O = OUTLINE
+    for cx in (-8.0, 15.0):
+        if state == "x":
+            pen.line([(cx - 3.5, -3), (cx + 3.5, 4)], O, 1.6)
+            pen.line([(cx - 3.5, 4), (cx + 3.5, -3)], O, 1.6)
+        elif state == "blink":
+            pen.line([(cx - 4, 1), (cx, 2.8), (cx + 4, 1)], O, 1.6, smooth=True)
+        else:
+            pen.ellipse(cx, 0.5, 4.4, 4.2, EYE, O, 1.1)
+            pen.ellipse(cx + 1.4, 0.8, 2.4, 3.0, (70, 118, 160, 255))
+            pen.circle((cx + 1.6, 0.8), 1.2, PUPIL)
+            pen.circle((cx + 0.6, -0.6), 0.8, EYE)
+            pen.line([(cx - 4.6, -2.6), (cx, -4.4), (cx + 4.6, -2.8), (cx + 6.4, -4.6)], O, 1.3, smooth=True)
+        pen.line([(cx - 5, -7.5), (cx, -9), (cx + 5, -7.5)], BLONDE_SHADE, 1.6, smooth=True)
+
+
+def _paint_mouth(pen: V.Pen, state: int) -> None:
+    O = OUTLINE
+    rx, ry = [(0, 0), (4.6, 2.8), (5.6, 5.0), (6.8, 8.0)][state]
+    cy = 19 + ry * 0.55
+    pen.ellipse(8.5, cy, rx + 1.2, ry + 1.2, LIP)
+    pen.ellipse(8.5, cy, rx, ry, MOUTH, O, 1.1)
+    if state >= 2:
+        pen.ellipse(9, cy + ry * 0.45, rx * 0.6, ry * 0.4, TONGUE)
+    if state == 3:
+        pen.poly([(3, cy - ry * 0.78), (14, cy - ry * 0.78), (13.5, cy - ry * 0.42), (3.5, cy - ry * 0.42)], EYE)
+
+
+def _draw_head(img: Image.Image, J, pose: "Pose") -> None:
+    H = V.frame_point(J.head_root, J.head_ang)
+    k = HEAD_K
+    off = BRAID_ROOT[0] - HEAD_MID
+    braid = V.piece(_k("braid"), (10, 6, 16, BRAID_LEN + 12), _paint_braid, k=k)
+    turn = -math.degrees(math.atan2(pose.braid * BRAID_SWAY, BRAID_LEN))
+    V.put(img, braid, H((HEAD_MID + off) * k, BRAID_ROOT[1] * k), J.head_ang + turn, "braid_r")
+    V.put_mirrored(img, braid, H((HEAD_MID - off) * k, BRAID_ROOT[1] * k), J.head_ang + turn, "braid_l")
+    horn = V.piece(_k("horn"), (6, 60, 56, 12), _paint_horn, k=k)
+    off = HORN_ROOT[0] - HEAD_MID
+    V.put(img, horn, H((HEAD_MID + off) * k, HORN_ROOT[1] * k), J.head_ang, "horn_r")
+    V.put_mirrored(img, horn, H((HEAD_MID - off) * k, HORN_ROOT[1] * k), J.head_ang, "horn_l")
+    eyes = "x" if pose.x_eye else ("blink" if pose.blink else "open")
+    mouth = V.mouth_state(pose.mouth)
+    V.face(
+        img,
+        J.head_root,
+        J.head_ang,
+        "head",
+        HEAD_EXTENT,
+        (_k("head"), _paint_head_base),
+        [
+            ("eyes", _k("eyes", eyes), lambda pen: _paint_eyes(pen, eyes)),
+            ("mouth", _k("mouth", mouth) if mouth else None, lambda pen: _paint_mouth(pen, mouth)),
+        ],
+        k=k,
+    )
+
+
+def _muscle(r: float, band: RGBA, at: float, skin_shade: RGBA):
+    def detail(pen: V.Pen) -> None:
+        pen.arc(at + 18, 0, 12, r * 0.7, 200, 300, skin_shade, 1.2)
+        pen.poly([(at + 6, -r * 1.02), (at + 11, -r), (at + 11, r), (at + 6, r * 1.02)], band, OUTLINE, 1.0)
+
+    return detail
+
+
+def _bracer(x0: float, x1: float, color: RGBA, r: float):
+    def detail(pen: V.Pen) -> None:
+        pen.poly([(x0, -r), (x1, -r * 0.92), (x1, r * 0.92), (x0, r)], color, OUTLINE, 1.1)
+        pen.line([(x0 + 3, -r * 0.9), (x0 + 3, r * 0.9)], GOLD, 1.6)
+
+    return detail
+
+
+def _limb_parts(front: bool) -> dict:
+    skin = SKIN if front else SKIN_SHADE
+    side = "near" if front else "far"
+    L1, L2 = _viking_heavy_shieldmaiden_rig.UPPER_ARM, _viking_heavy_shieldmaiden_rig.FOREARM
     return {
-        "far": (J.far_shoulder, J.far_elbow, J.far_hand),
-        "near": (J.near_shoulder, J.near_elbow, J.near_hand),
+        "thigh": V.tube_piece(_k("thigh", side), THIGH, 9.0, 8.0, skin, OUTLINE, 1.8, k=S),
+        "shin": V.tube_piece(_k("shin", side), SHIN, 8.0, 6.2, skin, OUTLINE, 1.8, start_cap=False, k=S),
+        "upper": V.tube_piece(_k("upper", side), L1, 12.6, 10.8, skin, OUTLINE, 1.8, detail=_muscle(11.2, GOLD, 18.0, SKIN_SHADE), k=S),
+        "fore": V.tube_piece(_k("fore", side), L2, 10.8, 8.2, skin, OUTLINE, 1.8, start_cap=False, detail=_bracer(26, 46, BROWN if front else BROWN_DARK, 8.8), k=S),
+        "fist": V.fist_piece(_k("fist", side), skin, OUTLINE, 9.2, k=S),
     }
 
 
-_LIMB_LENGTHS: dict = {}
-
-
-def _limb_lengths(chains) -> dict:
-    """Each limb's bone lengths: the painter's own in the rest pose (the
-    first frame). ``chains(J)`` names each limb's ``(root, joint, end)``."""
-    if not _LIMB_LENGTHS:
-        for limb, (a, b, c) in chains(_joints(ROWS[0][0], 0, ROWS[0][1])).items():
-            _LIMB_LENGTHS[limb] = (round(math.dist(a, b), 1), round(math.dist(b, c), 1))
-    return _LIMB_LENGTHS
-
-
-def _limb(chains, limb: str, root: Point, ref: Point, end: Point) -> Tuple[Point, float, float]:
-    """A two-bone limb from ``root`` to ``end`` of its rest bone lengths,
-    bent toward the painter's joint ``ref``. Out of reach (the painter's
-    position-shift limb grows), both bones lengthen to the next 3-pixel
-    step: a stretched limb takes a few lengths. Returns (joint, l1, l2)."""
-    l1, l2 = _limb_lengths(chains)[limb]
-    d = math.dist(root, end)
-    if d > l1 + l2 - 0.5:
-        k = math.ceil((d + 0.5) / 3.0) * 3.0 / (l1 + l2)
-        l1, l2 = round(l1 * k, 1), round(l2 * k, 1)
-    return _ik(root, end, l1, l2, ref), l1, l2
-
-
-def _draw_leg(img: Image.Image, hip: Point, ang: float, lift: float, *, front: bool, side: str) -> Point:
-    """Thigh and shin bones (fixed lengths) and the sandal riding the ankle."""
-    knee = (hip[0] + _THIGH * math.cos(math.radians(ang)), hip[1] + _THIGH * math.sin(math.radians(ang)))
-    reach = (
-        knee[0] + _SHIN * math.cos(math.radians(ang + 8)),
-        knee[1] + _SHIN * math.sin(math.radians(ang + 8)) - lift,
-    )
-    shin_deg = _deg(knee, reach)
-    ankle = (knee[0] + _SHIN * math.cos(math.radians(shin_deg)), knee[1] + _SHIN * math.sin(math.radians(shin_deg)))
-    col = SKIN if front else SKIN_SHADE
-    width = 6.6 if front else 6.0
-    O = _BONE_O
-
-    def thigh(d) -> None:
-        _line(d, [O, (O[0] + _THIGH, O[1])], col, width)
-        _line(d, [O, (O[0] + _THIGH, O[1])], OUTLINE, 1.0)
-
-    def shin(d) -> None:
-        _circle(d, O, width / 2.0, col, col, 0.1)
-        _line(d, [O, (O[0] + _SHIN, O[1])], col, width)
-        _line(d, [O, (O[0] + _SHIN, O[1])], OUTLINE, 1.0)
-
-    def sandal(d) -> None:
-        x, y = O
-        pts = [(x - 10, y - 4), (x + 10, y - 4), (x + 14, y + 4), (x + 6, y + 10), (x - 10, y + 8)]
-        _poly(d, pts, SANDAL, OUTLINE, 0.8)
-        for off in [-4, 1, 6]:
-            _line(d, [(x + off, y - 3), (x + off, y + 7)], GOLD_SHADE, 0.35)
-
-    _put(img, _rest(("thigh", front), thigh, O), hip, ang, f"{side}_thigh")
-    _put(img, _rest(("shin", front), shin, O), knee, shin_deg, f"{side}_shin")
-    _put(img, _rest(("sandal",), sandal, O), ankle, 0.0, f"{side}_sandal")
-    return ankle
-
-
-def _draw_beefy_arm(img: Image.Image, shoulder: Point, elbow: Point, hand: Point, skin: RGBA, side: str) -> None:
-    """Upper arm and forearm bones of fixed length, bent where the painter's
-    elbow is; the muscle bulges ride their bone."""
-    elbow, l1, l2 = _limb(_chains, side, shoulder, elbow, hand)
-    O = _BONE_O
-
-    def upper(d) -> None:
-        end = (O[0] + l1, O[1])
-        _line(d, [O, end], skin, 12.2)
-        _line(d, [O, end], OUTLINE, 1.2)
-        mid = (O[0] + l1 / 2.0, O[1])
-        _ellipse(d, O[0], O[1], 6.0, 6.0, skin, OUTLINE, 0.35)
-        _ellipse(d, mid[0], mid[1], 12.2, 9.8, skin, OUTLINE, 0.5)
-        _line(d, [(mid[0] - 8, mid[1] - 4), (mid[0] + 8, mid[1] + 4)], GOLD, 1.0)
-
-    def fore(d) -> None:
-        end = (O[0] + l2, O[1])
-        _line(d, [O, end], skin, 12.2)
-        _line(d, [O, end], OUTLINE, 1.2)
-        _ellipse(d, O[0], O[1], 7.2, 6.2, skin, OUTLINE, 0.35)
-        _ellipse(d, O[0] + l2 / 2.0, O[1], 10.0, 8.0, skin, OUTLINE, 0.45)
-
-    _put(img, _rest(("upper_arm", side, l1, skin), upper, O), shoulder, _deg(shoulder, elbow), f"{side}_upper_arm")
-    _put(img, _rest(("forearm", side, l2, skin), fore, O), elbow, _deg(elbow, hand), f"{side}_forearm")
-
-
-def _draw_saw_shield(draw: ImageDraw.ImageDraw, center: Point, r: float) -> None:
-    teeth: List[Point] = []
-    for i in range(18):
-        ang = math.tau * i / 18.0
-        rr = r + (6 if i % 2 == 0 else 1)
-        teeth.append((center[0] + rr * math.cos(ang), center[1] + rr * math.sin(ang)))
-    _poly(draw, teeth, SHIELD, OUTLINE, 0.8)
-    _circle(draw, center, r * 0.76, SHIELD_SHADE, OUTLINE, 0.45)
-    _circle(draw, center, r * 0.28, STEEL, OUTLINE, 0.3)
-    for ang in [0.0, math.pi / 2, math.pi / 4, -math.pi / 4]:
-        p1 = (center[0] + math.cos(ang) * r * 0.18, center[1] + math.sin(ang) * r * 0.18)
-        p2 = (center[0] + math.cos(ang) * r * 0.56, center[1] + math.sin(ang) * r * 0.56)
-        _line(draw, [p1, p2], STEEL, 0.7)
-
-
-SPEAR_LENGTH = 146.0
-
-
-def _paint_spear(draw: ImageDraw.ImageDraw, hand: Point, length: float) -> None:
-    """The spear at angle 0 (pointing +x) held at ``hand``."""
-    hx, hy = hand
-    butt = (hx - length * 0.25, hy)
-    tip_base = (hx + length * 0.75, hy)
-    _line(draw, [butt, tip_base], BROWN, 6.2)
-    _line(draw, [butt, tip_base], OUTLINE, 0.9)
-    _poly(draw, [(tip_base[0] + 24, hy), (tip_base[0], hy + 14), (tip_base[0], hy - 14)], STEEL, OUTLINE, 0.8)
-    _line(draw, [(tip_base[0] - 16, hy), (tip_base[0] - 8, hy)], GOLD_SHADE, 1.8)
-    _poly(draw, [(butt[0] - 12, hy), (butt[0] + 5, hy + 6), (butt[0] - 5, hy - 6)], STEEL_SHADE, OUTLINE, 0.35)
-
-
-def _paint_body_back(draw: ImageDraw.ImageDraw) -> None:
-    rx, ry = _REST_ROOT
-
-    def P(x: float, y: float) -> Point:
-        return (rx + x, ry + y)
-
-    _poly(draw, [P(-44, -164), P(42, -164), P(58, -46), P(24, -4), P(-18, -6), P(-56, -56)], DRESS_SHADE, OUTLINE, 1.0)
-    _poly(draw, [P(-56, -270), P(16, -274), P(60, -240), P(72, -168), P(48, -118), P(-10, -106), P(-56, -138), P(-72, -206)], CLOTH, OUTLINE, 1.2)
-    _poly(draw, [P(-42, -244), P(22, -246), P(48, -226), P(46, -182), P(28, -136), P(-16, -128), P(-46, -156), P(-52, -206)], GOLD, OUTLINE, 0.9)
-    left_breast = P(-18, -206)
-    right_breast = P(22, -206)
-    _circle(draw, left_breast, 26, GOLD_SHADE, OUTLINE, 0.75)
-    _circle(draw, right_breast, 26, GOLD_SHADE, OUTLINE, 0.75)
-    _line(draw, [P(0, -230), P(0, -134)], GOLD_SHADE, 0.8)
-    for cc in [left_breast, right_breast]:
-        for rr in [5, 10, 15, 20]:
-            _circle(draw, cc, rr, None, GOLD, 0.3)
-    _poly(draw, [P(-34, -246), P(-10, -258), P(14, -258), P(38, -246), P(26, -234), P(-10, -236)], STEEL, OUTLINE, 0.7)
-
-
-def _paint_dress_front(draw: ImageDraw.ImageDraw) -> None:
-    rx, ry = _REST_ROOT
-
-    def P(x: float, y: float) -> Point:
-        return (rx + x, ry + y)
-
-    _poly(draw, [P(-48, -164), P(40, -164), P(50, -42), P(16, 0), P(-28, -2), P(-60, -54)], DRESS, OUTLINE, 1.0)
-    for x in [-24, -4, 14, 30]:
-        _line(draw, [P(x, -154), P(x + 4, -8)], DRESS_SHADE, 0.9)
-    _poly(draw, [P(-34, -86), P(8, -80), P(18, -12), P(-22, -8), P(-42, -42)], DRESS, OUTLINE, 0.6)
-
-
-def _H0(x: float, y: float) -> Point:
-    return (_REST_HEAD[0] + x, _REST_HEAD[1] + y)
-
-
-def _paint_horns(draw: ImageDraw.ImageDraw) -> None:
-    H = _H0
-    for pts in [
-        [H(-16, -8), H(-24, -18), H(-32, -20), H(-28, -10), H(-18, -4)],
-        [H(-24, -18), H(-34, -28), H(-42, -32), H(-40, -22), H(-30, -16)],
-        [H(-34, -28), H(-46, -34), H(-56, -32), H(-50, -24), H(-40, -22)],
-        [H(-46, -34), H(-60, -30), H(-68, -20), H(-56, -18), H(-50, -24)],
-        [H(16, -10), H(24, -20), H(32, -22), H(28, -12), H(18, -6)],
-        [H(24, -20), H(34, -30), H(42, -34), H(40, -24), H(30, -18)],
-        [H(34, -30), H(46, -36), H(56, -34), H(50, -26), H(40, -24)],
-        [H(46, -36), H(60, -32), H(68, -22), H(56, -20), H(50, -26)],
-    ]:
-        _poly(draw, pts, HORN, OUTLINE, 0.42)
-    _line(draw, [H(-22, -14), H(-30, -20), H(-40, -26), H(-52, -27), H(-61, -24)], HORN_SHADE, 0.38)
-    _line(draw, [H(22, -16), H(30, -22), H(40, -28), H(52, -29), H(61, -26)], HORN_SHADE, 0.38)
-
-
-#: Each braid at rest (pose.braid 0), from its root, and how far its end
-#: sways per unit of ``pose.braid`` (the braid turns about its root by that).
-_BRAIDS = {
-    "braid_l": ((-28, 6), [(0, 0), (-14, 22), (-16, 46), (-6, 70)], 0.20),
-    "braid_r": ((26, 6), [(0, 0), (14, 24), (14, 48), (4, 70)], 0.18),
-}
-
-
-def _paint_braid(draw: ImageDraw.ImageDraw, which: str) -> None:
-    root, pts, _sway = _BRAIDS[which]
-    braid = [_H0(root[0] + x, root[1] + y) for x, y in pts]
-    _line(draw, braid, BLONDE, 6.5)
-    _line(draw, braid, OUTLINE, 0.7)
-    for frac in [0.25, 0.5, 0.75]:
-        bx = _lerp(braid[0][0], braid[-1][0], frac)
-        by = _lerp(braid[0][1], braid[-1][1], frac)
-        _line(draw, [(bx - 4, by - 3), (bx + 4, by + 3)], BLONDE_SHADE, 0.45)
-
-
-def _paint_head(draw: ImageDraw.ImageDraw, blink: bool, x_eye: bool, mouth: float) -> None:
-    H = _H0
-    _poly(draw, [H(-24, -8), H(-18, -34), H(18, -34), H(26, -8), H(24, 14), H(10, 24), H(-12, 24), H(-26, 10)], STEEL, OUTLINE, 0.9)
-    _poly(draw, [H(-22, -2), H(-18, -22), H(12, -22), H(24, -4), H(22, 16), H(10, 30), H(-6, 30), H(-20, 16)], SKIN, OUTLINE, 0.8)
-    _ellipse(draw, H(-9, 14)[0], H(-9, 14)[1], 4.8, 3.2, (232, 142, 150, 130), None, 0)
-    _ellipse(draw, H(13, 14)[0], H(13, 14)[1], 4.8, 3.2, (232, 142, 150, 130), None, 0)
-    if x_eye:
-        _line(draw, [H(-10, 0), H(-3, 7)], OUTLINE, 0.8)
-        _line(draw, [H(-10, 7), H(-3, 0)], OUTLINE, 0.8)
-        _line(draw, [H(6, 0), H(13, 7)], OUTLINE, 0.8)
-        _line(draw, [H(6, 7), H(13, 0)], OUTLINE, 0.8)
-    elif blink:
-        _line(draw, [H(-12, 2), H(-4, 2)], OUTLINE, 0.7)
-        _line(draw, [H(6, 2), H(14, 2)], OUTLINE, 0.7)
-    else:
-        _ellipse(draw, H(-8, 3)[0], H(-8, 3)[1], 4.0, 3.2, EYE, OUTLINE, 0.35)
-        _ellipse(draw, H(10, 3)[0], H(10, 3)[1], 4.0, 3.2, EYE, OUTLINE, 0.35)
-        _circle(draw, H(-7, 3), 1.1, PUPIL, PUPIL, 0.1)
-        _circle(draw, H(11, 3), 1.1, PUPIL, PUPIL, 0.1)
-    _line(draw, [H(-14, -6), H(-4, -8)], OUTLINE, 0.45)
-    _line(draw, [H(6, -8), H(16, -6)], OUTLINE, 0.45)
-    _line(draw, [H(1, 2), H(4, 12)], SKIN_SHADE, 0.35)
-    if mouth > 0.03:
-        _ellipse(draw, H(2, 22)[0], H(2, 22)[1], 6.0, 3.2 + mouth * 14.0, MOUTH, OUTLINE, 0.35)
-        if mouth > 0.14:
-            _poly(draw, [H(-2, 22), H(2, 30), H(6, 22)], TONGUE, OUTLINE, 0.2)
-    else:
-        _ellipse(draw, H(2, 22)[0], H(2, 22)[1], 5.2, 2.0, LIP, OUTLINE, 0.25)
-
-
 def _render_frame(anim: str, idx: int, n: int) -> Image.Image:
-    img = Image.new("RGBA", _CANVAS, (0, 0, 0, 0))
+    img = V.new_canvas()
     pose = Pose(anim, idx, n)
+    J = _viking_heavy_shieldmaiden_rig.evaluate(pose, WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1], anim)
+    near, far = _limb_parts(True), _limb_parts(False)
+    sandal = V.boot_piece(_k("sandal"), PAL, toe=16.0, height=7.0, straps=GOLD_SHADE, k=S)
+    L1, L2 = S * _viking_heavy_shieldmaiden_rig.UPPER_ARM, S * _viking_heavy_shieldmaiden_rig.FOREARM
 
-    # Joints come from the explicit skeleton (see _viking_heavy_shieldmaiden_rig).
-    J = _viking_heavy_shieldmaiden_rig.evaluate(pose, WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1])
-    root = J.root
-    body_ang = J.body_ang
-    head_root = J.head_root
-    head_ang = J.head_ang
+    V.put(img, V.piece(_k("cape"), (76, 270, 32, 0), _paint_cape, k=S), J.root, J.body_ang, "cape")
+    fall = J.body_ang if anim == "death" else 0.0
+    V.leg(img, J.far_hip, 94 + pose.right_leg + fall, S * pose.right_lift, S * THIGH, S * SHIN, far["thigh"], far["shin"], sandal, "far", fall)
+    near_foot = V.leg(img, J.near_hip, 94 + pose.left_leg + fall, S * pose.left_lift, S * THIGH, S * SHIN, near["thigh"], near["shin"], sandal, "near", fall)
+    far_elbow, far_hand = V.arm(img, J.far_shoulder, J.far_hand, L1, L2, J.far_bend, far["upper"], far["fore"], "far")
+    V.put(img, V.piece(_k("body"), (74, 274, 72, 0), _paint_body, k=S), J.root, J.body_ang, "body")
+    _draw_head(img, J, pose)
+    V.arm(img, J.near_shoulder, J.near_hand, L1, L2, J.near_bend, near["upper"], near["fore"], "near")
+    V.put(img, V.saw_shield_piece(_k("shield"), PAL, SHIELD_R, k=S), J.shield_center, 0.0, "shield")
+    V.put(img, V.spear_piece(_k("spear"), PAL, SPEAR_BUTT, SPEAR_TIP, k=S), far_hand, J.spear_deg, "spear")
+    V.put(img, far["fist"], far_hand, V.angle(far_elbow, far_hand), "far_fist")
 
-    def H(x: float, y: float) -> Point:
-        rx, ry = _rot(x, y, head_ang)
-        return (head_root[0] + rx, head_root[1] + ry)
-
-    # Back leg / body mass: the body is one piece turned with the lean.
-    _draw_leg(img, J.far_hip, 94 + pose.right_leg, pose.right_lift, front=False, side="far")
-    _put(img, _rest(("body_back",), _paint_body_back, _REST_ROOT), root, body_ang, "body_back")
-
-    # Back arm (weapon).
-    _draw_beefy_arm(img, J.far_shoulder, J.far_elbow, J.far_hand, SKIN_SHADE, "far")
-
-    # Horns behind the helmet, the braids swaying about their roots, the head.
-    _put(img, _rest(("horns",), _paint_horns, _REST_HEAD), head_root, head_ang, "horns")
-    for which, (broot, _pts, sway) in _BRAIDS.items():
-        part = _rest((which,), lambda d, which=which: _paint_braid(d, which), _H0(*broot))
-        turn = -math.degrees(math.atan2(pose.braid * sway, 70.0))
-        _put(img, part, H(*broot), head_ang + turn, which)
-    mouth = round(pose.mouth, 2)
-    head = _rest(("head", pose.blink, pose.x_eye, mouth), lambda d: _paint_head(d, pose.blink, pose.x_eye, mouth), _REST_HEAD)
-    _put(img, head, head_root, head_ang, "head")
-
-    # Front leg / arm.
-    near_foot = _draw_leg(img, J.near_hip, 94 + pose.left_leg, pose.left_lift, front=True, side="near")
-    _put(img, _rest(("dress_front",), _paint_dress_front, _REST_ROOT), root, body_ang, "dress_front")
-    near_hand = J.near_hand
-    far_hand = J.far_hand
-    _draw_beefy_arm(img, J.near_shoulder, J.near_elbow, near_hand, SKIN, "near")
-    shield_center = near_hand
-    _put(img, _rest(("shield",), lambda d: _draw_saw_shield(d, _REST_ROOT, 46), _REST_ROOT), shield_center, 0.0, "shield")
-    spear_angle = -78 + pose.weapon_pitch
-    _put(img, _rest(("spear",), lambda d: _paint_spear(d, _REST_ROOT, SPEAR_LENGTH), _REST_ROOT), far_hand, spear_angle, "spear")
-    reach = SPEAR_LENGTH * 0.75 + 24
-    spear_tip = (far_hand[0] + reach * math.cos(math.radians(spear_angle)), far_hand[1] + reach * math.sin(math.radians(spear_angle)))
-
-    # Feet dust / impact FX: they change every frame, one raster each.
+    # effects: pieces painted once, placed with an opacity
+    H = V.frame_point(J.head_root, J.head_ang)
+    if anim == "shield_barge" and pose.impact > 0.18:
+        burst = V.burst_piece(_k("burst"), FX, 26.0, k=S)
+        V.put(img, burst, V.along(J.shield_center, J.body_ang, S * (SHIELD_R + 10)), J.body_ang, "fx_burst", opacity=min(1.0, pose.impact * 1.1))
+    if anim == "spear_jab" and pose.impact > 0.18:
+        burst = V.burst_piece(_k("burst"), FX, 26.0, k=S)
+        V.put(img, burst, V.along(far_hand, J.spear_deg, S * (SPEAR_TIP + 40)), J.spear_deg, "fx_burst", opacity=min(1.0, pose.impact * 1.1))
+    if anim == "diva_bellow" and pose.mouth > 0.2:
+        V.put(img, V.shout_piece(_k("shout"), FX, 30.0, k=S), H(34 * HEAD_K, 22 * HEAD_K), J.head_ang, "fx_shout", opacity=min(1.0, (pose.mouth - 0.2) * 6.0))
     if anim in {"march", "shield_barge"} and (pose.left_lift > 0.5 or pose.right_lift > 0.5):
-        def dust(draw) -> None:
-            for dx in [-18, 0, 14]:
-                c = (near_foot[0] + dx, near_foot[1] + 8)
-                _poly(draw, [(c[0] - 3, c[1]), (c[0], c[1] - 4), (c[0] + 4, c[1] - 1), (c[0] + 1, c[1] + 3)], DUST, None, 0)
+        V.put(img, V.dust_piece(_k("dust"), DUST, k=S), (near_foot[0], near_foot[1] + 10 * S), 0.0, "fx_dust", opacity=0.9)
 
-        _fx_layer(img, dust, "fx_dust")
-
-    def arcs(draw) -> None:
-        if anim == "shield_barge" and pose.impact > 0.18:
-            cx, cy = shield_center
-            draw.arc((_s(cx - 36), _s(cy - 28), _s(cx + 48), _s(cy + 34)), 210, 350, fill=FX, width=_s(3.2))
-        if anim == "spear_jab" and pose.impact > 0.18:
-            cx, cy = spear_tip
-            draw.arc((_s(cx - 40), _s(cy - 22), _s(cx + 56), _s(cy + 26)), 195, 345, fill=FX, width=_s(3.0))
-        if anim == "diva_bellow" and pose.mouth > 0.2:
-            cx, cy = H(6, 22)
-            for expand in [0, 14]:
-                box = (_s(cx - 16 - expand), _s(cy - 18 - expand * 0.6), _s(cx + 42 + expand), _s(cy + 18 + expand * 0.6))
-                draw.arc(box, 330, 30, fill=FX, width=_s(2.0))
-
-    if (anim == "shield_barge" and pose.impact > 0.18) or (anim == "spear_jab" and pose.impact > 0.18) or (anim == "diva_bellow" and pose.mouth > 0.2):
-        _fx_layer(img, arcs, "fx_arc")
-
-    return _downsample(img)
+    return V.downsample(img)
 
 
 def render(out_dir: str | Path, **opts) -> List[Path]:
