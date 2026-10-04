@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import math
 import random
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 from PIL import Image, ImageDraw
 from ambition_sprite2d_renderer.core.draw import bbox_from_center as _bbox
@@ -61,10 +61,14 @@ class RigCanvas:
     Shared by the robot-family painters (robot_side, boss_side, sandbag,
     robot_heavy, player_robot_fable)."""
 
-    def __init__(self, canvas: Image.Image, pivot: Point = (0.0, 0.0), turn: float = 0.0) -> None:
+    def __init__(self, canvas: Image.Image, pivot: Point = (0.0, 0.0), turn: float = 0.0, warp: Optional[Callable[[Point, int], Tuple[float, float, float]]] = None) -> None:
         self.canvas = canvas
         self.pivot = pivot
         self.turn = float(turn)
+        #: ``warp(place, k) -> (dx, dy, opacity)`` moves and fades the k-th
+        #: piece placed (an effect that takes the body apart, piece by piece).
+        self.warp = warp
+        self._placed = 0
 
     def at(self, pt: Point) -> Point:
         if self.turn == 0.0:
@@ -78,7 +82,12 @@ class RigCanvas:
         image, pivot = part
         if opacity <= 0.0 or image.getbbox() is None:
             return
-        rigdoc.blit_rotated(self.canvas, image, pivot, self.at(at), degrees + self.turn, min(1.0, opacity), part_name=name)
+        at = self.at(at)
+        if self.warp is not None:
+            dx, dy, fade = self.warp(at, self._placed)
+            self._placed += 1
+            at, opacity = (at[0] + dx, at[1] + dy), opacity * fade
+        rigdoc.blit_rotated(self.canvas, image, pivot, at, degrees + self.turn, min(1.0, opacity), part_name=name)
 
     def capsule(self, a: Point, b: Point, radius: float, fill: Color, outline: Color, outline_w: float, name: str, length: Optional[float] = None, opacity: float = 1.0) -> None:
         """``draw_capsule`` from ``a`` toward ``b`` as a bone (``length`` fixed,
@@ -131,6 +140,51 @@ class RigCanvas:
 
         part = shape_rig.piece(("rig_disc", round(radius, 3), fill, outline, outline_px), (2 * pad, 2 * pad), (pad, pad), paint)
         self.put(part, center, 0.0, name, opacity)
+
+
+#: A piece that is placed mirrored has a canvas a whole multiple of this
+#: (every supersample factor, 2, 3 or 4, divides it): reduced, the mirrored
+#: raster is then exactly the mirror of the reduced one, and the publisher
+#: stores the two as one part and a draw transform.
+_GRID = 12
+
+
+def _on_grid(n: float) -> int:
+    return max(_GRID, int(math.ceil(n / _GRID)) * _GRID)
+
+
+_TRANSPOSED: Dict[Tuple[int, Any], Tuple[Image.Image, Tuple[Image.Image, Point]]] = {}
+
+
+def transposed(part: Tuple[Image.Image, Point], op: Any) -> Tuple[Image.Image, Point]:
+    """``part`` mirrored (``Image.FLIP_LEFT_RIGHT`` / ``FLIP_TOP_BOTTOM``) or
+    turned a half (``ROTATE_180``) with its pivot carried: the same raster
+    transposed, a zero-cost transform for the publisher. Cached."""
+    image, (px, py) = part
+    cached = _TRANSPOSED.get((id(image), op))
+    if cached is None or cached[0] is not image:
+        w, h = image.size
+        pivot = {
+            Image.FLIP_LEFT_RIGHT: (w - px, py),
+            Image.FLIP_TOP_BOTTOM: (px, h - py),
+            Image.ROTATE_180: (w - px, h - py),
+        }[op]
+        cached = (image, (image.transpose(op), pivot))
+        _TRANSPOSED[(id(image), op)] = cached
+    return cached[1]
+
+
+def fx_piece(key: Any, extent: Tuple[float, float, float, float], paint: Callable, grid: bool = False) -> Tuple[Image.Image, Point]:
+    """A piece painted in its own coordinates: ``paint(draw, ox, oy)`` draws
+    with the pivot at ``(ox, oy)`` and the art inside ``extent`` (left, top,
+    right, bottom, relative to the pivot). ``grid`` sizes the canvas for a
+    mirrored copy (``_on_grid``). Cached by ``key``."""
+    x0, y0, x1, y1 = extent
+    ox, oy = float(math.ceil(-x0 + 2)), float(math.ceil(-y0 + 2))
+    w, h = ox + x1 + 2, oy + y1 + 2
+    if grid:
+        w, h = _on_grid(w), _on_grid(h)
+    return shape_rig.piece(key, (w, h), (ox, oy), lambda d: paint(d, ox, oy))
 
 
 def two_bone(root: Point, target: Point, upper: float, lower: float, hint: Point) -> Tuple[Point, Point]:
@@ -1736,6 +1790,143 @@ class SideRobotGenerator(CharacterGenerator):
         ripple_alpha = int(78 * max(0.18, 1.0 - t * 0.35))
         d.ellipse((dest_x - 18 * S, ground_y - 7 * S, dest_x + 16 * S, ground_y + 1 * S), outline=_with_alpha(energy, ripple_alpha), width=max(1, int(1.0 * S)))
 
+    def _portal_ring(self, rig: "RigCanvas", center: Point, rscale: float, S: float, opacity: float, name: str) -> None:
+        """A teleport portal ring: one raster per fifth of a scale step,
+        placed with its strength as the draw's opacity."""
+        q = max(0.2, round(rscale * 5.0) / 5.0)
+        rx, ry, w = 8.0 * S * q, 14.0 * S * q, max(1, int(1.3 * S))
+        energy = self.PALETTE["visor_glow"]
+
+        def paint(d, ox, oy) -> None:
+            d.ellipse((ox - rx, oy - ry, ox + rx, oy + ry), outline=energy, width=w)
+
+        rig.put(fx_piece(("robot_portal_ring", round(q, 2), energy, round(S, 4)), (-rx - w, -ry - w, rx + w, ry + w), paint), center, 0.0, name, opacity)
+
+    def _place_blink_out_fx(self, rig: "RigCanvas", root_x: float, ground_y: float, S: float, frame_index: int, frame_count: int) -> None:
+        """The departure portal as pieces: two rings, four slivers (one
+        raster), the sparks and the ground ripple, each faded by its draw's
+        opacity."""
+        t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
+        charge = smoothstep(clamp(t / 0.56, 0.0, 1.0))
+        burst = smoothstep(clamp((t - 0.30) / 0.50, 0.0, 1.0))
+        energy = self.PALETTE["visor_glow"]
+        accent = self.PALETTE["accent"]
+        strength = max(charge, burst)
+        source_x = root_x + 8 * S
+        mid_y = ground_y - 50 * S
+        self._portal_ring(rig, (source_x, mid_y - 4 * S), 0.62 + 0.55 * charge, S, 145 * max(charge, 0.15) / 255.0, "portal_ring")
+        self._portal_ring(rig, (source_x, mid_y - 4 * S), 0.40 + 0.85 * burst, S, 118 * max(burst, 0.12) / 255.0, "portal_ring2")
+
+        # Vertical slivers: one raster (two crossed strokes), placed four times.
+        half = 14.5 * S
+        sw = max(1, int(1.7 * S))
+
+        def paint_sliver(d, ox, oy) -> None:
+            d.line([(ox, oy - half), (ox + 6 * S, oy + half)], fill=_with_alpha(accent, 90), width=sw)
+            d.line([(ox + 2 * S, oy - half), (ox - 4 * S, oy + half)], fill=_with_alpha(energy, 66), width=max(1, int(0.9 * S)))
+
+        sliver = fx_piece(("robot_sliver", accent, energy, round(S, 4)), (-4 * S - sw, -half - sw, 6 * S + sw, half + sw), paint_sliver)
+        for i, dx in enumerate((-10, -4, 3, 10)):
+            rig.put(sliver, (source_x + dx * S, mid_y), 0.0, f"sliver{i}", (90 - i * 14) / 90.0 * strength)
+
+        def paint_sparks(d, ox, oy) -> None:
+            for i in range(4):
+                frac = i / 3.0
+                sx = ox - 8 * S + frac * 18 * S
+                sy = oy - 12 * S - frac * 7 * S
+                d.line([(sx, sy), (sx + (6 + i * 2) * S, sy - (8 + i * 2) * S)], fill=_with_alpha(energy, 65), width=max(1, int(1.0 * S)))
+
+        rig.put(fx_piece(("robot_sparks", energy, round(S, 4)), (-10 * S, -36 * S, 24 * S, -9 * S), paint_sparks), (source_x, mid_y), 0.0, "sparks", strength)
+        self._ripple(rig, (source_x, ground_y), accent, 80, S, strength)
+
+    def _ripple(self, rig: "RigCanvas", at: Point, color: Color, alpha: int, S: float, opacity: float) -> None:
+        def paint(d, ox, oy) -> None:
+            d.ellipse((ox - 18 * S, oy - 7 * S, ox + 16 * S, oy + 1 * S), outline=_with_alpha(color, alpha), width=max(1, int(1.0 * S)))
+
+        rig.put(fx_piece(("robot_ripple", color, alpha, round(S, 4)), (-19 * S, -8 * S, 17 * S, 2 * S), paint), at, 0.0, "ripple", opacity)
+
+    def _place_blink_in_fx(self, rig: "RigCanvas", root_x: float, ground_y: float, S: float, frame_index: int, frame_count: int) -> None:
+        """The arrival portal as pieces: two rings, the converging streaks
+        (one raster) and the ripple, faded by their draws' opacity."""
+        t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
+        appear = smoothstep(clamp(t / 0.60, 0.0, 1.0))
+        settle = ease_out_cubic(appear)
+        energy = self.PALETTE["visor_glow"]
+        accent = self.PALETTE["accent"]
+        dest_x = root_x + 8 * S
+        mid_y = ground_y - 50 * S
+        self._portal_ring(rig, (dest_x, mid_y - 4 * S), 1.25 - 0.45 * settle, S, 155 * max(0.18, 1.0 - t * 0.55) / 255.0, "portal_ring")
+        self._portal_ring(rig, (dest_x, mid_y - 4 * S), 0.52 + 0.30 * appear, S, 120 * max(0.20, 1.0 - t * 0.35) / 255.0, "portal_ring2")
+
+        def paint_streaks(d, ox, oy) -> None:
+            for i, dx in enumerate((-14, -7, 0, 8, 14)):
+                height = (33.5 - i * 2.6) * S
+                alpha = 95 - i * 12
+                x = ox + dx * S
+                d.line([(x, oy - height / 2), (ox, oy)], fill=_with_alpha(accent, alpha), width=max(1, int(1.6 * S)))
+                d.line([(x, oy + height / 2), (ox + 2 * S, oy - 2 * S)], fill=_with_alpha(energy, max(15, alpha - 18)), width=max(1, int(0.9 * S)))
+
+        rig.put(fx_piece(("robot_streaks", accent, energy, round(S, 4)), (-16 * S, -18 * S, 16 * S, 18 * S), paint_streaks), (dest_x, mid_y), 0.0, "streaks", max(0.18, 1.0 - t * 0.42))
+        self._ripple(rig, (dest_x, ground_y), energy, 78, S, max(0.18, 1.0 - t * 0.35))
+
+    def _teleport_warp(self, animation: str, root_x: float, S: float, frame_index: int, frame_count: int) -> Callable[[Point, int], Tuple[float, float, float]]:
+        """How a teleport takes the body apart: each piece slides by where it
+        sits across the body (``frac``, 0 at the back, 1 at the front) and
+        fades, and every few pieces flicker; departing, the pieces shear up
+        and away; arriving, they converge and solidify."""
+        t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
+        x1, x2 = root_x - 28 * S, root_x + 32 * S
+        if animation == "blink_out":
+            progress = smoothstep(clamp((t - 0.02) / 0.98, 0.0, 1.0))
+
+            def warp(at: Point, k: int) -> Tuple[float, float, float]:
+                frac = clamp((at[0] - x1) / (x2 - x1), 0.0, 1.0)
+                dx = (frac - 0.5) * (22.0 * S * progress) + math.sin(frac * math.pi * 7.0 + progress * 7.0) * 1.8 * S * progress
+                dy = -(5.0 + abs(frac - 0.5) * 18.0) * S * progress
+                fade = max(0.06, 1.0 - 0.88 * progress)
+                if progress > 0.35 and (k + int(progress * 10)) % 3 == 0:
+                    fade *= 0.35
+                return dx, dy, fade
+
+            return warp
+        progress = smoothstep(clamp(t, 0.0, 1.0))
+        solid = smoothstep(clamp((progress - 0.34) / 0.66, 0.0, 1.0))
+
+        def warp(at: Point, k: int) -> Tuple[float, float, float]:
+            frac = clamp((at[0] - x1) / (x2 - x1), 0.0, 1.0)
+            dx = (frac - 0.5) * (24.0 * S * (1.0 - progress))
+            dy = -(3.0 + abs(frac - 0.5) * 16.0) * S * (1.0 - progress)
+            fade = min(1.0, 0.18 + 0.94 * progress)
+            if progress < 0.45 and (k + frame_index) % 4 == 0:
+                fade *= 0.55
+            return dx, dy, 1.0 - (1.0 - fade) * (1.0 - solid)
+
+        return warp
+
+    def _place_teleport_scanlines(self, fx: "RigCanvas", animation: str, root_x: float, ground_y: float, S: float, frame_index: int, frame_count: int) -> None:
+        """Faint vertical scan lines over the body while it is taken apart:
+        one comb of four lines (one raster), placed twice across the body and
+        faded by the draw's opacity."""
+        t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
+        if animation == "blink_out":
+            progress = smoothstep(clamp((t - 0.02) / 0.98, 0.0, 1.0))
+            strength = 0.3 * min(1.0, progress * 3.0) * (1.0 - 0.7 * progress)
+        else:
+            progress = smoothstep(clamp(t, 0.0, 1.0))
+            strength = 0.3 * (1.0 - smoothstep(clamp((progress - 0.34) / 0.66, 0.0, 1.0)))
+        if strength <= 0.01:
+            return
+        energy = self.PALETTE["visor_glow"]
+        half, w = 30 * S, max(1, int(1.0 * S))
+
+        def paint(d, ox, oy) -> None:
+            for i in range(4):
+                d.line([(ox + i * 6 * S, oy - half), (ox + i * 6 * S, oy + half)], fill=energy, width=w)
+
+        comb = fx_piece(("robot_scanlines", energy, round(S, 4)), (-w, -half - w, 18 * S + w, half + w), paint)
+        for j in range(2):
+            fx.put(comb, (root_x - 16 * S + j * 24 * S, ground_y - 48 * S), 0.0, f"scanlines{j}", strength)
+
     def _composite_teleport_actor(self, base: Image.Image, actor: Image.Image, animation: str, frame_index: int, frame_count: int, S: float) -> None:
         alpha_bbox = actor.getchannel("A").getbbox()
         if alpha_bbox is None:
@@ -1779,64 +1970,98 @@ class SideRobotGenerator(CharacterGenerator):
                 rigdoc.composite_layer(base, rigdoc.faded_canvas(actor, full_alpha), name="resolved")
 
     def _draw_rigid_head(self, img: "RigCanvas", center: Point, spec: BotSpec, pal: Dict[str, Color], S: float, angle: float, blink_closed: bool, squint: float, dead: bool, look: float = 1.0) -> None:
-        # Draw in head-local coordinates, then rotate/paste the full layer.  This
-        # preserves the older in-repo rigid 2.5D-head idea while remaining pure 2D.
-        # One piece per face (blink, squint, look, dead), turned by the head
-        # angle (``Image.rotate``'s counter-clockwise ``angle``).
-        pad = int(math.ceil(48 * S))
-        look = round(clamp(float(look), -1.0, 1.0), 2)
-        squint = round(squint * 20.0) / 20.0
-        key = ("robot_head", spec, tuple(sorted(pal.items())), round(S, 4), bool(blink_closed), squint, bool(dead), look)
-        part = shape_rig.piece(key, (pad * 2, pad * 2), (pad, pad), lambda d: self._paint_head(d, pad, spec, pal, S, blink_closed, squint, dead, look))
-        img.put(part, center, -angle, "head")
-
-    def _paint_head(self, d, pad: int, spec: BotSpec, pal: Dict[str, Color], S: float, blink_closed: bool, squint: float, dead: bool, look: float) -> None:
-        """The head in its own frame, centred on ``(pad, pad)``."""
-        layer = d._img
-        cx, cy = float(pad), float(pad)
+        """The rigid head as pieces turned together by the head angle
+        (``Image.rotate``'s counter-clockwise ``angle``): the antenna (behind
+        the shell), ONE shell for every expression, and the visor and eyes as
+        small overlays keyed by the expression. ``look`` slides the visor and
+        antenna inside the shell (a glance back mirrors the antenna)."""
+        deg = -angle
+        look = clamp(float(look), -1.0, 1.0)
         outline = max(1, int(round(1.8 * S)))
-        head_w = spec.head_w * S
-        head_h = spec.head_h * S
+        head_w, head_h = spec.head_w * S, spec.head_h * S
+        c, s = math.cos(math.radians(deg)), math.sin(math.radians(deg))
 
-        # Antenna is part of the rigid head.
-        ant_base = (cx - 8 * S * look, cy - head_h * 0.50)
-        ant_tip = (cx - 12 * S * look, cy - head_h * 0.50 - spec.antenna_h * S)
-        d.line([ant_base, ant_tip], fill=pal["outline"], width=max(1, int(1.7 * S)))
-        d.ellipse(_bbox(ant_tip, 6.4 * S, 6.4 * S), fill=pal["accent"], outline=pal["outline"], width=max(1, int(1.0 * S)))
+        def at(q: Point) -> Point:
+            return (center[0] + q[0] * c - q[1] * s, center[1] + q[0] * s + q[1] * c)
 
-        outer = _bbox((cx, cy), head_w + 2 * outline, head_h + 2 * outline)
-        inner = _bbox((cx, cy), head_w, head_h)
-        d.rounded_rectangle(outer, radius=9 * S + outline, fill=pal["outline"])
-        d.rounded_rectangle(inner, radius=9 * S, fill=pal["shell_top"])
+        # Antenna: base on the shell's top edge, tip leaning back.
+        ant_h = spec.antenna_h * S
+        ball = 3.2 * S + max(1, int(1.0 * S))
 
-        # Semi-transparent head highlights/shadows must be alpha-composited
-        # over the opaque head base.  Drawing translucent fills directly onto
-        # the layer replaces the destination alpha and leaves the mouth/shadow
-        # area partially transparent after rotation/compositing.
-        detail = Image.new("RGBA", layer.size, (0, 0, 0, 0))
-        hd = blending_draw(detail)
-        hd.rounded_rectangle((inner[0] + 4 * S, inner[1] + 3 * S, inner[2] - 5 * S, cy - 1 * S), radius=7 * S, fill=_with_alpha((255, 255, 255, 255), 205))
-        hd.rounded_rectangle((inner[0] + 8 * S, cy + 1 * S, inner[2] - 2 * S, inner[3] - 3 * S), radius=7 * S, fill=_with_alpha(pal["shell_side"], 190))
-        layer.alpha_composite(detail)
+        def paint_antenna(d, ox, oy) -> None:
+            tip = (ox - 4 * S, oy - ant_h)
+            d.line([(ox, oy), tip], fill=pal["outline"], width=max(1, int(1.7 * S)))
+            d.ellipse(_bbox(tip, 6.4 * S, 6.4 * S), fill=pal["accent"], outline=pal["outline"], width=max(1, int(1.0 * S)))
 
-        visor_center = (cx + 7.0 * S * look, cy - 1.0 * S)
-        visor_h = spec.visor_h * S
+        antenna = fx_piece(("robot_antenna", round(ant_h, 3), pal["outline"], pal["accent"], round(S, 4)), (-4 * S - ball, -ant_h - ball, ball, ball), paint_antenna, grid=True)
+        if look < 0:
+            antenna = transposed(antenna, Image.FLIP_LEFT_RIGHT)
+        img.put(antenna, at((-8 * S * look, -head_h * 0.50)), deg, "antenna")
+
+        hx, hy = head_w / 2 + outline + 2, head_h / 2 + outline + 2
+
+        def paint_shell(d, ox, oy) -> None:
+            outer = _bbox((ox, oy), head_w + 2 * outline, head_h + 2 * outline)
+            inner = _bbox((ox, oy), head_w, head_h)
+            d.rounded_rectangle(outer, radius=9 * S + outline, fill=pal["outline"])
+            d.rounded_rectangle(inner, radius=9 * S, fill=pal["shell_top"])
+            # Translucent highlight and shade composited over the opaque
+            # shell (drawn straight on, they would replace its alpha).
+            layer = d._img
+            detail = Image.new("RGBA", layer.size, (0, 0, 0, 0))
+            hd = blending_draw(detail)
+            hd.rounded_rectangle((inner[0] + 4 * S, inner[1] + 3 * S, inner[2] - 5 * S, oy - 1 * S), radius=7 * S, fill=_with_alpha((255, 255, 255, 255), 205))
+            hd.rounded_rectangle((inner[0] + 8 * S, oy + 1 * S, inner[2] - 2 * S, inner[3] - 3 * S), radius=7 * S, fill=_with_alpha(pal["shell_side"], 190))
+            layer.alpha_composite(detail)
+
+        shell_key = ("robot_head_shell", round(head_w, 3), round(head_h, 3), pal["outline"], pal["shell_top"], pal["shell_side"], round(S, 4))
+        img.put(fx_piece(shell_key, (-hx, -hy, hx, hy), paint_shell), center, deg, "head")
+
+        # Visor: its height is the expression (squint, blink).
+        visor_at = at((7.0 * S * look, -1.0 * S))
+        visor_w = spec.visor_w * S
+        full_h = spec.visor_h * S
         if blink_closed:
-            visor_h = max(2.0 * S, visor_h * 0.22)
+            visor_h = max(2.0 * S, full_h * 0.22)
         else:
-            visor_h *= max(0.35, 1.0 - squint * 0.50)
-        vouter = _bbox(visor_center, spec.visor_w * S + outline * 0.6, visor_h + outline * 0.6)
-        vinner = _bbox(visor_center, spec.visor_w * S, visor_h)
-        d.rounded_rectangle(vouter, radius=4 * S + outline * 0.25, fill=pal["outline"])
-        d.rounded_rectangle(vinner, radius=4 * S, fill=pal["visor"])
-        if dead:
-            x, y = visor_center
-            r = 4.0 * S
-            d.line([(x - r, y - r), (x + r, y + r)], fill=pal["visor_glow"], width=max(1, int(1.3 * S)))
-            d.line([(x - r, y + r), (x + r, y - r)], fill=pal["visor_glow"], width=max(1, int(1.3 * S)))
-        elif not blink_closed:
-            for ex in (-4.0, 4.0):
-                d.ellipse(_bbox((visor_center[0] + ex * S, visor_center[1]), 3.0 * S, 6.0 * S), fill=pal["visor_glow"])
+            visor_h = full_h * max(0.35, 1.0 - squint * 0.50)
+        orad, irad = 4 * S + outline * 0.25, 4 * S
+
+        def paint_visor(d, ox, oy, h) -> None:
+            d.rounded_rectangle(_bbox((ox, oy), visor_w + outline * 0.6, h + outline * 0.6), radius=orad, fill=pal["outline"])
+            d.rounded_rectangle(_bbox((ox, oy), visor_w, h), radius=irad, fill=pal["visor"])
+
+        # A visor of most heights is its top half and that half mirrored,
+        # slid together (they overlap by ``2 * lap`` or more): one raster for
+        # every squint. A nearly shut visor is its own raster.
+        lap = 1.0 * S
+        if visor_h >= 0.6 * full_h:
+            cut = _on_grid(full_h / 2 + outline + 2 + lap)
+            width = _on_grid(visor_w + outline + 4)
+            key = ("robot_visor_half", round(visor_w, 3), round(full_h, 3), pal["outline"], pal["visor"], round(S, 4))
+            top = shape_rig.piece(key, (width, cut), (width / 2, cut - lap), lambda d: paint_visor(d, width / 2, cut - lap, full_h))
+            slide = (full_h - visor_h) / 2
+            img.put(top, at((7.0 * S * look, -1.0 * S + slide)), deg, "visor")
+            img.put(transposed(top, Image.FLIP_TOP_BOTTOM), at((7.0 * S * look, -1.0 * S - slide)), deg, "visor_low")
+        else:
+            visor_h = round(visor_h / S * 2.0) / 2.0 * S
+            vx, vy = visor_w / 2 + outline, visor_h / 2 + outline
+            key = ("robot_visor", round(visor_w, 3), round(visor_h, 3), pal["outline"], pal["visor"], round(S, 4))
+            img.put(fx_piece(key, (-vx, -vy, vx, vy), lambda d, ox, oy: paint_visor(d, ox, oy, visor_h)), visor_at, deg, "visor")
+        if blink_closed and not dead:
+            return
+
+        def paint_eyes(d, ox, oy) -> None:
+            if dead:
+                r = 4.0 * S
+                d.line([(ox - r, oy - r), (ox + r, oy + r)], fill=pal["visor_glow"], width=max(1, int(1.3 * S)))
+                d.line([(ox - r, oy + r), (ox + r, oy - r)], fill=pal["visor_glow"], width=max(1, int(1.3 * S)))
+            else:
+                for ex in (-4.0, 4.0):
+                    d.ellipse(_bbox((ox + ex * S, oy), 3.0 * S, 6.0 * S), fill=pal["visor_glow"])
+
+        e = 6.0 * S
+        img.put(fx_piece(("robot_eyes", bool(dead), pal["visor_glow"], round(S, 4)), (-e, -e, e, e), paint_eyes), visor_at, deg, "eyes")
 
     # Per-direction blade and arc-visual tuning for directional slashes.
     # Each entry: (blade_base_deg, blade_sweep_deg, (arc_box_dx0, dy0, dx1, dy1)*S, arc_start, arc_end).
@@ -1856,6 +2081,13 @@ class SideRobotGenerator(CharacterGenerator):
         # nearly horizontal, tips up slightly through the thrust as the
         # body drops. Short, low arc visual ahead of the hand.
         "low_poke":     ( -4.0, -16.0, ( -2.0,  -8.0,  36.0,   8.0),  -28.0,   18.0),
+    }
+
+    #: Arc directions that are another's mirror image: (source, transpose).
+    _SLASH_ARC_MIRRORS: Dict[str, Tuple[str, Any]] = {
+        "back": ("side", Image.FLIP_LEFT_RIGHT),
+        "air_back": ("air_forward", Image.FLIP_LEFT_RIGHT),
+        "air_up": ("air_down", Image.FLIP_TOP_BOTTOM),
     }
 
     def _draw_robot_arm(self, img: "RigCanvas", shoulder: Point, a1: float, a2: float, tint: Color, spec: BotSpec, pal: Dict[str, Color], S: float, outline: float, slash: float = 0.0, slash_arc: float = 0.0, slash_dir: str = "side", side: str = "near") -> Point:
@@ -1879,15 +2111,206 @@ class SideRobotGenerator(CharacterGenerator):
             blade = shape_rig.piece(("robot_blade", round(length, 3), pal["outline"], pal["accent"], round(S, 4)), (length + 2 * bpad, 2 * bpad), (bpad, bpad), paint_blade)
             img.put(blade, hand, blade_angle, f"{side}_blade")
             if slash_arc > 0.18:
-                apad = 56 * S
+                # A direction that mirrors another is that arc transposed.
+                source, flip = self._SLASH_ARC_MIRRORS.get(slash_dir, (slash_dir, None))
+                _b, _s, arc_rel, arc_start, arc_end = self._SLASH_DIR_TABLE.get(source, self._SLASH_DIR_TABLE["side"])
+                apad = _on_grid(112 * S) / 2
 
                 def paint_arc(d) -> None:
                     box = (apad + arc_rel[0] * S, apad + arc_rel[1] * S, apad + arc_rel[2] * S, apad + arc_rel[3] * S)
                     d.arc(box, start=arc_start, end=arc_end, fill=(12, 235, 255, 170), width=max(1, int(2.4 * S)))
 
-                arc = shape_rig.piece(("robot_slash_arc", slash_dir, round(S, 4)), (2 * apad, 2 * apad), (apad, apad), paint_arc)
+                arc = shape_rig.piece(("robot_slash_arc", source, round(S, 4)), (2 * apad, 2 * apad), (apad, apad), paint_arc)
+                if flip is not None:
+                    arc = transposed(arc, flip)
                 img.put(arc, hand, 0.0, f"{side}_slash_arc")
         return hand
+
+    def _place_action_fx(self, fx: "RigCanvas", animation: str, p: Pose, spec: BotSpec, pal: Dict[str, Color], S: float, root_x: float, ground_y: float, frame_index: int, frame_count: int) -> None:
+        """The effects behind the actor. Each is a piece painted once and
+        placed: moved, turned, and faded by its draw's opacity (a strength
+        that changes every frame is an opacity, not a new raster)."""
+        t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
+        lw = max(1, int(1.6 * S))
+        if animation == "blink_out":
+            self._place_blink_out_fx(fx, root_x, ground_y, S, frame_index, frame_count)
+        elif animation == "blink_in":
+            self._place_blink_in_fx(fx, root_x, ground_y, S, frame_index, frame_count)
+
+        if p.dash:
+            # Speed lines: each one piece (its length) slid to its height.
+            for i in range(4):
+                y = (49 + i * 12 + math.sin(frame_index + i) * 2) * S
+                span = (29 - i * 3) * S
+
+                def paint_line(d, ox, oy, span=span) -> None:
+                    d.line([(ox, oy), (ox + span, oy - 2 * S)], fill=(12, 235, 255, 90), width=lw)
+
+                fx.put(fx_piece(("robot_speed_line", i, round(S, 4)), (-lw, -2 * S - lw, span + lw, lw), paint_line), (14 * S, y), 0.0, f"speed_line{i}")
+        if animation == "swim":
+            def paint_swim(d, ox, oy) -> None:
+                d.arc((ox, oy, ox + 18 * S, oy + 9 * S), start=180, end=358, fill=(89, 210, 255, 92), width=max(1, int(1.1 * S)))
+
+            ripple = fx_piece(("robot_swim_arc", round(S, 4)), (0.0, 0.0, 18 * S, 9 * S), paint_swim)
+            for i in range(4):
+                fx.put(ripple, ((24 + i * 18 + math.sin(frame_index + i) * 2) * S, (83 + i % 2 * 6) * S), 0.0, f"swim_arc{i}")
+        if animation == "interact":
+            pulse = math.sin(t * math.pi)
+            if pulse > 0.05:
+                w = max(1, int(1.5 * S))
+
+                def paint_glint(d, ox, oy) -> None:
+                    d.line([(ox, oy), (ox + 13 * S, oy - 7 * S)], fill=(255, 241, 150, 140), width=w)
+                    d.line([(ox + 2 * S, oy + 12 * S), (ox + 18 * S, oy + 12 * S)], fill=(255, 241, 150, 140), width=w)
+
+                fx.put(fx_piece(("robot_interact_glint", round(S, 4)), (-w, -7 * S - w, 18 * S + w, 12 * S + w), paint_glint), (94 * S, 49 * S), 0.0, "interact_glint", pulse)
+        if animation == "block":
+            def paint_shield(d, ox, oy) -> None:
+                d.rounded_rectangle((ox, oy, ox + 12 * S, oy + 42 * S), radius=4 * S, fill=(197, 205, 232, 165), outline=pal["outline"], width=max(1, int(1.0 * S)))
+
+            fx.put(fx_piece(("robot_shield", pal["outline"], round(S, 4)), (0.0, 0.0, 12 * S, 42 * S), paint_shield), (31 * S, 43 * S), 0.0, "shield")
+
+        # Review-only action FX. These are intentionally simple read-at-a-glance
+        # effects that make the generated sheet useful before Rust selects rows.
+        if animation in {"land", "stomp"}:
+            impact = 1.0 - min(1.0, abs(t - 0.52) / 0.52)
+            # The rings widen in two steps; their strength is the opacity.
+            grow = round(impact * 2.0) / 2.0
+            for i in range(3):
+                if 86 * impact * (1.0 - i * 0.18) < 1.0:
+                    continue
+                rx, ry = (18 + i * 12 + 20 * grow) * S, (2.2 + i * 0.7) * S
+                alpha = int(86 * (1.0 - i * 0.18))
+
+                def paint_dust(d, ox, oy, rx=rx, ry=ry, alpha=alpha) -> None:
+                    d.arc((ox - rx, oy - ry, ox + rx, oy + ry), start=190, end=350, fill=_with_alpha(pal["accent"], alpha), width=max(1, int(1.1 * S)))
+
+                fx.put(fx_piece(("robot_dust_ring", i, grow, pal["accent"], round(S, 4)), (-rx, -ry, rx, ry), paint_dust), (root_x, ground_y), 0.0, f"dust_ring{i}", impact)
+        if animation in {"slide", "roll"}:
+            w = max(1, int(1.2 * S))
+
+            def paint_skid(d, ox, oy) -> None:
+                for i in range(4):
+                    x0, y = ox - i * 8 * S, oy + i * 3 * S
+                    d.line([(x0, y), (x0 - (16 + i * 3) * S, y + 4 * S)], fill=(210, 206, 190, 70 - i * 13), width=w)
+
+            fx.put(fx_piece(("robot_skid", round(S, 4)), (-49 * S - w, -w, w, 13 * S + w), paint_skid), (28 * S, 96 * S), 0.0, "skid_lines")
+        if animation == "pickup":
+            obj_y = (93 - 36 * smoothstep(clamp((t - 0.30) / 0.55, 0.0, 1.0))) * S
+            obj_x = (91 - 8 * smoothstep(clamp(t / 0.55, 0.0, 1.0))) * S
+
+            def paint_box(d, ox, oy) -> None:
+                d.rounded_rectangle((ox - 5 * S, oy - 5 * S, ox + 5 * S, oy + 5 * S), radius=2 * S, fill=_with_alpha(pal["accent"], 200), outline=pal["outline"], width=max(1, int(0.8 * S)))
+
+            fx.put(fx_piece(("robot_pickup_box", pal["accent"], pal["outline"], round(S, 4)), (-5 * S, -5 * S, 5 * S, 5 * S), paint_box), (obj_x, obj_y), 0.0, "pickup_box")
+        if animation == "throw" and t > 0.18:
+            arc_t = smoothstep(clamp((t - 0.18) / 0.74, 0.0, 1.0))
+
+            def paint_ball(d, ox, oy) -> None:
+                d.ellipse((ox - 4 * S, oy - 4 * S, ox + 4 * S, oy + 4 * S), fill=_with_alpha(pal["accent"], 210), outline=pal["outline"], width=max(1, int(0.8 * S)))
+
+            def paint_path(d, ox, oy) -> None:
+                d.arc((ox, oy, ox + 60 * S, oy + 51 * S), start=205, end=314, fill=_with_alpha(pal["accent"], 78), width=max(1, int(1.0 * S)))
+
+            fx.put(fx_piece(("robot_throw_ball", pal["accent"], pal["outline"], round(S, 4)), (-4 * S, -4 * S, 4 * S, 4 * S), paint_ball), ((73 + 45 * arc_t) * S, (52 - 18 * math.sin(arc_t * math.pi) + 18 * arc_t) * S), 0.0, "throw_ball")
+            fx.put(fx_piece(("robot_throw_path", pal["accent"], round(S, 4)), (0.0, 0.0, 60 * S, 51 * S), paint_path), (66 * S, 34 * S), 0.0, "throw_path")
+        if animation in {"aim", "shoot"}:
+            glow = _with_alpha(pal["visor_glow"], 255)
+            w = max(1, int(0.9 * S))
+
+            def paint_reticle(d, ox, oy) -> None:
+                d.ellipse((ox - 6 * S, oy - 6 * S, ox + 6 * S, oy + 6 * S), outline=glow, width=max(1, int(1.0 * S)))
+                d.line([(ox - 9 * S, oy), (ox - 3 * S, oy)], fill=glow, width=w)
+                d.line([(ox + 3 * S, oy), (ox + 9 * S, oy)], fill=glow, width=w)
+
+            reticle = fx_piece(("robot_reticle", glow, round(S, 4)), (-9 * S - w, -6 * S - w, 9 * S + w, 6 * S + w), paint_reticle)
+            fx.put(reticle, (111 * S, 51 * S), 0.0, "reticle", (110 if animation == "aim" else 170) / 255.0)
+        if animation == "shoot":
+            flash = 1.0 - smoothstep(clamp(t / 0.50, 0.0, 1.0))
+            if flash > 0.05:
+                def paint_flash(d, ox, oy) -> None:
+                    d.polygon([(ox, oy), (ox + 22 * S, oy - 7 * S), (ox + 18 * S, oy + 6 * S)], fill=(255, 238, 126, 205))
+
+                fx.put(fx_piece(("robot_muzzle_flash", round(S, 4)), (0.0, -7 * S, 22 * S, 6 * S), paint_flash), (96 * S, 54 * S), 0.0, "muzzle_flash", flash)
+        if animation in {"charge", "cast"}:
+            # A ring of dashes (one raster, turned about the ring) that widens
+            # as the spell builds, with a glowing core.
+            radius = (11 + 13 * smoothstep(t)) * S
+            cx = (92 if animation == "charge" else 98) * S
+            cy = (57 if animation == "charge" else 45) * S
+            strength = (90 + int(70 * (0.5 + 0.5 * math.sin(t * math.tau * 3.0)))) / 255.0
+            half, w = 2.75 * S, max(1, int(1.5 * S))
+
+            def paint_dash(d, ox, oy) -> None:
+                d.line([(ox - half, oy), (ox + half, oy)], fill=_with_alpha(pal["accent"], 255), width=w)
+
+            dash = fx_piece(("robot_spell_dash", pal["accent"], round(S, 4)), (-half - w, -w, half + w, w), paint_dash)
+            for k in range(12):
+                theta = k * 30.0
+                fx.put(dash, (cx + radius * math.cos(math.radians(theta)), cy + radius * math.sin(math.radians(theta))), theta + 90.0, f"spell_dash{k}", strength)
+
+            def paint_core(d, ox, oy) -> None:
+                d.ellipse((ox - 3 * S, oy - 3 * S, ox + 3 * S, oy + 3 * S), fill=_with_alpha(pal["visor_glow"], 255))
+
+            fx.put(fx_piece(("robot_spell_core", pal["visor_glow"], round(S, 4)), (-3 * S, -3 * S, 3 * S, 3 * S), paint_core), (cx, cy), 0.0, "spell_core", strength)
+        if animation == "celebrate":
+            for i, (dx, dy) in enumerate([(-20, -35), (0, -41), (21, -34), (33, -20), (-30, -18)]):
+                phase = (frame_index + i) % max(1, frame_count)
+                alpha = min(210, 80 + int(90 * (phase / max(1, frame_count - 1))))
+                color = _with_alpha(pal["accent"] if i % 2 else pal["visor_glow"], 255)
+
+                def paint_confetti(d, ox, oy, color=color) -> None:
+                    d.rectangle((ox - 2 * S, oy - 2 * S, ox + 2 * S, oy + 2 * S), fill=color)
+
+                bit = fx_piece(("robot_confetti", color, round(S, 4)), (-2 * S, -2 * S, 2 * S, 2 * S), paint_confetti)
+                fx.put(bit, (root_x + dx * S, ground_y + dy * S + phase * 1.4 * S), 0.0, f"confetti{i}", alpha / 255.0)
+        if animation == "sleep":
+            glow = _with_alpha(pal["visor_glow"], 255)
+
+            def paint_z(d, ox, oy) -> None:
+                d.text((ox, oy), "Z", fill=glow)
+
+            z = fx_piece(("robot_sleep_z", glow), (0.0, 0.0, 12.0, 14.0), paint_z)
+            for i in range(3):
+                zt = ((frame_index + i * 2) % max(1, frame_count)) / max(1, frame_count - 1)
+                fx.put(z, ((83 + i * 8) * S, (42 - zt * 24) * S), 0.0, f"sleep_z{i}", 150 * (1.0 - zt * 0.45) / 255.0)
+        if animation == "hover":
+            # Long jets with a white-hot core make hover read as thrust. Offset
+            # flicker phases keep the two plumes from pulsing in lockstep; a
+            # jet is one raster per flicker step (three).
+            flame_l = 0.65 + 0.35 * math.sin(frame_index * 1.7)
+            flame_r = 0.65 + 0.35 * math.sin(frame_index * 1.7 + math.pi / 2)
+            # Each jet is anchored at its foot, as the body draw places it, so
+            # the jets stay on the feet through the bob.
+            hover_body_x = root_x + lerp(0.0, 12 * S, p.collapse)
+            hover_body_y = ground_y - lerp(39 * S, 11 * S, p.collapse) + p.body_bob * S
+            jet_hips = (
+                ("jet_far", hover_body_x - 6 * S, hover_body_y + 11 * S, p.far_leg_upper, p.far_leg_lower, -2.0, flame_l),
+                ("jet_near", hover_body_x + 8 * S, hover_body_y + 10 * S, p.near_leg_upper, p.near_leg_lower, 3.0, flame_r),
+            )
+            for name, hx, hy, a1, a2, foot_shift, flame in jet_hips:
+                _, ankle = self._leg_chain((hx, hy), spec.leg_upper * S, spec.leg_lower * S, a1, a2)
+                foot_cx = ankle[0] + (12 * S * 0.34) + foot_shift * S
+                foot_cy = min(ground_y - 2 * S, ankle[1] + 2 * S)
+                q = min((0.4, 0.7, 1.0), key=lambda level: abs(level - flame))
+                fx.put(self._jet_piece(pal, S, q), (foot_cx, foot_cy), 0.0, name)
+
+    def _jet_piece(self, pal: Dict[str, Color], S: float, flame: float) -> Tuple[Image.Image, Point]:
+        """A hover jet at one flicker step, its nozzle at the pivot: a halo,
+        the cyan plume, the yellow flame and a white-hot core."""
+
+        def paint(d, ox, oy) -> None:
+            halo_w = (7 + 3 * flame) * S
+            for tip_y, half_w, base, color in (
+                (oy - 1 * S, halo_w, oy + (22 + 14 * flame) * S, _with_alpha(pal["visor_glow"], int(70 * flame))),
+                (oy + 1 * S, 5 * S, oy + (18 + 12 * flame) * S, _with_alpha(pal["visor_glow"], int(180 * flame))),
+                (oy + 2 * S, 3 * S, oy + (12 + 8 * flame) * S, (255, 235, 130, int(210 * flame))),
+                (oy + 2 * S, 1.6 * S, oy + (7 + 5 * flame) * S, (255, 255, 240, int(240 * flame))),
+            ):
+                d.polygon([(ox, tip_y), (ox - half_w, base), (ox + half_w, base)], fill=color)
+
+        reach = 10 * S
+        return fx_piece(("robot_jet", round(flame, 2), pal["visor_glow"], round(S, 4)), (-reach, -2 * S, reach, 37 * S), paint)
 
     def _render_highres(self, spec: BotSpec, animation: str, frame_index: int, frame_count: int, size: Tuple[int, int], background: Optional[Color], scale: int) -> Image.Image:
         W, H = size[0] * scale, size[1] * scale
@@ -1906,168 +2329,7 @@ class SideRobotGenerator(CharacterGenerator):
 
         # Ground shadow removed; the in-game renderer composites the
         # robot over floor geometry that already provides contact.
-        d = blending_draw(img)
-
-        if animation == "blink_out":
-            self._draw_blink_out_fx(img, root_x, ground_y, S, frame_index, frame_count)
-        elif animation == "blink_in":
-            self._draw_blink_in_fx(img, root_x, ground_y, S, frame_index, frame_count)
-
-        if p.dash:
-            # Speed lines: each one piece (its length) slid to its height.
-            for i in range(4):
-                y = (49 + i * 12 + math.sin(frame_index + i) * 2) * S
-                span = (29 - i * 3) * S
-                lpad = 3 * S
-
-                def paint_line(dd, span=span, lpad=lpad) -> None:
-                    dd.line([(lpad, lpad + 2 * S), (lpad + span, lpad)], fill=(12, 235, 255, 90), width=max(1, int(1.6 * S)))
-
-                line = shape_rig.piece(("robot_speed_line", i, round(S, 4)), (span + 2 * lpad, 2 * lpad + 2 * S), (lpad, lpad + 2 * S), paint_line)
-                RigCanvas(img).put(line, (14 * S, y), 0.0, f"speed_line{i}")
-        if animation == "swim":
-            for i in range(4):
-                x = (24 + i * 18 + math.sin(frame_index + i) * 2) * S
-                y = (83 + i % 2 * 6) * S
-                d.arc((x, y, x + 18 * S, y + 9 * S), start=180, end=358, fill=(89, 210, 255, 92), width=max(1, int(1.1 * S)))
-        if animation == "interact":
-            pulse = math.sin((0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)) * math.pi)
-            if pulse > 0.05:
-                d.line([(94 * S, 49 * S), (107 * S, 42 * S)], fill=(255, 241, 150, int(140 * pulse)), width=max(1, int(1.5 * S)))
-                d.line([(96 * S, 61 * S), (112 * S, 61 * S)], fill=(255, 241, 150, int(140 * pulse)), width=max(1, int(1.5 * S)))
-        if animation == "block":
-            d.rounded_rectangle((31 * S, 43 * S, 43 * S, 85 * S), radius=4 * S, fill=(197, 205, 232, 165), outline=pal["outline"], width=max(1, int(1.0 * S)))
-
-        # Review-only action FX. These are intentionally simple read-at-a-glance
-        # effects that make the generated sheet useful before Rust selects rows.
-        if animation in {"land", "stomp"}:
-            impact_t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
-            impact = 1.0 - min(1.0, abs(impact_t - 0.52) / 0.52)
-            for i in range(3):
-                rx = (18 + i * 12 + 20 * impact) * S
-                ry = (2.2 + i * 0.7) * S
-                alpha = int(86 * impact * (1.0 - i * 0.18))
-                if alpha > 0:
-                    d.arc((root_x - rx, ground_y - ry, root_x + rx, ground_y + ry), start=190, end=350, fill=_with_alpha(pal["accent"], alpha), width=max(1, int(1.1 * S)))
-        if animation in {"slide", "roll"}:
-            for i in range(4):
-                alpha = 70 - i * 13
-                x0 = (28 - i * 8) * S
-                y = (96 + i * 3) * S
-                d.line([(x0, y), (x0 - (16 + i * 3) * S, y + 4 * S)], fill=(210, 206, 190, alpha), width=max(1, int(1.2 * S)))
-        if animation == "pickup":
-            lift_t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
-            obj_y = (93 - 36 * smoothstep(clamp((lift_t - 0.30) / 0.55, 0.0, 1.0))) * S
-            obj_x = (91 - 8 * smoothstep(clamp(lift_t / 0.55, 0.0, 1.0))) * S
-            d.rounded_rectangle((obj_x - 5 * S, obj_y - 5 * S, obj_x + 5 * S, obj_y + 5 * S), radius=2 * S, fill=_with_alpha(pal["accent"], 200), outline=pal["outline"], width=max(1, int(0.8 * S)))
-        if animation == "throw":
-            throw_t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
-            if throw_t > 0.18:
-                arc_t = smoothstep(clamp((throw_t - 0.18) / 0.74, 0.0, 1.0))
-                obj_x = (73 + 45 * arc_t) * S
-                obj_y = (52 - 18 * math.sin(arc_t * math.pi) + 18 * arc_t) * S
-                d.ellipse((obj_x - 4 * S, obj_y - 4 * S, obj_x + 4 * S, obj_y + 4 * S), fill=_with_alpha(pal["accent"], 210), outline=pal["outline"], width=max(1, int(0.8 * S)))
-                d.arc((66 * S, 34 * S, 126 * S, 85 * S), start=205, end=314, fill=_with_alpha(pal["accent"], 78), width=max(1, int(1.0 * S)))
-        if animation in {"aim", "shoot"}:
-            tx, ty = 111 * S, 51 * S
-            a = 110 if animation == "aim" else 170
-            d.ellipse((tx - 6 * S, ty - 6 * S, tx + 6 * S, ty + 6 * S), outline=_with_alpha(pal["visor_glow"], a), width=max(1, int(1.0 * S)))
-            d.line([(tx - 9 * S, ty), (tx - 3 * S, ty)], fill=_with_alpha(pal["visor_glow"], a), width=max(1, int(0.9 * S)))
-            d.line([(tx + 3 * S, ty), (tx + 9 * S, ty)], fill=_with_alpha(pal["visor_glow"], a), width=max(1, int(0.9 * S)))
-        if animation == "shoot":
-            flash = 1.0 - smoothstep(clamp((0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)) / 0.50, 0.0, 1.0))
-            if flash > 0.05:
-                mx, my = 96 * S, 54 * S
-                d.polygon([(mx, my), (mx + 22 * S * flash, my - 7 * S), (mx + 18 * S * flash, my + 6 * S)], fill=(255, 238, 126, int(205 * flash)))
-        if animation in {"charge", "cast"}:
-            spell_t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
-            radius = (11 + 13 * smoothstep(spell_t)) * S
-            cx = (92 if animation == "charge" else 98) * S
-            cy = (57 if animation == "charge" else 45) * S
-            alpha = 90 + int(70 * (0.5 + 0.5 * math.sin(spell_t * math.tau * 3.0)))
-            d.ellipse((cx - radius, cy - radius, cx + radius, cy + radius), outline=_with_alpha(pal["accent"], alpha), width=max(1, int(1.5 * S)))
-            d.ellipse((cx - 3 * S, cy - 3 * S, cx + 3 * S, cy + 3 * S), fill=_with_alpha(pal["visor_glow"], alpha))
-        if animation == "celebrate":
-            for i, (dx, dy) in enumerate([(-20, -35), (0, -41), (21, -34), (33, -20), (-30, -18)]):
-                phase = (frame_index + i) % max(1, frame_count)
-                alpha = 80 + int(90 * (phase / max(1, frame_count - 1)))
-                x = root_x + dx * S
-                y = ground_y + dy * S + phase * 1.4 * S
-                color = pal["accent"] if i % 2 else pal["visor_glow"]
-                d.rectangle((x - 2 * S, y - 2 * S, x + 2 * S, y + 2 * S), fill=_with_alpha(color, min(210, alpha)))
-        if animation == "sleep":
-            for i in range(3):
-                zt = ((frame_index + i * 2) % max(1, frame_count)) / max(1, frame_count - 1)
-                x = (83 + i * 8) * S
-                y = (42 - zt * 24) * S
-                d.text((x, y), "Z", fill=_with_alpha(pal["visor_glow"], int(150 * (1.0 - zt * 0.45))))
-        if animation == "hover":
-            # Long jets with a white-hot core make hover read as thrust. Offset
-            # flicker phases keep the two plumes from pulsing in lockstep.
-            flame_l = 0.65 + 0.35 * math.sin(frame_index * 1.7)
-            flame_r = 0.65 + 0.35 * math.sin(frame_index * 1.7 + math.pi / 2)
-            # Anchor each jet at the actual foot position, mirroring
-            # the leg_chain / foot_center math used by the body draw
-            # below. The previous fixed-canvas flames floated ~10px
-            # below the lifted hover body, looking detached. Tracking
-            # the feet keeps the jets glued on through the bob.
-            hover_body_x = root_x + lerp(0.0, 12 * S, p.collapse)
-            hover_body_y = ground_y - lerp(39 * S, 11 * S, p.collapse) + p.body_bob * S
-            jet_hips = (
-                (hover_body_x - 6 * S, hover_body_y + 11 * S, p.far_leg_upper, p.far_leg_lower, -2.0, flame_l),
-                (hover_body_x + 8 * S, hover_body_y + 10 * S, p.near_leg_upper, p.near_leg_lower, 3.0, flame_r),
-            )
-            for hx, hy, a1, a2, foot_shift, flame in jet_hips:
-                _, ankle = self._leg_chain((hx, hy), spec.leg_upper * S, spec.leg_lower * S, a1, a2)
-                foot_w = 12 * S
-                foot_cx = ankle[0] + (foot_w * 0.34) + foot_shift * S
-                foot_cy = min(ground_y - 2 * S, ankle[1] + 2 * S)
-                # Three-layer plume so the jets read clearly even
-                # downsampled. Width-then-length so the silhouette is
-                # a tall, slightly-tapered teardrop.
-                top = (foot_cx, foot_cy + 1 * S)
-                # Outer glow halo (faint cyan, widest, longest).
-                halo_w = (7 + 3 * flame) * S
-                halo_base = foot_cy + (22 + 14 * flame) * S
-                d.polygon(
-                    [
-                        (foot_cx, foot_cy - 1 * S),
-                        (foot_cx - halo_w, halo_base),
-                        (foot_cx + halo_w, halo_base),
-                    ],
-                    fill=_with_alpha(pal["visor_glow"], int(70 * flame)),
-                )
-                # Mid cyan plume — the main flame body.
-                outer_base = foot_cy + (18 + 12 * flame) * S
-                d.polygon(
-                    [
-                        top,
-                        (foot_cx - 5 * S, outer_base),
-                        (foot_cx + 5 * S, outer_base),
-                    ],
-                    fill=_with_alpha(pal["visor_glow"], int(180 * flame)),
-                )
-                # Inner yellow flame.
-                inner_base = foot_cy + (12 + 8 * flame) * S
-                d.polygon(
-                    [
-                        (foot_cx, foot_cy + 2 * S),
-                        (foot_cx - 3 * S, inner_base),
-                        (foot_cx + 3 * S, inner_base),
-                    ],
-                    fill=(255, 235, 130, int(210 * flame)),
-                )
-                # White-hot core (narrowest, brightest, anchored at
-                # the nozzle so the eye locks on to "this is a jet").
-                core_base = foot_cy + (7 + 5 * flame) * S
-                d.polygon(
-                    [
-                        (foot_cx, foot_cy + 2 * S),
-                        (foot_cx - 1.6 * S, core_base),
-                        (foot_cx + 1.6 * S, core_base),
-                    ],
-                    fill=(255, 255, 240, int(240 * flame)),
-                )
+        self._place_action_fx(RigCanvas(img), animation, p, spec, pal, S, root_x, ground_y, frame_index, frame_count)
 
         # Draw the actor on its own transparent layer first.  Some
         # animations apply a whole-body layer rotation (roll / ledge_roll);
@@ -2130,7 +2392,7 @@ class SideRobotGenerator(CharacterGenerator):
                 far_shift = (-2.1, -1.7, -0.8, 0.5, 1.5, 1.0, 0.1, -1.0)
                 near_shift = (1.9, 1.2, 0.2, -1.2, -1.8, -1.3, -0.4, 0.9)
                 foot_tilt = (-8, -5, -2, 3, 8, 5, 2, -3)
-                pelvis_w, pelvis_h = 13.0 * S, 7.5 * S
+                pelvis_w, pelvis_h = 12.5 * S, 7.25 * S
             else:
                 far_ax = (-11.4, -8.8, -4.0, 0.0, 1.2, -1.8, -6.2, -10.0)
                 far_ay = (23.0, 23.2, 22.0, 19.8, 22.5, 23.3, 22.9, 22.6)
@@ -2139,7 +2401,7 @@ class SideRobotGenerator(CharacterGenerator):
                 far_shift = (-1.8, -1.4, -0.6, 0.4, 1.3, 0.9, 0.0, -0.8)
                 near_shift = (1.7, 1.0, 0.1, -1.0, -1.5, -1.0, -0.3, 0.8)
                 foot_tilt = (-6, -4, -2, 2, 6, 4, 2, -2)
-                pelvis_w, pelvis_h = 12.0 * S, 7.0 * S
+                pelvis_w, pelvis_h = 12.5 * S, 7.25 * S
 
             # Semantic mapping for a right-facing, slightly camera-tilted player:
             # - player-right arm = lighter arm on screen-left
@@ -2263,7 +2525,9 @@ class SideRobotGenerator(CharacterGenerator):
         # ``-whole_body_rotation``, which ``Image.rotate`` turned
         # counter-clockwise).
         roll_center = (body_center[0] + 2.0 * S, body_center[1] + 4.0 * S)
-        rig = RigCanvas(character_img, roll_center, -p.whole_body_rotation if abs(p.whole_body_rotation) > 1e-4 else 0.0)
+        # A teleport takes the body apart piece by piece (``_teleport_warp``).
+        warp = self._teleport_warp(animation, root_x, S, frame_index, frame_count) if animation in {"blink_out", "blink_in"} else None
+        rig = RigCanvas(character_img, roll_center, -p.whole_body_rotation if abs(p.whole_body_rotation) > 1e-4 else 0.0, warp=warp)
 
         # Explicit semantic limb mapping for the right-facing player view.
         player_left_arm = (shoulder_near, p.near_arm_upper, p.near_arm_lower, pal["shell_side"])
@@ -2301,10 +2565,9 @@ class SideRobotGenerator(CharacterGenerator):
         self._draw_rigid_head(rig, head_center, spec, pal, S, head_angle, p.blink, p.eye_squint, p.dead, p.head_look)
         self._draw_robot_arm(rig, player_right_arm[0], player_right_arm[1], player_right_arm[2], player_right_arm[3], spec, pal, S, outline, side="front")
 
-        if animation in {"blink_out", "blink_in"}:
-            self._composite_teleport_actor(img, character_img, animation, frame_index, frame_count, S)
-        else:
-            rigdoc.composite_canvas(img, character_img)
+        rigdoc.composite_canvas(img, character_img)
+        if warp is not None:
+            self._place_teleport_scanlines(RigCanvas(img), animation, root_x, ground_y, S, frame_index, frame_count)
 
         return img
 
