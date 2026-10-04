@@ -1756,7 +1756,10 @@ _LOSSLESS = {
 def _lossless_map(op, size: Tuple[int, int]):
     """``(L, t)`` of ``op`` on a raster of ``size``: a continuous source point
     ``p`` lands at ``L p + t`` in the transposed raster. ``t`` moves the
-    transformed box back onto the origin."""
+    transformed box back onto the origin. ``None`` is the identity (the same
+    pixels at another pivot)."""
+    if op is None:
+        return (1, 0, 0, 1), (0.0, 0.0)
     a, b, c, d = _LOSSLESS[op]
     w, h = size
     corners = [(a * x + b * y, c * x + d * y) for x in (0, w) for y in (0, h)]
@@ -1797,7 +1800,11 @@ def _share_transformed_parts(flipbook: "PartFlipbook") -> "PartFlipbook":
         crop, _box = trimmed(part.image)
         key = (crop.size, crop.tobytes())
         if key in seen:
-            continue  # an exact twin: the recorder already shares those
+            # The same pixels at another pivot or padding: the recorder keys
+            # a part by its pivot too, so these slip past it (18% of the player
+            # robot's texels after its effects became pieces, 2026-10-04).
+            source_of[i] = (seen[key], None)
+            continue
         for op in _LOSSLESS:
             turned = crop.transpose(op)
             match = seen.get((turned.size, turned.tobytes()))

@@ -91,3 +91,15 @@ def test_a_draw_turned_by_a_shared_quarter_turn_keeps_square_axes():
     for draw in shared.clips["idle"][1][0]:
         assert abs(abs(draw.scale[0]) - 1.0) < 1e-9 and abs(abs(draw.scale[1]) - 1.0) < 1e-9
         assert math.isfinite(draw.rotation)
+
+
+def test_the_same_pixels_at_another_pivot_are_one_part():
+    base = _piece()
+    padded = Image.new("RGBA", (base.width + 3, base.height + 1), (0, 0, 0, 0))
+    padded.alpha_composite(base, (3, 1))
+    parts = [PartRaster("a", base, (4.0, 3.0)), PartRaster("b", padded, (1.5, 6.0))]
+    draws = [PartDraw(0, (-30.0, -40.0), 0.0, (1.0, 1.0), "a"), PartDraw(1, (5.0, -20.0), 0.6, (-1.0, 1.0), "b")]
+    flipbook = PartFlipbook("twin", (96, 72), (60.0, 66.0), parts, {"idle": (0.1, [draws])}, placement=PLACEMENT_CONTINUOUS)
+    shared = _share_transformed_parts(flipbook)
+    assert len(shared.parts) == 1
+    assert _differs(flipbook.recompose("idle", 0), shared.recompose("idle", 0)) == 0
