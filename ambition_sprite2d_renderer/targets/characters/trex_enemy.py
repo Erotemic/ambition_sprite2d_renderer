@@ -21,7 +21,6 @@ from PIL import Image, ImageDraw
 from ...authoring import rigdoc
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.sheet_build import build_sheet
-from ambition_sprite2d_renderer.core.draw import blending_draw
 
 from . import _solo_shape_rig as SR
 
@@ -457,11 +456,23 @@ def _bar(length: float, width: float, color: RGBA, stripe: float):
     return _local_piece(("trex_bar", length, width, color, stripe), (half, half, length + half, half), paint)
 
 
-def _place_bar(img: Image.Image, a: Point, b: Point, width: float, color: RGBA, stripe: float, name: str, step: Optional[float] = None) -> None:
-    length = math.hypot(b[0] - a[0], b[1] - a[1])
-    if step:
-        length = max(step, round(length / step) * step)
-    SR.place(img, _bar(round(length, 3), width, color, stripe), _S(a), _heading(a, b), name)
+def _place_bone(img: Image.Image, a: Point, b: Point, length: float, width: float, color: RGBA, stripe: float, name: str) -> None:
+    """A limb bone of a FIXED ``length`` from ``a`` toward ``b``: one raster
+    for every pose."""
+    SR.place(img, _bar(length, width, color, stripe), _S(a), _heading(a, b), name)
+
+
+def _ik_joint(root: Point, target: Point, length: float, bend: Point) -> Tuple[Point, Point]:
+    """The joint and the reached end of a two-bone limb with both bones
+    ``length`` long. A target out of reach is pulled in along its direction
+    (the limb straightens; it does not stretch)."""
+    dx, dy = target[0] - root[0], target[1] - root[1]
+    d = math.hypot(dx, dy)
+    reach = 2.0 * length * 0.999
+    if d > reach:
+        target = (root[0] + dx / d * reach, root[1] + dy / d * reach)
+    joint, _seg = SR.two_bone(root, target, length, bend)
+    return joint, target
 
 
 def _taper(length: float, w0: float, w1: float, fill: RGBA, outline_w: float, stripe: Optional[RGBA] = None, stripe_w: float = 0.0, outline: RGBA = OUTLINE):
@@ -486,17 +497,39 @@ def _taper(length: float, w0: float, w1: float, fill: RGBA, outline_w: float, st
 
 # The tail's three segments: widths at each joint (the old polygon's spread).
 TAIL_WIDTHS = (28.0, 32.0, 22.0, 10.0)
-TAIL_STEP = 3.0
+# Where the old painter put the tail's joints (body frame, about the hip) and
+# how far each was turned by the pose (Pose.tail_base / tail_mid / tail_tip).
+TAIL_REST = ((-36.0, -40.0), (-112.0, -82.0), (-214.0, -92.0), (-322.0, -70.0))
+# Each segment's FIXED length: its length at the default pose (a chain of
+# rigid bones, one raster each, instead of a length a frame).
+TAIL_REST_TURN = (0.0, -8.0, -14.0, -18.0)
+
+
+def _tail_rest_length(i: int) -> float:
+    a = _rot(*TAIL_REST[i], TAIL_REST_TURN[i])
+    b = _rot(*TAIL_REST[i + 1], TAIL_REST_TURN[i + 1])
+    return float(round(math.hypot(b[0] - a[0], b[1] - a[1])))
+
+
+TAIL_LENGTHS = tuple(_tail_rest_length(i) for i in range(3))
+
+
+def _tail_joints(P, pose: "Pose") -> List[Point]:
+    """The tail as a chain of fixed bones: each bone points where the old
+    painter's segment pointed."""
+    old = [P(*TAIL_REST[0]), P(*TAIL_REST[1], pose.tail_base), P(*TAIL_REST[2], pose.tail_mid), P(*TAIL_REST[3], pose.tail_tip)]
+    joints = [old[0]]
+    for i in range(3):
+        h = math.radians(_heading(old[i], old[i + 1]))
+        a = joints[-1]
+        joints.append((a[0] + TAIL_LENGTHS[i] * math.cos(h), a[1] + TAIL_LENGTHS[i] * math.sin(h)))
+    return joints
 
 
 def _draw_tail(img: Image.Image, joints: Sequence[Point]) -> None:
-    """The tail as three tapered segments, every outline first and then every
+    """The tail as three tapered bones, every outline first and then every
     fill, so the joints read as one silhouette."""
-    segs = []
-    for i in range(3):
-        a, b = joints[i], joints[i + 1]
-        length = max(TAIL_STEP, round(math.hypot(b[0] - a[0], b[1] - a[1]) / TAIL_STEP) * TAIL_STEP)
-        segs.append((a, _heading(a, b), length, TAIL_WIDTHS[i], TAIL_WIDTHS[i + 1]))
+    segs = [(joints[i], _heading(joints[i], joints[i + 1]), TAIL_LENGTHS[i], TAIL_WIDTHS[i], TAIL_WIDTHS[i + 1]) for i in range(3)]
     for i, (a, deg, length, w0, w1) in enumerate(segs):
         SR.place(img, _taper(length, w0, w1, None, 1.4), _S(a), deg, f"tail{i}_line")
     for i, (a, deg, length, w0, w1) in enumerate(segs):
@@ -522,18 +555,24 @@ def _foot_piece(scale: float, front: bool):
     return _local_piece(("trex_foot", scale, front), (12 * scale, 10 * scale, foot_len + 10 * scale, 14 * scale), paint)
 
 
+#: Thigh and shin share one length (one raster per leg).
+LEG_BONE = 71.0
+
+
 def _draw_hind_leg(img: Image.Image, hip: Point, thigh_deg: float, knee_bend: float, foot_lift: float, *, scale: float, front: bool, side: str) -> Point:
-    """Thigh (a fixed bone), shin (stretched by the foot lift, in steps), knee
-    and foot: pieces placed along the old leg."""
+    """Thigh and shin (two bones of one fixed length reaching the foot the old
+    painter placed), knee and foot: pieces placed along the leg."""
     thigh_len = 68 * scale
     shin_len = 74 * scale
-    knee = (hip[0] + thigh_len * math.cos(math.radians(thigh_deg)), hip[1] + thigh_len * math.sin(math.radians(thigh_deg)))
+    knee0 = (hip[0] + thigh_len * math.cos(math.radians(thigh_deg)), hip[1] + thigh_len * math.sin(math.radians(thigh_deg)))
     shin_deg = thigh_deg + knee_bend
-    ankle = (knee[0] + shin_len * math.cos(math.radians(shin_deg)), knee[1] + shin_len * math.sin(math.radians(shin_deg)) - foot_lift)
+    target = (knee0[0] + shin_len * math.cos(math.radians(shin_deg)), knee0[1] + shin_len * math.sin(math.radians(shin_deg)) - foot_lift)
+    bone = LEG_BONE * scale
+    knee, ankle = _ik_joint(hip, target, bone, (1.0, 0.0))
     col = GREEN if front else GREEN_DARK
     w = 16 * scale if front else 13 * scale
-    _place_bar(img, hip, knee, w, col, 1.5, f"{side}_thigh")
-    _place_bar(img, knee, ankle, w, col, 1.5, f"{side}_shin", step=2.0)
+    _place_bone(img, hip, knee, bone, w, col, 1.5, f"{side}_thigh")
+    _place_bone(img, knee, ankle, bone, w, col, 1.5, f"{side}_shin")
     r = 7.0 * scale
     knee_part = _local_piece(("trex_knee", scale, front), (r + 1, r + 1, r + 1, r + 1), lambda d, o: _circle(d, o, r, GREEN_LIGHT if front else GREEN, OUTLINE, 0.8))
     SR.place(img, knee_part, _S(knee), 0.0, f"{side}_knee")
@@ -550,15 +589,15 @@ def _claws_piece(front: bool):
     return _local_piece(("trex_claws", front), (2.0, 2.0, 16.0, 10.0), paint)
 
 
-def _draw_tiny_arm(img: Image.Image, shoulder: Point, ang: float, reach: float, *, front: bool, side: str) -> Point:
-    upper = 18 if front else 16
-    lower = 16 + reach
-    elbow = (shoulder[0] + upper * math.cos(math.radians(ang)), shoulder[1] + upper * math.sin(math.radians(ang)))
-    hand = (elbow[0] + lower * math.cos(math.radians(ang + 14)), elbow[1] + lower * math.sin(math.radians(ang + 14)))
+def _draw_tiny_arm(img: Image.Image, shoulder: Point, ang: float, *, front: bool, side: str) -> Point:
+    """Upper arm and forearm: bones of one length (one raster per arm)."""
+    bone = 17.0 if front else 16.0
+    elbow = (shoulder[0] + bone * math.cos(math.radians(ang)), shoulder[1] + bone * math.sin(math.radians(ang)))
+    hand = (elbow[0] + bone * math.cos(math.radians(ang + 14)), elbow[1] + bone * math.sin(math.radians(ang + 14)))
     col = GREEN_LIGHT if front else GREEN_DARK
     w = 6.8 if front else 5.2
-    _place_bar(img, shoulder, elbow, w, col, 1.0, f"{side}_upper_arm")
-    _place_bar(img, elbow, hand, w, col, 1.0, f"{side}_forearm")
+    _place_bone(img, shoulder, elbow, bone, w, col, 1.0, f"{side}_upper_arm")
+    _place_bone(img, elbow, hand, bone, w, col, 1.0, f"{side}_forearm")
     SR.place(img, _claws_piece(front), _S(hand), 0.0, f"{side}_claws")
     return hand
 
@@ -585,11 +624,14 @@ def _paint_torso(d, root: Point) -> None:
 
 
 # The neck: a tapered band from its base on the torso to the head's root,
-# its belly strip on the throat side.
+# its belly strip on the throat side. One FIXED length: the neck turns at its
+# base and carries the head; it does not stretch.
 NECK_W = (46.0, 32.0)
 NECK_BELLY_W = (28.0, 20.0)
 NECK_BELLY_OFFSET = 10.0
-NECK_STEP = 3.0
+NECK_BASE = (166.0, -67.0)
+NECK_TOP = (228.0, -134.0)
+NECK_LENGTH = round(math.hypot(NECK_TOP[0] - 4.0 - NECK_BASE[0], NECK_TOP[1] + 1.0 - NECK_BASE[1]))
 
 
 def _neck_piece(length: float):
@@ -606,56 +648,123 @@ def _neck_piece(length: float):
     return _local_piece(("trex_neck", length), (r, r, length + 10.0, r), paint)
 
 
-def _paint_head(d, pivot: Point, jaw: float, x_eye: bool, blink: bool) -> None:
-    """The head unturned, its pivot at ``pivot``, the jaw open ``jaw``."""
+# -- the head: a base, a hinged lower jaw and an eye overlay ------------------
+#
+# The head is three rasters for every pose: the BASE (skull, upper jaw, its
+# pale lip, upper teeth, nostril, brow), the LOWER JAW (jaw, tongue, lower
+# teeth) turned about its hinge by the jaw's opening, and the mouth's dark
+# INSIDE. The inside is two pieces that a closed mouth hides: a dark copy of
+# the lower jaw that turns with the head (behind the jaw), and a dark copy of
+# the upper jaw that turns with the lower jaw (behind the base). An open jaw
+# shows them in the gap. The eye (open, shut or crossed out) is a small
+# overlay placed on the base.
 
+JAW_HINGE = (4.0, 2.0)
+#: How far the head's pivot is from the neck's end.
+HEAD_REACH = 12.0
+#: Degrees the lower jaw turns per unit of ``Pose.jaw`` (the old painter's
+#: jaw value, which moved the jaw's front down about a fifth of a unit).
+JAW_DEG_PER_UNIT = 0.2
+JAW_CLOSED = 6.0
+UPPER_JAW = ((-4, -26), (40, -38), (104, -34), (154, -20), (188, -3), (176, 7), (126, 4), (58, 0), (10, -6))
+LOWER_JAW = ((2, 10), (48, 18), (118, 24), (172, 18), (188, 9), (134, 4), (62, 2), (8, 4))
+EYE_AT = (40.0, -18.0)
+HEAD_EXTENT = (36.0, 52.0, 198.0, 36.0)
+
+
+def _paint_head_base(d, o: Point) -> None:
     def H(x: float, y: float) -> Point:
-        return (pivot[0] + x, pivot[1] + y)
+        return (o[0] + x, o[1] + y)
 
     skull = [H(-26, -22), H(-6, -40), H(34, -44), H(54, -30), H(22, -8), H(-18, -4)]
-    upper_jaw = [H(-4, -26), H(40, -38), H(104, -34), H(154, -20), H(188, -3), H(176, 7), H(126, 4), H(58, 0), H(10, -6)]
-    lower_jaw = [
-        H(2, 10),
-        H(48, 18),
-        H(118, 24 + jaw * 0.20),
-        H(172, 18 + jaw * 0.18),
-        H(188, 9 + jaw * 0.14),
-        H(134, 4 + jaw * 0.18),
-        H(62, 2),
-        H(8, 4),
-    ]
     _poly(d, skull, GREEN_LIGHT, OUTLINE, 1.2)
-    _poly(d, upper_jaw, GREEN, OUTLINE, 1.3)
-    _poly(d, lower_jaw, GREEN_LIGHT, OUTLINE, 1.1)
-    snout_belly = [H(24, -2), H(90, 2), H(164, 8), H(172, 14), H(114, 16), H(48, 12), H(12, 8)]
-    _poly(d, snout_belly, BELLY, OUTLINE, 0.8)
-    # Mouth interior and teeth
-    _poly(d, [H(18, 3), H(62, 8), H(132, 14 + jaw * 0.10), H(162, 10 + jaw * 0.10), H(118, 24 + jaw * 0.11), H(56, 18)], MOUTH, OUTLINE, 0.6)
-    _poly(d, [H(70, 16), H(116, 20 + jaw * 0.10), H(92, 30 + jaw * 0.11)], TONGUE, OUTLINE, 0.5)
+    _poly(d, [H(*p) for p in UPPER_JAW], GREEN, OUTLINE, 1.3)
+    # The pale lip along the upper jaw's lower edge.
+    _poly(d, [H(14, -4), H(58, -4), H(126, 0), H(170, 3), H(176, 7), H(126, 4), H(58, 0), H(10, -2)], BELLY, OUTLINE, 0.6)
     for tx in [32, 54, 78, 102, 126, 148, 166]:
-        _poly(d, [H(tx, 2), H(tx + 5, 10), H(tx + 10, 2)], TOOTH, OUTLINE, 0.4)
-    for tx in [40, 72, 104, 138]:
-        _poly(d, [H(tx, 15 + jaw * 0.09), H(tx + 5, 7 + jaw * 0.06), H(tx + 10, 15 + jaw * 0.09)], TOOTH, OUTLINE, 0.4)
-    eye = H(40, -18)
+        _poly(d, [H(tx, 1), H(tx + 5, 10), H(tx + 10, 2)], TOOTH, OUTLINE, 0.4)
     _line(d, [H(28, -24), H(46, -30)], OUTLINE, 1.1)
-    if x_eye:
-        _line(d, [H(34, -22), H(46, -14)], OUTLINE, 1.0)
-        _line(d, [H(34, -14), H(46, -22)], OUTLINE, 1.0)
-    elif blink:
-        _line(d, [H(34, -18), H(46, -18)], OUTLINE, 1.0)
+    _line(d, [H(126, -12), H(132, -11)], OUTLINE, 0.8)
+
+
+def _paint_lower_jaw(d, o: Point) -> None:
+    def H(x: float, y: float) -> Point:
+        return (o[0] + x, o[1] + y)
+
+    # The dark inside of the upper jaw: hidden behind the base until the jaw opens.
+    _poly(d, [H(*p) for p in UPPER_JAW[4:] + UPPER_JAW[:1]], MOUTH, None, 0.0)
+    _poly(d, [H(*p) for p in LOWER_JAW], GREEN_LIGHT, OUTLINE, 1.1)
+    _line(d, [H(12, 11), H(48, 16), H(118, 21), H(166, 16)], BELLY, 2.4)
+    _poly(d, [H(18, 3), H(62, 6), H(132, 7), H(162, 8), H(118, 14), H(56, 11)], MOUTH, OUTLINE, 0.6)
+    _poly(d, [H(70, 8), H(116, 9), H(92, 15)], TONGUE, OUTLINE, 0.5)
+    for tx in [40, 72, 104, 138]:
+        _poly(d, [H(tx, 9), H(tx + 5, 1), H(tx + 10, 9)], TOOTH, OUTLINE, 0.4)
+
+
+def _paint_mouth_floor(d, o: Point) -> None:
+    _poly(d, [(o[0] + x, o[1] + y) for x, y in LOWER_JAW], MOUTH, None, 0.0)
+
+
+def _paint_eye(d, o: Point, state: str) -> None:
+    x, y = o
+    if state == "x":
+        _line(d, [(x - 6, y - 4), (x + 6, y + 4)], OUTLINE, 1.0)
+        _line(d, [(x - 6, y + 4), (x + 6, y - 4)], OUTLINE, 1.0)
+    elif state == "shut":
+        _line(d, [(x - 6, y), (x + 6, y)], OUTLINE, 1.0)
     else:
-        _ellipse(d, eye[0], eye[1], 6.0, 5.0, EYE, OUTLINE, 0.7)
-        _circle(d, (eye[0] + 1.5, eye[1] + 0.5), 1.5, PUPIL, PUPIL, 0.1)
-    nostril = H(128, -12)
-    _line(d, [(nostril[0] - _s(2), nostril[1]), (nostril[0] + _s(4), nostril[1] + _s(1))], OUTLINE, 0.8)
+        _ellipse(d, x, y, 6.0, 5.0, EYE, OUTLINE, 0.7)
+        _circle(d, (x + 1.5, y + 0.5), 1.5, PUPIL, PUPIL, 0.1)
+
+
+def _draw_head(img: Image.Image, pivot: Point, degrees: float, pose: "Pose") -> None:
+    def H(x: float, y: float) -> Point:
+        rx, ry = _rot(x, y, degrees)
+        return (pivot[0] + rx, pivot[1] + ry)
+
+    hinge = H(*JAW_HINGE)
+    jaw_deg = max(0.0, pose.jaw - JAW_CLOSED) * JAW_DEG_PER_UNIT
+    rel = (-JAW_HINGE[0], -JAW_HINGE[1])
+    floor = _local_piece(("trex_mouth_floor",), HEAD_EXTENT, _paint_mouth_floor)
+    jaw = _local_piece(("trex_lower_jaw",), (HEAD_EXTENT[0] - rel[0], HEAD_EXTENT[1] - rel[1], HEAD_EXTENT[2] + rel[0], HEAD_EXTENT[3] + rel[1]), lambda d, o: _paint_lower_jaw(d, (o[0] + rel[0], o[1] + rel[1])))
+    base = _local_piece(("trex_head_base",), HEAD_EXTENT, _paint_head_base)
+    if jaw_deg > 0.25:
+        SR.place(img, floor, _S(pivot), degrees, "mouth_floor")
+    SR.place(img, jaw, _S(hinge), degrees + jaw_deg, "lower_jaw")
+    SR.place(img, base, _S(pivot), degrees, "head")
+    state = "x" if pose.x_eye else ("shut" if pose.blink else "open")
+    eye = _local_piece(("trex_eye", state), (8.0, 7.0, 8.0, 7.0), lambda d, o: _paint_eye(d, o, state))
+    SR.place(img, eye, _S(H(*EYE_AT)), degrees, "eye")
+
+
+# -- effects: pieces painted once, placed with their strength as opacity ------
+
+
+def _arc_piece(key: str, box: Tuple[float, float, float, float], start: float, end: float, color: RGBA, width: float):
+    """An arc of the ellipse ``box`` (work units about the piece's origin)."""
+    l, t, r, b = box
+    pad = width + 2.0
+
+    def paint(d, o) -> None:
+        d.arc((_s(o[0] + l), _s(o[1] + t), _s(o[0] + r), _s(o[1] + b)), start, end, fill=color, width=_s(width))
+
+    return _local_piece(("trex_arc", key), (pad - l, pad - t, r + pad, b + pad), paint)
+
+
+def _dust_piece():
+    def paint(d, o) -> None:
+        x, y = o
+        _poly(d, [(x - 9, y), (x, y - 12), (x + 10, y - 1), (x + 3, y + 7)], DUST, (95, 78, 54, 110), 0.4)
+
+    return _local_piece(("trex_dust",), (11.0, 14.0, 12.0, 9.0), paint)
 
 
 def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
-    """The T-rex as a rig: torso, neck, head (per jaw step and eye state), tail
-    segments and limb bones are pieces painted once and turned into place;
-    the attack effects stay shapes."""
+    """The T-rex as a rig: every piece is painted once and turned into place.
+    The tail, neck and limbs are bones of fixed length; the head is a base, a
+    hinged lower jaw and an eye overlay; the attack effects are pieces placed
+    with their strength as opacity."""
     img = Image.new("RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0))
-    draw = blending_draw(img)
     pose = Pose(anim, frame_idx, nframes)
 
     root = (
@@ -669,11 +778,8 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         return (root[0] + rx, root[1] + ry)
 
     # Tail first, big and classic
-    tail0 = P(-36, -40)
-    tail1 = P(-112, -82, pose.tail_base)
-    tail2 = P(-214, -92, pose.tail_mid)
-    tail3 = P(-322, -70, pose.tail_tip)
-    _draw_tail(img, [tail0, tail1, tail2, tail3])
+    tail = _tail_joints(P, pose)
+    _draw_tail(img, tail)
 
     # Far hind leg (still only one of the two biped legs)
     _draw_hind_leg(img, P(-10, -4), 90 + pose.far_leg, 34 + pose.far_knee, pose.far_lift, scale=0.92, front=False, side="far")
@@ -683,69 +789,49 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     SR.place(img, torso, _S(root), body_angle, "torso")
 
     # Far tiny arm
-    _draw_tiny_arm(img, P(126, -70), 128 + pose.far_arm, pose.far_reach, front=False, side="far")
+    _draw_tiny_arm(img, P(126, -70), 128 + pose.far_arm, front=False, side="far")
 
-    # Neck: from its base on the torso to the head's root.
-    neck_top = P(228, -134, pose.neck)
-    base = P(166, -67)
-    top = (neck_top[0] - 4.0, neck_top[1] + 1.0)
-    length = max(NECK_STEP, round(math.hypot(top[0] - base[0], top[1] - base[1]) / NECK_STEP) * NECK_STEP)
-    SR.place(img, _neck_piece(length), _S(base), _heading(base, top), "neck")
-
+    # Neck: one fixed bone from its base on the torso, pointed where the old
+    # painter's neck top was; it carries the head.
+    neck_top = P(*NECK_TOP, pose.neck)
+    base = P(*NECK_BASE)
+    heading = _heading(base, (neck_top[0] - 4.0, neck_top[1] + 1.0))
+    SR.place(img, _neck_piece(NECK_LENGTH), _S(base), heading, "neck")
+    end = (base[0] + NECK_LENGTH * math.cos(math.radians(heading)) + 4.0, base[1] + NECK_LENGTH * math.sin(math.radians(heading)) - 1.0)
+    # The head sits ON the neck's end (the old painter left a gap there).
     head_pivot = (
-        neck_top[0] + 28 * math.cos(math.radians(body_angle + pose.neck - 16)),
-        neck_top[1] + 28 * math.sin(math.radians(body_angle + pose.neck - 16)),
+        end[0] + HEAD_REACH * math.cos(math.radians(body_angle + pose.neck - 16)),
+        end[1] + HEAD_REACH * math.sin(math.radians(body_angle + pose.neck - 16)),
     )
     head_ang = body_angle + pose.neck + pose.head - 6
-    jaw = SR.q(pose.jaw, 4.0)
-    head = _local_piece(("trex_head", jaw, pose.x_eye, pose.blink), (36.0, 52.0, 198.0, 36.0), lambda d, o: _paint_head(d, o, jaw, pose.x_eye, pose.blink))
-    SR.place(img, head, _S(head_pivot), head_ang, "head")
+    _draw_head(img, head_pivot, head_ang, pose)
 
     def H(x: float, y: float) -> Point:
         rx, ry = _rot(x, y, head_ang)
         return (head_pivot[0] + rx, head_pivot[1] + ry)
 
     # Near tiny arm
-    _draw_tiny_arm(img, P(136, -62), 124 + pose.near_arm, pose.near_reach, front=True, side="near")
+    _draw_tiny_arm(img, P(136, -62), 124 + pose.near_arm, front=True, side="near")
 
     # Near hind leg (second and last leg)
     near_ankle = _draw_hind_leg(img, P(34, -2), 92 + pose.near_leg, 38 + pose.near_knee, pose.near_lift, scale=1.0, front=True, side="near")
 
-    # Attack FX
+    # Attack FX: each a piece, its strength the draw's opacity.
     if anim == "bite" and pose.bite_fx > 0.15:
-        cx, cy = H(162, 6)
-        box = (_s(cx - 66), _s(cy - 40), _s(cx + 52), _s(cy + 48))
-        draw.arc(box, 210, 350, fill=FX, width=_s(4.8 + pose.bite_fx))
+        SR.place(img, _arc_piece("bite", (-66, -40, 52, 48), 210, 350, FX, 5.4), _S(H(162, 6)), head_ang, "bite_fx", min(1.0, 0.4 + pose.bite_fx))
     if anim == "roar" and pose.roar > 0.15:
         for i in range(3):
-            rad = 28 + i * 22 + pose.roar * 8
-            cx, cy = H(176, 10)
-            box = (_s(cx - rad), _s(cy - rad * 0.66), _s(cx + rad), _s(cy + rad * 0.66))
-            draw.arc(box, 300, 30, fill=ROAR, width=_s(2.0))
+            rad = 32.0 + i * 22.0
+            push = pose.roar * 8.0
+            SR.place(img, _arc_piece(f"roar{i}", (-rad, -rad * 0.66, rad, rad * 0.66), 300, 30, ROAR, 2.0), _S(H(176 + push, 10)), head_ang, f"roar{i}", min(1.0, 0.3 + pose.roar))
     if anim == "tail_swipe" and pose.swipe > 0.12:
-        tx, ty = tail3
-        box = (_s(tx - 76), _s(ty - 56), _s(tx + 46), _s(ty + 52))
-        draw.arc(box, 100, 252, fill=FX, width=_s(4.2))
+        SR.place(img, _arc_piece("swipe", (-76, -56, 46, 52), 100, 252, FX, 4.2), _S(tail[3]), 0.0, "swipe_fx", min(1.0, 0.3 + pose.swipe))
     if anim in {"charge", "stomp"} and pose.dust > 0.1:
         for i, dx in enumerate([-34, -10, 16, 42]):
-            base = (near_ankle[0] + dx, near_ankle[1] + 10 + (i % 2) * 2)
-            scale = pose.dust * (1.0 - i * 0.08)
-            _poly(
-                draw,
-                [
-                    (base[0] - 9 * scale, base[1]),
-                    (base[0], base[1] - 12 * scale),
-                    (base[0] + 10 * scale, base[1] - 1 * scale),
-                    (base[0] + 3 * scale, base[1] + 7 * scale),
-                ],
-                DUST,
-                (95, 78, 54, 110),
-                0.4,
-            )
+            at = (near_ankle[0] + dx, near_ankle[1] + 10 + (i % 2) * 2)
+            SR.place(img, _dust_piece(), _S(at), 0.0, f"dust{i}", min(1.0, pose.dust * (1.0 - i * 0.08)))
     if anim == "stomp" and pose.dust > 0.1:
-        sx, sy = near_ankle
-        box = (_s(sx - 78), _s(sy - 14), _s(sx + 88), _s(sy + 32))
-        draw.arc(box, 190, 350, fill=FX, width=_s(3.8))
+        SR.place(img, _arc_piece("stomp", (-78, -14, 88, 32), 190, 350, FX, 3.8), _S(near_ankle), 0.0, "stomp_fx", min(1.0, pose.dust))
 
     return _downsample(img)
 
