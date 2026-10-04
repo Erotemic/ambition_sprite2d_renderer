@@ -1847,6 +1847,14 @@ def _share_transformed_parts(flipbook: "PartFlipbook") -> "PartFlipbook":
         # P's own pivot lands where R's draw put the point ix, iy.
         dx, dy = p_img.pivot[0] - ix, p_img.pivot[1] - iy
         at = (d.at[0] + m[0] * dx + m[1] * dy, d.at[1] + m[2] * dx + m[3] * dy)
+        if op is None:
+            # The same pixels at another pivot: only the draw's place moves
+            # (recomposed, its turn and scale would come back a float off).
+            return _replace(d, part=src, at=at)
+        # A lossless transform of a draw scaled by +-1 is scaled by exactly +-1
+        # (the published table writes what it is given; a 0.9999999 would not
+        # read back as written).
+        sx, sy = (round(v) if abs(abs(v) - 1.0) < 1e-9 else v for v in (sx, sy))
         return _replace(d, part=src, at=at, rotation=theta, scale=(sx, sy))
 
     def shared_clips(sources):
