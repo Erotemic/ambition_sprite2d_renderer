@@ -65,3 +65,4 @@ godot/pose_editor/generated/
 # scenes/resources are disposable. Godot 4.4+ creates script UID sidecars on
 # first scan; no committed resource in this project depends on those UIDs.
 godot/pose_editor/**/*.gd.uid
+build
