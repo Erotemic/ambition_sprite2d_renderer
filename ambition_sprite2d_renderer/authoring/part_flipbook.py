@@ -28,7 +28,6 @@ a clip or a baked clip; the runtime refuses a flipbook that leaves a row out.
 
 from __future__ import annotations
 
-import hashlib
 import math
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
@@ -657,24 +656,11 @@ def _reduce_part(sprite: Image.Image, pivot: Tuple[float, float], factor: int, r
     frame it is painted on is reduced: padded by the filter's reach first, so
     its edge is not cut, then trimmed to what it covers plus ``PART_BORDER``.
 
-    ⭐ A RASTER AND ITS MIRROR REDUCE AS MIRRORS. The padding is a whole factor
-    from the LEFT edge, so a raster mirrored at full size reduced at another
-    phase and came out a different picture: robot v3's head, face and antennas
-    drawn turned round in `air_back` were stored a second time, a texel
-    smeared apart (2026-10-04). Each raster is reduced in whichever of its two
-    orientations has the lower digest, and the other is that reduction
-    mirrored, so the two are one part and a mirrored draw (lossless sharing).
-    Where a part lands is a fraction of a frame pixel anyway, so neither
-    phase is the frame's own."""
-    mirrored = sprite.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
-    if hashlib.sha1(mirrored.tobytes()).digest() < hashlib.sha1(sprite.tobytes()).digest():
-        small, (u, v) = _reduce_unmirrored(mirrored, (sprite.width - pivot[0], pivot[1]), factor, reduce)
-        return small.transpose(Image.Transpose.FLIP_LEFT_RIGHT), (small.width - u, v)
-    return _reduce_unmirrored(sprite, pivot, factor, reduce)
-
-
-def _reduce_unmirrored(sprite: Image.Image, pivot: Tuple[float, float], factor: int, reduce: Callable):
-    """``_reduce_part`` in the raster's own orientation.
+    ⛔ A RASTER IS REDUCED IN ITS OWN ORIENTATION. Reducing a mirrored raster as
+    the mirror of its twin's reduction (2026-10-04, reverted the same day) moved
+    the 4x sampling phase: Jeff Hinter's thin translucent armour strands came out
+    70 alpha levels denser than the frame and the publish refused it. Raster
+    dedup must prove equivalence under replay; this could not.
 
     ⛔ THE BORDER IS NOT WASTE. A continuous draw lands between pixels and is
     resampled, and a resampler reads past the last texel: PIL repeats the edge,

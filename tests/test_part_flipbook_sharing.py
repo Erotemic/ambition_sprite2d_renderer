@@ -203,23 +203,6 @@ def test_an_asymmetric_part_stays_whole():
     assert _split_symmetric_parts(flipbook, {("idle", 0): flipbook.recompose("idle", 0)}) is flipbook
 
 
-def test_a_raster_and_its_mirror_reduce_as_mirrors():
-    """A 4x part the rig draws turned round reduces to the mirror of its
-    reduction, at the mirrored pivot, whatever its width's phase (robot v3's
-    `air_back` head was stored twice, a texel apart)."""
-    from ambition_sprite2d_renderer.authoring.part_flipbook import _reduce_part
-
-    def reduce(image, size):
-        return image.resize(size, Image.Resampling.BOX)
-
-    for width in (36, 37, 38, 39):
-        art = _limb(1.0, width)
-        a, (ua, va) = _reduce_part(art, (10.0, 6.0), 4, reduce)
-        b, (ub, vb) = _reduce_part(art.transpose(Image.Transpose.FLIP_LEFT_RIGHT), (art.width - 10.0, 6.0), 4, reduce)
-        assert a.transpose(Image.Transpose.FLIP_LEFT_RIGHT).tobytes() == b.tobytes(), f"width {width}"
-        assert (ub, vb) == (a.width - ua, va)
-
-
 def test_a_squash_scales_about_the_pivot_row():
     from ambition_sprite2d_renderer.authoring.rigdoc import squashed_sprite
 
