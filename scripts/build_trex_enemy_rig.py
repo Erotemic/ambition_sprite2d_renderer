@@ -24,6 +24,8 @@ from pathlib import Path
 from typing import Callable, Dict, List, Tuple
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 PKG = ROOT / "ambition_sprite2d_renderer"
 SVG_PATH = PKG / "data" / "characters" / "trex_enemy" / "trex_enemy.svg"
 RIG_PATH = PKG / "targets" / "characters" / "rigged" / "trex_enemy" / "trex_enemy_side.rig.json"
@@ -525,7 +527,21 @@ def main(argv: List[str] | None = None) -> int:
     RIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     RIG_PATH.write_text(json.dumps(doc, indent=1) + "\n", encoding="utf8")
     print(RIG_PATH.relative_to(ROOT))
+    install_svg_catalog()
     return 0
+
+
+def install_svg_catalog() -> None:
+    """Refresh the SVG's embedded rig catalog (``svg_rig_tool``) from the rig
+    just written, so the SVG states the same skeleton the rig turns."""
+    from ambition_sprite2d_renderer.devtools import svg_rig_tool
+
+    catalog, quality = svg_rig_tool.catalog_from_rigdoc(RIG_PATH, SVG_PATH, used_view_ids=set())
+    svg_rig_tool.install_block(SVG_PATH, svg_rig_tool._serialize_character_block([catalog], {catalog.view_id: quality}))
+    problems = svg_rig_tool.validate(SVG_PATH)
+    if problems:
+        raise SystemExit(f"{SVG_PATH.name}: rig catalog does not validate: {problems}")
+    print(SVG_PATH.relative_to(ROOT))
 
 
 if __name__ == "__main__":
