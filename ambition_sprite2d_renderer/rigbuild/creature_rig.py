@@ -46,8 +46,9 @@ Skeleton = Callable[[Dict[str, Point]], List[BoneSpec]]
 class Leg:
     """A two-bone leg on IK: ``upper`` and ``lower`` reach the ``foot`` bone's
     origin, which the drawing marks with the joint ``ankle``. ``bend`` picks
-    the side the middle joint folds to (-1: a knee ahead of the hip-ankle
-    line when facing right; +1: an elbow behind it)."""
+    the side the middle joint folds to; the one that reproduces the drawn
+    joint at rest is the right one (a builder can check with
+    ``RigDocument.solve``)."""
 
     upper: str
     lower: str

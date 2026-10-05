@@ -707,8 +707,10 @@ def _render_sheet(renderer: MantisLancerRenderer, out_dir: Path):
 def render(out_dir: str | Path, **opts):
     """Render the mantis_lancer spritesheet bundle via the shared
     `sheet_build.build_sheet` pipeline (auto-cropped, with the
-    runtime-compatible YAML+RON shape). See `bear_mauler.render` for
-    the full rationale — same conversion."""
+    runtime-compatible YAML+RON shape): the union-bbox crop keeps every
+    frame one size while shedding the transparent margin the bespoke layout
+    baked in, and the sheet carries the ``body_metrics`` and per-row
+    ``rects`` the runtime's sheet registry parses."""
     from ...authoring.sheet_build import build_sheet
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
