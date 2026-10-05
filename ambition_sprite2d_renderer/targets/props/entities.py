@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable, Dict, Iterable, List, Tuple
@@ -159,15 +160,33 @@ def breakable_broken(d: ImageDraw.ImageDraw, s: float) -> None:
     d.ellipse(bbox(65 * s, 94 * s, 75 * s, 12 * s), fill=(0, 0, 0, 45))
 
 
+def _heart(cx: float, cy: float, size: float, steps: int = 72) -> List[Point]:
+    """A heart's outline (the classic parametric curve), centred on (cx, cy)
+    and ``size`` wide."""
+    k = size / 34.0
+    pts = []
+    for i in range(steps):
+        a = math.tau * i / steps
+        x = 16.0 * math.sin(a) ** 3
+        y = 13.0 * math.cos(a) - 5.0 * math.cos(2 * a) - 2.0 * math.cos(3 * a) - math.cos(4 * a)
+        pts.append((cx + x * k, cy - (y + 2.5) * k))
+    return pts
+
+
 def pickup_health(d: ImageDraw.ImageDraw, s: float) -> None:
-    draw_gem(d, (64, 58), 28, rgba("#38E983"), rgba("#0C2A1C"), s)
-    d.rounded_rectangle(
-        (57 * s, 43 * s, 71 * s, 73 * s), radius=3 * s, fill=rgba("#FFFFFF")
-    )
-    d.rounded_rectangle(
-        (49 * s, 51 * s, 79 * s, 65 * s), radius=3 * s, fill=rgba("#FFFFFF")
-    )
-    d.ellipse(bbox(64 * s, 93 * s, 43 * s, 10 * s), fill=(0, 0, 0, 36))
+    """A glossy red heart: inked outline, a darker lower edge, a light upper
+    body, a highlight on the left lobe and a glint."""
+    d.ellipse(bbox(64 * s, 96 * s, 46 * s, 9 * s), fill=(0, 0, 0, 45))
+    d.polygon(poly_scaled(_heart(64, 58, 72), s), fill=rgba("#3A0A14"))
+    d.polygon(poly_scaled(_heart(64, 58, 64), s), fill=rgba("#B3172F"))
+    d.polygon(poly_scaled(_heart(62.5, 55.5, 56), s), fill=rgba("#E8314A"))
+    d.polygon(poly_scaled(_heart(61, 53, 40), s), fill=rgba("#FF5A6E"))
+    # The highlight on the left lobe and a glint beside it.
+    d.ellipse(bbox(47 * s, 41 * s, 11 * s, 7 * s), fill=rgba("#FFD3DA"))
+    d.ellipse(bbox(59 * s, 37 * s, 3.4 * s, 3.4 * s), fill=rgba("#FFFFFF"))
+    gx, gy = 86.0, 32.0
+    d.polygon(poly_scaled([(gx, gy - 9), (gx + 2, gy - 2), (gx + 9, gy), (gx + 2, gy + 2), (gx, gy + 9),
+                           (gx - 2, gy + 2), (gx - 9, gy), (gx - 2, gy - 2)], s), fill=rgba("#FFFFFF", 235))
 
 
 def pickup_currency(d: ImageDraw.ImageDraw, s: float) -> None:
