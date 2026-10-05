@@ -1,5 +1,18 @@
 """Opaque right-facing green goblin target for side-scrolling games.
 
+The goblin's look is this module's drawing (an egg body and loincloth, a
+rigid big-eared head with a snout and a glowing eye, stick limbs, the held
+item, the archetype's accessories) and it is deliberately crude. Its MOVES
+are key poses in ``_goblin_moves.py`` (a full platform-fighter moveset: a
+stabbing jab string, tilts, smashes, aerials, specials, grabs and throws,
+shield and dodges, the damage, ledge, item and presentation rows) and its
+rows and fighter-category coverage are ``_goblin_motion.py``. A pose is laid
+out here (``_layout``: the whole goblin can turn about its body, legs plant
+by IK or tuck by angle, the weapon points anywhere) and drawn with the same
+primitives as before. Swing smears, sparks, dust and the rest are drawn from
+the pose's ``fx`` strengths, and ``attack_hitboxes`` measures each strike's
+volume from where the weapon (or boot, or teeth) is on its active frames.
+
 The ``blink_out`` and ``blink_in`` rows are Ambition's short-range teleport /
 precision-blink ability split into source and destination phases, not an eyelid
 blink.  The goblin remains fully opaque inside the character
@@ -14,8 +27,8 @@ from __future__ import annotations
 
 import math
 import random
-from dataclasses import asdict, dataclass
-from typing import Dict, Optional, Tuple
+from dataclasses import asdict, dataclass, field
+from typing import Dict, List, Optional, Tuple
 
 from PIL import Image, ImageColor, ImageDraw
 from ambition_sprite2d_renderer.core.draw import rgba, with_alpha, bbox_from_center as _bbox
@@ -26,6 +39,8 @@ from ...authoring.common_draw import RESAMPLING, draw_rotated_ellipse, draw_rota
 from ...authoring.generator import CharacterGenerator
 from ...authoring.rig import add, clamp, ease_in_out_sine, ease_out_cubic, lerp, smoothstep, vec
 from ...registry import CharacterJob
+from . import _goblin_moves as MOVES
+from ._goblin_motion import GOBLIN_ROWS
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
 Color = Tuple[int, int, int, int]
@@ -40,6 +55,33 @@ def parse_background(value: str) -> Optional[Color]:
     return None if str(value).lower() == "transparent" else rgba(str(value))
 
 
+
+
+def _rot(p: Point, degrees: float) -> Point:
+    """``p`` turned ``degrees`` clockwise on screen (y down)."""
+    r = math.radians(degrees)
+    return (p[0] * math.cos(r) - p[1] * math.sin(r), p[0] * math.sin(r) + p[1] * math.cos(r))
+
+
+def _hull(points) -> list:
+    """The convex hull of ``points`` (monotone chain)."""
+    pts = sorted(set((round(x, 2), round(y, 2)) for x, y in points))
+    if len(pts) <= 2:
+        return pts
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower, upper = [], []
+    for q in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], q) <= 0:
+            lower.pop()
+        lower.append(q)
+    for q in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], q) <= 0:
+            upper.pop()
+        upper.append(q)
+    return lower[:-1] + upper[:-1]
 
 
 def _paste_rotated_local(base: Image.Image, layer: Image.Image, center: Point, angle: float) -> None:
@@ -76,28 +118,39 @@ class GoblinSpec:
 
 @dataclass
 class GoblinPose:
-    root_x: float = 0.0
-    root_y: float = 0.0
-    body_bob: float = 0.0
-    body_tilt: float = 0.0
-    head_tilt: float = 0.0
-    crouch: float = 0.0
-    far_arm_upper: float = 136.0
-    far_arm_lower: float = 152.0
-    near_arm_upper: float = 28.0
-    near_arm_lower: float = 18.0
-    far_leg_upper: float = 92.0
-    far_leg_lower: float = 98.0
-    near_leg_upper: float = 62.0
-    near_leg_lower: float = 82.0
+    """One frame of the goblin, as ``_goblin_moves`` keys it (see that
+    module's docstring for each field). Angles are clockwise on screen."""
+
+    x: float = 0.0
+    y: float = 0.0
+    spin: float = 0.0
+    bx: float = 0.0
+    by: float = 0.0
+    tilt: float = 0.0
+    hx: float = 0.0
+    hy: float = 0.0
+    head: float = 0.0
+    nu: float = 28.0
+    nl: float = 18.0
+    fu: float = 136.0
+    fl: float = 152.0
+    wa: float = -18.0
+    wpn: float = 1.0
+    nleg: tuple = ("a", 62.0, 82.0)
+    fleg: tuple = ("a", 92.0, 98.0)
     blink: bool = False
-    eye_squint: float = 0.0
-    slash: float = 0.0
-    slash_arc: float = 0.0
-    recoil: float = 0.0
-    dash: float = 0.0
-    collapse: float = 0.0
+    squint: float = 0.0
     dead: bool = False
+    mouth: float = 0.0
+    #: The far arm drawn in front of the body (a grab, a held item, a punch).
+    fz: float = 0.0
+    fx: Dict[str, float] = field(default_factory=dict)
+
+    @classmethod
+    def from_moves(cls, values: Dict[str, object]) -> "GoblinPose":
+        fx = {k[3:]: float(v) for k, v in values.items() if k.startswith("fx.")}
+        fields_ = {k: v for k, v in values.items() if not k.startswith("fx.") and k in cls.__dataclass_fields__}
+        return cls(fx=fx, **fields_)
 
 
 class SideGoblinGenerator(CharacterGenerator):
@@ -108,23 +161,12 @@ class SideGoblinGenerator(CharacterGenerator):
     name = "goblin"
     target = "goblin"
 
+    #: Every row the goblin can publish (``_goblin_motion.GOBLIN_ROWS``); a
+    #: config's ``animations`` list picks which ones its sheet carries. The
+    #: rows ``blink_out`` / ``blink_in`` are Ambition's teleport (see the
+    #: module docstring).
     ANIMATIONS: Dict[str, Dict[str, int]] = {
-        "idle": {"frames": 8, "duration_ms": 120},
-        "walk": {"frames": 8, "duration_ms": 95},
-        "run": {"frames": 8, "duration_ms": 75},
-        "jump": {"frames": 6, "duration_ms": 95},
-        "fall": {"frames": 6, "duration_ms": 95},
-        "slash": {"frames": 7, "duration_ms": 75},
-        "hit": {"frames": 5, "duration_ms": 90},
-        "death": {"frames": 8, "duration_ms": 110},
-        # Ambition blink ability split into source/departure and destination/arrival.
-        "blink_out": {"frames": 6, "duration_ms": 62},
-        "blink_in": {"frames": 6, "duration_ms": 62},
-        "dash": {"frames": 6, "duration_ms": 65},
-        "talk": {"frames": 8, "duration_ms": 110},
-        "interact": {"frames": 6, "duration_ms": 90},
-        "celebrate": {"frames": 8, "duration_ms": 92},
-        "block": {"frames": 6, "duration_ms": 85},
+        name: {"frames": frames, "duration_ms": ms} for name, frames, ms in GOBLIN_ROWS
     }
 
     PALETTES = {
@@ -270,205 +312,28 @@ class SideGoblinGenerator(CharacterGenerator):
             tooth_size=rng.uniform(2.4, 3.2) * scale,
         )
 
-    def pose_for_animation(self, animation: str, frame_index: int, frame_count: int) -> GoblinPose:
-        p = GoblinPose()
-        t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
-        wave = math.sin(t * math.tau)
-        if animation == "idle":
-            bob = abs(wave)
-            p.body_bob = bob * 1.2
-            p.body_tilt = -2.0 + wave * 1.2
-            p.head_tilt = -3.0 + bob * 1.0
-            p.blink = frame_index == frame_count // 2
-            p.eye_squint = 0.10 if frame_index in {1, frame_count - 2} else 0.0
-        elif animation == "talk":
-            bob = abs(wave)
-            p.body_bob = bob * 0.9
-            p.head_tilt = -4.0 + wave * 3.0
-            p.near_arm_upper = 24.0 + wave * 10.0
-            p.near_arm_lower = -18.0 + wave * 8.0
-            p.far_arm_upper = 178.0 - wave * 7.0
-            p.far_arm_lower = 146.0
-            p.eye_squint = 0.06 + 0.06 * bob
-        elif animation == "interact":
-            reach = smoothstep(clamp(t / 0.55, 0.0, 1.0))
-            p.body_tilt = -4.0 * reach
-            p.head_tilt = -3.0 * reach
-            p.near_arm_upper = lerp(18.0, -20.0, reach)
-            p.near_arm_lower = lerp(8.0, -32.0, reach)
-        elif animation == "celebrate":
-            lift = math.sin(t * math.pi)
-            p.body_bob = -2.0 * lift
-            p.body_tilt = wave * 6.0
-            p.head_tilt = -wave * 5.0
-            p.near_arm_upper = -62.0 + wave * 8.0
-            p.near_arm_lower = -46.0
-            p.far_arm_upper = 214.0 - wave * 8.0
-            p.far_arm_lower = 210.0
-            p.eye_squint = 0.02
-        elif animation == "block":
-            p.body_tilt = -10.0
-            p.head_tilt = -8.0
-            p.near_arm_upper = -24.0
-            p.near_arm_lower = -52.0
-            p.far_arm_upper = 156.0
-            p.far_arm_lower = 188.0
-            p.eye_squint = 0.18
-        elif animation == "blink_out":
-            charge = smoothstep(clamp(t / 0.46, 0.0, 1.0))
-            burst = smoothstep(clamp((t - 0.30) / 0.48, 0.0, 1.0))
-            pulse = math.sin(t * math.pi)
-            p.root_x = -2.0 * charge - 2.0 * burst
-            p.root_y = 1.3 * charge - 1.8 * burst
-            p.body_bob = -1.0 * charge + 0.18 * pulse
-            p.body_tilt = -15.0 * charge - 11.0 * burst
-            p.head_tilt = -11.0 * charge - 3.0 * burst
-            p.far_arm_upper = 166.0 + 20.0 * charge
-            p.far_arm_lower = 170.0 + 18.0 * burst
-            p.near_arm_upper = -2.0 - 14.0 * charge
-            p.near_arm_lower = -4.0 - 16.0 * burst
-            p.far_leg_upper = 122.0 + 18.0 * charge
-            p.far_leg_lower = 76.0 + 15.0 * charge
-            p.near_leg_upper = 92.0 + 16.0 * charge
-            p.near_leg_lower = 68.0 + 12.0 * charge
-            p.eye_squint = 0.22 + 0.14 * pulse + 0.14 * burst
-        elif animation == "blink_in":
-            appear = smoothstep(clamp(t / 0.60, 0.0, 1.0))
-            settle = ease_out_cubic(appear)
-            recoil = 1.0 - settle
-            pulse = math.sin(t * math.pi)
-            p.root_x = 4.8 * recoil
-            p.root_y = 1.8 * recoil - 1.6 * pulse * recoil
-            p.body_bob = -0.9 * recoil + 0.16 * pulse
-            p.body_tilt = 16.0 * recoil - 4.0 * settle
-            p.head_tilt = 10.0 * recoil - 2.0 * settle
-            p.far_arm_upper = 184.0 - 28.0 * settle
-            p.far_arm_lower = 176.0 - 18.0 * settle
-            p.near_arm_upper = 34.0 - 20.0 * settle
-            p.near_arm_lower = 26.0 - 18.0 * settle
-            p.far_leg_upper = 128.0 - 26.0 * settle
-            p.far_leg_lower = 84.0 + 10.0 * recoil
-            p.near_leg_upper = 104.0 - 22.0 * settle
-            p.near_leg_lower = 76.0 + 12.0 * recoil
-            p.eye_squint = 0.28 + 0.18 * recoil
-        elif animation in {"walk", "run"}:
-            stride = math.sin(t * math.tau)
-            bounce = (1.0 - math.cos(t * math.tau * 2.0)) * 0.5
-            amp = 18 if animation == "walk" else 26
-            arm_amp = 10 if animation == "walk" else 16
-            p.root_x = stride * (1.0 if animation == "walk" else 1.6)
-            p.body_bob = 0.6 + bounce * (1.8 if animation == "walk" else 2.5)
-            p.body_tilt = -6.0 - (2.0 if animation == "run" else 0.0) - stride * 4.0
-            p.head_tilt = -4.0 - bounce * 2.0
-            p.far_arm_upper = 140 + stride * arm_amp
-            p.far_arm_lower = 152 + stride * (arm_amp * 0.6)
-            p.near_arm_upper = 24 - stride * arm_amp
-            p.near_arm_lower = 18 - stride * (arm_amp * 0.6)
-            p.far_leg_upper = 90 + stride * amp
-            p.far_leg_lower = 96 - max(0.0, stride) * 18 + max(0.0, -stride) * 8
-            p.near_leg_upper = 60 - stride * amp
-            p.near_leg_lower = 82 - max(0.0, -stride) * 18 + max(0.0, stride) * 8
-            p.eye_squint = 0.08 + bounce * 0.10
-        elif animation == "jump":
-            arc = math.sin(t * math.pi)
-            lift = ease_in_out_sine(arc)
-            p.root_y = -18 * lift
-            p.body_tilt = -5.0 + lift * 3.0
-            p.head_tilt = -6.0
-            p.crouch = 0.4 * (1.0 - lift)
-            p.far_arm_upper = 160 - 18 * lift
-            p.far_arm_lower = 142 - 12 * lift
-            p.near_arm_upper = 12 + 18 * lift
-            p.near_arm_lower = 6 + 12 * lift
-            p.far_leg_upper = 118
-            p.far_leg_lower = 70
-            p.near_leg_upper = 86
-            p.near_leg_lower = 58
-            p.eye_squint = 0.08
-        elif animation == "fall":
-            p.root_y = -10 + t * 8
-            p.body_tilt = 4.0 + 8.0 * t
-            p.head_tilt = 2.0
-            p.far_arm_upper = 175 - 10 * t
-            p.far_arm_lower = 162 - 12 * t
-            p.near_arm_upper = 6 + 8 * t
-            p.near_arm_lower = 10 + 6 * t
-            p.far_leg_upper = 124 - 6 * t
-            p.far_leg_lower = 126 - 18 * t
-            p.near_leg_upper = 88 - 4 * t
-            p.near_leg_lower = 110 - 14 * t
-            p.eye_squint = 0.14
-        elif animation == "slash":
-            wind = 1.0 - smoothstep(clamp(t / 0.32, 0.0, 1.0))
-            strike = smoothstep(clamp((t - 0.28) / 0.36, 0.0, 1.0))
-            p.root_x = -1.0 * wind + 3.0 * strike
-            p.body_tilt = -10.0 * wind + 16.0 * strike
-            p.head_tilt = -4.0 + 6.0 * strike
-            p.far_arm_upper = 150
-            p.far_arm_lower = 164
-            p.near_arm_upper = -24 - 18 * wind + 42 * strike
-            p.near_arm_lower = -14 - 16 * wind + 30 * strike
-            p.far_leg_upper = 96 + 10 * strike
-            p.far_leg_lower = 96
-            p.near_leg_upper = 54 - 8 * wind
-            p.near_leg_lower = 82
-            p.slash = max(0.2, wind, strike)
-            p.slash_arc = strike
-            p.eye_squint = 0.24 + strike * 0.20
-        elif animation == "hit":
-            j = abs(math.sin(t * math.pi * 2.0))
-            p.root_x = -4.0 * j
-            p.root_y = 2.0 * j
-            p.body_tilt = -16.0 * j
-            p.head_tilt = -18.0 * j
-            p.far_arm_upper = 175
-            p.far_arm_lower = 165
-            p.near_arm_upper = 40
-            p.near_arm_lower = 55
-            p.far_leg_upper = 112
-            p.far_leg_lower = 110
-            p.near_leg_upper = 86
-            p.near_leg_lower = 96
-            p.recoil = j
-            p.eye_squint = 0.45
-        elif animation == "dash":
-            surge = ease_in_out_sine(t)
-            p.root_x = 5.5 + surge * 3.0
-            p.body_tilt = -17.0 + wave * 1.0
-            p.head_tilt = -8.0
-            p.far_arm_upper = 166 + wave * 2
-            p.far_arm_lower = 160 + wave * 2
-            p.near_arm_upper = 152 + wave * 2
-            p.near_arm_lower = 148 + wave * 2
-            p.far_leg_upper = 144 + wave * 2
-            p.far_leg_lower = 148 + wave * 2
-            p.near_leg_upper = 126 + wave * 2
-            p.near_leg_lower = 132 + wave * 2
-            p.dash = 1.0
-            p.eye_squint = 0.32
-        elif animation == "death":
-            fall = ease_out_cubic(t)
-            p.root_x = lerp(0.0, -5.0, fall)
-            p.root_y = lerp(0.0, 4.0, fall)
-            p.body_tilt = lerp(0.0, 74.0, fall)
-            p.head_tilt = lerp(0.0, 58.0, fall)
-            p.far_arm_upper = lerp(140.0, 206.0, fall)
-            p.far_arm_lower = lerp(152.0, 232.0, fall)
-            p.near_arm_upper = lerp(28.0, 92.0, fall)
-            p.near_arm_lower = lerp(18.0, 118.0, fall)
-            p.far_leg_upper = lerp(90.0, 150.0, fall)
-            p.far_leg_lower = lerp(96.0, 166.0, fall)
-            p.near_leg_upper = lerp(60.0, 110.0, fall)
-            p.near_leg_lower = lerp(82.0, 142.0, fall)
-            p.collapse = fall
-            p.dead = True
-            p.eye_squint = 0.60
-        return p
+    def sample_spec(self, job: CharacterJob) -> GoblinSpec:
+        # Remembered so ``attack_hitboxes`` (which the sheet asks for by frame
+        # size alone) measures this goblin's own limbs and weapon.
+        spec = super().sample_spec(job)
+        self._last_spec = spec
+        return spec
 
-    def _draw_body(self, img: Image.Image, center: Point, spec: GoblinSpec, pal: Dict[str, Color], S: float, angle: float) -> None:
+    def pose_for_animation(self, animation: str, frame_index: int, frame_count: int) -> GoblinPose:
+        return self.pose_at(animation, MOVES.clip_time(animation, frame_index, frame_count))
+
+    def pose_at(self, animation: str, t: float) -> GoblinPose:
+        """The goblin's pose at clip time ``t`` (``_goblin_moves``)."""
+        return GoblinPose.from_moves(MOVES.pose(animation, t))
+
+    def _draw_body(self, img: Image.Image, center: Point, spec: GoblinSpec, pal: Dict[str, Color], S: float, angle: float,
+                   spin: float = 0.0) -> None:
+        """The body egg (``angle`` counter-clockwise, as before) with its belly
+        and loincloth, the whole turned clockwise by ``spin``."""
         outline = pal["outline"]
         draw_rotated_ellipse(img, center, (spec.body_w * S, spec.body_h * S), angle, pal["skin"], outline, 1.7 * S)
-        draw_rotated_ellipse(img, (center[0] + 2 * S, center[1] + 2 * S), (spec.body_w * 0.58 * S, spec.body_h * 0.60 * S), angle, pal["belly"], None, 0)
+        bx, by = _rot((2 * S, 2 * S), spin)
+        draw_rotated_ellipse(img, (center[0] + bx, center[1] + by), (spec.body_w * 0.58 * S, spec.body_h * 0.60 * S), angle, pal["belly"], None, 0)
         # Opaque cloth silhouette over body: one piece riding the body centre.
         local = 20 * S
 
@@ -479,17 +344,19 @@ class SideGoblinGenerator(CharacterGenerator):
             d.line([cloth[0], cloth[2]], fill=pal["cloth_dark"], width=max(1, int(1.2 * S)))
 
         part = shape_rig.piece(("goblin_cloth", pal["cloth"], pal["cloth_dark"], outline, S), (2 * local, 2 * local), (local, local), paint)
-        shape_rig.place(img, part, center, 0.0, "cloth")
+        shape_rig.place(img, part, center, spin, "cloth")
 
-    def _draw_rigid_head(self, img: Image.Image, center: Point, spec: GoblinSpec, pal: Dict[str, Color], S: float, angle: float, blink: bool, squint: float, dead: bool) -> Point:
+    def _draw_rigid_head(self, img: Image.Image, center: Point, spec: GoblinSpec, pal: Dict[str, Color], S: float, angle: float, blink: bool, squint: float, dead: bool, mouth: float = 0.0) -> Point:
         pad = int(math.ceil(54 * S))
-        squint = round(squint, 2)
-        key = ("goblin_head", spec, spec.palette_name, S, blink, squint, dead)
-        layer, _pivot = shape_rig.piece(key, (pad * 2, pad * 2), (pad, pad), lambda d: self._paint_head(d, pad, spec, pal, S, blink, squint, dead))
+        squint = round(squint * 10.0) / 10.0
+        # Three jaw states (shut, open, gaping) keep the head pieces few.
+        mouth = round(min(1.0, max(0.0, mouth)) * 2.0) / 2.0
+        key = ("goblin_head", spec, spec.palette_name, S, blink, squint, dead, mouth)
+        layer, _pivot = shape_rig.piece(key, (pad * 2, pad * 2), (pad, pad), lambda d: self._paint_head(d, pad, spec, pal, S, blink, squint, dead, mouth))
         _paste_rotated_local(img, layer, center, angle)
         return (center[0] + spec.head_w * 0.42 * S + 6 * S, center[1] + 0.5 * S)
 
-    def _paint_head(self, d, pad: int, spec: GoblinSpec, pal: Dict[str, Color], S: float, blink: bool, squint: float, dead: bool) -> None:
+    def _paint_head(self, d, pad: int, spec: GoblinSpec, pal: Dict[str, Color], S: float, blink: bool, squint: float, dead: bool, mouth: float = 0.0) -> None:
         """The head in its own frame, centred on ``(pad, pad)``."""
         layer = d._img
         cx, cy = float(pad), float(pad)
@@ -532,7 +399,17 @@ class SideGoblinGenerator(CharacterGenerator):
         # Mouth and teeth.
         mouth_a = (snout_center[0] - 3 * S, snout_center[1] + 3 * S)
         mouth_b = (snout_center[0] + 5 * S, snout_center[1] + 3.5 * S)
-        d.line([mouth_a, mouth_b], fill=pal["mouth"], width=max(1, int(1.1 * S)))
+        if mouth > 0.0:
+            # The jaw dropped: a crude dark wedge, the fang still hanging from
+            # the top lip and a stub of a tooth coming up from the bottom.
+            drop = (3.0 + 4.0 * mouth) * S
+            jaw = [(mouth_a[0] - 1 * S, mouth_a[1] - 0.5 * S), (mouth_b[0] + 1 * S, mouth_b[1] - 1 * S),
+                   (mouth_b[0] - 1 * S, mouth_b[1] + drop), (mouth_a[0] + 1 * S, mouth_a[1] + drop * 0.8)]
+            d.polygon(jaw, fill=pal["mouth"], outline=outline)
+            bottom = (mouth_b[0] - 3 * S, mouth_b[1] + drop * 0.9)
+            d.polygon([(bottom[0] - 0.9 * S, bottom[1]), (bottom[0] + 0.9 * S, bottom[1]), (bottom[0], bottom[1] - spec.tooth_size * 0.8 * S)], fill=pal["tooth"], outline=outline)
+        else:
+            d.line([mouth_a, mouth_b], fill=pal["mouth"], width=max(1, int(1.1 * S)))
         d.polygon([(mouth_a[0] + 1 * S, mouth_a[1]), (mouth_a[0] + 2.7 * S, mouth_a[1]), (mouth_a[0] + 1.9 * S, mouth_a[1] + spec.tooth_size * S)], fill=pal["tooth"], outline=outline)
 
 
@@ -598,10 +475,9 @@ class SideGoblinGenerator(CharacterGenerator):
             d.line([handle, tip], fill=pal["outline"], width=max(1, int(3.4 * S)))
             d.line([handle, tip], fill=pal["metal"], width=max(1, int(1.7 * S)))
 
-    def _place_weapon(self, img: Image.Image, hand: Point, spec: GoblinSpec, pal: Dict[str, Color], S: float, slash_arc: float) -> None:
-        """The held item as one piece: painted once at the neutral swing
-        (``slash_arc`` 0.5, angle 0) and turned about the hand to the swing's
-        angle."""
+    def _place_weapon(self, img: Image.Image, hand: Point, spec: GoblinSpec, pal: Dict[str, Color], S: float, angle: float) -> None:
+        """The held item as one piece: painted once pointing straight ahead
+        and turned about the hand to ``angle`` (clockwise, the pose's ``wa``)."""
         reach = 48 * S
         part = shape_rig.piece(
             ("goblin_weapon", spec.held_item.lower(), spec.palette_name, S),
@@ -609,9 +485,9 @@ class SideGoblinGenerator(CharacterGenerator):
             (reach, reach),
             lambda d: self._draw_weapon(d, (reach, reach), spec, pal, S, 0.5),
         )
-        shape_rig.place(img, part, hand, -18 + slash_arc * 36, "weapon")
+        shape_rig.place(img, part, hand, angle, "weapon")
 
-    def _place_variant_accessories(self, img: Image.Image, spec: GoblinSpec, pal: Dict[str, Color], S: float, body_center: Point, head_center: Point) -> None:
+    def _place_variant_accessories(self, img: Image.Image, spec: GoblinSpec, pal: Dict[str, Color], S: float, body_center: Point, head_center: Point, body_angle: float = 0.0, head_angle: float = 0.0) -> None:
         """The archetype's accessories as two pieces, one riding the head and
         one the body: each is the accessory painter with the other anchor far
         off its canvas, so only its own items land."""
@@ -627,7 +503,7 @@ class SideGoblinGenerator(CharacterGenerator):
                     d, spec, pal, S, 0.0, 0.0, local if which == "body" else away, local if which == "head" else away
                 ),
             )
-            shape_rig.place(img, part, at, 0.0, f"{which}_accessories")
+            shape_rig.place(img, part, at, head_angle if which == "head" else body_angle, f"{which}_accessories")
 
     def _draw_blink_out_fx(self, img: Image.Image, root_x: float, ground_y: float, S: float, frame_index: int, frame_count: int, pal: Dict[str, Color]) -> None:
         d = blending_draw(img)
@@ -776,6 +652,310 @@ class SideGoblinGenerator(CharacterGenerator):
             d.rounded_rectangle((body_center[0] - 20*S, body_center[1] - 3*S, body_center[0] - 9*S, body_center[1] + 15*S), radius=3*S, fill=pal["metal"], outline=outline, width=max(1, int(1*S)))
             d.ellipse((head_center[0] + 12*S, head_center[1] - 25*S, head_center[0] + 19*S, head_center[1] - 18*S), fill=pal["eye_glow"], outline=outline, width=max(1, int(0.8*S)))
 
+    # --- layout -----------------------------------------------------------------------
+
+    #: The body's centre above the ground, and the head / hips / shoulders
+    #: about it, in 128-frame units (the goblin as it was always drawn).
+    BODY_UP = 37.0
+    HEAD_AT = (16.0, -25.0)
+    HIPS = {"far": (-5.0, 9.0), "near": (7.0, 9.0)}
+    SHOULDERS = {"far": (-8.0, -7.0), "near": (8.0, -7.0)}
+    BASE_X, GROUND = 60.0, 101.0
+    #: Kicks hit with the near foot, the bite with the snout.
+    KICKS = frozenset({"attack_down", "air_back", "air_down"})
+    BITES = frozenset({"pummel", "dash_attack"})
+    PUNCHES = frozenset({"jab_2"})
+    #: Rows whose speed lines stream vertically.
+    VERTICAL = frozenset({"air_down", "spring_pounce", "meteor"})
+
+    def _layout(self, spec: GoblinSpec, p: GoblinPose, S: float) -> Dict[str, object]:
+        """Every joint of the goblin for pose ``p``, in canvas pixels."""
+        ground = self.GROUND * S
+        root = ((self.BASE_X + p.x) * S, ground + p.y * S)
+        body = (root[0] + p.bx * S, root[1] + (-self.BODY_UP + p.by) * S)
+
+        def at(off: Point) -> Point:
+            ox, oy = _rot((off[0] * S, off[1] * S), p.spin)
+            return (body[0] + ox, body[1] + oy)
+
+        out: Dict[str, object] = {"body": body, "ground": ground, "S": S}
+        out["head"] = at((self.HEAD_AT[0] + p.hx, self.HEAD_AT[1] + p.hy))
+        for side in ("far", "near"):
+            shoulder = at(self.SHOULDERS[side])
+            u, l = (p.nu, p.nl) if side == "near" else (p.fu, p.fl)
+            elbow, hand = self._limb_chain(shoulder, spec.arm_upper * S, spec.arm_lower * S, u, l)
+            out[f"{side}_arm"] = (shoulder, elbow, hand)
+            hip = at(self.HIPS[side])
+            leg = p.nleg if side == "near" else p.fleg
+            knee, ankle, planted = self._leg(spec, hip, leg, S, ground)
+            out[f"{side}_leg"] = (hip, knee, ankle, planted)
+        return out
+
+    def _ankle_for(self, spec: GoblinSpec, hip: Point, leg, S: float, ground: float) -> Tuple[Point, bool]:
+        mode = leg[0]
+        if mode == "g":
+            lift = (2.0 + spec.foot_h * 0.5 + float(leg[2])) * S
+            return ((self.BASE_X + float(leg[1])) * S, ground - lift), True
+        if mode == "a":
+            _knee, ankle = self._limb_chain(hip, spec.leg_upper * S, spec.leg_lower * S, float(leg[1]), float(leg[2]))
+            return ankle, False
+        # ("mix", leg_a, leg_b, u): both placed, then blended.
+        (pa, ga), (pb, gb) = self._ankle_for(spec, hip, leg[1], S, ground), self._ankle_for(spec, hip, leg[2], S, ground)
+        u = float(leg[3])
+        return (pa[0] + (pb[0] - pa[0]) * u, pa[1] + (pb[1] - pa[1]) * u), (gb if u >= 0.5 else ga)
+
+    def _leg(self, spec: GoblinSpec, hip: Point, leg, S: float, ground: float) -> Tuple[Point, Point, bool]:
+        if leg[0] == "a":
+            knee, ankle = self._limb_chain(hip, spec.leg_upper * S, spec.leg_lower * S, float(leg[1]), float(leg[2]))
+            return knee, ankle, False
+        ankle, planted = self._ankle_for(spec, hip, leg, S, ground)
+        knee, _a1, _a2 = self._solve_leg_ik(hip, ankle, spec.leg_upper * S, spec.leg_lower * S, bend_sign=1.0)
+        return knee, ankle, planted
+
+    def _weapon_reach(self, spec: GoblinSpec) -> float:
+        """How far the held item reaches from the fist (128-frame units)."""
+        return {"spear": 29.0, "staff": 29.0, "sword": 25.0, "hammer": 26.0, "bow": 23.0}.get(spec.held_item.lower(), 19.0)
+
+    def _strike_points(self, spec: GoblinSpec, animation: str, p: GoblinPose, S: float) -> List[Point]:
+        """What hits on this frame: the weapon from fist to tip, or the boot
+        of a kick, or the snout of a bite."""
+        lay = self._layout(spec, p, S)
+        if animation in self.KICKS:
+            _hip, knee, ankle, _ = lay["near_leg"]
+            return [knee, ankle, add(ankle, vec(spec.foot_w * S, p.spin + 5.0))]
+        if animation in self.BITES:
+            hx, hy = lay["head"]
+            return [(hx + 12 * S, hy), (hx + 20 * S, hy + 4 * S)]
+        if animation in self.PUNCHES:
+            _shoulder, elbow, fist = lay["far_arm"]
+            return [elbow, fist]
+        hand = lay["near_arm"][2]
+        reach = self._weapon_reach(spec) * S
+        return [add(hand, vec(reach * k, p.wa)) for k in (0.3, 0.65, 1.0)]
+
+    # --- effects ------------------------------------------------------------------------
+
+    def _blit(self, img: Image.Image, key: tuple, size: Tuple[float, float], pivot: Point, paint, at: Point,
+              degrees: float = 0.0, opacity: float = 1.0, name: str = "fx") -> None:
+        """One effect glyph, painted once (cached by ``key``) and placed."""
+        if opacity <= 0.02:
+            return
+        image, piv = shape_rig.piece(key, (int(math.ceil(size[0])), int(math.ceil(size[1]))), pivot, paint)
+        rigdoc.blit_rotated(img, image, piv, at, degrees, min(1.0, opacity), part_name=name)
+
+    def _fx_behind(self, img: Image.Image, spec: GoblinSpec, animation: str, frame_index: int, frame_count: int,
+                   p: GoblinPose, lay: Dict[str, object], S: float, pal: Dict[str, Color]) -> None:
+        fx = p.fx
+        body = lay["body"]
+        if fx.get("shield", 0.0) > 0.02:
+            r = 30 * S
+            self._blit(img, ("goblin_fx_shield", pal["eye"], S), (2 * r + 4, 2 * r + 4), (r + 2, r + 2),
+                       lambda d: (d.ellipse((2, 2, 2 * r + 2, 2 * r + 2), fill=with_alpha(pal["eye"], 70),
+                                            outline=with_alpha(pal["eye_glow"], 220), width=max(1, int(1.6 * S)))),
+                       (body[0] + 2 * S, body[1] - 6 * S), 0.0, fx["shield"], "shield")
+        trail = fx.get("trail", 0.0)
+        if trail > 0.02 and p.wpn > 0.5 and animation not in MOVES.GOBLIN_LOOPS:
+            self._draw_trail(img, spec, animation, frame_index, frame_count, S, pal, trail)
+
+    def _draw_trail(self, img, spec, animation, frame_index, frame_count, S, pal, strength) -> None:
+        """The smear the weapon tip swept since the last frame: a fan of
+        translucent wedges fading toward where it was."""
+        if frame_count < 2 or frame_index == 0:
+            return
+        t = MOVES.clip_time(animation, frame_index, frame_count)
+        dt = 1.0 / (frame_count - 1)
+        reach = self._weapon_reach(spec) * S
+        outer, inner = [], []
+        for k in range(6, -1, -1):
+            q = self.pose_at(animation, max(0.0, t - dt * k / 6.0))
+            hand = self._layout(spec, q, S)["near_arm"][2]
+            outer.append(add(hand, vec(reach, q.wa)))
+            inner.append(add(hand, vec(reach * 0.45, q.wa)))
+        span = sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(outer, outer[1:]))
+        if span < 6 * S:
+            return
+        layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        d = blending_draw(layer)
+        n = len(outer) - 1
+        for k in range(n):
+            alpha = int(150 * min(1.0, strength) * (k + 1) / n)
+            d.polygon([outer[k], outer[k + 1], inner[k + 1], inner[k]], fill=with_alpha(pal["eye_glow"], alpha))
+        d.line(outer[n // 2:], fill=with_alpha(pal["eye"], int(220 * min(1.0, strength))), width=max(1, int(1.6 * S)))
+        rigdoc.composite_layer(img, layer, name="trail")
+
+    def _fx_front(self, img: Image.Image, spec: GoblinSpec, animation: str, frame_index: int, frame_count: int,
+                  p: GoblinPose, lay: Dict[str, object], S: float, pal: Dict[str, Color]) -> None:
+        fx = p.fx
+        body, ground, head = lay["body"], lay["ground"], lay["head"]
+        t = MOVES.clip_time(animation, frame_index, frame_count)
+        outline = pal["outline"]
+        spark = fx.get("spark", 0.0)
+        if spark > 0.02:
+            # On the blade, not past its tip: where the hit lands.
+            pts = self._strike_points(spec, animation, p, S)
+            at = pts[-2] if len(pts) > 2 else pts[-1]
+            r = 9 * S
+
+            def star(d, r=r):
+                pts = []
+                for k in range(16):
+                    ang = math.radians(k * 22.5)
+                    rr = r if k % 2 == 0 else r * 0.38
+                    pts.append((r + 2 + math.cos(ang) * rr, r + 2 + math.sin(ang) * rr))
+                d.polygon(pts, fill=with_alpha(pal["eye_glow"], 255), outline=with_alpha(pal["eye"], 255))
+
+            self._blit(img, ("goblin_fx_spark", pal["eye"], S), (2 * r + 4, 2 * r + 4), (r + 2, r + 2), star, at,
+                       22.5 * (frame_index % 2), spark, "spark")
+        charge = fx.get("charge", 0.0)
+        if charge > 0.02 and p.wpn > 0.5:
+            hand = lay["near_arm"][2]
+            at = add(hand, vec(self._weapon_reach(spec) * S, p.wa))
+            r = 7 * S
+            self._blit(img, ("goblin_fx_charge", pal["eye"], S), (2 * r + 4, 2 * r + 4), (r + 2, r + 2),
+                       lambda d: (d.ellipse((2, 2, 2 * r + 2, 2 * r + 2), outline=with_alpha(pal["eye"], 255), width=max(1, int(1.6 * S))),
+                                  d.line([(r + 2, 2), (r + 2, 2 * r + 2)], fill=with_alpha(pal["eye_glow"], 255), width=max(1, int(1.0 * S))),
+                                  d.line([(2, r + 2), (2 * r + 2, r + 2)], fill=with_alpha(pal["eye_glow"], 255), width=max(1, int(1.0 * S)))),
+                       at, 360.0 * t, charge, "charge")
+        dust = fx.get("dust", 0.0)
+        if dust > 0.02:
+            for side, fade in (("near", 1.0), ("far", 0.8)):
+                ankle = lay[f"{side}_leg"][2]
+                self._dust(img, (ankle[0] + 3 * S, min(ground, ankle[1] + 5 * S)), S, dust * fade, f"{side}_dust")
+        shock = fx.get("shock", 0.0)
+        if shock > 0.02:
+            x = self._strike_points(spec, animation, p, S)[-1][0] if p.wpn > 0.5 else body[0] + 14 * S
+            rx, ry = 20 * S, 3.5 * S
+            self._blit(img, ("goblin_fx_shock", pal["eye"], S), (2 * rx + 4, 2 * ry + 4), (rx + 2, ry + 2),
+                       lambda d: d.ellipse((2, 2, 2 * rx + 2, 2 * ry + 2), outline=with_alpha(pal["eye"], 230), width=max(1, int(1.4 * S))),
+                       (x, ground), 0.0, shock, "shock")
+        hit = fx.get("hit", 0.0)
+        if hit > 0.02:
+            r = 10 * S
+
+            def burst(d, r=r):
+                pts = []
+                for k in range(16):
+                    ang = math.radians(k * 22.5 - 90)
+                    rr = r if k % 2 == 0 else r * 0.4
+                    pts.append((r + 2 + math.cos(ang) * rr, r + 2 + math.sin(ang) * rr))
+                d.polygon(pts, fill=(255, 236, 120, 255), outline=outline)
+
+            self._blit(img, ("goblin_fx_hit", S), (2 * r + 4, 2 * r + 4), (r + 2, r + 2), burst,
+                       (body[0] + 8 * S, body[1] - 4 * S), 0.0, hit, "hit")
+        flash = fx.get("flash", 0.0)
+        if flash > 0.02:
+            r = 22 * S
+            self._blit(img, ("goblin_fx_flash", S), (2 * r + 4, 2 * r + 4), (r + 2, r + 2),
+                       lambda d: d.ellipse((2, 2, 2 * r + 2, 2 * r + 2), outline=(255, 255, 255, 255), width=max(1, int(2.0 * S))),
+                       body, 0.0, flash, "flash")
+        stars = fx.get("stars", 0.0)
+        if stars > 0.02:
+            for k in range(3):
+                ang = math.tau * (k / 3.0 + t)
+                at = (head[0] + 12 * S * math.cos(ang), head[1] - 16 * S + 4 * S * math.sin(ang))
+                self._small_star(img, at, S, pal, stars, f"star{k}")
+        if animation == "sleep" or fx.get("zzz", 0.0) > 0.02:
+            for k in range(2):
+                u = (t + k / 2.0) % 1.0
+                at = (head[0] + 6 * S + 6 * S * u, head[1] - 16 * S - 14 * S * u)
+                self._blit(img, ("goblin_fx_z", S), (10 * S, 10 * S), (5 * S, 5 * S),
+                           lambda d: d.line([(2 * S, 2 * S), (8 * S, 2 * S), (2 * S, 8 * S), (8 * S, 8 * S)],
+                                            fill=(220, 240, 255, 255), width=max(1, int(1.4 * S))),
+                           at, -10.0, math.sin(math.pi * u), f"z{k}")
+        rock = fx.get("rock", 0.0)
+        if 0.0 < rock < 0.999:
+            q = self.pose_at(animation, 0.5)
+            start = self._layout(spec, q, S)["far_arm"][2]
+            at = (start[0] + 42 * S * rock, start[1] - 18 * S * math.sin(math.pi * rock) + 10 * S * rock)
+            r = 3.5 * S
+            self._blit(img, ("goblin_fx_rock", S), (2 * r + 4, 2 * r + 4), (r + 2, r + 2),
+                       lambda d: d.polygon([(2, r + 2), (r, 2), (2 * r + 2, r), (2 * r, 2 * r + 2), (r - 1, 2 * r + 2)],
+                                           fill=(128, 118, 104, 255), outline=outline),
+                       at, 300.0 * rock, 1.0, "rock")
+        elif rock >= 0.999:
+            pass
+        if fx.get("rock", 0.0) > 0.0 and fx.get("rock", 0.0) < 0.05:
+            # Still in the fist.
+            pass
+        mound = fx.get("mound", 0.0)
+        if mound > 0.02:
+            w, h = 30 * S, 12 * S
+            self._blit(img, ("goblin_fx_mound", S), (2 * w + 4, h + 4 * S + 4), (w + 2, h * 0.5 + 2),
+                       lambda d: (d.pieslice((2, 2, 2 * w + 2, 2 * h + 2), 180, 360, fill=(110, 82, 56, 255), outline=outline),
+                                  d.rectangle((2, h + 2, 2 * w + 2, h + 4 * S + 2), fill=(110, 82, 56, 255))),
+                       (body[0], ground - h * 0.5 + 2 * S), 0.0, mound, "mound")
+
+    def _dust(self, img, at: Point, S: float, opacity: float, name: str) -> None:
+        r = 5 * S
+
+        def paint(d, r=r):
+            for dx, dy, k in ((-3, 1, 0.8), (0, -1, 1.0), (3, 1, 0.8)):
+                rr = r * k
+                cx, cy = 2 * r + dx * S, r + dy * S
+                d.ellipse((cx - rr, cy - rr * 0.7, cx + rr, cy + rr * 0.7), fill=(176, 150, 108, 200))
+
+        self._blit(img, ("goblin_fx_dust", S), (4 * r, 2 * r), (2 * r, r), paint, at, 0.0, opacity, name)
+
+    def _small_star(self, img, at: Point, S: float, pal, opacity: float, name: str) -> None:
+        r = 3.5 * S
+
+        def paint(d, r=r):
+            pts = []
+            for k in range(10):
+                ang = math.radians(k * 36 - 90)
+                rr = r if k % 2 == 0 else r * 0.45
+                pts.append((r + 2 + math.cos(ang) * rr, r + 2 + math.sin(ang) * rr))
+            d.polygon(pts, fill=(255, 214, 92, 255), outline=pal["outline"])
+
+        self._blit(img, ("goblin_fx_star", S), (2 * r + 4, 2 * r + 4), (r + 2, r + 2), paint, at, 0.0, opacity, name)
+
+    # --- hit volumes ----------------------------------------------------------------------
+
+    def attack_hitboxes(self, size: Tuple[int, int]) -> Dict[str, Dict[str, object]]:
+        """Each strike row's volume, measured from where the weapon (or boot,
+        or teeth) actually is on its active frames, in source-canvas pixels.
+        The first active frame counts only the last 30% of its approach (the
+        rest is still the wind-up); a strike already under way counts all of
+        it."""
+        spec = getattr(self, "_last_spec", None)
+        if spec is None:
+            return {}
+        S = size[0] / 128.0
+        out: Dict[str, Dict[str, object]] = {}
+        for name, frames, _ms in GOBLIN_ROWS:
+            if name in MOVES.GOBLIN_LOOPS or name not in MOVES.MOVES:
+                continue
+            dt = 1.0 / max(1, frames - 1)
+            active: List[int] = []
+            points: List[Point] = []
+            for i in range(frames):
+                t = MOVES.clip_time(name, i, frames)
+                p = self.pose_at(name, t)
+                if not (p.fx.get("trail", 0.0) >= 0.5 or p.fx.get("spark", 0.0) >= 0.75):
+                    continue
+                span = 1.0 if active and active[-1] == i - 1 else 0.3
+                active.append(i)
+                for k in range(4):
+                    q = self.pose_at(name, max(0.0, t - dt * span * k / 3.0))
+                    # Each point a small square: a thrust that moves straight
+                    # along its own line still has a volume.
+                    r = 3.0 * S
+                    for x, y in self._strike_points(spec, name, q, S):
+                        points += [(x - r, y - r), (x + r, y - r), (x + r, y + r), (x - r, y + r)]
+            if not active:
+                continue
+            poly = _hull(points)
+            if len(poly) < 3:
+                continue
+            xs, ys = [q[0] for q in poly], [q[1] for q in poly]
+            x0, y0 = int(math.floor(min(xs))), int(math.floor(min(ys)))
+            x1, y1 = int(math.ceil(max(xs))), int(math.ceil(max(ys)))
+            out[name] = {"active_frames": active, "bbox": (x0, y0, x1 - x0, y1 - y0),
+                         "poly": [(round(x, 2), round(y, 2)) for x, y in poly]}
+        return out
+
+    # --- the frame --------------------------------------------------------------------------
+
     def _render_highres(self, spec: GoblinSpec, animation: str, frame_index: int, frame_count: int, size: Tuple[int, int], background: Optional[Color], scale: int) -> Image.Image:
         W, H = size[0] * scale, size[1] * scale
         bg = (0, 0, 0, 0) if background is None else background
@@ -787,8 +967,9 @@ class SideGoblinGenerator(CharacterGenerator):
         S = float(scale) * (size[0] / 128.0)
         pal = self.PALETTES.get(spec.palette_name, self.PALETTES["classic"])
         p = self.pose_for_animation(animation, frame_index, frame_count)
-        ground_y = (101.0 + p.root_y) * S
-        root_x = (60.0 + p.root_x) * S
+        lay = self._layout(spec, p, S)
+        ground_y = lay["ground"]
+        root_x = (self.BASE_X + p.x) * S
         # No baked ground drop shadow; the scene renderer owns contact shadows.
 
         # The teleport glyphs as one effect piece a frame (not one draw a stroke).
@@ -802,10 +983,14 @@ class SideGoblinGenerator(CharacterGenerator):
             )
             shape_rig.place(img, part, (0.0, 0.0), 0.0, "blink_fx")
 
-        if p.dash:
-            # Speed lines: each one piece (its length) slid to its height.
+        speed = p.fx.get("speed", 0.0)
+        if speed > 0.02:
+            # Speed lines: each one piece (its length) slid to its height,
+            # streaming off behind the body.
+            body = lay["body"]
+            vertical = animation in self.VERTICAL
             for i in range(4):
-                y = (50 + i * 10 + math.sin(frame_index + i) * 2) * S
+                y = body[1] + (-12 + i * 8 + math.sin(frame_index + i) * 2) * S
                 span, lpad = (26 - i * 3) * S, 3 * S
                 line = shape_rig.piece(
                     ("goblin_speed_line", i, round(S, 4)),
@@ -813,73 +998,60 @@ class SideGoblinGenerator(CharacterGenerator):
                     (lpad, lpad + 2 * S),
                     lambda dd, span=span, lpad=lpad: dd.line([(lpad, lpad + 2 * S), (lpad + span, lpad)], fill=(150, 212, 105, 90), width=max(1, int(1.5 * S))),
                 )
-                shape_rig.place(img, line, (14 * S, y), 0.0, f"speed_line{i}")
+                if vertical:
+                    # Streaming off whichever way the goblin is not going.
+                    up = -1.0 if animation == "air_down" else 1.0
+                    at = (body[0] + (-12 + i * 8) * S, body[1] - up * (46 - i * 2) * S)
+                    rigdoc.blit_rotated(img, line[0], line[1], at, 90.0 * up, min(1.0, speed), part_name=f"speed_line{i}")
+                else:
+                    rigdoc.blit_rotated(img, line[0], line[1], (body[0] - (46 - i * 2) * S, y), 0.0, min(1.0, speed),
+                                        part_name=f"speed_line{i}")
 
         character_img = img if animation not in {"blink_out", "blink_in"} else Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        self._fx_behind(character_img, spec, animation, frame_index, frame_count, p, lay, S, pal)
 
-        collapse = p.collapse
-        body_center = (root_x + lerp(0, 12 * S, collapse), ground_y - lerp(37 * S, 11 * S, collapse) + p.body_bob * S)
-        head_center = (root_x + lerp(16 * S, 37 * S, collapse), ground_y - lerp(62 * S, 15 * S, collapse) + p.body_bob * 0.45 * S)
+        # Legs: far, then near.
+        for side, tint, shift in (("far", pal["skin_shadow"], -1.5), ("near", pal["skin"], 3.0)):
+            hip, knee, ankle, planted = lay[f"{side}_leg"]
+            shape_rig.capsule(character_img, hip, knee, 2.5 * S, tint, pal["outline"], 1.2 * S, f"{side}_thigh", length=spec.leg_upper * S)
+            shape_rig.capsule(character_img, knee, ankle, 2.3 * S, tint, pal["outline"], 1.2 * S, f"{side}_shin", length=spec.leg_lower * S)
+            leg = p.nleg if side == "near" else p.fleg
+            # A planted foot lies flat; a foot in the air follows its shin.
+            foot_cw = 5.0 if planted else 5.0 + (math.degrees(math.atan2(ankle[1] - knee[1], ankle[0] - knee[0])) - 90.0) * 0.6
+            ox, oy = _rot(((spec.foot_w * 0.32 + shift) * S, 2.0 * S), foot_cw - 5.0)
+            foot_center = (ankle[0] + ox, ankle[1] + oy)
+            if planted:
+                foot_center = (foot_center[0], min(ground_y - 2 * S, foot_center[1]))
+            del leg
+            draw_rotated_rounded_rect(character_img, foot_center, (spec.foot_w * S, spec.foot_h * S), -foot_cw, spec.foot_h * 0.5 * S, tint, pal["outline"], 1.1 * S, name=f"{side}_foot")
 
-        hip_far = (body_center[0] - 5 * S, body_center[1] + 9 * S)
-        hip_near = (body_center[0] + 7 * S, body_center[1] + 9 * S)
-        shoulder_far = (body_center[0] - 8 * S, body_center[1] - 7 * S)
-        shoulder_near = (body_center[0] + 8 * S, body_center[1] - 7 * S)
+        # Far arm behind body (or, reaching across, in front of it).
+        def far_arm() -> None:
+            shoulder, elbow, hand = lay["far_arm"]
+            shape_rig.capsule(character_img, shoulder, elbow, 2.2 * S, pal["skin_shadow"], pal["outline"], 1.1 * S, "far_upper_arm", length=spec.arm_upper * S)
+            shape_rig.capsule(character_img, elbow, hand, 2.1 * S, pal["skin_shadow"], pal["outline"], 1.1 * S, "far_forearm", length=spec.arm_lower * S)
 
-        # Legs.  Walk/run uses the documented side-view baseline: authored
-        # contact/down/passing/up ankle targets, fixed two-bone lengths, and
-        # forward-bending knees.  This keeps goblin walks from degenerating
-        # into opposed sticks while preserving rigid shin/thigh lengths.
-        if animation in {"walk", "run"}:
-            idx = frame_index % 8
-            leg_len = (spec.leg_upper + spec.leg_lower) * S
-            stride = leg_len * (0.42 if animation == "run" else 0.36)
-            base_drop = leg_len * (0.86 if animation == "run" else 0.88)
-            far_x = (-1.00, -0.76, -0.36, -0.06, 0.12, -0.18, -0.58, -0.90)
-            near_x = (0.92, 0.68, 0.30, 0.04, -0.08, 0.20, 0.62, 0.94)
-            far_lift = (0.00, 0.00, 0.05, 0.14, 0.00, 0.02, 0.08, 0.02)
-            near_lift = (0.00, 0.02, 0.08, 0.02, 0.00, 0.00, 0.05, 0.14)
-            far_shift = (-1.5, -1.2, -0.5, 0.3, 1.0, 0.7, 0.0, -0.7)
-            near_shift = (1.4, 0.9, 0.1, -0.7, -1.1, -0.8, -0.2, 0.7)
-            foot_tilt = (-7, -4, -2, 3, 7, 4, 2, -3) if animation == "run" else (-5, -3, -1, 2, 5, 3, 1, -2)
+        if p.fz < 0.5:
+            far_arm()
+        hand = lay["far_arm"][2]
+        if 0.0 < p.fx.get("rock", 0.0) < 0.05:
+            # The rock in the fist before it flies.
+            r = 3.5 * S
+            self._blit(character_img, ("goblin_fx_rock", S), (2 * r + 4, 2 * r + 4), (r + 2, r + 2),
+                       lambda d: d.polygon([(2, r + 2), (r, 2), (2 * r + 2, r), (2 * r, 2 * r + 2), (r - 1, 2 * r + 2)],
+                                           fill=(128, 118, 104, 255), outline=pal["outline"]),
+                       hand, 0.0, 1.0, "rock_held")
 
-            leg_draws = []
-            for name, hip, xnorm, lift, tint, foot_shift, foot_angle in [
-                ("front_dark", hip_far, far_x[idx], far_lift[idx], pal["skin_shadow"], far_shift[idx], foot_tilt[idx]),
-                ("back_light", hip_near, near_x[idx], near_lift[idx], pal["skin"], near_shift[idx], -foot_tilt[(idx + 4) % 8]),
-            ]:
-                ankle = (body_center[0] + xnorm * stride, hip[1] + base_drop - lift * leg_len)
-                knee, _a1, _a2 = self._solve_leg_ik(hip, ankle, spec.leg_upper * S, spec.leg_lower * S, bend_sign=1.0)
-                foot_center = (ankle[0] + spec.foot_w * 0.32 * S + foot_shift * S, ankle[1] + 2.0 * S)
-                leg_draws.append((0 if name == "back_light" else 1, hip, knee, ankle, tint, foot_center, foot_angle))
-            for _z, hip, knee, ankle, tint, foot_center, foot_angle in sorted(leg_draws):
-                side = "near" if _z == 0 else "far"
-                shape_rig.capsule(character_img, hip, knee, 2.5 * S, tint, pal["outline"], 1.2 * S, f"{side}_thigh", length=spec.leg_upper * S)
-                shape_rig.capsule(character_img, knee, ankle, 2.3 * S, tint, pal["outline"], 1.2 * S, f"{side}_shin", length=spec.leg_lower * S)
-                draw_rotated_rounded_rect(character_img, foot_center, (spec.foot_w * S, spec.foot_h * S), foot_angle + p.body_tilt * 0.08, spec.foot_h * 0.5 * S, tint, pal["outline"], 1.1 * S, name=f"{side}_foot")
-        else:
-            for side, hip, a1, a2, tint, foot_shift in [
-                ("far", hip_far, p.far_leg_upper, p.far_leg_lower, pal["skin_shadow"], -1.5),
-                ("near", hip_near, p.near_leg_upper, p.near_leg_lower, pal["skin"], 3.0),
-            ]:
-                knee, ankle = self._limb_chain(hip, spec.leg_upper * S, spec.leg_lower * S, a1, a2)
-                shape_rig.capsule(character_img, hip, knee, 2.5 * S, tint, pal["outline"], 1.2 * S, f"{side}_thigh", length=spec.leg_upper * S)
-                shape_rig.capsule(character_img, knee, ankle, 2.3 * S, tint, pal["outline"], 1.2 * S, f"{side}_shin", length=spec.leg_lower * S)
-                foot_center = (ankle[0] + spec.foot_w * 0.32 * S + foot_shift * S, min(ground_y - 2 * S, ankle[1] + 2 * S))
-                draw_rotated_rounded_rect(character_img, foot_center, (spec.foot_w * S, spec.foot_h * S), -5 + p.body_tilt * 0.08, spec.foot_h * 0.5 * S, tint, pal["outline"], 1.1 * S, name=f"{side}_foot")
-
-        # Far arm behind body.
-        elbow, hand = self._limb_chain(shoulder_far, spec.arm_upper * S, spec.arm_lower * S, p.far_arm_upper, p.far_arm_lower)
-        shape_rig.capsule(character_img, shoulder_far, elbow, 2.2 * S, pal["skin_shadow"], pal["outline"], 1.1 * S, "far_upper_arm", length=spec.arm_upper * S)
-        shape_rig.capsule(character_img, elbow, hand, 2.1 * S, pal["skin_shadow"], pal["outline"], 1.1 * S, "far_forearm", length=spec.arm_lower * S)
-
-        self._draw_body(character_img, body_center, spec, pal, S, p.body_tilt)
-        self._draw_rigid_head(character_img, head_center, spec, pal, S, p.head_tilt, p.blink, p.eye_squint, p.dead)
-        self._place_variant_accessories(character_img, spec, pal, S, body_center, head_center)
+        body_center, head_center = lay["body"], lay["head"]
+        self._draw_body(character_img, body_center, spec, pal, S, -(p.tilt + p.spin), p.spin)
+        self._draw_rigid_head(character_img, head_center, spec, pal, S, -(p.head + p.spin), p.blink, p.squint, p.dead, p.mouth)
+        self._place_variant_accessories(character_img, spec, pal, S, body_center, head_center, p.spin, p.head + p.spin)
+        if p.fz >= 0.5:
+            far_arm()
 
         # Near arm and weapon on top.
-        elbow, hand = self._limb_chain(shoulder_near, spec.arm_upper * S, spec.arm_lower * S, p.near_arm_upper, p.near_arm_lower)
-        shape_rig.capsule(character_img, shoulder_near, elbow, 2.3 * S, pal["skin"], pal["outline"], 1.1 * S, "near_upper_arm", length=spec.arm_upper * S)
+        shoulder, elbow, hand = lay["near_arm"]
+        shape_rig.capsule(character_img, shoulder, elbow, 2.3 * S, pal["skin"], pal["outline"], 1.1 * S, "near_upper_arm", length=spec.arm_upper * S)
         shape_rig.capsule(character_img, elbow, hand, 2.2 * S, pal["skin"], pal["outline"], 1.1 * S, "near_forearm", length=spec.arm_lower * S)
         hand_r = spec.hand_r * S
         hand_pad = hand_r + 2 * S
@@ -890,18 +1062,9 @@ class SideGoblinGenerator(CharacterGenerator):
             lambda d: d.ellipse((hand_pad - hand_r, hand_pad - hand_r, hand_pad + hand_r, hand_pad + hand_r), fill=pal["skin"], outline=pal["outline"], width=max(1, int(1.0 * S))),
         )
         shape_rig.place(character_img, hand_part, hand, 0.0, "near_hand")
-        if animation in {"slash", "idle", "walk", "run", "dash", "blink_out", "blink_in"}:
-            self._place_weapon(character_img, hand, spec, pal, S, p.slash_arc)
-        if p.slash_arc > 0.18:
-            # The slash arc rides the hand: one piece.
-            apad = 42 * S
-            arc = shape_rig.piece(
-                ("goblin_slash_arc", round(S, 4)),
-                (2 * apad, 2 * apad),
-                (apad, apad),
-                lambda dd: dd.arc((apad - 6 * S, apad - 30 * S, apad + 38 * S, apad + 19 * S), start=-70, end=45, fill=(242, 77, 255, 155), width=max(1, int(2.2 * S))),
-            )
-            shape_rig.place(character_img, arc, hand, 0.0, "slash_arc")
+        if p.wpn > 0.5:
+            self._place_weapon(character_img, hand, spec, pal, S, p.wa)
+        self._fx_front(character_img, spec, animation, frame_index, frame_count, p, lay, S, pal)
 
         if animation in {"blink_out", "blink_in"}:
             self._composite_teleport_actor(img, character_img, animation, frame_index, frame_count, S)

@@ -14,6 +14,105 @@ animations:
 - blink_out
 - blink_in
 - dash
+- talk
+- interact
+- celebrate
+- block
+- walk_stop
+- turnaround
+- dash_startup
+- stumble
+- crouch_start
+- crouch
+- crouch_walk
+- crouch_end
+- jump_squat
+- double_jump
+- fall_special
+- land
+- land_hard
+- tumble
+- roll
+- roll_back
+- spot_dodge
+- air_dodge
+- platform_drop
+- footstool_jump
+- teeter
+- shield_raise
+- shield_release
+- shield_hit
+- parry
+- launch
+- meteor
+- splat
+- ground_bounce
+- knockdown
+- prone
+- prone_damage
+- getup
+- getup_attack
+- getup_roll
+- tech
+- wall_tech
+- dizzy
+- sleep
+- wake
+- bury_start
+- buried
+- bury_escape
+- jab
+- jab_2
+- jab_3
+- dash_attack
+- attack_up
+- attack_down
+- smash_charge
+- smash_forward
+- smash_up
+- smash_down
+- air_neutral
+- air_forward
+- air_back
+- air_up
+- air_down
+- air_land
+- rock_toss
+- shiv_lunge
+- spring_pounce
+- play_dead
+- play_dead_strike
+- goblin_frenzy
+- grab
+- grab_hold
+- pummel
+- grab_release
+- throw_forward
+- throw_back
+- throw_up
+- throw_down
+- grabbed
+- grabbed_pummel
+- grab_escape
+- ledge_catch
+- ledge_grab
+- ledge_getup
+- ledge_attack
+- ledge_roll
+- ledge_jump
+- ledge_drop
+- wall_jump
+- item_hold
+- item_pickup
+- item_heavy_pickup
+- item_heavy_carry
+- item_throw
+- item_drop
+- item_swing
+- taunt
+- entrance
+- victory_hold
+- loss
 render:
   frame_width: 128
   frame_height: 128
@@ -66,6 +165,27 @@ animation_bindings:
   locomotion.walk:
     animation: walk
     events: []
+  locomotion.run:
+    animation: run
+    events: []
+  traversal.jump:
+    animation: jump
+    events: []
+  traversal.fall:
+    animation: fall
+    events: []
+  locomotion.crouch:
+    animation: crouch
+    events: []
+  locomotion.land:
+    animation: land
+    events: []
+  locomotion.ledge_grab:
+    animation: ledge_grab
+    events: []
+  locomotion.wall_jump:
+    animation: wall_jump
+    events: []
   interaction.talk:
     animation: talk
     events: []
@@ -75,12 +195,240 @@ animation_bindings:
   action.melee.primary:
     animation: slash
     events:
-    - t: 0.34
+    - t: 0.286
       event: hitbox_active_start
       source: explicit.profile.combat_humanoid
-    - t: 0.58
+    - t: 0.429
       event: hitbox_active_end
       source: explicit.profile.combat_humanoid
+  action.melee.jab:
+    animation: jab
+    events:
+    - t: 0.333
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.5
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.melee.forward:
+    animation: slash
+    events:
+    - t: 0.286
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.429
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.melee.up:
+    animation: attack_up
+    events:
+    - t: 0.25
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.5
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.melee.down:
+    animation: attack_down
+    events:
+    - t: 0.286
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.429
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.melee.dash:
+    animation: dash_attack
+    events:
+    - t: 0.25
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.375
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.smash.forward:
+    animation: smash_forward
+    events:
+    - t: 0.4
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.5
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.smash.up:
+    animation: smash_up
+    events:
+    - t: 0.333
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.667
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.smash.down:
+    animation: smash_down
+    events:
+    - t: 0.333
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.667
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.aerial.neutral:
+    animation: air_neutral
+    events:
+    - t: 0.143
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.714
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.aerial.forward:
+    animation: air_forward
+    events:
+    - t: 0.375
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.5
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.aerial.back:
+    animation: air_back
+    events:
+    - t: 0.286
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.429
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.aerial.up:
+    animation: air_up
+    events:
+    - t: 0.286
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.714
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.aerial.down:
+    animation: air_down
+    events:
+    - t: 0.375
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.625
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.special.neutral:
+    animation: rock_toss
+    events:
+    - t: 0.5
+      event: projectile_release
+      source: explicit.profile.combat_humanoid
+  action.special.side:
+    animation: shiv_lunge
+    events:
+    - t: 0.333
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.556
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.special.up:
+    animation: spring_pounce
+    events:
+    - t: 0.333
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.889
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.special.down:
+    animation: play_dead
+    events: []
+  action.special.final:
+    animation: goblin_frenzy
+    events:
+    - t: 0.143
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.857
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.capture.grab:
+    animation: grab
+    events: []
+  action.capture.pummel:
+    animation: pummel
+    events:
+    - t: 0.4
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.6
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.capture.throw_forward:
+    animation: throw_forward
+    events:
+    - t: 0.375
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.5
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.capture.throw_back:
+    animation: throw_back
+    events:
+    - t: 0.625
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.75
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.capture.throw_up:
+    animation: throw_up
+    events:
+    - t: 0.5
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.625
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.capture.throw_down:
+    animation: throw_down
+    events:
+    - t: 0.75
+      event: hitbox_active_start
+      source: explicit.profile.combat_humanoid
+    - t: 0.875
+      event: hitbox_active_end
+      source: explicit.profile.combat_humanoid
+  action.defense.block:
+    animation: block
+    events: []
+  action.defense.roll:
+    animation: roll
+    events: []
+  action.defense.parry:
+    animation: parry
+    events: []
+  action.ranged.primary:
+    animation: rock_toss
+    events:
+    - t: 0.5
+      event: projectile_release
+      source: explicit.profile.combat_humanoid
+  damage.hit:
+    animation: hit
+    events: []
+  lifecycle.death:
+    animation: death
+    events: []
+  emote.taunt:
+    animation: taunt
+    events: []
+  emote.victory:
+    animation: celebrate
+    events: []
 sockets:
   head:
     source: explicit.profile.humanoid
