@@ -2,10 +2,11 @@
 """Build the treasure chest's rig document from its SVG.
 
 The SVG ``data/props/treasure_chest/treasure_chest.svg`` owns the art and
-says where every joint is; ``rigbuild.creature_rig`` derives the skeleton,
-binds every part to its bone and refreshes the SVG's rig catalog. This
-script supplies only what the drawing cannot state: the skeleton (a box, a
-hinged lid, a lock, the treasure heap), the frame, the rows and the clips.
+says where every joint is; ``rigbuild.creature_rig``, with the ``chest``
+anatomy (a box, a hinged lid, a lock, the treasure heap), derives the
+skeleton, binds every part to its bone and refreshes the SVG's rig catalog.
+This script supplies only what the drawing cannot state: the frame, the rows
+and the clips.
 It never draws.
 
     uv run python scripts/build_treasure_chest_rig.py
@@ -33,15 +34,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from ambition_sprite2d_renderer.rigbuild.creature_rig import (  # noqa: E402
-    BoneSpec,
-    CreatureSpec,
-    Point,
-    Pose,
-    segment,
-    track,
-    write,
-)
+from ambition_sprite2d_renderer.rigbuild.chest import Pose, chest_spec, lid, track, write  # noqa: E402
 
 PKG = ROOT / "ambition_sprite2d_renderer"
 K = track
@@ -58,22 +51,6 @@ ROWS = [
     ("opening_treasure", 14, 62, False),
     ("open_treasure", 8, 110, True),
 ]
-
-LIDS = ("closed", "ajar", "up", "open")
-
-
-def lid(state: str) -> Pose:
-    return {f"lid.{name}": 1.0 if name == state else 0.0 for name in LIDS}
-
-
-def skeleton(J: Dict[str, Point]) -> List[BoneSpec]:
-    return [
-        ("base", None, J["base"], 0.0, 0.0),
-        segment("lid", "base", J["hinge"], J["lid_top"]),
-        segment("lock", "base", J["lock"], J["lock_end"]),
-        segment("treasure", "base", J["treasure"], J["treasure_top"]),
-    ]
-
 
 def closed(i: int, n: int, t: float) -> Pose:
     """Shut, held still."""
@@ -161,14 +138,11 @@ CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
 }
 
 
-SPEC = CreatureSpec(
+SPEC = chest_spec(
     name="treasure_chest",
     svg_path=PKG / "data" / "props" / "treasure_chest" / "treasure_chest.svg",
     rig_path=PKG / "targets" / "props" / "rigged" / "treasure_chest" / "treasure_chest.rig.json",
     view_label="Treasure Chest - Front",
-    skeleton=skeleton,
-    legs=(),
-    ankle_joint="base",
     # Drawn at 512 units square, published in a 128 px frame.
     scale=0.25,
     svg_center_x=256.0,

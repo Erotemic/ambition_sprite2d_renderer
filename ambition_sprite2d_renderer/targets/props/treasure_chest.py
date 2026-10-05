@@ -48,6 +48,7 @@ from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet, write_canonical
 from ..characters import _creature_fx as FX
+from . import _chest_fx as CHEST_FX
 from ..characters._svg_fighter_effects import FxCanvas, compose_rig_frame
 
 Point = Tuple[float, float]
@@ -123,50 +124,12 @@ def _doc() -> RigDocument:
 
 ROWS: List[Tuple[str, int, int]] = _doc().rows()
 
-# --- Effect glyphs (`_creature_fx`), in the drawing's SVG units ------------------
+# --- Effect glyphs (`_creature_fx`, `_chest_fx`), in the drawing's SVG units -------
 
-LIGHT = (255, 226, 130)
-HOT = (255, 248, 214)
-WHITE = (255, 255, 250, 255)
 GOLD = (233, 169, 58, 255)
 GOLD_LIGHT = (255, 216, 106, 255)
 GOLD_DARK = (168, 104, 26, 255)
 INK = (31, 20, 16, 255)
-
-
-def _a(rgb, alpha: int):
-    return (rgb[0], rgb[1], rgb[2], alpha)
-
-
-def _paint_glow(c: FxCanvas) -> None:
-    """Warm light pooled over the opening (soft: stacked translucent ovals)."""
-    for k, (rx, ry, alpha) in enumerate(((170, 74, 26), (140, 58, 30), (112, 44, 36), (82, 30, 44), (52, 18, 60))):
-        c.ellipse((0, 0), rx, ry, _a(LIGHT if k < 3 else HOT, alpha))
-
-
-def _paint_rays(c: FxCanvas) -> None:
-    """Thin beams fanning up out of the chest, each a pale core in a warm sheath."""
-    for k, ang in enumerate(range(-150, -20, 18)):
-        length = 210.0 if k % 2 else 160.0
-        for half, scale, color in ((2.6, 1.0, _a(LIGHT, 48)), (0.9, 0.85, _a(HOT, 96))):
-            a0, a1 = math.radians(ang - half), math.radians(ang + half)
-            L = length * scale
-            c.polygon([(0, 0), (L * math.cos(a0), L * math.sin(a0)), (L * math.cos(a1), L * math.sin(a1))], color)
-
-
-def _paint_leak(c: FxCanvas) -> None:
-    """Light escaping the crack under a lifted lid: a hot slit, a halo, short
-    beams fanning up and out."""
-    c.ellipse((0, 0), 150, 22, _a(LIGHT, 60))
-    c.ellipse((0, 0), 140, 8, _a(HOT, 200))
-    for ang in (-170, -150, -125, -100, -80, -55, -30, -10):
-        r = math.radians(ang)
-        c.line([(110 * math.cos(r) * 0.9, 6 * math.sin(r)), (150 * math.cos(r), 70 * math.sin(r))], _a(HOT, 150), 3.0)
-
-
-def _paint_burst(c: FxCanvas) -> None:
-    c.star((0, 0), 120.0, _a(HOT, 170), points=12, inner=0.32, rotation=-90)
-    c.star((0, 0), 64.0, WHITE, points=8, inner=0.4, rotation=-67.5)
 
 
 def _coin(view: int):
@@ -182,25 +145,7 @@ def _coin(view: int):
     return paint
 
 
-def _paint_sparkle(c: FxCanvas) -> None:
-    c.star((0, 0), 16.0, WHITE, points=4, inner=0.22, rotation=0)
-    c.star((0, 0), 8.0, _a(LIGHT, 255), points=4, inner=0.3, rotation=45)
-
-
-def _paint_click(c: FxCanvas) -> None:
-    c.star((0, 0), 26.0, _a(HOT, 255), points=6, inner=0.3, rotation=0)
-    for ang in (-60, -20, 20, 60, 120, 160, 200, 240):
-        r = math.radians(ang)
-        c.line([(28 * math.cos(r), 28 * math.sin(r)), (40 * math.cos(r), 40 * math.sin(r))], WHITE, 2.4)
-
-
-_GLYPHS: Dict[str, Tuple[FX.Extent, FX.Paint]] = {**FX.COMMON}
-_GLYPHS["glow"] = ((172.0, 76.0, 172.0, 76.0), _paint_glow)
-_GLYPHS["rays"] = ((212.0, 212.0, 212.0, 6.0), _paint_rays)
-_GLYPHS["leak"] = ((152.0, 72.0, 152.0, 24.0), _paint_leak)
-_GLYPHS["burst"] = ((154.0, 154.0, 154.0, 154.0), _paint_burst)
-_GLYPHS["sparkle"] = ((18.0, 18.0, 18.0, 18.0), _paint_sparkle)
-_GLYPHS["click"] = ((42.0, 42.0, 42.0, 42.0), _paint_click)
+_GLYPHS: Dict[str, Tuple[FX.Extent, FX.Paint]] = {**FX.COMMON, **CHEST_FX.GLYPHS}
 for _view in range(3):
     _GLYPHS[f"coin{_view}"] = ((22.0, 21.0, 22.0, 21.0), _coin(_view))
 GLYPHS = FX.Glyphs(ART_SCALE, _GLYPHS)
