@@ -644,11 +644,10 @@ def _params_for(anim: str, frame_idx: int, nframes: int):
     elif anim == "walk":
         wave_amp = 2.2
         wave_freq = 2.0
-        # Body translates left→right within the frame across the loop —
-        # makes the sheet feel like the slug is actually crawling
-        # when previewed end-to-end. The game can ignore the
-        # translation by anchoring on the body center.
-        body_translate = -7.0 + 14.0 * t
+        # The body stays put in the frame: the game moves it. A crawl
+        # across the frame (it was 14 px a loop, for a sheet previewed
+        # end to end) is drawn on top of the game's own motion, and every
+        # loop snapped the slug back by it.
         trail_strength = 0.55
         head_phase = phase
     elif anim == "wall_walk":
@@ -669,7 +668,6 @@ def _params_for(anim: str, frame_idx: int, nframes: int):
         pitch = math.pi
         wave_amp = 2.0
         wave_freq = 2.0
-        body_translate = 7.0 - 14.0 * t
         trail_strength = 0.40
         sag = 1.3  # heads droop visibly
     elif anim == "hurt":
