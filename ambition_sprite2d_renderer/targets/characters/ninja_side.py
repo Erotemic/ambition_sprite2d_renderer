@@ -70,11 +70,21 @@ def _capsule(canvas: Image.Image, a: Point, b: Point, radius: float, fill: Color
     _place(canvas, part, a, math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])), name, opacity)
 
 
-def _two_bone(root: Point, target: Point, upper: float, lower: float, hint: Point) -> Tuple[Point, Point]:
+def _two_bone(root: Point, target: Point, upper: float, lower: float, hint: Point, soft: float = 0.0) -> Tuple[Point, Point]:
     """Elbow and end of a two-bone chain of fixed lengths reaching toward
-    ``target`` from ``root``, bending to the side of ``hint``."""
+    ``target`` from ``root``, bending to the side of ``hint``.
+
+    ``soft`` (pixels) eases the last ``soft`` of the reach: a target that far
+    from full extension or farther is reached short, along an exponential
+    approach to straight. Without it the bend is infinitely sensitive at full
+    reach, and the oni leader's idle arm, whose hand rests a pixel either side
+    of it, snapped between straight and bent 9 degrees every other frame
+    (2026-10-04)."""
     dx, dy = target[0] - root[0], target[1] - root[1]
     dist = max(1e-6, math.hypot(dx, dy))
+    if soft > 0.0 and dist > upper + lower - soft:
+        knee = upper + lower - soft
+        dist = knee + soft * (1.0 - math.exp(-(dist - knee) / soft))
     reach = clamp(dist, abs(upper - lower) + 1e-3, upper + lower - 1e-3)
     base = math.atan2(dy, dx)
     bend = math.acos(clamp((upper * upper + reach * reach - lower * lower) / (2 * upper * reach), -1.0, 1.0))
@@ -743,7 +753,7 @@ class NinjaSideGenerator(CharacterGenerator):
             # The old painter stretched the forearm to the pulled hand; a held
             # pose keeps that reach as the bone's (fixed) length.
             forearm = spec.arm_lower if leader and p.slash <= 0.08 else spec.arm_lower * (1.4 if is_near else 1.55)
-            elbow, hand = _two_bone(shoulder, (hand[0], hand[1]), spec.arm_upper, forearm, elbow)
+            elbow, hand = _two_bone(shoulder, (hand[0], hand[1]), spec.arm_upper, forearm, elbow, soft=0.1 * (spec.arm_upper + forearm))
             return shoulder, elbow, hand, forearm
 
         far_sh, far_el, far_hand, far_fore = arm_points(False)
