@@ -241,7 +241,9 @@ def test_adapter_manifest_publishes_character_notes(monkeypatch):
 def test_review_character_configs_load_portable_notes():
     configs = (
         "alice.yaml",
-        "bob.yaml",
+        # ⛔ `bob.yaml` LEFT, 2026-10-05: Bob is the SVG-rigged module target
+        # `targets/characters/bob.py`, whose ACTOR_METADATA carries his
+        # authoring prose and barks verbatim (and more).
         "craig.yaml",
         "erdish.yaml",
         "eve.yaml",

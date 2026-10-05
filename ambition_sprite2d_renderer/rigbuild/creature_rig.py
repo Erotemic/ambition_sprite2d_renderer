@@ -9,9 +9,11 @@ samples a character's clip functions into keyed channels, and refreshes the
 SVG's rig catalog.
 
 A family module says what its anatomy is (``theropod``: the T-rex boss and the
-raptor stalker; ``quadruped``: the bear mauler) as a skeleton function and a
-list of legs; a character's builder script (``scripts/build_<name>_rig.py``)
-supplies only its frame, its rows and its clips.
+raptor stalker; ``quadruped``: the bear mauler; ``fish``: the burning flying
+shark; ``humanoid``: Bob, with a key-pose language for a fighter's moveset)
+as a skeleton function and a list of legs; a character's builder script
+(``scripts/build_<name>_rig.py``) supplies only its frame, its rows and its
+clips.
 
 ⭐ THE SOURCE IS THE ART FILE. Nothing here draws.
 
@@ -27,6 +29,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -85,6 +88,17 @@ class CreatureSpec:
     #: ankle is drawn at that height above the ground). A legless creature
     #: (a flyer, a swimmer) has none.
     ankle_joint: str = "near_ankle"
+    #: Clips keyed between frames too: ``{clip: n}`` adds ``n`` evenly spaced
+    #: keys inside each frame interval, so a reader sampling between frames
+    #: (a swing's smear, its hit volume) follows the authored path instead of
+    #: a straight line between two drawn frames. Frames render the same.
+    substeps: Dict[str, int] = field(default_factory=dict)
+    #: Angle channels kept continuous from key to key (no jump across
+    #: +-180 degrees), so sampling between keys turns the short way round.
+    angle_channels: FrozenSet[str] = frozenset()
+    #: Write each channel's keys on one line (a fighter's hundred-odd clips
+    #: are otherwise mostly whitespace).
+    compact_keys: bool = False
 
     @property
     def center_x(self) -> float:
@@ -226,23 +240,50 @@ def eyes(state: str) -> Pose:
     return {f"eye.{name}": 1.0 if name == state else 0.0 for name in EYE_STATES}
 
 
+def unwrap(values: List[float]) -> List[float]:
+    """Angles (degrees) shifted by whole turns so no step exceeds half a turn."""
+    out = values[:1]
+    for v in values[1:]:
+        prev = out[-1]
+        out.append(round(v + 360.0 * round((prev - v) / 360.0), 3))
+    return out
+
+
 def author_clip(spec: CreatureSpec, name: str, frames: int, ms: int, loop: bool) -> dict:
     """Sample a clip function at the sheet's frame times into keyed channels."""
     fn = spec.clips[name]
     times = [i / frames for i in range(frames)] if loop else [i / max(1, frames - 1) for i in range(frames)]
-    poses = [fn(i, frames, t) for i, t in enumerate(times)]
+    index = list(range(frames))
+    sub = spec.substeps.get(name, 0)
+    if sub:
+        ends = times[1:] + ([1.0] if loop else [])
+        fine, index = [], []
+        for i, t0 in enumerate(times):
+            fine.append(t0)
+            index.append(i)
+            if i < len(ends):
+                for k in range(1, sub + 1):
+                    fine.append(t0 + (ends[i] - t0) * k / (sub + 1))
+                    index.append(i)
+        times = fine
+    poses = [fn(i, frames, t) for i, t in zip(index, times)]
     names = sorted({k for pose in poses for k in pose})
     distances = spec.distance_channels
     channels = {}
     for key in names:
         k = spec.scale if key in distances else 1.0
         values = [round(float(pose.get(key, spec.defaults.get(key, 0.0))) * k, 3) for pose in poses]
+        if key in spec.angle_channels:
+            values = unwrap(values)
         if all(abs(v - values[0]) < 1e-9 for v in values):
             channels[key] = {"const": values[0]}
             continue
         pairs = [[round(t, 6), v] for t, v in zip(times, values)]
         if loop:
-            pairs.append([1.0, values[0]])
+            first = values[0]
+            if key in spec.angle_channels:
+                first = unwrap([values[-1], first])[1]
+            pairs.append([1.0, first])
         channels[key] = {"keys": pairs}
     return {"loop": loop, "frames": frames, "duration_ms": ms, "channels": channels}
 
@@ -326,10 +367,25 @@ def install_svg_catalog(spec: CreatureSpec) -> None:
         raise SystemExit(f"{spec.svg_path.name}: rig catalog does not validate: {problems}")
 
 
+def compact_keys(text: str) -> str:
+    """``json.dumps(indent=1)`` output with every ``[t, v]`` key pair, and
+    every ``"keys"`` list of them, on one line. Still valid JSON, same data."""
+    num = r"(-?[\d.e+-]+)"
+    text = re.sub(r"\[\n\s*" + num + r",\n\s*" + num + r"\n\s*\]", r"[\1, \2]", text)
+    return re.sub(
+        r'("keys": )\[\n((?:\s*\[[^\[\]\n]*\],?\n)+)\s*\]',
+        lambda m: m.group(1) + "[" + ", ".join(x.strip().rstrip(",") for x in m.group(2).strip().split("\n")) + "]",
+        text,
+    )
+
+
 def write(spec: CreatureSpec) -> List[Path]:
     """Write the rig document, then the SVG's catalog from it."""
     doc = build(spec)
     spec.rig_path.parent.mkdir(parents=True, exist_ok=True)
-    spec.rig_path.write_text(json.dumps(doc, indent=1) + "\n", encoding="utf8")
+    text = json.dumps(doc, indent=1)
+    if spec.compact_keys:
+        text = compact_keys(text)
+    spec.rig_path.write_text(text + "\n", encoding="utf8")
     install_svg_catalog(spec)
     return [spec.rig_path, spec.svg_path]

@@ -194,8 +194,9 @@ RUNTIME_REVIEW_NPCS: tuple[str, ...] = (
     # roster. Batch 2 (Trudy/Craig/Sybil/Victor/Peggy/Walter/Olivia)
     # landed as toon-target sketches with phenotype variation; each
     # may be promoted to a bespoke template if a story room demands.
+    # Bob is no longer a review-config NPC: he is the SVG-rigged module
+    # target `bob` (targets/characters/bob.py), published by `publish`.
     "alice",
-    "bob",
     "eve",
     "judy",
     "mallory",

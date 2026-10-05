@@ -62,7 +62,6 @@ CATEGORIES: Tuple[str, ...] = (
 GENERATOR_MODULE_STEMS: frozenset[str] = frozenset(
     {
         "alice_cryptographer",
-        "bob_engineer",
         "boss_side",
         # These three register a `CharacterGenerator` in
         # `registry/character_generators.py` exactly like the rest of this set,
