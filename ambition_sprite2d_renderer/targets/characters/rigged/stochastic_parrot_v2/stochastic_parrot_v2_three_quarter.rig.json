@@ -1,5 +1,5 @@
 {
- "name": "stochastic_parrot_v2_front",
+ "name": "stochastic_parrot_v2_three_quarter",
  "frame": {
   "width": 128,
   "height": 128,
@@ -10,8 +10,8 @@
   "render_scale": 1
  },
  "svg_source": {
-  "path": "../../../../data/characters/stochastic_parrot_v2/stochastic_parrot_v2_front.svg",
-  "view": "Stochastic Parrot - Front",
+  "path": "../../../../data/characters/stochastic_parrot_v2/stochastic_parrot_v2_three_quarter.svg",
+  "view": "Stochastic Parrot - Three Quarter Right",
   "ref_dpi": 25.4,
   "scale": 0.25
  },
@@ -21,7 +21,7 @@
    "name": "body",
    "parent": null,
    "offset": [
-    0.0,
+    -1.0,
     -21.5
    ],
    "length": 0.0,
@@ -31,72 +31,57 @@
    "name": "head",
    "parent": "body",
    "offset": [
-    0.0,
-    -17.0
+    5.0,
+    -18.5
    ],
-   "length": 22.5,
-   "rest_angle": -90.0
+   "length": 21.5232,
+   "rest_angle": -87.337
   },
   {
    "name": "jaw",
    "parent": "head",
    "offset": [
-    6.5,
-    -0.0
+    5.8658,
+    7.7358
    ],
    "length": 14.0,
-   "rest_angle": -180.0
+   "rest_angle": 177.337
   },
   {
    "name": "far_wing",
    "parent": "body",
    "offset": [
-    -7.5,
-    -15.5
+    8.0,
+    -16.0
    ],
-   "length": 36.5034,
-   "rest_angle": -126.0851
+   "length": 36.4005,
+   "rest_angle": -52.8153
   },
   {
    "name": "near_wing",
    "parent": "body",
    "offset": [
-    7.5,
-    -15.5
+    -4.0,
+    -14.5
    ],
-   "length": 36.5034,
-   "rest_angle": -53.9149
+   "length": 45.6426,
+   "rest_angle": -132.7803
   }
  ],
  "parts": [
   {
    "name": "tail",
    "bone": "body",
-   "z": 10.0,
+   "z": 8.0,
    "kind": "sprite",
    "include": [
     "tail"
    ],
    "pivot": [
-    256.0,
+    252.0,
     330.0
    ],
    "rest_angle": 0.0
-  },
-  {
-   "name": "near_wing_open",
-   "bone": "near_wing",
-   "z": 12.0,
-   "kind": "sprite",
-   "include": [
-    "near-wing-open"
-   ],
-   "pivot": [
-    286.0,
-    268.0
-   ],
-   "rest_angle": -53.9149,
-   "opacity_channel": "wing.open"
   },
   {
    "name": "far_wing_open",
@@ -107,10 +92,10 @@
     "far-wing-open"
    ],
    "pivot": [
-    226.0,
-    268.0
+    284.0,
+    266.0
    ],
-   "rest_angle": -126.0851,
+   "rest_angle": -52.8153,
    "opacity_channel": "wing.open"
   },
   {
@@ -122,7 +107,7 @@
     "feet"
    ],
    "pivot": [
-    256.0,
+    252.0,
     330.0
    ],
    "rest_angle": 0.0
@@ -136,7 +121,7 @@
     "body"
    ],
    "pivot": [
-    256.0,
+    252.0,
     330.0
    ],
    "rest_angle": 0.0
@@ -150,7 +135,7 @@
     "near-wing-folded"
    ],
    "pivot": [
-    256.0,
+    252.0,
     330.0
    ],
    "rest_angle": 0.0,
@@ -158,20 +143,19 @@
    "opacity_default": 1.0
   },
   {
-   "name": "far_wing_folded",
-   "bone": "body",
-   "z": 40.0,
+   "name": "near_wing_open",
+   "bone": "near_wing",
+   "z": 44.0,
    "kind": "sprite",
    "include": [
-    "far-wing-folded"
+    "near-wing-open"
    ],
    "pivot": [
-    256.0,
-    330.0
+    236.0,
+    272.0
    ],
-   "rest_angle": 0.0,
-   "opacity_channel": "wing.folded",
-   "opacity_default": 1.0
+   "rest_angle": -132.7803,
+   "opacity_channel": "wing.open"
   },
   {
    "name": "jaw",
@@ -182,8 +166,8 @@
     "jaw"
    ],
    "pivot": [
-    256.0,
-    236.0
+    304.0,
+    234.0
    ],
    "rest_angle": 90.0
   },
@@ -196,10 +180,10 @@
     "head"
    ],
    "pivot": [
-    256.0,
-    262.0
+    272.0,
+    256.0
    ],
-   "rest_angle": -90.0
+   "rest_angle": -87.337
   }
  ],
  "ik_legs": [],
@@ -265,23 +249,23 @@
       ],
       [
        0.25,
-       0.0
+       -8.0
       ],
       [
        0.375,
-       -16.0
+       0.0
       ],
       [
        0.5,
-       4.0
+       0.0
       ],
       [
        0.625,
-       20.0
+       0.0
       ],
       [
        0.75,
-       0.0
+       -6.0
       ],
       [
        0.875,
@@ -393,39 +377,39 @@
      "keys": [
       [
        0.0,
-       -0.0
+       0.0
       ],
       [
        0.125,
-       -48.0
+       48.0
       ],
       [
        0.25,
-       -96.0
+       96.0
       ],
       [
        0.375,
-       -48.0
+       48.0
       ],
       [
        0.5,
-       -0.0
+       0.0
       ],
       [
        0.625,
-       -48.0
+       48.0
       ],
       [
        0.75,
-       -96.0
+       96.0
       ],
       [
        0.875,
-       -48.0
+       48.0
       ],
       [
        1.0,
-       -0.0
+       0.0
       ]
      ]
     },
@@ -476,39 +460,39 @@
      "keys": [
       [
        0.0,
-       0.0
+       -0.0
       ],
       [
        0.125,
-       48.0
+       -48.0
       ],
       [
        0.25,
-       96.0
+       -96.0
       ],
       [
        0.375,
-       48.0
+       -48.0
       ],
       [
        0.5,
-       0.0
+       -0.0
       ],
       [
        0.625,
-       48.0
+       -48.0
       ],
       [
        0.75,
-       96.0
+       -96.0
       ],
       [
        0.875,
-       48.0
+       -48.0
       ],
       [
        1.0,
-       0.0
+       -0.0
       ]
      ]
     },

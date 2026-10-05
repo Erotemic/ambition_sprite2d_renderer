@@ -11,9 +11,10 @@ per side on IK with a zygodactyl foot. The SVG marks the joints ``body``,
 ``tail2``, ``tail_tip``, and per side ``shoulder``, ``wrist``, ``wingtip``,
 ``hip``, ``knee`` and ``ankle``.
 
-Facing the viewer (the middle of a turnaround) the bird is a ``body`` with a
-``head`` (``neck`` to ``head_top``), a ``jaw`` and a wing per side
-(``<side>_wing``, ``shoulder`` to ``wingtip``); its feet ride the body.
+Facing the viewer, or turned three-quarters toward it (a turnaround's
+steps), the bird is a ``body`` with a ``head`` (``neck`` to ``head_top``), a
+``jaw`` and a wing per side (``<side>_wing``, ``shoulder`` to ``wingtip``);
+its feet ride the body (``front_skeleton``).
 
 A wing has two looks, a swap set on its own channels: ``wing.folded`` (the
 wing on the body, perched) and ``wing.open`` (spread, drawn raised). The
@@ -76,7 +77,8 @@ def bird_spec(**fields) -> CreatureSpec:
 
 
 def bird_front_spec(**fields) -> CreatureSpec:
-    """The facing-the-viewer bird: no IK (its feet ride the body)."""
+    """The bird facing the viewer or turned three-quarters toward it: no IK
+    (its feet ride the body)."""
     return CreatureSpec(skeleton=front_skeleton, legs=(), ankle_joint="body", **fields)
 
 

@@ -2,7 +2,8 @@
 """Build the Stochastic Parrot's rig documents from its SVGs.
 
 The SVGs ``data/characters/stochastic_parrot_v2/stochastic_parrot_v2.svg``
-(side) and ``stochastic_parrot_v2_front.svg`` (facing the viewer) own the art
+(side), ``stochastic_parrot_v2_front.svg`` (facing the viewer) and
+``stochastic_parrot_v2_three_quarter.svg`` (turned halfway) own the art
 and say where every joint is; ``rigbuild.creature_rig``, with the ``bird``
 anatomy, derives each skeleton, binds every part to its bone and refreshes
 each SVG's rig catalog. This script supplies only what the drawings cannot
@@ -11,10 +12,10 @@ state: the frame, the rows and the clips. It never draws.
     uv run python scripts/build_stochastic_parrot_v2_rig.py
 
 The rows keep the sheet contract ``stochastic_parrot_v2`` always published:
-the same twelve rows, frame counts and durations. A turnaround's middle
-frames come from the front rig (its clips share the turnaround rows' names);
-its last frames are the side rig mirrored (``targets/characters/
-stochastic_parrot_v2.py`` picks the view per frame).
+the same twelve rows, frame counts and durations. A turnaround turns
+through a three-quarter view and the front (rigs whose clips share the
+turnaround rows' names) and ends on the side rig mirrored
+(``targets/characters/stochastic_parrot_v2.py`` picks the view per frame).
 
 Clips are key poses: one key per drawn frame (``K``), so a one-shot row's
 frame ``i`` IS key ``i`` and a loop's last key repeats its first. Angles are
@@ -48,6 +49,8 @@ BODY = (250.0, 328.0)
 NEAR_X, FAR_X = 14.0, -6.0
 #: Feet tucked up under the belly in flight (relative to the body joint).
 TUCK_NEAR, TUCK_FAR = (40.0, 52.0), (26.0, 50.0)
+#: A turnaround's hop (root height per frame), shared by every view of it.
+HOP = [0, 8, -20, -34, -38, -34, -20, 6, 0]
 
 #: (row, frames, ms, loops): the contract the game already reads.
 ROWS = [
@@ -148,10 +151,10 @@ def fly(i: int, n: int, t: float) -> Pose:
 
 
 def turnaround(i: int, n: int, t: float) -> Pose:
-    """The side frames of a hop-turn: crouch, (the front rig turns), land
-    facing the other way (drawn mirrored) and settle."""
+    """The side frames of a hop-turn: crouch, (the three-quarter and front
+    rigs turn), land facing the other way (drawn mirrored) and settle."""
     p = perched()
-    p["root_y"] = K([0, 8, -20, -34, -38, -34, -20, 6, 0], t)
+    p["root_y"] = K(HOP, t)
     p["body"] = K([0, 8, 0, 0, 0, 0, 0, -6, 0], t)
     p["head"] = K([0, 10, 0, 0, 0, 0, 0, -8, 0], t)
     p["tail1"] = K([0, -6, 0, 0, 0, 0, 0, 12, 0], t)
@@ -382,36 +385,51 @@ SPEC = B.bird_spec(
 )
 
 
-# --- the front rig: the middle of a turnaround ------------------------------------------
+# --- the turning views: the front and the three-quarter rigs ---------------------------
+#
+# A turnaround's nine frames: side, side (crouch), three-quarter, front x3,
+# three-quarter mirrored, side mirrored x2 (``TURN_VIEWS`` in the target).
+# Every view keys the whole row on the same hop, so whichever view draws a
+# frame, the bird is at the same height.
 
 
-def front_turn(i: int, n: int, t: float) -> Pose:
-    """Facing the viewer mid hop-turn: up off the perch, the head cocked one
-    way then the other (the parrot's look), down again."""
-    p: Pose = {"root_y": K([0, 8, -20, -34, -38, -34, -20, 6, 0], t)}
-    p["head"] = K([0, 0, -16, -6, 18, 22, 8, 0, 0], t)
-    p["body"] = K([0, 0, -4, 0, 3, 0, 4, 0, 0], t)
-    p["jaw"] = K([0, 0, 0, 6, 10, 4, 0, 0, 0], t)
-    p["near_wing"] = p["far_wing"] = 0.0
-    p.update(wings("folded"))
-    return p
+def turn_clip(head: List[float]) -> Callable[[int, int, float], Pose]:
+    """A turning view mid hop-turn: up off the perch with the side rig's hop,
+    the head cocked one way then the other (the parrot's look), down again."""
+
+    def clip(i: int, n: int, t: float) -> Pose:
+        p: Pose = {"root_y": K(HOP, t)}
+        p["head"] = K(head, t)
+        p["body"] = K([0, 0, -4, 0, 3, 0, 4, 0, 0], t)
+        p["jaw"] = K([0, 0, 0, 6, 10, 4, 0, 0, 0], t)
+        p["near_wing"] = p["far_wing"] = 0.0
+        p.update(wings("folded"))
+        return p
+
+    return clip
 
 
-def front_turn_flight(i: int, n: int, t: float) -> Pose:
-    """Facing the viewer on the wing: both wings beating."""
-    w = math.tau * 2.0 * t
-    down = 0.5 - 0.5 * math.cos(w)
-    p: Pose = {"root_y": -40.0 - 8.0 * math.sin(w - 0.6)}
-    # The near (screen-right) wing drives down clockwise, the far one counter.
-    p["near_wing"] = 96.0 * down
-    p["far_wing"] = -96.0 * down
-    p["head"] = K([0, 0, -10, -4, 8, 12, 4, 0, 0], t)
-    p["jaw"] = 4.0
-    p.update(wings("open"))
-    return p
+def turn_flight_clip(near_sign: float) -> Callable[[int, int, float], Pose]:
+    """A turning view on the wing: both wings beating with the side rig's
+    flight. ``near_sign`` is the way the near wing turns on its downstroke
+    (it opens to the viewer's right facing front, to the left at three
+    quarters)."""
+
+    def clip(i: int, n: int, t: float) -> Pose:
+        w = math.tau * 2.0 * t
+        down = 0.5 - 0.5 * math.cos(w)
+        p: Pose = {"root_y": -40.0 - 8.0 * math.sin(w - 0.6)}
+        p["near_wing"] = near_sign * 96.0 * down
+        p["far_wing"] = -near_sign * 96.0 * down
+        p["head"] = K([0, 0, -6, -10, 4, 12, 4, 0, 0], t)
+        p["jaw"] = 4.0
+        p.update(wings("open"))
+        return p
+
+    return clip
 
 
-FRONT_ROWS = [("turnaround", 9, 82, False), ("turnaround_flight", 9, 74, False)]
+TURN_ROWS = [("turnaround", 9, 82, False), ("turnaround_flight", 9, 74, False)]
 FRONT_SPEC = B.bird_front_spec(
     name="stochastic_parrot_v2_front",
     svg_path=DATA / "stochastic_parrot_v2_front.svg",
@@ -421,15 +439,28 @@ FRONT_SPEC = B.bird_front_spec(
     svg_center_x=CENTER_X,
     svg_ground_y=GROUND_Y,
     frame_size=(128, 128),
-    rows=FRONT_ROWS,
-    clips={"turnaround": front_turn, "turnaround_flight": front_turn_flight},
+    rows=TURN_ROWS,
+    clips={"turnaround": turn_clip([0, 0, 0, -16, 4, 20, 0, 0, 0]), "turnaround_flight": turn_flight_clip(1.0)},
+    defaults={"wing.folded": 1.0, "wing.open": 0.0},
+)
+THREE_QUARTER_SPEC = B.bird_front_spec(
+    name="stochastic_parrot_v2_three_quarter",
+    svg_path=DATA / "stochastic_parrot_v2_three_quarter.svg",
+    rig_path=RIGGED / "stochastic_parrot_v2_three_quarter.rig.json",
+    view_label="Stochastic Parrot - Three Quarter Right",
+    scale=0.25,
+    svg_center_x=CENTER_X,
+    svg_ground_y=GROUND_Y,
+    frame_size=(128, 128),
+    rows=TURN_ROWS,
+    clips={"turnaround": turn_clip([0, 0, -8, 0, 0, 0, -6, 0, 0]), "turnaround_flight": turn_flight_clip(-1.0)},
     defaults={"wing.folded": 1.0, "wing.open": 0.0},
 )
 
 
 def main(argv: List[str] | None = None) -> int:
     del argv
-    for spec in (SPEC, FRONT_SPEC):
+    for spec in (SPEC, FRONT_SPEC, THREE_QUARTER_SPEC):
         missing = sorted({name for name, *_ in spec.rows} - set(spec.clips))
         if missing:
             raise SystemExit(f"{spec.name}: rows without clips: {missing}")

@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """How the Stochastic Parrot's SVGs were first drawn (reference, not authority).
 
-``data/characters/stochastic_parrot_v2/stochastic_parrot_v2.svg`` (side) and
-``stochastic_parrot_v2_front.svg`` (facing the viewer) own the art; this
-script reproduces them as first committed (less the rig catalog
+``data/characters/stochastic_parrot_v2/stochastic_parrot_v2.svg`` (side),
+``stochastic_parrot_v2_front.svg`` (facing the viewer) and
+``stochastic_parrot_v2_three_quarter.svg`` (turned halfway between) own the
+art; this script reproduces them as first committed (less the rig catalog
 ``scripts/build_stochastic_parrot_v2_rig.py`` installs).
 
-    uv run python scripts/svg_art/stochastic_parrot_art.py SIDE.svg FRONT.svg
+    uv run python scripts/svg_art/stochastic_parrot_art.py SIDE.svg FRONT.svg THREE_QUARTER.svg
 
 A scarlet macaw on a 512x512 canvas, ground y=416, centre line x=256
 (published at 0.25: a 128 px frame). The side view swaps a folded wing (on
@@ -408,8 +409,123 @@ def draw_front() -> str:
     )
 
 
+# ---- three-quarter view ----------------------------------------------------------------
+#: Turned 45 degrees from the side toward the viewer: the face and the belly
+#: come round to the right, the near (left) wing stays on the viewer's side,
+#: the far wing goes behind, the tail runs back and away to the left.
+JQ = dict(
+    body=(252.0, 330.0),
+    neck=(272.0, 256.0),
+    head_top=(276.0, 170.0),
+    jaw=(304.0, 234.0),
+    near_shoulder=(236.0, 272.0),
+    near_wingtip=(112.0, 138.0),
+    far_shoulder=(284.0, 266.0),
+    far_wingtip=(372.0, 150.0),
+)
+
+
+def fan_wing(side, sh, tp, sx, k, dark, z, cid):
+    """A spread wing seen from the front quarter: red shoulder, yellow band,
+    blue flight feathers fanned out to the tip (``sx`` the side it opens to,
+    ``k`` its foreshortening)."""
+    red = C["red_dark"] if dark else C["red"]
+    yellow = C["yellow_dark"] if dark else C["yellow"]
+    blue = C["blue_dark"] if dark else C["blue"]
+    blue_tip = C["blue"] if dark else C["blue_light"]
+
+    def at(dx, dy):
+        return (sh[0] + sx * dx * k, sh[1] + dy * k)
+
+    fan = smooth([sh, at(34, -76), tp + (True,), (tp[0] - sx * 4 * k, tp[1] + 46 * k), at(64, -4), at(20, 24)])
+    items = [path(smooth([sh, at(34, -76), at(60, -60), at(30, -6)]), red),
+             path(smooth([at(30, -6), at(60, -60), at(72, -44), at(42, 6)]), yellow)]
+    for j in range(5):
+        ang = (-50.0 + 11.0 * j) if sx > 0 else (230.0 - 11.0 * j)
+        items += feather(at(54 + 6 * j, -56 + 14 * j), ang, 66.0 * k, 17.0 * k, blue, blue_tip, sw=1.0)
+    part(f"{side}-wing-open", f"Wing Open - {side}", f"{side}_wing_open", f"{side}_wing", z,
+         outlined(fan, blue, items, cid), ' data-rig-opacity="wing.open"')
+
+
+def three_quarter_parts():
+    # The tail runs back and away, foreshortened, behind the body.
+    tail = []
+    for j, (ang, ln) in enumerate(((172.0, 112.0), (164.0, 124.0), (156.0, 104.0))):
+        tail += feather((232 - 3 * j, 366 + 4 * j), ang, ln, 22.0, C["red"], C["blue"])
+    part("tail", "Tail", "tail", "body", 8, tail)
+    # The far wing spreads behind the head, foreshortened and in shadow.
+    fan_wing("far", JQ["far_shoulder"], JQ["far_wingtip"], 1.0, 0.85, True, 12, "clip-q-far-fan")
+    # Feet gripping, the far one a little behind.
+    feet = []
+    for ax, ay, top in ((270.0, 398.0, 378.0), (238.0, 402.0, 382.0)):
+        feet += outlined(svg.capsule((ax, top), (ax, ay), 6.0, 5.0), C["leg"])
+        for dx, dy in ((16.0, 8.0), (20.0, 12.0), (-9.0, 11.0)):
+            feet += outlined(svg.capsule((ax, ay), (ax + dx, ay + dy), 3.8, 2.8), C["leg"])
+    part("feet", "Feet", "feet", "body", 20, feet)
+    body = smooth([(228, 272), (248, 252), (270, 244), (290, 262), (300, 292), (304, 330), (294, 366), (270, 388), (240, 390),
+                   (216, 372), (206, 334), (210, 296)])
+    items = [path(smooth([(262, 282), (290, 300), (296, 340), (278, 374), (252, 378), (246, 340), (250, 300)]),
+                  C["red_light"]),
+             line([(256, 322), (272, 328), (290, 322)], C["red_dark"], 1.2),
+             line([(254, 346), (270, 352), (286, 346)], C["red_dark"], 1.2),
+             line([(258, 368), (272, 372)], C["red_dark"], 1.2)]
+    part("body", "Body", "body", "body", 30, outlined(body, C["red"], items, "clip-q-body"))
+    # The near wing folded on the body's near side, its flight feathers
+    # running down over the tail.
+    folded = smooth([(232, 268), (250, 286), (252, 320), (240, 356), (214, 394), (196, 406), (202, 372), (206, 330),
+                     (214, 294)])
+    items = [path(smooth([(232, 268), (250, 286), (250, 306), (230, 306), (216, 292)]), C["red_dark"]),
+             path(smooth([(250, 306), (252, 322), (232, 330), (210, 322), (214, 300), (230, 306)]), C["yellow"]),
+             path(smooth([(252, 322), (246, 340), (226, 346), (208, 340), (210, 322), (232, 330)]), C["green"]),
+             path(smooth([(246, 340), (240, 356), (214, 394), (196, 406), (204, 370), (208, 340), (226, 346)]), C["blue"]),
+             line([(236, 350), (214, 384), (202, 400)], C["blue_dark"], 1.3)]
+    part("near-wing-folded", "Wing Folded - near", "near_wing_folded", "body", 40,
+         outlined(folded, C["red"], items, "clip-q-folded"), ' data-rig-opacity="wing.folded" data-rig-default="1"')
+    fan_wing("near", JQ["near_shoulder"], JQ["near_wingtip"], -1.0, 1.1, False, 44, "clip-q-near-fan")
+    # The head, its face and beak turned toward the viewer's right.
+    head = smooth([(246, 224), (248, 194), (266, 176), (292, 172), (314, 184), (322, 206), (316, 232), (300, 248),
+                   (276, 254), (256, 244)])
+    items = [path(smooth([(262, 186), (288, 176), (306, 182), (288, 190), (266, 196)]), C["red_light"]),
+             path(smooth([(250, 226), (260, 244), (276, 252), (256, 250)]), C["red_dark"]),
+             path(smooth([(276, 190), (300, 184), (316, 196), (318, 222), (304, 236), (284, 232), (276, 212)]), C["face"]),
+             line([(282, 218), (292, 222), (302, 220)], C["face_line"], 1.0),
+             line([(284, 226), (294, 230), (304, 228)], C["face_line"], 1.0)]
+    hbody = outlined(head, C["red"], items, "clip-q-head")
+    ex, ey = 292.0, 205.0
+    hbody += [ellipse(ex, ey, 6.5, 6.5, C["iris"], INK, 1.4), ellipse(ex + 1, ey, 3.2, 3.6, C["pupil"]),
+              ellipse(ex - 1.5, ey - 2, 1.4, 1.4, "#ffffff")]
+    upper = smooth([(300, 192), (320, 196), (334, 212), (340, 234), (336, 252, True), (328, 240), (318, 232), (306, 230)])
+    hbody += outlined(upper, C["beak"], [
+        path(smooth([(336, 230), (340, 236), (336, 252), (328, 242)]), C["beak_dark"]),
+        path(smooth([(306, 214), (322, 218), (328, 230), (312, 228)]), C["beak_shadow"]),
+    ], "clip-q-beak")
+    part("head", "Head", "head", "head", 50, hbody)
+    jaw = smooth([(304, 232), (318, 234), (328, 244), (324, 252), (312, 250), (302, 242)])
+    part("jaw", "Lower Beak", "jaw", "jaw", 49, outlined(jaw, C["beak_dark"], [
+        line([(308, 238), (320, 244)], "#4a3f42", 1.4)], "clip-q-jaw"))
+
+
+def draw_three_quarter() -> str:
+    svg.configure(dx=0.0, dy=0.0, ink=INK, ow=OW, colors=C)
+    three_quarter_parts()
+    return svg.document(
+        size=(W, H),
+        design="stochastic-parrot-v2-three-quarter",
+        layer_id="parrot-three-quarter",
+        label="Stochastic Parrot - Three Quarter Right",
+        comment=[
+            "  <!-- The Stochastic Parrot turned three-quarters toward the viewer, facing",
+            "       right (a turnaround's step between the side and the front; mirrored for",
+            "       the step back out). The wings swap between folded and spread",
+            "       (wing.folded / wing.open). The hidden Rig Joints layer marks its joints. -->",
+        ],
+        joints=svg.joints_layer(JQ),
+    )
+
+
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         raise SystemExit(__doc__)
     Path(sys.argv[1]).write_text(draw_side())
     Path(sys.argv[2]).write_text(draw_front())
+    Path(sys.argv[3]).write_text(draw_three_quarter())

@@ -9,7 +9,8 @@ tipped green, blue flight feathers. Perched, the wing folds on the body;
 flying, it beats.
 
 The SVGs ``data/characters/stochastic_parrot_v2/stochastic_parrot_v2.svg``
-(side) and ``stochastic_parrot_v2_front.svg`` (facing the viewer) own the art
+(side), ``stochastic_parrot_v2_front.svg`` (facing the viewer) and
+``stochastic_parrot_v2_three_quarter.svg`` (turned halfway) own the art
 and mark every joint (their hidden ``Rig Joints`` layers). The rig documents
 under ``rigged/stochastic_parrot_v2/`` own the skeletons and the clips;
 ``scripts/build_stochastic_parrot_v2_rig.py`` derives them (through
@@ -18,9 +19,10 @@ Each clip also keys the eye state (``eye.*``), the wing look (``wing.folded``
 / ``wing.open``) and the strength of each effect (``fx.*``). This module owns
 only the effects and publication.
 
-A turnaround hops round: its first frames are the side rig, its middle the
-front rig (whose clips share the turnaround rows' names), its last the side
-rig mirrored.
+A turnaround hops round through a three-quarter view and the front: its
+frames are the side rig, the three-quarter rig, the front rig, then the
+three-quarter and side rigs mirrored (the turning rigs' clips share the
+turnaround rows' names).
 
 Rows, frame counts and durations are the sheet contract the target always
 published.
@@ -60,6 +62,7 @@ LINEAGE = {
 RIGGED = Path(__file__).resolve().parent / "rigged" / TARGET_NAME
 RIG_PATH = RIGGED / "stochastic_parrot_v2_side.rig.json"
 FRONT_RIG_PATH = RIGGED / "stochastic_parrot_v2_front.rig.json"
+THREE_QUARTER_RIG_PATH = RIGGED / "stochastic_parrot_v2_three_quarter.rig.json"
 FRAME_W, FRAME_H = 128, 128
 #: Sprite pixels per SVG unit (the rigs' ``svg_source.scale``): drawn 512
 #: units square, published in a 128 px frame.
@@ -67,7 +70,7 @@ ART_SCALE = 0.25
 LOOPS = {"idle", "walk", "fly", "taunt"}
 TURN_ROWS = {"turnaround", "turnaround_flight"}
 #: Which view draws each turnaround frame.
-TURN_VIEWS = ("side", "side", "front", "front", "front", "front", "front", "mirror", "mirror")
+TURN_VIEWS = ("side", "side", "three_quarter", "front", "front", "front", "three_quarter_mirror", "side_mirror", "side_mirror")
 
 
 def _px(x: float, y: float) -> Dict[str, float]:
@@ -197,8 +200,8 @@ def _doc() -> RigDocument:
     return FX.rig_document(RIG_PATH)
 
 
-def _front_doc() -> RigDocument:
-    return FX.rig_document(FRONT_RIG_PATH)
+def _turn_doc(view: str) -> RigDocument:
+    return FX.rig_document(FRONT_RIG_PATH if view == "front" else THREE_QUARTER_RIG_PATH)
 
 
 #: The sheet's rows are the side rig's clips, in its order (the game reads
@@ -378,10 +381,12 @@ def _side_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image
 def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
     if animation in TURN_ROWS:
         view = TURN_VIEWS[min(frame_idx, len(TURN_VIEWS) - 1)]
-        if view == "front":
-            return compose_rig_frame(_front_doc(), animation, frame_idx, frame_count, fx_pieces=True)
-        frame = _side_frame(animation, frame_idx, frame_count)
-        return rigdoc.mirrored_canvas(frame) if view == "mirror" else frame
+        base = view.removesuffix("_mirror")
+        if base == "side":
+            frame = _side_frame(animation, frame_idx, frame_count)
+        else:
+            frame = compose_rig_frame(_turn_doc(base), animation, frame_idx, frame_count, fx_pieces=True)
+        return rigdoc.mirrored_canvas(frame) if view.endswith("mirror") else frame
     return _side_frame(animation, frame_idx, frame_count)
 
 
