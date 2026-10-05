@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Build the T-rex boss's rig document from its SVG.
 
-The SVG ``data/characters/trex_enemy/trex_enemy.svg`` owns the art and says
-where every joint is; ``rigbuild.theropod`` derives the skeleton from it, binds
-every part to its bone, and refreshes the SVG's rig catalog. This script
-supplies only what the drawing cannot state: the frame, the rows and the
-clips. It never draws.
+The SVG ``data/characters/trex_enemy/trex_enemy.svg`` owns the art and says where
+every joint is; ``rigbuild.creature_rig``, with the ``theropod`` anatomy,
+derives the skeleton from it, binds every part to its bone, and refreshes the
+SVG's rig catalog. This script supplies only what the drawing cannot state:
+the frame, the rows and the clips. It never draws.
 
     uv run python scripts/build_trex_enemy_rig.py
 
@@ -250,7 +250,7 @@ DEFAULTS: Pose = {
 }
 
 
-SPEC = T.TheropodSpec(
+SPEC = T.theropod_spec(
     name="trex_enemy",
     svg_path=PKG / "data" / "characters" / "trex_enemy" / "trex_enemy.svg",
     rig_path=PKG / "targets" / "characters" / "rigged" / "trex_enemy" / "trex_enemy_side.rig.json",

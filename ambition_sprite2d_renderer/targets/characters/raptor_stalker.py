@@ -35,7 +35,7 @@ from ...authoring.portrait import (
 )
 from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet
-from . import _theropod_fx as FX
+from . import _creature_fx as FX
 from ._svg_fighter_effects import FxCanvas, compose_rig_frame
 
 Point = Tuple[float, float]
@@ -147,7 +147,7 @@ def _doc() -> RigDocument:
 #: them by name).
 ROWS: List[Tuple[str, int, int]] = _doc().rows()
 
-# --- Effect glyphs (`_theropod_fx`), in SVG units like the art ----------------
+# --- Effect glyphs (`_creature_fx`), in SVG units like the art ----------------
 
 RAKE = (255, 246, 214, 255)
 RAKE_GLOW = (255, 196, 120, 140)

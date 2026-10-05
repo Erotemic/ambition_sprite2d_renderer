@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Build the raptor stalker's rig document from its SVG.
 
-The SVG ``data/characters/raptor_stalker/raptor_stalker.svg`` owns the art
-and says where every joint is; ``rigbuild.theropod`` derives the skeleton from
-it, binds every part to its bone, and refreshes the SVG's rig catalog. This
-script supplies only what the drawing cannot state: the frame, the rows and
-the clips. It never draws.
+The SVG ``data/characters/raptor_stalker/raptor_stalker.svg`` owns the art and says where
+every joint is; ``rigbuild.creature_rig``, with the ``theropod`` anatomy,
+derives the skeleton from it, binds every part to its bone, and refreshes the
+SVG's rig catalog. This script supplies only what the drawing cannot state:
+the frame, the rows and the clips. It never draws.
 
     uv run python scripts/build_raptor_stalker_rig.py
 
@@ -211,7 +211,7 @@ DEFAULTS: Pose = {
     "jaw": 2.0,
 }
 
-SPEC = T.TheropodSpec(
+SPEC = T.theropod_spec(
     name="raptor_stalker",
     svg_path=PKG / "data" / "characters" / "raptor_stalker" / "raptor_stalker.svg",
     rig_path=PKG / "targets" / "characters" / "rigged" / "raptor_stalker" / "raptor_stalker_side.rig.json",

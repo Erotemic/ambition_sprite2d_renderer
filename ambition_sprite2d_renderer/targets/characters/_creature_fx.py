@@ -1,8 +1,8 @@
-"""Effects and rig loading shared by the SVG-rigged theropods (the T-rex boss
-and the raptor stalker).
+"""Effects and rig loading shared by the SVG-rigged creatures built with
+``rigbuild.creature_rig`` (the T-rex boss, the raptor stalker, the bear mauler).
 
-Both are drawn in SVG units and published at an ``art_scale``; their effects
-are authored in the same units. Each effect is a glyph painted ONCE at full
+Each is drawn in SVG units and published at an ``art_scale``; its effects are
+authored in the same units. Each effect is a glyph painted ONCE at full
 strength, about its own pivot (logical (0, 0)), at the effect canvas's
 supersample; a frame places it with the clip's ``fx.*`` strength as the draw's
 opacity, so a part flipbook stores one raster per glyph, not one per frame.
@@ -136,7 +136,7 @@ def paint_thud(c: FxCanvas) -> None:
         c.ellipse((x, y), r, r * 0.5, DUST_DARK)
 
 
-#: The glyphs every theropod shares, by name: (extent, paint).
+#: The glyphs every creature shares, by name: (extent, paint).
 COMMON: Dict[str, Tuple[Extent, Paint]] = {
     "bite": ((40.0, 30.0, 40.0, 30.0), paint_bite),
     "dust": ((24.0, 16.0, 26.0, 14.0), paint_dust),
