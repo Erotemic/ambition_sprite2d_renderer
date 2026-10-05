@@ -2215,6 +2215,14 @@ def _split_symmetric_parts(flipbook: "PartFlipbook", rendered, distinct=frozense
             a = band[..., 3] / 255.0
             band[..., 3] = np.round(255.0 * (1.0 - np.sqrt(np.clip(1.0 - a, 0.0, 1.0))))
             cut = Image.fromarray(pixels.round().astype(np.uint8), "RGBA")
+            # ⛔ AND THE CUT SIDE GETS THE BORDER TOO (`PART_BORDER`). Cut flush,
+            # the half ended in opaque texels at its rect's edge, and the GPU's
+            # filter read the atlas neighbour there: Hunny Horror drew a seam down
+            # its body, head and jaw (2026-10-04). The offline replay reads
+            # transparent past a raster and never saw it.
+            bordered = Image.new("RGBA", (cut.width + PART_BORDER, cut.height) if axis == 0 else (cut.width, cut.height + PART_BORDER), (0, 0, 0, 0))
+            bordered.paste(cut, (0, 0))
+            cut = bordered
             halves[i] = len(new_parts)
             new_parts.append(PartRaster(f"{parts[i].name}/half", cut, parts[i].pivot))
         clips = {}
@@ -2233,6 +2241,8 @@ def _split_symmetric_parts(flipbook: "PartFlipbook", rendered, distinct=frozense
                     size = crop.size[axis]
                     half = min(size, (size + 1) // 2 + SPLIT_OVERLAP)
                     out.append(_redrawn(d, parts[d.part], half_raster, h, None, (0, 0), (1.0, 1.0, 1.0)))
+                    # (Placed by its drawn extent: the border on the cut side is
+                    # transparent and moves nothing.)
                     mirror_offset = (size - half, 0) if axis == 0 else (0, size - half)
                     out.append(
                         _replace(

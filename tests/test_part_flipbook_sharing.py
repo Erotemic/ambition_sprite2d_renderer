@@ -230,3 +230,21 @@ def test_a_squash_scales_about_the_pivot_row():
     covered = [y for y, a in enumerate(alpha) if a >= 128]
     # 30 rows above the pivot become 15, 10 below become 5.
     assert pivot[1] == round(pivot[1]) and covered[0] == pivot[1] - 15 and covered[-1] == pivot[1] + 4
+
+
+def test_a_half_keeps_a_transparent_border_on_its_cut_side():
+    """The GPU filter reads past a part's rect into its atlas neighbour, so every
+    part ends in transparent texels; a half cut flush ended opaque and drew a
+    seam down Hunny Horror (2026-10-04)."""
+    from ambition_sprite2d_renderer.authoring.part_flipbook import PART_BORDER
+
+    part = _symmetric(34)
+    draws = [PartDraw(0, (-10.0, -30.0), 0.3, (1.0, 1.0), "limb"), PartDraw(0, (14.0, -20.0), -1.1, (-1.0, 1.0), "limb2")]
+    flipbook = PartFlipbook("sym", (96, 72), (48.0, 66.0), [PartRaster("limb", part, (5.0, 7.0))],
+                            {"idle": (0.1, [draws])}, placement=PLACEMENT_CONTINUOUS)
+    split = _split_symmetric_parts(flipbook, {("idle", 0): flipbook.recompose("idle", 0)})
+    assert split is not flipbook
+    alpha = split.parts[0].image.getchannel("A")
+    width, height = alpha.size
+    for x in range(width - PART_BORDER, width):
+        assert max(alpha.getpixel((x, y)) for y in range(height)) == 0, f"column {x} of {width} is drawn"
