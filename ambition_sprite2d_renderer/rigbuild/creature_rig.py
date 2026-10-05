@@ -10,7 +10,8 @@ SVG's rig catalog.
 
 A family module says what its anatomy is (``theropod``: the T-rex boss and the
 raptor stalker; ``quadruped``: the bear mauler; ``fish``: the burning flying
-shark; ``humanoid``: Bob, with a key-pose language for a fighter's moveset)
+shark; ``bird``: the Stochastic Parrot; ``humanoid``: Bob, with a key-pose
+language for a fighter's moveset)
 as a skeleton function and a list of legs; a character's builder script
 (``scripts/build_<name>_rig.py``) supplies only its frame, its rows and its
 clips.

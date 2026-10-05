@@ -827,8 +827,8 @@ def _sampled_as_the_frame(ops: list, frame_size: Tuple[int, int], size: Tuple[in
 
     rx, ry = frame_size[0] / size[0], frame_size[1] / size[1]
     # The filter's reach in frame pixels: 3 when reducing; enlarging, 3
-    # canvas pixels are 3 / scale frame pixels (stochastic_parrot_v2 fits a
-    # reduced frame up to 1.32x).
+    # canvas pixels are 3 / scale frame pixels (a painter may fit a reduced
+    # frame up to 1.32x).
     reach_x, reach_y = math.ceil(3 / min(1.0, rx)), math.ceil(3 / min(1.0, ry))
 
     def as_part(op):

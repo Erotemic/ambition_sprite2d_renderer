@@ -1,16 +1,30 @@
-"""Polished, versioned Stochastic Parrot character target.
+"""SVG-rigged Stochastic Parrot (v2): a scarlet macaw that mimics, squawks and dive-bombs.
 
-This is an intentional sibling of :mod:`stochastic_parrot`, not a replacement.
-It keeps the original sheet available as lineage while publishing a new
-``stochastic_parrot_v2`` target with a larger, cleaner scarlet-macaw silhouette,
-layered connected wings, a longer feathered tail, a more expressive face and
-beak, and stronger pose readability.
+The second version of :mod:`stochastic_parrot`, which stays published as its
+lineage. A scarlet macaw drawn as an SVG and posed by a rig: the bare white
+face patch lined with tiny red feathers, a great hooked pale beak over a black
+lower mandible that gabbles, a smooth round crown,
+pinning eyes, and wings that really spread: red shoulders, a yellow band
+tipped green, blue flight feathers. Perched, the wing folds on the body;
+flying, it beats.
 
-The sheet is authored entirely in Python/Pillow.  It contains no props,
-particles, floor ellipse, or drop shadow.  The original action vocabulary is
-preserved so the two versions can be compared or selected independently.
+The SVGs ``data/characters/stochastic_parrot_v2/stochastic_parrot_v2.svg``
+(side) and ``stochastic_parrot_v2_front.svg`` (facing the viewer) own the art
+and mark every joint (their hidden ``Rig Joints`` layers). The rig documents
+under ``rigged/stochastic_parrot_v2/`` own the skeletons and the clips;
+``scripts/build_stochastic_parrot_v2_rig.py`` derives them (through
+``rigbuild.creature_rig`` with the ``bird`` anatomy) and authors the clips.
+Each clip also keys the eye state (``eye.*``), the wing look (``wing.folded``
+/ ``wing.open``) and the strength of each effect (``fx.*``). This module owns
+only the effects and publication.
 
-    PYTHONPATH=tools/ambition_sprite2d_renderer python -m ambition_sprite2d_renderer sheet stochastic_parrot_v2
+A turnaround hops round: its first frames are the side rig, its middle the
+front rig (whose clips share the turnaround rows' names), its last the side
+rig mirrored.
+
+Rows, frame counts and durations are the sheet contract the target always
+published.
+
     PYTHONPATH=tools/ambition_sprite2d_renderer python -m ambition_sprite2d_renderer publish stochastic_parrot_v2
 """
 
@@ -20,28 +34,15 @@ import math
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from PIL import Image, ImageColor, ImageDraw
+from PIL import Image
 
-from ...authoring import rigdoc, shape_rig
+from ...authoring import rigdoc
 from ...authoring.part_flipbook import publish_rig_flipbook
-from ...authoring.common_draw import draw_capsule
-from ...authoring.rig import add, clamp, ease_in_out_sine, vec
-from ...authoring.skeleton import (
-    BoneWorld,
-    Channel,
-    Clip,
-    PartCtx,
-    Rig,
-    Skeleton,
-    composite_polygon,
-    draw_polygon,
-    rounded_polygon,
-    two_bone_ik,
-)
-from ambition_sprite2d_renderer.core.draw import blending_draw
+from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet, write_canonical
+from . import _creature_fx as FX
+from ._svg_fighter_effects import FxCanvas, compose_rig_frame
 
-Color = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
 TARGET_NAME = "stochastic_parrot_v2"
@@ -51,36 +52,28 @@ USES_DROP_SHADOW = False
 USES_PROPS = False
 LINEAGE = {
     "family": "stochastic_parrot",
-    "variant": "polished_v2",
+    "variant": "svg_rigged_v2",
     "parents": [PARENT_TARGET],
-    "creator": "GPT-5.6 Thinking",
-    "method": "procedural_python_pillow",
-    "revision": "full_visual_polish",
+    "method": "svg_rig",
+    "revision": "svg_rigged_redesign",
 }
+RIGGED = Path(__file__).resolve().parent / "rigged" / TARGET_NAME
+RIG_PATH = RIGGED / "stochastic_parrot_v2_side.rig.json"
+FRONT_RIG_PATH = RIGGED / "stochastic_parrot_v2_front.rig.json"
 FRAME_W, FRAME_H = 128, 128
-SS = 4
-GROUND_Y = 104.0
-CENTER_X = 64.0
-ANKLE_H = 1.3
-LEG_U, LEG_L = 12.5, 9.5
-WING_U, WING_L = 16.5, 13.5
-OUTLINE_W = 1.35
-
-ROWS: List[Tuple[str, int, int]] = [
-    ("idle", 8, 120),
-    ("walk", 8, 95),
-    ("fly", 10, 82),
-    ("turnaround", 9, 82),
-    ("turnaround_flight", 9, 74),
-    ("dive_bomb", 9, 72),
-    ("hover_peck", 10, 68),
-    ("banked_strafe", 10, 74),
-    ("slash", 8, 76),
-    ("taunt", 10, 90),
-    ("hurt", 4, 92),
-    ("death", 8, 108),
-]
+#: Sprite pixels per SVG unit (the rigs' ``svg_source.scale``): drawn 512
+#: units square, published in a 128 px frame.
+ART_SCALE = 0.25
 LOOPS = {"idle", "walk", "fly", "taunt"}
+TURN_ROWS = {"turnaround", "turnaround_flight"}
+#: Which view draws each turnaround frame.
+TURN_VIEWS = ("side", "side", "front", "front", "front", "front", "front", "mirror", "mirror")
+
+
+def _px(x: float, y: float) -> Dict[str, float]:
+    """A point of the side drawing (SVG units) as a sprite-frame point."""
+    return {"x": round(x * ART_SCALE, 1), "y": round(y * ART_SCALE, 1)}
+
 
 ACTOR_METADATA = {
     "actor": {"character_id": TARGET_NAME, "display_name": "Stochastic Parrot v2"},
@@ -96,7 +89,7 @@ ACTOR_METADATA = {
             "noisy",
             "chaotic",
             "versioned_variant",
-            "polished_v2",
+            "svg_rigged",
         ],
     },
     "capabilities": {
@@ -119,1658 +112,277 @@ ACTOR_METADATA = {
     },
     "brain": {"default_preset": "parrot_lively"},
     "actions": {"default_preset": "peaceful"},
-    "visual": {"default_pose": "idle"},
+    "animation_bindings": {
+        "default": {"animation": "idle", "events": []},
+        "locomotion.walk": {"animation": "walk", "events": []},
+        "locomotion.fly": {"animation": "fly", "events": []},
+        "action.melee.primary": {
+            "animation": "slash",
+            "events": [
+                {"t": 0.14, "event": "telegraph_peak", "source": TARGET_NAME},
+                {"t": 0.29, "event": "hitbox_active_start", "source": TARGET_NAME},
+                {"t": 0.57, "event": "hitbox_active_end", "source": TARGET_NAME},
+            ],
+        },
+        "action.melee.peck": {
+            "animation": "hover_peck",
+            "events": [
+                {"t": 0.22, "event": "hitbox_active_start", "source": TARGET_NAME},
+                {"t": 0.33, "event": "hitbox_active_end", "source": TARGET_NAME},
+                {"t": 0.56, "event": "hitbox_active_start", "source": TARGET_NAME},
+                {"t": 0.67, "event": "hitbox_active_end", "source": TARGET_NAME},
+            ],
+        },
+        "action.special.dive": {
+            "animation": "dive_bomb",
+            "events": [
+                {"t": 0.12, "event": "telegraph_peak", "source": TARGET_NAME},
+                {"t": 0.25, "event": "dive_commit", "source": TARGET_NAME},
+                {"t": 0.62, "event": "hitbox_active_start", "source": TARGET_NAME},
+                {"t": 0.75, "event": "hitbox_active_end", "source": TARGET_NAME},
+            ],
+        },
+        "action.special.strafe": {
+            "animation": "banked_strafe",
+            "events": [
+                {"t": 0.33, "event": "hitbox_active_start", "source": TARGET_NAME},
+                {"t": 0.67, "event": "hitbox_active_end", "source": TARGET_NAME},
+            ],
+        },
+        "emote.taunt": {"animation": "taunt", "events": []},
+        "reaction.hurt": {"animation": "hurt", "events": []},
+        "reaction.death": {"animation": "death", "events": []},
+    },
+    # Points on the drawn frame (before the sheet's auto-crop), perched at rest.
+    "sockets": {
+        "beak": {"source": "stochastic_parrot_v2.geometry", "point": _px(352.0, 250.0)},
+        "head": {"source": "stochastic_parrot_v2.geometry", "point": _px(304.0, 208.0)},
+        "talons": {"source": "stochastic_parrot_v2.geometry", "point": _px(270.0, 410.0)},
+        "tail": {"source": "stochastic_parrot_v2.geometry", "point": _px(110.0, 402.0)},
+    },
+    "visual": {
+        "default_pose": "idle",
+        "canonical_source": "ambition_sprite2d_renderer/data/characters/stochastic_parrot_v2/stochastic_parrot_v2.svg",
+    },
     "tags": [
         "enemy",
         "bird",
         "stochastic_parrot",
         "versioned_variant",
-        "polished_v2",
+        "svg_rigged",
     ],
+    "authoring_description": (
+        "Stochastic Parrot v2 is the second rendering of the 'stochastic parrots' language-model "
+        "critique: a scarlet macaw drawn as an SVG and posed by a rig. It keeps the same joke "
+        "(impressive continuation and mimicry are not automatically comprehension) with a bird "
+        "that really flies: its wings fold on the body when it perches and spread and beat when "
+        "it takes off, and it squawks a balloon of noise when it taunts."
+    ),
+    "gameplay_description": (
+        "Use as the preferred high-readability mimic enemy or chatter NPC. It can walk, fly, "
+        "strafe with its talons, peck, wing-chop, dive-bomb and remix dialogue; games may choose "
+        "this version while retaining the original as lineage or a weaker variant."
+    ),
+    "dialogue_hints": {
+        "barks": [
+            "Version two: twice the plumage, same epistemology.",
+            "Fluent! Therefore correct!",
+            "I can continue that sentence for you.",
+        ]
+    },
 }
 
 
-ACTOR_METADATA.update(
-    {
-        "authoring_description": (
-            "Stochastic Parrot v2 is the polished second rendering of the 'stochastic parrots' "
-            "language-model critique. The larger scarlet-macaw silhouette improves readability but "
-            "keeps the same joke: impressive continuation and mimicry are not automatically "
-            "comprehension."
-        ),
-        "gameplay_description": (
-            "Use as the preferred high-readability mimic enemy or chatter NPC. It can fly, strafe, "
-            "peck, and remix dialogue; games may choose this version while retaining the original as "
-            "lineage or a weaker variant."
-        ),
-    }
-)
-ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
-    "barks",
-    [
-        'Version two: twice the plumage, same epistemology.',
-        'Fluent! Therefore correct!',
-        'I can continue that sentence for you.',
-    ],
-)
+def _doc() -> RigDocument:
+    return FX.rig_document(RIG_PATH)
 
 
-def _rgba(hex_color: str, alpha: int = 255) -> Color:
-    r, g, b = ImageColor.getrgb(hex_color)
-    return (r, g, b, alpha)
+def _front_doc() -> RigDocument:
+    return FX.rig_document(FRONT_RIG_PATH)
 
 
-PAL: Dict[str, Color] = {
-    "outline": _rgba("#18171C"),
-    "outline_soft": _rgba("#302A31"),
-    "body": _rgba("#D93A34"),
-    "body_dark": _rgba("#8E2028"),
-    "body_deep": _rgba("#641B28"),
-    "body_light": _rgba("#F36A4E"),
-    "body_glow": _rgba("#FF8A5C"),
-    "wing_yellow": _rgba("#F5C13A"),
-    "wing_gold": _rgba("#D89020"),
-    "wing_blue": _rgba("#2E64C8"),
-    "wing_blue_light": _rgba("#4A82E2"),
-    "wing_blue_dark": _rgba("#1A3D8F"),
-    "head": _rgba("#D83A34"),
-    "head_light": _rgba("#F66B50"),
-    "face_patch": _rgba("#F4E9D5", 242),
-    "face_patch_shadow": _rgba("#D8C9B5", 210),
-    "face_line": _rgba("#6F6B70", 190),
-    "beak_upper": _rgba("#E8DDC8"),
-    "beak_upper_light": _rgba("#FFF3DC"),
-    "beak_upper_shadow": _rgba("#BDAF9D"),
-    "beak_lower": _rgba("#29282D"),
-    "leg": _rgba("#777B85"),
-    "leg_light": _rgba("#A1A5AC"),
-    "talon": _rgba("#D9BD82"),
-    "eye": _rgba("#F8E28A"),
-    "iris": _rgba("#B87924"),
-    "pupil": _rgba("#111216"),
-}
+#: The sheet's rows are the side rig's clips, in its order (the game reads
+#: them by name).
+ROWS: List[Tuple[str, int, int]] = _doc().rows()
 
+# --- Effect glyphs (`_creature_fx`), in glyph units (``FX_UNIT`` art units) ----
 
-# ---- Skeleton -----------------------------------------------------------------
+INK = (29, 20, 24, 255)
+WHITE = (255, 252, 244, 255)
+STREAK = (255, 248, 226, 150)
+RED = (216, 53, 43, 255)
+RED_DARK = (156, 28, 26, 255)
+BLUE = (47, 111, 208, 255)
+BLUE_LIGHT = (94, 156, 240, 255)
+YELLOW = (246, 198, 50, 255)
+SCRATCH = (255, 244, 214, 235)
 
 
-def _build_skeleton() -> Skeleton:
-    sk = Skeleton()
-    sk.bone("body", offset=(0.0, -24.0))
-    sk.bone("head", parent="body", offset=(14.5, -12.0))
-    sk.bone("beak", parent="head", offset=(12.5, 0.6), length=11.0)
-    sk.bone("tail", parent="body", offset=(-17.0, 3.0), length=20.0, rest_angle=162.0)
-    sk.bone("far_wing_u", parent="body", offset=(-2.0, -3.0), length=WING_U, rest_angle=162.0)
-    sk.bone("far_wing_l", parent="far_wing_u", offset=(WING_U, 0.0), length=WING_L, rest_angle=6.0)
-    sk.bone("near_wing_u", parent="body", offset=(3.0, -3.5), length=WING_U, rest_angle=150.0)
-    sk.bone("near_wing_l", parent="near_wing_u", offset=(WING_U, 0.0), length=WING_L, rest_angle=8.0)
-    sk.bone("far_leg_u", parent="body", offset=(-4.5, 8.0), length=LEG_U, rest_angle=90.0)
-    sk.bone("far_leg_l", parent="far_leg_u", offset=(LEG_U, 0.0), length=LEG_L)
-    sk.bone("far_foot", parent="far_leg_l", offset=(LEG_L, 0.0), length=7.0, rest_angle=-90.0)
-    sk.bone("near_leg_u", parent="body", offset=(2.0, 8.5), length=LEG_U, rest_angle=90.0)
-    sk.bone("near_leg_l", parent="near_leg_u", offset=(LEG_U, 0.0), length=LEG_L)
-    sk.bone("near_foot", parent="near_leg_l", offset=(LEG_L, 0.0), length=7.0, rest_angle=-90.0)
-    return sk
-
-
-_SKEL = _build_skeleton()
-
-
-# ---- Parts --------------------------------------------------------------------
-
-
-def _leg_painter(upper: str, lower: str, tint: Color, toe_tint: Color, r_u: float, r_l: float):
-    def fn(ctx: PartCtx) -> None:
-        u, low = ctx.world[upper], ctx.world[lower]
-        ow = ctx.L(0.45)
-        draw_capsule(ctx.draw, ctx.cw(u.origin), ctx.cw(u.tip), ctx.L(r_u), tint, PAL["outline"], ow)
-        draw_capsule(ctx.draw, ctx.cw(low.origin), ctx.cw(low.tip), ctx.L(r_l), tint, PAL["outline"], ow)
-        jx, jy = ctx.cw(low.origin)
-        jr = ctx.L(r_u * 0.55)
-        ctx.draw.ellipse((jx - jr, jy - jr, jx + jr, jy + jr), fill=PAL["talon"])
-        hx, hy = ctx.cw(low.tip)
-        for spread, length in ((-28.0, 4.5), (0.0, 5.4), (26.0, 4.2)):
-            tx, ty = ctx.cw(add(low.tip, vec(length, low.angle + spread)))
-            ctx.draw.line((hx, hy, tx, ty), fill=toe_tint, width=max(1, int(ctx.L(0.8))))
-    fn.spec = ("leg", upper, lower, tint, toe_tint, r_u, r_l)
-    return fn
-
-
-
-
-#: The tail's feathers: (root y, fan shift, end x, end y, half width, colour).
-#: The fan moves each feather across the tail by ``fan shift * tail_fan``.
-TAIL_FEATHERS = [
-    (-4.2, -4.5, 21.5, -7.2, 2.3, "body_dark"),
-    (-1.5, -1.8, 24.5, -1.8, 2.45, "body"),
-    (1.1, 1.8, 25.8, 4.0, 2.35, "wing_blue"),
-    (3.7, 4.5, 22.5, 9.0, 2.05, "wing_blue_dark"),
-]
-
-
-def _tail_painter(ctx: PartCtx, which=None) -> None:
-    """Long, layered macaw tail whose roots overlap the rump. ``which`` paints
-    one piece: a feather's index (at zero fan, rigid: the fan moves it) or
-    ``"cover"`` (the rump covert); ``None`` paints the whole tail."""
-    fan = clamp(ctx.params.get("tail_fan", 0.0), -1.0, 1.0)
-    for idx, (root_y, shift, end_x, end_y, half_w, color) in enumerate(TAIL_FEATHERS):
-        if which is not None and which != idx:
-            continue
-        root_y, end_y = root_y + shift * fan, end_y + shift * fan
-        pts = [
-            (-2.2, root_y - half_w),
-            (4.0, root_y - half_w * 1.08),
-            (13.0, root_y - half_w * 0.72),
-            (end_x, end_y),
-            (13.2, root_y + half_w * 0.72),
-            (4.0, root_y + half_w * 1.08),
-            (-2.2, root_y + half_w),
-        ]
-        draw_polygon(
-            ctx.draw,
-            rounded_polygon(ctx.pts(pts), radius=ctx.L(1.35)),
-            PAL[color],
-            PAL["outline"],
-            ctx.L(0.62),
-        )
-        shaft = [ctx.pt((1.0, root_y)), ctx.pt((end_x * 0.82, end_y * 0.82 + root_y * 0.18))]
-        ctx.draw.line(
-            (shaft[0][0], shaft[0][1], shaft[1][0], shaft[1][1]),
-            fill=(*PAL["outline"][:3], 95),
-            width=max(1, int(ctx.L(0.18))),
-        )
-    if which is not None and which != "cover":
-        return
-    # Opaque rump covert seals all feather roots into the body silhouette.
-    cover = [(-4.0, -6.0), (5.5, -6.7), (9.0, -1.0), (5.8, 6.5), (-4.0, 6.1), (-7.0, 0.0)]
-    draw_polygon(
-        ctx.draw,
-        rounded_polygon(ctx.pts(cover), radius=ctx.L(2.2)),
-        PAL["body_dark"],
-        PAL["outline"],
-        ctx.L(0.55),
-    )
-
-
-def _body_painter(ctx: PartCtx) -> None:
-    """Draw a tapered avian trunk with a readable breast and shoulder."""
-    body = [
-        (-20.0, -10.5),
-        (-12.5, -17.0),
-        (-1.0, -20.0),
-        (10.5, -18.0),
-        (19.5, -11.0),
-        (22.0, -1.0),
-        (17.0, 10.5),
-        (7.0, 16.5),
-        (-5.5, 17.0),
-        (-16.0, 11.0),
-        (-22.0, 2.0),
-    ]
-    draw_polygon(
-        ctx.draw,
-        rounded_polygon(ctx.pts(body), radius=ctx.L(4.6)),
-        PAL["body"],
-        PAL["outline"],
-        ctx.L(OUTLINE_W),
-    )
-
-    # Back depth and a warm breast highlight establish volume without gradients.
-    back = [(-19.0, -9.2), (-11.0, -15.0), (-6.0, -13.0), (-7.0, 12.5), (-15.0, 9.5), (-20.0, 2.0)]
-    composite_polygon(
-        ctx.img,
-        rounded_polygon(ctx.pts(back), radius=ctx.L(2.8)),
-        (*PAL["body_dark"][:3], 150),
-    )
-    breast = [(-3.0, -10.5), (9.5, -12.0), (17.0, -5.0), (16.0, 6.0), (8.0, 13.0), (-2.5, 12.0), (-7.0, 3.0)]
-    composite_polygon(
-        ctx.img,
-        rounded_polygon(ctx.pts(breast), radius=ctx.L(3.8)),
-        (*PAL["body_light"][:3], 112),
-    )
-    breast_glint = [(5.0, -9.5), (12.0, -7.5), (13.0, -1.0), (9.0, 2.5), (4.0, -0.5)]
-    composite_polygon(
-        ctx.img,
-        rounded_polygon(ctx.pts(breast_glint), radius=ctx.L(2.0)),
-        (*PAL["body_glow"][:3], 70),
-    )
-
-    # Golden shoulder covert is integrated into the torso and reads even when
-    # the near wing folds tightly against the body.
-    shoulder = [(-1.5, -14.0), (8.0, -16.0), (14.0, -11.5), (11.0, -5.5), (3.0, -4.8), (-2.5, -8.0)]
-    composite_polygon(
-        ctx.img,
-        rounded_polygon(ctx.pts(shoulder), radius=ctx.L(2.5)),
-        (*PAL["wing_yellow"][:3], 185),
-    )
-
-
-def _wing_painter(
-    upper: str,
-    lower: str,
-    covert_tint: Color,
-    primary_tint: Color,
-    r_u: float,
-    r_l: float,
-    shoulder_tint: Color,
-    tip_tint: Color,
-):
-    def fn(ctx: PartCtx, which: str = "both") -> None:
-        u, low = ctx.world[upper], ctx.world[lower]
-        is_far = upper.startswith("far_")
-        scale = 0.98 if is_far else 1.10
-        ow = ctx.L(0.48)
-
-        def rot_pt(center: Point, angle_deg: float, along: float, across: float) -> Point:
-            rad = math.radians(angle_deg)
-            ca, sa = math.cos(rad), math.sin(rad)
-            return (center[0] + ca * along - sa * across, center[1] + sa * along + ca * across)
-
-        def feather(center: Point, ang: float, length: float, base_w: float, tip_w: float, fill: Color, shaft: Color, highlight_alpha: int = 56) -> None:
-            pts = [
-                rot_pt(center, ang, -0.72 * scale, -base_w),
-                rot_pt(center, ang, length * 0.12, -base_w * 0.96),
-                rot_pt(center, ang, length * 0.42, -base_w * 0.72),
-                rot_pt(center, ang, length * 0.74, -tip_w * 1.08),
-                rot_pt(center, ang, length + 0.8 * scale, 0.0),
-                rot_pt(center, ang, length * 0.74, tip_w * 1.08),
-                rot_pt(center, ang, length * 0.42, base_w * 0.72),
-                rot_pt(center, ang, length * 0.12, base_w * 0.96),
-                rot_pt(center, ang, -0.55 * scale, base_w),
-            ]
-            poly = rounded_polygon([ctx.cw(p) for p in pts], radius=ctx.L(1.0 * scale))
-            draw_polygon(ctx.draw, poly, fill, PAL["outline"], ctx.L(0.28))
-            hi = [
-                rot_pt(center, ang, 0.25 * scale, -base_w * 0.36),
-                rot_pt(center, ang, length * 0.52, -base_w * 0.24),
-                rot_pt(center, ang, length * 0.76, -tip_w * 0.18),
-                rot_pt(center, ang, length * 0.58, 0.05),
-                rot_pt(center, ang, 0.45 * scale, 0.04),
-            ]
-            composite_polygon(ctx.img, rounded_polygon([ctx.cw(p) for p in hi], radius=ctx.L(0.55 * scale)), (*PAL["body_light"][:3], highlight_alpha if not is_far else int(highlight_alpha * 0.7)))
-            shaft_pts = [
-                ctx.cw(rot_pt(center, ang, 0.22 * scale, -0.08 * scale)),
-                ctx.cw(rot_pt(center, ang, length * 0.82, 0.0)),
-            ]
-            ctx.draw.line((shaft_pts[0][0], shaft_pts[0][1], shaft_pts[1][0], shaft_pts[1][1]), fill=shaft, width=max(1, int(ctx.L(0.18))))
-
-        shoulder = u.origin
-        elbow = u.tip
-        # The upper arm (drawn in the upper bone frame) and the forearm
-        # (in the forearm frame) are separate pieces: ``which`` picks one.
-        if which != "lower":
-            draw_capsule(ctx.draw, ctx.cw(shoulder), ctx.cw(elbow), ctx.L(r_u * (0.74 if is_far else 0.8)), shoulder_tint, PAL["outline"], ow)
-
-            shoulder_panel = [
-                rot_pt(shoulder, u.angle, 0.1, -r_u * 0.82),
-                rot_pt(shoulder, u.angle, 4.8 * scale, -r_u * 1.08),
-                rot_pt(elbow, low.angle, 0.7 * scale, -r_l * 0.94),
-                rot_pt(elbow, low.angle, 3.2 * scale, -r_l * 0.32),
-                rot_pt(elbow, low.angle, 2.7 * scale, r_l * 0.4),
-                rot_pt(elbow, low.angle, 0.1 * scale, r_l * 0.95),
-                rot_pt(shoulder, u.angle, 0.8, r_u * 0.76),
-            ]
-            draw_polygon(ctx.draw, rounded_polygon([ctx.cw(p) for p in shoulder_panel], radius=ctx.L(1.25)), shoulder_tint, PAL["outline"], ctx.L(0.24))
-            arm_hi = [
-                rot_pt(shoulder, u.angle, 1.0, -r_u * 0.2),
-                rot_pt(shoulder, u.angle, 3.9 * scale, -r_u * 0.52),
-                rot_pt(elbow, low.angle, 0.3 * scale, -r_l * 0.28),
-                rot_pt(elbow, low.angle, 0.8 * scale, 0.08),
-                rot_pt(shoulder, u.angle, 1.1, r_u * 0.1),
-            ]
-            composite_polygon(ctx.img, rounded_polygon([ctx.cw(p) for p in arm_hi], radius=ctx.L(0.82)), (*PAL["body_light"][:3], 138 if not is_far else 96))
-        if which == "upper":
-            return
-
-        covert_panel = [
-            rot_pt(elbow, low.angle, -0.25 * scale, -r_l * 1.02),
-            rot_pt(elbow, low.angle, 3.0 * scale, -r_l * 1.05),
-            rot_pt(elbow, low.angle, 7.0 * scale, -r_l * 0.92),
-            rot_pt(elbow, low.angle, 10.4 * scale, -r_l * 0.46),
-            rot_pt(elbow, low.angle, 11.1 * scale, 0.12),
-            rot_pt(elbow, low.angle, 8.7 * scale, r_l * 0.72),
-            rot_pt(elbow, low.angle, 3.8 * scale, r_l * 1.0),
-            rot_pt(elbow, low.angle, 0.25 * scale, r_l * 0.78),
-        ]
-        draw_polygon(ctx.draw, rounded_polygon([ctx.cw(p) for p in covert_panel], radius=ctx.L(1.28)), covert_tint, PAL["outline"], ctx.L(0.23))
-        covert_hi = [
-            rot_pt(elbow, low.angle, 1.0 * scale, -r_l * 0.42),
-            rot_pt(elbow, low.angle, 4.9 * scale, -r_l * 0.54),
-            rot_pt(elbow, low.angle, 7.4 * scale, -r_l * 0.22),
-            rot_pt(elbow, low.angle, 6.2 * scale, 0.28),
-            rot_pt(elbow, low.angle, 2.3 * scale, 0.18),
-        ]
-        composite_polygon(ctx.img, rounded_polygon([ctx.cw(p) for p in covert_hi], radius=ctx.L(0.9)), (*PAL["wing_yellow"][:3], 172 if not is_far else 122))
-
-        feather_bed = [
-            rot_pt(elbow, low.angle, 2.0 * scale, -r_l * 0.32),
-            rot_pt(elbow, low.angle, 6.5 * scale, -r_l * 0.24),
-            rot_pt(elbow, low.angle, 10.8 * scale, -r_l * 0.02),
-            rot_pt(elbow, low.angle, 11.0 * scale, r_l * 0.34),
-            rot_pt(elbow, low.angle, 8.4 * scale, r_l * 0.54),
-            rot_pt(elbow, low.angle, 3.6 * scale, r_l * 0.48),
-        ]
-        composite_polygon(ctx.img, rounded_polygon([ctx.cw(p) for p in feather_bed], radius=ctx.L(0.95)), (*covert_tint[:3], 214 if not is_far else 160))
-
-        alula = [
-            rot_pt(elbow, low.angle - 10.0, -0.5 * scale, -0.72),
-            rot_pt(elbow, low.angle - 16.0, 2.4 * scale, -1.08),
-            rot_pt(elbow, low.angle - 6.0, 3.4 * scale, -0.22),
-            rot_pt(elbow, low.angle + 2.0, 1.0 * scale, 0.62),
-        ]
-        draw_polygon(ctx.draw, rounded_polygon([ctx.cw(p) for p in alula], radius=ctx.L(0.76)), shoulder_tint, PAL["outline"], ctx.L(0.16))
-
-        secondary_specs = [
-            (add(elbow, vec(1.4 * scale, low.angle - 4.2)), low.angle + 34.0, 6.7 * scale, 1.38 * scale, 0.72 * scale, covert_tint),
-            (add(elbow, vec(2.8 * scale, low.angle - 2.2)), low.angle + 24.0, 7.5 * scale, 1.46 * scale, 0.76 * scale, covert_tint),
-            (add(elbow, vec(4.2 * scale, low.angle - 0.2)), low.angle + 15.0, 8.2 * scale, 1.5 * scale, 0.78 * scale, covert_tint),
-            (add(elbow, vec(5.5 * scale, low.angle + 1.6)), low.angle + 6.0, 8.8 * scale, 1.48 * scale, 0.76 * scale, covert_tint),
-            (add(elbow, vec(6.7 * scale, low.angle + 3.3)), low.angle - 3.0, 9.0 * scale, 1.42 * scale, 0.72 * scale, covert_tint),
-        ]
-        primary_specs = [
-            (add(elbow, vec(7.3 * scale, low.angle - 5.2)), low.angle + 18.0, 9.4 * scale, 1.34 * scale, 0.64 * scale, primary_tint),
-            (add(elbow, vec(8.2 * scale, low.angle - 1.8)), low.angle + 6.0, 10.6 * scale, 1.38 * scale, 0.62 * scale, primary_tint),
-            (add(elbow, vec(8.8 * scale, low.angle + 1.6)), low.angle - 6.0, 11.3 * scale, 1.34 * scale, 0.6 * scale, primary_tint),
-            (add(elbow, vec(8.8 * scale, low.angle + 5.1)), low.angle - 17.0, 11.2 * scale, 1.26 * scale, 0.56 * scale, tip_tint),
-            (add(elbow, vec(8.3 * scale, low.angle + 8.0)), low.angle - 29.0, 10.4 * scale, 1.12 * scale, 0.5 * scale, tip_tint),
-        ]
-        shaft_color = (*PAL["outline"][:3], 124)
-        for spec in reversed(primary_specs):
-            feather(*spec, shaft_color, 42)
-        for spec in reversed(secondary_specs):
-            feather(*spec, shaft_color, 54)
-
-        root_coverts = [
-            rot_pt(elbow, low.angle, 0.8 * scale, -r_l * 0.34),
-            rot_pt(elbow, low.angle, 3.8 * scale, -r_l * 0.48),
-            rot_pt(elbow, low.angle, 6.2 * scale, -r_l * 0.22),
-            rot_pt(elbow, low.angle, 6.5 * scale, 0.18),
-            rot_pt(elbow, low.angle, 4.2 * scale, 0.38),
-            rot_pt(elbow, low.angle, 1.2 * scale, 0.28),
-        ]
-        composite_polygon(ctx.img, rounded_polygon([ctx.cw(p) for p in root_coverts], radius=ctx.L(0.82)), (*covert_tint[:3], 188 if not is_far else 132))
-
-    fn.spec = ("wing", upper, lower)
-    return fn
-
-
-
-def _head_painter(ctx: PartCtx) -> None:
-    """The whole head: the base and the eye (``_head_base_painter``,
-    ``_head_eye_painter``)."""
-    _head_base_painter(ctx)
-    _head_eye_painter(ctx)
-
-
-def _head_base_painter(ctx: PartCtx) -> None:
-    """Large scarlet-macaw head with a graphic bare cheek patch: the head
-    shape, plumage, cheek and brow, which no expression changes."""
-    head = [
-        (-13.8, -11.0),
-        (-5.0, -14.3),
-        (4.5, -13.8),
-        (12.0, -8.0),
-        (14.8, 0.0),
-        (12.0, 7.0),
-        (6.0, 12.0),
-        (-4.5, 11.5),
-        (-12.5, 6.0),
-        (-15.0, -2.5),
-    ]
-    draw_polygon(
-        ctx.draw,
-        rounded_polygon(ctx.pts(head), radius=ctx.L(4.4)),
-        PAL["head"],
-        PAL["outline"],
-        ctx.L(OUTLINE_W),
-    )
-    crown = [(-7.5, -11.5), (2.8, -12.2), (9.0, -7.0), (7.5, -2.5), (-1.0, -3.2), (-8.5, -6.8)]
-    composite_polygon(
-        ctx.img,
-        rounded_polygon(ctx.pts(crown), radius=ctx.L(2.7)),
-        (*PAL["head_light"][:3], 135),
-    )
-
-    cheek = [
-        (-0.8, -7.5),
-        (7.8, -7.0),
-        (11.2, -2.0),
-        (10.6, 5.4),
-        (6.2, 9.8),
-        (1.1, 9.4),
-        (-2.0, 4.5),
-        (-2.4, -1.5),
-    ]
-    draw_polygon(
-        ctx.draw,
-        rounded_polygon(ctx.pts(cheek), radius=ctx.L(2.9)),
-        PAL["face_patch"],
-        PAL["outline_soft"],
-        ctx.L(0.32),
-    )
-    cheek_shadow = [(6.0, -5.7), (9.4, -2.0), (8.7, 6.0), (5.2, 8.0), (4.0, 2.0)]
-    composite_polygon(
-        ctx.img,
-        rounded_polygon(ctx.pts(cheek_shadow), radius=ctx.L(1.8)),
-        (*PAL["face_patch_shadow"][:3], 88),
-    )
-
-    # Macaw facial feather tracks curve around the eye rather than reading as
-    # arbitrary vertical scratches.
-    tracks = [
-        ((1.1, 1.0), (0.7, 6.2)),
-        ((3.0, 0.5), (2.7, 7.1)),
-        ((5.0, 0.2), (5.0, 7.4)),
-        ((6.8, 0.5), (7.2, 6.7)),
-    ]
-    for a, b in tracks:
-        p0, p1 = ctx.pt(a), ctx.pt(b)
-        ctx.draw.line(
-            (p0[0], p0[1], p1[0], p1[1]),
-            fill=PAL["face_line"],
-            width=max(1, int(ctx.L(0.28))),
-        )
-
-    # The brow is above the tallest eye, so it does not overlap the eye overlay.
-    brow = [(-1.2, -8.8), (6.2, -10.1), (9.0, -8.1), (1.2, -6.8)]
-    composite_polygon(
-        ctx.img,
-        rounded_polygon(ctx.pts(brow), radius=ctx.L(1.15)),
-        (*PAL["body_deep"][:3], 185),
-    )
-
-
-def _eye_state(p) -> Tuple[float, float, float]:
-    """The eye's look as ``(height, iris_dx, iris_dy)``, rounded so near
-    looks share one overlay. A blink is height 1.0 (no iris)."""
-    if p.get("blink", 0.0) > 0.5:
-        return (1.0, 0.0, 0.0)
-    squint = clamp(p.get("eye_squint", 0.0), 0.0, 1.0)
-    eye_h = round(6.4 * (1.0 - 0.52 * squint) * 2.0) / 2.0
-    dx = round((0.7 + 0.75 * clamp(p.get("look_x", 0.0), -1.0, 1.0)) * 2.0) / 2.0
-    dy = round((0.45 * clamp(p.get("look_y", 0.0), -1.0, 1.0)) * 2.0) / 2.0
-    return (eye_h, dx, dy)
-
-
-def _head_eye_painter(ctx: PartCtx) -> None:
-    """The eye, iris, pupil and glint: the expression overlay on the head."""
-    eye_h, iris_dx, iris_dy = _eye_state(ctx.params)
-    blink = eye_h <= 1.0
-    ec = ctx.pt((5.0, -2.9))
-    ew, eh = ctx.L(5.3), ctx.L(eye_h)
-    ctx.draw.ellipse(
-        (ec[0] - ew / 2, ec[1] - eh / 2, ec[0] + ew / 2, ec[1] + eh / 2),
-        fill=PAL["eye"],
-        outline=PAL["outline"],
-        width=max(1, int(ctx.L(0.42))),
-    )
-    if not blink:
-        iris_r = ctx.L(max(1.35, eye_h * 0.27))
-        px = ec[0] + ctx.L(iris_dx)
-        py = ec[1] + ctx.L(iris_dy)
-        ctx.draw.ellipse((px - iris_r, py - iris_r, px + iris_r, py + iris_r), fill=PAL["iris"])
-        pr = ctx.L(max(0.62, eye_h * 0.13))
-        ctx.draw.ellipse((px - pr, py - pr, px + pr, py + pr), fill=PAL["pupil"])
-        glint = ctx.L(0.38)
-        ctx.draw.ellipse((px - pr * 0.45 - glint, py - pr * 0.45 - glint, px - pr * 0.45 + glint, py - pr * 0.45 + glint), fill=(255, 255, 245, 230))
-
-
-def _beak_painter(ctx: PartCtx, which: str = "all") -> None:
-    """The beak. ``which`` paints one of its pieces: ``"back"`` (backplate and
-    cere), ``"lower"`` (the jaw), ``"upper"`` (the hook) or ``"pins"`` (the
-    hinge pins); ``"all"`` paints every one. Each jaw turns about its own pin
-    (``BEAK_PIVOTS``), so a rig places the jaws closed and turns them."""
-    p = ctx.params
-    open_amt = clamp(p.get("beak_open", 0.0), 0.0, 1.0)
-
-    # User-space reference points from the macaw jaw sketch.  We interpret the
-    # original coordinates as a small design grid with +y upward, then map them
-    # into the renderer's local space where +y points downward.
-    sx, sy = 4.15, 4.0
-    ox, oy = -1.8, 8.9
-
-    def map_u(pt: Point) -> Point:
-        x, y = pt
-        return (ox + x * sx, oy - y * sy)
-
-    def rot_about(pt: Point, pivot: Point, deg: float) -> Point:
-        # Local space has +y downward, so positive degrees rotate clockwise.
-        a = math.radians(deg)
-        c, s = math.cos(a), math.sin(a)
-        dx, dy = pt[0] - pivot[0], pt[1] - pivot[1]
-        return (pivot[0] + dx * c - dy * s, pivot[1] + dx * s + dy * c)
-
-    upper_src = [
-        (0.0, 3.0),
-        (1.0, 4.2),
-        (2.3, 4.4),
-        (3.2, 3.5),
-        (3.4, 2.0),
-        (3.1, 0.2),
-        (2.4, 0.8),
-        (1.0, 2.0),
-        (0.0, 1.2),
-    ]
-    lower_src = [
-        (0.1, 0.4),
-        (0.1, 1.1),
-        (1.7, 1.1),
-        (0.9, 0.3),
-    ]
-    pup = map_u((0.0, 3.0))
-    plow = map_u((0.1, 0.4))
-    upper_pts = [map_u(p) for p in upper_src]
-    lower_pts = [map_u(p) for p in lower_src]
-
-    upper_deg = -14.0 * open_amt
-    lower_deg = 20.0 * open_amt
-    upper_pts = [rot_about(pt, pup, upper_deg) for pt in upper_pts]
-    lower_pts = [rot_about(pt, plow, lower_deg) for pt in lower_pts]
-
-    # Small vertical backplate / cere so the dual pivots feel mechanically
-    # distinct rather than like a single duck bill.
-    backplate = [
-        (pup[0] - 2.2, pup[1] - 2.4),
-        (pup[0] - 0.3, pup[1] - 2.1),
-        (plow[0] + 0.2, plow[1] + 1.2),
-        (plow[0] - 2.4, plow[1] + 1.3),
-    ]
-    cere = [
-        (pup[0] - 0.4, pup[1] - 0.9),
-        (pup[0] + 2.4, pup[1] - 1.4),
-        (pup[0] + 3.3, pup[1] + 0.2),
-        (pup[0] + 0.9, pup[1] + 0.8),
-    ]
-    upper_shadow = [
-        (1.0, 3.45),
-        (2.15, 3.65),
-        (2.95, 3.05),
-        (3.05, 2.15),
-        (2.7, 1.0),
-        (2.2, 1.25),
-        (1.0, 2.15),
-    ]
-    upper_shadow = [rot_about(map_u(p), pup, upper_deg) for p in upper_shadow]
-    lower_highlight = [
-        (0.25, 0.62),
-        (0.45, 0.96),
-        (1.35, 0.95),
-        (0.92, 0.55),
-    ]
-    lower_highlight = [rot_about(map_u(p), plow, lower_deg) for p in lower_highlight]
-
-    if which in ("all", "back"):
-        draw_polygon(ctx.draw, rounded_polygon(ctx.pts(backplate), radius=ctx.L(1.3)), PAL["face_line"], PAL["outline"], ctx.L(0.55))
-        composite_polygon(ctx.img, rounded_polygon(ctx.pts(cere), radius=ctx.L(1.25)), (*PAL["face_patch"][:3], 205))
-
-    # Draw lower first so the upper hook can overbite and hide it at rest.
-    if which in ("all", "lower"):
-        draw_polygon(ctx.draw, rounded_polygon(ctx.pts(lower_pts), radius=ctx.L(1.15)), PAL["beak_lower"], PAL["outline"], ctx.L(0.72))
-        composite_polygon(ctx.img, rounded_polygon(ctx.pts(lower_highlight), radius=ctx.L(0.65)), (88, 86, 92, 180))
-
-    if which in ("all", "upper"):
-        draw_polygon(ctx.draw, rounded_polygon(ctx.pts(upper_pts), radius=ctx.L(1.55)), PAL["beak_upper"], PAL["outline"], ctx.L(0.8))
-        composite_polygon(ctx.img, rounded_polygon(ctx.pts(upper_shadow), radius=ctx.L(1.0)), (*PAL["beak_upper_shadow"][:3], 190))
-        # Nostril.
-        nostril = rot_about(map_u((1.15, 3.1)), pup, upper_deg)
-        nx, ny = ctx.pt(nostril)
-        nrx, nry = ctx.L(0.42), ctx.L(0.6)
-        ctx.draw.ellipse((nx - nrx, ny - nry, nx + nrx, ny + nry), fill=PAL["outline"])
-
-    # Hinge pins.
-    if which in ("all", "pins"):
-        for pin, fill in ((pup, PAL["beak_upper_shadow"]), (plow, PAL["outline"])):
-            px, py = ctx.pt(pin)
-            rr = ctx.L(0.42)
-            ctx.draw.ellipse((px - rr, py - rr, px + rr, py + rr), fill=fill, outline=PAL["outline"])
-
-
-#: The beak's two pins in the beak bone's frame: the upper hook turns about
-#: the first by ``-14 * beak_open`` degrees, the jaw about the second by
-#: ``20 * beak_open`` (``_beak_painter``'s ``map_u((0.0, 3.0))``, ``map_u((0.1, 0.4))``).
-BEAK_PIVOTS = {"upper": (-1.8, 8.9 - 3.0 * 4.0), "lower": (-1.8 + 0.1 * 4.15, 8.9 - 0.4 * 4.0)}
-BEAK_TURN = {"upper": -14.0, "lower": 20.0}
-
-
-def _build_rig() -> Rig:
-    rig = Rig(_SKEL)
-    rig.part("far_tail", "tail", 8, _tail_painter)
-    rig.part("far_leg", "far_leg_u", 12, _leg_painter("far_leg_u", "far_leg_l", PAL["leg"], PAL["talon"], 1.15, 0.95))
-    rig.part("far_wing", "far_wing_u", 18, _wing_painter("far_wing_u", "far_wing_l", PAL["wing_gold"], PAL["wing_blue"], 3.2, 2.7, PAL["body_dark"], PAL["wing_blue_dark"]))
-    rig.part("body", "body", 30, _body_painter)
-    rig.part("near_leg", "near_leg_u", 42, _leg_painter("near_leg_u", "near_leg_l", PAL["leg"], PAL["talon"], 1.2, 1.0))
-    rig.part("near_wing", "near_wing_u", 48, _wing_painter("near_wing_u", "near_wing_l", PAL["wing_yellow"], PAL["wing_blue"], 3.5, 2.9, PAL["body"], PAL["wing_blue_dark"]))
-    rig.part("head", "head", 60, _head_painter)
-    rig.part("beak", "beak", 64, _beak_painter)
-    return rig
-
-
-_RIG = _build_rig()
-
-
-# ---- Pieces -------------------------------------------------------------------
-#
-# The rig is drawn as pieces: each piece paints ONCE on a scratch canvas with
-# its bone at ``PIECE_HOME`` and angle 0, the result is cut to what it covers
-# and placed at the bone, turned by its angle (``shape_rig``). A part
-# flipbook stores each once.
-#
-# * A leg is two pieces (the thigh; the shin with its toes); both legs share
-#   the same bones.
-# * A wing is two pieces: the upper arm rides the upper bone, the forearm with
-#   its feathers rides the forearm bone (the shoulder panel is painted at the
-#   rest bend; the forearm covers the elbow).
-# * The tail is four rigid feathers that the fan moves across the tail, and
-#   the rump covert over their roots.
-# * The head is a base and an eye overlay (keyed by the rounded eye state).
-# * The beak is a backplate, two jaws turned about their pins, and the pins.
-
-#: Where a piece's bone sits on the scratch canvas (world units); the canvas
-#: is twice it.
-PIECE_HOME = (40.0, 40.0)
-#: The polished bird's one enlargement: every frame (side and turnaround) is
-#: painted at this scale about ``POLISH_CENTER`` and moved by
-#: ``POLISH_SHIFT`` (world units). The old fit enlarged each frame by its own
-#: extent (1.15x to 1.32x, measured 2026-10-03; 1.2 for most), so no part
-#: could be shared between frames.
-POLISH_SCALE = 1.2
-POLISH_CENTER = (CENTER_X, GROUND_Y)
-POLISH_SHIFT = (0.0, 4.0)
-#: Canvas pixels per world unit of a piece.
-PIECE_SCALE = SS * POLISH_SCALE
-
-
-def _polished(pt: Point) -> Point:
-    """A world point where the polished bird paints it (canvas pixels)."""
-    cx, cy = POLISH_CENTER
-    return (
-        (cx + (pt[0] - cx) * POLISH_SCALE + POLISH_SHIFT[0]) * SS,
-        (cy + (pt[1] - cy) * POLISH_SCALE + POLISH_SHIFT[1]) * SS,
-    )
-
-
-_PIECES: Dict[tuple, object] = {}
-_MIRRORED: Dict[int, tuple] = {}
-
-
-def _piece(key: tuple, paint, pivot: Point = (0.0, 0.0)):
-    """``(raster, anchor)``: what ``paint(img, draw)`` paints, its bone at
-    ``PIECE_HOME``, cut to its box; the anchor is ``PIECE_HOME + pivot``
-    (world units). ``None`` when it paints nothing. The cut starts and ends on
-    multiples of 8 canvas pixels, so pieces (and their mirrors) reduce on one
-    pixel grid."""
-    full_key = (key, pivot)
-    if full_key not in _PIECES:
-        S = PIECE_SCALE
-        size = (int(2 * PIECE_HOME[0] * S), int(2 * PIECE_HOME[1] * S))
-        canvas = Image.new("RGBA", size, (0, 0, 0, 0))
-        paint(canvas, blending_draw(canvas))
-        box = canvas.getchannel("A").getbbox()
-        if box is None:
-            _PIECES[full_key] = None
-        else:
-            x0, y0 = box[0] - box[0] % 8, box[1] - box[1] % 8
-            x1, y1 = min(size[0], box[2] + (-box[2]) % 8), min(size[1], box[3] + (-box[3]) % 8)
-            ax, ay = (PIECE_HOME[0] + pivot[0]) * S - x0, (PIECE_HOME[1] + pivot[1]) * S - y0
-            _PIECES[full_key] = (canvas.crop((x0, y0, x1, y1)), (ax, ay))
-    return _PIECES[full_key]
-
-
-def _mirrored(part):
-    """``part`` mirrored left to right about its anchor: the same raster
-    transposed (a zero-cost transform for the publisher)."""
-    image, (ax, ay) = part
-    cached = _MIRRORED.get(id(image))
-    if cached is None or cached[0] is not image:
-        cached = (image, (image.transpose(Image.FLIP_LEFT_RIGHT), (image.width - ax, ay)))
-        _MIRRORED[id(image)] = cached
-    return cached[1]
-
-
-def _place_at(actor: Image.Image, part, at: Point, degrees: float, name: str) -> None:
-    """Place ``part`` with its anchor at the world point ``at`` (polished)."""
-    if part is not None:
-        shape_rig.place(actor, part, _polished(at), degrees, name)
-
-
-def _part_ctx(img, d, bone: str, length: float, params, origin: Point = PIECE_HOME, angle: float = 0.0) -> PartCtx:
-    bw = BoneWorld(origin, angle, length)
-    return PartCtx(img, d, bw, {bone: bw}, PIECE_SCALE, params)
-
-
-def _draw_rig_pieces(actor: Image.Image, world, params: Dict[str, float]) -> None:
-    """``_RIG.draw``, each part as pieces (see above)."""
-    home = PIECE_HOME
-    S = PIECE_SCALE
-    for part in sorted(_RIG.parts, key=lambda p: p.z):
-        spec = getattr(part.fn, "spec", None)
-        if spec is not None and spec[0] == "leg":
-            _, upper, lower, tint, toe_tint, _r_u, _r_l = spec
-            # Both legs share one thigh and one shin (the near leg's radii).
-            r_u, r_l = 1.2, 1.0
-            u, low = world[upper], world[lower]
-            thigh = _piece(
-                ("thigh", tint, r_u, u.length),
-                lambda img, d: draw_capsule(d, (home[0] * S, home[1] * S), ((home[0] + u.length) * S, home[1] * S), r_u * S, tint, PAL["outline"], 0.45 * S),
-            )
-            _place_at(actor, thigh, u.origin, u.angle, f"{part.name}_thigh")
-
-            def shin(img, d, low=low) -> None:
-                hx, hy = home
-                draw_capsule(d, (hx * S, hy * S), ((hx + low.length) * S, hy * S), r_l * S, tint, PAL["outline"], 0.45 * S)
-                jr = r_u * 0.55 * S
-                d.ellipse((hx * S - jr, hy * S - jr, hx * S + jr, hy * S + jr), fill=PAL["talon"])
-                tip = (hx + low.length, hy)
-                for spread, length in ((-28.0, 4.5), (0.0, 5.4), (26.0, 4.2)):
-                    tx, ty = add(tip, vec(length, spread))
-                    d.line((tip[0] * S, tip[1] * S, tx * S, ty * S), fill=toe_tint, width=max(1, int(0.8 * S)))
-
-            _place_at(actor, _piece(("shin", tint, toe_tint, r_u, r_l, low.length), shin), low.origin, low.angle, f"{part.name}_shin")
-            continue
-        if spec is not None and spec[0] == "wing":
-            _, upper, lower = spec
-            u, low = world[upper], world[lower]
-            rest = _SKEL.bones[lower].rest_angle
-            upper_local = {upper: BoneWorld(home, 0.0, u.length), lower: BoneWorld(add(home, (u.length, 0.0)), rest, low.length)}
-            lower_local = {upper: BoneWorld(add(home, vec(-u.length, -rest)), -rest, u.length), lower: BoneWorld(home, 0.0, low.length)}
-            arm = _piece(("wing_upper", part.name), lambda img, d, w=upper_local, part=part: part.fn(PartCtx(img, d, w[upper], w, S, params), "upper"))
-            _place_at(actor, arm, u.origin, u.angle, f"{part.name}_arm")
-            hand = _piece(("wing_lower", part.name), lambda img, d, w=lower_local, part=part: part.fn(PartCtx(img, d, w[lower], w, S, params), "lower"))
-            _place_at(actor, hand, low.origin, low.angle, part.name)
-            continue
-        bone = world[part.bone]
-        if part.name == "far_tail":
-            fan = clamp(params.get("tail_fan", 0.0), -1.0, 1.0)
-            for idx, feather in enumerate(TAIL_FEATHERS):
-                piece = _piece(("tail_feather", idx), lambda img, d, idx=idx: _tail_painter(_part_ctx(img, d, "tail", bone.length, {}), idx))
-                _place_at(actor, piece, bone.to_world((0.0, feather[1] * fan)), bone.angle, f"tail_{idx}")
-            cover = _piece(("tail_cover",), lambda img, d: _tail_painter(_part_ctx(img, d, "tail", bone.length, {}), "cover"))
-            _place_at(actor, cover, bone.origin, bone.angle, "tail_cover")
-            continue
-        if part.name == "head":
-            base = _piece(("head_base",), lambda img, d: _head_base_painter(_part_ctx(img, d, "head", bone.length, {})))
-            _place_at(actor, base, bone.origin, bone.angle, "head")
-            eye = _piece(("head_eye", _eye_state(params)), lambda img, d: _head_eye_painter(_part_ctx(img, d, "head", bone.length, dict(params))))
-            _place_at(actor, eye, bone.origin, bone.angle, "head_eye")
-            continue
-        if part.name == "beak":
-            open_amt = clamp(params.get("beak_open", 0.0), 0.0, 1.0)
-            closed = {"beak_open": 0.0}
-            for which in ("back", "lower", "upper", "pins"):
-                pivot = BEAK_PIVOTS.get(which, (0.0, 0.0))
-                origin = (home[0] - pivot[0], home[1] - pivot[1])
-                jaw = _piece(("beak", which), lambda img, d, which=which, origin=origin: _beak_painter(_part_ctx(img, d, "beak", bone.length, closed, origin), which))
-                _place_at(actor, jaw, bone.to_world(pivot), bone.angle + BEAK_TURN.get(which, 0.0) * open_amt, f"beak_{which}")
-            continue
-        body = _piece(("body",), lambda img, d: _body_painter(_part_ctx(img, d, "body", bone.length, {})))
-        _place_at(actor, body, bone.origin, bone.angle, part.name)
-
-
-# ---- Clips --------------------------------------------------------------------
-
-
-def _step_wave(t: float, phase: float = 0.0) -> float:
-    return math.sin((t + phase) * math.tau)
-
-
-DEFAULT_FOOT_X = {"near": 4.5, "far": -2.5}
-DEFAULT_AIR_FOOT = {"near": (5.0, -8.5), "far": (-0.5, -9.5)}
-
-
-CLIP_IDLE = Clip(
-    loop=True,
-    channels={
-        "root_y": lambda t: -0.8 + 1.6 * ease_in_out_sine(0.5 - 0.5 * math.cos(t * math.tau)),
-        "body": lambda t: 2.8 * math.sin(t * math.tau),
-        "head": lambda t: -4.6 * math.sin(t * math.tau + 0.3),
-        "tail": lambda t: 10.0 * math.sin(t * math.tau + 0.75),
-        "tail_fan": lambda t: 0.35 * math.sin(t * math.tau + 1.1),
-        "near_wing_u": lambda t: -8.0 + 5.0 * math.sin(t * math.tau + 0.4),
-        "near_wing_l": lambda t: -4.0 + 3.0 * math.sin(t * math.tau + 0.7),
-        "far_wing_u": lambda t: -5.0 + 3.8 * math.sin(t * math.tau + 1.2),
-        "far_wing_l": lambda t: -2.0 + 2.6 * math.sin(t * math.tau + 1.4),
-        "blink": Channel((0.00, 0.0), (0.11, 0.0), (0.13, 1.0), (0.15, 0.0), (0.67, 0.0), (0.695, 1.0), (0.72, 0.0)),
-        "eye_squint": lambda t: 0.18 + 0.08 * math.sin(t * math.tau + 0.8),
-        "look_x": lambda t: 0.15 + 0.25 * math.sin(t * math.tau + 0.2),
-        "look_y": lambda t: -0.05,
-        "beak_open": lambda t: 0.04 + 0.02 * math.sin(t * math.tau + 1.2),
-    },
-)
-
-
-
-def _walk_root_y(t: float) -> float:
-    return -1.0 + 3.5 * abs(math.sin(t * math.tau))
-
-
-
-def _walk_foot_x(side: str, t: float) -> float:
-    phase = t if side == "near" else (t + 0.5) % 1.0
-    # Stance at ends, faster swing through the middle.
-    swing = math.sin(phase * math.tau)
-    return DEFAULT_FOOT_X[side] + 5.5 * swing
-
-
-
-def _walk_foot_lift(side: str, t: float) -> float:
-    phase = t if side == "near" else (t + 0.5) % 1.0
-    lift = max(0.0, math.sin(phase * math.tau))
-    return 5.0 * (lift ** 1.45)
-
-
-
-def _walk_foot_pitch(side: str, t: float) -> float:
-    phase = t if side == "near" else (t + 0.5) % 1.0
-    s = math.sin(phase * math.tau)
-    return -10.0 * max(0.0, s) + 6.0 * max(0.0, -s)
-
-
-CLIP_WALK = Clip(
-    loop=True,
-    channels={
-        "root_y": _walk_root_y,
-        "body": lambda t: 6.0 * math.sin(t * math.tau),
-        "head": lambda t: -7.5 * math.sin(t * math.tau + 0.2),
-        "tail": lambda t: 16.0 * math.sin(t * math.tau + 0.85),
-        "tail_fan": lambda t: 0.55 * math.sin(t * math.tau + 0.85),
-        "near_wing_u": lambda t: -12.0 + 8.5 * math.sin(t * math.tau + 0.1),
-        "near_wing_l": lambda t: -7.0 + 5.0 * math.sin(t * math.tau + 0.4),
-        "far_wing_u": lambda t: -9.0 + 6.5 * math.sin(t * math.tau + 0.8),
-        "far_wing_l": lambda t: -5.0 + 4.2 * math.sin(t * math.tau + 1.0),
-        "near_foot_x": lambda t: _walk_foot_x("near", t),
-        "far_foot_x": lambda t: _walk_foot_x("far", t),
-        "near_foot_lift": lambda t: _walk_foot_lift("near", t),
-        "far_foot_lift": lambda t: _walk_foot_lift("far", t),
-        "near_foot_pitch": lambda t: _walk_foot_pitch("near", t),
-        "far_foot_pitch": lambda t: _walk_foot_pitch("far", t),
-        "blink": Channel((0.0, 0.0), (0.45, 0.0), (0.48, 1.0), (0.52, 0.0)),
-        "eye_squint": 0.22,
-        "look_x": 0.4,
-        "beak_open": lambda t: 0.08 + 0.05 * max(0.0, math.sin(t * math.tau)),
-    },
-)
-
-
-CLIP_FLY = Clip(
-    loop=True,
-    channels={
-        "airborne": 1.0,
-        "root_x": lambda t: 0.9 * math.sin(t * math.tau),
-        "root_y": lambda t: -22.0 + 2.8 * math.sin(t * math.tau * 2.0 + 0.15),
-        "body": lambda t: -6.0 + 7.5 * math.sin(t * math.tau * 2.0 + 0.1),
-        "head": lambda t: -4.0 - 6.5 * math.sin(t * math.tau * 2.0 + 0.35),
-        "tail": lambda t: 22.0 * math.sin(t * math.tau * 2.0 + math.pi),
-        "tail_fan": lambda t: 0.65 + 0.35 * math.sin(t * math.tau * 2.0 + 0.85),
-        "near_wing_u": lambda t: -28.0 + 40.0 * math.sin(t * math.tau * 2.0 + 0.05),
-        "near_wing_l": lambda t: -6.0 + 30.0 * math.sin(t * math.tau * 2.0 - 0.05),
-        "far_wing_u": lambda t: -22.0 + 32.0 * math.sin(t * math.tau * 2.0 + 0.18),
-        "far_wing_l": lambda t: -4.0 + 22.0 * math.sin(t * math.tau * 2.0 + 0.05),
-        "near_foot_x": lambda t: 5.2 + 1.2 * math.sin(t * math.tau + 0.3),
-        "near_foot_y": lambda t: -8.2 + 1.0 * math.sin(t * math.tau * 2.0 + 1.1),
-        "far_foot_x": lambda t: -0.6 + 1.0 * math.sin(t * math.tau + 0.8),
-        "far_foot_y": lambda t: -9.4 + 0.8 * math.sin(t * math.tau * 2.0 + 0.5),
-        "near_foot_pitch": lambda t: -6.0 + 5.0 * math.sin(t * math.tau + 0.6),
-        "far_foot_pitch": lambda t: -9.0 + 4.0 * math.sin(t * math.tau + 1.0),
-        "blink": Channel((0.0, 0.0), (0.30, 0.0), (0.33, 1.0), (0.37, 0.0), (0.78, 0.0), (0.81, 1.0), (0.84, 0.0)),
-        "eye_squint": lambda t: 0.18 + 0.12 * max(0.0, math.sin(t * math.tau * 2.0)),
-        "look_x": 0.55,
-        "look_y": -0.08,
-        "beak_open": lambda t: 0.05 + 0.06 * max(0.0, math.sin(t * math.tau * 2.0 + 0.3)),
-    },
-)
-
-
-CLIP_TURNAROUND = Clip(
-    loop=False,
-    channels={
-        # Grounded pivot: a planted, stepping turn with partially opened wings.
-        "airborne": 0.0,
-        "turn_front": Channel((0.0, 0.0), (0.50, 1.0, "sine"), (1.0, 0.0)),
-        "turn_flip": Channel((0.0, 0.0), (0.50, 0.0), (0.501, 1.0), (1.0, 1.0)),
-        "root_x": Channel((0.0, -1.8), (0.50, 0.0), (1.0, 1.8)),
-        "root_y": Channel((0.0, -0.8), (0.25, -2.0), (0.50, -0.2), (0.75, -2.0), (1.0, -0.8)),
-        "body": Channel((0.0, -3.0), (0.25, -12.0), (0.50, 0.0), (0.75, 12.0), (1.0, 3.0)),
-        "head": Channel((0.0, -1.5), (0.25, -7.0), (0.50, 0.0), (0.75, 7.0), (1.0, 1.5)),
-        "tail": Channel((0.0, 10.0), (0.25, 22.0), (0.50, 0.0), (0.75, -22.0), (1.0, -10.0)),
-        "tail_fan": Channel((0.0, 0.36), (0.50, 0.82), (1.0, 0.36)),
-        "near_wing_u": Channel((0.0, -10.0), (0.25, 0.0), (0.50, 10.0, "out"), (0.75, 0.0), (1.0, -10.0)),
-        "near_wing_l": Channel((0.0, -7.0), (0.25, 1.5), (0.50, 8.0, "out"), (0.75, 1.5), (1.0, -7.0)),
-        "far_wing_u": Channel((0.0, -8.0), (0.25, -1.0), (0.50, 7.0, "out"), (0.75, -1.0), (1.0, -8.0)),
-        "far_wing_l": Channel((0.0, -5.0), (0.25, 0.5), (0.50, 6.0, "out"), (0.75, 0.5), (1.0, -5.0)),
-        "near_foot_x": Channel((0.0, 5.0), (0.50, 0.8), (1.0, 5.0)),
-        "near_foot_lift": Channel((0.0, 0.0), (0.25, 1.8), (0.50, 0.2), (0.75, 1.8), (1.0, 0.0)),
-        "far_foot_x": Channel((0.0, -0.5), (0.50, -2.0), (1.0, -0.5)),
-        "far_foot_lift": Channel((0.0, 1.0), (0.25, 0.1), (0.50, 1.8), (0.75, 0.1), (1.0, 1.0)),
-        "near_foot_pitch": Channel((0.0, -4.0), (0.50, 2.0), (1.0, -4.0)),
-        "far_foot_pitch": Channel((0.0, -6.0), (0.50, 0.0), (1.0, -6.0)),
-        "beak_open": Channel((0.0, 0.04), (0.50, 0.0), (1.0, 0.04)),
-        "eye_squint": Channel((0.0, 0.14), (0.50, 0.08), (1.0, 0.14)),
-        "look_x": Channel((0.0, 0.50), (0.50, 0.0), (1.0, 0.50)),
-        "look_y": -0.03,
-        "blink": 0.0,
-    },
-)
-
-CLIP_TURNAROUND_FLIGHT = Clip(
-    loop=False,
-    channels={
-        # Airborne turn: big wing spread and tucked feet.
-        "airborne": 1.0,
-        "turn_front": Channel((0.0, 0.0), (0.50, 1.0, "sine"), (1.0, 0.0)),
-        "turn_flip": Channel((0.0, 0.0), (0.50, 0.0), (0.501, 1.0), (1.0, 1.0)),
-        "root_x": Channel((0.0, -2.5), (0.50, 0.0), (1.0, 2.5)),
-        "root_y": Channel((0.0, -20.0), (0.25, -25.0), (0.50, -19.0), (0.75, -25.0), (1.0, -20.0)),
-        "body": Channel((0.0, -8.0), (0.25, -20.0), (0.50, -1.0), (0.75, 20.0), (1.0, 8.0)),
-        "head": Channel((0.0, -3.0), (0.25, -10.0), (0.50, 0.0), (0.75, 10.0), (1.0, 3.0)),
-        "tail": Channel((0.0, 12.0), (0.25, 30.0), (0.50, 0.0), (0.75, -30.0), (1.0, -12.0)),
-        "tail_fan": Channel((0.0, 0.45), (0.50, 1.0), (1.0, 0.45)),
-        "near_wing_u": Channel((0.0, -24.0), (0.25, 34.0), (0.50, 58.0, "out"), (0.75, 34.0), (1.0, -24.0)),
-        "near_wing_l": Channel((0.0, -10.0), (0.25, 24.0), (0.50, 42.0, "out"), (0.75, 24.0), (1.0, -10.0)),
-        "far_wing_u": Channel((0.0, -18.0), (0.25, 24.0), (0.50, 44.0, "out"), (0.75, 24.0), (1.0, -18.0)),
-        "far_wing_l": Channel((0.0, -7.0), (0.25, 18.0), (0.50, 32.0, "out"), (0.75, 18.0), (1.0, -7.0)),
-        "near_foot_x": Channel((0.0, 5.2), (0.50, 1.8), (1.0, 5.2)),
-        "near_foot_y": Channel((0.0, -8.6), (0.50, -11.6), (1.0, -8.6)),
-        "far_foot_x": Channel((0.0, -0.6), (0.50, -1.8), (1.0, -0.6)),
-        "far_foot_y": Channel((0.0, -9.6), (0.50, -11.0), (1.0, -9.6)),
-        "near_foot_pitch": Channel((0.0, -6.0), (0.50, -1.0), (1.0, -6.0)),
-        "far_foot_pitch": Channel((0.0, -9.0), (0.50, -2.0), (1.0, -9.0)),
-        "beak_open": Channel((0.0, 0.05), (0.50, 0.0), (1.0, 0.05)),
-        "eye_squint": Channel((0.0, 0.18), (0.50, 0.10), (1.0, 0.18)),
-        "look_x": Channel((0.0, 0.55), (0.50, 0.0), (1.0, 0.55)),
-        "look_y": -0.05,
-        "blink": 0.0,
-    },
-)
-
-CLIP_DIVE_BOMB = Clip(
-    loop=False,
-    channels={
-        "airborne": 1.0,
-        "root_x": Channel((0.0, -10.0), (0.22, -7.0), (0.55, 18.0, "out"), (0.78, 9.0), (1.0, 2.0)),
-        "root_y": Channel((0.0, -30.0), (0.22, -34.0), (0.55, -6.0, "out"), (0.78, -16.0), (1.0, -22.0)),
-        "body": Channel((0.0, -18.0), (0.22, -28.0), (0.55, 22.0, "out"), (0.78, -4.0), (1.0, -10.0)),
-        "head": Channel((0.0, -8.0), (0.26, -16.0), (0.55, 20.0, "out"), (0.80, 4.0), (1.0, -4.0)),
-        "tail": Channel((0.0, 18.0), (0.30, 32.0), (0.55, -18.0), (0.82, 10.0), (1.0, 14.0)),
-        "tail_fan": Channel((0.0, 0.30), (0.45, 0.05), (0.72, 0.95), (1.0, 0.45)),
-        "near_wing_u": Channel((0.0, -22.0), (0.35, -40.0), (0.56, -32.0), (0.72, 24.0, "out"), (1.0, -10.0)),
-        "near_wing_l": Channel((0.0, -12.0), (0.35, -26.0), (0.56, -20.0), (0.72, 28.0, "out"), (1.0, -6.0)),
-        "far_wing_u": Channel((0.0, -18.0), (0.35, -30.0), (0.56, -24.0), (0.72, 18.0, "out"), (1.0, -8.0)),
-        "far_wing_l": Channel((0.0, -9.0), (0.35, -19.0), (0.56, -15.0), (0.72, 20.0, "out"), (1.0, -5.0)),
-        "near_foot_x": Channel((0.0, 5.0), (0.55, 8.0), (1.0, 4.8)),
-        "near_foot_y": Channel((0.0, -9.0), (0.55, -5.5), (1.0, -8.8)),
-        "far_foot_x": Channel((0.0, -0.6), (0.55, 2.0), (1.0, -0.5)),
-        "far_foot_y": Channel((0.0, -10.0), (0.55, -7.0), (1.0, -9.5)),
-        "near_foot_pitch": Channel((0.0, -8.0), (0.55, 3.0), (1.0, -8.0)),
-        "far_foot_pitch": Channel((0.0, -10.0), (0.55, 1.0), (1.0, -9.0)),
-        "beak_open": Channel((0.0, 0.05), (0.40, 0.25), (0.56, 0.95, "out"), (0.80, 0.20), (1.0, 0.05)),
-        "eye_squint": Channel((0.0, 0.25), (0.55, 0.75), (1.0, 0.22)),
-        "look_x": 0.8,
-        "blink": 0.0,
-    },
-)
-
-
-CLIP_HOVER_PECK = Clip(
-    loop=False,
-    channels={
-        "airborne": 1.0,
-        "root_x": lambda t: 1.5 * math.sin(t * math.tau),
-        "root_y": lambda t: -21.0 + 2.4 * math.sin(t * math.tau * 3.0),
-        "body": lambda t: -4.0 + 4.0 * math.sin(t * math.tau * 3.0 + 0.3),
-        "head": lambda t: -5.0 + 15.0 * max(0.0, math.sin(t * math.tau * 2.0 - 0.35)),
-        "tail": lambda t: 14.0 * math.sin(t * math.tau * 3.0 + math.pi),
-        "tail_fan": lambda t: 0.5 + 0.25 * math.sin(t * math.tau * 3.0),
-        "near_wing_u": lambda t: -24.0 + 44.0 * math.sin(t * math.tau * 3.0),
-        "near_wing_l": lambda t: -8.0 + 34.0 * math.sin(t * math.tau * 3.0 - 0.1),
-        "far_wing_u": lambda t: -20.0 + 34.0 * math.sin(t * math.tau * 3.0 + 0.2),
-        "far_wing_l": lambda t: -6.0 + 24.0 * math.sin(t * math.tau * 3.0),
-        "near_foot_x": lambda t: 5.8 + 0.7 * math.sin(t * math.tau * 2.0 + 0.5),
-        "near_foot_y": lambda t: -8.0 + 0.9 * math.sin(t * math.tau * 3.0 + 1.0),
-        "far_foot_x": lambda t: -0.2 + 0.5 * math.sin(t * math.tau * 2.0 + 1.0),
-        "far_foot_y": lambda t: -9.2 + 0.8 * math.sin(t * math.tau * 3.0 + 0.45),
-        "near_foot_pitch": -5.0,
-        "far_foot_pitch": -8.0,
-        "beak_open": lambda t: 0.10 + 0.80 * max(0.0, math.sin(t * math.tau * 2.0 - 0.2)),
-        "eye_squint": lambda t: 0.26 + 0.25 * max(0.0, math.sin(t * math.tau * 2.0 - 0.2)),
-        "look_x": 0.8,
-        "blink": 0.0,
-    },
-)
-
-
-CLIP_BANKED_STRAFE = Clip(
-    loop=False,
-    channels={
-        "airborne": 1.0,
-        "root_x": Channel((0.0, -14.0), (0.35, -4.0), (0.70, 16.0, "out"), (1.0, 22.0)),
-        "root_y": Channel((0.0, -22.0), (0.30, -28.0), (0.65, -18.0), (1.0, -24.0)),
-        "body": Channel((0.0, -18.0), (0.35, -34.0), (0.70, 22.0, "out"), (1.0, 8.0)),
-        "head": Channel((0.0, 4.0), (0.35, 12.0), (0.70, -8.0), (1.0, -2.0)),
-        "tail": Channel((0.0, 28.0), (0.35, 38.0), (0.70, -12.0), (1.0, 4.0)),
-        "tail_fan": Channel((0.0, 0.85), (0.50, 1.0), (1.0, 0.6)),
-        "near_wing_u": Channel((0.0, -36.0), (0.35, -48.0), (0.70, 24.0), (1.0, 10.0)),
-        "near_wing_l": Channel((0.0, -18.0), (0.35, -28.0), (0.70, 30.0), (1.0, 18.0)),
-        "far_wing_u": Channel((0.0, 18.0), (0.35, 34.0), (0.70, -24.0), (1.0, -10.0)),
-        "far_wing_l": Channel((0.0, 16.0), (0.35, 26.0), (0.70, -14.0), (1.0, -5.0)),
-        "near_foot_x": Channel((0.0, 4.5), (0.5, 7.5), (1.0, 5.0)),
-        "near_foot_y": Channel((0.0, -8.5), (0.5, -6.5), (1.0, -8.0)),
-        "far_foot_x": Channel((0.0, -1.0), (0.5, 1.0), (1.0, -0.3)),
-        "far_foot_y": Channel((0.0, -9.8), (0.5, -7.6), (1.0, -9.0)),
-        "near_foot_pitch": Channel((0.0, -18.0), (0.5, 2.0), (1.0, -8.0)),
-        "far_foot_pitch": Channel((0.0, 8.0), (0.5, -12.0), (1.0, -8.0)),
-        "beak_open": 0.12,
-        "eye_squint": 0.35,
-        "look_x": 0.75,
-        "blink": 0.0,
-    },
-)
-
-CLIP_SLASH = Clip(
-    loop=False,
-    channels={
-        "airborne": 1.0,
-        "root_x": Channel((0.0, -3.0), (0.18, -8.0), (0.48, 16.0, "out"), (0.78, 7.0), (1.0, 2.0)),
-        "root_y": Channel((0.0, -18.0), (0.22, -24.0), (0.44, -12.0, "out"), (0.72, -19.0), (1.0, -20.0)),
-        "body": Channel((0.0, -5.0), (0.22, -15.0), (0.45, 12.0, "out"), (0.7, -3.0), (1.0, -6.0)),
-        "head": Channel((0.0, -2.0), (0.22, -12.0), (0.44, 17.0, "out"), (0.72, 5.0), (1.0, -2.0)),
-        "tail": Channel((0.0, 10.0), (0.24, 24.0), (0.46, -10.0), (0.76, 8.0), (1.0, 12.0)),
-        "tail_fan": Channel((0.0, 0.35), (0.32, 0.95), (0.55, 0.1), (1.0, 0.4)),
-        "near_wing_u": Channel((0.0, -22.0), (0.20, 8.0), (0.42, 38.0, "out"), (0.68, -6.0), (1.0, -18.0)),
-        "near_wing_l": Channel((0.0, -8.0), (0.18, 16.0), (0.42, 26.0, "out"), (0.68, -4.0), (1.0, -6.0)),
-        "far_wing_u": Channel((0.0, -18.0), (0.20, 4.0), (0.42, 28.0, "out"), (0.68, -3.0), (1.0, -14.0)),
-        "far_wing_l": Channel((0.0, -6.0), (0.18, 12.0), (0.42, 21.0, "out"), (0.68, -2.0), (1.0, -5.0)),
-        "near_foot_x": Channel((0.0, 4.8), (0.45, 7.6), (1.0, 4.7)),
-        "near_foot_y": Channel((0.0, -7.8), (0.45, -5.8), (1.0, -8.5)),
-        "far_foot_x": Channel((0.0, -0.8), (0.45, 1.8), (1.0, -0.5)),
-        "far_foot_y": Channel((0.0, -9.5), (0.45, -7.2), (1.0, -9.3)),
-        "near_foot_pitch": -6.0,
-        "far_foot_pitch": -9.0,
-        "beak_open": Channel((0.0, 0.10), (0.22, 0.55), (0.44, 1.0, "out"), (0.68, 0.18), (1.0, 0.08)),
-        "eye_squint": Channel((0.0, 0.2), (0.24, 0.35), (0.44, 0.7), (0.70, 0.22), (1.0, 0.18)),
-        "look_x": 0.75,
-        "blink": 0.0,
-    },
-)
-
-CLIP_TAUNT = Clip(
-    loop=True,
-    channels={
-        "airborne": 1.0,
-        "root_x": lambda t: 1.1 * math.sin(t * math.tau),
-        "root_y": lambda t: -18.0 + 3.2 * math.sin(t * math.tau * 2.0) ** 2,
-        "body": lambda t: -4.0 + 6.0 * math.sin(t * math.tau * 2.0 + 0.1),
-        "head": lambda t: 6.0 * math.sin(t * math.tau + 0.35),
-        "tail": lambda t: 24.0 * math.sin(t * math.tau * 2.0 + 0.7),
-        "tail_fan": lambda t: 0.8 + 0.4 * math.sin(t * math.tau * 2.0 + 0.7),
-        "near_wing_u": lambda t: -18.0 + 34.0 * max(-0.2, math.sin(t * math.tau * 2.0 + 0.1)),
-        "near_wing_l": lambda t: -4.0 + 24.0 * max(-0.2, math.sin(t * math.tau * 2.0 + 0.1)),
-        "far_wing_u": lambda t: -14.0 + 28.0 * max(-0.25, math.sin(t * math.tau * 2.0 + 0.28)),
-        "far_wing_l": lambda t: -2.0 + 18.0 * max(-0.25, math.sin(t * math.tau * 2.0 + 0.28)),
-        "near_foot_x": lambda t: 5.5 + 1.0 * math.sin(t * math.tau + 0.2),
-        "near_foot_y": lambda t: -8.0 + 1.2 * math.sin(t * math.tau * 2.0 + 1.0),
-        "far_foot_x": lambda t: -0.2 + 0.8 * math.sin(t * math.tau + 0.8),
-        "far_foot_y": lambda t: -9.2 + 1.0 * math.sin(t * math.tau * 2.0 + 0.45),
-        "near_foot_pitch": -5.0,
-        "far_foot_pitch": -8.0,
-        "beak_open": lambda t: 0.22 + 0.7 * max(0.0, math.sin(t * math.tau + 0.12)),
-        "blink": Channel((0.0, 0.0), (0.22, 0.0), (0.24, 1.0), (0.27, 0.0), (0.8, 0.0), (0.82, 1.0), (0.86, 0.0)),
-        "eye_squint": lambda t: 0.24 + 0.18 * max(0.0, math.sin(t * math.tau + 0.2)),
-        "look_x": lambda t: 0.5 + 0.2 * math.sin(t * math.tau + 0.4),
-        "look_y": lambda t: -0.15,
-    },
-)
-
-CLIP_HURT = Clip(
-    loop=False,
-    channels={
-        "airborne": 1.0,
-        "root_x": Channel((0.0, 0.0), (0.18, -6.0), (0.44, 3.0), (1.0, -1.0)),
-        "root_y": Channel((0.0, -16.0), (0.22, -10.0), (0.44, -18.0), (1.0, -20.0)),
-        "body": Channel((0.0, -4.0), (0.20, -16.0), (0.44, 5.0), (1.0, -5.0)),
-        "head": Channel((0.0, 0.0), (0.20, 11.0), (0.44, -8.0), (1.0, -2.0)),
-        "tail": Channel((0.0, 10.0), (0.20, -12.0), (0.44, 16.0), (1.0, 8.0)),
-        "near_wing_u": Channel((0.0, 2.0), (0.18, 26.0), (0.5, -10.0), (1.0, -20.0)),
-        "near_wing_l": Channel((0.0, 0.0), (0.18, 22.0), (0.5, -6.0), (1.0, -8.0)),
-        "far_wing_u": Channel((0.0, 0.0), (0.18, 18.0), (0.5, -8.0), (1.0, -16.0)),
-        "far_wing_l": Channel((0.0, 0.0), (0.18, 13.0), (0.5, -4.0), (1.0, -6.0)),
-        "near_foot_x": 6.0,
-        "near_foot_y": -6.2,
-        "far_foot_x": 0.8,
-        "far_foot_y": -7.4,
-        "near_foot_pitch": -1.0,
-        "far_foot_pitch": -3.0,
-        "beak_open": Channel((0.0, 0.0), (0.2, 0.6), (0.5, 0.12), (1.0, 0.0)),
-        "eye_squint": 0.7,
-        "blink": 0.0,
-        "look_x": -0.3,
-    },
-)
-
-CLIP_DEATH = Clip(
-    loop=False,
-    channels={
-        "root_x": Channel((0.0, 0.0), (0.36, 6.0), (0.72, 14.0), (1.0, 16.0)),
-        "root_y": Channel((0.0, 0.0), (0.30, -3.0), (0.60, 7.0), (1.0, 17.0)),
-        "body": Channel((0.0, 0.0), (0.32, 18.0), (0.55, 58.0, "out"), (1.0, 86.0)),
-        "head": Channel((0.0, 0.0), (0.32, -14.0), (0.60, -26.0), (1.0, -18.0)),
-        "tail": Channel((0.0, 0.0), (0.35, -24.0), (0.70, -34.0), (1.0, -30.0)),
-        "tail_fan": Channel((0.0, 0.0), (0.50, 0.8), (1.0, 0.1)),
-        "near_wing_u": Channel((0.0, 0.0), (0.35, 28.0), (0.65, 44.0), (1.0, 40.0)),
-        "near_wing_l": Channel((0.0, 0.0), (0.35, 22.0), (0.65, 35.0), (1.0, 30.0)),
-        "far_wing_u": Channel((0.0, 0.0), (0.35, 22.0), (0.65, 34.0), (1.0, 30.0)),
-        "far_wing_l": Channel((0.0, 0.0), (0.35, 16.0), (0.65, 24.0), (1.0, 20.0)),
-        "beak_open": Channel((0.0, 0.0), (0.45, 0.7), (1.0, 0.18)),
-        "eye_squint": Channel((0.0, 0.1), (0.45, 0.8), (1.0, 1.0)),
-        "blink": Channel((0.0, 0.0), (0.7, 0.0), (0.76, 1.0), (1.0, 1.0)),
-        "look_x": -0.6,
-    },
-)
-
-CLIPS: Dict[str, Clip] = {
-    "idle": CLIP_IDLE,
-    "walk": CLIP_WALK,
-    "fly": CLIP_FLY,
-    "turnaround": CLIP_TURNAROUND,
-    "turnaround_flight": CLIP_TURNAROUND_FLIGHT,
-    "dive_bomb": CLIP_DIVE_BOMB,
-    "hover_peck": CLIP_HOVER_PECK,
-    "banked_strafe": CLIP_BANKED_STRAFE,
-    "slash": CLIP_SLASH,
-    "taunt": CLIP_TAUNT,
-    "hurt": CLIP_HURT,
-    "death": CLIP_DEATH,
-}
-
-
-# ---- Solving / rendering ------------------------------------------------------
-
-
-def _foot_target(sampled: Dict[str, float], side: str, root: Point) -> Point:
-    airborne = sampled.get("airborne", 0.0) > 0.5
-    if airborne:
-        dx, dy = DEFAULT_AIR_FOOT[side]
-        ax = root[0] + sampled.get(f"{side}_foot_x", dx)
-        ay = root[1] + sampled.get(f"{side}_foot_y", dy)
-        return (ax, ay)
-    ax = CENTER_X + sampled.get(f"{side}_foot_x", DEFAULT_FOOT_X[side])
-    ay = GROUND_Y - ANKLE_H - sampled.get(f"{side}_foot_lift", 0.0)
-    return (ax, ay)
-
-
-
-def _solve(animation: str, t: float):
-    sampled = CLIPS[animation].sample(t)
-    root = (CENTER_X + sampled.get("root_x", 0.0), GROUND_Y + sampled.get("root_y", 0.0))
-    angles = {name: val for name, val in sampled.items() if name in _SKEL.bones}
-    w0 = _SKEL.world(angles, root=root)
-    for side in ("far", "near"):
-        hip = w0[f"{side}_leg_u"].origin
-        ankle = _foot_target(sampled, side, root)
-        a1, a2 = two_bone_ik(hip, ankle, LEG_U, LEG_L, bend=1.0)
-        body_angle = w0["body"].angle
-        angles[f"{side}_leg_u"] = a1 - body_angle - 90.0
-        angles[f"{side}_leg_l"] = a2 - a1
-        pitch = sampled.get(f"{side}_foot_pitch", 0.0)
-        angles[f"{side}_foot"] = pitch - a2 + 90.0
-    world = _SKEL.world(angles, root=root)
-    return world, sampled
-
-
-
-def _render_side_actor(world, params: Dict[str, float]) -> Image.Image:
-    """The side view, facing right. A caller that faces it left mirrors the
-    reduced frame (see ``render_frame``)."""
-    actor = Image.new("RGBA", (FRAME_W * SS, FRAME_H * SS), (0, 0, 0, 0))
-    _draw_rig_pieces(actor, world, params)
-    return actor
-
-
-
-#: Canvas pixels per world unit of a turnaround piece (the polished scale).
-TS = PIECE_SCALE
-
-
-def _turn_pt(pt: Point, cx: float, cy: float, mirror: bool = False) -> Point:
-    x, y = pt
-    if mirror:
-        x = -x
-    return (cx + x * TS, cy + y * TS)
-
-
-
-def _turn_pts(pts: List[Point], cx: float, cy: float, mirror: bool = False) -> List[Point]:
-    return [_turn_pt(p, cx, cy, mirror) for p in pts]
-
-
-
-def _turn_poly(draw: ImageDraw.ImageDraw, pts: List[Point], cx: float, cy: float, fill: Color, outline: Color = PAL["outline"], width: float = 0.7, radius: float = 1.8, mirror: bool = False) -> None:
-    poly = rounded_polygon(_turn_pts(pts, cx, cy, mirror), radius=TS * radius)
-    draw_polygon(draw, poly, fill, outline, TS * width)
-
-
-
-def _turn_fill(img: Image.Image, pts: List[Point], cx: float, cy: float, fill: Color, radius: float = 1.6, mirror: bool = False) -> None:
-    poly = rounded_polygon(_turn_pts(pts, cx, cy, mirror), radius=TS * radius)
-    composite_polygon(img, poly, fill)
-
-
-
-def _turn_rot(center: Point, angle_deg: float, along: float, across: float) -> Point:
-    rad = math.radians(angle_deg)
-    ca, sa = math.cos(rad), math.sin(rad)
-    return (center[0] + ca * along - sa * across, center[1] + sa * along + ca * across)
-
-
-
-def _turn_feather_pts(origin: Point, angle_deg: float, length: float, base_w: float, tip_w: float) -> List[Point]:
-    return [
-        _turn_rot(origin, angle_deg, -0.5, -base_w),
-        _turn_rot(origin, angle_deg, length * 0.18, -base_w * 0.94),
-        _turn_rot(origin, angle_deg, length * 0.55, -base_w * 0.64),
-        _turn_rot(origin, angle_deg, length * 0.84, -tip_w * 1.08),
-        _turn_rot(origin, angle_deg, length + 0.45, 0.0),
-        _turn_rot(origin, angle_deg, length * 0.84, tip_w * 1.08),
-        _turn_rot(origin, angle_deg, length * 0.55, base_w * 0.64),
-        _turn_rot(origin, angle_deg, length * 0.18, base_w * 0.94),
-        _turn_rot(origin, angle_deg, -0.35, base_w),
-    ]
-
-
-
-def _turn_draw_feather(draw: ImageDraw.ImageDraw, cx: float, cy: float, origin: Point, angle_deg: float, length: float, base_w: float, tip_w: float, fill: Color, mirror: bool = False, width: float = 0.3, radius: float = 0.9) -> None:
-    pts = _turn_feather_pts(origin, angle_deg, length, base_w, tip_w)
-    poly = rounded_polygon(_turn_pts(pts, cx, cy, mirror), radius=TS * radius)
-    draw_polygon(draw, poly, fill, PAL["outline"], TS * width)
-    s0 = _turn_pt(_turn_rot(origin, angle_deg, 0.4, -0.08), cx, cy, mirror)
-    s1 = _turn_pt(_turn_rot(origin, angle_deg, length * 0.82, 0.0), cx, cy, mirror)
-    draw.line((s0[0], s0[1], s1[0], s1[1]), fill=(*PAL["outline"][:3], 138), width=max(1, int(TS * 0.18)))
-
-
-
-def _draw_turn_three_quarter_wing(img: Image.Image, draw: ImageDraw.ImageDraw, cx: float, cy: float, wing_lift: float, near: bool, airborne: bool, mirror: bool = False) -> None:
-    sign = 1.0 if near else -1.0
-    spread = (0.52 + 0.56 * wing_lift) if airborne else (0.18 + 0.42 * wing_lift)
-    lift_y = 4.0 + 10.0 * spread
-    shoulder_fill = PAL["body"] if near else PAL["body_dark"]
-    covert_fill = PAL["wing_yellow"] if near else PAL["wing_gold"]
-    primary_fill = PAL["wing_blue"] if near else PAL["wing_blue_dark"]
-    tip_fill = PAL["wing_blue_dark"] if near else PAL["wing_blue"]
-    hi_alpha = 178 if near else 112
-
-    shoulder = [
-        (sign * 4.0, -8.2),
-        (sign * 7.2, -14.4 - 0.42 * lift_y),
-        (sign * 10.9, -14.0 - 0.58 * lift_y),
-        (sign * 12.2, -8.0 + 0.06 * lift_y),
-        (sign * 9.2, -0.6 + 0.34 * lift_y),
-        (sign * 4.6, -2.4),
-    ]
-    _turn_poly(draw, shoulder, cx, cy, shoulder_fill, width=0.5 if near else 0.46, radius=1.75, mirror=mirror)
-    _turn_fill(img, [
-        (sign * 5.1, -7.6),
-        (sign * 8.1, -11.9 - 0.22 * lift_y),
-        (sign * 10.4, -11.2 - 0.34 * lift_y),
-        (sign * 8.8, -4.6),
-        (sign * 5.5, -5.0),
-    ], cx, cy, (*PAL["body_light"][:3], 120 if near else 80), radius=1.0, mirror=mirror)
-
-    coverts = [
-        (sign * 6.8, -11.0 - 0.24 * lift_y),
-        (sign * 11.8, -16.4 - 0.56 * lift_y),
-        (sign * 17.8, -15.1 - 0.58 * lift_y),
-        (sign * 20.0, -8.8 - 0.02 * lift_y),
-        (sign * 18.2, -1.4 + 0.42 * lift_y),
-        (sign * 12.0, 1.0 + 0.42 * lift_y),
-        (sign * 8.2, -0.4 + 0.22 * lift_y),
-    ]
-    _turn_poly(draw, coverts, cx, cy, covert_fill, width=0.48, radius=1.95, mirror=mirror)
-    _turn_fill(img, [
-        (sign * 9.1, -10.0 - 0.18 * lift_y),
-        (sign * 14.8, -12.6 - 0.40 * lift_y),
-        (sign * 17.0, -7.4 + 0.02 * lift_y),
-        (sign * 13.0, -2.0 + 0.20 * lift_y),
-        (sign * 9.8, -3.1 + 0.06 * lift_y),
-    ], cx, cy, (*PAL["wing_yellow"][:3], hi_alpha), radius=1.15, mirror=mirror)
-    feather_bed = [
-        (sign * 10.6, -10.6 - 0.20 * lift_y),
-        (sign * 14.8, -10.2 - 0.24 * lift_y),
-        (sign * 19.2, -8.5 - 0.16 * lift_y),
-        (sign * 19.4, -4.8 + 0.10 * lift_y),
-        (sign * 15.4, -2.4 + 0.24 * lift_y),
-        (sign * 11.5, -3.4 + 0.14 * lift_y),
-    ]
-    _turn_fill(img, feather_bed, cx, cy, (*covert_fill[:3], 214 if near else 168), radius=1.05, mirror=mirror)
-
-    feather_data = [
-        ((sign * 9.8, -12.0 - 0.34 * lift_y), -48.0 * sign, 7.8 + 1.6 * spread, 1.48, 0.78, covert_fill),
-        ((sign * 11.8, -11.2 - 0.24 * lift_y), -31.0 * sign, 8.5 + 2.0 * spread, 1.52, 0.8, covert_fill),
-        ((sign * 13.8, -9.8 - 0.12 * lift_y), -16.0 * sign, 9.0 + 2.2 * spread, 1.52, 0.78, covert_fill),
-        ((sign * 15.2, -8.0 - 0.04 * lift_y), -2.0 * sign, 9.4 + 2.4 * spread, 1.46, 0.74, covert_fill),
-        ((sign * 15.8, -12.0 - 0.42 * lift_y), -30.0 * sign, 9.8 + 2.5 * spread, 1.36, 0.64, primary_fill),
-        ((sign * 17.6, -9.3 - 0.26 * lift_y), -12.0 * sign, 10.8 + 2.8 * spread, 1.36, 0.6, primary_fill),
-        ((sign * 18.6, -6.0 - 0.02 * lift_y), 6.0 * sign, 11.6 + 3.0 * spread, 1.3, 0.58, tip_fill),
-        ((sign * 18.6, -2.2 + 0.18 * lift_y), 22.0 * sign, 10.8 + 2.8 * spread, 1.18, 0.52, tip_fill),
-    ]
-    for origin, ang, length, base_w, tip_w, fill in reversed(feather_data):
-        _turn_draw_feather(draw, cx, cy, origin, ang, length, base_w, tip_w, fill, mirror=mirror, width=0.28 if near else 0.25, radius=0.82)
-
-    join_coverts = [
-        (sign * 8.6, -11.3 - 0.22 * lift_y),
-        (sign * 11.5, -12.1 - 0.26 * lift_y),
-        (sign * 14.6, -11.0 - 0.18 * lift_y),
-        (sign * 14.9, -8.0 - 0.04 * lift_y),
-        (sign * 11.9, -7.2 + 0.04 * lift_y),
-        (sign * 9.2, -8.1 + 0.02 * lift_y),
-    ]
-    _turn_fill(img, join_coverts, cx, cy, (*covert_fill[:3], 186 if near else 138), radius=0.82, mirror=mirror)
-
-def _draw_turn_front_wing(img: Image.Image, draw: ImageDraw.ImageDraw, cx: float, cy: float, wing_lift: float, airborne: bool, mirror: bool = False) -> None:
-    spread = (0.58 + 0.62 * wing_lift) if airborne else (0.14 + 0.36 * wing_lift)
-    lift_y = 5.0 + 11.0 * spread
-    shoulder = [
-        (3.0, -7.1),
-        (5.8, -13.8 - 0.34 * lift_y),
-        (9.0, -13.5 - 0.44 * lift_y),
-        (10.0, -7.0 + 0.12 * lift_y),
-        (7.2, -0.8 + 0.34 * lift_y),
-        (3.6, -2.3),
-    ]
-    _turn_poly(draw, shoulder, cx, cy, PAL["body"], width=0.46, radius=1.55, mirror=mirror)
-    _turn_fill(img, [(4.3, -7.0), (6.6, -11.1 - 0.18 * lift_y), (8.2, -10.7 - 0.22 * lift_y), (7.0, -5.1), (4.8, -4.8)], cx, cy, (*PAL["body_light"][:3], 118), radius=0.9, mirror=mirror)
-
-    coverts = [
-        (5.1, -10.8 - 0.22 * lift_y),
-        (9.8, -16.3 - 0.50 * lift_y),
-        (15.6, -15.5 - 0.52 * lift_y),
-        (19.0, -9.0 - 0.06 * lift_y),
-        (18.2, -1.0 + 0.52 * lift_y),
-        (12.2, 2.1 + 0.34 * lift_y),
-        (8.0, 0.8 + 0.26 * lift_y),
-    ]
-    _turn_poly(draw, coverts, cx, cy, PAL["wing_yellow"], width=0.46, radius=1.9, mirror=mirror)
-    _turn_fill(img, [(7.0, -10.0 - 0.14 * lift_y), (12.8, -13.0 - 0.38 * lift_y), (15.8, -7.0 + 0.02 * lift_y), (12.0, -1.4 + 0.20 * lift_y), (8.8, -2.4)], cx, cy, (*PAL["wing_gold"][:3], 162), radius=1.02, mirror=mirror)
-    _turn_fill(img, [(8.2, -10.4 - 0.12 * lift_y), (12.2, -10.0 - 0.16 * lift_y), (17.0, -8.2 - 0.10 * lift_y), (17.2, -4.5 + 0.10 * lift_y), (13.2, -2.1 + 0.20 * lift_y), (9.4, -3.0)], cx, cy, (*PAL["wing_yellow"][:3], 214), radius=1.0, mirror=mirror)
-
-    feathers = [
-        ((7.2, -12.0 - 0.28 * lift_y), -44.0, 7.9 + 1.8 * spread, 1.45, 0.78, PAL["wing_yellow"]),
-        ((9.3, -11.4 - 0.22 * lift_y), -28.0, 8.7 + 2.1 * spread, 1.5, 0.8, PAL["wing_yellow"]),
-        ((11.5, -10.4 - 0.14 * lift_y), -12.0, 9.5 + 2.4 * spread, 1.52, 0.78, PAL["wing_yellow"]),
-        ((13.6, -9.0 - 0.06 * lift_y), 2.0, 10.2 + 2.7 * spread, 1.42, 0.68, PAL["wing_blue"]),
-        ((15.2, -6.8 + 0.04 * lift_y), 18.0, 10.9 + 2.9 * spread, 1.3, 0.58, PAL["wing_blue"]),
-        ((15.8, -3.2 + 0.14 * lift_y), 33.0, 9.9 + 2.7 * spread, 1.14, 0.48, PAL["wing_blue_dark"]),
-    ]
-    for origin, ang, length, base_w, tip_w, fill in reversed(feathers):
-        _turn_draw_feather(draw, cx, cy, origin, ang, length, base_w, tip_w, fill, mirror=mirror, width=0.25, radius=0.8)
-    _turn_fill(img, [(6.7, -10.7 - 0.16 * lift_y), (9.6, -11.2 - 0.18 * lift_y), (12.4, -10.2 - 0.10 * lift_y), (12.5, -7.6), (10.0, -6.6), (7.4, -7.3)], cx, cy, (*PAL["wing_yellow"][:3], 184), radius=0.78, mirror=mirror)
-
-# The turnaround views are pieces too: each group (the tail, a wing, the
-# body, the legs, the head with its beak) is painted ONCE about the view's
-# centre and placed there. A wing is painted at the middle of its lift and
-# turned about its shoulder by the lift; the left-facing three-quarter view is
-# the right-facing one mirrored (each raster transposed).
-
-#: A wing's lift turns it about its shoulder by this many degrees per unit of
-#: lift (from the middle of its range), airborne and grounded.
-TURN_WING_DEGREES = {True: 18.0, False: 12.0}
-#: The fixed tail fan and beak opening the turnaround views are painted with.
-TURN_TAIL_FAN = {"three_quarter": 0.6, "front": 0.8}
-TURN_BEAK_OPEN = 0.04
-
-
-def _home_canvas() -> Tuple[float, float]:
-    return (PIECE_HOME[0] * TS, PIECE_HOME[1] * TS)
-
-
-def _paint_three_quarter_tail(img, d) -> None:
-    """The tail, centred ``(-10, 5)`` from the view's centre."""
-    cx, cy = _home_canvas()
-    cx, cy = cx - 10.0 * TS, cy + 5.0 * TS
-    tail_fan = TURN_TAIL_FAN["three_quarter"]
-    for dx, top, mid, bot, color in [
-        (-9.0, 4.0, 17.0 + 3.0 * tail_fan, 28.0, PAL["body_dark"]),
-        (-2.5, 3.0, 18.0 + 4.0 * tail_fan, 29.5, PAL["body"]),
-        (4.0, 4.0, 16.0 + 3.0 * tail_fan, 27.5, PAL["wing_blue"]),
-    ]:
-        tail = [(dx - 1.3, 0.0), (dx + 2.2, top), (dx + 5.2, mid), (dx + 0.8, bot), (dx - 3.2, mid - 2.5)]
-        _turn_poly(d, tail, cx, cy, color, width=0.45, radius=1.25)
-
-
-def _paint_three_quarter_body(img, d) -> None:
-    cx, cy = _home_canvas()
-    body = [(-17.0, -13.0), (-2.0, -18.5), (13.0, -14.0), (19.0, -2.0), (16.0, 12.0), (4.0, 20.0), (-11.0, 15.0), (-19.0, 3.5)]
-    _turn_poly(d, body, cx, cy, PAL["body"], width=0.8, radius=4.0)
-    _turn_fill(img, [(-10.0, -7.0), (6.0, -8.5), (10.5, 5.0), (4.5, 15.0), (-6.5, 12.0), (-9.5, 1.0)], cx, cy, (*PAL["body_light"][:3], 88), radius=3.0)
-    _turn_fill(img, [(-16.0, -11.0), (-6.0, -14.0), (-4.0, 11.0), (-14.0, 8.5)], cx, cy, (*PAL["body_dark"][:3], 110), radius=2.8)
-    _turn_fill(img, [(-1.0, -13.2), (7.5, -14.8), (11.5, -9.8), (4.0, -5.0), (-1.5, -6.5)], cx, cy, (*PAL["wing_yellow"][:3], 150), radius=2.0)
-
-
-def _paint_three_quarter_legs(airborne: bool):
-    def paint(img, d) -> None:
-        cx, cy = _home_canvas()
-        if airborne:
-            for dx, dy, pitch in [(-1.6, 10.0, -0.6), (3.0, 10.8, -0.2)]:
-                shin = [(dx - 0.6, dy - 0.5), (dx + 0.4, dy - 0.2), (dx + 0.8, dy + 2.4), (dx - 0.2, dy + 2.7)]
-                _turn_poly(d, shin, cx, cy, PAL["leg"], width=0.35, radius=0.7)
-                base = _turn_pt((dx + 0.2, dy + 2.4), cx, cy)
-                for spread, length in ((-0.5, 2.5), (0.0, 3.0), (0.5, 2.3)):
-                    d.line((base[0], base[1], base[0] + TS * length, base[1] + TS * (spread + pitch * 1.6)), fill=PAL["talon"], width=max(1, int(TS * 0.45)))
-        else:
-            for dx, dy, pitch in [(-2.0, 13.5, -0.2), (4.5, 14.8, 0.15)]:
-                shin = [(dx - 0.8, dy - 0.8), (dx + 0.4, dy - 0.5), (dx + 0.9, dy + 3.5), (dx - 0.4, dy + 3.7)]
-                _turn_poly(d, shin, cx, cy, PAL["leg"], width=0.4, radius=0.8)
-                base = _turn_pt((dx + 0.2, dy + 3.3), cx, cy)
-                for spread, length in ((-0.8, 3.3), (0.0, 3.9), (0.8, 3.1)):
-                    d.line((base[0], base[1], base[0] + TS * length, base[1] + TS * (spread + pitch * 2.2)), fill=PAL["talon"], width=max(1, int(TS * 0.5)))
+def _feather(fill, tip):
+    def paint(c: FxCanvas) -> None:
+        pts = [(-14, 0), (-8, -5), (4, -5.5), (14, -2), (18, 0), (14, 2), (4, 5.5), (-8, 5)]
+        c.polygon(pts, fill, INK, 1.2)
+        c.polygon([(6, -4.5), (14, -2), (18, 0), (14, 2), (6, 4.5)], tip)
+        c.line([(-16, 0), (14, 0)], INK, 0.9)
 
     return paint
 
 
-def _paint_three_quarter_head(img, d) -> None:
-    """The head with its beak, about the view's centre (the head sits at
-    ``(4, -1)`` from it, the beak at ``(14, -7)``)."""
-    cx, cy = _home_canvas()
-    hx, hy = cx + 4.0 * TS, cy - 1.0 * TS
-    head = [(-4.0, -23.0), (8.5, -23.8), (17.0, -16.0), (17.0, -4.0), (10.0, 6.5), (-1.5, 6.0), (-10.0, -1.5), (-10.0, -13.5)]
-    _turn_poly(d, head, hx, hy, PAL["head"], width=0.8, radius=3.7)
-    _turn_fill(img, [(-0.5, -20.0), (8.5, -20.5), (13.0, -13.0), (11.5, -6.0), (2.0, -5.8), (-1.8, -10.5)], hx, hy, (*PAL["head_light"][:3], 110), radius=2.5)
-    _turn_fill(img, [(2.5, -18.0), (10.0, -17.2), (12.2, -3.0), (10.0, 4.5), (4.5, 5.5), (0.8, 1.0), (0.8, -10.0)], hx, hy, PAL["face_patch"], radius=2.3)
-    for x0, y0, x1, y1 in ((4.0, -14.0, 3.4, -2.0), (6.2, -12.5, 5.8, -0.5), (8.2, -10.5, 8.0, 1.5)):
-        p0 = _turn_pt((x0, y0), hx, hy)
-        p1 = _turn_pt((x1, y1), hx, hy)
-        d.line((p0[0], p0[1], p1[0], p1[1]), fill=PAL["face_line"], width=max(1, int(TS * 0.28)))
-    eye_c = _turn_pt((7.0, -11.0), hx, hy)
-    ew, eh = TS * 4.7, TS * 5.3
-    d.ellipse((eye_c[0] - ew / 2, eye_c[1] - eh / 2, eye_c[0] + ew / 2, eye_c[1] + eh / 2), fill=PAL["eye"], outline=PAL["outline"], width=max(1, int(TS * 0.35)))
-    pw, ph = TS * 1.55, TS * 2.2
-    pupil_dx = 0.3 * TS
-    d.ellipse((eye_c[0] - pw / 2 + pupil_dx, eye_c[1] - ph / 2, eye_c[0] + pw / 2 + pupil_dx, eye_c[1] + ph / 2), fill=PAL["pupil"])
-    tiny_eye = _turn_pt((1.6, -11.5), hx, hy)
-    d.ellipse((tiny_eye[0] - TS * 1.2, tiny_eye[1] - TS * 1.5, tiny_eye[0] + TS * 1.2, tiny_eye[1] + TS * 1.5), fill=(*PAL["eye"][:3], 170), outline=(*PAL["outline"][:3], 180), width=max(1, int(TS * 0.22)))
-    d.ellipse((tiny_eye[0] - TS * 0.35, tiny_eye[1] - TS * 0.55, tiny_eye[0] + TS * 0.35, tiny_eye[1] + TS * 0.55), fill=(*PAL["pupil"][:3], 180))
-
-    beak_open = TURN_BEAK_OPEN
-    bx, by = cx + 14.0 * TS, cy - 7.0 * TS
-    upper = [(-1.0, -4.0), (6.0, -6.2), (13.0, -4.5), (17.0, -0.2), (16.0, 4.8), (12.0, 10.0), (4.5, 8.2), (0.5, 3.0)]
-    lower = [(-0.5, 3.0 + 2.0 * beak_open), (5.0, 5.0 + 5.0 * beak_open), (10.5, 5.8 + 6.5 * beak_open), (8.0, 10.8 + 7.8 * beak_open), (2.0, 9.0 + 5.2 * beak_open)]
-    _turn_poly(d, upper, bx, by, PAL["beak_upper"], width=0.7, radius=1.5)
-    _turn_fill(img, [(1.0, -1.5), (8.0, -2.7), (13.2, 0.0), (10.2, 5.4), (5.0, 5.0)], bx, by, (*PAL["beak_upper_shadow"][:3], 185), radius=1.1)
-    _turn_poly(d, lower, bx, by, PAL["beak_lower"], width=0.65, radius=1.2)
-    nostril = _turn_pt((5.0, -2.3), bx, by)
-    d.ellipse((nostril[0] - TS * 0.45, nostril[1] - TS * 0.6, nostril[0] + TS * 0.45, nostril[1] + TS * 0.6), fill=PAL["outline"])
+def _paint_speed(c: FxCanvas) -> None:
+    for y, x0, length in ((-24, 30, 60), (-6, 24, 84), (12, 34, 66), (28, 44, 46)):
+        c.line([(x0, y), (x0 + length, y)], STREAK, 2.4)
 
 
-class _View:
-    """Places turnaround pieces about the view centre ``centre`` (world
-    units, before the polish), mirrored left to right when ``mirror``."""
-
-    def __init__(self, actor: Image.Image, centre: Point, mirror: bool = False) -> None:
-        self.actor, self.centre, self.mirror = actor, centre, mirror
-
-    def put(self, part, offset: Point, name: str, degrees: float = 0.0) -> None:
-        if part is None:
-            return
-        sign = -1.0 if self.mirror else 1.0
-        if self.mirror:
-            part = _mirrored(part)
-        at = (self.centre[0] + sign * offset[0], self.centre[1] + offset[1])
-        shape_rig.place(self.actor, part, _polished(at), sign * degrees, name)
-
-
-def _wing_lift(params: Dict[str, float], airborne: bool) -> float:
-    wing_src = params.get("near_wing_u", -24.0 if airborne else -10.0)
-    wing_base = -24.0 if airborne else -10.0
-    wing_span = 82.0 if airborne else 28.0
-    return clamp((wing_src - wing_base) / wing_span, 0.0, 1.0)
+def _paint_balloon(c: FxCanvas) -> None:
+    """A squawk balloon full of plausible-looking nonsense: jagged edge, a
+    tail to the beak, three lines of scribbled 'words'."""
+    pts = []
+    for k in range(18):
+        a = math.tau * k / 18
+        r = 1.0 if k % 2 == 0 else 0.8
+        pts.append((36 * r * math.cos(a), 24 * r * math.sin(a)))
+    c.polygon([(-20, 14), (-38, 32), (-8, 20)], WHITE, INK, 1.6)
+    c.polygon(pts, WHITE, INK, 1.6)
+    c.polygon([(-19, 13), (-34, 28), (-8, 19)], WHITE)
+    for row, (y, words) in enumerate(((-8, (10, 6, 12)), (0, (7, 14, 4)), (8, (11, 8)))):
+        x = -22 + 3 * row
+        for wlen in words:
+            wave = [(x + u, y + 1.0 * math.sin(u * 1.2 + row)) for u in range(0, wlen + 1, 2)]
+            c.line(wave, (40, 40, 52, 255) if row != 1 else (200, 40, 40, 255), 1.8)
+            x += wlen + 4
 
 
-def _render_turn_three_quarter(params: Dict[str, float], mirrored: bool = False) -> Image.Image:
-    img = Image.new("RGBA", (FRAME_W * SS, FRAME_H * SS), (0, 0, 0, 0))
-    airborne = params.get("airborne", 0.0) > 0.5
-    default_root_y = -21.0 if airborne else -1.0
-    centre = (CENTER_X + params.get("root_x", 0.0), GROUND_Y + params.get("root_y", default_root_y) - 22.0)
-    wing_lift = _wing_lift(params, airborne)
-    view = _View(img, centre, mirrored)
-    view.put(_piece(("three_quarter_tail",), _paint_three_quarter_tail, (-10.0, 5.0)), (-10.0, 5.0), "turn_tail")
-
-    def wing(near: bool):
-        sign = 1.0 if near else -1.0
-        shoulder = (sign * 4.0, -8.2)
-        part = _piece(
-            ("three_quarter_wing", near, airborne),
-            lambda img_, d: _draw_turn_three_quarter_wing(img_, d, *_home_canvas(), 0.5, near=near, airborne=airborne),
-            shoulder,
-        )
-        view.put(part, shoulder, "turn_near_wing" if near else "turn_far_wing", -sign * TURN_WING_DEGREES[airborne] * (wing_lift - 0.5))
-
-    wing(False)
-    view.put(_piece(("three_quarter_body",), _paint_three_quarter_body), (0.0, 0.0), "turn_body")
-    wing(True)
-    view.put(_piece(("three_quarter_legs", airborne), _paint_three_quarter_legs(airborne)), (0.0, 0.0), "turn_legs")
-    view.put(_piece(("three_quarter_head",), _paint_three_quarter_head), (0.0, 0.0), "turn_head")
-    return img
+def _paint_noise(c: FxCanvas) -> None:
+    """Sound coming off the beak: three arcs and two glints."""
+    for r in (14, 26, 38):
+        c.arc((0, 0), r, r, -40, 40, (255, 246, 214, 220), 2.6)
+    c.star((44, -24), 6.0, YELLOW, points=4, inner=0.3, rotation=0)
+    c.star((40, 26), 5.0, WHITE, points=4, inner=0.3, rotation=0)
 
 
-def _paint_front_tail(img, d) -> None:
-    cx, cy = _home_canvas()
-    tail_fan = TURN_TAIL_FAN["front"]
-    for dx, color in ((-5.0, PAL["body_dark"]), (0.0, PAL["body"]), (5.0, PAL["wing_blue"])):
-        tail = [(dx - 2.0, 15.5), (dx, 24.0 + 4.0 * tail_fan), (dx + 2.0, 33.0), (dx - 4.0, 30.5), (dx - 5.0, 20.5)]
-        _turn_poly(d, tail, cx, cy, color, width=0.45, radius=1.0)
+def _paint_peck(c: FxCanvas) -> None:
+    c.star((0, 0), 12.0, (255, 236, 120, 255), points=6, inner=0.35, rotation=0)
+    c.star((0, 0), 6.0, WHITE, points=6, inner=0.45, rotation=30)
+    for ang in (-50.0, 0.0, 50.0):
+        r = math.radians(ang)
+        c.line([(14 * math.cos(r), 14 * math.sin(r)), (24 * math.cos(r), 24 * math.sin(r))], WHITE, 2.0)
 
 
-def _paint_front_body(img, d) -> None:
-    cx, cy = _home_canvas()
-    body = [(-14.0, -14.5), (-4.0, -19.0), (4.0, -19.0), (14.0, -14.5), (16.5, -2.0), (14.0, 15.5), (6.5, 22.0), (-6.5, 22.0), (-14.0, 15.5), (-16.5, -2.0)]
-    _turn_poly(d, body, cx, cy, PAL["body"], width=0.8, radius=4.2)
-    _turn_fill(img, [(-8.0, -8.0), (0.0, -10.0), (8.0, -8.0), (10.0, 8.0), (5.0, 18.0), (-5.0, 18.0), (-10.0, 8.0)], cx, cy, (*PAL["body_light"][:3], 95), radius=3.0)
-    _turn_fill(img, [(-3.0, -14.0), (0.0, -15.0), (3.0, -14.0), (7.0, -10.0), (0.0, -5.0), (-7.0, -10.0)], cx, cy, (*PAL["wing_yellow"][:3], 140), radius=1.8)
+def _paint_chop(c: FxCanvas) -> None:
+    """The wing chop's trail: an arc about the shoulder from over the back,
+    over the head and down in front."""
+    R = 170.0 / FX_UNIT
+    c.arc((0, 0), R, R, -150, 50, (255, 255, 255, 90), 22.0)
+    c.arc((0, 0), R, R, -140, 44, (255, 246, 214, 210), 7.0)
+    c.arc((0, 0), R - 26, R - 26, -120, 36, (255, 246, 214, 130), 3.0)
 
 
-def _paint_front_legs(airborne: bool):
-    def paint(img, d) -> None:
-        cx, cy = _home_canvas()
-        if airborne:
-            for x in (-3.2, 3.2):
-                shin = [(x - 0.6, 11.6), (x + 0.4, 11.6), (x + 0.8, 14.4), (x - 0.2, 14.5)]
-                _turn_poly(d, shin, cx, cy, PAL["leg"], width=0.32, radius=0.6)
-                base = _turn_pt((x + 0.2, 14.2), cx, cy)
-                for spread, length in ((-0.55, 2.2), (0.0, 2.8), (0.55, 2.2)):
-                    d.line((base[0], base[1], base[0] + TS * (length if x > 0 else -length), base[1] + TS * spread), fill=PAL["talon"], width=max(1, int(TS * 0.4)))
-        else:
-            for x in (-4.5, 4.5):
-                shin = [(x - 0.7, 15.0), (x + 0.4, 15.0), (x + 0.9, 19.2), (x - 0.2, 19.3)]
-                _turn_poly(d, shin, cx, cy, PAL["leg"], width=0.35, radius=0.7)
-                base = _turn_pt((x + 0.2, 19.0), cx, cy)
-                for spread, length in ((-0.7, 2.6), (0.0, 3.2), (0.7, 2.6)):
-                    d.line((base[0], base[1], base[0] + TS * (length if x > 0 else -length), base[1] + TS * spread), fill=PAL["talon"], width=max(1, int(TS * 0.45)))
-
-    return paint
+def _paint_rake(c: FxCanvas) -> None:
+    """Three claw slashes."""
+    for k in (-1, 0, 1):
+        c.polygon([(-26, -14 + 10 * k), (24, 8 + 10 * k), (28, 12 + 10 * k), (-20, -8 + 10 * k)], SCRATCH)
 
 
-def _paint_front_head(img, d) -> None:
-    """The front head with its beak, about the view's centre."""
-    cx, cy = _home_canvas()
-    hy = cy - 2.0 * TS
-    head = [(-11.0, -26.0), (-3.0, -29.0), (3.0, -29.0), (11.0, -26.0), (14.0, -16.0), (12.0, -3.0), (6.0, 7.0), (-6.0, 7.0), (-12.0, -3.0), (-14.0, -16.0)]
-    _turn_poly(d, head, cx, hy, PAL["head"], width=0.8, radius=4.0)
-    _turn_fill(img, [(-7.5, -22.0), (-1.5, -24.0), (1.5, -24.0), (7.5, -22.0), (10.0, -9.0), (8.0, 0.5), (4.0, 4.0), (-4.0, 4.0), (-8.0, 0.5), (-10.0, -9.0)], cx, hy, PAL["face_patch"], radius=3.0)
-    _turn_fill(img, [(-5.5, -24.0), (0.0, -25.0), (5.5, -24.0), (7.5, -17.0), (0.0, -13.0), (-7.5, -17.0)], cx, hy, (*PAL["head_light"][:3], 100), radius=2.0)
-    for sign in (-1.0, 1.0):
-        for y0, y1 in ((-14.5, -2.0), (-11.0, 1.0), (-7.0, 3.5)):
-            p0 = _turn_pt((sign * 5.2, y0), cx, hy)
-            p1 = _turn_pt((sign * 4.2, y1), cx, hy)
-            d.line((p0[0], p0[1], p1[0], p1[1]), fill=PAL["face_line"], width=max(1, int(TS * 0.26)))
-    for sign in (-1.0, 1.0):
-        ec = _turn_pt((sign * 6.0, -12.5), cx, hy)
-        ew, eh = TS * 4.4, TS * 5.0
-        d.ellipse((ec[0] - ew / 2, ec[1] - eh / 2, ec[0] + ew / 2, ec[1] + eh / 2), fill=PAL["eye"], outline=PAL["outline"], width=max(1, int(TS * 0.35)))
-        pw, ph = TS * 1.4, TS * 2.0
-        d.ellipse((ec[0] - pw / 2 + sign * TS * 0.25, ec[1] - ph / 2, ec[0] + pw / 2 + sign * TS * 0.25, ec[1] + ph / 2), fill=PAL["pupil"])
-
-    beak_open = TURN_BEAK_OPEN
-    by = cy - 6.5 * TS
-    upper = [(-4.5, -3.0), (-1.5, -6.5), (1.5, -6.5), (4.5, -3.0), (3.4, 3.8), (0.0, 9.0), (-3.4, 3.8)]
-    lower = [(-2.3, 4.2 + 2.0 * beak_open), (0.0, 7.0 + 5.5 * beak_open), (2.3, 4.2 + 2.0 * beak_open), (1.3, 11.0 + 6.5 * beak_open), (-1.3, 11.0 + 6.5 * beak_open)]
-    _turn_poly(d, upper, cx, by, PAL["beak_upper"], width=0.7, radius=1.2)
-    _turn_fill(img, [(-2.4, -1.2), (0.0, -3.0), (2.4, -1.2), (1.6, 4.2), (0.0, 6.6), (-1.6, 4.2)], cx, by, (*PAL["beak_upper_shadow"][:3], 190), radius=1.0)
-    _turn_poly(d, lower, cx, by, PAL["beak_lower"], width=0.65, radius=1.0)
-    for sign in (-1.0, 1.0):
-        n = _turn_pt((sign * 1.7, -1.5), cx, by)
-        d.ellipse((n[0] - TS * 0.35, n[1] - TS * 0.45, n[0] + TS * 0.35, n[1] + TS * 0.45), fill=PAL["outline"])
+_GLYPHS: Dict[str, Tuple[FX.Extent, FX.Paint]] = {**FX.COMMON}
+_GLYPHS["feather_red"] = ((18.0, 8.0, 20.0, 8.0), _feather(RED, BLUE))
+_GLYPHS["feather_blue"] = ((18.0, 8.0, 20.0, 8.0), _feather(BLUE, BLUE_LIGHT))
+_GLYPHS["feather_yellow"] = ((18.0, 8.0, 20.0, 8.0), _feather(YELLOW, RED))
+_GLYPHS["speed"] = ((4.0, 28.0, 112.0, 32.0), _paint_speed)
+_GLYPHS["balloon"] = ((42.0, 28.0, 40.0, 36.0), _paint_balloon)
+_GLYPHS["noise"] = ((6.0, 44.0, 52.0, 44.0), _paint_noise)
+_GLYPHS["peck"] = ((26.0, 26.0, 26.0, 26.0), _paint_peck)
+_GLYPHS["chop"] = ((118.0, 118.0, 118.0, 96.0), _paint_chop)
+_GLYPHS["rake"] = ((30.0, 26.0, 32.0, 26.0), _paint_rake)
+#: The effects read at the sprite's small size only drawn bigger than the
+#: art's own units: glyph units are this much larger than the drawing's.
+FX_UNIT = 1.6
+GLYPHS = FX.Glyphs(ART_SCALE * FX_UNIT, _GLYPHS)
+_place = GLYPHS.place
 
 
-def _render_turn_front(params: Dict[str, float]) -> Image.Image:
-    img = Image.new("RGBA", (FRAME_W * SS, FRAME_H * SS), (0, 0, 0, 0))
-    airborne = params.get("airborne", 0.0) > 0.5
-    default_root_y = -19.0 if airborne else -0.5
-    centre = (CENTER_X + params.get("root_x", 0.0), GROUND_Y + params.get("root_y", default_root_y) - 21.0)
-    wing_lift = _wing_lift(params, airborne)
-    # Both wings are one raster: the right wing, and it mirrored for the left.
-    shoulder = (3.0, -7.1)
-    wing = _piece(("front_wing", airborne), lambda img_, d: _draw_turn_front_wing(img_, d, *_home_canvas(), 0.5, airborne), shoulder)
-    turn = -TURN_WING_DEGREES[airborne] * (wing_lift - 0.5)
-    _View(img, centre, mirror=True).put(wing, shoulder, "turn_far_wing", turn)
-    view = _View(img, centre)
-    view.put(wing, shoulder, "turn_near_wing", turn)
-    view.put(_piece(("front_tail",), _paint_front_tail), (0.0, 0.0), "turn_tail")
-    view.put(_piece(("front_body",), _paint_front_body), (0.0, 0.0), "turn_body")
-    view.put(_piece(("front_legs", airborne), _paint_front_legs(airborne)), (0.0, 0.0), "turn_legs")
-    view.put(_piece(("front_head",), _paint_front_head), (0.0, 0.0), "turn_head")
-    return img
+def _local(bone, x: float, y: float) -> Point:
+    """A point in a bone's frame given in the drawing's SVG units."""
+    return bone.to_world((x * ART_SCALE, y * ART_SCALE))
 
 
-def _render_turnaround_actor(frame_idx: int, nframes: int, world, params: Dict[str, float]) -> Tuple[Image.Image, bool]:
-    """The view of this turnaround step, and whether to mirror its reduced frame."""
-    step = int(round(frame_idx * 8 / max(1, nframes - 1)))
-    if step <= 0:
-        return _render_side_actor(world, params), False
-    if step <= 2:
-        return _render_turn_three_quarter(params, mirrored=False), False
-    if step <= 5:
-        return _render_turn_front(params), False
-    if step <= 7:
-        return _render_turn_three_quarter(params, mirrored=True), False
-    return _render_side_actor(world, params), True
+#: The beak tip in the head bone's frame (SVG units: the bone runs from the
+#: neck joint to the beak tip, 70 units).
+BEAK_TIP = (72.0, 2.0)
+FEATHERS = ("feather_red", "feather_blue", "feather_red", "feather_yellow", "feather_red", "feather_blue")
 
 
+def _feather_burst(canvas: FxCanvas, t: float, world, strength: float) -> None:
+    """Loose feathers flung out from the body, drifting as they go."""
+    body = world["body"]
+    centre = _local(body, 10.0, 0.0)
+    for k, name in enumerate(FEATHERS):
+        a = math.tau * k / len(FEATHERS) + 0.6
+        reach = (50.0 + 90.0 * ((t * 1.6 + 0.13 * k) % 1.0)) * ART_SCALE
+        at = (centre[0] + math.cos(a) * reach, centre[1] + math.sin(a) * reach * 0.8)
+        _place(canvas, name, at, strength, degrees=math.degrees(a) + 40.0 * math.sin(t * 9.0 + k))
 
 
-def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
-    if animation in LOOPS:
-        t = frame_idx / max(1, nframes)
-    else:
-        t = frame_idx / max(1, nframes - 1)
-    img = Image.new("RGBA", (FRAME_W * SS, FRAME_H * SS), (0, 0, 0, 0))
-    world, params = _solve(animation, t)
-    if animation in {"turnaround", "turnaround_flight"}:
-        actor, mirrored = _render_turnaround_actor(frame_idx, nframes, world, params)
-    else:
-        actor, mirrored = _render_side_actor(world, params), params.get("turn_flip", 0.0) > 0.5
-    rigdoc.composite_canvas(img, actor)
-    frame = rigdoc.downsampled_canvas(img, (FRAME_W, FRAME_H), Image.Resampling.LANCZOS)
-    # The reduction and a mirror commute, so a left-facing view is mirrored
-    # after it: a part flipbook mirrors reduced parts only.
-    return rigdoc.mirrored_canvas(frame) if mirrored else frame
+def _behind(canvas: FxCanvas, t: float, world, params) -> None:
+    speed = params.get("fx.speed", 0.0)
+    if speed > 0.02:
+        body = world["body"]
+        # Streaks trail back from the body against its flight line (level
+        # flight pitches the body 36 degrees forward).
+        _place(canvas, "speed", body.origin, speed, degrees=body.angle - 36.0 + 180.0)
+    chop = params.get("fx.smear", 0.0)
+    if chop > 0.02:
+        _place(canvas, "chop", world["near_wing"].origin, chop)
+    dust = params.get("fx.dust", 0.0)
+    if dust > 0.02:
+        ground = float(_doc().frame["ground_y"])
+        x = world["body"].origin[0]
+        _place(canvas, "dust", (x - 26.0 * ART_SCALE, ground), dust)
+        _place(canvas, "dust", (x + 36.0 * ART_SCALE, ground), dust * 0.8)
+
+
+def _front(canvas: FxCanvas, t: float, world, params) -> None:
+    head = world["head"]
+    beak = _local(head, *BEAK_TIP)
+    for key, glyph in (("fx.peck", "peck"), ("fx.peck_big", "hit")):
+        if params.get(key, 0.0) > 0.02:
+            _place(canvas, glyph, _local(head, BEAK_TIP[0] + 10.0, BEAK_TIP[1]), params[key])
+    # A blow landing on the parrot's chest; its own talons striking.
+    _place(canvas, "hit", _local(world["body"], 40.0, -20.0), params.get("fx.hit", 0.0))
+    foot = world["near_foot"].origin
+    _place(canvas, "hit", (foot[0] + 10.0 * ART_SCALE, foot[1]), params.get("fx.strike", 0.0))
+    if params.get("fx.rake", 0.0) > 0.02:
+        _place(canvas, "rake", (foot[0] + 8.0 * ART_SCALE, foot[1] + 10.0 * ART_SCALE), params["fx.rake"])
+    feathers = params.get("fx.feathers", 0.0)
+    if feathers > 0.02:
+        _feather_burst(canvas, t, world, feathers)
+    drift = params.get("fx.drift", 0.0)
+    if drift > 0.02:
+        # One last feather seesawing down onto the body.
+        body = world["body"].origin
+        y = body[1] - (110.0 - 70.0 * t) * ART_SCALE
+        x = body[0] + 18.0 * math.sin(t * 9.0) * ART_SCALE
+        _place(canvas, "feather_red", (x, y), drift, degrees=25.0 * math.sin(t * 9.0))
+    squawk = params.get("fx.squawk", 0.0)
+    if squawk > 0.02:
+        x, y = head.origin
+        _place(canvas, "balloon", (x + 80.0 * ART_SCALE, y - 120.0 * ART_SCALE), squawk)
+    noise = params.get("fx.notes", 0.0)
+    if noise > 0.02 and params.get("jaw", 0.0) > 14.0:
+        _place(canvas, "noise", beak, noise, degrees=head.angle)
+
+
+def _side_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
+    return compose_rig_frame(_doc(), animation, frame_idx, frame_count, behind=_behind, front=_front, fx_pieces=True)
+
+
+def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
+    if animation in TURN_ROWS:
+        view = TURN_VIEWS[min(frame_idx, len(TURN_VIEWS) - 1)]
+        if view == "front":
+            return compose_rig_frame(_front_doc(), animation, frame_idx, frame_count, fx_pieces=True)
+        frame = _side_frame(animation, frame_idx, frame_count)
+        return rigdoc.mirrored_canvas(frame) if view == "mirror" else frame
+    return _side_frame(animation, frame_idx, frame_count)
 
 
 # ---- Target registration hooks ------------------------------------------------
@@ -1793,7 +405,19 @@ def render(out_dir: Path, **opts) -> List[Path]:
     return [Path(outputs[k]) for k in keys if outputs.get(k)] + list(parts.values())
 
 
-
 def render_canonical(out_dir: Path, **opts) -> Path:
     del opts
     return write_canonical(TARGET_NAME, ROWS, render_frame, Path(out_dir))
+
+
+__all__ = [
+    "ACTOR_METADATA",
+    "LINEAGE",
+    "LOOPS",
+    "PARENT_TARGET",
+    "ROWS",
+    "TARGET_NAME",
+    "render",
+    "render_canonical",
+    "render_frame",
+]

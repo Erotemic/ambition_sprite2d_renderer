@@ -10,6 +10,7 @@ These scripts are how the first drafts of these character SVGs were drawn:
 | `burning_flying_shark_art.py` | `data/characters/burning_flying_shark/burning_flying_shark.svg` | `scripts/build_burning_flying_shark_rig.py` |
 | `bob_art.py` | `data/characters/bob/bob.svg` | `scripts/build_bob_rig.py` |
 | `bob_front_art.py` | `data/characters/bob/bob_front.svg` | `scripts/build_bob_rig.py` |
+| `stochastic_parrot_art.py` | `data/characters/stochastic_parrot_v2/stochastic_parrot_v2.svg` and `stochastic_parrot_v2_front.svg` | `scripts/build_stochastic_parrot_v2_rig.py` |
 
 ⚠ **The SVGs own the art.** Edit an SVG directly (in Inkscape or by hand)
 when the art changes; these scripts are not re-run to produce it and are not
@@ -19,6 +20,8 @@ silhouettes that hide the seams between parts, feathers, fringes of fur, and a
 hidden `Rig Joints` layer the rig builder reads. `bob_art.py` is the humanoid
 example: limbs as overlapping capsules, swap sets (fist / open hands, eye and
 mouth states) and props that ride a hand or stow on the back.
+`stochastic_parrot_art.py` is the bird: one script drawing two views, and a
+wing that swaps between folded on the body and spread in two bones.
 
 At the time they were committed, each script reproduced its SVG byte for byte,
 except for the rig catalog block (`BEGIN/END AMBITION SVG RIG v1`) that the rig
@@ -48,4 +51,5 @@ rig document and installs the SVG's rig catalog.
 | shark | 15,655 B | 51,049 B | 65,422 B |
 | Bob | 23,113 B | 57,949 B | 80,431 B |
 | Bob, front view | 16,227 B | 49,237 B | 69,589 B |
+| Stochastic Parrot (side + front) | 21,100 B | 75,193 B + 33,294 B | 93,646 B + 40,731 B |
 | shared `svgkit.py` | 11,543 B | | |
