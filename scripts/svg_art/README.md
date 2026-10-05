@@ -1,6 +1,6 @@
-# Character SVG drawing scripts (reference, not authority)
+# Character and prop SVG drawing scripts (reference, not authority)
 
-These scripts are how the first drafts of these character SVGs were drawn:
+These scripts are how the first drafts of these character and prop SVGs were drawn:
 
 | Script | Draws | Rig builder |
 |---|---|---|
@@ -11,6 +11,7 @@ These scripts are how the first drafts of these character SVGs were drawn:
 | `bob_art.py` | `data/characters/bob/bob.svg` | `scripts/build_bob_rig.py` |
 | `bob_front_art.py` | `data/characters/bob/bob_front.svg` | `scripts/build_bob_rig.py` |
 | `stochastic_parrot_art.py` | `data/characters/stochastic_parrot_v2/stochastic_parrot_v2.svg`, `stochastic_parrot_v2_front.svg` and `stochastic_parrot_v2_three_quarter.svg` | `scripts/build_stochastic_parrot_v2_rig.py` |
+| `treasure_chest_art.py` | `data/props/treasure_chest/treasure_chest.svg` | `scripts/build_treasure_chest_rig.py` |
 
 ⚠ **The SVGs own the art.** Edit an SVG directly (in Inkscape or by hand)
 when the art changes; these scripts are not re-run to produce it and are not
@@ -22,6 +23,8 @@ example: limbs as overlapping capsules, swap sets (fist / open hands, eye and
 mouth states) and props that ride a hand or stow on the back.
 `stochastic_parrot_art.py` is the bird: one script drawing three views, and a
 wing that swaps between folded on the body and spread in two bones.
+`treasure_chest_art.py` is a prop: a lid drawn four times (closed, ajar,
+up, open) as a swap set hinged at the box's back edge.
 
 At the time they were committed, each script reproduced its SVG byte for byte,
 except for the rig catalog block (`BEGIN/END AMBITION SVG RIG v1`) that the rig
@@ -52,4 +55,5 @@ rig document and installs the SVG's rig catalog.
 | Bob | 23,113 B | 57,949 B | 80,431 B |
 | Bob, front view | 16,227 B | 49,237 B | 69,589 B |
 | Stochastic Parrot (side + front + three-quarter) | 27,996 B | 75,193 + 33,294 + 38,090 B | 93,646 + 40,731 + 45,511 B |
+| treasure chest | 13,344 B | 33,926 B | 41,223 B |
 | shared `svgkit.py` | 11,543 B | | |

@@ -19,6 +19,7 @@ from ambition_sprite2d_renderer.core.pipeline import (
     CROP_GROUND,
     CROP_NONE,
     CROP_TIGHT,
+    crop_to_content,
     render_frame,
 )
 
@@ -108,62 +109,6 @@ def draw_gem(
         fill=with_alpha((255, 255, 255, 255), 110),
         width=max(1, int(1.2 * s)),
     )
-
-
-def chest_closed(d: ImageDraw.ImageDraw, s: float) -> None:
-    outline = rgba("#221714")
-    d.ellipse(bbox(64 * s, 92 * s, 74 * s, 15 * s), fill=(0, 0, 0, 45))
-    d.rounded_rectangle(
-        (28 * s, 52 * s, 100 * s, 91 * s),
-        radius=8 * s,
-        fill=rgba("#8D4B22"),
-        outline=outline,
-        width=max(1, int(2 * s)),
-    )
-    d.rounded_rectangle(
-        (25 * s, 42 * s, 103 * s, 66 * s),
-        radius=12 * s,
-        fill=rgba("#C98231"),
-        outline=outline,
-        width=max(1, int(2 * s)),
-    )
-    d.rectangle(
-        (28 * s, 63 * s, 100 * s, 70 * s),
-        fill=rgba("#F0B84A"),
-        outline=outline,
-        width=max(1, int(1 * s)),
-    )
-    d.rounded_rectangle(
-        (56 * s, 58 * s, 72 * s, 78 * s),
-        radius=3 * s,
-        fill=rgba("#FFE477"),
-        outline=outline,
-        width=max(1, int(1 * s)),
-    )
-
-
-def chest_open(d: ImageDraw.ImageDraw, s: float) -> None:
-    outline = rgba("#221714")
-    d.ellipse(bbox(64 * s, 94 * s, 78 * s, 15 * s), fill=(0, 0, 0, 45))
-    d.polygon(
-        poly_scaled([(31, 56), (64, 33), (97, 56), (92, 67), (64, 51), (36, 67)], s),
-        fill=rgba("#D78B34"),
-        outline=outline,
-    )
-    d.rounded_rectangle(
-        (28 * s, 62 * s, 100 * s, 92 * s),
-        radius=8 * s,
-        fill=rgba("#8D4B22"),
-        outline=outline,
-        width=max(1, int(2 * s)),
-    )
-    for x in [47, 61, 76]:
-        d.line(
-            [(x * s, 59 * s), (x * s, 32 * s)],
-            fill=rgba("#FFF18A", 120),
-            width=max(1, int(2 * s)),
-        )
-    draw_gem(d, (64, 63), 11, rgba("#6BE9FF"), outline, s)
 
 
 def breakable_intact(d: ImageDraw.ImageDraw, s: float) -> None:
@@ -1617,8 +1562,6 @@ ENTITY_SPECS: List[EntitySpriteSpec] = [
 ]
 
 DRAWERS: Dict[str, Callable[[ImageDraw.ImageDraw, float], None]] = {
-    "chest_closed": chest_closed,
-    "chest_open": chest_open,
     "breakable_intact": breakable_intact,
     "breakable_cracked": breakable_cracked,
     "breakable_broken": breakable_broken,
@@ -1660,7 +1603,31 @@ DRAWERS: Dict[str, Callable[[ImageDraw.ImageDraw, float], None]] = {
 }
 
 
+#: Entity states drawn by an SVG-rigged prop instead of a drawer here: the
+#: key's rendering is that prop's ``render_state(state)`` (a full frame),
+#: cropped like every other entity sprite. The treasure chest's two runtime
+#: states are the ``treasure_chest`` sheet's rest poses, so both show one chest.
+RIG_STATES: Dict[str, Tuple[str, str]] = {
+    "chest_closed": ("treasure_chest", "closed"),
+    "chest_open": ("treasure_chest", "open"),
+}
+
+
+def _render_rig_state(spec: EntitySpriteSpec) -> Image.Image:
+    import importlib
+
+    module, state = RIG_STATES[spec.key]
+    prop = importlib.import_module(f"{__package__}.{module}")
+    frame = prop.render_state(state)
+    if frame.size != spec.size:
+        frame = frame.resize(spec.size, Image.Resampling.LANCZOS)
+    crop = CROP_NONE if not spec.tight_crop else (CROP_GROUND if spec.ground else CROP_TIGHT)
+    return crop_to_content(frame, crop)
+
+
 def render_entity_sprite(spec: EntitySpriteSpec, supersample: int = 4) -> Image.Image:
+    if spec.key in RIG_STATES:
+        return _render_rig_state(spec)
     try:
         draw_fn = DRAWERS[spec.key]
     except KeyError as ex:

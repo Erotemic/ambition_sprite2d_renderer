@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+     width="512mm" height="512mm" viewBox="0 0 512 512"
+     data-character-design="treasure-chest">
+  <!-- A banded pirate treasure chest seen from the front and a little above, on
+       a 512x512 drawing whose ground is y=440 (published at 0.25). Each part is a
+       layer with a data-rig-part name; rigged/treasure_chest/ poses them. The lid
+       is a swap set hinged at the box's back edge: lid.closed, lid.ajar, lid.up,
+       lid.open. The hidden Rig Joints layer marks every joint. -->
+  <g id="treasure-chest" inkscape:groupmode="layer" inkscape:label="Treasure Chest - Front">
+    <g id="shadow" inkscape:groupmode="layer" inkscape:label="Shadow" data-rig-part="shadow" data-rig-bone="base" data-rig-z="0">
+      <path d="M424,436 C424,438.3 419.41,440.77 411.21,442.89 C403.01,445.01 389.95,447.1 374.79,448.73 C359.64,450.35 340.09,451.75 320.29,452.63 C300.49,453.51 277.43,454 256,454 C234.57,454 211.51,453.51 191.71,452.63 C171.91,451.75 152.36,450.35 137.21,448.73 C122.05,447.1 108.99,445.01 100.79,442.89 C92.59,440.77 88,438.3 88,436 C88,433.7 92.59,431.23 100.79,429.11 C108.99,426.99 122.05,424.9 137.21,423.27 C152.36,421.65 171.91,420.25 191.71,419.37 C211.51,418.49 234.57,418 256,418 C277.43,418 300.49,418.49 320.29,419.37 C340.09,420.25 359.64,421.65 374.79,423.27 C389.95,424.9 403.01,426.99 411.21,429.11 C419.41,431.23 424,433.7 424,436 Z" fill="#000000" opacity="0.28" />
+    </g>
+    <g id="lid-up" inkscape:groupmode="layer" inkscape:label="Lid - Up" data-rig-part="lid_up" data-rig-bone="lid" data-rig-z="5" data-rig-opacity="lid.up">
+      <clipPath id="clip-lid-up"><path d="M116,264 L396,264 L404,168 L108,168 Z" /></clipPath>
+      <g clip-path="url(#clip-lid-up)">
+      <path d="M116,264 L396,264 L404,168 L108,168 Z" fill="#5a2c14" />
+      <path d="M118,226 C164,226 348,226 394,226" fill="none" stroke="#3a1a0a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M116,196 C162.67,196 349.33,196 396,196" fill="none" stroke="#3a1a0a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M160,168 L182,168 L182,262 L160,262 Z" fill="#3d4049" stroke="#1f1410" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M163,170 C163,185 163,245 163,260" fill="none" stroke="#717887" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="171" cy="184" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="169.8" cy="182.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      <ellipse cx="171" cy="244" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="169.8" cy="242.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      <path d="M330,168 L352,168 L352,262 L330,262 Z" fill="#3d4049" stroke="#1f1410" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M333,170 C333,185 333,245 333,260" fill="none" stroke="#717887" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="341" cy="184" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="339.8" cy="182.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      <ellipse cx="341" cy="244" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="339.8" cy="242.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      </g>
+      <path d="M116,264 L396,264 L404,168 L108,168 Z" fill="none" stroke="#1f1410" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
+      <clipPath id="clip-lid-up-dome"><path d="M108,170 C108,170 99.33,159 112,154 C124.67,149 160,143 184,140 C208,137 232,136 256,136 C280,136 304,137 328,140 C352,143 387.33,149 400,154 C412.67,159 404,170 404,170 C404,170 108,170 108,170 Z" /></clipPath>
+      <g clip-path="url(#clip-lid-up-dome)">
+      <path d="M108,170 C108,170 99.33,159 112,154 C124.67,149 160,143 184,140 C208,137 232,136 256,136 C280,136 304,137 328,140 C352,143 387.33,149 400,154 C412.67,159 404,170 404,170 C404,170 108,170 108,170 Z" fill="#9a5427" />
+      <path d="M108,160 L404,160 L404,170 L108,170 Z" fill="#e9a93a" />
+      <path d="M184,146 C196,145.33 232,142 256,142 C280,142 316,145.33 328,146" fill="none" stroke="#bd7038" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+      </g>
+      <path d="M108,170 C108,170 99.33,159 112,154 C124.67,149 160,143 184,140 C208,137 232,136 256,136 C280,136 304,137 328,140 C352,143 387.33,149 400,154 C412.67,159 404,170 404,170 C404,170 108,170 108,170 Z" fill="none" stroke="#1f1410" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
+    </g>
+    <g id="lid-open" inkscape:groupmode="layer" inkscape:label="Lid - Open" data-rig-part="lid_open" data-rig-bone="lid" data-rig-z="5" data-rig-opacity="lid.open">
+      <clipPath id="clip-lid-open"><path d="M116,264 C116,264 396,264 396,264 C396,264 406,128 406,128 C406,128 355,115.33 330,112 C305,108.67 280.67,108 256,108 C231.33,108 207,108.67 182,112 C157,115.33 106,128 106,128 C106,128 116,264 116,264 Z" /></clipPath>
+      <g clip-path="url(#clip-lid-open)">
+      <path d="M116,264 C116,264 396,264 396,264 C396,264 406,128 406,128 C406,128 355,115.33 330,112 C305,108.67 280.67,108 256,108 C231.33,108 207,108.67 182,112 C157,115.33 106,128 106,128 C106,128 116,264 116,264 Z" fill="#5a2c14" />
+      <path d="M116,226 C162.67,226 349.33,226 396,226" fill="none" stroke="#3a1a0a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M112,190 C160,190 352,190 400,190" fill="none" stroke="#3a1a0a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M108,154 C157.33,154 354.67,154 404,154" fill="none" stroke="#3a1a0a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M106,116 L406,116 L406,132 L106,132 Z" fill="#e9a93a" />
+      <path d="M106,119 C156,119 356,119 406,119" fill="none" stroke="#ffd86a" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M116,252 L396,252 L396,264 L116,264 Z" fill="#3a1a0a" />
+      <path d="M160,108 L182,108 L182,262 L160,262 Z" fill="#3d4049" stroke="#1f1410" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M163,110 C163,135 163,235 163,260" fill="none" stroke="#717887" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="171" cy="150" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="169.8" cy="148.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      <ellipse cx="171" cy="214" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="169.8" cy="212.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      <path d="M330,108 L352,108 L352,262 L330,262 Z" fill="#3d4049" stroke="#1f1410" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M333,110 C333,135 333,235 333,260" fill="none" stroke="#717887" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="341" cy="150" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="339.8" cy="148.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      <ellipse cx="341" cy="214" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="339.8" cy="212.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      <ellipse cx="128" cy="140" rx="3.4" ry="3.4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="126.98" cy="138.98" rx="1.19" ry="1.19" fill="#c9ced8" />
+      <ellipse cx="384" cy="140" rx="3.4" ry="3.4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="382.98" cy="138.98" rx="1.19" ry="1.19" fill="#c9ced8" />
+      </g>
+      <path d="M116,264 C116,264 396,264 396,264 C396,264 406,128 406,128 C406,128 355,115.33 330,112 C305,108.67 280.67,108 256,108 C231.33,108 207,108.67 182,112 C157,115.33 106,128 106,128 C106,128 116,264 116,264 Z" fill="none" stroke="#1f1410" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
+    </g>
+    <g id="interior" inkscape:groupmode="layer" inkscape:label="Interior" data-rig-part="interior" data-rig-bone="base" data-rig-z="10">
+      <clipPath id="clip-well"><path d="M120,262 L392,262 L394,300 L118,300 Z" /></clipPath>
+      <g clip-path="url(#clip-well)">
+      <path d="M120,262 L392,262 L394,300 L118,300 Z" fill="#1c0e08" />
+      <path d="M120,262 L392,262 L390,276 L122,276 Z" fill="#5a2c14" />
+      <path d="M154,264 C154,265.83 154,273.17 154,275" fill="none" stroke="#3a1a0a" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M358,264 C358,265.83 358,273.17 358,275" fill="none" stroke="#3a1a0a" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      </g>
+      <path d="M120,262 L392,262 L394,300 L118,300 Z" fill="none" stroke="#1f1410" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
+    </g>
+    <g id="treasure" inkscape:groupmode="layer" inkscape:label="Treasure" data-rig-part="treasure" data-rig-bone="treasure" data-rig-z="20">
+      <clipPath id="clip-mound"><path d="M124,306 C82.67,300 132.33,279.67 140,270 C147.67,260.33 156.67,253.67 170,248 C183.33,242.33 204.67,239 220,236 C235.33,233 247.67,229.67 262,230 C276.33,230.33 291.33,234.33 306,238 C320.67,241.67 338.67,246.33 350,252 C361.33,257.67 367.67,263 374,272 C380.33,281 429.67,300.33 388,306 C346.33,311.67 165.33,312 124,306 Z" /></clipPath>
+      <g clip-path="url(#clip-mound)">
+      <path d="M124,306 C82.67,300 132.33,279.67 140,270 C147.67,260.33 156.67,253.67 170,248 C183.33,242.33 204.67,239 220,236 C235.33,233 247.67,229.67 262,230 C276.33,230.33 291.33,234.33 306,238 C320.67,241.67 338.67,246.33 350,252 C361.33,257.67 367.67,263 374,272 C380.33,281 429.67,300.33 388,306 C346.33,311.67 165.33,312 124,306 Z" fill="#a8681a" />
+      <path d="M124,306 C82.67,300 132.33,279.67 140,270 C147.67,260.33 156.67,253.67 170,248 C183.33,242.33 204.67,239 220,236 C235.33,233 247.67,229.67 262,230 C276.33,230.33 291.33,234.33 306,238 C320.67,241.67 338.67,246.33 350,252 C361.33,257.67 367.67,263 374,272 C380.33,281 429.67,300.33 388,306 C346.33,311.67 165.33,312 124,306 Z" fill="#e9a93a" opacity="0.45" />
+      </g>
+      <path d="M124,306 C82.67,300 132.33,279.67 140,270 C147.67,260.33 156.67,253.67 170,248 C183.33,242.33 204.67,239 220,236 C235.33,233 247.67,229.67 262,230 C276.33,230.33 291.33,234.33 306,238 C320.67,241.67 338.67,246.33 350,252 C361.33,257.67 367.67,263 374,272 C380.33,281 429.67,300.33 388,306 C346.33,311.67 165.33,312 124,306 Z" fill="none" stroke="#1f1410" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="150" cy="262" rx="9" ry="4.5" fill="#e9a93a" stroke="#1f1410" stroke-width="1.2" />
+      <ellipse cx="148.2" cy="260.92" rx="4.95" ry="2.7" fill="#ffd86a" />
+      <ellipse cx="182" cy="250" rx="10" ry="5.8" fill="#e9a93a" stroke="#1f1410" stroke-width="1.2" />
+      <ellipse cx="180" cy="248.8" rx="5.5" ry="3" fill="#ffd86a" />
+      <ellipse cx="214" cy="242" rx="11" ry="5.5" fill="#e9a93a" stroke="#1f1410" stroke-width="1.2" />
+      <ellipse cx="211.8" cy="240.68" rx="6.05" ry="3.3" fill="#ffd86a" />
+      <ellipse cx="246" cy="236" rx="9" ry="5.22" fill="#e9a93a" stroke="#1f1410" stroke-width="1.2" />
+      <ellipse cx="244.2" cy="234.92" rx="4.95" ry="2.7" fill="#ffd86a" />
+      <ellipse cx="282" cy="240" rx="10" ry="5" fill="#e9a93a" stroke="#1f1410" stroke-width="1.2" />
+      <ellipse cx="280" cy="238.8" rx="5.5" ry="3" fill="#ffd86a" />
+      <ellipse cx="314" cy="246" rx="11" ry="6.38" fill="#e9a93a" stroke="#1f1410" stroke-width="1.2" />
+      <ellipse cx="311.8" cy="244.68" rx="6.05" ry="3.3" fill="#ffd86a" />
+      <ellipse cx="346" cy="256" rx="9" ry="4.5" fill="#e9a93a" stroke="#1f1410" stroke-width="1.2" />
+      <ellipse cx="344.2" cy="254.92" rx="4.95" ry="2.7" fill="#ffd86a" />
+      <ellipse cx="378" cy="270" rx="10" ry="5.8" fill="#e9a93a" stroke="#1f1410" stroke-width="1.2" />
+      <ellipse cx="376" cy="268.8" rx="5.5" ry="3" fill="#ffd86a" />
+      <ellipse cx="166" cy="276" rx="11" ry="5.5" fill="#e9a93a" stroke="#1f1410" stroke-width="1.2" />
+      <ellipse cx="163.8" cy="274.68" rx="6.05" ry="3.3" fill="#ffd86a" />
+      <ellipse cx="200" cy="266" rx="9" ry="5.22" fill="#e9a93a" stroke="#1f1410" stroke-width="1.2" />
+      <ellipse cx="198.2" cy="264.92" rx="4.95" ry="2.7" fill="#ffd86a" />
+      <ellipse cx="232" cy="258" rx="10" ry="5" fill="#e9a93a" stroke="#1f1410" stroke-width="1.2" />
+      <ellipse cx="230" cy="256.8" rx="5.5" ry="3" fill="#ffd86a" />
+      <ellipse cx="300" cy="262" rx="11" ry="6.38" fill="#e9a93a" stroke="#1f1410" stroke-width="1.2" />
+      <ellipse cx="297.8" cy="260.68" rx="6.05" ry="3.3" fill="#ffd86a" />
+      <ellipse cx="334" cy="270" rx="9" ry="4.5" fill="#e9a93a" stroke="#1f1410" stroke-width="1.2" />
+      <ellipse cx="332.2" cy="268.92" rx="4.95" ry="2.7" fill="#ffd86a" />
+      <ellipse cx="264" cy="254" rx="10" ry="5.8" fill="#e9a93a" stroke="#1f1410" stroke-width="1.2" />
+      <ellipse cx="262" cy="252.8" rx="5.5" ry="3" fill="#ffd86a" />
+      <ellipse cx="136" cy="284" rx="11" ry="5.5" fill="#e9a93a" stroke="#1f1410" stroke-width="1.2" />
+      <ellipse cx="133.8" cy="282.68" rx="6.05" ry="3.3" fill="#ffd86a" />
+      <ellipse cx="366" cy="286" rx="9" ry="5.22" fill="#e9a93a" stroke="#1f1410" stroke-width="1.2" />
+      <ellipse cx="364.2" cy="284.92" rx="4.95" ry="2.7" fill="#ffd86a" />
+      <ellipse cx="226" cy="280" rx="10" ry="5" fill="#e9a93a" stroke="#1f1410" stroke-width="1.2" />
+      <ellipse cx="224" cy="278.8" rx="5.5" ry="3" fill="#ffd86a" />
+      <ellipse cx="290" cy="282" rx="11" ry="6.38" fill="#e9a93a" stroke="#1f1410" stroke-width="1.2" />
+      <ellipse cx="287.8" cy="280.68" rx="6.05" ry="3.3" fill="#ffd86a" />
+      <path d="M208,241 L217.9,250.35 L213.5,261.9 L202.5,261.9 L198.1,250.35 Z" fill="#e0334a" stroke="#1f1410" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M208,241 L217.9,250.35 L208,253.1 L198.1,250.35 Z" fill="#ffffff" opacity="0.35" />
+      <path d="M318,246 L327,254.5 L323,265 L313,265 L309,254.5 Z" fill="#3f7ae8" stroke="#1f1410" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M318,246 L327,254.5 L318,257 L309,254.5 Z" fill="#ffffff" opacity="0.35" />
+      <path d="M270,235 L278.1,242.65 L274.5,252.1 L265.5,252.1 L261.9,242.65 Z" fill="#34c26f" stroke="#1f1410" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M270,235 L278.1,242.65 L270,244.9 L261.9,242.65 Z" fill="#ffffff" opacity="0.35" />
+      <path d="M150,270 C154.33,271.67 167,279 176,280 C185,281 195.67,275.33 204,276 C212.33,276.67 222.33,282.67 226,284" fill="none" stroke="#f4ecdc" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="150" cy="270" rx="3" ry="3" fill="#f4ecdc" stroke="#1f1410" stroke-width="0.7" />
+      <ellipse cx="164" cy="276" rx="3" ry="3" fill="#f4ecdc" stroke="#1f1410" stroke-width="0.7" />
+      <ellipse cx="178" cy="280" rx="3" ry="3" fill="#f4ecdc" stroke="#1f1410" stroke-width="0.7" />
+      <ellipse cx="192" cy="278" rx="3" ry="3" fill="#f4ecdc" stroke="#1f1410" stroke-width="0.7" />
+      <ellipse cx="206" cy="276" rx="3" ry="3" fill="#f4ecdc" stroke="#1f1410" stroke-width="0.7" />
+      <ellipse cx="220" cy="282" rx="3" ry="3" fill="#f4ecdc" stroke="#1f1410" stroke-width="0.7" />
+      <clipPath id="clip-goblet"><path d="M338,222 C338,222 366,222 366,222 C366,222 364,234 362,238 C360,242 355,242.67 354,246 C353,249.33 356,258 356,258 C356,258 366,264 366,264 C366,264 334,264 334,264 C334,264 346,258 346,258 C346,258 349,249.33 348,246 C347,242.67 341.67,242 340,238 C338.33,234 338,222 338,222 Z" /></clipPath>
+      <g clip-path="url(#clip-goblet)">
+      <path d="M338,222 C338,222 366,222 366,222 C366,222 364,234 362,238 C360,242 355,242.67 354,246 C353,249.33 356,258 356,258 C356,258 366,264 366,264 C366,264 334,264 334,264 C334,264 346,258 346,258 C346,258 349,249.33 348,246 C347,242.67 341.67,242 340,238 C338.33,234 338,222 338,222 Z" fill="#e9a93a" />
+      <path d="M344,226 C344,228 344,236 344,238" fill="none" stroke="#ffd86a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      </g>
+      <path d="M338,222 C338,222 366,222 366,222 C366,222 364,234 362,238 C360,242 355,242.67 354,246 C353,249.33 356,258 356,258 C356,258 366,264 366,264 C366,264 334,264 334,264 C334,264 346,258 346,258 C346,258 349,249.33 348,246 C347,242.67 341.67,242 340,238 C338.33,234 338,222 338,222 Z" fill="none" stroke="#1f1410" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+    </g>
+    <g id="base" inkscape:groupmode="layer" inkscape:label="Box" data-rig-part="base" data-rig-bone="base" data-rig-z="30">
+      <clipPath id="clip-front"><path d="M114,300 C114,300 398,300 398,300 C398,300 401.33,400 400,422 C398.67,444 390,432 390,432 C390,432 122,432 122,432 C122,432 113.33,444 112,422 C110.67,400 114,300 114,300 Z" /></clipPath>
+      <g clip-path="url(#clip-front)">
+      <path d="M114,300 C114,300 398,300 398,300 C398,300 401.33,400 400,422 C398.67,444 390,432 390,432 C390,432 122,432 122,432 C122,432 113.33,444 112,422 C110.67,400 114,300 114,300 Z" fill="#9a5427" />
+      <path d="M114,300 L398,300 L398,318 L114,318 Z" fill="#bd7038" />
+      <path d="M114,334 C161.33,334 350.67,334 398,334" fill="none" stroke="#4a220e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M114,337 C161.33,337 350.67,337 398,337" fill="none" stroke="#bd7038" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M114,366 C161.33,366 350.67,366 398,366" fill="none" stroke="#4a220e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M114,369 C161.33,369 350.67,369 398,369" fill="none" stroke="#bd7038" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M114,398 C161.33,398 350.67,398 398,398" fill="none" stroke="#4a220e" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M114,401 C161.33,401 350.67,401 398,401" fill="none" stroke="#bd7038" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M176,304 C177,306.17 182,312.67 182,317 C182,321.33 177,327.83 176,330" fill="none" stroke="#6e3517" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M300,340 C301,341.83 306,347.33 306,351 C306,354.67 301,360.17 300,362" fill="none" stroke="#6e3517" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M204,370 C205,372 210,378 210,382 C210,386 205,392 204,394" fill="none" stroke="#6e3517" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M330,404 C331,406 336,412 336,416 C336,420 331,426 330,428" fill="none" stroke="#6e3517" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M140,404 C141,405.83 146,411.33 146,415 C146,418.67 141,424.17 140,426" fill="none" stroke="#6e3517" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M114,416 L398,416 L398,432 L114,432 Z" fill="#6e3517" />
+      <path d="M114,300 L142,300 L142,310 L124,310 L124,422 L142,422 L142,432 L114,432 Z" fill="#3d4049" />
+      <ellipse cx="132" cy="306" rx="3.2" ry="3.2" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="131.04" cy="305.04" rx="1.12" ry="1.12" fill="#c9ced8" />
+      <ellipse cx="132" cy="427" rx="3.2" ry="3.2" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="131.04" cy="426.04" rx="1.12" ry="1.12" fill="#c9ced8" />
+      <path d="M398,300 L370,300 L370,310 L388,310 L388,422 L370,422 L370,432 L398,432 Z" fill="#3d4049" />
+      <ellipse cx="380" cy="306" rx="3.2" ry="3.2" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="379.04" cy="305.04" rx="1.12" ry="1.12" fill="#c9ced8" />
+      <ellipse cx="380" cy="427" rx="3.2" ry="3.2" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="379.04" cy="426.04" rx="1.12" ry="1.12" fill="#c9ced8" />
+      <path d="M160,300 L182,300 L182,432 L160,432 Z" fill="#3d4049" stroke="#1f1410" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M163,302 C163,323.33 163,408.67 163,430" fill="none" stroke="#717887" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="171" cy="322" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="169.8" cy="320.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      <ellipse cx="171" cy="384" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="169.8" cy="382.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      <ellipse cx="171" cy="416" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="169.8" cy="414.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      <path d="M330,300 L352,300 L352,432 L330,432 Z" fill="#3d4049" stroke="#1f1410" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M333,302 C333,323.33 333,408.67 333,430" fill="none" stroke="#717887" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="341" cy="322" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="339.8" cy="320.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      <ellipse cx="341" cy="384" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="339.8" cy="382.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      <ellipse cx="341" cy="416" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="339.8" cy="414.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      <path d="M114,300 L398,300 L398,307 L114,307 Z" fill="#e9a93a" />
+      <path d="M114,302 C161.33,302 350.67,302 398,302" fill="none" stroke="#ffd86a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      </g>
+      <path d="M114,300 C114,300 398,300 398,300 C398,300 401.33,400 400,422 C398.67,444 390,432 390,432 C390,432 122,432 122,432 C122,432 113.33,444 112,422 C110.67,400 114,300 114,300 Z" fill="none" stroke="#1f1410" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
+    </g>
+    <g id="lock" inkscape:groupmode="layer" inkscape:label="Lock" data-rig-part="lock" data-rig-bone="lock" data-rig-z="40">
+      <clipPath id="clip-lock"><path d="M234,304 C234,304 278,304 278,304 C278,304 283.67,325.67 280,334 C276.33,342.33 256,354 256,354 C256,354 235.67,342.33 232,334 C228.33,325.67 234,304 234,304 Z" /></clipPath>
+      <g clip-path="url(#clip-lock)">
+      <path d="M234,304 C234,304 278,304 278,304 C278,304 283.67,325.67 280,334 C276.33,342.33 256,354 256,354 C256,354 235.67,342.33 232,334 C228.33,325.67 234,304 234,304 Z" fill="#e9a93a" />
+      <path d="M238,308 C244,308 268,308 274,308" fill="none" stroke="#ffd86a" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M256,316 C258,316 261.5,320 262,322 C262.5,324 259,328 259,328 C259,328 261,340 261,340 C261,340 251,340 251,340 C251,340 253,328 253,328 C253,328 249.5,324 250,322 C250.5,320 254,316 256,316 Z" fill="#1c0e08" />
+      </g>
+      <path d="M234,304 C234,304 278,304 278,304 C278,304 283.67,325.67 280,334 C276.33,342.33 256,354 256,354 C256,354 235.67,342.33 232,334 C228.33,325.67 234,304 234,304 Z" fill="none" stroke="#1f1410" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="240" cy="312" rx="2.6" ry="2.6" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="239.22" cy="311.22" rx="0.91" ry="0.91" fill="#c9ced8" />
+      <ellipse cx="272" cy="312" rx="2.6" ry="2.6" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="271.22" cy="311.22" rx="0.91" ry="0.91" fill="#c9ced8" />
+    </g>
+    <g id="lid-closed" inkscape:groupmode="layer" inkscape:label="Lid - Closed" data-rig-part="lid_closed" data-rig-bone="lid" data-rig-z="50" data-rig-opacity="lid.closed" data-rig-default="1">
+      <clipPath id="clip-lid-closed"><path d="M110,308 C110,308 106.33,266 110,252 C113.67,238 119.67,231.67 132,224 C144.33,216.33 163.33,210.33 184,206 C204.67,201.67 232,198 256,198 C280,198 307.33,201.67 328,206 C348.67,210.33 367.67,216.33 380,224 C392.33,231.67 398.33,238 402,252 C405.67,266 402,308 402,308 C402,308 110,308 110,308 Z" /></clipPath>
+      <g clip-path="url(#clip-lid-closed)">
+      <path d="M110,308 C110,308 106.33,266 110,252 C113.67,238 119.67,231.67 132,224 C144.33,216.33 163.33,210.33 184,206 C204.67,201.67 232,198 256,198 C280,198 307.33,201.67 328,206 C348.67,210.33 367.67,216.33 380,224 C392.33,231.67 398.33,238 402,252 C405.67,266 402,308 402,308 C402,308 110,308 110,308 Z" fill="#9a5427" />
+      <path d="M132,228 C140.67,223 163.33,214.33 184,210 C204.67,205.67 232,202 256,202 C280,202 307.33,205.67 328,210 C348.67,214.33 371.33,223 380,228 C388.67,233 388.67,241 380,240 C371.33,239 348.67,226.33 328,222 C307.33,217.67 280,214 256,214 C232,214 204.67,217.67 184,222 C163.33,226.33 140.67,239 132,240 C123.33,241 123.33,233 132,228 Z" fill="#bd7038" />
+      <path d="M114,246 C125.67,242.67 160.33,230.33 184,226 C207.67,221.67 232,220 256,220 C280,220 304.33,221.67 328,226 C351.67,230.33 386.33,242.67 398,246" fill="none" stroke="#4a220e" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M114,270 C161.33,270 350.67,270 398,270" fill="none" stroke="#4a220e" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M110,290 L402,290 L402,308 L110,308 Z" fill="#e9a93a" />
+      <path d="M110,293 C158.67,293 353.33,293 402,293" fill="none" stroke="#ffd86a" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M160,196 L182,196 L182,292 L160,292 Z" fill="#3d4049" stroke="#1f1410" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M163,198 C163,213.33 163,274.67 163,290" fill="none" stroke="#717887" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="171" cy="226" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="169.8" cy="224.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      <ellipse cx="171" cy="262" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="169.8" cy="260.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      <path d="M330,196 L352,196 L352,292 L330,292 Z" fill="#3d4049" stroke="#1f1410" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M333,198 C333,213.33 333,274.67 333,290" fill="none" stroke="#717887" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="341" cy="226" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="339.8" cy="224.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      <ellipse cx="341" cy="262" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="339.8" cy="260.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      </g>
+      <path d="M110,308 C110,308 106.33,266 110,252 C113.67,238 119.67,231.67 132,224 C144.33,216.33 163.33,210.33 184,206 C204.67,201.67 232,198 256,198 C280,198 307.33,201.67 328,206 C348.67,210.33 367.67,216.33 380,224 C392.33,231.67 398.33,238 402,252 C405.67,266 402,308 402,308 C402,308 110,308 110,308 Z" fill="none" stroke="#1f1410" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
+      <clipPath id="clip-hasp"><path d="M242,286 C242,286 270,286 270,286 C270,286 272.33,306 270,312 C267.67,318 256,322 256,322 C256,322 244.33,318 242,312 C239.67,306 242,286 242,286 Z" /></clipPath>
+      <g clip-path="url(#clip-hasp)">
+      <path d="M242,286 C242,286 270,286 270,286 C270,286 272.33,306 270,312 C267.67,318 256,322 256,322 C256,322 244.33,318 242,312 C239.67,306 242,286 242,286 Z" fill="#e9a93a" />
+      <path d="M246,290 C249.33,290 262.67,290 266,290" fill="none" stroke="#ffd86a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      </g>
+      <path d="M242,286 C242,286 270,286 270,286 C270,286 272.33,306 270,312 C267.67,318 256,322 256,322 C256,322 244.33,318 242,312 C239.67,306 242,286 242,286 Z" fill="none" stroke="#1f1410" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
+    </g>
+    <g id="lid-ajar" inkscape:groupmode="layer" inkscape:label="Lid - Ajar" data-rig-part="lid_ajar" data-rig-bone="lid" data-rig-z="50" data-rig-opacity="lid.ajar">
+      <clipPath id="clip-lid-ajar"><path d="M110,286 C110,286 106.33,252 110,240 C113.67,228 119.67,221 132,214 C144.33,207 163.33,202 184,198 C204.67,194 232,190 256,190 C280,190 307.33,194 328,198 C348.67,202 367.67,207 380,214 C392.33,221 398.33,228 402,240 C405.67,252 402,286 402,286 C402,286 110,286 110,286 Z" /></clipPath>
+      <g clip-path="url(#clip-lid-ajar)">
+      <path d="M110,286 C110,286 106.33,252 110,240 C113.67,228 119.67,221 132,214 C144.33,207 163.33,202 184,198 C204.67,194 232,190 256,190 C280,190 307.33,194 328,198 C348.67,202 367.67,207 380,214 C392.33,221 398.33,228 402,240 C405.67,252 402,286 402,286 C402,286 110,286 110,286 Z" fill="#9a5427" />
+      <path d="M132,218 C140.67,213.67 163.33,206 184,202 C204.67,198 232,194 256,194 C280,194 307.33,198 328,202 C348.67,206 371.33,213.67 380,218 C388.67,222.33 388.67,229 380,228 C371.33,227 348.67,215.67 328,212 C307.33,208.33 280,206 256,206 C232,206 204.67,208.33 184,212 C163.33,215.67 140.67,227 132,228 C123.33,229 123.33,222.33 132,218 Z" fill="#bd7038" />
+      <path d="M114,234 C125.67,231 160.33,220 184,216 C207.67,212 232,210 256,210 C280,210 304.33,212 328,216 C351.67,220 386.33,231 398,234" fill="none" stroke="#4a220e" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M114,254 C161.33,254 350.67,254 398,254" fill="none" stroke="#4a220e" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M110,272 L402,272 L402,286 L110,286 Z" fill="#e9a93a" />
+      <path d="M110,275 C158.67,275 353.33,275 402,275" fill="none" stroke="#ffd86a" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M160,188 L182,188 L182,274 L160,274 Z" fill="#3d4049" stroke="#1f1410" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M163,190 C163,203.67 163,258.33 163,272" fill="none" stroke="#717887" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="171" cy="216" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="169.8" cy="214.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      <ellipse cx="171" cy="248" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="169.8" cy="246.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      <path d="M330,188 L352,188 L352,274 L330,274 Z" fill="#3d4049" stroke="#1f1410" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M333,190 C333,203.67 333,258.33 333,272" fill="none" stroke="#717887" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="341" cy="216" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="339.8" cy="214.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      <ellipse cx="341" cy="248" rx="4" ry="4" fill="#717887" stroke="#1f1410" stroke-width="1" />
+      <ellipse cx="339.8" cy="246.8" rx="1.4" ry="1.4" fill="#c9ced8" />
+      </g>
+      <path d="M110,286 C110,286 106.33,252 110,240 C113.67,228 119.67,221 132,214 C144.33,207 163.33,202 184,198 C204.67,194 232,190 256,190 C280,190 307.33,194 328,198 C348.67,202 367.67,207 380,214 C392.33,221 398.33,228 402,240 C405.67,252 402,286 402,286 C402,286 110,286 110,286 Z" fill="none" stroke="#1f1410" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
+      <clipPath id="clip-hasp-ajar"><path d="M242,270 C242,270 270,270 270,270 C270,270 272.33,287 270,292 C267.67,297 256,300 256,300 C256,300 244.33,297 242,292 C239.67,287 242,270 242,270 Z" /></clipPath>
+      <g clip-path="url(#clip-hasp-ajar)">
+      <path d="M242,270 C242,270 270,270 270,270 C270,270 272.33,287 270,292 C267.67,297 256,300 256,300 C256,300 244.33,297 242,292 C239.67,287 242,270 242,270 Z" fill="#e9a93a" />
+      <path d="M246,274 C249.33,274 262.67,274 266,274" fill="none" stroke="#ffd86a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      </g>
+      <path d="M242,270 C242,270 270,270 270,270 C270,270 272.33,287 270,292 C267.67,297 256,300 256,300 C256,300 244.33,297 242,292 C239.67,287 242,270 242,270 Z" fill="none" stroke="#1f1410" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
+    </g>
+  </g>
+  <g id="rig-joints" inkscape:groupmode="layer" inkscape:label="Rig Joints" style="display:none">
+    <circle id="joint-base" data-joint="base" cx="256" cy="432" r="2" fill="#ff00ff" />
+    <circle id="joint-hinge" data-joint="hinge" cx="256" cy="262" r="2" fill="#ff00ff" />
+    <circle id="joint-lid-top" data-joint="lid_top" cx="256" cy="198" r="2" fill="#ff00ff" />
+    <circle id="joint-lock" data-joint="lock" cx="256" cy="306" r="2" fill="#ff00ff" />
+    <circle id="joint-lock-end" data-joint="lock_end" cx="256" cy="352" r="2" fill="#ff00ff" />
+    <circle id="joint-treasure" data-joint="treasure" cx="256" cy="290" r="2" fill="#ff00ff" />
+    <circle id="joint-treasure-top" data-joint="treasure_top" cx="256" cy="228" r="2" fill="#ff00ff" />
+  </g>
+  <!-- BEGIN AMBITION SVG RIG v1 -->
+  <metadata id="ambition-rig-metadata" data-ambition-schema="ambition-svg-rig-v1" data-ambition-role="character-rig" data-rig-coordinate-space="root-svg-user-space" data-rig-rest-authority="markers">
+    <g id="ambition-rig-view-front" data-rig-view-def="front" data-rig-source-layer="treasure-chest" data-rig-source-label="Treasure Chest - Front" data-rig-root="ambition-rig-front-joint-rig_root" data-rig-projection="front" data-rig-profile="custom-articulated-v1" data-rig-pose-authority="geometry-only" data-rig-part-order="attribute" data-rig-source-map-quality="exact-frame-space">
+      <g id="ambition-rig-front-bone-base" data-rig-bone-def="base" data-rig-origin="ambition-rig-front-joint-base_pivot" />
+      <g id="ambition-rig-front-bone-lid" data-rig-bone-def="lid" data-rig-parent="base" data-rig-origin="ambition-rig-front-joint-lid_pivot" data-rig-tip="ambition-rig-front-joint-lid_tip" />
+      <g id="ambition-rig-front-bone-lock" data-rig-bone-def="lock" data-rig-parent="base" data-rig-origin="ambition-rig-front-joint-lock_pivot" data-rig-tip="ambition-rig-front-joint-lock_tip" />
+      <g id="ambition-rig-front-bone-treasure" data-rig-bone-def="treasure" data-rig-parent="base" data-rig-origin="ambition-rig-front-joint-treasure_pivot" data-rig-tip="ambition-rig-front-joint-treasure_tip" />
+      <g id="ambition-rig-front-part-shadow" data-rig-part-def="shadow" data-rig-bone="base" data-rig-z="0" data-rig-pivot="ambition-rig-front-bind-shadow" data-rig-bind-angle="0" data-rig-elements="shadow" />
+      <g id="ambition-rig-front-part-lid_up" data-rig-part-def="lid_up" data-rig-bone="lid" data-rig-z="5" data-rig-pivot="ambition-rig-front-bind-lid_up" data-rig-bind-angle="-90" data-rig-opacity="lid.up" data-rig-elements="lid-up" />
+      <g id="ambition-rig-front-part-lid_open" data-rig-part-def="lid_open" data-rig-bone="lid" data-rig-z="5" data-rig-pivot="ambition-rig-front-bind-lid_open" data-rig-bind-angle="-90" data-rig-opacity="lid.open" data-rig-elements="lid-open" />
+      <g id="ambition-rig-front-part-interior" data-rig-part-def="interior" data-rig-bone="base" data-rig-z="10" data-rig-pivot="ambition-rig-front-bind-interior" data-rig-bind-angle="0" data-rig-elements="interior" />
+      <g id="ambition-rig-front-part-treasure" data-rig-part-def="treasure" data-rig-bone="treasure" data-rig-z="20" data-rig-pivot="ambition-rig-front-bind-treasure" data-rig-bind-angle="-90" data-rig-elements="treasure" />
+      <g id="ambition-rig-front-part-base" data-rig-part-def="base" data-rig-bone="base" data-rig-z="30" data-rig-pivot="ambition-rig-front-bind-base" data-rig-bind-angle="0" data-rig-elements="base" />
+      <g id="ambition-rig-front-part-lock" data-rig-part-def="lock" data-rig-bone="lock" data-rig-z="40" data-rig-pivot="ambition-rig-front-bind-lock" data-rig-bind-angle="90" data-rig-elements="lock" />
+      <g id="ambition-rig-front-part-lid_closed" data-rig-part-def="lid_closed" data-rig-bone="lid" data-rig-z="50" data-rig-pivot="ambition-rig-front-bind-lid_closed" data-rig-bind-angle="-90" data-rig-opacity="lid.closed" data-rig-elements="lid-closed" />
+      <g id="ambition-rig-front-part-lid_ajar" data-rig-part-def="lid_ajar" data-rig-bone="lid" data-rig-z="50" data-rig-pivot="ambition-rig-front-bind-lid_ajar" data-rig-bind-angle="-90" data-rig-opacity="lid.ajar" data-rig-elements="lid-ajar" />
+    </g>
+  </metadata>
+  <g id="ambition-rig-markers" data-rig-editor-layer="true" inkscape:groupmode="layer" inkscape:label="Ambition Rig Markers">
+    <g id="ambition-rig-markers-front" data-rig-view="front" inkscape:label="Rig Markers - Treasure Chest - Front">
+      <line id="ambition-rig-front-guide-lid" data-rig-bone-guide="lid" x1="256" y1="262" x2="256" y2="198" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-front-guide-lock" data-rig-bone-guide="lock" x1="256" y1="306" x2="256" y2="352" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-front-guide-treasure" data-rig-bone-guide="treasure" x1="256" y1="290" x2="256" y2="228" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <circle id="ambition-rig-front-joint-base_pivot" data-rig-joint="base_pivot" cx="256" cy="432" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-lid_pivot" data-rig-joint="lid_pivot" cx="256" cy="262" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-lid_tip" data-rig-joint="lid_tip" cx="256" cy="198" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-lock_pivot" data-rig-joint="lock_pivot" cx="256" cy="306" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-lock_tip" data-rig-joint="lock_tip" cx="256" cy="352" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-rig_root" data-rig-joint="rig_root" cx="256" cy="440" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-treasure_pivot" data-rig-joint="treasure_pivot" cx="256" cy="290" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-joint-treasure_tip" data-rig-joint="treasure_tip" cx="256" cy="228" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-front-bind-shadow" data-rig-bind-pivot="shadow" cx="256" cy="432" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-lid_up" data-rig-bind-pivot="lid_up" cx="256" cy="262" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-lid_open" data-rig-bind-pivot="lid_open" cx="256" cy="262" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-interior" data-rig-bind-pivot="interior" cx="256" cy="432" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-treasure" data-rig-bind-pivot="treasure" cx="256" cy="290" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-base" data-rig-bind-pivot="base" cx="256" cy="432" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-lock" data-rig-bind-pivot="lock" cx="256" cy="306" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-lid_closed" data-rig-bind-pivot="lid_closed" cx="256" cy="262" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-front-bind-lid_ajar" data-rig-bind-pivot="lid_ajar" cx="256" cy="262" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+    </g>
+  </g>
+  <!-- END AMBITION SVG RIG v1 -->
+</svg>

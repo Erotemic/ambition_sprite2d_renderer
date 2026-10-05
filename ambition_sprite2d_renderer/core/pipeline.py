@@ -57,6 +57,12 @@ def render_frame(
     draw(ImageDraw.Draw(img), float(s))
     out_size = (max(1, round(bw * scale)), max(1, round(bh * scale)))
     img = downsample(img, out_size)
+    return crop_to_content(img, crop, crop_padding)
+
+
+def crop_to_content(img: Image.Image, crop: str = CROP_TIGHT, crop_padding: int = 4) -> Image.Image:
+    """``img`` cropped to its opaque content plus ``crop_padding`` (``render_frame``'s
+    last step, for an image painted some other way)."""
     if crop == CROP_NONE:
         return img
     bbox = img.getchannel("A").getbbox()
@@ -66,8 +72,8 @@ def render_frame(
     left, top, right, bottom = bbox
     left = max(0, left - pad)
     top = max(0, top - pad)
-    right = min(out_size[0], right + pad)
+    right = min(img.width, right + pad)
     # Grounded sprites keep the bottom flush (no padding) so the texture's
     # bottom row == the feet; the runtime plants that edge on the floor.
-    bottom = bottom if crop == CROP_GROUND else min(out_size[1], bottom + pad)
+    bottom = bottom if crop == CROP_GROUND else min(img.height, bottom + pad)
     return img.crop((left, top, right, bottom))
