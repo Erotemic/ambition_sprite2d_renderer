@@ -2,11 +2,10 @@
 """Build the T-rex boss's rig document from its SVG.
 
 The SVG ``data/characters/trex_enemy/trex_enemy.svg`` owns the art and says
-where every joint is: each part layer names its ``data-rig-part``,
-``data-rig-bone`` and ``data-rig-z`` (and, for the eye states,
-``data-rig-opacity``), and the hidden ``Rig Joints`` layer holds one circle per
-joint. This builder derives the skeleton from those joints, binds every part
-to its bone at its rest pose, and authors the clips. It never draws.
+where every joint is; ``rigbuild.theropod`` derives the skeleton from it, binds
+every part to its bone, and refreshes the SVG's rig catalog. This script
+supplies only what the drawing cannot state: the frame, the rows and the
+clips. It never draws.
 
     uv run python scripts/build_trex_enemy_rig.py
 
@@ -16,213 +15,27 @@ frame counts and durations as before the SVG redesign.
 
 from __future__ import annotations
 
-import json
 import math
 import sys
-import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, List
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+from ambition_sprite2d_renderer.rigbuild import theropod as T  # noqa: E402
+from ambition_sprite2d_renderer.rigbuild.theropod import Pose, eyes, track  # noqa: E402
+
 PKG = ROOT / "ambition_sprite2d_renderer"
-SVG_PATH = PKG / "data" / "characters" / "trex_enemy" / "trex_enemy.svg"
-RIG_PATH = PKG / "targets" / "characters" / "rigged" / "trex_enemy" / "trex_enemy_side.rig.json"
-VIEW_LABEL = "T-Rex - Side Right"
-
-SVG_NS = "http://www.w3.org/2000/svg"
-INK_NS = "http://www.inkscape.org/namespaces/inkscape"
-
-#: Sprite pixels per SVG unit. The art is drawn roomy (640x400 units); the
-#: sprite keeps the on-screen size the T-rex had before the SVG redesign.
-SCALE = 0.75
-SVG_CENTER_X = 270.0
-SVG_GROUND_Y = 372.0
-FRAME_W, FRAME_H = 480, 300
-CENTER_X = SVG_CENTER_X * SCALE
-GROUND_Y = SVG_GROUND_Y * SCALE
-SUPERSAMPLE = 4
-#: Clip channels that are distances. The clips are authored in SVG units and
-#: scaled with the art; angles and strengths are not.
-DISTANCE_CHANNELS = {"root_x", "root_y", "near_foot_x", "near_foot_lift", "far_foot_x", "far_foot_lift"}
-
-#: name, frames, ms, loop. The game binds these rows by name.
-ROWS: List[Tuple[str, int, int, bool]] = [
-    ("idle", 6, 120, True),
-    ("walk", 8, 90, True),
-    ("charge", 8, 76, True),
-    ("bite", 7, 78, False),
-    ("roar", 6, 104, False),
-    ("tail_swipe", 7, 82, False),
-    ("stomp", 6, 92, False),
-    ("hurt", 4, 90, False),
-    ("death", 8, 110, False),
-]
-
-Point = Tuple[float, float]
-
-
-# --- the SVG ------------------------------------------------------------------
-
-
-def read_svg() -> Tuple[Dict[str, Point], List[dict]]:
-    """Joints (in SVG units) and the part layers."""
-    root = ET.parse(SVG_PATH).getroot()
-    joints: Dict[str, Point] = {}
-    for circle in root.iter(f"{{{SVG_NS}}}circle"):
-        name = circle.get("data-joint")
-        if name:
-            joints[name] = (float(circle.get("cx")), float(circle.get("cy")))
-    parts = []
-    for group in root.iter(f"{{{SVG_NS}}}g"):
-        name = group.get("data-rig-part")
-        if not name:
-            continue
-        parts.append(
-            {
-                "name": name,
-                "id": group.get("id"),
-                "bone": group.get("data-rig-bone"),
-                "z": float(group.get("data-rig-z", "0")),
-                "opacity": group.get("data-rig-opacity"),
-                "default": group.get("data-rig-default"),
-            }
-        )
-    return joints, parts
-
-
-# --- the skeleton ---------------------------------------------------------------
-
-
-def heading(a: Point, b: Point) -> float:
-    return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
-
-
-def rotate(p: Point, deg: float) -> Point:
-    r = math.radians(deg)
-    return (p[0] * math.cos(r) - p[1] * math.sin(r), p[0] * math.sin(r) + p[1] * math.cos(r))
-
-
-def dist(a: Point, b: Point) -> float:
-    return math.hypot(b[0] - a[0], b[1] - a[1])
-
-
-def build_bones(J: Dict[str, Point]):
-    """Bones as (name, parent, world origin, world angle, length) in sprite
-    pixels (``J`` already scaled); the rest pose IS the drawing."""
-    spec: List[Tuple[str, str | None, Point, float, float]] = []
-    world: Dict[str, Tuple[Point, float]] = {}
-
-    def add(name, parent, origin, angle, length):
-        spec.append((name, parent, origin, angle, length))
-        world[name] = (origin, angle)
-
-    add("pelvis", None, J["pelvis"], 0.0, 0.0)
-    add("torso", "pelvis", J["pelvis"], heading(J["pelvis"], J["neck_base"]), dist(J["pelvis"], J["neck_base"]))
-    add("neck", "torso", J["neck_base"], heading(J["neck_base"], J["head"]), dist(J["neck_base"], J["head"]))
-    add("head", "neck", J["head"], heading(J["head"], J["snout"]), dist(J["head"], J["snout"]))
-    add("jaw", "head", J["jaw"], heading(J["head"], J["snout"]), 80.0)
-    tail = ["tail0", "tail1", "tail2", "tail3", "tail_tip"]
-    parent = "pelvis"
-    for i in range(4):
-        name = f"tail{i + 1}"
-        add(name, parent, J[tail[i]], heading(J[tail[i]], J[tail[i + 1]]), dist(J[tail[i]], J[tail[i + 1]]))
-        parent = name
-    for side in ("far", "near"):
-        hip, knee, ankle = J[f"{side}_hip"], J[f"{side}_knee"], J[f"{side}_ankle"]
-        add(f"{side}_thigh", "pelvis", hip, heading(hip, knee), dist(hip, knee))
-        add(f"{side}_shin", f"{side}_thigh", knee, heading(knee, ankle), dist(knee, ankle))
-        add(f"{side}_foot", f"{side}_shin", ankle, 0.0, 0.0)
-        sh, el, wr = J[f"{side}_shoulder"], J[f"{side}_elbow"], J[f"{side}_wrist"]
-        add(f"{side}_arm_u", "torso", sh, heading(sh, el), dist(sh, el))
-        add(f"{side}_arm_l", f"{side}_arm_u", el, heading(el, wr), dist(el, wr))
-
-    bones = []
-    for name, par, origin, angle, length in spec:
-        if par is None:
-            offset = (origin[0] - CENTER_X, origin[1] - GROUND_Y)
-            rest = angle
-        else:
-            p_origin, p_angle = world[par]
-            offset = rotate((origin[0] - p_origin[0], origin[1] - p_origin[1]), -p_angle)
-            rest = (angle - p_angle + 180.0) % 360.0 - 180.0
-        bones.append(
-            {
-                "name": name,
-                "parent": par,
-                "offset": [round(offset[0], 4), round(offset[1], 4)],
-                "length": round(length, 4),
-                "rest_angle": round(rest, 4),
-            }
-        )
-    return bones, world
-
-
-# --- clips ---------------------------------------------------------------------
-
-Pose = Dict[str, float]
-
-
-def smooth01(x: float) -> float:
-    x = max(0.0, min(1.0, x))
-    return x * x * (3.0 - 2.0 * x)
-
-
-def pulse(x: float) -> float:
-    return math.sin(math.pi * max(0.0, min(1.0, x)))
-
-
-def track(keys: List[float], t: float) -> float:
-    """``keys`` evenly spread over [0, 1], eased between."""
-    n = len(keys) - 1
-    x = max(0.0, min(1.0, t)) * n
-    i = min(n - 1, int(x))
-    return keys[i] + (keys[i + 1] - keys[i]) * smooth01(x - i)
-
-
-def step(phase: float, centre: float, stride: float, lift: float) -> Tuple[float, float, float]:
-    """A planted-then-swinging foot: ``(x, lift, pitch)`` at gait ``phase``.
-    The first half is stance (the foot slides back under the walking body);
-    the second half is the swing forward."""
-    p = phase % 1.0
-    if p < 0.5:
-        return centre + stride * (1.0 - 4.0 * p), 0.0, 0.0
-    s = (p - 0.5) / 0.5
-    h = lift * pulse(s)
-    return centre - stride + 2.0 * stride * smooth01(s), h, 0.45 * h
-
 
 #: Where each foot plants, from the drawing's centre (SVG units).
 NEAR_X = 2.0
 FAR_X = -14.0
 
 
-def gait(t: float, *, stride: float, lift: float, bob: float, sway: float, tail: float) -> Pose:
-    p: Pose = {}
-    nx, nl, npitch = step(t, NEAR_X, stride, lift)
-    fx, fl, fpitch = step(t + 0.5, FAR_X, stride, lift)
-    p.update(near_foot_x=nx, near_foot_lift=nl, near_foot_pitch=npitch,
-             far_foot_x=fx, far_foot_lift=fl, far_foot_pitch=fpitch)
-    w = math.tau * t
-    # Highest at mid-stance, lowest as each foot lands.
-    p["root_y"] = bob * (0.5 - abs(math.sin(w)))
-    p["pelvis"] = sway * math.sin(w)
-    p["torso"] = -0.4 * sway * math.sin(w)
-    p["neck"] = -1.2 * sway * math.sin(w + 0.6)
-    p["head"] = 0.8 * sway * math.sin(w + 1.2)
-    for i in range(4):
-        p[f"tail{i + 1}"] = tail * math.sin(w - 0.7 * (i + 1)) * (0.6 + 0.25 * i)
-    p["near_arm_u"] = 6.0 * math.sin(w)
-    p["near_arm_l"] = 6.0 * math.sin(w - 0.8)
-    p["far_arm_u"] = -6.0 * math.sin(w)
-    p["far_arm_l"] = -6.0 * math.sin(w - 0.8)
-    return p
-
-
-def eyes(state: str) -> Pose:
-    return {"eye.open": 1.0 if state == "open" else 0.0, "eye.angry": 1.0 if state == "angry" else 0.0,
-            "eye.shut": 1.0 if state == "shut" else 0.0, "eye.dead": 1.0 if state == "dead" else 0.0}
+def gait(t: float, **kw) -> Pose:
+    return T.gait(t, near_x=NEAR_X, far_x=FAR_X, **kw)
 
 
 def idle(i: int, n: int, t: float) -> Pose:
@@ -437,111 +250,38 @@ DEFAULTS: Pose = {
 }
 
 
-def author_clip(name: str, frames: int, ms: int, loop: bool) -> dict:
-    fn = CLIPS[name]
-    times = [i / frames for i in range(frames)] if loop else [i / max(1, frames - 1) for i in range(frames)]
-    poses = [fn(i, frames, t) for i, t in enumerate(times)]
-    names = sorted({k for pose in poses for k in pose})
-    channels = {}
-    for key in names:
-        k = SCALE if key in DISTANCE_CHANNELS else 1.0
-        values = [round(float(pose.get(key, DEFAULTS.get(key, 0.0))) * k, 3) for pose in poses]
-        if all(abs(v - values[0]) < 1e-9 for v in values):
-            channels[key] = {"const": values[0]}
-            continue
-        pairs = [[round(t, 6), v] for t, v in zip(times, values)]
-        if loop:
-            pairs.append([1.0, values[0]])
-        channels[key] = {"keys": pairs}
-    return {"loop": loop, "frames": frames, "duration_ms": ms, "channels": channels}
-
-
-# --- the document --------------------------------------------------------------------
-
-
-def build() -> dict:
-    J_svg, svg_parts = read_svg()
-    J = {name: (x * SCALE, y * SCALE) for name, (x, y) in J_svg.items()}
-    bones, world = build_bones(J)
-    parts = []
-    for sp in sorted(svg_parts, key=lambda p: p["z"]):
-        origin, angle = world[sp["bone"]]
-        # A sprite part's pivot is in SVG units (``svg_source.scale`` maps it).
-        origin = (origin[0] / SCALE, origin[1] / SCALE)
-        part = {
-            "name": sp["name"],
-            "bone": sp["bone"],
-            "z": sp["z"],
-            "kind": "sprite",
-            "include": [sp["id"]],
-            "pivot": [round(origin[0], 4), round(origin[1], 4)],
-            "rest_angle": round(angle, 4),
-        }
-        if sp["opacity"]:
-            part["opacity_channel"] = sp["opacity"]
-            if sp["default"]:
-                part["opacity_default"] = float(sp["default"])
-        parts.append(part)
-    ankle_h = GROUND_Y - J["near_ankle"][1]
-    ik_legs = [
-        {
-            "upper": f"{side}_thigh",
-            "lower": f"{side}_shin",
-            "foot": f"{side}_foot",
-            "channel_prefix": f"{side}_foot",
-            "rest_x": round(J[f"{side}_ankle"][0] - CENTER_X, 4),
-            "rest_lift": round(GROUND_Y - ankle_h - J[f"{side}_ankle"][1], 4),
-            "rest_pitch": 0.0,
-            "bend": -1.0,
-        }
-        for side in ("far", "near")
-    ]
-    clips = {name: author_clip(name, frames, ms, loop) for name, frames, ms, loop in ROWS}
-    rel_svg = Path("../../../../data/characters/trex_enemy/trex_enemy.svg")
-    return {
-        "name": "trex_enemy",
-        "frame": {
-            "width": FRAME_W,
-            "height": FRAME_H,
-            "center_x": CENTER_X,
-            "ground_y": GROUND_Y,
-            "ankle_h": round(ankle_h, 4),
-            "supersample": SUPERSAMPLE,
-            "render_scale": 1,
-        },
-        "svg_source": {"path": str(rel_svg), "view": VIEW_LABEL, "ref_dpi": 25.4, "scale": SCALE},
-        "palette": {},
-        "bones": bones,
-        "parts": parts,
-        "ik_legs": ik_legs,
-        "ik_chains": [],
-        "clips": clips,
-        "sprite_tuning": {"collision_scale": 1.0},
-        "features": {"facing": "east"},
-    }
+SPEC = T.TheropodSpec(
+    name="trex_enemy",
+    svg_path=PKG / "data" / "characters" / "trex_enemy" / "trex_enemy.svg",
+    rig_path=PKG / "targets" / "characters" / "rigged" / "trex_enemy" / "trex_enemy_side.rig.json",
+    view_label="T-Rex - Side Right",
+    # The art is drawn roomy (640x400 units); the sprite keeps the on-screen
+    # size the T-rex had before the SVG redesign.
+    scale=0.75,
+    svg_center_x=270.0,
+    svg_ground_y=372.0,
+    frame_size=(480, 300),
+    rows=[
+        ("idle", 6, 120, True),
+        ("walk", 8, 90, True),
+        ("charge", 8, 76, True),
+        ("bite", 7, 78, False),
+        ("roar", 6, 104, False),
+        ("tail_swipe", 7, 82, False),
+        ("stomp", 6, 92, False),
+        ("hurt", 4, 90, False),
+        ("death", 8, 110, False),
+    ],
+    clips=CLIPS,
+    defaults=DEFAULTS,
+)
 
 
 def main(argv: List[str] | None = None) -> int:
     del argv
-    doc = build()
-    RIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    RIG_PATH.write_text(json.dumps(doc, indent=1) + "\n", encoding="utf8")
-    print(RIG_PATH.relative_to(ROOT))
-    install_svg_catalog()
+    for path in T.write(SPEC):
+        print(path.relative_to(ROOT))
     return 0
-
-
-def install_svg_catalog() -> None:
-    """Refresh the SVG's embedded rig catalog (``svg_rig_tool``) from the rig
-    just written, so the SVG states the same skeleton the rig turns."""
-    from ambition_sprite2d_renderer.devtools import svg_rig_tool
-
-    catalog, quality = svg_rig_tool.catalog_from_rigdoc(RIG_PATH, SVG_PATH, used_view_ids=set())
-    svg_rig_tool.install_block(SVG_PATH, svg_rig_tool._serialize_character_block([catalog], {catalog.view_id: quality}))
-    problems = svg_rig_tool.validate(SVG_PATH)
-    if problems:
-        raise SystemExit(f"{SVG_PATH.name}: rig catalog does not validate: {problems}")
-    print(SVG_PATH.relative_to(ROOT))
 
 
 if __name__ == "__main__":

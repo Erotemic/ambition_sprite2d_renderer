@@ -24,9 +24,8 @@ from __future__ import annotations
 
 import argparse
 import math
-from functools import lru_cache
 from pathlib import Path
-from typing import Callable, Dict, List, Sequence, Tuple
+from typing import Dict, List, Sequence, Tuple
 
 from PIL import Image
 
@@ -39,9 +38,9 @@ from ...authoring.portrait import (
 )
 from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet
+from . import _theropod_fx as FX
 from ._svg_fighter_effects import FxCanvas, compose_rig_frame
 
-RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
 TARGET_NAME = "trex_enemy"
@@ -172,44 +171,21 @@ ACTOR_METADATA = {
 }
 
 
-@lru_cache(maxsize=4)
-def _load_doc_cached(path_text: str, mtime_ns: int, size: int) -> RigDocument:
-    del mtime_ns, size
-    return RigDocument.load(path_text)
-
-
 def _doc() -> RigDocument:
-    stat = RIG_PATH.stat()
-    return _load_doc_cached(str(RIG_PATH), stat.st_mtime_ns, stat.st_size)
+    return FX.rig_document(RIG_PATH)
 
 
 #: The sheet's rows are the rig's clips, in the rig's order (the game reads
 #: them by name).
 ROWS: List[Tuple[str, int, int]] = _doc().rows()
 
-# --- Effect glyphs -----------------------------------------------------------
-#
-# Each glyph is painted ONCE at full strength, at the effect canvas's
-# supersample, about its own pivot (logical (0, 0)). A frame places it with the
-# clip's ``fx.*`` strength as the draw's opacity.
-
-#: ``compose_rig_frame``'s effect supersample for a rig published at 1x.
-FX_SCALE = 3
+# --- Effect glyphs (`_theropod_fx`), in SVG units like the art ----------------
 
 ROAR = (255, 244, 214, 255)
 ROAR_SOFT = (255, 214, 150, 150)
-FLASH = (255, 252, 236, 255)
-FLASH_GOLD = (255, 214, 92, 255)
-DUST = (176, 150, 108, 170)
-DUST_DARK = (128, 106, 74, 150)
-SHOCK = (255, 232, 170, 230)
-CRACK = (58, 44, 30, 220)
-HIT = (255, 236, 120, 255)
-
-Paint = Callable[[FxCanvas], None]
 
 
-def _roar_wave(rx: float, ry: float, width: float) -> Paint:
+def _roar_wave(rx: float, ry: float, width: float) -> FX.Paint:
     def paint(c: FxCanvas) -> None:
         c.arc((-rx * 0.82, 0), rx, ry, -42, 42, ROAR_SOFT, width + 2.2)
         c.arc((-rx * 0.82, 0), rx, ry, -40, 40, ROAR, width)
@@ -217,97 +193,26 @@ def _roar_wave(rx: float, ry: float, width: float) -> Paint:
     return paint
 
 
-def _paint_bite(c: FxCanvas) -> None:
-    # The snap: crescents closing on the fang tips, and a glint where they meet.
-    for sign in (-1.0, 1.0):
-        c.arc((-6, sign * 22.0), 30, 22, 300 if sign > 0 else 30, 360 if sign > 0 else 90, FLASH_GOLD, 3.4)
-        c.arc((-6, sign * 22.0), 30, 22, 305 if sign > 0 else 35, 355 if sign > 0 else 85, FLASH, 1.6)
-    for ang in (-30.0, 0.0, 30.0):
-        r = math.radians(ang)
-        c.line([(18 + 4 * math.cos(r), 10 * math.sin(r)), (18 + 16 * math.cos(r), 22 * math.sin(r))], FLASH_GOLD, 2.2)
-    c.star((10, 0), 8.0, FLASH, points=4, inner=0.28, rotation=0)
-
-
 SWIPE_R = 175.0
 
-
-def _paint_swipe(c: FxCanvas) -> None:
-    # A trail swept by the tail's tip, centred SWIPE_R to the glyph's right.
-    c.arc((SWIPE_R, 0), SWIPE_R, SWIPE_R * 0.92, 146, 214, (255, 255, 255, 120), 9.0)
-    c.arc((SWIPE_R, 0), SWIPE_R, SWIPE_R * 0.92, 150, 210, (255, 246, 214, 220), 3.2)
-    c.arc((SWIPE_R, 0), SWIPE_R - 16, SWIPE_R * 0.92 - 16, 156, 204, (255, 246, 214, 150), 1.8)
-
-
-def _paint_dust(c: FxCanvas) -> None:
-    for (x, y, r) in ((-12, 2, 9.0), (0, -4, 11.0), (13, 1, 9.5), (4, 5, 8.0)):
-        c.ellipse((x, y), r, r * 0.72, DUST)
-    for (x, y, r) in ((-7, 6, 5.0), (9, 6, 5.5)):
-        c.ellipse((x, y), r, r * 0.6, DUST_DARK)
-
-
-def _paint_shock(c: FxCanvas) -> None:
-    c.ellipse((0, 0), 78, 13, None, SHOCK, 3.0)
-    c.ellipse((0, 0), 52, 8, None, (255, 246, 214, 170), 1.8)
-    for pts in (
-        [(-6, 2), (-22, 5), (-30, 3), (-44, 7)],
-        [(6, 2), (20, 6), (34, 4), (46, 8)],
-        [(0, 3), (-4, 8), (2, 11)],
-    ):
-        c.line(pts, CRACK, 1.6)
-
-
-def _paint_hit(c: FxCanvas) -> None:
-    c.star((0, 0), 18.0, HIT, points=8, inner=0.38, rotation=-90)
-    c.star((0, 0), 9.0, FLASH, points=8, inner=0.45, rotation=-67.5)
-
-
-def _paint_thud(c: FxCanvas) -> None:
-    for (x, y, r) in ((-60, 0, 13), (-34, -5, 16), (-6, -7, 18), (24, -5, 16), (52, 0, 13), (78, 2, 10)):
-        c.ellipse((x, y), r, r * 0.62, DUST)
-    for (x, y, r) in ((-46, 4, 8), (8, 3, 10), (60, 4, 7)):
-        c.ellipse((x, y), r, r * 0.5, DUST_DARK)
-
-
-#: name -> ((left, top, right, bottom) extent about the pivot, paint), in SVG
-#: units like the art; a glyph is painted at ``ART_SCALE``.
-GLYPHS: Dict[str, Tuple[Tuple[float, float, float, float], Paint]] = {
-    "roar0": ((28.0, 30.0, 12.0, 30.0), _roar_wave(26.0, 34.0, 2.6)),
-    "roar1": ((40.0, 46.0, 14.0, 46.0), _roar_wave(40.0, 52.0, 2.4)),
-    "roar2": ((54.0, 62.0, 16.0, 62.0), _roar_wave(54.0, 70.0, 2.2)),
-    "bite": ((40.0, 30.0, 40.0, 30.0), _paint_bite),
-    "swipe": ((8.0, 110.0, 52.0, 110.0), _paint_swipe),
-    "dust": ((24.0, 16.0, 26.0, 14.0), _paint_dust),
-    "shock": ((84.0, 18.0, 84.0, 18.0), _paint_shock),
-    "hit": ((20.0, 20.0, 20.0, 20.0), _paint_hit),
-    "thud": ((76.0, 20.0, 92.0, 14.0), _paint_thud),
-}
-
-
-@lru_cache(maxsize=None)
-def _glyph(name: str) -> Tuple[Image.Image, Point]:
-    """The glyph's raster and its pivot, in effect-canvas pixels."""
-    (left, top, right, bottom), paint = GLYPHS[name]
-    k = ART_SCALE
-    size = (int(math.ceil((left + right) * k)), int(math.ceil((top + bottom) * k)))
-    canvas = FxCanvas(size, scale=FX_SCALE, origin=(left, top), unit_scale=k)
-    paint(canvas)
-    return canvas.image, (left * FX_SCALE * k, top * FX_SCALE * k)
-
-
-def _place(canvas: FxCanvas, name: str, at: Point, opacity: float, degrees: float = 0.0) -> None:
-    if opacity > 0.02:
-        canvas.place(_glyph(name), at, degrees, min(1.0, opacity), name=name)
+GLYPHS = FX.Glyphs(
+    ART_SCALE,
+    {
+        **FX.COMMON,
+        "roar0": ((28.0, 30.0, 12.0, 30.0), _roar_wave(26.0, 34.0, 2.6)),
+        "roar1": ((40.0, 46.0, 14.0, 46.0), _roar_wave(40.0, 52.0, 2.4)),
+        "roar2": ((54.0, 62.0, 16.0, 62.0), _roar_wave(54.0, 70.0, 2.2)),
+        "swipe": ((8.0, 110.0, 52.0, 110.0), FX.tail_trail(SWIPE_R)),
+    },
+)
+_place = GLYPHS.place
+_local = GLYPHS.local
 
 
 def _foot_ground(world, side: str) -> Point:
     """Where a foot's toes meet the ground under it."""
     ankle = world[f"{side}_foot"].origin
     return (ankle[0] + 28.0 * ART_SCALE, GROUND_Y - 1.5)
-
-
-def _local(bone, x: float, y: float) -> Point:
-    """A point in a bone's frame given in SVG units."""
-    return bone.to_world((x * ART_SCALE, y * ART_SCALE))
 
 
 def _behind(canvas: FxCanvas, t: float, world, params) -> None:
