@@ -13,17 +13,27 @@ swap set hinged at the box's back edge (closed, ajar, up, open) that the
 ``opening`` clip runs through, bouncing the open lid on its hinge. This
 module owns only the effects and publication.
 
-Rows:
+Rows. The plain rows are an EMPTY chest, for the usual use (an item placed
+in it at runtime, or nothing); the treasure rows fill it with the drawn heap:
 
-- ``closed``: shut, a glint running over the lock now and then (loops);
-- ``opening``: it rattles, hops, the lock swings loose, light leaks from
-  under the lid, the lid flies back in a burst of light and a fountain of
-  coins spouts from the heap and rains back into it (once);
-- ``open``: the treasure glowing and twinkling (loops).
+- ``closed``: shut (one frame);
+- ``opening``: it rattles, hops, the lock swings loose, the lid cracks and
+  flies back, bouncing on its hinge; nothing inside, no light (once);
+- ``open``: open and empty (one frame);
+- ``opening_treasure``: the same opening on the treasure: light leaks
+  from under the lid, the lid flies back in a burst of light and a fountain
+  of coins spouts from the heap and rains back into it (once);
+- ``open_treasure``: the treasure glowing and twinkling (loops). A player
+  who takes the treasure flips the chest to ``open``.
+
+An item shown in the chest at runtime anchors on the ``item`` socket (the
+middle of the box's mouth) and layers between the box's dark interior and
+its front (the treasure heap's slot: above z 10, below z 30), so the box's
+front hides the item's lower part.
 
 The ``entities`` target's static ``chest_closed`` / ``chest_open`` textures
-are rendered from the same rig (``render_state``), so the runtime's two
-chest states and this sheet show one chest.
+are this sheet's ``closed`` and ``open`` frames (``render_state``), so the
+runtime's two chest states and this sheet show one chest.
 """
 
 from __future__ import annotations
@@ -76,17 +86,27 @@ ACTOR_METADATA = {
         "interact.open": {
             "animation": "opening",
             "events": [
+                {"t": 0.4, "event": "unlock", "source": TARGET_NAME},
+                {"t": 0.78, "event": "lid_open", "source": TARGET_NAME},
+                {"t": 0.78, "event": "reward_spawn", "source": TARGET_NAME},
+            ],
+        },
+        "state.open": {"animation": "open", "events": []},
+        "interact.open_treasure": {
+            "animation": "opening_treasure",
+            "events": [
                 {"t": 0.31, "event": "unlock", "source": TARGET_NAME},
                 {"t": 0.54, "event": "lid_open", "source": TARGET_NAME},
                 {"t": 0.62, "event": "reward_spawn", "source": TARGET_NAME},
             ],
         },
-        "state.open": {"animation": "open", "events": []},
+        "state.open_treasure": {"animation": "open_treasure", "events": []},
     },
     # Points on the drawn frame (before the sheet's auto-crop).
     "sockets": {
         "lock": {"source": f"{TARGET_NAME}.geometry", "point": _px(256.0, 326.0)},
         "reward": {"source": f"{TARGET_NAME}.geometry", "point": _px(256.0, 250.0)},
+        "item": {"source": f"{TARGET_NAME}.geometry", "point": _px(256.0, 282.0)},
         "base": {"source": f"{TARGET_NAME}.geometry", "point": _px(256.0, 440.0)},
     },
     "visual": {
@@ -215,7 +235,6 @@ def _front(canvas: FxCanvas, t: float, world, params) -> None:
     _place(canvas, "burst", mouth, params.get("fx.burst", 0.0) * 0.85)
     lock = world["lock"]
     _place(canvas, "click", _local(lock, 0.0, 18.0), params.get("fx.click", 0.0))
-    _place(canvas, "sparkle", _local(lock, -14.0, 8.0), params.get("fx.glint", 0.0))
     dust = params.get("fx.dust", 0.0)
     _place(canvas, "dust", _local(base, -150.0, 2.0), dust)
     _place(canvas, "dust", _local(base, 150.0, 2.0), dust)
@@ -242,17 +261,10 @@ def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Imag
 
 
 def render_state(state: str) -> Image.Image:
-    """The chest at rest in one of the runtime's two states (``closed`` /
-    ``open``), on the full 128 px frame, without the light beams: the
-    ``entities`` target crops it."""
-    frames = dict((name, frames) for name, frames, _ms in ROWS)
-
-    def front(canvas: FxCanvas, t: float, world, params) -> None:
-        # No beams: they would widen the texture's crop and shrink the chest
-        # in its entity box. The glow and the sparkles stay.
-        _front(canvas, t, world, {**params, "fx.rays": 0.0})
-
-    return compose_rig_frame(_doc(), state, 0, frames[state], front=front)
+    """The chest in one of the runtime's two states (``closed`` / ``open``,
+    both one still frame, the open chest empty), on the full 128 px frame:
+    the ``entities`` target crops it."""
+    return render_frame(state, 0, 1)
 
 
 # ---- Target registration hooks ------------------------------------------------

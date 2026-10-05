@@ -7,7 +7,8 @@
        a 512x512 drawing whose ground is y=440 (published at 0.25). Each part is a
        layer with a data-rig-part name; rigged/treasure_chest/ poses them. The lid
        is a swap set hinged at the box's back edge: lid.closed, lid.ajar, lid.up,
-       lid.open. The hidden Rig Joints layer marks every joint. -->
+       lid.open. The treasure heap shows only where a clip keys treasure.shown
+       (an empty chest otherwise). The hidden Rig Joints layer marks every joint. -->
   <g id="treasure-chest" inkscape:groupmode="layer" inkscape:label="Treasure Chest - Front">
     <g id="shadow" inkscape:groupmode="layer" inkscape:label="Shadow" data-rig-part="shadow" data-rig-bone="base" data-rig-z="0">
       <path d="M424,436 C424,438.3 419.41,440.77 411.21,442.89 C403.01,445.01 389.95,447.1 374.79,448.73 C359.64,450.35 340.09,451.75 320.29,452.63 C300.49,453.51 277.43,454 256,454 C234.57,454 211.51,453.51 191.71,452.63 C171.91,451.75 152.36,450.35 137.21,448.73 C122.05,447.1 108.99,445.01 100.79,442.89 C92.59,440.77 88,438.3 88,436 C88,433.7 92.59,431.23 100.79,429.11 C108.99,426.99 122.05,424.9 137.21,423.27 C152.36,421.65 171.91,420.25 191.71,419.37 C211.51,418.49 234.57,418 256,418 C277.43,418 300.49,418.49 320.29,419.37 C340.09,420.25 359.64,421.65 374.79,423.27 C389.95,424.9 403.01,426.99 411.21,429.11 C419.41,431.23 424,433.7 424,436 Z" fill="#000000" opacity="0.28" />
@@ -79,7 +80,7 @@
       </g>
       <path d="M120,262 L392,262 L394,300 L118,300 Z" fill="none" stroke="#1f1410" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
     </g>
-    <g id="treasure" inkscape:groupmode="layer" inkscape:label="Treasure" data-rig-part="treasure" data-rig-bone="treasure" data-rig-z="20">
+    <g id="treasure" inkscape:groupmode="layer" inkscape:label="Treasure" data-rig-part="treasure" data-rig-bone="treasure" data-rig-z="20" data-rig-opacity="treasure.shown">
       <clipPath id="clip-mound"><path d="M124,306 C82.67,300 132.33,279.67 140,270 C147.67,260.33 156.67,253.67 170,248 C183.33,242.33 204.67,239 220,236 C235.33,233 247.67,229.67 262,230 C276.33,230.33 291.33,234.33 306,238 C320.67,241.67 338.67,246.33 350,252 C361.33,257.67 367.67,263 374,272 C380.33,281 429.67,300.33 388,306 C346.33,311.67 165.33,312 124,306 Z" /></clipPath>
       <g clip-path="url(#clip-mound)">
       <path d="M124,306 C82.67,300 132.33,279.67 140,270 C147.67,260.33 156.67,253.67 170,248 C183.33,242.33 204.67,239 220,236 C235.33,233 247.67,229.67 262,230 C276.33,230.33 291.33,234.33 306,238 C320.67,241.67 338.67,246.33 350,252 C361.33,257.67 367.67,263 374,272 C380.33,281 429.67,300.33 388,306 C346.33,311.67 165.33,312 124,306 Z" fill="#a8681a" />
@@ -284,7 +285,7 @@
       <g id="ambition-rig-front-part-lid_up" data-rig-part-def="lid_up" data-rig-bone="lid" data-rig-z="5" data-rig-pivot="ambition-rig-front-bind-lid_up" data-rig-bind-angle="-90" data-rig-opacity="lid.up" data-rig-elements="lid-up" />
       <g id="ambition-rig-front-part-lid_open" data-rig-part-def="lid_open" data-rig-bone="lid" data-rig-z="5" data-rig-pivot="ambition-rig-front-bind-lid_open" data-rig-bind-angle="-90" data-rig-opacity="lid.open" data-rig-elements="lid-open" />
       <g id="ambition-rig-front-part-interior" data-rig-part-def="interior" data-rig-bone="base" data-rig-z="10" data-rig-pivot="ambition-rig-front-bind-interior" data-rig-bind-angle="0" data-rig-elements="interior" />
-      <g id="ambition-rig-front-part-treasure" data-rig-part-def="treasure" data-rig-bone="treasure" data-rig-z="20" data-rig-pivot="ambition-rig-front-bind-treasure" data-rig-bind-angle="-90" data-rig-elements="treasure" />
+      <g id="ambition-rig-front-part-treasure" data-rig-part-def="treasure" data-rig-bone="treasure" data-rig-z="20" data-rig-pivot="ambition-rig-front-bind-treasure" data-rig-bind-angle="-90" data-rig-opacity="treasure.shown" data-rig-elements="treasure" />
       <g id="ambition-rig-front-part-base" data-rig-part-def="base" data-rig-bone="base" data-rig-z="30" data-rig-pivot="ambition-rig-front-bind-base" data-rig-bind-angle="0" data-rig-elements="base" />
       <g id="ambition-rig-front-part-lock" data-rig-part-def="lock" data-rig-bone="lock" data-rig-z="40" data-rig-pivot="ambition-rig-front-bind-lock" data-rig-bind-angle="90" data-rig-elements="lock" />
       <g id="ambition-rig-front-part-lid_closed" data-rig-part-def="lid_closed" data-rig-bone="lid" data-rig-z="50" data-rig-pivot="ambition-rig-front-bind-lid_closed" data-rig-bind-angle="-90" data-rig-opacity="lid.closed" data-rig-elements="lid-closed" />

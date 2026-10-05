@@ -12,7 +12,9 @@ canvas, ground y=440, centre line x=256 (published at 0.25: a 128 px frame).
 The lid is a swap set of four drawings hinged at the box's back edge
 (``lid.closed`` / ``lid.ajar`` / ``lid.up`` / ``lid.open``): the classic way
 a sprite lid swings toward the viewer. Inside, a heap of coins and gems
-sits behind the box's front.
+sits behind the box's front, shown only in the treasure rows
+(``treasure.shown``): the plain chest is empty, for an item placed at
+runtime.
 """
 from __future__ import annotations
 
@@ -129,7 +131,8 @@ def base_parts():
                              (366, 264, True), (334, 264, True), (346, 258, True), (348, 246), (340, 238)]),
                      C["gold"], [line([(344, 226), (344, 238)], C["gold_light"], 2.4)], "clip-goblet", 2.4)
     part("treasure", "Treasure", "treasure", "treasure", 20,
-         outlined(mound, C["gold_dark"], [path(mound, C["gold"], extra=' opacity="0.45"')], "clip-mound") + heap)
+         outlined(mound, C["gold_dark"], [path(mound, C["gold"], extra=' opacity="0.45"')], "clip-mound") + heap,
+         ' data-rig-opacity="treasure.shown"')
     # The box's front: planks, iron corners and straps, a gold trim along
     # the rim and a lock plate.
     front = smooth([(L, RIM, True), (R, RIM, True), (R + 2, FLOOR - 10), (R - 8, FLOOR, True), (L + 8, FLOOR, True),
@@ -249,7 +252,8 @@ def draw() -> str:
             "       a 512x512 drawing whose ground is y=440 (published at 0.25). Each part is a",
             "       layer with a data-rig-part name; rigged/treasure_chest/ poses them. The lid",
             "       is a swap set hinged at the box's back edge: lid.closed, lid.ajar, lid.up,",
-            "       lid.open. The hidden Rig Joints layer marks every joint. -->",
+            "       lid.open. The treasure heap shows only where a clip keys treasure.shown",
+            "       (an empty chest otherwise). The hidden Rig Joints layer marks every joint. -->",
         ],
         joints=svg.joints_layer(J),
     )

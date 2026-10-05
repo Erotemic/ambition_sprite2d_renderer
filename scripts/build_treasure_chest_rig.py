@@ -13,9 +13,10 @@ It never draws.
 The lid swings through its swap set (``lid.closed`` / ``lid.ajar`` /
 ``lid.up`` / ``lid.open``) and bounces by its squash (``bone.lid.scale_y``
 about the hinge). The clips also key the effects' strengths (``fx.*``),
-which ``targets/props/treasure_chest.py`` draws: the glint on the lock, the
-light leaking from under the lid, the burst of light, the coin fountain,
-the sparkles.
+which ``targets/props/treasure_chest.py`` draws: the click and dust of the
+lock giving way, and in the treasure rows the light leaking from under the
+lid, the burst of light, the coin fountain, the sparkles. The treasure heap
+shows only in the treasure rows (``treasure.shown``).
 
 Clips are key poses, one key per drawn frame (``K``): a one-shot row's
 frame ``i`` IS key ``i``; a loop's last key repeats its first. Distances are
@@ -46,10 +47,16 @@ PKG = ROOT / "ambition_sprite2d_renderer"
 K = track
 
 #: (row, frames, ms, loops).
+#: (row, frames, ms, loops). The plain rows are an empty chest (an item can
+#: be layered into it at runtime, or nothing); the treasure rows fill it with
+#: the drawn heap. A player who takes the treasure flips the chest from
+#: ``open_treasure`` to ``open``.
 ROWS = [
-    ("closed", 8, 130, True),
-    ("opening", 14, 62, False),
-    ("open", 8, 110, True),
+    ("closed", 1, 100, True),
+    ("opening", 10, 62, False),
+    ("open", 1, 100, True),
+    ("opening_treasure", 14, 62, False),
+    ("open_treasure", 8, 110, True),
 ]
 
 LIDS = ("closed", "ajar", "up", "open")
@@ -69,33 +76,61 @@ def skeleton(J: Dict[str, Point]) -> List[BoneSpec]:
 
 
 def closed(i: int, n: int, t: float) -> Pose:
-    """Shut and waiting: a glint runs over the lock now and then."""
+    """Shut, held still."""
     p = lid("closed")
-    p["fx.glint"] = K([0, 0, 0, 0, 0, 0.6, 1, 0.3, 0], t)
+    p["treasure.shown"] = 0.0
     return p
 
 
-def opening(i: int, n: int, t: float) -> Pose:
-    """It rattles (something wants out), hops, the lock swings loose, the
-    lid cracks with light leaking under it, flies back and bounces on its
-    hinge in a burst of light, and the treasure spouts a fountain of coins
-    that rain back into the heap."""
-    state = ["closed", "closed", "closed", "closed", "ajar", "ajar", "up", "open", "open", "open", "open", "open",
-             "open", "open"][i]
-    p = lid(state)
-    p["root_x"] = K([0, 4, -4, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], t)
-    p["root_y"] = K([0, 0, 0, -14, 2, 0, -4, 0, 0, 0, 0, 0, 0, 0], t)
-    p["base"] = K([0, 1.5, -1.5, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], t)
+def _opening_motion(p: Pose, t: float, frames: int) -> None:
+    """The opening both versions share, over ``frames`` keys (10 or 14):
+    it rattles, hops, the lock swings loose, the lid cracks, flies back and
+    bounces on its hinge. The treasure version holds its last pose longer
+    while its coins rain back."""
+    pad = [0.0] * (frames - 10)
+    one = [1.0] * (frames - 10)
+    p["root_x"] = K([0, 4, -4, 3, 0, 0, 0, 0, 0, 0] + pad, t)
+    p["root_y"] = K([0, 0, 0, -14, 2, 0, -4, 0, 0, 0] + pad, t)
+    p["base"] = K([0, 1.5, -1.5, 1, 0, 0, 0, 0, 0, 0] + pad, t)
     # The closed lid rattles on its hinge before it gives.
-    p["lid"] = K([0, -2.5, 2.5, -3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], t)
+    p["lid"] = K([0, -2.5, 2.5, -3, 0, 0, 0, 0, 0, 0] + pad, t)
     # Thrown back, the open lid overshoots and settles (its squash about the hinge).
-    p["bone.lid.scale_y"] = K([1, 1, 1, 1, 1, 1, 1, 1.1, 0.94, 1.03, 0.99, 1, 1, 1], t)
+    p["bone.lid.scale_y"] = K([1, 1, 1, 1, 1, 1, 1, 1.1, 0.94, 1.0] + one, t)
     # The lock jolts, then swings loose on its staple and settles.
-    p["lock"] = K([0, 6, -6, 10, -26, 18, -12, 8, -5, 3, -1, 0, 0, 0], t)
+    p["lock"] = K([0, 6, -6, 10, -26, 18, -12, 8, -3, 0] + pad, t)
+    p["fx.click"] = K([0, 0, 0, 0.4, 1, 0.3, 0, 0, 0, 0] + pad, t)
+    p["fx.dust"] = K([0, 0, 0, 0, 1, 0.4, 0, 0, 0, 0] + pad, t)
+
+
+#: The lid's look on each frame of an opening.
+OPENING_LIDS = ["closed", "closed", "closed", "closed", "ajar", "ajar", "up", "open", "open", "open"]
+
+
+def opening(i: int, n: int, t: float) -> Pose:
+    """The empty chest opening: no light, nothing inside (an item placed at
+    runtime goes in the ``item`` socket's layer)."""
+    p = lid(OPENING_LIDS[i])
+    p["treasure.shown"] = 0.0
+    _opening_motion(p, t, 10)
+    return p
+
+
+def open_(i: int, n: int, t: float) -> Pose:
+    """Open and empty, held still."""
+    p = lid("open")
+    p["treasure.shown"] = 0.0
+    return p
+
+
+def opening_treasure(i: int, n: int, t: float) -> Pose:
+    """The same opening on a chest full of treasure: light leaks under the
+    cracked lid, the lid flies back in a burst of light and the heap spouts
+    a fountain of coins that rain back into it."""
+    p = lid((OPENING_LIDS + ["open"] * 4)[i])
+    p["treasure.shown"] = 1.0
+    _opening_motion(p, t, 14)
     # The heap heaves as the coins burst from it.
     p["bone.treasure.scale_y"] = K([1, 1, 1, 1, 1, 1, 1, 1.08, 1.03, 1, 1, 1, 1, 1], t)
-    p["fx.click"] = K([0, 0, 0, 0.4, 1, 0.3, 0, 0, 0, 0, 0, 0, 0, 0], t)
-    p["fx.dust"] = K([0, 0, 0, 0, 1, 0.4, 0, 0, 0, 0, 0, 0, 0, 0], t)
     p["fx.leak"] = K([0, 0, 0, 0, 0.8, 1, 0, 0, 0, 0, 0, 0, 0, 0], t)
     p["fx.burst"] = K([0, 0, 0, 0, 0, 0, 0.6, 1, 0.7, 0.4, 0.2, 0, 0, 0], t)
     p["fx.glow"] = K([0, 0, 0, 0, 0.3, 0.5, 0.8, 1, 1, 0.9, 0.8, 0.75, 0.7, 0.7], t)
@@ -106,9 +141,10 @@ def opening(i: int, n: int, t: float) -> Pose:
     return p
 
 
-def open_(i: int, n: int, t: float) -> Pose:
-    """Open, the treasure glowing and twinkling."""
+def open_treasure(i: int, n: int, t: float) -> Pose:
+    """Open on the treasure, glowing and twinkling."""
     p = lid("open")
+    p["treasure.shown"] = 1.0
     p["fx.glow"] = K([0.7, 0.8, 0.9, 0.8, 0.7, 0.6, 0.65, 0.7, 0.7], t)
     p["fx.rays"] = K([0.45, 0.55, 0.65, 0.55, 0.45, 0.4, 0.42, 0.45, 0.45], t)
     p["fx.sparkle"] = 0.8
@@ -116,7 +152,14 @@ def open_(i: int, n: int, t: float) -> Pose:
     return p
 
 
-CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {"closed": closed, "opening": opening, "open": open_}
+CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
+    "closed": closed,
+    "opening": opening,
+    "open": open_,
+    "opening_treasure": opening_treasure,
+    "open_treasure": open_treasure,
+}
+
 
 SPEC = CreatureSpec(
     name="treasure_chest",
@@ -133,7 +176,7 @@ SPEC = CreatureSpec(
     frame_size=(128, 128),
     rows=ROWS,
     clips=CLIPS,
-    defaults={"lid.closed": 1.0},
+    defaults={"lid.closed": 1.0, "treasure.shown": 0.0},
 )
 
 
