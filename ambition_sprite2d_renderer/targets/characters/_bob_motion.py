@@ -181,6 +181,11 @@ BOB_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     ("sit", 8, 140),
 )
 
+#: Rows drawn from Bob's FRONT view (``data/characters/bob/bob_front.svg``,
+#: its own rig ``rigged/bob/bob_front.rig.json``); every other row is the
+#: side view. The game shows him facing the viewer when he stands and talks.
+BOB_FRONT_ROWS: Final[frozenset[str]] = frozenset({"idle_front"})
+
 #: Rows that loop (the rest play once and hold their last frame).
 BOB_LOOPS: Final[frozenset[str]] = frozenset({
     "idle", "idle_side", "idle_front", "idle_look_up", "walk", "dash", "run", "crouch", "crouch_walk",
@@ -332,6 +337,7 @@ EFFECT_ALIASES: Final[dict[str, str]] = {
 
 __all__ = [
     "APPLICABLE_MOTION_SCOPES",
+    "BOB_FRONT_ROWS",
     "BOB_LOOPS",
     "BOB_ROWS",
     "EFFECT_ALIASES",

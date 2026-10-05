@@ -20,6 +20,7 @@ from ambition_sprite2d_renderer.rigbuild import humanoid as H
 from ambition_sprite2d_renderer.rigbuild.creature_rig import read_svg, unwrap
 from ambition_sprite2d_renderer.targets.characters._bob_motion import (
     APPLICABLE_MOTION_SCOPES,
+    BOB_FRONT_ROWS,
     BOB_LOOPS,
     BOB_ROWS,
     FIGHTER_MOTION_COVERAGE,
@@ -40,12 +41,25 @@ def test_bob_covers_every_current_applicable_motion_category():
     )
 
 
-def test_bob_rig_authors_every_declared_row_in_order():
-    doc = RigDocument.load(bob_target.RIG_PATH)
-    assert doc.rows() == list(BOB_ROWS)
+def test_bob_rigs_author_every_declared_row_in_order():
+    # The side rig draws every row but the front-view ones, which the front
+    # rig draws; together they are the sheet, in its order.
+    side = RigDocument.load(bob_target.RIG_PATH)
+    front = RigDocument.load(bob_target.FRONT_RIG_PATH)
+    assert side.rows() == [row for row in BOB_ROWS if row[0] not in BOB_FRONT_ROWS]
+    assert front.rows() == [row for row in BOB_ROWS if row[0] in BOB_FRONT_ROWS]
     assert bob_target.ROWS == list(BOB_ROWS)
     for name, _frames, _ms in BOB_ROWS:
+        doc = front if name in BOB_FRONT_ROWS else side
         assert bool(doc.clips[name]["loop"]) == (name in BOB_LOOPS), name
+
+
+def test_bob_has_a_front_facing_idle():
+    assert "idle_front" in BOB_FRONT_ROWS
+    joints, _parts = read_svg(SVG.with_name("bob_front.svg"))
+    # Facing the viewer: the shoulders and hips straddle the centre line.
+    assert joints["far_shoulder"][0] < 340.0 < joints["near_shoulder"][0]
+    assert joints["far_hip"][0] < 340.0 < joints["near_hip"][0]
 
 
 def test_bob_keeps_every_row_name_the_procedural_sheet_published():

@@ -9,6 +9,7 @@ These scripts are how the first drafts of these character SVGs were drawn:
 | `bear_mauler_art.py` | `data/characters/bear_mauler/bear_mauler.svg` | `scripts/build_bear_mauler_rig.py` |
 | `burning_flying_shark_art.py` | `data/characters/burning_flying_shark/burning_flying_shark.svg` | `scripts/build_burning_flying_shark_rig.py` |
 | `bob_art.py` | `data/characters/bob/bob.svg` | `scripts/build_bob_rig.py` |
+| `bob_front_art.py` | `data/characters/bob/bob_front.svg` | `scripts/build_bob_rig.py` |
 
 ⚠ **The SVGs own the art.** Edit an SVG directly (in Inkscape or by hand)
 when the art changes; these scripts are not re-run to produce it and are not
@@ -46,4 +47,5 @@ rig document and installs the SVG's rig catalog.
 | bear | 16,797 B | 64,889 B | 87,377 B |
 | shark | 15,655 B | 51,049 B | 65,422 B |
 | Bob | 23,113 B | 57,949 B | 80,431 B |
+| Bob, front view | 16,227 B | 49,237 B | 69,589 B |
 | shared `svgkit.py` | 11,543 B | | |

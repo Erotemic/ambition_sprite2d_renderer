@@ -37,7 +37,11 @@ if str(ROOT) not in sys.path:
 
 from ambition_sprite2d_renderer.rigbuild import humanoid as H  # noqa: E402
 from ambition_sprite2d_renderer.rigbuild.humanoid import Pose, Semantic  # noqa: E402
-from ambition_sprite2d_renderer.targets.characters._bob_motion import BOB_LOOPS, BOB_ROWS  # noqa: E402
+from ambition_sprite2d_renderer.targets.characters._bob_motion import (  # noqa: E402
+    BOB_FRONT_ROWS,
+    BOB_LOOPS,
+    BOB_ROWS,
+)
 
 PKG = ROOT / "ambition_sprite2d_renderer"
 SVG = PKG / "data" / "characters" / "bob" / "bob.svg"
@@ -167,17 +171,6 @@ def idle_side(t: float) -> Semantic:
     return S(y=6.0 + 1.8 * math.sin(w), lean=3.0 + 1.0 * math.sin(w - 0.5), head=-3.0 + 2.0 * math.sin(w - 1.0),
              nu=52.0 + 2.0 * math.sin(w - 0.7), ne=150.0, nw=-150.0 + 3.0 * math.sin(w - 1.1),
              fu=118.0, fe=60.0, fw=40.0, nf=g(22.0), ff=g(-30.0), eye="shut" if 0.3 < t < 0.42 else "open")
-
-
-def idle_front(t: float) -> Semantic:
-    """The conversational stand: upright, the wrench hanging at his side, the
-    far hand turning over as he listens."""
-    w = W * t
-    return S(y=4.0 + 1.5 * math.sin(w), lean=2.0, head=-4.0 + 3.0 * math.sin(w - 0.8), fz=REACH,
-             nu=88.0, ne=12.0, nw=96.0 + 3.0 * math.sin(w - 0.4),
-             fu=70.0 + 4.0 * math.sin(w), fe=70.0 + 6.0 * math.sin(w - 0.6), fw=-20.0 + 10.0 * math.sin(w),
-             fhand="open", nf=g(18.0), ff=g(-24.0), mouth="smile" if t > 0.5 else "closed",
-             eye="shut" if 0.8 < t < 0.92 else "open")
 
 
 def idle_look_up(t: float) -> Semantic:
@@ -1358,7 +1351,7 @@ SHOW = {
 }
 
 LOOPS = {
-    "idle": idle, "idle_side": idle_side, "idle_front": idle_front, "idle_look_up": idle_look_up,
+    "idle": idle, "idle_side": idle_side, "idle_look_up": idle_look_up,
     "walk": walk, "dash": dash, "run": run, "crouch": crouch, "crouch_walk": crouch_walk,
     "fall": fall, "fall_special": fall_special, "tumble": tumble, "teeter": teeter, "block": block,
     "prone": prone, "dizzy": dizzy, "sleep": sleep, "buried": buried, "grab_hold": grab_hold, "grabbed": grabbed,
@@ -1374,7 +1367,7 @@ for group in (LOCOMOTION, DEFENSE, DAMAGE, ATTACKS, SPECIALS, GRABS, LEDGE, ITEM
         assert name not in CLIPS, name
         CLIPS[name] = fn
 
-ROWS = [(name, frames, ms, name in BOB_LOOPS) for name, frames, ms in BOB_ROWS]
+ROWS = [(name, frames, ms, name in BOB_LOOPS) for name, frames, ms in BOB_ROWS if name not in BOB_FRONT_ROWS]
 
 def _substeps() -> Dict[str, int]:
     """Swing clips are keyed between frames too (``CreatureSpec.substeps``),
@@ -1411,14 +1404,79 @@ SPEC = H.humanoid_spec(
 )
 
 
+# --- the front view ---------------------------------------------------------------------
+#
+# Bob facing the viewer, drawn on the same canvas (``bob_front.svg``). Its
+# rows are few and quiet, so they are written straight in the pose language
+# as offsets from the drawn stance.
+
+FRONT_SVG = PKG / "data" / "characters" / "bob" / "bob_front.svg"
+FRONT = H.Body.from_svg(FRONT_SVG, CENTER_X, GROUND_Y)
+
+
+def _front_rest() -> Semantic:
+    """The front drawing's own stance in pose-language fields."""
+    pose: Semantic = {"nf": g(FRONT.rest_x("near")), "ff": g(FRONT.rest_x("far"))}
+    for side in ("near", "far"):
+        s = side[0]
+        ru = FRONT._rest(f"{side}_shoulder", f"{side}_elbow")
+        rl = FRONT._rest(f"{side}_elbow", f"{side}_wrist")
+        pose.update({f"{s}u": ru, f"{s}e": ru - rl, f"{s}w": -90.0})
+    return pose
+
+
+FRONT_STANCE = _front_rest()
+
+
+def idle_front(t: float) -> Semantic:
+    """Facing the viewer at ease: breathing, his weight drifting from foot to
+    foot, the head tipping as he listens, the wrench swinging a little from
+    his fist, a blink, and a half smile."""
+    w = W * t
+    p = dict(FRONT_STANCE)
+    p.update({
+        "x": 2.5 * math.sin(w), "y": 1.5 + 1.5 * math.sin(2 * w), "lean": -1.5 * math.sin(w),
+        "head": 3.0 * math.sin(w - 0.7),
+        "nu": float(FRONT_STANCE["nu"]) - 2.0 + 2.5 * math.sin(w - 0.4),
+        "nw": -90.0 + 4.0 * math.sin(w - 1.0),
+        "fu": float(FRONT_STANCE["fu"]) + 2.0 - 2.0 * math.sin(w - 0.3),
+        "eye": "shut" if 0.8 < t < 0.92 else "open",
+        "mouth": "smile" if 0.35 < t < 0.75 else "closed",
+    })
+    return p
+
+
+FRONT_CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
+    "idle_front": lambda i, n, t: FRONT.channels(idle_front(t)),
+}
+FRONT_ROWS = [(name, frames, ms, name in BOB_LOOPS) for name, frames, ms in BOB_ROWS if name in BOB_FRONT_ROWS]
+
+FRONT_SPEC = H.humanoid_spec(
+    name="bob_front",
+    svg_path=FRONT_SVG,
+    rig_path=PKG / "targets" / "characters" / "rigged" / "bob" / "bob_front.rig.json",
+    view_label="Bob - Front",
+    scale=0.5,
+    svg_center_x=CENTER_X,
+    svg_ground_y=GROUND_Y,
+    frame_size=(360, 320),
+    rows=FRONT_ROWS,
+    clips=FRONT_CLIPS,
+    defaults={"body_opacity": 1.0},
+    knee_bend=1.0,
+    far_knee_bend=-1.0,
+)
+
+
 def main(argv: List[str] | None = None) -> int:
     del argv
-    missing = sorted({name for name, *_ in ROWS} - set(CLIPS))
-    extra = sorted(set(CLIPS) - {name for name, *_ in ROWS})
-    if missing or extra:
-        raise SystemExit(f"rows without clips: {missing}; clips without rows: {extra}")
-    for path in H.write(SPEC):
-        print(path.relative_to(ROOT))
+    for spec in (SPEC, FRONT_SPEC):
+        missing = sorted({name for name, *_ in spec.rows} - set(spec.clips))
+        extra = sorted(set(spec.clips) - {name for name, *_ in spec.rows})
+        if missing or extra:
+            raise SystemExit(f"{spec.name}: rows without clips: {missing}; clips without rows: {extra}")
+        for path in H.write(spec):
+            print(path.relative_to(ROOT))
     return 0
 
 

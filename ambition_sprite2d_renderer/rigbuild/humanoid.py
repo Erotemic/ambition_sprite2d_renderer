@@ -106,9 +106,12 @@ def skeleton(J: Dict[str, Point], hand_len: float) -> List[BoneSpec]:
     return bones
 
 
-def humanoid_spec(*, knee_bend: float = 1.0, **fields) -> CreatureSpec:
-    """A ``CreatureSpec`` with the humanoid skeleton and two IK legs."""
-    legs = [Leg(f"{side}_leg_u", f"{side}_leg_l", f"{side}_foot", f"{side}_foot", f"{side}_ankle", bend=knee_bend)
+def humanoid_spec(*, knee_bend: float = 1.0, far_knee_bend: float | None = None, **fields) -> CreatureSpec:
+    """A ``CreatureSpec`` with the humanoid skeleton and two IK legs. A side
+    view's knees both fold forward (``knee_bend``); a front view's fold
+    outward, mirrored, so the far leg takes ``far_knee_bend``."""
+    bends = {"near": knee_bend, "far": knee_bend if far_knee_bend is None else far_knee_bend}
+    legs = [Leg(f"{side}_leg_u", f"{side}_leg_l", f"{side}_foot", f"{side}_foot", f"{side}_ankle", bend=bends[side])
             for side in SIDES]
     hand_len = HAND_LENGTH * fields["scale"]
     angles = {"pelvis", "torso", "head"}

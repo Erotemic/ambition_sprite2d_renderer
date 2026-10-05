@@ -7,7 +7,9 @@ adjustable wrench (his reach), throws sealed packets from his satchel,
 recovers on a telescoping antenna mast, and counters by *receiving*: his
 analyzer verifies what hits him and he answers it.
 
-The SVG ``data/characters/bob/bob.svg`` owns the art and marks every joint;
+The SVG ``data/characters/bob/bob.svg`` owns the art and marks every joint
+(``bob_front.svg`` is the same Bob facing the viewer, for ``idle_front`` and
+the resting dialog portraits, on its own small rig ``bob_front.rig.json``);
 ``rigged/bob/bob_side.rig.json`` owns the skeleton and the clips, derived from
 the SVG and authored as key poses by ``scripts/build_bob_rig.py`` (through
 ``rigbuild.creature_rig`` with the ``humanoid`` anatomy). The rows and their
@@ -36,13 +38,16 @@ from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet
 from . import _creature_fx as FX
 from ._svg_fighter_effects import FxCanvas, compose_rig_frame
-from ._bob_motion import BOB_ROWS, EFFECT_ALIASES, FIGHTER_MOTION_COVERAGE
+from ._bob_motion import BOB_FRONT_ROWS, BOB_ROWS, EFFECT_ALIASES, FIGHTER_MOTION_COVERAGE
 
 Point = Tuple[float, float]
 RGBA = Tuple[int, int, int, int]
 
 TARGET_NAME = "bob"
 RIG_PATH = Path(__file__).resolve().parent / "rigged" / "bob" / "bob_side.rig.json"
+#: Bob facing the viewer (``data/characters/bob/bob_front.svg``): the rows in
+#: ``BOB_FRONT_ROWS`` are drawn from this rig, everything else from the side.
+FRONT_RIG_PATH = RIG_PATH.with_name("bob_front.rig.json")
 FRAME_SIZE = (360, 320)
 #: Sprite pixels per SVG unit (the rig's ``svg_source.scale``).
 ART_SCALE = 0.5
@@ -63,6 +68,10 @@ ANALYZER = (10.0, -5.0)
 
 def _doc() -> RigDocument:
     return FX.rig_document(RIG_PATH)
+
+
+def _front_doc() -> RigDocument:
+    return FX.rig_document(FRONT_RIG_PATH)
 
 
 # --- effect glyphs (SVG units) ------------------------------------------------------
@@ -524,6 +533,9 @@ def _packet_release() -> Point:
 
 
 def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
+    if animation in BOB_FRONT_ROWS:
+        # The front view keys no effects.
+        return compose_rig_frame(_front_doc(), animation, frame_idx, frame_count, fx_pieces=True)
     return compose_rig_frame(
         _doc(),
         animation,
@@ -817,18 +829,32 @@ FACE = FaceGuide(
 )
 
 
+#: The face in the front view's frame.
+FACE_FRONT = FaceGuide(
+    center_x=170.0,
+    center_y=121.0,
+    width=46.0,
+    height=50.0,
+    source_width=FRAME_SIZE[0],
+    source_height=FRAME_SIZE[1],
+)
+
+
 def render_portraits(out_dir: Path, **opts) -> List[Path]:
-    """Dialog portraits rerendered from the rig at 4x, never the sheet."""
+    """Dialog portraits rerendered from the rigs at 4x, never the sheet: the
+    resting portraits face the viewer, the reactions are side-on."""
     del opts
-    doc = _doc()
 
     def frame(animation: str, index: int, count: int) -> Image.Image:
+        front = animation in BOB_FRONT_ROWS
+        doc = _front_doc() if front else _doc()
         source = doc.render_at(animation, doc.frame_time(animation, index, count), supersample=2, scale=4)
-        return render_framed_portrait(source, FACE, view_width=78.0, center_y=124.0)
+        return render_framed_portrait(source, FACE_FRONT if front else FACE, view_width=78.0,
+                                      center_y=125.0 if front else 124.0)
 
     clips = {
-        "default": PortraitClip.loop(tuple(frame("idle", i, 8) for i in range(8)), duration_ms=140),
-        "portrait": PortraitClip.still(frame("idle_front", 6, 8)),
+        "default": PortraitClip.loop(tuple(frame("idle_front", i, 8) for i in range(8)), duration_ms=150),
+        "portrait": PortraitClip.still(frame("idle_front", 4, 8)),
         "talking": PortraitClip.loop(tuple(frame("talk", i, 8) for i in range(8)), duration_ms=104),
         "determined": PortraitClip.still(frame("smash_forward_charge", 0, 6)),
         "verifying": PortraitClip.still(frame("receive", 4, 10)),
