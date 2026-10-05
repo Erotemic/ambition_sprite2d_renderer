@@ -82,7 +82,8 @@ class CreatureSpec:
     defaults: Pose = field(default_factory=dict)
     supersample: int = 4
     #: The joint whose height is the document's ``ankle_h`` (every leg's
-    #: ankle is drawn at that height above the ground).
+    #: ankle is drawn at that height above the ground). A legless creature
+    #: (a flyer, a swimmer) has none.
     ankle_joint: str = "near_ankle"
 
     @property
@@ -272,7 +273,7 @@ def build(spec: CreatureSpec) -> dict:
             if sp["default"]:
                 part["opacity_default"] = float(sp["default"])
         parts.append(part)
-    ankle_h = spec.ground_y - J[spec.ankle_joint][1]
+    ankle_h = spec.ground_y - J[spec.ankle_joint][1] if spec.legs else 0.0
     ik_legs = [
         {
             "upper": leg.upper,

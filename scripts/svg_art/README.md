@@ -1,12 +1,13 @@
 # Creature SVG drawing scripts (reference, not authority)
 
-These scripts are how the first drafts of three creature SVGs were drawn:
+These scripts are how the first drafts of these creature SVGs were drawn:
 
 | Script | Draws | Rig builder |
 |---|---|---|
 | `trex_enemy_art.py` | `data/characters/trex_enemy/trex_enemy.svg` | `scripts/build_trex_enemy_rig.py` |
 | `raptor_stalker_art.py` | `data/characters/raptor_stalker/raptor_stalker.svg` | `scripts/build_raptor_stalker_rig.py` |
 | `bear_mauler_art.py` | `data/characters/bear_mauler/bear_mauler.svg` | `scripts/build_bear_mauler_rig.py` |
+| `burning_flying_shark_art.py` | `data/characters/burning_flying_shark/burning_flying_shark.svg` | `scripts/build_burning_flying_shark_rig.py` |
 
 ⚠ **The SVGs own the art.** Edit an SVG directly (in Inkscape or by hand)
 when the art changes; these scripts are not re-run to produce it and are not
@@ -40,4 +41,5 @@ rig document and installs the SVG's rig catalog.
 | T-rex | 22,376 B | 72,498 B | 97,626 B |
 | raptor | 20,861 B | 107,870 B | 133,037 B |
 | bear | 16,797 B | 64,889 B | 87,377 B |
+| shark | 15,655 B | 51,049 B | 65,422 B |
 | shared `svgkit.py` | 11,543 B | | |

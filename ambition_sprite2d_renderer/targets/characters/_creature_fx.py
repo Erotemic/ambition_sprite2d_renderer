@@ -50,6 +50,24 @@ def rig_document(path: Path) -> RigDocument:
     return _load_doc_cached(str(path), stat.st_mtime_ns, stat.st_size)
 
 
+def rest_frames(doc: RigDocument) -> Dict[str, Tuple[Point, float]]:
+    """Each bone's rest ``(origin, world angle)`` in sprite pixels: the pose
+    the drawing is in."""
+    frame = doc.frame
+    worlds = doc.build_skeleton().world({}, root=(float(frame["center_x"]), float(frame["ground_y"])))
+    return {name: (bw.origin, bw.angle) for name, bw in worlds.items()}
+
+
+def anchor(rest: Dict[str, Tuple[Point, float]], bone: str, svg_point: Point, art_scale: float) -> Point:
+    """A point the drawing marks (SVG units) in ``bone``'s own frame, so an
+    effect placed with ``world[bone].to_world(anchor)`` stays on the drawn
+    feature (a fin's edge, a tail tip) however the bone turns."""
+    (ox, oy), angle = rest[bone]
+    dx, dy = svg_point[0] * art_scale - ox, svg_point[1] * art_scale - oy
+    r = math.radians(-angle)
+    return (dx * math.cos(r) - dy * math.sin(r), dx * math.sin(r) + dy * math.cos(r))
+
+
 class Glyphs:
     """A character's effect glyphs, painted at its ``art_scale``."""
 

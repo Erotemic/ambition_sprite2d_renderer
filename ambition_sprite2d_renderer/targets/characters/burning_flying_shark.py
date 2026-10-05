@@ -1,25 +1,46 @@
-"""Procedural burning flying shark mount sprite sheet.
+"""SVG-rigged sprite target for the burning flying shark, the pirates' sky-mount.
 
-A tack-on target for the pirate sky-mount: a broad, side-view shark with a
-combat harness, ember fins, and persistent fire streaming from its dorsal ridge
-and tail. The goal is a readable gameplay silhouette rather than a fully
-realistic shark.
+A great shark that burns from the inside: charred gunmetal skin split by
+glowing magma cracks, fins whose trailing edges smoulder orange, an amber eye
+that rolls back under its membrane when it bites, and fire streaming from its
+dorsal fin, pectoral fins and tail. It is tacked up for a rider: a red saddle
+blanket with a skull and crossbones, a leather saddle, a girth with a brass
+buckle, a stirrup and reins to a bit in its jaw.
+
+The SVG ``data/characters/burning_flying_shark/burning_flying_shark.svg`` owns
+the art and marks every joint (its hidden ``Rig Joints`` layer). The rig
+document ``rigged/burning_flying_shark/burning_flying_shark_side.rig.json``
+owns the skeleton and the clips; ``scripts/build_burning_flying_shark_rig.py``
+derives it from the SVG (through ``rigbuild.creature_rig`` with the ``fish``
+anatomy) and authors the clips. Each clip also keys the eye state (``eye.*``)
+and the strength of each effect (``fx.*``). This module owns only the effects
+(the fire above all) and publication.
+
+Rows, frame counts, durations, animation bindings and events are the sheet
+contract the game already reads; they are unchanged by the SVG redesign.
 """
 
 from __future__ import annotations
 
+import argparse
 import math
 from pathlib import Path
-from typing import List, Tuple
+from typing import Dict, List, Sequence, Tuple
 
-from PIL import Image, ImageColor, ImageFilter
+from PIL import Image
 
-from ...authoring import rigdoc, shape_rig
 from ...authoring.part_flipbook import publish_rig_flipbook
+from ...authoring.portrait import (
+    FaceGuide,
+    PortraitClip,
+    render_framed_portrait,
+    write_portrait_sheet,
+)
+from ...authoring.rigdoc import RigDocument
 from ...authoring.sheet_build import build_sheet
-from ambition_sprite2d_renderer.core.draw import blending_draw
+from . import _creature_fx as FX
+from ._svg_fighter_effects import FxCanvas, compose_rig_frame
 
-RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
 TARGET_NAME = "burning_flying_shark"
@@ -29,6 +50,17 @@ SHEET_FILES = [
     f"{TARGET_NAME}_spritesheet.ron",
     f"{TARGET_NAME}_actor.ron",
 ]
+RIG_PATH = Path(__file__).resolve().parent / "rigged" / TARGET_NAME / "burning_flying_shark_side.rig.json"
+FRAME_SIZE = (223, 130)
+#: Sprite pixels per SVG unit (the rig's ``svg_source.scale``): the art is
+#: drawn at 620x360 units and published at the size the shark always had.
+ART_SCALE = 0.36
+
+
+def _px(x: float, y: float) -> Dict[str, float]:
+    """A point of the drawing (SVG units) as a sprite-frame point."""
+    return {"x": round(x * ART_SCALE, 1), "y": round(y * ART_SCALE, 1)}
+
 
 ACTOR_METADATA = {
     "actor": {
@@ -40,7 +72,7 @@ ACTOR_METADATA = {
         "body_kind": "Floating",
         "mass_class": "Heavy",
         "locomotion_hint": "Fly",
-        "traits": ["enemy", "pirate", "aerial", "mount", "beast", "no_hands", "fire"],
+        "traits": ["enemy", "pirate", "aerial", "mount", "beast", "no_hands", "fire", "svg_rigged"],
     },
     "capabilities": {
         "traversal": {
@@ -67,21 +99,9 @@ ACTOR_METADATA = {
         "action.melee.primary": {
             "animation": "chomp",
             "events": [
-                {
-                    "t": 0.24,
-                    "event": "telegraph_peak",
-                    "source": "burning_flying_shark",
-                },
-                {
-                    "t": 0.36,
-                    "event": "hitbox_active_start",
-                    "source": "burning_flying_shark",
-                },
-                {
-                    "t": 0.64,
-                    "event": "hitbox_active_end",
-                    "source": "burning_flying_shark",
-                },
+                {"t": 0.24, "event": "telegraph_peak", "source": "burning_flying_shark"},
+                {"t": 0.36, "event": "hitbox_active_start", "source": "burning_flying_shark"},
+                {"t": 0.64, "event": "hitbox_active_end", "source": "burning_flying_shark"},
             ],
         },
         "action.special.dive": {
@@ -91,387 +111,179 @@ ACTOR_METADATA = {
             ],
         },
     },
+    # Points on the drawn frame (before the sheet's auto-crop), at rest.
     "sockets": {
-        "mouth": {
-            "source": "burning_flying_shark.geometry",
-            "point": {"x": 148.0, "y": 66.0},
-        },
-        "head": {
-            "source": "burning_flying_shark.geometry",
-            "point": {"x": 132.0, "y": 56.0},
-        },
-        "tail": {
-            "source": "burning_flying_shark.geometry",
-            "point": {"x": 34.0, "y": 64.0},
-        },
-        "saddle": {
-            "source": "burning_flying_shark.geometry",
-            "point": {"x": 88.0, "y": 44.0},
-        },
-        "ember_origin": {
-            "source": "burning_flying_shark.geometry",
-            "point": {"x": 58.0, "y": 42.0},
+        "mouth": {"source": "burning_flying_shark.geometry", "point": _px(530.0, 225.0)},
+        "head": {"source": "burning_flying_shark.geometry", "point": _px(490.0, 200.0)},
+        "tail": {"source": "burning_flying_shark.geometry", "point": _px(130.0, 210.0)},
+        "saddle": {"source": "burning_flying_shark.geometry", "point": _px(396.0, 152.0)},
+        "ember_origin": {"source": "burning_flying_shark.geometry", "point": _px(350.0, 130.0)},
+    },
+    "visual": {
+        "default_pose": "idle",
+        "canonical_source": "ambition_sprite2d_renderer/data/characters/burning_flying_shark/burning_flying_shark.svg",
+        "portrait": {
+            "face_guide": {
+                "center": _px(488.0, 206.0),
+                "size": {"width": round(110.0 * ART_SCALE, 1), "height": round(80.0 * ART_SCALE, 1)},
+                "source_size": {"width": FRAME_SIZE[0], "height": FRAME_SIZE[1]},
+            }
         },
     },
-    "tags": ["pirate", "aerial", "enemy", "beast", "fire"],
+    "tags": ["pirate", "aerial", "enemy", "beast", "fire", "svg_rigged"],
+    "authoring_description": (
+        "A flying, burning great shark kept as a pirate crew's sky-mount: a genre mash-up, not a "
+        "parody of a person. The body follows a great white's side profile (conical snout, gill "
+        "slits, a tall first dorsal, crescent tail, pectoral fins) with the pectorals beating "
+        "like wings, the nictitating membrane it closes as it bites, and the fire, magma cracks "
+        "and tack (saddle, girth, stirrup, reins and a skull-and-crossbones blanket) invented "
+        "for the pirate setting."
+    ),
 }
 
-ROWS: List[Tuple[str, int, int]] = [
-    ("idle", 6, 135),
-    ("fly", 8, 90),
-    ("chomp", 6, 82),
-    ("dive", 8, 82),
-]
 
-FRAME_SIZE = (192, 128)
-SUPER = 4
-W, H = FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER
+def _doc() -> RigDocument:
+    return FX.rig_document(RIG_PATH)
 
 
-def _rgba(color: str, alpha: int = 255) -> RGBA:
-    r, g, b = ImageColor.getrgb(color)
-    return (r, g, b, alpha)
+#: The sheet's rows are the rig's clips, in the rig's order (the game reads
+#: them by name).
+ROWS: List[Tuple[str, int, int]] = _doc().rows()
+
+# --- Effect glyphs (`_creature_fx`), in SVG units like the art ----------------
+#
+# Flames are authored pointing along +x from their base: a red-orange tongue,
+# an orange body, a yellow heart and a pale core, in three flicker shapes and
+# two lengths. Each is placed on a drawn feature and turned with its bone.
+
+FLAME_LAYERS = (
+    ((232, 70, 22, 205), 1.0),
+    ((255, 140, 36, 230), 0.72),
+    ((255, 214, 92, 240), 0.46),
+    ((255, 248, 214, 255), 0.22),
+)
 
 
-def _s(v: float) -> int:
-    return int(round(v * SUPER))
+def _flame(length: float, width: float, flicker: int):
+    sway = (0.0, 0.18, -0.16)[flicker]
+    lick = (1.0, 0.9, 1.08)[flicker]
 
-
-def _pt(x: float, y: float) -> Tuple[int, int]:
-    return (_s(x), _s(y))
-
-
-def _box(x1: float, y1: float, x2: float, y2: float) -> Tuple[int, int, int, int]:
-    return (_s(x1), _s(y1), _s(x2), _s(y2))
-
-
-def _downsample(img: Image.Image) -> Image.Image:
-    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
-
-
-def _draw_glow(
-    base: Image.Image, points: list[Point], color: RGBA, blur: float = 4.0
-) -> None:
-    layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
-    draw = blending_draw(layer)
-    draw.polygon([_pt(x, y) for x, y in points], fill=color)
-    layer = layer.filter(ImageFilter.GaussianBlur(radius=blur * SUPER / 2.0))
-    base.alpha_composite(layer)
-
-
-def _paint_flame_plume(base: Image.Image, anchor: Point, length: float, width: float, blur_scale: float) -> None:
-    """A flame plume from ``anchor`` along +x, ``length`` long and ``width``
-    wide (frame units): a soft glow under three tongues of flame."""
-    ax, ay = anchor
-    outer = [
-        (ax, ay - width * 0.50),
-        (ax, ay + width * 0.58),
-        (ax + length * 0.38, ay),
-        (ax + length * 0.75, ay + width * 0.42),
-        (ax + length, ay),
-        (ax + length * 0.72, ay - width * 0.35),
-        (ax - length * 0.05, ay),
-    ]
-    mid = [
-        (ax, ay - width * 0.22),
-        (ax, ay + width * 0.25),
-        (ax + length * 0.35, ay),
-        (ax + length * 0.65, ay + width * 0.18),
-        (ax + length * 0.84, ay),
-        (ax + length * 0.60, ay - width * 0.16),
-    ]
-    inner = [
-        (ax, ay - width * 0.10),
-        (ax, ay + width * 0.10),
-        (ax + length * 0.32, ay),
-        (ax + length * 0.58, ay),
-        (ax + length * 0.72, ay),
-        (ax + length * 0.30, ay - width * 0.08),
-    ]
-    _draw_glow(base, outer, _rgba("#ff621d", 120), blur=5.0 * blur_scale)
-    _draw_glow(base, mid, _rgba("#ff9d2f", 150), blur=3.2 * blur_scale)
-    draw = blending_draw(base)
-    draw.polygon([_pt(x, y) for x, y in outer], fill=_rgba("#ff7a22", 170))
-    draw.polygon([_pt(x, y) for x, y in mid], fill=_rgba("#ffb142", 195))
-    draw.polygon([_pt(x, y) for x, y in inner], fill=_rgba("#fff3b0", 215))
-
-
-#: The pieces' canvas (frame units): full width, ``PIECE_CY`` above the body
-#: centre line and the rest below it.
-PIECE_H = 84.0
-PIECE_CY = 42.0
-#: Half the side of a flame plume's canvas (frame units), its anchor at the centre.
-FLAME_HALF = 24.0
-#: The two plume sizes (a flame's scale) and its three flicker steps
-#: (length factor, width factor): a longer tongue is thinner.
-FLAME_SCALES = (0.95, 1.15)
-FLAME_FLICKER = ((0.78, 1.06), (0.92, 0.98), (1.06, 0.88))
-#: The body turns about this point (frame units, on the centre line) when it
-#: dives nose down.
-PITCH_X = 90.0
-
-#: Pieces painted on a frame-sized canvas, kept cropped to what they cover
-#: (the frame-sized raster would sit in ``shape_rig``'s cache for the process).
-_CROPPED: dict = {}
-
-
-def _cropped_piece(key: tuple, size, pivot, paint) -> tuple:
-    """``shape_rig.piece`` for a piece painted on a large canvas: painted once,
-    cropped to its alpha box with its pivot moved to match, and cached here."""
-    hit = _CROPPED.get(key)
-    if hit is None:
-        image = Image.new("RGBA", (int(math.ceil(size[0])), int(math.ceil(size[1]))), (0, 0, 0, 0))
-        paint(blending_draw(image))
-        box = image.getbbox() or (0, 0, 1, 1)
-        hit = (image.crop(box), (pivot[0] - box[0], pivot[1] - box[1]))
-        _CROPPED[key] = hit
-    return hit
-
-
-def _turn(pivot: Point, rest: Point, posed: Point) -> float:
-    """Degrees (clockwise) that turn the point ``rest`` about ``pivot`` onto
-    the direction of ``posed``: a rigid piece hinged at ``pivot``."""
-    a = math.atan2(rest[1] - pivot[1], rest[0] - pivot[0])
-    b = math.atan2(posed[1] - pivot[1], posed[0] - pivot[0])
-    return math.degrees(b - a)
-
-
-class _Body:
-    """The shark's body frame: its centre line at ``cy`` (frame units),
-    turned ``pitch`` degrees (clockwise: nose down) about ``PITCH_X``."""
-
-    def __init__(self, cy: float, pitch: float) -> None:
-        self.cy = cy
-        self.pitch = pitch
-        r = math.radians(pitch)
-        self._c, self._s = math.cos(r), math.sin(r)
-
-    def point(self, x: float, dy: float) -> Point:
-        """Canvas pixels of the body point ``x`` along, ``dy`` below the centre line."""
-        px, py = x - PITCH_X, dy
-        return ((PITCH_X + px * self._c - py * self._s) * SUPER, (self.cy + px * self._s + py * self._c) * SUPER)
-
-    def put(self, img: Image.Image, key: tuple, paint, pivot: Point, name: str, degrees: float = 0.0) -> None:
-        """The piece ``key`` (``paint(draw, cy)`` draws it at rest in frame
-        units) hinged at ``pivot`` = (x, dy) and turned ``degrees`` more
-        than the body."""
-        part = _cropped_piece(
-            ("burning_flying_shark",) + key,
-            (W, PIECE_H * SUPER),
-            (pivot[0] * SUPER, (PIECE_CY + pivot[1]) * SUPER),
-            lambda d: paint(d, PIECE_CY),
-        )
-        shape_rig.place(img, part, self.point(*pivot), self.pitch + degrees, name)
-
-
-TAIL_PIVOT = (56.0, 1.0)
-TAIL_TIP = (28.0, 0.0)
-
-
-def _paint_tail(draw, cy: float) -> None:
-    tail_base = (TAIL_PIVOT[0], cy + TAIL_PIVOT[1])
-    tail_tip = (TAIL_TIP[0], cy + TAIL_TIP[1])
-    tail_upper = [tail_base, (41.0, cy - 5.0), (tail_tip[0], tail_tip[1] - 16.0), (34.0, cy - 2.5)]
-    tail_lower = [tail_base, (40.0, cy + 7.0), (tail_tip[0], tail_tip[1] + 18.0), (33.0, cy + 5.0)]
-    draw.polygon([_pt(*p) for p in tail_upper], fill=_rgba("#4a5968"), outline=_rgba("#182028"))
-    draw.polygon([_pt(*p) for p in tail_lower], fill=_rgba("#404d5c"), outline=_rgba("#182028"))
-
-
-#: Fins as triangles (root, tip, root) at rest (x, dy) with the tip's travel
-#: per unit of wing flap; each is hinged at the middle of its root.
-REAR_FIN = ((76.0, 3.0), (58.0, 14.0), (85.0, 15.0))
-WING_BACK = ((82.0, -1.5), (60.0, -21.0), (95.0, -9.0))
-WING_FRONT = ((94.0, 0.5), (62.0, 12.0), (103.0, 10.0))
-DORSAL = ((87.0, -8.0), (94.0, -31.0), (105.0, -8.0))
-
-
-def _root(fin) -> Point:
-    return ((fin[0][0] + fin[2][0]) / 2.0, (fin[0][1] + fin[2][1]) / 2.0)
-
-
-def _fin_painter(fin, fill: RGBA, outline: RGBA):
-    def paint(draw, cy: float) -> None:
-        draw.polygon([_pt(x, cy + dy) for x, dy in fin], fill=fill, outline=outline)
+    def paint(c: FxCanvas) -> None:
+        for color, k in FLAME_LAYERS:
+            L, w = length * k * lick, width * (0.4 + 0.6 * k)
+            # A round root, a body that narrows, a tip that licks to one side.
+            pts = [(-0.18 * L, 0.0), (-0.1 * L, -0.42 * w), (0.12 * L, -0.5 * w), (0.4 * L, -0.36 * w),
+                   (0.7 * L, (-0.16 + sway * 0.6) * w), (L, sway * w), (0.74 * L, (0.1 + sway * 0.5) * w),
+                   (0.46 * L, 0.3 * w), (0.16 * L, 0.48 * w), (-0.1 * L, 0.42 * w)]
+            c.polygon(pts, color)
 
     return paint
 
 
-def _place_fin(img, body: _Body, name: str, fin, tip_dy: float, fill: RGBA, outline: RGBA) -> None:
-    """The fin ``fin`` turned at its root so its tip moves ``tip_dy`` down."""
-    root, tip = _root(fin), fin[1]
-    body.put(img, (name,), _fin_painter(fin, fill, outline), root, name, _turn(root, tip, (tip[0], tip[1] + tip_dy)))
+def _paint_ember(c: FxCanvas) -> None:
+    c.ellipse((0, 0), 4.5, 4.5, (255, 140, 36, 150))
+    c.ellipse((0, 0), 2.2, 2.2, (255, 236, 160, 255))
 
 
-def _paint_body(draw, cy: float) -> None:
-    body_left = 50.0
-    body_right = 126.0
-    top = cy - 18.0
-    bottom = cy + 18.0
-    draw.ellipse(_box(body_left, top, body_right, bottom), fill=_rgba("#596978"), outline=_rgba("#15202c"), width=_s(1.6))
-    draw.ellipse(_box(body_left + 4.0, top + 3.0, body_right - 6.0, bottom - 2.0), fill=_rgba("#667888"))
-    draw.pieslice(_box(78.0, top + 2.0, 132.0, bottom - 2.0), 80, 280, fill=_rgba("#495867", 120))
-    draw.pieslice(_box(58.0, cy - 11.0, 116.0, cy + 14.0), 108, 248, fill=_rgba("#8191a1", 115))
+def _paint_speed(c: FxCanvas) -> None:
+    for y, length in ((-34, 70), (0, 110), (30, 80)):
+        c.line([(0, y), (length, y)], (255, 246, 214, 120), 3.0)
 
 
-def _paint_head(draw, cy: float) -> None:
-    """Snout, belly, the mouth line, glowing eye and gills (the jaw and the
-    teeth are pieces of their own)."""
-    img = draw._img
-    head_pts = [(108.0, cy - 18.0), (141.5, cy - 10.0), (153.0, cy - 3.0), (157.0, cy + 1.0), (153.0, cy + 6.0), (140.5, cy + 12.0), (105.0, cy + 18.0)]
-    draw.polygon([_pt(*p) for p in head_pts], fill=_rgba("#627385"), outline=_rgba("#15202c"))
-    belly = [(75.0, cy + 7.0), (104.0, cy + 11.0), (136.0, cy + 11.0), (153.0, cy + 6.0), (138.0, cy + 14.0), (113.0, cy + 16.0), (88.0, cy + 17.0)]
-    draw.polygon([_pt(*p) for p in belly], fill=_rgba("#c0c9cf", 210))
-    draw.line([_pt(124.0, cy + 0.5), _pt(154.0, cy + 1.0)], fill=_rgba("#172028"), width=_s(1.2))
-    draw.ellipse(_box(119.0, cy - 8.0, 126.5, cy - 1.5), fill=_rgba("#1c0b08"))
-    eye_glow = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    eg = blending_draw(eye_glow)
-    eg.ellipse(_box(120.4, cy - 6.6, 124.8, cy - 2.6), fill=_rgba("#ff8b29", 220))
-    img.alpha_composite(eye_glow.filter(ImageFilter.GaussianBlur(radius=2.6)))
-    draw.ellipse(_box(121.0, cy - 6.0, 124.1, cy - 3.2), fill=_rgba("#ffd76d"))
-    for gx in (112.0, 116.0, 120.0):
-        draw.arc(_box(gx, cy - 4.0, gx + 7.0, cy + 8.0), 260, 78, fill=_rgba("#314150"), width=_s(0.8))
+_GLYPHS: Dict[str, Tuple[FX.Extent, FX.Paint]] = {**FX.COMMON}
+for _k in range(3):
+    _GLYPHS[f"flame{_k}"] = ((12.0, 16.0, 56.0, 16.0), _flame(48.0, 26.0, _k))
+    _GLYPHS[f"flame_big{_k}"] = ((16.0, 20.0, 80.0, 20.0), _flame(70.0, 32.0, _k))
+_GLYPHS["ember"] = ((6.0, 6.0, 6.0, 6.0), _paint_ember)
+_GLYPHS["speed"] = ((4.0, 38.0, 114.0, 34.0), _paint_speed)
+GLYPHS = FX.Glyphs(ART_SCALE, _GLYPHS)
+_place = GLYPHS.place
+_local = GLYPHS.local
+
+REST = FX.rest_frames(_doc())
+
+#: Where the fire burns: (bone, a drawn point on it in SVG units, the flame's
+#: rest heading in degrees (y down; 180 streams straight back), its phase).
+#: Each is rooted a little inside its fin's trailing edge, so the fin covers
+#: its root, and licks up and back the way fire rises off a moving body.
+FLAMES = (
+    ("dorsal", (350.0, 116.0), 218.0, 0.0),
+    ("dorsal", (354.0, 140.0), 206.0, 1.7),
+    ("near_pec", (358.0, 294.0), 196.0, 0.9),
+    ("near_pec", (380.0, 268.0), 202.0, 2.6),
+    ("fluke", (130.0, 164.0), 210.0, 1.3),
+    ("fluke", (150.0, 206.0), 196.0, 2.2),
+    ("fluke", (136.0, 236.0), 188.0, 0.4),
+    ("tail1", (276.0, 180.0), 222.0, 3.1),
+)
+_ANCHORS = [FX.anchor(REST, bone, point, ART_SCALE) for bone, point, _deg, _phase in FLAMES]
 
 
-#: The jaw: the open mouth (hinge, tip, chin) at full gape, hinged at the
-#: back of the mouth and turned up as the mouth closes.
-JAW = ((123.0, 1.0), (150.5, 16.0), (135.0, 15.0))
+def _behind(canvas: FxCanvas, t: float, world, params) -> None:
+    flame = params.get("fx.flame", 0.0)
+    flare = params.get("fx.flare", 0.0)
+    if params.get("fx.speed", 0.0) > 0.02:
+        body = world["body"]
+        _place(canvas, "speed", _local(body, -130.0, -10.0), params["fx.speed"], degrees=body.angle + 180.0)
+    if flame > 0.02:
+        step = int(round(t * 24))
+        for i, ((bone, _point, deg, phase), local) in enumerate(zip(FLAMES, _ANCHORS)):
+            bw = world[bone]
+            turn = bw.angle - REST[bone][1]
+            wobble = 8.0 * math.sin(math.tau * t * 2.0 + phase)
+            name = f"{'flame_big' if flare > 0.5 else 'flame'}{(step + i) % 3}"
+            opacity = flame * (0.82 + 0.18 * math.cos(math.tau * t * 3.0 + phase))
+            _place(canvas, name, bw.to_world(local), opacity, degrees=deg + turn + wobble)
+        # Embers shed behind the tail.
+        tail = world["fluke"].to_world((0.0, 0.0))
+        for k in range(5):
+            u = (t * 2.0 + k / 5.0) % 1.0
+            x = tail[0] - (20.0 + 150.0 * u) * ART_SCALE
+            y = tail[1] + (math.sin(k * 2.1 + u * 6.0) * 40.0 - 30.0 * u) * ART_SCALE
+            _place(canvas, "ember", (x, y), flame * (1.0 - u))
 
 
-def _jaw_tip_dy(mouth_open: float) -> float:
-    return 7.5 + 8.5 * mouth_open
+def _front(canvas: FxCanvas, t: float, world, params) -> None:
+    head = world["head"]
+    _place(canvas, "bite", _local(head, 112.0, 14.0), params.get("fx.bite", 0.0), degrees=head.angle)
 
 
-def _paint_jaw(draw, cy: float) -> None:
-    draw.polygon([_pt(x, cy + dy) for x, dy in JAW], fill=_rgba("#8a4140"), outline=_rgba("#1d1214"))
+def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
+    return compose_rig_frame(_doc(), animation, frame_idx, frame_count, behind=_behind, front=_front, fx_pieces=True)
 
 
-def _paint_teeth(draw, cy: float) -> None:
-    for tooth_x in (131.0, 137.5, 144.0, 149.0):
-        tooth = [(tooth_x, cy + 1.6), (tooth_x + 1.8, cy + 4.6), (tooth_x + 3.6, cy + 1.5)]
-        draw.polygon([_pt(*p) for p in tooth], fill=_rgba("#f5efe2"))
+FACE = FaceGuide(
+    center_x=488.0 * ART_SCALE,
+    center_y=206.0 * ART_SCALE,
+    width=110.0 * ART_SCALE,
+    height=80.0 * ART_SCALE,
+    source_width=FRAME_SIZE[0],
+    source_height=FRAME_SIZE[1],
+)
 
 
-def _paint_harness(draw, cy: float) -> None:
-    """Pirate harness / saddle."""
-    strap = _rgba("#5a3f28")
-    brass = _rgba("#d0a85e")
-    steel = _rgba("#b7c2cd")
-    draw.rectangle(_box(78.0, cy - 10.5, 101.0, cy + 0.5), fill=_rgba("#4c3424"), outline=_rgba("#1b1210"))
-    draw.rectangle(_box(82.0, cy - 17.0, 95.0, cy - 10.0), fill=_rgba("#77533a"), outline=_rgba("#1b1210"))
-    draw.line(_box(77.0, cy - 3.0, 106.0, cy - 1.0), fill=strap, width=_s(1.5))
-    draw.line(_box(88.0, cy - 13.0, 88.0, cy + 6.0), fill=strap, width=_s(1.2))
-    draw.line(_box(99.0, cy - 11.0, 99.0, cy + 7.0), fill=strap, width=_s(1.2))
-    draw.ellipse(_box(86.0, cy - 2.2, 89.8, cy + 1.6), fill=brass)
-    draw.ellipse(_box(97.0, cy - 2.2, 100.8, cy + 1.6), fill=brass)
-    draw.line(_box(101.0, cy - 13.0, 111.0, cy - 15.5), fill=steel, width=_s(0.9))
-    draw.line(_box(111.0, cy - 15.5, 117.0, cy - 12.0), fill=steel, width=_s(0.9))
+def render_portraits(out_dir: Path, **opts) -> List[Path]:
+    """Dialog portraits rerendered from the rig at 6x, never the sheet."""
+    del opts
+    doc = _doc()
 
+    def portrait_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
+        source = doc.render_at(animation, doc.frame_time(animation, frame_idx, frame_count), supersample=3, scale=6)
+        return render_framed_portrait(source, FACE, view_width=180.0 * ART_SCALE, center_y=206.0 * ART_SCALE)
 
-def _flame(size: int, flicker: int) -> tuple:
-    """The plume of size step ``size`` and flicker step ``flicker``, painted
-    once along +x with its anchor at the centre."""
-    scale = FLAME_SCALES[size]
-    long_k, wide_k = FLAME_FLICKER[flicker]
-    half = FLAME_HALF * SUPER
-    return shape_rig.piece(
-        ("burning_flying_shark", "flame", size, flicker),
-        (2 * half, 2 * half),
-        (half, half),
-        lambda d: _paint_flame_plume(d._img, (FLAME_HALF, FLAME_HALF), 14.0 * scale * long_k, 6.4 * scale * wide_k, scale),
-    )
-
-
-#: Ember specks: three sizes of one soft dot.
-EMBER_RADII = (0.85, 1.19, 1.53)
-
-
-def _ember(size: int) -> tuple:
-    r = EMBER_RADII[size]
-    half = 4.0 * SUPER
-
-    def paint(d) -> None:
-        dot = Image.new("RGBA", d._img.size, (0, 0, 0, 0))
-        blending_draw(dot).ellipse((half - r * SUPER, half - r * SUPER, half + r * SUPER, half + r * SUPER), fill=_rgba("#ffb451", 160))
-        d._img.alpha_composite(dot.filter(ImageFilter.GaussianBlur(radius=1.0)))
-
-    return shape_rig.piece(("burning_flying_shark", "ember", size), (2 * half, 2 * half), (half, half), paint)
-
-
-def _draw_shark(anim: str, frame_idx: int, nframes: int) -> Image.Image:
-    """The shark as a rig: every piece is painted once and turned into place.
-    The body bobs (and dives nose down); the tail, the fins and the jaw turn
-    at their roots; the flames are two plume sizes in three flicker steps,
-    turned along their streams and faded; the embers are soft dots."""
-    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-
-    t = frame_idx / max(1, nframes)
-    cyc = math.tau * t
-    bob = math.sin(cyc) * (1.6 if anim == "idle" else 2.4)
-    tail_swing = math.sin(cyc * (1.0 if anim == "idle" else 1.35)) * (4.0 if anim == "fly" else 5.4)
-    wing_flap = math.sin(cyc * (1.25 if anim == "idle" else 1.8)) * (5.5 if anim != "dive" else 2.8)
-    mouth_open = 1.0 if anim == "chomp" and frame_idx in {1, 2, 3, 4} else 0.0
-    if anim == "chomp":
-        mouth_open = max(mouth_open, 0.18 + 0.82 * math.sin(t * math.pi))
-    # A dive pitches the whole body nose down (the nose drops 3 to 7 px).
-    pitch = 0.0
-    if anim == "dive":
-        nose_drop = 5.0 + 2.0 * math.sin(cyc * 1.2)
-        pitch = math.degrees(math.atan2(nose_drop, 157.0 - PITCH_X))
-
-    # Drop shadow intentionally omitted — the shark is airborne;
-    # an under-body ground shadow reads as a grounded prop.
-    body = _Body(62.0 + bob, pitch)
-
-    # Tail and rear fin behind the body.
-    tail_deg = _turn(TAIL_PIVOT, TAIL_TIP, (TAIL_TIP[0], TAIL_TIP[1] + tail_swing))
-    body.put(img, ("tail",), _paint_tail, TAIL_PIVOT, "tail", tail_deg)
-    _place_fin(img, body, "rear_fin", REAR_FIN, wing_flap * 0.45, _rgba("#d5682f"), _rgba("#3d1d16"))
-    # Main body, then the snout, the jaw and the teeth.
-    body.put(img, ("body",), _paint_body, (90.0, 0.0), "body")
-    body.put(img, ("head",), _paint_head, (130.0, 0.0), "head")
-    if mouth_open > 0.05:
-        hinge, tip = JAW[0], JAW[1]
-        jaw_deg = _turn(hinge, tip, (tip[0], _jaw_tip_dy(mouth_open)))
-        body.put(img, ("jaw",), _paint_jaw, hinge, "jaw", jaw_deg)
-    body.put(img, ("teeth",), _paint_teeth, (140.0, 2.0), "teeth")
-    # Wings / pectoral fins and dorsal fin, then the harness.
-    _place_fin(img, body, "wing_back", WING_BACK, -wing_flap, _rgba("#c85d2e"), _rgba("#3d1d16"))
-    _place_fin(img, body, "wing_front", WING_FRONT, wing_flap, _rgba("#da6e33"), _rgba("#3d1d16"))
-    _place_fin(img, body, "dorsal", DORSAL, -abs(wing_flap) * 0.35, _rgba("#de6b2b"), _rgba("#4a1f13"))
-    body.put(img, ("harness",), _paint_harness, (90.0, -6.0), "harness")
-
-    # Flame plumes stream from the dorsal ridge, the flanks and the tail tip.
-    tail_r = math.radians(tail_deg)
-    tdx, tdy = 36.0 - TAIL_PIVOT[0], 1.0 - TAIL_PIVOT[1]
-    tail_flame = (TAIL_PIVOT[0] + tdx * math.cos(tail_r) - tdy * math.sin(tail_r), TAIL_PIVOT[1] + tdx * math.sin(tail_r) + tdy * math.cos(tail_r))
-    flame_anchors = [
-        ((95.0, -26.0), (-0.25, -1.0), 0, 0.2),
-        ((80.0, -16.5), (-0.95, -0.28), 1, 1.1),
-        ((74.0, 13.0), (-0.92, 0.24), 0, 2.0),
-        (tail_flame, (-1.0, 0.10), 1, 1.6),
-    ]
-    for k, (anchor, direction, size, offset) in enumerate(flame_anchors):
-        phase = cyc + offset
-        flicker = int(round(math.sin(phase))) + 1
-        wobble = 7.0 * math.sin(phase * 1.7)
-        deg = math.degrees(math.atan2(direction[1], direction[0])) + wobble + body.pitch
-        opacity = round(0.86 + 0.14 * math.cos(phase * 1.7), 2)
-        rigdoc.blit_rotated(img, *_flame(size, flicker), body.point(*anchor), deg, opacity, part_name=f"flame{k}")
-
-    # Ember specks drift behind the shark.
-    for i in range(12):
-        ex = 58.0 - i * 5.8 + math.sin(cyc + i) * 1.7
-        ey = body.cy - 22.0 + (i % 5) * 7.0 + math.cos(cyc * 1.8 + i * 0.7) * 1.6
-        shape_rig.place(img, _ember(i % 3), (ex * SUPER, ey * SUPER), 0.0, f"ember{i}")
-
-    return _downsample(img)
-
-
-def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
-    return _draw_shark(animation, frame_idx, nframes)
+    clips = {
+        "default": PortraitClip.still(portrait_frame("idle", 0, 6)),
+        "gaping": PortraitClip(
+            tuple(portrait_frame("idle", frame, 6) for frame in (0, 1, 2, 3, 4, 5)),
+            duration_ms=135,
+            looping=True,
+        ),
+    }
+    return write_portrait_sheet(TARGET_NAME, clips, Path(out_dir))
 
 
 def render(out_dir: str | Path, **opts) -> List[Path]:
+    del opts
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     frame_transform: dict = {}
@@ -485,13 +297,26 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         label_width=118,
         actor_metadata=ACTOR_METADATA,
     )
-    parts = publish_rig_flipbook(TARGET_NAME, ROWS, render_frame, outputs, frame_transform, Path(out_dir))
-    return [
-        outputs["canonical"],
-        outputs["canonical_transparent"],
-        outputs["spritesheet"],
-        outputs["yaml"],
-        outputs["ron"],
-        outputs["actor"],
-        outputs["preview"],
-    ] + list(parts.values())
+    parts = publish_rig_flipbook(TARGET_NAME, ROWS, render_frame, outputs, frame_transform, out_dir)
+    keys = ("canonical", "canonical_transparent", "spritesheet", "yaml", "ron", "actor", "preview")
+    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
+
+
+__all__ = ["ACTOR_METADATA", "ROWS", "SHEET_FILES", "TARGET_NAME", "render", "render_frame", "render_portraits"]
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=Path(__file__).resolve().parents[2] / "generated" / TARGET_NAME,
+    )
+    args = parser.parse_args(argv)
+    for path in render(args.out_dir):
+        print(path)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
