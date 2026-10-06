@@ -4,6 +4,9 @@ The joints are the bones of ``rigged/trex_enemy/trex_enemy_side.rig.json``, and
 every clip frame is the same ``RigDocument.solve`` that draws the sheet row, so
 a head in the rig is the head in the drawing: one pose table, not two.
 
+Attachments are the named points the game reads: ``jaw``, where his jaws hold
+a body (``ATTACHMENTS``).
+
 Hurt parts are what you can hit: his head and jaw, neck, torso, the first three
 tail bones and his legs. Each is MEASURED from the drawn part it covers (its
 raster's opaque extent), not guessed. The arms (tiny) and the tail tip (a
@@ -42,6 +45,16 @@ HURT_PARTS: Sequence[Tuple[str, str, str, str, float]] = (
     ("thigh_far", "far_thigh", "far_thigh", "capsule", 0.75),
     ("shin_far", "far_shin", "far_shin", "capsule", 0.75),
 )
+
+#: attachment name -> (its joint, its place in the joint's frame, sheet pixels).
+#:
+#: ``jaw``: where his jaws hold a body. It is on the teeth line of his lower
+#: jaw, near its front (the jaw bone runs from the hinge, 0, to the tip, about
+#: 66). It rides the jaw joint, so a held body follows his mouth through the
+#: reach, the thrash and the fling. The game reads this point
+#: (``ambition.body.attachments``); it keeps no pixel of its own for it.
+ATTACHMENTS: Sequence[Tuple[str, str, Point]] = (("jaw", "jaw", (60.0, -10.0)),)
+
 
 def _rotate(p: Point, degrees: float) -> Point:
     c, s = math.cos(math.radians(degrees)), math.sin(math.radians(degrees))
@@ -121,7 +134,7 @@ def body_rig(
     return BodyRigProduct(
         target=target,
         joints=[(bone, None) for bone in bones],
-        attachments=[],
+        attachments=list(ATTACHMENTS),
         hurt_parts=hurt,
         clips=clips,
     )
