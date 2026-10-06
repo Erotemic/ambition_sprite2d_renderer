@@ -2,10 +2,11 @@
 
 A CANDIDATE redesign (Jon, 2026-10-06), after the mechanical "mockingbird"
 of the How to Kill a Mockingbird Flash animation: a lean black skull with a
-great domed forehead, a brow low over a slit eye tilted hard toward a slender
+great sloping forehead, a brow low over a slit eye tilted hard toward a slender
 sharp beak of long narrow fangs, on a segmented steel neck; a cage of steel
 ribs round a glowing red engine-heart; two rigid swept jet wings (the near
-one reaching toward the camera), a missile on each wingtip; two rotors on tall
+one reaching toward the camera, the far one hidden but for its tip), a
+missile on the near wingtip; two rotors on tall
 masts; a heavy thruster at the tail; two grappling claws beneath. Jon's
 reviews asked for a sleek, mean head with a big forehead, no chin spikes and
 long narrow teeth; rigid jet wings that reach out toward the camera, carrying
@@ -209,8 +210,12 @@ _GLYPHS: Dict[str, Tuple[FX.Extent, FX.Paint]] = {**FX.COMMON}
 for _k in range(3):
     _GLYPHS[f"jet{_k}"] = ((8.0, 40.0, 150.0, 40.0), _jet(120.0, 66.0, _k))
     _GLYPHS[f"boost{_k}"] = ((8.0, 46.0, 260.0, 46.0), _jet(220.0, 78.0, _k))
-_GLYPHS["near_blur"] = ((212.0, 18.0, 212.0, 18.0), _paint_blur(206.0))
-_GLYPHS["far_blur"] = ((166.0, 18.0, 166.0, 18.0), _paint_blur(160.0))
+# Each blur disc is as wide as its rotor's blades reach: the ``<side>_blade``
+# bone runs from the hub to a blade tip the drawing marks.
+_BONES = _doc().build_skeleton().bones
+for _side in ("near", "far"):
+    _span = _BONES[f"{_side}_blade"].length / ART_SCALE
+    _GLYPHS[f"{_side}_blur"] = ((_span + 6.0, 18.0, _span + 6.0, 18.0), _paint_blur(_span))
 _GLYPHS["core_glow"] = ((160.0, 90.0, 160.0, 90.0), _paint_glow(156.0, 86.0, (255, 120, 40)))
 _GLYPHS["eye_glow"] = ((44.0, 24.0, 44.0, 24.0), _paint_glow(42.0, 22.0, (255, 110, 30)))
 _GLYPHS["charge_s"] = ((24.0, 24.0, 24.0, 24.0), _paint_fireball(14.0))

@@ -88,6 +88,16 @@
    "rest_angle": -90.0
   },
   {
+   "name": "far_blade",
+   "parent": "far_rotor",
+   "offset": [
+    65.0,
+    -0.0
+   ],
+   "length": 54.0,
+   "rest_angle": -90.0
+  },
+  {
    "name": "far_arm",
    "parent": "body",
    "offset": [
@@ -126,6 +136,16 @@
    ],
    "length": 74.0,
    "rest_angle": -90.0
+  },
+  {
+   "name": "near_blade",
+   "parent": "near_rotor",
+   "offset": [
+    74.0,
+    -0.0
+   ],
+   "length": 70.0,
+   "rest_angle": 90.0
   },
   {
    "name": "near_arm",
@@ -188,20 +208,6 @@
    "rest_angle": 0.0
   },
   {
-   "name": "far_missile",
-   "bone": "body",
-   "z": 4.1,
-   "kind": "sprite",
-   "include": [
-    "far-missile"
-   ],
-   "pivot": [
-    550.0,
-    330.0
-   ],
-   "rest_angle": 0.0
-  },
-  {
    "name": "far_rotor_mast",
    "bone": "far_rotor",
    "z": 6.0,
@@ -217,7 +223,7 @@
   },
   {
    "name": "far_rotor_a",
-   "bone": "far_rotor",
+   "bone": "far_blade",
    "z": 7.0,
    "kind": "sprite",
    "include": [
@@ -225,15 +231,15 @@
    ],
    "pivot": [
     438.0,
-    254.0
+    124.0
    ],
-   "rest_angle": -90.0,
+   "rest_angle": 180.0,
    "opacity_channel": "far_rotor.a",
    "opacity_default": 1.0
   },
   {
    "name": "far_rotor_b",
-   "bone": "far_rotor",
+   "bone": "far_blade",
    "z": 7.0,
    "kind": "sprite",
    "include": [
@@ -241,14 +247,14 @@
    ],
    "pivot": [
     438.0,
-    254.0
+    124.0
    ],
-   "rest_angle": -90.0,
+   "rest_angle": 180.0,
    "opacity_channel": "far_rotor.b"
   },
   {
    "name": "far_rotor_c",
-   "bone": "far_rotor",
+   "bone": "far_blade",
    "z": 7.0,
    "kind": "sprite",
    "include": [
@@ -256,9 +262,9 @@
    ],
    "pivot": [
     438.0,
-    254.0
+    124.0
    ],
-   "rest_angle": -90.0,
+   "rest_angle": 180.0,
    "opacity_channel": "far_rotor.c"
   },
   {
@@ -663,7 +669,7 @@
   },
   {
    "name": "near_rotor_a",
-   "bone": "near_rotor",
+   "bone": "near_blade",
    "z": 52.0,
    "kind": "sprite",
    "include": [
@@ -671,15 +677,15 @@
    ],
    "pivot": [
     694.0,
-    262.0
+    114.0
    ],
-   "rest_angle": -90.0,
+   "rest_angle": 0.0,
    "opacity_channel": "near_rotor.a",
    "opacity_default": 1.0
   },
   {
    "name": "near_rotor_b",
-   "bone": "near_rotor",
+   "bone": "near_blade",
    "z": 52.0,
    "kind": "sprite",
    "include": [
@@ -687,14 +693,14 @@
    ],
    "pivot": [
     694.0,
-    262.0
+    114.0
    ],
-   "rest_angle": -90.0,
+   "rest_angle": 0.0,
    "opacity_channel": "near_rotor.b"
   },
   {
    "name": "near_rotor_c",
-   "bone": "near_rotor",
+   "bone": "near_blade",
    "z": 52.0,
    "kind": "sprite",
    "include": [
@@ -702,9 +708,9 @@
    ],
    "pivot": [
     694.0,
-    262.0
+    114.0
    ],
-   "rest_angle": -90.0,
+   "rest_angle": 0.0,
    "opacity_channel": "near_rotor.c"
   },
   {

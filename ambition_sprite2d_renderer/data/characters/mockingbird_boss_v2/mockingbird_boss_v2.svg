@@ -7,7 +7,7 @@
        right. A lean black skull with a great forehead, a slanted slit eye and a
        slender beak of fangs on a segmented steel neck; a cage of steel ribs round
        a glowing red engine-heart; hooked spines on an armoured back; two swept
-       jet wings, a missile on each tip; two rotors on tall masts; a thruster at the
+       jet wings, a missile on the near tip; two rotors on tall masts; a thruster at the
        tail; two grappling claws beneath. Each part is a layer with a data-rig-part name.
        *_ink layers are silhouettes grown by the outline width, painted beneath
        every fill so the body reads as one outlined silhouette. Swap sets (the
@@ -16,58 +16,34 @@
        The hidden Rig Joints layer marks every joint the skeleton is built on. -->
   <g id="mockingbird-side" inkscape:groupmode="layer" inkscape:label="Mockingbird - Side Right">
     <g id="far-wing-ink" inkscape:groupmode="layer" inkscape:label="Ink - far_wing" data-rig-part="far_wing_ink" data-rig-bone="body" data-rig-z="2.5">
-      <path d="M652,258 L454,184 L416,188 L504,256 Z" fill="#0b0c10" stroke="#0b0c10" stroke-width="9.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M640,260 L520,226 L494,230 L522,256 Z" fill="#0b0c10" stroke="#0b0c10" stroke-width="9.6" stroke-linejoin="round" stroke-linecap="round" />
     </g>
     <g id="far-wing" inkscape:groupmode="layer" inkscape:label="Wing - far" data-rig-part="far_wing" data-rig-bone="body" data-rig-z="3.5">
-      <clipPath id="clip-far-wing"><path d="M652,258 L454,184 L416,188 L504,256 Z" /></clipPath>
+      <clipPath id="clip-far-wing"><path d="M640,260 L520,226 L494,230 L522,256 Z" /></clipPath>
       <g clip-path="url(#clip-far-wing)">
-      <path d="M652,258 L454,184 L416,188 L504,256 Z" fill="#1d1f25" />
-      <path d="M646.08,257.92 L452.48,184.16 L442.6,185.2 L607.6,257.4 Z" fill="#2e323b" />
-      <path d="M560.24,256.76 L430.44,186.48 L424.36,187.12 L536.56,256.44 Z" fill="#17181d" />
-      <path d="M524.8,250.86 L494,231.49 L470.15,231.52 L494.18,250.53 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M491.8,230.1 L461,210.73 L444.41,211.16 L468.44,230.17 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M458.8,209.34 L428,189.97 L418.67,190.8 L442.7,209.8 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M575.3,231.37 C562.11,231.39 509.36,231.47 496.17,231.48" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M513.7,207.78 C504.79,208.04 469.17,209.05 460.26,209.3" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M585.4,257.1 C560.65,245.22 461.65,197.68 436.9,185.8" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <ellipse cx="567.58" cy="248.54" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
-      <ellipse cx="540.85" cy="235.71" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
-      <ellipse cx="511.15" cy="221.45" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
-      <ellipse cx="481.45" cy="207.19" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
-      <ellipse cx="454.72" cy="194.36" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
-      <path d="M563.7,249.9 L546.54,241.38 L526.73,241.27 L541.78,249.68 Z" fill="#e2b630" stroke="#0b0c10" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M519.66,212.33 L480.4,199.42 L503.7,212.67 L501.26,208.14 Z" fill="#94261a" stroke="#0b0c10" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M640,260 L520,226 L494,230 L522,256 Z" fill="#1d1f25" />
+      <path d="M635.28,259.84 L518.96,226.16 L512.2,227.2 L604.6,258.8 Z" fill="#2e323b" />
+      <path d="M566.84,257.52 L503.88,228.48 L499.72,229.12 L547.96,256.88 Z" fill="#17181d" />
+      <path d="M541.89,254.59 L528.9,246.86 L510.22,246.62 L517.55,253.85 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M527.97,246.31 L514.98,238.58 L502.37,238.87 L509.7,246.1 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M514.05,238.03 L501.06,230.3 L494.53,231.11 L501.85,238.35 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M592.56,247.7 C582.23,247.57 540.92,247.02 530.59,246.89" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M555.63,236.95 C548.88,237.13 521.9,237.83 515.16,238" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M586.9,258.2 C573.8,253.13 521.4,232.87 508.3,227.8" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="577.47" cy="254.55" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
+      <ellipse cx="563.32" cy="249.08" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
+      <ellipse cx="547.6" cy="243" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
+      <ellipse cx="531.88" cy="236.92" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
+      <ellipse cx="517.73" cy="231.45" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
+      <path d="M573.6,255 L564.72,251.4 L549.08,251.04 L556.19,254.49 Z" fill="#e2b630" stroke="#0b0c10" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M558.28,239.04 L534.23,233.33 L546.09,239.23 L546.2,237.2 Z" fill="#94261a" stroke="#0b0c10" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
       </g>
-      <path d="M652,258 L454,184 L416,188 L504,256 Z" fill="none" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M652,258 C619,245.67 487,196.33 454,184" fill="none" stroke="#0b0c10" stroke-width="8" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M652,258 C619,245.67 487,196.33 454,184" fill="none" stroke="#6f747d" stroke-width="4.6" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M646.06,255.78 C615.04,244.19 490.96,197.81 459.94,186.22" fill="none" stroke="#a3a8b0" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M657.92,258.08 C657.92,258.08 501.04,255.96 501.04,255.96 C501.04,255.96 489.32,250.26 508.9,249.34 C528.48,248.42 593.66,249 618.5,250.46 C643.34,251.92 657.92,258.08 657.92,258.08 Z" fill="#2e323b" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
-      <ellipse cx="454" cy="184" rx="4.5" ry="4.5" fill="#2a8a48" stroke="#0b0c10" stroke-width="1" />
-    </g>
-    <g id="far-missile" inkscape:groupmode="layer" inkscape:label="Missile - far" data-rig-part="far_missile" data-rig-bone="body" data-rig-z="4.1">
-      <path d="M420,188 C426,187.33 450,184.67 456,184" fill="none" stroke="#0b0c10" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M420,188 C426,187.33 450,184.67 456,184" fill="none" stroke="#4a4e56" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M419.69,165.8 C419.69,165.8 385.2,154.18 385.2,154.18 C385.2,154.18 393.72,166.84 393.72,166.84 C393.72,166.84 419.69,165.8 419.69,165.8 Z" fill="#4a4e56" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M420.26,179.79 C420.26,179.79 386.81,194.14 386.81,194.14 C386.81,194.14 394.28,180.83 394.28,180.83 C394.28,180.83 420.26,179.79 420.26,179.79 Z" fill="#4a4e56" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <clipPath id="clip-far-missile"><path d="M390.4,183.99 L538.42,178.04 L537.62,158.05 L389.6,164.01 Z" /></clipPath>
-      <g clip-path="url(#clip-far-missile)">
-      <path d="M390.4,183.99 L538.42,178.04 L537.62,158.05 L389.6,164.01 Z" fill="#6f747d" />
-      <path d="M390.44,184.99 L538.46,179.04 L538.2,172.54 L390.18,178.5 Z" fill="#4a4e56" />
-      <path d="M389.7,166.51 L537.72,160.55 L537.88,164.55 L389.86,170.5 Z" fill="#a3a8b0" />
-      <path d="M407.32,162.29 C407.47,165.96 408.06,180.61 408.2,184.28" fill="none" stroke="#34373e" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M409.1,162.22 C409.24,165.89 409.83,180.54 409.98,184.21" fill="none" stroke="#a3a8b0" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M493.17,158.84 C493.32,162.5 493.91,177.16 494.06,180.82" fill="none" stroke="#34373e" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M494.95,158.77 C495.1,162.43 495.69,177.09 495.83,180.75" fill="none" stroke="#a3a8b0" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" />
-      </g>
-      <path d="M390.4,183.99 L538.42,178.04 L537.62,158.05 L389.6,164.01 Z" fill="none" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M445.85,161.75 L463.61,161.03 L464.41,181.01 L446.65,181.73 Z" fill="#e2b630" stroke="#0b0c10" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M447.84,161.66 C447.31,165.02 445.18,178.45 444.65,181.81" fill="none" stroke="#17181d" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M453.77,161.43 C453.23,164.78 451.1,178.21 450.57,181.57" fill="none" stroke="#17181d" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M459.69,161.19 C459.15,164.55 457.03,177.98 456.49,181.33" fill="none" stroke="#17181d" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M537.62,158.05 C537.62,158.05 547.29,158 551.69,159.49 C556.08,160.98 564,167 564,167 C564,167 556.59,173.64 552.33,175.48 C548.07,177.32 538.42,178.04 538.42,178.04 C538.42,178.04 537.62,158.05 537.62,158.05 Z" fill="#4f8f8a" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M539.74,160.97 C539.74,160.97 548.42,161.12 551.79,161.99 C555.16,162.85 559.96,166.16 559.96,166.16 C559.96,166.16 553.29,166.1 549.95,166.06 C546.61,166.03 539.94,165.97 539.94,165.97 C539.94,165.97 539.74,160.97 539.74,160.97 Z" fill="#9fd8cf" />
-      <path d="M537.62,158.05 C537.75,161.38 538.29,174.71 538.42,178.04" fill="none" stroke="#34373e" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M640,260 L520,226 L494,230 L522,256 Z" fill="none" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M640,260 C620,254.33 540,231.67 520,226" fill="none" stroke="#0b0c10" stroke-width="8" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M640,260 C620,254.33 540,231.67 520,226" fill="none" stroke="#6f747d" stroke-width="4.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M636.4,258.98 C617.6,253.65 542.4,232.35 523.6,227.02" fill="none" stroke="#a3a8b0" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M644.72,260.16 C644.72,260.16 519.64,255.92 519.64,255.92 C519.64,255.92 513.83,253.66 530.08,253.72 C546.33,253.78 598.01,255.21 617.12,256.28 C636.23,257.35 644.72,260.16 644.72,260.16 Z" fill="#2e323b" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="520" cy="226" rx="4.5" ry="4.5" fill="#2a8a48" stroke="#0b0c10" stroke-width="1" />
     </g>
     <g id="far-rotor-mast" inkscape:groupmode="layer" inkscape:label="Far Rotor Mast" data-rig-part="far_rotor_mast" data-rig-bone="far_rotor" data-rig-z="6">
       <clipPath id="clip-far-mast"><path d="M448,258 L448,132 L428,132 L428,258 Z" /></clipPath>
@@ -86,33 +62,33 @@
       <ellipse cx="438" cy="132" rx="14" ry="6" fill="#4a4e56" stroke="#0b0c10" stroke-width="1.6" />
       <ellipse cx="438" cy="129" rx="10" ry="4" fill="#6f747d" stroke="#0b0c10" stroke-width="1" />
     </g>
-    <g id="far-rotor-a" inkscape:groupmode="layer" inkscape:label="Far Rotor Blades - a" data-rig-part="far_rotor_a" data-rig-bone="far_rotor" data-rig-z="7" data-rig-opacity="far_rotor.a" data-rig-default="1">
-      <path d="M438,121 C438,121 387,120.88 363,121.3 C339,121.72 306.5,122.55 294,123.5 C281.5,124.45 288,127 288,127 C288,127 281.5,130.17 294,130.5 C306.5,130.83 339,129.58 363,129 C387,128.42 438,127 438,127 C438,127 438,121 438,121 Z" fill="#7d838c" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M415.5,123.45 C396.25,123.84 319.25,125.38 300,125.76" fill="none" stroke="#b9bec5" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M302,124.2 C301,125.13 297,128.87 296,129.8" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M438,121 C438,121 489,118.88 513,118.3 C537,117.72 569.5,117.05 582,117.5 C594.5,117.95 588,121 588,121 C588,121 594.5,123.67 582,124.5 C569.5,125.33 537,125.58 513,126 C489,126.42 438,127 438,127 C438,127 438,121 438,121 Z" fill="#7d838c" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M460.5,122.55 C479.75,122.16 556.75,120.62 576,120.24" fill="none" stroke="#b9bec5" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M574,118.2 C575,119.13 579,122.87 580,123.8" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="far-rotor-a" inkscape:groupmode="layer" inkscape:label="Far Rotor Blades - a" data-rig-part="far_rotor_a" data-rig-bone="far_blade" data-rig-z="7" data-rig-opacity="far_rotor.a" data-rig-default="1">
+      <path d="M438,121 C438,121 401,120.88 384,121.3 C367,121.72 345,122.55 336,123.5 C327,124.45 330,127 330,127 C330,127 327,130.17 336,130.5 C345,130.83 367,129.58 384,129 C401,128.42 438,127 438,127 C438,127 438,121 438,121 Z" fill="#7d838c" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M421.8,123.45 C407.94,123.84 352.5,125.38 338.64,125.76" fill="none" stroke="#b9bec5" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M344,124.2 C343,125.13 339,128.87 338,129.8" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M438,121 C438,121 475,118.88 492,118.3 C509,117.72 531,117.05 540,117.5 C549,117.95 546,121 546,121 C546,121 549,123.67 540,124.5 C531,125.33 509,125.58 492,126 C475,126.42 438,127 438,127 C438,127 438,121 438,121 Z" fill="#7d838c" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M454.2,122.55 C468.06,122.16 523.5,120.62 537.36,120.24" fill="none" stroke="#b9bec5" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M532,118.2 C533,119.13 537,122.87 538,123.8" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
       <ellipse cx="438" cy="124" rx="14" ry="8" fill="#4a4e56" stroke="#0b0c10" stroke-width="1.4" />
       <ellipse cx="438" cy="122" rx="8" ry="3.6" fill="#a3a8b0" />
     </g>
-    <g id="far-rotor-b" inkscape:groupmode="layer" inkscape:label="Far Rotor Blades - b" data-rig-part="far_rotor_b" data-rig-bone="far_rotor" data-rig-z="7" data-rig-opacity="far_rotor.b">
-      <path d="M438,121 C438,121 406,123.37 391.5,125.2 C377,127.03 358.75,130.2 351,132 C343.25,133.8 345,136 345,136 C345,136 343.25,140.33 351,140 C358.75,139.67 377,136.17 391.5,134 C406,131.83 438,127 438,127 C438,127 438,121 438,121 Z" fill="#7d838c" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M424.05,124.8 C412.12,126.34 364.38,132.5 352.44,134.04" fill="none" stroke="#b9bec5" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M359,132.8 C358,133.87 354,138.13 353,139.2" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M438,121 C438,121 470,115.37 484.5,113.2 C499,111.03 517.25,108.2 525,108 C532.75,107.8 531,112 531,112 C531,112 532.75,114.33 525,116 C517.25,117.67 499,120.17 484.5,122 C470,123.83 438,127 438,127 C438,127 438,121 438,121 Z" fill="#7d838c" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M451.95,121.2 C463.88,119.66 511.62,113.5 523.56,111.96" fill="none" stroke="#b9bec5" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M517,108.8 C518,109.87 522,114.13 523,115.2" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="far-rotor-b" inkscape:groupmode="layer" inkscape:label="Far Rotor Blades - b" data-rig-part="far_rotor_b" data-rig-bone="far_blade" data-rig-z="7" data-rig-opacity="far_rotor.b">
+      <path d="M438,121 C438,121 414.68,123.37 404.52,125.2 C394.36,127.03 382.62,130.2 377.04,132 C371.46,133.8 371.04,136 371.04,136 C371.04,136 371.46,140.33 377.04,140 C382.62,139.67 394.36,136.17 404.52,134 C414.68,131.83 438,127 438,127 C438,127 438,121 438,121 Z" fill="#7d838c" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M427.96,124.8 C419.36,126.34 384.99,132.5 376.4,134.04" fill="none" stroke="#b9bec5" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M385.04,132.8 C384.04,133.87 380.04,138.13 379.04,139.2" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M438,121 C438,121 461.32,115.37 471.48,113.2 C481.64,111.03 493.38,108.2 498.96,108 C504.54,107.8 504.96,112 504.96,112 C504.96,112 504.54,114.33 498.96,116 C493.38,117.67 481.64,120.17 471.48,122 C461.32,123.83 438,127 438,127 C438,127 438,121 438,121 Z" fill="#7d838c" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M448.04,121.2 C456.64,119.66 491.01,113.5 499.6,111.96" fill="none" stroke="#b9bec5" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M490.96,108.8 C491.96,109.87 495.96,114.13 496.96,115.2" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
       <ellipse cx="438" cy="124" rx="14" ry="8" fill="#4a4e56" stroke="#0b0c10" stroke-width="1.4" />
       <ellipse cx="438" cy="122" rx="8" ry="3.6" fill="#a3a8b0" />
     </g>
-    <g id="far-rotor-c" inkscape:groupmode="layer" inkscape:label="Far Rotor Blades - c" data-rig-part="far_rotor_c" data-rig-bone="far_rotor" data-rig-z="7" data-rig-opacity="far_rotor.c">
-      <path d="M438,121 C438,121 406,115.37 391.5,113.2 C377,111.03 358.75,108.2 351,108 C343.25,107.8 345,112 345,112 C345,112 343.25,114.33 351,116 C358.75,117.67 377,120.17 391.5,122 C406,123.83 438,127 438,127 C438,127 438,121 438,121 Z" fill="#7d838c" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M424.05,121.2 C412.12,119.66 364.38,113.5 352.44,111.96" fill="none" stroke="#b9bec5" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M359,108.8 C358,109.87 354,114.13 353,115.2" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M438,121 C438,121 470,123.37 484.5,125.2 C499,127.03 517.25,130.2 525,132 C532.75,133.8 531,136 531,136 C531,136 532.75,140.33 525,140 C517.25,139.67 499,136.17 484.5,134 C470,131.83 438,127 438,127 C438,127 438,121 438,121 Z" fill="#7d838c" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M451.95,124.8 C463.88,126.34 511.62,132.5 523.56,134.04" fill="none" stroke="#b9bec5" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M517,132.8 C518,133.87 522,138.13 523,139.2" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="far-rotor-c" inkscape:groupmode="layer" inkscape:label="Far Rotor Blades - c" data-rig-part="far_rotor_c" data-rig-bone="far_blade" data-rig-z="7" data-rig-opacity="far_rotor.c">
+      <path d="M438,121 C438,121 414.68,115.37 404.52,113.2 C394.36,111.03 382.62,108.2 377.04,108 C371.46,107.8 371.04,112 371.04,112 C371.04,112 371.46,114.33 377.04,116 C382.62,117.67 394.36,120.17 404.52,122 C414.68,123.83 438,127 438,127 C438,127 438,121 438,121 Z" fill="#7d838c" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M427.96,121.2 C419.36,119.66 384.99,113.5 376.4,111.96" fill="none" stroke="#b9bec5" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M385.04,108.8 C384.04,109.87 380.04,114.13 379.04,115.2" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M438,121 C438,121 461.32,123.37 471.48,125.2 C481.64,127.03 493.38,130.2 498.96,132 C504.54,133.8 504.96,136 504.96,136 C504.96,136 504.54,140.33 498.96,140 C493.38,139.67 481.64,136.17 471.48,134 C461.32,131.83 438,127 438,127 C438,127 438,121 438,121 Z" fill="#7d838c" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M448.04,124.8 C456.64,126.34 491.01,132.5 499.6,134.04" fill="none" stroke="#b9bec5" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M490.96,132.8 C491.96,133.87 495.96,138.13 496.96,139.2" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
       <ellipse cx="438" cy="124" rx="14" ry="8" fill="#4a4e56" stroke="#0b0c10" stroke-width="1.4" />
       <ellipse cx="438" cy="122" rx="8" ry="3.6" fill="#a3a8b0" />
     </g>
@@ -202,7 +178,7 @@
       <path d="M816,346 C818.67,345.17 832,358 832,358 C832,358 862,360 880,360 C898,360 921.67,358.33 940,358 C958.33,357.67 974,357.33 990,358 C1006,358.67 1036,362 1036,362 C1036,362 1034.33,366.17 1026,368 C1017.67,369.83 1000.33,371.33 986,373 C971.67,374.67 956,376.5 940,378 C924,379.5 904.67,381.33 890,382 C875.33,382.67 862.33,383.17 852,382 C841.67,380.83 834,378.17 828,375 C822,371.83 818,367.83 816,363 C814,358.17 813.33,346.83 816,346 Z" fill="#0b0c10" stroke="#0b0c10" stroke-width="9.6" stroke-linejoin="round" stroke-linecap="round" />
     </g>
     <g id="head-ink" inkscape:groupmode="layer" inkscape:label="Ink - head" data-rig-part="head_ink" data-rig-bone="head" data-rig-z="24">
-      <path d="M768,342 C764.33,333 759.33,316.33 758,302 C756.67,287.67 757,270.33 760,256 C763,241.67 768.33,227.33 776,216 C783.67,204.67 794,195.33 806,188 C818,180.67 833.33,174.67 848,172 C862.67,169.33 880,169.33 894,172 C908,174.67 921.67,180.67 932,188 C942.33,195.33 950.33,206 956,216 C961.67,226 964,237.67 966,248 C968,258.33 968,278 968,278 C968,278 981.33,291 990,298 C998.67,305 1010.33,312.67 1020,320 C1029.67,327.33 1039.67,335 1048,342 C1056.33,349 1064,356.33 1070,362 C1076,367.67 1084,376 1084,376 C1084,376 1067.67,369 1060,366 C1052.33,363 1038,358 1038,358 C1038,358 1006.33,355 990,354 C973.67,353 955.67,352.33 940,352 C924.33,351.67 909.33,352 896,352 C882.67,352 870,351.33 860,352 C850,352.67 836,356 836,356 C836,356 815.33,360 806,360 C796.67,360 786.33,359 780,356 C773.67,353 771.67,351 768,342 Z" fill="#0b0c10" stroke="#0b0c10" stroke-width="9.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M768,342 C764.67,333 760.67,315.33 760,302 C759.33,288.67 760.33,274.33 764,262 C767.67,249.67 772.67,237.33 782,228 C791.33,218.67 805,211.33 820,206 C835,200.67 855.33,197 872,196 C888.67,195 906.67,196 920,200 C933.33,204 944.33,212 952,220 C959.67,228 963.33,238.33 966,248 C968.67,257.67 968,278 968,278 C968,278 981.33,291 990,298 C998.67,305 1010.33,312.67 1020,320 C1029.67,327.33 1039.67,335 1048,342 C1056.33,349 1064,356.33 1070,362 C1076,367.67 1084,376 1084,376 C1084,376 1067.67,369 1060,366 C1052.33,363 1038,358 1038,358 C1038,358 1006.33,355 990,354 C973.67,353 955.67,352.33 940,352 C924.33,351.67 909.33,352 896,352 C882.67,352 870,351.33 860,352 C850,352.67 836,356 836,356 C836,356 815.33,360 806,360 C796.67,360 786.33,359 780,356 C773.67,353 771.33,351 768,342 Z" fill="#0b0c10" stroke="#0b0c10" stroke-width="9.6" stroke-linejoin="round" stroke-linecap="round" />
     </g>
     <g id="engine" inkscape:groupmode="layer" inkscape:label="Thruster" data-rig-part="engine" data-rig-bone="engine" data-rig-z="26">
       <path d="M420,326 C420,326 436,346.67 436,356 C436,365.33 420,382 420,382 C420,382 391.33,386.33 382,380 C372.67,373.67 364,344 364,344 C364,344 420,326 420,326 Z" fill="#262931" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
@@ -406,23 +382,23 @@
       <path d="M816,346 C818.67,345.17 832,358 832,358 C832,358 862,360 880,360 C898,360 921.67,358.33 940,358 C958.33,357.67 974,357.33 990,358 C1006,358.67 1036,362 1036,362 C1036,362 1034.33,366.17 1026,368 C1017.67,369.83 1000.33,371.33 986,373 C971.67,374.67 956,376.5 940,378 C924,379.5 904.67,381.33 890,382 C875.33,382.67 862.33,383.17 852,382 C841.67,380.83 834,378.17 828,375 C822,371.83 818,367.83 816,363 C814,358.17 813.33,346.83 816,346 Z" fill="none" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
     </g>
     <g id="head" inkscape:groupmode="layer" inkscape:label="Head" data-rig-part="head" data-rig-bone="head" data-rig-z="44">
-      <clipPath id="clip-head"><path d="M768,342 C764.33,333 759.33,316.33 758,302 C756.67,287.67 757,270.33 760,256 C763,241.67 768.33,227.33 776,216 C783.67,204.67 794,195.33 806,188 C818,180.67 833.33,174.67 848,172 C862.67,169.33 880,169.33 894,172 C908,174.67 921.67,180.67 932,188 C942.33,195.33 950.33,206 956,216 C961.67,226 964,237.67 966,248 C968,258.33 968,278 968,278 C968,278 981.33,291 990,298 C998.67,305 1010.33,312.67 1020,320 C1029.67,327.33 1039.67,335 1048,342 C1056.33,349 1064,356.33 1070,362 C1076,367.67 1084,376 1084,376 C1084,376 1067.67,369 1060,366 C1052.33,363 1038,358 1038,358 C1038,358 1006.33,355 990,354 C973.67,353 955.67,352.33 940,352 C924.33,351.67 909.33,352 896,352 C882.67,352 870,351.33 860,352 C850,352.67 836,356 836,356 C836,356 815.33,360 806,360 C796.67,360 786.33,359 780,356 C773.67,353 771.67,351 768,342 Z" /></clipPath>
+      <clipPath id="clip-head"><path d="M768,342 C764.67,333 760.67,315.33 760,302 C759.33,288.67 760.33,274.33 764,262 C767.67,249.67 772.67,237.33 782,228 C791.33,218.67 805,211.33 820,206 C835,200.67 855.33,197 872,196 C888.67,195 906.67,196 920,200 C933.33,204 944.33,212 952,220 C959.67,228 963.33,238.33 966,248 C968.67,257.67 968,278 968,278 C968,278 981.33,291 990,298 C998.67,305 1010.33,312.67 1020,320 C1029.67,327.33 1039.67,335 1048,342 C1056.33,349 1064,356.33 1070,362 C1076,367.67 1084,376 1084,376 C1084,376 1067.67,369 1060,366 C1052.33,363 1038,358 1038,358 C1038,358 1006.33,355 990,354 C973.67,353 955.67,352.33 940,352 C924.33,351.67 909.33,352 896,352 C882.67,352 870,351.33 860,352 C850,352.67 836,356 836,356 C836,356 815.33,360 806,360 C796.67,360 786.33,359 780,356 C773.67,353 771.33,351 768,342 Z" /></clipPath>
       <g clip-path="url(#clip-head)">
-      <path d="M768,342 C764.33,333 759.33,316.33 758,302 C756.67,287.67 757,270.33 760,256 C763,241.67 768.33,227.33 776,216 C783.67,204.67 794,195.33 806,188 C818,180.67 833.33,174.67 848,172 C862.67,169.33 880,169.33 894,172 C908,174.67 921.67,180.67 932,188 C942.33,195.33 950.33,206 956,216 C961.67,226 964,237.67 966,248 C968,258.33 968,278 968,278 C968,278 981.33,291 990,298 C998.67,305 1010.33,312.67 1020,320 C1029.67,327.33 1039.67,335 1048,342 C1056.33,349 1064,356.33 1070,362 C1076,367.67 1084,376 1084,376 C1084,376 1067.67,369 1060,366 C1052.33,363 1038,358 1038,358 C1038,358 1006.33,355 990,354 C973.67,353 955.67,352.33 940,352 C924.33,351.67 909.33,352 896,352 C882.67,352 870,351.33 860,352 C850,352.67 836,356 836,356 C836,356 815.33,360 806,360 C796.67,360 786.33,359 780,356 C773.67,353 771.67,351 768,342 Z" fill="#262931" />
+      <path d="M768,342 C764.67,333 760.67,315.33 760,302 C759.33,288.67 760.33,274.33 764,262 C767.67,249.67 772.67,237.33 782,228 C791.33,218.67 805,211.33 820,206 C835,200.67 855.33,197 872,196 C888.67,195 906.67,196 920,200 C933.33,204 944.33,212 952,220 C959.67,228 963.33,238.33 966,248 C968.67,257.67 968,278 968,278 C968,278 981.33,291 990,298 C998.67,305 1010.33,312.67 1020,320 C1029.67,327.33 1039.67,335 1048,342 C1056.33,349 1064,356.33 1070,362 C1076,367.67 1084,376 1084,376 C1084,376 1067.67,369 1060,366 C1052.33,363 1038,358 1038,358 C1038,358 1006.33,355 990,354 C973.67,353 955.67,352.33 940,352 C924.33,351.67 909.33,352 896,352 C882.67,352 870,351.33 860,352 C850,352.67 836,356 836,356 C836,356 815.33,360 806,360 C796.67,360 786.33,359 780,356 C773.67,353 771.33,351 768,342 Z" fill="#262931" />
       <path d="M770,338 C785,329 815,336.67 840,336 C865,335.33 893.33,333.33 920,334 C946.67,334.67 971.67,336.33 1000,340 C1028.33,343.67 1075,347.67 1090,356 C1105,364.33 1146.67,384.33 1090,390 C1033.33,395.67 803.33,398.67 750,390 C696.67,381.33 755,347 770,338 Z" fill="#17181d" />
-      <path d="M776,250 C777.33,243 786,223 796,212 C806,201 821.33,189.67 836,184 C850.67,178.33 869,176.33 884,178 C899,179.67 915.67,187 926,194 C936.33,201 946.33,217.67 946,220 C945.67,222.33 934.33,212.33 924,208 C913.67,203.67 898,195.33 884,194 C870,192.67 852.67,195.33 840,200 C827.33,204.67 816.67,213 808,222 C799.33,231 793.33,249.33 788,254 C782.67,258.67 774.67,257 776,250 Z" fill="#3d424e" />
-      <path d="M776,326 C775.67,316.67 770.67,287 774,270 C777.33,253 785,236.67 796,224 C807,211.33 832.67,199 840,194" fill="none" stroke="#101116" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M820,250 C830,247.33 861.67,235.33 880,234 C898.33,232.67 921.67,240.67 930,242" fill="none" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M780,256 C781.33,251 790.67,235.67 800,228 C809.33,220.33 822,214.33 836,210 C850,205.67 869,202.33 884,202 C899,201.67 915,203.67 926,208 C937,212.33 950,226 950,228 C950,230 937,222.33 926,220 C915,217.67 898,214 884,214 C870,214 854,216.33 842,220 C830,223.67 820.33,229.67 812,236 C803.67,242.33 797.33,254.67 792,258 C786.67,261.33 778.67,261 780,256 Z" fill="#3d424e" />
+      <path d="M776,326 C776,317.67 772.67,290.33 776,276 C779.33,261.67 785.33,250 796,240 C806.67,230 832.67,220 840,216" fill="none" stroke="#101116" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M820,256 C830,254 861.33,245 880,244 C898.67,243 923.33,249 932,250" fill="none" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
       <path d="M980,322 C986.67,324.33 1006.67,329.67 1020,336 C1033.33,342.33 1053.33,356 1060,360" fill="none" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
       <ellipse cx="1032" cy="342" rx="4" ry="2" fill="#101116" transform="rotate(30 1032 342)" />
       <path d="M832,324 C833.33,326.67 838.67,337.33 840,340" fill="none" stroke="#17181d" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
       <path d="M842,324 C843.33,326.67 848.67,337.33 850,340" fill="none" stroke="#17181d" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
       <path d="M852,324 C853.33,326.67 858.67,337.33 860,340" fill="none" stroke="#17181d" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
       <ellipse cx="792" cy="300" rx="2" ry="2" fill="#8e949e" stroke="#0b0c10" stroke-width="0.8" />
-      <ellipse cx="796" cy="276" rx="2" ry="2" fill="#8e949e" stroke="#0b0c10" stroke-width="0.8" />
-      <ellipse cx="810" cy="252" rx="2" ry="2" fill="#8e949e" stroke="#0b0c10" stroke-width="0.8" />
+      <ellipse cx="796" cy="278" rx="2" ry="2" fill="#8e949e" stroke="#0b0c10" stroke-width="0.8" />
+      <ellipse cx="810" cy="256" rx="2" ry="2" fill="#8e949e" stroke="#0b0c10" stroke-width="0.8" />
       </g>
-      <path d="M768,342 C764.33,333 759.33,316.33 758,302 C756.67,287.67 757,270.33 760,256 C763,241.67 768.33,227.33 776,216 C783.67,204.67 794,195.33 806,188 C818,180.67 833.33,174.67 848,172 C862.67,169.33 880,169.33 894,172 C908,174.67 921.67,180.67 932,188 C942.33,195.33 950.33,206 956,216 C961.67,226 964,237.67 966,248 C968,258.33 968,278 968,278 C968,278 981.33,291 990,298 C998.67,305 1010.33,312.67 1020,320 C1029.67,327.33 1039.67,335 1048,342 C1056.33,349 1064,356.33 1070,362 C1076,367.67 1084,376 1084,376 C1084,376 1067.67,369 1060,366 C1052.33,363 1038,358 1038,358 C1038,358 1006.33,355 990,354 C973.67,353 955.67,352.33 940,352 C924.33,351.67 909.33,352 896,352 C882.67,352 870,351.33 860,352 C850,352.67 836,356 836,356 C836,356 815.33,360 806,360 C796.67,360 786.33,359 780,356 C773.67,353 771.67,351 768,342 Z" fill="none" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M768,342 C764.67,333 760.67,315.33 760,302 C759.33,288.67 760.33,274.33 764,262 C767.67,249.67 772.67,237.33 782,228 C791.33,218.67 805,211.33 820,206 C835,200.67 855.33,197 872,196 C888.67,195 906.67,196 920,200 C933.33,204 944.33,212 952,220 C959.67,228 963.33,238.33 966,248 C968.67,257.67 968,278 968,278 C968,278 981.33,291 990,298 C998.67,305 1010.33,312.67 1020,320 C1029.67,327.33 1039.67,335 1048,342 C1056.33,349 1064,356.33 1070,362 C1076,367.67 1084,376 1084,376 C1084,376 1067.67,369 1060,366 C1052.33,363 1038,358 1038,358 C1038,358 1006.33,355 990,354 C973.67,353 955.67,352.33 940,352 C924.33,351.67 909.33,352 896,352 C882.67,352 870,351.33 860,352 C850,352.67 836,356 836,356 C836,356 815.33,360 806,360 C796.67,360 786.33,359 780,356 C773.67,353 771.33,351 768,342 Z" fill="none" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
       <path d="M845.25,352.1 C845.25,352.1 846.79,361.49 847.34,365.1 C847.89,368.72 848.55,373.78 848.55,373.78 C848.55,373.78 849.83,365.47 850.2,361.85 C850.57,358.24 850.75,352.1 850.75,352.1 C850.75,352.1 845.25,352.1 845.25,352.1 Z" fill="#eeeae0" stroke="#0b0c10" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
       <path d="M859.25,352.26 C859.25,352.26 860.79,362.02 861.34,365.78 C861.89,369.53 862.55,374.78 862.55,374.78 C862.55,374.78 863.83,366.15 864.2,362.4 C864.57,358.64 864.75,352.26 864.75,352.26 C864.75,352.26 859.25,352.26 859.25,352.26 Z" fill="#eeeae0" stroke="#0b0c10" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
       <path d="M873.25,352.43 C873.25,352.43 874.79,362.55 875.34,366.45 C875.89,370.34 876.55,375.79 876.55,375.79 C876.55,375.79 877.83,366.84 878.2,362.94 C878.57,359.05 878.75,352.43 878.75,352.43 C878.75,352.43 873.25,352.43 873.25,352.43 Z" fill="#eeeae0" stroke="#0b0c10" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
@@ -462,33 +438,33 @@
       <path d="M918,300 C920.67,302.33 931.33,311.67 934,314" fill="none" stroke="#5c616b" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
       <path d="M918,314 C920.67,311.67 931.33,302.33 934,300" fill="none" stroke="#5c616b" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
     </g>
-    <g id="near-rotor-a" inkscape:groupmode="layer" inkscape:label="Near Rotor Blades - a" data-rig-part="near_rotor_a" data-rig-bone="near_rotor" data-rig-z="52" data-rig-opacity="near_rotor.a" data-rig-default="1">
-      <path d="M694,111 C694,111 627.67,110.88 596,111.3 C564.33,111.72 520.33,112.55 504,113.5 C487.67,114.45 498,117 498,117 C498,117 487.67,120.17 504,120.5 C520.33,120.83 564.33,119.58 596,119 C627.67,118.42 694,117 694,117 C694,117 694,111 694,111 Z" fill="#9aa1ab" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M664.6,113.45 C639.45,113.84 538.83,115.38 513.68,115.76" fill="none" stroke="#dde2e7" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M512,114.2 C511,115.13 507,118.87 506,119.8" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M694,111 C694,111 760.33,108.88 792,108.3 C823.67,107.72 867.67,107.05 884,107.5 C900.33,107.95 890,111 890,111 C890,111 900.33,113.67 884,114.5 C867.67,115.33 823.67,115.58 792,116 C760.33,116.42 694,117 694,117 C694,117 694,111 694,111 Z" fill="#9aa1ab" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M723.4,112.55 C748.55,112.16 849.17,110.62 874.32,110.24" fill="none" stroke="#dde2e7" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M876,108.2 C877,109.13 881,112.87 882,113.8" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="near-rotor-a" inkscape:groupmode="layer" inkscape:label="Near Rotor Blades - a" data-rig-part="near_rotor_a" data-rig-bone="near_blade" data-rig-z="52" data-rig-opacity="near_rotor.a" data-rig-default="1">
+      <path d="M694,111 C694,111 646.33,110.88 624,111.3 C601.67,111.72 571.67,112.55 560,113.5 C548.33,114.45 554,117 554,117 C554,117 548.33,120.17 560,120.5 C571.67,120.83 601.67,119.58 624,119 C646.33,118.42 694,117 694,117 C694,117 694,111 694,111 Z" fill="#9aa1ab" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M673,113.45 C655.03,113.84 583.17,115.38 565.2,115.76" fill="none" stroke="#dde2e7" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M568,114.2 C567,115.13 563,118.87 562,119.8" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M694,111 C694,111 741.67,108.88 764,108.3 C786.33,107.72 816.33,107.05 828,107.5 C839.67,107.95 834,111 834,111 C834,111 839.67,113.67 828,114.5 C816.33,115.33 786.33,115.58 764,116 C741.67,116.42 694,117 694,117 C694,117 694,111 694,111 Z" fill="#9aa1ab" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M715,112.55 C732.97,112.16 804.83,110.62 822.8,110.24" fill="none" stroke="#dde2e7" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M820,108.2 C821,109.13 825,112.87 826,113.8" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
       <ellipse cx="694" cy="114" rx="14" ry="8" fill="#5c616b" stroke="#0b0c10" stroke-width="1.4" />
       <ellipse cx="694" cy="112" rx="8" ry="3.6" fill="#cfd4da" />
     </g>
-    <g id="near-rotor-b" inkscape:groupmode="layer" inkscape:label="Near Rotor Blades - b" data-rig-part="near_rotor_b" data-rig-bone="near_rotor" data-rig-z="52" data-rig-opacity="near_rotor.b">
-      <path d="M694,111 C694,111 652.49,113.37 633.24,115.2 C613.99,117.03 588.61,120.2 578.48,122 C568.35,123.8 572.48,126 572.48,126 C572.48,126 568.35,130.33 578.48,130 C588.61,129.67 613.99,126.17 633.24,124 C652.49,121.83 694,117 694,117 C694,117 694,111 694,111 Z" fill="#9aa1ab" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M675.77,114.8 C660.18,116.34 597.8,122.5 582.2,124.04" fill="none" stroke="#dde2e7" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M586.48,122.8 C585.48,123.87 581.48,128.13 580.48,129.2" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M694,111 C694,111 735.51,105.37 754.76,103.2 C774.01,101.03 799.39,98.2 809.52,98 C819.65,97.8 815.52,102 815.52,102 C815.52,102 819.65,104.33 809.52,106 C799.39,107.67 774.01,110.17 754.76,112 C735.51,113.83 694,117 694,117 C694,117 694,111 694,111 Z" fill="#9aa1ab" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M712.23,111.2 C727.82,109.66 790.2,103.5 805.8,101.96" fill="none" stroke="#dde2e7" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M801.52,98.8 C802.52,99.87 806.52,104.13 807.52,105.2" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="near-rotor-b" inkscape:groupmode="layer" inkscape:label="Near Rotor Blades - b" data-rig-part="near_rotor_b" data-rig-bone="near_blade" data-rig-z="52" data-rig-opacity="near_rotor.b">
+      <path d="M694,111 C694,111 664.07,113.37 650.6,115.2 C637.13,117.03 620.43,120.2 613.2,122 C605.97,123.8 607.2,126 607.2,126 C607.2,126 605.97,130.33 613.2,130 C620.43,129.67 637.13,126.17 650.6,124 C664.07,121.83 694,117 694,117 C694,117 694,111 694,111 Z" fill="#9aa1ab" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M680.98,114.8 C669.84,116.34 625.28,122.5 614.14,124.04" fill="none" stroke="#dde2e7" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M621.2,122.8 C620.2,123.87 616.2,128.13 615.2,129.2" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M694,111 C694,111 723.93,105.37 737.4,103.2 C750.87,101.03 767.57,98.2 774.8,98 C782.03,97.8 780.8,102 780.8,102 C780.8,102 782.03,104.33 774.8,106 C767.57,107.67 750.87,110.17 737.4,112 C723.93,113.83 694,117 694,117 C694,117 694,111 694,111 Z" fill="#9aa1ab" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M707.02,111.2 C718.16,109.66 762.72,103.5 773.86,101.96" fill="none" stroke="#dde2e7" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M766.8,98.8 C767.8,99.87 771.8,104.13 772.8,105.2" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
       <ellipse cx="694" cy="114" rx="14" ry="8" fill="#5c616b" stroke="#0b0c10" stroke-width="1.4" />
       <ellipse cx="694" cy="112" rx="8" ry="3.6" fill="#cfd4da" />
     </g>
-    <g id="near-rotor-c" inkscape:groupmode="layer" inkscape:label="Near Rotor Blades - c" data-rig-part="near_rotor_c" data-rig-bone="near_rotor" data-rig-z="52" data-rig-opacity="near_rotor.c">
-      <path d="M694,111 C694,111 652.49,105.37 633.24,103.2 C613.99,101.03 588.61,98.2 578.48,98 C568.35,97.8 572.48,102 572.48,102 C572.48,102 568.35,104.33 578.48,106 C588.61,107.67 613.99,110.17 633.24,112 C652.49,113.83 694,117 694,117 C694,117 694,111 694,111 Z" fill="#9aa1ab" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M675.77,111.2 C660.18,109.66 597.8,103.5 582.2,101.96" fill="none" stroke="#dde2e7" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M586.48,98.8 C585.48,99.87 581.48,104.13 580.48,105.2" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M694,111 C694,111 735.51,113.37 754.76,115.2 C774.01,117.03 799.39,120.2 809.52,122 C819.65,123.8 815.52,126 815.52,126 C815.52,126 819.65,130.33 809.52,130 C799.39,129.67 774.01,126.17 754.76,124 C735.51,121.83 694,117 694,117 C694,117 694,111 694,111 Z" fill="#9aa1ab" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M712.23,114.8 C727.82,116.34 790.2,122.5 805.8,124.04" fill="none" stroke="#dde2e7" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M801.52,122.8 C802.52,123.87 806.52,128.13 807.52,129.2" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="near-rotor-c" inkscape:groupmode="layer" inkscape:label="Near Rotor Blades - c" data-rig-part="near_rotor_c" data-rig-bone="near_blade" data-rig-z="52" data-rig-opacity="near_rotor.c">
+      <path d="M694,111 C694,111 664.07,105.37 650.6,103.2 C637.13,101.03 620.43,98.2 613.2,98 C605.97,97.8 607.2,102 607.2,102 C607.2,102 605.97,104.33 613.2,106 C620.43,107.67 637.13,110.17 650.6,112 C664.07,113.83 694,117 694,117 C694,117 694,111 694,111 Z" fill="#9aa1ab" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M680.98,111.2 C669.84,109.66 625.28,103.5 614.14,101.96" fill="none" stroke="#dde2e7" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M621.2,98.8 C620.2,99.87 616.2,104.13 615.2,105.2" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M694,111 C694,111 723.93,113.37 737.4,115.2 C750.87,117.03 767.57,120.2 774.8,122 C782.03,123.8 780.8,126 780.8,126 C780.8,126 782.03,130.33 774.8,130 C767.57,129.67 750.87,126.17 737.4,124 C723.93,121.83 694,117 694,117 C694,117 694,111 694,111 Z" fill="#9aa1ab" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M707.02,114.8 C718.16,116.34 762.72,122.5 773.86,124.04" fill="none" stroke="#dde2e7" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M766.8,122.8 C767.8,123.87 771.8,128.13 772.8,129.2" fill="none" stroke="#e2b630" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
       <ellipse cx="694" cy="114" rx="14" ry="8" fill="#5c616b" stroke="#0b0c10" stroke-width="1.4" />
       <ellipse cx="694" cy="112" rx="8" ry="3.6" fill="#cfd4da" />
     </g>
@@ -616,6 +592,8 @@
     <circle id="joint-near-hub" data-joint="near_hub" cx="694" cy="114" r="2" fill="#ff00ff" />
     <circle id="joint-far-rotor" data-joint="far_rotor" cx="438" cy="254" r="2" fill="#ff00ff" />
     <circle id="joint-far-hub" data-joint="far_hub" cx="438" cy="124" r="2" fill="#ff00ff" />
+    <circle id="joint-near-blade-tip" data-joint="near_blade_tip" cx="834" cy="114" r="2" fill="#ff00ff" />
+    <circle id="joint-far-blade-tip" data-joint="far_blade_tip" cx="330" cy="124" r="2" fill="#ff00ff" />
     <circle id="joint-near-shoulder" data-joint="near_shoulder" cx="606" cy="406" r="2" fill="#ff00ff" />
     <circle id="joint-near-elbow" data-joint="near_elbow" cx="648" cy="464" r="2" fill="#ff00ff" />
     <circle id="joint-near-wrist" data-joint="near_wrist" cx="698" cy="494" r="2" fill="#ff00ff" />
@@ -635,20 +613,21 @@
       <g id="ambition-rig-side-bone-jaw" data-rig-bone-def="jaw" data-rig-parent="head" data-rig-origin="ambition-rig-side-joint-jaw_hinge" />
       <g id="ambition-rig-side-bone-engine" data-rig-bone-def="engine" data-rig-parent="body" data-rig-origin="ambition-rig-side-joint-engine_pivot" data-rig-tip="ambition-rig-side-joint-engine_tip" />
       <g id="ambition-rig-side-bone-far_rotor" data-rig-bone-def="far_rotor" data-rig-parent="body" data-rig-origin="ambition-rig-side-joint-far_rotor_pivot" data-rig-tip="ambition-rig-side-joint-far_rotor_tip" />
+      <g id="ambition-rig-side-bone-far_blade" data-rig-bone-def="far_blade" data-rig-parent="far_rotor" data-rig-origin="ambition-rig-side-joint-far_blade_pivot" data-rig-tip="ambition-rig-side-joint-far_blade_tip" />
       <g id="ambition-rig-side-bone-far_arm" data-rig-bone-def="far_arm" data-rig-parent="body" data-rig-origin="ambition-rig-side-joint-far_arm_pivot" data-rig-tip="ambition-rig-side-joint-far_arm_tip" />
       <g id="ambition-rig-side-bone-far_fore" data-rig-bone-def="far_fore" data-rig-parent="far_arm" data-rig-origin="ambition-rig-side-joint-far_fore_pivot" data-rig-tip="ambition-rig-side-joint-far_fore_tip" />
       <g id="ambition-rig-side-bone-far_claw" data-rig-bone-def="far_claw" data-rig-parent="far_fore" data-rig-origin="ambition-rig-side-joint-far_claw_pivot" data-rig-tip="ambition-rig-side-joint-far_claw_tip" />
       <g id="ambition-rig-side-bone-near_rotor" data-rig-bone-def="near_rotor" data-rig-parent="body" data-rig-origin="ambition-rig-side-joint-near_rotor_pivot" data-rig-tip="ambition-rig-side-joint-near_rotor_tip" />
+      <g id="ambition-rig-side-bone-near_blade" data-rig-bone-def="near_blade" data-rig-parent="near_rotor" data-rig-origin="ambition-rig-side-joint-near_blade_pivot" data-rig-tip="ambition-rig-side-joint-near_blade_tip" />
       <g id="ambition-rig-side-bone-near_arm" data-rig-bone-def="near_arm" data-rig-parent="body" data-rig-origin="ambition-rig-side-joint-near_arm_pivot" data-rig-tip="ambition-rig-side-joint-near_arm_tip" />
       <g id="ambition-rig-side-bone-near_fore" data-rig-bone-def="near_fore" data-rig-parent="near_arm" data-rig-origin="ambition-rig-side-joint-near_fore_pivot" data-rig-tip="ambition-rig-side-joint-near_fore_tip" />
       <g id="ambition-rig-side-bone-near_claw" data-rig-bone-def="near_claw" data-rig-parent="near_fore" data-rig-origin="ambition-rig-side-joint-near_claw_pivot" data-rig-tip="ambition-rig-side-joint-near_claw_tip" />
       <g id="ambition-rig-side-part-far_wing_ink" data-rig-part-def="far_wing_ink" data-rig-bone="body" data-rig-z="2.5" data-rig-pivot="ambition-rig-side-bind-far_wing_ink" data-rig-bind-angle="0" data-rig-elements="far-wing-ink" />
       <g id="ambition-rig-side-part-far_wing" data-rig-part-def="far_wing" data-rig-bone="body" data-rig-z="3.5" data-rig-pivot="ambition-rig-side-bind-far_wing" data-rig-bind-angle="0" data-rig-elements="far-wing" />
-      <g id="ambition-rig-side-part-far_missile" data-rig-part-def="far_missile" data-rig-bone="body" data-rig-z="4.1" data-rig-pivot="ambition-rig-side-bind-far_missile" data-rig-bind-angle="0" data-rig-elements="far-missile" />
       <g id="ambition-rig-side-part-far_rotor_mast" data-rig-part-def="far_rotor_mast" data-rig-bone="far_rotor" data-rig-z="6" data-rig-pivot="ambition-rig-side-bind-far_rotor_mast" data-rig-bind-angle="-90" data-rig-elements="far-rotor-mast" />
-      <g id="ambition-rig-side-part-far_rotor_a" data-rig-part-def="far_rotor_a" data-rig-bone="far_rotor" data-rig-z="7" data-rig-pivot="ambition-rig-side-bind-far_rotor_a" data-rig-bind-angle="-90" data-rig-opacity="far_rotor.a" data-rig-elements="far-rotor-a" />
-      <g id="ambition-rig-side-part-far_rotor_b" data-rig-part-def="far_rotor_b" data-rig-bone="far_rotor" data-rig-z="7" data-rig-pivot="ambition-rig-side-bind-far_rotor_b" data-rig-bind-angle="-90" data-rig-opacity="far_rotor.b" data-rig-elements="far-rotor-b" />
-      <g id="ambition-rig-side-part-far_rotor_c" data-rig-part-def="far_rotor_c" data-rig-bone="far_rotor" data-rig-z="7" data-rig-pivot="ambition-rig-side-bind-far_rotor_c" data-rig-bind-angle="-90" data-rig-opacity="far_rotor.c" data-rig-elements="far-rotor-c" />
+      <g id="ambition-rig-side-part-far_rotor_a" data-rig-part-def="far_rotor_a" data-rig-bone="far_blade" data-rig-z="7" data-rig-pivot="ambition-rig-side-bind-far_rotor_a" data-rig-bind-angle="180" data-rig-opacity="far_rotor.a" data-rig-elements="far-rotor-a" />
+      <g id="ambition-rig-side-part-far_rotor_b" data-rig-part-def="far_rotor_b" data-rig-bone="far_blade" data-rig-z="7" data-rig-pivot="ambition-rig-side-bind-far_rotor_b" data-rig-bind-angle="180" data-rig-opacity="far_rotor.b" data-rig-elements="far-rotor-b" />
+      <g id="ambition-rig-side-part-far_rotor_c" data-rig-part-def="far_rotor_c" data-rig-bone="far_blade" data-rig-z="7" data-rig-pivot="ambition-rig-side-bind-far_rotor_c" data-rig-bind-angle="180" data-rig-opacity="far_rotor.c" data-rig-elements="far-rotor-c" />
       <g id="ambition-rig-side-part-far_arm" data-rig-part-def="far_arm" data-rig-bone="far_arm" data-rig-z="9" data-rig-pivot="ambition-rig-side-bind-far_arm" data-rig-bind-angle="54.8658" data-rig-elements="far-arm" />
       <g id="ambition-rig-side-part-far_fore" data-rig-part-def="far_fore" data-rig-bone="far_fore" data-rig-z="9.5" data-rig-pivot="ambition-rig-side-bind-far_fore" data-rig-bind-angle="32.0054" data-rig-elements="far-fore" />
       <g id="ambition-rig-side-part-far_claw_open" data-rig-part-def="far_claw_open" data-rig-bone="far_claw" data-rig-z="10" data-rig-pivot="ambition-rig-side-bind-far_claw_open" data-rig-bind-angle="48.1798" data-rig-opacity="far_claw.open" data-rig-elements="far-claw-open" />
@@ -677,9 +656,9 @@
       <g id="ambition-rig-side-part-eye_angry" data-rig-part-def="eye_angry" data-rig-bone="head" data-rig-z="46" data-rig-pivot="ambition-rig-side-bind-eye_angry" data-rig-bind-angle="9.0903" data-rig-opacity="eye.angry" data-rig-elements="eye-angry" />
       <g id="ambition-rig-side-part-eye_shut" data-rig-part-def="eye_shut" data-rig-bone="head" data-rig-z="46" data-rig-pivot="ambition-rig-side-bind-eye_shut" data-rig-bind-angle="9.0903" data-rig-opacity="eye.shut" data-rig-elements="eye-shut" />
       <g id="ambition-rig-side-part-eye_dead" data-rig-part-def="eye_dead" data-rig-bone="head" data-rig-z="46" data-rig-pivot="ambition-rig-side-bind-eye_dead" data-rig-bind-angle="9.0903" data-rig-opacity="eye.dead" data-rig-elements="eye-dead" />
-      <g id="ambition-rig-side-part-near_rotor_a" data-rig-part-def="near_rotor_a" data-rig-bone="near_rotor" data-rig-z="52" data-rig-pivot="ambition-rig-side-bind-near_rotor_a" data-rig-bind-angle="-90" data-rig-opacity="near_rotor.a" data-rig-elements="near-rotor-a" />
-      <g id="ambition-rig-side-part-near_rotor_b" data-rig-part-def="near_rotor_b" data-rig-bone="near_rotor" data-rig-z="52" data-rig-pivot="ambition-rig-side-bind-near_rotor_b" data-rig-bind-angle="-90" data-rig-opacity="near_rotor.b" data-rig-elements="near-rotor-b" />
-      <g id="ambition-rig-side-part-near_rotor_c" data-rig-part-def="near_rotor_c" data-rig-bone="near_rotor" data-rig-z="52" data-rig-pivot="ambition-rig-side-bind-near_rotor_c" data-rig-bind-angle="-90" data-rig-opacity="near_rotor.c" data-rig-elements="near-rotor-c" />
+      <g id="ambition-rig-side-part-near_rotor_a" data-rig-part-def="near_rotor_a" data-rig-bone="near_blade" data-rig-z="52" data-rig-pivot="ambition-rig-side-bind-near_rotor_a" data-rig-bind-angle="0" data-rig-opacity="near_rotor.a" data-rig-elements="near-rotor-a" />
+      <g id="ambition-rig-side-part-near_rotor_b" data-rig-part-def="near_rotor_b" data-rig-bone="near_blade" data-rig-z="52" data-rig-pivot="ambition-rig-side-bind-near_rotor_b" data-rig-bind-angle="0" data-rig-opacity="near_rotor.b" data-rig-elements="near-rotor-b" />
+      <g id="ambition-rig-side-part-near_rotor_c" data-rig-part-def="near_rotor_c" data-rig-bone="near_blade" data-rig-z="52" data-rig-pivot="ambition-rig-side-bind-near_rotor_c" data-rig-bind-angle="0" data-rig-opacity="near_rotor.c" data-rig-elements="near-rotor-c" />
       <g id="ambition-rig-side-part-near_wing" data-rig-part-def="near_wing" data-rig-bone="body" data-rig-z="55" data-rig-pivot="ambition-rig-side-bind-near_wing" data-rig-bind-angle="0" data-rig-elements="near-wing" />
       <g id="ambition-rig-side-part-near_missile" data-rig-part-def="near_missile" data-rig-bone="body" data-rig-z="55.6" data-rig-pivot="ambition-rig-side-bind-near_missile" data-rig-bind-angle="0" data-rig-elements="near-missile" />
       <g id="ambition-rig-side-part-near_arm" data-rig-part-def="near_arm" data-rig-bone="near_arm" data-rig-z="60" data-rig-pivot="ambition-rig-side-bind-near_arm" data-rig-bind-angle="54.0903" data-rig-elements="near-arm" />
@@ -694,10 +673,12 @@
       <line id="ambition-rig-side-guide-neck2" data-rig-bone-guide="neck2" x1="736" y1="320" x2="780" y2="326" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-engine" data-rig-bone-guide="engine" x1="420" y1="362" x2="237.999948" y2="365.999857" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-far_rotor" data-rig-bone-guide="far_rotor" x1="438" y1="254" x2="438" y2="124" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-far_blade" data-rig-bone-guide="far_blade" x1="438" y1="124" x2="330" y2="124" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-far_arm" data-rig-bone-guide="far_arm" x1="540" y1="402" x2="578" y2="456" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-far_fore" data-rig-bone-guide="far_fore" x1="578" y1="456" x2="626" y2="486" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-far_claw" data-rig-bone-guide="far_claw" x1="626" y1="486" x2="659.999892" y2="523.999871" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-near_rotor" data-rig-bone-guide="near_rotor" x1="694" y1="262" x2="694" y2="114" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_blade" data-rig-bone-guide="near_blade" x1="694" y1="114" x2="834" y2="114" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-near_arm" data-rig-bone-guide="near_arm" x1="606" y1="406" x2="648" y2="464" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-near_fore" data-rig-bone-guide="near_fore" x1="648" y1="464" x2="698" y2="494" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-near_claw" data-rig-bone-guide="near_claw" x1="698" y1="494" x2="731.999953" y2="534.000059" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
@@ -706,6 +687,8 @@
       <circle id="ambition-rig-side-joint-engine_tip" data-rig-joint="engine_tip" cx="237.999948" cy="365.999857" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-far_arm_pivot" data-rig-joint="far_arm_pivot" cx="540" cy="402" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-far_arm_tip" data-rig-joint="far_arm_tip" cx="578" cy="456" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_blade_pivot" data-rig-joint="far_blade_pivot" cx="438" cy="124" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_blade_tip" data-rig-joint="far_blade_tip" cx="330" cy="124" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-far_claw_pivot" data-rig-joint="far_claw_pivot" cx="626" cy="486" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-far_claw_tip" data-rig-joint="far_claw_tip" cx="659.999892" cy="523.999871" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-far_fore_pivot" data-rig-joint="far_fore_pivot" cx="578" cy="456" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
@@ -715,6 +698,8 @@
       <circle id="ambition-rig-side-joint-jaw_hinge" data-rig-joint="jaw_hinge" cx="824" cy="352" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-near_arm_pivot" data-rig-joint="near_arm_pivot" cx="606" cy="406" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-near_arm_tip" data-rig-joint="near_arm_tip" cx="648" cy="464" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_blade_pivot" data-rig-joint="near_blade_pivot" cx="694" cy="114" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_blade_tip" data-rig-joint="near_blade_tip" cx="834" cy="114" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-near_claw_pivot" data-rig-joint="near_claw_pivot" cx="698" cy="494" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-near_claw_tip" data-rig-joint="near_claw_tip" cx="731.999953" cy="534.000059" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-near_fore_pivot" data-rig-joint="near_fore_pivot" cx="648" cy="464" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
@@ -729,11 +714,10 @@
       <circle id="ambition-rig-side-joint-rig_root" data-rig-joint="rig_root" cx="570" cy="740" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-bind-far_wing_ink" data-rig-bind-pivot="far_wing_ink" cx="550" cy="330" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-far_wing" data-rig-bind-pivot="far_wing" cx="550" cy="330" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-far_missile" data-rig-bind-pivot="far_missile" cx="550" cy="330" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-far_rotor_mast" data-rig-bind-pivot="far_rotor_mast" cx="438" cy="254" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-far_rotor_a" data-rig-bind-pivot="far_rotor_a" cx="438" cy="254" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-far_rotor_b" data-rig-bind-pivot="far_rotor_b" cx="438" cy="254" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-far_rotor_c" data-rig-bind-pivot="far_rotor_c" cx="438" cy="254" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_rotor_a" data-rig-bind-pivot="far_rotor_a" cx="438" cy="124" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_rotor_b" data-rig-bind-pivot="far_rotor_b" cx="438" cy="124" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_rotor_c" data-rig-bind-pivot="far_rotor_c" cx="438" cy="124" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-far_arm" data-rig-bind-pivot="far_arm" cx="540" cy="402" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-far_fore" data-rig-bind-pivot="far_fore" cx="578" cy="456" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-far_claw_open" data-rig-bind-pivot="far_claw_open" cx="626" cy="486" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
@@ -762,9 +746,9 @@
       <circle id="ambition-rig-side-bind-eye_angry" data-rig-bind-pivot="eye_angry" cx="780" cy="326" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-eye_shut" data-rig-bind-pivot="eye_shut" cx="780" cy="326" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-eye_dead" data-rig-bind-pivot="eye_dead" cx="780" cy="326" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-near_rotor_a" data-rig-bind-pivot="near_rotor_a" cx="694" cy="262" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-near_rotor_b" data-rig-bind-pivot="near_rotor_b" cx="694" cy="262" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-near_rotor_c" data-rig-bind-pivot="near_rotor_c" cx="694" cy="262" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_rotor_a" data-rig-bind-pivot="near_rotor_a" cx="694" cy="114" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_rotor_b" data-rig-bind-pivot="near_rotor_b" cx="694" cy="114" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_rotor_c" data-rig-bind-pivot="near_rotor_c" cx="694" cy="114" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_wing" data-rig-bind-pivot="near_wing" cx="550" cy="330" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_missile" data-rig-bind-pivot="near_missile" cx="550" cy="330" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_arm" data-rig-bind-pivot="near_arm" cx="606" cy="406" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />

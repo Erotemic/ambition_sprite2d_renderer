@@ -13,11 +13,13 @@ through a cage of ribs.
 
 The design follows the mechanical "mockingbird" of the How to Kill a
 Mockingbird Flash animation (Jon's reference, 2026-10-06), revised after his
-two reviews: a lean black skull with a great domed forehead, a brow low over
+two reviews: a lean black skull with a great sloping forehead, a brow low over
 a glowing slit eye tilted hard toward a slender, sharp beak lined with long
 narrow fangs over a slim jaw, on a segmented steel neck; a cage of steel ribs
 round a glowing red engine-heart; two rigid swept jet wings, the near one
-reaching toward the camera, a missile on each wingtip; two rotors on masts tall enough to clear the back spikes; a heavy
+reaching toward the camera, the far one hidden but for its tip, a missile on
+the near wingtip; two rotors on masts tall enough to clear the back spikes,
+their discs apart; a heavy
 thruster at the tail and two grappling claws beneath.
 Drawn facing right in a 1140x760 SVG (design units shifted by ``DX``, ``DY``).
 """
@@ -95,6 +97,8 @@ J = dict(
     near_hub=(574.0, -16.0),
     far_rotor=(318.0, 124.0),
     far_hub=(318.0, -6.0),
+    near_blade_tip=(714.0, -16.0),
+    far_blade_tip=(210.0, -6.0),
     near_shoulder=(486.0, 276.0),
     near_elbow=(528.0, 334.0),
     near_wrist=(578.0, 364.0),
@@ -191,7 +195,7 @@ def far_rotor_parts():
     body.append(ellipse(hx, hy + 8, 14, 6, c["steel_lo"], INK, LW))
     body.append(ellipse(hx, hy + 5, 10, 4, c["steel"], INK, 1.0))
     part("far-rotor-mast", "Far Rotor Mast", "far_rotor_mast", "far_rotor", 6, body)
-    blades("far_rotor", "far_rotor", 7, (hx, hy), 150.0, True, "Far Rotor Blades")
+    blades("far_rotor", "far_blade", 7, (hx, hy), ROTOR_SPAN["far"], True, "Far Rotor Blades")
 
 
 def missile(name, a, b, r, c):
@@ -229,19 +233,25 @@ def missile(name, a, b, r, c):
 
 #: The swept jet wings in design units, as (root leading edge, root trailing
 #: edge, tip trailing edge, tip leading edge). Seen from a little above, the
-#: near wing reaches down and back toward the camera from the flank and the
-#: far wing up and back behind the hull, foreshortened.
+#: near wing reaches down and back toward the camera from the flank; the far
+#: wing reaches away behind the hull, which hides all but its tip.
 WINGS = {
     "near": ((548.0, 186.0), (372.0, 192.0), (238.0, 318.0), (302.0, 318.0)),
-    "far": ((532.0, 128.0), (384.0, 126.0), (296.0, 58.0), (334.0, 54.0)),
+    "far": ((520.0, 130.0), (402.0, 126.0), (374.0, 100.0), (400.0, 96.0)),
 }
+#: Each rotor's blade reach from its hub (design units), marked in the rig
+#: joints as ``<side>_blade_tip`` (the target sizes its blur disc from it).
+#: The two discs must not overlap: the hubs are 256 apart, so the reaches sum
+#: to less than that.
+ROTOR_SPAN = {"near": 140.0, "far": 108.0}
 
 
 def wing_parts(side):
     """A rigid swept jet wing on the hull (it rides the ``body`` bone): its
     skin with a sheen behind the steel leading edge, flap segments along the
     trailing edge, panel lines and rivets, a hazard stripe and a red chevron,
-    a nav light at the tip, and a missile on a rail along the tip."""
+    a nav light at the tip, and (the near wing only: the far one's would be
+    hidden by the hull) a missile on a rail along the tip."""
     far = side == "far"
     c = col(far)
     z0 = 3.5 if far else 55
@@ -280,10 +290,12 @@ def wing_parts(side):
     ink(f"{side}_wing", "body", 19.5 if not far else 2.5, sil)
     part(f"{side}-wing", f"Wing - {side}", f"{side}_wing", "body", z0, body)
 
+    if far:
+        return
     # the missile on a rail along the wingtip, pointing forward
-    r = 10.0 if far else 13.0
-    y = t_le[1] + (r + 3 if not far else -r - 3)
-    tail, nose = (t_te[0] - 26, y + 3), (t_le[0] + 150 if not far else t_le[0] + 110, y - 4)
+    r = 13.0
+    y = t_le[1] + r + 3
+    tail, nose = (t_te[0] - 26, y + 3), (t_le[0] + 150, y - 4)
     rail = [line([(t_te[0] + 4, t_te[1]), (t_le[0] + 2, t_le[1])], INK, 9.0),
             line([(t_te[0] + 4, t_te[1]), (t_le[0] + 2, t_le[1])], c["steel_lo"], 5.0)]
     part(f"{side}-missile", f"Missile - {side}", f"{side}_missile", "body", z0 + 0.6,
@@ -476,8 +488,8 @@ def neck_parts():
 
 # The skull: back of the dome, over the brow, down the snout to its tip,
 # then back along the mouth line (the jaw is its own part).
-SKULL = [(648, 212), (638, 172), (640, 126), (656, 86), (686, 58), (728, 42), (774, 42), (812, 58), (836, 86),
-         (846, 118), (848, 148, True), (870, 168), (900, 190), (928, 212), (950, 232), (964, 246, True), (940, 236),
+SKULL = [(648, 212), (640, 172), (644, 132), (662, 98), (700, 76), (752, 66), (800, 70), (832, 90), (846, 118),
+         (848, 148, True), (870, 168), (900, 190), (928, 212), (950, 232), (964, 246, True), (940, 236),
          (918, 228, True), (870, 224), (820, 222), (776, 222), (740, 222), (716, 226, True), (686, 230), (660, 226)]
 JAW = [(696, 216), (712, 228, True), (760, 230), (820, 228), (870, 228), (916, 232, True), (906, 238), (866, 243),
        (820, 248), (770, 252), (732, 252), (708, 245), (696, 233)]
@@ -519,18 +531,18 @@ def head_part():
     sil = smooth(SKULL)
     ink("head", "head", 24, sil)
     lo = [(650, 208), (720, 206), (800, 204), (880, 210), (970, 226), (970, 260), (630, 260)]
-    hi = [(656, 120), (676, 82), (716, 54), (764, 48), (806, 64), (826, 90), (804, 78), (764, 64), (720, 70), (688, 92),
-          (668, 124)]
+    hi = [(660, 126), (680, 98), (716, 80), (764, 72), (806, 78), (830, 98), (806, 90), (764, 84), (722, 90), (692, 106),
+          (672, 128)]
     extra = [
         # the cranium's plate seams and rivets
-        line([(656, 196), (654, 140), (676, 94), (720, 64)], C["seam"], 1.8),
-        line([(700, 120), (760, 104), (810, 112)], C["seam"], 1.4),
+        line([(656, 196), (656, 146), (676, 110), (720, 86)], C["seam"], 1.8),
+        line([(700, 126), (760, 114), (812, 120)], C["seam"], 1.4),
         line([(860, 192), (900, 206), (940, 230)], C["seam"], 1.4),
         ellipse(912, 212, 4.0, 2.0, C["seam"], rot=30),
         # a cheek vent: three slots
         *[line([(712 + 10 * k, 194), (720 + 10 * k, 210)], c["armor_lo"], 3.0) for k in range(3)],
     ]
-    extra += rivets([(672, 170), (676, 146), (690, 122)], 2.0, C["steel"])
+    extra += rivets([(672, 170), (676, 148), (690, 126)], 2.0, C["steel"])
     teeth = [tooth(x, 222 + (x - 720) * 0.012, 26 - abs(x - 800) * 0.06, 5.5, down=True) for x in range(728, 918, 14)]
     # The brow: an armour plate jutting low over the eye, angled down to the front.
     brow = path(smooth([(752, 146, True), (812, 156), (856, 178, True), (818, 172), (762, 160)]), c["armor_lo"], INK, 1.2)
@@ -577,10 +589,15 @@ def near_rotor_parts():
     body.append(ellipse(hx, hy + 10, 20, 7.5, c["steel_lo"], INK, LW))
     body.append(ellipse(hx, hy + 6, 13, 4.8, c["steel"], INK, 1.0))
     part("near-rotor-mast", "Near Rotor Mast", "near_rotor_mast", "near_rotor", 37, body)
-    blades("near_rotor", "near_rotor", 52, (hx, hy), 196.0, False, "Near Rotor Blades")
+    blades("near_rotor", "near_blade", 52, (hx, hy), ROTOR_SPAN["near"], False, "Near Rotor Blades")
 
 
 def draw() -> str:
+    # the blade-tip joints say the same reach the blades are drawn with, and
+    # the two rotor discs stay apart
+    assert J["near_blade_tip"][0] - J["near_hub"][0] == ROTOR_SPAN["near"]
+    assert J["far_hub"][0] - J["far_blade_tip"][0] == ROTOR_SPAN["far"]
+    assert ROTOR_SPAN["near"] + ROTOR_SPAN["far"] < J["near_hub"][0] - J["far_hub"][0]
     svg.configure(dx=DX, dy=DY, ink=INK, ow=OW, colors=C)
     wing_parts("far")
     far_rotor_parts()
@@ -605,7 +622,7 @@ def draw() -> str:
             "       right. A lean black skull with a great forehead, a slanted slit eye and a",
             "       slender beak of fangs on a segmented steel neck; a cage of steel ribs round",
             "       a glowing red engine-heart; hooked spines on an armoured back; two swept",
-            "       jet wings, a missile on each tip; two rotors on tall masts; a thruster at the",
+            "       jet wings, a missile on the near tip; two rotors on tall masts; a thruster at the",
             "       tail; two grappling claws beneath. Each part is a layer with a data-rig-part name.",
             "       *_ink layers are silhouettes grown by the outline width, painted beneath",
             "       every fill so the body reads as one outlined silhouette. Swap sets (the",

@@ -53,7 +53,8 @@ SIDES = ("far", "near")
 def skeleton(J: Dict[str, Point]) -> List[BoneSpec]:
     """A ``body`` at the hull's centre (the root: a clip pitches the whole
     machine with it), a two-segment neck to a ``head`` with a hinged ``jaw``,
-    a thruster ``engine``, two rotor masts and, per side, a claw arm
+    a thruster ``engine``, two rotor masts (``<side>_rotor``) each carrying
+    its blades (``<side>_blade``, hub to blade tip) and, per side, a claw arm
     (``<side>_arm``, ``<side>_fore``, ``<side>_claw``). The jet wings and their
     missiles are rigid: they ride ``body``."""
     bones: List[BoneSpec] = [("body", None, J["body"], 0.0, 0.0)]
@@ -64,6 +65,9 @@ def skeleton(J: Dict[str, Point]) -> List[BoneSpec]:
     bones.append(segment("engine", "body", J["engine"], J["engine_tip"]))
     for side in SIDES:
         bones.append(segment(f"{side}_rotor", "body", J[f"{side}_rotor"], J[f"{side}_hub"]))
+        # the blades: from the hub to the tip of one blade (its length is the
+        # blade reach the target sizes the blur disc from)
+        bones.append(segment(f"{side}_blade", f"{side}_rotor", J[f"{side}_hub"], J[f"{side}_blade_tip"]))
         bones.append(segment(f"{side}_arm", "body", J[f"{side}_shoulder"], J[f"{side}_elbow"]))
         bones.append(segment(f"{side}_fore", f"{side}_arm", J[f"{side}_elbow"], J[f"{side}_wrist"]))
         bones.append(segment(f"{side}_claw", f"{side}_fore", J[f"{side}_wrist"], J[f"{side}_tip"]))
