@@ -107,10 +107,10 @@ def hover(t: float, *, bob: float = 7.0, sway: float = 1.0) -> Pose:
         "neck2": -2.4 * sway * math.sin(w - 0.3),
         "head": 2.6 * sway * math.sin(w - 0.9),
         "engine": 1.5 * sway * math.sin(w + 1.4),
-        "near_wing": 5.0 * sway * math.sin(w + 0.9),
-        "near_wing_tip": 7.0 * sway * math.sin(w + 0.2),
-        "far_wing": 5.0 * sway * math.sin(w + 0.7),
-        "far_wing_tip": 7.0 * sway * math.sin(w + 0.0),
+        "near_wing": 2.5 * sway * math.sin(w + 0.9),
+        "near_wing_tip": 4.0 * sway * math.sin(w + 0.2),
+        "far_wing": 2.5 * sway * math.sin(w + 0.7),
+        "far_wing_tip": 4.0 * sway * math.sin(w + 0.0),
         "near_arm": 5.0 * sway * math.sin(w - 1.0),
         "near_fore": 6.0 * sway * math.sin(w - 1.6),
         "near_claw": 8.0 * sway * math.sin(w - 2.2),
@@ -148,8 +148,8 @@ def thrust(i: int, n: int, t: float) -> Pose:
     p["jaw"] = 24.0 + 4.0 * math.sin(w * 2.0)
     p["engine"] += -4.0
     for side in SIDES:
-        p[f"{side}_wing"] += -9.0
-        p[f"{side}_wing_tip"] += -6.0
+        p[f"{side}_wing"] += -6.0
+        p[f"{side}_wing_tip"] += -4.0
     for side, k in (("near", 1.0), ("far", 0.85)):
         p[f"{side}_arm"] += 34.0 * k
         p[f"{side}_fore"] += 22.0 * k

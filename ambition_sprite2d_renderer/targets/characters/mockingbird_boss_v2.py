@@ -2,15 +2,16 @@
 
 A CANDIDATE redesign (Jon, 2026-10-06), after the mechanical "mockingbird"
 of the How to Kill a Mockingbird Flash animation: a lean black skull with a
-tall forehead, an overhanging brow, a glowing slit eye and a long hooked beak
-of fangs on a segmented steel neck; a cage of steel ribs round a glowing red
-engine-heart; two armoured wings swept back over the hull, a missile slung
-under each; two rotors on tall masts; a heavy thruster at the tail; two
-grappling claws beneath. Jon's first review: "the head is too chunky ... It
-should be sleek and mean. It can have a big forehead"; wings "are
-important", with the missiles on them; the rotors raised clear of the spikes. The first design (``mockingbird_boss``, a nested
-scene-graph rig) stays published beside it as its lineage; the game still
-wears the first.
+great domed forehead, a brow low over a slit eye tilted hard toward a slender
+sharp beak of long narrow fangs, on a segmented steel neck; a cage of steel
+ribs round a glowing red engine-heart; two swept jet wings with flaps, folding
+outer panels and winglets, a missile slung under each; two rotors on tall
+masts; a heavy thruster at the tail; two grappling claws beneath. Jon's
+reviews asked for a sleek, mean head with a big forehead, no chin spikes and
+long narrow teeth; wings that read as a jet's, carrying the missiles; and
+rotors raised clear of the spikes. The first design (``mockingbird_boss``, a
+nested scene-graph rig) stays published beside it as its lineage; the game
+still wears the first.
 
 The SVG ``data/characters/mockingbird_boss_v2/mockingbird_boss_v2.svg`` owns
 the art and marks every joint. The rig document
@@ -72,7 +73,7 @@ ACTOR_METADATA = {
         "The Mockingbird v2 adapts the mechanical creature of the old How to Kill a Mockingbird "
         "Flash animation into a giant predator-gunship that mimics the fighters it hunts: a lean "
         "black beaked skull with a glowing slit eye and fangs on a steel neck, a rib cage round a "
-        "glowing engine-heart, armoured wings carrying missiles, rotors, a thruster and two "
+        "glowing engine-heart, swept jet wings carrying missiles, rotors, a thruster and two "
         "grappling claws."
     ),
     "gameplay_description": (
@@ -94,9 +95,9 @@ ACTOR_METADATA = {
     # Points on the drawn frame, at rest.
     "sockets": {
         "mouth": {"source": "mockingbird_boss_v2.geometry", "point": _px(880.0, 234.0)},
-        "head": {"source": "mockingbird_boss_v2.geometry", "point": _px(770.0, 160.0)},
+        "head": {"source": "mockingbird_boss_v2.geometry", "point": _px(760.0, 140.0)},
         "core": {"source": "mockingbird_boss_v2.geometry", "point": _px(432.0, 238.0)},
-        "missile": {"source": "mockingbird_boss_v2.geometry", "point": _px(622.0, 184.0)},
+        "missile": {"source": "mockingbird_boss_v2.geometry", "point": _px(520.0, 185.0)},
         "thruster": {"source": "mockingbird_boss_v2.geometry", "point": _px(114.0, 236.0)},
         "near_claw": {"source": "mockingbird_boss_v2.geometry", "point": _px(600.0, 392.0)},
     },
@@ -230,14 +231,12 @@ def _anchor(bone: str, x: float, y: float) -> Point:
 
 A = {
     "nozzle": ("engine", _anchor("engine", 112.0, 236.0)),
-    "near_hub": ("near_rotor", _anchor("near_rotor", 498.0, 58.0)),
-    "far_hub": ("far_rotor", _anchor("far_rotor", 332.0, 70.0)),
     "core": ("body", _anchor("body", 440.0, 236.0)),
-    "eye": ("head", _anchor("head", 800.0, 151.0)),
+    "eye": ("head", _anchor("head", 808.0, 176.0)),
     "throat": ("head", _anchor("head", 850.0, 232.0)),
-    "spit": ("head", _anchor("head", 976.0, 238.0)),
-    "muzzle": ("near_wing", _anchor("near_wing", 622.0, 184.0)),
-    "snout": ("head", _anchor("head", 934.0, 238.0)),
+    "spit": ("head", _anchor("head", 990.0, 246.0)),
+    "muzzle": ("near_wing", _anchor("near_wing", 520.0, 185.0)),
+    "snout": ("head", _anchor("head", 950.0, 240.0)),
     "spark1": ("body", _anchor("body", 520.0, 150.0)),
     "spark2": ("neck2", _anchor("neck2", 640.0, 196.0)),
     "spark3": ("body", _anchor("body", 300.0, 170.0)),
@@ -245,6 +244,15 @@ A = {
     "smoke2": ("engine", _anchor("engine", 240.0, 210.0)),
     "smoke3": ("body", _anchor("body", 360.0, 130.0)),
 }
+
+
+def _hub(world, side: str) -> Tuple[Point, float]:
+    """A rotor's hub: the tip of its mast bone (the rig builder runs the bone
+    from the mast's foot to the hub the drawing marks), so the blur disc spins
+    where the blades are and follows the art if the mast moves."""
+    bone = f"{side}_rotor"
+    bw = world[bone]
+    return bw.to_world((bw.length, 0.0)), bw.angle - REST[bone][1]
 
 
 def _at(world, key: str) -> Tuple[Point, float]:
@@ -265,7 +273,7 @@ def _behind(canvas: FxCanvas, t: float, world, params) -> None:
         name = f"{'boost' if boost > 0.4 else 'jet'}{step % 3}"
         _place(canvas, name, p, min(1.0, jet + 0.2), degrees=180.0 + turn)
     if params.get("fx.blur", 0.0) > 0.02:
-        p, turn = _at(world, "far_hub")
+        p, turn = _hub(world, "far")
         _place(canvas, "far_blur", p, params["fx.blur"], degrees=turn)
 
 
@@ -279,7 +287,7 @@ def _front(canvas: FxCanvas, t: float, world, params) -> None:
         p, turn = _at(world, "eye")
         _place(canvas, "eye_glow", p, 0.6 + 0.4 * params.get("eye.angry", 0.0), degrees=turn)
     if params.get("fx.blur", 0.0) > 0.02:
-        p, turn = _at(world, "near_hub")
+        p, turn = _hub(world, "near")
         _place(canvas, "near_blur", p, params["fx.blur"], degrees=turn)
     charge = params.get("fx.charge", 0.0)
     if charge > 0.02:

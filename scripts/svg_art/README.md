@@ -30,8 +30,8 @@ times (closed, ajar, up, open) as a swap set hinged at the box's back edge.
 `mockingbird_boss_v2_art.py` is the machine: armour panels shaded inside their
 silhouettes, steel cylinders with rings and a sheen, rotor blades drawn as a
 swap set of spin states, claws open or shut, a glowing core seen through a
-cage of ribs, and wings of blade feathers whose tips make a stepped trailing
-edge; its rig builder writes its own (gunship) skeleton instead of a
+cage of ribs, and swept jet wings with flaps and a folding outer panel; its
+rig builder writes its own (gunship) skeleton instead of a
 `rigbuild` family.
 
 At the time they were committed, each script reproduced its SVG byte for byte,
@@ -65,5 +65,5 @@ rig document and installs the SVG's rig catalog.
 | Stochastic Parrot (side + front + three-quarter) | 27,996 B | 75,193 + 33,294 + 38,090 B | 93,646 + 40,731 + 45,511 B |
 | treasure chest | 13,344 B | 33,926 B | 41,223 B |
 | boss chest | 12,576 B | 38,518 B | 45,010 B |
-| Mockingbird v2 | 32,734 B | 145,931 B | 178,111 B |
+| Mockingbird v2 | 33,173 B | 109,217 B | 141,399 B |
 | shared `svgkit.py` | 11,543 B | | |
