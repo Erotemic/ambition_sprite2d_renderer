@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Dict, List, Sequence, Tuple
 
 from PIL import Image
+import yaml
 
 from ...authoring.part_flipbook import publish_rig_flipbook
 from ...authoring.portrait import (
@@ -330,8 +331,16 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         actor_metadata=ACTOR_METADATA,
     )
     parts = publish_rig_flipbook(TARGET_NAME, ROWS, render_frame, outputs, frame_transform, out_dir)
+    # His semantic body rig, solved from the same rig as the frames above: the
+    # parts the game hits him through follow his pose (a gameplay product; it
+    # does not change the sheet).
+    from ._trex_enemy_body_rig import body_rig
+
+    metrics = yaml.safe_load(Path(outputs["yaml"]).read_text()).get("body_metrics") or {}
+    feet = metrics.get("feet_pixel") or {}
+    rig = body_rig(_doc(), TARGET_NAME, ROWS, frame_transform, (float(feet["x"]), float(feet["y"])))
     keys = ("spritesheet", "yaml", "ron", "actor", "preview", "canonical", "canonical_transparent")
-    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
+    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values()) + [rig.write(out_dir)]
 
 
 __all__ = ["ACTOR_METADATA", "ROWS", "TARGET_NAME", "render", "render_frame", "render_portraits"]
