@@ -13,9 +13,9 @@ through a cage of ribs.
 
 The design follows the mechanical "mockingbird" of the How to Kill a
 Mockingbird Flash animation (Jon's reference, 2026-10-06), revised after his
-two reviews: a lean black skull with a great sloping forehead, a brow low over
-a glowing slit eye tilted hard toward a slender, sharp beak lined with long
-narrow fangs over a slim jaw, on a segmented steel neck; a cage of steel ribs
+two reviews: a lean black skull: a long low cranium, a brow jutting over a deep socket and
+a glowing slit eye under a scowling hood that curves down to a hooked point over a
+lipless grin of long narrow fangs and a slim jaw, on a segmented steel neck; a cage of steel ribs
 round a glowing red engine-heart; two rigid swept jet wings, the near one
 reaching toward the camera, the far one hidden but for its tip, a missile on
 the near wingtip; two rotors on masts tall enough to clear the back spikes,
@@ -88,9 +88,9 @@ J = dict(
     neck1=(572.0, 182.0),
     neck2=(616.0, 190.0),
     head=(660.0, 196.0),
-    snout=(960.0, 244.0),
+    snout=(896.0, 264.0),
     jaw=(704.0, 222.0),
-    jaw_tip=(914.0, 234.0),
+    jaw_tip=(866.0, 242.0),
     engine=(300.0, 232.0),
     engine_tip=(118.0, 236.0),
     near_rotor=(574.0, 132.0),
@@ -488,18 +488,30 @@ def neck_parts():
 
 # The skull: back of the dome, over the brow, down the snout to its tip,
 # then back along the mouth line (the jaw is its own part).
-SKULL = [(648, 212), (640, 172), (644, 132), (662, 98), (700, 76), (752, 66), (800, 70), (832, 90), (846, 118),
-         (848, 148, True), (870, 168), (900, 190), (928, 212), (950, 232), (964, 246, True), (940, 236),
-         (918, 228, True), (870, 224), (820, 222), (776, 222), (740, 222), (716, 226, True), (686, 230), (660, 226)]
-JAW = [(696, 216), (712, 228, True), (760, 230), (820, 228), (870, 228), (916, 232, True), (906, 238), (866, 243),
-       (820, 248), (770, 252), (732, 252), (708, 245), (696, 233)]
-EYE = (806.0, 176.0)
+# The whole head, stooped like a predator's: a crest spiking back over the
+# neck, the shell sweeping over and steeply down the front to a heavy hooked
+# point in front of the fangs, then back along the mouth line (the jaw is its
+# own part).
+SKULL = [(650, 214), (642, 184), (640, 156), (628, 134, True), (664, 124), (708, 104), (770, 96), (830, 108),
+         (872, 134), (900, 170), (912, 206), (910, 236), (896, 264, True), (884, 246), (872, 238, True), (830, 232),
+         (780, 228), (740, 228), (716, 230, True), (686, 232), (660, 228)]
+# The hood: the cranium's shell over the face, wrapping down the front to the
+# hook. Its rim dips into a pointed brow over the front of the eye, a scowl.
+HOOD = [(640, 156), (628, 134, True), (664, 124), (708, 104), (770, 96), (830, 108), (872, 134), (900, 170),
+        (912, 206), (910, 236), (896, 264, True), (884, 240), (872, 218), (860, 198, True), (846, 180), (816, 174),
+        (780, 170), (736, 168), (692, 174), (648, 186, True)]
+JAW = [(696, 218), (712, 230, True), (760, 232), (820, 236), (866, 240, True), (860, 248), (830, 256), (790, 260),
+       (750, 260), (720, 252), (700, 238)]
+#: The head, jaw, mouth and eye are drawn 12% larger about the head joint
+#: than their coordinates (without the beak the head read small on the body).
+HEAD_SCALE = (660.0, 196.0, 1.12)
+EYE = (826.0, 192.0)
 
 
 def mouth_part():
     c = C
-    inside = smooth([(712, 226, True), (780, 222), (860, 222), (918, 230, True), (896, 244), (820, 250), (760, 252),
-                     (724, 246)])
+    inside = smooth([(712, 228, True), (780, 226), (840, 232), (872, 240, True), (850, 254), (800, 258), (750, 258),
+                     (724, 250)])
     part("mouth", "Mouth", "mouth", "head", 40,
          [path(inside, c["mouth"]), line([(730, 240), (800, 244), (870, 238)], c["mouth2"], 4.0)])
 
@@ -512,49 +524,64 @@ def tooth(x, y, h, w, down=True, fill=None):
 
 
 def jaw_part():
-    """A slim lower mandible with a row of long, narrow fangs along its top."""
+    """A short slim mandible with a row of long, narrow fangs along its top."""
     c = C
     sil = smooth(JAW)
     ink("jaw", "jaw", 23, sil)
-    lo = [(700, 242), (760, 244), (830, 240), (916, 236), (916, 270), (700, 270)]
-    hi = [(714, 232), (770, 233), (840, 232), (906, 234), (896, 238), (840, 237), (770, 238), (716, 238)]
-    extra = [line([(722, 244), (780, 246), (850, 241), (896, 238)], C["seam"], 1.4)]
-    teeth = [tooth(x, 230 + (x - 730) * 0.01, 20 - abs(x - 800) * 0.05, 5.0, down=False) for x in range(735, 904, 14)]
+    lo = [(700, 248), (760, 250), (830, 250), (870, 246), (870, 280), (700, 280)]
+    hi = [(714, 234), (770, 235), (830, 239), (862, 242), (856, 245), (830, 243), (770, 240), (716, 240)]
+    extra = [line([(722, 248), (780, 252), (840, 250)], C["seam"], 1.4)]
+    teeth = [tooth(x, 232 + (x - 730) * 0.07, 22 - abs(x - 790) * 0.06, 5.0, down=False) for x in range(735, 862, 14)]
     body = teeth + shaded("clip-jaw", sil, c["armor"], c["armor_lo"], c["armor_hi"], lo, hi, extra)
     part("jaw", "Lower Jaw", "jaw", "jaw", 42, body)
 
 
 def head_part():
-    """A lean skull: a great domed forehead, an armour brow low over the eye,
-    and a slender beak tapering to a sharp hooked point, lined with long fangs."""
+    """A skull under a hood: the face is a dark recess beneath the cranium's
+    shell, the eye glowing low in it, a cheekbone ridge, and a lipless grin
+    of uneven long narrow fangs out of a dark gum line. The hood is its own
+    part, drawn over the eye so its brow shadows it."""
     c = C
     sil = smooth(SKULL)
     ink("head", "head", 24, sil)
-    lo = [(650, 208), (720, 206), (800, 204), (880, 210), (970, 226), (970, 260), (630, 260)]
-    hi = [(660, 126), (680, 98), (716, 80), (764, 72), (806, 78), (830, 98), (806, 90), (764, 84), (722, 90), (692, 106),
-          (672, 128)]
+    face = "#0d0d11"
+    lo = [(650, 222), (720, 222), (800, 222), (880, 240), (920, 260), (920, 290), (630, 290)]
+    gum = smooth([(722, 212, True), (800, 212), (850, 220), (876, 236, True), (850, 236), (800, 230), (730, 230)])
     extra = [
-        # the cranium's plate seams and rivets
-        line([(656, 196), (656, 146), (676, 110), (720, 86)], C["seam"], 1.8),
-        line([(700, 126), (760, 114), (812, 120)], C["seam"], 1.4),
-        line([(860, 192), (900, 206), (940, 230)], C["seam"], 1.4),
-        ellipse(912, 212, 4.0, 2.0, C["seam"], rot=30),
-        # a cheek vent: three slots
-        *[line([(712 + 10 * k, 194), (720 + 10 * k, 210)], c["armor_lo"], 3.0) for k in range(3)],
+        # the shadow the hood's rim casts on the face
+        line([(650, 192), (700, 180), (780, 178), (840, 186), (852, 204), (864, 224), (876, 244)], "#050507", 9.0),
+        # the cheekbone, under the eye, lit on top
+        line([(690, 206), (760, 200), (820, 204), (850, 210)], INK, 3.6),
+        line([(692, 203), (760, 197), (820, 201), (846, 207)], c["armor_hi"], 1.4),
+        # the lipless gum line the fangs grow out of
+        path(gum, C["mouth"]),
     ]
-    extra += rivets([(672, 170), (676, 148), (690, 126)], 2.0, C["steel"])
-    teeth = [tooth(x, 222 + (x - 720) * 0.012, 26 - abs(x - 800) * 0.06, 5.5, down=True) for x in range(728, 918, 14)]
-    # The brow: an armour plate jutting low over the eye, angled down to the front.
-    brow = path(smooth([(752, 146, True), (812, 156), (856, 178, True), (818, 172), (762, 160)]), c["armor_lo"], INK, 1.2)
-    body = shaded("clip-head", sil, c["armor"], c["armor_lo"], c["armor_hi"], lo, hi, extra) + teeth + [brow]
+    # uneven fangs, longest at the front, like a skull's
+    teeth = []
+    for k, x in enumerate(range(730, 874, 12)):
+        h = (32 if k % 2 == 0 else 22) * (0.8 + 0.45 * (x - 730) / 144)
+        teeth.append(tooth(x, 214 + (x - 724) * 0.13, h, 5.4 if k % 2 == 0 else 4.4, down=True))
+    body = shaded("clip-head", sil, face, c["armor_lo"], c["armor"], lo, None, extra) + teeth
     part("head", "Head", "head", "head", 44, body)
+    # The hood: the shell over the face, a sheen along its crown, darker as
+    # it curves down to its rim, which is lit; a shadow line under the rim.
+    hood = smooth(HOOD)
+    hi = [(664, 132), (708, 112), (770, 104), (830, 114), (866, 138), (890, 168), (870, 150), (830, 126), (770, 116),
+          (708, 124), (670, 142)]
+    lo2 = [(640, 172), (700, 160), (770, 156), (840, 164), (880, 190), (900, 230), (920, 280), (630, 280)]
+    items = [path(hood, c["armor"]), path(smooth(lo2), c["armor_lo"]), path(smooth(hi), c["armor_hi"]),
+             line([(636, 140), (700, 114), (770, 104), (840, 118), (880, 146)], c["sheen"], 1.4)]
+    rim = [(650, 184), (692, 172), (736, 166), (780, 168), (816, 172), (846, 178), (860, 198), (872, 218), (884, 240),
+           (894, 258)]
+    body = clipped("clip-hood", hood, items) + [path(hood, "none", INK, LW), line(rim, c["sheen"], 1.8)]
+    part("hood", "Hood", "hood", "head", 47, body)
 
 
 def eye_parts():
-    """A narrow slit tilted hard down toward the beak, under the brow."""
+    """A narrow slit tilted hard down toward the front, under the hood's brow."""
     x, y = EYE
     socket = path(smooth([(x - 26, y - 14, True), (x + 4, y - 4), (x + 32, y + 12, True), (x + 6, y + 12), (x - 20, y - 2)]),
-                  C["armor_lo"], INK, 1.2)
+                  "#08080b")
 
     def slit(w, h, fill, rim=None):
         pts = [(x - 22 * w, y - 11 * h - 1, True), (x + 2 * w, y - 3 * h), (x + 28 * w, y + 10 * h, True),
@@ -605,10 +632,12 @@ def draw() -> str:
     body_parts()
     engine_part()
     neck_parts()
+    svg.transform(HEAD_SCALE)
     mouth_part()
     jaw_part()
     head_part()
     eye_parts()
+    svg.transform(None)
     near_rotor_parts()
     wing_parts("near")
     claw_parts("near")
@@ -619,8 +648,9 @@ def draw() -> str:
         label="Mockingbird - Side Right",
         comment=[
             "  <!-- The Mockingbird v2: a mechanical predator-gunship in side view, facing",
-            "       right. A lean black skull with a great forehead, a slanted slit eye and a",
-            "       slender beak of fangs on a segmented steel neck; a cage of steel ribs round",
+            "       right. A hooded black skull curving down to a hooked point, a slanted slit",
+            "       eye under its brow, a lipless grin of long fangs, on a segmented steel neck;",
+            "       a cage of steel ribs round",
             "       a glowing red engine-heart; hooked spines on an armoured back; two swept",
             "       jet wings, a missile on the near tip; two rotors on tall masts; a thruster at the",
             "       tail; two grappling claws beneath. Each part is a layer with a data-rig-part name.",
@@ -630,7 +660,7 @@ def draw() -> str:
             "       other and the rig shows one at a time (data-rig-opacity).",
             "       The hidden Rig Joints layer marks every joint the skeleton is built on. -->",
         ],
-        joints=svg.joints_layer(J),
+        joints=svg.joints_layer(J, {k: HEAD_SCALE for k in ("snout", "jaw", "jaw_tip")}),
     )
 
 

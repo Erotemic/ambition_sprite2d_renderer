@@ -66,5 +66,5 @@ rig document and installs the SVG's rig catalog.
 | Stochastic Parrot (side + front + three-quarter) | 27,996 B | 75,193 + 33,294 + 38,090 B | 93,646 + 40,731 + 45,511 B |
 | treasure chest | 13,344 B | 33,926 B | 41,223 B |
 | boss chest | 12,576 B | 38,518 B | 45,010 B |
-| Mockingbird v2 | 31,961 B | 98,827 B | 128,864 B |
+| Mockingbird v2 | 33,889 B | 102,171 B | 132,614 B |
 | shared `svgkit.py` | 11,543 B | | |

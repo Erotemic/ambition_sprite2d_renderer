@@ -2,8 +2,10 @@
 
 A CANDIDATE redesign (Jon, 2026-10-06), after the mechanical "mockingbird"
 of the How to Kill a Mockingbird Flash animation: a lean black skull with a
-great sloping forehead, a brow low over a slit eye tilted hard toward a slender
-sharp beak of long narrow fangs, on a segmented steel neck; a cage of steel
+hood-like cranium curving steeply down to a hooked point, a slit eye glowing
+low under its scowling rim, and a lipless grin of long narrow fangs (Jon: "The
+menace is the most important thing"; the reference's skull-like head, the
+beak dropped), on a segmented steel neck; a cage of steel
 ribs round a glowing red engine-heart; two rigid swept jet wings (the near
 one reaching toward the camera, the far one hidden but for its tip), a
 missile on the near wingtip; two rotors on tall
@@ -64,6 +66,17 @@ def S(x: float, y: float) -> Point:
     return (x + DX, y + DY)
 
 
+#: The art script draws the head 12% larger about the head joint than its
+#: design coordinates (its ``HEAD_SCALE``); head points here are given in
+#: those design coordinates.
+HEAD_SCALE = (660.0, 196.0, 1.12)
+
+
+def _on_head(x: float, y: float) -> Point:
+    cx, cy, k = HEAD_SCALE
+    return (cx + (x - cx) * k, cy + (y - cy) * k)
+
+
 def _px(x: float, y: float) -> Dict[str, float]:
     """A design point as a sprite-frame point."""
     sx, sy = S(x, y)
@@ -74,7 +87,7 @@ ACTOR_METADATA = {
     "authoring_description": (
         "The Mockingbird v2 adapts the mechanical creature of the old How to Kill a Mockingbird "
         "Flash animation into a giant predator-gunship that mimics the fighters it hunts: a lean "
-        "black beaked skull with a glowing slit eye and fangs on a steel neck, a rib cage round a "
+        "black hooded skull with a glowing slit eye and bared fangs on a steel neck, a rib cage round a "
         "glowing engine-heart, swept jet wings carrying missiles, rotors, a thruster and two "
         "grappling claws."
     ),
@@ -96,8 +109,8 @@ ACTOR_METADATA = {
     },
     # Points on the drawn frame, at rest.
     "sockets": {
-        "mouth": {"source": "mockingbird_boss_v2.geometry", "point": _px(880.0, 234.0)},
-        "head": {"source": "mockingbird_boss_v2.geometry", "point": _px(760.0, 140.0)},
+        "mouth": {"source": "mockingbird_boss_v2.geometry", "point": _px(*_on_head(840.0, 236.0))},
+        "head": {"source": "mockingbird_boss_v2.geometry", "point": _px(*_on_head(780.0, 150.0))},
         "core": {"source": "mockingbird_boss_v2.geometry", "point": _px(432.0, 238.0)},
         "missile": {"source": "mockingbird_boss_v2.geometry", "point": _px(452.0, 327.0)},
         "thruster": {"source": "mockingbird_boss_v2.geometry", "point": _px(114.0, 236.0)},
@@ -238,11 +251,11 @@ def _anchor(bone: str, x: float, y: float) -> Point:
 A = {
     "nozzle": ("engine", _anchor("engine", 112.0, 236.0)),
     "core": ("body", _anchor("body", 440.0, 236.0)),
-    "eye": ("head", _anchor("head", 808.0, 176.0)),
-    "throat": ("head", _anchor("head", 850.0, 232.0)),
-    "spit": ("head", _anchor("head", 990.0, 246.0)),
+    "eye": ("head", _anchor("head", *_on_head(828.0, 192.0))),
+    "throat": ("head", _anchor("head", *_on_head(846.0, 240.0))),
+    "spit": ("head", _anchor("head", *_on_head(920.0, 262.0))),
     "muzzle": ("body", _anchor("body", 452.0, 327.0)),
-    "snout": ("head", _anchor("head", 950.0, 240.0)),
+    "snout": ("head", _anchor("head", *_on_head(890.0, 252.0))),
     "spark1": ("body", _anchor("body", 520.0, 150.0)),
     "spark2": ("neck2", _anchor("neck2", 640.0, 196.0)),
     "spark3": ("body", _anchor("body", 300.0, 170.0)),

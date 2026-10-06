@@ -97,6 +97,11 @@ def claws(near: str, far: str | None = None) -> Pose:
     }
 
 
+#: The head is carried stooped, a few degrees down from the drawing, like a
+#: predator about to strike.
+HEAD_STOOP = 5.0
+
+
 def hover(t: float, *, bob: float = 7.0, sway: float = 1.0) -> Pose:
     """A held hover: the machine bobs on its rotors, the neck and head
     counter the bob, the claws dangle a beat behind it."""
@@ -106,7 +111,7 @@ def hover(t: float, *, bob: float = 7.0, sway: float = 1.0) -> Pose:
         "body": 1.6 * sway * math.sin(w + 0.6),
         "neck1": -2.0 * sway * math.sin(w + 0.2),
         "neck2": -2.4 * sway * math.sin(w - 0.3),
-        "head": 2.6 * sway * math.sin(w - 0.9),
+        "head": HEAD_STOOP + 2.6 * sway * math.sin(w - 0.9),
         "engine": 1.5 * sway * math.sin(w + 1.4),
         "near_arm": 5.0 * sway * math.sin(w - 1.0),
         "near_fore": 6.0 * sway * math.sin(w - 1.6),
@@ -172,7 +177,7 @@ def bite(i: int, n: int, t: float) -> Pose:
         "body": K([0, -8, -11, 12, 10, 3], i),
         "neck1": K([0, -4, -6, 6, 4, 1], i),
         "neck2": K([0, -4, -6, 7, 5, 1], i),
-        "head": K([0, -6, -8, 10, 7, 3], i),
+        "head": HEAD_STOOP + K([0, -6, -8, 10, 7, 3], i),
         "jaw": K([14, 30, 36, 0, 4, 12], i),
         "engine": K([0, 6, 8, -6, -4, 0], i),
         "near_arm": K([0, -24, -32, -36, -26, -6], i),
@@ -203,7 +208,7 @@ def slash(i: int, n: int, t: float) -> Pose:
         "body": K([0, -5, -8, -9, 5, 1], i),
         "neck1": K([0, -4, -6, -7, 4, 1], i),
         "neck2": K([0, -4, -6, -8, 5, 1], i),
-        "head": K([0, -6, -9, -11, 6, 2], i),
+        "head": HEAD_STOOP + K([0, -6, -9, -11, 6, 2], i),
         "jaw": K([14, 26, 34, 42, 40, 18], i),
         "engine": K([0, 3, 5, 6, -4, 0], i),
         "near_arm": K([0, 10, 16, 18, 4, 0], i),
@@ -231,7 +236,7 @@ def hit(i: int, n: int, t: float) -> Pose:
         "body": K([0, -10, -6, -2], i),
         "neck1": K([0, -5, -3, -1], i),
         "neck2": K([0, -6, -3, -1], i),
-        "head": K([0, -10, -5, -2], i),
+        "head": HEAD_STOOP + K([0, -10, -5, -2], i),
         "jaw": K([14, 28, 20, 15], i),
         "near_arm": K([0, 22, 12, 4], i),
         "near_fore": K([0, 18, 10, 3], i),
@@ -259,7 +264,7 @@ def death(i: int, n: int, t: float) -> Pose:
         "body": K([0, -8, 4, 10, 15, 19, 21, 22], i),
         "neck1": K([0, -5, 3, 6, 8, 9, 10, 10], i),
         "neck2": K([0, -6, 3, 6, 8, 9, 10, 10], i),
-        "head": K([0, -10, 4, 8, 10, 12, 13, 14], i),
+        "head": HEAD_STOOP + K([0, -10, 4, 8, 10, 12, 13, 14], i),
         "jaw": K([14, 34, 26, 30, 34, 36, 38, 38], i),
         "engine": K([0, 6, -6, 8, -4, 10, 12, 14], i),
         "near_arm": K([0, 24, 34, 44, 52, 56, 58, 60], i),
