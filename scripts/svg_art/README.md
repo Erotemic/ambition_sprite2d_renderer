@@ -13,6 +13,7 @@ These scripts are how the first drafts of these character and prop SVGs were dra
 | `stochastic_parrot_art.py` | `data/characters/stochastic_parrot_v2/stochastic_parrot_v2.svg`, `stochastic_parrot_v2_front.svg` and `stochastic_parrot_v2_three_quarter.svg` | `scripts/build_stochastic_parrot_v2_rig.py` |
 | `treasure_chest_art.py` | `data/props/treasure_chest/treasure_chest.svg` | `scripts/build_treasure_chest_rig.py` |
 | `boss_chest_art.py` | `data/props/boss_chest/boss_chest.svg` | `scripts/build_boss_chest_rig.py` |
+| `mockingbird_boss_v2_art.py` | `data/characters/mockingbird_boss_v2/mockingbird_boss_v2.svg` | `scripts/build_mockingbird_boss_v2_rig.py` |
 
 ⚠ **The SVGs own the art.** Edit an SVG directly (in Inkscape or by hand)
 when the art changes; these scripts are not re-run to produce it and are not
@@ -26,6 +27,11 @@ mouth states) and props that ride a hand or stow on the back.
 wing that swaps between folded on the body and spread in two bones.
 `treasure_chest_art.py` and `boss_chest_art.py` are props: a lid drawn four
 times (closed, ajar, up, open) as a swap set hinged at the box's back edge.
+`mockingbird_boss_v2_art.py` is the machine: armour panels shaded inside their
+silhouettes, steel cylinders with rings and a sheen, rotor blades drawn as a
+swap set of spin states, claws open or shut, and a glowing core seen through a
+cage of ribs; its rig builder writes its own (gunship) skeleton instead of a
+`rigbuild` family.
 
 At the time they were committed, each script reproduced its SVG byte for byte,
 except for the rig catalog block (`BEGIN/END AMBITION SVG RIG v1`) that the rig
@@ -58,4 +64,5 @@ rig document and installs the SVG's rig catalog.
 | Stochastic Parrot (side + front + three-quarter) | 27,996 B | 75,193 + 33,294 + 38,090 B | 93,646 + 40,731 + 45,511 B |
 | treasure chest | 13,344 B | 33,926 B | 41,223 B |
 | boss chest | 12,576 B | 38,518 B | 45,010 B |
+| Mockingbird v2 | 28,955 B | 99,396 B | 127,702 B |
 | shared `svgkit.py` | 11,543 B | | |
