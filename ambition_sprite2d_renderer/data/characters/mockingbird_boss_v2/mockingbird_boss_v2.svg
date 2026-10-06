@@ -7,7 +7,7 @@
        right. A lean black skull with a great forehead, a slanted slit eye and a
        slender beak of fangs on a segmented steel neck; a cage of steel ribs round
        a glowing red engine-heart; hooked spines on an armoured back; two swept
-       jet wings, a missile under each; two rotors on tall masts; a thruster at the
+       jet wings, a missile on each tip; two rotors on tall masts; a thruster at the
        tail; two grappling claws beneath. Each part is a layer with a data-rig-part name.
        *_ink layers are silhouettes grown by the outline width, painted beneath
        every fill so the body reads as one outlined silhouette. Swap sets (the
@@ -15,82 +15,59 @@
        other and the rig shows one at a time (data-rig-opacity).
        The hidden Rig Joints layer marks every joint the skeleton is built on. -->
   <g id="mockingbird-side" inkscape:groupmode="layer" inkscape:label="Mockingbird - Side Right">
-    <g id="far-wing-tip" inkscape:groupmode="layer" inkscape:label="Wing Tip - far" data-rig-part="far_wing_tip" data-rig-bone="far_wing_tip" data-rig-z="3.1">
-      <path d="M336,178 C336,178 318,142 318,142 C318,142 298,144 298,144 C298,144 302,182 302,182 C302,182 336,178 336,178 Z" fill="#1d1f25" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
-      <clipPath id="clip-far-wing-outer"><path d="M512.36,218.12 L332,176 L310,180 L274,188 L378.76,240.92 Z" /></clipPath>
-      <g clip-path="url(#clip-far-wing-outer)">
-      <path d="M512.36,218.12 L332,176 L310,180 L274,188 L378.76,240.92 Z" fill="#1d1f25" />
-      <path d="M504.34,219.49 L328.52,176.72 L314.6,179.6 L472.28,224.96 Z" fill="#2e323b" />
-      <path d="M408.15,235.9 L367.69,219.06 L343.84,223.28 L378.76,240.92 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M367.69,219.06 L327.22,202.21 L308.92,205.64 L343.84,223.28 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M327.22,202.21 L286.76,185.36 L274,188 L308.92,205.64 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M446.32,205.37 C433.28,207.68 381.13,216.92 368.09,219.22" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M388.3,191.26 C378.26,193.14 338.08,200.66 328.03,202.54" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M452.24,228.38 C427.85,220.55 330.29,189.23 305.9,181.4" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <ellipse cx="430.29" cy="221.33" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
-      <ellipse cx="393.7" cy="209.59" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
-      <ellipse cx="357.12" cy="197.84" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
-      <ellipse cx="320.53" cy="186.1" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
-      </g>
-      <path d="M512.36,218.12 L332,176 L310,180 L274,188 L378.76,240.92 Z" fill="none" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M512.36,218.12 C482.3,211.1 362.06,183.02 332,176" fill="none" stroke="#0b0c10" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M512.36,218.12 C482.3,211.1 362.06,183.02 332,176" fill="none" stroke="#6f747d" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M506.95,216.86 C478.69,210.26 365.67,183.86 337.41,177.26" fill="none" stroke="#a3a8b0" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
-      <ellipse cx="326" cy="179" rx="4.5" ry="4.5" fill="#2a8a48" stroke="#0b0c10" stroke-width="1" />
-      <path d="M387.53,194.42 L370.63,190.05 L335,196.81 L348.5,201.67 Z" fill="#94261a" stroke="#0b0c10" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="far-wing-ink" inkscape:groupmode="layer" inkscape:label="Ink - far_wing" data-rig-part="far_wing_ink" data-rig-bone="body" data-rig-z="2.5">
+      <path d="M652,258 L454,184 L416,188 L504,256 Z" fill="#0b0c10" stroke="#0b0c10" stroke-width="9.6" stroke-linejoin="round" stroke-linecap="round" />
     </g>
-    <g id="far-wing" inkscape:groupmode="layer" inkscape:label="Wing - far" data-rig-part="far_wing" data-rig-bone="far_wing" data-rig-z="3.5">
-      <clipPath id="clip-far-wing-inner"><path d="M666,254 L512.36,218.12 L378.76,240.92 L468,286 Z" /></clipPath>
-      <g clip-path="url(#clip-far-wing-inner)">
-      <path d="M666,254 L512.36,218.12 L378.76,240.92 L468,286 Z" fill="#1d1f25" />
-      <path d="M654.12,255.92 L504.34,219.49 L472.28,224.96 L606.6,263.6 Z" fill="#2e323b" />
-      <path d="M511.56,278.96 L477.09,264.61 L438.25,270.97 L468,286 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M477.09,264.61 L442.62,250.26 L408.51,255.95 L438.25,270.97 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M442.62,250.26 L408.15,235.9 L378.76,240.92 L408.51,255.95 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M604.69,243.9 C583.48,247.37 498.65,261.28 477.44,264.75" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M555.27,231.87 C536.61,234.99 461.97,247.43 443.31,250.54" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M576.9,268.4 C556.12,261.73 473.02,235.05 452.24,228.38" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <ellipse cx="558.2" cy="262.4" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
-      <ellipse cx="527.04" cy="252.39" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
-      <ellipse cx="495.87" cy="242.39" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
-      <ellipse cx="464.71" cy="232.38" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
+    <g id="far-wing" inkscape:groupmode="layer" inkscape:label="Wing - far" data-rig-part="far_wing" data-rig-bone="body" data-rig-z="3.5">
+      <clipPath id="clip-far-wing"><path d="M652,258 L454,184 L416,188 L504,256 Z" /></clipPath>
+      <g clip-path="url(#clip-far-wing)">
+      <path d="M652,258 L454,184 L416,188 L504,256 Z" fill="#1d1f25" />
+      <path d="M646.08,257.92 L452.48,184.16 L442.6,185.2 L607.6,257.4 Z" fill="#2e323b" />
+      <path d="M560.24,256.76 L430.44,186.48 L424.36,187.12 L536.56,256.44 Z" fill="#17181d" />
+      <path d="M524.8,250.86 L494,231.49 L470.15,231.52 L494.18,250.53 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M491.8,230.1 L461,210.73 L444.41,211.16 L468.44,230.17 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M458.8,209.34 L428,189.97 L418.67,190.8 L442.7,209.8 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M575.3,231.37 C562.11,231.39 509.36,231.47 496.17,231.48" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M513.7,207.78 C504.79,208.04 469.17,209.05 460.26,209.3" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M585.4,257.1 C560.65,245.22 461.65,197.68 436.9,185.8" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="567.58" cy="248.54" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
+      <ellipse cx="540.85" cy="235.71" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
+      <ellipse cx="511.15" cy="221.45" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
+      <ellipse cx="481.45" cy="207.19" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
+      <ellipse cx="454.72" cy="194.36" rx="1.5" ry="1.5" fill="#6f747d" stroke="#0b0c10" stroke-width="0.8" />
+      <path d="M563.7,249.9 L546.54,241.38 L526.73,241.27 L541.78,249.68 Z" fill="#e2b630" stroke="#0b0c10" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M519.66,212.33 L480.4,199.42 L503.7,212.67 L501.26,208.14 Z" fill="#94261a" stroke="#0b0c10" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
       </g>
-      <path d="M666,254 L512.36,218.12 L378.76,240.92 L468,286 Z" fill="none" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M666,254 C640.39,248.02 537.97,224.1 512.36,218.12" fill="none" stroke="#0b0c10" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M666,254 C640.39,248.02 537.97,224.1 512.36,218.12" fill="none" stroke="#6f747d" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M661.39,252.92 C637.32,247.3 541.04,224.82 516.97,219.2" fill="none" stroke="#a3a8b0" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M561.99,237.5 L543.02,232.69 L499.84,239.9 L516.47,245.04 Z" fill="#e2b630" stroke="#0b0c10" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M512.36,218.12 C490.09,221.92 401.03,237.12 378.76,240.92" fill="none" stroke="#0b0c10" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M512.36,218.12 C490.09,221.92 401.03,237.12 378.76,240.92" fill="none" stroke="#4a4e56" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" />
-      <ellipse cx="499" cy="220.4" rx="4" ry="4" fill="#6f747d" stroke="#0b0c10" stroke-width="1" />
-      <ellipse cx="445.56" cy="229.52" rx="4" ry="4" fill="#6f747d" stroke="#0b0c10" stroke-width="1" />
-      <ellipse cx="392.12" cy="238.64" rx="4" ry="4" fill="#6f747d" stroke="#0b0c10" stroke-width="1" />
-      <ellipse cx="612" cy="248" rx="14" ry="14" fill="#4a4e56" stroke="#0b0c10" stroke-width="1.6" />
-      <ellipse cx="612" cy="248" rx="5.5" ry="5.5" fill="#a3a8b0" stroke="#0b0c10" stroke-width="0.8" />
+      <path d="M652,258 L454,184 L416,188 L504,256 Z" fill="none" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M652,258 C619,245.67 487,196.33 454,184" fill="none" stroke="#0b0c10" stroke-width="8" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M652,258 C619,245.67 487,196.33 454,184" fill="none" stroke="#6f747d" stroke-width="4.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M646.06,255.78 C615.04,244.19 490.96,197.81 459.94,186.22" fill="none" stroke="#a3a8b0" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M657.92,258.08 C657.92,258.08 501.04,255.96 501.04,255.96 C501.04,255.96 489.32,250.26 508.9,249.34 C528.48,248.42 593.66,249 618.5,250.46 C643.34,251.92 657.92,258.08 657.92,258.08 Z" fill="#2e323b" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="454" cy="184" rx="4.5" ry="4.5" fill="#2a8a48" stroke="#0b0c10" stroke-width="1" />
     </g>
-    <g id="far-missile" inkscape:groupmode="layer" inkscape:label="Missile - far" data-rig-part="far_missile" data-rig-bone="far_wing" data-rig-z="4.1">
-      <path d="M506.95,258.71 C506.28,264.38 503.62,287.04 502.95,292.71" fill="none" stroke="#0b0c10" stroke-width="11" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M506.95,258.71 C506.28,264.38 503.62,287.04 502.95,292.71" fill="none" stroke="#4a4e56" stroke-width="6.4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M396.49,300.22 C396.49,300.22 361.74,284.93 361.74,284.93 C361.74,284.93 370.52,301.43 370.52,301.43 C370.52,301.43 396.49,300.22 396.49,300.22 Z" fill="#4a4e56" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M397.34,318.4 C397.34,318.4 364.17,336.87 364.17,336.87 C364.17,336.87 371.37,319.61 371.37,319.61 C371.37,319.61 397.34,318.4 397.34,318.4 Z" fill="#4a4e56" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <clipPath id="clip-far-missile"><path d="M367.56,323.7 L589.8,313.28 L588.58,287.31 L366.34,297.72 Z" /></clipPath>
+    <g id="far-missile" inkscape:groupmode="layer" inkscape:label="Missile - far" data-rig-part="far_missile" data-rig-bone="body" data-rig-z="4.1">
+      <path d="M420,188 C426,187.33 450,184.67 456,184" fill="none" stroke="#0b0c10" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M420,188 C426,187.33 450,184.67 456,184" fill="none" stroke="#4a4e56" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M419.69,165.8 C419.69,165.8 385.2,154.18 385.2,154.18 C385.2,154.18 393.72,166.84 393.72,166.84 C393.72,166.84 419.69,165.8 419.69,165.8 Z" fill="#4a4e56" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M420.26,179.79 C420.26,179.79 386.81,194.14 386.81,194.14 C386.81,194.14 394.28,180.83 394.28,180.83 C394.28,180.83 420.26,179.79 420.26,179.79 Z" fill="#4a4e56" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <clipPath id="clip-far-missile"><path d="M390.4,183.99 L538.42,178.04 L537.62,158.05 L389.6,164.01 Z" /></clipPath>
       <g clip-path="url(#clip-far-missile)">
-      <path d="M367.56,323.7 L589.8,313.28 L588.58,287.31 L366.34,297.72 Z" fill="#6f747d" />
-      <path d="M367.62,324.99 L589.86,314.58 L589.46,306.14 L367.22,316.55 Z" fill="#4a4e56" />
-      <path d="M366.49,300.97 L588.73,290.55 L588.97,295.75 L366.74,306.16 Z" fill="#a3a8b0" />
-      <path d="M392.95,295.18 C393.17,299.94 394.06,318.98 394.29,323.74" fill="none" stroke="#34373e" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M395.62,295.05 C395.84,299.81 396.73,318.86 396.95,323.62" fill="none" stroke="#a3a8b0" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M521.85,289.13 C522.07,293.89 522.96,312.94 523.19,317.7" fill="none" stroke="#34373e" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M524.51,289.01 C524.74,293.77 525.63,312.82 525.85,317.58" fill="none" stroke="#a3a8b0" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M390.4,183.99 L538.42,178.04 L537.62,158.05 L389.6,164.01 Z" fill="#6f747d" />
+      <path d="M390.44,184.99 L538.46,179.04 L538.2,172.54 L390.18,178.5 Z" fill="#4a4e56" />
+      <path d="M389.7,166.51 L537.72,160.55 L537.88,164.55 L389.86,170.5 Z" fill="#a3a8b0" />
+      <path d="M407.32,162.29 C407.47,165.96 408.06,180.61 408.2,184.28" fill="none" stroke="#34373e" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M409.1,162.22 C409.24,165.89 409.83,180.54 409.98,184.21" fill="none" stroke="#a3a8b0" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M493.17,158.84 C493.32,162.5 493.91,177.16 494.06,180.82" fill="none" stroke="#34373e" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M494.95,158.77 C495.1,162.43 495.69,177.09 495.83,180.75" fill="none" stroke="#a3a8b0" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" />
       </g>
-      <path d="M367.56,323.7 L589.8,313.28 L588.58,287.31 L366.34,297.72 Z" fill="none" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M450.79,293.77 L477.46,292.52 L478.68,318.49 L452.01,319.74 Z" fill="#e2b630" stroke="#0b0c10" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M452.79,293.67 C452.33,298.03 450.47,315.47 450.01,319.83" fill="none" stroke="#17181d" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M461.68,293.26 C461.22,297.62 459.36,315.05 458.9,319.41" fill="none" stroke="#17181d" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M470.57,292.84 C470.11,297.2 468.25,314.64 467.79,319" fill="none" stroke="#17181d" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M588.58,287.31 C588.58,287.31 601.15,287.15 606.88,289.05 C612.61,290.95 622.95,298.71 622.95,298.71 C622.95,298.71 613.38,307.4 607.85,309.83 C602.33,312.26 589.8,313.28 589.8,313.28 C589.8,313.28 588.58,287.31 588.58,287.31 Z" fill="#4f8f8a" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M590.76,291.11 C590.76,291.11 602.34,291.17 607.03,292.3 C611.72,293.43 618.91,297.9 618.91,297.9 C618.91,297.9 609.32,297.66 604.68,297.61 C600.04,297.56 591.06,297.6 591.06,297.6 C591.06,297.6 590.76,291.11 590.76,291.11 Z" fill="#9fd8cf" />
-      <path d="M588.58,287.31 C588.78,291.64 589.59,308.95 589.8,313.28" fill="none" stroke="#34373e" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M390.4,183.99 L538.42,178.04 L537.62,158.05 L389.6,164.01 Z" fill="none" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M445.85,161.75 L463.61,161.03 L464.41,181.01 L446.65,181.73 Z" fill="#e2b630" stroke="#0b0c10" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M447.84,161.66 C447.31,165.02 445.18,178.45 444.65,181.81" fill="none" stroke="#17181d" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M453.77,161.43 C453.23,164.78 451.1,178.21 450.57,181.57" fill="none" stroke="#17181d" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M459.69,161.19 C459.15,164.55 457.03,177.98 456.49,181.33" fill="none" stroke="#17181d" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M537.62,158.05 C537.62,158.05 547.29,158 551.69,159.49 C556.08,160.98 564,167 564,167 C564,167 556.59,173.64 552.33,175.48 C548.07,177.32 538.42,178.04 538.42,178.04 C538.42,178.04 537.62,158.05 537.62,158.05 Z" fill="#4f8f8a" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M539.74,160.97 C539.74,160.97 548.42,161.12 551.79,161.99 C555.16,162.85 559.96,166.16 559.96,166.16 C559.96,166.16 553.29,166.1 549.95,166.06 C546.61,166.03 539.94,165.97 539.94,165.97 C539.94,165.97 539.74,160.97 539.74,160.97 Z" fill="#9fd8cf" />
+      <path d="M537.62,158.05 C537.75,161.38 538.29,174.71 538.42,178.04" fill="none" stroke="#34373e" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" />
     </g>
     <g id="far-rotor-mast" inkscape:groupmode="layer" inkscape:label="Far Rotor Mast" data-rig-part="far_rotor_mast" data-rig-bone="far_rotor" data-rig-z="6">
       <clipPath id="clip-far-mast"><path d="M448,258 L448,132 L428,132 L428,258 Z" /></clipPath>
@@ -205,6 +182,9 @@
     </g>
     <g id="engine-ink" inkscape:groupmode="layer" inkscape:label="Ink - engine" data-rig-part="engine_ink" data-rig-bone="engine" data-rig-z="19">
       <path d="M425.17,330.01 L271.17,334.01 L272.83,397.99 L426.83,393.99 Z" fill="#0b0c10" stroke="#0b0c10" stroke-width="9.6" stroke-linejoin="round" stroke-linecap="round" />
+    </g>
+    <g id="near-wing-ink" inkscape:groupmode="layer" inkscape:label="Ink - near_wing" data-rig-part="near_wing_ink" data-rig-bone="body" data-rig-z="19.5">
+      <path d="M668,316 L422,448 L358,448 L492,322 Z" fill="#0b0c10" stroke="#0b0c10" stroke-width="9.6" stroke-linejoin="round" stroke-linecap="round" />
     </g>
     <g id="core-ink" inkscape:groupmode="layer" inkscape:label="Ink - core" data-rig-part="core_ink" data-rig-bone="body" data-rig-z="20">
       <path d="M432,346 C435.33,333.67 445,324.67 460,318 C475,311.33 500,307.67 522,306 C544,304.33 569.67,305 592,308 C614.33,311 640.67,315.67 656,324 C671.33,332.33 681.67,345.67 684,358 C686.33,370.33 680.33,387.33 670,398 C659.67,408.67 641.67,416.67 622,422 C602.33,427.33 575.33,430 552,430 C528.67,430 500.67,428.33 482,422 C463.33,415.67 448.33,404.67 440,392 C431.67,379.33 428.67,358.33 432,346 Z" fill="#0b0c10" stroke="#0b0c10" stroke-width="9.6" stroke-linejoin="round" stroke-linecap="round" />
@@ -512,82 +492,56 @@
       <ellipse cx="694" cy="114" rx="14" ry="8" fill="#5c616b" stroke="#0b0c10" stroke-width="1.4" />
       <ellipse cx="694" cy="112" rx="8" ry="3.6" fill="#cfd4da" />
     </g>
-    <g id="near-wing-tip" inkscape:groupmode="layer" inkscape:label="Wing Tip - near" data-rig-part="near_wing_tip" data-rig-bone="near_wing_tip" data-rig-z="53.6">
-      <path d="M350,194 C350,194 332,158 332,158 C332,158 312,160 312,160 C312,160 316,198 316,198 C316,198 350,194 350,194 Z" fill="#262931" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
-      <clipPath id="clip-near-wing-outer"><path d="M526.36,234.12 L346,192 L324,196 L288,204 L392.76,256.92 Z" /></clipPath>
-      <g clip-path="url(#clip-near-wing-outer)">
-      <path d="M526.36,234.12 L346,192 L324,196 L288,204 L392.76,256.92 Z" fill="#262931" />
-      <path d="M518.34,235.49 L342.52,192.72 L328.6,195.6 L486.28,240.96 Z" fill="#3d424e" />
-      <path d="M422.15,251.9 L381.69,235.06 L357.84,239.28 L392.76,256.92 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M381.69,235.06 L341.22,218.21 L322.92,221.64 L357.84,239.28 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M341.22,218.21 L300.76,201.36 L288,204 L322.92,221.64 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M460.32,221.37 C447.28,223.68 395.13,232.92 382.09,235.22" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M402.3,207.26 C392.26,209.14 352.08,216.66 342.03,218.54" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M466.24,244.38 C441.85,236.55 344.29,205.23 319.9,197.4" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <ellipse cx="444.29" cy="237.33" rx="1.5" ry="1.5" fill="#8e949e" stroke="#0b0c10" stroke-width="0.8" />
-      <ellipse cx="407.7" cy="225.59" rx="1.5" ry="1.5" fill="#8e949e" stroke="#0b0c10" stroke-width="0.8" />
-      <ellipse cx="371.12" cy="213.84" rx="1.5" ry="1.5" fill="#8e949e" stroke="#0b0c10" stroke-width="0.8" />
-      <ellipse cx="334.53" cy="202.1" rx="1.5" ry="1.5" fill="#8e949e" stroke="#0b0c10" stroke-width="0.8" />
+    <g id="near-wing" inkscape:groupmode="layer" inkscape:label="Wing - near" data-rig-part="near_wing" data-rig-bone="body" data-rig-z="55">
+      <clipPath id="clip-near-wing"><path d="M668,316 L422,448 L358,448 L492,322 Z" /></clipPath>
+      <g clip-path="url(#clip-near-wing)">
+      <path d="M668,316 L422,448 L358,448 L492,322 Z" fill="#262931" />
+      <path d="M660.96,316.24 L419.44,448 L402.8,448 L615.2,317.8 Z" fill="#3d424e" />
+      <path d="M558.88,319.72 L382.32,448 L372.08,448 L530.72,320.68 Z" fill="#17181d" />
+      <path d="M514.69,330.98 L470.9,366.59 L441.05,367.44 L477.94,332.19 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M467.77,369.14 L423.98,404.75 L401.52,405.2 L438.41,369.95 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M420.85,407.3 L377.06,442.91 L361.99,442.96 L398.88,407.72 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M572.66,363.71 C556.15,364.18 490.12,366.05 473.61,366.52" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M495.73,405.86 C483.58,406.09 434.99,407.02 422.84,407.26" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M588.8,318.7 C556.2,340.25 425.8,426.45 393.2,448" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="565.33" cy="334.22" rx="1.5" ry="1.5" fill="#8e949e" stroke="#0b0c10" stroke-width="0.8" />
+      <ellipse cx="530.12" cy="357.49" rx="1.5" ry="1.5" fill="#8e949e" stroke="#0b0c10" stroke-width="0.8" />
+      <ellipse cx="491" cy="383.35" rx="1.5" ry="1.5" fill="#8e949e" stroke="#0b0c10" stroke-width="0.8" />
+      <ellipse cx="451.88" cy="409.21" rx="1.5" ry="1.5" fill="#8e949e" stroke="#0b0c10" stroke-width="0.8" />
+      <ellipse cx="416.67" cy="432.48" rx="1.5" ry="1.5" fill="#8e949e" stroke="#0b0c10" stroke-width="0.8" />
+      <path d="M561,331.9 L538.2,347.38 L513.98,348.13 L534.63,332.76 Z" fill="#e2b630" stroke="#0b0c10" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M502.69,398.11 L452.19,421.86 L481.38,398.57 L478.76,406.18 Z" fill="#c2321c" stroke="#0b0c10" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
       </g>
-      <path d="M526.36,234.12 L346,192 L324,196 L288,204 L392.76,256.92 Z" fill="none" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M526.36,234.12 C496.3,227.1 376.06,199.02 346,192" fill="none" stroke="#0b0c10" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M526.36,234.12 C496.3,227.1 376.06,199.02 346,192" fill="none" stroke="#8e949e" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M520.95,232.86 C492.69,226.26 379.67,199.86 351.41,193.26" fill="none" stroke="#cfd4da" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
-      <ellipse cx="340" cy="195" rx="4.5" ry="4.5" fill="#3fd16a" stroke="#0b0c10" stroke-width="1" />
-      <path d="M401.53,210.42 L384.63,206.05 L349,212.81 L362.5,217.67 Z" fill="#c2321c" stroke="#0b0c10" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M668,316 L422,448 L358,448 L492,322 Z" fill="none" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M668,316 C627,338 463,426 422,448" fill="none" stroke="#0b0c10" stroke-width="8" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M668,316 C627,338 463,426 422,448" fill="none" stroke="#8e949e" stroke-width="4.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M660.62,319.96 C622.08,340.64 467.92,423.36 429.38,444.04" fill="none" stroke="#cfd4da" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M675.04,315.76 C675.04,315.76 488.48,322.12 488.48,322.12 C488.48,322.12 472.01,332.79 495.08,334.06 C518.15,335.33 596.93,332.79 626.92,329.74 C656.91,326.69 675.04,315.76 675.04,315.76 Z" fill="#3d424e" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="422" cy="448" rx="4.5" ry="4.5" fill="#3fd16a" stroke="#0b0c10" stroke-width="1" />
     </g>
-    <g id="near-wing" inkscape:groupmode="layer" inkscape:label="Wing - near" data-rig-part="near_wing" data-rig-bone="near_wing" data-rig-z="54">
-      <clipPath id="clip-near-wing-inner"><path d="M680,270 L526.36,234.12 L392.76,256.92 L482,302 Z" /></clipPath>
-      <g clip-path="url(#clip-near-wing-inner)">
-      <path d="M680,270 L526.36,234.12 L392.76,256.92 L482,302 Z" fill="#262931" />
-      <path d="M668.12,271.92 L518.34,235.49 L486.28,240.96 L620.6,279.6 Z" fill="#3d424e" />
-      <path d="M525.56,294.96 L491.09,280.61 L452.25,286.97 L482,302 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M491.09,280.61 L456.62,266.26 L422.51,271.95 L452.25,286.97 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M456.62,266.26 L422.15,251.9 L392.76,256.92 L422.51,271.95 Z" fill="#17181d" stroke="#101116" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M618.69,259.9 C597.48,263.37 512.65,277.28 491.44,280.75" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M569.27,247.87 C550.61,250.99 475.97,263.43 457.31,266.54" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M590.9,284.4 C570.12,277.73 487.02,251.05 466.24,244.38" fill="none" stroke="#101116" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <ellipse cx="572.2" cy="278.4" rx="1.5" ry="1.5" fill="#8e949e" stroke="#0b0c10" stroke-width="0.8" />
-      <ellipse cx="541.04" cy="268.39" rx="1.5" ry="1.5" fill="#8e949e" stroke="#0b0c10" stroke-width="0.8" />
-      <ellipse cx="509.87" cy="258.39" rx="1.5" ry="1.5" fill="#8e949e" stroke="#0b0c10" stroke-width="0.8" />
-      <ellipse cx="478.71" cy="248.38" rx="1.5" ry="1.5" fill="#8e949e" stroke="#0b0c10" stroke-width="0.8" />
-      </g>
-      <path d="M680,270 L526.36,234.12 L392.76,256.92 L482,302 Z" fill="none" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M680,270 C654.39,264.02 551.97,240.1 526.36,234.12" fill="none" stroke="#0b0c10" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M680,270 C654.39,264.02 551.97,240.1 526.36,234.12" fill="none" stroke="#8e949e" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M675.39,268.92 C651.32,263.3 555.04,240.82 530.97,235.2" fill="none" stroke="#cfd4da" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M575.99,253.5 L557.02,248.69 L513.84,255.9 L530.47,261.04 Z" fill="#e2b630" stroke="#0b0c10" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M526.36,234.12 C504.09,237.92 415.03,253.12 392.76,256.92" fill="none" stroke="#0b0c10" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M526.36,234.12 C504.09,237.92 415.03,253.12 392.76,256.92" fill="none" stroke="#5c616b" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" />
-      <ellipse cx="513" cy="236.4" rx="4" ry="4" fill="#8e949e" stroke="#0b0c10" stroke-width="1" />
-      <ellipse cx="459.56" cy="245.52" rx="4" ry="4" fill="#8e949e" stroke="#0b0c10" stroke-width="1" />
-      <ellipse cx="406.12" cy="254.64" rx="4" ry="4" fill="#8e949e" stroke="#0b0c10" stroke-width="1" />
-      <ellipse cx="640" cy="280" rx="14" ry="14" fill="#5c616b" stroke="#0b0c10" stroke-width="1.6" />
-      <ellipse cx="640" cy="280" rx="5.5" ry="5.5" fill="#cfd4da" stroke="#0b0c10" stroke-width="0.8" />
-    </g>
-    <g id="near-missile" inkscape:groupmode="layer" inkscape:label="Missile - near" data-rig-part="near_missile" data-rig-bone="near_wing" data-rig-z="54.6">
-      <path d="M520.95,274.71 C520.28,280.38 517.62,303.04 516.95,308.71" fill="none" stroke="#0b0c10" stroke-width="11" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M520.95,274.71 C520.28,280.38 517.62,303.04 516.95,308.71" fill="none" stroke="#5c616b" stroke-width="6.4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M410.49,316.22 C410.49,316.22 375.74,300.93 375.74,300.93 C375.74,300.93 384.52,317.43 384.52,317.43 C384.52,317.43 410.49,316.22 410.49,316.22 Z" fill="#5c616b" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M411.34,334.4 C411.34,334.4 378.17,352.87 378.17,352.87 C378.17,352.87 385.37,335.61 385.37,335.61 C385.37,335.61 411.34,334.4 411.34,334.4 Z" fill="#5c616b" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
-      <clipPath id="clip-near-missile"><path d="M381.56,339.7 L603.8,329.28 L602.58,303.31 L380.34,313.72 Z" /></clipPath>
+    <g id="near-missile" inkscape:groupmode="layer" inkscape:label="Missile - near" data-rig-part="near_missile" data-rig-bone="body" data-rig-z="55.6">
+      <path d="M362,448 C372.33,448 413.67,448 424,448" fill="none" stroke="#0b0c10" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M362,448 C372.33,448 413.67,448 424,448" fill="none" stroke="#5c616b" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M361.72,457.03 C361.72,457.03 327.24,441.13 327.24,441.13 C327.24,441.13 335.73,457.79 335.73,457.79 C335.73,457.79 361.72,457.03 361.72,457.03 Z" fill="#5c616b" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M362.25,475.22 C362.25,475.22 328.76,493.11 328.76,493.11 C328.76,493.11 336.26,475.98 336.26,475.98 C336.26,475.98 362.25,475.22 362.25,475.22 Z" fill="#5c616b" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
+      <clipPath id="clip-near-missile"><path d="M332.38,479.99 L538.59,473.98 L537.84,447.99 L331.62,454.01 Z" /></clipPath>
       <g clip-path="url(#clip-near-missile)">
-      <path d="M381.56,339.7 L603.8,329.28 L602.58,303.31 L380.34,313.72 Z" fill="#8e949e" />
-      <path d="M381.62,340.99 L603.86,330.58 L603.46,322.14 L381.22,332.55 Z" fill="#5c616b" />
-      <path d="M380.49,316.97 L602.73,306.55 L602.97,311.75 L380.74,322.16 Z" fill="#cfd4da" />
-      <path d="M406.95,311.18 C407.17,315.94 408.06,334.98 408.29,339.74" fill="none" stroke="#41454d" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M409.62,311.05 C409.84,315.81 410.73,334.86 410.95,339.62" fill="none" stroke="#cfd4da" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M535.85,305.13 C536.07,309.89 536.96,328.94 537.19,333.7" fill="none" stroke="#41454d" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M538.51,305.01 C538.74,309.77 539.63,328.82 539.85,333.58" fill="none" stroke="#cfd4da" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M332.38,479.99 L538.59,473.98 L537.84,447.99 L331.62,454.01 Z" fill="#8e949e" />
+      <path d="M332.42,481.29 L538.63,475.28 L538.38,466.83 L332.17,472.85 Z" fill="#5c616b" />
+      <path d="M331.72,457.25 L537.93,451.24 L538.08,456.44 L331.87,462.45 Z" fill="#cfd4da" />
+      <path d="M356.33,451.98 C356.47,456.75 357.02,475.81 357.16,480.57" fill="none" stroke="#41454d" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M358.8,451.91 C358.94,456.68 359.5,475.74 359.64,480.5" fill="none" stroke="#cfd4da" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M475.93,448.5 C476.07,453.26 476.63,472.32 476.77,477.08" fill="none" stroke="#41454d" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M478.41,448.42 C478.55,453.19 479.1,472.25 479.24,477.01" fill="none" stroke="#cfd4da" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" />
       </g>
-      <path d="M381.56,339.7 L603.8,329.28 L602.58,303.31 L380.34,313.72 Z" fill="none" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M464.79,309.77 L491.46,308.52 L492.68,334.49 L466.01,335.74 Z" fill="#e2b630" stroke="#0b0c10" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M466.79,309.67 C466.33,314.03 464.47,331.47 464.01,335.83" fill="none" stroke="#17181d" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M475.68,309.26 C475.22,313.62 473.36,331.05 472.9,335.41" fill="none" stroke="#17181d" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M484.57,308.84 C484.11,313.2 482.25,330.64 481.79,335" fill="none" stroke="#17181d" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M602.58,303.31 C602.58,303.31 615.15,303.15 620.88,305.05 C626.61,306.95 636.95,314.71 636.95,314.71 C636.95,314.71 627.38,323.4 621.85,325.83 C616.33,328.26 603.8,329.28 603.8,329.28 C603.8,329.28 602.58,303.31 602.58,303.31 Z" fill="#4f8f8a" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M604.76,307.11 C604.76,307.11 616.34,307.17 621.03,308.3 C625.72,309.43 632.91,313.9 632.91,313.9 C632.91,313.9 623.32,313.66 618.68,313.61 C614.04,313.56 605.06,313.6 605.06,313.6 C605.06,313.6 604.76,307.11 604.76,307.11 Z" fill="#9fd8cf" />
-      <path d="M602.58,303.31 C602.78,307.64 603.59,324.95 603.8,329.28" fill="none" stroke="#41454d" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M332.38,479.99 L538.59,473.98 L537.84,447.99 L331.62,454.01 Z" fill="none" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M409.98,451.72 L434.73,451 L435.49,476.99 L410.74,477.71 Z" fill="#e2b630" stroke="#0b0c10" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M411.98,451.66 C411.44,456.01 409.28,473.42 408.74,477.77" fill="none" stroke="#17181d" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M420.23,451.42 C419.69,455.77 417.53,473.18 416.99,477.53" fill="none" stroke="#17181d" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M428.48,451.18 C427.94,455.53 425.78,472.94 425.24,477.29" fill="none" stroke="#17181d" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M537.84,447.99 C537.84,447.99 550.41,448.06 556.1,450.06 C561.8,452.06 572,460 572,460 C572,460 562.28,468.52 556.71,470.85 C551.14,473.18 538.59,473.98 538.59,473.98 C538.59,473.98 537.84,447.99 537.84,447.99 Z" fill="#4f8f8a" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M539.95,451.83 C539.95,451.83 551.53,452.09 556.2,453.31 C560.87,454.52 567.97,459.12 567.97,459.12 C567.97,459.12 558.39,458.71 553.75,458.58 C549.11,458.45 540.14,458.33 540.14,458.33 C540.14,458.33 539.95,451.83 539.95,451.83 Z" fill="#9fd8cf" />
+      <path d="M537.84,447.99 C537.96,452.32 538.47,469.65 538.59,473.98" fill="none" stroke="#41454d" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" />
     </g>
     <g id="near-arm" inkscape:groupmode="layer" inkscape:label="Claw Arm - near" data-rig-part="near_arm" data-rig-bone="near_arm" data-rig-z="60">
       <clipPath id="clip-near-arm"><path d="M599.12,410.99 L641.12,468.99 L654.88,459.01 L612.88,401.01 Z" /></clipPath>
@@ -662,12 +616,6 @@
     <circle id="joint-near-hub" data-joint="near_hub" cx="694" cy="114" r="2" fill="#ff00ff" />
     <circle id="joint-far-rotor" data-joint="far_rotor" cx="438" cy="254" r="2" fill="#ff00ff" />
     <circle id="joint-far-hub" data-joint="far_hub" cx="438" cy="124" r="2" fill="#ff00ff" />
-    <circle id="joint-near-wing" data-joint="near_wing" cx="640" cy="280" r="2" fill="#ff00ff" />
-    <circle id="joint-near-wing-wrist" data-joint="near_wing_wrist" cx="454" cy="242" r="2" fill="#ff00ff" />
-    <circle id="joint-near-wing-tip" data-joint="near_wing_tip" cx="317" cy="198" r="2" fill="#ff00ff" />
-    <circle id="joint-far-wing" data-joint="far_wing" cx="626" cy="264" r="2" fill="#ff00ff" />
-    <circle id="joint-far-wing-wrist" data-joint="far_wing_wrist" cx="440" cy="226" r="2" fill="#ff00ff" />
-    <circle id="joint-far-wing-tip" data-joint="far_wing_tip" cx="303" cy="182" r="2" fill="#ff00ff" />
     <circle id="joint-near-shoulder" data-joint="near_shoulder" cx="606" cy="406" r="2" fill="#ff00ff" />
     <circle id="joint-near-elbow" data-joint="near_elbow" cx="648" cy="464" r="2" fill="#ff00ff" />
     <circle id="joint-near-wrist" data-joint="near_wrist" cx="698" cy="494" r="2" fill="#ff00ff" />
@@ -686,21 +634,17 @@
       <g id="ambition-rig-side-bone-head" data-rig-bone-def="head" data-rig-parent="neck2" data-rig-origin="ambition-rig-side-joint-neck" />
       <g id="ambition-rig-side-bone-jaw" data-rig-bone-def="jaw" data-rig-parent="head" data-rig-origin="ambition-rig-side-joint-jaw_hinge" />
       <g id="ambition-rig-side-bone-engine" data-rig-bone-def="engine" data-rig-parent="body" data-rig-origin="ambition-rig-side-joint-engine_pivot" data-rig-tip="ambition-rig-side-joint-engine_tip" />
-      <g id="ambition-rig-side-bone-far_wing" data-rig-bone-def="far_wing" data-rig-parent="body" data-rig-origin="ambition-rig-side-joint-far_wing_pivot" data-rig-tip="ambition-rig-side-joint-far_wing_tip" />
-      <g id="ambition-rig-side-bone-far_wing_tip" data-rig-bone-def="far_wing_tip" data-rig-parent="far_wing" data-rig-origin="ambition-rig-side-joint-far_wing_tip_pivot" data-rig-tip="ambition-rig-side-joint-far_wing_tip_tip" />
       <g id="ambition-rig-side-bone-far_rotor" data-rig-bone-def="far_rotor" data-rig-parent="body" data-rig-origin="ambition-rig-side-joint-far_rotor_pivot" data-rig-tip="ambition-rig-side-joint-far_rotor_tip" />
       <g id="ambition-rig-side-bone-far_arm" data-rig-bone-def="far_arm" data-rig-parent="body" data-rig-origin="ambition-rig-side-joint-far_arm_pivot" data-rig-tip="ambition-rig-side-joint-far_arm_tip" />
       <g id="ambition-rig-side-bone-far_fore" data-rig-bone-def="far_fore" data-rig-parent="far_arm" data-rig-origin="ambition-rig-side-joint-far_fore_pivot" data-rig-tip="ambition-rig-side-joint-far_fore_tip" />
       <g id="ambition-rig-side-bone-far_claw" data-rig-bone-def="far_claw" data-rig-parent="far_fore" data-rig-origin="ambition-rig-side-joint-far_claw_pivot" data-rig-tip="ambition-rig-side-joint-far_claw_tip" />
-      <g id="ambition-rig-side-bone-near_wing" data-rig-bone-def="near_wing" data-rig-parent="body" data-rig-origin="ambition-rig-side-joint-near_wing_pivot" data-rig-tip="ambition-rig-side-joint-near_wing_tip" />
-      <g id="ambition-rig-side-bone-near_wing_tip" data-rig-bone-def="near_wing_tip" data-rig-parent="near_wing" data-rig-origin="ambition-rig-side-joint-near_wing_tip_pivot" data-rig-tip="ambition-rig-side-joint-near_wing_tip_tip" />
       <g id="ambition-rig-side-bone-near_rotor" data-rig-bone-def="near_rotor" data-rig-parent="body" data-rig-origin="ambition-rig-side-joint-near_rotor_pivot" data-rig-tip="ambition-rig-side-joint-near_rotor_tip" />
       <g id="ambition-rig-side-bone-near_arm" data-rig-bone-def="near_arm" data-rig-parent="body" data-rig-origin="ambition-rig-side-joint-near_arm_pivot" data-rig-tip="ambition-rig-side-joint-near_arm_tip" />
       <g id="ambition-rig-side-bone-near_fore" data-rig-bone-def="near_fore" data-rig-parent="near_arm" data-rig-origin="ambition-rig-side-joint-near_fore_pivot" data-rig-tip="ambition-rig-side-joint-near_fore_tip" />
       <g id="ambition-rig-side-bone-near_claw" data-rig-bone-def="near_claw" data-rig-parent="near_fore" data-rig-origin="ambition-rig-side-joint-near_claw_pivot" data-rig-tip="ambition-rig-side-joint-near_claw_tip" />
-      <g id="ambition-rig-side-part-far_wing_tip" data-rig-part-def="far_wing_tip" data-rig-bone="far_wing_tip" data-rig-z="3.1" data-rig-pivot="ambition-rig-side-bind-far_wing_tip" data-rig-bind-angle="-162.1946" data-rig-elements="far-wing-tip" />
-      <g id="ambition-rig-side-part-far_wing" data-rig-part-def="far_wing" data-rig-bone="far_wing" data-rig-z="3.5" data-rig-pivot="ambition-rig-side-bind-far_wing" data-rig-bind-angle="-168.4533" data-rig-elements="far-wing" />
-      <g id="ambition-rig-side-part-far_missile" data-rig-part-def="far_missile" data-rig-bone="far_wing" data-rig-z="4.1" data-rig-pivot="ambition-rig-side-bind-far_missile" data-rig-bind-angle="-168.4533" data-rig-elements="far-missile" />
+      <g id="ambition-rig-side-part-far_wing_ink" data-rig-part-def="far_wing_ink" data-rig-bone="body" data-rig-z="2.5" data-rig-pivot="ambition-rig-side-bind-far_wing_ink" data-rig-bind-angle="0" data-rig-elements="far-wing-ink" />
+      <g id="ambition-rig-side-part-far_wing" data-rig-part-def="far_wing" data-rig-bone="body" data-rig-z="3.5" data-rig-pivot="ambition-rig-side-bind-far_wing" data-rig-bind-angle="0" data-rig-elements="far-wing" />
+      <g id="ambition-rig-side-part-far_missile" data-rig-part-def="far_missile" data-rig-bone="body" data-rig-z="4.1" data-rig-pivot="ambition-rig-side-bind-far_missile" data-rig-bind-angle="0" data-rig-elements="far-missile" />
       <g id="ambition-rig-side-part-far_rotor_mast" data-rig-part-def="far_rotor_mast" data-rig-bone="far_rotor" data-rig-z="6" data-rig-pivot="ambition-rig-side-bind-far_rotor_mast" data-rig-bind-angle="-90" data-rig-elements="far-rotor-mast" />
       <g id="ambition-rig-side-part-far_rotor_a" data-rig-part-def="far_rotor_a" data-rig-bone="far_rotor" data-rig-z="7" data-rig-pivot="ambition-rig-side-bind-far_rotor_a" data-rig-bind-angle="-90" data-rig-opacity="far_rotor.a" data-rig-elements="far-rotor-a" />
       <g id="ambition-rig-side-part-far_rotor_b" data-rig-part-def="far_rotor_b" data-rig-bone="far_rotor" data-rig-z="7" data-rig-pivot="ambition-rig-side-bind-far_rotor_b" data-rig-bind-angle="-90" data-rig-opacity="far_rotor.b" data-rig-elements="far-rotor-b" />
@@ -711,6 +655,7 @@
       <g id="ambition-rig-side-part-far_claw_shut" data-rig-part-def="far_claw_shut" data-rig-bone="far_claw" data-rig-z="10" data-rig-pivot="ambition-rig-side-bind-far_claw_shut" data-rig-bind-angle="48.1798" data-rig-opacity="far_claw.shut" data-rig-elements="far-claw-shut" />
       <g id="ambition-rig-side-part-spines" data-rig-part-def="spines" data-rig-bone="body" data-rig-z="16" data-rig-pivot="ambition-rig-side-bind-spines" data-rig-bind-angle="0" data-rig-elements="spines" />
       <g id="ambition-rig-side-part-engine_ink" data-rig-part-def="engine_ink" data-rig-bone="engine" data-rig-z="19" data-rig-pivot="ambition-rig-side-bind-engine_ink" data-rig-bind-angle="178.741" data-rig-elements="engine-ink" />
+      <g id="ambition-rig-side-part-near_wing_ink" data-rig-part-def="near_wing_ink" data-rig-bone="body" data-rig-z="19.5" data-rig-pivot="ambition-rig-side-bind-near_wing_ink" data-rig-bind-angle="0" data-rig-elements="near-wing-ink" />
       <g id="ambition-rig-side-part-core_ink" data-rig-part-def="core_ink" data-rig-bone="body" data-rig-z="20" data-rig-pivot="ambition-rig-side-bind-core_ink" data-rig-bind-angle="0" data-rig-elements="core-ink" />
       <g id="ambition-rig-side-part-hull_ink" data-rig-part-def="hull_ink" data-rig-bone="body" data-rig-z="21" data-rig-pivot="ambition-rig-side-bind-hull_ink" data-rig-bind-angle="0" data-rig-elements="hull-ink" />
       <g id="ambition-rig-side-part-neck1_ink" data-rig-part-def="neck1_ink" data-rig-bone="neck1" data-rig-z="22" data-rig-pivot="ambition-rig-side-bind-neck1_ink" data-rig-bind-angle="10.3048" data-rig-elements="neck1-ink" />
@@ -735,9 +680,8 @@
       <g id="ambition-rig-side-part-near_rotor_a" data-rig-part-def="near_rotor_a" data-rig-bone="near_rotor" data-rig-z="52" data-rig-pivot="ambition-rig-side-bind-near_rotor_a" data-rig-bind-angle="-90" data-rig-opacity="near_rotor.a" data-rig-elements="near-rotor-a" />
       <g id="ambition-rig-side-part-near_rotor_b" data-rig-part-def="near_rotor_b" data-rig-bone="near_rotor" data-rig-z="52" data-rig-pivot="ambition-rig-side-bind-near_rotor_b" data-rig-bind-angle="-90" data-rig-opacity="near_rotor.b" data-rig-elements="near-rotor-b" />
       <g id="ambition-rig-side-part-near_rotor_c" data-rig-part-def="near_rotor_c" data-rig-bone="near_rotor" data-rig-z="52" data-rig-pivot="ambition-rig-side-bind-near_rotor_c" data-rig-bind-angle="-90" data-rig-opacity="near_rotor.c" data-rig-elements="near-rotor-c" />
-      <g id="ambition-rig-side-part-near_wing_tip" data-rig-part-def="near_wing_tip" data-rig-bone="near_wing_tip" data-rig-z="53.6" data-rig-pivot="ambition-rig-side-bind-near_wing_tip" data-rig-bind-angle="-162.1946" data-rig-elements="near-wing-tip" />
-      <g id="ambition-rig-side-part-near_wing" data-rig-part-def="near_wing" data-rig-bone="near_wing" data-rig-z="54" data-rig-pivot="ambition-rig-side-bind-near_wing" data-rig-bind-angle="-168.4533" data-rig-elements="near-wing" />
-      <g id="ambition-rig-side-part-near_missile" data-rig-part-def="near_missile" data-rig-bone="near_wing" data-rig-z="54.6" data-rig-pivot="ambition-rig-side-bind-near_missile" data-rig-bind-angle="-168.4533" data-rig-elements="near-missile" />
+      <g id="ambition-rig-side-part-near_wing" data-rig-part-def="near_wing" data-rig-bone="body" data-rig-z="55" data-rig-pivot="ambition-rig-side-bind-near_wing" data-rig-bind-angle="0" data-rig-elements="near-wing" />
+      <g id="ambition-rig-side-part-near_missile" data-rig-part-def="near_missile" data-rig-bone="body" data-rig-z="55.6" data-rig-pivot="ambition-rig-side-bind-near_missile" data-rig-bind-angle="0" data-rig-elements="near-missile" />
       <g id="ambition-rig-side-part-near_arm" data-rig-part-def="near_arm" data-rig-bone="near_arm" data-rig-z="60" data-rig-pivot="ambition-rig-side-bind-near_arm" data-rig-bind-angle="54.0903" data-rig-elements="near-arm" />
       <g id="ambition-rig-side-part-near_fore" data-rig-part-def="near_fore" data-rig-bone="near_fore" data-rig-z="60.5" data-rig-pivot="ambition-rig-side-bind-near_fore" data-rig-bind-angle="30.9638" data-rig-elements="near-fore" />
       <g id="ambition-rig-side-part-near_claw_open" data-rig-part-def="near_claw_open" data-rig-bone="near_claw" data-rig-z="61" data-rig-pivot="ambition-rig-side-bind-near_claw_open" data-rig-bind-angle="49.6355" data-rig-opacity="near_claw.open" data-rig-elements="near-claw-open" />
@@ -749,14 +693,10 @@
       <line id="ambition-rig-side-guide-neck1" data-rig-bone-guide="neck1" x1="692" y1="312" x2="736" y2="320" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-neck2" data-rig-bone-guide="neck2" x1="736" y1="320" x2="780" y2="326" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-engine" data-rig-bone-guide="engine" x1="420" y1="362" x2="237.999948" y2="365.999857" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
-      <line id="ambition-rig-side-guide-far_wing" data-rig-bone-guide="far_wing" x1="626" y1="264" x2="440" y2="226" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
-      <line id="ambition-rig-side-guide-far_wing_tip" data-rig-bone-guide="far_wing_tip" x1="440" y1="226" x2="303.000008" y2="181.999834" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-far_rotor" data-rig-bone-guide="far_rotor" x1="438" y1="254" x2="438" y2="124" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-far_arm" data-rig-bone-guide="far_arm" x1="540" y1="402" x2="578" y2="456" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-far_fore" data-rig-bone-guide="far_fore" x1="578" y1="456" x2="626" y2="486" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-far_claw" data-rig-bone-guide="far_claw" x1="626" y1="486" x2="659.999892" y2="523.999871" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
-      <line id="ambition-rig-side-guide-near_wing" data-rig-bone-guide="near_wing" x1="640" y1="280" x2="454" y2="242" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
-      <line id="ambition-rig-side-guide-near_wing_tip" data-rig-bone-guide="near_wing_tip" x1="454" y1="242" x2="317.000008" y2="197.999834" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-near_rotor" data-rig-bone-guide="near_rotor" x1="694" y1="262" x2="694" y2="114" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-near_arm" data-rig-bone-guide="near_arm" x1="606" y1="406" x2="648" y2="464" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
       <line id="ambition-rig-side-guide-near_fore" data-rig-bone-guide="near_fore" x1="648" y1="464" x2="698" y2="494" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
@@ -772,10 +712,6 @@
       <circle id="ambition-rig-side-joint-far_fore_tip" data-rig-joint="far_fore_tip" cx="626" cy="486" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-far_rotor_pivot" data-rig-joint="far_rotor_pivot" cx="438" cy="254" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-far_rotor_tip" data-rig-joint="far_rotor_tip" cx="438" cy="124" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-far_wing_pivot" data-rig-joint="far_wing_pivot" cx="626" cy="264" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-far_wing_tip" data-rig-joint="far_wing_tip" cx="440" cy="226" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-far_wing_tip_pivot" data-rig-joint="far_wing_tip_pivot" cx="440" cy="226" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-far_wing_tip_tip" data-rig-joint="far_wing_tip_tip" cx="303.000008" cy="181.999834" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-jaw_hinge" data-rig-joint="jaw_hinge" cx="824" cy="352" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-near_arm_pivot" data-rig-joint="near_arm_pivot" cx="606" cy="406" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-near_arm_tip" data-rig-joint="near_arm_tip" cx="648" cy="464" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
@@ -785,19 +721,15 @@
       <circle id="ambition-rig-side-joint-near_fore_tip" data-rig-joint="near_fore_tip" cx="698" cy="494" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-near_rotor_pivot" data-rig-joint="near_rotor_pivot" cx="694" cy="262" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-near_rotor_tip" data-rig-joint="near_rotor_tip" cx="694" cy="114" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-near_wing_pivot" data-rig-joint="near_wing_pivot" cx="640" cy="280" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-near_wing_tip" data-rig-joint="near_wing_tip" cx="454" cy="242" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-near_wing_tip_pivot" data-rig-joint="near_wing_tip_pivot" cx="454" cy="242" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-joint-near_wing_tip_tip" data-rig-joint="near_wing_tip_tip" cx="317.000008" cy="197.999834" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-neck" data-rig-joint="neck" cx="780" cy="326" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-neck1_pivot" data-rig-joint="neck1_pivot" cx="692" cy="312" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-neck1_tip" data-rig-joint="neck1_tip" cx="736" cy="320" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-neck2_pivot" data-rig-joint="neck2_pivot" cx="736" cy="320" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-neck2_tip" data-rig-joint="neck2_tip" cx="780" cy="326" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
       <circle id="ambition-rig-side-joint-rig_root" data-rig-joint="rig_root" cx="570" cy="740" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
-      <circle id="ambition-rig-side-bind-far_wing_tip" data-rig-bind-pivot="far_wing_tip" cx="440" cy="226" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-far_wing" data-rig-bind-pivot="far_wing" cx="626" cy="264" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-far_missile" data-rig-bind-pivot="far_missile" cx="626" cy="264" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_wing_ink" data-rig-bind-pivot="far_wing_ink" cx="550" cy="330" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_wing" data-rig-bind-pivot="far_wing" cx="550" cy="330" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_missile" data-rig-bind-pivot="far_missile" cx="550" cy="330" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-far_rotor_mast" data-rig-bind-pivot="far_rotor_mast" cx="438" cy="254" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-far_rotor_a" data-rig-bind-pivot="far_rotor_a" cx="438" cy="254" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-far_rotor_b" data-rig-bind-pivot="far_rotor_b" cx="438" cy="254" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
@@ -808,6 +740,7 @@
       <circle id="ambition-rig-side-bind-far_claw_shut" data-rig-bind-pivot="far_claw_shut" cx="626" cy="486" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-spines" data-rig-bind-pivot="spines" cx="550" cy="330" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-engine_ink" data-rig-bind-pivot="engine_ink" cx="420" cy="362" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_wing_ink" data-rig-bind-pivot="near_wing_ink" cx="550" cy="330" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-core_ink" data-rig-bind-pivot="core_ink" cx="550" cy="330" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-hull_ink" data-rig-bind-pivot="hull_ink" cx="550" cy="330" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-neck1_ink" data-rig-bind-pivot="neck1_ink" cx="692" cy="312" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
@@ -832,9 +765,8 @@
       <circle id="ambition-rig-side-bind-near_rotor_a" data-rig-bind-pivot="near_rotor_a" cx="694" cy="262" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_rotor_b" data-rig-bind-pivot="near_rotor_b" cx="694" cy="262" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_rotor_c" data-rig-bind-pivot="near_rotor_c" cx="694" cy="262" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-near_wing_tip" data-rig-bind-pivot="near_wing_tip" cx="454" cy="242" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-near_wing" data-rig-bind-pivot="near_wing" cx="640" cy="280" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
-      <circle id="ambition-rig-side-bind-near_missile" data-rig-bind-pivot="near_missile" cx="640" cy="280" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_wing" data-rig-bind-pivot="near_wing" cx="550" cy="330" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_missile" data-rig-bind-pivot="near_missile" cx="550" cy="330" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_arm" data-rig-bind-pivot="near_arm" cx="606" cy="406" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_fore" data-rig-bind-pivot="near_fore" cx="648" cy="464" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_claw_open" data-rig-bind-pivot="near_claw_open" cx="698" cy="494" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />

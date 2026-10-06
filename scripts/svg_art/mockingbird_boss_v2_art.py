@@ -16,8 +16,8 @@ Mockingbird Flash animation (Jon's reference, 2026-10-06), revised after his
 two reviews: a lean black skull with a great domed forehead, a brow low over
 a glowing slit eye tilted hard toward a slender, sharp beak lined with long
 narrow fangs over a slim jaw, on a segmented steel neck; a cage of steel ribs
-round a glowing red engine-heart; two swept jet wings with flaps, folding
-outer panels and winglets, a missile slung under each; two rotors on masts tall enough to clear the back spikes; a heavy
+round a glowing red engine-heart; two rigid swept jet wings, the near one
+reaching toward the camera, a missile on each wingtip; two rotors on masts tall enough to clear the back spikes; a heavy
 thruster at the tail and two grappling claws beneath.
 Drawn facing right in a 1140x760 SVG (design units shifted by ``DX``, ``DY``).
 """
@@ -95,12 +95,6 @@ J = dict(
     near_hub=(574.0, -16.0),
     far_rotor=(318.0, 124.0),
     far_hub=(318.0, -6.0),
-    near_wing=(520.0, 150.0),
-    near_wing_wrist=(334.0, 112.0),
-    near_wing_tip=(197.0, 68.0),
-    far_wing=(506.0, 134.0),
-    far_wing_wrist=(320.0, 96.0),
-    far_wing_tip=(183.0, 52.0),
     near_shoulder=(486.0, 276.0),
     near_elbow=(528.0, 334.0),
     near_wrist=(578.0, 364.0),
@@ -233,103 +227,67 @@ def missile(name, a, b, r, c):
     return items
 
 
-#: A swept jet wing in design units: the leading and trailing edges from root
-#: to tip (the wing lies back over the hull, its top face tilted to us), and
-#: the fraction of the span where the outer panel folds.
-WING_LE = ((560.0, 140.0), (226.0, 62.0))
-WING_TE = ((362.0, 172.0), (168.0, 74.0))
-FOLD = 0.46
+#: The swept jet wings in design units, as (root leading edge, root trailing
+#: edge, tip trailing edge, tip leading edge). Seen from a little above, the
+#: near wing reaches down and back toward the camera from the flank and the
+#: far wing up and back behind the hull, foreshortened.
+WINGS = {
+    "near": ((548.0, 186.0), (372.0, 192.0), (238.0, 318.0), (302.0, 318.0)),
+    "far": ((532.0, 128.0), (384.0, 126.0), (296.0, 58.0), (334.0, 54.0)),
+}
 
 
 def wing_parts(side):
-    """A swept jet wing: an inner panel (``<side>_wing``) with a steel
-    leading edge, flap segments along the trailing edge, a hazard stripe and
-    rivet lines, folding at a hinge into an outer panel (``<side>_wing_tip``)
-    with a clipped tip, a small canted winglet and a nav light; a missile is
-    slung under the inner panel on a pylon."""
+    """A rigid swept jet wing on the hull (it rides the ``body`` bone): its
+    skin with a sheen behind the steel leading edge, flap segments along the
+    trailing edge, panel lines and rivets, a hazard stripe and a red chevron,
+    a nav light at the tip, and a missile on a rail along the tip."""
     far = side == "far"
     c = col(far)
-    z0 = 3.5 if far else 54
-    off = (-14.0, -16.0) if far else (0.0, 0.0)
-
-    def O(p):
-        return (p[0] + off[0], p[1] + off[1])
+    z0 = 3.5 if far else 55
+    r_le, r_te, t_te, t_le = WINGS[side]
 
     def at(a, b, t):
         return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
 
-    le0, le1 = O(WING_LE[0]), O(WING_LE[1])
-    te0, te1 = O(WING_TE[0]), O(WING_TE[1])
-    lef, tef = at(le0, le1, FOLD), at(te0, te1, FOLD)
-    skin, skin_hi, skin_lo = c["armor"], c["armor_hi"], c["armor_lo"]
+    def chord(u, v):
+        """The point ``v`` of the way from leading to trailing edge, ``u``
+        of the way from root to tip."""
+        return at(at(r_le, t_le, u), at(r_te, t_te, u), v)
 
-    def panel(cid, le_a, le_b, te_b, te_a, tip=False):
-        """One wing panel: the skin, a sheen along the leading edge, flap
-        segments along the trailing edge and panel lines across."""
-        if tip:
-            sil = poly([le_a, le_b, (le_b[0] - 22, le_b[1] + 4), te_b, te_a])
-        else:
-            sil = poly([le_a, le_b, te_b, te_a])
-        items = [path(sil, skin)]
-        # the sheen: a band just behind the leading edge
-        items.append(path(poly([at(le_a, te_a, 0.06), at(le_b, te_b, 0.06), at(le_b, te_b, 0.3), at(le_a, te_a, 0.3)]),
-                          skin_hi))
-        # flaps: the last fifth of the chord, in segments
-        n = 3
-        for k in range(n):
-            u0, u1 = k / n, (k + 1) / n
-            f0, f1 = at(at(le_a, te_a, 0.78), at(le_b, te_b, 0.78), u0), at(at(le_a, te_a, 0.78), at(le_b, te_b, 0.78), u1)
-            g0, g1 = at(te_a, te_b, u0), at(te_a, te_b, u1)
-            items.append(path(poly([f0, f1, g1, g0]), skin_lo, C["seam"], 1.4))
-        # panel lines across the chord, and a spar line along it
-        for u in (0.33, 0.66):
-            items.append(line([at(at(le_a, te_a, 0.06), at(le_b, te_b, 0.06), u),
-                               at(at(le_a, te_a, 0.78), at(le_b, te_b, 0.78), u)], C["seam"], 1.2))
-        items.append(line([at(le_a, te_a, 0.45), at(le_b, te_b, 0.45)], C["seam"], 1.2))
-        items += rivets([at(at(le_a, te_a, 0.45), at(le_b, te_b, 0.45), u) for u in (0.15, 0.4, 0.65, 0.9)], 1.5,
-                        c["steel"])
-        body = clipped(cid, sil, items) + [path(sil, "none", INK, LW)]
-        # the leading edge: a steel strip
-        body.append(line([le_a, le_b], INK, 7.0))
-        body.append(line([le_a, le_b], c["steel"], 4.0))
-        body.append(line([at(le_a, le_b, 0.03), at(le_a, le_b, 0.97)], c["steel_hi"], 1.4))
-        return body
+    sil = poly([r_le, t_le, t_te, r_te])
+    items = [path(sil, c["armor"])]
+    items.append(path(poly([chord(0, 0.04), chord(1, 0.04), chord(1, 0.3), chord(0, 0.3)]), c["armor_hi"]))
+    items.append(path(poly([chord(0, 0.62), chord(1, 0.62), chord(1, 0.78), chord(0, 0.78)]), c["armor_lo"]))
+    for k in range(3):
+        u0, u1 = 0.08 + k * 0.3, 0.08 + (k + 1) * 0.3 - 0.02
+        items.append(path(poly([chord(u0, 0.8), chord(u1, 0.8), chord(u1, 1.02), chord(u0, 1.02)]), c["armor_lo"],
+                          C["seam"], 1.4))
+    for u in (0.36, 0.68):
+        items.append(line([chord(u, 0.05), chord(u, 0.78)], C["seam"], 1.2))
+    items.append(line([chord(0, 0.45), chord(1, 0.45)], C["seam"], 1.2))
+    items += rivets([chord(u, 0.45) for u in (0.12, 0.3, 0.5, 0.7, 0.88)], 1.5, c["steel"])
+    items.append(path(poly([chord(0.1, 0.5), chord(0.22, 0.5), chord(0.22, 0.66), chord(0.1, 0.66)]), C["hazard"], INK, 0.8))
+    items.append(path(poly([chord(0.62, 0.12), chord(0.8, 0.22), chord(0.62, 0.32), chord(0.68, 0.22)]), c["hydraulic"],
+                      INK, 0.8))
+    body = clipped(f"clip-{side}-wing", sil, items) + [path(sil, "none", INK, LW)]
+    # the steel leading edge and a root fairing into the hull
+    body += [line([r_le, t_le], INK, 8.0), line([r_le, t_le], c["steel"], 4.6),
+             line([at(r_le, t_le, 0.03), at(r_le, t_le, 0.97)], c["steel_hi"], 1.4)]
+    fair = smooth([at(r_le, r_te, -0.04) + (True,), at(r_le, r_te, 1.02) + (True,), chord(0.1, 0.9), chord(0.1, 0.1)])
+    body.append(path(fair, c["armor_hi"], INK, LW))
+    body.append(ellipse(*t_le, 4.5, 4.5, "#3fd16a" if not far else "#2a8a48", INK, 1.0))
+    ink(f"{side}_wing", "body", 19.5 if not far else 2.5, sil)
+    part(f"{side}-wing", f"Wing - {side}", f"{side}_wing", "body", z0, body)
 
-    # -- the outer panel (folds at the hinge): a clipped tip, a winglet, a nav light.
-    outer = panel(f"clip-{side}-wing-outer", lef, le1, te1, tef, tip=True)
-    wl = [(le1[0] + 4, le1[1] + 2, True), (le1[0] - 14, le1[1] - 34, True), (le1[0] - 34, le1[1] - 32, True),
-          (le1[0] - 30, le1[1] + 6, True)]
-    outer.insert(0, path(smooth(wl), skin, INK, LW))
-    outer.append(ellipse(le1[0] - 6, le1[1] + 3, 4.5, 4.5, "#3fd16a" if not far else "#2a8a48", INK, 1.0))
-    # a red chevron near the tip
-    ch = [at(at(lef, tef, 0.15), at(le1, te1, 0.15), 0.62), at(at(lef, tef, 0.15), at(le1, te1, 0.15), 0.72),
-          at(at(lef, tef, 0.6), at(le1, te1, 0.6), 0.72), at(at(lef, tef, 0.6), at(le1, te1, 0.6), 0.62)]
-    outer.append(path(poly(ch), c["hydraulic"], INK, 0.8))
-    part(f"{side}-wing-tip", f"Wing Tip - {side}", f"{side}_wing_tip", f"{side}_wing_tip", z0 - 0.4, outer)
-
-    # -- the inner panel, with a hazard stripe and the fold hinge.
-    inner = panel(f"clip-{side}-wing-inner", le0, lef, tef, te0)
-    hz = [at(at(le0, te0, 0.12), at(lef, tef, 0.12), 0.55), at(at(le0, te0, 0.12), at(lef, tef, 0.12), 0.68),
-          at(at(le0, te0, 0.4), at(lef, tef, 0.4), 0.68), at(at(le0, te0, 0.4), at(lef, tef, 0.4), 0.55)]
-    inner.append(path(poly(hz), C["hazard"], INK, 0.8))
-    inner.append(line([lef, tef], INK, 5.0))
-    inner.append(line([lef, tef], c["steel_lo"], 2.6))
-    for t in (0.1, 0.5, 0.9):
-        h = at(lef, tef, t)
-        inner.append(ellipse(h[0], h[1], 4.0, 4.0, c["steel"], INK, 1.0))
-    # the root fairing where the wing meets the hull
-    R = J[f"{side}_wing"]
-    inner.append(ellipse(R[0] + off[0], R[1] + off[1], 14, 14, c["steel_lo"], INK, LW))
-    inner.append(ellipse(R[0] + off[0], R[1] + off[1], 5.5, 5.5, c["steel_hi"], INK, 0.8))
-    part(f"{side}-wing", f"Wing - {side}", f"{side}_wing", f"{side}_wing", z0, inner)
-
-    # -- the missile, slung under the inner panel on a pylon.
-    pyl = at(at(le0, te0, 0.6), at(lef, tef, 0.6), 0.35)
-    m_tail, m_nose = (pyl[0] - 140, pyl[1] + 52), (pyl[0] + 116, pyl[1] + 40)
-    drop = (pyl[0] - 4, pyl[1] + 34)
-    mis = [line([pyl, drop], INK, 11.0), line([pyl, drop], c["steel_lo"], 6.4)]
-    mis += missile(f"{side}-missile", m_tail, m_nose, 13.0, c)
-    part(f"{side}-missile", f"Missile - {side}", f"{side}_missile", f"{side}_wing", z0 + 0.6, mis)
+    # the missile on a rail along the wingtip, pointing forward
+    r = 10.0 if far else 13.0
+    y = t_le[1] + (r + 3 if not far else -r - 3)
+    tail, nose = (t_te[0] - 26, y + 3), (t_le[0] + 150 if not far else t_le[0] + 110, y - 4)
+    rail = [line([(t_te[0] + 4, t_te[1]), (t_le[0] + 2, t_le[1])], INK, 9.0),
+            line([(t_te[0] + 4, t_te[1]), (t_le[0] + 2, t_le[1])], c["steel_lo"], 5.0)]
+    part(f"{side}-missile", f"Missile - {side}", f"{side}_missile", "body", z0 + 0.6,
+         rail + missile(f"{side}-missile", tail, nose, r, c))
 
 
 def claw_parts(side):
@@ -647,7 +605,7 @@ def draw() -> str:
             "       right. A lean black skull with a great forehead, a slanted slit eye and a",
             "       slender beak of fangs on a segmented steel neck; a cage of steel ribs round",
             "       a glowing red engine-heart; hooked spines on an armoured back; two swept",
-            "       jet wings, a missile under each; two rotors on tall masts; a thruster at the",
+            "       jet wings, a missile on each tip; two rotors on tall masts; a thruster at the",
             "       tail; two grappling claws beneath. Each part is a layer with a data-rig-part name.",
             "       *_ink layers are silhouettes grown by the outline width, painted beneath",
             "       every fill so the body reads as one outlined silhouette. Swap sets (the",

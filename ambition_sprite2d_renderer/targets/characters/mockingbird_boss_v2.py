@@ -4,12 +4,13 @@ A CANDIDATE redesign (Jon, 2026-10-06), after the mechanical "mockingbird"
 of the How to Kill a Mockingbird Flash animation: a lean black skull with a
 great domed forehead, a brow low over a slit eye tilted hard toward a slender
 sharp beak of long narrow fangs, on a segmented steel neck; a cage of steel
-ribs round a glowing red engine-heart; two swept jet wings with flaps, folding
-outer panels and winglets, a missile slung under each; two rotors on tall
+ribs round a glowing red engine-heart; two rigid swept jet wings (the near
+one reaching toward the camera), a missile on each wingtip; two rotors on tall
 masts; a heavy thruster at the tail; two grappling claws beneath. Jon's
 reviews asked for a sleek, mean head with a big forehead, no chin spikes and
-long narrow teeth; wings that read as a jet's, carrying the missiles; and
-rotors raised clear of the spikes. The first design (``mockingbird_boss``, a
+long narrow teeth; rigid jet wings that reach out toward the camera, carrying
+the missiles ("It's a big mecha jet engine with a bird face"); and rotors
+raised clear of the spikes. The first design (``mockingbird_boss``, a
 nested scene-graph rig) stays published beside it as its lineage; the game
 still wears the first.
 
@@ -97,7 +98,7 @@ ACTOR_METADATA = {
         "mouth": {"source": "mockingbird_boss_v2.geometry", "point": _px(880.0, 234.0)},
         "head": {"source": "mockingbird_boss_v2.geometry", "point": _px(760.0, 140.0)},
         "core": {"source": "mockingbird_boss_v2.geometry", "point": _px(432.0, 238.0)},
-        "missile": {"source": "mockingbird_boss_v2.geometry", "point": _px(520.0, 185.0)},
+        "missile": {"source": "mockingbird_boss_v2.geometry", "point": _px(452.0, 327.0)},
         "thruster": {"source": "mockingbird_boss_v2.geometry", "point": _px(114.0, 236.0)},
         "near_claw": {"source": "mockingbird_boss_v2.geometry", "point": _px(600.0, 392.0)},
     },
@@ -210,7 +211,7 @@ for _k in range(3):
     _GLYPHS[f"boost{_k}"] = ((8.0, 46.0, 260.0, 46.0), _jet(220.0, 78.0, _k))
 _GLYPHS["near_blur"] = ((212.0, 18.0, 212.0, 18.0), _paint_blur(206.0))
 _GLYPHS["far_blur"] = ((166.0, 18.0, 166.0, 18.0), _paint_blur(160.0))
-_GLYPHS["core_glow"] = ((190.0, 110.0, 190.0, 110.0), _paint_glow(186.0, 106.0, (255, 120, 40)))
+_GLYPHS["core_glow"] = ((160.0, 90.0, 160.0, 90.0), _paint_glow(156.0, 86.0, (255, 120, 40)))
 _GLYPHS["eye_glow"] = ((44.0, 24.0, 44.0, 24.0), _paint_glow(42.0, 22.0, (255, 110, 30)))
 _GLYPHS["charge_s"] = ((24.0, 24.0, 24.0, 24.0), _paint_fireball(14.0))
 _GLYPHS["charge_l"] = ((36.0, 36.0, 36.0, 36.0), _paint_fireball(24.0))
@@ -235,7 +236,7 @@ A = {
     "eye": ("head", _anchor("head", 808.0, 176.0)),
     "throat": ("head", _anchor("head", 850.0, 232.0)),
     "spit": ("head", _anchor("head", 990.0, 246.0)),
-    "muzzle": ("near_wing", _anchor("near_wing", 520.0, 185.0)),
+    "muzzle": ("body", _anchor("body", 452.0, 327.0)),
     "snout": ("head", _anchor("head", 950.0, 240.0)),
     "spark1": ("body", _anchor("body", 520.0, 150.0)),
     "spark2": ("neck2", _anchor("neck2", 640.0, 196.0)),
@@ -275,14 +276,16 @@ def _behind(canvas: FxCanvas, t: float, world, params) -> None:
     if params.get("fx.blur", 0.0) > 0.02:
         p, turn = _hub(world, "far")
         _place(canvas, "far_blur", p, params["fx.blur"], degrees=turn)
-
-
-def _front(canvas: FxCanvas, t: float, world, params) -> None:
-    step = int(round(t * 24))
+    # The core's glow is a halo BEHIND the body: in front it hazed the near
+    # wing, which hangs across the core.
     glow = params.get("fx.glow", 0.0)
     if glow > 0.02:
         p, turn = _at(world, "core")
         _place(canvas, "core_glow", p, glow, degrees=turn)
+
+
+def _front(canvas: FxCanvas, t: float, world, params) -> None:
+    step = int(round(t * 24))
     if params.get("eye.open", 0.0) > 0.5 or params.get("eye.angry", 0.0) > 0.5:
         p, turn = _at(world, "eye")
         _place(canvas, "eye_glow", p, 0.6 + 0.4 * params.get("eye.angry", 0.0), degrees=turn)
@@ -299,7 +302,7 @@ def _front(canvas: FxCanvas, t: float, world, params) -> None:
         _place(canvas, "spit", p, params["fx.spit"], degrees=head.angle - REST["head"][1] + 0.0)
     if params.get("fx.muzzle", 0.0) > 0.02:
         p, turn = _at(world, "muzzle")
-        _place(canvas, "muzzle", p, params["fx.muzzle"], degrees=turn - 3.2)
+        _place(canvas, "muzzle", p, params["fx.muzzle"], degrees=turn - 1.6)
     if params.get("fx.bite", 0.0) > 0.02:
         p, turn = _at(world, "snout")
         _place(canvas, "bite", p, params["fx.bite"], degrees=turn)
