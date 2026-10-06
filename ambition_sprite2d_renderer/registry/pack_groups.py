@@ -58,6 +58,12 @@ _POLICIES: Dict[str, PackPolicy] = {target: PackPolicy(trim=False) for target in
 # a `page_size` at the GPU cap keeps the single-bin packer from spilling.
 _POLICIES["gnu_ton_boss"] = PackPolicy(page_size=16384)
 
+# The Mockingbird's SVG-rigged redesign packs to ~2350 px square on one 4096
+# page; at 2048 it splits into pages within the downlevel WebGL2 limit, which
+# `scripts/tests/test_sprite_page_dimensions.py` holds the roster to. The boss
+# runtime draws a sheet across pages (`build_boss_pages`).
+_POLICIES["mockingbird_boss_v2"] = PackPolicy(page_size=2048)
+
 
 def policy_for(target: str) -> PackPolicy:
     """Pack policy for a sprite target (its sheet file-root / RON ``target``)."""

@@ -101,7 +101,8 @@ ACTOR_METADATA = {
         "Use as a multipart aerial mimic boss. Its copied attacks should be recognizable "
         "but imperfectly timed, leaving a novelty gap where the player can escape or counter."
     ),
-    "actor": {"character_id": f"npc_{TARGET_NAME}", "display_name": "The Mockingbird"},
+    # The same character as the first design: this is its art now.
+    "actor": {"character_id": "npc_mockingbird_boss", "display_name": "The Mockingbird"},
     "body": {
         "body_plan": "BossMultipart",
         "body_kind": "Wide",
