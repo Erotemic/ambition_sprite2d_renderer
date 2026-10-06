@@ -195,6 +195,13 @@ def _roar_wave(rx: float, ry: float, width: float) -> FX.Paint:
 
 SWIPE_R = 175.0
 
+STAR = (255, 230, 110, 255)
+STAR_EDGE = (150, 96, 20, 255)
+
+
+def _star(c: FxCanvas) -> None:
+    c.star((0, 0), 16.0, STAR, points=5, inner=0.45, outline=STAR_EDGE)
+
 GLYPHS = FX.Glyphs(
     ART_SCALE,
     {
@@ -203,6 +210,7 @@ GLYPHS = FX.Glyphs(
         "roar1": ((40.0, 46.0, 14.0, 46.0), _roar_wave(40.0, 52.0, 2.4)),
         "roar2": ((54.0, 62.0, 16.0, 62.0), _roar_wave(54.0, 70.0, 2.2)),
         "swipe": ((8.0, 110.0, 52.0, 110.0), FX.tail_trail(SWIPE_R)),
+        "star": ((18.0, 18.0, 18.0, 18.0), _star),
     },
 )
 _place = GLYPHS.place
@@ -249,6 +257,15 @@ def _front(canvas: FxCanvas, t: float, world, params) -> None:
     hit = params.get("fx.hit", 0.0)
     if hit > 0.02:
         _place(canvas, "hit", _local(world["torso"], 104.0, 4.0), hit)
+    stars = params.get("fx.stars", 0.0)
+    if stars > 0.02:
+        # Three stars circling over his brow, a third of a turn apart, going
+        # round once a loop of the row.
+        brow = _local(head, 60.0, -46.0)
+        for k in range(3):
+            a = math.tau * (t + k / 3.0)
+            at = (brow[0] + math.cos(a) * 52.0 * ART_SCALE, brow[1] + math.sin(a) * 14.0 * ART_SCALE)
+            _place(canvas, "star", at, stars * (0.75 + 0.25 * math.sin(a)))
     thud = params.get("fx.thud", 0.0)
     if thud > 0.02:
         _place(canvas, "thud", (world["pelvis"].origin[0] + 40.0 * ART_SCALE, GROUND_Y - 4.0), thud)

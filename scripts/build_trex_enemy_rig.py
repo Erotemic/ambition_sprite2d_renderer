@@ -9,8 +9,9 @@ the frame, the rows and the clips. It never draws.
 
     uv run python scripts/build_trex_enemy_rig.py
 
-The clips keep the sheet contract the game already reads: the same nine rows,
-frame counts and durations as before the SVG redesign.
+The clips keep the sheet contract the game already reads: the first nine rows,
+frame counts and durations are those from before the SVG redesign; the boss
+rework appended ``stunned``, ``snap_up`` and ``leap``.
 """
 
 from __future__ import annotations
@@ -159,16 +160,18 @@ def tail_swipe(i: int, n: int, t: float) -> Pose:
 
 def stomp(i: int, n: int, t: float) -> Pose:
     p: Pose = {
-        "root_x": track([0, 3, 10, 11, 6, 0], t),
-        "root_y": track([0, -7, 8, 8, 3, 0], t),
-        "pelvis": track([0, -8, 6, 5, 2, 0], t),
-        "torso": track([0, -3, 3, 2, 1, 0], t),
-        "neck": track([0, -12, 10, 8, 3, 0], t),
-        "head": track([0, -4, 4, 2, 1, 0], t),
-        "jaw": track([3, 14, 26, 18, 8, 3], t),
-        "near_foot_x": track([NEAR_X, 16, 26, 26, 14, NEAR_X], t),
-        "near_foot_lift": track([0, 44, 0, 0, 10, 0], t),
-        "near_foot_pitch": track([0, 16, 0, 0, 4, 0], t),
+        # He rears back onto the far leg, the near foot raised high (the
+        # tell), then drives it down with his whole weight.
+        "root_x": track([0, -4, 12, 12, 6, 0], t),
+        "root_y": track([0, -8, 10, 9, 3, 0], t),
+        "pelvis": track([0, -5, 7, 6, 2, 0], t),
+        "torso": track([0, -2, 4, 3, 1, 0], t),
+        "neck": track([0, -12, 12, 9, 3, 0], t),
+        "head": track([0, -6, 6, 3, 1, 0], t),
+        "jaw": track([3, 18, 30, 20, 8, 3], t),
+        "near_foot_x": track([NEAR_X, 18, 28, 28, 14, NEAR_X], t),
+        "near_foot_lift": track([0, 72, 0, 0, 10, 0], t),
+        "near_foot_pitch": track([0, 22, 0, 0, 4, 0], t),
         "near_arm_u": track([0, -24, 6, 4, 0, 0], t),
         "far_arm_u": track([0, -20, 8, 6, 0, 0], t),
         "tail1": track([0, -8, 6, 4, 1, 0], t),
@@ -230,6 +233,92 @@ def death(i: int, n: int, t: float) -> Pose:
     return p
 
 
+def stunned(i: int, n: int, t: float) -> Pose:
+    """Knocked senseless by the wall: slumped on bent legs, head hanging and
+    lolling, jaw slack, stars circling (``fx.stars``). It loops until he
+    shakes it off."""
+    w = math.tau * t
+    p: Pose = {
+        "root_x": -6.0,
+        "root_y": 24.0 + 2.0 * math.sin(w),
+        "pelvis": 7.0 + 1.5 * math.sin(w),
+        "torso": 5.0,
+        "neck": 24.0 + 5.0 * math.sin(w),
+        "head": 14.0 + 8.0 * math.sin(w + 1.1),
+        "jaw": 20.0 + 4.0 * math.sin(w + 0.4),
+        "near_foot_x": NEAR_X + 4.0,
+        "far_foot_x": FAR_X - 6.0,
+        "near_arm_u": 22.0 + 4.0 * math.sin(w),
+        "near_arm_l": 18.0,
+        "far_arm_u": 20.0 + 4.0 * math.sin(w + 0.5),
+        "far_arm_l": 16.0,
+        "fx.stars": 1.0,
+    }
+    for k in range(4):
+        p[f"tail{k + 1}"] = 4.0 + 2.5 * k + 1.5 * math.sin(w - 0.5 * k)
+    p.update(eyes("dead"))
+    return p
+
+
+def snap_up(i: int, n: int, t: float) -> Pose:
+    """At a ledge above: he crouches with his head cocked up at you (frames
+    0-1, the tell), then throws it up and forward, jaws wide, and snaps them
+    shut at the top (frames 2-5). Up-and-forward, not straight up: straight
+    up, the head leaves the 300 px frame."""
+    p: Pose = {
+        "root_x": track([0, -6, 2, 4, 2, 0], t),
+        "root_y": track([0, 10, 6, 4, 2, 0], t),
+        "pelvis": track([0, 4, -3, -4, -2, 0], t),
+        "torso": track([0, -4, -3, -3, -2, 0], t),
+        "neck": track([0, -16, -16, -18, -10, 0], t),
+        "head": track([0, -12, -14, -12, -6, 0], t),
+        "jaw": track([3, 10, 34, 2, 6, 3], t),
+        "near_foot_x": NEAR_X + 6.0,
+        "near_arm_u": track([0, -12, -40, -44, -20, 0], t),
+        "far_arm_u": track([0, -10, -36, -40, -18, 0], t),
+        "tail1": track([0, 4, 12, 14, 6, 0], t),
+        "tail2": track([0, 4, 14, 16, 8, 0], t),
+        "tail3": track([0, 4, 16, 18, 8, 0], t),
+        "tail4": track([0, 4, 18, 20, 10, 0], t),
+        "fx.bite": track([0, 0, 0.3, 1, 0.3, 0], t),
+    }
+    p.update(eyes("angry"))
+    return p
+
+
+def leap(i: int, n: int, t: float) -> Pose:
+    """The enrage leap, drawn in place (the conductor flies him): a deep
+    crouch, the spring, legs tucked in the air with the tail up for balance,
+    the landing that shakes the hall (``fx.thud``, ``fx.stomp``), and the
+    rise out of it."""
+    p: Pose = {
+        "root_x": track([0, 4, 8, 8, 6, 2, 0, 0], t),
+        "root_y": track([18, 0, -6, -6, -2, 22, 8, 0], t),
+        "pelvis": track([8, -5, -3, 2, 6, 10, 4, 0], t),
+        "torso": track([4, -4, -2, 0, 2, 4, 2, 0], t),
+        "neck": track([10, -6, -2, 4, 8, 14, 4, 0], t),
+        "head": track([4, -8, 0, 4, 6, 6, 2, 0], t),
+        "jaw": track([6, 20, 30, 34, 26, 12, 6, 3], t),
+        "near_foot_x": track([NEAR_X + 4, NEAR_X - 6, NEAR_X + 18, NEAR_X + 20, NEAR_X + 14, NEAR_X + 6, NEAR_X + 2, NEAR_X], t),
+        "far_foot_x": track([FAR_X - 4, FAR_X - 12, FAR_X + 10, FAR_X + 12, FAR_X + 6, FAR_X - 2, FAR_X, FAR_X], t),
+        "near_foot_lift": track([0, 8, 46, 50, 30, 0, 0, 0], t),
+        "far_foot_lift": track([0, 14, 54, 56, 34, 0, 0, 0], t),
+        "near_foot_pitch": track([0, -20, 24, 26, 12, 0, 0, 0], t),
+        "far_foot_pitch": track([0, -24, 28, 30, 14, 0, 0, 0], t),
+        "near_arm_u": track([10, -30, -20, -16, -10, 18, 6, 0], t),
+        "far_arm_u": track([8, -26, -18, -14, -8, 16, 4, 0], t),
+        "tail1": track([6, -10, -14, -12, -6, 8, 2, 0], t),
+        "tail2": track([6, -12, -16, -14, -6, 10, 3, 0], t),
+        "tail3": track([6, -14, -18, -16, -8, 12, 3, 0], t),
+        "tail4": track([6, -16, -20, -18, -8, 14, 4, 0], t),
+        "fx.dust": track([0.4, 0.8, 0, 0, 0, 1, 0.5, 0.1], t),
+        "fx.thud": track([0, 0, 0, 0, 0, 1, 0.45, 0], t),
+        "fx.stomp": track([0, 0, 0, 0, 0, 1, 0.4, 0], t),
+    }
+    p.update(eyes("angry"))
+    return p
+
+
 CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
     "idle": idle,
     "walk": walk,
@@ -240,6 +329,9 @@ CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
     "stomp": stomp,
     "hurt": hurt,
     "death": death,
+    "stunned": stunned,
+    "snap_up": snap_up,
+    "leap": leap,
 }
 
 DEFAULTS: Pose = {
@@ -271,6 +363,11 @@ SPEC = T.theropod_spec(
         ("stomp", 6, 92, False),
         ("hurt", 4, 90, False),
         ("death", 8, 110, False),
+        # The rework's rows (2026-10-05): appended, so the nine above keep
+        # their places.
+        ("stunned", 6, 130, True),
+        ("snap_up", 6, 90, False),
+        ("leap", 8, 90, False),
     ],
     clips=CLIPS,
     defaults=DEFAULTS,
