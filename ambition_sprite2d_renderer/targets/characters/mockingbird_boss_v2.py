@@ -1,12 +1,14 @@
 """SVG-rigged sprite target for the Mockingbird v2: the boss redrawn as a mechanical predator.
 
 A CANDIDATE redesign (Jon, 2026-10-06), after the mechanical "mockingbird"
-of the How to Kill a Mockingbird Flash animation: a black skull with a hooked
-beak, a glowing slit eye and a gaping jaw of white saw teeth (a comb of them
-raking off the chin) on a segmented steel neck; a cage of steel ribs round a
-glowing red engine-heart; hooked spines and swept fins along an armoured back;
-two rotors; a missile pod over the head; a heavy thruster at the tail; two
-grappling claws beneath. The first design (``mockingbird_boss``, a nested
+of the How to Kill a Mockingbird Flash animation: a lean black skull with a
+tall forehead, an overhanging brow, a glowing slit eye and a long hooked beak
+of fangs on a segmented steel neck; a cage of steel ribs round a glowing red
+engine-heart; two armoured wings swept back over the hull, a missile slung
+under each; two rotors on tall masts; a heavy thruster at the tail; two
+grappling claws beneath. Jon's first review: "the head is too chunky ... It
+should be sleek and mean. It can have a big forehead"; wings "are
+important", with the missiles on them; the rotors raised clear of the spikes. The first design (``mockingbird_boss``, a nested
 scene-graph rig) stays published beside it as its lineage; the game still
 wears the first.
 
@@ -47,11 +49,11 @@ SHEET_FILES = [
     f"{TARGET_NAME}_actor.ron",
 ]
 RIG_PATH = Path(__file__).resolve().parent / "rigged" / TARGET_NAME / "mockingbird_boss_v2_side.rig.json"
-FRAME_SIZE = (570, 360)
+FRAME_SIZE = (570, 380)
 #: Sprite pixels per SVG unit (the rig's ``svg_source.scale``).
 ART_SCALE = 0.5
 #: The art script draws in design units shifted by this much.
-DX, DY = 120.0, 90.0
+DX, DY = 120.0, 130.0
 
 
 def S(x: float, y: float) -> Point:
@@ -68,9 +70,10 @@ def _px(x: float, y: float) -> Dict[str, float]:
 ACTOR_METADATA = {
     "authoring_description": (
         "The Mockingbird v2 adapts the mechanical creature of the old How to Kill a Mockingbird "
-        "Flash animation into a giant predator-gunship that mimics the fighters it hunts: a black "
-        "beaked skull with a glowing slit eye and saw teeth on a steel neck, a rib cage round a "
-        "glowing engine-heart, rotors, a missile pod, a thruster and two grappling claws."
+        "Flash animation into a giant predator-gunship that mimics the fighters it hunts: a lean "
+        "black beaked skull with a glowing slit eye and fangs on a steel neck, a rib cage round a "
+        "glowing engine-heart, armoured wings carrying missiles, rotors, a thruster and two "
+        "grappling claws."
     ),
     "gameplay_description": (
         "Use as a multipart aerial mimic boss. Its copied attacks should be recognizable "
@@ -90,10 +93,10 @@ ACTOR_METADATA = {
     },
     # Points on the drawn frame, at rest.
     "sockets": {
-        "mouth": {"source": "mockingbird_boss_v2.geometry", "point": _px(880.0, 238.0)},
-        "head": {"source": "mockingbird_boss_v2.geometry", "point": _px(790.0, 180.0)},
+        "mouth": {"source": "mockingbird_boss_v2.geometry", "point": _px(880.0, 234.0)},
+        "head": {"source": "mockingbird_boss_v2.geometry", "point": _px(770.0, 160.0)},
         "core": {"source": "mockingbird_boss_v2.geometry", "point": _px(432.0, 238.0)},
-        "pod_muzzle": {"source": "mockingbird_boss_v2.geometry", "point": _px(820.0, 96.0)},
+        "missile": {"source": "mockingbird_boss_v2.geometry", "point": _px(622.0, 184.0)},
         "thruster": {"source": "mockingbird_boss_v2.geometry", "point": _px(114.0, 236.0)},
         "near_claw": {"source": "mockingbird_boss_v2.geometry", "point": _px(600.0, 392.0)},
     },
@@ -230,11 +233,11 @@ A = {
     "near_hub": ("near_rotor", _anchor("near_rotor", 498.0, 58.0)),
     "far_hub": ("far_rotor", _anchor("far_rotor", 332.0, 70.0)),
     "core": ("body", _anchor("body", 440.0, 236.0)),
-    "eye": ("head", _anchor("head", 814.0, 160.0)),
-    "throat": ("head", _anchor("head", 836.0, 238.0)),
-    "spit": ("head", _anchor("head", 960.0, 236.0)),
-    "muzzle": ("pod", _anchor("pod", 826.0, 96.0)),
-    "snout": ("head", _anchor("head", 900.0, 234.0)),
+    "eye": ("head", _anchor("head", 800.0, 151.0)),
+    "throat": ("head", _anchor("head", 850.0, 232.0)),
+    "spit": ("head", _anchor("head", 976.0, 238.0)),
+    "muzzle": ("near_wing", _anchor("near_wing", 622.0, 184.0)),
+    "snout": ("head", _anchor("head", 934.0, 238.0)),
     "spark1": ("body", _anchor("body", 520.0, 150.0)),
     "spark2": ("neck2", _anchor("neck2", 640.0, 196.0)),
     "spark3": ("body", _anchor("body", 300.0, 170.0)),
@@ -288,7 +291,7 @@ def _front(canvas: FxCanvas, t: float, world, params) -> None:
         _place(canvas, "spit", p, params["fx.spit"], degrees=head.angle - REST["head"][1] + 0.0)
     if params.get("fx.muzzle", 0.0) > 0.02:
         p, turn = _at(world, "muzzle")
-        _place(canvas, "muzzle", p, params["fx.muzzle"], degrees=world["pod"].angle)
+        _place(canvas, "muzzle", p, params["fx.muzzle"], degrees=turn - 3.2)
     if params.get("fx.bite", 0.0) > 0.02:
         p, turn = _at(world, "snout")
         _place(canvas, "bite", p, params["fx.bite"], degrees=turn)

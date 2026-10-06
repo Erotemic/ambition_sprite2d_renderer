@@ -12,12 +12,14 @@ through a cage of ribs.
     uv run python scripts/svg_art/mockingbird_boss_v2_art.py OUT.svg
 
 The design follows the mechanical "mockingbird" of the How to Kill a
-Mockingbird Flash animation (Jon's reference, 2026-10-06): a black skull with a
-glowing slit eye and a gaping jaw of white saw teeth on a segmented steel neck,
-a cage of steel ribs round a glowing red engine-heart, hooked black spines and
-swept fins along an armoured back, two rotor masts, a missile pod over the
-head, a heavy thruster at the tail and two grappling claws hanging beneath.
-Drawn facing right in a 1140x720 SVG (design units shifted by ``DX``, ``DY``).
+Mockingbird Flash animation (Jon's reference, 2026-10-06), revised after his
+first review: a lean black skull with a tall forehead, an overhanging brow, a
+glowing slit eye and a long hooked beak of fangs over a slim jaw, on a
+segmented steel neck; a cage of steel ribs round a glowing red engine-heart;
+two armoured wings of blade feathers swept back over the hull, a missile slung
+under each; two rotors on masts tall enough to clear the back spikes; a heavy
+thruster at the tail and two grappling claws beneath.
+Drawn facing right in a 1140x760 SVG (design units shifted by ``DX``, ``DY``).
 """
 from __future__ import annotations
 
@@ -28,10 +30,10 @@ from pathlib import Path
 import svgkit as svg
 from svgkit import capsule, clipped, ellipse, ink, line, part, path, poly, smooth
 
-W, H = 1140, 720
+W, H = 1140, 760
 #: The design is drawn at x 100-925, y 30-440; shifted to leave room behind
 #: it for the thruster's plume and above it to rear.
-DX, DY = 120.0, 90.0
+DX, DY = 120.0, 130.0
 INK = "#0b0c10"
 OW = 2.4  # half the silhouette ink width
 LW = 1.6  # detail outline width
@@ -84,17 +86,21 @@ J = dict(
     neck1=(572.0, 182.0),
     neck2=(616.0, 190.0),
     head=(660.0, 196.0),
-    snout=(904.0, 222.0),
-    jaw=(694.0, 222.0),
-    jaw_tip=(890.0, 240.0),
+    snout=(936.0, 234.0),
+    jaw=(704.0, 222.0),
+    jaw_tip=(904.0, 232.0),
     engine=(300.0, 232.0),
     engine_tip=(118.0, 236.0),
-    pod=(560.0, 118.0),
-    pod_tip=(820.0, 96.0),
-    near_rotor=(498.0, 128.0),
-    near_hub=(498.0, 58.0),
-    far_rotor=(332.0, 126.0),
-    far_hub=(332.0, 70.0),
+    near_rotor=(574.0, 132.0),
+    near_hub=(574.0, -16.0),
+    far_rotor=(318.0, 124.0),
+    far_hub=(318.0, 4.0),
+    near_wing=(516.0, 146.0),
+    near_wing_wrist=(410.0, 74.0),
+    near_wing_tip=(150.0, 30.0),
+    far_wing=(500.0, 130.0),
+    far_wing_wrist=(402.0, 56.0),
+    far_wing_tip=(170.0, 6.0),
     near_shoulder=(486.0, 276.0),
     near_elbow=(528.0, 334.0),
     near_wrist=(578.0, 364.0),
@@ -187,38 +193,130 @@ def blades(name, bone, z, hub, span, far, extra_label):
 def far_rotor_parts():
     c = col(True)
     hx, hy = J["far_hub"]
-    sil, body = cylinder("clip-far-mast", (hx, J["far_rotor"][1] + 4), (hx, hy + 8), 9.0, c, rings=(0.3, 0.62), cap=False)
+    sil, body = cylinder("clip-far-mast", (hx, J["far_rotor"][1] + 4), (hx, hy + 8), 10.0, c, rings=(0.25, 0.5, 0.75), cap=False)
     body.append(ellipse(hx, hy + 8, 14, 6, c["steel_lo"], INK, LW))
     body.append(ellipse(hx, hy + 5, 10, 4, c["steel"], INK, 1.0))
     part("far-rotor-mast", "Far Rotor Mast", "far_rotor_mast", "far_rotor", 6, body)
     blades("far_rotor", "far_rotor", 7, (hx, hy), 150.0, True, "Far Rotor Blades")
 
 
-def pod_part():
-    """The missile pod on the far shoulder, its warhead over the head."""
-    c = col(True)
-    a, b = J["pod"], J["pod_tip"]
-    # the mount
-    mount = smooth([(540, 140, True), (552, 112), (584, 104), (600, 128, True)])
-    items = [path(mount, c["armor"], INK, LW)]
-    sil, body = cylinder("clip-pod", a, (b[0] - 40, b[1] + 3.4), 15.0, c, rings=(0.1, 0.45, 0.8), cap=False)
+def missile(name, a, b, r, c):
+    """A missile from its tail ``a`` to its nose ``b``: a steel body with
+    rings, a hazard band, tail fins and a teal warhead with a pale tip."""
+    ax, ay = a
+    bx, by = b
+    d = math.hypot(bx - ax, by - ay)
+    ux, uy = (bx - ax) / d, (by - ay) / d
+    nx, ny = -uy, ux
+
+    def L(t, k):
+        return (ax + ux * t + nx * k, ay + uy * t + ny * k)
+
+    items = []
+    for s_ in (-1, 1):
+        items.append(path(smooth([L(30, s_ * r * 0.7) + (True,), L(-4, s_ * r * 2.0) + (True,), L(4, s_ * r * 0.7) + (True,)]),
+                          c["steel_lo"], INK, 1.2))
+    wh = d - 2.6 * r
+    _, body = cylinder(f"clip-{name}", a, L(wh, 0), r, c, rings=(0.12, 0.7), cap=False)
     items += body
-    # the warhead: a teal ogive with a pale tip
-    wx, wy = b[0] - 40, b[1] + 3.4
-    head = smooth([(wx, wy - 15, True), (wx + 22, wy - 12), (b[0], b[1], True), (wx + 22, wy + 12), (wx, wy + 15, True)])
+    band = poly([L(wh * 0.38, -r), L(wh * 0.5, -r), L(wh * 0.5, r), L(wh * 0.38, r)])
+    items.append(path(band, C["hazard"], INK, 0.8))
+    for k in range(3):
+        t0 = wh * (0.38 + 0.04 * k)
+        items.append(line([L(t0 + 2, -r), L(t0 - 2, r)], C["armor_lo"], 2.0))
+    head = smooth([L(wh, -r) + (True,), L(wh + r * 1.4, -r * 0.8), L(d, 0) + (True,), L(wh + r * 1.4, r * 0.8),
+                   L(wh, r) + (True,)])
     items.append(path(head, C["teal"], INK, LW))
-    items.append(path(smooth([(wx + 2, wy - 11, True), (wx + 22, wy - 8), (b[0] - 4, b[1] - 1, True), (wx + 18, wy - 3),
-                              (wx + 2, wy - 4, True)]), C["teal_hi"]))
-    items.append(line([(wx + 1, wy - 15), (wx + 1, wy + 15)], c["steel_dk"], 3.0))
-    # fins at the tail end
-    for s in (-1, 1):
-        items.append(path(smooth([(a[0] + 18, a[1] + s * 12, True), (a[0] - 6, a[1] + s * 30, True),
-                                  (a[0] - 2, a[1] + s * 12, True)]), c["steel_lo"], INK, 1.2))
-    # a hazard band
-    for k in range(4):
-        x = a[0] + 140 + k * 7
-        items.append(line([(x, a[1] - 26 + k * -0.6 + 10), (x + 4, a[1] - 26 + 28)], C["hazard"] if k % 2 else C["armor_lo"], 3.4))
-    part("pod", "Missile Pod", "pod", "pod", 12, items)
+    items.append(path(smooth([L(wh + 2, -r * 0.7) + (True,), L(wh + r * 1.4, -r * 0.55), L(d - 4, -1) + (True,),
+                              L(wh + r * 1.2, -r * 0.15), L(wh + 2, -r * 0.2) + (True,)]), C["teal_hi"]))
+    items.append(line([L(wh, -r), L(wh, r)], c["steel_dk"], 2.6))
+    return items
+
+
+def wing_parts(side):
+    """A mechanical wing swept back over the hull: a steel spar in two bones
+    (``<side>_wing`` to the wrist, ``<side>_wing_tip`` beyond it), blade
+    feathers hanging off it whose tips make a stepped trailing edge (the
+    primaries off the outer bone, the secondaries off the inner), an armour
+    covert strip over their roots, and a missile slung under the inner wing."""
+    far = side == "far"
+    c = col(far)
+    z0 = 3.5 if far else 54
+    R, Wr, T = J[f"{side}_wing"], J[f"{side}_wing_wrist"], J[f"{side}_wing_tip"]
+
+    def at(a, b, t):
+        return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+
+    def blade(base, tip, width, fill, cid):
+        bx, by = base
+        tx, ty = tip
+        d = math.hypot(tx - bx, ty - by)
+        ux, uy = (tx - bx) / d, (ty - by) / d
+        nx, ny = -uy, ux
+        w = width / 2
+
+        def L(t, k):
+            return (bx + ux * d * t + nx * w * k, by + uy * d * t + ny * w * k)
+
+        pts = [L(0, -1) + (True,), L(0.55, -1.05), L(0.86, -0.7), tip + (True,), L(0.8, 0.85), L(0.4, 1.0),
+               L(0, 1) + (True,)]
+        sil = smooth(pts)
+        items = [path(sil, fill), path(smooth([L(0, 0.15), L(0.6, 0.2), L(0.92, 0.05), L(0.75, 1.0), L(0, 1.2)]),
+                                       c["armor_lo"]),
+                 line([L(0.05, -0.55), L(0.8, -0.4)], c["steel"], 1.6)]
+        return clipped(cid, sil, items) + [path(sil, "none", INK, LW)]
+
+    def feathers(name, a, b, n, ang0, ang1, len0, len1, width, t0=0.0, t1=1.0):
+        out = []
+        for k in range(n):
+            u = k / max(1, n - 1)
+            base = at(a, b, t0 + (t1 - t0) * u)
+            ang = math.radians(ang0 + (ang1 - ang0) * u)
+            L = len0 + (len1 - len0) * u
+            tip = (base[0] + math.cos(ang) * L, base[1] + math.sin(ang) * L)
+            fill = c["armor_hi"] if k % 2 else c["armor"]
+            out.append(blade(base, tip, width, fill, f"clip-{side}-{name}-{k}"))
+        return out
+
+    # -- the outer wing: primaries, the outermost (longest, most swept) first.
+    prim = feathers("primary", Wr, T, 7, 140, 172, 96, 150, 32, t0=0.04, t1=0.96)
+    outer = [x for f in reversed(prim) for x in f]
+    spar = capsule(Wr, T, 9.0, 4.5)
+    outer.append(path(spar, c["steel"], INK, LW))
+    outer.append(line([at(Wr, T, 0.02), at(T, Wr, 0.04)], c["steel_hi"], 2.0))
+    for t in (0.3, 0.6):
+        p0 = at(Wr, T, t)
+        outer.append(line([(p0[0], p0[1] - 7), (p0[0] + 1, p0[1] + 7)], c["steel_dk"], 2.6))
+    part(f"{side}-wing-tip", f"Wing Tip - {side}", f"{side}_wing_tip", f"{side}_wing_tip", z0 - 0.4, outer)
+
+    # -- the inner wing: secondaries, a covert strip over their roots, the spar.
+    sec = feathers("secondary", Wr, R, 5, 142, 124, 112, 70, 34, t0=0.0, t1=0.85)
+    inner = [x for f in sec for x in f]
+    cov = smooth([at(R, Wr, -0.05) + (True,), at(R, Wr, 1.05) + (True,), (Wr[0] + 6, Wr[1] + 30),
+                  (R[0] - 30, R[1] + 26), (R[0] + 8, R[1] + 16, True)])
+    cov_items = [path(cov, c["armor"]), line([(Wr[0] + 10, Wr[1] + 22), (R[0] - 24, R[1] + 20)], c["armor_lo"], 8.0),
+                 line([(Wr[0] + 8, Wr[1] + 6), (R[0] - 4, R[1] + 2)], c["armor_hi"], 4.0)]
+    cov_items += rivets([at(R, Wr, t) for t in (0.25, 0.5, 0.75)], 1.8, c["steel"])
+    inner += clipped(f"clip-{side}-coverts", cov, cov_items) + [path(cov, "none", INK, LW)]
+    _, sp = cylinder(f"clip-{side}-wing-spar", R, Wr, 9.0, c, rings=(0.35, 0.7), cap=False)
+    inner += sp
+    inner.append(line([(R[0] - 4, R[1] + 8), at(R, Wr, 0.5)], c["hydraulic"], 3.4))
+    # a hooked thumb spike at the wrist
+    inner.append(path(smooth([(Wr[0] + 10, Wr[1] - 6, True), (Wr[0] + 24, Wr[1] - 30), (Wr[0] + 38, Wr[1] - 40, True),
+                              (Wr[0] + 16, Wr[1] - 24), (Wr[0] - 4, Wr[1] - 8, True)]), c["armor"], INK, LW))
+    inner.append(ellipse(Wr[0], Wr[1], 11, 11, c["steel_lo"], INK, LW))
+    inner.append(ellipse(Wr[0], Wr[1], 4, 4, c["hydraulic"], INK, 0.8))
+    inner.append(ellipse(R[0], R[1], 15, 15, c["steel_lo"], INK, LW))
+    inner.append(ellipse(R[0], R[1], 6, 6, c["steel_hi"], INK, 0.8))
+    part(f"{side}-wing", f"Wing - {side}", f"{side}_wing", f"{side}_wing", z0, inner)
+
+    # -- the missile, slung under the inner wing on a pylon.
+    pyl = at(R, Wr, 0.3)
+    m_tail, m_nose = (R[0] - 150, R[1] + 52), (R[0] + 100, R[1] + 38)
+    drop = (pyl[0] - 4, R[1] + 32)
+    mis = [line([pyl, drop], INK, 11.0), line([pyl, drop], c["steel_lo"], 6.4)]
+    mis += missile(f"{side}-missile", m_tail, m_nose, 13.0, c)
+    part(f"{side}-missile", f"Missile - {side}", f"{side}_missile", f"{side}_wing", z0 + 0.6, mis)
 
 
 def claw_parts(side):
@@ -294,17 +392,6 @@ def hook(base, lean, size, c):
 
 def body_parts():
     c = C
-    # Swept fins at the back, behind the hull.
-    fins = []
-    for (bx, by, h, k) in ((296, 126, 96, 1.0), (258, 140, 74, 0.86)):
-        pts = [(bx + 26 * k, by + 6, True), (bx + 4 * k, by - h * 0.55), (bx - 30 * k, by - h, True),
-               (bx - 18 * k, by - h * 0.62), (bx - 22 * k, by + 8, True)]
-        sil = smooth(pts)
-        fins += [path(sil, c["armor"], INK, LW), line([(bx + 10 * k, by), (bx - 20 * k, by - h * 0.9)], c["sheen"], 1.8),
-                 path(smooth([(bx + 14 * k, by + 2), (bx - 2 * k, by - h * 0.45), (bx - 26 * k, by - h * 0.92, True),
-                              (bx - 14 * k, by - h * 0.5), (bx - 14 * k, by + 4)]), c["armor_lo"])]
-    part("fins", "Back Fins", "fins", "body", 14, fins)
-
     # The cage: ribs round the glowing core, the core beneath them.
     cx, cy = CORE_C
     core_sil = smooth([(cx - 120, cy - 22), (cx - 92, cy - 50), (cx - 30, cy - 62), (cx + 40, cy - 60), (cx + 104, cy - 44),
@@ -348,7 +435,7 @@ def body_parts():
     sil = smooth(BACK)
     ink("hull", "body", 21, sil)
     spines = []
-    for i, (x, s) in enumerate(((556, 0.9), (514, 1.2), (466, 1.4), (418, 1.5), (370, 1.4), (330, 1.25))):
+    for i, (x, s) in enumerate(((548, 1.0), (522, 1.15))):
         y = 116 if 360 < x < 540 else 122
         if x > 540:
             y = 128
@@ -418,20 +505,20 @@ def neck_parts():
 
 # The skull: back of the dome, over the brow, down the snout to its tip,
 # then back along the mouth line (the jaw is its own part).
-SKULL = [(646, 196), (650, 166), (672, 136), (712, 118), (762, 114), (810, 124), (852, 144), (886, 172), (910, 204),
-         (922, 232), (918, 254, True), (906, 238), (890, 228, True), (850, 222), (810, 220), (770, 220), (734, 224),
-         (704, 230, True), (676, 230), (656, 216)]
-JAW = [(686, 216), (700, 228, True), (740, 234), (790, 236), (840, 236), (884, 234, True), (892, 244), (880, 270),
-       (848, 294), (800, 308), (750, 310), (712, 298), (690, 272), (680, 240)]
-EYE = (812.0, 160.0)
+SKULL = [(648, 208), (648, 172), (660, 136), (684, 106), (718, 88), (758, 84), (792, 94), (812, 112), (818, 132, True),
+         (846, 154), (880, 176), (912, 200), (934, 224), (940, 246, True), (926, 234), (906, 226, True), (866, 222),
+         (826, 220), (786, 220), (746, 222), (718, 226, True), (688, 228), (662, 222)]
+JAW = [(696, 216), (712, 228, True), (760, 230), (820, 228), (870, 228), (906, 232, True), (900, 240), (868, 246),
+       (820, 252), (770, 256), (732, 256), (708, 248), (696, 234)]
+EYE = (798.0, 150.0)
 
 
 def mouth_part():
     c = C
-    inside = smooth([(700, 226, True), (760, 222), (830, 220), (896, 222, True), (884, 252), (820, 262), (760, 262),
-                     (712, 250)])
+    inside = smooth([(712, 226, True), (780, 222), (860, 222), (912, 230, True), (892, 244), (820, 250), (760, 252),
+                     (724, 246)])
     part("mouth", "Mouth", "mouth", "head", 40,
-         [path(inside, c["mouth"]), line([(716, 244), (780, 252), (850, 248)], c["mouth2"], 5.0)])
+         [path(inside, c["mouth"]), line([(730, 240), (800, 244), (870, 238)], c["mouth2"], 4.0)])
 
 
 def tooth(x, y, h, w, down=True, fill=None):
@@ -442,77 +529,72 @@ def tooth(x, y, h, w, down=True, fill=None):
 
 
 def jaw_part():
+    """A slim lower mandible: a row of fangs along its top and a short comb of
+    saw teeth raking off the chin."""
     c = C
     sil = smooth(JAW)
     ink("jaw", "jaw", 23, sil)
-    lo = [(680, 262), (740, 280), (820, 276), (900, 250), (900, 320), (680, 320)]
-    hi = [(700, 236), (760, 240), (840, 242), (896, 240), (890, 248), (840, 250), (760, 250), (706, 246)]
-    extra = [line([(712, 270), (770, 284), (840, 276), (880, 258)], C["seam"], 1.8)]
-    extra += rivets([(730, 262), (770, 272), (812, 270)], 2.0, C["steel"])
-    teeth = [tooth(x, 236 - (x - 720) * -0.02, 18 - abs(x - 800) * 0.04, 10, down=False) for x in range(724, 884, 13)]
-    # The beard: a comb of saw teeth rooted along the chin, raking down and forward.
+    lo = [(700, 244), (760, 246), (830, 242), (906, 236), (906, 270), (700, 270)]
+    hi = [(714, 232), (770, 233), (840, 232), (900, 234), (890, 238), (840, 237), (770, 238), (716, 238)]
+    extra = [line([(722, 246), (780, 248), (850, 242), (890, 238)], C["seam"], 1.4)]
+    teeth = [tooth(x, 230 + (x - 730) * 0.01, 12 - abs(x - 810) * 0.03, 7, down=False) for x in range(732, 896, 12)]
     beard = []
-    chin = [(888, 250), (878, 272), (848, 296), (800, 310), (752, 312), (716, 300)]
+    chin = [(898, 240), (868, 247), (820, 253), (772, 257)]
     segs = list(zip(chin, chin[1:]))
-    for k in range(11):
-        u = k / 10 * len(segs)
+    for k in range(7):
+        u = k / 6 * len(segs)
         i = min(len(segs) - 1, int(u))
         (x0, y0), (x1, y1) = segs[i]
         t = u - i
         x, y = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
-        h = 24 - 12 * (k / 10)
-        tx, ty = x1 - x0, y1 - y0
-        d = math.hypot(tx, ty)
-        tx, ty = tx / d, ty / d
-        nx, ny = -ty, tx  # outward (down) normal of a chin running nose to throat
-        if ny < 0:
-            nx, ny = -nx, -ny
-        w = 7.0
-        tip = (x + nx * h + 8, y + ny * h)
-        beard.append(path(smooth([(x - tx * w - nx * 4, y - ty * w - ny * 4, True), tip + (True,),
-                                  (x + tx * w - nx * 4, y + ty * w - ny * 4, True)]), C["tooth"], INK, 1.1))
-        beard.append(line([(x + nx * 2, y + ny * 2), (x + nx * h * 0.7 + 5, y + ny * h * 0.7)], C["tooth_sh"], 1.3))
+        h = 13 - 5 * (k / 6)
+        beard.append(path(smooth([(x - 5, y - 3, True), (x + 6, y + h, True), (x + 6, y - 3, True)]), C["tooth"], INK, 1.0))
     body = teeth + shaded("clip-jaw", sil, c["armor"], c["armor_lo"], c["armor_hi"], lo, hi, extra) + beard
     part("jaw", "Lower Jaw", "jaw", "jaw", 42, body)
 
 
 def head_part():
+    """A lean skull: a tall domed forehead, an overhanging brow, and a long
+    snout tapering to a hooked beak lined with fangs."""
     c = C
     sil = smooth(SKULL)
     ink("head", "head", 24, sil)
-    lo = [(650, 200), (720, 196), (800, 192), (880, 196), (920, 204), (920, 240), (640, 240)]
-    hi = [(684, 146), (720, 130), (770, 126), (820, 136), (856, 154), (836, 152), (790, 140), (740, 140), (700, 152)]
+    lo = [(650, 206), (720, 204), (800, 200), (880, 206), (944, 216), (944, 252), (640, 252)]
+    hi = [(668, 132), (696, 102), (736, 90), (776, 94), (804, 112), (788, 110), (752, 104), (716, 110), (688, 134)]
     extra = [
-        # a brow ridge over the eye socket, and seams back from it
-        path(smooth([(772, 150), (812, 140), (854, 152), (858, 162), (812, 154), (774, 162)]), c["armor_lo"]),
-        line([(700, 160), (760, 170), (794, 172)], C["seam"], 2.0),
-        line([(690, 196), (740, 204), (790, 202)], C["seam"], 1.6),
-        line([(872, 196), (900, 222), (912, 244)], C["seam"], 1.6),
-        ellipse(890, 192, 3.6, 2.4, C["seam"], rot=30),
+        # the cranium's plate seam and rivets
+        line([(664, 186), (676, 140), (704, 112), (740, 100)], C["seam"], 1.8),
+        line([(700, 176), (760, 182), (806, 180)], C["seam"], 1.6),
+        line([(836, 186), (880, 200), (918, 224)], C["seam"], 1.6),
+        ellipse(900, 206, 4.0, 2.2, C["seam"], rot=30),
+        # a cheek vent: three slots
+        *[line([(712 + 10 * k, 196), (720 + 10 * k, 212)], c["armor_lo"], 3.0) for k in range(3)],
     ]
-    extra += rivets([(690, 178), (716, 186), (742, 190)], 2.0, C["steel"])
-    teeth = [tooth(x, 224 - (x - 720) * 0.012, 22 - abs(x - 800) * 0.05, 11, down=True) for x in range(718, 892, 14)]
-    body = shaded("clip-head", sil, c["armor"], c["armor_lo"], c["armor_hi"], lo, hi, extra) + teeth
+    extra += rivets([(684, 168), (694, 146), (712, 128)], 2.0, C["steel"])
+    teeth = [tooth(x, 222 + (x - 720) * 0.006, 15 - abs(x - 810) * 0.03, 8, down=True) for x in range(724, 904, 12)]
+    # The brow: an armour plate jutting over the eye, angled down at the front.
+    brow = path(smooth([(752, 128, True), (812, 130), (838, 146, True), (812, 144), (764, 142)]), c["armor_lo"], INK, 1.2)
+    body = shaded("clip-head", sil, c["armor"], c["armor_lo"], c["armor_hi"], lo, hi, extra) + teeth + [brow]
     part("head", "Head", "head", "head", 44, body)
 
 
 def eye_parts():
     x, y = EYE
-    socket = path(smooth([(x - 30, y + 8, True), (x - 6, y - 6), (x + 26, y - 6, True), (x + 18, y + 6), (x - 6, y + 12)]),
+    socket = path(smooth([(x - 26, y - 6, True), (x + 4, y - 2), (x + 30, y + 6, True), (x + 6, y + 10), (x - 20, y + 4)]),
                   C["armor_lo"], INK, 1.2)
 
     def slit(w, h, fill, rim=None):
-        pts = [(x - 26 * w, y + 7, True), (x - 4 * w, y - 3 * h), (x + 22 * w, y - 4 * h, True), (x + 12 * w, y + 4 * h),
-               (x - 6 * w, y + 8 * h)]
+        pts = [(x - 22 * w, y - 4 * h, True), (x + 4 * w, y - 1 * h), (x + 26 * w, y + 6 * h, True),
+               (x + 4 * w, y + 5 * h), (x - 16 * w, y + 2 * h)]
         return path(smooth(pts), fill, rim or INK, 1.0)
 
-    open_ = [socket, slit(1.0, 1.0, C["eye"]), slit(0.62, 0.55, C["eye_hi"], C["eye"]), ellipse(x + 4, y + 1, 3.4, 2.4, "#fff6dc")]
-    angry = [socket, slit(1.05, 0.7, C["eye"]), slit(0.7, 0.35, C["eye_hi"], C["eye"]),
-             path(smooth([(x - 34, y - 14, True), (x + 30, y - 2, True), (x + 32, y - 18, True)]), C["armor"], INK, 1.0)]
-    shut = [socket, line([(x - 26, y + 7), (x - 4, y + 2), (x + 22, y - 2)], C["eye_off"], 4.0),
-            line([(x - 24, y + 6), (x + 20, y - 2)], C["eye"], 1.0)]
-    dead = [socket, slit(1.0, 1.0, C["eye_off"]), line([(x - 10, y - 4), (x + 8, y + 8)], C["steel_lo"], 2.0),
-            line([(x - 10, y + 8), (x + 8, y - 4)], C["steel_lo"], 2.0)]
+    open_ = [socket, slit(1.0, 1.0, C["eye"]), slit(0.6, 0.5, C["eye_hi"], C["eye"]), ellipse(x + 6, y + 3, 2.6, 1.8, "#fff6dc")]
+    angry = [socket, slit(1.05, 0.6, C["eye"]), slit(0.7, 0.3, C["eye_hi"], C["eye"]),
+             path(smooth([(x - 30, y - 12, True), (x + 34, y + 2, True), (x + 34, y - 10, True)]), C["armor"], INK, 1.0)]
+    shut = [socket, line([(x - 22, y - 2), (x + 4, y + 2), (x + 26, y + 6)], C["eye_off"], 3.6),
+            line([(x - 20, y - 1), (x + 24, y + 6)], C["eye"], 1.0)]
+    dead = [socket, slit(1.0, 1.0, C["eye_off"]), line([(x - 8, y - 4), (x + 8, y + 8)], C["steel_lo"], 2.0),
+            line([(x - 8, y + 8), (x + 8, y - 4)], C["steel_lo"], 2.0)]
     part("eye-open", "Eye - Open", "eye_open", "head", 46, open_, ' data-rig-opacity="eye.open" data-rig-default="1"')
     part("eye-angry", "Eye - Angry", "eye_angry", "head", 46, angry, ' data-rig-opacity="eye.angry"')
     part("eye-shut", "Eye - Shut", "eye_shut", "head", 46, shut, ' data-rig-opacity="eye.shut"')
@@ -522,30 +604,26 @@ def eye_parts():
 def near_rotor_parts():
     c = C
     hx, hy = J["near_hub"]
-    # The nacelle on the flank: a tall pod from the keel to the rotor's collar.
-    nac = smooth([(476, 262, True), (472, 200), (474, 140), (486, 126, True), (510, 126, True), (522, 140), (524, 200),
-                  (520, 262, True), (498, 274)])
-    items = [path(nac, c["steel"])]
-    items.append(path(smooth([(506, 128), (520, 140), (524, 200), (520, 262), (498, 274), (500, 200), (502, 140)]), c["steel_lo"]))
-    items.append(path(smooth([(480, 140), (486, 132), (492, 140), (490, 250), (482, 252)]), c["steel_hi"]))
-    for y in (150, 196, 242):
-        items.append(line([(472, y), (498, y + 4), (524, y)], c["steel_dk"], 3.0))
-    items.append(ellipse(498, 220, 8, 8, C["armor_lo"], INK, 1.0))
-    items.append(ellipse(498, 220, 4, 4, C["eye"]))
-    ink("nacelle", "body", 21.5, nac)
-    part("nacelle", "Rotor Nacelle", "nacelle", "body", 50, clipped("clip-nacelle", nac, items) + [path(nac, "none", INK, LW)])
-    sil, body = cylinder("clip-near-mast", (hx, J["near_rotor"][1] + 2), (hx, hy + 10), 10.0, c, rings=(0.35, 0.7), cap=False)
-    body.append(ellipse(hx, hy + 10, 18, 7, c["steel_lo"], INK, LW))
-    body.append(ellipse(hx, hy + 6, 12, 4.5, c["steel"], INK, 1.0))
-    part("near-rotor-mast", "Near Rotor Mast", "near_rotor_mast", "near_rotor", 48, body)
+    base = J["near_rotor"][1]
+    # A gearbox on the forward hull, the tall mast rising out of it.
+    box = smooth([(hx - 26, base + 14, True), (hx - 22, base - 14), (hx - 10, base - 22, True), (hx + 10, base - 22, True),
+                  (hx + 22, base - 14), (hx + 26, base + 14, True)])
+    gear = [path(box, c["armor"], INK, LW), line([(hx - 20, base - 6), (hx + 20, base - 6)], c["steel"], 3.0),
+            line([(hx - 14, base - 16), (hx + 6, base - 18)], c["armor_hi"], 2.4)]
+    gear += rivets([(hx - 16, base + 4), (hx + 16, base + 4)], 1.8, c["steel"])
+    part("gearbox", "Rotor Gearbox", "gearbox", "body", 38, gear)
+    sil, body = cylinder("clip-near-mast", (hx, base - 10), (hx, hy + 10), 11.0, c, rings=(0.25, 0.5, 0.75), cap=False)
+    body.append(ellipse(hx, hy + 10, 20, 7.5, c["steel_lo"], INK, LW))
+    body.append(ellipse(hx, hy + 6, 13, 4.8, c["steel"], INK, 1.0))
+    part("near-rotor-mast", "Near Rotor Mast", "near_rotor_mast", "near_rotor", 37, body)
     blades("near_rotor", "near_rotor", 52, (hx, hy), 196.0, False, "Near Rotor Blades")
 
 
 def draw() -> str:
     svg.configure(dx=DX, dy=DY, ink=INK, ow=OW, colors=C)
+    wing_parts("far")
     far_rotor_parts()
     claw_parts("far")
-    pod_part()
     body_parts()
     engine_part()
     neck_parts()
@@ -554,6 +632,7 @@ def draw() -> str:
     head_part()
     eye_parts()
     near_rotor_parts()
+    wing_parts("near")
     claw_parts("near")
     return svg.document(
         size=(W, H),
@@ -562,11 +641,11 @@ def draw() -> str:
         label="Mockingbird - Side Right",
         comment=[
             "  <!-- The Mockingbird v2: a mechanical predator-gunship in side view, facing",
-            "       right. A black skull with a glowing slit eye and a jaw of white saw teeth",
-            "       on a segmented steel neck; a cage of steel ribs round a glowing red",
-            "       engine-heart; hooked spines and swept fins on an armoured back; two",
-            "       rotors; a missile pod over the head; a thruster at the tail; two",
-            "       grappling claws beneath. Each part is a layer with a data-rig-part name.",
+            "       right. A lean black skull with a tall forehead, a glowing slit eye and a",
+            "       beak of fangs on a segmented steel neck; a cage of steel ribs round a",
+            "       glowing red engine-heart; hooked spines on an armoured back; two armoured",
+            "       wings, a missile under each; two rotors on tall masts; a thruster at the",
+            "       tail; two grappling claws beneath. Each part is a layer with a data-rig-part name.",
             "       *_ink layers are silhouettes grown by the outline width, painted beneath",
             "       every fill so the body reads as one outlined silhouette. Swap sets (the",
             "       eye, each rotor's spin state, each claw open or shut) sit on top of each",

@@ -16,8 +16,8 @@ frame counts and durations, so the redesign can stand in for the first sheet.
 
 Angles are degrees added to the drawing (positive turns clockwise on screen:
 a positive ``body`` dips the nose, a positive ``jaw`` opens the mouth, a
-positive ``<side>_arm`` swings a claw back under the belly); distances are SVG
-units. One-shot rows are key poses, one key per drawn frame (``K``).
+positive ``<side>_arm`` swings a claw back under the belly, a positive
+``<side>_wing`` raises a wing); distances are SVG units. One-shot rows are key poses, one key per drawn frame (``K``).
 """
 
 from __future__ import annotations
@@ -53,16 +53,19 @@ SIDES = ("far", "near")
 def skeleton(J: Dict[str, Point]) -> List[BoneSpec]:
     """A ``body`` at the hull's centre (the root: a clip pitches the whole
     machine with it), a two-segment neck to a ``head`` with a hinged ``jaw``,
-    a thruster ``engine``, a missile ``pod``, two rotor masts and, per side, a
-    claw arm (``<side>_arm``, ``<side>_fore``, ``<side>_claw``)."""
+    a thruster ``engine``, two rotor masts and, per side, a wing
+    (``<side>_wing`` to the wrist, ``<side>_wing_tip`` beyond it; its missile
+    rides the inner bone) and a claw arm (``<side>_arm``, ``<side>_fore``,
+    ``<side>_claw``)."""
     bones: List[BoneSpec] = [("body", None, J["body"], 0.0, 0.0)]
     bones.append(segment("neck1", "body", J["neck1"], J["neck2"]))
     bones.append(segment("neck2", "neck1", J["neck2"], J["head"]))
     bones.append(segment("head", "neck2", J["head"], J["snout"]))
     bones.append(("jaw", "head", J["jaw"], heading(J["jaw"], J["jaw_tip"]), dist(J["jaw"], J["jaw_tip"])))
     bones.append(segment("engine", "body", J["engine"], J["engine_tip"]))
-    bones.append(segment("pod", "body", J["pod"], J["pod_tip"]))
     for side in SIDES:
+        bones.append(segment(f"{side}_wing", "body", J[f"{side}_wing"], J[f"{side}_wing_wrist"]))
+        bones.append(segment(f"{side}_wing_tip", f"{side}_wing", J[f"{side}_wing_wrist"], J[f"{side}_wing_tip"]))
         bones.append(segment(f"{side}_rotor", "body", J[f"{side}_rotor"], J[f"{side}_hub"]))
         bones.append(segment(f"{side}_arm", "body", J[f"{side}_shoulder"], J[f"{side}_elbow"]))
         bones.append(segment(f"{side}_fore", f"{side}_arm", J[f"{side}_elbow"], J[f"{side}_wrist"]))
@@ -104,7 +107,10 @@ def hover(t: float, *, bob: float = 7.0, sway: float = 1.0) -> Pose:
         "neck2": -2.4 * sway * math.sin(w - 0.3),
         "head": 2.6 * sway * math.sin(w - 0.9),
         "engine": 1.5 * sway * math.sin(w + 1.4),
-        "pod": -1.2 * sway * math.sin(w + 0.4),
+        "near_wing": 5.0 * sway * math.sin(w + 0.9),
+        "near_wing_tip": 7.0 * sway * math.sin(w + 0.2),
+        "far_wing": 5.0 * sway * math.sin(w + 0.7),
+        "far_wing_tip": 7.0 * sway * math.sin(w + 0.0),
         "near_arm": 5.0 * sway * math.sin(w - 1.0),
         "near_fore": 6.0 * sway * math.sin(w - 1.6),
         "near_claw": 8.0 * sway * math.sin(w - 2.2),
@@ -141,6 +147,9 @@ def thrust(i: int, n: int, t: float) -> Pose:
     p["head"] += -4.0
     p["jaw"] = 24.0 + 4.0 * math.sin(w * 2.0)
     p["engine"] += -4.0
+    for side in SIDES:
+        p[f"{side}_wing"] += -9.0
+        p[f"{side}_wing_tip"] += -6.0
     for side, k in (("near", 1.0), ("far", 0.85)):
         p[f"{side}_arm"] += 34.0 * k
         p[f"{side}_fore"] += 22.0 * k
@@ -172,7 +181,10 @@ def bite(i: int, n: int, t: float) -> Pose:
         "head": K([0, -6, -8, 10, 7, 3], i),
         "jaw": K([14, 30, 36, 0, 4, 12], i),
         "engine": K([0, 6, 8, -6, -4, 0], i),
-        "pod": K([0, 3, 4, -3, -2, 0], i),
+        "near_wing": K([0, 4, 6, -14, -10, -2], i),
+        "near_wing_tip": K([0, 4, 5, -12, -8, 0], i),
+        "far_wing": K([0, 4, 6, -14, -10, -2], i),
+        "far_wing_tip": K([0, 4, 5, -12, -8, 0], i),
         "near_arm": K([0, -24, -32, -36, -26, -6], i),
         "near_fore": K([0, -12, -18, -26, -14, -2], i),
         "near_claw": K([0, -10, -14, 6, 4, 0], i),
@@ -193,7 +205,7 @@ def bite(i: int, n: int, t: float) -> Pose:
 
 def slash(i: int, n: int, t: float) -> Pose:
     """The fireball tell: rear back, jaw opening wider and wider as the core
-    flares and fire gathers in the throat, then spit it, the pod firing too."""
+    flares and fire gathers in the throat, then spit it, the near wing's missile firing too."""
     p: Pose = {
         "root_y": K([0, -6, -10, -12, 4, 0], i),
         "root_x": K([0, -12, -18, -22, 10, 2], i),
@@ -203,7 +215,10 @@ def slash(i: int, n: int, t: float) -> Pose:
         "head": K([0, -6, -9, -11, 6, 2], i),
         "jaw": K([14, 26, 34, 42, 40, 18], i),
         "engine": K([0, 3, 5, 6, -4, 0], i),
-        "pod": K([0, -2, -4, -5, 6, 1], i),
+        "near_wing": K([0, 4, 7, 8, -4, 0], i),
+        "near_wing_tip": K([0, 5, 8, 9, -2, 0], i),
+        "far_wing": K([0, 4, 7, 8, -2, 0], i),
+        "far_wing_tip": K([0, 5, 8, 9, 0, 0], i),
         "near_arm": K([0, 10, 16, 18, 4, 0], i),
         "near_fore": K([0, 8, 12, 14, 2, 0], i),
         "far_arm": K([0, 8, 14, 16, 4, 0], i),
@@ -237,6 +252,10 @@ def hit(i: int, n: int, t: float) -> Pose:
         "far_arm": K([0, 18, 10, 3], i),
         "far_fore": K([0, 14, 8, 2], i),
         "far_claw": K([0, 10, 6, 2], i),
+        "near_wing": K([0, 10, 4, 1], i),
+        "near_wing_tip": K([0, 14, 6, 2], i),
+        "far_wing": K([0, 8, 3, 1], i),
+        "far_wing_tip": K([0, 12, 5, 2], i),
     }
     p.update(rotors(i))
     p.update(claws("open"))
@@ -260,7 +279,10 @@ def death(i: int, n: int, t: float) -> Pose:
         "head": K([0, -10, 4, 8, 10, 12, 13, 14], i),
         "jaw": K([14, 34, 26, 30, 34, 36, 38, 38], i),
         "engine": K([0, 6, -6, 8, -4, 10, 12, 14], i),
-        "pod": K([0, -4, 6, 10, 14, 18, 20, 22], i),
+        "near_wing": K([0, 10, -4, -10, -14, -16, -17, -18], i),
+        "near_wing_tip": K([0, 12, -6, -12, -16, -18, -20, -20], i),
+        "far_wing": K([0, 8, -3, -8, -12, -14, -15, -16], i),
+        "far_wing_tip": K([0, 10, -5, -10, -14, -16, -18, -18], i),
         "near_arm": K([0, 24, 34, 44, 52, 56, 58, 60], i),
         "near_fore": K([0, 18, 24, 30, 34, 36, 38, 38], i),
         "near_claw": K([0, 14, 20, 26, 30, 32, 34, 34], i),
@@ -299,7 +321,7 @@ DEFAULTS: Pose = {
     "far_claw.open": 1.0,
 }
 
-#: Sprite pixels per SVG unit: the drawing is 1140x720 units.
+#: Sprite pixels per SVG unit: the drawing is 1140x760 units.
 SCALE = 0.5
 
 SPEC = CreatureSpec(
@@ -311,8 +333,8 @@ SPEC = CreatureSpec(
     legs=(),
     scale=SCALE,
     svg_center_x=570.0,
-    svg_ground_y=700.0,
-    frame_size=(570, 360),
+    svg_ground_y=740.0,
+    frame_size=(570, 380),
     # (row, frames, ms, loops): the first sheet's rows. Its one-shots were
     # sampled as loops too; here only the hover and the dash loop.
     rows=[
