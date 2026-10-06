@@ -40,6 +40,12 @@ from typing import Dict, List, Sequence, Tuple
 from PIL import Image
 
 from ...authoring.part_flipbook import publish_rig_flipbook
+from ...authoring.portrait import (
+    FaceGuide,
+    PortraitClip,
+    render_framed_portrait,
+    write_portrait_sheet,
+)
 from ...authoring.sheet_build import build_sheet
 from . import _creature_fx as FX
 from ._svg_fighter_effects import FxCanvas, compose_rig_frame
@@ -348,6 +354,38 @@ def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Imag
     return compose_rig_frame(_doc(), animation, frame_idx, frame_count, behind=_behind, front=_front, fx_pieces=True)
 
 
+#: The face: the hooded skull, eye and grin (design coordinates on the head).
+_FACE_C = _on_head(800.0, 196.0)
+FACE = FaceGuide(
+    center_x=S(*_FACE_C)[0] * ART_SCALE,
+    center_y=S(*_FACE_C)[1] * ART_SCALE,
+    width=230.0 * ART_SCALE,
+    height=170.0 * ART_SCALE,
+    source_width=FRAME_SIZE[0],
+    source_height=FRAME_SIZE[1],
+)
+
+
+def render_portraits(out_dir: Path, **opts) -> List[Path]:
+    """Dialog portraits rerendered from the rig at 6x, never the sheet."""
+    del opts
+    doc = _doc()
+
+    def portrait_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
+        source = doc.render_at(animation, doc.frame_time(animation, frame_idx, frame_count), supersample=3, scale=6)
+        return render_framed_portrait(source, FACE, view_width=300.0 * ART_SCALE, center_y=FACE.center_y)
+
+    clips = {
+        "default": PortraitClip.still(portrait_frame("rest", 0, 6)),
+        "gaping": PortraitClip(
+            tuple(portrait_frame("rest", frame, 6) for frame in range(6)),
+            duration_ms=110,
+            looping=True,
+        ),
+    }
+    return write_portrait_sheet(TARGET_NAME, clips, Path(out_dir))
+
+
 def render(out_dir: str | Path, **opts) -> List[Path]:
     del opts
     out_dir = Path(out_dir)
@@ -368,7 +406,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
     return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
 
 
-__all__ = ["ACTOR_METADATA", "ROWS", "SHEET_FILES", "TARGET_NAME", "render", "render_frame"]
+__all__ = ["ACTOR_METADATA", "ROWS", "SHEET_FILES", "TARGET_NAME", "render", "render_frame", "render_portraits"]
 
 
 def main(argv: Sequence[str] | None = None) -> int:
