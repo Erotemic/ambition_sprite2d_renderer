@@ -11,7 +11,8 @@ the frame, the rows and the clips. It never draws.
 
 The clips keep the sheet contract the game already reads: the first nine rows,
 frame counts and durations are those from before the SVG redesign; the boss
-rework appended ``stunned``, ``snap_up`` and ``leap``.
+rework appended ``stunned``, ``snap_up`` and ``leap``, and the jaw grab's
+``grab_reach``, ``grab_shake`` and ``grab_throw``.
 """
 
 from __future__ import annotations
@@ -319,6 +320,79 @@ def leap(i: int, n: int, t: float) -> Pose:
     return p
 
 
+def grab_reach(i: int, n: int, t: float) -> Pose:
+    """The jaw grab: a low crouch with the head down and forward, jaws wide
+    (frames 0-1, the tell, held while he aims), then the lunge and the clamp
+    (2-5): the jaws slam shut low, where a standing body is."""
+    p: Pose = {
+        "root_x": track([0, -10, 26, 34, 30, 22], t),
+        "root_y": track([0, 12, 10, 8, 8, 8], t),
+        "pelvis": track([0, 8, 12, 13, 12, 10], t),
+        "torso": track([0, 4, 5, 5, 5, 4], t),
+        "neck": track([0, 16, 24, 26, 24, 22], t),
+        "head": track([0, -6, 2, 4, 4, 4], t),
+        "jaw": track([3, 36, 44, 4, 3, 3], t),
+        "near_foot_x": track([NEAR_X, NEAR_X, 22, 26, 26, 24], t),
+        "near_foot_lift": track([0, 0, 14, 0, 0, 0], t),
+        "near_arm_u": track([0, -14, -24, -22, -20, -18], t),
+        "far_arm_u": track([0, -12, -22, -20, -18, -16], t),
+        "tail1": track([0, -8, -10, -8, -6, -6], t),
+        "tail2": track([0, -10, -12, -10, -8, -8], t),
+        "tail3": track([0, -10, -14, -12, -8, -8], t),
+        "tail4": track([0, -12, -16, -12, -10, -10], t),
+        "fx.bite": track([0, 0, 0, 1, 0.3, 0], t),
+    }
+    p.update(eyes("angry"))
+    return p
+
+
+def grab_shake(i: int, n: int, t: float) -> Pose:
+    """Something clamped in his jaws, thrashed: the neck and head whip up and
+    down (twice a loop), the body braced low, the tail swinging against it."""
+    w = math.tau * t * 2.0
+    whip = math.sin(w)
+    p: Pose = {
+        "root_x": 18.0 + 3.0 * math.sin(w + 0.4),
+        "root_y": 8.0 + 2.0 * abs(whip),
+        "pelvis": 10.0 + 2.0 * whip,
+        "torso": 4.0 + 1.5 * whip,
+        "neck": 14.0 + 16.0 * whip,
+        "head": 2.0 + 12.0 * math.sin(w + 0.7),
+        "jaw": 4.0,
+        "near_foot_x": NEAR_X + 18.0,
+        "far_foot_x": FAR_X - 4.0,
+        "near_arm_u": -16.0 + 8.0 * whip,
+        "far_arm_u": -14.0 + 8.0 * whip,
+    }
+    for k in range(4):
+        p[f"tail{k + 1}"] = -(4.0 + 3.0 * k) * math.sin(w - 0.6 * (k + 1))
+    p.update(eyes("angry"))
+    return p
+
+
+def grab_throw(i: int, n: int, t: float) -> Pose:
+    """The fling: the head whips up and forward from the shake and the jaws
+    open at the top (frame 2), then the follow-through."""
+    p: Pose = {
+        "root_x": track([18, 12, 22, 16, 6], t),
+        "root_y": track([8, 10, 0, 2, 2], t),
+        "pelvis": track([10, 12, -4, 0, 2], t),
+        "torso": track([4, 5, -3, -1, 0], t),
+        "neck": track([22, 26, -26, -14, -4], t),
+        "head": track([4, 6, -18, -10, -2], t),
+        "jaw": track([4, 4, 38, 24, 8], t),
+        "near_foot_x": track([NEAR_X + 18, NEAR_X + 18, NEAR_X + 22, NEAR_X + 14, NEAR_X + 6], t),
+        "near_arm_u": track([-16, -18, -34, -24, -8], t),
+        "far_arm_u": track([-14, -16, -30, -20, -6], t),
+        "tail1": track([-4, -6, 8, 4, 0], t),
+        "tail2": track([-6, -8, 10, 5, 0], t),
+        "tail3": track([-8, -10, 12, 6, 0], t),
+        "tail4": track([-10, -12, 14, 8, 0], t),
+    }
+    p.update(eyes("angry"))
+    return p
+
+
 CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
     "idle": idle,
     "walk": walk,
@@ -332,6 +406,9 @@ CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
     "stunned": stunned,
     "snap_up": snap_up,
     "leap": leap,
+    "grab_reach": grab_reach,
+    "grab_shake": grab_shake,
+    "grab_throw": grab_throw,
 }
 
 DEFAULTS: Pose = {
@@ -368,6 +445,10 @@ SPEC = T.theropod_spec(
         ("stunned", 6, 130, True),
         ("snap_up", 6, 90, False),
         ("leap", 8, 90, False),
+        # The jaw grab (2026-10-06): reach and clamp, thrash, fling.
+        ("grab_reach", 6, 100, False),
+        ("grab_shake", 6, 70, True),
+        ("grab_throw", 5, 80, False),
     ],
     clips=CLIPS,
     defaults=DEFAULTS,
