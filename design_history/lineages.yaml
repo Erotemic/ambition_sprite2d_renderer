@@ -93,7 +93,7 @@ lineages:
     name: The player robot (v0, v2, v3)
     ids: [robot]
     paths: ['(^|/)robot(\.yaml|\.py|_side|25d)', 'robot_side', 'robot25d', 'player_robot']
-    summary: "one lineage, three distinct catalog characters (v0, v2, v3)"
+    summary: "one lineage, three characters"
     tile_w: 240
     per_row: 4
     eras:
