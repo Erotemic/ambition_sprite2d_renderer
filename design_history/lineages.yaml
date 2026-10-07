@@ -1,0 +1,322 @@
+# Curated design history. A lineage is one CHARACTER as the player knows them;
+# an era is one look, pinned to the commit that introduced it.
+#
+# Nothing here is an authority. An era is a commit id; its pixels are made by
+# that commit's own code (see README.md). Edit this file when a design changes
+# or a lineage's identity is clarified; never copy old art or code beside it.
+#
+# `ids`    target ids to try at each commit, newest name first (names changed)
+# `paths`  regexes over renderer-relative paths; a commit touching one is a
+#          candidate for `survey`
+# `eras`   the curated looks, oldest first (empty until surveyed and judged)
+lineages:
+  alice:
+    name: Alice
+    ids: [alice, alice_cryptographer]
+    paths: ['alice']
+    summary: "from a jointed-puppet placeholder to an SVG-rigged courier"
+    eras:
+      - commit: "5d206dc8b"
+        label: "Toon-rig placeholder"
+        note: "Cryptography crew batch 1: one jointed template worn by Alice, Bob and the rest."
+      - commit: "739c173d2"
+        label: "Bespoke cryptographer"
+        note: "Layered hair, a knee-length cinched coat over the checker tabard."
+      - commit: "1dadefd72"
+        label: "Face and hair pass"
+        note: "End of the first day's iteration on the toon scaffold."
+      - commit: "ac2c9c47f"
+        label: "Teal jacket, satchel, letter"
+        note: "The first full redraw; committed from Jon's account, subject names GPT-5.6."
+      - commit: "b656e038c"
+        label: "SVG cipher courier"
+        note: "Red hair, white coat: the articulated SVG redesign."
+      - commit: "341958b56"
+        label: "Teal jacket and short dark hair, restored"
+        note: "Jon asked for the jacket and hair back; poses refined."
+      - commit: "d64c64d9a"
+        label: "A rig: props, effects, faces are pieces"
+        note: "Current design."
+  bob:
+    name: Bob
+    ids: [bob, bob_engineer]
+    paths: ['(^|/)bob', '_bob_']
+    summary: "engineer: from a jointed-puppet placeholder to a bearded SVG-rigged fighter"
+    eras:
+      - commit: "5d206dc8b"
+        label: "Toon-rig placeholder"
+        note: "Cryptography crew batch 1."
+      - commit: "90cf3b20d"
+        label: "Bespoke engineer"
+        note: "Vest, tool belt and workboots."
+      - commit: "1dadefd72"
+        label: "Face and hair pass"
+      - commit: "38f1fec37"
+        label: "Goggles and beard"
+        note: "First full redraw (Jul 12); committed from Jon's account."
+      - commit: "d64c64d9a"
+        label: "A rig: props, effects, faces are pieces"
+      - commit: "3ef6613c5"
+        label: "Redrawn as an SVG-rigged fighter"
+        note: "Current design."
+  noether:
+    name: Emmy Noether
+    ids: [noether]
+    paths: ['noether']
+    summary: "Emmy: pixel-art puppet to a glowing SVG-rigged fighter"
+    eras:
+      - commit: "20407b51a"
+        label: "Pixel-art puppet"
+        note: "Teal suit, round glasses, hairpin antenna."
+      - commit: "5d8e7628b"
+        label: "Smooth puppet, tuned per character"
+        note: "Rig refinement: per-character sprite tuning."
+      - commit: "f4e126e7d"
+        label: "Hand-traced SVG fighter"
+        note: "A full fighter from standardized SVG labels."
+      - commit: "6e928c569"
+        label: "Purple dress"
+        note: "Updated SVGs; committed from Jon's account."
+      - commit: "c62c1d039"
+        label: "Glow"
+      - commit: "1a799c184"
+        label: "Supersampled"
+        note: "Current design."
+  player_robot:
+    # The repo's own lineage note (game/ambition_content/src/player_robot_lineage.rs):
+    # `robot` (v0), `player_robot_v2` and `player_robot_v3` are three incarnations
+    # of ONE character; there is no v1. Each era names its own target id because
+    # the id changed with the incarnation. The Fable candidate is a separate
+    # experiment from the sprite-toolkit work, drawn from the same character
+    # brief; it is shown in its place in time and was not an incarnation.
+    name: The player robot (v0, v2, v3)
+    ids: [robot]
+    paths: ['(^|/)robot(\.yaml|\.py|_side|25d)', 'robot_side', 'robot25d', 'player_robot']
+    summary: "one character, three incarnations (v0, v2, v3)"
+    tile_w: 240
+    per_row: 4
+    eras:
+      - commit: "8e67c1920"
+        id: robot
+        label: "v0: the toon puppet"
+        note: "Promoted from proc2d_character_lab into the sprite tool; Claude Opus 4.7 declared."
+      - commit: "2c69b7755"
+        id: player_robot_fable
+        label: "Fable 5's bone-and-keyframe candidate"
+        note: "Added with the bone/keyframe sprite toolkit; an experiment, not a shipped incarnation."
+      - commit: "60d97631c"
+        id: player_robot_v2
+        label: "v2: Keep the robot you used to be"
+        note: "The earlier look kept as a playable, meetable v2."
+      - commit: "442160508"
+        id: player_robot_v3
+        label: "v3: the current player robot"
+        note: "Headphones, a cyan chest light and a lowered stance."
+      - commit: "7726f1b52"
+        id: player_robot_v3
+        label: "v3, drawn from both sides"
+        note: "The antenna stays on the far side from the camera."
+      - commit: "d25dfd23a"
+        id: robot
+        label: "v0, redrawn as rig pieces"
+        note: "The robot, boss, ninja, sandbag and toon families are drawn as pieces; this is the old robot, not v3."
+  viking_warrior:
+    name: Viking warrior
+    ids: [viking_warrior]
+    paths: ['viking']
+    summary: "jointed paper puppet to a rigged character, 2026"
+    group: vikings
+    eras:
+      - commit: "6b6e79206"
+        label: "Paper puppet"
+        note: "Procedural family drawing."
+      - commit: "076d761b6"
+        label: "Redrawn as rigs"
+        note: "The four vikings redrawn (Oct 4). Current design."
+  viking_shieldmaiden:
+    name: Viking shieldmaiden
+    ids: [viking_shieldmaiden]
+    paths: ['viking']
+    summary: "jointed paper puppet to a rigged character, 2026"
+    group: vikings
+    eras:
+      - commit: "6b6e79206"
+        label: "Paper puppet"
+        note: "Procedural family drawing."
+      - commit: "076d761b6"
+        label: "Redrawn as rigs"
+        note: "The four vikings redrawn (Oct 4). Current design."
+  viking_heavy_warrior:
+    name: Viking heavy warrior
+    ids: [viking_heavy_warrior]
+    paths: ['viking']
+    summary: "jointed paper puppet to a rigged character, 2026"
+    group: vikings
+    eras:
+      - commit: "6b6e79206"
+        label: "Paper puppet"
+        note: "Procedural family drawing."
+      - commit: "076d761b6"
+        label: "Redrawn as rigs"
+        note: "The four vikings redrawn (Oct 4). Current design."
+  viking_heavy_shieldmaiden:
+    name: Viking heavy shieldmaiden
+    ids: [viking_heavy_shieldmaiden]
+    paths: ['viking']
+    summary: "jointed paper puppet to a rigged character, 2026"
+    group: vikings
+    eras:
+      - commit: "6b6e79206"
+        label: "Paper puppet"
+        note: "Procedural family drawing."
+      - commit: "076d761b6"
+        label: "Redrawn as rigs"
+        note: "The four vikings redrawn (Oct 4). Current design."
+  mockingbird:
+    name: Mockingbird
+    ids: [mockingbird_boss_v2, mockingbird_boss]
+    paths: ['mockingbird']
+    summary: "a long grey flier to a rocket-and-rotor songbird"
+    tile_w: 300
+    per_row: 4
+    eras:
+      - commit: "cc3dfa527"
+        label: "First Mockingbird"
+        note: "Flat grey flier."
+      - commit: "bafa83591"
+        label: "Actor contract sidecars"
+      - commit: "5c0fb55a9"
+        label: "Candidate v2: SVG-rigged"
+        note: "Oct 6 redraw begins."
+      - commit: "296272f77"
+        label: "Jet wings, slender beak"
+      - commit: "ced13c003"
+        label: "Hooded skull head"
+        note: "Current design."
+  raptor_stalker:
+    name: Raptor stalker
+    ids: [raptor_stalker]
+    paths: ['raptor']
+    summary: "a green faceted raptor to a feathered SVG-rigged one"
+    tile_w: 300
+    per_row: 4
+    eras:
+      - commit: "7d8005b79"
+        label: "Faceted green raptor"
+      - commit: "5afb92d2b"
+        label: "Feathered SVG-rigged dromaeosaur"
+        note: "Current design."
+  gnu_ton:
+    name: GNU-ton (the scholar riding the giant gnu)
+    ids: [gnu_ton_boss]
+    paths: ['gnu_ton']
+    pick: 'frame:rest@gnu_ton_boss'
+    summary: "a debate-bubble scholar on a gnu, to a powdered-wig Newton, to a gnu and a scholar drawn separately"
+    tile_w: 300
+    per_row: 4
+    eras:
+      - commit: "018b65d2d"
+        label: "First GNU-ton"
+        note: "The Hall of Bosses pantheon hub arrives with him; the rider is a speech-bubble figure. Claude Sonnet 4.6 declared."
+      - commit: "91857f259"
+        label: "Higher-res, more frames, layered output"
+        note: "The gnu is rebuilt larger; the rider shrinks to a figure on its neck. Claude Opus 4.7 declared."
+      - commit: "2fa1c78b1"
+        label: "Powdered-wig scholar"
+        note: "Newton: the apple-rain attack arrives with the wig. Claude Opus 4.7 declared."
+      - commit: "59278ba1e"
+        label: "Regenerated on the rig generators"
+        note: "Converged with the Mockingbird's generators (Claude Opus 4.8 declared); the look barely moves."
+      - commit: "87c1a49a3"
+        label: "The scholar redrawn with his fight poses"
+        note: "Claude Opus 5.5 declared."
+  giant_gnu:
+    name: The giant gnu, alone
+    ids: [gnu_ton_boss]
+    paths: ['gnu_ton']
+    pick: 'frame:rest@giant_gnu'
+    summary: "the fused giant, then the giant alone once the scholar was split off"
+    tile_w: 300
+    per_row: 4
+    eras:
+      - commit: "018b65d2d"
+        label: "Fused with the scholar"
+        note: "In the first look the gnu and the rider are one sheet; the gnu is never drawn alone."
+      - commit: "8bd7548f4"
+        label: "G1: the fused giant+scholar split"
+        note: "Claude Opus 4.8 declared."
+      - commit: "506317748"
+        label: "A lone-fist sheet and a scholar-sized rider sheet"
+        note: "The giant is drawn on its own, large. Commit marked <synthetic>; Claude Opus 5.5 and GPT-6 sol credited."
+  gnu_ton_scholar:
+    name: The scholar (GNU-ton), alone
+    ids: [gnu_ton_boss]
+    paths: ['gnu_ton']
+    pick: 'frame:rest@gnu_ton_rider'
+    summary: "a rider small on the gnu's neck, then a pixel scholar of his own, then a smooth redraw"
+    tile_w: 280
+    per_row: 4
+    # Observed 2026-10-07, not changed here: the Hall of Characters does not draw
+    # this scholar as his own entry; only the giant gnu is drawn standalone.
+    eras:
+      - commit: "2fa1c78b1"
+        label: "Powdered-wig rider on the gnu"
+        note: "No standalone sheet exists yet: this is the whole boss sheet, the scholar a few pixels tall. Claude Opus 4.7 declared."
+      - commit: "8bd7548f4"
+        label: "G1: split off the giant"
+        note: "The first scholar of his own: a pixel figure in a blue coat. Claude Opus 4.8 declared."
+      - commit: "87c1a49a3"
+        label: "Redrawn with his fight poses"
+        note: "A smooth, outlined redraw. Claude Opus 5.5 declared."
+  burning_flying_shark:
+    name: Burning flying shark
+    ids: [burning_flying_shark]
+    paths: ['shark']
+    summary: "a grey shark with a fire fin to a fire-wreathed SVG-rigged one"
+    tile_w: 300
+    per_row: 4
+    eras:
+      - commit: "62886ed06"
+        label: "First shark"
+      - commit: "61f536265"
+        label: "Procedural, no backdrop"
+      - commit: "acf4f69d2"
+        label: "SVG-rigged, fire-wreathed"
+        note: "Polished (Oct 5). Current design."
+  treasure_chest:
+    # Before October 2026 the chest was one texture of the batched `entities`
+    # target (`chest_closed`); `boss_chest` and `treasure_chest` came later. The
+    # survey found one drawn look of the dedicated target.
+    name: Treasure chest
+    ids: [entities]
+    paths: ['chest', 'props/entities']
+    pick: 'file:chest_closed.png'
+    summary: "one chest drawn once, as a boss (big-item) chest"
+    eras:
+      - commit: "a9a563809"
+        id: boss_chest
+        pick: null
+        label: "The boss (big-item) chest"
+        note: "Royal blue and gold with a heavy lock; the first dedicated chest target. Claude Opus 5.5 declared."
+  boss_chest:
+    name: Boss (big-item) chest
+    ids: [boss_chest]
+    paths: ['chest']
+  oiler:
+    name: Oiler
+    ids: [oiler]
+    paths: ['oiler']
+    summary: "several different Oilers before the multiview SVG rig"
+    eras:
+      - commit: "0cce56e13"
+        label: "Goggles and wrench"
+        note: "The first Oiler, committed as plain 'sprites' from Jon's account."
+      - commit: "13a143098"
+        label: "Toon preset"
+        note: "A very different drawing under the same id: hat and cardboard body. Not verified whether this was meant as the same character."
+      - commit: "5056024a1"
+        label: "Editable multiview SVG rig"
+        note: "Rebuilt around a multiview SVG rig."
+      - commit: "3f7d265b0"
+        label: "A body that can throw a punch"
+        note: "Same face; the body gained moves. A session list carries a synthetic entry."
