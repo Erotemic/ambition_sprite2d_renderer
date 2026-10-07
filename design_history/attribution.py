@@ -23,7 +23,12 @@ import re
 
 from .store import Commit
 
-_TRAILER = re.compile(r"^co-authored-by:\s*(.+?)\s*<[^>]*>\s*$", re.IGNORECASE | re.MULTILINE)
+# The email is optional ("Co-Authored-By: Claude Opus 5.5" is a trailer too).
+_TRAILER = re.compile(r"^co-authored-by:\s*([^<\r\n]+?)\s*(?:<[^>]*>)?\s*$", re.IGNORECASE | re.MULTILINE)
+# A trailer names a MODEL only if it says so; a human co-author is not one.
+_AI_NAME = re.compile(
+    r"\b(claude|anthropic|gpt|openai|codex|gemini|copilot|opus|sonnet|haiku|fable)\b", re.IGNORECASE
+)
 _MENTION = re.compile(
     r"\b(GPT[- ]?\d+(?:\.\d+)?(?:\s+(?:Sol|Astra|Thinking))?|Claude\s+(?:Opus|Sonnet|Haiku|Fable)\s*[\d.]*|"
     r"Opus\s*\d[\d.]*|Sonnet\s*\d[\d.]*|Fable\s*\d[\d.]*|Codex)\b",
@@ -47,7 +52,16 @@ class Attribution:
 def _clean(name: str) -> str:
     # "Claude Opus 4.8 (1M context)" -> "Claude Opus 4.8": the context window is
     # a deployment detail, not a different model.
-    return re.sub(r"\s*\((?:\d+\w*\s*)?context\)", "", name).strip()
+    name = re.sub(r"\s*\((?:\d+\w*\s*)?context\)", "", name)
+    # "Claude Opus 4.8 [1M]": the bracketed window is the same deployment detail.
+    name = re.sub(r"\s*\[\d+\w*\]", "", name)
+    return re.sub(r"\s+", " ", name).strip()
+
+
+def _add(seen: list[str], name: str) -> None:
+    """Append `name` unless an equal one (ignoring case) is already there."""
+    if name.lower() not in {existing.lower() for existing in seen}:
+        seen.append(name)
 
 
 def pretty(model: str) -> str:
@@ -77,15 +91,13 @@ def attribute(commit: Commit, ledger: dict[str, list[dict]]) -> Attribution:
     trailers: list[str] = []
     for name in _TRAILER.findall(commit.body):
         name = _clean(name)
-        if name not in trailers:
-            trailers.append(name)
+        if _AI_NAME.search(name):
+            _add(trailers, name)
     if trailers:
         return Attribution(tuple(trailers), "declared")
     mentioned: list[str] = []
     for hit in _MENTION.findall(commit.subject + "\n" + commit.body):
-        hit = re.sub(r"\s+", " ", hit).strip()
-        if hit not in mentioned:
-            mentioned.append(hit)
+        _add(mentioned, re.sub(r"\s+", " ", hit).strip())
     if mentioned:
         return Attribution(tuple(mentioned), "message")
     if commit.author.lower() in _HUMAN_AUTHORS:

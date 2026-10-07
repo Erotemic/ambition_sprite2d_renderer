@@ -106,6 +106,14 @@ class Commit:
     subject: str
     body: str
 
+    @property
+    def instant(self):
+        """The author date as an instant. ``date`` is ISO text with the author's
+        own UTC offset, so two commits' strings do not sort as their times do."""
+        import datetime
+
+        return datetime.datetime.fromisoformat(self.date)
+
 
 def commit_info(store: Path, sha: str, segment: str = "") -> Commit:
     out = git(store, "show", "-s", "--format=%H%x1f%aI%x1f%an%x1f%s%x1f%b", sha)

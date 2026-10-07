@@ -89,7 +89,7 @@ def cmd_survey(args) -> int:
             for cand in found:
                 print(f"  {cand.commit.date[:10]} {cand.commit.sha}  {_short(cand.commit.subject, 70)}")
             if tiles:
-                compose(f"{name} — survey", tiles, per_row=spec.get("per_row", 6), tile_w=spec.get("tile_w", 190)).save(OUT / "survey" / f"{name}.png")
+                compose(f"{name} — survey", tiles, per_row=spec.get("per_row", 6), tile_w=spec.get("tile_w", 190)).save(OUT / "survey" / f"{Path(name).name}.png")
     finally:
         if not args.keep_worktrees:
             worktrees.remove()

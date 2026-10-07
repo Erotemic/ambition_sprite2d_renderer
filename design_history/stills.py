@@ -217,14 +217,32 @@ def _pick(python: str, root: Path, target_id: str, pick: str) -> tuple[Path | No
     """``file:<name>`` takes a named output; ``frame:<animation>[@<sheet>]``
     takes the first frame of an animation of one of the target's sheets."""
     out = Path(tempfile.mkdtemp(prefix="dh-pick-"))
-    failure = _outputs_of(python, root, target_id, out)
+    try:
+        failure = _outputs_of(python, root, target_id, out)
+    except subprocess.TimeoutExpired:
+        failure = "timed out"
     kind, _, spec = pick.partition(":")
     if kind == "file":
         hit = next(out.rglob(spec), None)
-        return (hit, "") if hit else (None, failure or f"no output named {spec}")
-    animation, _, sheet = spec.partition("@")
-    frame = _first_frame(out, sheet or target_id, animation)
-    return (frame, "") if frame else (None, failure or f"no {animation} frame in {sheet or target_id}")
+        found, note = (hit, "") if hit else (None, failure or f"no output named {spec}")
+    else:
+        animation, _, sheet = spec.partition("@")
+        frame = _first_frame(out, sheet or target_id, animation)
+        found, note = (frame, "") if frame else (None, failure or f"no {animation} frame in {sheet or target_id}")
+    if found is None:
+        # Nothing of this scratch directory is returned, so nothing owns it.
+        shutil.rmtree(out, ignore_errors=True)
+    return found, note
+
+
+def scratch_root(png: Path) -> Path:
+    """The ``dh-*`` temporary directory a rendered PNG sits in, however deep: a
+    ``file:`` pick can be a subdirectory of it, and removing only its parent
+    leaves the root behind."""
+    for parent in png.parents:
+        if parent.name.startswith("dh-"):
+            return parent
+    return png.parent
 
 
 def render_still(
@@ -284,7 +302,8 @@ def still_for(
     if png is None:
         miss.write_text(failure)
         return Still(None, None, None, failure)
+    scratch = scratch_root(png)
     shutil.move(str(png), hit)
-    shutil.rmtree(png.parent, ignore_errors=True)
+    shutil.rmtree(scratch, ignore_errors=True)
     (stills / f"{key}.id").write_text(used or "")
     return Still(hit, used, pixel_hash(hit))

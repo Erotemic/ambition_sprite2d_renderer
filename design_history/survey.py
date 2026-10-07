@@ -39,7 +39,7 @@ def history(store: Path) -> list[tuple[Commit, Segment, list[str]]]:
     for seg in SEGMENTS:
         for commit, paths in touching(store, seg):
             rows.append((commit, seg, paths))
-    rows.sort(key=lambda row: row[0].date)
+    rows.sort(key=lambda row: row[0].instant)
     return rows
 
 
@@ -76,7 +76,7 @@ def eras(cands: list[Candidate]) -> list[Candidate]:
     failed is skipped: it says nothing about the look."""
     out: list[Candidate] = []
     previous = None
-    for cand in sorted(cands, key=lambda c: c.commit.date):
+    for cand in sorted(cands, key=lambda c: c.commit.instant):
         if cand.still is None or cand.still.pixel_hash is None:
             continue
         if cand.still.pixel_hash != previous:
