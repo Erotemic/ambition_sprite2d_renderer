@@ -298,8 +298,12 @@ def wing_parts(side):
     tail, nose = (t_te[0] - 26, y + 3), (t_le[0] + 150, y - 4)
     rail = [line([(t_te[0] + 4, t_te[1]), (t_le[0] + 2, t_le[1])], INK, 9.0),
             line([(t_te[0] + 4, t_te[1]), (t_le[0] + 2, t_le[1])], c["steel_lo"], 5.0)]
-    part(f"{side}-missile", f"Missile - {side}", f"{side}_missile", "body", z0 + 0.6,
-         rail + missile(f"{side}-missile", tail, nose, r, c))
+    # The rail stays; the missile leaves it when fired (the ``missile`` row
+    # hides it: ``<side>_missile.a``, shown by default).
+    part(f"{side}-missile-rail", f"Missile Rail - {side}", f"{side}_missile_rail", "body", z0 + 0.6, rail)
+    part(f"{side}-missile", f"Missile - {side}", f"{side}_missile", "body", z0 + 0.7,
+         missile(f"{side}-missile", tail, nose, r, c),
+         f' data-rig-opacity="{side}_missile.a" data-rig-default="1"')
 
 
 def claw_parts(side):

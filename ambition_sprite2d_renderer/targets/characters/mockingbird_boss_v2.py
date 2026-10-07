@@ -230,6 +230,8 @@ _GLYPHS: Dict[str, Tuple[FX.Extent, FX.Paint]] = {**FX.COMMON}
 for _k in range(3):
     _GLYPHS[f"jet{_k}"] = ((8.0, 40.0, 150.0, 40.0), _jet(120.0, 66.0, _k))
     _GLYPHS[f"boost{_k}"] = ((8.0, 46.0, 260.0, 46.0), _jet(220.0, 78.0, _k))
+    # The wingtip missile's motor lighting on its rail.
+    _GLYPHS[f"launch{_k}"] = ((8.0, 20.0, 80.0, 20.0), _jet(64.0, 30.0, _k))
 # Each blur disc is as wide as its rotor's blades reach: the ``<side>_blade``
 # bone runs from the hub to a blade tip the drawing marks.
 _BONES = _doc().build_skeleton().bones
@@ -262,6 +264,7 @@ A = {
     "throat": ("head", _anchor("head", *_on_head(846.0, 240.0))),
     "spit": ("head", _anchor("head", *_on_head(920.0, 262.0))),
     "muzzle": ("body", _anchor("body", 452.0, 327.0)),
+    "missile_tail": ("body", _anchor("body", 212.0, 337.0)),
     "snout": ("head", _anchor("head", *_on_head(890.0, 252.0))),
     "spark1": ("body", _anchor("body", 520.0, 150.0)),
     "spark2": ("neck2", _anchor("neck2", 640.0, 196.0)),
@@ -325,6 +328,10 @@ def _front(canvas: FxCanvas, t: float, world, params) -> None:
         p, turn = _at(world, "spit")
         head = world["head"]
         _place(canvas, "spit", p, params["fx.spit"], degrees=head.angle - REST["head"][1] + 0.0)
+    launch = params.get("fx.launch", 0.0)
+    if launch > 0.02:
+        p, turn = _at(world, "missile_tail")
+        _place(canvas, f"launch{step % 3}", p, min(1.0, launch + 0.2), degrees=180.0 + turn)
     if params.get("fx.muzzle", 0.0) > 0.02:
         p, turn = _at(world, "muzzle")
         _place(canvas, "muzzle", p, params["fx.muzzle"], degrees=turn - 1.6)

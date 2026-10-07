@@ -10,9 +10,12 @@ draws.
 
     uv run python scripts/build_mockingbird_boss_v2_rig.py
 
-The rows are the six the Mockingbird's boss sheet already ships
-(``rest``, ``thrust``, ``bite``, ``slash``, ``hit``, ``death``) with the same
-frame counts and durations, so the redesign can stand in for the first sheet.
+The first six rows are the ones the first sheet shipped (``rest``,
+``thrust``, ``bite``, ``slash``, ``hit``, ``death``) with the same frame
+counts and durations, so the redesign stood in for it. The air chase adds
+``missile`` (the wingtip missile leaves its rail), ``dive``, ``chomp``,
+``stunned`` (winded after a dive: the punish) and ``screech`` (between
+phases).
 
 Angles are degrees added to the drawing (positive turns clockwise on screen:
 a positive ``body`` dips the nose, a positive ``jaw`` opens the mouth, a
@@ -287,6 +290,132 @@ def death(i: int, n: int, t: float) -> Pose:
     return p
 
 
+def missile(i: int, n: int, t: float) -> Pose:
+    """The wing missile: it banks to bring the near wingtip round, the
+    missile's motor lights on the rail, it drops away (hidden from frame 3:
+    the game flies it from the ``missile`` socket) and the wing kicks up."""
+    p = hover(t, bob=3.0, sway=0.4)
+    p["root_y"] += K([0, -4, -8, 6, 2, 0], i)
+    p["root_x"] = K([0, -4, -6, -14, -6, 0], i)
+    p["body"] += K([0, -4, -7, 4, 2, 0], i)
+    p["head"] += K([0, 2, 4, -6, -3, 0], i)
+    p["jaw"] = K([14, 18, 22, 30, 24, 16], i)
+    p.update(rotors(i))
+    p.update(claws("shut"))
+    p.update(eyes("angry"))
+    p["near_missile.a"] = K([1, 1, 1, 0, 0, 0], i)
+    p["fx.jet"] = K([0.55, 0.6, 0.7, 0.9, 0.7, 0.6], i)
+    p["fx.blur"] = 1.0
+    p["fx.glow"] = K([0.6, 0.7, 0.9, 1.0, 0.8, 0.6], i)
+    p["fx.launch"] = K([0, 0.4, 0.8, 1.0, 0.4, 0], i)
+    p["fx.muzzle"] = K([0, 0, 0, 1, 0.3, 0], i)
+    return p
+
+
+def dive(i: int, n: int, t: float) -> Pose:
+    """The dive: it tips over and comes at you nose first, the neck flung
+    forward, the jaw wide, both claws reaching, the thruster on full."""
+    p = hover(t, bob=2.0, sway=0.4)
+    w = math.tau * t
+    p["body"] += 24.0
+    p["neck1"] += -10.0
+    p["neck2"] += -12.0
+    p["head"] += -6.0 + 2.0 * math.sin(w * 2.0)
+    p["jaw"] = 36.0 + 4.0 * math.sin(w * 2.0)
+    p["engine"] += -8.0
+    for side, k in (("near", 1.0), ("far", 0.85)):
+        p[f"{side}_arm"] += -40.0 * k
+        p[f"{side}_fore"] += -24.0 * k
+        p[f"{side}_claw"] += -10.0 * k
+    p.update(rotors(i))
+    p.update(claws("open"))
+    p.update(eyes("angry"))
+    p["fx.jet"] = 1.0
+    p["fx.boost"] = 1.0
+    p["fx.speed"] = 1.0
+    p["fx.blur"] = 1.0
+    p["fx.glow"] = 1.0
+    return p
+
+
+def chomp(i: int, n: int, t: float) -> Pose:
+    """The bite at the end of the dive: the head lunges and the jaw slams
+    shut, then it shakes its head."""
+    p: Pose = {
+        "root_x": K([0, 10, 16, 8, 2], i),
+        "body": K([12, 10, 6, 2, 0], i),
+        "neck1": K([-8, -12, -6, -2, 0], i),
+        "neck2": K([-10, -14, -6, -2, 0], i),
+        "head": HEAD_STOOP + K([-6, -10, 6, 2, 0], i),
+        "jaw": K([42, 46, 0, 4, 12], i),
+        "engine": K([-6, -4, 2, 0, 0], i),
+        "near_arm": K([-30, -36, -10, -2, 0], i),
+        "near_fore": K([-18, -22, -6, 0, 0], i),
+        "far_arm": K([-26, -30, -8, -2, 0], i),
+        "far_fore": K([-14, -18, -4, 0, 0], i),
+    }
+    p.update(rotors(i))
+    p.update(claws("open" if i < 2 else "shut"))
+    p.update(eyes("angry"))
+    p["fx.jet"] = K([1.0, 0.8, 0.5, 0.5, 0.55], i)
+    p["fx.blur"] = 1.0
+    p["fx.glow"] = K([1.0, 1.0, 0.8, 0.7, 0.6], i)
+    p["fx.bite"] = K([0, 0, 1, 0.4, 0], i)
+    return p
+
+
+def stunned(i: int, n: int, t: float) -> Pose:
+    """Winded after the dive: it lists and sags on sputtering rotors, the head
+    lolling, the eye shut, smoke and sparks off the thruster. The punish."""
+    w = math.tau * t
+    p = hover(t, bob=10.0, sway=1.6)
+    p["root_y"] += 18.0
+    p["body"] += -6.0 + 4.0 * math.sin(w)
+    p["neck1"] += 6.0
+    p["neck2"] += 10.0 + 4.0 * math.sin(w - 0.4)
+    p["head"] += 16.0 + 6.0 * math.sin(w - 0.8)
+    p["jaw"] = 26.0 + 4.0 * math.sin(w * 1.5)
+    for side, k in (("near", 1.0), ("far", 0.85)):
+        p[f"{side}_arm"] += 20.0 * k
+        p[f"{side}_fore"] += 16.0 * k
+        p[f"{side}_claw"] += 12.0 * k
+    # The rotors stutter: they spin on alternate frames.
+    p.update(rotors(i // 2 if i % 2 == 0 else 0, spin=i % 2 == 0))
+    p.update(claws("open"))
+    p.update(eyes("shut"))
+    p["fx.jet"] = 0.1 if i % 3 == 0 else 0.0
+    p["fx.blur"] = 0.5 if i % 2 == 0 else 0.0
+    p["fx.glow"] = 0.25 + 0.15 * math.sin(w * 2.0)
+    p["fx.spark"] = 1.0 if i % 3 == 1 else 0.3
+    p["fx.smoke"] = 0.7
+    return p
+
+
+def screech(i: int, n: int, t: float) -> Pose:
+    """Between phases: it rears, throws its head back and screams, the core
+    blazing and the thruster roaring."""
+    p = hover(t, bob=4.0, sway=0.5)
+    shudder = 2.0 * math.sin(math.tau * t * 6.0)
+    p["root_y"] += K([0, 6, 14, 20, 20, 16], i)
+    p["body"] += K([0, -6, -10, -12, -12, -10], i)
+    p["neck1"] += K([0, -6, -10, -12, -12, -10], i)
+    p["neck2"] += K([0, -6, -10, -12, -12, -10], i) + shudder
+    p["head"] += K([0, -8, -14, -18, -18, -14], i) + shudder
+    p["jaw"] = K([14, 30, 44, 48, 46, 48], i) + shudder
+    for side, k in (("near", 1.0), ("far", 0.85)):
+        p[f"{side}_arm"] += K([0, -10, -20, -26, -26, -24], i) * k
+        p[f"{side}_fore"] += K([0, -8, -14, -18, -18, -16], i) * k
+    p.update(rotors(i))
+    p.update(claws("open"))
+    p.update(eyes("angry"))
+    p["fx.jet"] = K([0.55, 0.8, 1.0, 1.0, 1.0, 1.0], i)
+    p["fx.boost"] = K([0, 0.4, 0.8, 1.0, 1.0, 1.0], i)
+    p["fx.blur"] = 1.0
+    p["fx.glow"] = K([0.6, 0.9, 1.0, 1.0, 1.0, 1.0], i)
+    p["fx.charge"] = K([0, 0.3, 0.6, 0.8, 0.7, 0.8], i)
+    return p
+
+
 CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
     "rest": rest,
     "thrust": thrust,
@@ -294,6 +423,11 @@ CLIPS: Dict[str, Callable[[int, int, float], Pose]] = {
     "slash": slash,
     "hit": hit,
     "death": death,
+    "missile": missile,
+    "dive": dive,
+    "chomp": chomp,
+    "stunned": stunned,
+    "screech": screech,
 }
 
 DEFAULTS: Pose = {
@@ -303,6 +437,7 @@ DEFAULTS: Pose = {
     "far_rotor.a": 1.0,
     "near_claw.open": 1.0,
     "far_claw.open": 1.0,
+    "near_missile.a": 1.0,
 }
 
 #: Sprite pixels per SVG unit: the drawing is 1140x760 units.
@@ -328,6 +463,12 @@ SPEC = CreatureSpec(
         ("slash", 6, 88, False),
         ("hit", 4, 80, False),
         ("death", 8, 105, False),
+        # The air chase's rows (2026-10-06).
+        ("missile", 6, 85, False),
+        ("dive", 4, 70, True),
+        ("chomp", 5, 70, False),
+        ("stunned", 6, 120, True),
+        ("screech", 6, 100, False),
     ],
     clips=CLIPS,
     defaults=DEFAULTS,

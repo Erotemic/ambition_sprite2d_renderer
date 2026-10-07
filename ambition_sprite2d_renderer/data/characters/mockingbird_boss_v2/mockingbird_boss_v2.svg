@@ -494,9 +494,11 @@
       <path d="M675.04,315.76 C675.04,315.76 488.48,322.12 488.48,322.12 C488.48,322.12 472.01,332.79 495.08,334.06 C518.15,335.33 596.93,332.79 626.92,329.74 C656.91,326.69 675.04,315.76 675.04,315.76 Z" fill="#3d424e" stroke="#0b0c10" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
       <ellipse cx="422" cy="448" rx="4.5" ry="4.5" fill="#3fd16a" stroke="#0b0c10" stroke-width="1" />
     </g>
-    <g id="near-missile" inkscape:groupmode="layer" inkscape:label="Missile - near" data-rig-part="near_missile" data-rig-bone="body" data-rig-z="55.6">
+    <g id="near-missile-rail" inkscape:groupmode="layer" inkscape:label="Missile Rail - near" data-rig-part="near_missile_rail" data-rig-bone="body" data-rig-z="55.6">
       <path d="M362,448 C372.33,448 413.67,448 424,448" fill="none" stroke="#0b0c10" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" />
       <path d="M362,448 C372.33,448 413.67,448 424,448" fill="none" stroke="#5c616b" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+    </g>
+    <g id="near-missile" inkscape:groupmode="layer" inkscape:label="Missile - near" data-rig-part="near_missile" data-rig-bone="body" data-rig-z="55.7" data-rig-opacity="near_missile.a" data-rig-default="1">
       <path d="M361.72,457.03 C361.72,457.03 327.24,441.13 327.24,441.13 C327.24,441.13 335.73,457.79 335.73,457.79 C335.73,457.79 361.72,457.03 361.72,457.03 Z" fill="#5c616b" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
       <path d="M362.25,475.22 C362.25,475.22 328.76,493.11 328.76,493.11 C328.76,493.11 336.26,475.98 336.26,475.98 C336.26,475.98 362.25,475.22 362.25,475.22 Z" fill="#5c616b" stroke="#0b0c10" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round" />
       <clipPath id="clip-near-missile"><path d="M332.38,479.99 L538.59,473.98 L537.84,447.99 L331.62,454.01 Z" /></clipPath>
@@ -660,7 +662,8 @@
       <g id="ambition-rig-side-part-near_rotor_b" data-rig-part-def="near_rotor_b" data-rig-bone="near_blade" data-rig-z="52" data-rig-pivot="ambition-rig-side-bind-near_rotor_b" data-rig-bind-angle="0" data-rig-opacity="near_rotor.b" data-rig-elements="near-rotor-b" />
       <g id="ambition-rig-side-part-near_rotor_c" data-rig-part-def="near_rotor_c" data-rig-bone="near_blade" data-rig-z="52" data-rig-pivot="ambition-rig-side-bind-near_rotor_c" data-rig-bind-angle="0" data-rig-opacity="near_rotor.c" data-rig-elements="near-rotor-c" />
       <g id="ambition-rig-side-part-near_wing" data-rig-part-def="near_wing" data-rig-bone="body" data-rig-z="55" data-rig-pivot="ambition-rig-side-bind-near_wing" data-rig-bind-angle="0" data-rig-elements="near-wing" />
-      <g id="ambition-rig-side-part-near_missile" data-rig-part-def="near_missile" data-rig-bone="body" data-rig-z="55.6" data-rig-pivot="ambition-rig-side-bind-near_missile" data-rig-bind-angle="0" data-rig-elements="near-missile" />
+      <g id="ambition-rig-side-part-near_missile_rail" data-rig-part-def="near_missile_rail" data-rig-bone="body" data-rig-z="55.6" data-rig-pivot="ambition-rig-side-bind-near_missile_rail" data-rig-bind-angle="0" data-rig-elements="near-missile-rail" />
+      <g id="ambition-rig-side-part-near_missile" data-rig-part-def="near_missile" data-rig-bone="body" data-rig-z="55.7" data-rig-pivot="ambition-rig-side-bind-near_missile" data-rig-bind-angle="0" data-rig-opacity="near_missile.a" data-rig-elements="near-missile" />
       <g id="ambition-rig-side-part-near_arm" data-rig-part-def="near_arm" data-rig-bone="near_arm" data-rig-z="60" data-rig-pivot="ambition-rig-side-bind-near_arm" data-rig-bind-angle="54.0903" data-rig-elements="near-arm" />
       <g id="ambition-rig-side-part-near_fore" data-rig-part-def="near_fore" data-rig-bone="near_fore" data-rig-z="60.5" data-rig-pivot="ambition-rig-side-bind-near_fore" data-rig-bind-angle="30.9638" data-rig-elements="near-fore" />
       <g id="ambition-rig-side-part-near_claw_open" data-rig-part-def="near_claw_open" data-rig-bone="near_claw" data-rig-z="61" data-rig-pivot="ambition-rig-side-bind-near_claw_open" data-rig-bind-angle="49.6355" data-rig-opacity="near_claw.open" data-rig-elements="near-claw-open" />
@@ -751,6 +754,7 @@
       <circle id="ambition-rig-side-bind-near_rotor_b" data-rig-bind-pivot="near_rotor_b" cx="694" cy="114" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_rotor_c" data-rig-bind-pivot="near_rotor_c" cx="694" cy="114" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_wing" data-rig-bind-pivot="near_wing" cx="550" cy="330" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_missile_rail" data-rig-bind-pivot="near_missile_rail" cx="550" cy="330" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_missile" data-rig-bind-pivot="near_missile" cx="550" cy="330" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_arm" data-rig-bind-pivot="near_arm" cx="606" cy="406" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
       <circle id="ambition-rig-side-bind-near_fore" data-rig-bind-pivot="near_fore" cx="648" cy="464" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
