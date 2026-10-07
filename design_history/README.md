@@ -87,14 +87,15 @@ Mockingbird, the raptor stalker, GNU-ton (the scholar riding the gnu), the giant
 gnu alone, the scholar alone, the burning flying shark, the treasure chest and
 Oiler. `boss_chest` is surveyed and has one look, shown under `treasure_chest`.
 
-* **The player robot** is one character with three incarnations (`robot` v0,
-  `player_robot_v2`, `player_robot_v3`; there is no v1): the repo's own note is
-  `game/ambition_content/src/player_robot_lineage.rs`. Each era names its own
-  target id because the id changed with the incarnation, and the Fable 5
-  bone-and-keyframe candidate sits in its place in time as an experiment, not an
-  incarnation. The old note that "the character became other named characters" is
-  not recorded anywhere this tool can read; if it is meant to mean more than the
-  v0/v2/v3 chain, add it to the `player_robot` summary and eras.
+* **The player robot** is one lineage of three deliberately distinct catalog
+  characters (`robot` v0, `player_robot_v2`, `player_robot_v3`; there is no v1).
+  The repo's own note is `game/ambition_content/src/player_robot_lineage.rs`:
+  each version is its own catalog row (its own body, kit and voice, so you can
+  meet, fight and play as an old version of yourself), and `derived_from` names
+  the version before it as provenance only. Nothing is inherited along the chain,
+  and no further character is part of it. Each era names its own target id
+  because the id changed with the character. The Fable 5 bone-and-keyframe
+  candidate sits in its place in time as an experiment, not a catalog character.
 * **GNU-ton** was one fused sheet (scholar on the giant) until the 2026-07-05
   split; the giant and the scholar then have sheets of their own. The Hall of
   Characters does not draw the scholar standalone (observed, not changed).

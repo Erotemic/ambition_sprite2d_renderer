@@ -84,15 +84,16 @@ lineages:
         note: "Current design."
   player_robot:
     # The repo's own lineage note (game/ambition_content/src/player_robot_lineage.rs):
-    # `robot` (v0), `player_robot_v2` and `player_robot_v3` are three incarnations
-    # of ONE character; there is no v1. Each era names its own target id because
+    # `robot` (v0), `player_robot_v2` and `player_robot_v3` are three deliberately
+    # distinct catalog characters in one lineage (`derived_from` is provenance
+    # only; nothing is inherited); there is no v1. Each era names its own target id because
     # the id changed with the incarnation. The Fable candidate is a separate
     # experiment from the sprite-toolkit work, drawn from the same character
     # brief; it is shown in its place in time and was not an incarnation.
     name: The player robot (v0, v2, v3)
     ids: [robot]
     paths: ['(^|/)robot(\.yaml|\.py|_side|25d)', 'robot_side', 'robot25d', 'player_robot']
-    summary: "one character, three incarnations (v0, v2, v3)"
+    summary: "one lineage, three distinct catalog characters (v0, v2, v3)"
     tile_w: 240
     per_row: 4
     eras:
