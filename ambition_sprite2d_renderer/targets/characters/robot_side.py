@@ -1869,64 +1869,6 @@ class SideRobotGenerator(CharacterGenerator):
         rig.put(fx_piece(("robot_streaks", accent, energy, round(S, 4)), (-16 * S, -18 * S, 16 * S, 18 * S), paint_streaks), (dest_x, mid_y), 0.0, "streaks", max(0.18, 1.0 - t * 0.42))
         self._ripple(rig, (dest_x, ground_y), energy, 78, S, max(0.18, 1.0 - t * 0.35))
 
-    def _teleport_warp(self, animation: str, root_x: float, S: float, frame_index: int, frame_count: int) -> Callable[[Point, int], Tuple[float, float, float]]:
-        """How a teleport takes the body apart: each piece slides by where it
-        sits across the body (``frac``, 0 at the back, 1 at the front) and
-        fades, and every few pieces flicker; departing, the pieces shear up
-        and away; arriving, they converge and solidify."""
-        t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
-        x1, x2 = root_x - 28 * S, root_x + 32 * S
-        if animation == "blink_out":
-            progress = smoothstep(clamp((t - 0.02) / 0.98, 0.0, 1.0))
-
-            def warp(at: Point, k: int) -> Tuple[float, float, float]:
-                frac = clamp((at[0] - x1) / (x2 - x1), 0.0, 1.0)
-                dx = (frac - 0.5) * (22.0 * S * progress) + math.sin(frac * math.pi * 7.0 + progress * 7.0) * 1.8 * S * progress
-                dy = -(5.0 + abs(frac - 0.5) * 18.0) * S * progress
-                fade = max(0.06, 1.0 - 0.88 * progress)
-                if progress > 0.35 and (k + int(progress * 10)) % 3 == 0:
-                    fade *= 0.35
-                return dx, dy, fade
-
-            return warp
-        progress = smoothstep(clamp(t, 0.0, 1.0))
-        solid = smoothstep(clamp((progress - 0.34) / 0.66, 0.0, 1.0))
-
-        def warp(at: Point, k: int) -> Tuple[float, float, float]:
-            frac = clamp((at[0] - x1) / (x2 - x1), 0.0, 1.0)
-            dx = (frac - 0.5) * (24.0 * S * (1.0 - progress))
-            dy = -(3.0 + abs(frac - 0.5) * 16.0) * S * (1.0 - progress)
-            fade = min(1.0, 0.18 + 0.94 * progress)
-            if progress < 0.45 and (k + frame_index) % 4 == 0:
-                fade *= 0.55
-            return dx, dy, 1.0 - (1.0 - fade) * (1.0 - solid)
-
-        return warp
-
-    def _place_teleport_scanlines(self, fx: "RigCanvas", animation: str, root_x: float, ground_y: float, S: float, frame_index: int, frame_count: int) -> None:
-        """Faint vertical scan lines over the body while it is taken apart:
-        one comb of four lines (one raster), placed twice across the body and
-        faded by the draw's opacity."""
-        t = 0.0 if frame_count <= 1 else frame_index / float(frame_count - 1)
-        if animation == "blink_out":
-            progress = smoothstep(clamp((t - 0.02) / 0.98, 0.0, 1.0))
-            strength = 0.3 * min(1.0, progress * 3.0) * (1.0 - 0.7 * progress)
-        else:
-            progress = smoothstep(clamp(t, 0.0, 1.0))
-            strength = 0.3 * (1.0 - smoothstep(clamp((progress - 0.34) / 0.66, 0.0, 1.0)))
-        if strength <= 0.01:
-            return
-        energy = self.PALETTE["visor_glow"]
-        half, w = 30 * S, max(1, int(1.0 * S))
-
-        def paint(d, ox, oy) -> None:
-            for i in range(4):
-                d.line([(ox + i * 6 * S, oy - half), (ox + i * 6 * S, oy + half)], fill=energy, width=w)
-
-        comb = fx_piece(("robot_scanlines", energy, round(S, 4)), (-w, -half - w, 18 * S + w, half + w), paint)
-        for j in range(2):
-            fx.put(comb, (root_x - 16 * S + j * 24 * S, ground_y - 48 * S), 0.0, f"scanlines{j}", strength)
-
     def _composite_teleport_actor(self, base: Image.Image, actor: Image.Image, animation: str, frame_index: int, frame_count: int, S: float) -> None:
         alpha_bbox = actor.getchannel("A").getbbox()
         if alpha_bbox is None:
@@ -2525,9 +2467,12 @@ class SideRobotGenerator(CharacterGenerator):
         # ``-whole_body_rotation``, which ``Image.rotate`` turned
         # counter-clockwise).
         roll_center = (body_center[0] + 2.0 * S, body_center[1] + 4.0 * S)
-        # A teleport takes the body apart piece by piece (``_teleport_warp``).
-        warp = self._teleport_warp(animation, root_x, S, frame_index, frame_count) if animation in {"blink_out", "blink_in"} else None
-        rig = RigCanvas(character_img, roll_center, -p.whole_body_rotation if abs(p.whole_body_rotation) > 1e-4 else 0.0, warp=warp)
+        # A blink row is a plain pose. The game takes the body apart: its pass
+        # over the composited body cuts the picture into vertical slivers
+        # (``BodyWarp``, by the row's name), and it does so only for a row
+        # that draws the body whole. Taken apart here, piece by piece
+        # (as this generator did before), the teleport read as a fade.
+        rig = RigCanvas(character_img, roll_center, -p.whole_body_rotation if abs(p.whole_body_rotation) > 1e-4 else 0.0)
 
         # Explicit semantic limb mapping for the right-facing player view.
         player_left_arm = (shoulder_near, p.near_arm_upper, p.near_arm_lower, pal["shell_side"])
@@ -2566,8 +2511,6 @@ class SideRobotGenerator(CharacterGenerator):
         self._draw_robot_arm(rig, player_right_arm[0], player_right_arm[1], player_right_arm[2], player_right_arm[3], spec, pal, S, outline, side="front")
 
         rigdoc.composite_canvas(img, character_img)
-        if warp is not None:
-            self._place_teleport_scanlines(RigCanvas(img), animation, root_x, ground_y, S, frame_index, frame_count)
 
         return img
 
