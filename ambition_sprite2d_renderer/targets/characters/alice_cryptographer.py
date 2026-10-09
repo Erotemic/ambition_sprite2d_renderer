@@ -487,14 +487,15 @@ class AliceCryptographerGenerator(CharacterGenerator):
             pose.near_hand = (-2.0, 19.0)
             pose.far_hand = (-9.0, 17.0)
             pose.prop = "none"
+        # ⛔ THE BLINK ROWS ARE PLAIN POSES: no `opacity`. The game takes the
+        # body apart (the engine's teleport warp), and only for a row that
+        # draws the body whole. The route streaks are an effect.
         elif animation in {"blink_out", "blink_in"}:
             amount = _smoothstep(t)
             if animation == "blink_out":
-                pose.opacity = max(0.08, 1.0 - amount)
                 pose.root_x = 7.0 * amount
                 pose.lean = -12.0 * amount
             else:
-                pose.opacity = max(0.08, amount)
                 pose.root_x = 7.0 * (1.0 - amount)
                 pose.lean = -12.0 * (1.0 - amount)
             pose.crouch = 0.24 * math.sin(math.pi * t)

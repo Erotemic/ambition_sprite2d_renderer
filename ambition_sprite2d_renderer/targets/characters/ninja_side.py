@@ -407,10 +407,12 @@ class NinjaSideGenerator(CharacterGenerator):
             p.scarf_swing = 12.0 * t
             p.sash_swing = 10.0 * t
             p.fade = 0.25 * t
+        # ⛔ THE BLINK ROWS ARE PLAIN POSES: no `fade`. The game takes the body
+        # apart (the engine's teleport warp), and only for a row that draws the
+        # body whole. The smoke of `dash` is an effect and no part of the body.
         elif animation == "blink_out":
             t = frame_index / max(1, frame_count - 1)
             p.dash = t
-            p.fade = t * 0.75
             p.root_x = 18.0 * t
             p.root_y = -8.0 * math.sin(t * math.pi)
             p.lean = 12.0
@@ -419,7 +421,6 @@ class NinjaSideGenerator(CharacterGenerator):
             t = frame_index / max(1, frame_count - 1)
             inv = 1.0 - t
             p.dash = inv
-            p.fade = inv * 0.75
             p.root_x = -18.0 * inv
             p.root_y = -8.0 * math.sin(t * math.pi)
             p.lean = 8.0

@@ -37,9 +37,6 @@
           "near_leg_u": {
             "rotation_deg": 3.193433
           }
-        },
-        "parameters": {
-          "body_opacity": 1.0
         }
       }
     },
@@ -87,9 +84,6 @@
           "torso": {
             "rotation_deg": -3.5
           }
-        },
-        "parameters": {
-          "body_opacity": 0.60625
         }
       }
     },
@@ -137,9 +131,6 @@
           "torso": {
             "rotation_deg": -4.0
           }
-        },
-        "parameters": {
-          "body_opacity": 0.55
         }
       }
     },
@@ -187,9 +178,6 @@
           "torso": {
             "rotation_deg": -5.75
           }
-        },
-        "parameters": {
-          "body_opacity": 0.13875
         }
       }
     },
@@ -237,9 +225,6 @@
           "torso": {
             "rotation_deg": -6.0
           }
-        },
-        "parameters": {
-          "body_opacity": 0.08
         }
       }
     }

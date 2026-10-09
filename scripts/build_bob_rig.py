@@ -1300,16 +1300,20 @@ GADGETS = {
         (0.857, {"fx.waves": 1.0}),
         (1.0, {**HOME, "analyzer": 0.0, "fx.waves": 0.0}),
     ], extra=lambda t, p: p.update({"analyzer": 1.0 if 0.15 < t < 0.95 else 0.0})),
+    # ⛔ THE BLINK ROWS ARE PLAIN POSES: the body is opaque in each frame. The
+    # game takes the body apart (the engine's teleport warp), and it does so
+    # only for a row that draws the body whole. A `body_opacity` here gives Bob
+    # his own fade and no warp.
     "blink_out": clip([
         (0.0, {"fx.blink": 0.0}),
         (0.4, {"y": 30, "lean": 20, "nu": 60, "ne": 120, "nw": -20, "fu": 50, "fe": 120, "eye": "shut",
-               "fx.blink": 0.5, "body_opacity": 0.8, "ease": "out"}),
-        (1.0, {"y": 20, "lean": 10, "fx.blink": 1.0, "body_opacity": 0.0, "ease": "in"}),
-    ], extra=lambda t, p: p.setdefault("body_opacity", 1.0)),
+               "fx.blink": 0.5, "ease": "out"}),
+        (1.0, {"y": 20, "lean": 10, "fx.blink": 1.0, "ease": "in"}),
+    ]),
     "blink_in": clip([
-        (0.0, {"y": 20, "lean": 10, "eye": "shut", "fx.blink": 1.0, "body_opacity": 0.0}),
-        (0.6, {"y": 30, "lean": 20, "fx.blink": 0.5, "body_opacity": 0.85, "ease": "out"}),
-        (1.0, {**HOME, "fx.blink": 0.0, "body_opacity": 1.0}),
+        (0.0, {"y": 20, "lean": 10, "eye": "shut", "fx.blink": 1.0}),
+        (0.6, {"y": 30, "lean": 20, "fx.blink": 0.5, "ease": "out"}),
+        (1.0, {**HOME, "fx.blink": 0.0}),
     ]),
 }
 
