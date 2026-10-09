@@ -16,7 +16,6 @@ not reintroduce a config under a name a module target already claims.
 
 from __future__ import annotations
 
-import dataclasses
 import math
 from functools import lru_cache
 from pathlib import Path
@@ -79,8 +78,7 @@ def _other_side(params: dict) -> dict:
     return {**params, "near_ear_vis": far, "far_ear_vis": near}
 
 
-#: The robot family's teleport (portal pieces and the warp that takes a body
-#: apart), drawn at this rig's scale.
+#: The robot family's teleport (its portal pieces), drawn at this rig's scale.
 _TELEPORT = SideRobotGenerator()
 
 ACTOR_METADATA = {
@@ -424,30 +422,9 @@ def _shot(length: float):
     return fx_piece(("v3_shot", length), (-3 * K, -4 * K, (length + 4) * K, 4 * K), paint)
 
 
-def _render_body(doc: RigDocument, clip: str, t: float, solved, warp=None) -> Image.Image:
-    """The rig's frame (``render_at``), or, with ``warp``, the same parts each
-    moved and faded by ``warp(place, k) -> (dx, dy, opacity)`` (supersampled
-    pixels; ``k`` numbers the BONES, so a head and its face move as one)."""
-    if warp is None:
-        return doc.render_at(clip, t, solved=solved)
-    fr = doc.frame
-    size = (int(fr["width"]), int(fr["height"]))
-    S = float(max(1, int(fr.get("supersample", 4))))
-    img = Image.new("RGBA", (int(size[0] * S), int(size[1] * S)), (0, 0, 0, 0))
-    draw = blending_draw(img)
-    world, params = solved
-    bones: Dict[str, int] = {}
-    for part in rigdoc.ordered_parts(rigdoc.visible_parts(doc.parts, doc.features), params):
-        bone = part.get("bone")
-        sprite = doc.sprite_raster(part, S)
-        if bone not in world or sprite is None or rigdoc.part_channel_opacity(part, params) <= 0.01:
-            continue
-        bw = world[bone]
-        dx, dy, fade = warp((bw.origin[0] * S, bw.origin[1] * S), bones.setdefault(bone, len(bones)))
-        moved = {**world, bone: dataclasses.replace(bw, origin=(bw.origin[0] + dx / S, bw.origin[1] + dy / S))}
-        faded = {**params, "body_opacity": max(0.0, min(1.0, float(params.get("body_opacity", 1.0)))) * fade}
-        rigdoc.paint_part(img, draw, part, moved, S, faded, doc.palette, sprite=sprite, transform_cache=doc._sprite_transform_cache)
-    return rigdoc.downsampled_canvas(img, size)
+def _render_body(doc: RigDocument, clip: str, t: float, solved) -> Image.Image:
+    """The rig's frame (``render_at``)."""
+    return doc.render_at(clip, t, solved=solved)
 
 
 def _compose(animation: str, clip: str, t: float, solved, frame_idx: int, nframes: int) -> Image.Image:
@@ -461,7 +438,6 @@ def _compose(animation: str, clip: str, t: float, solved, frame_idx: int, nframe
     effect = animation if animation in STRIKES else EFFECT_ALIASES.get(animation, animation)
     size = (int(doc.frame["width"]), int(doc.frame["height"]))
     back, front = _FxLayer(size), _FxLayer(size)
-    warp = None
 
     if effect in {"dash", "dash_startup", "slide"}:
         back.put(_dash_lines(), (8, 49), 0.0, "dash_lines", 1.0 if effect == "dash" else 0.7)
@@ -500,20 +476,19 @@ def _compose(animation: str, clip: str, t: float, solved, frame_idx: int, nframe
         front.put(_hit_sparks(), (78, 48), 0.0, "hit_sparks")
 
     if effect in {"blink_out", "blink_in"}:
-        # The teleport takes the body apart part by part (robot_side's
-        # ``_teleport_warp``) inside its portal rings and slivers.
-        root_x = float(doc.frame.get("center_x", size[0] / 2.0)) + float(params.get("root_x", 0.0))
-        ground_y = float(doc.frame.get("ground_y", size[1] - 2.0)) + float(params.get("root_y", 0.0))
-        body_ss = float(max(1, int(doc.frame.get("supersample", 4))))
-        warp = _TELEPORT._teleport_warp(effect, root_x * body_ss, body_ss, frame_idx, nframes)
-        root_x, ground_y = root_x * K, ground_y * K
+        # The row is a plain pose inside its portal rings and slivers. The
+        # game takes the body apart: its pass over the composited body cuts
+        # the picture into vertical slivers (``BodyWarp``, by the row's name).
+        # Taken apart here, part by part, the teleport was a fade: the parts
+        # are few and they overlap.
+        root_x = (float(doc.frame.get("center_x", size[0] / 2.0)) + float(params.get("root_x", 0.0))) * K
+        ground_y = (float(doc.frame.get("ground_y", size[1] - 2.0)) + float(params.get("root_y", 0.0))) * K
         if effect == "blink_out":
             _TELEPORT._place_blink_out_fx(back.rig, root_x, ground_y, K, frame_idx, nframes)
         else:
             _TELEPORT._place_blink_in_fx(back.rig, root_x, ground_y, K, frame_idx, nframes)
-        _TELEPORT._place_teleport_scanlines(front.rig, effect, root_x, ground_y, K, frame_idx, nframes)
 
-    body = _render_body(doc, clip, t, solved, warp)
+    body = _render_body(doc, clip, t, solved)
     if effect == "death":
         # The whole body fades as one picture: its parts do not show through
         # each other.

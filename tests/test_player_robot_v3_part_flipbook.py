@@ -10,8 +10,9 @@ The robot exercises what Mary-O does not:
 * his other side is a MIRRORED row, drawn as mirrored draws of the same parts;
 * his smash blade FADES on its own (a draw's opacity), and his death fades the
   whole body AS ONE PICTURE (a frame's opacity);
-* his blink takes the body apart part by part (each draw moved and faded),
-  and his effects are pieces placed with an opacity, not a layer a frame.
+* his blink is a plain pose inside its portal pieces (the game takes the body
+  apart, as one picture), and his effects are pieces placed with an opacity,
+  not a layer a frame.
 
 A continuous replay is not the same picture as the render to the bit: the
 render composites at 4x and reduces once, the replay reduces each part and
@@ -45,7 +46,7 @@ PARITY_BOUND = 0.01
 BLOB_BOUND = 6
 
 #: One row per mechanism: rigid parts (idle), a tweened loop and its mirror
-#: (walk), a frame fade (death), a body taken apart (blink_out), blurred
+#: (walk), a frame fade (death), a body in its portal pieces (blink_out), blurred
 #: effect pieces (hover), a faded part and its mirror (smash_forward), a
 #: translucent shield of four mirrored quarters over the body (block).
 SAMPLE = (
@@ -102,9 +103,11 @@ def test_each_mechanism_is_in_the_flipbook(sample):
     mirrored = [d for frame in flipbook.clips["walk~mirrored"][1] for d in frame if d.track and not d.track.startswith("overlay:")]
     # Mirrored about the pivot (scale.x -1); a squashed part keeps its squash.
     assert mirrored and all(d.scale[0] == -1.0 for d in mirrored)
-    # The blink fades the body's own draws and adds the portal pieces.
+    # The blink draws the body whole and adds the portal pieces. The game
+    # takes the body apart (`BodyWarp`), so a fade here would be a second one.
     blink = [d for frame in flipbook.clips["blink_out"][1] for d in frame]
-    assert any(d.track == "head" and d.opacity < 0.5 for d in blink), sorted({(d.track, d.opacity) for d in blink})
+    heads = [d.opacity for d in blink if d.track == "head"]
+    assert heads and all(opacity == 1.0 for opacity in heads), sorted({(d.track, d.opacity) for d in blink})
     assert {"portal_ring", "sliver0"} <= {d.track for d in blink}
     assert any(d.track == "near_jet" for d in flipbook.clips["hover"][1][0])
     # No effect is a raster of the whole frame layer.
@@ -172,16 +175,6 @@ def test_a_visible_part_a_pixel_off_fails(sample, track):
 
 def test_a_dropped_effect_piece_fails(sample):
     assert _fails(sample, "hover", 0, _without("near_jet"))
-
-
-def test_a_blink_drawn_whole_fails(sample):
-    """The blink's body draws carry their fade: drawn opaque, the body is
-    whole again."""
-
-    def opaque(draws, opacity):
-        return [dataclasses.replace(d, opacity=1.0) for d in draws], opacity
-
-    assert _fails(sample, "blink_out", 4, opaque)
 
 
 def test_a_death_frame_drawn_opaque_fails(sample):
