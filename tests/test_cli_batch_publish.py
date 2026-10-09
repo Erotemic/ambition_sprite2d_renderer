@@ -60,6 +60,7 @@ def test_publish_many_deduplicates_targets_and_uses_quiet_batch_path(monkeypatch
             quiet=True,
             quality_scale=None,
             downsample=None,
+            published_list=None,
         )
     )
 

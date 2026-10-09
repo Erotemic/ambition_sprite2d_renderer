@@ -1205,19 +1205,35 @@ def _cmd_publish_many(args: argparse.Namespace) -> int:
 
     opts = _target_render_opts(args)
     names = list(dict.fromkeys(args.targets))
+    published = _PublishedList(args.published_list)
     workers = min(render_workers(), len(names))
     if workers > 1:
-        return _publish_in_parallel(names, Path(args.dest_root), args.quiet, opts, workers)
-    return _bulk_over(
-        "publish-many",
-        names,
-        lambda name: _publish_target(
-            name,
-            args.dest_root,
-            quiet=args.quiet,
-            **opts,
-        ),
-    )
+        return _publish_in_parallel(
+            names, Path(args.dest_root), args.quiet, opts, workers, published
+        )
+
+    def publish(name: str) -> None:
+        _publish_target(name, args.dest_root, quiet=args.quiet, **opts)
+        published.add(name)
+
+    return _bulk_over("publish-many", names, publish)
+
+
+class _PublishedList:
+    """The targets of a batch that published, one name for each line.
+
+    A batch with one failure exits 1. Without this list the caller cannot tell
+    which targets are current, so it must render all of them again."""
+
+    def __init__(self, path: str | None) -> None:
+        self.path = Path(path) if path else None
+        if self.path is not None:
+            self.path.write_text("")
+
+    def add(self, name: str) -> None:
+        if self.path is not None:
+            with self.path.open("a") as file:
+                file.write(name + "\n")
 
 
 def _publish_one(name: str, dest_root: Path, quiet: bool, opts: dict) -> str | None:
@@ -1226,12 +1242,19 @@ def _publish_one(name: str, dest_root: Path, quiet: bool, opts: dict) -> str | N
     try:
         _publish_target(name, dest_root, quiet=quiet, **opts)
         return None
-    except Exception as ex:  # noqa: BLE001 - reported per target, as `_bulk_over` does
+    except (Exception, SystemExit) as ex:  # noqa: BLE001 - reported per target
+        # An unknown target exits. In a worker that would break the pool and
+        # lose the result of each other target.
         return f"{type(ex).__name__}: {ex}"
 
 
 def _publish_in_parallel(
-    names: list[str], dest_root: Path, quiet: bool, opts: dict, workers: int
+    names: list[str],
+    dest_root: Path,
+    quiet: bool,
+    opts: dict,
+    workers: int,
+    published: "_PublishedList",
 ) -> int:
     """`publish-many` on `workers` processes. Each target installs only its
     own files. Exit 1 when one target failed, as the serial batch does."""
@@ -1252,7 +1275,9 @@ def _publish_in_parallel(
                 f"[{done}/{len(names)}] publish-many {name}: {mark} | elapsed {time.perf_counter() - started:.0f}s",
                 flush=True,
             )
-            if error is not None:
+            if error is None:
+                published.add(name)
+            else:
                 failures.append(name)
     if failures:
         print(f"publish-many: {len(failures)} failure(s): {', '.join(failures)}", file=sys.stderr)
