@@ -1236,16 +1236,37 @@ class _PublishedList:
                 file.write(name + "\n")
 
 
-def _publish_one(name: str, dest_root: Path, quiet: bool, opts: dict) -> str | None:
-    """Publish one target; the failure text, or None. Module-level, so a
-    process pool can run it."""
+#: The seconds each target took in the last parallel batch. A batch starts the
+#: slowest known targets first, so that one slow target does not run alone at
+#: the end: in a regen of 144 tack-on targets on 7 processes, the last target
+#: ran alone for about 230 s. A target with no record counts as the slowest.
+PUBLISH_SECONDS = Path(__file__).resolve().parents[2] / ".cache" / "publish_seconds.json"
+
+
+def _read_publish_seconds(path: Path) -> dict[str, float]:
+    try:
+        return {str(k): float(v) for k, v in json.loads(path.read_text()).items()}
+    except (OSError, ValueError, AttributeError):
+        return {}
+
+
+def _longest_first(names: list[str], seconds: dict[str, float]) -> list[str]:
+    return sorted(names, key=lambda name: -seconds.get(name, float("inf")))
+
+
+def _publish_one(
+    name: str, dest_root: Path, quiet: bool, opts: dict
+) -> tuple[str | None, float]:
+    """Publish one target: the failure text or None, and its seconds.
+    Module-level, so a process pool can run it."""
+    started = time.perf_counter()
     try:
         _publish_target(name, dest_root, quiet=quiet, **opts)
-        return None
+        return None, time.perf_counter() - started
     except (Exception, SystemExit) as ex:  # noqa: BLE001 - reported per target
         # An unknown target exits. In a worker that would break the pool and
         # lose the result of each other target.
-        return f"{type(ex).__name__}: {ex}"
+        return f"{type(ex).__name__}: {ex}", time.perf_counter() - started
 
 
 def _publish_in_parallel(
@@ -1265,11 +1286,16 @@ def _publish_in_parallel(
     started = time.perf_counter()
     print(f"publish-many: {len(names)} target(s) on {workers} worker(s)", flush=True)
     failures: list[str] = []
+    seconds = _read_publish_seconds(PUBLISH_SECONDS)
+    order = _longest_first(names, seconds)
     with ProcessPoolExecutor(max_workers=workers) as pool:
-        futures = {pool.submit(_publish_one, name, dest_root, quiet, opts): name for name in names}
+        # A pool takes the submitted jobs in order, so the order is the schedule.
+        futures = {pool.submit(_publish_one, name, dest_root, quiet, opts): name for name in order}
         for done, future in enumerate(as_completed(futures), 1):
             name = futures[future]
-            error = future.result()
+            error, took = future.result()
+            if error is None:
+                seconds[name] = round(took, 2)
             mark = "ok" if error is None else f"FAILED ({error})"
             print(
                 f"[{done}/{len(names)}] publish-many {name}: {mark} | elapsed {time.perf_counter() - started:.0f}s",
@@ -1279,6 +1305,11 @@ def _publish_in_parallel(
                 published.add(name)
             else:
                 failures.append(name)
+    try:
+        PUBLISH_SECONDS.parent.mkdir(parents=True, exist_ok=True)
+        PUBLISH_SECONDS.write_text(json.dumps(seconds, indent=1, sort_keys=True))
+    except OSError as ex:
+        print(f"publish-many: the seconds of this batch were not kept: {ex}", file=sys.stderr)
     if failures:
         print(f"publish-many: {len(failures)} failure(s): {', '.join(failures)}", file=sys.stderr)
         return 1
