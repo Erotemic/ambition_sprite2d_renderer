@@ -1,9 +1,19 @@
 """Procedural rope prop for the cut-rope boss arena.
 
 A narrow hanging rope authored as a Prop with kind ``cut_rope_rope``.
-The sprite is intentionally just the visible rope above the anvil; the
-LDtk hitbox is likewise authored above the anvil so players cannot cut
-an invisible extension below it.
+
+The frame is a kit for a rope of any length (``column_tile``): a tie at the
+top (the cap), one tile of braid that the game repeats, and a knot at the
+bottom (the end). The game draws the cap at the top of the Prop's box, the
+knot at its bottom, and the tile between them, so the rope is as long as the
+box the map gives it. The LDtk hitbox is that box, so a player cannot cut a
+part of the rope that is not drawn.
+
+The braid has a period of ``PERIOD`` rows and the tile is two periods. The
+cap and the end each keep one period of plain braid next to the tile, so the
+rows on each side of a boundary are the same in the tile and outside it, also
+in a reduced copy of the sheet. Each part is a multiple of ``PERIOD`` rows, so
+each boundary is on a whole texel in the half, quarter and one-sixth copies.
 """
 
 from __future__ import annotations
@@ -26,6 +36,19 @@ SHEET_FILES = [
     f"{TARGET_NAME}_actor.ron",
 ]
 
+# Rows of one turn of the braid. The strands and the bands repeat with it.
+PERIOD = 12
+# The rows of the tie at the top, of the tile, and of the knot at the bottom.
+# The tie and the knot each take 20 rows; the rest of the cap and of the end
+# is plain braid.
+CAP_ROWS = 3 * PERIOD
+TILE_ROWS = 2 * PERIOD
+END_ROWS = 3 * PERIOD
+# ``(first row, row after the last)`` of the tile.
+COLUMN_TILE = (CAP_ROWS, CAP_ROWS + TILE_ROWS)
+
+FRAME_SIZE = (48, CAP_ROWS + TILE_ROWS + END_ROWS)
+
 ACTOR_METADATA = {
     "actor": {
         "character_id": "prop_cut_rope_rope",
@@ -44,11 +67,10 @@ ACTOR_METADATA = {
         "default": {"animation": "idle", "events": []},
     },
     "sockets": {
-        "top": {"source": f"{TARGET_NAME}.geometry", "point": {"x": 24.0, "y": 4.0}},
-        "cut": {"source": f"{TARGET_NAME}.geometry", "point": {"x": 24.0, "y": 92.0}},
+        "top": {"source": f"{TARGET_NAME}.geometry", "point": {"x": 24.0, "y": 2.0}},
         "bottom": {
             "source": f"{TARGET_NAME}.geometry",
-            "point": {"x": 24.0, "y": 188.0},
+            "point": {"x": 24.0, "y": float(FRAME_SIZE[1] - 2)},
         },
     },
     "tags": ["prop", "rope", "cuttable", "boss-arena"],
@@ -58,7 +80,6 @@ ROWS: List[Tuple[str, int, int]] = [
     ("idle", 1, 1000),
 ]
 
-FRAME_SIZE = (48, 192)
 SUPER = 4
 W, H = FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER
 
@@ -66,7 +87,6 @@ ROPE_DARK = ImageColor.getrgb("#5B3518") + (255,)
 ROPE_MID = ImageColor.getrgb("#A66B2E") + (255,)
 ROPE_LIGHT = ImageColor.getrgb("#E2B15E") + (255,)
 ROPE_SHADOW = ImageColor.getrgb("#2B1A12") + (255,)
-BINDING = ImageColor.getrgb("#D9C28F") + (255,)
 
 
 def _s(v: float) -> int:
@@ -80,12 +100,12 @@ def _box(x1: float, y1: float, x2: float, y2: float) -> Tuple[int, int, int, int
 def _rope_wave(y: float, strand: int) -> float:
     # Static braided silhouette. A deterministic triangular-ish wave reads as
     # rope twist without the DNA/dancing-flower motion the old idle row had.
-    t = (y * 0.08 + strand * 0.33) % 1.0
+    t = (y / PERIOD + strand * 0.33) % 1.0
     return (abs(t - 0.5) - 0.25) * 7.0
 
 
 def _rope_band_wave(y: float) -> float:
-    t = (y * 0.08) % 1.0
+    t = (y / PERIOD) % 1.0
     return (abs(t - 0.5) - 0.25) * 5.0
 
 
@@ -97,28 +117,25 @@ def _draw_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     draw = blending_draw(img)
 
     cx = 24.0
+    bottom = float(FRAME_SIZE[1])
 
-    # Top tie/loop. No drop shadow: this is the visible rope only.
-    draw.ellipse(_box(cx - 6, 2, cx + 6, 16), outline=ROPE_DARK, width=_s(3.0))
-    draw.ellipse(_box(cx - 3.5, 5, cx + 3.5, 13), outline=ROPE_LIGHT, width=_s(1.1))
-    draw.rectangle(_box(cx - 7, 15, cx + 7, 22), fill=ROPE_DARK)
-    for x in (cx - 4.5, cx, cx + 4.5):
-        draw.line((_s(x), _s(15), _s(x), _s(22)), fill=ROPE_LIGHT, width=_s(0.6))
-
-    # Braided strands. Draw three sinusoidal strands and periodic bands
-    # so the line reads as twisted rope at small scale.
+    # Braided strands. Three strands and a band on each turn, so the line
+    # reads as twisted rope at small scale. Each is drawn on a multiple of
+    # 3 rows, which divides ``PERIOD``: the braid is the same picture each
+    # ``PERIOD`` rows, and the tile joins the next copy of itself. No drop
+    # shadow: this is the visible rope only.
     for strand, color, offset in [
         (0, ROPE_DARK, -3.4),
         (1, ROPE_MID, 0.0),
         (2, ROPE_LIGHT, 3.4),
     ]:
         pts = []
-        for y in range(20, 188, 3):
+        for y in range(PERIOD, int(bottom) - 9, 3):
             wave = _rope_wave(y, strand)
             pts.append((_s(cx + offset + wave), _s(y)))
         draw.line(pts, fill=color, width=_s(2.2))
 
-    for y in range(26, 184, 12):
+    for y in range(PERIOD + 2, int(bottom) - 8, PERIOD):
         wave = _rope_band_wave(y)
         draw.arc(
             _box(cx - 6 + wave, y - 4, cx + 6 + wave, y + 8),
@@ -135,8 +152,31 @@ def _draw_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
             width=_s(0.8),
         )
 
-    # A faint cut marker near the intended strike height.
-    draw.line((_s(cx - 7), _s(92), _s(cx + 7), _s(92)), fill=BINDING, width=_s(0.7))
+    # The cap: the tie that hangs the rope. A period of plain braid is between
+    # it and the tile.
+    draw.ellipse(_box(cx - 6, 1, cx + 6, 14), outline=ROPE_DARK, width=_s(3.0))
+    draw.ellipse(_box(cx - 3.5, 4, cx + 3.5, 11), outline=ROPE_LIGHT, width=_s(1.1))
+    draw.rectangle(_box(cx - 7, 13, cx + 7, 20), fill=ROPE_DARK)
+    for x in (cx - 4.5, cx, cx + 4.5):
+        draw.line((_s(x), _s(13), _s(x), _s(20)), fill=ROPE_LIGHT, width=_s(0.6))
+
+    # The end: the knot that holds the load, a period of plain braid under
+    # the tile.
+    draw.rectangle(_box(cx - 7, bottom - 20, cx + 7, bottom - 13), fill=ROPE_DARK)
+    for x in (cx - 4.5, cx, cx + 4.5):
+        draw.line(
+            (_s(x), _s(bottom - 20), _s(x), _s(bottom - 13)),
+            fill=ROPE_LIGHT,
+            width=_s(0.6),
+        )
+    draw.ellipse(
+        _box(cx - 6, bottom - 14, cx + 6, bottom - 1), outline=ROPE_DARK, width=_s(3.0)
+    )
+    draw.ellipse(
+        _box(cx - 3.5, bottom - 11, cx + 3.5, bottom - 4),
+        outline=ROPE_LIGHT,
+        width=_s(1.1),
+    )
 
     return img.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
 
@@ -145,9 +185,8 @@ def _frame_meta(anim: str, frame_idx: int, nframes: int) -> dict:
     del frame_idx, nframes
     return {
         "anchors": {
-            "top": {"x": 24.0, "y": 4.0},
-            "cut": {"x": 24.0, "y": 92.0},
-            "bottom": {"x": 24.0, "y": 188.0},
+            "top": {"x": 24.0, "y": 2.0},
+            "bottom": {"x": 24.0, "y": float(FRAME_SIZE[1] - 2)},
         },
         "prop": {"kind": TARGET_NAME, "animation": anim},
     }
@@ -167,6 +206,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
         frame_meta_fn=_frame_meta,
         auto_crop=False,
         actor_metadata=ACTOR_METADATA,
+        column_tile=COLUMN_TILE,
     )
     return [
         outputs["spritesheet"],
