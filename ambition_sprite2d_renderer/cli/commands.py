@@ -297,17 +297,50 @@ def draw_all(
             continue
         selected_jobs.append((path, job, job.output_stem(path)))
 
-    outputs: List[Path] = []
     total = len(selected_jobs)
-    for index, (path, job, stem) in enumerate(selected_jobs, start=1):
-        _render_progress(f"    [sheet {index}/{total}] {stem}")
-        image_out = out_dir / f"{stem}_spritesheet.png"
-        manifest_out = out_dir / f"{stem}_spritesheet.yaml"
-        outputs.extend(
-            write_spritesheet(job, image_out, manifest_out, source_config=path)
-        )
-        _render_progress(f"    [portrait {index}/{total}] {stem}")
-        outputs.extend(_render_job_portraits(job, stem, out_dir))
+    workers = min(render_workers(), total)
+    if workers <= 1:
+        outputs: List[Path] = []
+        for index, (path, job, stem) in enumerate(selected_jobs, start=1):
+            outputs.extend(_render_one_job(path, job, stem, out_dir, index, total))
+        return outputs
+    # One process per job: each job writes only its own files, and a worker
+    # imports its own copy of every module cache. The outputs are returned in
+    # roster order, as the serial loop returns them.
+    from concurrent.futures import ProcessPoolExecutor
+
+    _render_progress(f"    [draw-all] {total} sheet(s) on {workers} worker(s)")
+    with ProcessPoolExecutor(max_workers=workers) as pool:
+        futures = [
+            pool.submit(_render_one_job, path, job, stem, out_dir, index, total)
+            for index, (path, job, stem) in enumerate(selected_jobs, start=1)
+        ]
+        return [path for future in futures for path in future.result()]
+
+
+def render_workers() -> int:
+    """Processes a batch render may use: `AMBITION_SPRITE_JOBS`, else 1.
+
+    The renderer is single-threaded Python, so one process uses one core of
+    the machine.
+    """
+    try:
+        return max(1, int(os.environ.get("AMBITION_SPRITE_JOBS", "1")))
+    except ValueError:
+        return 1
+
+
+def _render_one_job(
+    path: Path, job: CharacterJob, stem: str, out_dir: Path, index: int, total: int
+) -> List[Path]:
+    """One job's sheet and portraits. A module-level function, so a process
+    pool can run it."""
+    _render_progress(f"    [sheet {index}/{total}] {stem}")
+    image_out = out_dir / f"{stem}_spritesheet.png"
+    manifest_out = out_dir / f"{stem}_spritesheet.yaml"
+    outputs = list(write_spritesheet(job, image_out, manifest_out, source_config=path))
+    _render_progress(f"    [portrait {index}/{total}] {stem}")
+    outputs.extend(_render_job_portraits(job, stem, out_dir))
     return outputs
 
 
@@ -1171,16 +1204,85 @@ def _cmd_publish_many(args: argparse.Namespace) -> int:
     """Publish an explicit target batch after one registry discovery pass."""
 
     opts = _target_render_opts(args)
-    return _bulk_over(
-        "publish-many",
-        list(dict.fromkeys(args.targets)),
-        lambda name: _publish_target(
-            name,
-            args.dest_root,
-            quiet=args.quiet,
-            **opts,
-        ),
-    )
+    names = list(dict.fromkeys(args.targets))
+    published = _PublishedList(args.published_list)
+    workers = min(render_workers(), len(names))
+    if workers > 1:
+        return _publish_in_parallel(
+            names, Path(args.dest_root), args.quiet, opts, workers, published
+        )
+
+    def publish(name: str) -> None:
+        _publish_target(name, args.dest_root, quiet=args.quiet, **opts)
+        published.add(name)
+
+    return _bulk_over("publish-many", names, publish)
+
+
+class _PublishedList:
+    """The targets of a batch that published, one name for each line.
+
+    A batch with one failure exits 1. Without this list the caller cannot tell
+    which targets are current, so it must render all of them again."""
+
+    def __init__(self, path: str | None) -> None:
+        self.path = Path(path) if path else None
+        if self.path is not None:
+            self.path.write_text("")
+
+    def add(self, name: str) -> None:
+        if self.path is not None:
+            with self.path.open("a") as file:
+                file.write(name + "\n")
+
+
+def _publish_one(name: str, dest_root: Path, quiet: bool, opts: dict) -> str | None:
+    """Publish one target; the failure text, or None. Module-level, so a
+    process pool can run it."""
+    try:
+        _publish_target(name, dest_root, quiet=quiet, **opts)
+        return None
+    except (Exception, SystemExit) as ex:  # noqa: BLE001 - reported per target
+        # An unknown target exits. In a worker that would break the pool and
+        # lose the result of each other target.
+        return f"{type(ex).__name__}: {ex}"
+
+
+def _publish_in_parallel(
+    names: list[str],
+    dest_root: Path,
+    quiet: bool,
+    opts: dict,
+    workers: int,
+    published: "_PublishedList",
+) -> int:
+    """`publish-many` on `workers` processes. Each target installs only its
+    own files. Exit 1 when one target failed, as the serial batch does."""
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+
+    for line in _REPORT.warnings:
+        print(f"discovery warning: {line}", file=sys.stderr)
+    started = time.perf_counter()
+    print(f"publish-many: {len(names)} target(s) on {workers} worker(s)", flush=True)
+    failures: list[str] = []
+    with ProcessPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(_publish_one, name, dest_root, quiet, opts): name for name in names}
+        for done, future in enumerate(as_completed(futures), 1):
+            name = futures[future]
+            error = future.result()
+            mark = "ok" if error is None else f"FAILED ({error})"
+            print(
+                f"[{done}/{len(names)}] publish-many {name}: {mark} | elapsed {time.perf_counter() - started:.0f}s",
+                flush=True,
+            )
+            if error is None:
+                published.add(name)
+            else:
+                failures.append(name)
+    if failures:
+        print(f"publish-many: {len(failures)} failure(s): {', '.join(failures)}", file=sys.stderr)
+        return 1
+    return 0
 
 
 @profile

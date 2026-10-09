@@ -274,6 +274,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print target progress but suppress per-file path listings.",
     )
+    p.add_argument(
+        "--published-list",
+        metavar="PATH",
+        help=(
+            "Write the name of each target that published to PATH, one for "
+            "each line, so a caller can keep the work of a batch that failed."
+        ),
+    )
     p.set_defaults(func=_cmd_publish_many)
 
     p = sub.add_parser(
