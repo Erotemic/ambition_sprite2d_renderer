@@ -35,9 +35,9 @@ from ._mary_o_v2_model import (
     MARY_FIRE_FLASH,
     MARY_NORMAL,
     SHORT_FORM,
+    FIRE_ORB_POSE,
     SHORT_POSES,
     TALL_FORM,
-    TALL_LIKE_POSES,
     poses_for_form,
     FormSpec,
     Pose,
@@ -196,7 +196,7 @@ def _draw_poc_form(
             (_transition_form(FIRE_FORM, fire_reveal_1, stage=1.94, power="fire"), Pose(bob=-1.08, body_lean=0.14, arm_front_angle=108, arm_back_angle=18, leg_front_angle=18, leg_back_angle=-12), 1.18, 3, False),
             (_transition_form(FIRE_FORM, fire_reveal_2, stage=1.98, power="fire"), Pose(bob=-0.72, body_lean=0.12, arm_front_angle=86, arm_back_angle=6, leg_front_angle=12, leg_back_angle=-8), 1.02, 3, False),
             (_transition_form(FIRE_FORM, fire_reveal_3, stage=2.00, power="fire"), Pose(bob=-0.45, body_lean=0.10, arm_front_angle=70, arm_back_angle=-4, leg_front_angle=10, leg_back_angle=-6), 0.96, 3, True),
-            (FIRE_FORM, TALL_LIKE_POSES["fireball"][0], 1.0, 3, True),
+            (FIRE_FORM, FIRE_ORB_POSE, 1.0, 3, True),
         ]
         active, pose, sleeve, stars, orb = seq[frame_idx % len(seq)]
         return _effect_frame(
@@ -253,10 +253,8 @@ def _draw_poc_form(
         # Death is a front projection, so it deliberately uses the front SVG
         # component library rather than falling back to procedural rotated limbs.
         return render_pose_with_doc(docs[f"{host_form.target_name}:front"], host_form, pose)
-    frame = _rig_pose(docs, host_form, pose)
-    if animation == "fireball":
-        frame = composite_effects(frame, form=host_form, pose=pose, animation=animation, frame_idx=frame_idx, show_orb=True)
-    return frame
+    # `shoot` draws no orb: the game draws the spark she throws.
+    return _rig_pose(docs, host_form, pose)
 
 
 def _actor_metadata(form: FormSpec) -> dict:

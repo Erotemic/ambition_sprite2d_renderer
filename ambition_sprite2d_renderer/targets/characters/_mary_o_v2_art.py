@@ -991,7 +991,7 @@ def _draw_side_pose(px, form: FormSpec, pose: Pose, *, animation: str = "idle", 
             length=form.leg_height - form.body_dy - 0.6 * pose.crouch,
         )
 
-    side_wing_boost = wing_boost + 0.45 * fire_accessory_t + (0.25 if animation == "fireball" else 0.0)
+    side_wing_boost = wing_boost + 0.45 * fire_accessory_t + (0.25 if animation == "shoot" else 0.0)
     sleeve_boost = sleeve_wing_boost + 0.85 * fire_accessory_t
     _draw_wing_side(px, body_x + 1.6, body_top + 3.4, form=form, spread=side_wing_boost)
     if stage >= 1.7:
@@ -1054,10 +1054,6 @@ def _draw_side_pose(px, form: FormSpec, pose: Pose, *, animation: str = "idle", 
             length=4.0 * _arm_k(form),
         )
 
-    if form.power == "fire" and animation == "fireball":
-        orb_x = front_shoulder[0] + 5.0
-        orb_y = front_shoulder[1] + 0.8
-        _draw_fire_orb(px, orb_x, orb_y)
 
 
 V2_TEAL_DARK = (17, 91, 117, 255)

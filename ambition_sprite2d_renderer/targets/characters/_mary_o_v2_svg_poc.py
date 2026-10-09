@@ -2688,7 +2688,7 @@ def build_rig_document(svg_path: str | Path, form: FormSpec, projection: str = "
     records = _find_part_records(svg_path, form, projection)
     #  THE CLIPPED FEET ARE NOT FIXED BY MOVING THIS. Raising the ground
     # line to `_FRAME_H - 4` was measured and did NOT clear them: FIRE still ran
-    # to the frame's bottom edge in idle, walk, skid, climb and fireball. Her
+    # to the frame's bottom edge in idle, walk, skid, climb and the fire throw. Her
     # silhouette is 84 units in a 96-unit frame, so it FITS -- the art is simply
     # composited hard against the bottom, which means the cause is where the
     # sheet places the frame, not where this rig puts her feet.

@@ -36,7 +36,7 @@ for form in (SHORT_FORM, TALL_FORM, FIRE_FORM):
     table = poc._poses_for(form)
     for row, count, ms in form.rows:
         poses = table.get(row)
-        if not poses or len(poses) < 2 or row in ("grow","shrink","big_shrink","transform","death","fireball"): continue
+        if not poses or len(poses) < 2 or row in ("grow","shrink","big_shrink","transform","death","shoot"): continue
         for i in range(len(poses)):
             a, b = poses[i], poses[(i+1) % len(poses)]
             mid = lerp_pose(a, b, 0.5)

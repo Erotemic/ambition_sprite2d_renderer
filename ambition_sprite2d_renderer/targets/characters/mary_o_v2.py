@@ -38,6 +38,7 @@ from ._mary_o_v2_model import (
     OUTPUT_RESOLUTION_SCALE,
     SCALE,
     SHORT_FORM,
+    FIRE_ORB_POSE,
     SHORT_POSES,
     TALL_FORM,
     TALL_LIKE_POSES,
@@ -89,7 +90,7 @@ def _draw_form(form: FormSpec, animation: str, frame_idx: int, nframes: int) -> 
             (_transition_form(FIRE_FORM, fire_reveal_1, stage=1.94, power="fire"), Pose(bob=-1.08, body_lean=0.14, arm_front_angle=108, arm_back_angle=18, leg_front_angle=18, leg_back_angle=-12), 1.38, 1.18, 3, False),
             (_transition_form(FIRE_FORM, fire_reveal_2, stage=1.98, power="fire"), Pose(bob=-0.72, body_lean=0.12, arm_front_angle=86, arm_back_angle=6, leg_front_angle=12, leg_back_angle=-8), 1.08, 1.02, 3, False),
             (_transition_form(FIRE_FORM, fire_reveal_3, stage=2.00, power="fire"), Pose(bob=-0.45, body_lean=0.10, arm_front_angle=70, arm_back_angle=-4, leg_front_angle=10, leg_back_angle=-6), 0.94, 0.96, 3, True),
-            (FIRE_FORM, TALL_LIKE_POSES["fireball"][0], 0.90, 1.0, 3, True),
+            (FIRE_FORM, FIRE_ORB_POSE, 0.90, 1.0, 3, True),
         ]
         active_form, pose, wing_boost, sleeve_wing_boost, extra_star_phase, show_orb = transform_seq[frame_idx % len(transform_seq)]
 
@@ -283,7 +284,7 @@ def _actor_metadata(form: FormSpec) -> dict:
         bindings["power.grow"] = {"animation": "grow", "events": []}
         bindings["power.shrink"] = {"animation": "shrink", "events": []}
     if form.power == "fire":
-        bindings["ability.fireball"] = {"animation": "fireball", "events": []}
+        bindings["ability.fireball"] = {"animation": "shoot", "events": []}
         bindings["power.transform"] = {"animation": "transform", "events": []}
     return metadata
 

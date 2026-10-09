@@ -133,7 +133,9 @@ FIRE_ROWS: List[Tuple[str, int, int]] = [
     ("crouch_jump", 1, 120),
     ("climb", 2, 120),
     ("swim", 6, 100),
-    ("fireball", 1, 120),
+    # The engine names the row a firing body shows `shoot`. Three frames in the
+    # 0.18 s that the pose holds: the reach, the release, the follow-through.
+    ("shoot", 3, 60),
     ("transform", 11, 80),
 ]
 
@@ -672,13 +674,19 @@ def _fire_accessory_t(form: FormSpec) -> float:
 SHORT_POSES: Dict[str, List[Pose]] = {
     "idle": [Pose()],
     "death": [Pose(mode="dead", bob=-4.2)],
+    # Her arms SWING about the shoulder, counter to her legs: the front arm
+    # goes back while the front leg goes forward. Before, each arm kept its
+    # angle and moved as a whole (`arm_*_dx` / `arm_*_dy`), so the arms slid
+    # on the body and did not swing. She is drawn three-quarter on, with one
+    # shoulder on each side of her body: the forward swing of the back arm and
+    # the back swing of the front arm go across her body, and are smaller.
     "walk": [
         Pose(
             body_lean=0.5,
-            arm_front_dx=1.2,
-            arm_front_dy=-1.0,
-            arm_back_dx=-0.9,
-            arm_back_dy=1.0,
+            arm_front_angle=-14,
+            arm_front_dy=0.3,
+            arm_back_angle=18,
+            arm_back_dy=-0.4,
             leg_front_dx=1.3,
             leg_back_dx=-0.9,
             #  A LIFT, and this was `+1.0` — a SINK. `+dy` is down, so the
@@ -692,17 +700,17 @@ SHORT_POSES: Dict[str, List[Pose]] = {
             # The passing pose is the HIGHEST beat of a walk, not the lowest;
             # `+0.4` sank it 0.33u below the standing line for nothing.
             bob=0.0,
-            arm_front_dy=0.6,
-            arm_back_dy=0.2,
+            arm_front_angle=7,
+            arm_back_angle=-3,
             leg_front_dx=0.2,
             leg_back_dx=-0.2,
         ),
         Pose(
             body_lean=-0.4,
-            arm_front_dx=-0.9,
-            arm_front_dy=1.0,
-            arm_back_dx=1.1,
-            arm_back_dy=-1.1,
+            arm_front_angle=28,
+            arm_front_dy=-0.4,
+            arm_back_angle=-24,
+            arm_back_dy=0.3,
             leg_front_dx=-0.8,
             leg_front_dy=-1.0,
             leg_back_dx=1.4,
@@ -751,30 +759,31 @@ SHORT_POSES: Dict[str, List[Pose]] = {
 TALL_LIKE_POSES: Dict[str, List[Pose]] = {
     "idle": [Pose()],
     "death": [Pose(mode="dead", bob=-4.4)],
+    # The arm swing of the short form (see `SHORT_POSES`).
     "walk": [
         Pose(
             body_lean=0.5,
-            arm_front_dx=1.4,
-            arm_front_dy=-1.1,
-            arm_back_dx=-1.0,
-            arm_back_dy=1.1,
+            arm_front_angle=-14,
+            arm_front_dy=0.3,
+            arm_back_angle=18,
+            arm_back_dy=-0.4,
             leg_front_dx=1.4,
             leg_back_dx=-1.0,
             leg_back_dy=-1.2,
         ),
         Pose(
             bob=0.0,
-            arm_front_dy=0.7,
-            arm_back_dy=0.2,
+            arm_front_angle=7,
+            arm_back_angle=-3,
             leg_front_dx=0.3,
             leg_back_dx=-0.2,
         ),
         Pose(
             body_lean=-0.5,
-            arm_front_dx=-1.0,
-            arm_front_dy=1.1,
-            arm_back_dx=1.2,
-            arm_back_dy=-1.2,
+            arm_front_angle=28,
+            arm_front_dy=-0.4,
+            arm_back_angle=-24,
+            arm_back_dy=0.3,
             leg_front_dx=-0.8,
             leg_front_dy=-1.1,
             leg_back_dx=1.5,
@@ -841,16 +850,40 @@ TALL_LIKE_POSES: Dict[str, List[Pose]] = {
         Pose(mode="swim", bob=-0.6, arm_front_angle=18, arm_back_angle=8, leg_front_angle=6, leg_back_angle=-16),
         Pose(mode="swim", bob=-0.7, body_lean=-0.2, arm_front_angle=2, arm_back_angle=88, leg_front_angle=22, leg_back_angle=-24),
     ],
-    "fireball": [
+    # She throws the spark with her front hand. The game makes the spark at the
+    # hand of the MIDDLE frame (the release), so that frame has the longest
+    # reach. No frame draws an orb: the spark is its own sprite from the tick
+    # she fires.
+    "shoot": [
+        Pose(mode="fireball", body_lean=0.3, arm_front_angle=62, arm_back_angle=-20, leg_front_dx=0.5),
         Pose(
             mode="fireball",
-            body_lean=0.3,
-            arm_front_angle=92,
-            arm_back_angle=-12,
+            body_lean=0.8,
+            arm_front_angle=96,
+            arm_back_angle=-38,
+            leg_front_dx=1.0,
+            leg_back_dx=-0.5,
+        ),
+        Pose(
+            mode="fireball",
+            body_lean=0.5,
+            arm_front_angle=76,
+            arm_back_angle=-24,
             leg_front_dx=0.8,
-        )
+            leg_back_dx=-0.3,
+        ),
     ],
 }
+
+#: The last frame of `transform`: she holds the orb of her new power in her
+#: front hand. The frame draws the orb; this pose puts the hand under it.
+FIRE_ORB_POSE = Pose(
+    mode="fireball",
+    body_lean=0.3,
+    arm_front_angle=92,
+    arm_back_angle=-12,
+    leg_front_dx=0.8,
+)
 
 ACTOR_METADATA_BASE = {
     "body": {
