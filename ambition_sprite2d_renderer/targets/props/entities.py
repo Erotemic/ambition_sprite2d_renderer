@@ -459,6 +459,22 @@ def one_way_platform(d: ImageDraw.ImageDraw, s: float) -> None:
 # with `ground=True`: the foot is the bottom edge of the texture, and the
 # runtime plants it on the floor face of the loading-zone box.
 
+#: A door is the tallest thing of this family that a room shows, and the game
+#: camera draws it at about two times its box. So a door is published at two
+#: times the resolution of the other entity sprites: twice the canvas, and the
+#: drawer at twice the scale (`_twice`).
+DOOR_CANVAS = (256, 256)
+
+
+def _twice(draw_fn):
+    """`draw_fn` at two times its scale, for a sprite on a doubled canvas."""
+
+    def drawn(d: ImageDraw.ImageDraw, s: float) -> None:
+        draw_fn(d, 2.0 * s)
+
+    return drawn
+
+
 DOOR_FRAME = (36, 10, 92, 127)
 DOOR_LEAF = (42, 16, 86, 118)
 
@@ -1552,6 +1568,7 @@ ENTITY_SPECS: List[EntitySpriteSpec] = [
         "Door",
         "interior door loading zone",
         ground=True,
+        size=DOOR_CANVAS,
     ),
     EntitySpriteSpec(
         "door_stone",
@@ -1560,6 +1577,7 @@ ENTITY_SPECS: List[EntitySpriteSpec] = [
         "Door (clean architecture)",
         "EntityArt override: the door of the clean architecture",
         ground=True,
+        size=DOOR_CANVAS,
     ),
     EntitySpriteSpec(
         "door_voxel",
@@ -1568,6 +1586,7 @@ ENTITY_SPECS: List[EntitySpriteSpec] = [
         "Door (corrupted architecture)",
         "EntityArt override: the door of the corrupted architecture",
         ground=True,
+        size=DOOR_CANVAS,
     ),
     EntitySpriteSpec(
         "door_blueprint",
@@ -1576,6 +1595,7 @@ ENTITY_SPECS: List[EntitySpriteSpec] = [
         "Door (drawing)",
         "EntityArt override: the door of the debug-beautiful look",
         ground=True,
+        size=DOOR_CANVAS,
     ),
     EntitySpriteSpec(
         "edge_exit",
@@ -1780,10 +1800,10 @@ DRAWERS: Dict[str, Callable[[ImageDraw.ImageDraw, float], None]] = {
     "hard_blink_wall": hard_blink_wall,
     "solid_block": solid_block,
     "one_way_platform": one_way_platform,
-    "door_zone": door_zone,
-    "door_stone": door_stone,
-    "door_voxel": door_voxel,
-    "door_blueprint": door_blueprint,
+    "door_zone": _twice(door_zone),
+    "door_stone": _twice(door_stone),
+    "door_voxel": _twice(door_voxel),
+    "door_blueprint": _twice(door_blueprint),
     "edge_exit": edge_exit,
     "projectile_energy": projectile_energy,
     "bonus_block_tile": bonus_block_tile,
