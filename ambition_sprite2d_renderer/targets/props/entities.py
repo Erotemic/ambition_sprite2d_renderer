@@ -450,65 +450,223 @@ def one_way_platform(d: ImageDraw.ImageDraw, s: float) -> None:
         )
 
 
-def door_zone(d: ImageDraw.ImageDraw, s: float) -> None:
-    # A solid, upright paneled door whose FOOT is the bottom edge of the
-    # canvas. This drawer is published with `ground=True`, so the crop
-    # keeps the bottom flush (no padding): the lowest opaque pixel — the
-    # gold sill below — becomes the texture's bottom edge, i.e. the
-    # door's "feet". The renderer then plants those feet on the bottom
-    # (floor) edge of the loading-zone box, so the door stands on the
-    # ground rather than floating. The fill is fully opaque and warmer
-    # than the cool hub background so it reads as a solid door instead
-    # of a gold wireframe.
-    gold = rgba("#F1B33B")
-    gold_soft = rgba("#F1B33B", 200)
-    rad = max(2, int(8 * s))
-    # Outer frame / jamb. Top corners rounded, bottom left square so the
-    # door foot is a flat edge flush with the floor.
+# ---- Doors --------------------------------------------------------------------
+#
+# Every door has the SAME outer shape: a frame from (36, 10) to (92, 127) with
+# round top corners and a flat foot. The crop of a door is its opaque extent,
+# so one shape gives one texture size, and the runtime can swap one door for
+# another (`EntityArt`) without a change of geometry. Each door is published
+# with `ground=True`: the foot is the bottom edge of the texture, and the
+# runtime plants it on the floor face of the loading-zone box.
+
+DOOR_FRAME = (36, 10, 92, 127)
+DOOR_LEAF = (42, 16, 86, 118)
+
+
+def _door_shape(d, s, box, fill, outline=None, width=0, radius=8):
+    x0, y0, x1, y1 = box
     d.rounded_rectangle(
-        (36 * s, 10 * s, 92 * s, 127 * s),
-        radius=rad,
+        (x0 * s, y0 * s, x1 * s, y1 * s),
+        radius=max(2, int(radius * s)),
         corners=(True, True, False, False),
-        fill=rgba("#2A3148"),
-        outline=gold,
-        width=max(1, int(3 * s)),
+        fill=fill,
+        outline=outline,
+        width=max(1, int(width * s)) if outline else 0,
     )
-    # Door leaf — solid, warm bronze so it pops against the dark-blue hub.
-    d.rounded_rectangle(
-        (42 * s, 16 * s, 86 * s, 113 * s),
-        radius=max(2, int(4 * s)),
-        corners=(True, True, False, False),
-        fill=rgba("#8A6A3E"),
-        outline=rgba("#5E441F"),
-        width=max(1, int(2 * s)),
-    )
-    # Two recessed panels with a simple top-left highlight / bottom-right
-    # shadow for depth.
-    for top, bot in ((22, 60), (68, 108)):
-        d.rectangle(
-            (48 * s, top * s, 80 * s, bot * s),
-            fill=rgba("#6E5230"),
-        )
-        d.line(
-            [(48 * s, bot * s), (48 * s, top * s), (80 * s, top * s)],
-            fill=rgba("#C7A35F", 220),
-            width=max(1, int(2 * s)),
-        )
-        d.line(
-            [(80 * s, top * s), (80 * s, bot * s), (48 * s, bot * s)],
-            fill=rgba("#4E3A22", 220),
-            width=max(1, int(2 * s)),
-        )
-    # Doorknob on the latch (right) side, on the rail between the panels.
-    d.ellipse(bbox(78 * s, 64 * s, 7 * s, 7 * s), fill=gold, outline=rgba("#7A5410"))
-    d.ellipse(bbox(76 * s, 62 * s, 2 * s, 2 * s), fill=rgba("#FFF4D2", 230))
-    # Gold sill/threshold at the very bottom — the door's flat foot.
+
+
+def _rect(d, s, box, fill, outline=None, width=1):
+    x0, y0, x1, y1 = box
     d.rectangle(
-        (37 * s, 118 * s, 91 * s, 127 * s),
-        fill=gold,
-        outline=rgba("#7A5410"),
-        width=max(1, int(1 * s)),
+        (x0 * s, y0 * s, x1 * s, y1 * s),
+        fill=fill,
+        outline=outline,
+        width=max(1, int(width * s)) if outline else 0,
     )
+
+
+def _line(d, s, pts, fill, width=1.0):
+    d.line([(x * s, y * s) for x, y in pts], fill=fill, width=max(1, int(width * s)))
+
+
+def _disc(d, s, cx, cy, r, fill, outline=None, width=1):
+    d.ellipse(
+        ((cx - r) * s, (cy - r) * s, (cx + r) * s, (cy + r) * s),
+        fill=fill,
+        outline=outline,
+        width=max(1, int(width * s)) if outline else 0,
+    )
+
+
+def _bevel_panel(d, s, box, face, lit, shade):
+    """A recessed panel: a shaded top-left inner edge, a lit bottom-right one."""
+    x0, y0, x1, y1 = box
+    _rect(d, s, box, face)
+    _line(d, s, [(x0, y1), (x0, y0), (x1, y0)], shade, 1.6)
+    _line(d, s, [(x1, y0), (x1, y1), (x0, y1)], lit, 1.6)
+
+
+def door_zone(d: ImageDraw.ImageDraw, s: float) -> None:
+    # The standard door: warm wood in a dark jamb with a brass line, a lit
+    # transom, two bevelled panels, a kick plate and a brass sill. It is
+    # warmer than every room backdrop, so it reads as a thing to open.
+    brass = rgba("#E9B043")
+    brass_dark = rgba("#8A5E14")
+    _door_shape(d, s, DOOR_FRAME, rgba("#232A40"), rgba("#11162A"), 2)
+    # A brass line inside the jamb.
+    _door_shape(d, s, (38.5, 12.5, 89.5, 127), None, brass, 1.4, radius=6.5)
+    # The leaf.
+    _door_shape(d, s, DOOR_LEAF, rgba("#8B6638"), rgba("#4E3516"), 1.6, radius=4)
+    # Wood grain: a few long, soft lines.
+    for x, y0, y1 in ((47, 40, 112), (55.5, 22, 116), (64, 38, 114), (72.5, 20, 116), (81, 42, 110)):
+        _line(d, s, [(x, y0), (x + 0.6, y1)], rgba("#7C5A30"), 0.9)
+    # A transom: a small lit window, the light of the room behind the door.
+    _door_shape(d, s, (48, 21, 80, 36), rgba("#1B3550"), rgba("#4E3516"), 1.2, radius=3)
+    _door_shape(d, s, (50, 23, 78, 34), rgba("#4FB8D8"), None, 0, radius=2)
+    _rect(d, s, (50, 28.5, 78, 34), rgba("#2E8FB8"))
+    _line(d, s, [(64, 23), (64, 34)], rgba("#1B3550"), 1.2)
+    _line(d, s, [(52, 25), (58, 25)], rgba("#C9F1FF"), 1.0)
+    # Two panels.
+    _bevel_panel(d, s, (48, 42, 80, 72), rgba("#73522B"), rgba("#B48B4C"), rgba("#4C3519"))
+    _bevel_panel(d, s, (48, 80, 80, 104), rgba("#73522B"), rgba("#B48B4C"), rgba("#4C3519"))
+    # A light on the upper left of the leaf, a shade on the right.
+    _line(d, s, [(44, 20), (44, 116)], rgba("#A98047"), 1.0)
+    _line(d, s, [(84.4, 20), (84.4, 116)], rgba("#6A4B26"), 1.0)
+    # The handle: a plate, a knob, a keyhole.
+    _rect(d, s, (75.5, 70.5, 81.5, 81.5), brass_dark)
+    _rect(d, s, (76.2, 71.2, 80.8, 80.8), brass)
+    _disc(d, s, 78.5, 74.4, 2.7, rgba("#FFD675"), brass_dark, 0.8)
+    _disc(d, s, 77.7, 73.6, 0.8, rgba("#FFF6D8"))
+    _disc(d, s, 78.5, 79.0, 0.7, rgba("#4E3516"))
+    # The kick plate and the sill.
+    _rect(d, s, (43.5, 108, 84.5, 117), rgba("#B78833"), brass_dark, 0.8)
+    for x in (46, 82):
+        _disc(d, s, x, 112.5, 0.8, rgba("#FFE39A"))
+    _rect(d, s, (36, 118, 92, 127), brass, brass_dark, 1.0)
+    _line(d, s, [(37.5, 120), (90.5, 120)], rgba("#FFE39A"), 1.0)
+
+
+def door_stone(d: ImageDraw.ImageDraw, s: float) -> None:
+    # The door of the clean architecture: lacquer blue in pale stone, with a
+    # gold figure. The figure is the sigil the stone carries: rings, a
+    # diamond, an axis.
+    gold = rgba("#C9A24A")
+    gold_lit = rgba("#F0D17F")
+    _door_shape(d, s, DOOR_FRAME, rgba("#E3DCCC"), rgba("#A89F8C"), 1.6)
+    _door_shape(d, s, (38.5, 12.5, 89.5, 127), None, gold, 1.2, radius=6.5)
+    _door_shape(d, s, DOOR_LEAF, rgba("#34467C"), rgba("#1E2A52"), 1.6, radius=4)
+    # Two leaves meet on the centre line.
+    _line(d, s, [(64, 17), (64, 117)], rgba("#1E2A52"), 1.4)
+    _line(d, s, [(65.2, 18), (65.2, 117)], rgba("#4C61A0"), 0.8)
+    # A gold border on each leaf.
+    for x0, x1 in ((45.5, 61.5), (66.5, 82.5)):
+        d.rounded_rectangle(
+            (x0 * s, 20.5 * s, x1 * s, 112 * s),
+            radius=max(1, int(2 * s)),
+            outline=gold,
+            width=max(1, int(1.0 * s)),
+        )
+    # The figure, across both leaves.
+    cx, cy = 64, 48
+    for r in (15, 9.5):
+        d.ellipse(
+            ((cx - r) * s, (cy - r) * s, (cx + r) * s, (cy + r) * s),
+            outline=gold_lit,
+            width=max(1, int(1.1 * s)),
+        )
+    _line(d, s, [(cx, cy - 9.5), (cx + 9.5, cy), (cx, cy + 9.5), (cx - 9.5, cy), (cx, cy - 9.5)], gold_lit, 0.9)
+    _line(d, s, [(cx, cy - 20), (cx, cy + 20)], gold, 0.9)
+    _disc(d, s, cx, cy, 2.0, gold_lit)
+    # Lower panels: a shallow relief.
+    for x0, x1 in ((48, 59.5), (68.5, 80)):
+        _bevel_panel(d, s, (x0, 78, x1, 106), rgba("#2D3D70"), rgba("#4C61A0"), rgba("#1E2A52"))
+    # Ring handles.
+    for x in (59.5, 68.5):
+        d.ellipse(
+            ((x - 2.6) * s, 69.4 * s, (x + 2.6) * s, 74.6 * s),
+            outline=gold_lit,
+            width=max(1, int(1.1 * s)),
+        )
+        _disc(d, s, x, 68.6, 1.0, gold)
+    # A light on the upper left.
+    _line(d, s, [(44, 20), (44, 116)], rgba("#4C61A0"), 0.9)
+    # A stone step with a gold fillet.
+    _rect(d, s, (36, 118, 92, 127), rgba("#F3EEDF"), rgba("#A89F8C"), 1.0)
+    _line(d, s, [(37.5, 121.5), (90.5, 121.5)], gold, 1.0)
+
+
+def door_voxel(d: ImageDraw.ImageDraw, s: float) -> None:
+    # The same door after the architecture is rewritten: the leaf is blocks,
+    # some of them out of place, and light comes through the seam. The figure
+    # is the same figure, and it is on.
+    magenta = rgba("#FF2AA8")
+    cyan = rgba("#22E0FF")
+    _door_shape(d, s, DOOR_FRAME, rgba("#0B0A1C"), magenta, 1.4)
+    _door_shape(d, s, DOOR_LEAF, rgba("#14122E"), rgba("#1790B4"), 1.0, radius=4)
+    # The leaf as an 8-unit block grid. The tones and the shifts are a fixed
+    # table, so the sprite is the same on each render.
+    tones = ("#211D48", "#2C2660", "#1B183C", "#372E74", "#252054", "#181534")
+    shifts = {(1, 3): 1.6, (4, 5): -1.8, (2, 8): 1.4, (0, 10): -1.2, (3, 1): 1.2}
+    for row in range(12):
+        for col in range(5):
+            x0 = 43.5 + col * 8.2 + shifts.get((col, row), 0.0)
+            y0 = 19 + row * 8.2
+            tone = tones[(col * 7 + row * 3 + (col * row) % 5) % len(tones)]
+            if y0 + 7.4 > 117:
+                continue
+            _rect(d, s, (x0, y0, x0 + 7.4, y0 + 7.4), rgba(tone))
+            # A lit top face.
+            _rect(d, s, (x0, y0, x0 + 7.4, y0 + 1.5), rgba("#4D4394"))
+    # Light through the centre seam.
+    _rect(d, s, (62.6, 18, 65.4, 117), rgba("#7A1560"))
+    _rect(d, s, (63.4, 18, 64.6, 117), magenta)
+    _line(d, s, [(64, 30), (64, 60)], rgba("#FFD0EE"), 0.9)
+    # The figure, lit.
+    cx, cy = 64, 48
+    for r in (15, 9.5):
+        d.ellipse(
+            ((cx - r) * s, (cy - r) * s, (cx + r) * s, (cy + r) * s),
+            outline=cyan,
+            width=max(1, int(1.1 * s)),
+        )
+    _line(d, s, [(cx, cy - 9.5), (cx + 9.5, cy), (cx, cy + 9.5), (cx - 9.5, cy), (cx, cy - 9.5)], magenta, 0.9)
+    _disc(d, s, cx, cy, 2.4, rgba("#FFD0EE"), magenta, 0.8)
+    # Cracks that carry the light.
+    _line(d, s, [(44, 76.2), (58, 76.2), (58, 84.4), (62.6, 84.4)], magenta, 0.9)
+    _line(d, s, [(65.4, 92.6), (76, 92.6), (76, 100.8), (85, 100.8)], cyan, 0.9)
+    # Blocks that left the jamb.
+    _rect(d, s, (36, 60, 39.5, 67), rgba("#0B0A1C"))
+    _rect(d, s, (88.5, 34, 92, 42), rgba("#22E0FF"))
+    # The sill.
+    _rect(d, s, (36, 118, 92, 127), rgba("#14122E"), cyan, 1.2)
+    _line(d, s, [(40, 122.5), (88, 122.5)], magenta, 1.0)
+
+
+def door_blueprint(d: ImageDraw.ImageDraw, s: float) -> None:
+    # The door as a drawing: outlines on a faint fill, the panels crossed (an
+    # opening, in drawing convention), and marks at the corners.
+    ink = rgba("#FAD14C")
+    faint = rgba("#FAD14C", 150)
+    _door_shape(d, s, DOOR_FRAME, rgba("#10203A", 150), ink, 1.4)
+    _door_shape(d, s, DOOR_LEAF, rgba("#17305A", 130), faint, 1.0, radius=4)
+    for y0, y1 in ((24, 66), (74, 110)):
+        _rect(d, s, (48, y0, 80, y1), rgba("#17305A", 90), ink, 1.0)
+        _line(d, s, [(48, y0), (80, y1)], faint, 0.8)
+        _line(d, s, [(80, y0), (48, y1)], faint, 0.8)
+    # The handle and its centre line.
+    d.ellipse(
+        (75.5 * s, 67 * s, 81.5 * s, 73 * s),
+        outline=ink,
+        width=max(1, int(1.0 * s)),
+    )
+    _line(d, s, [(42, 70), (86, 70)], rgba("#FAD14C", 90), 0.7)
+    # Corner nodes.
+    for x, y in ((36, 10), (92, 10), (36, 127), (92, 127)):
+        x0 = min(max(x - 2.2, 36), 92 - 4.4)
+        y0 = min(max(y - 2.2, 10), 127 - 4.4)
+        _rect(d, s, (x0, y0, x0 + 4.4, y0 + 4.4), rgba("#FFF3C4"))
+    # The sill: the floor line.
+    _rect(d, s, (36, 121, 92, 127), rgba("#FAD14C", 200), ink, 1.0)
 
 
 def edge_exit(d: ImageDraw.ImageDraw, s: float) -> None:
@@ -621,7 +779,7 @@ def bonus_block_tile(d: ImageDraw.ImageDraw, s: float) -> None:
 
     ⛔ **the block a game must be able to tell apart from a wall.** Art came from
     `BlockKind` alone, so a bonus block, the used block it becomes and an
-    ordinary solid were one texture (queue D11). The `BlockArt` component is the
+    ordinary solid were one texture (queue D11). The `EntityArt` component is the
     seam that lets a game say otherwise; this is what it says for a LIVE block.
     The USED state needs no art of its own -- a spent block is a plain solid, so
     it simply drops the override and falls back to the kind's tile.
@@ -1396,6 +1554,30 @@ ENTITY_SPECS: List[EntitySpriteSpec] = [
         ground=True,
     ),
     EntitySpriteSpec(
+        "door_stone",
+        "door_stone.png",
+        "LoadingZoneActivation::Door",
+        "Door (clean architecture)",
+        "EntityArt override: the door of the clean architecture",
+        ground=True,
+    ),
+    EntitySpriteSpec(
+        "door_voxel",
+        "door_voxel.png",
+        "LoadingZoneActivation::Door",
+        "Door (corrupted architecture)",
+        "EntityArt override: the door of the corrupted architecture",
+        ground=True,
+    ),
+    EntitySpriteSpec(
+        "door_blueprint",
+        "door_blueprint.png",
+        "LoadingZoneActivation::Door",
+        "Door (drawing)",
+        "EntityArt override: the door of the debug-beautiful look",
+        ground=True,
+    ),
+    EntitySpriteSpec(
         "edge_exit",
         "edge_exit.png",
         "LoadingZoneActivation::EdgeExit",
@@ -1417,7 +1599,7 @@ ENTITY_SPECS: List[EntitySpriteSpec] = [
     EntitySpriteSpec(
         "spent_block_tile",
         "spent_block_tile.png",
-        "BlockArt override (a used bonus block)",
+        "EntityArt override (a used bonus block)",
         "spent block",
         "inert bonus block, drained and glyphless",
         size=(32, 32),
@@ -1426,7 +1608,7 @@ ENTITY_SPECS: List[EntitySpriteSpec] = [
     EntitySpriteSpec(
         "bonus_block_tile",
         "bonus_block_tile.png",
-        "BlockArt override (a live bonus block)",
+        "EntityArt override (a live bonus block)",
         "bonus block",
         "interrobang bonus block, the live state",
         size=(32, 32),
@@ -1599,6 +1781,9 @@ DRAWERS: Dict[str, Callable[[ImageDraw.ImageDraw, float], None]] = {
     "solid_block": solid_block,
     "one_way_platform": one_way_platform,
     "door_zone": door_zone,
+    "door_stone": door_stone,
+    "door_voxel": door_voxel,
+    "door_blueprint": door_blueprint,
     "edge_exit": edge_exit,
     "projectile_energy": projectile_energy,
     "bonus_block_tile": bonus_block_tile,
