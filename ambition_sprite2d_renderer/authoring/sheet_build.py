@@ -832,6 +832,7 @@ def build_sheet(
     authored_faces_left: bool = False,
     mirror_of=None,
     frame_transform_out: Optional[dict] = None,
+    column_tile: Optional[Tuple[float, float]] = None,
 ):
     """Build one module target's sheet from a frame callable + rows.
 
@@ -846,6 +847,15 @@ def build_sheet(
     whose two sides differ. Each is emitted with ``mirror_of`` so the runtime
     draws it instead of flipping ``source_row``. Both rows must have the same
     frame count; the rows themselves are ordinary entries of ``rows``.
+
+    ``column_tile`` (``(first row, row after the last)``, in the rows
+    ``render_fn`` draws) declares a column that tiles: the rows before the
+    first are its cap, the rows from the last are its end, and the rows
+    between are one tile that the game repeats to fill a box of any height.
+    The art must join itself there: the row after the tile is the same as its
+    first row. It is published as fractions of the frame height
+    (``SheetRecord::column_tile``), so a reduced copy of the sheet needs no
+    change.
 
     Thin constructor: wraps the recipe in a :class:`CallableFrameSource` and
     hands it to the one :func:`render_sheet` core. Kept as the module-target
@@ -873,8 +883,30 @@ def build_sheet(
         trim=trim,
         pose_bodies=pose_bodies,
         mirror_of=mirror_of,
+        column_tile=column_tile,
     )
     return render_sheet(source, out_dir, frame_transform_out=frame_transform_out)
+
+
+def _published_column_tile(declared, dy: float, frame_height: int, target: str):
+    """``column_tile`` as the sheet publishes it: fractions of the frame height.
+
+    ``declared`` is ``(first row, row after the last)`` in the rows the target
+    drew, and ``dy`` moves a drawn row to its published row (padding added,
+    auto-crop removed). ``None`` when the target declares no tile.
+    """
+    if declared is None:
+        return None
+    start, end = (float(declared[0]) + dy, float(declared[1]) + dy)
+    if not 0.0 <= start < end <= float(frame_height):
+        raise ValueError(
+            f"{target}: column_tile rows {declared} are published as {start}..{end}, "
+            f"which is not inside the frame height {frame_height}"
+        )
+    return {
+        "start": round(start / frame_height, 6),
+        "end": round(end / frame_height, 6),
+    }
 
 
 @profile
@@ -1178,6 +1210,9 @@ def render_sheet(source: FrameSource, out_dir: Path, frame_transform_out: Option
     progress(f"phase crop: done in {time.perf_counter() - crop_started:.2f}s | frame={fw}x{fh}")
     if frame_transform_out is not None:
         frame_transform_out.update({"dx": pad_left - crop_x, "dy": pad_top - crop_y})
+    column_tile = _published_column_tile(
+        getattr(source, "column_tile", None), pad_top - crop_y, fh, target
+    )
 
     # Semantic frame-publication seam: capture tooling (see
     # authoring/auto_capture.py) registers a hook here, AFTER the uniform
@@ -1377,6 +1412,9 @@ def render_sheet(source: FrameSource, out_dir: Path, frame_transform_out: Option
         # Written only when true so every +x-drawn sheet's YAML and RON stay
         # byte-identical to what they emitted before this key existed.
         manifest["authored_faces_left"] = True
+    if column_tile:
+        # Written only when the sheet declares it, as `authored_faces_left` is.
+        manifest["column_tile"] = column_tile
     if sheet_tuning:
         # Emitted to the RON `tuning` field (ron_tuning reads `sheet_tuning`);
         # the runtime SheetRegistry uses it for in-game display size /

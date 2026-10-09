@@ -218,6 +218,7 @@ class CallableFrameSource:
         max_sheet_dimension: int = 16384,
         pose_bodies: str = "art",
         mirror_of: Optional[Dict[str, str]] = None,
+        column_tile: Optional[Tuple[float, float]] = None,
     ) -> None:
         self.target = target
         self.rows = list(rows)
@@ -241,6 +242,10 @@ class CallableFrameSource:
         # is only ever set by a target that knows otherwise — today, a rigged
         # character whose rig declares `features.facing: "west"`.
         self.authored_faces_left = bool(authored_faces_left)
+        # ``(first row, row after the last)`` of the part of the frame that
+        # repeats down a column, in the rows ``render_fn`` draws. ``None``: the
+        # art is one picture. See `SheetRecord::column_tile`.
+        self.column_tile = column_tile
         self.trim = trim
         self.max_sheet_dimension = max_sheet_dimension
         self.pose_bodies = pose_bodies
