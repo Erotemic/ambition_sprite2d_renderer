@@ -819,19 +819,37 @@ def door_blueprint(d: ImageDraw.ImageDraw, s: float) -> None:
 
 
 def edge_exit(d: ImageDraw.ImageDraw, s: float) -> None:
-    d.rectangle(
-        (27 * s, 26 * s, 101 * s, 102 * s),
-        fill=rgba("#0D2230", 130),
-        outline=rgba("#43E9FF", 200),
-        width=max(1, int(2 * s)),
-    )
-    for x in (44, 62, 80):
-        d.line(
-            [(x * s, 35 * s), (x * s, 94 * s)],
-            fill=rgba("#43E9FF", 120),
-            width=max(1, int(2 * s)),
-        )
-    d.polygon(poly_scaled([(52, 49), (77, 64), (52, 79)], s), fill=rgba("#43E9FF"))
+    """The mark of a way out at the edge of a room: a pane of light in a
+    frame, with two arrow heads. The game stretches it over the zone, which is
+    most often tall and narrow, so each part of it is a shape that can be
+    stretched: bands, a frame, corners.
+
+    The pane is translucent on purpose: the room shows through it. The draw
+    replaces pixels, so each band is its own strip and no two overlap."""
+    cyan = "#43E9FF"
+    x0, y0, x1, y1 = 27.0, 26.0, 101.0, 102.0
+    # The pane: darker and more solid at its two sides, clear in the middle.
+    bands = 9
+    for i in range(bands):
+        a = x0 + (x1 - x0) * i / bands
+        b = x0 + (x1 - x0) * (i + 1) / bands
+        edge = abs((i + 0.5) / bands - 0.5) * 2.0
+        d.rectangle((a * s, y0 * s, b * s, y1 * s), fill=rgba("#0D2230", int(70 + 90 * edge)))
+    # Lines of light across the pane.
+    for y in range(34, 100, 8):
+        d.rectangle((x0 * s, y * s, x1 * s, (y + 0.9) * s), fill=rgba(cyan, 70))
+    # The frame, and a heavy corner at each of its four corners.
+    d.rectangle((x0 * s, y0 * s, x1 * s, y1 * s), outline=rgba(cyan, 215), width=max(1, int(2 * s)))
+    for cx, cy, sx, sy in ((x0, y0, 1, 1), (x1, y0, -1, 1), (x0, y1, 1, -1), (x1, y1, -1, -1)):
+        d.rectangle((min(cx, cx + 14 * sx) * s, min(cy, cy + 4 * sy) * s,
+                     max(cx, cx + 14 * sx) * s, max(cy, cy + 4 * sy) * s), fill=rgba("#B8F6FF"))
+        d.rectangle((min(cx, cx + 4 * sx) * s, min(cy, cy + 12 * sy) * s,
+                     max(cx, cx + 4 * sx) * s, max(cy, cy + 12 * sy) * s), fill=rgba("#B8F6FF"))
+    # Two arrow heads that point the way out.
+    for ox in (0.0, 15.0):
+        head = [(44 + ox, 46), (52 + ox, 46), (68 + ox, 64), (52 + ox, 82), (44 + ox, 82), (60 + ox, 64)]
+        d.polygon(poly_scaled(head, s), fill=rgba(cyan), outline=rgba("#0B2B36"))
+        d.polygon(poly_scaled([(47 + ox, 49), (51 + ox, 49), (64.5 + ox, 64), (62 + ox, 64)], s), fill=rgba("#E8FDFF"))
 
 
 def projectile_energy(d: ImageDraw.ImageDraw, s: float) -> None:
