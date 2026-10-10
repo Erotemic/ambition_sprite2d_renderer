@@ -132,7 +132,10 @@ def hub(layer_key: str, art: Art) -> np.ndarray:
 
 
 # ---------------------------------------------------------------------------
-# The arena: spires under a black sun
+# The arena: spires, and the gate of the vault with fire behind it
+#
+# No sun and no dark disc here: the dark sun is the mark of the eclipse, and
+# only that scene has it. The light of this scene is the fire behind the gate.
 # ---------------------------------------------------------------------------
 
 BOSS = {
@@ -148,24 +151,38 @@ BOSS = {
 
 def boss(layer_key: str, art: Art) -> np.ndarray:
     p = BOSS
-    sun = (0.50, 0.405)
+    # Where the light is from: the seam of the gate. Each rim of light on a
+    # rock is on its side toward this place.
+    sun = (0.50, HORIZON - 0.06)
+    #: The gate: its middle, half its width, its foot, the start of its arch, its point.
+    gate_u, gate_w, gate_foot, gate_spring, gate_top = 0.50, 0.060, HORIZON + 0.05, HORIZON - 0.15, HORIZON - 0.255
     if layer_key == "sky":
-        layer = art.opaque(art.ramp([(0.0, p["black"]), (0.30, p["deep"]), (HORIZON, p["blood"]), (0.78, p["deep"]), (1.0, p["black"])]))
-        # The black sun: a ring of fire, and rays from it through the cloud.
-        art.light(layer, art.spot(*sun, 0.50, 2.2), p["fire"], 0.55)
+        layer = art.opaque(art.ramp([(0.0, p["black"]), (0.26, p["deep"]), (HORIZON, p["blood"]), (0.78, p["deep"]), (1.0, p["black"])]))
+        # The fire is below the edge of the land: a wide band of it, and a
+        # column of light that goes up from the gate into the ash.
+        band = np.clip(1.0 - np.abs(art.v - (HORIZON + 0.01)) / 0.16, 0.0, 1.0) ** 2
+        art.light(layer, band * (0.55 + 0.45 * art.noise("fire band", cells=6.0, octaves=3, stretch=5.0)), p["fire"], 0.60)
+        column = np.clip(1.0 - np.abs(art.u - gate_u) / 0.13, 0.0, 1.0) ** 2 * smoothstep(0.05, HORIZON, art.v)
+        art.light(layer, column * (0.5 + 0.5 * art.noise("column", cells=10.0, octaves=3, stretch=0.2)), p["fire"], 0.70)
+        # Rays that go up and out from behind the gate, through the ash.
         rays, pen = art.drawing()
         rng = art.rand("rays")
-        for k in range(18):
-            a = k * 20.0 + rng.uniform(-6, 6)
-            w = rng.uniform(2.0, 5.0)
-            pen.poly([sun, polar(*sun, 0.7, a - w), polar(*sun, 0.7, a + w)], rng.randint(90, 200))
-        art.light(layer, art.mask_of(rays, blur=7.0) * art.spot(*sun, 0.6, 1.2), p["fire"], 0.30)
-        art.light(layer, art.spot(*sun, 0.13, 3.0), p["hot"], 0.95)
-        disc, pen = art.drawing()
-        pen.ellipse(*sun, 0.072)
-        art.put(layer, art.mask_of(disc, blur=0.5), p["black"])
-        art.shade(layer, cloud_mask(art, "ash cloud", 0.34, 0.2, cells=3.0, cover=0.55, soft=0.3, stretch=4.0) * (1.0 - art.spot(*sun, 0.2, 1.0)), 0.50)
-        art.shade(layer, cloud_mask(art, "low ash", 0.56, 0.08, cells=4.0, cover=0.5, soft=0.3, stretch=6.0), 0.30)
+        source = (gate_u, HORIZON + 0.04)
+        for k in range(13):
+            a = -90.0 + (k - 6) * 11.0 + rng.uniform(-3, 3)
+            w = rng.uniform(1.2, 3.2)
+            pen.poly([source, polar(*source, 0.7, a - w), polar(*source, 0.7, a + w)], rng.randint(90, 200))
+        art.light(layer, art.mask_of(rays, blur=6.0) * art.spot(*source, 0.55, 1.2), p["fire"], 0.42)
+        art.light(layer, art.spot(gate_u, HORIZON - 0.08, 0.24, 2.0), p["hot"], 0.80)
+        art.shade(layer, cloud_mask(art, "ash cloud", 0.30, 0.2, cells=3.0, cover=0.6, soft=0.3, stretch=4.0), 0.55)
+        art.shade(layer, cloud_mask(art, "low ash", 0.52, 0.08, cells=4.0, cover=0.5, soft=0.3, stretch=6.0) * (1.0 - column), 0.34)
+        # Sparks that go up with the heat.
+        sparks, pen = art.drawing()
+        rng = art.rand("sparks")
+        for _ in range(150):
+            u, v = rng.gauss(gate_u, 0.17), rng.uniform(0.22, HORIZON)
+            pen.ellipse(u, v, rng.uniform(0.0009, 0.0022))
+        art.light(layer, art.mask_of(sparks, blur=0.4), p["hot"], 0.85)
         art.grain(layer, "grain")
         return layer
     if layer_key == "far_backplate":
@@ -177,10 +194,48 @@ def boss(layer_key: str, art: Art) -> np.ndarray:
             h, w = rng.uniform(0.16, 0.34), rng.uniform(0.012, 0.024)
             lean = rng.uniform(-0.015, 0.015)
             pen.poly([(u - w, HORIZON + 0.05), (u + lean - w * 0.3, HORIZON - h * 0.6), (u + lean, HORIZON - h), (u + lean + w * 0.4, HORIZON - h * 0.55), (u + w, HORIZON + 0.05)])
-        mask = np.maximum(range_, art.mask_of(image))
+        # The gate of the vault: two towers and a pointed arch between them,
+        # shut. It is as tall as the spires and it is in the middle of the scene.
+        gate, gate_pen = art.drawing()
+        leaf, leaf_pen = art.drawing()
+        seam, seam_pen = art.drawing()
+        bands, band_pen = art.drawing()
+        tower = gate_w * 0.42
+        for side in (-1.0, 1.0):
+            x = gate_u + side * (gate_w + tower * 0.5)
+            gate_pen.rect(x - tower * 0.5, gate_top + 0.03, x + tower * 0.5, gate_foot)
+            # The head of the tower: wider than the shaft, with three teeth.
+            gate_pen.rect(x - tower * 0.74, gate_top + 0.012, x + tower * 0.74, gate_top + 0.034)
+            for k in (-1, 0, 1):
+                gate_pen.rect(x + k * tower * 0.5 - tower * 0.16, gate_top - 0.004, x + k * tower * 0.5 + tower * 0.16, gate_top + 0.014)
+            gate_pen.rect(x - tower * 0.66, gate_spring - 0.004, x + tower * 0.66, gate_spring + 0.008)
+            # A slit in each tower with the fire behind it.
+            seam_pen.rect(x - 0.0022, gate_top + 0.055, x + 0.0022, gate_top + 0.095)
+        rise = gate_spring - gate_top
+        curve = [(gate_w * c, gate_spring - rise * r) for c, r in ((1.0, 0.0), (0.97, 0.26), (0.84, 0.52), (0.60, 0.76), (0.30, 0.92), (0.0, 1.0))]
+        arch = [(gate_u - gate_w, gate_foot)] + [(gate_u - du, v) for du, v in curve] + [(gate_u + du, v) for du, v in reversed(curve[:-1])] + [(gate_u + gate_w, gate_foot)]
+        gate_pen.poly(arch)
+        inset = [(gate_u + (u - gate_u) * 0.82, v if v == gate_foot else v + 0.014 * (1.0 - abs(u - gate_u) / gate_w) + 0.004) for u, v in arch]
+        leaf_pen.poly(inset)
+        seam_pen.rect(gate_u - 0.0016, gate_top + 0.03, gate_u + 0.0016, HORIZON - 0.005)
+        for v in (gate_spring + 0.004, gate_spring + 0.066, gate_spring + 0.128):
+            band_pen.rect(gate_u - gate_w * 0.82, v, gate_u + gate_w * 0.82, v + 0.008)
+        # The lock: a ring over the seam, held by the middle band.
+        band_pen.ring(gate_u, gate_spring + 0.070, 0.014, 0.004)
+        mask = np.maximum(range_, np.maximum(art.mask_of(image), art.mask_of(gate)))
         layer = solid(art, mask, mix(p["rock_light"], p["blood"], 0.3), p["rock"], HORIZON - 0.3, HORIZON + 0.08, "spire rock", 0.10)
+        leaves = art.mask_of(leaf)
+        whole = art.mask_of(gate)
+        # The gate is the darkest thing in the scene, against the fire behind it.
+        art.put(layer, whole, scale(p["rock"], 1.3), 0.90)
+        art.put(layer, leaves, scale(p["rock"], 0.7), 0.95)
+        art.put(layer, art.mask_of(bands) * leaves, mix(p["rock_light"], p["fire"], 0.25), 0.9)
+        # The fire shows through the seam and the slits, and it lights the leaves near it.
+        art.light(layer, art.mask_of(seam, blur=4.0) * whole, p["fire"], 0.75)
+        art.put(layer, art.mask_of(seam, blur=0.4) * whole, p["hot"], 0.95)
+        art.light(layer, (art.rim(whole, 0.003, 0.0, 0.4) + art.rim(whole, -0.003, 0.0, 0.4) + art.rim(whole, 0.0, 0.003, 0.4)) * whole * (1.0 - leaves), p["fire"], 0.55)
         toward = np.sign(sun[0] - art.u)
-        art.light(layer, (art.rim(mask, 0.004, 0.002, 0.6) * (toward < 0) + art.rim(mask, -0.004, 0.002, 0.6) * (toward > 0)) * mask, p["fire"], 0.5)
+        art.light(layer, (art.rim(mask, 0.004, 0.002, 0.6) * (toward < 0) + art.rim(mask, -0.004, 0.002, 0.6) * (toward > 0)) * mask * (1.0 - leaves), p["fire"], 0.5)
         haze(art, layer, p["blood"], 0.32, HORIZON + 0.06)
         return layer
     if layer_key == "near_background":

@@ -83,13 +83,18 @@ SKINS: tuple[Skin, ...] = (
     Skin("hub_clean", "block", (226, 220, 208), (150, 144, 138), (255, 252, 244), (226, 178, 86), "edge", (240, 234, 222), "lip", "slab"),
     Skin("hub", "panel", (40, 40, 94), (15, 15, 46), (92, 94, 164), (255, 206, 140), "strip", (70, 70, 134), "lip", "grate"),
     Skin("basement", "brick", (88, 42, 32), (30, 13, 11), (146, 78, 54), (255, 150, 60), "plate", (58, 42, 40), "bolts", "grate"),
-    Skin("boss", "block", (86, 30, 44), (26, 8, 14), (150, 58, 70), (255, 112, 72), "plate", (40, 14, 20), "spikes", "grate"),
+    # The vault of a boss: columns of black rock, with fire in some of the breaks.
+    Skin("boss", "basalt", (70, 26, 38), (22, 7, 12), (132, 52, 64), (255, 112, 72), "plate", (40, 14, 20), "spikes", "grate"),
     Skin("cave", "rock", (48, 46, 90), (16, 15, 36), (94, 94, 152), (124, 222, 255), "moss", (46, 112, 112), "stalactites", "plank"),
     Skin("cove", "rock", (44, 78, 88), (12, 30, 40), (100, 150, 150), (255, 224, 170), "sand", (214, 190, 140), "weed", "plank"),
-    Skin("water", "block", (30, 84, 104), (8, 34, 52), (82, 152, 162), (150, 240, 200), "moss", (36, 132, 108), "weed", "slab"),
+    # A town that sank: cut stone of many sizes, its corners worn, weed on it.
+    Skin("water", "ruin", (30, 84, 104), (8, 34, 52), (82, 152, 162), (150, 240, 200), "moss", (36, 132, 108), "weed", "slab"),
     Skin("forest", "earth", (60, 46, 36), (24, 18, 14), (106, 86, 62), (236, 222, 120), "grass", (84, 140, 62), "roots", "plank"),
-    Skin("skybridge", "block", (150, 164, 198), (86, 100, 142), (216, 224, 242), (255, 236, 150), "grass", (112, 178, 96), "roots", "slab"),
-    Skin("eclipse", "block", (30, 34, 86), (10, 12, 36), (72, 78, 152), (92, 232, 200), "edge", (44, 50, 112), "lip", "slab"),
+    # The islands in the sky are rock that broke off, not a wall that was laid.
+    Skin("skybridge", "rock", (150, 164, 198), (86, 100, 142), (216, 224, 242), (255, 236, 150), "grass", (112, 178, 96), "roots", "slab"),
+    Skin("open_sky", "rock", (176, 164, 150), (104, 92, 92), (232, 222, 204), (255, 240, 170), "grass", (126, 184, 92), "roots", "plank"),
+    # Great slabs, each with one sign cut in it that gives a little light.
+    Skin("eclipse", "monolith", (30, 34, 86), (10, 12, 36), (72, 78, 152), (92, 232, 200), "edge", (44, 50, 112), "lip", "slab"),
 )
 
 
@@ -290,6 +295,109 @@ def fill(skin: Skin) -> Image.Image:
         _courses(tile, skin, 16.0, 32.0, 0.5, 0.7)
         cracks = tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x, y), (x + a, y + 3), (x + a - 1.5, y + 7)], 0.3) for x, y, a in [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(-3, 3)) for _ in range(6)]])
         tile.put(cracks, skin.dark, 0.55)
+        tile.tone((tile.noise(3, 3, 4) - 0.5) * 0.22)
+    elif skin.material == "basalt":
+        # Columns of rock that stand side by side, each with a round face.
+        # Each column is broken across at its own heights: the top of each
+        # piece is a light facet, and the fire is in a few of the breaks.
+        tile.put(np.ones_like(tile.alpha), skin.dark)
+        widths = [14.0, 9.0, 16.0, 11.0, 14.0]
+        x0 = 0.0
+        hot = []
+        for width in widths:
+            breaks = sorted(rng.uniform(0.0, 64.0) for _ in range(2))
+            if breaks[1] - breaks[0] < 14.0:
+                breaks[1] = breaks[0] + 14.0 + rng.uniform(0.0, 20.0)
+            tone = rng.uniform(-0.18, 0.14)
+            colour = _mix(skin.base, skin.light if tone > 0 else skin.dark, abs(tone) * 1.5)
+            for k, top in enumerate(breaks):
+                low = breaks[(k + 1) % len(breaks)] + (64.0 if k + 1 == len(breaks) else 0.0)
+                slant = rng.uniform(1.2, 2.6) * rng.choice([-1.0, 1.0])
+                peak = rng.uniform(0.3, 0.7)
+                # The top is two slopes that meet at a point: a broken end.
+                shape = [(x0 + 0.6, top + 2.4 + slant), (x0 + width * peak, top + 0.6), (x0 + width - 0.6, top + 2.4 - slant), (x0 + width - 0.6, low - 0.5), (x0 + 0.6, low - 0.5)]
+                body = tile.mask(lambda p, dx, dy: _poly(p, dx, dy, shape))
+                tile.put(body, colour)
+                # Round: light on the left third, shade to the right.
+                across = ((tile.x - x0) % 64.0) / width
+                tile.put(body * np.clip(1.0 - np.abs(across - 0.26) / 0.22, 0.0, 1.0), skin.light, 0.22)
+                tile.put(body * np.clip((across - 0.55) / 0.45, 0.0, 1.0), skin.dark, 0.55)
+                facet = [shape[0], shape[1], shape[2], (shape[2][0], shape[2][1] + 2.2), (shape[1][0], shape[1][1] + 3.4), (shape[0][0], shape[0][1] + 2.2)]
+                tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, facet)), skin.light, 0.34)
+                if rng.random() < 0.3:
+                    hot.append([(shape[0][0], shape[0][1] - 0.5), (shape[1][0], shape[1][1] - 0.5), (shape[2][0], shape[2][1] - 0.5)])
+            x0 += width
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 1.2) for pts in hot], blur=1.4), skin.accent, 0.42)
+        tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, 0.4) for pts in hot]), _mix(skin.accent, (255, 230, 190), 0.35), 0.80)
+        tile.tone((tile.noise(5, 5, 4) - 0.5) * 0.30)
+    elif skin.material == "monolith":
+        # Two rows of great slabs. Each slab has one sign cut in it.
+        tile.put(np.ones_like(tile.alpha), skin.dark)
+        signs, dust = [], []
+        for row in range(2):
+            for i in range(2):
+                x0, y0 = i * 32.0 + (16.0 if row else 0.0), row * 32.0
+                tone = rng.uniform(-0.12, 0.10)
+                colour = _mix(skin.base, skin.light if tone > 0 else skin.dark, abs(tone) * 1.6)
+                tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.5, y0 + 0.5, x0 + 31.5, y0 + 31.5)), colour)
+                tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, x0 + 0.5, y0 + 0.5, x0 + 31.5, y0 + 1.3), _box(p, dx, dy, x0 + 0.5, y0 + 0.5, x0 + 1.3, y0 + 31.5))), skin.light, 0.32)
+                tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, x0 + 0.5, y0 + 30.7, x0 + 31.5, y0 + 31.5), _box(p, dx, dy, x0 + 30.7, y0 + 0.5, x0 + 31.5, y0 + 31.5))), skin.dark, 0.5)
+                # A panel that is cut a little into the face of the slab.
+                tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 5.0, y0 + 5.0, x0 + 27.0, y0 + 27.0)), skin.dark, 0.22)
+                tile.put(tile.mask(lambda p, dx, dy: (_box(p, dx, dy, x0 + 5.0, y0 + 26.4, x0 + 27.0, y0 + 27.0), _box(p, dx, dy, x0 + 26.4, y0 + 5.0, x0 + 27.0, y0 + 27.0))), skin.light, 0.22)
+                signs.append((x0 + 16.0, y0 + 16.0, row * 2 + i))
+        def sign(p, dx, dy, cx, cy, kind, width):
+            if kind == 0:
+                _dot(p, dx, dy, cx, cy, 5.2)
+                _dot(p, dx, dy, cx, cy, 5.2 - width, value=0)
+                _dot(p, dx, dy, cx, cy, 1.0)
+            elif kind == 1:
+                _line(p, dx, dy, [(cx - 5.0, cy + 3.5), (cx, cy - 4.5), (cx + 5.0, cy + 3.5)], width)
+                _line(p, dx, dy, [(cx - 2.6, cy + 5.2), (cx + 2.6, cy + 5.2)], width)
+            elif kind == 2:
+                _line(p, dx, dy, [(cx - 5.2, cy), (cx + 5.2, cy)], width)
+                _line(p, dx, dy, [(cx, cy - 5.2), (cx, cy + 5.2)], width)
+                _dot(p, dx, dy, cx + 3.6, cy - 3.6, 0.8)
+            else:
+                # A moon in front of a sun: the sign of this place.
+                _dot(p, dx, dy, cx, cy, 5.0)
+                _dot(p, dx, dy, cx + 2.2, cy - 1.2, 4.3, value=0)
+                _dot(p, dx, dy, cx + 2.6, cy - 1.4, 0.9)
+        tile.put(tile.mask(lambda p, dx, dy: [sign(p, dx, dy, cx, cy, kind, 1.3) for cx, cy, kind in signs], blur=1.2), skin.accent, 0.22)
+        tile.put(tile.mask(lambda p, dx, dy: [sign(p, dx, dy, cx, cy, kind, 0.7) for cx, cy, kind in signs]), _mix(skin.accent, skin.base, 0.35), 0.62)
+        dust = [(rng.uniform(0, 64), rng.uniform(0, 64)) for _ in range(26)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 0.28) for x, y in dust]), skin.light, 0.5)
+        tile.tone((tile.noise(3, 3, 4) - 0.5) * 0.20)
+    elif skin.material == "ruin":
+        # Cut stone of many sizes in rows of many heights. The corners are
+        # worn round, and weed is in the damp of the joints.
+        tile.put(np.ones_like(tile.alpha), skin.dark)
+        y0 = 0.0
+        stones = []
+        for row_h in (13.0, 19.0, 11.0, 21.0):
+            x0 = rng.uniform(0.0, 12.0)
+            end = x0 + 64.0
+            while x0 < end - 1.0:
+                width = min(rng.choice([10.0, 14.0, 18.0, 24.0]), end - x0)
+                if end - (x0 + width) < 7.0:
+                    width = end - x0
+                stones.append((x0, y0, width, row_h, rng.uniform(-0.2, 0.16), rng.uniform(1.2, 2.4)))
+                x0 += width
+            y0 += row_h
+        for x0, sy, width, row_h, tone, worn in stones:
+            colour = _mix(skin.base, skin.light if tone > 0 else skin.dark, abs(tone) * 1.5)
+            # A box with a blur, cut at half: its corners come out round.
+            soft = tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0 + 0.7, sy + 0.7, x0 + width - 0.7, sy + row_h - 0.7), blur=worn * 0.5)
+            body = np.clip((soft - 0.5) * 6.0 + 0.5, 0.0, 1.0)
+            tile.put(body, colour)
+            tile.put(body * np.clip(1.0 - (tile.y - sy) % 64.0 / 2.6, 0.0, 1.0) * ((tile.y - sy) % 64.0 < row_h), skin.light, 0.24)
+            tile.put(body * np.clip(((tile.y - sy) % 64.0 - (row_h - 3.0)) / 3.0, 0.0, 1.0) * ((tile.y - sy) % 64.0 < row_h), skin.dark, 0.30)
+        growth = np.clip((tile.noise(4, 4, 3) - 0.56) * 7.0, 0.0, 1.0) * (1.0 - tile.alpha * 0.0)
+        joints = 1.0 - np.clip(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x0 + 1.6, sy + 1.6, x0 + width - 1.6, sy + row_h - 1.6) for x0, sy, width, row_h, _t, _w in stones], blur=1.0), 0.0, 1.0)
+        tile.put(growth * (0.35 + 0.65 * joints), skin.cap_colour, 0.55)
+        shells = [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(0.5, 0.95)) for _ in range(12)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y + 0.25, r) for x, y, r in shells]), skin.dark, 0.6)
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r * 0.8) for x, y, r in shells]), _mix(skin.light, (236, 232, 214), 0.5), 0.85)
         tile.tone((tile.noise(3, 3, 4) - 0.5) * 0.22)
     elif skin.material == "rock":
         # Broken stone: each pixel is in the cell of its nearest point, and

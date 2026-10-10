@@ -4,11 +4,13 @@ A calm guide in a hooded robe of deep teal with a trim of amber, round glasses
 that glow, and a slate with a screen of light that the tutorial is read from.
 The guide was a preset of the toon rig with four short rows. It is a character
 on the rig of the pirate crew now (`_pirate_common`, `_pirate_rig`): the same
-skeleton, its own look, its own poses, and six rows (idle, walk, talk,
-interact, hurt, death).
+skeleton, its own look, its own poses, and eight rows (idle, walk, talk,
+interact, slash, shoot, hurt, death).
 
-The guide has no weapon and no combat kit (the catalog of the game says so).
-The hand that a pirate has a sword in has the slate.
+The guide has no weapon. The hand that a pirate has a sword in has the slate,
+and a guide that was hit too many times fights with it (Jon, 2026-10-10): it
+hits with the slate (`slash`) and it sends a bolt of light from the screen
+(`shoot`). The names of the rows are the names the game looks for.
 """
 
 from __future__ import annotations
@@ -28,6 +30,8 @@ ROWS = [
     ("walk", 8, 100),
     ("talk", 8, 110),
     ("interact", 6, 100),
+    ("slash", 6, 85),
+    ("shoot", 6, 85),
     ("hurt", 4, 90),
     ("death", 8, 110),
 ]
@@ -136,6 +140,27 @@ def pose(anim: str, frame_idx: int, nframes: int) -> dict:
         p["head_tilt"] = 9.0 - c * 1.5
         p["body_tilt"] = 2.0
         p["glow"] = 0.2 + 0.8 * tap
+    elif anim == "slash":
+        # Lifts the slate over the head and brings it down flat on the one in
+        # front. The arcs are those of the crew's cut: they are in the frame.
+        for channel, table in crew._SLASH.items():
+            p[channel] = crew._sampled(table, t)
+        p["mouth_open"] = crew._sampled((0.0, 0.2, 0.5, 0.6, 0.3, 0.1), t)
+        p["glow"] = crew._sampled((0.2, 0.5, 1.0, 1.0, 0.5, 0.2), t)
+    elif anim == "shoot":
+        # Holds the slate out with the two hands, the screen to the front. The
+        # screen goes bright, the bolt goes, and the guide goes back a little.
+        p["sword_upper"] = crew._sampled((-40.0, -66.0, -76.0, -70.0, -60.0, -40.0), t)
+        p["sword_fore"] = crew._sampled((-88.0, -92.0, -90.0, -106.0, -98.0, -88.0), t)
+        p["weapon"] = crew._sampled((-70.0, -84.0, -88.0, -106.0, -96.0, -76.0), t)
+        p["off_upper"] = crew._sampled((-10.0, -40.0, -52.0, -46.0, -30.0, -6.0), t)
+        p["off_fore"] = crew._sampled((-40.0, -84.0, -92.0, -100.0, -70.0, -30.0), t)
+        p["body_tilt"] = crew._sampled((2.0, 5.0, 4.0, -6.0, -3.0, 0.0), t)
+        p["root_x"] = crew._sampled((0.0, 1.0, 1.0, -4.0, -2.0, 0.0), t)
+        p["head_tilt"] = crew._sampled((4.0, 0.0, -2.0, -8.0, -3.0, 3.0), t)
+        p["coat_sway"] = crew._sampled((0.0, -3.0, -4.0, 8.0, 5.0, 1.0), t)
+        p["glow"] = crew._sampled((0.3, 0.7, 1.0, 0.8, 0.4, 0.2), t)
+        p["mouth_open"] = crew._sampled((0.0, 0.1, 0.4, 0.5, 0.2, 0.0), t)
     elif anim == "hurt":
         # Thrown back, the slate held to the chest.
         hit = crew._sampled((0.6, 1.0, 0.65, 0.2), t)
@@ -219,7 +244,7 @@ ACTOR_METADATA = {
         },
     },
     "brain": {"default_preset": "patrol_peaceful"},
-    "actions": {"default_preset": "peaceful"},
+    "actions": {"default_preset": "kernel_guide_slate"},
     "visual": {"default_pose": "idle"},
     "tags": ["story", "humanoid", "guide"],
     "sockets": {

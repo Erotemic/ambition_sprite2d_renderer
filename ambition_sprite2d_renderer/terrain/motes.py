@@ -99,6 +99,8 @@ MOTES = {
     "water": (_bubble, (206, 252, 244)),
     "cove": (_dot, (226, 244, 236)),
     "skybridge": (_petal, (255, 214, 226)),
+    # Seeds on the wind.
+    "open_sky": (_dot, (255, 252, 236)),
     # The clean state of the two-state hub: dust in the light of its halls.
     "hub_clean": (_dot, (255, 240, 206)),
 }
@@ -121,6 +123,7 @@ SHADOWS = {
     "water": (2, 16, 30),
     "cove": (4, 14, 24),
     "skybridge": (40, 52, 84),
+    "open_sky": (60, 64, 80),
     "hub_clean": (60, 60, 80),
 }
 SHADOW_PX = (96, 28)
