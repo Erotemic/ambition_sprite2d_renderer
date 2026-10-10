@@ -321,3 +321,15 @@ lineages:
       - commit: "3f7d265b0"
         label: "A body that can throw a punch"
         note: "Same face; the body gained moves. A session list carries a synthetic entry."
+  pirate_raider:
+    name: Pirate crew (the raider stands for the five)
+    ids: [pirate_raider]
+    paths: ['_pirate_common', '_pirate_rig', 'pirate_raider']
+    summary: "five pirates on one thin body, then five characters"
+    eras:
+      - commit: "3b3209c"
+        label: "One thin body in five palettes"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "333e716"
+        label: "Five characters"
+        note: "Full bodies, a look for each pirate, the head on the chest, each pose made again. Jon: redo them completely, the posing too. Claude Opus 5.5 declared."
