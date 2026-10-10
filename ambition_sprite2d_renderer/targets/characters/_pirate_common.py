@@ -252,7 +252,15 @@ def pose_of(kind: str, anim: str, frame_idx: int, nframes: int) -> dict:
 
 
 def home_pose() -> dict:
-    """Each channel of a pose, at the guard of a pirate."""
+    """Each channel of a pose, at the guard of a pirate.
+
+    The guard is a low one: the sword hand is at the hip and the blade goes
+    up and to the front from it. The game has its own idea of a hand for a body
+    with no art to ask (a fixed place at the height of the chest), and its
+    tests tell the hand of the art from that place by how far apart the two
+    are. A hand held level at the chest is on that place (measured
+    2026-10-10: 2.8 and 4.5 world units from it, and three tests of the game
+    could not tell which one a shot had used)."""
     return {
         "root_x": 0.0,
         "bob": 0.0,
@@ -261,8 +269,8 @@ def home_pose() -> dict:
         "left_shin": 20.0,
         "right_thigh": -20.0,
         "right_shin": -6.0,
-        "sword_upper": -18.0,
-        "sword_fore": -100.0,
+        "sword_upper": -10.0,
+        "sword_fore": -62.0,
         "weapon": -50.0,
         "off_upper": 26.0,
         "off_fore": 8.0,
@@ -294,8 +302,9 @@ def animation_pose(anim, frame_idx, nframes):
 
     A limb angle is a world angle (see ``_pirate_rig``): 0 is down, negative is
     to the front, positive is to the back. The guard is the home pose: the
-    feet apart with the front knee a little bent, the sword held up to the
-    front, the other arm down and a little behind the body.
+    feet apart with the front knee a little bent, the sword hand low at the
+    hip with the blade up to the front, the other arm down and a little behind
+    the body.
 
     Each pose but the death is planted: the root goes down or up until the
     lower foot is on the ground.
@@ -313,7 +322,7 @@ def animation_pose(anim, frame_idx, nframes):
         pose["shoulder_bounce"] = -s * 2.0
         pose["root_x"] = c * 0.8
         pose["body_tilt"] = 2.0 + c * 1.0
-        pose["sword_fore"] = -100.0 + s * 3.0
+        pose["sword_fore"] = -62.0 + s * 3.0
         pose["weapon"] = -50.0 - s * 5.0 + c * 2.0
         pose["off_upper"] = 26.0 + s * 2.0
         pose["off_fore"] = 8.0 + c * 3.0
@@ -329,8 +338,8 @@ def animation_pose(anim, frame_idx, nframes):
             pose[f"{side}_thigh"] = thigh
             pose[f"{side}_shin"] = thigh + 50.0 * max(0.0, -math.cos(at))
         pose["body_tilt"] = 5.0
-        pose["sword_upper"] = -14.0 + 6.0 * math.sin(phase)
-        pose["sword_fore"] = -82.0 + 6.0 * math.sin(phase)
+        pose["sword_upper"] = -12.0 + 6.0 * math.sin(phase)
+        pose["sword_fore"] = -68.0 + 6.0 * math.sin(phase)
         pose["weapon"] = -30.0 + 5.0 * math.sin(2.0 * phase)
         # The free arm goes back when its leg goes to the front.
         pose["off_upper"] = 14.0 - 24.0 * math.sin(phase)
@@ -369,8 +378,8 @@ def animation_pose(anim, frame_idx, nframes):
         pose["left_shin"] = 20.0 + 16.0 * phase
         pose["right_thigh"] = -20.0 + 12.0 * phase
         pose["right_shin"] = -6.0 + 14.0 * phase
-        pose["sword_upper"] = -18.0 - 50.0 * phase
-        pose["sword_fore"] = -100.0 - 40.0 * phase
+        pose["sword_upper"] = -10.0 - 58.0 * phase
+        pose["sword_fore"] = -62.0 - 78.0 * phase
         pose["weapon"] = -50.0 - 60.0 * phase
         pose["off_upper"] = 26.0 + 40.0 * phase
         pose["off_fore"] = 8.0 + 40.0 * phase
@@ -393,8 +402,8 @@ def animation_pose(anim, frame_idx, nframes):
         pose["left_shin"] = lerp(20.0, -80.0, tt)
         pose["right_thigh"] = lerp(-20.0, -92.0, tt)
         pose["right_shin"] = lerp(-6.0, -86.0, tt)
-        pose["sword_upper"] = lerp(-18.0, -100.0, tt) - 60.0 * up
-        pose["sword_fore"] = lerp(-100.0, -84.0, tt) - 50.0 * up
+        pose["sword_upper"] = lerp(-10.0, -100.0, tt) - 60.0 * up
+        pose["sword_fore"] = lerp(-62.0, -84.0, tt) - 50.0 * up
         pose["weapon"] = lerp(-50.0, -8.0, tt) - 80.0 * up
         pose["off_upper"] = lerp(26.0, 100.0, tt)
         pose["off_fore"] = lerp(8.0, 96.0, tt)
@@ -802,6 +811,15 @@ def draw_limb(draw, name: str, root, joint, end, fill, widths, ink, ink_width: i
             line(draw, [(0.0, ha), (length, hb)], ink, width=ink_width)
 
 
+def _hand(draw, r: float, pal) -> None:
+    """A hand: a disc of skin in a disc of ink. Not one disc with an ink line:
+    the two rasterizers of this family put that line on different sides of
+    the edge, and a hand is often the widest thing of a pose, so it is what
+    the width of the body is measured by."""
+    circle(draw, (0, 0), r, pal.outline)
+    circle(draw, (0, 0), r - 2.6, pal.skin)
+
+
 def _draw_robe(draw, chest, global_tilt, pal, look: Look) -> None:
     """The top of a robe: closed in front, a line of trim down its middle with
     three nodes on it (a trace on a board), a belt with a stone of light, and a
@@ -974,7 +992,7 @@ def paint_character(
     draw_limb(draw, "back_arm", back_shoulder, back_elbow, back_hand, pal.coat,
               (22 * b, 19 * b, 16 * b), pal.outline, 4, cuff=pal.coat2)
     with draw.part("back_hand", back_hand, 0.0):
-        circle(draw, (0, 0), 9, pal.skin, pal.outline, width=3)
+        _hand(draw, 9.0, pal)
     _end(draw)
 
     # The arm with the sword, in front of the body.
@@ -991,7 +1009,7 @@ def paint_character(
         draw_tablet(draw, front_hand, pose["weapon"], pal, pose["glow"])
     # The hand is over the grip of the sword.
     with draw.part("front_hand", front_hand, 0.0):
-        circle(draw, (0, 0), 10, pal.skin, pal.outline, width=3)
+        _hand(draw, 10.0, pal)
     if look.sword and anim == "slash" and frame_idx in _SWOOSH:
         # The path of the blade in the air: a part of a circle about the
         # shoulder, from where the blade was to where it is.

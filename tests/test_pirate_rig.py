@@ -144,8 +144,8 @@ def test_golden_walk_pose() -> None:
         "right_foot": ((292.189, 424.960), -18.385),
         "back_elbow": ((248.420, 312.845), -2.971),
         "back_hand": ((266.151, 350.920), -24.971),
-        "front_elbow": ((299.657, 316.251), -9.757),
-        "front_hand": ((340.702, 325.157), -77.757),
+        "front_elbow": ((298.070, 316.495), -7.757),
+        "front_hand": ((335.741, 335.067), -63.757),
     }
     assert set(golden) == set(J), "every evaluated joint must be pinned"
     for name, ((gx, gy), ga) in golden.items():
