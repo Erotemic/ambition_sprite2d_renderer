@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from ambition_sprite2d_renderer.terrain import motes, skins
+from ambition_sprite2d_renderer.terrain import decor, motes, skins
 
 
 @pytest.mark.parametrize("skin", skins.SKINS, ids=lambda skin: skin.key)
@@ -53,3 +53,18 @@ def test_a_mote_strip_has_its_squares_and_each_one_is_clear_at_its_edge(theme: s
         assert cell.max() > 60, "a square with no mote"
         edge = np.concatenate([cell[0], cell[-1], cell[:, 0], cell[:, -1]])
         assert edge.max() < 40, "a mote that is cut by the edge of its square shows the cut"
+
+
+@pytest.mark.parametrize("theme", sorted(decor.DECOR))
+def test_each_thing_of_the_decor_stands_on_the_ground_line_inside_its_square(theme: str) -> None:
+    # The game puts the bottom of a square on the top of a block. A thing
+    # that does not reach the bottom of its square is in the air, and a thing
+    # that is cut by a side of its square shows the cut.
+    strip = np.asarray(decor.strip(theme))
+    px = decor.CELL_PX
+    assert strip.shape == (px, px * decor.VARIANTS, 4)
+    for variant in range(decor.VARIANTS):
+        cell = strip[:, variant * px : (variant + 1) * px, 3]
+        assert cell[-5:].max() > 120, f"square {variant} does not stand on the ground line"
+        assert max(cell[:, 0].max(), cell[:, -1].max()) < 90, f"square {variant} is cut by a side"
+        assert cell[0].max() < 90, f"square {variant} is cut by the top"

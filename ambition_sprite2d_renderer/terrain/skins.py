@@ -186,9 +186,11 @@ class Tile:
         """Make the colour lighter (amount over 0) or darker (under 0)."""
         self.rgb = np.clip(self.rgb * (1.0 + amount[:, :, None]), 0.0, 255.0)
 
-    def publish(self) -> Image.Image:
+    def publish(self, supersample: int = SUPERSAMPLE) -> Image.Image:
+        """The picture to publish. It is made `supersample` times smaller
+        than the work: a smaller number gives more pixels to the unit."""
         pre = np.dstack([self.rgb * self.alpha[:, :, None], self.alpha])
-        s = SUPERSAMPLE
+        s = supersample
         small = pre.reshape(self.H // s, s, self.W // s, s, 4).mean(axis=(1, 3))
         a = small[:, :, 3:4]
         # An empty pixel has the mean colour of the picture, so a sampler that
