@@ -211,9 +211,9 @@ _SLASH = {
     "off_fore": (10.0, 20.0, 0.0, 40.0, 46.0, 20.0),
     "body_tilt": (-6.0, -10.0, 2.0, 14.0, 16.0, 8.0),
     "root_x": (-2.0, -4.0, 2.0, 8.0, 9.0, 5.0),
-    "left_thigh": (12.0, 16.0, 14.0, 26.0, 28.0, 20.0),
-    "left_shin": (20.0, 26.0, 22.0, 30.0, 32.0, 24.0),
-    "right_thigh": (-14.0, -8.0, -24.0, -40.0, -42.0, -28.0),
+    "left_thigh": (16.0, 18.0, 16.0, 28.0, 30.0, 22.0),
+    "left_shin": (22.0, 28.0, 24.0, 32.0, 34.0, 26.0),
+    "right_thigh": (-18.0, -10.0, -26.0, -42.0, -44.0, -30.0),
     "right_shin": (-4.0, 4.0, -6.0, 2.0, 4.0, -4.0),
     "head_tilt": (-4.0, -6.0, 0.0, 4.0, 4.0, 0.0),
     "hat_tilt": (-2.0, -4.0, 0.0, 4.0, 5.0, 2.0),
@@ -251,9 +251,9 @@ def animation_pose(anim, frame_idx, nframes):
         "root_x": 0.0,
         "bob": 0.0,
         "body_tilt": 2.0,
-        "left_thigh": 12.0,
-        "left_shin": 14.0,
-        "right_thigh": -16.0,
+        "left_thigh": 16.0,
+        "left_shin": 20.0,
+        "right_thigh": -20.0,
         "right_shin": -6.0,
         "sword_upper": -18.0,
         "sword_fore": -100.0,
@@ -323,9 +323,9 @@ def animation_pose(anim, frame_idx, nframes):
         # He is thrown back onto the back foot, and the arms go out.
         pose["root_x"] = -5.0 * phase + shake * 3.0
         pose["body_tilt"] = 2.0 - 18.0 * phase
-        pose["left_thigh"] = 12.0 + 10.0 * phase
-        pose["left_shin"] = 14.0 + 18.0 * phase
-        pose["right_thigh"] = -16.0 + 10.0 * phase
+        pose["left_thigh"] = 16.0 + 10.0 * phase
+        pose["left_shin"] = 20.0 + 16.0 * phase
+        pose["right_thigh"] = -20.0 + 12.0 * phase
         pose["right_shin"] = -6.0 + 14.0 * phase
         pose["sword_upper"] = -18.0 - 50.0 * phase
         pose["sword_fore"] = -100.0 - 40.0 * phase
@@ -347,9 +347,9 @@ def animation_pose(anim, frame_idx, nframes):
         pose["root_x"] = tt * 16.0
         pose["bob"] = -tt * 4.0
         pose["body_tilt"] = lerp(2.0, -86.0, tt)
-        pose["left_thigh"] = lerp(12.0, -82.0, tt)
-        pose["left_shin"] = lerp(14.0, -80.0, tt)
-        pose["right_thigh"] = lerp(-16.0, -92.0, tt)
+        pose["left_thigh"] = lerp(16.0, -82.0, tt)
+        pose["left_shin"] = lerp(20.0, -80.0, tt)
+        pose["right_thigh"] = lerp(-20.0, -92.0, tt)
         pose["right_shin"] = lerp(-6.0, -86.0, tt)
         pose["sword_upper"] = lerp(-18.0, -100.0, tt) - 60.0 * up
         pose["sword_fore"] = lerp(-100.0, -84.0, tt) - 50.0 * up

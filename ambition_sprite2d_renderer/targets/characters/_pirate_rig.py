@@ -81,8 +81,12 @@ PIRATE_BONES: Tuple[PirateBone, ...] = (
     # the pirate looks to; the other arm is on the side behind.
     PirateBone("back_shoulder", "chest", lambda p, k: (-24.0, -10.0), lambda p, k, tilt: tilt),
     PirateBone("front_shoulder", "chest", lambda p, k: (22.0, -10.0), lambda p, k, tilt: tilt),
-    PirateBone("left_hip", None, lambda p, k: (-14.0, -80.0), lambda p, k, tilt: tilt),
-    PirateBone("right_hip", None, lambda p, k: (14.0, -80.0), lambda p, k, tilt: tilt),
+    # The two hips are near one place: the pirate is seen from the side, and
+    # the width of the pelvis is into the picture. Hips that are far apart on
+    # the screen make one half of a walk a wide step and the other half a
+    # narrow one (measured 2026-10-10: 98 and 42 with hips 28 apart).
+    PirateBone("left_hip", None, lambda p, k: (-4.0, -80.0), lambda p, k, tilt: tilt),
+    PirateBone("right_hip", None, lambda p, k: (4.0, -80.0), lambda p, k, tilt: tilt),
     PirateBone("left_knee", "left_hip", lambda p, k: (0.0, THIGH), lambda p, k, tilt: p["left_thigh"]),
     PirateBone("right_knee", "right_hip", lambda p, k: (0.0, THIGH), lambda p, k, tilt: p["right_thigh"]),
     PirateBone("left_foot", "left_knee", lambda p, k: (0.0, SHIN), lambda p, k, tilt: p["left_shin"]),
