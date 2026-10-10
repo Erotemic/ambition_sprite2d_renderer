@@ -4,8 +4,8 @@
     python -m ambition_sprite2d_renderer.terrain preview OUT.png [SKIN ...]
 
 `draw` publishes `<skin>_<part>.png` for each part of each skin, and the mote
-picture and the decor picture of each biome (`<biome>_motes.png`,
-`<biome>_decor.png`). `preview`
+picture, the decor picture and the door of each biome (`<biome>_motes.png`,
+`<biome>_decor.png`, `<biome>_door.png`). `preview`
 writes one picture with a small made-up room in each skin. It does not run
 the game.
 """
@@ -17,7 +17,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from . import decor, motes, skins
+from . import decor, doors, motes, skins
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -55,6 +55,12 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             path = args.out_dir / f"{key}_decor.png"
             decor.strip(key).save(path)
+            print(path)
+        for key in doors.DOORS:
+            if args.skins and key not in args.skins:
+                continue
+            path = args.out_dir / f"{key}_door.png"
+            doors.door(key).save(path)
             print(path)
         return 0
     rooms = [skins.mockup(skin, drawn[skin.key]) for skin in chosen]

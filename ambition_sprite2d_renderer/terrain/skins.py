@@ -69,7 +69,13 @@ class Skin:
 
 
 SKINS: tuple[Skin, ...] = (
-    Skin("lab", "panel", (22, 62, 74), (8, 28, 38), (58, 118, 128), (120, 236, 220), "strip", (44, 92, 104), "pipes", "grate"),
+    # The lab is steel, not the teal of its air: the ground must not have the
+    # colour of what is behind it.
+    Skin("lab", "panel", (38, 54, 74), (14, 22, 36), (84, 112, 138), (120, 236, 220), "strip", (62, 84, 108), "pipes", "grate"),
+    # The clean state of the two-state hub: pale marble with a line of gold.
+    # The look of that room draws its own blocks, and this is what the room
+    # has on a device that does not draw the look.
+    Skin("hub_clean", "block", (226, 220, 208), (150, 144, 138), (255, 252, 244), (226, 178, 86), "edge", (240, 234, 222), "lip", "slab"),
     Skin("hub", "panel", (40, 40, 94), (15, 15, 46), (92, 94, 164), (255, 206, 140), "strip", (70, 70, 134), "lip", "grate"),
     Skin("basement", "brick", (88, 42, 32), (30, 13, 11), (146, 78, 54), (255, 150, 60), "plate", (58, 42, 40), "bolts", "grate"),
     Skin("boss", "block", (86, 30, 44), (26, 8, 14), (150, 58, 70), (255, 112, 72), "plate", (40, 14, 20), "spikes", "grate"),

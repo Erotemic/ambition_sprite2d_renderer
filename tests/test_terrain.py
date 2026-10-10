@@ -68,3 +68,16 @@ def test_each_thing_of_the_decor_stands_on_the_ground_line_inside_its_square(the
         assert cell[-5:].max() > 120, f"square {variant} does not stand on the ground line"
         assert max(cell[:, 0].max(), cell[:, -1].max()) < 90, f"square {variant} is cut by a side"
         assert cell[0].max() < 90, f"square {variant} is cut by the top"
+
+
+def test_each_door_has_the_shape_of_the_door_of_the_entity_sheet() -> None:
+    # The game keeps the size and the place of a door and changes its
+    # picture. A door of another shape would be stretched.
+    from ambition_sprite2d_renderer.terrain import doors
+
+    for theme in doors.DOORS:
+        image = np.asarray(doors.door(theme))
+        assert image.shape == (doors.HEIGHT_PX, doors.WIDTH_PX, 4), theme
+        alpha = image[:, :, 3]
+        assert alpha[-1].min() == 255, f"{theme}: the step at the foot goes from side to side"
+        assert alpha[doors.HEIGHT_PX // 2].min() == 255, f"{theme}: a door has no hole in its middle"
