@@ -7,7 +7,7 @@ import math
 import numpy as np
 
 from .artkit import Art, Pen, mix, polar, scale, smoothstep
-from .parts import HORIZON, cloud_mask, cumulus, fog, haze, lamps, moon, motes, palm, pine, shafts, solid, stars, vignette
+from .parts import HORIZON, cloud_mask, cumulus, fog, haze, lamps, moon, palm, pine, shafts, solid, stars, vignette
 
 # ---------------------------------------------------------------------------
 # The cove: a coast at night under the moon
@@ -122,7 +122,6 @@ def cove(layer_key: str, art: Art) -> np.ndarray:
         return layer
     layer = art.blank()
     art.put(layer, fog(art, "sea mist", 0.66, 0.15), p["horizon"], 0.30)
-    art.put(layer, motes(art, "spray", 60, 0.3, 0.8, 0.001, 0.0024), p["moon"], 0.45)
     vignette(art, layer, p["zenith"], 0.34)
     return layer
 
@@ -362,7 +361,6 @@ def forest(layer_key: str, art: Art) -> np.ndarray:
     layer = art.blank()
     art.put(layer, shafts(art, "sun shafts", 5, -0.12, 0.0, 0.80, 0.05), p["glow"], 0.15)
     art.put(layer, fog(art, "ground mist", 0.68, 0.16), p["mist"], 0.38)
-    art.put(layer, motes(art, "fireflies", 46, 0.38, 0.74, 0.0014, 0.0028), (226, 255, 150), 0.8)
     vignette(art, layer, p["top"], 0.34)
     return layer
 
@@ -467,16 +465,6 @@ def water(layer_key: str, art: Art) -> np.ndarray:
         return layer
     layer = art.blank()
     art.put(layer, shafts(art, "near rays", 4, 0.20, 0.0, 0.8, 0.06), p["ray"], 0.12)
-    rng = art.rand("bubbles")
-    bubbles, pen = art.drawing()
-    for _ in range(7):
-        u = rng.uniform(0.05, 0.95)
-        v = rng.uniform(0.45, 0.75)
-        for k in range(rng.randint(4, 9)):
-            r = rng.uniform(0.002, 0.006)
-            pen.ring(u + rng.uniform(-0.012, 0.012), v - k * rng.uniform(0.022, 0.04), r, 0.0012, value=rng.randint(140, 255))
-    art.put(layer, art.mask_of(bubbles, blur=0.3), p["ray"], 0.75)
-    art.put(layer, motes(art, "plankton", 120, 0.15, 0.9, 0.0008, 0.002), p["ray"], 0.45)
     vignette(art, layer, p["deep"], 0.36)
     return layer
 

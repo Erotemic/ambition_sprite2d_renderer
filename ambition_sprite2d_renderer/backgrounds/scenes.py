@@ -36,7 +36,7 @@ from typing import Callable
 import numpy as np
 from PIL import Image
 
-from . import arenas, interiors, outdoors, room_look_sky
+from . import arenas, foregrounds, interiors, outdoors, room_look_sky
 from .artkit import Art
 from .parts import LAYER_BLUR, LAYER_SIZE
 
@@ -61,16 +61,23 @@ SCENES: dict[str, Scene] = {
 }
 
 
+#: The layer the game draws in front of the play. A scene can have none.
+FOREGROUND = "foreground"
+
+
 #: Each theme this package publishes: the scenes, and the two states of the
 #: sky of the two-state room look, which has its own art.
 THEMES: tuple[str, ...] = (*SCENES, *room_look_sky.THEME_KEYS)
 
-LAYERS: tuple[str, ...] = tuple(LAYER_SIZE)
+LAYERS: tuple[str, ...] = (*LAYER_SIZE, FOREGROUND)
 
 
-def render(theme_key: str, layer_key: str, size: int | None = None) -> Image.Image:
+def render(theme_key: str, layer_key: str, size: int | None = None) -> Image.Image | None:
     """The published picture of one layer of one scene. `size` is for a test
-    or a quick look: a scene is the same picture at each size."""
+    or a quick look: a scene is the same picture at each size. `None` for a
+    foreground the scene does not have."""
+    if layer_key == FOREGROUND:
+        return foregrounds.render(theme_key, size)
     if theme_key in room_look_sky.THEME_KEYS:
         return room_look_sky.render_look_layer(theme_key, layer_key)
     art = Art(size or LAYER_SIZE[layer_key], theme_key, layer_key)
@@ -78,13 +85,15 @@ def render(theme_key: str, layer_key: str, size: int | None = None) -> Image.Ima
     return art.publish(layer, blur=LAYER_BLUR[layer_key], opaque=layer_key == "sky")
 
 
-#: The panel of each layer as the game draws it: `(panel scale, factor)`
+#: The panel of each layer as the game draws it: `(panel scale, factor along,
+#: factor up and down)`
 #: (`RUNTIME_PARALLAX_LAYERS` in `ambition_render`).
 RUNTIME = {
-    "sky": (1.20, 0.10),
-    "far_backplate": (1.34, 0.20),
-    "near_background": (1.52, 0.42),
-    "foreground_atmosphere": (1.72, 0.60),
+    "sky": (1.20, 0.10, 0.10),
+    "far_backplate": (1.34, 0.20, 0.20),
+    "near_background": (1.52, 0.42, 0.42),
+    "foreground_atmosphere": (1.72, 0.60, 0.60),
+    FOREGROUND: (2.20, 1.00, 0.10),
 }
 
 
@@ -94,10 +103,12 @@ def view(layers: dict[str, Image.Image], size: tuple[int, int] = (1280, 720), ca
     bottom. This is the arithmetic of `sync_parallax_transform_to_camera`."""
     w, h = size
     out = Image.new("RGBA", size, (0, 0, 0, 255))
-    for key, (panel_scale, factor) in RUNTIME.items():
+    for key, (panel_scale, factor, factor_y) in RUNTIME.items():
+        if layers.get(key) is None:
+            continue
         panel = max(w, h) * panel_scale
         travel = ((panel - w) * 0.5, (panel - h) * 0.5)
-        centre = (panel * 0.5 + camera[0] * travel[0] * factor, panel * 0.5 + camera[1] * travel[1] * factor)
+        centre = (panel * 0.5 + camera[0] * travel[0] * factor, panel * 0.5 + camera[1] * travel[1] * factor_y)
         image = layers[key].resize((int(panel), int(panel)), Image.BILINEAR)
         box = (int(centre[0] - w * 0.5), int(centre[1] - h * 0.5))
         out.alpha_composite(image.crop((box[0], box[1], box[0] + w, box[1] + h)))

@@ -7,7 +7,7 @@ import math
 import numpy as np
 
 from .artkit import Art, Pen, mix, polar, scale, smoothstep
-from .parts import HORIZON, cloud_mask, crystal_cluster, fog, haze, lamps, motes, shafts, solid, vignette, window_grid
+from .parts import HORIZON, cloud_mask, crystal_cluster, fog, haze, lamps, shafts, solid, vignette, window_grid
 
 # ---------------------------------------------------------------------------
 # The lab: the hall of a reactor
@@ -162,7 +162,6 @@ def lab(layer_key: str, art: Art) -> np.ndarray:
     layer = art.blank()
     art.put(layer, shafts(art, "shafts", 5, 0.10, 0.0, 0.82, 0.045), p["glow"], 0.17)
     art.put(layer, fog(art, "floor mist", 0.69, 0.16), mix(p["air"], p["glow"], 0.35), 0.34)
-    art.put(layer, motes(art, "dust", 110, 0.15, 0.85), (200, 255, 244), 0.5)
     vignette(art, layer, p["deep"], 0.30)
     return layer
 
@@ -303,7 +302,6 @@ def foundry(layer_key: str, art: Art) -> np.ndarray:
     layer = art.blank()
     art.put(layer, fog(art, "heat", 0.70, 0.20), p["fire"], 0.24)
     art.put(layer, cloud_mask(art, "roof smoke", 0.22, 0.2, cells=2.5, cover=0.6, soft=0.3), p["soot"], 0.42)
-    art.put(layer, motes(art, "embers", 90, 0.25, 0.80, 0.0012, 0.0032), p["hot"], 0.85)
     vignette(art, layer, p["soot"], 0.36)
     return layer
 
@@ -403,6 +401,5 @@ def cave(layer_key: str, art: Art) -> np.ndarray:
         return layer
     layer = art.blank()
     art.put(layer, fog(art, "cave mist", 0.70, 0.17), p["air"], 0.36)
-    art.put(layer, motes(art, "spores", 80, 0.2, 0.85), p["glow"], 0.6)
     vignette(art, layer, p["black"], 0.40)
     return layer

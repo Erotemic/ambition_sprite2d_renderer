@@ -17,6 +17,9 @@ def test_a_scene_has_an_opaque_sky_and_layers_the_sky_shows_through(theme: str) 
     # part hides the sky and each layer behind it.
     for layer in scenes.LAYERS:
         image = scenes.render(theme, layer, size=SMALL)
+        if image is None:
+            assert layer == scenes.FOREGROUND, "only a foreground can be absent"
+            continue
         assert image.size == (SMALL, SMALL)
         alpha = np.asarray(image)[:, :, 3]
         if layer == "sky":
@@ -45,7 +48,26 @@ def test_the_view_shows_the_middle_band_of_each_panel() -> None:
 
     clear = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
     layers = {key: clear for key in scenes.LAYERS}
+    layers[scenes.FOREGROUND] = None
     layers["sky"] = panel(0.25, 0.75)
     assert np.asarray(scenes.view(layers, (320, 180))).min() == 255
     layers["sky"] = panel(0.0, 0.25)
     assert np.asarray(scenes.view(layers, (320, 180)))[:, :, :3].max() == 0
+
+
+@pytest.mark.parametrize("theme", sorted(scenes.SCENES))
+def test_a_foreground_leaves_the_middle_of_the_view_empty(theme: str) -> None:
+    # The foreground is in front of the play. What a view at rest shows of it
+    # must be empty in its middle half, and the layer must hide little of the
+    # view in all.
+    from ambition_sprite2d_renderer.backgrounds import foregrounds
+
+    image = scenes.render(theme, scenes.FOREGROUND, size=256)
+    if image is None:
+        return
+    alpha = np.asarray(image)[:, :, 3].astype(float) / 255.0
+    top, bottom = int(foregrounds.REST_TOP * 256), int(foregrounds.REST_BOTTOM * 256)
+    rest = alpha[top:bottom]
+    quarter = rest.shape[0] // 4
+    assert rest[quarter : 3 * quarter].mean() < 0.02, f"{theme} foreground is in the middle of the view"
+    assert rest.mean() < 0.16, f"{theme} foreground hides too much of the view"

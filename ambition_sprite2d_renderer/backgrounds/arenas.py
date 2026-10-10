@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from .artkit import Art, mix, polar, scale, smoothstep
-from .parts import HORIZON, cloud_mask, fog, haze, lamps, motes, solid, stars, vignette, window_grid
+from .parts import HORIZON, cloud_mask, fog, haze, lamps, solid, stars, vignette, window_grid
 
 # ---------------------------------------------------------------------------
 # The hub: a station city at night
@@ -127,7 +127,6 @@ def hub(layer_key: str, art: Art) -> np.ndarray:
         return layer
     layer = art.blank()
     art.put(layer, fog(art, "city haze", 0.68, 0.16), p["accent"], 0.30)
-    art.put(layer, motes(art, "dust", 60, 0.2, 0.8), p["glow"], 0.40)
     vignette(art, layer, p["zenith"], 0.34)
     return layer
 
@@ -233,7 +232,6 @@ def boss(layer_key: str, art: Art) -> np.ndarray:
         return layer
     layer = art.blank()
     art.put(layer, fog(art, "red mist", 0.69, 0.17), p["blood"], 0.36)
-    art.put(layer, motes(art, "embers", 70, 0.25, 0.82, 0.0012, 0.003), p["hot"], 0.8)
     vignette(art, layer, p["black"], 0.42)
     return layer
 
@@ -339,6 +337,5 @@ def eclipse(layer_key: str, art: Art) -> np.ndarray:
         return layer
     layer = art.blank()
     art.put(layer, fog(art, "light mist", 0.69, 0.16), mix(p["mid"], p["aurora"], 0.35), 0.32)
-    art.put(layer, motes(art, "sparks", 70, 0.2, 0.82), p["aurora"], 0.55)
     vignette(art, layer, p["black"], 0.38)
     return layer

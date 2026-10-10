@@ -23,7 +23,7 @@ from . import scenes
 MAX_JOBS = 6
 
 
-def _render(job: tuple[str, str]) -> tuple[str, str, Image.Image]:
+def _render(job: tuple[str, str]) -> tuple[str, str, Image.Image | None]:
     theme, layer = job
     return theme, layer, scenes.render(theme, layer)
 
@@ -63,6 +63,10 @@ def main(argv: list[str] | None = None) -> int:
         for theme, layers in rendered.items():
             for layer, image in layers.items():
                 path = args.out_dir / f"{theme}_{layer}.png"
+                if image is None:
+                    # A scene with no foreground. The game asks for each layer
+                    # of each theme, so the layer is an empty picture.
+                    image = Image.new("RGBA", (4, 4), (0, 0, 0, 0))
                 image.save(path)
                 print(path)
         return 0
