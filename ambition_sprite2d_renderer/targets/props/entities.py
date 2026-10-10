@@ -201,7 +201,6 @@ def breakable_cracked(d: ImageDraw.ImageDraw, s: float) -> None:
 def breakable_broken(d: ImageDraw.ImageDraw, s: float) -> None:
     """What is left of the crate: boards in a heap, and one steel corner."""
     outline = rgba("#241714")
-    d.ellipse(bbox(65 * s, 94 * s, 75 * s, 12 * s), fill=(0, 0, 0, 45))
     boards = [
         ([(31, 93), (36, 73), (52, 60), (58, 68), (46, 80), (44, 93)], "#8A5736"),
         ([(52, 72), (57, 50), (79, 47), (76, 61), (68, 64), (66, 84)], "#A46B3E"),
@@ -237,7 +236,6 @@ def _heart(cx: float, cy: float, size: float, steps: int = 72) -> List[Point]:
 def pickup_health(d: ImageDraw.ImageDraw, s: float) -> None:
     """A glossy red heart: inked outline, a darker lower edge, a light upper
     body, a highlight on the left lobe and a glint."""
-    d.ellipse(bbox(64 * s, 96 * s, 46 * s, 9 * s), fill=(0, 0, 0, 45))
     d.polygon(poly_scaled(_heart(64, 58, 72), s), fill=rgba("#3A0A14"))
     d.polygon(poly_scaled(_heart(64, 58, 64), s), fill=rgba("#B3172F"))
     d.polygon(poly_scaled(_heart(62.5, 55.5, 56), s), fill=rgba("#E8314A"))
@@ -263,7 +261,6 @@ def pickup_currency(d: ImageDraw.ImageDraw, s: float) -> None:
         width=max(1, int(3 * s)),
     )
     d.text((57 * s, 45 * s), "$", fill=rgba("#5C4112"), font=font(int(28 * s)))
-    d.ellipse(bbox(64 * s, 94 * s, 42 * s, 10 * s), fill=(0, 0, 0, 34))
 
 
 def pickup_ability(d: ImageDraw.ImageDraw, s: float) -> None:
@@ -290,7 +287,6 @@ def pickup_ability(d: ImageDraw.ImageDraw, s: float) -> None:
 def hazard_spikes(d: ImageDraw.ImageDraw, s: float) -> None:
     """Five spikes on a plate. Each has a lit face and a face in shade."""
     outline = rgba("#24060B")
-    d.ellipse(bbox(64 * s, 92 * s, 80 * s, 13 * s), fill=(0, 0, 0, 40))
     for i in range(5):
         x = 28 + i * 18
         d.polygon(poly_scaled([(x, 91), (x + 10, 39), (x + 20, 91)], s), fill=rgba("#B8222F"))
@@ -395,7 +391,6 @@ def sandbag_dummy(d: ImageDraw.ImageDraw, s: float) -> None:
     target painted on it."""
     outline = rgba("#2A1D13")
     canvas, canvas_hi, canvas_lo = "#B58A5D", "#D8B080", "#8C6640"
-    d.ellipse(bbox(64 * s, 97 * s, 46 * s, 10 * s), fill=(0, 0, 0, 40))
     d.rounded_rectangle(
         (45 * s, 30 * s, 83 * s, 91 * s),
         radius=17 * s,
@@ -427,7 +422,6 @@ def sandbag_dummy(d: ImageDraw.ImageDraw, s: float) -> None:
 def moving_platform(d: ImageDraw.ImageDraw, s: float) -> None:
     """A deck that floats on two jets."""
     outline = rgba("#10253A")
-    d.ellipse(bbox(64 * s, 83 * s, 88 * s, 13 * s), fill=(0, 0, 0, 40))
     # The housing under the deck and the light of its two jets.
     d.polygon(poly_scaled([(30, 73), (98, 73), (92, 81), (36, 81)], s), fill=rgba("#1B3148"), outline=outline)
     for x in (45, 83):
@@ -1315,8 +1309,6 @@ def morph_ball(d: ImageDraw.ImageDraw, s: float) -> None:
     the morph reads as "the same character, curled up"."""
     cx, cy = 64 * s, 68 * s  # bias slightly down so feet anchor to bottom
     outer_r = 44 * s
-    # Ground shadow.
-    d.ellipse(bbox(64 * s, 96 * s, 80 * s, 12 * s), fill=(0, 0, 0, 70))
     # Sphere body: dark outer rim with bright inner.
     d.ellipse(
         (cx - outer_r, cy - outer_r, cx + outer_r, cy + outer_r),
@@ -1491,8 +1483,6 @@ def spike_ball(d: ImageDraw.ImageDraw, s: float) -> None:
 
     cx, cy = 64 * s, 64 * s
     outer_r = 32 * s
-    # Drop shadow.
-    d.ellipse(bbox(64 * s, 100 * s, 70 * s, 10 * s), fill=(0, 0, 0, 60))
     # Spike points around the sphere — 12 spikes, each a thin triangle.
     for i in range(12):
         angle = i * (360.0 / 12.0)

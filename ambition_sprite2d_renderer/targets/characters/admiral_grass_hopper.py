@@ -173,7 +173,6 @@ ACTOR_METADATA = {
 }
 
 OUTLINE = (18, 22, 22, 255)
-SHADOW = (0, 0, 0, 44)
 GREEN_DARK = (41, 92, 54, 255)
 GREEN = (89, 163, 93, 255)
 GREEN_LIGHT = (140, 211, 123, 255)
@@ -550,14 +549,6 @@ def _draw_admiral(pose: Pose, anim: str, frame_idx: int, frame_count: int):
     ox = 210 + pose.root_x * SUPER
     ground_y = 386 + pose.root_y * SUPER
     bob = pose.bob * SUPER
-
-    shadow_w = round((138 + abs(pose.lean) * 0.6) / 2) * 2
-    shadow_h = round(22 + abs(pose.bob) * 0.3)
-    shadow = _piece(
-        ("shadow", shadow_w, shadow_h), shadow_w / 2 + 4,
-        lambda d, o: _ellipse(d, (o - shadow_w / 2, o, o + shadow_w / 2, o + shadow_h), SHADOW, outline=None),
-    )
-    shape_rig.place(img, shadow, (ox, ground_y - 6), 0.0, "shadow")
 
     hip_back = (ox - 42, ground_y - 112 - bob)
     hip_front = (ox - 4, ground_y - 114 - bob)

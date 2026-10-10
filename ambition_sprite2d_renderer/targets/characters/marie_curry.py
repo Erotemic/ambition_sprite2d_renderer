@@ -178,7 +178,6 @@ ACTOR_METADATA = {
 }
 
 OUTLINE = (24, 22, 30, 255)
-SHADOW = (0, 0, 0, 46)
 SKIN = (229, 199, 171, 255)
 SKIN_SHADE = (203, 169, 138, 255)
 HAIR_DARK = (71, 57, 52, 255)
@@ -551,9 +550,6 @@ def _draw_character(pose: Pose, anim: str, frame_idx: int, frame_count: int):
     ox = 216 + pose.root_x * 4
     ground_y = 388 + pose.root_y * 4
     bob = pose.bob * 4
-
-    shadow = _piece(("shadow",), (128, 30), (64, 7), lambda d: _ellipse(d, (4, 2, 126, 25), SHADOW, outline=None, width=0))
-    shape_rig.place(img, shadow, (ox, ground_y), 0.0, "shadow")
 
     hip_back = (ox - 18, ground_y - 120 - bob)
     hip_front = (ox + 14, ground_y - 120 - bob)

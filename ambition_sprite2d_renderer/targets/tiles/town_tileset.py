@@ -131,7 +131,9 @@ def _shadow(
     y2: float,
     alpha: int = 40,
 ) -> None:
-    draw.ellipse(_box(x1, y1, x2, y2), fill=(0, 0, 0, alpha))
+    # No picture. The rule of the project: a sprite has no drop shadow in it.
+    # The calls stay, to say where a prop touches the ground.
+    return
 
 
 # ---------------------------------------------------------------------------

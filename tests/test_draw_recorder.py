@@ -177,12 +177,15 @@ def test_part_edit_propagates_to_frames(tmp_path: Path) -> None:
     import ambition_sprite2d_renderer.targets.characters._pirate_common as pc
     from ambition_sprite2d_renderer.authoring.svg_scene import ComponentScene
 
-    path = pc.export_scene("pirate_raider", tmp_path / "s.svg")
+    # The quartermaster: he has a hat in the colour `hat`, and nothing else on
+    # him has that colour. (The raider has a bandana in the colour of his coat.)
+    path = pc.export_scene("pirate_quartermaster", tmp_path / "s.svg")
     text = path.read_text()
     m = re.search(r'<g id="(part_hat_[a-f0-9]+)"', text)
     assert m
+    assert "rgb(20,24,30)" in text
     edited = tmp_path / "edited.svg"
-    edited.write_text(text.replace("rgb(31,23,32)", "rgb(96,40,160)"))
+    edited.write_text(text.replace("rgb(20,24,30)", "rgb(96,40,160)"))
     a, b = ComponentScene.load(path), ComponentScene.load(edited)
     changed = sum(
         1 for key in a.frames

@@ -133,8 +133,6 @@ def _draw_base(img: Image.Image, draw: ImageDraw.ImageDraw, params: dict) -> Non
         params["core_mix"],
     )
     stone_hi = _mix(_rgba(_STONE_HI), _rgba((140, 90, 88, 255)), params["stone_mix"])
-    shadow = (0, 0, 0, 72)
-    draw.ellipse(_box(12, 149, 76, 159), fill=shadow)
 
     # Backlit aura. The activation animation broadens the glow and pushes it
     # brighter without changing the shrine's footprint.

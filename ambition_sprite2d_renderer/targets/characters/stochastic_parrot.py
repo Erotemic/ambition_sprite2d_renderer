@@ -134,7 +134,6 @@ PAL: Dict[str, Color] = {
     "talon": _rgba("#E0C590"),
     "eye": _rgba("#F8EC98"),
     "pupil": _rgba("#151417"),
-    "shadow": _rgba("#1D1A20", 90),
 }
 
 
@@ -1307,15 +1306,6 @@ def _home_canvas() -> Tuple[float, float]:
     return (PIECE_HOME[0] * SS, PIECE_HOME[1] * SS)
 
 
-def _turn_shadow(airborne: bool):
-    def paint(img, d) -> None:
-        cx, cy = _home_canvas()
-        w, h = SS * (14.0 if airborne else 19.0), SS * (3.0 if airborne else 4.0)
-        d.ellipse((cx - w, cy - h, cx + w, cy + h), fill=(*PAL["shadow"][:3], 44 if airborne else PAL["shadow"][3]))
-
-    return _piece(("turn_shadow", airborne), paint)
-
-
 def _paint_three_quarter_tail(img, d) -> None:
     """The tail, centred ``(-10, 5)`` from the view's centre."""
     cx, cy = _home_canvas()
@@ -1426,8 +1416,6 @@ def _render_turn_three_quarter(params: Dict[str, float], mirrored: bool = False)
     wing_lift = _wing_lift(params, airborne)
     view = _View(img, cx, cy, mirrored)
 
-    shadow_view = _View(img, cx, (GROUND_Y + 0.5) * SS, mirrored)
-    shadow_view.put(_turn_shadow(airborne), (0.0, 0.0), "turn_shadow")
     view.put(_piece(("three_quarter_tail",), _paint_three_quarter_tail, (-10.0, 5.0)), (-10.0, 5.0), "turn_tail")
 
     def wing(near: bool):
@@ -1525,7 +1513,6 @@ def _render_turn_front(params: Dict[str, float]) -> Image.Image:
     cy = (GROUND_Y + params.get("root_y", default_root_y) - 21.0) * SS
     wing_lift = _wing_lift(params, airborne)
 
-    _View(img, cx, (GROUND_Y + 0.5) * SS).put(_turn_shadow(airborne), (0.0, 0.0), "turn_shadow")
     # Both wings are one raster: the right wing, and it mirrored for the left.
     shoulder = (3.0, -7.1)
     wing = _piece(("front_wing", airborne), lambda img_, d: _draw_turn_front_wing(img_, d, *_home_canvas(), 0.5, airborne), shoulder)

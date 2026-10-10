@@ -49,24 +49,58 @@ def test_sockets_ride_the_body_tilt() -> None:
         assert J["hip"].point[0] > root[0] if tilt > 0 else True
 
 
-def test_legs_swing_in_world_space_not_relative_to_tilt() -> None:
-    """The defining pirate convention: a leg's world angle is its pose angle,
-    independent of the body tilt (unlike a relative-FK humanoid whose legs lean
-    with the torso). Poison the tilt; the knee angle must not move."""
+def test_limbs_swing_in_world_space_not_relative_to_tilt() -> None:
+    """The convention of the family: the world angle of a limb bone is its
+    channel of the pose, whatever the body tilt is (a relative-FK humanoid has
+    legs that lean with the torso). Poison the tilt; the angles must not move."""
     pose = animation_pose("walk", 3, 8)
     a = R.evaluate(pose, "pirate_raider", W, H, pose["body_tilt"])
     b = R.evaluate(pose, "pirate_raider", W, H, pose["body_tilt"] + 40.0)
-    assert abs(a["left_knee"].angle - pose["left_leg"]) < 1e-9
-    assert abs(b["left_knee"].angle - pose["left_leg"]) < 1e-9
-    assert abs(a["left_foot"].angle - pose["left_leg"] * 0.3) < 1e-9
+    for joints in (a, b):
+        assert abs(joints["left_knee"].angle - pose["left_thigh"]) < 1e-9
+        assert abs(joints["left_foot"].angle - pose["left_shin"]) < 1e-9
+        assert abs(joints["front_elbow"].angle - pose["sword_upper"]) < 1e-9
+        assert abs(joints["front_hand"].angle - pose["sword_fore"]) < 1e-9
 
 
-def test_admiral_narrows_the_shoulders() -> None:
-    pose = _zero_pose()
-    raider = R.evaluate(pose, "pirate_raider", W, H, 0.0)
-    admiral = R.evaluate(pose, "pirate_admiral", W, H, 0.0)
-    span = lambda J: J["back_shoulder"].point[0] - J["front_shoulder"].point[0]
-    assert span(admiral) < span(raider)
+def test_the_head_stays_on_the_body_in_every_frame() -> None:
+    """The head is a bone of the chest: it turns about the base of the neck.
+    The pirates before 2026-10-10 had a head on the root, and a pose that
+    turned it took it far from the body. No frame may do that."""
+    from ambition_sprite2d_renderer.authoring.sheet_build import ANIMATIONS
+
+    neck = math.hypot(6.0, 62.0)
+    for anim, count, _ms in ANIMATIONS:
+        for index in range(count):
+            pose = animation_pose(anim, index, count)
+            joints = R.evaluate(pose, "pirate_raider", W, H, pose["body_tilt"])
+            (hx, hy), (cx, cy) = joints["head"].point, joints["chest"].point
+            assert abs(math.hypot(hx - cx, hy - cy) - neck) < 2.5, (anim, index)
+            # The head does not turn far from the line of the body.
+            assert abs(pose["head_tilt"]) <= 16.0, (anim, index)
+
+
+def test_a_standing_pose_has_a_foot_on_the_ground() -> None:
+    """Each pose but the death is planted: the lower foot is on the ground."""
+    from ambition_sprite2d_renderer.authoring.sheet_build import ANIMATIONS
+
+    for anim, count, _ms in ANIMATIONS:
+        if anim == "death":
+            continue
+        for index in range(count):
+            pose = animation_pose(anim, index, count)
+            joints = R.evaluate(pose, "pirate_raider", W, H, pose["body_tilt"])
+            low = max(joints["left_foot"].point[1], joints["right_foot"].point[1])
+            assert abs(low - R.ground_y(H)) < 0.5, (anim, index, low)
+
+
+def test_the_sword_arm_is_on_the_side_the_pirate_looks_to() -> None:
+    """The arm with the sword is to the front and the other arm is behind, so
+    the two arms do not cross over the chest in the guard."""
+    pose = animation_pose("idle", 0, 6)
+    joints = R.evaluate(pose, "pirate_raider", W, H, pose["body_tilt"])
+    assert joints["front_shoulder"].point[0] > joints["back_shoulder"].point[0]
+    assert joints["front_hand"].point[0] > joints["chest"].point[0] > joints["back_hand"].point[0]
 
 
 def test_golden_walk_pose() -> None:
@@ -76,22 +110,22 @@ def test_golden_walk_pose() -> None:
     pose = animation_pose("walk", 3, 8)
     J = R.evaluate(pose, "pirate_raider", W, H, pose["body_tilt"])
     golden = {
-        "root": ((263.071, 435.931), 3.536),
-        "hip": ((266.771, 376.045), 3.536),
-        "chest": ((270.609, 313.931), 3.536),
-        "head": ((276.929, 233.540), 1.657),
-        "back_shoulder": ((295.412, 301.669), 3.536),
-        "front_shoulder": ((245.507, 298.586), 3.536),
-        "left_hip": ((250.555, 379.050), 3.536),
-        "right_hip": ((284.490, 381.147), 3.536),
-        "left_knee": ((250.727, 409.315), -7.920),
-        "right_knee": ((284.319, 411.412), 7.920),
-        "left_foot": ((243.977, 439.621), -2.376),
-        "right_foot": ((291.420, 433.240), 2.376),
-        "back_elbow": ((281.775, 352.009), 19.556),
-        "back_hand": ((272.817, 399.165), 10.756),
-        "front_elbow": ((277.286, 337.652), -32.284),
-        "front_hand": ((288.679, 382.219), -14.340),
+        "root": ((256.000, 427.519), 5.000),
+        "hip": ((263.321, 343.838), 5.000),
+        "chest": ((269.073, 278.089), 5.000),
+        "head": ((277.233, 216.337), 2.000),
+        "back_shoulder": ((246.036, 266.036), 5.000),
+        "front_shoulder": ((291.861, 270.045), 5.000),
+        "left_hip": ((249.026, 346.603), 5.000),
+        "right_hip": ((276.919, 349.043), 5.000),
+        "left_knee": ((236.410, 384.561), 18.385),
+        "right_knee": ((289.535, 387.002), -18.385),
+        "left_foot": ((204.156, 408.219), 53.740),
+        "right_foot": ((302.151, 424.960), -18.385),
+        "back_elbow": ((248.420, 311.974), -2.971),
+        "back_hand": ((266.151, 350.048), -24.971),
+        "front_elbow": ((299.657, 315.379), -9.757),
+        "front_hand": ((340.702, 324.286), -77.757),
     }
     assert set(golden) == set(J), "every evaluated joint must be pinned"
     for name, ((gx, gy), ga) in golden.items():

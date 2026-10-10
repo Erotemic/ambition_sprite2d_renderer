@@ -119,14 +119,10 @@ def _rounded_rect(
 def draw_pickup_ring(d: ImageDraw.ImageDraw, s: float) -> None:
     """Draw a readable gold ring at entity-sprite scale."""
     dark = rgba("#5A3307")
-    shadow = (0, 0, 0, 38)
     gold = rgba("#F7B51E")
     light = rgba("#FFE985")
     hot = rgba("#FFF8C6")
     amber = rgba("#C97A10")
-
-    # Soft contact shadow below the hovering ring.
-    _ellipse(d, 64, 96, 52, 11, fill=shadow, s=s)
 
     # Outer + inner outlines make the crop robust against light backgrounds.
     _ellipse(d, 64, 60, 70, 86, fill=gold, outline=dark, width=3.0, s=s)
@@ -160,9 +156,6 @@ def draw_spring_red(d: ImageDraw.ImageDraw, s: float) -> None:
     metal_dark = rgba("#4C5560")
     metal = rgba("#AEB7C2")
     metal_light = rgba("#E8EEF5")
-
-    # Ground shadow.
-    _ellipse(d, 64, 107, 74, 13, fill=(0, 0, 0, 45), s=s)
 
     # Base foot.
     _rounded_rect(

@@ -247,14 +247,6 @@ def _draw_gate_ring_base(
     )
     draw = blending_draw(img)
 
-    shadow_bbox = (
-        CENTER[0] - 50 * SUPER,
-        CENTER[1] + 54 * SUPER,
-        CENTER[0] + 50 * SUPER,
-        CENTER[1] + 66 * SUPER,
-    )
-    draw.ellipse(shadow_bbox, fill=(0, 0, 0, 56))
-
     ring = Image.new("RGBA", img.size, (0, 0, 0, 0))
     rd = blending_draw(ring)
 

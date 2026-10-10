@@ -144,7 +144,6 @@ ROWS: List[Tuple[str, int, int]] = [
 TRANSPARENT = (0, 0, 0, 0)
 OUTLINE = (10, 12, 17, 255)
 OUTLINE_SOFT = (22, 25, 33, 255)
-SHADOW = (12, 14, 22, 88)
 SMOKE = (36, 43, 58, 115)
 UNDERSUIT = (17, 21, 30, 255)
 CLOTH_DEEP = (23, 28, 39, 255)
@@ -1101,17 +1100,6 @@ def _render_frame(
     rig, local = _build_rig(pose)
     torso = pose.torso
 
-    # Ground shadow (its width follows the fall: a few steps).
-    death = SR.q(pose.death, 0.125)
-
-    def paint_shadow(d, o) -> None:
-        width = 60.0 * FS * (1.0 - death * 0.12)
-        height = 10.0 * FS
-        _ellipse(d, o[0], o[1], width, height, SHADOW, None, 0)
-        _ellipse(d, o[0] - 5, o[1] - 1, width * 0.62, height * 0.55, (8, 10, 16, 55), None, 0)
-
-    shadow = _piece(("ninja_shadow", death), (64 * FS, 12 * FS, 64 * FS, 12 * FS), paint_shadow)
-    _place(image, shadow, (rig.root[0] + pose.death * 14.0, rig.root[1] + 10.0 * FS), 0.0, "shadow")
     _draw_smoke_ribbon(draw, rig, pose)
 
     # Weapon behind the body in neutral poses.  During the strike it crosses in

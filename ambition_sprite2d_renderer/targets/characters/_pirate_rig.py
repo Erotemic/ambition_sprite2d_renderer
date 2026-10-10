@@ -7,13 +7,13 @@ changes: ``paint_character`` now reads every joint from :func:`evaluate` instead
 of recomputing it, so the animation lives on bones that can be edited, sampled,
 and (next) exported to an SVG paper-doll assembled by this same skeleton.
 
-The pirate keeps its OWN kinematic convention — deliberately not the shared
-humanoid FK rig. A joint is ``parent_point + rot(offset, world_angle)`` where the
-offset is rotated by the CHILD's own world angle: limb segments swing in world
-space while their sockets ride the tilted pelvis. That mix (tilted sockets,
-world-space swing) is exactly what gives the pirate its current read, so
-reproducing it faithfully means modelling it as-is rather than reshaping it into
-a relative-FK tree whose legs would lean with the body.
+The proportions are of 2026-10-10 (the pirates were drawn again): legs of 80,
+a torso of 66, a head whose middle is 62 over the line of the shoulders.
+
+A joint is ``parent_point + rot(offset, world_angle)`` where the offset is
+rotated by the CHILD's own world angle: the bones of a limb swing in world
+space while their sockets ride the tilted body. A pose thus says where a
+forearm or a shin points on the screen, whatever the body does.
 
 Angles use the renderer's screen convention: degrees, +y down, clockwise
 positive. Offsets are in supersampled paint pixels (the space ``paint_character``
@@ -28,14 +28,6 @@ from typing import Callable, Dict, Mapping, Optional, Tuple
 from ...authoring.sheet_build import SCALE, transform
 
 Point = Tuple[float, float]
-
-# The admiral differs from the other pirates in two bits of skeleton geometry:
-# slightly narrower shoulder sockets (see the shoulder bones below) and a stance
-# nudged left of centre (see root_origin). Both live here so the skeleton — not
-# the paint pass — owns per-kind geometry. (Purely painted per-kind traits — the
-# admiral's eyepatch, longer blade, scarf blade-curve — stay in paint_character.)
-_ADMIRAL = "pirate_admiral"
-
 
 @dataclass(frozen=True)
 class PirateBone:
@@ -59,64 +51,59 @@ class BonePose:
     angle: float
 
 
+#: The length of a thigh and of a shin, and of an upper arm and a forearm, in
+#: paint pixels.
+THIGH = SHIN = 40.0
+UPPER_ARM, FOREARM = 46.0, 42.0
+
 # Parent-first declaration; a single in-order pass evaluates the tree.
+#
+# A limb angle is a world angle: 0 is down, a negative angle is to the front
+# (the right of the picture, where the pirate looks), a positive one is to the
+# back. Each bone of a limb has its own channel in the pose, so a knee and an
+# elbow bend where the pose says.
 PIRATE_BONES: Tuple[PirateBone, ...] = (
-    # Pelvis / spine / head ride the body tilt from the root.
-    PirateBone("hip", None, lambda p, k: (0.0, -60.0), lambda p, k, tilt: tilt),
+    # The pelvis and the chest ride the body tilt from the root.
+    PirateBone("hip", None, lambda p, k: (0.0, -84.0), lambda p, k, tilt: tilt),
     PirateBone(
         "chest", None,
-        lambda p, k: (0.0, -124.0 + p["shoulder_bounce"]),
+        lambda p, k: (0.0, -150.0 + p["shoulder_bounce"]),
         lambda p, k, tilt: tilt,
     ),
+    # The head is on the chest: it turns about the base of the neck, so no
+    # pose can take it away from the body.
     PirateBone(
-        "head", None,
-        lambda p, k: (8.0, -202.0 + p["head_y"]),
+        "head", "chest",
+        lambda p, k: (6.0, -62.0 + p["head_y"]),
         lambda p, k, tilt: tilt + p["head_tilt"],
     ),
-    # Shoulder + hip sockets: fixed offsets, tilt-oriented.
-    PirateBone(
-        "back_shoulder", None,
-        lambda p, k: ((20.0 if k == _ADMIRAL else 24.0), -136.0),
-        lambda p, k, tilt: tilt,
-    ),
-    PirateBone(
-        "front_shoulder", None,
-        lambda p, k: ((-22.0 if k == _ADMIRAL else -26.0), -136.0),
-        lambda p, k, tilt: tilt,
-    ),
-    PirateBone("left_hip", None, lambda p, k: (-16.0, -56.0), lambda p, k, tilt: tilt),
-    PirateBone("right_hip", None, lambda p, k: (18.0, -56.0), lambda p, k, tilt: tilt),
-    # Legs swing in world angles off their sockets.
-    PirateBone("left_knee", "left_hip", lambda p, k: (-4.0, 30.0), lambda p, k, tilt: p["left_leg"]),
-    PirateBone("right_knee", "right_hip", lambda p, k: (4.0, 30.0), lambda p, k, tilt: p["right_leg"]),
-    PirateBone(
-        "left_foot", "left_knee",
-        lambda p, k: (-8.0, 30.0 - p["left_foot_lift"]),
-        lambda p, k, tilt: p["left_leg"] * 0.3,
-    ),
-    PirateBone(
-        "right_foot", "right_knee",
-        lambda p, k: (8.0, 30.0 - p["right_foot_lift"]),
-        lambda p, k, tilt: p["right_leg"] * 0.3,
-    ),
-    # Back arm (weapon-free) then front arm (weapon).
-    PirateBone("back_elbow", "back_shoulder", lambda p, k: (4.0, 52.0), lambda p, k, tilt: p["left_arm"]),
-    PirateBone("back_hand", "back_elbow", lambda p, k: (0.0, 48.0), lambda p, k, tilt: p["left_arm"] * 0.55),
-    PirateBone("front_elbow", "front_shoulder", lambda p, k: (6.0, 50.0), lambda p, k, tilt: p["right_arm"]),
-    PirateBone("front_hand", "front_elbow", lambda p, k: (0.0, 46.0), lambda p, k, tilt: p["weapon"] * 0.35),
+    # The shoulders are on the chest. The arm with the sword is on the side
+    # the pirate looks to; the other arm is on the side behind.
+    PirateBone("back_shoulder", "chest", lambda p, k: (-24.0, -10.0), lambda p, k, tilt: tilt),
+    PirateBone("front_shoulder", "chest", lambda p, k: (22.0, -10.0), lambda p, k, tilt: tilt),
+    PirateBone("left_hip", None, lambda p, k: (-14.0, -80.0), lambda p, k, tilt: tilt),
+    PirateBone("right_hip", None, lambda p, k: (14.0, -80.0), lambda p, k, tilt: tilt),
+    PirateBone("left_knee", "left_hip", lambda p, k: (0.0, THIGH), lambda p, k, tilt: p["left_thigh"]),
+    PirateBone("right_knee", "right_hip", lambda p, k: (0.0, THIGH), lambda p, k, tilt: p["right_thigh"]),
+    PirateBone("left_foot", "left_knee", lambda p, k: (0.0, SHIN), lambda p, k, tilt: p["left_shin"]),
+    PirateBone("right_foot", "right_knee", lambda p, k: (0.0, SHIN), lambda p, k, tilt: p["right_shin"]),
+    # The arm with no sword, then the arm with the sword.
+    PirateBone("back_elbow", "back_shoulder", lambda p, k: (0.0, UPPER_ARM), lambda p, k, tilt: p["off_upper"]),
+    PirateBone("back_hand", "back_elbow", lambda p, k: (0.0, FOREARM), lambda p, k, tilt: p["off_fore"]),
+    PirateBone("front_elbow", "front_shoulder", lambda p, k: (0.0, UPPER_ARM), lambda p, k, tilt: p["sword_upper"]),
+    PirateBone("front_hand", "front_elbow", lambda p, k: (0.0, FOREARM), lambda p, k, tilt: p["sword_fore"]),
 )
 
 
+def ground_y(h: float) -> float:
+    """Where the ground is in a frame ``h`` paint pixels high."""
+    return h * 0.83
+
+
 def root_origin(pose: Mapping[str, float], kind: str, w: float, h: float) -> Point:
-    """The whole-body root (``char_origin``): stance centre + walk/idle drift and
-    the death lean, in supersampled paint pixels."""
-    death_t = pose.get("death_t", 0.0)
-    cx = w * (0.48 if kind == _ADMIRAL else 0.50)
-    ground = h * 0.83
-    return (
-        cx + pose["root_x"] * SCALE + death_t * 12.0 * SCALE,
-        ground + pose["bob"] * SCALE + death_t * 5.0 * SCALE,
-    )
+    """The whole-body root (``char_origin``): the middle of the stance on the
+    ground, moved by the pose (``root_x`` and ``bob`` are in frame pixels)."""
+    return (w * 0.50 + pose["root_x"] * SCALE, ground_y(h) + pose["bob"] * SCALE)
 
 
 def evaluate(
@@ -142,4 +129,4 @@ def evaluate(
     return out
 
 
-__all__ = ["PirateBone", "BonePose", "PIRATE_BONES", "root_origin", "evaluate"]
+__all__ = ["PirateBone", "BonePose", "PIRATE_BONES", "ground_y", "root_origin", "evaluate"]

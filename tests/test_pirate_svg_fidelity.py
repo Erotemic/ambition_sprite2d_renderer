@@ -12,13 +12,16 @@ guards here:
   ``equivalence_harness._frame_defects``), which catches *mislocation* (a part
   placed at the wrong joint shifts occupancy well past the floor).
 
-Honest scope: the SOLID geometry reproduces at a uniform ~0.045-0.05 occupancy
-floor (resvg-vs-Pillow stroke-edge AA, sub-2px, visually identical). The six
-slash frames sit higher (~0.075-0.09) solely because of the translucent
-swoosh effect — suppressing just that arc drops them back to the floor — which is
-the accepted translucent-compositing divergence class (as with glows), NOT lost
-geometry. So the slash frames do not pass the strict ``_frame_verified`` (0.07)
-gate, and that is a documented by-design divergence, not a reproduction defect.
+Honest scope: the SOLID geometry reproduces at a uniform occupancy floor
+(resvg-vs-Pillow stroke-edge AA, sub-2px, visually identical). The six slash
+frames sit higher solely because of the translucent swoosh effect — suppressing
+just that arc drops them back to the floor — which is the accepted
+translucent-compositing divergence class (as with glows), NOT lost geometry.
+
+The numbers are a ratio to the area of the body. Measured 2026-10-10, after the
+pirates were drawn again with full bodies (raider and admiral): each solid
+frame 0.021 to 0.031, each slash frame 0.036 to 0.055. The thin body before
+that day had less area for the same edges: ~0.045-0.05 and ~0.075-0.09.
 
 Comparison is in supersampled paint space (before the sheet crop/fit) to isolate
 rig+SVG reproduction; the post-crop 128px ship path is exercised by the harness
@@ -106,17 +109,34 @@ def test_svg_scene_reproduces_pirate(kind: str) -> None:
     assert statistics.median(occs) <= MEDIAN_OCC_MAX, (kind, statistics.median(occs))
 
 
+#: Over each solid frame (at most 0.031 when measured).
+SOLID_FLOOR_MAX = 0.04
+
+
 def test_only_the_translucent_slash_swoosh_exceeds_the_solid_floor() -> None:
     """Pins the honest fidelity story: SOLID geometry reproduces at a uniform
-    floor (~0.045-0.05), and the ONLY frames above ~0.06 are slash frames — and
-    only because of the translucent swoosh effect, not lost geometry. This keeps
-    a real solid-geometry regression from hiding behind the slash allowance."""
+    floor, and the ONLY frames that may be above it are slash frames — and only
+    because of the translucent swoosh effect, not lost geometry. This keeps a
+    real solid-geometry regression from hiding behind the slash allowance."""
     kind = "pirate_raider"
     scene = P.build_scene(kind)
     over = set()
     for anim, n, _ms in P.ANIMATIONS:
         for i in range(n):
             d = _frame_defects(_pil(kind, anim, i, n), _svg(scene, anim, i))
-            if d.occupancy > 0.06:
+            if d.occupancy > SOLID_FLOOR_MAX:
                 over.add(anim)
-    assert over == {"slash"}, f"only slash should exceed the solid floor: {over}"
+    assert over <= {"slash"}, f"only slash may exceed the solid floor: {over}"
+
+
+def test_each_frame_is_inside_the_sheet_frame() -> None:
+    """The sheet frame is one size for each frame of each pirate
+    (``RIG_FRAME``). A pose that goes out of it is cut at the edge: the sword
+    over the head was, when the poses were made again and the frame was not."""
+    for kind in P.PALETTES:
+        for anim, n, _ms in P.ANIMATIONS:
+            for i in range(n):
+                frame = P.draw_rig_frame(kind, anim, i, n)
+                x0, y0, x1, y1 = frame.getchannel("A").getbbox()
+                assert x0 >= 2 and y0 >= 2, (kind, anim, i, (x0, y0))
+                assert x1 <= frame.width - 2 and y1 <= frame.height - 2, (kind, anim, i, (x1, y1))

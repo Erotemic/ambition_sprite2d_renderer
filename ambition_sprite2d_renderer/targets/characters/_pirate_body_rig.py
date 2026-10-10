@@ -80,7 +80,7 @@ def body_rig_for_pirate(
     then the published ``feet`` pixel as origin. The fit scale does not turn,
     so a joint keeps its evaluated angle.
     """
-    from ._pirate_common import SCARFED_KINDS, animation_pose
+    from ._pirate_common import animation_pose
 
     w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
     dx, dy = float(frame_transform["dx"]), float(frame_transform["dy"])
@@ -91,7 +91,7 @@ def body_rig_for_pirate(
         for index in range(int(frame_count)):
             fit = frame_fits[(anim, index)]
             pose = animation_pose(anim, index, frame_count)
-            tilt = pose["body_tilt"] + (5 if kind in SCARFED_KINDS and anim == "taunt" else 0)
+            tilt = pose["body_tilt"]
             joints = pirate_rig.evaluate(pose, kind, w, h, tilt)
             world: Dict[str, Affine] = {}
             poses: List[JointPose] = []
