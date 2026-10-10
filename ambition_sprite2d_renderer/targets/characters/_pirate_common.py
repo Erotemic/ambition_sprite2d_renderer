@@ -409,6 +409,9 @@ class Look:
     stripes: bool = False
     #: Lashes at the eyes and colour on the lips.
     lashes: bool = False
+    #: A cutlass painted in the hand. False for a pirate whose weapon the game
+    #: draws in that hand: two weapons in one hand is what a painted one gives.
+    sword: bool = True
 
 
 LOOKS: Dict[str, Look] = {
@@ -419,6 +422,8 @@ LOOKS: Dict[str, Look] = {
     "pirate_raider": Look(
         build=1.0, headwear="bandana", band="coat", hair=(77, 42, 23, 255),
         beard="full", earring=True, coat="short", stripes=True,
+        # The game puts a gun-sword in his hand (`held_item` of the catalog).
+        sword=False,
     ),
     "pirate_quartermaster": Look(
         build=1.17, headwear="tricorn", band="sash", hair=(38, 24, 16, 255),
@@ -847,11 +852,12 @@ def paint_character(
               (24 * b, 20 * b, 17 * b), pal.outline, 4, cuff=pal.coat2)
     blade = 92 if kind == "pirate_admiral" else 86
     curve = 16 if kind in SCARFED_KINDS else 5
-    draw_sword(draw, front_hand, pose["weapon"], blade, pal, curve=curve)
+    if look.sword:
+        draw_sword(draw, front_hand, pose["weapon"], blade, pal, curve=curve)
     # The hand is over the grip of the sword.
     with draw.part("front_hand", front_hand, 0.0):
         circle(draw, (0, 0), 10, pal.skin, pal.outline, width=3)
-    if anim == "slash" and frame_idx in _SWOOSH:
+    if look.sword and anim == "slash" and frame_idx in _SWOOSH:
         # The path of the blade in the air: a part of a circle about the
         # shoulder, from where the blade was to where it is.
         start, end = _SWOOSH[frame_idx]
@@ -860,7 +866,7 @@ def paint_character(
                    front_shoulder[0] + reach, front_shoulder[1] + reach)
         draw.arc(arc_box, start=start, end=end, fill=(255, 245, 200, 180), width=8)
         draw.arc(arc_box, start=start + 8, end=end - 6, fill=(255, 255, 255, 120), width=4)
-    elif anim in {"idle", "walk", "taunt"} and frame_idx % 2 == 0:
+    elif look.sword and anim in {"idle", "walk", "taunt"} and frame_idx % 2 == 0:
         blade_tip = transform((blade, curve), front_hand, pose["weapon"])
         with draw.part("glint", blade_tip, 0.0):
             line(draw, [(0, 0), (10, -8)], (255, 255, 255, 100), width=2)

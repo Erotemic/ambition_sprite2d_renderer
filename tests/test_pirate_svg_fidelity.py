@@ -81,14 +81,16 @@ def test_scene_contains_and_places_every_expected_part(kind: str) -> None:
     scene = P.build_scene(kind)
     assert scene.missing_part_refs() == [], "every <use> must resolve to a part"
     names = {name for _pid, (name, _body) in scene.parts.items()}
-    assert not (CORE_PARTS - names), f"{kind} scene dropped parts: {CORE_PARTS - names}"
+    # A pirate whose weapon the game draws has no sword painted in his hand.
+    core = CORE_PARTS if P.LOOKS[kind].sword else CORE_PARTS - {"sword"}
+    assert not (core - names), f"{kind} scene dropped parts: {core - names}"
     # A part must be REGISTERED and PLACED — a regression that stops emitting a
     # part's <use> leaves it registered but unrendered, which occupancy catches
     # only weakly for small parts. Require each core part's def to be referenced
     # by at least one posed frame, so a dropped placement fails structurally.
     all_frames = "".join(scene.frames.values())
     for pid, (name, _body) in scene.parts.items():
-        if name in CORE_PARTS:
+        if name in core:
             assert pid in all_frames, f"{kind}: part {name!r} ({pid}) is never placed"
     # Minimal: parts are deduped. The limbs, hands and collar are parts too
     # (each bone once per length): measured 2026-10-03, 35 (raider) and 34
