@@ -505,11 +505,12 @@ def draw_neck(draw, chest, head_center, global_tilt, pal, look: Look):
         poly(draw, [(-21, -31), (-3, -23), (-11, -6), (-24, -14)], pal.shirt, pal.outline, width=3)
         poly(draw, [(3, -23), (21, -31), (24, -14), (11, -6)], pal.shirt, pal.outline, width=3)
         if look.coat == "long":
-            # A knot of cloth at the throat, and its two ends.
+            # A knot of cloth at the throat with its two ends: one shape. Three
+            # small shapes with their own lines were a few sprite pixels of
+            # noise, and the part flipbook could not replay them.
             knot = pal.accent or pal.coat2
-            poly(draw, rotated_rect_points((0, -13), 12, 9, 0.0), knot, pal.outline, width=2)
-            poly(draw, [(-2, -9), (-11, 7), (-3, 9), (1, -2)], knot, pal.outline, width=2)
-            poly(draw, [(2, -9), (11, 7), (4, 9), (-1, -2)], knot, pal.outline, width=2)
+            poly(draw, [(-8, -18), (8, -18), (5, -7), (12, 8), (4, 10), (0, 1), (-4, 10), (-12, 8), (-5, -7)],
+                 knot, pal.outline, width=2)
 
 
 #: The head, from the middle of it: a skull with a jaw, the chin a little to
@@ -802,7 +803,9 @@ def paint_character(
                   (28 * b, 24 * b, 19 * b), pal.outline, 4, end_cap=False)
         # A foot on the ground is flat on it. A foot in the air goes with its
         # shin, and so do the feet of a body that is down.
-        lifted = max(0.0, min(1.0, (ground - foot_pt[1]) / 14.0))
+        # A foot within 4 px of the ground is on it: a boot turned by a part
+        # of a degree is a sole one row off in the part flipbook.
+        lifted = max(0.0, min(1.0, (ground - foot_pt[1] - 4.0) / 12.0))
         draw_boot(draw, foot_pt, pose[f"{side}_shin"] * max(lifted, death_t), pal)
     # The seat of the trousers, between the two legs and under the coat.
     with draw.part("seat", hip, global_tilt):
@@ -908,7 +911,11 @@ RIG_REDUCTION = 3
 #: over the head), 11 down (the boots).
 RIG_FRAME = (220, 164)
 #: Where the idle pose's box centre (x) and feet (y) land in ``RIG_FRAME``.
-RIG_IDLE_ANCHOR = (118.0, 148.0)
+#: The feet are at the middle of a pixel row, not on the line between two
+#: rows: on the line, the render and the part flipbook put the bottom row of a
+#: sole on different sides of it (measured 2026-10-10: at 148.0 and at 148.33
+#: a walk frame had a row of 10 wrong pixels; at 148.5 no frame has over 5).
+RIG_IDLE_ANCHOR = (118.0, 148.5)
 
 #: (kind, frame size) -> (scale, offset): a paint point ``p`` lands at
 #: ``p * scale + offset`` on the reduction canvas.

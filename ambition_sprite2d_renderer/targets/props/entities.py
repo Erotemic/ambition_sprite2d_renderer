@@ -385,10 +385,13 @@ def boss_core(d: ImageDraw.ImageDraw, s: float) -> None:
 
 
 def sandbag_dummy(d: ImageDraw.ImageDraw, s: float) -> None:
-    """A bag to hit: canvas with a lit side, a rope at the neck and a
-    target painted on it."""
+    """The bag to hit. Its look is the point (Jon, 2026-10-10): it is to bring
+    the sandbag of Super Smash Bros. to mind. A plain upright bag of canvas, a
+    seam about its neck, a cross of two stitched lines on its front, and a cap
+    on top. No target and no other mark on it."""
     outline = rgba("#2A1D13")
-    canvas, canvas_hi, canvas_lo = "#B58A5D", "#D8B080", "#8C6640"
+    canvas, canvas_hi, canvas_lo = "#B58A5D", "#D3AB7B", "#93693F"
+    stitch = rgba("#6A4C32")
     d.rounded_rectangle(
         (45 * s, 30 * s, 83 * s, 91 * s),
         radius=17 * s,
@@ -396,23 +399,17 @@ def sandbag_dummy(d: ImageDraw.ImageDraw, s: float) -> None:
         outline=outline,
         width=max(1, int(2 * s)),
     )
-    # The side in shade and the side in light.
+    # The side in shade and the side in light, under the seam of the neck.
     d.rounded_rectangle((72 * s, 49 * s, 80.5 * s, 85 * s), radius=4.2 * s, fill=rgba(canvas_lo))
     d.rounded_rectangle((66 * s, 49 * s, 74 * s, 87 * s), radius=4 * s, fill=_mix(canvas, canvas_lo, 0.5))
     d.rounded_rectangle((48.5 * s, 49 * s, 54 * s, 84 * s), radius=2.7 * s, fill=rgba(canvas_hi))
     _line(d, s, [(52, 36), (58, 32.6)], rgba(canvas_hi), 1.6)
-    # The target.
-    _disc(d, s, 64, 67, 13, rgba("#EFE3C6"), outline=outline)
-    _disc(d, s, 64, 67, 9, rgba("#C8483C"))
-    _disc(d, s, 64, 67, 5.4, rgba("#EFE3C6"))
-    _disc(d, s, 64, 67, 2.4, rgba("#C8483C"))
-    # The rope at the neck.
-    _rect(d, s, (47.5, 42.5, 80.5, 47), rgba("#6A4C32"), outline=outline, width=1)
-    for x in range(50, 80, 5):
-        _line(d, s, [(x, 46.2), (x + 2.4, 43.4)], rgba("#A98258"), 1.1)
-    # A patch, with its stitches.
-    d.polygon(poly_scaled([(55, 82), (62, 81), (62.6, 87), (56, 87.6)], s), fill=rgba("#DCC6A0"), outline=outline)
-    # The cap the bag hangs from.
+    # The seam about the neck.
+    _line(d, s, [(48, 45), (80, 45)], stitch, 2.0)
+    # The cross on the front: two lines of thick thread.
+    _line(d, s, [(52, 58), (76, 76)], stitch, 3.0)
+    _line(d, s, [(76, 58), (52, 76)], stitch, 3.0)
+    # The cap on top.
     _rect(d, s, (58, 24, 70, 35), rgba("#755236"), outline=outline, width=1)
     _line(d, s, [(60, 26), (60, 33)], rgba("#A07A54"), 1.3)
 

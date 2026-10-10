@@ -49,7 +49,12 @@ def _published_frame(atlas, row, index, frame_size):
     return frame
 
 
-@pytest.mark.parametrize("kind", ["pirate_raider", "pirate_admiral"])
+# Each of the five: each has its own build and its own headwear, and the
+# quartermaster alone did not replay when the poses were made again (a publish
+# of the five found it, this test with two of them did not).
+@pytest.mark.parametrize("kind", [
+    "pirate_raider", "pirate_admiral", "pirate_quartermaster", "pirate_lookout", "pirate_navigator",
+])
 def test_the_flipbook_recomposes_every_published_frame(kind, tmp_path: Path):
     outputs, products = render_target_with_products(kind, tmp_path)
     flipbook = products["parts"]
