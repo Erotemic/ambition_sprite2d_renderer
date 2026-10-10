@@ -75,6 +75,9 @@ SKINS: tuple[Skin, ...] = (
     # The clean state of the two-state hub: pale marble with a line of gold.
     # The look of that room draws its own blocks, and this is what the room
     # has on a device that does not draw the look.
+    # The lab with its power out: the same steel, darker, and the light of
+    # its strip is the red of the alarm.
+    Skin("alarm", "panel", (34, 37, 52), (9, 10, 18), (82, 88, 114), (255, 86, 68), "strip", (58, 60, 82), "pipes", "grate"),
     Skin("hub_clean", "block", (226, 220, 208), (150, 144, 138), (255, 252, 244), (226, 178, 86), "edge", (240, 234, 222), "lip", "slab"),
     Skin("hub", "panel", (40, 40, 94), (15, 15, 46), (92, 94, 164), (255, 206, 140), "strip", (70, 70, 134), "lip", "grate"),
     Skin("basement", "brick", (88, 42, 32), (30, 13, 11), (146, 78, 54), (255, 150, 60), "plate", (58, 42, 40), "bolts", "grate"),

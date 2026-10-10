@@ -49,6 +49,7 @@ Scene = Callable[[str, Art], np.ndarray]
 SCENES: dict[str, Scene] = {
     "hub": arenas.hub,
     "lab": interiors.lab,
+    "alarm": interiors.alarm,
     "basement": interiors.foundry,
     "cave": interiors.cave,
     "cove": outdoors.cove,

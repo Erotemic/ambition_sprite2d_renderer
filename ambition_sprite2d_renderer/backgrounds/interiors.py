@@ -1,4 +1,5 @@
-"""The scenes of the rooms that are inside: the lab and the foundry."""
+"""The scenes of the rooms that are inside: the lab, the lab with its alarm
+on, the foundry and the cave."""
 
 from __future__ import annotations
 
@@ -24,8 +25,28 @@ LAB = {
 }
 
 
+#: The lab with its power out and its alarm on: the raid. The air is dark and
+#: cold, and the light is the red of the beacons.
+ALARM = {
+    "deep": (5, 6, 12),
+    "wall": (15, 18, 30),
+    "air": (36, 38, 58),
+    "glow": (255, 78, 62),
+    "steel": (7, 8, 15),
+    "steel_light": (40, 44, 64),
+    "amber": (255, 196, 104),
+}
+
+
 def lab(layer_key: str, art: Art) -> np.ndarray:
-    p = LAB
+    return _lab(layer_key, art, LAB, False)
+
+
+def alarm(layer_key: str, art: Art) -> np.ndarray:
+    return _lab(layer_key, art, ALARM, True)
+
+
+def _lab(layer_key: str, art: Art, p: dict, raided: bool) -> np.ndarray:
     core = (0.66, 0.47)
     if layer_key == "sky":
         layer = art.opaque(art.ramp([(0.0, p["deep"]), (0.38, p["wall"]), (0.60, p["air"]), (0.80, p["wall"]), (1.0, p["deep"])]))
@@ -57,6 +78,13 @@ def lab(layer_key: str, art: Art) -> np.ndarray:
         art.light(layer, art.mask_of(eye, blur=1.5) * (0.45 + 0.55 * swirl), p["glow"], 0.62)
         art.light(layer, art.spot(*core, 0.07, 1.4), (230, 255, 248), 0.55)
         art.shade(layer, art.noise("stain", cells=3.0, octaves=5) * art.band(0.5, 0.6, 0.6), 0.16)
+        if raided:
+            # A beacon on each third rib of the wall, and smoke under the roof.
+            beacons = [(u, 0.275, 0.0035) for u in (0.0625, 0.25, 0.4375, 0.875)]
+            for u, v, _ in beacons:
+                art.light(layer, art.spot(u, v, 0.15, 1.7), p["glow"], 0.30)
+            lamps(art, layer, beacons, p["glow"], halo=6.0, strength=1.0)
+            art.shade(layer, fog(art, "smoke", 0.10, 0.22, cells=3.0), 0.55)
         art.grain(layer, "grain")
         return layer
     if layer_key == "far_backplate":
@@ -143,6 +171,16 @@ def lab(layer_key: str, art: Art) -> np.ndarray:
         for _ in range(9):
             a, b = rng.uniform(-0.05, 1.0), rng.uniform(0.08, 0.3)
             pen.curve((a, 0.0), (a + b, 0.0), rng.uniform(0.07, 0.19), 0.0028)
+        sparks = []
+        if raided:
+            # A beam of the gantry that came down, and cables that are cut:
+            # each one hangs straight, with a spark at its end.
+            pen.line([(0.20, 0.318), (0.335, 0.69)], 0.016)
+            pen.line([(0.335, 0.69), (0.39, 0.66)], 0.010)
+            for u in (0.27, 0.52, 0.61, 0.79):
+                end = rng.uniform(0.40, 0.56)
+                pen.line([(u, 0.0), (u + rng.uniform(-0.008, 0.008), end)], 0.0028)
+                sparks.append((u, end, 0.0026))
         mask = art.mask_of(image)
         layer = solid(art, mask, mix(p["steel"], p["steel_light"], 0.42), scale(p["steel"], 0.8), 0.30, 0.72, "near metal", 0.07)
         art.light(layer, art.rim(mask, 0.0, 0.0035, 0.4) * mask, p["glow"], 0.34)
@@ -156,10 +194,19 @@ def lab(layer_key: str, art: Art) -> np.ndarray:
                 (warm_points if rng.random() < 0.3 else points).append(spot)
         lamps(art, layer, points, p["glow"], halo=4.0, strength=0.85)
         lamps(art, layer, warm_points, p["amber"], halo=4.0, strength=0.85)
+        lamps(art, layer, sparks, (255, 240, 200), halo=7.0, strength=1.0)
         haze(art, layer, p["wall"], 0.16, 0.70)
         return layer
     # The air in front: beams of light from the roof, dust, mist on the floor.
     layer = art.blank()
+    if raided:
+        # The beams are the red of the beacons and there are fewer. Smoke
+        # hangs under the roof.
+        art.put(layer, shafts(art, "shafts", 3, 0.16, 0.0, 0.82, 0.06), p["glow"], 0.13)
+        art.put(layer, fog(art, "roof smoke", 0.08, 0.20, cells=3.0), p["deep"], 0.55)
+        art.put(layer, fog(art, "floor mist", 0.69, 0.16), mix(p["air"], p["glow"], 0.22), 0.30)
+        vignette(art, layer, p["deep"], 0.42)
+        return layer
     art.put(layer, shafts(art, "shafts", 5, 0.10, 0.0, 0.82, 0.045), p["glow"], 0.17)
     art.put(layer, fog(art, "floor mist", 0.69, 0.16), mix(p["air"], p["glow"], 0.35), 0.34)
     vignette(art, layer, p["deep"], 0.30)
@@ -330,7 +377,7 @@ def _crystals(art: Art, layer: np.ndarray, places, colour, halo: float = 1.0) ->
     facet, facet_pen = art.drawing()
     wide, wide_pen = art.drawing()
     for u, v, size, up in places:
-        crystal_cluster(body_pen, facet_pen, rng, u, v, size, count=rng.randint(4, 7), up=up)
+        crystal_cluster(body_pen, facet_pen, rng, u, v, size, count=rng.randint(5, 8), up=up, spread=30.0)
         wide_pen.ellipse(u, v + (size * 0.4 if up > 0 else -size * 0.4), size * 0.9)
     art.put(layer, art.mask_of(wide, blur=22.0 * halo), colour, 0.34)
     art.put(layer, art.mask_of(body), scale(colour, 0.55))
@@ -358,10 +405,10 @@ def cave(layer_key: str, art: Art) -> np.ndarray:
         floor, _ = art.ridge("far floor", HORIZON + 0.03, 0.10, cells=11.0, octaves=4, sharp=0.9)
         roof, _ = art.ridge("far roof", 0.33, -0.12, cells=12.0, octaves=4, sharp=0.9)
         mask = np.maximum(floor, 1.0 - roof)
-        layer = solid(art, mask, p["rock_light"], p["rock"], 0.30, 0.70, "far rock", 0.10)
-        art.light(layer, art.rim(mask, 0.004, 0.0, 0.6) * mask, p["glow"], 0.22)
+        layer = solid(art, mask, mix(p["rock_light"], p["wall"], 0.55), p["rock"], 0.30, 0.70, "far rock", 0.10)
+        art.light(layer, art.rim(mask, 0.004, 0.0, 0.6) * mask, p["glow"], 0.30)
         _crystals(art, layer, [(0.12, 0.60, 0.06, -90.0), (0.58, 0.63, 0.07, -90.0), (0.86, 0.59, 0.05, -90.0), (0.70, 0.30, 0.05, 90.0)], p["glow"])
-        haze(art, layer, p["air"], 0.36, HORIZON + 0.05)
+        haze(art, layer, p["air"], 0.24, HORIZON + 0.05)
         return layer
     if layer_key == "near_background":
         rng = art.rand("near cave")

@@ -5,7 +5,7 @@
 
 `draw` publishes `<skin>_<part>.png` for each part of each skin, and the mote
 picture, the decor picture and the door of each biome (`<biome>_motes.png`,
-`<biome>_decor.png`, `<biome>_door.png`). `preview`
+`<biome>_decor.png`, `<biome>_decor_glow.png`, `<biome>_door.png`). `preview`
 writes one picture with a small made-up room in each skin. It does not run
 the game.
 """
@@ -17,7 +17,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from . import decor, doors, motes, skins
+from . import decor, doors, fixtures, motes, skins
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -50,12 +50,44 @@ def main(argv: list[str] | None = None) -> int:
             path = args.out_dir / f"{key}_motes.png"
             motes.strip(key).save(path)
             print(path)
+        for key in motes.SHADOWS:
+            if args.skins and key not in args.skins:
+                continue
+            path = args.out_dir / f"{key}_shadow.png"
+            motes.shadow(key).save(path)
+            print(path)
         for key in decor.DECOR:
             if args.skins and key not in args.skins:
                 continue
             path = args.out_dir / f"{key}_decor.png"
             decor.strip(key).save(path)
             print(path)
+            path = args.out_dir / f"{key}_decor_glow.png"
+            decor.glow_strip(key).save(path)
+            print(path)
+        water = {
+            "water_clear": fixtures.water_clear(),
+            "water_murky": fixtures.water_murky(),
+            "water_surface": fixtures.water_surface(),
+            "blink_soft": fixtures.blink_soft(),
+            "blink_hard": fixtures.blink_hard(),
+            "blink_edge": fixtures.blink_edge(),
+            "hazard_fill": fixtures.hazard_fill(),
+            "hazard_edge": fixtures.hazard_edge(),
+        }
+        for skin in skins.SKINS:
+            if args.skins and skin.key not in args.skins:
+                continue
+            path = args.out_dir / f"{skin.key}_ladder.png"
+            fixtures.ladder(skin.key).save(path)
+            print(path)
+            # The water, the blink walls and the spikes are the same in each
+            # biome: each one has its copy, so the game finds it by the theme of the room
+            # as each other part.
+            for part, image in water.items():
+                path = args.out_dir / f"{skin.key}_{part}.png"
+                image.save(path)
+                print(path)
         for key in doors.DOORS:
             if args.skins and key not in args.skins:
                 continue

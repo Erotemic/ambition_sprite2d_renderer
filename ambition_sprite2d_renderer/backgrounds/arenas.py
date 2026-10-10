@@ -187,23 +187,16 @@ def boss(layer_key: str, art: Art) -> np.ndarray:
         rng = art.rand("arena")
         image, pen = art.drawing()
         cloth, cloth_pen = art.drawing()
-        # The wall of the arena at each side: arches, the top broken away.
-        for u0, u1 in ((-0.02, 0.30), (0.70, 1.02)):
-            span = (u1 - u0) / 3.0
-            pen.rect(u0, 0.40, u1, 1.0)
-            for k in range(3):
-                cu = u0 + span * (k + 0.5)
-                r = span * 0.34
-                pen.rect(cu - r, 0.52, cu + r, 1.0, value=0)
-                pen.ellipse(cu, 0.52, r, r, value=0)
-            # The top is broken away to the middle of the arena.
-            inner = u1 if u0 < 0.5 else u0
-            away = -1 if u0 < 0.5 else 1
-            pts = [(inner + away * -0.01, 0.38)]
-            for k in range(7):
-                pts.append((inner + away * k * 0.03, 0.62 - k * 0.034 + rng.uniform(-0.012, 0.012)))
-            pts.append((inner + away * 0.19, 0.38))
-            pen.poly(pts, value=0)
+        # The wall of the arena at each side: arches, the top broken away to
+        # the middle of the arena.
+        for side in (-1.0, 1.0):
+            edge = 0.5 + side * 0.52
+            x = lambda d: edge - side * d  # noqa: E731  `d` is how far in from the edge
+            pen.poly([(x(0.0), 1.0), (x(0.0), 0.38), (x(0.10), 0.38), (x(0.12), 0.43), (x(0.16), 0.42), (x(0.19), 0.50), (x(0.24), 0.52), (x(0.27), 0.60), (x(0.32), 0.62), (x(0.33), 1.0)])
+            for d, r in ((0.065, 0.034), (0.165, 0.030)):
+                pen.rect(x(d) - r, 0.57, x(d) + r, 1.0, value=0)
+                pen.ellipse(x(d), 0.57, r, r, value=0)
+            pen.rect(min(x(0.0), x(0.11)), 0.375, max(x(0.0), x(0.11)), 0.39)
         # Broken columns between them.
         for u in (0.36, 0.44, 0.585, 0.645):
             top = rng.uniform(0.50, 0.62)
@@ -211,8 +204,8 @@ def boss(layer_key: str, art: Art) -> np.ndarray:
             pen.poly([(u - 0.013, top), (u + 0.013, top - 0.018), (u + 0.013, top)])
             pen.rect(u - 0.018, 0.675, u + 0.018, 0.69)
         # Chains from above, and banners on the wall.
-        for u in (0.33, 0.50, 0.67):
-            end = rng.uniform(0.36, 0.48)
+        for u in (0.34, 0.41, 0.63):
+            end = rng.uniform(0.34, 0.44)
             v = 0.0
             while v < end:
                 pen.ellipse(u, v, 0.0034, 0.006)

@@ -268,6 +268,7 @@ def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, pla
 #: The six things of each theme, and its colours.
 DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     "lab": ((console, floor_light, cone, coil, crate, floor_light), _palette((8, 28, 38), (30, 70, 82), (70, 130, 140), (40, 84, 92), (38, 80, 92), (60, 150, 130), (236, 150, 70), (120, 236, 220))),
+    "alarm": ((crate, cone, coil, console, cone, floor_light), _palette((6, 7, 14), (34, 38, 56), (84, 90, 118), (52, 50, 66), (44, 48, 70), (110, 60, 60), (236, 150, 70), (255, 92, 72))),
     "hub": ((planter, lamp_post, crate, floor_light, planter, cone), _palette((15, 15, 46), (52, 52, 110), (100, 102, 170), (70, 64, 120), (60, 60, 120), (90, 150, 130), (236, 150, 90), (255, 206, 140))),
     "basement": ((anvil, coal, barrel, crate, brazier, coal), _palette((26, 12, 10), (70, 40, 34), (130, 80, 60), (104, 62, 40), (62, 46, 44), (90, 110, 60), (200, 90, 50), (255, 160, 70))),
     "boss": ((brazier, bones, column_stub, bones, rock, obelisk), _palette((22, 6, 12), (80, 30, 42), (140, 60, 70), (90, 40, 40), (50, 20, 26), (110, 60, 60), (200, 60, 60), (255, 120, 76))),
@@ -278,6 +279,50 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     "skybridge": ((bush, flowers, column_stub, grass_tuft, planter, flowers), _palette((86, 100, 142), (160, 172, 204), (224, 230, 244), (150, 120, 90), (130, 144, 180), (106, 176, 96), (255, 150, 170), (255, 236, 150))),
     "eclipse": ((obelisk, crystal, rock, obelisk, rock, crystal), _palette((10, 12, 36), (40, 46, 104), (84, 90, 164), (60, 60, 110), (44, 50, 110), (60, 150, 140), (172, 112, 255), (92, 232, 200))),
 }
+
+
+#: The things of the decor that give light: where the light is in the square
+#: (x, and how far over the ground), and how strong the pool of light round
+#: it is.
+LIGHTS: dict[Draw, tuple[float, float, float]] = {
+    lamp_post: (M, 17.4, 0.36),
+    stone_lantern: (M, 10.5, 0.32),
+    brazier: (M, 12.5, 0.40),
+    floor_light: (M, 7.0, 0.26),
+    crystal: (M, 7.0, 0.22),
+    mushrooms: (M + 1.0, 6.0, 0.14),
+    console: (M, 10.4, 0.12),
+}
+#: A pool of light is drawn this many times the side of a decor square, with
+#: its middle on the middle of the square.
+GLOW_SCALE = 3
+
+
+def glow_strip(theme_key: str) -> Image.Image:
+    """The pools of light of the decor of a theme: a strip of the same
+    squares as `strip`, one for each thing. The square of a thing that gives
+    no light is empty. The game draws a square `GLOW_SCALE` times the size of
+    the decor square, behind the thing."""
+    draws, colours = DECOR[theme_key]
+    px = CELL_PX
+    out = np.zeros((px, px * VARIANTS, 4), dtype=np.float32)
+    ys, xs = np.mgrid[0:px, 0:px]
+    u = (xs + 0.5) / px
+    v = (ys + 0.5) / px
+    for index, draw in enumerate(draws):
+        if draw not in LIGHTS:
+            continue
+        x, up, strength = LIGHTS[draw]
+        # The decor square is the middle third of this one.
+        cu = 0.5 + (x / CELL - 0.5) / GLOW_SCALE
+        cv = 0.5 + ((G - up) / CELL - 0.5) / GLOW_SCALE
+        # The pool ends inside the square on each side.
+        reach = min(cu, 1.0 - cu, cv, 1.0 - cv) * 0.96
+        d = np.sqrt((u - cu) ** 2 + (v - cv) ** 2) / reach
+        fall = np.clip(1.0 - d, 0.0, 1.0) ** 2.2
+        out[:, index * px : (index + 1) * px, :3] = colours["glow"]
+        out[:, index * px : (index + 1) * px, 3] = fall * strength * 255.0
+    return Image.fromarray(np.rint(out).astype(np.uint8), "RGBA")
 
 
 def strip(theme_key: str) -> Image.Image:

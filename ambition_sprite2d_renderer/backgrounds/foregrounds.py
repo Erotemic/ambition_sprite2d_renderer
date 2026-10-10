@@ -30,7 +30,7 @@ import numpy as np
 
 from .arenas import BOSS, ECLIPSE, HUB
 from .artkit import Art, Pen, polar, scale
-from .interiors import CAVE, FOUNDRY, LAB
+from .interiors import ALARM, CAVE, FOUNDRY, LAB
 from .outdoors import COVE, FOREST, SKYBRIDGE, WATER
 from .parts import lamps
 
@@ -51,17 +51,24 @@ def _chain(pen: Pen, u: float, v0: float, v1: float, link: float = 0.006) -> Non
         v += link * 1.7
 
 
-def _lab(art: Art, pen: Pen, layer_lights: list) -> None:
+def _lab(art: Art, pen: Pen, layer_lights: list, glow=None) -> None:
+    glow = glow or LAB["glow"]
     rng = art.rand("lab foreground")
     for k in range(5):
         a = k * 0.21 + rng.uniform(-0.04, 0.04)
         pen.curve((a, 0.0), (a + rng.uniform(0.16, 0.26), 0.0), rng.uniform(0.385, 0.415), rng.choice([0.003, 0.004, 0.006]))
-    for u in (0.13, 0.55, 0.84):
-        h = rng.uniform(0.012, 0.028)
-        w = rng.uniform(0.04, 0.06)
-        pen.rect(u, REST_BOTTOM - h, u + w, 1.0)
-        pen.rect(u + w * 0.2, REST_BOTTOM - h - 0.006, u + w * 0.8, REST_BOTTOM - h)
-        layer_lights.append((u + w * 0.5, REST_BOTTOM - h + 0.012, 0.003, LAB["glow"]))
+    # Lamps that hang on a cord from the roof, with a shade. Nothing stands
+    # from below: a cabinet there was a dark box on the floor of each room
+    # whose camera is low.
+    for u in (0.16, 0.47, 0.80):
+        end = rng.uniform(0.385, 0.40)
+        pen.rect(u - 0.0012, 0.0, u + 0.0012, end)
+        pen.poly([(u - 0.004, end), (u + 0.004, end), (u + 0.012, end + 0.010), (u - 0.012, end + 0.010)])
+        layer_lights.append((u, end + 0.0125, 0.0034, glow))
+
+
+def _alarm(art: Art, pen: Pen, layer_lights: list) -> None:
+    _lab(art, pen, layer_lights, ALARM["glow"])
 
 
 def _foundry(art: Art, pen: Pen, layer_lights: list) -> None:
@@ -74,8 +81,15 @@ def _foundry(art: Art, pen: Pen, layer_lights: list) -> None:
             pen.arc(u, end + 0.012, 0.012, 20, 270, 0.0045)
         else:
             pen.ring(u, end + 0.012, 0.012, 0.004)
-    heaps, _ = art.ridge("slag", REST_BOTTOM + 0.004, 0.014, cells=7.0, octaves=4, sharp=0.4)
-    art.extra = heaps  # type: ignore[attr-defined]
+    # A few heaps of slag, apart. A ridge the length of the panel was a dark
+    # band on the floor of each room whose camera is low.
+    for k in range(3):
+        u = (k + rng.uniform(0.25, 0.75)) / 3.0
+        w = rng.uniform(0.04, 0.06)
+        # A heap is the top of a large round: wide and low at each height
+        # of the camera.
+        for du, part, top in ((0.0, 1.0, REST_BOTTOM - 0.006), (w * 0.9, 0.55, REST_BOTTOM + 0.006)):
+            pen.ellipse(u + du, top + 0.07, w * part, 0.07)
 
 
 def _cave(art: Art, pen: Pen, layer_lights: list) -> None:
@@ -183,8 +197,13 @@ def _boss(art: Art, pen: Pen, layer_lights: list) -> None:
             w = 0.022
             pen.rect(u - w, 0.0, u + w, end - 0.02)
             pen.poly([(u - w, end - 0.02), (u - w * 0.4, end + 0.006), (u, end - 0.012), (u + w * 0.5, end + 0.012), (u + w, end - 0.02)])
-    spikes, _ = art.ridge("teeth", REST_BOTTOM + 0.006, 0.014, cells=46.0, octaves=2, sharp=1.0)
-    art.extra = spikes  # type: ignore[attr-defined]
+    # Teeth of rock, apart: a ridge of them the length of the panel was a
+    # dark band on the floor of each room whose camera is low.
+    for k in range(9):
+        u = (k + rng.uniform(0.15, 0.85)) / 9.0
+        w = rng.uniform(0.006, 0.012)
+        tip = REST_BOTTOM - rng.uniform(0.004, 0.014)
+        pen.poly([(u - w, 1.0), (u - w, REST_BOTTOM + 0.05), (u + rng.uniform(-0.3, 0.3) * w, tip), (u + w, REST_BOTTOM + 0.05), (u + w, 1.0)])
 
 
 def _eclipse(art: Art, pen: Pen, layer_lights: list) -> None:
@@ -213,6 +232,7 @@ def _hub(art: Art, pen: Pen, layer_lights: list) -> None:
 FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, int]]] = {
     "hub": (_hub, scale(HUB["city"], 0.7)),
     "lab": (_lab, scale(LAB["steel"], 0.7)),
+    "alarm": (_alarm, scale(ALARM["steel"], 0.9)),
     "basement": (_foundry, scale(FOUNDRY["iron"], 0.8)),
     "cave": (_cave, scale(CAVE["rock"], 0.8)),
     "cove": (_cove, scale(COVE["rock"], 0.8)),

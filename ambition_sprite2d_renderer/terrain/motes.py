@@ -88,6 +88,8 @@ MOTES = {
     "hub": (_dot, (206, 214, 255)),
     "lab": (_dot, (196, 255, 244)),
     "basement": (_glow, (255, 190, 110)),
+    # Sparks from the cables that are cut.
+    "alarm": (_glow, (255, 170, 120)),
     "boss": (_glow, (255, 150, 100)),
     "cave": (_twinkle, (150, 232, 255)),
     "eclipse": (_twinkle, (130, 246, 214)),
@@ -95,7 +97,47 @@ MOTES = {
     "water": (_bubble, (206, 252, 244)),
     "cove": (_dot, (226, 244, 236)),
     "skybridge": (_petal, (255, 214, 226)),
+    # The clean state of the two-state hub: dust in the light of its halls.
+    "hub_clean": (_dot, (255, 240, 206)),
 }
+
+
+#: The shadow a body throws on the ground under it, for each theme: its
+#: colour. The picture is a soft ellipse, `SHADOW_PX` wide and high, with a
+#: dark core. The game draws one under each actor, smaller and fainter
+#: when the actor is in the air (`ground_shadows` in `ambition_render`).
+SHADOWS = {
+    "hub": (8, 8, 30),
+    "lab": (4, 12, 22),
+    "alarm": (3, 3, 9),
+    "basement": (20, 8, 6),
+    "boss": (16, 2, 8),
+    "cave": (8, 6, 22),
+    "eclipse": (2, 4, 18),
+    "forest": (10, 18, 12),
+    "water": (2, 16, 30),
+    "cove": (4, 14, 24),
+    "skybridge": (40, 52, 84),
+    "hub_clean": (60, 60, 80),
+}
+SHADOW_PX = (96, 28)
+
+
+def shadow(theme_key: str) -> Image.Image:
+    """The ground shadow picture of a theme."""
+    w, h = SHADOW_PX
+    ys, xs = np.mgrid[0:h, 0:w]
+    x = (xs + 0.5) / w * 2.0 - 1.0
+    y = (ys + 0.5) / h * 2.0 - 1.0
+    d = np.sqrt(x * x + y * y)
+    # A dark core out to near half of the way, then a smooth edge: a cone has
+    # so thin a middle that the shadow does not show on a floor.
+    t = np.clip((d - 0.45) / 0.55, 0.0, 1.0)
+    alpha = 1.0 - t * t * (3.0 - 2.0 * t)
+    out = np.zeros((h, w, 4), dtype=np.float32)
+    out[:, :, :3] = SHADOWS[theme_key]
+    out[:, :, 3] = alpha * 255.0
+    return Image.fromarray(np.rint(out).astype(np.uint8), "RGBA")
 
 
 def strip(theme_key: str) -> Image.Image:
