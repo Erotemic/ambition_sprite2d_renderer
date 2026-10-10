@@ -102,8 +102,6 @@ def panel(x0, x1, y0, y1, cid, jewel=True):
 
 
 def base_parts():
-    shade = smooth([(CX + 210 * math.cos(a), 598 + 20 * math.sin(a)) for a in (k * math.tau / 16 for k in range(16))])
-    part("shadow", "Shadow", "shadow", "base", 0, [path(shade, C["shadow"], extra=' opacity="0.3"')])
     # The inside: velvet back wall over a dark well (an item stands in it).
     well = poly([(L + 8, BACK), (R - 8, BACK), (R - 4, RIM), (L + 4, RIM)])
     part("interior", "Interior", "interior", "base", 10, outlined(well, C["void"], [

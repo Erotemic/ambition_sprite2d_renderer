@@ -790,17 +790,6 @@ def paint_character(
     back_shoulder = joints["back_shoulder"].point
     front_shoulder = joints["front_shoulder"].point
 
-    # The arm with no sword is behind the body: it is painted first, and what
-    # shows of it is what comes out past the coat.
-    _begin(draw, "arms")
-    back_elbow = joints["back_elbow"].point
-    back_hand = joints["back_hand"].point
-    draw_limb(draw, "back_arm", back_shoulder, back_elbow, back_hand, _shade(pal.coat, 0.84),
-              (22 * b, 19 * b, 16 * b), pal.outline, 4, cuff=pal.coat2)
-    with draw.part("back_hand", back_hand, 0.0):
-        circle(draw, (0, 0), 9, pal.skin_shadow, pal.outline, width=3)
-    _end(draw)
-
     # The back leg, then the front leg over it.
     _begin(draw, "legs")
     ground = pirate_rig.ground_y(h)
@@ -834,6 +823,17 @@ def paint_character(
              pal.coat, pal.outline, width=4)
         poly(draw, [(26 * b, -10), (39 * b, -10), (35 * b, drop - 4), (26 * b, drop - 6)],
              _shade(pal.coat, 0.78))
+    _end(draw)
+
+    # The two arms are in front of the body (Jon, 2026-10-10). The arm with no
+    # sword is painted first: the sword arm is over it where they meet.
+    _begin(draw, "arms")
+    back_elbow = joints["back_elbow"].point
+    back_hand = joints["back_hand"].point
+    draw_limb(draw, "back_arm", back_shoulder, back_elbow, back_hand, pal.coat,
+              (22 * b, 19 * b, 16 * b), pal.outline, 4, cuff=pal.coat2)
+    with draw.part("back_hand", back_hand, 0.0):
+        circle(draw, (0, 0), 9, pal.skin, pal.outline, width=3)
     _end(draw)
 
     # The arm with the sword, in front of the body.

@@ -103,8 +103,6 @@ def gem(x, y, r, color):
 
 
 def base_parts():
-    shade = smooth([(256 + 168 * math.cos(a), 436 + 18 * math.sin(a)) for a in (k * math.tau / 16 for k in range(16))])
-    part("shadow", "Shadow", "shadow", "base", 0, [path(shade, C["shadow"], extra=' opacity="0.28"')])
     # The box's inside (seen once the lid is up): a dark well, lighter at
     # the back wall.
     well = poly([(L + 6, BACK), (R - 6, BACK), (R - 4, RIM), (L + 4, RIM)])

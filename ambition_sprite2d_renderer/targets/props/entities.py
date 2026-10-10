@@ -264,24 +264,22 @@ def pickup_currency(d: ImageDraw.ImageDraw, s: float) -> None:
 
 
 def pickup_ability(d: ImageDraw.ImageDraw, s: float) -> None:
+    """A new ability to take: a bolt of violet light in a ball of deep blue
+    glass, in a ring."""
     outline = rgba("#0B1930")
-    d.ellipse(
-        bbox(64 * s, 62 * s, 52 * s, 52 * s),
-        fill=rgba("#1A2452"),
-        outline=outline,
-        width=max(1, int(2 * s)),
-    )
-    for r, a in [(45, 70), (33, 95), (22, 135)]:
-        d.ellipse(
-            bbox(64 * s, 62 * s, r * s, r * s),
-            outline=rgba("#6BE9FF", a),
-            width=max(1, int(1.4 * s)),
-        )
-    d.polygon(
-        poly_scaled([(56, 44), (80, 62), (62, 65), (72, 84), (48, 63), (66, 60)], s),
-        fill=rgba("#B98CFF"),
-        outline=outline,
-    )
+    cx, cy = 64.0, 62.0
+    _disc(d, s, cx, cy, 26, outline)
+    _disc(d, s, cx, cy, 24.4, rgba("#3D8FB8"))
+    _disc(d, s, cx, cy, 21.4, outline)
+    _ball(d, s, cx, cy, 20.2, "#111A44", "#3B55B8")
+    # Four marks on the ring, at the quarters.
+    for ang in (45, 135, 225, 315):
+        a = math.radians(ang)
+        _disc(d, s, cx + math.cos(a) * 22.9, cy + math.sin(a) * 22.9, 1.5, rgba("#BFF3FF"))
+    bolt = [(56, 45), (79, 61), (66, 63.5), (73, 81), (49, 62), (62, 60)]
+    d.polygon(poly_scaled(bolt, s), fill=rgba("#B98CFF"), outline=outline)
+    d.polygon(poly_scaled([(58, 47.6), (74, 59.4), (64, 61.2), (60, 53)], s), fill=rgba("#E3CCFF"))
+    d.ellipse(bbox((cx - 9) * s, (cy - 12) * s, 7 * s, 4.4 * s), fill=rgba("#DDE8FF"))
 
 
 def hazard_spikes(d: ImageDraw.ImageDraw, s: float) -> None:
@@ -562,17 +560,30 @@ def solid_block(d: ImageDraw.ImageDraw, s: float) -> None:
 
 
 def one_way_platform(d: ImageDraw.ImageDraw, s: float) -> None:
+    """A catwalk: a deck of steel on a truss. It had a row of pale triangles
+    on it, which a player reads as spikes."""
+    outline = rgba("#1A2235")
+    steel, steel_hi, steel_lo = "#677699", "#B4C6F4", "#3C4866"
+    # The truss under the deck: a lower rail and braces up to the deck.
+    _rect(d, s, (24, 69, 104, 73.5), rgba(steel_lo), outline=outline, width=1)
+    for x in range(26, 100, 13):
+        _line(d, s, [(x, 71), (x + 6.5, 58), (x + 13, 71)], outline, 3.4)
+        _line(d, s, [(x, 71), (x + 6.5, 58), (x + 13, 71)], rgba(steel), 1.6)
+    # The deck.
     d.rounded_rectangle(
-        (18 * s, 58 * s, 110 * s, 74 * s),
-        radius=6 * s,
-        fill=rgba("#677699"),
-        outline=rgba("#1A2235"),
+        (18 * s, 46 * s, 110 * s, 59 * s),
+        radius=3 * s,
+        fill=rgba(steel),
+        outline=outline,
         width=max(1, int(2 * s)),
     )
-    for x in (32, 50, 68, 86):
-        d.polygon(
-            poly_scaled([(x, 51), (x + 7, 40), (x + 14, 51)], s), fill=rgba("#B4C6F4")
-        )
+    _rect(d, s, (21, 48.2, 107, 50.6), rgba(steel_hi))
+    _rect(d, s, (21, 54.6, 107, 57), rgba(steel_lo))
+    # The grip of the deck: short marks along it, and a bolt at each end.
+    for x in range(30, 100, 10):
+        _line(d, s, [(x, 52), (x + 4, 53.6)], _mix(steel, steel_hi, 0.55), 1.2)
+    for x in (23.5, 104.5):
+        _disc(d, s, x, 52.6, 1.6, rgba(steel_lo), outline=outline)
 
 
 # ---- Doors --------------------------------------------------------------------
@@ -827,14 +838,23 @@ def edge_exit(d: ImageDraw.ImageDraw, s: float) -> None:
 
 
 def projectile_energy(d: ImageDraw.ImageDraw, s: float) -> None:
-    d.ellipse(
-        bbox(64 * s, 64 * s, 38 * s, 24 * s),
-        fill=rgba("#6BE9FF", 210),
-        outline=rgba("#0B2B36"),
-        width=max(1, int(2 * s)),
-    )
-    d.polygon(poly_scaled([(30, 64), (54, 52), (54, 76)], s), fill=rgba("#C58AFF", 150))
-    d.ellipse(bbox(72 * s, 60 * s, 10 * s, 8 * s), fill=rgba("#FFFFFF", 200))
+    """A bolt of energy that goes to the right: a hot head and a tail of
+    three streaks that get thin behind it."""
+    outline = rgba("#0B2B36")
+    # The glow about the head is the one translucent thing: it is on nothing.
+    d.ellipse(bbox(66 * s, 64 * s, 44 * s, 30 * s), fill=rgba("#6BE9FF", 54))
+    # The tail.
+    for y, back, shade in ((57.0, 36.0, 0.3), (64.0, 24.0, 0.0), (71.0, 38.0, 0.4)):
+        d.polygon(
+            poly_scaled([(back, y), (60, y - 4.4), (62, y + 4.4)], s),
+            fill=_mix("#B98CFF", "#3A2A78", shade),
+        )
+    # The head: a dark rim, the body of the light, the hot middle.
+    d.ellipse(bbox(66 * s, 64 * s, 34 * s, 22 * s), fill=outline)
+    d.ellipse(bbox(66 * s, 64 * s, 30 * s, 18 * s), fill=rgba("#2FB6D9"))
+    d.ellipse(bbox(68 * s, 64 * s, 23 * s, 13 * s), fill=rgba("#6BE9FF"))
+    d.ellipse(bbox(71 * s, 63.4 * s, 13 * s, 7.4 * s), fill=rgba("#E8FDFF"))
+    d.ellipse(bbox(74 * s, 61.8 * s, 5 * s, 3 * s), fill=rgba("#FFFFFF"))
 
 
 # ─── Tile drawers ───────────────────────────────────────────────────
@@ -1475,46 +1495,34 @@ def lava_tile(d: ImageDraw.ImageDraw, s: float) -> None:
 
 
 def spike_ball(d: ImageDraw.ImageDraw, s: float) -> None:
-    """Iron sphere with radial spikes. Hazard variant for swinging /
-    rolling traps — distinct from `hazard_spikes` (a spike strip)
-    and `hazard_tile` (a tilable hazard floor). Not yet wired; ships
-    so future hazard mechanics have art to consume."""
-    import math
-
-    cx, cy = 64 * s, 64 * s
-    outer_r = 32 * s
-    # Spike points around the sphere — 12 spikes, each a thin triangle.
+    """A ball of iron with twelve spikes: a hazard that swings or rolls. Each
+    spike has a face in light and a face in shade, and a collar where it is
+    set in the ball."""
+    outline = rgba("#0A0C12")
+    cx = cy = 64.0
+    r = 32.0
     for i in range(12):
-        angle = i * (360.0 / 12.0)
-        a = math.radians(angle)
-        tip_x = cx + math.cos(a) * (outer_r + 12 * s)
-        tip_y = cy + math.sin(a) * (outer_r + 12 * s)
-        b1_x = cx + math.cos(a + math.pi / 2) * 4 * s + math.cos(a) * outer_r
-        b1_y = cy + math.sin(a + math.pi / 2) * 4 * s + math.sin(a) * outer_r
-        b2_x = cx + math.cos(a - math.pi / 2) * 4 * s + math.cos(a) * outer_r
-        b2_y = cy + math.sin(a - math.pi / 2) * 4 * s + math.sin(a) * outer_r
-        d.polygon(
-            [(b1_x, b1_y), (tip_x, tip_y), (b2_x, b2_y)],
-            fill=rgba("#3A3F4A"),
-            outline=rgba("#0A0C12"),
-        )
-    # Sphere body.
-    d.ellipse(
-        (cx - outer_r, cy - outer_r, cx + outer_r, cy + outer_r),
-        fill=rgba("#4A4F5C"),
-        outline=rgba("#0A0C12"),
-        width=max(1, int(2 * s)),
-    )
-    # Dark inner cracks.
-    for ang in (30, 110, 200, 290):
+        a = math.radians(i * 30.0)
+        ux, uy = math.cos(a), math.sin(a)
+        px, py = -uy, ux
+        base = (cx + ux * (r - 2), cy + uy * (r - 2))
+        tip = (cx + ux * (r + 12), cy + uy * (r + 12))
+        left = (base[0] + px * 5.4, base[1] + py * 5.4)
+        right = (base[0] - px * 5.4, base[1] - py * 5.4)
+        # The face of the spike that is toward the light (up and to the left).
+        lit, dark = (left, right) if (px + py) < 0 else (right, left)
+        d.polygon(poly_scaled([lit, tip, base], s), fill=rgba("#9AA1B2"))
+        d.polygon(poly_scaled([dark, tip, base], s), fill=rgba("#3A3F4A"))
+        d.polygon(poly_scaled([left, tip, right], s), outline=outline)
+    _disc(d, s, cx, cy, r + 1.2, outline)
+    _ball(d, s, cx, cy, r, "#2C303B", "#8A90A2")
+    # A band about the ball, with a rivet at each quarter.
+    d.arc(((cx - r) * s, (cy - 9) * s, (cx + r) * s, (cy + 13) * s), 0, 180,
+          fill=rgba("#1A1D26"), width=max(1, int(2.4 * s)))
+    for ang in (20, 65, 115, 160):
         a = math.radians(ang)
-        x1 = cx + math.cos(a) * 6 * s
-        y1 = cy + math.sin(a) * 6 * s
-        x2 = cx + math.cos(a) * 22 * s
-        y2 = cy + math.sin(a) * 22 * s
-        d.line([(x1, y1), (x2, y2)], fill=rgba("#1A1D26"), width=max(1, int(1 * s)))
-    # Top-left highlight.
-    d.ellipse(bbox(cx - 12 * s, cy - 12 * s, 18 * s, 14 * s), fill=rgba("#7F8493", 180))
+        _disc(d, s, cx + math.cos(a) * (r - 1), cy + 2 + math.sin(a) * 11, 1.9, rgba("#C4CCD8"), outline=outline)
+    d.ellipse(bbox((cx - 12) * s, (cy - 14) * s, 12 * s, 8 * s), fill=rgba("#D9DEE8"))
 
 
 def bg_circuit_tile(d: ImageDraw.ImageDraw, s: float) -> None:

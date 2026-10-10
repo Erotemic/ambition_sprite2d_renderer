@@ -10,9 +10,6 @@
        lid.open. The treasure heap shows only where a clip keys treasure.shown
        (an empty chest otherwise). The hidden Rig Joints layer marks every joint. -->
   <g id="treasure-chest" inkscape:groupmode="layer" inkscape:label="Treasure Chest - Front">
-    <g id="shadow" inkscape:groupmode="layer" inkscape:label="Shadow" data-rig-part="shadow" data-rig-bone="base" data-rig-z="0">
-      <path d="M424,436 C424,438.3 419.41,440.77 411.21,442.89 C403.01,445.01 389.95,447.1 374.79,448.73 C359.64,450.35 340.09,451.75 320.29,452.63 C300.49,453.51 277.43,454 256,454 C234.57,454 211.51,453.51 191.71,452.63 C171.91,451.75 152.36,450.35 137.21,448.73 C122.05,447.1 108.99,445.01 100.79,442.89 C92.59,440.77 88,438.3 88,436 C88,433.7 92.59,431.23 100.79,429.11 C108.99,426.99 122.05,424.9 137.21,423.27 C152.36,421.65 171.91,420.25 191.71,419.37 C211.51,418.49 234.57,418 256,418 C277.43,418 300.49,418.49 320.29,419.37 C340.09,420.25 359.64,421.65 374.79,423.27 C389.95,424.9 403.01,426.99 411.21,429.11 C419.41,431.23 424,433.7 424,436 Z" fill="#000000" opacity="0.28" />
-    </g>
     <g id="lid-up" inkscape:groupmode="layer" inkscape:label="Lid - Up" data-rig-part="lid_up" data-rig-bone="lid" data-rig-z="5" data-rig-opacity="lid.up">
       <clipPath id="clip-lid-up"><path d="M116,264 L396,264 L404,168 L108,168 Z" /></clipPath>
       <g clip-path="url(#clip-lid-up)">

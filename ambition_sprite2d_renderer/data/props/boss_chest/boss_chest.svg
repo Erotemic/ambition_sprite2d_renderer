@@ -10,9 +10,6 @@
        lid.open. Empty inside, for an item placed at runtime. The hidden Rig
        Joints layer marks every joint. -->
   <g id="boss-chest" inkscape:groupmode="layer" inkscape:label="Boss Chest - Front">
-    <g id="shadow" inkscape:groupmode="layer" inkscape:label="Shadow" data-rig-part="shadow" data-rig-bone="base" data-rig-z="0">
-      <path d="M530,598 C530,600.55 524.27,603.3 514.01,605.65 C503.76,608.01 487.43,610.34 468.49,612.14 C449.55,613.95 425.11,615.5 400.36,616.48 C375.61,617.45 346.79,618 320,618 C293.21,618 264.39,617.45 239.64,616.48 C214.89,615.5 190.45,613.95 171.51,612.14 C152.57,610.34 136.24,608.01 125.99,605.65 C115.73,603.3 110,600.55 110,598 C110,595.45 115.73,592.7 125.99,590.35 C136.24,587.99 152.57,585.66 171.51,583.86 C190.45,582.05 214.89,580.5 239.64,579.52 C264.39,578.55 293.21,578 320,578 C346.79,578 375.61,578.55 400.36,579.52 C425.11,580.5 449.55,582.05 468.49,583.86 C487.43,585.66 503.76,587.99 514.01,590.35 C524.27,592.7 530,595.45 530,598 Z" fill="#000000" opacity="0.3" />
-    </g>
     <g id="lid-up" inkscape:groupmode="layer" inkscape:label="Lid - Up" data-rig-part="lid_up" data-rig-bone="lid" data-rig-z="5" data-rig-opacity="lid.up">
       <clipPath id="clip-lid-up"><path d="M140,346 L500,346 L508,236 L132,236 Z" /></clipPath>
       <g clip-path="url(#clip-lid-up)">
