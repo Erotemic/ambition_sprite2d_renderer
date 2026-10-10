@@ -34,9 +34,10 @@ import math
 from pathlib import Path
 from typing import List, Tuple
 
-from PIL import Image, ImageDraw
+from PIL import Image
 
 from ...authoring.sheet_build import build_sheet
+from ...core.draw import blending_draw
 
 RGBA = Tuple[int, int, int, int]
 
@@ -116,7 +117,7 @@ def _xy(x: float, y: float) -> Tuple[float, float]:
 class _Pen:
     def __init__(self) -> None:
         self.image = Image.new("RGBA", (UNITS[0] * K, UNITS[1] * K), (0, 0, 0, 0))
-        self.draw = ImageDraw.Draw(self.image)
+        self.draw = blending_draw(self.image)
 
     def poly(self, pts, fill: RGBA, ink: float = 0.9) -> None:
         pts = [_xy(x, y) for x, y in pts]

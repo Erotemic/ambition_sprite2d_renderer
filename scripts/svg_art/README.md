@@ -11,6 +11,8 @@ These scripts are how the first drafts of these character and prop SVGs were dra
 | `bob_art.py` | `data/characters/bob/bob.svg` | `scripts/build_bob_rig.py` |
 | `bob_front_art.py` | `data/characters/bob/bob_front.svg` | `scripts/build_bob_rig.py` |
 | `stochastic_parrot_art.py` | `data/characters/stochastic_parrot_v2/stochastic_parrot_v2.svg`, `stochastic_parrot_v2_front.svg` and `stochastic_parrot_v2_three_quarter.svg` | `scripts/build_stochastic_parrot_v2_rig.py` |
+| `chicken_art.py` | `data/characters/chicken/chicken.svg` | `scripts/build_chicken_rig.py` |
+| `owl_art.py` | `data/characters/owl/owl.svg` | `scripts/build_owl_rig.py` |
 | `treasure_chest_art.py` | `data/props/treasure_chest/treasure_chest.svg` | `scripts/build_treasure_chest_rig.py` |
 | `boss_chest_art.py` | `data/props/boss_chest/boss_chest.svg` | `scripts/build_boss_chest_rig.py` |
 | `mockingbird_boss_v2_art.py` | `data/characters/mockingbird_boss_v2/mockingbird_boss_v2.svg` | `scripts/build_mockingbird_boss_v2_rig.py` |
@@ -25,6 +27,9 @@ example: limbs as overlapping capsules, swap sets (fist / open hands, eye and
 mouth states) and props that ride a hand or stow on the back.
 `stochastic_parrot_art.py` is the bird: one script drawing three views, and a
 wing that swaps between folded on the body and spread in two bones.
+`chicken_art.py` and `owl_art.py` are side-view birds on the same joints, drawn
+with the helpers in `birdkit.py` (the spread wing, the legs, the eye swap set);
+the owl's body is seen from the side and its face is turned to the viewer.
 `treasure_chest_art.py` and `boss_chest_art.py` are props: a lid drawn four
 times (closed, ajar, up, open) as a swap set hinged at the box's back edge.
 `mockingbird_boss_v2_art.py` is the machine: armour panels shaded inside their
@@ -52,6 +57,7 @@ nearest one), and run it; it derives the skeleton from the joints, writes the
 rig document and installs the SVG's rig catalog.
 
 `svgkit.py` holds the shared drawing helpers; its docstring lists them.
+`birdkit.py` adds the helpers the side-view birds share.
 
 ## Sizes (at commit time)
 
