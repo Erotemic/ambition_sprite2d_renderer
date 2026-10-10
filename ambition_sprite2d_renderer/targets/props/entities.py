@@ -112,52 +112,113 @@ def draw_gem(
     )
 
 
-def breakable_intact(d: ImageDraw.ImageDraw, s: float) -> None:
+def _mix(a: str, b: str, t: float) -> Color:
+    """An opaque colour between two hex colours. A drawer here cannot lay a
+    translucent colour on an opaque one (the draw replaces pixels, it does
+    not blend), so each shade on a body is a mixed opaque colour."""
+    ca, cb = rgba(a), rgba(b)
+    return (
+        int(round(ca[0] + (cb[0] - ca[0]) * t)),
+        int(round(ca[1] + (cb[1] - ca[1]) * t)),
+        int(round(ca[2] + (cb[2] - ca[2]) * t)),
+        255,
+    )
+
+
+def _ball(d, s, cx, cy, r, dark: str, light: str, steps: int = 28) -> None:
+    """A lit ball: discs from the dark rim to the light near the top left."""
+    for i in range(steps):
+        t = i / (steps - 1)
+        rr = r * (1.0 - 0.86 * t)
+        off = r * 0.36 * t
+        _disc(d, s, cx - off, cy - off, rr, _mix(dark, light, t * t * 0.4 + t * 0.6))
+
+
+def _crate(d: ImageDraw.ImageDraw, s: float) -> None:
+    """A crate: four boards in a frame with a brace and steel corners."""
     outline = rgba("#241714")
+    d.rounded_rectangle(
+        (27 * s, 38 * s, 101 * s, 92 * s), radius=6 * s, fill=rgba("#6E4227")
+    )
+    # The boards, each with a lit left edge, a dark right edge and a grain.
+    edges = (32.0, 48.0, 64.0, 80.0, 96.0)
+    faces = ("#9A6238", "#8A5736", "#A46B3E", "#8E5A37")
+    for i, face in enumerate(faces):
+        x0, x1 = edges[i], edges[i + 1]
+        _rect(d, s, (x0, 43, x1, 87), rgba(face))
+        _line(d, s, [(x0 + 1.0, 43), (x0 + 1.0, 87)], _mix(face, "#E3B27C", 0.55), 1.3)
+        _line(d, s, [(x1 - 0.8, 43), (x1 - 0.8, 87)], _mix(face, "#2A1810", 0.6), 1.3)
+        for k, gx in enumerate((x0 + 5.5, x0 + 10.5)):
+            y0 = 47 + (i * 7 + k * 13) % 18
+            _line(d, s, [(gx, y0), (gx - 0.8, y0 + 13)], _mix(face, "#4A2C1A", 0.5), 1.0)
+    # The brace across the boards.
+    brace = [(34, 82), (40, 87), (94, 48), (88, 43)]
+    d.polygon(poly_scaled(brace, s), fill=rgba("#B07A48"))
+    _line(d, s, [(34, 82), (88, 43)], rgba("#DDA970"), 1.3)
+    _line(d, s, [(40, 87), (94, 48)], rgba("#5C3928"), 1.5)
+    # The top and bottom rails of the frame.
+    for y0, y1 in ((39, 46), (84, 91)):
+        _rect(d, s, (29, y0, 99, y1), rgba("#B07A48"))
+        _line(d, s, [(29, y0 + 1.0), (99, y0 + 1.0)], rgba("#DDA970"), 1.3)
+        _line(d, s, [(29, y1 - 0.6), (99, y1 - 0.6)], rgba("#5C3928"), 1.4)
+    # The steel corners, with a rivet in each.
+    steel, steel_hi = rgba("#56606E"), rgba("#C4CCD8")
+    for cx, cy, sx, sy in ((29, 40, 1, 1), (99, 40, -1, 1), (29, 90, 1, -1), (99, 90, -1, -1)):
+        corner = [
+            (cx, cy),
+            (cx + 14 * sx, cy),
+            (cx + 14 * sx, cy + 5 * sy),
+            (cx + 5 * sx, cy + 5 * sy),
+            (cx + 5 * sx, cy + 13 * sy),
+            (cx, cy + 13 * sy),
+        ]
+        d.polygon(poly_scaled(corner, s), fill=steel, outline=outline)
+        _disc(d, s, cx + 3.2 * sx, cy + 2.8 * sy, 1.3, steel_hi)
     d.rounded_rectangle(
         (27 * s, 38 * s, 101 * s, 92 * s),
         radius=6 * s,
-        fill=rgba("#8A5736"),
         outline=outline,
         width=max(1, int(2 * s)),
     )
-    for x in (45, 70, 92):
-        d.line(
-            [(x * s, 41 * s), ((x - 7) * s, 90 * s)],
-            fill=rgba("#B98255"),
-            width=max(1, int(2 * s)),
-        )
-    d.line(
-        [(28 * s, 64 * s), (101 * s, 61 * s)],
-        fill=rgba("#5C3928"),
-        width=max(1, int(3 * s)),
-    )
+
+
+def breakable_intact(d: ImageDraw.ImageDraw, s: float) -> None:
+    _crate(d, s)
 
 
 def breakable_cracked(d: ImageDraw.ImageDraw, s: float) -> None:
-    breakable_intact(d, s)
-    d.line(
-        poly_scaled([(63, 39), (58, 55), (66, 62), (55, 75), (60, 92)], s),
-        fill=rgba("#130B0A"),
-        width=max(1, int(2 * s)),
-    )
-    d.line(
-        poly_scaled([(66, 62), (83, 70), (95, 87)], s),
-        fill=rgba("#130B0A"),
-        width=max(1, int(1.5 * s)),
-    )
+    """The crate after a hit: a split down the boards and a chip gone."""
+    _crate(d, s)
+    dark = rgba("#130B0A")
+    # The wood under the split is light where it broke.
+    _line(d, s, [(63.6, 40), (58.6, 55), (66.6, 62), (55.6, 75), (60.6, 91)], rgba("#E3B27C"), 1.2)
+    _line(d, s, [(63, 40), (58, 55), (66, 62), (55, 75), (60, 91)], dark, 2.2)
+    _line(d, s, [(66, 62), (83, 70), (95, 86)], dark, 1.6)
+    _line(d, s, [(58, 55), (44, 50), (37, 56)], dark, 1.4)
+    d.polygon(poly_scaled([(55, 75), (49, 79), (53, 84), (58, 82)], s), fill=rgba("#3A2216"), outline=dark)
 
 
 def breakable_broken(d: ImageDraw.ImageDraw, s: float) -> None:
+    """What is left of the crate: boards in a heap, and one steel corner."""
     outline = rgba("#241714")
-    shards = [
-        [(34, 74), (55, 58), (58, 91), (30, 93)],
-        [(57, 50), (79, 47), (72, 82), (49, 72)],
-        [(82, 62), (101, 72), (91, 93), (73, 86)],
-    ]
-    for pts in shards:
-        d.polygon(poly_scaled(pts, s), fill=rgba("#8A5736"), outline=outline)
     d.ellipse(bbox(65 * s, 94 * s, 75 * s, 12 * s), fill=(0, 0, 0, 45))
+    boards = [
+        ([(31, 93), (36, 73), (52, 60), (58, 68), (46, 80), (44, 93)], "#8A5736"),
+        ([(52, 72), (57, 50), (79, 47), (76, 61), (68, 64), (66, 84)], "#A46B3E"),
+        ([(72, 86), (82, 62), (101, 72), (92, 93)], "#8E5A37"),
+        ([(42, 93), (50, 82), (74, 85), (78, 93)], "#9A6238"),
+    ]
+    for pts, face in boards:
+        d.polygon(poly_scaled(pts, s), fill=rgba(face), outline=outline)
+        # The lit edge of a board is its first side.
+        _line(d, s, [pts[0], pts[1]], _mix(face, "#E3B27C", 0.6), 1.2)
+        (ax, ay), (bx, by) = pts[1], pts[2]
+        mx, my = (ax + bx) / 2.0, (ay + by) / 2.0
+        (cx, cy) = pts[-1]
+        _line(d, s, [(mx, my + 2.0), ((mx + cx) / 2.0, (my + cy) / 2.0)], _mix(face, "#4A2C1A", 0.5), 1.0)
+    corner = [(84, 93), (84, 84), (89, 84), (89, 89), (97, 89), (97, 93)]
+    d.polygon(poly_scaled(corner, s), fill=rgba("#56606E"), outline=outline)
+    _disc(d, s, 86.6, 86.8, 1.2, rgba("#C4CCD8"))
 
 
 def _heart(cx: float, cy: float, size: float, steps: int = 72) -> List[Point]:
@@ -227,120 +288,172 @@ def pickup_ability(d: ImageDraw.ImageDraw, s: float) -> None:
 
 
 def hazard_spikes(d: ImageDraw.ImageDraw, s: float) -> None:
+    """Five spikes on a plate. Each has a lit face and a face in shade."""
     outline = rgba("#24060B")
     d.ellipse(bbox(64 * s, 92 * s, 80 * s, 13 * s), fill=(0, 0, 0, 40))
     for i in range(5):
         x = 28 + i * 18
-        d.polygon(
-            poly_scaled([(x, 91), (x + 10, 39), (x + 20, 91)], s),
-            fill=rgba("#F04450"),
-            outline=outline,
-        )
-        d.polygon(
-            poly_scaled([(x + 8, 55), (x + 10, 39), (x + 12, 57)], s),
-            fill=rgba("#FFB1B5"),
-        )
+        d.polygon(poly_scaled([(x, 91), (x + 10, 39), (x + 20, 91)], s), fill=rgba("#B8222F"))
+        d.polygon(poly_scaled([(x, 91), (x + 10, 39), (x + 10, 91)], s), fill=rgba("#F04450"))
+        d.polygon(poly_scaled([(x + 3.5, 86), (x + 9.2, 52), (x + 7.0, 86)], s), fill=rgba("#FF7C85"))
+        d.polygon(poly_scaled([(x + 8, 55), (x + 10, 39), (x + 12, 57)], s), fill=rgba("#FFD0D2"))
+        d.polygon(poly_scaled([(x, 91), (x + 10, 39), (x + 20, 91)], s), outline=outline)
+    # The plate the spikes stand on.
+    _rect(d, s, (28, 86, 120, 91.5), rgba("#4A1019"), outline=outline, width=1)
+    _line(d, s, [(30, 87.4), (118, 87.4)], rgba("#8E2330"), 1.0)
+    for x in range(37, 120, 18):
+        _disc(d, s, x, 89.2, 1.0, rgba("#FFB1B5"))
 
 
 def npc_terminal(d: ImageDraw.ImageDraw, s: float) -> None:
+    """A terminal that talks: a face on a screen, a row of lights for a
+    mouth, on a neck and a foot."""
     outline = rgba("#101820")
+    body, body_hi, body_lo = "#2B3D58", "#5A7AA6", "#17243A"
+    # The neck and the foot.
+    _rect(d, s, (58, 88, 70, 99), rgba("#1B2A40"), outline=outline, width=1.5)
+    _line(d, s, [(61, 90), (61, 97)], rgba("#40587C"), 1.4)
+    d.rounded_rectangle(
+        (34.2 * s, 97 * s, 93.8 * s, 105.4 * s),
+        radius=3 * s,
+        fill=rgba(body),
+        outline=outline,
+        width=max(1, int(1.5 * s)),
+    )
+    _line(d, s, [(39, 99.2), (89, 99.2)], rgba(body_hi), 1.0)
+    # The case.
     d.rounded_rectangle(
         (39 * s, 31 * s, 89 * s, 90 * s),
         radius=8 * s,
-        fill=rgba("#27364E"),
+        fill=rgba(body),
         outline=outline,
         width=max(1, int(2 * s)),
     )
+    d.rounded_rectangle((79 * s, 37 * s, 86.5 * s, 85 * s), radius=3 * s, fill=_mix(body, body_lo, 0.55))
+    _line(d, s, [(46, 34.2), (82, 34.2)], rgba(body_hi), 1.4)
+    _line(d, s, [(42.2, 39), (42.2, 82)], _mix(body, body_hi, 0.6), 1.4)
+    # The screen in its bezel.
     d.rounded_rectangle(
-        (45 * s, 38 * s, 83 * s, 63 * s),
-        radius=5 * s,
-        fill=rgba("#07131E"),
-        outline=outline,
+        (44 * s, 37 * s, 84 * s, 65 * s), radius=5 * s, fill=rgba("#0C1622"), outline=outline
     )
-    d.ellipse(bbox(55 * s, 51 * s, 7 * s, 10 * s), fill=rgba("#6BE9FF"))
-    d.ellipse(bbox(73 * s, 51 * s, 7 * s, 10 * s), fill=rgba("#6BE9FF"))
-    d.rectangle((49 * s, 72 * s, 79 * s, 77 * s), fill=rgba("#C98CFF"))
-    d.line(
-        [(45 * s, 91 * s), (35 * s, 104 * s)], fill=outline, width=max(1, int(3 * s))
-    )
-    d.line(
-        [(83 * s, 91 * s), (93 * s, 104 * s)], fill=outline, width=max(1, int(3 * s))
-    )
+    d.rounded_rectangle((46.5 * s, 39.5 * s, 81.5 * s, 62.5 * s), radius=3.5 * s, fill=rgba("#0A2636"))
+    for y in range(42, 62, 3):
+        _line(d, s, [(47.5, y), (80.5, y)], rgba("#0D3145"), 0.8)
+    d.polygon(poly_scaled([(48, 41), (59, 41), (51, 52), (48, 52)], s), fill=rgba("#12384E"))
+    # The eyes, each with a glow under it and a glint.
+    for ex in (55, 73):
+        d.ellipse(bbox(ex * s, 51 * s, 12 * s, 15 * s), fill=rgba("#124A63"))
+        d.ellipse(bbox(ex * s, 51 * s, 7 * s, 10 * s), fill=rgba("#6BE9FF"))
+        d.ellipse(bbox((ex - 1.0) * s, 48.6 * s, 2.6 * s, 3.2 * s), fill=rgba("#F2FDFF"))
+    # The mouth: a row of lights in a slot.
+    _rect(d, s, (47.5, 69.5, 80.5, 78.5), rgba("#0C1622"), outline=outline, width=1)
+    for i in range(6):
+        x0 = 49.5 + i * 5.0
+        tall = (2.0, 3.6, 5.0, 4.2, 2.8, 1.8)[i]
+        _rect(d, s, (x0, 74 - tall / 2.0, x0 + 3.6, 74 + tall / 2.0), rgba("#C98CFF"))
+    # Two lamps and a grille.
+    _disc(d, s, 48.5, 84, 1.8, rgba("#38E983"), outline=outline)
+    _disc(d, s, 54.5, 84, 1.8, rgba("#FFC857"), outline=outline)
+    for x in (62, 65.5, 69, 72.5):
+        _line(d, s, [(x, 81.8), (x, 86.2)], rgba(body_lo), 1.3)
 
 
 def boss_core(d: ImageDraw.ImageDraw, s: float) -> None:
+    """The core of a boss: an eye of light in a shell with eight claws."""
     outline = rgba("#1B0624")
-    d.ellipse(
-        bbox(64 * s, 64 * s, 72 * s, 72 * s),
-        fill=rgba("#7520A5"),
-        outline=outline,
-        width=max(1, int(3 * s)),
-    )
+    d.ellipse(bbox(64 * s, 64 * s, 94 * s, 94 * s), fill=rgba("#EC4DFF", 34))
+    d.ellipse(bbox(64 * s, 64 * s, 82 * s, 82 * s), fill=rgba("#EC4DFF", 52))
+    # The claws, behind the shell.
     for ang in range(0, 360, 45):
-        import math
-
         a = math.radians(ang)
-        x = 64 + math.cos(a) * 47
-        y = 64 + math.sin(a) * 47
-        d.line(
-            [(64 * s, 64 * s), (x * s, y * s)],
-            fill=rgba("#EC4DFF", 120),
-            width=max(1, int(2 * s)),
-        )
-    d.ellipse(
-        bbox(64 * s, 64 * s, 30 * s, 30 * s),
-        fill=rgba("#1B0826"),
-        outline=rgba("#FF78FF"),
-        width=max(1, int(2 * s)),
-    )
-    d.ellipse(bbox(64 * s, 64 * s, 12 * s, 12 * s), fill=rgba("#FFFFFF"))
+        ux, uy = math.cos(a), math.sin(a)
+        px, py = -uy, ux
+        claw = [
+            (64 + ux * 30 + px * 7.5, 64 + uy * 30 + py * 7.5),
+            (64 + ux * 47, 64 + uy * 47),
+            (64 + ux * 30 - px * 7.5, 64 + uy * 30 - py * 7.5),
+        ]
+        d.polygon(poly_scaled(claw, s), fill=rgba("#A23AD0"), outline=outline)
+        _line(d, s, [claw[0], claw[1]], rgba("#E08CFF"), 1.0)
+    # The shell.
+    _disc(d, s, 64, 64, 36, outline)
+    _ball(d, s, 64, 64, 34, "#3F0F5E", "#A54BDA")
+    d.ellipse(bbox(64 * s, 64 * s, 50 * s, 50 * s), outline=rgba("#2A0A3C"), width=max(1, int(2 * s)))
+    for ang in range(22, 360, 45):
+        a = math.radians(ang + 0.5)
+        _disc(d, s, 64 + math.cos(a) * 29.5, 64 + math.sin(a) * 29.5, 1.9, rgba("#E7B8FF"), outline=outline)
+    # The eye.
+    _disc(d, s, 64, 64, 16, rgba("#1B0826"), outline=rgba("#FF78FF"), width=2)
+    _disc(d, s, 64, 64, 11, rgba("#5A1784"))
+    _disc(d, s, 64, 64, 7.5, rgba("#D85CFF"))
+    _disc(d, s, 64, 64, 4.4, rgba("#FFFFFF"))
+    _disc(d, s, 58.5, 58.5, 2.0, rgba("#F6D8FF"))
 
 
 def sandbag_dummy(d: ImageDraw.ImageDraw, s: float) -> None:
+    """A bag to hit: canvas with a lit side, a rope at the neck and a
+    target painted on it."""
     outline = rgba("#2A1D13")
+    canvas, canvas_hi, canvas_lo = "#B58A5D", "#D8B080", "#8C6640"
     d.ellipse(bbox(64 * s, 97 * s, 46 * s, 10 * s), fill=(0, 0, 0, 40))
     d.rounded_rectangle(
         (45 * s, 30 * s, 83 * s, 91 * s),
         radius=17 * s,
-        fill=rgba("#B58A5D"),
+        fill=rgba(canvas),
         outline=outline,
         width=max(1, int(2 * s)),
     )
-    d.line(
-        [(48 * s, 45 * s), (80 * s, 45 * s)],
-        fill=rgba("#6A4C32"),
-        width=max(1, int(2 * s)),
-    )
-    d.line(
-        [(52 * s, 58 * s), (76 * s, 76 * s)],
-        fill=rgba("#6A4C32"),
-        width=max(1, int(3 * s)),
-    )
-    d.line(
-        [(76 * s, 58 * s), (52 * s, 76 * s)],
-        fill=rgba("#6A4C32"),
-        width=max(1, int(3 * s)),
-    )
-    d.rectangle((58 * s, 24 * s, 70 * s, 35 * s), fill=rgba("#755236"), outline=outline)
+    # The side in shade and the side in light.
+    d.rounded_rectangle((72 * s, 49 * s, 80.5 * s, 85 * s), radius=4.2 * s, fill=rgba(canvas_lo))
+    d.rounded_rectangle((66 * s, 49 * s, 74 * s, 87 * s), radius=4 * s, fill=_mix(canvas, canvas_lo, 0.5))
+    d.rounded_rectangle((48.5 * s, 49 * s, 54 * s, 84 * s), radius=2.7 * s, fill=rgba(canvas_hi))
+    _line(d, s, [(52, 36), (58, 32.6)], rgba(canvas_hi), 1.6)
+    # The target.
+    _disc(d, s, 64, 67, 13, rgba("#EFE3C6"), outline=outline)
+    _disc(d, s, 64, 67, 9, rgba("#C8483C"))
+    _disc(d, s, 64, 67, 5.4, rgba("#EFE3C6"))
+    _disc(d, s, 64, 67, 2.4, rgba("#C8483C"))
+    # The rope at the neck.
+    _rect(d, s, (47.5, 42.5, 80.5, 47), rgba("#6A4C32"), outline=outline, width=1)
+    for x in range(50, 80, 5):
+        _line(d, s, [(x, 46.2), (x + 2.4, 43.4)], rgba("#A98258"), 1.1)
+    # A patch, with its stitches.
+    d.polygon(poly_scaled([(55, 82), (62, 81), (62.6, 87), (56, 87.6)], s), fill=rgba("#DCC6A0"), outline=outline)
+    # The cap the bag hangs from.
+    _rect(d, s, (58, 24, 70, 35), rgba("#755236"), outline=outline, width=1)
+    _line(d, s, [(60, 26), (60, 33)], rgba("#A07A54"), 1.3)
 
 
 def moving_platform(d: ImageDraw.ImageDraw, s: float) -> None:
+    """A deck that floats on two jets."""
     outline = rgba("#10253A")
     d.ellipse(bbox(64 * s, 83 * s, 88 * s, 13 * s), fill=(0, 0, 0, 40))
+    # The housing under the deck and the light of its two jets.
+    d.polygon(poly_scaled([(30, 73), (98, 73), (92, 81), (36, 81)], s), fill=rgba("#1B3148"), outline=outline)
+    for x in (45, 83):
+        d.ellipse(bbox(x * s, 82.5 * s, 17 * s, 6 * s), fill=rgba("#2F8FC4"))
+        d.ellipse(bbox(x * s, 82 * s, 11 * s, 3.6 * s), fill=rgba("#9FEFFF"))
+        _rect(d, s, (x - 6, 77.5, x + 6, 81), rgba("#0E1E30"), outline=outline, width=1)
+    # The deck.
     d.rounded_rectangle(
         (20 * s, 55 * s, 108 * s, 75 * s),
-        radius=9 * s,
-        fill=rgba("#4CB4FF"),
+        radius=6 * s,
+        fill=rgba("#3E9BE0"),
         outline=outline,
         width=max(1, int(2 * s)),
     )
-    d.rectangle((28 * s, 61 * s, 100 * s, 67 * s), fill=rgba("#BCEBFF"))
-    for x in (35, 64, 93):
-        d.ellipse(
-            bbox(x * s, 78 * s, 12 * s, 12 * s),
-            fill=rgba("#12263A"),
-            outline=rgba("#7ED6FF"),
-        )
+    _rect(d, s, (25, 57.6, 103, 60.4), rgba("#A9E2FF"))
+    _rect(d, s, (24, 69.6, 104, 72.6), rgba("#2A76B8"))
+    # The lamp along the middle, and a rivet at each end.
+    d.rounded_rectangle(
+        (40 * s, 62.6 * s, 88 * s, 67.4 * s), radius=2.4 * s, fill=rgba("#12324E"), outline=outline
+    )
+    for i in range(5):
+        x0 = 43 + i * 9.0
+        _rect(d, s, (x0, 64, x0 + 6, 66), rgba("#E8FBFF") if i % 2 == 0 else rgba("#7ED6FF"))
+    for x in (29.5, 98.5):
+        _disc(d, s, x, 65, 2.2, rgba("#12263A"))
+        _disc(d, s, x - 0.6, 64.4, 0.9, rgba("#BCEBFF"))
 
 
 def rebound_pad(d: ImageDraw.ImageDraw, s: float) -> None:
@@ -391,21 +504,15 @@ def rebound_pad(d: ImageDraw.ImageDraw, s: float) -> None:
 
 
 def pogo_orb(d: ImageDraw.ImageDraw, s: float) -> None:
+    """A ball of light in an open ring: a body that pogos on it goes up
+    again."""
     outline = rgba("#07251A")
-    d.ellipse(
-        bbox(64 * s, 64 * s, 44 * s, 44 * s),
-        fill=rgba("#29E88B"),
-        outline=outline,
-        width=max(1, int(2 * s)),
-    )
-    d.ellipse(bbox(57 * s, 55 * s, 14 * s, 14 * s), fill=rgba("#D9FFF0"))
-    d.arc(
-        (29 * s, 29 * s, 99 * s, 99 * s),
-        20,
-        330,
-        fill=rgba("#77FFD0", 170),
-        width=max(1, int(3 * s)),
-    )
+    d.ellipse(bbox(64 * s, 64 * s, 60 * s, 60 * s), fill=rgba("#29E88B", 46))
+    d.arc((29 * s, 29 * s, 99 * s, 99 * s), 20, 330, fill=rgba("#2FB98A"), width=max(1, int(3 * s)))
+    d.arc((30 * s, 30 * s, 98 * s, 98 * s), 150, 300, fill=rgba("#A5FFE0"), width=max(1, int(1.2 * s)))
+    _disc(d, s, 64, 64, 22, outline)
+    _ball(d, s, 64, 64, 20.4, "#14B56E", "#C9FFE8")
+    d.ellipse(bbox(56.5 * s, 55 * s, 9 * s, 7 * s), fill=rgba("#FFFFFF"))
 
 
 def soft_blink_wall(d: ImageDraw.ImageDraw, s: float) -> None:
