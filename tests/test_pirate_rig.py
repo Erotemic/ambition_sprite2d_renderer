@@ -69,15 +69,19 @@ def test_the_head_stays_on_the_body_in_every_frame() -> None:
     turned it took it far from the body. No frame may do that."""
     from ambition_sprite2d_renderer.authoring.sheet_build import ANIMATIONS
 
+    from ambition_sprite2d_renderer.targets.characters import _pirate_common as crew
+    from ambition_sprite2d_renderer.targets.characters import kernel_guide  # noqa: F401
+
     neck = math.hypot(6.0, 62.0)
-    for anim, count, _ms in ANIMATIONS:
-        for index in range(count):
-            pose = animation_pose(anim, index, count)
-            joints = R.evaluate(pose, "pirate_raider", W, H, pose["body_tilt"])
-            (hx, hy), (cx, cy) = joints["head"].point, joints["chest"].point
-            assert abs(math.hypot(hx - cx, hy - cy) - neck) < 2.5, (anim, index)
-            # The head does not turn far from the line of the body.
-            assert abs(pose["head_tilt"]) <= 16.0, (anim, index)
+    for kind in ("pirate_raider", "kernel_guide"):
+        for anim, count, _ms in crew.rows_of(kind):
+            for index in range(count):
+                pose = crew.pose_of(kind, anim, index, count)
+                joints = R.evaluate(pose, kind, W, H, pose["body_tilt"])
+                (hx, hy), (cx, cy) = joints["head"].point, joints["chest"].point
+                assert abs(math.hypot(hx - cx, hy - cy) - neck) < 2.5, (kind, anim, index)
+                # The head does not turn far from the line of the body.
+                assert abs(pose["head_tilt"]) <= 16.0, (kind, anim, index)
 
 
 def test_a_standing_pose_has_a_foot_on_the_ground() -> None:
@@ -92,6 +96,22 @@ def test_a_standing_pose_has_a_foot_on_the_ground() -> None:
             joints = R.evaluate(pose, "pirate_raider", W, H, pose["body_tilt"])
             low = max(joints["left_foot"].point[1], joints["right_foot"].point[1])
             assert abs(low - R.ground_y(H)) < 0.5, (anim, index, low)
+
+
+def test_each_frame_of_a_row_is_its_own_pose() -> None:
+    """No two frames of a row are the same pose. A loop on one sine has each
+    pose two times; the idle did, and a test of the game that waits for a
+    frame to change the picture found it."""
+    from ambition_sprite2d_renderer.targets.characters import _pirate_common as crew
+    from ambition_sprite2d_renderer.targets.characters import kernel_guide  # noqa: F401
+
+    for kind in ("pirate_raider", "kernel_guide"):
+        for anim, count, _ms in crew.rows_of(kind):
+            poses = {
+                tuple(round(v, 3) if isinstance(v, float) else v for v in crew.pose_of(kind, anim, i, count).values())
+                for i in range(count)
+            }
+            assert len(poses) == count, (kind, anim, len(poses))
 
 
 def test_the_sword_arm_is_on_the_side_the_pirate_looks_to() -> None:

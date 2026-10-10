@@ -25,7 +25,6 @@ from ambition_sprite2d_renderer.authoring.part_flipbook import (
     largest_wrong_blob,
     parity,
 )
-from ambition_sprite2d_renderer.authoring.sheet_build import ANIMATIONS
 from ambition_sprite2d_renderer.targets.characters._pirate_common import (
     render_target_with_products,
 )
@@ -54,8 +53,13 @@ def _published_frame(atlas, row, index, frame_size):
 # of the five found it, this test with two of them did not).
 @pytest.mark.parametrize("kind", [
     "pirate_raider", "pirate_admiral", "pirate_quartermaster", "pirate_lookout", "pirate_navigator",
+    # Not a pirate: the Kernel Guide, on the same rig with its own rows.
+    "kernel_guide",
 ])
 def test_the_flipbook_recomposes_every_published_frame(kind, tmp_path: Path):
+    from ambition_sprite2d_renderer.targets.characters import _pirate_common as crew
+    from ambition_sprite2d_renderer.targets.characters import kernel_guide  # noqa: F401
+
     outputs, products = render_target_with_products(kind, tmp_path)
     flipbook = products["parts"]
     assert Path(outputs["parts"]).read_text() == flipbook.to_ron()
@@ -63,7 +67,7 @@ def test_the_flipbook_recomposes_every_published_frame(kind, tmp_path: Path):
     atlas = Image.open(Path(outputs["yaml"]).parent / sheet["image"]).convert("RGBA")
     rows = {row["animation"]: row for row in sheet["rows"]}
     assert [(row, len(frames)) for row, (_d, frames) in flipbook.clips.items()] == [
-        (row, count) for row, count, _ms in ANIMATIONS
+        (row, count) for row, count, _ms in crew.rows_of(kind)
     ]
     failures = []
     for row, (_duration, frames) in flipbook.clips.items():

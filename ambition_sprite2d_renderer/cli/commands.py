@@ -185,7 +185,6 @@ RUNTIME_REVIEW_NPCS: tuple[str, ...] = (
     "absurd_general",
     "architect",
     "erdish",
-    "kernel_guide",
     "merchant_prototype",
     "oiler",
     "vault_keeper",

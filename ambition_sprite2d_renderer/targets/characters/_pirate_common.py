@@ -28,7 +28,7 @@ import math
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 from PIL import Image, ImageDraw
 
@@ -234,20 +234,26 @@ def _sampled(table, t: float) -> float:
     return lerp(table[i], table[i + 1], at - i)
 
 
-def animation_pose(anim, frame_idx, nframes):
-    """The pose of one frame: where the body is and where each bone points.
+#: The rows of a kind that does not have the rows of a pirate, and the function
+#: that poses it. A character on this rig that is not a pirate (the Kernel
+#: Guide) puts itself here.
+ROWS: Dict[str, list] = {}
+POSES: Dict[str, Callable] = {}
 
-    A limb angle is a world angle (see ``_pirate_rig``): 0 is down, negative is
-    to the front, positive is to the back. The guard is the home pose: the
-    feet apart with the front knee a little bent, the sword held up to the
-    front, the other arm down and a little behind the body.
 
-    Each pose but the death is planted: the root goes down or up until the
-    lower foot is on the ground.
-    """
-    s = oscillate(frame_idx, nframes)
-    t = frame_idx / max(1, nframes - 1)
-    pose = {
+def rows_of(kind: str) -> list:
+    """The rows of the sheet of ``kind``: (name, frames, ms a frame)."""
+    return ROWS.get(kind, ANIMATIONS)
+
+
+def pose_of(kind: str, anim: str, frame_idx: int, nframes: int) -> dict:
+    """The pose of one frame of ``kind``."""
+    return POSES.get(kind, animation_pose)(anim, frame_idx, nframes)
+
+
+def home_pose() -> dict:
+    """Each channel of a pose, at the guard of a pirate."""
+    return {
         "root_x": 0.0,
         "bob": 0.0,
         "body_tilt": 2.0,
@@ -269,17 +275,51 @@ def animation_pose(anim, frame_idx, nframes):
         "mouth_open": 0.0,
         "death_t": 0.0,
         "x_eyes": False,
+        "glow": 0.0,
     }
+
+
+def planted(pose: dict) -> dict:
+    """``pose`` with its root moved down or up until the lower foot is on the
+    ground."""
+    w, h = BASE_FRAME[0] * SCALE, BASE_FRAME[1] * SCALE
+    joints = pirate_rig.evaluate(pose, "", w, h, pose["body_tilt"])
+    low = max(joints["left_foot"].point[1], joints["right_foot"].point[1])
+    pose["bob"] += (pirate_rig.ground_y(h) - low) / SCALE
+    return pose
+
+
+def animation_pose(anim, frame_idx, nframes):
+    """The pose of one frame: where the body is and where each bone points.
+
+    A limb angle is a world angle (see ``_pirate_rig``): 0 is down, negative is
+    to the front, positive is to the back. The guard is the home pose: the
+    feet apart with the front knee a little bent, the sword held up to the
+    front, the other arm down and a little behind the body.
+
+    Each pose but the death is planted: the root goes down or up until the
+    lower foot is on the ground.
+    """
+    s = oscillate(frame_idx, nframes)
+    # A quarter of a turn after `s`. A loop on `s` alone has each pose two
+    # times (it is the same on the way up and on the way down): with `c` in
+    # it, each frame of the loop is its own pose.
+    c = math.cos((frame_idx / max(1, nframes)) * math.tau)
+    t = frame_idx / max(1, nframes - 1)
+    pose = home_pose()
     if anim == "idle":
-        # He breathes: the chest and the sword go up and down a little.
+        # He breathes: the chest and the sword go up and down a little. His
+        # weight goes from one foot to the other a quarter of a turn later.
         pose["shoulder_bounce"] = -s * 2.0
+        pose["root_x"] = c * 0.8
+        pose["body_tilt"] = 2.0 + c * 1.0
         pose["sword_fore"] = -100.0 + s * 3.0
-        pose["weapon"] = -50.0 - s * 5.0
+        pose["weapon"] = -50.0 - s * 5.0 + c * 2.0
         pose["off_upper"] = 26.0 + s * 2.0
-        pose["off_fore"] = 8.0 + s * 2.0
-        pose["head_tilt"] = -2.0 + s * 1.5
+        pose["off_fore"] = 8.0 + c * 3.0
+        pose["head_tilt"] = -2.0 + c * 1.5
         pose["hat_tilt"] = s * 1.5
-        pose["coat_sway"] = s * 4.0
+        pose["coat_sway"] = c * 4.0
         pose["blink"] = frame_idx == max(0, nframes - 2)
     elif anim == "walk":
         phase = (frame_idx / max(1, nframes)) * math.tau
@@ -307,18 +347,20 @@ def animation_pose(anim, frame_idx, nframes):
         pose["body_tilt"] = -4.0 + s * 2.0
         # Not straight up: the tip of the blade stays in the frame of the sheet.
         pose["sword_upper"] = -138.0 + s * 5.0
-        pose["sword_fore"] = -150.0 + s * 6.0
+        pose["sword_fore"] = -150.0 + c * 6.0
         pose["weapon"] = -46.0 + s * 8.0
         # The free hand is a fist that he shakes.
         pose["off_upper"] = 34.0 + s * 8.0
-        pose["off_fore"] = -30.0 + s * 14.0
-        pose["head_tilt"] = -8.0 + s * 4.0
+        pose["off_fore"] = -30.0 + c * 14.0
+        pose["head_tilt"] = -8.0 + c * 4.0
         pose["hat_tilt"] = -3.0 + s * 3.0
         pose["coat_sway"] = s * 6.0
         pose["shoulder_bounce"] = -s * 2.0
         pose["mouth_open"] = 0.5 + max(0.0, s) * 0.4
     elif anim == "hurt":
-        phase = math.sin(t * math.pi)
+        # How far he is thrown, a value for each frame: the first frame is
+        # the hit itself, not the guard he was in.
+        phase = _sampled((0.6, 1.0, 0.65, 0.2), t)
         shake = math.sin(t * math.pi * 5.0) * (1.0 - t)
         # He is thrown back onto the back foot, and the arms go out.
         pose["root_x"] = -5.0 * phase + shake * 3.0
@@ -362,12 +404,7 @@ def animation_pose(anim, frame_idx, nframes):
         pose["mouth_open"] = 0.5 * tt
         pose["x_eyes"] = tt > 0.55
         return pose
-    # Plant the pose: the lower foot is on the ground.
-    w, h = BASE_FRAME[0] * SCALE, BASE_FRAME[1] * SCALE
-    joints = pirate_rig.evaluate(pose, "", w, h, pose["body_tilt"])
-    low = max(joints["left_foot"].point[1], joints["right_foot"].point[1])
-    pose["bob"] += (pirate_rig.ground_y(h) - low) / SCALE
-    return pose
+    return planted(pose)
 
 
 def _shade(color: RGBA, k: float) -> RGBA:
@@ -388,7 +425,7 @@ class Look:
 
     #: The width of the body: 1.0 is the raider.
     build: float = 1.0
-    #: ``tricorn``, ``bicorne``, ``bandana`` or ``plume``.
+    #: ``tricorn``, ``bicorne``, ``bandana``, ``plume`` or ``hood``.
     headwear: str = "tricorn"
     #: The palette field of the bandana, or of the band and trim of a hat.
     band: str = "sash"
@@ -402,8 +439,9 @@ class Look:
     epaulettes: bool = False
     #: A skull on the hat.
     skull: bool = False
-    #: ``long`` (tails to the knee, a strap across the chest) or ``short``
-    #: (a jacket open on the shirt, to the belt).
+    #: ``long`` (tails to the knee, a strap across the chest), ``short`` (a
+    #: jacket open on the shirt, to the belt) or ``robe`` (closed, to the
+    #: ankles, with a mantle on the shoulders).
     coat: str = "long"
     #: Stripes across the shirt, in the colour of the coat.
     stripes: bool = False
@@ -412,6 +450,13 @@ class Look:
     #: A cutlass painted in the hand. False for a pirate whose weapon the game
     #: draws in that hand: two weapons in one hand is what a painted one gives.
     sword: bool = True
+    #: A thing in the hand that is not a sword: ``tablet`` or none.
+    prop: Optional[str] = None
+    #: Round glasses that glow, over the eyes.
+    glasses: bool = False
+    #: A kind face: the brows are level and the eyes are open. The face of a
+    #: pirate is not.
+    gentle: bool = False
 
 
 LOOKS: Dict[str, Look] = {
@@ -488,6 +533,20 @@ def draw_sword(draw, hand, angle, length, pal, curve=0.0):
         line(draw, [spine(0.06), spine(0.45), spine(0.82)], (255, 255, 255, 255), width=2)
 
 
+def draw_tablet(draw, hand, angle, pal, glow: float = 0.0):
+    """A slate with a screen of light, held by its lower end. ``glow`` is 0 to
+    1: how bright the screen is when a finger is on it."""
+    lit = (250, 248, 240, 255)
+    screen = tuple(round(pal.metal[i] + (lit[i] - pal.metal[i]) * max(0.0, min(1.0, glow))) for i in range(3)) + (255,)
+    with draw.part("tablet", hand, angle):
+        poly(draw, [(-8, -15), (38, -15), (42, -11), (42, 11), (38, 15), (-8, 15), (-12, 11), (-12, -11)],
+             (34, 40, 58, 255), pal.outline, width=3)
+        poly(draw, [(-5, -10.5), (36, -10.5), (36, 10.5), (-5, 10.5)], screen)
+        # Three lines of text on the screen.
+        for x, top in ((28, -7), (20, -7), (12, -3)):
+            poly(draw, [(x, top), (x + 3, top), (x + 3, 7), (x, 7)], _shade(pal.metal, 0.5))
+
+
 def draw_neck(draw, chest, head_center, global_tilt, pal, look: Look):
     """The neck, from the collar of the coat to under the jaw, and the
     collar of the shirt over it."""
@@ -536,6 +595,12 @@ def _oval(cx: float, cy: float, rx: float, ry: float, steps: int = 16):
 def draw_hair(draw, head_center, tilt, pal, look: Look):
     """The hair behind the head: it is painted before the face."""
     with draw.part("hair", head_center, tilt):
+        if look.headwear == "hood":
+            # The hood is about the whole head, with a point at the back.
+            poly(draw, [(-33, -30), (-14, -43), (10, -43), (28, -31), (33, -8), (27, 20), (8, 36),
+                        (-20, 36), (-38, 20), (-50, 2), (-41, -14)], pal.hat, pal.outline, width=4)
+            poly(draw, [(-36, 16), (-46, 2), (-38, -10), (-30, 4)], _shade(pal.hat, 0.78))
+            return
         if look.hair_style == "long":
             poly(draw, [(-27, -22), (-8, -34), (0, -8), (-10, 22), (-14, 40), (-24, 58), (-36, 50),
                         (-46, 56), (-44, 34), (-40, 16), (-34, -4)], look.hair, pal.outline, width=3)
@@ -584,6 +649,8 @@ def draw_face(draw, head_center, tilt, pal, look: Look, x_eyes=False, blink=Fals
                 else:
                     poly(draw, _oval(ex, eye_y + 1, 5.5, 5.5), white, pal.outline, width=2)
                     circle(draw, (ex + 1.8, eye_y + 1.8), 3.0, pal.outline)
+                    if look.gentle:
+                        continue
                     # The lid is down over the top of the eye, lower at the
                     # nose: these are not kind people.
                     toward = 1.0 if ex == far else -1.0
@@ -595,11 +662,26 @@ def draw_face(draw, head_center, tilt, pal, look: Look, x_eyes=False, blink=Fals
                     if look.lashes:
                         out = ex - 6.5 if ex == far else ex + 6.5
                         line(draw, [(out, eye_y - 1.5), (out - toward * 4.0, eye_y - 5.0)], pal.outline, width=2)
-            line(draw, [(far - 8, eye_y - 9), (far + 7, eye_y - 5.5)], pal.outline, width=4)
-            line(draw, [(near - 7, eye_y - 5.5), (near + 8, eye_y - 9)], pal.outline, width=4)
+            if look.gentle:
+                line(draw, [(far - 7, eye_y - 11), (far + 6, eye_y - 12)], pal.outline, width=3)
+                line(draw, [(near - 6, eye_y - 12), (near + 7, eye_y - 11)], pal.outline, width=3)
+            else:
+                line(draw, [(far - 8, eye_y - 9), (far + 7, eye_y - 5.5)], pal.outline, width=4)
+                line(draw, [(near - 7, eye_y - 5.5), (near + 8, eye_y - 9)], pal.outline, width=4)
             if look.eyepatch:
                 line(draw, [(-25, -17), (27, -12)], pal.outline, width=3)
                 poly(draw, _oval(near, eye_y + 0.5, 8, 7.5), pal.hat, pal.outline, width=2)
+        if look.glasses:
+            # Two round lenses of light, and the bar between them. A blink
+            # and a body that is down put the light out.
+            lit = not (blink or x_eyes)
+            lens = pal.metal if lit else _shade(pal.metal, 0.38)
+            line(draw, [(far + 7, eye_y), (near - 7, eye_y)], pal.outline, width=3)
+            line(draw, [(far - 8, eye_y - 1), (-25, eye_y - 4)], pal.outline, width=3)
+            for ex in (far, near):
+                circle(draw, (ex, eye_y + 0.5), 8.5, lens, pal.outline, width=3)
+                if lit:
+                    circle(draw, (ex - 2.5, eye_y - 2.5), 2.4, white)
         # The mouth: a grin, or open with a row of teeth.
         if mouth_open > 0.12:
             drop = 5.0 + mouth_open * 12.0
@@ -629,6 +711,12 @@ def draw_hat(draw, head_center, tilt, pal, look: Look):
     """What is on the head: a hat or a bandana, in the head's own frame."""
     band = getattr(pal, look.band) or pal.sash
     with draw.part("hat", head_center, tilt):
+        if look.headwear == "hood":
+            # The front of the hood, over the brow, with a line of trim.
+            poly(draw, [(-29, -8), (-26, -26), (-12, -38), (10, -39), (25, -31), (32, -12),
+                        (23, -19), (7, -25), (-9, -24), (-21, -16)], pal.hat, pal.outline, width=4)
+            line(draw, [(-25, -10), (-19, -18), (-8, -26.5), (7, -27.5), (22, -21.5), (29, -14)], band, width=3)
+            return
         if look.headwear == "bandana":
             # The ends of the knot fly behind the head.
             poly(draw, [(-27, -14), (-48, -10), (-58, 2), (-46, 0), (-34, -4)], band, pal.outline, width=3)
@@ -714,10 +802,39 @@ def draw_limb(draw, name: str, root, joint, end, fill, widths, ink, ink_width: i
             line(draw, [(0.0, ha), (length, hb)], ink, width=ink_width)
 
 
+def _draw_robe(draw, chest, global_tilt, pal, look: Look) -> None:
+    """The top of a robe: closed in front, a line of trim down its middle with
+    three nodes on it (a trace on a board), a belt with a stone of light, and a
+    mantle on the shoulders."""
+    b = look.build
+    shade = _shade(pal.coat, 0.78)
+    with draw.part("torso", chest, global_tilt):
+        poly(draw, [(-39 * b, -14), (-30 * b, -29), (28 * b, -29), (37 * b, -14), (35 * b, 34),
+                    (39 * b, 68), (0, 76), (-41 * b, 68), (-37 * b, 34)],
+             pal.coat, pal.outline, width=5)
+        poly(draw, [(22 * b, -24), (34 * b, -12), (32 * b, 32), (36 * b, 64), (23 * b, 68)], shade)
+        # The trace down the front.
+        poly(draw, [(-3.5, 8), (3.5, 8), (3.5, 72), (-3.5, 72)], pal.coat2)
+        for y in (20, 60):
+            poly(draw, rotated_rect_points((0, y), 11, 11, 45.0), pal.coat2, pal.outline, width=2)
+        # The belt, and the stone on it.
+        poly(draw, [(-39 * b, 35), (36 * b, 35), (38 * b, 47), (-41 * b, 47)],
+             pal.sash, pal.outline, width=3)
+        circle(draw, (0, 41), 8.5, pal.metal, pal.outline, width=3)
+        circle(draw, (-2.5, 38.5), 2.6, (250, 248, 240, 255))
+        # The mantle on the shoulders, with its hem of trim.
+        mantle = [(-47 * b, -6), (-33 * b, -30), (31 * b, -30), (45 * b, -6), (34 * b, 8), (0, 18), (-36 * b, 8)]
+        poly(draw, mantle, _shade(pal.coat, 0.88), pal.outline, width=4)
+        line(draw, [(-43 * b, -3), (-34 * b, 4.5), (0, 14), (32 * b, 4.5), (41 * b, -3)], pal.coat2, width=3)
+
+
 def _draw_torso(draw, chest, global_tilt, pal, look: Look) -> None:
     """The coat or the jacket on the chest, the shirt in it and the belt. One
     rigid part in the frame of the chest."""
     b = look.build
+    if look.coat == "robe":
+        _draw_robe(draw, chest, global_tilt, pal, look)
+        return
     long_coat = look.coat == "long"
     coat_shade = _shade(pal.coat, 0.78)
     hem = 74 if long_coat else 52
@@ -782,7 +899,7 @@ def paint_character(
     look = LOOKS[kind]
     b = look.build
     w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
-    pose = animation_pose(anim, frame_idx, nframes)
+    pose = pose_of(kind, anim, frame_idx, nframes)
 
     global_tilt = pose["body_tilt"]
 
@@ -822,16 +939,32 @@ def paint_character(
     _draw_torso(draw, chest, global_tilt, pal, look)
     # The tails of a coat stop over the knees. A jacket has a short skirt.
     coat_sway = pose["coat_sway"]
-    drop = 34.0 if look.coat == "long" else 6.0
-    with draw.part("coat_tail_left", hip, global_tilt + coat_sway):
-        poly(draw, [(-44 * b, -14), (-9, -14), (-11, drop - 8), (-38 * b, drop)],
-             pal.coat, pal.outline, width=4)
-    with draw.part("coat_tail_right", hip, global_tilt - coat_sway):
-        poly(draw, [(9, -14), (42 * b, -14), (38 * b, drop), (10, drop - 8)],
-             pal.coat, pal.outline, width=4)
-        poly(draw, [(26 * b, -10), (39 * b, -10), (35 * b, drop - 4), (26 * b, drop - 6)],
-             _shade(pal.coat, 0.78))
-    _end(draw)
+    if look.coat == "robe":
+        # The skirt of a robe: two halves that meet in the middle and go down
+        # to the ankles, each with a hem of trim. The boots show under them.
+        drop = 66.0
+        with draw.part("coat_tail_left", hip, global_tilt + coat_sway):
+            poly(draw, [(-41 * b, -14), (5, -14), (7, drop), (-43 * b, drop - 2)],
+                 pal.coat, pal.outline, width=4)
+            poly(draw, [(-42 * b, drop - 10), (6.5, drop - 8), (7, drop - 2), (-43 * b, drop - 4)], pal.coat2)
+        with draw.part("coat_tail_right", hip, global_tilt - coat_sway):
+            poly(draw, [(-5, -14), (39 * b, -14), (43 * b, drop - 2), (-7, drop)],
+                 pal.coat, pal.outline, width=4)
+            poly(draw, [(24 * b, -10), (37 * b, -10), (40 * b, drop - 12), (26 * b, drop - 11)],
+                 _shade(pal.coat, 0.78))
+            poly(draw, [(-6.5, drop - 8), (42 * b, drop - 10), (43 * b, drop - 4), (-7, drop - 2)], pal.coat2)
+        _end(draw)
+    else:
+        drop = 34.0 if look.coat == "long" else 6.0
+        with draw.part("coat_tail_left", hip, global_tilt + coat_sway):
+            poly(draw, [(-44 * b, -14), (-9, -14), (-11, drop - 8), (-38 * b, drop)],
+                 pal.coat, pal.outline, width=4)
+        with draw.part("coat_tail_right", hip, global_tilt - coat_sway):
+            poly(draw, [(9, -14), (42 * b, -14), (38 * b, drop), (10, drop - 8)],
+                 pal.coat, pal.outline, width=4)
+            poly(draw, [(26 * b, -10), (39 * b, -10), (35 * b, drop - 4), (26 * b, drop - 6)],
+                 _shade(pal.coat, 0.78))
+        _end(draw)
 
     # The two arms are in front of the body (Jon, 2026-10-10). The arm with no
     # sword is painted first: the sword arm is over it where they meet.
@@ -854,6 +987,8 @@ def paint_character(
     curve = 16 if kind in SCARFED_KINDS else 5
     if look.sword:
         draw_sword(draw, front_hand, pose["weapon"], blade, pal, curve=curve)
+    elif look.prop == "tablet":
+        draw_tablet(draw, front_hand, pose["weapon"], pal, pose["glow"])
     # The hand is over the grip of the sword.
     with draw.part("front_hand", front_hand, 0.0):
         circle(draw, (0, 0), 10, pal.skin, pal.outline, width=3)
@@ -912,16 +1047,16 @@ def paint_character(
 RIG_REDUCTION = 3
 #: The sheet frame for a ``BASE_FRAME`` request: it holds each frame of each
 #: pirate at the scale of the idle pose, with a margin of 5 px or more. Measured
-#: 2026-10-10, after the poses were made again, about the anchor below: 113 px
-#: to the back (the death), 91 to the front (the strike), 140 up (the sword
+#: 2026-10-10, after the poses were made again, about the anchor below: 117 px
+#: to the back (the death), 89 to the front (the strike), 142 up (the sword
 #: over the head), 11 down (the boots).
-RIG_FRAME = (220, 164)
+RIG_FRAME = (224, 164)
 #: Where the idle pose's box centre (x) and feet (y) land in ``RIG_FRAME``.
 #: The feet are at the middle of a pixel row, not on the line between two
 #: rows: on the line, the render and the part flipbook put the bottom row of a
 #: sole on different sides of it (measured 2026-10-10: at 148.0 and at 148.33
 #: a walk frame had a row of 10 wrong pixels; at 148.5 no frame has over 5).
-RIG_IDLE_ANCHOR = (118.0, 148.5)
+RIG_IDLE_ANCHOR = (124.0, 148.5)
 
 #: (kind, frame size) -> (scale, offset): a paint point ``p`` lands at
 #: ``p * scale + offset`` on the reduction canvas.
@@ -947,7 +1082,8 @@ def _rig_fit(kind: str, frame_size=BASE_FRAME) -> Tuple[float, Tuple[float, floa
 
         w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
         img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-        paint_character(PillowPartDraw(blending_draw(img)), kind, "idle", 0, 6, frame_size)
+        idle_frames = next(n for name, n, _ms in rows_of(kind) if name == "idle")
+        paint_character(PillowPartDraw(blending_draw(img)), kind, "idle", 0, idle_frames, frame_size)
         x1, y1, x2, y2 = img.getchannel("A").getbbox()
         fw, fh = frame_size
         k = RIG_REDUCTION
@@ -1255,7 +1391,7 @@ def render_target_with_products(
 
     outputs = build_sheet(
         target=target,
-        rows=ANIMATIONS,
+        rows=rows_of(target),
         render_fn=render_fn,
         out_dir=out_dir,
         frame_size=rig_frame_size(frame_size),
@@ -1285,7 +1421,7 @@ def render_target_with_products(
     # placed the frame.
     from ...authoring.part_flipbook import PartFlipbook, publish_rig_flipbook
 
-    for name, path in publish_rig_flipbook(target, ANIMATIONS, render_fn, outputs, frame_transform, out_dir).items():
+    for name, path in publish_rig_flipbook(target, rows_of(target), render_fn, outputs, frame_transform, out_dir).items():
         outputs["parts" if name == "ron" else name] = path
     if "parts" not in outputs:
         # A quality tier's render: its flipbook is derived, not recorded.
@@ -1310,7 +1446,7 @@ def build_scene(target: str, frame_size: Tuple[int, int] = BASE_FRAME):
 
     w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
     recorders = {}
-    for anim, nframes, _ms in ANIMATIONS:
+    for anim, nframes, _ms in rows_of(target):
         for i in range(nframes):
             rec = DrawRecorder((w, h))
             paint_character(rec, target, anim, i, nframes, frame_size)
@@ -1359,7 +1495,7 @@ def render_target_svg(
 
     return build_sheet(
         target=target,
-        rows=ANIMATIONS,
+        rows=rows_of(target),
         render_fn=render_fn,
         out_dir=out_dir,
         frame_size=rig_frame_size(frame_size),
@@ -1449,7 +1585,8 @@ def render_pirate_portraits(target: str, out_dir, *, kind: str | None = None,
 
     # Measured ONCE, on the pose the portrait sits in: a guide that moved per
     # frame would make the idle breathe by sliding the camera.
-    guide = pirate_face_guide(kind, ANIMATIONS[0][0], 0, ANIMATIONS[0][1])
+    rows = rows_of(kind)
+    guide = pirate_face_guide(kind, rows[0][0], 0, rows[0][1])
     # Head and shoulders. The measured band is the hat and face together, so the
     # view is only a little wider than it and drops far enough for a collar.
     view_width = guide.width * 1.95
@@ -1462,8 +1599,8 @@ def render_pirate_portraits(target: str, out_dir, *, kind: str | None = None,
             view_width=view_width, center_y=center_y
         )
 
-    idle = next((name for name, *_rest in ANIMATIONS if name == "idle"), ANIMATIONS[0][0])
-    count = next(n for name, n, *_r in ANIMATIONS if name == idle)
+    idle = next((name for name, *_rest in rows if name == "idle"), rows[0][0])
+    count = next(n for name, n, *_r in rows if name == idle)
     clips = {
         "default": PortraitClip.loop(
             tuple(frame(idle, i, count) for i in range(count)), duration_ms=count * 120
@@ -1471,6 +1608,6 @@ def render_pirate_portraits(target: str, out_dir, *, kind: str | None = None,
         "portrait": PortraitClip.still(frame(idle, count // 3, count)),
     }
     for name, (anim, index) in (stills or {}).items():
-        rows = next(n for a, n, *_r in ANIMATIONS if a == anim)
-        clips[name] = PortraitClip.still(frame(anim, index, rows))
+        frames = next(n for a, n, *_r in rows if a == anim)
+        clips[name] = PortraitClip.still(frame(anim, index, frames))
     return write_portrait_sheet(target, clips, Path(out_dir), still_clip="portrait")

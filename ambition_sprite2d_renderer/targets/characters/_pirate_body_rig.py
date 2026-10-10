@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Dict, List, Mapping, Tuple
 
 from ...authoring.body_rig import BodyRigProduct, JointPose
-from ...authoring.sheet_build import ANIMATIONS, BASE_FRAME, SCALE
+from ...authoring.sheet_build import BASE_FRAME, SCALE
 from . import _pirate_rig as pirate_rig
 
 #: Rows that repeat while their state holds; the rest play once.
@@ -80,17 +80,17 @@ def body_rig_for_pirate(
     then the published ``feet`` pixel as origin. The fit scale does not turn,
     so a joint keeps its evaluated angle.
     """
-    from ._pirate_common import animation_pose
+    from ._pirate_common import pose_of, rows_of
 
     w, h = frame_size[0] * SCALE, frame_size[1] * SCALE
     dx, dy = float(frame_transform["dx"]), float(frame_transform["dy"])
     bones = pirate_rig.PIRATE_BONES
     clips: Dict[str, tuple] = {}
-    for anim, frame_count, duration_ms in ANIMATIONS:
+    for anim, frame_count, duration_ms in rows_of(kind):
         frames: List[List[JointPose]] = []
         for index in range(int(frame_count)):
             fit = frame_fits[(anim, index)]
-            pose = animation_pose(anim, index, frame_count)
+            pose = pose_of(kind, anim, index, frame_count)
             tilt = pose["body_tilt"]
             joints = pirate_rig.evaluate(pose, kind, w, h, tilt)
             world: Dict[str, Affine] = {}

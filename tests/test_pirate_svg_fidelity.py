@@ -135,8 +135,11 @@ def test_each_frame_is_inside_the_sheet_frame() -> None:
     """The sheet frame is one size for each frame of each pirate
     (``RIG_FRAME``). A pose that goes out of it is cut at the edge: the sword
     over the head was, when the poses were made again and the frame was not."""
+    # The Kernel Guide is a kind of this rig too: its module puts it in.
+    from ambition_sprite2d_renderer.targets.characters import kernel_guide  # noqa: F401
+
     for kind in P.PALETTES:
-        for anim, n, _ms in P.ANIMATIONS:
+        for anim, n, _ms in P.rows_of(kind):
             for i in range(n):
                 frame = P.draw_rig_frame(kind, anim, i, n)
                 x0, y0, x1, y1 = frame.getchannel("A").getbbox()
