@@ -1,5 +1,5 @@
 """The scenes of the rooms that are inside: the lab, the lab with its alarm
-on, the foundry and the cave."""
+on, the under-town, the foundry and the cave."""
 
 from __future__ import annotations
 
@@ -210,6 +210,142 @@ def _lab(layer_key: str, art: Art, p: dict, raided: bool) -> np.ndarray:
     art.put(layer, shafts(art, "shafts", 5, 0.10, 0.0, 0.82, 0.045), p["glow"], 0.17)
     art.put(layer, fog(art, "floor mist", 0.69, 0.16), mix(p["air"], p["glow"], 0.35), 0.34)
     vignette(art, layer, p["deep"], 0.30)
+    return layer
+
+
+# ---------------------------------------------------------------------------
+# The under-town: brick drains and pipes under the street
+# ---------------------------------------------------------------------------
+
+UNDERTOWN = {
+    "deep": (7, 12, 14),
+    "brick": (46, 43, 40),
+    "brick_light": (98, 88, 74),
+    "air": (38, 64, 60),
+    "moss": (58, 106, 70),
+    "water": (86, 198, 166),
+    "amber": (255, 190, 110),
+    "day": (178, 216, 236),
+    "iron": (14, 20, 22),
+    "iron_light": (50, 64, 64),
+}
+
+
+def undertown(layer_key: str, art: Art) -> np.ndarray:
+    p = UNDERTOWN
+    if layer_key == "sky":
+        layer = art.opaque(art.ramp([(0.0, p["deep"]), (0.30, p["brick"]), (0.58, p["air"]), (0.78, p["brick"]), (1.0, p["deep"])]))
+        # The far wall of a vaulted drain: courses of brick.
+        courses = (np.sin(art.v * math.pi * 2.0 * 52.0) > 0.86).astype(np.float32)
+        joints = (np.sin((art.u + np.floor(art.v * 52.0) * 0.5 * 0.027) * math.pi * 2.0 * 37.0) > 0.93).astype(np.float32)
+        art.shade(layer, art.blur(np.maximum(courses, joints), 0.4), 0.15)
+        # The mouths of drains that go off into the dark, each with a ring of
+        # bricks round it and the glow of its water low in it.
+        mouths, pen = art.drawing()
+        for cu, r in ((0.17, 0.10), (0.50, 0.125), (0.84, 0.10)):
+            pen.rect(cu - r, 0.53, cu + r, 1.0)
+            pen.ellipse(cu, 0.53, r, r)
+        mouth = art.mask_of(mouths, blur=1.0)
+        art.light(layer, art.rim(mouth, 0.0, 0.007, 1.2) * (1.0 - mouth), p["brick_light"], 0.30)
+        art.shade(layer, mouth, 0.62)
+        art.light(layer, mouth * art.band(0.69, 0.10, 1.5) * (0.5 + 0.5 * art.noise("ripple", cells=9.0, octaves=3, stretch=5.0)), p["water"], 0.42)
+        # Water along the foot of the wall, and its light on the brick.
+        art.light(layer, art.band(0.72, 0.09, 1.6) * (0.5 + 0.5 * art.noise("water", cells=7.0, octaves=3, stretch=6.0)), p["water"], 0.26)
+        # Day through the grates of the street.
+        art.light(layer, shafts(art, "day", 3, 0.05, 0.22, 0.78, 0.07), p["day"], 0.34)
+        # Damp, and moss low on the wall.
+        art.shade(layer, art.noise("damp", cells=3.0, octaves=5) * art.band(0.5, 0.6, 0.6), 0.20)
+        art.tint(layer, art.noise("moss", cells=6.0, octaves=4) * art.band(0.66, 0.12, 1.4), p["moss"], 0.34)
+        art.grain(layer, "grain")
+        return layer
+    if layer_key == "far_backplate":
+        # The mains of the town: large pipes with flanges, risers, a ladder,
+        # and the piers of the vault.
+        rng = art.rand("mains")
+        image, pen = art.drawing()
+        for v, r in ((0.355, 0.024), (0.545, 0.014)):
+            pen.rect(0.0, v - r, 1.0, v + r)
+            for k in range(5):
+                u = (k + rng.uniform(0.2, 0.8)) / 5.0
+                pen.rect(u - 0.005, v - r - 0.006, u + 0.005, v + r + 0.006)
+        wheels = []
+        for k in range(3):
+            u = (k + rng.uniform(0.25, 0.75)) / 3.0
+            pen.rect(u - 0.008, 0.355, u + 0.008, 1.0)
+            if True:
+                v = rng.uniform(0.44, 0.50)
+                pen.ring(u, v, 0.018, 0.004)
+                for a in (0.0, 60.0, 120.0):
+                    pen.line([polar(u, v, 0.018, a), polar(u, v, 0.018, a + 180.0)], 0.003)
+                wheels.append((u, v))
+        # A ladder up to a manhole.
+        for u in (0.705, 0.735):
+            pen.rect(u - 0.002, 0.20, u + 0.002, HORIZON + 0.04)
+        for k in range(22):
+            pen.rect(0.705, 0.21 + k * 0.02, 0.735, 0.214 + k * 0.02)
+        piers = []
+        for u in (0.02, 0.345, 0.655, 0.98):
+            pen.rect(u - 0.016, 0.24, u + 0.016, 1.0)
+            pen.rect(u - 0.024, 0.30, u + 0.024, 0.314)
+            piers.append((u, 0.475, 0.0034))
+        # The walk at the foot of the wall, with a rail.
+        pen.rect(0.0, HORIZON + 0.035, 1.0, 1.0)
+        pen.rect(0.0, HORIZON + 0.005, 1.0, HORIZON + 0.009)
+        for k in range(34):
+            pen.rect(k / 33.0 - 0.0012, HORIZON + 0.005, k / 33.0 + 0.0012, HORIZON + 0.035)
+        mask = art.mask_of(image)
+        layer = solid(art, mask, mix(p["iron_light"], p["air"], 0.3), p["iron"], HORIZON - 0.30, HORIZON + 0.1, "main metal", 0.07)
+        art.light(layer, art.rim(mask, 0.0, 0.004, 0.5) * mask, p["day"], 0.18)
+        art.shade(layer, art.rim(mask, 0.0, -0.006, 1.0) * mask, 0.30)
+        lamps(art, layer, piers, p["amber"], halo=7.0, strength=0.95)
+        haze(art, layer, p["air"], 0.40, HORIZON + 0.04)
+        return layer
+    if layer_key == "near_background":
+        # Piers of brick and the ribs of the vault, a pipe with its drops,
+        # chains, and a lamp in a cage on each pier.
+        rng = art.rand("piers")
+        image, pen = art.drawing()
+        centres = (0.05, 0.50, 0.95)
+        for u in centres:
+            pen.rect(u - 0.034, 0.0, u + 0.034, 1.0)
+            pen.rect(u - 0.044, 0.318, u + 0.044, 0.336)
+            pen.rect(u - 0.042, 0.66, u + 0.042, 0.69)
+        for cu in (0.275, 0.725):
+            pen.arc(cu, 0.335, 0.20, 180, 360, 0.024)
+        pen.rect(0.0, 0.372, 1.0, 0.392)
+        for k in range(8):
+            u = (k + rng.uniform(0.2, 0.8)) / 8.0
+            pen.rect(u - 0.006, 0.364, u + 0.006, 0.40)
+        for _ in range(4):
+            u = rng.choice([rng.uniform(0.12, 0.42), rng.uniform(0.58, 0.88)])
+            v1 = rng.uniform(0.46, 0.60)
+            pen.rect(u - 0.006, 0.39, u + 0.006, v1)
+            pen.rect(u - 0.006, v1 - 0.006, u + rng.choice([-1, 1]) * 0.05, v1 + 0.006)
+        for u in (0.19, 0.36, 0.64, 0.81):
+            end = rng.uniform(0.42, 0.52)
+            v = 0.0
+            while v < end:
+                pen.ellipse(u, v, 0.003, 0.0052)
+                v += 0.009
+        pen.rect(0.0, 0.69, 1.0, 1.0)
+        mask = art.mask_of(image)
+        layer = solid(art, mask, mix(p["brick"], p["brick_light"], 0.36), scale(p["brick"], 0.5), 0.28, 0.72, "near brick", 0.11)
+        # Courses on the brick, light from the grates on each top face, and
+        # moss where the damp is.
+        near_courses = (np.sin(art.v * math.pi * 2.0 * 90.0) > 0.84).astype(np.float32)
+        art.shade(layer, art.blur(near_courses, 0.3) * mask, 0.14)
+        art.light(layer, art.rim(mask, 0.0, 0.0035, 0.4) * mask, p["day"], 0.26)
+        art.light(layer, art.rim(mask, -0.003, 0.0, 0.4) * mask, p["day"], 0.10)
+        art.shade(layer, art.rim(mask, 0.0, -0.006, 1.2) * mask, 0.36)
+        art.tint(layer, art.noise("near moss", cells=9.0, octaves=4) * art.band(0.64, 0.10, 1.2) * mask, p["moss"], 0.55)
+        lamps(art, layer, [(u + side * 0.036, 0.47, 0.0036) for u in centres for side in (-1, 1) if 0.0 < u + side * 0.036 < 1.0], p["amber"], halo=7.0, strength=0.95)
+        haze(art, layer, p["brick"], 0.12, 0.70)
+        return layer
+    # The air in front: day from the grates, and mist over the water.
+    layer = art.blank()
+    art.put(layer, shafts(art, "shafts", 3, 0.07, 0.0, 0.82, 0.075), p["day"], 0.24)
+    art.put(layer, fog(art, "floor mist", 0.71, 0.11), mix(p["air"], p["water"], 0.4), 0.20)
+    vignette(art, layer, p["deep"], 0.38)
     return layer
 
 

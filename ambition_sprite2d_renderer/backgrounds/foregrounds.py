@@ -30,7 +30,7 @@ import numpy as np
 
 from .arenas import BOSS, ECLIPSE, HUB
 from .artkit import Art, Pen, polar, scale
-from .interiors import ALARM, CAVE, FOUNDRY, LAB
+from .interiors import ALARM, CAVE, FOUNDRY, LAB, UNDERTOWN
 from .outdoors import COVE, FOREST, SKYBRIDGE, WATER
 from .parts import lamps
 
@@ -69,6 +69,24 @@ def _lab(art: Art, pen: Pen, layer_lights: list, glow=None) -> None:
 
 def _alarm(art: Art, pen: Pen, layer_lights: list) -> None:
     _lab(art, pen, layer_lights, ALARM["glow"])
+
+
+def _undertown(art: Art, pen: Pen, layer_lights: list) -> None:
+    """Chains and a pipe that drips, from above. Nothing stands from below."""
+    rng = art.rand("undertown foreground")
+    for k in range(5):
+        u = (k + rng.uniform(0.2, 0.8)) / 5.0
+        end = rng.uniform(0.38, 0.405)
+        if k % 2:
+            _chain(pen, u, 0.0, end)
+            pen.arc(u, end + 0.011, 0.011, 20, 270, 0.004)
+        else:
+            pen.rect(u - 0.006, 0.0, u + 0.006, end - 0.01)
+            pen.rect(u - 0.009, end - 0.016, u + 0.009, end - 0.008)
+            layer_lights.append((u, end + 0.004, 0.0016, UNDERTOWN["water"]))
+    for k in range(3):
+        a = k * 0.34 + rng.uniform(-0.03, 0.03)
+        pen.curve((a, 0.0), (a + rng.uniform(0.18, 0.26), 0.0), rng.uniform(0.38, 0.40), 0.003)
 
 
 def _foundry(art: Art, pen: Pen, layer_lights: list) -> None:
@@ -233,6 +251,7 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "hub": (_hub, scale(HUB["city"], 0.7)),
     "lab": (_lab, scale(LAB["steel"], 0.7)),
     "alarm": (_alarm, scale(ALARM["steel"], 0.9)),
+    "undertown": (_undertown, scale(UNDERTOWN["iron"], 0.9)),
     "basement": (_foundry, scale(FOUNDRY["iron"], 0.8)),
     "cave": (_cave, scale(CAVE["rock"], 0.8)),
     "cove": (_cove, scale(COVE["rock"], 0.8)),

@@ -78,6 +78,8 @@ SKINS: tuple[Skin, ...] = (
     # The lab with its power out: the same steel, darker, and the light of
     # its strip is the red of the alarm.
     Skin("alarm", "panel", (34, 37, 52), (9, 10, 18), (82, 88, 114), (255, 86, 68), "strip", (58, 60, 82), "pipes", "grate"),
+    # The drains under the town: old brick, with moss where it is damp.
+    Skin("undertown", "brick", (72, 66, 58), (22, 22, 22), (124, 112, 94), (96, 206, 172), "moss", (62, 112, 74), "pipes", "grate"),
     Skin("hub_clean", "block", (226, 220, 208), (150, 144, 138), (255, 252, 244), (226, 178, 86), "edge", (240, 234, 222), "lip", "slab"),
     Skin("hub", "panel", (40, 40, 94), (15, 15, 46), (92, 94, 164), (255, 206, 140), "strip", (70, 70, 134), "lip", "grate"),
     Skin("basement", "brick", (88, 42, 32), (30, 13, 11), (146, 78, 54), (255, 150, 60), "plate", (58, 42, 40), "bolts", "grate"),

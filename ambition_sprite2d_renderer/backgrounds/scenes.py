@@ -50,6 +50,7 @@ SCENES: dict[str, Scene] = {
     "hub": arenas.hub,
     "lab": interiors.lab,
     "alarm": interiors.alarm,
+    "undertown": interiors.undertown,
     "basement": interiors.foundry,
     "cave": interiors.cave,
     "cove": outdoors.cove,

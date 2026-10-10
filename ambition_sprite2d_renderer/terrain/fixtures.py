@@ -48,7 +48,7 @@ HAZARD = (64, 64)
 HAZARD_EDGE = (64, 12)
 
 #: The skins whose ladder is steel. Each other one has a ladder of wood.
-STEEL = {"lab", "alarm", "hub", "basement", "boss", "eclipse", "hub_clean"}
+STEEL = {"lab", "alarm", "undertown", "hub", "basement", "boss", "eclipse", "hub_clean"}
 
 
 def ladder(theme_key: str) -> Image.Image:
@@ -80,9 +80,11 @@ def ladder(theme_key: str) -> Image.Image:
 def water_clear() -> Image.Image:
     tile = Tile(WATER, True, True, "water", "clear")
     tile.put(np.ones_like(tile.alpha), (60, 178, 220), 0.30)
-    streaks = tile.noise(3, 14, 2)
-    tile.put(np.clip((streaks - 0.56) * 6.0, 0.0, 1.0), (190, 240, 255), 0.22)
-    tile.put(np.clip((0.40 - streaks) * 6.0, 0.0, 1.0), (20, 90, 150), 0.18)
+    # Light in streaks, faint: the picture repeats each 64 units, and a
+    # strong streak shows the repeat as rows.
+    streaks = tile.noise(2, 9, 3)
+    tile.put(np.clip((streaks - 0.55) * 3.0, 0.0, 1.0), (190, 240, 255), 0.11)
+    tile.put(np.clip((0.44 - streaks) * 3.0, 0.0, 1.0), (20, 90, 150), 0.09)
     return tile.publish()
 
 
@@ -90,8 +92,9 @@ def water_murky() -> Image.Image:
     tile = Tile(WATER, True, True, "water", "murky")
     tile.put(np.ones_like(tile.alpha), (24, 52, 46), 0.90)
     silt = tile.noise(4, 4, 4)
-    tile.put(np.clip((silt - 0.5) * 3.0, 0.0, 1.0), (52, 88, 66), 0.5)
-    tile.put(np.clip((0.42 - silt) * 4.0, 0.0, 1.0), (8, 20, 20), 0.5)
+    # Faint, for the same reason as the streaks of the clear water.
+    tile.put(np.clip((silt - 0.5) * 2.0, 0.0, 1.0), (52, 88, 66), 0.22)
+    tile.put(np.clip((0.44 - silt) * 2.0, 0.0, 1.0), (8, 20, 20), 0.20)
     specks = [(tile.rng.uniform(0, 64), tile.rng.uniform(0, 64), tile.rng.uniform(0.3, 0.8)) for _ in range(26)]
     tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r) for x, y, r in specks]), (120, 150, 110), 0.5)
     return tile.publish()

@@ -88,6 +88,8 @@ MOTES = {
     "hub": (_dot, (206, 214, 255)),
     "lab": (_dot, (196, 255, 244)),
     "basement": (_glow, (255, 190, 110)),
+    # Drops of water that fall from the vault.
+    "undertown": (_dot, (196, 232, 218)),
     # Sparks from the cables that are cut.
     "alarm": (_glow, (255, 170, 120)),
     "boss": (_glow, (255, 150, 100)),
@@ -110,6 +112,7 @@ SHADOWS = {
     "hub": (8, 8, 30),
     "lab": (4, 12, 22),
     "alarm": (3, 3, 9),
+    "undertown": (6, 10, 10),
     "basement": (20, 8, 6),
     "boss": (16, 2, 8),
     "cave": (8, 6, 22),
