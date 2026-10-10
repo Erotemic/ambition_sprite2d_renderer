@@ -344,26 +344,50 @@ def moving_platform(d: ImageDraw.ImageDraw, s: float) -> None:
 
 
 def rebound_pad(d: ImageDraw.ImageDraw, s: float) -> None:
+    """A pad that throws a body up: a base, a plate on two springs, and two
+    arrows that point up. It had a row of gold triangles on it, which a
+    player reads as spikes. The extent of the art is the same as it was."""
     outline = rgba("#3A1904")
+    # The base.
     d.rounded_rectangle(
-        (21 * s, 68 * s, 107 * s, 91 * s),
-        radius=8 * s,
+        (21 * s, 78 * s, 107 * s, 91 * s),
+        radius=6 * s,
+        fill=rgba("#C9631A"),
+        outline=outline,
+        width=max(1, int(2 * s)),
+    )
+    d.rectangle((27 * s, 81 * s, 101 * s, 83 * s), fill=rgba("#F3A24A"))
+    # The springs between the base and the plate.
+    for x in (36, 92):
+        d.line(
+            [(x - 6) * s, 78 * s, (x + 6) * s, 75 * s, (x - 6) * s, 72 * s, (x + 6) * s, 69 * s],
+            fill=rgba("#E8EEF4"),
+            width=max(1, int(2 * s)),
+            joint="curve",
+        )
+    # The plate a body lands on.
+    d.rounded_rectangle(
+        (21 * s, 60 * s, 107 * s, 70 * s),
+        radius=4 * s,
         fill=rgba("#F38E2A"),
         outline=outline,
         width=max(1, int(2 * s)),
     )
-    d.polygon(
-        poly_scaled(
-            [(27, 68), (41, 40), (55, 68), (69, 40), (83, 68), (97, 40), (103, 68)], s
-        ),
-        fill=rgba("#FFD26A"),
-        outline=outline,
-    )
-    d.line(
-        [(64 * s, 82 * s), (64 * s, 45 * s)],
-        fill=rgba("#FFFFFF", 170),
-        width=max(1, int(2 * s)),
-    )
+    d.rectangle((27 * s, 62 * s, 101 * s, 64 * s), fill=rgba("#FFD26A"))
+    # Two arrows that point up, over the plate.
+    for tip in (43, 52):
+        d.line(
+            [(52 * s, (tip + 9) * s), (64 * s, tip * s), (76 * s, (tip + 9) * s)],
+            fill=outline,
+            width=max(1, int(6 * s)),
+            joint="curve",
+        )
+        d.line(
+            [(53 * s, (tip + 8.4) * s), (64 * s, (tip + 0.9) * s), (75 * s, (tip + 8.4) * s)],
+            fill=rgba("#FFE58A"),
+            width=max(1, int(3 * s)),
+            joint="curve",
+        )
 
 
 def pogo_orb(d: ImageDraw.ImageDraw, s: float) -> None:
