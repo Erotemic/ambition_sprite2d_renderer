@@ -1,11 +1,15 @@
 """Sprite generator for AI Slop: a heap of generated goo that wants a like.
 
-The look (redrawn 2026-10-11): a glossy dollop in the gradient every AI
+The look (redrawn 2026-10-11): a glossy heap in the gradient every AI
 product is sold in (violet over orchid over pink over peach), whose bands
-flow while it stands. It has the marks of a generated picture: two eyes that
+flow and run while it stands. The heap is three lumps of unequal size on a
+spill with drops beside it. It is not a smooth dome with one tip on a neat
+rim: that shape was read as another thing (Jon, 2026-10-11). It has the marks of a generated picture: two eyes that
 do not match and do not blink together, a third eye where no eye belongs, a
 smile with too many teeth, a hand with seven fingers that waves from its
-back, a stock picture sunk in its side, and sparkles. It faces right.
+back, a stock picture sunk in its side, files that it made and that nobody
+asked for afloat in it (a Python file, a Rust file, a Markdown file), and
+sparkles. It faces right.
 
 It walks by oozing: the front runs forward and the heap sinks, the rear
 catches up and the heap rises. Its swipe is the hand, thrown over its head.
@@ -378,13 +382,13 @@ BANDS: Sequence[Tuple[float, RGBA]] = (
 
 
 def _heap_outline(w: float, h: float, lean: float, lump: float) -> List[Point]:
-    """The dome: steep sides, a round top that leans, slow lumps along it."""
+    """The heap: a low round top that leans, with lumps along it."""
     pts: List[Point] = []
     steps = 56
     for j in range(steps + 1):
         u = -1.0 + 2.0 * j / steps
-        k = (1.0 - abs(u) ** 2.6) ** 0.5
-        pts.append((CX + u * w + lean * k**1.5, GROUND - h * k - 2.2 * k * math.sin(3.1 * u + 0.8 + lump)))
+        k = (1.0 - abs(u) ** 2.2) ** 0.5
+        pts.append((CX + u * w + lean * k**1.5, GROUND - 0.94 * h * k - 4.0 * k * math.sin(3.1 * u + 0.8 + lump) - 2.0 * k * math.sin(7.3 * u - lump)))
     return pts + [(CX + w, GROUND), (CX - w, GROUND)]
 
 
@@ -396,21 +400,26 @@ def _heap_piece(w: float, h: float, tip: float, lean: float, front: float, rear:
     def layer() -> Image.Image:
         return Image.new("RGBA", CANVAS, TRANSPARENT)
 
-    # Its silhouette: the dome, the curl on its top, the lobes where it runs
-    # out over the ground.
+    # Its silhouette: the heap, the three lumps of its top, the spill where it
+    # runs out over the ground, and the drops beside the spill.
     shape_img = layer()
     d = blending_draw(shape_img)
     d.polygon([_pt(p) for p in _heap_outline(w, h, lean, flow)], fill=WHITE)
     top = (CX + lean - 3.0, GROUND - h)
     if tip > 0.05:
-        curl = _bezier((top[0] - 7.0, top[1] + 8.0), (top[0] - 6.0, top[1] - 9.0 * tip), (top[0] + 7.0, top[1] - 15.0 * tip),
-                       (top[0] + 15.0 * tip, top[1] - 6.0 * tip), 22)
-        for j, p in enumerate(curl):
-            r = 8.5 - 6.3 * j / (len(curl) - 1)
-            _oval(d, p, r, r, WHITE)
+        # Three lumps of unequal size, each a little out of the heap: the
+        # tallest is not in the middle. `tip` is how far they stand out.
+        for across, rise, r in ((-0.44, 0.03, 15.5), (0.10, 0.13, 18.5), (0.54, -0.02, 12.5)):
+            k = (1.0 - abs(across) ** 2.2) ** 0.5
+            c = (top[0] + 3.0 + across * w, GROUND - 0.94 * h * k + r * 0.55 - rise * h * tip)
+            _oval(d, c, r, r * 0.84, WHITE)
     flat = min(1.0, h / REST_H + 0.25)
-    for x, rx, ry in ((CX - w + 2.0 - rear, 14.0 + rear * 0.4, 7.5 * flat), (CX + w - 1.0 + front, 13.0 + front * 0.5, 8.0 * flat),
-                      (CX - 0.48 * w, 17.0, 6.0 * flat), (CX + 0.40 * w, 19.0, 6.5 * flat)):
+    # The spill: a long thin run behind it, a short one before it, and two
+    # drops that are no part of it. A ring of equal lobes is a rim.
+    for x, rx, ry in ((CX - w - 3.0 - rear, 19.0 + rear * 0.4, 4.6 * flat), (CX + w - 3.0 + front, 11.0 + front * 0.5, 7.4 * flat),
+                      (CX - 0.30 * w, 15.0, 5.0 * flat), (CX + 0.52 * w, 13.0, 4.2 * flat)):
+        _oval(d, (x, GROUND - ry), rx, ry, WHITE)
+    for x, rx, ry in ((max(8.0, CX - w - 27.0 - rear), 4.6, 2.6), (min(FRAME_SIZE[0] - 8.0, CX + w + 15.0 + front), 3.4, 2.2)):
         _oval(d, (x, GROUND - ry), rx, ry, WHITE)
     # It sags: a bulge on its back, a smaller one on its front.
     _oval(d, (CX - 0.80 * w + lean * 0.2, GROUND - 0.30 * h), 10.0, 0.16 * h, WHITE)
@@ -426,6 +435,16 @@ def _heap_piece(w: float, h: float, tip: float, lean: float, front: float, rear:
         for x in range(0, FRAME_SIZE[0] + 9, 4):
             edge.append((float(x), GROUND - level * h + 3.4 * math.sin(x / 11.0 + k * 1.7 + flow) + 1.4 * math.sin(x / 5.0 - flow)))
         d.polygon([_pt(p) for p in edge + [(FRAME_SIZE[0] + 8.0, GROUND + 8.0), (0.0, GROUND + 8.0)]], fill=colour)
+    # The colours run: drips of each band go down into the band under it.
+    above = VIOLET
+    for k, (level, colour) in enumerate(BANDS):
+        for j in range(5):
+            x = CX + (-0.86 + 0.42 * j + 0.11 * k) * w
+            y = GROUND - level * h
+            long = (0.05 + 0.035 * ((j + 2 * k) % 3)) * h
+            _capsule(d, (x, y - 3.0), (x, y + long), 3.4 + (j + k) % 2, above)
+            _oval(d, (x, y + long + 1.2), 2.5 + 0.5 * ((j + k) % 2), 2.8, above)
+        above = colour
 
     def edge_of(dx: float, dy: float) -> Image.Image:
         """The part of the heap that has nothing of the heap ``(dx, dy)`` away."""
@@ -664,6 +683,62 @@ def _put_card(img: Image.Image, pose: Dict[str, object]) -> None:
     _put(img, ("card",), _paint_card, (at[0] - 4.0 * sink, min(GROUND - 6.0, at[1] + 22.0 * sink)), "card", round(float(pose["card_turn"]), 1))
 
 
+#: The files afloat in it: (kind, across, up, turn in degrees). They are where
+#: its face is not.
+DOCS = (("py", -0.66, 0.58, -13.0), ("md", 0.74, 0.38, 15.0), ("rs", -0.14, 0.90, 7.0))
+
+PAGE = (250, 250, 252, 255)
+PAGE_FOLD = (206, 208, 220, 255)
+CODE_LINE = (150, 156, 176, 255)
+PY_BLUE = (55, 118, 171, 255)
+PY_YELLOW = (255, 212, 59, 255)
+RUST = (206, 92, 52, 255)
+MARK = (52, 46, 70, 255)
+
+
+def _paint_doc(d, kind: str) -> None:
+    """One file: a page with a folded corner, the mark of its language, two
+    lines of what is in it, and the heap over its lower part."""
+    hx, hy = HOME
+    l, t, r, b = hx - 6.5, hy - 8.5, hx + 6.5, hy + 8.5
+    fold = 4.0
+    _poly(d, [(l, t), (r - fold, t), (r, t + fold), (r, b), (l, b)], PAGE, OUTLINE, 0.9)
+    _poly(d, [(r - fold, t), (r - fold, t + fold), (r, t + fold)], PAGE_FOLD, OUTLINE, 0.6)
+    if kind == "py":
+        # Two snakes of one shape, one turned about: blue over yellow.
+        d.rounded_rectangle((_s(hx - 4.4), _s(hy - 6.2), _s(hx + 1.2), _s(hy - 1.2)), radius=_s(1.4), fill=PY_BLUE)
+        d.rounded_rectangle((_s(hx - 2.4), _s(hy - 3.4), _s(hx + 3.2), _s(hy + 1.6)), radius=_s(1.4), fill=PY_YELLOW)
+        _oval(d, (hx - 3.0, hy - 4.9), 0.6, 0.6, PAGE)
+        _oval(d, (hx + 1.8, hy + 0.3), 0.6, 0.6, PAGE)
+    elif kind == "rs":
+        # A cog: the mark of a thing made of iron that has rust on it.
+        for k in range(8):
+            a = math.tau * k / 8
+            _oval(d, (hx - 0.6 + 4.1 * math.cos(a), hy - 2.6 + 4.1 * math.sin(a)), 1.0, 1.0, RUST)
+        _oval(d, (hx - 0.6, hy - 2.6), 3.6, 3.6, RUST)
+        _oval(d, (hx - 0.6, hy - 2.6), 1.5, 1.5, PAGE)
+    else:
+        # An M and an arrow that goes down, in a box.
+        d.rounded_rectangle((_s(hx - 5.0), _s(hy - 6.0), _s(hx + 4.0), _s(hy + 0.4)), radius=_s(1.0), outline=MARK, width=_s(0.8))
+        _line(d, [(hx - 3.8, hy - 1.0), (hx - 3.8, hy - 4.6), (hx - 2.2, hy - 2.6), (hx - 0.6, hy - 4.6), (hx - 0.6, hy - 1.0)], MARK, 0.9)
+        _line(d, [(hx + 1.9, hy - 4.6), (hx + 1.9, hy - 1.4)], MARK, 0.9)
+        _poly(d, [(hx + 0.5, hy - 2.6), (hx + 3.3, hy - 2.6), (hx + 1.9, hy - 0.8)], MARK, None)
+    for k, long in enumerate((8.0, 5.5)):
+        _capsule(d, (l + 2.2, hy + 3.6 + 2.4 * k), (l + 2.2 + long, hy + 3.6 + 2.4 * k), 0.9, CODE_LINE)
+    # It is in the heap, not on it: the heap is over its lower part.
+    d.rectangle((_s(l + 0.6), _s(hy + 2.4), _s(r - 0.6), _s(b - 0.6)), fill=(PINK[0], PINK[1], PINK[2], 120))
+
+
+def _put_docs(img: Image.Image, pose: Dict[str, object]) -> None:
+    sink = float(pose["card_sink"])
+    flow = float(pose["flow"])
+    for k, (kind, across, up, turn) in enumerate(DOCS):
+        at = _on_heap(pose, across, up * 0.94)
+        bob = round(1.2 * math.sin(flow * 2.0 + k * 2.1) * 2.0) / 2.0
+        y = min(GROUND - 5.0, at[1] + bob + 16.0 * sink)
+        _put(img, ("doc", kind), lambda d, kind=kind: _paint_doc(d, kind), (at[0], y), f"doc_{kind}", round(turn + 3.0 * math.sin(flow + k), 1))
+
+
 #: The sparkles: (across, up, size) on the heap at rest.
 SPARKLES = ((0.84, 1.14, 12.0), (1.14, 0.86, 7.0), (-1.04, 1.04, 5.5))
 
@@ -712,6 +787,7 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     if not pose["arm_front"]:
         _put_arm(img, pose)
     _put_heap(img, pose)
+    _put_docs(img, pose)
     _put_face(img, pose)
     if pose["arm_front"]:
         _put_arm(img, pose)
