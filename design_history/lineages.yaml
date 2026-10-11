@@ -321,6 +321,18 @@ lineages:
       - commit: "3f7d265b0"
         label: "A body that can throw a punch"
         note: "Same face; the body gained moves. A session list carries a synthetic entry."
+  giant_gnu:
+    name: Giant GNU (GNU-ton's mount)
+    ids: [gnu_ton_boss]
+    paths: ['gnu_ton_boss']
+    summary: "from a wildebeest of flat polygons to a giant that is almost a centaur"
+    eras:
+      - commit: "a18c282"
+        label: "A wildebeest of polygons, with a spiked hump"
+        note: "The last commit with the first design. Its face was liked: goofy, and not on purpose."
+      - commit: "a6e2ab1"
+        label: "A giant like a gnu, almost a centaur"
+        note: "Jon chose it in rounds of stills: a mythical giant, a slope for a back, a gnu's horns, a plain face. Claude Opus 5.5 declared."
   pirate_raider:
     name: Pirate crew (the raider stands for the five)
     ids: [pirate_raider]
