@@ -872,6 +872,40 @@ def projectile_energy(d: ImageDraw.ImageDraw, s: float) -> None:
     d.ellipse(bbox(74 * s, 61.8 * s, 5 * s, 3 * s), fill=rgba("#FFFFFF"))
 
 
+def fire_orb(d: ImageDraw.ImageDraw, s: float) -> None:
+    """A ball of fire with no direction: a round body with three tongues, for
+    a hazard that turns about a pivot (a bar of fire)."""
+    outline = rgba("#3A1408")
+    # The glow about it is the one translucent thing: it is on nothing.
+    d.ellipse(bbox(64 * s, 64 * s, 52 * s, 52 * s), fill=rgba("#FF9A3C", 46))
+    # Three tongues about the body, a third of a turn apart.
+    for turn in (0.0, 120.0, 240.0):
+        a = math.radians(turn - 90.0)
+        ca, sa = math.cos(a), math.sin(a)
+        tongue = [(-9.0, -14.0), (0.0, -31.0), (9.0, -14.0)]
+        placed = [(64 + x * -sa + y * ca * -1.0, 64 + x * ca + y * sa * -1.0) for x, y in tongue]
+        d.polygon(poly_scaled(placed, s), fill=outline)
+        inner = [(-6.0, -14.0), (0.0, -26.0), (6.0, -14.0)]
+        placed = [(64 + x * -sa + y * ca * -1.0, 64 + x * ca + y * sa * -1.0) for x, y in inner]
+        d.polygon(poly_scaled(placed, s), fill=rgba("#F26A1B"))
+    # The body: a dark rim, the fire, the hot middle.
+    d.ellipse(bbox(64 * s, 64 * s, 40 * s, 40 * s), fill=outline)
+    d.ellipse(bbox(64 * s, 64 * s, 35 * s, 35 * s), fill=rgba("#F26A1B"))
+    d.ellipse(bbox(63 * s, 62 * s, 26 * s, 26 * s), fill=rgba("#FFB02E"))
+    d.ellipse(bbox(61.5 * s, 60 * s, 16 * s, 16 * s), fill=rgba("#FFE47A"))
+    d.ellipse(bbox(60 * s, 58 * s, 7 * s, 7 * s), fill=rgba("#FFFBE0"))
+
+
+def void_orb(d: ImageDraw.ImageDraw, s: float) -> None:
+    """A ball of the void: no light in it, a thin rim of white light about it.
+    The shot of Mary-O's Void Lizard."""
+    d.ellipse(bbox(64 * s, 64 * s, 54 * s, 54 * s), fill=rgba("#FFFFFF", 44))
+    d.ellipse(bbox(64 * s, 64 * s, 42 * s, 42 * s), fill=rgba("#C9C9D2"))
+    d.ellipse(bbox(64 * s, 64 * s, 39 * s, 39 * s), fill=rgba("#FFFFFF"))
+    d.ellipse(bbox(64 * s, 64 * s, 35 * s, 35 * s), fill=rgba("#0D0D12"))
+    d.ellipse(bbox(62 * s, 62 * s, 20 * s, 20 * s), fill=rgba("#030305"))
+
+
 # ─── Tile drawers ───────────────────────────────────────────────────
 #
 # These are 32×32 textures designed to TILE seamlessly across a
@@ -1762,6 +1796,20 @@ ENTITY_SPECS: List[EntitySpriteSpec] = [
         "future projectile",
         "small energy projectile placeholder",
     ),
+    EntitySpriteSpec(
+        "fire_orb",
+        "fire_orb.png",
+        "EntityArt override (a hazard that is fire)",
+        "fire orb",
+        "round ball of fire for a bar of fire that turns",
+    ),
+    EntitySpriteSpec(
+        "void_orb",
+        "void_orb.png",
+        "projectile art (Mary-O's Void Lizard)",
+        "void orb",
+        "dark ball with a rim of white light",
+    ),
     # Tile sprites: 32×32 seamless textures rendered via Bevy's
     # `Sprite::image_mode = Tiled` so they REPEAT across IntGrid-
     # derived block surfaces (which can be arbitrary aspect ratios)
@@ -1957,6 +2005,8 @@ DRAWERS: Dict[str, Callable[[ImageDraw.ImageDraw, float], None]] = {
     "door_blueprint": _twice(door_blueprint),
     "edge_exit": edge_exit,
     "projectile_energy": projectile_energy,
+    "fire_orb": fire_orb,
+    "void_orb": void_orb,
     "bonus_block_tile": bonus_block_tile,
     "spent_block_tile": spent_block_tile,
     "solid_tile": solid_tile,
