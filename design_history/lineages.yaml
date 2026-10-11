@@ -345,3 +345,15 @@ lineages:
       - commit: "333e716"
         label: "Five characters"
         note: "Full bodies, a look for each pirate, the head on the chest, each pose made again. Jon: redo them completely, the posing too. Claude Opus 5.5 declared."
+  ai_slop:
+    name: AI Slop
+    ids: [ai_slop]
+    paths: ['ai_era_enemies', 'ai_slop']
+    summary: "a purple collage of thumbnail cards with two long arms, then a heap of gradient goo"
+    eras:
+      - commit: "11133ff"
+        label: "Thumbnail-collage sludge beast"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "77f2432"
+        label: "A heap of gradient goo"
+        note: "Mismatched eyes, a third eye, too many teeth, a hand with seven fingers, a stock picture, sparkles. Jon: rework the art. Claude Opus 5.5 declared."
