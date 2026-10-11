@@ -1,32 +1,26 @@
 #!/usr/bin/env python3
 """
-GNU-ton boss sprite generator.
+GNU-ton boss sprite generator: the sheets of the giant, its fist, and its rider.
 
-GNU-ton is a scholar who stands on the shoulders of a giant GNU (wildebeest).
-He mutters things like "I can see further than everyone else... and it's not Unix."
+GNU-ton is a scholar who stands on the shoulders of a giant GNU. The giant is
+drawn by `giant_art` (a giant that is like a gnu and is not one: a beast on
+four long legs with a chest that stands up at its front), and the scholar by
+`scholar`. This module puts their frames in the sheets the game reads:
 
-Visual design:
-  - Giant GNU body: massive wildebeest with iconic curved horns, shaggy mane
-  - Two huge stylized hooves/hands at the sides (the primary attack objects)
-  - Small academic figure (GNU-ton) perched atop the GNU's neck
-  - The GNU head is the primary vulnerable target — it descends to player level
-    during the vulnerability window
+  - `giant_gnu`       the giant alone: the MOUNT of the fight
+  - `giant_gnu_fist`  one fist alone: each fist is a body of its own
+  - `gnu_ton_rider`   the scholar alone: the boss
+  - `gnu_ton_boss`    the three together (the Hall's exhibit), and its
+                      `_full` / `_body` / `_hands` pages
 
-Animation rows (mapping to BossAnim vocabulary):
-  Row 0  rest       (6 frames) -> BossAnim::Rest
-  Row 1  hand_slam  (7 frames) -> BossAnim::FloorSlam
-  Row 2  hand_sweep (7 frames) -> BossAnim::SideSweep
-  Row 3  head_down  (6 frames) -> BossAnim::SpikeHalo  (vulnerability window)
-  Row 4  hit        (5 frames) -> BossAnim::Hit
-  Row 5  death      (8 frames) -> BossAnim::Death
-
-Frame size: 512x384  (wide to accommodate side-extending horns and hands)
-
-Dependencies: python -m pip install pillow
+Rows of the giant's sheets (`ANIMATIONS`): rest, hand_slam, hand_sweep,
+head_down, hit, death, buck, stomp. The game reads the first six by index
+and pins the last two by name.
 """
 
 from __future__ import annotations
 
+import functools
 import math
 import shutil
 from pathlib import Path
@@ -37,6 +31,7 @@ from PIL import Image, ImageDraw, ImageFilter
 from ambition_sprite2d_renderer.core.manifest_ron import ron_row
 from ambition_sprite2d_renderer.registry.pack_groups import policy_for
 from ambition_sprite2d_renderer.core.draw import blending_draw
+from ambition_sprite2d_renderer.targets.characters.gnu_ton_boss import giant_art as _giant
 from ambition_sprite2d_renderer.targets.characters.gnu_ton_boss import scholar as _scholar
 
 RGBA = Tuple[int, int, int, int]
@@ -56,13 +51,12 @@ DATA_DIR = Path(__file__).resolve().parent
 # targets/characters/gnu_ton_boss -> the tool checkout root (display paths).
 TOOL_ROOT = DATA_DIR.parents[3]
 
-# Frame canvas — bumped from 512×384 → 768×576 for less in-game pixelation
-# at the boss's blown-up render scale. Design-space coordinates and anchor
-# offsets stay frame-relative so the existing layout still reads correctly.
-FRAME_W = 768
-FRAME_H = 576
+# The frame of the giant's sheets: the frame the giant is drawn in
+# (`giant_art.FRAME`). Anchors are in design space: its origin is the middle
+# of the frame, +y is down, and one unit is one published pixel.
+FRAME_W, FRAME_H = _giant.FRAME
 FRAME_SIZE = (FRAME_W, FRAME_H)
-SUPERSAMPLE = 2  # render at 2x then downsample for clean edges
+SUPERSAMPLE = 2  # the scholar is drawn at 2x and brought down for clean edges
 
 # Origin in design coordinates (center of frame)
 OX = FRAME_W // 2
@@ -187,12 +181,9 @@ GIANT_ACTOR_METADATA = {
     "actions": {"default_preset": "peaceful"},
     "tags": ["boss", "multipart", "mount"],
     "missing_information": [
-        # Design-space (giant frame center -> scholar shoulder anchor). Mirrors
-        # _MAN_CENTER_X (44.0) / _MAN_CENTER_Y (_SHOULDER_TOP_Y - 18 = -20.0),
-        # which are defined further down; kept as literals here since this dict
-        # is built at import before those constants exist.
-        "Mountable::rider_offset (design-space): x=44.0, y=-20.0 "
-        "(see _MAN_CENTER_X/_MAN_CENTER_Y) — author in G2",
+        # The catalog authors the seat (`mount.saddle` of `npc_giant_gnu`): the
+        # middle of the right shoulder's top, `giant_art.seat_place`.
+        "The rider's seat is the catalog's (mount.saddle), from giant_art.seat_place",
     ],
 }
 
@@ -253,58 +244,16 @@ FIST_ACTOR_METADATA = {
 }
 
 # ── Palette ──────────────────────────────────────────────────────────────────
-C_OUTLINE = (20, 14, 8, 255)
-C_BODY_DARK = (48, 34, 20, 255)
-C_BODY_MID = (82, 60, 38, 255)
-C_BODY_LIGHT = (118, 88, 56, 255)
-C_BODY_SPEC = (148, 112, 72, 255)
-C_HORN = (212, 188, 142, 255)
-C_HORN_TIP = (238, 218, 176, 255)
-C_HORN_DARK = (162, 138, 98, 255)
-C_MANE_DARK = (58, 38, 22, 255)
-C_MANE_MID = (92, 66, 42, 255)
-C_MANE_LIGHT = (128, 96, 62, 255)
-C_SNOUT = (98, 74, 50, 255)
-C_NOSTRIL = (32, 20, 10, 255)
-C_EYE_WHITE = (230, 218, 200, 255)
-C_EYE_IRIS = (185, 138, 44, 255)
-C_EYE_GLOW = (255, 200, 60, 255)
-C_EYE_GLOW2 = (255, 240, 140, 180)
-C_PUPIL = (12, 8, 4, 255)
-C_HAND_DARK = (52, 36, 22, 255)
-C_HAND_MID = (90, 66, 44, 255)
-C_HAND_LIGHT = (128, 98, 66, 255)
-C_HOOF_DARK = (32, 22, 12, 255)
-C_HOOF_MID = (58, 42, 26, 255)
-C_KNUCKLE = (148, 112, 72, 255)
-C_MAN_ROBE = (55, 78, 148, 255)
-C_MAN_ROBE_D = (38, 55, 108, 255)
-C_MAN_ROBE_L = (78, 108, 190, 255)
-C_MAN_SKIN = (198, 162, 126, 255)
-C_MAN_HAIR = (72, 52, 32, 255)
-C_MAN_BEARD = (88, 66, 44, 255)
-C_MAN_SPEC = (240, 220, 180, 255)
 # Powdered wig (Isaac Newton style): cream-white with a soft warm shadow
 # so the curls read against the dark wildebeest mane behind the scholar.
-C_MAN_WIG = (240, 234, 220, 255)
-C_MAN_WIG_S = (190, 180, 158, 255)
-C_MAN_WIG_D = (138, 128, 110, 255)
 C_SPEECH_BG = (248, 246, 238, 220)
 C_SPEECH_EDGE = (180, 170, 148, 255)
 C_SPEECH_TXT = (28, 22, 14, 255)
-C_HIT_FLASH = (255, 160, 60, 200)
-C_DEATH_GREY = (88, 80, 72, 255)
-C_GLOW_RING = (255, 200, 60, 60)
-C_AMBER_GLOW = (255, 180, 40, 80)
 C_BG = (0, 0, 0, 0)  # transparent background
 
 
 def wave(phase: float, freq: float = 1.0, offset: float = 0.0) -> float:
     return math.sin(math.tau * (phase * freq + offset))
-
-
-def blink01(phase: float, freq: float = 1.0, offset: float = 0.0) -> float:
-    return 0.5 + 0.5 * wave(phase, freq, offset)
 
 
 def lerp(a: float, b: float, t: float) -> float:
@@ -444,399 +393,6 @@ class Canvas:
 # ── Drawing primitives ───────────────────────────────────────────────────────
 
 
-def _leg_lift(leg_idx: int, phase: float, anim: str) -> float:
-    """Per-leg vertical lift in design pixels for walk-in-place shuffle.
-
-    Diagonal pairs (hind-left + fore-right) walk in counter-phase to the
-    other pair so the giant reads as a quadruped marching in place rather
-    than bouncing all four hooves at once. Amplitude grows during attacks
-    so the body sells the brace step.
-    """
-    pair_phase = phase if leg_idx in (0, 3) else phase + 0.5
-    if anim == "death":
-        return 0.0
-    if anim in ("hand_slam", "hand_sweep"):
-        # Wider shuffle while bracing for an attack — the giant rocks.
-        return max(0.0, wave(pair_phase, 1.2)) * 7.0 - 2.5
-    if anim == "head_down":
-        return max(0.0, wave(pair_phase, 1.0)) * 4.0 - 1.0
-    if anim == "hit":
-        return wave(pair_phase, 2.5) * 3.0
-    # Rest: continuous in-place walking shuffle so the giant isn't a statue.
-    return max(0.0, wave(pair_phase, 0.85)) * 5.5 - 1.5
-
-
-def draw_gnu_body(
-    c: Canvas,
-    body_y: float = 0.0,
-    alpha_scale: float = 1.0,
-    phase: float = 0.0,
-    anim: str = "rest",
-) -> None:
-    """Giant GNU torso, hindquarters, and legs."""
-    # Subtle breathing
-    breathe = wave(phase, 0.8) * 2.5 if anim not in ("death",) else 0
-    by = body_y + breathe
-
-    # ── Hindquarters ──
-    hq = [
-        (-140, by + 50),
-        (-180, by + 30),
-        (-200, by + 10),
-        (-185, by - 20),
-        (-140, by - 32),
-        (-90, by - 28),
-        (-55, by - 15),
-        (-60, by + 40),
-    ]
-    c.polygon(hq, C_BODY_DARK, C_OUTLINE, 1.5)
-    # Highlight
-    hq_hi = [
-        (-150, by + 10),
-        (-175, by - 5),
-        (-160, by - 22),
-        (-115, by - 25),
-        (-85, by - 20),
-    ]
-    c.polygon(hq_hi, C_BODY_MID)
-
-    # ── Main torso / barrel ──
-    torso = [
-        (-60, by + 50),
-        (-55, by - 15),
-        (0, by - 38),
-        (70, by - 32),
-        (100, by - 10),
-        (95, by + 45),
-        (40, by + 58),
-        (-20, by + 58),
-    ]
-    c.polygon(torso, C_BODY_MID, C_OUTLINE, 1.5)
-
-    # Torso highlight
-    hi = [(-10, by - 28), (50, by - 24), (72, by - 8), (60, by + 10), (10, by + 6)]
-    c.polygon(hi, C_BODY_LIGHT)
-
-    # ── Shoulder hump ──
-    hump = [
-        (-20, by - 38),
-        (10, by - 58),
-        (40, by - 62),
-        (65, by - 50),
-        (70, by - 32),
-        (20, by - 35),
-    ]
-    c.polygon(hump, C_BODY_LIGHT, C_OUTLINE, 1.2)
-
-    # ── Four legs (with walk-in-place shuffle) ──
-    legs = [
-        (-130, by + 50, -145, by + 100, -138, by + 115),  # 0: hind left
-        (-70, by + 52, -80, by + 102, -72, by + 118),  # 1: hind right-ish
-        (20, by + 55, 12, by + 108, 22, by + 122),  # 2: fore left
-        (75, by + 48, 82, by + 100, 74, by + 115),  # 3: fore right
-    ]
-    for idx, (x0, y0, x1, y1, x2, y2) in enumerate(legs):
-        lift = _leg_lift(idx, phase, anim)
-        # Lift hits the knee and hoof — upper-leg attachment stays put so
-        # the silhouette doesn't pop off the body.
-        knee_lift = lift * 0.65
-        hoof_lift = lift
-        y1l = y1 - knee_lift
-        y2l = y2 - hoof_lift
-        # Upper leg
-        c.polygon(
-            [(x0 - 14, y0), (x0 + 10, y0), (x1 + 8, y1l), (x1 - 12, y1l)],
-            C_BODY_DARK,
-            C_OUTLINE,
-            1.2,
-        )
-        # Lower leg (slightly lighter)
-        c.polygon(
-            [(x1 - 10, y1l), (x1 + 7, y1l), (x2 + 6, y2l), (x2 - 9, y2l)],
-            C_BODY_MID,
-            C_OUTLINE,
-            1.2,
-        )
-        # Hoof
-        c.ellipse(x2 - 2, y2l + 6, 12, 6, C_HOOF_DARK, C_OUTLINE, 1.0)
-
-    # ── Shaggy mane along chest/neck base ──
-    for i in range(8):
-        mx = lerp(-50, 50, i / 7)
-        my = by - 25 + wave(i * 1.3, 1.0) * 5
-        c.polygon(
-            [
-                (mx - 8, my),
-                (mx, my - 20 - i * 1.5),
-                (mx + 8, my - 2),
-            ],
-            C_MANE_DARK if i % 2 == 0 else C_MANE_MID,
-        )
-
-
-def draw_gnu_neck(
-    c: Canvas,
-    head_y_offset: float = 0.0,
-    tilt: float = 0.0,
-    phase: float = 0.0,
-    anim: str = "rest",
-) -> None:
-    """Thick muscular neck connecting body to head."""
-    sway = wave(phase, 0.7) * 3.0
-    nx = sway + tilt * 15
-    ny = head_y_offset
-
-    neck = [
-        (-28 + nx * 0.3, ny + 30),
-        (-22 + nx, ny - 20),
-        (-12 + nx, ny - 60),
-        (18 + nx, ny - 60),
-        (28 + nx * 0.8, ny - 20),
-        (30 + nx * 0.3, ny + 30),
-    ]
-    c.polygon(neck, C_BODY_MID, C_OUTLINE, 1.8)
-    # Highlight
-    hi = [(-4 + nx, ny + 10), (0 + nx, ny - 40), (14 + nx, ny - 52), (18 + nx, ny + 8)]
-    c.polygon(hi, C_BODY_LIGHT)
-
-
-def draw_gnu_horns(
-    c: Canvas,
-    hx: float = 0.0,
-    hy: float = 0.0,
-    scale: float = 1.0,
-    phase: float = 0.0,
-    anim: str = "rest",
-) -> None:
-    """GNU's iconic curved horns (C-shaped: outward, down, then back up at tips)."""
-    droop = 0.0
-    if anim == "death":
-        settle = min(1.0, phase * 1.5)
-        droop = settle * 35
-
-    for side, sx in (("left", -1), ("right", 1)):
-        # Horn base: emerges from skull wide and sweeping outward
-        bx = hx + sx * 32 * scale
-        by = hy - 18 * scale
-
-        # Control points for the C-curve
-        # The GNU horn goes: out → curves down → then the tip curls back inward/up
-        pts = [
-            (bx, by),
-            (bx + sx * 40 * scale, by - 10 * scale + droop),
-            (bx + sx * 80 * scale, by + 20 * scale + droop),
-            (bx + sx * 88 * scale, by + 55 * scale + droop),
-            (bx + sx * 70 * scale, by + 85 * scale + droop * 0.5),
-            (bx + sx * 45 * scale, by + 90 * scale),
-        ]
-
-        # Draw horn as thick tapered line with decreasing width
-        for i in range(len(pts) - 1):
-            t = i / (len(pts) - 1)
-            w = lerp(14, 5, t) * scale
-            p0, p1 = pts[i], pts[i + 1]
-            # Cross-section polygon for each segment
-            dx = p1[0] - p0[0]
-            dy = p1[1] - p0[1]
-            length = math.hypot(dx, dy) or 1
-            nx_v = -dy / length
-            ny_v = dx / length
-            color = C_HORN if i < len(pts) - 2 else C_HORN_TIP
-            seg = [
-                (p0[0] + nx_v * w, p0[1] + ny_v * w),
-                (p0[0] - nx_v * w, p0[1] - ny_v * w),
-                (p1[0] - nx_v * w * 0.7, p1[1] - ny_v * w * 0.7),
-                (p1[0] + nx_v * w * 0.7, p1[1] + ny_v * w * 0.7),
-            ]
-            c.polygon(seg, color, C_OUTLINE, 1.0)
-
-        # Horn tip cap
-        tip = pts[-1]
-        c.ellipse(tip[0], tip[1], 5 * scale, 5 * scale, C_HORN_TIP)
-
-
-def draw_gnu_head(
-    c: Canvas,
-    hx: float = 0.0,
-    hy: float = 0.0,
-    phase: float = 0.0,
-    anim: str = "rest",
-    enraged: bool = False,
-) -> None:
-    """GNU's massive head: skull, snout, eyes, and horns."""
-    sway = wave(phase, 0.5) * 4.0
-
-    # Head sway
-    if anim == "death":
-        slump = min(1.0, phase * 1.4)
-        hx += slump * -15
-        hy += slump * 25
-        sway = 0
-
-    # ── Skull base ──
-    skull = [
-        (hx - 55 + sway, hy - 25),
-        (hx - 60 + sway, hy + 5),
-        (hx - 45 + sway, hy + 28),
-        (hx - 10 + sway, hy + 38),
-        (hx + 25 + sway, hy + 32),
-        (hx + 50 + sway, hy + 12),
-        (hx + 52 + sway, hy - 15),
-        (hx + 35 + sway, hy - 30),
-        (hx + 5 + sway, hy - 34),
-        (hx - 28 + sway, hy - 30),
-    ]
-    c.polygon(skull, C_BODY_MID, C_OUTLINE, 2.0)
-
-    # Skull highlight
-    hi = [
-        (hx - 20 + sway, hy - 22),
-        (hx + 15 + sway, hy - 26),
-        (hx + 32 + sway, hy - 12),
-        (hx + 20 + sway, hy + 5),
-        (hx - 5 + sway, hy + 2),
-        (hx - 22 + sway, hy - 10),
-    ]
-    c.polygon(hi, C_BODY_LIGHT)
-
-    # ── Wide snout ──
-    snout = [
-        (hx + 25 + sway, hy + 8),
-        (hx + 50 + sway, hy + 12),
-        (hx + 78 + sway, hy + 24),
-        (hx + 82 + sway, hy + 42),
-        (hx + 60 + sway, hy + 52),
-        (hx + 28 + sway, hy + 48),
-        (hx + 15 + sway, hy + 35),
-    ]
-    c.polygon(snout, C_SNOUT, C_OUTLINE, 1.8)
-
-    # Snout highlight
-    c.ellipse(hx + 55 + sway, hy + 32, 16, 10, C_BODY_LIGHT)
-
-    # Nostrils
-    c.ellipse(hx + 55 + sway, hy + 38, 7, 5, C_NOSTRIL)
-    c.ellipse(hx + 72 + sway, hy + 36, 6, 4, C_NOSTRIL)
-
-    # ── Eyes ──
-    # The left eye (the one facing us more directly)
-    ex = hx - 18 + sway
-    ey = hy - 4
-    c.ellipse(ex, ey, 14, 12, C_EYE_WHITE, C_OUTLINE, 1.5)
-    c.ellipse(ex + 3, ey + 1, 9, 9, C_EYE_IRIS)
-    c.ellipse(ex + 4, ey + 2, 5, 5, C_PUPIL)
-    # Eye shine
-    c.ellipse(ex + 1, ey - 3, 3, 3, (255, 255, 255, 180))
-
-    # Right eye (partially occluded by snout angle)
-    ex2 = hx + 20 + sway
-    ey2 = hy - 8
-    c.ellipse(ex2, ey2, 11, 9, C_EYE_WHITE, C_OUTLINE, 1.0)
-    c.ellipse(ex2 + 2, ey2 + 1, 7, 7, C_EYE_IRIS)
-    c.ellipse(ex2 + 3, ey2 + 1, 4, 4, C_PUPIL)
-
-    if enraged or anim in ("head_down", "hand_slam", "hand_sweep"):
-        # Angry glow around eyes
-        intensity = 0.7 + 0.3 * blink01(phase, 2.5)
-        glow = (int(255 * intensity), int(160 * intensity), 20, 120)
-        c.alpha_ellipse(ex, ey, 22, 18, glow)
-        c.alpha_ellipse(ex2, ey2, 18, 14, glow)
-
-    # ── Horns ──
-    draw_gnu_horns(c, hx + sway, hy, 1.0, phase, anim)
-
-
-def draw_hand(
-    c: Canvas,
-    cx: float,
-    cy: float,
-    side: int = 1,
-    phase: float = 0.0,
-    anim: str = "rest",
-    slam_progress: float = 0.0,
-    sweep_progress: float = 0.0,
-) -> None:
-    """One of the giant stylized hoof-hands at the sides."""
-    # side: +1 = right, -1 = left
-
-    # Main mass: large rounded hoof shape
-    # The "knuckle" side faces inward (toward the player)
-    hw = 56 + abs(math.sin(phase * 0.6)) * 3
-    hh = 48 + abs(math.cos(phase * 0.8)) * 2
-
-    # Hoof shape: wider at knuckle end, narrowing to hoof tip
-    # For left hand: tip points right; for right: tip points left
-    tip_x = cx + side * -48
-    knuckle_x = cx + side * 20
-
-    pts = [
-        (knuckle_x, cy - hh * 0.7),
-        (knuckle_x + side * 15, cy - hh * 0.4),
-        (knuckle_x + side * 18, cy + hh * 0.2),
-        (knuckle_x, cy + hh * 0.7),
-        (tip_x, cy + hh * 0.4),
-        (tip_x - side * 8, cy),
-        (tip_x, cy - hh * 0.5),
-    ]
-    c.polygon(pts, C_HAND_DARK, C_OUTLINE, 2.0)
-
-    # Mid-tone fill panel
-    mid_pts = [
-        (knuckle_x - side * 5, cy - hh * 0.5),
-        (knuckle_x + side * 10, cy - hh * 0.2),
-        (knuckle_x + side * 12, cy + hh * 0.1),
-        (knuckle_x - side * 5, cy + hh * 0.5),
-        (tip_x + side * 8, cy + hh * 0.25),
-        (tip_x + side * 8, cy - hh * 0.25),
-    ]
-    c.polygon(mid_pts, C_HAND_MID)
-
-    # Knuckle ridges
-    for i in range(3):
-        ky = cy + (i - 1) * hh * 0.26
-        c.ellipse(knuckle_x, ky, 8, 5, C_KNUCKLE, C_OUTLINE, 0.8)
-
-    # The thumb, curled over the top of the fist: what makes it a HAND, and a
-    # right one (the left fist is its mirror, which is a left hand).
-    thumb = [
-        (knuckle_x - side * 22, cy - hh * 0.62),
-        (knuckle_x - side * 6, cy - hh * 0.86),
-        (knuckle_x + side * 8, cy - hh * 0.72),
-        (knuckle_x + side * 6, cy - hh * 0.5),
-        (knuckle_x - side * 16, cy - hh * 0.44),
-    ]
-    c.polygon(thumb, C_HAND_MID, C_OUTLINE, 1.2)
-    c.ellipse(knuckle_x + side * 3, cy - hh * 0.66, 4, 3, C_KNUCKLE, C_OUTLINE, 0.6)
-
-    # Hoof tip (darker, hard)
-    tip_pts = [
-        (tip_x, cy - hh * 0.4),
-        (tip_x - side * 12, cy),
-        (tip_x, cy + hh * 0.35),
-    ]
-    c.polygon(tip_pts, C_HOOF_DARK, C_OUTLINE, 1.0)
-
-    # Impact glow during slam
-    if slam_progress > 0.3 and anim == "hand_slam":
-        glow_alpha = int(120 * min(1.0, (slam_progress - 0.3) * 4))
-        glow = (255, 180, 60, glow_alpha)
-        c.alpha_ellipse(cx, cy + hh, 40, 16, glow)
-
-    # Wind trail during sweep
-    if sweep_progress > 0.4 and anim == "hand_sweep":
-        trail_alpha = int(80 * min(1.0, sweep_progress))
-        trail = (120, 180, 255, trail_alpha)
-        c.polygon(
-            [
-                (cx + side * 30, cy - 20),
-                (cx + side * 80, cy - 10),
-                (cx + side * 80, cy + 10),
-                (cx + side * 30, cy + 20),
-            ],
-            trail,
-        )
-
-
 # The fused sheet's rows, drawn with the scholar's own rows.
 _FUSED_SCHOLAR_ROW = {
     "rest": "rest",
@@ -845,6 +401,8 @@ _FUSED_SCHOLAR_ROW = {
     "head_down": "invoke",
     "hit": "hit",
     "death": "death",
+    "buck": "brace",
+    "stomp": "point",
 }
 # On the giant he is drawn at this multiple of his design size, so he stands as
 # tall as the figure he replaced (~45 design px, sole to wig).
@@ -905,6 +463,47 @@ def draw_gnu_ton_man(
 # ── Per-animation frame drawing ──────────────────────────────────────────────
 
 
+# Where each fist is in the fused sheet's frame at rest: beside the giant, at
+# the height of its chest. (The fists the player fights are bodies of their
+# own, from `giant_gnu_fist`; these are the picture of the Hall's exhibit.)
+_FUSED_FIST_X = 330.0
+_FUSED_FIST_Y = 330.0
+_FUSED_FIST_FLOOR_Y = 606.0
+# The scholar on the giant's shoulder in the fused sheet: his own rider frame,
+# at the size he has beside the giant in the fight (85 px of body).
+_RIDER_REST_BBOX = (65, 31, 69, 126)
+_FUSED_SCHOLAR_BODY_PX = 85.0
+
+
+@functools.lru_cache(maxsize=None)
+def _giant_frame(anim: str, frame_idx: int, frame_count: int) -> Image.Image:
+    return _giant.render_giant(anim, frame_idx, frame_count)
+
+
+@functools.lru_cache(maxsize=None)
+def _fist_rest() -> Image.Image:
+    return _giant.render_fist("rest", 0, 10)
+
+
+def _fused_fists(anim: str, phase: float) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+    """Where the left and the right fist are in the frame (their middles)."""
+    cx = FRAME_W * 0.5
+    bob = 4.0 * math.sin(2.0 * math.pi * phase)
+    x, y = _FUSED_FIST_X, _FUSED_FIST_Y + bob
+    if anim == "hand_slam":
+        up = math.sin(math.pi * min(1.0, phase / 0.45)) if phase < 0.45 else 0.0
+        down = min(1.0, (phase - 0.45) / 0.12) if phase >= 0.45 else 0.0
+        back = max(0.0, (phase - 0.8) / 0.2)
+        y = _FUSED_FIST_Y - 70.0 * up + (_FUSED_FIST_FLOOR_Y - _FUSED_FIST_Y) * down * (1.0 - back)
+    elif anim == "hand_sweep":
+        sweep = math.sin(math.pi * phase)
+        x = _FUSED_FIST_X - 150.0 * sweep
+        y = _FUSED_FIST_Y + (_FUSED_FIST_FLOOR_Y - 30.0 - _FUSED_FIST_Y) * sweep
+    elif anim == "death":
+        y = _FUSED_FIST_Y + (_FUSED_FIST_FLOOR_Y - _FUSED_FIST_Y) * smoothstep(clamp((phase - 0.2) / 0.5, 0.0, 1.0))
+    return (cx - x, y), (cx + x, y)
+
+
 def draw_frame(
     anim: str,
     frame_idx: int,
@@ -914,69 +513,68 @@ def draw_frame(
 ) -> Image.Image:
     """Render one animation frame and return a FRAME_SIZE RGBA image.
 
-    `layer` selects which silhouette layers to draw:
-      - "full"  : everything (used for canonical + debug sheet)
-      - "body"  : body, neck, head, scholar — no hands, no attack VFX
-      - "hands" : hands + attack VFX (shockwaves, vulnerability rings)
+    `layer` selects what is in it:
+      - "full"       : the giant, the scholar on its shoulder, the two fists
+      - "body"       : the giant and the scholar
+      - "hands"      : the two fists
+      - "giant_body" : the giant alone (the MOUNT of the fight)
+      - "scholar"    : the scholar alone, in the middle of the frame
     `parts` collects design-space anchor positions for runtime hitboxes.
     Pass the same dict across all frames of a row to accumulate the row.
     """
     phase = frame_idx / max(1, frame_count)
-    c = Canvas(FRAME_W, FRAME_H, C_BG, scale=SUPERSAMPLE)
-
     if layer == _SCHOLAR_LAYER:
-        # ADR 0020 RIDER split: the scholar ALONE, centered in its own frame
-        # (man_x=0 at the frame center, NOT the giant shoulder offset
-        # _MAN_CENTER_X/_MAN_CENTER_Y). Same per-row `anim` so the arm poses
-        # still vary. Packed on its own tight trim into `gnu_ton_rider`.
-        draw_gnu_ton_man(
-            c, 0.0, _RIDER_CENTER_Y, phase=phase, anim=anim, show_speech=False
-        )
+        c = Canvas(FRAME_W, FRAME_H, C_BG, scale=SUPERSAMPLE)
+        draw_gnu_ton_man(c, 0.0, _RIDER_CENTER_Y, phase=phase, anim=anim, show_speech=False)
         return c.finish()
 
-    if anim == "rest":
-        _draw_rest(c, phase, frame_idx, layer=layer, parts=parts)
-    elif anim == "hand_slam":
-        _draw_hand_slam(c, phase, frame_idx, layer=layer, parts=parts)
-    elif anim == "hand_sweep":
-        _draw_hand_sweep(c, phase, frame_idx, layer=layer, parts=parts)
-    elif anim == "head_down":
-        _draw_head_down(c, phase, frame_idx, layer=layer, parts=parts)
-    elif anim == "hit":
-        _draw_hit(c, phase, frame_idx, layer=layer, parts=parts)
-    elif anim == "death":
-        _draw_death(c, phase, frame_idx, layer=layer, parts=parts)
-    elif anim == "buck":
-        _draw_buck(c, phase, frame_idx, layer=layer, parts=parts)
-    elif anim == "stomp":
-        _draw_stomp(c, phase, frame_idx, layer=layer, parts=parts)
-    else:
-        _draw_rest(c, phase, frame_idx, layer=layer, parts=parts)
+    pose = _giant.pose_for(anim, phase)
+    frame = Image.new("RGBA", FRAME_SIZE, (0, 0, 0, 0))
+    if layer in ("full", "body", _GIANT_BODY_LAYER):
+        frame.alpha_composite(_giant_frame(anim, frame_idx, frame_count))
 
-    return c.finish()
+    seat = _giant.seat_place(pose)
+    scale = _FUSED_SCHOLAR_BODY_PX / _RIDER_REST_BBOX[3]
+    if layer in ("full", "body"):
+        row = _FUSED_SCHOLAR_ROW.get(anim, "rest")
+        frames = _scholar.row_frames(row)
+        man = _scholar.render_frame(
+            Canvas, row, min(frames - 1, int(phase * frames)), frames, RIDER_FRAME, RIDER_PX_PER_UNIT, SUPERSAMPLE
+        )
+        man = man.resize((round(man.width * scale), round(man.height * scale)), Image.LANCZOS)
+        bx, by, bw, bh = _RIDER_REST_BBOX
+        frame.alpha_composite(
+            man, (round(seat[0] - (bx + bw * 0.5) * scale), round(seat[1] - (by + bh) * scale))
+        )
+
+    left, right = _fused_fists(anim, phase)
+    if layer in ("full", "hands"):
+        fist = _fist_rest()
+        for (x, y), image in ((right, fist), (left, fist.transpose(Image.FLIP_LEFT_RIGHT))):
+            frame.alpha_composite(image, (round(x - image.width * 0.5), round(y - image.height * 0.5)))
+
+    head = _giant.head_place(pose)
+    _record_parts(
+        parts,
+        anim,
+        frame_idx,
+        head=(head[0] - OX, head[1] - OY),
+        hand_left=(left[0] - OX, left[1] - OY),
+        hand_right=(right[0] - OX, right[1] - OY),
+        scholar=(seat[0] - OX, seat[1] - _FUSED_SCHOLAR_BODY_PX * 0.5 - OY),
+    )
+    return frame
 
 
-# Giant GNU layout in design-space (y=0 is frame center; positive = down).
-# Frame is now 768×576 so we have ~96 extra design pixels of vertical room.
-#
-#   Body at +60 below center      (lower so the body fills the bottom)
-#   Shoulder hump peak: body_y - 62 = -2  (just above frame center)
-#   Head at -75 above center      (lowered ~20px so neck better connects)
-#   Hands at +20 below center
-#
-# Scholar (GNU-ton) stands on the RIGHT shoulder of the giant (nudged
-# further right to x≈+44 per direction). His center sits ~18 px above the
-# hump peak (smaller silhouette than the older 22 px gap). He is NOT on
-# the head — the head is the attack target that periodically descends.
-REST_HEAD_Y = -75.0
-REST_HAND_Y = 20.0
-REST_BODY_Y = 60.0
-
-# Shoulder contact point: body hump peak is at (body_y - 62).
-# Scholar feet sit here; scholar center = foot_y - 18 (smaller figure now).
-_SHOULDER_TOP_Y = REST_BODY_Y - 62  # ≈ -2
-_MAN_CENTER_Y = _SHOULDER_TOP_Y - 18  # ≈ -20
-_MAN_CENTER_X = 44.0  # nudged further onto the right shoulder
+# Where the giant's parts are at rest, in design space (the origin is the
+# middle of the frame, +y is down): what the fused sheet's boxes fall back to
+# when a row recorded no anchor.
+REST_HEAD_X = 110.0
+REST_HEAD_Y = -108.0
+REST_HAND_X = _FUSED_FIST_X
+REST_HAND_Y = _FUSED_FIST_Y - FRAME_H * 0.5
+# How deep a fist of the fused sheet goes in its slam: to the floor.
+SLAM_STRIKE_Y = _FUSED_FIST_FLOOR_Y - FRAME_H * 0.5
 
 # ADR 0020 RIDER split: the standalone scholar frame draws the man CENTERED at
 # man_x=0. The scholar figure spans design-y ≈ (hy-24) wig top .. (hy+19) feet;
@@ -998,97 +596,6 @@ RIDER_PX_PER_UNIT = 3
 # His rows, in the order the boss sheet's fixed slots read them (see
 # `scholar.SLOT_ROWS`), then the named rows a move or the conductor asks for.
 RIDER_ROWS = [(name, frames, int(round(secs * 1000))) for name, frames, secs in _scholar.ROWS]
-
-# Hand x-anchors. Slightly wider than the older 185 px so the wider 768
-# frame still places hands near the edges.
-REST_HAND_X = 235.0
-
-# Hand-slam strike depth (design-space y). Below the leg hooves at
-# REST_BODY_Y + 115 = 175 so the slam visually hits the floor. The
-# Rust-side hardcoded `HandSlam` hitbox uses the same y so the
-# collision overlays the drawn hand.
-SLAM_STRIKE_Y = 195.0
-
-
-def _draw_body_layer(
-    c: Canvas,
-    body_y: float,
-    head_y: float,
-    head_x: float,
-    neck_offset: float,
-    neck_tilt: float,
-    man_x: float,
-    man_y: float,
-    anim: str,
-    phase: float,
-    enraged: bool,
-    draw_man: bool = True,
-) -> None:
-    """Draw the static silhouette: body, neck, head, scholar.
-
-    Excludes the hands and any attack VFX (shockwave, glow rings) — those
-    live in the hands layer so they render in front of platforms.
-    """
-    draw_gnu_body(c, body_y=body_y, phase=phase, anim=anim)
-    draw_gnu_neck(c, head_y_offset=neck_offset, tilt=neck_tilt, phase=phase, anim=anim)
-    draw_gnu_head(c, head_x, head_y, phase=phase, anim=anim, enraged=enraged)
-    if draw_man:
-        draw_gnu_ton_man(c, man_x, man_y, phase=phase, anim=anim, show_speech=False)
-
-
-def _draw_hands_layer(
-    c: Canvas,
-    lhx: float,
-    lhy: float,
-    rhx: float,
-    rhy: float,
-    anim: str,
-    phase: float,
-    slam_alpha: float = 0.0,
-    sweep_prog: float = 0.0,
-    head_y_for_glow: Optional[float] = None,
-    vulnerability_alpha: float = 0.0,
-    shockwave_radius: float = 0.0,
-    shockwave_alpha: float = 0.0,
-) -> None:
-    """Draw the hands plus attack VFX (shockwaves, glow rings, sweep trails)."""
-    draw_hand(
-        c,
-        lhx,
-        lhy,
-        side=-1,
-        phase=phase,
-        anim=anim,
-        slam_progress=slam_alpha,
-        sweep_progress=sweep_prog,
-    )
-    draw_hand(
-        c,
-        rhx,
-        rhy,
-        side=+1,
-        phase=phase,
-        anim=anim,
-        slam_progress=slam_alpha,
-        sweep_progress=sweep_prog,
-    )
-    # Vulnerability ring around the head, lives in the hands layer so it
-    # renders in front of platforms (it's a readability signal).
-    if vulnerability_alpha > 0.1 and head_y_for_glow is not None:
-        ga = int(80 * vulnerability_alpha * (0.7 + 0.3 * blink01(phase, 3.0)))
-        c.alpha_ellipse(
-            0.0,
-            head_y_for_glow,
-            100 * vulnerability_alpha,
-            80 * vulnerability_alpha,
-            (255, 220, 60, ga),
-        )
-    # Hand-slam impact shockwave at floor level — same layer as hands.
-    if shockwave_radius > 0 and shockwave_alpha > 0:
-        ws = shockwave_alpha
-        for r in [0.4, 0.7, 1.0]:
-            a = int(100 * ws * (1 - r * 0.6))
-            c.ellipse(0, 120, shockwave_radius * r, 22 * r * ws, (255, 200, 80, a))
 
 
 def _record_parts(
@@ -1120,441 +627,12 @@ def _record_parts(
     parts.setdefault(anim, []).append(entry)
 
 
-def _draw_rest(
-    c: Canvas,
-    phase: float,
-    frame_idx: int,
-    layer: str = "full",
-    parts: Optional[dict] = None,
-) -> None:
-    """Idle: gentle sway, scholar muttering from the GNU's right shoulder."""
-    bob = wave(phase, 0.9) * 3.5
-    head_y = REST_HEAD_Y + bob * 0.6
-    neck_offset = head_y + 70
-
-    lhx = wave(phase, 0.6) * 5 - REST_HAND_X
-    lhy = REST_HAND_Y + wave(phase, 0.85, 0.1) * 4
-    rhx = wave(phase, 0.6, 0.25) * 5 + REST_HAND_X
-    rhy = REST_HAND_Y + wave(phase, 0.85, 0.35) * 4
-
-    man_y = _MAN_CENTER_Y + bob * 0.4
-    man_x = _MAN_CENTER_X + wave(phase, 0.7, 0.2) * 1.5
-
-    if layer in ("full", "body", _GIANT_BODY_LAYER):
-        _draw_body_layer(
-            c,
-            REST_BODY_Y,
-            head_y,
-            0.0,
-            neck_offset,
-            0.0,
-            man_x,
-            man_y,
-            anim="rest",
-            phase=phase,
-            enraged=False,
-            draw_man=layer != _GIANT_BODY_LAYER,
-        )
-    if layer in ("full", "hands"):
-        _draw_hands_layer(c, lhx, lhy, rhx, rhy, anim="rest", phase=phase)
-
-    _record_parts(
-        parts,
-        "rest",
-        frame_idx,
-        head=(0.0, head_y),
-        hand_left=(lhx, lhy),
-        hand_right=(rhx, rhy),
-        scholar=(man_x, man_y),
-    )
-
-
-# Where the gnu's hooves meet the floor, design space: the pivots a buck and a
-# stomp rock the body about (the front pair for a buck, the hind for a stomp).
-_FRONT_HOOVES = (66.0, 176.0)
-_HIND_HOOVES = (-154.0, 176.0)
-
-
-def _rocked_body(c: Canvas, phase: float, angle: float, pivot, lift: float, layer: str) -> None:
-    """The resting body (and its rider) rocked `angle` degrees about `pivot`
-    and lifted `lift` design px: drawn on its own layer, then turned."""
-    if layer not in ("full", "body", _GIANT_BODY_LAYER):
-        return
-    tmp = Canvas(FRAME_W, FRAME_H, C_BG, scale=SUPERSAMPLE)
-    _draw_body_layer(
-        tmp,
-        REST_BODY_Y - lift,
-        REST_HEAD_Y - lift,
-        0.0,
-        REST_HEAD_Y - lift + 70,
-        0.0,
-        _MAN_CENTER_X,
-        _MAN_CENTER_Y - lift,
-        anim="rest",
-        phase=phase,
-        enraged=False,
-        draw_man=layer != _GIANT_BODY_LAYER,
-    )
-    center = tmp.P(pivot[0], pivot[1] - lift)
-    turned = tmp.img.rotate(angle, resample=Image.BICUBIC, center=center)
-    c.img = Image.alpha_composite(c.img, turned)
-    c.draw = blending_draw(c.img)
-
-
-def _dust(c: Canvas, x: float, y: float, k: float) -> None:
-    """A puff of dust at `(x, y)`, `k` in 0..1 of its life."""
-    for i, dx in enumerate((-26.0, -8.0, 10.0, 28.0)):
-        r = 8.0 + 18.0 * k + i * 2.0
-        c.alpha_ellipse(x + dx * (0.6 + k), y - 4.0 - 10.0 * k, r, r * 0.6, (150, 128, 96, int(170 * (1.0 - k))), blur=2.0)
-
-
-def _draw_buck(c: Canvas, phase: float, frame_idx: int, layer: str = "full", parts: Optional[dict] = None) -> None:
-    """The buck: the gnu throws its hindquarters up about its front hooves, and
-    whatever stands on its back goes with them."""
-    k = math.sin(math.pi * min(1.0, phase * 1.25))
-    _rocked_body(c, phase, -16.0 * k, _FRONT_HOOVES, 10.0 * k, layer)
-    if layer in ("full", "hands"):
-        _draw_hands_layer(c, -REST_HAND_X, REST_HAND_Y, REST_HAND_X, REST_HAND_Y, anim="rest", phase=phase)
-    _record_parts(parts, "buck", frame_idx, head=(0.0, REST_HEAD_Y), hand_left=(-REST_HAND_X, REST_HAND_Y), hand_right=(REST_HAND_X, REST_HAND_Y), scholar=(_MAN_CENTER_X, _MAN_CENTER_Y))
-
-
-def _draw_stomp(c: Canvas, phase: float, frame_idx: int, layer: str = "full", parts: Optional[dict] = None) -> None:
-    """The stomp: the gnu rears on its hind hooves and brings its front down,
-    the floor puffing where they land."""
-    rise = smoothstep(min(1.0, phase / 0.55))
-    slam = smoothstep(clamp((phase - 0.55) / 0.2, 0.0, 1.0))
-    angle = 13.0 * rise * (1.0 - slam)
-    _rocked_body(c, phase, angle, _HIND_HOOVES, 0.0, layer)
-    if layer in ("full", "hands"):
-        _draw_hands_layer(c, -REST_HAND_X, REST_HAND_Y, REST_HAND_X, REST_HAND_Y, anim="rest", phase=phase)
-        if phase >= 0.7:
-            _dust(c, _FRONT_HOOVES[0] - 30.0, _FRONT_HOOVES[1], (phase - 0.7) / 0.3)
-    _record_parts(parts, "stomp", frame_idx, head=(0.0, REST_HEAD_Y), hand_left=(-REST_HAND_X, REST_HAND_Y), hand_right=(REST_HAND_X, REST_HAND_Y), scholar=(_MAN_CENTER_X, _MAN_CENTER_Y))
-
-
-def _draw_hand_slam(
-    c: Canvas,
-    phase: float,
-    frame_idx: int,
-    layer: str = "full",
-    parts: Optional[dict] = None,
-) -> None:
-    """Hands raise then slam down from above.
-
-    Strike peak is design y = SLAM_STRIKE_Y (below the leg hooves) so the
-    hands visually hit the floor. The Rust-side `gnu_ton_part_aabb`
-    consumers use the same y, so collision boxes overlay where the hands
-    actually appear.
-    """
-    if phase < 0.3:
-        t = phase / 0.3
-        slam_y = lerp(REST_HAND_Y, -110, smoothstep(t))
-        slam_alpha = 0.0
-    elif phase < 0.6:
-        t = (phase - 0.3) / 0.3
-        slam_y = lerp(-110, SLAM_STRIKE_Y, smoothstep(t) * 1.05)
-        slam_alpha = smoothstep(t)
-    else:
-        t = (phase - 0.6) / 0.4
-        slam_y = lerp(SLAM_STRIKE_Y, REST_HAND_Y, smoothstep(t))
-        slam_alpha = lerp(1.0, 0.0, t)
-
-    head_y = REST_HEAD_Y
-    if layer in ("full", "body", _GIANT_BODY_LAYER):
-        _draw_body_layer(
-            c,
-            REST_BODY_Y,
-            head_y,
-            0.0,
-            head_y + 70,
-            0.0,
-            _MAN_CENTER_X,
-            _MAN_CENTER_Y,
-            anim="hand_slam",
-            phase=phase,
-            enraged=True,
-            draw_man=layer != _GIANT_BODY_LAYER,
-        )
-
-    shockwave_radius = 0.0
-    shockwave_alpha = 0.0
-    if slam_alpha > 0.5:
-        shockwave_alpha = (slam_alpha - 0.5) * 2.0
-        shockwave_radius = 260.0 * shockwave_alpha
-
-    if layer in ("full", "hands"):
-        _draw_hands_layer(
-            c,
-            -REST_HAND_X,
-            slam_y,
-            REST_HAND_X,
-            slam_y,
-            anim="hand_slam",
-            phase=phase,
-            slam_alpha=slam_alpha,
-            shockwave_radius=shockwave_radius,
-            shockwave_alpha=shockwave_alpha,
-        )
-
-    _record_parts(
-        parts,
-        "hand_slam",
-        frame_idx,
-        head=(0.0, head_y),
-        hand_left=(-REST_HAND_X, slam_y),
-        hand_right=(REST_HAND_X, slam_y),
-        scholar=(_MAN_CENTER_X, _MAN_CENTER_Y),
-        extra={"slam_alpha": round(slam_alpha, 3)},
-    )
-
-
-def _draw_hand_sweep(
-    c: Canvas,
-    phase: float,
-    frame_idx: int,
-    layer: str = "full",
-    parts: Optional[dict] = None,
-) -> None:
-    """Hands sweep in from the far sides."""
-    if phase < 0.2:
-        t = phase / 0.2
-        lhx = lerp(-REST_HAND_X, -290, smoothstep(t))
-        rhx = lerp(REST_HAND_X, 290, smoothstep(t))
-        sweep_prog = 0.0
-    elif phase < 0.65:
-        t = (phase - 0.2) / 0.45
-        lhx = lerp(-290, -80, smoothstep(t))
-        rhx = lerp(290, 80, smoothstep(t))
-        sweep_prog = smoothstep(t)
-    else:
-        t = (phase - 0.65) / 0.35
-        lhx = lerp(-80, -REST_HAND_X, smoothstep(t))
-        rhx = lerp(80, REST_HAND_X, smoothstep(t))
-        sweep_prog = lerp(1.0, 0.0, t)
-
-    head_y = REST_HEAD_Y
-    if layer in ("full", "body", _GIANT_BODY_LAYER):
-        _draw_body_layer(
-            c,
-            REST_BODY_Y,
-            head_y,
-            0.0,
-            head_y + 70,
-            0.0,
-            _MAN_CENTER_X,
-            _MAN_CENTER_Y,
-            anim="hand_sweep",
-            phase=phase,
-            enraged=True,
-            draw_man=layer != _GIANT_BODY_LAYER,
-        )
-    if layer in ("full", "hands"):
-        _draw_hands_layer(
-            c,
-            lhx,
-            REST_HAND_Y,
-            rhx,
-            REST_HAND_Y,
-            anim="hand_sweep",
-            phase=phase,
-            sweep_prog=sweep_prog,
-        )
-
-    _record_parts(
-        parts,
-        "hand_sweep",
-        frame_idx,
-        head=(0.0, head_y),
-        hand_left=(lhx, REST_HAND_Y),
-        hand_right=(rhx, REST_HAND_Y),
-        scholar=(_MAN_CENTER_X, _MAN_CENTER_Y),
-        extra={"sweep_prog": round(sweep_prog, 3)},
-    )
-
-
-def _draw_head_down(
-    c: Canvas,
-    phase: float,
-    frame_idx: int,
-    layer: str = "full",
-    parts: Optional[dict] = None,
-) -> None:
-    """Head descends dramatically — vulnerability window."""
-    if phase < 0.45:
-        t = phase / 0.45
-        head_y = lerp(REST_HEAD_Y, 30, smoothstep(t))
-        enrage_scale = smoothstep(t)
-    elif phase < 0.75:
-        head_y = 30.0
-        enrage_scale = 1.0
-    else:
-        t = (phase - 0.75) / 0.25
-        head_y = lerp(30, REST_HEAD_Y, smoothstep(t))
-        enrage_scale = lerp(1.0, 0.0, t)
-
-    c_sway = wave(phase, 1.5) * 8
-    lhx = -REST_HAND_X + c_sway
-    rhx = REST_HAND_X - c_sway
-
-    if layer in ("full", "body", _GIANT_BODY_LAYER):
-        _draw_body_layer(
-            c,
-            REST_BODY_Y,
-            head_y,
-            0.0,
-            head_y + 55,
-            0.3,
-            _MAN_CENTER_X,
-            _MAN_CENTER_Y,
-            anim="head_down",
-            phase=phase,
-            enraged=(enrage_scale > 0.5),
-            draw_man=layer != _GIANT_BODY_LAYER,
-        )
-    if layer in ("full", "hands"):
-        _draw_hands_layer(
-            c,
-            lhx,
-            REST_HAND_Y,
-            rhx,
-            REST_HAND_Y,
-            anim="head_down",
-            phase=phase,
-            head_y_for_glow=head_y,
-            vulnerability_alpha=enrage_scale,
-        )
-
-    _record_parts(
-        parts,
-        "head_down",
-        frame_idx,
-        head=(0.0, head_y),
-        hand_left=(lhx, REST_HAND_Y),
-        hand_right=(rhx, REST_HAND_Y),
-        scholar=(_MAN_CENTER_X, _MAN_CENTER_Y),
-        extra={"vulnerability": round(enrage_scale, 3)},
-    )
-
-
-def _draw_hit(
-    c: Canvas,
-    phase: float,
-    frame_idx: int,
-    layer: str = "full",
-    parts: Optional[dict] = None,
-) -> None:
-    """Hit flash and brief recoil."""
-    jolt = wave(phase, 2.0) * 8
-    flash_alpha = int(150 * (1.0 - phase))
-
-    body_y_hit = REST_BODY_Y + jolt * 0.3
-    head_y = REST_HEAD_Y + jolt * 0.5
-    lhx = -REST_HAND_X + jolt
-    lhy = REST_HAND_Y - jolt * 0.5
-    rhx = REST_HAND_X + jolt
-    rhy = REST_HAND_Y + jolt * 0.3
-    man_x = _MAN_CENTER_X + jolt * 0.4
-    man_y = _MAN_CENTER_Y + jolt * 0.2
-
-    if layer in ("full", "body", _GIANT_BODY_LAYER):
-        _draw_body_layer(
-            c,
-            body_y_hit,
-            head_y,
-            jolt * 0.7,
-            head_y + 70,
-            0.0,
-            man_x,
-            man_y,
-            anim="hit",
-            phase=phase,
-            enraged=False,
-            draw_man=layer != _GIANT_BODY_LAYER,
-        )
-    if layer in ("full", "hands"):
-        _draw_hands_layer(c, lhx, lhy, rhx, rhy, anim="hit", phase=phase)
-
-    # Hit-flash overlay only on the full sheet; the runtime applies its own
-    # flash via the hit_flash timer so the body/hands sheets stay clean.
-    if layer == "full" and flash_alpha > 0:
-        flash_img = Image.new("RGBA", (c.sw, c.sh), (255, 140, 40, flash_alpha))
-        c.img = Image.alpha_composite(c.img, flash_img)
-        c.draw = blending_draw(c.img)
-
-    _record_parts(
-        parts,
-        "hit",
-        frame_idx,
-        head=(jolt * 0.7, head_y),
-        hand_left=(lhx, lhy),
-        hand_right=(rhx, rhy),
-        scholar=(man_x, man_y),
-    )
-
-
-def _draw_death(
-    c: Canvas,
-    phase: float,
-    frame_idx: int,
-    layer: str = "full",
-    parts: Optional[dict] = None,
-) -> None:
-    """Boss collapses: horns droop, body slumps, man tumbles off."""
-    settle = min(1.0, phase * 1.2)
-
-    head_y = lerp(REST_HEAD_Y, 60, smoothstep(settle * 1.1))
-    body_y = lerp(REST_BODY_Y, 100.0, smoothstep(settle))
-    man_y = _MAN_CENTER_Y + settle * 110
-    man_x = _MAN_CENTER_X + settle * 60
-
-    lhx = lerp(-REST_HAND_X, -REST_HAND_X - 20, settle)
-    lhy = lerp(REST_HAND_Y, 110, smoothstep(settle))
-    rhx = lerp(REST_HAND_X, REST_HAND_X + 25, settle)
-    rhy = lerp(REST_HAND_Y, 105, smoothstep(settle))
-
-    if layer in ("full", "body", _GIANT_BODY_LAYER):
-        _draw_body_layer(
-            c,
-            body_y,
-            head_y,
-            0.0,
-            head_y + 70,
-            0.0,
-            man_x,
-            man_y,
-            anim="death",
-            phase=phase,
-            enraged=False,
-            draw_man=(layer != _GIANT_BODY_LAYER) and (settle < 0.9),
-        )
-    if layer in ("full", "hands"):
-        _draw_hands_layer(c, lhx, lhy, rhx, rhy, anim="death", phase=phase)
-
-    if layer == "full":
-        grey_blend = settle * 0.7
-        if grey_blend > 0:
-            grey = Image.new("RGBA", (c.sw, c.sh), (100, 90, 80, int(grey_blend * 140)))
-            c.img = Image.alpha_composite(c.img, grey)
-            c.draw = blending_draw(c.img)
-
-    _record_parts(
-        parts,
-        "death",
-        frame_idx,
-        head=(0.0, head_y),
-        hand_left=(lhx, lhy),
-        hand_right=(rhx, rhy),
-        scholar=(man_x, man_y),
-        extra={"settle": round(settle, 3)},
-    )
-
-
 # ── Runtime RON manifest ────────────────────────────────────────────────────
 
-_HEAD_BOX_W = 184
-_HEAD_BOX_H = 148
-_HAND_BOX_W = 156
-_HAND_BOX_H = 120
+_HEAD_BOX_W = 112
+_HEAD_BOX_H = 150
+_HAND_BOX_W = 104
+_HAND_BOX_H = 84
 # GNU-ton's damageable head hurtbox is intentionally a little tighter
 # than the dangerous head hitbox. Keeping both boxes centered on the
 # same anchor makes the debug preview readable (cyan inside red) and
@@ -1578,9 +656,9 @@ def _part_rect(name: str, rect: dict) -> dict:
 
 
 def _head_rect(head_anchor) -> dict:
-    _x, y = head_anchor
+    x, y = head_anchor
     return _part_rect(
-        "head", _pixel_rect_from_center(0.0, float(y), _HEAD_BOX_W, _HEAD_BOX_H)
+        "head", _pixel_rect_from_center(float(x), float(y), _HEAD_BOX_W, _HEAD_BOX_H)
     )
 
 
@@ -1736,7 +814,7 @@ def _widest_frame_parts(frames: list[dict], fallback: list[dict]) -> list[dict]:
 
 def _row_hurt_entry(parts_doc: dict, anim: str) -> dict:
     frames = _head_hurt_frames(parts_doc, anim)
-    fallback = _head_hurt_rect((0.0, REST_HEAD_Y))
+    fallback = _head_hurt_rect((REST_HEAD_X, REST_HEAD_Y))
     entry = {
         "frame_duration_secs": _animation_duration_secs(anim),
         "hurtbox": _box([_first_part(frames, fallback)], frames),
@@ -1747,8 +825,8 @@ def _row_hurt_entry(parts_doc: dict, anim: str) -> dict:
 def _row_head_hit_entry(parts_doc: dict, anim: str) -> dict:
     hurt_frames = _head_hurt_frames(parts_doc, anim)
     hit_frames = _head_hit_frames(parts_doc, anim)
-    hurt_fallback = _head_hurt_rect((0.0, REST_HEAD_Y))
-    hit_fallback = _head_rect((0.0, REST_HEAD_Y))
+    hurt_fallback = _head_hurt_rect((REST_HEAD_X, REST_HEAD_Y))
+    hit_fallback = _head_rect((REST_HEAD_X, REST_HEAD_Y))
     hurt_parts = _deepest_frame_parts(hurt_frames, [hurt_fallback])
     hit_parts = _deepest_frame_parts(hit_frames, [hit_fallback])
     entry = {
@@ -1801,7 +879,7 @@ def _gnu_ton_body_metrics(parts_doc: dict) -> dict:
             _pixel_rect_from_center(REST_HAND_X, REST_HAND_Y, _HAND_BOX_W, _HAND_BOX_H),
         ),
     ]
-    shockwave = _part_rect("shockwave", {"x": 84, "y": 465, "w": 600, "h": 36})
+    shockwave = _part_rect("shockwave", {"x": FRAME_W // 2 - 300, "y": FRAME_H - 44, "w": 600, "h": 36})
 
     gnu_hand_slam = dict(hand_slam_hurt)
     gnu_hand_slam["hitbox"] = _box(
@@ -2187,20 +1265,18 @@ def build_spritesheet(outdir: Path) -> List[Path]:
         f"{GIANT_TARGET_NAME}_spritesheet.{k}.png" for k in range(1, num_pages)
     ]
     giant_ron_path = outdir / f"{GIANT_TARGET_NAME}_spritesheet.ron"
-    # The giant's body IS its art: an authored box over the scholar-less body at
-    # rest (horns to hooves), so the runtime sizes it from the drawing and it
-    # stands where it is drawn. The fused sheet's per-row head hurtboxes are not
+    # The giant's body IS its art: the authored box of the beast and its chest
+    # (`giant_art.BODY_BBOX`: shoulders to hooves, not the head, the horns or
+    # the tail), so the runtime sizes it from the drawing and it stands where
+    # it is drawn. The fused sheet's per-row head hurtboxes are not
     # carried: the giant is the scholar's mount, not the thing you hit.
-    giant_rest = [
-        rendered[_GIANT_BODY_LAYER][(0, f)] for f in range(ANIMATIONS[0][1])
-    ]
     giant_ron_path.write_text(
         _runtime_spritesheet_ron(
             rows_meta,
             parts_doc,
             giant_page_names,
             target=GIANT_TARGET_NAME,
-            metrics_ron=_authored_body_metrics_ron(_union_bbox(giant_rest)),
+            metrics_ron=_authored_body_metrics_ron(_giant.BODY_BBOX),
         ),
         encoding="utf8",
     )
@@ -2304,10 +1380,6 @@ def build_spritesheet(outdir: Path) -> List[Path]:
 # ── The fist, alone ──────────────────────────────────────────────────────────
 # A frame that holds one `draw_hand` with room for its impact glow below.
 FIST_FRAME = (144, 128)
-# `draw_hand` puts the knuckles at +38 and the hoof tip at -60 around its
-# centre, so the silhouette's own centre is 11 px left of it: draw it there.
-_FIST_DRAW_X = 11.0
-_FIST_DRAW_Y = -10.0
 # Rows: `rest` idles, `fall` is a fist coming down (the slam glow under it), and
 # `hit` is the flinch when the player strikes it.
 FIST_ANIMATIONS: List[Tuple[str, int, int]] = [
@@ -2322,34 +1394,7 @@ FIST_ANIMATIONS: List[Tuple[str, int, int]] = [
 
 def draw_fist_frame(anim: str, frame_idx: int, frame_count: int) -> Image.Image:
     """One frame of the right fist, alone (the left fist is its mirror)."""
-    phase = frame_idx / max(1, frame_count)
-    c = Canvas(FIST_FRAME[0], FIST_FRAME[1], C_BG, scale=SUPERSAMPLE)
-    if anim == "fall":
-        # No impact glow: the fist plays this row whenever it moves downward
-        # (a slam, but also its idle bob), and the old slam art's glow read as
-        # an orange puddle hanging under a floating fist. The impact is the
-        # runtime's dust burst, where the fist actually lands.
-        draw_hand(c, _FIST_DRAW_X, _FIST_DRAW_Y + 2.0 * math.sin(phase * math.pi), side=+1, phase=phase)
-        # Speed lines above a fist coming down.
-        for i, dx in enumerate((-30.0, 0.0, 26.0)):
-            y0 = _FIST_DRAW_Y - 30.0 - (i % 2) * 4.0
-            c.line([(_FIST_DRAW_X + dx, y0), (_FIST_DRAW_X + dx, y0 - 10.0 - 4.0 * math.sin(phase * math.pi))], (240, 226, 190, 150), 1.4)
-    elif anim == "hit":
-        jolt = math.sin(phase * math.pi * 4) * 3.0
-        draw_hand(c, _FIST_DRAW_X + jolt, _FIST_DRAW_Y, side=+1, phase=phase * 3)
-    elif anim == "stuck":
-        # Shuddering in place, straining upward, grit spitting from the floor.
-        shake = math.sin(phase * math.pi * 6) * 2.5
-        draw_hand(c, _FIST_DRAW_X + shake, _FIST_DRAW_Y + 6.0, side=+1, phase=0.2)
-        for i, dx in enumerate((-40.0, -12.0, 18.0, 44.0)):
-            up = (phase * 1.7 + i * 0.27) % 1.0
-            c.ellipse(_FIST_DRAW_X + dx + shake, _FIST_DRAW_Y + 50.0 - 30.0 * up, 3.0 - 1.6 * up, 2.4 - 1.2 * up, C_HAND_DARK, C_OUTLINE, 0.6)
-        for i in range(3):
-            y = _FIST_DRAW_Y - 30.0 - i * 4.0
-            c.line([(_FIST_DRAW_X - 30 + i * 22, y), (_FIST_DRAW_X - 24 + i * 22, y - 8)], C_OUTLINE, 1.2)
-    else:
-        draw_hand(c, _FIST_DRAW_X, _FIST_DRAW_Y + wave(phase, 1.0) * 2.0, side=+1, phase=phase)
-    return c.finish()
+    return _giant.render_fist(anim, frame_idx, frame_count)
 
 
 def build_fist_sheet(outdir: Path, policy) -> List[Path]:
