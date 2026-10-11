@@ -72,3 +72,31 @@ def test_every_ink_tag_this_test_knows_is_declared_drawable() -> None:
     everything the fixture can draw."""
     missing = sorted(set(INK) - set(svg_parts._DRAWABLE))
     assert not missing, f"tags that put ink on the canvas but are never hidden: {missing}"
+
+
+def test_editor_expression_layer_visibility_does_not_remove_a_rig_part(tmp_path: Path) -> None:
+    """Inkscape's alternative-layer toggles must not change rig sprite pixels."""
+    source = (
+        '<g id="facial-options" data-rig-editor-visibility="editor-only" style="display:none">'
+        '<g id="face-a" data-rig-editor-visibility="editor-only" style="display:none">'
+        '<ellipse id="my-eye" cx="24" cy="24" rx="8" ry="6" fill="#ff0000" />'
+        '</g>'
+        '<g id="face-b" data-rig-editor-visibility="editor-only">'
+        '<rect id="other-eye" x="60" y="60" width="15" height="15" fill="#00ff00" />'
+        '</g>'
+        '</g>'
+        '<g id="suppressed" style="display:none">'
+        '<rect id="manually-hidden" x="50" y="20" width="10" height="10" fill="#0000ff" />'
+        '</g>'
+    )
+    svg = _doc(tmp_path, source)
+    hidden_variant, _, _ = svg_parts.rasterize_subset(svg, 'side', ['face-a'], 96.0)
+    normal_variant, _, _ = svg_parts.rasterize_subset(svg, 'side', ['face-b'], 96.0)
+    manual_hidden, _, _ = svg_parts.rasterize_subset(svg, 'side', ['suppressed'], 96.0)
+    assert hidden_variant is not None and normal_variant is not None
+    assert hidden_variant.getbbox() and normal_variant.getbbox()
+    assert manual_hidden is None, 'non-editor hidden shapes must stay hidden'
+    colors_a = {rgb[:3] for rgb in hidden_variant.get_flattened_data() if rgb[3] > 8}
+    colors_b = {rgb[:3] for rgb in normal_variant.get_flattened_data() if rgb[3] > 8}
+    assert (255, 0, 0) in colors_a and (0, 255, 0) not in colors_a
+    assert (0, 255, 0) in colors_b and (255, 0, 0) not in colors_b

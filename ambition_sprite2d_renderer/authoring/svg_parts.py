@@ -281,6 +281,21 @@ def _rasterize_subset_cached(
             use.set("href", f"#{ref_id}")
             use.set(f"{{{XLINK_NS}}}href", f"#{ref_id}")
 
+    # An artist can switch mutually exclusive expression sublayers in
+    # Inkscape by toggling their display style. When the rig explicitly
+    # selects any editor-visibility-marked part, restore that part's paint
+    # without revealing its siblings. Otherwise hiding the default expression
+    # to inspect another one would accidentally delete sprite source pixels.
+    for elem in root.iter():
+        if (id(elem) in keep and elem.get("data-rig-editor-visibility") == "editor-only"):
+            style = elem.get("style", "")
+            remaining = [entry.strip() for entry in style.split(";")
+                         if entry.strip() and entry.strip().split(":", 1)[0].strip().lower() != "display"]
+            if remaining:
+                elem.set("style", ";".join(remaining))
+            else:
+                elem.attrib.pop("style", None)
+
     # Hide sibling view layers wholesale when they do not host any kept art, then
     # every drawable leaf we don't keep.
     for layer in root:
