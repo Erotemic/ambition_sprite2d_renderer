@@ -357,3 +357,51 @@ lineages:
       - commit: "77f2432"
         label: "A heap of gradient goo"
         note: "Mismatched eyes, a third eye, too many teeth, a hand with seven fingers, a stock picture, sparkles. Jon: rework the art. Claude Opus 5.5 declared."
+  synthetic_friend:
+    name: Synthetic Friend
+    ids: [synthetic_friend]
+    paths: ['ai_era_enemies', 'synthetic_friend', '_ai_era_kit']
+    summary: "a portrait card with a bald face, then a toy robot whose smile is a plate"
+    eras:
+      - commit: "11133ff"
+        label: "Deepfake portrait card"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "52d3d2a"
+        label: "A toy robot with a plate for a smile"
+        note: "A hug for an attack; the plate slips when it is struck. Jon: rework the art. Claude Opus 5.5 declared."
+  spaghetti_event:
+    name: Spaghetti Event
+    ids: [spaghetti_event]
+    paths: ['ai_era_enemies', 'spaghetti_event', '_ai_era_kit']
+    summary: "a brown noodle crab, then a twirl of spaghetti on a fork"
+    eras:
+      - commit: "11133ff"
+        label: "Noodle body-horror creature"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "52d3d2a"
+        label: "A twirl of spaghetti on a fork"
+        note: "Meatballs for eyes, a noodle whip with an arrowhead, a loop that an arrowhead goes round. Jon: rework the art. Claude Opus 5.5 declared."
+  helpful_liar:
+    name: Helpful Liar
+    ids: [helpful_liar]
+    paths: ['ai_era_enemies', 'helpful_liar', '_ai_era_kit']
+    summary: "a kiosk screen on a wheeled stand, then a help-desk robot whose nose grows"
+    eras:
+      - commit: "11133ff"
+        label: "Kiosk on a stand"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "52d3d2a"
+        label: "A help-desk robot with a wooden nose"
+        note: "One wheel, a 'verified' badge, crossed fingers behind its back; it shoots its nose. Jon: rework the art. Claude Opus 5.5 declared."
+  agent_swarm:
+    name: Agent Swarm
+    ids: [agent_swarm]
+    paths: ['ai_era_enemies', 'agent_swarm', '_ai_era_kit']
+    summary: "a planner orb with tool drones, then seven of one small robot and the lines between them"
+    eras:
+      - commit: "11133ff"
+        label: "Planner orb and drones"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "52d3d2a"
+        label: "Seven agents and the lines between them"
+        note: "No leader: an arrowhead to walk, a spear to attack, two of them always voting. Jon: rework the art. Claude Opus 5.5 declared."
