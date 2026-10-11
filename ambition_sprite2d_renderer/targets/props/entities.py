@@ -875,9 +875,9 @@ def projectile_energy(d: ImageDraw.ImageDraw, s: float) -> None:
 def fire_orb(d: ImageDraw.ImageDraw, s: float) -> None:
     """A ball of fire with no direction: a round body with three tongues, for
     a hazard that turns about a pivot (a bar of fire)."""
-    outline = rgba("#3A1408")
+    outline = rgba("#3A0A0C")
     # The glow about it is the one translucent thing: it is on nothing.
-    d.ellipse(bbox(64 * s, 64 * s, 52 * s, 52 * s), fill=rgba("#FF9A3C", 46))
+    d.ellipse(bbox(64 * s, 64 * s, 52 * s, 52 * s), fill=rgba("#FF4A24", 52))
     # Three tongues about the body, a third of a turn apart.
     for turn in (0.0, 120.0, 240.0):
         a = math.radians(turn - 90.0)
@@ -887,13 +887,13 @@ def fire_orb(d: ImageDraw.ImageDraw, s: float) -> None:
         d.polygon(poly_scaled(placed, s), fill=outline)
         inner = [(-6.0, -14.0), (0.0, -26.0), (6.0, -14.0)]
         placed = [(64 + x * -sa + y * ca * -1.0, 64 + x * ca + y * sa * -1.0) for x, y in inner]
-        d.polygon(poly_scaled(placed, s), fill=rgba("#F26A1B"))
+        d.polygon(poly_scaled(placed, s), fill=rgba("#E02A1C"))
     # The body: a dark rim, the fire, the hot middle.
     d.ellipse(bbox(64 * s, 64 * s, 40 * s, 40 * s), fill=outline)
-    d.ellipse(bbox(64 * s, 64 * s, 35 * s, 35 * s), fill=rgba("#F26A1B"))
-    d.ellipse(bbox(63 * s, 62 * s, 26 * s, 26 * s), fill=rgba("#FFB02E"))
-    d.ellipse(bbox(61.5 * s, 60 * s, 16 * s, 16 * s), fill=rgba("#FFE47A"))
-    d.ellipse(bbox(60 * s, 58 * s, 7 * s, 7 * s), fill=rgba("#FFFBE0"))
+    d.ellipse(bbox(64 * s, 64 * s, 35 * s, 35 * s), fill=rgba("#E02A1C"))
+    d.ellipse(bbox(63 * s, 62 * s, 26 * s, 26 * s), fill=rgba("#FF6A22"))
+    d.ellipse(bbox(61.5 * s, 60 * s, 16 * s, 16 * s), fill=rgba("#FFC24A"))
+    d.ellipse(bbox(60 * s, 58 * s, 7 * s, 7 * s), fill=rgba("#FFF3C4"))
 
 
 def fire_glow(d: ImageDraw.ImageDraw, s: float) -> None:

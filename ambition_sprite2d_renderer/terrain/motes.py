@@ -99,6 +99,8 @@ MOTES = {
     "primeval": (_dot, (240, 232, 150)),
     # Embers of a dark light.
     "starless": (_glow, (255, 120, 196)),
+    # Sparks that go up from the fire under the floor.
+    "void_castle": (_glow, (255, 150, 80)),
     # The sparkles of a wand.
     "starlight": (_twinkle, (255, 240, 200)),
     "water": (_bubble, (206, 252, 244)),
@@ -128,6 +130,7 @@ SHADOWS = {
     "primeval": (16, 22, 10),
     "starlight": (88, 64, 120),
     "starless": (5, 2, 14),
+    "void_castle": (14, 3, 8),
     "water": (2, 16, 30),
     "cove": (4, 14, 24),
     "skybridge": (40, 52, 84),

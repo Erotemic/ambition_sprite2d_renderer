@@ -42,6 +42,7 @@ def _ember(pen: ImageDraw.ImageDraw, x: float, y: float, r: float, value: int) -
 SHIMMERS = {
     "starlight": (_sparkle, 30, 5.0, 15.0, 3),
     "starless": (_ember, 44, 3.0, 8.0, 2),
+    "void_castle": (_ember, 56, 2.5, 7.0, 2),
 }
 
 

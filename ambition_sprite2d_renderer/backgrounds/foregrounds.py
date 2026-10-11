@@ -20,9 +20,10 @@ What is here must not hide the play:
 A scene with no entry in `FOREGROUNDS` has no foreground: `draw` publishes an
 empty picture for it.
 
-The two scenes of Mary-O (`starlight`, `starless`) have none. Each had one
-(strings of stars; chains with moons), and it went over the blocks and the
-coins of a room that has play at each height of the view (Jon, 2026-10-11).
+The scenes of Mary-O (`starlight`, `starless`, `void_castle`) have none. The
+first two each had one (strings of stars; chains with moons), and it went over
+the blocks and the coins of a room that has play at each height of the view
+(Jon, 2026-10-11).
 """
 
 from __future__ import annotations

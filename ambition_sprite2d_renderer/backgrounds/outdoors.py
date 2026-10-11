@@ -951,3 +951,183 @@ def starless(layer_key: str, art: Art) -> np.ndarray:
     art.put(layer, fog(art, "roof dark", 0.26, 0.14), p["black"], 0.30)
     vignette(art, layer, p["black"], 0.46)
     return layer
+
+
+# ---------------------------------------------------------------------------
+# The void castle: Mary-O's castle, with fire under it, that the void eats
+# ---------------------------------------------------------------------------
+
+VOID_CASTLE = {
+    "black": (12, 4, 8),
+    "wall": (58, 20, 44),
+    "wall_light": (142, 62, 76),
+    "air": (118, 36, 44),
+    "fire": (255, 96, 40),
+    "fire_hot": (255, 212, 120),
+    "pink": (255, 120, 190),
+    "gold": (255, 210, 116),
+    "teal": (110, 226, 220),
+    "banner": (200, 30, 62),
+    "banner_dark": (112, 14, 40),
+    # The void has no colour: a body with no light in it, and a white edge.
+    "void": (3, 3, 5),
+    "void_edge": (246, 246, 252),
+}
+
+
+def _shard(pen: Pen, rng, u: float, v: float, size: float, up: float) -> None:
+    """A splinter of the void: a long thin kite that grows from `(u, v)`."""
+    angle = up + rng.uniform(-24.0, 24.0)
+    length = size * rng.uniform(0.5, 1.0)
+    width = length * rng.uniform(0.07, 0.12)
+    tip = polar(u, v, length, angle)
+    waist = polar(u, v, length * 0.34, angle)
+    nx, ny = polar(0.0, 0.0, width, angle + 90.0)
+    pen.poly([(u, v), (waist[0] - nx, waist[1] - ny), tip, (waist[0] + nx, waist[1] + ny)])
+
+
+def _void(art: Art, layer: np.ndarray, image, p: dict, edge: float = 0.0022) -> np.ndarray:
+    """Paint a drawing as the void: black, with a white edge all round it.
+    The mask of the drawing comes back, so a scene can keep it."""
+    body = art.mask_of(image)
+    grown = np.clip(art.blur(body, edge * 1000.0) * 3.0, 0.0, 1.0)
+    art.put(layer, grown, p["void_edge"])
+    art.put(layer, body, p["void"])
+    return body
+
+
+def _banner(pen: Pen, u: float, v0: float, v1: float, half: float) -> None:
+    """A long banner that ends in two tails."""
+    pen.poly([(u - half, v0), (u + half, v0), (u + half, v1), (u, v1 - half * 0.9), (u - half, v1)])
+
+
+def _star(pen: Pen, u: float, v: float, r: float, value: int = 255) -> None:
+    pen.poly([polar(u, v, r if k % 2 == 0 else r * 0.44, -90.0 + k * 36.0) for k in range(10)], value)
+
+
+def void_castle(layer_key: str, art: Art) -> np.ndarray:
+    p = VOID_CASTLE
+    rose_at = (0.36, 0.43)
+    if layer_key == "sky":
+        # The far wall of a great hall: dark at its vault, and red at its
+        # foot from the fire that is under the floor.
+        layer = art.opaque(art.ramp([(0.0, p["black"]), (0.28, p["wall"]), (0.62, mix(p["wall"], p["air"], 0.55)), (0.80, p["air"]), (0.92, p["fire"]), (1.0, p["fire_hot"])]))
+        courses = art.noise("courses", cells=6.0, octaves=5, stretch=5.0)
+        art.shade(layer, smoothstep(0.42, 0.78, courses) * (art.v < 0.74), 0.30)
+        # The rose window of a magical girl: petals of three colours about a star.
+        petals = {key: art.drawing() for key in ("pink", "gold", "teal")}
+        order = ("pink", "gold", "teal", "gold")
+        r = 0.115
+        for k in range(12):
+            _, pen = petals[order[k % 4]]
+            a0, a1 = k * 30.0 + 3.0, k * 30.0 + 27.0
+            pen.poly([polar(*rose_at, r * 0.30, a0), polar(*rose_at, r * 0.96, a0), polar(*rose_at, r * 1.04, (a0 + a1) * 0.5), polar(*rose_at, r * 0.96, a1), polar(*rose_at, r * 0.30, a1)])
+        hub, hub_pen = art.drawing()
+        _star(hub_pen, *rose_at, r * 0.25)
+        frame, frame_pen = art.drawing()
+        frame_pen.ring(*rose_at, r * 1.13, r * 0.07)
+        frame_pen.ring(*rose_at, r * 0.28, r * 0.035)
+        # Two tall windows at each side of it.
+        for u, key in ((0.12, "teal"), (0.60, "pink"), (0.74, "gold"), (0.90, "teal")):
+            _, pen = petals[key]
+            pen.rect(u - 0.018, 0.36, u + 0.018, 0.56)
+            pen.poly([(u - 0.018, 0.36), (u, 0.31), (u + 0.018, 0.36)])
+        # The void eats the window: a break from the top of the wall down
+        # through one side of the rose. What it covers gives no light.
+        void, void_pen = art.drawing()
+        void_pen.poly([(0.385, 0.0), (0.47, 0.0), (0.455, 0.20), (0.48, 0.31), (0.445, 0.40), (0.47, 0.50), (0.425, 0.585), (0.43, 0.47), (0.398, 0.40), (0.415, 0.30), (0.39, 0.21)])
+        rng = art.rand("void breaks")
+        for u, v, size, up in ((0.44, 0.40, 0.10, 20.0), (0.42, 0.50, 0.08, 150.0), (0.46, 0.22, 0.09, -20.0), (0.40, 0.28, 0.07, 200.0), (0.43, 0.58, 0.07, 80.0)):
+            _shard(void_pen, rng, u, v, size, up)
+        eaten = 1.0 - art.mask_of(void, blur=1.2)
+        for key, (image, _) in petals.items():
+            art.light(layer, art.mask_of(image, blur=16.0) * eaten, p[key], 0.34)
+            art.put(layer, art.mask_of(image, blur=0.5) * eaten, mix(p[key], (255, 255, 255), 0.18), 0.92)
+        art.put(layer, art.mask_of(hub, blur=0.4) * eaten, mix(p["gold"], (255, 255, 255), 0.5))
+        art.put(layer, art.mask_of(frame, blur=0.4), mix(p["wall"], p["black"], 0.45))
+        _void(art, layer, void, p)
+        art.grain(layer, "grain")
+        return layer
+    if layer_key == "far_backplate":
+        rng = art.rand("far hall")
+        image, pen = art.drawing()
+        # A gallery of pointed arches, and the wall over it.
+        _arch_row(pen, 0.36, 0.70, 6, 0.016)
+        pen.rect(0.0, 0.0, 1.0, 0.30)
+        for k in range(13):
+            pen.rect(k / 12.0 - 0.018, 0.30, k / 12.0 + 0.018, 0.325)
+        pen.rect(0.0, 0.70, 1.0, 1.0)
+        # Chains from the vault, each with a bowl of fire on it.
+        bowls = []
+        for k in range(6):
+            u = (k + 0.5 + rng.uniform(-0.2, 0.2)) / 6.0
+            end = rng.uniform(0.44, 0.54)
+            pen.line([(u, 0.30), (u, end)], 0.0018)
+            pen.poly([(u - 0.016, end), (u + 0.016, end), (u + 0.009, end + 0.016), (u - 0.009, end + 0.016)])
+            bowls.append((u, end - 0.006, 0.0050))
+        mask = art.mask_of(image)
+        layer = solid(art, mask, mix(p["wall"], p["black"], 0.35), mix(p["wall_light"], p["fire"], 0.30), 0.30, 0.78, "far stone", 0.10)
+        # Light from the fire below, on each edge that faces down.
+        art.light(layer, art.rim(mask, 0.0, -0.004, 0.5) * mask, p["fire"], 0.55)
+        art.shade(layer, art.rim(mask, 0.0, 0.006, 1.4) * mask, 0.30)
+        lamps(art, layer, bowls, p["fire_hot"], halo=5.0, strength=0.9)
+        # Splinters of the void that grow down from the vault.
+        void, void_pen = art.drawing()
+        for u in (0.07, 0.31, 0.52, 0.80, 0.93):
+            for _ in range(3):
+                _shard(void_pen, rng, u + rng.uniform(-0.02, 0.02), 0.30, rng.uniform(0.07, 0.15), 90.0)
+        _void(art, layer, void, p, 0.0016)
+        haze(art, layer, p["air"], 0.22, 0.74)
+        return layer
+    if layer_key == "near_background":
+        rng = art.rand("near hall")
+        image, pen = art.drawing()
+        # Columns from the floor to the vault, each with a head and a foot.
+        columns = (0.06, 0.34, 0.63, 0.90)
+        for u in columns:
+            pen.rect(u - 0.026, 0.20, u + 0.026, 0.72)
+            for v, wide in ((0.20, 0.044), (0.225, 0.036), (0.70, 0.038), (0.72, 0.046)):
+                pen.rect(u - wide, v, u + wide, v + 0.022)
+        pen.rect(0.0, 0.0, 1.0, 0.215)
+        # The floor of the hall, with the teeth of a wall along it.
+        pen.rect(0.0, 0.735, 1.0, 1.0)
+        for k in range(26):
+            pen.rect(k / 25.0 - 0.011, 0.715, k / 25.0 + 0.011, 0.74)
+        mask = art.mask_of(image)
+        layer = solid(art, mask, mix(p["wall"], p["black"], 0.55), mix(p["wall"], p["wall_light"], 0.5), 0.22, 0.78, "near stone", 0.10)
+        flutes, flute_pen = art.drawing()
+        for u in columns:
+            for du in (-0.013, 0.0, 0.013):
+                flute_pen.rect(u + du - 0.0022, 0.25, u + du + 0.0022, 0.70)
+        art.shade(layer, art.mask_of(flutes, blur=0.6), 0.34)
+        art.light(layer, art.rim(mask, 0.0, -0.004, 0.5) * mask, p["fire"], 0.62)
+        art.light(layer, art.rim(mask, -0.004, 0.0, 0.4) * mask, p["wall_light"], 0.30)
+        # Banners between the columns, with the star of the land on each.
+        cloth, cloth_pen = art.drawing()
+        marks, mark_pen = art.drawing()
+        for u, v1 in ((0.20, 0.50), (0.485, 0.46), (0.765, 0.52)):
+            _banner(cloth_pen, u, 0.215, v1, 0.030)
+            _star(mark_pen, u, 0.215 + (v1 - 0.215) * 0.42, 0.016)
+        cloth_mask = art.mask_of(cloth, blur=0.4)
+        folds = art.noise("folds", cells=26.0, octaves=2, stretch=0.12)
+        art.put(layer, cloth_mask, p["banner"])
+        art.shade(layer, cloth_mask * smoothstep(0.45, 0.75, folds), 0.36)
+        art.put(layer, art.rim(cloth_mask, 0.0025, 0.0) * cloth_mask, p["gold"], 0.85)
+        art.put(layer, art.rim(cloth_mask, -0.0025, 0.0) * cloth_mask, p["gold"], 0.85)
+        art.put(layer, art.mask_of(marks, blur=0.4), p["gold"])
+        # The void in the hall grows down from the vault, and it has taken the
+        # end of one banner. It is not in the air where the play is: a black
+        # thing with a white edge there is an enemy.
+        void, void_pen = art.drawing()
+        for u, v, size, up, count in ((0.34, 0.215, 0.13, 90.0, 5), (0.80, 0.215, 0.11, 90.0, 4), (0.485, 0.44, 0.05, 90.0, 3)):
+            for _ in range(count):
+                _shard(void_pen, rng, u + rng.uniform(-0.03, 0.03), v, size, up)
+        _void(art, layer, void, p)
+        haze(art, layer, p["wall"], 0.10, 0.74)
+        return layer
+    layer = art.blank()
+    # The heat of the fire, low in the air, and the dark of the vault.
+    art.put(layer, fog(art, "heat", 0.74, 0.14), p["fire"], 0.26)
+    art.put(layer, fog(art, "vault dark", 0.24, 0.13), p["black"], 0.34)
+    vignette(art, layer, p["black"], 0.40)
+    return layer

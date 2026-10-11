@@ -9,6 +9,11 @@ level/render code can compose without stretching artwork:
 * ``super_mary_o_flag_pole_body`` repeats vertically;
 * ``super_mary_o_flag_pole_top`` caps the pole with its finial;
 * ``super_mary_o_flag`` is a separate four-frame waving banner.
+* ``super_mary_o_lava_top`` is the top of a pit of lava: four frames of a wave
+  that go round, with the light of the lava in the air over it. It repeats
+  along a pit;
+* ``super_mary_o_lava_body`` is the lava under the top. It repeats along a pit,
+  and the game makes it as deep as the pit is.
 
 The seams and attachment anchors are part of the generated frame metadata.
 Frames are never cropped or trim-packed because their transparent margins and
@@ -17,6 +22,7 @@ edge coordinates are construction geometry, not disposable whitespace.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, List, Tuple
@@ -266,6 +272,127 @@ def _flag_meta(animation: str, frame_idx: int, nframes: int) -> dict:
     }
 
 
+# ── lava ──────────────────────────────────────────────────────────────────
+LAVA_LOGICAL = (16, 16)
+LAVA_FRAME = (LAVA_LOGICAL[0] * SCALE, LAVA_LOGICAL[1] * SCALE)
+LAVA_FRAMES = 4
+#: The logical row of the top of the lava in its top frame, in the mean. The
+#: rows over it are air with the light of the lava in it.
+LAVA_SURFACE = 8
+LAVA_SURFACE_PX = float(LAVA_SURFACE * SCALE)
+
+LAVA_WHITE: RGBA = (255, 244, 190, 255)
+LAVA_YELLOW: RGBA = (255, 206, 84, 255)
+LAVA_ORANGE: RGBA = (255, 132, 36, 255)
+LAVA_RED: RGBA = (232, 54, 30, 255)
+LAVA_DEEP: RGBA = (160, 22, 30, 255)
+LAVA_DARK: RGBA = (92, 10, 28, 255)
+#: The light of the lava in the air over it, at the lava and at its top.
+LAVA_GLOW: RGBA = (255, 110, 40, 96)
+
+
+def _lava_grid() -> list:
+    return [[TRANSPARENT for _ in range(LAVA_LOGICAL[0])] for _ in range(LAVA_LOGICAL[1])]
+
+
+def _lava_image(grid: list) -> Image.Image:
+    image = Image.new("RGBA", LAVA_LOGICAL, TRANSPARENT)
+    image.putdata([colour for row in grid for colour in row])
+    return image.resize(LAVA_FRAME, Image.NEAREST)
+
+
+def _lava_wave(x: int, frame_idx: int, nframes: int) -> int:
+    """The row of the top of the lava at column `x`: one wave to the frame
+    width, which goes one part of the width along in each frame."""
+    phase = (x / LAVA_LOGICAL[0] - frame_idx / float(max(nframes, 1))) * 2.0 * math.pi
+    return LAVA_SURFACE + int(round(1.2 * math.sin(phase)))
+
+
+def _lava_top_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
+    del animation
+    width, height = LAVA_LOGICAL
+    grid = _lava_grid()
+    for x in range(width):
+        top = _lava_wave(x, frame_idx, nframes)
+        # A skin of light on the wave, then the hot lava, then the red of the body.
+        bands = ((LAVA_WHITE, 1), (LAVA_YELLOW, 1), (LAVA_ORANGE, 2 + (x + frame_idx) % 2))
+        y = top
+        for colour, rows in bands:
+            for _ in range(rows):
+                if y < height:
+                    grid[y][x] = colour
+                y += 1
+        while y < height:
+            grid[y][x] = LAVA_RED
+            y += 1
+    # A bubble that comes up, grows and breaks, one time in the four frames.
+    bx = 11
+    by = _lava_wave(bx, frame_idx, nframes)
+    if frame_idx % 4 == 1:
+        grid[by - 1][bx] = LAVA_YELLOW
+    elif frame_idx % 4 == 2:
+        for dx, dy in ((0, -2), (-1, -1), (1, -1)):
+            grid[by + dy][bx + dx] = LAVA_YELLOW
+        grid[by - 1][bx] = LAVA_WHITE
+    elif frame_idx % 4 == 3:
+        for dx, dy in ((-2, -2), (2, -2), (0, -3)):
+            grid[by + dy][(bx + dx) % width] = LAVA_ORANGE
+    image = _lava_image(grid)
+    # The light in the air: none at the top of the frame, most at the lava.
+    # It is a smooth ramp, not pixels: it is light, and it is not a thing.
+    glow = Image.new("RGBA", LAVA_FRAME, TRANSPARENT)
+    pixels = glow.load()
+    for y in range(LAVA_FRAME[1]):
+        alpha = int(LAVA_GLOW[3] * min(1.0, y / (LAVA_SURFACE_PX + SCALE)) ** 1.6)
+        for x in range(LAVA_FRAME[0]):
+            pixels[x, y] = (*LAVA_GLOW[:3], alpha)
+    glow.alpha_composite(image)
+    return glow
+
+
+def _lava_body_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
+    del animation
+    width, height = LAVA_LOGICAL
+    grid = _lava_grid()
+    for y in range(height):
+        for x in range(width):
+            # Three bands, each with a toothed edge, from the red of the top
+            # to the dark of the deep.
+            tooth = (x + y) % 2
+            if y < 5 + tooth:
+                colour = LAVA_RED
+            elif y < 11 + tooth:
+                colour = LAVA_DEEP
+            else:
+                colour = LAVA_DARK
+            grid[y][x] = colour
+    # Lumps of hot lava that go slowly along under the top.
+    shift = frame_idx * width // max(nframes, 1)
+    for x0, y0, long in ((1, 2, 4), (9, 4, 3), (5, 8, 3), (13, 10, 2)):
+        for dx in range(long):
+            grid[y0][(x0 + dx + shift) % width] = LAVA_ORANGE if y0 < 6 else LAVA_RED
+    return _lava_image(grid)
+
+
+def _lava_top_meta(animation: str, frame_idx: int, nframes: int) -> dict:
+    del animation, frame_idx, nframes
+    return {
+        "anchors": {
+            "surface": {"x": LAVA_FRAME[0] / 2, "y": LAVA_SURFACE_PX},
+            "body_seam": {"x": LAVA_FRAME[0] / 2, "y": float(LAVA_FRAME[1])},
+        },
+        "construction": {"kind": "lava_top", "repeat_axis": "x"},
+    }
+
+
+def _lava_body_meta(animation: str, frame_idx: int, nframes: int) -> dict:
+    del animation, frame_idx, nframes
+    return {
+        "anchors": {"stack_top": {"x": LAVA_FRAME[0] / 2, "y": 0.0}},
+        "construction": {"kind": "lava_body", "repeat_axis": "x"},
+    }
+
+
 SPECS: Dict[str, ConstructionSpec] = {
     "super_mary_o_pipe_body": ConstructionSpec(
         target_name="super_mary_o_pipe_body",
@@ -311,6 +438,24 @@ SPECS: Dict[str, ConstructionSpec] = {
         renderer=_flag_frame,
         frame_meta=_flag_meta,
         traits=("scenery", "flag", "goal", "animated"),
+    ),
+    "super_mary_o_lava_top": ConstructionSpec(
+        target_name="super_mary_o_lava_top",
+        display_name="Mary-O Lava Top",
+        frame_size=LAVA_FRAME,
+        rows=[("idle", LAVA_FRAMES, 170)],
+        renderer=_lava_top_frame,
+        frame_meta=_lava_top_meta,
+        traits=("scenery", "lava", "construction", "animated"),
+    ),
+    "super_mary_o_lava_body": ConstructionSpec(
+        target_name="super_mary_o_lava_body",
+        display_name="Mary-O Lava Body",
+        frame_size=LAVA_FRAME,
+        rows=[("idle", LAVA_FRAMES, 260)],
+        renderer=_lava_body_frame,
+        frame_meta=_lava_body_meta,
+        traits=("scenery", "lava", "construction", "animated"),
     ),
 }
 

@@ -14,6 +14,8 @@ EXPECTED_TARGETS = {
     "super_mary_o_flag_pole_body",
     "super_mary_o_flag_pole_top",
     "super_mary_o_flag",
+    "super_mary_o_lava_top",
+    "super_mary_o_lava_body",
 }
 
 
@@ -72,3 +74,14 @@ def test_composition_preview_is_generated(tmp_path: Path) -> None:
     image = Image.open(path).convert("RGBA")
     assert image.size == (384, 288)
     assert image.getchannel("A").getbbox() == (0, 0, 384, 288)
+
+
+def test_lava_repeats_along_a_pit_and_its_top_meets_its_body() -> None:
+    for frame in range(art.LAVA_FRAMES):
+        top = art._lava_top_frame("idle", frame, art.LAVA_FRAMES)
+        body = art._lava_body_frame("idle", frame, art.LAVA_FRAMES)
+        assert top.size == body.size == art.LAVA_FRAME
+        # The bottom row of the top and the top row of the body are one colour.
+        assert set(_row(top, top.height - 1).getdata()) == set(_row(body, 0).getdata()) == {art.LAVA_RED}
+        # The air at the top of the top frame has nothing in it.
+        assert all(pixel[3] == 0 for pixel in _row(top, 0).getdata())

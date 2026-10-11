@@ -98,6 +98,9 @@ SKINS: tuple[Skin, ...] = (
     # Under Mary-O's land: the brick of an old game's underground, in the
     # violet of the dark, with a line of magenta light on its edge.
     Skin("starless", "brick", (58, 46, 112), (17, 12, 40), (112, 96, 180), (255, 86, 170), "edge", (34, 26, 72), "spikes", "grate"),
+    # Mary-O's castle: cut stone the colour of a plum, with a line of gold on
+    # its edge. It is not red: the fire in the pits is. The void has no part in the ground: a body stands on what is whole.
+    Skin("void_castle", "ruin", (104, 66, 116), (34, 18, 46), (170, 124, 176), (255, 206, 116), "edge", (138, 90, 146), "bolts", "slab"),
     # The islands in the sky are rock that broke off, not a wall that was laid.
     Skin("skybridge", "rock", (150, 164, 198), (86, 100, 142), (216, 224, 242), (255, 236, 150), "grass", (112, 178, 96), "roots", "slab"),
     Skin("open_sky", "rock", (176, 164, 150), (104, 92, 92), (232, 222, 204), (255, 240, 170), "grass", (126, 184, 92), "roots", "plank"),
