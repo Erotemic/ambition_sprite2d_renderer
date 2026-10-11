@@ -17,6 +17,8 @@ These scripts are how the first drafts of these character and prop SVGs were dra
 | `swallows_art.py` | `data/characters/european_swallow/european_swallow.svg` and `data/characters/african_swallow/african_swallow.svg` | `scripts/build_flyer_rigs.py` |
 | `vulture_art.py` | `data/characters/vulture/vulture.svg` | `scripts/build_flyer_rigs.py` |
 | `penguin_art.py` | `data/characters/penguin/penguin.svg` | `scripts/build_penguin_rig.py` |
+| `dinosaurs_art.py` | `data/characters/<name>/<name>.svg` for `compsognathus`, `dilophosaurus` and `pachycephalosaurus` | `scripts/build_ratite_rigs.py` |
+| `triceratops_art.py` | `data/characters/triceratops/triceratops.svg` | `scripts/build_triceratops_rig.py` |
 | `treasure_chest_art.py` | `data/props/treasure_chest/treasure_chest.svg` | `scripts/build_treasure_chest_rig.py` |
 | `boss_chest_art.py` | `data/props/boss_chest/boss_chest.svg` | `scripts/build_boss_chest_rig.py` |
 | `mockingbird_boss_v2_art.py` | `data/characters/mockingbird_boss_v2/mockingbird_boss_v2.svg` | `scripts/build_mockingbird_boss_v2_rig.py` |

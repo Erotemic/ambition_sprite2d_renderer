@@ -11,6 +11,10 @@ clips. It never draws.
 
     uv run python scripts/build_ratite_rigs.py
 
+The small two-legged dinosaurs (the ``compsognathus``, the ``dilophosaurus``,
+the ``pachycephalosaurus``) are here too: the same build, with arms on the
+wing bones. They bite or ram, and the dilophosaurus has a ``shoot`` row.
+
 They are one anatomy and one set of rows (the names the game reads), so
 they share the clips: each clip is written once and takes the bird's measures
 (``Bird``). What is its own is each bird's attack and its ``taunt``:
@@ -88,16 +92,31 @@ class Bird:
     sit: float
     #: How its wings move when it balances (degrees at full).
     wing: float
-    #: ``kick`` (a tall ratite), ``stab`` (the kiwi's beak) or ``lunge`` (the
-    #: shoebill's bill).
+    #: ``kick`` (a tall ratite), ``stab`` (the kiwi's beak), ``lunge`` (the
+    #: shoebill's bill), ``bite`` (a small dinosaur's jaws) or ``butt`` (the
+    #: pachycephalosaurus's skull).
     attack: str
     #: ``sand``, ``dance``, ``stamp``, ``probe`` or ``clatter``.
     taunt: str
+    #: The height its ankles are drawn at (a drawing made smaller about a
+    #: point on the ground has them lower).
+    ankle_y: float = ANKLE_Y
+    #: It has a ``shoot`` row too (the dilophosaurus spits).
+    shoots: bool = False
+    #: How far its neck falls when it dies (a part of a long bird neck's fall)
+    #: and how far its head turns back up, so that a short neck with a long
+    #: skull lies on the ground and not under it.
+    death_neck: float = 1.0
+    death_head: float = 0.0
 
     @property
     def leg(self) -> float:
         """The body joint's height over the ankles."""
-        return ANKLE_Y - self.body[1]
+        return self.ankle_y - self.body[1]
+
+    @property
+    def rows(self) -> List[Tuple[str, int, int, bool]]:
+        return ROWS + ([("shoot", 7, 70, False)] if self.shoots else [])
 
 
 BIRDS = [
@@ -109,6 +128,14 @@ BIRDS = [
     Bird("kiwi", "Kiwi", (236.0, 332.0), 4.0, -28.0, 0.25, (128, 128), 12.0, 18.0, 12.0, 20.0, 20.0, "stab", "probe"),
     Bird("shoebill", "Shoebill", (244.0, 250.0), 2.0, -16.0, 0.5, (256, 256), 16.0, 26.0, 22.0, 100.0, 46.0, "lunge",
          "clatter"),
+    # The small dinosaurs (`scripts/svg_art/dinosaurs_art.py`): the same build, with arms where a bird has wings.
+    Bird("dilophosaurus", "Dilophosaurus", (236.0, 262.0), -18.0, -36.0, 0.5, (256, 256), 24.0, 40.0, 30.0, 104.0, 30.0,
+         "bite", "stamp", shoots=True, death_neck=0.62, death_head=-50.0),
+    Bird("pachycephalosaurus", "Pachycephalosaurus", (236.0, 262.0), -18.0, -36.0, 0.5, (256, 256), 22.0, 38.0, 28.0, 104.0,
+         30.0, "butt", "stamp", death_neck=0.62, death_head=-50.0),
+    # The build at 0.62 about (236, 416): its joints are where that puts them.
+    Bird("compsognathus", "Compsognathus", (236.0, 320.5), -18.8, -29.9, 0.25, (128, 128), 15.0, 25.0, 18.0, 64.0, 30.0,
+         "bite", "dance", ankle_y=408.6, death_neck=0.62, death_head=-50.0),
 ]
 
 
@@ -119,7 +146,7 @@ def eye_at(t: float, states: List[str]) -> Pose:
 
 def clips(b: Bird) -> Dict[str, Callable[[int, int, float], Pose]]:
     def foot(p: Pose, side: str, local) -> None:
-        R.foot_at(p, side, local, body_origin=b.body, center_x=CENTER_X, ankle_y=ANKLE_Y, pitch=30.0)
+        R.foot_at(p, side, local, body_origin=b.body, center_x=CENTER_X, ankle_y=b.ankle_y, pitch=30.0)
 
     def standing(**extra: float) -> Pose:
         p: Pose = {"near_foot_x": b.near_x, "far_foot_x": b.far_x, "near_foot_lift": 0.0, "far_foot_lift": 0.0}
@@ -228,6 +255,50 @@ def clips(b: Bird) -> Dict[str, Callable[[int, int, float], Pose]]:
         p["near_foot_x"] = b.near_x + K([0, 0, 6, 14, 12, 4, 0], t)
         p.update(eye_at(t, ["open", "angry", "angry", "angry", "angry", "open", "open"]))
         p["fx.peck"] = K([0, 0, 0, 1, 0.6, 0, 0], t)
+        return p
+
+    def bite(i: int, n: int, t: float) -> Pose:
+        """A bite: the head drawn back with the jaws wide, thrown forward, and
+        the jaws shut on it."""
+        p = standing()
+        p["root_x"] = K([0, -8, 10, 24, 20, 8, 0], t)
+        p["body"] = K([0, -6, 6, 14, 10, 4, 0], t)
+        p["neck"] = K([0, -18, 10, 30, 24, 8, 0], t)
+        p["head"] = K([0, -14, -6, 6, 4, 0, 0], t)
+        p["jaw"] = K([0, 30, 36, 2, 6, 2, 0], t)
+        p["tail"] = K([0, 6, -6, -10, -8, -2, 0], t)
+        wings(p, K([0, 0.4, 0.8, 0.3, 0.2, 0, 0], t))
+        p.update(eye_at(t, ["open", "angry", "angry", "angry", "angry", "open", "open"]))
+        p["fx.peck"] = K([0, 0, 0, 1, 0.6, 0, 0], t)
+        return p
+
+    def butt(i: int, n: int, t: float) -> Pose:
+        """The ram: it draws back, drops its skull and drives it forward with
+        every part of it behind the blow."""
+        p = standing()
+        p["root_x"] = K([0, -16, -8, 34, 40, 18, 0], t)
+        p["body"] = K([0, -10, 10, 20, 16, 6, 0], t)
+        p["neck"] = K([0, -16, 24, 34, 28, 10, 0], t)
+        p["head"] = K([0, -10, 20, 26, 20, 8, 0], t)
+        p["tail"] = K([0, 8, -8, -14, -10, -4, 0], t)
+        for side, x in (("near", b.near_x), ("far", b.far_x)):
+            p[f"{side}_foot_x"] = x + 0.6 * p["root_x"]
+        wings(p, K([0, 0.2, 0.6, 0.8, 0.5, 0.1, 0], t))
+        p.update(eye_at(t, ["open", "angry", "angry", "angry", "angry", "open", "open"]))
+        p["fx.peck"] = K([0, 0, 0, 1, 0.6, 0, 0], t)
+        p["fx.dust"] = K([0, 0, 0.4, 1, 0.6, 0.2, 0], t)
+        return p
+
+    def shoot(i: int, n: int, t: float) -> Pose:
+        """It spits: the head reared back, then thrown forward with the jaws wide."""
+        p = standing()
+        p["body"] = K([0, -8, -10, 4, 2, 0, 0], t)
+        p["neck"] = K([0, -22, -26, 10, 6, 2, 0], t)
+        p["head"] = K([0, -16, -20, 6, 4, 0, 0], t)
+        p["jaw"] = K([0, 10, 40, 44, 30, 8, 0], t)
+        p["tail"] = K([0, 6, 10, -6, -4, 0, 0], t)
+        wings(p, K([0, 0.5, 0.8, 0.4, 0.2, 0, 0], t))
+        p.update(eye_at(t, ["open", "angry", "angry", "angry", "angry", "open", "open"]))
         return p
 
     def lunge(i: int, n: int, t: float) -> Pose:
@@ -348,8 +419,9 @@ def clips(b: Bird) -> Dict[str, Callable[[int, int, float], Pose]]:
         p["root_x"] = K([-12, -18, -10, -4, 0, 0, 0, 0], t)
         p["root_y"] = b.sit * K([-0.04, 0, 0.3, 0.75, 1, 0.96, 1, 1], t)
         p["body"] = K([-16, -20, -8, 4, 8, 6, 8, 8], t)
-        p["neck"] = K([-24, -10, 10, 50, 96, 104, 100, 100], t)
-        p["head"] = K([20, 10, 0, -10, -4, 6, 4, 4], t)
+        fall = K([0, 0, 0.1, 0.5, 1, 1, 1, 1], t)
+        p["neck"] = K([-24, -10, 10, 50, 96, 104, 100, 100], t) * (1.0 + (b.death_neck - 1.0) * fall)
+        p["head"] = K([20, 10, 0, -10, -4, 6, 4, 4], t) + b.death_head * fall
         p["jaw"] = K([24, 20, 14, 10, 16, 20, 18, 18], t)
         p["tail"] = K([14, 16, 8, 0, -8, -4, -6, -6], t)
         wings(p, K([1, 0.8, 0.5, 0.6, 0.2, 0, 0, 0], t))
@@ -382,7 +454,7 @@ def clips(b: Bird) -> Dict[str, Callable[[int, int, float], Pose]]:
 
     taunts = {"sand": taunt_sand, "dance": taunt_dance, "stamp": taunt_stamp, "probe": taunt_probe,
               "clatter": taunt_clatter}
-    attacks = {"kick": kick, "stab": stab, "lunge": lunge}
+    attacks = {"kick": kick, "stab": stab, "lunge": lunge, "bite": bite, "butt": butt}
     return {
         "idle": idle,
         "walk": walk,
@@ -393,6 +465,7 @@ def clips(b: Bird) -> Dict[str, Callable[[int, int, float], Pose]]:
         "taunt": taunts[b.taunt],
         "hurt": hurt,
         "death": death_small if b.attack == "stab" else death_tall,
+        **({"shoot": shoot} if b.shoots else {}),
     }
 
 
@@ -406,7 +479,7 @@ def spec(b: Bird):
         svg_center_x=CENTER_X,
         svg_ground_y=GROUND_Y,
         frame_size=b.frame,
-        rows=ROWS,
+        rows=b.rows,
         clips=clips(b),
         defaults={"eye.open": 1.0},
         angle_channels=frozenset({"body", "neck"}),

@@ -80,12 +80,17 @@ class BirdFx:
     ``feathers`` are the (fill, tip) colours of the feathers it sheds,
     ``beak_tip`` the tip of its beak in the head bone's frame (SVG units),
     ``flight_pitch`` the body angle of its level flight (its speed streaks
-    trail back along that line).
+    trail back along that line). ``body_bone`` and ``foot_bone`` name the
+    bones the effects sit on (an anatomy that is not a bird's names them
+    differently).
     """
 
     def __init__(self, *, target: str, rig_path: Path, art_scale: float, frame_size: Tuple[int, int],
-                 feathers: Sequence[Tuple[RGBA, RGBA]], beak_tip: Point, flight_pitch: float = 36.0) -> None:
+                 feathers: Sequence[Tuple[RGBA, RGBA]], beak_tip: Point, flight_pitch: float = 36.0,
+                 body_bone: str = "body", foot_bone: str = "near_foot") -> None:
         self.target = target
+        self.body_bone = body_bone
+        self.foot_bone = foot_bone
         self.rig_path = rig_path
         self.art_scale = art_scale
         self.frame_size = frame_size
@@ -116,12 +121,12 @@ class BirdFx:
         place, k = self.glyphs.place, self.art_scale
         speed = params.get("fx.speed", 0.0)
         if speed > 0.02:
-            body = world["body"]
+            body = world[self.body_bone]
             place(canvas, "speed", body.origin, speed, degrees=body.angle - self.flight_pitch + 180.0)
         dust = params.get("fx.dust", 0.0)
         if dust > 0.02:
             ground = float(self.doc().frame["ground_y"])
-            x = world["body"].origin[0]
+            x = world[self.body_bone].origin[0]
             place(canvas, "dust", (x - 26.0 * k, ground), dust)
             place(canvas, "dust", (x + 36.0 * k, ground), dust * 0.8)
 
@@ -132,14 +137,14 @@ class BirdFx:
         beak = self._local(head, bx, by)
         place(canvas, "peck", self._local(head, bx + 10.0, by), params.get("fx.peck", 0.0))
         # A blow landing on the bird's chest; its own talons striking.
-        place(canvas, "hit", self._local(world["body"], 40.0, -20.0), params.get("fx.hit", 0.0))
-        foot = world["near_foot"].origin
+        place(canvas, "hit", self._local(world[self.body_bone], 40.0, -20.0), params.get("fx.hit", 0.0))
+        foot = world[self.foot_bone].origin
         place(canvas, "hit", (foot[0] + 10.0 * k, foot[1]), params.get("fx.strike", 0.0))
         place(canvas, "rake", (foot[0] + 8.0 * k, foot[1] + 10.0 * k), params.get("fx.rake", 0.0))
         feathers = params.get("fx.feathers", 0.0)
         if feathers > 0.02:
             # Loose feathers flung out from the body, drifting as they go.
-            centre = self._local(world["body"], 10.0, 0.0)
+            centre = self._local(world[self.body_bone], 10.0, 0.0)
             count = 6
             for j in range(count):
                 a = math.tau * j / count + 0.6
@@ -150,7 +155,7 @@ class BirdFx:
         drift = params.get("fx.drift", 0.0)
         if drift > 0.02:
             # One last feather seesawing down onto the body.
-            body = world["body"].origin
+            body = world[self.body_bone].origin
             y = body[1] - (110.0 - 70.0 * t) * k
             x = body[0] + 18.0 * math.sin(t * 9.0) * k
             place(canvas, self.feather_names[0], (x, y), drift, degrees=25.0 * math.sin(t * 9.0))

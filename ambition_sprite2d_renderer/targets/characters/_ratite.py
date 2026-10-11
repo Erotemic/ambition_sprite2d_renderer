@@ -1,5 +1,6 @@
-"""What the ratite targets share (the ostrich, the emu, the cassowary, the
-kiwi): each is one SVG posed by a rig on the ``ratite`` anatomy
+"""What the targets on the ``ratite`` anatomy share (the ostrich, the emu, the
+cassowary, the kiwi, the shoebill, and the small two-legged dinosaurs, which
+have the same build): each is one SVG posed by a rig on that anatomy
 (``scripts/build_ratite_rigs.py``), with the rows of a ground bird and the
 effects of ``_bird_fx``. A target module states only what is its own: its
 size, its colours and its words.
@@ -33,17 +34,18 @@ def lineage(target: str) -> Dict[str, object]:
 
 def actor_metadata(target: str, *, character_id: str, display_name: str, art_scale: float, mass_class: str, traits: Sequence[str],
                    sockets: Dict[str, Tuple[float, float]], authoring: str, gameplay: str,
-                   barks: Sequence[str]) -> dict:
+                   barks: Sequence[str], body_plan: str = "AvianBiped",
+                   kind: Sequence[str] = ("bird", "ground_bird", "ratite"), shoots: bool = False) -> dict:
     """The actor contract of a ground bird that runs at its target and
     strikes. ``sockets`` are points of the drawing in SVG units."""
     return {
         "actor": {"character_id": character_id, "display_name": display_name},
         "body": {
-            "body_plan": "AvianBiped",
+            "body_plan": body_plan,
             "body_kind": "Standard",
             "mass_class": mass_class,
             "locomotion_hint": "Run",
-            "traits": ["enemy", "bird", "ground_bird", "ratite", "svg_rigged", *traits],
+            "traits": ["enemy", *kind, "svg_rigged", *traits],
         },
         "capabilities": {
             "traversal": {
@@ -74,6 +76,8 @@ def actor_metadata(target: str, *, character_id: str, display_name: str, art_sca
                     {"t": 0.67, "event": "hitbox_active_end", "source": target},
                 ],
             },
+            **({"action.ranged.primary": {"animation": "shoot", "events": [
+                {"t": 0.5, "event": "projectile_release", "source": target}]}} if shoots else {}),
             "emote.taunt": {"animation": "taunt", "events": []},
             "reaction.hurt": {"animation": "hurt", "events": []},
             "reaction.death": {"animation": "death", "events": []},
@@ -87,7 +91,7 @@ def actor_metadata(target: str, *, character_id: str, display_name: str, art_sca
             "default_pose": "idle",
             "canonical_source": f"ambition_sprite2d_renderer/data/characters/{target}/{target}.svg",
         },
-        "tags": ["enemy", "bird", "ratite", target, "svg_rigged"],
+        "tags": ["enemy", *kind, target, "svg_rigged"],
         "authoring_description": authoring,
         "gameplay_description": gameplay,
         "dialogue_hints": {"barks": list(barks)},

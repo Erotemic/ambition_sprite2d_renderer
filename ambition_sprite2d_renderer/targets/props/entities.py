@@ -929,25 +929,34 @@ def _seamless_brick_pattern(
 #: workflow, and this one authors standalone 32px entity textures. Importing
 #: across would tie two independent pipelines together to save ten lines, and the
 #: tileset's cell size is free to change without breaking this.
-#: The EROTEME's hook — the `?` curve alone, WITHOUT a descending stem.
+#: The EROTEME's hook: the `?` curve alone, one run per pixel row as
+#: ``(y, x_start, x_end)`` with ``x_end`` exclusive. It is three rows thick
+#: and it ends ON the exclamation stroke.
 #:
-#: The eroteme owns only the hook. A separate, slightly slanted exclamation
-#: stroke crosses it and extends above the curve so the two marks remain legible.
+#: The exclamation stroke is upright, thicker than the hook, and starts four
+#: rows above the crown. A stroke as thin as the hook made the glyph read as a
+#: plain `?` in play (Jon, 2026-10-11): the part of the stroke above the crown
+#: is what says `!`.
 _EROTEME_HOOK_RUNS_32 = (
     # the crown
-    (5, 11, 21),
-    # shoulders, left and right
-    (7, 9, 12),
-    (7, 19, 22),
-    # the right side coming down
-    (9, 19, 22),
-    # curving back in toward the centre and THROUGH the exclamation stroke,
-    # emerging on its far side — the hook must not simply meet the bar and stop,
-    # or the two marks merge into one stem again.
-    (11, 16, 21),
-    (13, 12, 19),
+    (6, 10, 23),
+    (7, 8, 25),
+    (8, 7, 26),
+    # the left end hangs down; the right side comes down
+    (9, 7, 11),
+    (9, 22, 26),
+    (10, 7, 11),
+    (10, 22, 26),
+    (11, 7, 10),
+    (11, 22, 26),
+    (12, 22, 26),
+    # and curves back in to the stroke
+    (13, 21, 26),
+    (14, 19, 25),
+    (15, 17, 24),
+    (16, 16, 22),
+    (17, 16, 20),
 )
-
 
 
 def bonus_block_tile(d: ImageDraw.ImageDraw, s: float) -> None:
@@ -973,18 +982,16 @@ def bonus_block_tile(d: ImageDraw.ImageDraw, s: float) -> None:
     # Rivets, one per corner, the pixel shorthand for "this is a device".
     for cx, cy in ((5, 5), (26, 5), (5, 26), (26, 26)):
         d.rectangle((cx * s, cy * s, (cx + 1) * s, (cy + 1) * s), fill=edge)
-    # The eroteme's hook first, two pixels thick so it holds its own against the
-    # stroke that crosses it.
     for y, x0, x1 in _EROTEME_HOOK_RUNS_32:
-        d.rectangle((x0 * s, y * s, x1 * s, (y + 2) * s - 1), fill=glyph)
-    # ...then the exclamation stroke OVER it. It starts ABOVE the crown and ends
-    # below the hook's tail, so it crosses the curve twice — that crossing is the
-    # glyph. The slight lean is what keeps the two marks readable as two.
-    for step, y in enumerate(range(3, 21)):
-        x0 = 16.6 - step / 12.0
-        d.rectangle((x0 * s, y * s, (x0 + 2.0) * s, (y + 1) * s - 1), fill=glyph)
+        d.rectangle((x0 * s, y * s, x1 * s - 1, (y + 1) * s - 1), fill=glyph)
+    # The exclamation stroke over the hook: a wedge from above the crown to
+    # under the hook's end.
+    for y in range(2, 22):
+        w = 4 if y < 12 else 3 if y < 18 else 2
+        x0 = 16 - w // 2
+        d.rectangle((x0 * s, y * s, (x0 + w) * s - 1, (y + 1) * s - 1), fill=glyph)
     # The detached dot, under the stroke's foot.
-    d.rectangle((15.0 * s, 24.0 * s, 17.0 * s, 26.0 * s - 1), fill=glyph)
+    d.rectangle((14 * s, 24 * s, 18 * s - 1, 28 * s - 1), fill=glyph)
 
 
 def spent_block_tile(d: ImageDraw.ImageDraw, s: float) -> None:

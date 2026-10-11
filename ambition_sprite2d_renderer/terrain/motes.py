@@ -97,6 +97,10 @@ MOTES = {
     "eclipse": (_twinkle, (130, 246, 214)),
     "forest": (_glow, (226, 255, 140)),
     "primeval": (_dot, (240, 232, 150)),
+    # Embers of a dark light.
+    "starless": (_glow, (255, 120, 196)),
+    # The sparkles of a wand.
+    "starlight": (_twinkle, (255, 240, 200)),
     "water": (_bubble, (206, 252, 244)),
     "cove": (_dot, (226, 244, 236)),
     "skybridge": (_petal, (255, 214, 226)),
@@ -122,6 +126,8 @@ SHADOWS = {
     "eclipse": (2, 4, 18),
     "forest": (10, 18, 12),
     "primeval": (16, 22, 10),
+    "starlight": (88, 64, 120),
+    "starless": (5, 2, 14),
     "water": (2, 16, 30),
     "cove": (4, 14, 24),
     "skybridge": (40, 52, 84),

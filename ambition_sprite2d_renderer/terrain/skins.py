@@ -92,6 +92,12 @@ SKINS: tuple[Skin, ...] = (
     Skin("forest", "earth", (60, 46, 36), (24, 18, 14), (106, 86, 62), (236, 222, 120), "grass", (84, 140, 62), "roots", "plank"),
     # The land of the dinosaurs: red earth under deep green.
     Skin("primeval", "earth", (86, 56, 36), (34, 20, 12), (136, 98, 62), (255, 190, 90), "grass", (58, 146, 62), "roots", "plank"),
+    # Mary-O's land: the ground blocks of an old platform game, in the pinks
+    # of a magical girl, under mint icing.
+    Skin("starlight", "candy", (236, 150, 186), (158, 86, 140), (255, 206, 222), (255, 240, 170), "frosting", (176, 232, 208), "lip", "slab"),
+    # Under Mary-O's land: the brick of an old game's underground, in the
+    # violet of the dark, with a line of magenta light on its edge.
+    Skin("starless", "brick", (58, 46, 112), (17, 12, 40), (112, 96, 180), (255, 86, 170), "edge", (34, 26, 72), "spikes", "grate"),
     # The islands in the sky are rock that broke off, not a wall that was laid.
     Skin("skybridge", "rock", (150, 164, 198), (86, 100, 142), (216, 224, 242), (255, 236, 150), "grass", (112, 178, 96), "roots", "slab"),
     Skin("open_sky", "rock", (176, 164, 150), (104, 92, 92), (232, 222, 204), (255, 240, 170), "grass", (126, 184, 92), "roots", "plank"),
@@ -293,6 +299,35 @@ def fill(skin: Skin) -> Image.Image:
     elif skin.material == "brick":
         _courses(tile, skin, 8.0, 16.0, 0.45, 0.45)
         tile.tone((tile.noise(3, 3, 4) - 0.55) * 0.34)
+    elif skin.material == "candy":
+        # Square blocks with round corners, each with a light top left and a
+        # dark low right: the ground of an old platform game. One in five
+        # has a star pressed in it.
+        tile.put(np.ones_like(tile.alpha), skin.dark)
+        for bx in range(4):
+            for by in range(4):
+                x0, y0 = bx * 16.0, by * 16.0
+                tone = rng.uniform(-0.10, 0.10)
+                colour = _mix(skin.base, skin.light if tone > 0 else skin.dark, abs(tone) * 1.4)
+
+                def block(p, dx, dy, grow=0.0):
+                    p.rounded_rectangle(((x0 + 0.6 - grow) * K + dx, (y0 + 0.6 - grow) * K + dy, (x0 + 15.4 + grow) * K + dx, (y0 + 15.4 + grow) * K + dy),
+                                        radius=2.6 * K, fill=255)
+
+                body = tile.mask(block)
+                tile.put(body, colour)
+                lit = body * np.clip(1.0 - tile.mask(lambda p, dx, dy: p.rounded_rectangle(((x0 + 1.9) * K + dx, (y0 + 1.9) * K + dy, (x0 + 16.6) * K + dx, (y0 + 16.6) * K + dy), radius=2.6 * K, fill=255)), 0.0, 1.0)
+                tile.put(lit, skin.light, 0.75)
+                low = body * np.clip(1.0 - tile.mask(lambda p, dx, dy: p.rounded_rectangle(((x0 - 0.6) * K + dx, (y0 - 0.6) * K + dy, (x0 + 14.1) * K + dx, (y0 + 14.1) * K + dy), radius=2.6 * K, fill=255)), 0.0, 1.0)
+                tile.put(low, skin.dark, 0.55)
+                if (bx, by) in ((0, 1), (2, 3), (3, 0)):
+                    cx, cy = x0 + 8.0, y0 + 8.2
+                    star = [(cx + (3.6 if k % 2 == 0 else 1.6) * math.cos(math.radians(-90 + k * 36)), cy + (3.6 if k % 2 == 0 else 1.6) * math.sin(math.radians(-90 + k * 36))) for k in range(10)]
+                    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, [(x + 0.5, y + 0.5) for x, y in star])), skin.dark, 0.45)
+                    tile.put(tile.mask(lambda p, dx, dy: _poly(p, dx, dy, star)), skin.accent, 0.85)
+                else:
+                    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x0 + cx, y0 + cy, 0.7) for cx, cy in ((4.2, 4.2), (11.8, 11.8))]), skin.dark, 0.30)
+        tile.tone((tile.noise(3, 3, 3) - 0.5) * 0.08)
     elif skin.material == "block":
         _courses(tile, skin, 16.0, 32.0, 0.5, 0.7)
         cracks = tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x, y), (x + a, y + 3), (x + a - 1.5, y + 7)], 0.3) for x, y, a in [(rng.uniform(0, 64), rng.uniform(0, 64), rng.uniform(-3, 3)) for _ in range(6)]])
@@ -491,8 +526,11 @@ def cap(skin: Skin) -> Image.Image:
             tile.put(signs, skin.accent, 0.7)
     else:
         # Soft ground: a body that the surface cuts, with an uneven lower edge.
-        depth = {"grass": (5.0, 6.0), "moss": (4.0, 9.0), "sand": (3.5, 2.5)}[skin.cap]
+        depth = {"grass": (5.0, 6.0), "moss": (4.0, 9.0), "sand": (3.5, 2.5), "frosting": (5.0, 0.0)}[skin.cap]
         lower = s + depth[0] + tile.profile(8, 3)[None, :] * depth[1]
+        if skin.cap == "frosting":
+            # Icing that runs down in round drips, eight to the tile.
+            lower = s + 4.2 + 4.6 * np.abs(np.sin(tile.x * math.pi / 8.0)) ** 0.7 * (0.55 + 0.45 * np.cos(tile.x * math.pi / 16.0) ** 2)
         top = s - (tile.profile(16, 2)[None, :] - 0.5) * (1.0 if skin.cap != "sand" else 0.6)
         body = np.clip((lower - y) * K * 0.5 + 0.5, 0, 1) * np.clip((y - top) * K * 0.5 + 0.5, 0, 1)
         tile.put(np.clip((lower + 2.5 - y) / 2.5, 0, 1) * (y >= top), (0, 0, 0), 0.34)
@@ -500,7 +538,13 @@ def cap(skin: Skin) -> Image.Image:
         tile.tone((tile.noise(16, 5, 2) - 0.5) * 0.30 * (tile.alpha > 0))
         tile.put(body * np.clip((y - (lower - 2.2)) / 2.2, 0, 1), skin.dark, 0.5)
         tile.put(body * np.clip(1.0 - (y - top) / 1.2, 0, 1), _mix(skin.cap_colour, (255, 255, 235), 0.42), 0.8)
-        if skin.cap == "grass":
+        if skin.cap == "frosting":
+            # A line of light along the top of the icing, and sprinkles on it.
+            tile.put(body * np.clip(1.0 - np.abs(y - s - 1.5) / 0.7, 0, 1), (255, 255, 255), 0.55)
+            sprinkles = [(rng.uniform(0, 64), s + rng.uniform(2.0, 4.6), rng.uniform(0, 3.14), k % 3) for k in range(18)]
+            for kind, colour in enumerate((skin.accent, skin.base, (170, 200, 255))):
+                tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x - 0.7 * math.cos(a), yy - 0.7 * math.sin(a)), (x + 0.7 * math.cos(a), yy + 0.7 * math.sin(a))], 0.45) for x, yy, a, kk in sprinkles if kk == kind]), colour)
+        elif skin.cap == "grass":
             blades = []
             for _ in range(70):
                 x = rng.uniform(0, 64)

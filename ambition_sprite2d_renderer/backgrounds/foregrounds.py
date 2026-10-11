@@ -31,7 +31,7 @@ import numpy as np
 from .arenas import BOSS, ECLIPSE, HUB
 from .artkit import Art, Pen, polar, scale
 from .interiors import ALARM, CAVE, FOUNDRY, LAB, UNDERTOWN
-from .outdoors import COVE, FOREST, SKYBRIDGE, WATER
+from .outdoors import COVE, FOREST, SKYBRIDGE, STARLESS, STARLIGHT, WATER
 from .parts import lamps
 
 SIZE = 1024
@@ -203,6 +203,42 @@ def _skybridge(art: Art, pen: Pen, layer_lights: list) -> None:
             pen.poly([(u - 0.008, v), (u + 0.008, v), (u, v + 0.022)])
 
 
+def _starlight(art: Art, pen: Pen, layer_lights: list) -> None:
+    # Strings of stars across the top of the view, each star with a light.
+    for a, b, sag in ((-0.1, 0.36, 0.040), (0.36, 0.70, 0.032), (0.70, 1.15, 0.042)):
+        base = 0.384
+        pen.curve((a, base), (b, base), sag, 0.0016)
+        for k in range(1, 9):
+            t = k / 9.0
+            u = a + (b - a) * t
+            v = base + sag * 4.0 * t * (1.0 - t)
+            pen.rect(u - 0.0008, v, u + 0.0008, v + 0.006)
+            pts = [polar(u, v + 0.014, 0.009 if i % 2 == 0 else 0.0042, -90.0 + i * 36.0) for i in range(10)]
+            pen.poly(pts)
+            if k % 2:
+                layer_lights.append((u, v + 0.014, 0.0030, STARLIGHT["star"]))
+
+
+def _starless(art: Art, pen: Pen, layer_lights: list) -> None:
+    rng = art.rand("starless foreground")
+    # Chains that hang into the view, each with a moon and its light.
+    for k in range(4):
+        u = (k + rng.uniform(0.2, 0.8)) / 4.0
+        end = rng.uniform(0.385, 0.405)
+        _chain(pen, u, 0.0, end)
+        pen.ellipse(u, end + 0.012, 0.011)
+        pen.ellipse(u + 0.006, end + 0.009, 0.0095, value=0)
+        layer_lights.append((u - 0.004, end + 0.016, 0.0026, STARLESS["glow"]))
+    # Spires of black glass below.
+    u = 0.0
+    while u < 1.0:
+        w = rng.uniform(0.010, 0.030)
+        if rng.random() < 0.4:
+            tip = rng.uniform(0.60, 0.64)
+            pen.poly([(u, 1.0), (u + w, 1.0), (u + w * 0.5, tip)])
+        u += w + rng.uniform(0.0, 0.09)
+
+
 def _boss(art: Art, pen: Pen, layer_lights: list) -> None:
     rng = art.rand("boss foreground")
     for k in range(5):
@@ -258,6 +294,8 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "water": (_water, scale(WATER["kelp"], 0.6)),
     "forest": (_forest, scale(FOREST["near"], 0.9)),
     "skybridge": (_skybridge, SKYBRIDGE["stone"]),
+    "starlight": (_starlight, scale(STARLIGHT["near"], 0.9)),
+    "starless": (_starless, STARLESS["rock"]),
     "boss": (_boss, scale(BOSS["rock"], 0.8)),
     "eclipse": (_eclipse, scale(ECLIPSE["rock"], 0.9)),
 }

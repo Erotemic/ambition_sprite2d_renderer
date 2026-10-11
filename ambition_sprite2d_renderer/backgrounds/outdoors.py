@@ -7,7 +7,7 @@ import math
 import numpy as np
 
 from .artkit import Art, Pen, mix, polar, scale, smoothstep
-from .parts import HORIZON, cloud_mask, cumulus, fog, haze, lamps, moon, palm, pine, shafts, solid, stars, vignette
+from .parts import HORIZON, cloud_mask, crystal_cluster, cumulus, fog, haze, lamps, moon, palm, pine, shafts, solid, stars, vignette
 
 # ---------------------------------------------------------------------------
 # The cove: a coast at night under the moon
@@ -637,4 +637,317 @@ def open_sky(layer_key: str, art: Art) -> np.ndarray:
         return art.over(cumulus(art, "high heaps", 0.40, 0.12, 7.0, 0.44, light, mix(shadow, light, 0.3)), layer)
     layer = art.blank()
     art.put(layer, cloud_mask(art, "streaks", 0.55, 0.3, cells=3.0, cover=0.42, soft=0.4, stretch=9.0), light, 0.34)
+    return layer
+
+
+# ---------------------------------------------------------------------------
+# The starlight kingdom: Mary-O's land, in the colours of a magical girl
+# ---------------------------------------------------------------------------
+
+STARLIGHT = {
+    "top": (116, 102, 196),
+    "high": (190, 136, 214),
+    "mid": (250, 176, 206),
+    "glow": (255, 232, 196),
+    "moon": (255, 248, 224),
+    "halo": (255, 196, 226),
+    "cloud": (255, 238, 246),
+    "cloud_shade": (226, 170, 214),
+    "far": (150, 200, 206),
+    "hill": (120, 196, 176),
+    "hill_light": (190, 236, 206),
+    "near": (70, 96, 140),
+    "near_light": (150, 170, 216),
+    "castle": (214, 170, 222),
+    "star": (255, 244, 190),
+    "mist": (255, 214, 232),
+}
+
+
+def _sparkle(pen: Pen, u: float, v: float, r: float, value: int = 255) -> None:
+    """A star of four points: the sparkle of a magic wand."""
+    w = r * 0.22
+    pen.poly([(u, v - r), (u + w, v - w), (u + r, v), (u + w, v + w), (u, v + r), (u - w, v + w), (u - r, v), (u - w, v - w)], value)
+
+
+def _star(pen: Pen, u: float, v: float, r: float, value: int = 255) -> None:
+    """A star of five round points."""
+    pts = []
+    for k in range(10):
+        pts.append(polar(u, v, r if k % 2 == 0 else r * 0.5, -90.0 + k * 36.0))
+    pen.poly(pts, value)
+
+
+def _round_hill(pen: Pen, u: float, v: float, w: float, h: float) -> None:
+    """A hill with a round top that stands on `v`: the hill of an old platform game."""
+    pen.ellipse(u, v - h + w, w, w)
+    pen.rect(u - w, v - h + w, u + w, v + 0.02)
+
+
+def _castle(pen: Pen, u: float, v: float, s: float) -> None:
+    """A castle of thin towers with pointed roofs, on `v`."""
+    pen.rect(u - s * 0.50, v - s * 0.42, u + s * 0.50, v + 0.01)
+    for k in range(6):
+        x = u - s * 0.50 + k * s * 0.2
+        pen.rect(x, v - s * 0.50, x + s * 0.1, v - s * 0.42)
+    for du, w, h in ((-0.46, 0.11, 0.86), (0.46, 0.11, 0.86), (-0.20, 0.09, 1.10), (0.20, 0.09, 1.10), (0.0, 0.14, 1.42)):
+        x = u + du * s
+        pen.rect(x - w * s, v - h * s, x + w * s, v)
+        pen.poly([(x - w * s * 1.5, v - h * s), (x + w * s * 1.5, v - h * s), (x, v - (h + 0.42) * s)])
+
+
+def starlight(layer_key: str, art: Art) -> np.ndarray:
+    p = STARLIGHT
+    moon_at = (0.24, 0.36)
+    if layer_key == "sky":
+        horizon = mix(p["mid"], p["glow"], 0.7)
+        layer = art.opaque(art.ramp([(0.0, p["top"]), (0.26, p["high"]), (0.44, p["mid"]), (HORIZON - 0.01, horizon), (0.70, p["far"]), (1.0, p["hill"])]))
+        art.light(layer, art.spot(0.5, HORIZON, 0.6, 2.0, squash=2.2), p["glow"], 0.40)
+        # A rainbow, pale, over the far land.
+        cu, cv, r0 = 0.62, HORIZON + 0.16, 0.36
+        bow_fade = smoothstep(HORIZON + 0.02, HORIZON - 0.10, art.v)
+        for k, colour in enumerate(((255, 150, 170), (255, 200, 150), (255, 240, 170), (170, 236, 190), (160, 206, 255), (200, 170, 250))):
+            bow, bow_pen = art.drawing()
+            bow_pen.ring(cu, cv, r0 - k * 0.011, 0.011)
+            art.tint(layer, art.mask_of(bow, blur=1.2) * bow_fade, colour, 0.42)
+        # Stars that a wand made: small points, and a few of four rays.
+        stars(art, layer, 300, p["star"], 0.42)
+        image, pen = art.drawing()
+        rng = art.rand("sparkles")
+        for _ in range(34):
+            u, v = rng.random(), rng.uniform(0.05, 0.46)
+            _sparkle(pen, u, v, rng.uniform(0.006, 0.016) * (1.0 - v))
+        sparkles = art.mask_of(image)
+        art.light(layer, art.blur(sparkles, 3.0), p["halo"], 0.7)
+        art.light(layer, sparkles, p["star"], 0.95)
+        # The moon: a crescent with a soft ring of light.
+        moon(art, layer, *moon_at, 0.050, p["moon"], p["halo"], crescent=0.62)
+        # Clouds in heaps, pink below.
+        for tag, v, half, cells, cover in (("high clouds", 0.33, 0.10, 3.4, 0.40), ("low clouds", 0.47, 0.08, 4.2, 0.46)):
+            art.put(layer, *(lambda c: (c[:, :, 3], c[:, :, :3]))(cumulus(art, tag, v, half, cells, cover, p["cloud"], p["cloud_shade"])), 0.92)
+        # A castle a long way off, on a far hill, in the colour of the air.
+        far, far_pen = art.drawing()
+        _round_hill(far_pen, 0.70, HORIZON + 0.03, 0.17, 0.13)
+        _round_hill(far_pen, 0.36, HORIZON + 0.03, 0.22, 0.10)
+        _round_hill(far_pen, 0.98, HORIZON + 0.03, 0.16, 0.09)
+        _castle(far_pen, 0.70, HORIZON - 0.095, 0.085)
+        art.tint(layer, art.mask_of(far, blur=0.5), mix(p["castle"], p["mid"], 0.35), 0.80)
+        art.tint(layer, fog(art, "far mist", HORIZON + 0.03, 0.07), p["mist"], 0.55)
+        art.grain(layer, "grain")
+        return layer
+    if layer_key == "far_backplate":
+        rng = art.rand("far hills")
+        image, pen = art.drawing()
+        spots, spot_pen = art.drawing()
+        for k in range(9):
+            u = (k + rng.uniform(0.1, 0.9)) / 9.0
+            w, h = rng.uniform(0.06, 0.11), rng.uniform(0.10, 0.20)
+            _round_hill(pen, u, HORIZON + 0.09, w, h)
+            # The marks on the face of a hill, as an old game drew them.
+            for _ in range(3):
+                su, sv = u + rng.uniform(-0.5, 0.5) * w, HORIZON + 0.09 - h + w * rng.uniform(0.5, 1.2)
+                spot_pen.ellipse(su, sv, w * 0.09, w * 0.13)
+        pen.rect(0.0, HORIZON + 0.08, 1.0, 1.0)
+        mask = art.mask_of(image)
+        layer = solid(art, mask, mix(p["hill_light"], p["mid"], 0.25), mix(p["hill"], p["far"], 0.3), 0.40, 0.70, "hills", 0.05)
+        art.light(layer, art.rim(mask, 0.004, 0.006, 1.0) * mask, p["glow"], 0.45)
+        art.tint(layer, art.mask_of(spots) * mask, p["hill"], 0.55)
+        haze(art, layer, p["mist"], 0.22, HORIZON + 0.10)
+        return layer
+    if layer_key == "near_background":
+        rng = art.rand("near garden")
+        image, pen = art.drawing()
+        ground, _ = art.ridge("ground", 0.71, 0.008, cells=4.0, octaves=2)
+        lights, light_pen = art.drawing()
+        # Round bushes of three lumps, and trees with a round crown.
+        for k in range(8):
+            u = (k + rng.uniform(0.1, 0.9)) / 8.0
+            r = rng.uniform(0.022, 0.040)
+            pen.ellipse(u - r * 1.1, 0.712 - r * 0.6, r * 0.8)
+            pen.ellipse(u + r * 1.1, 0.712 - r * 0.6, r * 0.8)
+            pen.ellipse(u, 0.712 - r * 1.0, r * 1.05)
+        for u in (0.07, 0.31, 0.56, 0.83):
+            u += rng.uniform(-0.03, 0.03)
+            h = rng.uniform(0.12, 0.19)
+            r = rng.uniform(0.034, 0.046)
+            pen.rect(u - 0.006, 0.712 - h, u + 0.006, 0.72)
+            pen.ellipse(u, 0.712 - h - r * 0.6, r)
+            pen.ellipse(u - r * 0.62, 0.712 - h - r * 0.1, r * 0.62)
+            pen.ellipse(u + r * 0.62, 0.712 - h - r * 0.1, r * 0.62)
+        # Lamps with a star on top, between them.
+        for u in (0.19, 0.44, 0.70, 0.94):
+            top = 0.712 - 0.12
+            pen.rect(u - 0.0028, top, u + 0.0028, 0.72)
+            _star(pen, u, top - 0.012, 0.018)
+            _star(light_pen, u, top - 0.012, 0.012)
+        mask = np.maximum(ground, art.mask_of(image))
+        layer = solid(art, mask, mix(p["near"], p["near_light"], 0.5), p["near"], 0.42, 0.74, "leaves", 0.06)
+        art.light(layer, art.rim(mask, 0.003, 0.004, 0.5) * mask, p["halo"], 0.50)
+        art.shade(layer, art.rim(mask, -0.004, -0.004, 1.2) * mask, 0.16)
+        glow = art.mask_of(lights)
+        art.light(layer, glow, p["star"], 0.9)
+        art.glow(layer, art.blur(glow, 6.0), p["star"], 0.40)
+        haze(art, layer, p["mist"], 0.14, 0.73)
+        return layer
+    layer = art.blank()
+    image, pen = art.drawing()
+    rng = art.rand("near sparkles")
+    for _ in range(26):
+        _sparkle(pen, rng.random(), rng.uniform(0.30, 0.70), rng.uniform(0.003, 0.007))
+    sparkles = art.mask_of(image)
+    art.put(layer, art.blur(sparkles, 2.5), p["halo"], 0.34)
+    art.put(layer, sparkles, p["star"], 0.60)
+    art.put(layer, fog(art, "ground mist", 0.70, 0.13), p["mist"], 0.30)
+    vignette(art, layer, p["top"], 0.22)
+    return layer
+
+
+# ---------------------------------------------------------------------------
+# The starless deep: under Mary-O's land, a dark magical girl's cavern
+# ---------------------------------------------------------------------------
+
+STARLESS = {
+    "black": (7, 4, 16),
+    "wall": (30, 18, 58),
+    "air": (70, 34, 104),
+    "glow": (255, 86, 170),
+    "moon": (255, 150, 200),
+    "rift": (112, 30, 104),
+    "glass": (120, 220, 230),
+    "gold": (255, 206, 130),
+    "rock": (13, 8, 28),
+    "rock_light": (74, 50, 122),
+    "mist": (150, 50, 130),
+}
+
+
+def _gear(pen: Pen, u: float, v: float, r: float, teeth: int, turn: float = 0.0) -> None:
+    """A clock wheel: a ring with teeth and spokes."""
+    pen.ring(u, v, r, r * 0.16)
+    pen.ring(u, v, r * 0.24, r * 0.12)
+    for k in range(teeth):
+        a = turn + 360.0 * k / teeth
+        pen.line([polar(u, v, r * 1.0, a), polar(u, v, r * 1.16, a)], r * 0.14)
+    for k in range(4):
+        a = turn + 45.0 + 90.0 * k
+        pen.line([polar(u, v, r * 0.24, a), polar(u, v, r * 0.94, a)], r * 0.07)
+
+
+def _thorn_vine(pen: Pen, rng, pts: list, width: float) -> None:
+    """A vine through `pts`, with a thorn each way along it."""
+    pen.line(pts, width)
+    for k in range(1, len(pts) - 1):
+        (x0, y0), (x1, y1) = pts[k - 1], pts[k + 1]
+        d = math.hypot(x1 - x0, y1 - y0) or 1.0
+        nx, ny = -(y1 - y0) / d, (x1 - x0) / d
+        side = 1.0 if k % 2 else -1.0
+        x, y = pts[k]
+        reach = width * rng.uniform(3.0, 5.0)
+        pen.poly([(x - (x1 - x0) / d * width, y - (y1 - y0) / d * width), (x + (x1 - x0) / d * width, y + (y1 - y0) / d * width),
+                  (x + nx * side * reach, y + ny * side * reach)])
+
+
+def _arch_row(pen: Pen, v_top: float, v_foot: float, count: int, pier: float) -> None:
+    """A row of pointed arches: the piers and the heads between them."""
+    step = 1.0 / count
+    pen.rect(0.0, v_top - 0.02, 1.0, v_top + 0.012)
+    for k in range(count + 1):
+        u = k * step
+        pen.rect(u - pier, v_top, u + pier, v_foot)
+        # the head of the arch: two bows that meet in a point
+        for side in (-1.0, 1.0):
+            pen.poly([(u + side * pier, v_top + 0.012), (u + side * step * 0.5, v_top + 0.012), (u + side * pier, v_top + step * 0.55)])
+
+
+def starless(layer_key: str, art: Art) -> np.ndarray:
+    p = STARLESS
+    moon_at = (0.36, 0.42)
+    if layer_key == "sky":
+        layer = art.opaque(art.ramp([(0.0, p["black"]), (0.30, p["wall"]), (0.52, p["air"]), (0.78, p["wall"]), (1.0, p["black"])]))
+        strata = art.noise("strata", cells=5.0, octaves=5, stretch=4.0)
+        art.shade(layer, smoothstep(0.40, 0.76, strata), 0.34)
+        # A rift in the far wall, and in it a moon that is eaten to a ring.
+        rift, rift_pen = art.drawing()
+        rift_pen.poly([(moon_at[0] - 0.015, 0.22), (moon_at[0] + 0.035, 0.31), (moon_at[0] + 0.105, moon_at[1]), (moon_at[0] + 0.04, 0.54),
+                       (moon_at[0] + 0.012, 0.66), (moon_at[0] - 0.035, 0.55), (moon_at[0] - 0.11, moon_at[1] + 0.015), (moon_at[0] - 0.04, 0.32)])
+        opening = art.mask_of(rift, blur=1.6)
+        art.tint(layer, opening, p["rift"], 0.70)
+        art.light(layer, art.mask_of(rift, blur=22.0), p["glow"], 0.26)
+        ring, ring_pen = art.drawing()
+        ring_pen.ellipse(*moon_at, 0.050)
+        ring_pen.ellipse(moon_at[0] + 0.005, moon_at[1] - 0.003, 0.042, value=0)
+        art.light(layer, art.mask_of(ring, blur=5.0) * opening, p["glow"], 0.9)
+        art.light(layer, art.mask_of(ring) * opening, p["moon"], 1.0)
+        # Wheels of a great clock, far back in the dark, that do not turn.
+        wheels, wheel_pen = art.drawing()
+        _gear(wheel_pen, 0.78, 0.40, 0.12, 14, 8.0)
+        _gear(wheel_pen, 0.905, 0.52, 0.065, 10, 20.0)
+        _gear(wheel_pen, 0.10, 0.50, 0.085, 12, 0.0)
+        art.tint(layer, art.mask_of(wheels, blur=0.8), mix(p["rock_light"], p["air"], 0.4), 0.50)
+        # A window of coloured glass, lit from behind.
+        glass, glass_pen = art.drawing()
+        cu, cv, r = 0.66, 0.565, 0.034
+        for k in range(8):
+            glass_pen.poly([(cu, cv), polar(cu, cv, r, k * 45.0 + 4.0), polar(cu, cv, r, k * 45.0 + 41.0)], 150 if k % 2 else 255)
+        art.light(layer, art.mask_of(glass, blur=7.0), p["glass"], 0.30)
+        art.light(layer, art.mask_of(glass, blur=0.5), p["glass"], 0.42)
+        art.grain(layer, "grain")
+        return layer
+    if layer_key == "far_backplate":
+        rng = art.rand("far deep")
+        floor, _ = art.ridge("far floor", HORIZON + 0.06, 0.05, cells=9.0, octaves=4, sharp=0.8)
+        roof, _ = art.ridge("far roof", 0.30, -0.08, cells=10.0, octaves=4, sharp=0.9)
+        image, pen = art.drawing()
+        # A viaduct of pointed arches across the cavern, broken at one end.
+        _arch_row(pen, 0.43, 0.72, 7, 0.012)
+        pen.rect(0.86, 0.38, 1.0, 0.75, value=0)
+        # Chains from the roof, each with a moon on its end.
+        charms = []
+        for k in range(6):
+            u = (k + rng.uniform(0.2, 0.8)) / 6.0
+            end = rng.uniform(0.40, 0.52)
+            pen.line([(u, 0.0), (u, end)], 0.0016)
+            pen.ellipse(u, end + 0.012, 0.012)
+            pen.ellipse(u + 0.006, end + 0.009, 0.010, value=0)
+            charms.append((u - 0.004, end + 0.014, 0.0022))
+        mask = np.maximum.reduce([floor, 1.0 - roof, art.mask_of(image)])
+        layer = solid(art, mask, mix(p["rock_light"], p["wall"], 0.5), p["rock"], 0.30, 0.72, "far rock", 0.10)
+        art.light(layer, art.rim(mask, -0.004, 0.002, 0.6) * mask, p["glow"], 0.26)
+        lamps(art, layer, charms, p["glow"], halo=4.0, strength=0.7)
+        haze(art, layer, p["air"], 0.26, HORIZON + 0.06)
+        return layer
+    if layer_key == "near_background":
+        rng = art.rand("near deep")
+        floor, _ = art.ridge("floor", 0.70, 0.035, cells=8.0, octaves=5, sharp=0.8)
+        roof, _ = art.ridge("roof", 0.25, -0.10, cells=8.0, octaves=5, sharp=0.9)
+        image, pen = art.drawing()
+        facets, facet_pen = art.drawing()
+        # Spires of black glass that grow from the floor and the roof.
+        for u, v, size, up in ((0.10, 0.70, 0.20, -90.0), (0.47, 0.71, 0.13, -90.0), (0.88, 0.70, 0.22, -90.0), (0.30, 0.25, 0.12, 90.0), (0.70, 0.24, 0.15, 90.0)):
+            crystal_cluster(pen, facet_pen, rng, u, v, size, count=6, up=up, spread=30.0)
+        # Vines of thorns that hang in bows from the roof.
+        for _ in range(5):
+            u0 = rng.uniform(0.0, 0.8)
+            u1 = u0 + rng.uniform(0.15, 0.32)
+            sag = rng.uniform(0.10, 0.20)
+            pts = [(u0 + (u1 - u0) * i / 16.0, 0.20 + sag * 4.0 * (i / 16.0) * (1.0 - i / 16.0)) for i in range(17)]
+            _thorn_vine(pen, rng, pts, 0.0028)
+        # Candles on the floor.
+        flames = []
+        for u in (0.21, 0.245, 0.60, 0.635, 0.665):
+            h = rng.uniform(0.018, 0.034)
+            pen.rect(u - 0.0035, 0.705 - h, u + 0.0035, 0.71)
+            flames.append((u, 0.705 - h - 0.006, 0.0036))
+        mask = np.maximum.reduce([floor, 1.0 - roof, art.mask_of(image)])
+        layer = solid(art, mask, mix(p["rock"], p["rock_light"], 0.42), p["rock"], 0.24, 0.74, "rock", 0.10)
+        art.light(layer, art.mask_of(facets) * mask, p["glow"], 0.20)
+        art.light(layer, art.rim(mask, -0.003, 0.003, 0.4) * mask, p["glow"], 0.30)
+        art.shade(layer, art.rim(mask, 0.005, -0.003, 1.2) * mask, 0.30)
+        lamps(art, layer, flames, p["gold"], halo=5.0, strength=0.9)
+        haze(art, layer, p["wall"], 0.12, 0.73)
+        return layer
+    layer = art.blank()
+    art.put(layer, fog(art, "ground mist", 0.70, 0.15), p["mist"], 0.34)
+    art.put(layer, fog(art, "roof dark", 0.26, 0.14), p["black"], 0.30)
+    vignette(art, layer, p["black"], 0.46)
     return layer

@@ -5,7 +5,8 @@
 
 `draw` publishes `<skin>_<part>.png` for each part of each skin, and the mote
 picture, the decor picture and the door of each biome (`<biome>_motes.png`,
-`<biome>_decor.png`, `<biome>_decor_glow.png`, `<biome>_door.png`). `preview`
+`<biome>_decor.png`, `<biome>_decor_glow.png`, `<biome>_door.png`), and the
+shimmer of a biome that has one (`<biome>_shimmer.png`). `preview`
 writes one picture with a small made-up room in each skin. It does not run
 the game.
 """
@@ -17,7 +18,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from . import decor, doors, fixtures, motes, skins
+from . import decor, doors, fixtures, motes, shimmer, skins
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -64,6 +65,12 @@ def main(argv: list[str] | None = None) -> int:
             print(path)
             path = args.out_dir / f"{key}_decor_glow.png"
             decor.glow_strip(key).save(path)
+            print(path)
+        for key in shimmer.SHIMMERS:
+            if args.skins and key not in args.skins:
+                continue
+            path = args.out_dir / f"{key}_shimmer.png"
+            shimmer.picture(key).save(path)
             print(path)
         water = {
             "water_clear": fixtures.water_clear(),

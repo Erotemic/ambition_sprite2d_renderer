@@ -94,26 +94,27 @@ def _brick_lines(draw: ImageDraw.ImageDraw, *, fill, mortar, variant: str = "pla
 
 #: The interrobang, pixel by pixel, on the 16x16 cell.
 #:
-#: Pixel interrobang: a question-mark hook shares the exclamation stem and
-#: detached dot, so the 16px glyph reads as either mark.
+#: Pixel interrobang: the `?` hook, and an upright `!` stroke through it
+#: that starts two rows above the hook's crown. A hook that shared the
+#: stroke as its own stem was a plain `?` (Jon, 2026-10-11).
 #:
 #: Authored as explicit runs rather than a font glyph because at 16px a font is
 #: unreadable mush, and because `ImageFont` would make the tileset depend on which
 #: fonts happen to be installed.
 _INTERROBANG_RUNS: Sequence[Tuple[int, int, int]] = (
     # (y, x_start, x_end) — the hook, opening at the top-left like a `?`
-    (3, 6, 9),
-    (4, 5, 6),
-    (4, 9, 10),
-    (5, 9, 10),
-    (6, 8, 9),
-    # ...landing on the shared stem, which is also the `!`
-    (7, 7, 8),
-    (8, 7, 8),
-    (9, 7, 8),
-    (10, 7, 8),
+    (4, 4, 11),
+    (5, 3, 12),
+    (6, 3, 4),
+    (6, 11, 12),
+    (7, 11, 12),
+    (8, 10, 12),
+    (9, 8, 11),
+    # the `!` stroke, from over the crown to under the hook
+    *((y, 7, 8) for y in range(2, 12)),
     # the detached dot
-    (12, 7, 8),
+    (13, 7, 8),
+    (14, 7, 8),
 )
 
 
