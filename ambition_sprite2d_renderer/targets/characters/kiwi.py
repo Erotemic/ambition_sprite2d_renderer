@@ -45,6 +45,8 @@ BIRD = _ratite.ratite_fx(
 
 ACTOR_METADATA = _ratite.actor_metadata(
     TARGET_NAME,
+    # Spelled out: the game's identity scan reads a literal, not a name.
+    character_id="kiwi",
     display_name="Kiwi",
     art_scale=ART_SCALE,
     mass_class="Light",

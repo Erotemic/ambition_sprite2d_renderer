@@ -31,13 +31,13 @@ def lineage(target: str) -> Dict[str, object]:
     return {"family": target, "variant": "svg_rigged", "parents": [], "method": "svg_rig", "revision": "initial"}
 
 
-def actor_metadata(target: str, *, display_name: str, art_scale: float, mass_class: str, traits: Sequence[str],
+def actor_metadata(target: str, *, character_id: str, display_name: str, art_scale: float, mass_class: str, traits: Sequence[str],
                    sockets: Dict[str, Tuple[float, float]], authoring: str, gameplay: str,
                    barks: Sequence[str]) -> dict:
     """The actor contract of a bird that flies at its target and strikes.
     ``sockets`` are points of the drawing in SVG units."""
     return {
-        "actor": {"character_id": target, "display_name": display_name},
+        "actor": {"character_id": character_id, "display_name": display_name},
         "body": {
             "body_plan": "AvianBiped",
             "body_kind": "Floating",

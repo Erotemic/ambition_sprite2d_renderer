@@ -47,6 +47,8 @@ BIRD = _flyer.flyer_fx(
 
 ACTOR_METADATA = _flyer.actor_metadata(
     TARGET_NAME,
+    # Spelled out: the game's identity scan reads a literal, not a name.
+    character_id="vulture",
     display_name="Vulture",
     art_scale=ART_SCALE,
     mass_class="Medium",

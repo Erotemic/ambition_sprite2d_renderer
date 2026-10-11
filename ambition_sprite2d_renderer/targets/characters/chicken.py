@@ -66,7 +66,7 @@ def _px(x: float, y: float) -> Dict[str, float]:
 
 
 ACTOR_METADATA = {
-    "actor": {"character_id": TARGET_NAME, "display_name": "Chicken"},
+    "actor": {"character_id": "chicken", "display_name": "Chicken"},
     "body": {
         "body_plan": "AvianBiped",
         "body_kind": "Standard",
