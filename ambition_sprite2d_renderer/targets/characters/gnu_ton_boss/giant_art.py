@@ -967,9 +967,13 @@ def seat_place(pose: dict) -> Tuple[float, float]:
 
 #: The frame of the lone fist's sheet. Its top edge is the line of the punch's
 #: far portal: the row `through_*` comes down out of it.
-FIST_FRAME = (160, 208)
+FIST_FRAME = (160, 162)
 #: The fist's BODY in its frame: the mitt and its knuckles. Not its fore arm.
-FIST_BBOX = (34, 82, 92, 76)
+#: How far it is under the top edge says how high the far line of a punch is
+#: over the floor (the fist comes down to the floor): 145 world units, which a
+#: player's two jumps from the floor reach (about 148 of rise, and half of its
+#: own height).
+FIST_BBOX = (34, 36, 92, 76)
 #: Where the far line of a punch is, from the middle of the fist's body, in
 #: pixels of the frame: over it. The game puts the portal there.
 FIST_LINE_OVER = FIST_BBOX[1] + FIST_BBOX[3] * 0.5
