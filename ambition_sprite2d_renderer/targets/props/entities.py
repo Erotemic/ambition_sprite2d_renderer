@@ -896,6 +896,31 @@ def fire_orb(d: ImageDraw.ImageDraw, s: float) -> None:
     d.ellipse(bbox(60 * s, 58 * s, 7 * s, 7 * s), fill=rgba("#FFFBE0"))
 
 
+def fire_glow(d: ImageDraw.ImageDraw, s: float) -> None:
+    """The flame picture of Mary-O's fire glow: tongues of light on black,
+    which the glow shader moves up (`fire_shader.rs` in the Mary-O game). It
+    repeats in the two directions: a tongue that goes over an edge is drawn
+    again at the other edge."""
+    d.rectangle((0, 0, 128 * s, 128 * s), fill=rgba("#000000"))
+    # A fixed list, so the picture is the same each time it is made.
+    tongues = [
+        (14, 20, 9, 26, 150), (46, 8, 7, 20, 110), (78, 30, 11, 30, 170), (110, 14, 8, 22, 120),
+        (28, 62, 10, 28, 160), (62, 70, 8, 24, 130), (96, 58, 12, 32, 180), (124, 84, 7, 20, 100),
+        (8, 100, 9, 24, 130), (44, 108, 11, 30, 170), (82, 104, 8, 22, 120), (112, 118, 10, 26, 150),
+        (60, 40, 6, 16, 90), (20, 40, 5, 14, 80), (100, 88, 6, 16, 90),
+    ]
+    for cx, cy, rx, ry, light in tongues:
+        for dx in (-128, 0, 128):
+            for dy in (-128, 0, 128):
+                x, y = cx + dx, cy + dy
+                # A tongue: wide at its foot, with a point at its top.
+                d.polygon(
+                    poly_scaled([(x - rx, y + ry * 0.4), (x, y - ry), (x + rx, y + ry * 0.4), (x, y + ry)], s),
+                    fill=(255, 255, 255, light),
+                )
+                d.ellipse(bbox(x * s, (y + ry * 0.35) * s, rx * 1.6 * s, ry * 0.9 * s), fill=(255, 255, 255, light // 2))
+
+
 def void_orb(d: ImageDraw.ImageDraw, s: float) -> None:
     """A ball of the void: no light in it, a thin rim of white light about it.
     The shot of Mary-O's Void Lizard."""
@@ -1804,6 +1829,14 @@ ENTITY_SPECS: List[EntitySpriteSpec] = [
         "round ball of fire for a bar of fire that turns",
     ),
     EntitySpriteSpec(
+        "fire_glow",
+        "fire_glow.png",
+        "shader picture (the glow of a fire in Mary-O)",
+        "fire glow",
+        "tongues of light on black that the fire glow shader moves",
+        tight_crop=False,
+    ),
+    EntitySpriteSpec(
         "void_orb",
         "void_orb.png",
         "projectile art (Mary-O's Void Lizard)",
@@ -2007,6 +2040,7 @@ DRAWERS: Dict[str, Callable[[ImageDraw.ImageDraw, float], None]] = {
     "projectile_energy": projectile_energy,
     "fire_orb": fire_orb,
     "void_orb": void_orb,
+    "fire_glow": fire_glow,
     "bonus_block_tile": bonus_block_tile,
     "spent_block_tile": spent_block_tile,
     "solid_tile": solid_tile,
