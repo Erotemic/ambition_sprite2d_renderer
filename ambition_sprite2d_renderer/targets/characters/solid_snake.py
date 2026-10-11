@@ -274,7 +274,7 @@ def _snake_curve(anim: str, frame_idx: int, nframes: int) -> tuple[list[Point], 
 def _body_width(t: float) -> float:
     """The body's width ``t`` of the way from the tip of the tail to the
     head: a thin tail, a thick middle, a narrower neck."""
-    return round(3.2 + 9.6 * _smooth(0.0, 0.3, t) - 4.2 * _smooth(0.68, 1.0, t), 2)
+    return round(3.2 + 11.6 * _smooth(0.0, 0.3, t) - 5.2 * _smooth(0.68, 1.0, t), 2)
 
 
 # ---- Pieces ------------------------------------------------------------------
