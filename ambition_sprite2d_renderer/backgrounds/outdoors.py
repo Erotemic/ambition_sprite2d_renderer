@@ -1032,12 +1032,14 @@ def void_castle(layer_key: str, art: Art) -> np.ndarray:
             _, pen = petals[key]
             pen.rect(u - 0.018, 0.36, u + 0.018, 0.56)
             pen.poly([(u - 0.018, 0.36), (u, 0.31), (u + 0.018, 0.36)])
-        # The void eats the window: a break from the top of the wall down
-        # through one side of the rose. What it covers gives no light.
+        # The void comes down the wall from the vault and has the top edge of
+        # the rose. It stops over the band where the play is: this wall goes
+        # with the camera, so a thing in that band is on each screen of the
+        # level, and a black thing with a white edge there is an enemy.
         void, void_pen = art.drawing()
-        void_pen.poly([(0.385, 0.0), (0.47, 0.0), (0.455, 0.20), (0.48, 0.31), (0.445, 0.40), (0.47, 0.50), (0.425, 0.585), (0.43, 0.47), (0.398, 0.40), (0.415, 0.30), (0.39, 0.21)])
+        void_pen.poly([(0.33, 0.0), (0.45, 0.0), (0.44, 0.13), (0.455, 0.22), (0.425, 0.30), (0.41, 0.345), (0.395, 0.29), (0.37, 0.25), (0.385, 0.17), (0.35, 0.10)])
         rng = art.rand("void breaks")
-        for u, v, size, up in ((0.44, 0.40, 0.10, 20.0), (0.42, 0.50, 0.08, 150.0), (0.46, 0.22, 0.09, -20.0), (0.40, 0.28, 0.07, 200.0), (0.43, 0.58, 0.07, 80.0)):
+        for u, v, size, up in ((0.43, 0.24, 0.07, 70.0), (0.38, 0.22, 0.06, 120.0), (0.40, 0.30, 0.05, 95.0)):
             _shard(void_pen, rng, u, v, size, up)
         eaten = 1.0 - art.mask_of(void, blur=1.2)
         for key, (image, _) in petals.items():
@@ -1045,7 +1047,8 @@ def void_castle(layer_key: str, art: Art) -> np.ndarray:
             art.put(layer, art.mask_of(image, blur=0.5) * eaten, mix(p[key], (255, 255, 255), 0.18), 0.92)
         art.put(layer, art.mask_of(hub, blur=0.4) * eaten, mix(p["gold"], (255, 255, 255), 0.5))
         art.put(layer, art.mask_of(frame, blur=0.4), mix(p["wall"], p["black"], 0.45))
-        _void(art, layer, void, p)
+        # Far: its edge is grey, not white.
+        _void(art, layer, void, {**p, "void_edge": mix(p["void_edge"], p["wall"], 0.55)}, 0.0016)
         art.grain(layer, "grain")
         return layer
     if layer_key == "far_backplate":
