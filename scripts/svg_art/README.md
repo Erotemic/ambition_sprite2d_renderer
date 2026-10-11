@@ -22,6 +22,7 @@ These scripts are how the first drafts of these character and prop SVGs were dra
 | `treasure_chest_art.py` | `data/props/treasure_chest/treasure_chest.svg` | `scripts/build_treasure_chest_rig.py` |
 | `boss_chest_art.py` | `data/props/boss_chest/boss_chest.svg` | `scripts/build_boss_chest_rig.py` |
 | `mockingbird_boss_v2_art.py` | `data/characters/mockingbird_boss_v2/mockingbird_boss_v2.svg` | `scripts/build_mockingbird_boss_v2_rig.py` |
+| `giant_gnu_art.py` | nothing yet: a CANDIDATE redraw of GNU-ton's giant (the design Jon chose in stills, 2026-10-11, with its faces) | none yet |
 
 ⚠ **The SVGs own the art.** Edit an SVG directly (in Inkscape or by hand)
 when the art changes; these scripts are not re-run to produce it and are not
