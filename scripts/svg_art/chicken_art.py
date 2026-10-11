@@ -5,7 +5,11 @@
 it as first committed (less the rig catalog ``scripts/build_chicken_rig.py``
 installs).
 
-    uv run python scripts/svg_art/chicken_art.py SIDE.svg
+    uv run python scripts/svg_art/chicken_art.py SIDE.svg [HEN.svg]
+
+``HEN.svg`` is ``data/characters/chicken_hen/chicken_hen.svg``: the hen of the
+same breed (a small comb and wattle, a short tail and no sickle feathers), on
+the same joints.
 
 A white cockerel with a dark tail (the Columbian pattern) on a 512x512 canvas,
 ground y=416, centre line x=256 (published at 0.25: a 128 px frame). A red
@@ -82,15 +86,25 @@ WING_FAR = dict(arm=C["shade"], arm_shade=C["shade_deep"], covert=C["shade_deep"
 TOES = ((-10, 9), (13, 12), (22, 8))
 
 
-def parts():
+#: The hen: the joints of the cockerel with a short tail.
+J_HEN = dict(J, tail2=(196.0, 272.0), tail_tip=(170.0, 244.0))
+
+
+def parts(hen: bool = False):
     # The tail: dark sickle feathers standing up and back off the rump.
     tail = []
+    # (The hen's is a short fan with no sickles.)
+    k = 0.6 if hen else 1.0
     for ang, ln, wd in ((208.0, 78.0, 26.0), (222.0, 92.0, 28.0), (236.0, 84.0, 26.0), (250.0, 66.0, 24.0)):
-        tail += feather((212, 294), ang, ln, wd, C["dark"], C["dark_light"], C["dark_deep"])
+        tail += feather((212, 294), ang, ln * k, wd, C["dark"], C["dark_light"], C["dark_deep"])
     part("tail", "Tail", "tail", "tail1", 10, tail)
     tip = []
-    for ang, ln, wd in ((212.0, 78.0, 20.0), (228.0, 96.0, 22.0), (244.0, 82.0, 20.0)):
-        tip += feather((194, 266), ang, ln, wd, C["dark"], C["sheen"], C["dark_deep"])
+    if hen:
+        for ang, ln, wd in ((216.0, 34.0, 18.0), (236.0, 38.0, 18.0)):
+            tip += feather((200, 276), ang, ln, wd, C["dark"], C["dark_light"], C["dark_deep"])
+    else:
+        for ang, ln, wd in ((212.0, 78.0, 20.0), (228.0, 96.0, 22.0), (244.0, 82.0, 20.0)):
+            tip += feather((194, 266), ang, ln, wd, C["dark"], C["sheen"], C["dark_deep"])
     part("tail-tip", "Tail Tip", "tail_tip", "tail2", 9, tip)
 
     open_wing(J, "far", 14, WING_FAR, secondaries=5, sec_len=58.0, sec_w=22.0, primaries=5, prim_w=22.0, prim_spread=9.0)
@@ -125,13 +139,17 @@ def parts():
          outlined(folded, C["white"], items, "clip-folded"), ' data-rig-opacity="wing.folded" data-rig-default="1"')
     open_wing(J, "near", 60, WING, secondaries=5, sec_len=58.0, sec_w=22.0, primaries=5, prim_w=22.0, prim_spread=9.0)
 
-    head_parts()
+    head_parts(hen)
 
 
-def head_parts():
+def head_parts(hen: bool = False):
     # The comb: three red lobes behind the crown.
     body = []
-    for cx, cy, rx, ry, rot in ((294, 186, 7.5, 13.0, -24.0), (307, 179, 8.0, 15.0, -4.0), (320, 185, 7.0, 12.0, 22.0)):
+    lobes = ((294, 186, 7.5, 13.0, -24.0), (307, 179, 8.0, 15.0, -4.0), (320, 185, 7.0, 12.0, 22.0))
+    if hen:
+        # a small comb, low on the crown
+        lobes = ((300, 189, 5.0, 6.5, -20.0), (309, 186, 5.5, 7.5, -4.0), (318, 189, 5.0, 6.0, 20.0))
+    for cx, cy, rx, ry, rot in lobes:
         body.append(ellipse(cx, cy, rx, ry, C["red"], INK, 2 * OW, rot=rot))
         body.append(ellipse(cx - 1.5, cy - 3, rx * 0.4, ry * 0.45, C["red_light"], rot=rot))
     sil = smooth(HEAD)
@@ -147,8 +165,10 @@ def head_parts():
     ]
     body += outlined(sil, C["white"], items, "clip-head")
     # The wattle, hanging under the chin.
-    body += outlined(smooth([(316, 230), (326, 232), (328, 248), (322, 258), (314, 250)]), C["red"],
-                     [ellipse(319, 240, 2.4, 5.0, C["red_light"])], "clip-wattle")
+    wattle = [(316, 230), (325, 232), (326, 242), (321, 248), (315, 243)] if hen else \
+        [(316, 230), (326, 232), (328, 248), (322, 258), (314, 250)]
+    body += outlined(smooth(wattle), C["red"], [ellipse(319, 238 if hen else 240, 2.0 if hen else 2.4,
+                                                        3.0 if hen else 5.0, C["red_light"])], "clip-wattle")
     upper = smooth([(324, 204, True), (338, 208), (348, 218, True), (336, 220), (324, 220, True)])
     body += outlined(upper, C["beak"], [line([(328, 212), (340, 215)], C["beak_dark"], 1.2)], "clip-beak")
     part("head", "Head", "head", "head", 70, body)
@@ -166,9 +186,23 @@ def head_parts():
     })
 
 
-def draw_side() -> str:
+def draw_side(hen: bool = False) -> str:
     svg.configure(dx=0.0, dy=0.0, ink=INK, ow=OW, colors=C)
-    parts()
+    parts(hen)
+    if hen:
+        return svg.document(
+            size=(W, H),
+            design="chicken-hen-side",
+            layer_id="chicken-hen-side",
+            label="Chicken Hen - Side Right",
+            comment=[
+                "  <!-- The hen of the chicken: the cockerel's breed with a small comb and wattle",
+                "       and a short tail, side view facing right, on a 512x512 drawing whose ground",
+                "       is y=416 (published at 0.25). rigged/chicken_hen/ turns its parts about their",
+                "       joints. The hidden Rig Joints layer marks every joint. -->",
+            ],
+            joints=svg.joints_layer(J_HEN),
+        )
     return svg.document(
         size=(W, H),
         design="chicken-side",
@@ -187,6 +221,8 @@ def draw_side() -> str:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    if len(sys.argv) not in (2, 3):
         raise SystemExit(__doc__)
     Path(sys.argv[1]).write_text(draw_side())
+    if len(sys.argv) == 3:
+        Path(sys.argv[2]).write_text(draw_side(hen=True))

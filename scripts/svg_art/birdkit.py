@@ -11,7 +11,7 @@ bones (``wing.open``).
 from __future__ import annotations
 
 import math
-from typing import Dict, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import svgkit as svg
 from svgkit import clipped, ellipse, line, part, path, smooth
@@ -129,4 +129,34 @@ def eye_states(prefix: str, bone: str, z: float, states: Dict[str, list]) -> Non
         part(f"{prefix}-{name}", f"Eye - {name.title()}", f"{prefix.replace('-', '_')}_{name}", bone, z, items, extra)
 
 
-__all__ = ("ellipse", "eye_states", "feather", "legs", "line", "open_wing", "outlined", "part", "path", "smooth")
+def tube(centre: Sequence[Point], r0: float, r1: float) -> List[tuple]:
+    """The outline of a tapered tube along ``centre`` (a neck), as points for
+    ``smooth``: down one side and back up the other."""
+    left, right = [], []
+    n = len(centre) - 1
+    for i, (x, y) in enumerate(centre):
+        ax, ay = centre[max(0, i - 1)]
+        bx, by = centre[min(n, i + 1)]
+        d = math.hypot(bx - ax, by - ay)
+        nx, ny = -(by - ay) / d, (bx - ax) / d
+        r = r0 + (r1 - r0) * i / n
+        left.append((x + nx * r, y + ny * r))
+        right.append((x - nx * r, y - ny * r))
+    return left + right[::-1]
+
+
+def along(centre: Sequence[Point], u: float) -> Point:
+    """The point ``u`` (0..1) of the way along the polyline ``centre``."""
+    x = u * (len(centre) - 1)
+    i = min(len(centre) - 2, int(x))
+    t = x - i
+    return (centre[i][0] + (centre[i + 1][0] - centre[i][0]) * t, centre[i][1] + (centre[i + 1][1] - centre[i][1]) * t)
+
+
+def shag(edge: Sequence[Point], n: int, length: float, fill: str, tip: Optional[str] = None, lean: float = 0.3) -> list:
+    """A shaggy fringe of plumage hanging off ``edge`` (drawn under the body)."""
+    return svg.fringe(list(edge), n, length, lean, fill, tip, ow=1.1, inset=10.0, jitter=0.25)
+
+
+__all__ = ("along", "ellipse", "eye_states", "feather", "legs", "line", "open_wing", "outlined", "part", "path", "shag",
+           "smooth", "tube")

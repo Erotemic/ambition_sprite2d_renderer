@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Build the chicken's rig document from its SVG.
+"""Build the rig documents of the chicken (a cockerel) and of its hen.
 
-The SVG ``data/characters/chicken/chicken.svg`` owns the art and says where
-every joint is; ``rigbuild.creature_rig``, with the ``bird`` anatomy, derives
+The SVGs ``data/characters/chicken/chicken.svg`` and
+``data/characters/chicken_hen/chicken_hen.svg`` own the art and say where
+every joint is (the hen has the cockerel's joints, so the two share the clips); ``rigbuild.creature_rig``, with the ``bird`` anatomy, derives
 the skeleton, binds every part to its bone and refreshes the SVG's rig
 catalog. This script supplies only what the drawing cannot state: the frame,
 the rows and the clips. It never draws.
@@ -284,13 +285,31 @@ SPEC = B.bird_spec(
 )
 
 
+#: The hen: the same joints (but for a shorter tail), so the same clips.
+HEN_SPEC = B.bird_spec(
+    name="chicken_hen",
+    svg_path=PKG / "data" / "characters" / "chicken_hen" / "chicken_hen.svg",
+    rig_path=PKG / "targets" / "characters" / "rigged" / "chicken_hen" / "chicken_hen_side.rig.json",
+    view_label="Chicken Hen - Side Right",
+    scale=0.25,
+    svg_center_x=CENTER_X,
+    svg_ground_y=GROUND_Y,
+    frame_size=(128, 128),
+    rows=ROWS,
+    clips=CLIPS,
+    defaults=DEFAULTS,
+    angle_channels=frozenset({"body"}),
+)
+
+
 def main(argv: List[str] | None = None) -> int:
     del argv
-    missing = sorted({name for name, *_ in SPEC.rows} - set(SPEC.clips))
-    if missing:
-        raise SystemExit(f"{SPEC.name}: rows without clips: {missing}")
-    for path in B.write(SPEC):
-        print(path.relative_to(ROOT))
+    for spec in (SPEC, HEN_SPEC):
+        missing = sorted({name for name, *_ in spec.rows} - set(spec.clips))
+        if missing:
+            raise SystemExit(f"{spec.name}: rows without clips: {missing}")
+        for path in B.write(spec):
+            print(path.relative_to(ROOT))
     return 0
 
 
