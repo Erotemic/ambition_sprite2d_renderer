@@ -366,6 +366,150 @@ def forest(layer_key: str, art: Art) -> np.ndarray:
 
 
 # ---------------------------------------------------------------------------
+# The primeval jungle: the land of the dinosaurs, under a volcano
+# ---------------------------------------------------------------------------
+
+PRIMEVAL = {
+    "top": (58, 96, 110),
+    "mid": (214, 168, 108),
+    "glow": (255, 214, 140),
+    "mist": (206, 214, 170),
+    "far": (62, 104, 84),
+    "near": (10, 30, 20),
+    "near_light": (44, 92, 52),
+    "fire": (255, 120, 52),
+    "smoke": (92, 78, 84),
+}
+
+
+def _fern(pen: Pen, rng, u: float, v: float, size: float) -> None:
+    """A tree fern or a cycad that stands at `(u, v)`: a short thick trunk
+    and a crown of long fronds that arch out and hang."""
+    trunk = size * rng.uniform(0.25, 0.5)
+    pen.line([(u, v + 0.01), (u + rng.uniform(-0.004, 0.004), v - trunk)], size * 0.09)
+    top = (u, v - trunk)
+    for k in range(9):
+        angle = -168.0 + k * (156.0 / 8.0) + rng.uniform(-6.0, 6.0)
+        length = size * rng.uniform(0.7, 1.0)
+        tip = polar(*top, length, angle)
+        tip = (tip[0], tip[1] + length * 0.5)
+        ctrl = polar(*top, length * 0.62, angle)
+        ctrl = (ctrl[0], ctrl[1] - length * 0.2)
+        prev = top
+        for i in range(1, 11):
+            t = i / 10.0
+            x = (1 - t) ** 2 * top[0] + 2 * (1 - t) * t * ctrl[0] + t * t * tip[0]
+            y = (1 - t) ** 2 * top[1] + 2 * (1 - t) * t * ctrl[1] + t * t * tip[1]
+            pen.line([prev, (x, y)], size * 0.035 * (1.0 - t * 0.6))
+            # the leaflets, to each side of the rib
+            leaf = size * 0.11 * (1.0 - abs(t - 0.45))
+            pen.line([(x, y - leaf * 0.5), (x, y + leaf)], size * 0.02)
+            prev = (x, y)
+
+
+def _sauropod(pen: Pen, u: float, v: float, size: float, facing: float = 1.0) -> None:
+    """A long-necked dinosaur that stands at `(u, v)`, its head `facing` way."""
+    f = facing
+    pen.ellipse(u, v - size * 0.42, size * 0.42, size * 0.22)
+    # the neck, up and forward to a small head
+    pen.poly([(u + f * size * 0.22, v - size * 0.54), (u + f * size * 0.62, v - size * 1.18), (u + f * size * 0.72, v - size * 1.16),
+              (u + f * size * 0.40, v - size * 0.40)])
+    pen.ellipse(u + f * size * 0.72, v - size * 1.19, size * 0.09, size * 0.05)
+    # the tail, level and long
+    pen.poly([(u - f * size * 0.30, v - size * 0.56), (u - f * size * 1.10, v - size * 0.40), (u - f * size * 0.30, v - size * 0.30)])
+    for du in (-0.26, -0.12, 0.12, 0.26):
+        pen.rect(u + du * size - size * 0.05, v - size * 0.34, u + du * size + size * 0.05, v + 0.004)
+
+
+def primeval(layer_key: str, art: Art) -> np.ndarray:
+    p = PRIMEVAL
+    crater = (0.70, 0.36)
+    if layer_key == "sky":
+        horizon = mix(p["mid"], p["glow"], 0.6)
+        layer = art.opaque(art.ramp([(0.0, p["top"]), (0.34, mix(p["top"], p["mid"], 0.6)), (HORIZON - 0.02, horizon), (0.72, p["far"]), (1.0, p["top"])]))
+        art.light(layer, art.spot(0.30, 0.52, 0.55, 2.0, squash=1.5), p["glow"], 0.45)
+        # The volcano: a cone far off, and its smoke that the wind carries.
+        image, pen = art.drawing()
+        cu, cv = crater
+        pen.poly([(cu - 0.30, HORIZON + 0.02), (cu - 0.035, cv), (cu + 0.035, cv), (cu + 0.34, HORIZON + 0.02)])
+        cone = art.mask_of(image, blur=0.6)
+        art.tint(layer, cone, mix(p["far"], p["mid"], 0.50), 0.86)
+        smoke = cloud_mask(art, "smoke", 0.20, 0.17, cells=2.6, cover=0.50, soft=0.2) * smoothstep(0.30, 0.9, art.u) * (art.v < cv + 0.02)
+        plume = art.spot(cu + 0.03, cv - 0.07, 0.11, 1.4, squash=0.55)
+        smoke = np.clip(smoke + plume * 0.9, 0.0, 1.0)
+        art.tint(layer, smoke, p["smoke"], 0.72)
+        art.light(layer, art.spot(cu, cv - 0.01, 0.07, 2.2), p["fire"], 0.85)
+        # Flyers a long way off: small shapes with bent wings.
+        birds, bird_pen = art.drawing()
+        rng = art.rand("flyers")
+        for _ in range(7):
+            u, v, w = rng.uniform(0.06, 0.58), rng.uniform(0.14, 0.40), rng.uniform(0.010, 0.020)
+            bird_pen.line([(u - w, v - w * 0.2), (u - w * 0.4, v - w * 0.5), (u, v), (u + w * 0.4, v - w * 0.5), (u + w, v - w * 0.2)], 0.0022)
+        art.tint(layer, art.mask_of(birds), p["near"], 0.62)
+        # Two far ranges of jungle hills, with mist between.
+        for tag, base, amp, colour, amount in (("range a", 0.55, 0.06, mix(p["far"], p["mid"], 0.42), 0.80), ("range b", 0.59, 0.05, mix(p["far"], p["mid"], 0.18), 0.90)):
+            hills, _ = art.ridge(tag, base, amp, cells=4.0, octaves=5, sharp=0.2)
+            art.tint(layer, hills, colour, amount)
+            art.tint(layer, fog(art, (tag, "mist"), base + 0.05, 0.06), p["mist"], 0.50)
+        art.grain(layer, "grain")
+        return layer
+    if layer_key == "far_backplate":
+        rng = art.rand("far jungle")
+        ground, line = art.ridge("jungle ridge", HORIZON + 0.02, 0.03, cells=4.0, octaves=4)
+        image, pen = art.drawing()
+        for _ in range(26):
+            u = rng.random()
+            v = float(line[min(art.n - 1, int(u * art.n))])
+            palm(pen, rng, u, v + 0.01, rng.uniform(0.08, 0.15), rng.uniform(-0.03, 0.03))
+        for _ in range(30):
+            u = rng.random()
+            v = float(line[min(art.n - 1, int(u * art.n))])
+            _fern(pen, rng, u, v + 0.012, rng.uniform(0.03, 0.055))
+        # Two long-necks that feed at the edge of the trees.
+        _sauropod(pen, 0.22, float(line[int(0.22 * art.n)]) + 0.012, 0.16, 1.0)
+        _sauropod(pen, 0.50, float(line[int(0.50 * art.n)]) + 0.014, 0.10, -1.0)
+        mask = np.maximum(ground, art.mask_of(image))
+        layer = solid(art, mask, mix(p["far"], p["mid"], 0.20), scale(p["far"], 0.8), 0.38, 0.68, "jungle", 0.08)
+        art.light(layer, art.rim(mask, -0.003, 0.003, 0.6) * mask, p["glow"], 0.34)
+        haze(art, layer, p["mist"], 0.18, HORIZON + 0.05)
+        return layer
+    if layer_key == "near_background":
+        rng = art.rand("near jungle")
+        image, pen = art.drawing()
+        ground, _ = art.ridge("ground", 0.70, 0.016, cells=5.0, octaves=3)
+        # Great trunks at each side, with vines that hang between them.
+        for u, w in ((0.045, 0.030), (0.175, 0.018), (0.86, 0.024), (0.965, 0.034)):
+            lean = rng.uniform(-0.02, 0.02)
+            pen.poly([(u - w, 0.74), (u - w * 0.7 + lean, 0.0), (u + w * 0.7 + lean, 0.0), (u + w, 0.74)])
+            for k in range(3):
+                # a root that spreads at the foot
+                side = rng.choice([-1, 1])
+                pen.poly([(u + side * w * 0.6, 0.66), (u + side * (w + 0.03 + 0.012 * k), 0.74), (u + side * w * 0.2, 0.74)])
+        for _ in range(9):
+            u0, u1 = sorted((rng.uniform(0.0, 1.0), rng.uniform(0.0, 1.0)))
+            sag = rng.uniform(0.08, 0.20)
+            pen.line([(u0 + (u1 - u0) * i / 14.0, sag * 4.0 * (i / 14.0) * (1.0 - i / 14.0) + rng.uniform(0.0, 0.004)) for i in range(15)], 0.0026)
+        # Palms and tree ferns across the view; the ferns are big and near.
+        for _ in range(5):
+            palm(pen, rng, rng.uniform(0.22, 0.80), 0.70, rng.uniform(0.20, 0.30), rng.uniform(-0.05, 0.05))
+        for _ in range(11):
+            _fern(pen, rng, rng.uniform(0.0, 1.0), 0.71, rng.uniform(0.06, 0.11))
+        # Leaves that hang from the canopy over the view.
+        canopy = smoothstep(0.50, 0.56, art.noise("canopy", cells=8.0, octaves=5) * smoothstep(0.30, 0.10, art.v))
+        mask = np.maximum.reduce([ground, art.mask_of(image), canopy])
+        layer = solid(art, mask, mix(p["near"], p["near_light"], 0.55), p["near"], 0.22, 0.72, "leaves", 0.12)
+        art.light(layer, art.rim(mask, -0.003, 0.003, 0.4) * mask, p["glow"], 0.34)
+        art.shade(layer, art.rim(mask, 0.005, -0.003, 1.2) * mask, 0.28)
+        haze(art, layer, p["far"], 0.12, 0.73)
+        return layer
+    layer = art.blank()
+    art.put(layer, shafts(art, "sun shafts", 6, 0.14, 0.0, 0.82, 0.05), p["glow"], 0.16)
+    art.put(layer, fog(art, "ground mist", 0.69, 0.15), p["mist"], 0.34)
+    vignette(art, layer, p["near"], 0.36)
+    return layer
+
+
+# ---------------------------------------------------------------------------
 # The water: under the sea, by a drowned ruin
 # ---------------------------------------------------------------------------
 

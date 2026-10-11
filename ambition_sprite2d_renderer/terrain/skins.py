@@ -90,6 +90,8 @@ SKINS: tuple[Skin, ...] = (
     # A town that sank: cut stone of many sizes, its corners worn, weed on it.
     Skin("water", "ruin", (30, 84, 104), (8, 34, 52), (82, 152, 162), (150, 240, 200), "moss", (36, 132, 108), "weed", "slab"),
     Skin("forest", "earth", (60, 46, 36), (24, 18, 14), (106, 86, 62), (236, 222, 120), "grass", (84, 140, 62), "roots", "plank"),
+    # The land of the dinosaurs: red earth under deep green.
+    Skin("primeval", "earth", (86, 56, 36), (34, 20, 12), (136, 98, 62), (255, 190, 90), "grass", (58, 146, 62), "roots", "plank"),
     # The islands in the sky are rock that broke off, not a wall that was laid.
     Skin("skybridge", "rock", (150, 164, 198), (86, 100, 142), (216, 224, 242), (255, 236, 150), "grass", (112, 178, 96), "roots", "slab"),
     Skin("open_sky", "rock", (176, 164, 150), (104, 92, 92), (232, 222, 204), (255, 240, 170), "grass", (126, 184, 92), "roots", "plank"),
