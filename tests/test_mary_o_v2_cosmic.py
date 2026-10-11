@@ -1,0 +1,54 @@
+"""Eternal Cosmic Mary-O: her sheet says what the game reads from it."""
+
+from __future__ import annotations
+
+from ambition_sprite2d_renderer.registry import discover_all_targets
+from ambition_sprite2d_renderer.targets.characters import _mary_o_v2_model as model
+from ambition_sprite2d_renderer.targets.characters import mary_o_v2_cosmic as cosmic
+from ambition_sprite2d_renderer.targets.characters._mary_o_v2_cosmic_art import S, frame
+
+
+def test_the_target_is_discoverable() -> None:
+    assert cosmic.TARGET in discover_all_targets().targets
+
+
+def test_her_body_is_the_body_of_her_grown_forms_at_half_the_pixels() -> None:
+    """Her sheet is published as drawn, and her other sheets at two times
+    that. The game gives her the height of her grown forms, so her body box
+    must be theirs, at half the pixels."""
+    fire = model.form_collision_box(model.FIRE_FORM)
+    box = cosmic.STAGE.body_box_px()
+    scale = model.OUTPUT_RESOLUTION_SCALE
+    assert (box["w"], box["h"]) == (fire["w"] / scale, fire["h"] / scale)
+    feet_x, feet_y = cosmic.STAGE.feet_px
+    assert box["y"] + box["h"] == feet_y
+    assert abs(box["x"] + box["w"] / 2.0 - feet_x) <= 0.5
+
+
+def test_the_transformation_is_one_row_as_long_as_the_game_holds_her() -> None:
+    rows = {name: (frames, ms) for name, frames, ms in cosmic.ROWS}
+    assert rows["transform"] == (cosmic.TRANSFORM_FRAMES, cosmic.TRANSFORM_FRAME_MS)
+    assert len(cosmic.transformation()) == cosmic.TRANSFORM_FRAMES
+
+
+def test_each_frame_is_in_its_stage() -> None:
+    """A wing or a star that goes out of the stage is cut at its edge. The
+    transformation is the exception: its column of light is the height of the
+    frame, and the star comes down from over it."""
+    stage = cosmic.STAGE
+    for name, frames, _ms in cosmic.ROWS:
+        if name == "transform":
+            continue
+        for index in range(frames):
+            box = frame(stage, cosmic.look_for(name, index)).getbbox()
+            assert box is not None, (name, index)
+            assert box[0] > 0 and box[1] > 0 and box[2] < stage.w * S and box[3] < stage.h * S, (name, index, box)
+
+
+def test_the_last_frame_of_the_transformation_is_her_idle() -> None:
+    """The transformation ends on the frame her idle starts on, so the game
+    goes from one to the other with no jump."""
+    stage = cosmic.STAGE
+    last = frame(stage, cosmic.transformation()[-1])
+    idle = frame(stage, cosmic.look_for("idle", 0))
+    assert last.tobytes() == idle.tobytes()
