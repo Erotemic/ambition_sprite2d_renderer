@@ -76,7 +76,28 @@ ANIMATIONS: List[Tuple[str, int, int]] = [
     # conductor pins these by name while the gnu bucks and stomps.
     ("buck", 8, 70),
     ("stomp", 8, 70),
+    # The rows of the fight with arms and portals (`giant_art`). Each row above
+    # draws the giant with its arms in two portals' lines (the drawing is cut
+    # there; the game draws the lines), and its fists are bodies of their own.
+    # `armed_*`: the same row with whole arms and the fists on them (phase 1).
+    # `armed_rest_b` is a copy of `armed_rest`: a pinned row does not loop, so
+    # the game goes from one to the other. `punch_*`: the right fist goes down
+    # into a portal's line. `clamp`: the arms go out and into the two lines.
+    ("armed_rest", 8, 110),
+    ("armed_rest_b", 8, 110),
+    ("armed_hit", 5, 80),
+    ("armed_buck", 8, 70),
+    ("punch_windup", 6, 70),
+    ("punch_strike", 5, 70),
+    ("punch_hold", 4, 70),
+    ("punch_recover", 6, 70),
+    ("clamp", 8, 80),
 ]
+
+# The rows whose giant has its fists on its arms: the fused sheet draws no
+# fist beside it.
+_ROWS_WITH_FISTS_ON = ("armed_rest", "armed_rest_b", "armed_hit", "armed_buck",
+                       "punch_windup", "punch_strike", "punch_hold", "punch_recover")
 
 # Output files: the runtime consumes the split body/hands pair plus the
 # canonical SheetRecord RON. Runtime collision/hurtbox metadata is stored in
@@ -403,6 +424,15 @@ _FUSED_SCHOLAR_ROW = {
     "death": "death",
     "buck": "brace",
     "stomp": "point",
+    "armed_rest": "rest",
+    "armed_rest_b": "rest",
+    "armed_hit": "hit",
+    "armed_buck": "brace",
+    "punch_windup": "point",
+    "punch_strike": "point",
+    "punch_hold": "point",
+    "punch_recover": "conduct",
+    "clamp": "invoke",
 }
 # On the giant he is drawn at this multiple of his design size, so he stands as
 # tall as the figure he replaced (~45 design px, sole to wig).
@@ -548,10 +578,14 @@ def draw_frame(
         )
 
     left, right = _fused_fists(anim, phase)
-    if layer in ("full", "hands"):
+    if layer in ("full", "hands") and anim not in _ROWS_WITH_FISTS_ON:
         fist = _fist_rest()
-        for (x, y), image in ((right, fist), (left, fist.transpose(Image.FLIP_LEFT_RIGHT))):
-            frame.alpha_composite(image, (round(x - image.width * 0.5), round(y - image.height * 0.5)))
+        bx, by, bw, bh = _giant.FIST_BBOX
+        for (x, y), image, cx in (
+            (right, fist, bx + bw * 0.5),
+            (left, fist.transpose(Image.FLIP_LEFT_RIGHT), fist.width - (bx + bw * 0.5)),
+        ):
+            frame.alpha_composite(image, (round(x - cx), round(y - (by + bh * 0.5))))
 
     head = _giant.head_place(pose)
     _record_parts(
@@ -1379,17 +1413,12 @@ def build_spritesheet(outdir: Path) -> List[Path]:
 
 # ── The fist, alone ──────────────────────────────────────────────────────────
 # A frame that holds one `draw_hand` with room for its impact glow below.
-FIST_FRAME = (144, 128)
-# Rows: `rest` idles, `fall` is a fist coming down (the slam glow under it), and
-# `hit` is the flinch when the player strikes it.
-FIST_ANIMATIONS: List[Tuple[str, int, int]] = [
-    ("rest", 10, 110),
-    ("fall", 6, 70),
-    ("hit", 6, 80),
-    # Driven into the floor and straining to come free: the conductor pins it
-    # while the fist is `stuck` (and hittable).
-    ("stuck", 8, 70),
-]
+FIST_FRAME = _giant.FIST_FRAME
+# Its rows (`giant_art.FIST_ROWS`): `rest` idles, `fall` is a fist that comes
+# down, `hit` is the flinch when the player strikes it, `stuck` is a fist in
+# the floor that pulls to come free. `through_*` is the far side of the punch
+# of phase 1, and `none` is a fist that is not there.
+FIST_ANIMATIONS: List[Tuple[str, int, int]] = list(_giant.FIST_ROWS)
 
 
 def draw_fist_frame(anim: str, frame_idx: int, frame_count: int) -> Image.Image:
@@ -1440,7 +1469,6 @@ def build_fist_sheet(outdir: Path, policy) -> List[Path]:
         )
     page_path = outdir / f"{FIST_TARGET_NAME}_spritesheet.png"
     result.pages[0].save(str(page_path), "PNG")
-    rest = [rendered[(0, f)] for f in range(FIST_ANIMATIONS[0][1])]
     ron_path = outdir / f"{FIST_TARGET_NAME}_spritesheet.ron"
     ron_path.write_text(
         _runtime_spritesheet_ron(
@@ -1449,7 +1477,8 @@ def build_fist_sheet(outdir: Path, policy) -> List[Path]:
             [f"{FIST_TARGET_NAME}_spritesheet.png"],
             target=FIST_TARGET_NAME,
             frame_size=FIST_FRAME,
-            metrics_ron=_authored_body_metrics_ron(_union_bbox(rest)),
+            # The fist's body is its mitt, not the fore arm behind it.
+            metrics_ron=_authored_body_metrics_ron(_giant.FIST_BBOX),
         ),
         encoding="utf8",
     )

@@ -590,6 +590,84 @@ def mix_stance(a: dict, b: dict, u: float) -> dict:
     return out
 
 
+# ---------------------------------------------------------------------------
+# The arms. The sheets of the fight draw them: whole (an arm to its fist), or
+# into a PORTAL. The drawing has no portal in it: an arm that goes into one is
+# cut at the portal's line, and the game draws the line there.
+
+#: Where a shoulder's arm starts (before the stance lifts it).
+ARM_ROOT_L = (826.0, 506.0)
+ARM_ROOT_R = (1258.0, 506.0)
+#: The line the right fist goes DOWN into in phase 1: its middle, and its
+#: half length. A flat line (before the stance lifts it).
+PUNCH_LINE = ((1400.0, 585.0), 100.0)
+#: The two lines the arms are in from the end of phase 1: each stands up,
+#: past the elbow. Their middles (before the stance lifts them).
+CLAMP_LINE_L = (676.0, 580.0)
+CLAMP_LINE_R = (1412.0, 580.0)
+CLAMP_HALF = 80.0
+_HANG_L = (ARM_ROOT_L, (792.0, 660.0), (822.0, 800.0))
+_HANG_R = (ARM_ROOT_R, (1304.0, 660.0), (1282.0, 800.0))
+_OUT_L = (ARM_ROOT_L, (748.0, 560.0), (600.0, 580.0))
+_OUT_R = (ARM_ROOT_R, (1340.0, 560.0), (1488.0, 580.0))
+
+
+def _whole_arms(sway=0.0, pts=None):
+    left, right = pts or (_HANG_L, _HANG_R)
+    move = lambda p, k: (p[0] + sway * k, p[1])  # noqa: E731
+    return [dict(kind="limb", name="arm-left", pts=(left[0], move(left[1], 0.5), move(left[2], 1.0))),
+            dict(kind="limb", name="arm-right", pts=(right[0], move(right[1], 0.5), move(right[2], 1.0)))]
+
+
+def _clamped_arms(amount=1.0):
+    """Each arm out to its side and into its line. ``amount`` 0 is the arm
+    that hangs, 1 is the arm in the line."""
+    left, right = mix(_HANG_L, _OUT_L, amount), mix(_HANG_R, _OUT_R, amount)
+    return [dict(kind="limb", name="arm-left", pts=left, cut=("x", CLAMP_LINE_L[0], False)),
+            dict(kind="limb", name="arm-right", pts=right, cut=("x", CLAMP_LINE_R[0], True))]
+
+
+def _punch_arm(depth, first, last):
+    """The right arm as one curve, its end held straight down at the punch's
+    line. ``depth`` is how far the wrist is past the line (less than 0: it is
+    not through yet)."""
+    (x, y), _half = PUNCH_LINE
+    wrist = (x, y + depth)
+    return dict(kind="soft", name="arm-right", toward=(0.0, 1.0), cut=("y", y, True),
+                handles=(ARM_ROOT_R, (ARM_ROOT_R[0] + first[0], ARM_ROOT_R[1] + first[1]), (wrist[0], wrist[1] - last), wrist))
+
+
+#: The keys of the punch: how far the wrist is past the line, where the arm's
+#: first handle is from the shoulder, how long its last handle is.
+_PUNCH_UP = (-255.0, (60.0, -170.0), 120.0)
+_PUNCH_BACK = (-295.0, (50.0, -190.0), 120.0)
+_PUNCH_DOWN = (145.0, (110.0, -40.0), 200.0)
+#: How far past its line the wrist is in the far picture of the punch (the
+#: fist's own sheet draws that side). The same numbers as the giant's side.
+PUNCH_DEPTH_UP = _PUNCH_UP[0]
+PUNCH_DEPTH_DOWN = _PUNCH_DOWN[0]
+
+
+def punch_keys(anim: str, phase: float):
+    """The punch at ``phase`` of one of its four rows: (depth, first handle,
+    last handle). The giant's side and the fist's side both draw from this."""
+    if anim.endswith("windup"):
+        # The fist goes up over the line, and a little farther back.
+        if phase < 0.6:
+            return mix((-40.0, (30.0, 90.0), 60.0), _PUNCH_UP, _ease(phase / 0.6))
+        return mix(_PUNCH_UP, _PUNCH_BACK, _ease((phase - 0.6) / 0.4))
+    if anim.endswith("strike"):
+        u = min(1.0, phase / 0.8)
+        return mix(_PUNCH_BACK, _PUNCH_DOWN, u * u * u)
+    if anim.endswith("hold"):
+        give = 12.0 * abs(math.sin(2.0 * math.pi * phase))
+        return (_PUNCH_DOWN[0] - give, _PUNCH_DOWN[1], _PUNCH_DOWN[2])
+    # recover: it comes back out the same way, and the arm goes down to hang.
+    if phase < 0.6:
+        return mix(_PUNCH_DOWN, _PUNCH_UP, _ease(phase / 0.6))
+    return mix(_PUNCH_UP, (-40.0, (30.0, 90.0), 60.0), _ease((phase - 0.6) / 0.4))
+
+
 #: Down, at the end of its fight: the body low, the legs folded under it.
 FALLEN = dict(
     lift=(18.0, 70.0), rump=(352.0, 800.0), belly=((396.0, 930.0), (1096.0, 936.0)), expr="sleepy",
@@ -616,7 +694,16 @@ def pose_for(anim: str, phase: float) -> dict:
     """
     two_pi = 2.0 * math.pi
     sloped = STANCES["sloped"]
-    pose = dict(stance=sloped, expr=EXPRESSIONS["ordered"], head=(0.0, 0.0), dust=0.0)
+    pose = dict(stance=sloped, expr=EXPRESSIONS["ordered"], head=(0.0, 0.0), dust=0.0, arms=[])
+    # A row draws the giant with its arms in the two lines: its fists are
+    # bodies of their own. A row `armed_*` is the same body with whole arms
+    # and its fists on them (phase 1). `*_b` is a copy of a row: a pinned row
+    # does not loop, so the game goes from a row to its copy and back.
+    armed = anim.startswith("armed_")
+    if armed:
+        anim = anim[len("armed_"):]
+    if anim.endswith("_b"):
+        anim = anim[:-2]
 
     def breathe(st, amount=1.0):
         s = dict(st)
@@ -688,6 +775,30 @@ def pose_for(anim: str, phase: float) -> dict:
         pose["dust"] = max(0.0, 1.0 - (phase - 0.7) / 0.3) if phase >= 0.7 else 0.0
         pose["head"] = (0.0, 10.0 * (1.0 if phase >= 0.7 else 0.0) * (1.0 - (phase - 0.7) / 0.3))
         pose["expr"] = face("angry" if phase < 0.85 else "serious")
+    elif anim.startswith("punch_"):
+        depth, first, last = punch_keys(anim, phase)
+        struck = anim in ("punch_strike", "punch_hold")
+        s = dict(sloped)
+        s["lift"] = (sloped["lift"][0], sloped["lift"][1] + (10.0 if struck else -4.0))
+        pose["stance"] = s
+        pose["head"] = (0.0, 8.0 if struck else 0.0)
+        pose["expr"] = face("angry" if struck or anim == "punch_recover" else "serious")
+        pose["arms"] = [_whole_arms()[0], _punch_arm(depth, first, last)]
+        return pose
+    elif anim == "clamp":
+        # The arms go out to each side and into the lines; the lines close on them.
+        out = _ease(min(1.0, phase / 0.7))
+        pose["stance"] = breathe(sloped, 0.5)
+        pose["expr"] = face("dazed" if phase < 0.5 else "angry")
+        pose["arms"] = _clamped_arms(out)
+        return pose
+
+    if not armed:
+        pose["arms"] = _clamped_arms(1.0)
+    elif anim == "buck":
+        pose["arms"] = _whole_arms(pts=pose["stance"]["arms"])
+    else:
+        pose["arms"] = _whole_arms(sway=6.0 * math.sin(two_pi * phase) if anim == "rest" else 0.0)
     return pose
 
 
@@ -709,9 +820,68 @@ def _dust(at, amount):
     return out
 
 
+def soft_arm(name, p0, p1, p2, p3, toward):
+    """An arm as one curve (a cubic through four handles), and its fist. Its
+    end goes the way ``toward``: the arm of a punch, which is longer in the
+    blow than at rest."""
+    def at(u):
+        a, b, c, d = (1 - u) ** 3, 3 * u * (1 - u) ** 2, 3 * u * u * (1 - u), u ** 3
+        return (a * p0[0] + b * p1[0] + c * p2[0] + d * p3[0], a * p0[1] + b * p1[1] + c * p2[1] + d * p3[1])
+
+    n = 22
+    mid = [at(k / n) for k in range(n + 1)]
+    left, right, shade, light = [], [], [], []
+    for k, (x, y) in enumerate(mid):
+        ax, ay = mid[max(0, k - 1)]
+        bx, by = mid[min(n, k + 1)]
+        d = math.hypot(bx - ax, by - ay) or 1.0
+        nx, ny = -(by - ay) / d, (bx - ax) / d
+        u = k / n
+        r = 46.0 - 2.0 * u - 9.0 * math.sin(math.pi * u)
+        left.append((x + nx * r, y + ny * r))
+        right.append((x - nx * r, y - ny * r))
+        shade.append((x + nx * r * 0.45, y + ny * r * 0.45))
+        light.append((x - nx * r * 0.55, y - ny * r * 0.55))
+    sil = smooth(left + right[::-1])
+    items = [path(smooth(left + shade[::-1]), C["dark"]),
+             path(smooth(list(light[3:-3]), closed=False), "none", C["light"], 9.0)]
+    ex, ey = mid[n // 2]
+    tuft = smooth([(ex - 30, ey - 6, True), (ex + 30, ey - 6, True), (ex + 26, ey + 30), (ex + 10, ey + 58, True),
+                   (ex, ey + 34), (ex - 12, ey + 64, True), (ex - 26, ey + 28)])
+    body = outlined(tuft, C["mane"], [], None) + outlined(sil, C["fur"], items, f"clip-{name}")
+    fx, fy = p3[0] + toward[0] * 56, p3[1] + toward[1] * 56
+    turn = math.degrees(math.atan2(-toward[1], -toward[0]))
+    body += [f'<g transform="translate({fx:.1f} {fy:.1f}) rotate({turn:.1f})">'] + fist(f"{name}-fist") + ["</g>"]
+    return body
+
+
+def _cut(cid, cut):
+    """A clip to one side of a portal's line: ("x" or "y", where, keep the lower side)."""
+    axis, where, low = cut
+    if axis == "x":
+        x0, x1 = (-9000.0, where) if low else (where, 9000.0)
+        return f'<clipPath id="{cid}"><rect x="{x0}" y="-9000" width="{x1 - x0}" height="18000" /></clipPath>'
+    y0, y1 = (-9000.0, where) if low else (where, 9000.0)
+    return f'<clipPath id="{cid}"><rect x="-9000" y="{y0}" width="18000" height="{y1 - y0}" /></clipPath>'
+
+
+def _draw_arm(spec):
+    name = spec["name"]
+    if spec["kind"] == "soft":
+        body = soft_arm(name, *spec["handles"], spec["toward"])
+    else:
+        n0 = len(svg.PARTS)
+        arm(name, *spec["pts"])
+        body = svg.PARTS.pop(n0)[6]
+    if spec.get("cut"):
+        body = [_cut(f"cut-{name}", spec["cut"]), f'<g clip-path="url(#cut-{name})">'] + body + ["</g>"]
+    part(name, name, name.replace("-", "_"), name.replace("-", "_"), 40, body)
+
+
 def giant_svg(pose: dict, *, arms: bool = False, horns: str = "gnu", view=None) -> str:
     """The giant in ``pose`` as an SVG. ``view`` is (x, y, w, h) in design
-    units; the default is the published frame."""
+    units; the default is the published frame. ``arms`` draws an arm from each
+    shoulder to its fist for a pose that says none."""
     st = pose["stance"]
     lx, ly = st["lift"]
     hx, hy = pose["head"]
@@ -733,9 +903,9 @@ def giant_svg(pose: dict, *, arms: bool = False, horns: str = "gnu", view=None) 
     chest()
     epaulet("epaulet-left", SHOULDER_L, SHOULDER_L[0])
     epaulet("epaulet-right", SHOULDER_R, SHOULDER_R[1])
-    if arms:
-        arm("arm-left", *st["arms"][0])
-        arm("arm-right", *st["arms"][1])
+    drawn = pose.get("arms") or (_whole_arms(pts=st["arms"]) if arms else [])
+    for spec in drawn:
+        _draw_arm(spec)
     n1 = len(svg.PARTS)
     head(pose["expr"], horns)
     if hx or hy:
@@ -795,15 +965,54 @@ def seat_place(pose: dict) -> Tuple[float, float]:
 # ---------------------------------------------------------------------------
 # A fist of the giant, as a body of its own.
 
-#: The frame of the lone fist's sheet.
-FIST_FRAME = (144, 128)
+#: The frame of the lone fist's sheet. Its top edge is the line of the punch's
+#: far portal: the row `through_*` comes down out of it.
+FIST_FRAME = (160, 208)
+#: The fist's BODY in its frame: the mitt and its knuckles. Not its fore arm.
+FIST_BBOX = (34, 82, 92, 76)
+#: Where the far line of a punch is, from the middle of the fist's body, in
+#: pixels of the frame: over it. The game puts the portal there.
+FIST_LINE_OVER = FIST_BBOX[1] + FIST_BBOX[3] * 0.5
+#: The rows of the fist's sheet: its name, its frames, the time of a frame.
+FIST_ROWS = (("rest", 10, 110), ("fall", 6, 70), ("hit", 6, 80), ("stuck", 8, 70),
+             ("through_strike", 5, 70), ("through_hold", 4, 70), ("through_recover", 6, 70), ("none", 1, 110))
+
+
+def _fist_document():
+    w, h = FIST_FRAME
+    cx, cy = FIST_BBOX[0] + FIST_BBOX[2] * 0.5, FIST_BBOX[1] + FIST_BBOX[3] * 0.5
+    # The middle of the fist's body is the design origin.
+    return _document((-2.0 * cx, -2.0 * cy, 2.0 * w, 2.0 * h))
 
 
 def render_fist(anim: str, frame_idx: int, frame_count: int) -> Image.Image:
     """One frame of the RIGHT fist alone: its wrist to the left, its knuckles
-    to the right, as the game holds it. The left fist is its mirror."""
+    to the right, as the game holds it. The left fist is its mirror.
+
+    The fist has a short fore arm behind it, cut where a portal's line is: in
+    the fight the arm of the giant is in a portal, and this is the end of it
+    that comes out. The rows `through_*` are the far side of the punch of
+    phase 1: the fore arm and the fist come DOWN out of the top of the frame.
+    `none` is nothing: a fist that is not there.
+    """
     phase = frame_idx / max(1, frame_count)
     two_pi = 2.0 * math.pi
+    svg.configure(dx=0.0, dy=0.0, ink=INK, ow=OW, colors=C)
+    if anim == "none":
+        return Image.new("RGBA", FIST_FRAME, (0, 0, 0, 0))
+    if anim.startswith("through_"):
+        depth, _first, _last = punch_keys("punch_" + anim[len("through_"):], phase)
+        # The line is over the body by FIST_LINE_OVER; at the full depth of the
+        # blow the fist is on the body's middle.
+        line_y = -2.0 * FIST_LINE_OVER
+        wrist_y = line_y + (PUNCH_DEPTH_DOWN + depth) * (2.0 * FIST_LINE_OVER - 56.0) / (2.0 * PUNCH_DEPTH_DOWN) if depth > -PUNCH_DEPTH_DOWN else line_y - 400.0
+        body = outlined(svg.capsule((0.0, wrist_y - 400.0), (0.0, wrist_y), 40.0, 44.0), C["fur"],
+                        [path(svg.capsule((18.0, wrist_y - 400.0), (18.0, wrist_y), 16.0, 20.0), C["dark"])], "clip-through")
+        body += [f'<g transform="translate(0 {wrist_y + 56.0:.1f}) rotate(-90)">'] + fist("fist") + ["</g>"]
+        part("through", "Through", "through", "fist", 10,
+             [_cut("cut-through", ("y", line_y, False)), '<g clip-path="url(#cut-through)">'] + body + ["</g>"])
+        return _raster(_fist_document(), FIST_FRAME)
+
     dx = dy = turn = 0.0
     extra: List[str] = []
     if anim == "rest":
@@ -825,9 +1034,16 @@ def render_fist(anim: str, frame_idx: int, frame_count: int) -> Image.Image:
         for i, x in enumerate((-80.0, -24.0, 36.0, 88.0)):
             up = (phase * 1.7 + i * 0.27) % 1.0
             extra.append(ellipse(x + dx, 92.0 - 56.0 * up, 6.0 - 3.0 * up, 5.0 - 2.4 * up, C["dark"], INK, 1.2))
-    svg.configure(dx=0.0, dy=0.0, ink=INK, ow=OW, colors=C)
-    body = fist("fist")
+    # The fore arm behind the wrist, cut at its portal's line (drawn knuckles
+    # to the left, then turned over with the fist).
+    stub = outlined(svg.capsule((300.0, 0.0), (92.0, 0.0), 40.0, 44.0), C["fur"],
+                    [path(svg.capsule((300.0, 18.0), (92.0, 18.0), 16.0, 20.0), C["dark"])], "clip-fore-arm")
+    fore = [_cut("cut-fore-arm", ("x", FIST_STUB_LINE, True)), '<g clip-path="url(#cut-fore-arm)">'] + stub + ["</g>"]
     part("fist", "Fist", "fist", "fist", 10,
-         grp(body, f"translate({dx:.2f} {dy:.2f}) rotate({turn:.2f}) scale(-1 1)") + extra)
-    w, h = FIST_FRAME
-    return _raster(_document((-w, -h - 12.0, 2.0 * w, 2.0 * h)), FIST_FRAME)
+         grp(fore + fist("fist"), f"translate({dx:.2f} {dy:.2f}) rotate({turn:.2f}) scale(-1 1)") + extra)
+    return _raster(_fist_document(), FIST_FRAME)
+
+
+#: Where the line of a fist's own portal is behind its wrist, in design
+#: units from the fist's middle (the fist drawn with its knuckles to the left).
+FIST_STUB_LINE = 150.0
