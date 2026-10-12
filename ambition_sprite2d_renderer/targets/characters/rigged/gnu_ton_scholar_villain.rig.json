@@ -1,5 +1,35 @@
 {
  "name": "gnu_ton_scholar_villain",
+ "actor_metadata": {
+  "authoring_description": "GNU-ton the scholar: a small man in a coat and a wig, with a quill and a book. A parody of Isaac Newton. In his boss fight he rides the giant gnu and conducts its fists; on its back, and on a platform-fighter stage, he fights on his own feet.",
+  "gameplay_description": "The quill is long and fast and does little; the book is short and slow and ends a fight. As a boss he conducts from the saddle and fights a player who climbs to him.",
+  "animation_bindings": {
+   "default": {
+    "animation": "rest",
+    "events": []
+   },
+   "action.melee.primary": {
+    "animation": "point",
+    "events": []
+   },
+   "action.special.primary": {
+    "animation": "conduct",
+    "events": []
+   },
+   "action.defense.block": {
+    "animation": "brace",
+    "events": []
+   },
+   "reaction.hit": {
+    "animation": "hit",
+    "events": []
+   },
+   "reaction.death": {
+    "animation": "death",
+    "events": []
+   }
+  }
+ },
  "frame": {
   "width": 240,
   "height": 280,

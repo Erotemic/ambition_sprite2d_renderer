@@ -28,6 +28,7 @@ from ambition_sprite2d_renderer.rigbuild import creature_rig as CR  # noqa: E402
 from ambition_sprite2d_renderer.rigbuild import humanoid as H  # noqa: E402
 
 sys.path.insert(0, str(ROOT / "scripts" / "svg_art"))
+import gnu_ton_scholar_actor as A  # noqa: E402
 from scholar_svg_labels import label_generated_rig_guides, write_object_inventory  # noqa: E402
 
 PACKAGE = ROOT / "ambition_sprite2d_renderer"
@@ -303,6 +304,7 @@ def main() -> None:
     if not ART.exists():
         raise SystemExit(f"Missing SVG: run scripts/svg_art/gnu_ton_scholar_villain_art.py first")
     files = H.write(make_spec())
+    A.stamp(RIG)
     label_generated_rig_guides(ART)
     write_object_inventory(ART, ROOT / "docs" / "authoring" / "gnu_ton_scholar_object_index.csv")
     for file in files:

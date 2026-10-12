@@ -25,6 +25,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import build_gnu_ton_scholar_villain_rig as B  # noqa: E402
+import gnu_ton_scholar_actor as A  # noqa: E402
 import gnu_ton_scholar_fighter_poses as F  # noqa: E402
 from ambition_sprite2d_renderer.rigbuild import creature_rig as CR  # noqa: E402
 from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument  # noqa: E402
@@ -57,6 +58,7 @@ def main():
     RIG.parent.mkdir(parents=True, exist_ok=True)
     text = CR.compact_keys(json.dumps(fighter, indent=1))
     RIG.write_text(text + "\n", encoding="utf8")
+    A.stamp(RIG)
     doc = RigDocument.load(RIG)
     print(f"wrote {RIG.relative_to(ROOT)} ({len(doc.clips)} fighting animations)")
 

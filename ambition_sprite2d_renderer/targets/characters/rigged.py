@@ -20,7 +20,7 @@ from typing import Dict, List
 RIGGED_DIR = Path(__file__).resolve().parent / "rigged"
 
 
-def _make_entry(path: Path) -> dict:
+def _make_entry(path: Path, actor_metadata: dict | None = None) -> dict:
     def render(out_dir: Path, **opts) -> List[Path]:
         del opts
         from ...authoring.rigdoc import RigDocument, render_sheet_for_doc
@@ -36,7 +36,11 @@ def _make_entry(path: Path) -> dict:
         doc = RigDocument.load(path)
         return write_canonical(doc.name, doc.rows(), doc.render_frame, Path(out_dir))
 
-    return {"render": render, "render_canonical": render_canonical}
+    entry = {"render": render, "render_canonical": render_canonical}
+    if actor_metadata:
+        # What the document says of the actor goes to its `*_actor.ron`.
+        entry["actor_metadata"] = actor_metadata
+    return entry
 
 
 def _discover() -> Dict[str, dict]:
@@ -48,7 +52,8 @@ def _discover() -> Dict[str, dict]:
     characters_dir = RIGGED_DIR.parent
     for path in sorted(RIGGED_DIR.glob("*.rig.json")):
         try:
-            name = str(json.loads(path.read_text(encoding="utf8")).get("name", path.stem))
+            doc = json.loads(path.read_text(encoding="utf8"))
+            name = str(doc.get("name", path.stem))
         except Exception:
             continue  # malformed doc: skip registration, GUI can still open it
         # A dedicated character module is a stronger publication contract than
@@ -58,7 +63,7 @@ def _discover() -> Dict[str, dict]:
         # because rigged.py sorts later during discovery.
         if (characters_dir / f"{name}.py").exists():
             continue
-        targets[name] = _make_entry(path)
+        targets[name] = _make_entry(path, doc.get("actor_metadata"))
     return targets
 
 

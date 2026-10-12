@@ -36,6 +36,7 @@ class PackPolicy:
 # per-frame size/anchor compensation, so their frames must NOT be trimmed:
 #   - shrine                — ShrineVisualAnim (rendering/shrine_visuals.rs)
 #   - robot_slash           — one-shot melee effect (rendering/slash_visuals.rs)
+#   - gnu_ton_slash         — the same, for GNU-ton's quill
 #   - glider                — projectile, sprite.rect sub-image (projectile_visuals.rs)
 #   - lasersword            — wielded + projectile item sprite (item_visuals.rs)
 #   - lasersword_with_guns  — pirate gun-sword overlay (pirate_weapon.rs)
@@ -43,6 +44,7 @@ class PackPolicy:
 _UNTRIMMED = (
     "shrine",
     "robot_slash",
+    "gnu_ton_slash",
     "glider",
     "lasersword",
     "lasersword_with_guns",
