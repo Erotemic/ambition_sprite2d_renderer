@@ -417,3 +417,15 @@ lineages:
       - commit: "eae36fc"
         label: "An icon whose head is a hand"
         note: "Seven fingers, two thumbs, an eye in the palm, a halo; it stands on two more hands. Jon: it needs a redesigned sprite. Claude Opus 5.5 declared."
+  ramen_nujan:
+    name: Ramen-nujan
+    ids: [ramen_nujan]
+    paths: ['ramen_nujan', '_ai_era_kit', '_solo_shape_rig']
+    summary: "a front-facing scholar in an aubergine coat, then a round young dreamer with a noodle scarf"
+    eras:
+      - commit: "121f793"
+        label: "Aubergine coat and a stole"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "7ce2ed4"
+        label: "The dreamer with the noodle scarf"
+        note: "Three quarters view, large eyes, a night-blue coat with a constellation, a scarf that trails; chalk-gold mathematics. Jon: redesign the Ramen-Nujan character. Claude Opus 5.5 declared."
