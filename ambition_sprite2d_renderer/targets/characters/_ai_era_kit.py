@@ -59,6 +59,60 @@ def bezier(a: Point, b: Point, c: Point, e: Point, steps: int = 16) -> List[Poin
     return pts
 
 
+Pose = Dict[str, object]
+
+
+def blend(a: Pose, b: Pose, t: float) -> Pose:
+    """The pose ``t`` of the way from ``a`` to ``b``: numbers and tuples of
+    numbers go across, a word changes at the middle."""
+    out: Pose = {}
+    for k, va in a.items():
+        vb = b[k]
+        if isinstance(va, str):
+            out[k] = vb if t >= 0.5 else va
+        elif isinstance(va, tuple):
+            out[k] = tuple(lerp(x, y, t) for x, y in zip(va, vb))  # type: ignore[arg-type]
+        else:
+            out[k] = lerp(float(va), float(vb), t)  # type: ignore[arg-type]
+    return out
+
+
+def keys(u: float, frames: List[Tuple[float, Pose]]) -> Pose:
+    """The pose at ``u`` of a row that goes through ``frames`` (``(when, pose)``)."""
+    if u <= frames[0][0]:
+        return frames[0][1]
+    for (u0, p0), (u1, p1) in zip(frames, frames[1:]):
+        if u <= u1:
+            return blend(p0, p1, ease((u - u0) / max(1e-6, u1 - u0)))
+    return frames[-1][1]
+
+
+def solve(root: Point, target: Point, first: float, second: float, side: float) -> Tuple[Point, Point]:
+    """The middle joint and the end of a two-bone limb from ``root`` toward
+    ``target`` (the end stops short if the limb cannot reach). ``side``: 1
+    bends it to the left of the way it points, -1 to the right."""
+    dx, dy = target[0] - root[0], target[1] - root[1]
+    dist = math.hypot(dx, dy)
+    if dist < 1e-3:
+        dx, dy, dist = 0.0, 1.0, 1.0
+    ux, uy = dx / dist, dy / dist
+    span = max(abs(first - second) + 0.05, min(first + second - 0.05, dist))
+    along = (first * first - second * second + span * span) / (2.0 * span)
+    off = math.sqrt(max(0.0, first * first - along * along))
+    joint = (root[0] + ux * along - uy * off * side, root[1] + uy * along + ux * off * side)
+    return joint, (root[0] + ux * span, root[1] + uy * span)
+
+
+def angle(a: Point, b: Point) -> float:
+    """The turn of the way from ``a`` to ``b``."""
+    return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+
+
+def pin(p: Point) -> Point:
+    """The whole frame pixel nearest ``p``: where an ``aligned`` piece goes."""
+    return (float(round(p[0])), float(round(p[1])))
+
+
 class Kit:
     """The paint box for one frame size."""
 
@@ -153,6 +207,25 @@ class Kit:
             canvas = self.scratch()
             paint(blending_draw(canvas))
             self._pieces[key] = self._cut(canvas)
+        return self._pieces[key]
+
+    def aligned(self, key: tuple, paint: Callable) -> Optional[Part]:
+        """``piece``, cut on whole frame pixels. Placed unturned at a ``pin``,
+        it lands on the frame's own pixels, and a part flipbook reproduces it
+        exactly. For what does not survive being reduced and then turned: thin
+        lines, and a long light edge on a dark outline (measured on
+        ramen_nujan's scarf, 2026-10-11)."""
+        key = ("aligned",) + tuple(key)
+        if key not in self._pieces:
+            canvas = self.scratch()
+            paint(blending_draw(canvas))
+            box = canvas.getchannel("A").getbbox()
+            if box is None:
+                self._pieces[key] = None
+            else:
+                step = self.scale
+                box = (box[0] - box[0] % step, box[1] - box[1] % step, box[2] + (-box[2]) % step, box[3] + (-box[3]) % step)
+                self._pieces[key] = (canvas.crop(box), (self.home[0] * step - box[0], self.home[1] * step - box[1]))
         return self._pieces[key]
 
     def solid(
