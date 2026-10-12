@@ -405,3 +405,15 @@ lineages:
       - commit: "52d3d2a"
         label: "Seven agents and the lines between them"
         note: "No leader: an arrowhead to walk, a spear to attack, two of them always voting. Jon: rework the art. Claude Opus 5.5 declared."
+  hand_saint:
+    name: Hand Saint
+    ids: [hand_saint]
+    paths: ['ai_era_enemies', 'hand_saint', '_ai_era_kit']
+    summary: "a floating palm idol in a robe, then an icon whose head is an open hand"
+    eras:
+      - commit: "52d3d2a"
+        label: "Floating palm idol"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "eae36fc"
+        label: "An icon whose head is a hand"
+        note: "Seven fingers, two thumbs, an eye in the palm, a halo; it stands on two more hands. Jon: it needs a redesigned sprite. Claude Opus 5.5 declared."
