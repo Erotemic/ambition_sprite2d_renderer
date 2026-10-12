@@ -12,6 +12,8 @@ level/render code can compose without stretching artwork:
 * ``super_mary_o_lava_top`` is the top of a pit of lava: four frames of a wave
   that go round, with the light of the lava in the air over it. It repeats
   along a pit;
+* ``super_mary_o_switch`` is the switch at the end of the castle: a large button
+  on a block of stone, up (``idle``) and down (``pressed``);
 * ``super_mary_o_lava_body`` is the lava under the top. It repeats along a pit,
   and the game makes it as deep as the pit is.
 
@@ -393,6 +395,59 @@ def _lava_body_meta(animation: str, frame_idx: int, nframes: int) -> dict:
     }
 
 
+# ── the switch of the castle ────────────────────────
+SWITCH_LOGICAL = (16, 16)
+SWITCH_FRAME = (SWITCH_LOGICAL[0] * SCALE, SWITCH_LOGICAL[1] * SCALE)
+SWITCH_STONE: RGBA = (112, 104, 128, 255)
+SWITCH_STONE_LIGHT: RGBA = (164, 156, 180, 255)
+SWITCH_STONE_DARK: RGBA = (62, 54, 78, 255)
+SWITCH_BRASS: RGBA = (248, 201, 70, 255)
+SWITCH_BRASS_DARK: RGBA = (170, 118, 36, 255)
+SWITCH_RED: RGBA = (232, 54, 30, 255)
+SWITCH_RED_LIGHT: RGBA = (255, 132, 96, 255)
+SWITCH_RED_DARK: RGBA = (150, 22, 30, 255)
+SWITCH_SPENT: RGBA = (110, 40, 48, 255)
+SWITCH_SPENT_DARK: RGBA = (70, 24, 36, 255)
+
+
+def _switch_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
+    """A large button on a block of stone. `idle` is the button up, with a light
+    that goes across it. `pressed` is the button down in its collar."""
+    del nframes
+    down = animation == "pressed"
+
+    def painter(px: PixelCanvas) -> None:
+        # The block of stone, with a bevel and two rivets.
+        px.rect(1.0, 9.0, 15.0, 16.0, fill=SWITCH_STONE_DARK, outline=OUTLINE, width=0.5)
+        px.rect(1.5, 9.5, 14.5, 15.5, fill=SWITCH_STONE)
+        px.rect(1.5, 9.5, 14.5, 10.5, fill=SWITCH_STONE_LIGHT)
+        px.rect(1.5, 14.5, 14.5, 15.5, fill=SWITCH_STONE_DARK)
+        px.rect(3.0, 12.0, 4.0, 13.0, fill=SWITCH_BRASS)
+        px.rect(12.0, 12.0, 13.0, 13.0, fill=SWITCH_BRASS)
+        # The collar the button moves in.
+        px.rect(2.5, 7.5, 13.5, 9.5, fill=SWITCH_BRASS_DARK, outline=OUTLINE, width=0.5)
+        px.rect(3.0, 8.0, 13.0, 8.75, fill=SWITCH_BRASS)
+        if down:
+            px.rect(3.5, 6.5, 12.5, 8.0, fill=SWITCH_SPENT_DARK, outline=OUTLINE, width=0.5)
+            px.rect(4.0, 7.0, 12.0, 7.5, fill=SWITCH_SPENT)
+            return
+        px.ellipse(3.0, 1.5, 13.0, 10.5, fill=SWITCH_RED_DARK, outline=OUTLINE, width=0.5)
+        px.rect(3.25, 6.0, 12.75, 8.0, fill=SWITCH_RED_DARK)
+        px.ellipse(3.5, 2.0, 12.5, 9.0, fill=SWITCH_RED)
+        px.rect(2.5, 7.5, 13.5, 9.5, fill=SWITCH_BRASS_DARK, outline=OUTLINE, width=0.5)
+        px.rect(3.0, 8.0, 13.0, 8.75, fill=SWITCH_BRASS)
+        # The light goes from the left of the button to its top.
+        gleam = (4.5, 3.5) if frame_idx % 2 == 0 else (6.5, 2.75)
+        px.ellipse(gleam[0], gleam[1], gleam[0] + 2.5, gleam[1] + 1.5, fill=SWITCH_RED_LIGHT)
+
+    return rasterize_logical(SWITCH_LOGICAL, SCALE, painter)
+
+
+def _switch_meta(animation: str, frame_idx: int, nframes: int) -> dict:
+    del animation, frame_idx, nframes
+    return {"construction": {"kind": "switch"}}
+
+
 SPECS: Dict[str, ConstructionSpec] = {
     "super_mary_o_pipe_body": ConstructionSpec(
         target_name="super_mary_o_pipe_body",
@@ -456,6 +511,15 @@ SPECS: Dict[str, ConstructionSpec] = {
         renderer=_lava_body_frame,
         frame_meta=_lava_body_meta,
         traits=("scenery", "lava", "construction", "animated"),
+    ),
+    "super_mary_o_switch": ConstructionSpec(
+        target_name="super_mary_o_switch",
+        display_name="Mary-O Castle Switch",
+        frame_size=SWITCH_FRAME,
+        rows=[("idle", 2, 420), ("pressed", 1, 150)],
+        renderer=_switch_frame,
+        frame_meta=_switch_meta,
+        traits=("scenery", "switch", "goal", "animated"),
     ),
 }
 
