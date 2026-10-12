@@ -1072,6 +1072,39 @@ def spent_block_tile(d: ImageDraw.ImageDraw, s: float) -> None:
         d.rectangle((cx * s, cy * s, (cx + 1) * s, (cy + 1) * s), fill=edge)
 
 
+def bridge_plank_tile(d: ImageDraw.ImageDraw, s: float) -> None:
+    """One tile of a bridge: a deck of two boards, and a chain under it.
+
+    The low part of the tile is open, so what is under the bridge shows: a
+    bridge that looks like the floor is not read as a bridge. It repeats along
+    the bridge. A game names it through the `EntityArt` component.
+    """
+    board = rgba("#8E3A3F")
+    board_light = rgba("#C2585A")
+    board_dark = rgba("#52202B")
+    edge = rgba("#2A1320")
+    nail = rgba("#F8C946")
+    chain = rgba("#6A6276")
+    chain_light = rgba("#A49CB4")
+
+    def box(x0, y0, x1, y1, fill):
+        d.rectangle((x0 * s, y0 * s, x1 * s - 1, y1 * s - 1), fill=fill)
+
+    # The deck: two boards with a gap of shadow between them.
+    for x0 in (0, 16):
+        box(x0, 0, x0 + 16, 12, edge)
+        box(x0 + 1, 1, x0 + 15, 11, board)
+        box(x0 + 1, 1, x0 + 15, 3, board_light)
+        box(x0 + 1, 9, x0 + 15, 11, board_dark)
+        box(x0 + 3, 5, x0 + 5, 7, nail)
+        box(x0 + 11, 5, x0 + 13, 7, nail)
+    # The hangers, and the chain between them: links, one on and one off.
+    for x0 in (3, 27):
+        box(x0, 12, x0 + 2, 19, chain)
+    for index, x0 in enumerate(range(0, 32, 4)):
+        box(x0, 18 if index % 2 == 0 else 19, x0 + 3, 21 if index % 2 == 0 else 20, chain_light if index % 2 == 0 else chain)
+
+
 def solid_tile(d: ImageDraw.ImageDraw, s: float) -> None:
     """Stone brick tile for IntGrid Solid surfaces. Cool gray
     palette so it reads as "structural wall / floor" against the
@@ -1858,6 +1891,15 @@ ENTITY_SPECS: List[EntitySpriteSpec] = [
         tight_crop=False,
     ),
     EntitySpriteSpec(
+        "bridge_plank_tile",
+        "bridge_plank_tile.png",
+        "EntityArt override (a plank of a bridge)",
+        "bridge plank",
+        "deck of a bridge with a chain under it, open below",
+        size=(32, 32),
+        tight_crop=False,
+    ),
+    EntitySpriteSpec(
         "bonus_block_tile",
         "bonus_block_tile.png",
         "EntityArt override (a live bonus block)",
@@ -2042,6 +2084,7 @@ DRAWERS: Dict[str, Callable[[ImageDraw.ImageDraw, float], None]] = {
     "void_orb": void_orb,
     "fire_glow": fire_glow,
     "bonus_block_tile": bonus_block_tile,
+    "bridge_plank_tile": bridge_plank_tile,
     "spent_block_tile": spent_block_tile,
     "solid_tile": solid_tile,
     "one_way_tile": one_way_tile,

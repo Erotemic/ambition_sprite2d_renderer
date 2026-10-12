@@ -34,10 +34,11 @@ def test_the_transformation_is_one_row_as_long_as_the_game_holds_her() -> None:
 def test_each_frame_is_in_its_stage() -> None:
     """A wing or a star that goes out of the stage is cut at its edge. The
     transformation is the exception: its column of light is the height of the
-    frame, and the star comes down from over it."""
+    frame, and the star comes down from over it. Her way out of the form is
+    the same, the other way."""
     stage = cosmic.STAGE
     for name, frames, _ms in cosmic.ROWS:
-        if name == "transform":
+        if name in ("transform", cosmic.LEAVE_ROW):
             continue
         for index in range(frames):
             box = frame(stage, cosmic.look_for(name, index)).getbbox()
@@ -54,7 +55,7 @@ def test_the_last_frame_of_the_transformation_is_her_idle() -> None:
     assert last.tobytes() == idle.tobytes()
 
 
-def test_a_frame_of_parts_is_its_layers_and_her_body_is_two_of_them() -> None:
+def test_a_frame_of_parts_is_its_layers_and_her_body_is_one_of_them() -> None:
     """The game draws a barrier about her body and not about her wings. It
     reads her body by the names of its layers, so they are there, each frame
     that is of parts, and her wings are layers of their own."""
@@ -68,7 +69,7 @@ def test_a_frame_of_parts_is_its_layers_and_her_body_is_two_of_them() -> None:
     assert is_of_parts(look)
     names = [name for name, image in figure_layers(cosmic.STAGE, look)[0] if image.getbbox()]
     assert set(BODY_TRACKS) <= set(names)
-    assert {"far_wing", "near_wing"} <= set(names) - set(BODY_TRACKS)
+    assert {"far_wing", "near_wing", "hair"} <= set(names) - set(BODY_TRACKS)
     # Her wings are behind her figure.
     assert names.index("near_wing") < names.index("body")
 
@@ -79,3 +80,16 @@ def test_the_transformation_is_not_of_parts_where_light_is_on_the_whole_figure()
     from ambition_sprite2d_renderer.targets.characters._mary_o_v2_cosmic_art import is_of_parts
 
     assert any(not is_of_parts(look) for look in cosmic.transformation())
+
+
+def test_her_way_out_starts_as_the_form_and_ends_as_light_and_no_more() -> None:
+    """The game plays the row and then changes her character to the form of
+    her ladder, which can be each of three. So the last frame has no thing of
+    the cosmic form in it but light, and the first has her wings."""
+    rows = {name: (frames, ms) for name, frames, ms in cosmic.ROWS}
+    looks = cosmic.detransformation()
+    assert rows[cosmic.LEAVE_ROW] == (len(looks), cosmic.LEAVE_FRAME_MS)
+    first, last = looks[0], looks[-1]
+    assert first.wing == 1.0 and first.light == 0.0
+    assert last.light == 1.0 and (last.wing, last.hair, last.ring, last.crown) == (0, 0, 0, None)
+    assert last.lift == 0.0

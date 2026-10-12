@@ -272,8 +272,9 @@ def night_gown(body):
 
 
 #: The layers of her that are her body: what a barrier about her is drawn
-#: about. Her wings, the ring about her head and the star of her crown are not.
-BODY_TRACKS = ("hair", "body")
+#: about. Her figure, and no more (Jon, 2026-10-11): her long hair, her wings,
+#: the ring about her head and the star of her crown are not her body.
+BODY_TRACKS = ("body",)
 
 
 def figure_layers(stage: Stage, look: Look):

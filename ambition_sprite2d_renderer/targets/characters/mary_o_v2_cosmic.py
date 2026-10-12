@@ -33,6 +33,10 @@ STAGE = Stage(w=72, h=84, ox=24.0, oy=38.0)
 
 TRANSFORM_FRAMES = 36
 TRANSFORM_FRAME_MS = 95
+#: Her way out of the form (`detransformation`).
+LEAVE_ROW = "shrink"
+LEAVE_FRAMES = 18
+LEAVE_FRAME_MS = 95
 
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 4, 180),
@@ -52,6 +56,11 @@ ROWS: List[Tuple[str, int, int]] = [
     # The transformation, from her fire form. The game holds her in this row
     # for as long as it takes to draw (`cosmic.rs`).
     ("transform", TRANSFORM_FRAMES, TRANSFORM_FRAME_MS),
+    # Her way out of the form. The picture is of this form, so the row is on
+    # this sheet, the sheet of the form she leaves: the game plays it and then
+    # changes her character (`cosmic.rs`). It ends in light, so each form she
+    # can come back to follows it.
+    (LEAVE_ROW, LEAVE_FRAMES, LEAVE_FRAME_MS),
 ]
 
 POSES: Dict[str, List[Pose]] = M.poses_for_form(COSMIC_FORM)
@@ -130,6 +139,37 @@ def transformation() -> List[Look]:
     return looks
 
 
+def detransformation() -> List[Look]:
+    """Her way out of the form: 18 frames. The form goes from her in the
+    order it came to her, last thing first, and she goes out in light."""
+    looks: List[Look] = []
+    rest = Pose(bob=-0.2, arm_front_angle=8, arm_back_angle=0)
+    low = Pose(bob=-0.4, arm_front_angle=-18, arm_back_angle=14, leg_front_angle=3, leg_back_angle=-3)
+    # 1. Her wings close at her back, and she comes off the ground.
+    for i, (beat, fan) in enumerate(((18, 0.9), (44, 0.65), (62, 0.45))):
+        looks.append(Look(pose=rest, beat=beat, fan=fan, lift=mix(0, 3, (i + 1) / 3), sway=0.4 * i))
+    # 2. Her wings go, and the star lifts off her head.
+    for i, size in enumerate((0.65, 0.35, 0.0)):
+        t = (i + 1) / 3
+        looks.append(Look(pose=low, wing=size, beat=62, fan=0.45, lift=mix(3, 5, t), crown=(mix(0, 9, t), mix(1.0, 1.1, t), -90 + (i + 1) * 24), column=0.3 * t))
+    # 3. The ring goes from her head, and her hair comes in.
+    for i, t in enumerate((0.5, 1.0)):
+        looks.append(Look(pose=low, wing=0, ring=1.0 - t, hair=mix(1.0, 0.3, t), sway=-0.6 * t, lift=5, crown=(9, 1.1, -90 + (4 + i) * 24), column=mix(0.3, 0.7, t)))
+    # 4. A ring of light goes down her, and over it she is light.
+    for i in range(4):
+        t = (i + 1) / 4
+        looks.append(Look(pose=low, hair=0, wing=0, ring=0, light=1.0, reveal=0.86 * (1 - t), sweep=0.9 * (1 - t), lift=5, crown=(9, 1.1, -90 + (6 + i) * 24), column=mix(0.7, 1.0, t)))
+    # 5. A figure of light: she turns one time about, and the star goes up from her.
+    for i, spin in enumerate((0.45, -0.45, -1.0)):
+        looks.append(Look(pose=low, hair=0, wing=0, ring=0, light=1.0, spin=spin, lift=mix(5, 3, (i + 1) / 3), crown=(mix(9, 26, (i + 1) / 3), mix(1.1, 0.8, (i + 1) / 3), -90 + (10 + i) * 30), column=1.0))
+    # 6. She goes out in a star of light, and comes down. The star over her
+    # is gone. The last frame is light and no more, so each form follows it.
+    for i, (burst, column) in enumerate(((0.45, 0.8), (0.8, 0.5), (1.0, 0.2))):
+        looks.append(Look(pose=low, hair=0, wing=0, ring=0, light=1.0, lift=mix(3, 0, (i + 1) / 3), crown=None, burst=burst, burst_turn=i * 12.0, column=column))
+    assert len(looks) == LEAVE_FRAMES, len(looks)
+    return looks
+
+
 def _body_metrics(stage: Stage):
     def metrics(fw: int, fh: int) -> dict:
         box = stage.body_box_px()
@@ -160,6 +200,7 @@ def _cosmic_metadata() -> dict:
     bindings = metadata["animation_bindings"]
     bindings["locomotion.fall"] = {"animation": "fall", "events": []}
     bindings["power.transform"] = {"animation": "transform", "events": []}
+    bindings["power.shrink"] = {"animation": LEAVE_ROW, "events": []}
     metadata["authoring_description"] = (
         "Eternal Cosmic Mary-O is the ultimate form of Mary-O v2: a gown of the night sky, hair of "
         "starlight, wings of crystal, the ring of a planet about her head and a star over her cap."
@@ -176,11 +217,14 @@ def render_cosmic(out_dir: str | Path, **opts) -> List[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     looks = transformation()
+    leave = detransformation()
 
     def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
         del nframes
         if animation == "transform":
             return frame(STAGE, looks[frame_idx])
+        if animation == LEAVE_ROW:
+            return frame(STAGE, leave[frame_idx])
         return frame(STAGE, look_for(animation, frame_idx))
 
     frame_transform: dict = {}
@@ -211,8 +255,8 @@ def _publish_parts(render_frame, outputs, frame_transform, out_dir: Path) -> dic
     barrier of the form), and the tracks say which is which
     (`_mary_o_v2_cosmic_art.BODY_TRACKS`). So she is drawn from parts for what
     the tracks say, and the cost of the pages does not decide it. The
-    transformation has light on the whole figure and a turn of it, which no
-    part carries: its row stays the sheet's."""
+    transformation and her way out of the form have light on the whole figure
+    and a turn of it, which no part carries: those rows stay the sheet's."""
     import yaml
 
     from ...authoring import rigdoc
@@ -230,7 +274,7 @@ def _publish_parts(render_frame, outputs, frame_transform, out_dir: Path) -> dic
         rigdoc.composite_canvas(canvas, render_frame(row, index, count), (dx, dy))
         return canvas
 
-    part_rows = [name for name, _frames, _duration in ROWS if name != "transform"]
+    part_rows = [name for name, _frames, _duration in ROWS if name not in ("transform", LEAVE_ROW)]
     flipbook = build_rig_flipbook(TARGET, ROWS, published, part_rows, sheet_feet(Path(outputs["yaml"])), size)
     flipbook.pack()
     flipbook.realize = REALIZE_PARTS
