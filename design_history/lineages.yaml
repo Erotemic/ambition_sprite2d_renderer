@@ -421,7 +421,7 @@ lineages:
     name: Ramen-nujan
     ids: [ramen_nujan]
     paths: ['ramen_nujan', '_ai_era_kit', '_solo_shape_rig']
-    summary: "a front-facing scholar in an aubergine coat, then a round young dreamer with a noodle scarf"
+    summary: "a front-facing scholar in an aubergine coat, then a round young dreamer with a noodle scarf, then the same man grown up"
     eras:
       - commit: "121f793"
         label: "Aubergine coat and a stole"
@@ -429,6 +429,9 @@ lineages:
       - commit: "7ce2ed4"
         label: "The dreamer with the noodle scarf"
         note: "Three quarters view, large eyes, a night-blue coat with a constellation, a scarf that trails; chalk-gold mathematics. Jon: redesign the Ramen-Nujan character. Claude Opus 5.5 declared."
+      - commit: "7ec6048"
+        label: "A grown man, five heads tall"
+        note: "The same coat, scarf and poses on a taller body with a small head: neat parted hair and no standing lock, small eyes, no blush. Jon of the era before: too cutesy, too much like Astro Boy, and he did not like the hair. Claude Opus 5.5 declared."
   willson:
     name: Willson
     ids: [willson]
