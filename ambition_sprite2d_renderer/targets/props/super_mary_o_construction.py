@@ -16,6 +16,9 @@ level/render code can compose without stretching artwork:
   on a block of stone, up (``idle``) and down (``pressed``);
 * ``super_mary_o_lava_body`` is the lava under the top. It repeats along a pit,
   and the game makes it as deep as the pit is.
+* ``super_mary_o_gate`` is the gate past the switch: a portcullis of three
+  tiles. Each row is one position of it, from down (``idle``) to up in the
+  wall (``open``). The game shows the rows in sequence when the gate opens.
 
 The seams and attachment anchors are part of the generated frame metadata.
 Frames are never cropped or trim-packed because their transparent margins and
@@ -448,6 +451,57 @@ def _switch_meta(animation: str, frame_idx: int, nframes: int) -> dict:
     return {"construction": {"kind": "switch"}}
 
 
+# ── the gate past the switch ────────────────────────
+GATE_LOGICAL = (16, 48)
+GATE_FRAME = (GATE_LOGICAL[0] * SCALE, GATE_LOGICAL[1] * SCALE)
+# The part of the gate that stays in the doorway when it is open: its points.
+GATE_POINTS = 6.0
+# One row for each position of the gate. The game names them in this sequence.
+# The gate that is down is `idle`: a prop with no `idle` row is not drawn.
+GATE_ROWS = ("idle", "rise_1", "rise_2", "rise_3", "rise_4", "open")
+
+
+def _gate_lift(animation: str) -> float:
+    """How far the gate is up, in logical units."""
+    travel = GATE_LOGICAL[1] - GATE_POINTS
+    return travel * GATE_ROWS.index(animation) / (len(GATE_ROWS) - 1)
+
+
+def _gate_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
+    """A portcullis: three bars of iron with points, and three bands across
+    them. A row draws it `_gate_lift` up: the top of the frame cuts it, as the
+    wall over a doorway does."""
+    del frame_idx, nframes
+    up = _gate_lift(animation)
+
+    def painter(px: PixelCanvas) -> None:
+        tall = float(GATE_LOGICAL[1])
+        # The bars, each with a point at its end.
+        for x in (1.5, 6.5, 11.5):
+            px.rect(x, -up, x + 3.0, tall - 4.0 - up, fill=SWITCH_STONE_DARK, outline=OUTLINE, width=0.5)
+            px.rect(x + 0.5, -up, x + 2.5, tall - 4.0 - up, fill=SWITCH_STONE)
+            px.rect(x + 0.5, -up, x + 1.25, tall - 4.0 - up, fill=SWITCH_STONE_LIGHT)
+            px.polygon(
+                [(x, tall - 4.0 - up), (x + 3.0, tall - 4.0 - up), (x + 1.5, tall - up)],
+                fill=SWITCH_STONE,
+                outline=OUTLINE,
+                width=0.5,
+            )
+        # The bands, with a rivet where a band goes across a bar.
+        for y in (5.0, 20.0, 35.0):
+            px.rect(0.0, y - up, 16.0, y + 3.5 - up, fill=SWITCH_STONE_DARK, outline=OUTLINE, width=0.5)
+            px.rect(0.5, y + 0.5 - up, 15.5, y + 1.25 - up, fill=SWITCH_STONE_LIGHT)
+            for x in (2.5, 7.5, 12.5):
+                px.rect(x, y + 1.25 - up, x + 1.0, y + 2.25 - up, fill=SWITCH_BRASS)
+
+    return rasterize_logical(GATE_LOGICAL, SCALE, painter)
+
+
+def _gate_meta(animation: str, frame_idx: int, nframes: int) -> dict:
+    del frame_idx, nframes
+    return {"construction": {"kind": "gate", "lift": _gate_lift(animation)}}
+
+
 SPECS: Dict[str, ConstructionSpec] = {
     "super_mary_o_pipe_body": ConstructionSpec(
         target_name="super_mary_o_pipe_body",
@@ -520,6 +574,15 @@ SPECS: Dict[str, ConstructionSpec] = {
         renderer=_switch_frame,
         frame_meta=_switch_meta,
         traits=("scenery", "switch", "goal", "animated"),
+    ),
+    "super_mary_o_gate": ConstructionSpec(
+        target_name="super_mary_o_gate",
+        display_name="Mary-O Castle Gate",
+        frame_size=GATE_FRAME,
+        rows=[(row, 1, 150) for row in GATE_ROWS],
+        renderer=_gate_frame,
+        frame_meta=_gate_meta,
+        traits=("scenery", "gate", "goal", "construction"),
     ),
 }
 
