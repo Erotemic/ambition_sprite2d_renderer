@@ -3,14 +3,17 @@
 A respectful parody of Srinivasa Ramanujan, of the Flying Spaghetti Monster's
 faction. He is a person, not a food mascot: the noodles are in his clothes.
 
-The look (redrawn 2026-10-11): a small, round young scholar seen three
-quarters from the front, facing right. A big head with very large dark eyes,
-side-parted black hair and one lock that stands up in a wave like a noodle. A
-night-blue coat buttoned to the neck, with carrot buttons, a scallion-green
-lining and a few gold dots joined like a constellation; cream trousers; and a
-long noodle-coloured scarf whose two tails end in loose noodles and trail
-behind whatever he does. At rest he stands with his hands behind his back and
-looks up.
+The look (2026-10-12): a slight young man seen three quarters from the front,
+facing right, about five heads tall. Neat black hair with a side part, strong
+brows, small dark eyes, a full face. A long night-blue coat buttoned to the
+neck, with carrot buttons, a scallion-green lining and a few gold dots joined
+like a constellation; cream trousers; and a long noodle-coloured scarf whose
+two tails end in loose noodles and trail behind whatever he does. At rest he
+stands with his hands behind his back and looks up.
+
+He is a grown man, not a mascot (Jon, 2026-10-12, of the draft before this
+one: "too cutsey", "too much like astro boy", and no lock of hair standing on
+his head): no big head, no big eyes, no blush.
 
 Everything he eats is vegetarian, and so are the colours: mushroom cream,
 scallion green, carrot orange, sesame gold. He holds nothing; the runtime
@@ -36,25 +39,30 @@ from PIL import Image
 from ._ai_era_kit import OUTLINE, WHITE, Kit, Point, Pose, RGBA, angle, blend, ease, keys, lerp, mix, pin, solve, turned
 
 TARGET_NAME = "ramen_nujan"
-FRAME_SIZE = (176, 160)
-GROUND = 150.0
-CX = 84.0
+FRAME_SIZE = (208, 176)
+GROUND = 164.0
+CX = 104.0
 
 # ---- The rig: lengths in frame pixels, from his hips, up is negative ---------
 
 #: How high his hips are when he stands.
-HIP_UP = 37.0
-THIGH, SHIN = 17.5, 17.0
+HIP_UP = 46.0
+#: A length in a pose is in units of this many frame pixels: his hips stand 37
+#: units high. A pose is of his body, whatever size it is drawn.
+U = HIP_UP / 37.0
+THIGH, SHIN = 22.2, 21.4
 #: His hips to the base of his neck, along his spine.
-NECK = 31.0
-UPPER, FORE = 15.0, 14.0
-NEAR_SHOULDER: Point = (-5.5, -26.5)
-FAR_SHOULDER: Point = (6.5, -26.0)
-NEAR_HIP: Point = (-3.5, 0.0)
-FAR_HIP: Point = (3.5, 0.0)
+NECK = 38.5
+UPPER, FORE = 18.6, 17.4
+NEAR_SHOULDER: Point = (-6.5, -33.0)
+FAR_SHOULDER: Point = (7.5, -32.5)
+NEAR_HIP: Point = (-3.8, 0.0)
+FAR_HIP: Point = (3.8, 0.0)
 #: The sole of a shoe is this far under its ankle.
 ANKLE_UP = 3.0
-#: The top of his hair above the ground, standing (the lock stands higher).
+#: The middle of his head from the base of his neck, his head level.
+HEAD_UP: Point = (1.0, -11.0)
+#: The top of his hair above the ground, standing.
 HEIGHT = 108.0
 
 COAT: RGBA = (58, 70, 150, 255)
@@ -73,7 +81,6 @@ SHOE_DARK: RGBA = (70, 44, 36, 255)
 SKIN: RGBA = (182, 120, 80, 255)
 SKIN_SHADE: RGBA = (142, 86, 60, 255)
 SKIN_DEEP: RGBA = (112, 62, 46, 255)
-BLUSH: RGBA = (226, 112, 90, 110)
 HAIR: RGBA = (30, 26, 40, 255)
 HAIR_LIGHT: RGBA = (84, 84, 124, 255)
 EYE_WHITE: RGBA = (252, 248, 238, 255)
@@ -108,10 +115,10 @@ ACTOR_METADATA = {
     "visual": {"default_pose": "idle"},
     "tags": ["story", "humanoid", "mathematician", "number_theorist", "fsm_faction", "vegetarian", "playable_candidate", "dream_math"],
     "sockets": {
-        "head": {"source": "explicit.profile.humanoid", "point": {"x": CX + 2.0, "y": GROUND - 87.0}},
-        "chest": {"source": "explicit.profile.humanoid", "point": {"x": CX + 1.0, "y": GROUND - 54.0}},
-        "hand_l": {"source": "explicit.profile.humanoid", "point": {"x": CX - 14.0, "y": GROUND - 42.0}},
-        "hand_r": {"source": "explicit.profile.humanoid", "point": {"x": CX + 9.0, "y": GROUND - 41.0}},
+        "head": {"source": "explicit.profile.humanoid", "point": {"x": CX + 2.0, "y": GROUND - 95.0}},
+        "chest": {"source": "explicit.profile.humanoid", "point": {"x": CX + 1.0, "y": GROUND - 68.0}},
+        "hand_l": {"source": "explicit.profile.humanoid", "point": {"x": CX - 10.0, "y": GROUND - 47.0}},
+        "hand_r": {"source": "explicit.profile.humanoid", "point": {"x": CX + 10.0, "y": GROUND - 47.0}},
         "speech_bubble": {"source": "explicit.profile.humanoid", "point": {"x": CX + 2.0, "y": GROUND - 124.0}},
     },
     "animation_bindings": {
@@ -330,7 +337,7 @@ def slide(i: int, n: int) -> Pose:
 
 #: A ball, turned about its middle (which is 37 above the ground).
 TUCK = P(hip=(0.0, 0.0), lean=38.0, head=(-17.0, 24.0, 50.0), na=(18.0, 18.0), fa=(20.0, 15.0), nh="fist", fh="fist", nf=(9.0, -27.0, 10.0),
-         ff=(14.0, -30.0, 10.0), eyes="closed", mouth="flat", tail=180.0, wave=8.0, curl=34.0, arm="under", pivot=(15.5, -14.0), off=(-8.0, HIP_UP + 14.0 - 37.0),
+         ff=(14.0, -30.0, 10.0), eyes="closed", mouth="flat", tail=180.0, wave=8.0, curl=34.0, arm="under", pivot=(15.5, -14.0), off=(-8.0, 14.0),
          hem=(0.0, 3.0))
 
 
@@ -447,7 +454,7 @@ def death(i: int, n: int) -> Pose:
     # He sits down where he stood and is asleep: the dream goes on.
     sag = P(hip=(-5.0, 13.0), lean=-18.0, head=(-2.0, 0.0, -10.0), na=(6.0, 20.0), fa=(12.0, 16.0), nh="open", fh="open", nf=(-4.0, 0.0, 0.0),
             ff=(10.0, 0.0, -10.0), eyes="wince", mouth="o", tail=60.0, off=(-3.0, 0.0), hem=(0.0, 3.0))
-    sat = P(hip=(-8.0, HIP_UP - 10.5), lean=-13.0, head=(0.0, 0.0, 2.0), na=(-9.0, 25.0), fa=(9.0, 24.0), nh="open", fh="open",
+    sat = P(hip=(-8.0, 26.5), lean=-13.0, head=(0.0, 0.0, 2.0), na=(-9.0, 25.0), fa=(9.0, 24.0), nh="open", fh="open",
             nf=(19.0, 0.0, -62.0), ff=(25.0, 0.0, -66.0), eyes="closed", mouth="o", tail=110.0, hem=(0.0, 2.0))
     asleep = dict(sat, lean=-4.0, head=(1.0, 2.0, 22.0), mouth="smile", tail=96.0, wave=3.0)
     return keys(_shot(i, n), [(0.0, STRUCK), (0.28, sag), (0.5, sat), (0.72, asleep), (1.0, asleep)])
@@ -705,12 +712,12 @@ def _shoe(near: bool):
     h = K.home
 
     def shape(d) -> None:
-        K.oval(d, K.at(3.0, 0.6), 6.6, 3.3, WHITE)
-        K.rrect(d, h[0] - 3.6, h[1] - 0.4, h[0] + 9.4, h[1] + ANKLE_UP + 0.4, 1.6, WHITE)
+        K.oval(d, K.at(2.6, 0.6), 6.0, 3.2, WHITE)
+        K.rrect(d, h[0] - 3.4, h[1] - 0.4, h[0] + 8.4, h[1] + ANKLE_UP + 0.4, 1.6, WHITE)
         K.oval(d, h, 3.2, 3.0, WHITE)
 
     def detail(d) -> None:
-        K.rrect(d, h[0] - 5.0, h[1] + ANKLE_UP - 1.0, h[0] + 11.0, h[1] + ANKLE_UP + 2.0, 0.0, SHOE_DARK)
+        K.rrect(d, h[0] - 5.0, h[1] + ANKLE_UP - 1.0, h[0] + 10.0, h[1] + ANKLE_UP + 2.0, 0.0, SHOE_DARK)
         K.line(d, [K.at(2.0, -1.4), K.at(6.0, -0.6)], mix(SHOE, WHITE, 0.35), 0.8)
 
     return K.solid(("shoe", near), shape, SHOE if near else mix(SHOE, SHOE_DARK, 0.6), detail, outline=1.2, rim=0.25, shade=0.3,
@@ -718,33 +725,33 @@ def _shoe(near: bool):
 
 
 def _coat(hem_back: int, hem_front: int):
-    """His coat from his hips at ``home``, his spine straight up. The hem is
-    ``hem_back`` and ``hem_front`` wider than it hangs."""
+    """His coat from his hips at ``home``, his spine straight up: long, to
+    the middle of his thighs. The hem is ``hem_back`` and ``hem_front`` wider than it
+    hangs."""
     hb, hf = float(hem_back), float(hem_front)
-    back_hem, front_hem = K.at(-12.5 - hb, 10.6), K.at(13.0 + hf, 10.0)
-    split_top, split = K.at(8.2, -1.0), K.at(8.4 + hf * 0.7, 10.2)
+    back_hem, front_hem = K.at(-12.0 - hb, 10.0), K.at(12.6 + hf, 9.4)
+    split_top, split = K.at(7.8, -4.0), K.at(8.2 + hf * 0.7, 9.6)
 
     def shape(d) -> None:
-        K.poly(d, [K.at(-5.5, -31.0), K.at(-10.5, -27.0), K.at(-11.0, -14.0), K.at(-10.4, -4.0), back_hem, front_hem, K.at(13.2, -3.0),
-                   K.at(12.2, -15.0), K.at(10.5, -26.5), K.at(5.5, -31.5)], WHITE)
-        K.oval(d, K.at(-5.6, -25.6), 5.6, 5.8, WHITE)
-        K.oval(d, K.at(5.6, -25.6), 5.8, 6.0, WHITE)
-        K.oval(d, K.at(2.6, -8.0), 11.2, 10.5, WHITE)
+        K.poly(d, [K.at(-6.0, -38.5), K.at(-11.0, -33.5), K.at(-10.4, -17.0), K.at(-10.2, -4.0), back_hem, front_hem, K.at(12.0, -3.0),
+                   K.at(11.2, -18.0), K.at(11.2, -33.0), K.at(6.0, -39.0)], WHITE)
+        K.oval(d, K.at(-6.0, -32.4), 5.6, 6.0, WHITE)
+        K.oval(d, K.at(6.2, -32.4), 5.8, 6.2, WHITE)
 
     def detail(d) -> None:
         # The far side of his chest is in his own shade.
-        K.poly(d, [K.at(8.0, -34.0), K.at(16.0, -34.0), K.at(18.0 + hf, 12.0), K.at(8.4 + hf * 0.7, 12.0), split_top, K.at(6.8, -22.0)], COAT_DARK)
+        K.poly(d, [K.at(7.6, -42.0), K.at(16.0, -42.0), K.at(18.0 + hf, 12.0), K.at(8.2 + hf * 0.7, 12.0), split_top, K.at(6.8, -27.0)], COAT_DARK)
         # The lining, where the coat opens under its last button.
         K.poly(d, [split_top, (split[0] - 3.4, split[1] + 2.0), (split[0] + 2.6, split[1] + 2.0)], LINING)
-        K.line(d, [K.at(6.4, -31.0), K.at(6.8, -22.0), split_top], COAT_LIGHT, 0.9)
-        for k in range(4):
-            t = k / 3.0
-            K.oval(d, K.at(lerp(6.5, 8.0, t), lerp(-25.0, -4.0, t)), 1.5, 1.5, CARROT, OUTLINE, 0.4)
+        K.line(d, [K.at(6.4, -38.0), K.at(6.8, -27.0), split_top], COAT_LIGHT, 0.9)
+        for k in range(5):
+            t = k / 4.0
+            K.oval(d, K.at(lerp(6.6, 7.6, t), lerp(-31.5, -7.0, t)), 1.4, 1.4, CARROT, OUTLINE, 0.4)
         # The hem's gold band.
-        K.poly(d, [(back_hem[0] - 2.0, back_hem[1] - 2.6), (front_hem[0] + 2.0, front_hem[1] - 2.6), (front_hem[0] + 2.0, front_hem[1] + 3.0),
+        K.poly(d, [(back_hem[0] - 2.0, back_hem[1] - 2.4), (front_hem[0] + 2.0, front_hem[1] - 2.4), (front_hem[0] + 2.0, front_hem[1] + 3.0),
                    (back_hem[0] - 2.0, back_hem[1] + 3.0)], SESAME)
         # Gold dots, joined: a constellation, or a partition, or sesame.
-        stars = [K.at(-6.0, -19.0), K.at(-2.0, -11.5), K.at(-7.0, -5.0), K.at(-1.0, 0.5), K.at(-6.5, 5.0)]
+        stars = [K.at(-6.0, -24.0), K.at(-2.0, -15.5), K.at(-7.0, -8.5), K.at(-1.0, -2.0), K.at(-6.0, 4.0)]
         K.line(d, stars, mix(COAT, SESAME, 0.4), 0.45)
         for k, p in enumerate(stars):
             K.oval(d, p, 1.1 if k % 2 == 0 else 0.8, 1.1 if k % 2 == 0 else 0.8, SESAME)
@@ -756,17 +763,17 @@ def _wrap():
     """His scarf where it goes around his neck, from the base of his neck."""
 
     def shape(d) -> None:
-        K.oval(d, K.at(0.8, 0.4), 10.0, 4.6, WHITE)
-        K.oval(d, K.at(-8.8, 1.6), 3.7, 3.6, WHITE)
+        K.oval(d, K.at(0.8, 0.4), 8.4, 4.2, WHITE)
+        K.oval(d, K.at(-7.4, 1.5), 3.4, 3.3, WHITE)
 
     def detail(d) -> None:
         for dy in (-0.8, 1.8):
-            K.line(d, [K.at(-8.0, dy + 0.6), K.at(0.0, dy + 2.0), K.at(9.0, dy)], NOODLE_DARK, 0.6)
+            K.line(d, [K.at(-6.8, dy + 0.6), K.at(0.0, dy + 1.8), K.at(7.6, dy)], NOODLE_DARK, 0.6)
 
     return K.solid(("wrap",), shape, NOODLE, detail, outline=1.2, rim=0.4, shade=0.45, shade_colour=NOODLE_DARK)
 
 
-LINK = 5.2
+LINK = 6.0
 
 
 def _tails(chains: Tuple[Tuple[Point, ...], ...]):
@@ -808,69 +815,65 @@ def _tails(chains: Tuple[Tuple[Point, ...], ...]):
     return K.aligned(("tails", chains), paint)
 
 
-NEAR_EYE: Point = (0.6, 0.8)
-FAR_EYE: Point = (10.4, 0.5)
+NEAR_EYE: Point = (0.6, 0.0)
+FAR_EYE: Point = (6.4, -0.2)
 
 
 def _head():
-    """His head, from its middle: the skull, the hair, an ear, a nose."""
-
-    def lock(d, fill: RGBA, width: float) -> None:
-        K.stroke(d, [K.at(2.0, -16.0), K.at(-1.4, -21.0), K.at(4.0, -24.4), K.at(-0.6, -28.4), K.at(4.6, -31.6), K.at(7.4, -29.4)], fill, width)
+    """His head, from its middle: the skull, the jaw, the hair, an ear, a nose."""
 
     def shape(d) -> None:
-        K.oval(d, K.at(0.0, -1.0), 17.0, 16.5, WHITE)
-        K.oval(d, K.at(2.6, 5.0), 14.6, 12.6, WHITE)
-        K.oval(d, K.at(-3.0, -5.5), 18.4, 15.2, WHITE)
-        K.oval(d, K.at(-11.0, 3.6), 4.2, 5.4, WHITE)
-        lock(d, WHITE, 1.2)
+        K.oval(d, K.at(0.0, -1.4), 9.4, 9.8, WHITE)
+        K.oval(d, K.at(1.8, 3.4), 7.8, 8.2, WHITE)
+        K.oval(d, K.at(-1.0, -4.2), 9.8, 8.6, WHITE)
+        K.oval(d, K.at(-6.6, 1.6), 2.5, 3.2, WHITE)
 
     def detail(d) -> None:
         # The far cheek is in shade.
-        K.oval(d, K.at(17.5, 6.0), 5.0, 12.0, mix(SKIN, SKIN_SHADE, 0.6))
-        hairline = [K.at(18.5, -6.0), K.at(13.6, -11.6), K.at(7.0, -14.6), K.at(0.0, -11.4), K.at(-6.0, -8.6), K.at(-9.4, -3.0),
-                    K.at(-10.2, 4.0), K.at(-14.0, 7.5), K.at(-12.6, 15.0), K.at(-34.0, 15.0), K.at(-34.0, -44.0), K.at(34.0, -44.0),
-                    K.at(34.0, -6.0)]
+        K.oval(d, K.at(10.0, 3.0), 2.8, 7.4, mix(SKIN, SKIN_SHADE, 0.6))
+        # His hair: short, parted on the near side and combed across.
+        hairline = [K.at(9.6, -5.6), K.at(7.2, -8.4), K.at(2.6, -8.8), K.at(-1.6, -7.2), K.at(-4.2, -5.0), K.at(-4.6, -1.6),
+                    K.at(-5.0, 1.0), K.at(-7.6, 3.6), K.at(-7.2, 8.4), K.at(-20.0, 8.4), K.at(-20.0, -26.0), K.at(20.0, -26.0),
+                    K.at(20.0, -5.6)]
         K.poly(d, hairline, HAIR)
-        # The side-swept lock over his brow.
-        K.poly(d, [K.at(7.0, -14.6), K.at(13.6, -11.6), K.at(17.0, -5.6), K.at(12.4, -8.8), K.at(8.6, -10.6)], HAIR)
-        K.line(d, [K.at(-11.0, -15.0), K.at(-3.0, -19.4), K.at(6.0, -18.4), K.at(12.0, -14.6)], HAIR_LIGHT, 1.2)
-        K.line(d, [K.at(-15.6, -8.0), K.at(-17.0, -1.0), K.at(-16.0, 6.0)], HAIR_LIGHT, 1.0)
-        K.line(d, [K.at(7.0, -14.4), K.at(3.0, -17.6)], HAIR_LIGHT, 0.6)
+        K.line(d, [K.at(-3.0, -10.2), K.at(-0.8, -11.4), K.at(3.6, -11.2), K.at(7.0, -9.6)], HAIR_LIGHT, 0.9)
+        K.line(d, [K.at(-1.8, -7.6), K.at(-2.6, -10.6)], HAIR_LIGHT, 0.5)
+        K.line(d, [K.at(-9.4, -5.0), K.at(-10.2, -0.6), K.at(-9.6, 3.6)], HAIR_LIGHT, 0.7)
         # His ear, over his hair.
-        K.oval(d, K.at(-10.6, 3.6), 3.4, 4.7, SKIN, OUTLINE, 0.7)
-        K.line(d, [K.at(-11.4, 1.6), K.at(-9.8, 3.6), K.at(-11.0, 5.6)], SKIN_DEEP, 0.6)
-        K.oval(d, K.at(-3.4, 8.6), 3.0, 1.9, BLUSH)
-        K.oval(d, K.at(12.4, 7.8), 2.4, 1.8, BLUSH)
-        K.line(d, [K.at(6.6, 2.6), K.at(8.0, 5.6), K.at(6.0, 6.4)], SKIN_DEEP, 0.9)
+        K.oval(d, K.at(-6.4, 1.6), 2.0, 2.8, SKIN, OUTLINE, 0.6)
+        K.line(d, [K.at(-6.8, 0.6), K.at(-6.0, 1.8), K.at(-6.6, 2.8)], SKIN_DEEP, 0.45)
+        # His nose, and the line of his jaw.
+        K.line(d, [K.at(3.6, -1.0), K.at(4.9, 2.6), K.at(3.4, 3.4)], SKIN_DEEP, 0.75)
+        K.line(d, [K.at(-3.6, 6.6), K.at(-0.6, 10.0), K.at(3.0, 11.0)], mix(SKIN, SKIN_DEEP, 0.55), 0.6)
 
     return K.solid(("head",), shape, SKIN, detail, outline=1.3, rim=0.3, shade=0.35, shade_colour=SKIN_DEEP)
 
 
 def _eyes(mode: str):
     def paint(d) -> None:
-        for (ex, ey), rx, ry in ((NEAR_EYE, 3.6, 4.5), (FAR_EYE, 2.8, 4.2)):
+        for (ex, ey), rx, ry in ((NEAR_EYE, 2.1, 1.9), (FAR_EYE, 1.7, 1.8)):
             c = K.at(ex, ey)
             if mode == "closed":
-                K.line(d, [(c[0] - rx, c[1] - 0.2), (c[0], c[1] + 1.8), (c[0] + rx, c[1] - 0.2)], INK, 1.3)
+                K.line(d, [(c[0] - rx, c[1] - 0.2), (c[0], c[1] + 0.9), (c[0] + rx, c[1] - 0.2)], INK, 0.9)
                 continue
             if mode == "happy":
-                K.line(d, [(c[0] - rx, c[1] + 1.4), (c[0], c[1] - 1.8), (c[0] + rx, c[1] + 1.4)], INK, 1.4)
+                K.line(d, [(c[0] - rx, c[1] + 0.7), (c[0], c[1] - 1.0), (c[0] + rx, c[1] + 0.7)], INK, 1.0)
                 continue
             if mode == "wince":
-                side = 1.0 if ex < 6.0 else -1.0
-                K.line(d, [(c[0] - rx * side, c[1] - 2.4), (c[0] + rx * 0.6 * side, c[1]), (c[0] - rx * side, c[1] + 2.4)], INK, 1.3)
+                side = 1.0 if ex < 3.0 else -1.0
+                K.line(d, [(c[0] - rx * side, c[1] - 1.4), (c[0] + rx * 0.6 * side, c[1]), (c[0] - rx * side, c[1] + 1.4)], INK, 0.9)
                 continue
-            tall = ry + (0.9 if mode == "wide" else 0.0)
-            K.oval(d, c, rx, tall, EYE_WHITE, INK, 0.7)
-            small = 0.72 if mode == "wide" else 1.0
-            ic = (c[0] + 0.8, c[1] + (-1.5 if mode == "up" else 0.3))
-            K.oval(d, ic, rx * 0.72 * small, ry * 0.76 * small, IRIS)
-            K.oval(d, ic, rx * 0.44 * small, ry * 0.5 * small, INK)
-            K.oval(d, (ic[0] - 0.9, ic[1] - 1.5), 1.05, 1.05, WHITE)
-            K.oval(d, (ic[0] + 0.9, ic[1] + 1.5), 0.5, 0.5, WHITE)
-            K.line(d, [(c[0] - rx - 0.5, c[1] - 1.4), (c[0] - rx * 0.4, c[1] - tall + 0.2), (c[0] + rx * 0.5, c[1] - tall + 0.2),
-                       (c[0] + rx + 0.4, c[1] - 1.6)], INK, 1.3)
+            tall = ry + (0.6 if mode == "wide" else 0.0)
+            K.oval(d, c, rx, tall, EYE_WHITE)
+            small = 0.8 if mode == "wide" else 1.0
+            ic = (c[0] + 0.4, c[1] + (-0.5 if mode == "up" else 0.1))
+            K.oval(d, ic, 1.3 * small, 1.45 * small, IRIS)
+            K.oval(d, ic, 0.8 * small, 0.9 * small, INK)
+            K.oval(d, (ic[0] - 0.5, ic[1] - 0.6), 0.4, 0.4, WHITE)
+            # His upper lid: the heavy line of the eye.
+            K.line(d, [(c[0] - rx - 0.3, c[1] - 0.2), (c[0] - rx * 0.4, c[1] - tall), (c[0] + rx * 0.5, c[1] - tall),
+                       (c[0] + rx + 0.3, c[1] - 0.4)], INK, 0.9)
+            K.line(d, [(c[0] - rx * 0.6, c[1] + tall), (c[0] + rx * 0.7, c[1] + tall)], SKIN_DEEP, 0.4)
 
     return K.piece(("eyes", mode), paint)
 
@@ -879,32 +882,31 @@ def _brows(mood: int):
     """His brows: 0 level, 1 raised, -1 set."""
 
     def paint(d) -> None:
-        up = -1.6 if mood > 0 else 0.0
-        inner = 1.5 if mood < 0 else 0.0
-        K.stroke(d, [K.at(-4.0, -6.2 + up), K.at(0.4, -7.4 + up), K.at(4.4, -6.6 + up + inner)], HAIR, 1.7)
-        K.stroke(d, [K.at(7.8, -6.8 + up + inner), K.at(10.8, -7.6 + up), K.at(13.6, -6.2 + up)], HAIR, 1.6)
+        up = -1.0 if mood > 0 else 0.0
+        inner = 1.0 if mood < 0 else 0.0
+        K.stroke(d, [K.at(-2.2, -3.2 + up), K.at(0.6, -3.9 + up), K.at(3.0, -3.3 + up + inner)], HAIR, 1.3)
+        K.stroke(d, [K.at(4.9, -3.5 + up + inner), K.at(6.6, -4.0 + up), K.at(8.3, -3.2 + up)], HAIR, 1.2)
 
     return K.piece(("brows", mood), paint)
 
 
 def _mouth(mode: str):
-    c = K.at(5.8, 10.4)
+    c = K.at(3.6, 6.6)
 
     def paint(d) -> None:
         if mode == "smile":
-            K.line(d, [(c[0] - 3.6, c[1] - 0.9), (c[0] - 0.4, c[1] + 1.1), (c[0] + 3.2, c[1] - 1.1)], MOUTH, 1.0)
+            K.line(d, [(c[0] - 2.4, c[1] - 0.3), (c[0] - 0.2, c[1] + 0.5), (c[0] + 2.2, c[1] - 0.5)], MOUTH, 0.8)
         elif mode == "flat":
-            K.line(d, [(c[0] - 2.8, c[1]), (c[0] + 2.6, c[1] - 0.2)], MOUTH, 1.0)
+            K.line(d, [(c[0] - 2.0, c[1]), (c[0] + 1.9, c[1] - 0.1)], MOUTH, 0.8)
         elif mode == "o":
-            K.oval(d, c, 1.7, 2.0, MOUTH, INK, 0.5)
+            K.oval(d, c, 1.1, 1.3, MOUTH, INK, 0.4)
         elif mode == "grit":
-            K.rrect(d, c[0] - 3.4, c[1] - 1.5, c[0] + 3.2, c[1] + 1.5, 1.0, EYE_WHITE, INK, 0.6)
-            for dx in (-1.2, 1.0):
-                K.line(d, [(c[0] + dx, c[1] - 1.4), (c[0] + dx, c[1] + 1.4)], INK, 0.4)
+            K.rrect(d, c[0] - 2.3, c[1] - 1.0, c[0] + 2.2, c[1] + 1.0, 0.7, EYE_WHITE, INK, 0.5)
+            K.line(d, [(c[0], c[1] - 0.9), (c[0], c[1] + 0.9)], INK, 0.3)
         else:
-            ry = 3.3 if mode == "big" else 2.1
-            K.oval(d, (c[0], c[1] + 0.4), 3.2 if mode == "big" else 2.6, ry, MOUTH, INK, 0.6)
-            K.oval(d, (c[0], c[1] + 0.4 + ry * 0.5), 1.8, ry * 0.42, TONGUE)
+            ry = 2.2 if mode == "big" else 1.4
+            K.oval(d, (c[0], c[1] + 0.3), 2.2 if mode == "big" else 1.8, ry, MOUTH, INK, 0.5)
+            K.oval(d, (c[0], c[1] + 0.3 + ry * 0.5), 1.2, ry * 0.4, TONGUE)
 
     return K.piece(("mouth", mode), paint)
 
@@ -1171,14 +1173,14 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     lean = float(pose["lean"])  # type: ignore[arg-type]
     hx, hy = pose["hip"]  # type: ignore[misc]
     ox, oy = pose["off"]  # type: ignore[misc]
-    hip = (hx, -HIP_UP + hy)
+    hip = (hx * U, -HIP_UP + hy * U)
     px, py = pose["pivot"]  # type: ignore[misc]
-    pivot = (hip[0] + px, hip[1] + py)
+    pivot = (hip[0] + px * U, hip[1] + py * U)
 
     def W(p: Point) -> Point:
         """A point of him (from the ground under him) in the frame."""
         r = turned((p[0] - pivot[0], p[1] - pivot[1]), rot)
-        return (CX + ox + pivot[0] + r[0], GROUND + oy + pivot[1] + r[1])
+        return (CX + ox * U + pivot[0] + r[0], GROUND + oy * U + pivot[1] + r[1])
 
     def trunk(x: float, y: float) -> Point:
         """A point of his trunk, from his hips, his spine straight up."""
@@ -1195,11 +1197,11 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         key, name = ("na", "near") if near else ("fa", "far")
         shoulder = trunk(*(NEAR_SHOULDER if near else FAR_SHOULDER))
         dx, dy = pose[key]  # type: ignore[misc]
-        elbow, wrist = solve(shoulder, (shoulder[0] + dx, shoulder[1] + dy), UPPER, FORE, float(pose[key + "b"]))  # type: ignore[arg-type]
+        elbow, wrist = solve(shoulder, (shoulder[0] + dx * U, shoulder[1] + dy * U), UPPER, FORE, float(pose[key + "b"]))  # type: ignore[arg-type]
         colour = COAT if near else COAT_DARK
         limb(f"{name}_arm", [
-            (shoulder, elbow, lambda edge: _bone("upper", UPPER, 7.2, 6.0, colour, COAT_DARK, edge)),
-            (elbow, wrist, lambda edge: _bone("fore", FORE, 6.0, 5.4, colour, COAT_DARK, edge)),
+            (shoulder, elbow, lambda edge: _bone("upper", UPPER, 7.4, 6.2, colour, COAT_DARK, edge)),
+            (elbow, wrist, lambda edge: _bone("fore", FORE, 6.2, 5.4, colour, COAT_DARK, edge)),
         ])
         K.place(img, _hand(str(pose["nh" if near else "fh"]), near), W(wrist), f"{name}_hand", angle(W(elbow), W(wrist)))
         return W(wrist)
@@ -1208,11 +1210,11 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
         key, name = ("nf", "near") if near else ("ff", "far")
         root = (hip[0] + (NEAR_HIP if near else FAR_HIP)[0], hip[1])
         fx, fy, toe = pose[key]  # type: ignore[misc]
-        knee, ankle = solve(root, (fx, fy - ANKLE_UP), THIGH, SHIN, -1.0)
+        knee, ankle = solve(root, (fx * U, fy * U - ANKLE_UP), THIGH, SHIN, -1.0)
         colour = TROUSER if near else TROUSER_DARK
         limb(f"{name}_leg", [
-            (root, knee, lambda edge: _bone("thigh", THIGH, 7.4, 6.2, colour, TROUSER_DARK, edge)),
-            (knee, ankle, lambda edge: _bone("shin", SHIN, 6.2, 5.0, colour, TROUSER_DARK, edge)),
+            (root, knee, lambda edge: _bone("thigh", THIGH, 7.8, 6.4, colour, TROUSER_DARK, edge)),
+            (knee, ankle, lambda edge: _bone("shin", SHIN, 6.4, 5.2, colour, TROUSER_DARK, edge)),
         ])
         K.place(img, _shoe(near), W(ankle), f"{name}_shoe", toe + rot)
         return W(ankle)
@@ -1223,13 +1225,13 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     near_foot = (0.0, 0.0) if kicking else leg(True)
 
     hem = pose["hem"]
-    K.place(img, _coat(int(round(max(0.0, hem[0]))), int(round(max(0.0, hem[1])))), W(hip), "coat", lean + rot)  # type: ignore[index]
+    K.place(img, _coat(int(round(max(0.0, hem[0]) * U)), int(round(max(0.0, hem[1]) * U))), W(hip), "coat", lean + rot)  # type: ignore[index]
     if kicking:
         near_foot = leg(True)
 
     # His scarf's tails, from the knot at the back of his neck. They hang in
     # the world: turning him does not turn them.
-    knot = W(trunk(-8.8, -NECK + 1.8))
+    knot = W(trunk(-7.4, -NECK + 1.6))
     phase = math.tau * frame_idx / max(1, nframes)
     held = pin(knot)
     chains = []
@@ -1248,8 +1250,8 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
 
     neck = trunk(0.8, -NECK)
     hdx, hdy, tilt = pose["head"]  # type: ignore[misc]
-    up = turned((1.5, -19.0), lean * 0.5 + tilt * 0.3)
-    head = W((neck[0] + up[0] + hdx, neck[1] + up[1] + hdy))
+    up = turned(HEAD_UP, lean * 0.5 + tilt * 0.3)
+    head = W((neck[0] + up[0] + hdx * U, neck[1] + up[1] + hdy * U))
     turn = lean * 0.35 + tilt + rot
     K.place(img, _head(), head, "head", turn)
     K.place(img, _eyes(str(pose["eyes"])), head, "eyes", turn)
@@ -1267,8 +1269,8 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     return K.downsample(img)
 
 
-#: The body the game moves: his head and his coat, standing.
-BODY_BOX = (CX - 17.0, GROUND - HEIGHT, CX + 19.0, GROUND)
+#: The body the game moves: his coat, standing, up to the top of his hair.
+BODY_BOX = (CX - 14.0, GROUND - HEIGHT, CX + 15.0, GROUND)
 
 
 def render(out_dir: str | Path, **opts) -> List[Path]:
