@@ -48,6 +48,11 @@ ROWS: List[Tuple[str, int, int]] = [
     ("up", 5, 20),
     ("down", 5, 20),
     ("poke", 5, 20),
+    # The two halves of the 1-2 string of the robot at home: the blade goes up
+    # across its front, then comes down. One reach, and the same sweep; the
+    # picture says which way the blade went.
+    ("rise", 5, 20),
+    ("fall", 5, 20),
 ]
 
 # Pale blue ramp: keep even the deepest stop in mid blue so the effect reads as
@@ -336,6 +341,33 @@ def _draw_down_frame_raw(t: float) -> Image.Image:
     return _draw_sweep_frame(t)
 
 
+def _draw_directed_frame(t: float, rises: bool) -> Image.Image:
+    """The sweep, with the way the blade went: where the blade IS has all of
+    its light, and where it WAS goes dark first.
+
+    A rise is drawn for a strike to the right: the blade ends at the top of
+    the frame. The game turns the frame to the strike, and for a strike to the
+    left it asks for the other row (a half turn makes a rise a fall).
+    """
+    image = _draw_sweep_frame(t)
+    # How much of its light the part the blade left still has: some on the
+    # first frame (the whole reach is seen, and it hurts), none soon after.
+    left = _lerp(0.3, 0.0, _smoothstep(0.0, 0.4, t))
+    half = max(1.0, PEAK_HALF)
+    pixels = image.load()
+    for y in range(image.height):
+        # 0 where the blade started, 1 where it is.
+        s = _clamp(0.5 + (AXIS_Y - y) / (2.0 * half)) if rises else _clamp(0.5 - (AXIS_Y - y) / (2.0 * half))
+        keep = _lerp(left, 1.0, _smoothstep(0.2, 0.8, s))
+        if keep >= 0.999:
+            continue
+        for x in range(image.width):
+            r, g, b, a = pixels[x, y]
+            if a:
+                pixels[x, y] = (r, g, b, int(a * keep))
+    return image
+
+
 def _poke_polygon(progress: float, width_scale: float = 1.0):
     """Draw the down-tilt as a straight thrust in swing space.
 
@@ -400,6 +432,8 @@ def _draw_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image
         image = _draw_down_frame_raw(t)
     elif animation == "poke":
         image = _draw_poke_frame_raw(t)
+    elif animation in ("rise", "fall"):
+        image = _draw_directed_frame(t, animation == "rise")
     else:
         image = _draw_sweep_frame(t)
     # NO global rotation. Every row above is drawn in SWING SPACE — x is the
@@ -418,6 +452,8 @@ def _frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
         "up": ((AXIS_Y, FRAME_SIZE[1] - 2.0), (AXIS_Y, FRAME_SIZE[1] - REACH)),
         "down": ((AXIS_Y, 2.0), (AXIS_Y, REACH)),
         "poke": ((0.0, AXIS_Y), (REACH, AXIS_Y)),
+        "rise": ((0.0, AXIS_Y), (REACH, AXIS_Y)),
+        "fall": ((0.0, AXIS_Y), (REACH, AXIS_Y)),
     }
     origin, tip = anchors[animation]
     return {
