@@ -1,1446 +1,776 @@
-"""Willson — a pelican and bicycle authored as one composite actor.
+"""Sprite generator for Willson: a pelican riding a bicycle.
 
-The target is fully procedural Python.  Rider and bicycle have independent
-pose transforms inside one sprite entity, allowing Willson to step off, carry
-the bicycle while flying, and separate from it during the death fall without
-creating a second gameplay actor.  Wheel rotation uses deliberately asymmetric
-geometry so motion remains visible from frame to frame.
+A parody of Simon Willison, who asks every new model to draw a pelican riding
+a bicycle. He is the picture: if he has two wheels, a frame that joins them
+and a bird whose feet are on the pedals, the model passed.
 
-Publish:
+The look (redrawn 2026-10-11): a round white pelican with a long orange bill
+and a deep pouch, a small crest, round glasses, and long orange legs, on a red
+bicycle. He wears a brown satchel with a ``W`` on its flap, on a strap across
+his chest. He faces right.
 
-    PYTHONPATH=tools/ambition_sprite2d_renderer \
-      python -m ambition_sprite2d_renderer publish willson
+The bird and the bicycle are one actor and two rigs. The bicycle (frame,
+cranks, pedals) is painted whole for each tilt and crank turn, and each wheel
+for each turn, on whole pixels (``Kit.aligned``): spokes and thin tubes do not
+survive being reduced and then turned. The bird is turned pieces: his wings
+and legs are two bones through a solved joint, to the grips and the pedals.
+
+Rows: ``idle`` (a track stand: he rocks the pedals to stay up), ``walk`` and
+``run`` (he pedals), ``slash`` (the front wheel comes up and his bill comes
+down), ``fly`` (he carries the bicycle by its top tube), ``taunt`` (both wings
+up and a clack of the bill), ``hurt``, and ``death`` (the bicycle goes over
+backward onto its saddle and he sits down beside it).
 """
+
 from __future__ import annotations
 
+import argparse
 import math
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List, Mapping, Sequence, Tuple
+from typing import Callable, Dict, List, Tuple
 
-from PIL import Image, ImageColor, ImageDraw
+from PIL import Image
 
-from ...authoring import rigdoc
-from ...authoring.part_flipbook import publish_rig_flipbook
-from ...authoring.sheet_build import build_sheet, write_canonical
-from ambition_sprite2d_renderer.core.draw import blending_draw
-
-from . import _solo_shape_rig as SR
-
-Color = Tuple[int, int, int, int]
-Point = Tuple[float, float]
+from ._ai_era_kit import OUTLINE, WHITE, Kit, Point, Pose, RGBA, angle, ease, keys, lerp, mix, pin, solve, turned
 
 TARGET_NAME = "willson"
-FRAME_W, FRAME_H = 256, 256
-SS = 4
-TAU = math.tau
+FRAME_SIZE = (256, 240)
+GROUND = 226.0
+CX = 112.0
+
+# ---- The bicycle: from the ground between its wheels, up is negative ---------
+
+WHEEL = 27.0
+REAR: Point = (-38.0, -WHEEL)
+FRONT: Point = (38.0, -WHEEL)
+BRACKET: Point = (-3.0, -28.0)
+CRANK = 9.0
+#: Where he sits.
+SADDLE: Point = (-16.0, -68.0)
+#: Where a wing holds the handlebar.
+GRIP: Point = (27.5, -85.0)
+#: The top tube, where his feet hold it in the air.
+TUBE_BACK: Point = (-5.0, -63.0)
+TUBE_FRONT: Point = (8.0, -65.0)
+#: A wheel is painted at each of these turns.
+WHEEL_STEP = 15.0
+
+# ---- The bird: from his seat, his back straight up ---------------------------
+
+NECK_ROOT: Point = (12.0, -42.0)
+NECK_LOW, NECK_HIGH = 15.0, 14.0
+NEAR_SHOULDER: Point = (6.0, -35.0)
+FAR_SHOULDER: Point = (10.0, -36.0)
+WING_UPPER, WING_FORE = 19.0, 17.0
+NEAR_HIP: Point = (3.0, -3.0)
+FAR_HIP: Point = (6.0, -4.0)
+THIGH, SHIN = 28.0, 28.0
+ANKLE_UP = 2.5
+BAG_HANGS: Point = (-9.0, -15.0)
+
+FEATHER: RGBA = (248, 246, 238, 255)
+FEATHER_SHADE: RGBA = (204, 210, 228, 255)
+FEATHER_DARK: RGBA = (150, 158, 186, 255)
+PRIMARY: RGBA = (56, 52, 72, 255)
+BILL: RGBA = (255, 172, 58, 255)
+BILL_DARK: RGBA = (224, 118, 38, 255)
+POUCH: RGBA = (255, 214, 130, 255)
+POUCH_DARK: RGBA = (234, 166, 84, 255)
+LEG: RGBA = (246, 142, 54, 255)
+LEG_DARK: RGBA = (204, 100, 42, 255)
+INK: RGBA = (30, 22, 38, 255)
+GLASSES: RGBA = (48, 38, 66, 255)
+LENS: RGBA = (176, 220, 255, 170)
+BIKE: RGBA = (226, 64, 62, 255)
+BIKE_DARK: RGBA = (158, 36, 54, 255)
+BIKE_LIGHT: RGBA = (255, 142, 122, 255)
+TYRE: RGBA = (50, 46, 66, 255)
+RIM: RGBA = (204, 210, 230, 255)
+SPOKE: RGBA = (176, 184, 210, 255)
+METAL: RGBA = (124, 130, 156, 255)
+METAL_LIGHT: RGBA = (196, 202, 222, 255)
+SADDLE_BROWN: RGBA = (112, 70, 50, 255)
+BAG: RGBA = (152, 98, 58, 255)
+BAG_DARK: RGBA = (106, 64, 42, 255)
+BAG_FLAP: RGBA = (180, 122, 72, 255)
+LETTER: RGBA = (255, 242, 208, 255)
+BELL: RGBA = (250, 208, 88, 255)
+REFLECTOR: RGBA = (255, 176, 60, 255)
+
+K = Kit(FRAME_SIZE)
+
+ACTOR_METADATA = {
+    "actor": {"character_id": TARGET_NAME, "display_name": "Willson"},
+    "body": {
+        "body_plan": "AvianCyclist",
+        "body_kind": "Grounded",
+        "mass_class": "Medium",
+        "traits": ["pelican", "bicycle_bound", "inseparable_composite_actor", "aerial_bicycle_carry", "pedal_locomotion", "beak_melee",
+                   "expressive"],
+        "locomotion_hint": "Walk",
+    },
+    "visual": {"default_pose": "idle", "facing_policy": "side_right"},
+    "tags": ["npc", "avian", "cyclist", "custom", "beak_melee"],
+    "animation_bindings": {
+        "default": {"animation": "idle", "events": []},
+        "locomotion.walk": {"animation": "walk", "events": []},
+        "locomotion.run": {"animation": "run", "events": []},
+        "locomotion.fly": {"animation": "fly", "events": []},
+        "action.melee.primary": {
+            "animation": "slash",
+            "events": [
+                {"t": 0.45, "event": "hitbox_active_start", "source": "explicit.profile.willson"},
+                {"t": 0.7, "event": "hitbox_active_end", "source": "explicit.profile.willson"},
+            ],
+        },
+        "combat.hurt": {"animation": "hurt", "events": []},
+        "combat.death": {"animation": "death", "events": []},
+    },
+    "authoring_description": (
+        "Willson is a pelican riding a bicycle, built from the kind of compositional prompt that "
+        "image-generation systems notoriously mishandle. The extra L distinguishes him from "
+        "unrelated Wilson characters and makes him a living benchmark for whether an intelligence "
+        "can keep rider, bird, wheels, and motion coherent."
+    ),
+    "gameplay_description": (
+        "Use as a benchmark mascot, composite traversal character, courier, or comic evaluator of "
+        "generated art. Pelican and bicycle are one actor: he can pedal, carry the bicycle in "
+        "flight, and complain whenever a depiction loses a wheel. As an enemy he rides at what "
+        "he sees and brings his bill down on it."
+    ),
+    "dialogue_hints": {
+        "barks": [
+            "Draw me riding this bicycle. SVG only.",
+            "Every intelligence arrives with a brass band. Then it gives the bicycle one wheel.",
+            "A benchmark that cannot molt is just homework with a leaderboard.",
+        ]
+    },
+}
+
+
+# ---- The pose ----------------------------------------------------------------
+
+#: Riding, upright and still. A row states what differs.
+REST: Pose = {
+    # The bicycle: moved (whole pixels), and turned about a point of its own
+    # (the foot of its rear wheel: a wheelie).
+    "bike": (0.0, 0.0),
+    "tilt": 0.0,
+    "pivot": (REAR[0], 0.0),
+    # How far its cranks have turned (0: the near pedal is forward) and its
+    # wheels have (in `WHEEL_STEP`s).
+    "crank": 0.0,
+    "wheel": 0.0,
+    # His seat from the saddle. `free` 1: his seat is at `at` (from the ground
+    # under the frame's middle) and he does not turn with the bicycle.
+    "seat": (0.0, 0.0),
+    "free": 0.0,
+    "at": (0.0, 0.0),
+    # He leans this far forward.
+    "lean": 20.0,
+    # His head from the root of his neck, its tilt, and how far his bill is open.
+    "head": (11.0, -24.0),
+    "tilt_head": 0.0,
+    "gape": 0.0,
+    "eyes": "open",
+    # His wings: "bars" hold the grips, "spread" are out at `flap` (0 is up,
+    # negative is back), "fold" are at his sides.
+    "wings": "bars",
+    "flap": -60.0,
+    # Each foot: on its "pedal", or "at" a place (from the ground under the
+    # frame's middle; `nf` is the near one).
+    "feet": "pedal",
+    "nf": (0.0, 0.0),
+    "ff": (0.0, 0.0),
+    # His bag swings this far back.
+    "bag": 0.0,
+}
+
+
+def P(**kw) -> Pose:
+    unknown = set(kw) - set(REST)
+    assert not unknown, unknown
+    return dict(REST, **kw)
+
+
+ROW_POSES: Dict[str, Callable[[int, int], Pose]] = {}
+
+
+def row(fn: Callable[[int, int], Pose]) -> Callable[[int, int], Pose]:
+    ROW_POSES[fn.__name__] = fn
+    return fn
+
+
+def _loop(i: int, n: int) -> Tuple[float, float, float]:
+    ph = math.tau * i / max(1, n)
+    return ph, math.sin(ph), math.cos(ph)
+
+
+def _shot(i: int, n: int) -> float:
+    return i / max(1, n - 1)
+
+
+@row
+def idle(i: int, n: int) -> Pose:
+    # A track stand: he rocks the pedals a little forward and back to stay up.
+    _, s, c = _loop(i, n)
+    rock = (0, 1, 1, 0, 0, -1, -1, 0)[i % 8]
+    return P(crank=20.0 + 15.0 * rock, wheel=float(rock), lean=18.0 + 1.5 * s, head=(10.0 + 1.5 * c, -24.5 - 0.6 * s), tilt_head=-4.0 + 3.0 * c,
+             eyes="closed" if i == n - 2 else "open", bag=2.0 * s)
+
+
+@row
+def walk(i: int, n: int) -> Pose:
+    _, s, _c = _loop(i, n)
+    bob = math.sin(2.0 * math.tau * i / n)
+    return P(crank=45.0 * i, wheel=3.0 * i, seat=(0.0, -0.8 * bob), lean=21.0 + 1.5 * bob, head=(11.0, -24.0 + 0.8 * bob), tilt_head=2.0 * s,
+             bag=4.0 + 3.0 * bob)
+
+
+@row
+def run(i: int, n: int) -> Pose:
+    # Out of the saddle and over the bars.
+    bob = math.sin(2.0 * math.tau * i / n)
+    return P(crank=90.0 * i, wheel=9.0 * i, seat=(5.0, -6.0 - 1.2 * bob), lean=37.0 + 2.0 * bob, head=(16.0, -18.0 + bob), tilt_head=10.0,
+             gape=4.0 + 3.0 * bob, bag=24.0 + 5.0 * bob)
+
+
+@row
+def slash(i: int, n: int) -> Pose:
+    # The front wheel comes up, and his bill comes down with the wheel.
+    ride = P(crank=0.0, wheel=0.0)
+    rear_up = P(tilt=-17.0, crank=70.0, wheel=4.0, seat=(-2.0, -3.0), lean=4.0, head=(1.0, -27.0), tilt_head=-34.0, gape=16.0, bag=-12.0)
+    strike = P(tilt=0.0, bike=(4.0, 0.0), crank=150.0, wheel=9.0, seat=(6.0, -5.0), lean=44.0, head=(26.0, -9.0), tilt_head=26.0, gape=0.0,
+               eyes="wide", bag=30.0)
+    return keys(_shot(i, n), [(0.0, ride), (0.3, rear_up), (0.42, rear_up), (0.58, strike), (0.76, strike), (1.0, dict(ride, crank=180.0, wheel=12.0))])
+
+
+@row
+def fly(i: int, n: int) -> Pose:
+    # He carries it: his feet hold the top tube and the wheels turn in the air.
+    ph, s, c = _loop(i, n)
+    return P(bike=(0.0, round(-16.0 - 3.0 * s)), tilt=round(3.0 * c), pivot=(0.0, -64.0), crank=30.0, wheel=float(i), seat=(4.0, -24.0),
+             lean=30.0 + 3.0 * c, head=(14.0, -21.0), tilt_head=6.0, wings="spread", flap=-88.0 - 50.0 * s, feet="tube", bag=14.0 + 6.0 * c)
+
+
+@row
+def taunt(i: int, n: int) -> Pose:
+    clack = (0.0, 26.0, 2.0, 26.0, 2.0, 0.0)[i % 6]
+    up = (0.0, 1.0, 0.7, 1.0, 0.7, 0.0)[i % 6]
+    return P(tilt=round(-9.0 * up), crank=30.0 + 20.0 * up, wheel=float(round(2.0 * up)), lean=lerp(20.0, 2.0, up), head=(lerp(11.0, 5.0, up), -24.0 - 3.0 * up),
+             tilt_head=lerp(0.0, -32.0, up), gape=clack, eyes="happy" if up > 0.5 else "open", wings="spread" if up > 0.5 else "bars",
+             flap=-30.0 - 26.0 * (i % 2), bag=-8.0 * up)
+
+
+STRUCK = P(bike=(-4.0, 0.0), tilt=-15.0, crank=40.0, wheel=-2.0, seat=(-3.0, -5.0), lean=-8.0, head=(0.0, -26.0), tilt_head=-30.0, gape=24.0,
+           eyes="wince", wings="spread", flap=-20.0, bag=-22.0)
+
+
+@row
+def hurt(i: int, n: int) -> Pose:
+    back = P(bike=(-2.0, 0.0), tilt=-4.0, crank=20.0, wheel=-1.0, lean=10.0, head=(7.0, -25.0), tilt_head=-10.0, gape=8.0, eyes="wince", bag=-8.0)
+    return keys(_shot(i, n), [(0.0, P(eyes="wide", gape=10.0)), (0.34, STRUCK), (0.67, STRUCK), (1.0, back)])
+
+
+def _lowest(tilt: float, pivot: Point) -> float:
+    """How far under the ground the lowest thing of a bicycle is when it is
+    tilted ``tilt`` about ``pivot`` and not moved: a tyre, the saddle or a grip."""
+    low = -1e9
+    for point, reach in ((REAR, WHEEL), (FRONT, WHEEL), ((-17.0, -71.0), 1.5), ((GRIP[0], GRIP[1] - 1.0), 2.5)):
+        q = turned((point[0] - pivot[0], point[1] - pivot[1]), tilt)
+        low = max(low, pivot[1] + q[1] + reach)
+    return low
+
+
+@row
+def death(i: int, n: int) -> Pose:
+    # The bicycle goes over backward and comes to rest on its saddle and its
+    # bars, a wheel still turning. He sits down in front of it.
+    u = _shot(i, n)
+    middle = (0.0, -40.0)
+    over = ease(min(1.0, u / 0.62))
+    bike_tilt = round(lerp(-15.0, -184.0, over))
+    slide = round(lerp(-4.0, -30.0, over))
+    # It turns over on the ground: whatever is lowest is on it.
+    lift = round(-_lowest(float(bike_tilt), middle))
+    seat_start = (SADDLE[0] - 6.0, SADDLE[1] - 8.0)
+    thrown = keys(u, [
+        (0.0, dict(STRUCK, free=0.0, at=seat_start)),
+        (0.2, dict(STRUCK, free=1.0, at=(seat_start[0] + 8.0, seat_start[1] - 18.0), lean=-20.0, feet="at", nf=(8.0, -58.0), ff=(14.0, -62.0),
+                   flap=-70.0)),
+        (0.45, dict(STRUCK, free=1.0, at=(44.0, -64.0), lean=10.0, feet="at", nf=(70.0, -34.0), ff=(74.0, -40.0), flap=-110.0, tilt_head=0.0,
+                    head=(8.0, -25.0))),
+        (0.66, P(free=1.0, at=(56.0, -9.0), lean=-12.0, feet="at", nf=(92.0, -1.0), ff=(87.0, -2.0), wings="fold", head=(6.0, -22.0),
+                 tilt_head=24.0, gape=14.0, eyes="wince", bag=-30.0)),
+        (1.0, P(free=1.0, at=(56.0, -9.0), lean=-6.0, feet="at", nf=(92.0, -1.0), ff=(87.0, -2.0), wings="fold", head=(9.0, -21.0),
+                tilt_head=34.0, gape=4.0, eyes="closed", bag=-30.0)),
+    ])
+    return dict(thrown, bike=(float(slide), float(lift)), tilt=float(bike_tilt), pivot=middle, crank=40.0, wheel=float(-2 + i))
+
 
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 8, 140),
     ("walk", 8, 78),
+    ("run", 8, 52),
     ("slash", 8, 72),
     ("fly", 8, 86),
     ("taunt", 6, 108),
     ("hurt", 4, 94),
     ("death", 10, 92),
 ]
-LOOPS = {"idle", "walk", "fly"}
-
-ACTOR_METADATA = {
-    "actor": {
-        "character_id": TARGET_NAME,
-        "display_name": "Willson",
-    },
-    "body": {
-        "body_plan": "AvianCyclist",
-        "body_kind": "Grounded",
-        "traits": [
-            "pelican",
-            "bicycle_bound",
-            "inseparable_composite_actor",
-            "dismount_animation",
-            "aerial_bicycle_carry",
-            "pedal_locomotion",
-            "beak_melee",
-            "expressive",
-        ],
-    },
-    "visual": {
-        "default_pose": "idle",
-        "facing_policy": "side_right",
-    },
-    "provenance": {
-        "variant_family": TARGET_NAME,
-        "variant_id": "gpt_5_6_composite_motion_polish_2026_07_15",
-        "lineage": [
-            {
-                "revision_id": "human_concept_2026_07_15",
-                "creator_kind": "human",
-                "creator": "project_author",
-                "contribution": "character_name_and_pelican_riding_a_bicycle_concept",
-                "date": "2026-07-15",
-            },
-            {
-                "revision_id": "gpt_5_6_initial_sprite_2026_07_15",
-                "creator_kind": "model",
-                "creator": "gpt-5.6-thinking",
-                "contribution": "procedural_sprite_design_animation_and_python_implementation",
-                "parent_revision_id": "human_concept_2026_07_15",
-                "date": "2026-07-15",
-            },
-            {
-                "revision_id": "gpt_5_6_composite_motion_polish_2026_07_15",
-                "creator_kind": "model",
-                "creator": "gpt-5.6-thinking",
-                "contribution": "dismounted_idle_readable_wheel_motion_violent_attack_flight_and_rider_bicycle_separation",
-                "parent_revision_id": "gpt_5_6_initial_sprite_2026_07_15",
-                "date": "2026-07-15",
-            },
-        ],
-    },
-    "tags": ["npc", "avian", "cyclist", "custom", "beak_melee"],
-}
-
-
-ACTOR_METADATA.update(
-    {
-        "authoring_description": (
-            "Willson is a pelican riding a bicycle, built from the kind of compositional prompt that "
-            "image-generation systems notoriously mishandle. The extra L distinguishes him from "
-            "unrelated Wilson characters and makes him a living benchmark for whether an intelligence "
-            "can keep rider, bird, wheels, and motion coherent."
-        ),
-        "gameplay_description": (
-            "Use as a benchmark mascot, composite traversal character, courier, or comic evaluator of "
-            "generated art. Pelican and bicycle are one actor: he can pedal, dismount, carry the "
-            "bicycle in flight, and complain whenever a depiction loses a wheel."
-        ),
-    }
-)
-ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
-    "barks",
-    [
-        'Draw me riding this bicycle. SVG only.',
-        'Every intelligence arrives with a brass band. Then it gives the bicycle one wheel.',
-        'A benchmark that cannot molt is just homework with a leaderboard.',
-    ],
-)
-
-
-def _rgba(value: str, alpha: int = 255) -> Color:
-    r, g, b = ImageColor.getrgb(value)
-    return (r, g, b, alpha)
-
-
-PAL: Dict[str, Color] = {
-    "outline": _rgba("#101921"),
-    "tire": _rgba("#18212A"),
-    "tire_hi": _rgba("#394753"),
-    "rim": _rgba("#B9CDD1"),
-    "spoke": _rgba("#789098"),
-    "bike_dark": _rgba("#12505A"),
-    "bike": _rgba("#168A91"),
-    "bike_hi": _rgba("#49C7BE"),
-    "brass": _rgba("#D9A52E"),
-    "brass_hi": _rgba("#FFE27A"),
-    "leather": _rgba("#6F3F28"),
-    "leather_hi": _rgba("#B56D3E"),
-    "feather_dark": _rgba("#A8B0AD"),
-    "feather": _rgba("#E9E6D8"),
-    "feather_hi": _rgba("#FFFDF0"),
-    "wing": _rgba("#D4D4C8"),
-    "wing_hi": _rgba("#F4F1E2"),
-    "bill_dark": _rgba("#C34D22"),
-    "bill": _rgba("#F0782C"),
-    "bill_hi": _rgba("#FFB04A"),
-    "pouch": _rgba("#F6A548"),
-    "pouch_hi": _rgba("#FFD37A"),
-    "leg": _rgba("#D95E2C"),
-    "leg_hi": _rgba("#FF9A4B"),
-    "eye": _rgba("#14202A"),
-    "eye_hi": _rgba("#EAF9FF"),
-    "scarf": _rgba("#B53A3F"),
-    "scarf_hi": _rgba("#F06C62"),
-    "satchel": _rgba("#8B5533"),
-    "satchel_hi": _rgba("#D18A4D"),
-}
-
-
-# Stable painter ordering.  The bicycle lives behind the rider; the near foot
-# and wing live in front; the hand-grip and facial marks close the stack.
-LAYER_Z: Dict[str, int] = {
-    "wheels": 10,
-    "far_crank": 20,
-    "bike_frame": 30,
-    "tail": 40,
-    "far_wing": 45,
-    "far_leg": 48,
-    "body": 50,
-    "satchel": 54,
-    "neck": 58,
-    "head": 62,
-    # Under the head: the bill and pouch reach back beneath it.
-    "beak": 60,
-    "near_leg": 72,
-    "near_wing": 78,
-    "handle_details": 82,
-    "face_details": 86,
-    "accents": 90,
-}
-
-LAYER_RELATIONS: Tuple[Tuple[str, str], ...] = (
-    ("bike_frame", "wheels"),
-    ("body", "far_wing"),
-    ("body", "bike_frame"),
-    ("near_leg", "body"),
-    ("near_wing", "body"),
-    ("near_wing", "bike_frame"),
-    ("handle_details", "near_wing"),
-    ("face_details", "head"),
-    ("accents", "near_wing"),
-)
-
-
-def _validate_layer_z(layer_z: Mapping[str, int]) -> None:
-    if set(layer_z) != set(LAYER_Z):
-        raise ValueError(f"layer set changed: expected={sorted(LAYER_Z)}, got={sorted(layer_z)}")
-    values = list(layer_z.values())
-    if len(values) != len(set(values)):
-        raise ValueError("every Willson layer must have a unique z value")
-    for upper, lower in LAYER_RELATIONS:
-        if layer_z[upper] <= layer_z[lower]:
-            raise ValueError(f"layer contract requires {upper!r} above {lower!r}")
-
-
-_validate_layer_z(LAYER_Z)
-
-
-def _clamp(value: float, lo: float = 0.0, hi: float = 1.0) -> float:
-    return max(lo, min(hi, value))
-
-
-def _lerp(a: float, b: float, t: float) -> float:
-    return a + (b - a) * t
-
-
-def _ease(t: float) -> float:
-    t = _clamp(t)
-    return t * t * (3.0 - 2.0 * t)
-
-
-def _pulse(t: float, start: float, peak: float, end: float) -> float:
-    if t <= start or t >= end:
-        return 0.0
-    if t <= peak:
-        return _ease((t - start) / max(1e-6, peak - start))
-    return 1.0 - _ease((t - peak) / max(1e-6, end - peak))
-
-
-def _rot(point: Point, degrees: float) -> Point:
-    x, y = point
-    r = math.radians(degrees)
-    c, s = math.cos(r), math.sin(r)
-    return (x * c - y * s, x * s + y * c)
-
-
-def _around(point: Point, pivot: Point, degrees: float) -> Point:
-    q = _rot((point[0] - pivot[0], point[1] - pivot[1]), degrees)
-    return (q[0] + pivot[0], q[1] + pivot[1])
-
-
-def _add(a: Point, b: Point) -> Point:
-    return (a[0] + b[0], a[1] + b[1])
-
-
-def _sub(a: Point, b: Point) -> Point:
-    return (a[0] - b[0], a[1] - b[1])
-
-
-def _mul(a: Point, value: float) -> Point:
-    return (a[0] * value, a[1] * value)
-
-
-def _norm(a: Point) -> Point:
-    length = math.hypot(a[0], a[1]) or 1.0
-    return (a[0] / length, a[1] / length)
-
-
-def _perp(a: Point) -> Point:
-    return (-a[1], a[0])
-
-
-def _ellipse_points(center: Point, rx: float, ry: float, angle: float = 0.0, steps: int = 40) -> List[Point]:
-    out: List[Point] = []
-    for idx in range(steps):
-        theta = TAU * idx / steps
-        q = (rx * math.cos(theta), ry * math.sin(theta))
-        out.append(_add(center, _rot(q, angle)))
-    return out
-
-
-class VDraw:
-    def __init__(self, image: Image.Image, scale: int) -> None:
-        self.image = image
-        self.draw = blending_draw(image)
-        self.scale = scale
-
-    def point(self, point: Point) -> Point:
-        return (point[0] * self.scale, point[1] * self.scale)
-
-    def points(self, points: Iterable[Point]) -> List[Point]:
-        return [self.point(p) for p in points]
-
-    def line(self, points: Sequence[Point], fill: Color, width: float, joint: str = "curve") -> None:
-        self.draw.line(
-            self.points(points),
-            fill=fill,
-            width=max(1, int(round(width * self.scale))),
-            joint=joint,
-        )
-
-    def polygon(
-        self,
-        points: Sequence[Point],
-        fill: Color,
-        outline: Color | None = None,
-        width: float = 1.0,
-    ) -> None:
-        pts = self.points(points)
-        self.draw.polygon(pts, fill=fill)
-        if outline is not None:
-            self.draw.line(
-                pts + [pts[0]],
-                fill=outline,
-                width=max(1, int(round(width * self.scale))),
-                joint="curve",
-            )
-
-    def ellipse(
-        self,
-        center: Point,
-        rx: float,
-        ry: float,
-        fill: Color,
-        outline: Color | None = None,
-        width: float = 1.0,
-        angle: float = 0.0,
-    ) -> None:
-        self.polygon(_ellipse_points(center, rx, ry, angle), fill, outline, width)
-
-    def circle(
-        self,
-        center: Point,
-        radius: float,
-        fill: Color,
-        outline: Color | None = None,
-        width: float = 1.0,
-    ) -> None:
-        x, y = self.point(center)
-        r = radius * self.scale
-        self.draw.ellipse(
-            (x - r, y - r, x + r, y + r),
-            fill=fill,
-            outline=outline,
-            width=max(1, int(round(width * self.scale))),
-        )
-
-    def ring(self, center: Point, radius: float, fill: Color, width: float) -> None:
-        x, y = self.point(center)
-        r = radius * self.scale
-        self.draw.ellipse(
-            (x - r, y - r, x + r, y + r),
-            outline=fill,
-            width=max(1, int(round(width * self.scale))),
-        )
-
-
-BASE = {
-    "rear_hub": (65.0, 201.0),
-    "front_hub": (190.0, 201.0),
-    "crank": (126.0, 187.0),
-    "seat_post": (108.0, 151.0),
-    "head_top": (168.0, 153.0),
-    "head_bottom": (176.0, 178.0),
-    "handle_left": (160.0, 132.0),
-    "handle_right": (184.0, 130.0),
-    "body_center": (112.0, 108.0),
-    "rider_pivot": (114.0, 137.0),
-    "head_center": (151.0, 63.0),
-    "far_shoulder": (99.0, 99.0),
-    "near_shoulder": (127.0, 101.0),
-    "far_hip": (105.0, 134.0),
-    "near_hip": (120.0, 136.0),
-}
-
-
-def _pose(animation: str, frame_idx: int, nframes: int) -> Dict[str, float]:
-    loop = animation in LOOPS
-    t = frame_idx / max(1, nframes) if loop else frame_idx / max(1, nframes - 1)
-    phase = TAU * t
-    pose: Dict[str, float] = {
-        "t": t,
-        "phase": phase,
-        "wheel_angle": 0.0,
-        "wheel_motion": 0.0,
-        "pedal_angle": -52.0,
-        "bike_angle": 0.0,
-        "bike_dx": 0.0,
-        "bike_dy": 0.0,
-        "body_bob": 0.0,
-        "body_lean": 0.0,
-        "body_dx": 0.0,
-        "head_bob": 0.0,
-        "head_dx": 0.0,
-        "head_dy": 0.0,
-        "beak_extend": 0.0,
-        "beak_open": 0.0,
-        "near_wing_raise": 0.0,
-        "far_wing_raise": 0.0,
-        "blink": 0.0,
-        "scarf_lift": 0.0,
-        "slump": 0.0,
-        "bell_ring": 0.0,
-        "dismount": 0.0,
-        "flight": 0.0,
-        "flight_flap": 0.0,
-        "attack_force": 0.0,
-        "death_fall": 0.0,
-        "rider_bike_inherit": 1.0,
-        "rider_dx": 0.0,
-        "rider_dy": 0.0,
-        "rider_angle": 0.0,
-    }
-
-    if animation == "idle":
-        # One continuous mount/dismount cycle.  The midpoint is a stable
-        # dismounted pose: both feet are grounded and one wing holds the
-        # tilted bicycle ready to launch.
-        dismount = 0.5 - 0.5 * math.cos(phase)
-        settling = math.sin(phase * 2.0)
-        pose.update(
-            dismount=dismount,
-            rider_bike_inherit=1.0 - dismount,
-            rider_dx=-27.0 * dismount,
-            rider_dy=27.0 * dismount,
-            rider_angle=3.5 * dismount,
-            wheel_angle=18.0 * math.sin(phase * 0.5),
-            wheel_motion=0.18 * (1.0 - dismount),
-            pedal_angle=-52.0 + 26.0 * dismount + 3.0 * settling,
-            bike_angle=-5.5 * dismount,
-            bike_dx=8.0 * dismount,
-            body_bob=0.7 * settling,
-            body_lean=2.5 * dismount,
-            head_bob=0.8 * math.sin(phase + 0.4),
-            near_wing_raise=0.10 + 0.18 * dismount,
-            far_wing_raise=0.10 * dismount,
-            blink=1.0 if frame_idx == 5 else 0.0,
-            scarf_lift=0.08 * (1.0 + math.sin(phase)),
-        )
-    elif animation == "walk":
-        # Five spokes make 72 degrees the symmetry interval.  Deliberately
-        # advance by 58.5 degrees per frame so no adjacent frame aliases.
-        pose.update(
-            wheel_angle=468.0 * t,
-            wheel_motion=1.0,
-            pedal_angle=360.0 * t - 42.0,
-            body_bob=1.9 * math.sin(phase * 2.0),
-            body_lean=-6.0 + 1.8 * math.sin(phase),
-            head_bob=1.4 * math.sin(phase * 2.0 + 0.5),
-            scarf_lift=0.70 + 0.20 * math.sin(phase + 0.7),
-        )
-    elif animation == "slash":
-        windup = _pulse(t, 0.00, 0.20, 0.43)
-        strike = _pulse(t, 0.16, 0.51, 0.88)
-        impact = _pulse(t, 0.38, 0.55, 0.72)
-        pose.update(
-            wheel_angle=95.0 * t + 38.0 * strike,
-            wheel_motion=0.35 + 0.85 * strike,
-            pedal_angle=-36.0 + 72.0 * t,
-            bike_angle=6.0 * windup - 14.0 * strike + 4.0 * impact,
-            bike_dx=-7.0 * windup + 8.0 * strike,
-            bike_dy=2.0 * windup + 4.0 * strike,
-            body_dx=-6.0 * windup + 5.0 * strike,
-            body_lean=10.0 * windup - 12.0 * strike,
-            body_bob=3.0 * windup + 2.0 * strike,
-            head_dx=-4.0 * windup + 8.0 * strike,
-            head_dy=2.0 * windup + 1.0 * strike,
-            head_bob=-3.0 * strike,
-            beak_extend=25.0 * strike,
-            beak_open=0.82 * windup + 0.28 * strike,
-            near_wing_raise=0.72 * windup + 0.28 * strike,
-            far_wing_raise=0.45 * windup + 0.16 * strike,
-            scarf_lift=0.25 * windup + 0.95 * strike,
-            attack_force=impact,
-        )
-    elif animation == "fly":
-        flap = math.sin(phase)
-        pose.update(
-            flight=1.0,
-            flight_flap=flap,
-            rider_bike_inherit=0.0,
-            rider_dx=-4.0,
-            rider_dy=-20.0 + 3.0 * math.sin(phase * 2.0),
-            rider_angle=-13.0 + 2.5 * math.sin(phase),
-            bike_dx=-4.0,
-            bike_dy=5.0 + 1.8 * math.sin(phase * 2.0 + 0.8),
-            bike_angle=-4.0 + 1.5 * math.sin(phase + 0.5),
-            wheel_angle=540.0 * t,
-            wheel_motion=0.85,
-            pedal_angle=180.0 * t - 20.0,
-            body_bob=-2.0 * flap,
-            head_bob=-1.2 * flap,
-            beak_open=0.08 + 0.05 * max(0.0, flap),
-            scarf_lift=0.95 + 0.18 * flap,
-        )
-    elif animation == "taunt":
-        call = math.sin(math.pi * t) ** 2
-        pose.update(
-            wheel_angle=3.0 * math.sin(phase),
-            pedal_angle=-48.0,
-            body_bob=-1.2 * call,
-            body_lean=3.0 * call,
-            head_bob=-5.0 * call,
-            beak_open=0.85 * call,
-            near_wing_raise=0.72 * call,
-            bell_ring=math.sin(phase * 3.0) * call,
-            scarf_lift=0.25 * call,
-        )
-    elif animation == "hurt":
-        envelope = math.sin(math.pi * t)
-        wobble = math.sin(TAU * t * 1.5)
-        pose.update(
-            wheel_angle=24.0 * t,
-            wheel_motion=0.25 * envelope,
-            pedal_angle=-20.0 + 14.0 * t,
-            bike_angle=5.5 * wobble * envelope,
-            bike_dx=-5.0 * envelope,
-            body_lean=12.0 * wobble * envelope,
-            body_bob=-3.0 * envelope,
-            head_bob=3.0 * envelope,
-            beak_open=0.22 * envelope,
-            near_wing_raise=0.35 * envelope,
-            far_wing_raise=0.25 * envelope,
-            scarf_lift=0.35 * envelope,
-            blink=0.7 * envelope,
-        )
-    elif animation == "death":
-        fall = _ease(_clamp((t - 0.10) / 0.90))
-        kick = _pulse(t, 0.05, 0.22, 0.50)
-        pose.update(
-            death_fall=fall,
-            rider_bike_inherit=1.0 - fall,
-            rider_dx=-28.0 * fall,
-            rider_dy=57.0 * fall,
-            rider_angle=-70.0 * fall,
-            wheel_angle=170.0 * t + 30.0 * kick,
-            wheel_motion=0.70 * (1.0 - fall),
-            pedal_angle=-34.0 + 80.0 * t,
-            bike_angle=-4.0 * kick - 14.0 * fall,
-            bike_dx=23.0 * fall,
-            bike_dy=8.0 * fall,
-            body_dx=-4.0 * kick,
-            body_bob=-4.0 * kick,
-            body_lean=-10.0 * kick,
-            head_bob=3.0 * fall,
-            beak_open=0.42 * kick + 0.18 * fall,
-            near_wing_raise=0.30 * kick + 0.90 * fall,
-            far_wing_raise=0.25 * kick + 0.75 * fall,
-            scarf_lift=0.55 * kick + 0.65 * fall,
-            slump=fall,
-            blink=fall,
-        )
-    else:
-        raise KeyError(animation)
-    return pose
-
-
-def _bike_xf(pose: Mapping[str, float], point: Point) -> Point:
-    pivot = BASE["rear_hub"]
-    p = _around(point, pivot, pose["bike_angle"])
-    return (p[0] + pose["bike_dx"], p[1] + pose["bike_dy"])
-
-
-def _rider_xf(pose: Mapping[str, float], point: Point) -> Point:
-    pivot = BASE["rider_pivot"]
-    p = _around(point, pivot, pose["body_lean"])
-    p = (p[0] + pose["body_dx"], p[1] + pose["body_bob"])
-    p = _around(p, pivot, pose["rider_angle"])
-    independent = (p[0] + pose["rider_dx"], p[1] + pose["rider_dy"])
-    attached = _bike_xf(pose, independent)
-    inherit = _clamp(pose["rider_bike_inherit"])
-    return (
-        _lerp(independent[0], attached[0], inherit),
-        _lerp(independent[1], attached[1], inherit),
-    )
-
-
-def _rider_shape(pose: Mapping[str, float], points: Iterable[Point]) -> List[Point]:
-    return [_rider_xf(pose, p) for p in points]
-
-
-def _bike_shape(pose: Mapping[str, float], points: Iterable[Point]) -> List[Point]:
-    return [_bike_xf(pose, p) for p in points]
-
-
-def _pedal_points(pose: Mapping[str, float]) -> Tuple[Point, Point]:
-    center = BASE["crank"]
-    angle = math.radians(pose["pedal_angle"])
-    radius = 16.0
-    near = (center[0] + radius * math.cos(angle), center[1] + radius * math.sin(angle))
-    far = (center[0] - radius * math.cos(angle), center[1] - radius * math.sin(angle))
-    return _bike_xf(pose, near), _bike_xf(pose, far)
-
-
-def _knee(hip: Point, foot: Point, bend: float) -> Point:
-    delta = _sub(foot, hip)
-    direction = _norm(delta)
-    normal = _perp(direction)
-    mid = _add(hip, _mul(delta, 0.52))
-    reach = math.hypot(delta[0], delta[1])
-    bulge = max(8.0, 22.0 - reach * 0.12)
-    return _add(mid, _mul(normal, bend * bulge))
-
-
-def _draw_wheel(v: VDraw, center: Point, spin_deg: float, motion: float) -> None:
-    radius = 32.5
-    # Five spokes deliberately break the old 45-degree visual aliasing.
-    for idx in range(5):
-        angle = math.radians(spin_deg + idx * 72.0)
-        p = (center[0] + 27.5 * math.cos(angle), center[1] + 27.5 * math.sin(angle))
-        v.line([center, p], PAL["spoke"], 1.35)
-
-    # A brass valve and paired teal rim marks make rotation readable even when
-    # the wheel silhouette itself remains fixed in screen space.
-    valve_angle = math.radians(spin_deg + 17.0)
-    valve = (center[0] + 29.1 * math.cos(valve_angle), center[1] + 29.1 * math.sin(valve_angle))
-    v.circle(valve, 1.8, PAL["brass_hi"], PAL["outline"], 0.55)
-    for offset_deg in (116.0, 132.0):
-        angle = math.radians(spin_deg + offset_deg)
-        tangent = (-math.sin(angle), math.cos(angle))
-        p = (center[0] + 28.4 * math.cos(angle), center[1] + 28.4 * math.sin(angle))
-        v.line([_add(p, _mul(tangent, -4.5)), _add(p, _mul(tangent, 4.5))], PAL["bike_hi"], 1.6)
-
-    v.ring(center, 28.2, PAL["rim"], 2.1)
-    v.ring(center, radius, PAL["tire"], 5.3)
-    v.ring(center, radius - 2.1, PAL["tire_hi"], 0.9)
-    v.circle(center, 3.3, PAL["brass"], PAL["outline"], 0.9)
-
-    # Geometric streaks, never raster blur.  Their tangent direction changes
-    # with wheel phase, so they reinforce rather than obscure rotation.
-    if motion > 0.05:
-        alpha = int(100 + 110 * _clamp(motion))
-        streak_color = (*PAL["rim"][:3], alpha)
-        for idx in range(3):
-            angle = math.radians(spin_deg + 28.0 + idx * 118.0)
-            tangent = (-math.sin(angle), math.cos(angle))
-            p = (center[0] + 35.5 * math.cos(angle), center[1] + 35.5 * math.sin(angle))
-            length = 4.0 + 5.0 * motion
-            v.line([_add(p, _mul(tangent, -length)), _add(p, _mul(tangent, length))], streak_color, 1.15)
-
-
-def _tube(v: VDraw, pose: Mapping[str, float], a: Point, b: Point, width: float = 5.0, highlight: bool = True) -> None:
-    aa, bb = _bike_xf(pose, a), _bike_xf(pose, b)
-    v.line([aa, bb], PAL["outline"], width + 2.2)
-    v.line([aa, bb], PAL["bike"], width)
-    if highlight:
-        offset = _mul(_norm(_perp(_sub(bb, aa))), -1.2)
-        v.line([_add(aa, offset), _add(bb, offset)], PAL["bike_hi"], 1.1)
-
-
-def _paint_bike_frame(v: VDraw, pose: Mapping[str, float]) -> None:
-    rear = BASE["rear_hub"]
-    front = BASE["front_hub"]
-    crank = BASE["crank"]
-    seat = BASE["seat_post"]
-    ht = BASE["head_top"]
-    hb = BASE["head_bottom"]
-    _tube(v, pose, rear, crank)
-    _tube(v, pose, crank, hb)
-    _tube(v, pose, hb, rear)
-    _tube(v, pose, crank, seat, 4.6)
-    _tube(v, pose, seat, ht, 4.6)
-    _tube(v, pose, ht, hb, 5.0)
-    _tube(v, pose, ht, front, 4.2, highlight=False)
-    _tube(v, pose, hb, front, 3.5, highlight=False)
-
-    # Saddle, chain ring, and handlebar are all structural bike layers.
-    saddle = _bike_shape(pose, [(98, 148), (119, 147), (123, 151), (100, 153)])
-    v.polygon(saddle, PAL["leather"], PAL["outline"], 1.2)
-    v.line([_bike_xf(pose, (109, 151)), _bike_xf(pose, (109, 145))], PAL["outline"], 3.5)
-    v.circle(_bike_xf(pose, crank), 10.0, PAL["bike_dark"], PAL["outline"], 1.2)
-    v.ring(_bike_xf(pose, crank), 7.1, PAL["brass"], 1.6)
-
-    stem = _bike_xf(pose, (170, 132))
-    v.line([_bike_xf(pose, ht), stem], PAL["outline"], 5.4)
-    v.line([_bike_xf(pose, ht), stem], PAL["bike_hi"], 3.0)
-    v.line(
-        [_bike_xf(pose, BASE["handle_left"]), _bike_xf(pose, BASE["handle_right"])],
-        PAL["outline"],
-        4.6,
-    )
-    v.line(
-        [_bike_xf(pose, BASE["handle_left"]), _bike_xf(pose, BASE["handle_right"])],
-        PAL["bike_dark"],
-        2.5,
-    )
-
-
-def _wing_poly(shoulder: Point, hand: Point, lift: float, side: str) -> List[Point]:
-    delta = _sub(hand, shoulder)
-    direction = _norm(delta)
-    normal = _perp(direction)
-    sign = -1.0 if side == "far" else 1.0
-    elbow = _add(_add(shoulder, _mul(delta, 0.48)), _mul(normal, sign * (11.0 + 7.0 * lift)))
-    return [
-        _add(shoulder, _mul(normal, -6.0)),
-        _add(elbow, _mul(normal, -8.0)),
-        _add(hand, _mul(normal, -4.0)),
-        _add(hand, _mul(normal, 4.2)),
-        _add(elbow, _mul(normal, 7.0)),
-        _add(shoulder, _mul(normal, 6.5)),
+assert [name for name, _, _ in ROWS] == list(ROW_POSES), "every row has a pose, in sheet order"
+
+
+# ---- The bicycle's pieces ----------------------------------------------------
+
+
+def _wheel(step: int):
+    """A wheel from its hub, turned ``step`` steps. A reflector on one spoke
+    and the valve across from it show the turn."""
+    turn = math.radians(step * WHEEL_STEP)
+
+    def spoke(k: int, r: float) -> Point:
+        a = turn + k * math.tau / 6.0
+        return K.at(r * math.cos(a), r * math.sin(a))
+
+    def paint(d) -> None:
+        for k in range(6):
+            K.line(d, [K.home, spoke(k, WHEEL - 4.0)], SPOKE, 0.9)
+        K.oval(d, K.home, WHEEL, WHEEL, None, OUTLINE, 7.4)  # type: ignore[arg-type]
+        K.oval(d, K.at(0.0, 0.0), WHEEL - 1.1, WHEEL - 1.1, None, TYRE, 4.4)  # type: ignore[arg-type]
+        K.oval(d, K.at(0.0, 0.0), WHEEL - 5.3, WHEEL - 5.3, None, RIM, 1.4)  # type: ignore[arg-type]
+        K.oval(d, K.at(0.0, 0.0), WHEEL - 1.3, WHEEL - 1.3, None, mix(TYRE, WHITE, 0.22), 0.7)  # type: ignore[arg-type]
+        a, b = spoke(0, 12.0), spoke(0, 18.0)
+        K.stroke(d, [a, b], OUTLINE, 4.6)
+        K.stroke(d, [a, b], REFLECTOR, 2.6)
+        K.oval(d, spoke(3, WHEEL - 7.6), 1.4, 1.4, METAL)
+        K.oval(d, K.home, 3.6, 3.6, METAL, OUTLINE, 1.0)
+        K.oval(d, K.at(-0.8, -0.8), 1.2, 1.2, METAL_LIGHT)
+
+    return K.aligned(("wheel", step % 24), paint)
+
+
+def _bicycle(tilt: int, crank: int, pivot: Point):
+    """The frame, the cranks and the pedals, from ``pivot`` (a point of it),
+    tilted ``tilt`` degrees and its cranks turned ``crank``."""
+
+    def at(p: Point) -> Point:
+        q = turned((p[0] - pivot[0], p[1] - pivot[1]), float(tilt))
+        return K.at(q[0], q[1])
+
+    c = math.radians(crank)
+    near_pedal = (BRACKET[0] + CRANK * math.cos(c), BRACKET[1] + CRANK * math.sin(c))
+    far_pedal = (BRACKET[0] - CRANK * math.cos(c), BRACKET[1] - CRANK * math.sin(c))
+    seat_top, head_top, head_low = (-15.0, -60.0), (25.0, -70.0), (28.5, -57.0)
+    tubes = [
+        ([BRACKET, REAR], 2.8, BIKE_DARK),
+        ([seat_top, REAR], 2.6, BIKE_DARK),
+        ([BRACKET, (-15.6, -63.0)], 3.4, BIKE),
+        ([seat_top, (25.6, -67.0)], 3.4, BIKE),
+        ([BRACKET, (27.6, -60.0)], 3.6, BIKE),
+        ([head_low, (33.5, -43.0), FRONT], 3.0, BIKE),
+        ([head_top, head_low], 4.6, BIKE),
     ]
-
-
-def _flight_wing_local(side: str, flap: float) -> List[Point]:
-    if side == "far":
-        shoulder = (99.0, 99.0)
-        tip = (47.0, 78.0 - 33.0 * flap)
-        elbow = (74.0, 84.0 - 21.0 * flap)
-        return [
-            shoulder,
-            (88.0, 91.0),
-            (elbow[0] + 3.0, elbow[1] - 11.0),
-            (tip[0], tip[1]),
-            (56.0, tip[1] + 14.0),
-            (70.0, elbow[1] + 17.0),
-            (93.0, 108.0),
-        ]
-    shoulder = (127.0, 101.0)
-    tip = (63.0, 63.0 - 39.0 * flap)
-    elbow = (94.0, 77.0 - 25.0 * flap)
-    return [
-        shoulder,
-        (116.0, 91.0),
-        (elbow[0] + 6.0, elbow[1] - 14.0),
-        (tip[0], tip[1]),
-        (70.0, tip[1] + 17.0),
-        (82.0, elbow[1] + 21.0),
-        (113.0, 113.0),
+    metal = [
+        ([(-15.6, -63.0), (-16.0, -67.0)], 2.2, METAL),
+        ([head_top, (24.2, -82.0)], 2.6, METAL),
+        ([(21.0, -83.4), (30.0, -85.6)], 3.2, INK),
     ]
+    saddle = [(-26.0, -70.0), (-8.0, -71.4), (-4.6, -69.0), (-11.0, -66.6), (-25.0, -66.0)]
+
+    def pedal(p: Point) -> List[Point]:
+        return [at((p[0] - 4.6, p[1])), at((p[0] + 4.6, p[1]))]
+
+    def paint(d) -> None:
+        # The far crank and its pedal are behind the frame.
+        K.stroke(d, [at(BRACKET), at(far_pedal)], OUTLINE, 4.6)
+        K.stroke(d, pedal(far_pedal), OUTLINE, 5.2)
+        K.stroke(d, [at(BRACKET), at(far_pedal)], mix(METAL, OUTLINE, 0.35), 2.2)
+        K.stroke(d, pedal(far_pedal), mix(METAL, OUTLINE, 0.5), 2.8)
+        for pts, width, _colour in tubes + metal:
+            K.stroke(d, [at(p) for p in pts], OUTLINE, width + 2.4)
+        K.poly(d, [at(p) for p in saddle], OUTLINE, OUTLINE, 2.4)
+        for pts, width, colour in tubes + metal:
+            K.stroke(d, [at(p) for p in pts], colour, width)
+        # A light along the top of the two long tubes.
+        K.line(d, [at((-13.0, -61.2)), at((23.0, -68.0))], BIKE_LIGHT, 0.9)
+        K.line(d, [at((0.0, -30.6)), at((25.0, -59.6))], BIKE_LIGHT, 0.9)
+        K.poly(d, [at(p) for p in saddle], SADDLE_BROWN)
+        K.line(d, [at((-23.0, -68.8)), at((-9.0, -70.0))], mix(SADDLE_BROWN, WHITE, 0.3), 0.9)
+        # The bell, and the hubs' nuts.
+        K.oval(d, at((22.4, -87.2)), 3.0, 3.0, BELL, OUTLINE, 1.0)
+        K.oval(d, at((21.6, -88.0)), 0.9, 0.9, WHITE)
+        for hub in (REAR, FRONT):
+            K.oval(d, at(hub), 2.2, 2.2, METAL_LIGHT, OUTLINE, 0.9)
+        # The chainring, the near crank and its pedal are in front of it.
+        K.oval(d, at(BRACKET), 6.4, 6.4, METAL, OUTLINE, 1.1)
+        K.oval(d, at(BRACKET), 3.4, 3.4, mix(METAL, OUTLINE, 0.5))
+        K.stroke(d, [at(BRACKET), at(near_pedal)], OUTLINE, 4.8)
+        K.stroke(d, pedal(near_pedal), OUTLINE, 5.4)
+        K.stroke(d, [at(BRACKET), at(near_pedal)], METAL_LIGHT, 2.4)
+        K.stroke(d, pedal(near_pedal), INK, 3.0)
+        K.oval(d, at(BRACKET), 1.6, 1.6, METAL_LIGHT)
+
+    return K.aligned(("bicycle", tilt, crank % 360, pivot), paint)
 
 
-def _paint_far_wing(v: VDraw, pose: Mapping[str, float]) -> None:
-    if pose["flight"] > 0.5:
-        points = _rider_shape(pose, _flight_wing_local("far", pose["flight_flap"]))
-        v.polygon(points, PAL["feather_dark"], PAL["outline"], 1.4)
-        v.line(points[1:5], PAL["wing"], 1.6)
-        return
-
-    shoulder = _rider_xf(pose, BASE["far_shoulder"])
-    death = pose["death_fall"]
-    dismount = pose["dismount"]
-    handle = _bike_xf(pose, (162.0, 132.0 - 7.0 * pose["far_wing_raise"]))
-    rest = _rider_xf(pose, (88.0, 125.0))
-    tumble = _rider_xf(pose, (73.0, 85.0))
-    target = (
-        _lerp(_lerp(handle[0], rest[0], dismount), tumble[0], death),
-        _lerp(_lerp(handle[1], rest[1], dismount), tumble[1], death),
-    )
-    poly = _wing_poly(shoulder, target, pose["far_wing_raise"], "far")
-    v.polygon(poly, PAL["feather_dark"], PAL["outline"], 1.2)
-    v.line([shoulder, target], PAL["wing"], 2.2)
+# ---- The bird's pieces -------------------------------------------------------
 
 
-def _paint_body(v: VDraw, pose: Mapping[str, float]) -> None:
-    body = _rider_shape(pose, _ellipse_points(BASE["body_center"], 29.0, 37.0, -6.0))
-    v.polygon(body, PAL["feather"], PAL["outline"], 1.6)
-    belly = _rider_shape(pose, _ellipse_points((119.0, 116.0), 17.0, 24.0, -7.0))
-    v.polygon(belly, PAL["feather_hi"], None)
-    breast_mark = _rider_shape(pose, [(125, 88), (139, 101), (135, 117), (128, 108)])
-    v.polygon(breast_mark, PAL["wing"], None)
+def _bone(tag: str, length: float, w0: float, w1: float, colour: RGBA, edge: bool):
+    """A bone along +x from ``home``. ``edge``: with its outline (a limb is
+    placed twice, every bone's outline and then every bone, so a joint has no
+    line through it)."""
+
+    def shape(d) -> None:
+        K.poly(d, [K.at(0.0, -w0 / 2.0), K.at(length, -w1 / 2.0), K.at(length, w1 / 2.0), K.at(0.0, w0 / 2.0)], WHITE)
+        K.oval(d, K.home, w0 / 2.0, w0 / 2.0, WHITE)
+        K.oval(d, K.at(length, 0.0), w1 / 2.0, w1 / 2.0, WHITE)
+
+    return K.solid(("bone", tag, length, w0, w1, colour, edge), shape, colour, None, outline=1.2 if edge else 0.0, rim=0.0, shade=0.0)
 
 
-def _paint_satchel(v: VDraw, pose: Mapping[str, float]) -> None:
-    strap = _rider_shape(pose, [(96, 82), (101, 80), (130, 136), (124, 138)])
-    v.polygon(strap, PAL["leather"], PAL["outline"], 0.8)
-    bag = _rider_shape(pose, [(84, 113), (105, 109), (114, 131), (91, 137), (82, 128)])
-    v.polygon(bag, PAL["satchel"], PAL["outline"], 1.2)
-    flap = _rider_shape(pose, [(84, 113), (104, 110), (108, 120), (87, 124)])
-    v.polygon(flap, PAL["satchel_hi"], PAL["outline"], 0.8)
-    # W badge makes the name legible without writing text into the sprite.
-    badge = _rider_shape(pose, [(90, 119), (93, 129), (97, 123), (101, 128), (104, 116)])
-    v.line(badge, PAL["brass_hi"], 1.7)
+def _body():
+    """His body from his seat, his back straight up: the strap of his bag
+    goes across it."""
+
+    def shape(d) -> None:
+        K.oval(d, K.at(5.0, -24.0), 20.0, 25.0, WHITE)
+        K.oval(d, K.at(11.0, -30.0), 14.0, 16.0, WHITE)
+        K.oval(d, K.at(-4.0, -12.0), 15.0, 13.0, WHITE)
+
+    def detail(d) -> None:
+        K.oval(d, K.at(-8.0, -14.0), 20.0, 26.0, mix(FEATHER, FEATHER_SHADE, 0.55))
+        K.oval(d, K.at(9.0, -27.0), 17.0, 22.0, FEATHER)
+        for y in (-30.0, -22.0, -14.0):
+            K.line(d, [K.at(14.0, y), K.at(17.0, y + 2.4), K.at(20.0, y)], FEATHER_SHADE, 0.8)
+        strap = [K.at(19.0, -47.0), K.at(8.0, -32.0), K.at(-10.0, -15.0)]
+        K.line(d, strap, OUTLINE, 5.4)
+        K.line(d, strap, BAG_DARK, 3.2)
+        K.line(d, [(x - 0.6, y - 0.6) for x, y in strap], BAG, 0.9)
+
+    return K.solid(("body",), shape, FEATHER, detail, outline=1.3, rim=0.3, shade=0.4, shade_colour=FEATHER_DARK)
 
 
-def _paint_neck(v: VDraw, pose: Mapping[str, float]) -> None:
-    head_shift = pose["head_bob"]
-    hx, hdy = pose["head_dx"], pose["head_dy"]
-    points = [
-        (126, 91),
-        (139 + hx * 0.30, 84 + hdy * 0.30),
-        (140 + hx * 0.70, 72 + head_shift * 0.35 + hdy * 0.70),
-        (149 + hx, 68 + head_shift + hdy),
-    ]
-    world = _rider_shape(pose, points)
-    v.line(world, PAL["outline"], 22.0)
-    v.line(world, PAL["feather"], 18.2)
-    hi = _rider_shape(
-        pose,
-        [(130, 88), (141 + hx * 0.35, 81 + hdy * 0.35), (143 + hx * 0.72, 72 + head_shift * 0.4 + hdy * 0.72)],
-    )
-    v.line(hi, PAL["feather_hi"], 5.2)
+def _tail():
+    """His tail, from where it leaves his body: three feathers, back and down."""
+
+    feathers = ((146.0, 19.0), (170.0, 23.0), (196.0, 18.0))
+
+    def feather(a: float, reach: float, half: float) -> List[Point]:
+        c, s = math.cos(math.radians(a)), math.sin(math.radians(a))
+        return [K.at(4.0 * s, -4.0 * c), K.at(reach * 0.6 * c + half * s, reach * 0.6 * s - half * c), K.at(reach * c, reach * s),
+                K.at(reach * 0.6 * c - half * s, reach * 0.6 * s + half * c), K.at(-4.0 * s, 4.0 * c)]
+
+    def shape(d) -> None:
+        for a, reach in feathers:
+            K.poly(d, feather(a, reach, 4.4), WHITE)
+        K.oval(d, K.home, 5.0, 5.0, WHITE)
+
+    def detail(d) -> None:
+        for a, reach in feathers:
+            c, s = math.cos(math.radians(a)), math.sin(math.radians(a))
+            K.line(d, [K.at(3.0 * c, 3.0 * s), K.at((reach - 3.0) * c, (reach - 3.0) * s)], FEATHER_SHADE, 0.9)
+
+    return K.solid(("tail",), shape, FEATHER, detail, outline=1.2, rim=0.2, shade=0.3, shade_colour=FEATHER_DARK)
 
 
-def _paint_head(v: VDraw, pose: Mapping[str, float]) -> None:
-    center = (
-        BASE["head_center"][0] + pose["head_dx"],
-        BASE["head_center"][1] + pose["head_bob"] + pose["head_dy"],
-    )
-    head = _rider_shape(pose, _ellipse_points(center, 17.0, 16.0, -5.0))
-    v.polygon(head, PAL["feather"], PAL["outline"], 1.4)
-    hx = pose["head_dx"]
-    hy = pose["head_bob"] + pose["head_dy"]
-    crown = _rider_shape(
-        pose,
-        [(137 + hx, 54 + hy), (145 + hx, 45 + hy), (149 + hx, 54 + hy), (157 + hx, 47 + hy), (158 + hx, 58 + hy)],
-    )
-    v.polygon(crown, PAL["feather_hi"], PAL["outline"], 0.8)
+def _bag():
+    """His satchel, from where it hangs on its strap: a ``W`` on its flap."""
+    h = K.home
+
+    def shape(d) -> None:
+        K.rrect(d, h[0] - 10.0, h[1] - 1.0, h[0] + 10.0, h[1] + 18.0, 3.0, WHITE)
+
+    def detail(d) -> None:
+        K.rrect(d, h[0] - 12.0, h[1] + 9.0, h[0] + 12.0, h[1] + 20.0, 0.0, BAG_DARK)
+        K.poly(d, [K.at(-12.0, -3.0), K.at(12.0, -3.0), K.at(10.0, 9.0), K.at(0.0, 12.5), K.at(-10.0, 9.0)], BAG_FLAP, OUTLINE, 0.9)
+        K.stroke(d, [K.at(-5.4, 1.4), K.at(-2.8, 8.0), K.at(0.0, 3.6), K.at(2.8, 8.0), K.at(5.4, 1.4)], LETTER, 1.7)
+        K.oval(d, K.at(0.0, 14.6), 1.5, 1.5, BELL, OUTLINE, 0.5)
+
+    return K.solid(("bag",), shape, BAG, detail, outline=1.3, rim=0.3, shade=0.4, shade_colour=BAG_DARK)
 
 
-def _paint_near_wing(v: VDraw, pose: Mapping[str, float]) -> None:
-    if pose["flight"] > 0.5:
-        points = _rider_shape(pose, _flight_wing_local("near", pose["flight_flap"]))
-        v.polygon(points, PAL["wing"], PAL["outline"], 1.5)
-        v.line(points[1:5], PAL["wing_hi"], 2.0)
-        # Long primary-feather seams make the flap readable after downsample.
-        shoulder = _rider_xf(pose, BASE["near_shoulder"])
-        for local_tip in _flight_wing_local("near", pose["flight_flap"])[3:6]:
-            tip = _rider_xf(pose, local_tip)
-            v.line([shoulder, _add(shoulder, _mul(_norm(_sub(tip, shoulder)), 36.0))], PAL["feather_dark"], 0.8)
-        return
+def _foot(near: bool):
+    """A webbed foot from its ankle; its sole is ``ANKLE_UP`` under it."""
 
-    shoulder = _rider_xf(pose, BASE["near_shoulder"])
-    lift = pose["near_wing_raise"]
-    handle = _bike_xf(pose, (181.0 - 5.0 * lift, 130.0 - 17.0 * lift))
-    # Dismounted Willson still owns the bicycle: his near wing stays on the
-    # handle while his body and feet move off the saddle.
-    dismounted_handle = _bike_xf(pose, (178.0, 130.0))
-    tumble = _rider_xf(pose, (151.0, 74.0))
-    death = pose["death_fall"]
-    target = (
-        _lerp(_lerp(handle[0], dismounted_handle[0], pose["dismount"]), tumble[0], death),
-        _lerp(_lerp(handle[1], dismounted_handle[1], pose["dismount"]), tumble[1], death),
-    )
-    poly = _wing_poly(shoulder, target, lift, "near")
-    v.polygon(poly, PAL["wing"], PAL["outline"], 1.4)
-    inner = [
-        shoulder,
-        _add(shoulder, _mul(_norm(_sub(target, shoulder)), 18.0)),
-        _add(target, (-5.0, 2.0)),
-    ]
-    v.line(inner, PAL["wing_hi"], 2.3)
-    v.circle(target, 4.2, PAL["wing_hi"], PAL["outline"], 1.0)
+    def shape(d) -> None:
+        K.poly(d, [K.at(-3.4, -1.6), K.at(3.0, -2.2), K.at(11.6, ANKLE_UP), K.at(-3.4, ANKLE_UP)], WHITE)
+        K.oval(d, K.home, 2.6, 2.6, WHITE)
+
+    def detail(d) -> None:
+        for x in (2.0, 6.0):
+            K.line(d, [K.at(x - 2.0, -1.0), K.at(x + 2.6, ANKLE_UP)], LEG_DARK, 0.7)
+
+    return K.solid(("foot", near), shape, LEG if near else LEG_DARK, detail, outline=1.2, rim=0.25, shade=0.3, shade_colour=LEG_DARK)
 
 
-def _paint_face_details(v: VDraw, pose: Mapping[str, float]) -> None:
-    hx = pose["head_dx"]
-    hy = pose["head_bob"] + pose["head_dy"]
-    eye = _rider_xf(pose, (156.0 + hx, 59.0 + hy))
-    blink = _clamp(pose["blink"])
-    if blink > 0.55:
-        v.line([_add(eye, (-3.2, 0.5)), _add(eye, (3.0, -0.2))], PAL["eye"], 1.8)
-    else:
-        v.circle(eye, 3.3, PAL["eye"], PAL["outline"], 0.7)
-        v.circle(_add(eye, (1.0, -1.2)), 0.9, PAL["eye_hi"], None)
-    brow = _rider_shape(pose, [(151 + hx, 54 + hy), (160 + hx, 53 + hy)])
-    v.line(brow, PAL["feather_dark"], 1.4)
+def _wing_tip(near: bool):
+    """The end of a wing that holds a grip, along +x from its wrist: three
+    dark feathers around the bar."""
+    colour = FEATHER if near else FEATHER_SHADE
+
+    def shape(d) -> None:
+        K.oval(d, K.at(3.0, 0.0), 4.6, 3.8, WHITE)
+        for dy in (-2.4, 0.0, 2.4):
+            K.stroke(d, [K.at(4.0, dy), K.at(8.6, dy * 1.3)], WHITE, 2.4)
+
+    def detail(d) -> None:
+        K.rrect(d, K.home[0] + 5.0, K.home[1] - 8.0, K.home[0] + 14.0, K.home[1] + 8.0, 0.0, PRIMARY)
+
+    return K.solid(("wing_tip", near), shape, colour, detail, outline=1.2, rim=0.2, shade=0.3, shade_colour=FEATHER_DARK)
 
 
-# -- the rig --------------------------------------------------------------------
-#
-# Every rigid group is painted ONCE in its own frame (the bike frame at rest,
-# the rider's body at rest, a wheel at spin 0, a wing bone along +x) and placed
-# turned (``_solo_shape_rig``): a part flipbook stores each once. Bike pieces
-# ride ``_bike_xf`` (turned by the bike angle about the rear hub); rider
-# pieces ride ``_rider_xf`` (lean, rider angle and the inherited bike angle).
-# Wings and legs are two bones of a fixed length bent to reach their target;
-# the neck swings the head; the pouch hinges under the bill; the wind turns
-# the tail and scarf. Effects are pieces placed with their strength as
-# opacity.
+def _wing_spread(near: bool):
+    """A wing held out, from its shoulder, pointing up: its leading edge is to
+    the front, its long dark feathers to the back."""
+    colour = FEATHER if near else FEATHER_SHADE
+    edge = [K.at(-5.0, 2.0), K.at(-6.0, -20.0), K.at(-1.0, -46.0), K.at(4.0, -52.0), K.at(9.0, -46.0), K.at(8.0, -39.0), K.at(13.0, -35.0),
+            K.at(10.0, -29.0), K.at(15.0, -24.0), K.at(11.0, -18.0), K.at(15.0, -11.0), K.at(9.0, -6.0), K.at(8.0, 3.0)]
 
-#: The rider/bike transform zeroed: rider-space and bike-space pieces are
-#: painted through the original painters with this pose.
-_REST_XF = {
-    "bike_angle": 0.0, "bike_dx": 0.0, "bike_dy": 0.0, "body_lean": 0.0, "body_dx": 0.0, "body_bob": 0.0,
-    "rider_angle": 0.0, "rider_dx": 0.0, "rider_dy": 0.0, "rider_bike_inherit": 0.0,
-}
+    def shape(d) -> None:
+        K.poly(d, edge, WHITE)
+        K.oval(d, K.home, 6.4, 6.0, WHITE)
 
+    def detail(d) -> None:
+        # The long feathers: dark from the middle of the wing to its tip.
+        K.poly(d, [K.at(1.0, -60.0), K.at(20.0, -60.0), K.at(20.0, -8.0), K.at(8.0, -8.0), K.at(4.0, -30.0)], PRIMARY)
+        K.poly(d, [K.at(-8.0, -30.0), K.at(4.0, -30.0), K.at(1.0, -60.0), K.at(-8.0, -60.0)], mix(colour, FEATHER_DARK, 0.25))
+        for y in (-36.0, -26.0, -16.0):
+            K.line(d, [K.at(4.0, y - 4.0), K.at(12.0, y + 3.0)], mix(PRIMARY, WHITE, 0.25), 0.8)
+        K.line(d, [K.at(-3.0, -4.0), K.at(-3.6, -22.0), K.at(0.0, -44.0)], FEATHER_SHADE, 0.9)
 
-def _rest(pose: Mapping[str, float], **values: float) -> Dict[str, float]:
-    rest = dict(pose)
-    rest.update(_REST_XF)
-    rest.update(values)
-    return rest
+    return K.solid(("wing_spread", near), shape, colour, detail, outline=1.3, rim=0.3, shade=0.35, shade_colour=FEATHER_DARK)
 
 
-def _ss(point: Point) -> Point:
-    return (point[0] * SS, point[1] * SS)
+def _wing_fold():
+    """A wing at his side, from its shoulder."""
+
+    def shape(d) -> None:
+        K.poly(d, [K.at(4.0, -5.0), K.at(-8.0, 0.0), K.at(-22.0, 14.0), K.at(-31.0, 27.0), K.at(-18.0, 23.0), K.at(-5.0, 13.0), K.at(6.0, 4.0)], WHITE)
+
+    def detail(d) -> None:
+        K.poly(d, [K.at(-36.0, 34.0), K.at(-24.0, 12.0), K.at(-13.0, 30.0)], PRIMARY)
+        K.line(d, [K.at(0.0, 2.0), K.at(-12.0, 11.0), K.at(-21.0, 21.0)], FEATHER_SHADE, 0.9)
+
+    return K.solid(("wing_fold",), shape, FEATHER, detail, outline=1.3, rim=0.3, shade=0.35, shade_colour=FEATHER_DARK)
 
 
-def _rider_degrees(pose: Mapping[str, float]) -> float:
-    """How far a rider piece turns (clockwise): lean and rider angle, plus the
-    share of the bike's angle the rider inherits."""
-    k = _clamp(pose["rider_bike_inherit"])
-    b = math.radians(pose["bike_angle"])
-    blend = math.degrees(math.atan2(k * math.sin(b), (1.0 - k) + k * math.cos(b)))
-    return pose["body_lean"] + pose["rider_angle"] + blend
+def _head():
+    """His head, from its middle: a crest at the back of it."""
+
+    def shape(d) -> None:
+        K.oval(d, K.home, 11.5, 11.0, WHITE)
+        for a, reach in ((186.0, 19.0), (204.0, 21.0), (224.0, 17.0)):
+            c, s = math.cos(math.radians(a)), math.sin(math.radians(a))
+            K.poly(d, [K.at(8.0 * c + 2.6 * s, 8.0 * s - 2.6 * c), K.at(reach * c, reach * s), K.at(8.0 * c - 2.6 * s, 8.0 * s + 2.6 * c)], WHITE)
+
+    def detail(d) -> None:
+        K.oval(d, K.at(-5.0, 4.0), 9.0, 8.0, mix(FEATHER, FEATHER_SHADE, 0.6))
+        K.oval(d, K.at(6.6, 4.8), 2.6, 1.6, (255, 150, 130, 110))
+
+    return K.solid(("head",), shape, FEATHER, detail, outline=1.3, rim=0.3, shade=0.35, shade_colour=FEATHER_DARK)
 
 
-def _canvas_piece(key, pose_for_paint: Mapping[str, float], pivot: Point, paint: Callable[[VDraw, Mapping[str, float]], None]):
-    """A piece painted by an original painter on a full-frame canvas (the
-    group at its rest place), cut to what it covers."""
-    size = (FRAME_W * SS, FRAME_H * SS)
-    return SR.rest_piece(key, size, _ss(pivot), lambda d: paint(VDraw(d._img, SS), pose_for_paint))
+EYE: Point = (3.6, -2.4)
 
 
-def _place_rider(v: VDraw, part, pivot: Point, pose: Mapping[str, float], name: str) -> None:
-    SR.place(v.image, part, _ss(_rider_xf(pose, pivot)), _rider_degrees(pose), name)
+def _eyes(mode: str):
+    """His eye, and his round glasses."""
+    c = K.at(*EYE)
 
-
-def _place_bike(v: VDraw, part, pivot: Point, pose: Mapping[str, float], name: str) -> None:
-    SR.place(v.image, part, _ss(_bike_xf(pose, pivot)), pose["bike_angle"], name)
-
-
-def _local_piece(key, extent: Tuple[float, float, float, float], paint: Callable[[VDraw, Point], None]):
-    """A piece painted in its own frame: ``paint(v, origin)`` draws about
-    ``origin`` inside ``extent`` = (left, top, right, bottom) logical pixels."""
-    left, top, right, bottom = extent
-    origin = (left + 2.0, top + 2.0)
-    size = (int(math.ceil((left + right + 4.0) * SS)), int(math.ceil((top + bottom + 4.0) * SS)))
-    return SR.rest_piece(key, size, _ss(origin), lambda d: paint(VDraw(d._img, SS), origin))
-
-
-def _rig_wheels(v: VDraw, pose: Mapping[str, float]) -> None:
-    """Both wheels are one raster turned by their spin. A speed streak is one
-    small raster placed three times around each wheel, turned with it, its
-    strength the draw's opacity."""
-    wheel = _local_piece(("willson_wheel",), (42.0, 42.0, 42.0, 42.0), lambda w, o: _draw_wheel(w, o, 0.0, 0.0))
-    streak = _local_piece(("willson_wheel_streak",), (42.0, 42.0, 42.0, 42.0), _paint_wheel_streak)
-    motion = _clamp(pose["wheel_motion"])
-    for name, hub, spin in (("rear_wheel", BASE["rear_hub"], pose["wheel_angle"]), ("front_wheel", BASE["front_hub"], pose["wheel_angle"] + 13.0)):
-        at = _ss(_bike_xf(pose, hub))
-        SR.place(v.image, wheel, at, spin, name)
-        if motion > 0.05:
-            for idx in range(3):
-                SR.place(v.image, streak, at, spin + 28.0 + idx * 118.0, f"{name}_streak{idx}", (100.0 + 110.0 * motion) / STREAK_ALPHA)
-
-
-#: A streak's alpha at full speed (``_draw_wheel``: 100 + 110 * motion).
-STREAK_ALPHA = 210.0
-
-
-def _paint_wheel_streak(w: VDraw, o: Point) -> None:
-    """One of ``_draw_wheel``'s speed streaks at angle 0 and full speed
-    (the piece is cut to the streak; its pivot stays the hub)."""
-    x = o[0] + 35.5
-    w.line([(x, o[1] - 9.0), (x, o[1] + 9.0)], (*PAL["rim"][:3], int(STREAK_ALPHA)), 1.15)
-
-
-def _crank_arm_piece(which: str):
-    """A crank arm along +x from the crank (the far one with its pedal bar)."""
-    def paint(w: VDraw, o: Point) -> None:
-        end = (o[0] + 16.0, o[1])
-        if which == "far":
-            w.line([o, end], PAL["bike_dark"], 3.2)
-            w.line([(end[0], end[1] - 6.0), (end[0], end[1] + 6.0)], PAL["outline"], 2.6)
+    def paint(d) -> None:
+        K.oval(d, c, 5.6, 5.6, LENS)
+        if mode == "closed":
+            K.line(d, [(c[0] - 2.6, c[1] - 0.2), (c[0], c[1] + 1.4), (c[0] + 2.6, c[1] - 0.2)], INK, 1.2)
+        elif mode == "happy":
+            K.line(d, [(c[0] - 2.6, c[1] + 1.0), (c[0], c[1] - 1.5), (c[0] + 2.6, c[1] + 1.0)], INK, 1.3)
+        elif mode == "wince":
+            K.line(d, [(c[0] - 2.4, c[1] - 2.0), (c[0] + 1.6, c[1]), (c[0] - 2.4, c[1] + 2.0)], INK, 1.2)
         else:
-            w.line([o, end], PAL["outline"], 3.7)
-            w.line([o, end], PAL["brass"], 2.2)
+            r = 3.4 if mode == "wide" else 2.9
+            K.oval(d, c, r, r, WHITE, INK, 0.6)
+            K.oval(d, (c[0] + 0.5, c[1] + 0.2), 1.9 if mode == "wide" else 2.1, 1.9 if mode == "wide" else 2.1, INK)
+            K.oval(d, (c[0] - 0.3, c[1] - 0.8), 0.75, 0.75, WHITE)
+        K.oval(d, c, 5.8, 5.8, None, GLASSES, 1.7)  # type: ignore[arg-type]
+        K.line(d, [(c[0] - 5.4, c[1] - 0.6), (c[0] - 13.0, c[1] + 0.6)], GLASSES, 1.5)
 
-    return _local_piece(("willson_crank", which), (4.0, 8.0, 20.0, 8.0), paint)
-
-
-def _rig_far_crank(v: VDraw, pose: Mapping[str, float]) -> None:
-    degrees = pose["pedal_angle"] + 180.0 + pose["bike_angle"]
-    SR.place(v.image, _crank_arm_piece("far"), _ss(_bike_xf(pose, BASE["crank"])), degrees, "far_crank")
-
-
-def _rig_bike_frame(v: VDraw, pose: Mapping[str, float]) -> None:
-    part = _canvas_piece(("willson_bike_frame",), _rest(pose), BASE["rear_hub"], _paint_bike_frame)
-    _place_bike(v, part, BASE["rear_hub"], pose, "bike_frame")
+    return K.piece(("eyes", mode), paint)
 
 
-# The tail feathers and the scarf are each one rigid piece (painted at no
-# lift) that the scarf lift turns about its root: the wind lifts them.
-TAIL_ROOT = (95.0, 121.0)
-SCARF_KNOT = (95.0, 82.0)
-TAIL_LIFT_DEG = 8.0
-SCARF_LIFT_DEG = 16.0
+#: Where his bill meets his head, from the middle of his head.
+BILL_ROOT: Point = (8.0, 2.6)
 
 
-def _paint_tail_feathers(v: VDraw, pose: Mapping[str, float]) -> None:
-    feathers = [
-        [(90, 119), (65, 126), (81, 136), (102, 127)],
-        [(92, 114), (71, 111), (83, 127), (104, 124)],
-        [(94, 122), (74, 140), (96, 136), (108, 126)],
-    ]
-    for idx, feather in enumerate(feathers):
-        v.polygon(_rider_shape(pose, feather), PAL["feather_dark"] if idx != 1 else PAL["wing"], PAL["outline"], 1.0)
+def _bill_upper():
+    def shape(d) -> None:
+        K.poly(d, [K.at(-3.0, -5.6), K.at(14.0, -4.6), K.at(30.0, -1.6), K.at(40.5, 2.4), K.at(41.6, 7.2), K.at(38.0, 5.4), K.at(20.0, 3.6),
+                   K.at(-3.0, 2.8)], WHITE)
+
+    def detail(d) -> None:
+        K.line(d, [K.at(-2.0, -1.0), K.at(20.0, 0.4), K.at(38.0, 3.6)], BILL_DARK, 0.9)
+        K.poly(d, [K.at(36.0, 1.0), K.at(43.0, 2.0), K.at(43.0, 9.0), K.at(37.0, 6.0)], BILL_DARK)
+        K.oval(d, K.at(6.0, -2.0), 1.1, 0.7, BILL_DARK)
+
+    return K.solid(("bill_upper",), shape, BILL, detail, outline=1.3, rim=0.35, shade=0.3, shade_colour=BILL_DARK)
 
 
-def _paint_scarf(v: VDraw, pose: Mapping[str, float]) -> None:
-    v.polygon(_rider_shape(pose, [(93, 78), (76, 77), (62, 84), (81, 88), (96, 86)]), PAL["scarf"], PAL["outline"], 1.1)
-    v.polygon(_rider_shape(pose, [(78, 80), (71, 82), (77, 86), (84, 84)]), PAL["scarf_hi"], None)
+def _bill_lower():
+    """His lower bill and its pouch, from the hinge."""
+
+    def shape(d) -> None:
+        K.poly(d, [K.at(-3.0, -0.6), K.at(37.0, 2.4), K.at(34.0, 5.6), K.at(25.0, 11.4), K.at(13.0, 14.4), K.at(4.0, 11.6), K.at(-3.0, 5.0)], WHITE)
+
+    def detail(d) -> None:
+        K.line(d, [K.at(-3.0, 0.2), K.at(18.0, 1.8), K.at(37.0, 3.2)], BILL_DARK, 1.6)
+        for x in (7.0, 15.0, 23.0):
+            K.line(d, [K.at(x, 3.0), K.at(x + 1.6, 11.0)], POUCH_DARK, 0.7)
+
+    return K.solid(("bill_lower",), shape, POUCH, detail, outline=1.3, rim=0.3, shade=0.4, shade_colour=POUCH_DARK)
 
 
-def _rig_tail(v: VDraw, pose: Mapping[str, float]) -> None:
-    lift = pose["scarf_lift"]
-    for name, painter, root, deg in (("tail", _paint_tail_feathers, TAIL_ROOT, TAIL_LIFT_DEG), ("scarf", _paint_scarf, SCARF_KNOT, SCARF_LIFT_DEG)):
-        part = _canvas_piece(("willson", name), _rest(pose), root, painter)
-        SR.place(v.image, part, _ss(_rider_xf(pose, root)), _rider_degrees(pose) + deg * lift, name)
+# ---- The frame ---------------------------------------------------------------
 
 
-# -- wings ----------------------------------------------------------------------
-#
-# A grounded wing is a folding limb: an upper wing and a hand wing of one
-# FIXED length, bent at the elbow to reach the handlebar (or the rest or the
-# tumble point), each one raster turned into place. A flying wing is one
-# rigid piece turned at the shoulder by the flap.
+def _bike_of(pose: Pose) -> Tuple[Callable[[Point], Point], Point, int, int]:
+    """Where a point of the bicycle is in the frame, with where its pivot is
+    pinned, its tilt and its crank turn: the ones it is painted with."""
+    bx, by = pose["bike"]  # type: ignore[misc]
+    pivot: Point = pose["pivot"]  # type: ignore[assignment]
+    tilt = int(round(float(pose["tilt"])))  # type: ignore[arg-type]
+    crank = int(round(float(pose["crank"]))) % 360  # type: ignore[arg-type]
+    held = pin((CX + bx + pivot[0], GROUND + by + pivot[1]))
 
-WING_BONE = 37.0
-#: Half-widths at the shoulder, the elbow and the tip (the old wing polygon's).
-WING_WIDTHS = (6.5, 7.5, 4.2)
+    def at(p: Point) -> Point:
+        q = turned((p[0] - pivot[0], p[1] - pivot[1]), float(tilt))
+        return (held[0] + q[0], held[1] + q[1])
 
-
-def _ik_joint(root: Point, target: Point, length: float, bend: Point) -> Tuple[Point, Point]:
-    """The joint and the reached end of a two-bone limb with both bones
-    ``length`` long, bent toward ``bend``. A target out of reach is pulled in
-    along its direction (the limb straightens; it does not stretch)."""
-    d = math.hypot(target[0] - root[0], target[1] - root[1])
-    reach = 2.0 * length * 0.999
-    if d > reach:
-        target = _add(root, _mul(_sub(target, root), reach / d))
-    joint, _seg = SR.two_bone(root, target, length, bend)
-    return joint, target
+    return at, held, tilt, crank
 
 
-def _wing_segment(side: str, which: str):
-    """One wing bone along +x from its root: a taper with round ends whose
-    outer edge (the side away from the elbow's bend) is cut into feather
-    tips; the near hand wing ends in the wing's knuckle."""
-    r0, r1 = (WING_WIDTHS[0], WING_WIDTHS[1]) if which == "upper" else (WING_WIDTHS[1], WING_WIDTHS[2])
-    length = WING_BONE
-    fill, width = (PAL["feather_dark"], 1.2) if side == "far" else (PAL["wing"], 1.4)
-    # The elbow bends toward +normal (near) or -normal (far) of the reach,
-    # so the outer edge is local +y for the near wing, -y for the far one.
-    out = 1.0 if side == "near" else -1.0
-    reach = 3.0 if which == "upper" else 5.0
+def pedal_points(pose: Pose) -> Tuple[Point, Point]:
+    """The near and the far pedal of the bicycle of ``pose``, in the frame."""
+    at, _held, _tilt, crank = _bike_of(pose)
+    c = math.radians(crank)
+    return (at((BRACKET[0] + CRANK * math.cos(c), BRACKET[1] + CRANK * math.sin(c))),
+            at((BRACKET[0] - CRANK * math.cos(c), BRACKET[1] - CRANK * math.sin(c))))
 
-    def outline_points(o: Point, grow: float) -> List[Point]:
-        x0, y = o
-        pts = [(x0, y - out * (r0 + grow)), (x0 + length, y - out * (r1 + grow))]
-        for k in range(4):
-            x = x0 + length * (1.0 - k / 4.0)
-            r = r1 + (r0 - r1) * (k / 4.0) + grow
-            pts.append((x - length / 16.0, y + out * (r + reach)))
-            pts.append((x - length / 8.0, y + out * r))
-        pts.append((x0, y + out * (r0 + grow)))
-        return pts
 
-    def shape(w: VDraw, o: Point, grow: float, colour: Color) -> None:
-        w.polygon(outline_points(o, grow), colour)
-        w.circle(o, r0 + grow, colour)
-        w.circle((o[0] + length, o[1]), r1 + grow, colour)
+def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
+    pose = ROW_POSES[anim](frame_idx, nframes)
+    img = K.new_frame()
+    bike, held, tilt, crank = _bike_of(pose)
+    pivot: Point = tuple(round(v, 2) for v in pose["pivot"])  # type: ignore[assignment]
+    free = float(pose["free"])  # type: ignore[arg-type]
 
-    def paint(w: VDraw, o: Point) -> None:
-        shape(w, o, width, PAL["outline"])
-        shape(w, o, 0.0, fill)
-        tip = (o[0] + length, o[1])
-        if side == "far":
-            w.line([o, tip], PAL["wing"], 2.2)
+    # His seat, and how he is turned: with the bicycle, unless he is off it.
+    sx, sy = pose["seat"]  # type: ignore[misc]
+    on = bike((SADDLE[0] + sx, SADDLE[1] + sy))
+    ax, ay = pose["at"]  # type: ignore[misc]
+    seat = (lerp(on[0], CX + ax, free), lerp(on[1], GROUND + ay, free))
+    lean = float(pose["lean"]) + tilt * (1.0 - free)  # type: ignore[arg-type]
+
+    def bird(p: Point) -> Point:
+        """A point of him (from his seat, his back straight up) in the frame."""
+        q = turned(p, lean)
+        return (seat[0] + q[0], seat[1] + q[1])
+
+    def limb(name: str, bones: List[Tuple[Point, Point, Callable]]) -> None:
+        for edge in (True, False):
+            for k, (a, b, bone) in enumerate(bones):
+                K.place(img, bone(edge), a, f"{name}_{k}{'_edge' if edge else ''}", angle(a, b))
+
+    wings, flap = str(pose["wings"]), float(pose["flap"])  # type: ignore[arg-type]
+
+    def wing(near: bool) -> None:
+        name = "near" if near else "far"
+        shoulder = bird(NEAR_SHOULDER if near else FAR_SHOULDER)
+        colour = FEATHER if near else FEATHER_SHADE
+        if wings == "spread":
+            K.place(img, _wing_spread(near), shoulder, f"{name}_wing", lean * 0.4 + flap + (0.0 if near else 14.0))
+        elif wings == "fold":
+            if near:
+                K.place(img, _wing_fold(), shoulder, f"{name}_wing", lean)
         else:
-            w.line([(o[0], o[1] - 1.5), (tip[0] - 4.0, tip[1] - 1.0)], PAL["wing_hi"], 2.3)
-            if which == "lower":
-                w.circle(tip, 4.2, PAL["wing_hi"], PAL["outline"], 1.0)
-
-    r = max(r0, r1) + width + reach + 2.0
-    return _local_piece(("willson_wing_bone", side, which), (r, r, length + r, r), paint)
-
-
-def _flight_wing_turn(side: str, flap: float) -> float:
-    """Degrees (clockwise) the flap turns the flying wing about its shoulder:
-    how far the old painter's wing tip swung from its place at no flap."""
-    shoulder = BASE["far_shoulder"] if side == "far" else BASE["near_shoulder"]
-    tip0 = _flight_wing_local(side, 0.0)[3]
-    tip = _flight_wing_local(side, flap)[3]
-    a0 = math.atan2(tip0[1] - shoulder[1], tip0[0] - shoulder[0])
-    a1 = math.atan2(tip[1] - shoulder[1], tip[0] - shoulder[0])
-    return math.degrees(a1 - a0)
-
-
-def _rig_wing(v: VDraw, pose: Mapping[str, float], side: str) -> None:
-    if pose["flight"] > 0.5:
-        painter = _paint_far_wing if side == "far" else _paint_near_wing
-        shoulder = BASE["far_shoulder"] if side == "far" else BASE["near_shoulder"]
-        part = _canvas_piece(("willson_flight_wing", side), _rest(pose, flight_flap=0.0), shoulder, painter)
-        degrees = _rider_degrees(pose) + _flight_wing_turn(side, pose["flight_flap"])
-        SR.place(v.image, part, _ss(_rider_xf(pose, shoulder)), degrees, f"{side}_wing")
-        return
-    shoulder, target, _lift = _wing_target(pose, side)
-    normal = _perp(_norm(_sub(target, shoulder)))
-    bend = normal if side == "near" else _mul(normal, -1.0)
-    elbow, hand = _ik_joint(shoulder, target, WING_BONE, bend)
-    for which, a, b in (("upper", shoulder, elbow), ("lower", elbow, hand)):
-        degrees = math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
-        SR.place(v.image, _wing_segment(side, which), _ss(a), degrees, f"{side}_wing_{which}")
-
-
-def _wing_target(pose: Mapping[str, float], side: str) -> Tuple[Point, Point, float]:
-    """The grounded wing's shoulder, the point it reaches and its lift (as
-    ``_paint_far_wing`` / ``_paint_near_wing`` compute them)."""
-    death = pose["death_fall"]
-    if side == "far":
-        shoulder = _rider_xf(pose, BASE["far_shoulder"])
-        handle = _bike_xf(pose, (162.0, 132.0 - 7.0 * pose["far_wing_raise"]))
-        rest = _rider_xf(pose, (88.0, 125.0))
-        tumble = _rider_xf(pose, (73.0, 85.0))
-        dismount = pose["dismount"]
-        target = (
-            _lerp(_lerp(handle[0], rest[0], dismount), tumble[0], death),
-            _lerp(_lerp(handle[1], rest[1], dismount), tumble[1], death),
-        )
-        return shoulder, target, pose["far_wing_raise"]
-    shoulder = _rider_xf(pose, BASE["near_shoulder"])
-    lift = pose["near_wing_raise"]
-    handle = _bike_xf(pose, (181.0 - 5.0 * lift, 130.0 - 17.0 * lift))
-    dismounted_handle = _bike_xf(pose, (178.0, 130.0))
-    tumble = _rider_xf(pose, (151.0, 74.0))
-    target = (
-        _lerp(_lerp(handle[0], dismounted_handle[0], pose["dismount"]), tumble[0], death),
-        _lerp(_lerp(handle[1], dismounted_handle[1], pose["dismount"]), tumble[1], death),
-    )
-    return shoulder, target, lift
-
-
-# -- legs -----------------------------------------------------------------------
-
-#: Thigh and shin share one length: each leg is one raster, bent at the knee.
-LEG_BONE = 37.0
-
-
-def _rig_leg(v: VDraw, pose: Mapping[str, float], side: str) -> None:
-    hip, _knee0, foot, tangent = _leg_joints(pose, side)
-    sign = -1.0 if side == "near" else 1.0
-    knee, foot = _ik_joint(hip, foot, LEG_BONE, _mul(_perp(_norm(_sub(foot, hip))), sign))
-    if pose["dismount"] <= 0.55 and pose["flight"] <= 0.5 and pose["death_fall"] > 0.45:
-        tangent = _norm(_sub(foot, knee))
-    inner = PAL["leg"] if side == "far" else PAL["leg_hi"]
-    canvas = v.image
-    # The old polyline (outline 7.2, fill 4.4) as two outlined bones.
-    for name, a, b in (("thigh", hip, knee), ("shin", knee, foot)):
-        SR.clean_capsule(canvas, _ss(a), _ss(b), 2.2 * SS, inner, PAL["outline"], 1.4 * SS, f"{side}_{name}", length=LEG_BONE * SS)
-
-    def paint(w: VDraw, o: Point) -> None:
-        normal = (0.0, 1.0)
-        web = [
-            _add(o, (-5.0, 0.0)),
-            _add(_add(o, (7.5, 0.0)), _mul(normal, -4.0)),
-            _add(o, (8.5, 0.0)),
-            _add(_add(o, (7.0, 0.0)), _mul(normal, 4.2)),
-            _add(o, (-4.0, 0.0)),
-        ]
-        w.polygon(web, inner, PAL["outline"], 1.0)
-
-    part = _local_piece(("willson_web", side), (7.0, 6.0, 11.0, 6.0), paint)
-    SR.place(canvas, part, _ss(foot), math.degrees(math.atan2(tangent[1], tangent[0])), f"{side}_foot")
-
-
-def _leg_joints(pose: Mapping[str, float], side: str) -> Tuple[Point, Point, Point, Point]:
-    """Hip, knee, foot and the webbing's direction, as ``_draw_leg`` computes them."""
-    near_pedal, far_pedal = _pedal_points(pose)
-    if side == "near":
-        hip = _rider_xf(pose, BASE["near_hip"])
-        pedal = near_pedal
-        ground = (102.0, 221.0)
-        flight_grip = _bike_xf(pose, (132.0, 158.0))
-        tumble = _rider_xf(pose, (138.0, 170.0))
-        bend = -1.0
-    else:
-        hip = _rider_xf(pose, BASE["far_hip"])
-        pedal = far_pedal
-        ground = (82.0, 221.0)
-        flight_grip = _bike_xf(pose, (109.0, 155.0))
-        tumble = _rider_xf(pose, (91.0, 174.0))
-        bend = 1.0
-    dismount = pose["dismount"]
-    flight = pose["flight"]
-    death = pose["death_fall"]
-    foot = (_lerp(pedal[0], ground[0], dismount), _lerp(pedal[1], ground[1], dismount))
-    foot = (_lerp(foot[0], flight_grip[0], flight), _lerp(foot[1], flight_grip[1], flight))
-    foot = (_lerp(foot[0], tumble[0], death), _lerp(foot[1], tumble[1], death))
-    knee = _knee(hip, foot, bend)
-    if dismount > 0.55:
-        tangent = (1.0, 0.0)
-    elif flight > 0.5:
-        tangent = _norm(_sub(_bike_xf(pose, (145.0, 150.0)), _bike_xf(pose, (98.0, 150.0))))
-    elif death > 0.45:
-        tangent = _norm(_sub(foot, knee))
-    else:
-        crank = _bike_xf(pose, BASE["crank"])
-        tangent = _norm(_perp(_sub(foot, crank)))
-    return hip, knee, foot, tangent
-
-
-def _paint_body_and_seams(v: VDraw, pose: Mapping[str, float]) -> None:
-    _paint_body(v, pose)
-    _paint_seams(v, pose)
-
-
-def _rig_body(v: VDraw, pose: Mapping[str, float]) -> None:
-    part = _canvas_piece(("willson_body",), _rest(pose), BASE["rider_pivot"], _paint_body_and_seams)
-    _place_rider(v, part, BASE["rider_pivot"], pose, "body")
-
-
-def _rig_satchel(v: VDraw, pose: Mapping[str, float]) -> None:
-    part = _canvas_piece(("willson_satchel",), _rest(pose), BASE["rider_pivot"], _paint_satchel)
-    _place_rider(v, part, BASE["rider_pivot"], pose, "satchel")
-
-
-# -- neck, head and beak --------------------------------------------------------
-#
-# The neck is one rigid piece turned about its base on the body: the pose's
-# head offset swings it, and the head rides its end. The beak is an upper
-# bill and a pouch hinged under it (the pouch drops as the beak opens); both
-# reach back under the head, so the strike's thrust slides them out of it.
-
-NECK_BASE = (126.0, 91.0)
-
-
-def _neck_turn(pose: Mapping[str, float]) -> float:
-    """Degrees (clockwise) the neck turns to bring the head toward the pose's
-    head offset."""
-    hx, hy = _head_offset_pose(pose)
-    h0 = BASE["head_center"]
-    a0 = math.atan2(h0[1] - NECK_BASE[1], h0[0] - NECK_BASE[0])
-    a1 = math.atan2(h0[1] + hy - NECK_BASE[1], h0[0] + hx - NECK_BASE[0])
-    return math.degrees(a1 - a0)
-
-
-def _head_offset_pose(pose: Mapping[str, float]) -> Point:
-    return (pose["head_dx"], pose["head_bob"] + pose["head_dy"])
-
-
-def _head_offset(pose: Mapping[str, float]) -> Point:
-    """Where the head rides: the rest head centre swung with the neck."""
-    h0 = BASE["head_center"]
-    turned = _add(NECK_BASE, _rot(_sub(h0, NECK_BASE), _neck_turn(pose)))
-    return _sub(turned, h0)
-
-
-def _rig_neck(v: VDraw, pose: Mapping[str, float]) -> None:
-    part = _canvas_piece(("willson_neck",), _rest(pose, head_dx=0.0, head_bob=0.0, head_dy=0.0), NECK_BASE, _paint_neck)
-    SR.place(v.image, part, _ss(_rider_xf(pose, NECK_BASE)), _rider_degrees(pose) + _neck_turn(pose), "neck")
-
-
-def _place_on_head(v: VDraw, part, pose: Mapping[str, float], name: str, point: Point = None, degrees: float = 0.0) -> None:
-    hx, hy = _head_offset(pose)
-    point = BASE["head_center"] if point is None else point
-    SR.place(v.image, part, _ss(_rider_xf(pose, (point[0] + hx, point[1] + hy))), _rider_degrees(pose) + degrees, name)
-
-
-def _rig_head(v: VDraw, pose: Mapping[str, float]) -> None:
-    part = _canvas_piece(("willson_head",), _rest(pose, head_dx=0.0, head_bob=0.0, head_dy=0.0), BASE["head_center"], _paint_head)
-    _place_on_head(v, part, pose, "head")
-
-
-BILL_HINGE = (160.0, 68.0)
-POUCH_HINGE = (160.0, 74.0)
-#: Degrees per unit of ``beak_open``: the pouch drops, the bill lifts a little.
-POUCH_OPEN_DEG = 11.0
-BILL_OPEN_DEG = -3.0
-
-
-def _paint_bill(v: VDraw, pose: Mapping[str, float]) -> None:
-    upper = [(142, 62), (215, 65), (222, 70), (142, 75)]
-    v.polygon(upper, PAL["bill"], PAL["outline"], 1.3)
-    v.line([(158, 62), (215, 65), (222, 70)], PAL["bill_hi"], 1.5)
-
-
-def _paint_pouch(v: VDraw, pose: Mapping[str, float]) -> None:
-    pouch = [(142, 73), (159, 73), (221, 71), (205, 95), (172, 91), (160, 83), (142, 80)]
-    v.polygon(pouch, PAL["pouch"], PAL["outline"], 1.3)
-    v.line([(159, 73), (221, 71), (205, 95)], PAL["pouch_hi"], 1.2)
-
-
-def _rig_beak(v: VDraw, pose: Mapping[str, float]) -> None:
-    ext, opening = pose["beak_extend"], pose["beak_open"]
-    rest = _rest(pose)
-    for name, painter, hinge, deg in (("pouch", _paint_pouch, POUCH_HINGE, POUCH_OPEN_DEG), ("beak", _paint_bill, BILL_HINGE, BILL_OPEN_DEG)):
-        part = _canvas_piece(("willson", name), rest, hinge, painter)
-        _place_on_head(v, part, pose, name, (hinge[0] + ext, hinge[1]), deg * opening)
-
-
-def _rig_near_leg(v: VDraw, pose: Mapping[str, float]) -> None:
-    _rig_leg(v, pose, "near")
-    degrees = pose["pedal_angle"] + pose["bike_angle"]
-    SR.place(v.image, _crank_arm_piece("near"), _ss(_bike_xf(pose, BASE["crank"])), degrees, "near_crank")
-
-
-BELL_AT = (170.0, 127.0)
-
-
-def _paint_grips(v: VDraw, pose: Mapping[str, float]) -> None:
-    left, right = BASE["handle_left"], BASE["handle_right"]
-    v.line([left, _add(left, (-5.0, 0.8))], PAL["leather"], 4.2)
-    v.line([right, _add(right, (5.0, -0.5))], PAL["leather"], 4.2)
-
-
-def _paint_bell(v: VDraw, o: Point) -> None:
-    v.circle(o, 4.5, PAL["brass"], PAL["outline"], 1.0)
-    v.circle(_add(o, (-1.0, -1.0)), 1.2, PAL["brass_hi"], None)
-    v.line([_add(o, (3.8, 1.5)), _add(o, (7.0, 4.0))], PAL["outline"], 1.1)
-
-
-def _rig_handle_details(v: VDraw, pose: Mapping[str, float]) -> None:
-    grips = _canvas_piece(("willson_grips",), _rest(pose), BASE["rear_hub"], _paint_grips)
-    _place_bike(v, grips, BASE["rear_hub"], pose, "handle_details")
-    bell = _local_piece(("willson_bell",), (6.0, 6.0, 9.0, 7.0), _paint_bell)
-    _place_bike(v, bell, (BELL_AT[0], BELL_AT[1] + pose["bell_ring"]), pose, "bell")
-
-
-def _rig_face_details(v: VDraw, pose: Mapping[str, float]) -> None:
-    blink = 1.0 if _clamp(pose["blink"]) > 0.55 else 0.0
-    part = _canvas_piece(("willson_face", blink), _rest(pose, head_dx=0.0, head_bob=0.0, head_dy=0.0, blink=blink), BASE["head_center"], _paint_face_details)
-    _place_on_head(v, part, pose, "face_details")
-
-
-def _paint_seams(v: VDraw, pose: Mapping[str, float]) -> None:
-    for seam in ([(111, 89), (116, 103)], [(103, 93), (106, 109)], [(119, 96), (126, 112)]):
-        v.line(_rider_shape(pose, seam), PAL["feather_dark"], 0.8)
-
-
-# -- effects: pieces painted once at full strength ----------------------------
-
-
-def _streak_piece(key, vec: Point, colour: Color, width: float):
-    """A straight streak from its pivot along ``vec`` (logical pixels)."""
-    l, t = max(0.0, -vec[0]) + width + 1.0, max(0.0, -vec[1]) + width + 1.0
-    r, b = max(0.0, vec[0]) + width + 1.0, max(0.0, vec[1]) + width + 1.0
-    return _local_piece(("willson_streak", key), (l, t, r, b), lambda w, o: w.line([o, _add(o, vec)], colour, width))
-
-
-def _rig_accents(v: VDraw, pose: Mapping[str, float]) -> None:
-    attack = pose["attack_force"]
-    if attack > 0.05:
-        hx, hy = _head_offset(pose)
-        tip = _rider_xf(pose, (222.0 + hx + pose["beak_extend"], 70.0 + hy))
-        for idx, dy in enumerate((-13.0, 0.0, 13.0)):
-            end = _add(tip, (-(15.0 + idx * 4.0), dy * 0.34))
-            part = _streak_piece(("beak", idx), (-23.0, -dy * 0.10), PAL["bill_hi"] if idx == 1 else PAL["pouch_hi"], 2.2 - idx * 0.25)
-            SR.place(v.image, part, _ss(end), 0.0, f"strike{idx}", attack)
-        rear = _bike_xf(pose, BASE["rear_hub"])
-        part = _streak_piece(("rear",), (-7.0, 3.0), PAL["brass_hi"], 1.5)
-        for idx, (dx, dy) in enumerate(((-9, -3), (-13, 2), (-7, 6))):
-            SR.place(v.image, part, _ss(_add(rear, (dx, dy))), 0.0, f"grit{idx}", attack)
-
-    if pose["flight"] > 0.5:
-        # Thin horizontal air cuts: geometric motion cues behind the rider.
-        for idx, (x, y) in enumerate(((33, 88), (25, 114), (43, 145))):
-            wobble = 4.0 * math.sin(pose["phase"] + idx)
-            SR.place(v.image, _streak_piece(("air", idx), (21.0 + 5 * idx, 0.0), PAL["rim"], 1.0), _ss((x, y + wobble)), 0.0, f"air{idx}")
-
-    if pose["death_fall"] > 0.20:
-        # Loose feathers follow the rider, not the bicycle.
-        fall = pose["death_fall"]
-        feather = _local_piece(("willson_loose_feather",), (6.0, 4.0, 6.0, 4.0), lambda w, o: w.ellipse(o, 4.5, 1.8, PAL["wing_hi"], PAL["outline"], 0.6))
-        for idx, local in enumerate(((108, 76), (91, 96), (123, 119))):
-            center = _rider_xf(pose, local)
-            SR.place(v.image, feather, _ss(_add(center, (-8.0 * fall, -5.0 * fall))), -20.0, f"feather{idx}")
-
-
-PAINTERS: Dict[str, Callable[[VDraw, Mapping[str, float]], None]] = {
-    "wheels": _rig_wheels,
-    "far_crank": _rig_far_crank,
-    "bike_frame": _rig_bike_frame,
-    "tail": _rig_tail,
-    "far_wing": lambda v, pose: _rig_wing(v, pose, "far"),
-    "far_leg": lambda v, pose: _rig_leg(v, pose, "far"),
-    "body": _rig_body,
-    "satchel": _rig_satchel,
-    "neck": _rig_neck,
-    "head": _rig_head,
-    "beak": _rig_beak,
-    "near_leg": _rig_near_leg,
-    "near_wing": lambda v, pose: _rig_wing(v, pose, "near"),
-    "handle_details": _rig_handle_details,
-    "face_details": _rig_face_details,
-    "accents": _rig_accents,
-}
-
-
-def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
-    pose = _pose(animation, frame_idx, nframes)
-    image = Image.new("RGBA", (FRAME_W * SS, FRAME_H * SS), (0, 0, 0, 0))
-    vector = VDraw(image, SS)
-    for name in sorted(PAINTERS, key=LAYER_Z.__getitem__):
-        PAINTERS[name](vector, pose)
-    return rigdoc.downsampled_canvas(image, (FRAME_W, FRAME_H), Image.Resampling.LANCZOS)
-
-
-def _body_metrics_override(fw: int, fh: int):
-    return {
-        "body_pixel_bbox": {
-            "x": int(fw * 0.11),
-            "y": int(fh * 0.15),
-            "w": int(fw * 0.82),
-            "h": int(fh * 0.78),
-        },
-        "feet_pixel": {"x": fw * 0.50, "y": fh * 0.925},
-        "feet_anchor_norm": {"x": 0.0, "y": round(0.5 - 0.925, 6)},
-    }
-
-
-def render(out_dir: Path, **opts) -> List[Path]:
+            grip = bike(GRIP if near else (GRIP[0] + 1.6, GRIP[1] - 1.2))
+            elbow, wrist = solve(shoulder, grip, WING_UPPER, WING_FORE, 1.0)
+            limb(f"{name}_wing", [
+                (shoulder, elbow, lambda edge: _bone("wing_upper", WING_UPPER, 10.0, 8.0, colour, edge)),
+                (elbow, wrist, lambda edge: _bone("wing_fore", WING_FORE, 8.0, 6.4, colour, edge)),
+            ])
+            K.place(img, _wing_tip(near), wrist, f"{name}_wing_tip", angle(elbow, wrist))
+
+    feet = str(pose["feet"])
+    near_pedal, far_pedal = pedal_points(pose)
+
+    def leg(near: bool) -> None:
+        name = "near" if near else "far"
+        hip = bird(NEAR_HIP if near else FAR_HIP)
+        if feet == "pedal":
+            p = near_pedal if near else far_pedal
+            sole, turn = (p[0] - 2.0, p[1] - 1.4), float(tilt)
+        elif feet == "tube":
+            sole, turn = bike(TUBE_BACK if near else TUBE_FRONT), 30.0 + tilt
+        else:
+            x, y = pose["nf" if near else "ff"]  # type: ignore[misc]
+            sole, turn = (CX + x, GROUND + y), -20.0 * free * (1.0 if y > -8.0 else 0.0)
+        knee, ankle = solve(hip, (sole[0], sole[1] - ANKLE_UP), THIGH, SHIN, -1.0)
+        colour = LEG if near else LEG_DARK
+        limb(f"{name}_leg", [
+            (hip, knee, lambda edge: _bone("thigh", THIGH, 5.0, 4.4, colour, edge)),
+            (knee, ankle, lambda edge: _bone("shin", SHIN, 4.4, 3.8, colour, edge)),
+        ])
+        K.place(img, _foot(near), ankle, f"{name}_foot", turn)
+
+    wing(False)
+    leg(False)
+    for name, hub in (("rear", REAR), ("front", FRONT)):
+        K.place(img, _wheel(int(round(float(pose["wheel"])))), pin(bike(hub)), f"{name}_wheel")  # type: ignore[arg-type]
+    K.place(img, _bicycle(tilt, crank, pivot), held, "bicycle")
+
+    K.place(img, _tail(), bird((-15.0, -9.0)), "tail", lean)
+    K.place(img, _body(), seat, "body", lean)
+    K.place(img, _bag(), bird(BAG_HANGS), "bag", lean * 0.25 + float(pose["bag"]))  # type: ignore[arg-type]
+    leg(True)
+
+    root = bird(NECK_ROOT)
+    hx, hy = pose["head"]  # type: ignore[misc]
+    bend, head = solve(root, (root[0] + hx, root[1] + hy), NECK_LOW, NECK_HIGH, -1.0)
+    limb("neck", [
+        (root, bend, lambda edge: _bone("neck_low", NECK_LOW, 11.0, 9.0, FEATHER, edge)),
+        (bend, head, lambda edge: _bone("neck_high", NECK_HIGH, 9.0, 8.0, FEATHER, edge)),
+    ])
+    turn = lean * 0.2 + float(pose["tilt_head"])  # type: ignore[arg-type]
+    hinge_off = turned(BILL_ROOT, turn)
+    hinge = (head[0] + hinge_off[0], head[1] + hinge_off[1])
+    K.place(img, _bill_lower(), hinge, "bill_lower", turn + 12.0 + float(pose["gape"]))  # type: ignore[arg-type]
+    K.place(img, _head(), head, "head", turn)
+    K.place(img, _eyes(str(pose["eyes"])), head, "eyes", turn)
+    K.place(img, _bill_upper(), hinge, "bill_upper", turn + 12.0)
+    wing(True)
+    return K.downsample(img)
+
+
+#: The body the game moves: both wheels and the bird on them, riding.
+BODY_BOX = (CX - 62.0, GROUND - 142.0, CX + 62.0, GROUND)
+
+
+def render(out_dir: str | Path, **opts) -> List[Path]:
     del opts
-    frame_transform: dict = {}
-    outputs = build_sheet(
-        frame_transform_out=frame_transform,
-        target=TARGET_NAME,
-        rows=ROWS,
-        render_fn=render_frame,
-        out_dir=Path(out_dir),
-        frame_size=(FRAME_W, FRAME_H),
-        label_width=100,
-        auto_crop=False,
-        body_metrics_fn=_body_metrics_override,
-        actor_metadata=ACTOR_METADATA,
-        sheet_tuning={"collision_scale": 1.0, "frame_sample_inset": 1},
-        animation_key_map={name: name for name, _frames, _duration in ROWS},
-        attack_hitboxes={"slash": {"bbox": {"x": 142, "y": 30, "w": 112, "h": 96}}},
-    )
-    keys = (
-        "spritesheet",
-        "yaml",
-        "ron",
-        "actor",
-        "canonical",
-        "canonical_transparent",
-        "preview",
-    )
-    parts = publish_rig_flipbook(TARGET_NAME, ROWS, render_frame, outputs, frame_transform, Path(out_dir))
-    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
+    return K.render(TARGET_NAME, ROWS, _render_frame, out_dir, ACTOR_METADATA, BODY_BOX)
 
 
-def render_canonical(out_dir: Path, **opts) -> Path:
-    del opts
-    return write_canonical(
-        TARGET_NAME,
-        ROWS,
-        render_frame,
-        Path(out_dir),
-        frame_size=(FRAME_W, FRAME_H),
-    )
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Render the Willson spritesheet.")
+    parser.add_argument("--out-dir", type=Path, default=Path(__file__).resolve().parents[2] / "generated" / TARGET_NAME)
+    args = parser.parse_args(argv)
+    for path in render(args.out_dir):
+        print(path)
+    return 0
 
 
-def _source_uses_forbidden_raster_effects() -> bool:
-    forbidden_globals = ("ImageFilter", "GaussianBlur", "BoxBlur")
-    return any(name in globals() for name in forbidden_globals)
+TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
