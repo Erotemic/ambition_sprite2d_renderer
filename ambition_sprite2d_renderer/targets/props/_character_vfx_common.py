@@ -363,7 +363,13 @@ def publish_catalog(
     frame_size: tuple[int, int] = (144, 144),
     supersample: int = 4,
     crop_margin: int = 5,
+    whole_frames: bool = False,
 ) -> list[Path]:
+    """``whole_frames`` publishes each frame as it was drawn: not cropped and
+    not trimmed. The game draws an effect's frame into a square of one size
+    (``draw_effect_clip``), so a frame that is trimmed to a shape that is not
+    its sheet's is stretched. An effect whose frames differ much in shape (a
+    thin line, then a wide fist) needs its frames whole."""
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
@@ -413,8 +419,9 @@ def publish_catalog(
         out_dir=out_path,
         frame_size=frame_size,
         frame_meta_fn=frame_meta,
-        auto_crop=True,
+        auto_crop=not whole_frames,
         crop_margin=crop_margin,
+        trim=False if whole_frames else None,
         actor_metadata=actor_metadata(target_name, display_name, character_context_id),
     )
 
