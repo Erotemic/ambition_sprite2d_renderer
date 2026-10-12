@@ -25,6 +25,11 @@ shield, the dots of a partition, and the dream bubble a theorem arrives in.
 
 He is a rig: each limb is two bones through a solved elbow or knee, and each
 thing is painted once and turned to where it sits (``_ai_era_kit``).
+
+He is a platform fighter (the Smash roster's ``npc_ramen_nujan``): after the
+rows of the main game come the rows that game asks a sheet for by name (the
+grab kit, the dodges, ``tumble``, ``knockdown``, ``dizzy``) and the rows his
+move table names. He takes hold of somebody with his scarf.
 """
 
 from __future__ import annotations
@@ -192,6 +197,9 @@ REST: Pose = {
     "tail": 100.0,
     "wave": 9.0,
     "curl": 3.0,
+    # How long the tails are, of their length at rest: he throws his scarf to
+    # take hold of somebody.
+    "long": 1.0,
     # How far the hem of his coat swings out behind and in front.
     "hem": (0.0, 0.0),
 }
@@ -454,10 +462,8 @@ def death(i: int, n: int) -> Pose:
     # He sits down where he stood and is asleep: the dream goes on.
     sag = P(hip=(-5.0, 13.0), lean=-18.0, head=(-2.0, 0.0, -10.0), na=(6.0, 20.0), fa=(12.0, 16.0), nh="open", fh="open", nf=(-4.0, 0.0, 0.0),
             ff=(10.0, 0.0, -10.0), eyes="wince", mouth="o", tail=60.0, off=(-3.0, 0.0), hem=(0.0, 3.0))
-    sat = P(hip=(-8.0, 26.5), lean=-13.0, head=(0.0, 0.0, 2.0), na=(-9.0, 25.0), fa=(9.0, 24.0), nh="open", fh="open",
-            nf=(19.0, 0.0, -62.0), ff=(25.0, 0.0, -66.0), eyes="closed", mouth="o", tail=110.0, hem=(0.0, 2.0))
-    asleep = dict(sat, lean=-4.0, head=(1.0, 2.0, 22.0), mouth="smile", tail=96.0, wave=3.0)
-    return keys(_shot(i, n), [(0.0, STRUCK), (0.28, sag), (0.5, sat), (0.72, asleep), (1.0, asleep)])
+    asleep = dict(SAT, lean=-4.0, head=(1.0, 2.0, 22.0), mouth="smile", tail=96.0, wave=3.0)
+    return keys(_shot(i, n), [(0.0, STRUCK), (0.28, sag), (0.5, SAT), (0.72, asleep), (1.0, asleep)])
 
 
 @row
@@ -607,6 +613,215 @@ def taunt(i: int, n: int) -> Pose:
     return keys(_shot(i, n), [(0.0, P()), (0.2, together), (0.5, bow), (0.75, bow), (1.0, together)])
 
 
+# ---- The rows of a platform fighter ------------------------------------------
+
+
+@row
+def jab_2(i: int, n: int) -> Pose:
+    # The second point of the argument, with the other hand.
+    poke = dict(GUARD, hip=(4.0, 3.0), lean=13.0, na=(2.0, 15.0), fa=(27.0, 2.0), fh="point", nf=(-9.0, 0.0, 8.0), ff=(11.0, 0.0, 0.0),
+                mouth="open", tail=150.0)
+    return keys(_shot(i, n), [(0.0, GUARD), (0.3, poke), (0.6, poke), (1.0, GUARD)])
+
+
+@row
+def tilt_up(i: int, n: int) -> Pose:
+    # A tick over his head, from in front of him to behind it.
+    u = _shot(i, n)
+    swing = ease(max(0.0, min(1.0, (u - 0.15) / 0.5)))
+    a = math.radians(lerp(10.0, -130.0, swing))
+    hand = (27.0 * math.cos(a), 27.0 * math.sin(a))
+    base = dict(GUARD, hip=(0.0, lerp(4.0, 0.0, swing)), lean=lerp(6.0, -8.0, swing), head=(0.0, 0.0, -10.0 * swing), na=hand,
+                nab=-1.0 if hand[1] < -6.0 and hand[0] < 6.0 else 1.0, arm="under" if hand[1] < -4.0 and hand[0] > -14.0 else "over", nh="flat",
+                mouth="open" if 0.15 < u < 0.8 else "flat", brows=1.0, tail=lerp(110.0, 80.0, swing))
+    if u > 0.8:
+        return blend(base, GUARD, ease((u - 0.8) / 0.2))
+    return base
+
+
+@row
+def tilt_down(i: int, n: int) -> Pose:
+    low = dict(CROUCH, na=(-12.0, 14.0), nh="flat", brows=-1.0)
+    sweep = dict(SWEEP_LOW, hip=(4.0, 14.0), lean=24.0, na=(26.0, 14.0))
+    return keys(_shot(i, n), [(0.0, CROUCH), (0.25, low), (0.5, sweep), (0.75, sweep), (1.0, CROUCH)])
+
+
+@row
+def dash_attack(i: int, n: int) -> Pose:
+    lunge = dict(DASH, hip=(7.0, 7.0), lean=27.0, na=(27.0, -3.0), fa=(25.0, 3.0), nf=(-12.0, 0.0, 20.0), ff=(13.0, 0.0, 0.0), eyes="wide", mouth="big",
+                 tail=182.0, hem=(6.0, 0.0))
+    return keys(_shot(i, n), [(0.0, DASH), (0.3, lunge), (0.7, lunge), (1.0, HALF_UP)])
+
+
+@row
+def smash_charge(i: int, n: int) -> Pose:
+    # He holds a smash attack the way a theorem arrives.
+    return charge(i, n)
+
+
+@row
+def special_side(i: int, n: int) -> Pose:
+    # 1729, the taxicab number: forward, and it is a sum of two cubes two ways.
+    coil = dict(GUARD, hip=(-4.0, 7.0), lean=-6.0, na=(-12.0, 12.0), fa=(-8.0, 14.0), tail=70.0)
+    first = dict(DASH, hip=(6.0, 5.0), lean=24.0, na=(27.0, -4.0), nh="fist", fa=(-14.0, 10.0), fh="fist", nf=(-13.0, -3.0, 30.0), ff=(11.0, 0.0, 0.0),
+                 mouth="big", tail=180.0)
+    second = dict(first, hip=(8.0, 5.0), lean=26.0, na=(-10.0, 12.0), fa=(27.0, -2.0))
+    return keys(_shot(i, n), [(0.0, GUARD), (0.18, coil), (0.4, first), (0.55, first), (0.7, second), (0.85, second), (1.0, HALF_UP)])
+
+
+@row
+def special_up(i: int, n: int) -> Pose:
+    # A series that does not converge: each term is a step up.
+    wind = P(hip=(-1.0, 9.0), lean=8.0, na=(6.0, 18.0), fa=(10.0, 17.0), nf=(-6.0, 0.0, 0.0), ff=(7.0, 0.0, 0.0), eyes="closed", tail=108.0)
+    step = dict(RISE, lean=2.0, head=(0.0, 0.0, -10.0), na=(-5.0, -27.0), nh="point", fa=(-9.0, 18.0), fh="soft", eyes="closed", mouth="smile",
+                brows=0.0, tail=92.0, wave=9.0)
+    other = dict(step, nf=(6.0, -11.0, 12.0), ff=(-6.0, -1.0, 34.0))
+    return keys(_shot(i, n), [(0.0, wind), (0.2, step), (0.45, other), (0.7, step), (1.0, dict(APEX, eyes="closed", mouth="smile"))])
+
+
+@row
+def special_down(i: int, n: int) -> Pose:
+    # -1/12: the sum of all you throw at him. He waits for it with his eyes shut.
+    calm = P(hip=(-1.0, 2.0), lean=-3.0, head=(0.0, 0.0, -3.0), na=(20.0, 2.0), nh="flat", fa=(-7.0, 22.0), nf=(-6.0, 0.0, 0.0), ff=(7.0, 0.0, 0.0),
+             eyes="closed", tail=96.0, wave=4.0)
+    return keys(_shot(i, n), [(0.0, P()), (0.2, calm), (0.8, dict(calm, na=(21.0, 1.0))), (1.0, P())])
+
+
+#: He has somebody at the end of his scarf.
+HOLD = dict(GUARD, hip=(0.0, 2.0), lean=4.0, na=(22.0, 2.0), fa=(18.0, 6.0), ff=(9.0, 0.0, 0.0), tail=360.0, long=1.25, wave=2.0, curl=0.0)
+
+
+@row
+def grab(i: int, n: int) -> Pose:
+    # His scarf goes out over his head and takes hold.
+    throw = dict(GUARD, hip=(3.0, 3.0), lean=10.0, na=(26.0, -3.0), nh="open", fa=(8.0, 14.0), ff=(10.0, 0.0, 0.0), mouth="open", tail=360.0, long=1.7,
+                 wave=3.0, curl=0.0)
+    return keys(_shot(i, n), [(0.0, GUARD), (0.4, throw), (0.7, throw), (1.0, GUARD)])
+
+
+@row
+def grab_hold(i: int, n: int) -> Pose:
+    _, s, _c = _loop(i, n)
+    return dict(HOLD, hip=(0.0, 2.0 + 0.5 * s), lean=4.0 - 1.5 * s, tail=360.0 + 2.0 * s)
+
+
+@row
+def pummel(i: int, n: int) -> Pose:
+    # He corrects them, with one finger.
+    up = dict(HOLD, na=(15.0, -13.0), nh="point", brows=1.0)
+    tap = dict(HOLD, na=(26.0, -2.0), nh="point", lean=8.0, mouth="open")
+    return keys(_shot(i, n), [(0.0, HOLD), (0.35, up), (0.65, tap), (1.0, HOLD)])
+
+
+@row
+def throw_forward(i: int, n: int) -> Pose:
+    wind = dict(HOLD, hip=(-3.0, 3.0), lean=-8.0, na=(8.0, 10.0), fa=(10.0, 9.0), nh="open", fh="open")
+    push = dict(GUARD, hip=(5.0, 4.0), lean=16.0, na=(27.0, 0.0), fa=(25.0, 5.0), nh="open", fh="open", nf=(-10.0, 0.0, 14.0), ff=(12.0, 0.0, 0.0),
+                mouth="big", tail=160.0, hem=(4.0, 1.0))
+    return keys(_shot(i, n), [(0.0, HOLD), (0.3, wind), (0.5, push), (0.8, push), (1.0, GUARD)])
+
+
+@row
+def throw_back(i: int, n: int) -> Pose:
+    # Over his head by the scarf, and down behind him.
+    fling = dict(GUARD, hip=(-3.0, 3.0), lean=-20.0, head=(0.0, 0.0, 12.0), na=(-22.0, -8.0), nab=-1.0, fa=(-15.0, -3.0), nh="open", fh="open",
+                 nf=(-9.0, 0.0, 0.0), ff=(8.0, 0.0, -10.0), mouth="open", tail=180.0, long=1.3, wave=3.0, curl=0.0, hem=(0.0, 4.0))
+    return keys(_shot(i, n), [(0.0, HOLD), (0.5, fling), (0.75, fling), (1.0, dict(GUARD, tail=110.0))])
+
+
+@row
+def throw_up(i: int, n: int) -> Pose:
+    toss = dict(GUARD, hip=(0.0, -1.0), lean=-4.0, head=(0.0, 0.0, -12.0), na=(-6.0, -27.0), nab=-1.0, fa=(8.0, -26.0), nh="open", fh="open",
+                mouth="open", brows=1.0, tail=270.0, long=1.5, wave=3.0, curl=0.0)
+    low = dict(HOLD, hip=(0.0, 8.0), lean=8.0, tail=380.0)
+    return keys(_shot(i, n), [(0.0, HOLD), (0.25, low), (0.5, toss), (0.8, toss), (1.0, dict(GUARD, tail=110.0))])
+
+
+@row
+def throw_down(i: int, n: int) -> Pose:
+    high = dict(HOLD, hip=(-1.0, 0.0), lean=-8.0, na=(-10.0, -24.0), nab=-1.0, fa=(6.0, -24.0), tail=300.0, long=1.3)
+    slam = dict(GUARD, hip=(3.0, 11.0), lean=24.0, head=(1.0, 0.0, -6.0), na=(18.0, 22.0), fa=(14.0, 22.0), nh="open", fh="open", nf=(-9.0, 0.0, 0.0),
+                ff=(9.0, 0.0, 0.0), mouth="big", tail=420.0, long=1.2, wave=3.0, curl=0.0, hem=(3.0, 3.0))
+    return keys(_shot(i, n), [(0.0, HOLD), (0.3, high), (0.5, slam), (0.8, slam), (1.0, dict(HALF_UP, tail=464.0))])
+
+
+@row
+def grabbed(i: int, n: int) -> Pose:
+    _, s, c = _loop(i, n)
+    return P(hip=(-1.0, 1.0), lean=-6.0 + 4.0 * s, head=(0.0, 0.0, -8.0 + 5.0 * c), na=(-2.0, 24.0), fa=(3.0, 24.0), nh="fist", fh="fist",
+             nf=(-3.0 + 2.0 * s, -2.0, 20.0), ff=(4.0 - 2.0 * s, -3.0, 14.0), eyes="wince", mouth="grit", brows=1.0, tail=100.0, wave=13.0)
+
+
+@row
+def spot_dodge(i: int, n: int) -> Pose:
+    # He is not there: he steps back out of the line with his hands behind him.
+    away = P(hip=(-6.0, 3.0), lean=-16.0, head=(-1.0, 0.0, 10.0), na=(-8.5, 21.5), fa=(-7.0, 22.0), nf=(-10.0, 0.0, 0.0), ff=(2.0, 0.0, -8.0),
+             eyes="closed", tail=40.0, wave=8.0, hem=(0.0, 3.0))
+    return keys(_shot(i, n), [(0.0, P()), (0.3, away), (0.7, away), (1.0, P())])
+
+
+@row
+def air_dodge(i: int, n: int) -> Pose:
+    curl = dict(AIR, lean=20.0, head=(0.0, 0.0, -14.0), na=(9.0, 9.0), fa=(11.0, 8.0), nf=(3.0, -17.0, 14.0), ff=(8.0, -20.0, 10.0), eyes="closed",
+                tail=200.0, wave=10.0)
+    return keys(_shot(i, n), [(0.0, AIR), (0.3, curl), (0.75, curl), (1.0, AIR)])
+
+
+@row
+def tumble(i: int, n: int) -> Pose:
+    # Sent flying: over backwards, about his middle.
+    return P(hip=(0.0, -3.0), lean=-12.0, head=(-1.0, 0.0, -12.0), na=(-18.0, -14.0), nab=-1.0, fa=(20.0, -12.0), nh="open", fh="open",
+             nf=(-8.0, -6.0, 30.0), ff=(8.0, -12.0, 0.0), eyes="wince", mouth="big", brows=1.0, tail=200.0, wave=14.0, hem=(3.0, 3.0),
+             pivot=(0.0, -14.0), rot=-360.0 * i / n)
+
+
+#: On his back, his head behind him and his toes up.
+SUPINE = P(rot=-90.0, hip=(-2.0, 25.5), off=(13.0, 0.0), head=(0.0, 0.0, 0.0), na=(5.0, 26.0), nab=-1.0, fa=(8.0, 24.0), fab=-1.0, nh="open",
+           fh="open", nf=(-4.5, 25.0, 0.0), ff=(4.5, 25.0, -10.0), eyes="wince", mouth="o", tail=215.0, long=0.7, wave=2.0, curl=8.0)
+#: Sitting on the ground, his legs out in front of him.
+SAT = P(hip=(-8.0, 26.5), lean=-13.0, head=(0.0, 0.0, 2.0), na=(-9.0, 25.0), fa=(9.0, 24.0), nh="open", fh="open", nf=(19.0, 0.0, -62.0),
+        ff=(25.0, 0.0, -66.0), eyes="closed", mouth="o", tail=110.0, hem=(0.0, 2.0))
+
+
+@row
+def knockdown(i: int, n: int) -> Pose:
+    _, s, _c = _loop(i, n)
+    down = dict(SUPINE, off=(13.0, -0.4 - 0.4 * s))
+    return keys(_shot(i, n), [(0.0, dict(STRUCK, rot=-40.0, off=(0.0, -4.0))), (0.25, dict(SUPINE, off=(13.0, -3.0))), (0.45, down), (1.0, down)])
+
+
+@row
+def getup(i: int, n: int) -> Pose:
+    return keys(_shot(i, n), [(0.0, SUPINE), (0.35, dict(SAT, eyes="wince")), (0.7, HALF_UP), (1.0, P())])
+
+
+@row
+def dizzy(i: int, n: int) -> Pose:
+    _, s, c = _loop(i, n)
+    return P(hip=(1.5 * s, 2.0), lean=5.0 * s, head=(0.0, 0.0, 9.0 * c), na=(-4.0 - 2.0 * s, 25.0), fa=(4.0 - 2.0 * s, 24.5), nh="open", fh="open",
+             nf=(-6.0, 0.0, 0.0), ff=(7.0, 0.0, 0.0), eyes="wince" if i % 4 < 2 else "closed", mouth="o", brows=1.0, tail=96.0 + 8.0 * s, wave=10.0)
+
+
+@row
+def jump_squat(i: int, n: int) -> Pose:
+    wind = P(hip=(-1.0, 9.0), lean=10.0, na=(-14.0, 18.0), fa=(-10.0, 20.0), nf=(-6.0, 0.0, 0.0), ff=(7.0, 0.0, 0.0), brows=-1.0, tail=108.0)
+    return keys(_shot(i, n), [(0.0, P()), (1.0, wind)])
+
+
+@row
+def shield_hit(i: int, n: int) -> Pose:
+    held = block(0, 6)
+    struck = dict(held, hip=(-5.0, 5.0), lean=-12.0, eyes="wince", mouth="grit", off=(-3.0, 0.0), tail=30.0)
+    return keys(_shot(i, n), [(0.0, held), (0.35, struck), (1.0, held)])
+
+
+@row
+def parry(i: int, n: int) -> Pose:
+    held = block(0, 6)
+    met = dict(held, hip=(1.0, 3.0), lean=4.0, na=(26.0, -1.0), nh="flat", eyes="wide", mouth="open", brows=1.0, tail=140.0)
+    return keys(_shot(i, n), [(0.0, held), (0.4, met), (1.0, held)])
+
+
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 8, 145),
     ("walk", 8, 104),
@@ -651,6 +866,32 @@ ROWS: List[Tuple[str, int, int]] = [
     ("cast", 8, 80),
     ("celebrate", 8, 92),
     ("taunt", 8, 95),
+    # A platform fighter's.
+    ("jab_2", 5, 58),
+    ("tilt_up", 7, 62),
+    ("tilt_down", 7, 62),
+    ("dash_attack", 7, 62),
+    ("smash_charge", 8, 76),
+    ("special_side", 8, 66),
+    ("special_up", 8, 80),
+    ("special_down", 8, 75),
+    ("grab", 6, 60),
+    ("grab_hold", 6, 110),
+    ("pummel", 5, 50),
+    ("throw_forward", 7, 60),
+    ("throw_back", 7, 60),
+    ("throw_up", 7, 60),
+    ("throw_down", 7, 60),
+    ("grabbed", 6, 80),
+    ("spot_dodge", 6, 55),
+    ("air_dodge", 6, 60),
+    ("tumble", 8, 70),
+    ("knockdown", 6, 90),
+    ("getup", 7, 70),
+    ("dizzy", 8, 110),
+    ("jump_squat", 3, 30),
+    ("shield_hit", 4, 60),
+    ("parry", 4, 60),
 ]
 assert [name for name, _, _ in ROWS] == list(ROW_POSES), "every row has a pose, in sheet order"
 
@@ -1079,6 +1320,52 @@ def _effects(anim: str, i: int, n: int, at: Dict[str, Point]) -> List[Stamp]:
     if anim == "jab" and 1 <= i <= 3:
         stamp(_sigma(4.5), (hand[0] + 15.0, hand[1] - 1.0), "sigma")
         stamp(_sparkle(3.0), (hand[0] + 23.0, hand[1] - 8.0), "sparkle_0")
+    elif anim == "jab_2" and 1 <= i <= 3:
+        stamp(_infinity(6.0), (far_hand[0] + 16.0, far_hand[1] - 1.0), "infinity")
+        stamp(_sparkle(3.0), (far_hand[0] + 24.0, far_hand[1] - 8.0), "sparkle_0")
+    elif anim == "tilt_up" and 2 <= i <= 4:
+        a = math.degrees(math.atan2(hand[1] - shoulder[1], hand[0] - shoulder[0]))
+        lead = int(round(a / 5.0)) * 5
+        stamp(_swoosh(46.0, lead - 6, lead + 70, 8.0), shoulder, "swoosh")
+        tip = math.radians(lead - 12.0)
+        stamp(_tick(4.0), (shoulder[0] + 50.0 * math.cos(tip), shoulder[1] + 50.0 * math.sin(tip)), "tick")
+    elif anim == "tilt_down" and 3 <= i <= 5:
+        stamp(_swoosh(13.0, -70, 70, 5.0), (hand[0] + 6.0, hand[1] + 1.0), "swoosh")
+    elif anim == "dash_attack" and 2 <= i <= 4:
+        centre = (hand[0] + 13.0, hand[1] + 2.0)
+        stamp(_burst(8.0 + (i - 2)), centre, "burst")
+        stamp(_sigma(4.5), centre, "sigma")
+    elif anim == "special_side" and 3 <= i <= 6:
+        fist = hand if i <= 4 else far_hand
+        centre = (fist[0] + 14.0, fist[1])
+        stamp(_burst(9.0 + 2.0 * (i % 2)), centre, "burst")
+        stamp(_bang(6.0), centre, "bang")
+    elif anim == "special_up" and i >= 1:
+        stamp(_partition(), (hip[0] - 4.0, min(foot[1] + 10.0, GROUND - 10.0)), "partition")
+        stamp(_sigma(5.0), (hand[0] + 1.0, hand[1] - 14.0), "sigma")
+        sparkles([(-20.0, 6.0, 3.0), (20.0, 18.0, 3.0)], hip)
+    elif anim == "special_down" and 1 <= i <= 6:
+        disc, seal = _seal(9.0 + 0.5 * (i % 2))
+        centre = (hand[0] + 15.0, hand[1] - 2.0)
+        stamp(disc, centre, "seal_disc")
+        stamp(seal, centre, "seal")
+    elif anim == "pummel" and 2 <= i <= 3:
+        stamp(_tick(3.5), (hand[0] + 13.0, hand[1] - 3.0), "tick")
+    elif anim == "throw_forward" and 3 <= i <= 5:
+        centre = (hand[0] + 15.0, hand[1] + 2.0)
+        stamp(_burst(9.0), centre, "burst")
+        stamp(_bang(6.0), centre, "bang")
+    elif anim == "spot_dodge" and 2 <= i <= 4:
+        sparkles([(26.0, -30.0, 3.0), (30.0, -4.0, 2.5)], hip)
+    elif anim == "dizzy":
+        for k in range(3):
+            a = ph + k * math.tau / 3.0
+            stamp(_sparkle(3.0 + (k % 2)), (head[0] + 15.0 * math.cos(a), head[1] - 17.0 + 4.0 * math.sin(a)), f"sparkle_{k}")
+    elif anim == "parry" and 1 <= i <= 2:
+        stamp(_bracket(19.0), (hip[0] + 40.0, hip[1] - 24.0), "bracket")
+        stamp(_tick(4.5), (hip[0] + 30.0, hip[1] - 52.0), "tick")
+    elif anim == "shield_hit":
+        stamp(_bracket(18.0), (hip[0] + 40.0 - (3.0 if i == 1 else 0.0), hip[1] - 24.0), "bracket")
     elif anim == "punch" and 3 <= i <= 5:
         grow = float(i - 3)
         stamp(_burst(9.0 + 2.0 * grow), (hand[0] + 16.0, hand[1] - 1.0), "burst")
@@ -1089,9 +1376,9 @@ def _effects(anim: str, i: int, n: int, at: Dict[str, Point]) -> List[Stamp]:
             a = math.degrees(math.atan2(hand[1] - shoulder[1], hand[0] - shoulder[0]))
             lead = int(round(a / 5.0)) * 5
             sweep = 100 if anim == "slash" else 60
-            stamp(_swoosh(42.0, lead - sweep, lead + 6, 10.0), shoulder, "swoosh")
+            stamp(_swoosh(48.0, lead - sweep, lead + 6, 10.0), shoulder, "swoosh")
             tip = math.radians(lead + 12.0)
-            stamp(_sigma(6.5), (shoulder[0] + 46.0 * math.cos(tip), shoulder[1] + 46.0 * math.sin(tip)), "sigma")
+            stamp(_sigma(6.5), (shoulder[0] + 52.0 * math.cos(tip), shoulder[1] + 52.0 * math.sin(tip)), "sigma")
     elif anim == "attack_side" and 3 <= i <= 6:
         grow = float(i - 3)
         centre = (hand[0] + 17.0 + 2.0 * grow, hand[1] + 1.0)
@@ -1126,10 +1413,10 @@ def _effects(anim: str, i: int, n: int, at: Dict[str, Point]) -> List[Stamp]:
         stamp(_burst(8.0), (foot[0] - 10.0, foot[1]), "burst")
         stamp(_bang(5.0), (foot[0] - 10.0, foot[1]), "bang")
     elif anim == "block":
-        stamp(_bracket(18.0 + (i % 2)), (hip[0] + 38.0, hip[1] - 20.0), "bracket")
+        stamp(_bracket(18.0 + (i % 2)), (hip[0] + 40.0, hip[1] - 24.0), "bracket")
     elif anim == "interact" and 3 <= i <= 5:
         stamp(_tick(4.0), (hand[0] + 14.0, hand[1] - 5.0), "tick")
-    elif anim == "charge":
+    elif anim in ("charge", "smash_charge"):
         pulse = (1.0, 1.06, 1.12, 1.06)[i % 4]
         stamp(_puff(2.0), (head[0] - 13.0, head[1] - 22.0), "puff_0")
         stamp(_puff(3.2), (head[0] - 19.0, head[1] - 28.0), "puff_1")
@@ -1234,13 +1521,14 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     knot = W(trunk(-7.4, -NECK + 1.6))
     phase = math.tau * frame_idx / max(1, nframes)
     held = pin(knot)
+    link = LINK * float(pose["long"])  # type: ignore[arg-type]
     chains = []
     for links, lead, spread in ((7, 0.0, 0.0), (6, 1.7, 13.0)):
         at = (knot[0] - held[0], knot[1] - held[1])
         chain = [at]
         for k in range(links):
             a = float(pose["tail"]) + spread + float(pose["curl"]) * k + float(pose["wave"]) * math.sin(phase - 0.85 * k + lead) * (0.35 + 0.65 * k / links)  # type: ignore[arg-type]
-            at = (at[0] + LINK * math.cos(math.radians(a)), at[1] + LINK * math.sin(math.radians(a)))
+            at = (at[0] + link * math.cos(math.radians(a)), at[1] + link * math.sin(math.radians(a)))
             chain.append(at)
         chains.append(tuple(chain))
     K.place(img, _tails(tuple(chains)), held, "scarf_tails")
