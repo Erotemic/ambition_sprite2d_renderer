@@ -609,6 +609,26 @@ def _poke_poly(ox, oy, dx, dy, reach, half):
     return [at(0.0, half), at(0.86, half), at(1.0, 0.0), at(0.86, -half), at(0.0, -half)]
 
 
+# The low sweep of the down smash: a flat dome on the floor, the robot in its
+# middle. Each side reaches three quarters of a forward swing.
+SWEEP_HALF_WIDTH = SWING.reach * 0.78
+SWEEP_HEIGHT = SWING.half * 0.82
+#: How far under the floor line the dome starts: a body on the floor is in it.
+SWEEP_UNDER = 8.0
+
+
+def _sweep_poly(cx, ground_y, half_width, height):
+    """A dome on the floor about `cx`, as a convex polygon in frame pixels."""
+    steps = 8
+    return [
+        (
+            cx + half_width * math.cos(math.pi * i / steps),
+            ground_y + SWEEP_UNDER - (height + SWEEP_UNDER) * math.sin(math.pi * i / steps),
+        )
+        for i in range(steps + 1)
+    ]
+
+
 def _player_attack_hitboxes(size: Tuple[int, int]) -> Dict[str, dict]:
     """Return player-v3 attack geometry.
 
@@ -670,6 +690,21 @@ def _player_attack_hitboxes(size: Tuple[int, int]) -> Dict[str, dict]:
             _slash_poly(cx + w * 0.02, body_cy, -1.0, 0.0,
                         SWING.scaled(reach=0.86, half=0.94))
         ),
+        # The smash attacks (Jon, 2026-10-12: "the smash attacks visual area
+        # (and maybe hitbox) is far smaller than the tilts. It should probably
+        # be at least the same size, maybe even slightly bigger"). They had no
+        # sheet volume, as the jab had none: the runtime used the moveset's
+        # boxes (56x40, 48x60 and 80x28 world units; a tilt is 99x98), and the
+        # slash art is fitted to the volume. Each is its tilt's swing, larger.
+        "smash_forward": shaped(
+            _slash_poly(cx - w * 0.06, body_cy, 1.0, 0.0,
+                        SWING.scaled(reach=1.15, half=1.12))
+        ),
+        "smash_up": shaped(
+            _slash_poly(cx, body_cy, 0.0, -1.0, SWING.scaled(reach=1.02, half=1.06))
+        ),
+        # The low sweep is on the two sides of the robot at one time.
+        "smash_down": shaped(_sweep_poly(cx, 118.0, SWEEP_HALF_WIDTH, SWEEP_HEIGHT)),
         # Unbound by any move, and a ring rather than a swing. Left as the
         # family authored it.
         "air_neutral": family["air_neutral"],

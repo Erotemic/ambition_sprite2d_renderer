@@ -23,9 +23,9 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
-from typing import List, Sequence, Tuple
+from typing import List, Tuple
 
-from PIL import Image, ImageChops, ImageDraw, ImageFilter
+from PIL import Image
 
 from ...authoring.sheet_build import build_sheet
 from ...core import slash_envelope
@@ -61,10 +61,6 @@ HOT = (240, 251, 255, 255)
 BODY = (206, 238, 255, 255)
 EDGE = (150, 205, 245, 255)
 DEEP = (96, 158, 214, 255)
-
-
-def _px(value: float) -> float:
-    return value * SUPER
 
 
 def _clamp(value: float, lo: float = 0.0, hi: float = 1.0) -> float:
@@ -134,10 +130,6 @@ T_INSET_NEAR = 0.05
 T_INSET_FAR = 0.06
 
 
-def _scaled(points):
-    return [(_px(x), _px(y)) for x, y in points]
-
-
 def _half_at(t: float) -> float:
     """Half-height of the swept region a fraction `t` along the swing.
 
@@ -161,19 +153,6 @@ def _half_at(t: float) -> float:
     if u < 0.0 or u > 1.0:
         return 0.0
     return slash_envelope.half_at(u * SWING.tip) * PEAK_HALF
-
-
-def _envelope_outline(width_scale: float = 1.0, samples: int = 96):
-    """The swept region's outline, in swing space. Dense: this is ART."""
-    top = []
-    bottom = []
-    for i in range(samples + 1):
-        u = i / samples
-        x = REACH * u
-        half = _half_at(u) * width_scale
-        top.append((x, AXIS_Y - half))
-        bottom.append((x, AXIS_Y + half))
-    return top + list(reversed(bottom))
 
 
 # How far back the blade's horns sit from its point, as a fraction of reach. The
@@ -203,116 +182,19 @@ def _far_edge_x(dy: float, width_scale: float) -> float:
     return tip_x - (tip_x * HORN_PULL) * k * k
 
 
-def _blade_gradient(size, width_scale: float, trail: float) -> Image.Image:
-    """A RIBBON behind the leading edge: constant width, smooth everywhere.
+def _frame_feather(size, pixels: float = 3.0):
+    """1 in the frame and 0 in the frame's outermost pixel on each of its four
+    sides, over `pixels` frame pixels between."""
+    import numpy as np
 
-    The blade is the front of the swing, and what follows it is the air it came
-    through. So brightness is a function of one thing — how far a pixel sits
-    BEHIND the analytic leading edge — and `trail` is how long the wake is.
-
-    ⚠ This is the third fill this effect has had, and the reason each previous
-    one failed is worth keeping. Nested polygons in stepped colours gave a solid
-    lens with hard edges between the layers ("angles in the vfx"). A per-row
-    normalised ramp gave smooth colour but stepped between rows ("still feels
-    like the arc is jagged"). A closed-form distance behind a closed-form edge
-    has neither: no layer boundaries and no rows.
-    """
-    w, h = size
-    grad = Image.new("L", size, 0)
-    px = grad.load()
-    sx = w / FRAME_SIZE[0]
-    sy = h / FRAME_SIZE[1]
-    trail_px = trail * sx
-    for row in range(h):
-        dy = row / sy - AXIS_Y
-        fx = _far_edge_x(dy, width_scale)
-        if fx < 0.0:
-            continue
-        fx *= sx
-        lo = max(0, int(fx - trail_px))
-        hi = min(w - 1, int(fx))
-        for col in range(lo, hi + 1):
-            # 1 at the blade, 0 a full trail behind it. Squared so the bright
-            # core hugs the edge and the wake stays a wash.
-            k = 1.0 - (fx - col) / max(1e-6, trail_px)
-            # A FLOOR under the wake. Falling to zero left the near half of the
-            # swing invisible again at a glance, which is the original
-            # complaint; a fifth of full alpha keeps the whole swept region
-            # faintly lit and blue, and reads as air the blade came through.
-            px[col, row] = int(255 * (0.20 + 0.80 * _clamp(k) ** 1.7))
-    return grad
-
-
-def _arc_state(t: float) -> dict:
-    shrink = _smoothstep(0.0, 0.82, t)
-    release = _smoothstep(0.62, 1.0, t)
-    return {
-        "progress": _lerp(1.0, 0.58, shrink),
-        "width": _lerp(60.0, 16.0, shrink) * _lerp(1.0, 0.74, release),
-        "amp": _amplitude(t),
-        "release": release,
-    }
+    ys, xs = np.mgrid[0 : size[1], 0 : size[0]]
+    to_side = np.minimum(np.minimum(xs, size[0] - 1 - xs), np.minimum(ys, size[1] - 1 - ys)) / SUPER
+    return np.clip((to_side - 1.25) / pixels, 0.0, 1.0)
 
 
 def _draw_sweep_frame(t: float) -> Image.Image:
-    """One frame of the slash: a blade edge with a trail behind it.
-
-    The whole swept region carries ink — that is the fix for "a big empty part
-    of the hitpoly ... there is no vfx to indicate to the user that it would"
-    hit — but its brightness is a smooth ramp toward the leading edge rather
-    than a stack of filled shapes, so it reads as a swing and not as an object.
-    """
-    state = _arc_state(t)
-    amp = state["amp"]
-    size = (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER)
-    canvas = Image.new("RGBA", size, (0, 0, 0, 0))
-    if amp <= 0.01:
-        return canvas.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
-
-    release = state["release"]
-    width_scale = _lerp(1.0, 0.88, release)
-    # The trail retreats toward the blade as the swing spends: early frames are
-    # a full sweep, late ones a thin leading line.
-    # How far the wake reaches back from the blade, in frame units. It starts
-    # long enough to cover the swept region — the whole point is that the part
-    # of the polygon nearest the player visibly hurts — and shortens to a thin
-    # leading line as the swing spends.
-    trail = _lerp(REACH * 0.92, REACH * 0.30, _smoothstep(0.0, 0.9, t))
-
-    mask = Image.new("L", size, 0)
-    # raw-draw-ok: `mask` is mode "L". The gnu_ton rule is about ImageDraw
-    # REPLACING a destination's alpha; a single-channel mask has no alpha
-    # channel, and replacing its coverage value is exactly what a mask wants.
-    ImageDraw.Draw(mask).polygon(_scaled(_envelope_outline(width_scale)), fill=255)  # raw-draw-ok
-    grad = _blade_gradient(size, width_scale, trail)
-    grad = grad.filter(ImageFilter.GaussianBlur(radius=int(1.2 * SUPER)))
-    grad = ImageChops.multiply(grad, mask)
-
-    # Colour by the same ramp: the deep stop far from the edge, white at it.
-    # Alpha carries the fade independently of hue. Keep the wake in visible
-    # mid blues and reserve near-white for the final edge.
-    stops = ((0.00, DEEP), (0.35, EDGE), (0.72, BODY), (0.90, HOT), (1.00, CORE))
-    ramp = []
-    for i in range(256):
-        k = i / 255.0
-        lo, hi = stops[0], stops[-1]
-        for a, b in zip(stops, stops[1:]):
-            if a[0] <= k <= b[0]:
-                lo, hi = a, b
-                break
-        f = (k - lo[0]) / max(1e-6, hi[0] - lo[0])
-        ramp.append(tuple(int(_lerp(lo[1][c], hi[1][c], f)) for c in range(3)))
-
-    gpx = grad.load()
-    cpx = canvas.load()
-    for y in range(size[1]):
-        for x in range(size[0]):
-            v = gpx[x, y]
-            if v == 0:
-                continue
-            r, g, b = ramp[v]
-            cpx[x, y] = (r, g, b, int(v * amp))
-    return canvas.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+    """One frame of a swing with no direction: the whole crescent at once."""
+    return _draw_crescent_frame(t, None)
 
 
 #  `up` and `down` are NOT pre-rotated any more, and that is a contract change
@@ -341,18 +223,68 @@ def _draw_down_frame_raw(t: float) -> Image.Image:
 
 
 def _draw_directed_frame(t: float, rises: bool) -> Image.Image:
-    """A swing with a direction: the blade is a bright ray from the hand that
-    turns across the reach (low to high for a rise), and the air it came
-    through is its wake.
+    """A swing with a direction: a rise (low to high) or a fall."""
+    return _draw_crescent_frame(t, rises)
 
-    The reach is the same as the sweep's, and all of it has some light from
-    the first frame: the whole region hurts from the first frame, and a
-    player is to see that. What differs between the two rows is where the
-    blade IS, and so which way the eye is led.
 
-    A rise is drawn for a strike to the right: the blade ends at the top of
-    the frame. The game turns the frame to the strike, and for a strike to the
-    left it asks for the other row (a half turn makes a rise a fall).
+# The comet of a swing with a direction (see `_draw_crescent_frame`). Its
+# centre, as a part of the reach from the hand; the angle it starts at and the
+# angle it goes through, in degrees (0 is the front, 90 the side it ends on).
+COMET_CENTRE = 0.3
+COMET_START = -110.0
+COMET_SPAN = 250.0
+# Where its head and its tail are (0 to 1 of the span) at each part of the
+# row. The head is at the front on the first frame: a swing that starts at
+# rest is not seen. From 0.8 the head is over the top: the follow through.
+# Nothing is drawn past the head: the air the blade has not come to is dark.
+COMET_TIMES = (0.0, 0.25, 0.5, 0.75, 1.0)
+COMET_HEAD = (0.4, 0.78, 1.0, 1.08, 1.1)
+COMET_TAIL = (-0.05, 0.1, 0.38, 0.58, 0.95)
+
+# The comet's colours: pale. A fibre has less ALPHA than the band, and not a
+# darker blue: a dark line on a bright room is a scratch.
+COMET_STOPS = ((0.00, EDGE), (0.2, BODY), (0.5, HOT), (1.00, CORE))
+# The solid band of the comet, as a part of its thickness at each place.
+SOLID_PART = 0.34
+# The fibres behind the band. For each: how deep it is (a part of the comet's
+# thickness there, so each comes to the comet's point), its light, how long
+# after the tail it starts (of the span), and its width in pixels.
+FIBRES = (
+    (0.44, 0.95, 0.0, 1.3),
+    (0.56, 0.8, 0.05, 1.1),
+    (0.68, 0.7, 0.02, 1.5),
+    (0.83, 0.55, 0.1, 1.0),
+    (0.97, 0.48, 0.04, 1.3),
+    (1.16, 0.34, 0.13, 1.0),
+    (1.36, 0.26, 0.07, 1.2),
+)
+
+
+def _draw_crescent_frame(t: float, rises) -> Image.Image:
+    """A swing of the blade: a crescent at its edge, and the air behind it.
+
+    Three things are drawn, each a closed form of the distance behind the
+    blade's leading edge (`_far_edge_x`), so nothing has a step or a layer:
+
+    - The CRESCENT: white at the edge, thick at the middle of the swing, and
+      a point at each horn. It goes thin as the swing spends.
+    - The FIBRES: thin lines behind the edge, where the blade was. They say
+      that the blade moved.
+    - The WASH: a pale light on the air the blade came through. All of the
+      region that hurts has ink on the first frame (the complaint this
+      effect had was "a big empty part of the hitpoly"); the wash goes back
+      to the edge as the swing spends.
+
+    `rises` is `None` for a swing with no direction: the whole crescent is
+    there on the first frame. `True` and `False` are the two halves of the
+    1-2 string: the blade turns across the reach (low to high for a rise),
+    the crescent is drawn where the blade has been, and it goes out from the
+    end where it started. A rise is drawn for a strike to the right; the game
+    turns the frame to the strike, and for a strike to the left it asks for
+    the other row (a half turn makes a rise a fall).
+
+    The front edge is sharp and the other edges are soft, so the picture is
+    a crescent with light behind it and not a filled shape.
     """
     import numpy as np
 
@@ -364,59 +296,144 @@ def _draw_directed_frame(t: float, rises: bool) -> Image.Image:
     x = (xs + 0.5) / SUPER
     dy = (ys + 0.5) / SUPER - AXIS_Y
 
-    # The swept region, with a soft edge of a pixel and a half.
-    half = np.array([_half_at((col + 0.5) / SUPER / REACH) for col in range(size[0])])
-    inside = np.clip((half[None, :] - np.abs(dy)) / 1.5, 0.0, 1.0)
-    # 1 at the blade's far edge, 0 a trail behind it: the rim of the crescent.
-    far = np.array([_far_edge_x((row + 0.5) / SUPER - AXIS_Y, 1.0) for row in range(size[1])])
-    trail = _lerp(REACH * 0.85, REACH * 0.4, _smoothstep(0.0, 0.9, t))
-    rim = np.clip(1.0 - (far[:, None] - x) / max(1e-6, trail), 0.0, 1.0) ** 1.6
-    # The art has its own front (the curve of `_far_edge_x`), inside the
-    # volume's blunt end: nothing is drawn past it.
-    inside = inside * np.clip((far[:, None] - x) / 1.5, 0.0, 1.0)
-
-    # Where a point is in the turn of the blade: 0 where the blade starts, 1
-    # where it ends. The blade turns about the hand, so this is an angle.
-    widest = math.atan2(PEAK_HALF, REACH * 0.42)
-    angle = np.arctan2(-dy, np.maximum(x, 1.0))
-    turn = np.clip(0.5 + angle / (2.0 * widest), 0.0, 1.0)
-    if not rises:
-        turn = 1.0 - turn
-    # Where the blade is. It is a third of the way on the first frame (a
-    # swing that starts at rest is not seen), and through by the third.
-    at = min(1.08, 0.36 + 1.45 * t)
-    behind = at - turn
-
-    # The air the blade came through has all of the crescent's light. The air
-    # it has not come to has half: the whole reach is seen from the first
-    # frame, and the eye still follows the blade.
     def ramp(edge0, edge1, value):
         k = np.clip((value - edge0) / (edge1 - edge0), 0.0, 1.0)
         return k * k * (3.0 - 2.0 * k)
 
-    swept = 0.5 + 0.5 * ramp(-0.14, 0.0, behind)
-    # Then the crescent goes from the end it was drawn from: the last light
-    # is where the blade ended.
-    gone = _lerp(-0.6, 1.25, _smoothstep(0.15, 1.0, t))
-    swept = swept * ramp(gone - 0.25, gone + 0.25, turn)
-    # The blade: a bright ray, thin at the hand and wide at its end, and gone
-    # when the turn is done.
-    reach_part = np.clip(x / np.maximum(far[:, None], 1.0), 0.0, 1.0)
-    width = 0.03 + 0.07 * reach_part
-    blade = np.exp(-((behind / width) ** 2)) * (0.35 + 0.65 * reach_part)
-    blade = blade * (1.0 if at <= 1.0 else max(0.0, 1.0 - (at - 1.0) * 12.0))
+    spend = _smoothstep(0.0, 0.9, t)
 
-    # The crescent: brightest at the rim, as the sweep's.
-    crescent = 0.2 + 0.8 * rim
-    value = np.maximum(swept * crescent, blade)
-    value = np.clip(value, 0.0, 1.0) * inside
+    def half_of(u):
+        # The envelope has no width before its inset at the hand. The region
+        # closes to the hand in a straight side from there: the ink starts at
+        # the hand, as the volume does.
+        near = T_INSET_NEAR + 1e-3
+        return _half_at(u) if u >= near else _half_at(near) * (u / near)
 
-    stops = ((0.00, DEEP), (0.35, EDGE), (0.72, BODY), (0.90, HOT), (1.00, CORE))
+    half = np.array([half_of((col + 0.5) / SUPER / REACH) for col in range(size[0])])
+    far = np.array([_far_edge_x((row + 0.5) / SUPER - AXIS_Y, 1.0) for row in range(size[1])])[:, None]
+    # How far a point is behind the blade's leading edge.
+    behind_edge = far - x
+    # 0 on the axis of the swing, 1 at a horn.
+    across = np.clip(np.abs(dy) / PEAK_HALF, 0.0, 1.0)
+    horn = (1.0 - across**2) ** 0.75
+    # The swept region: a soft edge on its sides and a sharp one at its front.
+    soft = np.clip((half[None, :] - np.abs(dy)) / 5.0, 0.0, 1.0)
+    crisp = np.clip((half[None, :] - np.abs(dy)) / 1.5, 0.0, 1.0)
+    front = np.clip(behind_edge / 1.5, 0.0, 1.0)
+
+    reach_part = np.clip(x / np.maximum(far, 1.0), 0.0, 1.0)
+    # The light on the air the blade came through. Less at the hand: the
+    # region ends there in a flat side, and that side is not to be seen.
+    air = (0.14 + 0.2 * reach_part**1.4) * (0.4 + 0.6 * ramp(0.0, REACH * 0.25, x)) * ramp(0.0, REACH * 0.1, x)
+    # It goes back to the edge as the swing spends.
+    trail = _lerp(REACH * 1.05, REACH * 0.3, spend)
+
+    stops = ((0.00, DEEP), (0.3, EDGE), (0.62, BODY), (0.84, HOT), (1.00, CORE))
+    if rises is None:
+        # A swing with no direction: the whole crescent at one time, thick at
+        # the middle of the swing and a point at each horn.
+        # The same parts as the comet's: a solid band at the edge, fibres
+        # behind it, and a little light between them.
+        thick = np.maximum(REACH * _lerp(0.38, 0.12, spend) * horn**1.3, 1e-3)
+        there = np.clip(thick / 2.5, 0.0, 1.0)
+        solid = np.clip((thick * SOLID_PART - behind_edge) / 1.5, 0.0, 1.0)
+        fibres = np.zeros_like(x)
+        for off, light, late, wide in FIBRES:
+            # Each is parallel to the edge, and goes out toward the horns. One
+            # that starts later is shorter.
+            line = np.exp(-(((behind_edge - REACH * _lerp(0.3, 0.12, spend) * off) / wide) ** 2))
+            fibres = np.maximum(fibres, line * light * (1.0 - ramp(0.75 - 4.0 * late, 0.98 - 2.0 * late, across)))
+        glow = 0.4 * np.clip(1.0 - behind_edge / thick, 0.0, 1.0) ** 1.2
+        crescent = np.maximum(np.maximum(solid, fibres), glow) * there
+        wash = 0.62 * air * np.clip((trail - behind_edge) / (REACH * 0.12), 0.0, 1.0)
+        stops = COMET_STOPS
+    else:
+        # A swing with a direction is a COMET that goes along the edge of the
+        # region: from the low horn, across the front, to the high horn, and
+        # then back over the top toward the hand (the follow through). Its
+        # head is the blade and its tail is where the blade was. The tail
+        # comes after the head, so the last frames are the curl at the END of
+        # the swing and nothing at its start: no frame is the same above the
+        # axis and below it. (Jon, 2026-10-12: "I want more of the upward or
+        # downward motion and follow through visible in the slashes. The
+        # symmetric parts at the end are what I don't like.")
+        side = 1.0 if rises else -1.0
+        # The angle of a point about a centre in the near part of the region:
+        # 0 is the front, 90 is the side the swing ends on.
+        angle = np.degrees(np.arctan2(-dy * side, x - REACH * COMET_CENTRE))
+        angle = np.where(angle < COMET_START - 25.0, angle + 360.0, angle)
+        along = (angle - COMET_START) / COMET_SPAN
+        head = float(np.interp(t, COMET_TIMES, COMET_HEAD))
+        tail = float(np.interp(t, COMET_TIMES, COMET_TAIL))
+        # 0 at the tail, 1 at the head.
+        grown = np.clip((along - tail) / max(1e-6, head - tail), 0.0, 1.0)
+        # The head ends in a point a little past the blade.
+        point = 1.0 - ramp(head - 0.14, head + 0.04, along)
+        # How far a point is inside the outline of the region: its front and
+        # its two sides. The comet is on the outline.
+        # A SOFT least of the two: with a hard one, each line that follows
+        # the outline has a corner where the front meets a side.
+        round_by = REACH * 0.22
+        to_side = half[None, :] - np.abs(dy)
+        inside_by = -round_by * np.log(
+            np.exp(-np.clip(behind_edge, -50.0, 400.0) / round_by) + np.exp(-np.clip(to_side, -50.0, 400.0) / round_by)
+        )
+        # The follow through stops before the flat side at the hand.
+        off_hand = ramp(REACH * 0.06, REACH * 0.3, x)
+        # A point at the tail, at the head, and where the follow through
+        # comes to the hand: no end of the comet is a flat cut.
+        whole = np.maximum(REACH * _lerp(0.34, 0.2, spend) * grown**1.25 * point, 1e-3)
+        thick = np.maximum(whole * off_hand, 1e-3)
+        # No comet where it has no thickness: the soft least is under zero at
+        # the outline, and that is not a place the blade is.
+        deep = np.maximum(inside_by, 0.0)
+        there = np.clip(whole / 2.5, 0.0, 1.0)
+        # The comet has three parts, from its outline in: a SOLID white band
+        # with a sharp inner edge (the blade's edge is a thing, not a glow),
+        # FIBRES that come off that band and go thin (the air it cut), and a
+        # little light between them.
+        solid = np.clip((thick * SOLID_PART - deep) / 1.5, 0.0, 1.0)
+        fibres = np.zeros_like(x)
+        for off, light, late, wide in FIBRES:
+            # Its depth is of the comet's thickness with no taper at the hand:
+            # a taper along x makes a bend in each line.
+            line = np.exp(-(((deep - whole * off) / wide) ** 2))
+            # Each fibre starts some way after the tail and stops behind the
+            # head: the head is the clean edge.
+            # (before the comet starts to come to its point there: a fibre in
+            # that part has a bend).
+            span = ramp(tail + late, tail + late + 0.18, along) * (1.0 - ramp(head - 0.27 - late, head - 0.13, along))
+            fibres = np.maximum(fibres, line * light * span)
+        glow = 0.4 * np.clip(1.0 - deep / whole, 0.0, 1.0) ** 1.2
+        crescent = np.maximum(solid, np.maximum(fibres, glow) * off_hand) * there
+        # Only the air the blade came through has the light (Jon, 2026-10-12:
+        # "parts of the slash should not be visible until the slash has
+        # 'traveled through' that area"). It goes out from the start of the
+        # swing.
+        # Wide ramps: an edge of the wash along a line from the centre is a
+        # line that the eye sees.
+        swept = (1.0 - ramp(head - 0.2, head + 0.02, along)) * ramp(tail - 0.4, tail + 0.25, along)
+        wash = 0.7 * air * swept * (1.0 - 0.5 * _smoothstep(0.3, 0.9, t)) * ramp(0.0, REACH * 0.4, x)
+        # It is behind the comet and goes out toward the middle of the region:
+        # a part of a disc about the centre has a corner there.
+        wash = wash * np.clip(1.0 - deep / (REACH * 0.55), 0.0, 1.0)
+        # The curl at the end of the swing is to be seen: this row keeps its
+        # light to its last drawn frame, and then it is gone.
+        amp = max(amp, 0.96 if t <= 0.5 else 0.62)
+        stops = COMET_STOPS
+
+    value = np.maximum(crescent * crisp, wash * soft)
+    value = np.clip(value, 0.0, 1.0) * front
+    # Nothing has alpha at a side of the frame (Jon, 2026-10-12: "any alpha
+    # parts you add fade to complete transparency before the sheet ends, so
+    # there isn't any discontinuity by overlaying on something").
+    value = value * _frame_feather(size)
+
     keys = np.array([k for k, _ in stops])
     rgba = np.zeros(size[::-1] + (4,), dtype=np.float64)
     for channel in range(3):
         rgba[..., channel] = np.interp(value, keys, [color[channel] for _, color in stops])
-    rgba[..., 3] = value * 255.0 * amp
+    rgba[..., 3] = np.clip(value * 1.15, 0.0, 1.0) * 255.0 * amp
     canvas = Image.fromarray(np.clip(rgba, 0.0, 255.0).astype(np.uint8), "RGBA")
     return canvas.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
 
@@ -454,6 +471,7 @@ def _draw_poke_frame_raw(t: float) -> Image.Image:
     start = _lerp(-0.2, 0.8, _smoothstep(0.1, 0.95, t))
     left = ramp(start - 0.14, start + 0.14, along)
     value = np.clip(np.maximum(body * 0.6, core) * toward_point * left, 0.0, 1.0)
+    value = value * _frame_feather(size)
 
     stops = ((0.00, DEEP), (0.35, EDGE), (0.72, BODY), (0.90, HOT), (1.00, CORE))
     keys = np.array([k for k, _ in stops])

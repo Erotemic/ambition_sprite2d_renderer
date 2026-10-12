@@ -94,3 +94,17 @@ def test_robot_slash_has_no_painted_origin_marker():
     for y in range(88, 105):
         for x in range(0, 8):
             assert active.getpixel((x, y))[3] < 160
+
+
+def test_robot_slash_has_no_alpha_at_a_side_of_its_frame():
+    # The game lays a frame over the room. Alpha that is cut by a side of the
+    # frame is a straight line in the room: each part goes to nothing before
+    # the frame ends.
+    for animation, frames, _ in robot_slash.ROWS:
+        for index in range(frames):
+            alpha = robot_slash._draw_frame(animation, index, frames).convert("RGBA").getchannel("A")
+            w, h = alpha.size
+            sides = [alpha.getpixel((x, y)) for x in range(w) for y in (0, h - 1)]
+            sides += [alpha.getpixel((x, y)) for y in range(h) for x in (0, w - 1)]
+            assert max(sides) <= 2, f"{animation} frame {index} has alpha {max(sides)} at a side of its frame"
+
