@@ -52,3 +52,30 @@ def test_the_last_frame_of_the_transformation_is_her_idle() -> None:
     last = frame(stage, cosmic.transformation()[-1])
     idle = frame(stage, cosmic.look_for("idle", 0))
     assert last.tobytes() == idle.tobytes()
+
+
+def test_a_frame_of_parts_is_its_layers_and_her_body_is_two_of_them() -> None:
+    """The game draws a barrier about her body and not about her wings. It
+    reads her body by the names of its layers, so they are there, each frame
+    that is of parts, and her wings are layers of their own."""
+    from ambition_sprite2d_renderer.targets.characters._mary_o_v2_cosmic_art import (
+        BODY_TRACKS,
+        figure_layers,
+        is_of_parts,
+    )
+
+    look = cosmic.look_for("idle", 0)
+    assert is_of_parts(look)
+    names = [name for name, image in figure_layers(cosmic.STAGE, look)[0] if image.getbbox()]
+    assert set(BODY_TRACKS) <= set(names)
+    assert {"far_wing", "near_wing"} <= set(names) - set(BODY_TRACKS)
+    # Her wings are behind her figure.
+    assert names.index("near_wing") < names.index("body")
+
+
+def test_the_transformation_is_not_of_parts_where_light_is_on_the_whole_figure() -> None:
+    """Light on the whole figure and a turn of it are in no part, so those
+    frames stay the sheet's (`_publish_parts` leaves the row out)."""
+    from ambition_sprite2d_renderer.targets.characters._mary_o_v2_cosmic_art import is_of_parts
+
+    assert any(not is_of_parts(look) for look in cosmic.transformation())

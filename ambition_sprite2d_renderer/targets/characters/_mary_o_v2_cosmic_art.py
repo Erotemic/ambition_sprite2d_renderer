@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 
 from PIL import Image, ImageDraw
 
+from ...authoring import rigdoc
 from ..super_mary_o_common import MaryPalette, rasterize_logical
 from . import _mary_o_v2_model as M
 from ._mary_o_v2_art import _draw_dead_front, _draw_side_pose, _side_pose_head_origin
@@ -270,8 +271,16 @@ def night_gown(body):
     return body
 
 
-def figure(stage: Stage, look: Look):
-    """Her, with no thing of the transformation behind her."""
+#: The layers of her that are her body: what a barrier about her is drawn
+#: about. Her wings, the ring about her head and the star of her crown are not.
+BODY_TRACKS = ("hair", "body")
+
+
+def figure_layers(stage: Stage, look: Look):
+    """Her, as the layers she is made of, from the farthest: `(name, image)`.
+
+    The names are the tracks of her part flipbook (`mary_o_v2_cosmic.py`), so a
+    reader in the game can tell her body from her wings."""
     OX, W = stage.ox, stage.w
     dead = look.pose.mode == "dead"
 
@@ -287,8 +296,14 @@ def figure(stage: Stage, look: Look):
     body = rasterize_logical(M.LOGICAL_SIZE, S, paint)
     if look.cosmic:
         body = night_gown(body)
-    back, front = Layer(stage), Layer(stage)
     oy = stage.oy - look.lift
+    layers = []
+
+    def layer(name):
+        made = Layer(stage)
+        layers.append((name, made.image))
+        return made
+
     # Where this pose puts her head, from where her idle has it: the things
     # she wears on her head and her back go with it.
     if dead:
@@ -299,19 +314,27 @@ def figure(stage: Stage, look: Look):
     head = (OX + 10.2 + hdx, oy + 4.2 + hdy)
     worn = look.cosmic and not dead
     if worn:
-        wings(back, OX + 9.0 + hdx, oy + 12.0 + hdy, look, far=True)
-        ring(back, head[0], head[1] - 0.6, 10.5, 3.0, -14.0, front=False, part=look.ring)
-        hair(back, OX + 5.2 + hdx, oy + 7.0 + hdy, look)
-        wings(back, OX + 7.0 + hdx, oy + 13.6 + hdy, look)
+        wings(layer("far_wing"), OX + 9.0 + hdx, oy + 12.0 + hdy, look, far=True)
+        ring(layer("ring_back"), head[0], head[1] - 0.6, 10.5, 3.0, -14.0, front=False, part=look.ring)
+        hair(layer("hair"), OX + 5.2 + hdx, oy + 7.0 + hdy, look)
+        wings(layer("near_wing"), OX + 7.0 + hdx, oy + 13.6 + hdy, look)
     if look.sweep is not None:
-        ring(back, OX + 10.5, oy + 31.0 - look.sweep * 30.0, 9.0, 2.2, 0.0, front=False, colour=WHITE, stars=False, thick=0.7)
-    back.image.alpha_composite(body, (int(round(OX * S)), int(round(oy * S))))
+        ring(layer("sweep_back"), OX + 10.5, oy + 31.0 - look.sweep * 30.0, 9.0, 2.2, 0.0, front=False, colour=WHITE, stars=False, thick=0.7)
+    layer("body").image.alpha_composite(body, (int(round(OX * S)), int(round(oy * S))))
     if worn:
-        ring(front, head[0], head[1] - 0.6, 10.5, 3.0, -14.0, front=True, part=look.ring)
+        ring(layer("ring_front"), head[0], head[1] - 0.6, 10.5, 3.0, -14.0, front=True, part=look.ring)
     if look.sweep is not None:
-        ring(front, OX + 10.5, oy + 31.0 - look.sweep * 30.0, 9.0, 2.2, 0.0, front=True, colour=WHITE, stars=False, thick=0.7)
-    back.image.alpha_composite(front.image)
-    image = back.image
+        ring(layer("sweep_front"), OX + 10.5, oy + 31.0 - look.sweep * 30.0, 9.0, 2.2, 0.0, front=True, colour=WHITE, stars=False, thick=0.7)
+    return layers, oy, head
+
+
+def figure(stage: Stage, look: Look):
+    """Her, with no thing of the transformation behind her, as one picture."""
+    OX = stage.ox
+    layers, oy, head = figure_layers(stage, look)
+    image = Layer(stage).image
+    for _name, made in layers:
+        image.alpha_composite(made)
     if look.light > 0.0:
         # A figure of light: each pixel of her above the line of the reveal.
         px = image.load()
@@ -341,8 +364,34 @@ def figure(stage: Stage, look: Look):
     return image, oy, head
 
 
+def crown_layer(stage: Stage, look: Look, oy: float, head) -> Image.Image:
+    """The star over her head: the quasar, made a crown."""
+    dy, size, turn = look.crown
+    front = Layer(stage)
+    front.star(head[0], oy - 6.2 - dy + (head[1] - (oy + 4.2)), 4.2 * size, 1.8 * size, GOLD, turn=turn)
+    front.star(head[0], oy - 6.2 - dy + (head[1] - (oy + 4.2)), 2.2 * size, 0.95 * size, GOLD_HI, outline=None, turn=turn)
+    return front.image
+
+
+def is_of_parts(look: Look) -> bool:
+    """True when the frame of `look` is its layers and no more: no light on
+    the whole figure, no turn, and no thing of the transformation behind her."""
+    return look.light <= 0.0 and look.spin == 1.0 and look.sweep is None and look.column <= 0.0 and look.burst <= 0.0
+
+
 def frame(stage: Stage, look: Look) -> Image.Image:
     """One frame: the things of the transformation behind her, her, and the star of her crown."""
+    if is_of_parts(look):
+        # Each layer through the seam that records it, so the frame is
+        # published as its parts also.
+        layers, oy, head = figure_layers(stage, look)
+        if look.crown is not None and look.pose.mode != "dead":
+            layers.append(("crown", crown_layer(stage, look, oy, head)))
+        image = Layer(stage).image
+        for name, made in layers:
+            if made.getbbox() is not None:
+                rigdoc.composite_layer(image, made, name=name)
+        return image
     image, oy, head = figure(stage, look)
     back = Layer(stage)
     cx = stage.ox + BODY_CENTER_X
@@ -356,10 +405,5 @@ def frame(stage: Stage, look: Look) -> Image.Image:
         back.star(*middle, 19.0 * look.burst, 9.0 * look.burst, GOLD_HI, None, turn=look.burst_turn, points=12)
     back.image.alpha_composite(image)
     if look.crown is not None and look.pose.mode != "dead":
-        dy, size, turn = look.crown
-        front = Layer(stage)
-        # The star over her head: the quasar, made a crown.
-        front.star(head[0], oy - 6.2 - dy + (head[1] - (oy + 4.2)), 4.2 * size, 1.8 * size, GOLD, turn=turn)
-        front.star(head[0], oy - 6.2 - dy + (head[1] - (oy + 4.2)), 2.2 * size, 0.95 * size, GOLD_HI, outline=None, turn=turn)
-        back.image.alpha_composite(front.image)
+        back.image.alpha_composite(crown_layer(stage, look, oy, head))
     return back.image

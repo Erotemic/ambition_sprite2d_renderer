@@ -183,11 +183,13 @@ def render_cosmic(out_dir: str | Path, **opts) -> List[Path]:
             return frame(STAGE, looks[frame_idx])
         return frame(STAGE, look_for(animation, frame_idx))
 
+    frame_transform: dict = {}
     outputs = build_sheet(
         target=TARGET,
         rows=ROWS,
         render_fn=render_frame,
         out_dir=out_dir,
+        frame_transform_out=frame_transform,
         frame_size=STAGE.frame_px,
         label_width=LABEL_WIDTH,
         auto_crop=False,
@@ -198,7 +200,42 @@ def render_cosmic(out_dir: str | Path, **opts) -> List[Path]:
         # are not her body: a measured body would be as wide as her wings.
         pose_bodies="authored",
     )
-    return [outputs[key] for key in ("canonical", "canonical_transparent", "spritesheet", "yaml", "ron", "actor", "preview")]
+    parts = _publish_parts(render_frame, outputs, frame_transform, out_dir)
+    return [outputs[key] for key in ("canonical", "canonical_transparent", "spritesheet", "yaml", "ron", "actor", "preview")] + list(parts.values())
+
+
+def _publish_parts(render_frame, outputs, frame_transform, out_dir: Path) -> dict:
+    """Her part flipbook: each row but the transformation, as its layers.
+
+    A reader in the game draws about her body and not about her wings (the
+    barrier of the form), and the tracks say which is which
+    (`_mary_o_v2_cosmic_art.BODY_TRACKS`). So she is drawn from parts for what
+    the tracks say, and the cost of the pages does not decide it. The
+    transformation has light on the whole figure and a turn of it, which no
+    part carries: its row stays the sheet's."""
+    import yaml
+
+    from ...authoring import rigdoc
+    from ...authoring.part_flipbook import REALIZE_PARTS, build_rig_flipbook, sheet_feet
+    from ...authoring.sheet_build import rendering_canonical_only, rendering_quality_tier
+
+    if rendering_canonical_only() or rendering_quality_tier() or "yaml" not in outputs:
+        return {}
+    sheet = yaml.safe_load(Path(outputs["yaml"]).read_text())
+    size = (int(sheet["frame_width"]), int(sheet["frame_height"]))
+    dx, dy = int(frame_transform.get("dx", 0)), int(frame_transform.get("dy", 0))
+
+    def published(row: str, index: int, count: int) -> Image.Image:
+        canvas = Image.new("RGBA", size, (0, 0, 0, 0))
+        rigdoc.composite_canvas(canvas, render_frame(row, index, count), (dx, dy))
+        return canvas
+
+    part_rows = [name for name, _frames, _duration in ROWS if name != "transform"]
+    flipbook = build_rig_flipbook(TARGET, ROWS, published, part_rows, sheet_feet(Path(outputs["yaml"])), size)
+    flipbook.pack()
+    flipbook.realize = REALIZE_PARTS
+    print(f"[part flipbook] {TARGET}: realize parts (a reader needs her tracks), {flipbook.packed_texels()} texels", flush=True)
+    return flipbook.write(out_dir)
 
 
 TARGETS = {
