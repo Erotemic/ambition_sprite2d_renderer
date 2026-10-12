@@ -29,7 +29,6 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 from ...authoring.sheet_build import build_sheet
 from ...core import slash_envelope
-from ambition_sprite2d_renderer.core.draw import blending_draw
 
 TARGET_NAME = "robot_slash"
 SHEET_FILES = (
@@ -342,85 +341,127 @@ def _draw_down_frame_raw(t: float) -> Image.Image:
 
 
 def _draw_directed_frame(t: float, rises: bool) -> Image.Image:
-    """The sweep, with the way the blade went: where the blade IS has all of
-    its light, and where it WAS goes dark first.
+    """A swing with a direction: the blade is a bright ray from the hand that
+    turns across the reach (low to high for a rise), and the air it came
+    through is its wake.
+
+    The reach is the same as the sweep's, and all of it has some light from
+    the first frame: the whole region hurts from the first frame, and a
+    player is to see that. What differs between the two rows is where the
+    blade IS, and so which way the eye is led.
 
     A rise is drawn for a strike to the right: the blade ends at the top of
     the frame. The game turns the frame to the strike, and for a strike to the
     left it asks for the other row (a half turn makes a rise a fall).
     """
-    image = _draw_sweep_frame(t)
-    # How much of its light the part the blade left still has: some on the
-    # first frame (the whole reach is seen, and it hurts), none soon after.
-    left = _lerp(0.3, 0.0, _smoothstep(0.0, 0.4, t))
-    half = max(1.0, PEAK_HALF)
-    pixels = image.load()
-    for y in range(image.height):
-        # 0 where the blade started, 1 where it is.
-        s = _clamp(0.5 + (AXIS_Y - y) / (2.0 * half)) if rises else _clamp(0.5 - (AXIS_Y - y) / (2.0 * half))
-        keep = _lerp(left, 1.0, _smoothstep(0.2, 0.8, s))
-        if keep >= 0.999:
-            continue
-        for x in range(image.width):
-            r, g, b, a = pixels[x, y]
-            if a:
-                pixels[x, y] = (r, g, b, int(a * keep))
-    return image
+    import numpy as np
 
+    amp = _amplitude(t)
+    size = (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER)
+    if amp <= 0.01:
+        return Image.new("RGBA", FRAME_SIZE, (0, 0, 0, 0))
+    ys, xs = np.mgrid[0 : size[1], 0 : size[0]]
+    x = (xs + 0.5) / SUPER
+    dy = (ys + 0.5) / SUPER - AXIS_Y
 
-def _poke_polygon(progress: float, width_scale: float = 1.0):
-    """Draw the down-tilt as a straight thrust in swing space.
+    # The swept region, with a soft edge of a pixel and a half.
+    half = np.array([_half_at((col + 0.5) / SUPER / REACH) for col in range(size[0])])
+    inside = np.clip((half[None, :] - np.abs(dy)) / 1.5, 0.0, 1.0)
+    # 1 at the blade's far edge, 0 a trail behind it: the rim of the crescent.
+    far = np.array([_far_edge_x((row + 0.5) / SUPER - AXIS_Y, 1.0) for row in range(size[1])])
+    trail = _lerp(REACH * 0.85, REACH * 0.4, _smoothstep(0.0, 0.9, t))
+    rim = np.clip(1.0 - (far[:, None] - x) / max(1e-6, trail), 0.0, 1.0) ** 1.6
+    # The art has its own front (the curve of `_far_edge_x`), inside the
+    # volume's blunt end: nothing is drawn past it.
+    inside = inside * np.clip((far[:, None] - x) / 1.5, 0.0, 1.0)
 
-    The long lens emphasizes reach rather than area. It fills the thin hit-volume
-    quad vertically so the visible thrust is not narrower than the damaging one.
-    """
-    # Inside the volume, like every other row: the thrust's polygon is
-    # parallel-sided at the quad's own half-height, so art drawn at the frame
-    # edge leaks the moment the halo blurs. 0.86 leaves the blur somewhere to go.
-    x0 = 0.06 * REACH
-    x1 = x0 + (REACH * 0.90 - x0) * _clamp(progress, 0.30, 1.0)
-    half = 69.0 * width_scale
-    return [
-        (x0, AXIS_Y - half * 0.62),
-        (x0 + (x1 - x0) * 0.22, AXIS_Y - half),
-        (x0 + (x1 - x0) * 0.82, AXIS_Y - half * 0.78),
-        (x1, AXIS_Y),
-        (x0 + (x1 - x0) * 0.82, AXIS_Y + half * 0.78),
-        (x0 + (x1 - x0) * 0.22, AXIS_Y + half),
-        (x0, AXIS_Y + half * 0.62),
-    ]
+    # Where a point is in the turn of the blade: 0 where the blade starts, 1
+    # where it ends. The blade turns about the hand, so this is an angle.
+    widest = math.atan2(PEAK_HALF, REACH * 0.42)
+    angle = np.arctan2(-dy, np.maximum(x, 1.0))
+    turn = np.clip(0.5 + angle / (2.0 * widest), 0.0, 1.0)
+    if not rises:
+        turn = 1.0 - turn
+    # Where the blade is. It is a third of the way on the first frame (a
+    # swing that starts at rest is not seen), and through by the third.
+    at = min(1.08, 0.36 + 1.45 * t)
+    behind = at - turn
+
+    # The air the blade came through has all of the crescent's light. The air
+    # it has not come to has half: the whole reach is seen from the first
+    # frame, and the eye still follows the blade.
+    def ramp(edge0, edge1, value):
+        k = np.clip((value - edge0) / (edge1 - edge0), 0.0, 1.0)
+        return k * k * (3.0 - 2.0 * k)
+
+    swept = 0.5 + 0.5 * ramp(-0.14, 0.0, behind)
+    # Then the crescent goes from the end it was drawn from: the last light
+    # is where the blade ended.
+    gone = _lerp(-0.6, 1.25, _smoothstep(0.15, 1.0, t))
+    swept = swept * ramp(gone - 0.25, gone + 0.25, turn)
+    # The blade: a bright ray, thin at the hand and wide at its end, and gone
+    # when the turn is done.
+    reach_part = np.clip(x / np.maximum(far[:, None], 1.0), 0.0, 1.0)
+    width = 0.03 + 0.07 * reach_part
+    blade = np.exp(-((behind / width) ** 2)) * (0.35 + 0.65 * reach_part)
+    blade = blade * (1.0 if at <= 1.0 else max(0.0, 1.0 - (at - 1.0) * 12.0))
+
+    # The crescent: brightest at the rim, as the sweep's.
+    crescent = 0.2 + 0.8 * rim
+    value = np.maximum(swept * crescent, blade)
+    value = np.clip(value, 0.0, 1.0) * inside
+
+    stops = ((0.00, DEEP), (0.35, EDGE), (0.72, BODY), (0.90, HOT), (1.00, CORE))
+    keys = np.array([k for k, _ in stops])
+    rgba = np.zeros(size[::-1] + (4,), dtype=np.float64)
+    for channel in range(3):
+        rgba[..., channel] = np.interp(value, keys, [color[channel] for _, color in stops])
+    rgba[..., 3] = value * 255.0 * amp
+    canvas = Image.fromarray(np.clip(rgba, 0.0, 255.0).astype(np.uint8), "RGBA")
+    return canvas.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
 
 
 def _draw_poke_frame_raw(t: float) -> Image.Image:
-    shrink = _smoothstep(0.0, 0.82, t)
-    release = _smoothstep(0.62, 1.0, t)
-    progress = _lerp(1.0, 0.62, shrink)
+    """The straight thrust: a lance of light from the hand to a point, bright
+    along its middle and brightest toward the point. It goes from the hand's
+    end: the last light is the point.
+
+    The frame is the thrust's volume (a box: the row has no hit polygon), so
+    the lance is as long as the frame and nearly as tall at the hand.
+    """
+    import numpy as np
+
     amp = _amplitude(t)
-
     size = (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER)
-    canvas = Image.new("RGBA", size, (0, 0, 0, 0))
     if amp <= 0.01:
-        return canvas.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
+        return Image.new("RGBA", FRAME_SIZE, (0, 0, 0, 0))
+    ys, xs = np.mgrid[0 : size[1], 0 : size[0]]
+    along = np.clip((xs + 0.5) / SUPER / REACH, 0.0, 1.0)
+    dy = np.abs((ys + 0.5) / SUPER - AXIS_Y)
 
-    halo = Image.new("RGBA", size, (0, 0, 0, 0))
-    blending_draw(halo).polygon(
-        _scaled(_poke_polygon(progress, 1.0)),
-        fill=(EDGE[0], EDGE[1], EDGE[2], int(120 * amp)),
-    )
-    halo = halo.filter(ImageFilter.GaussianBlur(radius=int(3.0 * SUPER)))
-    canvas.alpha_composite(halo)
+    def ramp(edge0, edge1, value):
+        k = np.clip((value - edge0) / (edge1 - edge0), 0.0, 1.0)
+        return k * k * (3.0 - 2.0 * k)
 
-    draw = blending_draw(canvas)
-    for width_scale, color, alpha in (
-        (0.94, DEEP, 220),
-        (0.74, BODY, 238),
-        (0.48, HOT, 250),
-        (0.20, CORE, 255),
-    ):
-        draw.polygon(
-            _scaled(_poke_polygon(progress, width_scale * _lerp(1.0, 0.82, release))),
-            fill=(color[0], color[1], color[2], int(alpha * amp)),
-        )
+    # A point at the far end, and a soft start at the hand.
+    half = FRAME_SIZE[1] * 0.46 * (1.0 - along**1.7) ** 0.85 * ramp(0.0, 0.1, along)
+    half = np.maximum(half, 1e-3)
+    across = dy / half
+    body = np.clip(1.0 - across, 0.0, 1.0) ** 1.1
+    core = np.exp(-((across / 0.34) ** 2)) * (across < 1.0)
+    toward_point = 0.4 + 0.6 * along**1.1
+    # The hand's end goes first.
+    start = _lerp(-0.2, 0.8, _smoothstep(0.1, 0.95, t))
+    left = ramp(start - 0.14, start + 0.14, along)
+    value = np.clip(np.maximum(body * 0.6, core) * toward_point * left, 0.0, 1.0)
+
+    stops = ((0.00, DEEP), (0.35, EDGE), (0.72, BODY), (0.90, HOT), (1.00, CORE))
+    keys = np.array([k for k, _ in stops])
+    rgba = np.zeros(size[::-1] + (4,), dtype=np.float64)
+    for channel in range(3):
+        rgba[..., channel] = np.interp(value, keys, [color[channel] for _, color in stops])
+    rgba[..., 3] = np.clip(value * 1.25, 0.0, 1.0) * 255.0 * amp
+    canvas = Image.fromarray(np.clip(rgba, 0.0, 255.0).astype(np.uint8), "RGBA")
     return canvas.resize(FRAME_SIZE, Image.Resampling.LANCZOS)
 
 

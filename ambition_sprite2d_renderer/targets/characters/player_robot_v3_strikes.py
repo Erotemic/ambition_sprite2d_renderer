@@ -767,11 +767,28 @@ def pet(body: RigBody) -> List[Key]:
     return keys
 
 
+def calm(strike: Callable[[RigBody], List[Key]]) -> Callable[[RigBody], List[Key]]:
+    """`strike` with the robot's own face: its eyes are open, and they narrow
+    a little.
+
+    The ordinary swings are what the robot does all day. With the fierce face
+    on each of them it is angry all day (Jon, 2026-10-12: "he doesn't have to
+    have mean eyes every time he swings"). The fierce face and the strain are
+    for the blows that are an event: the thrust, the smash attacks, the
+    aerials.
+    """
+
+    def keys(body: RigBody) -> List[Key]:
+        return [replace(key, face=key.face or "open", squint=key.squint * 0.4) for key in strike(body)]
+
+    return keys
+
+
 STRIKES: Dict[str, Callable[[RigBody], List[Key]]] = {
-    "jab": jab,
-    "attack_side": tilt_forward,
-    "attack_up": tilt_up,
-    "attack_down": tilt_down,
+    "jab": calm(jab),
+    "attack_side": calm(tilt_forward),
+    "attack_up": calm(tilt_up),
+    "attack_down": calm(tilt_down),
     "dash_attack": dash_attack,
     "smash_charge": smash_charge,
     "smash_forward": smash_forward,
