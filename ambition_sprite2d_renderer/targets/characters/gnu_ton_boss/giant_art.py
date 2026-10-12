@@ -648,8 +648,11 @@ def _punch_arm(wrist, first, last, through):
 #: shoulder, the way its end goes. The line is OVER the shoulder: the arm goes
 #: out to the side and up, and the fist comes down into the line.
 _P_HANG = ((1282.0, 800.0), (46.0, 150.0), (0.0, 140.0))
-_P_OUT = ((1540.0, 520.0), (170.0, 60.0), (110.0, -90.0))
-_P_HIGH = ((1500.0, 250.0), (150.0, -120.0), (-120.0, -40.0))
+# The arm goes out no farther than this: the widest frame of the sheet says
+# how wide each cell of its page is, and ten cells must be under 8192 px (the
+# default limit of a texture's side).
+_P_OUT = ((1480.0, 520.0), (150.0, 60.0), (100.0, -90.0))
+_P_HIGH = ((1460.0, 250.0), (130.0, -120.0), (-120.0, -40.0))
 _P_UP = ((PUNCH_LINE[0][0], PUNCH_LINE[0][1] - 125.0), (-10.0, -300.0), (0.0, 120.0))
 _P_BACK = ((PUNCH_LINE[0][0], PUNCH_LINE[0][1] - 155.0), (-14.0, -320.0), (0.0, 120.0))
 _P_DOWN = ((PUNCH_LINE[0][0], PUNCH_LINE[0][1] + 145.0), (-6.0, -330.0), (0.0, 220.0))

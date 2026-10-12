@@ -126,9 +126,60 @@ CLIPS = {}
 ROW_SPECS = {}
 
 
+#: The rhythm of an attack: when its anticipation, its contact and its
+#: follow-through are, as parts of the clip. `action` puts them at 0.24, 0.48
+#: and 0.72 for each move, so each attack had one rhythm. A game slaves the row
+#: to its move (frame = progress * frames), so the contact's place in the clip
+#: IS the move's startup: a jab whose contact is at the middle of its clip can
+#: not be a fast jab. A quick move has its contact early and a long tail; a
+#: heavy move has a long anticipation and a contact that is a snap.
+BEATS = {
+    "jab": (0.08, 0.26, 0.56),
+    "jab_2": (0.08, 0.26, 0.56),
+    "jab_3": (0.10, 0.30, 0.60),
+    "dash_attack": (0.10, 0.30, 0.62),
+    "attack_side": (0.14, 0.34, 0.62),
+    "attack_up": (0.14, 0.34, 0.62),
+    "attack_down": (0.12, 0.32, 0.60),
+    "smash_forward": (0.36, 0.48, 0.74),
+    "smash_up": (0.36, 0.48, 0.74),
+    "smash_down": (0.34, 0.46, 0.74),
+    "air_neutral": (0.12, 0.30, 0.62),
+    "air_forward": (0.14, 0.34, 0.62),
+    "air_back": (0.16, 0.36, 0.64),
+    "air_up": (0.14, 0.34, 0.62),
+    "air_down": (0.18, 0.38, 0.66),
+    "special_side": (0.22, 0.40, 0.70),
+    "special_up": (0.14, 0.34, 0.70),
+    "grab": (0.12, 0.34, 0.62),
+    "pummel": (0.10, 0.30, 0.60),
+    "getup_attack": (0.14, 0.34, 0.62),
+    "ledge_attack": (0.14, 0.34, 0.62),
+}
+_ACTION_BEAT = (0.24, 0.48, 0.72)
+
+
+def retimed(clip, beat):
+    """``clip`` with its anticipation, contact and follow-through at ``beat``."""
+    new = (0.0, *beat, 1.0)
+    old = (0.0, *_ACTION_BEAT, 1.0)
+
+    def warp(t: float) -> float:
+        for k in range(4):
+            if t <= new[k + 1]:
+                span = new[k + 1] - new[k]
+                u = (t - new[k]) / span if span > 0 else 1.0
+                return old[k] + (old[k + 1] - old[k]) * u
+        return 1.0
+
+    return lambda i, n, t: clip(i, n, warp(t))
+
+
 def register(name: str, clip, frames=7, ms=75, loop=False):
     if name in CLIPS:
         raise ValueError(f"duplicate fighter clip: {name}")
+    if name in BEATS:
+        clip = retimed(clip, BEATS[name])
     CLIPS[name] = clip
     ROW_SPECS[name] = (name, frames, ms, loop)
 

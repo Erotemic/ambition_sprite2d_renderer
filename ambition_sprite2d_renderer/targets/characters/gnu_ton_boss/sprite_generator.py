@@ -496,7 +496,9 @@ def draw_gnu_ton_man(
 # Where each fist is in the fused sheet's frame at rest: beside the giant, at
 # the height of its chest. (The fists the player fights are bodies of their
 # own, from `giant_gnu_fist`; these are the picture of the Hall's exhibit.)
-_FUSED_FIST_X = 330.0
+# Not farther out than this: the widest frame of the pack says how wide each
+# cell of its pages is, and ten cells must be under 8192 px.
+_FUSED_FIST_X = 295.0
 _FUSED_FIST_Y = 330.0
 _FUSED_FIST_FLOOR_Y = 606.0
 # The scholar on the giant's shoulder in the fused sheet: his own rider frame,
