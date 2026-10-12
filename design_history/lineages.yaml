@@ -429,3 +429,15 @@ lineages:
       - commit: "7ce2ed4"
         label: "The dreamer with the noodle scarf"
         note: "Three quarters view, large eyes, a night-blue coat with a constellation, a scarf that trails; chalk-gold mathematics. Jon: redesign the Ramen-Nujan character. Claude Opus 5.5 declared."
+  willson:
+    name: Willson
+    ids: [willson]
+    paths: ['willson', '_ai_era_kit', '_solo_shape_rig']
+    summary: "an angular pelican on a teal bicycle, then a round one with glasses on a red bicycle"
+    eras:
+      - commit: "4bdd4fd"
+        label: "Angular pelican, teal bicycle"
+        note: "The last commit with the first design (gpt-5.6-thinking, 2026-07-15, by its own provenance block)."
+      - commit: "a2c6d7b"
+        label: "Round pelican, red bicycle"
+        note: "Glasses, a deep pouch, a track stand at rest; the W bag kept. Jon: a revised sprite, a pelican on a bicycle, keep the bag with a W. Claude Opus 5.5 declared."
