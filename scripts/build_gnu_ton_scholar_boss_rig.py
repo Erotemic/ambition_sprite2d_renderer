@@ -40,6 +40,11 @@ RIG = ROOT / "ambition_sprite2d_renderer" / "targets/characters/rigged" / f"{TAR
 DUEL_ROWS = (
     "idle", "jab", "attack_side", "attack_up", "attack_down", "smash_forward",
     "shield_raise", "shield_hold", "shield_hit", "spot_dodge", "hit_heavy", "taunt",
+    # He goes to the player along the back, rolls through him, is launched
+    # by a blow, lands, and comes back when he is thrown off the back.
+    "walk", "run", "roll", "launch", "fall", "land", "special_up",
+    # The rest of his jab's string, and the strike out of his run.
+    "jab_2", "jab_3", "dash_attack",
 )
 
 
