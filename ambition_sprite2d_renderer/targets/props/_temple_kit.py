@@ -52,7 +52,6 @@ HOLE = (20, 16, 24, 255)
 WOOD = (104, 72, 46, 255)
 WOOD_HI = (142, 104, 68, 255)
 WOOD_DARK = (62, 42, 28, 255)
-WET = (48, 84, 86, 255)
 BRONZE = (160, 108, 60, 255)
 BRONZE_HI = (214, 164, 100, 255)
 BRONZE_DARK = (96, 60, 34, 255)
@@ -302,11 +301,12 @@ def _numeral(d, cx: float, cy: float, n: int, ink: RGBA, s: float = 1.0) -> None
         _line(d, [(x, cy - 11 * s), (x, cy + 11 * s)], ink, 3.2 * s)
 
 
-def _draw_sluice(wheel: int, shut_by: bool) -> Image.Image:
-    """A sluice of the cistern: boards with iron straps, wet at the foot, and
-    a plate with the number of its wheel. A plate of blue is a sluice that
-    its wheel opens. A plate of amber with a bar across is a sluice that its
-    wheel shuts."""
+def _draw_wheel_gate(wheel: int, shut_by: bool) -> Image.Image:
+    """A gate of the cistern that a wheel moves: boards with iron straps, and
+    a plate with the number of its wheel. A plate of blue is a gate that its
+    wheel opens. A plate of amber with a bar across is a gate that its wheel
+    shuts. It is a dry gate: it holds no water back (the game has no water
+    that flows)."""
     w, h = DOOR_FRAME
     canvas = hp.new_super(DOOR_FRAME)
     d = blending_draw(canvas)
@@ -315,13 +315,14 @@ def _draw_sluice(wheel: int, shut_by: bool) -> Image.Image:
         _line(d, [(x, 2), (x, h - 2)], WOOD_DARK, 1.8)
     for x in (9, 30, 54, 78):
         _line(d, [(x, 26), (x, h - 60)], WOOD_HI, 1.4)
-    # The water has been at the foot of it.
-    _rect(d, 5, h - 96, w - 5, h - 2, WET)
-    for x in (24, 48, 72):
-        _line(d, [(x, h - 96), (x, h - 2)], WOOD_DARK, 1.8)
-    for k in range(7):
-        x = 10 + k * 13
-        _line(d, [(x, h - 96), (x + 2, h - 96 + 8 + (k * 5) % 13)], WET, 3.0)
+    # A second plate, lower down: a wheel of spokes, the sign of what moves it.
+    cx, cy = w / 2, 268
+    _disc(d, cx, cy, 24, hp.IRON_DARK, hp.OUTLINE, 1.8)
+    _disc(d, cx, cy, 18, WOOD_DARK)
+    for k in range(6):
+        a = k * math.pi / 3.0
+        _line(d, [(cx, cy), (cx + math.cos(a) * 21, cy + math.sin(a) * 21)], hp.IRON, 3.4)
+    _disc(d, cx, cy, 6.5, hp.IRON_HI, hp.OUTLINE, 1.2)
     for y in (0, 150, h - 22):
         _rect(d, 1, y, w - 1, y + 22, hp.IRON, hp.OUTLINE, 1.8)
         _rect(d, 3, y + 2, w - 3, y + 6, hp.IRON_HI)
@@ -372,8 +373,8 @@ def build_door(out_dir: str | Path, *, target_name: str, display: str, kind: str
             raise ValueError(f"unknown animation: {anim}")
         if kind == "sauce":
             return _draw_sauce_door(sauce)
-        if kind == "sluice":
-            return _draw_sluice(wheel, shut_by)
+        if kind == "wheel":
+            return _draw_wheel_gate(wheel, shut_by)
         if kind == "bell":
             return _draw_bell_seal()
         raise ValueError(f"unknown door: {kind}")
