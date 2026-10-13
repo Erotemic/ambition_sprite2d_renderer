@@ -482,3 +482,354 @@ lineages:
       - commit: "a2c6d7b"
         label: "Round pelican, red bicycle"
         note: "Glasses, a deep pouch, a track stand at rest; the W bag kept. Jon: a revised sprite, a pelican on a bicycle, keep the bag with a W. Claude Opus 5.5 declared."
+  girdle:
+    name: Girdle
+    ids: [girdle]
+    paths: ['girdle', '_person_rig']
+    summary: "a first design, then a person of the shared rig: a cream suit and round glasses, his hands behind his back; he reads as Kurt Goedel"
+    eras:
+      - commit: "aaa2d8a"
+        label: "The first design"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "d37754c"
+        label: "A person of the shared rig"
+        note: "A cream suit and round glasses, his hands behind his back; he reads as Kurt Goedel. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
+  neil_ongras_turfson:
+    name: Neil Ongras Turfson
+    ids: [neil_ongras_turfson]
+    paths: ['neil_ongras_turfson', '_person_rig']
+    summary: "a first design, then a person of the shared rig: tall and upright with a moustache and a star waistcoat"
+    eras:
+      - commit: "aaa2d8a"
+        label: "The first design"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "d37754c"
+        label: "A person of the shared rig"
+        note: "Tall and upright with a moustache and a star waistcoat. Jon: he should stand up straight and be very slightly more portly. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
+  m_leblanc:
+    name: M. LeBlanc
+    ids: [m_leblanc]
+    paths: ['m_leblanc', '_person_rig']
+    summary: "a first design, then a person of the shared rig: an Empire gown, a green sash and shawl, her hair up"
+    eras:
+      - commit: "aaa2d8a"
+        label: "The first design"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "d37754c"
+        label: "A person of the shared rig"
+        note: "An Empire gown, a green sash and shawl, her hair up. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
+  python_goras:
+    name: Python Goras
+    ids: [python_goras]
+    paths: ['python_goras', '_person_rig']
+    summary: "a first design, then a person of the shared rig: a chiton, a beard, a headband, and a live python"
+    eras:
+      - commit: "aaa2d8a"
+        label: "The first design"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "d37754c"
+        label: "A person of the shared rig"
+        note: "A chiton, a beard, a headband, and a live python. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
+  galwah:
+    name: Galwah
+    ids: [galwah]
+    paths: ['galwah', '_person_rig']
+    summary: "a first design, then a person of the shared rig: a young man of 1832 in a green coat"
+    eras:
+      - commit: "aaa2d8a"
+        label: "The first design"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "d37754c"
+        label: "A person of the shared rig"
+        note: "A young man of 1832 in a green coat. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
+  marie_curry:
+    name: Marie Curry
+    ids: [marie_curry]
+    paths: ['marie_curry', '_person_rig']
+    summary: "a first design, then a person of the shared rig: a dark dress, her hair up, a glow in her hands"
+    eras:
+      - commit: "aaa2d8a"
+        label: "The first design"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "d37754c"
+        label: "A person of the shared rig"
+        note: "A dark dress, her hair up, a glow in her hands. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
+  leib_knives:
+    name: Leib Knives
+    ids: [leib_knives]
+    paths: ['leib_knives', '_person_rig']
+    summary: "a first design, then a person of the shared rig: a great wig and a long red coat; his knives are in his hands only in their rows"
+    eras:
+      - commit: "aaa2d8a"
+        label: "The first design"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "d37754c"
+        label: "A person of the shared rig"
+        note: "A great wig and a long red coat; his knives are in his hands only in their rows. Jon asked for new art for the scientists and mathematicians. Claude Opus 5.5 declared."
+  craig:
+    name: Craig
+    ids: [craig]
+    paths: ['crypto_crew', '_person_rig']
+    summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
+    eras:
+      - commit: "aaa2d8a"
+        label: "The puppet of the crew"
+        note: "The last commit with the one template worn by all of the crew."
+      - commit: "d37754c"
+        label: "A person of the shared rig"
+        note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
+  eve:
+    name: Eve
+    ids: [eve]
+    paths: ['crypto_crew', '_person_rig']
+    summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
+    eras:
+      - commit: "aaa2d8a"
+        label: "The puppet of the crew"
+        note: "The last commit with the one template worn by all of the crew."
+      - commit: "d37754c"
+        label: "A person of the shared rig"
+        note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
+  judy:
+    name: Judy
+    ids: [judy]
+    paths: ['crypto_crew', '_person_rig']
+    summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
+    eras:
+      - commit: "aaa2d8a"
+        label: "The puppet of the crew"
+        note: "The last commit with the one template worn by all of the crew."
+      - commit: "d37754c"
+        label: "A person of the shared rig"
+        note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
+  mallory:
+    name: Mallory
+    ids: [mallory]
+    paths: ['crypto_crew', '_person_rig']
+    summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
+    eras:
+      - commit: "aaa2d8a"
+        label: "The puppet of the crew"
+        note: "The last commit with the one template worn by all of the crew."
+      - commit: "d37754c"
+        label: "A person of the shared rig"
+        note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
+  olivia:
+    name: Olivia
+    ids: [olivia]
+    paths: ['crypto_crew', '_person_rig']
+    summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
+    eras:
+      - commit: "aaa2d8a"
+        label: "The puppet of the crew"
+        note: "The last commit with the one template worn by all of the crew."
+      - commit: "d37754c"
+        label: "A person of the shared rig"
+        note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
+  peggy:
+    name: Peggy
+    ids: [peggy]
+    paths: ['crypto_crew', '_person_rig']
+    summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
+    eras:
+      - commit: "aaa2d8a"
+        label: "The puppet of the crew"
+        note: "The last commit with the one template worn by all of the crew."
+      - commit: "d37754c"
+        label: "A person of the shared rig"
+        note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
+  sybil:
+    name: Sybil
+    ids: [sybil]
+    paths: ['crypto_crew', '_person_rig']
+    summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
+    eras:
+      - commit: "aaa2d8a"
+        label: "The puppet of the crew"
+        note: "The last commit with the one template worn by all of the crew."
+      - commit: "d37754c"
+        label: "A person of the shared rig"
+        note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
+  trent:
+    name: Trent
+    ids: [trent]
+    paths: ['crypto_crew', '_person_rig']
+    summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
+    eras:
+      - commit: "aaa2d8a"
+        label: "The puppet of the crew"
+        note: "The last commit with the one template worn by all of the crew."
+      - commit: "d37754c"
+        label: "A person of the shared rig"
+        note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
+  trudy:
+    name: Trudy
+    ids: [trudy]
+    paths: ['crypto_crew', '_person_rig']
+    summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
+    eras:
+      - commit: "aaa2d8a"
+        label: "The puppet of the crew"
+        note: "The last commit with the one template worn by all of the crew."
+      - commit: "d37754c"
+        label: "A person of the shared rig"
+        note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
+  victor:
+    name: Victor
+    ids: [victor]
+    paths: ['crypto_crew', '_person_rig']
+    summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
+    eras:
+      - commit: "aaa2d8a"
+        label: "The puppet of the crew"
+        note: "The last commit with the one template worn by all of the crew."
+      - commit: "d37754c"
+        label: "A person of the shared rig"
+        note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
+  walter:
+    name: Walter
+    ids: [walter]
+    paths: ['crypto_crew', '_person_rig']
+    summary: "a jointed-puppet placeholder, then a person of the shared rig with a look of their own"
+    eras:
+      - commit: "aaa2d8a"
+        label: "The puppet of the crew"
+        note: "The last commit with the one template worn by all of the crew."
+      - commit: "d37754c"
+        label: "A person of the shared rig"
+        note: "One of eleven, each with a build, a face and clothes of their own. Jon: the women need to read as women, and not all look the same. Claude Opus 5.5 declared."
+  jeff_hinter:
+    name: Jeff Hinter
+    ids: [jeff_hinter]
+    paths: ['jeff_hinter', '_jeff_hinter_base', '_person_rig']
+    summary: "an old man with white hair and glasses, then the man when he was young; his armor is the same man in a surface fitted to him"
+    eras:
+      - commit: "aaa2d8a"
+        label: "The first design"
+        note: "The last commit with the first design."
+      - commit: "d37754c"
+        label: "An old man, on the shared rig"
+        note: "White hair combed over, thin glasses, a blazer, bent from the hips."
+      - commit: "1b708df"
+        label: "The young man"
+        note: "A mop of dark hair going grey, no glasses, a blue jumper, a straight back and a flat chest. Jon: Hinter needs to be less like an old man; no humped back. Claude Opus 5.5 declared."
+  jeff_hinter_armored:
+    name: Jeff Hinter (Armored)
+    ids: [jeff_hinter_armored]
+    paths: ['jeff_hinter_armored', 'jeff_hinter', '_jeff_hinter_base']
+    summary: "plates on the old painter's man, then the young man of the other sheet in cyber armor that a manifold fits to him"
+    eras:
+      - commit: "d37754c"
+        label: "Plates on the first design"
+        note: "The last commit in which the armored sheet is the first painter's."
+      - commit: "1b708df"
+        label: "The other side of the same man"
+        note: "The person of jeff_hinter in dark plates with a lit circuit; the change is a surface that closes on his outline. Jon: two sides of the same character; a manifold shrinkwrapping to fit his body; more cyber-techno. Claude Opus 5.5 declared."
+  mami_marzakhani:
+    name: Mami Marzakhani
+    ids: [mami_marzakhani]
+    paths: ['mami_marzakhani', '_person_rig']
+    summary: "a first design, then a person of the shared rig: short dark hair, a garnet jacket; she reads as a woman"
+    eras:
+      - commit: "d37754c"
+        label: "The first design"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "1b708df"
+        label: "A person of the shared rig"
+        note: "Short dark hair, a garnet jacket; she reads as a woman. Claude Opus 5.5 declared."
+  anne_druid:
+    name: Anne Druid
+    ids: [anne_druid]
+    paths: ['anne_druid', '_person_rig']
+    summary: "a first design, then a person of the shared rig: a druid of a high fantasy"
+    eras:
+      - commit: "d37754c"
+        label: "The first design"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "1b708df"
+        label: "A person of the shared rig"
+        note: "A druid of a high fantasy: a circlet of leaves with antlers, a moss-green robe with a leaf hem, a cloak lined with the night sky, a staff. Jon: Anne Druid needs to read as a high fantasy druid; and she needs a modest bust. Claude Opus 5.5 declared."
+  davy_hylbert:
+    name: Davy Hylbert
+    ids: [davy_hylbert]
+    paths: ['davy_hylbert', '_person_rig']
+    summary: "a first design, then a person of the shared rig: a pale summer hat, round glasses, a white beard, a blue three-piece suit"
+    eras:
+      - commit: "d37754c"
+        label: "The first design"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "1b708df"
+        label: "A person of the shared rig"
+        note: "A pale summer hat, round glasses, a white beard, a blue three-piece suit. Claude Opus 5.5 declared."
+  pipi_tau:
+    name: Pipi Tau
+    ids: [pipi_tau]
+    paths: ['pipi_tau', '_person_rig']
+    summary: "a first design, then a person of the shared rig: side-swept black hair, rectangular glasses, a teal jacket"
+    eras:
+      - commit: "d37754c"
+        label: "The first design"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "1b708df"
+        label: "A person of the shared rig"
+        note: "Side-swept black hair, rectangular glasses, a teal jacket. Claude Opus 5.5 declared."
+  paradox_barber:
+    name: The Paradox Barber
+    ids: [paradox_barber]
+    paths: ['paradox_barber', '_person_rig']
+    summary: "a first design, then a person of the shared rig: a tall thin barber in an apron with the stripes of the pole; lather on his cheek and a beard on his chin"
+    eras:
+      - commit: "d37754c"
+        label: "The first design"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "1b708df"
+        label: "A person of the shared rig"
+        note: "A tall thin barber in an apron with the stripes of the pole; lather on his cheek and a beard on his chin. Claude Opus 5.5 declared."
+  data_lovelace:
+    name: Data Lovelace
+    ids: [data_lovelace]
+    paths: ['data_lovelace', '_person_rig']
+    summary: "a first design, then a person of the shared rig: a Victorian automaton lady"
+    eras:
+      - commit: "d37754c"
+        label: "The first design"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "1b708df"
+        label: "A person of the shared rig"
+        note: "A Victorian automaton lady: an enamel face, cast copper hair, brass hoops, a hem of punched card. Claude Opus 5.5 declared."
+  georg_canter:
+    name: Georg Canter
+    ids: [georg_canter]
+    paths: ['georg_canter', '_person_rig']
+    summary: "a first design, then a person of the shared rig: a bearded professor of the 1880s on a bay horse, a blanket of sets inside sets"
+    eras:
+      - commit: "d37754c"
+        label: "The first design"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "1b708df"
+        label: "A person of the shared rig"
+        note: "A bearded professor of the 1880s on a bay horse, a blanket of sets inside sets. Claude Opus 5.5 declared."
+  admiral_grass_hopper:
+    name: Admiral Grass Hopper
+    ids: [admiral_grass_hopper]
+    paths: ['admiral_grass_hopper', '_person_rig']
+    summary: "a first design, then a person of the shared rig: a small old grasshopper lady in admiral's blues, her knees behind her"
+    eras:
+      - commit: "d37754c"
+        label: "The first design"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "1b708df"
+        label: "A person of the shared rig"
+        note: "A small old grasshopper lady in admiral's blues, her knees behind her. Claude Opus 5.5 declared."
+  joseph_furrier:
+    name: Joseph Furrier
+    ids: [joseph_furrier]
+    paths: ['joseph_furrier', '_person_rig']
+    summary: "a first design, then a person of the shared rig: a man of fifty in a great blanket with fur at each edge, his nose pink with the cold"
+    eras:
+      - commit: "d37754c"
+        label: "The first design"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "1b708df"
+        label: "A person of the shared rig"
+        note: "A man of fifty in a great blanket with fur at each edge, his nose pink with the cold. Claude Opus 5.5 declared."
