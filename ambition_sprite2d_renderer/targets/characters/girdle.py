@@ -452,6 +452,58 @@ def _effects(ctx) -> List[Stamp]:
 
 G.effects = _effects
 
+# ---- From the front ------------------------------------------------------------
+
+FRONT_TOP = BUILD.neck[1] - 2.0
+
+
+def _front_suit(d) -> None:
+    """His suit from the front: the waistcoat and the shirt where the jacket
+    is open, his tie, and a lapel each side."""
+    K.poly(d, [K.at(-4.6, FRONT_TOP), K.at(4.6, FRONT_TOP), K.at(5.4, 9.0), K.at(-5.4, 9.0)], VEST)
+    K.poly(d, [K.at(-3.0, FRONT_TOP - 1.0), K.at(3.0, FRONT_TOP - 1.0), K.at(0.0, -27.0)], SHIRT)
+    K.poly(d, [K.at(-1.0, FRONT_TOP + 0.6), K.at(1.0, FRONT_TOP + 0.6), K.at(1.2, -24.0), K.at(0.0, -22.6), K.at(-1.2, -24.0)], TIE)
+    for y in (-18.0, -12.0, -6.0):
+        K.oval(d, K.at(0.0, y), 0.7, 0.7, SUIT_DARK)
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(4.6 * sx, FRONT_TOP), K.at(7.2 * sx, FRONT_TOP + 1.0), K.at(5.4 * sx, -19.0)], SUIT_LIGHT)
+        K.line(d, [K.at(5.4 * sx, -19.0), K.at(5.4 * sx, 9.0)], SUIT_DARK, 0.7)
+        K.line(d, [K.at(9.6 * sx, -3.0), K.at(6.6 * sx, -2.6)], SUIT_DARK, 0.7)
+
+
+def _front_hair_shape(d) -> None:
+    K.oval(d, K.at(0.0, -6.0), 9.2, 7.0, WHITE)
+
+
+def _front_hair(d) -> None:
+    # Flat to his head, parted at one side, off a high forehead.
+    K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, -2.0), K.at(7.8, -2.0), K.at(7.2, -6.6), K.at(4.0, -9.0), K.at(-2.0, -9.6), K.at(-5.6, -8.0),
+               K.at(-7.6, -5.0), K.at(-7.8, -2.0), K.at(-20.0, -2.0)], HAIR)
+    K.line(d, [K.at(-4.0, -12.6), K.at(-3.0, -9.4)], SKIN_SHADE, 0.5)
+    for strand in ([(-2.0, -12.0), (2.0, -12.4), (6.0, -10.0)], [(-7.0, -8.0), (-6.4, -4.0)]):
+        K.line(d, [K.at(x, y) for x, y in strand], HAIR_LIGHT, 0.6)
+
+
+def _front_glasses(d) -> None:
+    # Round, black and heavy; and a thin nose under them.
+    for sx in (-1.0, 1.0):
+        K.oval(d, K.at(3.4 * sx, -0.6), 3.0, 3.0, LENS, FRAME, 1.0)
+        K.line(d, [K.at(6.4 * sx, -0.8), K.at(8.4 * sx, -1.4)], FRAME, 0.9)
+    K.line(d, [K.at(-0.5, -0.8), K.at(0.5, -0.8)], FRAME, 0.9)
+    K.line(d, [K.at(-0.3, 0.6), K.at(-1.2, 4.0), K.at(0.0, 4.8), K.at(1.2, 4.0)], SKIN_DEEP, 0.6)
+
+
+G.front_torso = R.make_front_torso(K, ("girdle",), SUIT, SUIT_DARK, [(FRONT_TOP, 4.2), (FRONT_TOP + 3.6, 9.2), (-24.0, 9.8), (-6.0, 9.6), (9.0, 10.2)],
+                                   shoulder=(7.4, -31.4, 4.4, 4.8), detail=_front_suit)
+G.front_head_layers = R.front_face(R.make_front_head(K, ("girdle",), SKIN, SKIN_DEEP, wide=7.8, jaw=6.0, chin=4.4, ears=SKIN, shape=_front_hair_shape,
+                                                    hair=_front_hair, face=_front_glasses),
+                                   R.make_front_eyes(K, ("girdle",), white=None, ink=INK, spread=3.4, y=-0.6, size=0.9),
+                                   R.make_front_brows(K, ("girdle",), HAIR, spread=3.4, y=-4.6, width=1.0), R.make_front_mouth(K, ("girdle",), y=8.8, colour=(112, 54, 58, 255),
+                                                                                                                         wide=0.7))
+G.front_shoe = R.make_front_shoe(K, SHOE, SHOE_DARK, BUILD.ankle_up)
+G.front_span = (8.2, 4.6)
+R.add_front_rows(G, hands="sides")
+
 ROWS = G.rows
 
 

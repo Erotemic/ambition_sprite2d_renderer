@@ -295,6 +295,50 @@ X.alias(taunt="shout_14")
 X.rows = [("idle", 8, 145), ("walk", 8, 105), ("talk", 8, 108), ("interact", 10, 92), ("hint", 10, 92), ("visualize_2d", 12, 92), ("shout_14", 12, 78),
           ("shout_3", 12, 78), ("manifold_shrinkwrap", 16, 82), ("transform_armor", 18, 82), ("block", 10, 82), ("taunt", 12, 78)]
 
+# ---- From the front --------------------------------------------------------------
+
+
+def _front_plates(d) -> None:
+    """His armor from the front: the collar, the plate of his chest and its
+    core, the plates of his belly, the belt."""
+    K.poly(d, [K.at(-5.6, TOP - 2.0), K.at(5.6, TOP - 2.0), K.at(6.6, TOP + 2.0), K.at(4.0, TOP + 4.0), K.at(-4.0, TOP + 4.0), K.at(-6.6, TOP + 2.0)], ARMOR_LIGHT)
+    K.poly(d, [K.at(-9.6, TOP + 5.4), K.at(9.6, TOP + 5.4), K.at(11.4, TOP + 8.0), K.at(11.0, -20.0), K.at(7.0, -17.4), K.at(-7.0, -17.4), K.at(-11.0, -20.0),
+               K.at(-11.4, TOP + 8.0)], mix(ARMOR, ARMOR_LIGHT, 0.36))
+    K.line(d, [K.at(-11.0, -20.0), K.at(-7.0, -17.4), K.at(7.0, -17.4), K.at(11.0, -20.0)], ARMOR_DEEP, 1.2)
+    K.line(d, [K.at(0.0, TOP + 6.0), K.at(0.0, -28.4)], ARMOR_DEEP, 0.5)
+    for y in (-15.4, -10.2, -5.0):
+        K.poly(d, [K.at(-6.0, y), K.at(6.0, y), K.at(7.4, y + 1.6), K.at(7.4, y + 3.6), K.at(-7.4, y + 3.6), K.at(-7.4, y + 1.6)], mix(ARMOR, ARMOR_LIGHT, 0.14))
+        K.line(d, [K.at(-7.4, y + 3.9), K.at(7.4, y + 3.9)], ARMOR_DEEP, 0.55)
+    K.poly(d, [K.at(-10.0, 0.6), K.at(10.0, 0.6), K.at(10.0, 3.8), K.at(-10.0, 3.8)], ARMOR_DEEP)
+    K.poly(d, [K.at(-2.0, 1.2), K.at(2.0, 1.2), K.at(2.0, 3.4), K.at(-2.0, 3.4)], NET_DARK)
+    K.poly(d, [K.at(-1.0, 1.8), K.at(1.0, 1.8), K.at(1.0, 2.8), K.at(-1.0, 2.8)], NET)
+    for r, colour in ((3.0, ARMOR_DEEP), (2.0, NET_DARK)):
+        K.poly(d, [K.at(r * math.cos(math.radians(a)), -24.6 + r * math.sin(math.radians(a))) for a in range(0, 360, 60)], colour)
+    K.oval(d, K.at(0.0, -24.6), 1.0, 1.0, NET)
+    for sx in (-1.0, 1.0):
+        _trace(d, [(3.0 * sx, -24.6), (6.0 * sx, -24.6), (7.6 * sx, -26.6)])
+    _trace(d, [(0.0, -21.6), (0.0, -19.0)], dot=False)
+
+
+def _front_hud():
+    """The unit over one ear, and the pane of light at that eye."""
+
+    def paint(d) -> None:
+        K.rrect(d, K.home[0] - 10.6, K.home[1] - 1.6, K.home[0] - 7.4, K.home[1] + 3.2, 1.0, ARMOR_LIGHT, ARMOR_DEEP, 0.6)
+        K.oval(d, K.at(-9.0, 0.8), 0.9, 0.9, NET)
+        K.line(d, [K.at(-7.4, 0.0), K.at(-6.2, -0.8)], NET, 0.5)
+        K.rrect(d, K.home[0] - 6.2, K.home[1] - 2.8, K.home[0] - 0.6, K.home[1] + 1.4, 0.6, (130, 236, 222, 70), NET, 0.45)
+
+    return K.piece(("hinter_front_hud",), paint)
+
+
+X.front_torso = R.make_front_torso(K, ("hinter_armor",), ARMOR, ARMOR_DARK, [(TOP, 4.6), (TOP + 3.6, 10.4), (-24.0, 11.2), (-8.0, 9.0), (5.0, 9.6)],
+                                   shoulder=(8.6, -32.8, 4.6, 4.8), detail=_front_plates)
+X.front_head_layers = R.front_face(base.FRONT_HEAD, base.FRONT_EYES, base.FRONT_BROWS, base.FRONT_MOUTH, extra=[(_front_hud, "hud")])
+X.front_shoe = R.make_front_shoe(K, ARMOR, ARMOR_DEEP, BUILD.ankle_up, wide=1.05)
+X.front_span = (9.2, 4.8)
+R.add_front_rows(X, hands="sides")
+
 # ---- What he shows -------------------------------------------------------------
 
 

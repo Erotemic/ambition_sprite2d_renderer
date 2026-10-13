@@ -322,6 +322,53 @@ X.alias(block="manifold_shrinkwrap", taunt="shout_14")
 X.rows = [("idle", 8, 145), ("walk", 8, 105), ("talk", 8, 108), ("interact", 10, 92), ("hint", 10, 92), ("visualize_2d", 12, 92), ("shout_14", 12, 78),
           ("shout_3", 12, 78), ("manifold_shrinkwrap", 16, 82), ("block", 16, 82), ("taunt", 12, 78)]
 
+# ---- From the front ------------------------------------------------------------
+
+
+def _front_jumper(d) -> None:
+    """His jumper from the front: the two points of his collar, and the rib
+    at its hem."""
+    K.poly(d, [K.at(-2.6, TOP - 1.0), K.at(2.6, TOP - 1.0), K.at(0.0, TOP + 4.0)], SKIN_SHADE)
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(0.8 * sx, TOP + 1.0), K.at(5.2 * sx, TOP - 0.8), K.at(3.8 * sx, TOP + 5.4)], SHIRT)
+    K.line(d, [K.at(-3.8, TOP + 5.4), K.at(0.0, TOP + 3.6), K.at(3.8, TOP + 5.4)], BLAZER_DARK, 0.6)
+    K.line(d, [K.at(-10.0, 1.6), K.at(10.0, 1.6)], BLAZER_DARK, 0.7)
+    for x in (-7.0, -3.5, 0.0, 3.5, 7.0):
+        K.line(d, [K.at(x, 2.4), K.at(x, 4.6)], BLAZER_DARK, 0.5)
+    for sx in (-1.0, 1.0):
+        K.line(d, [K.at(7.0 * sx, -26.0), K.at(7.6 * sx, -6.0)], BLAZER_DARK, 0.5)
+
+
+def _front_hair_shape(d) -> None:
+    K.oval(d, K.at(0.0, -6.2), 10.2, 8.2, WHITE)
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(8.0 * sx, -6.0), K.at(10.8 * sx, -2.0), K.at(9.4 * sx, 2.6), K.at(7.4 * sx, 3.6)], WHITE)
+
+
+def _front_hair(d) -> None:
+    # The mop: it falls on his forehead in locks, and over the top of each ear.
+    K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, 3.6), K.at(7.6, 3.6), K.at(7.8, -2.0), K.at(6.4, -5.2), K.at(4.6, -6.6), K.at(3.0, -4.9), K.at(1.2, -6.6),
+               K.at(-0.8, -4.7), K.at(-2.8, -6.6), K.at(-4.8, -5.0), K.at(-6.4, -5.4), K.at(-7.8, -2.0), K.at(-7.6, 3.6), K.at(-20.0, 3.6)], HAIR)
+    for strand in ([(-6.0, -11.0), (-2.0, -12.6), (3.0, -11.6)], [(-3.0, -9.0), (1.0, -10.0), (5.6, -8.0)], [(-8.6, -4.0), (-8.4, 1.0)], [(8.6, -4.0), (8.4, 1.0)]):
+        K.line(d, [K.at(x, y) for x, y in strand], HAIR_SHADE, 0.6)
+
+
+def _front_nose(d) -> None:
+    K.line(d, [K.at(-0.4, -0.6), K.at(-1.6, 3.8), K.at(0.0, 4.8), K.at(1.6, 3.8)], SKIN_DEEP, 0.7)
+    K.line(d, [K.at(-2.6, 11.4), K.at(0.0, 12.0), K.at(2.6, 11.4)], mix(SKIN, SKIN_DEEP, 0.4), 0.5)
+
+
+FRONT_HEAD = R.make_front_head(K, ("hinter",), SKIN, SKIN_DEEP, wide=8.2, jaw=6.4, chin=4.6, ears=SKIN, shape=_front_hair_shape, hair=_front_hair, face=_front_nose)
+FRONT_EYES = R.make_front_eyes(K, ("hinter",), white=None, ink=INK, spread=3.4)
+FRONT_BROWS = R.make_front_brows(K, ("hinter",), HAIR, spread=3.4, y=-3.4)
+FRONT_MOUTH = R.make_front_mouth(K, ("hinter",), y=8.8, colour=(124, 60, 62, 255), wide=0.85)
+X.front_torso = R.make_front_torso(K, ("hinter",), BLAZER, BLAZER_DARK, [(TOP, 4.2), (TOP + 3.6, 9.0), (-24.0, 9.6), (-6.0, 9.2), (5.0, 9.6)],
+                                   shoulder=(7.4, -32.8, 4.2, 4.6), detail=_front_jumper)
+X.front_head_layers = R.front_face(FRONT_HEAD, FRONT_EYES, FRONT_BROWS, FRONT_MOUTH)
+X.front_shoe = R.make_front_shoe(K, SHOE, SHOE_DARK, BUILD.ankle_up)
+X.front_span = (8.2, 4.6)
+R.add_front_rows(X, hands="sides")
+
 # ---- What he shows -----------------------------------------------------------
 
 #: Points in his plane: where each is, and which group it falls into.

@@ -581,6 +581,179 @@ def FP(**kw) -> Pose:
     return dict(FRONT_REST, **kw)
 
 
+# ---- A person from the front -----------------------------------------------------
+#
+# A row that faces the viewer has three pieces of its own: the trunk, the head
+# and the shoes. These make them. They are even from left to right: a
+# character states one side. The first of them was Neil's, drawn in his own
+# file as a test (Jon, 2026-10-13: "the front facing experiment for Neil
+# Turfson was a success, so I want to carry that forward with other
+# characters").
+
+
+def make_front_torso(K: Kit, key: tuple, colour: RGBA, dark: RGBA, outline: Sequence[Tuple[float, float]], *,
+                     shoulder: Optional[Tuple[float, float, float, float]] = None, detail: Optional[Callable] = None):
+    """``front_torso()``: the trunk from the front, from the hips at ``home``.
+    ``outline``: ``(y, half width)`` from the neck down to the hem.
+    ``shoulder``: ``(x, y, rx, ry)`` of the round of one shoulder.
+    ``detail(d)`` paints what is on it."""
+    left = [(-w, y) for y, w in outline]
+    right = [(w, y) for y, w in reversed(outline)]
+
+    def torso():
+        def shape(d) -> None:
+            K.poly(d, [K.at(x, y) for x, y in left + right], WHITE)
+            if shoulder is not None:
+                for sx in (-1.0, 1.0):
+                    K.oval(d, K.at(shoulder[0] * sx, shoulder[1]), shoulder[2], shoulder[3], WHITE)
+
+        return K.solid(("front_torso",) + tuple(key), shape, colour, (lambda d: detail(d)) if detail is not None else None, outline=1.3, rim=0.3, shade=0.4,
+                       shade_colour=dark)
+
+    return torso
+
+
+def make_front_head(K: Kit, key: tuple, skin: RGBA, deep: RGBA, *, wide: float = 9.0, jaw: float = 7.6, chin: float = 3.6, ears: Optional[RGBA] = None,
+                    shape: Optional[Callable] = None, hair: Optional[Callable] = None, face: Optional[Callable] = None):
+    """``head()``: a head from the front, from its middle. ``wide`` and
+    ``jaw`` are half the width of the skull and of the jaw; ``chin`` is how
+    far under the middle the round of the jaw is. ``ears``: their colour, or
+    none (hair is over them). ``shape(d)`` adds to the outline (hair, a
+    hat); ``hair(d)`` paints over the skin (it is cut to the outline);
+    ``face(d)`` paints over that (a nose, a moustache, glasses)."""
+
+    def head():
+        def outline(d) -> None:
+            K.oval(d, K.at(0.0, -1.6), wide, 9.4, WHITE)
+            K.oval(d, K.at(0.0, chin), jaw, 7.8, WHITE)
+            if ears is not None:
+                for sx in (-1.0, 1.0):
+                    K.oval(d, K.at(wide * sx, 0.8), 2.0, 3.0, WHITE)
+            if shape is not None:
+                shape(d)
+
+        def paint(d) -> None:
+            if hair is not None:
+                hair(d)
+            if ears is not None:
+                for sx in (-1.0, 1.0):
+                    K.oval(d, K.at(wide * sx, 0.8), 1.5, 2.5, ears, OUTLINE, 0.6)
+            if face is not None:
+                face(d)
+
+        return K.solid(("front_head",) + tuple(key), outline, skin, paint, outline=1.3, rim=0.3, shade=0.35, shade_colour=deep)
+
+    return head
+
+
+def make_front_eyes(K: Kit, key: tuple, *, spread: float = 3.6, y: float = -0.8, ink: RGBA = (28, 24, 32, 255), white: Optional[RGBA] = (252, 248, 238, 255),
+                    iris: RGBA = (70, 40, 28, 255), size: float = 1.0, lash: float = 0.0):
+    """``eyes(mode)`` from the front. With no ``white`` they are dots."""
+
+    def eyes(mode: str):
+        def paint(d) -> None:
+            for sx in (-1.0, 1.0):
+                c = K.at(spread * sx, y)
+                if mode in ("closed", "happy"):
+                    up = 0.8 if mode == "closed" else -0.9
+                    K.line(d, [(c[0] - 2.0 * size, c[1] - up * 0.2), (c[0], c[1] + up), (c[0] + 2.0 * size, c[1] - up * 0.2)], ink, 0.9)
+                    continue
+                at = (c[0], c[1] - (0.6 if mode == "up" else 0.0))
+                if white is None:
+                    K.oval(d, at, 1.1 * size, (1.5 if mode == "wide" else 1.2) * size, ink)
+                else:
+                    K.oval(d, c, 2.0 * size, (1.8 + (0.5 if mode == "wide" else 0.0)) * size, white)
+                    K.oval(d, at, 1.3 * size, 1.4 * size, iris)
+                    K.oval(d, at, 0.8 * size, 0.9 * size, ink)
+                    K.oval(d, (at[0] - 0.4, at[1] - 0.5), 0.35, 0.35, WHITE)
+                    K.line(d, [(c[0] - 2.3 * size, c[1] - 0.2), (c[0] - 0.8, c[1] - 1.8 * size), (c[0] + 0.8, c[1] - 1.8 * size), (c[0] + 2.3 * size, c[1] - 0.2)], ink,
+                           0.8 + 0.5 * lash)
+                if lash > 0.0:
+                    K.line(d, [(c[0] + 2.0 * size * sx, c[1] - 1.0), (c[0] + 3.2 * size * sx, c[1] - 1.8 - lash)], ink, 0.5 + 0.3 * lash)
+
+        return K.piece(("front_eyes",) + tuple(key) + (mode,), paint)
+
+    return eyes
+
+
+def make_front_brows(K: Kit, key: tuple, colour: RGBA, *, spread: float = 3.6, y: float = -4.6, width: float = 1.3):
+    def brows(mood: int):
+        def paint(d) -> None:
+            up = -1.1 if mood > 0 else 0.0
+            inner = 0.9 if mood < 0 else 0.0
+            for sx in (-1.0, 1.0):
+                K.stroke(d, [K.at((spread + 2.4) * sx, y + 0.6 + up), K.at(spread * sx, y - 0.3 + up), K.at((spread - 2.2) * sx, y + 0.4 + up + inner)], colour, width)
+
+        return K.piece(("front_brows",) + tuple(key) + (mood,), paint)
+
+    return brows
+
+
+def make_front_mouth(K: Kit, key: tuple, *, y: float = 9.2, colour: RGBA = (98, 40, 44, 255), ink: RGBA = (28, 24, 32, 255), lips: Optional[RGBA] = None,
+                     wide: float = 1.0):
+    def mouth(mode: str):
+        c = K.at(0.0, y)
+
+        def paint(d) -> None:
+            if lips is not None and mode in ("smile", "flat"):
+                K.oval(d, (c[0], c[1] + 0.2), 2.4 * wide, 1.1, lips)
+            if mode == "smile":
+                K.line(d, [(c[0] - 3.0 * wide, c[1] - 0.6), (c[0], c[1] + 0.8), (c[0] + 3.0 * wide, c[1] - 0.6)], colour, 0.9)
+            elif mode in ("flat", "grit"):
+                K.line(d, [(c[0] - 2.4 * wide, c[1]), (c[0] + 2.4 * wide, c[1])], colour, 0.9)
+            else:
+                ry = 2.2 if mode == "big" else 1.4
+                K.oval(d, (c[0], c[1] + 0.4), (2.6 if mode == "big" else 2.0) * wide, ry, lips or colour, ink, 0.5)
+                K.oval(d, (c[0], c[1] + 0.4), (2.0 if mode == "big" else 1.4) * wide, ry * 0.7, colour)
+                K.oval(d, (c[0], c[1] + 0.4 + ry * 0.5), 1.3 * wide, ry * 0.4, (224, 122, 116, 255))
+
+        return K.piece(("front_mouth",) + tuple(key) + (mode,), paint)
+
+    return mouth
+
+
+def front_face(head, eyes=None, brows=None, mouth=None, extra: Sequence[Tuple[Callable, str]] = ()):
+    """``front_head_layers(pose)`` from the makers above. ``extra``: pieces
+    over the face (glasses, a circlet), each ``(fn(), name)``."""
+
+    def layers(pose: Pose):
+        out = [(head(), "head")]
+        if eyes is not None:
+            out.append((eyes(str(pose["eyes"])), "eyes"))
+        if brows is not None:
+            out.append((brows(brow_mood(pose)), "brows"))
+        if mouth is not None:
+            out.append((mouth(str(pose["mouth"])), "mouth"))
+        return out + [(fn(), name) for fn, name in extra]
+
+    return layers
+
+
+def add_front_rows(person: "Person", *, idle_ms: int = 145, talk_ms: int = 110, hands: str = "clasped") -> None:
+    """Give ``person`` the two rows that face the viewer: ``front`` (at rest)
+    and ``front_talk``. ``hands``: ``clasped`` in front of them, or at their
+    ``sides``. A character whose rest is its own writes its own ``front``."""
+
+    def front(i: int, n: int) -> Pose:
+        _, s, c = loop(i, n)
+        arms = dict(la=(-5.5, 21.0), ra=(-5.5, 21.5), lz=0.35, rz=0.35, lh="flat", rh="flat") if hands == "clasped" else dict(la=(2.0, 26.0), ra=(2.0, 26.0))
+        return FP(hip=(0.0, 0.4 + 0.4 * s), head=(0.0, -0.3 * s, 0.0), eyes="closed" if i == n - 2 else "open", brows=1.0 if c < -0.4 else 0.0, **arms)
+
+    def front_talk(i: int, n: int) -> Pose:
+        _, s, c = loop(i, n)
+        if i >= n - 3:
+            return FP(hip=(0.0, -0.4), head=(0.0, 0.0, 6.0), la=(11.0, 9.0), ra=(11.0, 9.0), lz=0.6, rz=0.6, lh="open", rh="open", eyes="closed", mouth="smile",
+                      brows=1.0)
+        lift_l, lift_r = max(0.0, s), max(0.0, -s)
+        return FP(hip=(0.0, 0.4 * s), head=(0.0, 0.0, 3.0 * c), la=(8.0 + 3.0 * lift_l, 14.0 - 5.0 * lift_l), ra=(8.0 + 3.0 * lift_r, 14.0 - 5.0 * lift_r), lz=0.6,
+                  rz=0.6, lh="open", rh="open", mouth=("open", "smile", "big", "smile")[i % 4], brows=1.0 if abs(s) > 0.3 else 0.0)
+
+    person.front_poses.setdefault("front", front)
+    person.front_poses.setdefault("front_talk", front_talk)
+    names = {name for name, _f, _ms in person.rows}
+    person.rows = list(person.rows) + [row for row in (("front", 8, idle_ms), ("front_talk", 8, talk_ms)) if row[0] not in names]
+
+
 def make_front_shoe(K: Kit, colour: RGBA, dark: RGBA, ankle_up: float = 3.0, wide: float = 1.0):
     """``shoe()``: a shoe seen from its toe, from its ankle at ``home``."""
 

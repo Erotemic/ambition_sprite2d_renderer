@@ -422,6 +422,75 @@ X.rows = [("idle", 8, 145), ("walk", 8, 106), ("run", 8, 78), ("crouch", 6, 96),
           ("harmonic_split", 8, 74), ("low_pass_lament", 8, 82), ("spectral_descent", 8, 72), ("air_neutral", 8, 62), ("air_forward", 7, 60), ("air_back", 7, 60),
           ("air_down", 7, 68), ("air_up", 7, 60), ("full_turn", 10, 72), ("celebrate", 8, 88), ("taunt", 8, 96)]
 
+# ---- From the front ------------------------------------------------------------
+#
+# From the front he is wrapped in the blanket too: it is what he is.
+
+
+def _front_blanket(d) -> None:
+    """The blanket round him from the front: the flap that is on top, the
+    band of fur along its edge and along the hem, the roll at his chin, and
+    the hand that holds it."""
+    flap = [(8.6, TOP + 6.0), (5.0, -20.0), (0.0, -6.0), (-5.0, 10.0), (-9.0, HEM + 3.0)]
+    K.poly(d, [K.at(x, y) for x, y in flap] + [K.at(20.0, HEM + 6.0), K.at(20.0, TOP)], BLANKET_DARK)
+    for x0, y0, x1, y1 in ((-9.0, -24.0, -12.0, 6.0), (-4.0, -20.0, -8.0, 14.0), (11.0, -14.0, 12.6, 16.0)):
+        K.line(d, [K.at(x0, y0), K.at(x1, y1)], mix(BLANKET, BLANKET_DARK, 0.6) if x0 < 8 else (22, 24, 44, 255), 0.6)
+    steps = 26
+    _tufts(d, [(flap[0][0] + (flap[-1][0] - flap[0][0]) * t - 3.0 * math.sin(math.pi * t), flap[0][1] + (flap[-1][1] - flap[0][1]) * t) for t in
+               [k / steps for k in range(steps + 1)]], 2.1)
+    _tufts(d, [(x, HEM + 1.6 + 0.5 * math.sin(x)) for x in [-13.2 + 3.3 * k for k in range(9)]], 2.4)
+    _tufts(d, [(-7.6, TOP + 1.6), (-3.8, TOP + 2.8), (0.0, TOP + 3.2), (3.8, TOP + 2.8), (7.6, TOP + 1.6)], 3.2)
+    K.oval(d, K.at(3.6, -21.0), 3.1, 2.7, OUTLINE)
+    K.oval(d, K.at(3.6, -21.0), 2.5, 2.1, SKIN)
+    for dx in (-0.9, 0.5, 1.8):
+        K.line(d, [K.at(3.6 + dx, -22.4), K.at(3.6 + dx - 0.2, -20.0)], SKIN_DEEP, 0.4)
+
+
+def _front_hood_shape(d) -> None:
+    K.oval(d, K.at(0.0, -3.0), 11.0, 12.0, WHITE)
+    K.poly(d, [K.at(-10.4, 0.0), K.at(-9.0, 10.0), K.at(9.0, 10.0), K.at(10.4, 0.0)], WHITE)
+
+
+def _front_hood(d) -> None:
+    # The blanket is over his head: his face is in the opening of it, with
+    # the fur of its edge round it, and his curls at the top of it.
+    K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, 20.0), K.at(-20.0, 20.0)], BLANKET)
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(7.6 * sx, -12.0), K.at(11.6 * sx, -4.0), K.at(10.4 * sx, 10.0), K.at(7.6 * sx, 10.0)], BLANKET_DARK)
+    K.oval(d, K.at(0.0, 1.2), 6.6, 8.6, SKIN)
+    K.poly(d, [K.at(-6.0, -4.0), K.at(-4.0, -7.4), K.at(0.0, -8.2), K.at(4.0, -7.4), K.at(6.0, -4.0), K.at(3.6, -5.6), K.at(1.4, -4.6), K.at(-1.0, -5.8), K.at(-3.4, -4.6)],
+           HAIR)
+    ring = [(6.9 * math.cos(math.radians(a)), 1.2 + 9.0 * math.sin(math.radians(a))) for a in range(-200, 21, 20)]
+    _tufts(d, ring, 1.6)
+
+
+def _front_cold(d) -> None:
+    K.oval(d, K.at(0.0, 3.6), 1.6, 1.4, NOSE)
+    for sx in (-1.0, 1.0):
+        K.oval(d, K.at(3.8 * sx, 4.4), 1.7, 1.1, mix(SKIN, NOSE, 0.45))
+
+
+X.front_torso = R.make_front_torso(K, ("furrier",), BLANKET, BLANKET_DARK, [(TOP - 0.6, 5.0), (TOP + 4.0, 11.4), (-22.0, 13.8), (-4.0, 15.2), (HEM + 1.0, 14.8),
+                                                                           (HEM + 3.6, 12.0)], detail=_front_blanket)
+X.front_head_layers = R.front_face(R.make_front_head(K, ("furrier",), SKIN, SKIN_DEEP, wide=8.0, jaw=6.8, chin=3.6, shape=_front_hood_shape, hair=_front_hood,
+                                                    face=_front_cold),
+                                   R.make_front_eyes(K, ("furrier",), white=None, ink=INK, spread=3.0, y=-0.2), R.make_front_brows(K, ("furrier",), HAIR, spread=3.0, y=-3.2),
+                                   R.make_front_mouth(K, ("furrier",), y=8.0, colour=(118, 67, 65, 255), wide=0.7))
+X.front_shoe = R.make_front_shoe(K, SHOE, SHOE_DARK, BUILD.ankle_up)
+X.front_span = (8.6, 4.6)
+
+
+@X.front_row
+def front(i: int, n: int):
+    # His arms are inside the blanket: only the hand on its edge is out.
+    _, s, _c = loop(i, n)
+    shake = 0.6 if i in (5, 6) else 0.0
+    return R.FP(hip=(shake * (1.0 if i == 5 else -1.0), 0.4 + 0.3 * s), la=(-6.0, 12.0), ra=(-6.0, 12.0), lz=0.8, rz=0.8, lh="fist", rh="fist",
+                eyes="closed" if i == n - 2 else "open", mouth="grit" if shake else "flat", brows=-1.0 if shake else 0.0)
+
+
+R.add_front_rows(X)
+
 # ---- What he shows -----------------------------------------------------------
 
 

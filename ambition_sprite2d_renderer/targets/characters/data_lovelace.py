@@ -386,6 +386,92 @@ def self_repair(i: int, n: int):
 
 X.rows = [("idle", 8, 130), ("walk", 8, 102), ("talk", 8, 110), ("compute", 8, 92), ("analytical_burst", 8, 88), ("self_repair", 8, 96), ("death", 8, 116)]
 
+# ---- From the front --------------------------------------------------------------
+
+
+def _front_trunk(d) -> None:
+    """Her trunk from the front: the barrel and what is on it, the ball of
+    her waist, the bell, its band of card, her base and her wheels."""
+    h = K.home
+    foot = FLOOR - 7.0
+    K.line(d, [K.at(-9.4, TOP + 5.0), K.at(9.4, TOP + 5.0)], BRASS_DARK, 0.6)
+    K.line(d, [K.at(-9.4, -15.4), K.at(9.4, -15.4)], BRASS_DARK, 0.6)
+    _rivets(d, [(x, TOP + 3.0) for x in (-6.6, -2.2, 2.2, 6.6)] + [(x, -13.6) for x in (-6.6, -2.2, 2.2, 6.6)])
+    K.rrect(d, h[0] - 4.4, h[1] - 30.4, h[0] + 4.4, h[1] - 25.6, 0.6, INK)
+    for k in range(3):
+        K.rrect(d, h[0] - 3.7 + k * 2.7, h[1] - 29.7, h[0] - 1.7 + k * 2.7, h[1] - 26.3, 0.2, CARD)
+        K.line(d, [K.at(-2.7 + k * 2.7, -29.0), K.at(-2.7 + k * 2.7, -27.0 - (k % 2))], INK, 0.5)
+    K.oval(d, K.at(-5.4, -21.0), 2.5, 2.5, ENAMEL, BRASS_DEEP, 0.5)
+    K.line(d, [K.at(-5.4, -21.0), K.at(-4.0, -22.6)], COPPER_DARK, 0.5)
+    K.rrect(d, h[0] - 1.6, h[1] - 21.8, h[0] + 7.2, h[1] - 20.4, 0.3, INK)
+    K.poly(d, [K.at(-0.4, -21.0), K.at(6.0, -21.0), K.at(6.0, -18.4), K.at(-0.4, -18.4)], CARD)
+    K.oval(d, K.at(0.0, -9.6), 4.0, 3.6, BRASS_DEEP)
+    K.poly(d, [K.at(-6.4, -8.0), K.at(6.4, -8.0), K.at(13.4, foot), K.at(-13.4, foot)], BRONZE)
+    K.poly(d, [K.at(-7.0, -5.6), K.at(7.0, -5.6), K.at(7.8, -2.8), K.at(-7.8, -2.8)], TEAL)
+    for x in (-3.4, 0.0, 3.4):
+        K.line(d, [K.at(x * 0.8, -2.4), K.at(x * 2.6, foot - 5.4)], BRASS, 0.7)
+    K.poly(d, [K.at(-30.0, foot - 5.2), K.at(30.0, foot - 5.2), K.at(30.0, foot - 0.8), K.at(-30.0, foot - 0.8)], CARD)
+    for k in range(-5, 6):
+        if (k * 7) % 5 != 0:
+            K.rrect(d, h[0] + k * 2.4 - 0.6, h[1] + foot - 4.2 + 1.2 * (k % 2), h[0] + k * 2.4 + 0.6, h[1] + foot - 3.0 + 1.2 * (k % 2), 0.2, INK)
+    K.rrect(d, h[0] - 30.0, h[1] + foot - 0.6, h[0] + 30.0, h[1] + FLOOR - 2.6, 0.0, BRASS_DEEP)
+    for x in (-9.0, 9.0):
+        K.rrect(d, h[0] + x - 2.0, h[1] + FLOOR - 5.6, h[0] + x + 2.0, h[1] + FLOOR, 0.8, INK)
+
+
+def _front_cap_shape(d) -> None:
+    K.oval(d, K.at(0.0, -5.0), 9.6, 7.0, _SOLID)
+    for sx in (-1.0, 1.0):
+        K.rrect(d, K.home[0] + 6.6 * sx - 2.0, K.home[1] + 0.4, K.home[0] + 6.6 * sx + 2.0, K.home[1] + 9.6, 1.4, _SOLID)
+    K.stroke(d, [K.at(0.0, -11.0), K.at(0.0, -18.6)], _SOLID, 1.3)
+    K.oval(d, K.at(0.0, -19.4), 1.6, 1.6, _SOLID)
+
+
+def _front_cap(d) -> None:
+    K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, 12.0), K.at(5.4, 12.0), K.at(5.4, -3.0), K.at(3.0, -7.0), K.at(0.0, -8.4), K.at(-3.0, -7.0), K.at(-5.4, -3.0),
+               K.at(-5.4, 12.0), K.at(-20.0, 12.0)], COPPER)
+    K.line(d, [K.at(0.0, -12.2), K.at(0.0, -8.4)], COPPER_DARK, 0.6)
+    for sx in (-1.0, 1.0):
+        K.line(d, [K.at(2.0 * sx, -11.6), K.at(6.0 * sx, -8.4)], COPPER_LIGHT, 0.6)
+        spring = [K.at((6.6 + 1.6 * (1 if k % 2 else -1)) * sx, 1.4 + k * 1.3) for k in range(7)]
+        K.line(d, spring, COPPER_DARK, 1.3)
+        K.line(d, spring, COPPER_LIGHT, 0.5)
+    K.stroke(d, [K.at(0.0, -11.0), K.at(0.0, -18.6)], BRASS_DARK, 0.8)
+    K.oval(d, K.at(0.0, -19.4), 1.3, 1.3, LIGHT)
+
+
+def _front_plate(d) -> None:
+    plate = [K.at(-4.6, -6.4), K.at(4.6, -6.4), K.at(5.6, -2.0), K.at(5.2, 4.4), K.at(3.0, 8.2), K.at(-3.0, 8.2), K.at(-5.2, 4.4), K.at(-5.6, -2.0)]
+    K.poly(d, plate, ENAMEL)
+    K.line(d, plate + plate[:1], BRASS_DEEP, 0.6)
+    for sx in (-1.0, 1.0):
+        c = (2.6 * sx, -1.2)
+        K.oval(d, K.at(*c), 2.7, 2.7, BRASS, BRASS_DEEP, 0.5)
+        K.oval(d, K.at(*c), 2.0, 2.0, INK)
+        K.oval(d, K.at(*c), 1.3, 1.3, TEAL)
+        K.oval(d, K.at(*c), 0.6, 0.6, LIGHT)
+
+
+def _front_grille(mode: str):
+    lit = {"open": 2, "big": 3, "o": 2, "smile": 1}.get(mode, 0)
+
+    def paint(d) -> None:
+        K.rrect(d, K.home[0] - 2.8, K.home[1] + 4.2, K.home[0] + 2.8, K.home[1] + 6.6, 0.6, INK, BRASS_DEEP, 0.4)
+        for k in range(3):
+            K.line(d, [K.at(-1.6 + k * 1.6, 4.8), K.at(-1.6 + k * 1.6, 6.0)], LIGHT if k < lit else ENAMEL_DEEP, 0.6)
+
+    return K.piece(("lovelace_front_grille", lit), paint)
+
+
+X.front_torso = R.make_front_torso(K, ("lovelace",), BRASS, BRASS_DARK, [(TOP + 1.0, 6.0), (TOP + 3.0, 9.4), (-14.0, 9.4), (-12.0, 4.0), (-8.0, 4.6), (-8.0, 6.4),
+                                                                         (FLOOR - 7.0, 13.4), (FLOOR - 7.0, 14.2), (FLOOR - 2.6, 14.2)],
+                                   shoulder=(8.6, -30.4, 3.8, 4.2), detail=_front_trunk)
+X.front_head_layers = R.front_face(R.make_front_head(K, ("lovelace",), BRASS, BRASS_DEEP, wide=7.8, jaw=6.6, chin=3.2, shape=_front_cap_shape, hair=_front_cap,
+                                                    face=_front_plate), mouth=_front_grille)
+X.front_shoe = lambda: None
+X.front_span = (9.0, 4.0)
+R.add_front_rows(X)
+
 # ---- What she shows ------------------------------------------------------------
 
 

@@ -535,6 +535,74 @@ X.rows = [("idle", 8, 148), ("walk", 8, 104), ("run", 8, 80), ("crouch", 6, 96),
           ("golden_record_guard", 8, 68), ("whale_song", 10, 74), ("pulsar_beacon", 10, 76), ("cosmic_garden", 10, 78), ("voyager_cast", 10, 66),
           ("celebrate", 8, 90), ("taunt", 8, 96)]
 
+# ---- From the front ------------------------------------------------------------
+
+FRONT_HEM = BUILD.hip_up - 5.0
+
+
+def _front_robe(d) -> None:
+    """Her robe from the front: its neck, the light on her bust and the shade
+    under it, her belt and its disc, the folds, and the hem cut like leaves."""
+    by = TOP + 12.5
+    K.poly(d, [K.at(-3.4, TOP - 1.0), K.at(3.4, TOP - 1.0), K.at(0.0, TOP + 7.0)], SKIN_SHADE)
+    K.line(d, [K.at(-3.4, TOP - 1.0), K.at(0.0, TOP + 7.0), K.at(3.4, TOP - 1.0)], COAT_LIGHT, 1.0)
+    for sx in (-1.0, 1.0):
+        K.oval(d, K.at(4.4 * sx, by + 0.2), 2.6, 2.0, mix(COAT, COAT_LIGHT, 0.45))
+        K.poly(d, [K.at(0.8 * sx, by + 4.4), K.at(4.4 * sx, by + 5.2), K.at(8.4 * sx, by + 3.4), K.at(7.6 * sx, by + 6.0), K.at(4.2 * sx, by + 7.0), K.at(0.8 * sx, by + 6.0)],
+               COAT_DARK)
+    K.poly(d, [K.at(-9.0, -14.4), K.at(9.0, -14.4), K.at(9.0, -11.2), K.at(-9.0, -11.2)], SCARF)
+    K.oval(d, K.at(0.0, -12.8), 2.6, 2.6, GOLD, OUTLINE, 0.5)
+    K.oval(d, K.at(0.0, -12.8), 1.4, 1.4, None, GOLD_DARK, 0.5)  # type: ignore[arg-type]
+    K.poly(d, [K.at(-1.0, -10.4), K.at(1.0, -10.4), K.at(0.8, 2.0), K.at(-0.8, 2.0)], SCARF)
+    for x in (-6.0, -2.6, 2.6, 6.0):
+        K.line(d, [K.at(x * 0.8, -9.0), K.at(x * 1.5, FRONT_HEM - 6.0)], COAT_DARK, 0.6)
+    for k in range(-5, 6):
+        x = k * 3.4
+        K.poly(d, [K.at(x - 1.7, FRONT_HEM - 7.0), K.at(x + 1.7, FRONT_HEM - 7.0), K.at(x, FRONT_HEM - 0.6)], COAT_LIGHT)
+
+
+def _front_hair_shape(d) -> None:
+    # Long, down each side of her face to her shoulders; and her antlers.
+    K.oval(d, K.at(0.0, -5.4), 10.0, 8.0, WHITE)
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(7.0 * sx, -6.0), K.at(10.6 * sx, 0.0), K.at(11.0 * sx, 12.0), K.at(8.6 * sx, 17.0), K.at(5.6 * sx, 13.0), K.at(6.4 * sx, 4.0)], WHITE)
+        K.stroke(d, [K.at(3.4 * sx, -8.0), K.at(4.6 * sx, -13.6), K.at(7.0 * sx, -18.0)], WHITE, 1.9)
+        K.stroke(d, [K.at(4.6 * sx, -13.6), K.at(1.6 * sx, -16.6)], WHITE, 1.6)
+        K.stroke(d, [K.at(5.8 * sx, -15.8), K.at(9.4 * sx, -15.4)], WHITE, 1.5)
+
+
+def _front_hair(d) -> None:
+    K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, 20.0), K.at(6.2, 20.0), K.at(6.4, 4.0), K.at(7.2, -2.0), K.at(5.0, -6.4), K.at(0.0, -8.8), K.at(-5.0, -6.4),
+               K.at(-7.2, -2.0), K.at(-6.4, 4.0), K.at(-6.2, 20.0), K.at(-20.0, 20.0)], HAIR)
+    K.line(d, [K.at(0.0, -13.0), K.at(0.0, -8.8)], (30, 26, 34, 255), 0.5)
+    for sx in (-1.0, 1.0):
+        K.line(d, [K.at(7.6 * sx, -4.0), K.at(9.0 * sx, 4.0), K.at(8.4 * sx, 13.0)], HAIR_LIGHT, 0.7)
+        K.line(d, [K.at(2.0 * sx, -12.0), K.at(6.0 * sx, -9.0)], HAIR_LIGHT, 0.5)
+
+
+def _front_circlet(d) -> None:
+    # The circlet of leaves and her antlers, her nose, and an earring each side.
+    for sx in (-1.0, 1.0):
+        for seg in ([(3.4, -8.0), (4.6, -13.6), (7.0, -18.0)], [(4.6, -13.6), (1.6, -16.6)], [(5.8, -15.8), (9.4, -15.4)]):
+            K.line(d, [K.at(x * sx, y) for x, y in seg], ANTLER, 1.1)
+        K.oval(d, K.at(7.8 * sx, 5.0), 0.9, 0.9, GOLD)
+    K.poly(d, [K.at(-8.6, -8.4), K.at(8.6, -8.4), K.at(8.6, -5.8), K.at(-8.6, -5.8)], LEAF_DARK)
+    for x in (-6.4, -3.2, 0.0, 3.2, 6.4):
+        K.oval(d, K.at(x, -7.4), 1.9, 1.4, LEAF)
+    K.oval(d, K.at(0.0, -7.2), 1.1, 1.1, GOLD)
+    K.line(d, [K.at(-0.4, -0.4), K.at(-1.2, 3.4), K.at(0.0, 4.2), K.at(1.2, 3.4)], SKIN_DEEP, 0.6)
+
+
+X.front_torso = R.make_front_torso(K, ("anne",), COAT, COAT_DARK, [(TOP, 3.6), (TOP + 3.6, 7.6), (TOP + 12.5, 9.0), (-13.0, 6.4), (0.0, 8.6), (FRONT_HEM, 12.4)],
+                                   shoulder=(6.0, -30.2, 3.8, 4.2), detail=_front_robe)
+X.front_head_layers = R.front_face(
+    R.make_front_head(K, ("anne",), SKIN, SKIN_DEEP, wide=7.8, jaw=6.4, chin=3.8, shape=_front_hair_shape, hair=_front_hair, face=_front_circlet),
+    R.make_front_eyes(K, ("anne",), white=None, ink=INK, spread=3.2, y=-0.4, lash=0.5), R.make_front_brows(K, ("anne",), HAIR, spread=3.2, y=-3.6, width=0.9),
+    R.make_front_mouth(K, ("anne",), y=8.2, colour=(128, 54, 62, 255), lips=(196, 96, 100, 255), wide=0.8))
+X.front_shoe = R.make_front_shoe(K, BOOT, BOOT_DARK, BUILD.ankle_up, wide=0.9)
+X.front_span = (7.2, 4.4)
+R.add_front_rows(X)
+
 # ---- What she shows ----------------------------------------------------------
 
 
