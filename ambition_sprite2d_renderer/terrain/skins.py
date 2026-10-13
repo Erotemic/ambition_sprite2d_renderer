@@ -104,6 +104,9 @@ SKINS: tuple[Skin, ...] = (
     # Mary-O's castle: cut stone the colour of a plum, with a line of gold on
     # its edge. It is not red: the fire in the pits is. The void has no part in the ground: a body stands on what is whole.
     Skin("void_castle", "ruin", (104, 66, 116), (34, 18, 46), (170, 124, 176), (255, 206, 116), "edge", (138, 90, 146), "bolts", "slab"),
+    # The Noodly Temple: noodles in a press, under marinara that runs down
+    # the edge, with noodles that hang under each block.
+    Skin("noodly", "noodle", (160, 116, 58), (64, 34, 20), (226, 184, 106), (255, 222, 140), "sauce", (172, 44, 32), "noodles", "lasagne"),
     # The islands in the sky are rock that broke off, not a wall that was laid.
     Skin("skybridge", "rock", (150, 164, 198), (86, 100, 142), (216, 224, 242), (255, 236, 150), "grass", (112, 178, 96), "roots", "slab"),
     Skin("open_sky", "rock", (176, 164, 150), (104, 92, 92), (232, 222, 204), (255, 240, 170), "grass", (126, 184, 92), "roots", "plank"),
@@ -442,6 +445,42 @@ def fill(skin: Skin) -> Image.Image:
         tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y + 0.25, r) for x, y, r in shells]), skin.dark, 0.6)
         tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, r * 0.8) for x, y, r in shells]), _mix(skin.light, (236, 232, 214), 0.5), 0.85)
         tile.tone((tile.noise(3, 3, 4) - 0.5) * 0.22)
+    elif skin.material == "noodle":
+        # Noodles in a press: rows of strands that go along, each with a slow
+        # wave. A wave has a whole number of turns in the tile, and the rows
+        # fill its height, so the picture repeats each way.
+        tile.put(np.ones_like(tile.alpha), skin.dark)
+        rows = 16
+        pitch = FILL[1] / rows
+        for row in range(rows):
+            turns = rng.choice([1, 2, 2, 3])
+            phase = rng.uniform(0.0, math.tau)
+            swing = rng.uniform(0.35, 1.0)
+            y0 = (row + 0.5) * pitch
+            tone = rng.uniform(-0.20, 0.12)
+            colour = _mix(skin.base, skin.light if tone > 0 else skin.dark, abs(tone) * 1.5)
+            pts = [(x, y0 + swing * math.sin(phase + turns * math.tau * x / FILL[0])) for x in np.linspace(-4.0, FILL[0] + 4.0, 73)]
+            tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, pts, pitch * 0.80)), colour)
+            tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(x, y - pitch * 0.22) for x, y in pts], pitch * 0.16)), skin.light, 0.34)
+            tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(x, y + pitch * 0.30) for x, y in pts], pitch * 0.18)), skin.dark, 0.40)
+        # Noodles that lie over the rows: a short strand that goes from one
+        # row up to the row over it, with a round end.
+        for _ in range(7):
+            x0, row = rng.uniform(0, 64), rng.randrange(rows)
+            span, lift = rng.uniform(12.0, 22.0), rng.choice([-1.0, 1.0]) * pitch * rng.choice([1.0, 2.0])
+            y0 = (row + 0.5) * pitch
+            over = [(x0 + span * t, y0 + lift * (t * t * (3.0 - 2.0 * t))) for t in np.linspace(0.0, 1.0, 17)]
+            colour = _mix(skin.base, skin.light, rng.uniform(0.25, 0.6))
+            for oy in (-FILL[1], 0.0, FILL[1]):
+                pts = [(x, y + oy) for x, y in over]
+                tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(x, y + pitch * 0.34) for x, y in pts], pitch * 0.80)), skin.dark, 0.5)
+                tile.put(tile.mask(lambda p, dx, dy: (_line(p, dx, dy, pts, pitch * 0.80), _dot(p, dx, dy, *pts[0], pitch * 0.40), _dot(p, dx, dy, *pts[-1], pitch * 0.40))), colour)
+                tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(x, y - pitch * 0.22) for x, y in pts], pitch * 0.16)), skin.light, 0.45)
+        # A noodle end here and there, where a strand is cut: a round face.
+        ends = [(rng.uniform(0, 64), (rng.randrange(rows) + 0.5) * pitch) for _ in range(7)]
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, pitch * 0.42) for x, y in ends]), _mix(skin.base, skin.light, 0.5))
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, pitch * 0.16) for x, y in ends]), skin.dark, 0.55)
+        tile.tone((tile.noise(3, 3, 3) - 0.5) * 0.20)
     elif skin.material == "rock":
         # Broken stone: each pixel is in the cell of its nearest point, and
         # the cracks are where the two nearest points are as near.
@@ -532,11 +571,19 @@ def cap(skin: Skin) -> Image.Image:
             tile.put(signs, skin.accent, 0.7)
     else:
         # Soft ground: a body that the surface cuts, with an uneven lower edge.
-        depth = {"grass": (5.0, 6.0), "moss": (4.0, 9.0), "sand": (3.5, 2.5), "frosting": (5.0, 0.0)}[skin.cap]
+        depth = {"grass": (5.0, 6.0), "moss": (4.0, 9.0), "sand": (3.5, 2.5), "frosting": (5.0, 0.0), "sauce": (5.0, 0.0)}[skin.cap]
         lower = s + depth[0] + tile.profile(8, 3)[None, :] * depth[1]
         if skin.cap == "frosting":
             # Icing that runs down in round drips, eight to the tile.
             lower = s + 4.2 + 4.6 * np.abs(np.sin(tile.x * math.pi / 8.0)) ** 0.7 * (0.55 + 0.45 * np.cos(tile.x * math.pi / 16.0) ** 2)
+        elif skin.cap == "sauce":
+            # Sauce that runs down the edge: drips of three lengths, four of
+            # the long ones to the tile.
+            # A drip is a round end: half an ellipse under the body of the sauce.
+            lower = np.full_like(tile.x, s + 3.0)
+            for k, (length, half) in enumerate(((7.4, 2.5), (2.8, 3.4), (5.2, 2.2), (2.2, 3.0), (6.4, 2.4), (3.4, 3.6), (4.6, 2.0), (2.6, 3.2))):
+                dx_ = (tile.x - (k * 8.0 + 4.0) + 32.0) % 64.0 - 32.0
+                lower = np.maximum(lower, s + 3.0 + length * np.sqrt(np.clip(1.0 - (dx_ / half) ** 2, 0.0, 1.0)))
         top = s - (tile.profile(16, 2)[None, :] - 0.5) * (1.0 if skin.cap != "sand" else 0.6)
         body = np.clip((lower - y) * K * 0.5 + 0.5, 0, 1) * np.clip((y - top) * K * 0.5 + 0.5, 0, 1)
         tile.put(np.clip((lower + 2.5 - y) / 2.5, 0, 1) * (y >= top), (0, 0, 0), 0.34)
@@ -544,7 +591,14 @@ def cap(skin: Skin) -> Image.Image:
         tile.tone((tile.noise(16, 5, 2) - 0.5) * 0.30 * (tile.alpha > 0))
         tile.put(body * np.clip((y - (lower - 2.2)) / 2.2, 0, 1), skin.dark, 0.5)
         tile.put(body * np.clip(1.0 - (y - top) / 1.2, 0, 1), _mix(skin.cap_colour, (255, 255, 235), 0.42), 0.8)
-        if skin.cap == "frosting":
+        if skin.cap == "sauce":
+            # The shine of the sauce, grated cheese on it and bits of basil.
+            tile.put(body * np.clip(1.0 - np.abs(y - s - 1.4) / 0.6, 0, 1), _mix(skin.cap_colour, (255, 236, 210), 0.6), 0.5)
+            cheese = [(rng.uniform(0, 64), s + rng.uniform(0.4, 3.2), rng.uniform(0, 3.14)) for _ in range(34)]
+            tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, [(x - 0.6 * math.cos(a), yy - 0.3 * math.sin(a)), (x + 0.6 * math.cos(a), yy + 0.3 * math.sin(a))], 0.34) for x, yy, a in cheese]), (250, 236, 190), 0.9)
+            basil = [(rng.uniform(0, 64), s + rng.uniform(0.8, 3.4), rng.uniform(0.5, 0.9)) for _ in range(9)]
+            tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, yy, r, ry=r * 0.55) for x, yy, r in basil]), (64, 128, 62))
+        elif skin.cap == "frosting":
             # A line of light along the top of the icing, and sprinkles on it.
             tile.put(body * np.clip(1.0 - np.abs(y - s - 1.5) / 0.7, 0, 1), (255, 255, 255), 0.55)
             sprinkles = [(rng.uniform(0, 64), s + rng.uniform(2.0, 4.6), rng.uniform(0, 3.14), k % 3) for k in range(18)]
@@ -629,6 +683,25 @@ def under(skin: Skin) -> Image.Image:
                 leaves.append((pts[-1][0], pts[-1][1], 1))
         tile.put(tile.mask(lambda p, dx, dy: [_line(p, dx, dy, pts, w) for pts, w in strands]), colour)
         tile.put(tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, [(x - s * 1.0, yy), (x + s * 0.9, yy - 0.5), (x + s * 0.9, yy + 0.5)]) for x, yy, s in leaves]), leaf)
+    elif skin.under == "noodles":
+        # Noodles that hang under the block: many, of each length, and the
+        # end of a long one turns up in a curl.
+        strands = []
+        for k in range(15):
+            x = (k + rng.uniform(0.15, 0.85)) * 64.0 / 15.0
+            length = rng.uniform(2.5, 11.0)
+            phase = rng.uniform(0, 6.28)
+            pts = [(x + math.sin(phase + t * 0.6) * 0.8 * (t / 10.0), e - 0.8 + length * t / 10.0) for t in range(11)]
+            if length > 7.0:
+                side = rng.choice([-1.0, 1.0])
+                tx, ty = pts[-1]
+                pts += [(tx + side * 0.9 * (1.0 - math.cos(a)), ty + 0.9 * math.sin(a) - 0.25 * a) for a in (0.6, 1.2, 1.8, 2.4, 3.0, 3.6)]
+            strands.append((pts, rng.uniform(0.7, 1.0), rng.uniform(-0.18, 0.12)))
+        for pts, w, tone in strands:
+            colour = _mix(skin.light, (250, 226, 160), 0.35)
+            colour = _mix(colour, skin.dark if tone < 0 else (255, 244, 200), abs(tone) * 1.6)
+            tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(x + 0.3, y) for x, y in pts], w)), skin.dark, 0.55)
+            tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, pts, w)), colour)
     elif skin.under == "bolts":
         tile.put(((y >= e - 0.4) & (y < e + 2.6)).astype(np.float32), skin.cap_colour)
         tile.put(((y >= e - 0.4) & (y < e + 0.2)).astype(np.float32), _mix(skin.cap_colour, (255, 255, 255), 0.3))
@@ -684,6 +757,22 @@ def oneway(skin: Skin) -> Image.Image:
         brackets = tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, [(k * 32 + 14, 5.6), (k * 32 + 18, 5.6), (k * 32 + 18, 12.5), (k * 32 + 16.8, 12.5)]) for k in range(2)])
         tile.put(brackets, wood_dark)
         tile.put(np.clip(1.0 - (y - 5.6) / 3.0, 0, 1) * (y >= 5.6) * (1.0 - brackets), (0, 0, 0), 0.25)
+    elif skin.oneway == "lasagne":
+        # A sheet of lasagne on a line of sauce on a second sheet: the edge
+        # of each sheet is a row of small waves, as the pasta is cut.
+        pasta = _mix(skin.light, (250, 226, 160), 0.45)
+        wave = 0.5 * np.sin(tile.x * math.pi / 4.0)
+        top = ((y >= 0.5 + wave * 0.6) & (y < 2.9 + wave)).astype(np.float32)
+        low = ((y >= 4.1 + wave) & (y < 6.6 - wave * 0.8)).astype(np.float32)
+        tile.put(((y >= 2.6) & (y < 4.4)).astype(np.float32), skin.cap_colour)
+        tile.put(low, _mix(pasta, skin.base, 0.25))
+        tile.put(top, pasta)
+        tile.put(top * (y < 1.3 + wave * 0.6), _mix(pasta, (255, 255, 240), 0.5), 0.8)
+        tile.put(low * (y > 5.8 - wave * 0.8), skin.dark, 0.5)
+        # Sauce that runs out of the edge here and there.
+        drips = [(rng.uniform(0, 64), rng.uniform(1.6, 3.6)) for _ in range(5)]
+        tile.put(tile.mask(lambda p, dx, dy: [(_box(p, dx, dy, x - 0.5, 4.2, x + 0.5, 6.4 + h), _dot(p, dx, dy, x, 6.4 + h, 0.75)) for x, h in drips]), skin.cap_colour)
+        tile.put(np.clip(1.0 - (y - 6.6) / 3.0, 0, 1) * (y >= 6.6) * (tile.alpha < 0.5), (0, 0, 0), 0.22)
     else:  # slab
         stone = _mix(skin.base, skin.light, 0.45)
         tile.put((y < 6.4).astype(np.float32), stone)

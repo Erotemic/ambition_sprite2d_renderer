@@ -36,7 +36,7 @@ from typing import Callable
 import numpy as np
 from PIL import Image
 
-from . import arenas, foregrounds, interiors, outdoors, room_look_sky
+from . import arenas, foregrounds, interiors, noodly, outdoors, room_look_sky
 from .artkit import Art
 from .parts import LAYER_BLUR, LAYER_SIZE
 
@@ -64,6 +64,7 @@ SCENES: dict[str, Scene] = {
     "skybridge": outdoors.skybridge,
     "open_sky": outdoors.open_sky,
     "boss": arenas.boss,
+    "noodly": noodly.noodly,
     "eclipse": arenas.eclipse,
 }
 

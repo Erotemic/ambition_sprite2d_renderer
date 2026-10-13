@@ -97,6 +97,8 @@ MOTES = {
     "eclipse": (_twinkle, (130, 246, 214)),
     "forest": (_glow, (226, 255, 140)),
     "primeval": (_dot, (240, 232, 150)),
+    # Steam from the pots, in the light of the holes.
+    "noodly": (_glow, (255, 240, 214)),
     # Embers of a dark light.
     "starless": (_glow, (255, 120, 196)),
     # Sparks that go up from the fire under the floor.
@@ -130,6 +132,7 @@ SHADOWS = {
     "eclipse": (2, 4, 18),
     "forest": (10, 18, 12),
     "primeval": (16, 22, 10),
+    "noodly": (40, 18, 12),
     "starlight": (88, 64, 120),
     "stardune": (124, 78, 70),
     "starless": (5, 2, 14),

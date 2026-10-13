@@ -273,6 +273,67 @@ def star_post(tile: Tile, c: dict) -> None:
     tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M - 0.9, G - 17.4, 0.9)), (255, 255, 255), 0.7)
 
 
+def meatballs(tile: Tile, c: dict) -> None:
+    """Three meatballs in a heap, with sauce on the top one."""
+    _shadow(tile, 7.0)
+    for x, y, r in ((-3.6, 3.2, 3.4), (3.4, 3.0, 3.2), (0.0, 7.8, 3.5)):
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x, G - y, r)), _mix(c["wood"], c["dark"], 0.35))
+        tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + x - 0.6, G - y - 0.6, r * 0.78)), c["wood"])
+        tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x + ox, G - y + oy, 0.5) for ox, oy in ((-1.4, 0.6), (0.8, -1.2), (1.2, 1.0))]), c["dark"], 0.5)
+    tile.put(tile.mask(lambda p, dx, dy: (_dot(p, dx, dy, M, G - 10.2, 2.6, ry=1.3), _box(p, dx, dy, M + 1.2, G - 10.0, M + 2.2, G - 6.4), _dot(p, dx, dy, M + 1.7, G - 6.4, 0.7))), c["bloom"])
+    tile.alpha *= tile.y < G
+
+
+def noodle_nest(tile: Tile, c: dict) -> None:
+    """A nest of noodles: a low heap of strands that go round."""
+    _shadow(tile, 7.5)
+    heap = tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M, G - 0.5, 7.0, ry=5.0))
+    tile.put(heap, _mix(c["stone_light"], c["dark"], 0.45))
+    for k in range(6):
+        ry = 4.4 - k * 0.62
+        ring = tile.mask(lambda p, dx, dy: p.arc([(M - 6.4 + k * 0.5) * tile.W / tile.w + dx, (G - 0.6 - ry * 2.0) * tile.H / tile.h + dy, (M + 6.4 - k * 0.5) * tile.W / tile.w + dx, (G - 0.6) * tile.H / tile.h + dy], 180, 360, fill=255, width=max(1, int(0.5 * tile.W / tile.w))))
+        tile.put(ring, c["stone_light"] if k % 2 else _mix(c["stone_light"], (255, 250, 220), 0.3))
+    tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + 4.0, G - 4.0), (M + 6.6, G - 6.2), (M + 7.6, G - 4.6)], 0.5)), c["stone_light"])
+    tile.alpha *= tile.y < G
+
+
+def pot(tile: Tile, c: dict) -> None:
+    """A pot of water on the boil: its steam gives a little light."""
+    _shadow(tile, 6.5)
+    tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, M + x, G - y, r) for x, y, r in ((-1.5, 13.0, 2.6), (1.6, 16.0, 2.2), (-0.4, 19.0, 1.8))], blur=1.2), c["glow"], 0.34)
+    body = tile.mask(lambda p, dx, dy: (_box(p, dx, dy, M - 5.2, G - 8.4, M + 5.2, G - 1.2), _dot(p, dx, dy, M, G - 1.4, 5.2, ry=1.3)))
+    tile.put(body, c["metal"])
+    tile.put(body * (tile.x < M - 2.4), _mix(c["metal"], (255, 255, 255), 0.25), 0.6)
+    tile.put(body * (tile.x > M + 2.8), c["dark"], 0.45)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 5.8, G - 9.4, M + 5.8, G - 8.2)), _mix(c["metal"], (255, 255, 255), 0.2))
+    tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, M + s * 5.8 - 0.9, G - 7.4, M + s * 5.8 + 0.9, G - 6.4) for s in (-1.0, 1.0)]), c["dark"])
+    tile.alpha *= tile.y < G
+
+
+def garlic(tile: Tile, c: dict) -> None:
+    """A head of garlic and a clove by it."""
+    _shadow(tile, 5.0)
+    bulb = tile.mask(lambda p, dx, dy: (_dot(p, dx, dy, M - 1.0, G - 3.6, 4.2, ry=3.6), _poly(p, dx, dy, [(M - 2.2, G - 6.4), (M + 0.2, G - 6.4), (M - 0.6, G - 10.2)])))
+    tile.put(bulb, _mix(c["stone_light"], (255, 252, 240), 0.5))
+    for x in (-3.0, -1.0, 1.0):
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + x, G - 0.6), (M - 1.0 + (x + 1.0) * 0.3, G - 6.6)], 0.35)) * bulb, c["stone"], 0.6)
+    tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, M + 5.4, G - 1.6, 1.9, ry=1.5)), _mix(c["stone_light"], (255, 252, 240), 0.4))
+    tile.alpha *= tile.y < G
+
+
+def breadsticks(tile: Tile, c: dict) -> None:
+    """Breadsticks that stand in a jar."""
+    _shadow(tile, 4.5)
+    for x, top, lean in ((-2.2, 17.0, -1.6), (-0.4, 19.5, 0.2), (1.4, 16.0, 1.4), (2.6, 18.0, 2.6)):
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + x, G - 6.0), (M + x + lean, G - top)], 1.1)), _mix(c["stone_light"], c["wood"], 0.3))
+        tile.put(tile.mask(lambda p, dx, dy: _line(p, dx, dy, [(M + x + 0.3, G - 6.0), (M + x + lean + 0.3, G - top)], 0.3)), c["wood"], 0.7)
+    jar = tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 3.8, G - 8.6, M + 3.8, G))
+    tile.put(jar, c["stone"])
+    tile.put(jar * (tile.x < M - 1.8), c["stone_light"], 0.5)
+    tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, M - 4.2, G - 9.4, M + 4.2, G - 8.4)), c["stone_light"])
+    tile.put(jar * (np.abs(tile.y - (G - 4.4)) < 0.9), c["bloom"], 0.8)
+
+
 def _palette(dark: RGB, stone: RGB, stone_light: RGB, wood: RGB, metal: RGB, plant: RGB, bloom: RGB, glow: RGB) -> dict:
     return {"dark": dark, "stone": stone, "stone_light": stone_light, "wood": wood, "wood_light": _mix(wood, (255, 235, 200), 0.3), "metal": metal, "plant": plant, "bloom": bloom, "glow": glow}
 
@@ -285,6 +346,9 @@ DECOR: dict[str, tuple[tuple[Draw, ...], dict]] = {
     "hub": ((planter, lamp_post, crate, floor_light, planter, cone), _palette((15, 15, 46), (52, 52, 110), (100, 102, 170), (70, 64, 120), (60, 60, 120), (90, 150, 130), (236, 150, 90), (255, 206, 140))),
     "basement": ((anvil, coal, barrel, crate, brazier, coal), _palette((26, 12, 10), (70, 40, 34), (130, 80, 60), (104, 62, 40), (62, 46, 44), (90, 110, 60), (200, 90, 50), (255, 160, 70))),
     "boss": ((brazier, bones, column_stub, bones, rock, obelisk), _palette((22, 6, 12), (80, 30, 42), (140, 60, 70), (90, 40, 40), (50, 20, 26), (110, 60, 60), (200, 60, 60), (255, 120, 76))),
+    # The Noodly Temple: what is on the floor of a kitchen. `stone` is the
+    # colour of pasta, `wood` of a meatball and `bloom` of sauce.
+    "noodly": ((meatballs, noodle_nest, pot, garlic, breadsticks, bush), _palette((52, 26, 18), (196, 150, 86), (238, 204, 132), (124, 66, 40), (120, 112, 118), (70, 132, 66), (172, 44, 32), (255, 226, 150))),
     "cave": ((crystal, mushrooms, rock, mushrooms, crystal, rock), _palette((16, 15, 36), (54, 52, 98), (100, 100, 160), (80, 66, 90), (60, 60, 100), (60, 130, 130), (236, 130, 232), (124, 222, 255))),
     "cove": ((barrel, crate, coil, shells, reeds, lamp_post), _palette((12, 30, 40), (60, 96, 104), (120, 164, 164), (122, 88, 58), (70, 84, 92), (70, 140, 110), (236, 130, 120), (255, 200, 120))),
     "water": ((coral, amphora, column_stub, shells, coral, rock), _palette((8, 34, 52), (40, 96, 114), (96, 164, 172), (150, 110, 80), (50, 100, 116), (50, 150, 120), (255, 132, 126), (150, 240, 200))),

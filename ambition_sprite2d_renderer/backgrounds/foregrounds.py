@@ -36,6 +36,8 @@ import numpy as np
 from .arenas import BOSS, ECLIPSE, HUB
 from .artkit import Art, Pen, polar, scale
 from .interiors import ALARM, CAVE, FOUNDRY, LAB, UNDERTOWN
+from .noodly import NOODLY
+from .noodly import foreground as _noodly
 from .outdoors import COVE, FOREST, SKYBRIDGE, WATER
 from .parts import lamps
 
@@ -264,6 +266,7 @@ FOREGROUNDS: dict[str, tuple[Callable[[Art, Pen, list], None], tuple[int, int, i
     "forest": (_forest, scale(FOREST["near"], 0.9)),
     "skybridge": (_skybridge, SKYBRIDGE["stone"]),
     "boss": (_boss, scale(BOSS["rock"], 0.8)),
+    "noodly": (_noodly, scale(NOODLY["noodle_dark"], 0.62)),
     "eclipse": (_eclipse, scale(ECLIPSE["rock"], 0.9)),
 }
 
