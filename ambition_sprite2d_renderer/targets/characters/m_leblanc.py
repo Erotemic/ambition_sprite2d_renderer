@@ -257,6 +257,61 @@ def interact(i: int, n: int):
 L.rows = [("idle", 8, 150), ("walk", 8, 120), ("talk", 8, 120), ("interact", 8, 130)]
 
 
+# ---- From the front ------------------------------------------------------------
+
+FRONT_HEM = BUILD.hip_up - 5.0
+
+
+def _front_gown(d) -> None:
+    """Her gown from the front: the low square neck, the green sash under her
+    bust and its ends, the shawl on each shoulder, the folds."""
+    by = TOP + 12.5
+    K.poly(d, [K.at(-4.4, TOP - 1.0), K.at(4.4, TOP - 1.0), K.at(4.0, TOP + 6.0), K.at(-4.0, TOP + 6.0)], SKIN)
+    K.line(d, [K.at(-4.0, TOP + 6.0), K.at(4.0, TOP + 6.0)], GOWN_DARK, 0.6)
+    for sx in (-1.0, 1.0):
+        K.oval(d, K.at(4.0 * sx, by + 0.6), 2.4, 1.8, GOWN_LIGHT)
+        K.poly(d, [K.at(4.6 * sx, TOP - 1.0), K.at(9.0 * sx, TOP + 2.0), K.at(9.6 * sx, -12.0), K.at(7.4 * sx, -10.0), K.at(6.6 * sx, TOP + 5.0)], GREEN)
+        K.line(d, [K.at(6.6 * sx, TOP + 5.0), K.at(7.4 * sx, -10.0)], GREEN_DARK, 0.6)
+    K.poly(d, [K.at(-8.6, by + 4.0), K.at(8.6, by + 4.0), K.at(8.6, by + 7.0), K.at(-8.6, by + 7.0)], GREEN)
+    K.poly(d, [K.at(1.6, by + 7.0), K.at(4.0, by + 7.0), K.at(5.4, by + 22.0), K.at(2.8, by + 22.0)], GREEN)
+    K.line(d, [K.at(-8.6, by + 7.0), K.at(8.6, by + 7.0)], GREEN_DARK, 0.6)
+    for x in (-5.0, -1.6, 1.6, 5.0):
+        K.line(d, [K.at(x, by + 9.0), K.at(x * 1.7, FRONT_HEM - 2.0)], GOWN_DARK, 0.6)
+
+
+def _front_hair_shape(d) -> None:
+    # Up on top of her head in a knot, and a curl at each temple.
+    K.oval(d, K.at(0.0, -5.6), 9.0, 7.2, WHITE)
+    K.oval(d, K.at(0.0, -13.0), 4.4, 3.8, WHITE)
+    for sx in (-1.0, 1.0):
+        K.oval(d, K.at(7.8 * sx, 0.6), 2.4, 3.4, WHITE)
+
+
+def _front_hair(d) -> None:
+    K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, 5.0), K.at(6.4, 5.0), K.at(6.8, -2.6), K.at(4.4, -6.6), K.at(0.0, -7.8), K.at(-4.4, -6.6),
+               K.at(-6.8, -2.6), K.at(-6.4, 5.0), K.at(-20.0, 5.0)], HAIR)
+    K.line(d, [K.at(0.0, -11.6), K.at(0.0, -7.8)], (48, 30, 28, 255), 0.5)
+    K.oval(d, K.at(0.0, -13.0), 2.8, 2.2, None, HAIR_LIGHT, 0.6)  # type: ignore[arg-type]
+    for sx in (-1.0, 1.0):
+        K.line(d, [K.at(2.0 * sx, -10.6), K.at(5.6 * sx, -7.6)], HAIR_LIGHT, 0.6)
+        K.oval(d, K.at(7.8 * sx, 0.8), 1.4, 2.2, None, HAIR_LIGHT, 0.6)  # type: ignore[arg-type]
+
+
+def _front_nose(d) -> None:
+    K.line(d, [K.at(-0.2, 0.6), K.at(-0.9, 3.2), K.at(0.0, 3.9), K.at(0.9, 3.2)], SKIN_DEEP, 0.5)
+
+
+L.front_torso = R.make_front_torso(K, ("leblanc",), GOWN, GOWN_DARK, [(TOP, 3.4), (TOP + 3.6, 7.0), (TOP + 12.5, 8.6), (-13.0, 7.0), (0.0, 8.6), (FRONT_HEM, 12.4)],
+                                   shoulder=(5.8, -30.4, 3.8, 4.2), detail=_front_gown)
+L.front_head_layers = R.front_face(R.make_front_head(K, ("leblanc",), SKIN, SKIN_DEEP, wide=7.4, jaw=6.0, chin=3.6, shape=_front_hair_shape, hair=_front_hair,
+                                                    face=_front_nose),
+                                   R.make_front_eyes(K, ("leblanc",), ink=INK, iris=(84, 60, 44, 255), spread=3.2, y=-0.4, size=0.85, lash=0.5),
+                                   R.make_front_brows(K, ("leblanc",), HAIR, spread=3.2, y=-3.8, width=0.9),
+                                   R.make_front_mouth(K, ("leblanc",), y=7.8, colour=(130, 56, 66, 255), lips=(196, 104, 110, 255), wide=0.75))
+L.front_shoe = R.make_front_shoe(K, SLIPPER, GREEN_DARK, BUILD.ankle_up, wide=0.85)
+L.front_span = (6.8, 4.2)
+R.add_front_rows(L)
+
 # ---- What she shows ----------------------------------------------------------
 
 

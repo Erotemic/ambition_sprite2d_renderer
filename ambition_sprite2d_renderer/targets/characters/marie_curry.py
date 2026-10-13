@@ -344,6 +344,57 @@ def death(i: int, n: int):
 
 X.rows = list(ROWS)
 
+# ---- From the front ------------------------------------------------------------
+
+def _front_dress(d) -> None:
+    """Her black dress from the front, and the white apron over it: its bib,
+    its tie, and the green of what she cooks at its hem."""
+    K.poly(d, [K.at(-3.0, TOP - 1.0), K.at(3.0, TOP - 1.0), K.at(2.6, TOP + 2.4), K.at(-2.6, TOP + 2.4)], DRESS_LIGHT)
+    K.poly(d, [K.at(-4.6, TOP + 7.0), K.at(4.6, TOP + 7.0), K.at(5.4, -12.0), K.at(8.4, -9.0), K.at(9.8, HEM - 6.0), K.at(-9.8, HEM - 6.0), K.at(-8.4, -9.0),
+               K.at(-5.4, -12.0)], APRON)
+    for sx in (-1.0, 1.0):
+        K.line(d, [K.at(4.6 * sx, TOP + 7.0), K.at(3.0 * sx, TOP + 1.0)], APRON_DARK, 0.9)
+        K.line(d, [K.at(5.4 * sx, -12.0), K.at(9.0 * sx, -12.6)], APRON_DARK, 0.8)
+    K.line(d, [K.at(-5.4, -12.0), K.at(5.4, -12.0)], APRON_DARK, 0.6)
+    for x in (-4.0, 0.0, 4.0):
+        K.line(d, [K.at(x, -8.0), K.at(x * 1.5, HEM - 8.0)], APRON_DARK, 0.5)
+    for x, y, r in ((-5.0, HEM - 9.0, 1.6), (3.0, HEM - 8.0, 2.0), (6.6, HEM - 10.6, 1.2)):
+        K.oval(d, K.at(x, y), r, r * 0.8, mix(APRON, GLOW, 0.6))
+
+
+def _front_hair_shape(d) -> None:
+    # Put up loose on top of her head, and wisps at each side.
+    K.oval(d, K.at(0.0, -6.0), 9.2, 7.4, WHITE)
+    K.oval(d, K.at(0.6, -12.6), 5.4, 4.0, WHITE)
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(6.6 * sx, -4.0), K.at(9.4 * sx, 0.0), K.at(8.6 * sx, 5.0), K.at(6.6 * sx, 3.0)], WHITE)
+
+
+def _front_hair(d) -> None:
+    K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, 5.0), K.at(6.6, 5.0), K.at(7.0, -2.6), K.at(4.6, -7.0), K.at(0.0, -8.4), K.at(-4.6, -7.0),
+               K.at(-7.0, -2.6), K.at(-6.6, 5.0), K.at(-20.0, 5.0)], HAIR)
+    for strand in ([(-4.0, -12.6), (0.6, -14.6), (4.6, -12.0)], [(-6.0, -8.0), (-2.0, -10.0), (2.0, -9.6)], [(6.0, -8.0), (7.6, -3.0)], [(-7.8, -2.0), (-7.6, 3.0)]):
+        K.line(d, [K.at(x, y) for x, y in strand], HAIR_DARK, 0.6)
+    K.line(d, [K.at(2.0, -11.0), K.at(5.0, -9.0)], HAIR_LIGHT, 0.6)
+
+
+def _front_grave(d) -> None:
+    K.line(d, [K.at(-0.2, 0.4), K.at(-0.9, 3.2), K.at(0.0, 3.9), K.at(0.9, 3.2)], SKIN_DEEP, 0.5)
+    for sx in (-1.0, 1.0):
+        K.line(d, [K.at(2.6 * sx, 1.6), K.at(4.4 * sx, 2.2)], mix(SKIN, SKIN_DEEP, 0.4), 0.4)
+
+
+X.front_torso = R.make_front_torso(K, ("curry",), DRESS, DRESS_DARK, [(TOP, 3.2), (TOP + 3.6, 6.6), (TOP + 12.5, 7.6), (-13.0, 5.8), (0.0, 7.6), (HEM, 11.4)],
+                                   shoulder=(5.4, -29.4, 3.6, 4.0), detail=_front_dress)
+X.front_head_layers = R.front_face(R.make_front_head(K, ("curry",), SKIN, SKIN_DEEP, wide=7.2, jaw=5.6, chin=4.0, shape=_front_hair_shape, hair=_front_hair,
+                                                    face=_front_grave),
+                                   R.make_front_eyes(K, ("curry",), ink=INK, iris=(90, 110, 130, 255), spread=3.2, y=-0.4, size=0.85, lash=0.3),
+                                   R.make_front_brows(K, ("curry",), HAIR_DARK, spread=3.2, y=-3.8, width=0.9),
+                                   R.make_front_mouth(K, ("curry",), y=7.8, colour=(130, 66, 72, 255), wide=0.7))
+X.front_shoe = R.make_front_shoe(K, BOOT, (20, 18, 24, 255), BUILD.ankle_up, wide=0.85)
+X.front_span = (6.4, 4.0)
+R.add_front_rows(X)
+
 # ---- What she shows ----------------------------------------------------------
 
 
