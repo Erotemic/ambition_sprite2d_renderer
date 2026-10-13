@@ -833,3 +833,15 @@ lineages:
       - commit: "1b708df"
         label: "A person of the shared rig"
         note: "A man of fifty in a great blanket with fur at each edge, his nose pink with the cold. Claude Opus 5.5 declared."
+  ninja_heavy:
+    name: Ninja Heavy
+    ids: [ninja_heavy]
+    paths: ['ninja_heavy']
+    summary: "an oni mask in lamellar armor, then a wrestler of the dojo clad in black"
+    eras:
+      - commit: "73efbd5"
+        label: "Iron Lotus"
+        note: "The last commit with this design: an iron oni mask, layered armor, a studded kanabo, drawn by a renderer of its own."
+      - commit: "19e7c0b"
+        label: "The mountain of the dojo"
+        note: "On the shared rig: a wrestler's build, the hood of the dojo, black from head to feet, a red rope with white papers, the kanabo over his arm. Jon: less skin, the dark clad in black look."
