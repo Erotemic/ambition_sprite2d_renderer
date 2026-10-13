@@ -1,27 +1,27 @@
-"""Procedural sprite target for Python Goras.
+"""Sprite generator for Python Goras: the geometer of the right angle, and the
+python that chose to stay with him.
 
-Python Goras is a playful Pythagoras parody: a mystic geometer in a white toga
-with a living green python draped around his shoulders. The silhouette leans
-into three readable themes at once:
+A parody of Pythagoras.
 
-- the philosopher-mathematician (beard, robe, sandals, scroll);
-- the snake pun (a bright python companion that coils through most poses);
-- triangle / ratio iconography (a bronze triangle medallion and luminous
-  theorem glyphs during combat / taunt poses).
+The look (2026-10-13): a man of middle years seen three quarters from the
+front, facing right, as the old busts have him: a full dark beard, curled
+hair held by a white band, a strong straight nose. A long white chiton to his
+ankles with a blue key border, a cloak over his near shoulder, a bronze
+triangle on his chest, sandals. The python is green and lies over his
+shoulders: its tail hangs down his back, its head stands up in front of his
+far shoulder and looks where he looks. It is a living animal, not an emblem,
+and it does a good part of the acting.
 
-Authoring intent:
-- The parody is Pythagoras, but transformed into a more game-readable cartoon
-  sage whose seriousness keeps getting undercut by a very expressive snake.
-- The sprite should read as a roster scientist / mathematician immediately,
-  even before dialogue.
-- The move language is geometry-first rather than weapon-first: theorem sigils,
-  angle cuts, and triangular spacing tools.
+He is drawn from the old pictures of the man and not from a type (Jon,
+2026-10-13, of another person of this cast: "needs to read like paul erdos
+not bearnie sanders"). He is a grown man, not a mascot. He holds nothing;
+there is no drop shadow.
 
-Suggested gameplay role:
-- Mid-range control / zoner with a geometry gimmick.
-- The python acts like a visual extension of his reach.
-- His strongest fantasy is "I know where you must stand" — shaping space with
-  triangles, beams, and line segments rather than brute force.
+What he shows: the right triangle, with the square on each of its sides.
+
+He is a person of ``_person_rig``: the bones, the poses and the frame are
+shared; the head, the clothes, the snake, how he stands and what he shows are
+his.
 """
 
 from __future__ import annotations
@@ -29,32 +29,14 @@ from __future__ import annotations
 import argparse
 import math
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import List
 
-from PIL import Image, ImageDraw
-
-from ...authoring import rigdoc, shape_rig
-from ...authoring.part_flipbook import publish_rig_flipbook
-from ...authoring.sheet_build import build_sheet
-from ambition_sprite2d_renderer.core.draw import blending_draw
-
-RGBA = Tuple[int, int, int, int]
-Point = Tuple[float, float]
+from ._ai_era_kit import OUTLINE, WHITE, RGBA, lerp, mix, pin
+from . import _person_rig as R
+from ._person_rig import Build, Person, Stamp, loop, shot
 
 TARGET_NAME = "python_goras"
-FRAME_SIZE = (128, 128)
-SUPER = 4
-W, H = FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER
 
-ROWS: List[Tuple[str, int, int]] = [
-    ("idle", 6, 150),
-    ("walk", 8, 96),
-    ("talk", 8, 112),
-    ("taunt", 8, 108),
-    ("slash", 7, 84),
-    ("hurt", 4, 86),
-    ("death", 8, 112),
-]
 
 AUTHORING_DESCRIPTION = (
     "Parody of Pythagoras. The joke is not just the near-homophone 'Python '"
@@ -172,476 +154,341 @@ ACTOR_METADATA = {
     },
 }
 
-OUTLINE = (24, 18, 18, 255)
-OUTLINE_SOFT = (63, 49, 45, 255)
-SKIN = (206, 158, 116, 255)
-SKIN_SHADE = (153, 108, 76, 255)
-SKIN_LIGHT = (230, 188, 146, 255)
-HAIR = (53, 38, 31, 255)
-HAIR_LIGHT = (90, 64, 53, 255)
-BEARD = (74, 57, 46, 255)
-TOGA = (245, 241, 224, 255)
-TOGA_SHADE = (216, 206, 183, 255)
-TOGA_DEEP = (171, 159, 136, 255)
-SANDAL = (108, 76, 45, 255)
-PYTHON_GREEN = (102, 165, 81, 255)
-PYTHON_DARK = (61, 106, 56, 255)
-PYTHON_LIGHT = (156, 211, 120, 255)
-PYTHON_BELLY = (225, 219, 165, 255)
-EYE = (32, 26, 22, 255)
-MOUTH = (122, 63, 60, 255)
-SCROLL = (229, 219, 178, 255)
-SCROLL_SHADE = (191, 173, 128, 255)
-BRONZE = (187, 142, 71, 255)
-BRONZE_LIGHT = (224, 184, 96, 255)
-GLYPH = (130, 220, 255, 220)
-GLYPH_DIM = (88, 150, 198, 140)
-HIT_RED = (192, 86, 83, 120)
-TRANSPARENT = (0, 0, 0, 0)
+CHITON: RGBA = (246, 242, 226, 255)
+CHITON_DARK: RGBA = (196, 188, 168, 255)
+CLOAK: RGBA = (226, 214, 184, 255)
+CLOAK_DARK: RGBA = (170, 154, 124, 255)
+KEY: RGBA = (60, 104, 170, 255)
+BRONZE: RGBA = (206, 150, 76, 255)
+BRONZE_DARK: RGBA = (132, 88, 48, 255)
+SKIN: RGBA = (214, 168, 126, 255)
+SKIN_SHADE: RGBA = (178, 130, 98, 255)
+SKIN_DEEP: RGBA = (130, 86, 70, 255)
+HAIR: RGBA = (62, 46, 40, 255)
+HAIR_LIGHT: RGBA = (112, 88, 74, 255)
+BAND: RGBA = (250, 248, 240, 255)
+SANDAL: RGBA = (124, 84, 50, 255)
+SANDAL_DARK: RGBA = (74, 48, 34, 255)
+INK: RGBA = (26, 22, 28, 255)
+SNAKE: RGBA = (104, 176, 86, 255)
+SNAKE_DARK: RGBA = (56, 110, 60, 255)
+SNAKE_LIGHT: RGBA = (196, 226, 130, 255)
+TONGUE: RGBA = (226, 70, 80, 255)
+GLOW: RGBA = (252, 226, 130, 255)
+GLOW_DARK: RGBA = (206, 136, 56, 255)
+GLOW_FILL: RGBA = (252, 226, 130, 70)
+
+#: 175 cm: straight, broad in the chest.
+BUILD = Build(hip_up=50.0, thigh=24.2, shin=23.1, neck=(0.2, -37.0), upper=19.6, fore=18.6, near_shoulder=(-6.2, -32.6), far_shoulder=(7.8, -32.2),
+              near_hip=(-3.6, 0.0), far_hip=(3.6, 0.0), head_up=(0.9, -12.6), height=112.0, half_width=(13.5, 15.0))
+
+G = Person(TARGET_NAME, BUILD)
+K = G.K
+P = G.P
+TOP = BUILD.neck[1] - 2.0
+HEM = BUILD.hip_up - 6.0
 
 
-def _s(v: float) -> int:
-    return int(round(v * SUPER))
+# ---- The pieces --------------------------------------------------------------
 
 
-def _pt(p: Point) -> Tuple[int, int]:
-    return (_s(p[0]), _s(p[1]))
+def _front(d, hb: float, hf: float) -> None:
+    """His cloak down from his near shoulder across him, the folds of the
+    chiton, the blue key at its hem, and the bronze triangle on his chest."""
+    K.poly(d, [K.at(-12.0, TOP), K.at(-1.0, TOP), K.at(9.6, -10.0), K.at(11.0 + hf, 8.0), K.at(-2.0, 14.0), K.at(-14.0 - hb, 8.0)], CLOAK)
+    K.line(d, [K.at(-1.0, TOP), K.at(9.6, -10.0), K.at(11.0 + hf, 8.0)], KEY, 1.2)
+    for x0, y0, x1, y1 in ((-7.0, -30.0, 2.0, -10.0), (-9.0, -20.0, -2.0, 2.0)):
+        K.line(d, [K.at(x0, y0), K.at(x1, y1)], CLOAK_DARK, 0.6)
+    for x in (-6.0, -1.0, 4.0, 8.0):
+        K.line(d, [K.at(x, 16.0), K.at(x * 1.25 - hb * 0.3 + hf * 0.2, HEM - 5.0)], CHITON_DARK, 0.6)
+    K.poly(d, [K.at(-20.0 - hb, HEM - 4.4), K.at(20.0 + hf, HEM - 4.4), K.at(20.0 + hf, HEM - 1.6), K.at(-20.0 - hb, HEM - 1.6)], KEY)
+    for k in range(-5, 7):
+        K.rrect(d, K.home[0] + k * 3.4, K.home[1] + HEM - 3.8, K.home[0] + k * 3.4 + 1.6, K.home[1] + HEM - 2.2, 0.0, CHITON)
+    K.poly(d, [K.at(4.6, -26.0), K.at(8.6, -20.6), K.at(4.6, -20.6)], BRONZE, OUTLINE, 0.5)
 
 
-def _line(draw: ImageDraw.ImageDraw, pts: List[Point], fill: RGBA, width: float) -> None:
-    draw.line([_pt(p) for p in pts], fill=fill, width=max(1, _s(width)), joint="curve")
+G.torso = R.make_torso(K, ("goras",), CHITON, CHITON_DARK, back=(10.0, 10.4, 9.6, 12.6), front=(9.0, 10.8, 10.4, 12.2), hem_y=HEM, top=TOP,
+                       shoulders=((-6.0, -32.0), (7.2, -31.8)), shoulder_r=(5.8, 5.2), shade_from=10.0, detail=_front)
 
 
-def _poly(
-    draw: ImageDraw.ImageDraw,
-    pts: List[Point],
-    fill: RGBA,
-    outline: RGBA | None = OUTLINE,
-    width: float = 1.0,
-) -> None:
-    qp = [_pt(p) for p in pts]
-    draw.polygon(qp, fill=fill)
-    if outline is not None:
-        draw.line(qp + [qp[0]], fill=outline, width=max(1, _s(width)), joint="curve")
+def _hair_shape(d) -> None:
+    # Curled hair, close to his head, and a full beard to his chest.
+    K.oval(d, K.at(-1.0, -4.8), 9.2, 8.4, WHITE)
+    K.poly(d, [K.at(-3.4, 3.0), K.at(9.0, 4.0), K.at(9.6, 9.0), K.at(7.0, 15.0), K.at(3.0, 17.6), K.at(-0.6, 13.0), K.at(-3.6, 8.0)], WHITE)
 
 
-def _circle(
-    draw: ImageDraw.ImageDraw,
-    center: Point,
-    radius: float,
-    fill: RGBA,
-    outline: RGBA | None = OUTLINE,
-    width: float = 1.0,
-) -> None:
-    box = (
-        _s(center[0] - radius),
-        _s(center[1] - radius),
-        _s(center[0] + radius),
-        _s(center[1] + radius),
-    )
-    draw.ellipse(box, fill=fill, outline=outline, width=max(1, _s(width)) if outline else 0)
+def _hair(d) -> None:
+    K.poly(d, [K.at(20.0, -8.4), K.at(8.4, -8.4), K.at(4.0, -7.4), K.at(0.6, -6.0), K.at(-2.4, -4.4), K.at(-3.2, -1.4), K.at(-6.2, -1.4), K.at(-6.8, 3.6),
+               K.at(-5.2, 4.8), K.at(-4.8, 6.6), K.at(-20.0, 6.6), K.at(-20.0, -26.0), K.at(20.0, -26.0)], HAIR)
+    for x, y in ((-6.0, -8.0), (-2.0, -11.0), (3.0, -11.4), (-8.0, -3.0), (6.6, -10.0), (-7.6, 2.0)):
+        K.oval(d, K.at(x, y), 1.5, 1.2, None, HAIR_LIGHT, 0.5)  # type: ignore[arg-type]
+    # The white band round his head.
+    K.poly(d, [K.at(-10.0, -6.0), K.at(9.6, -9.6), K.at(9.6, -7.6), K.at(-10.0, -3.8)], BAND)
 
 
-def _arc(
-    draw: ImageDraw.ImageDraw,
-    center: Point,
-    rx: float,
-    ry: float,
-    start_deg: float,
-    end_deg: float,
-    fill: RGBA,
-    width: float,
-) -> None:
-    box = (
-        _s(center[0] - rx),
-        _s(center[1] - ry),
-        _s(center[0] + rx),
-        _s(center[1] + ry),
-    )
-    draw.arc(box, start=start_deg, end=end_deg, fill=fill, width=max(1, _s(width)))
+def _beard(d) -> None:
+    K.poly(d, [K.at(-3.6, 2.6), K.at(0.6, 4.6), K.at(4.6, 4.4), K.at(9.6, 4.8), K.at(9.8, 9.0), K.at(7.0, 15.4), K.at(3.0, 18.0), K.at(-0.8, 13.0),
+               K.at(-3.8, 8.0)], HAIR)
+    for x0, y0, x1, y1 in ((0.6, 8.0, 2.4, 15.0), (4.0, 8.4, 4.0, 16.0), (7.4, 8.0, 6.0, 13.6)):
+        K.line(d, [K.at(x0, y0), K.at(x1, y1)], HAIR_LIGHT, 0.6)
+    K.line(d, [K.at(3.6, 7.0), K.at(5.8, 7.6), K.at(8.0, 7.0)], (140, 84, 84, 255), 0.8)
 
 
-def _osc(i: int, n: int, phase: float = 0.0) -> float:
-    return math.sin((i / max(1, n)) * math.tau + phase)
+_head = R.make_head(K, ("goras",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.4, 8.2, 9.0), jaw=(2.6, 4.2, 6.0, 7.4),
+                    nose=((7.2, -1.4), (10.4, 3.0), (9.8, 4.6), (7.2, 5.0)), ear=(-5.0, 1.2, 2.1, 3.0), shape=_hair_shape, under=_hair, over=_beard)
+_eyes = R.make_eyes(K, (1.4, -0.6), (7.0, -0.8), ink=INK, iris=(70, 46, 30, 255), size=0.95)
+_brows = R.make_brows(K, [(-1.4, -3.8), (1.4, -4.6), (4.2, -3.8)], [(5.8, -4.0), (7.2, -4.6), (8.8, -3.8)], HAIR, 1.4)
+
+G.head_layers = lambda pose: [(_head(), "head"), (_eyes(str(pose["eyes"])), "eyes"), (_brows(R.brow_mood(pose)), "brows")]
+G.neck = R.make_neck(K, SKIN_SHADE, 5.4)
+# His near arm is under his cloak to the elbow; his far arm is bare.
+G.upper_arm = lambda near: [(0.0, 1.0, 7.8, 7.0, CLOAK)] if near else [(0.0, 1.0, 6.6, 5.6, SKIN_SHADE)]
+G.forearm = lambda near: [(0.0, 1.0, 5.6, 4.8, SKIN if near else SKIN_SHADE)]
+G.thigh = lambda near: [(0.0, 1.0, 7.0, 6.0, CHITON if near else CHITON_DARK)]
+G.shin = lambda near: [(0.0, 0.5, 6.0, 5.6, CHITON if near else CHITON_DARK), (0.45, 1.0, 5.0, 4.4, SKIN if near else SKIN_SHADE)]
+G.hand = R.make_hand(K, SKIN, SKIN_SHADE, SKIN_DEEP, size=1.05)
 
 
-def _draw_triangle_glyph(draw: ImageDraw.ImageDraw, center: Point, scale: float, glow: RGBA) -> None:
-    pts = [
-        (center[0], center[1] - 8.0 * scale),
-        (center[0] - 7.0 * scale, center[1] + 5.5 * scale),
-        (center[0] + 7.0 * scale, center[1] + 5.5 * scale),
-    ]
-    _poly(draw, pts, (0, 0, 0, 0), outline=glow, width=1.4 * scale)
-    _line(draw, [pts[1], ((pts[1][0] + pts[2][0]) / 2.0, pts[1][1] - 3.2 * scale), pts[2]], glow, 1.0 * scale)
+def _sandal(near: bool):
+    h = K.home
+
+    def shape(d) -> None:
+        K.oval(d, K.at(3.0, 0.6), 6.0, 2.8, WHITE)
+        K.rrect(d, h[0] - 3.4, h[1] - 0.2, h[0] + 9.4, h[1] + BUILD.ankle_up + 0.4, 1.4, WHITE)
+        K.oval(d, h, 2.8, 2.8, WHITE)
+
+    def detail(d) -> None:
+        K.rrect(d, h[0] - 5.0, h[1] + BUILD.ankle_up - 0.9, h[0] + 11.0, h[1] + BUILD.ankle_up + 2.0, 0.0, SANDAL_DARK)
+        for x0, x1 in ((4.6, 6.4), (0.8, 2.4)):
+            K.poly(d, [K.at(x0, -4.0), K.at(x1, -4.0), K.at(x1 + 1.0, BUILD.ankle_up), K.at(x0 + 1.0, BUILD.ankle_up)], SANDAL)
+        K.line(d, [K.at(-3.0, -2.6), K.at(2.0, -3.0)], SANDAL, 1.2)
+
+    return K.solid(("sandal", near), shape, SKIN if near else SKIN_SHADE, detail, outline=1.2, rim=0.25, shade=0.3, shade_colour=SKIN_DEEP)
 
 
-# ---- Pieces ------------------------------------------------------------------
-#
-# Python-goras is drawn as a rig: each rigid thing (the head, a sandal, a
-# hand, the scroll, the medallion, the python's head) is painted ONCE on a
-# scratch canvas with its anchor at ``HOME``, cut to what it covers, and placed
-# (and turned) through ``shape_rig``. Limbs are bones, one piece per
-# (quarter-pixel) length. The toga and the python's coil change shape with
-# the pose: one piece per (half-pixel) step of what shapes them. A part
-# flipbook stores each once.
-
-#: Where a piece's anchor is painted on the scratch canvas (frame pixels);
-#: the canvas is twice it.
-HOME = (64.0, 64.0)
-_PIECES: Dict[tuple, object] = {}
+G.shoe = _sandal
 
 
-def _piece(key: tuple, paint):
-    """``(raster, anchor)``: what ``paint(draw)`` paints with its anchor at
-    ``HOME``, cut to its box; ``None`` when it paints nothing."""
-    if key not in _PIECES:
-        canvas = Image.new("RGBA", (int(2 * HOME[0] * SUPER), int(2 * HOME[1] * SUPER)), TRANSPARENT)
-        paint(blending_draw(canvas))
-        box = canvas.getchannel("A").getbbox()
-        _PIECES[key] = None if box is None else (canvas.crop(box), (HOME[0] * SUPER - box[0], HOME[1] * SUPER - box[1]))
-    return _PIECES[key]
+# ---- The python --------------------------------------------------------------
 
 
-def _put(img: Image.Image, key: tuple, paint, at: Point, name: str, degrees: float = 0.0) -> None:
-    part = _piece(key, paint)
-    if part is not None:
-        shape_rig.place(img, part, (at[0] * SUPER, at[1] * SUPER), degrees, name)
+def _snake_head(open_: bool, tongue: bool):
+    """Its head, along +x from its neck."""
+
+    def shape(d) -> None:
+        K.poly(d, [K.at(-1.0, -2.6), K.at(4.0, -3.6), K.at(8.4, -1.6), K.at(9.4, 0.4), K.at(4.0, 3.2), K.at(-1.0, 2.6)], WHITE)
+        if open_:
+            K.poly(d, [K.at(3.0, 1.0), K.at(8.6, 4.6), K.at(3.0, 4.2)], WHITE)
+        if tongue:
+            K.stroke(d, [K.at(9.0, 0.6), K.at(13.0, 0.6)], WHITE, 1.0)
+            K.stroke(d, [K.at(13.0, 0.6), K.at(15.0, -1.0)], WHITE, 0.9)
+            K.stroke(d, [K.at(13.0, 0.6), K.at(15.0, 2.2)], WHITE, 0.9)
+
+    def detail(d) -> None:
+        if tongue:
+            K.poly(d, [K.at(9.0, -1.4), K.at(16.0, -2.4), K.at(16.0, 3.4), K.at(9.0, 2.4)], TONGUE)
+        K.poly(d, [K.at(-1.0, 1.0), K.at(9.0, 1.4), K.at(9.0, 6.0), K.at(-1.0, 6.0)], SNAKE_LIGHT)
+        if open_:
+            K.poly(d, [K.at(3.4, 1.4), K.at(7.6, 3.8), K.at(3.4, 3.6)], TONGUE)
+        K.oval(d, K.at(4.8, -1.2), 1.3, 1.3, (252, 232, 120, 255))
+        K.oval(d, K.at(5.0, -1.2), 0.5, 1.0, INK)
+        K.oval(d, K.at(8.2, -0.6), 0.4, 0.4, SNAKE_DARK)
+
+    return K.solid(("snake_head", open_, tongue), shape, SNAKE, detail, outline=1.1, rim=0.3, shade=0.35, shade_colour=SNAKE_DARK)
 
 
-def _half(v: float) -> float:
-    return round(v * 2.0) / 2.0
+def _snake_body(key: tuple, pts):
+    """Its body through ``pts`` (from the pin it is placed at): one piece, cut
+    on whole frame pixels, with a pale belly line and dark marks on its back."""
+    pts = tuple((round(x, 1), round(y, 1)) for x, y in pts)
+
+    def paint(d) -> None:
+        line = [K.at(x, y) for x, y in pts]
+        K.stroke(d, line, OUTLINE, 5.0 + 2.4)
+        K.stroke(d, line, SNAKE, 5.0)
+        K.line(d, [(x, y + 1.2) for x, y in line], SNAKE_LIGHT, 1.0)
+        for k in range(1, len(line) - 1):
+            a, b = line[k], line[k + 1]
+            K.oval(d, ((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0 - 0.8), 1.3, 1.0, SNAKE_DARK)
+        K.oval(d, line[0], 1.6, 1.6, SNAKE)
+
+    return K.aligned(("snake_body",) + tuple(key) + (pts,), paint)
 
 
-def _put_limb(img: Image.Image, root: Point, joint: Point, end: Point, fill: RGBA, outline_w: float, fill_w: float, name: str) -> None:
-    """A two-bone limb (an ``OUTLINE`` stroke under a ``fill`` stroke) as two
-    bones turned to their segments. The upper bone ends round, so the joint
-    is filled; the lower starts square, so it does not cut across it."""
-    hx, hy = HOME
-    for bone, a, b, cap in (("upper", root, joint, True), ("lower", joint, end, False)):
-        length = round(math.hypot(b[0] - a[0], b[1] - a[1]) * 4) / 4
-
-        def paint(d, length=length, cap=cap) -> None:
-            _line(d, [(hx, hy), (hx + length, hy)], OUTLINE, outline_w)
-            if cap:
-                _circle(d, (hx + length, hy), outline_w / 2.0, OUTLINE, outline=None)
-            _line(d, [(hx, hy), (hx + length, hy)], fill, fill_w)
-            if cap:
-                _circle(d, (hx + length, hy), fill_w / 2.0, fill, outline=None)
-
-        _put(img, ("limb", length, fill, outline_w, fill_w, cap), paint, a, f"{name}_{bone}", math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])))
+def _spline(points, per: int = 4):
+    """More points through ``points``, so the body bends and does not corner."""
+    out = []
+    n = len(points)
+    for k in range(n - 1):
+        p0, p1, p2, p3 = points[max(0, k - 1)], points[k], points[k + 1], points[min(n - 1, k + 2)]
+        for j in range(per):
+            t = j / per
+            out.append(tuple(0.5 * (2 * p1[c] + (p2[c] - p0[c]) * t + (2 * p0[c] - 5 * p1[c] + 4 * p2[c] - p3[c]) * t * t
+                                    + (3 * p1[c] - p0[c] - 3 * p2[c] + p3[c]) * t ** 3) for c in (0, 1)))
+    out.append(points[-1])
+    return out
 
 
-def _paint_toga(d, spread: float, shoulder: float, hip: float) -> None:
-    """The toga; ``shoulder`` and ``hip`` are heights above the feet line at
-    ``HOME``."""
-    cx, base_y = HOME
-    shoulder_y, hip_y = base_y - shoulder, base_y - hip
-    _poly(d, [
-        (cx - 18 - spread * 0.7, shoulder_y + 4),
-        (cx - 24 - spread, hip_y + 16),
-        (cx - 18 - spread * 0.4, base_y - 3),
-        (cx + 22 + spread * 0.5, base_y - 3),
-        (cx + 25 + spread, hip_y + 12),
-        (cx + 15, shoulder_y + 4),
-        (cx + 2, shoulder_y - 2),
-    ], TOGA, outline=OUTLINE, width=1.0)
-    _poly(d, [
-        (cx - 16, shoulder_y + 6),
-        (cx - 8, hip_y + 16),
-        (cx - 2, base_y - 2),
-        (cx + 3, base_y - 2),
-        (cx - 1, hip_y + 7),
-        (cx - 4, shoulder_y + 7),
-    ], TOGA_SHADE, outline=None)
-    _poly(d, [
-        (cx + 2, shoulder_y + 4),
-        (cx + 13, hip_y + 10),
-        (cx + 17, base_y - 4),
-        (cx + 21, base_y - 4),
-        (cx + 19, hip_y + 8),
-        (cx + 8, shoulder_y + 4),
-    ], TOGA_SHADE, outline=None)
+def _snake_layers(ctx):
+    """Where the python is this frame: ``(tail, front, head, turn)`` in frame
+    pixels. Its tail hangs down his back; it goes behind his neck; and the
+    front of it stands up from his far shoulder."""
+    sway = 2.0 * math.sin(ctx.phase)
+    reach = float(ctx.pose["snake"])  # 0: at rest. 1: it strikes.
+    up = float(ctx.pose["rise"])  # 1: it stands tall beside his head.
+    tail = [ctx.trunk(-9.6 - sway * 0.4, -8.0), ctx.trunk(-10.6, -16.0), ctx.trunk(-9.4, -25.0), ctx.trunk(-6.6, -33.0), ctx.trunk(-2.0, TOP + 0.6)]
+    sh = ctx.trunk(7.6, TOP + 2.4)
+    rest_head = ctx.trunk(17.0 + sway * 0.5, -31.0 - 5.0 * up + sway)
+    head = (lerp(rest_head[0], ctx.hand[0] + 16.0, reach), lerp(rest_head[1], ctx.hand[1] - 2.0, reach))
+    mid = ctx.trunk(12.0, -26.0 + 3.0 * (1.0 - up))
+    mid = (lerp(mid[0], (sh[0] + head[0]) / 2.0, reach), lerp(mid[1], (sh[1] + head[1]) / 2.0 + 4.0, reach))
+    neck_pt = (head[0] - 5.0, head[1] + (2.0 if reach < 0.5 else 0.6))
+    front = [ctx.trunk(3.0, TOP + 0.6), sh, mid, neck_pt, (head[0] - 1.0, head[1])]
+    turn = math.degrees(math.atan2(head[1] - neck_pt[1], head[0] - neck_pt[0])) * 0.5
+    return tail, front, head, turn
 
 
-def _paint_head(d, blink: bool, mouth_open: bool) -> None:
-    """Head, hair, beard and face, centred on ``HOME``."""
-    cx, head_y = HOME
-    _circle(d, (cx, head_y), 11.5, SKIN, outline=OUTLINE, width=1.0)
-    _circle(d, (cx + 2.2, head_y - 2.0), 8.8, SKIN_LIGHT, outline=None)
-    hair_pts = [
-        (cx - 10, head_y - 2),
-        (cx - 8, head_y - 10),
-        (cx, head_y - 13),
-        (cx + 10, head_y - 10),
-        (cx + 12, head_y - 2),
-        (cx + 9, head_y + 1),
-        (cx + 5, head_y - 1),
-        (cx - 2, head_y - 2),
-        (cx - 7, head_y + 1),
-    ]
-    _poly(d, hair_pts, HAIR, outline=OUTLINE, width=0.8)
-    _line(d, [(cx - 7, head_y - 5), (cx - 1, head_y - 9), (cx + 5, head_y - 6)], HAIR_LIGHT, 1.0)
-    beard_pts = [
-        (cx - 8, head_y + 5),
-        (cx - 4, head_y + 12),
-        (cx + 1, head_y + 16),
-        (cx + 8, head_y + 10),
-        (cx + 6, head_y + 4),
-        (cx - 2, head_y + 7),
-    ]
-    _poly(d, beard_pts, BEARD, outline=OUTLINE, width=0.8)
-    eye_y = head_y - 0.8
-    if blink:
-        _line(d, [(cx - 4.4, eye_y), (cx - 1.3, eye_y)], EYE, 0.8)
-        _line(d, [(cx + 1.8, eye_y), (cx + 4.8, eye_y)], EYE, 0.8)
-    else:
-        _circle(d, (cx - 2.8, eye_y), 0.9, EYE, outline=None)
-        _circle(d, (cx + 3.2, eye_y - 0.2), 0.9, EYE, outline=None)
-    if mouth_open:
-        _arc(d, (cx + 0.5, head_y + 4.0), 2.4, 1.7, 15, 165, MOUTH, 0.9)
-    else:
-        _line(d, [(cx - 1.7, head_y + 4.5), (cx + 3.0, head_y + 5.2)], MOUTH, 0.8)
+def _snake_back(ctx) -> List[Stamp]:
+    tail, _front, _head, _turn = _snake_layers(ctx)
+    at = pin(ctx.hip)
+    pts = _spline([(x - at[0], y - at[1]) for x, y in tail])
+    return [(_snake_body(("tail",), pts), at, "snake_tail", 0.0)]
 
 
-def _paint_python_coil(d, sway: float) -> None:
-    """The python's coil and belly band, its shoulder line at ``HOME``."""
-    ox, shoulder_y = HOME[0] - 64.0, HOME[1]
-    body = [
-        (48 + ox, shoulder_y + 6),
-        (42 + ox + sway * 1.5, shoulder_y + 12),
-        (46 + ox + sway * 2.0, shoulder_y + 19),
-        (59 + ox + sway * 0.6, shoulder_y + 21),
-        (77 + ox - sway * 0.7, shoulder_y + 19),
-        (88 + ox - sway * 1.2, shoulder_y + 12),
-        (84 + ox, shoulder_y + 4),
-    ]
-    _line(d, body, OUTLINE, 7.4)
-    _line(d, body, PYTHON_DARK, 5.6)
-    _line(d, body, PYTHON_GREEN, 4.4)
-    for x, y in body[1:-1]:
-        _circle(d, (x, y + 0.6), 1.1, PYTHON_LIGHT, outline=None)
-    belly = [(57 + ox, shoulder_y + 18), (72 + ox, shoulder_y + 17), (81 + ox, shoulder_y + 13)]
-    _line(d, belly, PYTHON_BELLY, 1.8)
+def _snake_front(ctx) -> List[Stamp]:
+    _tail, front, head, turn = _snake_layers(ctx)
+    at = pin(ctx.hip)
+    pts = _spline([(x - at[0], y - at[1]) for x, y in front])
+    strike = float(ctx.pose["snake"]) > 0.6
+    flick = (not strike) and ctx.i % 4 == 1
+    return [(_snake_body(("front",), pts), at, "snake_front", 0.0), (_snake_head(strike, flick), head, "snake_head", turn)]
 
 
-def _paint_python_head(d, emphasis: float) -> None:
-    """The python's head and tongue, centred on ``HOME``."""
-    hc = HOME
-    _circle(d, hc, 5.5 + emphasis * 0.3, PYTHON_GREEN, outline=OUTLINE, width=1.0)
-    _circle(d, (hc[0] + 1.6, hc[1] - 0.8), 2.2, PYTHON_LIGHT, outline=None)
-    _circle(d, (hc[0] + 1.6, hc[1] - 0.5), 0.75, EYE, outline=None)
-    _line(d, [(hc[0] + 4.8, hc[1] + 0.7), (hc[0] + 8.0, hc[1] + 1.5)], MOUTH, 0.9)
-    tongue_end = (hc[0] + 10.8 + emphasis * 1.6, hc[1] + 2.0)
-    _line(d, [(hc[0] + 7.7, hc[1] + 1.7), tongue_end], (188, 58, 88, 255), 0.8)
-    _line(d, [tongue_end, (tongue_end[0] + 2.2, tongue_end[1] - 1.3)], (188, 58, 88, 255), 0.7)
-    _line(d, [tongue_end, (tongue_end[0] + 2.1, tongue_end[1] + 1.2)], (188, 58, 88, 255), 0.7)
+G.layers["over_torso"].append(_snake_back)
+G.layers["front"].append(_snake_front)
 
 
-def _draw_character(anim: str, i: int, n: int) -> Image.Image:
-    img = Image.new("RGBA", (W, H), TRANSPARENT)
-    hx, hy = HOME
+# ---- How he holds himself ----------------------------------------------------
 
-    t = i / max(1, n - 1)
-    bob = _osc(i, n) * (1.0 if anim in {"walk", "talk", "taunt"} else 0.6)
-    body_shift = 0.0
-    arm_raise_r = 0.0
-    arm_raise_l = 0.0
-    glyph = 0.0
-    head_lift = 0.0
-    robe_spread = 0.0
-    collapse = 0.0
-    hurt_flash = 0.0
-    scroll_visible = True
-
-    if anim == "walk":
-        body_shift = _osc(i, n, math.pi / 2) * 2.8
-        robe_spread = abs(_osc(i, n)) * 4.0
-        arm_raise_r = _osc(i, n) * 10.0
-        arm_raise_l = -_osc(i, n) * 8.0
-    elif anim == "talk":
-        arm_raise_r = 8.0 + _osc(i, n) * 6.0
-        arm_raise_l = -4.0 + _osc(i, n, math.pi / 2) * 5.0
-        glyph = 0.6 + 0.4 * (0.5 + 0.5 * _osc(i, n))
-        head_lift = 0.5
-    elif anim == "taunt":
-        arm_raise_r = 18.0 + _osc(i, n) * 4.0
-        arm_raise_l = 10.0 + _osc(i, n, math.pi / 2) * 4.0
-        glyph = 1.0
-        head_lift = 1.4
-        robe_spread = 1.5
-    elif anim == "slash":
-        body_shift = -10.0 + 20.0 * t
-        arm_raise_r = 35.0 - 65.0 * t
-        arm_raise_l = -12.0 + 10.0 * t
-        glyph = max(0.0, math.sin(t * math.pi))
-        head_lift = glyph * 2.0
-        scroll_visible = t < 0.4
-    elif anim == "hurt":
-        body_shift = -4.0
-        arm_raise_r = -12.0
-        arm_raise_l = -8.0
-        hurt_flash = 0.65 + 0.25 * _osc(i, n)
-        head_lift = 1.0
-    elif anim == "death":
-        collapse = t
-        body_shift = 8.0 * t
-        arm_raise_r = -18.0 * t
-        arm_raise_l = -10.0 * t
-        glyph = max(0.0, 0.7 - t)
-        head_lift = -4.0 * t
-        scroll_visible = t < 0.25
-
-    cx = 64 + body_shift
-    base_y = 104 + collapse * 12.0
-    shoulder_y = 48 + bob * 0.7 + collapse * 6.0
-    hip_y = 76 + bob * 0.6 + collapse * 7.0
-    head_y = 26 + bob * 0.35 + collapse * 3.0 - head_lift
-
-    # Legs and sandals
-    step = _osc(i, n) if anim == "walk" else 0.0
-    left_foot = (cx - 10 - step * 5.0 + collapse * 10.0, base_y)
-    right_foot = (cx + 8 + step * 5.0 + collapse * 4.0, base_y - collapse * 3.0)
-    left_knee = (cx - 9 + step * 1.5, hip_y + 12 + abs(step) * 2.5 + collapse * 4.0)
-    right_knee = (cx + 8 - step * 1.5, hip_y + 11 + abs(step) * 1.4 + collapse * 2.0)
-    _put_limb(img, (cx - 7, hip_y), left_knee, left_foot, TOGA_DEEP, 4.0, 2.4, "left_leg")
-    _put_limb(img, (cx + 7, hip_y), right_knee, right_foot, TOGA_DEEP, 4.0, 2.4, "right_leg")
-
-    def sandal(d) -> None:
-        _poly(d, [(hx - 6, hy + 2), (hx + 6, hy + 2), (hx + 5, hy + 6), (hx - 7, hy + 6)], SANDAL)
-
-    _put(img, ("sandal",), sandal, left_foot, "left_sandal")
-    _put(img, ("sandal",), sandal, right_foot, "right_sandal")
-
-    # Toga body: one piece per half-pixel step of its spread and its heights.
-    spread, shoulder, hip = _half(robe_spread), _half(base_y - shoulder_y), _half(base_y - hip_y)
-    _put(img, ("toga", spread, shoulder, hip), lambda d: _paint_toga(d, spread, shoulder, hip), (cx, base_y), "toga")
-
-    # Gold triangle medallion.
-    def medallion(d) -> None:
-        _poly(d, [(hx, hy - 4), (hx - 5, hy + 5), (hx + 5, hy + 5)], BRONZE, outline=OUTLINE, width=0.8)
-        _circle(d, (hx, hy + 2), 0.9, BRONZE_LIGHT, outline=None)
-
-    _put(img, ("medallion",), medallion, (cx + 1, shoulder_y + 19), "medallion")
-
-    # Arms.
-    shoulder_l = (cx - 13, shoulder_y + 5)
-    shoulder_r = (cx + 12, shoulder_y + 3)
-    elbow_l = (cx - 19, shoulder_y + 20 + arm_raise_l * 0.16)
-    hand_l = (cx - 20, shoulder_y + 33 + arm_raise_l * 0.34)
-    elbow_r = (cx + 22, shoulder_y + 18 - arm_raise_r * 0.12)
-    hand_r = (cx + 27, shoulder_y + 31 - arm_raise_r * 0.42)
-    if anim == "death":
-        hand_l = (hand_l[0] + 18 * collapse, hand_l[1] + 2 * collapse)
-        hand_r = (hand_r[0] + 4 * collapse, hand_r[1] + 8 * collapse)
-    _put_limb(img, shoulder_l, elbow_l, hand_l, TOGA, 4.2, 2.6, "left_arm")
-    _put_limb(img, shoulder_r, elbow_r, hand_r, TOGA, 4.2, 2.6, "right_arm")
-    hand = lambda d: _circle(d, HOME, 2.8, SKIN, outline=OUTLINE, width=0.8)
-    _put(img, ("hand",), hand, hand_l, "left_hand")
-    _put(img, ("hand",), hand, hand_r, "right_hand")
-
-    # Scroll in left hand where appropriate.
-    if scroll_visible:
-        def scroll(d) -> None:
-            sc = HOME
-            _poly(d, [(sc[0] - 6, sc[1] - 4), (sc[0] + 6, sc[1] - 3), (sc[0] + 5, sc[1] + 4), (sc[0] - 7, sc[1] + 3)], SCROLL, outline=OUTLINE, width=0.8)
-            _arc(d, (sc[0] - 7, sc[1]), 2.0, 2.4, 70, 290, SCROLL_SHADE, 1.0)
-            _arc(d, (sc[0] + 6, sc[1]), 2.0, 2.4, -110, 110, SCROLL_SHADE, 1.0)
-
-        _put(img, ("scroll",), scroll, (hand_l[0] - 5, hand_l[1] + 2), "scroll")
-
-    # Head, hair, beard: one piece per expression.
-    blink = anim == "talk" and i % 5 == 0
-    mouth_open = anim == "talk" and (i % 2 == 0)
-    _put(img, ("head", blink, mouth_open), lambda d: _paint_head(d, blink, mouth_open), (cx, head_y), "head")
-
-    # Python companion draped over shoulders.
-    py_shoulder = shoulder_y - 1.0
-    sway = _osc(i, n, math.pi / 3) * (1.8 if anim != "death" else 0.8)
-    body_dx = body_shift * 0.25
-    coil_sway = round(sway * 4.0) / 4.0
-    _put(img, ("python_coil", coil_sway), lambda d: _paint_python_coil(d, coil_sway), (64 + body_dx, py_shoulder), "python_coil")
-    emphasis = round(glyph, 2)
-    py_head_lift = arm_raise_r * 0.07 + collapse * -3.0
-    _put(
-        img,
-        ("python_head", emphasis),
-        lambda d: _paint_python_head(d, emphasis),
-        (88 + body_dx + sway * 0.4, py_shoulder - 2 - py_head_lift),
-        "python_head",
-    )
-
-    # Gesture glyphs / theorem effects: one piece per glow (they fade).
-    if glyph > 0.05:
-        alpha = int(180 * glyph)
-        g1 = (GLYPH[0], GLYPH[1], GLYPH[2], alpha)
-        g2 = (GLYPH_DIM[0], GLYPH_DIM[1], GLYPH_DIM[2], int(120 * glyph))
-        scale1 = 1.0 + 0.2 * glyph
-        _put(img, ("glyph", g1, round(scale1, 3)), lambda d: _draw_triangle_glyph(d, HOME, scale1, g1), (hand_r[0] + 10, hand_r[1] - 10), "glyph")
-        if anim in {"taunt", "talk", "slash"}:
-            scale2 = 0.8 + 0.3 * glyph
-            _put(img, ("glyph", g2, round(scale2, 3)), lambda d: _draw_triangle_glyph(d, HOME, scale2, g2), (cx + 24, shoulder_y + 5), "glyph_dim")
-            # The thread from the hand to the dim glyph bends with the arm: a
-            # shape a frame.
-            _line(blending_draw(img), [(hand_r[0] + 8, hand_r[1] - 2), (cx + 18, shoulder_y + 1), (cx + 24, shoulder_y + 12)], g2, 1.0)
-        if anim == "slash":
-            def slash(d) -> None:
-                _line(d, [(hx + 12, hy + 1), (hx + 40, hy - 4), (hx + 57, hy + 6)], g1, 2.2)
-                _line(d, [(hx + 12, hy + 8), (hx + 40, hy + 12), (hx + 57, hy + 3)], g2, 1.2)
-
-            _put(img, ("slash", g1, g2), slash, (cx, shoulder_y), "slash")
-
-    if hurt_flash > 0.1:
-        alpha = int(80 * hurt_flash)
-
-        def flash(d) -> None:
-            _poly(d, [(hx - 26, hy - 14), (hx - 30, hy + (base_y - head_y) + 8), (hx + 30, hy + (base_y - head_y) + 8), (hx + 24, hy - 14)], (HIT_RED[0], HIT_RED[1], HIT_RED[2], alpha), outline=None)
-
-        _put(img, ("flash", alpha, round(base_y - head_y, 2)), flash, (cx, head_y), "hurt_flash")
-
-    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
+#: One hand flat on his chest, over the triangle; the other hangs.
+ON_CHEST = (7.0, 11.0)
+G.set_rest(na=ON_CHEST, nh="flat", nf=(-3.6, 0.0, 0.0), ff=(4.6, 0.0, 0.0), snake=0.0, rise=0.0)
 
 
-def render(out_dir: str | Path, **opts):
+@G.row
+def idle(i: int, n: int):
+    # He is still. The python looks about for him.
+    _, s, c = loop(i, n)
+    return P(hip=(0.0, 0.4 + 0.3 * s), head=(0.2, -0.2 * s, 2.0 * c), eyes="closed" if i == n - 2 else "open", rise=0.3 + 0.3 * c)
+
+
+@G.row
+def walk(i: int, n: int):
+    ph, s, c = loop(i, n)
+    nf, ff = R.stride(ph, 7.4, 3.8)
+    return P(hip=(0.5, 0.8 * math.cos(2.0 * ph)), lean=2.0, head=(0.0, 0.0, 1.2 * s), fa=(3.0 + 6.0 * c, 24.0), nf=nf, ff=ff,
+             hem=(1.0 + 1.5 * abs(c), 0.5 + 1.5 * abs(c)), rise=0.2)
+
+
+@G.row
+def talk(i: int, n: int):
+    # He teaches with his far hand. The python agrees.
+    _, s, c = loop(i, n)
+    return P(hip=(0.0, 0.3 * s), head=(0.3, 0.0, 2.0 * s), fa=(18.0 + 2.0 * c, 6.0 - 5.0 * max(0.0, s)), fh="open", brows=1.0 if s > 0.3 else 0.0,
+             rise=0.5 + 0.5 * max(0.0, s))
+
+
+@G.row
+def taunt(i: int, n: int):
+    # He draws the triangle in the air, and the python stands up to see it.
+    up = P(lean=-3.0, head=(0.0, 0.0, -8.0), na=(14.0, -14.0), nh="point", brows=1.0, rise=1.0)
+    return G.keys(shot(i, n), [(0.0, P()), (0.25, up), (0.5, dict(up, na=(24.0, -14.0))), (0.75, dict(up, na=(24.0, -2.0))), (1.0, dict(up, na=(14.0, -2.0)))])
+
+
+@G.row
+def slash(i: int, n: int):
+    # He points, and it is the python that goes.
+    wind = P(hip=(-2.0, 2.0), lean=-6.0, na=(-4.0, 6.0), nh="point", brows=-1.0, rise=1.0)
+    out = P(hip=(4.0, 3.0), lean=12.0, na=(25.0, 2.0), nh="point", nf=(-7.0, 0.0, 10.0), ff=(8.0, 0.0, 0.0), brows=-1.0, snake=1.0, hem=(4.0, 1.0))
+    return G.keys(shot(i, n), [(0.0, P()), (0.25, wind), (0.5, out), (0.75, out), (1.0, P())])
+
+
+@G.row
+def hurt(i: int, n: int):
+    return G.keys(shot(i, n), [(0.0, P(lean=-4.0, eyes="wide", rise=1.0)), (0.4, dict(G.full(R.STRUCK), rise=1.0)), (1.0, P(lean=-6.0, eyes="wince"))])
+
+
+@G.row
+def death(i: int, n: int):
+    # He goes over backward, straight, as a column goes (a man in a robe to
+    # his ankles does not sit down in it). The python stays up.
+    back = dict(G.full(R.STRUCK), lean=-12.0, rise=1.0)
+    down = dict(G.full(R.SUPINE), rise=0.6)
+    return G.keys(shot(i, n), [(0.0, back), (0.2, dict(back, lean=-20.0)), (0.7, down), (1.0, down)])
+
+
+G.rows = [("idle", 6, 150), ("walk", 8, 96), ("talk", 8, 112), ("taunt", 8, 108), ("slash", 7, 84), ("hurt", 4, 86), ("death", 8, 112)]
+
+
+# ---- What he shows -----------------------------------------------------------
+
+
+def _triangle(size: int, sides: int):
+    """The right triangle, ``sides`` of its sides drawn (it is drawn a side at
+    a time), and the square on each side when all three are there."""
+    a, b = float(size), float(size) * 0.75
+    pts = [(0.0, 0.0), (a, 0.0), (a, -b)]
+
+    def paint(d) -> None:
+        lines = [(pts[0], pts[1]), (pts[1], pts[2]), (pts[2], pts[0])][:sides]
+        if sides >= 3:
+            K.poly(d, [K.at(*q) for q in pts], GLOW_FILL)
+            K.rrect(d, K.home[0], K.home[1] + 0.6, K.home[0] + a, K.home[1] + 0.6 + a * 0.34, 0.0, GLOW_FILL)
+            K.rrect(d, K.home[0] + a + 0.6, K.home[1] - b, K.home[0] + a + 0.6 + b * 0.34, K.home[1], 0.0, GLOW_FILL)
+        for edge in (True, False):
+            for q0, q1 in lines:
+                K.stroke(d, [K.at(*q0), K.at(*q1)], GLOW_DARK if edge else GLOW, 2.6 if edge else 1.2)
+        if sides >= 2:
+            K.line(d, [K.at(a - 3.0, 0.0), K.at(a - 3.0, -3.0), K.at(a, -3.0)], GLOW, 0.7)
+
+    return K.aligned(("triangle", size, sides), paint)
+
+
+def _effects(ctx) -> List[Stamp]:
+    out: List[Stamp] = []
+    if ctx.anim == "taunt" and ctx.u > 0.2:
+        sides = 1 if ctx.u < 0.5 else 2 if ctx.u < 0.75 else 3
+        out.append((_triangle(16, sides), pin((ctx.shoulder[0] + 20.0, ctx.shoulder[1] - 4.0)), "triangle", 0.0))
+    elif ctx.anim == "slash" and 0.45 <= ctx.u <= 0.8:
+        out.append((_triangle(12, 3), pin((ctx.hand[0] + 26.0, ctx.hand[1] + 6.0)), "triangle", 0.0))
+    elif ctx.anim == "talk" and ctx.i in (2, 3):
+        out.append((_triangle(10, 3), pin((ctx.far_hand[0] + 6.0, ctx.far_hand[1] - 8.0)), "triangle", 0.0))
+    return out
+
+
+G.effects = _effects
+ROWS = G.rows
+
+
+def _render_frame(anim: str, frame_idx: int, nframes: int):
+    return G.render_frame(anim, frame_idx, nframes)
+
+
+def render(out_dir: str | Path, **opts) -> List[Path]:
     del opts
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    frame_transform: dict = {}
-    outputs = build_sheet(
-        frame_transform_out=frame_transform,
-        target=TARGET_NAME,
-        rows=ROWS,
-        render_fn=_draw_character,
-        out_dir=Path(out_dir),
-        frame_size=FRAME_SIZE,
-        auto_crop=True,
-        actor_metadata=ACTOR_METADATA,
-    )
-    parts = publish_rig_flipbook(TARGET_NAME, ROWS, _draw_character, outputs, frame_transform, Path(out_dir))
-    return [
-        outputs["spritesheet"],
-        outputs["yaml"],
-        outputs["ron"],
-        outputs["actor"],
-        outputs["preview"],
-        outputs["canonical"],
-        outputs["canonical_transparent"],
-    ] + list(parts.values())
-
-
-TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
+    return G.render(out_dir, ACTOR_METADATA)
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Render Python Goras.")
-    parser.add_argument(
-        "--out-dir",
-        type=Path,
-        default=Path(__file__).resolve().parents[2] / "generated" / TARGET_NAME,
-    )
+    parser = argparse.ArgumentParser(description="Render the Python Goras spritesheet.")
+    parser.add_argument("--out-dir", type=Path, default=Path(__file__).resolve().parents[2] / "generated" / TARGET_NAME)
     args = parser.parse_args(argv)
     for path in render(args.out_dir):
         print(path)
     return 0
+
+
+TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 
 if __name__ == "__main__":

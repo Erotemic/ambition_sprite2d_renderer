@@ -1,40 +1,40 @@
-"""Procedural full-action renderer for Girdle, a Kurt-Godel-inspired logician.
+"""Sprite generator for Girdle: the logician who found the room no proof can
+enter.
 
-This character-specific Python/Pillow renderer uses no generated-image inputs,
-props, particles, floor ellipses, or drop shadows.  The polished likeness is
-preserved while the animation vocabulary is expanded to player-character depth:
-locomotion, traversal, ledge options, defense, damage, expressive conversation,
-and a complete family of grounded and aerial empty-hand attacks.
+A severe parody of Kurt Godel (the name is the sound of his, bent into an
+ordinary object).
 
-The action language is intentionally specific to Girdle.  He fights like a
-severe, exacting logician: narrow two-finger jabs, tightly crossed blocks,
-precise open-hand cuts, coiled theorem poses, and sudden committed lunges rather
-than generic superhero swings.
+The look (2026-10-13): a thin, upright man seen three quarters from the front,
+facing right. Dark hair combed straight back from a high forehead, round black
+glasses, a narrow face, a small mouth that does not smile much. A cream linen
+suit of three pieces, buttoned, a dark tie, brown shoes: the suit he walked in
+with his one friend. He stands very straight with his hands behind his back,
+and now and then he puts his glasses right with one finger.
 
-Painter order remains ``legs -> torso -> both arms -> head``.  Both arms are
-always in front of the torso and the head is the final character layer.  All
-limbs are continuous tapered tubes with overlapping joints, cuffs, hems, hands,
-and shoes so every pose remains one logically connected body.
+He is drawn from the man and not from a type (Jon, 2026-10-13, of another
+person of this cast: "needs to read like paul erdos not bearnie sanders"). He
+is a grown man, not a mascot. He holds nothing; there is no drop shadow.
+
+His logic is written in pale green: the turnstile, the sentence G that says
+of itself that it can not be proved, and the arrow that goes round and comes
+back to where it began.
+
+He is a person of ``_person_rig``: the bones, the poses and the frame are
+shared; the head, the suit, how he stands and what he writes are his.
 """
 
 from __future__ import annotations
 
 import argparse
 import math
-from types import SimpleNamespace
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Sequence, Tuple
+from typing import List
 
-from ...authoring import rigdoc
-from ...authoring.part_flipbook import publish_rig_flipbook
-from PIL import Image, ImageDraw
-from ambition_sprite2d_renderer.core.draw import blending_draw
+from ._ai_era_kit import OUTLINE, WHITE, RGBA, keys, lerp, mix, pin
+from . import _person_rig as R
+from ._person_rig import Build, Person, Stamp, loop, shot
 
-from . import _solo_shape_rig as SR
-
-RGBA = Tuple[int, int, int, int]
-Point = Tuple[float, float]
+TARGET_NAME = "girdle"
 
 ACTOR_METADATA = {
     "actor": {"character_id": "npc_girdle", "display_name": "Girdle"},
@@ -113,1405 +113,367 @@ ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
     ],
 )
 
-TARGET_BASENAME = "girdle"
-FRAME_SIZE = (128, 128)
-SUPER = 4
-ROWS: List[Tuple[str, int, int]] = [
-    ("idle", 8, 145),
-    ("walk", 8, 104),
-    ("run", 8, 78),
-    ("crouch", 6, 95),
-    ("crouch_walk", 8, 88),
-    ("jump", 6, 95),
-    ("fall", 6, 95),
-    ("land_hard", 8, 95),
-    ("land_recovery", 6, 75),
-    ("dash_startup", 4, 50),
-    ("dash", 6, 65),
-    ("slide", 6, 70),
-    ("roll", 8, 58),
-    ("wall_grab", 6, 110),
-    ("wall_jump", 6, 85),
-    ("ledge_grab", 6, 100),
-    ("ledge_climb", 6, 100),
-    ("ledge_getup", 6, 40),
-    ("ledge_roll", 8, 37),
-    ("ledge_getup_attack", 8, 37),
-    ("climb", 8, 100),
-    ("swim", 8, 105),
-    ("float_glide", 8, 110),
-    ("block", 6, 85),
-    ("hit", 5, 90),
-    ("death", 8, 110),
-    ("talk", 8, 108),
-    ("interact", 8, 92),
-    ("jab", 5, 58),
-    ("punch", 7, 72),
-    ("slash", 8, 75),
-    ("attack_side", 8, 65),
-    ("attack_up", 8, 65),
-    ("attack_down", 8, 65),
-    ("air_neutral", 8, 60),
-    ("air_forward", 7, 62),
-    ("air_back", 7, 62),
-    ("air_down", 7, 70),
-    ("air_up", 7, 62),
-    ("charge", 8, 76),
-    ("cast", 8, 80),
-    ("celebrate", 8, 92),
-    ("taunt", 8, 95),
+
+SUIT: RGBA = (236, 226, 200, 255)
+SUIT_DARK: RGBA = (186, 172, 146, 255)
+SUIT_LIGHT: RGBA = (250, 244, 226, 255)
+VEST: RGBA = (214, 202, 174, 255)
+SHIRT: RGBA = (250, 250, 246, 255)
+TIE: RGBA = (62, 52, 72, 255)
+SHOE: RGBA = (112, 72, 50, 255)
+SHOE_DARK: RGBA = (70, 44, 36, 255)
+SKIN: RGBA = (234, 204, 178, 255)
+SKIN_SHADE: RGBA = (204, 166, 144, 255)
+SKIN_DEEP: RGBA = (160, 112, 98, 255)
+HAIR: RGBA = (52, 42, 44, 255)
+HAIR_LIGHT: RGBA = (104, 90, 96, 255)
+FRAME: RGBA = (22, 20, 28, 255)
+LENS: RGBA = (232, 244, 248, 180)
+INK: RGBA = (28, 24, 32, 255)
+LOGIC: RGBA = (196, 250, 214, 255)
+LOGIC_DARK: RGBA = (70, 150, 120, 255)
+LOGIC_GOLD: RGBA = (252, 226, 140, 255)
+
+#: Thin and straight: narrow shoulders, long legs, his head over his heels.
+BUILD = Build(hip_up=50.0, thigh=24.1, shin=23.2, neck=(0.4, -35.0), upper=19.0, fore=18.0, near_shoulder=(-5.4, -31.4), far_shoulder=(6.6, -31.0),
+              near_hip=(-3.2, 0.0), far_hip=(3.2, 0.0), head_up=(0.8, -12.4), height=109.0, half_width=(12.0, 13.0))
+
+G = Person(TARGET_NAME, BUILD)
+K = G.K
+
+#: Both hands behind his back.
+BEHIND_NEAR = (-5.5, 23.0)
+BEHIND_FAR = (-5.0, 23.0)
+G.set_rest(na=BEHIND_NEAR, fa=BEHIND_FAR, mouth="flat", nf=(-3.6, 0.0, 0.0), ff=(4.6, 0.0, 0.0))
+
+R.STROKES["G"] = (((0.95, 0.2), (0.6, 0.0), (0.2, 0.15), (0.05, 0.5), (0.2, 0.85), (0.6, 1.0), (0.95, 0.8), (0.95, 0.52), (0.55, 0.52)),)
+R.STROKES["not"] = (((0.05, 0.4), (0.95, 0.4), (0.95, 0.78)),)
+
+
+# ---- The pieces --------------------------------------------------------------
+
+
+def _torso(hem_back: int, hem_front: int):
+    """His jacket from his hips, his spine up: buttoned, narrow, its hem a
+    little below his hips."""
+    hb, hf = float(hem_back), float(hem_front)
+    back_hem, front_hem = K.at(-9.4 - hb, 9.0 - hb * 0.25), K.at(10.2 + hf, 8.4)
+
+    def shape(d) -> None:
+        K.poly(d, [K.at(-4.0, -38.0), K.at(-9.2, -34.0), K.at(-9.6, -24.0), K.at(-8.8, -12.0), K.at(-8.4, -3.0), back_hem, front_hem,
+                   K.at(9.6, -3.0), K.at(9.4, -14.0), K.at(10.0, -27.0), K.at(8.2, -35.0), K.at(4.0, -38.4)], WHITE)
+        K.oval(d, K.at(-5.4, -31.0), 5.2, 5.8, WHITE)
+        K.oval(d, K.at(6.0, -30.8), 4.8, 5.4, WHITE)
+
+    def detail(d) -> None:
+        # The far side of his chest is in his own shade.
+        K.poly(d, [K.at(7.4, -40.0), K.at(14.0, -40.0), K.at(14.0 + hf, 12.0), K.at(7.6 + hf * 0.6, 12.0), K.at(6.6, -6.0)], SUIT_DARK)
+        # His shirt and his tie, in the V of his vest and his lapels.
+        K.poly(d, [K.at(-0.4, -38.6), K.at(9.2, -38.6), K.at(6.0, -17.0)], VEST)
+        K.poly(d, [K.at(1.2, -38.6), K.at(8.0, -38.6), K.at(5.6, -23.0)], SHIRT)
+        K.poly(d, [K.at(3.4, -37.4), K.at(6.0, -37.4), K.at(6.4, -25.0), K.at(5.0, -22.4), K.at(3.8, -25.0)], TIE)
+        K.poly(d, [K.at(-2.4, -38.6), K.at(1.2, -38.6), K.at(5.6, -17.6), K.at(0.4, -27.0)], SUIT_LIGHT)
+        K.line(d, [K.at(0.4, -27.0), K.at(5.6, -17.6), K.at(6.2, -6.0), K.at(7.2 + hf * 0.6, 9.0)], SUIT_DARK, 0.7)
+        for y in (-13.0, -7.0):
+            K.oval(d, K.at(4.8, y), 0.9, 0.9, SUIT_DARK)
+        # A pocket square, and a pocket low on his side.
+        K.poly(d, [K.at(-5.4, -24.6), K.at(-2.4, -24.2), K.at(-3.0, -26.4), K.at(-4.4, -25.4)], SHIRT)
+        K.line(d, [K.at(-5.8, -24.2), K.at(-2.0, -23.8)], SUIT_DARK, 0.6)
+        K.line(d, [K.at(-6.6, -3.6), K.at(-1.0, -3.0)], SUIT_DARK, 0.6)
+
+    return K.solid(("jacket", hem_back, hem_front), shape, SUIT, detail, outline=1.3, rim=0.3, shade=0.4, shade_colour=SUIT_DARK)
+
+
+def _collar():
+    """The collar of his shirt, closed, and the knot of his tie."""
+
+    def shape(d) -> None:
+        K.poly(d, [K.at(-2.6, -1.0), K.at(2.0, -1.6), K.at(2.4, 2.6), K.at(-2.0, 1.8)], WHITE)
+        K.poly(d, [K.at(2.0, -1.6), K.at(5.4, -1.2), K.at(5.8, 1.8), K.at(3.6, 2.8)], WHITE)
+
+    def detail(d) -> None:
+        K.poly(d, [K.at(1.6, 0.4), K.at(3.8, 0.4), K.at(3.4, 3.4), K.at(2.0, 3.4)], TIE)
+
+    return K.solid(("collar",), shape, SHIRT, detail, outline=1.0, rim=0.0, shade=0.25, shade_colour=(196, 196, 204, 255))
+
+
+NEAR_EYE = (1.4, -0.2)
+FAR_EYE = (7.0, -0.4)
+#: Each lens is round.
+NEAR_LENS, FAR_LENS = 3.1, 2.3
+
+
+def _head():
+    """His head, from its middle: narrow, a high forehead, dark hair combed
+    straight back and flat, a thin jaw."""
+
+    def shape(d) -> None:
+        K.oval(d, K.at(0.0, -2.6), 7.8, 9.0, WHITE)
+        K.oval(d, K.at(2.4, 4.0), 5.4, 7.4, WHITE)
+        K.oval(d, K.at(-1.6, -5.0), 8.0, 7.6, WHITE)
+        # His nose: thin and straight.
+        K.poly(d, [K.at(7.2, -0.8), K.at(9.8, 3.4), K.at(9.2, 4.6), K.at(7.0, 4.8)], WHITE)
+
+    def detail(d) -> None:
+        K.oval(d, K.at(8.4, 7.6), 2.0, 4.0, mix(SKIN, SKIN_SHADE, 0.7))
+        K.poly(d, [K.at(-1.4, 3.8), K.at(1.8, 4.8), K.at(1.4, 9.2), K.at(-1.6, 8.0)], mix(SKIN, SKIN_SHADE, 0.45))
+        # His hair: back from a high line that comes to a point over his
+        # nose, flat to his head, short at his neck.
+        K.poly(d, [K.at(20.0, -10.2), K.at(7.6, -10.2), K.at(5.4, -8.6), K.at(3.4, -9.8), K.at(0.4, -8.4), K.at(-2.4, -6.6), K.at(-3.4, -3.4),
+                   K.at(-3.6, -1.6), K.at(-6.0, -1.8), K.at(-6.6, 3.0), K.at(-5.0, 4.4), K.at(-4.6, 6.4), K.at(-20.0, 6.4), K.at(-20.0, -26.0),
+                   K.at(20.0, -26.0)], HAIR)
+        for strand in ([(5.0, -10.6), (0.6, -11.6), (-4.4, -9.8)], [(1.4, -9.2), (-2.6, -9.4), (-6.2, -6.6)], [(-3.6, -5.4), (-6.6, -3.8)]):
+            K.line(d, [K.at(x, y) for x, y in strand], HAIR_LIGHT, 0.6)
+        # His ear, over his hair.
+        K.oval(d, K.at(-4.8, 1.0), 2.1, 3.2, SKIN, OUTLINE, 0.6)
+        K.line(d, [K.at(-5.2, -0.4), K.at(-4.2, 1.0), K.at(-5.0, 2.4)], SKIN_DEEP, 0.45)
+        for (cx, cy), r in ((NEAR_EYE, NEAR_LENS), (FAR_EYE, FAR_LENS)):
+            K.oval(d, K.at(cx, cy), r if r == NEAR_LENS else r * 0.86, r, LENS)
+        K.line(d, [K.at(8.6, 5.0), K.at(7.0, 5.0), K.at(6.4, 4.2)], SKIN_DEEP, 0.7)
+        K.line(d, [K.at(-0.8, 8.2), K.at(1.4, 10.8), K.at(4.0, 11.4)], mix(SKIN, SKIN_DEEP, 0.55), 0.6)
+
+    return K.solid(("head",), shape, SKIN, detail, outline=1.3, rim=0.3, shade=0.35, shade_colour=SKIN_DEEP)
+
+
+def _glasses():
+    """Round, black and heavy."""
+
+    def paint(d) -> None:
+        K.oval(d, K.at(*NEAR_EYE), NEAR_LENS, NEAR_LENS, None, FRAME, 1.0)  # type: ignore[arg-type]
+        K.oval(d, K.at(*FAR_EYE), FAR_LENS * 0.86, FAR_LENS, None, FRAME, 1.0)  # type: ignore[arg-type]
+        K.line(d, [K.at(NEAR_EYE[0] + NEAR_LENS, -0.8), K.at(FAR_EYE[0] - FAR_LENS * 0.86, -0.9)], FRAME, 0.9)
+        K.line(d, [K.at(NEAR_EYE[0] - NEAR_LENS, -0.8), K.at(-4.6, -0.4)], FRAME, 0.9)
+
+    return K.piece(("glasses",), paint)
+
+
+_eyes = R.make_eyes(K, (NEAR_EYE[0] + 0.3, NEAR_EYE[1] + 0.2), (FAR_EYE[0] + 0.2, FAR_EYE[1] + 0.2), ink=INK, white=None, lid=SKIN_DEEP, size=0.95)
+_brows = R.make_brows(K, [(-1.4, -4.4), (1.4, -5.0), (4.2, -4.4)], [(5.8, -4.6), (7.2, -5.0), (8.6, -4.4)], HAIR, 1.0)
+_mouth = R.make_mouth(K, (5.2, 8.0), (112, 54, 58, 255), wide=0.8)
+
+G.torso = _torso
+G.collar = _collar
+G.neck = R.make_neck(K, SKIN_SHADE, 4.6)
+G.head_layers = lambda pose: [
+    (_head(), "head"), (_eyes(str(pose["eyes"])), "eyes"), (_glasses(), "glasses"),
+    (_brows(1 if float(pose["brows"]) > 0.5 else -1 if float(pose["brows"]) < -0.5 else 0), "brows"), (_mouth(str(pose["mouth"])), "mouth"),
 ]
+G.upper_arm = lambda near: [(0.0, 1.0, 6.8, 5.6, SUIT if near else SUIT_DARK)]
+G.forearm = lambda near: [(0.0, 1.0, 5.6, 4.8, SUIT if near else SUIT_DARK)]
+G.thigh = lambda near: [(0.0, 1.0, 7.2, 6.0, SUIT if near else SUIT_DARK)]
+G.shin = lambda near: [(0.0, 1.0, 6.0, 5.2, SUIT if near else SUIT_DARK)]
+G.hand = R.make_hand(K, SKIN, SKIN_SHADE, SKIN_DEEP, SHIRT, (206, 206, 212, 255))
+G.shoe = R.make_shoe(K, SHOE, SHOE_DARK, BUILD.ankle_up)
 
-# Restrained period-suit palette with enough value separation to survive the
-# 128 px downsample.
-OUTLINE = (15, 17, 21, 255)
-OUTLINE_SOFT = (40, 43, 49, 255)
-SKIN = (214, 182, 151, 255)
-SKIN_LIGHT = (239, 216, 190, 255)
-SKIN_SHADE = (174, 137, 108, 255)
-SKIN_DEEP = (128, 92, 73, 255)
-HAIR = (43, 35, 35, 255)
-HAIR_MID = (68, 55, 52, 255)
-HAIR_GLEAM = (105, 88, 82, 255)
-GLASS = (29, 31, 36, 255)
-GLASS_TINT = (211, 225, 236, 56)
-SUIT = (59, 63, 70, 255)
-SUIT_MID = (78, 83, 91, 255)
-SUIT_LIGHT = (101, 106, 114, 255)
-SUIT_DARK = (36, 39, 46, 255)
-VEST = (73, 72, 76, 255)
-SHIRT = (232, 228, 217, 255)
-SHIRT_SHADE = (190, 185, 174, 255)
-TIE = (91, 45, 49, 255)
-TROUSER = (47, 50, 56, 255)
-TROUSER_LIGHT = (65, 68, 75, 255)
-SHOE = (53, 42, 38, 255)
-SHOE_LIGHT = (84, 66, 58, 255)
-EYE_WHITE = (231, 226, 216, 255)
-EYE = (24, 26, 30, 255)
-MOUTH = (91, 45, 46, 255)
-
-
-@dataclass
-class Pose:
-    body_x: float = 0.0
-    body_y: float = 0.0
-    scale_x: float = 1.0
-    scale_y: float = 1.0
-    rotation: float = 0.0
-    rotation_pivot: Point = (64.5, 84.0)
-    head_x: float = 0.0
-    head_y: float = 0.0
-    head_tilt: float = 0.0
-    blink: bool = False
-    mouth_open: float = 0.0
-    mouth_smile: float = 0.0
-    brow_lift: float = 0.0
-    near_shoulder: Point = (79.0, 56.0)
-    near_elbow: Point = (84.0, 74.0)
-    near_hand: Point = (83.0, 89.0)
-    far_shoulder: Point = (50.0, 57.0)
-    far_elbow: Point = (46.0, 75.0)
-    far_hand: Point = (48.0, 90.0)
-    near_hip: Point = (70.0, 91.0)
-    near_knee: Point = (72.0, 104.0)
-    near_ankle: Point = (73.0, 117.0)
-    far_hip: Point = (59.0, 91.0)
-    far_knee: Point = (58.0, 104.0)
-    far_ankle: Point = (57.0, 117.0)
-    near_hand_mode: str = "relaxed"
-    far_hand_mode: str = "relaxed"
-
-    def __init__(self, animation: str, frame_idx: int, nframes: int) -> None:
-        phase = frame_idx / max(1, nframes)
-        t = frame_idx / max(1, nframes - 1)
-        wave = math.sin(phase * math.tau)
-        cosine = math.cos(phase * math.tau)
-
-        self.body_x = 0.0
-        self.body_y = 0.0
-        self.scale_x = 1.0
-        self.scale_y = 1.0
-        self.rotation = 0.0
-        self.rotation_pivot = (64.5, 84.0)
-        self.head_x = 0.0
-        self.head_y = 0.0
-        self.head_tilt = -1.0
-        self.blink = False
-        self.mouth_open = 0.0
-        self.mouth_smile = 0.0
-        self.brow_lift = 0.0
-        self.near_shoulder = (79.0, 56.0)
-        self.near_elbow = (84.0, 74.0)
-        self.near_hand = (83.0, 89.0)
-        self.far_shoulder = (50.0, 57.0)
-        self.far_elbow = (46.0, 75.0)
-        self.far_hand = (48.0, 90.0)
-        self.near_hip = (70.0, 91.0)
-        self.near_knee = (72.0, 104.0)
-        self.near_ankle = (73.0, 117.0)
-        self.far_hip = (59.0, 91.0)
-        self.far_knee = (58.0, 104.0)
-        self.far_ankle = (57.0, 117.0)
-        self.near_hand_mode = "relaxed"
-        self.far_hand_mode = "relaxed"
-
-        if animation == "idle":
-            breath = 0.5 - 0.5 * cosine
-            self.body_y = -0.45 * breath
-            self.head_y = -0.25 * breath
-            self.head_x = 0.25 * wave
-            self.head_tilt = -1.3 + 0.55 * wave
-            self.near_elbow = (84.0 + 0.6 * wave, 74.0)
-            self.near_hand = (83.0 + 0.45 * wave, 89.0 + 0.35 * cosine)
-            self.far_elbow = (46.0 - 0.45 * wave, 75.0)
-            self.far_hand = (48.0 - 0.35 * wave, 90.0)
-            self.blink = frame_idx == 6
-
-        elif animation in {"walk", "run"}:
-            running = animation == "run"
-            gait = 1.0 if not running else 1.55
-            stride = 8.5 * wave * gait
-            near_lift = max(0.0, wave) * (5.0 if not running else 8.0)
-            far_lift = max(0.0, -wave) * (5.0 if not running else 8.0)
-            self.body_x = (0.8 if not running else 1.2) * wave
-            self.body_y = -(1.2 if not running else 2.0) * abs(wave)
-            self.head_x = 0.5 * wave
-            self.head_y = -0.35 * abs(wave)
-            self.head_tilt = (-2.0 if not running else -4.0) - 0.5 * wave
-            self.near_knee = (72.0 + stride * 0.50, 104.0 - near_lift * 0.25)
-            self.near_ankle = (73.0 + stride, 117.0 - near_lift)
-            self.far_knee = (58.0 - stride * 0.48, 104.0 - far_lift * 0.25)
-            self.far_ankle = (57.0 - stride * 0.92, 117.0 - far_lift)
-            self.near_elbow = (84.0 - stride * 0.45, 74.0)
-            self.near_hand = (83.0 - stride * 0.62, 89.0)
-            self.far_elbow = (46.0 + stride * 0.38, 75.0)
-            self.far_hand = (48.0 + stride * 0.54, 90.0)
-            if running:
-                self.near_hand_mode = self.far_hand_mode = "closed"
-
-        elif animation in {"crouch", "crouch_walk"}:
-            moving = animation == "crouch_walk"
-            stride = wave if moving else 0.0
-            self.scale_y = 0.79
-            self.rotation_pivot = (64.5, 117.0)
-            self.body_y = 1.0
-            self.head_tilt = -3.0 + 0.7 * stride
-            self.near_shoulder = (79.0, 60.0)
-            self.far_shoulder = (50.0, 61.0)
-            self.near_elbow = (87.0 + 3.0 * stride, 78.0)
-            self.near_hand = (92.0 + 5.0 * stride, 91.0)
-            self.far_elbow = (44.0 - 3.0 * stride, 79.0)
-            self.far_hand = (39.0 - 5.0 * stride, 92.0)
-            self.near_hip = (70.0, 95.0)
-            self.far_hip = (59.0, 95.0)
-            self.near_knee = (79.0 + 5.0 * stride, 105.0)
-            self.near_ankle = (85.0 + 8.0 * stride, 117.0)
-            self.far_knee = (51.0 - 5.0 * stride, 105.0)
-            self.far_ankle = (45.0 - 8.0 * stride, 117.0)
-
-        elif animation == "jump":
-            preload = 1.0 - _smoothstep(t / 0.28)
-            rise = _smoothstep((t - 0.08) / 0.58)
-            self.body_y = 4.0 * preload - 7.0 * rise
-            self.scale_y = 1.0 - 0.13 * preload
-            self.rotation_pivot = (64.5, 117.0)
-            self.head_tilt = -2.5 - 1.5 * rise
-            self.near_elbow = (86.0, 69.0 - 6.0 * rise)
-            self.near_hand = (93.0, 83.0 - 14.0 * rise)
-            self.far_elbow = (44.0, 70.0 - 4.0 * rise)
-            self.far_hand = (37.0, 86.0 - 10.0 * rise)
-            self.near_knee = (78.0, 100.0)
-            self.near_ankle = (82.0, 111.0)
-            self.far_knee = (53.0, 101.0)
-            self.far_ankle = (49.0, 112.0)
-            self.near_hand_mode = self.far_hand_mode = "open"
-
-        elif animation == "fall":
-            self.body_y = -7.0 + 4.0 * t
-            self.head_tilt = 2.0 + 2.0 * t
-            self.mouth_open = 0.12
-            self.near_elbow = (90.0, 66.0)
-            self.near_hand = (101.0, 76.0)
-            self.far_elbow = (40.0, 67.0)
-            self.far_hand = (29.0, 78.0)
-            self.near_knee = (77.0, 100.0)
-            self.near_ankle = (82.0, 112.0)
-            self.far_knee = (52.0, 101.0)
-            self.far_ankle = (47.0, 113.0)
-            self.near_hand_mode = self.far_hand_mode = "open"
-
-        elif animation in {"land_hard", "land_recovery"}:
-            impact = math.sin(math.pi * _clamp01(t / 0.78)) if animation == "land_hard" else 1.0 - _smoothstep(t)
-            self.body_y = 3.0 * impact
-            self.scale_y = 1.0 - 0.25 * impact
-            self.rotation_pivot = (64.5, 117.0)
-            self.head_tilt = -5.0 * impact
-            self.near_shoulder = (79.0, 58.0 + 6.0 * impact)
-            self.far_shoulder = (50.0, 59.0 + 6.0 * impact)
-            self.near_elbow = (88.0, 76.0 + 3.0 * impact)
-            self.near_hand = (95.0, 92.0 + 2.0 * impact)
-            self.far_elbow = (43.0, 77.0 + 3.0 * impact)
-            self.far_hand = (36.0, 93.0 + 2.0 * impact)
-            self.near_knee = (79.0, 104.0)
-            self.near_ankle = (84.0, 117.0)
-            self.far_knee = (51.0, 104.0)
-            self.far_ankle = (46.0, 117.0)
-
-        elif animation in {"dash_startup", "dash"}:
-            startup = animation == "dash_startup"
-            charge = _smoothstep(t) if startup else 1.0
-            self.rotation = -7.0 - 4.0 * charge
-            self.rotation_pivot = (64.5, 93.0)
-            self.body_x = (-2.0 * charge if startup else -2.0 + 6.0 * t)
-            self.body_y = 2.5 * charge
-            self.head_tilt = -3.0
-            self.near_elbow = (70.0, 72.0)
-            self.near_hand = (60.0, 85.0)
-            self.far_elbow = (42.0, 70.0)
-            self.far_hand = (31.0, 82.0)
-            self.near_knee = (81.0 + 5.0 * charge, 102.0)
-            self.near_ankle = (92.0 + 7.0 * charge, 117.0)
-            self.far_knee = (51.0 - 5.0 * charge, 103.0)
-            self.far_ankle = (41.0 - 7.0 * charge, 117.0)
-            self.near_hand_mode = self.far_hand_mode = "closed"
-
-        elif animation == "slide":
-            self.scale_y = 0.65
-            self.rotation = -12.0
-            self.rotation_pivot = (64.5, 117.0)
-            self.body_y = 2.0
-            self.body_x = -2.0 + 6.0 * t
-            self.head_tilt = -4.0
-            self.near_shoulder = (79.0, 62.0)
-            self.far_shoulder = (50.0, 63.0)
-            self.near_elbow = (72.0, 80.0)
-            self.near_hand = (62.0, 91.0)
-            self.far_elbow = (43.0, 80.0)
-            self.far_hand = (34.0, 93.0)
-            self.near_hip = (71.0, 97.0)
-            self.far_hip = (58.0, 97.0)
-            self.near_knee = (86.0, 105.0)
-            self.near_ankle = (101.0, 116.0)
-            self.far_knee = (49.0, 105.0)
-            self.far_ankle = (35.0, 117.0)
-
-        elif animation == "roll":
-            self.scale_x = 0.78
-            self.scale_y = 0.72
-            self.rotation = -360.0 * t
-            self.rotation_pivot = (64.5, 80.0)
-            self.body_x = -5.0 + 10.0 * t
-            self.body_y = 6.0 - 2.5 * math.sin(math.pi * t)
-            self.head_tilt = -2.0
-            self.near_shoulder = (76.0, 66.0)
-            self.far_shoulder = (53.0, 67.0)
-            self.near_elbow = (77.0, 80.0)
-            self.near_hand = (71.0, 91.0)
-            self.far_elbow = (52.0, 81.0)
-            self.far_hand = (58.0, 92.0)
-            self.near_hip = (70.0, 94.0)
-            self.far_hip = (59.0, 94.0)
-            self.near_knee = (77.0, 102.0)
-            self.near_ankle = (78.0, 110.0)
-            self.far_knee = (52.0, 102.0)
-            self.far_ankle = (51.0, 110.0)
-            self.near_hand_mode = self.far_hand_mode = "closed"
-
-        elif animation == "wall_grab":
-            self.body_x = 8.0
-            self.body_y = -4.0 + 0.7 * wave
-            self.rotation = 4.0
-            self.rotation_pivot = (65.0, 82.0)
-            self.head_tilt = 1.5
-            self.near_elbow = (94.0, 48.0)
-            self.near_hand = (104.0, 36.0)
-            self.far_elbow = (78.0, 50.0)
-            self.far_hand = (96.0, 42.0)
-            self.near_knee = (83.0, 98.0)
-            self.near_ankle = (98.0, 106.0)
-            self.far_knee = (68.0, 101.0)
-            self.far_ankle = (91.0, 114.0)
-            self.near_hand_mode = self.far_hand_mode = "grip"
-
-        elif animation == "wall_jump":
-            spring = _smoothstep(t)
-            self.body_x = 8.0 - 18.0 * spring
-            self.body_y = -4.0 - 5.0 * math.sin(math.pi * spring)
-            self.rotation = 4.0 - 22.0 * spring
-            self.rotation_pivot = (65.0, 82.0)
-            self.head_tilt = 2.0 - 3.0 * spring
-            self.near_elbow = _lerp_point((94.0, 48.0), (51.0, 67.0), spring)
-            self.near_hand = _lerp_point((104.0, 36.0), (36.0, 77.0), spring)
-            self.far_elbow = _lerp_point((78.0, 50.0), (45.0, 69.0), spring)
-            self.far_hand = _lerp_point((96.0, 42.0), (31.0, 82.0), spring)
-            self.near_knee = (83.0 - 9.0 * spring, 99.0)
-            self.near_ankle = (98.0 - 19.0 * spring, 108.0)
-            self.far_knee = (68.0 - 7.0 * spring, 101.0)
-            self.far_ankle = (91.0 - 20.0 * spring, 114.0)
-            self.near_hand_mode = self.far_hand_mode = "open"
-
-        elif animation == "ledge_grab":
-            self.body_y = 8.0 + 0.7 * wave
-            self.head_y = 1.0
-            self.head_tilt = -1.0 + 0.5 * wave
-            self.near_shoulder = (78.0, 58.0)
-            self.far_shoulder = (51.0, 59.0)
-            self.near_elbow = (79.0, 38.0)
-            self.near_hand = (73.0, 18.0)
-            self.far_elbow = (55.0, 39.0)
-            self.far_hand = (58.0, 18.0)
-            self.near_knee = (77.0, 103.0)
-            self.near_ankle = (83.0, 110.0)
-            self.far_knee = (53.0, 102.0)
-            self.far_ankle = (47.0, 109.0)
-            self.near_hand_mode = self.far_hand_mode = "grip"
-
-        elif animation in {"ledge_climb", "ledge_getup"}:
-            climb = _smoothstep(t)
-            self.body_y = 8.0 - 11.0 * climb
-            self.scale_y = 0.88 + 0.12 * climb
-            self.rotation_pivot = (64.5, 117.0)
-            self.head_y = 3.0 * (1.0 - climb)
-            self.head_tilt = -3.0 + 2.0 * climb
-            self.near_elbow = _lerp_point((79.0, 38.0), (88.0, 74.0), climb)
-            self.near_hand = _lerp_point((73.0, 18.0), (94.0, 90.0), climb)
-            self.far_elbow = _lerp_point((55.0, 39.0), (43.0, 75.0), climb)
-            self.far_hand = _lerp_point((58.0, 18.0), (37.0, 90.0), climb)
-            self.near_hip = _lerp_point((70.0, 95.0), (70.0, 91.0), climb)
-            self.far_hip = _lerp_point((59.0, 95.0), (59.0, 91.0), climb)
-            self.near_knee = _lerp_point((77.0, 105.0), (72.0, 104.0), climb)
-            self.near_ankle = _lerp_point((83.0, 110.0), (73.0, 117.0), climb)
-            self.far_knee = _lerp_point((53.0, 104.0), (58.0, 104.0), climb)
-            self.far_ankle = _lerp_point((47.0, 109.0), (57.0, 117.0), climb)
-            self.near_hand_mode = self.far_hand_mode = "grip" if climb < 0.65 else "relaxed"
-
-        elif animation == "ledge_roll":
-            roll = _smoothstep((t - 0.12) / 0.88)
-            self.scale_x = _lerp(1.0, 0.78, roll)
-            self.scale_y = _lerp(0.88, 0.72, roll)
-            self.rotation = -360.0 * roll
-            self.rotation_pivot = (64.5, 77.0)
-            self.body_x = -4.0 + 9.0 * roll
-            self.body_y = 8.0 * (1.0 - roll) + 4.0 * roll - 2.0 * math.sin(math.pi * roll)
-            self.head_tilt = -2.0
-            self.near_elbow = _lerp_point((79.0, 38.0), (77.0, 80.0), roll)
-            self.near_hand = _lerp_point((73.0, 18.0), (71.0, 91.0), roll)
-            self.far_elbow = _lerp_point((55.0, 39.0), (52.0, 81.0), roll)
-            self.far_hand = _lerp_point((58.0, 18.0), (58.0, 92.0), roll)
-            self.near_hip = (70.0, 95.0)
-            self.far_hip = (59.0, 95.0)
-            self.near_knee = (77.0, 103.0)
-            self.near_ankle = (79.0, 111.0)
-            self.far_knee = (52.0, 103.0)
-            self.far_ankle = (50.0, 111.0)
-            self.near_hand_mode = self.far_hand_mode = "grip" if roll < 0.35 else "closed"
-
-        elif animation == "ledge_getup_attack":
-            rise = _smoothstep(_clamp01(t / 0.48))
-            strike = _smoothstep(_clamp01((t - 0.32) / 0.52))
-            self.body_y = 8.0 - 10.0 * rise
-            self.rotation_pivot = (64.5, 117.0)
-            self.scale_y = 0.88 + 0.12 * rise
-            self.head_tilt = -3.0 + 3.0 * rise
-            self.near_elbow = _lerp_point((79.0, 38.0), (96.0, 64.0), rise)
-            self.near_hand = _lerp_point((73.0, 18.0), (112.0 + 4.0 * strike, 57.0 - 9.0 * strike), rise)
-            self.far_elbow = _lerp_point((55.0, 39.0), (58.0, 68.0), rise)
-            self.far_hand = _lerp_point((58.0, 18.0), (68.0, 73.0), rise)
-            self.near_knee = _lerp_point((77.0, 105.0), (76.0, 103.0), rise)
-            self.near_ankle = _lerp_point((83.0, 110.0), (82.0, 117.0), rise)
-            self.far_knee = _lerp_point((53.0, 104.0), (54.0, 104.0), rise)
-            self.far_ankle = _lerp_point((47.0, 109.0), (48.0, 117.0), rise)
-            self.near_hand_mode = "chop" if rise > 0.55 else "grip"
-            self.far_hand_mode = "closed"
-
-        elif animation == "climb":
-            alternate = wave
-            self.body_y = -4.0 + 1.2 * cosine
-            self.head_tilt = 1.5 * alternate
-            self.near_elbow = (81.0, 46.0 + 9.0 * alternate)
-            self.near_hand = (80.0, 29.0 + 12.0 * alternate)
-            self.far_elbow = (50.0, 47.0 - 9.0 * alternate)
-            self.far_hand = (51.0, 31.0 - 12.0 * alternate)
-            self.near_knee = (76.0, 99.0 - 5.0 * alternate)
-            self.near_ankle = (82.0, 112.0 - 9.0 * alternate)
-            self.far_knee = (53.0, 100.0 + 5.0 * alternate)
-            self.far_ankle = (47.0, 113.0 + 6.0 * alternate)
-            self.near_hand_mode = self.far_hand_mode = "grip"
-
-        elif animation == "swim":
-            stroke = wave
-            self.body_y = -4.0 + 1.1 * cosine
-            self.rotation = -53.0 + 3.0 * wave
-            self.rotation_pivot = (64.5, 77.0)
-            self.head_tilt = 1.0
-            self.near_elbow = (86.0 + 5.0 * stroke, 67.0)
-            self.near_hand = (97.0 + 6.0 * stroke, 75.0)
-            self.far_elbow = (43.0 - 5.0 * stroke, 68.0)
-            self.far_hand = (32.0 - 6.0 * stroke, 76.0)
-            self.near_knee = (77.0 - 4.0 * stroke, 100.0)
-            self.near_ankle = (82.0 - 6.0 * stroke, 111.0)
-            self.far_knee = (52.0 + 4.0 * stroke, 101.0)
-            self.far_ankle = (47.0 + 6.0 * stroke, 112.0)
-            self.near_hand_mode = self.far_hand_mode = "open"
-
-        elif animation == "float_glide":
-            self.body_y = -8.0 + 1.3 * cosine
-            self.rotation = -12.0 + 2.0 * wave
-            self.rotation_pivot = (64.5, 78.0)
-            self.head_tilt = 0.5
-            self.near_elbow = (92.0, 61.0 + 2.0 * wave)
-            self.near_hand = (108.0, 64.0 + 3.0 * wave)
-            self.far_elbow = (38.0, 62.0 - 2.0 * wave)
-            self.far_hand = (23.0, 67.0 - 3.0 * wave)
-            self.near_knee = (78.0, 101.0)
-            self.near_ankle = (86.0, 110.0)
-            self.far_knee = (52.0, 101.0)
-            self.far_ankle = (44.0, 111.0)
-            self.near_hand_mode = self.far_hand_mode = "open"
-
-        elif animation == "block":
-            brace = 0.25 + 0.75 * math.sin(math.pi * t)
-            self.body_y = 2.5 * brace
-            self.scale_y = 1.0 - 0.08 * brace
-            self.rotation_pivot = (64.5, 117.0)
-            self.head_tilt = -2.0 * brace
-            self.near_elbow = (83.0, 65.0)
-            self.near_hand = (62.0, 70.0)
-            self.far_elbow = (46.0, 66.0)
-            self.far_hand = (67.0, 79.0)
-            self.near_knee = (75.0, 102.0)
-            self.near_ankle = (79.0, 117.0)
-            self.far_knee = (55.0, 103.0)
-            self.far_ankle = (51.0, 117.0)
-            self.near_hand_mode = self.far_hand_mode = "closed"
-
-        elif animation == "hit":
-            recoil = math.sin(math.pi * t)
-            self.body_x = -5.0 * recoil
-            self.body_y = -2.0 * recoil
-            self.rotation = -9.0 * recoil
-            self.rotation_pivot = (64.5, 86.0)
-            self.head_tilt = 12.0 * recoil
-            self.mouth_open = 0.75 * recoil
-            self.brow_lift = 0.8 * recoil
-            self.near_elbow = (73.0, 69.0)
-            self.near_hand = (63.0, 79.0)
-            self.far_elbow = (42.0, 70.0)
-            self.far_hand = (31.0, 81.0)
-            self.near_knee = (76.0, 102.0)
-            self.near_ankle = (81.0, 117.0)
-            self.far_knee = (54.0, 103.0)
-            self.far_ankle = (49.0, 117.0)
-            self.near_hand_mode = self.far_hand_mode = "open"
-
-        elif animation == "death":
-            collapse = _smoothstep(t)
-            self.body_x = 4.0 * collapse
-            self.body_y = -4.0 * collapse
-            self.scale_y = 1.0 - 0.12 * collapse
-            self.rotation = 86.0 * collapse
-            self.rotation_pivot = (64.5, 88.0)
-            self.head_tilt = 6.0 * collapse
-            self.mouth_open = 0.15 * collapse
-            self.near_elbow = (78.0, 78.0)
-            self.near_hand = (70.0, 94.0)
-            self.far_elbow = (49.0, 78.0)
-            self.far_hand = (55.0, 95.0)
-            self.near_knee = (76.0, 103.0)
-            self.near_ankle = (79.0, 116.0)
-            self.far_knee = (53.0, 103.0)
-            self.far_ankle = (50.0, 116.0)
-            self.near_hand_mode = self.far_hand_mode = "relaxed"
-
-        elif animation == "talk":
-            gesture = 0.5 - 0.5 * math.cos(phase * math.tau)
-            counter = 0.5 + 0.5 * math.sin((phase + 0.23) * math.tau)
-            self.body_y = -0.35 * gesture
-            self.head_x = 0.7 * gesture
-            self.head_y = -0.2 * gesture
-            self.head_tilt = -1.8 + 2.0 * gesture
-            self.mouth_open = 0.22 + 0.68 * max(0.0, math.sin((phase + 0.08) * math.tau))
-            self.brow_lift = 0.75 * counter
-            self.blink = frame_idx == 6
-            self.near_elbow = (85.0 + 4.5 * gesture, 73.0 - 4.5 * gesture)
-            self.near_hand = (89.0 + 10.0 * gesture, 83.0 - 15.0 * gesture)
-            self.near_hand_mode = "pinch" if frame_idx in {2, 3, 4} else "open"
-            self.far_elbow = (45.0 - 2.5 * counter, 74.0 - 3.0 * counter)
-            self.far_hand = (43.0 - 5.0 * counter, 86.0 - 11.0 * counter)
-            self.far_hand_mode = "open"
-
-        elif animation == "interact":
-            reach = math.sin(t * math.pi) ** 1.2
-            settle = math.sin(phase * math.tau)
-            self.body_x = 1.8 * reach
-            self.body_y = -0.5 * reach
-            self.head_x = 1.5 * reach
-            self.head_y = -0.2 * reach
-            self.head_tilt = -2.8 + 1.0 * reach
-            self.mouth_open = 0.10 + 0.18 * reach
-            self.brow_lift = 0.35 + 0.55 * reach
-            self.near_elbow = (88.0 + 6.0 * reach, 72.0 - 2.0 * reach)
-            self.near_hand = (91.0 + 18.0 * reach, 78.0 - 9.0 * reach)
-            self.near_hand_mode = "point"
-            self.far_elbow = (48.0 + 2.0 * reach, 72.0)
-            self.far_hand = (58.0 + 2.0 * reach, 68.0 - 2.0 * reach)
-            self.far_hand_mode = "closed"
-            self.near_knee = (72.0 + 1.2 * reach, 104.0)
-            self.near_ankle = (73.0 + 2.2 * reach, 117.0)
-            self.far_knee = (58.0 + 0.4 * settle, 104.0)
-
-        elif animation == "jab":
-            strike = math.sin(math.pi * t) ** 1.6
-            self.body_x = 2.5 * strike
-            self.rotation = -3.0 * strike
-            self.rotation_pivot = (64.5, 91.0)
-            self.head_tilt = -2.0
-            self.near_elbow = (88.0 + 7.0 * strike, 70.0)
-            self.near_hand = (92.0 + 23.0 * strike, 68.0 - 2.0 * strike)
-            self.near_hand_mode = "point"
-            self.far_elbow = (53.0, 66.0)
-            self.far_hand = (64.0, 68.0)
-            self.far_hand_mode = "closed"
-            self.near_knee = (75.0 + 2.0 * strike, 103.0)
-            self.near_ankle = (79.0 + 5.0 * strike, 117.0)
-            self.far_knee = (55.0 - 2.0 * strike, 104.0)
-            self.far_ankle = (50.0 - 4.0 * strike, 117.0)
-
-        elif animation == "punch":
-            windup = _smoothstep(_clamp01(t / 0.35))
-            release = _smoothstep(_clamp01((t - 0.28) / 0.45))
-            recover = _smoothstep(_clamp01((t - 0.72) / 0.28))
-            strike = release * (1.0 - recover)
-            self.body_x = -2.0 * windup + 6.0 * strike
-            self.rotation = 5.0 * windup - 11.0 * strike
-            self.rotation_pivot = (64.5, 91.0)
-            self.head_tilt = -3.0 * strike
-            self.near_elbow = (77.0 + 18.0 * strike, 68.0)
-            self.near_hand = (67.0 - 8.0 * windup + 45.0 * strike, 72.0)
-            self.near_hand_mode = "closed"
-            self.far_elbow = (54.0 + 5.0 * strike, 66.0)
-            self.far_hand = (64.0 + 8.0 * strike, 71.0)
-            self.far_hand_mode = "closed"
-            self.near_knee = (77.0 + 4.0 * strike, 103.0)
-            self.near_ankle = (83.0 + 7.0 * strike, 117.0)
-            self.far_knee = (53.0 - 3.0 * strike, 104.0)
-            self.far_ankle = (47.0 - 6.0 * strike, 117.0)
-
-        elif animation in {"slash", "attack_side"}:
-            arc = _smoothstep(t)
-            swing = math.sin(math.pi * arc)
-            wide = animation == "slash"
-            self.body_x = (3.0 if wide else 4.5) * swing
-            self.rotation = (-5.0 if wide else -8.0) * swing
-            self.rotation_pivot = (64.5, 91.0)
-            self.head_tilt = -1.5 - 2.0 * swing
-            start = (69.0, 55.0) if wide else (72.0, 64.0)
-            end = (111.0, 81.0) if wide else (116.0, 68.0)
-            self.near_elbow = _lerp_point((75.0, 59.0), (96.0, 68.0), arc)
-            self.near_hand = _lerp_point(start, end, arc)
-            self.near_hand_mode = "chop" if wide else "point"
-            self.far_elbow = (53.0, 68.0)
-            self.far_hand = (64.0, 72.0)
-            self.far_hand_mode = "closed"
-            self.near_knee = (76.0 + 4.0 * swing, 103.0)
-            self.near_ankle = (82.0 + 7.0 * swing, 117.0)
-            self.far_knee = (54.0 - 3.0 * swing, 104.0)
-            self.far_ankle = (48.0 - 5.0 * swing, 117.0)
-
-        elif animation == "attack_up":
-            strike = math.sin(math.pi * t)
-            self.body_y = 2.0 * (1.0 - strike)
-            self.scale_y = 0.92 + 0.08 * strike
-            self.rotation_pivot = (64.5, 117.0)
-            self.head_tilt = -4.0 * strike
-            self.near_elbow = (84.0, 64.0 - 18.0 * strike)
-            self.near_hand = (88.0, 76.0 - 52.0 * strike)
-            self.near_hand_mode = "chop"
-            self.far_elbow = (50.0, 66.0 - 12.0 * strike)
-            self.far_hand = (58.0, 75.0 - 38.0 * strike)
-            self.far_hand_mode = "open"
-            self.near_knee = (77.0, 103.0)
-            self.near_ankle = (82.0, 117.0)
-            self.far_knee = (53.0, 104.0)
-            self.far_ankle = (48.0, 117.0)
-
-        elif animation == "attack_down":
-            strike = math.sin(math.pi * t)
-            self.body_y = 3.0 * strike
-            self.scale_y = 1.0 - 0.12 * strike
-            self.rotation_pivot = (64.5, 117.0)
-            self.head_tilt = 4.0 * strike
-            self.near_elbow = (91.0, 76.0 + 9.0 * strike)
-            self.near_hand = (104.0, 88.0 + 21.0 * strike)
-            self.near_hand_mode = "chop"
-            self.far_elbow = (52.0, 69.0)
-            self.far_hand = (63.0, 76.0)
-            self.far_hand_mode = "closed"
-            self.near_knee = (78.0, 104.0)
-            self.near_ankle = (84.0, 117.0)
-            self.far_knee = (52.0, 104.0)
-            self.far_ankle = (46.0, 117.0)
-
-        elif animation == "air_neutral":
-            self.body_y = -7.0
-            self.rotation = -360.0 * t
-            self.rotation_pivot = (64.5, 78.0)
-            self.head_tilt = -1.0
-            self.near_elbow = (91.0, 65.0)
-            self.near_hand = (105.0, 72.0)
-            self.far_elbow = (39.0, 66.0)
-            self.far_hand = (25.0, 74.0)
-            self.near_knee = (79.0, 100.0)
-            self.near_ankle = (88.0, 108.0)
-            self.far_knee = (50.0, 100.0)
-            self.far_ankle = (41.0, 109.0)
-            self.near_hand_mode = self.far_hand_mode = "chop"
-
-        elif animation == "air_forward":
-            strike = math.sin(math.pi * t)
-            self.body_y = -7.0
-            self.rotation = -8.0 * strike
-            self.rotation_pivot = (64.5, 78.0)
-            self.near_elbow = (93.0, 66.0)
-            self.near_hand = (110.0 + 5.0 * strike, 63.0)
-            self.near_hand_mode = "point"
-            self.far_elbow = (50.0, 69.0)
-            self.far_hand = (62.0, 72.0)
-            self.far_hand_mode = "closed"
-            self.near_knee = (83.0, 98.0)
-            self.near_ankle = (103.0 + 5.0 * strike, 101.0)
-            self.far_knee = (51.0, 101.0)
-            self.far_ankle = (43.0, 111.0)
-
-        elif animation == "air_back":
-            strike = math.sin(math.pi * t)
-            self.body_y = -7.0
-            self.rotation = 8.0 * strike
-            self.rotation_pivot = (64.5, 78.0)
-            self.near_elbow = (82.0, 70.0)
-            self.near_hand = (74.0, 78.0)
-            self.near_hand_mode = "closed"
-            self.far_elbow = (38.0, 66.0)
-            self.far_hand = (19.0 - 4.0 * strike, 63.0)
-            self.far_hand_mode = "chop"
-            self.near_knee = (76.0, 101.0)
-            self.near_ankle = (83.0, 111.0)
-            self.far_knee = (46.0, 98.0)
-            self.far_ankle = (25.0 - 5.0 * strike, 101.0)
-
-        elif animation == "air_down":
-            strike = math.sin(math.pi * t)
-            self.body_y = -8.0 + 2.0 * strike
-            self.head_tilt = 3.0 * strike
-            self.near_elbow = (90.0, 62.0)
-            self.near_hand = (101.0, 52.0)
-            self.far_elbow = (42.0, 63.0)
-            self.far_hand = (31.0, 54.0)
-            self.near_knee = (72.0, 101.0)
-            self.near_ankle = (73.0, 121.0 + 2.0 * strike)
-            self.far_knee = (58.0, 101.0)
-            self.far_ankle = (57.0, 114.0)
-            self.near_hand_mode = self.far_hand_mode = "open"
-
-        elif animation == "air_up":
-            strike = math.sin(math.pi * t)
-            self.body_y = -8.0
-            self.head_tilt = -4.0 * strike
-            self.near_elbow = (83.0, 55.0 - 15.0 * strike)
-            self.near_hand = (88.0, 62.0 - 42.0 * strike)
-            self.far_elbow = (48.0, 56.0 - 14.0 * strike)
-            self.far_hand = (52.0, 63.0 - 40.0 * strike)
-            self.near_knee = (77.0, 101.0)
-            self.near_ankle = (82.0, 111.0)
-            self.far_knee = (52.0, 101.0)
-            self.far_ankle = (47.0, 112.0)
-            self.near_hand_mode = self.far_hand_mode = "chop"
-
-        elif animation == "charge":
-            pulse = 0.5 - 0.5 * cosine
-            self.body_y = 2.0 * pulse
-            self.scale_y = 1.0 - 0.08 * pulse
-            self.rotation_pivot = (64.5, 117.0)
-            self.head_tilt = -3.0 - 2.0 * pulse
-            self.brow_lift = -0.2
-            self.near_elbow = (81.0, 66.0)
-            self.near_hand = (66.0, 72.0)
-            self.far_elbow = (48.0, 67.0)
-            self.far_hand = (63.0, 76.0)
-            self.near_hand_mode = self.far_hand_mode = "pinch"
-            self.near_knee = (76.0, 103.0)
-            self.near_ankle = (81.0, 117.0)
-            self.far_knee = (54.0, 104.0)
-            self.far_ankle = (49.0, 117.0)
-
-        elif animation == "cast":
-            unfold = _smoothstep(t)
-            self.body_y = -1.0 * unfold
-            self.head_tilt = -2.0 + 3.0 * unfold
-            self.mouth_open = 0.1 + 0.25 * unfold
-            self.brow_lift = 0.4 + 0.4 * unfold
-            self.near_elbow = _lerp_point((81.0, 66.0), (96.0, 54.0), unfold)
-            self.near_hand = _lerp_point((66.0, 72.0), (113.0, 46.0), unfold)
-            self.far_elbow = _lerp_point((48.0, 67.0), (36.0, 57.0), unfold)
-            self.far_hand = _lerp_point((63.0, 76.0), (20.0, 51.0), unfold)
-            self.near_hand_mode = self.far_hand_mode = "open"
-
-        elif animation == "celebrate":
-            lift = 0.5 - 0.5 * cosine
-            self.body_y = -2.0 * lift
-            self.head_tilt = 1.5 * wave
-            self.mouth_smile = 1.0
-            self.brow_lift = 0.7
-            self.near_elbow = (87.0, 58.0 - 9.0 * lift)
-            self.near_hand = (91.0, 65.0 - 28.0 * lift)
-            self.far_elbow = (43.0, 59.0 - 9.0 * lift)
-            self.far_hand = (39.0, 66.0 - 28.0 * lift)
-            self.near_hand_mode = self.far_hand_mode = "closed"
-            self.near_knee = (75.0, 103.0 - 2.0 * lift)
-            self.near_ankle = (79.0, 117.0 - 4.0 * lift)
-            self.far_knee = (55.0, 104.0)
-            self.far_ankle = (51.0, 117.0)
-
-        elif animation == "taunt":
-            question = 0.5 - 0.5 * cosine
-            self.head_tilt = -4.0 + 8.0 * question
-            self.brow_lift = 0.5
-            self.mouth_smile = -0.35
-            self.near_elbow = (87.0, 67.0 - 3.0 * question)
-            self.near_hand = (96.0, 55.0 - 7.0 * question)
-            self.near_hand_mode = "pinch"
-            self.far_elbow = (43.0, 69.0)
-            self.far_hand = (31.0, 77.0)
-            self.far_hand_mode = "open"
-
-        else:  # pragma: no cover - ROWS is the public animation contract.
-            raise KeyError(animation)
-
-
-def _s(value: float) -> int:
-    return int(round(value * SUPER))
-
-
-def _pt(point: Point) -> Tuple[int, int]:
-    return (_s(point[0]), _s(point[1]))
-
-
-def _box(center: Point, rx: float, ry: float) -> Tuple[int, int, int, int]:
-    cx, cy = center
-    return (_s(cx - rx), _s(cy - ry), _s(cx + rx), _s(cy + ry))
-
-
-def _poly(
-    draw: ImageDraw.ImageDraw,
-    points: Iterable[Point],
-    fill: RGBA,
-    outline: RGBA | None = OUTLINE,
-    width: float = 1.0,
-) -> None:
-    ipoints = [_pt(point) for point in points]
-    draw.polygon(ipoints, fill=fill)
-    if outline is not None and width > 0:
-        draw.line(ipoints + [ipoints[0]], fill=outline, width=max(1, _s(width)), joint="curve")
-
-
-def _line(draw: ImageDraw.ImageDraw, points: Sequence[Point], fill: RGBA, width: float) -> None:
-    draw.line([_pt(point) for point in points], fill=fill, width=max(1, _s(width)), joint="curve")
-
-
-def _ellipse(
-    draw: ImageDraw.ImageDraw,
-    center: Point,
-    rx: float,
-    ry: float,
-    fill: RGBA | None,
-    outline: RGBA | None = OUTLINE,
-    width: float = 1.0,
-) -> None:
-    draw.ellipse(
-        _box(center, rx, ry),
-        fill=fill,
-        outline=outline,
-        width=max(1, _s(width)) if outline is not None and width > 0 else 1,
-    )
-
-
-def _circle(
-    draw: ImageDraw.ImageDraw,
-    center: Point,
-    radius: float,
-    fill: RGBA | None,
-    outline: RGBA | None = OUTLINE,
-    width: float = 1.0,
-) -> None:
-    _ellipse(draw, center, radius, radius, fill, outline, width)
-
-
-def _lerp(a: float, b: float, amount: float) -> float:
-    return a + (b - a) * amount
-
-
-def _lerp_point(a: Point, b: Point, amount: float) -> Point:
-    return (_lerp(a[0], b[0], amount), _lerp(a[1], b[1], amount))
-
-
-def _clamp01(value: float) -> float:
-    return max(0.0, min(1.0, value))
-
-
-def _smoothstep(value: float) -> float:
-    value = _clamp01(value)
-    return value * value * (3.0 - 2.0 * value)
-
-
-def _unit_segment(a: Point, b: Point) -> Tuple[Point, Point, float]:
-    dx = b[0] - a[0]
-    dy = b[1] - a[1]
-    length = max(1.0e-6, math.hypot(dx, dy))
-    along = (dx / length, dy / length)
-    normal = (-along[1], along[0])
-    return along, normal, length
-
-
-def _bent_tube(
-    draw: ImageDraw.ImageDraw,
-    start: Point,
-    bend: Point,
-    end: Point,
-    radii: Tuple[float, float, float],
-    *,
-    fill: RGBA,
-    outline: RGBA = OUTLINE,
-    width: float = 1.15,
-) -> None:
-    """Draw one connected six-sided bent limb, not separate capsules."""
-    _, n1, _ = _unit_segment(start, bend)
-    _, n2, _ = _unit_segment(bend, end)
-    avg = (n1[0] + n2[0], n1[1] + n2[1])
-    avg_len = max(1.0e-6, math.hypot(*avg))
-    nm = (avg[0] / avg_len, avg[1] / avg_len)
-    r0, r1, r2 = radii
-    points = [
-        (start[0] + n1[0] * r0, start[1] + n1[1] * r0),
-        (bend[0] + nm[0] * r1, bend[1] + nm[1] * r1),
-        (end[0] + n2[0] * r2, end[1] + n2[1] * r2),
-        (end[0] - n2[0] * r2, end[1] - n2[1] * r2),
-        (bend[0] - nm[0] * r1, bend[1] - nm[1] * r1),
-        (start[0] - n1[0] * r0, start[1] - n1[1] * r0),
-    ]
-    _poly(draw, points, fill, outline, width)
-    _ellipse(draw, start, r0, r0, fill, outline, width)
-    _ellipse(draw, end, r2, r2, fill, outline, width)
-
-
-def _lens_tint(image: Image.Image, center: Point, rx: float, ry: float) -> None:
-    overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    draw = blending_draw(overlay)
-    _ellipse(draw, center, rx, ry, GLASS_TINT, outline=None, width=0)
-    rigdoc.composite_canvas(image, overlay)
-
-
-def _rotate(point: Point, origin: Point, degrees: float) -> Point:
-    radians = math.radians(degrees)
-    c = math.cos(radians)
-    s = math.sin(radians)
-    x = point[0] - origin[0]
-    y = point[1] - origin[1]
-    return (origin[0] + x * c - y * s, origin[1] + x * s + y * c)
-
-
-def _sp(point: Point) -> Point:
-    """A logical point in supersampled canvas pixels, unrounded."""
-    return (point[0] * SUPER, point[1] * SUPER)
-
-
-#: The torso's squash is painted about this point (the default turn pivot).
-TORSO_REFERENCE: Point = (64.5, 84.0)
-
-
-def _downsample(image: Image.Image) -> Image.Image:
-    return rigdoc.downsampled_canvas(image, FRAME_SIZE, Image.Resampling.LANCZOS)
-
-
-def _ensure_canvas_inset(image: Image.Image, margin: int = 2) -> Image.Image:
-    """Keep expressive poses fully visible without changing their authored shape.
-
-    Most frames only need a one- or two-pixel translation after Lanczos
-    downsampling.  Extremely wide rotations may receive a small uniform scale
-    reduction, capped by the available inset.  The operation is applied to the
-    complete composited character, so body connectivity and painter order are
-    preserved.
-    """
-    bbox = image.getbbox()
-    if bbox is None:
-        return image
-    left, top, right, bottom = bbox
-    available_w = image.width - 2 * margin
-    available_h = image.height - 2 * margin
-    width = right - left
-    height = bottom - top
-    scale = min(1.0, available_w / max(1, width), available_h / max(1, height))
-    if scale >= 0.999:
-        # A translation: through rigdoc's seam, so a part flipbook moves the
-        # frame's parts with it.
-        canvas = Image.new("RGBA", image.size, (0, 0, 0, 0))
-        target_x = min(max(left, margin), image.width - margin - width)
-        target_y = min(max(top, margin), image.height - margin - height)
-        rigdoc.composite_canvas(canvas, image, (int(target_x) - left, int(target_y) - top))
-        return canvas
-    crop = image.crop(bbox)
-    if scale < 0.999:
-        crop = crop.resize(
-            (max(1, round(crop.width * scale)), max(1, round(crop.height * scale))),
-            Image.Resampling.LANCZOS,
-        )
-    new_w, new_h = crop.size
-    target_x = min(max(left, margin), image.width - margin - new_w)
-    target_y = min(max(top, margin), image.height - margin - new_h)
-    canvas = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    # Rescaled, the frame is one picture: it rides a part flipbook as one overlay.
-    rigdoc.composite_canvas(canvas, crop, (int(target_x), int(target_y)))
-    return canvas
-
-
-class GirdleRenderer:
-    """Draw connected, prop-free Girdle frames."""
-
-    USES_PROPS = False
-    USES_DROP_SHADOW = False
-
-    def render_frame(self, animation: str, frame_idx: int, nframes: int) -> Image.Image:
-        """The frame as a rig: the torso (one piece per squash step) and each
-        head expression are painted once and placed by the whole-body turn;
-        limbs are tapered tubes of turned segments through the authored
-        joints; hands, shoes, cuffs and caps ride their joints."""
-        image = Image.new("RGBA", (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER), (0, 0, 0, 0))
-        pose = Pose(animation, frame_idx, nframes)
-
-        def P(point: Point) -> Point:
-            px, py = point
-            pivot_x, pivot_y = pose.rotation_pivot
-            px = pivot_x + (px - pivot_x) * pose.scale_x
-            py = pivot_y + (py - pivot_y) * pose.scale_y
-            if abs(pose.rotation) > 1.0e-7:
-                px, py = _rotate((px, py), pose.rotation_pivot, pose.rotation)
-            return (px + pose.body_x, py + pose.body_y)
-
-        # Fixed painter order requested by the character-art contract.
-        self._draw_far_leg(image, P, pose)
-        self._draw_near_leg(image, P, pose)
-        self._place_torso(image, P, pose)
-        self._draw_far_arm(image, P, pose)
-        self._draw_near_arm(image, P, pose)
-        # The head is last, but participates in the same whole-body rotation.
-        pose.head_tilt += pose.rotation
-        self._place_head(image, P((65.0 + pose.head_x, 36.0 + pose.head_y)), pose)
-        return _ensure_canvas_inset(_downsample(image))
-
-    def _draw_far_leg(self, image: Image.Image, P, pose: Pose) -> None:
-        self._draw_leg(image, P(pose.far_hip), P(pose.far_knee), P(pose.far_ankle), near=False)
-
-    def _draw_near_leg(self, image: Image.Image, P, pose: Pose) -> None:
-        self._draw_leg(image, P(pose.near_hip), P(pose.near_knee), P(pose.near_ankle), near=True)
-
-    def _draw_leg(self, image: Image.Image, hip: Point, knee: Point, ankle: Point, *, near: bool) -> None:
-        cloth = TROUSER_LIGHT if near else TROUSER
-        shade = TROUSER if near else SUIT_DARK
-        side = "near" if near else "far"
-        SR.tube2(image, _sp(hip), _sp(knee), _sp(ankle), (4.7 * SUPER, 4.0 * SUPER, 3.1 * SUPER), cloth, OUTLINE, 1.15 * SUPER, f"{side}_leg", q=float(SUPER))
-        crease = SR.rest_piece(
-            ("girdle_crease", shade), (_s(8), _s(8)), _pt((4.0, 4.0)), lambda d: _line(d, [(4.0 - 1.8, 4.0), (4.0 + 1.4, 4.0 + 0.6)], shade, 0.7)
-        )
-        SR.place(image, crease, _sp(knee), 0.0, f"{side}_crease")
-        # Hem and shoe, painted once with the shin upright and turned to the
-        # shin's axis (rolls, wall poses, swimming and death turn the feet).
-        along, _normal, _ = _unit_segment(knee, ankle)
-        local_knee, local_ankle = (16.0, 6.0), (16.0, 16.0)
-        shoe = SR.rest_piece(
-            ("girdle_shoe", near), (_s(32), _s(32)), _pt(local_ankle), lambda d: self._paint_shoe(d, local_knee, local_ankle, near=near)
-        )
-        SR.place(image, shoe, _sp(ankle), math.degrees(math.atan2(along[1], along[0])) - 90.0, f"{side}_shoe")
-
-    def _paint_shoe(self, draw: ImageDraw.ImageDraw, knee: Point, ankle: Point, *, near: bool) -> None:
-        shade = TROUSER if near else SUIT_DARK
-        # Trouser hem overlaps the shin; the shoe is oriented from the leg's
-        # transformed axis so rolls, wall poses, swimming, and death do not leave
-        # axis-aligned feet behind the rotating body.
-        _ellipse(draw, (ankle[0], ankle[1] - 0.7), 3.35, 3.0, shade, OUTLINE, 0.85)
-        along, normal, _ = _unit_segment(knee, ankle)
-        foot_dir = (-normal[0], -normal[1])
-        shoe_center = (
-            ankle[0] + along[0] * 1.8 + foot_dir[0] * (1.4 if near else 0.8),
-            ankle[1] + along[1] * 1.8 + foot_dir[1] * (1.4 if near else 0.8),
-        )
-        half_len = 5.8
-        half_w = 2.9
-        shoe_points = [
-            (shoe_center[0] - foot_dir[0] * half_len + along[0] * half_w, shoe_center[1] - foot_dir[1] * half_len + along[1] * half_w),
-            (shoe_center[0] + foot_dir[0] * half_len + along[0] * half_w, shoe_center[1] + foot_dir[1] * half_len + along[1] * half_w),
-            (shoe_center[0] + foot_dir[0] * (half_len + 1.3), shoe_center[1] + foot_dir[1] * (half_len + 1.3)),
-            (shoe_center[0] + foot_dir[0] * half_len - along[0] * half_w, shoe_center[1] + foot_dir[1] * half_len - along[1] * half_w),
-            (shoe_center[0] - foot_dir[0] * half_len - along[0] * half_w, shoe_center[1] - foot_dir[1] * half_len - along[1] * half_w),
-        ]
-        _poly(draw, shoe_points, SHOE_LIGHT if near else SHOE, OUTLINE, 1.0)
-        _line(
-            draw,
-            [
-                (shoe_center[0] - foot_dir[0] * 3.2 - along[0] * 0.8, shoe_center[1] - foot_dir[1] * 3.2 - along[1] * 0.8),
-                (shoe_center[0] + foot_dir[0] * 2.8 - along[0] * 0.8, shoe_center[1] + foot_dir[1] * 2.8 - along[1] * 0.8),
-            ],
-            SHOE_LIGHT,
-            0.55,
-        )
-
-    def _place_torso(self, image: Image.Image, P, pose: Pose) -> None:
-        """The torso painted once per squash step (about a fixed reference, so
-        any pivot shares it) and placed by the body transform."""
-        sx, sy = SR.q(pose.scale_x, 0.04), SR.q(pose.scale_y, 0.04)
-        ref = TORSO_REFERENCE
-
-        def S(point: Point) -> Point:
-            return (ref[0] + (point[0] - ref[0]) * sx, ref[1] + (point[1] - ref[1]) * sy)
-
-        part = SR.rest_piece(("girdle_torso", sx, sy), image.size, _sp(ref), lambda d: self._draw_torso(d, S))
-        SR.place(image, part, _sp(P(ref)), pose.rotation, "torso")
-
-    def _draw_torso(self, draw: ImageDraw.ImageDraw, P) -> None:
-        # Pelvis first gives both legs a real attachment under the jacket.
-        draw.rounded_rectangle(
-            _box(P((64.5, 90.5)), 10.0, 5.8),
-            radius=max(1, _s(2.6)),
-            fill=TROUSER,
-            outline=OUTLINE,
-            width=max(1, _s(1.15)),
-        )
-        jacket = [
-            P((50.0, 54.0)),
-            P((55.0, 50.0)),
-            P((64.0, 49.0)),
-            P((73.0, 49.5)),
-            P((80.0, 54.0)),
-            P((81.0, 84.5)),
-            P((75.0, 93.0)),
-            P((65.0, 91.5)),
-            P((55.0, 93.0)),
-            P((49.0, 84.0)),
-        ]
-        _poly(draw, jacket, SUIT, OUTLINE, 1.35)
-        # Near lit plane and far shadow plane make the torso read as three-quarter,
-        # not a flat front-facing rectangle.
-        _poly(
-            draw,
-            [P((65.0, 50.0)), P((77.0, 53.0)), P((79.0, 84.0)), P((72.0, 90.0)), P((64.5, 88.0))],
-            SUIT_MID,
-            outline=None,
-            width=0,
-        )
-        _poly(
-            draw,
-            [P((50.5, 55.0)), P((57.0, 51.0)), P((60.0, 88.0)), P((54.0, 91.0)), P((49.5, 83.0))],
-            SUIT_DARK,
-            outline=None,
-            width=0,
-        )
-        # Continuous shirt and waistcoat.
-        _poly(draw, [P((59.0, 50.5)), P((69.5, 50.5)), P((69.0, 83.5)), P((59.5, 83.5))], SHIRT, OUTLINE_SOFT, 0.75)
-        _poly(draw, [P((58.5, 66.0)), P((70.0, 65.5)), P((71.5, 86.0)), P((58.5, 86.0))], VEST, OUTLINE_SOFT, 0.65)
-        # Shirt collar, tie, and strong period lapels.
-        _poly(draw, [P((59.0, 50.0)), P((64.0, 56.5)), P((60.0, 62.0)), P((56.5, 53.0))], SHIRT, OUTLINE, 0.75)
-        _poly(draw, [P((69.5, 50.0)), P((64.0, 56.5)), P((68.0, 62.0)), P((72.5, 53.0))], SHIRT_SHADE, OUTLINE, 0.75)
-        _poly(draw, [P((63.0, 56.0)), P((66.0, 56.0)), P((67.0, 78.0)), P((64.0, 84.0)), P((61.8, 78.0))], TIE, OUTLINE, 0.65)
-        _poly(draw, [P((55.0, 51.5)), P((61.0, 54.0)), P((63.0, 63.0)), P((57.0, 72.0)), P((51.0, 57.0))], SUIT_LIGHT, OUTLINE, 0.75)
-        _poly(draw, [P((73.0, 51.5)), P((68.0, 54.0)), P((65.0, 63.0)), P((72.0, 73.0)), P((79.0, 56.5))], SUIT_DARK, OUTLINE, 0.75)
-        # Tailoring details.
-        _line(draw, [P((65.5, 67.0)), P((66.0, 88.0))], SUIT_DARK, 0.7)
-        _circle(draw, P((67.5, 73.5)), 0.9, OUTLINE_SOFT, OUTLINE_SOFT, 0.2)
-        _circle(draw, P((67.5, 81.0)), 0.9, OUTLINE_SOFT, OUTLINE_SOFT, 0.2)
-        _line(draw, [P((72.5, 75.0)), P((77.5, 74.5))], SUIT_LIGHT, 0.55)
-        # Neck/gorget is part of the torso layer and is heavily overlapped by the
-        # final head layer, preventing any head/torso gap.
-        draw.rounded_rectangle(
-            _box(P((64.5, 50.0)), 4.8, 6.0),
-            radius=max(1, _s(2.0)),
-            fill=SKIN_SHADE,
-            outline=OUTLINE,
-            width=max(1, _s(0.9)),
-        )
-
-    def _draw_far_arm(self, image: Image.Image, P, pose: Pose) -> None:
-        self._draw_arm(
-            image,
-            P(pose.far_shoulder),
-            P(pose.far_elbow),
-            P(pose.far_hand),
-            pose.far_hand_mode,
-            near=False,
-        )
-
-    def _draw_near_arm(self, image: Image.Image, P, pose: Pose) -> None:
-        self._draw_arm(
-            image,
-            P(pose.near_shoulder),
-            P(pose.near_elbow),
-            P(pose.near_hand),
-            pose.near_hand_mode,
-            near=True,
-        )
-
-    def _draw_arm(
-        self,
-        image: Image.Image,
-        shoulder: Point,
-        elbow: Point,
-        hand: Point,
-        hand_mode: str,
-        *,
-        near: bool,
-    ) -> None:
-        sleeve = SUIT_LIGHT if near else SUIT_DARK
-        seam = SUIT if near else OUTLINE_SOFT
-        side = "near" if near else "far"
-        along, normal, length = _unit_segment(elbow, hand)
-        wrist = (
-            hand[0] - along[0] * min(3.0, length * 0.30),
-            hand[1] - along[1] * min(3.0, length * 0.30),
-        )
-        seam_w = 0.75 * SUPER
-        SR.tube2(
-            image, _sp(shoulder), _sp(elbow), _sp(wrist), (5.4 * SUPER, 4.4 * SUPER, 3.2 * SUPER), sleeve, OUTLINE, 1.2 * SUPER, f"{side}_arm",
-            q=float(SUPER), seams=((seam, seam_w, 1.7 * SUPER, 0.0), (seam, seam_w, 0.0, 0.9 * SUPER)),
-        )
-        # Shoulder cap explicitly overlaps the jacket yoke.
-        cap = SR.rest_piece(("girdle_cap", sleeve), (_s(16), _s(16)), _pt((8.0, 8.0)), lambda d: _ellipse(d, (8.0, 8.0), 5.6, 5.0, sleeve, OUTLINE, 1.0))
-        SR.place(image, cap, _sp(shoulder), 0.0, f"{side}_shoulder")
-        # Cuff bridges cloth and skin.
-        cuff_fill = SHIRT if near else SHIRT_SHADE
-        cuff = SR.rest_piece(("girdle_cuff", cuff_fill), (_s(10), _s(10)), _pt((5.0, 5.0)), lambda d: _ellipse(d, (5.0, 5.0), 3.5, 3.0, cuff_fill, OUTLINE, 0.85))
-        SR.place(image, cuff, _sp(wrist), 0.0, f"{side}_cuff")
-        # The hand, painted once pointing along +x and turned to the forearm.
-        h_along, _n, _l = _unit_segment(wrist, hand)
-        center = (12.0, 12.0)
-        part = SR.rest_piece(
-            ("girdle_hand", hand_mode, near), (_s(24), _s(24)), _pt(center), lambda d: self._draw_hand(d, (9.0, 12.0), center, hand_mode, near=near)
-        )
-        SR.place(image, part, _sp(hand), math.degrees(math.atan2(h_along[1], h_along[0])), f"{side}_hand")
-
-    def _draw_hand(self, draw: ImageDraw.ImageDraw, wrist: Point, center: Point, mode: str, *, near: bool) -> None:
-        skin = SKIN_LIGHT if near else SKIN
-        along, normal, _ = _unit_segment(wrist, center)
-        palm_rx = 3.8 if mode in {"open", "point"} else 3.3
-        _ellipse(draw, center, palm_rx, 3.1, skin, OUTLINE, 0.9)
-
-        def finger(start: Point, end: Point, width: float = 1.0) -> None:
-            _line(draw, [start, end], OUTLINE, width + 0.75)
-            _line(draw, [start, end], skin, width)
-
-        if mode == "open":
-            base = (center[0] + along[0] * 1.2, center[1] + along[1] * 1.2)
-            for offset in (-1.45, -0.45, 0.55, 1.45):
-                start = (base[0] + normal[0] * offset, base[1] + normal[1] * offset)
-                length = 3.0 - abs(offset) * 0.25
-                end = (start[0] + along[0] * length, start[1] + along[1] * length)
-                finger(start, end, 0.85)
-        elif mode == "pinch":
-            for sign in (-1.0, 1.0):
-                start = (
-                    center[0] + along[0] * 1.0 + normal[0] * sign * 0.7,
-                    center[1] + along[1] * 1.0 + normal[1] * sign * 0.7,
-                )
-                end = (
-                    center[0] + along[0] * 3.4 + normal[0] * sign * 0.15,
-                    center[1] + along[1] * 3.4 + normal[1] * sign * 0.15,
-                )
-                finger(start, end, 0.9)
-        elif mode == "point":
-            start = (center[0] + along[0] * 1.2, center[1] + along[1] * 1.2)
-            end = (center[0] + along[0] * 6.2, center[1] + along[1] * 6.2)
-            finger(start, end, 1.05)
-        elif mode in {"closed", "grip"}:
-            _line(draw, [(center[0] - 1.6, center[1] - 0.6), (center[0] + 1.8, center[1] + 1.0)], SKIN_DEEP, 0.45)
-            if mode == "grip":
-                _line(draw, [(center[0] - normal[0] * 1.8, center[1] - normal[1] * 1.8), (center[0] + normal[0] * 1.8, center[1] + normal[1] * 1.8)], SKIN_DEEP, 0.4)
-        elif mode == "chop":
-            start = (center[0] + along[0] * 0.8, center[1] + along[1] * 0.8)
-            end = (center[0] + along[0] * 5.2, center[1] + along[1] * 5.2)
-            _line(draw, [start, end], OUTLINE, 2.4)
-            _line(draw, [start, end], skin, 1.55)
+
+# ---- How he holds himself ----------------------------------------------------
+
+P = G.P
+#: One finger at the bridge of his glasses.
+AT_GLASSES = (10.5, -8.5)
+
+
+@G.row
+def idle(i: int, n: int):
+    # Very straight and very still, and then his glasses are not right.
+    _, s, _c = loop(i, n)
+    fix = i in (n - 3, n - 2)
+    return P(hip=(0.0, 0.3 + 0.3 * s), head=(0.0, -0.2 * s, 3.0 if fix else 0.0), na=AT_GLASSES if fix else BEHIND_NEAR, nh="point" if fix else "soft",
+             eyes="closed" if i == n - 2 else "open")
+
+
+@G.row
+def walk(i: int, n: int):
+    # He walks as he stands: his hands stay behind him.
+    ph, s, c = loop(i, n)
+    nf, ff = R.stride(ph, 8.0, 4.5)
+    return P(hip=(0.5, 0.8 * math.cos(2.0 * ph)), lean=1.0, head=(0.0, 0.0, 1.0 * s), na=(BEHIND_NEAR[0], BEHIND_NEAR[1] + 0.5 * c),
+             fa=(BEHIND_FAR[0], BEHIND_FAR[1] - 0.5 * c), nf=nf, ff=ff, hem=(1.0 + abs(c), abs(c)))
+
+
+@G.row
+def talk(i: int, n: int):
+    # One hand, and not much of it: he states, he does not persuade.
+    _, s, c = loop(i, n)
+    return P(hip=(0.0, 0.3 * s), head=(0.3, 0.0, 2.0 * s), na=(13.0 + 2.0 * c, 6.0 - 3.0 * max(0.0, s)), nh="point" if s > 0.2 else "flat",
+             mouth=("open", "flat", "o", "flat")[i % 4], brows=1.0 if s > 0.5 else 0.0)
+
+
+@G.row
+def interact(i: int, n: int):
+    reach = P(hip=(1.5, 1.0), lean=6.0, na=(26.0, -1.0), nh="point", mouth="o", brows=1.0)
+    return G.keys(shot(i, n), [(0.0, P()), (0.35, reach), (0.7, dict(reach, na=(26.0, 3.0))), (1.0, P())])
+
+
+@G.row
+def land_recovery(i: int, n: int):
+    return G.keys(shot(i, n), [(0.0, R.HALF_UP), (1.0, P())])
+
+
+@G.row
+def ledge_getup(i: int, n: int):
+    return G.keys(shot(i, n), [(0.0, R.PERCH), (0.6, R.HALF_UP), (1.0, P())])
+
+
+#: Two fingers, held close: he fights as he argues.
+GUARD = P(hip=(-1.0, 2.0), lean=1.0, na=(10.0, 7.0), fa=BEHIND_FAR, nh="point", nf=(-6.0, 0.0, 0.0), ff=(7.0, 0.0, 0.0), brows=-1.0)
+
+
+@G.row
+def jab(i: int, n: int):
+    poke = dict(GUARD, hip=(3.0, 3.0), lean=10.0, na=(27.0, 0.0), ff=(10.0, 0.0, 0.0))
+    return G.keys(shot(i, n), [(0.0, GUARD), (0.3, poke), (0.6, poke), (1.0, GUARD)])
+
+
+@G.row
+def block(i: int, n: int):
+    # His arms crossed in front of him.
+    _, s, _c = loop(i, n)
+    return P(hip=(-2.0, 4.0 + 0.4 * s), lean=-4.0, head=(-1.0, 0.0, 6.0), na=(13.0, 1.0), fa=(8.0, 4.0), nh="fist", fh="fist", nf=(-7.0, 0.0, 0.0),
+             ff=(7.0, 0.0, 0.0), brows=-1.0)
+
+
+@G.row
+def charge(i: int, n: int):
+    # He builds the sentence: his eyes shut, a finger at his temple.
+    _, s, _c = loop(i, n)
+    return P(hip=(0.0, 1.0 + 0.4 * s), lean=2.0, head=(0.0, 0.0, 6.0 + s), na=(9.0, -9.0), nh="point", eyes="closed", brows=-1.0)
+
+
+@G.row
+def cast(i: int, n: int):
+    out = P(hip=(3.0, 3.0), lean=10.0, head=(1.0, 0.0, -4.0), na=(26.0, -3.0), nh="point", nf=(-9.0, 0.0, 10.0), ff=(10.0, 0.0, 0.0), eyes="wide",
+            mouth="open", brows=1.0, hem=(5.0, 1.0))
+    return G.keys(shot(i, n), [(0.0, charge(0, 8)), (0.3, out), (1.0, dict(out, hip=(2.0, 3.0), lean=7.0))])
+
+
+@G.row
+def celebrate(i: int, n: int):
+    # As pleased as he gets: one small nod, and a finger up.
+    _, s, _c = loop(i, n)
+    return P(hip=(0.0, 0.6 + 0.6 * s), head=(0.0, 0.0, 5.0 * max(0.0, s)), na=(11.0, -4.0 - 2.0 * max(0.0, s)), nh="point", eyes="happy" if s > 0.3 else "open",
+             mouth="smile", brows=1.0)
+
+
+@G.row
+def taunt(i: int, n: int):
+    # He looks at you over his glasses, and puts them back.
+    down = P(lean=6.0, head=(1.0, 0.5, 12.0), na=(10.0, -7.0), nh="point", brows=1.0, eyes="up")
+    return G.keys(shot(i, n), [(0.0, P()), (0.3, down), (0.7, down), (1.0, P(na=AT_GLASSES, nh="point"))])
+
+
+# ---- His logic ---------------------------------------------------------------
+
+
+def _sym(symbols, size: float, fill: RGBA = LOGIC):
+    return R.glyph(K, symbols, size, fill, LOGIC_DARK)
+
+
+def _loop_arrow(radius: float, turn: int):
+    """The arrow that goes round and comes back: all but a gap of a circle,
+    with a head, turned by ``turn`` degrees."""
+
+    def shape(d) -> None:
+        pts = [K.at(radius * math.cos(math.radians(a + turn)), radius * math.sin(math.radians(a + turn))) for a in range(20, 321, 12)]
+        K.stroke(d, pts, WHITE, 1.6)
+        a = math.radians(320 + turn)
+        tip = K.at(radius * math.cos(a), radius * math.sin(a))
+        for da, k in ((-0.55, 0.62), (0.75, 1.3)):
+            K.stroke(d, [tip, (tip[0] - 4.2 * math.cos(a + math.pi / 2.0 + da) * 1.0, tip[1] - 4.2 * math.sin(a + math.pi / 2.0 + da) * 1.0)], WHITE, 1.5)
+            del k
+
+    return R.chalk(K, ("loop_arrow", radius, turn), shape, LOGIC, LOGIC_DARK)
+
+
+def _effects(ctx) -> List[Stamp]:
+    out: List[Stamp] = []
+    anim, i, n, hand, head, hip, shoulder = ctx.anim, ctx.i, ctx.n, ctx.hand, ctx.head, ctx.hip, ctx.shoulder
+
+    def stamp(part, p, name: str, degrees: float = 0.0) -> None:
+        out.append((part, p, name, degrees))
+
+    def sentence(centre, size: float, turn: int) -> None:
+        """G, and the arrow round it."""
+        stamp(_loop_arrow(size, turn), centre, "loop")
+        stamp(_sym("G", size * 0.9, LOGIC_GOLD), centre, "g")
+
+    if anim == "jab" and 1 <= i <= 3:
+        stamp(_sym(["turnstile"], 7.0), (hand[0] + 18.0, hand[1] - 1.0), "turnstile")
+    elif anim == "punch" and 3 <= i <= 5:
+        centre = (hand[0] + 15.0, hand[1])
+        stamp(R.burst(K, 8.0 + (i - 3), LOGIC, LOGIC_DARK), centre, "burst")
+        stamp(_sym(["not"], 6.0, LOGIC_GOLD), centre, "not")
+    elif anim in ("slash", "ledge_getup_attack"):
+        lo, hi = (2, 5) if anim == "slash" else (4, 6)
+        if lo <= i <= hi:
+            a = math.degrees(math.atan2(hand[1] - shoulder[1], hand[0] - shoulder[0]))
+            lead = int(round(a / 5.0)) * 5
+            stamp(R.swoosh(K, 48.0, lead - (100 if anim == "slash" else 60), lead + 6, 7.0, LOGIC, LOGIC_DARK), shoulder, "swoosh")
+            tip = math.radians(lead + 13.0)
+            stamp(_sym(["turnstile"], 8.0, LOGIC_GOLD), (shoulder[0] + 53.0 * math.cos(tip), shoulder[1] + 53.0 * math.sin(tip)), "turnstile")
+    elif anim == "attack_side" and 3 <= i <= 6:
+        sentence((hand[0] + 19.0 + 2.0 * (i - 3), hand[1]), 8.0 + (i - 3), 45 * (i - 3))
+    elif anim in ("attack_up", "air_up") and 3 <= i <= 6:
+        y = hand[1] - 16.0 - 4.0 * (i - 3)
+        if y > 16.0:
+            sentence((hand[0] + 2.0, y), 8.0, 45 * (i - 3))
+    elif anim == "attack_down" and i >= 4:
+        centre = (hand[0] + 8.0, ctx.ground - 13.0)
+        stamp(R.burst(K, 11.0 + min(3, i - 4), LOGIC, LOGIC_DARK, 10), centre, "burst")
+        stamp(_sym("?", 9.0, LOGIC_GOLD), centre, "question")
+    elif anim == "air_down" and 2 <= i <= 5:
+        stamp(_sym(["not"], 7.0), (hip[0] + 1.0, ctx.ground - 8.0), "not")
+    elif anim == "air_neutral":
+        for k, sym in enumerate((["turnstile"], "G", ["not"])):
+            a = ctx.phase + k * math.tau / 3.0
+            stamp(_sym(sym, 8.0, (LOGIC, LOGIC_GOLD, LOGIC)[k]), (hip[0] + 34.0 * math.cos(a), hip[1] - 18.0 + 11.0 * math.sin(a)), f"sym_{k}")
+    elif anim == "air_forward" and 2 <= i <= 4:
+        stamp(R.swoosh(K, 13.0, -70, 70, 5.0, LOGIC, LOGIC_DARK), (ctx.foot[0] + 2.0, ctx.foot[1]), "swoosh")
+    elif anim == "air_back" and 2 <= i <= 4:
+        stamp(R.burst(K, 8.0, LOGIC, LOGIC_DARK), (ctx.foot[0] - 11.0, ctx.foot[1]), "burst")
+    elif anim == "interact" and 3 <= i <= 5:
+        stamp(R.tick(K, 4.0, LOGIC_GOLD, LOGIC_DARK), (hand[0] + 16.0, hand[1] - 5.0), "tick")
+    elif anim == "charge":
+        sentence((head[0] - 2.0, head[1] - 31.0), 6.0 + min(4, i) * 0.75, 45 * i)
+    elif anim == "cast":
+        if i < 2:
+            sentence((head[0] - 2.0 + 12.0 * i, head[1] - 31.0 + 10.0 * i), 9.0, 45 * i)
         else:
-            # Connected thumb nub gives a relaxed hand a readable silhouette.
-            thumb_start = (center[0] + normal[0] * 1.2, center[1] + normal[1] * 1.2)
-            thumb_end = (thumb_start[0] + along[0] * 2.1, thumb_start[1] + along[1] * 2.1)
-            finger(thumb_start, thumb_end, 0.8)
+            go = (i - 2) / max(1, n - 3)
+            sentence((hand[0] + 20.0 + 8.0 * go, hand[1] - 2.0), 9.0 + round(4.0 * go), 45 * i)
+    elif anim == "celebrate" and i >= 2:
+        stamp(_sym(["turnstile"], 7.0, LOGIC_GOLD), (head[0] + 15.0, head[1] - 21.0), "turnstile")
+    elif anim == "taunt" and 0.3 <= ctx.u <= 0.7:
+        stamp(_sym("?", 7.0), (head[0] + 17.0, head[1] - 17.0), "question")
+    elif anim == "death" and i >= n - 2:
+        stamp(_sym(["not"], 6.0), (head[0] + 3.0, head[1] - 17.0 - 3.0 * (i - (n - 2))), "not")
+    return out
 
-    def _place_head(self, image: Image.Image, center: Point, pose: Pose) -> None:
-        """The head: one piece per expression, turned by its tilt."""
-        expr = SimpleNamespace(
-            head_tilt=0.0,
-            blink=bool(pose.blink),
-            brow_lift=SR.q(pose.brow_lift, 0.1),
-            mouth_open=SR.q(pose.mouth_open, 0.1),
-            mouth_smile=SR.q(pose.mouth_smile, 0.05),
-        )
-        key = ("girdle_head", expr.blink, expr.brow_lift, expr.mouth_open, expr.mouth_smile)
-        local = (32.0, 34.0)
-        part = SR.rest_piece(key, (_s(64), _s(64)), _pt(local), lambda d: self._draw_head(d._img, d, local, expr))
-        SR.place(image, part, _sp(center), pose.head_tilt, "head")
 
-    def _draw_head(self, image: Image.Image, draw: ImageDraw.ImageDraw, center: Point, pose: Pose) -> None:
-        cx, cy = center
+G.effects = _effects
 
-        def R(point: Point) -> Point:
-            return _rotate(point, center, pose.head_tilt)
+ROWS = G.rows
 
-        # Large connected ear is an important part of the likeness.
-        ear = R((cx - 13.5, cy + 0.5))
-        _ellipse(draw, ear, 5.0, 7.2, SKIN_SHADE, OUTLINE, 0.9)
-        _line(draw, [R((cx - 15.0, cy - 1.0)), R((cx - 12.6, cy + 2.5)), R((cx - 14.5, cy + 5.5))], SKIN_DEEP, 0.55)
 
-        # Long three-quarter face. The nose is part of the silhouette, not a
-        # detached triangle, and the jaw pinches sharply toward the chin.
-        face = [
-            R((cx - 8.5, cy - 20.0)),
-            R((cx + 2.5, cy - 21.5)),
-            R((cx + 10.0, cy - 17.5)),
-            R((cx + 14.5, cy - 9.0)),
-            R((cx + 16.2, cy - 1.5)),
-            R((cx + 19.8, cy + 3.0)),
-            R((cx + 14.0, cy + 7.0)),
-            R((cx + 10.0, cy + 15.5)),
-            R((cx + 2.5, cy + 21.5)),
-            R((cx - 1.8, cy + 19.8)),
-            R((cx - 7.5, cy + 12.0)),
-            R((cx - 10.0, cy + 2.0)),
-            R((cx - 10.0, cy - 11.0)),
-        ]
-        _poly(draw, face, SKIN, OUTLINE, 1.15)
-        # Forehead plane and cheek shadow sculpt the gaunt face.
-        _poly(
-            draw,
-            [R((cx - 5.5, cy - 17.5)), R((cx + 2.0, cy - 19.0)), R((cx + 6.0, cy - 9.0)), R((cx - 2.0, cy - 7.5))],
-            SKIN_LIGHT,
-            outline=None,
-            width=0,
-        )
-        _poly(
-            draw,
-            [R((cx + 7.5, cy + 4.0)), R((cx + 13.5, cy + 6.0)), R((cx + 9.0, cy + 15.0)), R((cx + 2.5, cy + 17.5))],
-            SKIN_SHADE,
-            outline=None,
-            width=0,
-        )
-
-        # Receding, slicked-back hair: substantial at the rear and temples, but
-        # exposing the unusually high forehead.  This avoids the old hat-like cap.
-        hair = [
-            R((cx - 9.0, cy - 19.0)),
-            R((cx - 7.5, cy - 24.5)),
-            R((cx - 1.0, cy - 28.5)),
-            R((cx + 6.5, cy - 27.8)),
-            R((cx + 11.0, cy - 24.0)),
-            R((cx + 8.0, cy - 20.0)),
-            R((cx + 3.0, cy - 23.0)),
-            R((cx - 1.0, cy - 18.0)),
-            R((cx - 5.5, cy - 10.0)),
-            R((cx - 9.5, cy - 9.0)),
-        ]
-        _poly(draw, hair, HAIR, OUTLINE, 0.95)
-        _line(draw, [R((cx - 2.5, cy - 23.5)), R((cx + 2.5, cy - 28.0)), R((cx + 7.5, cy - 27.0))], HAIR_GLEAM, 0.7)
-        _line(draw, [R((cx - 6.0, cy - 17.0)), R((cx - 2.0, cy - 25.0))], HAIR_MID, 0.65)
-        _line(draw, [R((cx - 7.0, cy - 9.0)), R((cx - 8.5, cy - 21.0))], HAIR, 1.0)
-        # Crisp receding hairline.
-        _line(draw, [R((cx - 2.0, cy - 18.0)), R((cx + 1.0, cy - 23.0)), R((cx + 5.0, cy - 22.0))], OUTLINE, 0.7)
-
-        # Small round wire glasses, not oversized goggles.
-        far_lens = R((cx - 2.8, cy - 4.6))
-        near_lens = R((cx + 6.0, cy - 4.7))
-        _lens_tint(image, far_lens, 3.7, 4.1)
-        _lens_tint(image, near_lens, 4.45, 4.7)
-        _ellipse(draw, far_lens, 3.7, 4.1, None, GLASS, 0.85)
-        _ellipse(draw, near_lens, 4.45, 4.7, None, GLASS, 0.95)
-        _line(draw, [R((cx + 1.1, cy - 4.7)), R((cx + 1.7, cy - 4.7))], GLASS, 0.7)
-        _line(draw, [R((cx + 10.5, cy - 5.0)), R((cx + 15.0, cy - 6.4))], GLASS, 0.55)
-        _line(draw, [R((cx - 6.6, cy - 4.5)), R((cx - 10.8, cy - 5.7))], GLASS, 0.5)
-
-        # Deep-set eyes and precise brows.
-        for is_near, lens in ((False, far_lens), (True, near_lens)):
-            if pose.blink:
-                _line(draw, [(lens[0] - 1.8, lens[1]), (lens[0] + 1.8, lens[1])], EYE, 0.6)
-            else:
-                _ellipse(draw, lens, 1.10 if is_near else 0.90, 1.05, EYE_WHITE, OUTLINE, 0.3)
-                _circle(draw, (lens[0] + 0.20, lens[1]), 0.48 if is_near else 0.40, EYE, EYE, 0.1)
-            brow_y = -10.5 - pose.brow_lift * (1.0 if is_near else 0.65)
-            if is_near:
-                _line(draw, [R((cx + 2.0, cy + brow_y)), R((cx + 9.5, cy + brow_y - 0.8))], HAIR, 0.8)
-            else:
-                _line(draw, [R((cx - 6.0, cy + brow_y + 0.5)), R((cx - 1.0, cy + brow_y))], HAIR, 0.65)
-
-        # Long nose bridge and projected tip.
-        _line(draw, [R((cx + 2.5, cy - 1.0)), R((cx + 5.0, cy + 5.5))], SKIN_SHADE, 0.8)
-        _line(draw, [R((cx + 5.0, cy + 5.5)), R((cx + 11.0, cy + 6.0)), R((cx + 7.0, cy + 8.0))], OUTLINE_SOFT, 0.65)
-        # Thin mouth and sharply defined chin.
-        mouth_center = R((cx + 5.0, cy + 12.8))
-        if pose.mouth_open > 0.22:
-            _ellipse(draw, mouth_center, 3.6, 0.8 + pose.mouth_open * 1.2, MOUTH, OUTLINE, 0.5)
-            _line(draw, [(mouth_center[0] - 2.1, mouth_center[1]), (mouth_center[0] + 2.0, mouth_center[1])], SKIN_LIGHT, 0.35)
-        else:
-            curve = pose.mouth_smile * 2.0
-            _line(
-                draw,
-                [
-                    R((cx + 1.0, cy + 12.3)),
-                    R((cx + 5.5, cy + 13.0 + curve)),
-                    R((cx + 10.0, cy + 12.3)),
-                ],
-                MOUTH,
-                0.75,
-            )
-        _line(draw, [R((cx + 0.5, cy + 16.8)), R((cx + 6.0, cy + 17.2))], SKIN_DEEP, 0.4)
-        # Sparse wrinkles that remain legible after downsampling.
-        _line(draw, [R((cx - 3.5, cy - 14.0)), R((cx + 2.0, cy - 14.8))], SKIN_SHADE, 0.35)
-        _line(draw, [R((cx + 6.5, cy + 7.0)), R((cx + 9.0, cy + 8.2))], SKIN_DEEP, 0.35)
-        _line(draw, [R((cx - 5.0, cy + 3.5)), R((cx - 4.0, cy + 9.0))], SKIN_SHADE, 0.35)
+def _render_frame(anim: str, frame_idx: int, nframes: int):
+    return G.render_frame(anim, frame_idx, nframes)
 
 
 def render(out_dir: str | Path, **opts) -> List[Path]:
-    from ...authoring.sheet_build import build_sheet
-
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    renderer = GirdleRenderer()
-    frame_transform: dict = {}
-    outputs = build_sheet(
-        frame_transform_out=frame_transform,
-        target=TARGET_BASENAME,
-        rows=ROWS,
-        render_fn=renderer.render_frame,
-        out_dir=out_dir,
-        frame_size=FRAME_SIZE,
-        auto_crop=True,
-    )
-    parts = publish_rig_flipbook(TARGET_BASENAME, ROWS, renderer.render_frame, outputs, frame_transform, Path(out_dir))
-    return [
-        outputs["spritesheet"],
-        outputs["yaml"],
-        outputs["ron"],
-        outputs["preview"],
-        outputs["canonical"],
-        outputs["canonical_transparent"],
-    ] + list(parts.values())
+    del opts
+    return G.render(out_dir, ACTOR_METADATA)
 
 
-def main(argv: List[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Render the polished Girdle character spritesheet.")
-    parser.add_argument(
-        "--out-dir",
-        type=Path,
-        default=Path(__file__).resolve().parents[2] / "generated" / TARGET_BASENAME,
-    )
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Render the Girdle spritesheet.")
+    parser.add_argument("--out-dir", type=Path, default=Path(__file__).resolve().parents[2] / "generated" / TARGET_NAME)
     args = parser.parse_args(argv)
     for path in render(args.out_dir):
         print(path)
     return 0
+
+
+TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 
 if __name__ == "__main__":

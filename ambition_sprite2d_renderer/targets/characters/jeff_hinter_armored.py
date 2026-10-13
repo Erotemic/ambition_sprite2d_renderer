@@ -21,8 +21,8 @@ from pathlib import Path
 from typing import List, Tuple
 
 from ...authoring.part_flipbook import publish_rig_flipbook
-from .jeff_hinter import JeffHinterRenderer as _BaseJeffHinterRenderer
-from .jeff_hinter import _lerp, _lerp_point, _pulse01, _smoothstep
+from ._jeff_hinter_base import JeffHinterRenderer as _BaseJeffHinterRenderer
+from ._jeff_hinter_base import _lerp, _lerp_point, _pulse01, _smoothstep
 
 RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]

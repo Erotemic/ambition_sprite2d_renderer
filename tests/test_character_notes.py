@@ -244,26 +244,19 @@ def test_review_character_configs_load_portable_notes():
         # ⛔ `bob.yaml` LEFT, 2026-10-05: Bob is the SVG-rigged module target
         # `targets/characters/bob.py`, whose ACTOR_METADATA carries his
         # authoring prose and barks verbatim (and more).
-        "craig.yaml",
         # `erdish.yaml` LEFT, 2026-10-13: Erdish is the rigged module target
         # `targets/characters/erdish.py`, whose ACTOR_METADATA carries his
         # authoring prose and barks verbatim.
-        "eve.yaml",
-        "judy.yaml",
-        "mallory.yaml",
+        # The eleven of the cryptography crew that are not Alice or Bob LEFT
+        # the same day: they are the module targets of
+        # `targets/characters/crypto_crew.py`, which carries each one's prose
+        # and barks verbatim.
         # ⛔ `oiler.yaml` LEFT, 2026-08-31. It published as `oiler` — a MODULE
         # target — while rendering with the `toon` generator, so two different
         # renderers wrote one sheet and the last to run won. Its authoring prose
         # and all three barks are already in `targets/characters/oiler.py`,
         # verbatim, so nothing was lost by deleting it: the module superseded the
         # concept sheet and the config outlived that.
-        "olivia.yaml",
-        "peggy.yaml",
-        "sybil.yaml",
-        "trent.yaml",
-        "trudy.yaml",
-        "victor.yaml",
-        "walter.yaml",
     )
     config_dir = (
         Path(__file__).resolve().parents[1]

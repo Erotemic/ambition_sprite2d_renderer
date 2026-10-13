@@ -189,25 +189,12 @@ RUNTIME_REVIEW_NPCS: tuple[str, ...] = (
     "merchant_prototype",
     "oiler",
     "vault_keeper",
-    # Cryptography crew batch 1 — Bob/Alice/Eve/Mallory/Trent/Judy.
-    # See `docs/concepts/cryptography-crew.md` for the full canonical
-    # roster. Batch 2 (Trudy/Craig/Sybil/Victor/Peggy/Walter/Olivia)
-    # landed as toon-target sketches with phenotype variation; each
-    # may be promoted to a bespoke template if a story room demands.
-    # Bob is no longer a review-config NPC: he is the SVG-rigged module
-    # target `bob` (targets/characters/bob.py), published by `publish`.
+    # The cryptography crew: only Alice is still a review-config NPC. Bob is
+    # the SVG-rigged module target `bob`, and the other eleven (Craig, Eve,
+    # Judy, Mallory, Olivia, Peggy, Sybil, Trent, Trudy, Victor, Walter) are
+    # the rigged module targets of `targets/characters/crypto_crew.py`. All of
+    # them are published by `publish`.
     "alice",
-    "eve",
-    "judy",
-    "mallory",
-    "trent",
-    "trudy",
-    "craig",
-    "sybil",
-    "victor",
-    "peggy",
-    "walter",
-    "olivia",
 )
 
 

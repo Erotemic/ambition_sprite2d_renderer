@@ -320,7 +320,7 @@ def _derive_body_plan(stem: str, target: str | None, tags: Sequence[str], rows: 
         return "Crawler"
     if "shark" in hay or "flying" in hay or "fly" in rows or "hover" in rows:
         return "Flyer"
-    if target in {"robot", "goblin", "toon", "ninja", "sandbag", "trent_elder"}:
+    if target in {"robot", "goblin", "toon", "ninja", "sandbag"}:
         return "HumanoidBiped"
     if any(row in rows for row in ("walk", "run", "slash", "talk", "interact")):
         return "HumanoidBiped"
