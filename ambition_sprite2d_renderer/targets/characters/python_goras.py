@@ -166,7 +166,10 @@ SKIN_SHADE: RGBA = (178, 130, 98, 255)
 SKIN_DEEP: RGBA = (130, 86, 70, 255)
 HAIR: RGBA = (62, 46, 40, 255)
 HAIR_LIGHT: RGBA = (112, 88, 74, 255)
-BAND: RGBA = (250, 248, 240, 255)
+#: The band round his head is gold, with the leaves of a laurel. (A white
+#: band and a white chiton read as a tennis player: Jon, 2026-10-13.)
+BAND: RGBA = (236, 196, 92, 255)
+BAND_DARK: RGBA = (160, 112, 44, 255)
 SANDAL: RGBA = (124, 84, 50, 255)
 SANDAL_DARK: RGBA = (74, 48, 34, 255)
 INK: RGBA = (26, 22, 28, 255)
@@ -222,8 +225,11 @@ def _hair(d) -> None:
                K.at(-5.2, 4.8), K.at(-4.8, 6.6), K.at(-20.0, 6.6), K.at(-20.0, -26.0), K.at(20.0, -26.0)], HAIR)
     for x, y in ((-6.0, -8.0), (-2.0, -11.0), (3.0, -11.4), (-8.0, -3.0), (6.6, -10.0), (-7.6, 2.0)):
         K.oval(d, K.at(x, y), 1.5, 1.2, None, HAIR_LIGHT, 0.5)  # type: ignore[arg-type]
-    # The white band round his head.
+    # The gold band round his head, and its leaves.
     K.poly(d, [K.at(-10.0, -6.0), K.at(9.6, -9.6), K.at(9.6, -7.6), K.at(-10.0, -3.8)], BAND)
+    for x in (-7.0, -3.0, 1.0, 5.0):
+        y = -5.4 - (x + 10.0) * 0.18
+        K.line(d, [K.at(x, y + 1.0), K.at(x + 1.8, y - 1.2)], BAND_DARK, 0.6)
 
 
 def _beard(d) -> None:
@@ -436,13 +442,17 @@ def _front_chiton(d) -> None:
     """His chiton from the front: pinned at each shoulder with bronze, a
     cord at his waist, the key pattern at its hem, and the folds."""
     K.poly(d, [K.at(-3.6, TOP - 1.0), K.at(3.6, TOP - 1.0), K.at(0.0, TOP + 7.0)], SKIN_SHADE)
-    for sx in (-1.0, 1.0):
-        K.oval(d, K.at(6.6 * sx, TOP + 4.0), 1.5, 1.5, BRONZE, BRONZE_DARK, 0.5)
-        K.line(d, [K.at(6.6 * sx, TOP + 5.0), K.at(8.0 * sx, HEM - 6.0)], CHITON_DARK, 0.6)
-    K.line(d, [K.at(-9.6, -9.0), K.at(9.6, -9.0)], BRONZE_DARK, 1.3)
-    K.line(d, [K.at(-9.6, -9.0), K.at(9.6, -9.0)], BRONZE, 0.6)
+    # His cloak, from his right shoulder across him, with its blue edge; and
+    # the bronze triangle on his chest.
+    K.poly(d, [K.at(-20.0, TOP), K.at(-1.6, TOP), K.at(10.4, -13.0), K.at(20.0, -4.0), K.at(20.0, 9.0), K.at(-2.0, 14.0), K.at(-20.0, 8.0)], CLOAK)
+    K.line(d, [K.at(-1.6, TOP), K.at(10.4, -13.0)], KEY, 1.2)
+    K.line(d, [K.at(-20.0, 8.0), K.at(-2.0, 14.0), K.at(20.0, 9.0)], CLOAK_DARK, 0.8)
+    for x0, y0, x1, y1 in ((-6.6, -30.0, 3.0, -10.0), (-8.4, -20.0, -1.0, 4.0)):
+        K.line(d, [K.at(x0, y0), K.at(x1, y1)], CLOAK_DARK, 0.6)
+    K.poly(d, [K.at(4.4, -27.0), K.at(8.4, -21.6), K.at(4.4, -21.6)], BRONZE, OUTLINE, 0.5)
+    K.oval(d, K.at(6.6, TOP + 4.0), 1.5, 1.5, BRONZE, BRONZE_DARK, 0.5)
     for x in (-5.0, -1.6, 1.6, 5.0):
-        K.line(d, [K.at(x, -7.0), K.at(x * 1.5, HEM - 6.0)], CHITON_DARK, 0.6)
+        K.line(d, [K.at(x, 16.0), K.at(x * 1.5, HEM - 6.0)], CHITON_DARK, 0.6)
     K.poly(d, [K.at(-20.0, HEM - 5.0), K.at(20.0, HEM - 5.0), K.at(20.0, HEM - 2.0), K.at(-20.0, HEM - 2.0)], KEY)
     for k in range(-5, 6):
         K.poly(d, [K.at(k * 2.6 - 0.6, HEM - 4.4), K.at(k * 2.6 + 0.6, HEM - 4.4), K.at(k * 2.6 + 0.6, HEM - 2.8), K.at(k * 2.6 - 0.6, HEM - 2.8)], CHITON)
@@ -457,7 +467,10 @@ def _front_hair_shape(d) -> None:
 def _front_hair(d) -> None:
     K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, -1.0), K.at(7.4, -1.0), K.at(7.0, -5.0), K.at(4.0, -7.2), K.at(0.0, -6.4), K.at(-4.0, -7.2),
                K.at(-7.0, -5.0), K.at(-7.4, -1.0), K.at(-20.0, -1.0)], HAIR)
-    K.poly(d, [K.at(-20.0, -9.6), K.at(20.0, -9.6), K.at(20.0, -7.8), K.at(-20.0, -7.8)], BAND)
+    K.poly(d, [K.at(-20.0, -9.8), K.at(20.0, -9.8), K.at(20.0, -7.6), K.at(-20.0, -7.6)], BAND)
+    for sx in (-1.0, 1.0):
+        for x in (1.4, 4.4, 7.4):
+            K.line(d, [K.at(x * sx, -7.8), K.at((x + 1.6) * sx, -9.6)], BAND_DARK, 0.6)
     for x, y in ((-5.0, -11.6), (0.0, -12.6), (5.0, -11.6), (-7.6, -4.0), (7.6, -4.0)):
         K.line(d, [K.at(x - 1.4, y + 0.8), K.at(x, y - 0.8), K.at(x + 1.4, y + 0.6)], HAIR_LIGHT, 0.6)
 
@@ -478,6 +491,45 @@ G.front_head_layers = R.front_face(R.make_front_head(K, ("goras",), SKIN, SKIN_D
                                    R.make_front_brows(K, ("goras",), HAIR, spread=3.4, y=-4.0, width=1.4))
 G.front_shoe = R.make_front_shoe(K, SANDAL, SANDAL_DARK, BUILD.ankle_up)
 G.front_span = (8.4, 4.8)
+
+
+def _snake_face(tongue: bool):
+    """The head of the python from the front, from its middle."""
+
+    def shape(d) -> None:
+        K.poly(d, [K.at(-3.6, -2.6), K.at(0.0, -3.6), K.at(3.6, -2.6), K.at(4.2, 0.4), K.at(2.4, 3.4), K.at(-2.4, 3.4), K.at(-4.2, 0.4)], WHITE)
+        if tongue:
+            K.stroke(d, [K.at(0.0, 3.0), K.at(0.0, 6.4)], WHITE, 1.0)
+            K.stroke(d, [K.at(0.0, 6.4), K.at(-1.6, 8.2)], WHITE, 0.9)
+            K.stroke(d, [K.at(0.0, 6.4), K.at(1.6, 8.2)], WHITE, 0.9)
+
+    def detail(d) -> None:
+        if tongue:
+            K.poly(d, [K.at(-2.6, 3.4), K.at(2.6, 3.4), K.at(2.6, 9.4), K.at(-2.6, 9.4)], TONGUE)
+        K.poly(d, [K.at(-2.6, 1.6), K.at(2.6, 1.6), K.at(2.4, 3.4), K.at(-2.4, 3.4)], SNAKE_LIGHT)
+        for sx in (-1.0, 1.0):
+            K.oval(d, K.at(2.2 * sx, -0.8), 1.3, 1.3, (252, 232, 120, 255))
+            K.oval(d, K.at(2.2 * sx, -0.8), 0.5, 1.0, INK)
+            K.oval(d, K.at(0.8 * sx, 1.8), 0.35, 0.35, SNAKE_DARK)
+
+    return K.solid(("snake_face", tongue), shape, SNAKE, detail, outline=1.1, rim=0.3, shade=0.35, shade_colour=SNAKE_DARK)
+
+
+def _front_snake(ctx) -> List[Stamp]:
+    """The python from the front. It lies over his shoulders, behind his
+    neck: its tail hangs down his chest at one side, and at the other the
+    front of it stands up beside his head and looks at you."""
+    sway = 1.6 * math.sin(ctx.phase)
+    up = 4.0 if ctx.anim == "front_talk" else 0.0
+    at = pin(ctx.neck)
+    tail = [(-6.6, 1.6), (-7.0, 7.0), (-5.4, 14.0), (-3.8, 21.0), (-4.8 + sway * 0.5, 27.0)]
+    head = (17.0 + sway, -9.0 - up + sway * 0.5)
+    front = [(6.6, 1.6), (10.0, 3.0), (13.6, 1.0), (15.6 + sway * 0.5, -3.0 - up * 0.5), (head[0] - 0.4, head[1] + 3.0)]
+    return [(_snake_body(("front_tail",), _spline(tail)), at, "front_snake_tail", 0.0), (_snake_body(("front_rise",), _spline(front)), at, "front_snake_rise", 0.0),
+            (_snake_face(ctx.i % 4 == 1), (at[0] + head[0], at[1] + head[1]), "front_snake_head", 4.0 * math.sin(ctx.phase))]
+
+
+G.front_effects = _front_snake
 R.add_front_rows(G, hands="sides")
 
 # ---- What he shows -----------------------------------------------------------

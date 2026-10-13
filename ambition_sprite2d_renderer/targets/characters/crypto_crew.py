@@ -993,8 +993,7 @@ def _olivia() -> None:
     def front(i: int, n: int):
         # Very still, her eyes closed. She opens them one time to look at you.
         _, s, c = loop(i, n)
-        return R.FP(hip=(0.0, 0.3 + 0.3 * s), head=(0.0, -0.2 * s, 0.0), la=(-5.5, 21.0), ra=(-5.5, 21.5), lz=0.35, rz=0.35, lh="flat", rh="flat",
-                    eyes="open" if i in (n - 3, n - 2) else "closed")
+        return R.FP(hip=(0.0, 0.3 + 0.3 * s), head=(0.0, -0.2 * s, 0.0), eyes="open" if i in (n - 3, n - 2) else "closed", **R.front_arms(p, "clasped"))
 
     R.add_front_rows(p)
 

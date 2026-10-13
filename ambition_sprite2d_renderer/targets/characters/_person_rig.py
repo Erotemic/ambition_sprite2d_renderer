@@ -35,7 +35,7 @@ from ._ai_era_kit import OUTLINE, WHITE, Kit, Point, Pose, RGBA, angle, blend, e
 __all__ = [
     "AIR", "APEX", "Build", "CROUCH", "DASH", "FALL", "FP", "FRONT_REST", "GUARD", "HALF_UP", "HANG", "LANDED", "LIBRARY", "MAIN_ROWS", "P", "PERCH", "Person", "REST",
     "RISE", "SAT", "STRUCK", "SUPINE", "TUCK", "UP", "Seg", "Stamp", "bone", "burst", "chain", "chalk", "dust", "glyph", "loop", "make_brows",
-    "brow_mood", "entry_points", "make_eyes", "make_figure", "make_front_shoe", "make_hand", "make_head", "make_mouth", "make_neck", "make_shoe", "make_torso", "ribbon", "shot", "stride", "swoosh", "tick",
+    "brow_mood", "entry_points", "front_arms", "make_eyes", "make_figure", "make_front_shoe", "make_hand", "make_head", "make_mouth", "make_neck", "make_shoe", "make_torso", "ribbon", "shot", "stride", "swoosh", "tick",
 ]
 
 #: A part of a bone: from and to (as parts of its length), how wide it is at
@@ -729,24 +729,49 @@ def front_face(head, eyes=None, brows=None, mouth=None, extra: Sequence[Tuple[Ca
     return layers
 
 
+def front_arms(person: "Person", how: str = "sides", lift: Tuple[float, float] = (0.0, 0.0)) -> dict:
+    """The keys of the two arms of a pose that faces the viewer, from the
+    lengths of ``person``'s own arms (a fixed number bends a long arm out and
+    pulls a short one straight).
+
+    ``how``: ``sides``, each arm hangs nearly straight, its hand by the hip;
+    or ``clasped``, the two hands meet low in front and do not cross.
+    ``lift``: how far each hand (left, right of the picture) is lifted to
+    speak, 0 to 1: the elbow stays by the side, and the forearm comes up and
+    out with an open hand."""
+    reach = person.b.upper + person.b.fore
+    out: dict = {}
+    for side, up in zip("lr", lift):
+        if how == "clasped" and up <= 0.0:
+            # The wrist is the length of a hand from the middle, so the two
+            # hands end at each other.
+            out.update({side + "a": (-(person.front_span[0] - 5.0), 0.56 * reach), side + "z": 0.35, side + "h": "flat"})
+            continue
+        up = min(1.0, max(0.0, up))
+        out.update({side + "a": (lerp(1.4, 8.5, up), lerp(0.97 * reach, 0.24 * reach, up)), side + "z": 0.5 * up, side + "h": "open" if up > 0.4 else "soft"})
+    return out
+
+
 def add_front_rows(person: "Person", *, idle_ms: int = 145, talk_ms: int = 110, hands: str = "clasped") -> None:
     """Give ``person`` the two rows that face the viewer: ``front`` (at rest)
     and ``front_talk``. ``hands``: ``clasped`` in front of them, or at their
-    ``sides``. A character whose rest is its own writes its own ``front``."""
+    ``sides``. A character whose rest is its own writes its own ``front``.
+
+    In ``front_talk`` one hand speaks at a time and the other is at rest: two
+    arms held out together read as a scarecrow."""
 
     def front(i: int, n: int) -> Pose:
         _, s, c = loop(i, n)
-        arms = dict(la=(-5.5, 21.0), ra=(-5.5, 21.5), lz=0.35, rz=0.35, lh="flat", rh="flat") if hands == "clasped" else dict(la=(2.0, 26.0), ra=(2.0, 26.0))
-        return FP(hip=(0.0, 0.4 + 0.4 * s), head=(0.0, -0.3 * s, 0.0), eyes="closed" if i == n - 2 else "open", brows=1.0 if c < -0.4 else 0.0, **arms)
+        return FP(hip=(0.0, 0.4 + 0.4 * s), head=(0.0, -0.3 * s, 0.0), eyes="closed" if i == n - 2 else "open", brows=1.0 if c < -0.4 else 0.0,
+                  **front_arms(person, hands))
 
     def front_talk(i: int, n: int) -> Pose:
         _, s, c = loop(i, n)
         if i >= n - 3:
-            return FP(hip=(0.0, -0.4), head=(0.0, 0.0, 6.0), la=(11.0, 9.0), ra=(11.0, 9.0), lz=0.6, rz=0.6, lh="open", rh="open", eyes="closed", mouth="smile",
-                      brows=1.0)
-        lift_l, lift_r = max(0.0, s), max(0.0, -s)
-        return FP(hip=(0.0, 0.4 * s), head=(0.0, 0.0, 3.0 * c), la=(8.0 + 3.0 * lift_l, 14.0 - 5.0 * lift_l), ra=(8.0 + 3.0 * lift_r, 14.0 - 5.0 * lift_r), lz=0.6,
-                  rz=0.6, lh="open", rh="open", mouth=("open", "smile", "big", "smile")[i % 4], brows=1.0 if abs(s) > 0.3 else 0.0)
+            # A laugh: the head back, and the hands at rest.
+            return FP(hip=(0.0, -0.4), head=(0.0, 0.0, 6.0), eyes="closed", mouth="smile", brows=1.0, **front_arms(person, hands))
+        return FP(hip=(0.0, 0.4 * s), head=(0.0, 0.0, 3.0 * c), mouth=("open", "smile", "big", "smile")[i % 4], brows=1.0 if abs(s) > 0.3 else 0.0,
+                  **front_arms(person, hands, (max(0.0, s), max(0.0, -s))))
 
     person.front_poses.setdefault("front", front)
     person.front_poses.setdefault("front_talk", front_talk)

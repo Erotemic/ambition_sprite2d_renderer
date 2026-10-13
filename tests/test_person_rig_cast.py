@@ -68,10 +68,10 @@ def test_the_armored_hinter_is_the_man_of_the_other_sheet():
     assert armored.X.rest == plain.X.rest
     pose = plain.X.full(plain.X.poses["idle"](0, 8))
     assert [name for _piece, name in armored.X.head_layers(pose)][: len(plain.X.head_layers(pose))] == [name for _piece, name in plain.X.head_layers(pose)]
-    frames = dict((name, n) for name, n, _ms in armored.X.rows)["transform_armor"]
-    first = armored.X.render_frame("transform_armor", 0, frames)
-    assert first.tobytes() == plain.X.render_frame("transform_armor", 0, frames).tobytes()
-    assert armored.X.render_frame("transform_armor", frames - 1, frames).tobytes() != first.tobytes()
+    frames = dict((name, n) for name, n, _ms in armored.X.rows)["transform"]
+    first = armored.X.render_frame("transform", 0, frames)
+    assert first.tobytes() == plain.X.render_frame("transform", 0, frames).tobytes()
+    assert armored.X.render_frame("transform", frames - 1, frames).tobytes() != first.tobytes()
 
 
 def test_a_mans_chest_does_not_stand_out_of_his_trunk():

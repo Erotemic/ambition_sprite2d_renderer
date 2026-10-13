@@ -9,10 +9,12 @@ wraps round himself, closed on him and hard. Plates the blue-grey of slate,
 cut where a body bends, and the seams between them are the light of the net.
 His head is bare.
 
-The row ``transform_armor`` is the change: he stands as he is, the surface
+The row ``transform`` is the change: he stands as he is, the surface
 closes on him, and at the frame it locks he is in his armor. The frames
 before that one are drawn by ``jeff_hinter`` itself, so the man who changes
 is the man of the other sheet.
+``transform`` is the engine's word for this row: the game plays the row of
+that name when a body changes into this look.
 
 There is no drop shadow and he holds nothing.
 """
@@ -94,7 +96,7 @@ ACTOR_METADATA = {
         "emote.shout_14": {"animation": "shout_14", "events": []},
         "emote.shout_3": {"animation": "shout_3", "events": []},
         "ability.manifold_shrinkwrap": {"animation": "manifold_shrinkwrap", "events": []},
-        "ability.transform_armor": {"animation": "transform_armor", "events": []},
+        "ability.transform_armor": {"animation": "transform", "events": []},
         "defense.block": {"animation": "block", "events": []},
     },
 }
@@ -264,14 +266,14 @@ HELD = P(hip=(0.0, 0.6), lean=0.0, head=(0.0, 0.0, -6.0), na=(-12.0, 13.0), fa=(
 #: It has closed on him. He stands in it.
 STOOD = P(hip=(0.0, -0.4), lean=0.0, head=(0.0, 0.0, -3.0), na=(-1.0, 22.0), fa=(4.0, 22.0), nh="fist", fh="fist", brows=-1.0, mouth="smile",
           nf=(-5.0, 0.0, 0.0), ff=(6.0, 0.0, 0.0))
-#: The part of the row ``transform_armor`` at which the surface is on him:
+#: The part of the row ``transform`` at which the surface is on him:
 #: before it he is the man of the other sheet, and from it he is in his armor.
 LOCK = 0.56
 GLOW = base.GLOW
 
 
 def fit(u: float) -> float:
-    """How near to his outline the surface is at ``u`` of ``transform_armor``."""
+    """How near to his outline the surface is at ``u`` of ``transform``."""
     return max(0.0, min(1.0, (u - 0.1) / (LOCK - 0.06 - 0.1)))
 
 
@@ -287,13 +289,13 @@ def transform_armor(i: int, n: int):
     return X.keys(shot(i, n), [(0.0, P()), (0.12, HELD), (0.74, HELD), (0.88, STOOD), (1.0, STOOD)])
 
 
-X.poses["transform_armor"] = transform_armor
+X.poses["transform"] = transform_armor
 # The man of the other sheet makes the same moves: he is drawn for the frames
 # before the lock.
-base.X.poses["transform_armor"] = transform_armor
+base.X.poses["transform"] = transform_armor
 X.alias(taunt="shout_14")
 X.rows = [("idle", 8, 145), ("walk", 8, 105), ("talk", 8, 108), ("interact", 10, 92), ("hint", 10, 92), ("visualize_2d", 12, 92), ("shout_14", 12, 78),
-          ("shout_3", 12, 78), ("manifold_shrinkwrap", 16, 82), ("transform_armor", 18, 82), ("block", 10, 82), ("taunt", 12, 78)]
+          ("shout_3", 12, 78), ("manifold_shrinkwrap", 16, 82), ("transform", 18, 82), ("block", 10, 82), ("taunt", 12, 78)]
 
 # ---- From the front --------------------------------------------------------------
 
@@ -357,7 +359,7 @@ def _effects(ctx) -> List[Stamp]:
         if 0.3 <= u <= 0.7:
             return [(_lock_flash(4 + 2 * (i % 2)), pin((ctx.hand[0] + 5.0, ctx.hand[1] - 2.0)), "spark", 0.0)]
         return []
-    if anim == "transform_armor":
+    if anim == "transform":
         if base._BARE[0]:
             return []
         if u < LOCK:
@@ -371,15 +373,15 @@ def _effects(ctx) -> List[Stamp]:
 
 
 X.effects = _effects
-base.X.effects = lambda ctx, _own=base.X.effects: _effects(ctx) if ctx.anim == "transform_armor" else _own(ctx)
+base.X.effects = lambda ctx, _own=base.X.effects: _effects(ctx) if ctx.anim == "transform" else _own(ctx)
 
 _armored_frame = X.render_frame
 
 
 def _render_frame(anim: str, i: int, n: int):
-    """Before the lock of ``transform_armor`` he is the man of the other
+    """Before the lock of ``transform`` he is the man of the other
     sheet."""
-    if anim != "transform_armor":
+    if anim != "transform":
         return _armored_frame(anim, i, n)
     u = shot(i, n)
     person, frame = (base.X, base.X.render_frame) if u < LOCK else (X, _armored_frame)
@@ -402,11 +404,11 @@ _publish, main, render_canonical = R.entry_points(X, ACTOR_METADATA, DISPLAY_NAM
 def render(out_dir, **opts):
     # The outline of each frame the surface is fitted to, read before the
     # part flipbook records a frame.
-    base.warm_outlines(X, ("manifold_shrinkwrap", "transform_armor"))
+    base.warm_outlines(X, ("manifold_shrinkwrap", "transform"))
     base.warm_outlines(base.X, ())
-    frames = dict((name, n) for name, n, _ms in X.rows)["transform_armor"]
+    frames = dict((name, n) for name, n, _ms in X.rows)["transform"]
     for i in range(frames):
-        base.outline_of(base.X, "transform_armor", i, frames)
+        base.outline_of(base.X, "transform", i, frames)
     return _publish(out_dir, **opts)
 
 

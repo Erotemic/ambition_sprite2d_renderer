@@ -315,8 +315,10 @@ def celebrate(i: int, n: int):
 #
 # A TEST (Jon, 2026-10-13: "none of these character seem to have a forward
 # facing pose ... can we add a forward facing pose for neil as a test?"). The
-# rows `front` and `front_talk` face the viewer. The game does not play them
-# yet: their names are not ones `CharacterAnim::from_name` knows.
+# rows `front` and `front_talk` face the viewer. The test was a success, and
+# the rest of the cast have these rows from `_person_rig.add_front_rows`. The
+# game plays `front` when a body is at rest and `front_talk` when it is in a
+# conversation. His two poses here are his own (both hands out: there it is).
 
 FRONT_TOP = -42.0
 
