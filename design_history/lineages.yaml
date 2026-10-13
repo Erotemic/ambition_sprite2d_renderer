@@ -881,3 +881,15 @@ lineages:
       - commit: "d203737"
         label: "The warlord"
         note: "On the shared rig, from the picture Jon gave: horns red inside, a mask of bone with red eyes, laced armour in black and blue with a long skirt, a great sword planted in front of him. Claude Opus 5.5 declared."
+  puppy_slug:
+    name: Puppy Slug
+    ids: [puppy_slug]
+    paths: ['puppy_slug', '_ai_era_kit']
+    summary: "a brown worm with a flat dog face at each end, then a plump slug with the head of a puppy and a second face on its back"
+    eras:
+      - commit: "b0f7ffc"
+        label: "The worm of the first dream"
+        note: "The last commit with this design: a long brown body of segments, a dog face at each end, rows for a wall and a ceiling that no code read."
+      - commit: "dc75c38"
+        label: "The puppyslug"
+        note: "On the paint box of the cast: the head of a puppy, the eye stalks of a slug, fur that goes over into wet green skin, a face asleep on its back and two eyes in its flank. Claude Opus 5.5 declared."
