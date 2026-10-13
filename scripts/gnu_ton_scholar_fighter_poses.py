@@ -27,12 +27,20 @@ def air(side: str, dx: float = 0, dy: float = 0, pitch: float = 0):
     return B.b(dx, dy, pitch)
 
 
-# Duelist silhouette: planted asymmetric legs, quill raised off the shoulder,
-# book at the back hip.  Distinct from the boss's formal upright rest.
+#: The quill arm raised off the shoulder: the hand is at the height of the
+#: nose. The attacks were authored from this arm, and a strike can go through
+#: it. It is not a pose to hold: it covers the face.
+RAISED = {"nu": -57, "ne": 24, "nw": -80}
+
+# Duelist silhouette: planted asymmetric legs, the quill held as a foil in a
+# low guard (the hand in front of the chest, below the chin, the point
+# forward), book at the back hip.  Distinct from the boss's formal upright
+# rest.  A pose that is held must not put the arm, the hand or the quill in
+# front of the face.
 STANCE = {
     **B.REST,
     "y": 9, "lean": 11, "head": -4,
-    "nu": -57, "ne": 24, "nw": -80,
+    "nu": 48, "ne": 96, "nw": -55,
     "fu": 111, "fe": -20, "fw": 105,
     "nf": ground("near", 16), "ff": ground("far", -18),
     "eye": "open", "mouth": "closed", "book": 1, "book_open": 0,
@@ -43,7 +51,7 @@ STANCE = {
 FLIGHT = {
     **STANCE, "y": -24, "lean": 9, "head": -6,
     "nf": air("near", 8, -25, 12), "ff": air("far", -8, -28, -9),
-    "nu": -28, "ne": 18, "fu": 143, "fe": -8,
+    "nu": -28, "ne": 18, "nw": RAISED["nw"], "fu": 143, "fe": -8,
     "near_tail": 14, "far_tail": -12, "queue": 12,
 }
 
@@ -52,15 +60,38 @@ def hold(pose: dict, *, sway=0, flutter=0, queue=0):
     return B.clip([(0.0, pose), (1.0, pose)], sway=sway, flutter=flutter, queue=queue)
 
 
+def from_raised_arm(home: dict, *keys: dict) -> list:
+    """The keys of a move, with the quill arm they were authored on.
+
+    A key says only what changes, and the rest is carried forward. The moves
+    were authored when the stance held the arm raised: a key that names one
+    angle of the quill arm, in a move that starts in the stance, has the other
+    angles of `RAISED` and not those of the low guard. An angle that an earlier
+    key of the move named is carried forward as before.
+    """
+    if any(home[k] != STANCE[k] for k in RAISED):
+        return list(keys)
+    named: set = set()
+    out = []
+    for key in keys:
+        fill = {}
+        if any(k in key for k in RAISED):
+            fill = {k: v for k, v in RAISED.items() if k not in named}
+        named |= {k for k in RAISED if k in key or k in fill}
+        out.append({**fill, **key})
+    return out
+
+
 def action(wind: dict, contact: dict, recover: dict | None = None, *,
            start: dict | None = None, end: dict | None = None,
            sway=2, flutter=3, queue=2):
     """Readable anticipation -> impact -> followthrough -> recovery arc."""
     home = dict(STANCE if start is None else start)
+    wind, contact, recover = from_raised_arm(home, wind, contact, recover or {})
     keys = [(0.0, home),
             (0.24, {**wind, "ease": "out"}),
             (0.48, {**contact, "ease": "in"}),
-            (0.72, {**(recover or {}), "ease": "out"}),
+            (0.72, {**recover, "ease": "out"}),
             (1.0, home)]
     return B.clip(keys, sway=sway, flutter=flutter, queue=queue)
 
@@ -85,7 +116,7 @@ def cycle_legs(kind: str):
             "y": (22 if crouched else 0) + (3.0 if fast else 1.3) * math.sin(2 * theta),
             "lean": (18 if fast else 16 if crouched else 9) + 3 * math.sin(theta),
             "head": -3 + 2 * math.sin(theta + 0.4),
-            "nu": -57 + (31 if fast else 22) * math.sin(theta + 0.4),
+            "nu": STANCE["nu"] + (20 if fast else 12) * math.sin(theta + 0.4),
             "fu": 111 - (30 if fast else 20) * math.sin(theta + 0.4),
             "near_tail": 5 * math.sin(theta + 0.3),
             "far_tail": -6 * math.sin(theta + 0.3),
@@ -106,7 +137,7 @@ def cycle_legs(kind: str):
 
 
 CROUCH = {**STANCE, "y": 25, "lean": 19, "head": -8,
-          "nu": 19, "ne": 58, "fu": 157, "fe": 26,
+          "nu": 19, "ne": 58, "nw": RAISED["nw"], "fu": 157, "fe": 26,
           "nf": ground("near", 15), "ff": ground("far", -19)}
 SHIELD = {**STANCE, "lean": -9, "nu": -14, "ne": 92, "nw": -75,
           # Bring the book in front of the chest and in front of the coat,
@@ -117,7 +148,7 @@ GRAB = {**STANCE, "lean": 14, "nu": -9, "ne": -3, "nw": -20,
         "fu": 1, "fe": 0, "fw": -3, "quill": 0, "book": 0,
         "nf": ground("near", 18), "ff": ground("far", -15)}
 PRONE = {**STANCE, "spin": -81, "y": 55, "x": 58, "head": -81,
-         "nu": 126, "ne": -8, "fu": -165, "fe": 14,
+         "nu": 126, "ne": -8, "nw": RAISED["nw"], "fu": -165, "fe": 14,
          "nf": air("near", -4, -5), "ff": air("far", -10, -6),
          "quill": 0, "book": 0, "eye": "shut", "mouth": "grit",
          **B.arm_depth(-43)}
@@ -186,7 +217,7 @@ def register(name: str, clip, frames=7, ms=75, loop=False):
 
 # Neutral, mobility and platform traversal -------------------------------------
 register("idle", hold(STANCE, sway=1.5, flutter=2, queue=1), 10, 105, True)
-register("idle_look_up", hold({**STANCE, "head": -19, "nu": -70, "nw": -85}), 6, 105, True)
+register("idle_look_up", hold({**STANCE, "head": -19, "nw": -66}), 6, 105, True)
 register("walk", cycle_legs("walk"), 8, 93, True)
 register("run", cycle_legs("run"), 8, 67, True)
 register("dash_startup", action({"y": 13, "lean": -9, "head": 8},
@@ -240,7 +271,7 @@ register("land_recovery", transition(STANCE, source=CROUCH), 6, 75)
 register("platform_drop", transition({**FLIGHT, "y": 12,
                                       "nu": 46, "fu": 157}, source=CROUCH), 6, 85)
 register("wall_grab", hold({**FLIGHT, "y": -20, "lean": 20,
-                             "nu": -76, "ne": 20, "fu": -110,
+                             "nu": -40, "ne": 4, "fu": -110,
                              "nf": air("near", -4, -47),
                              "ff": air("far", -16, -30), "quill": 0}), 6, 100, True)
 register("wall_jump", action({**FLIGHT, "y": -20, "lean": 30,
@@ -250,12 +281,12 @@ register("wall_jump", action({**FLIGHT, "y": -20, "lean": 30,
                              {**FLIGHT, "y": -26, "x": -15},
                              start=FLIGHT, end=FLIGHT), 7, 67)
 ledge = {**FLIGHT, "y": -22, "lean": 28, "head": -13,
-         "nu": -83, "ne": -20, "fu": -97, "fe": -5,
+         "nu": -46, "ne": -6, "fu": -97, "fe": -5,
          "nf": air("near", -7, -38), "ff": air("far", -2, -15),
          "quill": 0, "book": 0}
 register("ledge_catch", transition(ledge, source=FLIGHT), 5, 58)
 register("ledge_grab", hold(ledge, flutter=1, queue=2), 6, 115, True)
-register("ledge_getup", action({**ledge, "y": -10, "nu": -79},
+register("ledge_getup", action({**ledge, "y": -10, "nu": -44},
                                 {**CROUCH, "y": 24, "nu": 34, "fu": 150},
                                 {**CROUCH, "y": 12}, start=ledge), 7, 58)
 register("ledge_roll", action({**ledge, "head": -15},
@@ -358,7 +389,10 @@ register("attack_down", action({"y": 19, "lean": 17,
                                 "head": 10, "nf": ground("near", 22),
                                 "eye": "angry"}, CROUCH), 8, 61)
 register("smash_charge", hold({**CROUCH, "y": 18, "lean": -10,
-                               "nu": -111, "ne": 101, "nw": -88,
+                               # The quill is drawn back at the ribs, as a
+                               # foil before a thrust: the elbow is behind
+                               # the back and the face is clear.
+                               "nu": 150, "ne": 125, "nw": -25,
                                "head": -10, "mouth": "grit", "eye": "angry",
                                "near_tail": -7},
                               sway=3, flutter=5, queue=4), 8, 91, True)
@@ -593,18 +627,18 @@ register("teeter", hold({**STANCE, "lean": 25,
                         sway=2.5, flutter=3), 8, 90, True)
 register("taunt", action({"lean": -12, "nu": -34, "ne": 47,
                           "mouth": "smile"},
-                         {"lean": 4, "nu": -80, "ne": 6,
+                         {"lean": 4, "nu": -42, "ne": 8,
                           "nw": -90, "fu": -108, "fe": -5,
                           "head": -9, "mouth": "smile",
                           "near_tail": 10},
-                         {"nu": -65, "mouth": "smile"}), 10, 95)
+                         {"nu": -32, "mouth": "smile"}), 10, 95)
 register("entrance", action({**STANCE, "spin": -39, "head": -39,
                             "x": -14, "quill": 0, "book": 0},
                            {**STANCE, "spin": 0, "head": -8,
-                            "nu": -89, "ne": 28, "nw": -90,
+                            "nu": -42, "ne": 10, "nw": -90,
                             "quill": 1, "book": 1, "mouth": "smile"},
-                           {"nu": -62, "head": -3}), 9, 90)
-register("victory_hold", hold({**STANCE, "nu": -98, "ne": -5,
+                           {"nu": -30, "head": -3}), 9, 90)
+register("victory_hold", hold({**STANCE, "nu": -40, "ne": 10,
                                "nw": -90, "fu": -91, "fe": 0,
                                "head": -11, "mouth": "smile",
                                "near_tail": 10}, sway=3, flutter=4), 10, 110, True)

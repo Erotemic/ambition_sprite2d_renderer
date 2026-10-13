@@ -152,11 +152,12 @@ INVOKE = clip([
            "fu": -128, "fe": 5, "fw": -40}),
     (0.22, {"lean": -7, "head": -9, "nu": -45, "ne": 42, "nw": -90,
             "fu": -135, "fe": 0, "fw": -50, "mouth": "smile"}),
-    (0.55, {"y": -9, "lean": -13, "head": -17, "nu": -82,
+    # The quill goes up in front of him, not along his face.
+    (0.55, {"y": -9, "lean": -13, "head": -17, "nu": -60,
             "ne": 6, "nw": -95, "fu": -142, "fe": 5, "fw": -50,
             "near_tail": 15, "far_tail": -10, "queue": 12, "mouth": "open", "eye": "angry"}),
-    (0.83, {"y": -6, "lean": -12, "nu": -70, "ne": 0, "nw": -88, "mouth": "smile"}),
-    (1.0, {"y": -6, "nu": -70, "ne": 0, "nw": -88, "mouth": "smile"}),
+    (0.83, {"y": -6, "lean": -12, "nu": -52, "ne": 0, "nw": -88, "mouth": "smile"}),
+    (1.0, {"y": -6, "nu": -52, "ne": 0, "nw": -88, "mouth": "smile"}),
 ], sway=4, flutter=5, queue=3)
 
 HIT = clip([
@@ -233,14 +234,16 @@ DAZED = clip([
 ], flutter=3, queue=2)
 
 CLIMB = clip([
+    # He reaches forward and up to the hold: the arm is not in front of his
+    # face.
     (0.0, {**REST, "book": 0, "quill": 0, "lean": 20,
-            "nu": -72, "ne": -12, "fu": -124, "fe": -16, "eye": "shut",
+            "nu": -42, "ne": -4, "fu": -124, "fe": -16, "eye": "shut",
             "mouth": "grit", "nf": b(7,-24), "ff": b(-6, -2)}),
-    (0.50, {"y": -16, "nu": -70, "ne": -6, "fu": -132, "fe": -12,
+    (0.50, {"y": -16, "nu": -34, "ne": 6, "fu": -132, "fe": -12,
             "nf": b(22,-52), "ff": b(0, -28),
             "near_tail": -12, "far_tail": -6, "head": -11,
             "eye": "shut", "mouth": "grit"}),
-    (1.0, {"y": 0, "nu": -72, "ne": -12, "nf": b(7,-24), "ff": b(-6,-2),
+    (1.0, {"y": 0, "nu": -42, "ne": -4, "nf": b(7,-24), "ff": b(-6,-2),
            "eye": "shut", "mouth": "grit"}),
 ],flutter=4,queue=3)
 
