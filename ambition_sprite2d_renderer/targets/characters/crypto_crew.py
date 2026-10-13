@@ -853,9 +853,11 @@ def _mallory() -> None:
         could not be seen: it comes off the back of her head to one side and
         lies out past her shoulder (Jon, 2026-10-13: a front view is not a
         strict face-on projection; "a few features (e.g. the ponytail) off to
-        one side a bit" give the character depth)."""
+        one side a bit" give the character depth). Her shoulder is in front
+        of most of it."""
         head_y = p.b.neck[1] + p.b.head_up[1]
-        pts = [(5.0, head_y - 2.0), (10.6, head_y + 3.0), (13.6, head_y + 11.0), (14.6, head_y + 21.0), (13.6, head_y + 31.0), (14.8, head_y + 40.0)]
+        # A little to one side, and not more: far out it was "unnatural".
+        pts = [(4.0, head_y - 2.0), (8.0, head_y + 5.0), (9.6, head_y + 13.0), (10.4, head_y + 22.0), (9.8, head_y + 31.0), (10.6, head_y + 39.0)]
 
         def paint(d) -> None:
             line = [K.at(x, y) for x, y in pts]
@@ -878,7 +880,8 @@ def _mallory() -> None:
         R.make_front_eyes(K, ("mallory",), ink=INK, iris=(70, 140, 130, 255), spread=3.2, y=-0.4, size=0.85, lash=0.4),
         R.make_front_brows(K, ("mallory",), (92, 40, 38, 255), spread=3.2, y=-3.6, width=0.9), R.make_front_mouth(K, ("mallory",), y=8.0, colour=(128, 78, 78, 255), wide=0.6))
     p.front_shoe = R.make_front_shoe(K, BOOT, (14, 12, 20, 255), p.b.ankle_up, wide=0.9)
-    p.front_span = (7.0, 4.2)
+    # Her arms are out from her trunk a little (Jon: "too tucked into the torso").
+    p.front_span = (8.6, 4.2)
 
     @p.front_row
     def front(i: int, n: int):
