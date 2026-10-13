@@ -819,29 +819,59 @@ def _mallory() -> None:
         K.poly(d, [K.at(-0.8, -10.6), K.at(0.8, -10.6), K.at(2.6, 26.0), K.at(-2.6, 26.0)], LINING)
         K.line(d, [K.at(0.0, -10.6), K.at(0.0, 26.0)], LINING_DARK, 0.6)
 
+    # Her face from the front is the face of the side view (Jon, 2026-10-13:
+    # "Her face looks weird and not like the side view"): narrow, with a long
+    # jaw; her hair pulled back hard from a high brow, with its crest over
+    # it; small eyes under thin brows; one hard line in each cheek.
     def front_hair_shape(d) -> None:
-        K.oval(d, K.at(0.0, -4.6), 8.8, 8.4, WHITE)
-        K.poly(d, [K.at(-5.6, -9.0), K.at(0.0, -15.2), K.at(5.6, -9.0)], WHITE)
+        # Wider than her head: it is thick, and it goes back over her ears.
+        K.oval(d, K.at(0.0, -5.0), 8.8, 8.2, WHITE)
+        K.poly(d, [K.at(-7.4, -9.6), K.at(-3.4, -15.4), K.at(4.0, -15.0), K.at(8.4, -11.0), K.at(7.6, -7.6)], WHITE)
+        K.oval(d, K.at(-8.0, 0.8), 2.8, 3.2, WHITE)
 
     def front_hair(d) -> None:
-        K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, -2.0), K.at(7.2, -2.0), K.at(6.2, -6.6), K.at(2.6, -8.6), K.at(0.0, -6.4), K.at(-2.6, -8.6),
-                   K.at(-6.2, -6.6), K.at(-7.2, -2.0), K.at(-20.0, -2.0)], HAIR)
-        for sx in (-1.0, 1.0):
-            K.line(d, [K.at(1.0 * sx, -13.0), K.at(4.0 * sx, -10.0), K.at(7.0 * sx, -5.0)], HAIR_DARK, 0.6)
+        K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, 3.4), K.at(5.4, 3.4), K.at(5.6, -1.0), K.at(5.4, -4.8), K.at(3.2, -7.0), K.at(0.4, -7.6),
+                   K.at(-3.0, -6.6), K.at(-5.4, -4.4), K.at(-5.6, -1.0), K.at(-5.4, 3.4), K.at(-20.0, 3.4)], HAIR)
+        # It goes back and up from her brow: the lines of the comb.
+        for strand in ([(-4.6, -6.4), (-2.6, -11.6), (2.6, -13.8)], [(-0.6, -7.8), (2.4, -11.4), (6.0, -11.6)], [(3.4, -7.2), (6.4, -8.6)], [(-6.6, -1.0), (-7.4, -6.6)],
+                       [(6.6, -1.0), (7.6, -6.0)]):
+            K.line(d, [K.at(x, y) for x, y in strand], HAIR_DARK, 0.6)
 
     def front_marks(d) -> None:
-        K.line(d, [K.at(-0.2, 0.8), K.at(-0.8, 3.2), K.at(0.0, 3.8), K.at(0.8, 3.2)], skin[2], 0.5)
-        K.line(d, [K.at(-7.4, 1.6), K.at(-4.6, 6.4), K.at(-2.0, 7.4)], STEEL, 0.8)
-        K.oval(d, K.at(-7.4, 1.0), 2.3, 2.9, BRASS, OUTLINE, 0.6)
-        K.oval(d, K.at(-7.4, 1.0), 1.0, 1.3, BRASS_DARK)
-        K.line(d, [K.at(-7.8, -1.8), K.at(-7.0, -6.4)], STEEL, 0.8)
+        K.line(d, [K.at(-0.2, 0.6), K.at(-0.7, 3.2), K.at(0.0, 3.8), K.at(0.7, 3.2)], skin[2], 0.5)
+        for sx in (-1.0, 1.0):
+            K.line(d, [K.at(4.4 * sx, 2.6), K.at(3.2 * sx, 6.6)], mix(skin[0], skin[2], 0.5), 0.5)
+        # The piece she listens with, at one ear: brass, with its arm to her mouth.
+        K.line(d, [K.at(-7.6, 1.8), K.at(-4.6, 6.8), K.at(-2.2, 7.8)], STEEL, 0.8)
+        K.oval(d, K.at(-7.8, 0.8), 2.2, 2.7, BRASS, OUTLINE, 0.6)
+        K.oval(d, K.at(-7.8, 0.8), 0.9, 1.2, BRASS_DARK)
+        K.line(d, [K.at(-8.2, -1.8), K.at(-7.8, -6.6)], STEEL, 0.8)
+
+    def front_braid(hip) -> List[Stamp]:
+        """Her braid from the front: it hangs down her back, and its end
+        shows by her side."""
+        pts = [(5.0, top + 2.0), (8.6, top + 8.0), (9.8, -24.0), (9.4, -14.0), (10.4, -6.0)]
+
+        def paint(d) -> None:
+            line = [K.at(x, y) for x, y in pts]
+            K.stroke(d, line, OUTLINE, 4.4 + 2.4)
+            K.stroke(d, line, HAIR, 4.4)
+            for k in (2, 3):
+                K.oval(d, line[k], 2.7, 2.7, BRASS_DARK)
+                K.oval(d, line[k], 1.8, 1.8, BRASS)
+            K.oval(d, line[-1], 3.0, 3.0, OUTLINE)
+            K.oval(d, line[-1], 2.0, 2.0, STEEL)
+
+        return [(K.piece(("mallory_front_braid",), paint), hip, "front_braid", 0.0)]
+
+    p.front_behind = front_braid
 
     p.front_torso = R.make_front_torso(K, ("mallory",), COAT, COAT_DARK, [(top, 3.4), (top + 3.6, 7.4), (top + 12.5, 8.0), (-13.0, 6.2), (0.0, 7.8), (26.0, 10.4)],
                                        shoulder=(5.8, sy, 4.2, 4.6), detail=front_coat)
     p.front_head_layers = R.front_face(
-        R.make_front_head(K, ("mallory",), skin[0], skin[2], wide=7.4, jaw=5.8, chin=4.2, shape=front_hair_shape, hair=front_hair, face=front_marks),
-        R.make_front_eyes(K, ("mallory",), ink=INK, iris=(70, 140, 130, 255), spread=3.2, y=-0.4, size=0.85, lash=0.25),
-        R.make_front_brows(K, ("mallory",), (92, 40, 38, 255), spread=3.2, y=-3.6, width=0.9), R.make_front_mouth(K, ("mallory",), y=8.0, colour=(120, 52, 56, 255), wide=0.75))
+        R.make_front_head(K, ("mallory",), skin[0], skin[2], wide=6.6, jaw=5.0, chin=4.8, shape=front_hair_shape, hair=front_hair, face=front_marks),
+        R.make_front_eyes(K, ("mallory",), ink=INK, iris=(70, 140, 130, 255), spread=2.8, y=-0.4, size=0.8, lash=0.4),
+        R.make_front_brows(K, ("mallory",), (92, 40, 38, 255), spread=2.8, y=-3.4, width=0.9), R.make_front_mouth(K, ("mallory",), y=8.2, colour=(128, 78, 78, 255), wide=0.5))
     p.front_shoe = R.make_front_shoe(K, BOOT, (14, 12, 20, 255), p.b.ankle_up, wide=0.9)
     p.front_span = (7.0, 4.2)
 
