@@ -455,7 +455,7 @@ render, main, render_canonical = R.entry_points(X, ACTOR_METADATA, DISPLAY_NAME)
 def render_portraits(out_dir, **opts):
     """His portraits are frames of this sheet."""
     del opts
-    return X.portraits(out_dir, {"default": ("idle", (1,), 0, False), "talking": ("taunt", (2, 3, 4), 160, True)}, view_width=44.0)
+    return X.portraits(out_dir, {"default": ("idle", (1,), 0, False), "talking": ("idle", (0, 1, 2, 3, 4, 5), 130, True)}, view_width=30.0)
 
 
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
