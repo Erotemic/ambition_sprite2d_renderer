@@ -359,6 +359,18 @@ lineages:
       - commit: "333e716"
         label: "Five characters"
         note: "Full bodies, a look for each pirate, the head on the chest, each pose made again. Jon: redo them completely, the posing too. Claude Opus 5.5 declared."
+  imperfect_cellular_automaton:
+    name: Imperfect Cellular Automaton
+    ids: [imperfect_cellular_automaton]
+    paths: ['imperfect_cellular_automaton']
+    summary: "a boxy robot in two halves, then a hunched creature with a tail in the same two halves"
+    eras:
+      - commit: "039a376"
+        label: "Boxy robot, half green and half purple"
+        note: "The last commit with the first design: a procedural skeleton with 4 rows. The commit that introduced it is not surveyed."
+      - commit: "e0891f4"
+        label: "Hunched, tailed, drawn from both sides"
+        note: "An SVG rig on the perfect one's clips. Jon chose candidate F of two rounds of stills: keep the two halves, an overt reference to Imperfect Cell that is not a copy. Claude Opus 5.5 declared."
   pirate_heavy:
     name: Pirate heavies (Iron Mary, Broadside Bess, Salt Annet)
     ids: [pirate_heavy]
