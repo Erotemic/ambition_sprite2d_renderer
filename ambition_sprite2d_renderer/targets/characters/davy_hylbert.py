@@ -322,6 +322,60 @@ X.rows = [("idle", 8, 145), ("walk", 8, 104), ("run", 8, 76), ("crouch", 6, 95),
           ("prime_stride", 8, 64), ("attack_up", 8, 64), ("attack_down", 8, 64), ("air_neutral", 8, 60), ("air_forward", 7, 60), ("air_back", 7, 60), ("air_down", 7, 68),
           ("air_up", 7, 60), ("compressed_sense", 8, 74), ("polymath_chain", 8, 78), ("full_turn", 10, 76), ("celebrate", 8, 88), ("taunt", 8, 92)]
 
+# ---- From the front ------------------------------------------------------------
+
+def _front_suit(d) -> None:
+    """His three-piece suit from the front: the waistcoat and its chain, the
+    shirt and the tie, a lapel each side."""
+    K.poly(d, [K.at(-4.8, TOP), K.at(4.8, TOP), K.at(5.6, 9.0), K.at(-5.6, 9.0)], VEST)
+    K.poly(d, [K.at(-3.0, TOP - 1.0), K.at(3.0, TOP - 1.0), K.at(0.0, -27.0)], SHIRT)
+    K.poly(d, [K.at(-1.0, TOP + 0.6), K.at(1.0, TOP + 0.6), K.at(1.2, -25.0), K.at(0.0, -23.6), K.at(-1.2, -25.0)], TIE)
+    K.line(d, [K.at(-4.6, -9.0), K.at(-1.0, -6.6), K.at(3.6, -8.6)], CHAIN_DARK, 1.1)
+    K.line(d, [K.at(-4.6, -9.0), K.at(-1.0, -6.6), K.at(3.6, -8.6)], CHAIN, 0.5)
+    for y in (-19.0, -13.0, -3.0):
+        K.oval(d, K.at(0.0, y), 0.7, 0.7, SUIT_DARK)
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(4.8 * sx, TOP), K.at(7.4 * sx, TOP + 1.0), K.at(5.6 * sx, -20.0)], SUIT_LIGHT)
+        K.line(d, [K.at(5.6 * sx, -20.0), K.at(5.6 * sx, 9.0)], SUIT_DARK, 0.7)
+
+
+def _front_hat_shape(d) -> None:
+    # The hat, its brim wider than his head; and his beard, to his collar.
+    K.rrect(d, K.home[0] - 7.6, K.home[1] - 16.6, K.home[0] + 7.6, K.home[1] - 7.0, 2.6, WHITE)
+    K.oval(d, K.at(0.0, -7.4), 12.6, 2.6, WHITE)
+    K.poly(d, [K.at(-6.6, 4.0), K.at(6.6, 4.0), K.at(5.4, 12.0), K.at(0.0, 16.0), K.at(-5.4, 12.0)], WHITE)
+
+
+def _front_hat(d) -> None:
+    K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, -6.0), K.at(-20.0, -6.0)], HAT)
+    K.poly(d, [K.at(-20.0, -10.4), K.at(20.0, -10.4), K.at(20.0, -8.4), K.at(-20.0, -8.4)], BAND)
+    K.line(d, [K.at(-12.0, -6.0), K.at(12.0, -6.0)], HAT_DARK, 0.9)
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(6.0 * sx, -5.6), K.at(9.0 * sx, -5.6), K.at(9.0 * sx, 1.0), K.at(7.0 * sx, 1.0)], BEARD)
+
+
+def _front_beard(d) -> None:
+    K.poly(d, [K.at(-7.0, 3.6), K.at(-3.6, 5.6), K.at(0.0, 5.0), K.at(3.6, 5.6), K.at(7.0, 3.6), K.at(5.6, 12.0), K.at(0.0, 16.0), K.at(-5.6, 12.0)], BEARD)
+    for x in (-3.0, 0.0, 3.0):
+        K.line(d, [K.at(x, 8.0), K.at(x * 0.8, 13.0)], BEARD_DARK, 0.5)
+    K.line(d, [K.at(-2.4, 8.6), K.at(0.0, 9.2), K.at(2.4, 8.6)], (150, 90, 90, 255), 0.7)
+    for sx in (-1.0, 1.0):
+        K.oval(d, K.at(3.4 * sx, -0.6), 2.9, 2.9, LENS, FRAME, 0.8)
+        K.line(d, [K.at(6.2 * sx, -0.8), K.at(8.0 * sx, -1.4)], FRAME, 0.7)
+    K.line(d, [K.at(-0.5, -0.8), K.at(0.5, -0.8)], FRAME, 0.7)
+    K.line(d, [K.at(-0.3, 0.8), K.at(-1.2, 3.4), K.at(0.0, 4.2), K.at(1.2, 3.4)], SKIN_DEEP, 0.6)
+
+
+X.front_torso = R.make_front_torso(K, ("hylbert",), SUIT, SUIT_DARK, [(TOP, 4.2), (TOP + 3.6, 9.2), (-24.0, 9.8), (-6.0, 9.8), (9.5, 10.2)],
+                                   shoulder=(7.4, -31.8, 4.4, 4.8), detail=_front_suit)
+X.front_head_layers = R.front_face(R.make_front_head(K, ("hylbert",), SKIN, SKIN_DEEP, wide=7.8, jaw=6.4, chin=3.8, ears=SKIN, shape=_front_hat_shape, hair=_front_hat,
+                                                    face=_front_beard),
+                                   R.make_front_eyes(K, ("hylbert",), white=None, ink=INK, spread=3.4, y=-0.6, size=0.9),
+                                   R.make_front_brows(K, ("hylbert",), BEARD_DARK, spread=3.4, y=-4.4))
+X.front_shoe = R.make_front_shoe(K, SHOE, SHOE_DARK, BUILD.ankle_up)
+X.front_span = (8.2, 4.6)
+R.add_front_rows(X)
+
 # ---- What he shows -----------------------------------------------------------
 
 

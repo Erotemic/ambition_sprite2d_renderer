@@ -364,6 +364,55 @@ X.rows = [("idle", 8, 150), ("walk", 8, 104), ("run", 8, 78), ("crouch", 6, 96),
           ("ledge_climb", 6, 94), ("climb", 8, 98), ("swim", 8, 104), ("block", 6, 82), ("hit", 5, 84), ("death", 8, 106), ("talk", 8, 106), ("interact", 8, 94),
           ("geodesic_sweep", 8, 66), ("boundary_fold", 8, 72), ("moduli_bloom", 10, 78), ("celebrate", 8, 88), ("taunt", 8, 94)]
 
+# ---- From the front ------------------------------------------------------------
+
+def _front_garnet(d) -> None:
+    """Her jacket from the front: the pale collar, the light on her bust and
+    the shade under it, the buttons."""
+    by = TOP + 12.5
+    K.poly(d, [K.at(-3.0, TOP - 1.0), K.at(3.0, TOP - 1.0), K.at(0.0, TOP + 6.0)], SKIN_SHADE)
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(1.0 * sx, TOP + 3.0), K.at(4.6 * sx, TOP - 1.0), K.at(5.4 * sx, TOP + 3.0), K.at(2.0 * sx, TOP + 8.0)], COLLAR)
+        K.oval(d, K.at(4.2 * sx, by + 0.2), 2.4, 1.9, JACKET_LIGHT)
+        K.poly(d, [K.at(0.8 * sx, by + 4.2), K.at(4.2 * sx, by + 5.0), K.at(8.0 * sx, by + 3.2), K.at(7.2 * sx, by + 5.8), K.at(4.0 * sx, by + 6.6), K.at(0.8 * sx, by + 5.6)],
+               JACKET_DARK)
+    K.line(d, [K.at(0.0, TOP + 8.0), K.at(0.0, 6.0)], JACKET_DARK, 0.6)
+    for y in (-14.0, -8.0, -2.0):
+        K.oval(d, K.at(1.4, y), 0.8, 0.8, COLLAR)
+
+
+def _front_hair_shape(d) -> None:
+    # Short and soft: over her ears, to her jaw.
+    K.oval(d, K.at(0.0, -5.4), 9.6, 7.8, WHITE)
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(7.0 * sx, -6.0), K.at(10.0 * sx, -1.0), K.at(9.6 * sx, 5.0), K.at(7.0 * sx, 7.6), K.at(5.8 * sx, 3.0)], WHITE)
+
+
+def _front_hair(d) -> None:
+    K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, 10.0), K.at(6.0, 10.0), K.at(6.4, 2.0), K.at(7.0, -3.0), K.at(4.6, -6.8), K.at(-1.0, -7.6), K.at(-5.0, -5.6),
+               K.at(-7.0, -3.0), K.at(-6.4, 2.0), K.at(-6.0, 10.0), K.at(-20.0, 10.0)], HAIR)
+    K.line(d, [K.at(2.6, -12.6), K.at(1.6, -7.4)], (30, 24, 28, 255), 0.5)
+    for strand in ([(-6.0, -9.0), (-2.0, -11.0), (1.0, -10.6)], [(4.0, -10.6), (7.6, -6.0), (8.4, 0.0)], [(-8.4, -3.0), (-8.0, 3.0)]):
+        K.line(d, [K.at(x, y) for x, y in strand], HAIR_LIGHT, 0.6)
+
+
+def _front_marks(d) -> None:
+    K.line(d, [K.at(-0.3, -0.2), K.at(-1.0, 3.2), K.at(0.0, 4.0), K.at(1.0, 3.2)], SKIN_DEEP, 0.6)
+    for sx in (-1.0, 1.0):
+        K.oval(d, K.at(7.2 * sx, 6.0), 0.9, 0.9, CURVE)
+
+
+X.front_torso = R.make_front_torso(K, ("mami",), JACKET, JACKET_DARK, [(TOP, 3.4), (TOP + 3.6, 7.2), (TOP + 12.5, 8.6), (-12.0, 6.2), (0.0, 8.0), (6.0, 8.4)],
+                                   shoulder=(5.8, -29.6, 3.8, 4.2), detail=_front_garnet)
+X.front_head_layers = R.front_face(R.make_front_head(K, ("mami",), SKIN, SKIN_DEEP, wide=7.6, jaw=6.2, chin=3.6, shape=_front_hair_shape, hair=_front_hair,
+                                                    face=_front_marks),
+                                   R.make_front_eyes(K, ("mami",), white=None, ink=INK, spread=3.2, y=-0.4, lash=0.5), R.make_front_brows(K, ("mami",), HAIR, spread=3.2, y=-3.8,
+                                                                                                                                 width=0.9),
+                                   R.make_front_mouth(K, ("mami",), y=7.8, colour=(130, 54, 66, 255), lips=(206, 96, 104, 255), wide=0.8))
+X.front_shoe = R.make_front_shoe(K, SHOE, SHOE_DARK, BUILD.ankle_up, wide=0.9)
+X.front_span = (7.0, 4.4)
+R.add_front_rows(X)
+
 # ---- What she shows ----------------------------------------------------------
 
 

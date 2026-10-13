@@ -290,6 +290,50 @@ X.rows = [("idle", 8, 145), ("walk", 8, 104), ("run", 8, 76), ("crouch", 6, 95),
           ("prime_stride", 8, 64), ("attack_up", 8, 64), ("attack_down", 8, 64), ("air_neutral", 8, 60), ("air_forward", 7, 60), ("air_back", 7, 60), ("air_down", 7, 68),
           ("air_up", 7, 60), ("compressed_sense", 8, 74), ("polymath_chain", 8, 78), ("full_turn", 10, 76), ("celebrate", 8, 88), ("taunt", 8, 92)]
 
+# ---- From the front ------------------------------------------------------------
+
+def _front_jacket(d) -> None:
+    """His jacket open on the tee with the tau on it."""
+    K.poly(d, [K.at(-4.4, TOP - 1.0), K.at(4.4, TOP - 1.0), K.at(5.0, 8.0), K.at(-5.0, 8.0)], TEE)
+    K.poly(d, [K.at(-2.6, TOP - 1.0), K.at(2.6, TOP - 1.0), K.at(0.0, TOP + 3.4)], SKIN_SHADE)
+    K.line(d, [K.at(-2.6, -22.6), K.at(2.6, -22.6)], TEE_MARK, 1.0)
+    K.line(d, [K.at(0.2, -22.6), K.at(-0.4, -17.6), K.at(0.8, -16.8)], TEE_MARK, 1.0)
+    for sx in (-1.0, 1.0):
+        K.line(d, [K.at(4.4 * sx, TOP), K.at(5.0 * sx, 6.0)], JACKET_DARK, 0.7)
+        K.poly(d, [K.at(4.4 * sx, TOP - 1.0), K.at(7.0 * sx, TOP), K.at(5.0 * sx, TOP + 6.0)], JACKET_LIGHT)
+        K.line(d, [K.at(8.6 * sx, -2.0), K.at(6.0 * sx, -1.6)], JACKET_DARK, 0.6)
+
+
+def _front_hair_shape(d) -> None:
+    K.oval(d, K.at(0.0, -5.8), 9.4, 7.4, WHITE)
+
+
+def _front_hair(d) -> None:
+    # Swept across his forehead from one side.
+    K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, -1.0), K.at(7.6, -1.0), K.at(7.4, -5.0), K.at(5.0, -7.4), K.at(0.0, -6.4), K.at(-4.6, -4.6),
+               K.at(-7.2, -3.4), K.at(-7.6, -1.0), K.at(-20.0, -1.0)], HAIR)
+    for strand in ([(5.0, -11.0), (0.0, -9.0), (-5.0, -6.0)], [(7.0, -8.0), (2.0, -7.6)]):
+        K.line(d, [K.at(x, y) for x, y in strand], HAIR_LIGHT, 0.6)
+
+
+def _front_glasses(d) -> None:
+    for sx in (-1.0, 1.0):
+        K.rrect(d, K.home[0] + 3.4 * sx - 2.8, K.home[1] - 2.6, K.home[0] + 3.4 * sx + 2.8, K.home[1] + 1.6, 0.8, LENS, FRAME, 0.9)
+        K.line(d, [K.at(6.2 * sx, -1.4), K.at(8.0 * sx, -1.8)], FRAME, 0.8)
+    K.line(d, [K.at(-0.6, -1.2), K.at(0.6, -1.2)], FRAME, 0.8)
+    K.line(d, [K.at(-0.3, 0.8), K.at(-1.2, 3.8), K.at(0.0, 4.6), K.at(1.2, 3.8)], SKIN_DEEP, 0.6)
+
+
+X.front_torso = R.make_front_torso(K, ("tau",), JACKET, JACKET_DARK, [(TOP, 4.0), (TOP + 3.6, 8.4), (-24.0, 9.0), (-6.0, 8.6), (6.0, 9.0)],
+                                   shoulder=(6.8, -30.8, 4.2, 4.6), detail=_front_jacket)
+X.front_head_layers = R.front_face(R.make_front_head(K, ("tau",), SKIN, SKIN_DEEP, wide=7.8, jaw=6.2, chin=4.0, ears=SKIN, shape=_front_hair_shape, hair=_front_hair,
+                                                    face=_front_glasses),
+                                   R.make_front_eyes(K, ("tau",), white=None, ink=INK, spread=3.4, y=-0.6, size=0.9), R.make_front_brows(K, ("tau",), HAIR, spread=3.4, y=-4.2),
+                                   R.make_front_mouth(K, ("tau",), y=8.2, colour=(130, 60, 64, 255), wide=0.8))
+X.front_shoe = R.make_front_shoe(K, SHOE, SHOE_DARK, BUILD.ankle_up)
+X.front_span = (7.8, 4.4)
+R.add_front_rows(X, hands="sides")
+
 # ---- What he shows -----------------------------------------------------------
 
 PRIMES = ("2", "3", "5", "7", "11", "13")

@@ -305,6 +305,65 @@ def self_shave(i: int, n: int):
 
 X.rows = [("idle", 8, 130), ("walk", 8, 102), ("talk", 8, 110), ("clean_cut", 8, 84), ("paradox_loop", 8, 96), ("self_shave", 8, 100), ("death", 8, 116)]
 
+# ---- From the front ------------------------------------------------------------
+
+def _front_apron(d) -> None:
+    """His apron from the front: the bib and its straps over his shirt, his
+    bow tie, the tie at his waist, the pocket, and the stripes of the pole."""
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(4.6 * sx, TOP - 2.0), K.at(14.0 * sx, TOP - 2.0), K.at(14.0 * sx, -8.0), K.at(6.0 * sx, -8.0), K.at(5.0 * sx, TOP + 6.0)], SHIRT)
+        K.line(d, [K.at(5.0 * sx, TOP + 6.0), K.at(3.0 * sx, TOP - 1.0)], APRON_DARK, 1.0)
+        K.line(d, [K.at(5.0 * sx, TOP + 6.0), K.at(6.0 * sx, -8.0)], APRON_DARK, 0.7)
+    K.poly(d, [K.at(-3.4, TOP - 1.4), K.at(3.4, TOP - 1.4), K.at(2.6, TOP + 3.0), K.at(-2.6, TOP + 3.0)], SHIRT)
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(0.4 * sx, TOP + 2.8), K.at(2.8 * sx, TOP + 1.4), K.at(2.8 * sx, TOP + 4.4)], RED)
+    K.oval(d, K.at(0.0, TOP + 2.9), 0.9, 0.9, RED_DARK)
+    K.line(d, [K.at(-9.6, -8.0), K.at(9.6, -8.0)], APRON_DARK, 0.8)
+    K.rrect(d, K.home[0] - 3.4, K.home[1] - 3.0, K.home[0] + 3.4, K.home[1] + 4.0, 0.8, mix(APRON, APRON_DARK, 0.25), APRON_DARK, 0.6)
+    K.poly(d, [K.at(-2.2, -6.4), K.at(-0.8, -6.4), K.at(-0.8, -2.4), K.at(-2.2, -2.4)], HAIR)
+    K.poly(d, [K.at(-12.0, HEM - 6.0), K.at(12.0, HEM - 6.0), K.at(12.0, HEM - 1.2), K.at(-12.0, HEM - 1.2)], FOAM)
+    for k in range(-3, 4):
+        x = k * 4.4 - 1.8
+        K.poly(d, [K.at(x, HEM - 1.2), K.at(x + 2.2, HEM - 6.0), K.at(x + 3.6, HEM - 6.0), K.at(x + 1.4, HEM - 1.2)], RED if k % 2 == 0 else BLUE)
+    K.line(d, [K.at(-12.0, HEM - 6.0), K.at(12.0, HEM - 6.0)], APRON_DARK, 0.5)
+
+
+def _front_hair_shape(d) -> None:
+    K.oval(d, K.at(0.0, -6.0), 9.2, 6.8, WHITE)
+    K.poly(d, [K.at(-2.0, -12.4), K.at(5.0, -13.4), K.at(8.4, -9.0), K.at(2.0, -8.0)], WHITE)
+
+
+def _front_hair(d) -> None:
+    K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, -2.0), K.at(7.8, -2.0), K.at(7.2, -6.4), K.at(3.0, -8.4), K.at(-3.0, -7.2), K.at(-6.4, -6.6),
+               K.at(-7.8, -2.0), K.at(-20.0, -2.0)], HAIR)
+    K.line(d, [K.at(-3.0, -12.4), K.at(-3.4, -7.4)], SKIN_SHADE, 0.5)
+    for strand in ([(-1.0, -11.6), (3.0, -12.2), (6.6, -9.6)], [(-7.0, -8.0), (-6.6, -4.0)]):
+        K.line(d, [K.at(x, y) for x, y in strand], HAIR_SHADE, 0.6)
+
+
+def _front_paradox(d) -> None:
+    # From the front the paradox is two halves: lather on one cheek, a beard
+    # on the other. And his moustache, with both ends up.
+    for (x, y), r in (((-5.0, 4.0), 2.4), ((-3.6, 6.6), 2.6), ((-1.6, 8.8), 2.0)):
+        K.oval(d, K.at(x, y), r, r * 0.86, FOAM_SHADE)
+    for (x, y), r in (((-5.2, 3.6), 2.0), ((-3.8, 6.0), 2.2), ((-1.8, 8.2), 1.6)):
+        K.oval(d, K.at(x, y), r, r * 0.86, FOAM)
+    K.poly(d, [K.at(0.2, 7.0), K.at(3.0, 6.4), K.at(6.6, 3.0), K.at(6.4, 7.6), K.at(3.6, 11.0), K.at(0.4, 11.4)], HAIR)
+    K.line(d, [K.at(-0.3, 0.6), K.at(-1.2, 3.6), K.at(0.0, 4.4), K.at(1.2, 3.6)], SKIN_DEEP, 0.6)
+    for sx in (-1.0, 1.0):
+        K.stroke(d, [K.at(0.0, 5.4), K.at(3.0 * sx, 6.2), K.at(5.0 * sx, 5.2), K.at(5.6 * sx, 3.4)], HAIR, 1.4)
+
+
+X.front_torso = R.make_front_torso(K, ("barber",), APRON, APRON_DARK, [(TOP, 4.0), (TOP + 3.6, 8.6), (-24.0, 9.0), (-8.0, 8.8), (HEM, 10.6)],
+                                   shoulder=(7.0, -32.0, 4.2, 4.6), detail=_front_apron)
+X.front_head_layers = R.front_face(R.make_front_head(K, ("barber",), SKIN, SKIN_DEEP, wide=7.8, jaw=6.2, chin=4.2, ears=SKIN, shape=_front_hair_shape, hair=_front_hair,
+                                                    face=_front_paradox),
+                                   R.make_front_eyes(K, ("barber",), white=None, ink=INK, spread=3.4, y=-0.8),
+                                   R.make_front_brows(K, ("barber",), HAIR, spread=3.4, y=-4.4, width=1.4))
+X.front_shoe = R.make_front_shoe(K, SHOE, SHOE_DARK, BUILD.ankle_up)
+X.front_span = (7.8, 4.6)
+R.add_front_rows(X)
+
 # ---- What he shows -----------------------------------------------------------
 
 
