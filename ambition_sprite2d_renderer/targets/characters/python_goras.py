@@ -430,6 +430,56 @@ def death(i: int, n: int):
 G.rows = [("idle", 6, 150), ("walk", 8, 96), ("talk", 8, 112), ("taunt", 8, 108), ("slash", 7, 84), ("hurt", 4, 86), ("death", 8, 112)]
 
 
+# ---- From the front ------------------------------------------------------------
+
+def _front_chiton(d) -> None:
+    """His chiton from the front: pinned at each shoulder with bronze, a
+    cord at his waist, the key pattern at its hem, and the folds."""
+    K.poly(d, [K.at(-3.6, TOP - 1.0), K.at(3.6, TOP - 1.0), K.at(0.0, TOP + 7.0)], SKIN_SHADE)
+    for sx in (-1.0, 1.0):
+        K.oval(d, K.at(6.6 * sx, TOP + 4.0), 1.5, 1.5, BRONZE, BRONZE_DARK, 0.5)
+        K.line(d, [K.at(6.6 * sx, TOP + 5.0), K.at(8.0 * sx, HEM - 6.0)], CHITON_DARK, 0.6)
+    K.line(d, [K.at(-9.6, -9.0), K.at(9.6, -9.0)], BRONZE_DARK, 1.3)
+    K.line(d, [K.at(-9.6, -9.0), K.at(9.6, -9.0)], BRONZE, 0.6)
+    for x in (-5.0, -1.6, 1.6, 5.0):
+        K.line(d, [K.at(x, -7.0), K.at(x * 1.5, HEM - 6.0)], CHITON_DARK, 0.6)
+    K.poly(d, [K.at(-20.0, HEM - 5.0), K.at(20.0, HEM - 5.0), K.at(20.0, HEM - 2.0), K.at(-20.0, HEM - 2.0)], KEY)
+    for k in range(-5, 6):
+        K.poly(d, [K.at(k * 2.6 - 0.6, HEM - 4.4), K.at(k * 2.6 + 0.6, HEM - 4.4), K.at(k * 2.6 + 0.6, HEM - 2.8), K.at(k * 2.6 - 0.6, HEM - 2.8)], CHITON)
+
+
+def _front_hair_shape(d) -> None:
+    # Thick dark curls, and a full beard to his chest.
+    K.oval(d, K.at(0.0, -5.6), 9.6, 7.6, WHITE)
+    K.poly(d, [K.at(-7.4, 2.0), K.at(7.4, 2.0), K.at(6.4, 11.0), K.at(0.0, 16.0), K.at(-6.4, 11.0)], WHITE)
+
+
+def _front_hair(d) -> None:
+    K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, -1.0), K.at(7.4, -1.0), K.at(7.0, -5.0), K.at(4.0, -7.2), K.at(0.0, -6.4), K.at(-4.0, -7.2),
+               K.at(-7.0, -5.0), K.at(-7.4, -1.0), K.at(-20.0, -1.0)], HAIR)
+    K.poly(d, [K.at(-20.0, -9.6), K.at(20.0, -9.6), K.at(20.0, -7.8), K.at(-20.0, -7.8)], BAND)
+    for x, y in ((-5.0, -11.6), (0.0, -12.6), (5.0, -11.6), (-7.6, -4.0), (7.6, -4.0)):
+        K.line(d, [K.at(x - 1.4, y + 0.8), K.at(x, y - 0.8), K.at(x + 1.4, y + 0.6)], HAIR_LIGHT, 0.6)
+
+
+def _front_beard(d) -> None:
+    K.line(d, [K.at(-0.3, 0.4), K.at(-1.4, 3.6), K.at(0.0, 4.4), K.at(1.4, 3.6)], SKIN_DEEP, 0.7)
+    K.poly(d, [K.at(-7.6, 1.6), K.at(-4.0, 5.2), K.at(0.0, 4.8), K.at(4.0, 5.2), K.at(7.6, 1.6), K.at(6.4, 11.0), K.at(0.0, 16.0), K.at(-6.4, 11.0)], HAIR)
+    K.line(d, [K.at(-2.4, 8.2), K.at(0.0, 8.8), K.at(2.4, 8.2)], (150, 90, 84, 255), 0.8)
+    for x in (-3.4, 0.0, 3.4):
+        K.line(d, [K.at(x, 10.0), K.at(x * 0.7, 14.0)], HAIR_LIGHT, 0.5)
+
+
+G.front_torso = R.make_front_torso(K, ("goras",), CHITON, CHITON_DARK, [(TOP, 4.4), (TOP + 3.6, 9.6), (-24.0, 10.2), (-9.0, 10.0), (HEM, 12.4)],
+                                   shoulder=(7.6, -32.6, 4.6, 5.0), detail=_front_chiton)
+G.front_head_layers = R.front_face(R.make_front_head(K, ("goras",), SKIN, SKIN_DEEP, wide=8.0, jaw=6.6, chin=3.8, ears=SKIN, shape=_front_hair_shape, hair=_front_hair,
+                                                    face=_front_beard),
+                                   R.make_front_eyes(K, ("goras",), ink=INK, iris=(70, 46, 30, 255), spread=3.4, y=-0.6, size=0.9),
+                                   R.make_front_brows(K, ("goras",), HAIR, spread=3.4, y=-4.0, width=1.4))
+G.front_shoe = R.make_front_shoe(K, SANDAL, SANDAL_DARK, BUILD.ankle_up)
+G.front_span = (8.4, 4.8)
+R.add_front_rows(G, hands="sides")
+
 # ---- What he shows -----------------------------------------------------------
 
 

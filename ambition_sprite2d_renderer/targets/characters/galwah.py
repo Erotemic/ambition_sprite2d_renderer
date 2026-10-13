@@ -262,6 +262,52 @@ def death(i: int, n: int):
 
 X.rows = [("rest", 8, 130), ("walk", 8, 95), ("theorem", 8, 110), ("duel", 8, 85), ("death", 8, 115)]
 
+# ---- From the front ------------------------------------------------------------
+
+def _front_coat(d) -> None:
+    """His coat from the front: open on the pale waistcoat, the high collar
+    of his shirt and the black cravat, and two rows of buttons."""
+    K.poly(d, [K.at(-4.4, TOP), K.at(4.4, TOP), K.at(5.0, 2.0), K.at(-5.0, 2.0)], VEST)
+    K.poly(d, [K.at(-3.4, TOP - 2.0), K.at(3.4, TOP - 2.0), K.at(2.6, TOP + 3.0), K.at(-2.6, TOP + 3.0)], SHIRT)
+    K.poly(d, [K.at(-2.4, TOP + 0.6), K.at(2.4, TOP + 0.6), K.at(1.6, TOP + 4.6), K.at(0.0, TOP + 6.0), K.at(-1.6, TOP + 4.6)], CRAVAT)
+    for y in (-18.0, -12.0, -6.0):
+        K.oval(d, K.at(0.0, y), 0.7, 0.7, (150, 132, 100, 255))
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(4.4 * sx, TOP), K.at(7.4 * sx, TOP + 1.0), K.at(5.0 * sx, -18.0)], COAT_LIGHT)
+        K.line(d, [K.at(5.0 * sx, -18.0), K.at(5.4 * sx, 18.0)], COAT_DARK, 0.7)
+        for y in (-14.0, -8.0):
+            K.oval(d, K.at(7.4 * sx, y), 0.8, 0.8, GOLD, GOLD_DARK, 0.3)
+
+
+def _front_hair_shape(d) -> None:
+    # Thick, dark, and it does not lie down.
+    K.oval(d, K.at(0.0, -6.2), 10.0, 7.8, WHITE)
+    for x, y in ((-6.0, -13.0), (-1.0, -14.6), (4.6, -13.4), (8.6, -9.0), (-9.0, -8.0)):
+        K.oval(d, K.at(x, y), 2.4, 2.2, WHITE)
+
+
+def _front_hair(d) -> None:
+    K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, 0.0), K.at(7.6, 0.0), K.at(7.2, -5.0), K.at(4.0, -7.6), K.at(1.0, -6.0), K.at(-2.6, -7.8),
+               K.at(-6.4, -6.0), K.at(-7.6, 0.0), K.at(-20.0, 0.0)], HAIR)
+    for strand in ([(-5.0, -12.0), (-1.0, -13.6), (3.6, -12.4)], [(-3.0, -9.6), (1.0, -10.0), (5.6, -8.6)], [(-8.6, -5.0), (-8.2, -1.0)], [(8.6, -5.0), (8.2, -1.0)]):
+        K.line(d, [K.at(x, y) for x, y in strand], HAIR_LIGHT, 0.6)
+
+
+def _front_nose(d) -> None:
+    K.line(d, [K.at(-0.3, 0.4), K.at(-1.2, 3.6), K.at(0.0, 4.4), K.at(1.2, 3.6)], SKIN_DEEP, 0.6)
+
+
+X.front_torso = R.make_front_torso(K, ("galwah",), COAT, COAT_DARK, [(TOP, 4.0), (TOP + 3.6, 8.6), (-24.0, 9.2), (-8.0, 8.6), (20.0, 10.6)],
+                                   shoulder=(7.0, -30.8, 4.2, 4.6), detail=_front_coat)
+X.front_head_layers = R.front_face(R.make_front_head(K, ("galwah",), SKIN, SKIN_DEEP, wide=7.8, jaw=6.0, chin=4.0, ears=SKIN, shape=_front_hair_shape, hair=_front_hair,
+                                                    face=_front_nose),
+                                   R.make_front_eyes(K, ("galwah",), ink=INK, iris=(60, 44, 40, 255), spread=3.4, y=-0.6, size=0.9),
+                                   R.make_front_brows(K, ("galwah",), HAIR, spread=3.4, y=-4.0, width=1.3),
+                                   R.make_front_mouth(K, ("galwah",), y=8.2, colour=(118, 54, 58, 255), wide=0.6))
+X.front_shoe = R.make_front_shoe(K, SHOE, SHOE_DARK, BUILD.ankle_up)
+X.front_span = (7.8, 4.4)
+R.add_front_rows(X, hands="sides")
+
 # ---- What he shows -----------------------------------------------------------
 
 

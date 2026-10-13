@@ -433,6 +433,56 @@ def taunt(i: int, n: int):
 X.rows = [("idle", 8, 132), ("walk", 8, 96), ("talk", 8, 106), ("slash", 7, 70), ("crosscut", 8, 66), ("integral_sweep", 9, 72), ("notation", 8, 92),
           ("block", 6, 82), ("hit", 5, 86), ("death", 8, 110), ("taunt", 8, 96)]
 
+# ---- From the front ------------------------------------------------------------
+
+_CURLS = [(sx * x, y, r) for sx in (-1.0, 1.0) for x, y, r in ((9.4, 0.0, 4.0), (10.0, 6.0, 4.0), (9.6, 12.0, 3.8), (8.4, 17.6, 3.4))]
+
+
+def _front_coat(d) -> None:
+    """His coat from the front: gold down each edge and round its hem, its
+    buttons, and the lace at his throat."""
+    K.poly(d, [K.at(-1.6, TOP + 2.0), K.at(1.6, TOP + 2.0), K.at(2.6, 27.0), K.at(-2.6, 27.0)], COAT_DARK)
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(1.6 * sx, TOP + 2.0), K.at(3.2 * sx, TOP + 2.0), K.at(4.4 * sx, 27.0), K.at(2.6 * sx, 27.0)], GOLD)
+        for y in (-20.0, -13.0, -6.0, 1.0):
+            K.oval(d, K.at(5.6 * sx, y), 0.9, 0.9, GOLD)
+    K.poly(d, [K.at(-20.0, 22.6), K.at(20.0, 22.6), K.at(20.0, 25.0), K.at(-20.0, 25.0)], GOLD)
+    K.poly(d, [K.at(-3.8, TOP - 1.0), K.at(3.8, TOP - 1.0), K.at(3.2, TOP + 9.0), K.at(0.0, TOP + 12.4), K.at(-3.2, TOP + 9.0)], LACE)
+    for y in (TOP + 3.0, TOP + 6.4):
+        K.line(d, [K.at(-3.2, y), K.at(0.0, y + 1.4), K.at(3.2, y)], LACE_DARK, 0.5)
+
+
+def _front_wig_shape(d) -> None:
+    # The great wig: high over his brow, and down past each shoulder in curls.
+    K.oval(d, K.at(0.0, -6.4), 11.0, 9.8, WHITE)
+    for x, y, r in _CURLS:
+        K.oval(d, K.at(x, y), r, r * 0.92, WHITE)
+
+
+def _front_wig(d) -> None:
+    K.poly(d, [K.at(-30.0, -30.0), K.at(30.0, -30.0), K.at(30.0, -2.0), K.at(7.2, -2.0), K.at(6.4, -6.0), K.at(3.6, -8.2), K.at(0.0, -6.6), K.at(-3.6, -8.2),
+               K.at(-6.4, -6.0), K.at(-7.2, -2.0), K.at(-30.0, -2.0)], WIG)
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(7.2 * sx, -2.0), K.at(6.8 * sx, 3.0), K.at(5.4 * sx, 7.0), K.at(4.8 * sx, 30.0), K.at(30.0 * sx, 30.0), K.at(30.0 * sx, -2.0)], WIG)
+    for x, y, r in _CURLS + [(-5.4, -11.0, 3.0), (0.0, -13.0, 2.8), (5.4, -11.0, 3.0)]:
+        K.oval(d, K.at(x, y), r * 0.7, r * 0.6, None, WIG_LIGHT, 0.6)  # type: ignore[arg-type]
+
+
+def _front_nose(d) -> None:
+    K.line(d, [K.at(-0.3, 0.0), K.at(-1.4, 3.8), K.at(0.0, 4.8), K.at(1.4, 3.8)], SKIN_DEEP, 0.7)
+
+
+X.front_torso = R.make_front_torso(K, ("leib",), COAT, COAT_DARK, [(TOP, 4.4), (TOP + 3.6, 9.6), (-24.0, 10.2), (-6.0, 9.6), (26.0, 12.4)],
+                                   shoulder=(7.6, -31.4, 4.6, 5.0), detail=_front_coat)
+X.front_head_layers = R.front_face(R.make_front_head(K, ("leib",), SKIN, SKIN_DEEP, wide=7.6, jaw=6.4, chin=4.4, ears=None, shape=_front_wig_shape, hair=_front_wig,
+                                                    face=_front_nose),
+                                   R.make_front_eyes(K, ("leib",), ink=INK, iris=(70, 56, 44, 255), spread=3.3, y=-0.6, size=0.95),
+                                   R.make_front_brows(K, ("leib",), WIG, spread=3.3, y=-4.2, width=1.2),
+                                   R.make_front_mouth(K, ("leib",), y=8.4, colour=(130, 60, 64, 255), wide=0.65))
+X.front_shoe = R.make_front_shoe(K, SHOE, SHOE_DARK, BUILD.ankle_up)
+X.front_span = (8.2, 4.6)
+R.add_front_rows(X)
+
 # ---- His blades, and what he writes -------------------------------------------
 
 

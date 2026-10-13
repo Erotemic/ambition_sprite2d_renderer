@@ -493,6 +493,71 @@ def taunt(i: int, n: int):
 X.rows = [("idle", 8, 132), ("walk", 8, 92), ("talk", 8, 104), ("diagonalize", 9, 76), ("countable_charge", 8, 74), ("power_set", 10, 84), ("aleph_rain", 8, 90),
           ("hit", 5, 84), ("death", 10, 112), ("taunt", 8, 98)]
 
+# ---- From the front ------------------------------------------------------------
+
+def _front_coat(d) -> None:
+    """The professor from the front: his coat open on his waistcoat, his bow
+    tie, the aleph on his chest; and under his waist the chest of the horse."""
+    K.poly(d, [K.at(-4.0, TOP), K.at(4.0, TOP), K.at(4.6, WAIST + 2.0), K.at(-4.6, WAIST + 2.0)], VEST)
+    K.poly(d, [K.at(-2.8, TOP - 1.0), K.at(2.8, TOP - 1.0), K.at(0.0, TOP + 7.0)], SHIRT)
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(2.0 * sx, TOP + 1.6), K.at(0.2 * sx, TOP + 2.8), K.at(2.0 * sx, TOP + 4.4)], INK)
+        K.poly(d, [K.at(4.0 * sx, TOP), K.at(7.0 * sx, TOP + 1.0), K.at(4.4 * sx, WAIST - 20.0)], COAT_LIGHT)
+        K.line(d, [K.at(4.4 * sx, WAIST - 20.0), K.at(4.8 * sx, WAIST + 4.0)], COAT_DARK, 0.7)
+    for y in (WAIST - 18.0, WAIST - 12.0, WAIST - 6.0):
+        K.oval(d, K.at(0.0, y), 0.7, 0.7, INK)
+    K.oval(d, K.at(6.0, WAIST - 21.0), 1.6, 1.6, GOLD, GOLD_DARK, 0.4)
+    # The chest of the horse.
+    K.poly(d, [K.at(-30.0, WAIST + 4.0), K.at(30.0, WAIST + 4.0), K.at(30.0, 30.0), K.at(-30.0, 30.0)], HORSE)
+    K.line(d, [K.at(-30.0, WAIST + 4.0), K.at(30.0, WAIST + 4.0)], COAT_DARK, 1.0)
+    # His barrel is behind it, in shade at each side; the two muscles of the
+    # chest come to a point between his front legs.
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(9.8 * sx, WAIST + 4.0), K.at(30.0 * sx, WAIST + 4.0), K.at(30.0 * sx, 30.0), K.at(8.6 * sx, 30.0), K.at(10.4 * sx, 0.0)], HORSE_DARK)
+        K.line(d, [K.at(8.0 * sx, 0.0), K.at(3.0 * sx, 6.0), K.at(0.0, 9.0)], HORSE_DARK, 0.8)
+    K.oval(d, K.at(0.0, -5.0), 5.6, 4.6, HORSE_LIGHT)
+
+
+def _front_hair_shape(d) -> None:
+    # Bare on top; hair at each side, and a beard to his collar.
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(7.4 * sx, -6.6), K.at(9.8 * sx, -1.0), K.at(8.8 * sx, 4.4), K.at(6.0 * sx, 6.4)], _SOLID)
+    K.poly(d, [K.at(-7.0, 3.0), K.at(7.0, 3.0), K.at(6.2, 11.0), K.at(0.0, 15.6), K.at(-6.2, 11.0)], _SOLID)
+
+
+def _front_hair(d) -> None:
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(6.2 * sx, -8.0), K.at(20.0 * sx, -8.0), K.at(20.0 * sx, 7.0), K.at(6.8 * sx, 7.0), K.at(7.2 * sx, 0.0)], HAIR)
+        K.line(d, [K.at(7.4 * sx, -4.0), K.at(8.8 * sx, 1.0)], HAIR_GREY, 0.6)
+
+
+def _front_beard(d) -> None:
+    K.line(d, [K.at(-3.0, -7.6), K.at(0.0, -8.0), K.at(3.0, -7.6)], mix(SKIN, SKIN_DEEP, 0.5), 0.45)
+    K.line(d, [K.at(-0.3, 0.2), K.at(-1.4, 3.2), K.at(0.0, 4.0), K.at(1.4, 3.2)], SKIN_DEEP, 0.7)
+    K.poly(d, [K.at(-7.2, 2.4), K.at(-4.0, 5.2), K.at(0.0, 4.6), K.at(4.0, 5.2), K.at(7.2, 2.4), K.at(6.2, 11.0), K.at(0.0, 15.6), K.at(-6.2, 11.0)], BEARD)
+    K.line(d, [K.at(-2.2, 7.4), K.at(0.0, 8.0), K.at(2.2, 7.4)], (150, 76, 76, 255), 0.8)
+    for x in (-2.6, 2.6):
+        K.line(d, [K.at(x, 9.6), K.at(x * 0.7, 13.4)], HAIR_GREY, 0.5)
+
+
+def _front_hoof():
+    def shape(d) -> None:
+        K.poly(d, [K.at(-2.8, -1.6), K.at(2.8, -1.6), K.at(4.0, BUILD.ankle_up), K.at(-4.0, BUILD.ankle_up)], _SOLID)
+
+    return K.solid(("front_hoof",), shape, HOOF, None, outline=1.1, rim=0.2, shade=0.0)
+
+
+X.front_torso = R.make_front_torso(K, ("canter",), COAT, COAT_DARK, [(TOP, 4.2), (TOP + 3.6, 9.0), (WAIST - 24.0, 9.6), (WAIST - 2.0, 8.8), (WAIST + 4.0, 10.0),
+                                                                    (WAIST + 7.0, 13.6), (-1.0, 13.8), (5.0, 11.0), (10.0, 4.0)],
+                                   shoulder=(7.2, WAIST - 30.6, 4.4, 4.8), detail=_front_coat)
+X.front_head_layers = R.front_face(R.make_front_head(K, ("canter",), SKIN, SKIN_DEEP, wide=7.6, jaw=6.0, chin=3.8, ears=SKIN, shape=_front_hair_shape, hair=_front_hair,
+                                                    face=_front_beard),
+                                   R.make_front_eyes(K, ("canter",), white=None, ink=INK, spread=3.3, y=-0.4),
+                                   R.make_front_brows(K, ("canter",), BEARD, spread=3.3, y=-4.0, width=1.5))
+X.front_shoe = _front_hoof
+X.front_span = (7.6, 6.6)
+R.add_front_rows(X, hands="sides")
+
 # ---- What he shows -----------------------------------------------------------
 
 

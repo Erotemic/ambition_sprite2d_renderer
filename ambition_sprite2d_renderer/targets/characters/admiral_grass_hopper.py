@@ -394,6 +394,76 @@ def death(i: int, n: int):
 X.alias(hurt="hit")
 X.rows = [("idle", 8, 140), ("walk", 8, 96), ("talk", 6, 112), ("interact", 6, 108), ("slash", 7, 84), ("taunt", 8, 92), ("hurt", 5, 92), ("death", 8, 112)]
 
+# ---- From the front ------------------------------------------------------------
+
+_FRONT_EYE = 3.0
+_FRONT_FEELERS = [[(1.6 * sx, -14.0), (3.6 * sx, -19.0), (7.0 * sx, -22.4), (10.4 * sx, -22.0)] for sx in (-1.0, 1.0)]
+
+
+def _front_jacket(d) -> None:
+    """Her collar and tie, two rows of gold buttons, the ribbons over her
+    heart, the hem of the jacket and the skirt under it."""
+    K.poly(d, [K.at(-3.4, TOP - 1.0), K.at(3.4, TOP - 1.0), K.at(0.0, TOP + 7.0)], CAP)
+    K.poly(d, [K.at(-1.0, TOP + 0.6), K.at(1.0, TOP + 0.6), K.at(0.7, TOP + 6.4), K.at(0.0, TOP + 7.6), K.at(-0.7, TOP + 6.2)], INK)
+    K.line(d, [K.at(-3.4, TOP - 1.0), K.at(0.0, TOP + 7.0), K.at(3.4, TOP - 1.0)], NAVY_DARK, 0.6)
+    for y in (-17.0, -12.6, -8.2):
+        for x in (-2.2, 2.2):
+            K.oval(d, K.at(x, y), 0.9, 0.9, GOLD, GOLD_DARK, 0.3)
+    for k, colour in enumerate(((206, 70, 70, 255), GOLD, (86, 150, 220, 255))):
+        K.poly(d, [K.at(2.4 + k * 1.6, -22.4), K.at(3.8 + k * 1.6, -22.4), K.at(3.8 + k * 1.6, -20.6), K.at(2.4 + k * 1.6, -20.6)], colour)
+    K.line(d, [K.at(-9.0, -3.0), K.at(9.0, -3.0)], NAVY_DARK, 0.8)
+    for x in (-3.0, 3.0):
+        K.line(d, [K.at(x, -2.0), K.at(x * 1.3, HEM - 1.0)], NAVY_DARK, 0.6)
+
+
+def _front_cap_shape(d) -> None:
+    K.poly(d, [K.at(-10.4, -7.0), K.at(-11.0, -11.6), K.at(-5.0, -14.8), K.at(5.0, -14.8), K.at(11.0, -11.6), K.at(10.4, -7.0)], _SOLID)
+    K.poly(d, [K.at(-7.4, -7.4), K.at(7.4, -7.4), K.at(8.0, -4.6), K.at(-8.0, -4.6)], _SOLID)
+    for feeler in _FRONT_FEELERS:
+        K.stroke(d, [K.at(x, y) for x, y in feeler], _SOLID, 1.5)
+
+
+def _front_cap(d) -> None:
+    K.poly(d, [K.at(-10.4, -7.0), K.at(-11.0, -11.6), K.at(-5.0, -14.8), K.at(5.0, -14.8), K.at(11.0, -11.6), K.at(10.4, -7.0)], CAP)
+    K.poly(d, [K.at(-11.0, -9.6), K.at(11.0, -9.6), K.at(10.4, -6.8), K.at(-10.4, -6.8)], INK)
+    K.line(d, [K.at(-10.8, -9.8), K.at(10.8, -9.8)], GOLD, 0.7)
+    K.poly(d, [K.at(-7.4, -7.0), K.at(7.4, -7.0), K.at(8.0, -4.6), K.at(-8.0, -4.6)], INK)
+    K.oval(d, K.at(0.0, -12.2), 2.0, 2.0, GOLD, GOLD_DARK, 0.4)
+    K.oval(d, K.at(0.0, -12.2), 0.8, 0.8, CAP)
+
+
+def _front_eyes_face(d) -> None:
+    # Her eyes are large and dark, and her glasses are round.
+    for sx in (-1.0, 1.0):
+        cx, cy, r = 3.5 * sx, -0.4, _FRONT_EYE
+        K.oval(d, K.at(cx, cy), r * 0.86, r, INK)
+        K.oval(d, K.at(cx - r * 0.25, cy - r * 0.35), r * 0.26, r * 0.3, GREEN_PALE)
+        K.oval(d, K.at(cx, cy), r + 0.4, r + 0.5, LENS, GOLD_DARK, 0.5)
+        K.line(d, [K.at(2.0 * sx, 5.0), K.at(3.4 * sx, 7.4)], GREEN_DEEP, 0.4)
+    K.line(d, [K.at(-0.5, -0.6), K.at(0.5, -0.6)], GOLD_DARK, 0.5)
+
+
+def _front_lids(mode: str):
+    if mode != "closed":
+        return None
+
+    def paint(d) -> None:
+        for sx in (-1.0, 1.0):
+            K.oval(d, K.at(3.5 * sx, -0.4), _FRONT_EYE * 0.86, _FRONT_EYE, GREEN_SHADE)
+            K.line(d, [K.at(3.5 * sx - 2.4, 0.0), K.at(3.5 * sx + 2.4, 0.0)], GREEN_DEEP, 0.6)
+
+    return K.piece(("hopper_front_lids",), paint)
+
+
+X.front_torso = R.make_front_torso(K, ("hopper",), NAVY, NAVY_DARK, [(TOP, 3.2), (TOP + 3.6, 6.4), (TOP + 12.5, 7.6), (-10.0, 5.6), (0.0, 8.0), (HEM, 9.4)],
+                                   shoulder=(4.8, -26.2, 3.8, 3.6), detail=_front_jacket)
+X.front_head_layers = R.front_face(R.make_front_head(K, ("hopper",), GREEN, GREEN_DEEP, wide=7.4, jaw=5.2, chin=2.8, shape=_front_cap_shape, hair=_front_cap,
+                                                    face=_front_eyes_face),
+                                   _front_lids, None, R.make_front_mouth(K, ("hopper",), y=6.4, colour=(150, 60, 66, 255), lips=(170, 70, 80, 255), wide=0.6))
+X.front_shoe = R.make_front_shoe(K, INK, (10, 10, 14, 255), BUILD.ankle_up, wide=0.8)
+X.front_span = (5.8, 3.4)
+R.add_front_rows(X)
+
 # ---- What she shows ------------------------------------------------------------
 
 
