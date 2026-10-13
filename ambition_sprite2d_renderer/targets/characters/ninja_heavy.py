@@ -1,42 +1,56 @@
-"""Procedural Iron Lotus redesign for the heavy ninja sprite.
+"""Sprite generator for the Ninja Heavy: the mountain of the Shadow Dojo.
 
-The previous target read as a small hooded figure carrying a pale axe-like
-shape.  This version rebuilds the character around a stronger silhouette and a
-clear visual hierarchy: an oni-inspired iron mask, layered lamellar armor,
-asymmetric shoulder plating, broad split hakama, wrapped greaves, and a truly
-massive studded kanabo.  Every frame remains authored in Python/Pillow and goes
-through the normal Ambition sheet build/publish path.
+The look (2026-10-13, a redraw: Jon, "Please redo the art for ninja heavy"):
+the largest person of the dojo, with the build of a wrestler of the ring, seen
+three quarters from the front, facing right. He is 198 cm, and wide: a round
+trunk, a neck as wide as his head, arms like the legs of other people.
+
+What makes him a ninja: the hood of the dojo over his head and his face, with
+only his eyes out of it, and a plate of iron on its brow; and black from there
+down, with no skin but at his eyes (Jon, 2026-10-13: "Less skin, I like the
+dark clad in black look"): a black gi shut to his neck, black sleeves and
+gloves, black wraps on his shins. What makes him the heavy: the rope of a
+champion round his middle, in red cord, with its white papers; iron on his
+forearms and one shoulder; and the kanabo, a club of iron with studs, as long
+as his leg. At rest it lies on his shoulder.
+
+He is a grown man and not a mascot, and not a monster: the last drawing had
+the mask of an oni, and so does the leader of the dojo. He has a face, and
+most of it is under cloth. There is no drop shadow.
+
+The rows are the ones a brute of the game plays: ``idle``, ``walk``,
+``slash`` (the club comes down from over his head with both hands), ``taunt``
+(he points it at you), ``hurt`` and ``death``.
+
+He is a person of ``_person_rig``: the bones, the poses and the frame are
+shared; the head, the clothes, the club and how he stands are his.
 """
 
 from __future__ import annotations
 
-import argparse
 import math
-from dataclasses import dataclass
-from pathlib import Path
-from typing import List, Sequence, Tuple
+from typing import List
 
-from PIL import Image, ImageDraw
+from ._ai_era_kit import OUTLINE, WHITE, RGBA, mix
+from . import _person_rig as R
+from ._person_rig import Build, Person, Stamp, loop, shot
 
-from ...authoring import rigdoc
-from ...authoring.part_flipbook import publish_rig_flipbook
-from ...authoring.sheet_build import build_sheet
-from ambition_sprite2d_renderer.core.draw import blending_draw
-
-from . import _solo_shape_rig as SR
+TARGET_NAME = "ninja_heavy"
+TARGET_BASENAME = TARGET_NAME
+DISPLAY_NAME = "Ninja Heavy"
 
 ACTOR_METADATA = {
     "actor": {"character_id": "npc_ninja_heavy", "display_name": "Ninja Heavy"},
     "lineage": {
         "family": "npc_ninja_heavy",
-        "variant": "iron_lotus",
-        "parents": ["npc_ninja_heavy/legacy"],
+        "variant": "mountain",
+        "parents": ["npc_ninja_heavy/iron_lotus"],
         "creator": {
             "kind": "model",
-            "model": "GPT-5.6 Thinking",
+            "model": "Claude Opus 5.5",
         },
-        "method": "procedural_python_pillow",
-        "revision": "anatomy_and_connectivity_polish",
+        "method": "person_rig",
+        "revision": "first_draft",
     },
     "body": {
         "body_plan": "HumanoidBiped",
@@ -121,1077 +135,330 @@ ACTOR_METADATA = {
 }
 
 
-RGBA = Tuple[int, int, int, int]
-Point = Tuple[float, float]
+#: He is in black from his head to his feet (Jon, 2026-10-13: "Less skin, I
+#: like the dark clad in black look"). The black has a little blue in it, so
+#: its folds and its edges can be seen.
+GI: RGBA = (32, 34, 48, 255)
+GI_DARK: RGBA = (17, 18, 28, 255)
+GI_LIGHT: RGBA = (64, 70, 98, 255)
+HOOD: RGBA = (27, 29, 42, 255)
+HOOD_DARK: RGBA = (14, 15, 24, 255)
+SLEEVE: RGBA = (38, 41, 58, 255)
+SLEEVE_DARK: RGBA = (22, 24, 36, 255)
+GLOVE: RGBA = (44, 46, 62, 255)
+GLOVE_DARK: RGBA = (20, 21, 32, 255)
+LACQUER: RGBA = (176, 44, 48, 255)
+LACQUER_DARK: RGBA = (112, 26, 34, 255)
+ROPE: RGBA = (150, 36, 44, 255)
+ROPE_DARK: RGBA = (92, 20, 30, 255)
+PAPER: RGBA = (250, 248, 240, 255)
+PAPER_DARK: RGBA = (196, 198, 210, 255)
+IRON: RGBA = (86, 92, 110, 255)
+IRON_DARK: RGBA = (46, 50, 66, 255)
+IRON_LIGHT: RGBA = (150, 160, 180, 255)
+BRASS: RGBA = (222, 176, 84, 255)
+BRASS_DARK: RGBA = (150, 104, 44, 255)
+WRAP: RGBA = (52, 55, 74, 255)
+WRAP_DARK: RGBA = (30, 32, 46, 255)
+GRIP: RGBA = (104, 60, 54, 255)
+GRIP_DARK: RGBA = (62, 34, 36, 255)
+SKIN: RGBA = (218, 166, 126, 255)
+SKIN_SHADE: RGBA = (182, 126, 96, 255)
+SKIN_DEEP: RGBA = (132, 82, 70, 255)
+INK: RGBA = (24, 22, 30, 255)
+DUST: RGBA = (214, 200, 168, 255)
+DUST_DARK: RGBA = (150, 132, 104, 255)
 
-TARGET_NAME = "ninja_heavy"
-FRAME_SIZE = (320, 288)
-WORK_FRAME_SIZE = (640, 576)
-SUPER = 4
-FIGURE_SCALE = 1.46
-WEAPON_SCALE = 1.02
-ROWS: List[Tuple[str, int, int]] = [
-    ("idle", 6, 130),
-    ("walk", 8, 95),
-    ("slash", 7, 80),
-    ("taunt", 6, 110),
-    ("hurt", 4, 90),
-    ("death", 8, 110),
-]
+#: 198 cm (168 cm is 108 pixels), and wide.
+BUILD = Build(hip_up=55.0, thigh=27.0, shin=26.0, neck=(1.0, -42.0), upper=22.0, fore=20.5, near_shoulder=(-10.0, -36.6), far_shoulder=(10.6, -36.0),
+              near_hip=(-5.4, 0.0), far_hip=(5.4, 0.0), head_up=(1.2, -12.4), height=127.0, half_width=(20.0, 22.0))
 
-# Palette: near-black cloth, blue-black armor, lacquer red, aged brass, and
-# cold iron.  The values are separated enough to survive low-quality scaling.
-TRANSPARENT = (0, 0, 0, 0)
-OUTLINE = (10, 12, 17, 255)
-OUTLINE_SOFT = (22, 25, 33, 255)
-SMOKE = (36, 43, 58, 115)
-UNDERSUIT = (17, 21, 30, 255)
-CLOTH_DEEP = (23, 28, 39, 255)
-CLOTH = (39, 47, 63, 255)
-CLOTH_MID = (63, 74, 95, 255)
-CLOTH_HI = (104, 117, 143, 255)
-ARMOR_DEEP = (31, 38, 55, 255)
-ARMOR = (53, 66, 92, 255)
-ARMOR_HI = (91, 111, 149, 255)
-LACQUER = (112, 24, 31, 255)
-LACQUER_HI = (190, 47, 49, 255)
-LACQUER_GLOW = (255, 91, 70, 255)
-BRASS_DARK = (100, 70, 34, 255)
-BRASS = (181, 135, 59, 255)
-BRASS_HI = (232, 190, 93, 255)
-IRON_DEEP = (43, 47, 55, 255)
-IRON = (89, 96, 108, 255)
-IRON_HI = (157, 166, 178, 255)
-WRAP = (79, 48, 45, 255)
-WRAP_HI = (149, 91, 77, 255)
-ROPE = (165, 124, 68, 255)
-ROPE_HI = (222, 180, 101, 255)
-SKIN_SHADOW = (93, 57, 47, 255)
-EYE = (241, 46, 48, 255)
-EYE_CORE = (255, 176, 113, 255)
-DUST = (142, 117, 79, 155)
-WHITE_FLASH = (255, 240, 215, 195)
+X = Person(TARGET_NAME, BUILD, frame=(288, 240), ground=226.0, cx=132.0)
+K = X.K
+P = X.P
+FRAME_SIZE = X.frame
+TOP = BUILD.neck[1] - 2.0
+#: How long the club is past his hand, and how far its grip is behind it.
+CLUB = 66.0
+BUTT = 6.0
 
 
-def _s(value: float) -> int:
-    return int(round(value * SUPER))
+def _front(d, hb: float, hf: float) -> None:
+    """The cross of his gi and the red under it, the line of his belly, and
+    the rope of a champion with its knot and its white papers."""
+    # The gi is shut to his neck: one side over the other, and a line of red
+    # under its edge.
+    K.poly(d, [K.at(-3.0, TOP), K.at(-0.4, TOP - 1.0), K.at(13.4, -15.0), K.at(10.6, -14.4)], LACQUER)
+    K.poly(d, [K.at(-6.0, TOP + 1.0), K.at(-3.0, TOP), K.at(10.6, -14.4), K.at(8.0, -13.4)], GI_LIGHT)
+    K.poly(d, [K.at(12.0, TOP + 1.0), K.at(14.4, TOP + 2.6), K.at(8.4, -24.0), K.at(6.4, -25.6)], GI_LIGHT)
+    K.line(d, [K.at(-9.0, -22.0), K.at(-3.0, -8.0)], GI_DARK, 0.7)
+    # The rope: thick, of twisted red cord, round the widest part of him.
+    K.poly(d, [K.at(-40.0, -15.0), K.at(40.0, -12.0), K.at(40.0, -4.0), K.at(-40.0, -7.0)], ROPE)
+    K.line(d, [K.at(-40.0, -15.0), K.at(40.0, -12.0)], ROPE_DARK, 0.8)
+    K.line(d, [K.at(-40.0, -7.0), K.at(40.0, -4.0)], ROPE_DARK, 0.8)
+    for k in range(-6, 9):
+        x = k * 4.4
+        K.line(d, [K.at(x, -14.4 + x * 0.04), K.at(x + 3.0, -5.6 + x * 0.04)], ROPE_DARK, 0.7)
+    # Its papers: two, each one zigzag of three steps.
+    for x in (4.0, 14.0):
+        K.poly(d, [K.at(x, -4.6), K.at(x + 4.0, -4.6), K.at(x + 4.0, 0.2), K.at(x + 5.8, 0.2), K.at(x + 5.8, 5.2), K.at(x + 4.0, 5.2), K.at(x + 4.0, 10.4),
+                   K.at(x, 10.4), K.at(x, 5.0), K.at(x + 1.8, 5.0), K.at(x + 1.8, 0.4), K.at(x, 0.4)], PAPER, OUTLINE, 0.5)
+    # The folds of the gi over his belly, and where it closes.
+    K.line(d, [K.at(-12.0, -28.0), K.at(-9.0, -16.0)], GI_DARK, 0.7)
+    K.line(d, [K.at(15.0, -22.0), K.at(19.0, -15.0)], GI_DARK, 0.6)
+    # The skirt of the gi under the rope, and its edge.
+    K.line(d, [K.at(7.0, -1.0), K.at(9.0 + hf * 0.5, 14.0)], GI_DARK, 0.7)
+    K.poly(d, [K.at(-40.0 - hb, 11.0), K.at(40.0 + hf, 11.0), K.at(40.0 + hf, 13.4), K.at(-40.0 - hb, 13.4)], GI_LIGHT)
 
 
-def _pt(point: Point) -> Tuple[int, int]:
-    return (_s(point[0]), _s(point[1]))
+def _torso(hem_back: int, hem_front: int):
+    """A round trunk: a back like a wall, a chest that goes into a belly,
+    and the skirt of the gi under the rope."""
+    hb, hf = float(hem_back), float(hem_front)
+
+    def shape(d) -> None:
+        K.poly(d, [K.at(-6.6, TOP), K.at(-14.0, TOP + 4.0), K.at(-18.0, -30.0), K.at(-19.6, -16.0), K.at(-18.6, -4.0), K.at(-16.0 - hb, 14.0), K.at(17.0 + hf, 14.0),
+                   K.at(22.0, 2.0), K.at(25.6, -7.0), K.at(26.0, -15.0), K.at(24.0, -23.0), K.at(19.0, -31.0), K.at(13.6, TOP + 4.0), K.at(6.6, TOP - 0.4)], WHITE)
+        K.oval(d, K.at(-9.6, -36.0), 9.6, 8.6, WHITE)
+        K.oval(d, K.at(10.0, -35.6), 8.2, 7.6, WHITE)
+
+    def paint(d) -> None:
+        _front(d, hb, hf)
+
+    return K.solid(("heavy_torso", hem_back, hem_front), shape, GI, paint, outline=1.3, rim=0.3, shade=0.4, shade_colour=GI_DARK)
 
 
-def _box(cx: float, cy: float, rx: float, ry: float) -> Tuple[int, int, int, int]:
-    return (_s(cx - rx), _s(cy - ry), _s(cx + rx), _s(cy + ry))
+X.torso = _torso
+
+NEAR_EYE = (2.2, -0.4)
+FAR_EYE = (7.4, -0.6)
 
 
-def _clamp01(value: float) -> float:
-    return max(0.0, min(1.0, value))
+def _hood_shape(d) -> None:
+    # The hood is a little larger than his head, and its two tails are behind.
+    K.oval(d, K.at(-0.6, -2.6), 9.6, 10.2, WHITE)
+    K.oval(d, K.at(2.6, 4.4), 6.4, 8.0, WHITE)
+    K.poly(d, [K.at(-8.6, -3.0), K.at(-16.0, 0.0), K.at(-17.6, 4.0), K.at(-10.0, 2.6)], WHITE)
+    K.poly(d, [K.at(-8.6, -1.0), K.at(-13.6, 6.0), K.at(-12.6, 10.6), K.at(-8.0, 4.0)], WHITE)
 
 
-def _lerp(a: float, b: float, t: float) -> float:
-    return a + (b - a) * t
+def _hood(d) -> None:
+    # All of it is cloth but a band at his eyes.
+    K.poly(d, [K.at(-30.0, -30.0), K.at(30.0, -30.0), K.at(30.0, -4.0), K.at(9.6, -4.0), K.at(4.0, -4.4), K.at(-0.6, -3.4), K.at(-1.6, -0.6), K.at(-1.0, 2.2),
+               K.at(4.0, 2.8), K.at(10.6, 2.4), K.at(30.0, 2.4), K.at(30.0, 30.0), K.at(-30.0, 30.0)], HOOD)
+    K.line(d, [K.at(9.6, -4.0), K.at(4.0, -4.4), K.at(-0.6, -3.4), K.at(-1.6, -0.6), K.at(-1.0, 2.2), K.at(4.0, 2.8), K.at(10.6, 2.4)], HOOD_DARK, 0.7)
+    # The folds of it, the knot at the back, and the cloth over his nose and mouth.
+    K.line(d, [K.at(-6.0, -9.0), K.at(-8.0, 0.0), K.at(-6.4, 8.0)], HOOD_DARK, 0.6)
+    K.line(d, [K.at(0.0, 5.0), K.at(4.0, 7.6), K.at(8.6, 6.6)], HOOD_DARK, 0.6)
+    K.line(d, [K.at(-1.0, 8.4), K.at(3.6, 11.0), K.at(7.4, 10.0)], HOOD_DARK, 0.5)
+    K.oval(d, K.at(-8.6, -0.4), 2.2, 2.6, HOOD_DARK)
+    K.line(d, [K.at(-10.0, 0.6), K.at(-16.0, 2.6)], HOOD_DARK, 0.6)
+    # The plate on his brow: iron, with a red bar and three brass rivets.
+    K.poly(d, [K.at(-3.6, -10.6), K.at(9.0, -11.2), K.at(10.4, -5.6), K.at(-2.4, -5.0)], IRON, OUTLINE, 0.6)
+    K.poly(d, [K.at(-3.0, -10.0), K.at(8.8, -10.6), K.at(9.0, -9.0), K.at(-2.8, -8.4)], IRON_LIGHT)
+    K.poly(d, [K.at(2.4, -10.4), K.at(4.6, -10.5), K.at(5.2, -5.6), K.at(3.0, -5.4)], LACQUER)
+    for x in (-1.0, 7.6):
+        K.oval(d, K.at(x, -7.0), 0.8, 0.8, BRASS)
 
 
-def _ease(t: float) -> float:
-    t = _clamp01(t)
-    return 0.5 - 0.5 * math.cos(math.pi * t)
+def _scar(d) -> None:
+    # An old cut through his near brow: he did not always win.
+    K.line(d, [K.at(0.6, -3.6), K.at(2.0, 1.6)], SKIN_DEEP, 0.5)
 
 
-def _smoothstep(t: float) -> float:
-    t = _clamp01(t)
-    return t * t * (3.0 - 2.0 * t)
+_head = R.make_head(K, ("heavy",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.4, 8.4, 9.2), jaw=(2.6, 4.2, 6.2, 7.8),
+                    nose=((7.4, -0.6), (9.8, 2.8), (9.2, 4.4), (7.2, 4.8)), ear=None, shape=_hood_shape, under=_hood, over=_scar)
+_eyes = R.make_eyes(K, NEAR_EYE, FAR_EYE, ink=INK, iris=(92, 60, 40, 255), lid=SKIN_DEEP, size=0.9)
+_brows = R.make_brows(K, [(-0.4, -3.0), (2.2, -3.6), (4.6, -2.4)], [(6.0, -2.6), (7.6, -3.6), (9.0, -3.2)], INK, 1.5)
+
+# His brows are always set: the cloth is on them.
+X.head_layers = lambda pose: [(_head(), "head"), (_eyes(str(pose["eyes"])), "eyes"), (_brows(min(0, R.brow_mood(pose))), "brows")]
+X.neck = R.make_neck(K, HOOD_DARK, 12.0)
+# Black sleeves; iron from under the elbow to the wrist; black gloves.
+X.upper_arm = lambda near: [(0.0, 1.0, 16.0, 13.0, SLEEVE if near else SLEEVE_DARK)]
+X.forearm = lambda near: [(0.0, 1.0, 13.0, 9.6, SLEEVE if near else SLEEVE_DARK), (0.3, 0.92, 13.4, 10.6, IRON if near else IRON_DARK)]
+# Wide trousers, tied under the knee; wraps on his shins.
+X.thigh = lambda near: [(0.0, 1.0, 18.0, 15.0, GI if near else GI_DARK)]
+X.shin = lambda near: [(0.0, 0.36, 15.0, 13.6, GI if near else GI_DARK), (0.34, 1.0, 11.0, 8.6, WRAP if near else WRAP_DARK)]
+X.hand = R.make_hand(K, GLOVE, GLOVE_DARK, GLOVE_DARK, size=1.4)
+X.shoe = R.make_shoe(K, HOOD, HOOD_DARK, BUILD.ankle_up, long=1.2, sole=ROPE_DARK)
 
 
-def _rot(x: float, y: float, deg: float) -> Point:
-    rad = math.radians(deg)
-    c = math.cos(rad)
-    s = math.sin(rad)
-    return (x * c - y * s, x * s + y * c)
+def _pauldron(ctx) -> List[Stamp]:
+    """The plate of iron on his near shoulder, with its red cord."""
+
+    def shape(d) -> None:
+        K.poly(d, [K.at(-9.0, -3.0), K.at(-4.0, -8.0), K.at(5.0, -8.6), K.at(10.0, -4.0), K.at(9.6, 4.6), K.at(0.0, 8.0), K.at(-9.4, 5.0)], WHITE)
+
+    def detail(d) -> None:
+        K.poly(d, [K.at(-9.0, -3.0), K.at(-4.0, -8.0), K.at(5.0, -8.6), K.at(10.0, -4.0), K.at(8.0, -3.0), K.at(-7.0, -2.0)], IRON_LIGHT)
+        for y in (0.6, 4.0):
+            K.line(d, [K.at(-9.4, y), K.at(0.0, y + 2.2), K.at(9.8, y - 0.6)], LACQUER, 0.9)
+        for x in (-6.0, 0.0, 6.0):
+            K.oval(d, K.at(x, -5.0), 0.8, 0.8, BRASS)
+
+    part = K.solid(("heavy_pauldron",), shape, IRON, detail, outline=1.2, rim=0.3, shade=0.35, shade_colour=IRON_DARK)
+    sh, el = ctx.shoulder, ctx.elbow
+    return [(part, (sh[0], sh[1] + 1.0), "pauldron", math.degrees(math.atan2(el[1] - sh[1], el[0] - sh[0])) - 90.0)]
 
 
-def _add(a: Point, b: Point) -> Point:
-    return (a[0] + b[0], a[1] + b[1])
+X.layers["front"].append(_pauldron)
+
+# ---- The kanabo ----------------------------------------------------------------
 
 
-def _polar(origin: Point, length: float, deg: float) -> Point:
-    dx, dy = _rot(length, 0.0, deg)
-    return (origin[0] + dx, origin[1] + dy)
+def _kanabo():
+    """The club along +x from his hand: a grip in dark cord with a ring at
+    its end, a brass collar, and a body of iron with eight sides and rows of
+    studs, wider at its end."""
+
+    def shape(d) -> None:
+        K.rrect(d, K.home[0] - BUTT, K.home[1] - 2.0, K.home[0] + 16.0, K.home[1] + 2.0, 1.0, WHITE)
+        K.oval(d, K.at(-BUTT - 1.2, 0.0), 2.2, 2.2, WHITE)
+        K.poly(d, [K.at(15.0, -3.0), K.at(CLUB - 3.0, -6.4), K.at(CLUB, -4.0), K.at(CLUB, 4.0), K.at(CLUB - 3.0, 6.4), K.at(15.0, 3.0)], WHITE)
+        for k in range(6):
+            x = 22.0 + k * 7.4
+            w = 3.6 + (x - 15.0) / (CLUB - 18.0) * 3.2
+            K.oval(d, K.at(x, -w - 0.4), 1.5, 1.5, WHITE)
+            K.oval(d, K.at(x, w + 0.4), 1.5, 1.5, WHITE)
+
+    def detail(d) -> None:
+        K.rrect(d, K.home[0] - BUTT, K.home[1] - 3.0, K.home[0] + 15.0, K.home[1] + 3.0, 0.0, GRIP)
+        for k in range(6):
+            x = -BUTT + 1.0 + k * 3.4
+            K.line(d, [K.at(x, -2.4), K.at(x + 2.4, 2.4)], GRIP_DARK, 0.7)
+        K.oval(d, K.at(-BUTT - 1.2, 0.0), 2.2, 2.2, BRASS_DARK)
+        K.rrect(d, K.home[0] + 14.0, K.home[1] - 4.0, K.home[0] + 18.0, K.home[1] + 4.0, 0.0, BRASS)
+        K.line(d, [K.at(18.0, -1.2), K.at(CLUB - 2.0, -2.0)], IRON_LIGHT, 0.9)
+        K.line(d, [K.at(18.0, 1.6), K.at(CLUB - 2.0, 2.6)], IRON_DARK, 0.8)
+        for k in range(6):
+            x = 22.0 + k * 7.4
+            w = 3.6 + (x - 15.0) / (CLUB - 18.0) * 3.2
+            for y in (-w - 0.4, 0.2, w + 0.4):
+                K.oval(d, K.at(x, y), 1.3, 1.3, IRON_LIGHT if y < 0.0 else BRASS if y == 0.2 else IRON_DARK, OUTLINE, 0.3)
+        K.rrect(d, K.home[0] + CLUB - 3.0, K.home[1] - 7.0, K.home[0] + CLUB + 1.0, K.home[1] + 7.0, 0.0, IRON_DARK)
+
+    return K.solid(("kanabo",), shape, IRON, detail, outline=1.3, rim=0.3, shade=0.35, shade_colour=IRON_DARK)
 
 
-def _poly(
-    draw: ImageDraw.ImageDraw,
-    points: Sequence[Point],
-    fill: RGBA,
-    outline: RGBA | None = OUTLINE,
-    width: float = 1.0,
-) -> None:
-    pts = [_pt(p) for p in points]
-    draw.polygon(pts, fill=fill)
-    if outline is not None and width > 0:
-        draw.line(pts + [pts[0]], fill=outline, width=max(1, _s(width)), joint="curve")
+def _club(ctx) -> List[Stamp]:
+    """The club in his near hand, at the turn the pose says (``club``: 0 is
+    forward, -90 is up). When he is down it lies by him.
+
+    It is in front of his arm and his shoulder, and his hand is round it
+    (Jon, 2026-10-13: "should not be behind the upper arm. Should be in front
+    of it. but probably behind the hand"): the club is painted over all of
+    him, and then his near hand again, over the club."""
+    if float(ctx.pose["held"]) < 0.5:
+        return [(_kanabo(), (ctx.hip[0] + 30.0, ctx.ground - 5.0), "kanabo", 0.0)]
+    hand, elbow = ctx.hand, ctx.elbow
+    return [(_kanabo(), hand, "kanabo", float(ctx.pose["club"])),
+            (X.hand(str(ctx.pose["nh"]), True), hand, "near_hand_on_club", math.degrees(math.atan2(hand[1] - elbow[1], hand[0] - elbow[0])))]
 
 
-def _line(
-    draw: ImageDraw.ImageDraw,
-    points: Sequence[Point],
-    fill: RGBA,
-    width: float = 1.0,
-) -> None:
-    draw.line(
-        [_pt(p) for p in points],
-        fill=fill,
-        width=max(1, _s(width)),
-        joint="curve",
-    )
+X.layers["front"].append(_club)
 
 
-def _ellipse(
-    draw: ImageDraw.ImageDraw,
-    cx: float,
-    cy: float,
-    rx: float,
-    ry: float,
-    fill: RGBA,
-    outline: RGBA | None = OUTLINE,
-    width: float = 1.0,
-) -> None:
-    draw.ellipse(
-        _box(cx, cy, rx, ry),
-        fill=fill,
-        outline=outline,
-        width=max(1, _s(width)) if outline is not None and width > 0 else 1,
-    )
+def _tip(ctx):
+    a = math.radians(float(ctx.pose["club"]))
+    return (ctx.hand[0] + CLUB * math.cos(a), ctx.hand[1] + CLUB * math.sin(a))
 
 
-def _circle(
-    draw: ImageDraw.ImageDraw,
-    point: Point,
-    radius: float,
-    fill: RGBA,
-    outline: RGBA | None = OUTLINE,
-    width: float = 1.0,
-) -> None:
-    _ellipse(draw, point[0], point[1], radius, radius, fill, outline, width)
+# ---- How he holds himself ----------------------------------------------------
+
+#: The club on his near shoulder: his hand low on its grip, in front of him.
+CARRY = (14.0, 9.0)
+#: The turn of the club there: up, and well back, so its end is behind him and not behind his head.
+SLUNG = -142.0
+X.set_rest(lean=-2.0, hip=(0.0, 0.0), na=CARRY, nh="fist", fa=(3.0, 23.0), fh="fist", nf=(-7.0, 0.0, 0.0), ff=(8.0, 0.0, 0.0), brows=-1.0, club=SLUNG,
+           held=1.0)
 
 
-def _quad(center: Point, width: float, height: float, deg: float) -> List[Point]:
-    hw = width * 0.5
-    hh = height * 0.5
-    out: List[Point] = []
-    for x, y in [(-hw, -hh), (hw, -hh), (hw, hh), (-hw, hh)]:
-        rx, ry = _rot(x, y, deg)
-        out.append((center[0] + rx, center[1] + ry))
+@X.row
+def idle(i: int, n: int):
+    # He does not move much. His chest does, and the club with it.
+    _, s, c = loop(i, n)
+    return P(hip=(0.0, 0.5 + 0.5 * s), head=(0.0, 0.2 * s, 1.0 * c), na=(CARRY[0], CARRY[1] + 0.5 * s), club=SLUNG + 1.5 * s,
+             eyes="closed" if i == n - 2 else "open")
+
+
+@X.row
+def walk(i: int, n: int):
+    # Heavy: each foot comes down, and all of him with it.
+    ph, s, c = loop(i, n)
+    nf, ff = R.stride(ph, 7.0, 3.4)
+    return P(hip=(0.5, 1.4 * abs(math.cos(ph))), lean=1.0 + 1.5 * c, head=(0.0, 0.0, 1.0 * s), na=(CARRY[0], CARRY[1] + 0.8 * abs(c)),
+             fa=(3.0 + 5.0 * c, 23.0), club=SLUNG + 3.0 * c, nf=nf, ff=ff, hem=(1.0 + 1.0 * abs(c), 0.5 + 1.0 * abs(c)))
+
+
+#: Both hands on the grip, the club over his head and back.
+RAISED = P(hip=(-1.5, 1.0), lean=-8.0, head=(0.0, 0.0, -6.0), na=(7.0, -24.0), nab=-1.0, arm="under", fa=(-4.0, -24.0), fab=-1.0, nh="fist", fh="fist",
+           nf=(-9.0, 0.0, 0.0), ff=(9.0, 0.0, 0.0), club=-128.0, eyes="wide")
+#: It is down: in front of him, on the ground.
+DOWN = P(hip=(4.0, 7.0), lean=24.0, head=(1.0, 1.0, 10.0), na=(17.0, 15.0), fa=(7.0, 19.0), nh="fist", fh="fist", nf=(-10.0, 0.0, 0.0), ff=(13.0, 0.0, 0.0),
+         club=15.0, eyes="open", hem=(5.0, 1.0))
+
+
+@X.row
+def slash(i: int, n: int):
+    # Up over his head with both hands, a moment there, and down on you.
+    ready = X.full(P())
+    return X.keys(shot(i, n), [(0.0, ready), (0.3, RAISED), (0.42, dict(RAISED, lean=-10.0, club=-136.0)), (0.56, DOWN), (0.8, DOWN), (1.0, ready)])
+
+
+@X.row
+def taunt(i: int, n: int):
+    # He takes it off his shoulder and points it at you. It does not shake.
+    point = P(hip=(1.0, 1.0), lean=4.0, head=(0.4, 0.0, 4.0), na=(24.0, 3.0), fa=(1.0, 22.0), club=-4.0, eyes="open")
+    lift = P(lean=-3.0, na=(15.0, 4.0), club=-70.0)
+    return X.keys(shot(i, n), [(0.0, X.full(P())), (0.25, lift), (0.5, point), (0.85, point), (1.0, X.full(P()))])
+
+
+@X.row
+def hurt(i: int, n: int):
+    struck = dict(X.full(R.STRUCK), lean=-14.0, hip=(-3.0, 2.0), na=(10.0, 16.0), nh="fist", club=-60.0, held=1.0, eyes="wince")
+    back = P(hip=(-2.0, 2.0), lean=-6.0, club=-100.0, eyes="wince")
+    return X.keys(shot(i, n), [(0.0, P(lean=-4.0, eyes="wide")), (0.3, struck), (0.65, struck), (1.0, back)])
+
+
+@X.row
+def death(i: int, n: int):
+    back = dict(X.full(R.STRUCK), lean=-14.0, na=(10.0, 16.0), nh="open", club=-40.0, held=1.0, eyes="wince")
+    down = dict(X.full(R.SUPINE), held=0.0, eyes="closed", off=(13.0, -8.0))
+    return X.keys(shot(i, n), [(0.0, back), (0.2, dict(back, lean=-24.0, held=0.0)), (0.7, down), (1.0, down)])
+
+
+X.rows = [("idle", 6, 130), ("walk", 8, 95), ("slash", 7, 80), ("taunt", 6, 110), ("hurt", 4, 90), ("death", 8, 110)]
+
+# ---- What the club does ----------------------------------------------------------
+
+
+def _effects(ctx) -> List[Stamp]:
+    out: List[Stamp] = []
+    if ctx.anim == "slash" and 0.5 <= ctx.u <= 0.86:
+        tip = _tip(ctx)
+        at = (tip[0] + 2.0, ctx.ground - 12.0)
+        late = ctx.u > 0.68
+        out.append((R.burst(K, 9.0 if late else 13.0, DUST, DUST_DARK, 9), at, "ground_hit", 0.0))
+        out.append((R.dust(K, 3.0 if late else 4.4, DUST, DUST_DARK), (at[0] + (14.0 if late else 9.0), at[1] - 3.0), "dust_ahead", 0.0))
+        out.append((R.dust(K, 2.4 if late else 3.6, DUST, DUST_DARK), (at[0] - (12.0 if late else 8.0), at[1] - 2.0), "dust_behind", 0.0))
     return out
 
 
-def _segment_polygon(
-    a: Point,
-    b: Point,
-    start_radius: float,
-    end_radius: float,
-) -> List[Point]:
-    dx = b[0] - a[0]
-    dy = b[1] - a[1]
-    length = max(1e-6, math.hypot(dx, dy))
-    nx = -dy / length
-    ny = dx / length
-    return [
-        (a[0] + nx * start_radius, a[1] + ny * start_radius),
-        (b[0] + nx * end_radius, b[1] + ny * end_radius),
-        (b[0] - nx * end_radius, b[1] - ny * end_radius),
-        (a[0] - nx * start_radius, a[1] - ny * start_radius),
-    ]
+X.effects = _effects
 
+ROWS = X.rows
+_render_frame = X.render_frame
+render, main, render_canonical = R.entry_points(X, ACTOR_METADATA, DISPLAY_NAME)
 
-def _draw_segment(
-    draw: ImageDraw.ImageDraw,
-    a: Point,
-    b: Point,
-    start_radius: float,
-    end_radius: float,
-    fill: RGBA,
-    *,
-    highlight: RGBA | None = None,
-) -> None:
-    _poly(draw, _segment_polygon(a, b, start_radius, end_radius), fill, OUTLINE, 1.5)
-    _circle(draw, a, start_radius, fill, OUTLINE, 1.2)
-    _circle(draw, b, end_radius, fill, OUTLINE, 1.2)
-    if highlight is not None:
-        dx = b[0] - a[0]
-        dy = b[1] - a[1]
-        length = max(1e-6, math.hypot(dx, dy))
-        nx = -dy / length
-        ny = dx / length
-        inset_a = (a[0] + nx * start_radius * 0.45, a[1] + ny * start_radius * 0.45)
-        inset_b = (b[0] + nx * end_radius * 0.45, b[1] + ny * end_radius * 0.45)
-        _line(draw, [inset_a, inset_b], highlight, 1.0)
 
+def render_portraits(out_dir, **opts):
+    """His portraits are frames of this sheet."""
+    del opts
+    return X.portraits(out_dir, {"default": ("idle", (1,), 0, False), "talking": ("taunt", (2, 3, 4), 160, True)}, view_width=44.0)
 
-def _draw_solid_segment(
-    draw: ImageDraw.ImageDraw,
-    a: Point,
-    b: Point,
-    start_radius: float,
-    end_radius: float,
-    fill: RGBA,
-) -> None:
-    """Paint a joint-safe capsule without an internal outline.
 
-    This is used for the continuous cloth undersuit beneath armor and robes.
-    The visible costume can overlap or occlude it, but transparent cracks can
-    no longer appear between neighboring anatomical pieces.
-    """
-    _poly(draw, _segment_polygon(a, b, start_radius, end_radius), fill, None, 0)
-    _circle(draw, a, start_radius, fill, None, 0)
-    _circle(draw, b, end_radius, fill, None, 0)
-
-
-def _downsample(image: Image.Image) -> Image.Image:
-    return rigdoc.downsampled_canvas(image, FRAME_SIZE, Image.Resampling.LANCZOS)
-
-
-@dataclass
-class Pose:
-    anim: str
-    frame_idx: int
-    nframes: int
-    root_x: float = 0.0
-    root_y: float = 0.0
-    bob: float = 0.0
-    torso: float = 0.0
-    head: float = 0.0
-    crouch: float = 0.0
-    left_arm: float = 0.0
-    right_arm: float = 0.0
-    left_leg: float = 0.0
-    right_leg: float = 0.0
-    left_foot_lift: float = 0.0
-    right_foot_lift: float = 0.0
-    cloth_sway: float = 0.0
-    weapon_angle: float = -58.0
-    weapon_shift_x: float = 0.0
-    weapon_shift_y: float = 0.0
-    weapon_front: bool = False
-    strike: float = 0.0
-    recoil: float = 0.0
-    taunt: float = 0.0
-    eye_flare: float = 0.0
-    death: float = 0.0
-    death_weapon: float = 0.0
-    x_eyes: bool = False
-
-    def __post_init__(self) -> None:
-        t = self.frame_idx / max(1, self.nframes - 1)
-        phase = math.tau * self.frame_idx / max(1, self.nframes)
-        s = math.sin(phase)
-        c = math.cos(phase)
-
-        if self.anim == "idle":
-            breath = 0.5 + 0.5 * s
-            self.root_x = s * 1.0
-            self.bob = -breath * 2.0
-            self.torso = -4.0 + s * 1.4
-            self.head = 2.0 - s * 1.1
-            self.crouch = 2.0 + breath * 1.5
-            self.left_arm = -6.0 + s * 3.0
-            self.right_arm = 5.0 - s * 2.5
-            self.left_leg = -3.0 + c * 1.5
-            self.right_leg = 3.0 - c * 1.5
-            self.cloth_sway = s * 2.5
-            self.weapon_angle = -56.0 + s * 2.0
-            self.eye_flare = 0.18 + max(0.0, s) * 0.12
-        elif self.anim == "walk":
-            stride = math.sin(phase)
-            step = abs(stride)
-            self.root_x = stride * 2.2
-            self.bob = step * 4.0 - 1.5
-            self.torso = -8.0 + stride * 3.0
-            self.head = 4.0 - stride * 1.8
-            self.crouch = 4.0 + step * 2.0
-            self.left_leg = stride * 23.0
-            self.right_leg = -stride * 23.0
-            self.left_foot_lift = max(0.0, -stride) * 10.0
-            self.right_foot_lift = max(0.0, stride) * 10.0
-            self.left_arm = -stride * 15.0 - 5.0
-            self.right_arm = stride * 10.0 + 4.0
-            self.cloth_sway = -stride * 8.0
-            self.weapon_angle = -62.0 - stride * 6.0
-            self.eye_flare = 0.28
-        elif self.anim == "slash":
-            if t < 0.28:
-                wind = _ease(t / 0.28)
-                self.torso = _lerp(-5.0, -19.0, wind)
-                self.head = _lerp(2.0, 9.0, wind)
-                self.crouch = _lerp(3.0, 11.0, wind)
-                self.root_x = _lerp(0.0, -10.0, wind)
-                self.left_arm = _lerp(-5.0, -24.0, wind)
-                self.right_arm = _lerp(4.0, -52.0, wind)
-                self.weapon_angle = _lerp(-56.0, -142.0, wind)
-                self.weapon_shift_y = _lerp(0.0, -7.0, wind)
-                self.eye_flare = _lerp(0.25, 0.8, wind)
-            elif t < 0.72:
-                hit = _ease((t - 0.28) / 0.44)
-                self.strike = math.sin(hit * math.pi)
-                self.torso = _lerp(-19.0, 21.0, hit)
-                self.head = _lerp(9.0, -5.0, hit)
-                self.crouch = 11.0 - self.strike * 5.0
-                self.root_x = _lerp(-10.0, 15.0, hit)
-                self.root_y = -self.strike * 4.0
-                self.left_arm = _lerp(-24.0, 28.0, hit)
-                self.right_arm = _lerp(-52.0, 29.0, hit)
-                self.weapon_angle = _lerp(-142.0, 28.0, hit)
-                self.weapon_shift_x = hit * 4.0
-                self.weapon_shift_y = -self.strike * 8.0
-                self.weapon_front = hit > 0.18
-                self.left_leg = -8.0 - self.strike * 6.0
-                self.right_leg = 10.0 + self.strike * 8.0
-                self.cloth_sway = _lerp(8.0, -13.0, hit)
-                self.eye_flare = 1.0
-            else:
-                recover = _smoothstep((t - 0.72) / 0.28)
-                self.torso = _lerp(21.0, -3.0, recover)
-                self.head = _lerp(-5.0, 1.0, recover)
-                self.crouch = _lerp(6.0, 3.0, recover)
-                self.root_x = _lerp(15.0, 1.0, recover)
-                self.left_arm = _lerp(28.0, -4.0, recover)
-                self.right_arm = _lerp(29.0, 5.0, recover)
-                self.weapon_angle = _lerp(28.0, -54.0, recover)
-                self.weapon_front = recover < 0.55
-                self.cloth_sway = _lerp(-13.0, 0.0, recover)
-                self.eye_flare = _lerp(1.0, 0.3, recover)
-        elif self.anim == "taunt":
-            pulse = 0.5 + 0.5 * s
-            self.taunt = pulse
-            self.root_x = s * 0.8
-            self.bob = -pulse * 2.0
-            self.torso = -10.0 + s * 2.2
-            self.head = -5.0 - s * 2.0
-            self.crouch = 4.0
-            self.left_arm = -82.0 + s * 7.0
-            self.right_arm = -7.0 + s * 4.0
-            self.weapon_angle = -84.0 + s * 3.0
-            self.weapon_shift_y = -pulse * 2.0
-            self.cloth_sway = s * 4.0
-            self.eye_flare = 0.72 + pulse * 0.28
-        elif self.anim == "hurt":
-            hit = math.sin(t * math.pi)
-            shake = math.sin(t * math.pi * 5.0) * (1.0 - t)
-            self.recoil = hit
-            self.root_x = shake * 6.0 - hit * 6.0
-            self.root_y = -hit * 3.0
-            self.bob = -hit * 2.0
-            self.torso = -22.0 * hit
-            self.head = 15.0 * hit
-            self.crouch = 5.0 + hit * 7.0
-            self.left_arm = 27.0 * hit
-            self.right_arm = 22.0 * hit
-            self.weapon_angle = -58.0 + hit * 20.0
-            self.left_leg = 7.0 * hit
-            self.right_leg = -7.0 * hit
-            self.cloth_sway = -10.0 * hit
-            self.eye_flare = 0.55
-        elif self.anim == "death":
-            fall = _ease(t)
-            drop = _ease(_clamp01((t - 0.12) / 0.7))
-            self.death = fall
-            self.death_weapon = drop
-            self.root_x = fall * 23.0
-            self.root_y = fall * 14.0
-            self.bob = -fall * 3.0
-            self.torso = -88.0 * fall
-            self.head = 21.0 * fall
-            self.crouch = fall * 8.0
-            self.left_arm = _lerp(-6.0, 64.0, fall)
-            self.right_arm = _lerp(4.0, -58.0, fall)
-            self.weapon_angle = _lerp(-56.0, 37.0, drop)
-            self.weapon_shift_x = drop * 20.0
-            self.weapon_shift_y = drop * 30.0
-            self.left_leg = _lerp(-3.0, 25.0, fall)
-            self.right_leg = _lerp(3.0, -24.0, fall)
-            self.cloth_sway = fall * 13.0
-            self.eye_flare = _lerp(0.25, 0.0, fall)
-            self.x_eyes = fall > 0.62
-
-
-@dataclass
-class Rig:
-    root: Point
-    pelvis: Point
-    chest: Point
-    neck: Point
-    head: Point
-    left_shoulder: Point
-    right_shoulder: Point
-    left_elbow: Point
-    right_elbow: Point
-    left_hand: Point
-    right_hand: Point
-    left_hip: Point
-    right_hip: Point
-    left_knee: Point
-    right_knee: Point
-    left_foot: Point
-    right_foot: Point
-
-
-def _build_rig(pose: Pose) -> Tuple[Rig, callable]:
-    frame_center_x = WORK_FRAME_SIZE[0] * 0.46
-    if pose.anim == "slash":
-        frame_center_x -= 36.0
-    root = (
-        frame_center_x + pose.root_x + pose.death * 8.0,
-        WORK_FRAME_SIZE[1] * 0.76 + pose.root_y + pose.bob,
-    )
-
-    def local(x: float, y: float) -> Point:
-        x *= FIGURE_SCALE
-        y *= FIGURE_SCALE
-        rx, ry = _rot(x, y, pose.torso)
-        return (root[0] + rx, root[1] + ry)
-
-    pelvis = local(0.0, -54.0 + pose.crouch * 0.2)
-    chest = local(0.0, -104.0 + pose.crouch * 0.25)
-    neck = local(0.0, -137.0 + pose.crouch * 0.18)
-    head_offset = _rot(0.0, -25.0 * FIGURE_SCALE, pose.torso + pose.head)
-    head = _add(neck, head_offset)
-
-    left_shoulder = local(-37.0, -113.0)
-    right_shoulder = local(39.0, -112.0)
-
-    left_upper = -112.0 + pose.torso + pose.left_arm
-    left_fore = -28.0 + pose.torso + pose.left_arm * 0.55
-    right_upper = -66.0 + pose.torso + pose.right_arm
-    right_fore = -13.0 + pose.torso + pose.right_arm * 0.52
-
-    left_elbow = _polar(left_shoulder, 38.0 * FIGURE_SCALE, left_upper)
-    left_hand = _polar(left_elbow, 34.0 * FIGURE_SCALE, left_fore)
-    right_elbow = _polar(right_shoulder, 40.0 * FIGURE_SCALE, right_upper)
-    right_hand = _polar(right_elbow, 34.0 * FIGURE_SCALE, right_fore)
-    right_hand = (
-        right_hand[0] + pose.weapon_shift_x * FIGURE_SCALE,
-        right_hand[1] + pose.weapon_shift_y * FIGURE_SCALE,
-    )
-
-    left_hip = local(-19.0, -55.0)
-    right_hip = local(19.0, -55.0)
-    left_knee = local(-24.0 + pose.left_leg * 0.22, -25.0 + pose.crouch * 0.45)
-    right_knee = local(24.0 + pose.right_leg * 0.22, -25.0 + pose.crouch * 0.45)
-    left_foot = local(
-        -31.0 + pose.left_leg * 0.25,
-        8.0 + pose.crouch - pose.left_foot_lift,
-    )
-    right_foot = local(
-        31.0 + pose.right_leg * 0.25,
-        8.0 + pose.crouch - pose.right_foot_lift,
-    )
-
-    return (
-        Rig(
-            root=root,
-            pelvis=pelvis,
-            chest=chest,
-            neck=neck,
-            head=head,
-            left_shoulder=left_shoulder,
-            right_shoulder=right_shoulder,
-            left_elbow=left_elbow,
-            right_elbow=right_elbow,
-            left_hand=left_hand,
-            right_hand=right_hand,
-            left_hip=left_hip,
-            right_hip=right_hip,
-            left_knee=left_knee,
-            right_knee=right_knee,
-            left_foot=left_foot,
-            right_foot=right_foot,
-        ),
-        local,
-    )
-
-
-def _draw_smoke_ribbon(draw: ImageDraw.ImageDraw, rig: Rig, pose: Pose) -> None:
-    sway = pose.cloth_sway * FIGURE_SCALE
-    y = rig.pelvis[1] + 30.0 * FIGURE_SCALE
-    points = [
-        (rig.pelvis[0] - 43 * FIGURE_SCALE, y - 5),
-        (rig.pelvis[0] - 64 * FIGURE_SCALE + sway, y + 7),
-        (rig.pelvis[0] - 35 * FIGURE_SCALE + sway * 0.5, y + 15),
-        (rig.pelvis[0] + 4 * FIGURE_SCALE, y + 8),
-        (rig.pelvis[0] + 47 * FIGURE_SCALE - sway * 0.3, y + 14),
-        (rig.pelvis[0] + 63 * FIGURE_SCALE - sway, y + 4),
-        (rig.pelvis[0] + 39 * FIGURE_SCALE, y - 8),
-    ]
-    _poly(draw, points, SMOKE, None, 0)
-
-
-def _lerp_point(a: Point, b: Point, t: float) -> Point:
-    return (_lerp(a[0], b[0], t), _lerp(a[1], b[1], t))
-
-
-def _draw_kanabo(
-    draw: ImageDraw.ImageDraw,
-    hand: Point,
-    angle: float,
-    *,
-    alpha: int = 255,
-) -> Point:
-    def col(color: RGBA) -> RGBA:
-        return (color[0], color[1], color[2], min(color[3], alpha))
-
-    def tr(distance: float, offset: float) -> Point:
-        x, y = _rot(distance * WEAPON_SCALE, offset * WEAPON_SCALE, angle)
-        return (hand[0] + x, hand[1] + y)
-
-    # Pommel and wrapped grip.
-    _circle(draw, tr(-13, 0), 5.8 * WEAPON_SCALE, col(BRASS), col(OUTLINE), 1.2)
-    handle = [tr(-12, -5.4), tr(52, -5.7), tr(55, 5.7), tr(-12, 5.4)]
-    _poly(draw, handle, col(WRAP), col(OUTLINE), 1.5)
-    for distance in range(-8, 50, 8):
-        _line(draw, [tr(distance, -5.2), tr(distance + 7, 5.2)], col(WRAP_HI), 1.0)
-    _poly(draw, [tr(49, -9), tr(61, -10), tr(62, 10), tr(49, 9)], col(BRASS_DARK), col(OUTLINE), 1.3)
-    _line(draw, [tr(52, -7), tr(58, -7)], col(BRASS_HI), 1.0)
-
-    # Tapered iron body with a slightly crooked forged silhouette.
-    club = [
-        tr(58, -12),
-        tr(84, -17),
-        tr(119, -20),
-        tr(148, -16),
-        tr(158, -8),
-        tr(160, 8),
-        tr(149, 17),
-        tr(118, 22),
-        tr(83, 18),
-        tr(58, 12),
-    ]
-    _poly(draw, club, col(IRON_DEEP), col(OUTLINE), 2.0)
-    inner = [
-        tr(64, -8),
-        tr(88, -12),
-        tr(119, -15),
-        tr(145, -12),
-        tr(153, -6),
-        tr(153, 5),
-        tr(144, 11),
-        tr(117, 16),
-        tr(88, 13),
-        tr(64, 8),
-    ]
-    _poly(draw, inner, col(IRON), col(OUTLINE_SOFT), 0.9)
-    _line(draw, [tr(70, -7), tr(139, -10)], col(IRON_HI), 1.4)
-    _line(draw, [tr(72, 10), tr(132, 13)], col((58, 62, 72, 255)), 1.1)
-
-    # Alternating studs sell the weapon as a kanabo rather than an axe.
-    for index, distance in enumerate((76, 96, 117, 138, 151)):
-        side = -1 if index % 2 == 0 else 1
-        radius = (4.4 if distance < 145 else 5.0) * WEAPON_SCALE
-        center = tr(distance, side * 14.0)
-        _circle(draw, center, radius, col(BRASS), col(OUTLINE), 1.0)
-        tip = tr(distance, side * 22.0)
-        flank = 3.0
-        _poly(
-            draw,
-            [tr(distance - flank, side * 15.5), tr(distance + flank, side * 15.5), tip],
-            col(BRASS_HI),
-            col(OUTLINE),
-            0.8,
-        )
-    cap = tr(157, 0)
-    _circle(draw, cap, 10.0 * WEAPON_SCALE, col(IRON), col(OUTLINE), 1.6)
-    _circle(draw, cap, 4.0 * WEAPON_SCALE, col(BRASS), col(OUTLINE), 0.8)
-    return tr(160, 0)
-
-
-def _draw_foot(
-    draw: ImageDraw.ImageDraw,
-    knee: Point,
-    foot: Point,
-    facing: float,
-) -> None:
-    """Draw a boot whose cuff visibly grows out of the shin."""
-    dx = knee[0] - foot[0]
-    dy = knee[1] - foot[1]
-    length = max(1.0, math.hypot(dx, dy))
-    ux, uy = dx / length, dy / length
-    nx, ny = -uy, ux
-
-    ankle = (
-        foot[0] + ux * 12.0 * FIGURE_SCALE,
-        foot[1] + uy * 12.0 * FIGURE_SCALE,
-    )
-    heel = (
-        foot[0] - facing * 10.0 * FIGURE_SCALE,
-        foot[1] + 4.5 * FIGURE_SCALE,
-    )
-    toe = (
-        foot[0] + facing * 22.0 * FIGURE_SCALE,
-        foot[1] + 3.0 * FIGURE_SCALE,
-    )
-    boot = [
-        (ankle[0] + nx * 8.5 * FIGURE_SCALE, ankle[1] + ny * 8.5 * FIGURE_SCALE),
-        (ankle[0] - nx * 8.5 * FIGURE_SCALE, ankle[1] - ny * 8.5 * FIGURE_SCALE),
-        heel,
-        (toe[0], toe[1] - 7.0 * FIGURE_SCALE),
-        (toe[0] + facing * 3.0 * FIGURE_SCALE, toe[1] + 2.5 * FIGURE_SCALE),
-        (heel[0] + facing * 2.0 * FIGURE_SCALE, heel[1] + 3.0 * FIGURE_SCALE),
-    ]
-    _poly(draw, boot, CLOTH_DEEP, OUTLINE, 1.5)
-
-    # A wrap cuff bridges the lower-leg capsule into the boot and gives the
-    # ankle a readable joint instead of an empty pixel gap under the hakama.
-    cuff_a = (ankle[0] + nx * 9.0 * FIGURE_SCALE, ankle[1] + ny * 9.0 * FIGURE_SCALE)
-    cuff_b = (ankle[0] - nx * 9.0 * FIGURE_SCALE, ankle[1] - ny * 9.0 * FIGURE_SCALE)
-    _line(draw, [cuff_a, cuff_b], WRAP_HI, 2.0)
-    _line(
-        draw,
-        [
-            (heel[0] + facing * 1.0 * FIGURE_SCALE, heel[1] + 1.0 * FIGURE_SCALE),
-            (toe[0] + facing * 1.0 * FIGURE_SCALE, toe[1] + 1.0 * FIGURE_SCALE),
-        ],
-        CLOTH_HI,
-        1.0,
-    )
-
-
-def _draw_attack_effects(draw: ImageDraw.ImageDraw, rig: Rig, pose: Pose, weapon_tip: Point) -> None:
-    if pose.anim != "slash" or pose.strike <= 0.08:
-        return
-    cx = rig.chest[0] + 18 * FIGURE_SCALE
-    cy = rig.chest[1] + 22 * FIGURE_SCALE
-    radius = 105 * FIGURE_SCALE
-    bbox = (_s(cx - radius), _s(cy - radius), _s(cx + radius), _s(cy + radius))
-    alpha = int(90 + pose.strike * 80)
-    draw.arc(bbox, 203, 330, fill=(231, 209, 173, alpha), width=_s(7.0 * FIGURE_SCALE))
-    draw.arc(bbox, 211, 323, fill=(255, 250, 232, 155), width=_s(2.3 * FIGURE_SCALE))
-    # A short red echo nearest the club gives the swing some character identity.
-    draw.arc(bbox, 236, 318, fill=(225, 48, 48, 105), width=_s(2.1 * FIGURE_SCALE))
-    _circle(draw, weapon_tip, 5.0 * FIGURE_SCALE * pose.strike, WHITE_FLASH, None, 0)
-
-    for index, (dx, dy) in enumerate(((-53, 9), (-37, 14), (35, 10), (55, 13))):
-        jitter = math.sin(pose.frame_idx * 1.7 + index) * 2.0
-        c = (rig.root[0] + (dx + jitter) * FIGURE_SCALE, rig.root[1] + dy * FIGURE_SCALE)
-        _poly(
-            draw,
-            [
-                (c[0] - 3 * FIGURE_SCALE, c[1]),
-                (c[0] + 4 * FIGURE_SCALE, c[1] - 2 * FIGURE_SCALE),
-                (c[0] + 1 * FIGURE_SCALE, c[1] + 4 * FIGURE_SCALE),
-            ],
-            DUST,
-            (80, 65, 46, 110),
-            0.6,
-        )
-
-
-def _draw_hurt_marks(draw: ImageDraw.ImageDraw, rig: Rig, pose: Pose) -> None:
-    if pose.recoil <= 0.08:
-        return
-    alpha = int(90 + pose.recoil * 150)
-    for offset in (-1, 1):
-        x = rig.chest[0] + offset * 18 * FIGURE_SCALE
-        y = rig.chest[1] - 4 * FIGURE_SCALE
-        _line(
-            draw,
-            [(x - 9 * FIGURE_SCALE, y - 8 * FIGURE_SCALE), (x + 8 * FIGURE_SCALE, y + 8 * FIGURE_SCALE)],
-            (255, 102, 79, alpha),
-            2.0,
-        )
-
-
-# -- the rig: pieces painted once in their own frame, turned into place --------
-
-FS = FIGURE_SCALE
-LENGTH_STEP = 2.0
-
-
-def _S(p: Point) -> Point:
-    """A work-space point in supersampled canvas pixels, unrounded."""
-    return (p[0] * SUPER, p[1] * SUPER)
-
-
-def _heading(a: Point, b: Point) -> float:
-    return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
-
-
-def _stepped(a: Point, b: Point) -> float:
-    return max(LENGTH_STEP, round(math.hypot(b[0] - a[0], b[1] - a[1]) / LENGTH_STEP) * LENGTH_STEP)
-
-
-def _piece(key, extent, paint):
-    return SR.local_piece(key, extent, paint, SUPER)
-
-
-def _place(image: Image.Image, part, at: Point, deg: float, name: str) -> None:
-    SR.place(image, part, _S(at), deg, name)
-
-
-def _torso_local(origin: Point):
-    """``local`` of an unturned torso whose root is at ``origin``."""
-
-    def local(x: float, y: float) -> Point:
-        return (origin[0] + x * FS, origin[1] + y * FS)
-
-    return local
-
-
-TORSO_EXTENT = (70 * FS, 145 * FS, 70 * FS, 20 * FS)
-
-
-def _bone_piece(kind: str, length: float, front: bool):
-    """One limb bone along +x, ``length`` long: its continuous underpainting,
-    the outlined segment over it, and what rides that bone (shin wraps; the
-    forearm's bracer and hand)."""
-    spec = {
-        # under (r0, r1), visible (r0, r1, fill, highlight)
-        "thigh": ((12.0, 10.5), (10.0, 9.0, CLOTH_MID if front else CLOTH, CLOTH_HI if front else None)),
-        "shin": ((10.5, 8.5), (9.0, 7.0, CLOTH_DEEP, CLOTH_MID if front else None)),
-        "upper_arm": ((12.5, 10.5), (11.0, 9.5, CLOTH_MID if front else CLOTH, CLOTH_HI if front else None)),
-        "forearm": ((10.5, 8.0), (9.5, 7.5, CLOTH_DEEP, CLOTH_MID if front else None)),
-    }[kind]
-    (u0, u1), (r0, r1, fill, highlight) = spec
-
-    def paint(d, o) -> None:
-        a, b = o, (o[0] + length, o[1])
-        _draw_solid_segment(d, a, b, u0 * FS, u1 * FS, UNDERSUIT)
-        _draw_segment(d, a, b, r0 * FS, r1 * FS, fill, highlight=highlight)
-        if kind == "shin":
-            for fraction in (0.35, 0.55, 0.75):
-                x = o[0] + length * fraction
-                _line(d, [(x, o[1] + 7.5 * FS), (x, o[1] - 7.5 * FS)], WRAP_HI if front else WRAP, 1.4)
-        elif kind == "forearm":
-            center = (o[0] + length * 0.72, o[1])
-            _poly(d, _quad(center, 20 * FS, 15 * FS, 0.0), ARMOR_DEEP, OUTLINE, 1.2)
-            _line(d, [(center[0] - 8 * FS, center[1]), (center[0] + 8 * FS, center[1])], LACQUER_HI, 1.4)
-            _circle(d, b, 7.8 * FS, WRAP, OUTLINE, 1.2)
-
-    r = max(u0, r0, 11.0) * FS + 3.0
-    return _piece(("ninja_bone", kind, length, front), (r, r, length + r, r), paint)
-
-
-def _place_bone(image: Image.Image, kind: str, a: Point, b: Point, front: bool, name: str) -> None:
-    _place(image, _bone_piece(kind, _stepped(a, b), front), a, _heading(a, b), name)
-
-
-def _boot_piece(facing: float, knee_dx: float):
-    """The boot, painted with the shin at its rest slant in the torso frame."""
-
-    def paint(d, o) -> None:
-        _draw_foot(d, (o[0] + knee_dx * FS, o[1] - 33.0 * FS), o, facing)
-
-    return _piece(("ninja_boot", facing, knee_dx), (28 * FS, 24 * FS, 28 * FS, 10 * FS), paint)
-
-
-def _draw_leg(image: Image.Image, hip: Point, knee: Point, foot: Point, torso: float, *, front: bool, knee_dx: float) -> None:
-    side = "front" if front else "rear"
-    _place_bone(image, "thigh", hip, knee, front, f"{side}_thigh")
-    _place_bone(image, "shin", knee, foot, front, f"{side}_shin")
-    facing = 1.0 if foot[0] >= hip[0] else -1.0
-    _place(image, _boot_piece(facing, knee_dx), foot, torso, f"{side}_boot")
-
-
-def _draw_arm(image: Image.Image, shoulder: Point, elbow: Point, hand: Point, *, front: bool, raised_talisman: bool = False) -> None:
-    side = "front" if front else "rear"
-    _place_bone(image, "upper_arm", shoulder, elbow, front, f"{side}_upper_arm")
-    _place_bone(image, "forearm", elbow, hand, front, f"{side}_forearm")
-    r = 9.0 * FS
-    elbow_part = _piece(("ninja_elbow", front), (r + 2, r + 2, r + 2, r + 2), lambda d, o: _circle(d, o, r, ARMOR if front else ARMOR_DEEP, OUTLINE, 1.2))
-    _place(image, elbow_part, elbow, 0.0, f"{side}_elbow")
-
-    if raised_talisman:
-        # A small paper seal makes the taunt read as occult ninja ritual rather
-        # than a generic fist pump.
-        def paint(d, o) -> None:
-            paper_center = (o[0] - 2 * FS, o[1] - 18 * FS)
-            paper = _quad(paper_center, 14 * FS, 28 * FS, -7.0)
-            _poly(d, paper, (224, 205, 164, 255), OUTLINE, 1.0)
-            _line(d, [(paper_center[0] - 4, paper_center[1] - 7), (paper_center[0] + 3, paper_center[1] + 7)], LACQUER, 1.0)
-            _line(d, [(paper_center[0] + 4, paper_center[1] - 8), (paper_center[0] - 3, paper_center[1] + 6)], LACQUER, 1.0)
-
-        _place(image, _piece(("ninja_talisman",), (14 * FS, 38 * FS, 12 * FS, 4 * FS), paint), hand, 0.0, "talisman")
-
-
-def _paint_trunk(d, o, crouch: float) -> None:
-    """The continuous body under the costume (torso frame, unturned)."""
-    local = _torso_local(o)
-    pelvis = local(0.0, -54.0 + crouch * 0.2)
-    chest = local(0.0, -104.0 + crouch * 0.25)
-    trunk = [local(-32, -121), local(32, -121), local(35, -58), local(23, -45), local(-23, -45), local(-35, -58)]
-    _poly(d, trunk, UNDERSUIT, None, 0)
-    _draw_solid_segment(d, local(-37.0, -113.0), local(39.0, -112.0), 14.5 * FS, 14.5 * FS, UNDERSUIT)
-    _draw_solid_segment(d, chest, pelvis, 27.0 * FS, 25.0 * FS, UNDERSUIT)
-    _draw_solid_segment(d, local(-19.0, -55.0), local(19.0, -55.0), 15.0 * FS, 15.0 * FS, UNDERSUIT)
-
-
-def _paint_hakama(d, o, sway: float) -> None:
-    local = _torso_local(o)
-    back = [local(-34, -61), local(34, -61), local(49 + sway * 0.25, -5), local(8 + sway * 0.1, 6), local(0, -2), local(-9 + sway * 0.1, 6), local(-49 + sway * 0.25, -5)]
-    _poly(d, back, CLOTH_DEEP, OUTLINE, 1.8)
-    left_panel = [local(-35, -57), local(-3, -58), local(-7 + sway * 0.12, 4), local(-48 + sway * 0.28, -3)]
-    right_panel = [local(3, -58), local(35, -57), local(48 + sway * 0.28, -3), local(7 + sway * 0.12, 4)]
-    _poly(d, left_panel, ARMOR_DEEP, OUTLINE, 1.5)
-    _poly(d, right_panel, ARMOR, OUTLINE, 1.5)
-    _line(d, [local(-24, -51), local(-30 + sway * 0.16, -4)], ARMOR_HI, 1.2)
-    _line(d, [local(22, -51), local(29 + sway * 0.16, -5)], ARMOR_HI, 1.2)
-    # Red inner split appears in motion without turning the whole sprite red.
-    center = [local(-6, -58), local(7, -58), local(5, 1), local(-5, 1)]
-    _poly(d, center, LACQUER, OUTLINE, 1.1)
-    _line(d, [local(0, -53), local(0, -4)], LACQUER_HI, 0.9)
-
-
-def _paint_torso(d, o) -> None:
-    local = _torso_local(o)
-    # Under-robe mass.
-    under = [local(-36, -116), local(35, -116), local(41, -72), local(29, -55), local(-30, -55), local(-42, -74)]
-    _poly(d, under, CLOTH, OUTLINE, 2.0)
-    # Asymmetric plated shoulders: weapon side is larger and higher.
-    left_pauldron = [local(-51, -113), local(-39, -127), local(-18, -122), local(-20, -98), local(-44, -91), local(-56, -100)]
-    right_pauldron = [local(17, -125), local(43, -133), local(58, -118), local(58, -96), local(44, -88), local(20, -96)]
-    _poly(d, left_pauldron, ARMOR_DEEP, OUTLINE, 1.7)
-    _poly(d, right_pauldron, ARMOR, OUTLINE, 2.0)
-    _poly(d, [local(24, -121), local(43, -126), local(51, -116), local(48, -107), local(27, -111)], ARMOR_HI, OUTLINE_SOFT, 0.9)
-    for y in (-113, -104, -95):
-        _line(d, [local(-48, y), local(-23, y + 4)], ARMOR_HI, 0.9)
-    # Five overlapping lamellar plates create a broad, readable chest.
-    for y, width, height, color in [(-101, 48, 20, ARMOR), (-92, 51, 20, ARMOR_DEEP), (-83, 52, 20, ARMOR), (-74, 48, 18, ARMOR_DEEP)]:
-        left = -width * 0.5
-        right = width * 0.5
-        plate = [local(left, y - height * 0.5), local(right, y - height * 0.5), local(right - 4, y + height * 0.5), local(0, y + height * 0.5 + 5), local(left + 4, y + height * 0.5)]
-        _poly(d, plate, color, OUTLINE, 1.25)
-        _line(d, [local(left + 8, y - 5), local(right - 8, y - 5)], ARMOR_HI, 0.9)
-        _circle(d, local(left + 9, y + 2), 1.6 * FS, BRASS, OUTLINE, 0.6)
-        _circle(d, local(right - 9, y + 2), 1.6 * FS, BRASS, OUTLINE, 0.6)
-    # Diagonal red harness and heavy rope belt.
-    harness = [local(-28, -116), local(-17, -119), local(30, -63), local(20, -59)]
-    _poly(d, harness, LACQUER, OUTLINE, 1.1)
-    _line(d, [local(-23, -115), local(25, -63)], LACQUER_HI, 1.0)
-    belt = [local(-39, -66), local(39, -66), local(36, -54), local(-37, -54)]
-    _poly(d, belt, ROPE, OUTLINE, 1.4)
-    for x in range(-30, 34, 10):
-        _line(d, [local(x, -67), local(x + 5, -54)], ROPE_HI, 1.0)
-    _circle(d, local(-2, -58), 5.5 * FS, ROPE_HI, OUTLINE, 1.0)
-    _poly(d, [local(-2, -54), local(-12, -35), local(-2, -39)], ROPE, OUTLINE, 0.9)
-    _poly(d, [local(2, -54), local(13, -36), local(3, -39)], ROPE, OUTLINE, 0.9)
-
-
-def _paint_gorget(d, o) -> None:
-    local = _torso_local(o)
-    gorget = [local(-28, -123), local(-16, -134), local(16, -134), local(29, -122), local(22, -107), local(-22, -107)]
-    _poly(d, gorget, ARMOR_DEEP, OUTLINE, 1.6)
-    _poly(d, [local(-18, -124), local(18, -124), local(14, -113), local(-14, -113)], ARMOR, OUTLINE_SOFT, 0.9)
-    _line(d, [local(-13, -119), local(13, -119)], ARMOR_HI, 1.0)
-
-
-def _neck_piece(length: float):
-    """The wrapped neck along +x from the collar, with its two wrap bands."""
-
-    def paint(d, o) -> None:
-        a, b = o, (o[0] + length, o[1])
-        _poly(d, _segment_polygon(a, b, 15.5 * FS, 12.5 * FS), CLOTH_DEEP, OUTLINE, 1.4)
-        for t in (0.35, 0.58):
-            half = _lerp(13.0, 10.0, t) * FS
-            x = o[0] + length * t
-            _line(d, [(x, o[1] + half), (x, o[1] - half)], CLOTH_MID, 1.0)
-
-    r = 17.0 * FS
-    return _piece(("ninja_neck", length), (4.0, r, length + 4.0, r), paint)
-
-
-def _paint_head(d, center: Point, x_eyes: bool, flare: float) -> None:
-    """The cowled, masked head unturned at ``center``."""
-
-    def hp(x: float, y: float) -> Point:
-        return (center[0] + x * FS, center[1] + y * FS)
-
-    cowl = [hp(-26, -25), hp(-15, -36), hp(13, -36), hp(27, -25), hp(31, -2), hp(22, 22), hp(8, 30), hp(-10, 29), hp(-24, 20), hp(-31, -2)]
-    _poly(d, cowl, CLOTH_DEEP, OUTLINE, 2.0)
-    inner = [hp(-19, -22), hp(-10, -29), hp(10, -29), hp(20, -20), hp(22, 2), hp(14, 18), hp(-14, 18), hp(-22, 2)]
-    _poly(d, inner, CLOTH_MID, OUTLINE, 1.1)
-    # Iron oni mask: angular cheek guards, central nose ridge, brass tusks.
-    mask = [hp(-20, -12), hp(-12, -21), hp(13, -21), hp(21, -11), hp(19, 11), hp(10, 23), hp(0, 27), hp(-11, 22), hp(-20, 10)]
-    _poly(d, mask, IRON_DEEP, OUTLINE, 1.7)
-    faceplate = [hp(-15, -9), hp(-8, -16), hp(9, -16), hp(16, -8), hp(14, 10), hp(5, 18), hp(-6, 18), hp(-14, 9)]
-    _poly(d, faceplate, IRON, OUTLINE_SOFT, 1.0)
-    _poly(d, [hp(-3, -14), hp(4, -14), hp(7, 11), hp(0, 16), hp(-6, 10)], IRON_HI, OUTLINE_SOFT, 0.8)
-    # Horn-like cowl crests frame the head without turning it into a literal oni.
-    _poly(d, [hp(-20, -29), hp(-34, -39), hp(-28, -18)], ARMOR, OUTLINE, 1.0)
-    _poly(d, [hp(18, -29), hp(34, -38), hp(27, -17)], ARMOR, OUTLINE, 1.0)
-    _line(d, [hp(-31, -35), hp(-25, -22)], ARMOR_HI, 0.8)
-    _line(d, [hp(30, -34), hp(24, -21)], ARMOR_HI, 0.8)
-    if x_eyes:
-        for x in (-8, 8):
-            _line(d, [hp(x - 4, -6), hp(x + 4, 2)], OUTLINE, 1.5)
-            _line(d, [hp(x - 4, 2), hp(x + 4, -6)], OUTLINE, 1.5)
-    else:
-        left_eye = [hp(-14, -8), hp(-3, -11), hp(-1, -5), hp(-12, -3)]
-        right_eye = [hp(2, -11), hp(14, -8), hp(12, -3), hp(1, -5)]
-        _poly(d, left_eye, EYE, OUTLINE, 0.7)
-        _poly(d, right_eye, EYE, OUTLINE, 0.7)
-        _line(d, [hp(-11, -6), hp(-4, -8)], EYE_CORE, 0.9 + flare * 0.8)
-        _line(d, [hp(4, -8), hp(11, -6)], EYE_CORE, 0.9 + flare * 0.8)
-        if flare > 0.7:
-            _line(d, [hp(-17, -8), hp(-24 - flare * 3, -10)], (255, 70, 58, 120), 1.0)
-            _line(d, [hp(17, -8), hp(24 + flare * 3, -10)], (255, 70, 58, 120), 1.0)
-    # Fanged lower vent and tusks.
-    _line(d, [hp(-9, 8), hp(0, 12), hp(9, 8)], OUTLINE_SOFT, 1.2)
-    _poly(d, [hp(-12, 10), hp(-5, 12), hp(-10, 20)], BRASS_HI, OUTLINE, 0.8)
-    _poly(d, [hp(12, 10), hp(5, 12), hp(10, 20)], BRASS_HI, OUTLINE, 0.8)
-    for x in (-5, 0, 5):
-        _line(d, [hp(x, 12), hp(x, 17)], OUTLINE, 0.7)
-
-
-def _paint_scarf(d, center: Point, sway: float) -> None:
-    """The tied scarf tails, in the head's frame."""
-
-    def hp(x: float, y: float) -> Point:
-        return (center[0] + x * FS, center[1] + y * FS)
-
-    tail1 = [hp(20, -20), hp(44 + sway * 0.4, -26), hp(35 + sway * 0.6, -14)]
-    tail2 = [hp(21, -17), hp(46 + sway * 0.5, -8), hp(33 + sway * 0.7, -4)]
-    _poly(d, tail1, LACQUER, OUTLINE, 0.9)
-    _poly(d, tail2, LACQUER_HI, OUTLINE, 0.9)
-
-
-def _kanabo_piece():
-    return _piece(("ninja_kanabo",), (22 * WEAPON_SCALE, 26 * WEAPON_SCALE, 172 * WEAPON_SCALE, 26 * WEAPON_SCALE), lambda d, o: _draw_kanabo(d, o, 0.0))
-
-
-def _place_kanabo(image: Image.Image, hand: Point, angle: float) -> Point:
-    _place(image, _kanabo_piece(), hand, angle, "kanabo")
-    x, y = _rot(160 * WEAPON_SCALE, 0.0, angle)
-    return (hand[0] + x, hand[1] + y)
-
-
-def _grip_piece():
-    """The closed hand over the handle, in the weapon's frame."""
-
-    def paint(d, o) -> None:
-        _circle(d, o, 8.6 * FS, WRAP, OUTLINE, 1.2)
-        for offset in (-4.5, -1.5, 1.5, 4.5):
-            _circle(d, (o[0], o[1] + offset * FS), 2.1 * FS, WRAP_HI, OUTLINE_SOFT, 0.55)
-        _line(d, [(o[0] - 7.0 * FS, o[1]), (o[0] + 7.0 * FS, o[1])], OUTLINE_SOFT, 1.0)
-
-    r = 10.0 * FS
-    return _piece(("ninja_grip",), (r, r, r, r), paint)
-
-
-def _wrist_piece(length: float):
-    def paint(d, o) -> None:
-        _draw_solid_segment(d, o, (o[0] + length, o[1]), 6.5 * FS, 8.5 * FS, WRAP)
-
-    r = 9.0 * FS
-    return _piece(("ninja_wrist", length), (r, r, length + r, r), paint)
-
-
-def _render_frame(
-    anim: str,
-    frame_idx: int,
-    nframes: int,
-    *,
-    include_effects: bool = True,
-) -> Image.Image:
-    """The heavy ninja as a rig: the torso's layers, hakama (per sway step),
-    head (per eye state) and scarf, the kanabo and every limb bone are pieces
-    painted once and turned into place. The smoke ribbon and the strike
-    effects stay shapes (they deform every frame)."""
-    image = Image.new("RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), TRANSPARENT)
-    draw = blending_draw(image)
-    pose = Pose(anim, frame_idx, nframes)
-    rig, local = _build_rig(pose)
-    torso = pose.torso
-
-    _draw_smoke_ribbon(draw, rig, pose)
-
-    # Weapon behind the body in neutral poses.  During the strike it crosses in
-    # front after the release point; the death drop also remains behind.
-    weapon_angle = pose.weapon_angle + torso
-    weapon_tip = rig.right_hand
-    if not pose.weapon_front:
-        weapon_tip = _place_kanabo(image, rig.right_hand, weapon_angle)
-
-    crouch = SR.q(pose.crouch, 4.0)
-    trunk = _piece(("ninja_trunk", crouch), TORSO_EXTENT, lambda d, o: _paint_trunk(d, o, crouch))
-    _place(image, trunk, rig.root, torso, "trunk")
-
-    # Rear leg and arm establish depth before the central costume mass.
-    _draw_leg(image, rig.left_hip, rig.left_knee, rig.left_foot, torso, front=False, knee_dx=7.0)
-    _draw_arm(image, rig.right_shoulder, rig.right_elbow, rig.right_hand, front=False)
-
-    sway = SR.q(pose.cloth_sway, 2.0)
-    _place(image, _piece(("ninja_hakama", sway), TORSO_EXTENT, lambda d, o: _paint_hakama(d, o, sway)), rig.root, torso, "hakama")
-    _place(image, _piece(("ninja_torso",), TORSO_EXTENT, _paint_torso), rig.root, torso, "torso")
-
-    _draw_leg(image, rig.right_hip, rig.right_knee, rig.right_foot, torso, front=True, knee_dx=-7.0)
-    _draw_arm(image, rig.left_shoulder, rig.left_elbow, rig.left_hand, front=True, raised_talisman=anim == "taunt")
-
-    # Neck and gorget: the neck turns from the collar toward the head.
-    collar = local(0.0, -118.0)
-    neck_target = _lerp_point(rig.neck, rig.head, 0.62)
-    _place(image, _neck_piece(_stepped(collar, neck_target)), collar, _heading(collar, neck_target), "neck")
-    _place(image, _piece(("ninja_gorget",), TORSO_EXTENT, _paint_gorget), rig.root, torso, "gorget")
-
-    head_angle = torso + pose.head
-    flare = SR.q(pose.eye_flare, 0.25)
-    head = _piece(("ninja_head", pose.x_eyes, flare), (36 * FS, 42 * FS, 36 * FS, 32 * FS), lambda d, o: _paint_head(d, o, pose.x_eyes, flare))
-    _place(image, head, rig.head, head_angle, "head")
-    scarf = _piece(("ninja_scarf", sway), (-14 * FS, 32 * FS, 56 * FS, 2 * FS), lambda d, o: _paint_scarf(d, o, sway))
-    _place(image, scarf, rig.head, head_angle, "scarf")
-
-    if pose.weapon_front:
-        weapon_tip = _place_kanabo(image, rig.right_hand, weapon_angle)
-    # The weapon hand over the handle: the wrist rides the forearm, the grip
-    # the weapon.
-    wrist = _lerp_point(rig.right_elbow, rig.right_hand, 0.80)
-    _place(image, _wrist_piece(_stepped(wrist, rig.right_hand)), wrist, _heading(wrist, rig.right_hand), "wrist")
-    _place(image, _grip_piece(), rig.right_hand, weapon_angle, "grip")
-
-    if include_effects:
-        _draw_attack_effects(draw, rig, pose, weapon_tip)
-        _draw_hurt_marks(draw, rig, pose)
-
-    return _downsample(image)
-
-
-def render(out_dir: str | Path, **opts) -> List[Path]:
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    frame_size = opts.get("frame_size", FRAME_SIZE)
-    frame_transform: dict = {}
-    outputs = build_sheet(
-        frame_transform_out=frame_transform,
-        target=TARGET_NAME,
-        rows=ROWS,
-        render_fn=lambda anim, frame_idx, nframes: _render_frame(anim, frame_idx, nframes),
-        out_dir=out_dir,
-        frame_size=frame_size,
-        crop_margin=10,
-        auto_crop=True,
-    )
-    parts = publish_rig_flipbook(TARGET_NAME, ROWS, _render_frame, outputs, frame_transform, Path(out_dir))
-    return [
-        outputs["spritesheet"],
-        outputs["yaml"],
-        outputs["ron"],
-        outputs["preview"],
-        outputs["canonical"],
-        outputs["canonical_transparent"],
-    ] + list(parts.values())
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Render the Iron Lotus heavy-ninja spritesheet."
-    )
-    parser.add_argument(
-        "--out-dir",
-        type=Path,
-        default=Path(__file__).resolve().parents[2] / "generated" / TARGET_NAME,
-    )
-    args = parser.parse_args(argv)
-    for path in render(args.out_dir):
-        print(path)
-    return 0
-
+TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 if __name__ == "__main__":
     raise SystemExit(main())

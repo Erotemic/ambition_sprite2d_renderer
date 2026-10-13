@@ -1,4 +1,4 @@
-"""Structural rendering checks for the Iron Lotus heavy ninja."""
+"""Structural rendering checks for the Ninja Heavy."""
 
 from __future__ import annotations
 
@@ -42,23 +42,37 @@ def _opaque_component_sizes(image, *, alpha_threshold: int = 128) -> list[int]:
     return sorted(sizes, reverse=True)
 
 
-def test_ninja_heavy_body_is_connected_in_every_pose() -> None:
-    """No limb, head, foot, or held weapon may become a floating sticker."""
+def test_ninja_heavy_body_is_connected_in_every_pose(monkeypatch) -> None:
+    """No limb, head, foot or held weapon is a piece that floats by itself.
+
+    The dust of the club's hit is not a part of him. When he is down the club
+    lies by him (the pose key ``held`` is 0): it can then be a second piece."""
+    monkeypatch.setattr(ninja_heavy.X, "effects", lambda ctx: [])
     failures = []
     for animation, frame_count, _frame_ms in ninja_heavy.ROWS:
         for frame_idx in range(frame_count):
-            image = ninja_heavy._render_frame(
-                animation,
-                frame_idx,
-                frame_count,
-                include_effects=False,
-            )
-            significant = [
-                size
-                for size in _opaque_component_sizes(image)
-                if size >= 20
-            ]
-            if len(significant) != 1:
-                failures.append((animation, frame_idx, significant))
+            image = ninja_heavy._render_frame(animation, frame_idx, frame_count)
+            held = float(ninja_heavy.X.full(ninja_heavy.X.poses[animation](frame_idx, frame_count))["held"]) >= 0.5
+            significant = [size for size in _opaque_component_sizes(image) if size >= 20]
+            if len(significant) not in ((1,) if held else (1, 2)):
+                failures.append((animation, frame_idx, held, significant))
 
     assert failures == []
+
+
+def test_ninja_heavy_shows_no_skin_but_at_his_eyes() -> None:
+    """He is in black from his head to his feet (Jon, 2026-10-13: "Less skin,
+    I like the dark clad in black look")."""
+    def is_skin(pixel) -> bool:
+        r, g, b, a = pixel
+        # Skin; not the brass of his club (its green is far over its blue) and not his white papers.
+        return a > 200 and r > 150 and r > g > b > 90 and g - b < 60 and r - b > 40
+
+    image = ninja_heavy._render_frame("idle", 0, 6).convert("RGBA")
+    box = image.getbbox()
+    width, height = image.size
+    pixels = image.load()
+    rows_with_skin = {y for y in range(height) for x in range(width) if is_skin(pixels[x, y])}
+    assert rows_with_skin, "his eyes are in a band of skin"
+    # All of it is in his head: the top fifth of him.
+    assert max(rows_with_skin) < box[1] + (box[3] - box[1]) * 0.2
