@@ -154,6 +154,10 @@ METAL_DARK = (104, 111, 118, 255)
 RIVET = (60, 64, 70, 255)
 GOLD = (232, 183, 68, 255)
 TEETH = (250, 244, 220, 255)
+#: The game's contract for a hand that holds an item
+#: (`rendering::posed_hand::ITEM_REST_ANGLE`): a hand part that is not turned
+#: holds an item that points the way she faces and this many degrees up.
+ITEM_REST_ANGLE = 24.0
 WOOD = (96, 60, 38, 255)
 WHITE = (255, 255, 255, 255)
 SLASH = (255, 246, 214, 255)
@@ -202,13 +206,12 @@ class VariantSpec:
     headwear: str = "bandana"  # "bandana", "tricorn" or "band"
     hair: str = "dreads"  # "dreads", "braid" or "waves"
     mark: str = "pauldron"  # "pauldron", "bandolier" or "neckerchief"
-    blade: str = "slab"  # "slab", "ports", "hook", or "none" (no cleaver in the art)
-    # She holds an item that the GAME draws (Iron Mary's gun-sword). The game
-    # puts a held item at a fixed place on the body box, in front of its
-    # middle (`sync_held_item_visual`): this is that place from the ground
-    # between her feet, and her lead fist stays on it in every row but the
-    # death. Such a variant has no cleaver in her art.
-    item_hand: Optional[Point] = None
+    # "slab", "ports", "hook", or "none": no cleaver in the art, because she
+    # holds an item that the GAME draws (Iron Mary's gun-sword). The game draws
+    # a held item in the hand of the pose that is drawn: it reads the track
+    # `right_hand` of the part flipbook each frame, where the hand is and how
+    # it is turned (see "The hands" in `_draw_variant`).
+    blade: str = "slab"
     bracer: str = "iron"  # "iron", "leather" or "rope"
     striped_sleeves: bool = False
     # the small things of her face
@@ -261,7 +264,7 @@ VARIANTS: Dict[str, VariantSpec] = {
         gold_tooth=True,
     ),
     # A red bandana over a mane of dreads, an iron shoulder. She rides a shark
-    # and she holds a gun-sword, which the game draws in her lead fist.
+    # and she holds a gun-sword, which the game draws in her lead hand.
     "iron_mary": VariantSpec(
         slug="iron_mary",
         display_name="Iron Mary",
@@ -282,9 +285,6 @@ VARIANTS: Dict[str, VariantSpec] = {
             boot_hi=(88, 58, 40, 255),
         ),
         blade="none",
-        # The gun-sword is drawn with its middle 60 to the front of her middle
-        # (measured in the Hall, 2026-10-13); its grip is behind that.
-        item_hand=(46.0, -80.0),
         cheek_scar=True,
         nose_ring=True,
         necklace=True,
@@ -553,6 +553,34 @@ def pose_for(anim: str, i: int, n: int) -> Pose:
             # from where her hand was, down to the deck
             p.loose_weapon = (_lerp_p((69.0, -57.0), (58.0, -9.0), drop), _lerp(-66.0, -2.0, drop) - 14.0 * math.sin(drop * math.pi))
     return p
+
+
+#: How far her gun hand is to the front of its rest in each frame of the
+#: attack row: back, then a thrust, then back.
+_GUN_THRUST = (-4.0, -9.0, 6.0, 22.0, 25.0, 18.0, 6.0)
+
+
+def _hold_a_gun(pose: Pose, anim: str, frame_idx: int) -> None:
+    """Change a pose of the cleaver to one of a gun-sword: it is level in her
+    lead hand at her hip, and her attack is a thrust with it, not a chop. The
+    game draws the gun-sword and points it at her target."""
+    pose.two_hand = False
+    pose.swoosh = None
+    pose.chips = False
+    pose.r_bend = 1.0
+    if anim == "taunt":
+        return
+    lift = pose.r_hand[1] + 57.0 if anim in ("idle", "walk") else 0.0
+    pose.r_hand = (62.0, -84.0 + lift)
+    pose.weapon = -ITEM_REST_ANGLE
+    if anim == "slash":
+        thrust = _GUN_THRUST[frame_idx]
+        pose.r_hand = (58.0 + thrust, -86.0)
+        pose.lean *= 0.5
+        pose.pelvis = (pose.pelvis[0] * 0.5, pose.pelvis[1])
+        pose.l_hand = (-44.0 - pose.lean * 0.6, -70.0)
+    elif anim == "hurt":
+        pose.r_hand = (62.0 + pose.lean * -0.6, -84.0 + pose.lean * 1.2)
 
 
 # ---- Pieces ------------------------------------------------------------------
@@ -1070,20 +1098,8 @@ def _draw_variant(
         "RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0)
     )
     pose = pose_for(anim, frame_idx, nframes)
-    if spec.item_hand is not None and anim != "death":
-        # Her lead fist does not leave the place where the game draws her item.
-        pose.r_hand = spec.item_hand
-        # the fist is near the shoulder: the elbow goes out, not into her side
-        pose.r_bend = -1.0
-        pose.two_hand = False
-        pose.swoosh = None
-        pose.chips = False
-        if anim == "slash":
-            # a thrust with the item, not a chop: half the lean, and the free
-            # fist stays back for balance
-            pose.lean *= 0.5
-            pose.pelvis = (pose.pelvis[0] * 0.5, pose.pelvis[1])
-            pose.l_hand = (-44.0 - pose.lean * 0.6, -70.0)
+    if spec.blade == "none" and anim != "death":
+        _hold_a_gun(pose, anim, frame_idx)
     pal = spec.palette
     slug = spec.slug
     J = _rig_evaluate(pose, spec, WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1])
@@ -1178,8 +1194,12 @@ def _draw_variant(
         at, degrees = pose.loose_weapon
         work = (J.stance[0] + at[0], J.stance[1] + at[1])
         _put(img, cleaver, lambda d: _paint_cleaver(d, spec), work, "cleaver", degrees)
-    put(("fist", slug), lambda d: _paint_fist(d, spec), J.left_hand, "left_fist", rig.angle(J.left_elbow, J.left_hand))
-    put(("fist", slug), lambda d: _paint_fist(d, spec), J.right_hand, "right_fist", rig.angle(J.right_elbow, J.right_hand))
+    # The hands. The track `right_hand` is what the game reads to draw an item
+    # she holds: the item is where this part is, and it turns as this part is
+    # turned. So the lead hand is turned as the haft is (`J.weapon`), from the
+    # rest the game states, and not as her forearm is.
+    put(("fist", slug), lambda d: _paint_fist(d, spec), J.left_hand, "left_hand", rig.angle(J.left_elbow, J.left_hand))
+    put(("fist", slug), lambda d: _paint_fist(d, spec), J.right_hand, "right_hand", J.weapon + ITEM_REST_ANGLE)
 
     if pose.chips:
         # bits of the deck, where the belly of the blade went in

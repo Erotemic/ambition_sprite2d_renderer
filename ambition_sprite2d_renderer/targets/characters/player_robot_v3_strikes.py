@@ -195,9 +195,11 @@ OTHER_SIDE_TURN = {"open": "profile", "profile": "open"}
 FAR_ARM_IN_FRONT = 52.5
 
 
-def _pose(body: RigBody, key: Key, other_side: bool = False) -> Dict[str, float]:
+def _pose(body: RigBody, key: Key, other_side: bool = False, item: bool = False) -> Dict[str, float]:
     """Channels for `key`. ``other_side`` poses the robot as seen from its
-    other side, where the hand that holds the blade is the FAR one."""
+    other side, where the hand that holds the blade is the FAR one. ``item``
+    is a strike with a held item (`ITEM_STRIKES`): each hand is turned as the
+    near one is, not by the direction its own blade is drawn."""
     blade_arm, off_arm = ("far", "near") if other_side else ("near", "far")
     turn = OTHER_SIDE_TURN.get(key.turn, key.turn) if other_side else key.turn
     ankles = {}
@@ -223,7 +225,7 @@ def _pose(body: RigBody, key: Key, other_side: bool = False) -> Dict[str, float]
             blade_arm: Arm(
                 key.near[0],
                 key.near[1],
-                key.near[2] - BLADE_DRAWN[blade_arm] + body.arm_rest[blade_arm].hand,
+                key.near[2] - (BLADE_DRAWN_DEG if item else BLADE_DRAWN[blade_arm]) + body.arm_rest[blade_arm].hand,
             ),
             off_arm: Arm(*key.far),
         },
@@ -767,6 +769,59 @@ def pet(body: RigBody) -> List[Key]:
     return keys
 
 
+# The game draws a held item in the hand of the blade arm: where the hand part
+# is, turned as the hand part is turned (`rendering::posed_hand` in the game).
+# A hand that is not turned holds the item this many degrees above level, so
+# the wrist of a key is the way the item must point plus this. That is true of
+# each hand, so the far hand of an item strike does not take the turn of the
+# far blade (`_pose`).
+ITEM_REST_DEG = 24.0
+#: The strikes whose weapon is a held item the game draws.
+ITEM_STRIKES = frozenset({"item_swing"})
+
+
+def _item(points: float) -> float:
+    """The wrist that holds an item so that it points ``points`` (world
+    degrees, as a blade: 0 ahead, 90 down, -90 up)."""
+    return points + ITEM_REST_DEG
+
+
+def item_swing(body: RigBody) -> List[Key]:
+    """The swing of a held item (a pool noodle): over the shoulder and down to
+    the front. 0.36 s, active 0.08-0.20 (`BatterSpec` of the pool noodle).
+
+    No blade: the item is not in this art. The game draws it in the near hand,
+    so these keys put the hand, and turn it, where a swing has the item. The
+    arm is the jab's: it reads in this drawing.
+    """
+    a0, a1 = 0.08 / 0.36, 0.20 / 0.36
+    still = _item(-ITEM_REST_DEG)
+    near, far = body.arm_rest["near"], body.arm_rest["far"]
+    return [
+        Key(at=0.0, near=(near.upper, near.lower, still), far=(far.upper, far.lower), blade=0.0),
+        # Coil: the item up and back over the shoulder, chest open to the
+        # camera, weight back, the off hand forward for balance.
+        Key(at=a0 * 0.85, near=(-150.0, -160.0, _item(-125.0)), far=(30.0, 0.0), torso=-7.0, head=-3.0,
+            lunge=-2.5, drop=2.5, squash=0.97, shoulder=-3.0, turn="open", squint=0.25, ease="in",
+            blade=0.0, face="fierce"),
+        # Over the top: the hand is high and the item points up and ahead.
+        Key(at=a0 + 0.2 * (a1 - a0), near=(-70.0, -80.0, _item(-60.0)), far=(110.0, 80.0), torso=4.0,
+            head=1.0, lunge=1.5, drop=2.5, shoulder=2.0, feet={"far": (2.0, 0.0, 0.0)}, turn="profile",
+            squint=0.3, ease="out", blade=0.0, face="fierce"),
+        # The hit: the item level at the target, a step in.
+        Key(at=a0 + 0.6 * (a1 - a0), near=(28.0, 8.0, _item(4.0)), far=(150.0, 120.0), torso=13.0,
+            head=4.0, lunge=5.0, drop=4.0, squash=1.03, shoulder=6.0, feet={"far": (5.0, 0.0, 0.0)},
+            turn="profile", squint=0.3, ease="out", blade=0.0, face="fierce"),
+        # Through: the item goes on down to the floor in front.
+        Key(at=a1, near=(58.0, 40.0, _item(48.0)), far=(160.0, 140.0), torso=16.0, head=6.0, lunge=6.0,
+            drop=4.5, squash=0.96, shoulder=7.0, feet={"far": (5.0, 0.0, 0.0)}, turn="profile",
+            squint=0.2, blade=0.0, face="strain"),
+        Key(at=a1 + 0.2, near=(74.0, 64.0, _item(30.0)), far=(115.0, 110.0), torso=8.0, head=3.0,
+            lunge=3.5, drop=3.0, shoulder=3.0, feet={"far": (3.0, 0.0, 0.0)}, blade=0.0),
+        Key(at=1.0, near=(near.upper, near.lower, still), far=(far.upper, far.lower), blade=0.0, ease="in"),
+    ]
+
+
 def calm(strike: Callable[[RigBody], List[Key]]) -> Callable[[RigBody], List[Key]]:
     """`strike` with the robot's own face: its eyes are open, and they narrow
     a little.
@@ -808,6 +863,7 @@ STRIKES: Dict[str, Callable[[RigBody], List[Key]]] = {
     "throw_down": throw_down,
     "taunt": taunt,
     "pet": pet,
+    "item_swing": item_swing,
 }
 
 
@@ -844,7 +900,8 @@ def author_strikes(doc: RigDocument) -> Dict[str, dict]:
             raise ValueError(f"{name}: key phases must be in order")
         loop = bool(clip.get("loop"))
         phases = frame_phases(int(clip["frames"]), loop)
-        frames = [_pose(body, sample(keys, ph)) for ph in phases]
+        item = name in ITEM_STRIKES
+        frames = [_pose(body, sample(keys, ph), item=item) for ph in phases]
         channels = clip["channels"]
         for key in frames[0]:
             if key.startswith("_"):
@@ -856,7 +913,7 @@ def author_strikes(doc: RigDocument) -> Dict[str, dict]:
         # The same strike seen from the robot's other side: the blade stays in
         # the hand that holds it, which from there is the far one. The sheet's
         # mirrored row draws this clip (then mirrors it) instead of the one above.
-        other = [_pose(body, sample(keys, ph), other_side=True) for ph in phases]
+        other = [_pose(body, sample(keys, ph), other_side=True, item=item) for ph in phases]
         doc.data["clips"][MIRRORED.format(name)] = {
             **{k: v for k, v in clip.items() if k != "channels"},
             "channels": {
