@@ -20,7 +20,8 @@ most of it is under cloth. There is no drop shadow.
 
 The rows are the ones a brute of the game plays: ``idle``, ``walk``,
 ``slash`` (the club comes down from over his head with both hands), ``taunt``
-(he points it at you), ``hurt`` and ``death``.
+(he points it at you), ``hurt``, ``death``, and ``front`` (he faces you: the
+row he turns through).
 
 He is a person of ``_person_rig``: the bones, the poses and the frame are
 shared; the head, the clothes, the club and how he stands are his.
@@ -446,6 +447,102 @@ def _effects(ctx) -> List[Stamp]:
 
 
 X.effects = _effects
+
+# ---- From the front ------------------------------------------------------------
+#
+# The row he turns through (Jon, 2026-10-13: "We need front facing views for
+# the ninjas too"). He faces you with the club head down on the ground at his
+# right side (the left of the picture), his hand on its grip.
+
+X.front_span = (17.6, 8.0)
+
+
+def _front_gi(d) -> None:
+    K.poly(d, [K.at(-3.0, TOP + 1.4), K.at(3.0, TOP + 1.4), K.at(0.8, -29.0)], LACQUER)
+    K.line(d, [K.at(-5.0, TOP + 1.0), K.at(4.0, -15.6)], GI_LIGHT, 1.2)
+    K.line(d, [K.at(5.0, TOP + 1.0), K.at(0.6, -25.0)], GI_LIGHT, 1.2)
+    # The rope, with its twist and its two papers.
+    K.poly(d, [K.at(-40.0, -15.0), K.at(40.0, -15.0), K.at(40.0, -6.0), K.at(-40.0, -6.0)], ROPE)
+    K.line(d, [K.at(-40.0, -15.0), K.at(40.0, -15.0)], ROPE_DARK, 0.8)
+    K.line(d, [K.at(-40.0, -6.0), K.at(40.0, -6.0)], ROPE_DARK, 0.8)
+    for k in range(-6, 7):
+        x = k * 4.4
+        K.line(d, [K.at(x - 1.5, -14.4), K.at(x + 1.5, -6.6)], ROPE_DARK, 0.7)
+    for x in (-8.0, 3.0):
+        K.poly(d, [K.at(x, -5.6), K.at(x + 4.0, -5.6), K.at(x + 4.0, -0.8), K.at(x + 5.8, -0.8), K.at(x + 5.8, 4.2), K.at(x + 4.0, 4.2), K.at(x + 4.0, 9.4),
+                   K.at(x, 9.4), K.at(x, 4.0), K.at(x + 1.8, 4.0), K.at(x + 1.8, -0.6), K.at(x, -0.6)], PAPER, OUTLINE, 0.5)
+    K.line(d, [K.at(-13.0, -28.0), K.at(-11.0, -17.0)], GI_DARK, 0.7)
+    K.line(d, [K.at(13.0, -28.0), K.at(11.0, -17.0)], GI_DARK, 0.7)
+    K.poly(d, [K.at(-40.0, 11.0), K.at(40.0, 11.0), K.at(40.0, 13.4), K.at(-40.0, 13.4)], GI_LIGHT)
+
+
+X.front_torso = R.make_front_torso(K, ("heavy",), GI, GI_DARK, [(TOP - 0.4, 6.4), (TOP + 4.0, 17.0), (-30.0, 21.6), (-16.0, 24.8), (-6.0, 25.2), (2.0, 23.0),
+                                                               (14.0, 21.0)], shoulder=(17.4, -35.6, 8.8, 8.4), detail=_front_gi)
+
+
+def _front_hood_shape(d) -> None:
+    K.oval(d, K.at(0.0, -2.2), 10.4, 10.6, WHITE)
+    K.oval(d, K.at(0.0, 4.4), 8.8, 8.6, WHITE)
+    K.poly(d, [K.at(8.6, -3.0), K.at(13.4, -5.0), K.at(13.8, -0.6), K.at(9.0, 1.0)], WHITE)
+
+
+def _front_hood(d) -> None:
+    # All of it is cloth but a band at his eyes.
+    K.poly(d, [K.at(-30.0, -30.0), K.at(30.0, -30.0), K.at(30.0, -0.6), K.at(7.8, -0.6), K.at(7.2, -4.0), K.at(-7.2, -4.0), K.at(-7.8, -0.6), K.at(-30.0, -0.6)],
+           HOOD)
+    K.poly(d, [K.at(-30.0, -0.6), K.at(-7.8, -0.6), K.at(-7.2, 2.6), K.at(0.0, 3.2), K.at(7.2, 2.6), K.at(7.8, -0.6), K.at(30.0, -0.6), K.at(30.0, 30.0),
+               K.at(-30.0, 30.0)], HOOD)
+    K.line(d, [K.at(-7.8, -0.6), K.at(-7.2, 2.6), K.at(0.0, 3.2), K.at(7.2, 2.6), K.at(7.8, -0.6)], HOOD_DARK, 0.7)
+    K.line(d, [K.at(-4.6, 6.0), K.at(0.0, 8.2), K.at(4.6, 6.0)], HOOD_DARK, 0.6)
+    K.line(d, [K.at(-4.0, 10.0), K.at(0.0, 11.6), K.at(4.0, 10.0)], HOOD_DARK, 0.5)
+    # The plate on his brow: iron, with a red bar and brass rivets.
+    K.poly(d, [K.at(-7.4, -11.0), K.at(7.4, -11.0), K.at(8.0, -4.8), K.at(-8.0, -4.8)], IRON, OUTLINE, 0.6)
+    K.poly(d, [K.at(-7.0, -10.4), K.at(7.0, -10.4), K.at(7.2, -8.8), K.at(-7.2, -8.8)], IRON_LIGHT)
+    K.poly(d, [K.at(-1.2, -10.8), K.at(1.2, -10.8), K.at(1.4, -5.2), K.at(-1.4, -5.2)], LACQUER)
+    for x in (-5.4, 5.4):
+        K.oval(d, K.at(x, -6.8), 0.8, 0.8, BRASS)
+
+
+def _front_scar(d) -> None:
+    # The old cut through his right brow.
+    K.line(d, [K.at(-4.6, -4.0), K.at(-3.4, 1.4)], SKIN_DEEP, 0.5)
+
+
+_front_head = R.make_front_head(K, ("heavy",), SKIN, SKIN_DEEP, wide=9.6, jaw=8.0, chin=4.2, shape=_front_hood_shape, hair=_front_hood, face=_front_scar)
+_front_eyes = R.make_front_eyes(K, ("heavy",), spread=3.6, y=-0.8, ink=INK, iris=(92, 60, 40, 255), size=0.9)
+_front_brows = R.make_front_brows(K, ("heavy",), INK, spread=3.6, y=-3.2, width=1.5)
+X.front_head_layers = lambda pose: [(_front_head(), "head"), (_front_eyes(str(pose["eyes"])), "eyes"), (_front_brows(-1), "brows")]
+X.front_shoe = R.make_front_shoe(K, HOOD, HOOD_DARK, BUILD.ankle_up, wide=1.2)
+
+
+def _front_effects(ctx) -> List[Stamp]:
+    hand = ctx.left_hand
+    shoulder = (ctx.hip[0] - X.front_span[0] - 1.0, ctx.hip[1] + BUILD.neck[1] + 4.0)
+    part = K.solid(("heavy_pauldron_front",), lambda d: K.poly(d, [K.at(-9.0, -3.0), K.at(-4.0, -8.0), K.at(5.0, -8.6), K.at(10.0, -4.0), K.at(9.6, 4.6), K.at(0.0, 8.0),
+                                                                    K.at(-9.4, 5.0)], WHITE),
+                   IRON, _front_pauldron, outline=1.2, rim=0.3, shade=0.35, shade_colour=IRON_DARK)
+    return [(part, shoulder, "front_pauldron", -6.0), (_kanabo(), hand, "front_kanabo", 96.0), (X.hand("fist", True), hand, "front_hand_on_club", 84.0)]
+
+
+def _front_pauldron(d) -> None:
+    K.poly(d, [K.at(-9.0, -3.0), K.at(-4.0, -8.0), K.at(5.0, -8.6), K.at(10.0, -4.0), K.at(8.0, -3.0), K.at(-7.0, -2.0)], IRON_LIGHT)
+    for y in (0.6, 4.0):
+        K.line(d, [K.at(-9.4, y), K.at(0.0, y + 2.2), K.at(9.8, y - 0.6)], LACQUER, 0.9)
+    for x in (-6.0, 0.0, 6.0):
+        K.oval(d, K.at(x, -5.0), 0.8, 0.8, BRASS)
+
+
+X.front_effects = _front_effects
+
+
+@X.front_row
+def front(i: int, n: int):
+    _, s, _c = loop(i, n)
+    arms = dict(R.front_arms(X, "sides"), la=(4.0, 17.0 + 0.3 * s), lz=0.15, lh="fist", rh="fist")
+    return R.FP(hip=(0.0, 0.5 + 0.5 * s), head=(0.0, 0.2 * s, 0.0), eyes="closed" if i == n - 2 else "open", **arms)
+
+
+X.rows = list(X.rows) + [("front", 8, 145)]
 
 ROWS = X.rows
 _render_frame = X.render_frame

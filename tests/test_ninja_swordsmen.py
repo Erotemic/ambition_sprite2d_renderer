@@ -20,11 +20,14 @@ def test_a_swordsman_of_the_dojo_is_connected_in_every_pose(monkeypatch, who) ->
     sword is out of his hand (the pose key ``held`` is 0) it can be a second
     piece."""
     monkeypatch.setattr(who.X, "effects", lambda ctx: [])
+    assert "front" in who.X.front_poses, "he has a row that faces the viewer, to turn through"
     failures = []
     for animation, frame_count, _frame_ms in who.ROWS:
         for frame_idx in range(frame_count):
             image = who._render_frame(animation, frame_idx, frame_count)
-            held = float(who.X.full(who.X.poses[animation](frame_idx, frame_count))["held"]) >= 0.5
+            # A row that faces the viewer has no pose key ``held``: the sword is in his hand.
+            side = who.X.poses.get(animation) if animation not in who.X.front_poses else None
+            held = side is None or float(who.X.full(side(frame_idx, frame_count))["held"]) >= 0.5
             significant = [size for size in _opaque_component_sizes(image) if size >= 20]
             if len(significant) not in ((1,) if held else (1, 2)):
                 failures.append((animation, frame_idx, held, significant))

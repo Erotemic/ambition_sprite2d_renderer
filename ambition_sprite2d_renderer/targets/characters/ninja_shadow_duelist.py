@@ -24,7 +24,7 @@ throat.
 The rows are the ones a striker of the game plays: ``idle`` (his guard),
 ``walk``, ``run`` (the sword behind him), ``jump``, ``fall``, ``slash`` (one
 cut, from over his far shoulder to low in front of him), ``hit``, ``death``,
-``dash``, and the two poses of a blink: ``blink_out`` (the sign of the hand
+``dash``, ``front`` (he faces you: the row he turns through), and the two poses of a blink: ``blink_out`` (the sign of the hand
 before he is gone) and ``blink_in`` (he comes back low). The warp of a blink
 is the engine's; these two rows are only how he stands for it.
 
@@ -589,6 +589,109 @@ def _effects(ctx) -> List[Stamp]:
 
 
 X.effects = _effects
+
+# ---- From the front ------------------------------------------------------------
+#
+# The row he turns through. He faces you with the sword low in his right hand
+# (the left of the picture), its point at the ground and out from him. The
+# scabbard and the ends of his scarf are behind him and come out at the other
+# side, where they can be seen.
+
+X.front_span = (8.4, 4.6)
+
+
+def _front_gi(d) -> None:
+    top = -36.4
+    K.poly(d, [K.at(-2.4, top + 1.2), K.at(2.4, top + 1.2), K.at(0.6, -27.0)], RED)
+    K.line(d, [K.at(-3.8, top + 1.0), K.at(2.6, -16.0)], GI_LIGHT, 1.0)
+    K.line(d, [K.at(3.8, top + 1.0), K.at(0.4, -23.6)], GI_LIGHT, 1.0)
+    # The sash, and the ends of its knot at his right hip.
+    K.poly(d, [K.at(-30.0, -13.0), K.at(30.0, -13.0), K.at(30.0, -7.0), K.at(-30.0, -7.0)], RED_DARK)
+    K.line(d, [K.at(-30.0, -10.6), K.at(30.0, -10.6)], RED, 0.7)
+    K.poly(d, [K.at(-4.4, -8.0), K.at(-1.4, -8.0), K.at(-1.0, 3.6), K.at(-3.6, 4.4)], RED_DARK, OUTLINE, 0.5)
+    K.poly(d, [K.at(-7.0, -8.0), K.at(-4.2, -8.0), K.at(-5.6, 1.6), K.at(-8.0, 1.0)], RED, OUTLINE, 0.5)
+    K.oval(d, K.at(-4.2, -8.8), 2.2, 2.0, RED, OUTLINE, 0.5)
+    K.line(d, [K.at(4.6, -4.0), K.at(5.4, 7.0)], GI_DARK, 0.6)
+    K.poly(d, [K.at(-30.0, 6.6), K.at(30.0, 6.6), K.at(30.0, 8.6), K.at(-30.0, 8.6)], GI_LIGHT)
+
+
+X.front_torso = R.make_front_torso(K, ("duelist",), GI, GI_DARK, [(-37.6, 3.4), (-34.6, 7.6), (-30.0, 8.6), (-22.0, 8.2), (-12.0, 7.0), (-6.0, 7.2), (0.0, 7.8),
+                                                                 (8.8, 8.6)], shoulder=(7.6, -32.4, 3.6, 3.8), detail=_front_gi)
+
+
+def _front_hood_shape(d) -> None:
+    K.oval(d, K.at(0.0, -2.0), 9.0, 9.8, WHITE)
+    K.oval(d, K.at(0.0, 3.8), 7.4, 8.0, WHITE)
+    # The knot of the hood: behind his head, and a little to one side.
+    K.poly(d, [K.at(7.4, -3.0), K.at(11.4, -4.6), K.at(11.8, -1.0), K.at(7.8, 0.6)], WHITE)
+
+
+def _front_hood(d) -> None:
+    # Cloth over all of it but the slit, and the slit is in shadow.
+    K.poly(d, [K.at(-30.0, -30.0), K.at(30.0, -30.0), K.at(30.0, -1.0), K.at(7.0, -1.0), K.at(6.4, -3.6), K.at(0.0, -4.2), K.at(-6.4, -3.6), K.at(-7.0, -1.0),
+               K.at(-30.0, -1.0)], HOOD)
+    K.poly(d, [K.at(-30.0, -1.0), K.at(-7.0, -1.0), K.at(-6.4, 1.6), K.at(0.0, 2.2), K.at(6.4, 1.6), K.at(7.0, -1.0), K.at(30.0, -1.0), K.at(30.0, 30.0),
+               K.at(-30.0, 30.0)], HOOD)
+    K.line(d, [K.at(7.0, -1.0), K.at(6.4, -3.6), K.at(0.0, -4.2), K.at(-6.4, -3.6), K.at(-7.0, -1.0), K.at(-6.4, 1.6), K.at(0.0, 2.2), K.at(6.4, 1.6),
+               K.at(7.0, -1.0)], HOOD_DARK, 0.7)
+    K.line(d, [K.at(-4.0, 5.0), K.at(0.0, 7.0), K.at(4.0, 5.0)], HOOD_DARK, 0.6)
+    K.line(d, [K.at(-3.4, 8.6), K.at(0.0, 10.0), K.at(3.4, 8.6)], HOOD_DARK, 0.5)
+    K.line(d, [K.at(-5.0, -8.6), K.at(0.0, -9.8), K.at(5.0, -8.6)], GI_LIGHT, 0.5)
+
+
+_front_head = R.make_front_head(K, ("duelist",), SLIT, SLIT, wide=8.2, jaw=6.8, chin=3.4, shape=_front_hood_shape, hair=_front_hood)
+
+
+def _front_eyes(mode: str):
+    """His eyes from the front: each slants down to the middle."""
+
+    def paint(d) -> None:
+        for sx in (-1.0, 1.0):
+            ex, ey = 3.3 * sx, -1.0
+            if mode in ("closed", "wince", "happy"):
+                K.line(d, [K.at(ex + 2.0 * sx, ey - 0.5), K.at(ex - 1.9 * sx, ey + 0.5)], EYE, 0.7)
+                continue
+            tall = 1.9 if mode == "wide" else 1.3
+            K.poly(d, [K.at(ex + 2.3 * sx, ey - tall), K.at(ex - 2.1 * sx, ey - 0.1), K.at(ex - 1.5 * sx, ey + tall * 0.9), K.at(ex + 1.8 * sx, ey + tall * 0.5)], EYE)
+            K.oval(d, K.at(ex - 0.2 * sx, ey + 0.1), 0.8, 0.6, EYE_HOT)
+
+    return K.piece(("duelist_front_eyes", mode), paint)
+
+
+X.front_head_layers = lambda pose: [(_front_head(), "head"), (_front_eyes(str(pose["eyes"])), "eyes")]
+X.front_shoe = R.make_front_shoe(K, HOOD, HOOD_DARK, BUILD.ankle_up)
+
+
+def _front_behind(hip) -> List[Stamp]:
+    # The ends of his scarf, out past his left shoulder; and the scabbard,
+    # from his left hip down and out.
+    root = (hip[0] + 5.0, hip[1] + BUILD.neck[1] + 1.0)
+    at = pin(root)
+    chains = [R.chain((root[0] - at[0], root[1] - at[1] + dy), 6 - k, 4.4, 46.0 + spread, curl=5.0) for k, (dy, spread) in enumerate(((0.0, 0.0), (1.6, 14.0)))]
+    return [(R.ribbon(K, ("duelist_front_tails",), chains, 3.0, RED, RED_DARK, taper=0.5), at, "front_scarf_tails", 0.0),
+            (_scabbard_part(), (hip[0] + 2.0, hip[1] - 7.0), "front_scabbard", 40.0)]
+
+
+X.front_behind = _front_behind
+
+
+def _front_effects(ctx) -> List[Stamp]:
+    hand = ctx.left_hand
+    return [(_scarf_wrap(), (ctx.neck[0], ctx.neck[1] + 0.6), "front_scarf", 0.0), (_sword(), hand, "front_sword", 118.0),
+            (X.hand("fist", True), hand, "front_hand_on_sword", 92.0)]
+
+
+X.front_effects = _front_effects
+
+
+@X.front_row
+def front(i: int, n: int):
+    _, s, _c = loop(i, n)
+    arms = dict(R.front_arms(X, "sides"), lh="fist", rh="fist")
+    return R.FP(hip=(0.0, 0.4 + 0.4 * s), head=(0.0, -0.3 * s, 0.0), eyes="closed" if i == n - 2 else "open", **arms)
+
+
+X.rows = list(X.rows) + [("front", 8, 145)]
 
 ROWS = X.rows
 _render_frame = X.render_frame

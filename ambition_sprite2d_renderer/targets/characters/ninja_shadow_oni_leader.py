@@ -18,6 +18,12 @@ and all of him is plate and cord:
 He shows no skin. He is a man in armour and not a demon: the oni is his mask.
 There is no drop shadow.
 
+His name is Zorlack 8. It is a secret (Jon, 2026-10-13: "that is a secret
+name, just document it in his generator file so we can use it in gameplay.
+Keep the current title for the nameplate"): his nameplate and his catalog row
+say "Shadow Oni Leader", and no art and no label of this file shows the name.
+``SECRET_NAME`` holds it for the day the game says it.
+
 A pose that is held keeps the sword off his face. At rest he does not hold a
 guard: the point of his sword is on the ground in front of him and his two
 hands are on the end of its grip. He waits.
@@ -27,7 +33,8 @@ had: ``idle``, ``walk`` (the sword low at his side), ``run`` and ``dash`` (the
 sword behind him), ``jump``, ``fall``, ``slash`` (one cut with two hands, from
 over his far shoulder to the ground), ``hit``, ``death``, and the two poses of
 a blink: ``blink_out`` (his open hand out: the order) and ``blink_in`` (he
-comes back low). The warp of a blink is the engine's.
+comes back low). The warp of a blink is the engine's. ``front`` is the row he
+turns through: he faces you, the sword planted in front of him.
 
 He is a person of ``_person_rig``: the bones, the poses and the frame are
 shared; the head, the armour, the sword and how he stands are his.
@@ -45,6 +52,8 @@ from ._person_rig import Build, Person, Stamp, loop, shot
 TARGET_NAME = "ninja_shadow_oni_leader"
 TARGET_BASENAME = TARGET_NAME
 DISPLAY_NAME = "Shadow Oni Leader"
+#: His own name. Not his nameplate: see the top of this file.
+SECRET_NAME = "Zorlack 8"
 
 ACTOR_METADATA = {
     "actor": {"character_id": "npc_ninja_shadow_oni_leader", "display_name": "Shadow Oni Leader"},
@@ -298,6 +307,25 @@ def _eyes(mode: str):
     return K.piece(("oni_leader_eyes", mode), paint)
 
 
+#: A horn from its root, which goes out to -x: its outside edge from the root
+#: to the point, its inside edge back, the red of its inside, and the rings of
+#: its outside.
+HORN_OUTSIDE = ((-3.6, 1.0), (-7.4, -4.0), (-9.6, -11.0), (-8.6, -18.0), (-5.0, -23.6))
+HORN_INSIDE = ((-5.6, -18.0), (-5.0, -11.6), (-2.4, -6.0), (2.6, -2.4), (3.6, 1.4))
+HORN_RED = ((-6.6, -20.6), (-5.0, -23.6), (-5.6, -18.0), (-5.0, -11.6), (-2.4, -6.0), (2.6, -2.4), (0.6, -1.6), (-4.0, -6.0), (-6.6, -12.0))
+HORN_RINGS = (((-7.4, -4.6), (-5.6, -6.2)), ((-9.4, -10.6), (-7.2, -11.4)), ((-8.8, -16.6), (-6.8, -16.8)))
+
+
+def _horn_shape(d, root, out: float, s: float) -> None:
+    K.poly(d, [K.at(root[0] - out * x * s, root[1] + y * s) for x, y in HORN_OUTSIDE + HORN_INSIDE], WHITE)
+
+
+def _horn_detail(d, root, out: float, s: float) -> None:
+    K.poly(d, [K.at(root[0] - out * x * s, root[1] + y * s) for x, y in HORN_RED], RED)
+    for a, b in HORN_RINGS:
+        K.line(d, [K.at(root[0] - out * a[0] * s, root[1] + a[1] * s), K.at(root[0] - out * b[0] * s, root[1] + b[1] * s)], HORN_DARK, 0.5)
+
+
 def _horn(near: bool):
     """A horn from its root at ``home``, on a side of the helmet: it goes out
     from the helmet and then up, and its point comes in again. The near horn
@@ -305,24 +333,8 @@ def _horn(near: bool):
     that is toward the other is red."""
     out = -1.0 if near else 1.0
     s = 1.0 if near else 0.88
-    # The outside edge from the root to the point, and the inside edge back.
-    outside = [(-3.6, 1.0), (-7.4, -4.0), (-9.6, -11.0), (-8.6, -18.0), (-5.0, -23.6)]
-    inside = [(-5.6, -18.0), (-5.0, -11.6), (-2.4, -6.0), (2.6, -2.4), (3.6, 1.4)]
-
-    def at(x: float, y: float):
-        return K.at(-out * x * s, y * s)
-
-    def shape(d) -> None:
-        K.poly(d, [at(x, y) for x, y in outside + inside], WHITE)
-
-    def detail(d) -> None:
-        # The red of its inside, and the rings of its outside.
-        K.poly(d, [at(x, y) for x, y in ((-6.6, -20.6), (-5.0, -23.6), (-5.6, -18.0), (-5.0, -11.6), (-2.4, -6.0), (2.6, -2.4), (0.6, -1.6), (-4.0, -6.0),
-                                         (-6.6, -12.0))], RED)
-        for (x0, y0), (x1, y1) in (((-7.4, -4.6), (-5.6, -6.2)), ((-9.4, -10.6), (-7.2, -11.4)), ((-8.8, -16.6), (-6.8, -16.8))):
-            K.line(d, [at(x0, y0), at(x1, y1)], HORN_DARK, 0.5)
-
-    return K.solid(("oni_leader_horn", near), shape, HORN, detail, outline=1.2, rim=0.3, shade=0.3, shade_colour=HORN_DARK)
+    return K.solid(("oni_leader_horn", near), lambda d: _horn_shape(d, (0.0, 0.0), out, s), HORN, lambda d: _horn_detail(d, (0.0, 0.0), out, s), outline=1.2,
+                   rim=0.3, shade=0.3, shade_colour=HORN_DARK)
 
 
 def _horn_at(ctx, x: float, y: float):
@@ -630,6 +642,127 @@ def _effects(ctx) -> List[Stamp]:
 
 
 X.effects = _effects
+
+# ---- From the front ------------------------------------------------------------
+#
+# The row he turns through (Jon, 2026-10-13: "We need front facing views for
+# the ninjas too"). He faces you as he waits: the sword planted in front of
+# him, his two hands on the end of its grip, a horn at each side of his helmet.
+
+X.front_span = (11.0, 5.4)
+
+
+def _front_armour(d) -> None:
+    _rows(d, -30.0, 30.0, -31.0, -13.0, 3.6)
+    K.poly(d, [K.at(-10.6, TOP + 2.6), K.at(10.6, TOP + 2.6), K.at(11.0, TOP + 4.8), K.at(-11.0, TOP + 4.8)], PLATE_LIGHT)
+    K.line(d, [K.at(-3.0, -30.0), K.at(0.0, -25.0), K.at(3.0, -30.0)], RED, 0.9)
+    K.oval(d, K.at(0.0, -25.0), 1.4, 1.4, RED, OUTLINE, 0.4)
+    K.line(d, [K.at(-0.8, -24.0), K.at(-1.6, -19.6)], RED, 0.7)
+    K.line(d, [K.at(0.8, -24.0), K.at(1.6, -19.6)], RED, 0.7)
+    K.poly(d, [K.at(-40.0, -12.6), K.at(40.0, -12.6), K.at(40.0, -7.2), K.at(-40.0, -7.2)], RED_DARK)
+    K.line(d, [K.at(-40.0, -10.4), K.at(40.0, -10.4)], RED, 0.6)
+    K.rrect(d, K.home[0] - 2.6, K.home[1] - 13.0, K.home[0] + 2.6, K.home[1] - 6.8, 0.6, BRASS, OUTLINE, 0.5)
+    # The skirt: three hanging plates and the gaps between them.
+    _rows(d, -40.0, 40.0, -3.0, SKIRT - 1.0, 3.8)
+    for x in (-4.8, 4.8):
+        K.line(d, [K.at(x, -6.0), K.at(x * 1.3, SKIRT)], PLATE_DARK, 1.1)
+    K.poly(d, [K.at(-40.0, SKIRT - 2.4), K.at(40.0, SKIRT - 2.4), K.at(40.0, SKIRT + 2.0), K.at(-40.0, SKIRT + 2.0)], PLATE_LIGHT)
+
+
+X.front_torso = R.make_front_torso(K, ("oni_leader",), PLATE, PLATE_DARK, [(TOP - 0.4, 4.6), (TOP + 4.0, 11.6), (-30.0, 12.8), (-16.0, 10.8), (-9.0, 11.0),
+                                                                           (0.0, 12.6), (SKIRT, 15.6)], shoulder=(10.4, -35.0, 5.6, 5.4), detail=_front_armour)
+
+#: Where each horn is on the helmet, from the middle of his head.
+FRONT_HORN = (7.6, -8.4)
+
+
+def _front_helmet_shape(d) -> None:
+    K.oval(d, K.at(0.0, -4.6), 10.4, 9.6, WHITE)
+    K.poly(d, [K.at(-11.0, -6.6), K.at(11.0, -6.6), K.at(12.6, -3.0), K.at(-12.6, -3.0)], WHITE)
+    for sx in (-1.0, 1.0):
+        # The guard of his neck, out at each side; and the horn of that side.
+        K.poly(d, [K.at(7.0 * sx, -4.0), K.at(14.6 * sx, 0.0), K.at(16.0 * sx, 7.0), K.at(11.0 * sx, 10.0), K.at(6.4 * sx, 6.0)], WHITE)
+        _horn_shape(d, (FRONT_HORN[0] * sx, FRONT_HORN[1]), sx, 1.0)
+    K.poly(d, [K.at(-6.6, 3.0), K.at(6.6, 3.0), K.at(6.8, 9.6), K.at(4.0, 12.8), K.at(-4.0, 12.8), K.at(-6.8, 9.6)], WHITE)
+
+
+def _front_helmet(d) -> None:
+    # The horns first: the bowl of the helmet is over their roots.
+    for sx in (-1.0, 1.0):
+        root = (FRONT_HORN[0] * sx, FRONT_HORN[1])
+        K.poly(d, [K.at(root[0] - sx * x, root[1] + y) for x, y in HORN_OUTSIDE + HORN_INSIDE], HORN)
+        _horn_detail(d, root, sx, 1.0)
+    # The bowl and its peak: over all of the head down to the brow of the mask.
+    K.poly(d, [K.at(-11.4, -30.0), K.at(11.4, -30.0), K.at(12.6, -3.4), K.at(-12.6, -3.4)], HELM)
+    for x, bend in ((-5.4, -2.0), (0.0, 0.0), (5.4, 2.0)):
+        K.line(d, [K.at(x, -6.6), K.at(x + bend * 0.5, -10.6), K.at(x + bend, -13.8)], HELM_LIGHT, 0.5)
+    K.poly(d, [K.at(-11.6, -6.4), K.at(11.6, -6.4), K.at(12.4, -3.8), K.at(-12.4, -3.8)], HELM_LIGHT)
+    K.oval(d, K.at(0.0, -8.4), 1.3, 1.3, BRASS, OUTLINE, 0.4)
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(7.2 * sx, -3.6), K.at(30.0 * sx, -3.6), K.at(30.0 * sx, 14.0), K.at(7.2 * sx, 9.0)], HELM)
+        for k in range(3):
+            y = 0.6 + k * 3.0
+            K.line(d, [K.at(7.6 * sx, y), K.at((14.6 + k * 0.5) * sx, y + 0.6)], LACE, 0.8)
+
+
+def _front_mask(d) -> None:
+    for sx in (-1.0, 1.0):
+        K.poly(d, [K.at(1.0 * sx, -2.8), K.at(6.0 * sx, -3.2), K.at(6.2 * sx, 0.8), K.at(3.6 * sx, 2.0), K.at(0.9 * sx, 0.8)], SOCKET)
+        K.line(d, [K.at(6.4 * sx, 3.0), K.at(5.0 * sx, 5.4), K.at(5.6 * sx, 8.0)], BONE_SHADE, 0.6)
+    K.poly(d, [K.at(-1.2, 2.4), K.at(0.0, 1.6), K.at(1.2, 2.4), K.at(1.5, 4.8), K.at(0.0, 4.0), K.at(-1.5, 4.8)], BONE_DEEP)
+    K.line(d, [K.at(-4.8, 7.0), K.at(0.0, 7.6), K.at(4.8, 7.0)], BONE_DEEP, 0.8)
+    for x in (-3.4, -1.1, 1.1, 3.4):
+        K.line(d, [K.at(x, 5.8), K.at(x, 9.0)], BONE_DEEP, 0.5)
+    K.line(d, [K.at(-4.2, 10.0), K.at(0.0, 10.8), K.at(4.2, 10.0)], BONE_SHADE, 0.6)
+
+
+_front_head = R.make_front_head(K, ("oni_leader",), BONE, BONE_DEEP, wide=8.6, jaw=7.2, chin=4.6, shape=_front_helmet_shape, hair=_front_helmet, face=_front_mask)
+
+
+def _front_eyes(mode: str):
+    def paint(d) -> None:
+        for sx in (-1.0, 1.0):
+            ex, ey = 3.5 * sx, -0.4
+            if mode in ("closed", "wince", "happy"):
+                K.line(d, [K.at(ex + 2.0 * sx, ey - 0.5), K.at(ex - 1.9 * sx, ey + 0.5)], EYE, 0.7)
+                continue
+            tall = 2.0 if mode == "wide" else 1.4
+            K.poly(d, [K.at(ex + 2.3 * sx, ey - tall), K.at(ex - 2.1 * sx, ey - 0.1), K.at(ex - 1.5 * sx, ey + tall * 0.9), K.at(ex + 1.8 * sx, ey + tall * 0.5)], EYE)
+            K.oval(d, K.at(ex - 0.2 * sx, ey + 0.1), 0.9, 0.7, EYE_HOT)
+
+    return K.piece(("oni_leader_front_eyes", mode), paint)
+
+
+X.front_head_layers = lambda pose: [(_front_head(), "head"), (_front_eyes(str(pose["eyes"])), "eyes")]
+X.front_shoe = R.make_front_shoe(K, HELM, HELM_DARK, BUILD.ankle_up, wide=1.1)
+
+
+def _front_effects(ctx) -> List[Stamp]:
+    out: List[Stamp] = []
+    # The guard of each shoulder, over the top of the arm.
+    for sx in (-1.0, 1.0):
+        out.append((_sode_part(True), (ctx.hip[0] + sx * (X.front_span[0] + 6.0), ctx.hip[1] + BUILD.neck[1] + 3.6), f"front_sode_{'l' if sx < 0 else 'r'}", -7.0 * sx))
+    # The sword, its point on the ground; and his two hands on its grip.
+    lh, rh = ctx.left_hand, ctx.right_hand
+    grip = ((lh[0] + rh[0]) / 2.0, (lh[1] + rh[1]) / 2.0)
+    out.append((_sword(), grip, "front_sword", 90.0))
+    out.append((X.hand("fist", True), (lh[0] - 1.0, lh[1]), "front_left_hand_on_sword", 24.0))
+    out.append((X.hand("fist", True), (rh[0] + 1.0, rh[1] - 3.0), "front_right_hand_on_sword", 156.0))
+    return out
+
+
+X.front_effects = _front_effects
+
+
+@X.front_row
+def front(i: int, n: int):
+    _, s, _c = loop(i, n)
+    reach = -(X.front_span[0] - 5.4)
+    return R.FP(hip=(0.0, 0.3 + 0.3 * s), head=(0.0, 0.2 * s, 0.0), la=(reach, 16.0), ra=(reach, 16.0), lz=0.35, rz=0.35, lh="fist", rh="fist",
+                eyes="closed" if i == n - 2 else "open")
+
+
+X.rows = list(X.rows) + [("front", 8, 145)]
 
 ROWS = X.rows
 _render_frame = X.render_frame

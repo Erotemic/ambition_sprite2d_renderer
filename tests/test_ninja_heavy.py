@@ -52,7 +52,9 @@ def test_ninja_heavy_body_is_connected_in_every_pose(monkeypatch) -> None:
     for animation, frame_count, _frame_ms in ninja_heavy.ROWS:
         for frame_idx in range(frame_count):
             image = ninja_heavy._render_frame(animation, frame_idx, frame_count)
-            held = float(ninja_heavy.X.full(ninja_heavy.X.poses[animation](frame_idx, frame_count))["held"]) >= 0.5
+            # A row that faces the viewer has no pose key ``held``: the club is in his hand.
+            side = ninja_heavy.X.poses.get(animation) if animation not in ninja_heavy.X.front_poses else None
+            held = side is None or float(ninja_heavy.X.full(side(frame_idx, frame_count))["held"]) >= 0.5
             significant = [size for size in _opaque_component_sizes(image) if size >= 20]
             if len(significant) not in ((1,) if held else (1, 2)):
                 failures.append((animation, frame_idx, held, significant))
