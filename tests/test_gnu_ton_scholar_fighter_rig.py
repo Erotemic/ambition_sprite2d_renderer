@@ -1,4 +1,4 @@
-"""Renderer-facing invariants for the D2 scholar's second, fighter rig.
+"""Renderer-facing invariants for the scholar's second, fighter rig.
 
 Art choices (specific colors, silhouette, row inventory) remain visual review
 work.  These tests check that the two rigs share one art authority, publication

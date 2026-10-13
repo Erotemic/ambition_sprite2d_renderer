@@ -61,7 +61,7 @@ def make_spec():
 def main():
     spec = make_spec()
     if not spec.svg_path.exists() or not B.RIG.exists():
-        raise SystemExit("Build the D2 art and the boss rig (`gnu_ton_scholar_villain`) first")
+        raise SystemExit("Build the art and the boss rig (`gnu_ton_scholar_villain`) first")
     # JSON only, as the fighter's builder: `CR.write` would rewrite the catalog
     # in the shared SVG.
     doc = CR.build(spec)

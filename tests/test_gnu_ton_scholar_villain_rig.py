@@ -176,17 +176,29 @@ def test_inkscape_parts_have_semantic_names_and_expression_folders():
     assert next(el for el in root.iter() if el.get('id') == 'mouth_open').get('style') == 'display:none'
     marker_layer = next(el for el in root if el.get('id') == 'ambition-rig-markers')
     assert marker_layer.get('style') == 'display:none'
-    assert any(el.get('id') == 'head_face--small-triangular-nose' for el in root.iter())
-    assert any(el.get('id') == 'head_face--rosy-blush-on-cheek' for el in root.iter())
+    # one nose shape, and no blush: the face is an old, stern man's
+    assert any(el.get('id') == 'head_face--long-nose-skin-shape' for el in root.iter())
+    assert not any('blush' in (el.get('id') or '') for el in root.iter())
     assert not any(el.get('id') == 'head_face--nose-tip-skin-highlight' for el in root.iter())
     assert not any(el.get('id') == 'torso_coat--coat-left-shadow-panel' for el in root.iter())
 
 
-def test_d2_face_eye_perspective_in_canonical_svg():
-    """The approved D2 placement must survive all generator rebuilds.
+def _x_extent(shape):
+    """``(left, right)`` of an ellipse or of the points of a path."""
+    if shape.get('cx') is not None:
+        cx, rx = float(shape.get('cx')), float(shape.get('rx'))
+        return cx - rx, cx + rx
+    import re
+    xs = [float(x) for x, _y in re.findall(r'(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)', shape.get('d'))]
+    return min(xs), max(xs)
 
-    Character-right is the viewer-near, canvas-left eye in this 3/4 view.
-    Character-left is the canvas-right far eye. These are actor-side names.
+
+def test_face_eye_perspective_in_canonical_svg():
+    """The layout of the eyes must survive all generator rebuilds.
+
+    Character-right is the viewer-near, canvas-left eye in this 3/4 view, and
+    it is the larger one. Character-left is the canvas-right far eye. These are
+    actor-side names.
     """
     root = ET.parse(SVG).getroot()
     by_id = {el.get('id'): el for el in root.iter() if el.get('id')}
@@ -195,11 +207,9 @@ def test_d2_face_eye_perspective_in_canonical_svg():
         shapes = [el for el in part if el.get('data-art-purpose')]
         near = next(el for el in shapes if 'NEAR eye (canvas-left)' in el.get('data-art-purpose', ''))
         far = next(el for el in shapes if 'FAR eye (canvas-right)' in el.get('data-art-purpose', ''))
-        near_x, far_x = float(near.get('cx')), float(far.get('cx'))
-        near_y, far_y = float(near.get('cy')), float(far.get('cy'))
-        assert near_x < far_x, variant
-        assert float(near.get('rx')) >= 1.6 * float(far.get('rx')), variant
-        assert near_y > far_y + 2, variant
+        (near_l, near_r), (far_l, far_r) = _x_extent(near), _x_extent(far)
+        assert near_r < far_l, variant
+        assert near_r - near_l >= 1.4 * (far_r - far_l), variant
         assert near.get('data-art-purpose', '').startswith('Actor-right NEAR')
         assert far.get('data-art-purpose', '').startswith('Actor-left FAR')
     doc = RigDocument.load(RIG)

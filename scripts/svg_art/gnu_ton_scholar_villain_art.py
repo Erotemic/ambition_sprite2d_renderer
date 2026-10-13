@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Programmatically author GNU-ton's scholar as a cleaner, flatter SVG rig.
+"""Programmatically author GNU-ton's scholar as a clean, flat SVG rig.
 
-This rebuild intentionally resets the design instead of iterating on the prior
-accumulated version. The goals are:
+The body is simple editable geometry: few nodes, flat colour, an ink outline,
+a real pelvis bridge between torso and legs, coat tails behind the body stack,
+and part names that say what a part is.
 
-- simpler editable geometry with fewer nodes and fewer decorative curves
-- flatter, outline-driven color treatment
-- a single readable nose solution (no duplicate nose tip highlight)
-- a real pelvis bridge between torso and legs
-- coat tails that live behind the body stack
-- clearer part semantics for later Inkscape editing and rigging
+The head is an old, stern man in a full wig (Jon chose it from a sheet of
+five, 2026-10-13): a long face, a long nose with a small hook, small eyes
+under heavy brows, a hollow cheek, a thin mouth. The wig is parted at the top,
+it has three big curls in front of the ear, and it falls down his back (the
+part ``wig_queue``, which swings). No hair is in front of his neck: the neck
+and the cravat show under his chin.
 """
 from __future__ import annotations
 
@@ -111,14 +112,13 @@ def swap(key, bone, z, items, channel, default=False):
 
 
 
-# Accepted facial design: D2 from the eye-placement exploration sheet.
-# Directions here describe the ACTOR (his own perspective), not pixel axes:
-#   actor-right / canvas-left = larger near eye, closer to viewer
-#   actor-left / canvas-right = smaller far eye, nearer the nose silhouette
-# The near eye is intentionally much larger and slightly lower.
-# These are SVG generator design coordinates before svgkit's +44/+32 shift.
-D2_NEAR_EYE = (206.0, 139.3)
-D2_FAR_EYE = (228.8, 135.4)
+# Where the eyes are, in SVG generator design coordinates (before svgkit's
+# +44/+32 shift). Directions describe the ACTOR (his own perspective), not
+# pixel axes:
+#   actor-right / canvas-left = the NEAR eye, larger, closer to the viewer
+#   actor-left / canvas-right = the FAR eye, smaller, by the nose
+NEAR_EYE = (207.8, 141.0)
+FAR_EYE = (226.8, 140.3)
 
 
 def draw():
@@ -159,14 +159,13 @@ def draw():
               L([(217,387), (226,386), (221,374)], C["gold"], 1.9),
           ], width=3.7)
 
-    # Queue
+    # The fall of the wig down his back. It swings on its own bone.
     piece("wig_queue", "wig_queue", 19,
-          S([(158,140), (169,149), (165,179), (157,205), (143,215), (132,212), (134,183), (143,156)]),
+          S([(158,140), (171,150), (170,184), (163,212), (149,224), (135,219), (136,190), (144,160)]),
           C["wig_shadow"], [
-              P(S([(147,155), (158,163), (152,198), (139,208), (141,184)]), C["wig_light"]),
-              L([(137,186), (157,191)], C["wig_dark"], 2.4),
-              P(S([(141,186), (128,195), (135,181)]), C["coat_dark"], INK, 1.7),
-              P(S([(150,190), (161,201), (162,182)]), C["coat_dark"], INK, 1.7),
+              P(S([(149,158), (160,166), (156,202), (143,213), (144,188)]), C["wig"]),
+              L([(145,176), (153,184), (161,178)], C["wig_dark"], 1.7),
+              L([(141,196), (149,204), (158,198)], C["wig_dark"], 1.7),
           ], width=3.0)
 
     # Rear arm and props
@@ -280,118 +279,135 @@ def draw():
               L([(194,448), (242,448)], INK, 2),
           ], width=3.5)
 
-    # Head and hair. Keep the face holistic and round; one actual nose shape.
+    # Head and hair.
     piece("wig_back_mass", "head", 57,
-          S([(170,144), (157,129), (154,111), (159,92), (170,79), (185,70), (202,69), (218,73), (231,82), (239,97), (240,116), (235,133), (220,140), (198,138), (181,138)]),
+          S([(172,150), (159,134), (153,113), (158,96), (168,82), (182,72), (193,70), (199,77), (206,69), (219,72), (231,82), (239,98), (240,116), (235,131), (220,136), (198,136), (181,141)]),
           C["wig_shadow"], [
-              P(S([(159,109), (167,88), (181,76), (199,73), (217,77), (230,88), (235,103), (234,122), (220,131), (199,129), (175,134)]), C["wig"]),
-              P(S([(165,105), (174,86), (191,76), (202,79), (191,89), (174,104)]), C["wig_light"]),
+              P(S([(160,112), (168,90), (183,78), (200,76), (217,79), (230,90), (235,105), (233,121), (219,128), (199,128), (176,134)]), C["wig"]),
           ], width=3.4)
     piece("head_face", "head", 60,
-          S([(174,121), (188,112), (204,108), (219,110), (231,118), (239,131), (241,147), (237,163), (228,176), (214,184), (198,187), (185,184), (174,177), (166,163), (164,147), (167,133)]),
+          S([(175,124), (188,113), (205,109), (220,112), (229,120), (232,131), (231,143), (232,156), (231,167),
+             (229,178), (222,187), (210,191), (197,188), (185,179), (176,166), (171,151), (171,136)]),
           C["skin"], [
-              P(S([(206,113), (220,116), (231,128), (220,128)]), C["skin_light"]),
-              E(196,160,6.2,4.8,C["blush"]),
-              P(poly([(226,148), (238,154), (227,162)]), C["skin_dark"], INK, 1.6),
-              E(174,148,6.6,8.9,C["skin"],INK,2.2),
-              L([(174,146), (176,150), (174,153)], C["skin_dark"], 1.5),
-          ], width=3.8)
+              P(S([(206,113), (220,116), (229,126), (219,126)]), C["skin_light"]),
+              # the shade under the cheek, along the jaw
+              P(S([(176,152), (183,171), (196,185), (209,190), (200,181), (189,169), (182,152)]), C["skin_dark"]),
+              E(178,150,5.6,8.4,C["skin"],INK,2.0),
+              L([(178,146), (180,150), (178,154)], C["skin_dark"], 1.4),
+              # the nose: long, with a small hook. One shape, inked on its outer side only.
+              P(S([(228,130), (235,139), (245,153), (244,159), (236,163), (229,158)]), C["skin"]),
+              P(S([(231,147), (237,159), (230,159)]), C["skin_dark"]),
+              L([(229,129), (235,139), (245,153), (244,159), (234,163)], INK, 2.4),
+              L([(232,158), (236,160.5)], INK, 1.5),
+              # the line from the nose to the mouth, the chin, the hollow of the cheek
+              L([(231,164), (226,168), (222,173)], C["skin_dark"], 1.7),
+              L([(215,186), (217,183)], C["skin_dark"], 1.3),
+              L([(190,156), (196,167), (204,174)], C["skin_dark"], 1.8),
+              # two lines on his brow
+              L([(196,122), (212,120)], C["skin_dark"], 1.2),
+              L([(198,117), (210,116)], C["skin_dark"], 1.1),
+          ], width=3.6)
     piece("wig_crown", "head", 66,
-          S([(160,124), (158,106), (161,91), (170,80), (182,73), (196,70), (211,72), (224,79), (233,88), (238,102), (239,118), (232,128), (218,126), (206,130), (195,126), (186,120), (178,124), (168,133), (163,138)]),
+          S([(168,138), (158,121), (159,100), (168,84), (182,74), (193,72), (200,81), (206,71), (219,74), (230,83), (237,98), (239,114), (235,125), (229,125), (220,117), (207,112), (201,118), (191,117), (181,124), (174,136)]),
           C["wig"], [
-              P(S([(162,107), (171,88), (182,77), (194,74), (203,82), (188,86), (172,104)]), C["wig_light"]),
-              P(S([(211,78), (224,86), (230,101), (229,114), (219,114), (212,104)]), C["wig_shadow"]),
-              L([(181,80), (189,87), (187,96)], C["wig_shadow"], 1.8),
-              L([(214,85), (221,96), (214,105)], C["wig_dark"], 1.6),
-              L([(166,110), (169,122)], C["wig_shadow"], 1.6),
+              P(S([(163,112), (171,92), (184,81), (194,79), (198,88), (187,92), (174,108)]), C["wig_light"]),
+              P(S([(212,80), (224,88), (231,102), (231,116), (222,113), (214,102)]), C["wig_shadow"]),
+              L([(201,83), (202,96), (204,110)], C["wig_dark"], 1.6),
+              L([(184,84), (190,94), (188,104)], C["wig_shadow"], 1.8),
+              L([(216,84), (222,96), (218,106)], C["wig_dark"], 1.5),
           ], width=3.4)
-    for idx, (x, y, rx, ry) in enumerate(((163,124,10,10), (159,143,11,11), (158,163,11,11))):
+    # Three big curls in front of the ear, one under the other, to his collar.
+    # They hang behind the line of his jaw, so his neck shows under his chin.
+    for idx, (x, y, rx, ry) in enumerate(((164,146,12.5,12.5), (160,169,12.5,12.5), (160,192,12,12.5))):
         decoration(f"wig_curl_{idx}", "head", 67 + idx * 0.1, [
-            E(x, y, rx, ry, C["wig"], INK, 2.6),
-            E(x - 2, y - 2, rx * 0.56, ry * 0.52, C["wig_light"]),
-            P(S([(x + 3, y - 5), (x + 6, y - 1), (x + 3, y + 3),
-                 (x - 1, y + 4), (x - 3, y + 1), (x - 1, y - 2), (x + 1, y - 2)], closed=False),
-              "none", C["wig_dark"], 1.6),
+            E(x, y, rx, ry, C["wig"], INK, 2.7),
+            E(x - 2.5, y - 3, rx * 0.55, ry * 0.5, C["wig_light"]),
+            P(S([(x + 6, y - 6), (x + 8, y), (x + 4, y + 6), (x - 3, y + 6), (x - 6, y + 1),
+                 (x - 3, y - 4), (x + 2, y - 3), (x + 3, y + 1)], closed=False),
+              "none", C["wig_dark"], 1.7),
         ])
 
-    # The D2 layout is shared by every expression. Eye anatomy (right/left)
-    # describes the character, and near/far describe relative camera depth.
-    near_x, near_y = D2_NEAR_EYE  # actor-right eye, canvas-left
-    far_x, far_y = D2_FAR_EYE     # actor-left eye, canvas-right
+    # Every expression has the same layout. Eye anatomy (right/left) describes
+    # the character, and near/far describe relative camera depth: the NEAR eye
+    # is canvas-left and larger, the FAR eye is canvas-right, by the nose.
+    nx, ny = NEAR_EYE
+    fx, fy = FAR_EYE
+    brow = C["wig_dark"]
+
+    def whites(near_h=1.0, far_h=1.0):
+        """The two eyes, open: white, iris, catchlight, and the heavy upper lid."""
+        return [
+            P(S([(nx - 7.8, ny + 1), (nx - 3.8, ny - 2.8 * near_h), (nx + 2.2, ny - 3.4 * near_h), (nx + 7.7, ny), (nx + 2.2, ny + 3.6 * near_h), (nx - 3.8, ny + 3.6 * near_h)]), C["linen"], INK, 1.3),
+            E(nx + 1.8, ny + 0.2, 2.7, 3.0, C["eye"]),
+            E(nx + 2.6, ny - 0.8, 0.8, 0.8, C["linen"]),
+            L([(nx - 8.8, ny + 0.6), (nx - 3.8, ny - 3.6 * near_h), (nx + 2.2, ny - 4.2 * near_h), (nx + 8.6, ny - 0.4)], INK, 2.4),
+            P(S([(fx - 4.8, fy + 0.1), (fx - 1.8, fy - 2.9 * far_h), (fx + 2.2, fy - 2.5 * far_h), (fx + 4.6, fy + 0.3), (fx + 1.2, fy + 2.9 * far_h), (fx - 2.8, fy + 2.9 * far_h)]), C["linen"], INK, 1.2),
+            E(fx + 1.0, fy + 0.1, 2.0, 2.4, C["eye"]),
+            E(fx + 1.6, fy - 0.7, 0.6, 0.6, C["linen"]),
+            L([(fx - 5.4, fy - 0.1), (fx - 1.8, fy - 3.5 * far_h), (fx + 2.6, fy - 3.1 * far_h), (fx + 5.0, fy - 0.1)], INK, 2.0),
+        ]
+
+    def brows(near, far, near_w=3.6, far_w=3.0):
+        """The two brows: each a list of points from its own eye's centre."""
+        return [L([(nx + x, ny + y) for x, y in near], brow, near_w), L([(fx + x, fy + y) for x, y in far], brow, far_w)]
+
+    bag = L([(nx - 4.8, ny + 6.4), (nx + 1.2, ny + 7.4), (nx + 6.2, ny + 5.4)], C["skin_dark"], 1.3)
+    crease = L([(219, 131), (219.6, 135)], C["skin_dark"], 1.3)
 
     swap("eye_angry", "head", 71, [
-        E(near_x, near_y, 8.7, 7.3, C["linen"], INK, 2.1),
-        E(near_x + 2.7, near_y + 0.6, 3.05, 3.5, C["eye"]),
-        E(near_x + 3.45, near_y - 0.5, 0.95, 1.0, C["linen"]),
-        L([(near_x - 7, near_y - 9.5), (near_x + 6.5, near_y - 8)], INK, 2.4),
-        E(far_x, far_y, 4.7, 5.0, C["linen"], INK, 1.75),
-        E(far_x + 1.25, far_y + 0.55, 1.6, 2.1, C["eye"]),
-        E(far_x + 1.65, far_y - 0.2, 0.5, 0.55, C["linen"]),
-        L([(far_x - 3.5, far_y - 7.4), (far_x + 3.8, far_y - 6.8)], INK, 1.75),
+        *whites(0.7, 0.75),
+        *brows([(-11, -13.5), (-2, -10.5), (9.5, -4.5)], [(-6, -4.2), (0, -8.6), (6, -10.8)], 4.0, 3.3),
+        bag, crease,
+        L([(217.4, 129), (218.4, 133.6)], C["skin_dark"], 1.3),
     ], "eye.angry")
     swap("eye_open", "head", 71, [
-        E(near_x, near_y, 9.3, 8.2, C["linen"], INK, 2.05),
-        E(near_x + 3.0, near_y + 0.5, 3.2, 3.8, C["eye"]),
-        E(near_x + 3.75, near_y - 0.6, 1.0, 1.1, C["linen"]),
-        L([(near_x - 7, near_y - 11), (near_x - 1.2, near_y - 12.1),
-           (near_x + 5.7, near_y - 11)], INK, 1.9),
-        E(far_x, far_y, 5.0, 5.5, C["linen"], INK, 1.75),
-        E(far_x + 1.3, far_y + 0.45, 1.75, 2.25, C["eye"]),
-        E(far_x + 1.7, far_y - 0.4, 0.58, 0.65, C["linen"]),
-        L([(far_x - 4.2, far_y - 7.8), (far_x + 3.7, far_y - 7.4)], INK, 1.45),
+        *whites(),
+        *brows([(-10.8, -12), (-1.8, -11.5), (9.2, -7)], [(-5.8, -6.3), (0.2, -9.8), (6.2, -9.8)]),
+        L([(nx - 6.8, ny - 5.4), (nx + 1.2, ny - 7.2), (nx + 7.2, ny - 4.8)], C["skin_dark"], 1.4),
+        bag, crease,
     ], "eye.open", True)
     swap("eye_surprised", "head", 71, [
-        E(near_x, near_y, 9.7, 10.0, C["linen"], INK, 2.25),
-        E(near_x + 2.8, near_y + 0.6, 3.5, 4.3, C["eye"]),
-        E(near_x + 3.7, near_y - 0.9, 1.1, 1.2, C["linen"]),
-        L([(near_x - 7, near_y - 14.8), (near_x + 6.1, near_y - 14.5)], INK, 1.85),
-        E(far_x, far_y, 5.4, 6.3, C["linen"], INK, 1.85),
-        E(far_x + 1.2, far_y + 0.7, 1.95, 2.7, C["eye"]),
-        E(far_x + 1.7, far_y - 0.6, 0.6, 0.72, C["linen"]),
-        L([(far_x - 4.1, far_y - 10.2), (far_x + 4.0, far_y - 10.0)], INK, 1.6),
+        E(nx, ny - 0.4, 7.4, 6.6, C["linen"], INK, 1.9),
+        E(nx + 1.2, ny - 0.2, 2.5, 2.8, C["eye"]),
+        E(nx + 1.9, ny - 1.1, 0.75, 0.75, C["linen"]),
+        E(fx, fy - 0.4, 4.6, 5.2, C["linen"], INK, 1.7),
+        E(fx + 0.8, fy - 0.2, 1.9, 2.2, C["eye"]),
+        E(fx + 1.3, fy - 0.9, 0.55, 0.55, C["linen"]),
+        *brows([(-10, -13), (-1, -16.5), (9, -13.5)], [(-5.6, -13), (0.2, -15.4), (5.6, -13.2)], 3.2, 2.8),
     ], "eye.surprised")
     swap("eye_shut", "head", 71, [
-        L([(near_x - 8.2, near_y), (near_x - 0.5, near_y + 3.0),
-           (near_x + 8.0, near_y)], INK, 2.65),
-        L([(far_x - 4.8, far_y), (far_x, far_y + 1.5),
-           (far_x + 4.4, far_y)], INK, 1.95),
-        L([(near_x - 7.0, near_y - 9.0), (near_x + 6.4, near_y - 9.0)], INK, 2.1),
-        L([(far_x - 4, far_y - 8.0), (far_x + 4, far_y - 7.6)], INK, 1.4),
-        L([(near_x - 8.0, near_y + 1.5), (near_x - 10.5, near_y + 4)], INK, 1.5),
+        L([(nx - 8.2, ny - 0.2), (nx - 0.4, ny + 3.2), (nx + 8.0, ny - 0.2)], INK, 2.5),
+        L([(fx - 5.0, fy - 0.2), (fx, fy + 2.4), (fx + 4.6, fy - 0.2)], INK, 2.0),
+        *brows([(-10.8, -11), (-1.8, -11.2), (9.2, -6.4)], [(-5.8, -5.8), (0.2, -9.2), (6.2, -9.6)]),
+        L([(nx - 8.4, ny + 1.4), (nx - 11, ny + 3.6)], INK, 1.4),
+        crease,
     ], "eye.shut")
     swap("eye_dead", "head", 71, [
-        L([(near_x - 6.2, near_y - 5.8), (near_x + 6.2, near_y + 6.2)], INK, 2.7),
-        L([(near_x - 6.2, near_y + 6.2), (near_x + 6.2, near_y - 5.8)], INK, 2.7),
-        L([(far_x - 3.7, far_y - 4.3), (far_x + 3.7, far_y + 4.5)], INK, 1.85),
-        L([(far_x - 3.7, far_y + 4.5), (far_x + 3.7, far_y - 4.3)], INK, 1.85),
-        L([(near_x - 7, near_y - 10.5), (near_x + 6, near_y - 10.2)], INK, 1.9),
-        L([(far_x - 4.2, far_y - 8.2), (far_x + 3.7, far_y - 7.9)], INK, 1.4),
+        L([(nx - 5.4, ny - 5.0), (nx + 5.4, ny + 5.0)], INK, 2.6),
+        L([(nx - 5.4, ny + 5.0), (nx + 5.4, ny - 5.0)], INK, 2.6),
+        L([(fx - 3.4, fy - 3.8), (fx + 3.4, fy + 3.8)], INK, 1.9),
+        L([(fx - 3.4, fy + 3.8), (fx + 3.4, fy - 3.8)], INK, 1.9),
+        *brows([(-10, -11), (-1, -11.6), (9, -10.4)], [(-5.6, -9.6), (0.2, -10.6), (5.8, -10)], 3.2, 2.8),
     ], "eye.dead")
+    near_spiral = [(-7, 0), (-4, -6), (2, -7), (8, -4), (8, 3), (3, 7), (-3, 6), (-5, 2), (-2, -3), (4, -2), (4, 3), (1, 4), (-1, 1), (0, -1)]
+    far_spiral = [(-4, 0), (-2, -4), (2, -4.5), (5, -1.5), (4.5, 3), (1, 5), (-2, 2), (-1, -1), (2, -1), (2, 1), (0, 1.5)]
     swap("eye_dizzy", "head", 71, [
-        P(S([(near_x - 7, near_y), (near_x - 4, near_y - 6),
-             (near_x + 2, near_y - 7), (near_x + 8, near_y - 4),
-             (near_x + 8, near_y + 3), (near_x + 3, near_y + 7),
-             (near_x - 3, near_y + 6), (near_x - 5, near_y + 2),
-             (near_x - 2, near_y - 3), (near_x + 4, near_y - 2),
-             (near_x + 4, near_y + 3), (near_x + 1, near_y + 4),
-             (near_x - 1, near_y + 1), (near_x, near_y - 1)]), "none", INK, 2.8),
-        P(S([(far_x - 4, far_y), (far_x - 2, far_y - 4),
-             (far_x + 2, far_y - 4.5), (far_x + 5, far_y - 1.5),
-             (far_x + 4.5, far_y + 3), (far_x + 1, far_y + 5),
-             (far_x - 2, far_y + 2), (far_x - 1, far_y - 1),
-             (far_x + 2, far_y - 1), (far_x + 2, far_y + 1),
-             (far_x, far_y + 1.5)]), "none", INK, 1.9),
+        L([(nx + x * 0.78, ny + y * 0.78) for x, y in near_spiral], INK, 2.3),
+        L([(fx + x * 0.86, fy + y * 0.86) for x, y in far_spiral], INK, 1.8),
+        *brows([(-10, -11.5), (-1, -13.5), (9, -11)], [(-5.6, -10.4), (0.2, -12), (5.8, -10.6)], 3.2, 2.8),
     ], "eye.dizzy")
-    swap("mouth_closed", "head", 72, [L([(220,166), (225,168), (230,166)], INK, 2.0)], "mouth.closed", True)
-    swap("mouth_smile", "head", 72, [L([(219,166), (224,170), (230,166)], INK, 2.0)], "mouth.smile")
+
+    lip = L([(220, 178.4), (226, 178)], C["skin_dark"], 1.5)
+    swap("mouth_closed", "head", 72, [L([(217,175.6), (223,173.2), (229,173.6)], INK, 2.2), lip], "mouth.closed", True)
+    swap("mouth_smile", "head", 72, [L([(217,173.4), (222.5,175.8), (229.4,172.4)], INK, 2.2), lip], "mouth.smile")
     swap("mouth_open", "head", 72, [
-        P(S([(221,163), (229,163), (231,168), (229,174), (223,174), (220,170)]), C["mouth"], INK, 2.0),
-        P(S([(223,164), (229,164), (229,167), (223,167)]), C["tooth"]),
+        P(S([(217.5,171.6), (229,170.8), (230,175.4), (227,181.4), (220.6,181.6), (217.2,176.4)]), C["mouth"], INK, 2.0),
+        P(S([(219.6,172), (228.4,171.5), (228.4,174.4), (219.8,174.8)]), C["tooth"]),
     ], "mouth.open")
-    swap("mouth_wavy", "head", 72, [P(S([(218,167), (221,164), (225,168), (229,164), (232,167)]), "none", INK, 2.3)], "mouth.wavy")
+    swap("mouth_wavy", "head", 72, [L([(216,175.2), (219.5,172.6), (223,175.6), (226.5,172.6), (230,175)], INK, 2.3)], "mouth.wavy")
     swap("mouth_grit", "head", 72, [
-        P(S([(220,163), (232,163), (232,169), (221,170)]), C["tooth"], INK, 2.0),
-        L([(224,166), (231,166)], C["mouth"], 1.1),
+        P(S([(217.4,171.6), (230,171), (230,177), (218.4,177.8)]), C["tooth"], INK, 2.0),
+        L([(218.6,174.5), (229.6,174.2)], C["mouth"], 1.1),
     ], "mouth.grit")
 
     # Front arm and quill
@@ -439,9 +455,9 @@ def draw():
     ], "prop.apple")
 
     source = svg.document(
-        size=(W, H), design="gnu-ton-scholar-v2-clean-rebuild",
+        size=(W, H), design="gnu-ton-scholar-v3-stern-face-full-wig",
         layer_id="scholar-three-quarter", label="GNU-ton Scholar - Three Quarter",
-        comment=["<!-- Clean rebuild: flatter, simpler, more editable programmatic SVG -->"],
+        comment=["<!-- A programmatic SVG: flat, simple, editable. The head is the stern old man in a full wig. -->"],
         joints=svg.joints_layer(J),
     )
     return annotate_for_inkscape(source)
