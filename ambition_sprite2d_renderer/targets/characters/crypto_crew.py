@@ -849,19 +849,23 @@ def _mallory() -> None:
         K.line(d, [K.at(-9.0, -1.8), K.at(-8.6, -6.6)], STEEL, 0.8)
 
     def front_braid(hip) -> List[Stamp]:
-        """Her braid from the front: it hangs down her back, and its end
-        shows by her side."""
-        pts = [(5.0, top + 2.0), (8.6, top + 8.0), (9.8, -24.0), (9.4, -14.0), (10.4, -6.0)]
+        """Her braid from the front. It is not right behind her, where it
+        could not be seen: it comes off the back of her head to one side and
+        lies out past her shoulder (Jon, 2026-10-13: a front view is not a
+        strict face-on projection; "a few features (e.g. the ponytail) off to
+        one side a bit" give the character depth)."""
+        head_y = p.b.neck[1] + p.b.head_up[1]
+        pts = [(5.0, head_y - 2.0), (10.6, head_y + 3.0), (13.6, head_y + 11.0), (14.6, head_y + 21.0), (13.6, head_y + 31.0), (14.8, head_y + 40.0)]
 
         def paint(d) -> None:
             line = [K.at(x, y) for x, y in pts]
-            K.stroke(d, line, OUTLINE, 4.4 + 2.4)
-            K.stroke(d, line, HAIR, 4.4)
-            for k in (2, 3):
-                K.oval(d, line[k], 2.7, 2.7, BRASS_DARK)
-                K.oval(d, line[k], 1.8, 1.8, BRASS)
-            K.oval(d, line[-1], 3.0, 3.0, OUTLINE)
-            K.oval(d, line[-1], 2.0, 2.0, STEEL)
+            K.stroke(d, line, OUTLINE, 4.6 + 2.4)
+            K.stroke(d, line, HAIR, 4.6)
+            for k in (2, 3, 4):
+                K.oval(d, line[k], 2.8, 2.8, BRASS_DARK)
+                K.oval(d, line[k], 1.9, 1.9, BRASS)
+            K.oval(d, line[-1], 3.1, 3.1, OUTLINE)
+            K.oval(d, line[-1], 2.1, 2.1, STEEL)
 
         return [(K.piece(("mallory_front_braid",), paint), hip, "front_braid", 0.0)]
 

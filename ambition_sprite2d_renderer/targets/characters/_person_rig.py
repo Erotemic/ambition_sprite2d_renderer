@@ -583,6 +583,12 @@ def FP(**kw) -> Pose:
 
 # ---- A person from the front -----------------------------------------------------
 #
+# A front view is NOT a strict face-on projection (Jon, 2026-10-13: "it's ok
+# to have a few features (e.g. the ponytail) off to one side a bit to add a
+# bit of depth to the character"). What is behind the person and is a part of
+# who they are (a braid, a pack, a tail) comes out to one side, where it can
+# be seen; `Person.front_behind` paints it before the body.
+#
 # A row that faces the viewer has three pieces of its own: the trunk, the head
 # and the shoes. These make them. They are even from left to right: a
 # character states one side. The first of them was Neil's, drawn in his own
