@@ -436,11 +436,11 @@ def dream_skin(size: int = 256, seed: int = 2015) -> Image.Image:
     p = val * (1 - sat); q = val * (1 - sat * f); t = val * (1 - sat * (1 - f))
     for c, table in enumerate(((val, q, p, p, t, val), (t, val, val, q, p, p), (p, p, t, val, val, q))):
         rgb[..., c] = np.choose(i6, table)
-    alpha = 0.34 + 0.30 * ripple
+    alpha = 0.14 + 0.24 * ripple
     # the crease where two whorls meet
     crease = np.clip(1.0 - (d2 - d1) / 2.4, 0.0, 1.0)
     rgb *= (1.0 - 0.55 * crease)[..., None]
-    alpha = np.maximum(alpha, 0.7 * crease)
+    alpha = np.maximum(alpha, 0.5 * crease)
     # rows of dots round each eye, as scales
     for ring, count in ((1.55, 9), (2.05, 13)):
         band = np.clip(1.0 - np.abs(u - ring) / 0.16, 0.0, 1.0)
