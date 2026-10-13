@@ -672,6 +672,59 @@ def _mallory() -> None:
 
     p.layers["back"].append(braid)
 
+    # ---- From the front: the same coat, straps and clasp; the peak of her
+    # hair is in the middle, and the listening piece is at one ear.
+    sy = p.b.near_shoulder[1] + 0.6
+
+    def front_coat(d) -> None:
+        K.poly(d, [K.at(-3.6, top - 1.0), K.at(3.6, top - 1.0), K.at(3.4, top + 3.4), K.at(-3.4, top + 3.4)], COAT_DARK)
+        K.line(d, [K.at(-7.0, top + 5.0), K.at(7.0, -15.0)], TEAL, 1.7)
+        K.line(d, [K.at(7.0, top + 5.0), K.at(-7.0, -15.0)], BRASS, 1.5)
+        K.oval(d, K.at(0.0, top + 14.6), 2.0, 2.0, LINING, OUTLINE, 0.5)
+        K.oval(d, K.at(0.0, top + 14.6), 0.8, 0.8, BRASS)
+        for x, y in ((-6.0, top + 9.0), (6.0, top + 9.0), (-5.6, -18.0), (5.6, -18.0)):
+            K.oval(d, K.at(x, y), 0.7, 0.7, STEEL)
+        K.poly(d, [K.at(-9.0, -14.6), K.at(9.0, -14.6), K.at(9.0, -11.6), K.at(-9.0, -11.6)], (60, 54, 62, 255))
+        K.rrect(d, K.home[0] - 2.0, K.home[1] - 15.4, K.home[0] + 2.0, K.home[1] - 10.8, 0.5, BRASS, OUTLINE, 0.5)
+        K.rrect(d, K.home[0] - 7.4, K.home[1] - 11.0, K.home[0] - 3.6, K.home[1] - 5.6, 0.8, (70, 60, 66, 255), OUTLINE, 0.5)
+        K.poly(d, [K.at(-0.8, -10.6), K.at(0.8, -10.6), K.at(2.6, 26.0), K.at(-2.6, 26.0)], LINING)
+        K.line(d, [K.at(0.0, -10.6), K.at(0.0, 26.0)], LINING_DARK, 0.6)
+
+    def front_hair_shape(d) -> None:
+        K.oval(d, K.at(0.0, -4.6), 8.8, 8.4, WHITE)
+        K.poly(d, [K.at(-5.6, -9.0), K.at(0.0, -15.2), K.at(5.6, -9.0)], WHITE)
+
+    def front_hair(d) -> None:
+        K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, -2.0), K.at(7.2, -2.0), K.at(6.2, -6.6), K.at(2.6, -8.6), K.at(0.0, -6.4), K.at(-2.6, -8.6),
+                   K.at(-6.2, -6.6), K.at(-7.2, -2.0), K.at(-20.0, -2.0)], HAIR)
+        for sx in (-1.0, 1.0):
+            K.line(d, [K.at(1.0 * sx, -13.0), K.at(4.0 * sx, -10.0), K.at(7.0 * sx, -5.0)], HAIR_DARK, 0.6)
+
+    def front_marks(d) -> None:
+        K.line(d, [K.at(-0.2, 0.8), K.at(-0.8, 3.2), K.at(0.0, 3.8), K.at(0.8, 3.2)], skin[2], 0.5)
+        K.line(d, [K.at(-7.4, 1.6), K.at(-4.6, 6.4), K.at(-2.0, 7.4)], STEEL, 0.8)
+        K.oval(d, K.at(-7.4, 1.0), 2.3, 2.9, BRASS, OUTLINE, 0.6)
+        K.oval(d, K.at(-7.4, 1.0), 1.0, 1.3, BRASS_DARK)
+        K.line(d, [K.at(-7.8, -1.8), K.at(-7.0, -6.4)], STEEL, 0.8)
+
+    p.front_torso = R.make_front_torso(K, ("mallory",), COAT, COAT_DARK, [(top, 3.4), (top + 3.6, 7.4), (top + 12.5, 8.0), (-13.0, 6.2), (0.0, 7.8), (26.0, 10.4)],
+                                       shoulder=(5.8, sy, 4.2, 4.6), detail=front_coat)
+    p.front_head_layers = R.front_face(
+        R.make_front_head(K, ("mallory",), skin[0], skin[2], wide=7.4, jaw=5.8, chin=4.2, shape=front_hair_shape, hair=front_hair, face=front_marks),
+        R.make_front_eyes(K, ("mallory",), ink=INK, iris=(70, 140, 130, 255), spread=3.2, y=-0.4, size=0.85, lash=0.25),
+        R.make_front_brows(K, ("mallory",), (92, 40, 38, 255), spread=3.2, y=-3.6, width=0.9), R.make_front_mouth(K, ("mallory",), y=8.0, colour=(120, 52, 56, 255), wide=0.75))
+    p.front_shoe = R.make_front_shoe(K, BOOT, (14, 12, 20, 255), p.b.ankle_up, wide=0.9)
+    p.front_span = (7.0, 4.2)
+
+    @p.front_row
+    def front(i: int, n: int):
+        # Her arms folded, and she looks at you from under her brows.
+        _, s, c = loop(i, n)
+        return R.FP(hip=(0.0, 0.3 + 0.3 * s), head=(0.3 * c, 0.0, 2.0 * c), la=(-9.0, 12.0), ra=(-9.0, 13.5), lz=0.5, rz=0.5, lh="fist", rh="fist",
+                    eyes="closed" if i == n - 2 else "open", brows=-1.0, mouth="smile" if c > 0.7 else "flat")
+
+    R.add_front_rows(p)
+
     #: Her arms folded. She is waiting for you to trust somebody.
     folded_near, folded_far = (8.0, 9.5), (-1.0, 22.0)
     p.set_rest(na=folded_near, fa=folded_far, nh="fist", mouth="flat", brows=-1.0, lean=-2.0)
