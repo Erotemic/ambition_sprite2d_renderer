@@ -60,7 +60,7 @@ def _field() -> Image.Image:
     n = SIZE * SUPER
     c = n / 2
     alpha = Image.new("L", (n, n), 0)
-    d = ImageDraw.Draw(alpha)
+    d = ImageDraw.Draw(alpha)  # raw-draw-ok: a one-channel mask, with no colour to composite
 
     def disc(radius: float, value: int) -> None:
         r = radius * c
@@ -74,14 +74,14 @@ def _field() -> Image.Image:
     disc(0.470, 66)
     # A second thin ring inside the rim, as glass has.
     ring = Image.new("L", (n, n), 0)
-    rd = ImageDraw.Draw(ring)
+    rd = ImageDraw.Draw(ring)  # raw-draw-ok: a one-channel mask, with no colour to composite
     for radius, value in ((0.805, 150), (0.790, 0)):
         r = radius * c
         rd.ellipse((c - r, c - r, c + r, c + r), fill=value)
     alpha = ImageChops.lighter(alpha, ring)
     # The glints: a crescent at the upper left, and a short one at the lower right.
     glint = Image.new("L", (n, n), 0)
-    gd = ImageDraw.Draw(glint)
+    gd = ImageDraw.Draw(glint)  # raw-draw-ok: a one-channel mask, with no colour to composite
 
     def crescent(r_out: float, r_in: float, start: float, end: float, value: int) -> None:
         pts = []
@@ -145,7 +145,7 @@ def _cracks() -> Image.Image:
     c = n / 2
     line = Image.new("L", (n, n), 0)
     when = Image.new("L", (n, n), 0)
-    ld, wd = ImageDraw.Draw(line), ImageDraw.Draw(when)
+    ld, wd = ImageDraw.Draw(line), ImageDraw.Draw(when)  # raw-draw-ok: a one-channel mask, with no colour to composite
     rng = random.Random(7)
 
     def grow(x: float, y: float, heading: float, length: float, width: float, t0: float, t1: float, depth: int) -> None:
@@ -172,7 +172,7 @@ def _cracks() -> Image.Image:
     # Only inside the bubble.
     mask = Image.new("L", (n, n), 0)
     r = 0.93 * c
-    ImageDraw.Draw(mask).ellipse((c - r, c - r, c + r, c + r), fill=255)
+    ImageDraw.Draw(mask).ellipse((c - r, c - r, c + r, c + r), fill=255)  # raw-draw-ok: a one-channel mask, with no colour to composite
     line = ImageChops.multiply(line, mask)
     size = (SIZE, SIZE)
     white = Image.new("L", size, 255)

@@ -1,0 +1,529 @@
+{
+  "name": "dog_roadie",
+  "frame": {
+    "width": 168,
+    "height": 168,
+    "center_x": 80,
+    "ground_y": 120,
+    "ankle_h": 0,
+    "supersample": 4,
+    "render_scale": 1,
+    "trim": false
+  },
+  "svg_source": {
+    "path": "../../../../data/characters/dog_roadie/dog_roadie_side.svg",
+    "view": "Roadie - Side Right",
+    "ref_dpi": 25.4,
+    "scale": 0.25
+  },
+  "sprite_tuning": {
+    "collision_scale": 1.5
+  },
+  "palette": {},
+  "bones": [
+    {
+      "name": "body",
+      "parent": null,
+      "offset": [
+        0,
+        -45.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "tail_base",
+      "parent": "body",
+      "offset": [
+        -29.0,
+        -10.5
+      ],
+      "length": 19.4052,
+      "rest_angle": -141.8013
+    },
+    {
+      "name": "tail_tip",
+      "parent": "tail_base",
+      "offset": [
+        19.4052,
+        0
+      ],
+      "length": 0,
+      "rest_angle": 141.8013
+    },
+    {
+      "name": "far_hind_upper",
+      "parent": "body",
+      "offset": [
+        -17.25,
+        1.75
+      ],
+      "length": 14.5538,
+      "rest_angle": 85.0729
+    },
+    {
+      "name": "far_hind_lower",
+      "parent": "far_hind_upper",
+      "offset": [
+        14.5538,
+        0
+      ],
+      "length": 22.5222,
+      "rest_angle": 7.4719
+    },
+    {
+      "name": "far_hind_paw",
+      "parent": "far_hind_lower",
+      "offset": [
+        22.5222,
+        0
+      ],
+      "length": 0,
+      "rest_angle": -92.5448
+    },
+    {
+      "name": "far_fore_upper",
+      "parent": "body",
+      "offset": [
+        15.5,
+        -1.25
+      ],
+      "length": 21.8017,
+      "rest_angle": 93.9452
+    },
+    {
+      "name": "far_fore_lower",
+      "parent": "far_fore_upper",
+      "offset": [
+        21.8017,
+        0
+      ],
+      "length": 18.7517,
+      "rest_angle": -3.1813
+    },
+    {
+      "name": "far_fore_paw",
+      "parent": "far_fore_lower",
+      "offset": [
+        18.7517,
+        0
+      ],
+      "length": 0,
+      "rest_angle": -90.7639
+    },
+    {
+      "name": "near_hind_upper",
+      "parent": "body",
+      "offset": [
+        -15.25,
+        3.25
+      ],
+      "length": 15.4616,
+      "rest_angle": 75.9638
+    },
+    {
+      "name": "near_hind_lower",
+      "parent": "near_hind_upper",
+      "offset": [
+        15.4616,
+        0
+      ],
+      "length": 20.8866,
+      "rest_angle": 25.0772
+    },
+    {
+      "name": "near_hind_paw",
+      "parent": "near_hind_lower",
+      "offset": [
+        20.8866,
+        0
+      ],
+      "length": 0,
+      "rest_angle": -101.0409
+    },
+    {
+      "name": "near_fore_upper",
+      "parent": "body",
+      "offset": [
+        25.0,
+        0.75
+      ],
+      "length": 21.5131,
+      "rest_angle": 91.9979
+    },
+    {
+      "name": "near_fore_lower",
+      "parent": "near_fore_upper",
+      "offset": [
+        21.5131,
+        0
+      ],
+      "length": 17.0,
+      "rest_angle": -1.9979
+    },
+    {
+      "name": "near_fore_paw",
+      "parent": "near_fore_lower",
+      "offset": [
+        17.0,
+        0
+      ],
+      "length": 0,
+      "rest_angle": -90.0
+    },
+    {
+      "name": "head",
+      "parent": "body",
+      "offset": [
+        38.25,
+        -20.25
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "ear",
+      "parent": "head",
+      "offset": [
+        1.25,
+        -9.75
+      ],
+      "length": 0,
+      "rest_angle": 0
+    }
+  ],
+  "parts": [
+    {
+      "name": "body",
+      "bone": "body",
+      "z": 20,
+      "kind": "sprite",
+      "include": [
+        "body"
+      ],
+      "pivot": [
+        320,
+        300
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "tail_base",
+      "bone": "tail_base",
+      "z": 1,
+      "kind": "sprite",
+      "include": [
+        "tail-base"
+      ],
+      "pivot": [
+        204,
+        258
+      ],
+      "rest_angle": -141.8013
+    },
+    {
+      "name": "tail_tip",
+      "bone": "tail_tip",
+      "z": 2,
+      "kind": "sprite",
+      "include": [
+        "tail-tip"
+      ],
+      "pivot": [
+        143,
+        210
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "far_hind_upper",
+      "bone": "far_hind_upper",
+      "z": 5,
+      "kind": "sprite",
+      "include": [
+        "far-hind-upper"
+      ],
+      "pivot": [
+        251,
+        307.0
+      ],
+      "rest_angle": 85.0729
+    },
+    {
+      "name": "far_hind_lower",
+      "bone": "far_hind_lower",
+      "z": 6,
+      "kind": "sprite",
+      "include": [
+        "far-hind-lower"
+      ],
+      "pivot": [
+        256,
+        365.0
+      ],
+      "rest_angle": 92.5448
+    },
+    {
+      "name": "far_hind_paw",
+      "bone": "far_hind_paw",
+      "z": 7,
+      "kind": "sprite",
+      "include": [
+        "far-hind-paw"
+      ],
+      "pivot": [
+        252,
+        455.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "far_fore_upper",
+      "bone": "far_fore_upper",
+      "z": 8,
+      "kind": "sprite",
+      "include": [
+        "far-fore-upper"
+      ],
+      "pivot": [
+        382,
+        295
+      ],
+      "rest_angle": 93.9452
+    },
+    {
+      "name": "far_fore_lower",
+      "bone": "far_fore_lower",
+      "z": 9,
+      "kind": "sprite",
+      "include": [
+        "far-fore-lower"
+      ],
+      "pivot": [
+        376,
+        382.0
+      ],
+      "rest_angle": 90.7639
+    },
+    {
+      "name": "far_fore_paw",
+      "bone": "far_fore_paw",
+      "z": 10,
+      "kind": "sprite",
+      "include": [
+        "far-fore-paw"
+      ],
+      "pivot": [
+        375,
+        457.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_hind_upper",
+      "bone": "near_hind_upper",
+      "z": 30,
+      "kind": "sprite",
+      "include": [
+        "near-hind-upper"
+      ],
+      "pivot": [
+        259,
+        313.0
+      ],
+      "rest_angle": 75.9638
+    },
+    {
+      "name": "near_hind_lower",
+      "bone": "near_hind_lower",
+      "z": 31,
+      "kind": "sprite",
+      "include": [
+        "near-hind-lower"
+      ],
+      "pivot": [
+        274,
+        373.0
+      ],
+      "rest_angle": 101.0409
+    },
+    {
+      "name": "near_hind_paw",
+      "bone": "near_hind_paw",
+      "z": 32,
+      "kind": "sprite",
+      "include": [
+        "near-hind-paw"
+      ],
+      "pivot": [
+        258,
+        455.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_fore_upper",
+      "bone": "near_fore_upper",
+      "z": 33,
+      "kind": "sprite",
+      "include": [
+        "near-fore-upper"
+      ],
+      "pivot": [
+        420,
+        303.0
+      ],
+      "rest_angle": 91.9979
+    },
+    {
+      "name": "near_fore_lower",
+      "bone": "near_fore_lower",
+      "z": 34,
+      "kind": "sprite",
+      "include": [
+        "near-fore-lower"
+      ],
+      "pivot": [
+        417,
+        389.0
+      ],
+      "rest_angle": 90.0
+    },
+    {
+      "name": "near_fore_paw",
+      "bone": "near_fore_paw",
+      "z": 35,
+      "kind": "sprite",
+      "include": [
+        "near-fore-paw"
+      ],
+      "pivot": [
+        417,
+        457.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "head",
+      "bone": "head",
+      "z": 40,
+      "kind": "sprite",
+      "include": [
+        "head"
+      ],
+      "pivot": [
+        473,
+        219
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "ear",
+      "bone": "ear",
+      "z": 42,
+      "kind": "sprite",
+      "include": [
+        "ear"
+      ],
+      "pivot": [
+        478,
+        180
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "neck",
+      "bone": "body",
+      "z": 38,
+      "kind": "sprite",
+      "include": [
+        "neck"
+      ],
+      "pivot": [
+        320,
+        300
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "eye_open",
+      "bone": "head",
+      "z": 41,
+      "kind": "sprite",
+      "include": [
+        "eye-open"
+      ],
+      "pivot": [
+        473,
+        219
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "eye_open",
+      "opacity_default": 1
+    },
+    {
+      "name": "eye_x",
+      "bone": "head",
+      "z": 44,
+      "kind": "sprite",
+      "include": [
+        "eye-x"
+      ],
+      "pivot": [
+        473,
+        219
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "eye_x"
+    },
+    {
+      "name": "eye_happy",
+      "bone": "head",
+      "z": 41,
+      "kind": "sprite",
+      "include": [
+        "eye-happy"
+      ],
+      "pivot": [
+        473,
+        219
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "eye_happy"
+    },
+    {
+      "name": "rest_mouth",
+      "bone": "head",
+      "z": 39,
+      "kind": "sprite",
+      "include": [
+        "rest-mouth"
+      ],
+      "pivot": [
+        473,
+        219
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "rest_mouth",
+      "opacity_default": 1
+    },
+    {
+      "name": "bark_mouth",
+      "bone": "head",
+      "z": 39,
+      "kind": "sprite",
+      "include": [
+        "bark-mouth"
+      ],
+      "pivot": [
+        473,
+        219
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "bark_mouth"
+    }
+  ],
+  "ik_legs": [],
+  "ik_chains": [],
+  "clips": {}
+}

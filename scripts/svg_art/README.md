@@ -23,6 +23,7 @@ These scripts are how the first drafts of these character and prop SVGs were dra
 | `boss_chest_art.py` | `data/props/boss_chest/boss_chest.svg` | `scripts/build_boss_chest_rig.py` |
 | `mockingbird_boss_v2_art.py` | `data/characters/mockingbird_boss_v2/mockingbird_boss_v2.svg` | `scripts/build_mockingbird_boss_v2_rig.py` |
 | `imperfect_cellular_automaton_art.py` | `data/characters/imperfect_cellular_automaton/imperfect_cellular_automaton.svg` and `imperfect_cellular_automaton_fault_side.svg` (her two sides) | `scripts/build_imperfect_cellular_automaton_rig.py` |
+| `house_dogs_art.py` | `data/characters/<name>/<name>_side.svg` for `dog_honey`, `dog_roadie` and `dog_bezoar` (Jon's three dogs), and `dog_honey_left_side.svg` (Honey's right ear has a flap, so she has a drawing of each side). Each has the companion dog's parts about its joints | `scripts/build_house_dog_rigs.py` (the companion dog's rig with the dog's own leg length; the clips are borrowed at load) |
 | `giant_gnu_art.py` | nothing: it draws one pose of GNU-ton's giant to look at. The giant's drawing is the target's own module (`targets/characters/gnu_ton_boss/giant_art.py`), not an SVG | none: the target makes its frames from poses |
 
 ⚠ **The SVGs own the art.** Edit an SVG directly (in Inkscape or by hand)
