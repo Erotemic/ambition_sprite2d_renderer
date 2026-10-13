@@ -345,6 +345,18 @@ lineages:
       - commit: "333e716"
         label: "Five characters"
         note: "Full bodies, a look for each pirate, the head on the chest, each pose made again. Jon: redo them completely, the posing too. Claude Opus 5.5 declared."
+  pirate_heavy:
+    name: Pirate heavies (Iron Mary, Broadside Bess, Salt Annet)
+    ids: [pirate_heavy]
+    paths: ['pirate_heavy', '_pirate_heavy_rig']
+    summary: "one body in three palettes, then three women from one template"
+    eras:
+      - commit: "943fa10"
+        label: "One body in three palettes"
+        note: "The last commit with the first design: stick arms, a cleaver that floats behind the body. Jon: not very good, but it has something. The commit that introduced it is not surveyed."
+      - commit: "35b6aee"
+        label: "Three women from one template"
+        note: "A build, a head, a mark and a blade for each; arms on a skeleton; a chop with a windup and a step. Jon: a heavy woman, a round face, fierce eyes, a bandana over a head of hair. Claude Opus 5.5 declared."
   ai_slop:
     name: AI Slop
     ids: [ai_slop]
