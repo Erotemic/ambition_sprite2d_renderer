@@ -202,7 +202,13 @@ class VariantSpec:
     headwear: str = "bandana"  # "bandana", "tricorn" or "band"
     hair: str = "dreads"  # "dreads", "braid" or "waves"
     mark: str = "pauldron"  # "pauldron", "bandolier" or "neckerchief"
-    blade: str = "slab"  # "slab", "ports" or "hook"
+    blade: str = "slab"  # "slab", "ports", "hook", or "none" (no cleaver in the art)
+    # She holds an item that the GAME draws (Iron Mary's gun-sword). The game
+    # puts a held item at a fixed place on the body box, in front of its
+    # middle (`sync_held_item_visual`): this is that place from the ground
+    # between her feet, and her lead fist stays on it in every row but the
+    # death. Such a variant has no cleaver in her art.
+    item_hand: Optional[Point] = None
     bracer: str = "iron"  # "iron", "leather" or "rope"
     striped_sleeves: bool = False
     # the small things of her face
@@ -254,7 +260,8 @@ VARIANTS: Dict[str, VariantSpec] = {
         necklace=True,
         gold_tooth=True,
     ),
-    # A red bandana over a mane of dreads, an iron shoulder, a slab cleaver.
+    # A red bandana over a mane of dreads, an iron shoulder. She rides a shark
+    # and she holds a gun-sword, which the game draws in her lead fist.
     "iron_mary": VariantSpec(
         slug="iron_mary",
         display_name="Iron Mary",
@@ -274,6 +281,10 @@ VARIANTS: Dict[str, VariantSpec] = {
             boot=(54, 34, 26, 255),
             boot_hi=(88, 58, 40, 255),
         ),
+        blade="none",
+        # The gun-sword is drawn with its middle 60 to the front of her middle
+        # (measured in the Hall, 2026-10-13); its grip is behind that.
+        item_hand=(46.0, -80.0),
         cheek_scar=True,
         nose_ring=True,
         necklace=True,
@@ -1059,6 +1070,20 @@ def _draw_variant(
         "RGBA", (WORK_FRAME_SIZE[0] * SUPER, WORK_FRAME_SIZE[1] * SUPER), (0, 0, 0, 0)
     )
     pose = pose_for(anim, frame_idx, nframes)
+    if spec.item_hand is not None and anim != "death":
+        # Her lead fist does not leave the place where the game draws her item.
+        pose.r_hand = spec.item_hand
+        # the fist is near the shoulder: the elbow goes out, not into her side
+        pose.r_bend = -1.0
+        pose.two_hand = False
+        pose.swoosh = None
+        pose.chips = False
+        if anim == "slash":
+            # a thrust with the item, not a chop: half the lean, and the free
+            # fist stays back for balance
+            pose.lean *= 0.5
+            pose.pelvis = (pose.pelvis[0] * 0.5, pose.pelvis[1])
+            pose.l_hand = (-44.0 - pose.lean * 0.6, -70.0)
     pal = spec.palette
     slug = spec.slug
     J = _rig_evaluate(pose, spec, WORK_FRAME_SIZE[0], WORK_FRAME_SIZE[1])
@@ -1145,7 +1170,9 @@ def _draw_variant(
 
     # the cleaver: in her lead hand, or out of it on its way to the deck
     cleaver = ("cleaver", slug)
-    if pose.loose_weapon is None:
+    if spec.blade == "none":
+        pass
+    elif pose.loose_weapon is None:
         put(cleaver, lambda d: _paint_cleaver(d, spec), J.right_hand, "cleaver", J.weapon)
     else:
         at, degrees = pose.loose_weapon
@@ -1167,6 +1194,37 @@ def _draw_variant(
     return _downsample(img)
 
 
+def _body_box(spec: VariantSpec) -> Tuple[float, float, float, float]:
+    """``(x0, y0, x1, y1)`` of her body in the drawn frame: from the top of
+    her head to her soles, as wide as her skirt. The cleaver, a plume and the
+    tails of a bandana are not her body."""
+    cx, ground = float(round(WORK_FRAME_SIZE[0] * 0.46)), float(round(WORK_FRAME_SIZE[1] * 0.67))
+    half = 56.0 * spec.hip + 2.0
+    head = (HIP_Y - rig.CHEST) * spec.tall - 31.0 * (0.4 + 0.6 * spec.head)
+    top = head - 30.0 * HEAD * spec.head - 2.0
+    return (cx - half, ground + top, cx + half, ground)
+
+
+def _body_metrics(spec: VariantSpec, frame_transform: dict):
+    """The ``body_metrics_fn`` of a variant. Without it the box is the alpha
+    box of the first frame, and that has the cleaver in it: the body the world
+    collides with was twice as wide as she is."""
+
+    def metrics(fw: int, fh: int) -> dict:
+        dx, dy = frame_transform.get("dx", 0), frame_transform.get("dy", 0)
+        x0, y0, x1, y1 = _body_box(spec)
+        x, y = int(math.floor(x0 + dx)), int(math.floor(y0 + dy))
+        w, h = int(math.ceil(x1 + dx)) - x, int(math.ceil(y1 + dy)) - y
+        feet = (x + w / 2.0, float(y + h))
+        return {
+            "body_pixel_bbox": {"x": x, "y": y, "w": w, "h": h},
+            "feet_pixel": {"x": feet[0], "y": feet[1]},
+            "feet_anchor_norm": {"x": round((feet[0] - fw / 2.0) / fw, 6), "y": round((fh / 2.0 - feet[1]) / fh, 6)},
+        }
+
+    return metrics
+
+
 def render_variant(spec: VariantSpec, out_dir: str | Path, **opts) -> List[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1186,6 +1244,8 @@ def render_variant(spec: VariantSpec, out_dir: str | Path, **opts) -> List[Path]
         frame_size=frame_size,
         crop_margin=10,
         auto_crop=True,
+        # reads `frame_transform`, which `build_sheet` fills before it asks
+        body_metrics_fn=_body_metrics(spec, frame_transform),
     )
     parts = publish_rig_flipbook(target_name, ROWS, render_frame, outputs, frame_transform, out_dir)
     return [
