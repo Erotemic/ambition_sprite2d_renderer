@@ -412,6 +412,47 @@ def _eve() -> None:
 
     p.layers["over_torso"].append(lock)
 
+    # ---- From the front: her hood round her face, a lock of hair down each
+    # side of it, the strap of her satchel across her.
+    sy = p.b.near_shoulder[1] + 0.6
+
+    def front_dress(d) -> None:
+        K.poly(d, [K.at(-9.0, -14.4), K.at(9.0, -14.4), K.at(9.0, -11.8), K.at(-9.0, -11.8)], DRESS_DARK)
+        K.oval(d, K.at(0.0, -13.0), 1.4, 1.4, GOLD)
+        K.line(d, [K.at(-7.0, top + 5.0), K.at(7.4, -6.0)], STRAP, 1.5)
+        K.oval(d, K.at(0.0, top + 3.0), 1.4, 1.4, GOLD)
+        for x in (-4.6, 0.0, 4.6):
+            K.line(d, [K.at(x, -4.0), K.at(x * 1.6, 30.0)], DRESS_DARK, 0.6)
+        K.poly(d, [K.at(-20.0, 31.0), K.at(20.0, 31.0), K.at(20.0, 36.0), K.at(-20.0, 36.0)], DRESS_LIGHT)
+
+    def front_hood_shape(d) -> None:
+        K.oval(d, K.at(0.0, -3.4), 10.2, 10.8, WHITE)
+        K.poly(d, [K.at(-9.6, 0.0), K.at(-8.0, 9.6), K.at(8.0, 9.6), K.at(9.6, 0.0)], WHITE)
+
+    def front_hood(d) -> None:
+        K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, 20.0), K.at(-20.0, 20.0)], CLOAK)
+        for sx in (-1.0, 1.0):
+            K.poly(d, [K.at(7.4 * sx, -11.0), K.at(11.0 * sx, -3.0), K.at(9.6 * sx, 9.6), K.at(7.4 * sx, 9.6)], CLOAK_DARK)
+        K.oval(d, K.at(0.0, 1.0), 6.4, 8.4, skin[0])
+        ring = [K.at(6.6 * math.cos(math.radians(a)), 1.0 + 8.6 * math.sin(math.radians(a))) for a in range(-190, 11, 10)]
+        K.line(d, ring, DRESS_LIGHT, 1.0)
+        for sx in (-1.0, 1.0):
+            K.poly(d, [K.at(0.0, -7.6), K.at(4.6 * sx, -6.4), K.at(6.2 * sx, -1.0), K.at(5.8 * sx, 7.0), K.at(4.4 * sx, 2.0), K.at(3.4 * sx, -3.6), K.at(0.6 * sx, -5.0)], HAIR)
+            K.line(d, [K.at(3.0 * sx, -6.0), K.at(5.0 * sx, -1.0), K.at(5.2 * sx, 5.0)], HAIR_LIGHT, 0.5)
+
+    def front_nose(d) -> None:
+        K.line(d, [K.at(-0.2, 0.8), K.at(-0.8, 3.0), K.at(0.0, 3.6), K.at(0.8, 3.0)], skin[2], 0.5)
+
+    p.front_torso = R.make_front_torso(K, ("eve",), DRESS, DRESS_DARK, [(top, 3.2), (top + 3.6, 6.8), (top + 12.5, 8.2), (-13.0, 5.8), (0.0, 8.0), (34.0, 11.4)],
+                                       shoulder=(5.4, sy, 3.8, 4.2), detail=front_dress)
+    p.front_head_layers = R.front_face(
+        R.make_front_head(K, ("eve",), skin[0], skin[2], wide=7.4, jaw=5.8, chin=3.4, shape=front_hood_shape, hair=front_hood, face=front_nose),
+        R.make_front_eyes(K, ("eve",), white=None, ink=INK, spread=3.0, y=-0.2, size=0.9, lash=0.5), R.make_front_brows(K, ("eve",), HAIR, spread=3.0, y=-3.4, width=0.7),
+        R.make_front_mouth(K, ("eve",), y=7.4, colour=(140, 60, 76, 255), lips=(206, 112, 124, 255), wide=0.7))
+    p.front_shoe = R.make_front_shoe(K, (84, 60, 70, 255), (50, 34, 46, 255), p.b.ankle_up, wide=0.85)
+    p.front_span = (6.6, 4.2)
+    R.add_front_rows(p)
+
     #: A hand cupped at the side of her hood; the other holds her elbow.
     at_ear, low = (4.6, -5.0), (2.0, 15.0)
     p.set_rest(na=low, fa=(-1.0, 22.0), mouth="smile")
@@ -519,6 +560,51 @@ def _judy() -> None:
     _face(p, head, R.make_eyes(K, (2.0, -0.6), (7.4, -0.8), ink=INK, iris=(64, 38, 30, 255), size=0.9, lash=0.4),
           R.make_brows(K, [(-0.2, -4.0), (2.0, -4.8), (4.4, -4.0)], [(5.8, -4.2), (7.4, -4.8), (8.8, -4.2)], (60, 50, 54, 255), 1.0),
           R.make_mouth(K, (5.8, 7.0), (110, 34, 44, 255), wide=0.85, lips=(168, 54, 62, 255)), glasses)
+
+    # ---- From the front: the wig of the court round her face, the red of
+    # her office down each side of her front, lace at her neck, her glasses.
+    sy = p.b.near_shoulder[1] + 0.8
+    hem = p.b.hip_up - 5.0
+
+    def front_robe(d) -> None:
+        for sx in (-1.0, 1.0):
+            K.poly(d, [K.at(3.6 * sx, top + 1.0), K.at(6.8 * sx, top + 1.0), K.at(8.6 * sx, hem + 4.0), K.at(4.6 * sx, hem + 4.0)], STOLE)
+            K.line(d, [K.at(6.8 * sx, top + 1.0), K.at(8.6 * sx, hem + 4.0)], STOLE_DARK, 0.6)
+            K.line(d, [K.at(11.0 * sx, 2.0), K.at(12.6 * sx, hem - 4.0)], ROBE_LIGHT, 0.6)
+        K.poly(d, [K.at(-3.6, top - 1.0), K.at(3.6, top - 1.0), K.at(2.8, top + 11.0), K.at(0.0, top + 13.0), K.at(-2.8, top + 11.0)], LACE)
+        for y in (top + 3.0, top + 6.5, top + 10.0):
+            K.line(d, [K.at(-2.8, y), K.at(0.0, y + 1.2), K.at(2.8, y)], WIG_DARK, 0.5)
+
+    def front_wig_shape(d) -> None:
+        K.oval(d, K.at(0.0, -4.6), 10.6, 9.6, WHITE)
+        for sx in (-1.0, 1.0):
+            for x, y, r in ((9.2, 2.0, 3.4), (9.0, 7.2, 3.2), (8.0, 12.0, 3.0)):
+                K.oval(d, K.at(x * sx, y), r, r * 0.9, WHITE)
+
+    def front_wig(d) -> None:
+        K.poly(d, [K.at(-20.0, -26.0), K.at(20.0, -26.0), K.at(20.0, 20.0), K.at(6.6, 20.0), K.at(6.6, 3.0), K.at(7.0, -3.0), K.at(4.6, -6.8), K.at(0.0, -7.6), K.at(-4.6, -6.8),
+                   K.at(-7.0, -3.0), K.at(-6.6, 3.0), K.at(-6.6, 20.0), K.at(-20.0, 20.0)], WIG)
+        for sx in (-1.0, 1.0):
+            for x, y, r in ((9.2, 2.0, 2.5), (9.0, 7.2, 2.3), (8.0, 12.0, 2.1), (6.6, -5.0, 2.5), (2.6, -9.6, 2.3)):
+                K.oval(d, K.at(x * sx, y), r, r * 0.85, None, WIG_DARK, 0.6)  # type: ignore[arg-type]
+
+    def front_judge(d) -> None:
+        for sx in (-1.0, 1.0):
+            K.rrect(d, K.home[0] + 3.4 * sx - 2.5, K.home[1] - 2.4, K.home[0] + 3.4 * sx + 2.5, K.home[1] + 1.0, 0.8, (236, 244, 250, 120), GOLD_DARK, 0.6)
+        K.line(d, [K.at(-0.9, -1.0), K.at(0.9, -1.0)], GOLD_DARK, 0.6)
+        K.line(d, [K.at(-0.3, 1.0), K.at(-1.4, 3.6), K.at(0.0, 4.4), K.at(1.4, 3.6)], skin[2], 0.6)
+        K.line(d, [K.at(-3.6, 11.0), K.at(0.0, 11.8), K.at(3.6, 11.0)], mix(skin[0], skin[2], 0.5), 0.5)
+
+    p.front_torso = R.make_front_torso(K, ("judy",), ROBE, ROBE_DARK, [(top, 4.2), (top + 3.6, 9.4), (top + 12.5, 11.6), (-11.0, 10.6), (0.0, 12.2), (hem, 14.6)],
+                                       shoulder=(7.4, sy, 5.0, 5.2), detail=front_robe)
+    p.front_head_layers = R.front_face(
+        R.make_front_head(K, ("judy",), skin[0], skin[2], wide=8.0, jaw=7.2, chin=3.4, shape=front_wig_shape, hair=front_wig, face=front_judge),
+        R.make_front_eyes(K, ("judy",), ink=INK, iris=(64, 38, 30, 255), spread=3.4, y=-0.8, size=0.85, lash=0.4),
+        R.make_front_brows(K, ("judy",), (60, 50, 54, 255), spread=3.4, y=-4.2, width=1.0),
+        R.make_front_mouth(K, ("judy",), y=7.6, colour=(110, 34, 44, 255), lips=(168, 54, 62, 255), wide=0.85))
+    p.front_shoe = R.make_front_shoe(K, (44, 36, 44, 255), (22, 18, 26, 255), p.b.ankle_up)
+    p.front_span = (9.0, 5.0)
+    R.add_front_rows(p)
 
     #: Her hands one on the other, in front of her.
     held_near, held_far = (7.0, 13.0), (-1.0, 22.0)
