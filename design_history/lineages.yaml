@@ -458,6 +458,18 @@ lineages:
       - commit: "7ec6048"
         label: "A grown man, five heads tall"
         note: "The same coat, scarf and poses on a taller body with a small head: neat parted hair and no standing lock, small eyes, no blush. Jon of the era before: too cutesy, too much like Astro Boy, and he did not like the hair. Claude Opus 5.5 declared."
+  erdish:
+    name: Erdish
+    ids: [erdish, erdish_scholar]
+    paths: ['erdish', '_ai_era_kit']
+    summary: "a stiff puppet in a slate jacket with round glasses, then a gaunt grey-haired rig that reads as Paul Erdos"
+    eras:
+      - commit: "476e96f"
+        label: "The puppet with round glasses"
+        note: "The last commit with the first design. The commit that introduced it is not surveyed."
+      - commit: "ab4590f"
+        label: "A rig, and the man himself"
+        note: "Iron-grey hair on top of his head, square black glasses, a grey suit, an open collar, socks in sandals; chalk mathematics. Jon: please redo the erdish sprite; and of the drafts, he had no beard, and he must read as Paul Erdos and not as Bernie Sanders. Claude Opus 5.5 declared."
   willson:
     name: Willson
     ids: [willson]
