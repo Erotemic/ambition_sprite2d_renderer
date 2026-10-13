@@ -83,7 +83,7 @@ def test_frames_are_independent_of_render_order(target):
 
 
 def test_render_all_frames_enumerates_every_frame():
-    src = _source("ninja")
+    src = _source("goblin")
     anims = src.animations()
     expected = sum(info["frames"] for info in anims.values())
     frames = render_all_frames(src, (64, 64))

@@ -78,7 +78,6 @@ GENERATOR_MODULE_STEMS: frozenset[str] = frozenset(
         # report orphans while discovery is warning, so this omission was load-
         # bearing.
         "goblin_side",
-        "ninja_side",
         "oiler_mechanic",
         "robot25d",
         "robot_side",

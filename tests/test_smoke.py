@@ -26,7 +26,6 @@ CONFIGS = (
 CONFIG_BASIS = [
     "robot.yaml",
     "goblin.yaml",
-    "ninja_leader.yaml",
 ]
 
 MODULE_RENDER_BASIS = [
@@ -59,7 +58,7 @@ def test_config_target_sheet_smoke(tmp_path: Path, config_name: str):
     assert manifest["frame_height"] > 0
 
 
-@pytest.mark.parametrize("config_name", ["robot.yaml", "ninja_leader.yaml"])
+@pytest.mark.parametrize("config_name", ["robot.yaml", "goblin.yaml"])
 def test_config_target_canonical_smoke(config_name: str):
     job = CharacterJob.load(CONFIGS / config_name)
     image = render_canonical(job)

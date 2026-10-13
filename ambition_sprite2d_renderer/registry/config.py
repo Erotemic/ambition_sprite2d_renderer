@@ -31,8 +31,6 @@ RUNTIME_ADAPTER_CONFIG_STEMS: frozenset[str] = frozenset(
         "boss",
         "raid_enforcer",
         "goblin",
-        "ninja",
-        "ninja_leader",
         "player_robot_v3",
         "robot",
         "sandbag",

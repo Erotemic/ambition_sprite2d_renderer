@@ -14,7 +14,6 @@ from ..authoring.generator import CharacterGenerator
 from ..targets.characters.alice_cryptographer import AliceCryptographerGenerator
 from ..targets.characters.boss_side import AISlopZetaGenerator
 from ..targets.characters.goblin_side import SideGoblinGenerator
-from ..targets.characters.ninja_side import NinjaSideGenerator
 from ..targets.characters.robot_side import SideRobotGenerator
 from ..targets.characters.sandbag import SandbagGenerator
 from ..targets.characters.toon_side import ToonSideGenerator
@@ -23,7 +22,6 @@ GENERATORS: Dict[str, CharacterGenerator] = {
     "alice_cryptographer": AliceCryptographerGenerator(),
     "boss": AISlopZetaGenerator(),
     "goblin": SideGoblinGenerator(),
-    "ninja": NinjaSideGenerator(),
     "robot": SideRobotGenerator(),
     "sandbag": SandbagGenerator(),
     "toon": ToonSideGenerator(),
