@@ -95,6 +95,9 @@ SKINS: tuple[Skin, ...] = (
     # Mary-O's land: the ground blocks of an old platform game, in the pinks
     # of a magical girl, under mint icing.
     Skin("starlight", "candy", (236, 150, 186), (158, 86, 140), (255, 206, 222), (255, 240, 170), "frosting", (176, 232, 208), "lip", "slab"),
+    # The desert of Mary-O's second world: the same ground blocks in the
+    # colours of sandstone, under a lip of pale sand.
+    Skin("stardune", "candy", (240, 186, 124), (172, 108, 78), (255, 226, 172), (255, 250, 214), "sand", (255, 236, 186), "lip", "slab"),
     # Under Mary-O's land: the brick of an old game's underground, in the
     # violet of the dark, with a line of magenta light on its edge.
     Skin("starless", "brick", (58, 46, 112), (17, 12, 40), (112, 96, 180), (255, 86, 170), "edge", (34, 26, 72), "spikes", "grate"),

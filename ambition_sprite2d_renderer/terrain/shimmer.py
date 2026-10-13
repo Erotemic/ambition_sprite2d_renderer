@@ -41,6 +41,7 @@ def _ember(pen: ImageDraw.ImageDraw, x: float, y: float, r: float, value: int) -
 #: radius of a shape (published pixels), and the number of its ribbons.
 SHIMMERS = {
     "starlight": (_sparkle, 30, 5.0, 15.0, 3),
+    "stardune": (_sparkle, 22, 4.0, 11.0, 2),
     "starless": (_ember, 44, 3.0, 8.0, 2),
     "void_castle": (_ember, 56, 2.5, 7.0, 2),
 }

@@ -803,6 +803,163 @@ def starlight(layer_key: str, art: Art) -> np.ndarray:
 
 
 # ---------------------------------------------------------------------------
+# The star dunes: the desert of Mary-O's second world, in the morning
+# ---------------------------------------------------------------------------
+
+STARDUNE = {
+    "top": (104, 178, 214),
+    "high": (166, 218, 216),
+    "mid": (255, 226, 176),
+    "glow": (255, 246, 214),
+    "sun": (255, 252, 230),
+    "halo": (255, 214, 150),
+    "cloud": (255, 250, 240),
+    "cloud_shade": (244, 196, 170),
+    "far": (246, 198, 150),
+    "hill": (232, 158, 112),
+    "hill_light": (255, 224, 170),
+    "near": (58, 112, 122),
+    "near_light": (146, 198, 176),
+    "pyramid": (236, 176, 150),
+    "star": (255, 250, 206),
+    "mist": (255, 232, 196),
+}
+
+
+def _pyramid(pen: Pen, u: float, v: float, half: float, h: float) -> None:
+    """A pyramid in steps that stands on `v`, as an old platform game drew one."""
+    steps = 6
+    for k in range(steps):
+        w = half * (1.0 - k / steps)
+        pen.rect(u - w, v - h * (k + 1) / steps, u + w, v - h * k / steps + 0.001)
+
+
+def _fat_palm(pen: Pen, rng, u: float, v: float, h: float, lean: float) -> None:
+    """A palm in thick shapes that stands at `(u, v)`: a trunk that bends, and a
+    head of fat leaves that hang. The trees of the first world are as thick."""
+    top = (u + lean, v - h)
+    pen.line([(u + lean * (i / 8.0) ** 1.6, v + 0.02 - (h + 0.02) * (i / 8.0)) for i in range(9)], 0.013)
+    for k in range(7):
+        angle = -205.0 + k * (230.0 / 6.0) + rng.uniform(-6.0, 6.0)
+        length = rng.uniform(0.075, 0.095) * (h / 0.18) ** 0.5
+        tip = polar(*top, length, angle)
+        tip = (tip[0], tip[1] + length * 0.55)
+        ctrl = polar(*top, length * 0.62, angle)
+        ctrl = (ctrl[0], ctrl[1] - length * 0.30)
+        for i in range(31):
+            t = i / 30.0
+            x = (1 - t) ** 2 * top[0] + 2 * (1 - t) * t * ctrl[0] + t * t * tip[0]
+            y = (1 - t) ** 2 * top[1] + 2 * (1 - t) * t * ctrl[1] + t * t * tip[1]
+            # Thin at the stem and at the tip, fat in the middle.
+            pen.ellipse(x, y, 0.005 + 0.012 * math.sin(math.pi * (0.12 + 0.88 * t)))
+    # The nuts under the leaves.
+    for du in (-0.011, 0.0, 0.011):
+        pen.ellipse(top[0] + du, top[1] + 0.012, 0.009)
+
+
+def _cactus(pen: Pen, u: float, v: float, h: float) -> None:
+    """A cactus with two arms: round ends, as a child draws it."""
+    w = h * 0.13
+    pen.rect(u - w, v - h + w, u + w, v + 0.01)
+    pen.ellipse(u, v - h + w, w)
+    for side, at, up in ((-1.0, 0.42, 0.30), (1.0, 0.56, 0.26)):
+        x = u + side * w * 3.0
+        pen.rect(min(u, x), v - h * at - w * 0.7, max(u, x), v - h * at + w * 0.7)
+        pen.rect(x - w * 0.7, v - h * (at + up), x + w * 0.7, v - h * at + w * 0.7)
+        pen.ellipse(x, v - h * (at + up), w * 0.7)
+
+
+def stardune(layer_key: str, art: Art) -> np.ndarray:
+    p = STARDUNE
+    sun_at = (0.72, 0.41)
+    if layer_key == "sky":
+        horizon = mix(p["mid"], p["glow"], 0.6)
+        layer = art.opaque(art.ramp([(0.0, p["top"]), (0.28, p["high"]), (0.47, p["mid"]), (HORIZON - 0.01, horizon), (0.70, p["far"]), (1.0, p["hill"])]))
+        art.light(layer, art.spot(sun_at[0], HORIZON, 0.6, 2.0, squash=2.2), p["glow"], 0.45)
+        # The last stars of the night, high up: a few of four rays.
+        image, pen = art.drawing()
+        rng = art.rand("sparkles")
+        for _ in range(16):
+            u, v = rng.random(), rng.uniform(0.04, 0.30)
+            _sparkle(pen, u, v, rng.uniform(0.005, 0.011) * (1.0 - v))
+        sparkles = art.mask_of(image)
+        art.light(layer, art.blur(sparkles, 3.0), p["glow"], 0.5)
+        art.light(layer, sparkles, p["star"], 0.8)
+        # The sun: a whole disc, low, with a wide ring of light. The moon of
+        # the first world is a crescent on the other side of the sky.
+        art.light(layer, art.spot(*sun_at, 0.34, 2.0), p["halo"], 0.50)
+        art.light(layer, art.spot(*sun_at, 0.13, 1.6), p["glow"], 0.75)
+        disc, disc_pen = art.drawing()
+        disc_pen.ellipse(*sun_at, 0.056)
+        art.put(layer, art.mask_of(disc, blur=0.6), p["sun"])
+        # Thin clouds, in two lines.
+        for tag, v, half, cells, cover in (("high clouds", 0.30, 0.05, 3.0, 0.30), ("low clouds", 0.49, 0.04, 4.6, 0.34)):
+            art.put(layer, *(lambda c: (c[:, :, 3], c[:, :, :3]))(cumulus(art, tag, v, half, cells, cover, p["cloud"], p["cloud_shade"])), 0.86)
+        # Pyramids a long way off, in the colour of the air. The tallest has a star on it.
+        far, far_pen = art.drawing()
+        _pyramid(far_pen, 0.30, HORIZON + 0.03, 0.13, 0.15)
+        _pyramid(far_pen, 0.46, HORIZON + 0.03, 0.08, 0.09)
+        _pyramid(far_pen, 0.93, HORIZON + 0.03, 0.10, 0.11)
+        _star(far_pen, 0.30, HORIZON + 0.03 - 0.15 - 0.016, 0.018)
+        art.tint(layer, art.mask_of(far, blur=0.5), mix(p["pyramid"], p["mid"], 0.40), 0.82)
+        art.tint(layer, fog(art, "far mist", HORIZON + 0.03, 0.07), p["mist"], 0.60)
+        art.grain(layer, "grain")
+        return layer
+    if layer_key == "far_backplate":
+        # Two lines of dunes: a far one in the light, and one in front of it.
+        back, _ = art.ridge("far dunes", HORIZON + 0.07, 0.035, cells=3.0, octaves=2)
+        front, front_line = art.ridge("mid dunes", HORIZON + 0.12, 0.030, cells=4.0, octaves=2)
+        layer = solid(art, back, mix(p["hill_light"], p["mid"], 0.15), mix(p["hill"], p["far"], 0.30), 0.60, 0.74, "sand", 0.04)
+        art.light(layer, art.rim(back, 0.004, 0.006, 1.0) * back, p["glow"], 0.50)
+        art.put(layer, front, solid(art, front, mix(p["hill_light"], p["hill"], 0.40), p["hill"], 0.66, 0.78, "sand", 0.05)[:, :, :3])
+        art.light(layer, art.rim(front, 0.004, 0.006, 1.0) * front, p["glow"], 0.42)
+        # The marks of the wind on the near dunes: short lines that go with the slope.
+        marks, mark_pen = art.drawing()
+        rng = art.rand("ripples")
+        for _ in range(46):
+            u = rng.random()
+            v = float(front_line[min(art.n - 1, int(u * art.n))]) + rng.uniform(0.012, 0.085)
+            w = rng.uniform(0.012, 0.030)
+            mark_pen.line([(u - w, v + 0.002), (u, v - 0.002), (u + w, v + 0.002)], 0.0016)
+        art.tint(layer, art.mask_of(marks, blur=0.4) * front, p["hill"], 0.42)
+        haze(art, layer, p["mist"], 0.12, HORIZON + 0.12)
+        return layer
+    if layer_key == "near_background":
+        rng = art.rand("near oasis")
+        image, pen = art.drawing()
+        ground, _ = art.ridge("ground", 0.71, 0.010, cells=3.0, octaves=2)
+        for u in (0.09, 0.36, 0.63, 0.88):
+            u += rng.uniform(-0.03, 0.03)
+            _fat_palm(pen, rng, u, 0.715, rng.uniform(0.15, 0.21), rng.uniform(-0.035, 0.035))
+        for u in (0.22, 0.50, 0.76):
+            _cactus(pen, u + rng.uniform(-0.03, 0.03), 0.715, rng.uniform(0.060, 0.090))
+        # Round stones, low, between them.
+        for k in range(6):
+            u = (k + rng.uniform(0.1, 0.9)) / 6.0
+            r = rng.uniform(0.010, 0.018)
+            pen.ellipse(u, 0.715 - r * 0.5, r * 1.4, r)
+        mask = np.maximum(ground, art.mask_of(image))
+        layer = solid(art, mask, mix(p["near"], p["near_light"], 0.55), p["near"], 0.44, 0.74, "leaves", 0.06)
+        # The sun is on the side of the sun: a warm edge to the right of each thing.
+        art.light(layer, art.rim(mask, -0.004, 0.003, 0.5) * mask, p["halo"], 0.55)
+        art.shade(layer, art.rim(mask, 0.004, -0.004, 1.2) * mask, 0.14)
+        haze(art, layer, p["mist"], 0.16, 0.73)
+        return layer
+    layer = art.blank()
+    image, pen = art.drawing()
+    rng = art.rand("near sparkles")
+    for _ in range(18):
+        _sparkle(pen, rng.random(), rng.uniform(0.32, 0.70), rng.uniform(0.003, 0.006))
+    sparkles = art.mask_of(image)
+    art.put(layer, art.blur(sparkles, 2.5), p["halo"], 0.30)
+    art.put(layer, sparkles, p["star"], 0.55)
+    # Sand that the wind lifts, low over the ground.
+    art.put(layer, fog(art, "ground sand", 0.71, 0.11, cells=3.0), p["mist"], 0.34)
+    vignette(art, layer, p["hill"], 0.16)
+    return layer
+
+
+# ---------------------------------------------------------------------------
 # The starless deep: under Mary-O's land, a dark magical girl's cavern
 # ---------------------------------------------------------------------------
 
