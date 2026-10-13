@@ -118,7 +118,7 @@ def swap(key, bone, z, items, channel, default=False):
 #   actor-right / canvas-left = the NEAR eye, larger, closer to the viewer
 #   actor-left / canvas-right = the FAR eye, smaller, by the nose
 NEAR_EYE = (207.8, 141.0)
-FAR_EYE = (226.8, 140.3)
+FAR_EYE = (224.9, 140.5)
 
 
 def draw():
@@ -286,21 +286,26 @@ def draw():
               P(S([(160,112), (168,90), (183,78), (200,76), (217,79), (230,90), (235,105), (233,121), (219,128), (199,128), (176,134)]), C["wig"]),
           ], width=3.4)
     piece("head_face", "head", 60,
-          S([(175,124), (188,113), (205,109), (220,112), (229,120), (232,131), (231,143), (232,156), (231,167),
-             (229,178), (222,187), (210,191), (197,188), (185,179), (176,166), (171,151), (171,136)]),
+          # The front of the face is a profile: the brow, the dip between the
+          # eyes, the cheek, the upper lip, the mouth, the chin.
+          S([(175,124), (188,113), (205,109), (220,112), (229,119.5), (232.4,127), (230.6,135), (231,147), (231.6,158),
+             (232.6,167), (230.8,174.4), (231.2,183), (222,188), (210,191.5), (197,188), (185,179), (176,166), (171,151), (171,136)]),
           C["skin"], [
               P(S([(206,113), (220,116), (229,126), (219,126)]), C["skin_light"]),
               # the shade under the cheek, along the jaw
               P(S([(176,152), (183,171), (196,185), (209,190), (200,181), (189,169), (182,152)]), C["skin_dark"]),
               E(178,150,5.6,8.4,C["skin"],INK,2.0),
               L([(178,146), (180,150), (178,154)], C["skin_dark"], 1.4),
-              # the nose: long, with a small hook. One shape, inked on its outer side only.
-              P(S([(228,130), (235,139), (245,153), (244,159), (236,163), (229,158)]), C["skin"]),
-              P(S([(231,147), (237,159), (230,159)]), C["skin_dark"]),
-              L([(229,129), (235,139), (245,153), (244,159), (234,163)], INK, 2.4),
-              L([(232,158), (236,160.5)], INK, 1.5),
+              # the nose: long and aquiline. It starts in the dip between the
+              # eyes, its bridge has a hump, its tip is round and turns down.
+              # One shape, inked on its outer side only; then the wing over
+              # the nostril, and the nostril.
+              P(S([(230.6,134), (236.4,140), (240.6,147.4), (243.8,154.6), (242.6,159.6), (237.2,161.8), (232.8,162.8), (229,160), (228.6,146)]), C["skin"]),
+              L([(230.6,134), (236.4,140), (240.6,147.4), (243.8,154.6), (242.6,159.6), (237.2,161.8), (232.8,162.8)], INK, 2.4),
+              L([(233.6,159.2), (231.8,156.6), (233.4,154.2), (235.8,154.8)], INK, 1.5),
+              L([(236.4,159.6), (239.2,158.6)], INK, 1.6),
               # the line from the nose to the mouth, the chin, the hollow of the cheek
-              L([(231,164), (226,168), (222,173)], C["skin_dark"], 1.7),
+              L([(230.6,165.4), (226.4,169), (223,173.4)], C["skin_dark"], 1.7),
               L([(215,186), (217,183)], C["skin_dark"], 1.3),
               L([(190,156), (196,167), (204,174)], C["skin_dark"], 1.8),
               # two lines on his brow
@@ -352,13 +357,13 @@ def draw():
         return [L([(nx + x, ny + y) for x, y in near], brow, near_w), L([(fx + x, fy + y) for x, y in far], brow, far_w)]
 
     bag = L([(nx - 4.8, ny + 6.4), (nx + 1.2, ny + 7.4), (nx + 6.2, ny + 5.4)], C["skin_dark"], 1.3)
-    crease = L([(219, 131), (219.6, 135)], C["skin_dark"], 1.3)
+    crease = L([(217.6, 131), (218.2, 135)], C["skin_dark"], 1.3)
 
     swap("eye_angry", "head", 71, [
         *whites(0.7, 0.75),
         *brows([(-11, -13.5), (-2, -10.5), (9.5, -4.5)], [(-6, -4.2), (0, -8.6), (6, -10.8)], 4.0, 3.3),
         bag, crease,
-        L([(217.4, 129), (218.4, 133.6)], C["skin_dark"], 1.3),
+        L([(216, 129), (217, 133.6)], C["skin_dark"], 1.3),
     ], "eye.angry")
     swap("eye_open", "head", 71, [
         *whites(),
@@ -398,7 +403,7 @@ def draw():
     ], "eye.dizzy")
 
     lip = L([(220, 178.4), (226, 178)], C["skin_dark"], 1.5)
-    swap("mouth_closed", "head", 72, [L([(217,175.6), (223,173.2), (229,173.6)], INK, 2.2), lip], "mouth.closed", True)
+    swap("mouth_closed", "head", 72, [L([(216.6,175.8), (222.6,173.4), (228.4,173.8)], INK, 2.2), lip], "mouth.closed", True)
     swap("mouth_smile", "head", 72, [L([(217,173.4), (222.5,175.8), (229.4,172.4)], INK, 2.2), lip], "mouth.smile")
     swap("mouth_open", "head", 72, [
         P(S([(217.5,171.6), (229,170.8), (230,175.4), (227,181.4), (220.6,181.6), (217.2,176.4)]), C["mouth"], INK, 2.0),

@@ -8,12 +8,19 @@ hair is in front of his neck. Jon chose this head from a sheet of five on
 2026-10-13; the head before it was a round face with a blush, a triangle for a
 nose and large eyes (the "D2" eye layout).
 
+The front of his face is a profile. The nose starts in a dip between the
+eyes, its bridge has a hump, its tip is round and turns down, and a wing is
+over the nostril. Below it the profile has an upper lip, a mouth and a chin.
+The far eye does not touch the line of the bridge. (Jon, 2026-10-13: "the nose
+on the gnuton scholar is visually off". Before, the nose was a straight wedge
+from the brow, and the face below it was one vertical line.)
+
 Directions are from the character's perspective, not the axes of the canvas.
 
 | Purpose | Actor side | Canvas side | Design-space center |
 | --- | --- | --- | --- |
 | Larger viewer-near eye | Actor-right | Canvas-left | `(207.8, 141.0)` |
-| Smaller viewer-far eye | Actor-left | Canvas-right, by the nose | `(226.8, 140.3)` |
+| Smaller viewer-far eye | Actor-left | Canvas-right, by the nose | `(224.9, 140.5)` |
 
 `svgkit.py` shifts design coordinates when it writes the SVG. To move the eyes,
 change `NEAR_EYE` and `FAR_EYE` in
