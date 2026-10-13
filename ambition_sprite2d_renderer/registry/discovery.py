@@ -77,7 +77,6 @@ GENERATOR_MODULE_STEMS: frozenset[str] = frozenset(
         # act on is a warning nobody reads, and the install audit refuses to
         # report orphans while discovery is warning, so this omission was load-
         # bearing.
-        "erdish_scholar",
         "eve_eavesdropper",
         "mallory_interceptor",
         "goblin_side",

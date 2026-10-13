@@ -154,9 +154,9 @@ PALETTES = {
         "shadow": rgba("#000000", 46),
         "white": rgba("#FBEAC9"),
     },
-    # Legacy Erdish toon fallback. The runtime sheet now uses the bespoke
-    # prop-free erdish_scholar renderer; keep this palette only for old
-    # review jobs that still request the shared toon target.
+    # Legacy Erdish toon fallback. The runtime sheet is the module target
+    # `erdish`; keep this palette only for old review jobs that still
+    # request the shared toon target.
     "erdish": {
         "skin": rgba("#D6C2B0"),
         "skin_shadow": rgba("#A78F7B"),

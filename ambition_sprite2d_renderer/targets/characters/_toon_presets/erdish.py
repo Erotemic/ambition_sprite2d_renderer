@@ -1,6 +1,6 @@
 """Legacy toon archetype preset for Erdish.
 
-The runtime review config now uses the bespoke ``erdish_scholar`` generator.
+The runtime sheet is the module target ``erdish`` (``targets/characters/erdish.py``).
 Keep this fallback prop-free so ad-hoc toon jobs cannot reintroduce the old
 tablet or satchel into base character poses.
 

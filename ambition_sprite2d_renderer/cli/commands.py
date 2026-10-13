@@ -184,7 +184,8 @@ def validate_adapter_config_dirs(*config_dirs: str | Path) -> int:
 RUNTIME_REVIEW_NPCS: tuple[str, ...] = (
     "absurd_general",
     "architect",
-    "erdish",
+    # erdish is NOT here any more: he is the rigged module target
+    # `targets/characters/erdish.py`, published by `publish`.
     "merchant_prototype",
     "oiler",
     "vault_keeper",

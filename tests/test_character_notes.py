@@ -245,7 +245,9 @@ def test_review_character_configs_load_portable_notes():
         # `targets/characters/bob.py`, whose ACTOR_METADATA carries his
         # authoring prose and barks verbatim (and more).
         "craig.yaml",
-        "erdish.yaml",
+        # `erdish.yaml` LEFT, 2026-10-13: Erdish is the rigged module target
+        # `targets/characters/erdish.py`, whose ACTOR_METADATA carries his
+        # authoring prose and barks verbatim.
         "eve.yaml",
         "judy.yaml",
         "mallory.yaml",
