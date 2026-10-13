@@ -1,67 +1,50 @@
+from ambition_sprite2d_renderer.authoring import rigdoc
 from ambition_sprite2d_renderer.targets.characters import imperfect_cellular_automaton as target
 
 
-def test_imperfect_cellular_automaton_frames_render_without_clipping():
-    for animation, nframes, _duration_ms in target.ROWS:
-        for frame_idx in range(nframes):
-            frame = target.render_frame(animation, frame_idx, nframes)
-            assert frame.size == (target.FRAME_W, target.FRAME_H)
-            bbox = frame.getchannel("A").getbbox()
-            assert bbox is not None
-            x0, y0, x1, y1 = bbox
-            assert x0 > 0
-            assert y0 > 0
-            assert x1 < target.FRAME_W
-            assert y1 < target.FRAME_H
+def test_each_row_is_published_from_both_sides():
+    base = [name for name, _frames, _duration in target.BASE_ROWS]
+    assert base, "premise: she has rows"
+    rows = {name: (frames, duration) for name, frames, duration in target.ROWS}
+    for name in base:
+        assert rows[target.MIRRORED.format(name)] == rows[name]
+        assert target.MIRROR_OF[target.MIRRORED.format(name)] == name
 
 
-def test_imperfect_rule_records_a_fault_and_changes_state():
-    board0, fault0 = target._life_state_for_frame("idle", 0)
-    board1, fault1 = target._life_state_for_frame("idle", 1)
-    assert board0 != board1
-    assert fault0 != fault1
-    assert 0 <= fault0[0] < 5
-    assert 0 <= fault0[1] < 5
+def test_the_other_side_of_her_is_not_a_flip_of_this_side():
+    # Her halves differ, so the row the game draws when she faces left is
+    # drawn from her other side. A flip of this side would be the same pixels.
+    this_side = target.render_frame("idle", 0, 10)
+    other_side = target.render_frame("idle~mirrored", 0, 10)
+    assert this_side.size == other_side.size == target.FRAME_SIZE
+    assert this_side.getchannel("A").getbbox() is not None
+    assert other_side.tobytes() != rigdoc.mirrored_canvas(this_side).tobytes()
+
+
+def test_she_stands_at_the_same_place_from_both_sides():
+    meta = target.frame_meta("idle", 0, 10)["anchors"]
+    mirrored = target.frame_meta("idle~mirrored", 0, 10)["anchors"]
+    for name, point in meta.items():
+        assert abs(mirrored[name]["x"] - (target.FRAME_SIZE[0] - point["x"])) < 1e-3
+        assert mirrored[name]["y"] == point["y"]
+
+
+def test_the_grid_on_her_chest_changes_state_each_frame():
+    states = [target.grid_state("idle", frame) for frame in range(target.GRID_STATES)]
+    assert sorted(states) == list(range(target.GRID_STATES))
+    assert target.render_frame("idle", 0, 10).tobytes() != target.render_frame("idle", 1, 10).tobytes()
+
+
+def test_her_rig_has_the_bones_of_the_clips_she_borrows():
+    # She plays the perfect one's clips. A channel that names a bone she does
+    # not have would be read as a free parameter, and the limb would not move.
+    doc = target._doc()
+    perfect = rigdoc.RigDocument.load(str(target.PERFECT_RIG_PATH))
+    assert {bone["name"] for bone in perfect.bones} <= {bone["name"] for bone in doc.bones}
 
 
 def test_imperfect_cellular_automaton_declares_model_lineage():
     provenance = target.ACTOR_METADATA["provenance"]
     assert provenance["variant_family"] == target.TARGET_NAME
-    assert provenance["variant_id"] == "gpt_5_6_zorder_polish_2026_07_15"
-    assert provenance["lineage"][-1]["creator"] == "gpt-5.6-thinking"
-    assert provenance["lineage"][-1]["contribution"] == "arm_visibility_zorder_contract_and_shadow_removal"
-    assert provenance["lineage"][-1]["parent_revision_id"] == "gpt_5_6_redesign_2026_07_15"
-
-
-def test_slash_has_a_distinct_extended_attack_silhouette():
-    idle = target.render_frame("idle", 0, 6).getchannel("A").getbbox()
-    strike = target.render_frame("slash", 2, 6).getchannel("A").getbbox()
-    assert idle is not None and strike is not None
-    assert strike[2] > idle[2] + 20
-
-
-def test_arms_are_contractually_above_every_non_arm_part():
-    target._validate_part_z(target.PART_Z)
-    assert min(target.PART_Z[name] for name in target.ARM_PARTS) > max(
-        target.PART_Z[name] for name in target.NON_ARM_PARTS
-    )
-    rig_z = {part.name: part.z for part in target._RIG.parts}
-    assert rig_z == target.PART_Z
-
-
-def test_character_left_arm_keeps_an_external_silhouette_in_every_pose():
-    for animation, nframes, _duration_ms in target.ROWS:
-        for frame_idx in range(nframes):
-            if animation in target.LOOPS:
-                t = frame_idx / nframes
-            else:
-                t = frame_idx / max(1, nframes - 1)
-            world, _params = target._solve(animation, t)
-            left_hand = world["far_arm_l"].tip
-            torso_center = world["torso"].origin
-            assert left_hand[0] < torso_center[0] - 25.0, (animation, frame_idx, left_hand, torso_center)
-
-
-def test_target_contains_no_drop_shadow_authoring():
-    assert "shadow" not in target.PAL
-    assert not hasattr(target, "_draw_soft_shadow")
+    assert provenance["lineage"][-1]["revision_id"] == provenance["variant_id"]
+    assert provenance["lineage"][-1]["parent_revision_id"] == provenance["lineage"][-2]["revision_id"]

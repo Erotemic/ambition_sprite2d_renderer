@@ -1,0 +1,552 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+     width="600mm" height="690mm" viewBox="0 0 600 690"
+     data-character-design="imperfect-cellular-automaton-clean-side-v1">
+  <!-- The Imperfect Cellular Automaton, her green (clean) half toward the camera, facing right.
+       The design elements are listed in scripts/svg_art/imperfect_cellular_automaton_art.py.
+       Each part is a layer with a data-rig-part name; the rigs in
+       targets/characters/rigged/imperfect_cellular_automaton/ turn the parts about their joints.
+       The grid_<n> layers lie on each other: the rig shows one of them in each frame.
+       The hidden Rig Joints layer marks every joint the skeleton is built on. -->
+  <g id="ica-clean-side" inkscape:groupmode="layer" inkscape:label="ICA - Clean Side">
+    <g id="tail-1" inkscape:groupmode="layer" inkscape:label="Tail 1" data-rig-part="tail_1" data-rig-bone="tail_1" data-rig-z="2.1">
+      <polygon points="237.54,395.69 189.92,416.62 188.31,440.04 206.08,455.38 254.46,436.31 256.15,411.77" fill="#137a5a" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="238.16,430.59 233.08,432.7 230.97,427.63 236.04,425.51" fill="#0d3b31" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="213.46,425.39 208.38,427.5 206.27,422.43 211.34,420.31" fill="#0d3b31" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+    </g>
+    <g id="tail-2" inkscape:groupmode="layer" inkscape:label="Tail 2" data-rig-part="tail_2" data-rig-bone="tail_2" data-rig-z="2.2">
+      <polygon points="207.11,417.08 152.24,392.88 135.44,405.88 135.76,427.12 188.89,454.92 207.46,440.56" fill="#0d3b31" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="179.9,438.49 174.94,436.11 177.33,431.15 182.28,433.54" fill="#b6f34a" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="164.22,415.79 159.26,413.41 161.65,408.45 166.6,410.84" fill="#b6f34a" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+    </g>
+    <g id="tail-3" inkscape:groupmode="layer" inkscape:label="Tail 3" data-rig-part="tail_3" data-rig-bone="tail_3" data-rig-z="2.3">
+      <polygon points="160.88,401.29 127.11,340.2 108.1,340.45 96.89,355.8 127.12,418.71 148.36,418.44" fill="#137a5a" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="127.31,398.15 124.79,393.27 129.67,390.75 132.2,395.63" fill="#0d3b31" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="125.48,367.69 122.96,362.8 127.85,360.28 130.37,365.17" fill="#0d3b31" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+    </g>
+    <g id="tail-4" inkscape:groupmode="layer" inkscape:label="Tail 4" data-rig-part="tail_4" data-rig-bone="tail_4" data-rig-z="2.4">
+      <polygon points="128.99,348.47 128.99,276.42 114.21,268.5 99.01,275.58 95.01,347.53 111.76,356.5" fill="#352253" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="103.38,328.34 104.54,322.97 109.92,324.13 108.76,329.5" fill="#f05cb8" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="115.81,300.55 115.69,295.05 121.19,294.93 121.31,300.43" fill="#b478f0" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+    </g>
+    <g id="tail-5" inkscape:groupmode="layer" inkscape:label="Tail 5" data-rig-part="tail_5" data-rig-bone="tail_5" data-rig-z="2.5">
+      <polygon points="127.67,282.17 153.85,219.35 144.68,208.08 130.15,208.65 100.33,269.83 110.91,282.84" fill="#7046a8" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="113.79,255.92 116.93,251.41 121.44,254.56 118.3,259.07" fill="#352253" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="134.13,236 136.15,230.89 141.27,232.9 139.25,238.02" fill="#f05cb8" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+    </g>
+    <g id="tail-6" inkscape:groupmode="layer" inkscape:label="Tail 6" data-rig-part="tail_6" data-rig-bone="tail_6" data-rig-z="2.6">
+      <polygon points="150.78,223.58 197.43,178.11 194.05,166.28 182.57,161.89 133.22,204.42 137.21,218.39" fill="#352253" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="149.54,196.57 154.21,193.66 157.11,198.33 152.44,201.23" fill="#f05cb8" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="174.35,186.1 178.21,182.19 182.12,186.05 178.26,189.96" fill="#b478f0" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+    </g>
+    <g id="tail-7" inkscape:groupmode="layer" inkscape:label="Tail 7" data-rig-part="tail_7" data-rig-bone="tail_7" data-rig-z="2.7">
+      <polygon points="193.02,180.58 248.47,162.65 250.33,152.76 243.53,145.35 186.98,159.42 184.71,171.51" fill="#7046a8" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="202.75,159.02 208.22,158.5 208.74,163.98 203.26,164.49" fill="#352253" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="226.62,160.25 231.83,158.48 233.59,163.69 228.39,165.46" fill="#f05cb8" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="238.86,143.56 256.71,140.54 271,146.86 262.21,159.77 245.45,166.64" fill="#352253" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="265.54,146.64 332.35,156.06 266.43,159.61" fill="#f05cb8" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+    </g>
+    <g id="wing-far" inkscape:groupmode="layer" inkscape:label="Wing - far" data-rig-part="wing_far" data-rig-bone="wing_far" data-rig-z="4">
+      <polygon points="243.48,287.19 230.48,275.48 242.19,262.47 255.19,274.18" fill="#352253" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="256.06,274.29 244.91,260.8 258.4,249.65 269.55,263.14" fill="#352253" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="268.77,260.26 257.78,246.64 271.4,235.65 282.39,249.27" fill="#352253" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="229.25,275.57 217.87,262.27 231.17,250.9 242.54,264.19" fill="#352253" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="242.1,260.09 228.78,248.75 240.13,235.42 253.45,246.77" fill="#f05cb8" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="254.92,244.6 240.21,235.11 249.7,220.4 264.41,229.89" fill="#352253" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="215.38,259.97 200.55,250.68 209.84,235.85 224.67,245.14" fill="#f05cb8" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="228.05,246.55 213.84,236.34 224.05,222.12 238.26,232.33" fill="#352253" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="240.62,234 228.27,221.6 240.67,209.25 253.02,221.65" fill="#352253" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="213.68,236.35 202.91,222.56 216.69,211.78 227.47,225.57" fill="#352253" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="226.47,221.57 214.54,208.77 227.34,196.83 239.27,209.63" fill="#352253" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="199.82,220.99 185.48,210.95 195.52,196.62 209.86,206.66" fill="#352253" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="212.57,206.33 197.76,197.01 207.09,182.2 221.89,191.53" fill="#f05cb8" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="185.61,209.39 172.47,197.83 184.03,184.69 197.17,196.25" fill="#f05cb8" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="171.35,197.94 160.08,184.56 173.46,173.28 184.74,186.66" fill="#f05cb8" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+    </g>
+    <g id="wing-near" inkscape:groupmode="layer" inkscape:label="Wing - near" data-rig-part="wing_near" data-rig-bone="wing_near" data-rig-z="5">
+      <polygon points="257.3,303.65 239.81,303.04 240.43,285.55 257.91,286.16" fill="#0d3b31" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="257.97,284.66 240.48,284.05 241.09,266.56 258.58,267.17" fill="#0d3b31" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="258.63,265.67 241.14,265.06 241.75,247.57 259.24,248.19" fill="#0d3b31" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="238.32,302.99 220.83,302.38 221.44,284.89 238.93,285.5" fill="#0d3b31" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="238.98,284 221.49,283.39 222.1,265.9 239.59,266.51" fill="#0d3b31" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="239.64,265.01 222.15,264.4 222.76,246.91 240.25,247.52" fill="#b6f34a" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="219.33,302.33 201.84,301.71 202.45,284.23 219.94,284.84" fill="#b6f34a" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="219.99,283.34 202.5,282.73 203.11,265.24 220.6,265.85" fill="#0d3b31" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="220.65,264.35 203.16,263.74 203.77,246.25 221.26,246.86" fill="#b6f34a" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="200.34,301.66 182.85,301.05 183.46,283.56 200.95,284.17" fill="#0d3b31" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="201,282.67 183.51,282.06 184.12,264.57 201.61,265.18" fill="#b6f34a" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="201.66,263.69 184.18,263.07 184.79,245.59 202.28,246.2" fill="#b6f34a" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="181.35,301 163.86,300.39 164.47,282.9 181.96,283.51" fill="#0d3b31" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="182.01,282.01 164.52,281.4 165.13,263.91 182.62,264.52" fill="#0d3b31" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="182.68,263.02 165.19,262.41 165.8,244.92 183.29,245.53" fill="#0d3b31" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="163.03,281.35 145.54,280.74 146.15,263.25 163.64,263.86" fill="#0d3b31" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+      <polygon points="144.04,280.68 126.55,280.07 127.16,262.58 144.65,263.2" fill="#0d3b31" stroke="#0b1517" stroke-width="1.3" stroke-linejoin="round" />
+    </g>
+    <g id="far-leg-u" inkscape:groupmode="layer" inkscape:label="Thigh - far" data-rig-part="far_leg_u" data-rig-bone="far_leg_u" data-rig-z="6">
+      <polygon points="275.48,442.79 338.66,502.09 357.44,496 365.34,477.91 312.52,409.21 286.45,417.66" fill="#7046a8" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="318.39,435.36 321.8,440.89 316.26,444.3 312.86,438.76" fill="#352253" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="320.71,461.3 325.31,465.9 320.71,470.5 316.12,465.9" fill="#f05cb8" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="341.07,469.33 346.04,473.51 341.86,478.48 336.88,474.3" fill="#352253" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+    </g>
+    <g id="far-leg-l" inkscape:groupmode="layer" inkscape:label="Shin - far" data-rig-part="far_leg_l" data-rig-bone="far_leg_l" data-rig-z="7">
+      <polygon points="336.67,485.4 316.51,566.55 326.45,575.17 339.49,573.45 367.33,494.6 354.07,483.1" fill="#17262a" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="367.32,508.55 344.77,566.31 328,570 319.86,558.84 333.79,498.49" fill="#352253" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="352.05,520.44 349.07,526.22 343.29,523.23 346.27,517.46" fill="#f05cb8" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="337.22,539.56 335.66,545.87 329.35,544.31 330.91,538" fill="#b478f0" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="364.56,493.36 355.36,502.56 342.81,499.19 339.44,486.64 348.64,477.44 361.19,480.81" fill="#f05cb8" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+    </g>
+    <g id="far-leg-foot" inkscape:groupmode="layer" inkscape:label="Foot - far" data-rig-part="far_leg_foot" data-rig-bone="far_leg_foot" data-rig-z="8">
+      <polygon points="321.82,554.81 357.82,563.7 363.43,581.85 348.01,587.97 313.51,577.41 295.09,576.48 313.54,566.01" fill="#17262a" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="355.82,564.19 391.17,585.35 359.37,580.73" fill="#efe8cf" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="348.61,576.72 382.54,598.53 345.69,587.33" fill="#efe8cf" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+    </g>
+    <g id="far-arm-u" inkscape:groupmode="layer" inkscape:label="Upper arm - far" data-rig-part="far_arm_u" data-rig-bone="far_arm_u" data-rig-z="9">
+      <polygon points="340.28,298.1 359.22,378.37 373.07,381.75 384.78,373.63 373.72,291.9 355.61,287.48" fill="#352253" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="369.94,323.68 369.93,329.68 363.93,329.67 363.94,323.67" fill="#f05cb8" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="365.8,348.82 367.18,354.66 361.34,356.04 359.96,350.2" fill="#b478f0" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+    </g>
+    <g id="far-arm-l" inkscape:groupmode="layer" inkscape:label="Forearm - far" data-rig-part="far_arm_l" data-rig-bone="far_arm_l" data-rig-z="10">
+      <polygon points="358.17,385.88 402.24,438.97 415.14,436.39 421.76,425.03 385.83,366.12 367.55,369.77" fill="#7046a8" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="381.27,392.05 383.58,397.04 378.6,399.36 376.28,394.37" fill="#352253" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="399.71,403.41 403.12,407.73 398.8,411.14 395.39,406.82" fill="#f05cb8" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="403.67,421.46 407.45,425.46 403.44,429.23 399.67,425.23" fill="#352253" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="382.63,378.85 374.85,386.63 364.22,383.78 361.37,373.15 369.15,365.37 379.78,368.22" fill="#f05cb8" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+    </g>
+    <g id="far-arm-hand" inkscape:groupmode="layer" inkscape:label="Hand - far" data-rig-part="far_arm_hand" data-rig-bone="far_arm_hand" data-rig-z="11">
+      <polygon points="418.28,420.14 426.65,430.14 405.49,445.25 398.75,434.09" fill="#17262a" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="425.83,430.72 437.34,443.39 428.86,455.6 415.37,459.09 406.3,444.67" fill="#efe8cf" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="436.62,441.41 458.22,459.91 431.55,450.03" fill="#efe8cf" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="448.58,451.46 458.22,459.91 446.14,455.59" fill="#f05cb8" stroke="#0b1517" stroke-width="1" stroke-linejoin="round" />
+      <polygon points="430.21,448.91 443.21,479.66 421.69,454.14" fill="#efe8cf" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="437.49,465.74 443.21,479.66 433.4,468.25" fill="#f05cb8" stroke="#0b1517" stroke-width="1" stroke-linejoin="round" />
+      <polygon points="422.79,456.86 420.42,484.22 412.84,457.82" fill="#efe8cf" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="421.63,471.89 420.42,484.22 416.86,472.35" fill="#f05cb8" stroke="#0b1517" stroke-width="1" stroke-linejoin="round" />
+    </g>
+    <g id="pelvis" inkscape:groupmode="layer" inkscape:label="Pelvis" data-rig-part="pelvis" data-rig-bone="pelvis" data-rig-z="20">
+      <polygon points="249.31,407.13 307.23,410.8 313.24,431.48 289.2,451.23 253.57,445.73 241.59,424.46" fill="#17262a" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+    </g>
+    <g id="torso" inkscape:groupmode="layer" inkscape:label="Torso" data-rig-part="torso" data-rig-bone="torso" data-rig-z="22">
+      <polygon points="275.46,316.21 334.65,326.84 321.59,387.48 301.24,419.51 258.06,410.81 256.09,369.09" fill="#17262a" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="263.79,263.83 306.47,257.98 331.22,266.21 308.46,340.93 263.34,323.49 248.29,292.94" fill="#137a5a" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="331.22,266.21 355.48,276.38 368.11,308.39 354.54,337.99 321.56,346.25 308.46,340.93" fill="#7046a8" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="272.15,277.8 271.18,284.73 264.24,283.76 265.22,276.83" fill="#0d3b31" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="272.73,295.24 271.76,302.18 264.83,301.2 265.8,294.27" fill="#0d3b31" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="266.64,309.82 265.67,316.75 258.74,315.78 259.71,308.85" fill="#0d3b31" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="299.69,276.9 351.6,291.91 349.69,324.41 323.04,381.66 307.05,412.72 267.76,404.98 267.25,365.69 280.31,305.05" fill="#efe8cf" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="294.66,283.63 302.91,285.69 300.86,293.94 292.61,291.88" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="306.31,286.54 314.56,288.59 312.5,296.84 304.25,294.79" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="317.95,289.44 326.2,291.5 324.14,299.74 315.9,297.69" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="328.27,291.19 336.7,292.28 335.61,300.71 327.18,299.61" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="343.66,297.45 351.32,301.13 347.65,308.79 339.98,305.12" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="291.64,295.76 299.89,297.82 297.83,306.07 289.58,304.01" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="303.28,298.67 311.53,300.72 309.48,308.97 301.23,306.91" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="314.93,301.57 323.17,303.63 321.12,311.87 312.87,309.82" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="328.7,306.41 336.45,309.9 332.96,317.65 325.21,314.16" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="336.39,305.78 344.86,306.49 344.15,314.96 335.68,314.25" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="288.62,307.89 296.86,309.95 294.81,318.2 286.56,316.14" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="300.26,310.8 308.51,312.85 306.45,321.1 298.2,319.04" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="311.9,313.7 320.15,315.75 318.09,324 309.85,321.95" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="321.2,314.56 329.69,314.86 329.38,323.36 320.89,323.05" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="336.23,320.43 344.26,323.21 341.49,331.24 333.45,328.47" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="285.59,320.02 293.84,322.08 291.78,330.32 283.54,328.27" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="297.24,322.92 305.48,324.98 303.43,333.23 295.18,331.17" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="308.88,325.83 317.13,327.88 315.07,336.13 306.82,334.07" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="322.88,330.88 330.56,334.51 326.93,342.2 319.24,338.56" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="332.19,331.65 340.43,333.72 338.36,341.96 330.12,339.89" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="282.57,332.15 290.82,334.21 288.76,342.45 280.51,340.4" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="294.21,335.05 302.46,337.11 300.4,345.36 292.16,343.3" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="305.86,337.96 314.1,340.01 312.05,348.26 303.8,346.2" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="315.8,339.37 324.26,340.18 323.45,348.64 314.99,347.84" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="328.1,342.84 336.5,344.14 335.2,352.54 326.8,351.24" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="279.54,344.28 287.79,346.33 285.74,354.58 277.49,352.53" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="291.19,347.18 299.44,349.24 297.38,357.49 289.13,355.43" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="302.83,350.08 311.08,352.14 309.02,360.39 300.78,358.33" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="315.32,353.74 323.4,356.39 320.75,364.47 312.68,361.82" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="328.05,357.64 335.86,361.01 332.49,368.82 324.69,365.45" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="276.52,356.41 284.77,358.46 282.71,366.71 274.46,364.65" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="288.16,359.31 296.41,361.37 294.35,369.61 286.11,367.56" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="299.81,362.21 308.05,364.27 306,372.52 297.75,370.46" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="311.67,365.31 319.88,367.53 317.67,375.73 309.46,373.52" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="320.8,366.02 329.29,366.36 328.94,374.86 320.45,374.51" fill="#c9c1a6" stroke="#0b1517" stroke-width="0.5" stroke-linejoin="round" />
+      <polygon points="342.05,281.85 360.92,249.35 352.31,236.64 337.08,234.65 316.51,266.1 325.74,279.72" fill="#17262a" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+    </g>
+    <g id="grid-0" inkscape:groupmode="layer" inkscape:label="Grid state 0" data-rig-part="grid_0" data-rig-bone="torso" data-rig-z="23" data-rig-opacity="grid_0">
+      <polygon points="306.31,286.54 314.56,288.59 312.5,296.84 304.25,294.79" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="314.93,301.57 323.17,303.63 321.12,311.87 312.87,309.82" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="288.62,307.89 296.86,309.95 294.81,318.2 286.56,316.14" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="300.26,310.8 308.51,312.85 306.45,321.1 298.2,319.04" fill="#4fd0e6" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="311.9,313.7 320.15,315.75 318.09,324 309.85,321.95" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="315.12,338.56 325.08,339.51 324.13,349.46 314.17,348.51" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="327.47,341.99 337.35,343.51 335.82,353.4 325.94,351.87" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="279.54,344.28 287.79,346.33 285.74,354.58 277.49,352.53" fill="#4fd0e6" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="314.84,352.8 324.34,355.91 321.23,365.41 311.73,362.3" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="320.08,365.24 330.07,365.65 329.66,375.64 319.67,375.23" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+    </g>
+    <g id="grid-1" inkscape:groupmode="layer" inkscape:label="Grid state 1" data-rig-part="grid_1" data-rig-bone="torso" data-rig-z="23.01" data-rig-opacity="grid_1">
+      <polygon points="291.64,295.76 299.89,297.82 297.83,306.07 289.58,304.01" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="314.93,301.57 323.17,303.63 321.12,311.87 312.87,309.82" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="328.32,305.42 337.44,309.52 333.33,318.64 324.22,314.53" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="300.26,310.8 308.51,312.85 306.45,321.1 298.2,319.04" fill="#4fd0e6" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="311.9,313.7 320.15,315.75 318.09,324 309.85,321.95" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="285.59,320.02 293.84,322.08 291.78,330.32 283.54,328.27" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="297.24,322.92 305.48,324.98 303.43,333.23 295.18,331.17" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="308.88,325.83 317.13,327.88 315.07,336.13 306.82,334.07" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="322.52,329.88 331.56,334.16 327.28,343.19 318.24,338.92" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="331.64,330.74 341.34,333.18 338.9,342.87 329.21,340.44" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="315.12,338.56 325.08,339.51 324.13,349.46 314.17,348.51" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="327.47,341.99 337.35,343.51 335.82,353.4 325.94,351.87" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="279.54,344.28 287.79,346.33 285.74,354.58 277.49,352.53" fill="#4fd0e6" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="314.84,352.8 324.34,355.91 321.23,365.41 311.73,362.3" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="276.52,356.41 284.77,358.46 282.71,366.71 274.46,364.65" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="320.08,365.24 330.07,365.65 329.66,375.64 319.67,375.23" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+    </g>
+    <g id="grid-2" inkscape:groupmode="layer" inkscape:label="Grid state 2" data-rig-part="grid_2" data-rig-bone="torso" data-rig-z="23.02" data-rig-opacity="grid_2">
+      <polygon points="294.66,283.63 302.91,285.69 300.86,293.94 292.61,291.88" fill="#4fd0e6" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="306.31,286.54 314.56,288.59 312.5,296.84 304.25,294.79" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="327.63,290.35 337.54,291.63 336.26,301.55 326.34,300.26" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="314.93,301.57 323.17,303.63 321.12,311.87 312.87,309.82" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="328.32,305.42 337.44,309.52 333.33,318.64 324.22,314.53" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="327.47,341.99 337.35,343.51 335.82,353.4 325.94,351.87" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="279.54,344.28 287.79,346.33 285.74,354.58 277.49,352.53" fill="#4fd0e6" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="314.84,352.8 324.34,355.91 321.23,365.41 311.73,362.3" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="276.52,356.41 284.77,358.46 282.71,366.71 274.46,364.65" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="320.08,365.24 330.07,365.65 329.66,375.64 319.67,375.23" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+    </g>
+    <g id="grid-3" inkscape:groupmode="layer" inkscape:label="Grid state 3" data-rig-part="grid_3" data-rig-bone="torso" data-rig-z="23.03" data-rig-opacity="grid_3">
+      <polygon points="294.66,283.63 302.91,285.69 300.86,293.94 292.61,291.88" fill="#4fd0e6" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="306.31,286.54 314.56,288.59 312.5,296.84 304.25,294.79" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="303.28,298.67 311.53,300.72 309.48,308.97 301.23,306.91" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="314.93,301.57 323.17,303.63 321.12,311.87 312.87,309.82" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="328.32,305.42 337.44,309.52 333.33,318.64 324.22,314.53" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="335.7,304.97 345.67,305.8 344.83,315.77 334.87,314.93" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="327.47,341.99 337.35,343.51 335.82,353.4 325.94,351.87" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="279.54,344.28 287.79,346.33 285.74,354.58 277.49,352.53" fill="#4fd0e6" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="314.84,352.8 324.34,355.91 321.23,365.41 311.73,362.3" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="299.81,362.21 308.05,364.27 306,372.52 297.75,370.46" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="311.14,364.39 320.8,367 318.2,376.65 308.54,374.05" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+    </g>
+    <g id="grid-4" inkscape:groupmode="layer" inkscape:label="Grid state 4" data-rig-part="grid_4" data-rig-bone="torso" data-rig-z="23.04" data-rig-opacity="grid_4">
+      <polygon points="294.66,283.63 302.91,285.69 300.86,293.94 292.61,291.88" fill="#4fd0e6" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="303.28,298.67 311.53,300.72 309.48,308.97 301.23,306.91" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="314.93,301.57 323.17,303.63 321.12,311.87 312.87,309.82" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="328.32,305.42 337.44,309.52 333.33,318.64 324.22,314.53" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="335.7,304.97 345.67,305.8 344.83,315.77 334.87,314.93" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="311.9,313.7 320.15,315.75 318.09,324 309.85,321.95" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="320.47,313.78 330.47,314.14 330.11,324.13 320.11,323.77" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="331.64,330.74 341.34,333.18 338.9,342.87 329.21,340.44" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="327.47,341.99 337.35,343.51 335.82,353.4 325.94,351.87" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="302.83,350.08 311.08,352.14 309.02,360.39 300.78,358.33" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="314.84,352.8 324.34,355.91 321.23,365.41 311.73,362.3" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="276.52,356.41 284.77,358.46 282.71,366.71 274.46,364.65" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="299.81,362.21 308.05,364.27 306,372.52 297.75,370.46" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="311.14,364.39 320.8,367 318.2,376.65 308.54,374.05" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+    </g>
+    <g id="grid-5" inkscape:groupmode="layer" inkscape:label="Grid state 5" data-rig-part="grid_5" data-rig-bone="torso" data-rig-z="23.05" data-rig-opacity="grid_5">
+      <polygon points="294.66,283.63 302.91,285.69 300.86,293.94 292.61,291.88" fill="#4fd0e6" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="291.64,295.76 299.89,297.82 297.83,306.07 289.58,304.01" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="303.28,298.67 311.53,300.72 309.48,308.97 301.23,306.91" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="335.7,304.97 345.67,305.8 344.83,315.77 334.87,314.93" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="288.62,307.89 296.86,309.95 294.81,318.2 286.56,316.14" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="300.26,310.8 308.51,312.85 306.45,321.1 298.2,319.04" fill="#4fd0e6" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="331.64,330.74 341.34,333.18 338.9,342.87 329.21,340.44" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="327.47,341.99 337.35,343.51 335.82,353.4 325.94,351.87" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="291.19,347.18 299.44,349.24 297.38,357.49 289.13,355.43" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="302.83,350.08 311.08,352.14 309.02,360.39 300.78,358.33" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="299.81,362.21 308.05,364.27 306,372.52 297.75,370.46" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+    </g>
+    <g id="grid-6" inkscape:groupmode="layer" inkscape:label="Grid state 6" data-rig-part="grid_6" data-rig-bone="torso" data-rig-z="23.06" data-rig-opacity="grid_6">
+      <polygon points="294.66,283.63 302.91,285.69 300.86,293.94 292.61,291.88" fill="#4fd0e6" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="343.3,296.45 352.32,300.77 348,309.79 338.98,305.47" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="335.7,304.97 345.67,305.8 344.83,315.77 334.87,314.93" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="300.26,310.8 308.51,312.85 306.45,321.1 298.2,319.04" fill="#4fd0e6" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="335.76,319.48 345.22,322.74 341.95,332.2 332.5,328.93" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="331.64,330.74 341.34,333.18 338.9,342.87 329.21,340.44" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="282.57,332.15 290.82,334.21 288.76,342.45 280.51,340.4" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="315.12,338.56 325.08,339.51 324.13,349.46 314.17,348.51" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="291.19,347.18 299.44,349.24 297.38,357.49 289.13,355.43" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="302.83,350.08 311.08,352.14 309.02,360.39 300.78,358.33" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="314.84,352.8 324.34,355.91 321.23,365.41 311.73,362.3" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="299.81,362.21 308.05,364.27 306,372.52 297.75,370.46" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+    </g>
+    <g id="grid-7" inkscape:groupmode="layer" inkscape:label="Grid state 7" data-rig-part="grid_7" data-rig-bone="torso" data-rig-z="23.07" data-rig-opacity="grid_7">
+      <polygon points="294.66,283.63 302.91,285.69 300.86,293.94 292.61,291.88" fill="#4fd0e6" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="327.63,290.35 337.54,291.63 336.26,301.55 326.34,300.26" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="343.3,296.45 352.32,300.77 348,309.79 338.98,305.47" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="328.32,305.42 337.44,309.52 333.33,318.64 324.22,314.53" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="335.7,304.97 345.67,305.8 344.83,315.77 334.87,314.93" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="320.47,313.78 330.47,314.14 330.11,324.13 320.11,323.77" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="335.76,319.48 345.22,322.74 341.95,332.2 332.5,328.93" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="322.52,329.88 331.56,334.16 327.28,343.19 318.24,338.92" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="331.64,330.74 341.34,333.18 338.9,342.87 329.21,340.44" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="282.57,332.15 290.82,334.21 288.76,342.45 280.51,340.4" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="294.21,335.05 302.46,337.11 300.4,345.36 292.16,343.3" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="315.12,338.56 325.08,339.51 324.13,349.46 314.17,348.51" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="291.19,347.18 299.44,349.24 297.38,357.49 289.13,355.43" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="327.66,356.66 336.84,360.62 332.88,369.8 323.7,365.84" fill="#f05cb8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="276.52,356.41 284.77,358.46 282.71,366.71 274.46,364.65" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="299.81,362.21 308.05,364.27 306,372.52 297.75,370.46" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="320.08,365.24 330.07,365.65 329.66,375.64 319.67,375.23" fill="#7046a8" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+    </g>
+    <g id="head" inkscape:groupmode="layer" inkscape:label="Head" data-rig-part="head" data-rig-bone="head" data-rig-z="30">
+      <polygon points="379.64,178.35 409.52,192.91 449.65,137.16 427.35,131.96" fill="#7046a8" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="432.48,123.93 454.78,129.13 465.4,95.98 443.77,97.99" fill="#f05cb8" stroke="#0b1517" stroke-width="1.8" stroke-linejoin="round" />
+      <polygon points="478.53,82.53 484.35,83.98 482.9,89.8 477.07,88.35" fill="#f05cb8" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="468.83,153.75 473.19,154.84 472.1,159.21 467.74,158.12" fill="#7046a8" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="310.23,213.89 319.14,183.41 352.29,166.91 374.88,169.28 363.45,250.89 329.56,247.33" fill="#0d3b31" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="374.88,169.28 397.18,174.48 417.4,199.45 416.96,230.82 397.94,248.81 363.45,250.89" fill="#352253" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="321.37,189.36 360.17,173.45 315.71,80.25 293.86,97.94" fill="#137a5a" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="333.88,148.96 330.86,142.65 337.18,139.63 340.2,145.95" fill="#b6f34a" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="318.24,118.99 315.22,112.67 321.54,109.66 324.56,115.98" fill="#b6f34a" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="325.62,191.41 336.56,192.56 335.41,203.5 324.47,202.35" fill="#137a5a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="342.34,181.75 353.28,182.9 352.13,193.84 341.19,192.69" fill="#137a5a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="322.28,209.62 333.22,210.77 332.07,221.71 321.13,220.56" fill="#b6f34a" stroke="#0b1517" stroke-width="0.8" stroke-linejoin="round" />
+      <polygon points="354.97,195.74 414.28,201.98 422.61,231.41 411.76,253.11 357.8,250.3 346.35,223.39" fill="#efe8cf" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="359.87,203.4 412.13,208.89 417.11,229.4 363.15,226.59" fill="#17262a" stroke="#0b1517" stroke-width="1.4" stroke-linejoin="round" />
+      <polygon points="367.9,208.53 386.26,210.46 386.34,223.31 367.9,222.09" fill="#b6f34a" />
+      <polygon points="393.47,209.79 407.59,211.27 407.97,221.3 393.84,219.82" fill="#f05cb8" />
+      <polygon points="399.79,217.59 412.35,220.34 412.72,230.37 400.16,227.62" fill="#b478f0" />
+      <polygon points="364.34,242.42 415.48,244.94 416.22,265.01 400.77,276.23 369.7,272.97 359.73,259.07" fill="#17262a" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="366.43,245 375.88,245.99 374.89,255.44 365.44,254.45" fill="#efe8cf" stroke="#0b1517" stroke-width="0.7" stroke-linejoin="round" />
+      <polygon points="377.73,246.19 387.18,247.18 386.18,256.63 376.74,255.64" fill="#efe8cf" stroke="#0b1517" stroke-width="0.7" stroke-linejoin="round" />
+      <polygon points="390.33,248.67 399.18,252.13 395.71,260.98 386.87,257.52" fill="#efe8cf" stroke="#0b1517" stroke-width="0.7" stroke-linejoin="round" />
+      <polygon points="400.72,249.63 410.02,251.58 408.07,260.88 398.77,258.93" fill="#f05cb8" stroke="#0b1517" stroke-width="0.7" stroke-linejoin="round" />
+      <polygon points="370.74,258.31 380.19,259.3 379.2,268.75 369.75,267.75" fill="#b6f34a" stroke="#0b1517" stroke-width="0.7" stroke-linejoin="round" />
+      <polygon points="380.6,262.58 389.96,260.98 391.57,270.34 382.21,271.95" fill="#efe8cf" stroke="#0b1517" stroke-width="0.7" stroke-linejoin="round" />
+      <polygon points="392.14,263.78 401.59,262.82 402.55,272.27 393.1,273.23" fill="#efe8cf" stroke="#0b1517" stroke-width="0.7" stroke-linejoin="round" />
+    </g>
+    <g id="near-leg-u" inkscape:groupmode="layer" inkscape:label="Thigh - near" data-rig-part="near_leg_u" data-rig-bone="near_leg_u" data-rig-z="40">
+      <polygon points="244.67,441.04 294.64,509.39 314.22,506.91 325.36,490.61 287.33,414.96 260.13,418.4" fill="#137a5a" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="287.1,440.96 290.49,446.51 284.95,449.9 281.56,444.35" fill="#0d3b31" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="285.31,466.78 288.69,472.33 283.15,475.72 279.76,470.17" fill="#0d3b31" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="303.96,478.13 307.35,483.67 301.8,487.06 298.41,481.52" fill="#0d3b31" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+    </g>
+    <g id="near-leg-l" inkscape:groupmode="layer" inkscape:label="Shin - near" data-rig-part="near_leg_l" data-rig-bone="near_leg_l" data-rig-z="41">
+      <polygon points="295.94,492.37 261.45,564.27 269.42,574.75 282.55,575.73 324.06,507.63 313.44,493.67" fill="#17262a" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="321.5,520.74 288.98,570.16 272,570 266.13,557.75 290.74,504.04" fill="#0d3b31" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="304.36,527.68 301.26,533.39 295.55,530.29 298.65,524.58" fill="#b6f34a" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="286.69,543.46 283.59,549.18 277.88,546.07 280.98,540.36" fill="#b6f34a" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="322.56,503.36 313.36,512.56 300.81,509.19 297.44,496.64 306.64,487.44 319.19,490.81" fill="#b6f34a" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+    </g>
+    <g id="near-leg-foot" inkscape:groupmode="layer" inkscape:label="Foot - near" data-rig-part="near_leg_foot" data-rig-bone="near_leg_foot" data-rig-z="42">
+      <polygon points="266.47,554.56 304.2,565.68 309.83,584.3 293.12,589.42 257.2,576.78 238.84,575.07 257.72,565.39" fill="#17262a" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="302.03,566.03 339.57,589.7 305.49,582.9" fill="#efe8cf" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="294.01,578.15 330.01,602.37 290.64,588.62" fill="#efe8cf" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+    </g>
+    <g id="near-arm-u" inkscape:groupmode="layer" inkscape:label="Upper arm - near" data-rig-part="near_arm_u" data-rig-bone="near_arm_u" data-rig-z="60">
+      <polygon points="247.42,268.23 231.32,357.12 242.7,365.7 256.68,362.88 280.58,275.77 265.7,264.54" fill="#0d3b31" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="263.49,305.83 262.16,311.68 256.31,310.35 257.64,304.5" fill="#b6f34a" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="249.69,330.45 248.36,336.3 242.51,334.97 243.84,329.12" fill="#b6f34a" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="247.07,250.97 265.5,243.2 287.82,252.89 291.71,270.35 279.59,285.88 251.94,281.05 241.26,266.02" fill="#137a5a" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="255.02,253.21 262.29,255.03 260.48,262.3 253.2,260.49" fill="#b6f34a" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="271.03,255.14 278.3,256.96 276.49,264.23 269.21,262.42" fill="#b6f34a" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="259.63,267.76 266.91,269.58 265.1,276.85 257.82,275.04" fill="#b6f34a" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+    </g>
+    <g id="near-arm-l" inkscape:groupmode="layer" inkscape:label="Forearm - near" data-rig-part="near_arm_l" data-rig-bone="near_arm_l" data-rig-z="61">
+      <polygon points="228.7,367.42 265.2,431.24 278.36,430.86 286.8,420.76 259.3,352.58 240.66,353.12" fill="#137a5a" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="250.38,378.31 252.78,383.26 247.83,385.66 245.43,380.71" fill="#0d3b31" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="268.07,394.18 270.47,399.13 265.52,401.53 263.13,396.58" fill="#0d3b31" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="269.78,413.73 272.17,418.68 267.23,421.08 264.83,416.13" fill="#0d3b31" stroke="#0b1517" stroke-width="0.9" stroke-linejoin="round" />
+      <polygon points="254.63,362.85 246.85,370.63 236.22,367.78 233.37,357.15 241.15,349.37 251.78,352.22" fill="#b6f34a" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+    </g>
+    <g id="near-arm-hand" inkscape:groupmode="layer" inkscape:label="Hand - near" data-rig-part="near_arm_hand" data-rig-bone="near_arm_hand" data-rig-z="62">
+      <polygon points="284.18,415.37 290.75,426.63 267.36,437.97 262.58,425.84" fill="#17262a" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="289.85,427.06 299.07,441.49 288.65,452.09 274.77,453.27 268.26,437.53" fill="#efe8cf" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="298.69,439.41 316.88,461.28 292.25,447.06" fill="#efe8cf" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="308.79,451.32 316.88,461.28 305.7,454.99" fill="#b6f34a" stroke="#0b1517" stroke-width="1" stroke-linejoin="round" />
+      <polygon points="291.11,445.73 298.76,478.22 281.83,449.46" fill="#efe8cf" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="295.46,463.55 298.76,478.22 291,465.33" fill="#b6f34a" stroke="#0b1517" stroke-width="1" stroke-linejoin="round" />
+      <polygon points="282.46,452.32 275.53,478.89 272.49,451.6" fill="#efe8cf" stroke="#0b1517" stroke-width="2.2" stroke-linejoin="round" />
+      <polygon points="278.8,466.94 275.53,478.89 274.01,466.6" fill="#b6f34a" stroke="#0b1517" stroke-width="1" stroke-linejoin="round" />
+    </g>
+  </g>
+  <g id="rig-joints" inkscape:groupmode="layer" inkscape:label="Rig Joints" style="display:none">
+    <circle id="joint-pelvis" data-joint="pelvis" cx="278" cy="422" r="2" fill="#ff00ff" />
+    <circle id="joint-torso" data-joint="torso" cx="282" cy="400" r="2" fill="#ff00ff" />
+    <circle id="joint-head" data-joint="head" cx="346" cy="246" r="2" fill="#ff00ff" />
+    <circle id="joint-wing-root" data-joint="wing_root" cx="273.01" cy="276.43" r="2" fill="#ff00ff" />
+    <circle id="joint-near-shoulder" data-joint="near_shoulder" cx="264" cy="272" r="2" fill="#ff00ff" />
+    <circle id="joint-near-elbow" data-joint="near_elbow" cx="244" cy="360" r="2" fill="#ff00ff" />
+    <circle id="joint-near-wrist" data-joint="near_wrist" cx="276" cy="426" r="2" fill="#ff00ff" />
+    <circle id="joint-near-hand-tip" data-joint="near_hand_tip" cx="298.69" cy="472.79" r="2" fill="#ff00ff" />
+    <circle id="joint-far-shoulder" data-joint="far_shoulder" cx="357" cy="295" r="2" fill="#ff00ff" />
+    <circle id="joint-far-elbow" data-joint="far_elbow" cx="372" cy="376" r="2" fill="#ff00ff" />
+    <circle id="joint-far-wrist" data-joint="far_wrist" cx="412" cy="432" r="2" fill="#ff00ff" />
+    <circle id="joint-far-hand-tip" data-joint="far_hand_tip" cx="442.22" cy="474.31" r="2" fill="#ff00ff" />
+    <circle id="joint-near-hip" data-joint="near_hip" cx="266" cy="428" r="2" fill="#ff00ff" />
+    <circle id="joint-near-knee" data-joint="near_knee" cx="310" cy="500" r="2" fill="#ff00ff" />
+    <circle id="joint-near-ankle" data-joint="near_ankle" cx="272" cy="570" r="2" fill="#ff00ff" />
+    <circle id="joint-near-toe" data-joint="near_toe" cx="334" cy="590" r="2" fill="#ff00ff" />
+    <circle id="joint-far-hip" data-joint="far_hip" cx="294" cy="426" r="2" fill="#ff00ff" />
+    <circle id="joint-far-knee" data-joint="far_knee" cx="352" cy="490" r="2" fill="#ff00ff" />
+    <circle id="joint-far-ankle" data-joint="far_ankle" cx="328" cy="570" r="2" fill="#ff00ff" />
+    <circle id="joint-far-toe" data-joint="far_toe" cx="386" cy="586" r="2" fill="#ff00ff" />
+    <circle id="joint-tail-0" data-joint="tail_0" cx="246" cy="416" r="2" fill="#ff00ff" />
+    <circle id="joint-tail-1" data-joint="tail_1" cx="198" cy="436" r="2" fill="#ff00ff" />
+    <circle id="joint-tail-2" data-joint="tail_2" cx="144" cy="410" r="2" fill="#ff00ff" />
+    <circle id="joint-tail-3" data-joint="tail_3" cx="112" cy="348" r="2" fill="#ff00ff" />
+    <circle id="joint-tail-4" data-joint="tail_4" cx="114" cy="276" r="2" fill="#ff00ff" />
+    <circle id="joint-tail-5" data-joint="tail_5" cx="142" cy="214" r="2" fill="#ff00ff" />
+    <circle id="joint-tail-6" data-joint="tail_6" cx="190" cy="170" r="2" fill="#ff00ff" />
+    <circle id="joint-tail-7" data-joint="tail_7" cx="246" cy="154" r="2" fill="#ff00ff" />
+    <circle id="joint-wing-near-tip" data-joint="wing_near_tip" cx="123.1" cy="271.2" r="2" fill="#ff00ff" />
+    <circle id="joint-wing-far-tip" data-joint="wing_far_tip" cx="161.54" cy="176.06" r="2" fill="#ff00ff" />
+  </g>
+  <!-- BEGIN AMBITION SVG RIG v1 -->
+  <metadata id="ambition-rig-metadata" data-ambition-schema="ambition-svg-rig-v1" data-ambition-role="character-rig" data-rig-coordinate-space="root-svg-user-space" data-rig-rest-authority="markers">
+    <g id="ambition-rig-view-side" data-rig-view-def="side" data-rig-source-layer="ica-clean-side" data-rig-source-label="ICA - Clean Side" data-rig-root="ambition-rig-side-joint-rig_root" data-rig-projection="side" data-rig-profile="humanoid-articulated-v1" data-rig-pose-authority="geometry-only" data-rig-part-order="attribute" data-rig-source-map-quality="exact-pivot-fit">
+      <g id="ambition-rig-side-bone-pelvis" data-rig-bone-def="pelvis" data-rig-origin="ambition-rig-side-joint-hip_center" />
+      <g id="ambition-rig-side-bone-torso" data-rig-bone-def="torso" data-rig-parent="pelvis" data-rig-origin="ambition-rig-side-joint-waist" />
+      <g id="ambition-rig-side-bone-head" data-rig-bone-def="head" data-rig-parent="torso" data-rig-origin="ambition-rig-side-joint-neck" />
+      <g id="ambition-rig-side-bone-far_arm_u" data-rig-bone-def="far_arm_u" data-rig-parent="torso" data-rig-origin="ambition-rig-side-joint-far_shoulder" data-rig-tip="ambition-rig-side-joint-far_elbow" />
+      <g id="ambition-rig-side-bone-far_arm_l" data-rig-bone-def="far_arm_l" data-rig-parent="far_arm_u" data-rig-origin="ambition-rig-side-joint-far_elbow" data-rig-tip="ambition-rig-side-joint-far_wrist" />
+      <g id="ambition-rig-side-bone-far_arm_hand" data-rig-bone-def="far_arm_hand" data-rig-parent="far_arm_l" data-rig-origin="ambition-rig-side-joint-far_wrist" data-rig-tip="ambition-rig-side-joint-far_handtip" />
+      <g id="ambition-rig-side-bone-far_leg_u" data-rig-bone-def="far_leg_u" data-rig-parent="pelvis" data-rig-origin="ambition-rig-side-joint-far_hip" data-rig-tip="ambition-rig-side-joint-far_knee" />
+      <g id="ambition-rig-side-bone-far_leg_l" data-rig-bone-def="far_leg_l" data-rig-parent="far_leg_u" data-rig-origin="ambition-rig-side-joint-far_knee" data-rig-tip="ambition-rig-side-joint-far_ankle" />
+      <g id="ambition-rig-side-bone-far_leg_foot" data-rig-bone-def="far_leg_foot" data-rig-parent="far_leg_l" data-rig-origin="ambition-rig-side-joint-far_ankle" data-rig-tip="ambition-rig-side-joint-far_toe" />
+      <g id="ambition-rig-side-bone-near_arm_u" data-rig-bone-def="near_arm_u" data-rig-parent="torso" data-rig-origin="ambition-rig-side-joint-near_shoulder" data-rig-tip="ambition-rig-side-joint-near_elbow" />
+      <g id="ambition-rig-side-bone-near_arm_l" data-rig-bone-def="near_arm_l" data-rig-parent="near_arm_u" data-rig-origin="ambition-rig-side-joint-near_elbow" data-rig-tip="ambition-rig-side-joint-near_wrist" />
+      <g id="ambition-rig-side-bone-near_arm_hand" data-rig-bone-def="near_arm_hand" data-rig-parent="near_arm_l" data-rig-origin="ambition-rig-side-joint-near_wrist" data-rig-tip="ambition-rig-side-joint-near_handtip" />
+      <g id="ambition-rig-side-bone-near_leg_u" data-rig-bone-def="near_leg_u" data-rig-parent="pelvis" data-rig-origin="ambition-rig-side-joint-near_hip" data-rig-tip="ambition-rig-side-joint-near_knee" />
+      <g id="ambition-rig-side-bone-near_leg_l" data-rig-bone-def="near_leg_l" data-rig-parent="near_leg_u" data-rig-origin="ambition-rig-side-joint-near_knee" data-rig-tip="ambition-rig-side-joint-near_ankle" />
+      <g id="ambition-rig-side-bone-near_leg_foot" data-rig-bone-def="near_leg_foot" data-rig-parent="near_leg_l" data-rig-origin="ambition-rig-side-joint-near_ankle" data-rig-tip="ambition-rig-side-joint-near_toe" />
+      <g id="ambition-rig-side-bone-tail_1" data-rig-bone-def="tail_1" data-rig-parent="pelvis" data-rig-origin="ambition-rig-side-joint-tail_1_pivot" data-rig-tip="ambition-rig-side-joint-tail_1_tip" />
+      <g id="ambition-rig-side-bone-tail_2" data-rig-bone-def="tail_2" data-rig-parent="tail_1" data-rig-origin="ambition-rig-side-joint-tail_2_pivot" data-rig-tip="ambition-rig-side-joint-tail_2_tip" />
+      <g id="ambition-rig-side-bone-tail_3" data-rig-bone-def="tail_3" data-rig-parent="tail_2" data-rig-origin="ambition-rig-side-joint-tail_3_pivot" data-rig-tip="ambition-rig-side-joint-tail_3_tip" />
+      <g id="ambition-rig-side-bone-tail_4" data-rig-bone-def="tail_4" data-rig-parent="tail_3" data-rig-origin="ambition-rig-side-joint-tail_4_pivot" data-rig-tip="ambition-rig-side-joint-tail_4_tip" />
+      <g id="ambition-rig-side-bone-tail_5" data-rig-bone-def="tail_5" data-rig-parent="tail_4" data-rig-origin="ambition-rig-side-joint-tail_5_pivot" data-rig-tip="ambition-rig-side-joint-tail_5_tip" />
+      <g id="ambition-rig-side-bone-tail_6" data-rig-bone-def="tail_6" data-rig-parent="tail_5" data-rig-origin="ambition-rig-side-joint-tail_6_pivot" data-rig-tip="ambition-rig-side-joint-tail_6_tip" />
+      <g id="ambition-rig-side-bone-tail_7" data-rig-bone-def="tail_7" data-rig-parent="tail_6" data-rig-origin="ambition-rig-side-joint-tail_7_pivot" data-rig-tip="ambition-rig-side-joint-tail_7_tip" />
+      <g id="ambition-rig-side-bone-wing_far" data-rig-bone-def="wing_far" data-rig-parent="torso" data-rig-origin="ambition-rig-side-joint-wing_far_pivot" data-rig-tip="ambition-rig-side-joint-wing_far_tip" />
+      <g id="ambition-rig-side-bone-wing_near" data-rig-bone-def="wing_near" data-rig-parent="torso" data-rig-origin="ambition-rig-side-joint-wing_near_pivot" data-rig-tip="ambition-rig-side-joint-wing_near_tip" />
+      <g id="ambition-rig-side-part-tail_1" data-rig-part-def="tail_1" data-rig-bone="tail_1" data-rig-z="2.1" data-rig-pivot="ambition-rig-side-bind-tail_1" data-rig-bind-angle="157.38" data-rig-elements="tail-1" />
+      <g id="ambition-rig-side-part-tail_2" data-rig-part-def="tail_2" data-rig-bone="tail_2" data-rig-z="2.2" data-rig-pivot="ambition-rig-side-bind-tail_2" data-rig-bind-angle="-154.29" data-rig-elements="tail-2" />
+      <g id="ambition-rig-side-part-tail_3" data-rig-part-def="tail_3" data-rig-bone="tail_3" data-rig-z="2.3" data-rig-pivot="ambition-rig-side-bind-tail_3" data-rig-bind-angle="-117.3" data-rig-elements="tail-3" />
+      <g id="ambition-rig-side-part-tail_4" data-rig-part-def="tail_4" data-rig-bone="tail_4" data-rig-z="2.4" data-rig-pivot="ambition-rig-side-bind-tail_4" data-rig-bind-angle="-88.409" data-rig-elements="tail-4" />
+      <g id="ambition-rig-side-part-tail_5" data-rig-part-def="tail_5" data-rig-bone="tail_5" data-rig-z="2.5" data-rig-pivot="ambition-rig-side-bind-tail_5" data-rig-bind-angle="-65.695" data-rig-elements="tail-5" />
+      <g id="ambition-rig-side-part-tail_6" data-rig-part-def="tail_6" data-rig-bone="tail_6" data-rig-z="2.6" data-rig-pivot="ambition-rig-side-bind-tail_6" data-rig-bind-angle="-42.51" data-rig-elements="tail-6" />
+      <g id="ambition-rig-side-part-tail_7" data-rig-part-def="tail_7" data-rig-bone="tail_7" data-rig-z="2.7" data-rig-pivot="ambition-rig-side-bind-tail_7" data-rig-bind-angle="-15.945" data-rig-elements="tail-7" />
+      <g id="ambition-rig-side-part-wing_far" data-rig-part-def="wing_far" data-rig-bone="wing_far" data-rig-z="4" data-rig-pivot="ambition-rig-side-bind-wing_far" data-rig-bind-angle="-137.999" data-rig-elements="wing-far" />
+      <g id="ambition-rig-side-part-wing_near" data-rig-part-def="wing_near" data-rig-bone="wing_near" data-rig-z="5" data-rig-pivot="ambition-rig-side-bind-wing_near" data-rig-bind-angle="-178.002" data-rig-elements="wing-near" />
+      <g id="ambition-rig-side-part-far_leg_u" data-rig-part-def="far_leg_u" data-rig-bone="far_leg_u" data-rig-z="6" data-rig-pivot="ambition-rig-side-bind-far_leg_u" data-rig-bind-angle="47.816" data-rig-elements="far-leg-u" />
+      <g id="ambition-rig-side-part-far_leg_l" data-rig-part-def="far_leg_l" data-rig-bone="far_leg_l" data-rig-z="7" data-rig-pivot="ambition-rig-side-bind-far_leg_l" data-rig-bind-angle="106.699" data-rig-elements="far-leg-l" />
+      <g id="ambition-rig-side-part-far_leg_foot" data-rig-part-def="far_leg_foot" data-rig-bone="far_leg_foot" data-rig-z="8" data-rig-pivot="ambition-rig-side-bind-far_leg_foot" data-rig-bind-angle="27.337" data-rig-elements="far-leg-foot" />
+      <g id="ambition-rig-side-part-far_arm_u" data-rig-part-def="far_arm_u" data-rig-bone="far_arm_u" data-rig-z="9" data-rig-pivot="ambition-rig-side-bind-far_arm_u" data-rig-bind-angle="79.509" data-rig-elements="far-arm-u" />
+      <g id="ambition-rig-side-part-far_arm_l" data-rig-part-def="far_arm_l" data-rig-bone="far_arm_l" data-rig-z="10" data-rig-pivot="ambition-rig-side-bind-far_arm_l" data-rig-bind-angle="54.462" data-rig-elements="far-arm-l" />
+      <g id="ambition-rig-side-part-far_arm_hand" data-rig-part-def="far_arm_hand" data-rig-bone="far_arm_hand" data-rig-z="11" data-rig-pivot="ambition-rig-side-bind-far_arm_hand" data-rig-bind-angle="54.464" data-rig-elements="far-arm-hand" />
+      <g id="ambition-rig-side-part-pelvis" data-rig-part-def="pelvis" data-rig-bone="pelvis" data-rig-z="20" data-rig-pivot="ambition-rig-side-bind-pelvis" data-rig-bind-angle="0" data-rig-elements="pelvis" />
+      <g id="ambition-rig-side-part-torso" data-rig-part-def="torso" data-rig-bone="torso" data-rig-z="22" data-rig-pivot="ambition-rig-side-bind-torso" data-rig-bind-angle="0" data-rig-elements="torso" />
+      <g id="ambition-rig-side-part-grid_0" data-rig-part-def="grid_0" data-rig-bone="torso" data-rig-z="23" data-rig-pivot="ambition-rig-side-bind-grid_0" data-rig-bind-angle="0" data-rig-opacity="grid_0" data-rig-elements="grid-0" />
+      <g id="ambition-rig-side-part-grid_1" data-rig-part-def="grid_1" data-rig-bone="torso" data-rig-z="23.01" data-rig-pivot="ambition-rig-side-bind-grid_1" data-rig-bind-angle="0" data-rig-opacity="grid_1" data-rig-elements="grid-1" />
+      <g id="ambition-rig-side-part-grid_2" data-rig-part-def="grid_2" data-rig-bone="torso" data-rig-z="23.02" data-rig-pivot="ambition-rig-side-bind-grid_2" data-rig-bind-angle="0" data-rig-opacity="grid_2" data-rig-elements="grid-2" />
+      <g id="ambition-rig-side-part-grid_3" data-rig-part-def="grid_3" data-rig-bone="torso" data-rig-z="23.03" data-rig-pivot="ambition-rig-side-bind-grid_3" data-rig-bind-angle="0" data-rig-opacity="grid_3" data-rig-elements="grid-3" />
+      <g id="ambition-rig-side-part-grid_4" data-rig-part-def="grid_4" data-rig-bone="torso" data-rig-z="23.04" data-rig-pivot="ambition-rig-side-bind-grid_4" data-rig-bind-angle="0" data-rig-opacity="grid_4" data-rig-elements="grid-4" />
+      <g id="ambition-rig-side-part-grid_5" data-rig-part-def="grid_5" data-rig-bone="torso" data-rig-z="23.05" data-rig-pivot="ambition-rig-side-bind-grid_5" data-rig-bind-angle="0" data-rig-opacity="grid_5" data-rig-elements="grid-5" />
+      <g id="ambition-rig-side-part-grid_6" data-rig-part-def="grid_6" data-rig-bone="torso" data-rig-z="23.06" data-rig-pivot="ambition-rig-side-bind-grid_6" data-rig-bind-angle="0" data-rig-opacity="grid_6" data-rig-elements="grid-6" />
+      <g id="ambition-rig-side-part-grid_7" data-rig-part-def="grid_7" data-rig-bone="torso" data-rig-z="23.07" data-rig-pivot="ambition-rig-side-bind-grid_7" data-rig-bind-angle="0" data-rig-opacity="grid_7" data-rig-elements="grid-7" />
+      <g id="ambition-rig-side-part-head" data-rig-part-def="head" data-rig-bone="head" data-rig-z="30" data-rig-pivot="ambition-rig-side-bind-head" data-rig-bind-angle="0" data-rig-elements="head" />
+      <g id="ambition-rig-side-part-near_leg_u" data-rig-part-def="near_leg_u" data-rig-bone="near_leg_u" data-rig-z="40" data-rig-pivot="ambition-rig-side-bind-near_leg_u" data-rig-bind-angle="58.57" data-rig-elements="near-leg-u" />
+      <g id="ambition-rig-side-part-near_leg_l" data-rig-part-def="near_leg_l" data-rig-bone="near_leg_l" data-rig-z="41" data-rig-pivot="ambition-rig-side-bind-near_leg_l" data-rig-bind-angle="118.496" data-rig-elements="near-leg-l" />
+      <g id="ambition-rig-side-part-near_leg_foot" data-rig-part-def="near_leg_foot" data-rig-bone="near_leg_foot" data-rig-z="42" data-rig-pivot="ambition-rig-side-bind-near_leg_foot" data-rig-bind-angle="50.964" data-rig-elements="near-leg-foot" />
+      <g id="ambition-rig-side-part-near_arm_u" data-rig-part-def="near_arm_u" data-rig-bone="near_arm_u" data-rig-z="60" data-rig-pivot="ambition-rig-side-bind-near_arm_u" data-rig-bind-angle="102.804" data-rig-elements="near-arm-u" />
+      <g id="ambition-rig-side-part-near_arm_l" data-rig-part-def="near_arm_l" data-rig-bone="near_arm_l" data-rig-z="61" data-rig-pivot="ambition-rig-side-bind-near_arm_l" data-rig-bind-angle="64.134" data-rig-elements="near-arm-l" />
+      <g id="ambition-rig-side-part-near_arm_hand" data-rig-part-def="near_arm_hand" data-rig-bone="near_arm_hand" data-rig-z="62" data-rig-pivot="ambition-rig-side-bind-near_arm_hand" data-rig-bind-angle="64.13" data-rig-elements="near-arm-hand" />
+    </g>
+  </metadata>
+  <g id="ambition-rig-markers" data-rig-editor-layer="true" inkscape:groupmode="layer" inkscape:label="Ambition Rig Markers">
+    <g id="ambition-rig-markers-side" data-rig-view="side" inkscape:label="Rig Markers - ICA - Clean Side">
+      <line id="ambition-rig-side-guide-far_arm_u" data-rig-bone-guide="far_arm_u" x1="357" y1="295" x2="371.999369" y2="376.000359" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-far_arm_l" data-rig-bone-guide="far_arm_l" x1="371.999369" y1="376.000359" x2="411.999144" y2="432.001445" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-far_arm_hand" data-rig-bone-guide="far_arm_hand" x1="411.999144" y1="432.001445" x2="442.218541" y2="474.31122" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-far_leg_u" data-rig-bone-guide="far_leg_u" x1="294" y1="426" x2="351.999287" y2="490.000209" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-far_leg_l" data-rig-bone-guide="far_leg_l" x1="351.999287" y1="490.000209" x2="327.998195" y2="570.000015" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-far_leg_foot" data-rig-bone-guide="far_leg_foot" x1="327.998195" y1="570.000015" x2="381.445973" y2="597.631377" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_arm_u" data-rig-bone-guide="near_arm_u" x1="264" y1="272" x2="244.000176" y2="360.001115" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_arm_l" data-rig-bone-guide="near_arm_l" x1="244.000176" y1="360.001115" x2="276.000875" y2="426.000669" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_arm_hand" data-rig-bone-guide="near_arm_hand" x1="276.000875" y1="426.000669" x2="298.690889" y2="472.789164" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_leg_u" data-rig-bone-guide="near_leg_u" x1="266" y1="428" x2="310.000834" y2="500.000138" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_leg_l" data-rig-bone-guide="near_leg_l" x1="310.000834" y1="500.000138" x2="272.002017" y2="569.99982" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_leg_foot" data-rig-bone-guide="near_leg_foot" x1="272.002017" y1="569.99982" x2="313.03188" y2="620.600634" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-tail_1" data-rig-bone-guide="tail_1" x1="246" y1="416" x2="198.000047" y2="436.000113" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-tail_2" data-rig-bone-guide="tail_2" x1="198.000047" y1="436.000113" x2="144.001004" y2="410.00052" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-tail_3" data-rig-bone-guide="tail_3" x1="144.001004" y1="410.00052" x2="112.00058" y2="348.000836" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-tail_4" data-rig-bone-guide="tail_4" x1="112.00058" y1="348.000836" x2="114.000439" y2="275.999571" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-tail_5" data-rig-bone-guide="tail_5" x1="114.000439" y1="275.999571" x2="141.999691" y2="213.999643" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-tail_6" data-rig-bone-guide="tail_6" x1="141.999691" y1="213.999643" x2="189.999891" y2="169.998608" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-tail_7" data-rig-bone-guide="tail_7" x1="189.999891" y1="169.998608" x2="246.000738" y2="153.997727" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-wing_far" data-rig-bone-guide="wing_far" x1="273.009677" y1="276.429032" x2="161.539705" y2="176.057496" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-wing_near" data-rig-bone-guide="wing_near" x1="273.009677" y1="276.429032" x2="123.100871" y2="271.199341" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <circle id="ambition-rig-side-joint-far_ankle" data-rig-joint="far_ankle" cx="327.998195" cy="570.000015" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_elbow" data-rig-joint="far_elbow" cx="371.999369" cy="376.000359" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_handtip" data-rig-joint="far_handtip" cx="442.218541" cy="474.31122" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_hip" data-rig-joint="far_hip" cx="294" cy="426" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_knee" data-rig-joint="far_knee" cx="351.999287" cy="490.000209" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_shoulder" data-rig-joint="far_shoulder" cx="357" cy="295" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_toe" data-rig-joint="far_toe" cx="381.445973" cy="597.631377" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_wrist" data-rig-joint="far_wrist" cx="411.999144" cy="432.001445" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-hip_center" data-rig-joint="hip_center" cx="278" cy="422" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_ankle" data-rig-joint="near_ankle" cx="272.002017" cy="569.99982" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_elbow" data-rig-joint="near_elbow" cx="244.000176" cy="360.001115" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_handtip" data-rig-joint="near_handtip" cx="298.690889" cy="472.789164" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_hip" data-rig-joint="near_hip" cx="266" cy="428" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_knee" data-rig-joint="near_knee" cx="310.000834" cy="500.000138" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_shoulder" data-rig-joint="near_shoulder" cx="264" cy="272" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_toe" data-rig-joint="near_toe" cx="313.03188" cy="620.600634" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_wrist" data-rig-joint="near_wrist" cx="276.000875" cy="426.000669" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-neck" data-rig-joint="neck" cx="346" cy="246" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-rig_root" data-rig-joint="rig_root" cx="306" cy="590" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-tail_1_pivot" data-rig-joint="tail_1_pivot" cx="246" cy="416" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-tail_1_tip" data-rig-joint="tail_1_tip" cx="198.000047" cy="436.000113" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-tail_2_pivot" data-rig-joint="tail_2_pivot" cx="198.000047" cy="436.000113" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-tail_2_tip" data-rig-joint="tail_2_tip" cx="144.001004" cy="410.00052" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-tail_3_pivot" data-rig-joint="tail_3_pivot" cx="144.001004" cy="410.00052" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-tail_3_tip" data-rig-joint="tail_3_tip" cx="112.00058" cy="348.000836" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-tail_4_pivot" data-rig-joint="tail_4_pivot" cx="112.00058" cy="348.000836" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-tail_4_tip" data-rig-joint="tail_4_tip" cx="114.000439" cy="275.999571" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-tail_5_pivot" data-rig-joint="tail_5_pivot" cx="114.000439" cy="275.999571" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-tail_5_tip" data-rig-joint="tail_5_tip" cx="141.999691" cy="213.999643" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-tail_6_pivot" data-rig-joint="tail_6_pivot" cx="141.999691" cy="213.999643" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-tail_6_tip" data-rig-joint="tail_6_tip" cx="189.999891" cy="169.998608" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-tail_7_pivot" data-rig-joint="tail_7_pivot" cx="189.999891" cy="169.998608" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-tail_7_tip" data-rig-joint="tail_7_tip" cx="246.000738" cy="153.997727" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-waist" data-rig-joint="waist" cx="282" cy="400" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-wing_far_pivot" data-rig-joint="wing_far_pivot" cx="273.009677" cy="276.429032" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-wing_far_tip" data-rig-joint="wing_far_tip" cx="161.539705" cy="176.057496" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-wing_near_pivot" data-rig-joint="wing_near_pivot" cx="273.009677" cy="276.429032" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-wing_near_tip" data-rig-joint="wing_near_tip" cx="123.100871" cy="271.199341" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-bind-tail_1" data-rig-bind-pivot="tail_1" cx="246" cy="416" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-tail_2" data-rig-bind-pivot="tail_2" cx="198" cy="436" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-tail_3" data-rig-bind-pivot="tail_3" cx="144" cy="410" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-tail_4" data-rig-bind-pivot="tail_4" cx="112" cy="348" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-tail_5" data-rig-bind-pivot="tail_5" cx="114" cy="276" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-tail_6" data-rig-bind-pivot="tail_6" cx="142" cy="214" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-tail_7" data-rig-bind-pivot="tail_7" cx="190" cy="170" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-wing_far" data-rig-bind-pivot="wing_far" cx="273.01" cy="276.43" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-wing_near" data-rig-bind-pivot="wing_near" cx="273.01" cy="276.43" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_leg_u" data-rig-bind-pivot="far_leg_u" cx="294" cy="426" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_leg_l" data-rig-bind-pivot="far_leg_l" cx="352" cy="490" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_leg_foot" data-rig-bind-pivot="far_leg_foot" cx="328" cy="570" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_arm_u" data-rig-bind-pivot="far_arm_u" cx="357" cy="295" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_arm_l" data-rig-bind-pivot="far_arm_l" cx="372" cy="376" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_arm_hand" data-rig-bind-pivot="far_arm_hand" cx="412" cy="432" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-pelvis" data-rig-bind-pivot="pelvis" cx="278" cy="422" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-torso" data-rig-bind-pivot="torso" cx="282" cy="400" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-grid_0" data-rig-bind-pivot="grid_0" cx="282" cy="400" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-grid_1" data-rig-bind-pivot="grid_1" cx="282" cy="400" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-grid_2" data-rig-bind-pivot="grid_2" cx="282" cy="400" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-grid_3" data-rig-bind-pivot="grid_3" cx="282" cy="400" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-grid_4" data-rig-bind-pivot="grid_4" cx="282" cy="400" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-grid_5" data-rig-bind-pivot="grid_5" cx="282" cy="400" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-grid_6" data-rig-bind-pivot="grid_6" cx="282" cy="400" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-grid_7" data-rig-bind-pivot="grid_7" cx="282" cy="400" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-head" data-rig-bind-pivot="head" cx="346" cy="246" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_leg_u" data-rig-bind-pivot="near_leg_u" cx="266" cy="428" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_leg_l" data-rig-bind-pivot="near_leg_l" cx="310" cy="500" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_leg_foot" data-rig-bind-pivot="near_leg_foot" cx="272" cy="570" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_arm_u" data-rig-bind-pivot="near_arm_u" cx="264" cy="272" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_arm_l" data-rig-bind-pivot="near_arm_l" cx="244" cy="360" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_arm_hand" data-rig-bind-pivot="near_arm_hand" cx="276" cy="426" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+    </g>
+  </g>
+  <!-- END AMBITION SVG RIG v1 -->
+</svg>
