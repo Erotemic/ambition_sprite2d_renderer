@@ -11,6 +11,25 @@ his shoulders are up. Under it a cream shirt with a high collar, dark
 trousers and brown shoes. Short dark curls, a round mild face, and a nose
 that is pink with the cold.
 
+THE DESIGN ELEMENTS A REDRAW MUST KEEP (Jon, 2026-10-13: "Joseph Furrier
+needs to have some idle sprites where he is wrapped in a blanket. We lost
+that detail from the original ... That detail should be noted in the comments
+for his generator ... so we know what the important design elements for the
+character are if we ever decide to rework him again."):
+
+1. THE BLANKET, AND HE IS WRAPPED IN IT. It is the joke of the character (the
+   story that Fourier kept himself wrapped up for warmth) and it is his
+   outline. When he does nothing he is IN it: it is round him and over the
+   back of his head, his arms are inside, and one hand holds it shut. It is a
+   blanket, not a coat: it has no sleeves and no buttons when it is wrapped.
+   It opens only when he does something (he talks, he strikes, he casts).
+2. THE FUR along the edges of the blanket: that is the fur of "Furrier". He
+   is a man and not a fox.
+3. HE IS COLD: a pink nose, shoulders up, and now and then he shakes.
+4. THE STEPS are in the rows that are their own (``step_function``,
+   ``spectral_descent``) and never in how he stands.
+5. THE WAVES: one wave that comes apart into its parts.
+
 He is a man and not a fox: the fur of his name is the fur of the blanket.
 He is a grown man, not a mascot. He holds nothing; there is no drop shadow.
 
@@ -245,7 +264,25 @@ _eyes = R.make_eyes(K, (NEAR_EYE[0] + 0.2, NEAR_EYE[1] + 0.2), (FAR_EYE[0] + 0.1
 _brows = R.make_brows(K, [(-0.8, -4.0), (1.8, -4.8), (4.4, -4.0)], [(5.8, -4.2), (7.2, -4.6), (8.6, -4.0)], HAIR, 1.3)
 _mouth = R.make_mouth(K, (5.6, 7.2), (118, 67, 65, 255), wide=0.8)
 
-X.head_layers = lambda pose: [(_head(), "head"), (_eyes(str(pose["eyes"])), "eyes"), (_brows(R.brow_mood(pose)), "brows"), (_mouth(str(pose["mouth"])), "mouth")]
+def _hood():
+    """The blanket over the back and the top of his head, when he is wrapped
+    in it: his face and the curls over his brow are out of it."""
+
+    def shape(d) -> None:
+        K.poly(d, [K.at(-6.0, 8.4), K.at(-10.6, 5.0), K.at(-11.6, -4.0), K.at(-8.6, -11.4), K.at(-1.0, -14.8), K.at(6.4, -13.2), K.at(9.4, -9.6), K.at(5.6, -8.2),
+                   K.at(0.4, -8.6), K.at(-3.0, -5.4), K.at(-4.0, 0.6), K.at(-3.6, 6.4)], WHITE)
+
+    def detail(d) -> None:
+        K.poly(d, [K.at(-11.6, -4.0), K.at(-8.6, -11.4), K.at(-6.0, -9.0), K.at(-8.4, -3.0), K.at(-7.6, 5.0), K.at(-10.6, 5.0)], BLANKET_DARK)
+        K.line(d, [K.at(-7.0, -8.0), K.at(-1.0, -11.6), K.at(5.0, -10.6)], BLANKET_LIGHT, 0.5)
+        # The fur of its edge goes round his face.
+        _tufts(d, [(7.6, -9.4), (4.4, -8.6), (1.2, -8.2), (-1.6, -6.2), (-3.2, -3.2), (-3.8, 0.2), (-3.8, 3.6), (-4.4, 6.6)], 1.7)
+
+    return K.solid(("furrier_hood",), shape, BLANKET, detail, outline=1.2, rim=0.2, shade=0.0)
+
+
+X.head_layers = lambda pose: ([(_head(), "head")] + ([(_hood(), "hood")] if float(pose["wrap"]) > 0.5 else []) +
+                              [(_eyes(str(pose["eyes"])), "eyes"), (_brows(R.brow_mood(pose)), "brows"), (_mouth(str(pose["mouth"])), "mouth")])
 X.neck = R.make_neck(K, SKIN_SHADE, 4.6)
 # His arms are in the blanket to the wrist, and it has fur there too.
 X.upper_arm = lambda near: [(0.0, 1.0, 8.0, 7.2, BLANKET if near else BLANKET_DARK)]
@@ -255,12 +292,59 @@ X.shin = lambda near: [(0.0, 1.0, 5.8, 5.0, TROUSER if near else TROUSER_DARK)]
 X.hand = R.make_hand(K, SKIN, SKIN_SHADE, SKIN_DEEP, size=0.95)
 X.shoe = R.make_shoe(K, SHOE, SHOE_DARK, BUILD.ankle_up, long=1.0)
 
+def _wrapped(ctx) -> List[Stamp]:
+    """He is wrapped in the blanket: it is round all of him from his chin to
+    his shins, his arms are inside it, and one hand holds the edge that is
+    over the other one."""
+    if float(ctx.pose["wrap"]) <= 0.5:
+        return []
+    sway = int(round(float(ctx.pose["hem"][0])))
+
+    def shape(d) -> None:
+        K.poly(d, [K.at(-5.0, TOP - 0.6), K.at(-11.4, TOP + 4.0), K.at(-14.4, -22.0), K.at(-16.0, -4.0), K.at(-15.4 - sway, HEM + 1.0), K.at(-9.0, HEM + 4.0),
+                   K.at(2.0, HEM + 2.4), K.at(13.4 + sway, HEM + 4.0), K.at(15.4, -2.0), K.at(13.8, -20.0), K.at(10.8, TOP + 5.0), K.at(6.4, TOP - 0.6)], WHITE)
+        for x in (-6.4, -2.4, 1.8, 6.0, 9.4):
+            K.oval(d, K.at(x, TOP + 1.6), 3.4, 3.2, WHITE)
+
+    def detail(d) -> None:
+        # The flap that is on top goes from his far shoulder down across him;
+        # what is under it is in its shade.
+        flap = [(10.4, TOP + 6.0), (7.6, -22.0), (4.0, -8.0), (-1.0, 8.0), (-5.6, HEM + 3.0)]
+        K.poly(d, [K.at(x, y) for x, y in flap] + [K.at(13.4 + sway, HEM + 4.0), K.at(15.4, -2.0), K.at(13.8, -20.0)], BLANKET_DARK)
+        K.line(d, [K.at(-11.0, TOP + 8.0), K.at(-13.6, -4.0), K.at(-13.0 - sway, HEM - 2.0)], BLANKET_LIGHT, 0.6)
+        for x0, y0, x1, y1 in ((-7.0, -24.0, -9.6, 4.0), (-2.0, -20.0, -5.0, 12.0), (10.6, -14.0, 11.6 + sway, 16.0)):
+            K.line(d, [K.at(x0, y0), K.at(x1, y1)], mix(BLANKET, BLANKET_DARK, 0.6) if x0 < 8 else (22, 24, 44, 255), 0.6)
+        # The fur of its edge is one band (tufts that are apart read as the
+        # buttons of a coat).
+        steps = 26
+        _tufts(d, [(flap[0][0] + (flap[-1][0] - flap[0][0]) * t - 3.0 * math.sin(math.pi * t), flap[0][1] + (flap[-1][1] - flap[0][1]) * t) for t in
+                   [k / steps for k in range(steps + 1)]], 2.1)
+        _tufts(d, [(x, HEM + 1.6 + 0.5 * math.sin(x)) for x in [-13.6 + 3.3 * k for k in range(9)]], 2.4)
+        # The roll at his chin.
+        _tufts(d, [(-6.4, TOP + 1.6), (-2.4, TOP + 2.8), (1.8, TOP + 3.2), (6.0, TOP + 2.8), (9.4, TOP + 1.6)], 3.2)
+        # The hand that holds it shut.
+        K.oval(d, K.at(6.0, -21.0), 3.1, 2.7, OUTLINE)
+        K.oval(d, K.at(6.0, -21.0), 2.5, 2.1, SKIN)
+        for dx in (-0.9, 0.5, 1.8):
+            K.line(d, [K.at(6.0 + dx, -22.4), K.at(6.0 + dx - 0.2, -20.0)], SKIN_DEEP, 0.4)
+
+    return [(K.solid(("furrier_wrap", sway), shape, BLANKET, detail, outline=1.3, rim=0.3, shade=0.0), ctx.hip, "wrap", ctx.lean)]
+
+
+X.layers["front"].append(_wrapped)
+
 # ---- How he holds himself ----------------------------------------------------
 
 #: Both hands hold the blanket shut at his chest.
 SHUT_NEAR = (9.0, 9.0)
 SHUT_FAR = (6.0, 12.0)
-X.set_rest(lean=0.0, na=SHUT_NEAR, fa=SHUT_FAR, nh="fist", fh="fist", nf=(-3.8, 0.0, 0.0), ff=(4.8, 0.0, 0.0))
+#: His arms when he is wrapped: all of them is inside the blanket.
+IN_NEAR = (7.0, 12.0)
+IN_FAR = (1.0, 14.0)
+# ``wrap``: he is wrapped in the blanket (``_wrapped``, ``_hood``). He is
+# when he does nothing and when he walks; a row in which he does something
+# opens it.
+X.set_rest(lean=0.0, na=SHUT_NEAR, fa=SHUT_FAR, nh="fist", fh="fist", nf=(-3.8, 0.0, 0.0), ff=(4.8, 0.0, 0.0), wrap=0.0)
 
 
 @X.row
@@ -269,7 +353,7 @@ def idle(i: int, n: int):
     _, s, c = loop(i, n)
     shake = 0.6 if i in (5, 6) else 0.0
     return P(hip=(shake * (1.0 if i == 5 else -1.0), 0.3 + 0.3 * s), lean=0.4 * s, head=(0.3, 0.2, 2.0 + 2.0 * c), eyes="closed" if i == n - 2 else "open",
-             mouth="grit" if shake else "flat", brows=-1.0 if shake else 0.0)
+             mouth="grit" if shake else "flat", brows=-1.0 if shake else 0.0, wrap=1.0, na=IN_NEAR, fa=IN_FAR)
 
 
 @X.row
@@ -277,7 +361,7 @@ def walk(i: int, n: int):
     # Small steps: the blanket stays shut.
     ph, s, c = loop(i, n)
     nf, ff = R.stride(ph, 6.4, 3.4)
-    return P(hip=(0.5, 0.7 * math.cos(2.0 * ph)), lean=2.0, head=(0.3, 0.0, 1.0 + 1.5 * s), nf=nf, ff=ff, hem=(1.0 + abs(c), abs(c)))
+    return P(hip=(0.5, 0.7 * math.cos(2.0 * ph)), lean=2.0, head=(0.3, 0.0, 1.0 + 1.5 * s), nf=nf, ff=ff, hem=(1.0 + abs(c), abs(c)), wrap=1.0, na=IN_NEAR, fa=IN_FAR)
 
 
 @X.row

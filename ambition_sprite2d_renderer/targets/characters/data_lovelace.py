@@ -1,28 +1,34 @@
-"""Sprite generator for Data Lovelace: the engine she wrote for, as a woman
-of brass.
+"""Sprite generator for Data Lovelace: the engine she wrote for, and it can
+think about what it is for.
 
-An affectionate caricature of Ada Lovelace, as an automaton of her own
-century.
+An affectionate caricature of Ada Lovelace, as a robot.
 
-The look (2026-10-13): a Victorian automaton in the shape of a lady, seen
-three quarters from the front, facing right. Her face is a mask of pale
-enamel with two eyes of green light. Her hair is cast in dark copper: parted
-in the middle, flat over her ears, with a coil of ringlets at each ear and a
-knot behind, as in the portrait of Ada. A bodice of teal enamel with brass
-ribs, puffed sleeves, and a bell of a skirt to her ankles: brass hoops with
-teal between them, and at its hem a band of card with holes punched in it.
-A gear is the clasp of her belt. Her arms and hands are brass.
+The look (2026-10-13): a robot of brass, seen three quarters from the front,
+facing right. A round head with a plate of pale enamel for a face: two round
+lenses with green light in them, and a small grille to speak through. On it a
+cap cast in dark copper in the shape of Ada's hair (parted in the middle, a
+knot behind, and at each ear a coil that is a spring), and one thin aerial. A
+neck of rings. A chest that is a riveted barrel, and on it what she is: a row
+of number wheels, a dial, and the slot her cards go in. Arms that are hoses
+of rings, and hands that are two-fingered grips. Under a ball at her waist a
+tall bell of bronze, and a base on small wheels: she has no legs, and she
+rolls. A band of punched card goes round the bell near its foot.
 
-She is a machine and she is a lady: she is not a robot of the future. She
-holds nothing; there is no drop shadow.
+She is a robot, and a person of rank: she is no one's maid, and nothing she
+wears is a servant's (Jon, 2026-10-13, of the draft before this one, a lady
+of enamel in a dress: "Data Lovelace needs to read more as a robot. Think
+Rosie the robot from the Jetson's minus the maid motif. I want her to be more
+dignified than a maid to reflect her intellectual prowess."). She holds
+herself very straight, her grips one on the other. She holds nothing; there
+is no drop shadow.
 
 What she shows: the cards of a program, dealt in an arc from her hand; the
 pattern they make (a weave, as a loom weaves flowers); and a gear that she
 sets right in her own arm.
 
-She is a person of ``_person_rig``: the bones, the poses and the frame are
-shared; the head, the clothes, how she stands and what she shows are hers.
-Her portraits are frames of this sheet.
+She is a person of ``_person_rig``: the bones of her trunk, her arms and her
+head, the poses and the frame are shared. She has no legs: the bell and its
+wheels are a part of her trunk. Her portraits are frames of this sheet.
 """
 
 from __future__ import annotations
@@ -30,7 +36,8 @@ from __future__ import annotations
 import math
 from typing import List
 
-from ._ai_era_kit import WHITE, RGBA, mix, pin
+from ._ai_era_kit import RGBA, mix, pin
+from ._ai_era_kit import WHITE as _SOLID
 from . import _person_rig as R
 from ._person_rig import Build, Person, Stamp, loop, shot
 
@@ -103,6 +110,8 @@ BRASS: RGBA = (216, 170, 86, 255)
 BRASS_DARK: RGBA = (150, 104, 54, 255)
 BRASS_LIGHT: RGBA = (248, 218, 146, 255)
 BRASS_DEEP: RGBA = (98, 64, 40, 255)
+BRONZE: RGBA = (168, 118, 70, 255)
+BRONZE_DARK: RGBA = (112, 74, 50, 255)
 TEAL: RGBA = (58, 154, 152, 255)
 TEAL_DARK: RGBA = (32, 98, 108, 255)
 TEAL_LIGHT: RGBA = (124, 208, 196, 255)
@@ -117,104 +126,210 @@ CARD_DARK: RGBA = (176, 160, 128, 255)
 LIGHT: RGBA = (140, 244, 224, 255)
 INK: RGBA = (30, 30, 40, 255)
 
-#: 165 cm.
-BUILD = Build(hip_up=47.0, thigh=22.9, shin=21.3, neck=(0.6, -35.0), upper=18.4, fore=17.4, near_shoulder=(-4.6, -30.8), far_shoulder=(5.6, -30.4),
-              near_hip=(-3.8, 0.0), far_hip=(3.8, 0.0), head_up=(1.0, -12.2), height=106.0, half_width=(13.0, 14.0))
+#: 165 cm, on her wheels.
+BUILD = Build(hip_up=47.0, thigh=22.9, shin=21.3, neck=(0.6, -35.0), upper=18.4, fore=17.4, near_shoulder=(-4.8, -30.6), far_shoulder=(4.8, -30.4),
+              near_hip=(-3.8, 0.0), far_hip=(3.8, 0.0), head_up=(0.8, -12.4), height=106.0, half_width=(14.0, 15.0))
 
 X = Person(TARGET_NAME, BUILD)
 K = X.K
 P = X.P
 TOP = BUILD.neck[1] - 2.0
-#: How far under her hips the hem of her skirt is.
-HEM = BUILD.hip_up - 5.0
+#: How far under the ball of her waist the floor is: her wheels are on it.
+FLOOR = BUILD.hip_up
 
 
-def _front(d, hb: float, hf: float) -> None:
-    """The ribs of her bodice, the light on her bust and the shade under it,
-    her belt and its gear, the hoops of her skirt and the band of card at
-    its hem."""
-    by = TOP + 12.5
-    # The bodice: a brass yoke, and ribs down to her waist.
-    K.poly(d, [K.at(-6.0, TOP - 1.0), K.at(9.0, TOP - 1.0), K.at(8.0, TOP + 4.0), K.at(4.0, TOP + 6.0), K.at(-5.0, TOP + 4.0)], BRASS)
-    K.line(d, [K.at(-5.0, TOP + 4.0), K.at(4.0, TOP + 6.0), K.at(8.0, TOP + 4.0)], BRASS_DARK, 0.6)
-    for x in (-3.4, 0.6, 4.6):
-        K.line(d, [K.at(x, TOP + 6.0), K.at(x * 0.6 + 0.6, -14.0)], BRASS, 0.9)
-    K.oval(d, K.at(6.2, by + 0.4), 2.6, 2.0, TEAL_LIGHT)
-    K.poly(d, [K.at(0.6, by + 3.4), K.at(4.6, by + 5.0), K.at(10.4, by + 3.6), K.at(9.2, by + 6.4), K.at(4.4, by + 7.2), K.at(0.6, by + 5.2)], TEAL_DARK)
-    # Her belt, and the gear that is its clasp.
-    K.poly(d, [K.at(-9.0, -14.6), K.at(9.4, -13.8), K.at(9.4, -11.4), K.at(-9.0, -12.2)], BRASS_DARK)
-    for a in range(0, 360, 45):
-        K.line(d, [K.at(3.6, -12.8), K.at(3.6 + 3.4 * math.cos(math.radians(a)), -12.8 + 3.4 * math.sin(math.radians(a)))], BRASS_DEEP, 1.3)
-    K.oval(d, K.at(3.6, -12.8), 2.5, 2.5, BRASS_LIGHT, BRASS_DEEP, 0.5)
-    K.oval(d, K.at(3.6, -12.8), 0.9, 0.9, BRASS_DEEP)
-    # The skirt: hoops of brass, and ribs from her waist to the hem.
-    for k, y in enumerate((-4.0, 6.0, 16.0, 26.0)):
-        wide = 10.6 + 2.2 * k
-        K.line(d, [K.at(-wide - hb * 0.3 * k, y), K.at(0.0, y + 1.6), K.at(wide + 1.0 + hf * 0.3 * k, y)], BRASS_DARK, 1.5)
-        K.line(d, [K.at(-wide - hb * 0.3 * k, y - 0.3), K.at(0.0, y + 1.3), K.at(wide + 1.0 + hf * 0.3 * k, y - 0.3)], BRASS, 0.7)
-    for x in (-5.0, 0.4, 5.6, 9.6):
-        K.line(d, [K.at(x * 0.7, -11.0), K.at(x * 1.9 - hb * 0.3 + hf * 0.3, HEM - 6.0)], BRASS, 0.6)
-    # The hem: a band of card, with holes punched in it.
-    K.poly(d, [K.at(-30.0, HEM - 6.4), K.at(30.0, HEM - 6.4), K.at(30.0, HEM + 6.0), K.at(-30.0, HEM + 6.0)], CARD)
-    K.line(d, [K.at(-30.0, HEM - 6.4), K.at(30.0, HEM - 6.4)], CARD_DARK, 0.6)
-    for k in range(-8, 10):
-        if (k * 7) % 5 != 0:
-            K.rrect(d, K.home[0] + k * 2.8 - 0.7, K.home[1] + HEM - 4.6 + 1.6 * (k % 2), K.home[0] + k * 2.8 + 0.7, K.home[1] + HEM - 3.2 + 1.6 * (k % 2), 0.2, INK)
+def _rivets(d, points) -> None:
+    for x, y in points:
+        K.oval(d, K.at(x, y), 0.7, 0.7, BRASS_DEEP)
+        K.oval(d, K.at(x - 0.2, y - 0.2), 0.35, 0.35, BRASS_LIGHT)
 
 
-X.torso = R.make_figure(K, ("lovelace",), TEAL, TEAL_DARK, back=(7.4, 7.6, 6.0, 10.4, 17.6), front=(6.4, 10.4, 6.2, 10.8, 17.4), hem_y=HEM, top=TOP,
-                        shoulders=((-4.6, -30.2), (3.8, -30.2)), shoulder_r=(4.8, 3.6), shade_from=8.0, detail=_front)
+def _torso(hem_back: int, hem_front: int, drop=None):
+    """Her trunk, the ball of her waist at ``home``: the barrel of her chest
+    over it, and under it the bell, its base and its wheels. ``drop``: the
+    floor is this far under her waist (the bell is shorter in a low pose)."""
+    floor = FLOOR if drop is None else max(14.0, min(FLOOR, float(drop)))
+    hb, hf = float(hem_back), float(hem_front)
+    foot = floor - 7.0
 
-NEAR_EYE = (2.0, -0.4)
-FAR_EYE = (7.0, -0.6)
+    def shape(d) -> None:
+        h = K.home
+        K.rrect(d, h[0] - 8.6, h[1] + TOP + 1.0, h[0] + 9.2, h[1] - 12.0, 4.0, _SOLID)
+        K.oval(d, K.at(-4.6, -30.4), 4.6, 4.8, _SOLID)
+        K.oval(d, K.at(4.4, -30.4), 3.6, 4.0, _SOLID)
+        K.oval(d, K.at(0.4, -9.6), 4.0, 3.6, _SOLID)
+        K.poly(d, [K.at(-5.6, -8.0), K.at(6.6, -8.0), K.at(14.0 + hf, foot), K.at(-13.0 - hb, foot)], _SOLID)
+        K.rrect(d, h[0] - 13.6 - hb, h[1] + foot - 0.6, h[0] + 14.6 + hf, h[1] + floor - 2.6, 1.2, _SOLID)
+        for x in (-8.6, 9.4):
+            K.oval(d, K.at(x, floor - 3.0), 3.0, 3.0, _SOLID)
+
+    def paint(d) -> None:
+        h = K.home
+        # The far side of the barrel is in its own shade; rivets on its rims.
+        K.poly(d, [K.at(6.0, TOP), K.at(12.0, TOP), K.at(12.0, -12.0), K.at(6.4, -12.0)], BRASS_DARK)
+        K.line(d, [K.at(-8.6, TOP + 5.0), K.at(9.2, TOP + 5.2)], BRASS_DARK, 0.6)
+        K.line(d, [K.at(-8.6, -15.4), K.at(9.2, -15.2)], BRASS_DARK, 0.6)
+        _rivets(d, [(x, TOP + 3.0) for x in (-5.6, -1.6, 2.4, 6.4)] + [(x, -13.6) for x in (-5.6, -1.6, 2.4, 6.4)])
+        # What she is: number wheels, a dial, and the slot her cards go in.
+        K.rrect(d, h[0] - 0.6, h[1] - 30.4, h[0] + 8.0, h[1] - 25.6, 0.6, INK)
+        for k in range(3):
+            K.rrect(d, h[0] + 0.1 + k * 2.7, h[1] - 29.7, h[0] + 2.1 + k * 2.7, h[1] - 26.3, 0.2, CARD)
+            K.line(d, [K.at(1.1 + k * 2.7, -29.0), K.at(1.1 + k * 2.7, -27.0 - (k % 2))], INK, 0.5)
+        K.oval(d, K.at(-4.0, -22.6), 2.7, 2.7, ENAMEL, BRASS_DEEP, 0.5)
+        K.line(d, [K.at(-4.0, -22.6), K.at(-2.6, -24.2)], COPPER_DARK, 0.5)
+        K.rrect(d, h[0] + 0.2, h[1] - 21.6, h[0] + 8.2, h[1] - 20.2, 0.3, INK)
+        K.poly(d, [K.at(1.4, -20.8), K.at(7.0, -20.8), K.at(7.0, -18.2), K.at(1.4, -18.2)], CARD)
+        for k in range(4):
+            K.oval(d, K.at(2.4 + k * 1.2, -19.4), 0.3, 0.3, INK)
+        # The ball of her waist.
+        K.oval(d, K.at(0.4, -9.6), 4.0, 3.6, BRASS_DEEP)
+        K.oval(d, K.at(-0.6, -10.4), 1.4, 1.1, BRASS_DARK)
+        # The bell: bronze, with a band of teal, seams, and the band of card.
+        K.poly(d, [K.at(-5.6, -8.0), K.at(6.6, -8.0), K.at(14.0 + hf, foot), K.at(-13.0 - hb, foot)], BRONZE)
+        K.poly(d, [K.at(3.0, -8.0), K.at(6.6, -8.0), K.at(14.0 + hf, foot), K.at(7.0 + hf * 0.5, foot)], BRONZE_DARK)
+        K.poly(d, [K.at(-6.2, -5.6), K.at(7.2, -5.6), K.at(7.9, -2.8), K.at(-6.9, -2.8)], TEAL)
+        K.line(d, [K.at(-6.2, -5.6), K.at(7.2, -5.6)], TEAL_DARK, 0.5)
+        K.line(d, [K.at(-6.9, -2.8), K.at(7.9, -2.8)], TEAL_DARK, 0.5)
+        for x in (-3.0, 0.6, 4.2):
+            K.line(d, [K.at(x * 0.7 + 0.3, -2.4), K.at(x * 2.3 + 0.4, foot - 5.4)], BRASS, 0.7)
+        _rivets(d, [(-4.6, -0.6), (-0.4, -0.4), (3.8, -0.6)])
+        K.poly(d, [K.at(-30.0, foot - 5.2), K.at(30.0, foot - 5.2), K.at(30.0, foot - 0.8), K.at(-30.0, foot - 0.8)], CARD)
+        K.line(d, [K.at(-30.0, foot - 5.2), K.at(30.0, foot - 5.2)], CARD_DARK, 0.5)
+        for k in range(-7, 9):
+            if (k * 7) % 5 != 0:
+                K.rrect(d, h[0] + k * 2.6 - 0.6, h[1] + foot - 4.2 + 1.2 * (k % 2), h[0] + k * 2.6 + 0.6, h[1] + foot - 3.0 + 1.2 * (k % 2), 0.2, INK)
+        # Her base, and her wheels.
+        K.rrect(d, h[0] - 30.0, h[1] + foot - 0.6, h[0] + 30.0, h[1] + floor - 2.6, 0.0, BRASS_DEEP)
+        for x in (-8.6, 9.4):
+            K.oval(d, K.at(x, floor - 3.0), 3.0, 3.0, INK)
+            K.oval(d, K.at(x, floor - 3.0), 1.1, 1.1, BRASS)
+
+    return K.solid(("lovelace_trunk", hem_back, hem_front, round(floor, 1)), shape, BRASS, paint, outline=1.3, rim=0.3, shade=0.0)
 
 
-def _hair_shape(d) -> None:
-    # Cast in one piece: smooth on top, a knot behind, and a coil at her ear.
-    K.oval(d, K.at(-0.8, -5.6), 8.8, 7.0, WHITE)
-    K.oval(d, K.at(-8.6, -3.0), 3.6, 3.4, WHITE)
-    for y in (2.6, 5.6, 8.4):
-        K.oval(d, K.at(-4.4, y), 2.6, 1.9, WHITE)
+_torso.takes_drop = True  # type: ignore[attr-defined]
+X.torso = _torso
+
+NEAR_EYE = (2.6, -1.0)
+FAR_EYE = (7.4, -1.2)
 
 
-def _hair(d) -> None:
-    K.poly(d, [K.at(20.0, -9.0), K.at(8.4, -9.0), K.at(5.6, -7.0), K.at(2.4, -4.4), K.at(-0.4, -2.0), K.at(-2.0, 0.4), K.at(-2.0, 12.0), K.at(-20.0, 12.0),
+def _cap_shape(d) -> None:
+    # The cap cast in the shape of her hair: a knot behind and a coil at her
+    # ear. And her aerial.
+    K.oval(d, K.at(-0.8, -5.2), 9.0, 6.8, _SOLID)
+    K.oval(d, K.at(-9.0, -2.6), 3.4, 3.2, _SOLID)
+    K.rrect(d, K.home[0] - 6.4, K.home[1] + 0.6, K.home[0] - 2.6, K.home[1] + 9.6, 1.4, _SOLID)
+    K.stroke(d, [K.at(-1.4, -11.0), K.at(-2.4, -18.6)], _SOLID, 1.3)
+    K.oval(d, K.at(-2.5, -19.4), 1.6, 1.6, _SOLID)
+
+
+def _cap(d) -> None:
+    K.poly(d, [K.at(20.0, -9.2), K.at(8.6, -9.2), K.at(5.6, -7.0), K.at(2.0, -4.6), K.at(-0.8, -2.0), K.at(-2.4, 0.4), K.at(-2.4, 12.0), K.at(-20.0, 12.0),
                K.at(-20.0, -26.0), K.at(20.0, -26.0)], COPPER)
-    # The parting, and the light the metal takes.
-    K.line(d, [K.at(3.0, -12.4), K.at(1.6, -8.0)], COPPER_DARK, 0.6)
-    for strand in ([(-5.0, -10.6), (-1.0, -11.6), (1.6, -10.8)], [(4.6, -11.2), (7.0, -9.8)], [(-6.0, -6.0), (-3.0, -3.6)]):
+    # The parting is a seam with rivets, and the metal takes the light.
+    K.line(d, [K.at(3.0, -12.2), K.at(1.6, -8.0)], COPPER_DARK, 0.6)
+    for x, y in ((2.8, -11.2), (2.2, -9.2)):
+        K.oval(d, K.at(x + 1.2, y), 0.5, 0.5, COPPER_LIGHT)
+    for strand in ([(-5.0, -10.4), (-1.0, -11.4), (1.4, -10.6)], [(4.8, -11.0), (7.0, -9.8)], [(-6.0, -6.0), (-3.0, -3.6)]):
         K.line(d, [K.at(x, y) for x, y in strand], COPPER_LIGHT, 0.6)
-    K.oval(d, K.at(-8.6, -3.0), 2.0, 1.8, None, COPPER_DARK, 0.5)  # type: ignore[arg-type]
-    for y in (2.6, 5.6, 8.4):
-        K.line(d, [K.at(-6.4, y - 0.4), K.at(-2.6, y + 0.6)], COPPER_DARK, 0.6)
-        K.line(d, [K.at(-6.0, y - 1.0), K.at(-3.4, y - 0.4)], COPPER_LIGHT, 0.5)
+    K.oval(d, K.at(-9.0, -2.6), 1.9, 1.7, None, COPPER_DARK, 0.5)  # type: ignore[arg-type]
+    # The coil at her ear is a spring.
+    spring = [K.at(-6.0 + 3.2 * (k % 2), 1.4 + k * 1.3) for k in range(7)]
+    K.line(d, spring, COPPER_DARK, 1.3)
+    K.line(d, spring, COPPER_LIGHT, 0.5)
+    # Her aerial, and the light at its end.
+    K.stroke(d, [K.at(-1.4, -11.0), K.at(-2.4, -18.6)], BRASS_DARK, 0.8)
+    K.oval(d, K.at(-2.5, -19.4), 1.3, 1.3, LIGHT)
 
 
 def _face(d) -> None:
-    # The seam of her mask, and a rivet at her temple.
-    K.line(d, [K.at(-1.4, 1.0), K.at(0.4, 6.4), K.at(3.6, 9.0)], ENAMEL_DEEP, 0.45)
-    K.oval(d, K.at(-0.6, -1.6), 0.7, 0.7, BRASS)
+    # A plate of enamel, with a brass edge, and in it her two lenses.
+    plate = [K.at(1.0, -6.6), K.at(7.6, -7.0), K.at(10.2, -3.0), K.at(10.4, 3.4), K.at(8.0, 7.6), K.at(3.0, 7.8), K.at(0.4, 4.0)]
+    K.poly(d, plate, ENAMEL)
+    K.poly(d, [K.at(7.6, -7.0), K.at(10.2, -3.0), K.at(10.4, 3.4), K.at(8.0, 7.6), K.at(7.0, 7.6), K.at(8.4, 3.0), K.at(8.2, -3.0)], ENAMEL_SHADE)
+    K.line(d, plate + plate[:1], BRASS_DEEP, 0.6)
+    for (cx, cy), r in ((NEAR_EYE, 2.7), (FAR_EYE, 2.0)):
+        K.oval(d, K.at(cx, cy), r + 0.7, r + 0.7, BRASS, BRASS_DEEP, 0.5)
+        K.oval(d, K.at(cx, cy), r, r, INK)
+        K.oval(d, K.at(cx, cy), r * 0.62, r * 0.62, TEAL)
+        K.oval(d, K.at(cx + r * 0.2, cy), r * 0.3, r * 0.3, LIGHT)
+        K.oval(d, K.at(cx - r * 0.4, cy - r * 0.45), r * 0.2, r * 0.2, ENAMEL)
+    _rivets(d, [(-0.8, -1.0), (-0.6, 3.0)])
 
 
-_head = R.make_head(K, ("lovelace",), ENAMEL, ENAMEL_SHADE, ENAMEL_DEEP, skull=(0.0, -2.4, 7.8, 8.8), jaw=(2.6, 4.0, 5.2, 6.8),
-                    nose=((7.4, -0.6), (9.4, 2.6), (8.8, 3.8), (7.2, 4.0)), ear=None, shape=_hair_shape, under=_hair, over=_face)
-_eyes = R.make_eyes(K, NEAR_EYE, FAR_EYE, ink=TEAL_DARK, white=LIGHT, lid=ENAMEL_DEEP, size=0.95, lash=0.5)
-_brows = R.make_brows(K, [(-0.4, -3.8), (2.0, -4.6), (4.4, -4.0)], [(5.8, -4.2), (7.2, -4.6), (8.4, -4.2)], COPPER_DARK, 0.9)
-_mouth = R.make_mouth(K, (5.6, 6.6), (150, 70, 70, 255), wide=0.7, lips=(196, 92, 92, 255))
+_head = R.make_head(K, ("lovelace",), BRASS, BRASS_DARK, BRASS_DEEP, skull=(0.0, -2.2, 8.2, 8.4), jaw=(2.2, 3.6, 6.2, 5.8), nose=None, ear=None, shape=_cap_shape,
+                    under=_cap, over=_face)
 
-X.head_layers = lambda pose: [(_head(), "head"), (_eyes(str(pose["eyes"])), "eyes"), (_brows(R.brow_mood(pose)), "brows"), (_mouth(str(pose["mouth"])), "mouth")]
-X.neck = R.make_neck(K, BRASS_DARK, 3.6)
-# A puffed sleeve of teal, and under it an arm of brass with a joint.
-X.upper_arm = lambda near: [(0.0, 0.5, 8.0, 6.4, TEAL if near else TEAL_DARK), (0.42, 1.0, 4.4, 4.0, BRASS if near else BRASS_DARK), (0.86, 1.0, 5.0, 5.0, BRASS_DEEP)]
-X.forearm = lambda near: [(0.0, 0.12, 5.0, 5.0, BRASS_DEEP), (0.1, 1.0, 4.6, 3.8, BRASS if near else BRASS_DARK), (0.78, 1.0, 4.6, 4.4, BRASS_LIGHT if near else BRASS)]
-X.thigh = lambda near: [(0.0, 1.0, 6.0, 5.2, BRASS if near else BRASS_DARK)]
-X.shin = lambda near: [(0.0, 1.0, 5.2, 4.4, BRASS if near else BRASS_DARK)]
-X.hand = R.make_hand(K, BRASS_LIGHT, BRASS, BRASS_DEEP, size=0.86)
-X.shoe = R.make_shoe(K, BRASS_DARK, BRASS_DEEP, BUILD.ankle_up, long=0.92)
+
+def _lids(mode: str):
+    """Her lenses are in her head; this is their shutters, when they are shut."""
+    if mode != "closed":
+        return None
+
+    def paint(d) -> None:
+        for (cx, cy), r in ((NEAR_EYE, 2.7), (FAR_EYE, 2.0)):
+            K.oval(d, K.at(cx, cy), r, r, BRASS_DARK)
+            K.line(d, [K.at(cx - r, cy), K.at(cx + r, cy)], BRASS_DEEP, 0.6)
+
+    return K.piece(("lovelace_lids",), paint)
+
+
+def _grille(mode: str):
+    """The grille she speaks through: its bars are lit when she speaks."""
+    lit = {"open": 2, "big": 3, "o": 2, "smile": 1}.get(mode, 0)
+
+    def paint(d) -> None:
+        K.rrect(d, K.home[0] + 3.4, K.home[1] + 4.2, K.home[0] + 8.6, K.home[1] + 6.6, 0.6, INK, BRASS_DEEP, 0.4)
+        for k in range(3):
+            K.line(d, [K.at(4.4 + k * 1.6, 4.8), K.at(4.4 + k * 1.6, 6.0)], LIGHT if k < lit else ENAMEL_DEEP, 0.6)
+
+    return K.piece(("lovelace_grille", lit), paint)
+
+
+X.head_layers = lambda pose: [(_head(), "head"), (_lids(str(pose["eyes"])), "lids"), (_grille(str(pose["mouth"])), "grille")]
+X.neck = R.make_neck(K, BRASS_DEEP, 3.4)
+
+
+def _hose(near: bool, cuff: RGBA, at_end: bool):
+    """An arm of hers is a hose of rings, with a cuff at one end of it."""
+    a, b_ = (BRASS, BRASS_DARK) if near else (BRASS_DARK, BRASS_DEEP)
+    rings = [(k * 0.2, k * 0.2 + 0.2, 5.0, 5.0, a if k % 2 == 0 else b_) for k in range(5)]
+    return rings + [((0.8, 1.0, 5.8, 5.8, cuff) if at_end else (0.0, 0.14, 6.2, 6.2, cuff))]
+
+
+X.upper_arm = lambda near: _hose(near, BRASS_LIGHT if near else BRASS, False)
+X.forearm = lambda near: _hose(near, TEAL if near else TEAL_DARK, True)
+# She has no legs.
+X.thigh = lambda near: []
+X.shin = lambda near: []
+X.shoe = lambda near: None
+
+
+def _grip(mode: str, near: bool):
+    """Her hand, along +x from its wrist: two fingers of brass that close."""
+    gap = {"open": 3.2, "flat": 1.6, "point": 0.9}.get(mode, 0.5)
+    reach = 7.6 if mode in ("flat", "point") else 6.4
+
+    def shape(d) -> None:
+        K.oval(d, K.at(1.0, 0.0), 2.6, 2.8, _SOLID)
+        K.stroke(d, [K.at(1.6, -1.4), K.at(reach * 0.6, -gap - 0.8), K.at(reach, -gap * 0.5)], _SOLID, 2.0)
+        if mode != "point":
+            K.stroke(d, [K.at(1.6, 1.4), K.at(reach * 0.6, gap + 0.8), K.at(reach, gap * 0.5)], _SOLID, 2.0)
+        else:
+            K.stroke(d, [K.at(1.6, 1.4), K.at(4.0, 2.0), K.at(3.0, 0.8)], _SOLID, 2.0)
+
+    def detail(d) -> None:
+        K.oval(d, K.at(1.0, 0.0), 1.1, 1.2, BRASS_DEEP)
+
+    return K.solid(("grip", mode, near), shape, BRASS_LIGHT if near else BRASS, detail, outline=1.0, rim=0.0, shade=0.0)
+
+
+X.hand = _grip
 
 # ---- How she holds herself -----------------------------------------------------
 
-#: Her hands one on the other at her waist.
+#: Her grips one on the other in front of her, as a person of rank stands.
 X.set_rest(lean=0.0, na=(5.0, 19.0), fa=(4.0, 21.0), nh="fist", fh="fist", nf=(-3.0, 0.0, 0.0), ff=(3.6, 0.0, 0.0))
 
 
@@ -228,10 +343,9 @@ def idle(i: int, n: int):
 
 @X.row
 def walk(i: int, n: int):
-    # She glides: the skirt hides her steps, and it swings.
-    ph, s, c = loop(i, n)
-    nf, ff = R.stride(ph, 6.0, 2.6)
-    return P(hip=(0.4, 0.4 * math.cos(2.0 * ph)), lean=1.0, head=(0.2, 0.0, 1.0 * s), nf=nf, ff=ff, hem=(1.5 + 1.5 * abs(c), 1.5 * abs(s)))
+    # She rolls: she leans a little into it, and nothing of her goes up and down.
+    _, s, _c = loop(i, n)
+    return P(lean=3.0, head=(0.3, 0.0, -2.0 + 0.6 * s))
 
 
 @X.row
@@ -279,7 +393,7 @@ def _card(seed: int):
     """A card of a program: holes in rows. ``seed`` says which holes."""
 
     def shape(d) -> None:
-        K.rrect(d, K.home[0] - 5.0, K.home[1] - 3.2, K.home[0] + 5.0, K.home[1] + 3.2, 0.6, WHITE)
+        K.rrect(d, K.home[0] - 5.0, K.home[1] - 3.2, K.home[0] + 5.0, K.home[1] + 3.2, 0.6, _SOLID)
 
     def detail(d) -> None:
         for r in range(3):
@@ -297,8 +411,8 @@ def _gear(r: float, teeth: int, turn: int):
             a = math.radians(turn + k * 180.0 / teeth)
             rr = r if k % 2 == 0 else r * 0.72
             pts.append(K.at(rr * math.cos(a), rr * math.sin(a)))
-        K.poly(d, pts, WHITE)
-        K.oval(d, K.home, r * 0.7, r * 0.7, WHITE)
+        K.poly(d, pts, _SOLID)
+        K.oval(d, K.home, r * 0.7, r * 0.7, _SOLID)
 
     def detail(d) -> None:
         K.oval(d, K.home, r * 0.3, r * 0.3, BRASS_DEEP)
