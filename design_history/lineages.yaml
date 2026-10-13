@@ -869,3 +869,15 @@ lineages:
       - commit: "22e5258"
         label: "The line of the dojo"
         note: "On the shared rig: lean, the hood of the dojo, black from head to feet, a long red scarf, a katana in a guard that keeps his face clear, its scabbard at his far hip. Claude Opus 5.5 declared."
+  ninja_shadow_oni_leader:
+    name: Shadow Oni Leader
+    ids: [ninja_shadow_oni_leader]
+    paths: ['ninja_shadow_oni_leader', 'ninja_side', '_person_rig']
+    summary: "the duelist's doll of grey capsules with horns and a banner, then a warlord in a horned helmet and a mask of bone"
+    eras:
+      - commit: "e11f755"
+        label: "Moon steel, with horns"
+        note: "The last commit with this design: the capsule doll of `ninja_side` with two horns, wide pauldrons, a banner with the mark of the dojo, from `configs/ninja_leader.yaml`."
+      - commit: "d203737"
+        label: "The warlord"
+        note: "On the shared rig, from the picture Jon gave: horns red inside, a mask of bone with red eyes, laced armour in black and blue with a long skirt, a great sword planted in front of him. Claude Opus 5.5 declared."
