@@ -17,8 +17,10 @@ is seen from its side, facing right, on the ground:
 It is wildlife. It is a little wrong and it does not know. It is not a
 monster, and it is not a toy. There is no drop shadow.
 
-The fur and the swirl of the dream are the game's (a shader over this sheet);
-the sheet is good to look at with no shader on it.
+The dream itself is a second picture of this target, ``dream_skin``: eyes in a
+lattice, a whorl of ripples round each, dots as scales. The game lays it over
+the slug and moves it (a shader that draws no art of its own). The sheet is
+good to look at with no shader on it.
 
 The rows: ``idle`` (it pants), ``walk`` (a wave goes down its body, and it
 goes longer and shorter), ``hurt`` (it bunches up) and ``death`` (it goes
@@ -34,9 +36,11 @@ from __future__ import annotations
 
 import argparse
 import math
+import random
 from pathlib import Path
 from typing import Dict, List, Tuple
 
+import numpy as np
 from PIL import Image
 
 from . import _person_rig as R
@@ -48,6 +52,8 @@ SHEET_FILES = [
     f"{TARGET_NAME}_spritesheet.yaml",
     f"{TARGET_NAME}_spritesheet.ron",
     f"{TARGET_NAME}_actor.ron",
+    # The skin of the dream: see `dream_skin`.
+    f"{TARGET_NAME}_dream_skin.png",
 ]
 
 ACTOR_METADATA = {
@@ -265,8 +271,16 @@ def _body(pose: Pose):
         top = [on(t) for t in (0.08, 0.16, 0.24, 0.34, 0.44, 0.54, 0.62, 0.7)]
         low = [on(t, k) for t, k in ((0.7, 0.24), (0.62, 0.44), (0.5, 0.52), (0.36, 0.5), (0.22, 0.44), (0.1, 0.3))]
         K.poly(d, [at(p) for p in top + low], SADDLE)
-        for t, k, r in ((0.16, 0.22, 1.4), (0.27, 0.32, 1.8), (0.36, 0.16, 1.2), (0.54, 0.34, 1.6), (0.62, 0.16, 1.1)):
-            K.oval(d, at(on(t, k)), r * 1.2, r, SPOT)
+        # Its spots are rings, as the eyes of the dream are: a pale ring, a
+        # dark middle, a point of light.
+        for t, k, r in ((0.16, 0.22, 1.5), (0.27, 0.32, 2.0), (0.36, 0.16, 1.3), (0.54, 0.34, 1.8), (0.62, 0.16, 1.2), (0.46, 0.4, 1.1)):
+            c = at(on(t, k))
+            K.oval(d, c, r * 1.25, r * 1.05, SPOT)
+            K.oval(d, c, r * 0.62, r * 0.55, SKIN_DARK)
+            K.oval(d, (c[0] - r * 0.3, c[1] - r * 0.3), 0.35, 0.35, WHITE)
+        # And dots in rows where the fur is, as on the dogs of those pictures.
+        for t, k in ((0.7, 0.34), (0.74, 0.6), (0.79, 0.3), (0.84, 0.62), (0.89, 0.36), (0.95, 0.66)):
+            K.oval(d, at(on(t, k)), 0.9, 0.8, FUR_DARK)
         # It is wet: a line of light down its back, and a little pink at its tail.
         K.line(d, [at(on(t, 0.14)) for t in (0.16, 0.24, 0.32)], SKIN_LIGHT, 0.9)
         K.line(d, [at(on(t, 0.4)) for t in (0.05, 0.1, 0.16)], SHEEN[:3] + (int(170 * dream),), 1.1)
@@ -368,6 +382,95 @@ def _stars(n: int):
     return K.piece(("puppy_slug_stars", n), paint)
 
 
+# ---- The skin of the dream -------------------------------------------------------
+
+DREAM_SKIN_FILE = f"{TARGET_NAME}_dream_skin.png"
+
+
+def dream_skin(size: int = 256, seed: int = 2015) -> Image.Image:
+    """The skin of the dream: a picture that TILES in both directions, for the
+    game's dream pass to lay over the slug (the pass draws no art of its own).
+
+    It is what the pictures of 2015 are made of: eyes in a loose lattice (a
+    dark pupil, an amber or a teal iris, a pale lid), a whorl of fine ripples
+    round each eye in the colours of oil on water, a dark crease where two
+    whorls meet, and rows of dots round each eye, as scales.
+
+    The alpha is how much of the skin shows: all of an eye, most of a dot,
+    less of the ripples."""
+    rng = random.Random(seed)
+    cols, rows = 7, 8
+    sx, sy = size / cols, size / rows
+    sites = []
+    for j in range(rows):
+        for i in range(cols):
+            x = (i + 0.5 + (0.5 if j % 2 else 0.0) + rng.uniform(-0.22, 0.22)) * sx
+            y = (j + 0.5 + rng.uniform(-0.22, 0.22)) * sy
+            sites.append((x % size, y % size, rng.uniform(6.0, 10.5), rng.random(), rng.random()))
+    S = 3
+    n = size * S
+    yy, xx = np.mgrid[0:n, 0:n].astype(np.float32) / S
+    d1 = np.full((n, n), 1e9, np.float32); d2 = np.full((n, n), 1e9, np.float32)
+    idx = np.zeros((n, n), np.int32); ang = np.zeros((n, n), np.float32)
+    for k, (x, y, r, h, t) in enumerate(sites):
+        dx = (xx - x + size / 2) % size - size / 2
+        dy = (yy - y + size / 2) % size - size / 2
+        d = np.sqrt(dx * dx + dy * dy)
+        closer = d < d1
+        d2 = np.where(closer, d1, np.minimum(d2, d))
+        ang = np.where(closer, np.arctan2(dy, dx), ang)
+        idx = np.where(closer, k, idx)
+        d1 = np.where(closer, d, d1)
+    rad = np.array([s[2] for s in sites], np.float32)[idx]
+    hue0 = np.array([s[3] for s in sites], np.float32)[idx]
+    kind = np.array([s[4] for s in sites], np.float32)[idx]
+    u = d1 / rad
+    # the whorl: fine ripples round each eye, bent a little by the angle
+    phase = d1 * 1.25 + 0.6 * np.sin(ang * 3.0 + hue0 * 6.28)
+    ripple = 0.5 + 0.5 * np.sin(phase)
+    hue = (0.52 + 0.30 * np.sin(hue0 * 6.28) + 0.07 * np.sin(ang * 2.0) + d1 * 0.011) % 1.0
+    sat = 0.50 + 0.25 * ripple
+    val = 0.50 + 0.50 * ripple
+    rgb = np.zeros((n, n, 3), np.float32)
+    h6 = hue * 6.0; i6 = np.floor(h6).astype(np.int32) % 6; f = h6 - np.floor(h6)
+    p = val * (1 - sat); q = val * (1 - sat * f); t = val * (1 - sat * (1 - f))
+    for c, table in enumerate(((val, q, p, p, t, val), (t, val, val, q, p, p), (p, p, t, val, val, q))):
+        rgb[..., c] = np.choose(i6, table)
+    alpha = 0.34 + 0.30 * ripple
+    # the crease where two whorls meet
+    crease = np.clip(1.0 - (d2 - d1) / 2.4, 0.0, 1.0)
+    rgb *= (1.0 - 0.55 * crease)[..., None]
+    alpha = np.maximum(alpha, 0.7 * crease)
+    # rows of dots round each eye, as scales
+    for ring, count in ((1.55, 9), (2.05, 13)):
+        band = np.clip(1.0 - np.abs(u - ring) / 0.16, 0.0, 1.0)
+        dots = np.clip((np.cos(ang * count + hue0 * 9.0) - 0.55) / 0.3, 0.0, 1.0) * band
+        dot_rgb = np.stack([0.20 + 0.0 * u, 0.12 + 0.0 * u, 0.20 + 0.0 * u], -1)
+        rgb = rgb * (1 - dots[..., None]) + dot_rgb * dots[..., None]
+        alpha = np.maximum(alpha, 0.9 * dots)
+    # the eye
+    def ring(lo, hi, soft=0.06):
+        return np.clip((u - lo) / soft, 0, 1) * np.clip((hi - u) / soft, 0, 1)
+    lid = ring(0.80, 1.04); limbus = ring(0.68, 0.82); iris = ring(0.30, 0.70); pupil = np.clip((0.34 - u) / 0.06, 0, 1)
+    amber = np.stack([0.98 + 0 * u, 0.62 + 0.2 * np.cos(ang * 9.0) * 0 + 0 * u, 0.16 + 0 * u], -1)
+    teal = np.stack([0.30 + 0 * u, 0.86 + 0 * u, 0.80 + 0 * u], -1)
+    iris_rgb = np.where((kind > 0.42)[..., None], amber, teal) * (0.80 + 0.20 * np.cos(ang * 11.0))[..., None]
+    for mask, colour in ((lid, np.array([0.98, 0.94, 0.84], np.float32)), (limbus, np.array([0.16, 0.10, 0.14], np.float32))):
+        rgb = rgb * (1 - mask[..., None]) + colour * mask[..., None]
+    rgb = rgb * (1 - iris[..., None]) + iris_rgb * iris[..., None]
+    rgb = rgb * (1 - pupil[..., None]) + np.array([0.04, 0.03, 0.06], np.float32) * pupil[..., None]
+    outline = ring(1.02, 1.16)
+    rgb = rgb * (1 - 0.8 * outline[..., None])
+    alpha = np.maximum(alpha, np.clip((1.16 - u) / 0.06, 0, 1))
+    # a point of light in each pupil
+    gx = (np.cos(ang) * d1 + rad * 0.14); gy = (np.sin(ang) * d1 + rad * 0.16)
+    glint = np.clip(1.0 - np.sqrt(gx * gx + gy * gy) / (rad * 0.13), 0, 1)
+    rgb = rgb * (1 - glint[..., None]) + glint[..., None]
+    out = np.dstack([np.clip(rgb, 0, 1), np.clip(alpha, 0, 1)])
+    img = Image.fromarray((out * 255).astype(np.uint8), "RGBA")
+    return img.resize((size, size), Image.LANCZOS)
+
+
 # ---- The rows ------------------------------------------------------------------
 
 
@@ -463,7 +566,10 @@ BODY_BOX = (4.0, 44.0, 118.0, GROUND)
 
 def render(out_dir: str | Path, **opts) -> List[Path]:
     del opts
-    return K.render(TARGET_NAME, ROWS, _render_frame, out_dir, ACTOR_METADATA, BODY_BOX)
+    outputs = K.render(TARGET_NAME, ROWS, _render_frame, out_dir, ACTOR_METADATA, BODY_BOX)
+    skin = Path(out_dir) / DREAM_SKIN_FILE
+    dream_skin().save(skin)
+    return outputs + [skin]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -475,7 +581,7 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
+TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA, "sheet_files": SHEET_FILES}}
 
 
 if __name__ == "__main__":
