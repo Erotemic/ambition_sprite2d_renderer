@@ -1,37 +1,42 @@
+"""Sprite generator for Admiral Grass Hopper: a grasshopper, and an admiral.
+
+An affectionate caricature of Rear Admiral Grace Hopper.
+
+The look (2026-10-13): a small old lady who is a grasshopper, in the blue
+uniform of an admiral, seen three quarters from the front, facing right. Her
+skin is green. Her eyes are large and dark behind round glasses, and two long
+feelers go back from under her cap. A white cap with a black peak and a gold
+badge; a dark blue jacket with gold buttons and the gold rings of her rank
+on each cuff, a white collar and a black tie, and a blue skirt to her knee.
+Her legs are a grasshopper's: long, green, and the knee is behind her. Her
+wings are folded down her back like the tails of a coat. She stands very
+straight.
+
+She is a grown woman (she is seventy), not a mascot. She holds nothing at
+rest: her baton is in her hand only in the rows that are its own. There is
+no drop shadow.
+
+What she shows: the baton, which is also a pointer; the length of wire that
+is a nanosecond; and the moth she found in the relay.
+
+She is a person of ``_person_rig``: the bones, the poses and the frame are
+shared; the head, the clothes, how she stands and what she shows are hers.
+Her portraits are frames of this sheet.
+"""
+
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
-from pathlib import Path
-from typing import List, Tuple
+from typing import List
 
-from PIL import Image, ImageDraw
-
-from ...authoring import rigdoc, shape_rig
-from ...authoring.part_flipbook import publish_rig_flipbook
-from ambition_sprite2d_renderer.authoring.portrait import (
-    FaceGuide,
-    PortraitClip,
-    render_framed_portrait,
-    write_portrait_sheet,
-)
-from ambition_sprite2d_renderer.authoring.sheet_build import build_sheet
+from ._ai_era_kit import RGBA, mix, pin
+from ._ai_era_kit import WHITE as _SOLID
+from . import _person_rig as R
+from ._person_rig import Build, Person, Stamp, loop, shot
 
 TARGET_NAME = "admiral_grass_hopper"
-FRAME_SIZE = (128, 128)
-WORK_SIZE = (FRAME_SIZE[0] * 4, FRAME_SIZE[1] * 4)
-SUPER = 4
-
-ROWS: List[Tuple[str, int, int]] = [
-    ("idle", 8, 140),
-    ("walk", 8, 96),
-    ("talk", 6, 112),
-    ("interact", 6, 108),
-    ("slash", 7, 84),
-    ("taunt", 8, 92),
-    ("hurt", 5, 92),
-    ("death", 8, 112),
-]
+TARGET_BASENAME = TARGET_NAME
+DISPLAY_NAME = "Admiral Grass Hopper"
 
 ACTOR_METADATA = {
     "actor": {
@@ -173,519 +178,300 @@ ACTOR_METADATA = {
 }
 
 OUTLINE = (18, 22, 22, 255)
-GREEN_DARK = (41, 92, 54, 255)
-GREEN = (89, 163, 93, 255)
-GREEN_LIGHT = (140, 211, 123, 255)
-GREEN_PALE = (182, 235, 156, 255)
-COAT_DARK = (32, 45, 92, 255)
-COAT = (56, 84, 150, 255)
-COAT_LIGHT = (92, 130, 210, 255)
-GOLD = (234, 197, 84, 255)
-GOLD_LIGHT = (248, 224, 136, 255)
-WHITE = (237, 240, 246, 255)
-RED = (173, 54, 53, 255)
-RED_LIGHT = (214, 90, 88, 255)
-WOOD = (123, 84, 56, 255)
-WOOD_LIGHT = (165, 118, 74, 255)
-EYE = (32, 24, 24, 255)
-EYE_HL = (255, 252, 244, 255)
-CHEEK = (208, 166, 132, 90)
-
-
-def _lerp(a: float, b: float, t: float) -> float:
-    return a + (b - a) * t
-
-
-def _ease(t: float) -> float:
-    return t * t * (3.0 - 2.0 * t)
-
-
-@dataclass
-class Pose:
-    root_x: float = 0.0
-    root_y: float = 0.0
-    bob: float = 0.0
-    lean: float = 0.0
-    head_tilt: float = 0.0
-    antenna_sway: float = 0.0
-    abdomen_lift: float = 0.0
-    coat_flare: float = 0.0
-    mouth_open: float = 0.0
-    arm_front: float = 0.0
-    arm_back: float = 0.0
-    baton_angle: float = -12.0
-    baton_extend: float = 0.0
-    front_leg: float = 0.0
-    rear_leg: float = 0.0
-    front_foot_lift: float = 0.0
-    rear_foot_lift: float = 0.0
-    salute: float = 0.0
-    blink: bool = False
-    x_eye: bool = False
-    dead: bool = False
-
-    def __init__(self, anim: str, frame_idx: int, frame_count: int):
-        t = frame_idx / max(1, frame_count - 1)
-        cyc = math.tau * frame_idx / max(1, frame_count)
-        s = math.sin(cyc)
-        c = math.cos(cyc)
-
-        self.root_x = 0.0
-        self.root_y = 0.0
-        self.bob = 0.0
-        self.lean = 0.0
-        self.head_tilt = 0.0
-        self.antenna_sway = 0.0
-        self.abdomen_lift = 0.0
-        self.coat_flare = 0.0
-        self.mouth_open = 0.0
-        self.arm_front = 0.0
-        self.arm_back = 0.0
-        self.baton_angle = -14.0
-        self.baton_extend = 0.0
-        self.front_leg = 0.0
-        self.rear_leg = 0.0
-        self.front_foot_lift = 0.0
-        self.rear_foot_lift = 0.0
-        self.salute = 0.0
-        self.blink = False
-        self.x_eye = False
-        self.dead = False
-
-        if anim == "idle":
-            self.bob = s * 1.5
-            self.lean = s * 1.8
-            self.head_tilt = -s * 1.4
-            self.antenna_sway = s * 6.0
-            self.abdomen_lift = abs(s) * 1.8
-            self.coat_flare = abs(s) * 1.4
-            self.arm_front = 8.0 + s * 3.0
-            self.arm_back = -10.0 - s * 2.0
-            self.front_leg = c * 2.0
-            self.rear_leg = -c * 2.0
-            self.blink = frame_idx == frame_count - 2
-        elif anim == "walk":
-            self.root_x = s * 2.4
-            self.bob = abs(s) * 3.2 - 0.8
-            self.lean = s * 3.4
-            self.head_tilt = -s * 1.6
-            self.antenna_sway = -s * 10.0
-            self.abdomen_lift = abs(s) * 2.4
-            self.coat_flare = abs(s) * 5.0
-            self.arm_front = 14.0 * s + 8.0
-            self.arm_back = -12.0 * s - 10.0
-            self.front_leg = 22.0 * s
-            self.rear_leg = -24.0 * s
-            self.front_foot_lift = max(0.0, s) * 8.0
-            self.rear_foot_lift = max(0.0, -s) * 8.0
-        elif anim == "talk":
-            self.bob = s * 1.0
-            self.lean = s * 1.2
-            self.head_tilt = -s * 2.0
-            self.antenna_sway = s * 8.0
-            self.arm_front = _lerp(8.0, 28.0, (s + 1.0) * 0.5)
-            self.arm_back = -8.0
-            self.baton_angle = -38.0
-            self.baton_extend = 8.0
-            self.salute = (s + 1.0) * 0.28
-            self.mouth_open = 0.18 + (c + 1.0) * 0.08
-            self.coat_flare = 1.5
-        elif anim == "interact":
-            tt = _ease(t)
-            self.bob = -math.sin(tt * math.pi) * 2.0
-            self.lean = _lerp(-8.0, 10.0, tt)
-            self.head_tilt = _lerp(-6.0, 4.0, tt)
-            self.antenna_sway = _lerp(10.0, -6.0, tt)
-            self.arm_front = _lerp(-12.0, 42.0, tt)
-            self.arm_back = -6.0
-            self.baton_angle = _lerp(-72.0, -10.0, tt)
-            self.baton_extend = _lerp(4.0, 18.0, tt)
-            self.salute = _lerp(0.0, 0.18, tt)
-            self.mouth_open = 0.10
-            self.coat_flare = 2.2
-        elif anim == "slash":
-            tt = _ease(t)
-            wave = math.sin(tt * math.pi)
-            self.root_x = _lerp(-4.0, 8.0, tt)
-            self.bob = -wave * 3.5
-            self.lean = _lerp(12.0, -18.0, tt)
-            self.head_tilt = _lerp(8.0, -10.0, tt)
-            self.antenna_sway = _lerp(-8.0, 18.0, tt)
-            self.abdomen_lift = 2.0 + wave * 1.8
-            self.coat_flare = 4.0 + wave * 5.0
-            self.arm_front = _lerp(78.0, -112.0, tt)
-            self.arm_back = _lerp(10.0, -18.0, tt)
-            self.baton_angle = _lerp(60.0, -120.0, tt)
-            self.baton_extend = _lerp(0.0, 26.0, tt)
-            self.front_leg = 8.0 - wave * 5.0
-            self.rear_leg = -10.0 + wave * 5.0
-            self.mouth_open = 0.12 * wave
-        elif anim == "taunt":
-            self.bob = abs(s) * 1.6
-            self.lean = s * 2.2
-            self.head_tilt = -s * 3.0
-            self.antenna_sway = s * 12.0
-            self.arm_front = 16.0 + s * 8.0
-            self.arm_back = -10.0
-            self.baton_angle = -84.0
-            self.baton_extend = 14.0
-            self.salute = 0.20 + max(0.0, s) * 0.25
-            self.mouth_open = 0.1 + max(0.0, c) * 0.12
-            self.coat_flare = 3.0
-        elif anim == "hurt":
-            hit = math.sin(t * math.pi)
-            shake = math.sin(t * math.pi * 4.0) * (1.0 - t)
-            self.root_x = shake * 4.0
-            self.bob = -hit * 2.5
-            self.lean = -18.0 * hit
-            self.head_tilt = 16.0 * hit
-            self.antenna_sway = 22.0 * hit
-            self.arm_front = 28.0 * hit
-            self.arm_back = 18.0 * hit
-            self.front_leg = 12.0 * hit
-            self.rear_leg = -10.0 * hit
-            self.mouth_open = 0.14 * hit
-        elif anim == "death":
-            tt = _ease(t)
-            self.root_x = _lerp(0.0, -16.0, tt)
-            self.root_y = _lerp(0.0, 12.0, tt)
-            self.bob = -tt * 2.0
-            self.lean = _lerp(0.0, -88.0, tt)
-            self.head_tilt = _lerp(0.0, 28.0, tt)
-            self.antenna_sway = _lerp(0.0, 26.0, tt)
-            self.abdomen_lift = _lerp(0.0, 6.0, tt)
-            self.coat_flare = _lerp(1.0, 7.0, tt)
-            self.arm_front = _lerp(8.0, 92.0, tt)
-            self.arm_back = _lerp(-10.0, 62.0, tt)
-            self.baton_angle = _lerp(-14.0, -136.0, tt)
-            self.front_leg = _lerp(0.0, 48.0, tt)
-            self.rear_leg = _lerp(0.0, 24.0, tt)
-            self.front_foot_lift = _lerp(0.0, 8.0, tt)
-            self.rear_foot_lift = _lerp(0.0, 4.0, tt)
-            self.mouth_open = _lerp(0.0, 0.18, tt)
-            self.x_eye = tt > 0.55
-            self.dead = tt > 0.84
-
-
-def _rot(point: tuple[float, float], origin: tuple[float, float], degrees: float) -> tuple[float, float]:
-    ang = math.radians(degrees)
-    px, py = point
-    ox, oy = origin
-    dx = px - ox
-    dy = py - oy
-    ca = math.cos(ang)
-    sa = math.sin(ang)
-    return (ox + dx * ca - dy * sa, oy + dx * sa + dy * ca)
-
-
-def _poly(draw: ImageDraw.ImageDraw, points, fill, outline=OUTLINE, width=5):
-    draw.polygon(points, fill=fill)
-    if outline is not None:
-        draw.line(list(points) + [points[0]], fill=outline, width=width)
-
-
-def _ellipse(draw: ImageDraw.ImageDraw, bbox, fill, outline=OUTLINE, width=5):
-    draw.ellipse(bbox, fill=fill, outline=outline, width=width)
-
-
-def _line(draw: ImageDraw.ImageDraw, pts, fill, width=5):
-    draw.line(pts, fill=fill, width=width, joint="curve")
-
-
-def _circle(draw: ImageDraw.ImageDraw, center, radius, fill, outline=OUTLINE, width=4):
-    x, y = center
-    _ellipse(draw, (x - radius, y - radius, x + radius, y + radius), fill=fill, outline=outline, width=width)
-
-
-def _draw_hat(draw: ImageDraw.ImageDraw, center, head_tilt=0.0):
-    cx, cy = center
-    brim = [(cx - 34, cy - 26), (cx + 20, cy - 32), (cx + 34, cy - 18), (cx - 22, cy - 12)]
-    crown = [(cx - 22, cy - 40), (cx + 8, cy - 44), (cx + 24, cy - 34), (cx - 8, cy - 30)]
-    brim = [_rot(p, center, head_tilt) for p in brim]
-    crown = [_rot(p, center, head_tilt) for p in crown]
-    _poly(draw, brim, COAT_DARK, width=4)
-    _poly(draw, crown, COAT, width=4)
-    badge_center = _rot((cx + 8, cy - 32), center, head_tilt)
-    _circle(draw, badge_center, 6, GOLD_LIGHT, width=2)
-    _line(draw, [
-        _rot((cx - 16, cy - 28), center, head_tilt),
-        _rot((cx + 22, cy - 34), center, head_tilt),
-    ], fill=GOLD, width=4)
-
-
-# --- Rig construction -------------------------------------------------------
-#
-# The admiral is drawn as a rig (``shape_rig``): every rigid piece is painted
-# once in its own raster (supersampled pixels) and placed, turned where it
-# turns. Limb segments are round-capped strokes turned from joint to joint
-# (one piece per whole-pixel length) carrying the joint disc at their root;
-# the abdomen, coat skirt and antennae are keyed by the (rounded) lift, flare
-# and sway they read; the thorax rides the chest; the head's face, eye, mouth,
-# antennae and hat turn together by the head's tilt; the baton is painted
-# level and turned about the hand.
-
-
-def _piece(key, half: float, paint):
-    """A piece ``2 * half`` supersampled pixels square, pivot at the centre:
-    ``paint(draw, o)`` paints it with the local origin at ``(o, o)``."""
-    size = 2 * int(math.ceil(half))
-    return shape_rig.piece((TARGET_NAME,) + tuple(key), (size, size), (size / 2, size / 2), lambda d: paint(d, size / 2))
-
-
-def _length(a, b) -> float:
-    """A segment's length to the whole frame pixel (in supersampled px)."""
-    return float(max(1, round(math.hypot(b[0] - a[0], b[1] - a[1]) / SUPER)) * SUPER)
-
-
-def _angle(a, b) -> float:
-    return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
-
-
-def _place_segment(img, a, b, fill, width: int, root_disc, name: str, end_disc=None) -> None:
-    """A limb segment from ``a`` to ``b``: a stroke of ``width`` with round
-    ends (the polyline's curve joints), then the joint disc ``(radius,
-    outline width)`` at its root, and ``end_disc`` at its end."""
-    span = _length(a, b)
-    half = span + width + 4
-
-    def paint(draw, o: float) -> None:
-        r = width / 2
-        _line(draw, [(o, o), (o + span, o)], fill=fill, width=width)
-        draw.ellipse((o - r, o - r, o + r, o + r), fill=fill)
-        draw.ellipse((o + span - r, o - r, o + span + r, o + r), fill=fill)
-        if root_disc is not None:
-            _circle(draw, (o, o), root_disc[0], fill, width=root_disc[1])
-        if end_disc is not None:
-            _circle(draw, (o + span, o), end_disc[0], fill, width=end_disc[1])
-
-    part = _piece(("segment", span, fill, width, root_disc, end_disc), half, paint)
-    shape_rig.place(img, part, a, _angle(a, b), name)
-
-
-def _place_leg(img, side: str, hip, knee, ankle, foot, *, fill, lift=0.0) -> None:
-    ax, ay = ankle
-    ankle = (ax, ay - lift * 0.35)
-    foot = (foot[0], foot[1] - lift)
-    _place_segment(img, hip, knee, fill, 18, (8, 3), f"{side}_thigh")
-    _place_segment(img, knee, ankle, fill, 18, (7, 3), f"{side}_shin")
-    _place_segment(img, ankle, foot, fill, 18, (6, 3), f"{side}_foot")
-
-
-def _paint_baton(draw, o: float, extend: float) -> None:
-    """The baton level from the hand at ``(o, o)``."""
-    hx, hy = o, o
-    end = (hx + 38.0 + extend, hy - 2.0)
-    tip = (end[0] + 8.0, end[1])
-    _line(draw, [(hx, hy), end], fill=WOOD, width=8)
-    _line(draw, [(hx, hy), end], fill=OUTLINE, width=2)
-    _line(draw, [end, tip], fill=GOLD, width=5)
-    _line(draw, [end, tip], fill=OUTLINE, width=2)
-    _circle(draw, (hx + 10.0, hy), 3, GOLD_LIGHT, width=2)
-
-
-def _paint_thorax(draw, chest) -> None:
-    thorax_box = (chest[0] - 56, chest[1] - 62, chest[0] + 54, chest[1] + 44)
-    _ellipse(draw, thorax_box, COAT, outline=OUTLINE, width=6)
-    left_lapel = [(chest[0] - 18, chest[1] - 38), (chest[0] + 2, chest[1] - 6), (chest[0] - 8, chest[1] + 30), (chest[0] - 28, chest[1] + 8)]
-    right_lapel = [(chest[0] + 4, chest[1] - 42), (chest[0] + 24, chest[1] - 12), (chest[0] + 20, chest[1] + 20), (chest[0] - 2, chest[1] - 10)]
-    _poly(draw, left_lapel, COAT_LIGHT, width=3)
-    _poly(draw, right_lapel, COAT_LIGHT, width=3)
-    for dx, dy in ((-30, -46), (-30, -28), (-26, -10), (10, -36), (8, -18), (6, 0)):
-        _circle(draw, (chest[0] + dx, chest[1] + dy), 4, GOLD_LIGHT, width=2)
-    epaulet_back = [(chest[0] - 48, chest[1] - 54), (chest[0] - 12, chest[1] - 64), (chest[0] - 10, chest[1] - 46), (chest[0] - 44, chest[1] - 36)]
-    epaulet_front = [(chest[0] + 8, chest[1] - 58), (chest[0] + 42, chest[1] - 60), (chest[0] + 46, chest[1] - 42), (chest[0] + 12, chest[1] - 42)]
-    _poly(draw, epaulet_back, GOLD, width=3)
-    _poly(draw, epaulet_front, GOLD, width=3)
-
-
-def _paint_head(draw, head_center) -> None:
-    head_box = (head_center[0] - 42, head_center[1] - 36, head_center[0] + 36, head_center[1] + 30)
-    _ellipse(draw, head_box, GREEN_LIGHT, outline=OUTLINE, width=6)
-    _ellipse(draw, (head_box[0] + 8, head_box[1] + 10, head_box[2] - 10, head_box[3] - 10), GREEN_PALE, outline=None)
-    _ellipse(draw, (head_center[0] - 8, head_center[1] + 8, head_center[0] + 20, head_center[1] + 24), CHEEK, outline=None)
-
-
-def _paint_eye(draw, head_center, x_eye: bool, blink: bool) -> None:
-    eye_center = (head_center[0] + 14, head_center[1] - 2)
-    if x_eye:
-        for sign in (-1, 1):
-            _line(draw, [(eye_center[0] - 7, eye_center[1] - 7 * sign), (eye_center[0] + 7, eye_center[1] + 7 * sign)], fill=EYE, width=4)
-    elif blink:
-        _line(draw, [(eye_center[0] - 10, eye_center[1]), (eye_center[0] + 8, eye_center[1] + 2)], fill=EYE, width=4)
-    else:
-        _ellipse(draw, (eye_center[0] - 10, eye_center[1] - 8, eye_center[0] + 8, eye_center[1] + 8), WHITE, outline=OUTLINE, width=3)
-        pupil = (eye_center[0] + 2, eye_center[1] + 1)
-        _circle(draw, pupil, 4, EYE, width=1)
-        _circle(draw, (pupil[0] - 1, pupil[1] - 1), 1, EYE_HL, outline=None, width=0)
-
-
-def _paint_mouth(draw, head_center, mouth_open: float) -> None:
-    mouth_y = head_center[1] + 16
-    mouth_w = 16
-    mouth_h = 3 + mouth_open * 26
-    _line(draw, [(head_center[0] - 2, mouth_y), (head_center[0] + mouth_w, mouth_y + mouth_h * 0.15)], fill=OUTLINE, width=4)
-    if mouth_open > 0.04:
-        tongue = [
-            (head_center[0] + 4, mouth_y + 2),
-            (head_center[0] + 15, mouth_y + 2),
-            (head_center[0] + 12, mouth_y + mouth_h),
-            (head_center[0] + 5, mouth_y + mouth_h),
-        ]
-        _poly(draw, tongue, RED_LIGHT, outline=None, width=0)
-
-
-def _paint_antennae(draw, head_center, sway: float) -> None:
-    for side, lift in ((-1, -8), (1, 10)):
-        ant_base = (head_center[0] - 4, head_center[1] - 20)
-        ant_mid = (head_center[0] + side * 8, head_center[1] - 62 + side * 4 + sway)
-        ant_tip = (head_center[0] + side * 22, head_center[1] - 96 + sway * 1.2 + lift)
-        _line(draw, [ant_base, ant_mid, ant_tip], fill=GREEN_DARK, width=6)
-        _circle(draw, ant_tip, 4, GOLD_LIGHT, width=2)
-
-
-def _draw_admiral(pose: Pose, anim: str, frame_idx: int, frame_count: int):
-    img = Image.new("RGBA", WORK_SIZE, (0, 0, 0, 0))
-
-    ox = 210 + pose.root_x * SUPER
-    ground_y = 386 + pose.root_y * SUPER
-    bob = pose.bob * SUPER
-
-    hip_back = (ox - 42, ground_y - 112 - bob)
-    hip_front = (ox - 4, ground_y - 114 - bob)
-    knee_back = _rot((ox - 74, ground_y - 54 - bob), hip_back, pose.rear_leg)
-    knee_front = _rot((ox + 16, ground_y - 48 - bob), hip_front, pose.front_leg)
-    ankle_back = (knee_back[0] + 22, knee_back[1] + 48)
-    ankle_front = (knee_front[0] + 24, knee_front[1] + 44)
-    foot_back = (ankle_back[0] + 34, ground_y - 6)
-    foot_front = (ankle_front[0] + 34, ground_y - 6)
-
-    _place_leg(img, "back", hip_back, knee_back, ankle_back, foot_back, fill=GREEN_DARK, lift=pose.rear_foot_lift * SUPER)
-
-    # Wing and abdomen about the body point, keyed by the abdomen's lift.
-    body_at = (ox, ground_y - bob)
-    lift = round(pose.abdomen_lift * SUPER)
-
-    def paint_abdomen(draw, o: float) -> None:
-        abdomen_box = (o - 122, o - 190 - lift, o - 10, o - 104)
-        wing_box = (o - 84, o - 214, o + 10, o - 128)
-        _ellipse(draw, wing_box, (184, 235, 226, 160), outline=(86, 120, 120, 150), width=3)
-        _ellipse(draw, abdomen_box, GREEN, outline=OUTLINE, width=6)
-        _ellipse(draw, (abdomen_box[0] + 14, abdomen_box[1] + 10, abdomen_box[2] - 12, abdomen_box[3] - 10), GREEN_LIGHT, outline=None)
-
-    shape_rig.place(img, _piece(("abdomen", lift), 220, paint_abdomen), body_at, 0.0, "abdomen")
-
-    chest = (ox + pose.lean * 0.5, ground_y - 212 - bob)
-    _place_leg(img, "front", hip_front, knee_front, ankle_front, foot_front, fill=GREEN, lift=pose.front_foot_lift * SUPER)
-
-    flare = round(pose.coat_flare * SUPER / 2) * 2
-
-    def paint_skirt(draw, o: float) -> None:
-        coat_skirt = [
-            (o - 44, o + 18),
-            (o + 28, o + 10),
-            (o + 44 + flare, o + 76),
-            (o - 12, o + 82),
-            (o - 48 - flare * 0.3, o + 74),
-        ]
-        _poly(draw, coat_skirt, COAT_DARK, width=5)
-
-    shape_rig.place(img, _piece(("skirt", flare), 96, paint_skirt), chest, 0.0, "coat_skirt")
-    shape_rig.place(img, _piece(("thorax",), 72, lambda d, o: _paint_thorax(d, (o, o))), chest, 0.0, "thorax")
-
-    # The head turns by its tilt about its centre: face, eye, mouth, antennae, hat.
-    neck = (chest[0] + 18, chest[1] - 66)
-    head_center = _rot((neck[0] + 20, neck[1] - 18), neck, pose.head_tilt)
-    tilt = pose.head_tilt
-    shape_rig.place(img, _piece(("head",), 48, lambda d, o: _paint_head(d, (o, o))), head_center, tilt, "head")
-    eye = (pose.x_eye, pose.blink and not pose.x_eye)
-    shape_rig.place(img, _piece(("eye",) + eye, 48, lambda d, o: _paint_eye(d, (o, o), *eye)), head_center, tilt, "eye")
-    mouth_open = round(pose.mouth_open * 50) / 50
-    shape_rig.place(img, _piece(("mouth", mouth_open), 48, lambda d, o: _paint_mouth(d, (o, o), mouth_open)), head_center, tilt, "mouth")
-    sway = round(pose.antenna_sway / 2) * 2
-    shape_rig.place(img, _piece(("antennae", sway), 132, lambda d, o: _paint_antennae(d, (o, o), sway)), head_center, tilt, "antennae")
-    shape_rig.place(img, _piece(("hat",), 52, lambda d, o: _draw_hat(d, (o, o))), head_center, tilt, "hat")
-
-    shoulder_back = (chest[0] - 28, chest[1] - 20)
-    elbow_back = _rot((shoulder_back[0] - 18, shoulder_back[1] + 28), shoulder_back, pose.arm_back)
-    hand_back = _rot((elbow_back[0] + 2, elbow_back[1] + 26), elbow_back, pose.arm_back * 0.3)
-    _place_segment(img, shoulder_back, elbow_back, GREEN_DARK, 14, (6, 3), "back_upper_arm")
-    _place_segment(img, elbow_back, hand_back, GREEN_DARK, 14, (5, 3), "back_forearm", end_disc=(5, 3))
-
-    shoulder_front = (chest[0] + 22, chest[1] - 18)
-    elbow_front = _rot((shoulder_front[0] + 20, shoulder_front[1] + 18), shoulder_front, pose.arm_front)
-    hand_front = _rot((elbow_front[0] + 22, elbow_front[1] + 20), elbow_front, pose.arm_front * 0.35)
-    _place_segment(img, shoulder_front, elbow_front, GREEN, 14, (6, 3), "front_upper_arm")
-    _place_segment(img, elbow_front, hand_front, GREEN, 14, (5, 3), "front_forearm", end_disc=(5, 3))
-    extend = round(pose.baton_extend / 2) * 2
-    baton = _piece(("baton", extend), 80, lambda d, o: _paint_baton(d, o, extend))
-    shape_rig.place(img, baton, hand_front, pose.baton_angle, "baton")
-
-    if pose.salute > 0.01:
-        salute_hand = _rot((head_center[0] + 4, head_center[1] - 36), head_center, pose.head_tilt)
-
-        def paint_salute(draw, o: float) -> None:
-            _line(draw, [(o - 10, o + 10), (o, o), (o + 16, o - 2)], fill=GOLD_LIGHT, width=5)
-
-        shape_rig.place(img, _piece(("salute",), 24, paint_salute), salute_hand, 0.0, "salute")
-
-    return rigdoc.downsampled_canvas(img, FRAME_SIZE, Image.Resampling.LANCZOS)
-
-
-def _render_frame(animation: str, frame_idx: int, frame_count: int):
-    pose = Pose(animation, frame_idx, frame_count)
-    return _draw_admiral(pose, animation, frame_idx, frame_count)
-
-
-def render_portraits(out_dir: str | Path, **opts):
+GREEN: RGBA = (112, 178, 104, 255)
+GREEN_SHADE: RGBA = (72, 134, 80, 255)
+GREEN_DEEP: RGBA = (42, 90, 58, 255)
+GREEN_PALE: RGBA = (176, 226, 150, 255)
+NAVY: RGBA = (40, 54, 104, 255)
+NAVY_DARK: RGBA = (24, 32, 70, 255)
+NAVY_LIGHT: RGBA = (78, 100, 166, 255)
+GOLD: RGBA = (236, 198, 86, 255)
+GOLD_DARK: RGBA = (170, 124, 50, 255)
+CAP: RGBA = (240, 242, 246, 255)
+CAP_SHADE: RGBA = (190, 198, 214, 255)
+INK: RGBA = (26, 24, 30, 255)
+LENS: RGBA = (226, 240, 248, 120)
+WING: RGBA = (196, 232, 190, 230)
+WING_DARK: RGBA = (120, 170, 130, 255)
+WOOD: RGBA = (132, 90, 60, 255)
+WOOD_DARK: RGBA = (80, 54, 42, 255)
+MOTH: RGBA = (206, 190, 160, 255)
+MOTH_DARK: RGBA = (130, 112, 96, 255)
+COPPER: RGBA = (214, 132, 84, 255)
+
+#: Small, 155 cm, with the legs of a grasshopper: they are longer than the
+#: way to the floor, and the knee is behind her.
+BUILD = Build(hip_up=42.0, thigh=22.0, shin=25.0, neck=(0.6, -30.0), upper=16.6, fore=15.6, near_shoulder=(-3.8, -26.6), far_shoulder=(4.8, -26.2),
+              near_hip=(-3.0, 0.0), far_hip=(3.0, 0.0), head_up=(1.0, -12.0), height=98.0, half_width=(12.0, 13.0), knee=1.0)
+
+X = Person(TARGET_NAME, BUILD)
+K = X.K
+P = X.P
+TOP = BUILD.neck[1] - 2.0
+#: How far under her hips the hem of her skirt is.
+HEM = 15.0
+
+
+def _front(d, hb: float, hf: float) -> None:
+    """Her collar and tie, the buttons, her ribbons, the hem of the jacket
+    and the skirt under it."""
+    by = TOP + 12.5
+    K.oval(d, K.at(5.8, by + 0.4), 2.4, 1.8, NAVY_LIGHT)
+    K.poly(d, [K.at(0.6, by + 3.4), K.at(4.4, by + 4.8), K.at(9.6, by + 3.6), K.at(8.6, by + 6.0), K.at(4.2, by + 6.8), K.at(0.6, by + 5.0)], NAVY_DARK)
+    # The collar and the tie.
+    K.poly(d, [K.at(1.6, TOP - 1.0), K.at(8.6, TOP - 1.0), K.at(5.6, TOP + 7.0)], CAP)
+    K.poly(d, [K.at(4.4, TOP + 0.6), K.at(6.4, TOP + 0.6), K.at(6.0, TOP + 6.4), K.at(5.2, TOP + 7.4), K.at(4.6, TOP + 6.2)], INK)
+    K.line(d, [K.at(1.6, TOP - 1.0), K.at(5.6, TOP + 7.0), K.at(8.6, TOP - 1.0)], NAVY_DARK, 0.6)
+    # Two rows of gold buttons, and the ribbons over her heart.
+    for y in (-17.0, -12.6, -8.2):
+        for x in (2.6, 6.6):
+            K.oval(d, K.at(x, y), 0.9, 0.9, GOLD, GOLD_DARK, 0.3)
+    for k, colour in enumerate(((206, 70, 70, 255), GOLD, (86, 150, 220, 255))):
+        K.poly(d, [K.at(-3.6 + k * 1.8, -22.4), K.at(-2.0 + k * 1.8, -22.4), K.at(-2.0 + k * 1.8, -20.6), K.at(-3.6 + k * 1.8, -20.6)], colour)
+    # The hem of the jacket, and the skirt.
+    K.line(d, [K.at(-9.0, -3.0), K.at(10.0, -2.6)], NAVY_DARK, 0.8)
+    for x in (-3.0, 3.0):
+        K.line(d, [K.at(x, -2.0), K.at(x * 1.3 + (hf if x > 0 else -hb) * 0.3, HEM - 1.0)], NAVY_DARK, 0.6)
+
+
+X.torso = R.make_figure(K, ("hopper",), NAVY, NAVY_DARK, back=(6.8, 7.0, 6.0, 8.0, 9.6), front=(6.0, 9.2, 6.0, 8.2, 9.4), hem_y=HEM, top=TOP,
+                        shoulders=((-4.0, -26.2), (3.4, -26.2)), shoulder_r=(4.2, 3.4), waist_y=-10.0, shade_from=7.0, detail=_front)
+
+NEAR_EYE = (2.0, -0.6)
+FAR_EYE = (7.2, -0.8)
+
+
+def _cap_shape(d) -> None:
+    # The crown of her cap, wide and flat, and its peak.
+    K.poly(d, [K.at(-9.6, -7.0), K.at(-10.6, -11.6), K.at(-4.0, -14.6), K.at(6.0, -14.6), K.at(10.6, -11.4), K.at(9.6, -7.0)], _SOLID)
+    K.poly(d, [K.at(6.0, -7.4), K.at(13.0, -5.6), K.at(12.4, -4.2), K.at(5.0, -5.0)], _SOLID)
+
+
+def _cap(d) -> None:
+    K.poly(d, [K.at(-20.0, -30.0), K.at(20.0, -30.0), K.at(20.0, -7.6), K.at(9.6, -7.6), K.at(-9.6, -6.4), K.at(-20.0, -6.4)], CAP)
+    K.poly(d, [K.at(-10.0, -8.8), K.at(10.0, -9.6), K.at(10.0, -6.8), K.at(-10.0, -5.8)], INK)
+    K.line(d, [K.at(-9.6, -9.0), K.at(9.8, -9.8)], GOLD, 0.7)
+    K.poly(d, [K.at(4.0, -7.6), K.at(14.0, -5.4), K.at(13.0, -3.6), K.at(4.0, -5.2)], INK)
+    K.poly(d, [K.at(-9.0, -12.0), K.at(-4.0, -14.2), K.at(-2.0, -10.4), K.at(-9.6, -9.6)], CAP_SHADE)
+    # The badge.
+    K.oval(d, K.at(5.2, -11.4), 2.0, 2.2, GOLD, GOLD_DARK, 0.4)
+    K.oval(d, K.at(5.2, -11.4), 0.8, 0.9, CAP)
+    # Under the cap her head is a grasshopper's: no hair, and a plate at the back of it.
+    K.poly(d, [K.at(-20.0, -6.4), K.at(-3.4, -6.4), K.at(-4.6, 1.0), K.at(-7.0, 4.0), K.at(-20.0, 4.0)], GREEN_SHADE)
+
+
+def _face(d) -> None:
+    # Her eyes are large and dark, and her glasses are round.
+    for (cx, cy), r in ((NEAR_EYE, 3.3), (FAR_EYE, 2.3)):
+        K.oval(d, K.at(cx, cy), r * 0.82, r, INK)
+        K.oval(d, K.at(cx - r * 0.25, cy - r * 0.35), r * 0.26, r * 0.3, GREEN_PALE)
+        K.oval(d, K.at(cx, cy), r + 0.4, r + 0.5, LENS, GOLD_DARK, 0.5)
+    K.line(d, [K.at(NEAR_EYE[0] + 3.6, -0.8), K.at(FAR_EYE[0] - 2.6, -0.9)], GOLD_DARK, 0.5)
+    K.line(d, [K.at(NEAR_EYE[0] - 3.6, -0.8), K.at(-4.6, -1.6)], GOLD_DARK, 0.5)
+    # The lines of seventy years, and the plates of her jaw.
+    K.line(d, [K.at(3.6, 4.6), K.at(2.4, 6.6)], GREEN_DEEP, 0.4)
+    K.line(d, [K.at(-2.0, 2.0), K.at(0.4, 6.0), K.at(3.6, 8.6)], GREEN_DEEP, 0.4)
+
+
+_head = R.make_head(K, ("hopper",), GREEN, GREEN_SHADE, GREEN_DEEP, skull=(0.0, -2.4, 7.8, 8.6), jaw=(2.8, 4.0, 5.0, 6.6), nose=None, ear=None,
+                    shape=_cap_shape, under=_cap, over=_face)
+_mouth = R.make_mouth(K, (6.0, 6.4), (150, 60, 66, 255), wide=0.7, lips=(170, 70, 80, 255))
+
+
+def _lids(mode: str):
+    """Her eyes are in the head; this is their lids, when they shut."""
+    if mode != "closed":
+        return None
+
+    def paint(d) -> None:
+        for (cx, cy), r in ((NEAR_EYE, 3.3), (FAR_EYE, 2.3)):
+            K.oval(d, K.at(cx, cy), r * 0.82, r, GREEN_SHADE)
+            K.line(d, [K.at(cx - r * 0.8, cy + 0.4), K.at(cx + r * 0.8, cy + 0.4)], GREEN_DEEP, 0.6)
+
+    return K.piece(("hopper_lids",), paint)
+
+
+X.head_layers = lambda pose: [(_head(), "head"), (_lids(str(pose["eyes"])), "lids"), (_mouth(str(pose["mouth"])), "mouth")]
+X.neck = R.make_neck(K, GREEN_SHADE, 3.6)
+# The rings of her rank are on each cuff: one wide, one narrow.
+X.upper_arm = lambda near: [(0.0, 1.0, 6.0, 5.2, NAVY if near else NAVY_DARK)]
+X.forearm = lambda near: [(0.0, 1.0, 5.2, 4.6, NAVY if near else NAVY_DARK), (0.62, 0.8, 4.8, 4.8, GOLD if near else GOLD_DARK), (0.86, 0.94, 4.6, 4.6, GOLD if near else GOLD_DARK)]
+# Her legs: green, thin, and the shin has the spines of a grasshopper's.
+X.thigh = lambda near: [(0.0, 1.0, 5.8, 3.8, GREEN if near else GREEN_SHADE)]
+X.shin = lambda near: [(0.0, 1.0, 3.4, 2.6, GREEN_SHADE if near else GREEN_DEEP), (0.0, 0.14, 4.0, 4.0, GREEN if near else GREEN_SHADE)]
+X.hand = R.make_hand(K, GREEN, GREEN_SHADE, GREEN_DEEP, size=0.82)
+X.shoe = R.make_shoe(K, INK, (10, 10, 14, 255), BUILD.ankle_up, long=0.86, heel=1.0)
+
+
+def _feelers(ctx) -> List[Stamp]:
+    """Her two feelers, from under her cap, back and up; and her wings,
+    folded down her back."""
+    a = math.radians(ctx.turn)
+    root = (ctx.head[0] + 3.0 * math.cos(a) + 12.6 * math.sin(a), ctx.head[1] + 3.0 * math.sin(a) - 12.6 * math.cos(a))
+    at = pin(root)
+    moving = ctx.anim in ("walk", "slash", "hurt")
+    chains = [R.chain((root[0] - at[0] + dx, root[1] - at[1]), 5, 4.4, 250.0 - spread, wave=7.0 if moving else 3.0, curl=-14.0, phase=ctx.phase, lead=lead)
+              for dx, spread, lead in ((0.0, 0.0, 0.0), (2.4, 16.0, 1.2))]
+    out: List[Stamp] = [(R.ribbon(K, ("hopper_feelers",), chains, 1.3, GREEN_SHADE, GREEN, taper=0.3), at, "feelers", 0.0)]
+    sway = int(round(float(ctx.pose["hem"][0])))
+
+    def shape(d) -> None:
+        K.poly(d, [K.at(-4.0, TOP + 5.0), K.at(-8.6, TOP + 9.0), K.at(-13.0 - sway, HEM + 3.0), K.at(-9.6 - sway, HEM + 8.0), K.at(-5.0, HEM - 2.0)], _SOLID)
+
+    def detail(d) -> None:
+        for k in range(3):
+            K.line(d, [K.at(-6.0 - k * 1.0, TOP + 9.0), K.at(-10.4 - sway - k * 0.6, HEM + 5.0 - k * 3.0)], WING_DARK, 0.4)
+
+    out.append((K.solid(("hopper_wings", sway), shape, WING, detail, outline=1.0, rim=0.0, shade=0.0), ctx.hip, "wings", ctx.lean))
+    return out
+
+
+X.layers["back"].append(_feelers)
+
+# ---- How she holds herself -----------------------------------------------------
+
+#: Her hands behind her back, as an officer stands.
+X.set_rest(lean=-1.0, na=(-6.0, 20.0), fa=(-5.0, 20.0), nh="fist", fh="fist", nf=(-3.4, 0.0, 0.0), ff=(4.4, 0.0, 0.0))
+
+
+@X.row
+def idle(i: int, n: int):
+    _, s, c = loop(i, n)
+    return P(hip=(0.0, 0.3 + 0.3 * s), head=(0.3, 0.0, -2.0 + 2.0 * c), eyes="closed" if i == n - 2 else "open", mouth="smile" if c > 0.3 else "flat")
+
+
+@X.row
+def walk(i: int, n: int):
+    # Quick, short steps, and a small hop in each.
+    ph, s, c = loop(i, n)
+    nf, ff = R.stride(ph, 7.0, 4.6)
+    return P(hip=(0.4, -0.6 * abs(math.sin(ph))), lean=2.0, head=(0.2, 0.0, 1.5 * s), nf=nf, ff=ff, hem=(1.0 + abs(c), abs(c)))
+
+
+@X.row
+def talk(i: int, n: int):
+    # She holds up a hand: the distance between finger and thumb is the lesson.
+    _, s, c = loop(i, n)
+    return P(hip=(0.0, 0.3 * s), lean=0.0, head=(0.4, 0.0, 2.0 * s), na=(12.0 + 1.5 * c, 0.0 - 3.0 * max(0.0, s)), nh="open", mouth=("open", "smile", "big")[i % 3],
+             brows=1.0 if s > 0.3 else 0.0)
+
+
+@X.row
+def interact(i: int, n: int):
+    reach = P(hip=(1.0, 1.0), lean=6.0, na=(20.0, 2.0), nh="point", mouth="o")
+    return X.keys(shot(i, n), [(0.0, P()), (0.35, reach), (0.7, dict(reach, na=(20.0, 5.0))), (1.0, P())])
+
+
+@X.row
+def slash(i: int, n: int):
+    # The baton: back over her shoulder, and down through.
+    back = P(hip=(-1.0, 1.0), lean=-5.0, na=(-8.0, -12.0), nab=-1.0, nh="fist", mouth="flat", nf=(-5.0, 0.0, 0.0), ff=(5.0, 0.0, 0.0))
+    through = P(hip=(2.5, 2.0), lean=10.0, head=(0.6, 0.0, 4.0), na=(22.0, 8.0), nh="fist", mouth="grit", nf=(-7.0, 0.0, 0.0), ff=(8.0, 0.0, 0.0), hem=(3.0, 2.0))
+    return X.keys(shot(i, n), [(0.0, P()), (0.25, back), (0.45, through), (0.7, dict(through, na=(21.0, 11.0))), (1.0, P())])
+
+
+@X.row
+def taunt(i: int, n: int):
+    # She shows the moth she found in the relay. It is in her hand, and it is why the word is "bug".
+    show = P(lean=0.0, head=(0.5, 0.0, 6.0), na=(14.0, -2.0), nh="flat", eyes="open", mouth="smile")
+    return X.keys(shot(i, n), [(0.0, P()), (0.25, show), (0.8, dict(show, na=(14.0, -3.0), mouth="big")), (1.0, P())])
+
+
+_fall = X.poses["death"]
+
+
+@X.row
+def death(i: int, n: int):
+    # As she goes over, her knees (which are behind her) are under her: that
+    # frame is a little higher, so they are in the cell.
+    pose = dict(X.full(_fall(i, n)))
+    if i == 4:
+        ox, oy = pose["off"]  # type: ignore[misc]
+        pose["off"] = (ox, oy - 5.0)
+    return pose
+
+
+X.alias(hurt="hit")
+X.rows = [("idle", 8, 140), ("walk", 8, 96), ("talk", 6, 112), ("interact", 6, 108), ("slash", 7, 84), ("taunt", 8, 92), ("hurt", 5, 92), ("death", 8, 112)]
+
+# ---- What she shows ------------------------------------------------------------
+
+
+def _baton():
+    """Her baton, along +x from the hand that holds it: dark wood, with a
+    gold cap at each end."""
+
+    def shape(d) -> None:
+        K.stroke(d, [K.at(-3.0, 0.0), K.at(17.0, 0.0)], _SOLID, 2.2)
+
+    def detail(d) -> None:
+        K.stroke(d, [K.at(-3.0, 0.0), K.at(-1.4, 0.0)], GOLD, 2.0)
+        K.stroke(d, [K.at(15.4, 0.0), K.at(17.0, 0.0)], GOLD, 2.0)
+
+    return K.solid(("baton",), shape, WOOD, detail, outline=0.9, rim=0.0, shade=0.3, shade_colour=WOOD_DARK)
+
+
+def _wire():
+    """A nanosecond: the length of wire that light goes in one."""
+
+    def paint(d) -> None:
+        pts = [K.at(x, 1.2 * math.sin(x * 0.7)) for x in [k * 0.5 for k in range(0, 25)]]
+        K.line(d, pts, OUTLINE, 2.0)
+        K.line(d, pts, COPPER, 0.9)
+
+    return K.aligned(("wire",), paint)
+
+
+def _moth(flap: int):
+    def shape(d) -> None:
+        K.oval(d, K.home, 1.0, 2.4, _SOLID)
+        for sign in (-1.0, 1.0):
+            K.poly(d, [K.at(0.0, -1.4), K.at(sign * (4.4 - flap), -3.0), K.at(sign * (4.0 - flap), 1.6), K.at(0.0, 1.4)], _SOLID)
+
+    return K.solid(("moth", flap), shape, MOTH, None, outline=0.9, rim=0.0, shade=0.3, shade_colour=MOTH_DARK)
+
+
+def _effects(ctx) -> List[Stamp]:
+    out: List[Stamp] = []
+    anim, i, u = ctx.anim, ctx.i, ctx.u
+    grip = math.degrees(math.atan2(ctx.hand[1] - ctx.elbow[1], ctx.hand[0] - ctx.elbow[0]))
+    if anim == "slash":
+        if 0.15 <= u <= 0.85:
+            out.append((_baton(), ctx.hand, "baton", grip - 30.0))
+        if 0.4 <= u <= 0.65:
+            out.append((R.swoosh(K, 22.0, -70, 30, 3.6, GOLD, GOLD_DARK), pin((ctx.shoulder[0] + 6.0, ctx.shoulder[1] + 6.0)), "cut", 0.0))
+    elif anim == "talk":
+        out.append((_wire(), pin((ctx.hand[0] + 1.0, ctx.hand[1] - 5.0)), "wire", 0.0))
+    elif anim == "interact" and 0.35 <= u <= 0.7:
+        out.append((R.tick(K, 3.6, GOLD, GOLD_DARK), (ctx.hand[0] + 12.0, ctx.hand[1] - 5.0), "tick", 0.0))
+    elif anim == "taunt" and 0.2 <= u <= 0.9:
+        out.append((_moth(i % 2), (ctx.hand[0] + 3.0, ctx.hand[1] - 5.0 - (2.0 if i % 2 else 0.0)), "moth", -10.0))
+    return out
+
+
+X.effects = _effects
+
+ROWS = X.rows
+FRAME_SIZE = X.frame
+render_frame = X.render_frame
+_render_frame = render_frame
+render, main, render_canonical = R.entry_points(X, ACTOR_METADATA, DISPLAY_NAME)
+
+
+def render_portraits(out_dir, **opts):
+    """Her portraits are frames of this sheet."""
     del opts
-
-    def portrait_frame(animation: str, frame_idx: int, frame_count: int):
-        source = _draw_admiral(Pose(animation, frame_idx, frame_count), animation, frame_idx, frame_count)
-        face = FaceGuide(
-            center_x=74.0,
-            center_y=28.0,
-            width=46.0,
-            height=42.0,
-            source_width=128.0,
-            source_height=128.0,
-        )
-        return render_framed_portrait(source, face, view_width=62.0, center_y=42.0)
-
-    clips = {
-        "default": PortraitClip.still(portrait_frame("idle", 2, 8)),
-        "talking": PortraitClip(tuple(portrait_frame("talk", i, 6) for i in (0, 2, 4)), duration_ms=110, looping=True),
-        "command": PortraitClip(tuple(portrait_frame("interact", i, 6) for i in (1, 3, 5)), duration_ms=108, looping=True),
-        "taunt": PortraitClip.still(portrait_frame("taunt", 3, 8)),
-    }
-    return write_portrait_sheet(TARGET_NAME, clips, Path(out_dir))
+    return X.portraits(out_dir, {
+        "default": ("idle", (1,), 0, False),
+        "talking": ("talk", tuple(range(6)), 112, True),
+        "command": ("interact", (2, 3, 4), 140, True),
+        "taunt": ("taunt", tuple(range(2, 7)), 110, True),
+    }, view_width=38.0)
 
 
-def render(out_dir: str | Path, **opts):
-    del opts
-    frame_transform: dict = {}
-    outputs = build_sheet(
-        frame_transform_out=frame_transform,
-        target=TARGET_NAME,
-        rows=ROWS,
-        render_fn=_render_frame,
-        out_dir=Path(out_dir),
-        frame_size=FRAME_SIZE,
-        auto_crop=True,
-        crop_margin=4,
-        actor_metadata=ACTOR_METADATA,
-        sheet_tuning={"collision_scale": 1.5},
-    )
-    keys = (
-        "spritesheet",
-        "yaml",
-        "ron",
-        "actor",
-        "canonical",
-        "canonical_transparent",
-        "preview",
-    )
-    parts = publish_rig_flipbook(TARGET_NAME, ROWS, _render_frame, outputs, frame_transform, Path(out_dir))
-    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
+TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
+del mix
 
-__all__ = ["ACTOR_METADATA", "render", "render_portraits"]
+if __name__ == "__main__":
+    raise SystemExit(main())

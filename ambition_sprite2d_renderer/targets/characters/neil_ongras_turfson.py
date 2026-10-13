@@ -552,6 +552,19 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def render_portraits(out_dir, **opts):
+    """His portraits are frames of this sheet: the clips his conversations
+    name."""
+    del opts
+    return N.portraits(out_dir, {
+        "default": ('idle', (0, 1, 2, 3, 4, 5, 6, 7), 145, True),
+        "portrait": ('idle', (1,), 0, False),
+        "talking": ('talk', (0, 1, 2, 3, 4, 5, 6, 7), 104, True),
+        "lecture": ('cosmic_lecture', (0, 1, 2, 3, 4, 5, 6, 7, 8, 9), 82, True),
+        "inspecting": ('interact', (0, 1, 2, 3, 4, 5, 6, 7), 90, True),
+    }, still="portrait", view_width=38.0)
+
+
 TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 

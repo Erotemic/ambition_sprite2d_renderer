@@ -1,101 +1,39 @@
-"""Procedural full-action renderer for Pipi Tau.
+"""Sprite generator for Pipi Tau: the mathematician who turns one problem that
+can not be done into six lemmas that can.
 
-Pipi Tau is a playful mathematical-action parody built around breadth,
-collaboration, and the habit of turning one impossible problem into a sequence
-of tractable lemmas.  He is deliberately *not* another robed professor.  His
-silhouette is a compact, quick-footed problem runner: side-swept black hair,
-rectangular glasses, a short asymmetric teal jacket over a dark tau tee,
-tapered trousers, and broad running shoes.
+A loose parody of Terence Tao (tau for Tao, and pi twice for a full turn). He
+is not a portrait.
 
-The animation vocabulary turns mathematical habits into movement rather than
-held props:
+The look (2026-10-13): a slight man in his thirties seen three quarters from
+the front, facing right, who looks younger than he is. Straight black hair
+that falls to one side of his brow, thin rectangular glasses, a quick small
+smile. A short teal jacket open over a dark shirt with a tau on it, slim grey
+trousers, running shoes. He does not stand still for long: his weight is on
+the front of his feet.
 
-* ``prime_stride`` advances in an uneven but purposeful rhythm;
-* ``compressed_sense`` gathers a broad circular field into one narrow strike;
-* ``polymath_chain`` links several small contributions into a larger result;
-* ``full_turn`` traces a complete tau-ring around the body;
-* ``epsilon_dash`` wins a tiny amount of distance repeatedly and very quickly.
+He is drawn from the man and not from a type (Jon, 2026-10-13, of another
+person of this cast: "needs to read like paul erdos not bearnie sanders"). He
+is a grown man, not a mascot. He holds nothing; there is no drop shadow.
 
-Everything is authored in Python/Pillow.  There are no generated-image inputs,
-held props, floor ellipses, or drop shadows.  Ability marks are tethered to the
-body or attack path so the base character remains authoritative.
+What he shows: an epsilon; the primes, in a row with gaps; a few points that
+are enough to know the whole (the sense he compresses); and the lemmas,
+linked into a chain.
+
+He is a person of ``_person_rig``: the bones, the poses and the frame are
+shared; the head, the clothes, how he stands and what he shows are his.
 """
 
 from __future__ import annotations
 
-import argparse
 import math
-from dataclasses import dataclass
-from pathlib import Path
-from typing import List, Sequence, Tuple
+from typing import List
 
-from PIL import Image, ImageDraw, ImageFont
-
-from ...authoring import rigdoc
-from ...authoring.part_flipbook import publish_rig_flipbook
-from ...authoring.portrait import (
-    FaceGuide,
-    PortraitClip,
-    render_framed_portrait,
-    write_portrait_sheet,
-)
-from ambition_sprite2d_renderer.core.draw import blending_draw
-from . import _solo_shape_rig as SR
-from ...authoring.sheet_build import build_sheet, write_canonical
-
-RGBA = Tuple[int, int, int, int]
-Point = Tuple[float, float]
+from ._ai_era_kit import OUTLINE, WHITE, RGBA, lerp, mix, pin
+from . import _person_rig as R
+from ._person_rig import Build, Person, Stamp, loop, shot
 
 TARGET_NAME = "pipi_tau"
-FRAME_W = 128
-FRAME_H = 128
-SUPER = 4
-
-ROWS: List[Tuple[str, int, int]] = [
-    ("idle", 8, 145),
-    ("walk", 8, 104),
-    ("run", 8, 76),
-    ("crouch", 6, 95),
-    ("crouch_walk", 8, 88),
-    ("jump", 6, 92),
-    ("fall", 6, 92),
-    ("land_hard", 8, 92),
-    ("land_recovery", 6, 72),
-    ("dash_startup", 4, 48),
-    ("dash", 6, 60),
-    ("epsilon_dash", 8, 54),
-    ("slide", 6, 68),
-    ("roll", 8, 56),
-    ("wall_grab", 6, 105),
-    ("wall_jump", 6, 82),
-    ("ledge_grab", 6, 98),
-    ("ledge_climb", 6, 98),
-    ("ledge_getup", 6, 42),
-    ("ledge_roll", 8, 38),
-    ("climb", 8, 98),
-    ("swim", 8, 102),
-    ("float_glide", 8, 108),
-    ("block", 6, 82),
-    ("hit", 5, 86),
-    ("death", 8, 105),
-    ("talk", 8, 104),
-    ("interact", 8, 90),
-    ("jab", 5, 56),
-    ("punch", 7, 68),
-    ("prime_stride", 8, 64),
-    ("attack_up", 8, 64),
-    ("attack_down", 8, 64),
-    ("air_neutral", 8, 60),
-    ("air_forward", 7, 60),
-    ("air_back", 7, 60),
-    ("air_down", 7, 68),
-    ("air_up", 7, 60),
-    ("compressed_sense", 8, 74),
-    ("polymath_chain", 8, 78),
-    ("full_turn", 10, 76),
-    ("celebrate", 8, 88),
-    ("taunt", 8, 92),
-]
+DISPLAY_NAME = "Pipi Tau"
 
 ACTOR_METADATA = {
     "actor": {"character_id": "npc_pipi_tau", "display_name": "Pipi Tau"},
@@ -193,1062 +131,272 @@ ACTOR_METADATA.setdefault("dialogue_hints", {}).setdefault(
     ],
 )
 
-OUTLINE = (13, 20, 25, 255)
-OUTLINE_SOFT = (30, 47, 53, 255)
-SKIN = (190, 137, 101, 255)
-SKIN_LIGHT = (224, 174, 132, 255)
-SKIN_SHADE = (145, 96, 73, 255)
-HAIR = (20, 27, 31, 255)
-HAIR_MID = (37, 49, 54, 255)
-HAIR_GLEAM = (72, 88, 91, 255)
-JACKET = (35, 129, 136, 255)
-JACKET_LIGHT = (63, 164, 166, 255)
-JACKET_DARK = (22, 82, 91, 255)
-JACKET_DEEP = (17, 57, 68, 255)
-SHIRT = (36, 49, 58, 255)
-SHIRT_SHADE = (70, 88, 98, 255)
-TROUSER = (37, 47, 67, 255)
-TROUSER_LIGHT = (56, 70, 91, 255)
-TROUSER_DARK = (24, 31, 48, 255)
-SHOE = (232, 219, 188, 255)
-SHOE_DARK = (83, 82, 77, 255)
-SOLE = (22, 34, 42, 255)
-GLASS = (225, 246, 244, 46)
-EYE = (28, 25, 22, 255)
-MOUTH = (109, 55, 48, 255)
-TAU_GOLD = (246, 184, 65, 255)
-TAU_LIGHT = (255, 227, 134, 255)
-LEMMA_BLUE = (96, 205, 227, 255)
-LEMMA_PINK = (230, 108, 153, 255)
-LEMMA_GREEN = (117, 207, 125, 255)
-FIELD = (126, 224, 211, 255)
-
-
-def _s(value: float) -> int:
-    return max(1, int(round(value * SUPER)))
-
-
-def _pt(point: Point) -> Tuple[int, int]:
-    return (int(round(point[0] * SUPER)), int(round(point[1] * SUPER)))
-
-
-def _bbox(center: Point, rx: float, ry: float) -> Tuple[int, int, int, int]:
-    return (
-        _s(center[0] - rx),
-        _s(center[1] - ry),
-        _s(center[0] + rx),
-        _s(center[1] + ry),
-    )
-
-
-def _clamp01(value: float) -> float:
-    return max(0.0, min(1.0, value))
-
-
-def _smooth(value: float) -> float:
-    value = _clamp01(value)
-    return value * value * (3.0 - 2.0 * value)
-
-
-def _pulse(value: float) -> float:
-    return math.sin(_clamp01(value) * math.pi)
-
-
-def _lerp(a: float, b: float, amount: float) -> float:
-    return a + (b - a) * amount
-
-
-def _lerp_point(a: Point, b: Point, amount: float) -> Point:
-    return (_lerp(a[0], b[0], amount), _lerp(a[1], b[1], amount))
-
-
-def _offset(point: Point, dx: float, dy: float) -> Point:
-    return (point[0] + dx, point[1] + dy)
-
-
-def _rotate(point: Point, origin: Point, degrees: float) -> Point:
-    radians = math.radians(degrees)
-    c = math.cos(radians)
-    s = math.sin(radians)
-    x = point[0] - origin[0]
-    y = point[1] - origin[1]
-    return (origin[0] + x * c - y * s, origin[1] + x * s + y * c)
-
-
-def _unit(a: Point, b: Point) -> Tuple[Point, Point, float]:
-    dx = b[0] - a[0]
-    dy = b[1] - a[1]
-    length = max(1.0e-6, math.hypot(dx, dy))
-    along = (dx / length, dy / length)
-    normal = (-along[1], along[0])
-    return along, normal, length
-
-
-def _segment_quad(a: Point, b: Point, ra: float, rb: float) -> List[Point]:
-    _, normal, _ = _unit(a, b)
-    return [
-        (a[0] + normal[0] * ra, a[1] + normal[1] * ra),
-        (b[0] + normal[0] * rb, b[1] + normal[1] * rb),
-        (b[0] - normal[0] * rb, b[1] - normal[1] * rb),
-        (a[0] - normal[0] * ra, a[1] - normal[1] * ra),
-    ]
-
-
+JACKET: RGBA = (40, 150, 150, 255)
+JACKET_DARK: RGBA = (24, 100, 110, 255)
+JACKET_LIGHT: RGBA = (100, 200, 190, 255)
+TEE: RGBA = (40, 44, 58, 255)
+TEE_MARK: RGBA = (250, 226, 130, 255)
+TROUSER: RGBA = (118, 122, 136, 255)
+TROUSER_DARK: RGBA = (80, 84, 100, 255)
+SHOE: RGBA = (238, 238, 232, 255)
+SHOE_DARK: RGBA = (150, 156, 170, 255)
+SOLE: RGBA = (230, 110, 70, 255)
+SKIN: RGBA = (232, 190, 152, 255)
+SKIN_SHADE: RGBA = (200, 152, 122, 255)
+SKIN_DEEP: RGBA = (150, 102, 90, 255)
+HAIR: RGBA = (28, 28, 36, 255)
+HAIR_LIGHT: RGBA = (78, 82, 100, 255)
+FRAME: RGBA = (40, 44, 58, 255)
+LENS: RGBA = (232, 244, 250, 140)
+INK: RGBA = (26, 22, 30, 255)
+MATH: RGBA = (252, 230, 140, 255)
+MATH_DARK: RGBA = (206, 136, 56, 255)
+COOL: RGBA = (150, 226, 240, 255)
+COOL_DARK: RGBA = (40, 120, 150, 255)
+
+#: 173 cm, slight, on the front of his feet.
+BUILD = Build(hip_up=50.0, thigh=24.2, shin=23.1, neck=(1.0, -35.0), upper=18.8, fore=17.8, near_shoulder=(-4.8, -30.8), far_shoulder=(6.6, -30.4),
+              near_hip=(-3.2, 0.0), far_hip=(3.2, 0.0), head_up=(1.0, -12.2), height=109.0, half_width=(12.0, 13.5))
+
+X = Person(TARGET_NAME, BUILD)
+K = X.K
+P = X.P
+TOP = BUILD.neck[1] - 2.0
+
+
+def _front(d, hb: float, hf: float) -> None:
+    """The dark shirt with the tau on it, where his jacket is open."""
+    K.poly(d, [K.at(1.8, TOP), K.at(11.6, TOP), K.at(12.0 + hf, 9.0), K.at(4.4 + hf * 0.5, 9.0), K.at(3.4, -14.0)], TEE)
+    K.poly(d, [K.at(9.6, TOP), K.at(12.6, TOP), K.at(13.0 + hf, 9.0), K.at(10.4 + hf, 9.0)], JACKET_DARK)
+    K.poly(d, [K.at(3.6, TOP - 1.0), K.at(8.4, TOP - 1.0), K.at(6.2, TOP + 3.4)], SKIN_SHADE)
+    for line in R.STROKES["tau"]:
+        K.line(d, [K.at(4.8 + x * 4.4, -24.0 + y * 6.0) for x, y in line], TEE_MARK, 1.0)
+    K.poly(d, [K.at(-0.6, TOP + 1.0), K.at(2.6, TOP), K.at(3.8, -18.0), K.at(0.2, -25.0)], JACKET_LIGHT)
+    K.line(d, [K.at(0.2, -25.0), K.at(3.8, -18.0), K.at(3.4, -14.0), K.at(4.4 + hf * 0.5, 6.0)], JACKET_DARK, 0.7)
+    K.line(d, [K.at(-8.0, 3.0), K.at(8.0, 3.6)], JACKET_DARK, 0.9)
+
+
+X.torso = R.make_torso(K, ("tau",), JACKET, JACKET_DARK, back=(8.2, 8.6, 7.4, 8.4), front=(7.6, 9.0, 8.4, 9.0), hem_y=6.0, top=TOP,
+                       shoulders=((-4.6, -30.2), (6.0, -30.0)), shoulder_r=(4.8, 4.4), shade_from=40.0, detail=_front)
+
+NEAR_EYE = (1.8, -0.4)
+FAR_EYE = (7.0, -0.6)
+
+
+def _hair_shape(d) -> None:
+    K.oval(d, K.at(-0.8, -5.0), 9.0, 8.0, WHITE)
+    K.poly(d, [K.at(1.0, -11.6), K.at(9.4, -9.6), K.at(10.2, -3.6), K.at(6.4, -6.0)], WHITE)
+
+
+def _hair(d) -> None:
+    # Straight and black; it falls across his brow toward the far side.
+    K.poly(d, [K.at(20.0, -3.8), K.at(9.6, -3.8), K.at(7.0, -6.6), K.at(3.6, -6.0), K.at(0.4, -4.4), K.at(-2.4, -4.0), K.at(-3.2, -1.4), K.at(-6.0, -1.2),
+               K.at(-6.6, 3.2), K.at(-5.0, 4.4), K.at(-4.8, 6.2), K.at(-20.0, 6.2), K.at(-20.0, -26.0), K.at(20.0, -26.0)], HAIR)
+    for strand in ([(-4.0, -11.0), (2.0, -9.6), (8.0, -5.6)], [(-6.0, -8.0), (0.0, -7.4), (5.6, -5.0)], [(-6.0, -1.0), (-8.0, 1.6)]):
+        K.line(d, [K.at(x, y) for x, y in strand], HAIR_LIGHT, 0.6)
+
+
+def _face(d) -> None:
+    for (cx, cy), rx in ((NEAR_EYE, 3.0), (FAR_EYE, 2.0)):
+        K.rrect(d, K.home[0] + cx - rx, K.home[1] + cy - 1.9, K.home[0] + cx + rx, K.home[1] + cy + 1.9, 0.6, LENS)
+
+
+def _glasses():
+    def paint(d) -> None:
+        for (cx, cy), rx in ((NEAR_EYE, 3.0), (FAR_EYE, 2.0)):
+            K.rrect(d, K.home[0] + cx - rx, K.home[1] + cy - 1.9, K.home[0] + cx + rx, K.home[1] + cy + 1.9, 0.6, None, FRAME, 0.7)  # type: ignore[arg-type]
+        K.line(d, [K.at(NEAR_EYE[0] + 3.0, -1.0), K.at(FAR_EYE[0] - 2.0, -1.1)], FRAME, 0.7)
+        K.line(d, [K.at(NEAR_EYE[0] - 3.0, -1.0), K.at(-4.6, -0.6)], FRAME, 0.7)
+
+    return K.piece(("tau_glasses",), paint)
+
+
+_head = R.make_head(K, ("tau",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.2, 7.8, 8.6), jaw=(2.4, 3.8, 5.6, 6.8),
+                    nose=((7.2, 0.2), (9.2, 3.0), (8.8, 4.0), (7.2, 4.4)), ear=(-4.8, 1.0, 2.0, 2.9), shape=_hair_shape, under=_hair, over=_face)
+_eyes = R.make_eyes(K, (NEAR_EYE[0] + 0.2, NEAR_EYE[1] + 0.2), (FAR_EYE[0] + 0.1, FAR_EYE[1] + 0.2), ink=INK, white=None, lid=None, size=0.9)
+_brows = R.make_brows(K, [(-0.8, -3.6), (1.8, -4.2), (4.4, -3.8)], [(5.8, -3.9), (7.2, -4.2), (8.6, -3.8)], HAIR, 1.0)
+_mouth = R.make_mouth(K, (5.4, 7.4), (130, 60, 64, 255), wide=0.85)
+
+X.head_layers = lambda pose: [(_head(), "head"), (_eyes(str(pose["eyes"])), "eyes"), (_glasses(), "glasses"), (_brows(R.brow_mood(pose)), "brows"),
+                              (_mouth(str(pose["mouth"])), "mouth")]
+X.neck = R.make_neck(K, SKIN_SHADE, 4.2)
+X.upper_arm = lambda near: [(0.0, 1.0, 6.4, 5.4, JACKET if near else JACKET_DARK)]
+X.forearm = lambda near: [(0.0, 1.0, 5.4, 4.6, JACKET if near else JACKET_DARK)]
+X.thigh = lambda near: [(0.0, 1.0, 6.8, 5.6, TROUSER if near else TROUSER_DARK)]
+X.shin = lambda near: [(0.0, 1.0, 5.6, 4.6, TROUSER if near else TROUSER_DARK)]
+X.hand = R.make_hand(K, SKIN, SKIN_SHADE, SKIN_DEEP, JACKET_LIGHT, JACKET, size=0.95)
+X.shoe = R.make_shoe(K, SHOE, SHOE_DARK, BUILD.ankle_up, long=1.08, sole=SOLE)
+
+# ---- How he holds himself ----------------------------------------------------
+
+AT_TEMPLE = (8.0, -9.0)
+X.set_rest(lean=3.0, na=(-2.0, 24.5), fa=(2.5, 24.0), nf=(-3.8, 0.0, 0.0), ff=(4.8, 0.0, 0.0))
+
 
-def _polygon(
-    draw: ImageDraw.ImageDraw,
-    points: Sequence[Point],
-    fill: RGBA,
-    outline: RGBA = OUTLINE,
-    width: float = 1.0,
-) -> None:
-    pts = [_pt(point) for point in points]
-    draw.polygon(pts, fill=fill)
-    draw.line(pts + [pts[0]], fill=outline, width=_s(width), joint="curve")
-
-
-def _line(
-    draw: ImageDraw.ImageDraw,
-    points: Sequence[Point],
-    fill: RGBA,
-    width: float,
-) -> None:
-    draw.line([_pt(point) for point in points], fill=fill, width=_s(width), joint="curve")
-
-
-def _ellipse(
-    draw: ImageDraw.ImageDraw,
-    center: Point,
-    rx: float,
-    ry: float,
-    fill: RGBA,
-    outline: RGBA | None = OUTLINE,
-    width: float = 1.0,
-) -> None:
-    draw.ellipse(
-        _bbox(center, rx, ry),
-        fill=fill,
-        outline=outline,
-        width=_s(width) if outline is not None else 1,
-    )
-
-
-def _arc(
-    draw: ImageDraw.ImageDraw,
-    center: Point,
-    rx: float,
-    ry: float,
-    start: float,
-    end: float,
-    fill: RGBA,
-    width: float,
-) -> None:
-    draw.arc(_bbox(center, rx, ry), start=start, end=end, fill=fill, width=_s(width))
-
-
-def _font(
-    size: float,
-    *,
-    bold: bool = False,
-    preferred: tuple[str, ...] | None = None,
-) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    if preferred is not None:
-        names = preferred
-    else:
-        names = ("DejaVuSans-Bold.ttf", "DejaVuSans.ttf") if bold else ("DejaVuSans.ttf", "DejaVuSans-Bold.ttf")
-    for name in names:
-        try:
-            return ImageFont.truetype(name, _s(size))
-        except OSError:
-            pass
-    return ImageFont.load_default()
-
-
-def _fade(color: RGBA, alpha: float) -> RGBA:
-    return (color[0], color[1], color[2], int(round(color[3] * _clamp01(alpha))))
-
-
-@dataclass
-class Pose:
-    root_x: float = 0.0
-    root_y: float = 0.0
-    rotation: float = 0.0
-    rotation_pivot: Point = (64.0, 86.0)
-    body_lean: float = 0.0
-    head_x: float = 0.0
-    head_y: float = 0.0
-    head_tilt: float = 0.0
-    blink: bool = False
-    mouth_open: float = 0.0
-    smile: float = 0.25
-    brow: float = 0.0
-    near_shoulder: Point = (78.0, 55.0)
-    near_elbow: Point = (84.0, 72.0)
-    near_hand: Point = (83.0, 86.0)
-    far_shoulder: Point = (51.0, 56.0)
-    far_elbow: Point = (45.0, 73.0)
-    far_hand: Point = (47.0, 87.0)
-    near_hip: Point = (70.0, 87.0)
-    near_knee: Point = (72.0, 102.0)
-    near_ankle: Point = (74.0, 117.0)
-    far_hip: Point = (59.0, 87.0)
-    far_knee: Point = (57.0, 102.0)
-    far_ankle: Point = (56.0, 117.0)
-    near_hand_mode: str = "relaxed"
-    far_hand_mode: str = "relaxed"
-    field: float = 0.0
-    field_phase: float = 0.0
-    full_turn: float = 0.0
-    compress: float = 0.0
-    chain: float = 0.0
-    prime: float = 0.0
-    epsilon: float = 0.0
-
-
-def _pose(animation: str, frame_idx: int, nframes: int) -> Pose:
-    phase = frame_idx / max(1, nframes)
-    t = frame_idx / max(1, nframes - 1)
-    cyc = math.tau * phase
-    wave = math.sin(cyc)
-    cosine = math.cos(cyc)
-    p = Pose()
-    p.root_y = 0.6 * math.sin(cyc)
-    p.head_y = -0.35 * math.sin(cyc)
-    p.blink = animation == "idle" and frame_idx in {5}
-
-    if animation == "walk":
-        stride = 8.5 * wave
-        p.root_y = -1.0 * abs(cosine)
-        p.body_lean = 2.0
-        p.near_knee = (72.0 + stride * 0.42, 102.0 - abs(stride) * 0.18)
-        p.near_ankle = (74.0 + stride, 117.0 - max(0.0, -wave) * 3.0)
-        p.far_knee = (57.0 - stride * 0.42, 102.0 - abs(stride) * 0.18)
-        p.far_ankle = (56.0 - stride, 117.0 - max(0.0, wave) * 3.0)
-        p.near_elbow = (83.0 - stride * 0.35, 71.0)
-        p.near_hand = (80.0 - stride * 0.65, 84.0)
-        p.far_elbow = (47.0 + stride * 0.35, 72.0)
-        p.far_hand = (49.0 + stride * 0.65, 85.0)
-    elif animation == "run":
-        stride = 13.0 * wave
-        p.root_y = -2.5 * abs(cosine)
-        p.body_lean = 9.0
-        p.head_x = 1.5
-        p.near_knee = (73.0 + stride * 0.45, 100.0 - abs(stride) * 0.20)
-        p.near_ankle = (75.0 + stride, 115.0 - max(0.0, -wave) * 5.0)
-        p.far_knee = (58.0 - stride * 0.45, 101.0 - abs(stride) * 0.20)
-        p.far_ankle = (56.0 - stride, 116.0 - max(0.0, wave) * 5.0)
-        p.near_elbow = (78.0 - stride * 0.35, 66.0)
-        p.near_hand = (74.0 - stride * 0.62, 77.0)
-        p.far_elbow = (54.0 + stride * 0.35, 68.0)
-        p.far_hand = (57.0 + stride * 0.62, 80.0)
-    elif animation in {"crouch", "crouch_walk"}:
-        step = 5.0 * wave if animation == "crouch_walk" else 0.0
-        p.root_y = 13.0
-        p.body_lean = 8.0
-        p.head_y = 4.0
-        p.near_hip = (70.0, 91.0)
-        p.near_knee = (79.0 + step, 104.0)
-        p.near_ankle = (73.0 + step * 1.3, 117.0)
-        p.far_hip = (59.0, 91.0)
-        p.far_knee = (51.0 - step, 105.0)
-        p.far_ankle = (57.0 - step * 1.3, 117.0)
-        p.near_elbow = (84.0, 79.0)
-        p.near_hand = (76.0, 91.0)
-        p.far_elbow = (50.0, 79.0)
-        p.far_hand = (57.0, 92.0)
-    elif animation == "jump":
-        lift = math.sin(t * math.pi)
-        p.root_y = -12.0 * lift
-        p.body_lean = 5.0
-        p.near_knee = (74.0, 100.0 - 4.0 * lift)
-        p.near_ankle = (82.0, 111.0 - 8.0 * lift)
-        p.far_knee = (57.0, 99.0 - 3.0 * lift)
-        p.far_ankle = (51.0, 110.0 - 7.0 * lift)
-        p.near_elbow = (86.0, 62.0)
-        p.near_hand = (90.0, 48.0)
-        p.far_elbow = (48.0, 64.0)
-        p.far_hand = (43.0, 53.0)
-    elif animation == "fall":
-        p.root_y = -6.0 + 8.0 * t
-        p.body_lean = -2.0
-        p.near_elbow = (88.0, 66.0)
-        p.near_hand = (94.0, 57.0)
-        p.far_elbow = (44.0, 67.0)
-        p.far_hand = (38.0, 59.0)
-        p.near_knee = (77.0, 101.0)
-        p.near_ankle = (82.0, 112.0)
-        p.far_knee = (53.0, 101.0)
-        p.far_ankle = (49.0, 113.0)
-    elif animation in {"land_hard", "land_recovery"}:
-        impact = 1.0 - t if animation == "land_recovery" else _pulse(min(1.0, t * 1.6))
-        p.root_y = 11.0 * impact
-        p.body_lean = 9.0 * impact
-        p.head_y = 3.0 * impact
-        p.near_knee = (79.0, 103.0)
-        p.near_ankle = (75.0, 117.0)
-        p.far_knee = (52.0, 104.0)
-        p.far_ankle = (56.0, 117.0)
-        p.near_hand = (82.0, 101.0)
-        p.far_hand = (52.0, 101.0)
-    elif animation in {"dash_startup", "dash", "epsilon_dash", "slide"}:
-        amount = _smooth(t) if animation == "dash_startup" else 1.0
-        if animation == "slide":
-            p.root_y = 15.0
-            p.body_lean = 22.0
-            p.rotation = -7.0
-        else:
-            p.root_y = 4.0 - 2.0 * abs(wave)
-            p.body_lean = 18.0 * amount
-        p.head_x = 2.0 * amount
-        p.near_shoulder = (79.0, 57.0)
-        p.near_elbow = (69.0, 65.0)
-        p.near_hand = (57.0, 70.0)
-        p.far_shoulder = (54.0, 58.0)
-        p.far_elbow = (42.0, 63.0)
-        p.far_hand = (31.0, 64.0)
-        p.near_hip = (70.0, 89.0)
-        p.near_knee = (82.0, 100.0)
-        p.near_ankle = (94.0, 108.0)
-        p.far_hip = (59.0, 89.0)
-        p.far_knee = (54.0, 104.0)
-        p.far_ankle = (42.0, 114.0)
-        if animation == "epsilon_dash":
-            p.epsilon = 0.35 + 0.65 * abs(math.sin(cyc * 2.0))
-            p.field_phase = phase
-    elif animation == "roll" or animation == "ledge_roll":
-        p.rotation = -360.0 * t
-        p.rotation_pivot = (65.0, 93.0)
-        p.root_y = 9.0
-        p.near_hand = (75.0, 87.0)
-        p.far_hand = (57.0, 87.0)
-        p.near_knee = (76.0, 98.0)
-        p.near_ankle = (71.0, 106.0)
-        p.far_knee = (56.0, 98.0)
-        p.far_ankle = (61.0, 106.0)
-    elif animation in {"wall_grab", "ledge_grab"}:
-        p.root_x = 12.0
-        p.body_lean = 6.0
-        p.near_elbow = (86.0, 55.0)
-        p.near_hand = (94.0, 47.0)
-        p.far_elbow = (74.0, 58.0)
-        p.far_hand = (91.0, 53.0)
-        p.near_knee = (76.0, 102.0)
-        p.near_ankle = (89.0, 108.0)
-        p.far_knee = (59.0, 101.0)
-        p.far_ankle = (83.0, 113.0)
-        p.near_hand_mode = p.far_hand_mode = "grip"
-    elif animation in {"wall_jump", "ledge_climb", "ledge_getup"}:
-        rise = _smooth(t)
-        p.root_x = 10.0 - 16.0 * rise
-        p.root_y = 6.0 - 13.0 * rise
-        p.body_lean = -8.0 + 14.0 * rise
-        p.near_elbow = (86.0, 57.0)
-        p.near_hand = (93.0, 48.0)
-        p.far_elbow = (74.0, 58.0)
-        p.far_hand = (91.0, 52.0)
-        p.near_knee = (79.0, 100.0)
-        p.near_ankle = (89.0, 110.0)
-        p.far_knee = (55.0, 100.0)
-        p.far_ankle = (50.0, 111.0)
-        p.near_hand_mode = p.far_hand_mode = "grip"
-    elif animation == "climb":
-        step = 6.0 * wave
-        p.root_y = -1.5 * abs(cosine)
-        p.near_hand = (83.0, 53.0 + step)
-        p.near_elbow = (82.0, 65.0 + step * 0.4)
-        p.far_hand = (50.0, 53.0 - step)
-        p.far_elbow = (49.0, 66.0 - step * 0.4)
-        p.near_ankle = (78.0, 114.0 - step)
-        p.far_ankle = (53.0, 114.0 + step)
-        p.near_hand_mode = p.far_hand_mode = "grip"
-    elif animation in {"swim", "float_glide"}:
-        p.rotation = -12.0 if animation == "swim" else -5.0
-        p.root_y = -3.0 + 2.0 * wave
-        p.near_hand = (92.0 + 5.0 * wave, 61.0)
-        p.near_elbow = (82.0, 65.0)
-        p.far_hand = (40.0 - 5.0 * wave, 64.0)
-        p.far_elbow = (49.0, 68.0)
-        p.near_ankle = (86.0, 111.0 + 3.0 * wave)
-        p.far_ankle = (44.0, 113.0 - 3.0 * wave)
-        if animation == "float_glide":
-            p.full_turn = 0.35
-    elif animation == "block":
-        p.body_lean = -4.0
-        p.near_elbow = (84.0, 63.0)
-        p.near_hand = (75.0, 57.0)
-        p.far_elbow = (67.0, 67.0)
-        p.far_hand = (74.0, 69.0)
-        p.near_hand_mode = p.far_hand_mode = "open"
-        p.field = 0.8
-    elif animation == "hit":
-        shock = _pulse(t)
-        p.root_x = -7.0 * shock
-        p.rotation = -8.0 * shock
-        p.head_x = -2.0 * shock
-        p.mouth_open = 0.65 * shock
-        p.near_hand = (91.0, 78.0)
-        p.far_hand = (38.0, 81.0)
-    elif animation == "death":
-        fall = _smooth(t)
-        p.rotation = -82.0 * fall
-        p.rotation_pivot = (62.0, 111.0)
-        p.root_x = -6.0 * fall
-        p.root_y = 9.0 * fall
-        p.mouth_open = 0.45 * fall
-        p.smile = 0.0
-    elif animation == "talk":
-        p.mouth_open = 0.15 + 0.55 * max(0.0, math.sin(cyc * 1.5))
-        p.smile = 0.5
-        p.brow = 1.0
-        p.near_elbow = (85.0, 69.0)
-        p.near_hand = (91.0, 60.0 + 3.0 * wave)
-        p.near_hand_mode = "open"
-        p.far_elbow = (47.0, 71.0)
-        p.far_hand = (53.0, 80.0)
-    elif animation == "interact":
-        reach = _pulse(t)
-        p.body_lean = 7.0 * reach
-        p.near_elbow = (88.0, 65.0)
-        p.near_hand = (99.0, 63.0)
-        p.near_hand_mode = "point"
-        p.far_hand = (56.0, 81.0)
-    elif animation in {"jab", "punch", "prime_stride"}:
-        strike = _pulse(t)
-        p.body_lean = 10.0 * strike
-        p.root_x = 3.0 * strike
-        p.near_elbow = (86.0 + 5.0 * strike, 67.0)
-        p.near_hand = (84.0 + 24.0 * strike, 68.0)
-        p.near_hand_mode = "fist"
-        p.far_hand = (55.0, 75.0)
-        p.far_hand_mode = "fist"
-        p.near_knee = (74.0 + 4.0 * strike, 102.0)
-        p.near_ankle = (82.0 + 9.0 * strike, 117.0)
-        if animation == "prime_stride":
-            p.prime = strike
-            p.field_phase = phase
-    elif animation == "attack_up" or animation == "air_up":
-        strike = _pulse(t)
-        p.near_elbow = (82.0, 52.0)
-        p.near_hand = (79.0, 34.0 - 4.0 * strike)
-        p.near_hand_mode = "fist"
-        p.far_hand = (54.0, 77.0)
-        p.body_lean = -4.0
-        p.field = 0.35 * strike
-    elif animation == "attack_down" or animation == "air_down":
-        strike = _pulse(t)
-        p.near_elbow = (84.0, 76.0)
-        p.near_hand = (87.0, 99.0 + 5.0 * strike)
-        p.near_hand_mode = "fist"
-        p.far_hand = (55.0, 72.0)
-        p.body_lean = 7.0
-    elif animation.startswith("air_"):
-        p.root_y = -8.0
-        p.rotation = 18.0 * wave
-        p.near_hand = (90.0, 68.0)
-        p.far_hand = (40.0, 70.0)
-        p.near_ankle = (84.0, 109.0)
-        p.far_ankle = (47.0, 110.0)
-        p.field = 0.25
-    elif animation == "compressed_sense":
-        gather = _smooth(min(1.0, t * 1.6))
-        release = _smooth(max(0.0, (t - 0.55) / 0.45))
-        p.compress = gather * (1.0 - 0.45 * release)
-        p.field_phase = phase
-        p.body_lean = 3.0 + 8.0 * release
-        p.near_elbow = (84.0, 64.0)
-        p.near_hand = (92.0 + 12.0 * release, 61.0)
-        p.near_hand_mode = "open"
-        p.far_elbow = (48.0, 66.0)
-        p.far_hand = (57.0, 62.0)
-        p.far_hand_mode = "open"
-    elif animation == "polymath_chain":
-        p.chain = _smooth(t)
-        p.field_phase = phase
-        p.near_elbow = (85.0, 63.0)
-        p.near_hand = (93.0, 50.0 + 5.0 * wave)
-        p.near_hand_mode = "open"
-        p.far_elbow = (46.0, 64.0)
-        p.far_hand = (38.0, 53.0 - 5.0 * wave)
-        p.far_hand_mode = "open"
-        p.mouth_open = 0.25 + 0.25 * abs(wave)
-    elif animation == "full_turn":
-        p.full_turn = _smooth(t)
-        p.field_phase = phase
-        p.near_elbow = (87.0, 63.0)
-        p.near_hand = (95.0, 52.0)
-        p.near_hand_mode = "open"
-        p.far_elbow = (44.0, 65.0)
-        p.far_hand = (36.0, 57.0)
-        p.far_hand_mode = "open"
-        p.root_y = -2.0 * math.sin(t * math.pi)
-    elif animation == "celebrate":
-        lift = abs(math.sin(cyc))
-        p.root_y = -7.0 * lift
-        p.near_elbow = (81.0, 49.0)
-        p.near_hand = (86.0, 35.0)
-        p.far_elbow = (49.0, 49.0)
-        p.far_hand = (44.0, 35.0)
-        p.near_hand_mode = p.far_hand_mode = "open"
-        p.smile = 1.0
-        p.mouth_open = 0.35
-        p.full_turn = 0.35 + 0.25 * lift
-    elif animation == "taunt":
-        p.near_elbow = (85.0, 67.0)
-        p.near_hand = (91.0, 56.0)
-        p.near_hand_mode = "point"
-        p.far_elbow = (49.0, 68.0)
-        p.far_hand = (55.0, 80.0)
-        p.smile = 0.7
-        p.brow = 0.7
-        p.full_turn = 0.25 + 0.15 * (0.5 + 0.5 * wave)
-
-    return p
-
-
-def _transform(point: Point, pose: Pose) -> Point:
-    x, y = point
-    # Forward lean is a shear around the waist, not a rigid rotation; this
-    # keeps the shoes planted while giving the runner silhouette momentum.
-    y_rel = y - 86.0
-    x += -pose.body_lean * y_rel / 75.0
-    point = (x + pose.root_x, y + pose.root_y)
-    return _rotate(point, pose.rotation_pivot, pose.rotation)
-
-
-def _draw_leg(
-    draw: ImageDraw.ImageDraw,
-    pose: Pose,
-    hip: Point,
-    knee: Point,
-    ankle: Point,
-    *,
-    far: bool,
-) -> None:
-    T = lambda q: _transform(q, pose)
-    hip_t, knee_t, ankle_t = T(hip), T(knee), T(ankle)
-    trouser = TROUSER_DARK if far else TROUSER
-    trouser_hi = TROUSER if far else TROUSER_LIGHT
-    _polygon(draw, _segment_quad(hip_t, knee_t, 5.0, 4.3), trouser, OUTLINE, 1.0)
-    _polygon(draw, _segment_quad(knee_t, ankle_t, 4.2, 3.4), trouser_hi, OUTLINE, 1.0)
-    _ellipse(draw, knee_t, 4.4, 3.8, trouser_hi, OUTLINE, 0.8)
-    along, normal, _ = _unit(knee_t, ankle_t)
-    toe = (ankle_t[0] + along[0] * 2.5 + normal[0] * 4.8, ankle_t[1] + along[1] * 2.5 + normal[1] * 4.8)
-    shoe_poly = [
-        (ankle_t[0] - normal[0] * 3.6, ankle_t[1] - normal[1] * 3.6),
-        (ankle_t[0] + normal[0] * 3.7, ankle_t[1] + normal[1] * 3.7),
-        (toe[0] + normal[0] * 3.2, toe[1] + normal[1] * 3.2),
-        (toe[0] - normal[0] * 2.6, toe[1] - normal[1] * 2.6),
-    ]
-    _polygon(draw, shoe_poly, SHOE if not far else SHOE_DARK, OUTLINE, 1.0)
-    _line(draw, [shoe_poly[2], shoe_poly[3]], SOLE, 1.8)
-    if not far:
-        _line(draw, [_lerp_point(ankle_t, toe, 0.35), _lerp_point(ankle_t, toe, 0.72)], TAU_GOLD, 0.8)
-
-
-def _draw_tau_shirt_mark(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
-    chest = _transform((65.2, 61.5), pose)
-    font = _font(21.0, preferred=("GentiumPlus-Italic.ttf", "LinLibertine_RI.otf", "DejaVuSerif-Italic.ttf", "DejaVuSans-Oblique.ttf"))
-    # Use a real Greek tau glyph from an italic serif font. Those fonts make the
-    # descender read much more clearly than the T-like sans-serif forms.
-    draw.text(
-        _pt(_offset(chest, 0.0, 0.15)),
-        "τ",
-        font=font,
-        fill=(246, 241, 222, 255),
-        anchor="mm",
-        stroke_width=max(1, _s(1.2)),
-        stroke_fill=OUTLINE,
-    )
-    # A second tiny fill pass thickens the glyph without changing its shape.
-    draw.text(
-        _pt(_offset(chest, -0.08, 0.15)),
-        "τ",
-        font=font,
-        fill=(246, 241, 222, 255),
-        anchor="mm",
-    )
-
-
-def _draw_neck(draw: ImageDraw.ImageDraw, pose: Pose, collar: bool = True) -> None:
-    T = lambda q: _transform(q, pose)
-    center = T((65.0 + pose.head_x, 31.0 + pose.head_y))
-    neck = [
-        T((60.4 + pose.head_x, 44.8 + pose.head_y)),
-        T((68.7 + pose.head_x, 44.2 + pose.head_y)),
-        T((69.8 + pose.head_x, 55.7 + pose.head_y)),
-        T((60.7 + pose.head_x, 55.9 + pose.head_y)),
-    ]
-    neck = [_rotate(q, center, pose.head_tilt) for q in neck]
-    _polygon(draw, neck, SKIN, OUTLINE_SOFT, 0.85)
-    _line(draw, [_rotate(T((61.7 + pose.head_x, 47.3 + pose.head_y)), center, pose.head_tilt), _rotate(T((61.6 + pose.head_x, 54.0 + pose.head_y)), center, pose.head_tilt)], SKIN_SHADE, 0.65)
-    _line(draw, [_rotate(T((67.7 + pose.head_x, 46.8 + pose.head_y)), center, pose.head_tilt), _rotate(T((67.7 + pose.head_x, 54.0 + pose.head_y)), center, pose.head_tilt)], SKIN_SHADE, 0.65)
-    if collar:
-        _draw_collar(draw, pose)
-
-
-def _draw_collar(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
-    T = lambda q: _transform(q, pose)
-    # Collar lines under the neck help connect the head to the shirt.
-    _arc(draw, T((65.3, 54.8)), 5.7, 3.4, 194, 346, OUTLINE_SOFT, 0.95)
-    _arc(draw, T((65.3, 55.2)), 4.9, 2.8, 196, 344, SHIRT_SHADE, 0.75)
-
-
-def _draw_torso(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
-    T = lambda q: _transform(q, pose)
-    jacket = [
-        T((52.0, 54.0)),
-        T((61.0, 49.0)),
-        T((70.0, 49.0)),
-        T((80.0, 54.0)),
-        T((83.0, 72.0)),
-        T((77.0, 89.0)),
-        T((66.0, 92.0)),
-        T((54.0, 88.0)),
-        T((48.0, 71.0)),
-    ]
-    _polygon(draw, jacket, JACKET_DARK, OUTLINE, 1.2)
-    # Asymmetric short jacket: near panel is bright and cut higher, creating a
-    # runner/courier silhouette instead of a suit coat or academic robe.
-    near_panel = [T((68.0, 51.2)), T((78.0, 55.0)), T((81.0, 71.0)), T((74.0, 86.0)), T((67.1, 90.0))]
-    far_panel = [T((53.0, 55.0)), T((61.9, 51.2)), T((62.8, 90.0)), T((55.0, 85.0)), T((50.0, 70.0))]
-    _polygon(draw, far_panel, JACKET, OUTLINE_SOFT, 0.7)
-    _polygon(draw, near_panel, JACKET_LIGHT, OUTLINE_SOFT, 0.7)
-    # Open jacket over a dark crew-neck tee, with a bold tau mark that stays
-    # legible from sprite scale.
-    shirt = [T((57.1, 52.8)), T((73.1, 52.8)), T((74.0, 65.0)), T((66.7, 73.0)), T((56.3, 65.4))]
-    _polygon(draw, shirt, SHIRT, OUTLINE_SOFT, 0.7)
-    _ellipse(draw, T((65.2, 54.1)), 5.6, 2.8, SHIRT, None, 0.0)
-    _arc(draw, T((65.2, 55.2)), 6.0, 3.6, 198, 342, SHIRT_SHADE, 1.0)
-    _draw_tau_shirt_mark(draw, pose)
-    _line(draw, [T((65.0, 52.4)), T((65.0, 89.0))], JACKET_DEEP, 0.8)
-    # Short sleeves and shoulder caps keep both arms visually attached.
-    _ellipse(draw, T((52.5, 56.0)), 6.0, 5.3, JACKET, OUTLINE, 0.9)
-    _ellipse(draw, T((78.0, 55.5)), 6.2, 5.4, JACKET, OUTLINE, 0.9)
-
-
-def _draw_arm(
-    draw: ImageDraw.ImageDraw,
-    pose: Pose,
-    shoulder: Point,
-    elbow: Point,
-    hand: Point,
-    mode: str,
-    *,
-    far: bool,
-) -> None:
-    T = lambda q: _transform(q, pose)
-    shoulder_t, elbow_t, hand_t = T(shoulder), T(elbow), T(hand)
-    # For the mostly front-facing hall sprite, both arms should read as the same
-    # body rather than one near arm and one deeply shadowed far arm.
-    skin = SKIN_LIGHT
-    sleeve = JACKET
-    along, _, length = _unit(elbow_t, hand_t)
-    wrist = (hand_t[0] - along[0] * min(3.0, length * 0.28), hand_t[1] - along[1] * min(3.0, length * 0.28))
-    upper_end = _lerp_point(shoulder_t, elbow_t, 0.58)
-    _polygon(draw, _segment_quad(shoulder_t, upper_end, 5.0, 4.0), sleeve, OUTLINE, 0.95)
-    _polygon(draw, _segment_quad(upper_end, elbow_t, 4.0, 3.6), skin, OUTLINE, 0.9)
-    _polygon(draw, _segment_quad(elbow_t, wrist, 3.6, 2.8), skin, OUTLINE, 0.9)
-    _ellipse(draw, elbow_t, 3.7, 3.3, skin, OUTLINE, 0.75)
-    _draw_hand(draw, wrist, hand_t, mode, skin)
-
-
-def _draw_hand(draw: ImageDraw.ImageDraw, wrist: Point, hand: Point, mode: str, skin: RGBA) -> None:
-    along, normal, _ = _unit(wrist, hand)
-    rx = 3.5 if mode == "open" else 3.0
-    _ellipse(draw, hand, rx, 2.8, skin, OUTLINE, 0.8)
-    if mode == "open":
-        for offset in (-1.4, -0.45, 0.45, 1.4):
-            start = (hand[0] + along[0] * 1.1 + normal[0] * offset, hand[1] + along[1] * 1.1 + normal[1] * offset)
-            end = (start[0] + along[0] * (2.8 - abs(offset) * 0.2), start[1] + along[1] * (2.8 - abs(offset) * 0.2))
-            _line(draw, [start, end], OUTLINE, 1.4)
-            _line(draw, [start, end], skin, 0.75)
-    elif mode == "point":
-        start = (hand[0] + along[0] * 1.4, hand[1] + along[1] * 1.4)
-        end = (hand[0] + along[0] * 5.5, hand[1] + along[1] * 5.5)
-        _line(draw, [start, end], OUTLINE, 1.6)
-        _line(draw, [start, end], skin, 0.85)
-    elif mode == "grip":
-        _line(draw, [hand, (hand[0] + normal[0] * 3.0, hand[1] + normal[1] * 3.0)], OUTLINE, 1.4)
-    elif mode == "fist":
-        _line(draw, [(hand[0] - normal[0] * 1.8, hand[1] - normal[1] * 1.8), (hand[0] + normal[0] * 1.8, hand[1] + normal[1] * 1.8)], SKIN_SHADE, 0.8)
-
-
-def _draw_head(draw: ImageDraw.ImageDraw, pose: Pose, collar: bool = True) -> None:
-    base = (65.0 + pose.head_x, 31.0 + pose.head_y)
-    T = lambda q: _transform(q, pose)
-    center = T(base)
-    _draw_neck(draw, pose, collar)
-    # Ear behind head, then a tapered three-quarter face.
-    _ellipse(draw, T((51.8 + pose.head_x, 32.0 + pose.head_y)), 3.8, 5.7, SKIN, OUTLINE, 0.8)
-    face = [
-        T((53.0 + pose.head_x, 20.0 + pose.head_y)),
-        T((64.0 + pose.head_x, 15.5 + pose.head_y)),
-        T((76.0 + pose.head_x, 20.0 + pose.head_y)),
-        T((79.0 + pose.head_x, 31.0 + pose.head_y)),
-        T((75.0 + pose.head_x, 43.0 + pose.head_y)),
-        T((65.0 + pose.head_x, 47.0 + pose.head_y)),
-        T((55.0 + pose.head_x, 41.0 + pose.head_y)),
-        T((51.5 + pose.head_x, 30.0 + pose.head_y)),
-    ]
-    face = [_rotate(q, center, pose.head_tilt) for q in face]
-    _polygon(draw, face, SKIN, OUTLINE, 1.2)
-    # Side-swept hair is a connected cap with one long diagonal fringe.
-    hair = [
-        T((51.5 + pose.head_x, 29.0 + pose.head_y)),
-        T((52.0 + pose.head_x, 20.0 + pose.head_y)),
-        T((59.0 + pose.head_x, 13.0 + pose.head_y)),
-        T((72.0 + pose.head_x, 13.5 + pose.head_y)),
-        T((80.0 + pose.head_x, 20.0 + pose.head_y)),
-        T((78.5 + pose.head_x, 27.0 + pose.head_y)),
-        T((72.0 + pose.head_x, 22.5 + pose.head_y)),
-        T((63.0 + pose.head_x, 27.0 + pose.head_y)),
-        T((55.0 + pose.head_x, 31.5 + pose.head_y)),
-    ]
-    hair = [_rotate(q, center, pose.head_tilt) for q in hair]
-    _polygon(draw, hair, HAIR, OUTLINE, 1.1)
-    _line(draw, [_rotate(T((57.0 + pose.head_x, 18.0 + pose.head_y)), center, pose.head_tilt), _rotate(T((71.5 + pose.head_x, 17.0 + pose.head_y)), center, pose.head_tilt)], HAIR_GLEAM, 1.1)
-    _line(draw, [_rotate(T((62.0 + pose.head_x, 21.0 + pose.head_y)), center, pose.head_tilt), _rotate(T((75.0 + pose.head_x, 18.5 + pose.head_y)), center, pose.head_tilt)], HAIR_MID, 1.0)
-
-    # Rectangular glasses are the primary face read at hall scale.
-    left = _rotate(T((59.0 + pose.head_x, 30.5 + pose.head_y)), center, pose.head_tilt)
-    right = _rotate(T((70.5 + pose.head_x, 30.2 + pose.head_y)), center, pose.head_tilt)
-    for eye_center, far in ((left, True), (right, False)):
-        rx = 5.1 if not far else 4.7
-        draw.rounded_rectangle(
-            _bbox(eye_center, rx, 3.4),
-            radius=_s(1.2),
-            fill=GLASS,
-            outline=OUTLINE_SOFT,
-            width=_s(0.9),
-        )
-        if pose.blink:
-            _line(draw, [_offset(eye_center, -2.3, 0.2), _offset(eye_center, 2.3, 0.0)], EYE, 1.0)
-        else:
-            _ellipse(draw, _offset(eye_center, 0.7, 0.4), 1.15, 1.4, EYE, None, 0.0)
-            _ellipse(draw, _offset(eye_center, 1.0, 0.0), 0.35, 0.35, TAU_LIGHT, None, 0.0)
-    _line(draw, [_offset(left, 4.7, -0.2), _offset(right, -5.0, -0.2)], OUTLINE_SOFT, 0.9)
-    _line(draw, [_offset(left, -4.6, -0.2), _offset(left, -8.5, -1.3)], OUTLINE_SOFT, 0.8)
-    _line(draw, [_offset(right, 4.8, -0.2), _offset(right, 7.4, -1.0)], OUTLINE_SOFT, 0.8)
-
-    # Narrow nose and understated, friendly mouth.
-    nose = _rotate(T((72.8 + pose.head_x, 35.0 + pose.head_y)), center, pose.head_tilt)
-    _line(draw, [_offset(nose, -0.9, -3.0), nose, _offset(nose, -1.6, 0.8)], SKIN_SHADE, 0.8)
-    mouth = _rotate(T((67.8 + pose.head_x, 40.2 + pose.head_y)), center, pose.head_tilt)
-    if pose.mouth_open > 0.14:
-        _ellipse(draw, mouth, 3.5, 0.8 + 1.5 * pose.mouth_open, MOUTH, OUTLINE_SOFT, 0.55)
-        if pose.smile > 0.35:
-            _line(draw, [_offset(mouth, -2.2, -0.2), _offset(mouth, 2.2, -0.2)], SKIN_LIGHT, 0.55)
-    else:
-        lift = 0.8 * pose.smile
-        _line(draw, [_offset(mouth, -3.0, -0.1), mouth, _offset(mouth, 3.0, -lift)], MOUTH, 0.9)
-    if pose.brow > 0.0:
-        _line(draw, [_offset(left, -2.8, -5.2 - pose.brow), _offset(left, 2.8, -5.8 - pose.brow)], HAIR, 0.9)
-        _line(draw, [_offset(right, -2.8, -5.6 - pose.brow), _offset(right, 2.8, -5.0 - pose.brow)], HAIR, 0.9)
-
-
-def _draw_ability_effects_behind(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
-    T = lambda q: _transform(q, pose)
-    if pose.full_turn > 0.02:
-        center = T((65.0, 70.0))
-        progress = 45.0 + 315.0 * pose.full_turn
-        _arc(draw, center, 31.0, 38.0, -90.0, -90.0 + progress, _fade(TAU_GOLD, 0.75), 2.2)
-        _arc(draw, center, 27.5, 34.0, -90.0, -90.0 + progress * 0.84, _fade(TAU_LIGHT, 0.42), 0.9)
-        angle = math.radians(-90.0 + progress)
-        marker = (center[0] + 31.0 * math.cos(angle), center[1] + 38.0 * math.sin(angle))
-        _ellipse(draw, marker, 2.4, 2.4, TAU_LIGHT, OUTLINE_SOFT, 0.5)
-    if pose.epsilon > 0.02:
-        # Several tiny gains behind the dash, each smaller than the last.
-        for idx in range(4):
-            amount = pose.epsilon * (1.0 - idx * 0.16)
-            center = T((44.0 - idx * 9.0, 75.0 + (idx % 2) * 2.0))
-            _arc(draw, center, 6.0 - idx * 0.7, 10.0 - idx * 0.8, 92, 268, _fade(FIELD, amount * 0.75), 1.4)
-    if pose.prime > 0.02:
-        # Unevenly spaced points (2, 3, 5, 7 offsets) tethered to the strike path.
-        hand = T(pose.near_hand)
-        for idx, gap in enumerate((2.0, 5.0, 10.0, 17.0)):
-            center = (hand[0] - gap * 1.45, hand[1] + math.sin(idx * 1.7) * 3.0)
-            _ellipse(draw, center, 1.6 + 0.2 * idx, 1.6 + 0.2 * idx, _fade(TAU_GOLD, pose.prime), None, 0.0)
-            if idx:
-                prev_gap = (2.0, 5.0, 10.0, 17.0)[idx - 1]
-                prev = (hand[0] - prev_gap * 1.45, hand[1] + math.sin((idx - 1) * 1.7) * 3.0)
-                _line(draw, [prev, center], _fade(TAU_LIGHT, pose.prime * 0.55), 0.75)
-    if pose.compress > 0.02:
-        center = T((75.0, 62.0))
-        for idx in range(4):
-            radius = _lerp(26.0 - idx * 4.5, 6.0 + idx * 1.0, pose.compress)
-            _arc(draw, center, radius, radius * 0.82, 160, 380, _fade(FIELD, 0.26 + idx * 0.12), 1.1)
-    if pose.chain > 0.02:
-        # Three contributor nodes join at the chest before the combined line
-        # exits through the near hand.  They are effects, not held objects.
-        chest = T((65.0, 67.0))
-        nodes = [T((42.0, 48.0)), T((65.0, 39.0)), T((88.0, 47.0))]
-        colors = [LEMMA_BLUE, LEMMA_PINK, LEMMA_GREEN]
-        for node, color in zip(nodes, colors):
-            progress = pose.chain
-            end = _lerp_point(node, chest, progress)
-            _line(draw, [node, end], _fade(color, 0.8), 1.2)
-            _ellipse(draw, node, 2.6, 2.6, _fade(color, 0.9), OUTLINE_SOFT, 0.45)
-        if pose.chain > 0.55:
-            out = T(pose.near_hand)
-            _line(draw, [chest, out], _fade(TAU_LIGHT, (pose.chain - 0.55) / 0.45), 2.0)
-
-
-def _draw_ability_effects_front(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
-    T = lambda q: _transform(q, pose)
-    if pose.field > 0.02:
-        center = T((76.0, 64.0))
-        _arc(draw, center, 18.0, 25.0, 110, 250, _fade(FIELD, pose.field), 2.4)
-        _arc(draw, center, 14.0, 20.0, 110, 250, _fade(TAU_LIGHT, pose.field * 0.55), 0.9)
-    if pose.compress > 0.45:
-        hand = T(pose.near_hand)
-        release = (pose.compress - 0.45) / 0.55
-        _line(draw, [hand, (hand[0] + 22.0 * release, hand[1] - 1.5)], _fade(TAU_LIGHT, release), 2.6)
-        _line(draw, [hand, (hand[0] + 28.0 * release, hand[1] + 2.0)], _fade(FIELD, release * 0.75), 1.0)
-
-
-# --- The rig ---------------------------------------------------------------
-#
-# The painters above draw every shape through ``_transform`` (the lean's shear,
-# the root, the roll). Drawn as a rig, the torso and the head are pieces painted
-# once at rest (sheared by the lean, to a step) and placed where ``_transform``
-# puts their anchor, turned by the roll; limb segments are pieces of a few
-# lengths turned along their bones; knees, elbows, shoes and hands are pieces.
-
-CANVAS = (FRAME_W * SUPER, FRAME_H * SUPER)
-LEAN_STEP = 2.0
-REST = (20.0, 64.0)
-
-
-def _sp(point: Point) -> Point:
-    return (point[0] * SUPER, point[1] * SUPER)
-
-
-def _xform(pose: Pose) -> SR.Xform:
-    """``_transform`` as a map: the shear about the waist, the root, the roll."""
-    k = pose.body_lean / 75.0
-    return SR.Xform((1.0, -k, 86.0 * k, 0.0, 1.0, 0.0)).translate(pose.root_x, pose.root_y).rotate_cw(pose.rotation_pivot, pose.rotation)
-
-
-def _rest_pose(pose: Pose, **face) -> Pose:
-    """The pose at rest (no root, no roll), its lean to a step."""
-    return Pose(body_lean=SR.q(pose.body_lean, LEAN_STEP), **face)
-
-
-def _place_rest(canvas: Image.Image, key: tuple, paint, rest: Pose, rest_anchor: Point, anchor: Point, T: SR.Xform, name: str) -> None:
-    """The piece ``paint`` paints at ``rest``, its ``rest_anchor`` landing
-    where the frame's transform puts ``anchor``."""
-    pivot = _sp(_transform(rest_anchor, rest))
-    part = SR.rest_piece(("pipi",) + key, CANVAS, pivot, paint)
-    SR.place(canvas, part, _sp(T.pt(anchor)), T.deg, name)
-
-
-def _segment(canvas: Image.Image, a: Point, b: Point, ra: float, rb: float, fill: RGBA, outline: RGBA, width: float, name: str, split: float = 1.0, fill2: RGBA | None = None, rb2: float = 0.0) -> None:
-    """A tapered limb segment ``a``->``b`` (``_segment_quad``) as a piece of a
-    whole-pixel length turned along the bone. ``split`` < 1 paints it in two
-    colours (a sleeve to ``split`` of the way, then ``fill2``)."""
-    length = max(1.0, SR.q(math.dist(a, b), 1.0))
-    x0, y0 = REST
-
-    def paint(draw) -> None:
-        if split < 1.0:
-            mid = (x0 + length * split, y0)
-            _polygon(draw, _segment_quad((x0, y0), mid, ra, rb), fill, outline, width)
-            _polygon(draw, _segment_quad(mid, (x0 + length, y0), rb, rb2), fill2, outline, width)
-        else:
-            _polygon(draw, _segment_quad((x0, y0), (x0 + length, y0), ra, rb), fill, outline, width)
-
-    part = SR.rest_piece(("pipi_seg", length, ra, rb, fill, outline, width, split, fill2, rb2), CANVAS, _sp(REST), paint)
-    SR.place(canvas, part, _sp(a), math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])), name)
-
-
-def _dot(canvas: Image.Image, at: Point, rx: float, ry: float, fill: RGBA, width: float, name: str) -> None:
-    part = SR.rest_piece(("pipi_dot", rx, ry, fill, width), CANVAS, _sp(REST), lambda d: _ellipse(d, REST, rx, ry, fill, OUTLINE, width))
-    SR.place(canvas, part, _sp(at), 0.0, name)
-
-
-def _rig_leg(canvas: Image.Image, pose: Pose, T: SR.Xform, hip: Point, knee: Point, ankle: Point, *, far: bool) -> None:
-    hip_t, knee_t, ankle_t = T.pt(hip), T.pt(knee), T.pt(ankle)
-    side = "far" if far else "near"
-    trouser = TROUSER_DARK if far else TROUSER
-    trouser_hi = TROUSER if far else TROUSER_LIGHT
-    _segment(canvas, hip_t, knee_t, 5.0, 4.3, trouser, OUTLINE, 1.0, f"{side}_thigh")
-    _segment(canvas, knee_t, ankle_t, 4.2, 3.4, trouser_hi, OUTLINE, 1.0, f"{side}_shin")
-    _dot(canvas, knee_t, 4.4, 3.8, trouser_hi, 0.8, f"{side}_knee")
-
-    def shoe(draw) -> None:
-        # ``_draw_leg``'s shoe with the shin along +x.
-        a, along, normal = REST, (1.0, 0.0), (0.0, 1.0)
-        toe = (a[0] + along[0] * 2.5 + normal[0] * 4.8, a[1] + along[1] * 2.5 + normal[1] * 4.8)
-        poly = [
-            (a[0] - normal[0] * 3.6, a[1] - normal[1] * 3.6),
-            (a[0] + normal[0] * 3.7, a[1] + normal[1] * 3.7),
-            (toe[0] + normal[0] * 3.2, toe[1] + normal[1] * 3.2),
-            (toe[0] - normal[0] * 2.6, toe[1] - normal[1] * 2.6),
-        ]
-        _polygon(draw, poly, SHOE if not far else SHOE_DARK, OUTLINE, 1.0)
-        _line(draw, [poly[2], poly[3]], SOLE, 1.8)
-        if not far:
-            _line(draw, [_lerp_point(a, toe, 0.35), _lerp_point(a, toe, 0.72)], TAU_GOLD, 0.8)
-
-    part = SR.rest_piece(("pipi_shoe", far), CANVAS, _sp(REST), shoe)
-    SR.place(canvas, part, _sp(ankle_t), math.degrees(math.atan2(ankle_t[1] - knee_t[1], ankle_t[0] - knee_t[0])), f"{side}_shoe")
-
-
-def _rig_arm(canvas: Image.Image, pose: Pose, T: SR.Xform, shoulder: Point, elbow: Point, hand: Point, mode: str, *, far: bool) -> None:
-    shoulder_t, elbow_t, hand_t = T.pt(shoulder), T.pt(elbow), T.pt(hand)
-    side = "far" if far else "near"
-    skin = SKIN_LIGHT
-    along, _, length = _unit(elbow_t, hand_t)
-    wrist = (hand_t[0] - along[0] * min(3.0, length * 0.28), hand_t[1] - along[1] * min(3.0, length * 0.28))
-    # The sleeve to 0.58 of the upper arm, then bare skin to the elbow: one piece.
-    _segment(canvas, shoulder_t, elbow_t, 5.0, 4.0, JACKET, OUTLINE, 0.95, f"{side}_upper_arm", split=0.58, fill2=skin, rb2=3.6)
-    _segment(canvas, elbow_t, wrist, 3.6, 2.8, skin, OUTLINE, 0.9, f"{side}_forearm")
-    _dot(canvas, elbow_t, 3.7, 3.3, skin, 0.75, f"{side}_elbow")
-    # The hand along the forearm (``_draw_hand`` with the forearm along +x).
-    part = SR.rest_piece(("pipi_hand", mode), CANVAS, _sp(REST), lambda d: _draw_hand(d, (REST[0] - 3.0, REST[1]), REST, mode, skin))
-    SR.place(canvas, part, _sp(hand_t), math.degrees(math.atan2(along[1], along[0])), f"{side}_hand")
-
-
-def _render_native_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
-    """Render into the authored supersampled canvas without raster scaling."""
-    pose = _pose(animation, frame_idx, nframes)
-    image = Image.new("RGBA", CANVAS, (0, 0, 0, 0))
-    draw = blending_draw(image)
-    T = _xform(pose)
-
-    _draw_ability_effects_behind(draw, pose)
-    _rig_leg(image, pose, T, pose.far_hip, pose.far_knee, pose.far_ankle, far=True)
-    _rig_leg(image, pose, T, pose.near_hip, pose.near_knee, pose.near_ankle, far=False)
-    rest = _rest_pose(pose)
-
-    def torso(d) -> None:
-        _draw_torso(d, rest)
-        _draw_collar(d, rest)
-
-    _place_rest(image, ("torso", rest.body_lean), torso, rest, (65.0, 70.0), (65.0, 70.0), T, "torso")
-    _rig_arm(image, pose, T, pose.far_shoulder, pose.far_elbow, pose.far_hand, pose.far_hand_mode, far=True)
-    _rig_arm(image, pose, T, pose.near_shoulder, pose.near_elbow, pose.near_hand, pose.near_hand_mode, far=False)
-    _draw_ability_effects_front(draw, pose)
-    face = dict(blink=pose.blink, mouth_open=SR.q(pose.mouth_open, 0.1), smile=SR.q(pose.smile, 0.25), brow=SR.q(pose.brow, 0.25))
-    head_rest = _rest_pose(pose, **face)
-    key = ("head", head_rest.body_lean) + tuple(face.values())
-    _place_rest(image, key, lambda d: _draw_head(d, head_rest, collar=False), head_rest, (65.0, 31.0), (65.0 + pose.head_x, 31.0 + pose.head_y), T, "head")
-    return image
-
-
-def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
-    return rigdoc.downsampled_canvas(_render_native_frame(animation, frame_idx, nframes), (FRAME_W, FRAME_H), Image.Resampling.LANCZOS)
-
-
-def render_portraits(out_dir: Path, **opts) -> List[Path]:
-    """Publish Pipi Tau's native close-up expressions and talk loop."""
+@X.row
+def idle(i: int, n: int):
+    # He comes up on his toes and down again, and taps his temple: one more case.
+    _, s, c = loop(i, n)
+    tap = i in (2, 3, 4)
+    return P(hip=(0.0, 0.2 - 0.8 * max(0.0, s)), lean=3.0, head=(0.3, 0.0, 2.0 * c), na=AT_TEMPLE if tap else (9.0, 9.0), nh="point" if tap else "soft", fa=(-1.0, 21.0),
+             nf=(-3.8, 0.0, 6.0 * max(0.0, s)), ff=(4.8, 0.0, 6.0 * max(0.0, s)), eyes="closed" if i == n - 2 else "open", mouth="smile" if tap else "flat")
+
+
+@X.row
+def talk(i: int, n: int):
+    # Fast, both hands: first this, then this, and so that.
+    _, s, c = loop(i, n)
+    return P(hip=(0.0, 0.4 * s), lean=4.0, head=(0.3, 0.0, 3.0 * s), na=(14.0 + 4.0 * c, 4.0 - 6.0 * max(0.0, s)), nh="open", fa=(16.0 - 4.0 * c, 7.0 + 5.0 * min(0.0, s)), fh="open",
+             mouth=("open", "smile", "big", "smile")[i % 4], brows=1.0 if s > 0.2 else 0.0)
+
+
+@X.row
+def epsilon_dash(i: int, n: int):
+    # A very short step, done very fast, done again.
+    _, s, _c = loop(i, n)
+    return dict(X.full(R.DASH), hip=(2.0, 5.0 + 0.8 * s), lean=28.0, na=(24.0, 6.0), nh="point", fa=(-16.0, 10.0), nf=(-12.0 - s, -5.0 - s, 36.0))
+
+
+@X.row
+def full_turn(i: int, n: int):
+    # Two pi: once all the way round, and he comes down where he began.
+    ph, s, c = loop(i, n)
+    up = math.sin(math.pi * shot(i, n))
+    return P(off=(0.0, -9.0 * up), hip=(0.0, 1.0), lean=8.0 * s, head=(0.0, 0.0, 8.0 * s), na=(-18.0 + 8.0 * c, 0.0), nab=-1.0, fa=(20.0 - 8.0 * c, 0.0), nh="open", fh="open",
+             nf=(-4.0 + 3.0 * s, -4.0 * up, 20.0 * up), ff=(5.0 - 3.0 * s, -6.0 * up, 10.0 * up), mouth="open", eyes="happy")
+
+
+@X.row
+def celebrate(i: int, n: int):
+    ph, s, _c = loop(i, n)
+    up = abs(math.sin(ph))
+    return P(off=(0.0, -9.0 * up), hip=(0.0, 3.0 * (1.0 - up)), lean=-3.0, head=(0.0, 0.0, -8.0), na=(8.0, -25.0 + 2.0 * s), nab=-1.0, arm="under", nh="fist",
+             fa=(-8.0, 16.0), fh="fist", nf=(-6.0, -4.0 * up, 24.0 * up), ff=(7.0, -6.0 * up, 14.0 * up), eyes="happy", mouth="big", brows=1.0)
+
+
+@X.row
+def taunt(i: int, n: int):
+    # He writes it on his hand, shows you, and it is short.
+    write = P(lean=6.0, head=(0.5, 0.5, 10.0), na=(10.0, 9.0), nh="point", fa=(12.0, 11.0), fh="flat", brows=-1.0)
+    show = P(lean=0.0, na=(-2.0, 24.5), fa=(20.0, 0.0), fh="flat", mouth="smile", brows=1.0, eyes="happy")
+    return X.keys(shot(i, n), [(0.0, P()), (0.25, write), (0.6, dict(write, na=(12.0, 10.0))), (0.8, show), (1.0, show)])
+
+
+X.alias(prime_stride="attack_side", compressed_sense="charge", polymath_chain="cast")
+X.rows = [("idle", 8, 145), ("walk", 8, 104), ("run", 8, 76), ("crouch", 6, 95), ("crouch_walk", 8, 88), ("jump", 6, 92), ("fall", 6, 92), ("land_hard", 8, 92),
+          ("land_recovery", 6, 72), ("dash_startup", 4, 48), ("dash", 6, 60), ("epsilon_dash", 8, 54), ("slide", 6, 68), ("roll", 8, 56), ("wall_grab", 6, 105),
+          ("wall_jump", 6, 82), ("ledge_grab", 6, 98), ("ledge_climb", 6, 98), ("ledge_getup", 6, 42), ("ledge_roll", 8, 38), ("climb", 8, 98), ("swim", 8, 102),
+          ("float_glide", 8, 108), ("block", 6, 82), ("hit", 5, 86), ("death", 8, 105), ("talk", 8, 104), ("interact", 8, 90), ("jab", 5, 56), ("punch", 7, 68),
+          ("prime_stride", 8, 64), ("attack_up", 8, 64), ("attack_down", 8, 64), ("air_neutral", 8, 60), ("air_forward", 7, 60), ("air_back", 7, 60), ("air_down", 7, 68),
+          ("air_up", 7, 60), ("compressed_sense", 8, 74), ("polymath_chain", 8, 78), ("full_turn", 10, 76), ("celebrate", 8, 88), ("taunt", 8, 92)]
+
+# ---- What he shows -----------------------------------------------------------
+
+PRIMES = ("2", "3", "5", "7", "11", "13")
+
+
+def _sym(symbols, size: float, fill: RGBA = MATH, dark: RGBA = MATH_DARK):
+    return R.glyph(K, symbols, size, fill, dark)
+
+
+def _sparse(count: int, known: bool):
+    """A grid, a few points of it lit: that is all he needs. ``known``: he has
+    the rest of it."""
+    lit = ((0, 1), (2, 0), (3, 2), (1, 3), (4, 1), (2, 4), (4, 4))
+
+    def paint(d) -> None:
+        for gx in range(5):
+            for gy in range(5):
+                on = (gx, gy) in lit[:count]
+                q = K.at(-10.0 + gx * 5.0, -10.0 + gy * 5.0)
+                if on or known:
+                    K.oval(d, q, 2.2, 2.2, OUTLINE)
+                    K.oval(d, q, 1.4, 1.4, MATH if on else COOL)
+                else:
+                    K.oval(d, q, 0.8, 0.8, COOL_DARK)
+
+    return K.aligned(("sparse", count, known), paint)
+
+
+def _chain(links: int):
+    """Lemmas, linked, along +x."""
+
+    def paint(d) -> None:
+        for k in range(links):
+            c = K.at(5.0 + 8.0 * k, 1.2 * (-1.0 if k % 2 else 1.0))
+            for edge in (True, False):
+                K.oval(d, c, 5.0, 3.2, None, COOL_DARK if edge else (MATH if k == links - 1 else COOL), 2.6 if edge else 1.2)  # type: ignore[arg-type]
+
+    return K.aligned(("chain", links), paint)
+
+
+def _effects(ctx) -> List[Stamp]:
+    out: List[Stamp] = []
+    anim, i, n, u, hand, head, hip = ctx.anim, ctx.i, ctx.n, ctx.u, ctx.hand, ctx.head, ctx.hip
+    if anim in ("jab", "epsilon_dash") and (anim == "epsilon_dash" or 1 <= i <= 3):
+        out.append((_sym(["epsilon"], 8.0, COOL, COOL_DARK), (hand[0] + 18.0, hand[1] - 2.0), "epsilon", 0.0))
+        if anim == "epsilon_dash":
+            for k in range(2):
+                out.append((R.dust(K, 1.4 - 0.4 * k, COOL, COOL_DARK), (hip[0] - 22.0 - 9.0 * k, hip[1] + 6.0 + 3.0 * ((i + k) % 2)), f"dust_{k}", 0.0))
+    elif anim == "punch" and 3 <= i <= 5:
+        out.append((R.burst(K, 8.0 + (i - 3), MATH, MATH_DARK), (hand[0] + 16.0, hand[1]), "burst", 0.0))
+        out.append((_sym(["tau"], 8.0), (hand[0] + 16.0, hand[1]), "tau", 0.0))
+    elif anim in ("slash", "ledge_getup_attack") and 2 <= i <= 6:
+        a = math.degrees(math.atan2(hand[1] - ctx.shoulder[1], hand[0] - ctx.shoulder[0]))
+        lead = int(round(a / 5.0)) * 5
+        out.append((R.swoosh(K, 46.0, lead - 90, lead + 6, 7.0, MATH, MATH_DARK), ctx.shoulder, "swoosh", 0.0))
+    elif anim in ("attack_side", "prime_stride") and 3 <= i <= 6:
+        # The primes in a row, and the gaps between them.
+        for k in range(1 + (i - 3)):
+            x = hand[0] + 14.0 + (4.0, 9.0, 18.0, 27.0)[k] * 1.0
+            out.append((_sym(PRIMES[k], 7.0, MATH if k % 2 == 0 else COOL, MATH_DARK if k % 2 == 0 else COOL_DARK), (min(x, 196.0), hand[1] - 2.0 - 3.0 * (k % 2)), f"prime_{k}", 0.0))
+    elif anim in ("attack_up", "air_up") and 3 <= i <= 6:
+        y = hand[1] - 16.0 - 4.0 * (i - 3)
+        if y > 14.0:
+            out.append((_sym(PRIMES[(i - 3) % 6], 8.0), (hand[0] + 3.0, y), "prime", 0.0))
+    elif anim == "attack_down" and i >= 4:
+        out.append((R.burst(K, 10.0 + min(3, i - 4), COOL, COOL_DARK, 10), (hand[0] + 8.0, ctx.ground - 12.0), "burst", 0.0))
+        out.append((_sym(["epsilon"], 8.0), (hand[0] + 8.0, ctx.ground - 12.0), "epsilon", 0.0))
+    elif anim == "air_neutral":
+        for k, sym in enumerate((["tau"], ["pi"], ["epsilon"])):
+            a = ctx.phase + k * math.tau / 3.0
+            out.append((_sym(sym, 8.0, (MATH, COOL, MATH)[k], (MATH_DARK, COOL_DARK, MATH_DARK)[k]), (hip[0] + 34.0 * math.cos(a), hip[1] - 18.0 + 11.0 * math.sin(a)), f"sym_{k}", 0.0))
+    elif anim in ("charge", "compressed_sense"):
+        out.append((_sparse(min(7, 1 + i), i >= n - 1), pin((head[0] - 2.0, head[1] - 34.0)), "sparse", 0.0))
+    elif anim in ("cast", "polymath_chain") and i >= 2:
+        out.append((_chain(min(5, i - 1)), pin((hand[0] + 6.0, hand[1] - 2.0)), "chain", 0.0))
+    elif anim == "full_turn":
+        a = ctx.phase
+        out.append((_sym(["pi"], 8.0), (hip[0] + 30.0 * math.cos(a), hip[1] - 20.0 + 9.0 * math.sin(a)), "pi_0", 0.0))
+        out.append((_sym(["pi"], 8.0, COOL, COOL_DARK), (hip[0] - 30.0 * math.cos(a), hip[1] - 20.0 - 9.0 * math.sin(a)), "pi_1", 0.0))
+    elif anim == "celebrate":
+        out.append((_sym(["tau"], 9.0), (head[0] + 4.0, head[1] - 26.0 - 2.0 * abs(math.sin(ctx.phase))), "tau", 0.0))
+    elif anim == "taunt" and u >= 0.8:
+        out.append((_sym(["epsilon"], 7.0), (ctx.far_hand[0] + 8.0, ctx.far_hand[1] - 10.0), "epsilon", 0.0))
+    elif anim == "interact" and 3 <= i <= 5:
+        out.append((R.tick(K, 4.0, MATH, MATH_DARK), (hand[0] + 16.0, hand[1] - 5.0), "tick", 0.0))
+    return out
+
+
+X.effects = _effects
+
+ROWS = X.rows
+_render_frame = X.render_frame
+render, main, render_canonical = R.entry_points(X, ACTOR_METADATA, DISPLAY_NAME)
+
+
+def render_portraits(out_dir, **opts):
+    """His portraits are frames of this sheet: the clips his conversations
+    name."""
     del opts
-    face = FaceGuide(
-        center_x=65.0,
-        center_y=28.0,
-        width=27.0,
-        height=31.0,
-        source_width=FRAME_W,
-        source_height=FRAME_H,
-    )
-
-    def portrait_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
-        return render_framed_portrait(
-            _render_native_frame(animation, frame_idx, frame_count),
-            face,
-            view_width=58.0,
-            center_y=42.0,
-        )
-
-    clips = {
-        "default": PortraitClip.still(portrait_frame("idle", 1, 8)),
-        "explaining": PortraitClip(
-            tuple(portrait_frame("talk", frame, 8) for frame in range(8)),
-            duration_ms=104,
-            looping=True,
-        ),
-        "thinking": PortraitClip(
-            tuple(
-                portrait_frame("compressed_sense", frame, 8)
-                for frame in (1, 3, 5, 7)
-            ),
-            duration_ms=118,
-            looping=True,
-        ),
-    }
-    return write_portrait_sheet(TARGET_NAME, clips, Path(out_dir))
+    return X.portraits(out_dir, {
+        "default": ("idle", (1,), 0, False),
+        "explaining": ("talk", tuple(range(8)), 104, True),
+        "thinking": ("idle", (2, 3, 4, 5), 180, True),
+    }, view_width=34.0)
 
 
-def _body_metrics_override(fw: int, fh: int):
-    return {
-        "body_pixel_bbox": {
-            "x": int(fw * 0.24),
-            "y": int(fh * 0.09),
-            "w": int(fw * 0.55),
-            "h": int(fh * 0.85),
-        },
-        "feet_pixel": {"x": fw * 0.51, "y": fh * 0.925},
-        "feet_anchor_norm": {"x": 0.01, "y": round(0.5 - 0.925, 6)},
-    }
-
-
-def render(out_dir: Path, **opts) -> List[Path]:
-    del opts
-    frame_transform: dict = {}
-    outputs = build_sheet(
-        frame_transform_out=frame_transform,
-        target=TARGET_NAME,
-        rows=ROWS,
-        render_fn=render_frame,
-        out_dir=Path(out_dir),
-        frame_size=(FRAME_W, FRAME_H),
-        label_width=108,
-        auto_crop=False,
-        body_metrics_fn=_body_metrics_override,
-        actor_metadata=ACTOR_METADATA,
-        sheet_tuning={"collision_scale": 1.0, "frame_sample_inset": 1},
-        animation_key_map={name: name for name, _frames, _duration in ROWS},
-        attack_hitboxes={
-            "prime_stride": {"bbox": {"x": 74, "y": 48, "w": 50, "h": 40}},
-            "compressed_sense": {"bbox": {"x": 82, "y": 42, "w": 44, "h": 43}},
-            "full_turn": {"bbox": {"x": 24, "y": 25, "w": 82, "h": 86}},
-        },
-    )
-    keys = (
-        "spritesheet",
-        "yaml",
-        "ron",
-        "actor",
-        "canonical",
-        "canonical_transparent",
-        "preview",
-    )
-    parts = publish_rig_flipbook(TARGET_NAME, ROWS, render_frame, outputs, frame_transform, Path(out_dir))
-    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
-
-
-def render_canonical(out_dir: Path, **opts) -> Path:
-    del opts
-    return write_canonical(
-        TARGET_NAME,
-        ROWS,
-        render_frame,
-        Path(out_dir),
-        frame_size=(FRAME_W, FRAME_H),
-    )
-
-
-__all__ = ["ACTOR_METADATA", "render", "render_canonical", "render_portraits"]
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("out_dir", nargs="?", type=Path, default=Path("generated") / TARGET_NAME)
-    args = parser.parse_args(argv)
-    outputs = render(args.out_dir)
-    for path in outputs:
-        print(path)
-    return 0
+TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 
 if __name__ == "__main__":

@@ -1,92 +1,43 @@
-"""Procedural full-action renderer for Joseph Furrier.
+"""Sprite generator for Joseph Furrier: he is cold, and he hears the parts a
+sound is made of.
 
-Joseph Furrier is a bundled-up harmonic eccentric whose oversized blanket is
-both his signature silhouette and the affectionate biographical joke at the
-center of the parody. The blanket stays visually dominant in ordinary movement;
-stair-step geometry belongs only to selected gameplay actions, where it reads as
-a discrete/stepwise Fourier homage rather than as a biographical prop.
+An affectionate caricature of Joseph Fourier.
 
-The character is intentionally human rather than a literal fox. The "Furrier"
-pun appears in the thick fur-trimmed blanket, which opens during attacks to
-reveal spectral embroidery and separated bands of harmonic color. His dark,
-slightly nocturnal presentation remains playful: he looks cold, private, and
-absorbed in signals that nobody else can hear, not monstrous.
+The look (2026-10-13): a man of fifty in a very large blanket, seen three
+quarters from the front, facing right. The blanket is his outline: dark
+blue, as thick as a coat and as long as one, with fur along each edge and a
+roll of fur at his neck. He holds it shut at his chest with both hands, and
+his shoulders are up. Under it a cream shirt with a high collar, dark
+trousers and brown shoes. Short dark curls, a round mild face, and a nose
+that is pink with the cold.
+
+He is a man and not a fox: the fur of his name is the fur of the blanket.
+He is a grown man, not a mascot. He holds nothing; there is no drop shadow.
+
+What he shows: the snap of the blanket; steps (a function that goes up by
+steps), which are in the rows that are their own and not in how he stands;
+one wave that comes apart into the waves it is made of; and a rough wave
+that he makes smooth.
+
+He is a person of ``_person_rig``: the bones, the poses and the frame are
+shared; the head, the clothes, how he stands and what he shows are his. His
+portraits are frames of this sheet.
 """
 
 from __future__ import annotations
 
-import argparse
 import math
-from dataclasses import dataclass
-from pathlib import Path
-from typing import List, Sequence, Tuple
+from typing import List
 
-from PIL import Image, ImageDraw
-
-from ...authoring import rigdoc
-from ...authoring.part_flipbook import publish_rig_flipbook
-from ...authoring.portrait import (
-    FaceGuide,
-    PortraitClip,
-    render_framed_portrait,
-    write_portrait_sheet,
-)
-from ...authoring.sheet_build import build_sheet, write_canonical
-from ...core.draw import blending_draw
-from . import _solo_shape_rig as SR
-
-RGBA = Tuple[int, int, int, int]
-Point = Tuple[float, float]
+from ._ai_era_kit import WHITE, RGBA, mix, pin
+from . import _person_rig as R
+from ._person_rig import Build, Person, Stamp, loop, shot
 
 TARGET_NAME = "joseph_furrier"
-FRAME_W = 128
-FRAME_H = 128
-SUPER = 4
+TARGET_BASENAME = TARGET_NAME
+DISPLAY_NAME = "Joseph Furrier"
 USES_DROP_SHADOW = False
 USES_PROPS = False
-
-ROWS: List[Tuple[str, int, int]] = [
-    ("idle", 8, 145),
-    ("walk", 8, 106),
-    ("run", 8, 78),
-    ("crouch", 6, 96),
-    ("crouch_walk", 8, 90),
-    ("jump", 6, 92),
-    ("fall", 6, 92),
-    ("land_hard", 8, 88),
-    ("land_recovery", 6, 72),
-    ("dash_startup", 4, 48),
-    ("dash", 6, 60),
-    ("slide", 6, 68),
-    ("roll", 8, 56),
-    ("wall_grab", 6, 105),
-    ("wall_jump", 6, 82),
-    ("ledge_grab", 6, 98),
-    ("ledge_climb", 6, 98),
-    ("ledge_getup", 6, 42),
-    ("ledge_roll", 8, 38),
-    ("climb", 8, 98),
-    ("swim", 8, 102),
-    ("float_glide", 8, 108),
-    ("block", 6, 82),
-    ("hit", 5, 86),
-    ("death", 8, 105),
-    ("talk", 8, 104),
-    ("interact", 8, 90),
-    ("blanket_snap", 7, 62),
-    ("step_function", 8, 70),
-    ("harmonic_split", 8, 74),
-    ("low_pass_lament", 8, 82),
-    ("spectral_descent", 8, 72),
-    ("air_neutral", 8, 62),
-    ("air_forward", 7, 60),
-    ("air_back", 7, 60),
-    ("air_down", 7, 68),
-    ("air_up", 7, 60),
-    ("full_turn", 10, 72),
-    ("celebrate", 8, 88),
-    ("taunt", 8, 96),
-]
 
 authoring_description = (
     "Joseph Furrier is a transformative parody of French mathematician and "
@@ -199,960 +150,271 @@ ACTOR_METADATA = {
 }
 
 OUTLINE = (18, 18, 24, 255)
-OUTLINE_SOFT = (48, 47, 59, 255)
-SKIN = (204, 164, 132, 255)
-SKIN_LIGHT = (232, 198, 166, 255)
-SKIN_SHADE = (154, 111, 91, 255)
-HAIR = (55, 48, 51, 255)
-HAIR_LIGHT = (95, 82, 83, 255)
-EYE = (26, 23, 26, 255)
-MOUTH = (118, 67, 65, 255)
-SHIRT = (220, 214, 193, 255)
-SHIRT_SHADE = (174, 164, 143, 255)
-TROUSER = (44, 46, 57, 255)
-TROUSER_LIGHT = (69, 72, 88, 255)
-SHOE = (63, 44, 38, 255)
-SHOE_LIGHT = (98, 68, 54, 255)
-BLANKET = (42, 45, 62, 255)
-BLANKET_LIGHT = (67, 71, 94, 255)
-BLANKET_DARK = (28, 30, 43, 255)
-BLANKET_DEEP = (19, 20, 30, 255)
-LINING = (93, 39, 57, 255)
-LINING_LIGHT = (142, 59, 78, 255)
-FUR = (180, 170, 149, 255)
-FUR_LIGHT = (221, 212, 193, 255)
-FUR_DARK = (126, 117, 104, 255)
-GOLD = (218, 176, 83, 255)
-GOLD_LIGHT = (247, 220, 145, 255)
-SPECTRAL_BLUE = (83, 177, 217, 255)
-SPECTRAL_TEAL = (87, 201, 177, 255)
-SPECTRAL_VIOLET = (150, 112, 203, 255)
-SPECTRAL_RED = (205, 82, 100, 255)
-DAMP_FIELD = (83, 105, 141, 255)
-
-
-def _s(value: float) -> int:
-    return max(1, int(round(value * SUPER)))
-
-
-def _pt(point: Point) -> Tuple[int, int]:
-    return (int(round(point[0] * SUPER)), int(round(point[1] * SUPER)))
-
-
-def _bbox(center: Point, rx: float, ry: float) -> Tuple[int, int, int, int]:
-    return (
-        _s(center[0] - rx),
-        _s(center[1] - ry),
-        _s(center[0] + rx),
-        _s(center[1] + ry),
-    )
-
-
-def _clamp01(value: float) -> float:
-    return max(0.0, min(1.0, value))
-
-
-def _smooth(value: float) -> float:
-    value = _clamp01(value)
-    return value * value * (3.0 - 2.0 * value)
-
-
-def _pulse(value: float) -> float:
-    return math.sin(_clamp01(value) * math.pi)
-
-
-def _lerp(a: float, b: float, amount: float) -> float:
-    return a + (b - a) * amount
-
-
-def _lerp_point(a: Point, b: Point, amount: float) -> Point:
-    return (_lerp(a[0], b[0], amount), _lerp(a[1], b[1], amount))
-
-
-def _offset(point: Point, dx: float, dy: float) -> Point:
-    return (point[0] + dx, point[1] + dy)
-
-
-def _rotate(point: Point, origin: Point, degrees: float) -> Point:
-    radians = math.radians(degrees)
-    c = math.cos(radians)
-    s = math.sin(radians)
-    x = point[0] - origin[0]
-    y = point[1] - origin[1]
-    return (origin[0] + x * c - y * s, origin[1] + x * s + y * c)
-
-
-def _fade(color: RGBA, alpha: float) -> RGBA:
-    return (color[0], color[1], color[2], int(round(color[3] * _clamp01(alpha))))
-
-
-def _polygon(
-    draw: ImageDraw.ImageDraw,
-    points: Sequence[Point],
-    fill: RGBA,
-    outline: RGBA | None = OUTLINE,
-    width: float = 1.0,
-) -> None:
-    pts = [_pt(point) for point in points]
-    draw.polygon(pts, fill=fill)
-    if outline is not None:
-        draw.line(pts + [pts[0]], fill=outline, width=_s(width), joint="curve")
-
-
-def _line(
-    draw: ImageDraw.ImageDraw,
-    points: Sequence[Point],
-    fill: RGBA,
-    width: float,
-) -> None:
-    draw.line([_pt(point) for point in points], fill=fill, width=_s(width), joint="curve")
-
-
-def _ellipse(
-    draw: ImageDraw.ImageDraw,
-    center: Point,
-    rx: float,
-    ry: float,
-    fill: RGBA,
-    outline: RGBA | None = OUTLINE,
-    width: float = 1.0,
-) -> None:
-    draw.ellipse(
-        _bbox(center, rx, ry),
-        fill=fill,
-        outline=outline,
-        width=_s(width) if outline is not None else 1,
-    )
-
-
-def _arc(
-    draw: ImageDraw.ImageDraw,
-    center: Point,
-    rx: float,
-    ry: float,
-    start: float,
-    end: float,
-    fill: RGBA,
-    width: float,
-) -> None:
-    draw.arc(_bbox(center, rx, ry), start=start, end=end, fill=fill, width=_s(width))
-
-
-def _unit(a: Point, b: Point) -> Tuple[Point, Point, float]:
-    dx = b[0] - a[0]
-    dy = b[1] - a[1]
-    length = max(1.0e-6, math.hypot(dx, dy))
-    along = (dx / length, dy / length)
-    normal = (-along[1], along[0])
-    return along, normal, length
-
-
-def _segment_quad(a: Point, b: Point, ra: float, rb: float) -> List[Point]:
-    _, normal, _ = _unit(a, b)
-    return [
-        (a[0] + normal[0] * ra, a[1] + normal[1] * ra),
-        (b[0] + normal[0] * rb, b[1] + normal[1] * rb),
-        (b[0] - normal[0] * rb, b[1] - normal[1] * rb),
-        (a[0] - normal[0] * ra, a[1] - normal[1] * ra),
-    ]
-
-
-@dataclass
-class Pose:
-    root_x: float = 0.0
-    root_y: float = 0.0
-    bob: float = 0.0
-    lean: float = 0.0
-    rotation: float = 0.0
-    rotation_pivot: Point = (64.0, 82.0)
-    crouch: float = 0.0
-    head_x: float = 0.0
-    head_y: float = 0.0
-    head_tilt: float = 0.0
-    blink: bool = False
-    mouth_open: float = 0.0
-    brow: float = 0.0
-    blanket_open: float = 0.0
-    blanket_wrap: float = 0.0
-    blanket_sway: float = 0.0
-    blanket_flare: float = 0.0
-    near_shoulder: Point = (79.0, 51.0)
-    near_elbow: Point = (82.0, 66.0)
-    near_hand: Point = (76.0, 72.0)
-    far_shoulder: Point = (49.0, 51.0)
-    far_elbow: Point = (46.0, 66.0)
-    far_hand: Point = (52.0, 72.0)
-    near_hip: Point = (69.0, 96.0)
-    near_knee: Point = (72.0, 106.0)
-    near_ankle: Point = (73.0, 117.0)
-    far_hip: Point = (59.0, 96.0)
-    far_knee: Point = (57.0, 106.0)
-    far_ankle: Point = (56.0, 117.0)
-    step: float = 0.0
-    harmonic: float = 0.0
-    damping: float = 0.0
-    descent: float = 0.0
-    snap: float = 0.0
-    turn: float = 0.0
-    celebrate: float = 0.0
-
-
-def _pose(animation: str, frame_idx: int, nframes: int) -> Pose:
-    phase = frame_idx / float(max(1, nframes))
-    t = 0.0 if nframes <= 1 else frame_idx / float(nframes - 1)
-    wave = math.sin(phase * math.tau)
-    cosine = math.cos(phase * math.tau)
-    p = Pose()
-
-    def standing_legs(stride: float = 0.0, lift: float = 0.0) -> None:
-        p.near_hip = (69.0, 96.0)
-        p.far_hip = (59.0, 96.0)
-        p.near_knee = (70.0 - stride * 0.35, 106.0 - max(0.0, lift) * 2.5)
-        p.far_knee = (58.0 + stride * 0.30, 106.0 - max(0.0, -lift) * 2.5)
-        p.near_ankle = (73.0 + stride, 117.0 - max(0.0, lift) * 5.0)
-        p.far_ankle = (55.0 - stride, 117.0 - max(0.0, -lift) * 5.0)
-
-    def arms_tucked() -> None:
-        p.near_shoulder = (79.0, 51.0)
-        p.near_elbow = (81.0, 64.0)
-        p.near_hand = (73.5, 69.0)
-        p.far_shoulder = (49.0, 51.0)
-        p.far_elbow = (47.0, 64.0)
-        p.far_hand = (54.5, 69.0)
-
-    standing_legs()
-    arms_tucked()
-
-    if animation == "idle":
-        p.bob = wave * 0.8
-        p.blanket_sway = wave * 0.8
-        p.blink = frame_idx in {3, 4}
-        p.head_tilt = cosine * 0.7
-    elif animation in {"walk", "crouch_walk"}:
-        stride = wave * (8.0 if animation == "walk" else 5.0)
-        standing_legs(stride, cosine)
-        p.bob = abs(cosine) * 1.1
-        p.lean = 1.5
-        p.blanket_sway = -wave * 3.0
-        if animation == "crouch_walk":
-            p.crouch = 0.75
-            p.root_y = 7.0
-            p.blanket_flare = 0.25
-    elif animation == "run":
-        stride = wave * 12.0
-        standing_legs(stride, cosine * 1.3)
-        p.bob = abs(cosine) * 2.0
-        p.lean = 6.0
-        p.blanket_sway = -wave * 5.0
-        p.blanket_flare = 0.35
-    elif animation == "crouch":
-        p.crouch = 0.85
-        p.root_y = 8.0
-        p.blanket_wrap = 0.35 + 0.08 * wave
-    elif animation in {"jump", "wall_jump"}:
-        lift = _pulse(t)
-        p.root_y = -5.0 * lift
-        p.lean = 3.0 if animation == "jump" else -6.0
-        p.blanket_flare = 0.55 * lift
-        p.near_ankle = (73.0, 108.0 - 5.0 * lift)
-        p.far_ankle = (55.0, 110.0 - 4.0 * lift)
-        if animation == "wall_jump":
-            p.rotation = -10.0 * _pulse(t)
-    elif animation == "fall":
-        p.root_y = -4.0 + 4.0 * t
-        p.blanket_flare = 0.42
-        p.blanket_sway = -2.0
-        p.near_ankle = (71.0, 111.0)
-        p.far_ankle = (57.0, 110.0)
-    elif animation in {"land_hard", "land_recovery"}:
-        amount = (1.0 - t) if animation == "land_recovery" else _pulse(t)
-        p.crouch = 0.9 * amount
-        p.root_y = 8.0 * amount
-        p.blanket_flare = 0.35 * amount
-    elif animation == "dash_startup":
-        p.lean = 10.0 * _smooth(t)
-        p.crouch = 0.25 * _smooth(t)
-        p.root_y = 2.0 * _smooth(t)
-        p.blanket_sway = -4.0 * _smooth(t)
-    elif animation == "dash":
-        p.lean = 12.0
-        p.root_x = wave * 1.2
-        p.blanket_sway = -7.0 + wave * 2.0
-        p.blanket_flare = 0.42
-        standing_legs(wave * 10.0, cosine)
-    elif animation == "slide":
-        p.crouch = 1.0
-        p.root_y = 11.0
-        p.lean = 12.0
-        p.blanket_sway = -6.0
-        p.blanket_flare = 0.5
-        p.near_ankle = (86.0, 118.0)
-        p.far_ankle = (51.0, 116.0)
-    elif animation in {"roll", "ledge_roll"}:
-        p.crouch = 1.0
-        p.root_y = -2.0
-        p.blanket_wrap = 0.85
-        p.rotation = math.sin(t * math.tau) * 34.0
-        p.rotation_pivot = (64.0, 79.0)
-        p.near_ankle = (75.0, 105.0)
-        p.far_ankle = (54.0, 105.0)
-    elif animation in {"wall_grab", "ledge_grab"}:
-        p.lean = -7.0
-        p.root_x = -5.0
-        p.near_hand = (44.0, 43.0)
-        p.far_hand = (43.0, 56.0)
-        p.near_elbow = (55.0, 52.0)
-        p.far_elbow = (53.0, 62.0)
-        p.near_ankle = (55.0, 111.0)
-        p.far_ankle = (51.0, 104.0)
-        p.blanket_open = 0.2
-    elif animation in {"ledge_climb", "ledge_getup", "climb"}:
-        climb = _smooth(t)
-        p.root_y = 1.0 - 5.0 * climb if animation != "climb" else wave * 3.0
-        p.near_hand = (53.0, 42.0 + wave * 4.0)
-        p.far_hand = (76.0, 46.0 - wave * 4.0)
-        p.near_elbow = (59.0, 54.0)
-        p.far_elbow = (70.0, 56.0)
-        p.blanket_open = 0.25
-        p.blanket_sway = wave * 2.0
-    elif animation == "swim":
-        p.rotation = wave * 4.0
-        p.root_y = -1.0 + wave * 1.5
-        p.blanket_flare = 0.65
-        p.blanket_open = 0.35
-        p.near_hand = (91.0, 65.0 + wave * 5.0)
-        p.far_hand = (39.0, 65.0 - wave * 5.0)
-        p.near_elbow = (82.0, 56.0)
-        p.far_elbow = (48.0, 56.0)
-        p.near_ankle = (78.0, 107.0)
-        p.far_ankle = (50.0, 109.0)
-    elif animation == "float_glide":
-        p.root_y = -3.0 + wave * 1.2
-        p.blanket_open = 0.85
-        p.blanket_flare = 0.85
-        p.near_hand = (96.0, 65.0)
-        p.far_hand = (32.0, 65.0)
-        p.near_elbow = (84.0, 57.0)
-        p.far_elbow = (44.0, 57.0)
-        p.near_ankle = (72.0, 110.0)
-        p.far_ankle = (57.0, 110.0)
-    elif animation == "block":
-        p.blanket_wrap = 0.9
-        p.crouch = 0.25
-        p.root_y = 2.0
-        p.near_hand = (72.0, 54.0)
-        p.far_hand = (56.0, 54.0)
-    elif animation == "hit":
-        impact = _pulse(t)
-        p.lean = -10.0 * impact
-        p.root_x = -5.0 * impact
-        p.head_tilt = -8.0 * impact
-        p.blanket_sway = 6.0 * impact
-        p.blanket_open = 0.25 * impact
-        p.mouth_open = impact
-    elif animation == "death":
-        fall = _smooth(t)
-        p.rotation = 78.0 * fall
-        p.root_x = -8.0 * fall
-        p.root_y = -4.0 * fall
-        p.rotation_pivot = (64.0, 79.0)
-        p.blanket_open = 0.25 * fall
-        p.mouth_open = 0.25
-    elif animation == "talk":
-        p.mouth_open = 0.65 if frame_idx % 3 else 0.1
-        p.brow = wave * 0.8
-        p.blanket_open = 0.18
-        p.near_elbow = (84.0, 63.0)
-        p.near_hand = (91.0, 58.0 + wave * 3.0)
-    elif animation == "interact":
-        reach = _pulse(t)
-        p.blanket_open = 0.35 * reach
-        p.near_elbow = _lerp_point((81.0, 64.0), (89.0, 60.0), reach)
-        p.near_hand = _lerp_point((73.5, 69.0), (104.0, 60.0), reach)
-        p.lean = 3.0 * reach
-    elif animation == "blanket_snap":
-        attack = _pulse(t)
-        p.snap = attack
-        p.blanket_open = 0.95 * attack
-        p.blanket_flare = 0.65 * attack
-        p.lean = 5.0 * attack
-        p.near_elbow = (87.0, 57.0)
-        p.near_hand = (90.0, 54.0)
-        p.far_elbow = (43.0, 61.0)
-        p.far_hand = (31.0, 62.0)
-    elif animation == "step_function":
-        cast = _pulse(t)
-        p.step = cast
-        p.blanket_open = 0.45 * cast
-        p.near_elbow = (85.0, 58.0)
-        p.near_hand = (91.0, 49.0 - 4.0 * cast)
-        p.lean = 2.0 * cast
-    elif animation == "harmonic_split":
-        cast = _pulse(t)
-        p.harmonic = cast
-        p.blanket_open = 0.78 * cast
-        p.near_hand = (96.0, 60.0)
-        p.near_elbow = (87.0, 58.0)
-        p.far_hand = (36.0, 62.0)
-        p.far_elbow = (45.0, 59.0)
-    elif animation == "low_pass_lament":
-        cast = _pulse(t)
-        p.damping = cast
-        p.blanket_wrap = 0.8 * cast
-        p.crouch = 0.15 * cast
-        p.near_hand = (72.0, 57.0)
-        p.far_hand = (56.0, 57.0)
-    elif animation == "spectral_descent":
-        cast = _pulse(t)
-        p.descent = cast
-        p.step = cast
-        p.root_y = -4.0 * cast + 2.0 * t
-        p.blanket_flare = 0.55 * cast
-        p.near_hand = (93.0, 48.0)
-        p.near_elbow = (83.0, 57.0)
-    elif animation.startswith("air_"):
-        attack = _pulse(t)
-        p.root_y = -5.0
-        p.blanket_flare = 0.5
-        p.blanket_open = 0.35 * attack
-        if animation == "air_neutral":
-            p.rotation = math.sin(t * math.tau) * 16.0
-            p.snap = 0.55 * attack
-        elif animation == "air_forward":
-            p.near_hand = (91.0, 58.0)
-            p.near_elbow = (88.0, 58.0)
-            p.snap = attack
-        elif animation == "air_back":
-            p.far_hand = (28.0, 58.0)
-            p.far_elbow = (43.0, 58.0)
-            p.snap = attack
-        elif animation == "air_down":
-            p.near_hand = (77.0, 100.0)
-            p.near_elbow = (78.0, 78.0)
-            p.step = 0.6 * attack
-        elif animation == "air_up":
-            p.near_hand = (74.0, 22.0)
-            p.near_elbow = (77.0, 42.0)
-            p.harmonic = 0.55 * attack
-    elif animation == "full_turn":
-        p.turn = _pulse(t)
-        p.rotation = math.sin(t * math.tau) * 18.0
-        p.blanket_open = 0.55 * p.turn
-        p.blanket_flare = 0.45 * p.turn
-        p.harmonic = 0.45 * p.turn
-    elif animation == "celebrate":
-        cheer = _pulse(t)
-        p.celebrate = cheer
-        p.blanket_open = 0.9 * cheer
-        p.near_hand = (89.0, 30.0)
-        p.near_elbow = (82.0, 46.0)
-        p.far_hand = (39.0, 30.0)
-        p.far_elbow = (46.0, 46.0)
-        p.mouth_open = 0.7 * cheer
-    elif animation == "taunt":
-        settle = _smooth(t)
-        p.crouch = 0.35
-        p.root_y = 4.0
-        p.blanket_wrap = 0.75
-        p.head_tilt = -4.0 + wave * 1.0
-        p.blink = frame_idx in {4, 5}
-        p.mouth_open = 0.25 if frame_idx in {1, 2, 6} else 0.0
-        p.near_hand = (71.0, 58.0 + settle)
-        p.far_hand = (57.0, 58.0 + settle)
-
-    return p
-
-
-def _transform(point: Point, pose: Pose) -> Point:
-    x = point[0] + pose.root_x + pose.lean * ((92.0 - point[1]) / 70.0)
-    y = point[1] + pose.root_y + pose.bob
-    if point[1] > 72.0:
-        y -= pose.crouch * (point[1] - 72.0) * 0.23
-    if point[1] < 72.0:
-        y += pose.crouch * (72.0 - point[1]) * 0.08
-    result = (x, y)
-    if pose.rotation:
-        pivot = (
-            pose.rotation_pivot[0] + pose.root_x,
-            pose.rotation_pivot[1] + pose.root_y,
-        )
-        result = _rotate(result, pivot, pose.rotation)
-    return result
-
-
-def _draw_leg(draw: ImageDraw.ImageDraw, pose: Pose, hip: Point, knee: Point, ankle: Point, *, far: bool) -> None:
-    T = lambda q: _transform(q, pose)
-    hip_t, knee_t, ankle_t = T(hip), T(knee), T(ankle)
-    trouser = TROUSER if not far else BLANKET_DEEP
-    trouser_light = TROUSER_LIGHT if not far else TROUSER
-    _polygon(draw, _segment_quad(hip_t, knee_t, 4.0, 3.6), trouser, OUTLINE, 0.9)
-    _polygon(draw, _segment_quad(knee_t, ankle_t, 3.6, 3.0), trouser_light, OUTLINE, 0.9)
-    direction = 1.0 if ankle_t[0] >= knee_t[0] else -1.0
-    shoe_center = (ankle_t[0] + direction * 2.1, ankle_t[1] + 1.0)
-    _ellipse(draw, shoe_center, 5.2, 2.6, SHOE if not far else SHOE_LIGHT, OUTLINE, 0.9)
-
-
-def _draw_arm(draw: ImageDraw.ImageDraw, pose: Pose, shoulder: Point, elbow: Point, hand: Point, *, far: bool) -> None:
-    T = lambda q: _transform(q, pose)
-    shoulder_t, elbow_t, hand_t = T(shoulder), T(elbow), T(hand)
-    sleeve = BLANKET_DARK if far else BLANKET_LIGHT
-    _polygon(draw, _segment_quad(shoulder_t, elbow_t, 5.0, 4.2), sleeve, OUTLINE, 0.9)
-    _polygon(draw, _segment_quad(elbow_t, hand_t, 4.2, 3.1), sleeve, OUTLINE, 0.9)
-    _ellipse(draw, hand_t, 3.4, 3.6, SKIN_SHADE if far else SKIN, OUTLINE, 0.8)
-    # A simple thumb keeps the hand readable at gameplay scale.
-    _line(draw, [hand_t, (hand_t[0] + (2.5 if not far else -2.5), hand_t[1] + 1.1)], OUTLINE_SOFT, 0.8)
-
-
-def _blanket_geometry(pose: Pose) -> Tuple[List[Point], List[Point], List[Point]]:
-    sway = pose.blanket_sway
-    flare = pose.blanket_flare
-    opening = pose.blanket_open
-    wrap = pose.blanket_wrap
-    shoulder_y = 46.0
-    hem_y = 105.0 - pose.crouch * 4.0
-    left_outer = 42.0 - flare * 10.0 - sway * 0.35 + wrap * 3.0
-    right_outer = 86.0 + flare * 10.0 - sway * 0.35 - wrap * 3.0
-    center_gap = 2.5 + opening * 10.0 - wrap * 1.8
-    center = 64.0 - sway * 0.08
-    left = [
-        (52.0 - sway * 0.12, shoulder_y),
-        (43.0 - opening * 7.0, 58.0),
-        (left_outer, 84.0),
-        (47.0 - flare * 7.0 + sway * 0.2, hem_y),
-        (center - center_gap, hem_y - 2.0),
-        (center - center_gap * 0.45, 61.0),
-    ]
-    right = [
-        (76.0 - sway * 0.12, shoulder_y),
-        (85.0 + opening * 7.0, 58.0),
-        (right_outer, 84.0),
-        (81.0 + flare * 7.0 + sway * 0.2, hem_y),
-        (center + center_gap, hem_y - 2.0),
-        (center + center_gap * 0.45, 61.0),
-    ]
-    lining = [
-        (center - center_gap * 0.5, 57.0),
-        (center + center_gap * 0.5, 57.0),
-        (center + center_gap, hem_y - 2.0),
-        (center - center_gap, hem_y - 2.0),
-    ]
-    return left, right, lining
-
-
-def _draw_spectral_lining(draw: ImageDraw.ImageDraw, pose: Pose, lining: Sequence[Point]) -> None:
-    T = lambda q: _transform(q, pose)
-    mapped = [T(q) for q in lining]
-    _polygon(draw, mapped, LINING, OUTLINE, 0.8)
-    alpha = 0.35 + 0.65 * pose.blanket_open
-    colors = [SPECTRAL_BLUE, SPECTRAL_TEAL, GOLD, SPECTRAL_RED, SPECTRAL_VIOLET]
-    y0 = 64.0
-    for idx, color in enumerate(colors):
-        y = y0 + idx * 6.7
-        half = 2.0 + pose.blanket_open * (4.0 + idx * 0.7)
-        _line(
-            draw,
-            [T((64.0 - half, y)), T((64.0 + half, y + math.sin(idx) * 1.0))],
-            _fade(color, alpha),
-            1.0,
-        )
-
-
-def _draw_blanket(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
-    T = lambda q: _transform(q, pose)
-    left, right, lining = _blanket_geometry(pose)
-    if pose.blanket_open > 0.08:
-        _draw_spectral_lining(draw, pose, lining)
-    _polygon(draw, [T(q) for q in left], BLANKET, OUTLINE, 1.1)
-    _polygon(draw, [T(q) for q in right], BLANKET_LIGHT, OUTLINE, 1.1)
-
-    # Deep folds make the large simple mass read as a blanket instead of a robe.
-    fold_alpha = 0.75
-    for x, bias in ((51.0, -1.0), (57.0, -0.5), (71.0, 0.5), (78.0, 1.0)):
-        _line(
-            draw,
-            [T((x, 58.0)), T((x + bias + pose.blanket_sway * 0.25, 99.0))],
-            _fade(BLANKET_DARK, fold_alpha),
-            1.0,
-        )
-
-    # Fur collar is the visual expression of the name pun.
-    collar = [
-        (49.0, 48.0),
-        (54.0, 43.5),
-        (61.0, 46.5),
-        (64.0, 43.5),
-        (67.0, 46.5),
-        (74.0, 43.5),
-        (79.0, 48.0),
-        (74.0, 55.0),
-        (64.0, 58.0),
-        (54.0, 55.0),
-    ]
-    _polygon(draw, [T(q) for q in collar], FUR, OUTLINE, 1.0)
-    _line(draw, [T((51.5, 49.0)), T((64.0, 55.5)), T((76.5, 49.0))], FUR_LIGHT, 1.1)
-    _line(draw, [T((54.0, 53.0)), T((64.0, 57.0)), T((74.0, 53.0))], FUR_DARK, 0.7)
-
-    # A restrained step border foreshadows the specials without making stairs
-    # the everyday silhouette.
-    border_y = 99.0 - pose.crouch * 3.5
-    step_points = []
-    for idx in range(7):
-        x = 49.0 + idx * 5.0
-        y = border_y - (idx % 2) * 2.0
-        step_points.extend([(x, y), (x + 2.5, y)])
-    _line(draw, [T(q) for q in step_points], _fade(GOLD, 0.72), 0.9)
-
-
-def _draw_head(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
-    center = (64.0 + pose.head_x, 29.0 + pose.head_y)
-    T = lambda q: _transform(_rotate(q, center, pose.head_tilt), pose)
-
-    # Hair mass and sideburns first.
-    _ellipse(draw, T((63.0, 26.5)), 14.0, 17.5, HAIR, OUTLINE, 1.0)
-    _ellipse(draw, T((52.5, 34.5)), 4.0, 9.0, HAIR, OUTLINE, 0.8)
-    _ellipse(draw, T((75.0, 34.0)), 4.0, 8.5, HAIR, OUTLINE, 0.8)
-    _ellipse(draw, T((64.0, 30.0)), 11.5, 15.0, SKIN, OUTLINE, 1.0)
-    _ellipse(draw, T((64.0, 24.0)), 10.5, 8.0, SKIN_LIGHT, None)
-
-    # High, slightly unruly hairline.
-    _arc(draw, T((63.0, 24.0)), 10.5, 8.0, 194, 345, HAIR_LIGHT, 1.4)
-    _line(draw, [T((54.0, 20.5)), T((59.0, 16.5)), T((64.0, 19.0)), T((70.0, 16.8)), T((74.5, 21.0))], HAIR, 4.0)
-
-    eye_y = 29.0
-    if pose.blink:
-        _line(draw, [T((58.0, eye_y)), T((61.0, eye_y + 0.4))], EYE, 0.9)
-        _line(draw, [T((68.0, eye_y + 0.4)), T((71.0, eye_y))], EYE, 0.9)
-    else:
-        _ellipse(draw, T((59.5, eye_y)), 1.15, 1.35, EYE, None)
-        _ellipse(draw, T((69.5, eye_y)), 1.15, 1.35, EYE, None)
-        _ellipse(draw, T((59.2, eye_y - 0.35)), 0.35, 0.38, SKIN_LIGHT, None)
-        _ellipse(draw, T((69.2, eye_y - 0.35)), 0.35, 0.38, SKIN_LIGHT, None)
-
-    _line(draw, [T((56.5, 25.5 - pose.brow)), T((61.0, 25.0))], HAIR, 1.0)
-    _line(draw, [T((67.5, 25.0)), T((72.0, 25.5 + pose.brow))], HAIR, 1.0)
-
-    # Long angular nose gives a recognizable non-generic face at sprite scale.
-    _polygon(draw, [T((64.0, 28.0)), T((66.8, 35.0)), T((63.2, 35.8))], SKIN_SHADE, OUTLINE_SOFT, 0.55)
-    mouth_y = 39.0
-    if pose.mouth_open > 0.1:
-        _ellipse(draw, T((64.5, mouth_y)), 3.0, 1.2 + 1.6 * pose.mouth_open, MOUTH, OUTLINE_SOFT, 0.55)
-    else:
-        _arc(draw, T((64.5, 37.5)), 4.0, 2.0, 20, 160, MOUTH, 0.8)
-
-    # Pronounced sideburn wisps, not a beard.
-    _line(draw, [T((53.0, 30.5)), T((52.5, 39.5))], HAIR_LIGHT, 2.0)
-    _line(draw, [T((75.0, 30.0)), T((75.5, 39.0))], HAIR_LIGHT, 2.0)
-
-
-def _draw_effects_behind(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
-    if pose.damping > 0.02:
-        for idx in range(3):
-            radius = 20.0 + idx * 8.0 + pose.damping * 5.0
-            _arc(
-                draw,
-                (64.0 + pose.root_x, 68.0 + pose.root_y),
-                radius,
-                radius * 0.72,
-                190,
-                350,
-                _fade(DAMP_FIELD, pose.damping * (0.65 - idx * 0.13)),
-                2.0 - idx * 0.35,
-            )
-    if pose.step > 0.02:
-        alpha = pose.step
-        base_x = 16.0
-        base_y = 102.0
-        for idx in range(6):
-            x0 = base_x + idx * 14.0
-            y0 = base_y - idx * 8.0
-            grow = 2.0 + alpha * 5.0
-            _polygon(
-                draw,
-                [(x0, y0), (x0 + 14.0, y0), (x0 + 14.0, y0 - grow), (x0, y0 - grow)],
-                _fade(BLANKET_DARK, alpha * 0.8),
-                _fade(GOLD, alpha * 0.85),
-                0.7,
-            )
-    if pose.descent > 0.02:
-        for idx in range(5):
-            x = 34.0 + idx * 12.0
-            y = 108.0 - idx * 10.0
-            _line(draw, [(x, y), (x + 12.0, y)], _fade(SPECTRAL_VIOLET, pose.descent * (0.8 - idx * 0.08)), 2.0)
-
-
-def _draw_effects_front(draw: ImageDraw.ImageDraw, pose: Pose) -> None:
-    T = lambda q: _transform(q, pose)
-    if pose.snap > 0.02:
-        hand = T(pose.near_hand)
-        for idx, color in enumerate((GOLD_LIGHT, SPECTRAL_RED, SPECTRAL_BLUE)):
-            extent = 8.0 + idx * 5.0 + pose.snap * 7.0
-            _arc(draw, (hand[0] + 4.0, hand[1]), extent, 8.0 + idx * 4.0, 280, 80, _fade(color, pose.snap * (0.95 - idx * 0.15)), 1.7)
-    if pose.harmonic > 0.02:
-        origin = T((77.0, 62.0))
-        colors = (SPECTRAL_BLUE, SPECTRAL_TEAL, GOLD, SPECTRAL_RED, SPECTRAL_VIOLET)
-        for idx, color in enumerate(colors):
-            points = []
-            amp = 2.0 + idx * 1.2
-            length = 27.0 + pose.harmonic * 12.0
-            for step_idx in range(9):
-                u = step_idx / 8.0
-                x = origin[0] + u * length
-                y = origin[1] - 13.0 + idx * 6.0 + math.sin(u * math.tau * (1.0 + idx * 0.25)) * amp
-                points.append((x, y))
-            _line(draw, points, _fade(color, pose.harmonic), 1.2)
-    if pose.step > 0.02:
-        hand = T(pose.near_hand)
-        points = [hand]
-        for idx in range(5):
-            x = hand[0] + 5.0 + idx * 5.0
-            y = hand[1] - idx * 4.0
-            points.extend([(x, y + 4.0), (x, y)])
-        _line(draw, points, _fade(GOLD_LIGHT, pose.step), 1.8)
-    if pose.celebrate > 0.02:
-        center = T((64.0, 48.0))
-        for idx, color in enumerate((GOLD_LIGHT, SPECTRAL_TEAL, SPECTRAL_VIOLET)):
-            angle = -70.0 + idx * 70.0
-            rad = math.radians(angle)
-            end = (center[0] + math.cos(rad) * 28.0, center[1] + math.sin(rad) * 28.0)
-            _line(draw, [center, end], _fade(color, pose.celebrate), 1.5)
-
-
-# --- The rig ---------------------------------------------------------------
-#
-# Every painter above draws through ``_transform`` (the lean's shear, the
-# crouch's squeeze, the root and bob, the roll). Drawn as a rig, the shirt,
-# the blanket and each head expression are pieces painted once at rest (with
-# the lean and crouch, to a step: the blanket is also keyed by its sway,
-# flare, opening and wrap) and placed where ``_transform`` puts their anchor,
-# turned by the roll; limb segments are pieces of a few lengths turned along
-# their bones; hands and shoes are pieces.
-
-CANVAS = (FRAME_W * SUPER, FRAME_H * SUPER)
-REST = (20.0, 64.0)
-
-
-def _sp(point: Point) -> Point:
-    return (point[0] * SUPER, point[1] * SUPER)
-
-
-def _rest_pose(pose: Pose, **extra) -> Pose:
-    """The pose at rest (no root, bob or roll), its lean and crouch to a step."""
-    return Pose(lean=SR.q(pose.lean, 1.0), crouch=SR.q(pose.crouch, 0.1), **extra)
-
-
-def _place_rest(canvas: Image.Image, key: tuple, paint, rest: Pose, rest_anchor: Point, pose: Pose, anchor: Point, name: str, degrees: float = 0.0) -> None:
-    """The piece ``paint`` paints at ``rest``, its ``rest_anchor`` landing
-    where the frame puts ``anchor``, turned by the roll (and ``degrees``)."""
-    part = SR.rest_piece(("joseph",) + key, CANVAS, _sp(_transform(rest_anchor, rest)), paint)
-    SR.place(canvas, part, _sp(_transform(anchor, pose)), pose.rotation + degrees, name)
-
-
-def _segment(canvas: Image.Image, a: Point, b: Point, ra: float, rb: float, fill: RGBA, width: float, name: str) -> None:
-    """A tapered limb segment ``a``->``b`` (``_segment_quad``) as a piece of a
-    whole-pixel length turned along the bone."""
-    length = max(1.0, SR.q(math.dist(a, b), 1.0))
-    x0, y0 = REST
-    part = SR.rest_piece(
-        ("joseph_seg", length, ra, rb, fill, width), CANVAS, _sp(REST),
-        lambda d: _polygon(d, _segment_quad((x0, y0), (x0 + length, y0), ra, rb), fill, OUTLINE, width),
-    )
-    SR.place(canvas, part, _sp(a), math.degrees(math.atan2(b[1] - a[1], b[0] - a[0])), name)
-
-
-def _rig_leg(canvas: Image.Image, pose: Pose, hip: Point, knee: Point, ankle: Point, *, far: bool) -> None:
-    T = lambda q: _transform(q, pose)
-    hip_t, knee_t, ankle_t = T(hip), T(knee), T(ankle)
-    side = "far" if far else "near"
-    trouser = TROUSER if not far else BLANKET_DEEP
-    trouser_light = TROUSER_LIGHT if not far else TROUSER
-    _segment(canvas, hip_t, knee_t, 4.0, 3.6, trouser, 0.9, f"{side}_thigh")
-    _segment(canvas, knee_t, ankle_t, 3.6, 3.0, trouser_light, 0.9, f"{side}_shin")
-    direction = 1.0 if ankle_t[0] >= knee_t[0] else -1.0
-    shoe_center = (ankle_t[0] + direction * 2.1, ankle_t[1] + 1.0)
-    fill = SHOE if not far else SHOE_LIGHT
-    part = SR.rest_piece(("joseph_shoe", far), CANVAS, _sp(REST), lambda d: _ellipse(d, REST, 5.2, 2.6, fill, OUTLINE, 0.9))
-    SR.place(canvas, part, _sp(shoe_center), 0.0, f"{side}_shoe")
-
-
-def _rig_arm(canvas: Image.Image, pose: Pose, shoulder: Point, elbow: Point, hand: Point, *, far: bool) -> None:
-    T = lambda q: _transform(q, pose)
-    shoulder_t, elbow_t, hand_t = T(shoulder), T(elbow), T(hand)
-    side = "far" if far else "near"
-    sleeve = BLANKET_DARK if far else BLANKET_LIGHT
-    _segment(canvas, shoulder_t, elbow_t, 5.0, 4.2, sleeve, 0.9, f"{side}_upper_arm")
-    _segment(canvas, elbow_t, hand_t, 4.2, 3.1, sleeve, 0.9, f"{side}_forearm")
+SKIN: RGBA = (226, 190, 160, 255)
+SKIN_SHADE: RGBA = (190, 146, 124, 255)
+SKIN_DEEP: RGBA = (150, 100, 90, 255)
+NOSE: RGBA = (232, 150, 140, 255)
+HAIR: RGBA = (55, 48, 51, 255)
+HAIR_LIGHT: RGBA = (104, 90, 92, 255)
+INK: RGBA = (26, 23, 26, 255)
+SHIRT: RGBA = (232, 226, 206, 255)
+TROUSER: RGBA = (50, 52, 66, 255)
+TROUSER_DARK: RGBA = (32, 34, 46, 255)
+SHOE: RGBA = (88, 60, 48, 255)
+SHOE_DARK: RGBA = (52, 36, 32, 255)
+BLANKET: RGBA = (52, 60, 96, 255)
+BLANKET_LIGHT: RGBA = (88, 100, 144, 255)
+BLANKET_DARK: RGBA = (34, 38, 64, 255)
+LINING: RGBA = (132, 52, 72, 255)
+FUR: RGBA = (206, 194, 170, 255)
+FUR_LIGHT: RGBA = (238, 230, 212, 255)
+FUR_DARK: RGBA = (146, 132, 114, 255)
+GOLD: RGBA = (236, 190, 92, 255)
+GOLD_DARK: RGBA = (170, 116, 50, 255)
+BANDS = ((83, 177, 217, 255), (87, 201, 177, 255), (150, 112, 203, 255), (205, 82, 100, 255))
+BAND_DARK: RGBA = (40, 60, 96, 255)
+DAMP: RGBA = (150, 176, 214, 255)
+
+#: 168 cm, and wide: most of the width is blanket.
+BUILD = Build(hip_up=48.0, thigh=23.2, shin=22.2, neck=(0.6, -34.4), upper=18.6, fore=17.6, near_shoulder=(-4.2, -30.4), far_shoulder=(5.6, -30.0),
+              near_hip=(-3.4, 0.0), far_hip=(3.4, 0.0), head_up=(0.8, -12.0), height=108.0, half_width=(14.0, 15.0))
+
+X = Person(TARGET_NAME, BUILD)
+K = X.K
+P = X.P
+TOP = BUILD.neck[1] - 2.0
+#: How far under his hips the blanket hangs.
+HEM = 27.0
+
+
+def _tufts(d, points, r: float = 2.2) -> None:
+    """A line of fur: tufts, each with its light."""
+    for x, y in points:
+        K.oval(d, K.at(x, y), r, r * 0.9, FUR)
+    for x, y in points[::2]:
+        K.oval(d, K.at(x - 0.4, y - 0.6), r * 0.5, r * 0.45, FUR_LIGHT)
+
+
+def _front(d, hb: float, hf: float) -> None:
+    """The fur at each edge of the blanket and at his neck, the folds of it,
+    and a little of his shirt where it does not meet."""
+    K.poly(d, [K.at(4.0, TOP + 2.0), K.at(8.6, TOP + 2.0), K.at(7.4, TOP + 9.0), K.at(5.0, TOP + 9.0)], SHIRT)
+    # The edge that is over the other one, from his neck to the hem.
+    edge = [(4.4 + 0.5 * math.sin(k * 0.9), TOP + 8.0 + k * 3.8) for k in range(int((HEM - TOP - 8.0) / 3.8) + 1)]
+    K.line(d, [K.at(x - 2.4, y) for x, y in edge], BLANKET_DARK, 0.8)
+    _tufts(d, edge)
+    # The hem.
+    _tufts(d, [(x, HEM - 2.0 + 0.4 * math.sin(x)) for x in [-13.0 + 3.4 * k for k in range(10)]], 2.4)
+    # The roll at his neck.
+    _tufts(d, [(-4.0, TOP + 3.0), (-0.6, TOP + 4.4), (3.0, TOP + 4.8), (6.6, TOP + 4.4), (9.6, TOP + 3.0)], 3.0)
+    for x0, x1 in ((-7.0, -9.0), (10.0, 12.6)):
+        K.line(d, [K.at(x0, -18.0), K.at(x1 + (hf if x0 > 0 else -hb) * 0.4, HEM - 6.0)], BLANKET_DARK, 0.6)
+    K.line(d, [K.at(-3.0, -20.0), K.at(-4.6, 8.0)], BLANKET_LIGHT, 0.5)
+
+
+X.torso = R.make_torso(K, ("furrier",), BLANKET, BLANKET_DARK, back=(9.4, 10.2, 10.2, 12.4), front=(9.6, 10.0, 10.6, 12.6), hem_y=HEM, top=TOP,
+                       shoulders=((-4.6, -30.0), (5.6, -30.0)), shoulder_r=(5.6, 4.6), shade_from=40.0, detail=_front)
+
+NEAR_EYE = (1.8, -0.6)
+FAR_EYE = (7.0, -0.8)
+
+
+def _hair_shape(d) -> None:
+    # Short curls: the edge of his head is not a smooth line.
+    K.oval(d, K.at(-0.6, -5.8), 8.8, 6.8, WHITE)
+    for x, y, r in ((-7.6, -6.0, 2.6), (-8.4, -2.0, 2.4), (-7.0, 2.0, 2.2), (-4.0, -11.0, 2.6), (0.6, -12.4, 2.6), (5.0, -11.4, 2.6), (8.0, -8.4, 2.2)):
+        K.oval(d, K.at(x, y), r, r, WHITE)
+
+
+def _hair(d) -> None:
+    K.poly(d, [K.at(20.0, -8.6), K.at(8.6, -8.6), K.at(6.0, -6.8), K.at(3.0, -8.0), K.at(0.0, -6.4), K.at(-2.4, -3.4), K.at(-2.6, -0.4), K.at(-5.2, -0.2),
+               K.at(-5.8, 3.6), K.at(-4.6, 5.0), K.at(-20.0, 5.4), K.at(-20.0, -26.0), K.at(20.0, -26.0)], HAIR)
+    for x, y in ((-5.0, -8.0), (-1.0, -10.0), (3.6, -9.6), (-7.0, -3.0), (6.6, -8.6)):
+        K.line(d, [K.at(x - 1.4, y + 0.8), K.at(x, y - 0.8), K.at(x + 1.4, y + 0.6)], HAIR_LIGHT, 0.6)
+
+
+def _face(d) -> None:
+    # His nose is pink with the cold, and so is his cheek.
+    K.oval(d, K.at(9.0, 3.0), 1.5, 1.4, NOSE)
+    K.oval(d, K.at(3.4, 4.0), 2.0, 1.3, mix(SKIN, NOSE, 0.45))
+
+
+_head = R.make_head(K, ("furrier",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.4, 8.0, 9.0), jaw=(2.4, 4.0, 5.8, 7.2),
+                    nose=((7.2, -0.8), (10.0, 2.6), (9.6, 4.2), (7.2, 4.6)), ear=(-4.8, 1.0, 2.2, 3.2), shape=_hair_shape, under=_hair, over=_face)
+_eyes = R.make_eyes(K, (NEAR_EYE[0] + 0.2, NEAR_EYE[1] + 0.2), (FAR_EYE[0] + 0.1, FAR_EYE[1] + 0.2), ink=INK, white=None, lid=SKIN_DEEP, size=1.0)
+_brows = R.make_brows(K, [(-0.8, -4.0), (1.8, -4.8), (4.4, -4.0)], [(5.8, -4.2), (7.2, -4.6), (8.6, -4.0)], HAIR, 1.3)
+_mouth = R.make_mouth(K, (5.6, 7.2), (118, 67, 65, 255), wide=0.8)
+
+X.head_layers = lambda pose: [(_head(), "head"), (_eyes(str(pose["eyes"])), "eyes"), (_brows(R.brow_mood(pose)), "brows"), (_mouth(str(pose["mouth"])), "mouth")]
+X.neck = R.make_neck(K, SKIN_SHADE, 4.6)
+# His arms are in the blanket to the wrist, and it has fur there too.
+X.upper_arm = lambda near: [(0.0, 1.0, 8.0, 7.2, BLANKET if near else BLANKET_DARK)]
+X.forearm = lambda near: [(0.0, 0.86, 7.4, 6.6, BLANKET if near else BLANKET_DARK), (0.72, 1.0, 7.0, 6.8, FUR if near else FUR_DARK)]
+X.thigh = lambda near: [(0.0, 1.0, 6.8, 5.8, TROUSER if near else TROUSER_DARK)]
+X.shin = lambda near: [(0.0, 1.0, 5.8, 5.0, TROUSER if near else TROUSER_DARK)]
+X.hand = R.make_hand(K, SKIN, SKIN_SHADE, SKIN_DEEP, size=0.95)
+X.shoe = R.make_shoe(K, SHOE, SHOE_DARK, BUILD.ankle_up, long=1.0)
+
+# ---- How he holds himself ----------------------------------------------------
+
+#: Both hands hold the blanket shut at his chest.
+SHUT_NEAR = (9.0, 9.0)
+SHUT_FAR = (6.0, 12.0)
+X.set_rest(lean=0.0, na=SHUT_NEAR, fa=SHUT_FAR, nh="fist", fh="fist", nf=(-3.8, 0.0, 0.0), ff=(4.8, 0.0, 0.0))
+
+
+@X.row
+def idle(i: int, n: int):
+    # He is cold. Now and then all of him shakes once.
+    _, s, c = loop(i, n)
+    shake = 0.6 if i in (5, 6) else 0.0
+    return P(hip=(shake * (1.0 if i == 5 else -1.0), 0.3 + 0.3 * s), lean=0.4 * s, head=(0.3, 0.2, 2.0 + 2.0 * c), eyes="closed" if i == n - 2 else "open",
+             mouth="grit" if shake else "flat", brows=-1.0 if shake else 0.0)
+
+
+@X.row
+def walk(i: int, n: int):
+    # Small steps: the blanket stays shut.
+    ph, s, c = loop(i, n)
+    nf, ff = R.stride(ph, 6.4, 3.4)
+    return P(hip=(0.5, 0.7 * math.cos(2.0 * ph)), lean=2.0, head=(0.3, 0.0, 1.0 + 1.5 * s), nf=nf, ff=ff, hem=(1.0 + abs(c), abs(c)))
+
+
+@X.row
+def talk(i: int, n: int):
+    # One hand comes out to count the parts of the wave, and goes back in.
+    _, s, c = loop(i, n)
+    return P(hip=(0.0, 0.3 * s), lean=1.0, head=(0.4, 0.0, 2.0 * s), na=(14.0 + 2.0 * c, 3.0 - 4.0 * max(0.0, s)), nh="open", mouth=("open", "smile", "big", "flat")[i % 4],
+             brows=1.0 if s > 0.3 else 0.0)
+
+
+@X.row
+def blanket_snap(i: int, n: int):
+    # He takes a corner of it and cracks it like a whip.
+    back = P(hip=(-1.5, 1.0), lean=-6.0, na=(-8.0, -4.0), nab=-1.0, nh="fist", brows=-1.0, nf=(-6.0, 0.0, 0.0), ff=(6.0, 0.0, 0.0))
+    out = P(hip=(3.0, 1.5), lean=10.0, head=(1.0, 0.0, 4.0), na=(26.0, 2.0), nh="fist", brows=-1.0, mouth="grit", nf=(-8.0, 0.0, 0.0), ff=(9.0, 0.0, 0.0), hem=(4.0, 3.0))
+    return X.keys(shot(i, n), [(0.0, P()), (0.25, back), (0.42, out), (0.7, dict(out, na=(24.0, 5.0))), (1.0, P())])
+
+
+@X.row
+def step_function(i: int, n: int):
+    # A foot up on the first step he has made, and a hand to the next.
+    up = P(hip=(1.5, -1.0), lean=4.0, head=(0.5, 0.0, -6.0), na=(22.0, -8.0), nh="point", ff=(11.0, -6.0, 0.0), nf=(-5.0, 0.0, 0.0), eyes="up", brows=1.0, mouth="open")
+    return X.keys(shot(i, n), [(0.0, P()), (0.3, up), (0.8, dict(up, na=(23.0, -12.0), mouth="smile")), (1.0, P())])
+
+
+#: The blanket open, both arms out: what was one wave is its parts.
+OPEN = P(hip=(0.0, 0.5), lean=-3.0, head=(0.0, 0.0, -6.0), na=(-13.0, 2.0), nab=-1.0, fa=(21.0, -2.0), nh="open", fh="open", eyes="wide", brows=1.0, mouth="big",
+         nf=(-5.0, 0.0, 0.0), ff=(6.0, 0.0, 0.0), hem=(4.0, 4.0))
+
+
+@X.row
+def harmonic_split(i: int, n: int):
+    wind = P(hip=(0.0, 2.0), lean=6.0, head=(0.5, 0.5, 6.0), eyes="closed", brows=-1.0)
+    return X.keys(shot(i, n), [(0.0, P()), (0.2, wind), (0.4, OPEN), (0.85, OPEN), (1.0, P())])
+
+
+@X.row
+def low_pass_lament(i: int, n: int):
+    # He goes down into the blanket, and what comes at him comes through soft.
+    _, s, _c = loop(i, n)
+    down = P(hip=(-1.0, 5.0 + 0.4 * s), lean=8.0, head=(0.5, 1.5, 12.0), eyes="closed", brows=-1.0, mouth="flat", nf=(-6.0, 0.0, 0.0), ff=(6.0, 0.0, 0.0))
+    return X.keys(shot(i, n), [(0.0, P()), (0.25, down), (0.85, down), (1.0, P())])
+
+
+@X.row
+def full_turn(i: int, n: int):
+    # All the way round, the blanket out from him like a bell.
+    _, s, c = loop(i, n)
+    return P(hip=(0.0, 1.0), lean=5.0 * s, head=(0.0, 0.0, 6.0 * s), na=(-16.0 + 7.0 * c, 0.0), nab=-1.0, fa=(19.0 - 7.0 * c, 0.0), nh="fist", fh="fist",
+             nf=(-4.0 + 3.0 * s, 0.0, 0.0), ff=(5.0 - 3.0 * s, -1.0 * abs(c), 10.0), mouth="open", hem=(5.0 * abs(s), 5.0 * abs(c)))
+
+
+X.alias(spectral_descent="air_down")
+X.rows = [("idle", 8, 145), ("walk", 8, 106), ("run", 8, 78), ("crouch", 6, 96), ("crouch_walk", 8, 90), ("jump", 6, 92), ("fall", 6, 92), ("land_hard", 8, 88),
+          ("land_recovery", 6, 72), ("dash_startup", 4, 48), ("dash", 6, 60), ("slide", 6, 68), ("roll", 8, 56), ("wall_grab", 6, 105), ("wall_jump", 6, 82),
+          ("ledge_grab", 6, 98), ("ledge_climb", 6, 98), ("ledge_getup", 6, 42), ("ledge_roll", 8, 38), ("climb", 8, 98), ("swim", 8, 102), ("float_glide", 8, 108),
+          ("block", 6, 82), ("hit", 5, 86), ("death", 8, 105), ("talk", 8, 104), ("interact", 8, 90), ("blanket_snap", 7, 62), ("step_function", 8, 70),
+          ("harmonic_split", 8, 74), ("low_pass_lament", 8, 82), ("spectral_descent", 8, 72), ("air_neutral", 8, 62), ("air_forward", 7, 60), ("air_back", 7, 60),
+          ("air_down", 7, 68), ("air_up", 7, 60), ("full_turn", 10, 72), ("celebrate", 8, 88), ("taunt", 8, 96)]
+
+# ---- What he shows -----------------------------------------------------------
+
+
+def _wave(cycles: float, amp: float, colour: RGBA, length: int = 34, rough: float = 0.0):
+    """A wave along +x from ``home``. ``rough``: how much of a second, fast
+    wave is on it."""
 
     def paint(d) -> None:
-        _ellipse(d, REST, 3.4, 3.6, SKIN_SHADE if far else SKIN, OUTLINE, 0.8)
-        # A simple thumb keeps the hand readable at gameplay scale.
-        _line(d, [REST, (REST[0] + (2.5 if not far else -2.5), REST[1] + 1.1)], OUTLINE_SOFT, 0.8)
+        pts = [K.at(x, amp * math.sin(math.tau * cycles * x / length) + rough * math.sin(math.tau * cycles * 5.3 * x / length + 1.0)) for x in
+               [k * 0.5 for k in range(length * 2 + 1)]]
+        K.line(d, pts, BAND_DARK, 2.0)
+        K.line(d, pts, colour, 0.9)
 
-    SR.place(canvas, SR.rest_piece(("joseph_hand", far), CANVAS, _sp(REST), paint), _sp(hand_t), 0.0, f"{side}_hand")
-
-
-def _paint_shirt(draw, pose: Pose) -> None:
-    """The shirt wedge under the collar (it shows when the blanket opens)."""
-    T = lambda q: _transform(q, pose)
-    _polygon(draw, [T((57.0, 48.0)), T((71.0, 48.0)), T((68.0, 70.0)), T((60.0, 70.0))], SHIRT, OUTLINE, 0.8)
-    _line(draw, [T((64.0, 49.0)), T((64.0, 68.0))], SHIRT_SHADE, 0.8)
+    return K.aligned(("wave", cycles, amp, colour, length, rough), paint)
 
 
-def _render_native_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
-    pose = _pose(animation, frame_idx, nframes)
-    image = Image.new("RGBA", CANVAS, (0, 0, 0, 0))
-    draw = blending_draw(image)
+def _steps(count: int, down: bool = False):
+    """Steps, from ``home`` at the floor: each as far up (or down) as it is
+    along."""
 
-    _draw_effects_behind(draw, pose)
-    _rig_leg(image, pose, pose.far_hip, pose.far_knee, pose.far_ankle, far=True)
-    _rig_leg(image, pose, pose.near_hip, pose.near_knee, pose.near_ankle, far=False)
+    def paint(d) -> None:
+        for k in range(count):
+            y = (6.0 * (k + 1)) * (1.0 if down else -1.0)
+            x0, x1 = 8.0 * k, 8.0 * (k + 1)
+            K.poly(d, [K.at(x0, 0.0), K.at(x1, 0.0), K.at(x1, y), K.at(x0, y)], GOLD_DARK)
+            K.poly(d, [K.at(x0 + 0.8, -0.8 if not down else 0.8), K.at(x1 - 0.8, -0.8 if not down else 0.8), K.at(x1 - 0.8, y + (0.8 if not down else -0.8)),
+                       K.at(x0 + 0.8, y + (0.8 if not down else -0.8))], GOLD)
 
-    rest = _rest_pose(pose)
-    _place_rest(image, ("shirt", rest.lean, rest.crouch), lambda d: _paint_shirt(d, rest), rest, (64.0, 60.0), pose, (64.0, 60.0), "shirt")
-    _rig_arm(image, pose, pose.far_shoulder, pose.far_elbow, pose.far_hand, far=True)
-    cloth = dict(
-        blanket_sway=SR.q(pose.blanket_sway, 1.0),
-        blanket_flare=SR.q(pose.blanket_flare, 0.1),
-        blanket_open=SR.q(pose.blanket_open, 0.1),
-        blanket_wrap=SR.q(pose.blanket_wrap, 0.1),
-    )
-    blanket_rest = _rest_pose(pose, **cloth)
-    key = ("blanket", blanket_rest.lean, blanket_rest.crouch) + tuple(cloth.values())
-    _place_rest(image, key, lambda d: _draw_blanket(d, blanket_rest), blanket_rest, (64.0, 75.0), pose, (64.0, 75.0), "blanket")
-    _rig_arm(image, pose, pose.near_shoulder, pose.near_elbow, pose.near_hand, far=False)
-    _draw_effects_front(draw, pose)
-    face = dict(blink=pose.blink, mouth_open=SR.q(pose.mouth_open, 0.1), brow=SR.q(pose.brow, 0.2))
-    head_rest = _rest_pose(pose, **face)
-    key = ("head", head_rest.lean, head_rest.crouch) + tuple(face.values())
-    _place_rest(
-        image, key, lambda d: _draw_head(d, head_rest), head_rest, (64.0, 29.0),
-        pose, (64.0 + pose.head_x, 29.0 + pose.head_y), "head", pose.head_tilt,
-    )
-    return image
+    return K.aligned(("steps", count, down), paint)
 
 
-def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
-    return rigdoc.downsampled_canvas(_render_native_frame(animation, frame_idx, nframes), (FRAME_W, FRAME_H), Image.Resampling.LANCZOS)
+def _effects(ctx) -> List[Stamp]:
+    out: List[Stamp] = []
+    anim, i, u = ctx.anim, ctx.i, ctx.u
+    if anim == "blanket_snap" and 0.35 <= u <= 0.7:
+        out.append((R.swoosh(K, 22.0, -60, 30, 5.0, BLANKET_LIGHT, BLANKET_DARK), pin((ctx.hand[0] - 6.0, ctx.hand[1] + 2.0)), "snap", 0.0))
+        out.append((R.burst(K, 6.0, FUR_LIGHT, FUR_DARK), (ctx.hand[0] + 16.0, ctx.hand[1]), "crack", 0.0))
+    elif anim == "step_function" and u >= 0.2:
+        out.append((_steps(min(3, 1 + int((u - 0.2) / 0.2))), pin((ctx.hip[0] + 8.0, ctx.ground)), "steps", 0.0))
+    elif anim == "spectral_descent" and 0.15 <= u <= 0.9:
+        out.append((_steps(3, down=True), pin((ctx.hip[0] + 6.0, ctx.hip[1] + 8.0)), "steps", 0.0))
+    elif anim == "harmonic_split":
+        if 0.2 <= u < 0.4:
+            out.append((_wave(2.0, 4.0, WHITE, 26, rough=1.6), pin((ctx.hip[0] + 12.0, ctx.hip[1] - 26.0)), "sum", 0.0))
+        elif u >= 0.4:
+            for k, colour in enumerate(BANDS):
+                spread = min(1.0, (u - 0.4) / 0.25)
+                out.append((_wave(1.0 + k, 3.4 - 0.5 * k, colour), pin((ctx.far_hand[0] + 4.0, ctx.hip[1] - 26.0 + (k - 1.5) * 9.0 * spread)), f"band_{k}", 0.0))
+    elif anim == "low_pass_lament" and 0.2 <= u <= 0.9:
+        # Rough where it comes in, smooth where it reaches him.
+        out.append((_wave(2.0, 3.6, DAMP, 22, rough=1.8), pin((ctx.hip[0] + 30.0 - 6.0 * (i % 2), ctx.hip[1] - 24.0)), "rough", 0.0))
+        out.append((_wave(1.0, 2.4, DAMP, 14), pin((ctx.hip[0] + 14.0, ctx.hip[1] - 24.0)), "smooth", 0.0))
+    return out
 
 
-def render_portraits(out_dir: Path, **opts) -> List[Path]:
-    """Publish native close-up expressions while preserving the blanket collar."""
+X.effects = _effects
+
+ROWS = X.rows
+FRAME_W, FRAME_H = X.frame
+render_frame = X.render_frame
+_render_frame = render_frame
+render, main, render_canonical = R.entry_points(X, ACTOR_METADATA, DISPLAY_NAME)
+
+
+def render_portraits(out_dir, **opts):
+    """His portraits are frames of this sheet."""
     del opts
-    face = FaceGuide(
-        center_x=64.0,
-        center_y=31.0,
-        width=30.0,
-        height=35.0,
-        source_width=FRAME_W,
-        source_height=FRAME_H,
-    )
-
-    def portrait_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
-        return render_framed_portrait(
-            _render_native_frame(animation, frame_idx, frame_count),
-            face,
-            view_width=70.0,
-            center_y=39.0,
-        )
-
-    clips = {
-        "default": PortraitClip.still(portrait_frame("idle", 1, 8)),
-        "murmuring": PortraitClip(
-            tuple(portrait_frame("talk", frame, 8) for frame in range(8)),
-            duration_ms=104,
-            looping=True,
-        ),
-        "listening": PortraitClip(
-            tuple(portrait_frame("idle", frame, 8) for frame in (1, 3, 4, 6)),
-            duration_ms=145,
-            looping=True,
-        ),
-        "spectral": PortraitClip(
-            tuple(portrait_frame("harmonic_split", frame, 8) for frame in (1, 3, 5, 7)),
-            duration_ms=118,
-            looping=True,
-        ),
-    }
-    return write_portrait_sheet(TARGET_NAME, clips, Path(out_dir))
+    r8 = tuple(range(8))
+    return X.portraits(out_dir, {
+        "default": ("idle", (1,), 0, False),
+        "murmuring": ("talk", r8, 104, True),
+        "listening": ("idle", r8, 145, True),
+        "spectral": ("harmonic_split", (3, 4, 5, 6), 110, True),
+    }, view_width=38.0)
 
 
-def _body_metrics_override(fw: int, fh: int):
-    return {
-        "body_pixel_bbox": {
-            "x": int(fw * 0.25),
-            "y": int(fh * 0.08),
-            "w": int(fw * 0.52),
-            "h": int(fh * 0.86),
-        },
-        "feet_pixel": {"x": fw * 0.50, "y": fh * 0.925},
-        "feet_anchor_norm": {"x": 0.0, "y": round(0.5 - 0.925, 6)},
-    }
-
-
-def render(out_dir: Path, **opts) -> List[Path]:
-    del opts
-    frame_transform: dict = {}
-    outputs = build_sheet(
-        frame_transform_out=frame_transform,
-        target=TARGET_NAME,
-        rows=ROWS,
-        render_fn=render_frame,
-        out_dir=Path(out_dir),
-        frame_size=(FRAME_W, FRAME_H),
-        label_width=108,
-        auto_crop=False,
-        body_metrics_fn=_body_metrics_override,
-        actor_metadata=ACTOR_METADATA,
-        sheet_tuning={"collision_scale": 1.0, "frame_sample_inset": 1},
-        animation_key_map={name: name for name, _frames, _duration in ROWS},
-        attack_hitboxes={
-            "blanket_snap": {"bbox": {"x": 75, "y": 43, "w": 50, "h": 42}},
-            "step_function": {"bbox": {"x": 76, "y": 30, "w": 50, "h": 62}},
-            "harmonic_split": {"bbox": {"x": 78, "y": 30, "w": 49, "h": 66}},
-            "spectral_descent": {"bbox": {"x": 29, "y": 43, "w": 82, "h": 76}},
-        },
-    )
-    keys = (
-        "spritesheet",
-        "yaml",
-        "ron",
-        "actor",
-        "canonical",
-        "canonical_transparent",
-        "preview",
-    )
-    parts = publish_rig_flipbook(TARGET_NAME, ROWS, render_frame, outputs, frame_transform, Path(out_dir))
-    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
-
-
-def render_canonical(out_dir: Path, **opts) -> Path:
-    del opts
-    return write_canonical(
-        TARGET_NAME,
-        ROWS,
-        render_frame,
-        Path(out_dir),
-        frame_size=(FRAME_W, FRAME_H),
-    )
-
-
-__all__ = [
-    "ACTOR_METADATA",
-    "authoring_description",
-    "render",
-    "render_canonical",
-    "render_frame",
-    "render_portraits",
-]
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("out_dir", nargs="?", type=Path, default=Path("generated") / TARGET_NAME)
-    args = parser.parse_args(argv)
-    outputs = render(args.out_dir)
-    for path in outputs:
-        print(path)
-    return 0
+TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
 
 if __name__ == "__main__":

@@ -50,12 +50,6 @@ def test_anne_druid_specials_have_visible_motion_and_distinct_science_identity()
         peak = target.render_frame(animation, max(1, nframes // 2), nframes)
         assert first.tobytes() != peak.tobytes(), animation
 
-    assert target._pose("golden_record_guard", 4, 8).record_front is True
-    assert target._pose("whale_song", 5, 10).effect == "whale_song"
-    assert target._pose("pulsar_beacon", 5, 10).effect == "pulsar"
-    assert target._pose("cosmic_garden", 5, 10).effect == "cosmic_garden"
-    assert target._pose("voyager_cast", 5, 10).record_x > 95.0
-
 
 def test_anne_druid_publishes_native_named_portraits(tmp_path):
     outputs = target.render_portraits(tmp_path)

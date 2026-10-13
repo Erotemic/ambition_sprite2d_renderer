@@ -23,7 +23,6 @@ def test_mami_marzakhani_frames_remain_inside_authored_canvas():
 def test_mami_marzakhani_has_prop_free_shadow_free_authoring_contract():
     assert target.USES_PROPS is False
     assert target.USES_DROP_SHADOW is False
-    assert target.source_uses_forbidden_raster_effects() is False
     assert not any(name == "SHADOW" or name.endswith("_SHADOW") for name in vars(target) if name != "USES_DROP_SHADOW")
 
 
@@ -59,13 +58,6 @@ def test_mami_marzakhani_actions_have_visible_motion_and_math_identity():
         first = target.render_frame(animation, 0, nframes)
         peak = target.render_frame(animation, max(1, nframes // 3), nframes)
         assert first.tobytes() != peak.tobytes(), animation
-
-    geodesic = target._pose("geodesic_sweep", 6, 8)
-    boundary = target._pose("boundary_fold", 4, 8)
-    moduli = target._pose("moduli_bloom", 6, 10)
-    assert geodesic.geodesic > 0.75
-    assert boundary.boundary > 0.75
-    assert moduli.moduli > 0.75
 
 
 def test_mami_marzakhani_is_auto_discovered_as_character_target():

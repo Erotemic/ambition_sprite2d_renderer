@@ -63,6 +63,9 @@ class Build:
     fore: float = 18.0
     near_shoulder: Point = (-6.0, -32.0)
     far_shoulder: Point = (7.6, -31.6)
+    #: Which way a knee bends: -1 to the front (a person), 1 to the back (a
+    #: grasshopper).
+    knee: float = -1.0
     near_hip: Point = (-3.6, 0.0)
     far_hip: Point = (3.6, 0.0)
     #: The sole of a shoe is this far under its ankle.
@@ -858,6 +861,14 @@ def make_head(K: Kit, key: tuple, skin: RGBA, shade: RGBA, deep: RGBA, *, skull:
     return head
 
 
+#: How far a man's chest may stand in front of the wider of his shoulder and
+#: his waist, how far his far shoulder may come past his front edge, and how
+#: far behind that edge his far arm starts (``make_torso``).
+CHEST_OUT = 0.5
+FAR_SHOULDER_OUT = 0.6
+FAR_ARM_IN = 2.6
+
+
 def make_torso(K: Kit, key: tuple, colour: RGBA, dark: RGBA, *, back: Tuple[float, float, float, float] = (9.2, 9.6, 8.6, 9.4),
                front: Tuple[float, float, float, float] = (8.2, 10.0, 9.6, 10.2), hem_y: float = 9.0, top: float = -38.0,
                shoulders: Tuple[Point, Point] = ((-5.4, -31.0), (6.0, -30.8)), shoulder_r: Tuple[float, float] = (5.2, 4.8), neck: Tuple[float, float] = (-4.0, 4.0),
@@ -868,9 +879,25 @@ def make_torso(K: Kit, key: tuple, colour: RGBA, dark: RGBA, *, back: Tuple[floa
     hem; ``hem_y`` is how far under the hips the hem is (9 is a jacket, 26 a
     coat to the knee, 40 a robe to the ankle). ``belly`` pushes the front of
     the waist out. ``detail(d, hem_back, hem_front)`` paints the front of it
-    (a shirt, lapels, buttons, a pattern): that is the character's."""
+    (a shirt, lapels, buttons, a pattern): that is the character's.
 
-    def torso(hem_back: int, hem_front: int):
+    This is the trunk of a man, and its front is a slope and not a round: the
+    chest is never more than ``CHEST_OUT`` in front of the wider of the
+    shoulder and the waist, and the far shoulder does not come past the front
+    edge. A chest that stands out under a narrow shoulder and over a narrow
+    waist reads as a bust (Jon, 2026-10-13: "That's not to say we can't have
+    defined chests for men, they just shouldn't read as boobs"). A woman's
+    trunk is ``make_figure``."""
+
+    full_hem = hem_y
+    chest = min(front[1], max(front[0], front[2] + belly * 0.5) + CHEST_OUT)
+    far_r = shoulder_r[1]
+    far_x = min(shoulders[1][0], front[0] + FAR_SHOULDER_OUT - far_r)
+
+    def torso(hem_back: int, hem_front: int, drop: Optional[int] = None):
+        # ``drop``: the floor is this far under the hips, and a long hem
+        # stops there.
+        hem_y = full_hem if drop is None else min(full_hem, float(drop))
         hb, hf = float(hem_back), float(hem_front)
         long = max(0.0, (hem_y - 9.0) / 30.0)
         back_hem = K.at(-back[3] - hb * (1.0 + long), hem_y - hb * 0.25)
@@ -878,10 +905,10 @@ def make_torso(K: Kit, key: tuple, colour: RGBA, dark: RGBA, *, back: Tuple[floa
 
         def shape(d) -> None:
             K.poly(d, [K.at(neck[0], top), K.at(-back[0], top + 4.0), K.at(-back[1], -24.0), K.at(-back[2], -4.0), back_hem, front_hem,
-                       K.at(front[2] + belly, -4.0), K.at(front[1] + belly * 0.5, -16.0), K.at(front[1], -27.0), K.at(front[0], top + 3.0),
+                       K.at(front[2] + belly, -4.0), K.at(chest + belly * 0.5, -16.0), K.at(chest, -27.0), K.at(front[0], top + 3.0),
                        K.at(neck[1], top - 0.4)], WHITE)
             K.oval(d, K.at(*shoulders[0]), shoulder_r[0], shoulder_r[0] + 0.6, WHITE)
-            K.oval(d, K.at(*shoulders[1]), shoulder_r[1], shoulder_r[1] + 0.6, WHITE)
+            K.oval(d, K.at(far_x, shoulders[1][1]), far_r, far_r + 0.6, WHITE)
 
         def paint(d) -> None:
             # The far side of the chest is in its own shade.
@@ -890,8 +917,11 @@ def make_torso(K: Kit, key: tuple, colour: RGBA, dark: RGBA, *, back: Tuple[floa
             if detail is not None:
                 detail(d, hb, hf)
 
-        return K.solid(("torso",) + tuple(key) + (hem_back, hem_front), shape, colour, paint, outline=1.3, rim=0.3, shade=0.4, shade_colour=dark)
+        return K.solid(("torso",) + tuple(key) + (hem_back, hem_front, hem_y), shape, colour, paint, outline=1.3, rim=0.3, shade=0.4, shade_colour=dark)
 
+    torso.takes_drop = full_hem > 12.0  # type: ignore[attr-defined]
+    # The far arm starts behind the front edge too (``Person`` reads this).
+    torso.far_arm_x = front[0] - FAR_ARM_IN  # type: ignore[attr-defined]
     return torso
 
 
@@ -909,7 +939,10 @@ def make_figure(K: Kit, key: tuple, colour: RGBA, dark: RGBA, *, back: Tuple[flo
     tall one and a stout one are different shapes, not one shape in three
     sizes."""
 
-    def torso(hem_back: int, hem_front: int):
+    full_hem = hem_y
+
+    def torso(hem_back: int, hem_front: int, drop: Optional[int] = None):
+        hem_y = full_hem if drop is None else min(full_hem, float(drop))
         hb, hf = float(hem_back), float(hem_front)
         long = max(0.0, (hem_y - 9.0) / 30.0)
         back_hem = K.at(-back[4] - hb * (1.0 + long), hem_y - hb * 0.25)
@@ -932,8 +965,9 @@ def make_figure(K: Kit, key: tuple, colour: RGBA, dark: RGBA, *, back: Tuple[flo
             if detail is not None:
                 detail(d, hb, hf)
 
-        return K.solid(("figure",) + tuple(key) + (hem_back, hem_front), shape, colour, paint, outline=1.3, rim=0.3, shade=0.4, shade_colour=dark)
+        return K.solid(("figure",) + tuple(key) + (hem_back, hem_front, hem_y), shape, colour, paint, outline=1.3, rim=0.3, shade=0.4, shade_colour=dark)
 
+    torso.takes_drop = full_hem > 12.0  # type: ignore[attr-defined]
     return torso
 
 
@@ -1326,7 +1360,10 @@ class Person:
 
         def arm_points(near: bool) -> Tuple[Point, Point, Point]:
             key = "na" if near else "fa"
-            shoulder = trunk_local(*(b.near_shoulder if near else b.far_shoulder))
+            sx, sy = b.near_shoulder if near else b.far_shoulder
+            if not near:
+                sx = min(sx, getattr(self.torso, "far_arm_x", sx))
+            shoulder = trunk_local(sx, sy)
             dx, dy = pose[key]  # type: ignore[misc]
             elbow, wrist = solve(shoulder, (shoulder[0] + dx * U, shoulder[1] + dy * U), b.upper, b.fore, float(pose[key + "b"]))  # type: ignore[arg-type]
             return W(shoulder), W(elbow), W(wrist)
@@ -1334,7 +1371,7 @@ class Person:
         def leg_points(near: bool) -> Tuple[Point, Point, Point, float]:
             root = (hip[0] + (b.near_hip if near else b.far_hip)[0], hip[1])
             fx, fy, toe = pose["nf" if near else "ff"]  # type: ignore[misc]
-            knee, ankle = solve(root, (fx * U, fy * U - b.ankle_up), b.thigh, b.shin, -1.0)
+            knee, ankle = solve(root, (fx * U, fy * U - b.ankle_up), b.thigh, b.shin, b.knee)
             return W(root), W(knee), W(ankle), float(toe)
 
         n_sh, n_el, n_wr = arm_points(True)
@@ -1383,7 +1420,17 @@ class Person:
             K.place(img, self.neck(float(round(math.dist(ctx.neck, top)))), ctx.neck, "neck", angle(ctx.neck, top))  # type: ignore[arg-type]
         stamps("under_torso")
         hem = pose["hem"]
-        K.place(img, self.torso(int(round(max(0.0, hem[0]) * U)), int(round(max(0.0, hem[1]) * U))), ctx.hip, "torso", lean + rot)  # type: ignore[index,arg-type]
+        hems = (int(round(max(0.0, hem[0]) * U)), int(round(max(0.0, hem[1]) * U)))  # type: ignore[index]
+        upright = (lean + rot + 180.0) % 360.0 - 180.0
+        if getattr(self.torso, "takes_drop", False) and abs(upright) < 60.0:
+            # A long hem stops at the floor: when the hips are low, there is
+            # less of it to hang.
+            tilt_ = math.radians(upright)
+            room = (self.ground + 1.0 - ctx.hip[1]) * math.cos(tilt_) - 12.0 * abs(math.sin(tilt_))
+            torso = self.torso(hems[0], hems[1], max(8, 2 * int(room // 2)))  # type: ignore[call-arg]
+        else:
+            torso = self.torso(*hems)
+        K.place(img, torso, ctx.hip, "torso", lean + rot)  # type: ignore[arg-type]
         if kicking:
             leg(True)
         stamps("over_torso")
@@ -1399,7 +1446,7 @@ class Person:
         stamps("front")
         for part, at, name, degrees in self.effects(ctx):
             K.place(img, part, at, name, degrees)  # type: ignore[arg-type]
-        return K.downsample(img)
+        return img if self._big else K.downsample(img)
 
     # -- publishing ------------------------------------------------------------
 
@@ -1434,6 +1481,41 @@ class Person:
             # frame has that frame's points. These are this frame's.
             actor_metadata = dict(actor_metadata, sockets=self.sockets())
         return self.K.render(self.target, self.rows, self.render_frame, out_dir, actor_metadata, self.body_box)
+
+    #: Set while a frame is drawn for a portrait: it is not reduced.
+    _big = False
+
+    def portraits(self, out_dir, clips: Dict[str, Tuple[str, Sequence[int], int, bool]], *, still: str = "default", view_width: float = 34.0,
+                  size: Tuple[int, int] = (256, 320)) -> List[Path]:
+        """Publish the portrait sheet of this person: the head and shoulders
+        of frames of its own rows, so a portrait is the person of the sheet.
+
+        ``clips``: name -> ``(row, frames, ms, looping)``; one frame that
+        does not loop is a still. ``still`` names the clip a box draws.
+        ``view_width`` is how many pixels of the frame the portrait is wide.
+        The face is where it is when the person stands, so a row in which the
+        head moves far is not a row for a portrait."""
+        from ...authoring.portrait import FaceGuide, PortraitClip, render_framed_portrait, write_portrait_sheet
+
+        b = self.b
+        face_x = self.cx + b.neck[0] + b.head_up[0] + 1.5
+        face_y = self.ground - b.hip_up + b.neck[1] + b.head_up[1]
+        face = FaceGuide(center_x=face_x, center_y=face_y, width=20.0, height=22.0, source_width=float(self.frame[0]), source_height=float(self.frame[1]))
+        counts = {name: frames for name, frames, _ms in self.rows}
+
+        def one(row: str, i: int) -> Image.Image:
+            self._big = True
+            try:
+                source = self.render_frame(row, i, counts[row])
+            finally:
+                self._big = False
+            return render_framed_portrait(source, face, output_size=size, view_width=view_width, center_y=face_y + view_width * 0.2)
+
+        built = {}
+        for name, (row, frames, ms, looping) in clips.items():
+            images = tuple(one(row, i) for i in frames)
+            built[name] = PortraitClip.still(images[0]) if len(images) == 1 and not looping else PortraitClip(images, duration_ms=int(ms), looping=looping)
+        return write_portrait_sheet(self.target, built, Path(out_dir), still_clip=still)
 
     def cut_frames(self) -> List[Tuple[str, int, Tuple[int, int, int, int]]]:
         """The frames that touch the edge of their cell (and are cut there):

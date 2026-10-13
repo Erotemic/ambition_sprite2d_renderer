@@ -73,9 +73,12 @@ def draw_doll(frame, cx, feet_y, pose, scale, solve):
         root = (cx + sign * 4 * spread, hip)
         target = (cx + sign * 5 * spread, ground - 6)
         if pose.walk_index >= 0:
+            # A foot that is off the ground goes FORWARD (she faces +x), and
+            # a foot that is on it goes back under her. The cycle was the
+            # other way round: each step was a step backward.
             phase = pose.walk_index * math.tau / 8 + (0 if near else math.pi)
-            target = (cx + math.cos(phase)*12*pose.gait_scale,
-                      ground - 6 - max(0, math.sin(phase))*9*pose.gait_scale)
+            target = (cx - math.cos(phase)*12*pose.gait_scale,
+                      ground - 6 - max(0, math.sin(phase))*7*pose.gait_scale)
         authored = pose.near_foot if near else pose.far_foot
         if authored is not None:
             target = (cx + authored[0], ground - 6 + authored[1])
@@ -92,7 +95,8 @@ def draw_doll(frame, cx, feet_y, pose, scale, solve):
         authored = pose.near_hand if near else pose.far_hand
         target = (body_x + sign*14*spread, shoulder+28)
         if pose.walk_index >= 0:
-            target = (root[0] - sign*math.cos(pose.walk_index*math.tau/8)*8*pose.arm_swing, shoulder+27)
+            # Each arm goes the other way from the leg of its own side.
+            target = (root[0] + sign*math.cos(pose.walk_index*math.tau/8)*8*pose.arm_swing, shoulder+27)
         if near and pose.prop == 'folio' and pose.walk_index < 0:
             target = (body_x+14, shoulder+23-pose.map_open*5)
         if not near and pose.gesture:

@@ -27,19 +27,12 @@ def test_joseph_furrier_frames_remain_inside_authored_canvas():
             assert bottom < target.FRAME_H, (animation, frame_idx, bbox)
 
 
-def test_joseph_furrier_specials_keep_stairs_secondary_to_blanket_identity():
-    idle = target._pose("idle", 1, 8)
-    step = target._pose("step_function", 3, 8)
-    descent = target._pose("spectral_descent", 3, 8)
-    harmonic = target._pose("harmonic_split", 3, 8)
-
-    assert idle.step == 0.0
-    assert idle.descent == 0.0
-    assert step.step > 0.8
-    assert descent.step > 0.8
-    assert descent.descent > 0.8
-    assert harmonic.harmonic > 0.8
-    assert harmonic.blanket_open > 0.6
+def test_joseph_furrier_steps_are_only_in_the_rows_that_are_their_own():
+    """The blanket is how he looks; the steps are something he does. A frame
+    of a row that makes steps is not the frame he stands in."""
+    idle = target.render_frame("idle", 1, 8)
+    for animation in ("step_function", "spectral_descent", "harmonic_split"):
+        assert target.render_frame(animation, 5, 8).tobytes() != idle.tobytes(), animation
 
 
 def test_joseph_furrier_is_auto_discovered_with_local_metadata():

@@ -335,7 +335,9 @@ class AliceCryptographerGenerator(CharacterGenerator):
             index = frame % 8
             pose.walk_index = index
             pose.step = (-1.0, -0.62, -0.18, 0.52, 1.0, 0.58, 0.08, -0.55)[index]
-            pose.walk_body_y = (0.0, 1.15, 0.35, -0.65, 0.0, 1.15, 0.35, -0.65)[index]
+            # Her feet are apart at 0 and 4 (a foot lands); she is lowest on
+            # the frame after, and highest as the other foot comes past.
+            pose.walk_body_y = (0.3, 1.1, -0.3, -0.8, 0.3, 1.1, -0.3, -0.8)[index]
             pose.head_tilt = (0.35, 0.10, -0.15, -0.35, -0.35, -0.10, 0.15, 0.35)[index]
             pose.prop = "none"
             if animation == "run":

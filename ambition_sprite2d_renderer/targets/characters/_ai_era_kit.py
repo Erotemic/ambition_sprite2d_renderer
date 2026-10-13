@@ -293,8 +293,18 @@ class Kit:
         self._pieces[key] = part
         return part
 
+    #: ``(colour, strength)``: each part placed is shaded with it, but not the
+    #: parts named in ``tint_skip``. A change of form sets it for a frame (the
+    #: body is one light shape, and then it is the other form).
+    tint: Optional[Tuple[Tuple[int, int, int], float]] = None
+    tint_skip: Tuple[str, ...] = ()
+
     def place(self, img: Image.Image, part: Optional[Part], at: Point, name: str, degrees: float = 0.0) -> None:
         if part is not None:
+            if self.tint is not None and name not in self.tint_skip:
+                from ._toon_rig import tinted
+
+                part = tinted(part, *self.tint)
             shape_rig.place(img, part, (at[0] * self.scale, at[1] * self.scale), degrees, name)
 
     def put(self, img: Image.Image, key: tuple, paint: Callable, at: Point, name: str, degrees: float = 0.0) -> None:

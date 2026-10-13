@@ -1,53 +1,43 @@
-"""Procedural sprite target for Georg Canter.
+"""Sprite generator for Georg Canter: a professor of sets, who is a centaur.
 
-Georg Canter is a transfinite centaur parody of Georg Cantor.  His human half
-reads as a severe late-nineteenth-century professor while the equine half gives
-"Canter" a literal combat silhouette.  Nested-set tack, aleph ornaments, a
-Cantor-diagonal lance, and recursive constellation effects turn set theory into
-visible action without requiring the audience to understand the mathematics.
+An affectionate caricature of Georg Cantor.
 
-Ambition's humans, animals, machines, monsters, and mixed bodies coexist as an
-ordinary fact of the setting.  Georg is a centaur because that is the character;
-no bark or scene should stop to explain it.
+The look (2026-10-13): from the withers up, a professor of the 1880s, seen
+three quarters from the front, facing right: a high bare forehead, dark hair
+going grey at the sides, a full beard, a black frock coat over a grey
+waistcoat, a white collar and a dark bow tie, and on his chest a small gold
+aleph. From the withers down, a bay horse: a deep chest, a round barrel, four
+dark legs with black hooves, a black tail. On his back a blanket with sets
+inside sets drawn on it. He stands straight, one hand on his lapel.
+
+He is a centaur because that is who he is: nothing in the game stops to
+explain it. He is a grown man, not a mascot. He holds nothing at rest: his
+lance is in his hand only in the row that is its own. There is no drop
+shadow.
+
+What he shows: a table of numbers and the line down its diagonal, which is
+the number the table does not have; the whole numbers, counted off behind
+him as he runs; a set, and the set of its parts, and the set of those; and
+alephs, which fall.
+
+He is a person of ``_person_rig`` from the withers up, and his front legs are
+its legs: the bones, the poses and the frame are shared. His barrel, his hind
+legs and his tail are layers of his own.
 """
 
 from __future__ import annotations
 
-import argparse
-from dataclasses import dataclass
 import math
-from pathlib import Path
-from typing import List, Sequence, Tuple
+from typing import List
 
-from PIL import Image, ImageDraw, ImageFont
-
-from ...authoring import rigdoc
-from ...authoring.part_flipbook import publish_rig_flipbook
-from ...authoring.sheet_build import build_sheet, write_canonical
-from ambition_sprite2d_renderer.core.draw import blending_draw
-
-from . import _solo_shape_rig as SR
-
-RGBA = Tuple[int, int, int, int]
-Point = Tuple[float, float]
+from ._ai_era_kit import RGBA, mix, pin, solve
+from ._ai_era_kit import WHITE as _SOLID
+from . import _person_rig as R
+from ._person_rig import Build, Person, Stamp, loop, shot
 
 TARGET_NAME = "georg_canter"
-FRAME_SIZE = (320, 288)
-SUPER = 3
-WORK_SIZE = (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER)
-
-ROWS: List[Tuple[str, int, int]] = [
-    ("idle", 8, 132),
-    ("walk", 8, 92),
-    ("talk", 8, 104),
-    ("diagonalize", 9, 76),
-    ("countable_charge", 8, 74),
-    ("power_set", 10, 84),
-    ("aleph_rain", 8, 90),
-    ("hit", 5, 84),
-    ("death", 10, 112),
-    ("taunt", 8, 98),
-]
+TARGET_BASENAME = TARGET_NAME
+DISPLAY_NAME = "Georg Canter"
 
 AUTHORING_DESCRIPTION = (
     "Georg Canter parodies Georg Cantor, the mathematician who founded modern "
@@ -213,650 +203,391 @@ ACTOR_METADATA = {
 
 # Palette: academic indigo and gold above a deep chestnut horse body.
 OUTLINE = (25, 20, 32, 255)
-OUTLINE_SOFT = (56, 44, 65, 255)
-HORSE = (112, 61, 42, 255)
-HORSE_MID = (147, 82, 53, 255)
-HORSE_LIGHT = (187, 113, 70, 255)
-HORSE_DARK = (69, 40, 35, 255)
-HOOF = (42, 34, 39, 255)
-SKIN = (221, 181, 146, 255)
-SKIN_LIGHT = (242, 209, 176, 255)
-SKIN_DARK = (177, 128, 100, 255)
-HAIR = (54, 40, 45, 255)
-HAIR_LIGHT = (91, 69, 72, 255)
-COAT = (45, 48, 101, 255)
-COAT_MID = (68, 73, 139, 255)
-COAT_LIGHT = (103, 111, 176, 255)
-SHIRT = (239, 234, 216, 255)
-VEST = (92, 123, 128, 255)
-GOLD = (222, 173, 66, 255)
-GOLD_LIGHT = (251, 222, 135, 255)
-STEEL = (174, 204, 220, 255)
-STEEL_LIGHT = (235, 250, 255, 255)
-TRANSFINITE = (116, 218, 232, 255)
-TRANSFINITE_DARK = (65, 122, 169, 255)
-POWER = (203, 119, 237, 255)
-POWER_LIGHT = (237, 194, 255, 255)
-EYE = (32, 29, 35, 255)
-MOUTH = (118, 59, 65, 255)
-TRANSPARENT = (0, 0, 0, 0)
-
-
-def _s(value: float) -> int:
-    return int(round(value * SUPER))
-
-
-def _pt(point: Point) -> Tuple[int, int]:
-    return (_s(point[0]), _s(point[1]))
-
-
-def _bbox(cx: float, cy: float, rx: float, ry: float) -> Tuple[int, int, int, int]:
-    return (_s(cx - rx), _s(cy - ry), _s(cx + rx), _s(cy + ry))
-
-
-def _fade(color: RGBA, alpha: float) -> RGBA:
-    return (color[0], color[1], color[2], max(0, min(255, int(color[3] * alpha))))
-
-
-def _line(draw: ImageDraw.ImageDraw, points: Sequence[Point], fill: RGBA, width: float) -> None:
-    draw.line([_pt(p) for p in points], fill=fill, width=max(1, _s(width)), joint="curve")
-
-
-def _poly(draw: ImageDraw.ImageDraw, points: Sequence[Point], fill: RGBA, outline: RGBA = OUTLINE, width: float = 1.2) -> None:
-    pts = [_pt(p) for p in points]
-    draw.polygon(pts, fill=fill)
-    if outline[3] > 0:
-        draw.line([*pts, pts[0]], fill=outline, width=max(1, _s(width)), joint="curve")
-
-
-def _ellipse(draw: ImageDraw.ImageDraw, center: Point, rx: float, ry: float, fill: RGBA, outline: RGBA = OUTLINE, width: float = 1.2) -> None:
-    draw.ellipse(_bbox(center[0], center[1], rx, ry), fill=fill, outline=outline, width=max(1, _s(width)))
-
-
-def _arc(draw: ImageDraw.ImageDraw, center: Point, rx: float, ry: float, start: float, end: float, fill: RGBA, width: float) -> None:
-    draw.arc(_bbox(center[0], center[1], rx, ry), start=start, end=end, fill=fill, width=max(1, _s(width)))
-
-
-def _font(size: int) -> ImageFont.ImageFont:
-    try:
-        return ImageFont.truetype("DejaVuSans.ttf", _s(size))
-    except Exception:
-        return ImageFont.load_default()
-
-
-def _text(draw: ImageDraw.ImageDraw, xy: Point, text: str, size: int, fill: RGBA, anchor: str = "mm", stroke: RGBA = OUTLINE) -> None:
-    draw.text(
-        _pt(xy),
-        text,
-        font=_font(size),
-        fill=fill,
-        anchor=anchor,
-        stroke_width=max(1, _s(0.7)),
-        stroke_fill=stroke,
-    )
-
-
-def _ease(t: float) -> float:
-    t = max(0.0, min(1.0, t))
-    return t * t * (3.0 - 2.0 * t)
-
-
-def _pulse(t: float, start: float, peak: float, end: float) -> float:
-    if t <= start or t >= end:
-        return 0.0
-    if t < peak:
-        return _ease((t - start) / max(0.001, peak - start))
-    return 1.0 - _ease((t - peak) / max(0.001, end - peak))
-
-
-def _rotate(point: Point, degrees: float) -> Point:
-    radians = math.radians(degrees)
-    c = math.cos(radians)
-    s = math.sin(radians)
-    return (point[0] * c - point[1] * s, point[0] * s + point[1] * c)
-
-
-def _from(origin: Point, length: float, degrees: float) -> Point:
-    dx, dy = _rotate((length, 0.0), degrees)
-    return (origin[0] + dx, origin[1] + dy)
-
-
-@dataclass(frozen=True)
-class Pose:
-    bob: float = 0.0
-    stride: float = 0.0
-    gallop: float = 0.0
-    lean: float = 0.0
-    arm_near: float = 42.0
-    arm_far: float = 145.0
-    lance_angle: float = -24.0
-    lance_length: float = 86.0
-    mouth: float = 0.0
-    blink: float = 0.0
-    diagonal: float = 0.0
-    charge: float = 0.0
-    power_set: float = 0.0
-    aleph_rain: float = 0.0
-    hit: float = 0.0
-    collapse: float = 0.0
-    taunt: float = 0.0
-
-
-def _pose_for(anim: str, frame_idx: int, nframes: int) -> Pose:
-    t = frame_idx / max(1, nframes - 1)
-    cyc = math.tau * frame_idx / max(1, nframes)
-    bob = math.sin(cyc) * 1.1
-    blink = 1.0 if anim == "idle" and frame_idx == 5 else 0.0
-    if anim == "idle":
-        return Pose(bob=bob, arm_near=38.0 + math.sin(cyc) * 3.0, blink=blink)
-    if anim == "walk":
-        return Pose(
-            bob=-abs(math.sin(cyc)) * 2.0,
-            stride=math.sin(cyc) * 18.0,
-            gallop=0.75,
-            lean=-3.0,
-            arm_near=32.0 - math.sin(cyc) * 8.0,
-            arm_far=150.0 + math.sin(cyc) * 5.0,
-            lance_angle=-18.0,
-        )
-    if anim == "talk":
-        return Pose(
-            bob=bob * 0.55,
-            arm_near=15.0 + math.sin(cyc) * 18.0,
-            arm_far=168.0 - math.sin(cyc) * 8.0,
-            mouth=0.35 + 0.65 * abs(math.sin(cyc * 1.5)),
-        )
-    if anim == "diagonalize":
-        swing = _pulse(t, 0.08, 0.55, 0.96)
-        wind = _ease(min(1.0, t / 0.35))
-        return Pose(
-            bob=-swing * 2.0,
-            lean=-8.0 * swing,
-            arm_near=20.0 - swing * 42.0,
-            arm_far=150.0,
-            lance_angle=-65.0 + wind * 102.0,
-            lance_length=96.0,
-            diagonal=swing,
-        )
-    if anim == "countable_charge":
-        charge = _pulse(t, 0.05, 0.52, 0.98)
-        return Pose(
-            bob=-abs(math.sin(cyc)) * 2.8,
-            stride=math.sin(cyc * 1.5) * 23.0,
-            gallop=1.0,
-            lean=-13.0 * charge,
-            arm_near=-8.0,
-            arm_far=155.0,
-            lance_angle=-3.0,
-            lance_length=116.0,
-            charge=charge,
-        )
-    if anim == "power_set":
-        power = _pulse(t, 0.02, 0.62, 0.98)
-        return Pose(
-            bob=-power * 4.0,
-            lean=2.0,
-            arm_near=-78.0 + power * 18.0,
-            arm_far=-116.0 - power * 18.0,
-            lance_angle=-62.0,
-            power_set=power,
-            mouth=power * 0.7,
-        )
-    if anim == "aleph_rain":
-        rain = _pulse(t, 0.02, 0.42, 0.98)
-        return Pose(
-            bob=bob * 0.4,
-            arm_near=-82.0,
-            arm_far=-132.0,
-            lance_angle=-88.0,
-            aleph_rain=rain,
-            mouth=rain * 0.45,
-        )
-    if anim == "hit":
-        impact = _pulse(t, 0.0, 0.20, 0.98)
-        return Pose(
-            bob=impact * 3.0,
-            lean=14.0 * impact,
-            arm_near=65.0,
-            arm_far=125.0,
-            lance_angle=-5.0,
-            hit=impact,
-        )
-    if anim == "death":
-        collapse = _ease(t)
-        return Pose(
-            bob=collapse * 27.0,
-            lean=collapse * 66.0,
-            arm_near=58.0,
-            arm_far=110.0,
-            lance_angle=18.0 + collapse * 35.0,
-            collapse=collapse,
-            blink=collapse,
-        )
-    if anim == "taunt":
-        taunt = 0.5 + 0.5 * math.sin(cyc)
-        return Pose(
-            bob=bob * 0.65,
-            arm_near=-38.0 + taunt * 12.0,
-            arm_far=192.0 - taunt * 18.0,
-            lance_angle=-42.0,
-            taunt=taunt,
-            mouth=0.25 + taunt * 0.4,
-        )
-    return Pose()
-
-
-def _leg_points(hip: Point, phase: float, stride: float, collapse: float) -> Tuple[Point, Point]:
-    lift = max(0.0, math.sin(phase)) * (7.0 + abs(stride) * 0.14)
-    hoof_x = hip[0] + stride * math.cos(phase)
-    hoof_y = 266.0 - lift + collapse * 8.0
-    knee = (
-        hip[0] + (hoof_x - hip[0]) * 0.45 - math.sin(phase) * 4.0,
-        hip[1] + (hoof_y - hip[1]) * 0.48,
-    )
-    return knee, (hoof_x, hoof_y)
-
-
-def _draw_recursive_sets(layer: Image.Image, center: Point, amount: float, phase: float) -> None:
-    draw = blending_draw(layer)
-    for idx in range(4):
-        radius = 28.0 + idx * 21.0 + amount * 10.0
-        wobble = math.sin(phase + idx * 0.8) * 4.0
-        color = POWER if idx % 2 else TRANSFINITE
-        alpha = amount * (0.62 - idx * 0.08)
-        _arc(draw, (center[0] + wobble, center[1]), radius, radius * 0.72, 190.0, 530.0, _fade(color, alpha), 2.4 + amount)
-        _text(draw, (center[0] - radius * 0.88, center[1]), "{", 17, _fade(color, alpha), anchor="mm", stroke=TRANSPARENT)
-        _text(draw, (center[0] + radius * 0.88, center[1]), "}", 17, _fade(color, alpha), anchor="mm", stroke=TRANSPARENT)
-
-
-def _paint_diagonal_field(draw, origin: Point) -> None:
-    """Cantor's diagonal grid at full strength, its first dot at ``origin``."""
-    spacing = 21.0
-    for row in range(6):
-        for col in range(7):
-            x = origin[0] + col * spacing
-            y = origin[1] + row * 18.0
-            alpha = 0.24 + (0.23 if row == col else 0.0)
-            _ellipse(draw, (x, y), 3.0, 3.0, _fade(TRANSFINITE, alpha), TRANSPARENT, 0.1)
-    _line(draw, [(origin[0], origin[1]), (origin[0] + 5 * spacing, origin[1] + 5 * 18.0)], _fade(GOLD_LIGHT, 0.78), 3.0)
-    for idx in range(6):
-        x = origin[0] + idx * spacing
-        y = origin[1] + idx * 18.0
-        _text(draw, (x + 7.0, y - 7.0), "¬", 8, _fade(POWER_LIGHT, 0.8), stroke=TRANSPARENT)
-
-
-def _draw_diagonal_field(layer: Image.Image, amount: float, phase: float) -> None:
-    """The grid as one piece, faded by ``amount`` (every ink in it scales by it)."""
-    part = _piece(("georg_diagonal_field",), (6.0, 16.0, 135.0, 100.0), _paint_diagonal_field)
-    _place(layer, part, (86.0, 58.0), 0.0, "diagonal_field", amount)
-
-
-def _draw_aleph_rain(layer: Image.Image, amount: float, phase: float) -> None:
-    draw = blending_draw(layer)
-    for idx in range(9):
-        x = 52.0 + idx * 29.0 + math.sin(phase + idx) * 5.0
-        y = 18.0 + ((idx * 31.0 + phase * 22.0) % 176.0)
-        alpha = amount * (0.34 + 0.06 * (idx % 3))
-        _text(draw, (x, y), "ℵ", 14 + idx % 3, _fade(TRANSFINITE, alpha), stroke=TRANSPARENT)
-        if idx % 2 == 0:
-            _text(draw, (x + 8.0, y + 8.0), str(idx // 2), 6, _fade(GOLD_LIGHT, alpha), stroke=TRANSPARENT)
-
-
-# -- the rig: each rigid piece painted once in its own frame, placed ------------
-
-
-def _S(p: Point) -> Point:
-    """A design point in supersampled canvas pixels, unrounded."""
-    return (p[0] * SUPER, p[1] * SUPER)
-
-
-def _piece(key, extent, paint):
-    return SR.local_piece(key, extent, paint, SUPER)
-
-
-def _place(image: Image.Image, part, at: Point, deg: float, name: str, opacity: float = 1.0) -> None:
-    SR.place(image, part, _S(at), deg, name, opacity)
-
-
-def _polyline(image: Image.Image, points: Sequence[Point], width: float, inner: float, fill: RGBA, name: str, *, seamless: bool = False) -> None:
-    """The old outlined polyline as turned capsule bones, each bone's length
-    rounded to a design pixel: one outlined capsule a bone, or (``seamless``)
-    every outline first and then every fill, so no outline crosses a joint."""
-    pts = [_S(p) for p in points]
-    bones = []
-    for i in range(len(pts) - 1):
-        a, b = pts[i], pts[i + 1]
-        bones.append((i, a, b, max(3.0, round(math.hypot(b[0] - a[0], b[1] - a[1]) / 3.0) * 3.0)))
-    if not seamless:
-        for i, a, b, length in bones:
-            SR.capsule(image, a, b, inner / 2.0 * SUPER, fill, OUTLINE, (width - inner) / 2.0 * SUPER, f"{name}{i}", length=length)
-        return
-    for kind, radius, ink in (("line", width / 2.0, OUTLINE), ("fill", inner / 2.0, fill)):
-        for i, a, b, length in bones:
-            SR.capsule(image, a, b, radius * SUPER, ink, ink, 0.0, f"{name}{i}_{kind}", length=length)
-
-
-def _ellipse_piece(rx: float, ry: float, fill: RGBA, outline: RGBA, width: float):
-    r = max(rx, ry) + width + 1.0
-    return _piece(("georg_ellipse", rx, ry, fill, outline, width), (r, r, r, r), lambda d, o: _ellipse(d, o, rx, ry, fill, outline, width))
-
-
-def _draw_leg(image: Image.Image, hip: Point, phase: float, stride: float, near: bool, collapse: float, name: str) -> None:
-    knee, hoof = _leg_points(hip, phase, stride, collapse)
-    coat = HORSE_MID if near else HORSE_DARK
-    _polyline(image, [hip, knee, hoof], 13.5 if near else 11.5, 9.0 if near else 7.4, coat, name)
-    _place(image, _ellipse_piece(4.3, 4.0, coat, OUTLINE, 0.8), knee, 0.0, f"{name}_knee")
-    _place(image, _ellipse_piece(7.2 if near else 6.2, 3.7, HOOF, OUTLINE, 0.8), (hoof[0] + 1.5, hoof[1] + 1.5), 0.0, f"{name}_hoof")
-
-
-def _draw_arm(image: Image.Image, shoulder: Point, angle: float, near: bool) -> Point:
-    elbow = _from(shoulder, 26.0, angle)
-    hand = _from(elbow, 24.0, angle + (-18.0 if near else 18.0))
-    side = "near" if near else "far"
-    _polyline(image, [shoulder, elbow, hand], 11.5, 7.2, COAT_MID if near else COAT, f"{side}_arm", seamless=True)
-    _place(image, _ellipse_piece(4.8, 4.4, SKIN, OUTLINE, 0.8), hand, 0.0, f"{side}_hand")
-    return hand
-
-
-def _lance_piece(length: float):
-    """The lance along +x from the hand: shaft, spearhead and gold brace."""
-
-    def paint(d, hand) -> None:
-        butt = (hand[0] - 17.0, hand[1])
-        tip = (hand[0] + length, hand[1])
-        _line(d, [butt, tip], OUTLINE, 5.0)
-        _line(d, [butt, tip], STEEL, 2.5)
-        base = (tip[0] - 13.0, tip[1])
-        _poly(d, [tip, (base[0], base[1] - 8.0), (base[0], base[1] + 8.0)], STEEL_LIGHT, OUTLINE, 0.8)
-        _arc(d, (hand[0] + 17.0, hand[1]), 10.0, 10.0, -150.0, 150.0, GOLD, 2.2)
-
-    return _piece(("georg_lance", length), (20.0, 12.0, length + 3.0, 12.0), paint)
-
-
-def _lance_glow_piece(length: float):
-    return _piece(("georg_lance_glow", length), (22.0, 6.0, length + 6.0, 6.0), lambda d, hand: _line(d, [(hand[0] - 17.0, hand[1]), (hand[0] + length, hand[1])], TRANSFINITE, 8.0))
-
-
-def _draw_lance(image: Image.Image, hand: Point, angle: float, length: float, glow: float) -> Point:
-    if glow > 0.02:
-        _place(image, _lance_glow_piece(length), hand, angle, "lance_glow", glow * 0.45)
-    _place(image, _lance_piece(length), hand, angle, "lance")
-    return _from(hand, length, angle)
-
-
-def _paint_horse(d, o) -> None:
-    """The horse barrel, chest and nested-set tack, centred on ``o``."""
-    bx, by = o
-    _ellipse(d, (bx, by), 76.0, 38.0, HORSE, OUTLINE, 1.7)
-    _ellipse(d, (bx - 25.0, by - 10.0), 44.0, 23.0, HORSE_MID, TRANSPARENT, 0.1)
-    _ellipse(d, (bx + 58.0, by - 10.0), 28.0, 31.0, HORSE_MID, OUTLINE, 1.0)
-    _arc(d, (bx - 10.0, by - 1.0), 56.0, 27.0, 190.0, 345.0, GOLD, 3.0)
-    for idx, radius in enumerate((12.0, 18.0, 24.0)):
-        _arc(d, (bx - 5.0, by - 3.0), radius, radius * 0.7, 195.0, 525.0, GOLD_LIGHT if idx == 1 else TRANSFINITE_DARK, 1.5)
-
-
-def _paint_coat(d, waist: Point, lean: float) -> None:
-    """The coat, vest and shirt from the waist (``waist``) up, slanted by ``lean``."""
-    torso_center = (waist[0] + lean * 0.30, waist[1] - 48.0)
-    shoulder_y = torso_center[1] - 27.0
-    coat_shape = [
-        (waist[0] - 22.0, waist[1] + 4.0),
-        (torso_center[0] - 28.0, shoulder_y + 5.0),
-        (torso_center[0] - 17.0, shoulder_y - 8.0),
-        (torso_center[0] + 21.0, shoulder_y - 7.0),
-        (waist[0] + 28.0, waist[1] + 4.0),
-    ]
-    _poly(d, coat_shape, COAT, OUTLINE, 1.5)
-    _poly(
-        d,
-        [(torso_center[0] - 7.0, shoulder_y - 3.0), (torso_center[0] + 10.0, shoulder_y - 3.0), (waist[0] + 9.0, waist[1] - 3.0), (waist[0] - 8.0, waist[1] - 3.0)],
-        VEST,
-        OUTLINE_SOFT,
-        0.8,
-    )
-    _line(d, [(torso_center[0] + 2.0, shoulder_y), (waist[0] + 1.0, waist[1])], GOLD, 1.5)
-    for yoff in (8.0, 20.0, 32.0):
-        _ellipse(d, (torso_center[0] + 4.0, shoulder_y + yoff), 1.7, 1.7, GOLD_LIGHT, OUTLINE, 0.4)
-    _poly(
-        d,
-        [(torso_center[0] - 9.0, shoulder_y - 8.0), (torso_center[0] + 10.0, shoulder_y - 8.0), (torso_center[0] + 4.0, shoulder_y + 7.0), (torso_center[0] - 2.0, shoulder_y + 7.0)],
-        SHIRT,
-        OUTLINE_SOFT,
-        0.6,
-    )
-
-
-def _paint_head(d, head: Point, blink: bool, mouth: float) -> None:
-    """Face, hair and beard centred on ``head``."""
-    _ellipse(d, head, 18.0, 22.0, SKIN, OUTLINE, 1.2)
-    hair_shape = [
-        (head[0] - 18.0, head[1] - 6.0),
-        (head[0] - 13.0, head[1] - 22.0),
-        (head[0] + 3.0, head[1] - 25.0),
-        (head[0] + 18.0, head[1] - 14.0),
-        (head[0] + 15.0, head[1] - 2.0),
-        (head[0] + 9.0, head[1] - 12.0),
-        (head[0] - 8.0, head[1] - 13.0),
-    ]
-    _poly(d, hair_shape, HAIR, OUTLINE, 0.9)
-    _arc(d, (head[0] - 7.0, head[1] - 8.0), 7.0, 5.0, 205.0, 345.0, HAIR_LIGHT, 1.3)
-    _arc(d, (head[0] + 6.0, head[1] - 9.0), 7.0, 5.0, 195.0, 338.0, HAIR_LIGHT, 1.3)
-    eye_y = head[1] - 1.0
-    eye_h = 0.6 if blink else 2.1
-    _ellipse(d, (head[0] - 6.0, eye_y), 2.4, eye_h, EYE, EYE, 0.1)
-    _ellipse(d, (head[0] + 6.0, eye_y), 2.4, eye_h, EYE, EYE, 0.1)
-    _line(d, [(head[0] - 10.0, eye_y - 6.0), (head[0] - 3.0, eye_y - 7.5)], HAIR, 1.5)
-    _line(d, [(head[0] + 3.0, eye_y - 7.5), (head[0] + 11.0, eye_y - 6.0)], HAIR, 1.5)
-    _poly(d, [(head[0] + 1.0, head[1] + 1.0), (head[0] + 6.0, head[1] + 7.0), (head[0] + 1.0, head[1] + 9.0)], SKIN_DARK, OUTLINE_SOFT, 0.4)
-    beard = [
-        (head[0] - 14.0, head[1] + 7.0),
-        (head[0] - 10.0, head[1] + 23.0),
-        (head[0], head[1] + 35.0),
-        (head[0] + 13.0, head[1] + 21.0),
-        (head[0] + 15.0, head[1] + 7.0),
-        (head[0] + 7.0, head[1] + 11.0),
-        (head[0], head[1] + 9.0),
-        (head[0] - 7.0, head[1] + 11.0),
-    ]
-    _poly(d, beard, HAIR, OUTLINE, 0.8)
-    if mouth > 0.08:
-        _ellipse(d, (head[0] + 1.0, head[1] + 13.0), 3.2, 1.2 + mouth * 2.6, MOUTH, OUTLINE, 0.4)
+HORSE: RGBA = (150, 84, 54, 255)
+HORSE_LIGHT: RGBA = (190, 118, 74, 255)
+HORSE_DARK: RGBA = (104, 56, 42, 255)
+SOCK: RGBA = (58, 40, 40, 255)
+SOCK_DARK: RGBA = (36, 26, 30, 255)
+HOOF: RGBA = (30, 26, 32, 255)
+MANE: RGBA = (38, 30, 36, 255)
+SKIN: RGBA = (232, 196, 170, 255)
+SKIN_SHADE: RGBA = (198, 154, 136, 255)
+SKIN_DEEP: RGBA = (156, 106, 98, 255)
+HAIR: RGBA = (70, 62, 66, 255)
+HAIR_GREY: RGBA = (150, 146, 150, 255)
+BEARD: RGBA = (62, 54, 58, 255)
+COAT: RGBA = (44, 44, 60, 255)
+COAT_DARK: RGBA = (26, 26, 40, 255)
+COAT_LIGHT: RGBA = (86, 88, 112, 255)
+VEST: RGBA = (132, 136, 150, 255)
+SHIRT: RGBA = (244, 242, 236, 255)
+INK: RGBA = (26, 24, 30, 255)
+GOLD: RGBA = (240, 196, 92, 255)
+GOLD_DARK: RGBA = (176, 120, 50, 255)
+TEAL: RGBA = (96, 200, 196, 255)
+TEAL_DARK: RGBA = (40, 110, 124, 255)
+BLANKET: RGBA = (70, 60, 110, 255)
+BLANKET_DARK: RGBA = (44, 38, 78, 255)
+STEEL: RGBA = (214, 224, 236, 255)
+STEEL_DARK: RGBA = (124, 138, 160, 255)
+
+#: The "hips" of this person are the points of his horse's shoulders: his
+#: front legs start there. His own waist is at the withers, this far up.
+WAIST = -15.0
+BUILD = Build(hip_up=46.0, thigh=22.4, shin=21.4, neck=(1.0, WAIST - 35.0), upper=18.6, fore=17.6, near_shoulder=(-3.8, WAIST - 31.0), far_shoulder=(5.2, WAIST - 30.6),
+              near_hip=(-2.6, 0.0), far_hip=(3.6, 0.0), head_up=(0.8, -12.4), height=120.0, half_width=(46.0, 16.0))
+
+X = Person(TARGET_NAME, BUILD, cx=126.0)
+K = X.K
+P = X.P
+TOP = BUILD.neck[1] - 2.0
+
+
+def _torso(hem_back: int, hem_front: int):
+    """The professor from his waist at the withers up, and the skirt of his
+    coat, which lies on his own back."""
+    hb, hf = float(hem_back), float(hem_front)
+
+    def shape(d) -> None:
+        K.poly(d, [K.at(-3.6, TOP), K.at(-7.6, TOP + 4.0), K.at(-8.2, WAIST - 20.0), K.at(-8.0, WAIST - 2.0), K.at(-13.0 - hb, WAIST + 7.0), K.at(10.6 + hf, WAIST + 8.0),
+                   K.at(8.6, WAIST - 2.0), K.at(8.4, WAIST - 14.0), K.at(8.4, WAIST - 24.0), K.at(7.8, TOP + 3.0), K.at(4.0, TOP - 0.4)], _SOLID)
+        K.oval(d, K.at(-3.4, WAIST - 30.4), 4.4, 5.0, _SOLID)
+        K.oval(d, K.at(4.2, WAIST - 30.4), 3.8, 4.4, _SOLID)
+
+    def paint(d) -> None:
+        # The waistcoat and the shirt where the coat is open, and his bow tie.
+        K.poly(d, [K.at(2.4, TOP), K.at(11.6, TOP), K.at(11.6, WAIST + 2.0), K.at(4.6, WAIST + 2.0), K.at(3.6, WAIST - 16.0)], VEST)
+        K.poly(d, [K.at(9.4, TOP), K.at(12.6, TOP), K.at(12.6 + hf, WAIST + 8.0), K.at(10.0, WAIST + 8.0)], COAT_DARK)
+        K.poly(d, [K.at(3.4, TOP - 1.0), K.at(8.8, TOP - 1.0), K.at(6.6, TOP + 7.0)], SHIRT)
+        K.poly(d, [K.at(4.2, TOP + 1.6), K.at(6.0, TOP + 2.8), K.at(4.2, TOP + 4.4)], INK)
+        K.poly(d, [K.at(8.0, TOP + 1.6), K.at(6.2, TOP + 2.8), K.at(8.0, TOP + 4.4)], INK)
+        for y in (WAIST - 18.0, WAIST - 12.0, WAIST - 6.0):
+            K.oval(d, K.at(6.4, y), 0.7, 0.7, INK)
+        # The lapel, the seam of the coat, and the aleph on his chest.
+        K.poly(d, [K.at(-0.6, TOP + 1.0), K.at(3.0, TOP), K.at(4.0, WAIST - 20.0), K.at(0.2, WAIST - 26.0)], COAT_LIGHT)
+        K.line(d, [K.at(0.2, WAIST - 26.0), K.at(4.0, WAIST - 20.0), K.at(3.6, WAIST - 16.0), K.at(4.8, WAIST + 6.0)], COAT_DARK, 0.7)
+        K.oval(d, K.at(0.2, WAIST - 20.0), 1.6, 1.6, GOLD, GOLD_DARK, 0.4)
+        K.line(d, [K.at(-9.0, WAIST + 0.6), K.at(-12.0 - hb, WAIST + 6.0)], COAT_DARK, 0.6)
+
+    return K.solid(("canter_torso", hem_back, hem_front), shape, COAT, paint, outline=1.3, rim=0.3, shade=0.4, shade_colour=COAT_DARK)
+
+
+X.torso = _torso
+
+NEAR_EYE = (2.0, -0.4)
+FAR_EYE = (7.0, -0.6)
+
+
+def _hair_shape(d) -> None:
+    # Bare on top; hair at the sides and the back, and a beard to his collar.
+    K.poly(d, [K.at(-7.8, -6.0), K.at(-9.6, -1.0), K.at(-8.4, 4.0), K.at(-5.0, 6.6), K.at(-3.0, 2.0)], _SOLID)
+    K.poly(d, [K.at(-1.0, 4.0), K.at(9.6, 5.0), K.at(9.0, 11.0), K.at(5.0, 15.0), K.at(0.6, 12.6), K.at(-2.4, 8.0)], _SOLID)
+
+
+def _hair(d) -> None:
+    K.poly(d, [K.at(-20.0, -9.4), K.at(-4.6, -9.4), K.at(-2.6, -5.0), K.at(-2.4, -0.6), K.at(-5.0, -0.2), K.at(-5.6, 3.6), K.at(-4.2, 5.4), K.at(-20.0, 8.0)], HAIR)
+    K.poly(d, [K.at(-9.0, -4.0), K.at(-3.4, -3.0), K.at(-3.6, 0.0), K.at(-9.0, 1.0)], HAIR_GREY)
+    for strand in ([(-7.6, -7.0), (-5.0, -4.6)], [(-8.4, 2.0), (-6.0, 3.6)]):
+        K.line(d, [K.at(x, y) for x, y in strand], HAIR_GREY, 0.5)
+
+
+def _face(d) -> None:
+    # His beard, and the lines of a man who has been told he is wrong.
+    K.poly(d, [K.at(-1.6, 3.0), K.at(1.6, 4.6), K.at(4.4, 4.2), K.at(8.6, 4.8), K.at(9.6, 6.6), K.at(8.8, 11.0), K.at(5.0, 15.0), K.at(0.6, 12.6), K.at(-2.4, 8.0)], BEARD)
+    K.line(d, [K.at(1.0, 8.0), K.at(3.0, 12.0)], HAIR_GREY, 0.5)
+    K.line(d, [K.at(4.4, 8.6), K.at(5.4, 13.0)], HAIR_GREY, 0.5)
+    K.line(d, [K.at(2.4, -7.6), K.at(5.0, -8.0), K.at(7.4, -7.6)], mix(SKIN, SKIN_DEEP, 0.5), 0.45)
+
+
+_head = R.make_head(K, ("canter",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.8, 7.8, 9.2), jaw=(2.6, 4.2, 5.4, 7.6),
+                    nose=((7.2, -1.0), (10.2, 2.8), (9.6, 4.2), (7.2, 4.6)), ear=(-4.8, 1.0, 2.2, 3.2), shape=_hair_shape, under=_hair, over=_face)
+_eyes = R.make_eyes(K, NEAR_EYE, FAR_EYE, ink=INK, white=None, lid=SKIN_DEEP, size=1.0)
+_brows = R.make_brows(K, [(-0.4, -3.4), (2.2, -4.6), (4.6, -3.4)], [(5.8, -3.6), (7.2, -4.6), (8.6, -4.0)], BEARD, 1.5)
+_mouth = R.make_mouth(K, (6.0, 7.0), (150, 76, 76, 255), wide=0.6)
+
+X.head_layers = lambda pose: [(_head(), "head"), (_eyes(str(pose["eyes"])), "eyes"), (_brows(R.brow_mood(pose)), "brows"), (_mouth(str(pose["mouth"])), "mouth")]
+X.neck = R.make_neck(K, SKIN_SHADE, 4.6)
+X.upper_arm = lambda near: [(0.0, 1.0, 6.6, 5.6, COAT if near else COAT_DARK)]
+X.forearm = lambda near: [(0.0, 1.0, 5.6, 4.8, COAT if near else COAT_DARK), (0.84, 1.0, 5.0, 5.0, SHIRT)]
+X.hand = R.make_hand(K, SKIN, SKIN_SHADE, SKIN_DEEP, size=1.0)
+# His front legs: the forearm of a horse, a knee, and a dark cannon to the hoof.
+X.thigh = lambda near: [(0.0, 1.0, 8.2, 5.4, HORSE if near else HORSE_DARK)]
+X.shin = lambda near: [(0.0, 0.16, 5.8, 5.8, HORSE if near else HORSE_DARK), (0.1, 1.0, 4.6, 3.8, SOCK if near else SOCK_DARK)]
+
+
+def _hoof(near: bool):
+    def shape(d) -> None:
+        K.poly(d, [K.at(-2.6, -1.6), K.at(2.4, -1.6), K.at(4.6, BUILD.ankle_up), K.at(-3.4, BUILD.ankle_up)], _SOLID)
+
+    return K.solid(("hoof", near), shape, HOOF if near else mix(HOOF, SOCK, 0.4), None, outline=1.1, rim=0.2, shade=0.0)
+
+
+X.shoe = _hoof
+
+# ---- The horse of him ------------------------------------------------------------
+
+#: Where his hind legs start, from the points of his shoulders, and how long
+#: their two bones are.
+HIND = (-43.0, -3.0)
+HIND_UPPER = 21.0
+HIND_LOWER = 24.0
+
+
+def _barrel():
+    """His barrel, from his chest back to his rump, the points of his
+    shoulders at ``home``; and the blanket on it."""
+
+    def shape(d) -> None:
+        K.poly(d, [K.at(9.6, -6.0), K.at(8.6, -13.0), K.at(2.0, WAIST - 1.0), K.at(-12.0, WAIST + 1.0), K.at(-30.0, WAIST + 0.4), K.at(-44.0, WAIST - 0.6), K.at(-52.0, -9.0),
+                   K.at(-53.0, -2.0), K.at(-49.0, 4.6), K.at(-40.0, 7.6), K.at(-22.0, 9.0), K.at(-6.0, 8.4), K.at(5.0, 5.6), K.at(9.6, 0.0)], _SOLID)
+
+    def paint(d) -> None:
+        # The light along his back, and the shade of his belly.
+        K.poly(d, [K.at(-50.0, -11.0), K.at(-30.0, WAIST + 1.6), K.at(-6.0, WAIST + 2.0), K.at(-6.0, WAIST + 4.6), K.at(-30.0, WAIST + 4.0), K.at(-49.0, -7.6)], HORSE_LIGHT)
+        K.poly(d, [K.at(-50.0, 3.0), K.at(-22.0, 6.0), K.at(4.0, 3.0), K.at(6.0, 8.0), K.at(-22.0, 12.0), K.at(-50.0, 9.0)], HORSE_DARK)
+        # The blanket: sets inside sets.
+        K.poly(d, [K.at(-30.0, WAIST + 0.6), K.at(-9.0, WAIST + 1.0), K.at(-10.0, 2.0), K.at(-29.0, 2.6)], BLANKET)
+        K.line(d, [K.at(-30.0, WAIST + 0.6), K.at(-29.0, 2.6), K.at(-10.0, 2.0), K.at(-9.0, WAIST + 1.0)], GOLD_DARK, 0.7)
+        for r, colour in ((6.4, GOLD), (4.4, TEAL), (2.4, GOLD)):
+            K.oval(d, K.at(-19.6, -6.4), r, r * 0.86, None, colour, 0.6)  # type: ignore[arg-type]
+        K.oval(d, K.at(-19.6, -6.4), 0.8, 0.8, TEAL)
+        K.line(d, [K.at(-24.0, 2.4), K.at(-23.6, 8.0)], BLANKET_DARK, 1.2)
+
+    return K.solid(("barrel",), shape, HORSE, paint, outline=1.3, rim=0.3, shade=0.0)
+
+
+def _hind_feet(ctx):
+    """Where his two hind hooves are, in the frame: on the ground under his
+    rump, or in the step of the row."""
+    root = (ctx.hip[0] + HIND[0], ctx.hip[1] + HIND[1])
+    U = X.U
+    if ctx.anim == "walk":
+        near, far = R.stride(ctx.phase + math.pi / 2.0, 7.0, 3.6)
+    elif ctx.anim == "countable_charge":
+        near, far = R.stride(ctx.phase + math.pi / 2.0, 11.0, 5.0)
     else:
-        _line(d, [(head[0] - 3.0, head[1] + 13.0), (head[0] + 5.0, head[1] + 12.5)], MOUTH, 0.8)
+        near, far = (-3.0, 0.0, 0.0), (3.0, 0.0, 0.0)
+    return root, [(root[0] + 3.0 + f[0] * U, ctx.ground + f[1] * U - BUILD.ankle_up) for f in (near, far)]
 
 
-def _paint_brooch(d, o) -> None:
-    _ellipse(d, o, 8.0, 8.0, COAT_LIGHT, GOLD, 1.4)
-    _text(d, o, "ℵ", 8, GOLD_LIGHT, stroke=TRANSPARENT)
+def _hind_leg(ctx, near: bool) -> List[Stamp]:
+    root, feet = _hind_feet(ctx)
+    hock, ankle = solve(root, feet[0 if near else 1], HIND_UPPER, HIND_LOWER, 1.0)
+    tag = "near" if near else "far"
+    out: List[Stamp] = []
+    bones = ((root, hock, [(9.6, 6.0, HORSE if near else HORSE_DARK)]), (hock, ankle, [(4.8, 3.8, SOCK if near else SOCK_DARK)]))
+    for edge in (True, False):
+        for k, (a, b, parts) in enumerate(bones):
+            for w0, w1, colour in parts:
+                length = math.hypot(b[0] - a[0], b[1] - a[1])
+                out.append((R.bone(K, f"hind_{tag}_{k}", length, w0, w1, colour, edge), a, f"hind_{tag}_{k}_{'edge' if edge else 'fill'}",
+                            math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))))
+    out.append((_hoof(near), ankle, f"hind_{tag}_hoof", 0.0))
+    return out
 
 
-def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
-    """Georg as a rig: the horse barrel, coat (per lean step), head (per
-    expression), brooch, lance and every limb bone are pieces painted once and
-    placed; the set-theory effects stay shapes."""
-    pose = _pose_for(anim, frame_idx, nframes)
-    phase = math.tau * frame_idx / max(1, nframes)
-    image = Image.new("RGBA", WORK_SIZE, TRANSPARENT)
-
-    # Effects are drawn on independent layers so translucent forms blend cleanly.
-    behind = Image.new("RGBA", WORK_SIZE, TRANSPARENT)
-    if pose.diagonal > 0.01:
-        _draw_diagonal_field(behind, pose.diagonal, phase)
-    if pose.power_set > 0.01:
-        _draw_recursive_sets(behind, (174.0, 135.0), pose.power_set, phase)
-    if pose.aleph_rain > 0.01:
-        _draw_aleph_rain(behind, pose.aleph_rain, phase)
-    if pose.taunt > 0.01:
-        draw_behind = blending_draw(behind)
-        _arc(draw_behind, (196.0, 70.0), 32.0 + pose.taunt * 6.0, 16.0, 0.0, 360.0, _fade(GOLD_LIGHT, 0.35 + pose.taunt * 0.35), 2.4)
-        _text(draw_behind, (196.0, 39.0), "∞", 18, _fade(TRANSFINITE, 0.45 + pose.taunt * 0.5), stroke=TRANSPARENT)
-    rigdoc.composite_canvas(image, behind)
-
-    collapse = pose.collapse
-    body_y = 190.0 + pose.bob + collapse * 13.0
-    body_x = 162.0 - pose.charge * 8.0
-
-    # Countable-charge afterimages sit behind the body.
-    if pose.charge > 0.02:
-        trail = Image.new("RGBA", WORK_SIZE, TRANSPARENT)
-        trail_draw = blending_draw(trail)
-        for idx in range(4):
-            offset = 25.0 + idx * 25.0
-            alpha = pose.charge * (0.22 - idx * 0.035)
-            _ellipse(trail_draw, (body_x - offset, body_y), 58.0, 27.0, _fade(HORSE_LIGHT, alpha), TRANSPARENT, 0.1)
-            _text(trail_draw, (body_x - offset, body_y - 37.0), str(idx), 9, _fade(TRANSFINITE, alpha * 2.2), stroke=TRANSPARENT)
-        rigdoc.composite_canvas(image, trail)
-
-    # Tail behind the legs and torso.
-    tail_root = (body_x - 64.0, body_y - 4.0)
-    tail_tip = (body_x - 101.0 - math.sin(phase) * 10.0, body_y + 24.0 + math.cos(phase) * 7.0)
-    tail_mid = ((tail_root[0] + tail_tip[0]) * 0.5, body_y + 4.0 - math.sin(phase) * 8.0)
-    _polyline(image, [tail_root, tail_mid, tail_tip], 12.0, 7.5, HORSE_DARK, "tail")
-    _place(image, _ellipse_piece(8.0, 10.0, HAIR, OUTLINE, 0.8), tail_tip, 0.0, "tail_tip")
-
-    # Far legs.
-    stride = pose.stride
-    _draw_leg(image, (body_x - 45.0, body_y + 12.0), phase + math.pi, stride * 0.76, False, collapse, "far_hind")
-    _draw_leg(image, (body_x + 38.0, body_y + 11.0), phase, stride * 0.76, False, collapse, "far_fore")
-
-    # Horse body and nested-set tack.
-    _place(image, _piece(("georg_horse",), (80.0, 44.0, 90.0, 42.0), _paint_horse), (body_x, body_y), 0.0, "horse")
-
-    # Near legs.
-    _draw_leg(image, (body_x - 28.0, body_y + 14.0), phase, stride, True, collapse, "near_hind")
-    _draw_leg(image, (body_x + 57.0, body_y + 13.0), phase + math.pi, stride, True, collapse, "near_fore")
-
-    # Human torso rises from the horse withers.
-    waist = (body_x + 50.0, body_y - 28.0)
-    lean = SR.q(pose.lean, 3.0)
-    coat = _piece(("georg_coat", lean), (36.0, 90.0, 54.0, 10.0), lambda d, o: _paint_coat(d, o, lean))
-    _place(image, coat, waist, 0.0, "coat")
-    torso_center = (waist[0] + pose.lean * 0.30, waist[1] - 48.0)
-    shoulder_y = torso_center[1] - 27.0
-
-    far_shoulder = (torso_center[0] - 18.0, shoulder_y + 2.0)
-    near_shoulder = (torso_center[0] + 20.0, shoulder_y + 3.0)
-    _draw_arm(image, far_shoulder, pose.arm_far + pose.lean * 0.35, False)
-    near_hand = _draw_arm(image, near_shoulder, pose.arm_near + pose.lean * 0.35, True)
-
-    # Neck, face, hair, and beard.
-    neck = (torso_center[0] + pose.lean * 0.20, shoulder_y - 14.0)
-    _place(image, _ellipse_piece(7.0, 12.0, SKIN_DARK, OUTLINE, 0.8), neck, 0.0, "neck")
-    head = (neck[0] + pose.lean * 0.16, neck[1] - 28.0)
-    blink, mouth = pose.blink > 0.4, SR.q(pose.mouth, 0.1)
-    _place(image, _piece(("georg_head", blink, mouth), (21.0, 28.0, 21.0, 38.0), lambda d, o: _paint_head(d, o, blink, mouth)), head, 0.0, "head")
-
-    # Aleph brooch and lance are foreground readability anchors.
-    _place(image, _piece(("georg_brooch",), (11.0, 11.0, 11.0, 11.0), _paint_brooch), (torso_center[0] + 1.0, shoulder_y + 10.0), 0.0, "brooch")
-    lance_glow = max(pose.diagonal, pose.charge, pose.power_set, pose.aleph_rain)
-    tip = _draw_lance(image, near_hand, pose.lance_angle + pose.lean * 0.15, pose.lance_length, lance_glow)
-
-    if pose.diagonal > 0.04:
-        front = Image.new("RGBA", WORK_SIZE, TRANSPARENT)
-        fd = blending_draw(front)
-        slash_end = _from(tip, 60.0, pose.lance_angle + 50.0)
-        _line(fd, [_from(tip, -72.0, pose.lance_angle + 50.0), slash_end], _fade(GOLD_LIGHT, pose.diagonal * 0.72), 5.5)
-        _line(fd, [_from(tip, -65.0, pose.lance_angle + 50.0), slash_end], _fade(TRANSFINITE, pose.diagonal * 0.76), 2.3)
-        rigdoc.composite_canvas(image, front)
-
-    if pose.hit > 0.04:
-        hit_layer = Image.new("RGBA", WORK_SIZE, TRANSPARENT)
-        hd = blending_draw(hit_layer)
-        center = (body_x + 8.0, body_y - 40.0)
-        for deg in range(0, 360, 45):
-            _line(hd, [_from(center, 18.0, deg), _from(center, 38.0 + pose.hit * 12.0, deg)], _fade(POWER_LIGHT, pose.hit * 0.82), 3.0)
-        rigdoc.composite_canvas(image, hit_layer)
-
-    return rigdoc.downsampled_canvas(image, FRAME_SIZE, Image.Resampling.LANCZOS)
+def _behind(ctx) -> List[Stamp]:
+    """His far hind leg, his tail and his barrel."""
+    rump = (ctx.hip[0] - 52.0, ctx.hip[1] - 8.0)
+    at = pin(rump)
+    moving = ctx.anim in ("walk", "countable_charge")
+    chains = [R.chain((rump[0] - at[0], rump[1] - at[1] + dy), 6, 5.0, (150.0 if moving else 108.0) + spread, wave=9.0 if moving else 3.0, curl=-6.0, phase=ctx.phase,
+                      lead=lead) for dy, spread, lead in ((0.0, 0.0, 0.0), (1.6, 10.0, 1.2))]
+    out = _hind_leg(ctx, False)
+    out.append((R.ribbon(K, ("canter_tail",), chains, 4.4, MANE, (70, 60, 70, 255), taper=0.5), at, "tail", 0.0))
+    out.append((_barrel(), ctx.hip, "barrel", 0.0))
+    return out
 
 
-def _body_metrics_override(frame_width: int, frame_height: int):
-    return {
-        "body_pixel_bbox": {
-            "x": int(frame_width * 0.14),
-            "y": int(frame_height * 0.06),
-            "w": int(frame_width * 0.78),
-            "h": int(frame_height * 0.88),
-        },
-        "feet_pixel": {"x": frame_width * 0.53, "y": frame_height * 0.93},
-        "feet_anchor_norm": {"x": 0.03, "y": round(0.5 - 0.93, 6)},
-    }
+X.layers["back"].append(_behind)
+X.layers["under_torso"].append(lambda ctx: _hind_leg(ctx, True))
+
+# ---- How he holds himself ----------------------------------------------------
+
+#: One hand at his lapel.
+X.set_rest(lean=0.0, na=(7.0, 9.0), nh="fist", nf=(-3.0, 0.0, 0.0), ff=(3.6, 0.0, 0.0))
 
 
-def render(out_dir: str | Path, **opts) -> List[Path]:
+@X.row
+def idle(i: int, n: int):
+    # He looks at something that goes on for ever, and one front hoof paws once.
+    _, s, c = loop(i, n)
+    paw = (2.5, -3.0, 0.0) if i in (5, 6) else (3.6, 0.0, 0.0)
+    return P(hip=(0.0, 0.2 * s), head=(0.3, 0.0, -4.0 + 3.0 * c), eyes="closed" if i == n - 2 else "up" if c < 0.0 else "open", ff=paw, mouth="flat")
+
+
+@X.row
+def walk(i: int, n: int):
+    ph, s, c = loop(i, n)
+    nf, ff = R.stride(ph, 7.0, 3.6)
+    return P(hip=(0.3, 0.5 * math.cos(2.0 * ph)), lean=1.0, head=(0.2, 0.0, -2.0 + 1.0 * s), nf=nf, ff=ff)
+
+
+@X.row
+def talk(i: int, n: int):
+    _, s, c = loop(i, n)
+    return P(hip=(0.0, 0.2 * s), lean=1.0, head=(0.4, 0.0, 2.0 * s), na=(14.0 + 2.0 * c, 2.0 - 5.0 * max(0.0, s)), nh="point", mouth=("open", "flat", "big", "flat")[i % 4],
+             brows=1.0 if s > 0.3 else -1.0)
+
+
+#: The lance is level, and then it is down the diagonal.
+COUCH = P(lean=-3.0, head=(0.0, 0.0, -4.0), na=(-6.0, 6.0), nab=-1.0, nh="fist", fa=(14.0, 8.0), fh="open", brows=-1.0, mouth="flat")
+STRIKE = P(hip=(1.5, 0.5), lean=8.0, head=(0.6, 0.0, 6.0), na=(22.0, 12.0), nh="fist", fa=(-4.0, 16.0), brows=-1.0, mouth="grit")
+
+
+@X.row
+def diagonalize(i: int, n: int):
+    return X.keys(shot(i, n), [(0.0, P()), (0.2, COUCH), (0.4, COUCH), (0.55, STRIKE), (0.85, STRIKE), (1.0, P())])
+
+
+@X.row
+def countable_charge(i: int, n: int):
+    # He runs, and counts.
+    ph, s, c = loop(i, n)
+    nf, ff = R.stride(ph, 11.0, 5.0)
+    return P(hip=(1.0, -1.0 * abs(s)), lean=10.0, head=(0.6, 0.0, 4.0), na=(20.0, -2.0), nh="point", fa=(-6.0, 14.0), fh="fist", nf=nf, ff=ff, brows=-1.0, mouth="open")
+
+
+#: A hand held up and open: the set is over it.
+HOLD = P(lean=-1.0, head=(0.3, 0.0, -8.0), na=(14.0, -6.0), nh="flat", eyes="up", brows=1.0, mouth="o")
+
+
+@X.row
+def power_set(i: int, n: int):
+    return X.keys(shot(i, n), [(0.0, P()), (0.2, HOLD), (0.85, dict(HOLD, na=(14.0, -8.0))), (1.0, P())])
+
+
+#: Both arms up: he calls them down.
+CALL = P(hip=(0.0, -0.5), lean=-4.0, head=(0.0, 0.0, -14.0), na=(-9.0, -22.0), nab=-1.0, fa=(15.0, -22.0), nh="open", fh="open", eyes="up", brows=1.0, mouth="big")
+
+
+@X.row
+def aleph_rain(i: int, n: int):
+    return X.keys(shot(i, n), [(0.0, P()), (0.25, CALL), (0.85, CALL), (1.0, P())])
+
+
+@X.row
+def hit(i: int, n: int):
+    back = P(hip=(-2.0, 1.0), lean=-12.0, head=(-1.0, 0.0, -14.0), na=(-6.0, 4.0), nab=-1.0, fa=(12.0, 2.0), nh="open", fh="open", eyes="closed", mouth="grit", brows=-1.0,
+             ff=(5.0, -4.0, 0.0))
+    return X.keys(shot(i, n), [(0.0, P()), (0.3, back), (0.7, back), (1.0, P())])
+
+
+@X.row
+def death(i: int, n: int):
+    # His legs fold under him, and he bows his head.
+    kneel = P(hip=(1.0, 14.0), lean=14.0, head=(0.6, 1.0, 16.0), na=(4.0, 22.0), fa=(8.0, 22.0), nh="open", fh="open", eyes="closed", mouth="flat", brows=-1.0,
+              nf=(8.0, 0.0, 0.0), ff=(12.0, 0.0, 0.0))
+    down = dict(kneel, hip=(1.0, 22.0), lean=34.0, head=(1.0, 2.0, 28.0), nf=(13.0, 0.0, 0.0), ff=(17.0, 0.0, 0.0))
+    return X.keys(shot(i, n), [(0.0, P()), (0.2, P(lean=-6.0, eyes="wide", mouth="o")), (0.55, kneel), (0.85, down), (1.0, down)])
+
+
+@X.row
+def taunt(i: int, n: int):
+    # He rears a little, and points up: there is always a larger one.
+    up = P(hip=(-1.0, -3.0), lean=-8.0, head=(0.0, 0.0, -10.0), na=(8.0, -24.0), nab=-1.0, nh="point", nf=(4.0, -9.0, 0.0), ff=(8.0, -6.0, 0.0), eyes="up", brows=1.0,
+           mouth="smile")
+    return X.keys(shot(i, n), [(0.0, P()), (0.3, up), (0.75, up), (1.0, P())])
+
+
+X.rows = [("idle", 8, 132), ("walk", 8, 92), ("talk", 8, 104), ("diagonalize", 9, 76), ("countable_charge", 8, 74), ("power_set", 10, 84), ("aleph_rain", 8, 90),
+          ("hit", 5, 84), ("death", 10, 112), ("taunt", 8, 98)]
+
+# ---- What he shows -----------------------------------------------------------
+
+
+def _lance():
+    """His lance, along +x from the hand that holds it."""
+
+    def shape(d) -> None:
+        K.stroke(d, [K.at(-10.0, 0.0), K.at(30.0, 0.0)], _SOLID, 2.0)
+        K.poly(d, [K.at(29.0, -2.4), K.at(38.0, 0.0), K.at(29.0, 2.4)], _SOLID)
+
+    def detail(d) -> None:
+        K.stroke(d, [K.at(-10.0, 0.0), K.at(29.0, 0.0)], GOLD_DARK, 1.4)
+        K.oval(d, K.at(-2.0, 0.0), 2.0, 2.0, GOLD)
+
+    return K.solid(("lance",), shape, STEEL, detail, outline=1.0, rim=0.0, shade=0.0)
+
+
+def _table(struck: int):
+    """A table of digits, and the line down its diagonal as far as row
+    ``struck``."""
+
+    def paint(d) -> None:
+        for r in range(4):
+            for c in range(4):
+                on = (r * 3 + c * 5) % 2 == 0
+                K.oval(d, K.at(c * 6.0, r * 6.0), 1.9, 1.9, OUTLINE)
+                K.oval(d, K.at(c * 6.0, r * 6.0), 1.2, 1.2, TEAL if on else TEAL_DARK)
+        if struck > 0:
+            K.line(d, [K.at(-2.0, -2.0), K.at(struck * 6.0 - 4.0, struck * 6.0 - 4.0)], OUTLINE, 2.4)
+            K.line(d, [K.at(-2.0, -2.0), K.at(struck * 6.0 - 4.0, struck * 6.0 - 4.0)], GOLD, 1.0)
+
+    return K.aligned(("table", struck), paint)
+
+
+def _sets(depth: int):
+    """A set of ``depth`` things, and round it the set of its parts."""
+
+    def paint(d) -> None:
+        for k in range(depth):
+            r = 4.0 + 4.0 * k
+            K.oval(d, K.home, r, r * 0.8, None, OUTLINE, 2.2)  # type: ignore[arg-type]
+            K.oval(d, K.home, r, r * 0.8, None, GOLD if k % 2 == 0 else TEAL, 0.9)  # type: ignore[arg-type]
+        K.oval(d, K.home, 1.4, 1.4, TEAL)
+
+    return K.aligned(("sets", depth), paint)
+
+
+def _effects(ctx) -> List[Stamp]:
+    out: List[Stamp] = []
+    anim, i, u = ctx.anim, ctx.i, ctx.u
+    if anim == "diagonalize":
+        grip = math.degrees(math.atan2(ctx.hand[1] - ctx.elbow[1], ctx.hand[0] - ctx.elbow[0]))
+        if 0.15 <= u <= 0.9:
+            out.append((_lance(), ctx.hand, "lance", 0.0 if u < 0.45 else 45.0 if u >= 0.55 else grip))
+        if u >= 0.2:
+            struck = 0 if u < 0.5 else min(4, 1 + int((u - 0.5) / 0.08))
+            out.append((_table(struck), pin((ctx.hip[0] + 34.0, ctx.hip[1] - 52.0)), "table", 0.0))
+    elif anim == "countable_charge":
+        for k in range(3):
+            digit = str((i + 3 - k) % 9 + 1)
+            out.append((R.glyph(K, digit, 8.0 - 1.2 * k, GOLD, GOLD_DARK), (ctx.hip[0] - 60.0 - 13.0 * k, ctx.hip[1] - 26.0 + 3.0 * ((i + k) % 2)), f"count_{k}", 0.0))
+    elif anim == "power_set" and u >= 0.2:
+        out.append((_sets(min(4, 1 + int((u - 0.2) / 0.16))), pin((ctx.hand[0] + 2.0, ctx.hand[1] - 22.0)), "sets", 0.0))
+    elif anim == "aleph_rain" and u >= 0.2:
+        for k in range(4):
+            fall = ((u - 0.2) * 1.6 + k * 0.27) % 1.0
+            out.append((R.glyph(K, ["aleph"], 9.0, GOLD, GOLD_DARK), (ctx.hip[0] - 34.0 + 22.0 * k, 16.0 + fall * (ctx.ground - 40.0)), f"aleph_{k}", 0.0))
+    elif anim == "taunt" and 0.3 <= u <= 0.8:
+        out.append((R.glyph(K, ["aleph"], 10.0, GOLD, GOLD_DARK), (ctx.hand[0] + 4.0, ctx.hand[1] - 14.0), "aleph", 0.0))
+    return out
+
+
+X.effects = _effects
+
+ROWS = X.rows
+FRAME_SIZE = X.frame
+render_frame = X.render_frame
+_render_frame = render_frame
+render, main, render_canonical = R.entry_points(X, ACTOR_METADATA, DISPLAY_NAME)
+
+
+def render_portraits(out_dir, **opts):
+    """His portraits are frames of this sheet."""
     del opts
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    frame_transform: dict = {}
-    outputs = build_sheet(
-        frame_transform_out=frame_transform,
-        target=TARGET_NAME,
-        rows=ROWS,
-        render_fn=_render_frame,
-        out_dir=out_dir,
-        frame_size=FRAME_SIZE,
-        label_width=118,
-        auto_crop=False,
-        body_metrics_fn=_body_metrics_override,
-        actor_metadata=ACTOR_METADATA,
-        sheet_tuning={"collision_scale": 1.12, "frame_sample_inset": 2},
-        animation_key_map={name: name for name, _frames, _duration in ROWS},
-        attack_hitboxes={
-            "diagonalize": {"bbox": {"x": 126, "y": 48, "w": 184, "h": 165}},
-            "countable_charge": {"bbox": {"x": 173, "y": 103, "w": 142, "h": 104}},
-            "power_set": {"bbox": {"x": 58, "y": 35, "w": 238, "h": 216}},
-            "aleph_rain": {"bbox": {"x": 38, "y": 18, "w": 258, "h": 232}},
-        },
-    )
-    keys = (
-        "spritesheet",
-        "yaml",
-        "ron",
-        "actor",
-        "canonical",
-        "canonical_transparent",
-        "preview",
-    )
-    parts = publish_rig_flipbook(TARGET_NAME, ROWS, _render_frame, outputs, frame_transform, Path(out_dir))
-    return [Path(outputs[key]) for key in keys if outputs.get(key)] + list(parts.values())
+    r8 = tuple(range(8))
+    return X.portraits(out_dir, {
+        "default": ("idle", r8, 148, True),
+        "portrait": ("idle", (1,), 0, False),
+        "talk": ("talk", r8, 104, True),
+    }, still="portrait", view_width=38.0)
 
 
-def render_canonical(out_dir: str | Path, **opts) -> Path:
-    del opts
-    return write_canonical(
-        TARGET_NAME,
-        ROWS,
-        _render_frame,
-        Path(out_dir),
-        frame_size=FRAME_SIZE,
-    )
+TARGETS = {TARGET_NAME: {"render": render, "actor_metadata": ACTOR_METADATA}}
 
-
-__all__ = [
-    "ACTOR_METADATA",
-    "AUTHORING_DESCRIPTION",
-    "FALLBACK_DIALOGUE",
-    "GAMEPLAY_DESCRIPTION",
-    "ROWS",
-    "SUGGESTED_BARKS",
-    "render",
-    "render_canonical",
-]
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "out_dir",
-        nargs="?",
-        type=Path,
-        default=Path("generated") / TARGET_NAME,
-    )
-    args = parser.parse_args(argv)
-    for path in render(args.out_dir):
-        print(path)
-    return 0
-
+del STEEL_DARK
 
 if __name__ == "__main__":
     raise SystemExit(main())
