@@ -52,7 +52,7 @@ DRAWABLE_PURPOSES: dict[str, tuple[str, ...]] = {
     "near_shin": ("Front white stocking silhouette", "Front stocking highlight", "Front stocking cuff seam"),
     "near_shoe": ("Front shoe outer leather", "Front shoe leather shine", "Front shoe gold buckle", "Front shoe sole seam"),
     "wig_back_mass": ("Wig rear volume silhouette, parted at the top", "Wig rear cream mass"),
-    "head_face": ("Long face skin and jaw outline", "Forehead skin highlight", "Shade under the cheek along the jaw", "Visible ear outer ellipse", "Inner ear fold line", "Long nose skin shape", "Nose outer ink line", "Nostril wing line", "Nostril line", "Line from nose to mouth", "Chin cleft line", "Hollow of the cheek line", "Brow furrow lower line", "Brow furrow upper line"),
+    "head_face": ("Long face skin and jaw outline", "Forehead skin highlight", "Shade under the cheek along the jaw", "Visible ear outer ellipse", "Inner ear fold line", "Long nose skin shape", "Nose bridge line", "Nose tip and underside ink line", "Nostril wing line", "Nostril line", "Line from nose to mouth", "Chin cleft line", "Hollow of the cheek line", "Brow furrow lower line", "Brow furrow upper line"),
     "wig_crown": ("Wig crown outline with centre parting", "Wig crown near cream highlight", "Wig crown far shaded section", "Wig crown parting line", "Wig crown near curl crease", "Wig crown far curl crease"),
     "wig_curl_0": ("Upper wig curl outer circle", "Upper curl cream inner highlight", "Upper curl spiral line"),
     "wig_curl_1": ("Middle wig curl outer circle", "Middle curl cream inner highlight", "Middle curl spiral line"),
