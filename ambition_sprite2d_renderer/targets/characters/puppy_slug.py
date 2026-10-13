@@ -17,10 +17,12 @@ is seen from its side, facing right, on the ground:
 It is wildlife. It is a little wrong and it does not know. It is not a
 monster, and it is not a toy. There is no drop shadow.
 
-The dream itself is a second picture of this target, ``dream_skin``: eyes in a
-lattice, a whorl of ripples round each, dots as scales. The game lays it over
-the slug and moves it (a shader that draws no art of its own). The sheet is
-good to look at with no shader on it.
+The dream itself is two more pictures of this target. ``dream_skin``: eyes in
+a lattice, a whorl of ripples round each, dots as scales. ``dream_faces``: four
+heads of the slug with nothing behind them. The game lays the skin over the
+slug and moves it, and it puts the heads on the body where no head is and takes
+them away again (a shader that draws no art of its own). The sheet is good to
+look at with no shader on it.
 
 The rows: ``idle`` (it pants), ``walk`` (a wave goes down its body, and it
 goes longer and shorter), ``hurt`` (it bunches up) and ``death`` (it goes
@@ -52,8 +54,10 @@ SHEET_FILES = [
     f"{TARGET_NAME}_spritesheet.yaml",
     f"{TARGET_NAME}_spritesheet.ron",
     f"{TARGET_NAME}_actor.ron",
-    # The skin of the dream: see `dream_skin`.
+    # The skin of the dream and the heads of the dream: see `dream_skin` and
+    # `dream_faces`.
     f"{TARGET_NAME}_dream_skin.png",
+    f"{TARGET_NAME}_dream_faces.png",
 ]
 
 ACTOR_METADATA = {
@@ -559,6 +563,51 @@ def render_frame(animation: str, frame_idx: int, nframes: int) -> Image.Image:
     return _render_frame(animation, frame_idx, nframes)
 
 
+# ---- The heads of the dream ------------------------------------------------------
+
+DREAM_FACES_FILE = f"{TARGET_NAME}_dream_faces.png"
+#: A head is in a cell of this many pixels, and the picture has two cells each way.
+FACE_CELL = 48
+
+
+def _face(eyes: str, tongue: float, ear: float, sway: float) -> Image.Image:
+    """The head of the slug with nothing behind it, in a cell."""
+    img = K.new_frame()
+    head = (64.0, 50.0)
+    K.place(img, _ear(False), (head[0] + 4.6, head[1] - 8.6), "far_ear", ear * 0.6 - 8.0)
+    stalks = []
+    for k, root in enumerate(((4.0, -10.0), (-2.4, -10.4))):
+        base = (head[0] + root[0], head[1] + root[1])
+        at = pin(base)
+        chain = R.chain((base[0] - at[0], base[1] - at[1]), 4, 2.9, -90.0 + sway - 8.0 * k, wave=0.0, curl=3.0 + 0.1 * sway)
+        stalks.append((at, chain))
+        K.place(img, R.ribbon(K, ("puppy_slug_face_stalk", k, sway), [chain], 2.3, SKIN if k else SKIN_DARK, None, taper=0.8), at, f"stalk_{k}", 0.0)
+    K.place(img, _head(eyes), head, "head", 0.0)
+    for k, (at, chain) in enumerate(stalks):
+        K.place(img, _stalk_eye(eyes), (at[0] + chain[-1][0], at[1] + chain[-1][1]), f"stalk_eye_{k}", 0.0)
+    if tongue > 0.05:
+        K.place(img, _tongue(tongue), (head[0] + 11.0, head[1] + 8.0), "tongue", 0.0)
+    K.place(img, _ear(True), (head[0] - 5.6, head[1] - 6.6), "near_ear", ear)
+    frame = K.downsample(img)
+    x0, y0 = int(head[0]) - 22, int(head[1]) - 30
+    return frame.crop((x0, y0, x0 + FACE_CELL, y0 + FACE_CELL))
+
+
+def dream_faces() -> Image.Image:
+    """The heads of the dream: four heads of the slug, each in a cell, two
+    cells each way, with nothing behind them. The game's dream pass puts them
+    on the body where no head is, small and large, and takes them away again
+    (the pass draws no art of its own): a dream of this kind finds the animal
+    again in each part of the animal, and you can not say which head is its
+    head.
+
+    The four: it looks, it sleeps, it is surprised, it pants."""
+    sheet = Image.new("RGBA", (FACE_CELL * 2, FACE_CELL * 2), (0, 0, 0, 0))
+    for k, (eyes, tongue, ear, sway) in enumerate((("open", 0.0, 0.0, 0.0), ("closed", 0.0, 6.0, 12.0), ("wide", 0.0, -22.0, -14.0), ("open", 0.9, 3.0, 6.0))):
+        sheet.alpha_composite(_face(eyes, tongue, ear, sway), ((k % 2) * FACE_CELL, (k // 2) * FACE_CELL))
+    return sheet
+
+
 #: The body the game moves: the slug from its tail to its nose, up to its
 #: back. Its stalks and its ears are not of it. It is the box of the old sheet.
 BODY_BOX = (4.0, 44.0, 118.0, GROUND)
@@ -569,7 +618,9 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
     outputs = K.render(TARGET_NAME, ROWS, _render_frame, out_dir, ACTOR_METADATA, BODY_BOX)
     skin = Path(out_dir) / DREAM_SKIN_FILE
     dream_skin().save(skin)
-    return outputs + [skin]
+    faces = Path(out_dir) / DREAM_FACES_FILE
+    dream_faces().save(faces)
+    return outputs + [skin, faces]
 
 
 def main(argv: list[str] | None = None) -> int:
