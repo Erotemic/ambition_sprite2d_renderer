@@ -170,54 +170,9 @@
   ],
   "parts": [
     {
-      "name": "far_leg_u",
-      "bone": "far_leg_u",
-      "z": 0.0,
-      "kind": "sprite",
-      "include": [
-        "path1161"
-      ],
-      "pivot": [
-        423.0,
-        607.5
-      ],
-      "rest_angle": 117.5164,
-      "svg_source_order": 0
-    },
-    {
-      "name": "far_foot",
-      "bone": "far_leg_foot",
-      "z": 1.0,
-      "kind": "sprite",
-      "include": [
-        "path1165"
-      ],
-      "pivot": [
-        346.5,
-        859.0
-      ],
-      "rest_angle": 163.4761,
-      "svg_source_order": 1
-    },
-    {
-      "name": "far_leg_l",
-      "bone": "far_leg_l",
-      "z": 2.0,
-      "kind": "sprite",
-      "include": [
-        "path1163"
-      ],
-      "pivot": [
-        367.0,
-        715.0
-      ],
-      "rest_angle": 98.1022,
-      "svg_source_order": 2
-    },
-    {
       "name": "far_arm_u",
       "bone": "far_arm_u",
-      "z": 3.0,
+      "z": 0.0,
       "kind": "sprite",
       "include": [
         "path1143"
@@ -227,12 +182,12 @@
         376.5
       ],
       "rest_angle": 134.5756,
-      "svg_source_order": 3
+      "svg_source_order": 0
     },
     {
       "name": "far_arm_l",
       "bone": "far_arm_l",
-      "z": 4.0,
+      "z": 1.0,
       "kind": "sprite",
       "include": [
         "path1145",
@@ -243,12 +198,12 @@
         478.5
       ],
       "rest_angle": -139.2773,
-      "svg_source_order": 4
+      "svg_source_order": 1
     },
     {
       "name": "far_hand",
       "bone": "far_arm_hand",
-      "z": 5.0,
+      "z": 2.0,
       "kind": "sprite",
       "include": [
         "path1178"
@@ -258,6 +213,51 @@
         395.0
       ],
       "rest_angle": -138.8141,
+      "svg_source_order": 2
+    },
+    {
+      "name": "far_leg_u",
+      "bone": "far_leg_u",
+      "z": 3.0,
+      "kind": "sprite",
+      "include": [
+        "path1161"
+      ],
+      "pivot": [
+        423.0,
+        607.5
+      ],
+      "rest_angle": 117.5164,
+      "svg_source_order": 3
+    },
+    {
+      "name": "far_foot",
+      "bone": "far_leg_foot",
+      "z": 4.0,
+      "kind": "sprite",
+      "include": [
+        "path1165"
+      ],
+      "pivot": [
+        346.5,
+        859.0
+      ],
+      "rest_angle": 163.4761,
+      "svg_source_order": 4
+    },
+    {
+      "name": "far_leg_l",
+      "bone": "far_leg_l",
+      "z": 5.0,
+      "kind": "sprite",
+      "include": [
+        "path1163"
+      ],
+      "pivot": [
+        367.0,
+        715.0
+      ],
+      "rest_angle": 98.1022,
       "svg_source_order": 5
     },
     {
@@ -37360,10 +37360,10 @@
     "schema": "canonical-svg-rig-v3",
     "builder_version": 19,
     "renderer": "resvg_py",
-    "renderer_version": "0.3.4",
+    "renderer_version": "0.4.0",
     "renderer_backend": "native-extension",
-    "renderer_origin": "/home/local/KHQ/jon.crall/code/ambition/tools/ambition_sprite2d_renderer/.venv/lib/python3.12/site-packages/resvg_py/resvg_py.cpython-312-x86_64-linux-gnu.so",
-    "svg_sha256": "3e2c67d910d4bf3e18748d54de8bfe06b80cf36643264875ea37a93f3298e170",
+    "renderer_origin": "/home/agent/.cache/ambition-tool-venvs/ambition_sprite2d_renderer/lib/python3.12/site-packages/resvg_py/resvg_py.abi3.so",
+    "svg_sha256": "13aa6f341ee0c9ca647b1813ece071392af7d13be8c73abaf147a55c3355b974",
     "part_order_policy": "svg-document-order",
     "part_order": "svg-document"
   }
