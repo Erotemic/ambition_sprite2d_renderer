@@ -269,6 +269,20 @@ lineages:
       - commit: "87c1a49a3"
         label: "Redrawn with his fight poses"
         note: "A smooth, outlined redraw. Claude Opus 5.5 declared."
+  gnu_ton_scholar_rig:
+    name: The scholar (GNU-ton), as an SVG rig
+    ids: [gnu_ton_scholar_fighter, gnu_ton_scholar_villain]
+    paths: ['gnu_ton_scholar']
+    summary: "a round face with a blush, then an old stern man in a full wig"
+    # This is the scholar the game draws (the fighter and the boss sheets). The
+    # lineage above is the rider on the fused boss sheet, which is other art.
+    eras:
+      - commit: "d377875"
+        label: "A round face, large eyes, a tie wig"
+        note: "The last commit with the first head of the rig. The commits that introduced the rig are not surveyed."
+      - commit: "ba9ce46"
+        label: "An old, stern man in a full wig"
+        note: "Jon chose it from a sheet of five: the long wig, the older face, the neck clear. Claude Opus 5.5 declared."
   burning_flying_shark:
     name: Burning flying shark
     ids: [burning_flying_shark]
