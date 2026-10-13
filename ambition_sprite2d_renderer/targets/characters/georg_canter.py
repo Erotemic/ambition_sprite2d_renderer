@@ -555,6 +555,32 @@ X.front_head_layers = R.front_face(R.make_front_head(K, ("canter",), SKIN, SKIN_
                                    R.make_front_eyes(K, ("canter",), white=None, ink=INK, spread=3.3, y=-0.4),
                                    R.make_front_brows(K, ("canter",), BEARD, spread=3.3, y=-4.0, width=1.5))
 X.front_shoe = _front_hoof
+
+
+def _front_behind(hip) -> List[Stamp]:
+    """The rest of the horse, behind his chest: his barrel, his two hind
+    legs outside the front ones, and his tail at one side."""
+    floor = BUILD.hip_up
+
+    def shape(d) -> None:
+        K.oval(d, K.at(0.0, -3.0), 15.4, 10.0, _SOLID)
+        for sx in (-1.0, 1.0):
+            K.poly(d, [K.at(9.0 * sx, 0.0), K.at(15.0 * sx, 0.0), K.at(13.6 * sx, floor - 3.0), K.at(10.4 * sx, floor - 3.0)], _SOLID)
+            K.poly(d, [K.at(9.6 * sx, floor - 5.0), K.at(14.4 * sx, floor - 5.0), K.at(15.0 * sx, floor - 1.6), K.at(9.0 * sx, floor - 1.6)], _SOLID)
+        K.poly(d, [K.at(13.0, -6.0), K.at(18.6, -2.0), K.at(19.6, 16.0), K.at(17.6, 30.0), K.at(15.0, 18.0), K.at(14.0, 4.0)], _SOLID)
+
+    def paint(d) -> None:
+        K.poly(d, [K.at(13.0, -8.0), K.at(22.0, -8.0), K.at(22.0, 34.0), K.at(15.6, 34.0), K.at(15.2, 2.0)], MANE)
+        K.line(d, [K.at(17.0, 0.0), K.at(18.0, 26.0)], (70, 60, 70, 255), 0.6)
+        for sx in (-1.0, 1.0):
+            K.poly(d, [K.at(8.0 * sx, 0.0), K.at(15.2 * sx, 0.0), K.at(14.0 * sx, floor), K.at(9.0 * sx, floor)], HORSE_DARK)
+            K.poly(d, [K.at(8.0 * sx, 24.0), K.at(16.0 * sx, 24.0), K.at(16.0 * sx, floor), K.at(8.0 * sx, floor)], SOCK_DARK)
+            K.poly(d, [K.at(8.0 * sx, floor - 5.0), K.at(16.0 * sx, floor - 5.0), K.at(16.0 * sx, floor), K.at(8.0 * sx, floor)], HOOF)
+
+    return [(K.solid(("canter_front_behind",), shape, HORSE_DARK, paint, outline=1.2, rim=0.0, shade=0.0), hip, "front_behind", 0.0)]
+
+
+X.front_behind = _front_behind
 X.front_span = (7.6, 6.6)
 R.add_front_rows(X, hands="sides")
 

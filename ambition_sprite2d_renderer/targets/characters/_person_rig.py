@@ -1420,6 +1420,9 @@ class Person:
         #: from the front.
         self.front_span: Tuple[float, float] = (9.0, 5.2)
         self.front_effects: Callable[[SimpleNamespace], List[Stamp]] = lambda ctx: []
+        #: ``front_behind(hip)``: what is behind a body that faces the viewer
+        #: (the rest of a centaur), painted before its legs.
+        self.front_behind: Callable[[Point], List[Stamp]] = lambda hip: []
 
     # -- poses -----------------------------------------------------------------
 
@@ -1494,6 +1497,8 @@ class Person:
             return (hip[0] + r[0], hip[1] + r[1])
 
         neck = T(0.0, -trunk)
+        for part, at, name, degrees in self.front_behind(hip):
+            K.place(img, part, at, name, degrees)  # type: ignore[arg-type]
         points = {}
         for side, sign in (("l", -1.0), ("r", 1.0)):
             root = (hip[0] + sign * hw, hip[1])
