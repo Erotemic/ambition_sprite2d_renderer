@@ -83,11 +83,10 @@
       <path d="M522 268 C534 288 558 298 582 294 C590 292 595 286 596 280 C598 292 590 308 572 314 C552 318 532 310 520 294 C516 284 517 274 522 268 Z" fill="#ece6dc" stroke="#3a241c" stroke-width="7" stroke-linejoin="round"/>
     </g>
     <g id="head" inkscape:groupmode="layer" inkscape:label="Head and Muzzle" data-rig-part="head" data-rig-bone="head" data-rig-z="40">
-      <path d="M492 206 C483 168 484 130 500 98 L526 90 C540 120 552 152 556 184 C541 199 514 207 492 206 Z" fill="#6b3a1a" stroke="#3a241c" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M492 206 C483 170 484 134 498 104 C504 92 522 86 529 96 C541 124 552 154 556 184 C541 199 514 207 492 206 Z" fill="#6b3a1a" stroke="#3a241c" stroke-width="8" stroke-linejoin="round"/>
       <path d="M499 200 C493 168 494 134 506 108 L522 103 C533 130 540 156 543 182 C532 192 514 200 499 200 Z" fill="#9c5825"/>
       <path d="M508 192 C503 166 504 142 510 122 L518 119 C526 140 533 160 536 178 C528 186 518 191 508 192 Z" fill="#a87a70"/>
-      <path d="M498 99 C505 88 517 84 527 87 C535 92 541 101 543 112 C532 108 517 105 501 107 C498 104 497 101 498 99 Z" fill="#8a4c20" stroke="#3a241c" stroke-width="6" stroke-linejoin="round"/>
-      <path d="M502 103 C509 98 518 95 526 93" fill="none" stroke="#c98a4a" stroke-width="3" stroke-linecap="round"/>
+      <path d="M500 105 C507 96 520 92 527 99" fill="none" stroke="#c98a4a" stroke-width="4" stroke-linecap="round"/>
       <path d="M453 193 C468 166 505 154 538 162 C564 168 581 190 579 220 C577 246 562 266 536 274 C504 283 473 269 458 247 C448 231 445 207 453 193 Z" fill="#cb7a34" stroke="#3a241c" stroke-width="9" stroke-linejoin="round"/>
       <path d="M500 172 C517 161 543 164 556 180 C546 179 537 188 533 201 C519 198 508 188 500 172 Z" fill="#e09a4e"/>
       <path d="M496 216 C502 204 520 201 531 210 C536 221 533 234 524 240 C511 242 500 236 496 224 Z" fill="#e9ad68"/>

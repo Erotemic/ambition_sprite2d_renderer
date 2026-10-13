@@ -292,26 +292,41 @@ def honey(left_side: bool = False) -> Dict[str, List[str]]:
     ear_pink = "M468 186 C463 158 464 132 471 112 C483 134 492 154 496 172 C488 180 478 185 468 186 Z"
     ear_tuft = "M466 186 C470 172 478 164 488 160 C490 168 492 174 494 178 C486 184 476 187 466 186 Z"
     # The ear with the flap: it stops at a fold, a little under where the
-    # other ear has its tip, and the tip hangs forward from the fold as a
-    # small piece of its own, with the back of the ear to the viewer.
+    # other ear has its tip. The tip flops OUTWARD, to her right, away from
+    # the middle of her head (Jon, 2026-10-13, of a tip drawn to the side:
+    # "it looks like it is flopping inward instead of outward"). Side on,
+    # outward is toward the viewer or away, not left or right:
+    # * seen from her right, the ear is the near one and the tip comes
+    #   toward the viewer: a small piece that hangs DOWN over the face of
+    #   the ear, with the back of the ear showing;
+    # * seen from her left, the ear is the far one and the tip goes away
+    #   from the viewer: the ear ends in a round fold, and no piece hangs.
     flap_edge = "M452 200 C443 162 444 124 460 92 L486 84 C500 114 512 146 516 178 C501 193 474 201 452 200 Z"
     flap_coat = "M459 194 C453 162 454 128 466 102 L482 97 C493 124 500 150 503 176 C492 186 474 194 459 194 Z"
     flap_pink = "M468 186 C463 160 464 136 470 116 L478 113 C486 134 493 154 496 172 C488 180 478 185 468 186 Z"
-    flap_tip = "M458 93 C465 82 477 78 487 81 C495 86 501 95 503 106 C492 102 477 99 461 101 C458 98 457 95 458 93 Z"
-    flap_crease = "M462 97 C469 92 478 89 486 87"
+    flap_tip = "M458 93 C466 86 477 82 488 82 C489 95 484 110 474 121 C466 114 460 104 458 93 Z"
+    flap_crease = "M462 93 C469 89 478 86 485 85"
+    # The far ear's fold: its top is round, with the edge of the fold on it.
+    fold_edge = "M452 200 C443 164 444 128 458 98 C464 86 482 80 489 90 C501 118 512 148 516 178 C501 193 474 201 452 200 Z"
+    fold_rim = "M460 99 C467 90 480 86 487 93"
 
     def ear(flap: bool, far: bool) -> List[str]:
         """One of her ears. The far ear is behind the head: darker, and moved."""
         dx, dy = (40, 6) if far else (0, 0)
         edge, pink = ("#6b3a1a", "#a87a70") if far else ("#74401c", "#c99488")
         coat = "#9c5825" if far else "#b96a2b"
-        shapes = (flap_edge, flap_coat, flap_pink) if flap else (ear_edge, ear_coat, ear_pink)
+        if not flap:
+            shapes = (ear_edge, ear_coat, ear_pink)
+        else:
+            shapes = (fold_edge if far else flap_edge, flap_coat, flap_pink)
         out = [path(shift(shapes[0], dx, dy), edge, o, 8), path(shift(shapes[1], dx, dy), coat), path(shift(shapes[2], dx, dy), pink)]
         if not far:
             out.append(path(ear_tuft, "#f0cfa6"))
-        if flap:
-            out.append(path(shift(flap_tip, dx, dy), "#8a4c20" if far else "#a35e27", o, 6))
-            out.append(line(shift(flap_crease, dx, dy), "#f0b46a" if not far else "#c98a4a", 3))
+        if flap and far:
+            out.append(line(shift(fold_rim, dx, dy), "#c98a4a", 4))
+        elif flap:
+            out.append(path(flap_tip, "#a35e27", o, 6))
+            out.append(line(flap_crease, "#f0b46a", 3))
         return out
 
     nose = shift(NOSE, -8, 2)
