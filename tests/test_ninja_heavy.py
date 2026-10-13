@@ -60,21 +60,3 @@ def test_ninja_heavy_body_is_connected_in_every_pose(monkeypatch) -> None:
                 failures.append((animation, frame_idx, held, significant))
 
     assert failures == []
-
-
-def test_ninja_heavy_shows_no_skin_but_at_his_eyes() -> None:
-    """He is in black from his head to his feet (Jon, 2026-10-13: "Less skin,
-    I like the dark clad in black look")."""
-    def is_skin(pixel) -> bool:
-        r, g, b, a = pixel
-        # Skin; not the brass of his club (its green is far over its blue) and not his white papers.
-        return a > 200 and r > 150 and r > g > b > 90 and g - b < 60 and r - b > 40
-
-    image = ninja_heavy._render_frame("idle", 0, 6).convert("RGBA")
-    box = image.getbbox()
-    width, height = image.size
-    pixels = image.load()
-    rows_with_skin = {y for y in range(height) for x in range(width) if is_skin(pixels[x, y])}
-    assert rows_with_skin, "his eyes are in a band of skin"
-    # All of it is in his head: the top fifth of him.
-    assert max(rows_with_skin) < box[1] + (box[3] - box[1]) * 0.2

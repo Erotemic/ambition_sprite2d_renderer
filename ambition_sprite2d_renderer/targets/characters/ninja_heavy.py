@@ -5,18 +5,20 @@ the largest person of the dojo, with the build of a wrestler of the ring, seen
 three quarters from the front, facing right. He is 198 cm, and wide: a round
 trunk, a neck as wide as his head, arms like the legs of other people.
 
-What makes him a ninja: the hood of the dojo over his head and his face, with
-only his eyes out of it, and a plate of iron on its brow; and black from there
-down, with no skin but at his eyes (Jon, 2026-10-13: "Less skin, I like the
-dark clad in black look"): a black gi shut to his neck, black sleeves and
+What makes him a ninja: the hood of the dojo over his head and his face, and
+a plate of iron on its brow; his eyes are two red lights in the dark slit of
+the hood, as the eyes of the Shadow Duelist are (Jon, 2026-10-13: "I like the
+new darker eyes. Do the same thing with the ninja heavy in terms of the
+eyes"); and black from there down, with no skin (Jon, 2026-10-13: "Less skin,
+I like the dark clad in black look"): a black gi shut to his neck, black sleeves and
 gloves, black wraps on his shins. What makes him the heavy: the rope of a
 champion round his middle, in red cord, with its white papers; iron on his
 forearms and one shoulder; and the kanabo, a club of iron with studs, as long
 as his leg. At rest it lies on his shoulder.
 
 He is a grown man and not a mascot, and not a monster: the last drawing had
-the mask of an oni, and so does the leader of the dojo. He has a face, and
-most of it is under cloth. There is no drop shadow.
+the mask of an oni, and so does the leader of the dojo. There is no drop
+shadow.
 
 The rows are the ones a brute of the game plays: ``idle``, ``walk``,
 ``slash`` (the club comes down from over his head with both hands), ``taunt``
@@ -163,9 +165,11 @@ WRAP: RGBA = (52, 55, 74, 255)
 WRAP_DARK: RGBA = (30, 32, 46, 255)
 GRIP: RGBA = (104, 60, 54, 255)
 GRIP_DARK: RGBA = (62, 34, 36, 255)
-SKIN: RGBA = (218, 166, 126, 255)
-SKIN_SHADE: RGBA = (182, 126, 96, 255)
-SKIN_DEEP: RGBA = (132, 82, 70, 255)
+#: The slit of his hood is in shadow, darker than its cloth, and his eyes are
+#: red lights in it.
+SLIT: RGBA = (8, 7, 12, 255)
+EYE: RGBA = (232, 34, 40, 255)
+EYE_HOT: RGBA = (255, 138, 110, 255)
 INK: RGBA = (24, 22, 30, 255)
 DUST: RGBA = (214, 200, 168, 255)
 DUST_DARK: RGBA = (150, 132, 104, 255)
@@ -244,7 +248,7 @@ def _hood_shape(d) -> None:
 
 
 def _hood(d) -> None:
-    # All of it is cloth but a band at his eyes.
+    # All of it is cloth but the slit at his eyes, and the slit is in shadow.
     K.poly(d, [K.at(-30.0, -30.0), K.at(30.0, -30.0), K.at(30.0, -4.0), K.at(9.6, -4.0), K.at(4.0, -4.4), K.at(-0.6, -3.4), K.at(-1.6, -0.6), K.at(-1.0, 2.2),
                K.at(4.0, 2.8), K.at(10.6, 2.4), K.at(30.0, 2.4), K.at(30.0, 30.0), K.at(-30.0, 30.0)], HOOD)
     K.line(d, [K.at(9.6, -4.0), K.at(4.0, -4.4), K.at(-0.6, -3.4), K.at(-1.6, -0.6), K.at(-1.0, 2.2), K.at(4.0, 2.8), K.at(10.6, 2.4)], HOOD_DARK, 0.7)
@@ -262,18 +266,26 @@ def _hood(d) -> None:
         K.oval(d, K.at(x, -7.0), 0.8, 0.8, BRASS)
 
 
-def _scar(d) -> None:
-    # An old cut through his near brow: he did not always win.
-    K.line(d, [K.at(0.6, -3.6), K.at(2.0, 1.6)], SKIN_DEEP, 0.5)
+_head = R.make_head(K, ("heavy",), SLIT, SLIT, SLIT, skull=(0.0, -2.4, 8.4, 9.2), jaw=(2.6, 4.2, 6.2, 7.8),
+                    nose=((7.4, -0.6), (9.8, 2.8), (9.2, 4.4), (7.2, 4.8)), ear=None, shape=_hood_shape, under=_hood)
+
+def _eyes(mode: str):
+    """His eyes: two red lights that slant down to his nose, in the dark slit
+    of his hood. Shut, each is a thin red line; struck, they are wide."""
+
+    def paint(d) -> None:
+        for (ex, ey), k in ((NEAR_EYE, 1.0), (FAR_EYE, 0.8)):
+            if mode in ("closed", "wince", "happy"):
+                K.line(d, [K.at(ex - 2.0 * k, ey - 0.4), K.at(ex + 1.9 * k, ey + 0.5)], EYE, 0.7)
+                continue
+            tall = 2.0 if mode == "wide" else 1.4
+            K.poly(d, [K.at(ex - 2.4 * k, ey - tall), K.at(ex + 2.3 * k, ey - 0.1), K.at(ex + 1.7 * k, ey + tall * 0.9), K.at(ex - 1.8 * k, ey + tall * 0.5)], EYE)
+            K.oval(d, K.at(ex + 0.3 * k, ey + 0.1), 0.9 * k, 0.7, EYE_HOT)
+
+    return K.piece(("heavy_eyes", mode), paint)
 
 
-_head = R.make_head(K, ("heavy",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.4, 8.4, 9.2), jaw=(2.6, 4.2, 6.2, 7.8),
-                    nose=((7.4, -0.6), (9.8, 2.8), (9.2, 4.4), (7.2, 4.8)), ear=None, shape=_hood_shape, under=_hood, over=_scar)
-_eyes = R.make_eyes(K, NEAR_EYE, FAR_EYE, ink=INK, iris=(92, 60, 40, 255), lid=SKIN_DEEP, size=0.9)
-_brows = R.make_brows(K, [(-0.4, -3.0), (2.2, -3.6), (4.6, -2.4)], [(6.0, -2.6), (7.6, -3.6), (9.0, -3.2)], INK, 1.5)
-
-# His brows are always set: the cloth is on them.
-X.head_layers = lambda pose: [(_head(), "head"), (_eyes(str(pose["eyes"])), "eyes"), (_brows(min(0, R.brow_mood(pose))), "brows")]
+X.head_layers = lambda pose: [(_head(), "head"), (_eyes(str(pose["eyes"])), "eyes")]
 X.neck = R.make_neck(K, HOOD_DARK, 12.0)
 # Black sleeves; iron from under the elbow to the wrist; black gloves.
 X.upper_arm = lambda near: [(0.0, 1.0, 16.0, 13.0, SLEEVE if near else SLEEVE_DARK)]
@@ -487,7 +499,7 @@ def _front_hood_shape(d) -> None:
 
 
 def _front_hood(d) -> None:
-    # All of it is cloth but a band at his eyes.
+    # All of it is cloth but the slit at his eyes.
     K.poly(d, [K.at(-30.0, -30.0), K.at(30.0, -30.0), K.at(30.0, -0.6), K.at(7.8, -0.6), K.at(7.2, -4.0), K.at(-7.2, -4.0), K.at(-7.8, -0.6), K.at(-30.0, -0.6)],
            HOOD)
     K.poly(d, [K.at(-30.0, -0.6), K.at(-7.8, -0.6), K.at(-7.2, 2.6), K.at(0.0, 3.2), K.at(7.2, 2.6), K.at(7.8, -0.6), K.at(30.0, -0.6), K.at(30.0, 30.0),
@@ -503,15 +515,25 @@ def _front_hood(d) -> None:
         K.oval(d, K.at(x, -6.8), 0.8, 0.8, BRASS)
 
 
-def _front_scar(d) -> None:
-    # The old cut through his right brow.
-    K.line(d, [K.at(-4.6, -4.0), K.at(-3.4, 1.4)], SKIN_DEEP, 0.5)
+_front_head = R.make_front_head(K, ("heavy",), SLIT, SLIT, wide=9.6, jaw=8.0, chin=4.2, shape=_front_hood_shape, hair=_front_hood)
+
+def _front_eyes(mode: str):
+    """His eyes from the front: each slants down to the middle."""
+
+    def paint(d) -> None:
+        for sx in (-1.0, 1.0):
+            ex, ey = 3.6 * sx, -0.8
+            if mode in ("closed", "wince", "happy"):
+                K.line(d, [K.at(ex + 2.0 * sx, ey - 0.5), K.at(ex - 1.9 * sx, ey + 0.5)], EYE, 0.7)
+                continue
+            tall = 2.0 if mode == "wide" else 1.4
+            K.poly(d, [K.at(ex + 2.4 * sx, ey - tall), K.at(ex - 2.2 * sx, ey - 0.1), K.at(ex - 1.6 * sx, ey + tall * 0.9), K.at(ex + 1.9 * sx, ey + tall * 0.5)], EYE)
+            K.oval(d, K.at(ex - 0.2 * sx, ey + 0.1), 0.9, 0.7, EYE_HOT)
+
+    return K.piece(("heavy_front_eyes", mode), paint)
 
 
-_front_head = R.make_front_head(K, ("heavy",), SKIN, SKIN_DEEP, wide=9.6, jaw=8.0, chin=4.2, shape=_front_hood_shape, hair=_front_hood, face=_front_scar)
-_front_eyes = R.make_front_eyes(K, ("heavy",), spread=3.6, y=-0.8, ink=INK, iris=(92, 60, 40, 255), size=0.9)
-_front_brows = R.make_front_brows(K, ("heavy",), INK, spread=3.6, y=-3.2, width=1.5)
-X.front_head_layers = lambda pose: [(_front_head(), "head"), (_front_eyes(str(pose["eyes"])), "eyes"), (_front_brows(-1), "brows")]
+X.front_head_layers = lambda pose: [(_front_head(), "head"), (_front_eyes(str(pose["eyes"])), "eyes")]
 X.front_shoe = R.make_front_shoe(K, HOOD, HOOD_DARK, BUILD.ankle_up, wide=1.2)
 
 

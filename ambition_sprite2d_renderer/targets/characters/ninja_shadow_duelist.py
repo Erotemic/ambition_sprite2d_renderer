@@ -5,13 +5,12 @@ art"): a lean swordsman of 170 cm, seen three quarters from the front, facing
 right. He is of the same dojo as the Ninja Heavy and he is its opposite: the
 heavy is a wall, and he is a line.
 
-His colours are those of the picture the ninjas of the game come from (Jon,
-2026-10-13: "the ninjas art is inspired by the attached picture, so the shadow
-dualist needs a slight recolor with the same red eyes and dark shadows"): a
-crowd of ninjas in flat grey, with dark grey shade, a slit of shadow where
-their eyes are, and pale swords. So he is grey from his head to his feet, the
-shade of his cloth is dark, and his eyes are two red lights in the dark slit
-of his hood. He shows no skin.
+He is black from his head to his feet, as the Ninja Heavy is (Jon,
+2026-10-13, of the heavy: "Less skin, I like the dark clad in black look"),
+and his eyes are those of the picture the ninjas of the game come from: two
+red lights in the dark slit of his hood. He shows no skin. He was grey for
+one draft, as the ninjas of that picture are; Jon: "Revert the shadow duelist
+colors to the darker ones, but I like the new darker eyes."
 
 What makes him the duelist: the long sword, which is the one bright thing he
 has; its black scabbard at his far hip; and the long red scarf at his neck,
@@ -140,21 +139,22 @@ ACTOR_METADATA = {
 }
 
 
-#: The grey of the ninjas of the picture: flat, a little cold, and its shade
-#: is dark (the far limbs, the folds, the far side of the trunk).
-GI: RGBA = (122, 126, 134, 255)
-GI_DARK: RGBA = (58, 61, 72, 255)
-GI_LIGHT: RGBA = (166, 170, 178, 255)
-HOOD: RGBA = (116, 120, 128, 255)
-HOOD_DARK: RGBA = (50, 53, 64, 255)
-SLEEVE: RGBA = (128, 132, 140, 255)
-SLEEVE_DARK: RGBA = (64, 67, 78, 255)
-GLOVE: RGBA = (88, 92, 102, 255)
-GLOVE_DARK: RGBA = (44, 47, 58, 255)
-WRAP: RGBA = (94, 98, 108, 255)
-WRAP_DARK: RGBA = (48, 51, 62, 255)
-#: The slit of his hood is in shadow, and his eyes are red lights in it.
-SLIT: RGBA = (20, 18, 26, 255)
+#: The black of the dojo, as the Ninja Heavy has it: a little blue in it, so
+#: its folds and its edges can be seen.
+GI: RGBA = (32, 34, 48, 255)
+GI_DARK: RGBA = (17, 18, 28, 255)
+GI_LIGHT: RGBA = (64, 70, 98, 255)
+HOOD: RGBA = (27, 29, 42, 255)
+HOOD_DARK: RGBA = (14, 15, 24, 255)
+SLEEVE: RGBA = (38, 41, 58, 255)
+SLEEVE_DARK: RGBA = (22, 24, 36, 255)
+GLOVE: RGBA = (44, 46, 62, 255)
+GLOVE_DARK: RGBA = (20, 21, 32, 255)
+WRAP: RGBA = (52, 55, 74, 255)
+WRAP_DARK: RGBA = (30, 32, 46, 255)
+#: The slit of his hood is in shadow, darker than its cloth, and his eyes are
+#: red lights in it.
+SLIT: RGBA = (8, 7, 12, 255)
 EYE: RGBA = (232, 34, 40, 255)
 EYE_HOT: RGBA = (255, 138, 110, 255)
 #: The red of the dojo: his scarf, the cord of his scabbard, the wrap of his grip.

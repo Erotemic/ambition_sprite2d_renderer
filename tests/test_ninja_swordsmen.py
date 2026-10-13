@@ -1,4 +1,4 @@
-"""Structural rendering checks for the swordsmen of the Shadow Dojo: the Duelist and the Oni Leader."""
+"""Structural rendering checks for the ninjas of the Shadow Dojo: the Heavy, the Duelist and the Oni Leader."""
 
 from __future__ import annotations
 
@@ -6,9 +6,10 @@ from test_ninja_heavy import _opaque_component_sizes
 
 import pytest
 
-from ambition_sprite2d_renderer.targets.characters import ninja_shadow_duelist, ninja_shadow_oni_leader
+from ambition_sprite2d_renderer.targets.characters import ninja_heavy, ninja_shadow_duelist, ninja_shadow_oni_leader
 
 SWORDSMEN = pytest.mark.parametrize("who", [ninja_shadow_duelist, ninja_shadow_oni_leader], ids=["duelist", "oni_leader"])
+NINJAS = pytest.mark.parametrize("who", [ninja_heavy, ninja_shadow_duelist, ninja_shadow_oni_leader], ids=["heavy", "duelist", "oni_leader"])
 
 
 @SWORDSMEN
@@ -35,12 +36,13 @@ def test_a_swordsman_of_the_dojo_is_connected_in_every_pose(monkeypatch, who) ->
     assert failures == []
 
 
-@SWORDSMEN
-def test_a_swordsman_of_the_dojo_shows_no_skin_and_his_eyes_are_red(who) -> None:
-    """The ninjas of the picture they come from show no skin, and their eyes
-    are red (Jon, 2026-10-13: "the same red eyes and dark shadows"): the
-    duelist's are in the dark slit of his hood, the leader's in the sockets of
-    his mask."""
+@NINJAS
+def test_a_ninja_of_the_dojo_shows_no_skin_and_his_eyes_are_red(who) -> None:
+    """The ninjas show no skin, and their eyes are red lights in the dark
+    (Jon, 2026-10-13: "the same red eyes and dark shadows"; and of the heavy,
+    "Do the same thing with the ninja heavy in terms of the eyes"): the
+    heavy's and the duelist's are in the slit of the hood, the leader's in the
+    sockets of his mask."""
     def is_skin(pixel) -> bool:
         r, g, b, a = pixel
         # Skin; not the brass of his sword (its green is far over its blue), not
@@ -51,7 +53,7 @@ def test_a_swordsman_of_the_dojo_shows_no_skin_and_his_eyes_are_red(who) -> None
         r, g, b, a = pixel
         return a > 200 and r > 215 and g < 90 and b < 90
 
-    image = who._render_frame("idle", 0, 8).convert("RGBA")
+    image = who._render_frame("idle", 0, dict((row, n) for row, n, _ms in who.ROWS)["idle"]).convert("RGBA")
     box = image.getbbox()
     width, height = image.size
     pixels = image.load()
