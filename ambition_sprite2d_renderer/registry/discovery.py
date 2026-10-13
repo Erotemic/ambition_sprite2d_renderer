@@ -771,6 +771,12 @@ def _build_module_targets(
         if render_canonical_fn is not None and not callable(render_canonical_fn):
             render_canonical_fn = None
         render_portraits_fn = spec.get("render_portraits")
+        if render_portraits_fn is None and len(mod.TARGETS) == 1:
+            # A module with ONE target and a `render_portraits` of its own
+            # means that target. Eleven characters had the function and not
+            # the key (2026-10-13), and each published the default crop of
+            # its body with one clip, with no error.
+            render_portraits_fn = getattr(mod, "render_portraits", None)
         if render_portraits_fn is not None and not callable(render_portraits_fn):
             render_portraits_fn = None
         portrait_files = tuple(

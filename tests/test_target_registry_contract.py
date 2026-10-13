@@ -95,3 +95,26 @@ def test_entity_target_does_not_claim_authoring_diagnostics():
     assert "entities/entity_contact_sheet.png" not in claims
     assert "entities/entity_manifest.yaml" not in claims
     assert any(name.startswith("entities/") and name.endswith(".png") for name in claims)
+
+
+def test_a_portrait_function_a_module_writes_is_the_one_its_target_publishes():
+    """A module that writes ``render_portraits`` publishes those portraits.
+
+    A module with a ``TARGETS`` table names its hooks in the table. Eleven
+    characters had the function and not the key (2026-10-13): each published
+    the default crop of its body with one clip, and a conversation that named
+    another clip got the default with no error."""
+    import importlib
+
+    report = discover_module_targets()
+    problems: list[str] = []
+    for name, target in sorted(report.targets.items()):
+        module_path = getattr(target, "module_path", None)
+        if not module_path:
+            continue
+        module = importlib.import_module(module_path)
+        own = getattr(module, "render_portraits", None)
+        table = getattr(module, "TARGETS", None)
+        if callable(own) and isinstance(table, dict) and len(table) == 1 and target._render_portraits_fn is None:
+            problems.append(f"{name}: {module_path}.render_portraits is not what the target publishes")
+    assert problems == []
