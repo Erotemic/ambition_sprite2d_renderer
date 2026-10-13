@@ -16,8 +16,9 @@ catches up and the heap rises. Its swipe is the hand, thrown over its head.
 Struck, it squashes and tears in strips like a broken video frame. Dead, it
 melts into a puddle and the hand goes under last, with both of its thumbs up.
 
-The gameplay body is the heap (``_body_metrics``): the hand, the picture and
-the sparkles do not make it larger.
+The gameplay body is the heap where it is high (``_body_metrics``): the hand,
+the picture and the sparkles do not make it larger, and the thin skirt of the
+puddle at each side does not make it wider.
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ import math
 from pathlib import Path
 from typing import Dict, List, Sequence, Tuple
 
+import numpy as np
 from PIL import Image, ImageChops, ImageFilter
 
 from ...authoring import rigdoc, shape_rig
@@ -796,15 +798,30 @@ def _render_frame(anim: str, frame_idx: int, nframes: int) -> Image.Image:
     return _downsample(img)
 
 
+#: The heap is a part of the body where it is this part of its full height,
+#: or more. Under it is the skirt of the puddle: paint on the ground, a third
+#: of the width of the heap, that no player takes for a thing that hits.
+BODY_HEIGHT_PART = 0.4
+
+
 def _body_metrics(fw: int, fh: int) -> dict:
-    """The gameplay body: the heap as it stands, in frame pixels."""
+    """The gameplay body: the heap as it stands, where it is high, in frame pixels.
+
+    The box was the box of all of the heap, with the skirt of its puddle: 161
+    wide, where the heap that a player sees as a body is about 107. A touch of
+    the air over the skirt was a hit (Jon, 2026-10-12: "a larger part of it
+    ... extends past the visual sprite")."""
     rest = _pose("idle", 0, 6)
     raster, anchor = _heap_piece(round(float(rest["w"]), 2), round(float(rest["h"]), 2), round(float(rest["tip"]), 2),
                                  round(float(rest["lean"]), 2), 0.0, 0.0, round(float(rest["flow"]), 3), ())
-    x0 = (CX * SUPER - anchor[0]) / SUPER
+    solid = np.asarray(raster.getchannel("A")) > 128
+    heights = solid.sum(axis=0)
+    high = np.flatnonzero(heights >= BODY_HEIGHT_PART * heights.max())
+    left, right = int(high[0]), int(high[-1]) + 1
+    x0 = (CX * SUPER - anchor[0] + left) / SUPER
     y0 = (GROUND * SUPER - anchor[1]) / SUPER
     x, y = int(math.floor(x0)), int(math.floor(y0))
-    w = int(math.ceil(x0 + raster.size[0] / SUPER)) - x
+    w = int(math.ceil(x0 + (right - left) / SUPER)) - x
     h = int(math.ceil(y0 + raster.size[1] / SUPER)) - y
     feet = (x + w / 2.0, float(y + h))
     return {
