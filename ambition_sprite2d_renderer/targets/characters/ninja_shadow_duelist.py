@@ -5,16 +5,17 @@ art"): a lean swordsman of 170 cm, seen three quarters from the front, facing
 right. He is of the same dojo as the Ninja Heavy and he is its opposite: the
 heavy is a wall, and he is a line.
 
-What makes him a ninja: the hood of the dojo over his head and his face, with
-only his eyes out of it; and black from there down, with no skin but at his
-eyes (Jon, 2026-10-13, of the heavy: "Less skin, I like the dark clad in black
-look"). What makes him the duelist: the long sword, which is the one bright
-thing he has; its black scabbard at his far hip; and the long red scarf at his
-neck, whose two ends say how fast he goes.
+His colours are those of the picture the ninjas of the game come from (Jon,
+2026-10-13: "the ninjas art is inspired by the attached picture, so the shadow
+dualist needs a slight recolor with the same red eyes and dark shadows"): a
+crowd of ninjas in flat grey, with dark grey shade, a slit of shadow where
+their eyes are, and pale swords. So he is grey from his head to his feet, the
+shade of his cloth is dark, and his eyes are two red lights in the dark slit
+of his hood. He shows no skin.
 
-He is a grown man and not a mascot, and not a machine: the last drawing had
-red lamps for eyes. He has a face, and most of it is under cloth. There is no
-drop shadow.
+What makes him the duelist: the long sword, which is the one bright thing he
+has; its black scabbard at his far hip; and the long red scarf at his neck,
+whose two ends say how fast he goes. There is no drop shadow.
 
 A pose that is held keeps the sword off his face: in his guard his hands are
 in front of his belly and the point is in front of him, at the height of his
@@ -139,19 +140,23 @@ ACTOR_METADATA = {
 }
 
 
-#: The black of the dojo, as the Ninja Heavy has it: a little blue in it, so
-#: its folds and its edges can be seen.
-GI: RGBA = (32, 34, 48, 255)
-GI_DARK: RGBA = (17, 18, 28, 255)
-GI_LIGHT: RGBA = (64, 70, 98, 255)
-HOOD: RGBA = (27, 29, 42, 255)
-HOOD_DARK: RGBA = (14, 15, 24, 255)
-SLEEVE: RGBA = (38, 41, 58, 255)
-SLEEVE_DARK: RGBA = (22, 24, 36, 255)
-GLOVE: RGBA = (44, 46, 62, 255)
-GLOVE_DARK: RGBA = (20, 21, 32, 255)
-WRAP: RGBA = (52, 55, 74, 255)
-WRAP_DARK: RGBA = (30, 32, 46, 255)
+#: The grey of the ninjas of the picture: flat, a little cold, and its shade
+#: is dark (the far limbs, the folds, the far side of the trunk).
+GI: RGBA = (122, 126, 134, 255)
+GI_DARK: RGBA = (58, 61, 72, 255)
+GI_LIGHT: RGBA = (166, 170, 178, 255)
+HOOD: RGBA = (116, 120, 128, 255)
+HOOD_DARK: RGBA = (50, 53, 64, 255)
+SLEEVE: RGBA = (128, 132, 140, 255)
+SLEEVE_DARK: RGBA = (64, 67, 78, 255)
+GLOVE: RGBA = (88, 92, 102, 255)
+GLOVE_DARK: RGBA = (44, 47, 58, 255)
+WRAP: RGBA = (94, 98, 108, 255)
+WRAP_DARK: RGBA = (48, 51, 62, 255)
+#: The slit of his hood is in shadow, and his eyes are red lights in it.
+SLIT: RGBA = (20, 18, 26, 255)
+EYE: RGBA = (232, 34, 40, 255)
+EYE_HOT: RGBA = (255, 138, 110, 255)
 #: The red of the dojo: his scarf, the cord of his scabbard, the wrap of his grip.
 RED: RGBA = (176, 44, 48, 255)
 RED_DARK: RGBA = (112, 26, 34, 255)
@@ -163,9 +168,6 @@ BRASS: RGBA = (222, 176, 84, 255)
 BRASS_DARK: RGBA = (150, 104, 44, 255)
 LACQUER: RGBA = (24, 24, 34, 255)
 LACQUER_LIGHT: RGBA = (70, 76, 104, 255)
-SKIN: RGBA = (214, 164, 124, 255)
-SKIN_SHADE: RGBA = (178, 124, 94, 255)
-SKIN_DEEP: RGBA = (128, 80, 68, 255)
 INK: RGBA = (24, 22, 30, 255)
 CUT: RGBA = (236, 242, 250, 255)
 CUT_DARK: RGBA = (150, 164, 190, 255)
@@ -223,7 +225,7 @@ def _hood_shape(d) -> None:
 
 
 def _hood(d) -> None:
-    # All of it is cloth but a band at his eyes.
+    # All of it is cloth but the slit at his eyes, and the slit is in shadow.
     K.poly(d, [K.at(-30.0, -30.0), K.at(30.0, -30.0), K.at(30.0, -4.4), K.at(9.0, -4.4), K.at(3.6, -4.8), K.at(-0.8, -3.8), K.at(-1.8, -0.8), K.at(-1.2, 1.8),
                K.at(3.6, 2.4), K.at(10.0, 2.0), K.at(30.0, 2.0), K.at(30.0, 30.0), K.at(-30.0, 30.0)], HOOD)
     K.line(d, [K.at(9.0, -4.4), K.at(3.6, -4.8), K.at(-0.8, -3.8), K.at(-1.8, -0.8), K.at(-1.2, 1.8), K.at(3.6, 2.4), K.at(10.0, 2.0)], HOOD_DARK, 0.7)
@@ -235,13 +237,27 @@ def _hood(d) -> None:
     K.oval(d, K.at(-8.0, 0.2), 1.8, 2.2, HOOD_DARK)
 
 
-_head = R.make_head(K, ("duelist",), SKIN, SKIN_SHADE, SKIN_DEEP, skull=(0.0, -2.4, 7.8, 8.8), jaw=(2.4, 4.0, 5.4, 7.2),
+_head = R.make_head(K, ("duelist",), SLIT, SLIT, SLIT, skull=(0.0, -2.4, 7.8, 8.8), jaw=(2.4, 4.0, 5.4, 7.2),
                     nose=((6.8, -0.8), (9.2, 2.8), (8.6, 4.2), (6.8, 4.6)), ear=None, shape=_hood_shape, under=_hood)
-_eyes = R.make_eyes(K, NEAR_EYE, FAR_EYE, ink=INK, iris=(70, 50, 44, 255), lid=SKIN_DEEP, size=0.9)
-_brows = R.make_brows(K, [(-0.8, -2.6), (1.8, -3.6), (4.4, -2.6)], [(5.6, -2.8), (7.0, -3.8), (8.4, -3.4)], INK, 1.4)
 
-# His brows are always set: the cloth is on them.
-X.head_layers = lambda pose: [(_head(), "head"), (_eyes(str(pose["eyes"])), "eyes"), (_brows(min(0, R.brow_mood(pose))), "brows")]
+
+def _eyes(mode: str):
+    """His eyes: two red lights that slant down to his nose. Shut, each is a
+    thin red line; struck, they are wide."""
+
+    def paint(d) -> None:
+        for (ex, ey), k in ((NEAR_EYE, 1.0), (FAR_EYE, 0.8)):
+            if mode in ("closed", "wince", "happy"):
+                K.line(d, [K.at(ex - 2.0 * k, ey - 0.4), K.at(ex + 1.9 * k, ey + 0.5)], EYE, 0.7)
+                continue
+            tall = 1.9 if mode == "wide" else 1.3
+            K.poly(d, [K.at(ex - 2.3 * k, ey - tall), K.at(ex + 2.2 * k, ey - 0.1), K.at(ex + 1.6 * k, ey + tall * 0.9), K.at(ex - 1.7 * k, ey + tall * 0.5)], EYE)
+            K.oval(d, K.at(ex + 0.3 * k, ey + 0.1), 0.8 * k, 0.6, EYE_HOT)
+
+    return K.piece(("duelist_eyes", mode), paint)
+
+
+X.head_layers = lambda pose: [(_head(), "head"), (_eyes(str(pose["eyes"])), "eyes")]
 X.neck = R.make_neck(K, HOOD_DARK, 6.0)
 # Close black sleeves, wraps from under the elbow to the wrist, black gloves.
 X.upper_arm = lambda near: [(0.0, 1.0, 8.6, 7.2, SLEEVE if near else SLEEVE_DARK)]

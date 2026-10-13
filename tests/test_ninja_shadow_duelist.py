@@ -27,20 +27,25 @@ def test_shadow_duelist_body_is_connected_in_every_pose(monkeypatch) -> None:
     assert failures == []
 
 
-def test_shadow_duelist_shows_no_skin_but_at_his_eyes() -> None:
-    """He is of the dojo of the Ninja Heavy: black from his head to his feet
-    (Jon, 2026-10-13: "Less skin, I like the dark clad in black look")."""
+def test_shadow_duelist_shows_no_skin_and_his_eyes_are_red() -> None:
+    """He is grey from his head to his feet, and his eyes are red lights in
+    the dark slit of his hood (Jon, 2026-10-13: "the same red eyes and dark
+    shadows")."""
     def is_skin(pixel) -> bool:
         r, g, b, a = pixel
         # Skin; not the brass of his sword (its green is far over its blue), not
         # its steel, and not the light of his red scarf (it has little green).
         return a > 200 and r > 150 and r > g > b > 90 and g > 120 and g - b < 60 and r - b > 40
 
+    def is_eye(pixel) -> bool:
+        r, g, b, a = pixel
+        return a > 200 and r > 215 and g < 90 and b < 90
+
     image = duelist._render_frame("idle", 0, 8).convert("RGBA")
     box = image.getbbox()
     width, height = image.size
     pixels = image.load()
-    rows_with_skin = {y for y in range(height) for x in range(width) if is_skin(pixels[x, y])}
-    assert rows_with_skin, "his eyes are in a band of skin"
-    # All of it is in his head: the top fifth of him.
-    assert max(rows_with_skin) < box[1] + (box[3] - box[1]) * 0.2
+    assert not [(x, y) for y in range(height) for x in range(width) if is_skin(pixels[x, y])]
+    # His eyes are in his head: the top fifth of him.
+    eye_rows = {y for y in range(int(box[1] + (box[3] - box[1]) * 0.2)) for x in range(width) if is_eye(pixels[x, y])}
+    assert eye_rows
