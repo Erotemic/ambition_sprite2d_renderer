@@ -16,6 +16,7 @@ from typing import List
 
 from ..registry.character_generators import GENERATORS, get_generator
 from ..profiling import profile
+from .. import read_record
 from ..yaml_io import safe_load
 from ..authoring.canonical import (
     draw_canonical_of,
@@ -1195,7 +1196,9 @@ def _cmd_publish_many(args: argparse.Namespace) -> int:
     names = list(dict.fromkeys(args.targets))
     published = _PublishedList(args.published_list)
     workers = min(render_workers(), len(names))
-    if workers > 1:
+    # A batch that records each target's reads renders each target in a process
+    # of its own, so it takes the pool even on one worker.
+    if workers > 1 or os.environ.get(read_record.READS_ENV):
         return _publish_in_parallel(
             names, Path(args.dest_root), args.quiet, opts, workers, published
         )
@@ -1267,7 +1270,7 @@ def _publish_in_parallel(
 ) -> int:
     """`publish-many` on `workers` processes. Each target installs only its
     own files. Exit 1 when one target failed, as the serial batch does."""
-    from concurrent.futures import ProcessPoolExecutor, as_completed
+    from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 
     for line in _REPORT.warnings:
         print(f"discovery warning: {line}", file=sys.stderr)
@@ -1276,9 +1279,36 @@ def _publish_in_parallel(
     failures: list[str] = []
     seconds = _read_publish_seconds(PUBLISH_SECONDS)
     order = _longest_first(names, seconds)
-    with ProcessPoolExecutor(max_workers=workers) as pool:
+    # A batch that records each target's reads (`read_record`) publishes each
+    # target in an interpreter of its own, which a thread starts and waits on.
+    reads_dir = os.environ.get(read_record.READS_ENV)
+    excluded = (DEFAULT_ASSET_DIR, PUBLISH_SECONDS.parent, Path(dest_root))
+
+    def recorded(name: str) -> tuple[str | None, float]:
+        target = _ALL_TARGETS.get(name)
+        if target is None:
+            return f"unknown target: {name!r}", 0.0
+        return read_record.publish_in_subprocess(
+            target,
+            generated_dir(name),
+            Path(dest_root),
+            opts,
+            Path(reads_dir) / f"{name}.reads",
+            repo_root(),
+            excluded,
+        )
+
+    pool_kind = ThreadPoolExecutor if reads_dir else ProcessPoolExecutor
+    with pool_kind(max_workers=workers) as pool:
         # A pool takes the submitted jobs in order, so the order is the schedule.
-        futures = {pool.submit(_publish_one, name, dest_root, quiet, opts): name for name in order}
+        futures = {
+            (
+                pool.submit(recorded, name)
+                if reads_dir
+                else pool.submit(_publish_one, name, dest_root, quiet, opts)
+            ): name
+            for name in order
+        }
         for done, future in enumerate(as_completed(futures), 1):
             name = futures[future]
             error, took = future.result()

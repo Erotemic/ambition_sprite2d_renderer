@@ -928,6 +928,13 @@ def discover_all_targets() -> DiscoveryReport:
         _configs_dir(),
         "characters",
     )
+    # A review config with the name of a main config is never published by
+    # the registry, but `draw-review` rendered it, and the publish installed
+    # that render over the main sheet: one name, two products.
+    shadow_warnings = [
+        f"characters/{name}: configs/review/ shadowed by configs/ — delete one"
+        for name in sorted(set(review_targets) & set(main_targets))
+    ]
     targets: Dict[str, Target] = {}
     # Precedence (later overrides earlier).
     targets.update(review_targets)
@@ -935,7 +942,7 @@ def discover_all_targets() -> DiscoveryReport:
     targets.update(module_report.targets)
     return DiscoveryReport(
         targets=targets,
-        warnings=module_report.warnings + main_warnings + review_warnings,
+        warnings=module_report.warnings + main_warnings + review_warnings + shadow_warnings,
     )
 
 

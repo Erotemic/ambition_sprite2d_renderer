@@ -31,6 +31,9 @@ RUNTIME_ADAPTER_CONFIG_STEMS: frozenset[str] = frozenset(
         "boss",
         "raid_enforcer",
         "goblin",
+        # The forest spear's review config was a second config of one name
+        # (deleted 2026-10-14); the game draws this one.
+        "goblin_forest_spear",
         "player_robot_v3",
         "robot",
         "sandbag",

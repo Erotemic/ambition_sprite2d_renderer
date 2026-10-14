@@ -157,9 +157,9 @@ def test_default_draw_all_runtime_adapter_population_is_explicit():
         "player_robot_v3",
         "robot",
         "ranged_skirmisher",
+        "goblin_forest_spear",
     } <= RUNTIME_ADAPTER_CONFIG_STEMS
     assert {
-        "goblin_forest_spear",
         "player_extended",
         "robot_guardian",
         "robot_runner",
