@@ -257,24 +257,6 @@ def test_move_joint_can_edit_transformed_authored_svg_marker(tmp_path: Path) -> 
     assert abs(float(guide.get("y1", "0")) - 106.0) < 1e-5
 
 
-def test_hunny_custom_rig_anchors_joint_origins_to_art_bind_pivots() -> None:
-    path = (
-        REPO_ROOT
-        / "ambition_sprite2d_renderer/data/characters/hunny_horror_boss/hunny_horror_boss-front.svg"
-    )
-    root = ET.parse(path).getroot()
-    shoulder = next(
-        elem for elem in root.iter()
-        if elem.get("id") == "ambition-rig-front-joint-left_shoulder"
-    )
-    elbow = next(
-        elem for elem in root.iter()
-        if elem.get("id") == "ambition-rig-front-joint-left_elbow"
-    )
-    assert (float(shoulder.get("cx", "0")), float(shoulder.get("cy", "0"))) == (49.0, 81.0)
-    assert (float(elbow.get("cx", "0")), float(elbow.get("cy", "0"))) == (35.0, 102.0)
-
-
 def test_repo_preview_writes_single_contact_sheet(tmp_path: Path, monkeypatch) -> None:
     from PIL import Image
     import io

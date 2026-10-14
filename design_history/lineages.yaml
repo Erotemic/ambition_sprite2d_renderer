@@ -908,3 +908,15 @@ lineages:
       - commit: "8cf95a5"
         label: "Box coat, stick legs, a chest of medals"
         note: "An SVG rig of his own. Jon gave a cartoon general as inspiration, not to copy; he refused the tall leaning hat of the first draft for a normal officer's cap, and asked for more medals. Claude Opus 5.5 declared."
+  hunny_horror_boss:
+    name: Hunny Horror
+    ids: [hunny_horror_boss]
+    paths: ['hunny_horror']
+    summary: "a front-facing SVG part rig of a blob bear in a red shirt, then a stuffed teddy seen from the side that turns into a monster when it attacks"
+    eras:
+      - commit: "09e7bd8"
+        label: "Front-facing part rig"
+        note: "The last commit with the first design: an SVG of parts with seams at every joint, a red shirt, rows the game did not read (rest, swipe, maul, slam, roar, stagger)."
+      - commit: "HEAD"
+        label: "The teddy that turns"
+        note: "On the paint box of the cast, each limb one piece. No shirt (Jon: the red shirt is not public domain), no scars; sweet at rest, bristling, glowing and all teeth when it attacks or is angry. Claude Opus 5.5 declared."

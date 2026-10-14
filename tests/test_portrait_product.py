@@ -300,61 +300,36 @@ def test_pipi_tau_publishes_bespoke_expression_clips(tmp_path):
 def test_hunny_horror_portraits_publish_dialogue_flash_clips(tmp_path, monkeypatch):
     from ambition_sprite2d_renderer.targets.characters import hunny_horror_boss
 
-    calls: list[tuple[str, int, int, int]] = []
+    calls: list[dict] = []
+    width, height = hunny_horror_boss.FRAME_SIZE
 
-    class _FakeRigDocument:
-        frame = {"width": 160, "height": 160}
+    def fake_pose(pose, fx=None):
+        calls.append(pose)
+        image = Image.new("RGBA", (width * 4, height * 4), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(image)
+        draw.ellipse((360, 80, 640, 360), fill=(220, 190, 90, 255))
+        draw.rectangle((300, 310, 700, 800), fill=(90, 50, 30, 255))
+        return image
 
-        def frame_time(self, clip_name, frame_index, frame_count):
-            calls.append((clip_name, frame_index, frame_count, 0))
-            return frame_index / max(1, frame_count)
-
-        def render_at(self, clip_name, time, *, scale):
-            assert scale == 4
-            assert 0.0 <= time <= 1.0
-            calls.append((clip_name, 0, 0, scale))
-            image = Image.new("RGBA", (640, 640), (0, 0, 0, 0))
-            draw = ImageDraw.Draw(image)
-            draw.ellipse((180, 80, 460, 360), fill=(220, 190, 90, 255))
-            draw.rectangle((120, 310, 520, 620), fill=(90, 50, 30, 255))
-            return image
-
-    monkeypatch.setattr(hunny_horror_boss, "load_doc", lambda: _FakeRigDocument())
+    monkeypatch.setattr(hunny_horror_boss, "render_pose", fake_pose)
     outputs = hunny_horror_boss.render_portraits(tmp_path)
     manifest = outputs[1].read_text(encoding="utf8")
     assert [path.name for path in outputs] == [
         "hunny_horror_boss_portraits.png",
         "hunny_horror_boss_portraits.ron",
     ]
-    # DERIVED from what the boss declares, not frozen. A hardcoded page size and
-    # render count pin the PACKING ARITHMETIC, and they go red the day a clip
-    # gains a frame — which is a content decision, exactly like the clip names
-    # this test already stopped freezing. The invariant worth holding is that the
-    # page is big enough for every declared frame and no bigger, and that each
-    # one cost a fresh render.
     declared_frames = manifest.count("(x:")
     columns = min(8, declared_frames)
     rows = -(-declared_frames // columns)
     assert Image.open(outputs[0]).size == (256 * columns, 320 * rows)
-    render_calls = [call for call in calls if call[3] == 4]
-    assert len(render_calls) == declared_frames, (
-        f"the manifest declares {declared_frames} frames but the rig was rendered "
-        f"{len(render_calls)} times — a portrait frame was reused, not rerendered"
-    )
     assert declared_frames > 6, "portrait coverage collapsed to a handful of frames"
-    #  this used to freeze the clip NAMES — `{"rest", "walk", "roar",
-    # "swipe"}` — and the boss re-sourced one portrait from `maul` instead of
-    # `walk`. Which of its own animations a character draws a portrait from is
-    # a content decision; that it draws from animations it ACTUALLY HAS is the
-    # invariant, and it is the one with a real failure mode: a typo or a deleted
-    # row silently renders nothing.
-    used = {call[0] for call in render_calls}
-    declared = {name for name, *_ in hunny_horror_boss.ROWS}
-    assert used <= declared, f"portraits draw from clips this sheet does not publish: {used - declared}"
-    assert len(used) >= 3, f"portrait variety collapsed onto {used}"
-    assert '"speaking": (' in manifest
-    assert '"evil_flash": (' in manifest
-    assert '"evil_hold": (' in manifest
+    # The beats go from the sweet bear to the monster.
+    assert any(float(pose["horror"]) == 0.0 for pose in calls)
+    assert any(float(pose["horror"]) == 1.0 for pose in calls)
+    # The clips the hall conversation (`hall_npc_hunny_horror_boss` in the
+    # game's `hall.yarn`) asks for: a missing one shows the default portrait.
+    for clip in ("speaking", "creepy", "snarl", "evil_flash", "evil_hold", "roar"):
+        assert f'"{clip}": (' in manifest, clip
 
 
 def test_oiler_portrait_hook_requests_native_svg_scale(monkeypatch, tmp_path):

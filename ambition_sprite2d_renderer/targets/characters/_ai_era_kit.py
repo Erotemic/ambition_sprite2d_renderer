@@ -116,8 +116,10 @@ def pin(p: Point) -> Point:
 class Kit:
     """The paint box for one frame size."""
 
-    def __init__(self, frame: Tuple[int, int], supersample: int = 4) -> None:
+    def __init__(self, frame: Tuple[int, int], supersample: int = 4, ink: RGBA = OUTLINE) -> None:
         self.frame = frame
+        #: The colour of every outline ``solid`` grows.
+        self.ink = ink
         self.scale = supersample
         self.canvas = (frame[0] * supersample, frame[1] * supersample)
         #: Where a piece's anchor is painted on the scratch canvas, which is
@@ -286,7 +288,7 @@ class Kit:
             detail(blending_draw(layer))
             body.alpha_composite(layer.crop(region))
         body.putalpha(mask)
-        out = Image.new("RGBA", mask.size, OUTLINE)
+        out = Image.new("RGBA", mask.size, self.ink)
         out.putalpha(mask.filter(ImageFilter.MaxFilter(2 * self.s(outline) + 1)) if outline > 0.0 else mask)
         out.alpha_composite(body)
         part = (out, (self.home[0] * self.scale - region[0], self.home[1] * self.scale - region[1]))
