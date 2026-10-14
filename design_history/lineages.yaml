@@ -893,3 +893,15 @@ lineages:
       - commit: "dc75c38"
         label: "The puppyslug"
         note: "On the paint box of the cast: the head of a puppy, the eye stalks of a slug, fur that goes over into wet green skin, a face asleep on its back and two eyes in its flank. Claude Opus 5.5 declared."
+  general:
+    name: General
+    ids: [absurd_general]
+    paths: ['absurd_general']
+    summary: "a preset of the toon template, then a box of a coat on stick legs under an officer's cap"
+    eras:
+      - commit: "5525f9a"
+        label: "Toon-template general"
+        note: "The last commit with the first design: a preset of the shared toon rig. The commit that introduced it is not surveyed."
+      - commit: "8cf95a5"
+        label: "Box coat, stick legs, a chest of medals"
+        note: "An SVG rig of his own. Jon gave a cartoon general as inspiration, not to copy; he refused the tall leaning hat of the first draft for a normal officer's cap, and asked for more medals. Claude Opus 5.5 declared."
