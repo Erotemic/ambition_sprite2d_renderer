@@ -64,8 +64,8 @@ ROWS: List[Tuple[str, int, int]] = [
     ("squeeze", 4, 110),
     ("throw", 5, 80),
     ("spit", 6, 90),
-    ("run", 6, 75),
-    ("flop", 8, 90),
+    ("float", 6, 120),
+    ("pounce", 4, 70),
     ("stunned", 6, 140),
 ]
 
@@ -555,21 +555,21 @@ def _pose(anim: str, i: int, n: int) -> Tuple[Pose, dict]:
         spit = P(lean=14.0, head=10.0, horror=1.0, jaw=1.0, eyes="glow", near_hand=(18.0, 46.0), far_hand=(6.0, 46.0),
                  root=(4.0, 0.0))
         return keys(u, [(0.0, REST), (0.4, fill), (0.6, spit), (1.0, spit)]), fx
-    if anim == "run":
-        # On all fours, the way a bear charges.
-        p = math.tau * loop
-        s, c = math.sin(p), math.cos(p)
-        return P(root=(10.0, -4.0 - 3.0 * abs(c)), lean=62.0 + 3.0 * s, head=-48.0 - 3.0 * s, horror=1.0, jaw=0.75, eyes="glow",
-                 claw=1.0, ground=1.0, near_hand=(26.0 + 14.0 * s, 60.0), far_hand=(16.0 - 14.0 * s, 60.0),
-                 near_foot=(-6.0 - 14.0 * s, -6.0 * max(0.0, c)), far_foot=(-20.0 + 14.0 * s, -6.0 * max(0.0, -c))), fx
-    if anim == "flop":
-        crouch = P(root=(-2.0, 6.0), lean=-6.0, head=-10.0, horror=1.0, jaw=0.5, eyes="glow", near_hand=(30.0, -30.0),
-                   far_hand=(20.0, -34.0), claw=1.0)
-        fly = P(root=(10.0, -26.0), lean=40.0, head=-20.0, horror=1.0, jaw=1.0, eyes="glow", near_hand=(50.0, -10.0),
-                far_hand=(40.0, -14.0), claw=1.0, near_foot=(-12.0, -20.0), far_foot=(-26.0, -16.0))
-        land = P(root=(18.0, -9.0), lean=72.0, head=-52.0, horror=1.0, jaw=0.75, eyes="glow", near_hand=(40.0, 60.0),
-                 far_hand=(26.0, 60.0), ground=1.0, claw=1.0, near_foot=(-14.0, 0.0), far_foot=(-28.0, 0.0))
-        return keys(u, [(0.0, crouch), (0.14, crouch), (0.5, fly), (0.72, land), (1.0, land)]), fx
+    if anim == "float":
+        # Hanging from a red balloon (the balloon is the game's own picture,
+        # held at the top of his raised paw), his legs dangling, looking down
+        # at you. The smile grows as he rises; at the top he is the monster.
+        sway = math.sin(math.tau * loop)
+        horror = 0.5 if i < n - 2 else 1.0
+        return P(root=(0.0, -10.0), lean=-6.0 + 3.0 * sway, head=16.0 - 2.0 * sway, horror=horror, jaw=0.0 if i < n - 2 else 0.5,
+                 eyes="bead" if i < n - 2 else "glow", near_hand=(-14.0, -62.0), far_hand=(6.0 + 3.0 * sway, 48.0),
+                 near_foot=(10.0 + 4.0 * sway, 6.0), far_foot=(-4.0 - 4.0 * sway, 4.0), claw=0.0 if i < n - 2 else 1.0), fx
+    if anim == "pounce":
+        # The dive: claws first at you, legs trailing.
+        k = 1.0 if i % 2 else -1.0
+        return P(root=(4.0, -36.0), lean=62.0 + 2.0 * k, head=-34.0, horror=1.0, jaw=1.0, eyes="glow", claw=1.0,
+                 near_hand=(58.0, 44.0 + 2.0 * k), far_hand=(46.0, 52.0 - 2.0 * k), near_foot=(-52.0, -66.0),
+                 far_foot=(-60.0, -56.0)), fx
     if anim == "stunned":
         # Dazed, sitting, sweet again: honey bees circle his head.
         wobble = math.sin(math.tau * loop)
