@@ -50,7 +50,7 @@ def test_render_scale_doubles_resolution_across_generator_families():
     jobs = _jobs()
     # One representative per generator family: toon (scale-to-width) +
     # robot/goblin/boss (128-base, fixed to scale-proportionally).
-    for name in ("absurd_general", "player_robot_v2", "goblin", "boss"):
+    for name in ("architect", "player_robot_v2", "goblin", "boss"):
         job = jobs.get(name)
         if job is None:
             continue

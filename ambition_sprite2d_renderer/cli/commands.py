@@ -182,7 +182,8 @@ def validate_adapter_config_dirs(*config_dirs: str | Path) -> int:
 # installs them in one shot so a fresh checkout can boot with full
 # NPC art without invoking `draw-character` ten times.
 RUNTIME_REVIEW_NPCS: tuple[str, ...] = (
-    "absurd_general",
+    # absurd_general is NOT here any more: the General is the rigged module
+    # target `targets/characters/absurd_general.py`, published by `publish`.
     "architect",
     # erdish is NOT here any more: he is the rigged module target
     # `targets/characters/erdish.py`, published by `publish`.

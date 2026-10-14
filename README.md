@@ -687,8 +687,8 @@ character is posed.
 `CharacterJob` accepts optional `name`, `output_name`, and `spec` fields.
 The `toon` target uses those `spec` overrides to author silhouette-first
 characters without inventing a brand new renderer per NPC. Review presets can
-be intentionally trope-heavy: `absurd_general` is the shouting-general pass with
-a giant star cap, epaulets, medals, awards, baton, and irate yell face. Example:
+be intentionally trope-heavy. (The General, `absurd_general`, was one of them
+until 2026-10-13; he is an SVG rig of his own now.) Example:
 
 ```yaml
 target: toon
@@ -706,7 +706,7 @@ Use `draw-review` to regenerate the current cast along with a canonical contact
 sheet. The `raid_enforcer` preset is a fictional raid-enforcer enemy pass: severe
 cap, charcoal tunic, red armband with an invented black sigil, collar skull
 tabs, and a long rifle so it reads as a distinct villain rather than a variant
-of `absurd_general`.
+of the General.
 
 ## Conventions
 
