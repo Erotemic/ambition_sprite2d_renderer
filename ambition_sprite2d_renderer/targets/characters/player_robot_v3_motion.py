@@ -27,7 +27,8 @@ ROBOT_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     ("idle_look_up", 8, 120),
     ("walk", 8, 95),
     ("walk_stop", 6, 72),
-    ("turnaround", 6, 72),
+    # Drawn over the first 0.16 s after a flip of the facing, slaved to it.
+    ("turnaround", 4, 40),
     ("dash_startup", 4, 50),
     ("dash", 6, 65),
     ("run", 8, 64),
@@ -426,7 +427,6 @@ LOOPING_ROWS: Final[frozenset[str]] = frozenset(
         "idle_look_up",
         "walk",
         "run",
-        # The crawl.
         "crouch_walk",
         "fall",
         "fall_special",

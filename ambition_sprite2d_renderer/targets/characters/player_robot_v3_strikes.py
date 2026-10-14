@@ -73,6 +73,10 @@ class Key:
     face: Optional[str] = None
     # The head turned to look behind (the back air), mirrored about the neck.
     look_back: bool = False
+    # The head sunk onto the shoulders and squashed, as in the crouch hold
+    # (`player_robot_v3_crouch`): a strike made from the crouch keeps it.
+    head_sink: float = 0.0
+    head_squash: float = 1.0
     # Seen from the robot's other side, the working arm is the far one. `None`
     # draws it over the body while the blade is out and reaching forward; a
     # bladeless reach (a pet) says `True`.
@@ -124,6 +128,35 @@ def rest(body: RigBody, at: float, *, air: bool = False) -> Key:
     )
 
 
+def crouched(body: RigBody, at: float, *, ease: str = "in") -> Key:
+    """The crouch hold (`player_robot_v3_crouch`) as a key, with the blade
+    stowed: a strike made from the crouch starts and ends in it, so the robot
+    does not stand up for it."""
+    from .player_robot_v3_crouch import (
+        CROUCH_DROP, CROUCH_HEAD_SINK, CROUCH_HEAD_SQUASH, CROUCH_SHAPE,
+    )
+
+    shape = CROUCH_SHAPE
+    # The hold keys the trunk on the pelvis; a key keys it in the world.
+    torso = shape["pelvis"] + shape["torso"]
+    near, far = body.arm_rest["near"], body.arm_rest["far"]
+    near_u = near.upper + torso + shape["near_arm_u"]
+    far_u = far.upper + torso + shape["far_arm_u"]
+    return Key(
+        at=at,
+        near=(near_u, near.lower + torso + shape["near_arm_u"] + shape["near_arm_l"], BLADE_DRAWN_DEG),
+        far=(far_u, far.lower + torso + shape["far_arm_u"] + shape["far_arm_l"]),
+        torso=torso,
+        head=torso + shape["head"],
+        drop=CROUCH_DROP,
+        head_sink=CROUCH_HEAD_SINK,
+        head_squash=CROUCH_HEAD_SQUASH,
+        squint=shape["eye_squint"],
+        blade=0.0,
+        ease=ease,
+    )
+
+
 def _lerp(a: float, b: float, u: float) -> float:
     return a + (b - a) * u
 
@@ -163,6 +196,8 @@ def _blend(a: Key, b: Key, u: float) -> Key:
         drop=num("drop"),
         squash=num("squash"),
         shoulder=num("shoulder"),
+        head_sink=num("head_sink"),
+        head_squash=num("head_squash"),
         feet={side: feet(side) for side in SIDES},
         # A body is airborne or it is not; the boots' frame of reference does
         # not blend. Ground and air keys never share a row.
@@ -218,6 +253,7 @@ def _pose(body: RigBody, key: Key, other_side: bool = False, item: bool = False)
         torso=key.torso,
         head=key.head,
         squash=key.squash,
+        head_dy=key.head_sink,
         # The torso TURNS by sliding its shoulders: the near one comes forward
         # as the chest swings toward the target, the far one goes back.
         shoulder_dx={blade_arm: key.shoulder, off_arm: -0.6 * key.shoulder},
@@ -251,6 +287,7 @@ def _pose(body: RigBody, key: Key, other_side: bool = False, item: bool = False)
     for name, channel in TORSO_SWAP.items():
         ch[channel] = 1.0 if turn == name else 0.0
     ch["eye_squint"] = key.squint
+    ch["bone.head.scale_y"] = key.head_squash
     face = key.face or ("fierce" if key.blade > 0.0 else "open")
     for name, channel in FACES.items():
         ch[channel] = 1.0 if face == name else 0.0
@@ -350,29 +387,33 @@ def tilt_up(body: RigBody) -> List[Key]:
 def tilt_down(body: RigBody) -> List[Key]:
     """Down tilt: a crouching thrust along the floor. 0.28 s, A 0.06-0.12.
 
+    It is made from the crouch (the stick is held down), so it starts and ends
+    in the crouch hold. From the stand it went up and down again around the
+    thrust, and a robot that crouched stood up to poke.
+
     Its volume is a long thin poke, so the blade goes out straight and comes
     straight back — no arc to read as a slash.
     """
     a0, a1 = 0.06 / 0.28, 0.12 / 0.28
     low = {"near": (-3.0, 0.0, 0.0), "far": (5.0, 0.0, 0.0)}
+    out = {"near": (-4.0, 0.0, 0.0), "far": (9.0, 0.0, 0.0)}
+    sunk = {"head_sink": 4.0, "head_squash": 0.82}
     return [
-        rest(body, 0.0),
-        # Drawn back at the hip, dropping into the crouch — the blade still
+        crouched(body, 0.0),
+        # Drawn back at the hip, lower into the crouch — the blade already
         # points AT the target: a thrust never swings.
         Key(at=a0 * 0.85, near=(150.0, 170.0, 5.0), far=(45.0, 20.0), torso=18.0, head=-8.0,
-            lunge=-1.0, drop=9.0, squash=0.92, shoulder=-3.0, feet=low, turn="open", squint=0.3,
-            ease="in"),
+            lunge=-1.0, drop=13.0, squash=0.92, shoulder=-3.0, feet=low, turn="open", squint=0.3,
+            ease="in", **sunk),
         # Thrust: arm and blade in one straight line along the floor.
         Key(at=a0 + 0.3 * (a1 - a0), near=(20.0, 8.0, 6.0), far=(140.0, 120.0), torso=26.0,
-            head=-12.0, lunge=6.0, drop=10.0, squash=0.94, shoulder=7.0,
-            feet={"near": (-4.0, 0.0, 0.0), "far": (9.0, 0.0, 0.0)}, turn="profile", squint=0.4,
-            ease="out"),
+            head=-12.0, lunge=6.0, drop=13.0, squash=0.94, shoulder=7.0, feet=out, turn="profile",
+            squint=0.4, ease="out", **sunk),
         Key(at=a1, near=(22.0, 10.0, 8.0), far=(140.0, 120.0), torso=25.0, head=-11.0, lunge=6.0,
-            drop=10.0, squash=0.94, shoulder=7.0,
-            feet={"near": (-4.0, 0.0, 0.0), "far": (9.0, 0.0, 0.0)}, turn="profile", squint=0.3),
-        Key(at=a1 + 0.22, near=(90.0, 100.0, 60.0), far=(90.0, 80.0), torso=12.0, head=-4.0,
-            lunge=3.0, drop=6.0, squash=0.97, feet={"far": (5.0, 0.0, 0.0)}, blade=0.0),
-        rest(body, 1.0),
+            drop=13.0, squash=0.94, shoulder=7.0, feet=out, turn="profile", squint=0.3, **sunk),
+        Key(at=a1 + 0.22, near=(90.0, 100.0, 60.0), far=(90.0, 80.0), torso=14.0, head=-2.0,
+            lunge=3.0, drop=12.5, squash=0.96, feet={"far": (5.0, 0.0, 0.0)}, blade=0.0, **sunk),
+        crouched(body, 1.0),
     ]
 
 

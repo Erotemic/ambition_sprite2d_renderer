@@ -29,6 +29,7 @@ import itertools
 import math
 
 from ...authoring.rigdoc import RigDocument
+from .player_robot_v3_body import write_frames
 
 # How far the pelvis travels, in frame pixels.
 #
@@ -89,6 +90,11 @@ ITEM_HOLD_ARMS = {
 
 # Breathing on the hold, and the crouch-walk's stride, both in frame pixels.
 BREATH = 1.6
+# The crouch walk: how far a foot reaches each side of where it stands, how
+# high it clears the floor, and how far the body bobs (twice in a cycle).
+STRIDE_X = 9.0
+STRIDE_LIFT = 4.5
+STRIDE_BOB = 1.2
 
 LEG_CHANNELS = ("far_leg_u", "far_leg_l", "far_leg_foot", "near_leg_u", "near_leg_l", "near_leg_foot")
 
@@ -358,9 +364,36 @@ def reauthor_crouch(doc: RigDocument) -> dict:
         leap.append(frame)
     poses["crouch_jump"] = leap
 
-    # `crouch_walk` is not of this family: a crouched body that moves crawls
-    # (`player_robot_v3_crawl`).
+    # crouch_walk: the hold, with the feet trading places along the ground line.
+    # A foot reaches 9 px each side and clears the floor by 4.5: at 5.5 and 2.4
+    # the steps did not read at the size of the game. A loop (`write_frames`).
+    walk = []
+    for i in range(8):
+        phase = 2.0 * math.pi * i / 8.0
+        targets = {}
+        for side, offset in (("far", 0.0), ("near", math.pi)):
+            swing = math.sin(phase + offset)
+            lift = max(0.0, math.sin(phase + offset + math.pi / 2.0)) * STRIDE_LIFT
+            targets[side] = (rest[side]["ankle"][0] + STRIDE_X * swing, p.ground - lift)
+        bob = math.cos(2.0 * phase)
+        frame = pose_at(p, rest, CROUCH_DROP + STRIDE_BOB * bob, targets, seed=walk[-1] if walk else hold)
+        frame.update(CROUCH_SHAPE)
+        # The body rocks with the steps, and the head lags the bob.
+        frame["torso"] = CROUCH_SHAPE["torso"] + 2.0 * math.sin(phase)
+        frame["head"] = CROUCH_SHAPE["head"] - 1.5 * math.sin(phase) - 1.0 * bob
+        frame["far_arm_u"] = CROUCH_SHAPE["far_arm_u"] + 14.0 * math.sin(phase)
+        frame["near_arm_u"] = CROUCH_SHAPE["near_arm_u"] - 14.0 * math.sin(phase)
+        frame.update(head_channels(1.0, breath=0.03 * bob))
+        walk.append(frame)
+    looping = {"crouch_walk": walk}
     p.drop()
+
+    for clip_name, frames in looping.items():
+        write_frames(
+            doc,
+            clip_name,
+            {key: [f.get(key, 0.0) for f in frames] for key in frames[0] if not key.startswith("_")},
+        )
 
     for clip_name, frames in poses.items():
         channels = doc.data["clips"][clip_name]["channels"]

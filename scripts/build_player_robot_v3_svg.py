@@ -22,9 +22,9 @@ from ambition_sprite2d_renderer.targets.characters.player_robot_v3_motion import
     ROBOT_ROWS,
 )
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_back import BACK_ROWS, author_back_rows
-from ambition_sprite2d_renderer.targets.characters.player_robot_v3_crawl import author_crawl
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_crouch import reauthor_crouch
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_double_jump import author_double_jump
+from ambition_sprite2d_renderer.targets.characters.player_robot_v3_turn import author_turnaround
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_gait import author_gaits
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_ground import keep_over_ground
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_strikes import (
@@ -590,8 +590,8 @@ def build_doc() -> dict:
     # a build is the whole rig and no second pass can be forgotten.
     solved = RigDocument(doc)
     reauthor_crouch(solved)
-    author_crawl(solved)
     author_double_jump(solved)
+    author_turnaround(solved)
     author_gaits(solved)
     author_strikes(solved)
     doc["features"] = {
@@ -610,7 +610,7 @@ def build_doc() -> dict:
         "idle_eye_blink": True,
         "solved_rows": [
             "crouch_start", "crouch", "crouch_walk", "crouch_jump", "crouch_end",
-            "item_hold_crouch", "double_jump", "walk", "run", *STRIKES,
+            "item_hold_crouch", "double_jump", "turnaround", "walk", "run", *STRIKES,
         ],
     }
     return doc
