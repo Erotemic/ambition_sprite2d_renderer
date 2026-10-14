@@ -15,8 +15,7 @@ TARGET_NAME = "dog_roadie"
 RIG_PATH = _house_dog.rig_path(TARGET_NAME)
 
 ACTOR_METADATA = _house_dog.actor_metadata(
-    "npc_dog_roadie",
-    "Roadie",
+    {"character_id": "npc_dog_roadie", "display_name": "Roadie"},
     [
         "Roadie, the biggest of the three (50 lb): a cattle dog with a tan head and legs, and a blue-grey saddle with pale flecks.",
         "A ruff at the neck, a brush of a tail with a white end, an orange collar.",

@@ -78,7 +78,9 @@ _GAIT = frozenset({"idle", "walk", "walk_stop", "turnaround", "dash_startup", "d
 
 ACTOR_METADATA = {
     "actor": {
-        "character_id": TARGET_NAME,
+        # Spelled out, not `TARGET_NAME`: the game's census of rendered
+        # identities reads the id as text (`rendered_identities_are_registered`).
+        "character_id": "imperfect_cellular_automaton",
         "display_name": "Imperfect Cellular Automaton",
     },
     "body": {

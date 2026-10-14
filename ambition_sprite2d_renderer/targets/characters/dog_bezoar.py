@@ -15,8 +15,7 @@ TARGET_NAME = "dog_bezoar"
 RIG_PATH = _house_dog.rig_path(TARGET_NAME)
 
 ACTOR_METADATA = _house_dog.actor_metadata(
-    "npc_dog_bezoar",
-    "Bezoar",
+    {"character_id": "npc_dog_bezoar", "display_name": "Bezoar"},
     [
         "Bezoar, tall and lanky (40 lb): a fawn dog on long legs, with a dark mask on its muzzle.",
         "Ears that stand up and fold at the end, a tongue that hangs out.",

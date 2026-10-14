@@ -15,8 +15,7 @@ TARGET_NAME = "dog_honey"
 RIG_PATH = _house_dog.rig_path(TARGET_NAME)
 
 ACTOR_METADATA = _house_dog.actor_metadata(
-    "npc_dog_honey",
-    "Honey",
+    {"character_id": "npc_dog_honey", "display_name": "Honey"},
     [
         "Honey, the smallest of the three (35 lb): a short orange dog like a fox, with two very large ears.",
         "Grey about the nose and the brow, a small white patch on the chest, a thick brush of a tail. No collar.",

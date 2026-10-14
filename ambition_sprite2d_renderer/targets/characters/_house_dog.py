@@ -93,11 +93,12 @@ def doc(target: str, left_side: bool = False) -> RigDocument:
     return _load(target, left_side, path.stat().st_mtime_ns, COMPANION_RIG_PATH.stat().st_mtime_ns)
 
 
-def actor_metadata(character_id: str, display_name: str, looks: List[str]) -> Dict[str, Any]:
+def actor_metadata(actor: Dict[str, str], looks: List[str]) -> Dict[str, Any]:
     """The actor contract of a house dog: the companion dog's body and rows,
-    with this dog's name and looks."""
+    with this dog's name and looks. ``actor`` is its id and its name; each
+    target spells the id out, so a scan of the targets reads it."""
     return {
-        "actor": {"character_id": character_id, "display_name": display_name},
+        "actor": dict(actor),
         "authoring_description": {
             "visual_inspirations": looks,
             "rigging_notes": [
