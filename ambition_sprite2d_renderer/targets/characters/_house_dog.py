@@ -32,10 +32,10 @@ COMPANION_RIG_PATH = RIGGED / "companion_dog" / "companion_dog_side.rig.json"
 
 
 #: How long the legs of each dog are, as a part of the companion dog's.
-LEG_SCALE: Dict[str, float] = {"dog_honey": 0.80, "dog_roadie": 1.0, "dog_bezoar": 1.15}
+LEG_SCALE: Dict[str, float] = {"dog_honey": 0.80, "dog_roadie": 1.0, "dog_bezoar": 1.05}
 #: How thick the legs of each dog are, as a part of the companion dog's. A
 #: fact of the drawing only: no joint moves.
-LEG_THICKNESS: Dict[str, float] = {"dog_honey": 1.0, "dog_roadie": 1.0, "dog_bezoar": 0.88}
+LEG_THICKNESS: Dict[str, float] = {"dog_honey": 1.0, "dog_roadie": 1.0, "dog_bezoar": 0.9}
 #: A dog that is not the same on its two sides has a second drawing, of its
 #: LEFT side. Honey's right ear has a small flap at its tip.
 MIRRORED = "{}~mirrored"

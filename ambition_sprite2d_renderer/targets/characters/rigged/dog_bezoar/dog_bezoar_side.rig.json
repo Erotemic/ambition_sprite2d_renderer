@@ -26,7 +26,7 @@
       "parent": null,
       "offset": [
         0,
-        -51.75
+        -47.25
       ],
       "length": 0,
       "rest_angle": 0
@@ -56,30 +56,30 @@
       "parent": "body",
       "offset": [
         -17.25,
-        2.0125
+        1.8375
       ],
-      "length": 16.7218,
-      "rest_angle": 85.713
+      "length": 15.2762,
+      "rest_angle": 85.3064
     },
     {
       "name": "far_hind_lower",
       "parent": "far_hind_upper",
       "offset": [
-        16.7218,
+        15.2762,
         0
       ],
-      "length": 25.8943,
-      "rest_angle": 6.5002
+      "length": 23.6462,
+      "rest_angle": 7.1173
     },
     {
       "name": "far_hind_paw",
       "parent": "far_hind_lower",
       "offset": [
-        25.8943,
+        23.6462,
         0
       ],
       "length": 0,
-      "rest_angle": -92.2132
+      "rest_angle": -92.4238
     },
     {
       "name": "far_fore_upper",
@@ -88,84 +88,84 @@
         15.5,
         -1.25
       ],
-      "length": 24.8703,
-      "rest_angle": 93.4578
+      "length": 22.8243,
+      "rest_angle": 93.7682
     },
     {
       "name": "far_fore_lower",
       "parent": "far_fore_upper",
       "offset": [
-        24.8703,
+        22.8243,
         0
       ],
-      "length": 21.5639,
-      "rest_angle": -2.7935
+      "length": 19.6891,
+      "rest_angle": -3.0406
     },
     {
       "name": "far_fore_paw",
       "parent": "far_fore_lower",
       "offset": [
-        21.5639,
+        19.6891,
         0
       ],
       "length": 0,
-      "rest_angle": -90.6643
+      "rest_angle": -90.7275
     },
     {
       "name": "near_hind_upper",
       "parent": "body",
       "offset": [
         -15.25,
-        3.7375
+        3.4125
       ],
-      "length": 17.6529,
-      "rest_angle": 77.7352
+      "length": 16.1903,
+      "rest_angle": 76.6075
     },
     {
       "name": "near_hind_lower",
       "parent": "near_hind_upper",
       "offset": [
-        17.6529,
+        16.1903,
         0
       ],
-      "length": 23.9119,
-      "rest_angle": 21.8945
+      "length": 21.8935,
+      "rest_angle": 23.9197
     },
     {
       "name": "near_hind_paw",
       "parent": "near_hind_lower",
       "offset": [
-        23.9119,
+        21.8935,
         0
       ],
       "length": 0,
-      "rest_angle": -99.6297
+      "rest_angle": -100.5272
     },
     {
       "name": "near_fore_upper",
       "parent": "body",
       "offset": [
         25.0,
-        0.8625
+        0.7875
       ],
-      "length": 24.7364,
-      "rest_angle": 91.7375
+      "length": 22.5875,
+      "rest_angle": 91.9028
     },
     {
       "name": "near_fore_lower",
       "parent": "near_fore_upper",
       "offset": [
-        24.7364,
+        22.5875,
         0
       ],
-      "length": 19.55,
-      "rest_angle": -1.7375
+      "length": 17.85,
+      "rest_angle": -1.9028
     },
     {
       "name": "near_fore_paw",
       "parent": "near_fore_lower",
       "offset": [
-        19.55,
+        17.85,
         0
       ],
       "length": 0,
@@ -245,9 +245,9 @@
       ],
       "pivot": [
         251,
-        308.05
+        307.35
       ],
-      "rest_angle": 85.713
+      "rest_angle": 85.3064
     },
     {
       "name": "far_hind_lower",
@@ -259,9 +259,9 @@
       ],
       "pivot": [
         256,
-        374.75
+        368.25
       ],
-      "rest_angle": 92.2132
+      "rest_angle": 92.4238
     },
     {
       "name": "far_hind_paw",
@@ -273,7 +273,7 @@
       ],
       "pivot": [
         252,
-        478.25
+        462.75
       ],
       "rest_angle": 0
     },
@@ -289,7 +289,7 @@
         382,
         295
       ],
-      "rest_angle": 93.4578
+      "rest_angle": 93.7682
     },
     {
       "name": "far_fore_lower",
@@ -301,9 +301,9 @@
       ],
       "pivot": [
         376,
-        394.3
+        386.1
       ],
-      "rest_angle": 90.6643
+      "rest_angle": 90.7275
     },
     {
       "name": "far_fore_paw",
@@ -315,7 +315,7 @@
       ],
       "pivot": [
         375,
-        480.55
+        464.85
       ],
       "rest_angle": 0
     },
@@ -329,9 +329,9 @@
       ],
       "pivot": [
         259,
-        314.95
+        313.65
       ],
-      "rest_angle": 77.7352
+      "rest_angle": 76.6075
     },
     {
       "name": "near_hind_lower",
@@ -343,9 +343,9 @@
       ],
       "pivot": [
         274,
-        383.95
+        376.65
       ],
-      "rest_angle": 99.6297
+      "rest_angle": 100.5272
     },
     {
       "name": "near_hind_paw",
@@ -357,7 +357,7 @@
       ],
       "pivot": [
         258,
-        478.25
+        462.75
       ],
       "rest_angle": 0
     },
@@ -371,9 +371,9 @@
       ],
       "pivot": [
         420,
-        303.45
+        303.15
       ],
-      "rest_angle": 91.7375
+      "rest_angle": 91.9028
     },
     {
       "name": "near_fore_lower",
@@ -385,7 +385,7 @@
       ],
       "pivot": [
         417,
-        402.35
+        393.45
       ],
       "rest_angle": 90.0
     },
@@ -399,7 +399,7 @@
       ],
       "pivot": [
         417,
-        480.55
+        464.85
       ],
       "rest_angle": 0
     },

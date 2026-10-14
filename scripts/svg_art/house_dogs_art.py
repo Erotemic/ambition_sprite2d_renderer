@@ -15,9 +15,9 @@ Writes ``data/characters/<name>/<name>_side.svg`` for:
   legs, a blue-grey saddle with flecks, a ruff at the neck, a brush of a tail
   with a white end, an orange collar.
 * ``dog_bezoar`` (Bezoar, "Bea", 40 lb, taller than Honey and lanky): a slim
-  fawn dog on long thin legs. A black mask on the muzzle and up the bridge
-  of the nose, a dark pip of an eyebrow, two dark ears with a slight flop (each stands
-  up, and its end hangs forward), a thin tail with a dark end, a brown collar with a
+  fawn dog on long thin legs. A muzzle that goes dark toward the nose, a
+  dark pip of an eyebrow, two ears with a slight flop and dark tips (each
+  stands up, and its end hangs forward), a thin tail with a dark end, a brown collar with a
   pattern and a blue tag in the shape of a bone.
 
 THE JOINTS ARE THE COMPANION DOG'S. Each drawing has the companion dog's
@@ -459,7 +459,6 @@ BEZOAR: Palette = {
     "far_upper": "#8c5628", "far_lower": "#a36632", "far_light": "#bb8248", "far_paw": "#cf9c64",
     "leg": "#d28d4c", "leg_light": "#e6aa68", "paw": "#ebc490", "toe": "#8f5c2e",
     "cream": "#f2d6a6", "eye_rim": "#1f1513", "iris": "#5b3a22",
-    "mask": "#33282a", "mask_soft": "#6a4a3a",
 }
 
 def bezoar() -> Dict[str, List[str]]:
@@ -494,33 +493,37 @@ def bezoar() -> Dict[str, List[str]]:
     ]
     # Two ears with a SLIGHT flop (Jon, 2026-10-13: "having the two flop ears
     # for beazor was correct", "slight flops"): each stands up tall, and only
-    # its end hangs forward. They are dark at the edge and dark inside.
+    # its end hangs forward. The ear is of the coat; only its tip is dark
+    # ("Her ears only have the dark tips").
     ear_edge = "M456 199 C448 166 449 132 461 102 L490 96 C502 124 510 152 513 178 C499 192 474 200 456 199 Z"
     ear_inner = "M467 187 C462 162 463 140 469 120 L486 116 C493 138 498 158 500 176 C490 182 478 186 467 187 Z"
     ear_tip = "M459 104 C468 90 483 86 494 91 C506 98 516 110 519 124 C506 121 488 116 463 116 C459 112 458 108 459 104 Z"
     parts["head"] = [
-        path(shift(ear_edge, 42, 8), "#57413a", o, 8),
-        path(shift(ear_inner, 42, 8), "#735750"),
+        path(shift(ear_edge, 42, 8), p["coat_dark"], o, 8),
+        path(shift(ear_inner, 42, 8), "#b98a6a"),
         path(shift(ear_tip, 42, 8), "#3f2f2a", o, 7),
         path(SKULL, p["coat"], o, 9),
         path("M500 172 C517 161 543 164 556 180 C546 179 537 188 533 201 C519 198 508 188 500 172 Z", p["coat_light"]),
-        # The mask: black at the muzzle, and brown up the bridge of the nose
-        # to between the eyes.
-        path("M528 232 C534 214 548 202 564 198 C576 202 590 208 600 214 C582 222 562 238 550 262 C538 258 528 246 528 232 Z", p["mask_soft"]),
-        path(MUZZLE, p["mask"], o, 8),
-        line("M548 223 C563 218 584 222 596 232", "#54433f", 6),
-        line("M562 262 C579 269 602 266 611 256", "#191213", 5),
+        # The muzzle is of the coat at its root and goes dark toward the nose,
+        # in three steps, so the dark blends in (Jon, 2026-10-13: "her muzzle
+        # isn't that dark. It is towards the end, but it sort of blends in").
+        path(MUZZLE, "#b97a40"),
+        path("M560 214 C574 210 592 214 604 221 C616 229 620 244 616 256 C608 266 584 268 566 266 C561 250 558 232 560 214 Z", "#8f5d3a"),
+        path("M584 216 C596 216 608 222 614 230 C619 240 618 250 614 256 C606 264 594 266 584 265 C580 250 581 232 584 216 Z", "#5c3d31"),
+        path(MUZZLE, "none", o, 8),
+        line("M548 223 C560 219 572 219 582 222", "#d09a5e", 5),
+        line("M562 262 C579 269 602 266 611 256", "#3a2620", 5),
         # The pip of the eyebrow: a dark mark over the eye.
         path(shift(BROW_PIP, 0, -3), "#33231d", "#33231d", 2),
         path(NOSE, "#1b1718", "#0e0c0d", 4),
         line("M601 220 C606 219 610 222 611 225", "#6f686b", 3),
     ]
     parts.update(eyes(p, size=1.12))
-    parts["rest-mouth"] = mouth("#44343a", o)
-    parts["bark-mouth"] = bark_mouth("#44343a", o)
+    parts["rest-mouth"] = mouth("#8f5d3a", o)
+    parts["bark-mouth"] = bark_mouth("#8f5d3a", o)
     parts["ear"] = [
-        path(ear_edge, "#6a4f44", o, 8),
-        path(ear_inner, "#8d6c62"),
+        path(ear_edge, "#b9783c", o, 8),
+        path(ear_inner, "#e2b48c"),
         path(ear_tip, "#4c3932", o, 7),
     ]
     return parts
