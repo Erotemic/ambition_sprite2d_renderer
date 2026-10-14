@@ -332,15 +332,16 @@ def tilt_up(body: RigBody) -> List[Key]:
         # Crouch with the blade low in front: the arc has somewhere to come from.
         Key(at=a0 * 0.85, near=(55.0, 40.0, 30.0), far=(120.0, 110.0), torso=8.0, head=4.0,
             drop=5.0, squash=0.94, squint=0.2, ease="in"),
-        # Up through the vertical, body stretched onto its toes, eyes up.
+        # Up through the vertical, body stretched onto its toes, the head back:
+        # the robot looks at where the blade goes.
         Key(at=a0 + 0.45 * (a1 - a0), near=(-95.0, -100.0, -92.0), far=(150.0, 150.0), torso=-8.0,
-            head=-12.0, drop=-1.5, squash=1.06, shoulder=2.0,
+            head=-26.0, drop=-1.5, squash=1.06, shoulder=2.0,
             feet={"near": (0.0, 1.5, 14.0), "far": (0.0, 1.5, 14.0)}, turn="open", squint=0.3,
             ease="out"),
         # Over and behind.
-        Key(at=a1, near=(-150.0, -165.0, -170.0), far=(120.0, 130.0), torso=-12.0, head=-14.0,
+        Key(at=a1, near=(-150.0, -165.0, -170.0), far=(120.0, 130.0), torso=-12.0, head=-30.0,
             drop=0.0, squash=1.02, turn="open", squint=0.2),
-        Key(at=a1 + 0.2, near=(-170.0, 160.0, 150.0), far=(90.0, 95.0), torso=-5.0, head=-5.0,
+        Key(at=a1 + 0.2, near=(-170.0, 160.0, 150.0), far=(90.0, 95.0), torso=-5.0, head=-12.0,
             drop=1.0, blade=0.0),
         rest(body, 1.0),
     ]
@@ -440,14 +441,14 @@ def smash_up(body: RigBody) -> List[Key]:
             face="strain"),
         # Spring: up off the toes, the blade sweeping up the front.
         Key(at=a0 + 0.4 * (a1 - a0), near=(-80.0, -95.0, -85.0), far=(140.0, 150.0), torso=-6.0,
-            head=-14.0, lunge=1.0, drop=-7.0, squash=1.08, shoulder=3.0,
+            head=-28.0, lunge=1.0, drop=-7.0, squash=1.08, shoulder=3.0,
             feet={"near": (-1.0, 6.0, 30.0), "far": (1.0, 7.0, 30.0)}, turn="profile", squint=0.5,
             ease="out"),
-        Key(at=a1, near=(-110.0, -130.0, -140.0), far=(130.0, 140.0), torso=-10.0, head=-16.0,
+        Key(at=a1, near=(-110.0, -130.0, -140.0), far=(130.0, 140.0), torso=-10.0, head=-32.0,
             lunge=1.0, drop=-8.0, squash=1.04, shoulder=2.0,
             feet={"near": (-1.0, 7.0, 30.0), "far": (1.0, 8.0, 30.0)}, turn="open", squint=0.35),
         # Landing back into a crouch.
-        Key(at=a1 + 0.2, near=(-150.0, -190.0, -200.0), far=(90.0, 90.0), torso=6.0, head=-3.0,
+        Key(at=a1 + 0.2, near=(-150.0, -190.0, -200.0), far=(90.0, 90.0), torso=6.0, head=-10.0,
             drop=5.0, squash=0.94, blade=0.2),
         Key(at=0.9, near=(115.0, 105.0, 85.0), far=(60.0, 75.0), torso=2.0, drop=1.0, blade=0.0),
         rest(body, 1.0),
@@ -587,13 +588,13 @@ def air_up(body: RigBody) -> List[Key]:
             squash=0.95, feet={"near": (-3.0, 9.0, 20.0), "far": (3.0, 11.0, 15.0)}, squint=0.3,
             ease="in"),
         Key(at=a0 + 0.45 * (a1 - a0), near=(-85.0, -95.0, -90.0), far=(140.0, 150.0), torso=-6.0,
-            head=-14.0, drop=-2.0, squash=1.07, shoulder=2.0,
+            head=-26.0, drop=-2.0, squash=1.07, shoulder=2.0,
             feet={"near": (-2.0, 3.0, 35.0), "far": (2.0, 4.0, 35.0)}, turn="open", squint=0.35,
             ease="out"),
-        Key(at=a1, near=(-150.0, -165.0, -165.0), far=(120.0, 130.0), torso=-10.0, head=-14.0,
+        Key(at=a1, near=(-150.0, -165.0, -165.0), far=(120.0, 130.0), torso=-10.0, head=-30.0,
             drop=-2.0, squash=1.02, feet={"near": (-2.0, 3.0, 35.0), "far": (2.0, 4.0, 35.0)},
             turn="open", squint=0.25),
-        Key(at=a1 + 0.2, near=(-170.0, 160.0, 140.0), far=(90.0, 95.0), torso=-4.0, head=-4.0,
+        Key(at=a1 + 0.2, near=(-170.0, 160.0, 140.0), far=(90.0, 95.0), torso=-4.0, head=-10.0,
             blade=0.0),
         replace(rest(body, 1.0), feet={}),
     ])

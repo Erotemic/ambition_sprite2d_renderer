@@ -22,8 +22,11 @@ from ambition_sprite2d_renderer.targets.characters.player_robot_v3_motion import
     ROBOT_ROWS,
 )
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_back import BACK_ROWS, author_back_rows
+from ambition_sprite2d_renderer.targets.characters.player_robot_v3_crawl import author_crawl
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_crouch import reauthor_crouch
+from ambition_sprite2d_renderer.targets.characters.player_robot_v3_double_jump import author_double_jump
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_gait import author_gaits
+from ambition_sprite2d_renderer.targets.characters.player_robot_v3_ground import keep_over_ground
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_strikes import (
     STRIKES,
     author_strikes,
@@ -187,8 +190,8 @@ def _pose_for_motion(
     arc = math.sin(t * math.pi)
 
     if animation == "idle_look_up":
-        pose.head_tilt -= 16.0
-        pose.head_dy -= 1.5
+        pose.head_tilt -= 26.0
+        pose.head_dy -= 2.0
         pose.eye_squint *= 0.4
     elif animation == "walk_stop":
         pose.root_x += 4.0 * (1.0 - _smooth01(t))
@@ -587,6 +590,8 @@ def build_doc() -> dict:
     # a build is the whole rig and no second pass can be forgotten.
     solved = RigDocument(doc)
     reauthor_crouch(solved)
+    author_crawl(solved)
+    author_double_jump(solved)
     author_gaits(solved)
     author_strikes(solved)
     doc["features"] = {
@@ -605,7 +610,7 @@ def build_doc() -> dict:
         "idle_eye_blink": True,
         "solved_rows": [
             "crouch_start", "crouch", "crouch_walk", "crouch_jump", "crouch_end",
-            "item_hold_crouch", "walk", "run", *STRIKES,
+            "item_hold_crouch", "double_jump", "walk", "run", *STRIKES,
         ],
     }
     return doc
@@ -683,6 +688,9 @@ def cmd_build() -> None:
     preserved = _preserved_authoring_blocks()
     doc = build_doc()
     doc.update(preserved)
+    # This pass DRAWS each frame, so it needs the path of the rig: the parts
+    # find their SVG beside it.
+    keep_over_ground(RigDocument(doc, source_path=RIG_JSON))
     RIG_JSON.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf8")
     print(RIG_JSON)
     BACK_RIG_JSON.write_text(json.dumps(build_back_doc(doc), indent=2) + "\n", encoding="utf8")

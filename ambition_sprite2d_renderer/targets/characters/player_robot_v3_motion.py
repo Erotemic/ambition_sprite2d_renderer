@@ -426,6 +426,8 @@ LOOPING_ROWS: Final[frozenset[str]] = frozenset(
         "idle_look_up",
         "walk",
         "run",
+        # The crawl.
+        "crouch_walk",
         "fall",
         "fall_special",
         "teeter",

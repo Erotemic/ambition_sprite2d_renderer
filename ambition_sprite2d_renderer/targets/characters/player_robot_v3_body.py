@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from ...authoring.rigdoc import RigDocument
 from ...authoring.skeleton import two_bone_ik
@@ -156,4 +156,45 @@ class RigBody:
         return ch
 
 
-__all__ = ["Arm", "RigBody", "SIDES", "WorldPose", "about", "rot"]
+#: Channels that are switches of the face. A solved row keeps what the builder
+#: set for them.
+FACE_SWITCHES = ("face_open_vis", "head_look", "blink_vis")
+#: A scale rests at 1.0; each other channel rests at 0.0.
+SCALE_RESTS = {"bone.head.scale_y": 1.0, "bone.torso.scale_y": 1.0}
+
+
+def write_frames(doc: RigDocument, row: str, values: Dict[str, List[float]]) -> None:
+    """Make `values` (one number of each channel for each frame) the clip of
+    `row`. A channel the clip had and `values` does not set goes to rest, so
+    nothing of the pose the row borrowed before stays in it.
+
+    A looping clip samples frame `i` of `n` at `i / n`, and a one-shot at
+    `i / (n - 1)` (`RigDocument.frame_time`); the keys are put at those times.
+    """
+    clip = doc.data["clips"][row]
+    n = int(clip["frames"])
+    if bool(clip.get("loop", True)):
+        times = [i / n for i in range(n)] + [1.0]
+        wrap = True
+    else:
+        times = [i / max(1, n - 1) for i in range(n)]
+        wrap = False
+
+    def keyed(series: List[float]) -> dict:
+        series = list(series) + ([series[0]] if wrap else [])
+        return {"keys": [[round(t, 6), round(float(v), 5)] for t, v in zip(times, series)]}
+
+    channels = clip["channels"]
+    for key, series in values.items():
+        assert len(series) == n, (row, key, len(series), n)
+        channels[key] = keyed(series)
+    for key in channels:
+        if key in values or key in FACE_SWITCHES:
+            continue
+        channels[key] = keyed([SCALE_RESTS.get(key, 0.0)] * n)
+
+
+__all__ = [
+    "Arm", "FACE_SWITCHES", "RigBody", "SCALE_RESTS", "SIDES", "WorldPose", "about", "rot",
+    "write_frames",
+]

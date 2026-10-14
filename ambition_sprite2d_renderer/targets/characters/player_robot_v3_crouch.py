@@ -89,8 +89,6 @@ ITEM_HOLD_ARMS = {
 
 # Breathing on the hold, and the crouch-walk's stride, both in frame pixels.
 BREATH = 1.6
-STRIDE_X = 5.5
-STRIDE_LIFT = 2.4
 
 LEG_CHANNELS = ("far_leg_u", "far_leg_l", "far_leg_foot", "near_leg_u", "near_leg_l", "near_leg_foot")
 
@@ -360,29 +358,8 @@ def reauthor_crouch(doc: RigDocument) -> dict:
         leap.append(frame)
     poses["crouch_jump"] = leap
 
-    # crouch_walk: the hold, with the feet trading places along the ground line.
-    walk = []
-    for i in range(8):
-        phase = 2.0 * math.pi * i / 8.0
-        targets = {}
-        for side, offset in (("far", 0.0), ("near", math.pi)):
-            swing = math.sin(phase + offset)
-            lift = max(0.0, math.sin(phase + offset + math.pi / 2.0)) * STRIDE_LIFT
-            targets[side] = (rest[side]["ankle"][0] + STRIDE_X * swing, p.ground - lift)
-        frame = pose_at(
-            p,
-            rest,
-            CROUCH_DROP + 0.6 * math.sin(2.0 * phase),
-            targets,
-            seed=walk[-1] if walk else hold,
-        )
-        frame.update(CROUCH_SHAPE)
-        frame["far_arm_u"] = CROUCH_SHAPE["far_arm_u"] + 6.0 * math.sin(phase)
-        frame["near_arm_u"] = CROUCH_SHAPE["near_arm_u"] - 6.0 * math.sin(phase)
-        frame.update(head_channels(1.0, breath=0.015 * math.sin(2.0 * phase)))
-        walk.append(frame)
-    poses["crouch_walk"] = walk
-
+    # `crouch_walk` is not of this family: a crouched body that moves crawls
+    # (`player_robot_v3_crawl`).
     p.drop()
 
     for clip_name, frames in poses.items():

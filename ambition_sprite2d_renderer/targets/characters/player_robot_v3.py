@@ -35,9 +35,10 @@ from ...authoring.portrait import (
     write_portrait_sheet,
 )
 from ...core import slash_envelope
-from .robot_side import RigCanvas, SideRobotGenerator, _on_grid, fx_piece, transposed
+from .robot_side import RigCanvas, SideRobotGenerator, fx_piece
 from .player_robot_v3_back import BACK_ROWS
 from .player_robot_v3_gameplay import hurtbox_parts_for_rows
+from .player_robot_v3_double_jump import JETS as DOUBLE_JUMP_JETS
 from .player_robot_v3_motion import EFFECT_ALIASES, MIRRORED, ROBOT_ROWS
 from .player_robot_v3_strikes import STRIKES
 
@@ -297,10 +298,12 @@ def _plume(size: float, intensity: float, phase: float):
     return fx_piece(("v3_plume", size, intensity, phase), (-2 * K, -half, length * 1.05 * K, half), paint)
 
 
-def _place_thrusters(front: _FxLayer, world, frame_idx: int, slow_fall: bool) -> None:
+def _place_thrusters(front: _FxLayer, world, frame_idx: int, slow_fall: bool, burn: float = 1.0) -> None:
     """Both boot jets. Slow fall (``float_glide``) burns smaller, softer and
-    angled back; full flight long and bright."""
+    angled back; full flight long and bright. ``burn`` scales a short burst
+    (the second jump), 1 being the flight."""
     size, intensity, angle = (0.56, 0.68, 102.0) if slow_fall else (1.0, 1.0, 90.0)
+    size, intensity = round(size * (0.45 + 0.55 * burn), 3), round(intensity * (0.5 + 0.5 * burn), 3)
     for side_idx, side in enumerate(("far", "near")):
         foot = world[f"{side}_leg_foot"]
         # The nozzle sits under the middle of the sole, not the ankle.
@@ -376,36 +379,6 @@ def _disc(radius: float, fill, outline, outline_w: float, key: str):
     return fx_piece(("v3_disc", key, radius, fill, outline, outline_w), (-r - 1, -r - 1, r + 1, r + 1), paint)
 
 
-def _shield_quarter(scale: float):
-    """The lower right quarter of the shield bubble, its centre at the pivot
-    (the canvas corner), on the mirror grid: the other three quarters are the
-    same raster mirrored (``transposed``)."""
-
-    def make():
-        rx, ry, w = int(round(40 * scale * K)), int(round(48 * scale * K)), int(2 * K)
-        full = Image.new("RGBA", (2 * rx + 4, 2 * ry + 4), (0, 0, 0, 0))
-        # Pixels 2 .. 2 + 2r - 1: symmetric about the pixel EDGE 2 + r, where the
-        # quarters meet.
-        blending_draw(full).ellipse((2, 2, 2 + 2 * rx - 1, 2 + 2 * ry - 1), fill=(65, 222, 255, 24), outline=(63, 229, 255, 190), width=w)
-        quarter = Image.new("RGBA", (_on_grid(rx + 2), _on_grid(ry + 2)), (0, 0, 0, 0))
-        quarter.alpha_composite(full.crop((2 + rx, 2 + ry, 2 * rx + 4, 2 * ry + 4)))
-        return quarter, (0.0, 0.0)
-
-    return _raster(("v3_shield_quarter", scale), make)
-
-
-def _place_shield(front: _FxLayer, center, t: float) -> None:
-    """The shield bubble on the torso, breathing in three sizes."""
-    quarter = _shield_quarter(1.0 + 0.05 * round(math.sin(t * math.tau)))
-    for name, part in (
-        ("shield_br", quarter),
-        ("shield_bl", transposed(quarter, Image.FLIP_LEFT_RIGHT)),
-        ("shield_tr", transposed(quarter, Image.FLIP_TOP_BOTTOM)),
-        ("shield_tl", transposed(quarter, Image.ROTATE_180)),
-    ):
-        front.put(part, center, 0.0, name)
-
-
 def _dash_lines():
     """The speed lines behind a dash, at full strength."""
 
@@ -461,15 +434,17 @@ def _compose(animation: str, clip: str, t: float, solved, frame_idx: int, nframe
     if effect in {"hover", "float_glide"}:
         _place_thrusters(front, world, frame_idx, slow_fall=effect == "float_glide")
 
+    if effect == "double_jump" and DOUBLE_JUMP_JETS[frame_idx % len(DOUBLE_JUMP_JETS)] > 0.0:
+        _place_thrusters(front, world, frame_idx, slow_fall=False, burn=DOUBLE_JUMP_JETS[frame_idx % len(DOUBLE_JUMP_JETS)])
+
     if effect == "swim":
         for i in range(5):
             x = 42 + i * 13 + math.sin((t + i) * math.tau) * 3
             y = 24 + ((i * 17 + frame_idx * 5) % 70)
             front.put(_disc(1 + (i % 2), None, (60, 226, 255, 150), 1, "bubble"), (x, y), 0.0, f"bubble{i}")
 
-    if effect == "block":
-        # Body-attached: centred on the torso.
-        _place_shield(front, world["torso"].origin, t)
+    # A block has no effect of its own in the sheet: the bubble of the guard is
+    # the `bubble_shield` picture, and the game draws it on the body.
 
     hand = world["near_arm_hand"]
     base = hand.tip
