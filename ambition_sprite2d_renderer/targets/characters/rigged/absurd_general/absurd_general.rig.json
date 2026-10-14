@@ -361,6 +361,20 @@
       "opacity_channel": "mouth_open"
     },
     {
+      "name": "nose",
+      "bone": "head",
+      "z": 43,
+      "kind": "sprite",
+      "include": [
+        "nose"
+      ],
+      "pivot": [
+        332.0,
+        318.0
+      ],
+      "rest_angle": 0
+    },
+    {
       "name": "hat",
       "bone": "hat",
       "z": 50,

@@ -233,7 +233,7 @@ def parts() -> Dict[str, List[str]]:
         line("M236 468 C242 464 250 466 254 472", SKIN_SHADE, 3),
     ]
 
-    # The head: wide at the jaw, an ear, grey hair under the hat, and the nose.
+    # The head: wide at the jaw, an ear, grey hair under the hat, the brows.
     out["head"] = [
         ellipse(286, 270, 14, 19, SKIN, O, 6),
         line("M284 262 C290 266 290 274 285 279", SKIN_SHADE, 3),
@@ -242,20 +242,26 @@ def parts() -> Dict[str, List[str]]:
         path("M300 300 C312 316 330 324 348 324 C330 328 308 320 296 304 Z", SKIN_SHADE),
         # The brows: one thick line that goes down to the nose from each side.
         line("M338 222 L386 242", O, 11),
-        line("M418 226 L396 240", O, 10),
-        path("M384 246 C400 234 430 238 442 256 C452 272 444 292 422 294 C402 296 386 284 382 268 Z", NOSE, O, 7),
-        line("M400 248 C410 244 422 246 430 254", "#f6c3ab", 5),
-        line("M398 282 C404 286 412 286 416 282", SKIN_SHADE, 4),
+        line("M420 220 L398 232", O, 10),
     ]
     out["eye-open"] = [
         ellipse(362, 250, 15, 12, WHITE, O, 5),
         circle(369, 251, 5.5, O),
-        ellipse(402, 246, 8, 9, WHITE, O, 4),
-        circle(405, 247, 3.5, O),
+        # His far eye. The nose and the peak of the cap are over it: none of
+        # it shows as he is drawn.
+        ellipse(404, 239, 8, 9, WHITE, O, 4),
+        circle(407, 238, 3.5, O),
     ]
     out["eye-shut"] = [
         line("M348 252 C356 244 368 244 376 252", O, 6),
-        line("M396 248 C400 243 406 243 409 248", O, 5),
+        line("M397 240 C401 235 407 235 411 240", O, 5),
+    ]
+    # The nose is a part of its own, over the eyes and the mouth: his far eye
+    # is behind it, so it is drawn over that eye.
+    out["nose"] = [
+        path("M384 246 C400 234 430 238 442 256 C452 272 444 292 422 294 C402 296 386 284 382 268 Z", NOSE, O, 7),
+        line("M400 248 C410 244 422 246 430 254", "#f6c3ab", 5),
+        line("M398 282 C404 286 412 286 416 282", SKIN_SHADE, 4),
     ]
     # The teeth, shut tight.
     out["mouth-grit"] = [
@@ -308,6 +314,7 @@ LAYERS = [
     ("eye-shut", "Eyes - Shut", "eye_shut", "head", 41, "eye_shut"),
     ("mouth-grit", "Mouth - Teeth Shut", "mouth_grit", "head", 42, "mouth_grit"),
     ("mouth-open", "Mouth - Open", "mouth_open", "head", 42, "mouth_open"),
+    ("nose", "Nose", "nose", "head", 43, ""),
     ("hat", "Hat", "hat", "hat", 50, ""),
 ]
 
