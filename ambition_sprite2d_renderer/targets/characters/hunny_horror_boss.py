@@ -45,9 +45,9 @@ from ...authoring.portrait import FaceGuide, PortraitClip, render_framed_portrai
 from ._ai_era_kit import Kit, Point, Pose, RGBA, angle, keys, lerp, mix, solve, turned
 
 TARGET_NAME = "hunny_horror_boss"
-FRAME_SIZE = (240, 212)
+FRAME_SIZE = (288, 212)
 GROUND = 200.0
-CX = 104.0
+CX = 120.0
 #: Row names are the ones the game reads (`CharacterAnim::from_name`).
 ROWS: List[Tuple[str, int, int]] = [
     ("idle", 8, 150),
@@ -58,6 +58,15 @@ ROWS: List[Tuple[str, int, int]] = [
     ("taunt", 10, 100),
     ("hurt", 4, 90),
     ("death", 12, 110),
+    # The rows of his boss fight (the conductor
+    # `ambition_content_modules::hunny` draws them by name).
+    ("hug", 6, 100),
+    ("squeeze", 4, 110),
+    ("throw", 5, 80),
+    ("spit", 6, 90),
+    ("run", 6, 75),
+    ("flop", 8, 90),
+    ("stunned", 6, 140),
 ]
 
 INK: RGBA = (46, 26, 20, 255)
@@ -343,6 +352,13 @@ def _head_piece(k: float, jaw: float, eyes: str, horror: float):
                 K.line(d, [(c[0], c[1] - 2.2 * k * size), (c[0], c[1] + 2.2 * k * size)], BEAD, 0.9 * k * size)
             elif eyes == "shut":
                 K.line(d, [(c[0] - 3.2 * k * size, c[1]), (c[0], c[1] + 1.4 * k * size), (c[0] + 3.2 * k * size, c[1])], BEAD, 1.2 * k)
+            elif eyes == "dizzy":
+                pts = []
+                for j in range(14):
+                    a = j * 0.9
+                    rr = (0.4 + j * 0.24) * k * size
+                    pts.append((c[0] + math.cos(a) * rr, c[1] + math.sin(a) * rr))
+                K.line(d, pts, BEAD, 0.9 * k)
             elif eyes == "x":
                 r = 2.6 * k * size
                 K.line(d, [(c[0] - r, c[1] - r), (c[0] + r, c[1] + r)], THREAD, 1.1 * k)
@@ -374,6 +390,22 @@ def _drip_piece(k: float, length: float, drop: float):
         K.oval(d, (b[0], b[1] + drop * k), drop * k, (drop + 0.6) * k, WHITE)
 
     return K.solid(("drip", k, length, drop), shape, HONEY, None, outline=0.9, rim=0.6, shade=0.3, shade_colour=(176, 96, 10, 255))
+
+
+def _bee_piece(wing: int):
+    """A honey bee, facing the way it flies (right); ``wing`` up or down."""
+
+    def shape(d) -> None:
+        K.oval(d, K.at(0.0, 0.0), 6.0, 4.4, WHITE)
+        K.oval(d, K.at(-1.4, -4.6 if wing else -2.8), 3.4, 2.4 if wing else 1.4, WHITE)
+
+    def detail(d) -> None:
+        K.oval(d, K.at(-1.4, -4.6 if wing else -2.8), 3.4, 2.4 if wing else 1.4, (236, 244, 255, 255))
+        for x in (-2.4, 1.2):
+            K.line(d, [K.at(x, -3.8), K.at(x, 3.8)], BEAD, 1.5)
+        K.oval(d, K.at(4.4, -0.6), 1.0, 1.0, BEAD)
+
+    return K.solid(("bee", wing), shape, (250, 206, 52, 255), detail, outline=0.8, rim=0.4, shade=0.3, shade_colour=(176, 120, 20, 255))
 
 
 def _tuft_piece(k: float, r: float):
@@ -498,6 +530,56 @@ def _pose(anim: str, i: int, n: int) -> Tuple[Pose, dict]:
         if i in (4, 5, 6):
             fx["tufts"] = tuple((10.0 + 6.0 * (i - 3) * j, -14.0 - 7.0 * (i - 3) * j, 2.6) for j in (0.6, 1.2))
         return pose, fx
+    if anim == "hug":
+        # The tell is the bait: arms wide for a hug, the smile wider than it
+        # should be. Then the arms close on whoever came near.
+        wide = P(lean=0.0, head=-4.0, horror=0.5, near_hand=(42.0, -18.0), far_hand=(-34.0, -22.0), claw=0.5)
+        close = P(lean=16.0, head=6.0, horror=1.0, jaw=0.5, eyes="glow", near_hand=(40.0, 10.0), far_hand=(30.0, 8.0),
+                  claw=1.0, root=(6.0, 0.0), near_foot=(16.0, 0.0))
+        return keys(u, [(0.0, P(horror=0.5)), (0.3, wide), (0.45, wide), (0.8, close), (1.0, close)]), fx
+    if anim == "squeeze":
+        shake = 1.0 if i % 2 else -1.0
+        return P(lean=10.0 + 2.0 * shake, head=6.0 + 4.0 * shake, horror=1.0, jaw=0.75 + 0.25 * (i % 2), eyes="glow",
+                 near_hand=(34.0, 8.0 + shake), far_hand=(26.0, 6.0 - shake), claw=1.0, root=(6.0, 0.0),
+                 near_foot=(16.0, 0.0)), fx
+    if anim == "throw":
+        hold = P(lean=10.0, head=6.0, horror=1.0, jaw=1.0, eyes="glow", near_hand=(34.0, 8.0), far_hand=(26.0, 6.0), claw=1.0,
+                 root=(6.0, 0.0), near_foot=(16.0, 0.0))
+        fling = P(lean=-8.0, head=-10.0, horror=1.0, jaw=1.0, eyes="glow", near_hand=(44.0, -44.0), far_hand=(34.0, -48.0),
+                  claw=1.0, root=(2.0, -3.0), near_foot=(16.0, 0.0))
+        return keys(u, [(0.0, hold), (0.35, fling), (1.0, P(root=(2.0, 0.0)))]), fx
+    if anim == "spit":
+        # The tell: his tummy rumbles and his cheeks fill. Then he spits
+        # honey (the glob is the projectile's own picture).
+        fill = P(lean=-4.0, head=-16.0, horror=0.5, near_hand=(10.0, 40.0), far_hand=(0.0, 42.0), root=(-2.0, 0.0))
+        spit = P(lean=14.0, head=10.0, horror=1.0, jaw=1.0, eyes="glow", near_hand=(18.0, 46.0), far_hand=(6.0, 46.0),
+                 root=(4.0, 0.0))
+        return keys(u, [(0.0, REST), (0.4, fill), (0.6, spit), (1.0, spit)]), fx
+    if anim == "run":
+        # On all fours, the way a bear charges.
+        p = math.tau * loop
+        s, c = math.sin(p), math.cos(p)
+        return P(root=(10.0, -4.0 - 3.0 * abs(c)), lean=62.0 + 3.0 * s, head=-48.0 - 3.0 * s, horror=1.0, jaw=0.75, eyes="glow",
+                 claw=1.0, ground=1.0, near_hand=(26.0 + 14.0 * s, 60.0), far_hand=(16.0 - 14.0 * s, 60.0),
+                 near_foot=(-6.0 - 14.0 * s, -6.0 * max(0.0, c)), far_foot=(-20.0 + 14.0 * s, -6.0 * max(0.0, -c))), fx
+    if anim == "flop":
+        crouch = P(root=(-2.0, 6.0), lean=-6.0, head=-10.0, horror=1.0, jaw=0.5, eyes="glow", near_hand=(30.0, -30.0),
+                   far_hand=(20.0, -34.0), claw=1.0)
+        fly = P(root=(10.0, -26.0), lean=40.0, head=-20.0, horror=1.0, jaw=1.0, eyes="glow", near_hand=(50.0, -10.0),
+                far_hand=(40.0, -14.0), claw=1.0, near_foot=(-12.0, -20.0), far_foot=(-26.0, -16.0))
+        land = P(root=(18.0, -9.0), lean=72.0, head=-52.0, horror=1.0, jaw=0.75, eyes="glow", near_hand=(40.0, 60.0),
+                 far_hand=(26.0, 60.0), ground=1.0, claw=1.0, near_foot=(-14.0, 0.0), far_foot=(-28.0, 0.0))
+        return keys(u, [(0.0, crouch), (0.14, crouch), (0.5, fly), (0.72, land), (1.0, land)]), fx
+    if anim == "stunned":
+        # Dazed, sitting, sweet again: honey bees circle his head.
+        wobble = math.sin(math.tau * loop)
+        bees = []
+        for j in range(3):
+            a = math.tau * (loop + j / 3.0)
+            bees.append((math.cos(a) * 30.0, math.sin(a) * 7.0, (i + j) % 2))
+        fx["bees"] = tuple(bees)
+        return P(root=(-10.0, 22.0), lean=-6.0 + 2.0 * wobble, head=10.0 + 6.0 * wobble, eyes="dizzy", jaw=0.125,
+                 near_hand=(18.0, 44.0), far_hand=(-12.0, 44.0), near_foot=(34.0, 0.0), far_foot=(24.0, 0.0)), fx
     raise KeyError(anim)
 
 
@@ -527,12 +609,12 @@ def _layout(pose: Pose) -> dict:
         target = (off[0] * k, off[1] * k)
         g = float(pose["ground"])
         if g > 0.0:
-            reach = (shoulder[0] + target[0], lerp(shoulder[1] + target[1], -6.0 * k, g))
+            reach = (shoulder[0] + target[0], lerp(shoulder[1] + target[1], -13.0 * k, g))
             target = (reach[0] - shoulder[0], reach[1] - shoulder[1])
         return target
 
     def foot(hip: Point, at: Point) -> Point:
-        sole = (at[0] * k, at[1] * k - 6.0 * k)
+        sole = (at[0] * k, at[1] * k - 11.0 * k)
         return (sole[0] - hip[0], sole[1] - hip[1])
 
     near_hip, far_hip = on_body(NEAR_HIP), on_body(FAR_HIP)
@@ -571,6 +653,9 @@ def _paint(img: Image.Image, pose: Pose, fx: dict) -> None:
     if drip is not None and float(pose["jaw"]) == 0.0:
         length = 4.0 + 14.0 * drip
         K.place(img, _drip_piece(k, length, 1.4 + 1.2 * drip), _world(at["mouth_corner"]), "drip")
+    for n, (x, y, wing) in enumerate(fx.get("bees", ())):
+        top = (at["neck"][0], at["neck"][1] - 60.0 * k)
+        K.place(img, _bee_piece(wing), _world((top[0] + x * k, top[1] + y * k)), f"bee{n}")
     for n, (x, y, r) in enumerate(fx.get("tufts", ())):
         K.place(img, _tuft_piece(k, r), _world((at["tummy"][0] + x * k, at["tummy"][1] + y * k)), f"tuft{n}")
     K.place(img, _arm_piece(at["near_hand"], k, False, claw), _world(at["near_shoulder"]), "near_arm")
