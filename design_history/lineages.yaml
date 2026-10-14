@@ -287,7 +287,7 @@ lineages:
     name: Burning flying shark
     ids: [burning_flying_shark]
     paths: ['shark']
-    summary: "a grey shark with a fire fin to a fire-wreathed SVG-rigged one"
+    summary: "a grey shark with a fire fin, then an SVG rig wreathed in fire, then a great white that burns along its whole back"
     tile_w: 300
     per_row: 4
     eras:
@@ -297,7 +297,10 @@ lineages:
         label: "Procedural, no backdrop"
       - commit: "acf4f69d2"
         label: "SVG-rigged, fire-wreathed"
-        note: "Polished (Oct 5). Current design."
+        note: "Polished (Oct 5). Dark over pale: Jon said it looked like an orca."
+      - commit: "3185b29"
+        label: "A great white under a sheet of fire"
+        note: "Pale grey over white with a black eye; fire along the whole back, in six shapes of flame. Current design. Claude Opus 5.5 declared."
   treasure_chest:
     # Before October 2026 the chest was one texture of the batched `entities`
     # target (`chest_closed`); `boss_chest` and `treasure_chest` came later. The
