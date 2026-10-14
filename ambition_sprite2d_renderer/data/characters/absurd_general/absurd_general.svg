@@ -117,17 +117,17 @@
       <path d="M277 262 C275 240 281 222 293 212 L302 252 C298 264 290 272 280 278 Z" fill="#7a736a"/>
       <path d="M300 300 C312 316 330 324 348 324 C330 328 308 320 296 304 Z" fill="#b8725f"/>
       <path d="M338 222 L386 242" fill="none" stroke="#181512" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M420 220 L398 232" fill="none" stroke="#181512" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M422 226 L400 234" fill="none" stroke="#181512" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
     </g>
     <g id="eye-open" inkscape:groupmode="layer" inkscape:label="Eyes - Open" data-rig-part="eye_open" data-rig-bone="head" data-rig-z="41">
       <ellipse cx="362" cy="250" rx="15" ry="12" fill="#fff0db" stroke="#181512" stroke-width="5"/>
       <circle cx="369" cy="251" r="5.5" fill="#181512"/>
-      <ellipse cx="404" cy="239" rx="8" ry="9" fill="#fff0db" stroke="#181512" stroke-width="4"/>
-      <circle cx="407" cy="238" r="3.5" fill="#181512"/>
+      <ellipse cx="404" cy="244" rx="9" ry="10" fill="#fff0db" stroke="#181512" stroke-width="4"/>
+      <circle cx="407" cy="243" r="4" fill="#181512"/>
     </g>
     <g id="eye-shut" inkscape:groupmode="layer" inkscape:label="Eyes - Shut" data-rig-part="eye_shut" data-rig-bone="head" data-rig-z="41">
       <path d="M348 252 C356 244 368 244 376 252" fill="none" stroke="#181512" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M397 240 C401 235 407 235 411 240" fill="none" stroke="#181512" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M396 245 C400 239 408 239 412 245" fill="none" stroke="#181512" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
     </g>
     <g id="mouth-grit" inkscape:groupmode="layer" inkscape:label="Mouth - Teeth Shut" data-rig-part="mouth_grit" data-rig-bone="head" data-rig-z="42">
       <path d="M332 292 C332 284 340 280 350 280 L394 284 C402 285 406 292 404 300 L400 312 C398 319 392 321 386 321 L350 321 C338 321 332 312 332 302 Z" fill="#fff0db" stroke="#181512" stroke-width="7" stroke-linejoin="round"/>
@@ -141,9 +141,9 @@
       <ellipse cx="368" cy="324" rx="17" ry="9" fill="#e2777c"/>
     </g>
     <g id="nose" inkscape:groupmode="layer" inkscape:label="Nose" data-rig-part="nose" data-rig-bone="head" data-rig-z="43">
-      <path d="M384 246 C400 234 430 238 442 256 C452 272 444 292 422 294 C402 296 386 284 382 268 Z" fill="#e9a48a" stroke="#181512" stroke-width="7" stroke-linejoin="round"/>
-      <path d="M400 248 C410 244 422 246 430 254" fill="none" stroke="#f6c3ab" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M398 282 C404 286 412 286 416 282" fill="none" stroke="#b8725f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M388 258 C404 246 434 250 446 268 C456 284 448 304 426 306 C406 308 390 296 386 280 Z" fill="#e9a48a" stroke="#181512" stroke-width="7" stroke-linejoin="round"/>
+      <path d="M404 260 C414 256 426 258 434 266" fill="none" stroke="#f6c3ab" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M402 294 C408 298 416 298 420 294" fill="none" stroke="#b8725f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
     </g>
     <g id="hat" inkscape:groupmode="layer" inkscape:label="Hat" data-rig-part="hat" data-rig-bone="hat" data-rig-z="50">
       <path d="M256 192 C248 168 260 150 286 146 C322 130 382 120 414 130 C434 138 436 162 426 180 C422 190 414 196 404 198 C376 186 300 186 272 196 C264 198 258 196 256 192 Z" fill="#2f5c38" stroke="#181512" stroke-width="8" stroke-linejoin="round"/>

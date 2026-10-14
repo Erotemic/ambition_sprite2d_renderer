@@ -242,26 +242,27 @@ def parts() -> Dict[str, List[str]]:
         path("M300 300 C312 316 330 324 348 324 C330 328 308 320 296 304 Z", SKIN_SHADE),
         # The brows: one thick line that goes down to the nose from each side.
         line("M338 222 L386 242", O, 11),
-        line("M420 220 L398 232", O, 10),
+        line("M422 226 L400 234", O, 9),
     ]
     out["eye-open"] = [
         ellipse(362, 250, 15, 12, WHITE, O, 5),
         circle(369, 251, 5.5, O),
-        # His far eye. The nose and the peak of the cap are over it: none of
-        # it shows as he is drawn.
-        ellipse(404, 239, 8, 9, WHITE, O, 4),
-        circle(407, 238, 3.5, O),
+        # His far eye: the nose is over its lower part, and the rest shows
+        # between the nose and the peak of the cap (Jon, 2026-10-13: "a
+        # little bit of the eye peaking out so you can see it").
+        ellipse(404, 244, 9, 10, WHITE, O, 4),
+        circle(407, 243, 4, O),
     ]
     out["eye-shut"] = [
         line("M348 252 C356 244 368 244 376 252", O, 6),
-        line("M397 240 C401 235 407 235 411 240", O, 5),
+        line("M396 245 C400 239 408 239 412 245", O, 5),
     ]
-    # The nose is a part of its own, over the eyes and the mouth: his far eye
-    # is behind it, so it is drawn over that eye.
+    # The nose is a part of its own, over the eyes and the mouth: it is in
+    # front of his far eye, so it is drawn over the lower part of that eye.
     out["nose"] = [
-        path("M384 246 C400 234 430 238 442 256 C452 272 444 292 422 294 C402 296 386 284 382 268 Z", NOSE, O, 7),
-        line("M400 248 C410 244 422 246 430 254", "#f6c3ab", 5),
-        line("M398 282 C404 286 412 286 416 282", SKIN_SHADE, 4),
+        path("M388 258 C404 246 434 250 446 268 C456 284 448 304 426 306 C406 308 390 296 386 280 Z", NOSE, O, 7),
+        line("M404 260 C414 256 426 258 434 266", "#f6c3ab", 5),
+        line("M402 294 C408 298 416 298 420 294", SKIN_SHADE, 4),
     ]
     # The teeth, shut tight.
     out["mouth-grit"] = [
