@@ -92,9 +92,14 @@ ITEM_HOLD_ARMS = {
 BREATH = 1.6
 # The crouch walk: how far a foot reaches each side of where it stands, how
 # high it clears the floor, and how far the body bobs (twice in a cycle).
-STRIDE_X = 9.0
-STRIDE_LIFT = 4.5
+STRIDE_X = 8.0
+STRIDE_LIFT = 4.0
 STRIDE_BOB = 1.2
+# Jon, 2026-10-13: the crouch walk is on tiptoe. The boots point their toes
+# at the floor by this much, and the ankles are this much higher, so the toe
+# caps stay on the ground line.
+TIPTOE_DEG = 38.0
+TIPTOE_RISE = 6.0
 
 LEG_CHANNELS = ("far_leg_u", "far_leg_l", "far_leg_foot", "near_leg_u", "near_leg_l", "near_leg_foot")
 
@@ -219,7 +224,7 @@ def solve_foot(p: Poser, side: str, want_world_angle: float):
     return value
 
 
-def pose_at(p: Poser, rest, drop: float, foot_targets=None, seed=None):
+def pose_at(p: Poser, rest, drop: float, foot_targets=None, seed=None, toe_down: float = 0.0):
     """Leg channels for a body dropped `drop` px, both feet on the ground line.
 
     `foot_targets` overrides where each ankle should land — `(x, y)` per side —
@@ -236,7 +241,7 @@ def pose_at(p: Poser, rest, drop: float, foot_targets=None, seed=None):
             leg_seed = (seed[f"{side}_leg_u"], seed[f"{side}_leg_l"])
         u, lo = solve_leg(p, side, target, leg_seed)
         out[f"{side}_leg_u"], out[f"{side}_leg_l"] = u, lo
-        out[f"{side}_leg_foot"] = solve_foot(p, side, rest[side]["foot_angle"])
+        out[f"{side}_leg_foot"] = solve_foot(p, side, rest[side]["foot_angle"] + toe_down)
         landed = p.solve()[f"{side}_leg_foot"].origin
         worst = max(worst, abs(landed[1] - target[1]))
     out["_ankle_error"] = worst
@@ -365,8 +370,9 @@ def reauthor_crouch(doc: RigDocument) -> dict:
     poses["crouch_jump"] = leap
 
     # crouch_walk: the hold, with the feet trading places along the ground line.
-    # A foot reaches 9 px each side and clears the floor by 4.5: at 5.5 and 2.4
-    # the steps did not read at the size of the game. A loop (`write_frames`).
+    # On tiptoe (`TIPTOE_DEG`): the heels up and the body up with them. A foot
+    # reaches 8 px each side and clears the floor by 4: at 5.5 and 2.4 the
+    # steps did not read at the size of the game. A loop (`write_frames`).
     walk = []
     for i in range(8):
         phase = 2.0 * math.pi * i / 8.0
@@ -374,9 +380,12 @@ def reauthor_crouch(doc: RigDocument) -> dict:
         for side, offset in (("far", 0.0), ("near", math.pi)):
             swing = math.sin(phase + offset)
             lift = max(0.0, math.sin(phase + offset + math.pi / 2.0)) * STRIDE_LIFT
-            targets[side] = (rest[side]["ankle"][0] + STRIDE_X * swing, p.ground - lift)
+            targets[side] = (rest[side]["ankle"][0] + STRIDE_X * swing, p.ground - TIPTOE_RISE - lift)
         bob = math.cos(2.0 * phase)
-        frame = pose_at(p, rest, CROUCH_DROP + STRIDE_BOB * bob, targets, seed=walk[-1] if walk else hold)
+        frame = pose_at(
+            p, rest, CROUCH_DROP - TIPTOE_RISE + STRIDE_BOB * bob, targets,
+            seed=walk[-1] if walk else hold, toe_down=TIPTOE_DEG,
+        )
         frame.update(CROUCH_SHAPE)
         # The body rocks with the steps, and the head lags the bob.
         frame["torso"] = CROUCH_SHAPE["torso"] + 2.0 * math.sin(phase)

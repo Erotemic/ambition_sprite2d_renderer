@@ -24,11 +24,13 @@ APPLICABLE_MOTION_SCOPES: Final[tuple[str, ...]] = (
 ROBOT_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     # Stance / locomotion / traversal.
     ("idle", 8, 120),
-    ("idle_look_up", 8, 120),
+    # A ramp, not a loop: the game draws it at how far the head is up.
+    ("idle_look_up", 6, 40),
     ("walk", 8, 95),
     ("walk_stop", 6, 72),
-    # Drawn over the first 0.16 s after a flip of the facing, slaved to it.
-    ("turnaround", 4, 40),
+    # Drawn over the first 0.22 s after a flip of the facing, slaved to it.
+    # Frames 2-4 are of the front view (`player_robot_v3_front`).
+    ("turnaround", 8, 28),
     ("dash_startup", 4, 50),
     ("dash", 6, 65),
     ("run", 8, 64),
@@ -424,7 +426,6 @@ EFFECT_ALIASES: Final[dict[str, str]] = {
 LOOPING_ROWS: Final[frozenset[str]] = frozenset(
     {
         "idle",
-        "idle_look_up",
         "walk",
         "run",
         "crouch_walk",

@@ -22,6 +22,7 @@ from ambition_sprite2d_renderer.targets.characters.player_robot_v3_motion import
     ROBOT_ROWS,
 )
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_back import BACK_ROWS, author_back_rows
+from ambition_sprite2d_renderer.targets.characters.player_robot_v3_front import author_front_rows
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_crouch import reauthor_crouch
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_double_jump import author_double_jump
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_turn import author_turnaround
@@ -43,6 +44,11 @@ VIEW_LABEL = "Player Robot - Side Right"
 BACK_SVG_PATH = PKG / "data/characters/player_robot_v3_svg/player-robot-v3-back.svg"
 BACK_RIG_JSON = RIG_DIR / "player_robot_v3_back.rig.json"
 BACK_VIEW_LABEL = "Player Robot - Back"
+# The robot from the front (`player_robot_v3_front`): the turnaround passes
+# through it. `scripts/build_player_robot_v3_front_svg.py` wrote its first drawing.
+FRONT_SVG_PATH = PKG / "data/characters/player_robot_v3_svg/player-robot-v3-front.svg"
+FRONT_RIG_JSON = RIG_DIR / "player_robot_v3_front.rig.json"
+FRONT_VIEW_LABEL = "Player Robot - Front"
 
 FRAME_WIDTH = 224
 FRAME_HEIGHT = 224
@@ -177,6 +183,11 @@ def _pose_for_motion(
         pose = _blend_pose(Pose(), _sample_pose(generator, "sleep", 0.25), t)
     elif animation == "wake":
         pose = _blend_pose(_sample_pose(generator, "sleep", 0.25), Pose(), t)
+    elif animation == "idle_look_up":
+        # A ramp from the stand to the look, played by the game at how far the
+        # head is up (`BodyPoseView::look_up`): the first frame of the idle,
+        # with no blink and no breath, so each frame differs by the look only.
+        pose = _sample_pose(generator, "idle", 0.0)
     elif animation in {"prone", "trip_idle"}:
         pose = _sample_pose(generator, "death", 1.0)
     elif animation in {"getup", "trip_getup", "shield_break_recover"}:
@@ -190,9 +201,11 @@ def _pose_for_motion(
     arc = math.sin(t * math.pi)
 
     if animation == "idle_look_up":
-        pose.head_tilt -= 26.0
-        pose.head_dy -= 2.0
-        pose.eye_squint *= 0.4
+        up = _smooth01(t)
+        pose.head_tilt -= 26.0 * up
+        pose.head_dy -= 2.0 * up
+        pose.body_tilt -= 3.0 * up
+        pose.eye_squint *= 1.0 - 0.6 * up
     elif animation == "walk_stop":
         pose.root_x += 4.0 * (1.0 - _smooth01(t))
         pose.body_tilt -= 7.0 * (1.0 - _smooth01(t))
@@ -616,8 +629,9 @@ def build_doc() -> dict:
     return doc
 
 
-def build_back_doc(side: dict) -> dict:
-    """The rig of the back view, at the scale and in the frame of the side rig.
+def build_view_doc(side: dict, svg_path: Path, label: str, name: str) -> dict:
+    """The rig of another view of the robot, at the scale and in the frame of
+    the side rig.
 
     The extraction sets the scale from a height. The first pass measures the
     back view's art; the second pass asks for the height that gives the side
@@ -627,11 +641,11 @@ def build_back_doc(side: dict) -> dict:
 
     def extract(target_height: float) -> dict:
         return build_humanoid_view_document(
-            BACK_SVG_PATH,
+            svg_path,
             RIG_DIR,
             HumanoidViewSpec(
-                view=BACK_VIEW_LABEL,
-                name="player_robot_v3_back",
+                view=label,
+                name=name,
                 frame_width=FRAME_WIDTH,
                 frame_height=FRAME_HEIGHT,
                 center_x=CENTER_X,
@@ -646,7 +660,12 @@ def build_back_doc(side: dict) -> dict:
 
     side_scale = float(side["svg_source"]["scale"])
     art_height = 100.0 / float(extract(100.0)["svg_source"]["scale"])
-    doc = extract(side_scale * art_height)
+    return extract(side_scale * art_height)
+
+
+def build_back_doc(side: dict) -> dict:
+    """The rig of the back view (`build_view_doc`)."""
+    doc = build_view_doc(side, BACK_SVG_PATH, BACK_VIEW_LABEL, "player_robot_v3_back")
     # These rows are IK rows: a clip gives where a hand and a foot are, and the
     # rig's chains put the elbows and the knees.
     author_back_rows(doc, {name: ROW_INFO[name] for name in BACK_ROWS})
@@ -684,6 +703,20 @@ def _preserved_gameplay_geometry() -> dict | None:
     return _preserved_authoring_blocks().get("gameplay_geometry")
 
 
+def build_front_doc(side: dict) -> dict:
+    """The rig of the front view (`build_view_doc`), with the clips of the
+    frames that rows draw from it (`FRONT_FRAMES`)."""
+    doc = build_view_doc(side, FRONT_SVG_PATH, FRONT_VIEW_LABEL, "player_robot_v3_front")
+    author_front_rows(doc)
+    doc["features"] = {
+        "paper_doll": True,
+        "view": "front",
+        "motion_profile": "targets/characters/player_robot_v3_front.py",
+        "logical_frame": [FRAME_WIDTH, FRAME_HEIGHT],
+    }
+    return doc
+
+
 def cmd_build() -> None:
     preserved = _preserved_authoring_blocks()
     doc = build_doc()
@@ -695,6 +728,8 @@ def cmd_build() -> None:
     print(RIG_JSON)
     BACK_RIG_JSON.write_text(json.dumps(build_back_doc(doc), indent=2) + "\n", encoding="utf8")
     print(BACK_RIG_JSON)
+    FRONT_RIG_JSON.write_text(json.dumps(build_front_doc(doc), indent=2) + "\n", encoding="utf8")
+    print(FRONT_RIG_JSON)
 
 
 def main(argv: Sequence[str] | None = None) -> None:

@@ -384,33 +384,38 @@ def tilt_up(body: RigBody) -> List[Key]:
     ]
 
 
+#: The down tilt's blade, in world degrees below straight ahead: it pokes DOWN
+#: at the floor in front of the robot, where its volume is. The sheet's hit
+#: shape is the same line (`player_robot_v3.POKE_DOWN_DEG`).
+POKE_DOWN_DEG = 18.0
+
+
 def tilt_down(body: RigBody) -> List[Key]:
-    """Down tilt: a crouching thrust along the floor. 0.28 s, A 0.06-0.12.
+    """Down tilt: a poke down at the floor ahead, from the crouch. 0.28 s,
+    A 0.06-0.12.
 
     It is made from the crouch (the stick is held down), so it starts and ends
-    in the crouch hold. From the stand it went up and down again around the
-    thrust, and a robot that crouched stood up to poke.
-
-    Its volume is a long thin poke, so the blade goes out straight and comes
-    straight back — no arc to read as a slash.
+    in the crouch hold. The blade goes out straight along one line, down at
+    the floor, and comes straight back: no arc to read as a slash.
     """
     a0, a1 = 0.06 / 0.28, 0.12 / 0.28
     low = {"near": (-3.0, 0.0, 0.0), "far": (5.0, 0.0, 0.0)}
     out = {"near": (-4.0, 0.0, 0.0), "far": (9.0, 0.0, 0.0)}
     sunk = {"head_sink": 4.0, "head_squash": 0.82}
+    poke = POKE_DOWN_DEG
     return [
         crouched(body, 0.0),
-        # Drawn back at the hip, lower into the crouch — the blade already
-        # points AT the target: a thrust never swings.
-        Key(at=a0 * 0.85, near=(150.0, 170.0, 5.0), far=(45.0, 20.0), torso=18.0, head=-8.0,
-            lunge=-1.0, drop=13.0, squash=0.92, shoulder=-3.0, feet=low, turn="open", squint=0.3,
+        # Drawn back at the hip, the blade already on the line it pokes along.
+        Key(at=a0 * 0.85, near=(150.0, 175.0, poke), far=(45.0, 20.0), torso=16.0, head=-2.0,
+            lunge=-1.5, drop=13.0, squash=0.92, shoulder=-3.0, feet=low, turn="open", squint=0.3,
             ease="in", **sunk),
-        # Thrust: arm and blade in one straight line along the floor.
-        Key(at=a0 + 0.3 * (a1 - a0), near=(20.0, 8.0, 6.0), far=(140.0, 120.0), torso=26.0,
-            head=-12.0, lunge=6.0, drop=13.0, squash=0.94, shoulder=7.0, feet=out, turn="profile",
+        # The poke: arm and blade in one straight line, down at the floor.
+        Key(at=a0 + 0.3 * (a1 - a0), near=(poke + 8.0, poke, poke), far=(140.0, 120.0), torso=24.0,
+            head=4.0, lunge=6.0, drop=13.0, squash=0.94, shoulder=7.0, feet=out, turn="profile",
             squint=0.4, ease="out", **sunk),
-        Key(at=a1, near=(22.0, 10.0, 8.0), far=(140.0, 120.0), torso=25.0, head=-11.0, lunge=6.0,
-            drop=13.0, squash=0.94, shoulder=7.0, feet=out, turn="profile", squint=0.3, **sunk),
+        Key(at=a1, near=(poke + 10.0, poke + 2.0, poke + 1.0), far=(140.0, 120.0), torso=23.0, head=4.0,
+            lunge=6.0, drop=13.0, squash=0.94, shoulder=7.0, feet=out, turn="profile", squint=0.3,
+            **sunk),
         Key(at=a1 + 0.22, near=(90.0, 100.0, 60.0), far=(90.0, 80.0), torso=14.0, head=-2.0,
             lunge=3.0, drop=12.5, squash=0.96, feet={"far": (5.0, 0.0, 0.0)}, blade=0.0, **sunk),
         crouched(body, 1.0),

@@ -37,6 +37,7 @@ from ...authoring.portrait import (
 from ...core import slash_envelope
 from .robot_side import RigCanvas, SideRobotGenerator, fx_piece
 from .player_robot_v3_back import BACK_ROWS
+from .player_robot_v3_front import FRONT_FRAMES, front_frame
 from .player_robot_v3_gameplay import hurtbox_parts_for_rows
 from .player_robot_v3_double_jump import JETS as DOUBLE_JUMP_JETS
 from .player_robot_v3_motion import EFFECT_ALIASES, MIRRORED, ROBOT_ROWS
@@ -54,6 +55,9 @@ RIG_PATH = (
 #: view at the same scale, in the same frame. The rows of `BACK_ROWS` are drawn
 #: from it.
 BACK_RIG_PATH = RIG_PATH.with_name("player_robot_v3_back.rig.json")
+#: The rig of the robot seen from the FRONT (`player_robot_v3_front`). The
+#: frames of `FRONT_FRAMES` are drawn from it.
+FRONT_RIG_PATH = RIG_PATH.with_name("player_robot_v3_front.rig.json")
 
 ANIMATION_ORDER = [name for name, _frames, _duration in ROBOT_ROWS]
 
@@ -170,6 +174,16 @@ def load_back_doc() -> RigDocument:
             "`uv run python scripts/build_player_robot_v3_svg.py build`"
         )
     return RigDocument.load(BACK_RIG_PATH)
+
+
+@lru_cache(maxsize=1)
+def load_front_doc() -> RigDocument:
+    if not FRONT_RIG_PATH.exists():
+        raise FileNotFoundError(
+            f"missing rig {FRONT_RIG_PATH}; rebuild it with "
+            "`uv run python scripts/build_player_robot_v3_svg.py build`"
+        )
+    return RigDocument.load(FRONT_RIG_PATH)
 
 
 # ── Effects ──────────────────────────────────────────────────────────────────
@@ -504,8 +518,26 @@ def _render_back(row: str, frame_idx: int, frame_count: int) -> Image.Image:
     return result
 
 
+def _front(row: str, frame_idx: int, mirrored: bool) -> Optional[Tuple[RigDocument, float]]:
+    """The front rig and the time of its clip, for a frame drawn from the front
+    view (`FRONT_FRAMES`); `None` for any other frame."""
+    if frame_idx not in FRONT_FRAMES.get(row, ()):
+        return None
+    doc = load_front_doc()
+    count = len(FRONT_FRAMES[row])
+    return doc, doc.frame_time(row, front_frame(row, frame_idx, mirrored), count)
+
+
 def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
     row, mirrored = _row(animation)
+    front = _front(row, frame_idx, mirrored)
+    if front is not None:
+        # From the front the robot is one picture for each facing: the ear cup
+        # stays at the left of the frame. It is not mirrored.
+        doc, t = front
+        result = Image.new("RGBA", (int(doc.frame["width"]), int(doc.frame["height"])), (0, 0, 0, 0))
+        rigdoc.composite_canvas(result, doc.render_at(row, t))
+        return result
     if row in BACK_ROWS:
         # From behind, the robot is the same picture for each facing: the ear
         # cup stays on its right ear, at the right of the frame. The row of the
@@ -537,6 +569,10 @@ def published_frame(animation: str, frame_idx: int, frame_count: int) -> Image.I
 
 def frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
     row, mirrored = _row(animation)
+    front = _front(row, frame_idx, mirrored)
+    if front is not None:
+        doc, _t = front
+        return _frame_meta(row, front_frame(row, frame_idx, mirrored), len(FRONT_FRAMES[row]), doc)
     if row in BACK_ROWS:
         return _frame_meta(row, frame_idx, frame_count, load_back_doc())
     clip = row
@@ -604,6 +640,16 @@ def _slash_poly(ox, oy, dx, dy, swing: slash_envelope.SwingDescriptor):
 # The thrust: long, thin, parallel-sided. Four vertices is the whole shape.
 POKE_REACH = 128 * 1.30
 POKE_HALF = 128 * 0.11
+# The down tilt's poke, in the 128 px frame (ground 118, centre 64): the line
+# of the drawn blade at its active frames, from the column of the body down to
+# the floor ahead. Measured off the rendered frames (hand 131.6,134.1 and tip
+# 170,152 in the rig's frame); `player_robot_v3_strikes.POKE_DOWN_DEG` poses
+# it. The robot is crouched, so the line starts at the height of a crouched
+# body, not at the standing centre.
+DOWN_POKE_ORIGIN = (64.0, 86.0)
+DOWN_POKE_DEG = 25.0
+DOWN_POKE_REACH = 68.0
+DOWN_POKE_HALF = 9.0
 
 
 def _poke_poly(ox, oy, dx, dy, reach, half):
@@ -686,8 +732,11 @@ def _player_attack_hitboxes(size: Tuple[int, int]) -> Dict[str, dict]:
         ),
         # This thrust is narrow and centered on the attacker-to-volume axis so
         # runtime quad fitting preserves its reach without tilting the art.
-        "attack_down": shaped(_poke_poly(cx, body_cy, 1.0, 0.0,
-                                         POKE_REACH, POKE_HALF)),
+        "attack_down": shaped(_poke_poly(
+            DOWN_POKE_ORIGIN[0], DOWN_POKE_ORIGIN[1],
+            math.cos(math.radians(DOWN_POKE_DEG)), math.sin(math.radians(DOWN_POKE_DEG)),
+            DOWN_POKE_REACH, DOWN_POKE_HALF,
+        )),
         "air_down": shaped(
             _slash_poly(cx, body_cy, 0.0, 1.0, SWING.scaled(reach=0.84, half=0.88))
         ),
