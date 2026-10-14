@@ -26,19 +26,19 @@ INK = "#15161c"
 OW = 2.2  # half the silhouette ink width
 
 C = dict(
-    body="#4b5262",
-    back="#353a47",
-    light="#6a7385",
-    belly="#cfc6b8",
-    belly_sh="#a69d90",
-    stripe="#2a2e38",
+    body="#b4bec7",
+    back="#8f9ba6",
+    light="#d2d9df",
+    belly="#f4f4ef",
+    belly_sh="#c9cfd2",
+    stripe="#7d8a95",
     magma="#ff6a1a",
     magma_hi="#ffd24a",
-    fin="#3c414e",
+    fin="#9ba7b1",
     fin_glow="#e5581c",
     fin_glow2="#ffb03a",
-    eye="#ffb52e",
-    eye_rim="#ffe38a",
+    eye="#1b1a1d",
+    eye_rim="#59636c",
     pupil="#140c06",
     membrane="#b9c4cf",
     mouth="#4a161c",
@@ -53,7 +53,7 @@ C = dict(
     blanket_d="#6e1c18",
     bone="#f1eadb",
 )
-FAR = dict(fin="#2c303b", fin_glow="#b8461a", fin_glow2="#d98a30")
+FAR = dict(fin="#7f8b96", fin_glow="#b8461a", fin_glow2="#d98a30")
 
 J = dict(
     body=(300.0, 150.0),
