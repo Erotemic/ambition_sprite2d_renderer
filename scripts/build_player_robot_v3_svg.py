@@ -21,6 +21,7 @@ from ambition_sprite2d_renderer.targets.characters.player_robot_v3_motion import
     POSE_ALIASES,
     ROBOT_ROWS,
 )
+from ambition_sprite2d_renderer.targets.characters.player_robot_v3_back import BACK_ROWS, author_back_rows
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_crouch import reauthor_crouch
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_gait import author_gaits
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_strikes import (
@@ -34,6 +35,11 @@ SVG_PATH = PKG / "data/characters/player_robot_v3_svg/player-robot-v3.svg"
 RIG_DIR = PKG / "targets/characters/rigged/player_robot_v3"
 RIG_JSON = RIG_DIR / "player_robot_v3.rig.json"
 VIEW_LABEL = "Player Robot - Side Right"
+# The robot from behind: a second SVG, with a rig of its own, for the rows of
+# `BACK_ROWS`. `scripts/build_player_robot_v3_back_svg.py` wrote its first drawing.
+BACK_SVG_PATH = PKG / "data/characters/player_robot_v3_svg/player-robot-v3-back.svg"
+BACK_RIG_JSON = RIG_DIR / "player_robot_v3_back.rig.json"
+BACK_VIEW_LABEL = "Player Robot - Back"
 
 FRAME_WIDTH = 224
 FRAME_HEIGHT = 224
@@ -605,6 +611,49 @@ def build_doc() -> dict:
     return doc
 
 
+def build_back_doc(side: dict) -> dict:
+    """The rig of the back view, at the scale and in the frame of the side rig.
+
+    The extraction sets the scale from a height. The first pass measures the
+    back view's art; the second pass asks for the height that gives the side
+    rig's scale. A change of either drawing can thus not make the two views two
+    sizes.
+    """
+
+    def extract(target_height: float) -> dict:
+        return build_humanoid_view_document(
+            BACK_SVG_PATH,
+            RIG_DIR,
+            HumanoidViewSpec(
+                view=BACK_VIEW_LABEL,
+                name="player_robot_v3_back",
+                frame_width=FRAME_WIDTH,
+                frame_height=FRAME_HEIGHT,
+                center_x=CENTER_X,
+                ground_y=GROUND_Y,
+                target_height=target_height,
+                ref_dpi=25.4,
+                supersample=4,
+                render_scale=1,
+                collision_scale=1.65,
+            ),
+        )
+
+    side_scale = float(side["svg_source"]["scale"])
+    art_height = 100.0 / float(extract(100.0)["svg_source"]["scale"])
+    doc = extract(side_scale * art_height)
+    # These rows are IK rows: a clip gives where a hand and a foot are, and the
+    # rig's chains put the elbows and the knees.
+    author_back_rows(doc, {name: ROW_INFO[name] for name in BACK_ROWS})
+    doc["features"] = {
+        "paper_doll": True,
+        "view": "back",
+        "motion_profile": "targets/characters/player_robot_v3_back.py",
+        "logical_frame": [FRAME_WIDTH, FRAME_HEIGHT],
+    }
+    return doc
+
+
 def _preserved_authoring_blocks() -> dict[str, dict]:
     """Keep GUI-authored metadata across deterministic rig regeneration.
 
@@ -636,6 +685,8 @@ def cmd_build() -> None:
     doc.update(preserved)
     RIG_JSON.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf8")
     print(RIG_JSON)
+    BACK_RIG_JSON.write_text(json.dumps(build_back_doc(doc), indent=2) + "\n", encoding="utf8")
+    print(BACK_RIG_JSON)
 
 
 def main(argv: Sequence[str] | None = None) -> None:

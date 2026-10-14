@@ -1,0 +1,1281 @@
+{
+  "name": "player_robot_v3_back",
+  "frame": {
+    "width": 224,
+    "height": 224,
+    "center_x": 112.0,
+    "ground_y": 158.0,
+    "ankle_h": 5.8046,
+    "supersample": 4,
+    "render_scale": 1
+  },
+  "svg_source": {
+    "path": "../../../../data/characters/player_robot_v3_svg/player-robot-v3-back.svg",
+    "view": "Player Robot - Back",
+    "ref_dpi": 25.4,
+    "scale": 1.16091954
+  },
+  "palette": {},
+  "bones": [
+    {
+      "name": "pelvis",
+      "parent": null,
+      "offset": [
+        0.0,
+        -25.5402
+      ],
+      "length": 0.0,
+      "rest_angle": 0.0
+    },
+    {
+      "name": "torso",
+      "parent": "pelvis",
+      "offset": [
+        0.0,
+        -3.4828
+      ],
+      "length": 0.0,
+      "rest_angle": 0.0
+    },
+    {
+      "name": "head",
+      "parent": "torso",
+      "offset": [
+        0.0,
+        -19.7356
+      ],
+      "length": 0.0,
+      "rest_angle": 0.0
+    },
+    {
+      "name": "far_arm_u",
+      "parent": "torso",
+      "offset": [
+        -15.092,
+        -13.931
+      ],
+      "length": 7.4335,
+      "rest_angle": 128.6598
+    },
+    {
+      "name": "far_arm_l",
+      "parent": "far_arm_u",
+      "offset": [
+        7.4335,
+        0.0
+      ],
+      "length": 10.5126,
+      "rest_angle": -32.3196
+    },
+    {
+      "name": "far_arm_hand",
+      "parent": "far_arm_l",
+      "offset": [
+        10.5126,
+        -0.0
+      ],
+      "length": 6.9655,
+      "rest_angle": -6.3402
+    },
+    {
+      "name": "far_leg_u",
+      "parent": "pelvis",
+      "offset": [
+        -5.8046,
+        0.0
+      ],
+      "length": 9.5732,
+      "rest_angle": 104.0362
+    },
+    {
+      "name": "far_leg_l",
+      "parent": "far_leg_u",
+      "offset": [
+        9.5732,
+        0.0
+      ],
+      "length": 10.4483,
+      "rest_angle": -14.0362
+    },
+    {
+      "name": "far_leg_foot",
+      "parent": "far_leg_l",
+      "offset": [
+        10.4483,
+        0.0
+      ],
+      "length": 5.8046,
+      "rest_angle": 0.0
+    },
+    {
+      "name": "near_arm_u",
+      "parent": "torso",
+      "offset": [
+        15.092,
+        -13.931
+      ],
+      "length": 7.4335,
+      "rest_angle": 51.3402
+    },
+    {
+      "name": "near_arm_l",
+      "parent": "near_arm_u",
+      "offset": [
+        7.4335,
+        0.0
+      ],
+      "length": 10.5126,
+      "rest_angle": 32.3196
+    },
+    {
+      "name": "near_arm_hand",
+      "parent": "near_arm_l",
+      "offset": [
+        10.5126,
+        -0.0
+      ],
+      "length": 6.9655,
+      "rest_angle": 6.3402
+    },
+    {
+      "name": "near_leg_u",
+      "parent": "pelvis",
+      "offset": [
+        5.8046,
+        0.0
+      ],
+      "length": 9.5732,
+      "rest_angle": 75.9638
+    },
+    {
+      "name": "near_leg_l",
+      "parent": "near_leg_u",
+      "offset": [
+        9.5732,
+        -0.0
+      ],
+      "length": 10.4483,
+      "rest_angle": 14.0362
+    },
+    {
+      "name": "near_leg_foot",
+      "parent": "near_leg_l",
+      "offset": [
+        10.4483,
+        0.0
+      ],
+      "length": 5.8046,
+      "rest_angle": 0.0
+    }
+  ],
+  "parts": [
+    {
+      "name": "far_leg_u",
+      "bone": "far_leg_u",
+      "z": 14.0,
+      "kind": "sprite",
+      "include": [
+        "back-far-leg-u-0"
+      ],
+      "pivot": [
+        29.0,
+        68.0
+      ],
+      "rest_angle": 104.0362,
+      "svg_source_order": 0
+    },
+    {
+      "name": "near_leg_u",
+      "bone": "near_leg_u",
+      "z": 14.1,
+      "kind": "sprite",
+      "include": [
+        "back-near-leg-u-0"
+      ],
+      "pivot": [
+        39.0,
+        68.0
+      ],
+      "rest_angle": 75.9638,
+      "svg_source_order": 1
+    },
+    {
+      "name": "far_leg_l",
+      "bone": "far_leg_l",
+      "z": 15.0,
+      "kind": "sprite",
+      "include": [
+        "back-far-leg-l-0"
+      ],
+      "pivot": [
+        27.0,
+        76.0
+      ],
+      "rest_angle": 90.0,
+      "svg_source_order": 2
+    },
+    {
+      "name": "near_leg_l",
+      "bone": "near_leg_l",
+      "z": 15.1,
+      "kind": "sprite",
+      "include": [
+        "back-near-leg-l-0"
+      ],
+      "pivot": [
+        41.0,
+        76.0
+      ],
+      "rest_angle": 90.0,
+      "svg_source_order": 3
+    },
+    {
+      "name": "far_foot",
+      "bone": "far_leg_foot",
+      "z": 16.0,
+      "kind": "sprite",
+      "include": [
+        "back-far-foot-0",
+        "back-far-foot-1"
+      ],
+      "pivot": [
+        27.0,
+        85.0
+      ],
+      "rest_angle": 90.0,
+      "svg_source_order": 4
+    },
+    {
+      "name": "near_foot",
+      "bone": "near_leg_foot",
+      "z": 16.1,
+      "kind": "sprite",
+      "include": [
+        "back-near-foot-0",
+        "back-near-foot-1"
+      ],
+      "pivot": [
+        41.0,
+        85.0
+      ],
+      "rest_angle": 90.0,
+      "svg_source_order": 5
+    },
+    {
+      "name": "far_arm_u",
+      "bone": "far_arm_u",
+      "z": 26.0,
+      "kind": "sprite",
+      "include": [
+        "back-far-arm-u-0"
+      ],
+      "pivot": [
+        21.0,
+        53.0
+      ],
+      "rest_angle": 128.6598,
+      "svg_source_order": 6
+    },
+    {
+      "name": "near_arm_u",
+      "bone": "near_arm_u",
+      "z": 26.1,
+      "kind": "sprite",
+      "include": [
+        "back-near-arm-u-0"
+      ],
+      "pivot": [
+        47.0,
+        53.0
+      ],
+      "rest_angle": 51.3402,
+      "svg_source_order": 7
+    },
+    {
+      "name": "far_arm_l",
+      "bone": "far_arm_l",
+      "z": 27.0,
+      "kind": "sprite",
+      "include": [
+        "back-far-arm-l-0"
+      ],
+      "pivot": [
+        17.0,
+        58.0
+      ],
+      "rest_angle": 96.3402,
+      "svg_source_order": 8
+    },
+    {
+      "name": "near_arm_l",
+      "bone": "near_arm_l",
+      "z": 27.1,
+      "kind": "sprite",
+      "include": [
+        "back-near-arm-l-0"
+      ],
+      "pivot": [
+        51.0,
+        58.0
+      ],
+      "rest_angle": 83.6598,
+      "svg_source_order": 9
+    },
+    {
+      "name": "far_hand",
+      "bone": "far_arm_hand",
+      "z": 28.0,
+      "kind": "sprite",
+      "include": [
+        "back-far-hand-0",
+        "back-far-hand-1",
+        "back-far-hand-2"
+      ],
+      "pivot": [
+        16.0,
+        67.0
+      ],
+      "rest_angle": 90.0,
+      "svg_source_order": 10
+    },
+    {
+      "name": "near_hand",
+      "bone": "near_arm_hand",
+      "z": 28.1,
+      "kind": "sprite",
+      "include": [
+        "back-near-hand-0",
+        "back-near-hand-1",
+        "back-near-hand-2"
+      ],
+      "pivot": [
+        52.0,
+        67.0
+      ],
+      "rest_angle": 90.0,
+      "svg_source_order": 11
+    },
+    {
+      "name": "pelvis_back",
+      "bone": "pelvis",
+      "z": 30.0,
+      "kind": "sprite",
+      "include": [
+        "back-pelvis-back-0"
+      ],
+      "pivot": [
+        34.0,
+        68.0
+      ],
+      "rest_angle": 0.0,
+      "svg_source_order": 12
+    },
+    {
+      "name": "neck_ring",
+      "bone": "torso",
+      "z": 38.0,
+      "kind": "sprite",
+      "include": [
+        "back-neck-ring-0"
+      ],
+      "pivot": [
+        34.0,
+        65.0
+      ],
+      "rest_angle": 0.0,
+      "svg_source_order": 13
+    },
+    {
+      "name": "torso_back",
+      "bone": "torso",
+      "z": 40.0,
+      "kind": "sprite",
+      "include": [
+        "back-torso-back-0"
+      ],
+      "pivot": [
+        34.0,
+        65.0
+      ],
+      "rest_angle": 0.0,
+      "svg_source_order": 14
+    },
+    {
+      "name": "antenna_near",
+      "bone": "head",
+      "z": 59.1,
+      "kind": "sprite",
+      "include": [
+        "back-antenna-near-0",
+        "back-antenna-near-1"
+      ],
+      "pivot": [
+        34.0,
+        48.0
+      ],
+      "rest_angle": 0.0,
+      "svg_source_order": 15
+    },
+    {
+      "name": "head_side",
+      "bone": "head",
+      "z": 59.5,
+      "kind": "sprite",
+      "include": [
+        "back-head-side-0",
+        "back-head-side-1"
+      ],
+      "pivot": [
+        34.0,
+        48.0
+      ],
+      "rest_angle": 0.0,
+      "svg_source_order": 16
+    },
+    {
+      "name": "head",
+      "bone": "head",
+      "z": 60.0,
+      "kind": "sprite",
+      "include": [
+        "back-head-0"
+      ],
+      "pivot": [
+        34.0,
+        48.0
+      ],
+      "rest_angle": 0.0,
+      "svg_source_order": 17
+    }
+  ],
+  "ik_legs": [
+    {
+      "upper": "near_leg_u",
+      "lower": "near_leg_l",
+      "foot": "near_leg_foot",
+      "channel_prefix": "near_foot",
+      "rest_x": 8.1264,
+      "rest_lift": 0.0,
+      "rest_pitch": 90.0,
+      "bend": 1.0
+    },
+    {
+      "upper": "far_leg_u",
+      "lower": "far_leg_l",
+      "foot": "far_leg_foot",
+      "channel_prefix": "far_foot",
+      "rest_x": -8.1264,
+      "rest_lift": 0.0,
+      "rest_pitch": 90.0,
+      "bend": -1.0
+    }
+  ],
+  "ik_chains": [
+    {
+      "upper": "near_arm_u",
+      "lower": "near_arm_l",
+      "end": "near_arm_hand",
+      "channel_prefix": "near_hand",
+      "rest_x": 20.8966,
+      "rest_y": -26.7011,
+      "rest_pitch": 90.0,
+      "pitch_mode": "world",
+      "bend": 1.0,
+      "pose_authority": "svg-layout"
+    },
+    {
+      "upper": "far_arm_u",
+      "lower": "far_arm_l",
+      "end": "far_arm_hand",
+      "channel_prefix": "far_hand",
+      "rest_x": -20.8966,
+      "rest_y": -26.7011,
+      "rest_pitch": 90.0,
+      "pitch_mode": "world",
+      "bend": -1.0,
+      "pose_authority": "svg-layout"
+    }
+  ],
+  "clips": {
+    "climb": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 100,
+      "channels": {
+        "root_x": {
+          "keys": [
+            [
+              0.0,
+              1.23134
+            ],
+            [
+              0.125,
+              1.74138
+            ],
+            [
+              0.25,
+              1.23134
+            ],
+            [
+              0.375,
+              0.0
+            ],
+            [
+              0.5,
+              -1.23134
+            ],
+            [
+              0.625,
+              -1.74138
+            ],
+            [
+              0.75,
+              -1.23134
+            ],
+            [
+              0.875,
+              -0.0
+            ],
+            [
+              1.0,
+              1.23134
+            ]
+          ]
+        },
+        "root_y": {
+          "keys": [
+            [
+              0.0,
+              -1.74138
+            ],
+            [
+              0.125,
+              -1.50336
+            ],
+            [
+              0.25,
+              -0.92874
+            ],
+            [
+              0.375,
+              -1.50336
+            ],
+            [
+              0.5,
+              -1.74138
+            ],
+            [
+              0.625,
+              -1.50336
+            ],
+            [
+              0.75,
+              -0.92874
+            ],
+            [
+              0.875,
+              -1.50336
+            ],
+            [
+              1.0,
+              -1.74138
+            ]
+          ]
+        },
+        "pelvis": {
+          "keys": [
+            [
+              0.0,
+              0.70711
+            ],
+            [
+              0.125,
+              1.0
+            ],
+            [
+              0.25,
+              0.70711
+            ],
+            [
+              0.375,
+              0.0
+            ],
+            [
+              0.5,
+              -0.70711
+            ],
+            [
+              0.625,
+              -1.0
+            ],
+            [
+              0.75,
+              -0.70711
+            ],
+            [
+              0.875,
+              -0.0
+            ],
+            [
+              1.0,
+              0.70711
+            ]
+          ]
+        },
+        "torso": {
+          "keys": [
+            [
+              0.0,
+              2.40416
+            ],
+            [
+              0.125,
+              3.4
+            ],
+            [
+              0.25,
+              2.40416
+            ],
+            [
+              0.375,
+              0.0
+            ],
+            [
+              0.5,
+              -2.40416
+            ],
+            [
+              0.625,
+              -3.4
+            ],
+            [
+              0.75,
+              -2.40416
+            ],
+            [
+              0.875,
+              -0.0
+            ],
+            [
+              1.0,
+              2.40416
+            ]
+          ]
+        },
+        "head": {
+          "keys": [
+            [
+              0.0,
+              -2.12132
+            ],
+            [
+              0.125,
+              -3.0
+            ],
+            [
+              0.25,
+              -2.12132
+            ],
+            [
+              0.375,
+              -0.0
+            ],
+            [
+              0.5,
+              2.12132
+            ],
+            [
+              0.625,
+              3.0
+            ],
+            [
+              0.75,
+              2.12132
+            ],
+            [
+              0.875,
+              0.0
+            ],
+            [
+              1.0,
+              -2.12132
+            ]
+          ]
+        },
+        "near_hand_x": {
+          "keys": [
+            [
+              0.0,
+              22.63793
+            ],
+            [
+              0.125,
+              22.63793
+            ],
+            [
+              0.25,
+              22.63793
+            ],
+            [
+              0.375,
+              22.63793
+            ],
+            [
+              0.5,
+              22.63793
+            ],
+            [
+              0.625,
+              21.3245
+            ],
+            [
+              0.75,
+              20.78046
+            ],
+            [
+              0.875,
+              21.3245
+            ],
+            [
+              1.0,
+              22.63793
+            ]
+          ]
+        },
+        "near_hand_y": {
+          "keys": [
+            [
+              0.0,
+              -50.38391
+            ],
+            [
+              0.125,
+              -46.4658
+            ],
+            [
+              0.25,
+              -42.5477
+            ],
+            [
+              0.375,
+              -38.6296
+            ],
+            [
+              0.5,
+              -34.71149
+            ],
+            [
+              0.625,
+              -37.16031
+            ],
+            [
+              0.75,
+              -42.5477
+            ],
+            [
+              0.875,
+              -47.93509
+            ],
+            [
+              1.0,
+              -50.38391
+            ]
+          ]
+        },
+        "near_hand_pitch": {
+          "keys": [
+            [
+              0.0,
+              -90.0
+            ],
+            [
+              0.125,
+              -90.0
+            ],
+            [
+              0.25,
+              -90.0
+            ],
+            [
+              0.375,
+              -90.0
+            ],
+            [
+              0.5,
+              -90.0
+            ],
+            [
+              0.625,
+              -90.0
+            ],
+            [
+              0.75,
+              -90.0
+            ],
+            [
+              0.875,
+              -90.0
+            ],
+            [
+              1.0,
+              -90.0
+            ]
+          ]
+        },
+        "near_hand_bend": {
+          "keys": [
+            [
+              0.0,
+              -1.0
+            ],
+            [
+              0.125,
+              -1.0
+            ],
+            [
+              0.25,
+              -1.0
+            ],
+            [
+              0.375,
+              -1.0
+            ],
+            [
+              0.5,
+              -1.0
+            ],
+            [
+              0.625,
+              -1.0
+            ],
+            [
+              0.75,
+              -1.0
+            ],
+            [
+              0.875,
+              -1.0
+            ],
+            [
+              1.0,
+              -1.0
+            ]
+          ]
+        },
+        "near_foot_x": {
+          "keys": [
+            [
+              0.0,
+              11.37701
+            ],
+            [
+              0.125,
+              10.06358
+            ],
+            [
+              0.25,
+              9.51954
+            ],
+            [
+              0.375,
+              10.06358
+            ],
+            [
+              0.5,
+              11.37701
+            ],
+            [
+              0.625,
+              11.37701
+            ],
+            [
+              0.75,
+              11.37701
+            ],
+            [
+              0.875,
+              11.37701
+            ],
+            [
+              1.0,
+              11.37701
+            ]
+          ]
+        },
+        "near_foot_lift": {
+          "keys": [
+            [
+              0.0,
+              2.9023
+            ],
+            [
+              0.125,
+              4.44414
+            ],
+            [
+              0.25,
+              7.8362
+            ],
+            [
+              0.375,
+              11.22827
+            ],
+            [
+              0.5,
+              12.77011
+            ],
+            [
+              0.625,
+              10.30316
+            ],
+            [
+              0.75,
+              7.8362
+            ],
+            [
+              0.875,
+              5.36925
+            ],
+            [
+              1.0,
+              2.9023
+            ]
+          ]
+        },
+        "near_foot_pitch": {
+          "keys": [
+            [
+              0.0,
+              95.0
+            ],
+            [
+              0.125,
+              90.75736
+            ],
+            [
+              0.25,
+              89.0
+            ],
+            [
+              0.375,
+              90.75736
+            ],
+            [
+              0.5,
+              95.0
+            ],
+            [
+              0.625,
+              95.0
+            ],
+            [
+              0.75,
+              95.0
+            ],
+            [
+              0.875,
+              95.0
+            ],
+            [
+              1.0,
+              95.0
+            ]
+          ]
+        },
+        "far_hand_x": {
+          "keys": [
+            [
+              0.0,
+              -22.63793
+            ],
+            [
+              0.125,
+              -21.3245
+            ],
+            [
+              0.25,
+              -20.78046
+            ],
+            [
+              0.375,
+              -21.3245
+            ],
+            [
+              0.5,
+              -22.63793
+            ],
+            [
+              0.625,
+              -22.63793
+            ],
+            [
+              0.75,
+              -22.63793
+            ],
+            [
+              0.875,
+              -22.63793
+            ],
+            [
+              1.0,
+              -22.63793
+            ]
+          ]
+        },
+        "far_hand_y": {
+          "keys": [
+            [
+              0.0,
+              -34.71149
+            ],
+            [
+              0.125,
+              -37.16031
+            ],
+            [
+              0.25,
+              -42.5477
+            ],
+            [
+              0.375,
+              -47.93509
+            ],
+            [
+              0.5,
+              -50.38391
+            ],
+            [
+              0.625,
+              -46.4658
+            ],
+            [
+              0.75,
+              -42.5477
+            ],
+            [
+              0.875,
+              -38.6296
+            ],
+            [
+              1.0,
+              -34.71149
+            ]
+          ]
+        },
+        "far_hand_pitch": {
+          "keys": [
+            [
+              0.0,
+              -90.0
+            ],
+            [
+              0.125,
+              -90.0
+            ],
+            [
+              0.25,
+              -90.0
+            ],
+            [
+              0.375,
+              -90.0
+            ],
+            [
+              0.5,
+              -90.0
+            ],
+            [
+              0.625,
+              -90.0
+            ],
+            [
+              0.75,
+              -90.0
+            ],
+            [
+              0.875,
+              -90.0
+            ],
+            [
+              1.0,
+              -90.0
+            ]
+          ]
+        },
+        "far_hand_bend": {
+          "keys": [
+            [
+              0.0,
+              1.0
+            ],
+            [
+              0.125,
+              1.0
+            ],
+            [
+              0.25,
+              1.0
+            ],
+            [
+              0.375,
+              1.0
+            ],
+            [
+              0.5,
+              1.0
+            ],
+            [
+              0.625,
+              1.0
+            ],
+            [
+              0.75,
+              1.0
+            ],
+            [
+              0.875,
+              1.0
+            ],
+            [
+              1.0,
+              1.0
+            ]
+          ]
+        },
+        "far_foot_x": {
+          "keys": [
+            [
+              0.0,
+              -11.37701
+            ],
+            [
+              0.125,
+              -11.37701
+            ],
+            [
+              0.25,
+              -11.37701
+            ],
+            [
+              0.375,
+              -11.37701
+            ],
+            [
+              0.5,
+              -11.37701
+            ],
+            [
+              0.625,
+              -10.06358
+            ],
+            [
+              0.75,
+              -9.51954
+            ],
+            [
+              0.875,
+              -10.06358
+            ],
+            [
+              1.0,
+              -11.37701
+            ]
+          ]
+        },
+        "far_foot_lift": {
+          "keys": [
+            [
+              0.0,
+              12.77011
+            ],
+            [
+              0.125,
+              10.30316
+            ],
+            [
+              0.25,
+              7.8362
+            ],
+            [
+              0.375,
+              5.36925
+            ],
+            [
+              0.5,
+              2.9023
+            ],
+            [
+              0.625,
+              4.44414
+            ],
+            [
+              0.75,
+              7.8362
+            ],
+            [
+              0.875,
+              11.22827
+            ],
+            [
+              1.0,
+              12.77011
+            ]
+          ]
+        },
+        "far_foot_pitch": {
+          "keys": [
+            [
+              0.0,
+              85.0
+            ],
+            [
+              0.125,
+              85.0
+            ],
+            [
+              0.25,
+              85.0
+            ],
+            [
+              0.375,
+              85.0
+            ],
+            [
+              0.5,
+              85.0
+            ],
+            [
+              0.625,
+              89.24264
+            ],
+            [
+              0.75,
+              91.0
+            ],
+            [
+              0.875,
+              89.24264
+            ],
+            [
+              1.0,
+              85.0
+            ]
+          ]
+        }
+      }
+    }
+  },
+  "sprite_tuning": {
+    "collision_scale": 1.65,
+    "part_order": "attribute"
+  },
+  "features": {
+    "paper_doll": true,
+    "view": "back",
+    "motion_profile": "targets/characters/player_robot_v3_back.py",
+    "logical_frame": [
+      224,
+      224
+    ]
+  }
+}

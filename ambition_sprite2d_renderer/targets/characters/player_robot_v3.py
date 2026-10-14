@@ -36,6 +36,7 @@ from ...authoring.portrait import (
 )
 from ...core import slash_envelope
 from .robot_side import RigCanvas, SideRobotGenerator, _on_grid, fx_piece, transposed
+from .player_robot_v3_back import BACK_ROWS
 from .player_robot_v3_gameplay import hurtbox_parts_for_rows
 from .player_robot_v3_motion import EFFECT_ALIASES, MIRRORED, ROBOT_ROWS
 from .player_robot_v3_strikes import STRIKES
@@ -47,6 +48,11 @@ RIG_PATH = (
     Path(__file__).resolve().parent
     / "rigged/player_robot_v3/player_robot_v3.rig.json"
 )
+
+#: The rig of the robot seen from BEHIND (`player_robot_v3_back`): a second SVG
+#: view at the same scale, in the same frame. The rows of `BACK_ROWS` are drawn
+#: from it.
+BACK_RIG_PATH = RIG_PATH.with_name("player_robot_v3_back.rig.json")
 
 ANIMATION_ORDER = [name for name, _frames, _duration in ROBOT_ROWS]
 
@@ -153,6 +159,16 @@ def load_doc() -> RigDocument:
             "`uv run python scripts/build_player_robot_v3_svg.py build`"
         )
     return RigDocument.load(RIG_PATH)
+
+
+@lru_cache(maxsize=1)
+def load_back_doc() -> RigDocument:
+    if not BACK_RIG_PATH.exists():
+        raise FileNotFoundError(
+            f"missing rig {BACK_RIG_PATH}; rebuild it with "
+            "`uv run python scripts/build_player_robot_v3_svg.py build`"
+        )
+    return RigDocument.load(BACK_RIG_PATH)
 
 
 # ── Effects ──────────────────────────────────────────────────────────────────
@@ -503,8 +519,23 @@ def _compose(animation: str, clip: str, t: float, solved, frame_idx: int, nframe
     return result
 
 
+def _render_back(row: str, frame_idx: int, frame_count: int) -> Image.Image:
+    """A frame of a back-view row: the back rig's body, with no effects."""
+    doc = load_back_doc()
+    t = doc.frame_time(row, frame_idx, frame_count)
+    size = (int(doc.frame["width"]), int(doc.frame["height"]))
+    result = Image.new("RGBA", size, (0, 0, 0, 0))
+    rigdoc.composite_canvas(result, doc.render_at(row, t))
+    return result
+
+
 def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
     row, mirrored = _row(animation)
+    if row in BACK_ROWS:
+        # From behind, the robot is the same picture for each facing: the ear
+        # cup stays on its right ear, at the right of the frame. The row of the
+        # other facing is thus this picture, and it is not mirrored.
+        return _render_back(row, frame_idx, frame_count)
     doc = load_doc()
     # A strike authors its own other-side clip (the blade stays in the hand that
     # holds it, which from this side is the far one); every other row is the
@@ -531,6 +562,8 @@ def published_frame(animation: str, frame_idx: int, frame_count: int) -> Image.I
 
 def frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
     row, mirrored = _row(animation)
+    if row in BACK_ROWS:
+        return _frame_meta(row, frame_idx, frame_count, load_back_doc())
     clip = row
     if mirrored and MIRRORED.format(row) in load_doc().clips:
         clip = MIRRORED.format(row)
@@ -541,8 +574,8 @@ def frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
     return meta
 
 
-def _frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
-    doc = load_doc()
+def _frame_meta(animation: str, frame_idx: int, frame_count: int, doc: Optional[RigDocument] = None) -> dict:
+    doc = load_doc() if doc is None else doc
     world, _params = doc.solve(animation, doc.frame_time(animation, frame_idx, frame_count))
     head = world["head"].origin
     near_hand = world["near_arm_hand"].tip
@@ -870,7 +903,7 @@ def render_canonical(out_dir: str | Path, **opts):
 
 __all__ = [
     "ACTOR_METADATA", "ANIMATION_ORDER", "FRAME_SIZE", "ROWS", "TARGET_NAME",
-    "build_part_flipbook", "frame_meta", "load_doc", "published_frame", "render",
+    "build_part_flipbook", "frame_meta", "load_back_doc", "load_doc", "published_frame", "render",
     "render_canonical", "render_frame",
     "render_portraits",
 ]

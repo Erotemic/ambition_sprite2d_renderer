@@ -465,6 +465,13 @@ uv run --extra gui python -m ambition_sprite2d_renderer.gui \
 uv run ambition-sprite2d-renderer sheet player_robot_v3
 ```
 
+The robot has a second view, from behind (`player-robot-v3-back.svg`, rig
+`player_robot_v3_back.rig.json`). The same build writes its rig, at the scale of
+the side view. The rows of `BACK_ROWS` (`player_robot_v3_back.py`: the ladder
+`climb`) are drawn from it. These rows are IK rows: a clip gives where each hand
+and each foot is. The robot has one ear cup, so a back row is not mirrored for
+the other facing.
+
 A rig's logical authoring frame and its published raster need not be identical.
 Large rotations such as rolls should use rig-render overscan so parts are painted
 outside the logical frame before publication crops or packs them. Padding a
