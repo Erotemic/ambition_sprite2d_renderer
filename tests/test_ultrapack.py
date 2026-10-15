@@ -177,3 +177,60 @@ def test_write_pack_is_clean_and_debug_views_are_opt_in(tmp_path):
     assert (out / "diagnostics").is_dir()
     assert all("diagnostics" in str(p) for p in diag)
     assert (out / "diagnostics" / "ultrapack_report.txt").exists()
+
+
+def _recolour(sheet_dir, stem):
+    page_path = sheet_dir / f"{stem}_spritesheet.png"
+    page = Image.open(page_path).convert("RGBA")
+    pixels = page.load()
+    for y in range(page.height):
+        for x in range(page.width):
+            r, g, b, a = pixels[x, y]
+            if a:
+                pixels[x, y] = (255 - r, g, b, a)
+    page.save(page_path)
+
+
+def test_a_page_whose_pixels_did_not_change_is_not_written_again(tmp_path):
+    """An edit to one sheet rewrites only the pages that hold its frames:
+    encoding a page costs about 5 times its decode."""
+    sheets = tmp_path / "in"
+    sheets.mkdir()
+    for stem in ("alpha", "beta"):
+        _write_sheet(sheets, stem, fw=64, fh=64, n_frames=4, cols=2)
+    plan = PackPlan(groups={"zone_a": ["alpha"]})
+    out = tmp_path / "out"
+    write_pack(ultrapack_rendered(sheets, page_size=256, plan=plan), out, name="ultrapack")
+    pack = ultrapack_rendered(sheets, page_size=256, plan=plan)
+    alpha_page = out / f"ultrapack_{pack.page_groups.index('zone_a')}.png"
+    beta_page = out / f"ultrapack_{pack.page_groups.index('shared')}.png"
+    before = {page: page.stat().st_mtime_ns for page in (alpha_page, beta_page)}
+    alpha_page.touch()  # a write would move the mtime past this
+    os_mtime = alpha_page.stat().st_mtime_ns
+
+    _recolour(sheets, "beta")
+    pack = ultrapack_rendered(sheets, page_size=256, plan=plan)
+    write_pack(pack, out, name="ultrapack")
+
+    assert alpha_page.stat().st_mtime_ns == os_mtime, "the unchanged page was written again"
+    assert beta_page.stat().st_mtime_ns != before[beta_page], "the changed page was kept"
+    # Control: every page on disk is what a fresh write of this pack gives.
+    fresh = tmp_path / "fresh"
+    write_pack(pack, fresh, name="ultrapack")
+    for page in fresh.glob("*.png"):
+        assert Image.open(page).tobytes() == Image.open(out / page.name).tobytes(), page.name
+
+
+def test_a_pack_with_fewer_pages_leaves_no_stale_page(tmp_path):
+    sheets = tmp_path / "in"
+    sheets.mkdir()
+    for stem in ("alpha", "beta"):
+        _write_sheet(sheets, stem, fw=64, fh=64, n_frames=4, cols=2)
+    out = tmp_path / "out"
+    two = ultrapack_rendered(sheets, page_size=256, plan=PackPlan(groups={"zone_a": ["alpha"]}))
+    write_pack(two, out, name="ultrapack")
+    assert len(list(out.glob("ultrapack_*.png"))) == len(two.pages) >= 2
+
+    one = ultrapack_rendered(sheets, page_size=256)
+    write_pack(one, out, name="ultrapack")
+    assert sorted(p.name for p in out.glob("ultrapack_*.png")) == [f"ultrapack_{i}.png" for i in range(len(one.pages))]

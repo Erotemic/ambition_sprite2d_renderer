@@ -393,6 +393,21 @@ def ultrapack_rendered(
     return _pack_pool(pairs, scale=scale, page_size=page_size, max_dim=max_dim, plan=plan)
 
 
+def _holds_pixels(path: Path, img: Image.Image) -> bool:
+    """True when ``path`` is an image with exactly the pixels of ``img``."""
+    if not path.is_file():
+        return False
+    try:
+        with Image.open(path) as existing:
+            return (
+                existing.size == img.size
+                and existing.mode == img.mode
+                and existing.tobytes() == img.tobytes()
+            )
+    except OSError:
+        return False
+
+
 @profile
 def write_pack(pack: UltraPack, out_dir: Path, *, name: str = "ultrapack") -> List[Path]:
     """Write the shared page PNGs + a catalog JSON (runtime artifacts only).
@@ -406,8 +421,18 @@ def write_pack(pack: UltraPack, out_dir: Path, *, name: str = "ultrapack") -> Li
     page_names = [f"{name}_{i}.png" for i in range(len(pack.pages))]
     for img, pname in zip(pack.pages, page_names):
         p = out_dir / pname
-        img.save(p)
+        # A page whose file already holds these pixels is kept: encoding a
+        # page costs about 5 times its decode, and an edit to one sheet
+        # leaves most pages as they were (1 of 61 changed for a recolour,
+        # 30 of 61 for a frame that changed size; measured 2026-10-15).
+        if not _holds_pixels(p, img):
+            img.save(p)
         written.append(p)
+    # A pack with fewer pages than the last one: the extra pages are stale.
+    for stale in out_dir.glob(f"{name}_*.png"):
+        suffix = stale.stem[len(name) + 1 :]
+        if suffix.isdigit() and int(suffix) >= len(pack.pages):
+            stale.unlink()
     catalog_path = out_dir / f"{name}.json"
     catalog_path.write_text(json.dumps(pack.catalog(page_names), indent=1, sort_keys=True))
     written.append(catalog_path)
