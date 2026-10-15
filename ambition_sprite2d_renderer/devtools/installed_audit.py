@@ -33,46 +33,6 @@ COMMAND_PRODUCED: Mapping[str, str] = {
 }
 
 
-def faction_claims() -> Dict[str, str]:
-    """Producer class 3, resolved from data rather than from a copied list.
-
-    ``draw-factions`` renders every character declared in
-    ``configs/factions/music_factions.yaml``; ``scripts/regen/sprites.sh`` then copies a
-    subset into the install root. The config is the declaration, so read it
-    instead of restating three filenames here — a hand-copied list is a fresh
-    drift source, and the drift it causes is "the audit calls a live sheet
-    stale".
-    """
-    from ..cli.commands import DEFAULT_FACTION_CONFIG
-
-    config_path = Path(DEFAULT_FACTION_CONFIG)
-    if not config_path.is_file():
-        return {}
-    spec = safe_load(config_path.read_text())
-    if not isinstance(spec, Mapping):
-        return {}
-    producer = "command:python3 -m ambition_sprite2d_renderer draw-factions"
-    claims: Dict[str, str] = {}
-    for faction in spec.get("factions") or ():
-        if not isinstance(faction, Mapping):
-            continue
-        for character in faction.get("characters") or ():
-            if not isinstance(character, Mapping):
-                continue
-            stem = character.get("id")
-            if not stem:
-                continue
-            for name in (
-                f"{stem}_spritesheet.png",
-                f"{stem}_spritesheet.yaml",
-                f"{stem}_spritesheet.ron",
-                f"{stem}_actor.ron",
-                f"{stem}_portraits.png",
-                f"{stem}_portraits.ron",
-            ):
-                claims[name] = producer
-    return claims
-
 #: Directories under the install root that no producer in THIS tool installs
 #: into, and whose contents are therefore outside what the registry can speak
 #: for. They are reported as unaudited, never as orphans: calling a file
@@ -193,8 +153,6 @@ def audit(
 
     for rel, command in COMMAND_PRODUCED.items():
         claimed.setdefault(rel, f"command:{command}")
-    for rel, producer in faction_claims().items():
-        claimed.setdefault(rel, producer)
 
     installed = _scan(install_root)
     result.scanned = len(installed)

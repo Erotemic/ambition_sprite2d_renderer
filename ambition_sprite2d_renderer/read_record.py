@@ -137,6 +137,7 @@ def publish_in_subprocess(
         "category": target.category,
         "module_path": target.module_path,
         "config_path": str(target._config_path) if target._config_path else None,
+        "lineup_row": getattr(target, "_lineup_row", False),
         "out_dir": str(out_dir),
         "dest_root": str(dest_root),
         "opts": opts,
@@ -163,6 +164,11 @@ def _one_target(spec: dict) -> Any:
     module or config only."""
     from .registry import discovery
 
+    if spec["kind"] == "config" and spec.get("lineup_row"):
+        lineup = discovery._discover_faction_lineup(Path(spec["config_path"]))
+        if spec["name"] not in lineup:
+            raise SystemExit(f"{spec['config_path']} has no lineup row {spec['name']!r}")
+        return lineup[spec["name"]]
     if spec["kind"] == "config":
         return discovery.Target.from_config(
             config_path=Path(spec["config_path"]), category=spec["category"]
