@@ -99,6 +99,8 @@ MOTES = {
     "primeval": (_dot, (240, 232, 150)),
     # Steam from the pots, in the light of the holes.
     "noodly": (_glow, (255, 240, 214)),
+    # Chalk dust in the morning light.
+    "math_town": (_dot, (252, 250, 240)),
     # Embers of a dark light.
     "starless": (_glow, (255, 120, 196)),
     # Sparks that go up from the fire under the floor.
@@ -133,6 +135,7 @@ SHADOWS = {
     "forest": (10, 18, 12),
     "primeval": (16, 22, 10),
     "noodly": (40, 18, 12),
+    "math_town": (70, 80, 100),
     "starlight": (88, 64, 120),
     "stardune": (124, 78, 70),
     "starless": (5, 2, 14),
