@@ -410,8 +410,42 @@ def _holds_pixels(path: Path, img: Image.Image) -> bool:
         return False
 
 
+def _pixel_digest(img: Image.Image) -> str:
+    digest = hashlib.sha1(f"{img.mode}:{img.size}:".encode())
+    digest.update(img.tobytes())
+    return digest.hexdigest()
+
+
+def _keep_or_write(path: Path, img: Image.Image, ledger: Optional[Dict[str, list]], records: Dict[str, list]) -> None:
+    """Write ``img`` to ``path`` unless the file already holds its pixels, and
+    record the file in ``records`` as ``[size, mtime_ns, pixel digest]``.
+
+    ``ledger`` is those records from the last run. A file whose size and
+    mtime did not change is known by its digest, and is not decoded: the
+    decode of every page was 17 s of an 87 s full-tier pack (measured
+    2026-10-15)."""
+    digest = _pixel_digest(img)
+    known = (ledger or {}).get(path.name)
+    stat = path.stat() if path.is_file() else None
+    if stat is not None and known and known[0] == stat.st_size and known[1] == stat.st_mtime_ns:
+        same = known[2] == digest
+    else:
+        same = _holds_pixels(path, img)
+    if not same:
+        img.save(path)
+        stat = path.stat()
+    records[path.name] = [stat.st_size, stat.st_mtime_ns, digest]
+
+
 @profile
-def write_pack(pack: UltraPack, out_dir: Path, *, name: str = "ultrapack") -> List[Path]:
+def write_pack(
+    pack: UltraPack,
+    out_dir: Path,
+    *,
+    name: str = "ultrapack",
+    ledger: Optional[Dict[str, list]] = None,
+    records: Optional[Dict[str, list]] = None,
+) -> List[Path]:
     """Write the shared page PNGs + a catalog JSON (runtime artifacts only).
 
     Diagnostics are NOT written here — see ``write_debug_views`` for the
@@ -427,8 +461,7 @@ def write_pack(pack: UltraPack, out_dir: Path, *, name: str = "ultrapack") -> Li
         # page costs about 5 times its decode, and an edit to one sheet
         # leaves most pages as they were (1 of 61 changed for a recolour,
         # 30 of 61 for a frame that changed size; measured 2026-10-15).
-        if not _holds_pixels(p, img):
-            img.save(p)
+        _keep_or_write(p, img, ledger, {} if records is None else records)
         written.append(p)
     # A pack with fewer pages than the last one: the extra pages are stale.
     for stale in out_dir.glob(f"{name}_*.png"):
@@ -555,7 +588,9 @@ def _plan_patch(
     return changes
 
 
-def _apply_patch(changes: Dict[str, list], out_dir: Path, name: str) -> List[Path]:
+def _apply_patch(
+    changes: Dict[str, list], out_dir: Path, name: str, ledger: Dict[str, list], records: Dict[str, list]
+) -> List[Path]:
     """Draw each changed frame again on its page, at its place, and write the
     catalog with the frames' new offsets, sizes and durations."""
     catalog_path = out_dir / f"{name}.json"
@@ -581,8 +616,7 @@ def _apply_patch(changes: Dict[str, list], out_dir: Path, name: str) -> List[Pat
             # must not keep the old frame's colour.
             page.paste((0, 0, 0, 0), (x, y, x + entry["w"], y + entry["h"]))
             page.alpha_composite(image, (x, y))
-        if not _holds_pixels(path, page):
-            page.save(path)
+        _keep_or_write(path, page, ledger, records)
         written.append(path)
     catalog_path.write_text(json.dumps(catalog, indent=1, sort_keys=True))
     written.append(catalog_path)
@@ -636,14 +670,16 @@ def pack_tier(
     state_path.unlink(missing_ok=True)
     if changes is not None:
         signature = state["signature"]
-        written = _apply_patch(changes, out_dir, name)
+        pages = dict(state.get("pages", {}))
+        written = _apply_patch(changes, out_dir, name, state.get("pages", {}), pages)
         how = f"patched {len(changes)} sheet(s) on {len(written) - 1} page(s): {', '.join(changes) or 'none'}"
     else:
         pack = ultrapack_rendered(
             sheet_dir, scale=scale, min_frame_px=min_frame_px, page_size=page_size, max_dim=max_dim, plan=plan
         )
         signature = _signature(pack)
-        written = write_pack(pack, out_dir, name=name)
+        pages: Dict[str, list] = {}
+        written = write_pack(pack, out_dir, name=name, ledger=state.get("pages") if state else None, records=pages)
         how = (
             f"packed {len(pack.frames)} frames from {len(signature)} targets -> "
             f"{len(pack.pages)} pages ({pack.fill_fraction() * 100:.1f}% fill)"
@@ -659,6 +695,7 @@ def pack_tier(
                 "signature": signature,
                 "catalog": catalog_digest,
                 "digests": memo,
+                "pages": pages,
             }
         )
     )

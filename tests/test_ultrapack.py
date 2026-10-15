@@ -351,3 +351,39 @@ def test_a_tier_pack_cut_short_leaves_no_state(tmp_path, monkeypatch):
     with pytest.raises(KeyboardInterrupt):
         pack_tier(sheets, out, state, page_size=256)
     assert not state.exists(), "a pack cut short left its state"
+
+
+def test_a_tier_knows_its_unchanged_pages_by_digest_and_does_not_decode_them(tmp_path, monkeypatch):
+    """A full pack keeps a page whose file still holds the pixels it wrote,
+    known by the digest in its state. A page file changed since then is
+    decoded and compared, and written again when its pixels differ."""
+    from ambition_sprite2d_renderer.authoring import ultrapack as module
+
+    sheets = tmp_path / "in"
+    sheets.mkdir()
+    for stem in ("alpha", "beta"):
+        _write_sheet(sheets, stem, fw=64, fh=64, n_frames=4, cols=2)
+    plan = PackPlan(groups={"zone_a": ["alpha"]})
+    out, state = tmp_path / "out", tmp_path / "state.json"
+    pack_tier(sheets, out, state, page_size=256, plan=plan)
+    alpha_page = out / "ultrapack_0.png"
+    alpha_mtime = alpha_page.stat().st_mtime_ns
+
+    decoded = []
+    real = module._holds_pixels
+    monkeypatch.setattr(module, "_holds_pixels", lambda path, img: decoded.append(path.name) or real(path, img))
+    # beta grows: a full pack, and alpha's page has the same pixels.
+    _write_sheet(sheets, "beta", fw=72, fh=72, n_frames=4, cols=2)
+    how, _ = pack_tier(sheets, out, state, page_size=256, plan=plan)
+    assert how.startswith("packed"), how
+    assert "ultrapack_0.png" not in decoded, decoded
+    assert alpha_page.stat().st_mtime_ns == alpha_mtime, "the unchanged page was written again"
+
+    # Something else wrote alpha's page: its digest is not trusted.
+    Image.new("RGBA", (8, 8), (255, 0, 0, 255)).save(alpha_page)
+    _write_sheet(sheets, "beta", fw=64, fh=64, n_frames=4, cols=2)
+    pack_tier(sheets, out, state, page_size=256, plan=plan)
+    assert "ultrapack_0.png" in decoded, decoded
+    fresh = tmp_path / "fresh"
+    write_pack(ultrapack_rendered(sheets, page_size=256, plan=plan), fresh, name="ultrapack")
+    _same_files(out, fresh)
