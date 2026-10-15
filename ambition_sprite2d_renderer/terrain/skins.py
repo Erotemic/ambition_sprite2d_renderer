@@ -106,6 +106,9 @@ SKINS: tuple[Skin, ...] = (
     Skin("void_castle", "ruin", (104, 66, 116), (34, 18, 46), (170, 124, 176), (255, 206, 116), "edge", (138, 90, 146), "bolts", "slab"),
     # The Noodly Temple: noodles in a press, under marinara that runs down
     # the edge, with noodles that hang under each block.
+    # The town of the Math dimension: pale limestone in courses, under a
+    # curb with a blue line marked like a ruler.
+    Skin("math_town", "block", (186, 172, 148), (118, 106, 90), (222, 210, 186), (78, 124, 186), "edge", (240, 234, 220), "lip", "slab"),
     Skin("noodly", "noodle", (160, 116, 58), (64, 34, 20), (226, 184, 106), (255, 222, 140), "sauce", (172, 44, 32), "noodles", "lasagne"),
     # The islands in the sky are rock that broke off, not a wall that was laid.
     Skin("skybridge", "rock", (150, 164, 198), (86, 100, 142), (216, 224, 242), (255, 236, 150), "grass", (112, 178, 96), "roots", "slab"),
