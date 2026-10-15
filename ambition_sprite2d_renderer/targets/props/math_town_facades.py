@@ -190,6 +190,54 @@ def _arcade_house(c, k, x0, x1, g):
     k.window(x0 + w / 2, eave - w * 0.13, 16, 16, "round", sill=False, tag="aoc")
 
 
+def _gable_house(c, k, x0, x1, g):
+    """A plastered house of the first terrace, green shutters and a cafe sign."""
+    eave = g - 170
+    wall = (238, 222, 196)
+    k.wall(x0, eave, x1, g, wall, "plaster", tag="gable")
+    k.eave_shade(x0, x1, eave, 5, 0.22)
+    w = x1 - x0
+    green = (90, 130, 90)
+    k.window(x0 + 40, eave + 30, 16, 28, "arch", shutters=green, tag="g1")
+    k.window(x1 - 40, eave + 30, 16, 28, "arch", shutters=green, tag="g2")
+    k.window(x0 + 40, eave + 102, 18, 30, "rect", flowers=(240, 200, 80), tag="g3")
+    k.door(x1 - 42, 30, 64, (60, 90, 80), arch=True, tag="gdoor")
+    k.ground = g
+    k.sign(x1 + 4, eave + 70, 22, 16, (60, 80, 70), "cup")
+    k.gable(x0, x1, eave, w * 0.32, TERRACOTTA, "clay", tag="groof")
+    chalk_proof(c, x0 + 70, g - 16, 0.7)
+
+
+def _flat_house(c, k, x0, x1, g):
+    """A narrow limestone house with a flat roof behind a spiral railing."""
+    eave = g - 220
+    k.wall(x0, eave, x1, g, LIMESTONE, "limestone", tag="flat")
+    k.eave_shade(x0, x1, eave, 5, 0.22)
+    w = x1 - x0
+    k.window(x0 + w * 0.3, eave + 30, 12, 24, "rect", tag="f1")
+    k.window(x1 - w * 0.3, eave + 30, 12, 24, "rect", tag="f2")
+    k.window(x0 + w / 2, eave + 100, 14, 28, "arch", tag="f3")
+    k.door(x0 + w / 2, 28, 62, (120, 72, 50), arch=True, tag="fdoor")
+    flat_roof(c, x0, x1, eave, LIMESTONE)
+    spiral_rail(c, x0, x1, eave - 8)
+
+
+def _observatory(c, k, x0, x1, g):
+    """The observatory on the summit: a white drum, a silver dome, its slit."""
+    eave = g - 120
+    k.wall(x0, eave, x1, g, WHITE, "plaster", tag="obs")
+    k.eave_shade(x0, x1, eave, 5, 0.18)
+    k.window(x0 + 40, eave + 22, 12, 24, "arch", tag="o1")
+    k.window(x1 - 40, eave + 22, 12, 24, "arch", tag="o2")
+    k.door((x0 + x1) / 2, 26, 56, BLUE, arch=True, tag="odoor")
+    dome(c, x0, x1, eave, (200, 206, 214), WHITE)
+    cx = (x0 + x1) / 2
+    r = (x1 - x0) * 0.38
+    c.put(c.mask(box(cx - 5, eave - r * 0.9 + 4, cx + 5, eave)) * (c.y < eave), PAL["dark"])
+    # A brass telescope through the slit, to the sky.
+    c.put(c.mask(lambda p: p.line([(cx, eave - r * 0.55), (cx + 22, eave - r * 0.9 - 14)], 4.0)), PAL["brass"])
+
+
 HOUSES: Dict[str, Tuple[float, float, Callable]] = {
     # name: (wall width, height of the frame over the street, draw)
     "math_house_rose": (170, 360, _rose_house),
@@ -197,6 +245,9 @@ HOUSES: Dict[str, Tuple[float, float, Callable]] = {
     "math_house_tower": (120, 480, _tower_house),
     "math_house_shop": (200, 320, _shop_house),
     "math_house_arcade": (210, 300, _arcade_house),
+    "math_house_gable": (170, 240, _gable_house),
+    "math_house_flat": (100, 252, _flat_house),
+    "math_observatory": (190, 220, _observatory),
 }
 
 
