@@ -833,6 +833,7 @@ def build_sheet(
     mirror_of=None,
     frame_transform_out: Optional[dict] = None,
     column_tile: Optional[Tuple[float, float]] = None,
+    fx: Optional[Dict[str, str]] = None,
 ):
     """Build one module target's sheet from a frame callable + rows.
 
@@ -856,6 +857,11 @@ def build_sheet(
     first row. It is published as fractions of the frame height
     (``SheetRecord::column_tile``), so a reduced copy of the sheet needs no
     change.
+
+    ``fx`` (``{"cue_family": .., "residency": "Core" | "OwnedByCharacter",
+    "fade": "OverItsLife" | "InItsFrames"}``) declares an effect sheet: each
+    row is an effect, named by the row (``SheetRecord::fx``). The game finds
+    its effect sheets by this, so a new one needs no Rust edit.
 
     Thin constructor: wraps the recipe in a :class:`CallableFrameSource` and
     hands it to the one :func:`render_sheet` core. Kept as the module-target
@@ -884,8 +890,27 @@ def build_sheet(
         pose_bodies=pose_bodies,
         mirror_of=mirror_of,
         column_tile=column_tile,
+        fx=fx,
     )
     return render_sheet(source, out_dir, frame_transform_out=frame_transform_out)
+
+
+FX_RESIDENCIES = ("Core", "OwnedByCharacter")
+FX_FADES = ("OverItsLife", "InItsFrames")
+
+
+def _checked_fx(fx, target: str) -> dict:
+    """``fx`` as the record states it, or a ValueError that names the field."""
+    fields = {"cue_family", "residency", "fade"}
+    if set(fx) != fields:
+        raise ValueError(f"{target}: fx has {sorted(fx)}; it has exactly {sorted(fields)}")
+    if not str(fx["cue_family"]).strip():
+        raise ValueError(f"{target}: fx.cue_family is empty")
+    if fx["residency"] not in FX_RESIDENCIES:
+        raise ValueError(f"{target}: fx.residency is {fx['residency']!r}; it is one of {FX_RESIDENCIES}")
+    if fx["fade"] not in FX_FADES:
+        raise ValueError(f"{target}: fx.fade is {fx['fade']!r}; it is one of {FX_FADES}")
+    return {"cue_family": str(fx["cue_family"]), "residency": fx["residency"], "fade": fx["fade"]}
 
 
 def _published_column_tile(declared, dy: float, frame_height: int, target: str):
@@ -1415,6 +1440,10 @@ def render_sheet(source: FrameSource, out_dir: Path, frame_transform_out: Option
     if column_tile:
         # Written only when the sheet declares it, as `authored_faces_left` is.
         manifest["column_tile"] = column_tile
+    fx = getattr(source, "fx", None)
+    if fx:
+        # Written only for an effect sheet, as `column_tile` is.
+        manifest["fx"] = _checked_fx(fx, target)
     if sheet_tuning:
         # Emitted to the RON `tuning` field (ron_tuning reads `sheet_tuning`);
         # the runtime SheetRegistry uses it for in-game display size /

@@ -25,6 +25,9 @@ from ._character_vfx_common import (
 )
 
 TARGET_NAME = "carl_stargan_vfx"
+# An effect sheet (`SheetRecord::fx`): its sounds are `vfx.carl_stargan.<row>`; it is
+# decoded when a character whose moveset names one of its rows is realized; the game fades each effect over its clip.
+FX = {"cue_family": "carl_stargan", "residency": "OwnedByCharacter", "fade": "OverItsLife"}
 SHEET_FILES = sheet_files(TARGET_NAME)
 FRAME_SIZE = (144, 144)
 
@@ -283,6 +286,7 @@ ORIGINS["horizon_arc"] = (72.0, 109.0)
 def render(out_dir: str | Path, **opts):
     del opts
     return publish_catalog(
+        fx=FX,
         target_name=TARGET_NAME,
         display_name="Carl Stargan Detached VFX",
         character_context_id="npc_carl_stargan",

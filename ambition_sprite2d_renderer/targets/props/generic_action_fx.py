@@ -38,6 +38,9 @@ RGBA = Tuple[int, int, int, int]
 Point = Tuple[float, float]
 
 TARGET_NAME = "generic_action_fx"
+# An effect sheet (`SheetRecord::fx`): its sounds are `vfx.generic_action.<row>`; it is
+# decoded at boot and kept: the generic vocabulary any effect may use; the game fades each effect over its clip.
+FX = {"cue_family": "generic_action", "residency": "Core", "fade": "OverItsLife"}
 AUTHORING_FILE = f"{TARGET_NAME}_authoring.yaml"
 SHEET_FILES = (
     f"{TARGET_NAME}_spritesheet.png",
@@ -945,6 +948,7 @@ def render(out_dir: str | Path, **opts) -> List[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     outputs = build_sheet(
+        fx=FX,
         target=TARGET_NAME,
         rows=ROWS,
         render_fn=_draw_frame,

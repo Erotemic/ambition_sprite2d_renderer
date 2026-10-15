@@ -364,6 +364,7 @@ def publish_catalog(
     supersample: int = 4,
     crop_margin: int = 5,
     whole_frames: bool = False,
+    fx: Mapping[str, str] | None = None,
 ) -> list[Path]:
     """``whole_frames`` publishes each frame as it was drawn: not cropped and
     not trimmed. The game draws an effect's frame into a square of one size
@@ -413,6 +414,7 @@ def publish_catalog(
         }
 
     outputs = build_sheet(
+        fx=fx,
         target=target_name,
         rows=rows,
         render_fn=render_frame,

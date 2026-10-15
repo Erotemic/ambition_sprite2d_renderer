@@ -27,6 +27,9 @@ from ..characters.gnu_ton_boss import giant_art as art
 from ._character_vfx_common import Canvas, make_spec, publish_canonical, publish_catalog, sheet_files
 
 TARGET_NAME = "gnu_ton_vfx"
+# An effect sheet (`SheetRecord::fx`): its sounds are `vfx.gnu_ton.<row>`; it is
+# decoded when a character whose moveset names one of its rows is realized; its frames draw their own start and end (they end on a clear frame), so the game draws each at full strength.
+FX = {"cue_family": "gnu_ton", "residency": "OwnedByCharacter", "fade": "InItsFrames"}
 SHEET_FILES = sheet_files(TARGET_NAME)
 FRAME_SIZE = (256, 256)
 
@@ -149,6 +152,7 @@ ORIGINS = {name: (FRAME_SIZE[0] * 0.5, FRAME_SIZE[1] * 0.5) for name, _, _ in RO
 def render(out_dir: str | Path, **opts):
     del opts
     return publish_catalog(
+        fx=FX,
         target_name=TARGET_NAME,
         display_name="GNU-ton Detached VFX",
         character_context_id="npc_gnu_ton",

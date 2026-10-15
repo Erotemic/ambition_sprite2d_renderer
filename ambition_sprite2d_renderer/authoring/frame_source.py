@@ -219,6 +219,7 @@ class CallableFrameSource:
         pose_bodies: str = "art",
         mirror_of: Optional[Dict[str, str]] = None,
         column_tile: Optional[Tuple[float, float]] = None,
+        fx: Optional[Dict[str, str]] = None,
     ) -> None:
         self.target = target
         self.rows = list(rows)
@@ -246,6 +247,10 @@ class CallableFrameSource:
         # repeats down a column, in the rows ``render_fn`` draws. ``None``: the
         # art is one picture. See `SheetRecord::column_tile`.
         self.column_tile = column_tile
+        # An effect sheet's facts (`SheetRecord::fx`): its rows are effects,
+        # and this says the sound family, the residency and the fade.
+        # ``None``: not an effect sheet.
+        self.fx = dict(fx) if fx else None
         self.trim = trim
         self.max_sheet_dimension = max_sheet_dimension
         self.pose_bodies = pose_bodies

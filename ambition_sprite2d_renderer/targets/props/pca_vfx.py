@@ -22,6 +22,9 @@ from ._character_vfx_common import (
 )
 
 TARGET_NAME = "pca_vfx"
+# An effect sheet (`SheetRecord::fx`): its sounds are `vfx.pca.<row>`; it is
+# decoded when a character whose moveset names one of its rows is realized; the game fades each effect over its clip.
+FX = {"cue_family": "pca", "residency": "OwnedByCharacter", "fade": "OverItsLife"}
 SHEET_FILES = sheet_files(TARGET_NAME)
 FRAME_SIZE = (144, 144)
 
@@ -332,6 +335,7 @@ ORIGINS["rule_front"] = (72.0, 24.0)
 def render(out_dir: str | Path, **opts):
     del opts
     return publish_catalog(
+        fx=FX,
         target_name=TARGET_NAME,
         display_name="Perfect Cellular Automaton Detached VFX",
         character_context_id="perfect_cellular_automaton",

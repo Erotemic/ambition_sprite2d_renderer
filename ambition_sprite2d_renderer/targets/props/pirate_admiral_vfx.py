@@ -25,6 +25,9 @@ from ._character_vfx_common import (
 )
 
 TARGET_NAME = "pirate_admiral_vfx"
+# An effect sheet (`SheetRecord::fx`): its sounds are `vfx.pirate_admiral.<row>`; it is
+# decoded when a character whose moveset names one of its rows is realized; the game fades each effect over its clip.
+FX = {"cue_family": "pirate_admiral", "residency": "OwnedByCharacter", "fade": "OverItsLife"}
 SHEET_FILES = sheet_files(TARGET_NAME)
 FRAME_SIZE = (144, 144)
 
@@ -321,6 +324,7 @@ ORIGINS.update({
 def render(out_dir: str | Path, **opts):
     del opts
     return publish_catalog(
+        fx=FX,
         target_name=TARGET_NAME,
         display_name="Pirate Admiral Detached VFX",
         character_context_id="npc_pirate_admiral",

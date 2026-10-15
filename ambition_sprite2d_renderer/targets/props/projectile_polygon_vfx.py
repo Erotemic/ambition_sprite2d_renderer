@@ -38,6 +38,9 @@ from ._character_vfx_common import (
 )
 
 TARGET_NAME = "projectile_polygon_vfx"
+# An effect sheet (`SheetRecord::fx`): its sounds are `vfx.projectile_polygon.<row>`; it is
+# decoded when a character whose moveset names one of its rows is realized; the game fades each effect over its clip.
+FX = {"cue_family": "projectile_polygon", "residency": "OwnedByCharacter", "fade": "OverItsLife"}
 SHEET_FILES = sheet_files(TARGET_NAME)
 FRAME_SIZE = (144, 144)
 
@@ -208,6 +211,7 @@ ORIGINS = {name: CENTRE for name, _frames, _ms in ROWS}
 def render(out_dir: str | Path, **opts):
     del opts
     return publish_catalog(
+        fx=FX,
         target_name=TARGET_NAME,
         display_name="Projectile Polygon Charge VFX",
         character_context_id="projectile_polygon",

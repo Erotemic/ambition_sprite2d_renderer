@@ -259,6 +259,15 @@ def record_to_ron(record: Dict) -> str:
         if column_tile
         else ""
     )
+    # AN EFFECT SHEET (`SheetRecord::fx`): its rows are effects. Emitted only
+    # for one, so every other sheet's RON is byte-identical.
+    fx = record.get("fx")
+    fx_field = (
+        f'    fx: Some((cue_family: "{_ron_escape(fx["cue_family"])}", '
+        f"residency: {fx['residency']}, fade: {fx['fade']})),\n"
+        if fx
+        else ""
+    )
     tuning_field = ron_tuning(record)
     # `images: [...]` only for split (multi-page) sheets; single-page sheets
     # emit just `image:` so their RON is byte-identical to the pre-paging shape.
@@ -279,6 +288,7 @@ def record_to_ron(record: Dict) -> str:
         f"{tuning_field}"
         f"{faces_left_field}"
         f"{column_tile_field}"
+        f"{fx_field}"
         f"    body_metrics: {_ron_body_metrics(record.get('body_metrics'))},\n"
         f"{rows_field}"
         f")"
