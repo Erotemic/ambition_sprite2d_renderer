@@ -7,10 +7,10 @@ portal are their own props (`gate_ring`, `gate_portal`) and stand on the
 plinth; nothing of the ring or of a portal is painted here (portals are drawn
 by the portal presentation, never in art).
 
-The stairs are what a body walks: the room puts a zero-speed one-way
-`MovingPlatform` under each tread (`STEP_RUN` by `STEP_RISE` units, as the
-intro cart's ramp), and one on the plinth. Each tread's top is the one light
-line of its step.
+A body walks it on one line the room places along the noses of the treads
+and over the plinth (a hidden `SurfaceChain`, `walkable_lines`): up one stair
+(`STEPS` treads of `STEP_RUN` by `STEP_RISE` units), across, down the other.
+Each tread's top is the one light line of its step.
 
 Units: one design unit is one world unit; the frame has `PX` pixels to the
 unit. The bottom of the frame is the floor.

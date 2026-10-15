@@ -9,8 +9,10 @@ summit, under an aqueduct whose deck runs across the whole town:
   street, the first terrace or the second. The room sets one beside the next;
   the deck is walked on a still platform the room places.
 - ``math_switchback_stair``: the stair from the street to the first terrace,
-  two flights and a landing on a pier. The room puts a still one-way platform
-  under each tread (``STEP_RISE`` by ``FLIGHT_1_RUN`` or ``FLIGHT_2_RUN``).
+  two flights and a landing on a pier, with a parapet at the landing's open
+  end. A body walks it on two lines the room places along the treads
+  (``stair_treads`` says where they are), and the room puts a solid in the
+  parapet.
 - ``math_tunnel_bay``, ``math_tunnel_mouth``, ``math_tunnel_gate``: the street
   goes on under the first terrace in a vaulted passage with lamps in its
   vault, to a shut gate (the long way round, for later).
@@ -73,8 +75,9 @@ LANDING_W = 64
 STAIR_W = LANDING_W + STEPS * FLIGHT_1_RUN
 STAIR_H = 2 * FLIGHT_RISE
 #: Where flight 2 leaves the landing: the landing goes on past it, to the
-#: left, so a body can turn there.
+#: left, so a body can turn there, against the parapet at its open end.
 FLIGHT_2_X0 = STAIR_W - STEPS * FLIGHT_2_RUN
+PARAPET_W, PARAPET_H = 16, 48
 
 #: The passage under the first terrace: a bay of it, its mouth, its gate.
 TUNNEL_H = 96
@@ -188,8 +191,8 @@ def _aqueduct_span(height: int, tag: str) -> Callable[[], Image.Image]:
 def stair_treads() -> List[Tuple[float, float, float]]:
     """Each tread as (x0, x1, top) in the stair's frame: flight 1 climbs left
     from the foot of the cliff (the frame's right) to the landing, flight 2
-    climbs right from the landing to the top of the cliff. The room puts a
-    still platform under each one; this is its one statement of them."""
+    climbs right from the landing to the top of the cliff. The room's two
+    lines run along their noses."""
     out = []
     for j in range(1, STEPS + 1):
         x1 = STAIR_W - FLIGHT_1_RUN * (j - 1)
@@ -224,6 +227,11 @@ def _stair() -> Image.Image:
     # Each tread's top is a walk line.
     c.put(c.mask(lambda p: [p.rect(x0, top, x1, top + 1.2) for x0, x1, top in treads]), WALK)
     c.put(c.mask(box(0, land, LANDING_W, land + 1.2)), WALK)
+    # The parapet at the open end of the landing: a body turns there (the
+    # room puts a solid in it).
+    post = c.mask(box(0, land - PARAPET_H, PARAPET_W, land))
+    ashlar(c, post, mix(stone, WALK, 0.1), course=8, length=16, salt=64)
+    walk_line(c, 0, PARAPET_W, land - PARAPET_H, stone)
     # Iron rails on the open side of each flight.
     iron = PAL["iron"]
     off = 26
