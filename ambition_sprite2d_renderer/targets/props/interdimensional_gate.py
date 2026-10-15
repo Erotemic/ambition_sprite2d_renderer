@@ -27,9 +27,14 @@ TARGET_NAME = "interdimensional_gate"
 RING_TARGET = f"{TARGET_NAME}_ring"
 PORTAL_TARGET = f"{TARGET_NAME}_portal"
 
+# The spin turns the band one full turn. Its step must divide the spacing of
+# the glyphs (360 / 15 = 24 degrees), or the eye pairs each glyph with its
+# neighbour and the band seems to creep and jitter as it turns (the wagon
+# wheel): 12 frames of 30 degrees did. 30 frames of 12 degrees step half a
+# glyph each frame.
 RING_ROWS: List[Tuple[str, int, int]] = [
     ("idle", 8, 140),
-    ("spin", 12, 85),
+    ("spin", 30, 34),
 ]
 PORTAL_ROWS: List[Tuple[str, int, int]] = [
     ("opening", 8, 80),

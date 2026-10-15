@@ -18,7 +18,7 @@ import math
 import numpy as np
 
 from .artkit import Art, Pen, mix, scale, smoothstep
-from .parts import HORIZON, cloud_mask, fog, haze, solid
+from .parts import HORIZON, cloud_mask, fog, haze, lamps, shafts, solid
 
 MATH = {
     "top": (62, 112, 192),
@@ -206,4 +206,110 @@ def math_town(layer_key: str, art: Art) -> np.ndarray:
     layer = art.blank()
     art.put(layer, fog(art, "morning haze", 0.70, 0.12), p["haze"], 0.22)
     art.put(layer, smoothstep(0.55, 0.80, art.v) * 0.5, p["haze"], 0.10)
+    return layer
+
+
+# ---------------------------------------------------------------------------
+# The undercroft: the gate hall under the street
+# ---------------------------------------------------------------------------
+
+UNDERCROFT = {
+    "deep": (34, 38, 54),
+    "stone": (176, 156, 126),
+    "stone_dark": (96, 86, 78),
+    "lit": (232, 206, 160),
+    "lamp": (255, 204, 128),
+    "day": (236, 240, 230),
+    "tile": (70, 108, 160),
+    "tile_gold": (214, 170, 84),
+    "near": (54, 52, 60),
+    "near_light": (150, 128, 100),
+}
+
+
+def _hex_frieze(art: Art, layer: np.ndarray, v0: float, v1: float, r: float, base, gold, tag: str) -> None:
+    """A band of hexagonal tiles from `v0` to `v1`, every seventh one gold."""
+    tiles, pen = art.drawing()
+    gilt, gilt_pen = art.drawing()
+    dx, dy = r * 1.732, r * 1.5
+    j = 0
+    for row, v in enumerate(np.arange(v0 + r, v1, dy)):
+        for u in np.arange(-r + (row % 2) * dx / 2, 1.0 + r, dx):
+            j += 1
+            pts = [(u + r * 0.9 * math.cos(math.radians(30 + 60 * k)), v + r * 0.9 * math.sin(math.radians(30 + 60 * k))) for k in range(6)]
+            (gilt_pen if j % 7 == 0 else pen).poly(pts)
+    band, band_pen = art.drawing()
+    band_pen.rect(0.0, v0, 1.0, v1)
+    clip = art.mask_of(band)
+    art.put(layer, clip, scale(base, 0.55))
+    art.put(layer, art.mask_of(tiles) * clip, base)
+    art.put(layer, art.mask_of(gilt) * clip, gold)
+
+
+def undercroft(layer_key: str, art: Art) -> np.ndarray:
+    """The gate hall of the Math dimension: a vaulted hall of limestone under
+    the street, lit by lamps, with the day coming down through grates in the
+    vault. Bays of round arches go back into the dark; a frieze of hexagonal
+    tiles runs along the wall. Travellers come and go by the gate here."""
+    p = UNDERCROFT
+    if layer_key == "sky":
+        layer = art.opaque(art.ramp([(0.0, p["deep"]), (0.22, p["stone_dark"]), (0.50, mix(p["stone"], p["lamp"], 0.12)), (0.80, p["stone_dark"]), (1.0, p["deep"])]))
+        # Courses of the far wall.
+        courses = (np.sin(art.v * math.pi * 2.0 * 34.0) > 0.9).astype(np.float32)
+        joints = (np.sin((art.u + np.floor(art.v * 34.0) * 0.5 * 0.04) * math.pi * 2.0 * 24.0) > 0.95).astype(np.float32)
+        art.shade(layer, art.blur(np.maximum(courses, joints), 0.4), 0.12)
+        # The far wall is in shadow; a few lamps in niches far back.
+        art.shade(layer, art.band(0.62, 0.30, 1.0), 0.25)
+        lamps(art, layer, [(cu, 0.58, 0.0028) for cu in np.arange(0.1, 1.0, 0.2)], p["lamp"], halo=6.0, strength=0.45)
+        # The day through the grates of the street, high in the vault.
+        art.light(layer, shafts(art, "grates", 4, 0.03, 0.05, 0.85, 0.05), p["day"], 0.22)
+        art.light(layer, art.spot(0.5, 0.55, 0.55, 1.4, squash=1.8), p["lamp"], 0.18)
+        art.grain(layer, "grain")
+        return layer
+    if layer_key == "far_backplate":
+        # The arcade of the hall: piers, the round arches over them, and the
+        # tile frieze above; the vault springs from the frieze.
+        image, pen = art.drawing()
+        holes, hole_pen = art.drawing()
+        pen.rect(0.0, 0.16, 1.0, 0.30)
+        span = 0.2
+        for cu in np.arange(-span / 2, 1.0 + span, span):
+            pen.rect(cu - 0.022, 0.30, cu + 0.022, 1.0)
+        pen.rect(0.0, 0.30, 1.0, 0.40)
+        for cu in np.arange(0.0, 1.0 + span, span):
+            hole_pen.rect(cu - span / 2 + 0.022, 0.40, cu + span / 2 - 0.022, 1.0)
+            hole_pen.ellipse(cu, 0.40, span / 2 - 0.022, 0.07)
+        # The ribs of the vault, over the frieze.
+        for cu in np.arange(-span / 2, 1.0 + span, span):
+            pen.line([(cu, 0.16), (cu + span / 2, 0.0)], 0.008)
+            pen.line([(cu, 0.16), (cu - span / 2, 0.0)], 0.008)
+        body = np.clip(art.mask_of(image) - art.mask_of(holes), 0, 1)
+        layer = solid(art, body, mix(p["stone"], p["lamp"], 0.10), scale(p["stone_dark"], 0.85), 0.2, 0.9, "stone", 0.08)
+        _hex_frieze(art, layer, 0.205, 0.255, 0.008, mix(p["tile"], p["stone_dark"], 0.3), mix(p["tile_gold"], p["stone_dark"], 0.2), "frieze")
+        art.light(layer, art.rim(body, -0.003, 0.0, 0.5) * body, p["lamp"], 0.35)
+        art.shade(layer, art.rim(body, 0.004, 0.0, 0.8) * body, 0.25)
+        haze(art, layer, p["deep"], 0.20, None)
+        return layer
+    if layer_key == "near_background":
+        # Great piers at each side, and lamps that hang on chains between.
+        image, pen = art.drawing()
+        chains, chain_pen = art.drawing()
+        for cu, w in ((0.04, 0.05), (0.96, 0.05)):
+            pen.rect(cu - w / 2, 0.0, cu + w / 2, 1.0)
+            pen.rect(cu - w / 2 - 0.012, 0.70, cu + w / 2 + 0.012, 0.73)
+            pen.rect(cu - w / 2 - 0.008, 0.20, cu + w / 2 + 0.008, 0.225)
+        lights = []
+        for cu in (0.30, 0.70):
+            chain_pen.line([(cu, 0.0), (cu, 0.30)], 0.002)
+            pen.poly([(cu - 0.012, 0.30), (cu + 0.012, 0.30), (cu + 0.008, 0.335), (cu - 0.008, 0.335)])
+            lights.append((cu, 0.32, 0.006))
+        mask = art.mask_of(image)
+        layer = solid(art, mask, p["near_light"], p["near"], 0.1, 0.9, "stone", 0.10)
+        art.put(layer, art.mask_of(chains), p["near"])
+        art.light(layer, art.rim(mask, -0.003, 0.0, 0.5) * mask, p["lamp"], 0.30)
+        lamps(art, layer, lights, p["lamp"], halo=7.0, strength=0.9)
+        return layer
+    layer = art.blank()
+    art.put(layer, shafts(art, "dust shafts", 4, 0.03, 0.0, 0.9, 0.04), p["day"], 0.10)
+    art.put(layer, fog(art, "floor haze", 0.78, 0.10), p["lamp"], 0.10)
     return layer
