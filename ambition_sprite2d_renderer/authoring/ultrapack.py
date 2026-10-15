@@ -33,7 +33,9 @@ scaled frame so potato atlases stay loadable.
 
 from __future__ import annotations
 
+import hashlib
 import json
+import re
 import sys
 import tempfile
 from dataclasses import dataclass, field
@@ -44,7 +46,7 @@ from PIL import Image, ImageDraw
 from ..profiling import profile
 from ..yaml_io import safe_load
 
-from .packer import FrameInput, pack_frames
+from .packer import FrameInput, _trim, pack_frames
 from ambition_sprite2d_renderer.core.draw import blending_draw
 
 
@@ -408,8 +410,42 @@ def _holds_pixels(path: Path, img: Image.Image) -> bool:
         return False
 
 
+def _pixel_digest(img: Image.Image) -> str:
+    digest = hashlib.sha1(f"{img.mode}:{img.size}:".encode())
+    digest.update(img.tobytes())
+    return digest.hexdigest()
+
+
+def _keep_or_write(path: Path, img: Image.Image, ledger: Optional[Dict[str, list]], records: Dict[str, list]) -> None:
+    """Write ``img`` to ``path`` unless the file already holds its pixels, and
+    record the file in ``records`` as ``[size, mtime_ns, pixel digest]``.
+
+    ``ledger`` is those records from the last run. A file whose size and
+    mtime did not change is known by its digest, and is not decoded: the
+    decode of every page was 17 s of an 87 s full-tier pack (measured
+    2026-10-15)."""
+    digest = _pixel_digest(img)
+    known = (ledger or {}).get(path.name)
+    stat = path.stat() if path.is_file() else None
+    if stat is not None and known and known[0] == stat.st_size and known[1] == stat.st_mtime_ns:
+        same = known[2] == digest
+    else:
+        same = _holds_pixels(path, img)
+    if not same:
+        img.save(path)
+        stat = path.stat()
+    records[path.name] = [stat.st_size, stat.st_mtime_ns, digest]
+
+
 @profile
-def write_pack(pack: UltraPack, out_dir: Path, *, name: str = "ultrapack") -> List[Path]:
+def write_pack(
+    pack: UltraPack,
+    out_dir: Path,
+    *,
+    name: str = "ultrapack",
+    ledger: Optional[Dict[str, list]] = None,
+    records: Optional[Dict[str, list]] = None,
+) -> List[Path]:
     """Write the shared page PNGs + a catalog JSON (runtime artifacts only).
 
     Diagnostics are NOT written here — see ``write_debug_views`` for the
@@ -425,8 +461,7 @@ def write_pack(pack: UltraPack, out_dir: Path, *, name: str = "ultrapack") -> Li
         # page costs about 5 times its decode, and an edit to one sheet
         # leaves most pages as they were (1 of 61 changed for a recolour,
         # 30 of 61 for a frame that changed size; measured 2026-10-15).
-        if not _holds_pixels(p, img):
-            img.save(p)
+        _keep_or_write(p, img, ledger, {} if records is None else records)
         written.append(p)
     # A pack with fewer pages than the last one: the extra pages are stale.
     for stale in out_dir.glob(f"{name}_*.png"):
@@ -437,6 +472,234 @@ def write_pack(pack: UltraPack, out_dir: Path, *, name: str = "ultrapack") -> Li
     catalog_path.write_text(json.dumps(pack.catalog(page_names), indent=1, sort_keys=True))
     written.append(catalog_path)
     return written
+
+
+#: The version of a tier's state file. A change to the file's shape makes
+#: every state file stale, so the next pack is a full pack.
+_STATE_VERSION = 1
+
+
+def _code_key() -> str:
+    """A digest of the code that lays out a tier. A layout from other code
+    must not be patched."""
+    here = Path(__file__).resolve().parent
+    digest = hashlib.sha1()
+    for module in ("packer.py", "ultrapack.py"):
+        digest.update((here / module).read_bytes())
+    return digest.hexdigest()
+
+
+def _sheet_digests(sheet_dir: Path, memo: Dict[str, list]) -> Tuple[Dict[str, str], Dict[str, list]]:
+    """The content digest of each published sheet in ``sheet_dir``: its
+    manifest and each page PNG, by stem.
+
+    ``memo`` maps a file name to ``[size, mtime_ns, digest]`` from the last
+    run. A file whose size and mtime did not change keeps its digest and is
+    not read. A copy with new mtimes (the publish's staging root) is read
+    once, and its digest is the same, so the copy alone moves no sheet."""
+    names = sorted(p.name for p in sheet_dir.iterdir() if p.is_file())
+    stems = [n[: -len("_spritesheet.yaml")] for n in names if n.endswith("_spritesheet.yaml")]
+    files: Dict[str, List[str]] = {stem: [f"{stem}_spritesheet.yaml"] for stem in stems}
+    page = re.compile(r"^(.+)_spritesheet(?:\.\d+)?\.png$")
+    for name in names:
+        match = page.match(name)
+        if match and match.group(1) in files:
+            files[match.group(1)].append(name)
+    new_memo: Dict[str, list] = {}
+    digests: Dict[str, str] = {}
+    for stem, stem_files in files.items():
+        sheet = hashlib.sha1()
+        for name in stem_files:
+            stat = (sheet_dir / name).stat()
+            known = memo.get(name)
+            if known and known[0] == stat.st_size and known[1] == stat.st_mtime_ns:
+                file_digest = known[2]
+            else:
+                file_digest = hashlib.sha1((sheet_dir / name).read_bytes()).hexdigest()
+            new_memo[name] = [stat.st_size, stat.st_mtime_ns, file_digest]
+            sheet.update(f"{name}:{file_digest};".encode())
+        digests[stem] = sheet.hexdigest()
+    return digests, new_memo
+
+
+def _signature(pack: UltraPack) -> Dict[str, list]:
+    """Each target's frames in pool order, with their trimmed sizes. The
+    packer places frames by these sizes in this order and by nothing else, so
+    two pools with one signature have one layout."""
+    out: Dict[str, list] = {}
+    for f in pack.frames:
+        out.setdefault(f.target, []).append([f.animation, f.index, f.w, f.h])
+    return out
+
+
+def _load_state(state_path: Path) -> Optional[dict]:
+    try:
+        state = json.loads(Path(state_path).read_text())
+    except (OSError, ValueError):
+        return None
+    return state if isinstance(state, dict) and state.get("version") == _STATE_VERSION else None
+
+
+def _plan_patch(
+    state: dict,
+    params: dict,
+    sheets: Dict[str, str],
+    sheet_dir: Path,
+    out_dir: Path,
+    name: str,
+    *,
+    scale: float,
+    min_px: int,
+) -> Optional[Dict[str, list]]:
+    """The new frames of each changed sheet, when the tier can be patched;
+    ``None`` when it must be packed again.
+
+    It can be patched when the inputs are the same as the last pack's except
+    for the pixels of some sheets, and each changed sheet's frames have the
+    same trimmed sizes in the same order. Then a full pack gives the same
+    layout, so the old pages with the changed frames drawn again are what a
+    full pack writes."""
+    if state.get("params") != params or set(state.get("sheets", {})) != set(sheets):
+        return None
+    catalog_path = out_dir / f"{name}.json"
+    try:
+        catalog_text = catalog_path.read_text()
+    except OSError:
+        return None
+    if hashlib.sha1(catalog_text.encode()).hexdigest() != state.get("catalog"):
+        return None
+    pages = json.loads(catalog_text).get("pages", [])
+    if not all((out_dir / page).is_file() for page in pages):
+        return None
+    changes: Dict[str, list] = {}
+    for stem in sorted(stem for stem in sheets if sheets[stem] != state["sheets"][stem]):
+        try:
+            pairs = _read_sheet_frames(sheet_dir, stem, scale=scale, min_px=min_px)
+        except Exception:  # noqa: BLE001 — the full pack reports it, by name
+            return None
+        frames = []
+        for fi, meta in pairs:
+            image, off_x, off_y = _trim(fi.image, fi.logical_size, True)
+            frames.append((meta, image, off_x, off_y, fi.logical_size))
+        signature = [[m["animation"], m["index"], *image.size] for m, image, _x, _y, _s in frames]
+        if signature != state.get("signature", {}).get(stem, []):
+            return None
+        changes[stem] = frames
+    return changes
+
+
+def _apply_patch(
+    changes: Dict[str, list], out_dir: Path, name: str, ledger: Dict[str, list], records: Dict[str, list]
+) -> List[Path]:
+    """Draw each changed frame again on its page, at its place, and write the
+    catalog with the frames' new offsets, sizes and durations."""
+    catalog_path = out_dir / f"{name}.json"
+    catalog = json.loads(catalog_path.read_text())
+    by_page: Dict[int, list] = {}
+    for stem, frames in changes.items():
+        for meta, image, off_x, off_y, (src_w, src_h) in frames:
+            entry = next(
+                e for e in catalog["targets"][stem][meta["animation"]] if e["index"] == meta["index"]
+            )
+            entry["off"] = [off_x, off_y]
+            entry["src"] = [src_w, src_h]
+            entry["duration_ms"] = meta["duration_ms"]
+            by_page.setdefault(entry["page"], []).append((entry, image))
+    written: List[Path] = []
+    for page_index, drawn in sorted(by_page.items()):
+        path = out_dir / catalog["pages"][page_index]
+        with Image.open(path) as opened:
+            page = opened.convert("RGBA")
+        for entry, image in drawn:
+            x, y = entry["x"], entry["y"]
+            # Clear the rect first: a pixel the new frame leaves transparent
+            # must not keep the old frame's colour.
+            page.paste((0, 0, 0, 0), (x, y, x + entry["w"], y + entry["h"]))
+            page.alpha_composite(image, (x, y))
+        _keep_or_write(path, page, ledger, records)
+        written.append(path)
+    catalog_path.write_text(json.dumps(catalog, indent=1, sort_keys=True))
+    written.append(catalog_path)
+    return written
+
+
+@profile
+def pack_tier(
+    sheet_dir: Path,
+    out_dir: Path,
+    state_path: Path,
+    *,
+    name: str = "ultrapack",
+    scale: float = 1.0,
+    min_frame_px: int = 1,
+    page_size: int = 2048,
+    max_dim: int = 16384,
+    plan: Optional[PackPlan] = None,
+) -> Tuple[str, List[Path]]:
+    """Bring the tier in ``out_dir`` up to date with the sheets in
+    ``sheet_dir``, at a cost in proportion to what changed.
+
+    ``state_path`` records the last pack's inputs (each sheet's digest, the
+    frames' trimmed sizes, the catalog's digest). When only the pixels of
+    some sheets changed and their frames kept their trimmed sizes (a
+    recolour, a shading pass), the layout is the same, and only the pages
+    that hold those frames are drawn again. Otherwise the tier is packed
+    again. Both roads write the same bytes. Returns how the tier was brought
+    up to date, and the files written.
+
+    The state file is removed before anything is written and written last,
+    so a run cut short leaves no state, and the next run packs in full."""
+    sheet_dir, out_dir, state_path = Path(sheet_dir), Path(out_dir), Path(state_path)
+    plan = plan or PackPlan()
+    params = {
+        "code": _code_key(),
+        "name": name,
+        "scale": scale,
+        "min_frame_px": min_frame_px,
+        "page_size": page_size,
+        "max_dim": max_dim,
+        "groups": plan.groups,
+    }
+    state = _load_state(state_path)
+    sheets, memo = _sheet_digests(sheet_dir, state.get("digests", {}) if state else {})
+    changes = None
+    if state is not None:
+        changes = _plan_patch(
+            state, params, sheets, sheet_dir, out_dir, name, scale=scale, min_px=min_frame_px
+        )
+    state_path.unlink(missing_ok=True)
+    if changes is not None:
+        signature = state["signature"]
+        pages = dict(state.get("pages", {}))
+        written = _apply_patch(changes, out_dir, name, state.get("pages", {}), pages)
+        how = f"patched {len(changes)} sheet(s) on {len(written) - 1} page(s): {', '.join(changes) or 'none'}"
+    else:
+        pack = ultrapack_rendered(
+            sheet_dir, scale=scale, min_frame_px=min_frame_px, page_size=page_size, max_dim=max_dim, plan=plan
+        )
+        signature = _signature(pack)
+        pages: Dict[str, list] = {}
+        written = write_pack(pack, out_dir, name=name, ledger=state.get("pages") if state else None, records=pages)
+        how = (
+            f"packed {len(pack.frames)} frames from {len(signature)} targets -> "
+            f"{len(pack.pages)} pages ({pack.fill_fraction() * 100:.1f}% fill)"
+        )
+    catalog_digest = hashlib.sha1((out_dir / f"{name}.json").read_bytes()).hexdigest()
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                "version": _STATE_VERSION,
+                "params": params,
+                "sheets": sheets,
+                "signature": signature,
+                "catalog": catalog_digest,
+                "digests": memo,
+                "pages": pages,
+            }
+        )
+    )
+    return how, written
 
 
 def _checkerboard(size: Tuple[int, int], cell: int = 16) -> Image.Image:
@@ -513,3 +776,61 @@ def write_debug_views(
     report.write_text("\n".join(lines) + "\n")
     written.append(report)
     return written
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    """The publish's road to one tier: ``python -m
+    ambition_sprite2d_renderer.authoring.ultrapack``.
+
+    It is here and not in the ``ultrapack`` command because an edit to the
+    CLI moves the renderer's shared core key, and that makes every published
+    sheet stale (a full re-render, about 56 minutes); this module is outside
+    that key. The ``ultrapack`` command packs in full, with no state."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description=pack_tier.__doc__.split("\n\n")[0])
+    parser.add_argument("--from-rendered", type=Path, required=True, metavar="DIR")
+    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--state", type=Path, required=True, metavar="FILE")
+    parser.add_argument("--scale", type=float, default=1.0)
+    parser.add_argument("--min-frame-px", type=int, default=1)
+    parser.add_argument("--page-size", type=int, default=2048)
+    parser.add_argument("--name", default="ultrapack")
+    parser.add_argument("--pack-plan", type=Path, default=None)
+    parser.add_argument("--debug-views", action="store_true")
+    parser.add_argument("--debug-dir", type=Path, default=None)
+    args = parser.parse_args(argv)
+    plan = PackPlan.load(args.pack_plan) if args.pack_plan else None
+    if args.debug_views:
+        # The views need the whole pack, so this is a full pack. It writes
+        # no state, and the next run packs in full.
+        args.state.unlink(missing_ok=True)
+        pack = ultrapack_rendered(
+            args.from_rendered,
+            scale=args.scale,
+            min_frame_px=args.min_frame_px,
+            page_size=args.page_size,
+            plan=plan,
+        )
+        written = write_pack(pack, args.out, name=args.name)
+        written += write_debug_views(pack, args.out, name=args.name, debug_dir=args.debug_dir)
+        how = f"packed {len(pack.frames)} frames -> {len(pack.pages)} pages, with debug views"
+    else:
+        how, written = pack_tier(
+            args.from_rendered,
+            args.out,
+            args.state,
+            name=args.name,
+            scale=args.scale,
+            min_frame_px=args.min_frame_px,
+            page_size=args.page_size,
+            plan=plan,
+        )
+    print(f"ultrapack '{args.name}' @ scale {args.scale:g}: {how}")
+    for path in written:
+        print(path)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

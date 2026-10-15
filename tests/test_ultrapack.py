@@ -11,6 +11,7 @@ import pytest
 
 from ambition_sprite2d_renderer.authoring.ultrapack import (
     PackPlan,
+    pack_tier,
     ultrapack_rendered,
     write_debug_views,
     write_pack,
@@ -234,3 +235,155 @@ def test_a_pack_with_fewer_pages_leaves_no_stale_page(tmp_path):
     one = ultrapack_rendered(sheets, page_size=256)
     write_pack(one, out, name="ultrapack")
     assert sorted(p.name for p in out.glob("ultrapack_*.png")) == [f"ultrapack_{i}.png" for i in range(len(one.pages))]
+
+
+def _redraw(sheet_dir, stem, *, shift, hole):
+    """Draw each frame of a test sheet again, ``shift`` px to the right in its
+    cell, with a transparent ``hole`` in its middle: the frames keep their
+    trimmed sizes and change their offsets and some pixels' alpha."""
+    page_path = sheet_dir / f"{stem}_spritesheet.png"
+    manifest = yaml.safe_load((sheet_dir / f"{stem}_spritesheet.yaml").read_text())
+    fw, fh = manifest["frame_width"], manifest["frame_height"]
+    page = Image.new("RGBA", Image.open(page_path).size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(page)
+    for rect in manifest["rows"][0]["rects"]:
+        cx, cy = rect["x"] + shift, rect["y"]
+        draw.ellipse((cx + 4, cy + 4, cx + fw - 4 - 2, cy + fh - 4), fill=(200, 40, 90, 255))
+        if hole:
+            mx, my = cx + fw // 2, cy + fh // 2
+            draw.rectangle((mx - 3, my - 3, mx + 3, my + 3), fill=(0, 0, 0, 0))
+    page.save(page_path)
+
+
+def _same_files(left, right):
+    names = sorted(p.name for p in left.iterdir())
+    assert names == sorted(p.name for p in right.iterdir())
+    for name in names:
+        assert (left / name).read_bytes() == (right / name).read_bytes(), name
+
+
+def test_a_tier_whose_changed_sheets_kept_their_sizes_is_patched_to_the_bytes_of_a_full_pack(tmp_path):
+    """A recolour or a shading pass draws only the pages that hold the
+    changed frames, and writes what a full pack writes. A change in a
+    frame's trimmed size packs the tier in full."""
+    sheets = tmp_path / "in"
+    sheets.mkdir()
+    for stem in ("alpha", "beta", "gamma"):
+        _write_sheet(sheets, stem, fw=64, fh=64, n_frames=4, cols=2)
+    _redraw(sheets, "beta", shift=0, hole=False)
+    plan = PackPlan(groups={"zone_a": ["alpha"], "zone_g": ["gamma"]})
+    out, state = tmp_path / "out", tmp_path / "state.json"
+    how, _ = pack_tier(sheets, out, state, page_size=256, plan=plan)
+    assert how.startswith("packed"), how
+
+    def fresh_pack(label):
+        fresh = tmp_path / label
+        write_pack(ultrapack_rendered(sheets, page_size=256, plan=plan), fresh, name="ultrapack")
+        return fresh
+
+    # The same pixels moved 2 px, with a hole: the same trimmed sizes.
+    _redraw(sheets, "beta", shift=2, hole=True)
+    alpha_page = out / "ultrapack_0.png"
+    alpha_mtime = alpha_page.stat().st_mtime_ns
+    how, written = pack_tier(sheets, out, state, page_size=256, plan=plan)
+    assert how.startswith("patched 1 sheet(s)") and "beta" in how, how
+    assert alpha_page not in written and alpha_page.stat().st_mtime_ns == alpha_mtime
+    _same_files(out, fresh_pack("fresh_patch"))
+
+    # Nothing changed: nothing is drawn.
+    how, written = pack_tier(sheets, out, state, page_size=256, plan=plan)
+    assert how.startswith("patched 0 sheet(s)"), how
+
+    # A frame that grew: a new layout, so a full pack.
+    _write_sheet(sheets, "beta", fw=72, fh=72, n_frames=4, cols=2)
+    how, _ = pack_tier(sheets, out, state, page_size=256, plan=plan)
+    assert how.startswith("packed"), how
+    _same_files(out, fresh_pack("fresh_grow"))
+
+    # A new sheet: a full pack.
+    _write_sheet(sheets, "delta", fw=32, fh=32, n_frames=2, cols=2)
+    how, _ = pack_tier(sheets, out, state, page_size=256, plan=plan)
+    assert how.startswith("packed"), how
+
+
+def test_a_tier_with_no_state_or_another_layout_on_disk_is_packed_in_full(tmp_path):
+    """The state is the only proof of what the pages on disk are. A run cut
+    short leaves none, and a catalog written by another run does not match
+    it: each is packed in full."""
+    sheets = tmp_path / "in"
+    sheets.mkdir()
+    for stem in ("alpha", "beta"):
+        _write_sheet(sheets, stem, fw=64, fh=64, n_frames=4, cols=2)
+    _redraw(sheets, "beta", shift=0, hole=False)
+    out, state = tmp_path / "out", tmp_path / "state.json"
+    pack_tier(sheets, out, state, page_size=256)
+    # Same sizes: only the state can refuse the patch.
+    _redraw(sheets, "beta", shift=2, hole=False)
+    # Another run wrote the tier with other numbers.
+    write_pack(ultrapack_rendered(sheets, page_size=512), out, name="ultrapack")
+    how, _ = pack_tier(sheets, out, state, page_size=256)
+    assert how.startswith("packed"), how
+    state.unlink()
+    _redraw(sheets, "beta", shift=0, hole=True)
+    how, _ = pack_tier(sheets, out, state, page_size=256)
+    assert how.startswith("packed"), how
+
+
+def test_a_tier_pack_cut_short_leaves_no_state(tmp_path, monkeypatch):
+    """A full pack that stops after it wrote some pages leaves pages of a new
+    layout under the old catalog's state. No state is left, so the next run
+    does not patch those pages."""
+    from ambition_sprite2d_renderer.authoring import ultrapack as module
+
+    sheets = tmp_path / "in"
+    sheets.mkdir()
+    for stem in ("alpha", "beta"):
+        _write_sheet(sheets, stem, fw=64, fh=64, n_frames=4, cols=2)
+    out, state = tmp_path / "out", tmp_path / "state.json"
+    pack_tier(sheets, out, state, page_size=256)
+    assert state.is_file()
+
+    def stops(*_args, **_kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(module, "write_pack", stops)
+    _write_sheet(sheets, "beta", fw=72, fh=72, n_frames=4, cols=2)
+    with pytest.raises(KeyboardInterrupt):
+        pack_tier(sheets, out, state, page_size=256)
+    assert not state.exists(), "a pack cut short left its state"
+
+
+def test_a_tier_knows_its_unchanged_pages_by_digest_and_does_not_decode_them(tmp_path, monkeypatch):
+    """A full pack keeps a page whose file still holds the pixels it wrote,
+    known by the digest in its state. A page file changed since then is
+    decoded and compared, and written again when its pixels differ."""
+    from ambition_sprite2d_renderer.authoring import ultrapack as module
+
+    sheets = tmp_path / "in"
+    sheets.mkdir()
+    for stem in ("alpha", "beta"):
+        _write_sheet(sheets, stem, fw=64, fh=64, n_frames=4, cols=2)
+    plan = PackPlan(groups={"zone_a": ["alpha"]})
+    out, state = tmp_path / "out", tmp_path / "state.json"
+    pack_tier(sheets, out, state, page_size=256, plan=plan)
+    alpha_page = out / "ultrapack_0.png"
+    alpha_mtime = alpha_page.stat().st_mtime_ns
+
+    decoded = []
+    real = module._holds_pixels
+    monkeypatch.setattr(module, "_holds_pixels", lambda path, img: decoded.append(path.name) or real(path, img))
+    # beta grows: a full pack, and alpha's page has the same pixels.
+    _write_sheet(sheets, "beta", fw=72, fh=72, n_frames=4, cols=2)
+    how, _ = pack_tier(sheets, out, state, page_size=256, plan=plan)
+    assert how.startswith("packed"), how
+    assert "ultrapack_0.png" not in decoded, decoded
+    assert alpha_page.stat().st_mtime_ns == alpha_mtime, "the unchanged page was written again"
+
+    # Something else wrote alpha's page: its digest is not trusted.
+    Image.new("RGBA", (8, 8), (255, 0, 0, 255)).save(alpha_page)
+    _write_sheet(sheets, "beta", fw=64, fh=64, n_frames=4, cols=2)
+    pack_tier(sheets, out, state, page_size=256, plan=plan)
+    assert "ultrapack_0.png" in decoded, decoded
+    fresh = tmp_path / "fresh"
+    write_pack(ultrapack_rendered(sheets, page_size=256, plan=plan), fresh, name="ultrapack")
+    _same_files(out, fresh)
