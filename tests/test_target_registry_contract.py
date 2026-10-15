@@ -118,3 +118,27 @@ def test_a_portrait_function_a_module_writes_is_the_one_its_target_publishes():
         if callable(own) and isinstance(table, dict) and len(table) == 1 and target._render_portraits_fn is None:
             problems.append(f"{name}: {module_path}.render_portraits is not what the target publishes")
     assert problems == []
+
+
+def test_a_faction_lineup_row_is_built_by_the_publish_worker_as_discovery_builds_it():
+    """The batch publish builds each target again in a worker interpreter
+    (`read_record._one_target`). A lineup row cannot be rebuilt from its file
+    alone, which holds many jobs: the worker reads the lineup and takes the row
+    by its name."""
+    from pathlib import Path
+
+    from ambition_sprite2d_renderer import read_record
+
+    discovered = discover_all_targets().targets["goblin_cantina_chieftain"]
+    spec = {
+        "name": discovered.name,
+        "kind": discovered.kind,
+        "category": discovered.category,
+        "module_path": discovered.module_path,
+        "config_path": str(discovered._config_path),
+        "lineup_row": discovered._lineup_row,
+    }
+    rebuilt = read_record._one_target(spec)
+    assert rebuilt.name == discovered.name
+    assert rebuilt._job == discovered._job
+    assert Path(rebuilt._config_path).name == "music_factions.yaml"

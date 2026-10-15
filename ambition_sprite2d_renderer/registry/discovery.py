@@ -327,6 +327,9 @@ class Target:
         # Config-authored fields.
         self._config_path: Optional[Path] = None
         self._job: Any = None
+        # True for a row of a file that holds several jobs (the faction
+        # lineup): the file alone does not name the job.
+        self._lineup_row = False
 
     # -- constructors -----------------------------------------------------
 
@@ -372,7 +375,18 @@ class Target:
 
         config_path = Path(config_path)
         job = CharacterJob.load(config_path)
-        name = job.output_stem(config_path)
+        return cls.from_job(
+            name=job.output_stem(config_path),
+            job=job,
+            config_path=config_path,
+            category=category,
+        )
+
+    @classmethod
+    def from_job(cls, *, name: str, job: Any, config_path: Path, category: str) -> "Target":
+        """A config target whose job is already read: one row of a config
+        file that holds several (the faction lineup). It renders as a config
+        target does, and `config_path` is the file it came from."""
         self = cls(
             name=name,
             category=category,
@@ -902,15 +916,39 @@ def _discover_yaml_configs(
     return targets, warnings
 
 
+def _discover_faction_lineup(path: Path) -> Dict[str, Target]:
+    """Each character of the faction lineup, as a config target.
+
+    The lineup is one file of many characters. The publish rendered all of
+    them as one phase on each run that was not a whole-run cache hit, and the
+    per-target cache could not see them. As targets, each one renders and is
+    cached alone.
+    """
+    from ..authoring.faction_lineup import FactionLineup, _safe_name
+
+    if not path.is_file():
+        return {}
+    targets: Dict[str, Target] = {}
+    for _faction, character, job in FactionLineup.load(path).iter_jobs():
+        target = Target.from_job(
+            name=_safe_name(character.id), job=job, config_path=path, category="characters"
+        )
+        target._lineup_row = True
+        targets[target.name] = target
+    return targets
+
+
 @profile
 def discover_all_targets() -> DiscoveryReport:
     """Walk every surface (module- + config-authored) into one Target dict.
 
     Sources, in precedence order (later overrides earlier on name collision):
 
-    1. ``configs/review/*.yaml`` — config-authored, category ``"characters"``
-    2. ``configs/*.yaml`` (main) — config-authored, category ``"characters"``
-    3. Module-authored Python targets under ``targets/<category>/``
+    1. ``configs/factions/music_factions.yaml`` — one config target for each
+       character of the faction lineup, category ``"characters"``
+    2. ``configs/review/*.yaml`` — config-authored, category ``"characters"``
+    3. ``configs/*.yaml`` (main) — config-authored, category ``"characters"``
+    4. Module-authored Python targets under ``targets/<category>/``
 
     So a module character with the same name as a config (e.g. `sandbag` ships
     both) gets the module target. The config pipeline is still reachable via
@@ -935,8 +973,14 @@ def discover_all_targets() -> DiscoveryReport:
         f"characters/{name}: configs/review/ shadowed by configs/ — delete one"
         for name in sorted(set(review_targets) & set(main_targets))
     ]
+    lineup_targets = _discover_faction_lineup(_configs_dir() / "factions" / "music_factions.yaml")
+    shadow_warnings += [
+        f"characters/{name}: the faction lineup shadowed by a config — rename one"
+        for name in sorted(set(lineup_targets) & (set(review_targets) | set(main_targets)))
+    ]
     targets: Dict[str, Target] = {}
     # Precedence (later overrides earlier).
+    targets.update(lineup_targets)
     targets.update(review_targets)
     targets.update(main_targets)
     targets.update(module_report.targets)
