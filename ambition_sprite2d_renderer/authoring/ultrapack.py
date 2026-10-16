@@ -38,6 +38,7 @@ import json
 import re
 import sys
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -353,6 +354,7 @@ def ultrapack_rendered(
     page_size: int = 2048,
     max_dim: int = 16384,
     plan: Optional[PackPlan] = None,
+    jobs: int = 1,
 ) -> UltraPack:
     """Pool frames from the *already-published* per-target sheets in ``sheet_dir``
     (no re-render). ``stems`` limits which sheets to include; ``None`` packs
@@ -372,10 +374,15 @@ def ultrapack_rendered(
         )
     pairs: List[Tuple[FrameInput, dict]] = []
     no_frames: List[str] = []
-    for stem in stems:
+
+    def read(stem: str):
         try:
-            frames = _read_sheet_frames(sheet_dir, stem, scale=scale, min_px=min_frame_px)
+            return _read_sheet_frames(sheet_dir, stem, scale=scale, min_px=min_frame_px), None
         except Exception as ex:  # noqa: BLE001 — report, then keep packing the rest
+            return None, ex
+
+    for stem, (frames, ex) in zip(stems, _ordered_map(read, stems, jobs)):
+        if ex is not None:
             print(
                 f"warning: ultrapack failed to read '{stem}' ({ex!r}) — "
                 f"target DROPPED from this pack",
@@ -393,6 +400,21 @@ def ultrapack_rendered(
             file=sys.stderr,
         )
     return _pack_pool(pairs, scale=scale, page_size=page_size, max_dim=max_dim, plan=plan)
+
+
+def _ordered_map(fn, items, jobs: int) -> list:
+    """``[fn(item) for item in items]``, on ``jobs`` threads, in item order.
+
+    Pillow releases the GIL while it decodes, scales and encodes, so the
+    threads run at once: the encode of 48 full-tier pages was 20.7 s on one
+    thread and 7.2 s on three, the same bytes (measured 2026-10-15). The
+    results keep the order of the items, so the pack is the same for each
+    number of threads."""
+    items = list(items)
+    if jobs <= 1 or len(items) <= 1:
+        return [fn(item) for item in items]
+    with ThreadPoolExecutor(max_workers=jobs) as pool:
+        return list(pool.map(fn, items))
 
 
 def _holds_pixels(path: Path, img: Image.Image) -> bool:
@@ -416,9 +438,9 @@ def _pixel_digest(img: Image.Image) -> str:
     return digest.hexdigest()
 
 
-def _keep_or_write(path: Path, img: Image.Image, ledger: Optional[Dict[str, list]], records: Dict[str, list]) -> None:
+def _keep_or_write(path: Path, img: Image.Image, ledger: Optional[Dict[str, list]]) -> list:
     """Write ``img`` to ``path`` unless the file already holds its pixels, and
-    record the file in ``records`` as ``[size, mtime_ns, pixel digest]``.
+    return the file's record, ``[size, mtime_ns, pixel digest]``.
 
     ``ledger`` is those records from the last run. A file whose size and
     mtime did not change is known by its digest, and is not decoded: the
@@ -434,7 +456,7 @@ def _keep_or_write(path: Path, img: Image.Image, ledger: Optional[Dict[str, list
     if not same:
         img.save(path)
         stat = path.stat()
-    records[path.name] = [stat.st_size, stat.st_mtime_ns, digest]
+    return [stat.st_size, stat.st_mtime_ns, digest]
 
 
 @profile
@@ -445,6 +467,7 @@ def write_pack(
     name: str = "ultrapack",
     ledger: Optional[Dict[str, list]] = None,
     records: Optional[Dict[str, list]] = None,
+    jobs: int = 1,
 ) -> List[Path]:
     """Write the shared page PNGs + a catalog JSON (runtime artifacts only).
 
@@ -453,16 +476,16 @@ def write_pack(
     publish output stays clean by default."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    written: List[Path] = []
     page_names = [f"{name}_{i}.png" for i in range(len(pack.pages))]
-    for img, pname in zip(pack.pages, page_names):
-        p = out_dir / pname
-        # A page whose file already holds these pixels is kept: encoding a
-        # page costs about 5 times its decode, and an edit to one sheet
-        # leaves most pages as they were (1 of 61 changed for a recolour,
-        # 30 of 61 for a frame that changed size; measured 2026-10-15).
-        _keep_or_write(p, img, ledger, {} if records is None else records)
-        written.append(p)
+    written: List[Path] = [out_dir / pname for pname in page_names]
+    # A page whose file already holds these pixels is kept: encoding a
+    # page costs about 5 times its decode, and an edit to one sheet
+    # leaves most pages as they were (1 of 61 changed for a recolour,
+    # 30 of 61 for a frame that changed size; measured 2026-10-15).
+    kept = _ordered_map(lambda pair: _keep_or_write(pair[1], pair[0], ledger), list(zip(pack.pages, written)), jobs)
+    if records is not None:
+        for path, record in zip(written, kept):
+            records[path.name] = record
     # A pack with fewer pages than the last one: the extra pages are stale.
     for stale in out_dir.glob(f"{name}_*.png"):
         suffix = stale.stem[len(name) + 1 :]
@@ -616,7 +639,7 @@ def _apply_patch(
             # must not keep the old frame's colour.
             page.paste((0, 0, 0, 0), (x, y, x + entry["w"], y + entry["h"]))
             page.alpha_composite(image, (x, y))
-        _keep_or_write(path, page, ledger, records)
+        records[path.name] = _keep_or_write(path, page, ledger)
         written.append(path)
     catalog_path.write_text(json.dumps(catalog, indent=1, sort_keys=True))
     written.append(catalog_path)
@@ -635,6 +658,7 @@ def pack_tier(
     page_size: int = 2048,
     max_dim: int = 16384,
     plan: Optional[PackPlan] = None,
+    jobs: int = 1,
 ) -> Tuple[str, List[Path]]:
     """Bring the tier in ``out_dir`` up to date with the sheets in
     ``sheet_dir``, at a cost in proportion to what changed.
@@ -675,11 +699,14 @@ def pack_tier(
         how = f"patched {len(changes)} sheet(s) on {len(written) - 1} page(s): {', '.join(changes) or 'none'}"
     else:
         pack = ultrapack_rendered(
-            sheet_dir, scale=scale, min_frame_px=min_frame_px, page_size=page_size, max_dim=max_dim, plan=plan
+            sheet_dir, scale=scale, min_frame_px=min_frame_px, page_size=page_size, max_dim=max_dim, plan=plan,
+            jobs=jobs,
         )
         signature = _signature(pack)
         pages: Dict[str, list] = {}
-        written = write_pack(pack, out_dir, name=name, ledger=state.get("pages") if state else None, records=pages)
+        written = write_pack(
+            pack, out_dir, name=name, ledger=state.get("pages") if state else None, records=pages, jobs=jobs
+        )
         how = (
             f"packed {len(pack.frames)} frames from {len(signature)} targets -> "
             f"{len(pack.pages)} pages ({pack.fill_fraction() * 100:.1f}% fill)"
@@ -799,6 +826,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--pack-plan", type=Path, default=None)
     parser.add_argument("--debug-views", action="store_true")
     parser.add_argument("--debug-dir", type=Path, default=None)
+    parser.add_argument("--jobs", type=int, default=1, help="threads that read sheets and encode pages")
     args = parser.parse_args(argv)
     plan = PackPlan.load(args.pack_plan) if args.pack_plan else None
     if args.debug_views:
@@ -825,6 +853,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             min_frame_px=args.min_frame_px,
             page_size=args.page_size,
             plan=plan,
+            jobs=args.jobs,
         )
     print(f"ultrapack '{args.name}' @ scale {args.scale:g}: {how}")
     for path in written:
