@@ -91,6 +91,27 @@ def test_build_manifest_curated_registers_only_referenced_sheets(tmp_path: Path)
     assert "PlayerStart" in manifest["entity_icons"]
 
 
+def test_the_curated_manifest_reads_only_the_sidecars_it_registers(tmp_path: Path, monkeypatch) -> None:
+    # A sidecar is read only for its frame size. Reading all of them was the
+    # publish's 25 s LDtk tileset phase, for a manifest of one sheet.
+    from ambition_sprite2d_renderer.devtools import ldtk_manifest
+
+    sprites = _scene(tmp_path)
+    read = []
+    original = ldtk_manifest._frame_size_from_sidecar
+    monkeypatch.setattr(
+        ldtk_manifest,
+        "_frame_size_from_sidecar",
+        lambda stem, directory: read.append(stem) or original(stem, directory),
+    )
+    build_manifest(sprites, repo_root=tmp_path, entity_map={"PlayerStart": "hero"}, all_sheets=False)
+    assert read == ["hero"]
+    # Control: the full manifest reads each sheet's sidecar once.
+    read.clear()
+    build_manifest(sprites, repo_root=tmp_path, entity_map={"PlayerStart": "hero"}, all_sheets=True)
+    assert sorted(read) == ["bigboss", "hero", "hero_full", "mystery"]
+
+
 def test_entity_map_entry_with_no_sheet_is_dropped(tmp_path: Path) -> None:
     sprites = _scene(tmp_path)
     manifest = build_manifest(
