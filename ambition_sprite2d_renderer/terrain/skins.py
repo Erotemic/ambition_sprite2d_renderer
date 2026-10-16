@@ -112,6 +112,11 @@ SKINS: tuple[Skin, ...] = (
     # The gate hall under the Math town: the same limestone, in lamplight.
     Skin("math_undercroft", "block", (150, 134, 110), (74, 66, 58), (196, 178, 148), (214, 170, 84), "edge", (206, 194, 170), "lip", "slab"),
     Skin("noodly", "noodle", (160, 116, 58), (64, 34, 20), (226, 184, 106), (255, 222, 140), "sauce", (172, 44, 32), "noodles", "lasagne"),
+    # The forest of the Evil dimension: black earth with dead grass on it,
+    # and the red of the sky in its cracks.
+    Skin("evil_forest", "earth", (46, 32, 32), (16, 10, 12), (86, 58, 52), (230, 70, 44), "grass", (74, 56, 40), "roots", "plank"),
+    # Castle Godwin: the cold blue-grey blocks of a fortress, dark.
+    Skin("castle_godwin", "block", (82, 92, 112), (28, 32, 44), (134, 146, 168), (200, 40, 32), "edge", (112, 122, 142), "bolts", "grate"),
     # The islands in the sky are rock that broke off, not a wall that was laid.
     Skin("skybridge", "rock", (150, 164, 198), (86, 100, 142), (216, 224, 242), (255, 236, 150), "grass", (112, 178, 96), "roots", "slab"),
     Skin("open_sky", "rock", (176, 164, 150), (104, 92, 92), (232, 222, 204), (255, 240, 170), "grass", (126, 184, 92), "roots", "plank"),

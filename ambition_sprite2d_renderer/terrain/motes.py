@@ -107,6 +107,9 @@ MOTES = {
     "starless": (_glow, (255, 120, 196)),
     # Sparks that go up from the fire under the floor.
     "void_castle": (_glow, (255, 150, 80)),
+    # Ash and sparks from the fires of the Evil dimension.
+    "evil_forest": (_glow, (255, 104, 60)),
+    "castle_godwin": (_glow, (255, 140, 70)),
     # The sparkles of a wand.
     "starlight": (_twinkle, (255, 240, 200)),
     # Grains of sand in the light.
@@ -143,6 +146,8 @@ SHADOWS = {
     "stardune": (124, 78, 70),
     "starless": (5, 2, 14),
     "void_castle": (14, 3, 8),
+    "evil_forest": (10, 2, 4),
+    "castle_godwin": (6, 6, 12),
     "water": (2, 16, 30),
     "cove": (4, 14, 24),
     "skybridge": (40, 52, 84),
