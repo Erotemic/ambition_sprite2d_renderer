@@ -30,6 +30,7 @@ import math
 from typing import List
 
 from ._ai_era_kit import OUTLINE, WHITE, RGBA, lerp, mix
+from . import _evil_faction as F
 from . import _person_rig as R
 from ._person_rig import Build, Person, Stamp, loop, shot
 
@@ -106,10 +107,7 @@ GLOVE_DEEP: RGBA = (22, 20, 26, 255)
 BELT: RGBA = (36, 30, 30, 255)
 METAL: RGBA = (196, 194, 186, 255)
 METAL_DARK: RGBA = (118, 116, 112, 255)
-RED: RGBA = (184, 36, 40, 255)
-RED_DARK: RGBA = (124, 22, 30, 255)
-DISC: RGBA = (246, 244, 238, 255)
-COG: RGBA = (22, 20, 24, 255)
+RED, DISC = F.RED, F.DISC
 SKIN: RGBA = (230, 196, 172, 255)
 SKIN_SHADE: RGBA = (204, 164, 144, 255)
 SKIN_DEEP: RGBA = (150, 100, 88, 255)
@@ -131,33 +129,6 @@ X = Person(TARGET_NAME, BUILD, frame=(224, 184), ground=172.0, cx=112.0)
 K = X.K
 P = X.P
 TOP = BUILD.neck[1] - 2.0
-
-
-# ---- The emblem --------------------------------------------------------------
-
-
-def cog(d, c, r: float, colour: RGBA, hole: RGBA) -> None:
-    """The faction's cog about ``c``: eight square teeth, ``r`` to their
-    tips, and a hole in its middle."""
-    pts = []
-    for k in range(8):
-        a = math.tau * k / 8.0
-        for da, rr in ((-0.24, 0.7), (-0.17, 1.0), (0.17, 1.0), (0.24, 0.7)):
-            pts.append((c[0] + math.cos(a + da) * r * rr, c[1] + math.sin(a + da) * r * rr))
-    K.poly(d, pts, colour)
-    K.oval(d, c, r * 0.7, r * 0.7, colour)
-    K.oval(d, c, r * 0.28, r * 0.28, hole)
-
-
-def _emblem(radius: float):
-    """The white disc with the black cog, from its middle."""
-
-    def paint(d) -> None:
-        K.oval(d, K.home, radius + 0.45, radius + 0.45, OUTLINE)
-        K.oval(d, K.home, radius, radius, DISC)
-        cog(d, K.home, radius * 0.8, COG, DISC)
-
-    return K.piece(("emblem", radius), paint)
 
 
 # ---- The tunic ---------------------------------------------------------------
@@ -268,7 +239,7 @@ def _cap():
         # The badge: the faction's cog on a white disc.
         K.oval(d, K.at(7.0, -14.6), 2.8, 2.8, OUTLINE)
         K.oval(d, K.at(7.0, -14.6), 2.4, 2.4, DISC)
-        cog(d, K.at(7.0, -14.6), 1.9, COG, DISC)
+        F.cog(K, d, K.at(7.0, -14.6), 1.9)
 
     return K.solid(("cap",), shape, UNIFORM, detail, outline=1.2, rim=0.3, shade=0.35, shade_colour=UNIFORM_DARK)
 
@@ -304,19 +275,6 @@ X.hand = R.make_hand(K, GLOVE, GLOVE_SHADE, GLOVE_DEEP, UNIFORM, UNIFORM_DARK, s
 X.shoe = R.make_shoe(K, BOOT, BOOT_DARK, BUILD.ankle_up, long=1.12, sole=SOLE, heel=0.8)
 
 
-def _band(width: float):
-    """The armband, along +x from its middle: it goes round the arm, so it is
-    as wide as the arm and a little more."""
-
-    def shape(d) -> None:
-        K.rrect(d, K.home[0] - 2.8, K.home[1] - width / 2.0, K.home[0] + 2.8, K.home[1] + width / 2.0, 0.5, WHITE)
-
-    def detail(d) -> None:
-        K.line(d, [K.at(-2.4, -width / 2.0 + 0.6), K.at(2.4, -width / 2.0 + 0.6)], mix(RED, WHITE, 0.3), 0.5)
-
-    return K.solid(("band", width), shape, RED, detail, outline=1.0, rim=0.25, shade=0.35, shade_colour=RED_DARK)
-
-
 def _armband(ctx) -> List[Stamp]:
     """The band and its emblem, on the near arm. They turn with the arm."""
     if ctx.pose["arm"] == "under":
@@ -324,7 +282,7 @@ def _armband(ctx) -> List[Stamp]:
     t = (BAND[0] + BAND[1]) / 2.0
     at = (lerp(ctx.shoulder[0], ctx.elbow[0], t), lerp(ctx.shoulder[1], ctx.elbow[1], t))
     turn = math.degrees(math.atan2(ctx.elbow[1] - ctx.shoulder[1], ctx.elbow[0] - ctx.shoulder[0]))
-    return [(_band(lerp(8.6, 7.4, t) + 0.8), at, "armband", turn), (_emblem(2.3), at, "armband_emblem", 0.0)]
+    return [(F.band(K, lerp(8.6, 7.4, t) + 0.8), at, "armband", turn), (F.emblem(K, 2.3), at, "armband_emblem", 0.0)]
 
 
 X.layers["front"].append(_armband)
@@ -645,7 +603,7 @@ def _front_cap():
         K.line(d, [K.at(-6.0, -5.6), K.at(6.0, -5.6)], BOOT_SHINE, 0.5)
         K.oval(d, K.at(0.0, -14.8), 2.9, 2.9, OUTLINE)
         K.oval(d, K.at(0.0, -14.8), 2.5, 2.5, DISC)
-        cog(d, K.at(0.0, -14.8), 2.0, COG, DISC)
+        F.cog(K, d, K.at(0.0, -14.8), 2.0)
 
     return K.solid(("front_cap",), shape, UNIFORM, detail, outline=1.2, rim=0.3, shade=0.35, shade_colour=UNIFORM_DARK)
 
@@ -664,8 +622,8 @@ def _front_effects(ctx) -> List[Stamp]:
     hand = ctx.right_hand
     t = (BAND[0] + BAND[1]) / 2.0 * b.upper / (b.upper + b.fore)
     at = (lerp(shoulder[0], hand[0], t), lerp(shoulder[1], hand[1], t))
-    return [(_band(8.4), at, "front_armband", math.degrees(math.atan2(hand[1] - shoulder[1], hand[0] - shoulder[0]))),
-            (_emblem(2.3), at, "front_armband_emblem", 0.0)]
+    return [(F.band(K, 8.4), at, "front_armband", math.degrees(math.atan2(hand[1] - shoulder[1], hand[0] - shoulder[0]))),
+            (F.emblem(K, 2.3), at, "front_armband_emblem", 0.0)]
 
 
 X.front_effects = _front_effects
