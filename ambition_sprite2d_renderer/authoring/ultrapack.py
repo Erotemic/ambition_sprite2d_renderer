@@ -136,9 +136,9 @@ class PackPlan:
           always: [player_robot_v3, robot]
         runtime_groups: [intro]
 
-    ``runtime_groups`` are the groups a runtime reader loads: their pages are
-    the pack's runtime product (:func:`write_runtime_product`). The rest of
-    the pack is a source that nothing in the game reads.
+    ``runtime_groups`` are the groups a runtime reader loads. The publish
+    packs only them (:meth:`runtime_stems`): the rest of a pack is pages that
+    nothing in the game reads.
     """
 
     SHARED = "shared"
@@ -168,6 +168,10 @@ class PackPlan:
             groups={str(g): [str(s) for s in stems] for g, stems in (doc.get("groups") or {}).items()},
             runtime_groups=[str(g) for g in (doc.get("runtime_groups") or [])],
         )
+
+    def runtime_stems(self) -> List[str]:
+        """The targets of the runtime groups, in plan order."""
+        return [stem for group in self.runtime_groups for stem in self.groups[group]]
 
     def group_of(self, stem: str) -> str:
         return self._stem_to_group.get(stem, self.SHARED)
@@ -509,53 +513,6 @@ def write_pack(
     return written
 
 
-def write_runtime_product(source_dir: Path, out_dir: Path, *, name: str = "ultrapack", groups: Sequence[str]) -> List[Path]:
-    """Write the runtime product of the pack in ``source_dir`` to ``out_dir``:
-    the pages of ``groups``, renumbered from 0, and a catalog of the targets on
-    them.
-
-    The packager ships every file under the runtime roots, and the game reads
-    a pack only through the targets a prop row names (one, ``intro_cart``):
-    695 MB of pack pages shipped for 5.4 MB that a reader can reach (measured
-    2026-10-15). The source pack stays whole, outside the runtime roots. A
-    page is copied byte for byte and only when it differs, so an unchanged
-    group keeps its files."""
-    source_dir, out_dir = Path(source_dir), Path(out_dir)
-    catalog = json.loads((source_dir / f"{name}.json").read_text())
-    wanted = set(groups)
-    kept = [index for index, group in enumerate(catalog["page_groups"]) if group in wanted]
-    renumber = {old: new for new, old in enumerate(kept)}
-    targets: Dict[str, Dict[str, list]] = {}
-    for target, animations in catalog["targets"].items():
-        pages = {frame["page"] for frames in animations.values() for frame in frames}
-        if not pages & set(renumber):
-            continue
-        if not pages <= set(renumber):
-            raise ValueError(f"target {target!r} has frames on pages of a group that is not shipped")
-        targets[target] = {
-            animation: [dict(frame, page=renumber[frame["page"]]) for frame in frames]
-            for animation, frames in animations.items()
-        }
-    out_dir.mkdir(parents=True, exist_ok=True)
-    page_names = [f"{name}_{index}.png" for index in range(len(kept))]
-    written: List[Path] = []
-    for old, page_name in zip(kept, page_names):
-        source = (source_dir / catalog["pages"][old]).read_bytes()
-        path = out_dir / page_name
-        if not path.is_file() or path.read_bytes() != source:
-            path.write_bytes(source)
-        written.append(path)
-    for stale in out_dir.glob(f"{name}_*.png"):
-        suffix = stale.stem[len(name) + 1 :]
-        if suffix.isdigit() and int(suffix) >= len(kept):
-            stale.unlink()
-    runtime = dict(catalog, pages=page_names, page_groups=[catalog["page_groups"][old] for old in kept], targets=targets)
-    catalog_path = out_dir / f"{name}.json"
-    catalog_path.write_text(json.dumps(runtime, indent=1, sort_keys=True))
-    written.append(catalog_path)
-    return written
-
-
 #: The version of a tier's state file. A change to the file's shape makes
 #: every state file stale, so the next pack is a full pack.
 _STATE_VERSION = 1
@@ -571,17 +528,22 @@ def _code_key() -> str:
     return digest.hexdigest()
 
 
-def _sheet_digests(sheet_dir: Path, memo: Dict[str, list]) -> Tuple[Dict[str, str], Dict[str, list]]:
-    """The content digest of each published sheet in ``sheet_dir``: its
-    manifest and each page PNG, by stem.
+def _sheet_digests(
+    sheet_dir: Path, memo: Dict[str, list], stems: Optional[Sequence[str]] = None
+) -> Tuple[Dict[str, str], Dict[str, list]]:
+    """The content digest of each published sheet in ``sheet_dir`` (of
+    ``stems`` only, when given): its manifest and each page PNG, by stem.
 
     ``memo`` maps a file name to ``[size, mtime_ns, digest]`` from the last
     run. A file whose size and mtime did not change keeps its digest and is
     not read. A copy with new mtimes (the publish's staging root) is read
     once, and its digest is the same, so the copy alone moves no sheet."""
     names = sorted(p.name for p in sheet_dir.iterdir() if p.is_file())
-    stems = [n[: -len("_spritesheet.yaml")] for n in names if n.endswith("_spritesheet.yaml")]
-    files: Dict[str, List[str]] = {stem: [f"{stem}_spritesheet.yaml"] for stem in stems}
+    wanted = None if stems is None else set(stems)
+    found = [n[: -len("_spritesheet.yaml")] for n in names if n.endswith("_spritesheet.yaml")]
+    files: Dict[str, List[str]] = {
+        stem: [f"{stem}_spritesheet.yaml"] for stem in found if wanted is None or stem in wanted
+    }
     page = re.compile(r"^(.+)_spritesheet(?:\.\d+)?\.png$")
     for name in names:
         match = page.match(name)
@@ -718,9 +680,11 @@ def pack_tier(
     max_dim: int = 16384,
     plan: Optional[PackPlan] = None,
     jobs: int = 1,
+    stems: Optional[Sequence[str]] = None,
 ) -> Tuple[str, List[Path]]:
     """Bring the tier in ``out_dir`` up to date with the sheets in
-    ``sheet_dir``, at a cost in proportion to what changed.
+    ``sheet_dir`` (of ``stems`` only, when given), at a cost in proportion to
+    what changed.
 
     ``state_path`` records the last pack's inputs (each sheet's digest, the
     frames' trimmed sizes, the catalog's digest). When only the pixels of
@@ -742,9 +706,10 @@ def pack_tier(
         "page_size": page_size,
         "max_dim": max_dim,
         "groups": plan.groups,
+        "stems": None if stems is None else sorted(stems),
     }
     state = _load_state(state_path)
-    sheets, memo = _sheet_digests(sheet_dir, state.get("digests", {}) if state else {})
+    sheets, memo = _sheet_digests(sheet_dir, state.get("digests", {}) if state else {}, stems)
     changes = None
     if state is not None:
         changes = _plan_patch(
@@ -757,9 +722,10 @@ def pack_tier(
         written = _apply_patch(changes, out_dir, name, state.get("pages", {}), pages)
         how = f"patched {len(changes)} sheet(s) on {len(written) - 1} page(s): {', '.join(changes) or 'none'}"
     else:
+        present = None if stems is None else [stem for stem in stems if stem in sheets]
         pack = ultrapack_rendered(
-            sheet_dir, scale=scale, min_frame_px=min_frame_px, page_size=page_size, max_dim=max_dim, plan=plan,
-            jobs=jobs,
+            sheet_dir, stems=present, scale=scale, min_frame_px=min_frame_px, page_size=page_size,
+            max_dim=max_dim, plan=plan, jobs=jobs,
         )
         signature = _signature(pack)
         pages: Dict[str, list] = {}
@@ -887,17 +853,26 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--debug-dir", type=Path, default=None)
     parser.add_argument("--jobs", type=int, default=1, help="threads that read sheets and encode pages")
     parser.add_argument(
-        "--runtime-out", type=Path, default=None, metavar="DIR",
-        help="also write the runtime product (the plan's runtime groups) to DIR",
+        "--runtime-only", action="store_true",
+        help="pack only the targets of the plan's runtime groups",
     )
     args = parser.parse_args(argv)
     plan = PackPlan.load(args.pack_plan) if args.pack_plan else None
+    # The packager ships every file under the runtime roots, and the game
+    # reads a pack only through the targets a prop row names (one,
+    # `intro_cart`): 695 MB of pack pages shipped for 5.4 MB that a reader
+    # can reach (measured 2026-10-15). A group packs onto pages of its own,
+    # so the runtime groups packed alone are their pages in the whole pack.
+    stems = (plan.runtime_stems() if plan else []) if args.runtime_only else None
     if args.debug_views:
         # The views need the whole pack, so this is a full pack. It writes
         # no state, and the next run packs in full.
         args.state.unlink(missing_ok=True)
         pack = ultrapack_rendered(
             args.from_rendered,
+            stems=None if stems is None else [
+                stem for stem in stems if (args.from_rendered / f"{stem}_spritesheet.yaml").is_file()
+            ],
             scale=args.scale,
             min_frame_px=args.min_frame_px,
             page_size=args.page_size,
@@ -917,12 +892,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             page_size=args.page_size,
             plan=plan,
             jobs=args.jobs,
+            stems=stems,
         )
-    if args.runtime_out is not None:
-        groups = plan.runtime_groups if plan else []
-        runtime = write_runtime_product(args.out, args.runtime_out, name=args.name, groups=groups)
-        how += f"; runtime product: {len(runtime) - 1} page(s) of {', '.join(groups) or 'no group'}"
-        written += runtime
     print(f"ultrapack '{args.name}' @ scale {args.scale:g}: {how}")
     for path in written:
         print(path)

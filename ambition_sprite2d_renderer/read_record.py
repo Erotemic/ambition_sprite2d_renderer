@@ -17,11 +17,18 @@ imports every target module. So a recorded target is published by
 only that target's module (or reads its config) and publishes it.
 
 What is recorded: each file under the repository that the render opens to
-read, and each directory it lists (a glob that finds a new file is a new
-input). Not recorded: Python source and the directories the import system
-lists (the static import closure keys the code), the tool's own environment
+read, each directory it lists (a glob that finds a new file is a new input),
+and each renderer module the process imported. Not recorded: other Python
+source, the directories the import system lists, the tool's own environment
 (`.venv`, which the toolchain fingerprint keys), the render's own outputs
 (`generated/`, the destination root) and `.cache/`.
+
+The modules are the render's code. The publish keyed every sheet on the
+whole renderer core (68 files), so an edit to one of them made every sheet
+stale: 56 min of renders (measured 2026-10-15). Ten sampled renders each
+imported 15 to 69 of the core's files, and 35 of the files were imported by
+none of them. The process imports only its target's module, so the modules
+it has at the end are the code that ran.
 A loose rig document is registered by `targets/characters/rigged.py`, which
 reads every loose document when it is imported, so the record of each loose
 rig target has all of them: more than it needs, never less.
@@ -109,10 +116,33 @@ def start(root: Path, excluded: Iterable[Path]) -> None:
         _hooked = True
 
 
+def _modules() -> set[str]:
+    """The renderer's Python files that this process imported, relative to
+    the repository."""
+    if not _root:
+        return set()
+    renderer = os.path.realpath(Path(__file__).resolve().parents[1])
+    out = set()
+    for module in list(sys.modules.values()):
+        file = getattr(module, "__file__", None)
+        if not file:
+            continue
+        real = os.path.realpath(file)
+        parts = real.split(os.sep)
+        if (
+            real.endswith(".py")
+            and real.startswith(renderer + os.sep)
+            and real.startswith(_root + os.sep)
+            and ".venv" not in parts
+        ):
+            out.add(os.path.relpath(real, _root))
+    return out
+
+
 def write(path: Path) -> None:
     """Write the record: `f <file>` and `d <directory>` lines, relative to the
     repository, sorted. Written whole, then moved into place."""
-    files, dirs = sorted(_files or ()), sorted(_dirs or ())
+    files, dirs = sorted((_files or set()) | _modules()), sorted(_dirs or ())
     text = "".join(f"f {rel}\n" for rel in files) + "".join(f"d {rel}\n" for rel in dirs)
     path.parent.mkdir(parents=True, exist_ok=True)
     partial = path.with_suffix(path.suffix + ".partial")
