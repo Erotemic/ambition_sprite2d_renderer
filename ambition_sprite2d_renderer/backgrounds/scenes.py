@@ -70,6 +70,8 @@ SCENES: dict[str, Scene] = {
     "eclipse": arenas.eclipse,
     "evil_forest": evil.evil_forest,
     "castle_godwin": evil.castle_godwin,
+    "castle_godwin_lab": evil.castle_godwin_lab,
+    "castle_godwin_throne": evil.castle_godwin_throne,
 }
 
 

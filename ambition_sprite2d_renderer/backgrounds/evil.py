@@ -280,3 +280,227 @@ def castle_godwin(layer_key: str, art: Art) -> np.ndarray:
     art.put(layer, fog(art, "floor smoke", 0.78, 0.10), p["red_dark"], 0.15)
     vignette(art, layer, p["deep"], 0.40)
     return layer
+
+
+# ---------------------------------------------------------------------------
+# The lab of Castle Godwin: where the prototypes and Wolfenstein were made
+# ---------------------------------------------------------------------------
+
+LAB = {
+    "deep": (6, 12, 10),
+    "stone": (56, 66, 70),
+    "stone_dark": (22, 28, 30),
+    "glow": (120, 255, 150),
+    "glass": (60, 140, 100),
+    "brass": (150, 112, 60),
+    "copper": (160, 90, 50),
+    "arc": (200, 230, 255),
+    "storm": (40, 46, 70),
+    "near": (8, 10, 12),
+    "near_light": (60, 80, 70),
+}
+
+
+def _vat(pen_glass: Pen, pen_frame: Pen, pen_body: Pen, cu: float, base: float, w: float, h: float) -> None:
+    """A tall glass vat on a base, with a dark shape floating in it."""
+    pen_glass.rect(cu - w / 2, base - h, cu + w / 2, base)
+    pen_glass.ellipse(cu, base - h, w / 2, w * 0.18)
+    pen_frame.rect(cu - w * 0.62, base, cu + w * 0.62, base + w * 0.35)
+    pen_frame.rect(cu - w * 0.58, base - h - w * 0.22, cu + w * 0.58, base - h - w * 0.08)
+    # The thing inside: a hunched shape with a long muzzle.
+    pen_body.ellipse(cu, base - h * 0.45, w * 0.22, h * 0.22)
+    pen_body.ellipse(cu + w * 0.10, base - h * 0.70, w * 0.13, w * 0.10)
+    pen_body.poly([(cu + w * 0.16, base - h * 0.72), (cu + w * 0.32, base - h * 0.69), (cu + w * 0.16, base - h * 0.66)])
+
+
+def castle_godwin_lab(layer_key: str, art: Art) -> np.ndarray:
+    """The lab of the castle, up the tower: a stone hall lit green by rows of
+    vats with failed prototypes in them, pipes and cables over everything,
+    Tesla coils that arc, and a slot in the roof open to the storm, where the
+    slab goes up to the lightning."""
+    p = LAB
+    if layer_key == "sky":
+        layer = art.opaque(art.ramp([(0.0, p["deep"]), (0.30, p["stone_dark"]), (0.60, mix(p["stone_dark"], p["glass"], 0.25)), (1.0, p["deep"])]))
+        art.shade(layer, art.blur(_courses(art, 20.0, 12.0), 0.4), 0.30)
+        # The slot in the roof, open to a storm, and a fork of lightning in it.
+        slot, spen = art.drawing()
+        spen.rect(0.40, 0.0, 0.60, 0.30)
+        art.put(layer, art.mask_of(slot, blur=0.4), p["storm"])
+        bolt, bpen = art.drawing()
+        bpen.line([(0.47, 0.0), (0.52, 0.08), (0.49, 0.13), (0.55, 0.22), (0.53, 0.30)], 0.004)
+        bpen.line([(0.52, 0.08), (0.58, 0.12)], 0.0025)
+        art.put(layer, art.mask_of(bolt, blur=0.3), p["arc"])
+        art.light(layer, art.mask_of(bolt, blur=12.0), p["arc"], 0.5)
+        art.light(layer, art.spot(0.5, 0.65, 0.6, 1.6, squash=1.6), p["glow"], 0.22)
+        art.grain(layer, "grain")
+        return layer
+    if layer_key == "far_backplate":
+        # A row of vats along the far wall, and the pipes over them.
+        glass, gpen = art.drawing()
+        frame, fpen = art.drawing()
+        body, bpen = art.drawing()
+        pipes, ppen = art.drawing()
+        for cu in np.arange(0.06, 1.0, 0.125):
+            _vat(gpen, fpen, bpen, cu, 0.66, 0.06, 0.22)
+            ppen.line([(cu, 0.66 - 0.22 - 0.012), (cu, 0.20)], 0.006)
+        for v in (0.17, 0.20):
+            ppen.rect(0.0, v, 1.0, v + 0.012)
+        layer = art.blank()
+        g = art.mask_of(glass)
+        art.put(layer, g, mix(p["glass"], p["deep"], 0.2))
+        art.light(layer, g * smoothstep(0.66, 0.44, art.v), p["glow"], 0.45)
+        art.put(layer, art.mask_of(body, blur=0.8) * g, mix(p["deep"], p["glass"], 0.3), 0.85)
+        art.put(layer, art.mask_of(frame), p["brass"])
+        art.put(layer, art.mask_of(pipes), mix(p["copper"], p["stone_dark"], 0.4))
+        art.light(layer, art.mask_of(glass, blur=14.0), p["glow"], 0.35)
+        haze(art, layer, p["deep"], 0.18, None)
+        return layer
+    if layer_key == "near_background":
+        # Tesla coils at the sides, cables that hang between them.
+        image, pen = art.drawing()
+        cables, cpen = art.drawing()
+        arcs, apen = art.drawing()
+        lights = []
+        for cu in (0.05, 0.95):
+            pen.rect(cu - 0.03, 0.62, cu + 0.03, 1.0)
+            pen.rect(cu - 0.012, 0.34, cu + 0.012, 0.62)
+            for k in range(6):
+                pen.rect(cu - 0.02, 0.36 + k * 0.04, cu + 0.02, 0.37 + k * 0.04)
+            pen.ellipse(cu, 0.31, 0.03)
+            rng = art.rand(("arc", cu))
+            x, y = cu, 0.31
+            pts = [(x, y)]
+            for _ in range(6):
+                x += (0.03 if cu < 0.5 else -0.03) + rng.uniform(-0.01, 0.01)
+                y += rng.uniform(-0.03, 0.03)
+                pts.append((x, y))
+            apen.line(pts, 0.003)
+            lights.append((cu, 0.31, 0.01))
+        for a, b, sag in (((0.08, 0.30), (0.40, 0.0), 0.06), ((0.92, 0.30), (0.62, 0.0), 0.07), ((0.0, 0.12), (1.0, 0.10), 0.12)):
+            cpen.curve(a, b, sag, 0.006)
+        mask = np.maximum(art.mask_of(image), art.mask_of(cables))
+        layer = solid(art, mask, p["near_light"], p["near"], 0.1, 0.9, "stone", 0.10)
+        art.put(layer, art.mask_of(arcs, blur=0.3), p["arc"])
+        art.light(layer, art.mask_of(arcs, blur=8.0), p["arc"], 0.5)
+        lamps(art, layer, lights, p["arc"], halo=6.0, strength=0.6)
+        return layer
+    layer = art.blank()
+    art.put(layer, fog(art, "steam", 0.75, 0.12), p["glass"], 0.18)
+    vignette(art, layer, p["deep"], 0.45)
+    return layer
+
+
+# ---------------------------------------------------------------------------
+# The throne room of Wolfenstein
+# ---------------------------------------------------------------------------
+
+THRONE = {
+    "deep": (8, 6, 10),
+    "stone": (70, 64, 76),
+    "stone_dark": (26, 22, 30),
+    "red": (150, 18, 22),
+    "red_dark": (70, 6, 12),
+    "moon": (255, 120, 90),
+    "fire": (255, 132, 48),
+    "iron": (40, 40, 48),
+    "near": (12, 10, 14),
+    "near_light": (80, 70, 80),
+}
+
+
+def castle_godwin_throne(layer_key: str, art: Art) -> np.ndarray:
+    """The throne room: a tall dark hall of pointed arches, a great round
+    window with a blood-red moon in it, heavy red curtains, a carved wolf's
+    head over the place of the throne, and iron chandeliers."""
+    p = THRONE
+    if layer_key == "sky":
+        layer = art.opaque(art.ramp([(0.0, p["deep"]), (0.35, p["stone_dark"]), (0.65, mix(p["stone_dark"], p["red_dark"], 0.35)), (1.0, p["deep"])]))
+        art.shade(layer, art.blur(_courses(art, 24.0, 16.0), 0.4), 0.28)
+        # The great round window, its tracery, and the red moon in it.
+        win, wpen = art.drawing()
+        wpen.ellipse(0.5, 0.36, 0.14)
+        tracery, tpen = art.drawing()
+        tpen.ring(0.5, 0.36, 0.14, 0.008)
+        tpen.ring(0.5, 0.36, 0.07, 0.005)
+        for k in range(8):
+            a = math.tau * k / 8
+            tpen.line([(0.5 + 0.07 * math.cos(a), 0.36 + 0.07 * math.sin(a)), (0.5 + 0.14 * math.cos(a), 0.36 + 0.14 * math.sin(a))], 0.005)
+        w = art.mask_of(win)
+        art.put(layer, w, mix(p["red_dark"], p["deep"], 0.3))
+        art.light(layer, art.spot(0.53, 0.33, 0.06, 2.0) * w, p["moon"], 0.9)
+        art.put(layer, art.mask_of(tracery), p["iron"])
+        art.light(layer, art.mask_of(win, blur=20.0), p["moon"], 0.2)
+        art.grain(layer, "grain")
+        return layer
+    if layer_key == "far_backplate":
+        # Pointed arches along the walls, and the carved wolf's head over the
+        # middle (the throne stands under it).
+        image, pen = art.drawing()
+        holes, hpen = art.drawing()
+        pen.rect(0.0, 0.0, 1.0, 1.0)
+        for cu in (0.12, 0.30, 0.70, 0.88):
+            hpen.rect(cu - 0.05, 0.36, cu + 0.05, 1.0)
+            hpen.poly([(cu - 0.05, 0.36), (cu, 0.24), (cu + 0.05, 0.36)])
+        hpen.ellipse(0.5, 0.36, 0.15)
+        body = np.clip(art.mask_of(image) - art.mask_of(holes), 0, 1)
+        layer = solid(art, body, mix(p["stone"], p["stone_dark"], 0.3), p["stone_dark"], 0.2, 0.9, "stone", 0.10)
+        art.shade(layer, art.blur(_courses(art, 30.0, 30.0), 0.3) * body, 0.30)
+        # The wolf's head relief: ears, a long muzzle, open jaws.
+        head, hd = art.drawing()
+        cu, cv = 0.5, 0.60
+        hd.poly([(cu - 0.06, cv - 0.02), (cu - 0.045, cv - 0.10), (cu - 0.02, cv - 0.04), (cu + 0.02, cv - 0.04), (cu + 0.045, cv - 0.10), (cu + 0.06, cv - 0.02),
+                 (cu + 0.05, cv + 0.05), (cu + 0.02, cv + 0.10), (cu - 0.02, cv + 0.10), (cu - 0.05, cv + 0.05)])
+        eyes, ed = art.drawing()
+        ed.ellipse(cu - 0.022, cv + 0.005, 0.008)
+        ed.ellipse(cu + 0.022, cv + 0.005, 0.008)
+        hm = art.mask_of(head, blur=0.4)
+        art.put(layer, hm, p["stone"])
+        art.shade(layer, art.rim(hm, 0.004, 0.003, 0.6) * hm, 0.5)
+        # The snout, the open jaw with its fangs, the nose and the brows.
+        snout, sd = art.drawing()
+        sd.poly([(cu - 0.025, cv + 0.03), (cu + 0.025, cv + 0.03), (cu + 0.018, cv + 0.10), (cu - 0.018, cv + 0.10)])
+        mouth, md = art.drawing()
+        md.poly([(cu - 0.03, cv + 0.075), (cu + 0.03, cv + 0.075), (cu + 0.02, cv + 0.115), (cu - 0.02, cv + 0.115)])
+        fangs, fd = art.drawing()
+        for k in (-0.02, -0.008, 0.008, 0.02):
+            fd.poly([(cu + k - 0.004, cv + 0.075), (cu + k + 0.004, cv + 0.075), (cu + k, cv + 0.092)])
+            fd.poly([(cu + k - 0.004, cv + 0.115), (cu + k + 0.004, cv + 0.115), (cu + k, cv + 0.100)])
+        brows, bd = art.drawing()
+        bd.line([(cu - 0.04, cv - 0.018), (cu - 0.008, cv - 0.002)], 0.005)
+        bd.line([(cu + 0.04, cv - 0.018), (cu + 0.008, cv - 0.002)], 0.005)
+        art.light(layer, art.mask_of(snout, blur=0.4), (255, 255, 255), 0.10)
+        art.put(layer, art.mask_of(mouth, blur=0.3), p["deep"])
+        art.put(layer, art.mask_of(fangs), mix(p["stone"], (255, 255, 255), 0.4))
+        art.put(layer, art.mask_of(brows), p["stone_dark"])
+        nose, nd = art.drawing()
+        nd.ellipse(cu, cv + 0.075, 0.012, 0.007)
+        art.put(layer, art.mask_of(nose), p["deep"])
+        art.put(layer, art.mask_of(eyes), p["fire"])
+        art.light(layer, art.mask_of(eyes, blur=6.0), p["fire"], 0.5)
+        haze(art, layer, p["deep"], 0.18, None)
+        return layer
+    if layer_key == "near_background":
+        # Heavy red curtains at the sides, iron chandeliers on chains.
+        curtains, cpen = art.drawing()
+        iron, ipen = art.drawing()
+        for side in (0, 1):
+            u0, u1 = (0.0, 0.12) if side == 0 else (0.88, 1.0)
+            cpen.poly([(u0, 0.0), (u1, 0.0), (u1 - (0.04 if side == 0 else -0.04), 0.5), (u1 if side == 0 else u0, 1.0), (u0 if side == 0 else u1, 1.0)])
+        lights = []
+        for cu in (0.30, 0.70):
+            ipen.line([(cu, 0.0), (cu, 0.18)], 0.003)
+            ipen.ring(cu, 0.20, 0.05, 0.004)
+            for k in (-0.05, -0.025, 0.0, 0.025, 0.05):
+                ipen.rect(cu + k - 0.003, 0.18, cu + k + 0.003, 0.20)
+                lights.append((cu + k, 0.175, 0.004))
+        c = art.mask_of(curtains)
+        layer = solid(art, c, p["red"], p["red_dark"], 0.1, 0.9, "cloth", 0.12)
+        folds = 0.5 + 0.5 * np.sin(art.u * math.pi * 60.0)
+        art.shade(layer, c * folds, 0.35)
+        art.put(layer, art.mask_of(iron), p["iron"])
+        lamps(art, layer, lights, p["fire"], halo=6.0, strength=0.8)
+        return layer
+    layer = art.blank()
+    art.put(layer, fog(art, "smoke", 0.22, 0.10), p["stone_dark"], 0.25)
+    vignette(art, layer, p["deep"], 0.45)
+    return layer

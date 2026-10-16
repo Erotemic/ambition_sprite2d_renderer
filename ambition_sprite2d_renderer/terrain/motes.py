@@ -110,6 +110,9 @@ MOTES = {
     # Ash and sparks from the fires of the Evil dimension.
     "evil_forest": (_glow, (255, 104, 60)),
     "castle_godwin": (_glow, (255, 140, 70)),
+    # Sparks from the coils; ash in the throne room.
+    "castle_godwin_lab": (_glow, (190, 230, 255)),
+    "castle_godwin_throne": (_glow, (255, 110, 70)),
     # The sparkles of a wand.
     "starlight": (_twinkle, (255, 240, 200)),
     # Grains of sand in the light.
@@ -148,6 +151,8 @@ SHADOWS = {
     "void_castle": (14, 3, 8),
     "evil_forest": (10, 2, 4),
     "castle_godwin": (6, 6, 12),
+    "castle_godwin_lab": (4, 10, 8),
+    "castle_godwin_throne": (8, 4, 8),
     "water": (2, 16, 30),
     "cove": (4, 14, 24),
     "skybridge": (40, 52, 84),

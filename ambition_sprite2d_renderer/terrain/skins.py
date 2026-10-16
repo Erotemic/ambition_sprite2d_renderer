@@ -117,6 +117,10 @@ SKINS: tuple[Skin, ...] = (
     Skin("evil_forest", "earth", (46, 32, 32), (16, 10, 12), (86, 58, 52), (230, 70, 44), "grass", (74, 56, 40), "roots", "plank"),
     # Castle Godwin: the cold blue-grey blocks of a fortress, dark.
     Skin("castle_godwin", "block", (82, 92, 112), (28, 32, 44), (134, 146, 168), (200, 40, 32), "edge", (112, 122, 142), "bolts", "grate"),
+    # The castle's lab: the same blocks, lit green by the vats.
+    Skin("castle_godwin_lab", "block", (70, 88, 86), (22, 32, 30), (118, 150, 140), (120, 255, 150), "edge", (96, 120, 112), "bolts", "grate"),
+    # The throne room: darker blocks, warmed by the red moon.
+    Skin("castle_godwin_throne", "block", (78, 70, 84), (26, 22, 30), (130, 118, 134), (220, 50, 40), "edge", (108, 96, 112), "bolts", "slab"),
     # The islands in the sky are rock that broke off, not a wall that was laid.
     Skin("skybridge", "rock", (150, 164, 198), (86, 100, 142), (216, 224, 242), (255, 236, 150), "grass", (112, 178, 96), "roots", "slab"),
     Skin("open_sky", "rock", (176, 164, 150), (104, 92, 92), (232, 222, 204), (255, 240, 170), "grass", (126, 184, 92), "roots", "plank"),
