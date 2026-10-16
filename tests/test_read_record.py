@@ -51,3 +51,25 @@ import pkg.helper
 sorted(os.listdir(root / "shapes"))
 """
     assert record_of(tmp_path, body) == ["d shapes"]
+
+
+def test_the_renderer_modules_the_process_imported_are_recorded(tmp_path: Path) -> None:
+    """A render's code is the modules its process imported: an edit to one
+    makes its sheet stale, and an edit to a module it did not import does
+    not."""
+    repo = RENDERER.parents[1]
+    script = f"""
+from pathlib import Path
+from ambition_sprite2d_renderer import read_record
+read_record.start(Path({str(repo)!r}), [])
+import ambition_sprite2d_renderer.core.measure
+read_record.write(Path({str(tmp_path / "record.reads")!r}))
+"""
+    subprocess.run([sys.executable, "-c", script], check=True, cwd=RENDERER)
+    lines = (tmp_path / "record.reads").read_text().splitlines()
+    package = "f tools/ambition_sprite2d_renderer/ambition_sprite2d_renderer"
+    assert f"{package}/core/measure.py" in lines, lines
+    assert f"{package}/read_record.py" in lines, lines
+    # Control: a module of the package that the process did not import.
+    assert f"{package}/authoring/faction_lineup.py" not in lines, lines
+    assert not [line for line in lines if ".venv" in line], lines
