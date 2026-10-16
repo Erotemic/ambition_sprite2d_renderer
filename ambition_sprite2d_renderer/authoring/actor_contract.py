@@ -193,12 +193,15 @@ def _load_catalog_profiles() -> dict[str, CatalogProfile]:
     for match in entry_re.finditer(text):
         character_id = match.group(1)
         block = match.group(2)
-        spritesheet = _extract_string(block, "spritesheet")
+        manifest = _extract_string(block, "manifest")
+        # A catalog row does not state its sheet image: it is the manifest
+        # path with `.png` in place of `.ron`.
+        spritesheet = manifest.removesuffix(".ron") + ".png" if manifest else None
         profile = CatalogProfile(
             character_id=character_id,
             display_name=_extract_string(block, "display_name"),
             spritesheet=spritesheet,
-            manifest=_extract_string(block, "manifest"),
+            manifest=manifest,
             body_kind=_extract_ident(block, "body_kind"),
             default_brain=_extract_string(block, "default_brain"),
             default_action_set=_extract_string(block, "default_action_set"),
