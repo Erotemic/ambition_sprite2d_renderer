@@ -17,3 +17,11 @@ groups:
     - interdimensional_gate_ring
     - interdimensional_gate_portal
     - news_board
+
+# The groups a runtime reader loads: their pages are the pack's runtime product
+# (`sprite_packs/<tier>/`), and the rest of the pack stays a source that is not
+# shipped. A prop row that names a pack target (`intro_prop_sprite_rows`, the
+# fourth field) reads its group, so that group is here: `intro` for
+# `intro_cart`.
+runtime_groups:
+  - intro
