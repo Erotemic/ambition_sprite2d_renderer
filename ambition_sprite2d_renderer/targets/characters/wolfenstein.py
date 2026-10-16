@@ -134,7 +134,10 @@ DUST_DARK: RGBA = (122, 112, 102, 255)
 BUILD = Build(hip_up=64.0, thigh=32.0, shin=31.0, neck=(2.0, -54.0), upper=30.0, fore=28.0, near_shoulder=(-9.0, -49.0), far_shoulder=(10.0, -48.4),
               near_hip=(-6.0, 0.0), far_hip=(6.0, 0.0), ankle_up=5.0, head_up=(7.0, -30.0), throat=(-1.0, 12.0), height=159.0, half_width=(19.0, 22.0))
 
-X = Person(TARGET_NAME, BUILD, frame=(320, 256), ground=240.0, cx=150.0)
+# The frame is as tall as it is wide, and the cell under his feet is empty:
+# a boss placed by its data has the middle of its frame on the middle of its
+# body box, so the middle of the box is the middle of the frame.
+X = Person(TARGET_NAME, BUILD, frame=(320, 320), ground=240.0, cx=150.0)
 K = X.K
 P = X.P
 TOP = BUILD.neck[1] - 2.0
