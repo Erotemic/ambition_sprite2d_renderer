@@ -30,6 +30,8 @@ MODULES = {
     "joseph_furrier": ("joseph_furrier",),
     "fascist_enforcer": ("fascist_enforcer",),
     "wolfenstein": ("wolfenstein",),
+    "evil_heavy": ("evil_heavy",),
+    "evil_failed_prototype": ("evil_failed_prototype",),
 }
 SHEETS = [(module, sheet) for module, sheets in MODULES.items() for sheet in sheets]
 

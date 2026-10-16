@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+     width="640mm" height="512mm" viewBox="0 0 640 512"
+     data-character-design="evil-attack-hound-side-v1">
+  <g id="evil-attack-hound-side" inkscape:groupmode="layer" inkscape:label="Attack Hound - Side Right">
+    <g id="tail-base" inkscape:groupmode="layer" inkscape:label="Tail - Base" data-rig-part="tail_base" data-rig-bone="tail_base" data-rig-z="1">
+      <path d="M214 284 C196 288 182 280 170 278 C156 276 146 262 138 252 C128 238 124 222 128 208 C134 196 150 198 156 210 C166 230 186 240 216 240 Z" fill="#362e32" stroke="#120d0f" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M204 276 C184 276 164 266 148 250 C140 240 134 230 132 220" fill="none" stroke="#5b2f1b" stroke-width="8" stroke-linecap="round"/>
+      <path d="M196 246 C178 240 162 226 154 212" fill="none" stroke="#5e5157" stroke-width="5" stroke-linecap="round"/>
+    </g>
+    <g id="tail-tip" inkscape:groupmode="layer" inkscape:label="Tail - Tip" data-rig-part="tail_tip" data-rig-bone="tail_tip" data-rig-z="2">
+      <path d="M134 224 C120 206 108 182 102 144 C118 158 142 176 156 200 C161 211 159 223 152 228 C146 232 138 230 134 224 Z" fill="#362e32" stroke="#120d0f" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M110 160 C116 182 126 202 138 216" fill="none" stroke="#5b2f1b" stroke-width="6" stroke-linecap="round"/>
+      <path d="M120 162 C134 174 146 188 152 204" fill="none" stroke="#5e5157" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <g id="far-hind-upper" inkscape:groupmode="layer" inkscape:label="Far Hind Leg - Upper" data-rig-part="far_hind_upper" data-rig-bone="far_hind_upper" data-rig-z="5">
+      <path d="M260.36 294 C269 306.6 273.32 329.7 271.88 352.8 C271.16 370.4 262.52 384.7 251.72 383.6 C241.64 380.3 237.32 366 239.48 349.5 L240.92 313.2 Z" fill="#262023" stroke="#120d0f" stroke-width="8" stroke-linejoin="round"/>
+    </g>
+    <g id="far-hind-lower" inkscape:groupmode="layer" inkscape:label="Far Hind Leg - Lower" data-rig-part="far_hind_lower" data-rig-bone="far_hind_lower" data-rig-z="6">
+      <path d="M256.72 359.4 C263.92 356.1 271.84 364.9 273.28 378.1 L265.36 462.8 C263.92 476 255.28 483.7 248.8 477.1 C243.04 472.7 241.6 461.7 244.48 448.5 L244.48 378.1 C244.48 368.2 249.52 360.5 256.72 359.4 Z" fill="#4f2a18" stroke="#120d0f" stroke-width="8" stroke-linejoin="round"/>
+    </g>
+    <g id="far-hind-paw" inkscape:groupmode="layer" inkscape:label="Far Hind Paw" data-rig-part="far_hind_paw" data-rig-bone="far_hind_paw" data-rig-z="7">
+      <path d="M245.6 461.7 C256 456.1 264.8 460.9 270.4 468.9 L283.2 472.9 C291.2 475.3 294.4 484.1 289.6 490.5 C283.2 495.3 264 493.7 248 492.1 C235.2 490.5 232.8 480.1 238.4 469.7 Z" fill="#5c321e" stroke="#120d0f" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M267.2 474.5 L268.8 489.7 M279.2 477.7 L281.6 489.7" fill="none" stroke="#341c11" stroke-width="4" stroke-linecap="round"/>
+      <path d="M285.6 487.3 L292 492.1 M285.6 480.9 L292 484.1" fill="none" stroke="#100b0c" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <g id="far-fore-upper" inkscape:groupmode="layer" inkscape:label="Far Foreleg - Upper" data-rig-part="far_fore_upper" data-rig-bone="far_fore_upper" data-rig-z="8">
+      <path d="M387.04 282 C395.68 284 400.72 295 400 312.1 L392.08 381.4 C389.92 400.1 378.4 408.9 369.76 400.1 C361.12 393.5 360.4 380.3 363.28 367.1 L368.32 296 Z" fill="#262023" stroke="#120d0f" stroke-width="8" stroke-linejoin="round"/>
+    </g>
+    <g id="far-fore-lower" inkscape:groupmode="layer" inkscape:label="Far Foreleg - Lower" data-rig-part="far_fore_lower" data-rig-bone="far_fore_lower" data-rig-z="9">
+      <path d="M375.28 378.1 C384.64 374.8 391.84 385.8 391.12 400.1 L389.68 474.9 C388.96 488.1 382.48 494.7 374.56 492.5 C366.64 490.3 364.48 480.4 366.64 467.2 L363.04 402.3 C362.32 389.1 367.36 380.3 375.28 378.1 Z" fill="#4f2a18" stroke="#120d0f" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M370.24 413.3 L371.68 470.5" fill="none" stroke="#643721" stroke-width="7" stroke-linecap="round"/>
+    </g>
+    <g id="far-fore-paw" inkscape:groupmode="layer" inkscape:label="Far Forepaw" data-rig-part="far_fore_paw" data-rig-bone="far_fore_paw" data-rig-z="10">
+      <path d="M369.4 464.7 C379 459.9 387.8 465.5 394.2 472.7 L403.8 474.3 C411.8 475.9 416.6 484.7 411 491.9 C405.4 496.7 380.6 495.1 366.2 492.7 C355.8 491.1 354.2 481.5 359.8 471.9 Z" fill="#5c321e" stroke="#120d0f" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M387 475.1 L387.8 491.1 M398.2 477.5 L399.8 491.1" fill="none" stroke="#341c11" stroke-width="4" stroke-linecap="round"/>
+      <path d="M406.2 487.9 L412.6 492.7 M406.2 481.5 L412.6 484.7" fill="none" stroke="#100b0c" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <g id="body" inkscape:groupmode="layer" inkscape:label="Body" data-rig-part="body" data-rig-bone="body" data-rig-z="20">
+      <path d="M198 254 C212 228 246 214 290 214 C326 213 350 212 384 206 C424 198 458 212 476 244 C490 274 486 322 464 342 C442 358 408 348 384 328 C348 300 302 300 262 304 C222 308 188 296 198 254 Z" fill="#7c4325" stroke="#120d0f" stroke-width="9" stroke-linejoin="round"/>
+      <path d="M200 256 C214 230 248 216 290 216 C326 215 350 214 384 208 C412 203 436 208 452 222 C454 254 438 278 406 286 C368 292 332 280 298 284 C264 288 230 296 208 292 C196 282 196 268 200 256 Z" fill="#362e32"/>
+      <path d="M206 266 C214 240 240 224 276 220 M300 218 C330 218 356 216 386 212" fill="none" stroke="#5e5157" stroke-width="6" stroke-linecap="round"/>
+      <path d="M410 300 C420 312 424 324 422 334" fill="none" stroke="#5b2f1b" stroke-width="4" stroke-linecap="round"/>
+      <path d="M392 296 C400 308 402 318 400 326" fill="none" stroke="#5b2f1b" stroke-width="4" stroke-linecap="round"/>
+      <path d="M272 302 C304 300 334 298 364 310" fill="none" stroke="#9c5a31" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <g id="near-hind-upper" inkscape:groupmode="layer" inkscape:label="Near Hind Leg - Upper" data-rig-part="near_hind_upper" data-rig-bone="near_hind_upper" data-rig-z="30">
+      <path d="M253.96 291 C273.4 286 287.8 307.7 290.68 340.7 C292.84 368.2 280.6 390.2 266.92 392.4 C250.36 394.6 239.56 377 240.28 353.9 C241 329.7 244.6 304.4 253.96 291 Z" fill="#362e32" stroke="#120d0f" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M256.12 307.7 C268.36 302.2 281.32 318.7 281.32 344" fill="none" stroke="#5e5157" stroke-width="7" stroke-linecap="round"/>
+      <path d="M249.64 300 C264.04 296 278.44 306.6 285.64 328.6 C274.12 324.2 261.16 322 245.32 328.6 C245.32 315.4 246.76 306.6 249.64 300 Z" fill="#251f22"/>
+      <path d="M261.16 339.6 C269.8 350.6 277 357.2 282.76 357.2" fill="none" stroke="#5b2f1b" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <g id="near-hind-lower" inkscape:groupmode="layer" inkscape:label="Near Hind Leg - Lower" data-rig-part="near_hind_lower" data-rig-bone="near_hind_lower" data-rig-z="31">
+      <path d="M271.84 370.4 C282.64 363.8 292 374.8 292 392.4 C289.84 417.7 277.6 433.1 275.44 468.3 C274.72 482.6 268.24 491.4 259.6 487 C250.96 482.6 249.52 470.5 253.12 457.3 L261.76 394.6 C261.76 383.6 265.36 374.8 271.84 370.4 Z" fill="#7c4325" stroke="#120d0f" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M278.32 401.2 L264.64 458.4" fill="none" stroke="#9a5830" stroke-width="7" stroke-linecap="round"/>
+    </g>
+    <g id="near-hind-paw" inkscape:groupmode="layer" inkscape:label="Near Hind Paw" data-rig-part="near_hind_paw" data-rig-bone="near_hind_paw" data-rig-z="32">
+      <path d="M251.6 463.3 C265.2 456.9 277.2 464.1 284.4 472.1 L298.8 473.7 C309.2 476.1 313.2 485.7 306.8 492.1 C301.2 496.9 272.4 495.3 254.8 492.9 C240.4 491.3 236.4 481.7 242 471.3 Z" fill="#8a4b29" stroke="#120d0f" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M276.4 474.5 L278 491.3 M291.6 476.9 L293.2 491.3" fill="none" stroke="#341c11" stroke-width="4" stroke-linecap="round"/>
+      <path d="M301.2 487.3 L307.6 492.1 M301.2 480.9 L307.6 484.1" fill="none" stroke="#100b0c" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <g id="near-fore-upper" inkscape:groupmode="layer" inkscape:label="Near Foreleg - Upper" data-rig-part="near_fore_upper" data-rig-bone="near_fore_upper" data-rig-z="33">
+      <path d="M421.44 283 C435.12 282 443.04 297 440.16 319.8 L430.08 392.4 C427.92 410 414.96 418.8 404.88 407.8 C396.96 397.9 398.4 382.5 402 366 L407.04 302.2 C409.2 290 413.52 284 421.44 283 Z" fill="#362e32" stroke="#120d0f" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M420 302.2 L412.8 369.3" fill="none" stroke="#5e5157" stroke-width="8" stroke-linecap="round"/>
+      <path d="M427.2 300 C431.52 322 428.64 348.4 422.88 370.4" fill="none" stroke="#251f22" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <g id="near-fore-lower" inkscape:groupmode="layer" inkscape:label="Near Foreleg - Lower" data-rig-part="near_fore_lower" data-rig-bone="near_fore_lower" data-rig-z="34">
+      <path d="M414.12 385.8 C425.64 380.3 432.84 390.2 432.84 406.7 L430.68 471.6 C430.68 487 424.92 495.8 414.84 493.6 C406.2 492.5 402.6 482.6 405.48 468.3 L403.32 407.8 C402.6 397.9 406.92 389.1 414.12 385.8 Z" fill="#7c4325" stroke="#120d0f" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M412.68 414.4 L414.84 463.9" fill="none" stroke="#9a5830" stroke-width="7" stroke-linecap="round"/>
+    </g>
+    <g id="near-fore-paw" inkscape:groupmode="layer" inkscape:label="Near Forepaw" data-rig-part="near_fore_paw" data-rig-bone="near_fore_paw" data-rig-z="35">
+      <path d="M409 464.7 C421.8 459.1 433 464.7 440.2 473.5 L453 475.9 C463.4 479.1 465.8 487.9 458.6 493.5 C452.2 497.5 423.4 495.9 407.4 493.5 C396.2 491.9 393 481.5 399.4 471.9 Z" fill="#8a4b29" stroke="#120d0f" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M432.2 475.9 L433.8 492.7 M446.6 478.3 L448.2 492.7" fill="none" stroke="#341c11" stroke-width="4" stroke-linecap="round"/>
+      <path d="M454.6 487.9 L461 492.7 M454.6 481.5 L461 484.7" fill="none" stroke="#100b0c" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <g id="mouth-inside" inkscape:groupmode="layer" inkscape:label="Mouth - Inside" data-rig-part="mouth_inside" data-rig-bone="jaw" data-rig-z="37">
+      <path d="M532 256 C556 246 590 236 618 230 L624 262 C598 268 562 268 534 262 Z" fill="#3b0f17"/>
+      <path d="M546 254 C566 249 590 247 606 249 C611 253 607 258 598 259 C578 261 560 260 546 256 Z" fill="#b24e5c"/>
+    </g>
+    <g id="neck" inkscape:groupmode="layer" inkscape:label="Neck, Hackles and Collar" data-rig-part="neck" data-rig-bone="body" data-rig-z="38">
+      <path d="M370 214 L376 200 L384 210 L392 196 L400 208 L408 192 L416 206 L425 188 L433 204 L442 184 L450 200 L460 180 L467 198 L478 180 L484 198 L496 184 L500 206 L504 228 C470 216 420 214 370 214 Z" fill="#362e32" stroke="#120d0f" stroke-width="7" stroke-linejoin="round"/>
+      <path d="M429 226 C454 204 483 207 503 227 L497 289 C479 314 457 331 439 329 C453 296 449 255 429 226 Z" fill="#362e32" stroke="#120d0f" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M459 232 C473 231 488 238 497 253 L491 290 C480 311 461 326 448 322 C466 294 469 256 459 232 Z" fill="#7c4325"/>
+      <path d="M466 244 C474 262 474 284 466 304" fill="none" stroke="#9c5a31" stroke-width="4" stroke-linecap="round"/>
+      <path d="M446 268 C462 278 482 278 499 266 L497 288 C482 300 462 300 448 292 Z" fill="#151416" stroke="#120d0f" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M447 280 C463 290 482 290 498 277" fill="none" stroke="#b82428" stroke-width="6" stroke-linecap="round"/>
+      <path d="M457.96 295.08 L451 305 L450.04 292.92 Z" fill="#c9ced6" stroke="#3e4249" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M470.32 298.36 L465 310 L461.68 297.64 Z" fill="#c9ced6" stroke="#3e4249" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M482.32 297.64 L479 310 L473.68 298.36 Z" fill="#c9ced6" stroke="#3e4249" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M493.96 292.92 L493 305 L486.04 295.08 Z" fill="#c9ced6" stroke="#3e4249" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M500.72 275.68 L512 282 L499.28 284.32 Z" fill="#c9ced6" stroke="#3e4249" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="M472 298 L472 306" fill="none" stroke="#9aa0a8" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="472" cy="320" r="16" fill="#b82428" stroke="#120d0f" stroke-width="4"/>
+      <circle cx="472" cy="320" r="11.52" fill="#f6f4ee"/>
+      <polygon points="478.53,318.40 481.46,318.38 481.46,321.62 478.53,321.60 477.75,323.49 479.84,325.54 477.54,327.84 475.49,325.75 473.60,326.53 473.62,329.46 470.38,329.46 470.40,326.53 468.51,325.75 466.46,327.84 464.16,325.54 466.25,323.49 465.47,321.60 462.54,321.62 462.54,318.38 465.47,318.40 466.25,316.51 464.16,314.46 466.46,312.16 468.51,314.25 470.40,313.47 470.38,310.54 473.62,310.54 473.60,313.47 475.49,314.25 477.54,312.16 479.84,314.46 477.75,316.51" fill="#161418"/>
+      <ellipse cx="472.00" cy="320.00" rx="6.72" ry="6.72" fill="#161418"/>
+      <ellipse cx="472.00" cy="320.00" rx="2.69" ry="2.69" fill="#f6f4ee"/>
+    </g>
+    <g id="jaw" inkscape:groupmode="layer" inkscape:label="Lower Jaw" data-rig-part="jaw" data-rig-bone="jaw" data-rig-z="39">
+      <path d="M528 250 C552 262 584 264 612 258 C620 257 624 263 620 270 C604 282 570 286 546 282 C530 278 522 264 528 250 Z" fill="#251f22" stroke="#120d0f" stroke-width="7" stroke-linejoin="round"/>
+      <path d="M544 274 C566 280 594 278 612 268 C606 278 584 284 560 282 C552 280 546 278 544 274 Z" fill="#5b2f1b"/>
+    </g>
+    <g id="head" inkscape:groupmode="layer" inkscape:label="Head, Muzzle and Upper Teeth" data-rig-part="head" data-rig-bone="head" data-rig-z="40">
+      <path d="M490 204 C492 166 508 128 534 96 C538 92 544 94 545 101 C551 134 553 162 549 188 C533 200 508 206 490 204 Z" fill="#151112" stroke="#120d0f" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M504 192 C508 164 520 138 534 118 C539 144 541 166 539 184 C529 190 516 193 504 192 Z" fill="#3d2723"/>
+      <path d="M452 196 C466 166 502 154 534 160 C560 166 578 188 578 214 C578 242 562 262 538 270 C506 280 474 268 460 250 C450 236 446 212 452 196 Z" fill="#362e32" stroke="#120d0f" stroke-width="9" stroke-linejoin="round"/>
+      <path d="M470 190 C486 172 512 164 540 168" fill="none" stroke="#5e5157" stroke-width="6" stroke-linecap="round"/>
+      <path d="M478 238 C494 226 524 228 542 244 C538 262 518 272 496 268 C484 262 474 250 478 238 Z" fill="#7c4325"/>
+      <path d="M486 196 C491 188 503 187 510 191 C511 196 506 199 499 199 C492 200 488 199 486 196 Z" fill="#9c5a31"/>
+      <path d="M552 252 C570 252 586 246 598 237 L620 235 L621 246 C600 252 576 258 554 259 Z" fill="#8e2b3b" stroke="#120d0f" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M536 204 C560 196 592 200 614 208 C626 213 632 224 628 232 C622 238 614 238 606 238 C598 238 590 244 580 250 L548 254 C534 250 528 236 530 222 C531 212 532 207 536 204 Z" fill="#251f22" stroke="#120d0f" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M574 205 L568 219 M586 205 L580 221 M598 208 L592 222" fill="none" stroke="#5e5157" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M552 252 C568 252 584 248 598 238 L620 236" fill="none" stroke="#4a1a24" stroke-width="3" stroke-linecap="round"/>
+      <path d="M594.5 250 L607.5 250 L603 276 Z" fill="#f1e9d2" stroke="#5c4b3c" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M608.8 248 L615.2 248 L612 259 Z" fill="#f1e9d2" stroke="#5c4b3c" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M616 246 L622 246 L619 256 Z" fill="#f1e9d2" stroke="#5c4b3c" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M560.5 257 L569.5 257 L565 266 Z" fill="#f1e9d2" stroke="#5c4b3c" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M572.5 255 L581.5 255 L577 265 Z" fill="#f1e9d2" stroke="#5c4b3c" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M584.5 252 L593.5 252 L589 263 Z" fill="#f1e9d2" stroke="#5c4b3c" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M604 204 C614 199 626 203 630 212 C632 220 626 227 618 227 C610 227 604 221 602 213 Z" fill="#0b0809" stroke="#050404" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M612 207 C617 205 622 207 624 211" fill="none" stroke="#5b5458" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <g id="eye-open" inkscape:groupmode="layer" inkscape:label="Eye - Open" data-rig-part="eye_open" data-rig-bone="head" data-rig-z="41">
+      <path d="M493 226 C501 211 523 207 539 218 C531 231 509 235 493 226 Z" fill="#0c0809"/>
+      <circle cx="518" cy="222" r="8" fill="#e8a51c"/>
+      <circle cx="519.5" cy="222.5" r="3.8" fill="#0b0708"/>
+      <circle cx="522" cy="219.5" r="1.7" fill="#fff6d8"/>
+      <path d="M484 200 C504 197 530 206 546 223 L539 229 C524 216 506 212 486 215 Z" fill="#362e32" stroke="#120d0f" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M492 205 C508 204 526 210 540 222" fill="none" stroke="#5e5157" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <g id="eye-x" inkscape:groupmode="layer" inkscape:label="Eye - Death X" data-rig-part="eye_x" data-rig-bone="head" data-rig-z="41">
+      <ellipse cx="516" cy="221" rx="13" ry="12" fill="#2a2427"/>
+      <path d="M507 212 L525 230 M525 212 L507 230" fill="none" stroke="#d9d2c6" stroke-width="5" stroke-linecap="round"/>
+    </g>
+    <g id="ear" inkscape:groupmode="layer" inkscape:label="Ear" data-rig-part="ear" data-rig-bone="ear" data-rig-z="42">
+      <path d="M456 198 C458 160 474 122 500 90 C504 86 510 88 511 95 C517 128 519 156 515 182 C499 194 474 200 456 198 Z" fill="#362e32" stroke="#120d0f" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M470 186 C474 158 486 132 500 112 C505 138 507 160 505 178 C495 184 482 187 470 186 Z" fill="#5a3a33"/>
+      <path d="M476 182 C480 166 486 152 494 140" fill="none" stroke="#7c4325" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <g id="lower-teeth" inkscape:groupmode="layer" inkscape:label="Lower Teeth" data-rig-part="lower_teeth" data-rig-bone="jaw" data-rig-z="43">
+      <path d="M585 263 L595 263 L590 244 Z" fill="#f1e9d2" stroke="#5c4b3c" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M601 261 L607 261 L604 252 Z" fill="#f1e9d2" stroke="#5c4b3c" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M609 259 L615 259 L612 251 Z" fill="#f1e9d2" stroke="#5c4b3c" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M564.4 264 L571.6 264 L568 256 Z" fill="#f1e9d2" stroke="#5c4b3c" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M575.4 264 L582.6 264 L579 255 Z" fill="#f1e9d2" stroke="#5c4b3c" stroke-width="2.2" stroke-linejoin="round"/>
+    </g>
+  </g>
+  <!-- BEGIN AMBITION SVG RIG v1 -->
+  <metadata id="ambition-rig-metadata" data-ambition-schema="ambition-svg-rig-v1" data-ambition-role="character-rig" data-rig-coordinate-space="root-svg-user-space" data-rig-rest-authority="markers">
+    <g id="ambition-rig-view-side" data-rig-view-def="side" data-rig-source-layer="evil-attack-hound-side" data-rig-source-label="Attack Hound - Side Right" data-rig-root="ambition-rig-side-joint-rig_root" data-rig-projection="side" data-rig-profile="custom-articulated-v1" data-rig-pose-authority="geometry-only" data-rig-part-order="attribute" data-rig-source-map-quality="exact-pivot-fit">
+      <g id="ambition-rig-side-bone-body" data-rig-bone-def="body" data-rig-origin="ambition-rig-side-joint-body_pivot" />
+      <g id="ambition-rig-side-bone-tail_base" data-rig-bone-def="tail_base" data-rig-parent="body" data-rig-origin="ambition-rig-side-joint-tail_base_pivot" data-rig-tip="ambition-rig-side-joint-tail_base_tip" />
+      <g id="ambition-rig-side-bone-tail_tip" data-rig-bone-def="tail_tip" data-rig-parent="tail_base" data-rig-origin="ambition-rig-side-joint-tail_tip_pivot" />
+      <g id="ambition-rig-side-bone-far_hind_upper" data-rig-bone-def="far_hind_upper" data-rig-parent="body" data-rig-origin="ambition-rig-side-joint-far_hind_upper_pivot" data-rig-tip="ambition-rig-side-joint-far_hind_upper_tip" />
+      <g id="ambition-rig-side-bone-far_hind_lower" data-rig-bone-def="far_hind_lower" data-rig-parent="far_hind_upper" data-rig-origin="ambition-rig-side-joint-far_hind_lower_pivot" data-rig-tip="ambition-rig-side-joint-far_hind_lower_tip" />
+      <g id="ambition-rig-side-bone-far_hind_paw" data-rig-bone-def="far_hind_paw" data-rig-parent="far_hind_lower" data-rig-origin="ambition-rig-side-joint-far_hind_paw_pivot" />
+      <g id="ambition-rig-side-bone-far_fore_upper" data-rig-bone-def="far_fore_upper" data-rig-parent="body" data-rig-origin="ambition-rig-side-joint-far_fore_upper_pivot" data-rig-tip="ambition-rig-side-joint-far_fore_upper_tip" />
+      <g id="ambition-rig-side-bone-far_fore_lower" data-rig-bone-def="far_fore_lower" data-rig-parent="far_fore_upper" data-rig-origin="ambition-rig-side-joint-far_fore_lower_pivot" data-rig-tip="ambition-rig-side-joint-far_fore_lower_tip" />
+      <g id="ambition-rig-side-bone-far_fore_paw" data-rig-bone-def="far_fore_paw" data-rig-parent="far_fore_lower" data-rig-origin="ambition-rig-side-joint-far_fore_paw_pivot" />
+      <g id="ambition-rig-side-bone-near_hind_upper" data-rig-bone-def="near_hind_upper" data-rig-parent="body" data-rig-origin="ambition-rig-side-joint-near_hind_upper_pivot" data-rig-tip="ambition-rig-side-joint-near_hind_upper_tip" />
+      <g id="ambition-rig-side-bone-near_hind_lower" data-rig-bone-def="near_hind_lower" data-rig-parent="near_hind_upper" data-rig-origin="ambition-rig-side-joint-near_hind_lower_pivot" data-rig-tip="ambition-rig-side-joint-near_hind_lower_tip" />
+      <g id="ambition-rig-side-bone-near_hind_paw" data-rig-bone-def="near_hind_paw" data-rig-parent="near_hind_lower" data-rig-origin="ambition-rig-side-joint-near_hind_paw_pivot" />
+      <g id="ambition-rig-side-bone-near_fore_upper" data-rig-bone-def="near_fore_upper" data-rig-parent="body" data-rig-origin="ambition-rig-side-joint-near_fore_upper_pivot" data-rig-tip="ambition-rig-side-joint-near_fore_upper_tip" />
+      <g id="ambition-rig-side-bone-near_fore_lower" data-rig-bone-def="near_fore_lower" data-rig-parent="near_fore_upper" data-rig-origin="ambition-rig-side-joint-near_fore_lower_pivot" data-rig-tip="ambition-rig-side-joint-near_fore_lower_tip" />
+      <g id="ambition-rig-side-bone-near_fore_paw" data-rig-bone-def="near_fore_paw" data-rig-parent="near_fore_lower" data-rig-origin="ambition-rig-side-joint-near_fore_paw_pivot" />
+      <g id="ambition-rig-side-bone-head" data-rig-bone-def="head" data-rig-parent="body" data-rig-origin="ambition-rig-side-joint-neck" />
+      <g id="ambition-rig-side-bone-ear" data-rig-bone-def="ear" data-rig-parent="head" data-rig-origin="ambition-rig-side-joint-ear_pivot" />
+      <g id="ambition-rig-side-bone-jaw" data-rig-bone-def="jaw" data-rig-parent="head" data-rig-origin="ambition-rig-side-joint-jaw_hinge" />
+      <g id="ambition-rig-side-part-tail_base" data-rig-part-def="tail_base" data-rig-bone="tail_base" data-rig-z="1" data-rig-pivot="ambition-rig-side-bind-tail_base" data-rig-bind-angle="-141.8013" data-rig-elements="tail-base" />
+      <g id="ambition-rig-side-part-tail_tip" data-rig-part-def="tail_tip" data-rig-bone="tail_tip" data-rig-z="2" data-rig-pivot="ambition-rig-side-bind-tail_tip" data-rig-bind-angle="0" data-rig-elements="tail-tip" />
+      <g id="ambition-rig-side-part-far_hind_upper" data-rig-part-def="far_hind_upper" data-rig-bone="far_hind_upper" data-rig-z="5" data-rig-pivot="ambition-rig-side-bind-far_hind_upper" data-rig-bind-angle="85.5189" data-rig-elements="far-hind-upper" />
+      <g id="ambition-rig-side-part-far_hind_lower" data-rig-part-def="far_hind_lower" data-rig-bone="far_hind_lower" data-rig-z="6" data-rig-pivot="ambition-rig-side-bind-far_hind_lower" data-rig-bind-angle="92.3137" data-rig-elements="far-hind-lower" />
+      <g id="ambition-rig-side-part-far_hind_paw" data-rig-part-def="far_hind_paw" data-rig-bone="far_hind_paw" data-rig-z="7" data-rig-pivot="ambition-rig-side-bind-far_hind_paw" data-rig-bind-angle="0" data-rig-elements="far-hind-paw" />
+      <g id="ambition-rig-side-part-far_fore_upper" data-rig-part-def="far_fore_upper" data-rig-bone="far_fore_upper" data-rig-z="8" data-rig-pivot="ambition-rig-side-bind-far_fore_upper" data-rig-bind-angle="93.6063" data-rig-elements="far-fore-upper" />
+      <g id="ambition-rig-side-part-far_fore_lower" data-rig-part-def="far_fore_lower" data-rig-bone="far_fore_lower" data-rig-z="9" data-rig-pivot="ambition-rig-side-bind-far_fore_lower" data-rig-bind-angle="90.6945" data-rig-elements="far-fore-lower" />
+      <g id="ambition-rig-side-part-far_fore_paw" data-rig-part-def="far_fore_paw" data-rig-bone="far_fore_paw" data-rig-z="10" data-rig-pivot="ambition-rig-side-bind-far_fore_paw" data-rig-bind-angle="0" data-rig-elements="far-fore-paw" />
+      <g id="ambition-rig-side-part-body" data-rig-part-def="body" data-rig-bone="body" data-rig-z="20" data-rig-pivot="ambition-rig-side-bind-body" data-rig-bind-angle="0" data-rig-elements="body" />
+      <g id="ambition-rig-side-part-near_hind_upper" data-rig-part-def="near_hind_upper" data-rig-bone="near_hind_upper" data-rig-z="30" data-rig-pivot="ambition-rig-side-bind-near_hind_upper" data-rig-bind-angle="77.1957" data-rig-elements="near-hind-upper" />
+      <g id="ambition-rig-side-part-near_hind_lower" data-rig-part-def="near_hind_lower" data-rig-bone="near_hind_lower" data-rig-z="31" data-rig-pivot="ambition-rig-side-bind-near_hind_lower" data-rig-bind-angle="100.0587" data-rig-elements="near-hind-lower" />
+      <g id="ambition-rig-side-part-near_hind_paw" data-rig-part-def="near_hind_paw" data-rig-bone="near_hind_paw" data-rig-z="32" data-rig-pivot="ambition-rig-side-bind-near_hind_paw" data-rig-bind-angle="0" data-rig-elements="near-hind-paw" />
+      <g id="ambition-rig-side-part-near_fore_upper" data-rig-part-def="near_fore_upper" data-rig-bone="near_fore_upper" data-rig-z="33" data-rig-pivot="ambition-rig-side-bind-near_fore_upper" data-rig-bind-angle="91.8164" data-rig-elements="near-fore-upper" />
+      <g id="ambition-rig-side-part-near_fore_lower" data-rig-part-def="near_fore_lower" data-rig-bone="near_fore_lower" data-rig-z="34" data-rig-pivot="ambition-rig-side-bind-near_fore_lower" data-rig-bind-angle="90" data-rig-elements="near-fore-lower" />
+      <g id="ambition-rig-side-part-near_fore_paw" data-rig-part-def="near_fore_paw" data-rig-bone="near_fore_paw" data-rig-z="35" data-rig-pivot="ambition-rig-side-bind-near_fore_paw" data-rig-bind-angle="0" data-rig-elements="near-fore-paw" />
+      <g id="ambition-rig-side-part-mouth_inside" data-rig-part-def="mouth_inside" data-rig-bone="jaw" data-rig-z="37" data-rig-pivot="ambition-rig-side-bind-mouth_inside" data-rig-bind-angle="0" data-rig-elements="mouth-inside" />
+      <g id="ambition-rig-side-part-neck" data-rig-part-def="neck" data-rig-bone="body" data-rig-z="38" data-rig-pivot="ambition-rig-side-bind-neck" data-rig-bind-angle="0" data-rig-elements="neck" />
+      <g id="ambition-rig-side-part-jaw" data-rig-part-def="jaw" data-rig-bone="jaw" data-rig-z="39" data-rig-pivot="ambition-rig-side-bind-jaw" data-rig-bind-angle="0" data-rig-elements="jaw" />
+      <g id="ambition-rig-side-part-head" data-rig-part-def="head" data-rig-bone="head" data-rig-z="40" data-rig-pivot="ambition-rig-side-bind-head" data-rig-bind-angle="0" data-rig-elements="head" />
+      <g id="ambition-rig-side-part-eye_open" data-rig-part-def="eye_open" data-rig-bone="head" data-rig-z="41" data-rig-pivot="ambition-rig-side-bind-eye_open" data-rig-bind-angle="0" data-rig-opacity="eye_open" data-rig-elements="eye-open" />
+      <g id="ambition-rig-side-part-eye_x" data-rig-part-def="eye_x" data-rig-bone="head" data-rig-z="41" data-rig-pivot="ambition-rig-side-bind-eye_x" data-rig-bind-angle="0" data-rig-opacity="eye_x" data-rig-elements="eye-x" />
+      <g id="ambition-rig-side-part-ear" data-rig-part-def="ear" data-rig-bone="ear" data-rig-z="42" data-rig-pivot="ambition-rig-side-bind-ear" data-rig-bind-angle="0" data-rig-elements="ear" />
+      <g id="ambition-rig-side-part-lower_teeth" data-rig-part-def="lower_teeth" data-rig-bone="jaw" data-rig-z="43" data-rig-pivot="ambition-rig-side-bind-lower_teeth" data-rig-bind-angle="0" data-rig-elements="lower-teeth" />
+    </g>
+  </metadata>
+  <g id="ambition-rig-markers" data-rig-editor-layer="true" inkscape:groupmode="layer" inkscape:label="Ambition Rig Markers">
+    <g id="ambition-rig-markers-side" data-rig-view="side" inkscape:label="Rig Markers - Attack Hound - Side Right">
+      <line id="ambition-rig-side-guide-tail_base" data-rig-bone-guide="tail_base" x1="204" y1="258" x2="143.00007" y2="210.00003" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-far_hind_upper" data-rig-bone-guide="far_hind_upper" x1="251" y1="307.7" x2="255.999992" y2="371.499976" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-far_hind_lower" data-rig-bone-guide="far_hind_lower" x1="255.999992" y1="371.499976" x2="252.00003" y2="470.500002" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-far_fore_upper" data-rig-bone-guide="far_fore_upper" x1="382" y1="295" x2="376.00002" y2="390.199913" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-far_fore_lower" data-rig-bone-guide="far_fore_lower" x1="376.00002" y1="390.199913" x2="374.999963" y2="472.699852" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_hind_upper" data-rig-bone-guide="near_hind_upper" x1="259" y1="314.3" x2="274.000065" y2="380.300103" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_hind_lower" data-rig-bone-guide="near_hind_lower" x1="274.000065" y1="380.300103" x2="258.000083" y2="470.500027" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_fore_upper" data-rig-bone-guide="near_fore_upper" x1="420" y1="303.3" x2="416.999969" y2="397.900042" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <line id="ambition-rig-side-guide-near_fore_lower" data-rig-bone-guide="near_fore_lower" x1="416.999969" y1="397.900042" x2="416.999969" y2="472.700042" stroke="#d226c6" stroke-width="1.25" stroke-opacity="0.32" />
+      <circle id="ambition-rig-side-joint-body_pivot" data-rig-joint="body_pivot" cx="320" cy="300" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-ear_pivot" data-rig-joint="ear_pivot" cx="478" cy="180" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_fore_lower_pivot" data-rig-joint="far_fore_lower_pivot" cx="376.00002" cy="390.199913" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_fore_lower_tip" data-rig-joint="far_fore_lower_tip" cx="374.999963" cy="472.699852" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_fore_paw_pivot" data-rig-joint="far_fore_paw_pivot" cx="374.999963" cy="472.699852" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_fore_upper_pivot" data-rig-joint="far_fore_upper_pivot" cx="382" cy="295" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_fore_upper_tip" data-rig-joint="far_fore_upper_tip" cx="376.00002" cy="390.199913" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_hind_lower_pivot" data-rig-joint="far_hind_lower_pivot" cx="255.999992" cy="371.499976" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_hind_lower_tip" data-rig-joint="far_hind_lower_tip" cx="252.00003" cy="470.500002" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_hind_paw_pivot" data-rig-joint="far_hind_paw_pivot" cx="252.00003" cy="470.500002" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_hind_upper_pivot" data-rig-joint="far_hind_upper_pivot" cx="251" cy="307.7" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_hind_upper_tip" data-rig-joint="far_hind_upper_tip" cx="255.999992" cy="371.499976" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-jaw_hinge" data-rig-joint="jaw_hinge" cx="532" cy="254" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_fore_lower_pivot" data-rig-joint="near_fore_lower_pivot" cx="416.999969" cy="397.900042" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_fore_lower_tip" data-rig-joint="near_fore_lower_tip" cx="416.999969" cy="472.700042" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_fore_paw_pivot" data-rig-joint="near_fore_paw_pivot" cx="416.999969" cy="472.700042" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_fore_upper_pivot" data-rig-joint="near_fore_upper_pivot" cx="420" cy="303.3" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_fore_upper_tip" data-rig-joint="near_fore_upper_tip" cx="416.999969" cy="397.900042" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_hind_lower_pivot" data-rig-joint="near_hind_lower_pivot" cx="274.000065" cy="380.300103" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_hind_lower_tip" data-rig-joint="near_hind_lower_tip" cx="258.000083" cy="470.500027" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_hind_paw_pivot" data-rig-joint="near_hind_paw_pivot" cx="258.000083" cy="470.500027" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_hind_upper_pivot" data-rig-joint="near_hind_upper_pivot" cx="259" cy="314.3" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_hind_upper_tip" data-rig-joint="near_hind_upper_tip" cx="274.000065" cy="380.300103" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-neck" data-rig-joint="neck" cx="473" cy="219" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-rig_root" data-rig-joint="rig_root" cx="320" cy="498" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-tail_base_pivot" data-rig-joint="tail_base_pivot" cx="204" cy="258" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-tail_base_tip" data-rig-joint="tail_base_tip" cx="143.00007" cy="210.00003" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-tail_tip_pivot" data-rig-joint="tail_tip_pivot" cx="143.00007" cy="210.00003" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-bind-tail_base" data-rig-bind-pivot="tail_base" cx="204" cy="258" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-tail_tip" data-rig-bind-pivot="tail_tip" cx="143" cy="210" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_hind_upper" data-rig-bind-pivot="far_hind_upper" cx="251" cy="307.7" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_hind_lower" data-rig-bind-pivot="far_hind_lower" cx="256" cy="371.5" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_hind_paw" data-rig-bind-pivot="far_hind_paw" cx="252" cy="470.5" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_fore_upper" data-rig-bind-pivot="far_fore_upper" cx="382" cy="295" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_fore_lower" data-rig-bind-pivot="far_fore_lower" cx="376" cy="390.2" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_fore_paw" data-rig-bind-pivot="far_fore_paw" cx="375" cy="472.7" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-body" data-rig-bind-pivot="body" cx="320" cy="300" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_hind_upper" data-rig-bind-pivot="near_hind_upper" cx="259" cy="314.3" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_hind_lower" data-rig-bind-pivot="near_hind_lower" cx="274" cy="380.3" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_hind_paw" data-rig-bind-pivot="near_hind_paw" cx="258" cy="470.5" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_fore_upper" data-rig-bind-pivot="near_fore_upper" cx="420" cy="303.3" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_fore_lower" data-rig-bind-pivot="near_fore_lower" cx="417" cy="397.9" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_fore_paw" data-rig-bind-pivot="near_fore_paw" cx="417" cy="472.7" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-mouth_inside" data-rig-bind-pivot="mouth_inside" cx="532" cy="254" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-neck" data-rig-bind-pivot="neck" cx="320" cy="300" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-jaw" data-rig-bind-pivot="jaw" cx="532" cy="254" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-head" data-rig-bind-pivot="head" cx="473" cy="219" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-eye_open" data-rig-bind-pivot="eye_open" cx="473" cy="219" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-eye_x" data-rig-bind-pivot="eye_x" cx="473" cy="219" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-ear" data-rig-bind-pivot="ear" cx="478" cy="180" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-lower_teeth" data-rig-bind-pivot="lower_teeth" cx="532" cy="254" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+    </g>
+  </g>
+  <!-- END AMBITION SVG RIG v1 -->
+</svg>
