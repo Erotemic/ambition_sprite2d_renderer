@@ -9,6 +9,7 @@ regime may be drawn in its place.
 from __future__ import annotations
 
 import math
+from typing import List
 
 from ._ai_era_kit import OUTLINE, WHITE, Kit, Point, RGBA, mix
 
@@ -18,17 +19,29 @@ DISC: RGBA = (246, 244, 238, 255)
 COG: RGBA = (22, 20, 24, 255)
 
 
-def cog(K: Kit, d, c: Point, r: float, colour: RGBA = COG, hole: RGBA = DISC) -> None:
-    """The cog about ``c``: eight square teeth, ``r`` to their tips, and a
-    hole in its middle."""
+#: The cog as parts of its radius: the round of its body, and its hole.
+COG_BODY = 0.7
+COG_HOLE = 0.28
+
+
+def cog_points(c: Point, r: float) -> List[Point]:
+    """The outline of the cog's eight square teeth about ``c``, ``r`` to
+    their tips. The body (``COG_BODY``) and the hole (``COG_HOLE``) are
+    circles: any drawing surface can draw the mark from these."""
     pts = []
     for k in range(8):
         a = math.tau * k / 8.0
-        for da, rr in ((-0.24, 0.7), (-0.17, 1.0), (0.17, 1.0), (0.24, 0.7)):
+        for da, rr in ((-0.24, COG_BODY), (-0.17, 1.0), (0.17, 1.0), (0.24, COG_BODY)):
             pts.append((c[0] + math.cos(a + da) * r * rr, c[1] + math.sin(a + da) * r * rr))
-    K.poly(d, pts, colour)
-    K.oval(d, c, r * 0.7, r * 0.7, colour)
-    K.oval(d, c, r * 0.28, r * 0.28, hole)
+    return pts
+
+
+def cog(K: Kit, d, c: Point, r: float, colour: RGBA = COG, hole: RGBA = DISC) -> None:
+    """The cog about ``c``: eight square teeth, ``r`` to their tips, and a
+    hole in its middle."""
+    K.poly(d, cog_points(c, r), colour)
+    K.oval(d, c, r * COG_BODY, r * COG_BODY, colour)
+    K.oval(d, c, r * COG_HOLE, r * COG_HOLE, hole)
 
 
 def emblem(K: Kit, radius: float):
