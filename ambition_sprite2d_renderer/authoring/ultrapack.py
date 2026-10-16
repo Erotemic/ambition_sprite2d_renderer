@@ -134,11 +134,17 @@ class PackPlan:
         groups:
           intro: [intro_cart, creator, interdimensional_gate_ring]
           always: [player_robot_v3, robot]
+        runtime_groups: [intro]
+
+    ``runtime_groups`` are the groups a runtime reader loads: their pages are
+    the pack's runtime product (:func:`write_runtime_product`). The rest of
+    the pack is a source that nothing in the game reads.
     """
 
     SHARED = "shared"
 
     groups: Dict[str, List[str]] = field(default_factory=dict)
+    runtime_groups: List[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         self._stem_to_group: Dict[str, str] = {}
@@ -151,11 +157,17 @@ class PackPlan:
                     raise ValueError(
                         f"pack-plan target {stem!r} is in two groups ({prior!r}, {group!r})"
                     )
+        for group in self.runtime_groups:
+            if group not in self.groups:
+                raise ValueError(f"pack-plan runtime group {group!r} is not a group of the plan")
 
     @classmethod
     def load(cls, path: Path) -> "PackPlan":
         doc = safe_load(Path(path).read_text()) or {}
-        return cls(groups={str(g): [str(s) for s in stems] for g, stems in (doc.get("groups") or {}).items()})
+        return cls(
+            groups={str(g): [str(s) for s in stems] for g, stems in (doc.get("groups") or {}).items()},
+            runtime_groups=[str(g) for g in (doc.get("runtime_groups") or [])],
+        )
 
     def group_of(self, stem: str) -> str:
         return self._stem_to_group.get(stem, self.SHARED)
@@ -497,6 +509,53 @@ def write_pack(
     return written
 
 
+def write_runtime_product(source_dir: Path, out_dir: Path, *, name: str = "ultrapack", groups: Sequence[str]) -> List[Path]:
+    """Write the runtime product of the pack in ``source_dir`` to ``out_dir``:
+    the pages of ``groups``, renumbered from 0, and a catalog of the targets on
+    them.
+
+    The packager ships every file under the runtime roots, and the game reads
+    a pack only through the targets a prop row names (one, ``intro_cart``):
+    695 MB of pack pages shipped for 5.4 MB that a reader can reach (measured
+    2026-10-15). The source pack stays whole, outside the runtime roots. A
+    page is copied byte for byte and only when it differs, so an unchanged
+    group keeps its files."""
+    source_dir, out_dir = Path(source_dir), Path(out_dir)
+    catalog = json.loads((source_dir / f"{name}.json").read_text())
+    wanted = set(groups)
+    kept = [index for index, group in enumerate(catalog["page_groups"]) if group in wanted]
+    renumber = {old: new for new, old in enumerate(kept)}
+    targets: Dict[str, Dict[str, list]] = {}
+    for target, animations in catalog["targets"].items():
+        pages = {frame["page"] for frames in animations.values() for frame in frames}
+        if not pages & set(renumber):
+            continue
+        if not pages <= set(renumber):
+            raise ValueError(f"target {target!r} has frames on pages of a group that is not shipped")
+        targets[target] = {
+            animation: [dict(frame, page=renumber[frame["page"]]) for frame in frames]
+            for animation, frames in animations.items()
+        }
+    out_dir.mkdir(parents=True, exist_ok=True)
+    page_names = [f"{name}_{index}.png" for index in range(len(kept))]
+    written: List[Path] = []
+    for old, page_name in zip(kept, page_names):
+        source = (source_dir / catalog["pages"][old]).read_bytes()
+        path = out_dir / page_name
+        if not path.is_file() or path.read_bytes() != source:
+            path.write_bytes(source)
+        written.append(path)
+    for stale in out_dir.glob(f"{name}_*.png"):
+        suffix = stale.stem[len(name) + 1 :]
+        if suffix.isdigit() and int(suffix) >= len(kept):
+            stale.unlink()
+    runtime = dict(catalog, pages=page_names, page_groups=[catalog["page_groups"][old] for old in kept], targets=targets)
+    catalog_path = out_dir / f"{name}.json"
+    catalog_path.write_text(json.dumps(runtime, indent=1, sort_keys=True))
+    written.append(catalog_path)
+    return written
+
+
 #: The version of a tier's state file. A change to the file's shape makes
 #: every state file stale, so the next pack is a full pack.
 _STATE_VERSION = 1
@@ -827,6 +886,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--debug-views", action="store_true")
     parser.add_argument("--debug-dir", type=Path, default=None)
     parser.add_argument("--jobs", type=int, default=1, help="threads that read sheets and encode pages")
+    parser.add_argument(
+        "--runtime-out", type=Path, default=None, metavar="DIR",
+        help="also write the runtime product (the plan's runtime groups) to DIR",
+    )
     args = parser.parse_args(argv)
     plan = PackPlan.load(args.pack_plan) if args.pack_plan else None
     if args.debug_views:
@@ -855,6 +918,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             plan=plan,
             jobs=args.jobs,
         )
+    if args.runtime_out is not None:
+        groups = plan.runtime_groups if plan else []
+        runtime = write_runtime_product(args.out, args.runtime_out, name=args.name, groups=groups)
+        how += f"; runtime product: {len(runtime) - 1} page(s) of {', '.join(groups) or 'no group'}"
+        written += runtime
     print(f"ultrapack '{args.name}' @ scale {args.scale:g}: {how}")
     for path in written:
         print(path)

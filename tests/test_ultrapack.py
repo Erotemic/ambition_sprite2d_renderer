@@ -413,3 +413,47 @@ def test_threads_run_at_once_and_write_the_bytes_of_one_thread(tmp_path):
         out[jobs] = {p.name: p.read_bytes() for p in (tmp_path / f"out{jobs}").iterdir()}
     assert len([name for name in out[1] if name.endswith(".png")]) > 1, "the fixture must have pages to share"
     assert out[3] == out[1]
+
+
+def test_the_runtime_product_is_the_runtime_groups_pages_and_the_same_pixels(tmp_path):
+    """The game reads a pack only through the groups a prop row names, so only
+    their pages ship: 695 MB of pack pages were shipped for 5.4 MB a reader
+    could reach. Each shipped frame shows the pixels it has in the whole pack."""
+    from ambition_sprite2d_renderer.authoring.ultrapack import write_runtime_product
+
+    sheets = tmp_path / "in"
+    sheets.mkdir()
+    for index, stem in enumerate(["cart", "hero", "crowd_a", "crowd_b"]):
+        _write_sheet(sheets, stem, fw=64 + 8 * index, fh=64, n_frames=6, cols=3)
+    # The runtime group packs after another, as `intro` does after `always`
+    # in the real plan, so its pages are renumbered.
+    plan = PackPlan(groups={"always": ["hero"], "intro": ["cart"]}, runtime_groups=["intro"])
+    source, runtime = tmp_path / "source", tmp_path / "runtime"
+    pack_tier(sheets, source, tmp_path / "state.json", page_size=256, plan=plan)
+    whole = json.loads((source / "ultrapack.json").read_text())
+    write_runtime_product(source, runtime, groups=plan.runtime_groups)
+    shipped = json.loads((runtime / "ultrapack.json").read_text())
+
+    assert set(shipped["targets"]) == {"cart"}
+    assert set(shipped["page_groups"]) == {"intro"}
+    assert shipped["pages"] == [f"ultrapack_{i}.png" for i in range(len(shipped["pages"]))]
+    assert sorted(p.name for p in runtime.glob("*.png")) == sorted(shipped["pages"])
+    assert len(shipped["pages"]) < len(whole["pages"]), "the fixture must leave pages out"
+    assert whole["page_groups"].index("intro") > 0, "the runtime group's pages must be renumbered"
+    for animation, frames in shipped["targets"]["cart"].items():
+        for frame, original in zip(frames, whole["targets"]["cart"][animation]):
+            box = (frame["x"], frame["y"], frame["x"] + frame["w"], frame["y"] + frame["h"])
+            with Image.open(runtime / shipped["pages"][frame["page"]]) as page, Image.open(
+                source / whole["pages"][original["page"]]
+            ) as source_page:
+                assert page.crop(box).tobytes() == source_page.crop(box).tobytes()
+
+    # A second write with nothing changed keeps the files.
+    before = {p.name: p.stat().st_mtime_ns for p in runtime.glob("*.png")}
+    write_runtime_product(source, runtime, groups=plan.runtime_groups)
+    assert {p.name: p.stat().st_mtime_ns for p in runtime.glob("*.png")} == before
+    # A plan with no runtime group ships no page.
+    write_runtime_product(source, runtime, groups=[])
+    assert not list(runtime.glob("*.png"))
+    with pytest.raises(ValueError):
+        PackPlan(groups={"intro": ["cart"]}, runtime_groups=["outro"])
