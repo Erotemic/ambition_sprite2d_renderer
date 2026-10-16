@@ -94,8 +94,11 @@ def _frame_size_from_yaml(path: Path) -> tuple[int, int] | None:
         import yaml  # type: ignore
     except Exception:  # pragma: no cover - environment-dependent
         return _frame_size_from_yaml_scan(path)
+    # The C loader where PyYAML has it: a large sheet's sidecar is about
+    # 0.2 s in the Python loader.
+    loader = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
     try:
-        data = yaml.safe_load(path.read_text())
+        data = yaml.load(path.read_text(), Loader=loader)
     except Exception:
         return None
     if not isinstance(data, dict):
@@ -129,8 +132,13 @@ def _frame_size_from_yaml_scan(path: Path) -> tuple[int, int] | None:
     return None
 
 
-def discover_sheets(sprites_dir: Path) -> dict[str, dict[str, Any]]:
+def discover_sheets(sprites_dir: Path, stems: set[str] | None = None) -> dict[str, dict[str, Any]]:
     """Map each renderable sheet's target stem -> {path, frame_size}.
+
+    With `stems`, only those stems are read. A sidecar is read only to get
+    its frame size, and reading all 276 of them was the 25 s of the
+    publish's LDtk tileset phase (measured 2026-10-15), where the default
+    manifest wants one sheet.
 
     Globs every `*_spritesheet.png` (flat sheets + boss subdirs), derives the
     target stem, and keeps only stems with a readable frame-size sidecar. That
@@ -142,6 +150,10 @@ def discover_sheets(sprites_dir: Path) -> dict[str, dict[str, Any]]:
     for png in sorted(sprites_dir.rglob("*_spritesheet.png")):
         stem = png.name[: -len("_spritesheet.png")]
         if any(stem.endswith(suffix) for suffix in _AUX_PNG_SUFFIXES):
+            continue
+        if stems is not None and stem not in stems:
+            continue
+        if stem in sheets:
             continue
         size = _frame_size_from_sidecar(stem, png.parent)
         if size is None:
@@ -165,7 +177,7 @@ def build_manifest(
     referenced by `entity_map`, keeping a `.ldtk` apply diff minimal.
     """
     entity_map = DEFAULT_ENTITY_SPRITE_MAP if entity_map is None else entity_map
-    sheets = discover_sheets(sprites_dir)
+    sheets = discover_sheets(sprites_dir, None if all_sheets else set(entity_map.values()))
 
     wanted: set[str]
     if all_sheets:
