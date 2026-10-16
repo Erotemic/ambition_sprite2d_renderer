@@ -920,3 +920,15 @@ lineages:
       - commit: "0f98ddf"
         label: "The teddy that turns"
         note: "On the paint box of the cast, each limb one piece. No shirt (Jon: the red shirt is not public domain), no scars; sweet at rest, bristling, glowing and all teeth when it attacks or is angry. Claude Opus 5.5 declared."
+  fascist_enforcer:
+    name: Fascist Enforcer
+    ids: [fascist_enforcer]
+    paths: ['fascist_enforcer', '_person_rig']
+    summary: "a toon-template puppet in a charcoal uniform with T-pose arms, then a heavy-set soldier of the shared person rig who fights with fists and boots"
+    eras:
+      - commit: "c24b727"
+        label: "Toon-template puppet"
+        note: "The last commit with the first design: the generic toon target from a review config; blocky stick limbs, a round cartoon head, arms held out."
+      - commit: "2de7069"
+        label: "A soldier of the person rig"
+        note: "Peaked cap, grey-green tunic, breeches, jackboots, black gloves, a red armband with the faction's invented cog. Jon: we are going to need to redo the art for the fascist enforcer. Claude Opus 5.5 declared."
