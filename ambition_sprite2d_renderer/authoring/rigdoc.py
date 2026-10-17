@@ -87,7 +87,7 @@ import json
 import math
 import os
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Mapping, Optional, Tuple, Union
 
 from PIL import Image, ImageDraw
 
@@ -803,9 +803,23 @@ class RigDocument:
         }
 
     @profile
-    def solve(self, clip_name: str, t: float):
-        """Sample channels, run leg + generic two-bone IK, return worlds/params."""
-        s = self.sample(clip_name, t)
+    def solve(
+        self,
+        clip_name: str,
+        t: float,
+        *,
+        channel_overrides: Optional[Mapping[str, float]] = None,
+        sampled_channels: Optional[Mapping[str, float]] = None,
+    ):
+        """Solve the rig from one clip or an already-composed channel sample.
+
+        A contact controller can supply foot targets after it probes the
+        surface. Independent actions can supply one composed channel sample.
+        """
+        s = (dict(sampled_channels) if sampled_channels is not None
+             else self.sample(clip_name, t))
+        if channel_overrides:
+            s.update({key: float(value) for key, value in channel_overrides.items()})
         fr = self.frame
         cx = float(fr.get("center_x", fr["width"] / 2))
         gy = float(fr.get("ground_y", fr["height"] - 2))

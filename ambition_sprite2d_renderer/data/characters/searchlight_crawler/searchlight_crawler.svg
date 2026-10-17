@@ -1,0 +1,425 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" width="680mm" height="480mm" viewBox="0 0 680 480" version="1.1" id="searchlight-crawler-svg" sodipodi:docname="searchlight_crawler.svg">
+  <defs id="defs1" />
+  <g id="view-searchlight-crawler-side" inkscape:label="Searchlight Crawler - Side">
+    <g id="part-far-rear-outer-coxa" inkscape:label="Far Rear Outer / Coxa">
+      <path d="M 278.0,305.8 L 271.3,297.7 L 246.6,279.6 L 237.7,273.1 L 230.4,280.7 L 238.3,289.0 L 259.5,311.2 L 268.4,316.7 Z" fill="#627684" stroke="#17212a" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 268.1,303.0 L 243.4,282.3" fill="none" stroke="#91a7ae" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 261.6,304.6 L 246.9,290.7" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="274" cy="312" r="9.0" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="274" cy="312" r="4.0" fill="#806b55" stroke="#26343e" stroke-width="1.5" />
+    </g>
+    <g id="part-far-rear-outer-femur" inkscape:label="Far Rear Outer / Femur">
+      <path d="M 234.5,270.1 L 216.4,252.6 L 158.4,206.7 L 137.6,190.5 L 131.4,195.8 L 152.0,214.4 L 207.2,263.7 L 227.4,278.5 Z" fill="#627684" stroke="#17212a" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 215.2,258.2 L 155.3,208.5" fill="none" stroke="#91a7ae" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 205.5,255.4 L 168.4,223.6" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 199.7,254.0 L 155.1,214.8" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="233" cy="276" r="8.2" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="233" cy="276" r="3.1" fill="#806b55" stroke="#26343e" stroke-width="1.5" />
+      <circle cx="132" cy="191" r="7.8" fill="#26343e" stroke="#17212a" stroke-width="2.4" />
+      <circle cx="132" cy="191" r="3.0" fill="#9c9180" stroke="#26343e" stroke-width="1.3" />
+    </g>
+    <g id="part-far-rear-outer-tibia" inkscape:label="Far Rear Outer / Tibia">
+      <path d="M 127.5,193.7 L 122.9,223.2 L 116.6,310.8 L 114.6,342.0 L 120.1,344.2 L 124.3,311.5 L 134.8,224.3 L 135.9,194.5 Z" fill="#627684" stroke="#17212a" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 127.5,220.5 L 119.2,312.6" fill="none" stroke="#91a7ae" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 129.6,231.7 L 123.6,289.4" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 131.1,238.1 L 123.1,308.2" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="132" cy="191" r="6.7" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="132" cy="191" r="3.1" fill="#806b55" stroke="#26343e" stroke-width="1.5" />
+      <circle cx="117" cy="347" r="6.8" fill="#26343e" stroke="#17212a" stroke-width="2.4" />
+      <circle cx="117" cy="347" r="3.0" fill="#9c9180" stroke="#26343e" stroke-width="1.3" />
+    </g>
+    <g id="part-far-rear-outer-tarsus" inkscape:label="Far Rear Outer / Tarsus">
+      <path d="M 113.2,347.4 L 107.9,359.6 L 100.8,398.1 L 97.9,411.8 L 99.0,412.8 L 104.0,399.0 L 118.1,362.5 L 120.1,349.3 Z" fill="#627684" stroke="#17212a" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 102.0,399.9 L 96.1,420.7" fill="none" stroke="#17212a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="117" cy="347" r="6.7" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="117" cy="347" r="3.1" fill="#806b55" stroke="#26343e" stroke-width="1.5" />
+    </g>
+    <g id="part-far-rear-inner-coxa" inkscape:label="Far Rear Inner / Coxa">
+      <path d="M 286.5,314.6 L 280.5,308.1 L 258.2,295.2 L 250.2,290.6 L 243.6,298.8 L 250.8,305.3 L 270.0,322.6 L 278.0,326.3 Z" fill="#627684" stroke="#17212a" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 277.7,313.5 L 255.4,298.2" fill="none" stroke="#91a7ae" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 271.8,316.1 L 258.6,305.5" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="283" cy="321" r="9.0" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="283" cy="321" r="4.0" fill="#806b55" stroke="#26343e" stroke-width="1.5" />
+    </g>
+    <g id="part-far-rear-inner-femur" inkscape:label="Far Rear Inner / Femur">
+      <path d="M 248.7,289.0 L 239.4,277.7 L 207.1,249.6 L 195.4,239.7 L 189.3,244.9 L 200.2,256.8 L 229.5,288.1 L 241.1,296.9 Z" fill="#627684" stroke="#17212a" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 237.1,282.3 L 204.2,251.5" fill="none" stroke="#91a7ae" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 230.3,281.6 L 210.4,261.6" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 226.3,281.4 L 202.4,256.7" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="246" cy="294" r="8.2" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="246" cy="294" r="3.1" fill="#806b55" stroke="#26343e" stroke-width="1.5" />
+      <circle cx="191" cy="241" r="7.8" fill="#26343e" stroke="#17212a" stroke-width="2.4" />
+      <circle cx="191" cy="241" r="3.0" fill="#9c9180" stroke="#26343e" stroke-width="1.3" />
+    </g>
+    <g id="part-far-rear-inner-tibia" inkscape:label="Far Rear Inner / Tibia">
+      <path d="M 186.6,243.3 L 183.4,267.5 L 181.0,339.3 L 180.4,365.0 L 186.0,366.6 L 188.7,339.8 L 195.3,268.3 L 195.1,243.8 Z" fill="#627684" stroke="#17212a" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 187.8,265.2 L 183.6,340.8" fill="none" stroke="#91a7ae" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 190.4,274.4 L 187.0,321.7" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 192.2,279.6 L 187.4,337.1" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="191" cy="241" r="6.7" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="191" cy="241" r="3.1" fill="#806b55" stroke="#26343e" stroke-width="1.5" />
+      <circle cx="183" cy="369" r="6.8" fill="#26343e" stroke="#17212a" stroke-width="2.4" />
+      <circle cx="183" cy="369" r="3.0" fill="#9c9180" stroke="#26343e" stroke-width="1.3" />
+    </g>
+    <g id="part-far-rear-inner-tarsus" inkscape:label="Far Rear Inner / Tarsus">
+      <path d="M 179.3,368.6 L 173.9,377.3 L 166.1,406.1 L 163.0,416.3 L 164.0,417.3 L 169.1,407.4 L 183.7,381.3 L 185.9,371.3 Z" fill="#627684" stroke="#17212a" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 167.2,407.7 L 160.4,424.5" fill="none" stroke="#17212a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="183" cy="369" r="6.7" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="183" cy="369" r="3.1" fill="#806b55" stroke="#26343e" stroke-width="1.5" />
+    </g>
+    <g id="part-far-front-inner-coxa" inkscape:label="Far Front Inner / Coxa">
+      <path d="M 356.7,326.6 L 363.2,322.4 L 377.0,304.9 L 381.9,298.6 L 374.7,290.8 L 368.1,296.0 L 350.6,309.8 L 346.4,316.3 Z" fill="#627684" stroke="#17212a" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 358.4,318.7 L 374.3,301.6" fill="none" stroke="#91a7ae" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 356.4,312.9 L 367.3,303.0" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="351" cy="322" r="9.0" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="351" cy="322" r="4.0" fill="#806b55" stroke="#26343e" stroke-width="1.5" />
+    </g>
+    <g id="part-far-front-inner-femur" inkscape:label="Far Front Inner / Femur">
+      <path d="M 384.3,296.2 L 395.1,285.2 L 421.4,248.6 L 430.6,235.4 L 424.9,229.8 L 413.6,242.4 L 383.9,276.3 L 375.7,289.3 Z" fill="#627684" stroke="#17212a" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 390.2,283.4 L 419.3,245.9" fill="none" stroke="#91a7ae" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 390.4,276.4 L 409.4,253.4" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 390.4,272.2 L 413.9,244.7" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="379" cy="294" r="8.2" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="379" cy="294" r="3.1" fill="#806b55" stroke="#26343e" stroke-width="1.5" />
+      <circle cx="429" cy="231" r="7.8" fill="#26343e" stroke="#17212a" stroke-width="2.4" />
+      <circle cx="429" cy="231" r="3.0" fill="#9c9180" stroke="#26343e" stroke-width="1.3" />
+    </g>
+    <g id="part-far-front-inner-tibia" inkscape:label="Far Front Inner / Tibia">
+      <path d="M 425.2,234.4 L 427.7,260.7 L 442.1,337.1 L 447.5,364.3 L 453.4,364.8 L 449.7,335.9 L 439.5,258.8 L 433.6,233.1 Z" fill="#627684" stroke="#17212a" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 431.5,257.3 L 445.0,338.0" fill="none" stroke="#91a7ae" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 436.2,266.4 L 443.9,317.1" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 439.1,271.5 L 447.9,333.4" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="429" cy="231" r="6.7" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="429" cy="231" r="3.1" fill="#806b55" stroke="#26343e" stroke-width="1.5" />
+      <circle cx="451" cy="368" r="6.8" fill="#26343e" stroke="#17212a" stroke-width="2.4" />
+      <circle cx="451" cy="368" r="3.0" fill="#9c9180" stroke="#26343e" stroke-width="1.3" />
+    </g>
+    <g id="part-far-front-inner-tarsus" inkscape:label="Far Front Inner / Tarsus">
+      <path d="M 448.0,370.3 L 450.3,380.6 L 464.9,407.9 L 469.8,417.7 L 471.2,417.7 L 467.9,406.7 L 460.1,376.8 L 454.8,367.7 Z" fill="#627684" stroke="#17212a" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 466.8,408.3 L 473.6,425.5" fill="none" stroke="#17212a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="451" cy="368" r="6.7" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="451" cy="368" r="3.1" fill="#806b55" stroke="#26343e" stroke-width="1.5" />
+    </g>
+    <g id="part-far-front-outer-coxa" inkscape:label="Far Front Outer / Coxa">
+      <path d="M 371.0,314.3 L 380.2,310.0 L 402.7,291.0 L 410.7,284.2 L 405.1,275.3 L 395.5,280.8 L 369.9,295.4 L 362.7,302.5 Z" fill="#627684" stroke="#17212a" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 375.8,305.7 L 400.7,287.3" fill="none" stroke="#91a7ae" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 375.7,299.1 L 392.0,288.5" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="366" cy="309" r="9.0" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="366" cy="309" r="4.0" fill="#806b55" stroke="#26343e" stroke-width="1.5" />
+    </g>
+    <g id="part-far-front-outer-femur" inkscape:label="Far Front Outer / Femur">
+      <path d="M 414.8,280.6 L 430.9,263.6 L 472.9,209.0 L 487.8,189.4 L 482.3,183.4 L 465.2,202.7 L 419.8,254.5 L 406.3,273.6 Z" fill="#627684" stroke="#17212a" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 425.5,262.3 L 471.1,205.9" fill="none" stroke="#91a7ae" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 427.7,253.0 L 457.0,218.2" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 428.8,247.6 L 464.9,205.6" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="409" cy="279" r="8.2" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="409" cy="279" r="3.1" fill="#806b55" stroke="#26343e" stroke-width="1.5" />
+      <circle cx="487" cy="184" r="7.8" fill="#26343e" stroke="#17212a" stroke-width="2.4" />
+      <circle cx="487" cy="184" r="3.0" fill="#9c9180" stroke="#26343e" stroke-width="1.3" />
+    </g>
+    <g id="part-far-front-outer-tibia" inkscape:label="Far Front Outer / Tibia">
+      <path d="M 484.2,188.7 L 494.2,220.1 L 530.4,310.1 L 543.5,342.1 L 549.4,341.8 L 537.6,307.4 L 505.4,215.9 L 492.2,185.7 Z" fill="#627684" stroke="#17212a" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 497.0,215.4 L 533.5,310.8" fill="none" stroke="#91a7ae" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 504.3,225.6 L 526.4,285.7" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 508.6,231.3 L 535.0,304.7" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="487" cy="184" r="6.7" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="487" cy="184" r="3.1" fill="#806b55" stroke="#26343e" stroke-width="1.5" />
+      <circle cx="548" cy="346" r="6.8" fill="#26343e" stroke="#17212a" stroke-width="2.4" />
+      <circle cx="548" cy="346" r="3.0" fill="#9c9180" stroke="#26343e" stroke-width="1.3" />
+    </g>
+    <g id="part-far-front-outer-tarsus" inkscape:label="Far Front Outer / Tarsus">
+      <path d="M 544.9,348.3 L 546.6,362.0 L 560.3,400.3 L 564.8,414.1 L 566.3,414.4 L 563.5,399.5 L 556.9,359.4 L 551.8,346.5 Z" fill="#627684" stroke="#17212a" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 562.2,401.3 L 567.7,422.8" fill="none" stroke="#17212a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="548" cy="346" r="6.7" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="548" cy="346" r="3.1" fill="#806b55" stroke="#26343e" stroke-width="1.5" />
+    </g>
+    <g id="part-hull" inkscape:label="Armored Hull">
+      <g id="body-under" inkscape:label="Underframe">
+        <path d="M 255,299 L 280,269 L 363,268 L 406,291 L 391,332 L 345,350 L 278,345 L 245,320 Z" fill="#26343e" stroke="#17212a" stroke-width="5.7" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 261,308 L 252,323 L 276,348 L 348,353 L 382,339 L 388,322" fill="none" stroke="#131b22" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 236,297 L 258,277 L 287,279 L 285,318 L 257,326 L 233,312 Z" fill="#526471" stroke="#17212a" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 249,283 L 277,290 M 250,301 L 272,308" fill="none" stroke="#a9b6bc" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 285,344 L 338,350 L 359,344" fill="none" stroke="#ad835a" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+        <circle cx="263" cy="332" r="5.2" fill="#687e88" stroke="#17212a" stroke-width="2.2" />
+        <circle cx="317" cy="344" r="5.2" fill="#687e88" stroke="#17212a" stroke-width="2.2" />
+        <circle cx="358" cy="337" r="5.2" fill="#687e88" stroke="#17212a" stroke-width="2.2" />
+      </g>
+      <g id="body-armor" inkscape:label="Faceted Shell">
+        <path d="M 251,289 L 267,268 L 313,254 L 360,263 L 391,280 L 402,308 L 379,329 L 344,339 L 302,335 L 270,326 L 249,307 Z" fill="#526471" stroke="#17212a" stroke-width="5.4" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 267,269 L 313,254 L 357,263 L 365,285 L 332,302 L 285,296 Z" fill="#8393a0" stroke="#17212a" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 256,309 L 277,316 L 310,322 L 306,335 L 269,326 Z" fill="#40525f" stroke="#17212a" stroke-width="3.1" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 337,305 L 375,285 L 392,296 L 383,320 L 344,334 L 318,323 Z" fill="#627782" stroke="#17212a" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 274,279 L 309,268 L 345,276" fill="none" stroke="#d0dbd6" stroke-width="4.2" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 332,312 L 369,299" fill="none" stroke="#a9b6bc" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 231,282 L 242,267 L 272,266 L 284,282 L 266,303 L 236,301 Z" fill="#26343e" stroke="#17212a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 246,276 L 251,285" fill="none" stroke="#d8574d" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 257,276 L 262,285" fill="none" stroke="#d8574d" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 268,276 L 273,285" fill="none" stroke="#d8574d" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" />
+      </g>
+      <g id="body-markings" inkscape:label="Fasteners and Warning Stripe">
+        <path d="M 307,269 L 322,274 L 325,295 L 311,300 Z" fill="#c35343" stroke="#17212a" stroke-width="2.0" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 314,275 L 318,277 L 319,292 L 314,291 Z" fill="#d0dbd6" stroke="none" stroke-width="0" stroke-linejoin="round" stroke-linecap="round" />
+        <circle cx="275" cy="289" r="4.0" fill="#ad835a" stroke="#17212a" stroke-width="1.7" />
+        <circle cx="294" cy="314" r="4.0" fill="#ad835a" stroke="#17212a" stroke-width="1.7" />
+        <circle cx="345" cy="279" r="4.0" fill="#ad835a" stroke="#17212a" stroke-width="1.7" />
+        <circle cx="374" cy="314" r="4.0" fill="#ad835a" stroke="#17212a" stroke-width="1.7" />
+        <circle cx="362" cy="328" r="4.0" fill="#ad835a" stroke="#17212a" stroke-width="1.7" />
+        <path d="M 279,320 L 291,324 M 364,281 L 376,286" fill="none" stroke="#24323a" stroke-width="2.0" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 365,282 L 390,253 L 419,259" fill="none" stroke="#17212a" stroke-width="16" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 365,282 L 390,253 L 419,259" fill="none" stroke="#a9b6bc" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" />
+        <circle cx="391" cy="255" r="10" fill="#26343e" stroke="#17212a" stroke-width="3.0" />
+        <circle cx="391" cy="255" r="4" fill="#e4bd76" stroke="#17212a" stroke-width="1" />
+        <path d="M 272,269 C 277,245 310,239 328,255 C 343,266 353,243 379,240" fill="none" stroke="#17212a" stroke-width="11" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 272,269 C 277,245 310,239 328,255 C 343,266 353,243 379,240" fill="none" stroke="#976c48" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 307,337 C 349,361 385,330 400,281" fill="none" stroke="#17212a" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 307,337 C 349,361 385,330 400,281" fill="none" stroke="#6e818a" stroke-width="4.7" stroke-linejoin="round" stroke-linecap="round" />
+      </g>
+    </g>
+    <g id="part-antenna" inkscape:label="Alarm Mast">
+      <path d="M 291,249 L 283,223 L 285,201" fill="none" stroke="#17212a" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 291,249 L 283,223 L 285,201" fill="none" stroke="#a2afb2" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 275,207 L 273,190 L 280,184 L 293,185 L 298,193 L 297,207 Z" fill="#d8574d" stroke="#17212a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 280,189 L 285,187 L 289,191 L 290,201" fill="none" stroke="#ffd4b7" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="285" cy="211" r="5.0" fill="#26343e" stroke="#17212a" stroke-width="2" />
+    </g>
+    <g id="part-beacon-halo" inkscape:label="Alarm Flash">
+      <circle cx="285" cy="195" r="15.0" fill="#ee7462" stroke="none" stroke-width="0" />
+      <circle cx="285" cy="195" r="7.5" fill="#ffe7ab" stroke="none" stroke-width="0" />
+      <path d="M 264,195 L 259,195" fill="none" stroke="#f6bb8a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 306,195 L 311,195" fill="none" stroke="#f6bb8a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 285,174 L 285,169" fill="none" stroke="#f6bb8a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 285,216 L 285,221" fill="none" stroke="#f6bb8a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+    </g>
+    <g id="part-exhaust-hatch" inkscape:label="Rear Exhaust Hatch">
+      <path d="M 247,278 L 225,270 L 230,255 L 261,259 L 270,269 Z" fill="#748793" stroke="#17212a" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 234,263 L 258,265" fill="none" stroke="#d0dbd6" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="247" cy="277" r="5.4" fill="#ad835a" stroke="#17212a" stroke-width="2.0" />
+    </g>
+    <g id="part-exhaust-glow" inkscape:label="Rear Exhaust Heat">
+      <path d="M 246,279 L 251,288" fill="none" stroke="#ffbd65" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 258,279 L 263,288" fill="none" stroke="#ffbd65" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 270,279 L 275,288" fill="none" stroke="#ffbd65" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round" />
+    </g>
+    <g id="part-near-rear-outer-coxa" inkscape:label="Near Rear Outer / Coxa">
+      <path d="M 267.5,316.3 L 260.3,307.4 L 233.7,287.2 L 224.2,279.9 L 216.0,288.1 L 224.6,297.2 L 247.3,321.8 L 256.8,328.1 Z" fill="#9fb0b6" stroke="#17212a" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 256.8,313.0 L 230.2,290.1" fill="none" stroke="#d8e5de" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 249.6,314.7 L 233.9,299.3" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="263" cy="323" r="9.0" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="263" cy="323" r="4.0" fill="#b39a78" stroke="#26343e" stroke-width="1.5" />
+    </g>
+    <g id="part-near-rear-outer-femur" inkscape:label="Near Rear Outer / Femur">
+      <path d="M 219.7,276.3 L 196.4,259.8 L 124.1,217.6 L 98.1,202.6 L 92.2,209.3 L 118.4,226.8 L 188.2,273.0 L 213.3,286.6 Z" fill="#9fb0b6" stroke="#17212a" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 196.1,265.9 L 120.9,219.9" fill="none" stroke="#d8e5de" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 184.8,264.3 L 138.2,234.6" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 178.2,263.6 L 121.8,226.9" fill="none" stroke="#ad835a" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="219" cy="283" r="8.2" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="219" cy="283" r="3.1" fill="#b39a78" stroke="#26343e" stroke-width="1.5" />
+      <circle cx="92" cy="204" r="7.8" fill="#26343e" stroke="#17212a" stroke-width="2.4" />
+      <circle cx="92" cy="204" r="3.0" fill="#e4bd76" stroke="#26343e" stroke-width="1.3" />
+    </g>
+    <g id="part-near-rear-outer-tibia" inkscape:label="Near Rear Outer / Tibia">
+      <path d="M 87.0,206.4 L 82.3,233.8 L 75.6,315.2 L 73.4,344.3 L 79.4,346.4 L 83.8,316.1 L 95.0,235.1 L 96.3,207.4 Z" fill="#9fb0b6" stroke="#17212a" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 87.1,231.3 L 78.3,317.0" fill="none" stroke="#d8e5de" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 89.5,241.9 L 83.0,295.5" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 91.1,247.9 L 82.6,313.0" fill="none" stroke="#ad835a" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="92" cy="204" r="6.7" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="92" cy="204" r="3.1" fill="#b39a78" stroke="#26343e" stroke-width="1.5" />
+      <circle cx="76" cy="349" r="6.8" fill="#26343e" stroke="#17212a" stroke-width="2.4" />
+      <circle cx="76" cy="349" r="3.0" fill="#e4bd76" stroke="#26343e" stroke-width="1.3" />
+    </g>
+    <g id="part-near-rear-outer-tarsus" inkscape:label="Near Rear Outer / Tarsus">
+      <path d="M 71.8,348.9 L 65.1,361.0 L 53.6,399.9 L 49.1,413.7 L 50.2,414.9 L 56.8,401.2 L 75.6,365.2 L 79.1,351.8 Z" fill="#9fb0b6" stroke="#17212a" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 54.7,401.9 L 46.4,422.5" fill="none" stroke="#17212a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="76" cy="349" r="6.7" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="76" cy="349" r="3.1" fill="#b39a78" stroke="#26343e" stroke-width="1.5" />
+    </g>
+    <g id="part-near-rear-inner-coxa" inkscape:label="Near Rear Inner / Coxa">
+      <path d="M 293.8,324.8 L 288.1,317.9 L 266.2,303.8 L 258.4,298.8 L 251.4,306.7 L 258.4,313.5 L 276.8,331.9 L 284.7,336.1 Z" fill="#9fb0b6" stroke="#17212a" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 285.0,323.2 L 263.2,306.7" fill="none" stroke="#d8e5de" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 279.0,325.5 L 266.1,314.2" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="290" cy="331" r="9.0" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="290" cy="331" r="4.0" fill="#b39a78" stroke="#26343e" stroke-width="1.5" />
+    </g>
+    <g id="part-near-rear-inner-femur" inkscape:label="Near Rear Inner / Femur">
+      <path d="M 257.1,297.3 L 249.6,286.6 L 222.3,260.1 L 212.3,250.8 L 206.0,255.7 L 214.9,266.9 L 239.0,296.4 L 249.0,304.7 Z" fill="#9fb0b6" stroke="#17212a" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 246.9,291.0 L 219.3,261.9" fill="none" stroke="#d8e5de" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 240.6,290.3 L 224.0,271.5" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 236.8,290.1 L 217.0,266.8" fill="none" stroke="#ad835a" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="254" cy="302" r="8.2" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="254" cy="302" r="3.1" fill="#b39a78" stroke="#26343e" stroke-width="1.5" />
+      <circle cx="208" cy="252" r="7.8" fill="#26343e" stroke="#17212a" stroke-width="2.4" />
+      <circle cx="208" cy="252" r="3.0" fill="#e4bd76" stroke="#26343e" stroke-width="1.3" />
+    </g>
+    <g id="part-near-rear-inner-tibia" inkscape:label="Near Rear Inner / Tibia">
+      <path d="M 203.5,253.9 L 198.5,276.8 L 191.1,345.4 L 188.7,369.9 L 194.2,372.0 L 198.7,346.5 L 210.3,278.4 L 211.9,255.0 Z" fill="#9fb0b6" stroke="#17212a" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 203.1,274.9 L 193.6,347.0" fill="none" stroke="#d8e5de" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 205.1,283.9 L 198.3,329.0" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 206.4,289.1 L 197.6,343.8" fill="none" stroke="#ad835a" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="208" cy="252" r="6.7" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="208" cy="252" r="3.1" fill="#b39a78" stroke="#26343e" stroke-width="1.5" />
+      <circle cx="191" cy="374" r="6.8" fill="#26343e" stroke="#17212a" stroke-width="2.4" />
+      <circle cx="191" cy="374" r="3.0" fill="#e4bd76" stroke="#26343e" stroke-width="1.3" />
+    </g>
+    <g id="part-near-rear-inner-tarsus" inkscape:label="Near Rear Inner / Tarsus">
+      <path d="M 187.3,373.7 L 182.5,381.8 L 176.4,408.8 L 173.9,418.4 L 174.9,419.3 L 179.5,410.0 L 192.4,385.5 L 194.0,376.2 Z" fill="#9fb0b6" stroke="#17212a" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 177.6,410.3 L 171.6,426.6" fill="none" stroke="#17212a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="191" cy="374" r="6.7" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="191" cy="374" r="3.1" fill="#b39a78" stroke="#26343e" stroke-width="1.5" />
+    </g>
+    <g id="part-near-front-inner-coxa" inkscape:label="Near Front Inner / Coxa">
+      <path d="M 353.5,334.9 L 362.0,329.9 L 382.1,309.4 L 389.2,302.0 L 382.8,293.7 L 374.0,299.8 L 350.4,316.2 L 344.1,323.8 Z" fill="#9fb0b6" stroke="#17212a" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 357.3,325.9 L 379.8,305.9" fill="none" stroke="#d8e5de" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 356.5,319.4 L 371.3,307.8" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="348" cy="330" r="9.0" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="348" cy="330" r="4.0" fill="#b39a78" stroke="#26343e" stroke-width="1.5" />
+    </g>
+    <g id="part-near-front-inner-femur" inkscape:label="Near Front Inner / Femur">
+      <path d="M 391.7,300.4 L 405.4,292.0 L 441.6,261.7 L 454.4,250.7 L 450.2,243.8 L 435.6,253.8 L 396.7,280.6 L 385.0,291.6 Z" fill="#9fb0b6" stroke="#17212a" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 401.1,289.1 L 440.2,258.5" fill="none" stroke="#d8e5de" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 403.2,282.2 L 428.3,263.7" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 404.3,278.0 L 435.2,256.1" fill="none" stroke="#ad835a" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="387" cy="297" r="8.2" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="387" cy="297" r="3.1" fill="#b39a78" stroke="#26343e" stroke-width="1.5" />
+      <circle cx="454" cy="246" r="7.8" fill="#26343e" stroke="#17212a" stroke-width="2.4" />
+      <circle cx="454" cy="246" r="3.0" fill="#e4bd76" stroke="#26343e" stroke-width="1.3" />
+    </g>
+    <g id="part-near-front-inner-tibia" inkscape:label="Near Front Inner / Tibia">
+      <path d="M 450.6,249.6 L 455.6,273.5 L 477.2,341.8 L 485.2,366.1 L 491.0,365.8 L 484.7,339.7 L 467.1,270.2 L 458.8,247.3 Z" fill="#9fb0b6" stroke="#17212a" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 459.0,269.8 L 480.2,342.3" fill="none" stroke="#d8e5de" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 464.6,277.6 L 477.0,323.2" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 467.9,281.9 L 482.6,337.6" fill="none" stroke="#ad835a" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="454" cy="246" r="6.7" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="454" cy="246" r="3.1" fill="#b39a78" stroke="#26343e" stroke-width="1.5" />
+      <circle cx="489" cy="369" r="6.8" fill="#26343e" stroke="#17212a" stroke-width="2.4" />
+      <circle cx="489" cy="369" r="3.0" fill="#e4bd76" stroke="#26343e" stroke-width="1.3" />
+    </g>
+    <g id="part-near-front-inner-tarsus" inkscape:label="Near Front Inner / Tarsus">
+      <path d="M 486.0,371.3 L 488.3,381.6 L 502.9,408.9 L 507.8,418.7 L 509.2,418.7 L 505.9,407.7 L 498.1,377.8 L 492.8,368.7 Z" fill="#9fb0b6" stroke="#17212a" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 504.8,409.3 L 511.6,426.5" fill="none" stroke="#17212a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="489" cy="369" r="6.7" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="489" cy="369" r="3.1" fill="#b39a78" stroke="#26343e" stroke-width="1.5" />
+    </g>
+    <g id="part-near-front-outer-coxa" inkscape:label="Near Front Outer / Coxa">
+      <path d="M 378.2,326.1 L 388.7,319.2 L 414.2,293.0 L 423.3,283.6 L 416.2,274.5 L 405.3,282.8 L 375.9,304.7 L 367.7,314.1 Z" fill="#9fb0b6" stroke="#17212a" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 383.4,315.2 L 411.7,289.2" fill="none" stroke="#d8e5de" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 382.8,307.7 L 401.5,292.3" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="372" cy="321" r="9.0" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="372" cy="321" r="4.0" fill="#b39a78" stroke="#26343e" stroke-width="1.5" />
+    </g>
+    <g id="part-near-front-outer-femur" inkscape:label="Near Front Outer / Femur">
+      <path d="M 426.3,281.9 L 448.6,270.8 L 510.7,231.8 L 532.8,217.8 L 529.5,209.5 L 505.3,222.5 L 440.8,257.4 L 420.2,271.5 Z" fill="#9fb0b6" stroke="#17212a" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 443.7,267.5 L 510.0,228.0" fill="none" stroke="#d8e5de" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 449.3,259.0 L 491.4,235.1" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 452.3,253.8 L 503.9,225.3" fill="none" stroke="#ad835a" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="421" cy="278" r="8.2" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="421" cy="278" r="3.1" fill="#b39a78" stroke="#26343e" stroke-width="1.5" />
+      <circle cx="534" cy="212" r="7.8" fill="#26343e" stroke="#17212a" stroke-width="2.4" />
+      <circle cx="534" cy="212" r="3.0" fill="#e4bd76" stroke="#26343e" stroke-width="1.3" />
+    </g>
+    <g id="part-near-front-outer-tibia" inkscape:label="Near Front Outer / Tibia">
+      <path d="M 530.4,216.1 L 536.9,242.7 L 563.2,318.7 L 572.7,345.8 L 579.1,345.3 L 571.1,316.3 L 549.1,238.9 L 539.3,213.3 Z" fill="#9fb0b6" stroke="#17212a" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 540.4,238.6 L 566.3,319.2" fill="none" stroke="#d8e5de" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 546.8,247.1 L 562.2,298.0" fill="none" stroke="#26343e" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 550.6,251.9 L 568.8,314.0" fill="none" stroke="#ad835a" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="534" cy="212" r="6.7" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="534" cy="212" r="3.1" fill="#b39a78" stroke="#26343e" stroke-width="1.5" />
+      <circle cx="577" cy="349" r="6.8" fill="#26343e" stroke="#17212a" stroke-width="2.4" />
+      <circle cx="577" cy="349" r="3.0" fill="#e4bd76" stroke="#26343e" stroke-width="1.3" />
+    </g>
+    <g id="part-near-front-outer-tarsus" inkscape:label="Near Front Outer / Tarsus">
+      <path d="M 573.9,351.9 L 577.7,365.3 L 597.0,401.3 L 603.5,414.3 L 605.1,414.4 L 600.1,399.9 L 588.1,360.9 L 581.2,348.8 Z" fill="#9fb0b6" stroke="#17212a" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 599.1,401.9 L 607.7,422.5" fill="none" stroke="#17212a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="577" cy="349" r="6.7" fill="#26343e" stroke="#17212a" stroke-width="3.1" />
+      <circle cx="577" cy="349" r="3.1" fill="#b39a78" stroke="#26343e" stroke-width="1.5" />
+    </g>
+    <g id="part-search-cone" inkscape:label="Soft Search Cone">
+      <path d="M 463,251 L 664,196 L 664,339 L 463,268 Z" fill="#e3f7bb" stroke="none" stroke-width="0" stroke-linejoin="round" stroke-linecap="round" fill-opacity="0.25" />
+      <path d="M 466,253 L 665,242 L 665,298 L 465,265 Z" fill="#fff5c2" stroke="none" stroke-width="0" stroke-linejoin="round" stroke-linecap="round" fill-opacity="0.12" />
+      <path d="M 462,251 L 662,196 M 463,268 L 662,339" fill="none" stroke="#d9f3ae" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round" stroke-opacity="0.60" />
+    </g>
+    <g id="part-search-cone-narrow" inkscape:label="Focused Search Cone">
+      <path d="M 465,253 L 664,242 L 664,280 L 465,264 Z" fill="#f4ffd9" stroke="none" stroke-width="0" stroke-linejoin="round" stroke-linecap="round" fill-opacity="0.45" />
+      <path d="M 465,253 L 664,242 M 465,264 L 664,280" fill="none" stroke="#f1ffd5" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" stroke-opacity="0.85" />
+    </g>
+    <g id="part-lamp" inkscape:label="Searchlight Assembly">
+      <g id="lamp-housing" inkscape:label="Searchlight Housing">
+        <path d="M 384,231 L 408,218 L 443,226 L 456,238 L 456,276 L 444,290 L 407,294 L 385,283 L 376,263 Z" fill="#354651" stroke="#17212a" stroke-width="5.7" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 390,235 L 419,223 L 449,236 L 450,282 L 417,290 L 388,276 Z" fill="#81929c" stroke="#17212a" stroke-width="4.3" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 394,238 L 417,230 L 420,283 L 392,274 Z" fill="#5b6b77" stroke="#17212a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 404,237 L 411,232 L 414,280 L 408,284 Z" fill="#a9b6bc" stroke="none" stroke-width="0" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 416,229 L 423,227 L 427,286 L 420,289 Z" fill="#17212a" stroke="none" stroke-width="0" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 383,257 L 361,254" fill="none" stroke="#17212a" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 383,257 L 363,254" fill="none" stroke="#ad835a" stroke-width="3.7" stroke-linejoin="round" stroke-linecap="round" />
+        <circle cx="384" cy="258" r="6.5" fill="#536672" stroke="#17212a" stroke-width="2.5" />
+        <circle cx="414" cy="234" r="3.4" fill="#ad835a" stroke="#17212a" stroke-width="1.3" />
+        <circle cx="414" cy="279" r="3.4" fill="#ad835a" stroke="#17212a" stroke-width="1.3" />
+        <circle cx="453" cy="258" r="32" fill="#26343e" stroke="#17212a" stroke-width="4.8" />
+        <circle cx="453" cy="258" r="27" fill="#c0c7b7" stroke="#17212a" stroke-width="3.5" />
+      </g>
+      <g id="lamp-glass" inkscape:label="Lensed Glass">
+        <circle cx="454" cy="258" r="24.0" fill="#aabf9f" stroke="#edf3d5" stroke-width="3.2" />
+        <circle cx="454" cy="258" r="19.5" fill="#eafcdb" stroke="#709484" stroke-width="2.6" />
+        <circle cx="454" cy="258" r="12.5" fill="#d1ecc8" stroke="#a2c4ad" stroke-width="2.0" />
+        <path d="M 446,249 Q 451,242 459,243" fill="none" stroke="#ffffff" stroke-width="4.1" stroke-linejoin="round" stroke-linecap="round" />
+        <path d="M 463,267 Q 460,273 452,274" fill="none" stroke="#7eafa0" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+        <circle cx="452" cy="226" r="3.2" fill="#ad835a" stroke="#17212a" stroke-width="1.3" />
+        <circle cx="452" cy="289" r="3.2" fill="#ad835a" stroke="#17212a" stroke-width="1.3" />
+      </g>
+    </g>
+    <g id="part-lamp-alert" inkscape:label="Alarm Iris">
+      <circle cx="454" cy="258" r="9.5" fill="none" stroke="#f28c6e" stroke-width="3.2" />
+      <path d="M 446,251 L 462,265 M 463,250 L 445,265" fill="none" stroke="#e95e55" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+    </g>
+    <g id="part-shutter-upper" inkscape:label="Upper Iris Shutter">
+      <path d="M 432,216 L 448,216 L 453,222 L 460,216 L 476,216 L 475,239 L 432,239 Z" fill="#33424c" stroke="#17212a" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 438,223 L 470,223" fill="none" stroke="#83999f" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 444,234 L 463,234" fill="none" stroke="#ad835a" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" />
+    </g>
+    <g id="part-shutter-lower" inkscape:label="Lower Iris Shutter">
+      <path d="M 433,277 L 475,277 L 476,300 L 460,300 L 453,294 L 448,300 L 432,300 Z" fill="#33424c" stroke="#17212a" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 438,292 L 470,292" fill="none" stroke="#83999f" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 444,282 L 463,282" fill="none" stroke="#ad835a" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" />
+    </g>
+    <g id="joint-markers" inkscape:label="Rig Joints (show to edit)" style="display:none">
+      <circle id="joint-body" cx="322.0" cy="312.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="body" />
+      <circle id="joint-light" cx="417.0" cy="259.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="light" />
+      <circle id="joint-antenna" cx="291.0" cy="249.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="antenna" />
+      <circle id="joint-shutter-upper" cx="454.0" cy="234.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="shutter_upper" />
+      <circle id="joint-shutter-lower" cx="454.0" cy="282.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="shutter_lower" />
+      <circle id="joint-exhaust-hatch" cx="247.0" cy="277.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="exhaust_hatch" />
+      <circle id="joint-far-rear-outer-coxa" cx="274.0" cy="312.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="far_rear_outer_coxa" />
+      <circle id="joint-far-rear-outer-femur" cx="233.0" cy="276.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="far_rear_outer_femur" />
+      <circle id="joint-far-rear-outer-tibia" cx="132.0" cy="191.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="far_rear_outer_tibia" />
+      <circle id="joint-far-rear-outer-tarsus" cx="117.0" cy="347.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="far_rear_outer_tarsus" />
+      <circle id="joint-far-rear-inner-coxa" cx="283.0" cy="321.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="far_rear_inner_coxa" />
+      <circle id="joint-far-rear-inner-femur" cx="246.0" cy="294.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="far_rear_inner_femur" />
+      <circle id="joint-far-rear-inner-tibia" cx="191.0" cy="241.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="far_rear_inner_tibia" />
+      <circle id="joint-far-rear-inner-tarsus" cx="183.0" cy="369.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="far_rear_inner_tarsus" />
+      <circle id="joint-far-front-inner-coxa" cx="351.0" cy="322.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="far_front_inner_coxa" />
+      <circle id="joint-far-front-inner-femur" cx="379.0" cy="294.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="far_front_inner_femur" />
+      <circle id="joint-far-front-inner-tibia" cx="429.0" cy="231.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="far_front_inner_tibia" />
+      <circle id="joint-far-front-inner-tarsus" cx="451.0" cy="368.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="far_front_inner_tarsus" />
+      <circle id="joint-far-front-outer-coxa" cx="366.0" cy="309.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="far_front_outer_coxa" />
+      <circle id="joint-far-front-outer-femur" cx="409.0" cy="279.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="far_front_outer_femur" />
+      <circle id="joint-far-front-outer-tibia" cx="487.0" cy="184.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="far_front_outer_tibia" />
+      <circle id="joint-far-front-outer-tarsus" cx="548.0" cy="346.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="far_front_outer_tarsus" />
+      <circle id="joint-near-rear-outer-coxa" cx="263.0" cy="323.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="near_rear_outer_coxa" />
+      <circle id="joint-near-rear-outer-femur" cx="219.0" cy="283.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="near_rear_outer_femur" />
+      <circle id="joint-near-rear-outer-tibia" cx="92.0" cy="204.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="near_rear_outer_tibia" />
+      <circle id="joint-near-rear-outer-tarsus" cx="76.0" cy="349.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="near_rear_outer_tarsus" />
+      <circle id="joint-near-rear-inner-coxa" cx="290.0" cy="331.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="near_rear_inner_coxa" />
+      <circle id="joint-near-rear-inner-femur" cx="254.0" cy="302.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="near_rear_inner_femur" />
+      <circle id="joint-near-rear-inner-tibia" cx="208.0" cy="252.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="near_rear_inner_tibia" />
+      <circle id="joint-near-rear-inner-tarsus" cx="191.0" cy="374.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="near_rear_inner_tarsus" />
+      <circle id="joint-near-front-inner-coxa" cx="348.0" cy="330.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="near_front_inner_coxa" />
+      <circle id="joint-near-front-inner-femur" cx="387.0" cy="297.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="near_front_inner_femur" />
+      <circle id="joint-near-front-inner-tibia" cx="454.0" cy="246.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="near_front_inner_tibia" />
+      <circle id="joint-near-front-inner-tarsus" cx="489.0" cy="369.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="near_front_inner_tarsus" />
+      <circle id="joint-near-front-outer-coxa" cx="372.0" cy="321.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="near_front_outer_coxa" />
+      <circle id="joint-near-front-outer-femur" cx="421.0" cy="278.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="near_front_outer_femur" />
+      <circle id="joint-near-front-outer-tibia" cx="534.0" cy="212.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="near_front_outer_tibia" />
+      <circle id="joint-near-front-outer-tarsus" cx="577.0" cy="349.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="near_front_outer_tarsus" />
+    </g>
+  </g>
+</svg>
