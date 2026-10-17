@@ -44,13 +44,14 @@ def piece(key: Hashable, size: Tuple[float, float], pivot: Point, paint: Callabl
     return cached
 
 
-def place(canvas: Image.Image, part: Tuple[Image.Image, Point], at: Point, degrees: float, name: str) -> None:
+def place(canvas: Image.Image, part: Tuple[Image.Image, Point], at: Point, degrees: float, name: str, scale_y: float = 1.0) -> None:
     """Composite ``part`` with its pivot at ``at``, turned ``degrees``, as the
-    draw ``name`` (one name once a frame)."""
+    draw ``name`` (one name once a frame). ``scale_y`` squashes it about its
+    pivot in its own frame first (``rigdoc.blit_rotated``)."""
     from . import rigdoc  # rigdoc imports modules that import this one
 
     image, pivot = part
-    rigdoc.blit_rotated(canvas, image, pivot, at, degrees, part_name=name)
+    rigdoc.blit_rotated(canvas, image, pivot, at, degrees, part_name=name, scale_y=scale_y)
 
 
 def capsule(

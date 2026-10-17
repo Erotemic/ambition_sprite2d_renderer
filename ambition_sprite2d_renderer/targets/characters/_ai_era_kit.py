@@ -62,13 +62,29 @@ def bezier(a: Point, b: Point, c: Point, e: Point, steps: int = 16) -> List[Poin
 Pose = Dict[str, object]
 
 
-def blend(a: Pose, b: Pose, t: float) -> Pose:
+def polar_lerp(a: Point, b: Point, t: float) -> Point:
+    """``t`` of the way from offset ``a`` to offset ``b`` round their origin:
+    the turn and the reach go across, so a hand swings in an arc about its
+    shoulder and does not cut through the body. The turn goes the short way."""
+    ra, rb = math.hypot(*a), math.hypot(*b)
+    if ra < 1e-6 or rb < 1e-6:
+        return (lerp(a[0], b[0], t), lerp(a[1], b[1], t))
+    aa, ab = math.atan2(a[1], a[0]), math.atan2(b[1], b[0])
+    d = (ab - aa + math.pi) % math.tau - math.pi
+    ang, r = aa + d * t, lerp(ra, rb, t)
+    return (r * math.cos(ang), r * math.sin(ang))
+
+
+def blend(a: Pose, b: Pose, t: float, polar: Sequence[str] = ()) -> Pose:
     """The pose ``t`` of the way from ``a`` to ``b``: numbers and tuples of
-    numbers go across, a word changes at the middle."""
+    numbers go across, a word changes at the middle. A key in ``polar`` (an
+    offset) goes across in an arc (``polar_lerp``)."""
     out: Pose = {}
     for k, va in a.items():
         vb = b[k]
-        if isinstance(va, str):
+        if k in polar:
+            out[k] = polar_lerp(va, vb, t)  # type: ignore[arg-type]
+        elif isinstance(va, str):
             out[k] = vb if t >= 0.5 else va
         elif isinstance(va, tuple):
             out[k] = tuple(lerp(x, y, t) for x, y in zip(va, vb))  # type: ignore[arg-type]
@@ -77,13 +93,41 @@ def blend(a: Pose, b: Pose, t: float) -> Pose:
     return out
 
 
-def keys(u: float, frames: List[Tuple[float, Pose]]) -> Pose:
-    """The pose at ``u`` of a row that goes through ``frames`` (``(when, pose)``)."""
+def _back(t: float) -> float:
+    """Past the key and back to it: an overshoot of about a tenth."""
+    c = 1.7
+    t = max(0.0, min(1.0, t)) - 1.0
+    return 1.0 + (c + 1.0) * t * t * t + c * t * t
+
+
+#: How the motion arrives at a key (the third item of a ``keys`` frame):
+#: ``io`` starts and stops gently (the default); ``in`` gathers and leaves
+#: fast (into a strike); ``out`` leaves fast and settles (out of a strike);
+#: ``snap`` is most of the way in the first quarter (a blow, a jolt);
+#: ``back`` goes past the key and returns (follow-through); ``hold`` keeps the
+#: pose before until the key (a held frame, then a cut); ``linear`` is even.
+EASES: Dict[str, Callable[[float], float]] = {
+    "io": ease,
+    "in": lambda t: max(0.0, min(1.0, t)) ** 2,
+    "out": lambda t: 1.0 - (1.0 - max(0.0, min(1.0, t))) ** 2,
+    "snap": lambda t: 1.0 - (1.0 - max(0.0, min(1.0, t))) ** 4,
+    "back": _back,
+    "hold": lambda t: 1.0 if t >= 1.0 else 0.0,
+    "linear": lambda t: max(0.0, min(1.0, t)),
+}
+
+
+def keys(u: float, frames: Sequence[tuple], polar: Sequence[str] = ()) -> Pose:
+    """The pose at ``u`` of a row that goes through ``frames``: ``(when,
+    pose)``, or ``(when, pose, how)`` with ``how`` a name of ``EASES`` for the
+    way the motion arrives at that key. Keys in ``polar`` blend in arcs."""
     if u <= frames[0][0]:
         return frames[0][1]
-    for (u0, p0), (u1, p1) in zip(frames, frames[1:]):
+    for f0, f1 in zip(frames, frames[1:]):
+        u0, p0, u1, p1 = f0[0], f0[1], f1[0], f1[1]
         if u <= u1:
-            return blend(p0, p1, ease((u - u0) / max(1e-6, u1 - u0)))
+            how = EASES[f1[2] if len(f1) > 2 else "io"]
+            return blend(p0, p1, how((u - u0) / max(1e-6, u1 - u0)), polar)
     return frames[-1][1]
 
 
@@ -116,12 +160,26 @@ def pin(p: Point) -> Point:
 class Kit:
     """The paint box for one frame size."""
 
-    def __init__(self, frame: Tuple[int, int], supersample: int = 4, ink: RGBA = OUTLINE) -> None:
+    def __init__(self, frame: Tuple[int, int], supersample: int = 4, ink: RGBA = OUTLINE, out: Optional[Tuple[int, int]] = None,
+                 zoom: float = 1.0) -> None:
+        #: The frame the character's lengths are in.
         self.frame = frame
+        #: The frame it is published at: ``frame``, or larger for a sheet of a
+        #: higher resolution (``authoring.texel_density``). The canvas is
+        #: ``supersample`` times it, so it reduces to it by a whole factor, as
+        #: a part flipbook records it.
+        self.out = out or frame
+        self.reduce = supersample
         #: The colour of every outline ``solid`` grows.
         self.ink = ink
-        self.scale = supersample
-        self.canvas = (frame[0] * supersample, frame[1] * supersample)
+        #: Canvas pixels per frame pixel. ``zoom`` paints a kit's pieces
+        #: larger than its frame's lengths (a head drawn bigger than the body's
+        #: lines would draw it).
+        scale = supersample * self.out[0] / frame[0] * zoom
+        # A whole scale stays an int: a character reads it as one (a resize
+        # to `size * scale`).
+        self.scale: Union[int, float] = int(scale) if float(scale).is_integer() else scale
+        self.canvas = (int(round(frame[0] * self.scale)), int(round(frame[1] * self.scale)))
         #: Where a piece's anchor is painted on the scratch canvas, which is
         #: twice the frame.
         self.home: Point = (float(frame[0]), float(frame[1]))
@@ -225,7 +283,8 @@ class Kit:
             if box is None:
                 self._pieces[key] = None
             else:
-                step = self.scale
+                # Whole published pixels: the canvas reduces by ``reduce``.
+                step = self.reduce
                 box = (box[0] - box[0] % step, box[1] - box[1] % step, box[2] + (-box[2]) % step, box[3] + (-box[3]) % step)
                 self._pieces[key] = (canvas.crop(box), (self.home[0] * step - box[0], self.home[1] * step - box[1]))
         return self._pieces[key]
@@ -301,13 +360,13 @@ class Kit:
     tint: Optional[Tuple[Tuple[int, int, int], float]] = None
     tint_skip: Tuple[str, ...] = ()
 
-    def place(self, img: Image.Image, part: Optional[Part], at: Point, name: str, degrees: float = 0.0) -> None:
+    def place(self, img: Image.Image, part: Optional[Part], at: Point, name: str, degrees: float = 0.0, scale_y: float = 1.0) -> None:
         if part is not None:
             if self.tint is not None and name not in self.tint_skip:
                 from ._toon_rig import tinted
 
                 part = tinted(part, *self.tint)
-            shape_rig.place(img, part, (at[0] * self.scale, at[1] * self.scale), degrees, name)
+            shape_rig.place(img, part, (at[0] * self.scale, at[1] * self.scale), degrees, name, scale_y)
 
     def put(self, img: Image.Image, key: tuple, paint: Callable, at: Point, name: str, degrees: float = 0.0) -> None:
         self.place(img, self.piece(key, paint), at, name, degrees)
@@ -318,7 +377,7 @@ class Kit:
         return Image.new("RGBA", self.canvas, TRANSPARENT)
 
     def downsample(self, img: Image.Image) -> Image.Image:
-        return rigdoc.downsampled_canvas(img, self.frame, Image.Resampling.LANCZOS)
+        return rigdoc.downsampled_canvas(img, self.out, Image.Resampling.LANCZOS)
 
     def body_metrics(self, box: Tuple[float, float, float, float]) -> Callable[[int, int], dict]:
         """The ``body_metrics_fn`` of a body whose box is ``(x0, y0, x1, y1)``
@@ -348,10 +407,10 @@ class Kit:
             rows=rows,
             render_fn=frame_fn,
             out_dir=out_dir,
-            frame_size=self.frame,
+            frame_size=self.out,
             auto_crop=False,
             actor_metadata=actor_metadata,
-            body_metrics_fn=self.body_metrics(body_box),
+            body_metrics_fn=self.body_metrics(tuple(v * self.out[0] / self.frame[0] for v in body_box)),  # type: ignore[arg-type]
         )
         parts = publish_rig_flipbook(target, rows, frame_fn, outputs, frame_transform, out_dir)
         return [outputs[k] for k in ("spritesheet", "yaml", "ron", "actor", "preview", "canonical", "canonical_transparent")] + list(parts.values())

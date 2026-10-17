@@ -34,7 +34,7 @@ from ._ai_era_kit import OUTLINE, WHITE, Kit, Point, Pose, RGBA, angle, blend, e
 
 __all__ = [
     "AIR", "APEX", "Build", "CROUCH", "DASH", "FALL", "FP", "FRONT_REST", "GUARD", "HALF_UP", "HANG", "LANDED", "LIBRARY", "MAIN_ROWS", "P", "PERCH", "Person", "REST",
-    "RISE", "SAT", "STRUCK", "SUPINE", "TUCK", "UP", "Seg", "Stamp", "bone", "burst", "chain", "chalk", "dust", "glyph", "loop", "make_brows",
+    "RISE", "SAT", "STRUCK", "SUPINE", "TUCK", "UP", "Seg", "Stamp", "bone", "burst", "chain", "chalk", "cycle", "dust", "glyph", "loop", "make_brows",
     "brow_mood", "entry_points", "front_arms", "make_eyes", "make_figure", "make_front_shoe", "make_hand", "make_head", "make_mouth", "make_neck", "make_shoe", "make_torso", "ribbon", "shot", "stride", "swoosh", "tick",
 ]
 
@@ -124,6 +124,14 @@ REST: Pose = {
     "brows": 0.0,
     # How far the hem of the torso swings out behind, and in front.
     "hem": (0.0, 0.0),
+    # The trunk squashed (under 1) or stretched (over 1) along its own length,
+    # about the hips: the neck and the shoulders go with it.
+    "sq": 1.0,
+    # The head squashed or stretched about its middle.
+    "hsq": 1.0,
+    # Both shoulders moved from where the trunk has them (units, -y is up): a
+    # shrug, a heave of the chest, a hunch.
+    "shrug": (0.0, 0.0),
 }
 
 
@@ -142,6 +150,12 @@ def loop(i: int, n: int) -> Tuple[float, float, float]:
 def shot(i: int, n: int) -> float:
     """How far frame ``i`` is through a row that plays once: 0 to 1."""
     return i / max(1, n - 1)
+
+
+def cycle(i: int, n: int) -> float:
+    """How far frame ``i`` is through a row that repeats: 0 up to, not at, 1
+    (the last frame leads back into the first)."""
+    return i / max(1, n)
 
 
 def stride(ph: float, reach: float, lift: float, mid: float = 0.5) -> Tuple[Tuple[float, float, float], Tuple[float, float, float]]:
@@ -1391,16 +1405,28 @@ class Person:
     ``trunk(x, y)`` (a point of the trunk in the frame) and ``ground``.
     """
 
-    def __init__(self, target: str, build: Build = Build(), frame: Tuple[int, int] = (208, 176), ground: float = 164.0, cx: float = 104.0) -> None:
+    def __init__(self, target: str, build: Build = Build(), frame: Tuple[int, int] = (208, 176), ground: float = 164.0, cx: float = 104.0,
+                 supersample: int = 4, world_height: Optional[float] = None) -> None:
         self.target = target
         CAST[target] = self
         self.b = build
         self.frame = frame
         self.ground = ground
         self.cx = cx
-        self.K = Kit(frame)
+        # ``world_height``: how tall the body box stands in the game, in world
+        # units. Given, the sheet is published at the game's texel density
+        # (``authoring.texel_density``): the lengths stay frame pixels, the
+        # sheet is drawn larger. Not given, it is published at ``frame``.
+        from ...authoring.texel_density import published_frame
+
+        out = published_frame(frame, build.height, world_height) if world_height else None
+        self.K = Kit(frame, supersample, out=out)
         self.U = build.hip_up / 37.0
         self.rest: Pose = dict(REST)
+        #: The pose keys that ``keys`` blends in arcs about their origin
+        #: (``_ai_era_kit.polar_lerp``): ``("na", "fa")`` swings the hands
+        #: round the shoulders. A character opts in.
+        self.polar: Tuple[str, ...] = ()
         self.poses: Dict[str, Callable[[int, int], Pose]] = dict(LIBRARY)
         self.rows: List[Tuple[str, int, int]] = list(MAIN_ROWS)
         self.torso: Callable[[int, int], object] = lambda hb, hf: None
@@ -1443,8 +1469,22 @@ class Person:
         does not know a key a character added)."""
         return dict(self.rest, **pose) if set(self.rest) - set(pose) else pose
 
-    def keys(self, u: float, frames: List[Tuple[float, Pose]]) -> Pose:
-        return keys(u, [(t, self.full(p)) for t, p in frames])
+    def keys(self, u: float, frames: Sequence[tuple], drag: Optional[Dict[str, float]] = None, wrap: bool = False) -> Pose:
+        """The pose at ``u`` through ``frames`` (``(when, pose)`` or ``(when,
+        pose, how)``, ``how`` a name of ``_ai_era_kit.EASES``).
+
+        ``drag`` is overlapping action: each named key of the pose follows the
+        row this much later (a part of ``u``), so a head, a hand or a coat
+        tail arrives after the body that moves it. ``wrap``: the row repeats,
+        so a lag before its start reads its end."""
+        full = [(f[0], self.full(f[1])) + tuple(f[2:]) for f in frames]
+        pose = keys(u, full, self.polar)
+        if drag:
+            pose = dict(pose)
+            for channel, lag in drag.items():
+                at = (u - lag) % 1.0 if wrap else max(0.0, u - lag)
+                pose[channel] = keys(at, full, self.polar)[channel]
+        return pose
 
     def blend(self, a: Pose, b: Pose, t: float) -> Pose:
         return blend(self.full(a), self.full(b), t)
@@ -1544,6 +1584,45 @@ class Person:
             K.place(img, part, at, name, degrees)  # type: ignore[arg-type]
         return K.downsample(img)
 
+    def arm_joints(self, pose: Pose, near: bool) -> Tuple[Point, Point, Point]:
+        """The shoulder, the elbow and the wrist of an arm in ``pose``, in
+        frame pixels: where ``render_frame`` draws them. A character asks it
+        where a hand is in a frame it is not drawing (a trail of where a claw
+        was, a socket on a hand)."""
+        return self._side_joints(self.full(pose))[0 if near else 1]
+
+    def _side_joints(self, pose: Pose):
+        b, U = self.b, self.U
+        rot = float(pose["rot"])  # type: ignore[arg-type]
+        lean = float(pose["lean"])  # type: ignore[arg-type]
+        hx, hy = pose["hip"]  # type: ignore[misc]
+        ox, oy = pose["off"]  # type: ignore[misc]
+        hip = (hx * U, -b.hip_up + hy * U)
+        px, py = pose["pivot"]  # type: ignore[misc]
+        pivot = (hip[0] + px * U, hip[1] + py * U)
+        sq = float(pose["sq"])  # type: ignore[arg-type]
+        shrug = pose["shrug"]
+
+        def W(p: Point) -> Point:
+            r = turned((p[0] - pivot[0], p[1] - pivot[1]), rot)
+            return (self.cx + ox * U + pivot[0] + r[0], self.ground + oy * U + pivot[1] + r[1])
+
+        def trunk_local(x: float, y: float) -> Point:
+            r = turned((x, y * sq), lean)
+            return (hip[0] + r[0], hip[1] + r[1])
+
+        def arm_points(near: bool) -> Tuple[Point, Point, Point]:
+            key = "na" if near else "fa"
+            sx, sy = b.near_shoulder if near else b.far_shoulder
+            if not near:
+                sx = min(sx, getattr(self.torso, "far_arm_x", sx))
+            shoulder = trunk_local(sx + shrug[0] * U, sy + shrug[1] * U / sq)  # type: ignore[index]
+            dx, dy = pose[key]  # type: ignore[misc]
+            elbow, wrist = solve(shoulder, (shoulder[0] + dx * U, shoulder[1] + dy * U), b.upper, b.fore, float(pose[key + "b"]))  # type: ignore[arg-type]
+            return W(shoulder), W(elbow), W(wrist)
+
+        return arm_points(True), arm_points(False)
+
     def render_frame(self, anim: str, i: int, n: int) -> Image.Image:
         if anim in self.front_poses:
             return self.render_front(anim, i, n)
@@ -1563,19 +1642,17 @@ class Person:
             r = turned((p[0] - pivot[0], p[1] - pivot[1]), rot)
             return (self.cx + ox * U + pivot[0] + r[0], self.ground + oy * U + pivot[1] + r[1])
 
+        sq = float(pose["sq"])  # type: ignore[arg-type]
+        shrug = pose["shrug"]
+
         def trunk_local(x: float, y: float) -> Point:
-            r = turned((x, y), lean)
+            r = turned((x, y * sq), lean)
             return (hip[0] + r[0], hip[1] + r[1])
 
+        arms = self._side_joints(pose)
+
         def arm_points(near: bool) -> Tuple[Point, Point, Point]:
-            key = "na" if near else "fa"
-            sx, sy = b.near_shoulder if near else b.far_shoulder
-            if not near:
-                sx = min(sx, getattr(self.torso, "far_arm_x", sx))
-            shoulder = trunk_local(sx, sy)
-            dx, dy = pose[key]  # type: ignore[misc]
-            elbow, wrist = solve(shoulder, (shoulder[0] + dx * U, shoulder[1] + dy * U), b.upper, b.fore, float(pose[key + "b"]))  # type: ignore[arg-type]
-            return W(shoulder), W(elbow), W(wrist)
+            return arms[0 if near else 1]
 
         def leg_points(near: bool) -> Tuple[Point, Point, Point, float]:
             root = (hip[0] + (b.near_hip if near else b.far_hip)[0], hip[1])
@@ -1639,15 +1716,16 @@ class Person:
             torso = self.torso(hems[0], hems[1], max(8, 2 * int(room // 2)))  # type: ignore[call-arg]
         else:
             torso = self.torso(*hems)
-        K.place(img, torso, ctx.hip, "torso", lean + rot)  # type: ignore[arg-type]
+        K.place(img, torso, ctx.hip, "torso", lean + rot, sq)  # type: ignore[arg-type]
         if kicking:
             leg(True)
         stamps("over_torso")
         under = pose["arm"] == "under"
         if under:
             arm(True)
+        hsq = float(pose["hsq"])  # type: ignore[arg-type]
         for part, name in self.head_layers(pose):
-            K.place(img, part, head, name, turn)  # type: ignore[arg-type]
+            K.place(img, part, head, name, turn, hsq)  # type: ignore[arg-type]
         if self.collar is not None:
             K.place(img, self.collar(), ctx.neck, "collar", lean + rot)  # type: ignore[arg-type]
         if not under:
@@ -1730,7 +1808,7 @@ class Person:
         """The frames that touch the edge of their cell (and are cut there):
         ``(row, frame, box)``. A test of a character asserts there are none."""
         out = []
-        w, h = self.frame
+        w, h = self.K.out
         for name, frames, _ms in self.rows:
             for i in range(frames):
                 box = self.render_frame(name, i, frames).getchannel("A").point(lambda a: 255 if a > 16 else 0).getbbox()
