@@ -1,0 +1,4388 @@
+{
+  "name": "shock_warden",
+  "frame": {
+    "width": 420,
+    "height": 324,
+    "center_x": 210,
+    "ground_y": 225,
+    "ankle_h": 0,
+    "supersample": 3,
+    "render_scale": 1,
+    "trim": false
+  },
+  "svg_source": {
+    "path": "../../../../data/characters/shock_warden/shock_warden.svg",
+    "view": "Shock Warden - Side",
+    "ref_dpi": 25.4,
+    "scale": 0.52
+  },
+  "sprite_tuning": {
+    "collision_scale": 1.1,
+    "frame_sample_inset": 2
+  },
+  "palette": {},
+  "bones": [
+    {
+      "name": "hips",
+      "parent": null,
+      "offset": [
+        -1.04,
+        -52.52
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "torso",
+      "parent": "hips",
+      "offset": [
+        -2.08,
+        -36.92
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "head",
+      "parent": "torso",
+      "offset": [
+        -3.12,
+        -37.96
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_thigh",
+      "parent": "hips",
+      "offset": [
+        14.56,
+        -1.56
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_shin",
+      "parent": "far_thigh",
+      "offset": [
+        18.72,
+        23.4
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_boot",
+      "parent": "far_shin",
+      "offset": [
+        1.56,
+        22.36
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_thigh",
+      "parent": "hips",
+      "offset": [
+        -19.24,
+        -2.6
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_shin",
+      "parent": "near_thigh",
+      "offset": [
+        -20.28,
+        25.48
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_boot",
+      "parent": "near_shin",
+      "offset": [
+        -6.24,
+        20.8
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "shield_upper",
+      "parent": "torso",
+      "offset": [
+        27.56,
+        -7.8
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "shield_forearm",
+      "parent": "shield_upper",
+      "offset": [
+        13.0,
+        17.68
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "shield",
+      "parent": "shield_forearm",
+      "offset": [
+        17.16,
+        8.84
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "baton_upper",
+      "parent": "torso",
+      "offset": [
+        -28.6,
+        -6.76
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "baton_forearm",
+      "parent": "baton_upper",
+      "offset": [
+        -20.28,
+        25.48
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "baton_hand",
+      "parent": "baton_forearm",
+      "offset": [
+        -14.56,
+        8.84
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "baton",
+      "parent": "baton_hand",
+      "offset": [
+        -1.56,
+        -0.52
+      ],
+      "length": 0,
+      "rest_angle": 0
+    }
+  ],
+  "parts": [
+    {
+      "name": "far_thigh",
+      "bone": "far_thigh",
+      "z": 10,
+      "kind": "sprite",
+      "include": [
+        "far-thigh"
+      ],
+      "pivot": [
+        376.0,
+        372.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "far_shin",
+      "bone": "far_shin",
+      "z": 11,
+      "kind": "sprite",
+      "include": [
+        "far-shin"
+      ],
+      "pivot": [
+        412.0,
+        417.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "far_boot",
+      "bone": "far_boot",
+      "z": 12,
+      "kind": "sprite",
+      "include": [
+        "far-boot"
+      ],
+      "pivot": [
+        415.0,
+        460.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "coat_tails",
+      "bone": "hips",
+      "z": 16,
+      "kind": "sprite",
+      "include": [
+        "coat-tails",
+        "hip-belt"
+      ],
+      "pivot": [
+        348.0,
+        375.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "shield_upper",
+      "bone": "shield_upper",
+      "z": 18,
+      "kind": "sprite",
+      "include": [
+        "shield-upper"
+      ],
+      "pivot": [
+        397.0,
+        289.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "shield_forearm",
+      "bone": "shield_forearm",
+      "z": 19,
+      "kind": "sprite",
+      "include": [
+        "shield-forearm"
+      ],
+      "pivot": [
+        422.0,
+        323.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "torso",
+      "bone": "torso",
+      "z": 30,
+      "kind": "sprite",
+      "include": [
+        "torso-armor",
+        "torso-details"
+      ],
+      "pivot": [
+        344.0,
+        304.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_thigh",
+      "bone": "near_thigh",
+      "z": 34,
+      "kind": "sprite",
+      "include": [
+        "near-thigh"
+      ],
+      "pivot": [
+        311.0,
+        370.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_shin",
+      "bone": "near_shin",
+      "z": 35,
+      "kind": "sprite",
+      "include": [
+        "near-shin"
+      ],
+      "pivot": [
+        272.0,
+        419.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_boot",
+      "bone": "near_boot",
+      "z": 36,
+      "kind": "sprite",
+      "include": [
+        "near-boot"
+      ],
+      "pivot": [
+        260.0,
+        459.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "head",
+      "bone": "head",
+      "z": 40,
+      "kind": "sprite",
+      "include": [
+        "head",
+        "helmet",
+        "face"
+      ],
+      "pivot": [
+        338.0,
+        231.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "baton_upper",
+      "bone": "baton_upper",
+      "z": 50,
+      "kind": "sprite",
+      "include": [
+        "baton-upper",
+        "insignia"
+      ],
+      "pivot": [
+        289.0,
+        291.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "baton_forearm",
+      "bone": "baton_forearm",
+      "z": 51,
+      "kind": "sprite",
+      "include": [
+        "baton-forearm"
+      ],
+      "pivot": [
+        250.0,
+        340.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "baton_hand",
+      "bone": "baton_hand",
+      "z": 52,
+      "kind": "sprite",
+      "include": [
+        "baton-hand"
+      ],
+      "pivot": [
+        222.0,
+        357.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "baton",
+      "bone": "baton",
+      "z": 53,
+      "kind": "sprite",
+      "include": [
+        "baton-weapon"
+      ],
+      "pivot": [
+        219.0,
+        356.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "baton_electric",
+      "bone": "baton",
+      "z": 54,
+      "kind": "sprite",
+      "include": [
+        "baton-electric"
+      ],
+      "pivot": [
+        219.0,
+        356.0
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "baton_charge",
+      "opacity_default": 0
+    },
+    {
+      "name": "shield_grip",
+      "bone": "shield",
+      "z": 70,
+      "kind": "sprite",
+      "include": [
+        "shield-grip"
+      ],
+      "pivot": [
+        455.0,
+        340.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "shield",
+      "bone": "shield",
+      "z": 71,
+      "kind": "sprite",
+      "include": [
+        "shield-main",
+        "shield-emblem",
+        "shield-viewport"
+      ],
+      "pivot": [
+        455.0,
+        340.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "shield_electric",
+      "bone": "shield",
+      "z": 72,
+      "kind": "sprite",
+      "include": [
+        "shield-electric"
+      ],
+      "pivot": [
+        455.0,
+        340.0
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "shield_charge",
+      "opacity_default": 0
+    },
+    {
+      "name": "shield_impact",
+      "bone": "shield",
+      "z": 73,
+      "kind": "sprite",
+      "include": [
+        "shield-impact"
+      ],
+      "pivot": [
+        455.0,
+        340.0
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "shield_impact",
+      "opacity_default": 0
+    }
+  ],
+  "ik_legs": [],
+  "ik_chains": [],
+  "clips": {
+    "idle": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 135,
+      "channels": {
+        "hips": {
+          "const": 0.0
+        },
+        "torso": {
+          "expr": "0.7*sin(tau*t)"
+        },
+        "head": {
+          "expr": "-1.2*sin(tau*t+0.25)"
+        },
+        "near_thigh": {
+          "const": 0.0
+        },
+        "near_shin": {
+          "const": 0.0
+        },
+        "near_boot": {
+          "const": 0.0
+        },
+        "far_thigh": {
+          "const": 0.0
+        },
+        "far_shin": {
+          "const": 0.0
+        },
+        "far_boot": {
+          "const": 0.0
+        },
+        "shield_upper": {
+          "const": 0.0
+        },
+        "shield_forearm": {
+          "const": 0.0
+        },
+        "shield": {
+          "expr": "0.8*sin(tau*t+0.6)"
+        },
+        "baton_upper": {
+          "const": 0.0
+        },
+        "baton_forearm": {
+          "const": 0.0
+        },
+        "baton_hand": {
+          "const": 0.0
+        },
+        "baton": {
+          "const": 0.0
+        },
+        "shield_charge": {
+          "expr": "0.56+0.12*sin(tau*2*t)"
+        },
+        "baton_charge": {
+          "expr": "0.45+0.12*sin(tau*2*t+0.7)"
+        },
+        "shield_impact": {
+          "const": 0.0
+        },
+        "root_x": {
+          "const": 0.0
+        },
+        "root_y": {
+          "expr": "0.7*sin(tau*t)"
+        }
+      }
+    },
+    "walk": {
+      "loop": true,
+      "frames": 10,
+      "duration_ms": 105,
+      "channels": {
+        "hips": {
+          "const": 0.0
+        },
+        "torso": {
+          "expr": "1.8*sin(tau*t)"
+        },
+        "head": {
+          "expr": "-1.4*sin(tau*t)"
+        },
+        "near_thigh": {
+          "expr": "21*sin(tau*t)"
+        },
+        "near_shin": {
+          "expr": "-9*sin(tau*t)-6*max(0,sin(tau*t))"
+        },
+        "near_boot": {
+          "expr": "-8*sin(tau*t)"
+        },
+        "far_thigh": {
+          "expr": "-21*sin(tau*t)"
+        },
+        "far_shin": {
+          "expr": "9*sin(tau*t)-6*max(0,-sin(tau*t))"
+        },
+        "far_boot": {
+          "expr": "8*sin(tau*t)"
+        },
+        "shield_upper": {
+          "expr": "-3*sin(tau*t)"
+        },
+        "shield_forearm": {
+          "const": 0.0
+        },
+        "shield": {
+          "const": 0.0
+        },
+        "baton_upper": {
+          "expr": "-4*sin(tau*t)"
+        },
+        "baton_forearm": {
+          "const": 0.0
+        },
+        "baton_hand": {
+          "const": 0.0
+        },
+        "baton": {
+          "const": 0.0
+        },
+        "shield_charge": {
+          "const": 0.7
+        },
+        "baton_charge": {
+          "const": 0.6
+        },
+        "shield_impact": {
+          "const": 0.0
+        },
+        "root_x": {
+          "const": 0.0
+        },
+        "root_y": {
+          "expr": "-1.2*abs(sin(tau*t))"
+        }
+      }
+    },
+    "guard": {
+      "loop": false,
+      "frames": 8,
+      "duration_ms": 110,
+      "channels": {
+        "baton": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.3,
+              0.0,
+              "linear"
+            ],
+            [
+              0.8,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_charge": {
+          "keys": [
+            [
+              0.0,
+              0.6,
+              "linear"
+            ],
+            [
+              0.3,
+              0.6,
+              "linear"
+            ],
+            [
+              0.8,
+              0.6,
+              "linear"
+            ],
+            [
+              1.0,
+              0.6,
+              "linear"
+            ]
+          ]
+        },
+        "baton_forearm": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.3,
+              0.0,
+              "linear"
+            ],
+            [
+              0.8,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.3,
+              0.0,
+              "linear"
+            ],
+            [
+              0.8,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_upper": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.3,
+              0.0,
+              "linear"
+            ],
+            [
+              0.8,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_boot": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.3,
+              0.0,
+              "linear"
+            ],
+            [
+              0.8,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_shin": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.3,
+              0.0,
+              "linear"
+            ],
+            [
+              0.8,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_thigh": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.3,
+              0.0,
+              "linear"
+            ],
+            [
+              0.8,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "head": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.3,
+              0.0,
+              "linear"
+            ],
+            [
+              0.8,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "hips": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.3,
+              0.0,
+              "linear"
+            ],
+            [
+              0.8,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_boot": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.3,
+              0.0,
+              "linear"
+            ],
+            [
+              0.8,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_shin": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.3,
+              0.0,
+              "linear"
+            ],
+            [
+              0.8,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_thigh": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.3,
+              0.0,
+              "linear"
+            ],
+            [
+              0.8,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "root_x": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.3,
+              0.0,
+              "linear"
+            ],
+            [
+              0.8,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "root_y": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.3,
+              0.0,
+              "linear"
+            ],
+            [
+              0.8,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.3,
+              -4.0,
+              "linear"
+            ],
+            [
+              0.8,
+              -4.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_charge": {
+          "keys": [
+            [
+              0.0,
+              0.7,
+              "linear"
+            ],
+            [
+              0.3,
+              0.9,
+              "linear"
+            ],
+            [
+              0.8,
+              0.9,
+              "linear"
+            ],
+            [
+              1.0,
+              0.7,
+              "linear"
+            ]
+          ]
+        },
+        "shield_forearm": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.3,
+              0.0,
+              "linear"
+            ],
+            [
+              0.8,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_impact": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.3,
+              0.0,
+              "linear"
+            ],
+            [
+              0.8,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_upper": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.3,
+              -6.0,
+              "linear"
+            ],
+            [
+              0.8,
+              -6.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "torso": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.3,
+              0.0,
+              "linear"
+            ],
+            [
+              0.8,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        }
+      }
+    },
+    "brace": {
+      "loop": false,
+      "frames": 9,
+      "duration_ms": 100,
+      "channels": {
+        "baton": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.24,
+              0.0,
+              "linear"
+            ],
+            [
+              0.76,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_charge": {
+          "keys": [
+            [
+              0.0,
+              0.6,
+              "linear"
+            ],
+            [
+              0.24,
+              0.6,
+              "linear"
+            ],
+            [
+              0.76,
+              0.6,
+              "linear"
+            ],
+            [
+              1.0,
+              0.6,
+              "linear"
+            ]
+          ]
+        },
+        "baton_forearm": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.24,
+              0.0,
+              "linear"
+            ],
+            [
+              0.76,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.24,
+              0.0,
+              "linear"
+            ],
+            [
+              0.76,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_upper": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.24,
+              0.0,
+              "linear"
+            ],
+            [
+              0.76,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_boot": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.24,
+              0.0,
+              "linear"
+            ],
+            [
+              0.76,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_shin": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.24,
+              17.0,
+              "linear"
+            ],
+            [
+              0.76,
+              17.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_thigh": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.24,
+              -8.0,
+              "linear"
+            ],
+            [
+              0.76,
+              -8.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "head": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.24,
+              -6.0,
+              "linear"
+            ],
+            [
+              0.76,
+              -6.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "hips": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.24,
+              0.0,
+              "linear"
+            ],
+            [
+              0.76,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_boot": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.24,
+              0.0,
+              "linear"
+            ],
+            [
+              0.76,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_shin": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.24,
+              -22.0,
+              "linear"
+            ],
+            [
+              0.76,
+              -22.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_thigh": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.24,
+              14.0,
+              "linear"
+            ],
+            [
+              0.76,
+              14.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "root_x": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.24,
+              0.0,
+              "linear"
+            ],
+            [
+              0.76,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "root_y": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.24,
+              8.0,
+              "linear"
+            ],
+            [
+              0.76,
+              8.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.24,
+              -8.0,
+              "linear"
+            ],
+            [
+              0.76,
+              -8.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_charge": {
+          "keys": [
+            [
+              0.0,
+              0.7,
+              "linear"
+            ],
+            [
+              0.24,
+              1.0,
+              "linear"
+            ],
+            [
+              0.76,
+              1.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.7,
+              "linear"
+            ]
+          ]
+        },
+        "shield_forearm": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.24,
+              -19.0,
+              "linear"
+            ],
+            [
+              0.76,
+              -19.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_impact": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.24,
+              0.0,
+              "linear"
+            ],
+            [
+              0.76,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_upper": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.24,
+              9.0,
+              "linear"
+            ],
+            [
+              0.76,
+              9.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "torso": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.24,
+              8.0,
+              "linear"
+            ],
+            [
+              0.76,
+              8.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        }
+      }
+    },
+    "shield_bash": {
+      "loop": false,
+      "frames": 12,
+      "duration_ms": 88,
+      "channels": {
+        "baton": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.23,
+              0.0,
+              "linear"
+            ],
+            [
+              0.47,
+              0.0,
+              "linear"
+            ],
+            [
+              0.65,
+              0.0,
+              "linear"
+            ],
+            [
+              0.83,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_charge": {
+          "keys": [
+            [
+              0.0,
+              0.6,
+              "linear"
+            ],
+            [
+              0.23,
+              0.6,
+              "linear"
+            ],
+            [
+              0.47,
+              0.6,
+              "linear"
+            ],
+            [
+              0.65,
+              0.6,
+              "linear"
+            ],
+            [
+              0.83,
+              0.6,
+              "linear"
+            ],
+            [
+              1.0,
+              0.6,
+              "linear"
+            ]
+          ]
+        },
+        "baton_forearm": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.23,
+              0.0,
+              "linear"
+            ],
+            [
+              0.47,
+              0.0,
+              "linear"
+            ],
+            [
+              0.65,
+              0.0,
+              "linear"
+            ],
+            [
+              0.83,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.23,
+              0.0,
+              "linear"
+            ],
+            [
+              0.47,
+              0.0,
+              "linear"
+            ],
+            [
+              0.65,
+              0.0,
+              "linear"
+            ],
+            [
+              0.83,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_upper": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.23,
+              0.0,
+              "linear"
+            ],
+            [
+              0.47,
+              0.0,
+              "linear"
+            ],
+            [
+              0.65,
+              0.0,
+              "linear"
+            ],
+            [
+              0.83,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_boot": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.23,
+              0.0,
+              "linear"
+            ],
+            [
+              0.47,
+              0.0,
+              "linear"
+            ],
+            [
+              0.65,
+              0.0,
+              "linear"
+            ],
+            [
+              0.83,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_shin": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.23,
+              0.0,
+              "linear"
+            ],
+            [
+              0.47,
+              -9.0,
+              "linear"
+            ],
+            [
+              0.65,
+              0.0,
+              "linear"
+            ],
+            [
+              0.83,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_thigh": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.23,
+              14.0,
+              "linear"
+            ],
+            [
+              0.47,
+              20.0,
+              "linear"
+            ],
+            [
+              0.65,
+              24.0,
+              "linear"
+            ],
+            [
+              0.83,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "head": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.23,
+              0.0,
+              "linear"
+            ],
+            [
+              0.47,
+              0.0,
+              "linear"
+            ],
+            [
+              0.65,
+              0.0,
+              "linear"
+            ],
+            [
+              0.83,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "hips": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.23,
+              0.0,
+              "linear"
+            ],
+            [
+              0.47,
+              0.0,
+              "linear"
+            ],
+            [
+              0.65,
+              0.0,
+              "linear"
+            ],
+            [
+              0.83,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_boot": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.23,
+              0.0,
+              "linear"
+            ],
+            [
+              0.47,
+              0.0,
+              "linear"
+            ],
+            [
+              0.65,
+              0.0,
+              "linear"
+            ],
+            [
+              0.83,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_shin": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.23,
+              0.0,
+              "linear"
+            ],
+            [
+              0.47,
+              22.0,
+              "linear"
+            ],
+            [
+              0.65,
+              0.0,
+              "linear"
+            ],
+            [
+              0.83,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_thigh": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.23,
+              -11.0,
+              "linear"
+            ],
+            [
+              0.47,
+              -24.0,
+              "linear"
+            ],
+            [
+              0.65,
+              -19.0,
+              "linear"
+            ],
+            [
+              0.83,
+              8.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "root_x": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.23,
+              -8.0,
+              "linear"
+            ],
+            [
+              0.47,
+              27.0,
+              "linear"
+            ],
+            [
+              0.65,
+              39.0,
+              "linear"
+            ],
+            [
+              0.83,
+              28.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "root_y": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.23,
+              6.0,
+              "linear"
+            ],
+            [
+              0.47,
+              -3.0,
+              "linear"
+            ],
+            [
+              0.65,
+              -2.0,
+              "linear"
+            ],
+            [
+              0.83,
+              12.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.23,
+              8.0,
+              "linear"
+            ],
+            [
+              0.47,
+              32.0,
+              "linear"
+            ],
+            [
+              0.65,
+              31.0,
+              "linear"
+            ],
+            [
+              0.83,
+              25.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_charge": {
+          "keys": [
+            [
+              0.0,
+              0.7,
+              "linear"
+            ],
+            [
+              0.23,
+              0.9,
+              "linear"
+            ],
+            [
+              0.47,
+              1.0,
+              "linear"
+            ],
+            [
+              0.65,
+              0.95,
+              "linear"
+            ],
+            [
+              0.83,
+              0.15,
+              "linear"
+            ],
+            [
+              1.0,
+              0.4,
+              "linear"
+            ]
+          ]
+        },
+        "shield_forearm": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.23,
+              10.0,
+              "linear"
+            ],
+            [
+              0.47,
+              -17.0,
+              "linear"
+            ],
+            [
+              0.65,
+              -18.0,
+              "linear"
+            ],
+            [
+              0.83,
+              30.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_impact": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.23,
+              0.0,
+              "linear"
+            ],
+            [
+              0.47,
+              1.0,
+              "linear"
+            ],
+            [
+              0.65,
+              0.3,
+              "linear"
+            ],
+            [
+              0.83,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_upper": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.23,
+              10.0,
+              "linear"
+            ],
+            [
+              0.47,
+              -28.0,
+              "linear"
+            ],
+            [
+              0.65,
+              -27.0,
+              "linear"
+            ],
+            [
+              0.83,
+              15.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "torso": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.23,
+              -8.0,
+              "linear"
+            ],
+            [
+              0.47,
+              13.0,
+              "linear"
+            ],
+            [
+              0.65,
+              14.0,
+              "linear"
+            ],
+            [
+              0.83,
+              19.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        }
+      }
+    },
+    "baton_attack": {
+      "loop": false,
+      "frames": 11,
+      "duration_ms": 90,
+      "channels": {
+        "baton": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.2,
+              -12.0,
+              "linear"
+            ],
+            [
+              0.42,
+              -18.0,
+              "linear"
+            ],
+            [
+              0.54,
+              -34.0,
+              "linear"
+            ],
+            [
+              0.73,
+              -45.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_charge": {
+          "keys": [
+            [
+              0.0,
+              0.6,
+              "linear"
+            ],
+            [
+              0.2,
+              0.8,
+              "linear"
+            ],
+            [
+              0.42,
+              1.0,
+              "linear"
+            ],
+            [
+              0.54,
+              1.0,
+              "linear"
+            ],
+            [
+              0.73,
+              1.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.5,
+              "linear"
+            ]
+          ]
+        },
+        "baton_forearm": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.2,
+              -18.0,
+              "linear"
+            ],
+            [
+              0.42,
+              -14.0,
+              "linear"
+            ],
+            [
+              0.54,
+              27.0,
+              "linear"
+            ],
+            [
+              0.73,
+              22.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.2,
+              0.0,
+              "linear"
+            ],
+            [
+              0.42,
+              0.0,
+              "linear"
+            ],
+            [
+              0.54,
+              -5.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_upper": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.2,
+              100.0,
+              "linear"
+            ],
+            [
+              0.42,
+              126.0,
+              "linear"
+            ],
+            [
+              0.54,
+              217.0,
+              "linear"
+            ],
+            [
+              0.73,
+              243.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_boot": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.2,
+              0.0,
+              "linear"
+            ],
+            [
+              0.42,
+              0.0,
+              "linear"
+            ],
+            [
+              0.54,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_shin": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.2,
+              0.0,
+              "linear"
+            ],
+            [
+              0.42,
+              0.0,
+              "linear"
+            ],
+            [
+              0.54,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_thigh": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.2,
+              0.0,
+              "linear"
+            ],
+            [
+              0.42,
+              0.0,
+              "linear"
+            ],
+            [
+              0.54,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "head": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.2,
+              0.0,
+              "linear"
+            ],
+            [
+              0.42,
+              0.0,
+              "linear"
+            ],
+            [
+              0.54,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "hips": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.2,
+              0.0,
+              "linear"
+            ],
+            [
+              0.42,
+              0.0,
+              "linear"
+            ],
+            [
+              0.54,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_boot": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.2,
+              0.0,
+              "linear"
+            ],
+            [
+              0.42,
+              0.0,
+              "linear"
+            ],
+            [
+              0.54,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_shin": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.2,
+              0.0,
+              "linear"
+            ],
+            [
+              0.42,
+              0.0,
+              "linear"
+            ],
+            [
+              0.54,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_thigh": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.2,
+              0.0,
+              "linear"
+            ],
+            [
+              0.42,
+              0.0,
+              "linear"
+            ],
+            [
+              0.54,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "root_x": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.2,
+              0.0,
+              "linear"
+            ],
+            [
+              0.42,
+              0.0,
+              "linear"
+            ],
+            [
+              0.54,
+              8.0,
+              "linear"
+            ],
+            [
+              0.73,
+              12.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "root_y": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.2,
+              0.0,
+              "linear"
+            ],
+            [
+              0.42,
+              0.0,
+              "linear"
+            ],
+            [
+              0.54,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.2,
+              -8.0,
+              "linear"
+            ],
+            [
+              0.42,
+              0.0,
+              "linear"
+            ],
+            [
+              0.54,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_charge": {
+          "keys": [
+            [
+              0.0,
+              0.7,
+              "linear"
+            ],
+            [
+              0.2,
+              0.7,
+              "linear"
+            ],
+            [
+              0.42,
+              0.7,
+              "linear"
+            ],
+            [
+              0.54,
+              0.7,
+              "linear"
+            ],
+            [
+              0.73,
+              0.7,
+              "linear"
+            ],
+            [
+              1.0,
+              0.7,
+              "linear"
+            ]
+          ]
+        },
+        "shield_forearm": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.2,
+              0.0,
+              "linear"
+            ],
+            [
+              0.42,
+              0.0,
+              "linear"
+            ],
+            [
+              0.54,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_impact": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.2,
+              0.0,
+              "linear"
+            ],
+            [
+              0.42,
+              0.0,
+              "linear"
+            ],
+            [
+              0.54,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_upper": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.2,
+              0.0,
+              "linear"
+            ],
+            [
+              0.42,
+              0.0,
+              "linear"
+            ],
+            [
+              0.54,
+              0.0,
+              "linear"
+            ],
+            [
+              0.73,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "torso": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.2,
+              0.0,
+              "linear"
+            ],
+            [
+              0.42,
+              -6.0,
+              "linear"
+            ],
+            [
+              0.54,
+              8.0,
+              "linear"
+            ],
+            [
+              0.73,
+              13.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        }
+      }
+    },
+    "recovery": {
+      "loop": false,
+      "frames": 8,
+      "duration_ms": 130,
+      "channels": {
+        "baton": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.7,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_charge": {
+          "keys": [
+            [
+              0.0,
+              0.12,
+              "linear"
+            ],
+            [
+              0.7,
+              0.12,
+              "linear"
+            ],
+            [
+              1.0,
+              0.6,
+              "linear"
+            ]
+          ]
+        },
+        "baton_forearm": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.7,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.7,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_upper": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.7,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_boot": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.7,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_shin": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.7,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_thigh": {
+          "keys": [
+            [
+              0.0,
+              -9.0,
+              "linear"
+            ],
+            [
+              0.7,
+              -9.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "head": {
+          "keys": [
+            [
+              0.0,
+              12.0,
+              "linear"
+            ],
+            [
+              0.7,
+              12.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "hips": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.7,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_boot": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.7,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_shin": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.7,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_thigh": {
+          "keys": [
+            [
+              0.0,
+              10.0,
+              "linear"
+            ],
+            [
+              0.7,
+              10.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "root_x": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.7,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "root_y": {
+          "keys": [
+            [
+              0.0,
+              9.0,
+              "linear"
+            ],
+            [
+              0.7,
+              9.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield": {
+          "keys": [
+            [
+              0.0,
+              41.0,
+              "linear"
+            ],
+            [
+              0.7,
+              41.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_charge": {
+          "keys": [
+            [
+              0.0,
+              0.08,
+              "linear"
+            ],
+            [
+              0.7,
+              0.08,
+              "linear"
+            ],
+            [
+              1.0,
+              0.7,
+              "linear"
+            ]
+          ]
+        },
+        "shield_forearm": {
+          "keys": [
+            [
+              0.0,
+              24.0,
+              "linear"
+            ],
+            [
+              0.7,
+              24.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_impact": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.7,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_upper": {
+          "keys": [
+            [
+              0.0,
+              13.0,
+              "linear"
+            ],
+            [
+              0.7,
+              13.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "torso": {
+          "keys": [
+            [
+              0.0,
+              14.0,
+              "linear"
+            ],
+            [
+              0.7,
+              14.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        }
+      }
+    },
+    "hit": {
+      "loop": false,
+      "frames": 5,
+      "duration_ms": 92,
+      "channels": {
+        "baton": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.4,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_charge": {
+          "keys": [
+            [
+              0.0,
+              0.6,
+              "linear"
+            ],
+            [
+              0.4,
+              0.6,
+              "linear"
+            ],
+            [
+              1.0,
+              0.6,
+              "linear"
+            ]
+          ]
+        },
+        "baton_forearm": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.4,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.4,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_upper": {
+          "keys": [
+            [
+              0.0,
+              22.0,
+              "linear"
+            ],
+            [
+              0.4,
+              15.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_boot": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.4,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_shin": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.4,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_thigh": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.4,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "head": {
+          "keys": [
+            [
+              0.0,
+              -19.0,
+              "linear"
+            ],
+            [
+              0.4,
+              -12.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "hips": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.4,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_boot": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.4,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_shin": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.4,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_thigh": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.4,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "root_x": {
+          "keys": [
+            [
+              0.0,
+              -8.0,
+              "linear"
+            ],
+            [
+              0.4,
+              -4.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "root_y": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.4,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield": {
+          "keys": [
+            [
+              0.0,
+              18.0,
+              "linear"
+            ],
+            [
+              0.4,
+              12.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_charge": {
+          "keys": [
+            [
+              0.0,
+              0.15,
+              "linear"
+            ],
+            [
+              0.4,
+              0.15,
+              "linear"
+            ],
+            [
+              1.0,
+              0.7,
+              "linear"
+            ]
+          ]
+        },
+        "shield_forearm": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.4,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_impact": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.4,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_upper": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.4,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "torso": {
+          "keys": [
+            [
+              0.0,
+              -18.0,
+              "linear"
+            ],
+            [
+              0.4,
+              -11.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        }
+      }
+    },
+    "death": {
+      "loop": false,
+      "frames": 9,
+      "duration_ms": 115,
+      "channels": {
+        "baton": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_charge": {
+          "keys": [
+            [
+              0.0,
+              0.6,
+              "linear"
+            ],
+            [
+              0.5,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_forearm": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_hand": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "baton_upper": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              30.0,
+              "linear"
+            ],
+            [
+              1.0,
+              68.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_boot": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_shin": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              38.0,
+              "linear"
+            ],
+            [
+              1.0,
+              58.0,
+              "linear"
+            ]
+          ]
+        },
+        "far_thigh": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              -26.0,
+              "linear"
+            ],
+            [
+              1.0,
+              -43.0,
+              "linear"
+            ]
+          ]
+        },
+        "head": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              25.0,
+              "linear"
+            ],
+            [
+              1.0,
+              32.0,
+              "linear"
+            ]
+          ]
+        },
+        "hips": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_boot": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_shin": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              -32.0,
+              "linear"
+            ],
+            [
+              1.0,
+              -52.0,
+              "linear"
+            ]
+          ]
+        },
+        "near_thigh": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              30.0,
+              "linear"
+            ],
+            [
+              1.0,
+              46.0,
+              "linear"
+            ]
+          ]
+        },
+        "root_x": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "root_y": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              20.0,
+              "linear"
+            ],
+            [
+              1.0,
+              37.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              45.0,
+              "linear"
+            ],
+            [
+              1.0,
+              65.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_charge": {
+          "keys": [
+            [
+              0.0,
+              0.7,
+              "linear"
+            ],
+            [
+              0.5,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_forearm": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_impact": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              0.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "shield_upper": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              17.0,
+              "linear"
+            ],
+            [
+              1.0,
+              35.0,
+              "linear"
+            ]
+          ]
+        },
+        "torso": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.5,
+              23.0,
+              "linear"
+            ],
+            [
+              1.0,
+              31.0,
+              "linear"
+            ]
+          ]
+        }
+      }
+    }
+  },
+  "actor_metadata": {
+    "actor": {
+      "character_id": "npc_shock_warden",
+      "display_name": "Shock Warden"
+    },
+    "authoring_description": {
+      "visual_inspirations": [
+        "Short, wide armored soldier with an oversized electrified riot shield.",
+        "A black coat, steel mask, heavy boots, and a steel electric baton.",
+        "Fictional gear emblems mark the authoritarian unit."
+      ],
+      "rigging_notes": [
+        "The SVG owns every part shape and joint marker.",
+        "The shield, its electrical rim, and the baton have separate controls.",
+        "The shield-bash and baton-swing rows include warning and recovery poses."
+      ]
+    },
+    "body": {
+      "body_plan": "HumanoidBiped",
+      "body_kind": "Standard",
+      "mass_class": "Heavy",
+      "traits": [
+        "human",
+        "soldier",
+        "enemy",
+        "evil",
+        "armored"
+      ],
+      "locomotion_hint": "Walk"
+    },
+    "visual": {
+      "default_pose": "idle"
+    },
+    "animation_bindings": {
+      "default": {
+        "animation": "idle",
+        "events": []
+      },
+      "locomotion.walk": {
+        "animation": "walk",
+        "events": []
+      },
+      "combat.guard": {
+        "animation": "guard",
+        "events": []
+      },
+      "combat.block": {
+        "animation": "brace",
+        "events": []
+      },
+      "attack.shield_bash": {
+        "animation": "shield_bash",
+        "events": []
+      },
+      "attack.baton": {
+        "animation": "baton_attack",
+        "events": []
+      },
+      "reaction.exposed": {
+        "animation": "recovery",
+        "events": []
+      },
+      "reaction.hit": {
+        "animation": "hit",
+        "events": []
+      },
+      "life.death": {
+        "animation": "death",
+        "events": []
+      }
+    },
+    "tags": [
+      "human",
+      "soldier",
+      "enemy",
+      "evil",
+      "armored",
+      "svg_rigged",
+      "concept"
+    ]
+  }
+}
