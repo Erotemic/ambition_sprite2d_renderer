@@ -605,7 +605,11 @@ ARM_ROOT_R = (1258.0, 506.0)
 #: half length. A flat line (before the stance lifts it), over the giant's
 #: right shoulder and out from it: a body that comes UP out of it is over the
 #: height of the giant's back, and can go to the side and stand there.
-PUNCH_LINE = ((1382.0, 340.0), 100.0)
+#: Its opening starts 16 past the arm's root (1258 + 46): what is under the
+#: opening and past it is only the arm that went in, so the game can cut the
+#: giant at the line and draw that at the far line. It is wide: the giant
+#: makes his portals as big as his fist needs.
+PUNCH_LINE = ((1451.0, 340.0), 131.0)
 #: The two lines the arms are in from the end of phase 1: each stands up,
 #: past the elbow. Their middles (before the stance lifts them).
 CLAMP_LINE_L = (676.0, 580.0)
@@ -635,12 +639,12 @@ def _clamped_arms(amount=1.0):
 def _punch_arm(wrist, first, last, through):
     """The right arm as one curve from its shoulder to ``wrist``. ``first`` is
     its first handle from the shoulder, ``last`` is the way its end goes (the
-    fore arm, to the fist). ``through``: the fist went down into the punch's
-    line, and what is under the line is not drawn (it is at the far line)."""
-    (x, y), _half = PUNCH_LINE
+    fore arm, to the fist). The arm is drawn whole, through its line or not:
+    the game cuts the giant at the portal and draws what went in at the far
+    line (`docs/planning/engine/portals-a-body-in-two-places.md`)."""
+    del through
     size = math.hypot(*last) or 1.0
     return dict(kind="soft", name="arm-right", toward=(last[0] / size, last[1] / size),
-                cut=("hole", x - 70.0, y, x + 70.0, y + 900.0) if through else None,
                 handles=(ARM_ROOT_R, (ARM_ROOT_R[0] + first[0], ARM_ROOT_R[1] + first[1]), (wrist[0] - last[0], wrist[1] - last[1]), wrist))
 
 
@@ -655,7 +659,10 @@ _P_OUT = ((1480.0, 520.0), (150.0, 60.0), (100.0, -90.0))
 _P_HIGH = ((1460.0, 250.0), (130.0, -120.0), (-120.0, -40.0))
 _P_UP = ((PUNCH_LINE[0][0], PUNCH_LINE[0][1] - 125.0), (-10.0, -300.0), (0.0, 120.0))
 _P_BACK = ((PUNCH_LINE[0][0], PUNCH_LINE[0][1] - 155.0), (-14.0, -320.0), (0.0, 120.0))
-_P_DOWN = ((PUNCH_LINE[0][0], PUNCH_LINE[0][1] + 145.0), (-6.0, -330.0), (0.0, 220.0))
+# Down: the fist's middle 150 under the line (94 + the 56 to the fist), which
+# is 96.2 in the world, where the fist lands on the floor under the far line
+# (`arms::LINE_OVER` of the game).
+_P_DOWN = ((PUNCH_LINE[0][0], PUNCH_LINE[0][1] + 94.0), (-6.0, -330.0), (0.0, 220.0))
 #: How far past its line the wrist is at the end of the blow. The fist's own
 #: sheet draws the far side of the punch from this.
 PUNCH_DEPTH_DOWN = _P_DOWN[0][1] - PUNCH_LINE[0][1]
