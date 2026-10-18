@@ -9,7 +9,11 @@ silently inflates combat geometry.
 
 from __future__ import annotations
 
+import math
+from dataclasses import dataclass
 from typing import Iterable, Sequence
+
+from ...authoring.swing_effects import _hull
 
 RIG_SIZE = (128, 192)
 RENDER_SCALE = 3
@@ -321,12 +325,103 @@ PCA_MOVE_BLUEPRINT = {
 }
 
 
+@dataclass(frozen=True)
+class Strike:
+    """Where an attack's business end is, so its hit area follows the art.
+
+    ``limbs`` are the bones that land it (a hand or foot: the segment from its
+    joint to its tip). ``reach`` carries the hit past the tip along the limb,
+    for the blast the attack throws; ``radius`` is how thick the hit is around
+    the limb. ``rise`` raises a column of that height above each limb end, for
+    an eruption. ``contact`` are the frames it lands on; frames before and
+    after hold the first and last contact shape, so a move whose gameplay
+    window opens early or lingers still hits where the blow is drawn, never
+    behind him. ``sweep`` adds the previous contact frame's limb, so a fast arc
+    covers the ground it travelled between drawings. ``apart`` gives each limb
+    its own shape, for blows that land on both sides of him at once.
+    ``toward`` sends the reach in a fixed world direction (degrees, 90 = down)
+    instead of along the limb, for a blow the limb does not point at.
+    """
+
+    limbs: tuple[str, ...]
+    contact: tuple[int, ...]
+    reach: float = 6.0
+    radius: float = 5.0
+    rise: float = 0.0
+    sweep: bool = False
+    apart: bool = False
+    toward: float | None = None
+
+
+# Rig logical units (the 128x192 canvas). The reaches are generous where an
+# effect flies off the blow (pca_effects.py draws them).
+STRIKES = {
+    "jab": Strike(("far_arm_hand",), (2,), reach=6.0),
+    "punch": Strike(("near_arm_hand",), (2, 3), reach=7.0),
+    "slash": Strike(("near_arm_hand",), (2, 3, 4), reach=5.0, radius=6.0, sweep=True),
+    "attack_side": Strike(("far_leg_foot",), (2, 3), reach=14.0, radius=7.0),
+    "attack_up": Strike(("far_arm_hand",), (2, 3), reach=12.0, radius=6.0, sweep=True),
+    "attack_down": Strike(("far_leg_foot",), (2, 3), reach=16.0, radius=8.0),
+    "dash_attack": Strike(("near_arm_hand", "far_arm_hand"), (2, 3, 4), reach=14.0, radius=7.0),
+    "smash_forward": Strike(("near_arm_hand", "far_arm_hand"), (3, 4, 5), reach=24.0, radius=9.0),
+    "smash_up": Strike(("near_arm_hand", "far_arm_hand"), (3, 4, 5), reach=30.0, radius=9.0),
+    # The claws slam either side of him and a column erupts above each one.
+    "smash_down": Strike(
+        ("near_arm_hand", "far_arm_hand"), (3, 4, 5), reach=4.0, radius=14.0, rise=70.0, apart=True,
+    ),
+    "air_forward": Strike(("near_arm_hand", "far_arm_hand"), (2, 3), reach=12.0, radius=7.0, sweep=True),
+    "air_back": Strike(("far_arm_hand",), (2, 3), reach=12.0, radius=7.0, sweep=True),
+    "air_up": Strike(("near_arm_hand",), (2, 3), reach=12.0, radius=7.0, sweep=True),
+    # A stomp: the cells drop below his tucked feet.
+    "air_down": Strike(("near_leg_foot", "far_leg_foot"), (2, 3, 4), reach=16.0, radius=7.0, toward=90.0),
+    "grab": Strike(("near_arm_hand", "far_arm_hand"), (2, 3), reach=3.0, radius=6.0),
+    "pummel": Strike(("near_arm_hand",), (2,), reach=3.0, radius=6.0),
+    "throw_forward": Strike(("near_arm_hand", "far_arm_hand"), (4, 5), reach=10.0, radius=7.0),
+    "throw_up": Strike(("near_arm_hand", "far_arm_hand"), (4, 5), reach=10.0, radius=7.0),
+    "ledge_attack": Strike(("near_arm_hand", "far_arm_hand"), (3, 4), reach=8.0, radius=6.0),
+    "ledge_getup_attack": Strike(("near_arm_hand", "far_arm_hand"), (3, 4), reach=8.0, radius=6.0),
+    "item_swing": Strike(("near_arm_hand",), (2, 3, 4), reach=8.0, radius=7.0, sweep=True),
+}
+
+
+def strike_points(limbs: Sequence[tuple[tuple[float, float], float, float]], strike: Strike) -> list:
+    """Hit-area outline points around limbs given as (joint, angle_deg, length)."""
+    points = []
+    ring = [(math.cos(a), math.sin(a)) for a in (k * math.tau / 8.0 for k in range(8))]
+    for (x, y), angle, length in limbs:
+        dx, dy = math.cos(math.radians(angle)), math.sin(math.radians(angle))
+        tip = (x + dx * length, y + dy * length)
+        if strike.toward is not None:
+            dx, dy = math.cos(math.radians(strike.toward)), math.sin(math.radians(strike.toward))
+        ends = [(x, y), tip, (tip[0] + dx * strike.reach, tip[1] + dy * strike.reach)]
+        if strike.rise:
+            ends += [(ex, ey - strike.rise) for ex, ey in ends]
+        for ex, ey in ends:
+            points.extend((ex + cx * strike.radius, ey + cy * strike.radius) for cx, cy in ring)
+    return points
+
+
+def hull_px(points: Iterable[tuple[float, float]]) -> list[tuple[float, float]]:
+    """A convex hull of rig-space points, in published frame pixels."""
+    return [(float(_px(x)), float(_px(y))) for x, y in _hull(list(points))]
+
+
+def bbox_of(poly: Sequence[tuple[float, float]]) -> dict:
+    xs, ys = [p[0] for p in poly], [p[1] for p in poly]
+    return {"x": int(min(xs)), "y": int(min(ys)), "w": int(max(xs) - min(xs)), "h": int(max(ys) - min(ys))}
+
+
 __all__ = [
     "ATTACK_HITBOXES",
+    "STRIKES",
+    "Strike",
     "PADDING",
     "PCA_MOVE_BLUEPRINT",
     "RENDER_SCALE",
     "RIG_SIZE",
+    "bbox_of",
     "body_metrics",
+    "hull_px",
     "hurtbox_parts_for_rows",
+    "strike_points",
 ]

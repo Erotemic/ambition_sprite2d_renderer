@@ -13,6 +13,7 @@ from typing import Mapping, Sequence
 
 from ...profiling import profile
 
+from . import _fx_blasts as fxb
 from ._svg_fighter_effects import FxCanvas, bone_origin, clamp01, fade, pulse, smooth
 
 Color = tuple[int, int, int, int]
@@ -33,10 +34,14 @@ CERAMIC: Color = (239, 232, 207, 255)
 EFFECTFUL_ANIMATIONS = frozenset(
     {
         "parry",
+        "jab",
+        "punch",
+        "slash",
         "dash_attack",
         "attack_side",
         "attack_up",
         "attack_down",
+        "smash_charge",
         "smash_forward",
         "smash_up",
         "smash_down",
@@ -317,47 +322,172 @@ def _parry(canvas: FxCanvas, t: float, world: World) -> None:
         _cell(canvas, (core[0] + ix * 20.0, core[1] + iy * 26.0), 5.0, ACID, alpha=0.70 * q)
 
 
-@profile
-def _smash_forward(canvas: FxCanvas, t: float, world: World, *, front: bool) -> None:
-    hand, _ = _hands(world)
-    q = _window(t, 0.62)
-    if not front:
-        canvas.line([hand, (131.0, hand[1])], fade(EMERALD, 0.34 * q), 3.0)
-    else:
-        for i in range(5):
-            x = hand[0] + 8.0 + i * 10.0
-            size = 6.0 + i * 1.4
-            _cell(canvas, (x, hand[1] + (i % 2 - 0.5) * 7.0), size, ACID if i < 3 else VIOLET_LIGHT, alpha=(0.82 - i * 0.08) * q)
-        canvas.arrow(hand, (134.0, hand[1]), fade(ACID_LIGHT, 0.72 * q), 1.1, 4.5)
+# --- Ground attacks: blasts from the shared vocabulary ----------------------
+#
+# Each attack anchors its blast on the limb that lands it (solved `world`), and
+# maps clip time onto the blast's own life with `window`. One-shot frames sit
+# at i/(n-1), so the windows below are written around each row's contact
+# frames. PCA's blasts are made of lattice cells; sparks only as accents.
+
+# A dark emerald rim keeps the pale cells legible on a pale stage.
+PCA_CELLS = fxb.BlastStyle(particle="cell", core=ACID_LIGHT, body=ACID, edge=VIOLET_LIGHT,
+                           outline=EMERALD_DARK, fill=0.9, grid=6.0)
+PCA_CELLS_COOL = fxb.BlastStyle(particle="cell", core=ACID_LIGHT, body=CYAN, edge=VIOLET,
+                                outline=EMERALD_DARK, fill=0.9, grid=6.0, seed=3)
+PCA_SPARKS = fxb.BlastStyle(particle="spark", core=ACID_LIGHT, body=ACID, edge=EMERALD, outline=EMERALD_DARK, seed=5)
+GROUND_Y = 176.0
 
 
-@profile
+def _bone_lengths() -> Mapping[str, float]:
+    global _LENGTHS
+    if _LENGTHS is None:
+        # Late import: the target module imports this one.
+        from .perfect_cellular_automaton import _doc
+
+        _LENGTHS = {name: bone.length for name, bone in _doc().build_skeleton().bones.items()}
+    return _LENGTHS
+
+
+_LENGTHS: Mapping[str, float] | None = None
+
+
+def _tip(world: World, name: str, frac: float = 0.75, fallback: Point = (64.0, 100.0)) -> Point:
+    """A point ``frac`` of the way along a hand/foot bone: its business end."""
+    origin = bone_origin(world, name, fallback)
+    angle = getattr(world.get(name), "angle", None)
+    if angle is None:
+        return origin
+    length = _bone_lengths().get(name, 0.0) * frac
+    a = math.radians(float(angle))
+    return origin[0] + math.cos(a) * length, origin[1] + math.sin(a) * length
+
+
+def _palms(world: World) -> Point:
+    a = _tip(world, "near_arm_hand", 0.5)
+    b = _tip(world, "far_arm_hand", 0.5)
+    return (a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5
+
+
+def _jab(canvas: FxCanvas, t: float, world: World) -> None:
+    fxb.impact_pop(canvas, fxb.window(t, 0.40, 0.95), _tip(world, "far_arm_hand"), PCA_CELLS, size=10.0)
+
+
+def _punch(canvas: FxCanvas, t: float, world: World) -> None:
+    fist = _tip(world, "near_arm_hand")
+    fxb.impact_pop(canvas, fxb.window(t, 0.30, 0.95), fist, PCA_CELLS, size=12.0)
+    fxb.ripple_arcs(canvas, fxb.window(t, 0.36, 1.0), fist, PCA_CELLS_COOL, spread=64.0, reach=30.0, count=2)
+
+
+#: The slash's trail: its head stops where the rake's follow-through ends
+#: (later frames are the recovery, which must not draw backwards), its tail
+#: lags behind and catches up, so the trail travels and leaves nothing ahead.
+_SLASH_START, _SLASH_HEAD_END, _SLASH_LAG = 0.15, 0.72, 0.30
+
+
+def _slash(canvas: FxCanvas, t: float, world: World) -> None:
+    head = min(t, _SLASH_HEAD_END)
+    tail = max(_SLASH_START, t - _SLASH_LAG)
+    if head - tail < 0.03:
+        return
+    from .perfect_cellular_automaton import _doc
+
+    doc = _doc()
+    steps = 9
+    path = []
+    for i in range(steps + 1):
+        st = tail + (head - tail) * i / steps
+        solved, _ = doc.solve("slash", st)
+        path.append(_tip(solved, "near_arm_hand", 0.9))
+    alpha = 1.0 if t <= _SLASH_HEAD_END else clamp01(1.0 - (t - _SLASH_HEAD_END) / (1.0 - _SLASH_HEAD_END))
+    fxb.swept_trail(canvas, path, PCA_CELLS, width=15.0, alpha=alpha, spacing=5.0)
+
+
+def _kick(canvas: FxCanvas, t: float, world: World) -> None:
+    foot = _tip(world, "far_leg_foot", 0.85)
+    u = fxb.window(t, 0.32, 0.92)
+    fxb.shard_burst(canvas, u, foot, PCA_CELLS, radius=28.0, direction=0.0, spread=110.0, count=9, size=6.0)
+    fxb.shockwave_ring(canvas, fxb.window(t, 0.34, 0.80), foot, PCA_CELLS_COOL, radius=12.0, flatten=2.2, width=1.6)
+
+
+def _rising_claw(canvas: FxCanvas, t: float, world: World) -> None:
+    claw = _tip(world, "far_arm_hand", 0.9)
+    fxb.spark_spray(canvas, fxb.window(t, 0.30, 0.90), claw, PCA_SPARKS, direction=-95.0, spread=70.0,
+                    length=36.0, count=10, gravity=12.0, size=4.4)
+    fxb.fan_burst(canvas, fxb.window(t, 0.34, 0.90), claw, PCA_CELLS, direction=-90.0, spread=90.0,
+                  length=22.0, petals=4, width=7.0)
+
+
+def _sweep(canvas: FxCanvas, t: float, world: World) -> None:
+    foot = _tip(world, "far_leg_foot", 0.85)
+    ground = (foot[0], GROUND_Y - 1.0)
+    fxb.fracture(canvas, fxb.window(t, 0.32, 1.0), ground, PCA_CELLS, reach=34.0, directions=(0.0, 172.0), chips=10, rise=18.0)
+    fxb.spark_spray(canvas, fxb.window(t, 0.34, 0.86), ground, PCA_SPARKS, direction=-20.0, spread=30.0,
+                    length=36.0, count=9, gravity=8.0, size=4.2)
+
+
+def _palm_strike(canvas: FxCanvas, t: float, world: World) -> None:
+    palms = _palms(world)
+    fxb.ripple_arcs(canvas, fxb.window(t, 0.26, 0.96), palms, PCA_CELLS, spread=72.0, reach=28.0, count=3)
+    fxb.shockwave_ring(canvas, fxb.window(t, 0.30, 0.78), palms, PCA_CELLS_COOL, radius=13.0, flatten=2.3, width=1.8)
+
+
+def _smash_gather(canvas: FxCanvas, t: float, world: World) -> None:
+    """The held charge: cells keep gathering into the drawn-back hands."""
+    u = ((t * 2.0) % 1.0) * 0.6
+    fxb.implosion_pop(canvas, u, _palms(world), PCA_CELLS, radius=28.0, count=12, pop_at=0.62, size=5.0)
+
+
+def _smash_forward(canvas: FxCanvas, t: float, world: World) -> None:
+    palms = _palms(world)
+    # Gathers through the coil and pops on the thrust frame (t = 3/7).
+    fxb.implosion_pop(canvas, fxb.window(t, 0.05, 0.66), palms, PCA_CELLS_COOL, radius=28.0, count=12, pop_at=0.62, size=5.0)
+    fxb.lattice_bloom(canvas, fxb.window(t, 0.40, 0.98), (palms[0] + 4.0, palms[1]), PCA_CELLS, radius=6, pitch=6.0,
+                      life=3.5, direction=0.0, cone=80.0)
+
+
 def _smash_up(canvas: FxCanvas, t: float, world: World, *, front: bool) -> None:
-    core = _core(world)
-    q = _window(t, 0.58)
+    palms = _palms(world)
     if not front:
-        canvas.line([(core[0], core[1]), (core[0], 12.0)], fade(EMERALD, 0.32 * q), 1.3)
-    else:
-        # Binary branching future tree, still composed of cellular units.
-        levels = ((0.0, 74.0), (-13.0, 57.0), (13.0, 57.0), (-24.0, 37.0), (0.0, 35.0), (24.0, 37.0))
-        for dx, y in levels:
-            _cell(canvas, (core[0] + dx, y), 6.4, ACID if dx >= 0 else CYAN, alpha=0.72 * q)
-        for a, b in (((0, 74), (-13, 57)), ((0, 74), (13, 57)), ((-13, 57), (-24, 37)), ((-13, 57), (0, 35)), ((13, 57), (0, 35)), ((13, 57), (24, 37))):
-            canvas.line([(core[0] + a[0], a[1]), (core[0] + b[0], b[1])], fade(ACID_LIGHT, 0.48 * q), 0.75)
+        fxb.light_pillar(canvas, fxb.window(t, 0.36, 1.0), palms, PCA_CELLS, height=62.0, width=20.0, motes=8)
+        return
+    fxb.shard_burst(canvas, fxb.window(t, 0.40, 0.88), palms, PCA_CELLS_COOL, radius=30.0, direction=-90.0,
+                    spread=120.0, count=9, size=6.0)
 
 
-@profile
+#: The down smash's slam frame (frame 3 of 8): the eruptions stay where the
+#: claws HIT, not where the recovering hands drift to.
+_SLAM_T = 3.0 / 7.0
+
+
 def _smash_down(canvas: FxCanvas, t: float, world: World, *, front: bool) -> None:
+    """Two cell columns erupt from the floor where the claws hit (behind the
+    body, so they flank it); the floor cracks between them (in front)."""
     core = _core(world)
-    q = _window(t, 0.60)
-    y = 151.0
-    if not front:
-        canvas.line([(4.0, y), (124.0, y)], fade(EMERALD, 0.28 * q), 1.0)
-    else:
-        for sign in (-1.0, 1.0):
-            for i in range(5):
-                x = core[0] + sign * (14.0 + i * 11.0)
-                _cell(canvas, (x, y - i * 1.4), 6.0 + 0.6 * i, ACID if i % 2 == 0 else VIOLET_LIGHT, alpha=(0.78 - i * 0.08) * q)
+    from .perfect_cellular_automaton import _doc
+
+    slam, _ = _doc().solve("smash_down", _SLAM_T)
+    hands = (_tip(slam, "near_arm_hand", 0.6), _tip(slam, "far_arm_hand", 0.6))
+    for i, hand in enumerate(hands):
+        style = PCA_CELLS if i else PCA_CELLS_COOL
+        if not front:
+            fxb.eruption(canvas, fxb.window(t, 0.38, 1.0), (hand[0], GROUND_Y), style.with_seed(i), height=96.0, pitch=7.0)
+            continue
+        fxb.shockwave_ring(canvas, fxb.window(t, 0.40, 0.80), (hand[0], GROUND_Y), style, radius=20.0, flatten=0.28, width=1.8)
+    if front:
+        fxb.fracture(canvas, fxb.window(t, 0.38, 0.95), (core[0], GROUND_Y), PCA_CELLS, reach=46.0, chips=10)
+
+
+_GROUND_ATTACKS = {
+    "jab": _jab,
+    "punch": _punch,
+    "slash": _slash,
+    "attack_side": _kick,
+    "attack_up": _rising_claw,
+    "attack_down": _sweep,
+    "dash_attack": _palm_strike,
+    "smash_charge": _smash_gather,
+    "smash_forward": _smash_forward,
+}
 
 
 @profile
@@ -417,8 +547,6 @@ def draw_pca_behind(
         _final_lattice(canvas, t, world, front=False)
     elif animation == "parry":
         _parry(canvas, t, world)
-    elif animation == "smash_forward":
-        _smash_forward(canvas, t, world, front=False)
     elif animation == "smash_up":
         _smash_up(canvas, t, world, front=False)
     elif animation == "smash_down":
@@ -444,19 +572,14 @@ def draw_pca_front(
         _glider_ascent(canvas, t, world, front=True)
     elif animation == "final_smash":
         _final_lattice(canvas, t, world, front=True)
-    elif animation == "smash_forward":
-        _smash_forward(canvas, t, world, front=True)
     elif animation == "smash_up":
         _smash_up(canvas, t, world, front=True)
     elif animation == "smash_down":
         _smash_down(canvas, t, world, front=True)
+    elif animation in _GROUND_ATTACKS:
+        _GROUND_ATTACKS[animation](canvas, t, world)
     elif animation in {"air_neutral", "air_forward", "air_back", "air_up", "air_down"}:
         _air_cells(canvas, t, world, animation)
-    elif animation == "dash_attack":
-        _smash_forward(canvas, t, world, front=True)
-    elif animation in {"attack_side", "attack_up", "attack_down"}:
-        alias = {"attack_side": "air_forward", "attack_up": "air_up", "attack_down": "air_down"}[animation]
-        _air_cells(canvas, t, world, alias)
     elif animation == "blink_out":
         _blink_cells(canvas, t, world, entering=False)
     elif animation == "blink_in":

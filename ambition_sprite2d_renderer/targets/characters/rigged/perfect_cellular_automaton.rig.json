@@ -335,7 +335,54 @@
     732.5,
     494.0
    ],
-   "rest_angle": 100.28
+   "rest_angle": 100.28,
+   "opacity_channel": "far_hand.open",
+   "opacity_default": 1.0
+  },
+  {
+   "name": "swap.far_hand.claw",
+   "bone": "far_arm_hand",
+   "z": 10.05,
+   "kind": "sprite",
+   "include": [
+    "pca-swap-far-hand-claw"
+   ],
+   "pivot": [
+    732.5,
+    494.0
+   ],
+   "rest_angle": 100.28,
+   "opacity_channel": "far_hand.claw"
+  },
+  {
+   "name": "swap.far_hand.palm",
+   "bone": "far_arm_hand",
+   "z": 10.05,
+   "kind": "sprite",
+   "include": [
+    "pca-swap-far-hand-palm"
+   ],
+   "pivot": [
+    732.5,
+    494.0
+   ],
+   "rest_angle": 100.28,
+   "opacity_channel": "far_hand.palm"
+  },
+  {
+   "name": "swap.far_hand.fist",
+   "bone": "far_arm_hand",
+   "z": 10.05,
+   "kind": "sprite",
+   "include": [
+    "pca-swap-far-hand-fist"
+   ],
+   "pivot": [
+    732.5,
+    494.0
+   ],
+   "rest_angle": 100.28,
+   "opacity_channel": "far_hand.fist"
   },
   {
    "name": "torso",
@@ -383,8 +430,6 @@
    "kind": "sprite",
    "include": [
     "path19398",
-    "path53807",
-    "path53809",
     "path41638",
     "path19398-2",
     "path44539",
@@ -398,6 +443,83 @@
     240.5
    ],
    "rest_angle": 0.0
+  },
+  {
+   "name": "eyes",
+   "bone": "head",
+   "z": 30.5,
+   "kind": "sprite",
+   "include": [
+    "path53807",
+    "path53809"
+   ],
+   "pivot": [
+    618.5,
+    240.5
+   ],
+   "rest_angle": 0.0,
+   "opacity_channel": "eyes.open",
+   "opacity_default": 1.0
+  },
+  {
+   "name": "swap.eyes.laugh",
+   "bone": "head",
+   "z": 30.55,
+   "kind": "sprite",
+   "include": [
+    "pca-swap-eyes-laugh"
+   ],
+   "pivot": [
+    618.5,
+    240.5
+   ],
+   "rest_angle": 0.0,
+   "opacity_channel": "eyes.laugh"
+  },
+  {
+   "name": "swap.eyes.wide",
+   "bone": "head",
+   "z": 30.55,
+   "kind": "sprite",
+   "include": [
+    "pca-swap-eyes-wide"
+   ],
+   "pivot": [
+    618.5,
+    240.5
+   ],
+   "rest_angle": 0.0,
+   "opacity_channel": "eyes.wide"
+  },
+  {
+   "name": "swap.eyes.smug",
+   "bone": "head",
+   "z": 30.55,
+   "kind": "sprite",
+   "include": [
+    "pca-swap-eyes-smug"
+   ],
+   "pivot": [
+    618.5,
+    240.5
+   ],
+   "rest_angle": 0.0,
+   "opacity_channel": "eyes.smug"
+  },
+  {
+   "name": "swap.eyes.fierce",
+   "bone": "head",
+   "z": 30.55,
+   "kind": "sprite",
+   "include": [
+    "pca-swap-eyes-fierce"
+   ],
+   "pivot": [
+    618.5,
+    240.5
+   ],
+   "rest_angle": 0.0,
+   "opacity_channel": "eyes.fierce"
   },
   {
    "name": "near_leg_u",
@@ -491,7 +613,54 @@
     490.0,
     503.0
    ],
-   "rest_angle": 78.917
+   "rest_angle": 78.917,
+   "opacity_channel": "near_hand.open",
+   "opacity_default": 1.0
+  },
+  {
+   "name": "swap.near_hand.claw",
+   "bone": "near_arm_hand",
+   "z": 62.05,
+   "kind": "sprite",
+   "include": [
+    "pca-swap-near-hand-claw"
+   ],
+   "pivot": [
+    490.0,
+    503.0
+   ],
+   "rest_angle": 78.917,
+   "opacity_channel": "near_hand.claw"
+  },
+  {
+   "name": "swap.near_hand.palm",
+   "bone": "near_arm_hand",
+   "z": 62.05,
+   "kind": "sprite",
+   "include": [
+    "pca-swap-near-hand-palm"
+   ],
+   "pivot": [
+    490.0,
+    503.0
+   ],
+   "rest_angle": 78.917,
+   "opacity_channel": "near_hand.palm"
+  },
+  {
+   "name": "swap.near_hand.fist",
+   "bone": "near_arm_hand",
+   "z": 62.05,
+   "kind": "sprite",
+   "include": [
+    "pca-swap-near-hand-fist"
+   ],
+   "pivot": [
+    490.0,
+    503.0
+   ],
+   "rest_angle": 78.917,
+   "opacity_channel": "near_hand.fist"
   }
  ],
  "ik_legs": [
@@ -32105,6 +32274,12 @@
     },
     "far_arm_hand": {
      "const": -20
+    },
+    "eyes.open": {
+     "const": 0.0
+    },
+    "eyes.laugh": {
+     "const": 1.0
     }
    }
   },

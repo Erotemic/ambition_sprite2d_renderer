@@ -34,8 +34,12 @@ from .pca_gameplay import (
     PCA_MOVE_BLUEPRINT,
     RENDER_SCALE,
     RIG_SIZE,
+    STRIKES,
+    bbox_of,
     body_metrics as authored_body_metrics,
+    hull_px,
     hurtbox_parts_for_rows,
+    strike_points,
 )
 from .pca_motion import FIGHTER_MOTION_COVERAGE, PCA_ROWS
 
@@ -203,6 +207,53 @@ def frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
     return {"anchors": anchors}
 
 
+def _limbs(world, doc: RigDocument, names) -> list:
+    bones = doc.build_skeleton().bones
+    return [(world[n].origin, world[n].angle, bones[n].length) for n in names]
+
+
+@profile
+def attack_hitboxes() -> dict:
+    """Every attack's hit area; a row in `STRIKES` follows its posed limbs frame by frame.
+
+    Each frame of a striking row publishes the hull around the limbs that land
+    it, held at the first and last contact shape outside the contact frames.
+    The row's coarse `poly` is the hull of all its contact frames: the shape a
+    consumer that cannot sample frames uses.
+    """
+    doc = _doc()
+    out = deepcopy(ATTACK_HITBOXES)
+    frame_counts = {name: frames for name, frames, _duration in ROWS}
+    for row, strike in STRIKES.items():
+        n = frame_counts[row]
+        limbs = []
+        for i in range(n):
+            world, _params = _frame_solution(row, i, n)[1]
+            limbs.append(_limbs(world, doc, strike.limbs))
+        first, last = strike.contact[0], strike.contact[-1]
+        def shape(groups: list, strike=strike) -> dict:
+            """One hull, or with `apart` one named part per limb."""
+            if not strike.apart:
+                poly = hull_px(strike_points([limb for group in groups for limb in group], strike))
+                return {"poly": poly, "bbox": bbox_of(poly)}
+            parts = []
+            for j, name in enumerate(strike.limbs):
+                poly = hull_px(strike_points([group[j] for group in groups], strike))
+                parts.append({"name": name, **bbox_of(poly), "poly": poly})
+            return {"parts": parts, "bbox": bbox_of([p for part in parts for p in part["poly"]])}
+
+        frames = []
+        for i in range(n):
+            k = min(max(i, first), last)
+            frames.append(shape([limbs[k]] + ([limbs[k - 1]] if strike.sweep and k > first else [])))
+        out[row] = {
+            **shape([limbs[k] for k in strike.contact]),
+            "frames": frames,
+            "active_frames": list(strike.contact),
+        }
+    return out
+
+
 @profile
 def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
     doc = _doc()
@@ -256,7 +307,7 @@ def render(out_dir: str | Path, **opts):
         body_metrics_fn=authored_body_metrics,
         sheet_tuning=doc.sprite_tuning or {"collision_scale": 2.4},
         animation_key_map={name: name for name, _frames, _duration in ROWS},
-        attack_hitboxes=ATTACK_HITBOXES,
+        attack_hitboxes=attack_hitboxes(),
         hurtbox_parts=hurtbox_parts_for_rows(ROWS),
         pose_bodies="authored",
     )
