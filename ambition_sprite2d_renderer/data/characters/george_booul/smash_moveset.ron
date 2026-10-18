@@ -219,7 +219,7 @@
                             id: "jab",
                             display_name: None,
                             clip: (
-                                clip: "attack",
+                                clip: "jab",
                                 fallbacks: [
                                     "attack_side",
                                     "attack",
@@ -344,7 +344,7 @@
                             id: "tilt_forward",
                             display_name: None,
                             clip: (
-                                clip: "attack",
+                                clip: "attack_side",
                                 fallbacks: [
                                     "attack_side",
                                     "attack",
@@ -441,7 +441,7 @@
                             id: "tilt_up",
                             display_name: None,
                             clip: (
-                                clip: "attack",
+                                clip: "attack_up",
                                 fallbacks: [
                                     "attack_side",
                                     "attack",
@@ -532,7 +532,7 @@
                             id: "tilt_down",
                             display_name: None,
                             clip: (
-                                clip: "attack",
+                                clip: "attack_down",
                                 fallbacks: [
                                     "attack_side",
                                     "attack",
@@ -626,7 +626,7 @@
                             id: "smash_forward",
                             display_name: None,
                             clip: (
-                                clip: "attack",
+                                clip: "smash_forward",
                                 fallbacks: [
                                     "attack_side",
                                     "attack",
@@ -743,7 +743,7 @@
                             id: "smash_up",
                             display_name: None,
                             clip: (
-                                clip: "attack",
+                                clip: "smash_up",
                                 fallbacks: [
                                     "attack_side",
                                     "attack",
@@ -846,7 +846,7 @@
                             id: "smash_down",
                             display_name: None,
                             clip: (
-                                clip: "attack",
+                                clip: "smash_down",
                                 fallbacks: [
                                     "attack_side",
                                     "attack",
@@ -949,7 +949,7 @@
                             id: "air_neutral",
                             display_name: None,
                             clip: (
-                                clip: "attack",
+                                clip: "air_neutral",
                                 fallbacks: [
                                     "attack_side",
                                     "attack",
@@ -1031,7 +1031,7 @@
                             id: "air_forward",
                             display_name: None,
                             clip: (
-                                clip: "attack",
+                                clip: "air_forward",
                                 fallbacks: [
                                     "attack_side",
                                     "attack",
@@ -1113,7 +1113,7 @@
                             id: "air_back",
                             display_name: None,
                             clip: (
-                                clip: "attack",
+                                clip: "air_back",
                                 fallbacks: [
                                     "attack_side",
                                     "attack",
@@ -1210,7 +1210,7 @@
                             id: "air_up",
                             display_name: None,
                             clip: (
-                                clip: "attack",
+                                clip: "air_up",
                                 fallbacks: [
                                     "attack_side",
                                     "attack",
@@ -1304,7 +1304,7 @@
                             id: "air_down",
                             display_name: None,
                             clip: (
-                                clip: "attack",
+                                clip: "air_down",
                                 fallbacks: [
                                     "attack_side",
                                     "attack",
@@ -1476,7 +1476,7 @@
                                                 half_extents: (16.0, 20.0),
                                             ),
                                             damage: 14,
-                                            knockback: 175.0,
+                                            knockback: 72.9,
                                             knockback_growth: Some(1.5),
                                             launch_dir: Some((0.92, -0.39)),
                                             reaction: None,
@@ -1563,7 +1563,7 @@
                                                 half_extents: (36.0, 30.0),
                                             ),
                                             damage: 17,
-                                            knockback: 216.0,
+                                            knockback: 90.0,
                                             knockback_growth: Some(2.0),
                                             launch_dir: Some((0.2, -1.0)),
                                             reaction: None,
@@ -1594,7 +1594,7 @@
                                                 radius: 46.0,
                                             ),
                                             damage: 32,
-                                            knockback: 367.2,
+                                            knockback: 153.0,
                                             knockback_growth: Some(3.4),
                                             launch_dir: Some((0.85, -0.55)),
                                             reaction: None,
@@ -1668,7 +1668,7 @@
                             id: "modus_ponens",
                             display_name: None,
                             clip: (
-                                clip: "special",
+                                clip: "special_side",
                                 fallbacks: [
                                     "attack_side",
                                     "attack",
@@ -1800,7 +1800,7 @@
                             id: "excluded_middle",
                             display_name: None,
                             clip: (
-                                clip: "special",
+                                clip: "special_up",
                                 fallbacks: [
                                     "attack_side",
                                     "attack",
@@ -1916,7 +1916,7 @@
                             id: "reductio_ad_absurdum",
                             display_name: None,
                             clip: (
-                                clip: "special",
+                                clip: "special_down",
                                 fallbacks: [
                                     "attack_side",
                                     "attack",
@@ -2040,7 +2040,7 @@
                             id: "reductio",
                             display_name: None,
                             clip: (
-                                clip: "special",
+                                clip: "special_air_down",
                                 fallbacks: [
                                     "attack_side",
                                     "attack",
@@ -2698,7 +2698,7 @@
                                                 half_extents: (36.0, 30.0),
                                             ),
                                             damage: 11,
-                                            knockback: 160.0,
+                                            knockback: 66.7,
                                             knockback_growth: Some(2.0),
                                             launch_dir: Some((0.2, -1.0)),
                                             reaction: None,
@@ -2729,7 +2729,7 @@
                                                 radius: 46.0,
                                             ),
                                             damage: 21,
-                                            knockback: 272.0,
+                                            knockback: 113.3,
                                             knockback_growth: Some(3.4),
                                             launch_dir: Some((0.85, -0.55)),
                                             reaction: None,

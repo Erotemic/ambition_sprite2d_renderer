@@ -1145,7 +1145,7 @@ def _side_fight_clips(doc: dict) -> dict:
             "channels": channels,
         }
 
-    return {
+    clips = {
         "attack_side": one_shot(6, 70, attack_side),
         "attack_up": one_shot(6, 66, attack_up),
         "attack_down": one_shot(6, 70, attack_down),
@@ -1154,6 +1154,264 @@ def _side_fight_clips(doc: dict) -> dict:
         "hit": one_shot(5, 80, hit),
         "death": one_shot(6, 90, death),
         "taunt": one_shot(8, 100, taunt),
+    }
+    # The Smash rows, and the four swings above retimed to their moves.
+    clips.update(_side_smash_clips(doc))
+    return clips
+
+
+#: Where each Smash move of his table (``data/movesets/oiler.ron``) is live,
+#: as parts of the move: (window start, window end) / duration.  A fight row
+#: is slaved to its move -- frame ``floor(progress * frames)`` -- so the strike
+#: pose is put on every frame that shows a live window.  Keep in step with the
+#: table.
+SMASH_ROW_WINDOWS = {
+    "jab": (8, [(0.188, 0.5)]),
+    "attack_side": (8, [(0.262, 0.524)]),
+    "attack_up": (8, [(0.238, 0.524)]),
+    "attack_down": (8, [(0.225, 0.525)]),
+    "dash_attack": (10, [(0.119, 0.381)]),
+    "smash_forward": (10, [(0.371, 0.514)]),
+    "smash_up": (10, [(0.358, 0.522)]),
+    "smash_down": (10, [(0.324, 0.5)]),
+    "air_neutral": (8, [(0.179, 0.59)]),
+    "air_forward": (8, [(0.279, 0.535)]),
+    "air_back": (8, [(0.289, 0.511)]),
+    "air_up": (8, [(0.231, 0.538)]),
+    "air_down": (8, [(0.265, 0.51)]),
+    "convergence": (12, [(0.28, 0.4), (0.52, 0.64), (0.72, 0.88)]),
+    "special_side": (10, [(0.242, 0.424)]),
+    "special_up": (12, [(0.183, 0.3)]),
+    "special_down": (10, [(0.208, 0.458)]),
+}
+
+
+def _side_smash_clips(doc: dict) -> dict:
+    """**Every Smash move its own row, struck on the frames the move is live.**
+
+    A pose is a dict: ``near``/``far`` are ``(deg, frac)`` on the arm's
+    reachable circle (forward 0, down +90, up -90, back 180; see
+    `_side_fight_clips`), ``nfx``/``ffx`` move a foot from its rest x,
+    ``nlift``/``flift`` raise it, and ``torso``/``head``/``root_x``/``root_y``
+    are the channels of the same names.  A row has a rest pose (the standing
+    guard, or a tuck in the air), an anticipation, and one strike pose per live
+    window (two give the strike a direction through its frames).  Mimed: he is
+    propless.
+    """
+
+    sx, sy, reach = _arm_envelope(doc, "near_hand")
+    fsx, fsy, freach = _arm_envelope(doc, "far_hand")
+    nhp = _rest_pitch(doc, "near_hand")
+    fhp = _rest_pitch(doc, "far_hand")
+    nfx = _rest(doc, "near_foot", "x")
+    ffx = _rest(doc, "far_foot", "x")
+
+    skeleton = RigDocument(doc).build_skeleton()
+    cx = float(doc["frame"]["center_x"])
+    gy = float(doc["frame"]["ground_y"])
+    stand = {"near": (90.0, 0.90), "far": (90.0, 0.92)}
+    tuck = {"near": (70.0, 0.9), "far": (80.0, 0.9), "nlift": 10.0, "flift": 12.0, "nfx": 3.0, "ffx": -2.0}
+    fields = ("torso", "head", "root_x", "root_y", "nfx", "ffx", "nlift", "flift")
+
+    def blend(a: dict, b: dict, k: float) -> dict:
+        out = {}
+        for name in fields:
+            va, vb = a.get(name, 0.0), b.get(name, 0.0)
+            out[name] = va + (vb - va) * k
+        for arm_name in ("near", "far"):
+            (da, fa), (db, fb) = a[arm_name], b[arm_name]
+            out[arm_name] = (da + (db - da) * k, fa + (fb - fa) * k)
+        return out
+
+    def full(pose: dict, rest: dict) -> dict:
+        return {**{name: 0.0 for name in fields}, **rest, **pose}
+
+    def smooth(t: float) -> float:
+        t = max(0.0, min(1.0, t))
+        return t * t * (3.0 - 2.0 * t)
+
+    def row(name: str, wind: dict, strikes: list, *, rest: dict = stand, hold: float = 0.0) -> dict:
+        frames, windows = SMASH_ROW_WINDOWS[name]
+        rest = full({}, rest)
+        wind = full(wind, rest)
+        strikes = [[full(s, rest) for s in (k if isinstance(k, list) else [k])] for k in strikes]
+        live = [
+            [i for i in range(frames) if i / frames < b and (i + 1) / frames > a]
+            for a, b in windows
+        ]
+        first, last = live[0][0], live[-1][-1]
+        poses = []
+        for i in range(frames):
+            hit = next((k for k, idx in enumerate(live) if i in idx), None)
+            if hit is not None:
+                keys, idx = strikes[min(hit, len(strikes) - 1)], live[hit]
+                u = 0.0 if len(idx) == 1 else (i - idx[0]) / (len(idx) - 1)
+                pose = keys[0] if len(keys) == 1 else blend(keys[0], keys[1], u)
+            elif i < first:
+                pose = blend(rest, wind, smooth((i + 1) / first))
+            elif i > last:
+                end = strikes[min(len(live), len(strikes)) - 1][-1]
+                u = (i - last) / (frames - 1 - last)
+                u = max(0.0, (u - hold) / (1.0 - hold)) if hold else u
+                pose = blend(end, rest, smooth(u))
+            else:
+                prev = max(k for k, idx in enumerate(live) if idx[-1] < i)
+                pose = blend(strikes[min(prev, len(strikes) - 1)][-1], wind, 0.6)
+            poses.append(pose)
+
+        def place(side: str, deg: float, frac: float, pose: dict) -> tuple:
+            # The hand target is a frame point, but the shoulder moves with the
+            # root and the lean: aim from where the shoulder IS in this pose,
+            # or a lunge crumples the arm it is meant to extend.
+            r = reach if side == "near" else freach
+            world = skeleton.world({"torso": pose["torso"]}, root=(cx + pose["root_x"], gy + pose["root_y"]))
+            ox, oy = world[f"{side}_arm_u"].origin
+            rad = math.radians(deg)
+            return (ox - cx + r * frac * math.cos(rad), oy - gy + r * frac * math.sin(rad))
+
+        channels = {}
+        for name_, key in (("torso", "torso"), ("head", "head"), ("root_x", "root_x"), ("root_y", "root_y")):
+            channels[name_] = _shot([p[key] for p in poses])
+        channels["near_foot_x"] = _shot([nfx + p["nfx"] for p in poses])
+        channels["far_foot_x"] = _shot([ffx + p["ffx"] for p in poses])
+        channels["near_foot_lift"] = _shot([p["nlift"] for p in poses])
+        channels["far_foot_lift"] = _shot([p["flift"] for p in poses])
+        for side, rest_pitch in (("near", nhp), ("far", fhp)):
+            targets = [place(side, *p[side], p) for p in poses]
+            channels[f"{side}_hand_x"] = _shot([t[0] for t in targets])
+            channels[f"{side}_hand_y"] = _shot([t[1] for t in targets])
+            channels[f"{side}_hand_pitch"] = _shot([rest_pitch + (p[side][0] - 90.0) for p in poses])
+        return {"loop": False, "frames": frames, "duration_ms": 60, "channels": _with_visibility(channels)}
+
+    return {
+        # A straight punch off the front hand, a half step in.
+        "jab": row(
+            "jab",
+            {"near": (124.0, 0.74), "far": (74.0, 0.9), "torso": -3.0, "root_x": -1.0},
+            [[{"near": (4.0, 0.99), "far": (66.0, 0.9), "torso": 6.0, "head": -3.0, "root_x": 2.0, "nfx": 4.0},
+              {"near": (0.0, 1.0), "far": (60.0, 0.9), "torso": 7.0, "head": -4.0, "root_x": 2.5, "nfx": 5.0}]],
+        ),
+        # The flat swing at chest height, now on the frames the move is live.
+        "attack_side": row(
+            "attack_side",
+            {"near": (152.0, 0.72), "far": (128.0, 0.78), "torso": -7.0, "head": 4.0, "root_x": -2.0, "ffx": -2.0},
+            [[{"near": (18.0, 0.98), "far": (56.0, 0.92), "torso": 9.0, "head": -5.0, "root_x": 2.5, "nfx": 8.0, "ffx": -6.0},
+              {"near": (2.0, 0.99), "far": (44.0, 0.94), "torso": 8.0, "head": -4.0, "root_x": 3.0, "nfx": 9.0, "ffx": -6.0}]],
+        ),
+        # The overhead arc.
+        "attack_up": row(
+            "attack_up",
+            {"near": (128.0, 0.70), "far": (104.0, 0.8), "torso": 6.0, "head": -4.0, "root_y": 1.5},
+            [[{"near": (-40.0, 0.96), "far": (36.0, 0.88), "torso": -8.0, "head": 6.0, "root_y": -1.5, "nfx": 3.0},
+              {"near": (-80.0, 0.99), "far": (20.0, 0.9), "torso": -11.0, "head": 9.0, "root_y": -2.0, "nfx": 3.0}]],
+        ),
+        # Low drag at shin height, dropped onto the trailing leg.
+        "attack_down": row(
+            "attack_down",
+            {"near": (146.0, 0.72), "far": (124.0, 0.78), "torso": -4.0, "head": 3.0, "root_y": 1.0},
+            [[{"near": (46.0, 0.98), "far": (86.0, 0.9), "torso": 13.0, "head": -9.0, "root_y": 8.5, "nfx": 10.0, "ffx": -9.0},
+              {"near": (34.0, 0.99), "far": (80.0, 0.92), "torso": 14.0, "head": -10.0, "root_y": 9.0, "nfx": 11.0, "ffx": -9.0}]],
+        ),
+        # Shoulder first out of the run, both hands low and in front.
+        "dash_attack": row(
+            "dash_attack",
+            {"near": (110.0, 0.8), "far": (100.0, 0.85), "torso": 8.0},
+            [[{"near": (28.0, 0.99), "far": (44.0, 0.97), "torso": 18.0, "head": -6.0, "root_x": 5.0, "root_y": 2.0, "nfx": 12.0, "ffx": -10.0},
+              {"near": (20.0, 1.0), "far": (36.0, 0.98), "torso": 19.0, "head": -7.0, "root_x": 6.0, "root_y": 2.5, "nfx": 13.0, "ffx": -11.0}]],
+        ),
+        # The torque spec, his kill move: back over the shoulder, then through.
+        "smash_forward": row(
+            "smash_forward",
+            {"near": (176.0, 0.8), "far": (160.0, 0.8), "torso": -14.0, "head": 9.0, "root_x": -4.5, "root_y": 3.0, "nfx": -2.0, "ffx": -2.0},
+            [[{"near": (6.0, 0.99), "far": (30.0, 0.95), "torso": 12.0, "head": -8.0, "root_x": 4.0, "root_y": -1.0, "nfx": 11.0, "ffx": -9.0},
+              {"near": (-8.0, 1.0), "far": (20.0, 0.97), "torso": 15.0, "head": -10.0, "root_x": 5.0, "root_y": -1.5, "nfx": 12.0, "ffx": -9.0}]],
+        ),
+        # Out of a crouch, both fists straight up.
+        "smash_up": row(
+            "smash_up",
+            {"near": (132.0, 0.8), "far": (122.0, 0.8), "torso": 10.0, "head": -4.0, "root_y": 7.0, "nfx": 3.0, "ffx": -3.0},
+            [[{"near": (-66.0, 0.99), "far": (-52.0, 0.95), "torso": -8.0, "head": 5.0, "root_y": -3.0},
+              {"near": (-92.0, 1.0), "far": (-80.0, 0.98), "torso": -12.0, "head": 7.0, "root_y": -5.0}]],
+        ),
+        # Hands up, then driven down to both sides of him at once.
+        "smash_down": row(
+            "smash_down",
+            {"near": (-40.0, 0.9), "far": (-52.0, 0.9), "torso": -6.0, "head": 3.0, "root_y": -1.0},
+            [[{"near": (26.0, 0.99), "far": (150.0, 0.99), "torso": 8.0, "head": -6.0, "root_y": 9.0, "nfx": 10.0, "ffx": -10.0},
+              {"near": (36.0, 1.0), "far": (142.0, 1.0), "torso": 10.0, "head": -7.0, "root_y": 10.0, "nfx": 11.0, "ffx": -11.0}]],
+        ),
+        # Spread like a star: a hand and a foot each way.
+        "air_neutral": row(
+            "air_neutral",
+            {"near": (60.0, 0.85), "far": (100.0, 0.85), "nlift": 16.0, "flift": 16.0},
+            [[{"near": (-14.0, 0.99), "far": (176.0, 0.97), "torso": -4.0, "nlift": 14.0, "flift": 12.0, "nfx": 13.0, "ffx": -13.0},
+              {"near": (-4.0, 1.0), "far": (186.0, 0.98), "torso": -2.0, "nlift": 12.0, "flift": 14.0, "nfx": 14.0, "ffx": -14.0}]],
+            rest=tuck,
+        ),
+        # Both hands from overhead down through the front.
+        "air_forward": row(
+            "air_forward",
+            {"near": (-76.0, 0.95), "far": (-62.0, 0.9), "torso": -6.0, "head": 4.0},
+            [[{"near": (4.0, 0.99), "far": (22.0, 0.95), "torso": 10.0, "head": -5.0},
+              {"near": (36.0, 0.99), "far": (50.0, 0.96), "torso": 14.0, "head": -7.0}]],
+            rest=tuck,
+        ),
+        # A back kick, chambered, then out behind him at hip height.
+        "air_back": row(
+            "air_back",
+            {"near": (60.0, 0.9), "far": (70.0, 0.9), "flift": 18.0, "ffx": -2.0, "torso": 4.0},
+            [[{"near": (30.0, 0.95), "far": (40.0, 0.9), "torso": 14.0, "head": -4.0, "ffx": -30.0, "flift": 32.0, "nlift": 14.0, "nfx": 6.0},
+              {"near": (26.0, 0.95), "far": (36.0, 0.9), "torso": 16.0, "head": -5.0, "ffx": -33.0, "flift": 34.0, "nlift": 14.0, "nfx": 6.0}]],
+            rest=tuck,
+        ),
+        # Both fists up over his head.
+        "air_up": row(
+            "air_up",
+            {"near": (110.0, 0.85), "far": (100.0, 0.85), "torso": 6.0},
+            [[{"near": (-60.0, 0.99), "far": (-46.0, 0.95), "torso": -8.0, "head": 4.0},
+              {"near": (-94.0, 1.0), "far": (-80.0, 0.98), "torso": -11.0, "head": 6.0}]],
+            rest=tuck,
+        ),
+        # A stomp: one heel driven straight down, the hands up for balance.
+        "air_down": row(
+            "air_down",
+            {"near": (60.0, 0.9), "far": (70.0, 0.9), "nlift": 18.0, "flift": 18.0},
+            [[{"near": (-46.0, 0.9), "far": (-66.0, 0.9), "torso": 4.0, "head": -4.0, "nlift": 0.0, "nfx": 2.0, "flift": 20.0, "ffx": -6.0},
+              {"near": (-52.0, 0.92), "far": (-72.0, 0.9), "torso": 5.0, "head": -5.0, "nlift": -2.0, "nfx": 1.0, "flift": 20.0, "ffx": -6.0}]],
+            rest=tuck,
+        ),
+        # Three blows that land on one point: front hand, back hand, both.
+        "convergence": row(
+            "convergence",
+            {"near": (120.0, 0.78), "far": (114.0, 0.8), "torso": -3.0},
+            [
+                {"near": (2.0, 0.99), "far": (96.0, 0.9), "torso": 6.0, "head": -3.0, "nfx": 4.0},
+                {"near": (112.0, 0.8), "far": (2.0, 0.99), "torso": 8.0, "head": -4.0, "nfx": 5.0},
+                {"near": (-4.0, 1.0), "far": (6.0, 0.99), "torso": 12.0, "head": -6.0, "root_x": 3.0, "nfx": 9.0, "ffx": -6.0},
+            ],
+        ),
+        # A slide on the oil: low, long, the front hand leading.
+        "special_side": row(
+            "special_side",
+            {"near": (140.0, 0.8), "far": (120.0, 0.82), "torso": -4.0, "root_y": 3.0},
+            [[{"near": (14.0, 0.99), "far": (168.0, 0.95), "torso": 18.0, "head": -8.0, "root_x": 5.0, "root_y": 6.0, "nfx": 14.0, "ffx": -14.0},
+              {"near": (8.0, 1.0), "far": (172.0, 0.96), "torso": 20.0, "head": -9.0, "root_x": 6.0, "root_y": 7.0, "nfx": 15.0, "ffx": -15.0}]],
+        ),
+        # Ridden up on the geyser, arms high; held while he rises.
+        "special_up": row(
+            "special_up",
+            {"near": (122.0, 0.8), "far": (116.0, 0.8), "torso": 12.0, "head": -5.0, "root_y": 7.0},
+            [[{"near": (-82.0, 0.99), "far": (-74.0, 0.97), "torso": -6.0, "head": 4.0, "root_y": -4.0, "nfx": -1.0, "ffx": 1.0},
+              {"near": (-90.0, 1.0), "far": (-82.0, 0.98), "torso": -7.0, "head": 5.0, "root_y": -5.0, "nfx": -1.0, "ffx": 1.0}]],
+            hold=0.55,
+        ),
+        # Down on the vents: both palms driven to the floor beside him.
+        "special_down": row(
+            "special_down",
+            {"near": (-40.0, 0.9), "far": (-50.0, 0.9), "torso": -4.0, "root_y": -2.0},
+            [[{"near": (54.0, 0.99), "far": (126.0, 0.99), "torso": 8.0, "head": -6.0, "root_y": 10.0, "nfx": 9.0, "ffx": -9.0},
+              {"near": (58.0, 1.0), "far": (122.0, 1.0), "torso": 10.0, "head": -7.0, "root_y": 11.0, "nfx": 10.0, "ffx": -10.0}]],
+        ),
     }
 
 

@@ -241,6 +241,14 @@ ROWS: Dict[str, list] = {}
 POSES: Dict[str, Callable] = {}
 
 
+def _register_fighting_rows() -> None:
+    """The admiral fights in Smash, so he has a row for each of his moves
+    (``_pirate_admiral_moves``). The rest of the family keeps the family's."""
+    from ._pirate_admiral_moves import register
+
+    register(ROWS, POSES, ANIMATIONS)
+
+
 def rows_of(kind: str) -> list:
     """The rows of the sheet of ``kind``: (name, frames, ms a frame)."""
     return ROWS.get(kind, ANIMATIONS)
@@ -1629,3 +1637,6 @@ def render_pirate_portraits(target: str, out_dir, *, kind: str | None = None,
         frames = next(n for a, n, *_r in rows if a == anim)
         clips[name] = PortraitClip.still(frame(anim, index, frames))
     return write_portrait_sheet(target, clips, Path(out_dir), still_clip="portrait")
+
+
+_register_fighting_rows()

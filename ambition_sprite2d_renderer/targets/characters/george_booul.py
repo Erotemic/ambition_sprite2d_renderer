@@ -50,6 +50,30 @@ ROWS: List[Tuple[str, int, int]] = [
     ("hit", 5, 88),
     ("death", 8, 112),
     ("taunt", 8, 104),
+    # The fight rows. Each is slaved to its move (frame = floor(progress x
+    # frames)), so `ATTACK_WINDOWS` keys the strike pose to the move's live
+    # windows; the ms here only matter to a preview.
+    ("jab", 10, 25),
+    # His second and third jab are borrowed (`smash_duelist_a`'s jab2 and
+    # jab3) and name `attack`: one row keyed to both.
+    ("attack", 12, 40),
+    ("attack_side", 10, 53),
+    ("attack_up", 10, 51),
+    ("attack_down", 10, 53),
+    ("dash_attack", 10, 50),
+    ("smash_forward", 12, 78),
+    ("smash_up", 12, 73),
+    ("smash_down", 12, 74),
+    ("air_neutral", 10, 36),
+    ("air_forward", 10, 55),
+    ("air_back", 10, 58),
+    ("air_up", 10, 35),
+    ("air_down", 10, 63),
+    ("special", 14, 51),
+    ("special_side", 12, 62),
+    ("special_up", 12, 96),
+    ("special_down", 12, 72),
+    ("special_air_down", 12, 50),
 ]
 
 SHEET_FILES = [
@@ -359,6 +383,8 @@ def _pose(animation: str, frame_idx: int, nframes: int) -> Pose:
             p.opacity = 1.0 - 0.18 * u
             p.collapse = u
             p.blink = u > 0.35
+    elif animation in ATTACK_POSES:
+        return _attack_pose(animation, frame_idx, nframes)
     elif animation == "taunt":
         p.state = 1.0
         p.y = -3.0 * (0.5 - 0.5 * math.cos(phase * math.tau))
@@ -370,6 +396,204 @@ def _pose(animation: str, frame_idx: int, nframes: int) -> Pose:
         p.hand_r_y = -8.0 * abs(wave)
         p.hem_wave = wave2
         p.mouth_open = 0.35 + 0.35 * (0.5 + 0.5 * wave2)
+    return p
+
+
+#: Where each fight row's move is live, as parts of the move (start, end),
+#: read off his table (`data/characters/george_booul/smash_moveset.ron`:
+#: window start / move duration). Keep them in step with the table: the
+#: strike pose is drawn on exactly the frames these cover.
+ATTACK_WINDOWS = {
+    "jab": [(0.2, 0.4)],
+    "attack": [(0.12, 0.45)],
+    "attack_side": [(0.34, 0.491)],
+    "attack_up": [(0.314, 0.49)],
+    "attack_down": [(0.321, 0.472)],
+    "dash_attack": [(0.3, 0.48)],
+    "smash_forward": [(0.426, 0.511)],
+    "smash_up": [(0.409, 0.523)],
+    "smash_down": [(0.382, 0.506)],
+    "air_neutral": [(0.167, 0.5)],
+    "air_forward": [(0.327, 0.491)],
+    "air_back": [(0.345, 0.483)],
+    "air_up": [(0.2, 0.457)],
+    "air_down": [(0.349, 0.492)],
+    "special": [(0.423, 0.521), (0.592, 0.704)],
+    "special_side": [(0.27, 0.432)],
+    "special_up": [(0.157, 0.278)],
+    "special_down": [(0.395, 0.674)],
+    "special_air_down": [(0.267, 0.667)],
+}
+
+#: The poses of a fight row, as changes to the rest pose: `wind` is the
+#: anticipation before the hit, `strike` (one per live window) the hit itself.
+#: He faces +x. A sheet-corner reaches out with `arm_*` (the near, right
+#: corner forward with a positive value, the far, left one forward with a
+#: large positive value: it passes behind the sheet), and the whole sheet
+#: lunges, stretches and squashes around it. The far reach of a hit is its
+#: strike effect's; the sheet sells where it comes from.
+ATTACK_POSES = {
+    "jab": {
+        "wind": dict(x=-2.0, tilt=3.0, arm_r=-6.0),
+        "strike": [dict(x=5.0, tilt=-6.0, arm_r=70.0, hand_r_y=-4.0, mouth_open=0.4)],
+    },
+    "attack": {
+        "wind": dict(x=1.0, arm_r=30.0, arm_l=20.0),
+        "strike": [dict(x=7.0, tilt=-8.0, arm_l=230.0, hand_l_y=-2.0, arm_r=40.0, hand_r_y=6.0,
+                        mouth_open=0.5, hem_wave=1.0)],
+    },
+    "attack_side": {
+        "wind": dict(x=-5.0, tilt=8.0, arm_r=-12.0, hand_r_y=-10.0),
+        "strike": [dict(x=8.0, tilt=-11.0, arm_r=88.0, hand_r_y=-2.0, squash_x=1.08, squash_y=0.95,
+                        mouth_open=0.5, hem_wave=1.0)],
+    },
+    "attack_up": {
+        "wind": dict(y=4.0, squash_x=1.08, squash_y=0.9),
+        "strike": [dict(y=-5.0, squash_x=0.9, squash_y=1.14, arm_l=24.0, arm_r=-24.0,
+                        hand_l_y=-44.0, hand_r_y=-44.0, mouth_open=0.6, hem_wave=-1.0)],
+    },
+    "attack_down": {
+        "wind": dict(y=-3.0, tilt=4.0, arm_r=8.0, hand_r_y=-8.0),
+        "strike": [dict(y=7.0, x=4.0, tilt=-9.0, squash_x=1.1, squash_y=0.88, arm_r=74.0,
+                        hand_r_y=44.0, mouth_open=0.4)],
+    },
+    "dash_attack": {
+        "wind": dict(x=2.0, tilt=-6.0, arm_r=20.0, arm_l=40.0),
+        "strike": [dict(x=13.0, tilt=-16.0, arm_r=78.0, arm_l=160.0, hand_r_y=-6.0, hand_l_y=2.0,
+                        hem_wave=1.5, mouth_open=0.6)],
+    },
+    "smash_forward": {
+        "wind": dict(x=-9.0, tilt=13.0, arm_r=-24.0, arm_l=-24.0, hand_r_y=-14.0, hand_l_y=-14.0,
+                     squash_x=0.94, squash_y=1.05, eye_scale=0.8, mouth_open=0.2),
+        "strike": [dict(x=14.0, tilt=-15.0, arm_r=96.0, arm_l=150.0, hand_r_y=-6.0, hand_l_y=-10.0,
+                        squash_x=1.1, squash_y=0.95, mouth_open=0.85, eye_scale=1.2,
+                        fx="and", fx_strength=1.0, hem_wave=1.5)],
+    },
+    "smash_up": {
+        "wind": dict(y=7.0, squash_x=1.16, squash_y=0.82, arm_l=-14.0, arm_r=14.0, hand_l_y=10.0,
+                     hand_r_y=10.0, eye_scale=0.85),
+        "strike": [dict(y=-4.0, squash_x=0.86, squash_y=1.17, arm_l=30.0, arm_r=-30.0, hand_l_y=-42.0,
+                        hand_r_y=-42.0, mouth_open=0.85, fx="uplift", fx_strength=1.0, hem_wave=-1.5)],
+    },
+    "smash_down": {
+        "wind": dict(y=-9.0, squash_x=0.92, squash_y=1.1, arm_l=10.0, arm_r=-10.0, hand_l_y=-24.0,
+                     hand_r_y=-24.0),
+        "strike": [dict(y=8.0, squash_x=1.4, squash_y=0.72, arm_l=-64.0, arm_r=64.0, hand_l_y=40.0,
+                        hand_r_y=40.0, mouth_open=0.8, fx="slam", fx_strength=1.0, hem_wave=1.8)],
+    },
+    "air_neutral": {
+        "wind": dict(arm_l=-8.0, arm_r=8.0, squash_x=0.95, squash_y=1.04),
+        "strike": [dict(arm_l=-46.0, arm_r=46.0, hand_l_y=-2.0, hand_r_y=-2.0, hem_wave=1.5,
+                        mouth_open=0.5, spin=360.0)],
+    },
+    "air_forward": {
+        "wind": dict(tilt=8.0, arm_r=12.0, hand_r_y=-42.0),
+        "strike": [dict(x=4.0, tilt=-12.0, arm_r=88.0, hand_r_y=12.0, mouth_open=0.5, hem_wave=1.2)],
+    },
+    "air_back": {
+        "wind": dict(tilt=-5.0, arm_l=10.0),
+        "strike": [dict(x=-5.0, tilt=13.0, arm_l=-74.0, hand_l_y=-2.0, arm_r=6.0, mouth_open=0.5,
+                        hem_wave=-1.2)],
+    },
+    "air_up": {
+        "wind": dict(y=3.0, squash_x=1.05, squash_y=0.94),
+        "strike": [dict(y=-7.0, squash_x=0.92, squash_y=1.12, arm_l=26.0, arm_r=-26.0, hand_l_y=-48.0,
+                        hand_r_y=-48.0, mouth_open=0.5)],
+    },
+    "air_down": {
+        "wind": dict(y=-5.0, arm_l=-10.0, arm_r=10.0, hand_l_y=-20.0, hand_r_y=-20.0),
+        "strike": [dict(y=10.0, squash_x=0.88, squash_y=1.18, arm_l=18.0, arm_r=-18.0, hand_l_y=-30.0,
+                        hand_r_y=-30.0, hem_wave=1.8, mouth_open=0.6, fx="stomp", fx_strength=0.8)],
+    },
+    "special": {
+        "wind": dict(y=4.0, squash_x=1.1, squash_y=0.86, eye_scale=0.8),
+        "strike": [
+            dict(y=-4.0, squash_x=1.18, squash_y=1.12, arm_l=-60.0, arm_r=60.0, hand_l_y=-12.0,
+                 hand_r_y=-12.0, mouth_open=0.7, fx="toggle", fx_strength=1.0),
+            dict(state=0.0, y=-6.0, squash_x=1.3, squash_y=1.2, arm_l=-76.0, arm_r=76.0, hand_l_y=-16.0,
+                 hand_r_y=-16.0, mouth_open=0.9, eye_scale=1.25, fx="not", fx_strength=1.0),
+        ],
+    },
+    "special_side": {
+        "wind": dict(x=-4.0, tilt=6.0, arm_l=-20.0, arm_r=-20.0, hand_l_y=-8.0, hand_r_y=-8.0),
+        "strike": [dict(x=5.0, tilt=-7.0, arm_r=62.0, arm_l=150.0, hand_r_y=-6.0, hand_l_y=-6.0,
+                        mouth_open=0.6, fx="and", fx_strength=1.0)],
+    },
+    "special_up": {
+        "wind": dict(y=6.0, squash_x=1.12, squash_y=0.84),
+        "strike": [dict(y=-4.0, squash_x=0.87, squash_y=1.16, arm_l=28.0, arm_r=-28.0, hand_l_y=-42.0,
+                        hand_r_y=-42.0, mouth_open=0.7, fx="uplift", fx_strength=1.0, hem_wave=-1.5)],
+        # A recovery: the rise is held while he goes up.
+        "hold": 0.6,
+    },
+    "special_down": {
+        "wind": dict(y=-8.0, squash_x=0.92, squash_y=1.08, hand_l_y=-26.0, hand_r_y=-26.0),
+        "strike": [dict(state=0.0, y=8.0, squash_x=1.36, squash_y=0.72, arm_l=-60.0, arm_r=60.0,
+                        hand_l_y=38.0, hand_r_y=38.0, mouth_open=0.8, fx="slam", fx_strength=1.0,
+                        hem_wave=1.8)],
+    },
+    "special_air_down": {
+        "wind": dict(y=-6.0, arm_l=-10.0, arm_r=10.0, hand_l_y=-30.0, hand_r_y=-30.0),
+        "strike": [dict(state=0.0, y=10.0, squash_x=0.86, squash_y=1.2, arm_l=20.0, arm_r=-20.0,
+                        hand_l_y=-34.0, hand_r_y=-34.0, mouth_open=0.7, fx="stomp", fx_strength=1.0,
+                        hem_wave=2.0)],
+    },
+}
+
+_LERPED = ("state", "x", "y", "tilt", "arm_l", "arm_r", "hand_l_y", "hand_r_y", "hem_wave",
+           "eye_scale", "mouth_open", "squash_x", "squash_y", "fx_strength")
+
+
+def _blend(a: dict, b: dict, k: float) -> dict:
+    """Pose `a` toward `b` by `k` (each an override of the rest pose)."""
+    rest = Pose()
+    out = {}
+    for name in _LERPED:
+        va = a.get(name, getattr(rest, name))
+        vb = b.get(name, getattr(rest, name))
+        out[name] = va + (vb - va) * k
+    out["fx"] = b.get("fx", "") if k >= 0.5 else a.get("fx", "")
+    return out
+
+
+def _attack_pose(animation: str, frame_idx: int, nframes: int) -> Pose:
+    """A fight row's frame: rest, anticipation, the strike on every frame
+    that shows a live window, then the follow-through back to rest."""
+    spec = ATTACK_POSES[animation]
+    windows = ATTACK_WINDOWS[animation]
+    lo, hi = frame_idx / nframes, (frame_idx + 1) / nframes
+    mid = (lo + hi) / 2.0
+    wind, strikes = spec["wind"], spec["strike"]
+    pose: dict
+    spin = 0.0
+    live = [k for k, (a, b) in enumerate(windows) if lo < b and hi > a]
+    if live:
+        k = live[-1]
+        a, b = windows[k]
+        pose = dict(strikes[min(k, len(strikes) - 1)])
+        turn = pose.pop("spin", 0.0)
+        if turn:
+            spin = turn * max(0.0, min(1.0, (mid - a) / max(1e-6, b - a)))
+    elif mid < windows[0][0]:
+        pose = _blend({}, wind, _smoothstep(mid / windows[0][0]))
+    elif mid > windows[-1][1]:
+        last = dict(strikes[min(len(windows), len(strikes)) - 1])
+        last.pop("spin", None)
+        b = windows[-1][1]
+        hold = spec.get("hold", 0.0)
+        u = (mid - b) / max(1e-6, 1.0 - b)
+        u = max(0.0, (u - hold) / max(1e-6, 1.0 - hold))
+        pose = _blend(last, {}, _smoothstep(u))
+    else:
+        # Between two live windows: half way back to the anticipation.
+        prev = next(k for k, (a, b) in reversed(list(enumerate(windows))) if b <= mid)
+        last = dict(strikes[min(prev, len(strikes) - 1)])
+        last.pop("spin", None)
+        pose = _blend(last, wind, 0.5)
+    p = Pose(**{name: pose.get(name, getattr(Pose(), name)) for name in _LERPED})
+    p.fx = pose.get("fx", "")
+    p.tilt += spin
+    p.phase = mid
     return p
 
 
@@ -438,6 +662,38 @@ def _draw_fx(draw: ImageDraw.ImageDraw, p: Pose, cx: float, cy: float) -> None:
             fill=_rgba(LOGIC_RED, p.fx_strength * alpha),
             width=_s(2.0),
         )
+    elif p.fx == "uplift":
+        # Rays of gold off the top of the sheet: the rise of a launcher.
+        strength = p.fx_strength
+        # Off the shoulders, up and out: above the head is outside the frame.
+        for side in (-1.0, 1.0):
+            for k, lean in enumerate((0.35, 0.75, 1.15)):
+                angle = -math.pi / 2 + side * lean
+                x0, y0 = cx + side * 26.0, cy - 30.0 + 8.0 * k
+                x1 = x0 + math.cos(angle) * (14.0 + 8.0 * strength)
+                y1 = y0 + math.sin(angle) * (14.0 + 8.0 * strength)
+                draw.line([_pt(x0, y0), _pt(x1, y1)],
+                          fill=_rgba(LOGIC_GOLD if k != 1 else LOGIC_GREEN_LIGHT, strength * alpha), width=_s(2.0))
+    elif p.fx == "slam":
+        # A shock along the floor to both sides of the hem.
+        strength = p.fx_strength
+        floor = cy + 56.0
+        for side in (-1.0, 1.0):
+            for ring, reach in ((0, 40.0), (1, 54.0)):
+                x = cx + side * (reach + 8.0 * strength)
+                draw.arc(_box(x - 9.0, floor - 16.0 + 4.0 * ring, x + 9.0, floor + 2.0),
+                         start=180 if side < 0 else 270, end=270 if side < 0 else 360,
+                         fill=_rgba(LOGIC_RED if ring else LOGIC_GOLD, strength * alpha), width=_s(2.0))
+        draw.line([_pt(cx - 60.0, floor), _pt(cx + 60.0, floor)], fill=_rgba(LOGIC_GOLD, 0.7 * strength * alpha), width=_s(1.4))
+    elif p.fx == "stomp":
+        # Chevrons under the hem: the sheet drives down.
+        strength = p.fx_strength
+        base = cy + 54.0
+        for k in range(3):
+            y = base + 6.0 + 7.0 * k
+            w = 16.0 - 4.0 * k
+            draw.line([_pt(cx - w, y - 5.0), _pt(cx, y), _pt(cx + w, y - 5.0)],
+                      fill=_rgba(LOGIC_RED if k else LOGIC_GOLD, strength * alpha * (1.0 - 0.25 * k)), width=_s(2.0))
     elif p.fx == "hit":
         strength = p.fx_strength
         for angle in (0.0, math.pi * 0.7, math.pi * 1.35):
@@ -620,7 +876,7 @@ def _draw_sheet(img: Image.Image, p: Pose) -> None:
     # Back glow only during logic actions; never a ground shadow. One piece
     # per strength (hundredths): a swell and its ebb share them.
     if p.fx_strength > 0.01:
-        glow = LOGIC_GREEN if p.fx == "and" else LOGIC_RED
+        glow = LOGIC_GREEN if p.fx in ("and", "uplift") else LOGIC_RED
         strength = round(p.fx_strength, 2)
         radius = 34.0 + 8.0 * strength
 
@@ -650,12 +906,16 @@ def _draw_sheet(img: Image.Image, p: Pose) -> None:
         rig.layer(lambda d: _draw_fx(d, p, cx, top + 50.0), "fx")
 
     if squashed:
-        crop = layer.crop(_box(34.0, 15.0, 126.0, 144.0))
-        target = (_s(92.0 * p.squash_x), _s(129.0 * p.squash_y))
+        # The whole frame, so a sheet-corner reaching past the body is squashed
+        # with it and not cut off.
+        # The squash is about the point under the hem (y 144), as it always was;
+        # what hangs below it (a stomp's chevrons) is squashed with the rest.
+        crop = layer.crop(_box(0.0, 0.0, 160.0, 160.0))
+        target = (_s(160.0 * p.squash_x), _s(160.0 * p.squash_y))
         crop = crop.resize(target, Image.Resampling.BICUBIC)
         scaled = Image.new("RGBA", layer.size, (0, 0, 0, 0))
         x = _s(CENTER_X) - target[0] // 2
-        y = _s(144.0) - target[1]
+        y = _s(144.0) - round(_s(144.0) * p.squash_y)
         rigdoc.composite_canvas(scaled, crop, (x, y))
         layer = scaled
         if abs(p.tilt) > 0.01:

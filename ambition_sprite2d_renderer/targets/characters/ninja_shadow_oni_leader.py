@@ -588,6 +588,130 @@ def blink_in(i: int, n: int):
     return X.keys(shot(i, n), [(0.0, LOW), (0.35, LOW), (0.7, rise), (1.0, ready)])
 
 
+# ---- How he fights (the rows of his Smash moves) ---------------------------------
+#
+# Each move of his table (``data/movesets/ninja_shadow_oni_leader.ron``) plays
+# a row of its own, slaved to the move: frame = progress x frames. So each row
+# is keyed in the SECONDS of its move, and the blade is on the line of the
+# move's hit volume through its live window. Before these every move fell back
+# to ``slash``, whose cut comes at the middle of the row: the sword was still
+# over his shoulder while the hit was live.
+
+#: His fighting guard: the sword in two hands at his belly, the point up and
+#: to the front at the eyes of whoever is there; the feet apart.
+F_GUARD = hold((14.0, 8.0), -42.0, hip=(0.0, 3.0), lean=4.0, nf=(-10.0, 0.0, 0.0), ff=(12.0, 0.0, 0.0), brows=-1.0)
+#: The point straight to the front at his chest, a step in.
+F_THRUST = hold((27.0, 4.0), 0.0, hip=(5.0, 5.0), lean=14.0, nf=(-15.0, 0.0, 10.0), ff=(17.0, 0.0, 0.0), eyes="wide", hem=(4.0, 1.0))
+#: The cut through the front, level, and gone on and down.
+F_CUT = hold((24.0, 6.0), 8.0, hip=(4.0, 5.0), lean=14.0, nf=(-14.0, 0.0, 10.0), ff=(16.0, 0.0, 0.0), eyes="wide", hem=(5.0, 1.0))
+F_CUT_ON = hold((22.0, 14.0), 36.0, hip=(5.0, 6.0), lean=18.0, nf=(-14.0, 0.0, 10.0), ff=(16.0, 0.0, 0.0), hem=(5.0, 1.0))
+#: The arms up, the blade straight up; and gone over to the back.
+F_UP = hold((9.0, -25.0), -92.0, hip=(0.0, -1.0), lean=-4.0, head=(0.0, 0.0, -10.0), nab=-1.0, fab=-1.0, arm="under", eyes="wide")
+F_UP_FRONT = hold((15.0, -20.0), -62.0, hip=(1.0, 0.0), lean=0.0, head=(0.0, 0.0, -8.0), nab=-1.0, fab=-1.0, arm="under", eyes="wide")
+F_UP_OVER = hold((2.0, -26.0), -134.0, hip=(-1.0, 0.0), lean=-8.0, head=(0.0, 0.0, -10.0), nab=-1.0, fab=-1.0, arm="under")
+#: Low: a knee bent near the deck, the blade along it to the front.
+F_LOW = hold((22.0, 24.0), 14.0, hip=(3.0, 13.0), lean=26.0, head=(1.0, 0.6, -10.0), nf=(-16.0, 0.0, 14.0), ff=(16.0, 0.0, 0.0), hem=(5.0, 2.0),
+           eyes="wide")
+#: Low, and round to the back: one hand on the sword, its point behind him.
+F_LOW_BEHIND = P(na=(-18.0, 22.0), nab=-1.0, blade=172.0, fa=(14.0, 18.0), fh="open", hip=(-2.0, 13.0), lean=14.0, head=(0.0, 0.6, -6.0),
+               nf=(-16.0, 0.0, 14.0), ff=(16.0, 0.0, 0.0), hem=(3.0, 4.0))
+#: Behind him at the chest, the point back; his head turned to it.
+F_BACK = P(na=(-24.0, 4.0), nab=-1.0, blade=182.0, fa=(16.0, 10.0), fh="open", lean=-8.0, head=(0.0, 0.0, 10.0), eyes="wide")
+#: The point straight down, under his feet.
+F_DOWN = hold((6.0, 24.0), 90.0, lean=4.0, eyes="wide")
+#: His knees drawn up, as a body in the air holds them.
+F_TUCK = dict(nf=(-8.0, -16.0, 24.0), ff=(9.0, -20.0, 12.0), hem=(5.0, 6.0))
+
+
+def _air(pose):
+    return dict(pose, **F_TUCK)
+
+
+def _timed(duration: float, keys):
+    """A row keyed in the seconds of its move, each frame drawn at the middle
+    of the part of the move it is shown over."""
+    frames = [(t / duration,) + tuple(k[1:]) for t, *rest in keys for k in [(t, *rest)]]
+
+    def pose(i: int, n: int):
+        return X.keys((i + 0.5) / max(1, n), frames)
+
+    return pose
+
+
+def _strike(duration, live, windup, hit, follow, hit_end=None, start=None):
+    """From the guard to the windup, to the hit a little before the live
+    window opens (the frame that shows its start shows the hit), held through
+    it, the follow-through, and back to the guard."""
+    a, b = live
+    lead = min(a * 0.5, 0.025)
+    start = start if start is not None else F_GUARD
+    keys = [(0.0, start)]
+    if a - lead > 0.02:
+        keys.append(((a - lead) * 0.55, windup))
+    keys += [(max(0.0, a - lead), hit), (b, hit_end or hit), (b + (duration - b) * 0.4, follow), (duration, start)]
+    return _timed(duration, keys)
+
+
+#: (row, frames, the pose function). Frames: about one for each 50 ms of the move.
+FIGHT = [
+    ("jab", 6, _strike(0.27, (0.03, 0.07), hold((10.0, 10.0), -20.0), F_THRUST, dict(F_THRUST, na=(22.0, 6.0), fa=two((22.0, 6.0), 4.0)))),
+    ("attack_side", 6, _strike(0.30, (0.04, 0.08), WOUND, F_CUT, F_CUT_ON, hit_end=hold((25.0, 9.0), 20.0, hip=(4.0, 5.0), lean=15.0, nf=(-14.0, 0.0, 10.0),
+                                                                                      ff=(16.0, 0.0, 0.0), eyes="wide", hem=(5.0, 1.0)))),
+    ("attack_up", 7, _strike(0.33, (0.05, 0.09), hold((16.0, 18.0), 30.0, hip=(0.0, 8.0), lean=10.0), F_UP_FRONT, F_UP_OVER, hit_end=F_UP)),
+    ("attack_down", 6, _strike(0.31, (0.05, 0.09), hold((10.0, 14.0), 120.0, hip=(0.0, 8.0), lean=16.0), F_LOW, dict(F_LOW, blade=34.0),
+                               hit_end=dict(F_LOW, blade=22.0))),
+    ("smash_forward", 13, _strike(0.69, (0.20, 0.25), dict(WOUND, blade=-150.0, lean=-10.0, hip=(-4.0, 4.0)),
+                                  dict(F_CUT, hip=(9.0, 7.0), lean=20.0, nf=(-20.0, 0.0, 14.0), ff=(22.0, 0.0, 0.0)), F_CUT_ON,
+                                  hit_end=dict(F_CUT, blade=18.0, hip=(9.0, 7.0), lean=22.0, nf=(-20.0, 0.0, 14.0), ff=(22.0, 0.0, 0.0)))),
+    ("smash_up", 12, _strike(0.65, (0.18, 0.23), dict(F_LOW_BEHIND, hip=(-2.0, 14.0)), dict(F_UP, hip=(0.0, -4.0), blade=-86.0), F_UP_OVER,
+                             hit_end=dict(F_UP, hip=(0.0, -4.0), blade=-100.0))),
+    ("smash_down", 12, _timed(0.68, [(0.0, F_GUARD), (0.09, F_UP_OVER), (0.135, F_LOW), (0.155, dict(F_LOW, blade=20.0)), (0.19, F_LOW_BEHIND),
+                                     (0.23, F_LOW_BEHIND), (0.38, dict(F_LOW_BEHIND, blade=160.0)), (0.68, F_GUARD)])),
+    ("smash_charge", 4, _timed(0.32, [(0.0, dict(WOUND, blade=-150.0, lean=-10.0)), (0.1, dict(WOUND, blade=-156.0, lean=-11.0, shrug=(0.0, -0.6))),
+                                      (0.2, dict(WOUND, blade=-147.0, lean=-9.0, shrug=(0.0, 0.4))), (0.32, dict(WOUND, blade=-150.0, lean=-10.0))])),
+    ("air_neutral", 7, _timed(0.32, [(0.0, _air(F_GUARD)), (0.035, _air(F_CUT)), (0.06, _air(F_UP_OVER)), (0.08, _air(F_BACK)),
+                                     (0.10, _air(dict(F_DOWN, blade=110.0))), (0.16, _air(F_CUT_ON)), (0.32, _air(F_GUARD))])),
+    ("air_forward", 7, _strike(0.35, (0.06, 0.11), _air(WOUND), _air(F_CUT), _air(F_CUT_ON), hit_end=_air(dict(F_CUT, blade=22.0)), start=_air(F_GUARD))),
+    ("air_back", 8, _strike(0.39, (0.07, 0.11), _air(dict(F_GUARD, blade=-80.0)), _air(F_BACK), _air(F_LOW_BEHIND), hit_end=_air(dict(F_BACK, blade=196.0)),
+                            start=_air(F_GUARD))),
+    ("air_up", 6, _strike(0.31, (0.04, 0.09), _air(hold((18.0, 4.0), -10.0)), _air(F_UP_FRONT), _air(F_UP_OVER), hit_end=_air(F_UP), start=_air(F_GUARD))),
+    ("air_down", 9, _strike(0.43, (0.08, 0.13), _air(F_UP), _air(F_DOWN), _air(dict(F_DOWN, blade=86.0)), start=_air(F_GUARD))),
+    ("dash_attack", 8, _strike(0.44, (0.05, 0.14), dict(F_THRUST, lean=24.0, na=(18.0, 8.0), fa=two((18.0, 8.0), 0.0)),
+                               dict(F_THRUST, hip=(8.0, 6.0), lean=26.0, nf=(-22.0, -4.0, 30.0), ff=(20.0, 0.0, 0.0)), F_CUT_ON)),
+    # The neutral special: he answers a blow with one cut of his own.
+    ("shadow_answer", 10, _strike(0.62, (0.06, 0.10), F_GUARD, dict(F_CUT, hip=(6.0, 5.0)), F_CUT_ON)),
+    # The forward special: the draw, a cut far out to the front.
+    ("iaijutsu", 9, _strike(0.58, (0.05, 0.10), dict(F_LOW_BEHIND, hip=(0.0, 8.0)),
+                            dict(F_CUT, hip=(10.0, 7.0), lean=22.0, nf=(-24.0, 0.0, 16.0), ff=(22.0, 0.0, 0.0)), F_CUT_ON)),
+    # The up special: up in a fold of smoke, the blade up over him.
+    ("smoke_fold", 9, _strike(0.52, (0.05, 0.10), dict(F_GUARD, hip=(0.0, 8.0)), _air(F_UP), _air(F_UP_OVER), hit_end=_air(dict(F_UP, blade=-104.0)))),
+    # The air down special: the point down as he drops on the seal.
+    ("falling_seal", 7, _strike(0.38, (0.05, 0.10), _air(F_UP), _air(F_DOWN), _air(dict(F_DOWN, blade=86.0)), start=_air(F_GUARD))),
+    # The down special: he sets a seal: the point to the deck at his feet.
+    ("special_down", 12, _strike(0.70, (0.06, 0.16), F_UP, dict(hold((14.0, 26.0), 84.0), hip=(2.0, 12.0), lean=22.0, nf=(-14.0, 0.0, 12.0),
+                                                                ff=(14.0, 0.0, 0.0)), dict(hold((14.0, 24.0), 86.0), hip=(2.0, 10.0), lean=18.0))),
+    # The grab: his far hand out to the front, the sword back in the near.
+    ("grab", 6, _strike(0.35, (0.05, 0.09), dict(F_GUARD, fa=(8.0, 6.0), fh="open"),
+                        P(na=(-12.0, 18.0), blade=150.0, fa=(28.0, 4.0), fh="open", hip=(4.0, 4.0), lean=12.0, nf=(-14.0, 0.0, 10.0), ff=(16.0, 0.0, 0.0)),
+                        P(na=(-10.0, 18.0), blade=150.0, fa=(22.0, 8.0), fh="fist", lean=6.0))),
+    ("pummel", 3, _timed(0.15, [(0.0, P(na=(-10.0, 18.0), blade=150.0, fa=(22.0, 8.0), fh="fist")),
+                                (0.07, P(na=(16.0, 0.0), nab=-1.0, blade=200.0, fa=(22.0, 8.0), fh="fist", lean=8.0)),
+                                (0.15, P(na=(-10.0, 18.0), blade=150.0, fa=(22.0, 8.0), fh="fist"))])),
+]
+_HOLDING = P(na=(-10.0, 18.0), blade=150.0, fa=(22.0, 8.0), fh="fist", lean=4.0)
+FIGHT += [
+    ("throw_forward", 5, _timed(0.25, [(0.0, _HOLDING), (0.06, dict(_HOLDING, fa=(6.0, 10.0), lean=-4.0)),
+                                       (0.12, dict(F_CUT, hip=(5.0, 5.0))), (0.25, F_GUARD)])),
+    ("throw_back", 5, _timed(0.27, [(0.0, _HOLDING), (0.07, dict(_HOLDING, lean=10.0)), (0.14, dict(F_BACK, fa=(-20.0, 0.0), fh="open")), (0.27, F_GUARD)])),
+    ("throw_up", 5, _timed(0.26, [(0.0, _HOLDING), (0.06, dict(_HOLDING, hip=(0.0, 10.0), lean=12.0)),
+                                  (0.13, dict(F_UP, fa=two((9.0, -25.0), -92.0))), (0.26, F_GUARD)])),
+    ("throw_down", 5, _timed(0.28, [(0.0, _HOLDING), (0.07, dict(_HOLDING, fa=(16.0, -16.0), fh="open")),
+                                    (0.14, dict(F_DOWN, hip=(2.0, 10.0), lean=20.0)), (0.28, F_GUARD)])),
+]
+for _name, _frames, _fn in FIGHT:
+    X.poses[_name] = _fn
+
+
 X.rows = [("idle", 8, 120), ("walk", 8, 95), ("run", 8, 75), ("jump", 6, 95), ("fall", 6, 95), ("slash", 8, 68), ("hit", 5, 90), ("death", 8, 110),
           ("blink_out", 6, 62), ("blink_in", 6, 62), ("dash", 6, 58)]
 
@@ -762,7 +886,7 @@ def front(i: int, n: int):
                 eyes="closed" if i == n - 2 else "open")
 
 
-X.rows = list(X.rows) + [("front", 8, 145)]
+X.rows = list(X.rows) + [("front", 8, 145)] + [(name, frames, 50) for name, frames, _fn in FIGHT]
 
 ROWS = X.rows
 _render_frame = X.render_frame
