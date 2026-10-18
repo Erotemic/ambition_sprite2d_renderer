@@ -71,3 +71,14 @@ def test_a_foreground_leaves_the_middle_of_the_view_empty(theme: str) -> None:
     quarter = rest.shape[0] // 4
     assert rest[quarter : 3 * quarter].mean() < 0.02, f"{theme} foreground is in the middle of the view"
     assert rest.mean() < 0.16, f"{theme} foreground hides too much of the view"
+
+
+def test_the_flat_backdrop_is_opaque_and_leaves_out_the_foreground() -> None:
+    # A tier with no parallax draws only this behind the play: a hole shows the
+    # clear colour. The foreground is in front of the play, so it is not in it.
+    layers = {layer: scenes.render("cove", layer, size=SMALL) for layer in scenes.LAYERS}
+    flat = scenes.flat(layers)
+    assert flat.size == (scenes.FLAT_SIDE, scenes.FLAT_SIDE)
+    assert np.asarray(flat)[:, :, 3].min() == 255
+    without = scenes.flat({**layers, scenes.FOREGROUND: None})
+    assert (np.asarray(flat) == np.asarray(without)).all()

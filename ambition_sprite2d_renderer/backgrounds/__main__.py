@@ -3,7 +3,8 @@
     python -m ambition_sprite2d_renderer.backgrounds draw --out-dir DIR [THEME ...]
     python -m ambition_sprite2d_renderer.backgrounds preview OUT.png [THEME ...]
 
-`draw` publishes `<theme>_<layer>.png` for each layer of each scene.
+`draw` publishes `<theme>_<layer>.png` for each layer of each scene, and
+`<theme>_flat.png`, the one picture a tier with no parallax draws (`scenes.flat`).
 `preview` writes one picture of what a 16:9 view of the game shows of each
 scene: the camera at the middle of its room, and then at the top and at the
 bottom. It does not run the game.
@@ -69,6 +70,9 @@ def main(argv: list[str] | None = None) -> int:
                     image = Image.new("RGBA", (4, 4), (0, 0, 0, 0))
                 image.save(path)
                 print(path)
+            path = args.out_dir / f"{theme}_flat.png"
+            scenes.flat(layers).save(path)
+            print(path)
         return 0
     cameras = [float(part) for part in args.cameras.split(",")]
     w, h = 1280, 720
