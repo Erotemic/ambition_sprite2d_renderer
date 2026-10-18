@@ -3,7 +3,8 @@
     python -m ambition_sprite2d_renderer.terrain draw --out-dir DIR [SKIN ...]
     python -m ambition_sprite2d_renderer.terrain preview OUT.png [SKIN ...]
 
-`draw` publishes `<skin>_<part>.png` for each part of each skin, and the mote
+`draw` publishes `<skin>_<part>.png` for each part of each skin (and the
+ornaments of a skin that has them, `ornaments.py`), and the mote
 picture, the decor picture and the door of each biome (`<biome>_motes.png`,
 `<biome>_decor.png`, `<biome>_decor_glow.png`, `<biome>_door.png`), and the
 shimmer of a biome that has one (`<biome>_shimmer.png`). `preview`
@@ -18,7 +19,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from . import decor, doors, fixtures, motes, shimmer, skins, two_state
+from . import decor, doors, fixtures, motes, ornaments, shimmer, skins, two_state
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -47,6 +48,10 @@ def main(argv: list[str] | None = None) -> int:
         args.out_dir.mkdir(parents=True, exist_ok=True)
         for key, parts in drawn.items():
             for part, image in parts.items():
+                path = args.out_dir / f"{key}_{part}.png"
+                image.save(path)
+                print(path)
+            for part, image in ornaments.parts(key).items():
                 path = args.out_dir / f"{key}_{part}.png"
                 image.save(path)
                 print(path)

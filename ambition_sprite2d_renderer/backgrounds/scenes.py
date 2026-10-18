@@ -127,3 +127,19 @@ def view(layers: dict[str, Image.Image], size: tuple[int, int] = (1280, 720), ca
         box = (int(centre[0] - w * 0.5), int(centre[1] - h * 0.5))
         out.alpha_composite(image.crop((box[0], box[1], box[0] + w, box[1] + h)))
     return out
+
+
+#: The side of the flat backdrop, in pixels: the one picture a tier that draws
+#: no parallax shows behind the play, fixed to the view (`ParallaxLayerAsset::Flat`
+#: in `ambition_sprite_sheet`). Small, as the tier is for low-power machines.
+FLAT_SIDE = 512
+
+
+def flat(layers: dict[str, Image.Image | None]) -> Image.Image:
+    """The flat backdrop of a scene: what a square view shows of it with the
+    camera at the middle of its room, without the foreground (it is in front of
+    the play, and a flat backdrop is behind it). Drawn at twice its size and
+    made smaller, so its edges are as smooth as the layers'."""
+    behind = {key: image for key, image in layers.items() if key != FOREGROUND}
+    big = view(behind, (FLAT_SIDE * 2, FLAT_SIDE * 2))
+    return big.resize((FLAT_SIDE, FLAT_SIDE), Image.LANCZOS)
