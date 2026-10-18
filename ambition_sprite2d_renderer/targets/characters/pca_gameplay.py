@@ -384,20 +384,31 @@ STRIKES = {
 }
 
 
+#: The game draws a rig unit at about half a world pixel, and the roster's hit
+#: volumes are about 1.6x the drawn reach (a normal is ~0.3-0.6 of a body height
+#: squared). A limb-thick area in rig units was a sliver in the game (a jab
+#: 0.25 x 0.07 body heights), so each area is this much thicker and reaches this
+#: much farther than its limb.
+GENEROUS_RADIUS = 2.6
+GENEROUS_REACH = 8.0
+
+
 def strike_points(limbs: Sequence[tuple[tuple[float, float], float, float]], strike: Strike) -> list:
     """Hit-area outline points around limbs given as (joint, angle_deg, length)."""
     points = []
+    radius = strike.radius * GENEROUS_RADIUS
+    reach = strike.reach + GENEROUS_REACH
     ring = [(math.cos(a), math.sin(a)) for a in (k * math.tau / 8.0 for k in range(8))]
     for (x, y), angle, length in limbs:
         dx, dy = math.cos(math.radians(angle)), math.sin(math.radians(angle))
         tip = (x + dx * length, y + dy * length)
         if strike.toward is not None:
             dx, dy = math.cos(math.radians(strike.toward)), math.sin(math.radians(strike.toward))
-        ends = [(x, y), tip, (tip[0] + dx * strike.reach, tip[1] + dy * strike.reach)]
+        ends = [(x, y), tip, (tip[0] + dx * reach, tip[1] + dy * reach)]
         if strike.rise:
             ends += [(ex, ey - strike.rise) for ex, ey in ends]
         for ex, ey in ends:
-            points.extend((ex + cx * strike.radius, ey + cy * strike.radius) for cx, cy in ring)
+            points.extend((ex + cx * radius, ey + cy * radius) for cx, cy in ring)
     return points
 
 

@@ -516,6 +516,11 @@ SHORT_FORM = FormSpec(
     front_arm_dy=0.333,
 )
 
+# Her fighting rows, for the grown forms that wear her platform-fighter kit
+# (`_mary_o_v2_attacks`). Imported here, after `Pose`, because that module
+# poses on it.
+from ._mary_o_v2_attacks import attack_poses as _attack_poses, attack_rows as _attack_rows  # noqa: E402
+
 TALL_FORM = FormSpec(
     target_name=f"{TARGET_BASE}_tall",
     display_name="Mary-O v2 Tall",
@@ -526,7 +531,7 @@ TALL_FORM = FormSpec(
     power="tall",
     tall=True,
     magic_stage=1,
-    rows=TALL_ROWS,
+    rows=TALL_ROWS + _attack_rows(),
     # Cap tip starts at y=8.
     collision_top_px=24,
     collision_bottom_px=192,
@@ -548,7 +553,7 @@ FIRE_FORM = FormSpec(
     power="fire",
     tall=True,
     magic_stage=2,
-    rows=FIRE_ROWS,
+    rows=FIRE_ROWS + _attack_rows(),
     # Same height as tall: the fire form is the same body wearing flames.
     collision_top_px=22,
     collision_bottom_px=190,
@@ -874,6 +879,8 @@ TALL_LIKE_POSES: Dict[str, List[Pose]] = {
         ),
     ],
 }
+
+TALL_LIKE_POSES.update(_attack_poses())
 
 #: The last frame of `transform`: she holds the orb of her new power in her
 #: front hand. The frame draws the orb; this pose puts the hand under it.

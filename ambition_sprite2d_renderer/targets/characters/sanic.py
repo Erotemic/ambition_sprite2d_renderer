@@ -973,7 +973,7 @@ ANIMATION_KEY_MAP: Dict[str, str] = {
 
 # Authored strike volumes, in frame pixel coords (auto_crop=False keeps these in
 # the same space we draw in). Approximate first-pass geometry — tune later.
-ATTACK_HITBOXES: Dict[str, dict] = {
+_DRAWN_HITBOXES: Dict[str, dict] = {
     "slash": {"bbox": {"x": 78, "y": 56, "w": 30, "h": 26}},
     "punch": {"bbox": {"x": 80, "y": 58, "w": 30, "h": 24}},
     "attack_side": {"bbox": {"x": 80, "y": 54, "w": 34, "h": 28}},
@@ -986,6 +986,35 @@ ATTACK_HITBOXES: Dict[str, dict] = {
     "air_down": {"bbox": {"x": 44, "y": 70, "w": 38, "h": 44}},
     "special": {"bbox": {"x": 38, "y": 58, "w": 46, "h": 46}},
     "ledge_getup_attack": {"bbox": {"x": 74, "y": 56, "w": 34, "h": 28}},
+}
+
+
+#: Where each blow is DRAWN reaches a sliver of the body: pixel-true, these were
+#: about a third of the area the rest of the Smash roster's volumes cover (a
+#: forward tilt 0.30 x 0.24 of his height, against ~0.6 x 0.5). The game's
+#: volumes are about 1.6x the drawn reach, so each grows by this much, and grows
+#: away from his middle (the blow's end), not into his body.
+HITBOX_GROWTH = 1.8
+_BODY_MIDDLE = (64.0, 70.0)
+
+
+def _generous(bbox: dict) -> dict:
+    cx, cy = bbox["x"] + bbox["w"] / 2.0, bbox["y"] + bbox["h"] / 2.0
+    w, h = bbox["w"] * HITBOX_GROWTH, bbox["h"] * HITBOX_GROWTH
+    # Half the growth goes outward along the line from his middle to the blow.
+    dx, dy = cx - _BODY_MIDDLE[0], cy - _BODY_MIDDLE[1]
+    norm = max(1.0, (dx * dx + dy * dy) ** 0.5)
+    cx += dx / norm * (w - bbox["w"]) / 2.0
+    cy += dy / norm * (h - bbox["h"]) / 2.0
+    x0 = max(0, round(cx - w / 2.0))
+    y0 = max(0, round(cy - h / 2.0))
+    x1 = min(FRAME_SIZE[0], round(cx + w / 2.0))
+    y1 = min(FRAME_SIZE[1], round(cy + h / 2.0))
+    return {"x": x0, "y": y0, "w": x1 - x0, "h": y1 - y0}
+
+
+ATTACK_HITBOXES: Dict[str, dict] = {
+    row: {**box, "bbox": _generous(box["bbox"])} for row, box in _DRAWN_HITBOXES.items()
 }
 
 
