@@ -33,6 +33,9 @@ CARD_OUTLINE = (210, 216, 228, 255)
 TEXT_RGBA = (32, 36, 46, 255)
 BUBBLE_FILL = (255, 255, 255, 255)
 BUBBLE_OUTLINE = (168, 178, 198, 255)
+# The screen around the card when the game plays it. This renderer does not
+# draw it; the exporter writes it beside the card's own colours.
+SCREEN_BACKDROP = (12, 14, 22, 255)
 RENDER_SCALE = 2
 SUPERSAMPLE = 2
 FLOOR_Y = 326

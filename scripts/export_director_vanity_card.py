@@ -414,6 +414,15 @@ def write_manifest(
     lines.append(f"    canvas: ({manifest['canvas'][0]:.1f}, {manifest['canvas'][1]:.1f}),")
     lines.append(f"    frame_ms: {manifest['frame_ms']},")
     lines.append(f'    sheet: "{ASSET_PREFIX}/vanity_card_parts.png",')
+    rgb = lambda rgba: f"({rgba[0]}, {rgba[1]}, {rgba[2]})"
+    lines.append("    // The renderer's colours (0 to 255) and card margin, so the game draws the")
+    lines.append("    // card and the bubbles as the renderer did, and the screen around the card.")
+    lines.append(
+        f"    look: (margin: {float(dialog.CARD_MARGIN):.1f}, card_fill: {rgb(dialog.CARD_FILL)}, "
+        f"card_outline: {rgb(dialog.CARD_OUTLINE)}, bubble_fill: {rgb(dialog.BUBBLE_FILL)}, "
+        f"bubble_outline: {rgb(dialog.BUBBLE_OUTLINE)}, text: {rgb(dialog.TEXT_RGBA)}, "
+        f"backdrop: {rgb(dialog.SCREEN_BACKDROP)}),"
+    )
     lines.append("    parts: [")
     for name, rect in zip(atlas.order, rects):
         lines.append(
