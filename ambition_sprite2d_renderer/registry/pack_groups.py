@@ -37,6 +37,7 @@ class PackPolicy:
 #   - shrine                — ShrineVisualAnim (rendering/shrine_visuals.rs)
 #   - robot_slash           — one-shot melee effect (rendering/slash_visuals.rs)
 #   - gnu_ton_slash         — the same, for GNU-ton's quill
+#   - *_strike_fx           — the same, one per Smash fighter (`_strike_fx_common.py`)
 #   - glider                — projectile, sprite.rect sub-image (projectile_visuals.rs)
 #   - lasersword            — wielded + projectile item sprite (item_visuals.rs)
 #   - lasersword_with_guns  — pirate gun-sword overlay (pirate_weapon.rs)
@@ -45,6 +46,27 @@ _UNTRIMMED = (
     "shrine",
     "robot_slash",
     "gnu_ton_slash",
+    "george_booul_strike_fx",
+    "mary_o_strike_fx",
+    "sanic_strike_fx",
+    "pirate_admiral_strike_fx",
+    "ninja_shadow_oni_leader_strike_fx",
+    "alice_strike_fx",
+    "bob_strike_fx",
+    "oiler_strike_fx",
+    "perfect_cellular_automaton_strike_fx",
+    "goblin_strike_fx",
+    "emmy_noether_strike_fx",
+    "carl_stargan_strike_fx",
+    "patent_clerk_strike_fx",
+    "ramen_nujan_strike_fx",
+    "pointed_polygon_strike_fx",
+    "projectile_polygon_strike_fx",
+    "pugnacious_polygon_strike_fx",
+    "director_strike_fx",
+    "performer_strike_fx",
+    "officer_strike_fx",
+    "medic_strike_fx",
     "glider",
     "lasersword",
     "lasersword_with_guns",
