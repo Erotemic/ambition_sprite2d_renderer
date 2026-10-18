@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from ambition_sprite2d_renderer.terrain import decor, fixtures, motes, skins
+from ambition_sprite2d_renderer.terrain import decor, fixtures, motes, ornaments, skins
 
 
 @pytest.mark.parametrize("skin", skins.SKINS, ids=lambda skin: skin.key)
@@ -159,3 +159,15 @@ def test_a_pool_of_light_is_clear_at_each_edge_of_its_square(theme: str) -> None
         edge = max(alpha[0].max(), alpha[-1].max(), alpha[:, 0].max(), alpha[:, -1].max())
         assert edge <= 2, (theme, variant, edge)
         assert (alpha.max() > 20) == (draw in decor.LIGHTS), (theme, variant)
+
+
+@pytest.mark.parametrize("key", ornaments.KEYS)
+def test_each_ornament_has_the_size_the_game_lays_it_at(key: str) -> None:
+    # The game places each ornament by its size in world units
+    # (`terrain_skin.rs`): a picture of another size is laid stretched.
+    parts = ornaments.parts(key)
+    assert sorted(parts) == sorted(ornaments.SIZES)
+    for part, image in parts.items():
+        w, h = ornaments.SIZES[part]
+        assert image.size == (w * skins.PX_PER_UNIT, h * skins.PX_PER_UNIT), part
+        assert np.asarray(image)[:, :, 3].max() > 200, f"{key} {part} draws nothing"
