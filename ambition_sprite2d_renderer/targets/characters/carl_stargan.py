@@ -446,6 +446,17 @@ def _quantized(value: float, low: float, high: float, steps: int = 2) -> float:
     return low + (high - low) * round(clamp01(value) * steps) / steps
 
 
+#: Where in each special's clip (0..1) the move lands: the frame its Active
+#: window opens on (`carl_stargan.ron`, frame k of f at k/(f-1)). An effect
+#: that grew over the whole clip peaked on its last frame, after the hit.
+STRIKE_AT = {"billions_and_billions": 4 / 9, "cosmic_calendar": 3 / 9, "starstuff": 1 / 9}
+
+
+def _struck(t: float, animation: str) -> float:
+    """How far an effect has grown: all there on the frame the move lands."""
+    return smooth(min(1.0, t / STRIKE_AT[animation]))
+
+
 def _behind(animation: str, canvas: FxCanvas, t: float, world, params) -> None:
     del params
     center = (80.0, 82.0)
@@ -486,7 +497,7 @@ def _behind(animation: str, canvas: FxCanvas, t: float, world, params) -> None:
                 _place_halves(canvas, _ring(canvas, radius, radius, PALE_BLUE, 0.8), dot, alpha * reached, "ripple")
         _field(canvas, dot, 29 * q, 3, t * 0.2, 0.22 + 0.3 * q)
     elif animation == "cosmic_calendar":
-        q = smooth(t)
+        q = _struck(t, "cosmic_calendar")
         for index in range(12):
             middle = math.radians(-165 + index * 20 + 7)
             rx, ry = 30 + index * 2.5 * q, 22 + index * 1.7 * q
@@ -496,13 +507,18 @@ def _behind(animation: str, canvas: FxCanvas, t: float, world, params) -> None:
             canvas.place(_dash(canvas, band), at, heading, 0.25 + 0.45 * q, "month")
         _field(canvas, center, 45 * q, 3, -t * 0.16, 0.35)
     elif animation == "billions_and_billions":
-        q = smooth(t)
-        _field(canvas, center, 12 + 62 * q, 8, t * 0.25, 0.28 + 0.5 * q)
+        # The universe goes off in front of his thrown hands, where the smash
+        # hits, and is all there on the frame it lands.
+        q = _struck(t, "billions_and_billions")
+        near = bone_origin(world, "near_arm_hand", (40, 80))
+        far = bone_origin(world, "far_arm_hand", (46, 82))
+        burst = ((near[0] + far[0]) / 2 - 22 * q, (near[1] + far[1]) / 2)
+        _field(canvas, burst, 12 + 44 * q, 8, t * 0.25, 0.28 + 0.5 * q)
         grown = round(q * 2) / 2
-        nebula = _disc(canvas, 20 + 34 * grown, 12 + 23 * grown, fade(NEBULA_VIOLET, 0.13))
-        _place_halves(canvas, nebula, center, (0.05 + 0.08 * q) / 0.13, "nebula")
+        nebula = _disc(canvas, 16 + 26 * grown, 12 + 18 * grown, fade(NEBULA_VIOLET, 0.13))
+        _place_halves(canvas, nebula, burst, (0.05 + 0.08 * q) / 0.13, "nebula")
     elif animation == "starstuff":
-        q = smooth(t)
+        q = _struck(t, "starstuff")
         # Round, not squashed, so a turn is a draw transform: kept smaller than
         # the squashed spiral's width so it stays about his body.
         swirl = _swirl(canvas, 0.35 if q < 0.3 else 0.55 if q < 0.65 else 0.75)
@@ -537,7 +553,7 @@ def _front(animation: str, canvas: FxCanvas, t: float, world, params) -> None:
         for hand in (near, far):
             canvas.place(star, (hand[0], hand[1] - 2), 0.0, 1.0, "hand_star")
     elif animation == "starstuff":
-        _field(canvas, (80, 82), 44 * smooth(t), 3, t * 0.6, 0.55, "front_stars")
+        _field(canvas, (80, 82), 44 * _struck(t, "starstuff"), 3, t * 0.6, 0.55, "front_stars")
     elif animation in {"stargaze", "celebrate"}:
         canvas.place(_star(canvas, _quantized(pulse(t), 3.2, 4.6), STAR_GOLD, 5), (near[0] - 5, near[1] - 7), 0.0, 0.75, "star")
         canvas.place(_star(canvas, _quantized(pulse(t + 0.2), 2.6, 3.8), PALE_BLUE), (far[0] + 5, far[1] - 6), 0.0, 0.65, "star")

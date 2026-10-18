@@ -44,6 +44,18 @@ EFFECTFUL_ANIMATIONS = frozenset(
         "invariant_field",
         "symmetry_break",
         "noether_theorem",
+        # Her palm strikes (`PALM_STRIKES`).
+        "jab",
+        "attack_up",
+        "attack_down",
+        "dash_attack",
+        "smash_up",
+        "smash_down",
+        "air_neutral",
+        "air_forward",
+        "air_back",
+        "air_up",
+        "air_down",
     }
 )
 
@@ -344,15 +356,16 @@ def _field_front(canvas: FxCanvas, t: float, world: World) -> None:
 
 def _break_behind(canvas: FxCanvas, t: float, world: World) -> None:
     center = _center(world)
-    q = _window(t, 0.61)
+    # Her forward smash lands at 0.33-0.44 of the row; the lattice breaks then.
+    q = _window(t, 0.42)
     # Start with a visibly symmetric lattice, then break its center line.
     half_w, half_h = 54.0, 48.0
     for xoff in (-36.0, -18.0, 0.0, 18.0, 36.0):
         canvas.line([(center[0] + xoff, center[1] - half_h), (center[0] + xoff, center[1] + half_h)], fade(INK_BLUE, 0.20 * q), 0.55)
     for yoff in (-32.0, -16.0, 0.0, 16.0, 32.0):
         canvas.line([(center[0] - half_w, center[1] + yoff), (center[0] + half_w, center[1] + yoff)], fade(INK_BLUE, 0.20 * q), 0.55)
-    if t > 0.35:
-        r = smooth((t - 0.35) / 0.65)
+    if t > 0.26:
+        r = smooth(min(1.0, (t - 0.26) / 0.2))
         crack = [
             (center[0], center[1] - 48),
             (center[0] - 5 * r, center[1] - 27),
@@ -376,7 +389,7 @@ def _break_behind(canvas: FxCanvas, t: float, world: World) -> None:
 
 def _break_front(canvas: FxCanvas, t: float, world: World) -> None:
     near, _far = _hands(world)
-    q = _window(t, 0.61)
+    q = _window(t, 0.42)
     radius = 5.0 + 8.0 * pulse(t)
     canvas.star(near, radius, fade(GOLD, 0.30 * q), points=4, inner=0.30, outline=fade(CORAL, 0.88 * q))
     for angle in (-0.65, -0.22, 0.22, 0.65):
@@ -439,16 +452,90 @@ def _proof(canvas: FxCanvas, t: float, world: World) -> None:
     canvas.arrow((center[0] + 5.0, center[1] + 7.0), (center[0] - 5.0, center[1] + 7.0), fade(GOLD, 0.62 * q), 0.75, 2.6)
 
 
-def _generator_strike(canvas: FxCanvas, t: float, world: World) -> None:
-    near, _far = _hands(world)
-    q = _window(t, 0.57)
-    # A compact generator glyph rides the striking hand. This is deliberately
-    # directional because the attack is; the actual authored volume remains a
-    # symmetric convex lens.
-    for index in range(3):
-        radius = 7.0 + index * 5.0
-        canvas.arc(near, radius, radius * 0.72, 210, 335, fade((ETHER, GOLD, VIOLET)[index], (0.66 - index * 0.11) * q), 1.2)
-    canvas.star(near, 3.8 + 2.2 * pulse(t), fade(ETHER_LIGHT, 0.42 * q), points=4, inner=0.35, outline=fade(GOLD, 0.76 * q))
+#: Her palm strikes: which hands strike, where in the row (0..1, frame k of f
+#: at k/(f-1)) the strike is first and last out, and how far its lens reaches.
+#: The frames are the ones that overlap each move's Active window in
+#: ``emmy_noether.ron``, as the poses in the rig builder are keyed.
+PALM_STRIKES: dict[str, tuple[str, float, float, float]] = {
+    "jab": ("near", 1 / 5, 3 / 5, 26.0),
+    "generator_strike": ("both", 2 / 6, 3 / 6, 34.0),
+    "attack_up": ("near", 2 / 7, 4 / 7, 30.0),
+    "attack_down": ("near", 2 / 7, 4 / 7, 32.0),
+    "dash_attack": ("near", 1 / 6, 2 / 6, 32.0),
+    "smash_up": ("both", 2 / 8, 4 / 8, 40.0),
+    "smash_down": ("both", 2 / 8, 4 / 8, 38.0),
+    "air_neutral": ("both", 1 / 7, 3 / 7, 26.0),
+    "air_forward": ("near", 2 / 6, 3 / 6, 32.0),
+    "air_back": ("near", 2 / 6, 3 / 6, 32.0),
+    "air_up": ("both", 2 / 6, 3 / 6, 30.0),
+    "air_down": ("both", 2 / 6, 3 / 6, 30.0),
+}
+
+
+#: Strikes thrown straight behind her, whatever the arm manages.
+BACKWARD = frozenset({"air_back"})
+
+#: Her frame is tall (the dress), so a lens sized like a fist read as a spark.
+LENS_SCALE = 1.5
+
+
+def _palm_strike(canvas: FxCanvas, t: float, world: World, animation: str) -> None:
+    """A mirrored lens thrown out of the striking palm along the strike.
+
+    Her construction language: the two halves of the lens are the two colours
+    of a symmetric pair, meeting on the line of the blow. It is all there on
+    the first live frame, then travels on and thins (it follows through, and
+    is never drawn ahead of where the blow reaches). The direction is the
+    hand's own, out from her middle, so one rule serves up, down, back and
+    both-handed blows.
+    """
+    hands, t0, t1, length = PALM_STRIKES[animation]
+    length *= LENS_SCALE
+    if t < t0 - 0.05:
+        return
+    if t <= t0:
+        q, after = 1.0, 0.0
+    elif t <= t1:
+        q, after = 1.0, 0.0
+    else:
+        after = clamp01((t - t1) / 0.3)
+        q = 1.0 - smooth(after)
+    if q <= 0.02:
+        return
+    center = _center(world)
+    near, far = _hands(world)
+    for hand, color in ((near, ETHER), (far, VIOLET))[: 1 if hands == "near" else 2]:
+        dx, dy = hand[0] - center[0], hand[1] - center[1]
+        if animation in BACKWARD:
+            # Her arm does not reach far behind her, so its own direction
+            # points up across her face; a back air strikes behind.
+            dx, dy = -abs(dx) - 1.0, 0.0
+        norm = math.hypot(dx, dy) or 1.0
+        ux, uy = dx / norm, dy / norm
+        px, py = -uy, ux
+        start = 0.18 * length * after
+        reach = length * (1.0 + 0.25 * after)
+        width = 12.0 * (1.0 - 0.55 * after)
+        upper, lower = [], []
+        for i in range(13):
+            s = i / 12
+            along = start + (reach - start) * s
+            half = width * math.sin(math.pi * s) ** 0.8
+            base = (hand[0] + ux * along, hand[1] + uy * along)
+            upper.append((base[0] + px * half, base[1] + py * half))
+            lower.append((base[0] - px * half, base[1] - py * half))
+        axis = [(hand[0] + ux * (start + (reach - start) * i / 12), hand[1] + uy * (start + (reach - start) * i / 12)) for i in range(13)]
+        canvas.polygon(upper + axis[::-1], fade(ETHER, 0.42 * q), fade(ETHER_LIGHT, 0.85 * q), 0.9)
+        canvas.polygon(lower + axis[::-1], fade(VIOLET, 0.42 * q), fade(ETHER_LIGHT, 0.85 * q), 0.9)
+        canvas.line([axis[0], axis[-1]], fade(ETHER_LIGHT, 0.9 * q), 1.1)
+        canvas.star(hand, (4.2 + 2.0 * (1.0 - after)) * (0.6 + 0.4 * q), fade(ETHER_LIGHT, 0.55 * q),
+                    points=4, inner=0.35, outline=fade(GOLD, 0.85 * q))
+        # Ticks behind the palm: where it came from.
+        for k in (1, 2):
+            back = 5.0 + 4.0 * k
+            a = (hand[0] - ux * back + px * 3.0 * k, hand[1] - uy * back + py * 3.0 * k)
+            b = (hand[0] - ux * (back + 5.0) + px * 3.0 * k, hand[1] - uy * (back + 5.0) + py * 3.0 * k)
+            canvas.line([a, b], fade(color, 0.6 * q * (1.0 - 0.3 * k)), 0.9)
 
 
 def draw_noether_behind(
@@ -497,8 +584,8 @@ def draw_noether_front(
         _break_front(canvas, t, world)
     elif animation == "noether_theorem":
         _theorem_front(canvas, t, world)
-    elif animation == "generator_strike":
-        _generator_strike(canvas, t, world)
+    elif animation in PALM_STRIKES:
+        _palm_strike(canvas, t, world, animation)
 
 
 __all__ = [

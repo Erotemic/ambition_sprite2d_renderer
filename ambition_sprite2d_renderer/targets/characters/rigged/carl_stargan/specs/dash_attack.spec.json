@@ -6,9 +6,8 @@
   "facing": "west",
   "hitbox": {
     "active": [
-      2,
-      3,
-      4
+      1,
+      2
     ],
     "extend": 1.05
   },

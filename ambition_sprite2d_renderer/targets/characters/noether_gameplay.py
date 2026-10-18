@@ -321,24 +321,60 @@ def body_metrics(fw: int, fh: int, profile: dict | None = None) -> dict:
 # rectangle's TOP as a height above the floor.
 
 
+def _palm_strike(row: str) -> dict:
+    """A palm strike's volume, solved from the rig: each striking palm on the
+    row's strike frames, and the lens it throws (``noether_effects``), padded.
+
+    So the area is where the blow is drawn, on the frames it is out, and moves
+    with the pose when the pose is re-keyed.
+    """
+    from .noether_effects import BACKWARD, LENS_SCALE, PALM_STRIKES, _center, _hands
+    from .noether_motion import NOETHER_ROWS
+
+    frames = next(f for name, f, _d in NOETHER_ROWS if name == row)
+    hands, t0, t1, length = PALM_STRIKES[row]
+    length *= LENS_SCALE
+    active = list(range(round(t0 * (frames - 1)), round(t1 * (frames - 1)) + 1))
+    doc = _rig()
+    xs: list[float] = []
+    ys: list[float] = []
+    for k in active:
+        world, _params = doc.solve(row, doc.frame_time(row, k, frames))
+        center = _center(world)
+        near, far = _hands(world)
+        for hand in (near, far)[: 1 if hands == "near" else 2]:
+            dx, dy = hand[0] - center[0], hand[1] - center[1]
+            if row in BACKWARD:
+                dx, dy = -abs(dx) - 1.0, 0.0
+            norm = math.hypot(dx, dy) or 1.0
+            tip = (hand[0] + dx / norm * length, hand[1] + dy / norm * length)
+            xs += [hand[0], tip[0]]
+            ys += [hand[1], tip[1]]
+    pad = 8.0
+    return {
+        "bbox": _rect_px(min(xs) - pad, min(ys) - pad, max(xs) + pad, max(ys) + pad),
+        "active_frames": active,
+    }
+
+
 def _attack_table() -> dict:
     return {
         # ── ordinary fighter surface ────────────────────────────────────────
-        "jab": _attack(6, 48, 20, 14, active=[2]),
+        "jab": _palm_strike("jab"),
         "punch": _attack(6, 47, 24, 16, active=[2, 3]),
         "slash": _attack(4, 54, 30, 28, active=[2, 3, 4]),
-        "dash_attack": _attack(5, 44, 27, 22, active=[2, 3, 4]),
+        "dash_attack": _palm_strike("dash_attack"),
         "attack_side": _attack(6, 48, 27, 20, active=[2, 3]),
-        "attack_up": _attack(-9, 76, 20, 24, active=[2, 3]),
-        "attack_down": _attack(-2, 16, 28, 16, active=[2, 3]),
+        "attack_up": _palm_strike("attack_up"),
+        "attack_down": _palm_strike("attack_down"),
         "smash_forward": _attack(5, 56, 32, 32, active=[3, 4, 5]),
-        "smash_up": _attack(-11, 84, 24, 32, active=[3, 4, 5]),
-        "smash_down": _attack(-20, 14, 42, 14, active=[3, 4, 5]),
-        "air_neutral": _attack(-14, 56, 30, 26, active=[2, 3]),
-        "air_forward": _attack(5, 56, 28, 24, active=[2, 3]),
-        "air_back": _attack(-32, 54, 28, 22, active=[2, 3]),
-        "air_up": _attack(-10, 80, 22, 24, active=[2, 3]),
-        "air_down": _attack(-9, 22, 20, 26, active=[2, 3]),
+        "smash_up": _palm_strike("smash_up"),
+        "smash_down": _palm_strike("smash_down"),
+        "air_neutral": _palm_strike("air_neutral"),
+        "air_forward": _palm_strike("air_forward"),
+        "air_back": _palm_strike("air_back"),
+        "air_up": _palm_strike("air_up"),
+        "air_down": _palm_strike("air_down"),
         "ledge_attack": _attack(3, 34, 26, 18, active=[2, 3]),
         "getup_attack": _attack(-22, 16, 46, 16, active=[2, 3]),
         # ── the signature clips `noether_motion` renames ────────────────────
@@ -347,7 +383,7 @@ def _attack_table() -> dict:
         # the same shape: a conservation law is a held field, a generator strike
         # is a committed swing, and a symmetry break is the biggest thing she
         # does.
-        "generator_strike": _attack(4, 58, 34, 34, active=[2, 3, 4]),
+        "generator_strike": _palm_strike("generator_strike"),
         "conservation_law": _attack(-18, 60, 40, 44, active=[3, 4, 5, 6]),
         "symmetry_shift": _attack(-14, 52, 32, 30, active=[2, 3, 4]),
         "symmetry_proof": _attack(2, 52, 30, 26, active=[2, 3, 4]),

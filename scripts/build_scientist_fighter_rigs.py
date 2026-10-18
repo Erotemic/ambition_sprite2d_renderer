@@ -36,7 +36,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
-BUILDER_VERSION = 19
+BUILDER_VERSION = 20
 
 
 def _is_extension_path(path: Path) -> bool:
@@ -1182,6 +1182,127 @@ def _add_noether_skirt_motion(clips: Mapping[str, dict]) -> dict[str, dict]:
     return out
 
 
+def _noether_strike_clips(r: Mapping[str, float], rows: Mapping[str, tuple[int, int]]) -> dict[str, dict]:
+    """Emmy's Smash strikes, authored WEST like the clerk's and mirrored after.
+
+    She fights with open hands, so the reach and the lean are the whole read:
+    each strike drives the palm (or both) along its line with the torso and
+    the stance behind it, and is out on the frames that overlap the move's
+    Active window in ``emmy_noether.ron`` (frame ``k`` shows for progress
+    ``[k/f, (k+1)/f)``; each row's comment names them). The clerk's poses she
+    borrowed moved one forearm a little and peaked after the hit.
+    """
+    nf, ff = r["near_foot_pitch"], r["far_foot_pitch"]
+
+    def reach(xs: Sequence[float]) -> list[float]:
+        return [max(0.0, min(80.0, 80.0 * (x + 40.0) / 57.0)) for x in xs]
+
+    def feet(n: int, front: Sequence[float], back: Sequence[float],
+             front_lift: Sequence[float] | None = None, back_lift: Sequence[float] | None = None) -> dict:
+        return dict(
+            far_foot=(front, front_lift or [0.0] * n, [ff] * n),
+            near_foot=(back, back_lift or [0.0] * n, [nf] * n),
+        )
+
+    ground: dict[str, dict] = {
+        # live 1-3: a palm driven straight out.
+        "jab": dict(torso=[0, 9, 12, 10, 4, 0], head=[0, -4, -6, -5, -2, 0], root_y=[0, 1, 1, 1, 0, 0],
+            near_hand=([17, -30, -38, -36, -10, 17], [-50, -56, -57, -56, -52, -50]),
+            **feet(6, [-10, -14, -15, -14, -12, -10], [10, 12, 13, 12, 11, 10])),
+        # live 1-3: both hands sweep the generator across in front of her.
+        "generator_strike": dict(torso=[-5, 6, 14, 15, 9, 3, 0], head=[3, -3, -7, -7, -4, -1, 0],
+            root_y=[0, 1, 2, 2, 1, 0, 0],
+            near_hand=([24, -14, -40, -44, -30, -4, 17], [-60, -62, -58, -56, -54, -51, -50]),
+            far_hand=([-13, -4, -26, -30, -20, -10, -13], [-49, -54, -56, -55, -52, -50, -49]),
+            **feet(7, [-10, -16, -20, -20, -17, -13, -10], [10, 13, 16, 16, 14, 12, 10])),
+        # live 1-4: up on her toes, the palm driven overhead.
+        "attack_up": dict(root_y=[2, -1, -3, -4, -3, -1, 0, 0], torso=[4, -4, -9, -11, -9, -5, -1, 0],
+            head=[-2, 4, 8, 10, 8, 4, 1, 0],
+            near_hand=([10, -4, -10, -8, -4, 4, 12, 17], [-46, -80, -98, -102, -96, -78, -60, -50]),
+            far_hand=([-13, -14, -16, -15, -14, -13, -13, -13], [-49, -62, -72, -74, -70, -60, -52, -49])),
+        # live 1-4: down low, the palm swept along the floor.
+        "attack_down": dict(root_y=[0, 5, 9, 10, 9, 5, 1, 0], torso=[0, 14, 22, 24, 20, 12, 4, 0],
+            head=[0, -6, -10, -11, -9, -5, -2, 0],
+            near_hand=([17, -12, -34, -42, -36, -18, 4, 17], [-50, -30, -14, -10, -12, -28, -42, -50]),
+            far_hand=([-13, -6, 2, 4, 2, -4, -10, -13], [-49, -42, -38, -36, -38, -42, -46, -49]),
+            **feet(8, [-10, -16, -20, -20, -19, -15, -12, -10], [10, 14, 17, 17, 16, 13, 11, 10])),
+        # live 3-4: drawn in to the chest, then both palms thrown open.
+        "symmetry_break": dict(torso=[0, -5, -6, 12, 20, 16, 10, 4, 1, 0], head=[0, 3, 3, -6, -10, -8, -5, -2, 0, 0],
+            root_y=[0, 1, 2, 4, 4, 3, 2, 1, 0, 0],
+            near_hand=([17, 16, 6, -30, -50, -44, -30, -12, 4, 17], [-50, -54, -58, -62, -64, -62, -58, -54, -51, -50]),
+            far_hand=([-13, -6, -8, -26, -42, -36, -24, -12, -10, -13], [-49, -52, -55, -62, -66, -64, -58, -54, -51, -49]),
+            **feet(10, [-10, -8, -7, -22, -24, -22, -18, -14, -11, -10], [10, 12, 13, 18, 20, 18, 15, 12, 11, 10])),
+        # live 2-4: crouched, then both palms driven up.
+        "smash_up": dict(root_y=[2, 6, -3, -5, -4, -2, 0, 1, 0], torso=[4, 9, -8, -12, -10, -6, -3, -1, 0],
+            head=[-2, -4, 8, 12, 10, 6, 2, 0, 0],
+            near_hand=([10, 14, -6, -10, -8, -2, 6, 12, 17], [-46, -40, -98, -108, -104, -90, -70, -56, -50]),
+            far_hand=([-13, -10, -18, -20, -18, -15, -13, -13, -13], [-49, -44, -94, -104, -100, -84, -64, -52, -49])),
+        # live 2-4: both palms pushed down and out to either side.
+        "smash_down": dict(root_y=[0, 4, 9, 10, 9, 6, 3, 1, 0], torso=[0, 8, 18, 20, 16, 10, 4, 1, 0],
+            head=[0, -3, -8, -9, -7, -4, -2, 0, 0],
+            near_hand=([17, 10, -34, -38, -34, -20, 0, 12, 17], [-50, -44, -16, -12, -14, -26, -40, -48, -50]),
+            far_hand=([-13, -6, 28, 32, 28, 16, 0, -10, -13], [-49, -44, -16, -12, -14, -26, -40, -47, -49]),
+            **feet(9, [-10, -14, -18, -18, -17, -14, -12, -11, -10], [10, 13, 16, 16, 15, 13, 11, 10, 10])),
+        # live 0-2: a running lunge, palm first.
+        "dash_attack": dict(torso=[6, 16, 18, 12, 6, 2, 0], head=[-3, -8, -9, -6, -3, -1, 0],
+            root_y=[1, 3, 3, 2, 1, 0, 0],
+            near_hand=([10, -40, -46, -36, -18, 0, 17], [-54, -56, -58, -56, -53, -51, -50]),
+            far_hand=([-13, 6, 10, 6, 0, -8, -13], [-49, -47, -46, -47, -48, -49, -49]),
+            **feet(7, [-14, -24, -26, -22, -16, -12, -10], [12, 20, 22, 18, 14, 12, 10])),
+    }
+    air = dict(root_y=[-8, -10, -12, -10, -8, -6, -7, -8], torso=[-3, -5, -6, -4, -1, 1, 0, -2],
+               head=[2, 4, 5, 3, 1, -1, 0, 1])
+    aerials: dict[str, dict] = {
+        # live 1-3: both arms flung out as she turns.
+        "air_neutral": dict(pelvis=[0, 10, 16, 12, 6, 2, 0, 0],
+            near_hand=([17, -30, -36, -28, -8, 6, 14, 17], [-50, -60, -58, -54, -50, -50, -50, -50]),
+            far_hand=([-13, 26, 32, 26, 8, -4, -10, -13], [-49, -60, -58, -54, -50, -49, -49, -49])),
+        # live 1-3: a palm whipped forward from over her shoulder.
+        "air_forward": dict(torso=[-5, 5, 12, 13, 7, 2, 0],
+            near_hand=([22, -10, -40, -44, -28, -4, 17], [-60, -62, -58, -56, -54, -51, -50]),
+            far_hand=([-13, -2, 4, 6, 2, -8, -13], [-49, -48, -47, -47, -48, -49, -49])),
+        # live 1-3: she turns her shoulders and strikes out behind.
+        "air_back": dict(torso=[4, -6, -13, -14, -8, -3, 0], head=[-2, 3, 6, 6, 4, 1, 0],
+            near_hand=([-10, 18, 38, 42, 30, 22, 17], [-56, -58, -58, -56, -54, -51, -50]),
+            far_hand=([-13, -22, -28, -28, -22, -16, -13], [-49, -52, -54, -54, -52, -50, -49])),
+        # live 1-3: both palms straight up.
+        "air_up": dict(torso=[2, -7, -11, -11, -7, -3, 0], head=[-1, 5, 9, 9, 5, 2, 0],
+            near_hand=([12, 2, -10, -8, 0, 8, 17], [-52, -76, -102, -100, -88, -66, -50]),
+            far_hand=([-13, -13, -16, -15, -14, -13, -13], [-49, -62, -82, -80, -70, -56, -49])),
+        # live 1-3: both palms driven down beneath her.
+        "air_down": dict(torso=[0, 8, 12, 12, 8, 3, 0],
+            near_hand=([17, -2, -4, -2, 4, 12, 17], [-50, -24, -10, -8, -18, -36, -50]),
+            far_hand=([-13, -8, -6, -6, -8, -11, -13], [-49, -26, -12, -10, -20, -38, -49])),
+    }
+    out: dict[str, dict] = {}
+    for name, kw in ground.items():
+        if name not in rows:
+            continue
+        f, d = rows[name]
+        kw = dict(kw)
+        # Her arms are short against the dress, so the torso carries more of
+        # the blow than the clerk's or Carl's does.
+        kw["torso"] = [1.4 * v for v in kw["torso"]]
+        for prefix in ("near_hand", "far_hand"):
+            if prefix in kw:
+                xs, ys = kw[prefix]
+                kw[prefix] = (xs, ys, reach(xs))
+        out[name] = _pose(r, f, d, compact=True, **kw)
+    for name, kw in aerials.items():
+        if name not in rows:
+            continue
+        f, d = rows[name]
+        kw = dict(kw)
+        for key, values in air.items():
+            kw.setdefault(key, values[:f])
+        kw["torso"] = list(kw["torso"])[:f]
+        for prefix in ("near_hand", "far_hand"):
+            xs, ys = kw[prefix]
+            kw[prefix] = (xs[:f], ys[:f], reach(xs[:f]))
+        out[name] = _pose(r, f, d, compact=True, **kw)
+    return out
+
+
 def _noether_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, dict]:
     """Build Noether's complete fighter surface from the shared scientist poses.
 
@@ -1208,6 +1329,10 @@ def _noether_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, 
         _NOETHER_SIGNATURE_FROM_PATENT.get(name, name): clip
         for name, clip in clips.items()
     }
+    clips.update(_noether_strike_clips(
+        _rest(doc, hands_follow_forearms=surrogate.hands_follow_forearms, natural_arm_pose=west_pose),
+        {name: (frames, duration) for name, frames, duration in spec.rows},
+    ))
     clips = _mirror_noether_pose_channels(clips)
     if "shield_break_fall" in clips and "fall_special" in clips:
         frames, duration = next(
@@ -1225,7 +1350,11 @@ def _noether_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, 
         "roll", "roll_back", "ledge_roll", "getup_roll", "tech_roll",
         "tumble", "climb", "swim", "death", "celebrate",
         "symmetry_shift", "ethereal_lift", "invariant_field",
-        "noether_theorem", "air_neutral", "air_back",
+        "noether_theorem",
+        # air_neutral and air_back are not here: their strikes are authored
+        # (`_noether_strike_clips`) with the wrist kept on its own side of
+        # the shoulder, and a torso lock would hold the back air's palm in
+        # front of her.
         "shield_break_fall", "bury_start", "buried", "bury_escape",
     ):
         if repair_row in clips:
@@ -1375,6 +1504,158 @@ def _freeze_clip_pose(
     return _clip(frames, duration_ms, loop=True, channels=channels)
 
 
+def _stargan_strike_clips(r: Mapping[str, float], rows: Mapping[str, tuple[int, int]]) -> dict[str, dict]:
+    """Carl's Smash strikes: each committed with his legs and torso, and out
+    while the move is live.
+
+    A row is slaved to its move (frame ``k`` is on screen for progress
+    ``[k/f, (k+1)/f)``), so each extension sits on the frames that overlap the
+    move's Active window in ``carl_stargan.ron``; the frame-index comment on
+    each row names them. Forward is west (negative x), up is negative y. The
+    telescope follows the forearm. Before these he struck from one planted
+    stance with only the near arm moving, and peaked a frame or two after
+    the hit.
+    """
+    nf, ff = r["near_foot_pitch"], r["far_foot_pitch"]
+
+    def reach(xs: Sequence[float]) -> list[float]:
+        # The wrist's pitch follows the forearm on this rig; the value is the
+        # legacy hint, 80 hanging to 0 at full reach.
+        return [max(0.0, min(80.0, 80.0 * (x + 40.0) / 57.0)) for x in xs]
+
+    def feet(n: int, front: Sequence[float], back: Sequence[float],
+             front_lift: Sequence[float] | None = None, back_lift: Sequence[float] | None = None) -> dict:
+        return dict(
+            far_foot=(front, front_lift or [0.0] * n, [ff] * n),
+            near_foot=(back, back_lift or [0.0] * n, [nf] * n),
+        )
+
+    specs: dict[str, dict] = {
+        # live 0-2: a lunging spyglass thrust.
+        "jab": dict(torso=[0, 10, 13, 6, 0], head=[0, -5, -7, -3, 0], root_y=[0, 1, 1, 0, 0],
+            near_hand=([17, -38, -44, -12, 17], [-48, -53, -54, -50, -48]),
+            **feet(5, [-10, -15, -16, -12, -10], [10, 13, 13, 11, 10])),
+        # live 1-3: drawn back, then a lunging forward rap.
+        "punch": dict(torso=[-4, 8, 16, 17, 10, 4, 0], head=[2, -4, -8, -8, -5, -2, 0],
+            root_y=[0, 2, 3, 3, 2, 1, 0],
+            near_hand=([26, -20, -46, -48, -30, 0, 17], [-52, -56, -58, -58, -55, -50, -48]),
+            far_hand=([-13, -2, 6, 8, 4, -5, -13], [-47, -45, -44, -44, -45, -46, -47]),
+            **feet(7, [-10, -18, -22, -22, -18, -13, -10], [10, 14, 17, 17, 15, 12, 10])),
+        # live 1-4: a crouch, then up onto his toes with the glass overhead.
+        "attack_up": dict(root_y=[3, 0, -3, -4, -3, -1, 1, 0], torso=[5, -4, -10, -12, -10, -6, -2, 0],
+            head=[-2, 3, 8, 10, 8, 4, 1, 0],
+            near_hand=([10, -6, -14, -12, -6, 2, 10, 17], [-44, -80, -100, -104, -98, -80, -60, -48]),
+            far_hand=([-13, -16, -18, -18, -16, -14, -13, -13], [-47, -58, -66, -68, -64, -56, -50, -47]),
+            **feet(8, [-10, -11, -12, -12, -12, -11, -10, -10], [10, 11, 12, 12, 12, 11, 10, 10],
+                   [0, 1, 3, 4, 3, 1, 0, 0], [0, 2, 5, 6, 5, 2, 0, 0])),
+        # live 1-4: down into a wide stance, the glass swept along the floor.
+        "attack_down": dict(root_y=[0, 7, 12, 13, 12, 7, 2, 0], torso=[0, 18, 30, 32, 28, 16, 5, 0],
+            head=[0, -8, -14, -15, -12, -7, -2, 0],
+            near_hand=([17, -16, -40, -48, -42, -22, 4, 17], [-48, -20, 2, 6, 4, -16, -38, -48]),
+            far_hand=([-13, -4, 6, 10, 8, 2, -6, -13], [-47, -40, -36, -34, -36, -40, -44, -47]),
+            **feet(8, [-10, -18, -24, -24, -22, -16, -12, -10], [10, 16, 20, 20, 19, 15, 12, 10])),
+        # live 4-5: a long lean back, then both hands thrown at the universe.
+        "billions_and_billions": dict(torso=[0, -6, -10, 2, 16, 20, 16, 8, 3, 0],
+            head=[0, 3, 5, -2, -8, -10, -8, -4, -1, 0], root_y=[0, 1, 2, 3, 4, 4, 3, 2, 1, 0],
+            near_hand=([17, 18, 8, -14, -44, -50, -40, -20, 0, 17], [-48, -54, -58, -60, -58, -60, -58, -54, -50, -48]),
+            far_hand=([-13, -6, -8, -22, -38, -44, -34, -18, -8, -13], [-47, -50, -52, -55, -54, -56, -54, -50, -48, -47]),
+            **feet(10, [-10, -8, -6, -6, -24, -26, -24, -18, -12, -10], [10, 12, 14, 14, 20, 22, 20, 16, 12, 10])),
+        # live 2-4: a deep crouch, then the glass driven straight up.
+        "smash_up": dict(root_y=[2, 6, -4, -6, -5, -2, 0, 1, 0], torso=[4, 9, -10, -14, -12, -8, -4, -1, 0],
+            head=[-2, -4, 8, 12, 10, 6, 2, 0, 0],
+            near_hand=([10, 14, -10, -14, -10, -2, 6, 12, 17], [-44, -38, -100, -108, -104, -90, -70, -55, -48]),
+            far_hand=([-13, -10, -20, -22, -18, -14, -12, -13, -13], [-47, -44, -90, -98, -94, -80, -62, -50, -47]),
+            **feet(9, [-10, -12, -11, -11, -11, -10, -10, -10, -10], [10, 13, 12, 12, 12, 11, 10, 10, 10],
+                   [0, 0, 3, 5, 4, 2, 0, 0, 0], [0, 0, 5, 7, 6, 3, 0, 0, 0])),
+        # live 2-4: crouched low, the glass swept in front and round behind.
+        "smash_down": dict(root_y=[0, 4, 9, 10, 9, 6, 3, 1, 0], torso=[0, 10, 22, 18, 10, 6, 3, 1, 0],
+            head=[0, -4, -10, -8, -5, -3, -1, 0, 0],
+            near_hand=([17, 10, -40, -10, 36, 30, 20, 17, 17], [-48, -40, -12, -6, -10, -20, -36, -46, -48]),
+            far_hand=([-13, -8, 10, 2, -20, -16, -14, -13, -13], [-47, -44, -36, -32, -34, -40, -44, -46, -47]),
+            **feet(9, [-10, -16, -24, -24, -22, -18, -14, -11, -10], [10, 14, 20, 20, 19, 16, 13, 11, 10])),
+        # live 0-2: running into a full-length lunge.
+        "dash_attack": dict(torso=[6, 18, 20, 14, 8, 3, 0], head=[-3, -9, -10, -7, -4, -1, 0],
+            root_y=[1, 3, 4, 3, 2, 1, 0],
+            near_hand=([10, -44, -50, -40, -20, 0, 17], [-52, -56, -58, -56, -52, -50, -48]),
+            far_hand=([-13, 8, 12, 8, 2, -6, -13], [-47, -44, -43, -44, -45, -46, -47]),
+            **feet(7, [-14, -26, -28, -24, -18, -12, -10], [12, 22, 24, 20, 16, 12, 10])),
+        # live 3-5: the year swept across the sky in one wide arc.
+        "cosmic_calendar": dict(root_y=[0, -1, -3, -5, -6, -5, -3, -2, -1, 0], torso=[0, 6, 11, 13, 12, 10, 7, 4, 1, 0],
+            head=[0, -3, -6, -8, -8, -7, -5, -3, -1, 0],
+            near_hand=([17, 0, -16, -28, -32, -30, -22, -8, 6, 17], [-48, -60, -72, -80, -84, -82, -74, -62, -52, -48]),
+            far_hand=([-13, 0, 16, 30, 36, 32, 22, 10, -2, -13], [-47, -58, -70, -78, -82, -80, -72, -60, -50, -47]),
+            **feet(10, [-10, -12, -16, -18, -18, -17, -15, -13, -11, -10], [10, 12, 15, 17, 17, 16, 14, 12, 11, 10])),
+        # live 2-4: both hands spin the planets out in front of him.
+        "planetary_orbit": dict(root_y=[0, -2, -5, -6, -5, -3, -1, 0, 0], torso=[0, 7, 13, 14, 11, 7, 3, 1, 0],
+            head=[0, -3, -7, -8, -6, -4, -2, 0, 0],
+            near_hand=([17, -5, -28, -36, -34, -24, -8, 6, 17], [-48, -64, -76, -78, -74, -64, -55, -50, -48]),
+            far_hand=([-13, 4, 18, 23, 20, 12, 2, -8, -13], [-47, -58, -67, -68, -64, -57, -50, -48, -47]),
+            **feet(9, [-10, -14, -20, -22, -20, -16, -12, -10, -10], [10, 13, 17, 18, 17, 14, 12, 10, 10])),
+        # live 1-2: the lift is at once, then he rides it.
+        "starstuff": dict(root_y=[0, -10, -16, -14, -10, -7, -4, -2, -1, 0], pelvis=[0, 26, 60, 50, 36, 24, 14, 6, 2, 0],
+            torso=[0, -12, -23, -19, -14, -9, -5, -2, -1, 0], head=[0, 9, 18, 15, 11, 7, 4, 2, 1, 0],
+            near_hand=([17, -4, -18, -14, -8, -2, 4, 10, 14, 17], [-48, -72, -92, -87, -78, -68, -60, -54, -50, -48]),
+            far_hand=([-13, -17, -21, -20, -18, -17, -15, -14, -13, -13], [-47, -68, -86, -80, -70, -62, -55, -51, -48, -47])),
+        # live 3-4: he points out the pale blue dot, arm and glass at full length.
+        "pale_blue_dot": dict(root_y=[0, -1, -3, -5, -5, -4, -3, -1, 0], torso=[0, 5, 10, 14, 14, 11, 6, 2, 0],
+            head=[0, -3, -6, -9, -9, -7, -4, -1, 0],
+            near_hand=([17, -6, -24, -42, -46, -38, -18, 0, 17], [-48, -56, -63, -68, -69, -66, -57, -51, -48]),
+            far_hand=([-13, -1, 6, 12, 13, 9, 1, -8, -13], [-47, -52, -56, -60, -59, -55, -50, -48, -47]),
+            **feet(9, [-10, -13, -17, -21, -22, -19, -15, -12, -10], [10, 12, 15, 18, 18, 16, 13, 11, 10])),
+    }
+    air = dict(root_y=[-8, -10, -12, -10, -8, -6, -7, -8], torso=[-3, -5, -6, -4, -1, 1, 0, -2],
+               head=[2, 4, 5, 3, 1, -1, 0, 1])
+    tuck = [4, 9, 12, 12, 9, 6, 4, 4]
+    aerials: dict[str, dict] = {
+        # live 1-3: both arms flung out as he turns.
+        "air_neutral": dict(pelvis=[0, 14, 22, 18, 10, 4, 1, 0],
+            near_hand=([17, -36, -42, -32, -10, 6, 14, 17], [-48, -60, -58, -52, -48, -48, -48, -48]),
+            far_hand=([-13, 30, 36, 28, 10, -4, -10, -13], [-47, -60, -58, -52, -48, -47, -47, -47])),
+        # live 1-3: the glass whipped forward from behind his head.
+        "air_forward": dict(torso=[-6, 6, 14, 15, 8, 2, 0],
+            near_hand=([24, -10, -44, -48, -30, -6, 17], [-62, -64, -58, -56, -54, -50, -48]),
+            far_hand=([-13, 0, 8, 10, 4, -6, -13], [-47, -46, -45, -45, -46, -47, -47])),
+        # live 1-3: he turns his shoulders and swings it out behind him.
+        "air_back": dict(torso=[4, -8, -16, -17, -10, -4, 0], head=[-2, 4, 7, 7, 4, 1, 0],
+            near_hand=([-10, 20, 44, 48, 36, 24, 17], [-56, -58, -58, -56, -54, -50, -48]),
+            far_hand=([-13, -24, -30, -30, -24, -18, -13], [-47, -50, -52, -52, -50, -48, -47])),
+        # live 1-3: straight up overhead, chin up.
+        "air_up": dict(torso=[2, -8, -12, -12, -8, -3, 0], head=[-1, 6, 10, 10, 6, 2, 0],
+            near_hand=([12, 0, -12, -8, 0, 8, 17], [-50, -78, -106, -104, -90, -66, -48]),
+            far_hand=([-13, -16, -18, -17, -15, -14, -13], [-47, -66, -76, -74, -64, -54, -47])),
+        # live 1-3: knees up, the glass driven down between his feet.
+        "air_down": dict(torso=[0, 10, 14, 14, 10, 4, 0],
+            near_hand=([17, -4, -6, -4, 2, 10, 17], [-48, -20, -6, -4, -14, -34, -48]),
+            far_hand=([-13, -10, -8, -8, -10, -12, -13], [-47, -34, -26, -26, -32, -42, -47])),
+    }
+    out: dict[str, dict] = {}
+    for name, kw in specs.items():
+        if name not in rows:
+            continue
+        f, d = rows[name]
+        kw = dict(kw)
+        for prefix in ("near_hand", "far_hand"):
+            if prefix in kw:
+                xs, ys = kw[prefix]
+                kw[prefix] = (xs, ys, reach(xs))
+        out[name] = _pose(r, f, d, compact=False, **kw)
+    for name, kw in aerials.items():
+        if name not in rows:
+            continue
+        f, d = rows[name]
+        kw = dict(kw)
+        for key, values in air.items():
+            kw.setdefault(key, values[:f])
+        kw["torso"] = list(kw["torso"])[:f]
+        for prefix in ("near_hand", "far_hand"):
+            xs, ys = kw[prefix]
+            kw[prefix] = (xs[:f], ys[:f], reach(xs[:f]))
+        lift = tuck[:f]
+        kw.update(feet(f, [-6] * f, [6] * f, lift, [v + 2 for v in lift]))
+        out[name] = _pose(r, f, d, compact=False, **kw)
+    return out
+
+
 def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, dict]:
     clips = _common_clips(spec, doc, compact=False)
     r = _rest(
@@ -1468,6 +1749,8 @@ def _stargan_clips(spec: CharacterSpec, doc: Mapping[str, object]) -> dict[str, 
         clips[name] = _pose(r, f, d, compact=False,
             root_y=[-8,-10,-12,-10,-8,-6,-7,-8][:f], torso=[-3,-5,-6,-4,-1,1,0,-2][:f], head=[2,4,5,3,1,-1,0,1][:f],
             near_hand=(xs[:f], ys[:f], [70,55,35,20,35,55,75,80][:f]))
+
+    clips.update(_stargan_strike_clips(r, rows))
 
     # ---- Pose-quality overrides -----------------------------------------
     # The complete fighter-motion surface deliberately reuses choreography,

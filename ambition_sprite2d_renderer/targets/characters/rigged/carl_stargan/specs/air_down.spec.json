@@ -7,8 +7,7 @@
   "hitbox": {
     "active": [
       2,
-      3,
-      4
+      3
     ],
     "extend": 1.05
   },
