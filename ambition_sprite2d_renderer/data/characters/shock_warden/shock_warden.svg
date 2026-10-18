@@ -4,147 +4,253 @@
  width="760mm" height="560mm" viewBox="0 0 760 560" version="1.1">
  <g id="view-shock-warden-side" inkscape:groupmode="layer" inkscape:label="Shock Warden - Side">
     <g id="far-thigh" inkscape:label="Far Thigh">
-      <path d="M 366,368 Q 392,367 409,393 L 424,409 Q 411,427 396,431 L 373,402 Z" fill="#373b44" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 391,390 L 411,412" fill="none" stroke="#565c65" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 364,365 Q 391,362 407,388 Q 419,401 421,416 L 398,429 Q 382,413 371,400 Z" fill="#343b43" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 381,377 Q 403,393 408,414" fill="none" stroke="#66716d" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
     </g>
     <g id="far-shin" inkscape:label="Far Shin">
-      <path d="M 396,415 Q 413,411 428,423 L 433,461 L 404,463 L 397,430 Z" fill="#3b414b" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 421,430 L 422,459" fill="none" stroke="#59635b" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 399,414 Q 412,405 427,422 L 430,452 L 419,465 L 401,455 L 397,430 Z" fill="#414b51" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 415,425 L 418,451" fill="none" stroke="#59635b" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="412" cy="417" r="7" fill="#65706c" stroke="#181b21" stroke-width="2"/>
     </g>
     <g id="far-boot" inkscape:label="Far Boot">
-      <path d="M 399,449 L 430,448 L 444,467 Q 448,476 439,478 L 392,478 Q 386,472 390,465 Z" fill="#272933" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 397,466 L 438,466" fill="none" stroke="#666a6f" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 399,452 L 430,449 L 454,466 Q 460,471 455,479 L 397,479 L 390,472 Z" fill="#262e36" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 401,466 L 448,466 M 391,474 L 455,474" fill="none" stroke="#6c7877" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
     </g>
-    <g id="coat-tails" inkscape:label="Coat Tails">
-      <path d="M 273,348 L 404,356 L 431,453 L 366,444 L 333,461 L 307,436 L 260,446 L 240,428 L 258,379 Z" fill="#32333e" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 260,434 L 304,425 M 333,449 L 347,394 M 372,437 L 390,385" fill="none" stroke="#464651" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="coat-tails" inkscape:label="Layered Coat Tails">
+      <path d="M 275,349 Q 338,370 404,350 L 425,404 L 416,453 L 365,444 L 335,463 L 304,438 L 252,452 L 236,428 Z" fill="#32333e" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 256,441 L 284,369 L 308,439 M 334,451 L 347,383 M 377,437 L 398,371" fill="none" stroke="#464651" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 257,436 L 293,444 M 365,443 L 412,447" fill="none" stroke="#181b21" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
     </g>
-    <g id="hip-belt" inkscape:label="Belt and Equipment">
-      <path d="M 273,372 Q 338,388 411,363 L 418,388 Q 347,411 274,390 Z" fill="#24262e" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 342,384 L 366,381 L 369,402 L 343,405 Z" fill="#9ba4a5" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 348,389 L 361,387 L 361,397 L 350,399 Z" fill="#4e5456" stroke="#181b21" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 264,377 L 296,381 L 290,414 L 265,409 Z" fill="#41434d" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 382,378 L 410,370 L 419,406 L 393,414 Z" fill="#41434d" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="hip-belt" inkscape:label="Angled Belt and Equipment">
+      <path d="M 265,368 Q 333,389 413,360 L 420,387 Q 342,415 273,390 Z" fill="#222830" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 342,384 L 369,380 L 372,401 L 342,405 Z" fill="#9ba4a5" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 349,390 L 363,387 L 363,397 L 349,399 Z" fill="#46505a" stroke="#181b21" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 271,381 L 297,383 L 292,410 L 267,407 Z" fill="#4b4c50" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 389,375 L 412,368 L 421,406 L 396,411 Z" fill="#45454c" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 281,385 L 286,404 M 403,377 L 407,399" fill="none" stroke="#7b7978" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
     </g>
-    <g id="shield-upper" inkscape:label="Shield Arm - Upper">
-      <path d="M 385,281 Q 414,281 429,298 L 438,316 L 414,334 L 392,313 Z" fill="#262a34" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 393,293 L 418,314" fill="none" stroke="#59635b" stroke-width="8" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="shield-upper" inkscape:label="Shield Arm - Upper Sleeve">
+      <path d="M 386,280 Q 400,271 414,285 L 432,307 L 435,321 L 416,335 L 397,314 L 385,298 Z" fill="#262a34" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 399,290 L 418,315" fill="none" stroke="#798277" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 405,302 L 427,317" fill="none" stroke="#181b21" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
     </g>
-    <g id="shield-forearm" inkscape:label="Shield Arm - Lower">
-      <path d="M 416,308 Q 430,303 449,318 L 471,342 L 455,355 L 422,336 Z" fill="#454a50" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 431,317 L 454,340" fill="none" stroke="#758079" stroke-width="8" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="shield-forearm" inkscape:label="Shield Arm - Braced Forearm">
+      <path d="M 416,311 Q 432,305 441,322 L 462,344 L 449,360 L 420,342 Z" fill="#56635e" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 426,320 L 449,343" fill="none" stroke="#a0aea3" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 438,321 L 454,337" fill="none" stroke="#181b21" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="425" cy="323" rx="8" ry="9" fill="#374149" stroke="#181b21" stroke-width="3"/>
     </g>
-    <g id="torso-armor" inkscape:label="Torso Armor">
-      <path d="M 296,272 Q 310,246 350,251 Q 402,250 417,291 L 413,371 Q 384,397 333,392 Q 274,398 261,361 L 268,298 Q 269,285 296,272 Z" fill="#32333e" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 292,286 L 320,277 Q 329,329 318,373 L 286,361 Z" fill="#59635b" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 366,276 L 397,288 L 401,363 L 369,376 Q 375,322 366,276 Z" fill="#59635b" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 327,276 L 360,274 L 366,380 L 326,377 Z" fill="#343a40" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 329,300 L 356,300 M 328,321 L 357,321 M 329,342 L 358,342" fill="none" stroke="#78816f" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 269,280 Q 289,258 312,271 L 312,310 Q 276,309 259,299 Z" fill="#424751" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 376,270 Q 404,266 430,283 L 422,307 L 386,313 Z" fill="#3b3e46" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="torso-armor" inkscape:label="Three Quarter Torso and Armor">
+      <path d="M 284,277 Q 309,250 352,250 Q 397,247 422,282 L 420,367 Q 391,392 344,392 Q 298,393 263,362 L 268,306 Q 271,286 284,277 Z" fill="#32333e" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 270,290 L 303,269 L 329,281 L 326,374 L 269,359 Z" fill="#424b4e" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 331,270 L 375,268 L 382,371 L 328,378 Z" fill="#343a40" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 379,278 L 411,290 L 410,359 L 384,374 Z" fill="#59635b" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 288,284 L 314,280 L 315,371 L 284,355 Z" fill="#59635b" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 327,280 L 376,278 L 380,374 L 329,379 Z" fill="#252c34" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 270,283 Q 284,263 310,270 L 319,293 L 304,308 L 266,305 Z" fill="#4e5559" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 377,271 Q 410,264 437,288 L 428,310 L 395,315 L 382,296 Z" fill="#424c50" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 381,285 L 422,295" fill="none" stroke="#778478" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
     </g>
-    <g id="torso-details" inkscape:label="Torso Fasteners">
-      <path d="M 321,283 L 320,380 M 366,283 L 366,378" fill="none" stroke="#181b21" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
-      <circle cx="336" cy="291" r="3" fill="#cad0c9" stroke="#181b21" stroke-width="1"/>
-      <circle cx="341" cy="363" r="3" fill="#cad0c9" stroke="#181b21" stroke-width="1"/>
-      <path d="M 277,347 L 309,352 M 382,350 L 405,345" fill="none" stroke="#a0a697" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="torso-details" inkscape:label="Three Quarter Torso Fasteners">
+      <path d="M 327,282 L 326,373 M 378,278 L 382,371" fill="none" stroke="#181b21" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 337,299 L 365,298 M 335,320 L 366,320 M 335,342 L 369,342" fill="none" stroke="#87978a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 278,348 L 304,354 M 392,350 L 408,345" fill="none" stroke="#a8aea6" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="341" cy="286" r="3" fill="#d2d7d1" stroke="#181b21" stroke-width="1"/>
+      <circle cx="347" cy="363" r="3" fill="#d2d7d1" stroke="#181b21" stroke-width="1"/>
+      <path d="M 403,290 L 409,297" fill="none" stroke="#b4b3a2" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
     </g>
-    <g id="near-thigh" inkscape:label="Near Thigh">
-      <path d="M 293,362 Q 314,361 324,382 L 301,424 L 265,415 Q 269,387 293,362 Z" fill="#32333e" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 302,381 L 285,409" fill="none" stroke="#464651" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="near-thigh" inkscape:label="Near Thigh and Knee">
+      <path d="M 301,359 Q 326,362 323,385 L 290,426 L 261,414 Q 271,377 301,359 Z" fill="#32333e" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 302,382 L 283,408" fill="none" stroke="#646570" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="274" cy="413" rx="12" ry="10" fill="#4f5758" stroke="#181b21" stroke-width="3"/>
     </g>
-    <g id="near-shin" inkscape:label="Near Shin">
-      <path d="M 259,405 L 286,410 L 285,461 L 254,468 L 243,452 Z" fill="#4f5058" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 266,417 L 262,457" fill="none" stroke="#686974" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="near-shin" inkscape:label="Near Shin Plate">
+      <path d="M 262,407 Q 278,411 288,420 L 281,463 L 252,469 L 241,450 Z" fill="#4e575e" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 265,422 L 258,457" fill="none" stroke="#8e9690" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 245,447 L 276,458" fill="none" stroke="#363d45" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
     </g>
-    <g id="near-boot" inkscape:label="Near Boot">
-      <path d="M 250,449 L 284,450 L 294,465 L 298,478 L 216,478 Q 208,472 219,465 L 244,460 Z" fill="#292a32" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 220,467 L 290,467" fill="none" stroke="#6c7071" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="near-boot" inkscape:label="Heavy Near Boot">
+      <path d="M 251,449 L 284,450 L 291,464 L 303,475 Q 302,480 293,480 L 218,480 Q 209,477 215,468 L 244,460 Z" fill="#292f37" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 216,471 L 294,471 M 252,455 L 276,455" fill="none" stroke="#7b8583" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 216,479 L 293,479" fill="none" stroke="#181b21" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
     </g>
-    <g id="head" inkscape:label="Face and Mask">
-      <path d="M 299,200 Q 302,182 321,180 L 368,187 L 392,205 L 386,258 Q 371,280 332,276 L 303,254 Z" fill="#33363e" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 307,237 L 384,229 L 370,271 L 318,264 Z" fill="#c9d0c9" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 313,247 L 370,241 L 370,261 L 320,261 Z" fill="#1f242d" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 320,248 L 327,262 M 331,246 L 336,262 M 343,244 L 346,261 M 355,242 L 357,261" fill="none" stroke="#7b8786" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="head" inkscape:label="Head - Side Mask and Jaw">
+      <path d="M 308,204 Q 311,182 334,183 L 379,193 L 404,219 L 404,257 Q 389,277 361,283 L 324,267 L 310,242 Z" fill="#343941" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 326,223 L 354,221 L 355,274 L 325,259 Z" fill="#4c5459" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 355,226 L 401,226 L 398,257 L 382,272 L 355,269 Z" fill="#acb7b3" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 360,244 L 394,242 L 392,260 L 361,262 Z" fill="#202832" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 364,246 L 364,262 M 373,246 L 375,261 M 382,245 L 386,259" fill="none" stroke="#9baaa8" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 346,254 L 360,270 L 383,272" fill="none" stroke="#181b21" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
     </g>
-    <g id="face" inkscape:label="Visor and Eyes">
-      <path d="M 301,214 L 382,207 L 381,234 L 305,240 Z" fill="#191f29" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 309,229 L 348,224 L 350,230 L 312,236 Z" fill="#eff3ed" stroke="#262a33" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 347,224 L 373,220 L 366,229 L 352,231 Z" fill="#f0e8df" stroke="#262a33" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 333,227 L 337,231 M 358,224 L 361,228" fill="none" stroke="#a83439" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 308,215 L 381,209" fill="none" stroke="#5e6767" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="face" inkscape:label="Directional Visor and Red Eyes">
+      <path d="M 326,216 L 404,220 L 406,240 L 340,239 Z" fill="#1a212c" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 342,229 L 369,229 L 372,235 L 345,235 Z" fill="#dce1dc" stroke="#20262b" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 376,228 L 397,229 L 393,236 L 377,235 Z" fill="#f0eae1" stroke="#20262b" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 366,232 L 370,236 M 389,231 L 391,236" fill="none" stroke="#a83439" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 330,218 L 402,224" fill="none" stroke="#667275" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
     </g>
-    <g id="helmet" inkscape:label="Helmet">
-      <path d="M 293,212 L 305,178 Q 330,164 363,171 L 386,189 L 384,217 L 287,223 Z" fill="#262a34" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 291,215 Q 338,210 392,210 L 399,221 L 290,230 Z" fill="#252931" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 311,183 Q 344,176 369,188" fill="none" stroke="#5c6066" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 342,180 L 354,180 L 353,194 L 342,194 Z" fill="#798277" stroke="#181b21" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="helmet" inkscape:label="Sloped Helmet and Forward Brim">
+      <path d="M 305,210 L 313,185 Q 329,168 358,171 Q 389,175 399,200 L 397,220 L 301,221 Z" fill="#262a34" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 301,214 L 400,214 L 416,225 Q 412,233 399,232 L 299,231 Z" fill="#202831" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 317,187 Q 342,179 370,191 L 387,200" fill="none" stroke="#667475" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 344,182 L 358,185 L 357,200 L 344,198 Z" fill="#798277" stroke="#181b21" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 308,219 L 405,224" fill="none" stroke="#6c7273" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
     </g>
-    <g id="baton-upper" inkscape:label="Baton Arm - Upper">
-      <path d="M 288,281 Q 272,277 258,291 L 238,334 L 264,354 L 301,313 Z" fill="#32333e" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 256,312 L 271,292" fill="none" stroke="#464651" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 242,325 L 265,345" fill="none" stroke="#5b6065" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="baton-upper" inkscape:label="Baton Arm - Shoulder and Upper Sleeve">
+      <path d="M 285,281 Q 267,277 257,293 L 237,333 Q 235,341 248,351 L 266,349 L 298,311 L 304,297 Z" fill="#32333e" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 270,299 L 251,331" fill="none" stroke="#717a75" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 242,325 L 266,345" fill="none" stroke="#5e636b" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 261,291 Q 276,281 295,294" fill="none" stroke="#181b21" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
     </g>
     <g id="insignia" inkscape:label="Fictional Unit Badge">
-      <path d="M 270,289 L 299,301 L 282,328 L 255,316 Z" fill="#a83439" stroke="#181b21" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
-      <ellipse cx="276" cy="308" rx="9" ry="8" fill="#e9e7dd" stroke="#181b21" stroke-width="2"/>
-      <path d="M 276.00,303.26 L 277.17,302.12 L 278.30,302.46 L 278.63,304.06 L 279.35,304.65 L 280.99,304.67 L 281.54,305.70 L 280.65,307.08 L 280.74,308.00 L 281.88,309.17 L 281.54,310.30 L 279.94,310.63 L 279.35,311.35 L 279.33,312.99 L 278.30,313.54 L 276.92,312.65 L 276.00,312.74 L 274.83,313.88 L 273.70,313.54 L 273.37,311.94 L 272.65,311.35 L 271.01,311.33 L 270.46,310.30 L 271.35,308.92 L 271.26,308.00 L 270.12,306.83 L 270.46,305.70 L 272.06,305.37 L 272.65,304.65 L 272.67,303.01 L 273.70,302.46 L 275.08,303.35 Z" fill="#23252b" stroke="#23252b" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" />
-      <circle cx="276" cy="308" r="2" fill="#e9e7dd" stroke="#181b21" stroke-width="1"/>
+      <path d="M 263,294 L 298,300 L 288,327 L 253,317 Z" fill="#a83439" stroke="#181b21" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+      <ellipse cx="276" cy="309" rx="10" ry="9" fill="#ece8db" stroke="#181b21" stroke-width="2"/>
+      <path d="M 276.00,303.47 L 277.37,302.13 L 278.68,302.53 L 279.07,304.40 L 279.91,305.09 L 281.82,305.11 L 282.47,306.32 L 281.42,307.92 L 281.53,309.00 L 282.87,310.37 L 282.47,311.68 L 280.60,312.07 L 279.91,312.91 L 279.89,314.82 L 278.68,315.47 L 277.08,314.42 L 276.00,314.53 L 274.63,315.87 L 273.32,315.47 L 272.93,313.60 L 272.09,312.91 L 270.18,312.89 L 269.53,311.68 L 270.58,310.08 L 270.47,309.00 L 269.13,307.63 L 269.53,306.32 L 271.40,305.93 L 272.09,305.09 L 272.11,303.18 L 273.32,302.53 L 274.92,303.58 Z" fill="#242a31" stroke="#242a31" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="276" cy="309" r="2" fill="#e9e7dd" stroke="#181b21" stroke-width="1"/>
     </g>
-    <g id="baton-forearm" inkscape:label="Baton Arm - Forearm">
-      <path d="M 246,325 L 265,344 L 242,363 L 221,352 Z" fill="#59635b" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 239,335 L 256,345" fill="none" stroke="#a0ad9c" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="baton-forearm" inkscape:label="Baton Arm - Forearm Plate">
+      <path d="M 246,324 L 265,342 L 241,366 L 218,349 Z" fill="#59635b" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 239,334 L 257,348" fill="none" stroke="#b0b7a7" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 224,349 L 236,360" fill="none" stroke="#181b21" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
     </g>
-    <g id="baton-hand" inkscape:label="Baton Hand">
-      <path d="M 230,341 Q 243,343 246,356 Q 247,369 228,376 L 215,369 L 216,352 Z" fill="#758774" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 224,351 L 235,354 M 220,358 L 232,362" fill="none" stroke="#485c4d" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="baton-hand" inkscape:label="Gripping Baton Hand">
+      <path d="M 230,340 Q 245,345 245,359 Q 241,374 224,377 L 208,364 L 214,347 Z" fill="#758774" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 217,350 L 231,353 M 213,360 L 225,364" fill="none" stroke="#455e4e" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
     </g>
-    <g id="baton-weapon" inkscape:label="Baton Weapon">
-      <path d="M 215,352 L 120,344" fill="none" stroke="#1b2530" stroke-width="19" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 211,351 L 129,343" fill="none" stroke="#6c7881" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 145,339 L 143,352 M 157,342 L 155,354 M 189,347 L 187,358" fill="none" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <circle cx="118" cy="343" r="9" fill="#93a5b0" stroke="#181b21" stroke-width="3"/>
-      <path d="M 192,341 L 204,346 L 202,358 L 190,358 Z" fill="#3a4048" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="baton-weapon" inkscape:label="Steel Baton and Collar">
+      <path d="M 214,359 L 128,343" fill="none" stroke="#202931" stroke-width="17" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 208,357 L 133,343" fill="none" stroke="#8c9fa5" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 153,341 L 151,355 M 166,344 L 163,357" fill="none" stroke="#181b21" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="128" cy="343" r="9" fill="#a9b9ba" stroke="#181b21" stroke-width="3"/>
+      <path d="M 190,347 L 205,349 L 205,361 L 190,360 Z" fill="#353d45" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
     </g>
     <g id="baton-electric" inkscape:label="Baton Electrical Arc">
-      <path d="M 121,326 L 139,337 L 148,327 L 166,339 L 179,333 L 190,340 L 205,339" fill="none" stroke="#61bdff" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 114,357 L 132,350 L 140,361 L 164,353 L 179,367 L 195,357" fill="none" stroke="#addfff" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 142,322 L 148,312 L 156,324" fill="none" stroke="#61bdff" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 121,324 L 137,335 L 151,326 L 166,337 L 180,330 L 191,339 L 204,338" fill="none" stroke="#61bdff" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 119,359 L 134,348 L 146,362 L 160,354 L 177,365 L 194,356" fill="none" stroke="#addfff" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 142,322 L 150,310 L 156,324" fill="none" stroke="#61bdff" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
     </g>
-    <g id="shield-grip" inkscape:label="Shield Handle">
-      <path d="M 445,329 L 480,320 L 489,355 L 454,359 Z" fill="#353c41" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 457,336 L 479,331" fill="none" stroke="#798277" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="shield-grip" inkscape:label="Arm and Shield Bracket">
+      <path d="M 438,329 Q 451,321 463,326 L 473,340 L 467,357 L 452,363 L 437,352 Z" fill="#6d7f73" stroke="#181b21" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 447,337 L 469,337 M 450,345 L 470,345" fill="none" stroke="#a8b4ac" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 456,328 L 461,350" fill="none" stroke="#181b21" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
     </g>
-    <g id="shield-main" inkscape:label="Shield Steel and Frame">
-      <path d="M 450,184 Q 450,174 462,174 L 520,180 Q 534,180 534,193 L 537,457 Q 537,466 525,469 L 456,468 Q 447,464 447,452 Z" fill="#717d7e" stroke="#181b21" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 461,190 L 519,193 L 521,454 L 461,453 Z" fill="#2c333d" stroke="#181b21" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 467,246 L 515,250 L 515,433 L 469,434 Z" fill="#4e555b" stroke="#181b21" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 462,198 L 519,201 M 461,442 L 521,443" fill="none" stroke="#b1baba" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 452,188 L 452,459" fill="none" stroke="#b4c4c6" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
-      <circle cx="461" cy="205" r="3" fill="#bac0bd" stroke="#181b21" stroke-width="1"/>
-      <circle cx="521" cy="208" r="3" fill="#bac0bd" stroke="#181b21" stroke-width="1"/>
-      <circle cx="461" cy="446" r="3" fill="#bac0bd" stroke="#181b21" stroke-width="1"/>
-      <circle cx="521" cy="449" r="3" fill="#bac0bd" stroke="#181b21" stroke-width="1"/>
+    <g id="shield-main" inkscape:label="Perspective Shield: Return and Front Plate">
+      <path d="M 456,180 Q 456,174 465,175 L 527,190 Q 535,191 537,201 L 548,463 Q 549,475 536,478 L 456,462 Q 449,459 449,448 Z" fill="#87989b" stroke="#181b21" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 456,187 L 478,200 L 479,457 L 456,455 Z" fill="#35434a" stroke="#181b21" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 477,199 L 527,209 L 539,464 L 479,453 Z" fill="#27343b" stroke="#181b21" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 487,251 L 520,255 L 530,424 L 487,419 Z" fill="#586767" stroke="#181b21" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 459,194 L 525,206 M 457,445 L 535,463" fill="none" stroke="#c5d1cb" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 461,196 L 466,447" fill="none" stroke="#9fb2b5" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 532,211 L 544,463" fill="none" stroke="#b7c4c0" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="467" cy="207" r="3" fill="#ced4d0" stroke="#181b21" stroke-width="1"/>
+      <circle cx="519" cy="214" r="3" fill="#ced4d0" stroke="#181b21" stroke-width="1"/>
+      <circle cx="466" cy="439" r="3" fill="#ced4d0" stroke="#181b21" stroke-width="1"/>
+      <circle cx="529" cy="454" r="3" fill="#ced4d0" stroke="#181b21" stroke-width="1"/>
     </g>
-    <g id="shield-viewport" inkscape:label="Shield Viewing Slit">
-      <path d="M 468,218 L 513,222 L 512,240 L 469,237 Z" fill="#141e2d" stroke="#181b21" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 473,223 L 508,226 L 508,232 L 473,231 Z" fill="#b3dded" stroke="none" stroke-width="0" stroke-linejoin="round" stroke-linecap="round" />
+    <g id="shield-viewport" inkscape:label="Perspective Viewing Slit">
+      <path d="M 488,223 L 523,231 L 525,246 L 488,240 Z" fill="#13212e" stroke="#181b21" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 493,230 L 518,234 L 520,239 L 493,236 Z" fill="#c7eff9" stroke="none" stroke-width="0" stroke-linejoin="round" stroke-linecap="round" />
     </g>
-    <g id="shield-emblem" inkscape:label="Shield Gear Badge">
-      <path d="M 470,304 L 512,302 L 513,367 L 470,366 Z" fill="#8b9793" stroke="#181b21" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 491.00,316.62 L 494.44,312.27 L 497.80,313.08 L 498.89,318.51 L 501.22,319.94 L 506.56,318.44 L 508.80,321.07 L 506.49,326.11 L 507.53,328.63 L 512.73,330.56 L 513.00,334.00 L 508.17,336.72 L 507.53,339.37 L 510.60,343.99 L 508.80,346.93 L 503.29,346.29 L 501.22,348.06 L 500.99,353.60 L 497.80,354.92 L 493.72,351.17 L 491.00,351.38 L 487.56,355.73 L 484.20,354.92 L 483.11,349.49 L 480.78,348.06 L 475.44,349.56 L 473.20,346.93 L 475.51,341.89 L 474.47,339.37 L 469.27,337.44 L 469.00,334.00 L 473.83,331.28 L 474.47,328.63 L 471.40,324.01 L 473.20,321.07 L 478.71,321.71 L 480.78,319.94 L 481.01,314.40 L 484.20,313.08 L 488.28,316.83 Z" fill="#2d343a" stroke="#2d343a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
-      <circle cx="491" cy="334" r="9" fill="#8b9793" stroke="#181b21" stroke-width="2"/>
+    <g id="shield-emblem" inkscape:label="Shield Gear Plate">
+      <path d="M 489,303 L 520,306 L 524,365 L 490,361 Z" fill="#98a6a0" stroke="#181b21" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 506.00,320.57 L 508.66,317.21 L 511.25,317.83 L 512.10,322.03 L 513.89,323.13 L 518.02,321.98 L 519.75,324.01 L 517.97,327.90 L 518.77,329.85 L 522.79,331.34 L 523.00,334.00 L 519.26,336.10 L 518.77,338.15 L 521.15,341.72 L 519.75,343.99 L 515.50,343.50 L 513.89,344.87 L 513.72,349.15 L 511.25,350.17 L 508.10,347.26 L 506.00,347.43 L 503.34,350.79 L 500.75,350.17 L 499.90,345.97 L 498.11,344.87 L 493.98,346.02 L 492.25,343.99 L 494.03,340.10 L 493.23,338.15 L 489.21,336.66 L 489.00,334.00 L 492.74,331.90 L 493.23,329.85 L 490.85,326.28 L 492.25,324.01 L 496.50,324.50 L 498.11,323.13 L 498.28,318.85 L 500.75,317.83 L 503.90,320.74 Z" fill="#30383e" stroke="#30383e" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="506" cy="334" r="7" fill="#9dacaa" stroke="#181b21" stroke-width="2"/>
     </g>
-    <g id="shield-electric" inkscape:label="Shield Electrical Arcs">
-      <path d="M 445,189 L 440,177 L 451,171 L 448,162 M 530,194 L 541,202 L 535,217 L 547,229 L 537,245" fill="none" stroke="#61bdff" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 447,260 L 436,270 L 449,283 L 440,303 L 450,317 M 538,328 L 546,343 L 533,363 L 544,376 L 535,398" fill="none" stroke="#a2e8ff" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 448,420 L 440,431 L 452,445 L 448,461 L 461,478 M 517,473 L 531,477 L 539,467" fill="none" stroke="#61bdff" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 451,186 L 448,453 M 534,190 L 537,454" fill="none" stroke="#4caaff" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" opacity="0.7"/>
+    <g id="shield-electric" inkscape:label="Shield Electrical Rim">
+      <path d="M 455,188 L 445,178 L 458,169 L 453,160 M 528,198 L 544,204 L 539,219 L 552,229 L 540,245" fill="none" stroke="#61bdff" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 451,272 L 442,285 L 454,297 L 444,314 L 455,326 M 545,327 L 556,344 L 545,360 L 559,377 L 547,398" fill="none" stroke="#c9ecff" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 455,417 L 444,431 L 458,445 L 454,463 L 468,480 M 534,473 L 544,481 L 553,465" fill="none" stroke="#61bdff" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 457,191 L 455,453 M 532,207 L 545,459" fill="none" stroke="#4caaff" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" opacity="0.7"/>
     </g>
     <g id="shield-impact" inkscape:label="Shield Bash Impact Flash">
-      <path d="M 539,254 L 561,241 L 552,269 L 575,277 L 552,287 L 566,313 L 539,306" fill="none" stroke="#c9ecff" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
-      <path d="M 539,374 L 562,357 L 556,388 L 571,402" fill="none" stroke="#61bdff" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 545,257 L 567,245 L 558,272 L 578,283 L 558,292 L 571,314 L 546,305" fill="none" stroke="#c9ecff" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 551,372 L 569,357 L 562,388 L 581,404" fill="none" stroke="#61bdff" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
     </g>
-    <g id="joint-markers" inkscape:label="Joints (hidden)" style="display:none"><circle id="joint-hips" data-rig-joint="hips" cx="348" cy="375" r="3" fill="#ff3eb5"/><circle id="joint-torso" data-rig-joint="torso" cx="344" cy="304" r="3" fill="#ff3eb5"/><circle id="joint-head" data-rig-joint="head" cx="338" cy="231" r="3" fill="#ff3eb5"/><circle id="joint-far_thigh" data-rig-joint="far_thigh" cx="376" cy="372" r="3" fill="#ff3eb5"/><circle id="joint-far_shin" data-rig-joint="far_shin" cx="412" cy="417" r="3" fill="#ff3eb5"/><circle id="joint-far_boot" data-rig-joint="far_boot" cx="415" cy="460" r="3" fill="#ff3eb5"/><circle id="joint-near_thigh" data-rig-joint="near_thigh" cx="311" cy="370" r="3" fill="#ff3eb5"/><circle id="joint-near_shin" data-rig-joint="near_shin" cx="272" cy="419" r="3" fill="#ff3eb5"/><circle id="joint-near_boot" data-rig-joint="near_boot" cx="260" cy="459" r="3" fill="#ff3eb5"/><circle id="joint-shield_upper" data-rig-joint="shield_upper" cx="397" cy="289" r="3" fill="#ff3eb5"/><circle id="joint-shield_forearm" data-rig-joint="shield_forearm" cx="422" cy="323" r="3" fill="#ff3eb5"/><circle id="joint-shield" data-rig-joint="shield" cx="455" cy="340" r="3" fill="#ff3eb5"/><circle id="joint-baton_upper" data-rig-joint="baton_upper" cx="289" cy="291" r="3" fill="#ff3eb5"/><circle id="joint-baton_forearm" data-rig-joint="baton_forearm" cx="250" cy="340" r="3" fill="#ff3eb5"/><circle id="joint-baton_hand" data-rig-joint="baton_hand" cx="222" cy="357" r="3" fill="#ff3eb5"/><circle id="joint-baton" data-rig-joint="baton" cx="219" cy="356" r="3" fill="#ff3eb5"/></g>
+    <g id="joint-markers" inkscape:label="Joints (hidden)" style="display:none"><circle id="joint-hips" data-rig-joint="hips" cx="348" cy="375" r="3" fill="#ff3eb5"/><circle id="joint-torso" data-rig-joint="torso" cx="344" cy="304" r="3" fill="#ff3eb5"/><circle id="joint-head" data-rig-joint="head" cx="340" cy="232" r="3" fill="#ff3eb5"/><circle id="joint-far_thigh" data-rig-joint="far_thigh" cx="376" cy="372" r="3" fill="#ff3eb5"/><circle id="joint-far_shin" data-rig-joint="far_shin" cx="412" cy="417" r="3" fill="#ff3eb5"/><circle id="joint-far_boot" data-rig-joint="far_boot" cx="415" cy="460" r="3" fill="#ff3eb5"/><circle id="joint-near_thigh" data-rig-joint="near_thigh" cx="311" cy="370" r="3" fill="#ff3eb5"/><circle id="joint-near_shin" data-rig-joint="near_shin" cx="272" cy="419" r="3" fill="#ff3eb5"/><circle id="joint-near_boot" data-rig-joint="near_boot" cx="260" cy="459" r="3" fill="#ff3eb5"/><circle id="joint-shield_upper" data-rig-joint="shield_upper" cx="395" cy="290" r="3" fill="#ff3eb5"/><circle id="joint-shield_forearm" data-rig-joint="shield_forearm" cx="424" cy="323" r="3" fill="#ff3eb5"/><circle id="joint-shield" data-rig-joint="shield" cx="451" cy="343" r="3" fill="#ff3eb5"/><circle id="joint-baton_upper" data-rig-joint="baton_upper" cx="288" cy="290" r="3" fill="#ff3eb5"/><circle id="joint-baton_forearm" data-rig-joint="baton_forearm" cx="250" cy="338" r="3" fill="#ff3eb5"/><circle id="joint-baton_hand" data-rig-joint="baton_hand" cx="222" cy="356" r="3" fill="#ff3eb5"/><circle id="joint-baton" data-rig-joint="baton" cx="216" cy="358" r="3" fill="#ff3eb5"/></g>
  </g>
+  <!-- BEGIN AMBITION SVG RIG v1 -->
+  <metadata id="ambition-rig-metadata" data-ambition-schema="ambition-svg-rig-v1" data-ambition-role="character-rig" data-rig-coordinate-space="root-svg-user-space" data-rig-rest-authority="markers">
+    <g id="ambition-rig-view-side" data-rig-view-def="side" data-rig-source-layer="view-shock-warden-side" data-rig-source-label="Shock Warden - Side" data-rig-root="ambition-rig-side-joint-rig_root" data-rig-projection="side" data-rig-profile="custom-articulated-v1" data-rig-pose-authority="geometry-only" data-rig-part-order="attribute" data-rig-source-map-quality="authored-svg-joints">
+      <g id="ambition-rig-side-bone-hips" data-rig-bone-def="hips" data-rig-origin="ambition-rig-side-joint-hips_pivot" />
+      <g id="ambition-rig-side-bone-torso" data-rig-bone-def="torso" data-rig-parent="hips" data-rig-origin="ambition-rig-side-joint-waist" />
+      <g id="ambition-rig-side-bone-head" data-rig-bone-def="head" data-rig-parent="torso" data-rig-origin="ambition-rig-side-joint-neck" />
+      <g id="ambition-rig-side-bone-far_thigh" data-rig-bone-def="far_thigh" data-rig-parent="hips" data-rig-origin="ambition-rig-side-joint-far_thigh_pivot" />
+      <g id="ambition-rig-side-bone-far_shin" data-rig-bone-def="far_shin" data-rig-parent="far_thigh" data-rig-origin="ambition-rig-side-joint-far_shin_pivot" />
+      <g id="ambition-rig-side-bone-far_boot" data-rig-bone-def="far_boot" data-rig-parent="far_shin" data-rig-origin="ambition-rig-side-joint-far_boot_pivot" />
+      <g id="ambition-rig-side-bone-near_thigh" data-rig-bone-def="near_thigh" data-rig-parent="hips" data-rig-origin="ambition-rig-side-joint-near_thigh_pivot" />
+      <g id="ambition-rig-side-bone-near_shin" data-rig-bone-def="near_shin" data-rig-parent="near_thigh" data-rig-origin="ambition-rig-side-joint-near_shin_pivot" />
+      <g id="ambition-rig-side-bone-near_boot" data-rig-bone-def="near_boot" data-rig-parent="near_shin" data-rig-origin="ambition-rig-side-joint-near_boot_pivot" />
+      <g id="ambition-rig-side-bone-shield_upper" data-rig-bone-def="shield_upper" data-rig-parent="torso" data-rig-origin="ambition-rig-side-joint-shield_upper_pivot" />
+      <g id="ambition-rig-side-bone-shield_forearm" data-rig-bone-def="shield_forearm" data-rig-parent="shield_upper" data-rig-origin="ambition-rig-side-joint-shield_forearm_pivot" />
+      <g id="ambition-rig-side-bone-shield" data-rig-bone-def="shield" data-rig-parent="shield_forearm" data-rig-origin="ambition-rig-side-joint-shield_pivot" />
+      <g id="ambition-rig-side-bone-baton_upper" data-rig-bone-def="baton_upper" data-rig-parent="torso" data-rig-origin="ambition-rig-side-joint-baton_upper_pivot" />
+      <g id="ambition-rig-side-bone-baton_forearm" data-rig-bone-def="baton_forearm" data-rig-parent="baton_upper" data-rig-origin="ambition-rig-side-joint-baton_forearm_pivot" />
+      <g id="ambition-rig-side-bone-baton_hand" data-rig-bone-def="baton_hand" data-rig-parent="baton_forearm" data-rig-origin="ambition-rig-side-joint-baton_hand_pivot" />
+      <g id="ambition-rig-side-bone-baton" data-rig-bone-def="baton" data-rig-parent="baton_hand" data-rig-origin="ambition-rig-side-joint-baton_pivot" />
+      <g id="ambition-rig-side-part-coat_tails" data-rig-part-def="coat_tails" data-rig-bone="hips" data-rig-z="16" data-rig-pivot="ambition-rig-side-bind-coat_tails" data-rig-bind-angle="0" data-rig-elements="coat-tails" />
+      <g id="ambition-rig-side-part-far_thigh" data-rig-part-def="far_thigh" data-rig-bone="far_thigh" data-rig-z="18" data-rig-pivot="ambition-rig-side-bind-far_thigh" data-rig-bind-angle="0" data-rig-elements="far-thigh" />
+      <g id="ambition-rig-side-part-far_shin" data-rig-part-def="far_shin" data-rig-bone="far_shin" data-rig-z="19" data-rig-pivot="ambition-rig-side-bind-far_shin" data-rig-bind-angle="0" data-rig-elements="far-shin" />
+      <g id="ambition-rig-side-part-far_boot" data-rig-part-def="far_boot" data-rig-bone="far_boot" data-rig-z="20" data-rig-pivot="ambition-rig-side-bind-far_boot" data-rig-bind-angle="0" data-rig-elements="far-boot" />
+      <g id="ambition-rig-side-part-hip_belt" data-rig-part-def="hip_belt" data-rig-bone="hips" data-rig-z="24" data-rig-pivot="ambition-rig-side-bind-hip_belt" data-rig-bind-angle="0" data-rig-elements="hip-belt" />
+      <g id="ambition-rig-side-part-shield_upper" data-rig-part-def="shield_upper" data-rig-bone="shield_upper" data-rig-z="37" data-rig-pivot="ambition-rig-side-bind-shield_upper" data-rig-bind-angle="0" data-rig-elements="shield-upper" />
+      <g id="ambition-rig-side-part-shield_forearm" data-rig-part-def="shield_forearm" data-rig-bone="shield_forearm" data-rig-z="38" data-rig-pivot="ambition-rig-side-bind-shield_forearm" data-rig-bind-angle="0" data-rig-elements="shield-forearm" />
+      <g id="ambition-rig-side-part-torso" data-rig-part-def="torso" data-rig-bone="torso" data-rig-z="30" data-rig-pivot="ambition-rig-side-bind-torso" data-rig-bind-angle="0" data-rig-elements="torso-armor torso-details" />
+      <g id="ambition-rig-side-part-near_thigh" data-rig-part-def="near_thigh" data-rig-bone="near_thigh" data-rig-z="34" data-rig-pivot="ambition-rig-side-bind-near_thigh" data-rig-bind-angle="0" data-rig-elements="near-thigh" />
+      <g id="ambition-rig-side-part-near_shin" data-rig-part-def="near_shin" data-rig-bone="near_shin" data-rig-z="35" data-rig-pivot="ambition-rig-side-bind-near_shin" data-rig-bind-angle="0" data-rig-elements="near-shin" />
+      <g id="ambition-rig-side-part-near_boot" data-rig-part-def="near_boot" data-rig-bone="near_boot" data-rig-z="36" data-rig-pivot="ambition-rig-side-bind-near_boot" data-rig-bind-angle="0" data-rig-elements="near-boot" />
+      <g id="ambition-rig-side-part-head" data-rig-part-def="head" data-rig-bone="head" data-rig-z="43" data-rig-pivot="ambition-rig-side-bind-head" data-rig-bind-angle="0" data-rig-elements="head helmet face" />
+      <g id="ambition-rig-side-part-baton_upper" data-rig-part-def="baton_upper" data-rig-bone="baton_upper" data-rig-z="50" data-rig-pivot="ambition-rig-side-bind-baton_upper" data-rig-bind-angle="0" data-rig-elements="baton-upper insignia" />
+      <g id="ambition-rig-side-part-baton_forearm" data-rig-part-def="baton_forearm" data-rig-bone="baton_forearm" data-rig-z="51" data-rig-pivot="ambition-rig-side-bind-baton_forearm" data-rig-bind-angle="0" data-rig-elements="baton-forearm" />
+      <g id="ambition-rig-side-part-baton_hand" data-rig-part-def="baton_hand" data-rig-bone="baton_hand" data-rig-z="52" data-rig-pivot="ambition-rig-side-bind-baton_hand" data-rig-bind-angle="0" data-rig-elements="baton-hand" />
+      <g id="ambition-rig-side-part-baton" data-rig-part-def="baton" data-rig-bone="baton" data-rig-z="53" data-rig-pivot="ambition-rig-side-bind-baton" data-rig-bind-angle="0" data-rig-elements="baton-weapon" />
+      <g id="ambition-rig-side-part-baton_electric" data-rig-part-def="baton_electric" data-rig-bone="baton" data-rig-z="54" data-rig-pivot="ambition-rig-side-bind-baton_electric" data-rig-bind-angle="0" data-rig-opacity="baton_charge" data-rig-elements="baton-electric" />
+      <g id="ambition-rig-side-part-shield_grip" data-rig-part-def="shield_grip" data-rig-bone="shield" data-rig-z="70" data-rig-pivot="ambition-rig-side-bind-shield_grip" data-rig-bind-angle="0" data-rig-elements="shield-grip" />
+      <g id="ambition-rig-side-part-shield" data-rig-part-def="shield" data-rig-bone="shield" data-rig-z="71" data-rig-pivot="ambition-rig-side-bind-shield" data-rig-bind-angle="0" data-rig-elements="shield-main shield-emblem shield-viewport" />
+      <g id="ambition-rig-side-part-shield_electric" data-rig-part-def="shield_electric" data-rig-bone="shield" data-rig-z="72" data-rig-pivot="ambition-rig-side-bind-shield_electric" data-rig-bind-angle="0" data-rig-opacity="shield_charge" data-rig-elements="shield-electric" />
+      <g id="ambition-rig-side-part-shield_impact" data-rig-part-def="shield_impact" data-rig-bone="shield" data-rig-z="73" data-rig-pivot="ambition-rig-side-bind-shield_impact" data-rig-bind-angle="0" data-rig-opacity="shield_impact" data-rig-elements="shield-impact" />
+    </g>
+  </metadata>
+  <g id="ambition-rig-markers" data-rig-editor-layer="true" inkscape:groupmode="layer" inkscape:label="Ambition Rig Markers">
+    <g id="ambition-rig-markers-side" data-rig-view="side" inkscape:label="Rig Markers - Shock Warden - Side">
+      <circle id="ambition-rig-side-joint-baton_forearm_pivot" data-rig-joint="baton_forearm_pivot" cx="250" cy="338" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-baton_hand_pivot" data-rig-joint="baton_hand_pivot" cx="222" cy="356" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-baton_pivot" data-rig-joint="baton_pivot" cx="216" cy="358" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-baton_upper_pivot" data-rig-joint="baton_upper_pivot" cx="288" cy="290" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_boot_pivot" data-rig-joint="far_boot_pivot" cx="415" cy="460" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_shin_pivot" data-rig-joint="far_shin_pivot" cx="412" cy="417" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-far_thigh_pivot" data-rig-joint="far_thigh_pivot" cx="376" cy="372" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-hips_pivot" data-rig-joint="hips_pivot" cx="348" cy="375" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_boot_pivot" data-rig-joint="near_boot_pivot" cx="260" cy="459" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_shin_pivot" data-rig-joint="near_shin_pivot" cx="272" cy="419" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-near_thigh_pivot" data-rig-joint="near_thigh_pivot" cx="311" cy="370" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-neck" data-rig-joint="neck" cx="340" cy="232" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-rig_root" data-rig-joint="rig_root" cx="350" cy="476" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-shield_forearm_pivot" data-rig-joint="shield_forearm_pivot" cx="424" cy="323" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-shield_pivot" data-rig-joint="shield_pivot" cx="451" cy="343" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-shield_upper_pivot" data-rig-joint="shield_upper_pivot" cx="395" cy="290" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-joint-waist" data-rig-joint="waist" cx="344" cy="304" r="3" fill="#ff3bd4" fill-opacity="0.58" stroke="#43133d" stroke-width="1" />
+      <circle id="ambition-rig-side-bind-coat_tails" data-rig-bind-pivot="coat_tails" cx="348" cy="375" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_thigh" data-rig-bind-pivot="far_thigh" cx="376" cy="372" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_shin" data-rig-bind-pivot="far_shin" cx="412" cy="417" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-far_boot" data-rig-bind-pivot="far_boot" cx="415" cy="460" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-hip_belt" data-rig-bind-pivot="hip_belt" cx="348" cy="375" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-shield_upper" data-rig-bind-pivot="shield_upper" cx="395" cy="290" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-shield_forearm" data-rig-bind-pivot="shield_forearm" cx="424" cy="323" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-torso" data-rig-bind-pivot="torso" cx="344" cy="304" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_thigh" data-rig-bind-pivot="near_thigh" cx="311" cy="370" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_shin" data-rig-bind-pivot="near_shin" cx="272" cy="419" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-near_boot" data-rig-bind-pivot="near_boot" cx="260" cy="459" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-head" data-rig-bind-pivot="head" cx="340" cy="232" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-baton_upper" data-rig-bind-pivot="baton_upper" cx="288" cy="290" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-baton_forearm" data-rig-bind-pivot="baton_forearm" cx="250" cy="338" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-baton_hand" data-rig-bind-pivot="baton_hand" cx="222" cy="356" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-baton" data-rig-bind-pivot="baton" cx="216" cy="358" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-baton_electric" data-rig-bind-pivot="baton_electric" cx="216" cy="358" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-shield_grip" data-rig-bind-pivot="shield_grip" cx="451" cy="343" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-shield" data-rig-bind-pivot="shield" cx="451" cy="343" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-shield_electric" data-rig-bind-pivot="shield_electric" cx="451" cy="343" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+      <circle id="ambition-rig-side-bind-shield_impact" data-rig-bind-pivot="shield_impact" cx="451" cy="343" r="2.2" fill="#28c8ff" fill-opacity="0.42" stroke="#093b52" stroke-width="0.8" />
+    </g>
+  </g>
+  <!-- END AMBITION SVG RIG v1 -->
 </svg>

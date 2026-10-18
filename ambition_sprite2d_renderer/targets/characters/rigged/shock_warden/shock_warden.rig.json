@@ -46,8 +46,8 @@
       "name": "head",
       "parent": "torso",
       "offset": [
-        -3.12,
-        -37.96
+        -2.08,
+        -37.44
       ],
       "length": 0,
       "rest_angle": 0
@@ -116,8 +116,8 @@
       "name": "shield_upper",
       "parent": "torso",
       "offset": [
-        27.56,
-        -7.8
+        26.52,
+        -7.28
       ],
       "length": 0,
       "rest_angle": 0
@@ -126,8 +126,8 @@
       "name": "shield_forearm",
       "parent": "shield_upper",
       "offset": [
-        13.0,
-        17.68
+        15.08,
+        17.16
       ],
       "length": 0,
       "rest_angle": 0
@@ -136,8 +136,8 @@
       "name": "shield",
       "parent": "shield_forearm",
       "offset": [
-        17.16,
-        8.84
+        14.04,
+        10.4
       ],
       "length": 0,
       "rest_angle": 0
@@ -146,8 +146,8 @@
       "name": "baton_upper",
       "parent": "torso",
       "offset": [
-        -28.6,
-        -6.76
+        -29.12,
+        -7.28
       ],
       "length": 0,
       "rest_angle": 0
@@ -156,8 +156,8 @@
       "name": "baton_forearm",
       "parent": "baton_upper",
       "offset": [
-        -20.28,
-        25.48
+        -19.76,
+        24.96
       ],
       "length": 0,
       "rest_angle": 0
@@ -167,7 +167,7 @@
       "parent": "baton_forearm",
       "offset": [
         -14.56,
-        8.84
+        9.36
       ],
       "length": 0,
       "rest_angle": 0
@@ -176,8 +176,8 @@
       "name": "baton",
       "parent": "baton_hand",
       "offset": [
-        -1.56,
-        -0.52
+        -3.12,
+        1.04
       ],
       "length": 0,
       "rest_angle": 0
@@ -185,9 +185,23 @@
   ],
   "parts": [
     {
+      "name": "coat_tails",
+      "bone": "hips",
+      "z": 16,
+      "kind": "sprite",
+      "include": [
+        "coat-tails"
+      ],
+      "pivot": [
+        348.0,
+        375.0
+      ],
+      "rest_angle": 0
+    },
+    {
       "name": "far_thigh",
       "bone": "far_thigh",
-      "z": 10,
+      "z": 18,
       "kind": "sprite",
       "include": [
         "far-thigh"
@@ -201,7 +215,7 @@
     {
       "name": "far_shin",
       "bone": "far_shin",
-      "z": 11,
+      "z": 19,
       "kind": "sprite",
       "include": [
         "far-shin"
@@ -215,7 +229,7 @@
     {
       "name": "far_boot",
       "bone": "far_boot",
-      "z": 12,
+      "z": 20,
       "kind": "sprite",
       "include": [
         "far-boot"
@@ -227,12 +241,11 @@
       "rest_angle": 0
     },
     {
-      "name": "coat_tails",
+      "name": "hip_belt",
       "bone": "hips",
-      "z": 16,
+      "z": 24,
       "kind": "sprite",
       "include": [
-        "coat-tails",
         "hip-belt"
       ],
       "pivot": [
@@ -244,27 +257,27 @@
     {
       "name": "shield_upper",
       "bone": "shield_upper",
-      "z": 18,
+      "z": 37,
       "kind": "sprite",
       "include": [
         "shield-upper"
       ],
       "pivot": [
-        397.0,
-        289.0
+        395.0,
+        290.0
       ],
       "rest_angle": 0
     },
     {
       "name": "shield_forearm",
       "bone": "shield_forearm",
-      "z": 19,
+      "z": 38,
       "kind": "sprite",
       "include": [
         "shield-forearm"
       ],
       "pivot": [
-        422.0,
+        424.0,
         323.0
       ],
       "rest_angle": 0
@@ -329,7 +342,7 @@
     {
       "name": "head",
       "bone": "head",
-      "z": 40,
+      "z": 43,
       "kind": "sprite",
       "include": [
         "head",
@@ -337,8 +350,8 @@
         "face"
       ],
       "pivot": [
-        338.0,
-        231.0
+        340.0,
+        232.0
       ],
       "rest_angle": 0
     },
@@ -352,8 +365,8 @@
         "insignia"
       ],
       "pivot": [
-        289.0,
-        291.0
+        288.0,
+        290.0
       ],
       "rest_angle": 0
     },
@@ -367,7 +380,7 @@
       ],
       "pivot": [
         250.0,
-        340.0
+        338.0
       ],
       "rest_angle": 0
     },
@@ -381,7 +394,7 @@
       ],
       "pivot": [
         222.0,
-        357.0
+        356.0
       ],
       "rest_angle": 0
     },
@@ -394,8 +407,8 @@
         "baton-weapon"
       ],
       "pivot": [
-        219.0,
-        356.0
+        216.0,
+        358.0
       ],
       "rest_angle": 0
     },
@@ -408,8 +421,8 @@
         "baton-electric"
       ],
       "pivot": [
-        219.0,
-        356.0
+        216.0,
+        358.0
       ],
       "rest_angle": 0,
       "opacity_channel": "baton_charge",
@@ -424,8 +437,8 @@
         "shield-grip"
       ],
       "pivot": [
-        455.0,
-        340.0
+        451.0,
+        343.0
       ],
       "rest_angle": 0
     },
@@ -440,8 +453,8 @@
         "shield-viewport"
       ],
       "pivot": [
-        455.0,
-        340.0
+        451.0,
+        343.0
       ],
       "rest_angle": 0
     },
@@ -454,8 +467,8 @@
         "shield-electric"
       ],
       "pivot": [
-        455.0,
-        340.0
+        451.0,
+        343.0
       ],
       "rest_angle": 0,
       "opacity_channel": "shield_charge",
@@ -470,8 +483,8 @@
         "shield-impact"
       ],
       "pivot": [
-        455.0,
-        340.0
+        451.0,
+        343.0
       ],
       "rest_angle": 0,
       "opacity_channel": "shield_impact",
@@ -486,8 +499,14 @@
       "frames": 8,
       "duration_ms": 135,
       "channels": {
-        "hips": {
-          "const": 0.0
+        "shield_charge": {
+          "expr": "0.56+0.12*sin(tau*2*t)"
+        },
+        "baton_charge": {
+          "expr": "0.45+0.12*sin(tau*2*t+0.7)"
+        },
+        "root_y": {
+          "expr": "0.7*sin(tau*t)"
         },
         "torso": {
           "expr": "0.7*sin(tau*t)"
@@ -495,59 +514,8 @@
         "head": {
           "expr": "-1.2*sin(tau*t+0.25)"
         },
-        "near_thigh": {
-          "const": 0.0
-        },
-        "near_shin": {
-          "const": 0.0
-        },
-        "near_boot": {
-          "const": 0.0
-        },
-        "far_thigh": {
-          "const": 0.0
-        },
-        "far_shin": {
-          "const": 0.0
-        },
-        "far_boot": {
-          "const": 0.0
-        },
-        "shield_upper": {
-          "const": 0.0
-        },
-        "shield_forearm": {
-          "const": 0.0
-        },
         "shield": {
-          "expr": "0.8*sin(tau*t+0.6)"
-        },
-        "baton_upper": {
-          "const": 0.0
-        },
-        "baton_forearm": {
-          "const": 0.0
-        },
-        "baton_hand": {
-          "const": 0.0
-        },
-        "baton": {
-          "const": 0.0
-        },
-        "shield_charge": {
-          "expr": "0.56+0.12*sin(tau*2*t)"
-        },
-        "baton_charge": {
-          "expr": "0.45+0.12*sin(tau*2*t+0.7)"
-        },
-        "shield_impact": {
-          "const": 0.0
-        },
-        "root_x": {
-          "const": 0.0
-        },
-        "root_y": {
-          "expr": "0.7*sin(tau*t)"
+          "expr": "-0.7*sin(tau*t)"
         }
       }
     },
@@ -556,8 +524,14 @@
       "frames": 10,
       "duration_ms": 105,
       "channels": {
-        "hips": {
-          "const": 0.0
+        "shield_charge": {
+          "const": 0.7
+        },
+        "baton_charge": {
+          "const": 0.6
+        },
+        "root_y": {
+          "expr": "-1.2*abs(sin(tau*t))"
         },
         "torso": {
           "expr": "1.8*sin(tau*t)"
@@ -587,37 +561,13 @@
           "expr": "-3*sin(tau*t)"
         },
         "shield_forearm": {
-          "const": 0.0
+          "expr": "2*sin(tau*t)"
         },
         "shield": {
-          "const": 0.0
+          "expr": "-0.8*sin(tau*t)"
         },
         "baton_upper": {
           "expr": "-4*sin(tau*t)"
-        },
-        "baton_forearm": {
-          "const": 0.0
-        },
-        "baton_hand": {
-          "const": 0.0
-        },
-        "baton": {
-          "const": 0.0
-        },
-        "shield_charge": {
-          "const": 0.7
-        },
-        "baton_charge": {
-          "const": 0.6
-        },
-        "shield_impact": {
-          "const": 0.0
-        },
-        "root_x": {
-          "const": 0.0
-        },
-        "root_y": {
-          "expr": "-1.2*abs(sin(tau*t))"
         }
       }
     },
@@ -626,30 +576,6 @@
       "frames": 8,
       "duration_ms": 110,
       "channels": {
-        "baton": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.3,
-              0.0,
-              "linear"
-            ],
-            [
-              0.8,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
         "baton_charge": {
           "keys": [
             [
@@ -658,162 +584,18 @@
               "linear"
             ],
             [
-              0.3,
+              0.25,
+              0.4,
+              "linear"
+            ],
+            [
+              0.85,
+              0.4,
+              "linear"
+            ],
+            [
+              1.0,
               0.6,
-              "linear"
-            ],
-            [
-              0.8,
-              0.6,
-              "linear"
-            ],
-            [
-              1.0,
-              0.6,
-              "linear"
-            ]
-          ]
-        },
-        "baton_forearm": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.3,
-              0.0,
-              "linear"
-            ],
-            [
-              0.8,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "baton_hand": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.3,
-              0.0,
-              "linear"
-            ],
-            [
-              0.8,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "baton_upper": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.3,
-              0.0,
-              "linear"
-            ],
-            [
-              0.8,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "far_boot": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.3,
-              0.0,
-              "linear"
-            ],
-            [
-              0.8,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "far_shin": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.3,
-              0.0,
-              "linear"
-            ],
-            [
-              0.8,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "far_thigh": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.3,
-              0.0,
-              "linear"
-            ],
-            [
-              0.8,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
               "linear"
             ]
           ]
@@ -826,85 +608,13 @@
               "linear"
             ],
             [
-              0.3,
-              0.0,
+              0.25,
+              -3.0,
               "linear"
             ],
             [
-              0.8,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "hips": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.3,
-              0.0,
-              "linear"
-            ],
-            [
-              0.8,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "near_boot": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.3,
-              0.0,
-              "linear"
-            ],
-            [
-              0.8,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "near_shin": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.3,
-              0.0,
-              "linear"
-            ],
-            [
-              0.8,
-              0.0,
+              0.85,
+              -3.0,
               "linear"
             ],
             [
@@ -922,37 +632,13 @@
               "linear"
             ],
             [
-              0.3,
-              0.0,
+              0.25,
+              4.0,
               "linear"
             ],
             [
-              0.8,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "root_x": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.3,
-              0.0,
-              "linear"
-            ],
-            [
-              0.8,
-              0.0,
+              0.85,
+              4.0,
               "linear"
             ],
             [
@@ -970,13 +656,13 @@
               "linear"
             ],
             [
-              0.3,
-              0.0,
+              0.25,
+              2.0,
               "linear"
             ],
             [
-              0.8,
-              0.0,
+              0.85,
+              2.0,
               "linear"
             ],
             [
@@ -994,13 +680,13 @@
               "linear"
             ],
             [
-              0.3,
-              -4.0,
+              0.25,
+              5.0,
               "linear"
             ],
             [
-              0.8,
-              -4.0,
+              0.85,
+              5.0,
               "linear"
             ],
             [
@@ -1018,12 +704,12 @@
               "linear"
             ],
             [
-              0.3,
+              0.25,
               0.9,
               "linear"
             ],
             [
-              0.8,
+              0.85,
               0.9,
               "linear"
             ],
@@ -1042,37 +728,13 @@
               "linear"
             ],
             [
-              0.3,
-              0.0,
+              0.25,
+              -29.0,
               "linear"
             ],
             [
-              0.8,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "shield_impact": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.3,
-              0.0,
-              "linear"
-            ],
-            [
-              0.8,
-              0.0,
+              0.85,
+              -29.0,
               "linear"
             ],
             [
@@ -1090,13 +752,13 @@
               "linear"
             ],
             [
-              0.3,
-              -6.0,
+              0.25,
+              18.0,
               "linear"
             ],
             [
-              0.8,
-              -6.0,
+              0.85,
+              18.0,
               "linear"
             ],
             [
@@ -1114,13 +776,13 @@
               "linear"
             ],
             [
-              0.3,
-              0.0,
+              0.25,
+              4.0,
               "linear"
             ],
             [
-              0.8,
-              0.0,
+              0.85,
+              4.0,
               "linear"
             ],
             [
@@ -1137,30 +799,6 @@
       "frames": 9,
       "duration_ms": 100,
       "channels": {
-        "baton": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.24,
-              0.0,
-              "linear"
-            ],
-            [
-              0.76,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
         "baton_charge": {
           "keys": [
             [
@@ -1169,66 +807,18 @@
               "linear"
             ],
             [
-              0.24,
+              0.25,
               0.6,
               "linear"
             ],
             [
-              0.76,
+              0.78,
               0.6,
               "linear"
             ],
             [
               1.0,
               0.6,
-              "linear"
-            ]
-          ]
-        },
-        "baton_forearm": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.24,
-              0.0,
-              "linear"
-            ],
-            [
-              0.76,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "baton_hand": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.24,
-              0.0,
-              "linear"
-            ],
-            [
-              0.76,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
               "linear"
             ]
           ]
@@ -1241,37 +831,13 @@
               "linear"
             ],
             [
-              0.24,
-              0.0,
+              0.25,
+              -11.0,
               "linear"
             ],
             [
-              0.76,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "far_boot": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.24,
-              0.0,
-              "linear"
-            ],
-            [
-              0.76,
-              0.0,
+              0.78,
+              -11.0,
               "linear"
             ],
             [
@@ -1289,13 +855,13 @@
               "linear"
             ],
             [
-              0.24,
-              17.0,
+              0.25,
+              21.0,
               "linear"
             ],
             [
-              0.76,
-              17.0,
+              0.78,
+              21.0,
               "linear"
             ],
             [
@@ -1313,13 +879,13 @@
               "linear"
             ],
             [
-              0.24,
-              -8.0,
+              0.25,
+              -14.0,
               "linear"
             ],
             [
-              0.76,
-              -8.0,
+              0.78,
+              -14.0,
               "linear"
             ],
             [
@@ -1337,61 +903,13 @@
               "linear"
             ],
             [
-              0.24,
-              -6.0,
+              0.25,
+              -13.0,
               "linear"
             ],
             [
-              0.76,
-              -6.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "hips": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.24,
-              0.0,
-              "linear"
-            ],
-            [
-              0.76,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "near_boot": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.24,
-              0.0,
-              "linear"
-            ],
-            [
-              0.76,
-              0.0,
+              0.78,
+              -13.0,
               "linear"
             ],
             [
@@ -1409,13 +927,13 @@
               "linear"
             ],
             [
-              0.24,
-              -22.0,
+              0.25,
+              -32.0,
               "linear"
             ],
             [
-              0.76,
-              -22.0,
+              0.78,
+              -32.0,
               "linear"
             ],
             [
@@ -1433,37 +951,13 @@
               "linear"
             ],
             [
-              0.24,
-              14.0,
+              0.25,
+              23.0,
               "linear"
             ],
             [
-              0.76,
-              14.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "root_x": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.24,
-              0.0,
-              "linear"
-            ],
-            [
-              0.76,
-              0.0,
+              0.78,
+              23.0,
               "linear"
             ],
             [
@@ -1481,13 +975,13 @@
               "linear"
             ],
             [
-              0.24,
-              8.0,
+              0.25,
+              7.0,
               "linear"
             ],
             [
-              0.76,
-              8.0,
+              0.78,
+              7.0,
               "linear"
             ],
             [
@@ -1505,13 +999,13 @@
               "linear"
             ],
             [
-              0.24,
-              -8.0,
+              0.25,
+              -2.0,
               "linear"
             ],
             [
-              0.76,
-              -8.0,
+              0.78,
+              -2.0,
               "linear"
             ],
             [
@@ -1529,12 +1023,12 @@
               "linear"
             ],
             [
-              0.24,
+              0.25,
               1.0,
               "linear"
             ],
             [
-              0.76,
+              0.78,
               1.0,
               "linear"
             ],
@@ -1553,37 +1047,13 @@
               "linear"
             ],
             [
-              0.24,
-              -19.0,
+              0.25,
+              -38.0,
               "linear"
             ],
             [
-              0.76,
-              -19.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "shield_impact": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.24,
-              0.0,
-              "linear"
-            ],
-            [
-              0.76,
-              0.0,
+              0.78,
+              -38.0,
               "linear"
             ],
             [
@@ -1601,13 +1071,13 @@
               "linear"
             ],
             [
-              0.24,
-              9.0,
+              0.25,
+              22.0,
               "linear"
             ],
             [
-              0.76,
-              9.0,
+              0.78,
+              22.0,
               "linear"
             ],
             [
@@ -1625,13 +1095,13 @@
               "linear"
             ],
             [
-              0.24,
-              8.0,
+              0.25,
+              16.0,
               "linear"
             ],
             [
-              0.76,
-              8.0,
+              0.78,
+              16.0,
               "linear"
             ],
             [
@@ -1645,43 +1115,9 @@
     },
     "shield_bash": {
       "loop": false,
-      "frames": 12,
-      "duration_ms": 88,
+      "frames": 14,
+      "duration_ms": 85,
       "channels": {
-        "baton": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.23,
-              0.0,
-              "linear"
-            ],
-            [
-              0.47,
-              0.0,
-              "linear"
-            ],
-            [
-              0.65,
-              0.0,
-              "linear"
-            ],
-            [
-              0.83,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
         "baton_charge": {
           "keys": [
             [
@@ -1690,96 +1126,28 @@
               "linear"
             ],
             [
-              0.23,
+              0.21,
               0.6,
               "linear"
             ],
             [
-              0.47,
+              0.46,
               0.6,
               "linear"
             ],
             [
-              0.65,
+              0.61,
               0.6,
               "linear"
             ],
             [
-              0.83,
+              0.82,
               0.6,
               "linear"
             ],
             [
               1.0,
               0.6,
-              "linear"
-            ]
-          ]
-        },
-        "baton_forearm": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.23,
-              0.0,
-              "linear"
-            ],
-            [
-              0.47,
-              0.0,
-              "linear"
-            ],
-            [
-              0.65,
-              0.0,
-              "linear"
-            ],
-            [
-              0.83,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "baton_hand": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.23,
-              0.0,
-              "linear"
-            ],
-            [
-              0.47,
-              0.0,
-              "linear"
-            ],
-            [
-              0.65,
-              0.0,
-              "linear"
-            ],
-            [
-              0.83,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
               "linear"
             ]
           ]
@@ -1792,56 +1160,22 @@
               "linear"
             ],
             [
-              0.23,
+              0.21,
               0.0,
               "linear"
             ],
             [
-              0.47,
-              0.0,
+              0.46,
+              -7.0,
               "linear"
             ],
             [
-              0.65,
-              0.0,
+              0.61,
+              -8.0,
               "linear"
             ],
             [
-              0.83,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "far_boot": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.23,
-              0.0,
-              "linear"
-            ],
-            [
-              0.47,
-              0.0,
-              "linear"
-            ],
-            [
-              0.65,
-              0.0,
-              "linear"
-            ],
-            [
-              0.83,
+              0.82,
               0.0,
               "linear"
             ],
@@ -1860,22 +1194,22 @@
               "linear"
             ],
             [
-              0.23,
+              0.21,
               0.0,
               "linear"
             ],
             [
-              0.47,
-              -9.0,
+              0.46,
+              -16.0,
               "linear"
             ],
             [
-              0.65,
-              0.0,
+              0.61,
+              -12.0,
               "linear"
             ],
             [
-              0.83,
+              0.82,
               0.0,
               "linear"
             ],
@@ -1894,23 +1228,23 @@
               "linear"
             ],
             [
-              0.23,
-              14.0,
+              0.21,
+              -13.0,
               "linear"
             ],
             [
-              0.47,
-              20.0,
+              0.46,
+              27.0,
               "linear"
             ],
             [
-              0.65,
-              24.0,
+              0.61,
+              25.0,
               "linear"
             ],
             [
-              0.83,
-              0.0,
+              0.82,
+              -8.0,
               "linear"
             ],
             [
@@ -1928,96 +1262,28 @@
               "linear"
             ],
             [
-              0.23,
-              0.0,
+              0.21,
+              7.0,
               "linear"
             ],
             [
-              0.47,
-              0.0,
+              0.46,
+              -23.0,
               "linear"
             ],
             [
-              0.65,
-              0.0,
+              0.61,
+              -25.0,
               "linear"
             ],
             [
-              0.83,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "hips": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.23,
-              0.0,
-              "linear"
-            ],
-            [
-              0.47,
-              0.0,
-              "linear"
-            ],
-            [
-              0.65,
-              0.0,
-              "linear"
-            ],
-            [
-              0.83,
-              0.0,
+              0.82,
+              -13.0,
               "linear"
             ],
             [
               1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "near_boot": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.23,
-              0.0,
-              "linear"
-            ],
-            [
-              0.47,
-              0.0,
-              "linear"
-            ],
-            [
-              0.65,
-              0.0,
-              "linear"
-            ],
-            [
-              0.83,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
+              -8.0,
               "linear"
             ]
           ]
@@ -2030,22 +1296,22 @@
               "linear"
             ],
             [
-              0.23,
+              0.21,
               0.0,
               "linear"
             ],
             [
-              0.47,
-              22.0,
+              0.46,
+              23.0,
               "linear"
             ],
             [
-              0.65,
-              0.0,
+              0.61,
+              20.0,
               "linear"
             ],
             [
-              0.83,
+              0.82,
               0.0,
               "linear"
             ],
@@ -2064,22 +1330,22 @@
               "linear"
             ],
             [
-              0.23,
-              -11.0,
+              0.21,
+              9.0,
               "linear"
             ],
             [
-              0.47,
-              -24.0,
+              0.46,
+              -29.0,
               "linear"
             ],
             [
-              0.65,
-              -19.0,
+              0.61,
+              -27.0,
               "linear"
             ],
             [
-              0.83,
+              0.82,
               8.0,
               "linear"
             ],
@@ -2098,28 +1364,28 @@
               "linear"
             ],
             [
-              0.23,
-              -8.0,
+              0.21,
+              -16.0,
               "linear"
             ],
             [
-              0.47,
-              27.0,
+              0.46,
+              55.0,
               "linear"
             ],
             [
-              0.65,
-              39.0,
+              0.61,
+              69.0,
               "linear"
             ],
             [
-              0.83,
-              28.0,
+              0.82,
+              42.0,
               "linear"
             ],
             [
               1.0,
-              0.0,
+              12.0,
               "linear"
             ]
           ]
@@ -2132,28 +1398,28 @@
               "linear"
             ],
             [
-              0.23,
-              6.0,
+              0.21,
+              4.0,
               "linear"
             ],
             [
-              0.47,
-              -3.0,
+              0.46,
+              -7.0,
               "linear"
             ],
             [
-              0.65,
-              -2.0,
+              0.61,
+              -5.0,
               "linear"
             ],
             [
-              0.83,
-              12.0,
+              0.82,
+              7.0,
               "linear"
             ],
             [
               1.0,
-              0.0,
+              5.0,
               "linear"
             ]
           ]
@@ -2166,28 +1432,28 @@
               "linear"
             ],
             [
-              0.23,
-              8.0,
+              0.21,
+              18.0,
               "linear"
             ],
             [
-              0.47,
-              32.0,
+              0.46,
+              0.0,
               "linear"
             ],
             [
-              0.65,
-              31.0,
+              0.61,
+              0.0,
               "linear"
             ],
             [
-              0.83,
-              25.0,
+              0.82,
+              26.0,
               "linear"
             ],
             [
               1.0,
-              0.0,
+              24.0,
               "linear"
             ]
           ]
@@ -2200,28 +1466,28 @@
               "linear"
             ],
             [
-              0.23,
-              0.9,
-              "linear"
-            ],
-            [
-              0.47,
-              1.0,
-              "linear"
-            ],
-            [
-              0.65,
+              0.21,
               0.95,
               "linear"
             ],
             [
-              0.83,
+              0.46,
+              1.0,
+              "linear"
+            ],
+            [
+              0.61,
+              1.0,
+              "linear"
+            ],
+            [
+              0.82,
               0.15,
               "linear"
             ],
             [
               1.0,
-              0.4,
+              0.2,
               "linear"
             ]
           ]
@@ -2234,28 +1500,28 @@
               "linear"
             ],
             [
-              0.23,
-              10.0,
+              0.21,
+              -32.0,
               "linear"
             ],
             [
-              0.47,
-              -17.0,
+              0.46,
+              -7.0,
               "linear"
             ],
             [
-              0.65,
-              -18.0,
+              0.61,
+              -8.0,
               "linear"
             ],
             [
-              0.83,
-              30.0,
+              0.82,
+              12.0,
               "linear"
             ],
             [
               1.0,
-              0.0,
+              15.0,
               "linear"
             ]
           ]
@@ -2268,22 +1534,22 @@
               "linear"
             ],
             [
-              0.23,
+              0.21,
               0.0,
               "linear"
             ],
             [
-              0.47,
+              0.46,
               1.0,
               "linear"
             ],
             [
-              0.65,
-              0.3,
+              0.61,
+              0.45,
               "linear"
             ],
             [
-              0.83,
+              0.82,
               0.0,
               "linear"
             ],
@@ -2302,28 +1568,28 @@
               "linear"
             ],
             [
-              0.23,
-              10.0,
+              0.21,
+              24.0,
               "linear"
             ],
             [
-              0.47,
-              -28.0,
+              0.46,
+              -29.0,
               "linear"
             ],
             [
-              0.65,
-              -27.0,
+              0.61,
+              -30.0,
               "linear"
             ],
             [
-              0.83,
-              15.0,
+              0.82,
+              5.0,
               "linear"
             ],
             [
               1.0,
-              0.0,
+              10.0,
               "linear"
             ]
           ]
@@ -2336,28 +1602,28 @@
               "linear"
             ],
             [
-              0.23,
-              -8.0,
+              0.21,
+              -12.0,
               "linear"
             ],
             [
-              0.47,
-              13.0,
+              0.46,
+              36.0,
               "linear"
             ],
             [
-              0.65,
-              14.0,
+              0.61,
+              38.0,
               "linear"
             ],
             [
-              0.83,
-              19.0,
+              0.82,
+              21.0,
               "linear"
             ],
             [
               1.0,
-              0.0,
+              12.0,
               "linear"
             ]
           ]
@@ -2366,7 +1632,7 @@
     },
     "baton_attack": {
       "loop": false,
-      "frames": 11,
+      "frames": 13,
       "duration_ms": 90,
       "channels": {
         "baton": {
@@ -2377,23 +1643,28 @@
               "linear"
             ],
             [
-              0.2,
-              -12.0,
+              0.22,
+              -5.0,
               "linear"
             ],
             [
               0.42,
-              -18.0,
+              -12.0,
               "linear"
             ],
             [
-              0.54,
-              -34.0,
+              0.6,
+              -12.0,
               "linear"
             ],
             [
-              0.73,
-              -45.0,
+              0.75,
+              -16.0,
+              "linear"
+            ],
+            [
+              0.91,
+              -12.0,
               "linear"
             ],
             [
@@ -2411,7 +1682,7 @@
               "linear"
             ],
             [
-              0.2,
+              0.22,
               0.8,
               "linear"
             ],
@@ -2421,18 +1692,23 @@
               "linear"
             ],
             [
-              0.54,
+              0.6,
               1.0,
               "linear"
             ],
             [
-              0.73,
+              0.75,
               1.0,
               "linear"
             ],
             [
+              0.91,
+              0.65,
+              "linear"
+            ],
+            [
               1.0,
-              0.5,
+              0.4,
               "linear"
             ]
           ]
@@ -2445,57 +1721,28 @@
               "linear"
             ],
             [
-              0.2,
-              -18.0,
+              0.22,
+              -20.0,
               "linear"
             ],
             [
               0.42,
+              -22.0,
+              "linear"
+            ],
+            [
+              0.6,
+              -10.0,
+              "linear"
+            ],
+            [
+              0.75,
               -14.0,
               "linear"
             ],
             [
-              0.54,
-              27.0,
-              "linear"
-            ],
-            [
-              0.73,
-              22.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "baton_hand": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.2,
-              0.0,
-              "linear"
-            ],
-            [
-              0.42,
-              0.0,
-              "linear"
-            ],
-            [
-              0.54,
-              -5.0,
-              "linear"
-            ],
-            [
-              0.73,
-              0.0,
+              0.91,
+              -22.0,
               "linear"
             ],
             [
@@ -2513,57 +1760,28 @@
               "linear"
             ],
             [
-              0.2,
+              0.22,
               100.0,
               "linear"
             ],
             [
               0.42,
-              126.0,
+              135.0,
               "linear"
             ],
             [
-              0.54,
-              217.0,
+              0.6,
+              184.0,
               "linear"
             ],
             [
-              0.73,
-              243.0,
+              0.75,
+              198.0,
               "linear"
             ],
             [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "far_boot": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.2,
-              0.0,
-              "linear"
-            ],
-            [
-              0.42,
-              0.0,
-              "linear"
-            ],
-            [
-              0.54,
-              0.0,
-              "linear"
-            ],
-            [
-              0.73,
-              0.0,
+              0.91,
+              175.0,
               "linear"
             ],
             [
@@ -2573,7 +1791,7 @@
             ]
           ]
         },
-        "far_shin": {
+        "bone.baton.z": {
           "keys": [
             [
               0.0,
@@ -2581,7 +1799,7 @@
               "linear"
             ],
             [
-              0.2,
+              0.22,
               0.0,
               "linear"
             ],
@@ -2591,13 +1809,96 @@
               "linear"
             ],
             [
-              0.54,
+              0.6,
+              22.0,
+              "linear"
+            ],
+            [
+              0.75,
+              22.0,
+              "linear"
+            ],
+            [
+              0.91,
+              14.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "bone.baton_forearm.z": {
+          "keys": [
+            [
+              0.0,
               0.0,
               "linear"
             ],
             [
-              0.73,
+              0.22,
               0.0,
+              "linear"
+            ],
+            [
+              0.42,
+              0.0,
+              "linear"
+            ],
+            [
+              0.6,
+              22.0,
+              "linear"
+            ],
+            [
+              0.75,
+              22.0,
+              "linear"
+            ],
+            [
+              0.91,
+              14.0,
+              "linear"
+            ],
+            [
+              1.0,
+              0.0,
+              "linear"
+            ]
+          ]
+        },
+        "bone.baton_hand.z": {
+          "keys": [
+            [
+              0.0,
+              0.0,
+              "linear"
+            ],
+            [
+              0.22,
+              0.0,
+              "linear"
+            ],
+            [
+              0.42,
+              0.0,
+              "linear"
+            ],
+            [
+              0.6,
+              22.0,
+              "linear"
+            ],
+            [
+              0.75,
+              22.0,
+              "linear"
+            ],
+            [
+              0.91,
+              14.0,
               "linear"
             ],
             [
@@ -2615,7 +1916,7 @@
               "linear"
             ],
             [
-              0.2,
+              0.22,
               0.0,
               "linear"
             ],
@@ -2625,12 +1926,17 @@
               "linear"
             ],
             [
-              0.54,
+              0.6,
               0.0,
               "linear"
             ],
             [
-              0.73,
+              0.75,
+              8.0,
+              "linear"
+            ],
+            [
+              0.91,
               0.0,
               "linear"
             ],
@@ -2649,125 +1955,28 @@
               "linear"
             ],
             [
-              0.2,
-              0.0,
+              0.22,
+              6.0,
               "linear"
             ],
             [
               0.42,
-              0.0,
+              5.0,
               "linear"
             ],
             [
-              0.54,
-              0.0,
+              0.6,
+              -6.0,
               "linear"
             ],
             [
-              0.73,
-              0.0,
+              0.75,
+              -12.0,
               "linear"
             ],
             [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "hips": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.2,
-              0.0,
-              "linear"
-            ],
-            [
-              0.42,
-              0.0,
-              "linear"
-            ],
-            [
-              0.54,
-              0.0,
-              "linear"
-            ],
-            [
-              0.73,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "near_boot": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.2,
-              0.0,
-              "linear"
-            ],
-            [
-              0.42,
-              0.0,
-              "linear"
-            ],
-            [
-              0.54,
-              0.0,
-              "linear"
-            ],
-            [
-              0.73,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "near_shin": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.2,
-              0.0,
-              "linear"
-            ],
-            [
-              0.42,
-              0.0,
-              "linear"
-            ],
-            [
-              0.54,
-              0.0,
-              "linear"
-            ],
-            [
-              0.73,
-              0.0,
+              0.91,
+              -7.0,
               "linear"
             ],
             [
@@ -2785,7 +1994,7 @@
               "linear"
             ],
             [
-              0.2,
+              0.22,
               0.0,
               "linear"
             ],
@@ -2795,12 +2004,17 @@
               "linear"
             ],
             [
-              0.54,
+              0.6,
               0.0,
               "linear"
             ],
             [
-              0.73,
+              0.75,
+              -10.0,
+              "linear"
+            ],
+            [
+              0.91,
               0.0,
               "linear"
             ],
@@ -2819,22 +2033,27 @@
               "linear"
             ],
             [
-              0.2,
-              0.0,
+              0.22,
+              -5.0,
               "linear"
             ],
             [
               0.42,
-              0.0,
+              -8.0,
               "linear"
             ],
             [
-              0.54,
-              8.0,
+              0.6,
+              12.0,
               "linear"
             ],
             [
-              0.73,
+              0.75,
+              17.0,
+              "linear"
+            ],
+            [
+              0.91,
               12.0,
               "linear"
             ],
@@ -2853,7 +2072,7 @@
               "linear"
             ],
             [
-              0.2,
+              0.22,
               0.0,
               "linear"
             ],
@@ -2863,13 +2082,18 @@
               "linear"
             ],
             [
-              0.54,
-              0.0,
+              0.6,
+              -2.0,
               "linear"
             ],
             [
-              0.73,
-              0.0,
+              0.75,
+              -4.0,
+              "linear"
+            ],
+            [
+              0.91,
+              -2.0,
               "linear"
             ],
             [
@@ -2887,23 +2111,28 @@
               "linear"
             ],
             [
-              0.2,
-              -8.0,
+              0.22,
+              11.0,
               "linear"
             ],
             [
               0.42,
-              0.0,
+              12.0,
               "linear"
             ],
             [
-              0.54,
-              0.0,
+              0.6,
+              41.0,
               "linear"
             ],
             [
-              0.73,
-              0.0,
+              0.75,
+              31.0,
+              "linear"
+            ],
+            [
+              0.91,
+              15.0,
               "linear"
             ],
             [
@@ -2921,7 +2150,7 @@
               "linear"
             ],
             [
-              0.2,
+              0.22,
               0.7,
               "linear"
             ],
@@ -2931,12 +2160,17 @@
               "linear"
             ],
             [
-              0.54,
+              0.6,
               0.7,
               "linear"
             ],
             [
-              0.73,
+              0.75,
+              0.7,
+              "linear"
+            ],
+            [
+              0.91,
               0.7,
               "linear"
             ],
@@ -2955,57 +2189,28 @@
               "linear"
             ],
             [
-              0.2,
-              0.0,
+              0.22,
+              -13.0,
               "linear"
             ],
             [
               0.42,
-              0.0,
+              -13.0,
               "linear"
             ],
             [
-              0.54,
-              0.0,
+              0.6,
+              15.0,
               "linear"
             ],
             [
-              0.73,
-              0.0,
+              0.75,
+              19.0,
               "linear"
             ],
             [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "shield_impact": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.2,
-              0.0,
-              "linear"
-            ],
-            [
-              0.42,
-              0.0,
-              "linear"
-            ],
-            [
-              0.54,
-              0.0,
-              "linear"
-            ],
-            [
-              0.73,
-              0.0,
+              0.91,
+              8.0,
               "linear"
             ],
             [
@@ -3023,23 +2228,28 @@
               "linear"
             ],
             [
-              0.2,
-              0.0,
+              0.22,
+              8.0,
               "linear"
             ],
             [
               0.42,
-              0.0,
+              8.0,
               "linear"
             ],
             [
-              0.54,
-              0.0,
+              0.6,
+              10.0,
               "linear"
             ],
             [
-              0.73,
-              0.0,
+              0.75,
+              18.0,
+              "linear"
+            ],
+            [
+              0.91,
+              12.0,
               "linear"
             ],
             [
@@ -3057,23 +2267,28 @@
               "linear"
             ],
             [
-              0.2,
-              0.0,
+              0.22,
+              -8.0,
               "linear"
             ],
             [
               0.42,
-              -6.0,
+              -9.0,
               "linear"
             ],
             [
-              0.54,
-              8.0,
+              0.6,
+              6.0,
               "linear"
             ],
             [
-              0.73,
-              13.0,
+              0.75,
+              15.0,
+              "linear"
+            ],
+            [
+              0.91,
+              10.0,
               "linear"
             ],
             [
@@ -3090,25 +2305,6 @@
       "frames": 8,
       "duration_ms": 130,
       "channels": {
-        "baton": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.7,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
         "baton_charge": {
           "keys": [
             [
@@ -3128,111 +2324,16 @@
             ]
           ]
         },
-        "baton_forearm": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.7,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "baton_hand": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.7,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "baton_upper": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.7,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "far_boot": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.7,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "far_shin": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.7,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
         "far_thigh": {
           "keys": [
             [
               0.0,
-              -9.0,
+              -8.0,
               "linear"
             ],
             [
               0.7,
-              -9.0,
+              -8.0,
               "linear"
             ],
             [
@@ -3246,69 +2347,12 @@
           "keys": [
             [
               0.0,
-              12.0,
+              -4.0,
               "linear"
             ],
             [
               0.7,
-              12.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "hips": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.7,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "near_boot": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.7,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "near_shin": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.7,
-              0.0,
+              -4.0,
               "linear"
             ],
             [
@@ -3322,31 +2366,12 @@
           "keys": [
             [
               0.0,
-              10.0,
+              11.0,
               "linear"
             ],
             [
               0.7,
-              10.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "root_x": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.7,
-              0.0,
+              11.0,
               "linear"
             ],
             [
@@ -3360,12 +2385,12 @@
           "keys": [
             [
               0.0,
-              9.0,
+              3.0,
               "linear"
             ],
             [
               0.7,
-              9.0,
+              3.0,
               "linear"
             ],
             [
@@ -3379,12 +2404,12 @@
           "keys": [
             [
               0.0,
-              41.0,
+              43.0,
               "linear"
             ],
             [
               0.7,
-              41.0,
+              43.0,
               "linear"
             ],
             [
@@ -3417,31 +2442,12 @@
           "keys": [
             [
               0.0,
-              24.0,
+              22.0,
               "linear"
             ],
             [
               0.7,
-              24.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "shield_impact": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.7,
-              0.0,
+              22.0,
               "linear"
             ],
             [
@@ -3455,12 +2461,12 @@
           "keys": [
             [
               0.0,
-              13.0,
+              12.0,
               "linear"
             ],
             [
               0.7,
-              13.0,
+              12.0,
               "linear"
             ],
             [
@@ -3496,25 +2502,6 @@
       "frames": 5,
       "duration_ms": 92,
       "channels": {
-        "baton": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.4,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
         "baton_charge": {
           "keys": [
             [
@@ -3534,111 +2521,16 @@
             ]
           ]
         },
-        "baton_forearm": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.4,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "baton_hand": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.4,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
         "baton_upper": {
           "keys": [
             [
               0.0,
-              22.0,
+              25.0,
               "linear"
             ],
             [
               0.4,
-              15.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "far_boot": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.4,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "far_shin": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.4,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "far_thigh": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.4,
-              0.0,
+              14.0,
               "linear"
             ],
             [
@@ -3652,88 +2544,12 @@
           "keys": [
             [
               0.0,
-              -19.0,
+              -7.0,
               "linear"
             ],
             [
               0.4,
-              -12.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "hips": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.4,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "near_boot": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.4,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "near_shin": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.4,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "near_thigh": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.4,
-              0.0,
+              -5.0,
               "linear"
             ],
             [
@@ -3762,30 +2578,11 @@
             ]
           ]
         },
-        "root_y": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.4,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
         "shield": {
           "keys": [
             [
               0.0,
-              18.0,
+              16.0,
               "linear"
             ],
             [
@@ -3819,63 +2616,6 @@
             ]
           ]
         },
-        "shield_forearm": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.4,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "shield_impact": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.4,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "shield_upper": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.4,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
         "torso": {
           "keys": [
             [
@@ -3902,68 +2642,11 @@
       "frames": 9,
       "duration_ms": 115,
       "channels": {
-        "baton": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.5,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
         "baton_charge": {
           "keys": [
             [
               0.0,
               0.6,
-              "linear"
-            ],
-            [
-              0.5,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "baton_forearm": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.5,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "baton_hand": {
-          "keys": [
-            [
-              0.0,
-              0.0,
               "linear"
             ],
             [
@@ -3993,25 +2676,6 @@
             [
               1.0,
               68.0,
-              "linear"
-            ]
-          ]
-        },
-        "far_boot": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.5,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
               "linear"
             ]
           ]
@@ -4063,50 +2727,12 @@
             ],
             [
               0.5,
-              25.0,
+              -11.0,
               "linear"
             ],
             [
               1.0,
-              32.0,
-              "linear"
-            ]
-          ]
-        },
-        "hips": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.5,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "near_boot": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.5,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
+              -15.0,
               "linear"
             ]
           ]
@@ -4145,25 +2771,6 @@
             [
               1.0,
               46.0,
-              "linear"
-            ]
-          ]
-        },
-        "root_x": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.5,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
               "linear"
             ]
           ]
@@ -4211,44 +2818,6 @@
             [
               0.0,
               0.7,
-              "linear"
-            ],
-            [
-              0.5,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "shield_forearm": {
-          "keys": [
-            [
-              0.0,
-              0.0,
-              "linear"
-            ],
-            [
-              0.5,
-              0.0,
-              "linear"
-            ],
-            [
-              1.0,
-              0.0,
-              "linear"
-            ]
-          ]
-        },
-        "shield_impact": {
-          "keys": [
-            [
-              0.0,
-              0.0,
               "linear"
             ],
             [
