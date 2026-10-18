@@ -81,6 +81,10 @@ SKINS: tuple[Skin, ...] = (
     # The drains under the town: old brick, with moss where it is damp.
     Skin("undertown", "brick", (72, 66, 58), (22, 22, 22), (124, 112, 94), (96, 206, 172), "moss", (62, 112, 74), "pipes", "grate"),
     Skin("hub_clean", "block", (226, 220, 208), (150, 144, 138), (255, 252, 244), (226, 178, 86), "edge", (240, 234, 222), "lip", "slab"),
+    # The corrupted state of the same hub: its stone rebuilt in dark voxels.
+    # `two_state.py` draws both states; the fields here name its colours for
+    # the parts that are the same in each biome (the ladder).
+    Skin("hub_corrupt", "block", (20, 18, 52), (5, 5, 14), (100, 90, 190), (34, 224, 255), "edge", (199, 184, 255), "lip", "slab"),
     Skin("hub", "panel", (40, 40, 94), (15, 15, 46), (92, 94, 164), (255, 206, 140), "strip", (70, 70, 134), "lip", "grate"),
     Skin("basement", "brick", (88, 42, 32), (30, 13, 11), (146, 78, 54), (255, 150, 60), "plate", (58, 42, 40), "bolts", "grate"),
     # The vault of a boss: columns of black rock, with fire in some of the breaks.

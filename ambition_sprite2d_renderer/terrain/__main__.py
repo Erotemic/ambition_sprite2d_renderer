@@ -18,7 +18,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from . import decor, doors, fixtures, motes, shimmer, skins
+from . import decor, doors, fixtures, motes, shimmer, skins, two_state
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -37,7 +37,12 @@ def main(argv: list[str] | None = None) -> int:
     if unknown:
         raise SystemExit(f"no skin named {unknown}; the skins are {sorted(known)}")
     chosen = [known[name] for name in args.skins] or list(skins.SKINS)
-    drawn = {skin.key: {part: make(skin) for part, make in skins.PARTS.items()} for skin in chosen}
+    # The two-state hub draws its own parts (`two_state.py`); each other skin
+    # is drawn by the parts of `skins.py`.
+    drawn = {
+        skin.key: {part: two_state.paint(skin.key, part) or make(skin) for part, make in skins.PARTS.items()}
+        for skin in chosen
+    }
     if args.command == "draw":
         args.out_dir.mkdir(parents=True, exist_ok=True)
         for key, parts in drawn.items():
