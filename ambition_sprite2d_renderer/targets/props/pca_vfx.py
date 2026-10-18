@@ -43,6 +43,13 @@ ROWS = [
     ("phase_boundary", 12, 66),
     ("generation_wipe", 10, 50),
     ("corruption_seed", 12, 64),
+    # The charge blast (neutral special, Jon 2026-10-18: Mewtwo's Shadow Ball).
+    # `life_build` is ONE long climb drawn to the move's whole hold (22 x 100 ms
+    # = 2.2 s, the move's `max_hold_s`), so the tier a player would release at
+    # is readable from the pattern growing in the hand.
+    ("life_intake", 6, 46),
+    ("life_build", 22, 100),
+    ("life_release", 8, 44),
 ]
 
 OUTLINE = (8, 16, 15, 255)
@@ -293,6 +300,69 @@ def _corruption_seed(c: Canvas, p: float) -> None:
     _cell(c, 72, 72, 7.4, MAGENTA, 1.0)
 
 
+#: The charge ladder, weakest first: the same five oscillators the shot's own
+#: sheet (`targets/projectiles/pca_charge_shot.py`) fires at each tier, so the
+#: pattern in the hand is the pattern that leaves it.
+_LADDER = [
+    ["###"],
+    [".###", "###."],
+    ["##..", "##..", "..##", "..##"],
+    [".#..", "..##", "##..", "..#."],
+    [
+        "..###...###..", ".............", "#....#.#....#", "#....#.#....#",
+        "#....#.#....#", "..###...###..", ".............", "..###...###..",
+        "#....#.#....#", "#....#.#....#", "#....#.#....#", ".............",
+        "..###...###..",
+    ],
+]
+
+
+def _ladder_cells(tier: int) -> list[tuple[float, float]]:
+    rows = _LADDER[tier]
+    cells = [(x, y) for y, row in enumerate(rows) for x, ch in enumerate(row) if ch == "#"]
+    mid_x = (len(rows[0]) - 1) * 0.5
+    mid_y = (len(rows) - 1) * 0.5
+    return [(x - mid_x, y - mid_y) for x, y in cells]
+
+
+def _life_intake(c: Canvas, p: float) -> None:
+    """Scattered cells drawn in to the hand: the press took."""
+    q = window(p, 0.55)
+    for i in range(10):
+        angle = i * math.tau / 10 + 0.3
+        reach = 50.0 * (1.0 - p) + 6.0
+        _cell(c, 72 + math.cos(angle) * reach, 72 + math.sin(angle) * reach, 6.5, ACID if i % 2 else CYAN, q)
+    c.ellipse((72, 72), 8 + 6 * p, outline=fade(EMERALD, 0.6 * q), width=1.0)
+
+
+def _life_build(c: Canvas, p: float) -> None:
+    """The pattern in the hand climbs the ladder: blinker, toad, beacon, clock,
+    pulsar, a membrane round each that grows with it."""
+    tier = min(4, int(p * 5.0))
+    within = p * 5.0 - tier
+    radius = (7.0, 10.0, 14.0, 18.5, 25.0)[tier] * (1.0 + 0.06 * math.sin(p * math.tau * 9))
+    c.ellipse((72, 72), radius, fill=fade(EMERALD_DARK, 0.75), outline=fade(ACID, 0.7), width=1.0)
+    cells = _ladder_cells(tier)
+    span = max(max(abs(x) for x, _ in cells), max(abs(y) for _, y in cells)) * 2 + 1
+    size = radius * 1.4 / max(span, 3)
+    for i, (x, y) in enumerate(cells):
+        _cell(c, 72 + x * size, 72 + y * size, size * 0.86, ACID if i % 3 else CYAN, 0.95)
+    # The rung's last stretch flickers its next membrane: about to step up.
+    if tier < 4 and within > 0.7:
+        nxt = (7.0, 10.0, 14.0, 18.5, 25.0)[tier + 1]
+        c.ellipse((72, 72), nxt, outline=fade(ACID_LIGHT, 0.5 * (within - 0.7) / 0.3), width=0.8)
+
+
+def _life_release(c: Canvas, p: float) -> None:
+    """The membrane bursts forward (+x) and its cells scatter."""
+    q = 1.0 - p
+    c.ellipse((72 + 30 * p, 72), 12 + 30 * p, outline=fade(ACID_LIGHT, 0.8 * q), width=1.4 * q + 0.4)
+    for i in range(8):
+        angle = (i - 3.5) * 0.26
+        reach = 10 + 56 * p
+        _cell(c, 72 + math.cos(angle) * reach, 72 + math.sin(angle) * reach, 6.0 * q + 1.5, ACID if i % 2 else CYAN, q)
+
+
 DRAWERS = {
     "cell_birth": _cell_birth,
     "cell_death": _cell_death,
@@ -308,6 +378,9 @@ DRAWERS = {
     "phase_boundary": _phase_boundary,
     "generation_wipe": _generation_wipe,
     "corruption_seed": _corruption_seed,
+    "life_intake": _life_intake,
+    "life_build": _life_build,
+    "life_release": _life_release,
 }
 
 SPECS = {
@@ -325,6 +398,9 @@ SPECS = {
     "phase_boundary": make_spec("phase_boundary", "Two cellular phases maintain a jagged discrete frontier whose local cells update each tick.", loop=True, placement="world", relationship="sustain", rotate_safe=False, size=116),
     "generation_wipe": make_spec("generation_transition", "A hard cellular scanline replaces one generation field with another.", placement="world", orientation="positive_y_is_wipe_direction", mirror_x=False, relationship="release", rotate_safe=False, size=120),
     "corruption_seed": make_spec("corruption", "One anomalous magenta seed deterministically converts nearby cells while the lattice continues to tick.", loop=True, placement="target", attachment="follow_target", relationship="sustain", extra_anchor="target", size=116),
+    "life_intake": make_spec("cellular_growth", "Scattered live cells are drawn in to one point: a charge begins.", placement="source", relationship="startup", extra_anchor="emitter", size=112),
+    "life_build": make_spec("oscillator", "A Life oscillator in a membrane climbs a ladder of bigger patterns, blinker to pulsar, as a charge builds.", placement="source", attachment="follow_source", relationship="sustain", extra_anchor="emitter", size=120),
+    "life_release": make_spec("glider", "A cellular membrane bursts forward and its cells scatter.", placement="source", orientation="positive_x_is_forward", mirror_x=True, relationship="release", extra_anchor="emitter", size=124),
 }
 
 ORIGINS = {name: (72.0, 72.0) for name, _, _ in ROWS}

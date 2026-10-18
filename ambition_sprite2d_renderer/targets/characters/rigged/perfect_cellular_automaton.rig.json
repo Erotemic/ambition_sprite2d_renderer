@@ -698,10 +698,10 @@
      "expr": "1.5+0.7*sin(tau*t)"
     },
     "torso": {
-     "expr": "-4+1.0*sin(tau*t)"
+     "expr": "3+1.0*sin(tau*t)"
     },
     "head": {
-     "expr": "-8-1.2*sin(tau*(t-0.12))"
+     "expr": "-2-1.2*sin(tau*(t-0.12))"
     },
     "near_foot_x": {
      "const": -19
