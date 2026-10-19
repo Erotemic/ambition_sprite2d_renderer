@@ -99,14 +99,9 @@ factions:
     music_source: tools/ambition_music_renderer/scores/examples/tech_bros_disruption.music.yaml
     palette_hint: neon green / black glass / badge lanyards
     lair_hook: basement dungeon full of dashboards and unsolicited pitches
-    characters:
-      - id: tech_bro_disruptor
-        display_name: Chadwick Disruptor III
-        target: robot
-        archetype: tech_disruptor
-        role: leader
-        seed: 25048391
-        animations: [idle, walk, talk, charge, cast, celebrate, hit, death]
+    # Chadwick Disruptor III (tech_bro_disruptor) is drawn by his own SVG rig
+    # (targets/characters/tech_bro_disruptor.py) since 2026-10-18.
+    characters: []
   - id: dinosaur_liberators
     display_name: Dinosaur Liberators
     music_cue: dinosaur_liberators
