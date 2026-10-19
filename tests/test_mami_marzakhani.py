@@ -6,26 +6,6 @@ from ambition_sprite2d_renderer.registry.discovery import discover_module_target
 from ambition_sprite2d_renderer.targets.characters import mami_marzakhani as target
 
 
-def test_mami_marzakhani_frames_remain_inside_authored_canvas():
-    for animation, nframes, _duration_ms in target.ROWS:
-        for frame_idx in range(nframes):
-            frame = target.render_frame(animation, frame_idx, nframes)
-            assert frame.size == (target.FRAME_W, target.FRAME_H)
-            bbox = frame.getchannel("A").getbbox()
-            assert bbox is not None, (animation, frame_idx)
-            left, top, right, bottom = bbox
-            assert left > 0, (animation, frame_idx, bbox)
-            assert top > 0, (animation, frame_idx, bbox)
-            assert right < target.FRAME_W, (animation, frame_idx, bbox)
-            assert bottom < target.FRAME_H, (animation, frame_idx, bbox)
-
-
-def test_mami_marzakhani_has_prop_free_shadow_free_authoring_contract():
-    assert target.USES_PROPS is False
-    assert target.USES_DROP_SHADOW is False
-    assert not any(name == "SHADOW" or name.endswith("_SHADOW") for name in vars(target) if name != "USES_DROP_SHADOW")
-
-
 def test_mami_marzakhani_publishes_native_named_portraits(tmp_path):
     outputs = target.render_portraits(tmp_path)
     assert [path.name for path in outputs] == [

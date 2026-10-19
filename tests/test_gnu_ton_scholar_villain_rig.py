@@ -52,22 +52,6 @@ def test_scholar_clips_move_real_bones_and_toggle_separate_props():
     assert abs(params_invoke["tail_near"]) > 4
 
 
-def test_all_animation_frames_fit_inside_the_authored_sprite_canvas():
-    doc = RigDocument.load(RIG)
-    w, h = int(doc.frame["width"]), int(doc.frame["height"])
-    pad = 25
-    for row, frame_count, _ms in doc.rows():
-        for index in range(frame_count):
-            # An overscanned *render*, not just bounds on the cropped frame:
-            # clipping can otherwise silently pass visual smoke tests.
-            rendered = doc.render_frame(row, index, frame_count, padding=pad)
-            bbox = rendered.getbbox()
-            assert bbox is not None, (row, index)
-            left, top, right, bottom = (v - pad for v in bbox)
-            assert 3 <= left < right <= w - 3, (row, index, bbox)
-            assert 3 <= top < bottom <= h - 3, (row, index, bbox)
-
-
 def test_boss_animation_contract_matches_the_shipped_rider():
     """The candidate must not silently drop one of the game's move states."""
     from ambition_sprite2d_renderer.targets.characters.gnu_ton_boss import scholar

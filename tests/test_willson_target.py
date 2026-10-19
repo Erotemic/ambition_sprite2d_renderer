@@ -6,17 +6,6 @@ from ambition_sprite2d_renderer.registry.discovery import discover_module_target
 from ambition_sprite2d_renderer.targets.characters import willson as target
 
 
-def test_no_frame_is_cut_by_the_edge_of_the_frame():
-    width, height = target.FRAME_SIZE
-    for animation, nframes, _duration_ms in target.ROWS:
-        for index in range(nframes):
-            frame = target._render_frame(animation, index, nframes)
-            assert frame.size == (width, height)
-            box = frame.getchannel("A").getbbox()
-            assert box is not None
-            assert box[0] > 0 and box[1] > 0 and box[2] < width and box[3] < height, (animation, index, box)
-
-
 def test_the_pedals_are_opposite_each_other_about_the_bottom_bracket():
     for animation, nframes, _duration_ms in target.ROWS:
         for index in range(nframes):

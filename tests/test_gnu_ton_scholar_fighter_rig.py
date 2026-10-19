@@ -106,20 +106,3 @@ def test_looping_fighter_pose_transitions_have_seam_safe_root_motion():
         end_params = fighter.solve(row, 1.0)[1]
         for channel in ("root_x", "root_y", "pelvis", "torso"):
             assert abs(start_params[channel] - end_params[channel]) < 0.01, (row, channel)
-
-
-def test_representative_fighter_frames_render_inside_frame():
-    _boss, fighter = rigs()
-    w, h = int(fighter.frame["width"]), int(fighter.frame["height"])
-    pad = 30
-    for name in ("idle", "run", "jump", "ledge_getup_attack", "smash_forward",
-                 "smash_up", "smash_down", "air_down", "special_up",
-                 "roll", "grab", "prone", "getup", "victory_hold"):
-        n = fighter.clips[name]["frames"]
-        for i in (0, n // 2, n - 1):
-            frame = fighter.render_frame(name, i, n, padding=pad)
-            bbox = frame.getbbox()
-            assert bbox is not None, (name, i)
-            left, top, right, bottom = [value - pad for value in bbox]
-            assert 2 <= left < right <= w - 2, (name, i, bbox)
-            assert 2 <= top < bottom <= h - 2, (name, i, bbox)

@@ -81,13 +81,17 @@ def test_fractional_render_scale_publishes_source_scale_sheet():
 
 
 def test_adapter_quality_scale_is_relative_to_normal_render_scale(tmp_path):
-    target = Target.from_config(
-        # Any config-driven character exercises the adapter's quality scale;
-        # v2 is used because `player_robot_v3` is no longer a config — it is a
-        # module target (the SVG rig), and a YAML claiming that name was what
-        # published the robot rig's art over v3's for a day.
-        config_path=DEFAULT_CONFIG_DIR / "player_robot_v2.yaml", category="characters"
-    )
+    # Any config-driven character exercises the adapter's quality scale;
+    # v2 is used because `player_robot_v3` is no longer a config — it is a
+    # module target (the SVG rig), and a YAML claiming that name was what
+    # published the robot rig's art over v3's for a day. Its idle row alone:
+    # the frame size is the sheet's, not a row's, and the whole sheet twice
+    # was 80 s.
+    config = yaml.safe_load((DEFAULT_CONFIG_DIR / "player_robot_v2.yaml").read_text())
+    config["animations"] = ["idle"]
+    config_path = tmp_path / "player_robot_v2.yaml"
+    config_path.write_text(yaml.safe_dump(config))
+    target = Target.from_config(config_path=config_path, category="characters")
     full_dir = tmp_path / "quality_full"
     target.render_sheet(full_dir)
     full = yaml.safe_load((full_dir / "player_robot_v2_spritesheet.yaml").read_text())

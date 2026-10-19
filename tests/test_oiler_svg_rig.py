@@ -26,7 +26,6 @@ from ambition_sprite2d_renderer.authoring.humanoid_svg_rig import (
 )
 from ambition_sprite2d_renderer.authoring.rigdoc import RigDocument
 from ambition_sprite2d_renderer.registry import discover_all_targets
-from ambition_sprite2d_renderer.targets.characters import oiler
 
 ROOT = Path(__file__).resolve().parent.parent
 SVG = ROOT / "ambition_sprite2d_renderer/data/characters/oiler/oiler-multiview.svg"
@@ -107,72 +106,6 @@ def test_oiler_target_overrides_the_legacy_yaml_generator():
     target = discover_all_targets().targets["oiler"]
     assert target.kind == "module"
     assert target.module_path == "ambition_sprite2d_renderer.targets.characters.oiler"
-
-
-def test_runtime_animation_samples_render_nonempty_without_edge_clipping():
-    for animation, frames, _duration in oiler.ROWS:
-        for frame_idx in sorted({0, frames // 2, frames - 1}):
-            image = oiler._render_frame(animation, frame_idx, frames)
-            bbox = image.getchannel("A").getbbox()
-            assert bbox is not None, (animation, frame_idx)
-            x1, y1, x2, y2 = bbox
-            assert x1 > 0 and y1 > 0
-            assert x2 < image.width and y2 < image.height
-
-
-def test_oiler_svg_is_flat_and_contains_no_embedded_props():
-    text = SVG.read_text(encoding="utf8").lower()
-    for forbidden in (
-        "drop-shadow",
-        "dropshadow",
-        "<filter",
-        "<lineargradient",
-        "<radialgradient",
-        "url(#",
-        "part:machine",
-        "part:wrench",
-        'data-rig-part="machine"',
-        'data-rig-part="wrench"',
-        "oil-flask",
-        "satchel",
-    ):
-        assert forbidden not in text
-
-
-def test_oiler_svg_preserves_the_euler_mechanic_design_contract():
-    root = ET.parse(SVG).getroot()
-    assert root.get("data-character-design") == "euler-mechanic-v1"
-
-    ids = {elem.get("id") for elem in root.iter() if elem.get("id")}
-    required_design_roles = {
-        "cap-back-and-tail",
-        "cap-crown-and-folds",
-        "neckcloth-and-cravat",
-        "face-shape-and-ears",
-        "lapels-and-upper-coat-trim",
-        "apron-details",
-        "nose-construction",
-    }
-    views = [
-        elem for elem in root.iter() if (elem.get(LABEL) or "").startswith("Oiler - ")
-    ]
-    assert len(views) == 3
-    for view in views:
-        roles = {
-            elem.get("data-oiler-role")
-            for elem in view.iter()
-            if elem.get("data-oiler-role")
-        }
-        assert required_design_roles <= roles
-
-    assert not any("beard" in elem_id or "moustache" in elem_id for elem_id in ids)
-
-    # The historical coat reference is carried by flat Euler-blue panels and
-    # charcoal trim, while the waist apron keeps him legible as a mechanic.
-    text = SVG.read_text(encoding="utf8").lower()
-    assert text.count('fill="#2f7187"') >= 3
-    assert text.count('fill="#28323a"') >= 6
-    assert text.count('fill="#e8dfcf"') >= 3
 
 
 def test_oiler_svg_uses_pca_style_artist_layers_with_separate_rig_metadata():

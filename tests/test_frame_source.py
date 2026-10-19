@@ -82,8 +82,25 @@ def test_frames_are_independent_of_render_order(target):
     assert again == baseline, f"{target} frame depends on render order (hidden state)"
 
 
+class _CountingSource:
+    """A source whose frames cost nothing: ``render_all_frames`` and
+    ``export_frames`` only walk a source, and a real character's every frame
+    (the goblin's 190) was 26 s of drawing they never look at. Every
+    generator's own drawing is ``test_generator_renders_at_arbitrary_resolution``."""
+
+    target = "counting"
+
+    def animations(self):
+        return {"idle": {"frames": 3, "duration_ms": 100}, "walk": {"frames": 5, "duration_ms": 80}}
+
+    def frame(self, animation, index, count, size):
+        from PIL import Image
+
+        return Image.new("RGBA", size, (index * 40, count * 20, len(animation), 255))
+
+
 def test_render_all_frames_enumerates_every_frame():
-    src = _source("goblin")
+    src = _CountingSource()
     anims = src.animations()
     expected = sum(info["frames"] for info in anims.values())
     frames = render_all_frames(src, (64, 64))
@@ -105,12 +122,12 @@ def test_render_animation_covers_one_animation():
 def test_export_frames_writes_png_per_frame_plus_index(tmp_path):
     from ambition_sprite2d_renderer.authoring.frame_debug import export_frames
 
-    src = _source("sandbag")
+    src = _CountingSource()
     paths = export_frames(src, (64, 64), tmp_path)
     pngs = [p for p in paths if p.suffix == ".png"]
     expected = sum(info["frames"] for info in src.animations().values())
     assert len(pngs) == expected
     index = json.loads((tmp_path / "frames.json").read_text())
-    assert index["target"] == "sandbag"
+    assert index["target"] == "counting"
     assert index["width"] == 64 and index["height"] == 64
     assert len(index["frames"]) == expected

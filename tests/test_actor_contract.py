@@ -330,6 +330,10 @@ def test_every_registered_character_target_has_local_actor_metadata():
             continue
         if getattr(target, "kind", None) == "config":
             job = getattr(target, "_job")
+            if job.faction and not job.actor:
+                # A review-only row of a faction lineup: no character of the
+                # game's cast. A row the game casts names it with `actor:`.
+                continue
             local_metadata = bool(
                 job.actor
                 or job.lineage

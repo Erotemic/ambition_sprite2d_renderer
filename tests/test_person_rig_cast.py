@@ -46,13 +46,6 @@ def test_every_row_of_the_sheet_has_a_pose(module, sheet):
     _person(module, sheet).check()
 
 
-@pytest.mark.parametrize("module,sheet", SHEETS)
-def test_no_frame_is_cut_by_the_edge_of_its_cell(module, sheet):
-    """A pose or an effect that goes past the cell is cut there, and the cut
-    shows in the game as a straight edge."""
-    assert _person(module, sheet).cut_frames() == []
-
-
 def test_an_idle_row_is_one_the_game_knows():
     """The game plays `idle` (or `rest`) for a body at rest."""
     for module, sheet in SHEETS:

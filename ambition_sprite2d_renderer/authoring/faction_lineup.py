@@ -36,6 +36,8 @@ class FactionCharacter:
     animations: List[str] = field(default_factory=list)
     render: Dict[str, Any] = field(default_factory=dict)
     notes: str = ""
+    # A row the game casts names its character here; a review-only row has none.
+    actor: Dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "FactionCharacter":
@@ -51,6 +53,7 @@ class FactionCharacter:
             animations=list(data.get("animations") or []),
             render=dict(data.get("render") or {}),
             notes=str(data.get("notes", "")),
+            actor=dict(data.get("actor") or {}),
         )
 
     def to_job(
@@ -71,6 +74,7 @@ class FactionCharacter:
             role=self.role,
             music_cue=music_cue,
             tags=["faction", self.role],
+            actor=dict(self.actor),
         )
 
 

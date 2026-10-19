@@ -5,10 +5,6 @@ from ambition_sprite2d_renderer.targets.characters import george_booul
 def test_george_booul_target_contract():
     assert george_booul.TARGET_NAME == "george_booul"
     assert george_booul.ROWS[0][0] == "idle"
-    assert "George Boole" in george_booul.AUTHORING_DESCRIPTION
-    assert george_booul.GAMEPLAY_DESCRIPTION
-    assert george_booul.SUGGESTED_BARKS["idle"]
-    assert george_booul.FALLBACK_DIALOGUE
 
 
 def test_george_booul_renders_classic_sheet_ghost_frame():

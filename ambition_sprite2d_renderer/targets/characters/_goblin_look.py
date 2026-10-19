@@ -28,7 +28,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 from PIL import Image, ImageChops, ImageDraw
 
 from ...authoring import shape_rig
-from ...core.draw import rgba
+from ...core.draw import blending_draw, rgba
 
 Point = Tuple[float, float]
 Color = Tuple[int, int, int, int]
@@ -82,7 +82,7 @@ class Part:
         n = int(math.ceil(2 * half * S))
         self.ink = Image.new("RGBA", (n, n), (0, 0, 0, 0))
         self.fill = Image.new("RGBA", (n, n), (0, 0, 0, 0))
-        self.di, self.df = ImageDraw.Draw(self.ink), ImageDraw.Draw(self.fill)
+        self.di, self.df = blending_draw(self.ink), blending_draw(self.fill)
 
     def P(self, pts):
         S, h = self.S, self.half
@@ -90,7 +90,7 @@ class Part:
 
     def mask(self, pts) -> Image.Image:
         m = Image.new("L", self.fill.size, 0)
-        ImageDraw.Draw(m).polygon(self.P(pts), fill=255)
+        ImageDraw.Draw(m).polygon(self.P(pts), fill=255)  # raw-draw-ok: an L coverage mask, not content
         return m
 
     def shape(self, pts, fill, ink, ow, *, shade=None, light=None, d=(2.2, 2.6), corner_n=6) -> None:

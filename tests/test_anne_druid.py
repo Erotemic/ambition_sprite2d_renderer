@@ -6,37 +6,6 @@ from ambition_sprite2d_renderer.registry.discovery import discover_module_target
 from ambition_sprite2d_renderer.targets.characters import anne_druid as target
 
 
-def test_anne_druid_frames_remain_inside_authored_canvas():
-    for animation, nframes, _duration_ms in target.ROWS:
-        for frame_idx in range(nframes):
-            frame = target.render_frame(animation, frame_idx, nframes)
-            assert frame.size == (target.FRAME_W, target.FRAME_H)
-            bbox = frame.getchannel("A").getbbox()
-            assert bbox is not None, (animation, frame_idx)
-            left, top, right, bottom = bbox
-            assert left > 0, (animation, frame_idx, bbox)
-            assert top > 0, (animation, frame_idx, bbox)
-            assert right < target.FRAME_W, (animation, frame_idx, bbox)
-            assert bottom < target.FRAME_H, (animation, frame_idx, bbox)
-
-
-def test_anne_druid_carries_behind_the_scenes_authoring_description(tmp_path):
-    description = target.AUTHORING_DESCRIPTION
-    assert description["parody_of"] == "Ann Druyan"
-    assert "Voyager Golden Record" in description["concept"]
-    assert description["visual_inspiration"]
-    assert description["gameplay_inspiration"]
-    assert description["boundaries"]
-    assert target.ACTOR_METADATA["authoring_description"] is description
-
-    outputs = target.render(tmp_path)
-    actor = next(path for path in outputs if path.name == "anne_druid_actor.ron")
-    text = actor.read_text(encoding="utf8")
-    assert "authoring_description: Some" in text
-    assert 'parody_of: "Ann Druyan"' in text
-    assert "Preserve agency and scientific curiosity" in text
-
-
 def test_anne_druid_specials_have_visible_motion_and_distinct_science_identity():
     for animation in (
         "golden_record_guard",

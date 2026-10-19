@@ -12,6 +12,7 @@ at which point every test is fast.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -42,6 +43,32 @@ def regen_roster() -> str:
             "standalone, so there is no regen roster to check against"
         )
     return roster.read_text(encoding="utf8")
+
+
+#: Workers for a run of a directory of tests. Six, not one per CPU: the box is
+#: shared. ``-n 0`` (or any ``-n``) on the command line overrides it.
+DEFAULT_WORKERS = 6
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_cmdline_main(config: pytest.Config) -> None:
+    """Run the suite on ``DEFAULT_WORKERS`` xdist workers when it is run whole.
+
+    Only when pytest-xdist is installed, no ``-n``/``--dist`` was given, and a
+    path asked for is a directory (``pytest`` alone runs ``testpaths``): a run
+    of one file or one test stays in this process, where starting six workers
+    would cost more than it saves. It sets ``tx`` as xdist's own hook would, so
+    it holds whichever of the two runs first.
+    """
+    if not config.pluginmanager.hasplugin("xdist") or os.environ.get("PYTEST_XDIST_WORKER"):
+        return
+    if config.option.numprocesses is not None or config.option.dist != "no" or config.option.tx:
+        return
+    if not any(Path(arg.split("::")[0]).is_dir() for arg in config.args):
+        return
+    config.option.numprocesses = DEFAULT_WORKERS
+    config.option.dist = "worksteal"
+    config.option.tx = ["popen"] * DEFAULT_WORKERS
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
