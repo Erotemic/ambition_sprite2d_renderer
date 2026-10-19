@@ -180,7 +180,8 @@ CLIPS = {
             # The whole of him tips back about the pelvis and lies along the deck.
             "body": expr(f"-88*{EASE}"),
             "root_x": expr(f"4*{EASE}"),
-            "root_y": expr(f"58*{EASE} - 8*sin(3.14159*t)"),
+            # less the lift that keeps his back on the ground line as he tips
+            "root_y": expr(f"58*{EASE} - 8*sin(3.14159*t) - 15*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.15)/0.3)))"),
             "head": expr(f"10*{EASE}"),
             "near_arm_u": expr(f"-30*{EASE}"), "near_arm_l": expr(f"-30*{EASE}"),
             "far_arm_u": expr(f"20*{EASE}"),

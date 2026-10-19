@@ -152,8 +152,9 @@ CLIPS = {
     "death": {
         "loop": False, "frames": 8, "duration_ms": 110,
         "channels": {
-            # He sinks onto his knees, then pitches forward on his face.
-            "root_y": expr(f"22*{ramp(0.0, 0.45)} + 2*{ramp(0.45, 0.85)}"),
+            # He sinks onto his knees, then pitches forward on his face; as he
+            # lies down he rises back to the ground line he knelt below.
+            "root_y": expr(f"22*{ramp(0.0, 0.45)} - 22*{ramp(0.45, 0.85)}"),
             "root_x": expr(f"10*{ramp(0.45, 0.85)}"),
             "torso": expr(f"20*{ramp(0.0, 0.45)} + 44*{ramp(0.45, 0.85)}"),
             "head": expr(f"10*{ramp(0.45, 0.85)}"),

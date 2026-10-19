@@ -1,0 +1,813 @@
+{
+  "name": "president_portrait",
+  "frame": {
+    "width": 320,
+    "height": 352,
+    "center_x": 160,
+    "ground_y": 344,
+    "ankle_h": 0,
+    "supersample": 3,
+    "render_scale": 1,
+    "trim": false
+  },
+  "svg_source": {
+    "path": "../../../../data/characters/president_portrait/president_portrait.svg",
+    "view": "President Portrait - Front",
+    "ref_dpi": 25.4,
+    "scale": 0.5
+  },
+  "sprite_tuning": {
+    "collision_scale": 1.2,
+    "frame_sample_inset": 1
+  },
+  "palette": {},
+  "bones": [
+    {
+      "name": "body",
+      "parent": null,
+      "offset": [
+        0.0,
+        -82.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "torso",
+      "parent": "body",
+      "offset": [
+        0.0,
+        0.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "head",
+      "parent": "torso",
+      "offset": [
+        0.0,
+        -49.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "left_arm_u",
+      "parent": "torso",
+      "offset": [
+        -21.4933,
+        -36.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "left_arm_l",
+      "parent": "left_arm_u",
+      "offset": [
+        -5.9973,
+        26.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "left_hand",
+      "parent": "left_arm_l",
+      "offset": [
+        1.424,
+        22.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "right_arm_u",
+      "parent": "torso",
+      "offset": [
+        21.4933,
+        -36.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "right_arm_l",
+      "parent": "right_arm_u",
+      "offset": [
+        13.4647,
+        23.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "right_hand",
+      "parent": "right_arm_l",
+      "offset": [
+        -4.5467,
+        16.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "left_leg",
+      "parent": "body",
+      "offset": [
+        -8.84,
+        33.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "right_leg",
+      "parent": "body",
+      "offset": [
+        8.84,
+        33.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    }
+  ],
+  "parts": [
+    {
+      "name": "hair_back",
+      "bone": "head",
+      "z": 5,
+      "kind": "sprite",
+      "include": [
+        "hair-back"
+      ],
+      "pivot": [
+        280.0,
+        240.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "scabbard",
+      "bone": "body",
+      "z": 8,
+      "kind": "sprite",
+      "include": [
+        "scabbard"
+      ],
+      "pivot": [
+        280.0,
+        338.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "coat_back",
+      "bone": "body",
+      "z": 10,
+      "kind": "sprite",
+      "include": [
+        "coat-back"
+      ],
+      "pivot": [
+        280.0,
+        338.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "right_leg",
+      "bone": "right_leg",
+      "z": 20,
+      "kind": "sprite",
+      "include": [
+        "right-leg"
+      ],
+      "pivot": [
+        297.68,
+        404.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "left_leg",
+      "bone": "left_leg",
+      "z": 21,
+      "kind": "sprite",
+      "include": [
+        "left-leg"
+      ],
+      "pivot": [
+        262.32,
+        404.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "breeches",
+      "bone": "body",
+      "z": 30,
+      "kind": "sprite",
+      "include": [
+        "breeches"
+      ],
+      "pivot": [
+        280.0,
+        338.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "waistcoat",
+      "bone": "torso",
+      "z": 40,
+      "kind": "sprite",
+      "include": [
+        "waistcoat"
+      ],
+      "pivot": [
+        280.0,
+        338.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "coat",
+      "bone": "torso",
+      "z": 45,
+      "kind": "sprite",
+      "include": [
+        "coat"
+      ],
+      "pivot": [
+        280.0,
+        338.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "epaulettes",
+      "bone": "torso",
+      "z": 46,
+      "kind": "sprite",
+      "include": [
+        "epaulettes"
+      ],
+      "pivot": [
+        280.0,
+        338.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "sash",
+      "bone": "torso",
+      "z": 48,
+      "kind": "sprite",
+      "include": [
+        "sash"
+      ],
+      "pivot": [
+        280.0,
+        338.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "neck",
+      "bone": "torso",
+      "z": 50,
+      "kind": "sprite",
+      "include": [
+        "neck"
+      ],
+      "pivot": [
+        280.0,
+        338.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "head",
+      "bone": "head",
+      "z": 60,
+      "kind": "sprite",
+      "include": [
+        "head"
+      ],
+      "pivot": [
+        280.0,
+        240.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "eye_open",
+      "bone": "head",
+      "z": 61,
+      "kind": "sprite",
+      "include": [
+        "eye-open"
+      ],
+      "pivot": [
+        280.0,
+        240.0
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "eye_open",
+      "opacity_default": 1
+    },
+    {
+      "name": "eye_shut",
+      "bone": "head",
+      "z": 61,
+      "kind": "sprite",
+      "include": [
+        "eye-shut"
+      ],
+      "pivot": [
+        280.0,
+        240.0
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "eye_shut",
+      "opacity_default": 0
+    },
+    {
+      "name": "eye_dead",
+      "bone": "head",
+      "z": 61,
+      "kind": "sprite",
+      "include": [
+        "eye-dead"
+      ],
+      "pivot": [
+        280.0,
+        240.0
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "eye_dead",
+      "opacity_default": 0
+    },
+    {
+      "name": "mouth_open",
+      "bone": "head",
+      "z": 62,
+      "kind": "sprite",
+      "include": [
+        "mouth-open"
+      ],
+      "pivot": [
+        280.0,
+        240.0
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "mouth_open",
+      "opacity_default": 0
+    },
+    {
+      "name": "sword_hilt",
+      "bone": "body",
+      "z": 70,
+      "kind": "sprite",
+      "include": [
+        "sword-hilt"
+      ],
+      "pivot": [
+        280.0,
+        338.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "left_hand",
+      "bone": "left_hand",
+      "z": 74,
+      "kind": "sprite",
+      "include": [
+        "left-hand"
+      ],
+      "pivot": [
+        227.86666666666667,
+        362
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "left_arm_u",
+      "bone": "left_arm_u",
+      "z": 75,
+      "kind": "sprite",
+      "include": [
+        "left-arm-upper"
+      ],
+      "pivot": [
+        237.01333333333332,
+        266
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "left_arm_l",
+      "bone": "left_arm_l",
+      "z": 76,
+      "kind": "sprite",
+      "include": [
+        "left-arm-lower"
+      ],
+      "pivot": [
+        225.01866666666666,
+        318
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "fx_oath",
+      "bone": "left_hand",
+      "z": 77,
+      "kind": "sprite",
+      "include": [
+        "fx-oath"
+      ],
+      "pivot": [
+        227.86666666666667,
+        362
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "fx_oath",
+      "opacity_default": 0
+    },
+    {
+      "name": "right_arm_u",
+      "bone": "right_arm_u",
+      "z": 80,
+      "kind": "sprite",
+      "include": [
+        "right-arm-upper"
+      ],
+      "pivot": [
+        322.9866666666667,
+        266
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "right_arm_l",
+      "bone": "right_arm_l",
+      "z": 81,
+      "kind": "sprite",
+      "include": [
+        "right-arm-lower"
+      ],
+      "pivot": [
+        349.916,
+        312
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "prop_decree",
+      "bone": "right_hand",
+      "z": 82,
+      "kind": "sprite",
+      "include": [
+        "prop-decree"
+      ],
+      "pivot": [
+        340.8226666666667,
+        344
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "prop_decree",
+      "opacity_default": 0
+    },
+    {
+      "name": "prop_book",
+      "bone": "right_hand",
+      "z": 82,
+      "kind": "sprite",
+      "include": [
+        "prop-book"
+      ],
+      "pivot": [
+        340.8226666666667,
+        344
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "prop_book",
+      "opacity_default": 0
+    },
+    {
+      "name": "right_hand",
+      "bone": "right_hand",
+      "z": 83,
+      "kind": "sprite",
+      "include": [
+        "right-hand"
+      ],
+      "pivot": [
+        340.8226666666667,
+        344
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "fx_decree",
+      "bone": "right_hand",
+      "z": 84,
+      "kind": "sprite",
+      "include": [
+        "fx-decree"
+      ],
+      "pivot": [
+        340.8226666666667,
+        344
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "fx_decree",
+      "opacity_default": 0
+    }
+  ],
+  "ik_legs": [],
+  "ik_chains": [],
+  "clips": {
+    "idle": {
+      "loop": true,
+      "frames": 6,
+      "duration_ms": 130,
+      "channels": {
+        "root_y": {
+          "expr": "0.6*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "0.8*sin(tau*t)"
+        },
+        "head": {
+          "expr": "-1.2*sin(tau*t+0.6)"
+        },
+        "left_arm_u": {
+          "expr": "1.5*sin(tau*t)"
+        },
+        "left_hand": {
+          "expr": "-2*sin(tau*t+0.5)"
+        },
+        "right_arm_u": {
+          "expr": "-0.8*sin(tau*t)"
+        },
+        "eye_shut": {
+          "expr": "1 if (0.7 < t < 0.9) and not (False) else 0"
+        },
+        "eye_dead": {
+          "expr": "1 if (False) else 0"
+        },
+        "eye_open": {
+          "expr": "0 if (0.7 < t < 0.9) or (False) else 1"
+        }
+      }
+    },
+    "walk": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 96,
+      "channels": {
+        "root_y": {
+          "expr": "-2.4*abs(sin(tau*t))"
+        },
+        "root_x": {
+          "expr": "1.5*sin(tau*t)"
+        },
+        "body": {
+          "expr": "1.5*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "-1.0*sin(tau*t)"
+        },
+        "head": {
+          "expr": "-0.8*sin(tau*t)"
+        },
+        "bone.left_leg.y": {
+          "expr": "-9*max(0.0, sin(tau*t))"
+        },
+        "bone.left_leg.scale_y": {
+          "expr": "1 - 0.06*max(0.0, sin(tau*t))"
+        },
+        "bone.right_leg.y": {
+          "expr": "-9*max(0.0, -sin(tau*t))"
+        },
+        "bone.right_leg.scale_y": {
+          "expr": "1 - 0.06*max(0.0, -sin(tau*t))"
+        },
+        "left_arm_u": {
+          "expr": "6*sin(tau*t)"
+        },
+        "left_arm_l": {
+          "expr": "4*sin(tau*t)"
+        },
+        "right_arm_u": {
+          "expr": "-1.5*sin(tau*t)"
+        }
+      }
+    },
+    "address": {
+      "loop": true,
+      "frames": 6,
+      "duration_ms": 112,
+      "channels": {
+        "root_y": {
+          "expr": "-0.6*abs(sin(tau*t))"
+        },
+        "torso": {
+          "expr": "-1.5 + 1.0*sin(tau*t)"
+        },
+        "head": {
+          "expr": "2 + 2*sin(tau*t)"
+        },
+        "left_arm_u": {
+          "expr": "48 + 8*sin(tau*t)"
+        },
+        "left_arm_l": {
+          "expr": "38 + 10*sin(tau*t+0.6)"
+        },
+        "left_hand": {
+          "expr": "-12 + 8*sin(tau*t+1.0)"
+        },
+        "mouth_open": {
+          "expr": "1 if sin(2*tau*t) > -0.2 else 0"
+        }
+      }
+    },
+    "decree": {
+      "loop": false,
+      "frames": 7,
+      "duration_ms": 82,
+      "channels": {
+        "root_y": {
+          "expr": "-2*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.3)/0.25000000000000006))) + 2*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.8)/0.19999999999999996)))"
+        },
+        "torso": {
+          "expr": "-3*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.3))) + 6*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.3)/0.25000000000000006)))"
+        },
+        "head": {
+          "expr": "-6*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.3)/0.25000000000000006)))"
+        },
+        "right_arm_u": {
+          "expr": "-30*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.3))) - 62*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.3)/0.25000000000000006)))"
+        },
+        "right_arm_l": {
+          "expr": "-40*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.3))) + 22*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.3)/0.25000000000000006)))"
+        },
+        "right_hand": {
+          "expr": "-((-30*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.3))) - 62*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.3)/0.25000000000000006)))) + (-40*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.3))) + 22*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.3)/0.25000000000000006)))) + (-3*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.3))) + 6*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.3)/0.25000000000000006)))))"
+        },
+        "left_arm_u": {
+          "expr": "10*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.3)/0.25000000000000006)))"
+        },
+        "prop_decree": {
+          "expr": "1 if t > 0.15 else 0"
+        },
+        "fx_decree": {
+          "expr": "1 if 0.45 < t < 0.85 else 0"
+        },
+        "mouth_open": {
+          "expr": "1 if 0.55 < t < 0.95 else 0"
+        }
+      }
+    },
+    "oath": {
+      "loop": false,
+      "frames": 6,
+      "duration_ms": 96,
+      "channels": {
+        "root_y": {
+          "expr": "-1.5*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.2)/0.39999999999999997)))"
+        },
+        "torso": {
+          "expr": "-2*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.6)))"
+        },
+        "head": {
+          "expr": "-4*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.2)/0.39999999999999997)))"
+        },
+        "left_arm_u": {
+          "expr": "92*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.6)))"
+        },
+        "left_arm_l": {
+          "expr": "88*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.6)))"
+        },
+        "left_hand": {
+          "expr": "-6*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.6)))"
+        },
+        "right_arm_u": {
+          "expr": "16*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.5)))"
+        },
+        "right_arm_l": {
+          "expr": "88*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.5)))"
+        },
+        "right_hand": {
+          "expr": "-((16*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.5)))) + (88*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.5)))) + (-2*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.6)))))"
+        },
+        "prop_book": {
+          "expr": "1"
+        },
+        "fx_oath": {
+          "expr": "1 if t > 0.55 else 0"
+        },
+        "mouth_open": {
+          "expr": "1 if 0.5 < t < 0.9 else 0"
+        }
+      }
+    },
+    "hurt": {
+      "loop": false,
+      "frames": 4,
+      "duration_ms": 92,
+      "channels": {
+        "root_x": {
+          "expr": "-5*(1-t)*(1-t)"
+        },
+        "root_y": {
+          "expr": "-2*(1-t)*(1-t)"
+        },
+        "body": {
+          "expr": "-4*(1-t)*(1-t)"
+        },
+        "torso": {
+          "expr": "-6*(1-t)*(1-t)"
+        },
+        "head": {
+          "expr": "-10*(1-t)*(1-t)"
+        },
+        "left_arm_u": {
+          "expr": "24*(1-t)*(1-t)"
+        },
+        "left_arm_l": {
+          "expr": "20*(1-t)*(1-t)"
+        },
+        "right_arm_u": {
+          "expr": "-20*(1-t)*(1-t)"
+        },
+        "right_arm_l": {
+          "expr": "-20*(1-t)*(1-t)"
+        },
+        "mouth_open": {
+          "expr": "1"
+        },
+        "eye_shut": {
+          "expr": "1 if (True) and not (False) else 0"
+        },
+        "eye_dead": {
+          "expr": "1 if (False) else 0"
+        },
+        "eye_open": {
+          "expr": "0 if (True) or (False) else 1"
+        }
+      }
+    },
+    "death": {
+      "loop": false,
+      "frames": 8,
+      "duration_ms": 112,
+      "channels": {
+        "body": {
+          "expr": "-90*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.1)/0.7000000000000001)))"
+        },
+        "root_x": {
+          "expr": "-8*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.1)/0.7000000000000001)))"
+        },
+        "root_y": {
+          "expr": "0.5*(164 - max(164*cos((1.5708*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.1)/0.7))))) + 22*sin((1.5708*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.1)/0.7))))), 66*sin((1.5708*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.1)/0.7))))))) - 28*sin(3.14159*max(0.0, min(1.0, (t-0.3)/0.55)))"
+        },
+        "torso": {
+          "expr": "-4*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.3))) + 4*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.3)/0.5)))"
+        },
+        "head": {
+          "expr": "-8*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.4))) + 14*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.5)/0.4)))"
+        },
+        "left_arm_u": {
+          "expr": "30*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.4))) - 46*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.5)/0.4)))"
+        },
+        "left_arm_l": {
+          "expr": "20*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.4))) - 10*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.5)/0.4)))"
+        },
+        "right_arm_u": {
+          "expr": "-24*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.0)/0.4))) + 10*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.5)/0.4)))"
+        },
+        "bone.left_leg.y": {
+          "expr": "-4*(lambda u: u*u*(3-2*u))(max(0.0, min(1.0, (t-0.1)/0.4)))"
+        },
+        "mouth_open": {
+          "expr": "1 if 0.1 < t < 0.6 else 0"
+        },
+        "eye_shut": {
+          "expr": "1 if (t < 0.6) and not (t >= 0.6) else 0"
+        },
+        "eye_dead": {
+          "expr": "1 if (t >= 0.6) else 0"
+        },
+        "eye_open": {
+          "expr": "0 if (t < 0.6) or (t >= 0.6) else 1"
+        }
+      }
+    }
+  }
+}
