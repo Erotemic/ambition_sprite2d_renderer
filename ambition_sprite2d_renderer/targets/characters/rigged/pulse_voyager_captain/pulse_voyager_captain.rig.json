@@ -727,25 +727,16 @@
           "expr": "-6 + 2*sin(tau*t)"
         },
         "near_arm_upper": {
-          "expr": "-142 + 8*sin(tau*2*t)"
+          "expr": "-112 + 14*sin(tau*t)"
         },
         "near_arm_lower": {
-          "expr": "-30 + 8*sin(tau*2*t+0.5)"
+          "expr": "12"
         },
         "far_arm_upper": {
-          "expr": "-150 - 8*sin(tau*2*t)"
+          "expr": "112 - 14*sin(tau*t)"
         },
         "far_arm_lower": {
-          "expr": "-20 - 8*sin(tau*2*t+0.5)"
-        },
-        "bone.near_arm_upper.z": {
-          "const": -10
-        },
-        "bone.near_arm_lower.z": {
-          "const": -10
-        },
-        "bone.near_hand.z": {
-          "const": -10
+          "expr": "-12"
         },
         "near_leg": {
           "expr": "-8*abs(sin(tau*t))"
@@ -834,10 +825,10 @@
           "expr": "-84*(t*t*(3-2*t))"
         },
         "root_x": {
-          "expr": "-10*(t*t*(3-2*t))"
+          "expr": "10*(t*t*(3-2*t))"
         },
         "root_y": {
-          "expr": "6*(t*t*(3-2*t)) - 6*sin(3.14159*t)"
+          "expr": "-2*(t*t*(3-2*t)) - 6*sin(3.14159*t)"
         },
         "head": {
           "expr": "6*(t*t*(3-2*t))"
@@ -852,22 +843,22 @@
           "expr": "-10*(t*t*(3-2*t))"
         },
         "near_leg": {
-          "expr": "(84 - 18)*(t*t*(3-2*t))"
+          "expr": "28*(t*t*(3-2*t))"
         },
         "far_leg": {
-          "expr": "(84 - 6)*(t*t*(3-2*t))"
+          "expr": "36*(t*t*(3-2*t))"
         },
         "near_shin": {
-          "expr": "-24*(t*t*(3-2*t))"
+          "expr": "-20*(t*t*(3-2*t))"
         },
         "far_shin": {
-          "expr": "-10*(t*t*(3-2*t))"
+          "expr": "-12*(t*t*(3-2*t))"
         },
         "near_foot": {
-          "expr": "-(((84 - 18)*(t*t*(3-2*t))) + (-24*(t*t*(3-2*t))))"
+          "expr": "-((28*(t*t*(3-2*t))) + (-20*(t*t*(3-2*t))))"
         },
         "far_foot": {
-          "expr": "-(((84 - 6)*(t*t*(3-2*t))) + (-10*(t*t*(3-2*t))))"
+          "expr": "-((36*(t*t*(3-2*t))) + (-12*(t*t*(3-2*t))))"
         },
         "eye_hurt": {
           "expr": "1 if (t < 0.5) else 0"

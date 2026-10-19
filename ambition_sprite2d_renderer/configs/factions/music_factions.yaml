@@ -87,15 +87,9 @@ factions:
     music_source: tools/ambition_music_renderer/scores/active/pulse_drift_voyage.music.yaml
     palette_hint: cyan voyage glow / winglets / comet trails
     lair_hook: water-world or skybridge faction outpost
-    characters:
-      - id: pulse_voyager_captain
-        display_name: Captain Pulse
-        target: robot
-        archetype: pulse_captain
-        role: leader
-        seed: 92026057
-        animations: [idle, walk, run, talk, dash, celebrate, hit, death]
-        actor: {character_id: npc_pulse_voyager_captain, display_name: Captain Pulse}
+    # Captain Pulse (pulse_voyager_captain) is drawn by his own SVG rig
+    # (targets/characters/pulse_voyager_captain.py) since 2026-10-19.
+    characters: []
   - id: tech_bros
     display_name: Tech-Bros Basement
     music_cue: tech_bros_disruption

@@ -145,10 +145,10 @@ CLIPS = {
             "root_y": expr("-8*abs(sin(tau*t))"),
             "torso": expr("-3 + 2*sin(tau*t)"),
             "head": expr("-6 + 2*sin(tau*t)"),
-            # The near arm goes up behind the head, so the visor stays in view.
-            "near_arm_upper": expr("-142 + 8*sin(tau*2*t)"), "near_arm_lower": expr("-30 + 8*sin(tau*2*t+0.5)"),
-            "far_arm_upper": expr("-150 - 8*sin(tau*2*t)"), "far_arm_lower": expr("-20 - 8*sin(tau*2*t+0.5)"),
-            "bone.near_arm_upper.z": {"const": -10}, "bone.near_arm_lower.z": {"const": -10}, "bone.near_hand.z": {"const": -10},
+            # His arms are too short to raise over that head, so he flings them
+            # wide on each hop: the near one forward and up, the far one back.
+            "near_arm_upper": expr("-112 + 14*sin(tau*t)"), "near_arm_lower": expr("12"),
+            "far_arm_upper": expr("112 - 14*sin(tau*t)"), "far_arm_lower": expr("-12"),
             **legs("-8*abs(sin(tau*t))", "8*abs(sin(tau*t))", "16*abs(sin(tau*t))", "16*abs(sin(tau*t))"),
             **eyes(happy="True"),
         },
@@ -172,13 +172,14 @@ CLIPS = {
         "channels": {
             # The body tips back about the hips; the legs fold down to the deck.
             "body": expr(f"-84*{EASE}"),
-            "root_x": expr(f"-10*{EASE}"),
-            "root_y": expr(f"6*{EASE} - 6*sin(3.14159*t)"),
+            "root_x": expr(f"10*{EASE}"),
+            "root_y": expr(f"-2*{EASE} - 6*sin(3.14159*t)"),
             "head": expr(f"6*{EASE}"),
             "near_arm_upper": expr(f"-30*{EASE}"), "far_arm_upper": expr(f"-20*{EASE}"),
             "near_arm_lower": expr(f"-10*{EASE}"),
-            # The legs hang from the body, so they first undo its tip, then fold.
-            **legs(f"(84 - 18)*{EASE}", f"(84 - 6)*{EASE}", f"-24*{EASE}", f"-10*{EASE}"),
+            # The legs go down with the body; his big head props his shoulders
+            # up, so the legs turn down to put his boots on the deck.
+            **legs(f"28*{EASE}", f"36*{EASE}", f"-20*{EASE}", f"-12*{EASE}"),
             **eyes(hurt="t < 0.5", dead="t >= 0.5"),
         },
     },
