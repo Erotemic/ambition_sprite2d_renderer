@@ -41,6 +41,9 @@ RUNTIME_ADAPTER_CONFIG_STEMS: frozenset[str] = frozenset(
         "ranged_skirmisher",
         "exploding_mite",
         "dividing_mite",
+        # The goblin's two Smash skins: the game's catalog draws them.
+        "goblin_raider",
+        "goblin_squat",
     }
 )
 
