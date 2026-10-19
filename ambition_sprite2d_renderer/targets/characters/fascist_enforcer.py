@@ -410,10 +410,13 @@ def death(i: int, n: int):
     # cap comes off.
     sag = P(hip=(-5.0, 13.0), lean=-18.0, head=(-2.0, 0.0, -10.0), na=(8.0, 18.0), fa=(13.0, 14.0), nh="open", fh="open", nf=(-4.0, 0.0, 0.0),
             ff=(10.0, 0.0, -10.0), eyes="wince", mouth="o", brows=1.0, off=(-3.0, 0.0), hem=(0.0, 3.0), cap=0.0)
-    # Half way down he is in the air: his boots stay over the floor.
-    toppling = X.blend(sag, SUPINE, 0.5)
-    toppling = dict(toppling, off=(toppling["off"][0], toppling["off"][1] - 6.0))
-    return X.keys(shot(i, n), [(0.0, dict(STRUCK, cap=0.0)), (0.3, sag), (0.46, toppling), (0.62, SUPINE), (1.0, SUPINE)])
+    # Half way down he is in the air: his boots stay over the floor. His cap
+    # stays off to the end: it lies on the floor (``lost_cap``), and the pose
+    # he lands in is shared with rows that keep it on.
+    down = dict(SUPINE, cap=0.0)
+    toppling = X.blend(sag, down, 0.5)
+    toppling = dict(toppling, off=(toppling["off"][0], toppling["off"][1] - 6.0), cap=0.0)
+    return X.keys(shot(i, n), [(0.0, dict(STRUCK, cap=0.0)), (0.3, sag), (0.46, toppling), (0.62, down), (1.0, down)])
 
 
 @X.row
