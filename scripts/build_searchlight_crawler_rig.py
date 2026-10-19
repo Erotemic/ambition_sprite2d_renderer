@@ -110,6 +110,159 @@ ARTICULATION_SLOTS = {
 }
 
 
+DEATH_FRAMES = 14
+
+
+def per_frame(values: list[float], n: int = DEATH_FRAMES) -> dict:
+    """One exact value per frame of an ``n``-frame one-shot (flicker channels)."""
+    assert len(values) == n
+    return {"keys": [[i/(n-1), v, "linear"] for i, v in enumerate(values)]}
+
+
+def keys(*pairs) -> dict:
+    return {"keys": [list(pair) for pair in pairs]}
+
+
+# The wreck's resting chassis: dropped onto its belly, nose tipped down.
+DEATH_REST_Y = 24.5
+DEATH_REST_BODY = 7.0
+
+
+def wreck_shoulder(name: str) -> tuple[float, float]:
+    """A leg's femur root in the wreck pose, as an offset from the ground center."""
+    bx, by = art.JOINTS["body"][1:]
+    sx, sy = art.LEG_POINTS[name][1]
+    lx, ly = (sx-bx)*SCALE, (sy-by)*SCALE
+    a = math.radians(DEATH_REST_BODY)
+    return ((bx-322.0)*SCALE + lx*math.cos(a) - ly*math.sin(a),
+            (by-art.GROUND_Y)*SCALE + DEATH_REST_Y + lx*math.sin(a) + ly*math.cos(a))
+
+
+def death_leg_channels() -> dict:
+    """Legs hold, buckle outward as the hull drops, then curl up over it.
+
+    Ankle targets are world offsets from the ground center, so a planted foot
+    stays put while the chassis falls. The curled wreck reads as a dead
+    spider: knees drawn in over the hull, claws hooked inward.
+    """
+    channels = {}
+    for name in art.LEG_POINTS:
+        rx, ry = NAME_TO_REST[name]
+        pitch = leg_spec(name).tarsus_pitch
+        front = rx > 0
+        side = 1.0 if front else -1.0
+        outer = "outer" in name
+        # Near and outer legs lag a little, so the collapse is not one pose.
+        lag = (0.02 if name.startswith("near_") else 0.0) + (0.02 if outer else 0.0)
+        splay_x = rx*1.10 + side*5.0
+        splay_pitch = 22.0 if front else 158.0
+        # The folded ankle sits just outside and above its shoulder. On the
+        # leg's own bend side that swings the knee up and in over the hull.
+        # The claw turns up through the top (not down through the floor).
+        hx, hy = wreck_shoulder(name)
+        reach = 20.0 if outer else 14.0
+        fold = math.radians(-25.0 if front else 205.0)
+        curl_x = hx + reach*math.cos(fold)
+        curl_y = hy + reach*math.sin(fold)
+        curl_pitch = -165.0 if front else 345.0
+        x_keys = [[0.0, rx], [0.30, rx], [0.50+lag, splay_x, "out"],
+                  [0.60+lag, splay_x], [0.84+lag, curl_x, "smooth"], [1.0, curl_x]]
+        y_keys = [[0.0, ry], [0.30, ry], [0.50+lag, -9.0, "out"],
+                  [0.60+lag, -9.0], [0.84+lag, curl_y, "smooth"], [1.0, curl_y]]
+        p_keys = [[0.0, pitch], [0.30, pitch], [0.50+lag, splay_pitch, "out"],
+                  [0.60+lag, splay_pitch], [0.84+lag, curl_pitch, "smooth"],
+                  [1.0, curl_pitch]]
+        if name == "near_front_outer":
+            # One spasm while the lens shorts out.
+            y_keys[1:2] = [[0.14, ry-12.0, "out"], [0.30, ry]]
+        if name == "far_rear_inner":
+            y_keys[1:2] = [[0.20, ry-8.0, "out"], [0.30, ry]]
+        pre = f"{name}_contact"
+        channels[f"{pre}_x"] = {"keys": x_keys}
+        channels[f"{pre}_y"] = {"keys": y_keys}
+        channels[f"{pre}_pitch"] = {"keys": p_keys}
+    return channels
+
+
+def death_clip() -> dict:
+    """Hit, the lens shorts and dies, the hull drops, the legs curl. Holds."""
+    # The lens flickers out over frames 0-4; a last spark and a smoke wisp
+    # come once the wreck has settled; the held final frame is clean.
+    #             0    1    2    3    4     5    6    7    8    9   10   11   12   13
+    lamp_dark = [0.0, 1.0, 0.0, 1.0, 0.45, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    burst = [1.0, 0.0, 0.85, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    crackle = [0.0, 1.0, 0.0, 0.0, 0.9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.75, 0.0, 0.0]
+    alert = [0.9, 0.0, 0.7, 0.0, 0.35, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    smoke = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.9, 0.0]
+    return {
+        "loop": False, "frames": DEATH_FRAMES, "duration_ms": 100,
+        "channels": {
+            "root_x": keys([0.0, -7.0], [0.10, -4.0], [0.30, -1.5], [0.55, 0.0]),
+            "root_y": keys([0.0, 0.0], [0.30, 2.0], [0.44, 12.0, "in"],
+                           [0.52, 25.0, "in"], [0.60, 21.5, "out"],
+                           [0.70, DEATH_REST_Y], [1.0, DEATH_REST_Y]),
+            "body": keys([0.0, -10.0], [0.10, -6.0], [0.30, -2.0],
+                         [0.44, 4.0], [0.52, 9.0, "in"], [0.60, 5.0, "out"],
+                         [0.70, DEATH_REST_BODY], [1.0, DEATH_REST_BODY]),
+            "light": keys([0.0, 14.0, "linear"], [0.083, -9.0, "linear"],
+                          [0.167, 10.0, "linear"], [0.25, -5.0, "linear"],
+                          [0.42, 8.0], [0.52, 32.0, "in"], [0.60, 22.0, "out"],
+                          [0.70, 28.0], [1.0, 28.0]),
+            "antenna": keys([0.0, -24.0, "linear"], [0.083, 12.0, "linear"],
+                            [0.167, -14.0, "linear"], [0.25, 6.0], [0.42, -4.0],
+                            [0.52, -30.0, "in"], [0.60, -16.0, "out"],
+                            [0.70, -24.0], [1.0, -24.0]),
+            "exhaust_hatch": keys([0.0, 0.0], [0.08, -30.0, "out"], [0.30, -12.0],
+                                  [0.52, -34.0, "in"], [0.70, -22.0], [1.0, -22.0]),
+            "exhaust_visible": per_frame(
+                [0.9, 0.6, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+            # The iris sags half shut as the power goes.
+            "bone.shutter_upper.y": keys([0.0, 0.0], [0.34, 0.0], [0.70, 3.6], [1.0, 3.6]),
+            "bone.shutter_lower.y": keys([0.0, 0.0], [0.34, 0.0], [0.70, -2.0], [1.0, -2.0]),
+            "beam_visible": expr("0"),
+            "focus_visible": expr("0"),
+            "beacon_visible": expr("0"),
+            "alert_visible": per_frame(alert),
+            "lamp_dark": per_frame(lamp_dark),
+            "spark_burst": per_frame(burst),
+            "spark_crackle": per_frame(crackle),
+            "smoke_visible": per_frame(smoke),
+            # The wisp rises straight up whatever the lamp's droop.
+            "smoke": expr("-35.0"),
+            "bone.smoke.y": keys([0.0, 0.0], [0.80, 0.0], [1.0, -8.0]),
+            **death_leg_channels(),
+        },
+    }
+
+
+# Wall cling: the standing pose turned -90 degrees about the body origin, so
+# the belly faces a wall on the right and the lamp points up it. The root
+# rises so the turned body stays inside the frame.
+CLING_LIFT = -36.0
+
+
+def wall_cling_clip() -> dict:
+    body_y = (art.JOINTS["body"][2]-art.GROUND_Y)*SCALE
+    channels = {
+        "root_y": expr(f"{CLING_LIFT}"),
+        # The hull breathes toward the wall and back; the planted feet absorb it.
+        "root_x": expr("-1.2*sin(tau*t)"),
+        "body": expr("-90+1.5*sin(tau*t+0.6)"),
+        "light": expr("-6+5*sin(tau*t)"),
+        "antenna": expr("3*sin(tau*t+0.9)"),
+        "beam_visible": expr("0"),
+        "alert_visible": expr("0"),
+    }
+    for name in art.LEG_POINTS:
+        rx, ry = NAME_TO_REST[name]
+        dx, dy = rx, ry-body_y
+        pre = f"{name}_contact"
+        channels[f"{pre}_x"] = expr(f"{dy:.4f}")
+        channels[f"{pre}_y"] = expr(f"{body_y+CLING_LIFT-dx:.4f}")
+        channels[f"{pre}_pitch"] = expr(f"{leg_spec(name).tarsus_pitch-90.0:.4f}")
+    return {"loop": True, "frames": 8, "duration_ms": 140, "channels": channels}
+
+
 def articulation_clips() -> dict:
     return {
         "aim_scan": {"loop": True, "frames": 16, "duration_ms": 85,
@@ -238,6 +391,8 @@ def clips() -> dict:
                 "alert_visible": expr(f"0.35*{JOLT}"),
             },
         },
+        "death": death_clip(),
+        "wall_cling": wall_cling_clip(),
         **articulation_clips(),
     }
 
@@ -277,6 +432,8 @@ ACTOR_METADATA = {
         "attack.beam": {"animation": "strike", "events": []},
         "reaction.hit": {"animation": "hit", "events": []},
         "reaction.stun": {"animation": "stun", "events": []},
+        "life.death": {"animation": "death", "events": []},
+        "locomotion.wall_cling": {"animation": "wall_cling", "events": []},
     },
     "tags": ["machine", "crawler", "enemy", "evil", "svg_rigged", "concept"],
 }

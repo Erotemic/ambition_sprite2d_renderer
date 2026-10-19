@@ -381,6 +381,54 @@
       <path d="M 438,292 L 470,292" fill="none" stroke="#83999f" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" />
       <path d="M 444,282 L 463,282" fill="none" stroke="#ad835a" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" />
     </g>
+    <g id="part-lamp-dead" inkscape:label="Dead Lens">
+      <circle cx="454" cy="258" r="24.0" fill="#3a4645" stroke="#5d6a66" stroke-width="3.2" />
+      <circle cx="454" cy="258" r="19.5" fill="#28322f" stroke="#46524e" stroke-width="2.6" />
+      <path d="M 446,250 Q 451,245 458,246" fill="none" stroke="#6f7c76" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 440,247 L 450,256 L 447,266 M 450,256 L 463,252 L 468,259 M 450,256 L 459,268" fill="none" stroke="#141b1f" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />
+    </g>
+    <g id="part-lens-burst" inkscape:label="Lens Spark Burst">
+      <path d="M 460.6,245.6 L 471.2,238.5 L 465.6,227.7 L 475.6,217.4" fill="none" stroke="#ff8a3d" stroke-width="8.0" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 460.6,245.6 L 471.2,238.5 L 465.6,227.7 L 475.6,217.4" fill="none" stroke="#fff4b8" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 467.3,253.7 L 483.1,254.9 L 487.4,242.9 L 503.5,241.9" fill="none" stroke="#ff8a3d" stroke-width="8.0" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 467.3,253.7 L 483.1,254.9 L 487.4,242.9 L 503.5,241.9" fill="none" stroke="#fff4b8" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 466.6,264.1 L 473.1,274.0 L 483.4,267.9 L 493.5,277.3" fill="none" stroke="#ff8a3d" stroke-width="8.0" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 466.6,264.1 L 473.1,274.0 L 483.4,267.9 L 493.5,277.3" fill="none" stroke="#fff4b8" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 456.9,271.7 L 452.7,280.8 L 463.7,284.6 L 462.3,297.1" fill="none" stroke="#ff8a3d" stroke-width="8.0" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 456.9,271.7 L 452.7,280.8 L 463.7,284.6 L 462.3,297.1" fill="none" stroke="#fff4b8" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 445.0,268.7 L 432.4,274.4 L 435.5,286.3 L 423.1,294.8" fill="none" stroke="#ff8a3d" stroke-width="8.0" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 445.0,268.7 L 432.4,274.4 L 435.5,286.3 L 423.1,294.8" fill="none" stroke="#fff4b8" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 440.5,254.1 L 433.4,245.9 L 424.6,253.7 L 413.6,246.4" fill="none" stroke="#ff8a3d" stroke-width="8.0" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 440.5,254.1 L 433.4,245.9 L 424.6,253.7 L 413.6,246.4" fill="none" stroke="#fff4b8" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 446.6,246.1 L 444.5,231.5 L 432.1,230.4 L 427.5,215.6" fill="none" stroke="#ff8a3d" stroke-width="8.0" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 446.6,246.1 L 444.5,231.5 L 432.1,230.4 L 427.5,215.6" fill="none" stroke="#fff4b8" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 459.2,245.0 L 467.4,240.9 L 460.3,231.8 L 468.2,222.8" fill="none" stroke="#ff8a3d" stroke-width="8.0" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 459.2,245.0 L 467.4,240.9 L 460.3,231.8 L 468.2,222.8" fill="none" stroke="#fff4b8" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="454" cy="258" r="15.0" fill="#ffe9a0" stroke="#ff8a3d" stroke-width="3.0" />
+      <circle cx="454" cy="258" r="7.0" fill="#ffffff" stroke="none" stroke-width="0" />
+      <circle cx="506" cy="226" r="3.6" fill="#fff4b8" stroke="#ff8a3d" stroke-width="1.8" />
+      <circle cx="400" cy="296" r="3.6" fill="#fff4b8" stroke="#ff8a3d" stroke-width="1.8" />
+      <circle cx="502" cy="302" r="3.6" fill="#fff4b8" stroke="#ff8a3d" stroke-width="1.8" />
+      <circle cx="420" cy="210" r="3.6" fill="#fff4b8" stroke="#ff8a3d" stroke-width="1.8" />
+      <circle cx="474" cy="196" r="3.6" fill="#fff4b8" stroke="#ff8a3d" stroke-width="1.8" />
+    </g>
+    <g id="part-lens-crackle" inkscape:label="Lens Spark Crackle">
+      <path d="M 434,246 L 446,254 L 441,261 L 456,266 L 452,272 L 466,276" fill="none" stroke="#ff8a3d" stroke-width="6.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 434,246 L 446,254 L 441,261 L 456,266 L 452,272 L 466,276" fill="none" stroke="#fff4b8" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 462,236 L 470,248 L 463,252 L 478,262" fill="none" stroke="#ff8a3d" stroke-width="6.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 462,236 L 470,248 L 463,252 L 478,262" fill="none" stroke="#fff4b8" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 470,270 L 488,282 L 484,288 L 498,296" fill="none" stroke="#ff8a3d" stroke-width="6.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M 470,270 L 488,282 L 484,288 L 498,296" fill="none" stroke="#fff4b8" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round" />
+      <circle cx="492" cy="250" r="3.0" fill="#fff4b8" stroke="#ff8a3d" stroke-width="1.6" />
+      <circle cx="506" cy="268" r="3.0" fill="#fff4b8" stroke="#ff8a3d" stroke-width="1.6" />
+      <circle cx="486" cy="230" r="3.0" fill="#fff4b8" stroke="#ff8a3d" stroke-width="1.6" />
+    </g>
+    <g id="part-smoke-wisp" inkscape:label="Smoke Wisp">
+      <circle cx="432" cy="212" r="10.0" fill="#7c878c" stroke="#4c565b" stroke-width="3.0" fill-opacity="0.9" stroke-opacity="0.9" />
+      <circle cx="424" cy="190" r="13.0" fill="#7c878c" stroke="#4c565b" stroke-width="3.0" fill-opacity="0.78" stroke-opacity="0.78" />
+      <circle cx="436" cy="164" r="15.5" fill="#7c878c" stroke="#4c565b" stroke-width="3.0" fill-opacity="0.62" stroke-opacity="0.62" />
+      <path d="M 450,156 C 464,142 452,126 438,132" fill="none" stroke="#4c565b" stroke-width="4.0" stroke-linejoin="round" stroke-linecap="round" stroke-opacity="0.6" />
+    </g>
     <g id="joint-markers" inkscape:label="Rig Joints (show to edit)" style="display:none">
       <circle id="joint-body" cx="322.0" cy="312.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="body" />
       <circle id="joint-light" cx="417.0" cy="259.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="light" />
@@ -420,6 +468,8 @@
       <circle id="joint-near-front-outer-femur" cx="421.0" cy="278.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="near_front_outer_femur" />
       <circle id="joint-near-front-outer-tibia" cx="534.0" cy="212.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="near_front_outer_tibia" />
       <circle id="joint-near-front-outer-tarsus" cx="577.0" cy="349.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="near_front_outer_tarsus" />
+      <circle id="joint-spark" cx="454.0" cy="258.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="spark" />
+      <circle id="joint-smoke" cx="432.0" cy="222.0" r="2.0" fill="#ff3eb5" stroke="#17212a" stroke-width="0.7" data-rig-joint="smoke" />
     </g>
   </g>
 </svg>
