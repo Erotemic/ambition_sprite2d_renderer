@@ -34,7 +34,20 @@ factions:
         role: leader
         seed: 42024093
         animations: [idle, walk, talk, slash, celebrate, hit, death]
+        # Drawn 1.08x the goblin on a canvas 1.125x its frame
+        # (`_goblin_look` LOOKS["fretjaw"]): 144 = 128 * 1.125.
+        render: {frame_width: 144, frame_height: 144, single_width: 144, single_height: 144}
         notes: Leader for the faction currently represented by first_goblin_tune_v2.
+      - id: goblin_cantina_bard
+        display_name: Cantina Bard
+        target: goblin
+        archetype: bard
+        held_item: hammer
+        role: member
+        seed: 42024094
+        animations: [idle, walk, talk, slash, celebrate, hit, death]
+        render: {frame_width: 144, frame_height: 144, single_width: 144, single_height: 144}
+        notes: A bard of Fretjaw's band (Jon, 2026-10-18), plumed hat and a lute on the back.
   - id: lofi_drift_hub
     display_name: Lofi Drift Hub
     music_cue: long_lofi_drift

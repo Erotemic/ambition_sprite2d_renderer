@@ -13,11 +13,13 @@ animations:
 - death
 - dash
 render:
-  frame_width: 128
-  frame_height: 128
-  single_width: 128
-  single_height: 128
-  supersample: 1
+  # The heavy is drawn 1.32x the goblin on a canvas 1.375x its frame
+  # (`_goblin_look` LOOKS["brute"]): 176 = 128 * 1.375.
+  frame_width: 176
+  frame_height: 176
+  single_width: 176
+  single_height: 176
+  supersample: 3
   downsample: lanczos
   background: transparent
   sheet_background: transparent
