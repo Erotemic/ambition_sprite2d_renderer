@@ -44,20 +44,31 @@ def font(size: int, bold: bool = False):
 
 
 def draw_pose(sheet: Image.Image, doc: RigDocument, clip: str,
-              frame: int, count: int, rect, *, scale: float = 1.5) -> None:
-    """Crop the still pose to its painted bounds for a readable review."""
+              frame: int, count: int, rect, *, scale: float = 1.0) -> None:
+    """Use one ground line and camera center for each pose panel."""
     x, y, width, height = rect
     image = doc.render_frame(clip, frame, count)
-    bbox = image.getbbox()
-    if bbox is None:
+    if image.getbbox() is None:
         raise ValueError(f"empty rig frame: {clip}[{frame}]")
-    l, t, r, b = bbox
-    image = image.crop((max(0, l - 10), max(0, t - 10),
-                        min(image.width, r + 10), min(image.height, b + 10)))
-    factor = min(scale, width / image.width, height / image.height)
+    factor = scale
     w, h = int(round(image.width * factor)), int(round(image.height * factor))
     image = image.resize((w, h), Image.Resampling.LANCZOS)
-    sheet.paste(image, (x + (width - w) // 2, y + (height - h) // 2), image)
+    center_x = float(doc.frame["center_x"]) * factor
+    ground_y = float(doc.frame["ground_y"]) * factor
+    # Align the game-space center and foot line. Do not recrop each pose.
+    dest_x = round(x + width * 0.42 - center_x)
+    dest_y = round(y + height - 22 - ground_y)
+    panel = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    local_x, local_y = dest_x - x, dest_y - y
+    src_box = (max(0, -local_x), max(0, -local_y),
+               min(w, width - local_x), min(h, height - local_y))
+    if src_box[0] < src_box[2] and src_box[1] < src_box[3]:
+        panel.alpha_composite(image.crop(src_box),
+                              (local_x + src_box[0], local_y + src_box[1]))
+    guide = ImageDraw.Draw(sheet)
+    floor = y + height - 22
+    guide.line((x + 12, floor, x + width - 12, floor), fill="#4b5564", width=1)
+    sheet.paste(panel, (x, y), panel)
 
 
 def review(doc: RigDocument) -> Image.Image:
@@ -68,7 +79,7 @@ def review(doc: RigDocument) -> Image.Image:
     draw.line((50, 132, 1812, 132), fill=GOLD, width=2)
     draw.rounded_rectangle((45, 160, 584, 1102), radius=20, fill=PANEL)
     draw.text((70, 188), "IDLE / SILHOUETTE", font=font(25, True), fill=GOLD)
-    draw_pose(sheet, doc, "idle", 0, 8, (55, 235, 510, 500), scale=1.85)
+    draw_pose(sheet, doc, "idle", 0, 8, (55, 235, 510, 500), scale=1.65)
     draw.text((72, 756), "SHIELD  /  BATON  /  ARMORED BODY", font=font(19, True), fill=INK)
     draw.text((72, 797), "Test at smaller game sizes", font=font(17), fill=MUTED)
     rest = doc.render_frame("idle", 0, 8)
@@ -81,9 +92,9 @@ def review(doc: RigDocument) -> Image.Image:
     poses = [
         ("GUARD", "guard", 4, 8),
         ("BRACE", "brace", 4, 9),
-        ("SHIELD BASH", "shield_bash", 6, 12),
-        ("BATON WINDUP", "baton_attack", 4, 11),
-        ("BATON STRIKE", "baton_attack", 7, 11),
+        ("SHIELD BASH", "shield_bash", 7, 14),
+        ("BATON WINDUP", "baton_attack", 5, 13),
+        ("BATON STRIKE", "baton_attack", 9, 13),
         ("VULNERABLE", "recovery", 3, 8),
     ]
     x0, y0, w, h, gap = 614, 160, 393, 453, 14
@@ -93,23 +104,28 @@ def review(doc: RigDocument) -> Image.Image:
         x, y = x0 + col * (w + gap), y0 + row * (h + gap)
         draw.rounded_rectangle((x, y, x + w, y + h), radius=18, fill=PANEL)
         draw.text((x + 19, y + 15), title, font=font(22, True), fill=GOLD)
-        draw_pose(sheet, doc, clip, idx, count, (x + 7, y + 58, w - 14, h - 80), scale=1.40)
+        draw_pose(sheet, doc, clip, idx, count, (x + 7, y + 58, w - 14, h - 80), scale=1.20)
     draw.text((619, 1087), f"{len(doc.bones)} BONES   /   {len(doc.parts)} PARTS   /   {len(doc.clips)} CLIPS",
               font=font(18, True), fill=MUTED)
     return sheet
 
 
 def animate(doc: RigDocument, animation: str) -> list[Image.Image]:
+    """Use one camera and one foot line for all animation frames."""
     frames = []
     n = doc.clips[animation]["frames"]
+    factor = 1.5
+    w, h = int(doc.frame["width"] * factor), int(doc.frame["height"] * factor)
+    floor = 435
+    dest_x = round(320 - doc.frame["center_x"] * factor)
+    dest_y = round(floor - doc.frame["ground_y"] * factor)
     for i in range(n):
-        canvas = Image.new("RGBA", (560, 370), "#252d3a")
-        pose = doc.render_frame(animation, i, n)
-        pose = pose.resize((round(pose.width * 1.2), round(pose.height * 1.2)),
-                           Image.Resampling.LANCZOS)
-        canvas.alpha_composite(pose, ((canvas.width - pose.width) // 2,
-                                      (canvas.height - pose.height) // 2))
-        frames.append(canvas.convert("P", palette=Image.Palette.ADAPTIVE))
+        canvas = Image.new("RGBA", (640, 480), "#252d3a")
+        ImageDraw.Draw(canvas).line((35, floor, 605, floor), fill="#5a6571", width=1)
+        pose = doc.render_frame(animation, i, n).resize((w, h), Image.Resampling.LANCZOS)
+        # PIL paste clips the transparent frame to the fixed camera canvas.
+        canvas.paste(pose, (dest_x, dest_y), pose)
+        frames.append(canvas.convert("RGB").convert("P", palette=Image.Palette.ADAPTIVE))
     return frames
 
 
