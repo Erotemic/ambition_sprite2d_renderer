@@ -11,6 +11,9 @@ way, so a player who has seen one knows the others:
 - a frame all round with a light edge, darker than the leaf inside it;
 - a step of the accent colour at the foot;
 - one small light or window in the upper part of the leaf.
+
+Each door also has its opening (`opening`): a strip of frames in which the
+leaf moves into the room behind it, for a body that goes through the door.
 """
 
 from __future__ import annotations
@@ -20,6 +23,7 @@ from typing import Callable
 import numpy as np
 from PIL import Image
 
+from ..core.door_swing import OPENING_FRAMES, SLIDE, SWING, Leaf, Room, opening_frames
 from .skins import K, Tile, _box, _dot, _line, _mix, _poly
 
 RGB = tuple[int, int, int]
@@ -70,7 +74,7 @@ def _window(tile: Tile, c: dict, x0: float, y0: float, x1: float, y1: float, rou
         tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, x0, y0, x1, y0 + (y1 - y0) * 0.35)), (255, 255, 255), 0.3)
 
 
-def bulkhead(tile: Tile, c: dict) -> None:
+def bulkhead(tile: Tile, c: dict) -> np.ndarray:
     """Two steel leaves that slide apart."""
     leaf = _frame(tile, c)
     tile.put(leaf * (np.abs(tile.x - W * 0.5) < 0.7), c["dark"])
@@ -82,9 +86,10 @@ def bulkhead(tile: Tile, c: dict) -> None:
     stripes = tile.mask(lambda p, dx, dy: [_poly(p, dx, dy, [(F + k * 8.0, H - STEP), (F + k * 8.0 + 4.0, H - STEP), (F + k * 8.0 + 9.0, H - STEP - 8.0), (F + k * 8.0 + 5.0, H - STEP - 8.0)]) for k in range(-1, 8)])
     tile.put(stripes * leaf * (tile.y > H - STEP - 8.0), c["accent"], 0.85)
     tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 0.9) for x in (F + 4.0, W - F - 4.0) for y in (38.0, 62.0, 96.0)]), c["leaf_light"], 0.7)
+    return leaf
 
 
-def iron(tile: Tile, c: dict) -> None:
+def iron(tile: Tile, c: dict) -> np.ndarray:
     """An iron door in a round arch, with bands and a grille."""
     leaf = _frame(tile, c, arch=14.0)
     for y in (40.0, 72.0, 100.0):
@@ -95,9 +100,10 @@ def iron(tile: Tile, c: dict) -> None:
     _window(tile, c, 20.0, 16.0, W - 20.0, 31.0)
     tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, 24.0 + k * 5.0, 16.0, 25.2 + k * 5.0, 31.0) for k in range(4)]), c["frame"])
     tile.put(tile.mask(lambda p, dx, dy: (_dot(p, dx, dy, W - F - 7.0, 60.0, 2.6), _dot(p, dx, dy, W - F - 7.0, 60.0, 1.2, value=0))), c["accent"])
+    return leaf
 
 
-def plank(tile: Tile, c: dict) -> None:
+def plank(tile: Tile, c: dict) -> np.ndarray:
     """A door of planks in a stone frame, with a lamp over it."""
     leaf = _frame(tile, c, arch=10.0)
     for k in range(1, 6):
@@ -110,9 +116,10 @@ def plank(tile: Tile, c: dict) -> None:
         tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, F + 4.0 + k * 9.0, y, 0.9) for k in range(6)]) * leaf, c["leaf_light"], 0.8)
     _window(tile, c, 25.0, 46.0, 38.0, 59.0, round_=True)
     tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, W - F - 6.0, 70.0, 1.8)), c["accent"])
+    return leaf
 
 
-def shoji(tile: Tile, c: dict) -> None:
+def shoji(tile: Tile, c: dict) -> np.ndarray:
     """Paper screens in a frame of dark wood."""
     leaf = _frame(tile, c)
     tile.put(leaf, c["glow"], 0.92)
@@ -130,9 +137,10 @@ def shoji(tile: Tile, c: dict) -> None:
     # A branch in ink on the paper.
     tile.put(tile.mask(lambda p, dx, dy: (_line(p, dx, dy, [(40.0, 78.0), (46.0, 58.0), (43.0, 40.0), (50.0, 26.0)], 0.7), _line(p, dx, dy, [(45.0, 52.0), (52.0, 46.0)], 0.5), _line(p, dx, dy, [(44.0, 40.0), (38.0, 33.0)], 0.5))) * leaf, c["dark"], 0.55)
     tile.put(tile.mask(lambda p, dx, dy: [_dot(p, dx, dy, x, y, 1.3) for x, y in ((52.0, 45.0), (38.0, 32.0), (50.0, 25.0), (47.0, 57.0))]) * leaf, c["accent"], 0.9)
+    return leaf
 
 
-def cabin(tile: Tile, c: dict) -> None:
+def cabin(tile: Tile, c: dict) -> np.ndarray:
     """The door of a ship's cabin: boards, a porthole, a brass plate."""
     leaf = _frame(tile, c)
     for k in range(1, 5):
@@ -144,9 +152,10 @@ def cabin(tile: Tile, c: dict) -> None:
     tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, F + 3.0, H - STEP - 16.0, W - F - 3.0, H - STEP - 3.0)), c["accent"], 0.8)
     tile.put(tile.mask(lambda p, dx, dy: _box(p, dx, dy, F + 3.0, H - STEP - 16.0, W - F - 3.0, H - STEP - 15.0)), (255, 255, 255), 0.35)
     tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, W - F - 6.0, 66.0, 2.0)), c["accent"])
+    return leaf
 
 
-def stone(tile: Tile, c: dict) -> None:
+def stone(tile: Tile, c: dict) -> np.ndarray:
     """A door of cut stone in an arch, with a ring of light."""
     leaf = _frame(tile, c, arch=18.0)
     tile.put(leaf * (np.abs(tile.x - W * 0.5) < 0.6), c["dark"], 0.8)
@@ -159,9 +168,22 @@ def stone(tile: Tile, c: dict) -> None:
     tile.put(np.clip(1.0 - d / 16.0, 0.0, 1.0) ** 2 * leaf, c["glow"], 0.35)
     tile.put(tile.mask(lambda p, dx, dy: _dot(p, dx, dy, cx, cy, 3.0)), c["glow"])
     tile.put(tile.mask(lambda p, dx, dy: [_box(p, dx, dy, x - 0.5, 62.0, x + 0.5, 74.0) for x in (cx - 8.0, cx + 8.0)]), c["accent"], 0.8)
+    return leaf
 
 
-Draw = Callable[[Tile, dict], None]
+#: A style draws the door on a tile and returns the mask of its leaf.
+Draw = Callable[[Tile, dict], np.ndarray]
+
+#: How the leaf of each style opens: one leaf that swings on the left jamb, or
+#: two leaves (one on each jamb) that swing or slide.
+MOTIONS: dict[Draw, tuple[str, bool]] = {
+    bulkhead: (SLIDE, True),
+    iron: (SWING, False),
+    plank: (SWING, False),
+    shoji: (SLIDE, True),
+    cabin: (SWING, False),
+    stone: (SWING, True),
+}
 
 
 def _colours(frame: RGB, leaf: RGB, dark: RGB, accent: RGB, glow: RGB) -> dict:
@@ -208,11 +230,36 @@ DOORS: dict[str, tuple[Draw, dict]] = {
 }
 
 
-def door(theme_key: str) -> Image.Image:
-    """The door picture of a theme."""
+def _drawn(theme_key: str) -> tuple[Tile, np.ndarray, Draw, dict]:
     draw, colours = DOORS[theme_key]
     tile = Tile((W, H), False, False, theme_key, "door")
-    draw(tile, colours)
+    leaf = draw(tile, colours)
+    return tile, leaf, draw, colours
+
+
+def door(theme_key: str) -> Image.Image:
+    """The door picture of a theme."""
+    tile, _, _, _ = _drawn(theme_key)
     image = tile.publish()
     assert image.size == (WIDTH_PX, HEIGHT_PX), image.size
     return image
+
+
+def opening(theme_key: str) -> Image.Image:
+    """The opening of the door of a theme: `OPENING_FRAMES` frames of
+    `WIDTH_PX` by `HEIGHT_PX` in one row, from the door picture (frame 0) to
+    the open door (`core.door_swing`)."""
+    tile, leaf, draw, c = _drawn(theme_key)
+    motion, double = MOTIONS[draw]
+    left, right, middle = F * K, (W - F) * K, W * 0.5 * K
+    if double:
+        half = tile.x < W * 0.5
+        leaves = [Leaf(leaf * half, left, middle, motion), Leaf(leaf * ~half, right, middle, motion)]
+    else:
+        leaves = [Leaf(leaf, left, right, motion)]
+    room = Room(c["dark"], c["glow"], top=F * K, bottom=(H - STEP) * K)
+    strip = Image.new("RGBA", (WIDTH_PX * OPENING_FRAMES, HEIGHT_PX))
+    for index, (rgb, alpha) in enumerate(opening_frames(tile.rgb, tile.alpha, leaf, leaves, room)):
+        tile.rgb, tile.alpha = rgb, alpha
+        strip.paste(tile.publish(), (index * WIDTH_PX, 0))
+    return strip

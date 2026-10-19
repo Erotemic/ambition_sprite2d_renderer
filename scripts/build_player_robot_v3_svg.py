@@ -21,7 +21,11 @@ from ambition_sprite2d_renderer.targets.characters.player_robot_v3_motion import
     POSE_ALIASES,
     ROBOT_ROWS,
 )
-from ambition_sprite2d_renderer.targets.characters.player_robot_v3_back import BACK_ROWS, author_back_rows
+from ambition_sprite2d_renderer.targets.characters.player_robot_v3_back import (
+    BACK_FRAMES,
+    BACK_ROWS,
+    author_back_rows,
+)
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_front import author_front_rows
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_crouch import reauthor_crouch
 from ambition_sprite2d_renderer.targets.characters.player_robot_v3_double_jump import author_double_jump
@@ -623,7 +627,7 @@ def build_doc() -> dict:
         "idle_eye_blink": True,
         "solved_rows": [
             "crouch_start", "crouch", "crouch_walk", "crouch_jump", "crouch_end",
-            "item_hold_crouch", "double_jump", "turnaround", "walk", "run", *STRIKES,
+            "item_hold_crouch", "double_jump", "turnaround", "turn_away", "walk", "run", *STRIKES,
         ],
     }
     return doc
@@ -668,7 +672,7 @@ def build_back_doc(side: dict) -> dict:
     doc = build_view_doc(side, BACK_SVG_PATH, BACK_VIEW_LABEL, "player_robot_v3_back")
     # These rows are IK rows: a clip gives where a hand and a foot are, and the
     # rig's chains put the elbows and the knees.
-    author_back_rows(doc, {name: ROW_INFO[name] for name in BACK_ROWS})
+    author_back_rows(doc, {name: ROW_INFO[name] for name in (*BACK_ROWS, *BACK_FRAMES)})
     doc["features"] = {
         "paper_doll": True,
         "view": "back",

@@ -144,6 +144,12 @@ ROBOT_ROWS: Final[tuple[tuple[str, int, int], ...]] = (
     ("ledge_drop", 5, 60),
     ("ledge_climb", 6, 92),
     ("climb", 8, 100),
+    # From behind (`player_robot_v3_back`): the robot walks away from the
+    # camera, into a doorway.
+    ("walk_away", 8, 100),
+    # The turn of the back to the camera, from the stand to the back view's
+    # stand: frames 0-1 are of the side view, 2-3 of the back view.
+    ("turn_away", 4, 60),
     ("swim", 8, 105),
     ("trip_fall", 7, 72),
     ("trip_idle", 8, 106),
@@ -313,6 +319,9 @@ POSE_ALIASES: Final[dict[str, str]] = {
     "idle_look_up": "idle",
     "walk_stop": "land_recovery",
     "turnaround": "idle",
+    # The side view's clips of the rows drawn from behind (`player_robot_v3_back`).
+    "walk_away": "walk",
+    "turn_away": "idle",
     "stumble": "hit",
     "crouch_start": "crouch",
     "crouch_end": "crouch",
@@ -441,6 +450,7 @@ LOOPING_ROWS: Final[frozenset[str]] = frozenset(
         "grabbed",
         "ledge_grab",
         "climb",
+        "walk_away",
         "swim",
         "item_hold",
         "item_hold_crouch",

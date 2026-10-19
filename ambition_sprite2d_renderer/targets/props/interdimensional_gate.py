@@ -40,6 +40,11 @@ PORTAL_ROWS: List[Tuple[str, int, int]] = [
     ("opening", 8, 80),
     ("stable", 8, 110),
     ("closing", 8, 80),
+    # A body goes in, and a body comes out (Jon, 2026-10-19: "some sort of
+    # ripple in the gate showing they moved through it"). Each starts and
+    # ends on the stable surface, so either can cut in from ``stable``.
+    ("swallow", 12, 55),
+    ("emit", 12, 55),
 ]
 
 SHEET_FILES = [
@@ -456,11 +461,19 @@ def _ease_out_back(t: float, overshoot: float = 1.35) -> float:
     return 1.0 + t * t * ((overshoot + 1.0) * t + overshoot)
 
 
-def _portal_surface(radius: float, loop_t: float, alpha_scale: float, flash: float) -> Image.Image:
+def _portal_surface(
+    radius: float, loop_t: float, alpha_scale: float, flash: float, splash: float = -1.0, outward: bool = False
+) -> Image.Image:
     """The membrane: a deep, water-like surface with ripples moving outward.
 
     ``loop_t`` in [0, 1) is the loop phase; every motion term is periodic in it,
     so the stable row loops without a seam.
+
+    ``splash`` in [0, 1] is how far through a crossing the surface is (none
+    when negative): a ring runs out from the middle to the lip and dies. A
+    body going in (``outward`` false) dents the middle, dark, and the surface
+    closes over it; a body coming out (``outward``) swells it, bright, and the
+    swell falls back.
     """
     size = (FRAME_SIZE[0] * SUPER, FRAME_SIZE[1] * SUPER)
     ys, xs = np.mgrid[0 : size[1], 0 : size[0]].astype(np.float32)
@@ -488,7 +501,29 @@ def _portal_surface(radius: float, loop_t: float, alpha_scale: float, flash: flo
     hy = dy / max(radius, 1.0) + 0.42
     spec = np.exp(-(hx * hx * 9.0 + hy * hy * 22.0)) * 0.55
 
-    light = (ripple * 95.0 + swirl * 70.0 + spec * 255.0 + flash * 180.0)[..., None]
+    light = ripple * 95.0 + swirl * 70.0 + spec * 255.0 + flash * 180.0
+    if splash >= 0.0:
+        u = float(splash)
+        fade = (1.0 - u) ** 1.3
+        # The ring that runs out to the lip, a smaller one behind it, and the
+        # surface between them pulled into folds.
+        # Each crest has its trough just behind it, so it reads as a wave.
+        front, back = u * 1.08, max(0.0, u - 0.3) * 1.08
+        lead = np.exp(-(((d - front) / 0.06) ** 2))
+        lead_trough = np.exp(-(((d - front + 0.1) / 0.06) ** 2)) * (d < front)
+        trail = np.exp(-(((d - back) / 0.045) ** 2)) * 0.7
+        trail_trough = np.exp(-(((d - back + 0.075) / 0.045) ** 2)) * (d < back) * 0.7
+        light = light + (lead * 300.0 + trail * 220.0) * fade
+        base = base * (1.0 - ((lead_trough + trail_trough) * 0.55 * fade)[..., None])
+        light = light - (lead_trough + trail_trough) * 120.0 * fade
+        # The middle: a dent, or a swell, that settles as the ring goes out.
+        middle = np.exp(-((d / (0.22 + 0.25 * u)) ** 2)) * (1.0 - _ease(u))
+        if outward:
+            light = light + middle * 260.0
+        else:
+            base = base * (1.0 - middle[..., None] * 0.75)
+            light = light - middle * 90.0
+    light = light[..., None]
     rgb = base + light * np.array([0.78, 0.94, 1.0], dtype=np.float32)
 
     # Bright lip at the edge of the membrane, with a soft glow past it.
@@ -528,11 +563,20 @@ def render_portal_frame(animation: str, frame_index: int, nframes: int) -> Image
         alpha_scale = 1.0
         flash = 0.0
         loop_t = frame_index / max(1, nframes)
+    splash = -1.0
+    if animation in ("swallow", "emit"):
+        # On the stable surface's own clock, so it cuts in from ``stable``.
+        splash = t
+        loop_t = (frame_index * 0.5 / max(1, nframes)) % 1.0
+        # The membrane gives a little where the body meets it.
+        dip = math.sin(min(1.0, t * 3.0) * math.pi) * (1.0 - t)
+        size = 1.0 + (0.035 if animation == "emit" else -0.025) * dip
+        flash = (0.35 if animation == "emit" else 0.15) * max(0.0, 1.0 - t * 4.0)
     if size <= 0.01 or alpha_scale <= 0.01:
         return _downsample(img)
 
     radius = PORTAL_R * size
-    surface = _portal_surface(radius, loop_t, alpha_scale, flash)
+    surface = _portal_surface(radius, loop_t, alpha_scale, flash, splash, animation == "emit")
     draw = blending_draw(surface)
     _draw_star_specks(draw, loop_t, radius, alpha_scale)
 

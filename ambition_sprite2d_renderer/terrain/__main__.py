@@ -6,7 +6,8 @@
 `draw` publishes `<skin>_<part>.png` for each part of each skin (and the
 ornaments of a skin that has them, `ornaments.py`), and the mote
 picture, the decor picture and the door of each biome (`<biome>_motes.png`,
-`<biome>_decor.png`, `<biome>_decor_glow.png`, `<biome>_door.png`), and the
+`<biome>_decor.png`, `<biome>_decor_glow.png`, `<biome>_door.png`, and its
+opening `<biome>_door_opening.png`), and the
 shimmer of a biome that has one (`<biome>_shimmer.png`). `preview`
 writes one picture with a small made-up room in each skin. It does not run
 the game.
@@ -110,6 +111,9 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             path = args.out_dir / f"{key}_door.png"
             doors.door(key).save(path)
+            print(path)
+            path = args.out_dir / f"{key}_door_opening.png"
+            doors.opening(key).save(path)
             print(path)
         return 0
     rooms = [skins.mockup(skin, drawn[skin.key]) for skin in chosen]

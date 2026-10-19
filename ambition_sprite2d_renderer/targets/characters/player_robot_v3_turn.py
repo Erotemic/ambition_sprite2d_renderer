@@ -8,6 +8,9 @@ open to the camera and the head still looks back the way the robot was facing
 the front view (`player_robot_v3_front`); on its last frames the head has come
 round and the body settles.
 
+The turn of the back to the camera (`turn_away`) starts here too: its first
+frames are of the side view, its last of the back view.
+
 Keys of the strike machinery (`player_robot_v3_strikes`) with the blade
 stowed. The rig builder calls ``author_turnaround``; nothing here touches the
 filesystem.
@@ -23,6 +26,7 @@ from .player_robot_v3_body import RigBody, write_frames
 from .player_robot_v3_strikes import BLADE_DRAWN_DEG, Key, _pose, frame_phases, rest, sample
 
 ROW = "turnaround"
+AWAY_ROW = "turn_away"
 
 
 def turnaround(body: RigBody) -> List[Key]:
@@ -51,16 +55,42 @@ def turnaround(body: RigBody) -> List[Key]:
     ]
 
 
-def solve_turnaround(doc: RigDocument) -> Dict[str, List[float]]:
+def turn_away(body: RigBody) -> List[Key]:
+    """Keys of the side frames of the turn of the back to the camera. Frames
+    0-1 are of the side view; frames 2-3 are of the back view
+    (`player_robot_v3_back.BACK_FRAMES`), so the keys stop at frame 1.
+
+    The chest turns from the camera (the profile torso) and the arms swing
+    behind with the turn; the head comes after the body.
+    """
+    near, far = body.arm_rest["near"], body.arm_rest["far"]
+    stowed = dict(blade=0.0, face="open")
+    return [
+        replace(rest(body, 0.0), face="open"),
+        Key(at=0.125, near=(near.upper + 6.0, near.lower + 8.0, BLADE_DRAWN_DEG),
+            far=(far.upper - 5.0, far.lower - 6.0), torso=2.0, head=-1.0, drop=0.6,
+            squash=0.98, turn="profile", **stowed),
+        Key(at=0.375, near=(near.upper + 16.0, near.lower + 20.0, BLADE_DRAWN_DEG),
+            far=(far.upper - 14.0, far.lower - 16.0), torso=4.0, head=-2.5, drop=1.2,
+            squash=0.97, turn="profile", ease="out", **stowed),
+    ]
+
+
+def _solve(doc: RigDocument, row: str, keys: List[Key]) -> Dict[str, List[float]]:
     body = RigBody(doc)
-    keys = turnaround(body)
-    frames = [_pose(body, sample(keys, phase)) for phase in frame_phases(int(doc.clips[ROW]["frames"]), False)]
+    frames = [_pose(body, sample(keys, phase)) for phase in frame_phases(int(doc.clips[row]["frames"]), False)]
     return {key: [frame[key] for frame in frames] for key in frames[0] if not key.startswith("_")}
 
 
+def solve_turnaround(doc: RigDocument) -> Dict[str, List[float]]:
+    return _solve(doc, ROW, turnaround(RigBody(doc)))
+
+
 def author_turnaround(doc: RigDocument) -> None:
-    """Replace the `turnaround` clip of a built v3 rig with the turn."""
+    """Replace the `turnaround` clip of a built v3 rig with the turn, and the
+    `turn_away` clip with its side frames."""
     write_frames(doc, ROW, solve_turnaround(doc))
+    write_frames(doc, AWAY_ROW, _solve(doc, AWAY_ROW, turn_away(RigBody(doc))))
 
 
-__all__ = ["ROW", "author_turnaround", "solve_turnaround", "turnaround"]
+__all__ = ["AWAY_ROW", "ROW", "author_turnaround", "solve_turnaround", "turn_away", "turnaround"]

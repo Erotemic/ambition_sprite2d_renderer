@@ -36,7 +36,7 @@ from ...authoring.portrait import (
 )
 from ...core import slash_envelope
 from .robot_side import RigCanvas, SideRobotGenerator, fx_piece
-from .player_robot_v3_back import BACK_ROWS
+from .player_robot_v3_back import BACK_FRAMES, BACK_ROWS, back_frame
 from .player_robot_v3_front import FRONT_FRAMES, front_frame
 from .player_robot_v3_gameplay import hurtbox_parts_for_rows
 from .player_robot_v3_double_jump import JETS as DOUBLE_JUMP_JETS
@@ -52,8 +52,8 @@ RIG_PATH = (
 )
 
 #: The rig of the robot seen from BEHIND (`player_robot_v3_back`): a second SVG
-#: view at the same scale, in the same frame. The rows of `BACK_ROWS` are drawn
-#: from it.
+#: view at the same scale, in the same frame. The rows of `BACK_ROWS` and the
+#: frames of `BACK_FRAMES` are drawn from it.
 BACK_RIG_PATH = RIG_PATH.with_name("player_robot_v3_back.rig.json")
 #: The rig of the robot seen from the FRONT (`player_robot_v3_front`). The
 #: frames of `FRONT_FRAMES` are drawn from it.
@@ -518,25 +518,32 @@ def _render_back(row: str, frame_idx: int, frame_count: int) -> Image.Image:
     return result
 
 
-def _front(row: str, frame_idx: int, mirrored: bool) -> Optional[Tuple[RigDocument, float]]:
-    """The front rig and the time of its clip, for a frame drawn from the front
-    view (`FRONT_FRAMES`); `None` for any other frame."""
-    if frame_idx not in FRONT_FRAMES.get(row, ()):
-        return None
-    doc = load_front_doc()
-    count = len(FRONT_FRAMES[row])
-    return doc, doc.frame_time(row, front_frame(row, frame_idx, mirrored), count)
+def _other_view(row: str, frame_idx: int, mirrored: bool) -> Optional[Tuple[RigDocument, str, int, int]]:
+    """``(rig, clip, frame, frame count)`` of another view, for a frame of a
+    side row drawn from the front (`FRONT_FRAMES`) or from behind
+    (`BACK_FRAMES`); `None` for any other frame.
+
+    From the front or behind the robot is one picture for each facing, so the
+    frame is not mirrored. The front plays the other facing's frames in the
+    other order; the back has a clip of its own for it."""
+    if frame_idx in FRONT_FRAMES.get(row, ()):
+        return load_front_doc(), row, front_frame(row, frame_idx, mirrored), len(FRONT_FRAMES[row])
+    if frame_idx in BACK_FRAMES.get(row, ()):
+        clip = MIRRORED.format(row) if mirrored else row
+        return load_back_doc(), clip, back_frame(row, frame_idx), len(BACK_FRAMES[row])
+    return None
 
 
 def render_frame(animation: str, frame_idx: int, frame_count: int) -> Image.Image:
     row, mirrored = _row(animation)
-    front = _front(row, frame_idx, mirrored)
-    if front is not None:
+    view = _other_view(row, frame_idx, mirrored)
+    if view is not None:
         # From the front the robot is one picture for each facing: the ear cup
-        # stays at the left of the frame. It is not mirrored.
-        doc, t = front
+        # stays at the left of the frame (from behind, at the right). It is
+        # not mirrored.
+        doc, clip, index, count = view
         result = Image.new("RGBA", (int(doc.frame["width"]), int(doc.frame["height"])), (0, 0, 0, 0))
-        rigdoc.composite_canvas(result, doc.render_at(row, t))
+        rigdoc.composite_canvas(result, doc.render_at(clip, doc.frame_time(clip, index, count)))
         return result
     if row in BACK_ROWS:
         # From behind, the robot is the same picture for each facing: the ear
@@ -569,10 +576,10 @@ def published_frame(animation: str, frame_idx: int, frame_count: int) -> Image.I
 
 def frame_meta(animation: str, frame_idx: int, frame_count: int) -> dict:
     row, mirrored = _row(animation)
-    front = _front(row, frame_idx, mirrored)
-    if front is not None:
-        doc, _t = front
-        return _frame_meta(row, front_frame(row, frame_idx, mirrored), len(FRONT_FRAMES[row]), doc)
+    view = _other_view(row, frame_idx, mirrored)
+    if view is not None:
+        doc, clip, index, count = view
+        return _frame_meta(clip, index, count, doc)
     if row in BACK_ROWS:
         return _frame_meta(row, frame_idx, frame_count, load_back_doc())
     clip = row
@@ -844,7 +851,7 @@ def body_metrics(fw: int, fh: int):
 #: steps (decision D3 of `docs/planning/engine/mary-o-part-realization.md`).
 TWEENED_ROWS = tuple(
     name
-    for row in ("walk", "run", "crouch_walk", "climb", "swim")
+    for row in ("walk", "run", "crouch_walk", "climb", "walk_away", "swim")
     for name in (row, MIRRORED.format(row))
 )
 

@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable, Dict, Iterable, List, Tuple
 
+import numpy as np
 import yaml
 from PIL import Image, ImageDraw
 
@@ -15,7 +16,8 @@ from ambition_sprite2d_renderer.core.draw import (
     rgba,
     with_alpha,
 )
-from ambition_sprite2d_renderer.core.draw import blending_draw
+from ambition_sprite2d_renderer.core.draw import blending_draw, downsample
+from ambition_sprite2d_renderer.core.door_swing import SWING, Leaf, Room, opening_frames
 from ambition_sprite2d_renderer.core.pipeline import (
     CROP_GROUND,
     CROP_NONE,
@@ -2139,6 +2141,67 @@ def render_entity_sprite(spec: EntitySpriteSpec, supersample: int = 4) -> Image.
     )
 
 
+#: The doors that have an opening (`render_entity_opening`): how the leaf
+#: opens (one leaf on the left jamb, or two leaves, one on each jamb), the
+#: dark of the room behind the door, and the light of the door that falls on
+#: the floor of that room, and the cover of that room (the drawing is part
+#: clear).
+DOOR_OPENINGS: Dict[str, Tuple[str, bool, str, str, float]] = {
+    "door_zone": (SWING, False, "#11162A", "#4FB8D8", 1.0),
+    "door_stone": (SWING, True, "#1E2A52", "#F0D17F", 1.0),
+    "door_voxel": (SWING, True, "#0B0A1C", "#FF2AA8", 1.0),
+    "door_blueprint": (SWING, False, "#10203A", "#FAD14C", 0.6),
+}
+
+
+def opening_filename(spec: EntitySpriteSpec) -> str:
+    """The file of the opening of a door: `<door>_opening.png`."""
+    return spec.filename.removesuffix(".png") + "_opening.png"
+
+
+def render_entity_opening(spec: EntitySpriteSpec, supersample: int = 4) -> Image.Image:
+    """The opening of a door: `OPENING_FRAMES` frames in one row, each the
+    size of the door picture. Frame 0 is the door picture
+    (`render_entity_sprite`); in the frames after it the leaf moves into the
+    room behind the door (`core.door_swing`). All frames have the crop of the
+    door picture, so the frame and the sill stay on the same pixels."""
+    motion, double, dark, glow, cover = DOOR_OPENINGS[spec.key]
+    s = float(supersample)
+    work = (spec.size[0] * supersample, spec.size[1] * supersample)
+    closed = Image.new("RGBA", work, (0, 0, 0, 0))
+    DRAWERS[spec.key](ImageDraw.Draw(closed), s)
+    # The door drawers draw at two times their scale (`_twice`).
+    u = 2.0 * s
+    mask_image = Image.new("L", work, 0)
+    _door_shape(ImageDraw.Draw(mask_image), u, DOOR_LEAF, 255, radius=4)
+    leaf = np.asarray(mask_image, dtype=np.float32) / 255.0
+    left, top, right, bottom = (v * u for v in DOOR_LEAF)
+    if double:
+        middle = (left + right) * 0.5
+        half = (np.arange(work[0]) + 0.5 < middle)[None, :]
+        leaves = [Leaf(leaf * half, left, middle, motion), Leaf(leaf * ~half, right, middle, motion)]
+    else:
+        leaves = [Leaf(leaf, left, right, motion)]
+    room = Room(rgba(dark)[:3], rgba(glow)[:3], top=top, bottom=bottom, alpha=cover)
+    pixels = np.asarray(closed, dtype=np.float32)
+    frames = opening_frames(pixels[:, :, :3], pixels[:, :, 3] / 255.0, leaf, leaves, room)
+    # The crop of the door picture (`crop_to_content`, ground: no padding
+    # under the feet).
+    full = downsample(closed, spec.size)
+    x0, y0, x1, y1 = full.getchannel("A").getbbox()
+    pad = 4
+    box = (max(0, x0 - pad), max(0, y0 - pad), min(full.width, x1 + pad), y1)
+    picture = render_entity_sprite(spec, supersample=supersample)
+    assert picture.size == (box[2] - box[0], box[3] - box[1]), (spec.key, picture.size, box)
+    strip = Image.new("RGBA", (picture.width * len(frames), picture.height), (0, 0, 0, 0))
+    strip.paste(picture, (0, 0))
+    for index, (rgb, alpha) in enumerate(frames[1:], start=1):
+        array = np.dstack([rgb, alpha * 255.0])
+        image = Image.fromarray(np.rint(array).astype(np.uint8), "RGBA")
+        strip.paste(downsample(image, spec.size).crop(box), (index * picture.width, 0))
+    return strip
+
+
 def build_entity_contact_sheet(
     tiles: List[Tuple[EntitySpriteSpec, Image.Image]],
 ) -> Image.Image:
@@ -2174,6 +2237,10 @@ def write_entity_sprites(
         img.save(path)
         outputs.append(path)
         tiles.append((spec, img))
+        if spec.key in DOOR_OPENINGS:
+            path = out_dir / opening_filename(spec)
+            render_entity_opening(spec, supersample=supersample).save(path)
+            outputs.append(path)
     contact = build_entity_contact_sheet(tiles)
     contact_path = out_dir / "entity_contact_sheet.png"
     contact.save(contact_path)
@@ -2204,7 +2271,9 @@ def write_entity_sprites(
 # is therefore the install claim, not a census of every render diagnostic.
 
 TARGET_NAME = "entities"
-SHEET_FILES = tuple(spec.filename for spec in ENTITY_SPECS)
+SHEET_FILES = tuple(spec.filename for spec in ENTITY_SPECS) + tuple(
+    opening_filename(spec) for spec in ENTITY_SPECS if spec.key in DOOR_OPENINGS
+)
 
 
 def render(out_dir: str | Path, **opts) -> List[Path]:
@@ -2235,11 +2304,11 @@ def install(render_dir: str | Path, dest_root: str | Path) -> List[Path]:
     dest_dir = dest_root / INSTALL_SUBDIR
     dest_dir.mkdir(parents=True, exist_ok=True)
     installed: List[Path] = []
-    for spec in ENTITY_SPECS:
-        src = render_dir / spec.filename
+    for filename in SHEET_FILES:
+        src = render_dir / filename
         if not src.exists():
             continue
-        dst = dest_dir / spec.filename
+        dst = dest_dir / filename
         dst.write_bytes(src.read_bytes())
         installed.append(dst)
     return installed
