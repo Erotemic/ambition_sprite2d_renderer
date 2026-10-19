@@ -1100,3 +1100,15 @@ lineages:
       - commit: "a00656e"
         label: "Prime"
         note: "Silver crown braid and lit circlet, a lined face, plate over a blue himation and ivory chiton, Greek-key circuitry, an armillary ring on her back and an armillary tech-lance. Jon first chose A (a literal Alexandrian Hypatia, kept), then asked for an old woman in future armour. Claude Opus 5.5 declared."
+  pulse_voyager_captain:
+    name: Captain Pulse
+    ids: [pulse_voyager_captain]
+    paths: ['pulse_voyager_captain', 'music_factions', 'robot_side']
+    summary: "the robot template in the Pulse Voyagers' colours, then Claude's own redesign of the v2 robot as an SVG rig"
+    eras:
+      - commit: "74983f8"
+        label: "The robot template"
+        note: "The last commit with the first design: a preset of the robot template from the faction lineup, in cyan voyage colours."
+      - commit: "04e9178"
+        label: "The voyager captain"
+        note: "The v2 robot rebuilt as white shell plates over a dark jointed suit: box head, dark visor, oval cyan eyes, one rigid antenna; a navy hull with a comet badge, gold shoulder boards, winglets, a comet trail. Jon asked what Claude would do redesigning the main character, then to use it on the Captain. Claude Opus 5.5 declared."
