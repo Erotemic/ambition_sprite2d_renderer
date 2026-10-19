@@ -1088,3 +1088,15 @@ lineages:
       - commit: "104ec30"
         label: "Three sentinels"
         note: "The Gradient Sentinel (the fallback), the Clockwork Warden (gear halo, clock heart, pendulum) and the Hooded Sentinel (Mode Collapse). Jon: all three are good, each to a different boss. Claude Opus 5.5 declared."
+  hypatia_prime:
+    name: Hypatia Prime
+    ids: [hypatia_prime]
+    paths: ['hypatia_prime']
+    summary: "a procedural scholar, then an old woman in space armour over the Alexandrian drape, a cel-shaded SVG rig"
+    eras:
+      - commit: "e220880"
+        label: "The procedural scholar"
+        note: "The last commit with the first design."
+      - commit: "a00656e"
+        label: "Prime"
+        note: "Silver crown braid and lit circlet, a lined face, plate over a blue himation and ivory chiton, Greek-key circuitry, an armillary ring on her back and an armillary tech-lance. Jon first chose A (a literal Alexandrian Hypatia, kept), then asked for an old woman in future armour. Claude Opus 5.5 declared."
