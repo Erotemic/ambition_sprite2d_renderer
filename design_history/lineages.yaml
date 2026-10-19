@@ -992,3 +992,99 @@ lineages:
       - commit: "e82ad72"
         label: "The founder-bot"
         note: "A white gadget robot with a smug neon visor, an earbud, a quilted fleece vest, a lanyard and badge, always on his phone. Jon: Chadwick is a robot; use variant A. Claude Opus 5.5 declared."
+  mantis_lancer:
+    name: Mantis Lancer
+    ids: [mantis_lancer]
+    paths: ['mantis_lancer']
+    summary: "a procedural insectoid lancer, then a slender conehead mantis as a cel-shaded SVG rig"
+    eras:
+      - commit: "2c82625"
+        label: "The procedural lancer"
+        note: "The last commit with the first design: a polygon insect biped with blade arms and a red crest. Jon called it old bad art."
+      - commit: "104ec30"
+        label: "The conehead"
+        note: "A slender green conehead mantis on four legs, the red crest as its head cone, raptorial blades. Jon chose A of three; B lacquered lancer and C dead-leaf kept. Claude Opus 5.5 declared."
+  ghoul_skulker:
+    name: Ghoul Skulker
+    ids: [ghoul_skulker]
+    paths: ['ghoul_skulker']
+    summary: "a procedural ghoul, then a stitched corpse in a burial shroud as a cel-shaded SVG rig"
+    eras:
+      - commit: "2c82625"
+        label: "The procedural ghoul"
+        note: "The last commit with the first design."
+      - commit: "104ec30"
+        label: "The shrouded corpse"
+        note: "A grey stitched corpse hunched under a burial shroud, long arms and claws. Jon chose B of three; A and C kept. Claude Opus 5.5 declared."
+  pirate_cutlass_viper:
+    name: Cutlass Viper
+    ids: [pirate_cutlass_viper]
+    paths: ['pirate_cutlass_viper']
+    summary: "a procedural front-and-profile pirate, then the same viper redrawn as a side-view SVG rig"
+    eras:
+      - commit: "2c82625"
+        label: "The procedural viper"
+        note: "The last commit with the first design: front and profile rows from the procedural pirate rig."
+      - commit: "104ec30"
+        label: "The viper redrawn"
+        note: "Tricorn over a red bandana, plum bodice, blue breeches, a cutlass; side view, the left rows mirrored. Jon chose A of three; B and C kept. Claude Opus 5.5 declared."
+  dark_lord:
+    name: Dark Lord
+    ids: [dark_lord]
+    paths: ['dark_lord']
+    summary: "a procedural dark lord, then the Iron Tyrant as a cel-shaded SVG rig"
+    eras:
+      - commit: "2c82625"
+        label: "The procedural dark lord"
+        note: "The last commit with the first design."
+      - commit: "104ec30"
+        label: "The Iron Tyrant"
+        note: "A spiked crown helm with a red visor slit, black plate, a crimson-lined cape, a rune halberd. Jon chose A of three; B Sorcerer-King and C Warlord kept as possible skins. Claude Opus 5.5 declared."
+  creator:
+    name: The Creator
+    ids: [creator]
+    paths: ['creator']
+    summary: "a procedural creator, then a silver-bearded man in a long navy coat as a cel-shaded SVG rig"
+    eras:
+      - commit: "2c82625"
+        label: "The procedural creator"
+        note: "The last commit with the first design."
+      - commit: "104ec30"
+        label: "The mantle"
+        note: "A long navy coat, violet scarf, silver hair and beard, a pendant, a tablet; one hand in his pocket. Jon chose B of three; A lab coat and C tinkerer kept. Claude Opus 5.5 declared."
+  president_portrait:
+    name: President Portrait
+    ids: [president_portrait]
+    paths: ['president_portrait']
+    summary: "a flat-shaded portrait president, then the Continental general as a cel-shaded SVG rig"
+    eras:
+      - commit: "2c82625"
+        label: "The flat portrait president"
+        note: "The last commit with the first design: powdered side rolls, a navy coat and white breeches, a striped sash; flat polygons, facing us."
+      - commit: "104ec30"
+        label: "The Continental general"
+        note: "Blue and buff, gold epaulettes, the pale-blue riband, riding boots, his hand on his sword; he presents a proclamation and swears on a book. Jon chose B of three. Claude Opus 5.5 declared."
+  colonial_statesman:
+    name: Colonial Statesman
+    ids: [colonial_statesman]
+    paths: ['colonial_statesman']
+    summary: "a charcoal recolour of the president's front-facing body, then a Federalist orator in profile as a cel-shaded SVG rig"
+    eras:
+      - commit: "2c82625"
+        label: "The president's recolour"
+        note: "The last commit with the first design: the president's flat body in a charcoal coat, facing us."
+      - commit: "104ec30"
+        label: "The Federalist orator"
+        note: "Side view: a bottle-green coat, buff waistcoat and breeches, a queue with a black bow, his speech; he draws a rapier to lunge and a flintlock to fire. Jon chose A of three. Claude Opus 5.5 declared."
+  sentinel_bosses:
+    name: The Sentinel Bosses
+    ids: [gradient_sentinel_boss, boss]
+    paths: ['boss_side', 'sentinel_boss']
+    summary: "one generic floating wraith worn by every boss without art, then three sentinels on one skeleton, one per boss"
+    eras:
+      - commit: "2c82625"
+        label: "The generic boss"
+        note: "The last commit with the first design: AISlopZetaGenerator, a hooded wraith with three magenta eyes, worn by the Clockwork Warden, Mode Collapse, Overflow and the hall's Boss."
+      - commit: "104ec30"
+        label: "Three sentinels"
+        note: "The Gradient Sentinel (the fallback), the Clockwork Warden (gear halo, clock heart, pendulum) and the Hooded Sentinel (Mode Collapse). Jon: all three are good, each to a different boss. Claude Opus 5.5 declared."
