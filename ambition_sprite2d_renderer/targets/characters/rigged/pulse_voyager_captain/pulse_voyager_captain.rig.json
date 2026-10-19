@@ -1,0 +1,884 @@
+{
+  "name": "pulse_voyager_captain",
+  "frame": {
+    "width": 224,
+    "height": 224,
+    "center_x": 112,
+    "ground_y": 214,
+    "ankle_h": 0,
+    "supersample": 3,
+    "render_scale": 1,
+    "trim": false
+  },
+  "svg_source": {
+    "path": "../../../../data/characters/pulse_voyager_captain/pulse_voyager_captain.svg",
+    "view": "Captain Pulse - Side Right",
+    "ref_dpi": 25.4,
+    "scale": 0.4
+  },
+  "sprite_tuning": {
+    "collision_scale": 1.2,
+    "frame_sample_inset": 1
+  },
+  "palette": {},
+  "bones": [
+    {
+      "name": "body",
+      "parent": null,
+      "offset": [
+        0.0,
+        -29.6
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "torso",
+      "parent": "body",
+      "offset": [
+        0.0,
+        -5.6
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "head",
+      "parent": "torso",
+      "offset": [
+        0.0,
+        -35.2
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_arm_upper",
+      "parent": "torso",
+      "offset": [
+        11.2,
+        -26.4
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_arm_lower",
+      "parent": "near_arm_upper",
+      "offset": [
+        2.4,
+        12.8
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_hand",
+      "parent": "near_arm_lower",
+      "offset": [
+        1.6,
+        11.2
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_arm_upper",
+      "parent": "torso",
+      "offset": [
+        -11.2,
+        -27.2
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_arm_lower",
+      "parent": "far_arm_upper",
+      "offset": [
+        -2.4,
+        12.8
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_hand",
+      "parent": "far_arm_lower",
+      "offset": [
+        0.8,
+        11.2
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_leg",
+      "parent": "body",
+      "offset": [
+        4.0,
+        1.6
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_shin",
+      "parent": "near_leg",
+      "offset": [
+        0.8,
+        11.2
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "near_foot",
+      "parent": "near_shin",
+      "offset": [
+        -0.8,
+        9.6
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_leg",
+      "parent": "body",
+      "offset": [
+        -4.8,
+        0.8
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_shin",
+      "parent": "far_leg",
+      "offset": [
+        0.0,
+        12.0
+      ],
+      "length": 0,
+      "rest_angle": 0
+    },
+    {
+      "name": "far_foot",
+      "parent": "far_shin",
+      "offset": [
+        -1.6,
+        9.6
+      ],
+      "length": 0,
+      "rest_angle": 0
+    }
+  ],
+  "parts": [
+    {
+      "name": "fx_trail",
+      "bone": "body",
+      "z": 1,
+      "kind": "sprite",
+      "include": [
+        "trail"
+      ],
+      "pivot": [
+        262.0,
+        396.0
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "fx_trail",
+      "opacity_default": 0
+    },
+    {
+      "name": "far_arm_upper",
+      "bone": "far_arm_upper",
+      "z": 4,
+      "kind": "sprite",
+      "include": [
+        "far-arm-upper"
+      ],
+      "pivot": [
+        234.0,
+        314.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "far_arm_lower",
+      "bone": "far_arm_lower",
+      "z": 5,
+      "kind": "sprite",
+      "include": [
+        "far-arm-lower"
+      ],
+      "pivot": [
+        228.0,
+        346.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "far_hand",
+      "bone": "far_hand",
+      "z": 6,
+      "kind": "sprite",
+      "include": [
+        "far-hand"
+      ],
+      "pivot": [
+        230.0,
+        374.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "far_leg",
+      "bone": "far_leg",
+      "z": 8,
+      "kind": "sprite",
+      "include": [
+        "far-leg"
+      ],
+      "pivot": [
+        250.0,
+        398.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "far_shin",
+      "bone": "far_shin",
+      "z": 9,
+      "kind": "sprite",
+      "include": [
+        "far-shin"
+      ],
+      "pivot": [
+        250.0,
+        428.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "far_foot",
+      "bone": "far_foot",
+      "z": 10,
+      "kind": "sprite",
+      "include": [
+        "far-foot"
+      ],
+      "pivot": [
+        246.0,
+        452.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_leg",
+      "bone": "near_leg",
+      "z": 12,
+      "kind": "sprite",
+      "include": [
+        "near-leg"
+      ],
+      "pivot": [
+        272.0,
+        400.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_shin",
+      "bone": "near_shin",
+      "z": 13,
+      "kind": "sprite",
+      "include": [
+        "near-shin"
+      ],
+      "pivot": [
+        274.0,
+        428.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_foot",
+      "bone": "near_foot",
+      "z": 14,
+      "kind": "sprite",
+      "include": [
+        "near-foot"
+      ],
+      "pivot": [
+        272.0,
+        452.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "hips",
+      "bone": "body",
+      "z": 18,
+      "kind": "sprite",
+      "include": [
+        "hips"
+      ],
+      "pivot": [
+        262.0,
+        396.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "torso",
+      "bone": "torso",
+      "z": 20,
+      "kind": "sprite",
+      "include": [
+        "torso"
+      ],
+      "pivot": [
+        262.0,
+        382.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "head",
+      "bone": "head",
+      "z": 26,
+      "kind": "sprite",
+      "include": [
+        "head"
+      ],
+      "pivot": [
+        262.0,
+        294.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "eye_open",
+      "bone": "head",
+      "z": 27,
+      "kind": "sprite",
+      "include": [
+        "eye-open"
+      ],
+      "pivot": [
+        262.0,
+        294.0
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "eye_open",
+      "opacity_default": 1
+    },
+    {
+      "name": "eye_shut",
+      "bone": "head",
+      "z": 27,
+      "kind": "sprite",
+      "include": [
+        "eye-shut"
+      ],
+      "pivot": [
+        262.0,
+        294.0
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "eye_shut",
+      "opacity_default": 0
+    },
+    {
+      "name": "eye_happy",
+      "bone": "head",
+      "z": 27,
+      "kind": "sprite",
+      "include": [
+        "eye-happy"
+      ],
+      "pivot": [
+        262.0,
+        294.0
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "eye_happy",
+      "opacity_default": 0
+    },
+    {
+      "name": "eye_hurt",
+      "bone": "head",
+      "z": 27,
+      "kind": "sprite",
+      "include": [
+        "eye-hurt"
+      ],
+      "pivot": [
+        262.0,
+        294.0
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "eye_hurt",
+      "opacity_default": 0
+    },
+    {
+      "name": "eye_dead",
+      "bone": "head",
+      "z": 27,
+      "kind": "sprite",
+      "include": [
+        "eye-dead"
+      ],
+      "pivot": [
+        262.0,
+        294.0
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "eye_dead",
+      "opacity_default": 0
+    },
+    {
+      "name": "mouth_talk",
+      "bone": "head",
+      "z": 28,
+      "kind": "sprite",
+      "include": [
+        "mouth-talk"
+      ],
+      "pivot": [
+        262.0,
+        294.0
+      ],
+      "rest_angle": 0,
+      "opacity_channel": "mouth_talk",
+      "opacity_default": 0
+    },
+    {
+      "name": "near_arm_upper",
+      "bone": "near_arm_upper",
+      "z": 30,
+      "kind": "sprite",
+      "include": [
+        "near-arm-upper"
+      ],
+      "pivot": [
+        290.0,
+        316.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_arm_lower",
+      "bone": "near_arm_lower",
+      "z": 31,
+      "kind": "sprite",
+      "include": [
+        "near-arm-lower"
+      ],
+      "pivot": [
+        296.0,
+        348.0
+      ],
+      "rest_angle": 0
+    },
+    {
+      "name": "near_hand",
+      "bone": "near_hand",
+      "z": 32,
+      "kind": "sprite",
+      "include": [
+        "near-hand"
+      ],
+      "pivot": [
+        300.0,
+        376.0
+      ],
+      "rest_angle": 0
+    }
+  ],
+  "ik_legs": [],
+  "ik_chains": [],
+  "clips": {
+    "idle": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 140,
+      "channels": {
+        "root_y": {
+          "expr": "0.8*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "1.2*sin(tau*t)"
+        },
+        "head": {
+          "expr": "-1.6*sin(tau*t+0.5)"
+        },
+        "near_arm_upper": {
+          "expr": "2.0*sin(tau*t)"
+        },
+        "far_arm_upper": {
+          "expr": "-2.0*sin(tau*t)"
+        },
+        "near_arm_lower": {
+          "expr": "-4"
+        },
+        "far_arm_lower": {
+          "expr": "-4"
+        },
+        "eye_shut": {
+          "expr": "1 if (0.86 < t < 0.97) else 0"
+        },
+        "eye_open": {
+          "expr": "0 if ((0.86 < t < 0.97)) else 1"
+        }
+      }
+    },
+    "walk": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 90,
+      "channels": {
+        "root_y": {
+          "expr": "-2.4*(1-abs(sin(tau*t)))"
+        },
+        "torso": {
+          "expr": "2 + 1.5*sin(2*tau*t)"
+        },
+        "head": {
+          "expr": "-2 - 1.2*sin(2*tau*t)"
+        },
+        "near_leg": {
+          "expr": "-32*sin(tau*t)"
+        },
+        "far_leg": {
+          "expr": "32*sin(tau*t)"
+        },
+        "near_shin": {
+          "expr": "40*max(0.0, cos(tau*t))"
+        },
+        "far_shin": {
+          "expr": "40*max(0.0, -cos(tau*t))"
+        },
+        "near_foot": {
+          "expr": "-((-32*sin(tau*t)) + (40*max(0.0, cos(tau*t))))"
+        },
+        "far_foot": {
+          "expr": "-((32*sin(tau*t)) + (40*max(0.0, -cos(tau*t))))"
+        },
+        "near_arm_upper": {
+          "expr": "20*sin(tau*t)"
+        },
+        "far_arm_upper": {
+          "expr": "-20*sin(tau*t)"
+        },
+        "near_arm_lower": {
+          "expr": "-12 - 8*max(0.0, -sin(tau*t))"
+        },
+        "far_arm_lower": {
+          "expr": "-12 - 8*max(0.0, sin(tau*t))"
+        }
+      }
+    },
+    "run": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 70,
+      "channels": {
+        "root_y": {
+          "expr": "-5*(1-abs(sin(tau*t)))"
+        },
+        "torso": {
+          "expr": "10 + 2*sin(2*tau*t)"
+        },
+        "head": {
+          "expr": "-8 - 2*sin(2*tau*t)"
+        },
+        "near_leg": {
+          "expr": "-40*sin(tau*t)"
+        },
+        "far_leg": {
+          "expr": "40*sin(tau*t)"
+        },
+        "near_shin": {
+          "expr": "70*max(0.0, cos(tau*t))"
+        },
+        "far_shin": {
+          "expr": "70*max(0.0, -cos(tau*t))"
+        },
+        "near_foot": {
+          "expr": "-((-40*sin(tau*t)) + (70*max(0.0, cos(tau*t))))"
+        },
+        "far_foot": {
+          "expr": "-((40*sin(tau*t)) + (70*max(0.0, -cos(tau*t))))"
+        },
+        "near_arm_upper": {
+          "expr": "40*sin(tau*t)"
+        },
+        "far_arm_upper": {
+          "expr": "-40*sin(tau*t)"
+        },
+        "near_arm_lower": {
+          "expr": "-80"
+        },
+        "far_arm_lower": {
+          "expr": "-80"
+        },
+        "fx_trail": {
+          "expr": "0.55 + 0.15*sin(2*tau*t)"
+        }
+      }
+    },
+    "talk": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 110,
+      "channels": {
+        "root_y": {
+          "expr": "-1.0*abs(sin(tau*2*t))"
+        },
+        "torso": {
+          "expr": "-2 + 1.5*sin(tau*2*t)"
+        },
+        "head": {
+          "expr": "-3 + 3.0*sin(tau*2*t)"
+        },
+        "near_arm_upper": {
+          "expr": "-48 + 10*sin(tau*2*t)"
+        },
+        "near_arm_lower": {
+          "expr": "-46 + 12*sin(tau*2*t+0.6)"
+        },
+        "far_arm_lower": {
+          "expr": "-6"
+        },
+        "mouth_talk": {
+          "expr": "1 if (t*4) % 1.0 < 0.6 else 0"
+        }
+      }
+    },
+    "dash": {
+      "loop": true,
+      "frames": 6,
+      "duration_ms": 70,
+      "channels": {
+        "root_y": {
+          "expr": "-2 + 1.0*sin(tau*t)"
+        },
+        "torso": {
+          "expr": "24"
+        },
+        "head": {
+          "expr": "-18"
+        },
+        "near_leg": {
+          "expr": "-46"
+        },
+        "far_leg": {
+          "expr": "38"
+        },
+        "near_shin": {
+          "expr": "64"
+        },
+        "far_shin": {
+          "expr": "34"
+        },
+        "near_foot": {
+          "expr": "-((-46) + (64))"
+        },
+        "far_foot": {
+          "expr": "-((38) + (34))"
+        },
+        "near_arm_upper": {
+          "expr": "58 + 4*sin(tau*t)"
+        },
+        "far_arm_upper": {
+          "expr": "50 - 4*sin(tau*t)"
+        },
+        "near_arm_lower": {
+          "expr": "-18"
+        },
+        "far_arm_lower": {
+          "expr": "-18"
+        },
+        "fx_trail": {
+          "expr": "0.9 + 0.1*sin(2*tau*t)"
+        },
+        "eye_happy": {
+          "expr": "1 if (True) else 0"
+        },
+        "eye_open": {
+          "expr": "0 if ((True)) else 1"
+        }
+      }
+    },
+    "celebrate": {
+      "loop": true,
+      "frames": 8,
+      "duration_ms": 100,
+      "channels": {
+        "root_y": {
+          "expr": "-8*abs(sin(tau*t))"
+        },
+        "torso": {
+          "expr": "-3 + 2*sin(tau*t)"
+        },
+        "head": {
+          "expr": "-6 + 2*sin(tau*t)"
+        },
+        "near_arm_upper": {
+          "expr": "-142 + 8*sin(tau*2*t)"
+        },
+        "near_arm_lower": {
+          "expr": "-30 + 8*sin(tau*2*t+0.5)"
+        },
+        "far_arm_upper": {
+          "expr": "-150 - 8*sin(tau*2*t)"
+        },
+        "far_arm_lower": {
+          "expr": "-20 - 8*sin(tau*2*t+0.5)"
+        },
+        "bone.near_arm_upper.z": {
+          "const": -10
+        },
+        "bone.near_arm_lower.z": {
+          "const": -10
+        },
+        "bone.near_hand.z": {
+          "const": -10
+        },
+        "near_leg": {
+          "expr": "-8*abs(sin(tau*t))"
+        },
+        "far_leg": {
+          "expr": "8*abs(sin(tau*t))"
+        },
+        "near_shin": {
+          "expr": "16*abs(sin(tau*t))"
+        },
+        "far_shin": {
+          "expr": "16*abs(sin(tau*t))"
+        },
+        "near_foot": {
+          "expr": "-((-8*abs(sin(tau*t))) + (16*abs(sin(tau*t))))"
+        },
+        "far_foot": {
+          "expr": "-((8*abs(sin(tau*t))) + (16*abs(sin(tau*t))))"
+        },
+        "eye_happy": {
+          "expr": "1 if (True) else 0"
+        },
+        "eye_open": {
+          "expr": "0 if ((True)) else 1"
+        }
+      }
+    },
+    "hit": {
+      "loop": false,
+      "frames": 5,
+      "duration_ms": 90,
+      "channels": {
+        "root_x": {
+          "expr": "-6*(1-t)*(1-t)"
+        },
+        "torso": {
+          "expr": "-16*(1-t)*(1-t)"
+        },
+        "head": {
+          "expr": "-14*(1-t)*(1-t)"
+        },
+        "near_arm_upper": {
+          "expr": "-40*(1-t)*(1-t)"
+        },
+        "far_arm_upper": {
+          "expr": "40*(1-t)*(1-t)"
+        },
+        "near_arm_lower": {
+          "expr": "-30*(1-t)*(1-t)"
+        },
+        "far_arm_lower": {
+          "expr": "-20*(1-t)*(1-t)"
+        },
+        "near_leg": {
+          "expr": "-12*(1-t)*(1-t)"
+        },
+        "far_leg": {
+          "expr": "10*(1-t)*(1-t)"
+        },
+        "near_shin": {
+          "expr": "0"
+        },
+        "far_shin": {
+          "expr": "8*(1-t)*(1-t)"
+        },
+        "near_foot": {
+          "expr": "-((-12*(1-t)*(1-t)) + (0))"
+        },
+        "far_foot": {
+          "expr": "-((10*(1-t)*(1-t)) + (8*(1-t)*(1-t)))"
+        },
+        "eye_hurt": {
+          "expr": "1 if (True) else 0"
+        },
+        "eye_open": {
+          "expr": "0 if ((True)) else 1"
+        }
+      }
+    },
+    "death": {
+      "loop": false,
+      "frames": 8,
+      "duration_ms": 110,
+      "channels": {
+        "body": {
+          "expr": "-84*(t*t*(3-2*t))"
+        },
+        "root_x": {
+          "expr": "-10*(t*t*(3-2*t))"
+        },
+        "root_y": {
+          "expr": "6*(t*t*(3-2*t)) - 6*sin(3.14159*t)"
+        },
+        "head": {
+          "expr": "6*(t*t*(3-2*t))"
+        },
+        "near_arm_upper": {
+          "expr": "-30*(t*t*(3-2*t))"
+        },
+        "far_arm_upper": {
+          "expr": "-20*(t*t*(3-2*t))"
+        },
+        "near_arm_lower": {
+          "expr": "-10*(t*t*(3-2*t))"
+        },
+        "near_leg": {
+          "expr": "(84 - 18)*(t*t*(3-2*t))"
+        },
+        "far_leg": {
+          "expr": "(84 - 6)*(t*t*(3-2*t))"
+        },
+        "near_shin": {
+          "expr": "-24*(t*t*(3-2*t))"
+        },
+        "far_shin": {
+          "expr": "-10*(t*t*(3-2*t))"
+        },
+        "near_foot": {
+          "expr": "-(((84 - 18)*(t*t*(3-2*t))) + (-24*(t*t*(3-2*t))))"
+        },
+        "far_foot": {
+          "expr": "-(((84 - 6)*(t*t*(3-2*t))) + (-10*(t*t*(3-2*t))))"
+        },
+        "eye_hurt": {
+          "expr": "1 if (t < 0.5) else 0"
+        },
+        "eye_dead": {
+          "expr": "1 if (t >= 0.5) else 0"
+        },
+        "eye_open": {
+          "expr": "0 if ((t < 0.5) or (t >= 0.5)) else 1"
+        }
+      }
+    }
+  }
+}
