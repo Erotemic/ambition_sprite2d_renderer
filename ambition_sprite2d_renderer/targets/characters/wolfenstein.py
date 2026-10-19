@@ -34,7 +34,7 @@ from __future__ import annotations
 import math
 from typing import List
 
-from typing import Tuple
+from typing import Optional, Tuple
 
 from ._ai_era_kit import OUTLINE, WHITE, RGBA, Kit, Point, ease, lerp, mix, turned
 from . import _evil_faction as F
@@ -130,6 +130,12 @@ SLASH: RGBA = (255, 236, 232, 255)
 SLASH_DARK: RGBA = (226, 70, 86, 255)
 DUST: RGBA = (196, 186, 170, 255)
 DUST_DARK: RGBA = (122, 112, 102, 255)
+#: The serum: an acid green that glows, and its glass.
+SERUM: RGBA = (132, 236, 64, 255)
+SERUM_DARK: RGBA = (52, 150, 40, 255)
+SERUM_CORE: RGBA = (226, 255, 186, 255)
+GLASS: RGBA = (214, 234, 236, 255)
+GLASS_DARK: RGBA = (124, 150, 158, 255)
 
 #: About 240 cm. ``height`` is the top of his skull as he stands, hunched
 #: (measured from the idle row); his ears lie back a little over it. A huge
@@ -145,10 +151,10 @@ BUILD = Build(hip_up=64.0, thigh=32.0, shin=31.0, neck=(2.0, -54.0), upper=31.0,
 #
 # He is published at the game's texel density (Jon, 2026-10-17: "make the
 # final render of this boss slightly higher res"; "several characters are
-# more blury than I want them to be"): his body box stands 100 units in the
-# fight (his boss body; the hall's catalog row is 93), so the sheet's frame
-# follows from it and is larger than his 320-pixel lengths.
-X = Person(TARGET_NAME, BUILD, frame=(320, 320), ground=240.0, cx=150.0, world_height=100.0)
+# more blury than I want them to be"): his body box stands 140 units in the
+# fight (84 x 140, his boss body), so the sheet's frame follows from it and is
+# larger than his 320-pixel lengths.
+X = Person(TARGET_NAME, BUILD, frame=(320, 320), ground=240.0, cx=150.0, world_height=140.0)
 K = X.K
 P = X.P
 #: His head is a fifth larger than the body's lines would draw it: a kit of
@@ -325,30 +331,41 @@ def _finger(base: Point, l1: float, l2: float, a1: float, a2: float) -> Tuple[Po
     return k, t, t, a2
 
 
+def _hand_bones(mode: str, near: bool):
+    """The fingers of a hand in ``mode`` (each: its base, knuckle, tip and
+    the way its tip points, index first) and its thumb (base, knuckle, tip,
+    way), in hand units from the wrist.
+
+    Facing canvas-right, his NEAR hand is his right hand and the far one his
+    left (Jon: "character-right is not canvas-right, in fact in this case it
+    is canvas-left"). The near hand is the far one with its fingers' order
+    and its thumb mirrored across the hand's length, so its back is to the
+    camera and not its palm; its fingers still curl the same way, toward
+    +y (Jon, 2026-10-18: mirroring the curl too drew it upside down)."""
+    spread, bends, (thumb_a, thumb_b), _claws_out = HAND_POSES.get(mode, HAND_POSES["soft"])
+    m = -1.0 if near else 1.0
+    fingers = []
+    for (base, l1, l2), sp, (b1, b2) in zip(FINGERS, spread, bends):
+        base = (base[0], base[1] * m)
+        a1 = sp * m + b1
+        knuckle, tip, _, a2 = _finger(base, l1, l2, a1, a1 + b2)
+        fingers.append((base, knuckle, tip, a2))
+    thumb_base = (3.6, -5.4 * m)
+    # The thumb turns out to its side and bends back across the palm.
+    ta1 = thumb_a * m
+    tk, tt, _, ta = _finger(thumb_base, 4.6, 4.0, ta1, ta1 + thumb_b * m)
+    return fingers, (thumb_base, tk, tt, ta)
+
+
 def _hand(mode: str, near: bool):
     """A big hand along +x from its wrist at ``home``: a heavy palm, four
     fingers with knuckles and claws, a thumb, and a seam sewn across its
     back. ``near`` is his right hand; the far one is his left."""
     mode = mode if mode in HAND_POSES else "soft"
-    # Facing canvas-right, his NEAR hand is his right hand and the far one his
-    # left (Jon: "character-right is not canvas-right, in fact in this case it
-    # is canvas-left"). The hand is drawn as a left hand; the near one is that
-    # drawing mirrored across its own length, so its back is to the camera
-    # and not its palm.
-    m = -1.0 if near else 1.0
-
-    def hp(x: float, y: float) -> Point:
-        return _h(x, y * m)
-
-    spread, bends, (thumb_a, thumb_b), claws_out = HAND_POSES[mode]
+    hp = _h
+    claws_out = HAND_POSES[mode][3]
     skin = SKIN if near else SKIN_SHADE
-    fingers = []
-    for (base, l1, l2), sp, (b1, b2) in zip(FINGERS, spread, bends):
-        a1 = sp + b1
-        knuckle, tip, _, a2 = _finger(base, l1, l2, a1, a1 + b2)
-        fingers.append((base, knuckle, tip, a2))
-    thumb_base = (3.6, -5.4)
-    tk, tt, _, ta = _finger(thumb_base, 4.6, 4.0, thumb_a, thumb_a + thumb_b)
+    fingers, (thumb_base, tk, tt, ta) = _hand_bones(mode, near)
 
     def claw(tip: Point, a: float, reach: float) -> List[Point]:
         ux, uy = math.cos(math.radians(a)), math.sin(math.radians(a))
@@ -429,10 +446,13 @@ def _jaw_points(open_: float) -> List[Point]:
     return [(HINGE[0] + p[0], HINGE[1] + p[1]) for p in (turned((x - HINGE[0], y - HINGE[1]), open_) for x, y in pts)]
 
 
-def _jaw(open_: float):
+def _jaw(open_: float, loll: bool = False):
     """His mouth, open ``open_`` degrees: its inside, his tongue, his lower
-    jaw and its teeth. It is under his head."""
+    jaw and its teeth. It is under his head. ``loll``: he is dead or out, and
+    his tongue hangs out over his teeth."""
     jaw = _jaw_points(open_)
+    # The tongue out of the side of his mouth, hanging down over the jaw.
+    tongue = [(10.0, 9.0), (15.0, 9.4), (17.4, 12.0), (17.0, 16.6), (15.0, 18.4), (13.0, 17.0), (12.6, 13.0), (9.0, 11.0)]
 
     def at(p: Point) -> Point:
         return KH.at(*p)
@@ -455,6 +475,8 @@ def _jaw(open_: float):
         KH.poly(d, [at(p) for p in jaw], WHITE)
         for tooth in teeth:
             KH.poly(d, [at(p) for p in tooth], WHITE)
+        if loll:
+            KH.poly(d, [at(p) for p in tongue], WHITE)
 
     def detail(d) -> None:
         KH.poly(d, [at(p) for p in [HINGE] + UPPER_LIP[1:] + [jaw[1], jaw[0]]], MOUTH)
@@ -466,8 +488,11 @@ def _jaw(open_: float):
         KH.poly(d, [at(jaw[5]), at(jaw[4]), at(jaw[3]), at((jaw[3][0] - 3.0, jaw[3][1] - 1.0)), at((jaw[5][0] + 2.0, jaw[5][1] - 1.0))], FUR_LIGHT)
         for tooth in teeth:
             KH.poly(d, [at(p) for p in tooth], TOOTH)
+        if loll:
+            KH.poly(d, [at(p) for p in tongue], TONGUE)
+            KH.line(d, [at((14.4, 11.0)), at((14.8, 16.0))], (176, 70, 84, 255), 0.6)
 
-    return KH.solid(("jaw", round(open_, 1)), shape, FUR, detail, outline=1.3, rim=0.2, shade=0.3, shade_colour=FUR_DEEP)
+    return KH.solid(("jaw", round(open_, 1), loll), shape, FUR, detail, outline=1.3, rim=0.2, shade=0.3, shade_colour=FUR_DEEP)
 
 
 def _skull():
@@ -565,6 +590,24 @@ def _eyes(mode: str, look: Point = (0.0, 0.0)):
             if mode == "wince":
                 KH.line(d, [(c[0] - rx, c[1] - 1.8), (c[0] + rx * 0.5, c[1]), (c[0] - rx, c[1] + 1.8)], OUTLINE, 1.0)
                 continue
+            if mode == "glazed":
+                # Dead and open: the lid half down over a dull eye that
+                # looks at nothing.
+                KH.oval(d, c, rx + 0.6, ry + 0.6, OUTLINE)
+                KH.oval(d, c, rx, ry, (214, 212, 200, 255))
+                KH.oval(d, (c[0] + 0.4, c[1] + ry * 0.45), rx * 0.24, rx * 0.2, (120, 116, 104, 255))
+                KH.poly(d, [(c[0] - rx - 1.0, c[1] - ry - 1.0), (c[0] + rx + 1.0, c[1] - ry - 1.0), (c[0] + rx + 1.0, c[1] + ry * 0.1),
+                           (c[0] - rx - 1.0, c[1] + ry * 0.2)], FUR_DARK)
+                KH.line(d, [(c[0] - rx - 0.6, c[1] + ry * 0.2), (c[0] + rx + 0.6, c[1] + ry * 0.1)], OUTLINE, 0.9)
+                continue
+            if mode in ("lit", "lit_green"):
+                # Lit by the charge in him: the eye is all light, with no
+                # pupil in it (blue from the coils, green from the serum).
+                glow, core = (ARC_GLOW, ARC_CORE) if mode == "lit" else (SERUM, SERUM_CORE)
+                KH.oval(d, c, rx + 0.6, ry + 0.6, OUTLINE)
+                KH.oval(d, c, rx, ry, glow)
+                KH.oval(d, (c[0] + 0.3, c[1] + 0.2), rx * 0.62, ry * 0.62, core)
+                continue
             wide = 0.7 if mode == "pin" else 0.0
             KH.oval(d, c, rx + 0.6 + wide, ry + 0.6 + wide, OUTLINE)
             KH.oval(d, c, rx + wide, ry + wide, EYE_WHITE)
@@ -652,14 +695,14 @@ X.layers["over_torso"].append(_neck_bolts)
 
 
 def _open(mouth: str) -> float:
-    return {"gape": 48.0, "big": 34.0, "open": 18.0, "o": 12.0, "grit": 1.0}.get(mouth, 5.0)
+    return {"gape": 48.0, "big": 34.0, "open": 18.0, "loll": 16.0, "o": 12.0, "grit": 1.0}.get(mouth, 5.0)
 
 
 def _head_layers(pose):
     ears = float(pose["ears"])  # type: ignore[arg-type]
     look = pose["look"]
     # The far ear lags its pair a little: two ears are not one.
-    return [(_ear(False, ears * 0.85), "far_ear"), (_jaw(_open(str(pose["mouth"]))), "jaw"), (_skull(), "skull"), (_ear(True, ears), "near_ear"),
+    return [(_ear(False, ears * 0.85), "far_ear"), (_jaw(_open(str(pose["mouth"])), str(pose["mouth"]) == "loll"), "jaw"), (_skull(), "skull"), (_ear(True, ears), "near_ear"),
             (_eyes(str(pose["eyes"]), look), "eyes"),  # type: ignore[arg-type]
             (_brows(R.brow_mood(pose)), "brows"), (_seam(), "seam")]
 
@@ -1174,6 +1217,511 @@ def shock(i: int, n: int):
     return dict(pose, rot=jitter(i, 6.0), hip=(jitter(i, 2.0, 1.0), -2.0 + jitter(i, 1.0, 2.0)), ears=12.0 + jitter(i, 10.0, 3.0))
 
 
+# ---- The story: the throne, the serum, the end ---------------------------------
+#
+# These rows tell his story, not his fight: he wakes dead on his throne, he
+# drinks the serum when the leash breaks, and he dies. Three pose keys are his
+# own: ``syringe`` (what the serum's glass is doing in his near hand, and
+# ``syr_turn``, how far it is turned in his fist from straight across it), ``veins``
+# (0 to 1: how far the green light has climbed in him) and ``tear`` (0 to 1:
+# how far his coat has burst).
+
+X.set_rest(syringe="", syr_turn=0.0, veins=0.0, tear=0.0)
+
+#: Where his hips are when he sits (from where they stand): down at the
+#: seat, the thighs out in front level, the shins hanging straight down. His soles are on the frame's
+#: ground line: the game lifts all of him onto the throne's seat. Measured
+#: on ``throne_dead`` (2026-10-18), in world units of his 140-unit body: the
+#: underside of his seat is 18 over his feet line, and his hip joint is 30.5
+#: over it and 6 behind his feet anchor. The iron throne's cushion
+#: (``castle_iron_throne``) is 84 over its base.
+SEAT_HIP = (-4.0, 16.2)
+#: Dead in his seat: slumped into his chest, his head hung down, his jaw
+#: slack and his tongue out, his eyes open and dull. His near arm hangs off
+#: the seat; his far hand hangs over his knee. His boots hang, toes down.
+DEAD_SEAT = P(hip=SEAT_HIP, leg="over", lean=17.0, sq=0.96, shrug=(2.0, 5.0), head=(2.0, 11.0, 58.0), na=(-9.0, 29.0), fa=(12.0, 23.0), nh="limp",
+              fh="limp", nf=(12.0, 0.0, 14.0), ff=(20.0, 0.0, 10.0), mouth="loll", eyes="glazed", ears=-36.0, brows=1.0, hem=(1.0, 0.0), charge=0.0)
+#: The armrests, for his hands: this many units over his soles (his wrists
+#: are then about 41 world units over his feet line; the throne's armrests
+#: are 20 over its cushion, 38 over his feet line).
+ARMREST_UP = 22.0
+
+
+@X.row
+def throne_dead(i: int, n: int):
+    # Dead on the throne, quite still. Once, a finger twitches and one ear
+    # flicks with what is left in the bolts.
+    pose = dict(DEAD_SEAT)
+    if i == n // 2 + 1:
+        pose = dict(pose, fh="soft", ears=-32.0)
+    elif i == n // 2 + 2:
+        pose = dict(pose, ears=-34.0)
+    return pose
+
+
+#: The first jolt: still in his seat, his back arched off it, his head
+#: thrown back, his arms flung out and his boots kicked up.
+JOLT = P(hip=(-4.0, 15.0), leg="over", lean=-12.0, sq=1.06, shrug=(-1.0, -4.0), head=(0.0, -1.0, -30.0), na=(-16.0, 14.0), nab=-1.0, fa=(28.0, -4.0), fab=-1.0,
+         nh="splay", fh="splay", nf=(12.0, -6.0, -20.0), ff=(20.0, -8.0, -24.0), mouth="gape", eyes="roll", ears=14.0, brows=1.0, hem=(2.0, 2.0),
+         charge=2.0)
+#: Between the jolts: he drops back into the slump, but not all the way.
+SAG = dict(X.blend(DEAD_SEAT, JOLT, 0.3), eyes="wince", mouth="big", charge=1.0)
+#: Alive: he takes hold of the armrests, sitting forward, his eyes lit.
+GRIP = planted(P(hip=SEAT_HIP, leg="over", lean=22.0, sq=0.98, shrug=(1.0, 1.0), head=(2.0, 1.0, -8.0), na=(2.0, 30.0), fa=(10.0, 30.0), nh="grip", fh="grip",
+                 nf=(6.0, 0.0, 0.0), ff=(13.0, 0.0, 0.0), mouth="grit", eyes="lit", ears=-20.0, brows=-1.0, hem=(1.0, 0.0), charge=2.0),
+               ARMREST_UP, ARMREST_UP)
+#: Pushing up off them: his hips up and forward over his feet, his feet drawn
+#: back under him, his arms straight under his weight.
+PUSH = planted(P(hip=(-1.0, 8.0), lean=34.0, sq=0.97, shrug=(1.0, -1.0), head=(3.0, 1.0, -18.0), na=(4.0, 30.0), fa=(12.0, 30.0), nh="grip", fh="grip",
+                 nf=(-3.0, 0.0, 0.0), ff=(8.0, 0.0, 0.0), mouth="big", eyes="lit", ears=-24.0, brows=-1.0, hem=(2.0, 1.0), charge=1.0),
+               ARMREST_UP, ARMREST_UP)
+#: Up: standing tall for a breath, his chest up, his hands off the armrests.
+RISEN = P(hip=(0.0, 1.0), lean=6.0, sq=1.04, shrug=(-1.0, -3.0), head=(1.0, -0.6, -10.0), na=(6.0, 27.0), fa=(10.0, 26.0), nh="claw", fh="claw",
+          nf=(-6.0, 0.0, 0.0), ff=(7.0, 0.0, 0.0), mouth="open", eyes="pin", ears=8.0, brows=-1.0, hem=(1.0, 3.0), charge=1.0)
+
+
+@X.row
+def throne_wake(i: int, n: int):
+    # The coils strike his bolts from both sides. He jolts in his seat, twice,
+    # and his eyes light. He takes hold of the armrests and pushes himself up
+    # off the throne, and stands as he stands in ``idle``.
+    end = X.full(X.poses["idle"](0, 16))
+    pose = keyed(i, n, [(0.0, DEAD_SEAT), (0.1, DEAD_SEAT, "hold"), (0.18, JOLT, "snap"), (0.28, SAG, "out"), (0.36, dict(JOLT, eyes="lit"), "snap"),
+                        (0.48, GRIP, "out"), (0.58, GRIP, "hold"), (0.72, PUSH, "io"), (0.84, RISEN, "out"), (1.0, end, "io")], drag=HEAVY)
+    u = shot(i, n)
+    if 0.12 < u < 0.48:
+        # The current shakes him.
+        pose = dict(pose, rot=jitter(i, 3.0), hip=(pose["hip"][0] + jitter(i, 0.8, 1.0), pose["hip"][1]),
+                    ears=float(pose["ears"]) + jitter(i, 10.0, 2.0))
+    if i == n - 1:
+        pose = end
+    return pose
+
+
+# ---- The serum -----------------------------------------------------------------
+#
+# When the leash breaks he takes the serum: a big glass syringe of glowing
+# green, out of his coat, into his neck between the bolts. The syringe is a
+# part of these rows, not a held item: it is used up in them.
+
+#: The syringe, along its own length from the middle of his fist: the end of
+#: the plunger, the finger grip, the barrel, the needle's tip. His fist is
+#: round the back of the barrel, so the serum shows in front of it.
+SYR_PLUNGER = -18.0
+#: It is big (his hands are): this many pixels to each unit of it.
+SYR_SIZE = 1.5
+SYR_GRIP = -5.0
+SYR_BARREL = (-4.0, 24.0)
+SYR_TIP = 40.0
+#: The middle of the fist is this far down the forearm from the wrist.
+SYR_PALM = 7.0
+#: How deep the needle goes into his neck, in pixels.
+SYR_DEPTH = 12.0
+
+
+def _syringe_axis(pose) -> Tuple[Point, Point]:
+    """The middle of his near fist and the way his syringe's needle points
+    in ``pose``: across the fist, out of its thumb side (he holds it like a
+    knife)."""
+    pose = X.full(pose)
+    _sh, el, wr = X.arm_joints(pose, True)
+    length = math.dist(el, wr) or 1.0
+    fx, fy = (wr[0] - el[0]) / length, (wr[1] - el[1]) / length
+    # The near hand's thumb is on this side (``_hand_bones``).
+    way = turned((-fy, fx), float(pose["syr_turn"]))
+    return (wr[0] + fx * SYR_PALM, wr[1] + fy * SYR_PALM), way
+
+
+def _neck_point(pose) -> Point:
+    """Where his bolts are in ``pose`` (frame pixels), as ``render_frame``
+    and ``_neck_bolts`` put them: the middle of his neck."""
+    pose = X.full(pose)
+    b, U = BUILD, X.U
+    rot, lean, sq = float(pose["rot"]), float(pose["lean"]), float(pose["sq"])
+    hx, hy = pose["hip"]
+    ox, oy = pose["off"]
+    hip = (hx * U, -b.hip_up + hy * U)
+    pivot = (hip[0] + pose["pivot"][0] * U, hip[1] + pose["pivot"][1] * U)
+
+    def W(p: Point) -> Point:
+        r = turned((p[0] - pivot[0], p[1] - pivot[1]), rot)
+        return (X.cx + ox * U + pivot[0] + r[0], X.ground + oy * U + pivot[1] + r[1])
+
+    r = turned((b.neck[0], b.neck[1] * sq), lean)
+    neck_local = (hip[0] + r[0], hip[1] + r[1])
+    hdx, hdy, tilt = pose["head"]
+    up = turned(b.head_up, lean * 0.5 + tilt * 0.3)
+    head = W((neck_local[0] + up[0] + hdx * U, neck_local[1] + up[1] + hdy * U))
+    neck = W(neck_local)
+    top = turned(b.throat, lean * 0.35 + tilt + rot)
+    top = (head[0] + top[0], head[1] + top[1])
+    return (lerp(neck[0], top[0], 0.55), lerp(neck[1], top[1], 0.55))
+
+
+def stabbed(pose, depth: float, aim: float):
+    """``pose`` with the syringe pointed ``aim`` degrees (in the frame: 0
+    is forward, 90 is down) and his near fist moved so the needle's tip is
+    ``depth`` pixels into his neck, between the bolts."""
+    pose = X.full(pose)
+    way = (math.cos(math.radians(aim)), math.sin(math.radians(aim)))
+    reach = SYR_TIP * SYR_SIZE - depth
+    for _ in range(60):
+        want = _neck_point(pose)
+        fist = (want[0] - way[0] * reach, want[1] - way[1] * reach)
+        mid, _w = _syringe_axis(dict(pose, syr_turn=0.0))
+        ex, ey = fist[0] - mid[0], fist[1] - mid[1]
+        if math.hypot(ex, ey) < 0.15:
+            break
+        na = pose["na"]
+        pose = dict(pose, na=(na[0] + 0.6 * ex / X.U, na[1] + 0.6 * ey / X.U))
+    return pointed(pose, aim)
+
+
+def pointed(pose, aim: float):
+    """``pose`` with the syringe turned in his fist so its needle points
+    ``aim`` degrees (in the frame: 0 is forward, -90 is up)."""
+    pose = X.full(pose)
+    _mid, across = _syringe_axis(dict(pose, syr_turn=0.0))
+    turn = aim - math.degrees(math.atan2(across[1], across[0]))
+    return dict(pose, syr_turn=(turn + 180.0) % 360.0 - 180.0)
+
+
+def _syringe(state: str, fill: float, push: float, hidden: float):
+    """The syringe across his fist, along +x, needle first. ``fill``: how
+    much serum is left (0 to 1); ``push``: how far the plunger is in (0 to
+    1); ``hidden``: how much of the needle is in his neck (pixels). It is
+    drawn under his arm, so his fist closes over its middle."""
+    fill = round(fill, 2)
+    push = round(push, 2)
+    hidden = round(hidden, 1)
+    S = SYR_SIZE
+    b0, b1 = SYR_BARREL
+    plunger = lerp(SYR_PLUNGER, SYR_GRIP - 3.0, push)
+    level = lerp(b1, b0 + 1.0, fill)
+    tip = SYR_TIP - hidden / S
+
+    def at(x: float, y: float) -> Point:
+        return K.at(x * S, y * S)
+
+    def bar(x0: float, x1: float, half: float, r: float, fill_: RGBA, line: Optional[float] = 0.6) -> None:
+        K.rrect(d_[0], at(x0, 0)[0], at(0, -half)[1], at(x1, 0)[0], at(0, half)[1], r * S, fill_, OUTLINE if line else None, line or 1.0)
+
+    d_ = [None]
+
+    def paint(d) -> None:
+        d_[0] = d
+        # The green glow round the serum: painted, a little wider than the
+        # glass.
+        if fill > 0.0:
+            bar(level - 1.2, b1 + 1.2, 5.4, 3.0, (150, 255, 90, 80), None)
+        # The plunger: its rod and the round press for the thumb.
+        bar(plunger, b0 + 2.0, 1.3, 0.6, GLASS_DARK)
+        bar(plunger - 1.6, plunger + 0.4, 4.6, 0.6, BOLT)
+        # The finger grip, a bar across the top of the barrel.
+        bar(SYR_GRIP - 0.8, SYR_GRIP + 1.0, 6.4, 0.6, BOLT)
+        # The barrel: glass, the serum in its lower end, a shine, the scale.
+        bar(b0, b1, 3.8, 1.0, GLASS, 0.7)
+        if fill > 0.0:
+            bar(level, b1 - 0.4, 3.0, 0.8, SERUM, None)
+            K.line(d, [at(level + 0.6, -1.4), at(b1 - 1.0, -1.4)], SERUM_CORE, 0.9 * S)
+        K.line(d, [at(b0 + 0.8, -2.6), at(b1 - 0.8, -2.6)], (255, 255, 255, 210), 0.6 * S)
+        for k in range(int(b0) + 3, int(b1) - 1, 3):
+            K.line(d, [at(k, 1.6), at(k, 3.0)], GLASS_DARK, 0.4 * S)
+        # The plunger's rubber, on the serum.
+        if fill < 1.0:
+            bar(level - 1.6, level, 3.2, 0.4, (40, 36, 40, 255), None)
+        # The hub and the needle.
+        bar(b1 - 0.4, b1 + 2.4, 1.8, 0.6, BOLT)
+        if tip > b1 + 2.4:
+            K.line(d, [at(b1 + 2.0, 0.0), at(tip, 0.0)], OUTLINE, 1.0 * S)
+            K.line(d, [at(b1 + 2.0, 0.0), at(tip - 0.2, 0.0)], (226, 230, 236, 255), 0.45 * S)
+
+    return K.piece(("syringe", state, fill, push, hidden), paint)
+
+
+def _shards(i: int, k: int, at: Point):
+    """The glass of the syringe flying out of his fist, ``k`` frames after
+    it broke: shards, and drops of serum."""
+
+    def rnd(j: int) -> float:
+        return math.sin(j * 37.17 + 1.3) * 0.5 + 0.5
+
+    def paint(d) -> None:
+        reach = 9.0 + 12.0 * k
+        for j in range(9):
+            a = math.tau * j / 9.0 + rnd(j) * 0.6
+            r = reach * (0.6 + 0.6 * rnd(j + 10))
+            c = K.at(math.cos(a) * r, math.sin(a) * r + 1.6 * k * k)
+            s = 4.4 - 0.8 * k
+            pts = [(c[0] + math.cos(a + q) * s * (1.4 if q == 0 else 0.7), c[1] + math.sin(a + q) * s * (1.4 if q == 0 else 0.7)) for q in (0.0, 2.2, 3.9)]
+            K.poly(d, pts, GLASS, OUTLINE, 0.5)
+        for j in range(7):
+            a = math.tau * j / 7.0 + 0.4 + rnd(j + 20)
+            r = reach * (0.4 + 0.5 * rnd(j + 30))
+            c = K.at(math.cos(a) * r, math.sin(a) * r + 2.4 * k * k)
+            K.oval(d, c, 2.8 - 0.5 * k, 2.8 - 0.5 * k, SERUM_DARK)
+            K.oval(d, (c[0] - 0.4, c[1] - 0.4), 1.9 - 0.4 * k, 1.9 - 0.4 * k, SERUM)
+
+    return K.piece(("shards", i, k), paint)
+
+
+def _glass_stamps(ctx) -> List[Stamp]:
+    """The glass of the syringe flying out of his fist when it breaks."""
+    state = str(ctx.pose["syringe"])
+    if not state.startswith("shatter"):
+        return []
+    mid, _way = _syringe_axis(ctx.pose)
+    return [(_shards(ctx.i, int(state[-1]), mid), R.pin(mid), "serum_glass", 0.0)]
+
+
+def _syringe_stamps(ctx) -> List[Stamp]:
+    """The syringe in his near fist: under his arm, over his trunk."""
+    state = str(ctx.pose["syringe"])
+    if not state or state.startswith("shatter"):
+        return []
+    mid, way = _syringe_axis(ctx.pose)
+    # "full", "in:<fill>:<push>": a state is a word, so it changes at the
+    # middle of a blend; the numbers are in it.
+    fill, push, hidden = 1.0, 0.0, 0.0
+    if state.startswith("in"):
+        _w, f, p_ = state.split(":")
+        fill, push, hidden = float(f), float(p_), SYR_DEPTH
+    return [(_syringe(state, fill, push, hidden), mid, "syringe", math.degrees(math.atan2(way[1], way[0])))]
+
+
+X.layers["over_torso"].append(_syringe_stamps)
+X.layers["front"].append(_glass_stamps)
+
+
+def _drawn(pts: List[Point], t: float) -> List[Point]:
+    """The first ``t`` of the polyline ``pts``."""
+    if t >= 1.0:
+        return pts
+    total = sum(math.dist(a, b) for a, b in zip(pts, pts[1:]))
+    left = total * max(0.0, t)
+    out = [pts[0]]
+    for a, b in zip(pts, pts[1:]):
+        step = math.dist(a, b)
+        if step >= left:
+            f = left / step if step else 0.0
+            out.append((lerp(a[0], b[0], f), lerp(a[1], b[1], f)))
+            return out
+        out.append(b)
+        left -= step
+    return out
+
+
+def _glowing(key: tuple, lines: List[List[Point]], width: float, glow: RGBA, core: RGBA) -> Tuple[object, Point]:
+    """Lines of light (frame points): a wide soft edge and a bright core, no
+    dark outline. Returns the piece and where it goes (unturned)."""
+    lines = [ln for ln in lines if len(ln) > 1]
+    if not lines:
+        return None, (0.0, 0.0)
+    o = R.pin(lines[0][0])
+    rel = tuple(tuple((round(x - o[0], 1), round(y - o[1], 1)) for x, y in ln) for ln in lines)
+
+    def paint(d) -> None:
+        for wide, colour in ((True, glow), (False, core)):
+            for ln in rel:
+                K.stroke(d, [K.at(*p) for p in ln], colour, width * (2.6 if wide else 0.8))
+
+    return K.piece(("glowing", key, rel, width), paint), o
+
+
+#: The serum's veins on his chest, in torso pixels (as ``_coat`` draws), from
+#: the neck down; and when on the way up each starts and is all there.
+CHEST_VEINS = [([(4.0, -52.0), (5.4, -46.0), (3.4, -40.0), (5.0, -33.0), (2.4, -26.0)], 0.2, 0.55),
+               ([(5.4, -46.0), (9.0, -42.0), (12.4, -36.0), (11.0, -30.0)], 0.3, 0.6),
+               ([(5.0, -33.0), (8.6, -27.0), (7.0, -20.0), (9.4, -13.0), (7.6, -6.0)], 0.4, 0.75),
+               ([(2.4, -26.0), (1.6, -18.0), (3.0, -10.0)], 0.5, 0.8)]
+
+
+def _vein_stamps(ctx) -> List[Stamp]:
+    """The green light of the serum in his veins: up his neck from the
+    needle, over his chest, and down his near arm. ``veins`` (0 to 1) is how
+    far it has gone; past 1 it pulses brighter."""
+    level = float(ctx.pose["veins"])
+    if level <= 0.0:
+        return []
+    bolt = _bolt_point(ctx)
+    lines = []
+    # Up his neck and down into his chest from where the needle went in.
+    t = min(1.0, level / 0.3)
+    lines.append(_drawn([bolt, (bolt[0] + 3.0, bolt[1] - 6.0), (bolt[0] + 1.0, bolt[1] - 11.0)], t))
+    lines.append(_drawn([bolt, (bolt[0] - 4.0, bolt[1] - 5.0), (bolt[0] - 3.0, bolt[1] - 10.0)], t))
+    lines.append(_drawn([bolt, (bolt[0] + 1.0, bolt[1] + 6.0), ctx.trunk(4.0, -52.0)], t))
+    for pts, a, b in CHEST_VEINS:
+        f = (level - a) / (b - a)
+        if f > 0.0:
+            lines.append(_drawn([ctx.trunk(x, y) for x, y in pts], f))
+    width = 1.0 + 0.5 * max(0.0, min(1.0, level - 1.0))
+    piece, at = _glowing(("veins", ctx.anim, ctx.i), lines, width, (120, 240, 70, 110), SERUM_CORE)
+    return [(piece, at, "serum_veins", 0.0)] if piece is not None else []
+
+
+def _arm_vein_stamps(ctx) -> List[Stamp]:
+    """The light down his near forearm, to his hand."""
+    level = float(ctx.pose["veins"])
+    f = (level - 0.6) / 0.4
+    if f <= 0.0:
+        return []
+    el, wr = ctx.elbow, ctx.hand
+    length = math.dist(el, wr) or 1.0
+    nx, ny = -(wr[1] - el[1]) / length, (wr[0] - el[0]) / length
+    pts = [(lerp(el[0], wr[0], t) + nx * s, lerp(el[1], wr[1], t) + ny * s) for t, s in ((0.6, 0.0), (0.72, 2.2), (0.84, -0.6), (0.96, 1.6))]
+    piece, at = _glowing(("arm_veins", ctx.anim, ctx.i), [_drawn(pts, f)], 1.0, (120, 240, 70, 110), SERUM_CORE)
+    return [(piece, at, "serum_arm_veins", 0.0)] if piece is not None else []
+
+
+def _coat_tears(ctx) -> List[Stamp]:
+    """Where his coat bursts as he swells (``tear``, 0 to 1): the front of
+    it tears open to its far edge over his chest, and the back seam splits
+    up from the hem. His green skin shows through, with its stitches."""
+    tear = float(ctx.pose["tear"])
+    if tear <= 0.0:
+        return []
+    T = ctx.trunk
+    # The front: torn from the old opening out to the coat's edge.
+    edge = lerp(18.0, 23.0, tear)
+    front = [(15.0, -50.0), (edge, -48.0), (edge + 0.4, lerp(-40.0, -26.0, tear)), (lerp(17.0, 19.0, tear), lerp(-34.0, -18.0, tear)), (16.0, -30.0)]
+    front_rag = [(edge, -48.0), (edge - 2.0, -44.0), (edge + 0.4, lerp(-40.0, -26.0, tear)), (lerp(17.0, 19.0, tear), lerp(-34.0, -18.0, tear))]
+    # The back: split up from the hem, longer as he swells.
+    top = lerp(-6.0, -34.0, tear)
+    back = [(-21.0, 13.0), (-17.4, 13.0), (-18.6, lerp(4.0, -14.0, tear)), (-17.0, top + 6.0), (-19.4, top), (-21.4, top + 8.0), (-20.4, lerp(4.0, -14.0, tear))]
+    seam = [(-19.2, 11.0), (-19.0, top + 5.0)]
+    pts = [[T(x, y) for x, y in poly] for poly in (front, front_rag, back, seam)]
+    o = R.pin(pts[0][0])
+    rel = [tuple((round(x - o[0], 1), round(y - o[1], 1)) for x, y in poly) for poly in pts]
+
+    def paint(d) -> None:
+        K.poly(d, [K.at(*q) for q in rel[0]], SKIN_SHADE, COAT_DARK, 1.2)
+        K.poly(d, [K.at(*q) for q in rel[2]], SKIN_SHADE, COAT_DARK, 1.2)
+        K.line(d, [K.at(*q) for q in rel[1]], COAT_DARK, 1.1)
+        stitches(d, [K.at(*q) for q in rel[3]], tick=1.0, every=2.6, width=0.45)
+        # A few threads across each tear.
+        for poly in (rel[0], rel[2]):
+            (ax, ay), (bx, by) = poly[1], poly[-1]
+            for t in (0.3, 0.6):
+                K.line(d, [K.at(lerp(poly[0][0], ax, t), lerp(poly[0][1], ay, t)), K.at(lerp(bx, poly[0][0], t) + 1.0, lerp(by, poly[0][1], t))],
+                       COAT_DARK, 0.5)
+
+    out: List[Stamp] = [(K.piece(("coat_tears", tuple(rel)), paint), o, "coat_tears", 0.0)]
+    return out
+
+
+def _shoulder_burst(ctx) -> List[Stamp]:
+    """When he swells past half way, the top of his near sleeve bursts too."""
+    tear = float(ctx.pose["tear"])
+    if tear < 0.4 or ctx.pose["arm"] == "under":
+        return []
+    sh, el = ctx.shoulder, ctx.elbow
+    big = round(min(1.0, (tear - 0.4) / 0.4), 1)
+
+    def rip(d) -> None:
+        edge = [(-7.0, 0.0), (-3.0, -3.4), (2.0, -2.0), (6.0 + 2.0 * big, -3.6), (9.0 + 2.0 * big, 0.0), (5.0, 3.0), (0.0, 2.4), (-4.0, 3.4)]
+        K.poly(d, [K.at(x * (1.0 + 0.3 * big), y * (1.0 + 0.3 * big)) for x, y in edge], SKIN_SHADE, OUTLINE, 0.6)
+        K.line(d, [K.at(-5.0, 0.6), K.at(7.0, -0.6)], SKIN_DEEP, 0.6)
+
+    at = (lerp(sh[0], el[0], 0.16), lerp(sh[1], el[1], 0.16))
+    return [(K.piece(("shoulder_burst", big), rip), at, "shoulder_burst", math.degrees(math.atan2(el[1] - sh[1], el[0] - sh[0])))]
+
+
+X.layers["over_torso"].extend([_coat_tears, _vein_stamps])
+X.layers["front"].append(_arm_vein_stamps)
+# Under the armband: the band stays whole over the burst sleeve.
+X.layers["front"].insert(X.layers["front"].index(_armband), _shoulder_burst)
+
+#: Hit by it: he staggers, bent over, and clutches at his chest.
+REEL = P(hip=(-4.0, 5.0), lean=24.0, sq=0.95, shrug=(1.0, 2.0), head=(3.0, 3.0, 18.0), na=(16.0, 10.0), fa=(18.0, 22.0), nh="claw", fh="splay",
+         nf=(-10.0, 0.0, 0.0), ff=(4.0, 0.0, 0.0), mouth="big", eyes="wince", ears=-26.0, brows=1.0, hem=(0.0, 3.0))
+#: His near hand inside his coat, on the far side of his chest.
+INSIDE = P(hip=(-3.0, 4.0), lean=16.0, sq=0.97, shrug=(1.0, 1.0), head=(2.0, 2.0, 22.0), na=(15.0, 4.0), fa=(14.0, 24.0), nh="fist", fh="claw",
+           nf=(-9.0, 0.0, 0.0), ff=(5.0, 0.0, 0.0), mouth="grit", eyes="pin", ears=-22.0, brows=-1.0, look=(0.6, 1.0), hem=(0.0, 2.0))
+#: Out: the syringe in his fist, held out in front of him; he looks at it.
+OUT = pointed(P(hip=(-2.0, 2.0), lean=8.0, shrug=(0.0, 0.0), head=(2.0, 1.0, 6.0), na=(31.0, -2.0), nab=-1.0, fa=(14.0, 24.0), nh="fist", fh="claw",
+        nf=(-8.0, 0.0, 0.0), ff=(6.0, 0.0, 0.0), mouth="open", eyes="pin", ears=-6.0, look=(1.0, 0.0), hem=(1.0, 3.0), syringe="full"), -45.0)
+# The syringe comes out of his coat already turned as he will hold it up.
+INSIDE = dict(INSIDE, syr_turn=OUT["syr_turn"])
+#: Raised high over his head, his chest up, his far fist low and clenched.
+RAISED = pointed(P(hip=(-1.0, 0.0), lean=-10.0, sq=1.05, shrug=(-1.0, -4.0), head=(0.0, -0.6, -22.0), na=(-4.0, -33.0), nab=-1.0, arm="under",
+           fa=(12.0, 26.0), nh="fist", fh="fist", nf=(-8.0, 0.0, 0.0), ff=(8.0, 0.0, 0.0), mouth="big", eyes="pin", ears=10.0, look=(0.4, -1.0),
+           hem=(1.0, 3.0), syringe="full"), -64.0)
+
+
+@X.row
+def serum_tell(i: int, n: int):
+    # He reels, reaches into his coat, pulls out the syringe of serum and
+    # holds it up high.
+    pose = keyed(i, n, [(0.0, X.full(P())), (0.18, REEL, "snap"), (0.42, INSIDE, "io"), (0.62, OUT, "out"), (0.86, RAISED, "out"), (1.0, RAISED)])
+    if shot(i, n) >= 0.86:
+        pose = dict(pose, na=(pose["na"][0] + jitter(i, 0.6), pose["na"][1] + jitter(i, 0.6, 2.0)))
+    return pose
+
+
+#: The stab: the fist down, the needle in his neck between the bolts, his
+#: head turned up and away from it.
+STAB = stabbed(P(hip=(-1.0, 3.0), lean=8.0, sq=0.98, shrug=(0.0, 0.0), head=(-1.0, -0.6, -34.0), na=(24.0, -4.0), nab=1.0, fa=(14.0, 26.0),
+                 nh="fist", fh="fist", nf=(-8.0, 0.0, 0.0), ff=(8.0, 0.0, 0.0), mouth="gape", eyes="wince", ears=-26.0, hem=(1.0, 2.0),
+                 syringe="in:1.0:0.0"), SYR_DEPTH, 205.0)
+
+
+#: The glass crushed in his fist, the fist pulled down from his neck.
+CRUSH = dict(STAB, na=(STAB["na"][0] + 5.0, STAB["na"][1] + 7.0), syr_turn=0.0, eyes="lit_green", mouth="gape", fh="splay", head=(-1.0, -0.6, -30.0),
+             ears=-10.0, veins=0.9)
+
+
+@X.row
+def serum_inject(i: int, n: int):
+    # He drives the needle into his neck and pushes the serum in; the light
+    # of it climbs his veins; he crushes the glass in his fist.
+    u = shot(i, n)
+    if u < 0.2:
+        pose = keyed(i, n, [(0.0, RAISED), (0.15, STAB, "snap"), (1.0, STAB)])
+        if u >= 0.15:
+            pose = dict(pose, veins=0.05)
+        return pose
+    if u < 0.75:
+        f = (u - 0.2) / 0.55
+        pose = dict(STAB, syringe=f"in:{1.0 - f:.2f}:{f:.2f}", veins=0.1 + 0.6 * f, eyes="wince" if f < 0.5 else "lit_green",
+                    sq=0.98 + 0.03 * f, shrug=(0.0, -2.0 * f), ears=-26.0 + 14.0 * f)
+        return dict(pose, hip=(pose["hip"][0] + jitter(i, 0.6), pose["hip"][1]), fh="splay" if f > 0.4 else "fist")
+    # The glass breaks in his fist.
+    k = 0 if u < 0.85 else 1
+    return dict(CRUSH, na=(CRUSH["na"][0] - 3.0 * (1 - k), CRUSH["na"][1] - 4.0 * (1 - k)), syringe=f"shatter{k}", veins=0.8 + 0.1 * k)
+
+
+#: The surge, frame by frame: thrown back by it, arched; curled up round it,
+#: swelling; up and flexed, the coat bursting; the breath, and the howl.
+ARCHED = P(hip=(-3.0, 2.0), lean=-18.0, sq=1.07, shrug=(-1.0, -4.0), head=(-2.0, -1.0, -36.0), na=(-12.0, 22.0), nab=-1.0, fa=(-4.0, 24.0), fab=-1.0,
+           nh="splay", fh="splay", nf=(-10.0, 0.0, 0.0), ff=(8.0, 0.0, -8.0), mouth="gape", eyes="lit_green", ears=10.0, hem=(2.0, 5.0), veins=1.0,
+           tear=0.2, charge=2.0)
+CURLED = P(hip=(-1.0, 10.0), lean=34.0, sq=0.9, shrug=(1.0, -3.0), head=(4.0, 3.0, -4.0), na=(14.0, 6.0), fa=(18.0, 8.0), nh="fist", fh="fist",
+           nf=(-12.0, 0.0, 0.0), ff=(10.0, 0.0, 0.0), mouth="grit", eyes="lit_green", ears=-30.0, brows=-1.0, hem=(3.0, 1.0), veins=1.2, tear=0.55,
+           charge=2.0)
+FLEXED = P(hip=(0.0, 3.0), lean=4.0, sq=1.06, shrug=(-1.0, -4.0), head=(1.0, 0.0, -14.0), na=(-16.0, -6.0), nab=-1.0, fa=(16.0, -8.0), fab=-1.0,
+           nh="fist", fh="fist", nf=(-11.0, 0.0, 0.0), ff=(11.0, 0.0, 0.0), mouth="big", eyes="lit_green", ears=-14.0, brows=-1.0, hem=(2.0, 4.0),
+           veins=1.4, tear=0.85, charge=2.0)
+SURGE_DRAW = dict(HOWL_DRAW, nf=(-10.0, 0.0, 0.0), ff=(10.0, 0.0, 0.0), eyes="closed", veins=1.2, tear=1.0, charge=2.0)
+SURGE_HOWL = dict(HOWL, head=(-3.0, -1.0, -66.0), na=(-16.0, 26.0), fa=(20.0, 25.0), nf=(-10.0, 0.0, 0.0), ff=(10.0, 0.0, 0.0), eyes="lit_green",
+                  sq=1.07, shrug=(-1.0, -4.0), veins=1.6, tear=1.0, charge=2.0, hem=(2.0, 4.0))
+
+
+@X.row
+def serum_surge(i: int, n: int):
+    # The serum takes him: he is thrown back, curls up round it, swells, his
+    # coat bursts, and he howls at the sky with the current all over him.
+    pose = keyed(i, n, [(0.0, dict(CRUSH, syringe="")), (0.1, ARCHED, "snap"), (0.26, CURLED, "io"),
+                        (0.44, FLEXED, "snap"), (0.56, SURGE_DRAW, "io"), (0.64, SURGE_HOWL, "snap"), (1.0, SURGE_HOWL)], drag=HEAVY)
+    u = shot(i, n)
+    if 0.05 < u < 0.5:
+        pose = dict(pose, rot=jitter(i, 2.4), hip=(pose["hip"][0] + jitter(i, 1.0, 1.0), pose["hip"][1]))
+    elif u >= 0.64:
+        _, s, c = loop(i, 4)
+        pose = dict(pose, hip=(jitter(i, 0.7), pose["hip"][1] + 0.4 * s), head=(-3.0 + jitter(i, 0.5, 2.0), -1.0, -66.0 + 3.0 * s),
+                    veins=1.6 + 0.4 * (i % 2))
+    return pose
+
+
 # ---- Hurt and dead -------------------------------------------------------------
 
 STRUCK = P(hip=(-5.0, 2.0), lean=-16.0, sq=0.96, head=(-3.0, -1.0, -24.0), na=(6.0, 24.0), fa=(16.0, 16.0), nh="splay", fh="splay", nf=(-8.0, 0.0, 0.0),
@@ -1185,25 +1733,84 @@ def hit(i: int, n: int):
     return keyed(i, n, [(0.0, X.full(P(mouth="o"))), (0.2, STRUCK, "snap"), (0.5, STRUCK, "hold"), (1.0, X.full(P(lean=7.0)), "back")])
 
 
-#: On his back, his boots up.
-SUPINE = P(rot=-90.0, hip=(-2.0, 25.5), off=(13.0, 0.0), head=(0.0, 0.0, 6.0), na=(8.0, 24.0), fa=(4.0, 22.0), nh="splay", fh="soft",
-           nf=(-4.5, 25.0, 0.0), ff=(4.5, 25.0, -10.0), eyes="dead", mouth="big", brows=0.0, lean=0.0, ears=-30.0)
+#: The charge going out of him: stiff, shaking, his hands splayed.
+SPUTTER = P(hip=(-2.0, 1.0), lean=-4.0, sq=1.03, shrug=(0.0, -2.0), head=(-1.0, 0.0, -16.0), na=(10.0, 20.0), fa=(18.0, 14.0), nh="splay", fh="splay",
+            nf=(-7.0, 0.0, 0.0), ff=(8.0, 0.0, 0.0), mouth="big", eyes="pin", ears=-20.0, brows=1.0, hem=(1.0, 3.0), charge=1.0)
+#: Out: his shoulders drop and his head hangs.
+SAGGED = P(hip=(-1.0, 6.0), lean=26.0, sq=0.94, shrug=(2.0, 4.0), head=(3.0, 5.0, 26.0), na=(10.0, 32.0), fa=(14.0, 31.0), nh="limp", fh="limp",
+           nf=(-7.0, 0.0, 0.0), ff=(8.0, 0.0, 0.0), mouth="open", eyes="closed", ears=-32.0, brows=1.0, hem=(0.0, 1.0))
+#: The stagger: a step back, then he lurches forward.
+REEL_BACK = P(hip=(-6.0, 4.0), lean=-8.0, sq=0.98, shrug=(1.0, 2.0), head=(-2.0, 2.0, 10.0), na=(-6.0, 28.0), fa=(18.0, 18.0), nh="limp", fh="open",
+              nf=(-14.0, 0.0, 0.0), ff=(4.0, -3.0, -14.0), mouth="open", eyes="open", ears=-28.0, brows=1.0, hem=(0.0, 5.0))
+REEL_ON = P(hip=(4.0, 9.0), lean=30.0, sq=0.95, shrug=(2.0, 3.0), head=(3.0, 4.0, 18.0), na=(16.0, 28.0), fa=(20.0, 24.0), nh="limp", fh="open",
+            nf=(-10.0, 0.0, 0.0), ff=(14.0, 0.0, 0.0), mouth="open", eyes="open", ears=-30.0, brows=1.0, hem=(3.0, 0.0))
+#: Down on his near knee, his far foot planted in front: his far hand on his
+#: far knee, his near hand flat on the floor.
+KNEEL = planted(P(hip=(1.0, 17.0), lean=24.0, sq=0.95, shrug=(2.0, 3.0), head=(3.0, 4.0, 18.0), na=(22.0, 30.0), fa=(14.0, 18.0), nh="flat",
+                  fh="limp", nf=(-17.0, 2.6, 66.0), ff=(13.0, 0.0, 0.0), mouth="open", eyes="closed", ears=-32.0, brows=1.0, hem=(2.0, 0.0)), 0.0, 20.0)
+KNEEL = dict(KNEEL, fa=(14.0, 18.0))
+#: He reaches out to you with his near hand, open.
+REACH = dict(KNEEL, lean=12.0, head=(2.0, 1.0, -6.0), na=(34.0, -6.0), nab=-1.0, nh="open", mouth="o", eyes="open", brows=1.0, ears=-18.0,
+             look=(1.0, -0.4))
+#: The last howl: his head goes back, but not far, and it breaks. His hand
+#: drops.
+LAST_HOWL = dict(KNEEL, lean=6.0, sq=1.0, head=(0.0, 0.0, -34.0), na=(30.0, 8.0), nab=-1.0, nh="soft", mouth="open", eyes="closed", ears=-14.0)
+#: Tipping over, onto his face.
+TIPPING = dict(KNEEL, rot=34.0, pivot=(4.0, 18.0), lean=24.0, head=(2.0, 2.0, 0.0), na=(28.0, 4.0), nab=-1.0, fa=(-8.0, 12.0), nh="open", fh="open",
+               mouth="big", eyes="dead", ears=-30.0)
+#: Down on his face and chest, the side of his head on the floor, his near
+#: arm by his side, his far arm under him (none of him below the floor: the
+#: far hand hung through it, 2026-10-19), his legs out behind.
+PRONE = P(rot=90.0, hip=(2.0, 25.0), off=(-16.0, 0.0), lean=0.0, head=(-3.6, 0.0, -80.0), na=(11.0, 22.0), nab=1.0, fa=(-8.0, 12.0), nh="limp",
+          fh="limp", nf=(-4.0, 25.0, 10.0), ff=(4.0, 25.0, -6.0), mouth="loll", eyes="dead", ears=-34.0, brows=1.0, hem=(0.0, 0.0))
+
+
+#: How far (frame pixels) a body on the floor may sink into it: its outline.
+FLOOR_SLACK = 1.5
+
+
+def on_the_floor(pose, i: int, n: int):
+    """``pose`` lifted (its ``off``) so that none of him is drawn below the
+    floor: a body that tips over, or lies on it, rests ON it. Measured on the
+    drawn body (no effects), so whatever the joints do, nothing goes through
+    the floor (Jon, 2026-10-18: "make sure that he doesn't go through the
+    floor"; his far hand hung through it as he lay dead, 2026-10-19)."""
+    X.poses["_on_the_floor"] = lambda _i, _n: pose
+    try:
+        img = X.render_frame("_on_the_floor", i, n)
+    finally:
+        del X.poses["_on_the_floor"]
+    box = img.getchannel("A").point(lambda a: 255 if a > 96 else 0).getbbox()
+    if box is None:
+        return pose
+    bottom = box[3] * X.frame[1] / img.height
+    sunk = bottom - (X.ground + FLOOR_SLACK)
+    if sunk <= 0.0:
+        return pose
+    pose = X.full(pose)
+    ox, oy = pose["off"]
+    return dict(pose, off=(ox, oy - sunk / X.U))
 
 
 @X.row
 def death(i: int, n: int):
-    # The charge goes out of him in a last spasm; he staggers, howls once,
-    # and goes over backward like a tree. His boot twitches.
-    last = P(hip=(-2.0, 0.0), lean=-14.0, head=(-1.0, -1.0, -42.0), na=(-6.0, 28.0), fa=(10.0, 26.0), nh="fist", fh="fist", eyes="roll", mouth="gape",
-             sq=1.05, ears=-20.0)
-    stagger = dict(STRUCK, hip=(-8.0, 6.0), lean=20.0, head=(2.0, 4.0, 24.0), eyes="roll", mouth="big", sq=0.94)
-    toppling = X.blend(last, SUPINE, 0.5)
-    toppling = dict(toppling, off=(toppling["off"][0], toppling["off"][1] - 8.0))
-    pose = keyed(i, n, [(0.0, STRUCK), (0.12, THROWN, "snap"), (0.25, stagger, "out"), (0.42, last, "out"), (0.52, last, "hold"),
-                        (0.62, toppling, "in"), (0.72, SUPINE, "snap"), (1.0, SUPINE)], drag=HEAVY)
-    if i == n - 3:
-        pose = dict(pose, ff=(4.5, 22.0, -30.0))
-    return pose
+    # The charge dies in him: the bolts sputter and the last arc fizzles. He
+    # staggers, drops to one knee, reaches out to you, tries one last howl
+    # that breaks, and falls on his face. One hand twitches, and he is still.
+    pose = keyed(i, n, [(0.0, SPUTTER), (0.1, dict(SPUTTER, sq=1.0, head=(-1.0, 0.0, -8.0)), "io"), (0.2, SAGGED, "out"), (0.28, REEL_BACK, "io"),
+                        (0.36, REEL_ON, "io"), (0.44, KNEEL, "snap"), (0.5, KNEEL, "hold"), (0.58, REACH, "out"), (0.64, REACH, "hold"),
+                        (0.7, LAST_HOWL, "out"), (0.74, LAST_HOWL, "hold"), (0.8, TIPPING, "in"), (0.86, PRONE, "snap"), (1.0, PRONE)], drag=HEAVY)
+    u = shot(i, n)
+    if u < 0.16:
+        pose = dict(pose, rot=jitter(i, 1.6), hip=(pose["hip"][0] + jitter(i, 0.6, 1.0), pose["hip"][1]))
+    if 0.86 <= u < 0.9:
+        # He lands, and bounces a little.
+        pose = dict(pose, off=(pose["off"][0], -1.4))
+    if i == n - 4:
+        pose = dict(pose, nh="splay")
+    elif i == n - 3:
+        pose = dict(pose, nh="soft")
+    return on_the_floor(pose, i, n) if u >= 0.4 else pose
 
 
 X.rows = [("idle", 16, 90), ("walk", 12, 100), ("prowl", 12, 70), ("run", 8, 85), ("jump", 6, 100), ("fall", 6, 100), ("land_hard", 8, 70),
@@ -1213,7 +1820,8 @@ X.rows = [("idle", 16, 90), ("walk", 12, 100), ("prowl", 12, 70), ("run", 8, 85)
           ("bound_rise", 6, 60), ("bound_wall", 4, 70), ("bound_dive", 4, 60), ("winded", 12, 90),
           ("howl_tell", 8, 100), ("howl", 12, 70), ("taunt", 12, 100),
           ("galvanize_tell", 10, 60), ("galvanize", 8, 60), ("lash_tell", 8, 80), ("lash", 6, 60), ("flatline", 16, 110), ("recharge", 8, 50),
-          ("awaken", 14, 70), ("shock", 8, 50), ("hit", 6, 60), ("death", 18, 90)]
+          ("awaken", 14, 70), ("shock", 8, 50), ("hit", 6, 60), ("death", 28, 90),
+          ("throne_dead", 12, 120), ("throne_wake", 20, 85), ("serum_tell", 10, 80), ("serum_inject", 10, 80), ("serum_surge", 20, 80)]
 
 # ---- What his blows do -------------------------------------------------------
 
@@ -1233,14 +1841,12 @@ def claw_tips(pose, near: bool) -> List[Point]:
     _shoulder, elbow, wrist = X.arm_joints(pose, near)
     turn = math.degrees(math.atan2(wrist[1] - elbow[1], wrist[0] - elbow[0]))
     mode = str(pose["nh" if near else "fh"])
-    spread, bends, _thumb, claws_out = HAND_POSES.get(mode, HAND_POSES["soft"])
+    claws_out = HAND_POSES.get(mode, HAND_POSES["soft"])[3]
     reach = (5.4 if mode == "claw" else 4.0) if claws_out else 0.0
     out = []
-    for (base, l1, l2), sp, (b1, b2) in zip(FINGERS, spread, bends):
-        _k, tip, _t, a2 = _finger(base, l1, l2, sp + b1, sp + b1 + b2)
+    for _base, _k, tip, a2 in _hand_bones(mode, near)[0]:
         end = (tip[0] + reach * math.cos(math.radians(a2)), tip[1] + reach * math.sin(math.radians(a2)))
-        # The near hand is drawn mirrored (``_hand``).
-        r = turned((end[0] * HAND, end[1] * HAND * (-1.0 if near else 1.0)), turn)
+        r = turned((end[0] * HAND, end[1] * HAND), turn)
         out.append((wrist[0] + r[0], wrist[1] + r[1]))
     return out
 
@@ -1273,7 +1879,7 @@ def _claw_marks(anim: str, i: int, n: int, near: bool, span: float) -> List[Stam
     return [(K.piece(("claw_cut", anim, i, near), paint), R.pin(head), "claw_cuts", 0.0)]
 
 
-def _arc(key: tuple, a: Point, b: Point, seed: int, kinks: int = 6, width: float = 2.2):
+def _arc(key: tuple, a: Point, b: Point, seed: int, kinks: int = 6, width: float = 2.2, colours: Tuple[RGBA, RGBA] = None):
     """A crooked line of current from ``a`` to ``b`` (frame points, painted
     from ``a``), with a fork or two off it: a white core in a blue glow, and
     no dark outline. Place it unturned at ``pin(a)``."""
@@ -1299,13 +1905,15 @@ def _arc(key: tuple, a: Point, b: Point, seed: int, kinks: int = 6, width: float
                           (x + math.cos(ang) * reach, y + math.sin(ang) * reach)])
     lines = tuple(tuple((round(px, 1), round(py, 1)) for px, py in line) for line in [main] + forks)
 
+    glow_colour, core_colour = colours or (ARC_GLOW, ARC_CORE)
+
     def paint(d) -> None:
-        for glow, colour in ((True, ARC_GLOW), (False, ARC_CORE)):
+        for glow, colour in ((True, glow_colour), (False, core_colour)):
             for k, line in enumerate(lines):
                 w = width * (1.0 if k == 0 else 0.6)
                 K.stroke(d, [K.at(*pt) for pt in line], colour, w * (2.4 if glow else 0.8))
 
-    return K.piece(("arc", key, seed, lines), paint)
+    return K.piece(("arc", key, seed, lines, width, glow_colour), paint)
 
 
 ARC_CORE: RGBA = (236, 246, 255, 255)
@@ -1392,8 +2000,87 @@ def _effects(ctx) -> List[Stamp]:
             out.append((_arc("sputter", bolt, ctx.hand, i, kinks=5, width=1.6), R.pin(bolt), "arc_sputter", 0.0))
     elif anim == "hit" and u <= 0.5:
         out.append((R.burst(K, 13.0, SPARK, SPARK_DARK, 9), (ctx.head[0] + 14.0, ctx.head[1] - 4.0), "struck", 0.0))
-    elif anim == "death" and 0.08 <= u <= 0.3:
-        out.append((_arc("death", bolt, ctx.hand, i, kinks=6), R.pin(bolt), "arc_death", 0.0))
+    else:
+        out.extend(_story_effects(ctx, bolt))
+    return out
+
+
+def _edge_arc(key: str, bolt: Point, left: bool, i: int, ground: float) -> Stamp:
+    """A strike from a coil off the side of the frame into his bolts: it
+    comes in from the frame's edge (and stops short of it, so the frame is
+    not cut) at the height of the coil's top."""
+    x = 5.0 if left else X.frame[0] - 5.0
+    start = (x, min(bolt[1], ground - 150.0) - 10.0 + 8.0 * math.sin(i * 1.9 + (0.0 if left else 2.0)))
+    return (_arc(key, start, bolt, i + (0 if left else 17), kinks=11, width=2.6), R.pin(start), key, 0.0)
+
+
+def _story_effects(ctx, bolt: Point) -> List[Stamp]:
+    """What is drawn over the story rows: the coils waking him, the serum,
+    and the charge dying out of him."""
+    out: List[Stamp] = []
+    anim, u, i = ctx.anim, ctx.u, ctx.i
+    if anim == "throne_wake":
+        if 0.1 <= u <= 0.5:
+            # The coils strike from both sides, both together on a jolt,
+            # one and then the other between.
+            jolt = u < 0.2 or 0.32 <= u <= 0.42
+            if jolt or i % 2 == 0:
+                out.append(_edge_arc("coil_west", bolt, True, i, ctx.ground))
+            if jolt or i % 2 == 1:
+                out.append(_edge_arc("coil_east", bolt, False, i, ctx.ground))
+            out.append((R.burst(K, 12.0 if jolt else 8.0, ARC_CORE, ARC_GLOW, 9), bolt, "bolt_spark", 0.0))
+            if jolt:
+                hip = ctx.hip
+                out.append((_arc("wake_body", bolt, (hip[0] + 4.0, hip[1] - 4.0), i + 5, kinks=5, width=1.6), R.pin(bolt), "arc_body", 0.0))
+        elif 0.5 < u <= 0.62:
+            out.append((R.burst(K, 6.0, ARC_CORE, ARC_GLOW, 6), bolt, "bolt_spark", 0.0))
+    elif anim == "serum_inject":
+        if 0.15 <= u < 0.75 and i % 2 == 0:
+            out.append((R.burst(K, 7.0, SERUM_CORE, SERUM_DARK, 7), bolt, "serum_spark", 0.0))
+        if u >= 0.75:
+            out.append((R.burst(K, 13.0, SERUM_CORE, SERUM_DARK, 9), _syringe_axis(ctx.pose)[0], "glass_burst", 0.0))
+    elif anim == "serum_surge" and u >= 0.06:
+        # Green and blue current all over him: from his bolts down his arm to
+        # his fist, and out of his fists and his bolts. More at the howl, and
+        # the howl goes out of his mouth in green rings.
+        howl = u >= 0.62
+        arcs = [(bolt, ctx.hand, "surge_arm", False),
+                (ctx.hand, (ctx.hand[0] - 22.0, ctx.hand[1] + 14.0 + 6.0 * math.sin(i * 1.3)), "surge_near", True),
+                (ctx.far_hand, (ctx.far_hand[0] + 24.0, ctx.far_hand[1] + 8.0 * math.cos(i * 1.7)), "surge_far", i % 2 == 0)]
+        if howl or i % 2 == 0:
+            arcs.append((bolt, (bolt[0] - 34.0, bolt[1] - 18.0 + 6.0 * math.sin(i * 2.1)), "surge_back", True))
+        if howl:
+            arcs.append((ctx.far_hand, (ctx.far_hand[0] + 6.0, ctx.far_hand[1] + 26.0), "surge_down", False))
+        for k, (a, b, name, green) in enumerate(arcs):
+            core, glow = (SERUM_CORE, (110, 230, 70, 255)) if green else (ARC_CORE, ARC_GLOW)
+            out.append((_arc(name, a, b, i * 7 + k, kinks=5, width=1.8 if howl else 1.4, colours=(glow, core)), R.pin(a), name, 0.0))
+        out.append((R.burst(K, 11.0 if howl else 8.0, SERUM_CORE, SERUM_DARK, 9), bolt, "bolt_spark", 0.0))
+        if howl and str(ctx.pose["mouth"]) == "gape":
+            mouth = _muzzle(ctx)
+            for k in range(1 + i % 3):
+                r = 12.0 + 12.0 * k
+                out.append((R.swoosh(K, r, int(ctx.turn - 36), int(ctx.turn + 36), 3.2, SERUM_CORE, SERUM_DARK), (mouth[0] - 4.0, mouth[1]),
+                            f"howl_{k}", 0.0))
+    elif anim == "death":
+        if u < 0.2:
+            # The charge sputters out of the bolts: orange sparks, smaller
+            # each time, and the last blue arc, shorter, and gone.
+            size = 10.0 - 30.0 * u
+            if i % 2 == 0:
+                out.append((R.burst(K, size, SPARK, SPARK_DARK, 7), bolt, "sputter", 0.0))
+            if u < 0.14:
+                reach = 46.0 * (1.0 - u / 0.14)
+                to = (bolt[0] - reach * 0.8, bolt[1] - reach * 0.6)
+                out.append((_arc("fizzle", bolt, to, i, kinks=5, width=1.8 - 6.0 * u), R.pin(bolt), "arc_fizzle", 0.0))
+        elif 0.2 <= u < 0.28 and i % 2 == 0:
+            out.append((R.burst(K, 4.0, SPARK, SPARK_DARK, 5), bolt, "last_spark", 0.0))
+        elif 0.66 <= u <= 0.76:
+            # The last howl, weak: a ring or two, broken, and small.
+            mouth = _muzzle(ctx)
+            for k in range(1 + (i % 2)):
+                r = 10.0 + 8.0 * k
+                out.append((R.swoosh(K, r, int(ctx.turn - 30 + 12 * k), int(ctx.turn - 4 + 12 * k), 2.0, DUST, DUST_DARK), (mouth[0] - 4.0, mouth[1]),
+                            f"howl_{k}", 0.0))
     return out
 
 
