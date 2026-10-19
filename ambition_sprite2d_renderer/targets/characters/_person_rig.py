@@ -1407,7 +1407,7 @@ class Person:
     """
 
     def __init__(self, target: str, build: Build = Build(), frame: Tuple[int, int] = (208, 176), ground: float = 164.0, cx: float = 104.0,
-                 supersample: int = 4, world_height: Optional[float] = None) -> None:
+                 supersample: Optional[int] = None, world_height: Optional[float] = None) -> None:
         self.target = target
         CAST[target] = self
         self.b = build
@@ -1421,6 +1421,14 @@ class Person:
         from ...authoring.texel_density import published_frame
 
         out = published_frame(frame, build.height, world_height) if world_height else None
+        # ``supersample``: how many canvas pixels it paints for each published
+        # one. 4 for a sheet published at its frame; 2 for one published
+        # larger, which already has more pixels than its frame: Wolfenstein's
+        # 924 px frame painted on 3696 px took about 5.7 s a frame and on 1848
+        # px about 1.1 s, and Jon judged the two side by side: "Go with the
+        # 2x, it looks fine" (2026-10-19).
+        if supersample is None:
+            supersample = 4 if out is None or tuple(out) == tuple(frame) else 2
         self.K = Kit(frame, supersample, out=out)
         self.U = build.hip_up / 37.0
         self.rest: Pose = dict(REST)

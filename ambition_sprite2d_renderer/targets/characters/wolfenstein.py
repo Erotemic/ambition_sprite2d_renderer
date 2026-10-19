@@ -105,6 +105,8 @@ BOOT_LIGHT: RGBA = (86, 82, 90, 255)
 SKIN: RGBA = (138, 162, 122, 255)
 SKIN_SHADE: RGBA = (108, 130, 98, 255)
 SKIN_DEEP: RGBA = (68, 86, 64, 255)
+#: Light on a ridge of his skin: the knuckles on the back of a hand.
+SKIN_LIGHT: RGBA = (170, 192, 150, 255)
 STITCH: RGBA = (40, 30, 34, 255)
 CLAW: RGBA = (46, 40, 38, 255)
 CLAW_TIP: RGBA = (214, 206, 186, 255)
@@ -338,29 +340,30 @@ def _hand_bones(mode: str, near: bool):
 
     Facing canvas-right, his NEAR hand is his right hand and the far one his
     left (Jon: "character-right is not canvas-right, in fact in this case it
-    is canvas-left"). The near hand is the far one with its fingers' order
-    and its thumb mirrored across the hand's length, so its back is to the
-    camera and not its palm; its fingers still curl the same way, toward
-    +y (Jon, 2026-10-18: mirroring the curl too drew it upside down)."""
+    is canvas-left"). Both hands have ONE outline: a hand hanging at his
+    side, palm to his thigh, has its thumb forward and its fingers curling
+    the same way, whichever side of him it is on. What differs is which side
+    of the hand faces the camera: the far hand shows its palm, the near one
+    its BACK (``_hand``). Jon, 2026-10-19: the near hand drawn mirrored, its
+    thumb down and back, read as a palm on a wrist turned the wrong way; and
+    on 10-18, mirrored with its curl, it was upside down."""
     spread, bends, (thumb_a, thumb_b), _claws_out = HAND_POSES.get(mode, HAND_POSES["soft"])
-    m = -1.0 if near else 1.0
     fingers = []
     for (base, l1, l2), sp, (b1, b2) in zip(FINGERS, spread, bends):
-        base = (base[0], base[1] * m)
-        a1 = sp * m + b1
-        knuckle, tip, _, a2 = _finger(base, l1, l2, a1, a1 + b2)
+        knuckle, tip, _, a2 = _finger(base, l1, l2, sp + b1, sp + b1 + b2)
         fingers.append((base, knuckle, tip, a2))
-    thumb_base = (3.6, -5.4 * m)
+    thumb_base = (3.6, -5.4)
     # The thumb turns out to its side and bends back across the palm.
-    ta1 = thumb_a * m
-    tk, tt, _, ta = _finger(thumb_base, 4.6, 4.0, ta1, ta1 + thumb_b * m)
+    tk, tt, _, ta = _finger(thumb_base, 4.6, 4.0, thumb_a, thumb_a + thumb_b)
     return fingers, (thumb_base, tk, tt, ta)
 
 
 def _hand(mode: str, near: bool):
     """A big hand along +x from its wrist at ``home``: a heavy palm, four
     fingers with knuckles and claws, a thumb, and a seam sewn across its
-    back. ``near`` is his right hand; the far one is his left."""
+    back. ``near`` is his right hand, seen from its BACK: its thumb is behind
+    the hand, in its shade, and the knuckles and the seam are on top. The far
+    one is his left, seen from its palm: its thumb lies in front, across it."""
     mode = mode if mode in HAND_POSES else "soft"
     hp = _h
     claws_out = HAND_POSES[mode][3]
@@ -386,17 +389,34 @@ def _hand(mode: str, near: bool):
         for c in claws:
             K.poly(d, c, WHITE)
 
+    def thumb(colour: RGBA) -> None:
+        K.stroke(d_now[0], [hp(*thumb_base), hp(*tk), hp(*tt)], SKIN_DEEP, (FINGER_W + 0.5) * HAND)
+        K.stroke(d_now[0], [hp(*thumb_base), hp(*tk), hp(*tt)], colour, (FINGER_W - 0.4) * HAND)
+
+    d_now = [None]
+
     def detail(d) -> None:
+        d_now[0] = d
+        if near:
+            # The back of the hand: the thumb is behind it, in its shade, and
+            # the back of the palm is laid over the thumb's root.
+            thumb(SKIN_SHADE)
+            K.rrect(d, K.home[0] - 2.4 * HAND, K.home[1] - 6.0 * HAND, K.home[0] + 10.0 * HAND, K.home[1] + 6.0 * HAND, 3.4 * HAND, SKIN_DEEP)
+            K.rrect(d, K.home[0] - 2.0 * HAND, K.home[1] - 5.5 * HAND, K.home[0] + 9.6 * HAND, K.home[1] + 5.5 * HAND, 3.0 * HAND, skin)
         # A line between each finger and the next: each one reads.
         for base, knuckle, tip, _a in order:
             K.stroke(d, [hp(*base), hp(*knuckle), hp(*tip)], SKIN_DEEP, FINGER_W * HAND)
             K.stroke(d, [hp(*base), hp(*knuckle), hp(*tip)], skin, (FINGER_W - 0.9) * HAND)
             K.oval(d, hp(*knuckle), 0.6 * HAND, 0.6 * HAND, SKIN_DEEP)
-        K.stroke(d, [hp(*thumb_base), hp(*tk), hp(*tt)], SKIN_DEEP, (FINGER_W + 0.5) * HAND)
-        K.stroke(d, [hp(*thumb_base), hp(*tk), hp(*tt)], skin, (FINGER_W - 0.4) * HAND)
-        # The knuckles of the hand, and its back sewn on at the wrist.
+        if not near:
+            # The palm: the thumb lies in front of it.
+            thumb(skin)
+        # The knuckles of the hand, and its back sewn on at the wrist: on the
+        # back of the near hand, ridges that catch the light.
         for base, *_ in fingers:
-            K.oval(d, hp(base[0] - 0.6, base[1]), 0.9 * HAND, 0.8 * HAND, SKIN_DEEP if mode == "fist" else skin)
+            K.oval(d, hp(base[0] - 0.6, base[1]), 0.9 * HAND, 0.8 * HAND, SKIN_DEEP if mode == "fist" or near else skin)
+            if near and mode != "fist":
+                K.oval(d, hp(base[0] - 0.8, base[1] - 0.2), 0.55 * HAND, 0.45 * HAND, SKIN_LIGHT)
         stitches(d, [hp(2.0, -6.0), hp(3.0, 0.0), hp(2.2, 6.0)], tick=1.1, every=2.4, width=0.5)
         for c in claws:
             K.poly(d, c, CLAW)
