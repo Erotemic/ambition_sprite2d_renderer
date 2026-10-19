@@ -968,3 +968,27 @@ lineages:
       - commit: "ada5087"
         label: "The cantina host"
         note: "Jowls, a droopy nose, a moustache and a gold tooth; a crown of bottle caps, a gold earring; an open orange waistcoat over a shirt with rolled sleeves, a bar apron, a brass-banded mallet. Jon: Fretjaw needs unique art, on a similar rig. Claude Opus 5.5 declared."
+  weird_hermit:
+    name: Weird Hermit
+    ids: [weird_hermit]
+    paths: ['weird_hermit']
+    summary: "a blocky faceted hermit with a tiny arm and a potato body, then the same hermit as a cel-shaded SVG rig"
+    eras:
+      - commit: "6314c07"
+        label: "The faceted hermit"
+        note: "The last commit with the first design: flat facets for a body, a cream rag, a long wedge of a nose, tiny arms and fingers."
+      - commit: "fa855db"
+        label: "The sun-baked hermit"
+        note: "A red rag knotted behind, wiry grey hair and moustache, ribs and a pot belly, patched green shorts on a rope belt, long fingers; he sneezes a green curse. Jon chose B of three. Claude Opus 5.5 declared."
+  tech_bro_disruptor:
+    name: Chadwick Disruptor III
+    ids: [tech_bro_disruptor]
+    paths: ['tech_bro_disruptor', 'music_factions', 'robot_side']
+    summary: "the robot template in the Tech-Bros' colours, then a gadget robot of his own in a fleece vest"
+    eras:
+      - commit: "6314c07"
+        label: "The robot template"
+        note: "The last commit with the first design: a preset of the robot template from the faction lineup, green screen eyes, a tablet."
+      - commit: "e82ad72"
+        label: "The founder-bot"
+        note: "A white gadget robot with a smug neon visor, an earbud, a quilted fleece vest, a lanyard and badge, always on his phone. Jon: Chadwick is a robot; use variant A. Claude Opus 5.5 declared."
