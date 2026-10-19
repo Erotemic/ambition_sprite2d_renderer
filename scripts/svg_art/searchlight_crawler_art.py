@@ -75,6 +75,9 @@ for leg, chain in LEG_POINTS.items():
         name = f"{leg}_{segment}"
         JOINTS[name] = (parent, float(point[0]), float(point[1]))
         parent = name
+# Death effects ride the lamp: sparks at the lens, smoke above the housing.
+JOINTS["spark"] = ("light", 454.0, 258.0)
+JOINTS["smoke"] = ("light", 432.0, 222.0)
 
 # (SVG group id, editor label, rig part name, rig bone, draw order, alpha channel)
 LAYERS = []
@@ -98,6 +101,7 @@ LAYERS.extend([
     ("part-lamp-alert", "Alert Iris", "lamp_alert", "light", 212, "alert_visible"),
     ("part-shutter-upper", "Upper Iris Shutter", "shutter_upper_part", "shutter_upper", 215, None),
     ("part-shutter-lower", "Lower Iris Shutter", "shutter_lower_part", "shutter_lower", 216, None),
+    ("part-lamp-dead", "Dead Lens", "lamp_dead", "light", 211, "lamp_dark"),
 ])
 
 for leg in LEG_POINTS:
@@ -107,6 +111,13 @@ for leg in LEG_POINTS:
                            f"{leg.replace('_', ' ').title()} / {segment.title()}",
                            f"{leg}_{segment}", f"{leg}_{segment}",
                            140 + list(LEG_POINTS).index(leg) * 5 + i, None))
+
+# Death effects draw over every leg.
+LAYERS.extend([
+    ("part-lens-burst", "Lens Spark Burst", "lens_burst", "spark", 230, "spark_burst"),
+    ("part-lens-crackle", "Lens Spark Crackle", "lens_crackle", "spark", 231, "spark_crackle"),
+    ("part-smoke-wisp", "Smoke Wisp", "smoke_wisp", "smoke", 232, "smoke_visible"),
+])
 
 
 def node(parent: ET.Element, name: str, **attributes: object) -> ET.Element:
@@ -333,6 +344,55 @@ def draw_light(view: ET.Element) -> None:
     path(lower, "M 444,282 L 463,282", "none", BRASS, 1.8)
 
 
+def draw_death_effects(view: ET.Element) -> None:
+    """The dead lens, two spark shapes, and a smoke wisp. All start hidden."""
+    dead = layer(view, "part-lamp-dead", "Dead Lens")
+    circle(dead, (454, 258), 24.0, "#3a4645", "#5d6a66", 3.2)
+    circle(dead, (454, 258), 19.5, "#28322f", "#46524e", 2.6)
+    path(dead, "M 446,250 Q 451,245 458,246", "none", "#6f7c76", 3.2)
+    # A cracked lens: one break through the glass, two short branches.
+    path(dead, "M 440,247 L 450,256 L 447,266 M 450,256 L 463,252 L 468,259 "
+         "M 450,256 L 459,268", "none", "#141b1f", 2.2)
+
+    burst = layer(view, "part-lens-burst", "Lens Spark Burst")
+    rays = ((-62, 46), (-18, 52), (26, 44), (78, 40), (130, 48), (196, 42),
+            (238, 50), (292, 38))
+    for angle, reach in rays:
+        a = math.radians(angle)
+        ux, uy = math.cos(a), math.sin(a)
+        nx, ny = -uy, ux
+        pts = [(454 + ux * 14, 258 + uy * 14),
+               (454 + ux * reach * 0.55 + nx * 6, 258 + uy * reach * 0.55 + ny * 6),
+               (454 + ux * reach * 0.70 - nx * 4, 258 + uy * reach * 0.70 - ny * 4),
+               (454 + ux * reach, 258 + uy * reach)]
+        d = "M " + " L ".join(point(p) for p in pts)
+        path(burst, d, "none", "#ff8a3d", 8.0)
+        path(burst, d, "none", "#fff4b8", 3.6)
+    circle(burst, (454, 258), 15.0, "#ffe9a0", "#ff8a3d", 3.0)
+    circle(burst, (454, 258), 7.0, "#ffffff", "none", 0)
+    for x, y in ((506, 226), (400, 296), (502, 302), (420, 210), (474, 196)):
+        circle(burst, (x, y), 3.6, "#fff4b8", "#ff8a3d", 1.8)
+
+    crackle = layer(view, "part-lens-crackle", "Lens Spark Crackle")
+    arcs = ("M 434,246 L 446,254 L 441,261 L 456,266 L 452,272 L 466,276",
+            "M 462,236 L 470,248 L 463,252 L 478,262",
+            "M 470,270 L 488,282 L 484,288 L 498,296")
+    for d in arcs:
+        path(crackle, d, "none", "#ff8a3d", 6.4)
+        path(crackle, d, "none", "#fff4b8", 2.8)
+    for x, y in ((492, 250), (506, 268), (486, 230)):
+        circle(crackle, (x, y), 3.0, "#fff4b8", "#ff8a3d", 1.6)
+
+    smoke = layer(view, "part-smoke-wisp", "Smoke Wisp")
+    # Three puffs that thin as they rise, then a curl at the top.
+    for (x, y, r, a) in ((432, 212, 10.0, 0.90), (424, 190, 13.0, 0.78),
+                         (436, 164, 15.5, 0.62)):
+        node(smoke, "circle", cx=x, cy=y, r=r, fill="#7c878c", stroke="#4c565b",
+             **{"stroke-width": 3.0, "fill-opacity": a, "stroke-opacity": a})
+    path(smoke, "M 450,156 C 464,142 452,126 438,132", "none", "#4c565b", 4.0,
+         **{"stroke-opacity": 0.6})
+
+
 def build_svg() -> str:
     root = ET.Element(f"{{{SVG_NS}}}svg", {
         "width": f"{CANVAS[0]}mm", "height": f"{CANVAS[1]}mm",
@@ -361,6 +421,7 @@ def build_svg() -> str:
             segment_art(group, chain[i], chain[i + 1], segment, True, "outer" in leg)
 
     draw_light(view)
+    draw_death_effects(view)
 
     joints = layer(view, "joint-markers", "Rig Joints (show to edit)")
     joints.set("style", "display:none")

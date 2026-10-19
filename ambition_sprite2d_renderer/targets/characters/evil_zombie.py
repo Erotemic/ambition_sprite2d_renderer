@@ -22,7 +22,7 @@ shadow.
 His attacks are slow and easy to read: ``slash`` (both arms come up, then
 down on you in a clumsy swipe) and ``attack_side`` (he lurches forward,
 grabs and bites). ``taunt`` is a groan. ``emerge`` is how he gets up off the
-floor.
+floor; ``death_idle`` is him lying there after his ``death`` row.
 
 He is a person of ``_person_rig``.
 """
@@ -497,6 +497,13 @@ def death(i: int, n: int):
 
 
 @X.row
+def death_idle(i: int, n: int):
+    # He lies where he fell. Now and then a hand twitches.
+    twitch = 2.0 if i == n - 2 else 0.0
+    return dict(PRONE, na=(PRONE["na"][0], PRONE["na"][1] - twitch))
+
+
+@X.row
 def emerge(i: int, n: int):
     # Up off the floor: on his knees, a hand on the floor, a hand reaching,
     # then he stands, and his head comes up last.
@@ -516,7 +523,7 @@ def taunt(i: int, n: int):
 
 
 X.rows = [("idle", 8, 170), ("walk", 10, 135), ("run", 8, 100), ("jump", 6, 100), ("fall", 6, 100), ("slash", 10, 95), ("attack_side", 10, 85),
-          ("hit", 5, 100), ("death", 8, 130), ("emerge", 10, 120), ("taunt", 10, 120)]
+          ("hit", 5, 100), ("death", 8, 130), ("death_idle", 8, 220), ("emerge", 10, 120), ("taunt", 10, 120)]
 
 # ---- What his blows do -------------------------------------------------------
 
