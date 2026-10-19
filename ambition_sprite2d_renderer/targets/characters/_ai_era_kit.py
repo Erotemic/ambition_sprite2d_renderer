@@ -11,9 +11,10 @@ Lengths are frame pixels; a turn is degrees, clockwise.
 
 from __future__ import annotations
 
+import contextlib
 import math
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Callable, Dict, Iterator, List, Optional, Sequence, Tuple, Union
 
 from PIL import Image, ImageChops, ImageFilter
 
@@ -184,6 +185,33 @@ class Kit:
         #: twice the frame.
         self.home: Point = (float(frame[0]), float(frame[1]))
         self._pieces: Dict[tuple, Optional[Part]] = {}
+
+    @contextlib.contextmanager
+    def drafted(self, supersample: int = 2) -> Iterator["Kit"]:
+        """This kit painting at its own FRAME size, ``supersample`` times, not
+        at its published size, and as it was after: for a check that needs
+        where a frame's pixels are and not how they look
+        (``Person.cut_frames``).
+
+        Its pieces are painted again at that size, so a character that holds
+        the kit as a module global (``K = X.K``) drafts with it.
+
+        A sheet published at the game's texel density paints on a canvas of
+        its published size times its supersample: Wolfenstein's 924 px frame
+        on 3696 px, about 2.7 s a frame, so a check of his 396 frames ran past
+        20 minutes (2026-10-19). Drafted at 2x his 320 px frame it paints on
+        640 px."""
+        saved = (self.out, self.reduce, self.scale, self.canvas, self._pieces)
+        zoom = self.scale / (self.reduce * self.out[0] / self.frame[0])
+        scale = supersample * zoom
+        self.out, self.reduce = self.frame, supersample
+        self.scale = int(scale) if float(scale).is_integer() else scale
+        self.canvas = (int(round(self.frame[0] * self.scale)), int(round(self.frame[1] * self.scale)))
+        self._pieces = {}
+        try:
+            yield self
+        finally:
+            self.out, self.reduce, self.scale, self.canvas, self._pieces = saved
 
     # -- units ---------------------------------------------------------------
 

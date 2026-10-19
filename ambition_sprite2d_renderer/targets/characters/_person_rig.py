@@ -22,6 +22,7 @@ system is authoritative).
 
 from __future__ import annotations
 
+import contextlib
 import math
 from dataclasses import dataclass
 from pathlib import Path
@@ -1804,14 +1805,34 @@ class Person:
             built[name] = PortraitClip.still(images[0]) if len(images) == 1 and not looping else PortraitClip(images, duration_ms=int(ms), looping=looping)
         return write_portrait_sheet(self.target, built, Path(out_dir), still_clip=still)
 
+    def kits(self) -> List[Kit]:
+        """Every paint box this character paints with: its own, and any its
+        module holds (a head drawn at another zoom)."""
+        import sys
+
+        kits: List[Kit] = [self.K]
+        for fn in self.poses.values():
+            module = sys.modules.get(getattr(fn, "__module__", ""))
+            for value in vars(module).values() if module is not None else ():
+                if isinstance(value, Kit) and all(value is not kit for kit in kits):
+                    kits.append(value)
+        return kits
+
     def cut_frames(self) -> List[Tuple[str, int, Tuple[int, int, int, int]]]:
         """The frames that touch the edge of their cell (and are cut there):
-        ``(row, frame, box)``. A test of a character asserts there are none."""
+        ``(row, frame, box)``, in frame pixels. A test of a character asserts
+        there are none.
+
+        Drafted (``Kit.drafted``): where a frame's pixels are does not need
+        them painted at the published size."""
         out = []
-        w, h = self.K.out
-        for name, frames, _ms in self.rows:
-            for i in range(frames):
-                box = self.render_frame(name, i, frames).getchannel("A").point(lambda a: 255 if a > 16 else 0).getbbox()
-                if box is None or box[0] <= 0 or box[1] <= 0 or box[2] >= w or box[3] >= h:
-                    out.append((name, i, box))
+        with contextlib.ExitStack() as stack:
+            for kit in self.kits():
+                stack.enter_context(kit.drafted())
+            w, h = self.K.out
+            for name, frames, _ms in self.rows:
+                for i in range(frames):
+                    box = self.render_frame(name, i, frames).getchannel("A").point(lambda a: 255 if a > 16 else 0).getbbox()
+                    if box is None or box[0] <= 0 or box[1] <= 0 or box[2] >= w or box[3] >= h:
+                        out.append((name, i, box))
         return out
