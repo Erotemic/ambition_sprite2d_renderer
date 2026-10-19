@@ -932,3 +932,39 @@ lineages:
       - commit: "2de7069"
         label: "A soldier of the person rig"
         note: "Peaked cap, grey-green tunic, breeches, jackboots, black gloves, a red armband with the faction's invented cog. Jon: we are going to need to redo the art for the fascist enforcer. Claude Opus 5.5 declared."
+  goblin:
+    name: Goblin
+    ids: [goblin]
+    paths: ['goblin_side', '_goblin_look', '_goblin_moves', '_goblin_motion']
+    summary: "a crude egg on beaded capsule limbs, then the same goblin's skeleton and moves under parts drawn once each, in twelve looks"
+    eras:
+      - commit: "10347d4"
+        label: "The crude goblin"
+        note: "The last commit with the first design: an egg body and a ball head, limbs of outlined capsules that read as beads, flat triangle ears, a stick sword, thick black ink."
+      - commit: "ada5087"
+        label: "Parts on the old skeleton"
+        note: "A neck, ears, hands and clawed feet; one ink silhouette under a cel-shaded fill; the purple loincloth and magenta eye kept. Jon chose it as the Smash goblin and kept the raider and squat looks as its skins. Claude Opus 5.5 declared."
+  goblin_brute:
+    name: Goblin Brute
+    ids: [goblin_brute_hammer]
+    paths: ['goblin_side', '_goblin_look', 'goblin_brute_hammer']
+    summary: "the goblin's crude body at the goblin's size with spikes floating over its head, then a hunched heavy drawn a third bigger"
+    eras:
+      - commit: "10347d4"
+        label: "A goblin with pauldrons"
+        note: "The last commit with the first design: the goblin's build and size, two pauldrons, a row of horn spikes floating clear of its head."
+      - commit: "ada5087"
+        label: "The heavy"
+        note: "A barrel of a body under a small low head, tusks, an iron cap with one horn, a pauldron and harness, an iron maul; 1.32x the goblin. Jon: the heavy should be larger than the normal goblin. Claude Opus 5.5 declared."
+  goblin_cantina_chieftain:
+    name: Fretjaw, Cantina Chieftain
+    ids: [goblin_cantina_chieftain]
+    paths: ['goblin_side', '_goblin_look', 'music_factions']
+    summary: "the crude goblin with a spiked crown and a banner, then a cantina host of his own"
+    eras:
+      - commit: "10347d4"
+        label: "A goblin with a crown"
+        note: "The last commit with the first design: the goblin's build in chieftain colours, a crude crown, pauldrons and a banner."
+      - commit: "ada5087"
+        label: "The cantina host"
+        note: "Jowls, a droopy nose, a moustache and a gold tooth; a crown of bottle caps, a gold earring; an open orange waistcoat over a shirt with rolled sleeves, a bar apron, a brass-banded mallet. Jon: Fretjaw needs unique art, on a similar rig. Claude Opus 5.5 declared."
