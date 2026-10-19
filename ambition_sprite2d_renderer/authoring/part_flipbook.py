@@ -497,14 +497,29 @@ def wrong_pixels(
                 matched |= np.abs(a - window).max(axis=-1) <= threshold
         return ~matched
 
-    ref, cand = premultiplied(reference), premultiplied(candidate)
-    drawn = (ref[..., 3] > 0) | (cand[..., 3] > 0)
+    # Measured over the box of what either image draws, grown by the radius:
+    # outside it both are transparent (premultiplied to nothing), exactly as
+    # the padding of the whole frame is. A body fills a small part of a large
+    # frame, and the whole frame took most of a publish (Wolfenstein's 924 px
+    # frames, 2026-10-19).
+    w, h = reference.size
+    wrong = np.zeros((h, w), dtype=bool)
+    drawn = np.zeros((h, w), dtype=bool)
+    boxes = [b for b in (reference.getchannel("A").getbbox(), candidate.getchannel("A").getbbox()) if b is not None]
+    if boxes:
+        x0 = max(0, min(b[0] for b in boxes) - radius)
+        y0 = max(0, min(b[1] for b in boxes) - radius)
+        x1 = min(w, max(b[2] for b in boxes) + radius)
+        y1 = min(h, max(b[3] for b in boxes) + radius)
+        ref, cand = premultiplied(reference.crop((x0, y0, x1, y1))), premultiplied(candidate.crop((x0, y0, x1, y1)))
+        drawn[y0:y1, x0:x1] = (ref[..., 3] > 0) | (cand[..., 3] > 0)
+        wrong[y0:y1, x0:x1] = unmatched(ref, cand) | unmatched(cand, ref)
     if edge:
         # A band at the frame's border is not measured (`EDGE_BAND`).
         inner = np.zeros(drawn.shape, dtype=bool)
         inner[edge:-edge, edge:-edge] = True
         drawn &= inner
-    return (unmatched(ref, cand) | unmatched(cand, ref)) & drawn, drawn
+    return wrong & drawn, drawn
 
 
 def parity(
@@ -527,6 +542,19 @@ def largest_wrong_blob(
     a missing star, orb or limb is one connected blob. This sees the blob.
     """
     wrong, _drawn = wrong_pixels(reference, candidate, threshold, radius, edge)
+    return _largest_blob(wrong)
+
+
+def replay_measure(
+    reference: Image.Image, candidate: Image.Image, threshold: int = 64, radius: int = 1, edge: int = 0
+) -> Tuple[float, int]:
+    """``(parity, largest_wrong_blob)`` of one comparison, from one mask."""
+    wrong, drawn = wrong_pixels(reference, candidate, threshold, radius, edge)
+    return float(wrong.sum()) / max(1, int(drawn.sum())), _largest_blob(wrong)
+
+
+def _largest_blob(wrong) -> int:
+    """Pixels in the largest 8-connected run of the mask ``wrong``."""
     h, w = wrong.shape
     seen = set()
     largest = 0
@@ -1612,8 +1640,7 @@ def build_rig_flipbook(
                     f"differs by {worst}) — something painted the frame outside rigdoc's seams"
                 )
             continue
-        wrong = parity(frame, replayed, **CONTINUOUS_REPLAY_TOLERANCE)
-        blob = largest_wrong_blob(frame, replayed, **CONTINUOUS_REPLAY_TOLERANCE)
+        wrong, blob = replay_measure(frame, replayed, **CONTINUOUS_REPLAY_TOLERANCE)
         if wrong > CONTINUOUS_REPLAY_PARITY or blob > CONTINUOUS_REPLAY_BLOB:
             raise AssertionError(
                 f"{target} {row}:{index}: the draws do not reproduce the render ({wrong:.2%} of its "
@@ -1631,10 +1658,8 @@ def _replay_failures(flipbook: "PartFlipbook", rendered: Mapping[Tuple[str, int]
             if _max_channel_difference(replayed, frame) > REPLAY_ROUNDING:
                 failing.append(f"{row}:{index}")
             continue
-        if (
-            parity(frame, replayed, **CONTINUOUS_REPLAY_TOLERANCE) > CONTINUOUS_REPLAY_PARITY
-            or largest_wrong_blob(frame, replayed, **CONTINUOUS_REPLAY_TOLERANCE) > CONTINUOUS_REPLAY_BLOB
-        ):
+        wrong, blob = replay_measure(frame, replayed, **CONTINUOUS_REPLAY_TOLERANCE)
+        if wrong > CONTINUOUS_REPLAY_PARITY or blob > CONTINUOUS_REPLAY_BLOB:
             failing.append(f"{row}:{index}")
     return failing
 
@@ -2263,11 +2288,21 @@ def _withdrawn_until_replayed(flipbook, rendered, chosen: dict, build, label: st
     chosen = dict(chosen)
     nominated = len(chosen)
     withdrawn = []
+
+    def drawing(parts) -> Dict[Tuple[str, int], Image.Image]:
+        # Only a frame that draws a changed part can change, and the whole
+        # flipbook is replayed again at the end (`build_rig_flipbook`).
+        return {
+            (row, index): frame
+            for (row, index), frame in rendered.items()
+            if any(d.part in parts for d in flipbook.clips[row][1][index])
+        }
+
     for _attempt in range(8):
         if not chosen:
             break
         result = build(chosen)
-        failing = _replay_failures(result, rendered)
+        failing = _replay_failures(result, drawing(chosen))
         if not failing:
             if label:
                 print(f"[part flipbook] {flipbook.target}: {label}: {len(chosen)} of {nominated} kept"

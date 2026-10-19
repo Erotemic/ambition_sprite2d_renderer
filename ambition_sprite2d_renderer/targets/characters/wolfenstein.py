@@ -18,6 +18,12 @@ a grey wolf with eyes that are open too wide (white all round, small
 pupils, red veins) that stare at you even from the side, a snarl of bared
 teeth, the ears flat back, and a ruff.
 
+In the top of the wolf's skull is a brain in a jar (Jon, 2026-10-19: the
+regime's scientist put a brain, maybe his own, in the wolf; "a visible brain
+in a jar on the wolf head", no face on it): a glass dome screwed into a
+riveted steel collar, green fluid, the brain floating in it with its stem
+going down into his skull.
+
 He is menacing and he is funny; he is not cute. He holds nothing; there is
 no drop shadow.
 
@@ -138,6 +144,14 @@ SERUM_DARK: RGBA = (52, 150, 40, 255)
 SERUM_CORE: RGBA = (226, 255, 186, 255)
 GLASS: RGBA = (214, 234, 236, 255)
 GLASS_DARK: RGBA = (124, 150, 158, 255)
+#: The brain in its jar: the fluid it floats in, and the brain.
+JAR_FLUID: RGBA = (120, 214, 170, 150)
+JAR_FLUID_TOP: RGBA = (170, 236, 200, 170)
+JAR_GLASS_EDGE: RGBA = (150, 196, 196, 255)
+BRAIN: RGBA = (232, 150, 160, 255)
+BRAIN_SHADE: RGBA = (196, 104, 124, 255)
+BRAIN_LIGHT: RGBA = (250, 196, 200, 255)
+BRAIN_FISSURE: RGBA = (176, 84, 104, 255)
 
 #: About 240 cm. ``height`` is the top of his skull as he stands, hunched
 #: (measured from the idle row); his ears lie back a little over it. A huge
@@ -322,6 +336,10 @@ HAND_POSES = {
     "point": ((-3.0, -2.0, 4.0, 10.0), ((0.0, 0.0), (92.0, 96.0), (94.0, 96.0), (94.0, 96.0)), (-40.0, 40.0), True),
     # On his bolts: curled round them.
     "grip": ((-10.0, -3.0, 4.0, 11.0), ((58.0, 70.0),) * 4, (-36.0, 58.0), True),
+    # The knife hand (Jon, 2026-10-19): every finger straight and pressed to
+    # the next, the thumb tucked along the side, the claws in a point. His
+    # stab drives it.
+    "knife": ((2.6, 0.9, -0.9, -2.6), ((1.0, 2.0),) * 4, (-14.0, 8.0), True),
 }
 
 
@@ -374,43 +392,64 @@ def _hand(mode: str, near: bool):
         ux, uy = math.cos(math.radians(a)), math.sin(math.radians(a))
         return [hp(tip[0] - uy * 1.3, tip[1] + ux * 1.3), hp(tip[0] + ux * reach, tip[1] + uy * reach), hp(tip[0] + uy * 1.3, tip[1] - ux * 1.3)]
 
-    reach = 5.4 if mode == "claw" else 4.0
-    claws = [claw(tip, a, reach) for _b, _k, tip, a in fingers if claws_out and (mode != "point" or _b == fingers[0][0])]
-    if claws_out:
-        claws.append(claw(tt, ta, 3.0))
-    # Draw the far fingers first, so the near ones lie over them.
-    order = list(reversed(fingers))
+    reach = {"claw": 5.4, "knife": 6.2}.get(mode, 4.0)
+    # Each finger's claw, or none: a claw is a part of its finger and is
+    # drawn with it, so it lies over the fingers its finger lies over and
+    # under the ones over its finger.
+    claws = [claw(tip, a, reach) if claws_out and (mode != "point" or k == 0) else None for k, (_b, _k, tip, a) in enumerate(fingers)]
+    thumb_claw = claw(tt, ta, 3.0) if claws_out else None
+    # The fingers' order, back to front. Seen from the palm (the far hand)
+    # the index finger is nearest the camera, so it is drawn last; seen from
+    # the back (the near hand) the order is the other way, and the little
+    # finger is nearest (Jon, 2026-10-19).
+    order = list(range(len(fingers))) if near else list(reversed(range(len(fingers))))
 
     def shape(d) -> None:
         K.rrect(d, K.home[0] - 2.4 * HAND, K.home[1] - 6.0 * HAND, K.home[0] + 10.0 * HAND, K.home[1] + 6.0 * HAND, 3.4 * HAND, WHITE)
-        for base, knuckle, tip, _a in order:
+        for base, knuckle, tip, _a in fingers:
             K.stroke(d, [hp(*base), hp(*knuckle), hp(*tip)], WHITE, FINGER_W * HAND)
         K.stroke(d, [hp(*thumb_base), hp(*tk), hp(*tt)], WHITE, (FINGER_W + 0.5) * HAND)
-        for c in claws:
-            K.poly(d, c, WHITE)
+        for c in claws + [thumb_claw]:
+            if c is not None:
+                K.poly(d, c, WHITE)
 
-    def thumb(colour: RGBA) -> None:
-        K.stroke(d_now[0], [hp(*thumb_base), hp(*tk), hp(*tt)], SKIN_DEEP, (FINGER_W + 0.5) * HAND)
-        K.stroke(d_now[0], [hp(*thumb_base), hp(*tk), hp(*tt)], colour, (FINGER_W - 0.4) * HAND)
+    def draw_claw(d, c) -> None:
+        if c is None:
+            return
+        K.poly(d, c, CLAW)
+        K.line(d, [c[1], ((c[0][0] + c[2][0]) / 2.0 * 0.4 + c[1][0] * 0.6, (c[0][1] + c[2][1]) / 2.0 * 0.4 + c[1][1] * 0.6)], CLAW_TIP, 0.6)
 
-    d_now = [None]
+    def thumb(d, colour: RGBA) -> None:
+        K.stroke(d, [hp(*thumb_base), hp(*tk), hp(*tt)], SKIN_DEEP, (FINGER_W + 0.5) * HAND)
+        K.stroke(d, [hp(*thumb_base), hp(*tk), hp(*tt)], colour, (FINGER_W - 0.4) * HAND)
+        draw_claw(d, thumb_claw)
+
+    def finger(d, k: int) -> None:
+        # A line round each finger: each one reads over the one behind it.
+        base, knuckle, tip, _a = fingers[k]
+        K.stroke(d, [hp(*base), hp(*knuckle), hp(*tip)], SKIN_DEEP, FINGER_W * HAND)
+        K.stroke(d, [hp(*base), hp(*knuckle), hp(*tip)], skin, (FINGER_W - 0.9) * HAND)
+        K.oval(d, hp(*knuckle), 0.6 * HAND, 0.6 * HAND, SKIN_DEEP)
+        draw_claw(d, claws[k])
+
+    def palm(d) -> None:
+        K.rrect(d, K.home[0] - 2.4 * HAND, K.home[1] - 6.0 * HAND, K.home[0] + 10.0 * HAND, K.home[1] + 6.0 * HAND, 3.4 * HAND, SKIN_DEEP)
+        K.rrect(d, K.home[0] - 2.0 * HAND, K.home[1] - 5.5 * HAND, K.home[0] + 9.6 * HAND, K.home[1] + 5.5 * HAND, 3.0 * HAND, skin)
 
     def detail(d) -> None:
-        d_now[0] = d
         if near:
-            # The back of the hand: the thumb is behind it, in its shade, and
-            # the back of the palm is laid over the thumb's root.
-            thumb(SKIN_SHADE)
-            K.rrect(d, K.home[0] - 2.4 * HAND, K.home[1] - 6.0 * HAND, K.home[0] + 10.0 * HAND, K.home[1] + 6.0 * HAND, 3.4 * HAND, SKIN_DEEP)
-            K.rrect(d, K.home[0] - 2.0 * HAND, K.home[1] - 5.5 * HAND, K.home[0] + 9.6 * HAND, K.home[1] + 5.5 * HAND, 3.0 * HAND, skin)
-        # A line between each finger and the next: each one reads.
-        for base, knuckle, tip, _a in order:
-            K.stroke(d, [hp(*base), hp(*knuckle), hp(*tip)], SKIN_DEEP, FINGER_W * HAND)
-            K.stroke(d, [hp(*base), hp(*knuckle), hp(*tip)], skin, (FINGER_W - 0.9) * HAND)
-            K.oval(d, hp(*knuckle), 0.6 * HAND, 0.6 * HAND, SKIN_DEEP)
-        if not near:
-            # The palm: the thumb lies in front of it.
-            thumb(skin)
+            # From the back: the thumb and the fingers curl away, behind the
+            # back of the hand, which is laid over their roots.
+            thumb(d, SKIN_SHADE)
+            for k in order:
+                finger(d, k)
+            palm(d)
+        else:
+            # From the palm: the fingers curl toward the camera, in front of
+            # it, and the thumb lies across it.
+            for k in order:
+                finger(d, k)
+            thumb(d, skin)
         # The knuckles of the hand, and its back sewn on at the wrist: on the
         # back of the near hand, ridges that catch the light.
         for base, *_ in fingers:
@@ -418,9 +457,6 @@ def _hand(mode: str, near: bool):
             if near and mode != "fist":
                 K.oval(d, hp(base[0] - 0.8, base[1] - 0.2), 0.55 * HAND, 0.45 * HAND, SKIN_LIGHT)
         stitches(d, [hp(2.0, -6.0), hp(3.0, 0.0), hp(2.2, 6.0)], tick=1.1, every=2.4, width=0.5)
-        for c in claws:
-            K.poly(d, c, CLAW)
-            K.line(d, [c[1], ((c[0][0] + c[2][0]) / 2.0 * 0.4 + c[1][0] * 0.6, (c[0][1] + c[2][1]) / 2.0 * 0.4 + c[1][1] * 0.6)], CLAW_TIP, 0.6)
 
     return K.solid(("hand", mode, near, HAND, 2), shape, skin, detail, outline=1.3, rim=0.3, shade=0.35, shade_colour=SKIN_DEEP)
 
@@ -714,6 +750,74 @@ def _neck_bolts(ctx) -> List[Stamp]:
 X.layers["over_torso"].append(_neck_bolts)
 
 
+#: The jar, from the middle of his head: the middle of it across, the top of
+#: its collar, the top of its dome and its half width.
+JAR_X, JAR_BASE, JAR_TOP, JAR_HALF = -4.6, -12.4, -36.0, 11.6
+
+
+def _jar_outline(inset: float = 0.0, steps: int = 24) -> List[Point]:
+    """The glass: straight sides up from the collar, a round top."""
+    r = JAR_HALF - inset
+    cy = JAR_TOP + r + inset
+    pts = [(JAR_X - r, JAR_BASE)]
+    for k in range(steps + 1):
+        a = math.pi + math.pi * k / steps
+        pts.append((JAR_X + r * math.cos(a), cy + r * math.sin(a)))
+    return pts + [(JAR_X + r, JAR_BASE)]
+
+
+def _brain_jar():
+    """The brain in its jar on the top of his skull. The brain has no face:
+    two halves seen from the side, the folds, the stem."""
+
+    def at(x: float, y: float) -> Point:
+        return KH.at(x, y)
+
+    def paint(d) -> None:
+        glass = [at(*p) for p in _jar_outline()]
+        # The far wall of the glass, then the fluid it holds.
+        KH.poly(d, glass, GLASS[:3] + (70,))
+        surface = JAR_TOP + 6.0
+        KH.poly(d, [at(x, max(y, surface)) for x, y in _jar_outline(1.2)], JAR_FLUID)
+        KH.line(d, [at(JAR_X - JAR_HALF + 1.6, surface), at(JAR_X + JAR_HALF - 1.6, surface)], JAR_FLUID_TOP, 0.8)
+        # The brain, floating a little off the collar, its stem down into
+        # his skull.
+        bx, by = JAR_X + 0.4, JAR_BASE - 9.4
+        KH.line(d, [at(bx - 1.0, by + 5.0), at(bx - 2.0, JAR_BASE + 0.5)], BRAIN_SHADE, 2.2)
+        KH.oval(d, at(bx, by), 8.8, 6.6, BRAIN, OUTLINE, 0.7)
+        KH.oval(d, at(bx - 3.4, by + 3.6), 4.6, 2.6, BRAIN_SHADE, OUTLINE, 0.6)
+        KH.oval(d, at(bx + 0.6, by - 0.6), 7.6, 5.4, BRAIN)
+        for fold in ([(-6.0, -2.0), (-3.4, -3.6), (-1.0, -1.6), (1.4, -3.8), (4.0, -2.0), (6.4, -3.0)],
+                     [(-6.6, 1.0), (-4.0, -0.4), (-1.6, 1.2), (1.0, -0.6), (3.6, 1.0), (6.6, 0.2)],
+                     [(-4.6, 3.6), (-2.0, 2.4), (0.6, 3.8), (3.2, 2.6), (5.6, 3.4)],
+                     [(-2.0, -5.4), (0.0, -3.6), (2.6, -5.6)]):
+            KH.line(d, [at(bx + x, by + y) for x, y in fold], BRAIN_SHADE, 0.6)
+        KH.line(d, [at(bx - 7.0, by - 1.0), at(bx + 7.6, by - 0.6)], BRAIN_FISSURE, 0.7)
+        KH.line(d, [at(bx - 4.0, by - 4.6), at(bx + 3.0, by - 5.6)], BRAIN_LIGHT, 0.8)
+        # Bubbles going up.
+        for x, y, r in ((6.4, -4.0, 0.8), (7.0, -10.0, 0.6), (5.6, -15.0, 0.9), (-7.0, -17.0, 0.5)):
+            KH.oval(d, at(JAR_X + x, JAR_BASE + y), r, r, (230, 255, 245, 200))
+        # The glass over it: a tint, its edge, the light on it.
+        KH.poly(d, glass, GLASS[:3] + (40,))
+        KH.line(d, glass, OUTLINE, 1.3)
+        KH.line(d, [at(*p) for p in _jar_outline(0.9)], JAR_GLASS_EDGE, 0.5)
+        left = JAR_X - JAR_HALF
+        KH.line(d, [at(left + 3.0, JAR_BASE - 3.0), at(left + 3.0, JAR_TOP + 10.0), at(left + 5.4, JAR_TOP + 5.0)], (255, 255, 255, 210), 1.1)
+        KH.line(d, [at(JAR_X + JAR_HALF - 3.0, JAR_TOP + 9.0), at(JAR_X + JAR_HALF - 3.0, JAR_TOP + 13.0)], (255, 255, 255, 150), 0.7)
+        # The steel collar it is screwed into, riveted to his skull, and a
+        # valve on the crown of the glass.
+        x0, x1 = JAR_X - JAR_HALF - 2.4, JAR_X + JAR_HALF + 2.4
+        KH.rrect(d, *at(x0, JAR_BASE - 0.6), *at(x1, JAR_BASE + 4.2), 1.0, BOLT, OUTLINE, 0.9)
+        KH.line(d, [at(x0 + 1.0, JAR_BASE + 0.6), at(x1 - 1.0, JAR_BASE + 0.6)], (200, 202, 210, 255), 0.7)
+        KH.line(d, [at(x0 + 1.0, JAR_BASE + 3.2), at(x1 - 1.0, JAR_BASE + 3.2)], BOLT_DARK, 0.7)
+        for x in (-10.0, -5.0, 0.0, 5.0, 10.0):
+            KH.oval(d, at(JAR_X + x, JAR_BASE + 1.8), 0.8, 0.8, BOLT_DARK, OUTLINE, 0.4)
+        KH.rrect(d, *at(JAR_X - 2.4, JAR_TOP - 2.6), *at(JAR_X + 2.4, JAR_TOP + 0.6), 0.6, BOLT, OUTLINE, 0.7)
+        KH.rrect(d, *at(JAR_X - 0.9, JAR_TOP - 4.6), *at(JAR_X + 0.9, JAR_TOP - 2.4), 0.4, BOLT_DARK, OUTLINE, 0.6)
+
+    return KH.piece(("brain_jar",), paint)
+
+
 def _open(mouth: str) -> float:
     return {"gape": 48.0, "big": 34.0, "open": 18.0, "loll": 16.0, "o": 12.0, "grit": 1.0}.get(mouth, 5.0)
 
@@ -722,7 +826,8 @@ def _head_layers(pose):
     ears = float(pose["ears"])  # type: ignore[arg-type]
     look = pose["look"]
     # The far ear lags its pair a little: two ears are not one.
-    return [(_ear(False, ears * 0.85), "far_ear"), (_jaw(_open(str(pose["mouth"])), str(pose["mouth"]) == "loll"), "jaw"), (_skull(), "skull"), (_ear(True, ears), "near_ear"),
+    return [(_ear(False, ears * 0.85), "far_ear"), (_jaw(_open(str(pose["mouth"])), str(pose["mouth"]) == "loll"), "jaw"), (_skull(), "skull"), (_brain_jar(), "brain_jar"),
+            (_ear(True, ears), "near_ear"),
             (_eyes(str(pose["eyes"]), look), "eyes"),  # type: ignore[arg-type]
             (_brows(R.brow_mood(pose)), "brows"), (_seam(), "seam")]
 
@@ -1023,6 +1128,46 @@ def hammer_pull(i: int, n: int):
     torn = P(hip=(-4.0, 2.0), lean=-12.0, sq=1.05, head=(-1.0, -1.0, -16.0), na=(-6.0, 4.0), fa=(-2.0, 8.0), nh="claw", fh="claw",
              nf=(-14.0, 0.0, -6.0), ff=(6.0, 0.0, 10.0), mouth="big", eyes="open", ears=8.0, hem=(1.0, 6.0))
     return keyed(i, n, [(0.0, HAMMER_DOWN), (0.3, torn, "snap"), (0.65, dict(torn, lean=-4.0, sq=1.0), "out"), (1.0, X.full(P()), "back")])
+
+
+# ---- The stab: the knife hand ------------------------------------------------------
+
+#: Cocked: his weight back on his rear foot, his near hand drawn back to his
+#: hip, its fingers straight and together and pointed at you; the far hand
+#: out in front to sight along.
+STAB_COCK = P(hip=(-5.0, 8.0), lean=6.0, sq=0.97, shrug=(1.0, 1.0), head=(2.0, 2.0, -4.0), na=(2.0, 24.0), nab=1.0, nht=-28.0, fa=(22.0, 8.0), fab=-1.0,
+              nh="knife", fh="open", nf=(-14.0, 0.0, 0.0), ff=(10.0, 0.0, 0.0), mouth="grit", eyes="pin", ears=-22.0, brows=-1.0, hem=(1.0, 4.0),
+              look=(1.0, 0.2))
+#: The stab: a long step in, the near arm straight out and a little down at
+#: you, the knife hand driving its claws, the far arm thrown back.
+STAB_THRUST = P(hip=(12.0, 18.0), lean=40.0, sq=1.0, shrug=(2.0, 0.0), head=(5.0, 2.0, -16.0), na=(29.0, 17.0), nab=-1.0, fa=(-22.0, 2.0),
+                nh="knife", fh="open", nf=(-20.0, 0.0, 0.0), ff=(24.0, 0.0, -8.0), mouth="gape", eyes="pin", ears=-30.0, hem=(4.0, 0.0))
+#: Overreached: all his weight on his front foot, the arm still out: the
+#: opening after a stab.
+STAB_PAST = dict(STAB_THRUST, hip=(14.0, 21.0), lean=46.0, sq=0.95, head=(6.0, 4.0, -6.0), na=(28.0, 20.0), mouth="open", eyes="open", ears=-10.0)
+
+
+@X.row
+def stab_tell(i: int, n: int):
+    # He draws the knife hand back to his hip and sights along the other;
+    # then he holds it, trembling.
+    pose = keyed(i, n, [(0.0, X.full(P())), (0.45, STAB_COCK, "out"), (1.0, STAB_COCK)])
+    if i >= n // 2:
+        pose = dict(pose, na=(pose["na"][0] + jitter(i, 0.6), pose["na"][1] + jitter(i, 0.6, 2.0)), ears=pose["ears"] + jitter(i, 3.0, 1.0))
+    return pose
+
+
+@X.row
+def stab(i: int, n: int):
+    # It goes: the step and the arm at once, straight in, and he is past.
+    return keyed(i, n, [(0.0, STAB_COCK), (0.25, STAB_THRUST, "snap"), (1.0, STAB_PAST, "out")])
+
+
+@X.row
+def stab_recover(i: int, n: int):
+    # Overreached, he hauls the arm back and himself up after it.
+    back = dict(STAB_PAST, hip=(4.0, 8.0), lean=16.0, na=(10.0, 22.0), nh="open", mouth="grit", eyes="open", ears=-6.0)
+    return keyed(i, n, [(0.0, STAB_PAST), (0.45, STAB_PAST, "hold"), (0.75, back, "io"), (1.0, X.full(P()), "io")])
 
 
 # ---- The lunge and the bound ---------------------------------------------------
@@ -1795,6 +1940,14 @@ def on_the_floor(pose, i: int, n: int):
     drawn body (no effects), so whatever the joints do, nothing goes through
     the floor (Jon, 2026-10-18: "make sure that he doesn't go through the
     floor"; his far hand hung through it as he lay dead, 2026-10-19)."""
+    key = (i, n, repr(sorted(pose.items())))
+    if key in _FLOOR_LIFTS:
+        lift = _FLOOR_LIFTS[key]
+        if lift == 0.0:
+            return pose
+        pose = X.full(pose)
+        return dict(pose, off=(pose["off"][0], pose["off"][1] - lift))
+    _FLOOR_LIFTS[key] = 0.0
     X.poses["_on_the_floor"] = lambda _i, _n: pose
     try:
         img = X.render_frame("_on_the_floor", i, n)
@@ -1807,9 +1960,15 @@ def on_the_floor(pose, i: int, n: int):
     sunk = bottom - (X.ground + FLOOR_SLACK)
     if sunk <= 0.0:
         return pose
+    _FLOOR_LIFTS[key] = sunk / X.U
     pose = X.full(pose)
     ox, oy = pose["off"]
     return dict(pose, off=(ox, oy - sunk / X.U))
+
+
+#: Each pose's lift onto the floor, measured once: a frame is asked for its
+#: pose by every pass of a publish (the sheet, the flipbook, its replays).
+_FLOOR_LIFTS: dict = {}
 
 
 @X.row
@@ -1841,7 +2000,8 @@ X.rows = [("idle", 16, 90), ("walk", 12, 100), ("prowl", 12, 70), ("run", 8, 85)
           ("howl_tell", 8, 100), ("howl", 12, 70), ("taunt", 12, 100),
           ("galvanize_tell", 10, 60), ("galvanize", 8, 60), ("lash_tell", 8, 80), ("lash", 6, 60), ("flatline", 16, 110), ("recharge", 8, 50),
           ("awaken", 14, 70), ("shock", 8, 50), ("hit", 6, 60), ("death", 28, 90),
-          ("throne_dead", 12, 120), ("throne_wake", 20, 85), ("serum_tell", 10, 80), ("serum_inject", 10, 80), ("serum_surge", 20, 80)]
+          ("throne_dead", 12, 120), ("throne_wake", 20, 85), ("serum_tell", 10, 80), ("serum_inject", 10, 80), ("serum_surge", 20, 80),
+          ("stab_tell", 8, 80), ("stab", 6, 60), ("stab_recover", 8, 80)]
 
 # ---- What his blows do -------------------------------------------------------
 

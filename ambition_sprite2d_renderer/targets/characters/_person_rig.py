@@ -109,6 +109,10 @@ REST: Pose = {
     "leg": "under",
     "nh": "soft",
     "fh": "soft",
+    # Each hand's turn off the line of its forearm (degrees, +y down): a hand
+    # held at the hip that points ahead, not down its arm.
+    "nht": 0.0,
+    "fht": 0.0,
     # The sole of each shoe from the ground under the person, and its toe's
     # turn.
     "nf": (-5.0, 0.0, 0.0),
@@ -1695,7 +1699,8 @@ class Person:
             name = "near" if near else "far"
             sh, el, wr = (n_sh, n_el, n_wr) if near else (f_sh, f_el, f_wr)
             self.limb(img, f"{name}_arm", [(sh, el, self.upper_arm(near)), (el, wr, self.forearm(near))])
-            K.place(img, self.hand(str(pose["nh" if near else "fh"]), near), wr, f"{name}_hand", angle(el, wr))  # type: ignore[arg-type]
+            turn = float(pose["nht" if near else "fht"])  # type: ignore[arg-type]
+            K.place(img, self.hand(str(pose["nh" if near else "fh"]), near), wr, f"{name}_hand", angle(el, wr) + turn)  # type: ignore[arg-type]
 
         def leg(near: bool) -> None:
             name = "near" if near else "far"
